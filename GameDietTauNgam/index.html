@@ -43,6 +43,10 @@
                             <span class="mode-title">PRACTICE MODE</span>
                             <span class="mode-desc">No damage, slower paced learning</span>
                         </button>
+                        <button class="mode-btn" data-mode="duo" id="btn-mode-duo">
+                            <span class="mode-title">2 PLAYER MODE</span>
+                            <span class="mode-desc">Two escort ships, shared mission</span>
+                        </button>
                     </div>
                 </div>
 
@@ -85,12 +89,22 @@
             <div id="hud-top">
                 <div class="hud-left glass-hud">
                     <div class="hud-item score-container">
-                        <span class="hud-label">SCORE</span>
+                        <span id="hud-score-label" class="hud-label">SCORE</span>
                         <span id="hud-score" class="hud-value neon-blue">00000</span>
                     </div>
                     <div class="hud-item lives-container">
-                        <span class="hud-label">LIVES</span>
+                        <span id="hud-lives-label" class="hud-label">LIVES</span>
                         <div id="hud-hearts" class="hud-value">❤️❤️❤️</div>
+                    </div>
+                    <div id="hud-p2-stats" class="duo-hud-stats hidden">
+                        <div class="hud-item score-container">
+                            <span class="hud-label">P2 SCORE</span>
+                            <span id="hud-p2-score" class="hud-value neon-pink">00000</span>
+                        </div>
+                        <div class="hud-item lives-container">
+                            <span class="hud-label">P2 LIVES</span>
+                            <div id="hud-p2-hearts" class="hud-value">❤️❤️❤️</div>
+                        </div>
                     </div>
                     <div class="hud-item difficulty-container">
                         <span class="hud-label">STAGE</span>

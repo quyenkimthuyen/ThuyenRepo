@@ -572,9 +572,10 @@ class FloatingText {
 // 4. DEPTH CHARGE BOMB
 // ==========================================================================
 class Bomb {
-    constructor(x, y) {
+    constructor(x, y, owner = null) {
         this.x = x;
         this.y = y;
+        this.owner = owner;
         this.vy = 2.0; // Falling speed starts slow
         this.radius = 12;
         this.gravity = 0.08;
@@ -1186,16 +1187,42 @@ class Missile {
 // 8. BATTLESHIP (Player Unit)
 // ==========================================================================
 class Battleship {
-    constructor(waterY) {
-        this.width = 135; // 150 * 0.9 = 135
-        this.height = 43; // 48 * 0.9 = 43.2 -> 43
-        this.x = window.innerWidth / 2;
+    constructor(waterY, options = {}) {
+        this.width = options.width || 135;
+        this.height = options.height || 43;
+        this.x = options.x || window.innerWidth / 2;
         this.y = waterY - this.height + 10;
         this.speed = 5.2;
+        this.playerLabel = options.playerLabel || 'P1';
+        this.palette = {
+            hullTop: options.hullTop || '#f8fafc',
+            hullMid: options.hullMid || '#93c5fd',
+            hullBottom: options.hullBottom || '#2563eb',
+            stroke: options.stroke || '#e0f2fe',
+            keel: options.keel || '#f97316',
+            deck: options.deck || '#dbeafe',
+            deckStroke: options.deckStroke || '#60a5fa',
+            bridgeBottom: options.bridgeBottom || '#bfdbfe',
+            bridgeStroke: options.bridgeStroke || '#3b82f6',
+            window: options.window || '#0ea5e9',
+            windowGlow: options.windowGlow || '#7dd3fc',
+            launcher: options.launcher || '#1d4ed8',
+            shadow: options.shadow || 'rgba(14, 165, 233, 0.28)'
+        };
         
         // Floating motion
         this.targetY = this.y;
         this.bobOffset = 0;
+
+        // Per-ship depth charge loading
+        this.fireCooldown = 0;
+        this.maxBombsBeforeReload = 2;
+        this.bombsRemaining = this.maxBombsBeforeReload;
+        this.reloadDuration = 120;
+        this.reloadTimer = 0;
+        this.score = 0;
+        this.lives = 3;
+        this.isDisabled = false;
 
         // Active State power-ups
         this.shieldActive = false;
@@ -1203,14 +1230,24 @@ class Battleship {
         this.frozenSubActive = false;
     }
 
-    update(keys, touchDir, waterY, time) {
+    update(keys, touchDir, waterY, time, controlMode = 'solo') {
+        if (this.isDisabled) return;
+
         // Handle input motion
         let dir = 0;
-        if (keys['a'] || keys['ArrowLeft']) dir = -1;
-        if (keys['d'] || keys['ArrowRight']) dir = 1;
+        if (controlMode === 'secondary') {
+            if (keys['a']) dir = -1;
+            if (keys['d']) dir = 1;
+        } else if (controlMode === 'primaryDuo') {
+            if (keys['ArrowLeft']) dir = -1;
+            if (keys['ArrowRight']) dir = 1;
+        } else {
+            if (keys['a'] || keys['ArrowLeft']) dir = -1;
+            if (keys['d'] || keys['ArrowRight']) dir = 1;
+        }
         
         // Touch overrides keyboard
-        if (touchDir !== 0) dir = touchDir;
+        if (touchDir !== 0 && controlMode !== 'secondary') dir = touchDir;
 
         this.x += dir * this.speed;
 
@@ -1234,18 +1271,21 @@ class Battleship {
         ctx.translate(-this.x, -this.y);
 
         ctx.save();
-        ctx.shadowColor = 'rgba(14, 165, 233, 0.28)';
+        if (this.isDisabled) {
+            ctx.globalAlpha = 0.45;
+        }
+        ctx.shadowColor = this.palette.shadow;
         ctx.shadowBlur = 14;
         ctx.shadowOffsetY = 5;
 
         const hullGrad = ctx.createLinearGradient(0, this.y, 0, this.y + this.height);
-        hullGrad.addColorStop(0, '#f8fafc');
-        hullGrad.addColorStop(0.45, '#93c5fd');
-        hullGrad.addColorStop(1, '#2563eb');
+        hullGrad.addColorStop(0, this.palette.hullTop);
+        hullGrad.addColorStop(0.45, this.palette.hullMid);
+        hullGrad.addColorStop(1, this.palette.hullBottom);
 
         // Cute rounded escort hull with a soft bow.
         ctx.fillStyle = hullGrad;
-        ctx.strokeStyle = '#e0f2fe';
+        ctx.strokeStyle = this.palette.stroke;
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(this.x - this.width/2 - 12, this.y + 14);
@@ -1260,14 +1300,14 @@ class Battleship {
         ctx.stroke();
 
         // Simple cheerful keel stripe.
-        ctx.fillStyle = '#f97316';
+        ctx.fillStyle = this.palette.keel;
         ctx.beginPath();
         ctx.roundRect(this.x - this.width/2 + 12, this.y + this.height - 12, this.width * 0.82, 7, 999);
         ctx.fill();
 
         // Soft deck platform.
-        ctx.fillStyle = '#dbeafe';
-        ctx.strokeStyle = '#60a5fa';
+        ctx.fillStyle = this.palette.deck;
+        ctx.strokeStyle = this.palette.deckStroke;
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.roundRect(this.x - 56, this.y - 7, 112, 13, 999);
@@ -1277,9 +1317,9 @@ class Battleship {
         // Cute command bridge.
         const bridgeGrad = ctx.createLinearGradient(0, this.y - 44, 0, this.y + 4);
         bridgeGrad.addColorStop(0, '#ffffff');
-        bridgeGrad.addColorStop(1, '#bfdbfe');
+        bridgeGrad.addColorStop(1, this.palette.bridgeBottom);
         ctx.fillStyle = bridgeGrad;
-        ctx.strokeStyle = '#3b82f6';
+        ctx.strokeStyle = this.palette.bridgeStroke;
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.roundRect(this.x - 30, this.y - 34, 60, 29, 9);
@@ -1287,8 +1327,8 @@ class Battleship {
         ctx.stroke();
 
         // Friendly windows.
-        ctx.fillStyle = '#0ea5e9';
-        ctx.shadowColor = '#7dd3fc';
+        ctx.fillStyle = this.palette.window;
+        ctx.shadowColor = this.palette.windowGlow;
         ctx.shadowBlur = 5;
         for (let i = 0; i < 4; i++) {
             ctx.beginPath();
@@ -1298,13 +1338,13 @@ class Battleship {
         ctx.shadowBlur = 0;
 
         // Escort radar mast for an aircraft-carrier guard ship.
-        ctx.strokeStyle = '#2563eb';
+        ctx.strokeStyle = this.palette.bridgeStroke;
         ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.moveTo(this.x + 22, this.y - 34);
         ctx.lineTo(this.x + 22, this.y - 55);
         ctx.stroke();
-        ctx.strokeStyle = '#0ea5e9';
+        ctx.strokeStyle = this.palette.window;
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.ellipse(this.x + 22, this.y - 57, 14, 4, 0, 0, Math.PI * 2);
@@ -1314,14 +1354,14 @@ class Battleship {
         ctx.arc(this.x + 22, this.y - 44, 5, 0, Math.PI * 2);
         ctx.fill();
 
-        // Small carrier-escort deck mark.
+        // Small carrier-escort deck mark and player label.
         ctx.fillStyle = 'rgba(255,255,255,0.82)';
         ctx.font = "bold 12px 'Fredoka', sans-serif";
         ctx.textAlign = 'center';
-        ctx.fillText('CV', this.x, this.y + 27);
+        ctx.fillText(this.playerLabel, this.x, this.y + 27);
 
         // Minimal toy-like depth charge launchers.
-        ctx.fillStyle = '#1d4ed8';
+        ctx.fillStyle = this.palette.launcher;
         ctx.strokeStyle = '#eff6ff';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -1385,8 +1425,13 @@ class GameEngine {
         this.modalGameover = document.getElementById('modal-gameover');
         
         // HUD text values
+        this.hudScoreLabel = document.getElementById('hud-score-label');
         this.hudScore = document.getElementById('hud-score');
+        this.hudLivesLabel = document.getElementById('hud-lives-label');
         this.hudHearts = document.getElementById('hud-hearts');
+        this.hudP2Stats = document.getElementById('hud-p2-stats');
+        this.hudP2Score = document.getElementById('hud-p2-score');
+        this.hudP2Hearts = document.getElementById('hud-p2-hearts');
         this.hudDiff = document.getElementById('hud-diff');
         this.hudTime = document.getElementById('hud-time');
         this.hudAccuracy = document.getElementById('hud-accuracy');
@@ -1410,7 +1455,7 @@ class GameEngine {
         this.puEmpVal = document.getElementById('powerup-emp-timer');
 
         // Settings / Game State
-        this.mode = 'classic'; // classic, survival, practice
+        this.mode = 'classic'; // classic, survival, practice, duo
         this.state = 'start'; // start, playing, paused, gameover
         this.score = 0;
         this.lives = 3;
@@ -1439,6 +1484,7 @@ class GameEngine {
 
         // Entities arrays
         this.battleship = null;
+        this.secondBattleship = null;
         this.bombs = [];
         this.submarines = [];
         this.missiles = [];
@@ -1492,10 +1538,11 @@ class GameEngine {
             if (this.handleMenuKeyboardNavigation(e)) return;
 
             this.keys[e.key] = true;
+            this.keys[e.key.toLowerCase()] = true;
             if (this.state !== 'playing') return;
             // Space or ArrowDown to fire depth charge
             if (e.key === ' ' || e.key === 'ArrowDown') {
-                this.fireDepthCharge();
+                this.fireDepthCharge(this.battleship);
                 e.preventDefault();
             }
             // ArrowUp to change target answer
@@ -1503,9 +1550,21 @@ class GameEngine {
                 this.requestManualTargetChange();
                 e.preventDefault();
             }
+            if (this.mode === 'duo') {
+                const key = e.key.toLowerCase();
+                if (key === 's') {
+                    this.fireDepthCharge(this.secondBattleship);
+                    e.preventDefault();
+                }
+                if (key === 'w') {
+                    this.requestManualTargetChange();
+                    e.preventDefault();
+                }
+            }
         });
         window.addEventListener('keyup', e => {
             this.keys[e.key] = false;
+            this.keys[e.key.toLowerCase()] = false;
         });
 
         // Setup DOM event listeners
@@ -1527,9 +1586,17 @@ class GameEngine {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
         this.waterY = this.canvas.height * 0.3; // surface line is top 30%
-        if (this.battleship) {
-            this.battleship.targetY = this.waterY - this.battleship.height + 10;
-        }
+        this.getActiveBattleships().forEach(ship => {
+            ship.targetY = this.waterY - ship.height + 10;
+        });
+    }
+
+    getActiveBattleships() {
+        return [this.battleship, this.secondBattleship].filter(Boolean);
+    }
+
+    areAllPlayerShipsDisabled() {
+        return this.getActiveBattleships().every(ship => ship.isDisabled || ship.lives <= 0);
     }
 
     getActiveMenuContainer() {
@@ -1655,11 +1722,11 @@ class GameEngine {
         btnFire.addEventListener('touchstart', (e) => {
             e.preventDefault();
             sound.init();
-            this.fireDepthCharge();
+            this.fireDepthCharge(this.battleship);
         });
         btnFire.addEventListener('click', () => {
             sound.init();
-            this.fireDepthCharge();
+            this.fireDepthCharge(this.battleship);
         });
     }
 
@@ -1698,7 +1765,29 @@ class GameEngine {
         
         vocab.reset();
 
-        this.battleship = new Battleship(this.waterY);
+        this.battleship = new Battleship(this.waterY, {
+            x: this.mode === 'duo' ? window.innerWidth * 0.35 : window.innerWidth / 2,
+            playerLabel: 'P1'
+        });
+        this.secondBattleship = this.mode === 'duo'
+            ? new Battleship(this.waterY, {
+                x: window.innerWidth * 0.65,
+                playerLabel: 'P2',
+                hullTop: '#fff7ed',
+                hullMid: '#f9a8d4',
+                hullBottom: '#db2777',
+                stroke: '#fce7f3',
+                keel: '#a855f7',
+                deck: '#fce7f3',
+                deckStroke: '#f472b6',
+                bridgeBottom: '#fbcfe8',
+                bridgeStroke: '#db2777',
+                window: '#a855f7',
+                windowGlow: '#f0abfc',
+                launcher: '#be185d',
+                shadow: 'rgba(236, 72, 153, 0.28)'
+            })
+            : null;
 
         this.screenStart.classList.remove('active');
         this.screenGame.classList.add('active');
@@ -1743,11 +1832,16 @@ class GameEngine {
     }
 
     updateStartHighScore() {
+        if (this.mode === 'duo') {
+            document.getElementById('start-high-score').innerText = 'N/A';
+            return;
+        }
         const stored = localStorage.getItem(`hscore_${this.mode}`) || 0;
         document.getElementById('start-high-score').innerText = stored;
     }
 
     saveHighScore() {
+        if (this.mode === 'duo') return;
         const key = `hscore_${this.mode}`;
         const stored = parseInt(localStorage.getItem(key) || 0);
         if (this.score > stored) {
@@ -1756,10 +1850,12 @@ class GameEngine {
     }
 
     getHighScore() {
+        if (this.mode === 'duo') return 0;
         return parseInt(localStorage.getItem(`hscore_${this.mode}`) || 0);
     }
 
     savePlayHistory() {
+        if (this.mode === 'duo') return;
         const key = `history_${this.mode}`;
         const history = this.getPlayHistory();
         history.unshift({
@@ -1774,6 +1870,7 @@ class GameEngine {
     }
 
     getPlayHistory() {
+        if (this.mode === 'duo') return [];
         try {
             return JSON.parse(localStorage.getItem(`history_${this.mode}`) || '[]');
         } catch (e) {
@@ -1889,16 +1986,16 @@ class GameEngine {
 
         const mult = this.getDifficultySpeedMultiplier();
         const sub = new Submarine(subDepthY, depthIndex, wordObj, mult, false);
-        // Ensure submarine does not spawn too close to the battleship horizontally
-        if (this.battleship) {
+        // Ensure submarine does not spawn too close to player ships horizontally
+        this.getActiveBattleships().forEach(ship => {
             const minDist = 150; // minimum horizontal distance in pixels
-            if (Math.abs(sub.x - this.battleship.x) < minDist) {
+            if (Math.abs(sub.x - ship.x) < minDist) {
                 // Shift submarine to the opposite side
-                sub.x = (sub.x < this.battleship.x) ? sub.x - minDist : sub.x + minDist;
+                sub.x = (sub.x < ship.x) ? sub.x - minDist : sub.x + minDist;
                 // Clamp within canvas bounds
                 sub.x = Math.max(sub.width / 2, Math.min(this.canvas.width - sub.width / 2, sub.x));
             }
-        }
+        });
         this.submarines.push(sub);
     }
 
@@ -1922,18 +2019,18 @@ class GameEngine {
         this.floatingTexts.push(new FloatingText(this.canvas.width/2, this.canvas.height/2 - 50, "⚠️ BOSS INCOMING ⚠️", "#ff0055", 1.8));
     }
 
-    fireDepthCharge() {
-        if (this.fireCooldown > 0 || this.reloadTimer > 0 || this.bombsRemaining <= 0) return;
-        this.fireCooldown = 22; // 0.36 seconds delay cooldown
+    fireDepthCharge(ship = this.battleship) {
+        if (!ship || ship.isDisabled || ship.fireCooldown > 0 || ship.reloadTimer > 0 || ship.bombsRemaining <= 0) return;
+        ship.fireCooldown = 22; // 0.36 seconds delay cooldown
         
-        const bomb = new Bomb(this.battleship.x, this.battleship.y + this.battleship.height - 10);
+        const bomb = new Bomb(ship.x, ship.y + ship.height - 10, ship);
         this.bombs.push(bomb);
-        this.bombsRemaining--;
+        ship.bombsRemaining--;
         sound.playShoot();
 
-        if (this.bombsRemaining <= 0) {
-            this.reloadTimer = this.reloadDuration;
-            this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 40, "RELOADING...", '#ffd000', 0.9));
+        if (ship.bombsRemaining <= 0) {
+            ship.reloadTimer = ship.reloadDuration;
+            this.floatingTexts.push(new FloatingText(ship.x, ship.y - 40, "RELOADING...", '#ffd000', 0.9));
             sound.playReload();
         }
         this.updateAmmoHUD();
@@ -2032,36 +2129,23 @@ class GameEngine {
 
     updatePhysics() {
         this.updateTimerHUD();
-        if (this.fireCooldown > 0) this.fireCooldown--;
         if (this.manualTargetChangeCooldown > 0) this.manualTargetChangeCooldown--;
         if (this.manualTargetChangeNoticeTimer > 0) this.manualTargetChangeNoticeTimer--;
 
-        if (this.reloadTimer > 0) {
-            this.reloadTimer--;
-            if (this.battleship && this.reloadTimer % 12 === 0) {
-                const fx = this.battleship.x + (Math.random() * 44 - 22);
-                const fy = this.battleship.y - 8;
-                this.particles.push(new Particle(fx, fy, 'spark', '#ffd000'));
-                this.particles.push(new Particle(fx, fy, 'smoke', '#facc15'));
-            }
-
-            if (this.reloadTimer <= 0) {
-                this.bombsRemaining = this.maxBombsBeforeReload;
-                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 40, "AMMO READY!", '#33ff88', 0.95));
-                this.speakCurrentTargetWord();
-            }
-            this.updateAmmoHUD();
-        }
+        this.getActiveBattleships().forEach(ship => this.updateShipReload(ship));
 
         // 1. Update Battleship
-        this.battleship.update(this.keys, this.touchDir, this.waterY, this.gameTime);
+        this.battleship.update(this.keys, this.touchDir, this.waterY, this.gameTime, this.mode === 'duo' ? 'primaryDuo' : 'solo');
+        if (this.secondBattleship) {
+            this.secondBattleship.update(this.keys, 0, this.waterY, this.gameTime, 'secondary');
+        }
 
         // 2. Power-up Timers countdown
         if (this.freezeTimer > 0) {
             this.freezeTimer--;
             if (this.freezeTimer <= 0) {
                 this.puFreeze.classList.add('hidden');
-                this.battleship.frozenSubActive = false;
+                this.getActiveBattleships().forEach(ship => ship.frozenSubActive = false);
             } else {
                 this.puFreezeVal.innerText = Math.ceil(this.freezeTimer / 60);
             }
@@ -2071,7 +2155,7 @@ class GameEngine {
             this.empTimer--;
             if (this.empTimer <= 0) {
                 this.puEmp.classList.add('hidden');
-                this.battleship.empActive = false;
+                this.getActiveBattleships().forEach(ship => ship.empActive = false);
             } else {
                 this.puEmpVal.innerText = Math.ceil(this.empTimer / 60);
             }
@@ -2150,11 +2234,14 @@ class GameEngine {
             crate.update(this.waterY, this.gameTime);
             
             // Check box collections
-            const dx = Math.abs(this.battleship.x - crate.x);
-            const dy = Math.abs(this.battleship.y + this.battleship.height/2 - (crate.y + crate.height/2));
-            
-            if (dx < (this.battleship.width/2 + crate.width/2) && dy < (this.battleship.height/2 + crate.height/2)) {
-                this.applyPowerup(crate.type);
+            const collector = this.getActiveBattleships().find(ship => {
+                const dx = Math.abs(ship.x - crate.x);
+                const dy = Math.abs(ship.y + ship.height/2 - (crate.y + crate.height/2));
+                return dx < (ship.width/2 + crate.width/2) && dy < (ship.height/2 + crate.height/2);
+            });
+
+            if (collector) {
+                this.applyPowerup(crate.type, collector);
                 this.crates.splice(i, 1);
             }
         }
@@ -2190,6 +2277,26 @@ class GameEngine {
         }
     }
 
+    updateShipReload(ship) {
+        if (ship.fireCooldown > 0) ship.fireCooldown--;
+        if (ship.reloadTimer <= 0) return;
+
+        ship.reloadTimer--;
+        if (ship.reloadTimer % 12 === 0) {
+            const fx = ship.x + (Math.random() * 44 - 22);
+            const fy = ship.y - 8;
+            this.particles.push(new Particle(fx, fy, 'spark', '#ffd000'));
+            this.particles.push(new Particle(fx, fy, 'smoke', '#facc15'));
+        }
+
+        if (ship.reloadTimer <= 0) {
+            ship.bombsRemaining = ship.maxBombsBeforeReload;
+            this.floatingTexts.push(new FloatingText(ship.x, ship.y - 40, "AMMO READY!", '#33ff88', 0.95));
+            this.speakCurrentTargetWord();
+        }
+        this.updateAmmoHUD();
+    }
+
     triggerSubmarineAttack() {
         if (this.submarines.length === 0) return;
 
@@ -2221,81 +2328,94 @@ class GameEngine {
     }
 
     checkMissileBattleshipCollision(missile) {
-        // Battleship width bounding box hit check
-        const halfW = this.battleship.width / 2;
-        const boundsLeft = this.battleship.x - halfW - 5;
-        const boundsRight = this.battleship.x + halfW + 5;
+        const hitShip = this.getActiveBattleships().find(ship => {
+            if (ship.isDisabled) return false;
+            const halfW = ship.width / 2;
+            return missile.x >= ship.x - halfW - 5 && missile.x <= ship.x + halfW + 5;
+        });
 
-        if (missile.x >= boundsLeft && missile.x <= boundsRight) {
+        if (hitShip) {
             // Hit!
-            if (this.battleship.shieldActive) {
+            if (hitShip.shieldActive) {
                 // Shield saves ship
-                this.battleship.shieldActive = false;
+                hitShip.shieldActive = false;
                 this.puShield.classList.add('hidden');
                 
                 // Explode blue sparks
                 for (let k = 0; k < 20; k++) {
-                    this.particles.push(new Particle(this.battleship.x, this.battleship.y, 'spark', '#00f0ff'));
+                    this.particles.push(new Particle(hitShip.x, hitShip.y, 'spark', '#00f0ff'));
                 }
-                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 30, "SHIELD BLOCKED!", '#00f0ff', 1.1));
+                this.floatingTexts.push(new FloatingText(hitShip.x, hitShip.y - 30, "SHIELD BLOCKED!", '#00f0ff', 1.1));
                 sound.playExplosion();
                 this.triggerScreenShake(10);
             } else {
                 // Lost life
-                this.lives--;
+                if (this.mode === 'duo') {
+                    hitShip.lives--;
+                    if (hitShip.lives <= 0) {
+                        hitShip.lives = 0;
+                        hitShip.isDisabled = true;
+                        this.floatingTexts.push(new FloatingText(hitShip.x, hitShip.y - 48, `${hitShip.playerLabel} DISABLED!`, '#ff3333', 1.4));
+                    }
+                } else {
+                    this.lives--;
+                }
                 this.triggerScreenShake(24);
                 sound.playDamage();
                 
                 // Damage sparks
                 for (let k = 0; k < 18; k++) {
-                    this.particles.push(new Particle(this.battleship.x, this.battleship.y + 10, 'fire', '#ff0033'));
+                    this.particles.push(new Particle(hitShip.x, hitShip.y + 10, 'fire', '#ff0033'));
                 }
                 
-                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 30, "-1 LIFE", '#ff3333', 1.3));
+                this.floatingTexts.push(new FloatingText(hitShip.x, hitShip.y - 30, "-1 LIFE", '#ff3333', 1.3));
                 this.currentCombo = 0; // Break combo
                 this.updateHUD();
 
-                if (this.lives <= 0) {
+                if ((this.mode === 'duo' && this.areAllPlayerShipsDisabled()) || (this.mode !== 'duo' && this.lives <= 0)) {
                     this.triggerGameOver();
                 }
             }
         }
     }
 
-    applyPowerup(type) {
+    applyPowerup(type, ship = this.battleship) {
         sound.playPowerup();
         
         switch (type) {
             case 'repair':
-                if (this.lives < 3 || this.mode === 'practice') {
+                if (this.mode === 'duo') {
+                    ship.lives = Math.min(3, ship.lives + 1);
+                    ship.isDisabled = ship.lives <= 0;
+                } else if (this.lives < 3 || this.mode === 'practice') {
                     this.lives++;
-                    this.updateHUD();
                 }
-                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 30, "+1 LIFE!", '#33ff88', 1.2));
+                this.updateHUD();
+                this.floatingTexts.push(new FloatingText(ship.x, ship.y - 30, "+1 LIFE!", '#33ff88', 1.2));
                 // green sparks
                 for (let k = 0; k < 12; k++) {
-                    this.particles.push(new Particle(this.battleship.x, this.battleship.y, 'spark', '#33ff88'));
+                    this.particles.push(new Particle(ship.x, ship.y, 'spark', '#33ff88'));
                 }
                 break;
 
             case 'shield':
-                this.battleship.shieldActive = true;
+                ship.shieldActive = true;
                 this.puShield.classList.remove('hidden');
-                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 30, "SHIELD ACTIVE!", '#00e1ff', 1.2));
+                this.floatingTexts.push(new FloatingText(ship.x, ship.y - 30, "SHIELD ACTIVE!", '#00e1ff', 1.2));
                 break;
 
             case 'freeze':
                 this.freezeTimer = 300; // 5 seconds at 60 FPS
-                this.battleship.frozenSubActive = true;
+                ship.frozenSubActive = true;
                 this.puFreeze.classList.remove('hidden');
-                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 30, "SUBMARINES FROZEN!", '#38bdf8', 1.2));
+                this.floatingTexts.push(new FloatingText(ship.x, ship.y - 30, "SUBMARINES FROZEN!", '#38bdf8', 1.2));
                 break;
 
             case 'emp':
                 this.empTimer = 600; // 10 seconds at 60 FPS
-                this.battleship.empActive = true;
+                ship.empActive = true;
                 this.puEmp.classList.remove('hidden');
-                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 30, "EMP ACTIVATE!", '#ffd000', 1.2));
+                this.floatingTexts.push(new FloatingText(ship.x, ship.y - 30, "EMP ACTIVATE!", '#ffd000', 1.2));
                 
                 // Spark animations on all living subs
                 this.submarines.forEach(sub => {
@@ -2327,14 +2447,14 @@ class GameEngine {
 
                 if (bomb.x >= subLeft && bomb.x <= subRight && bomb.y >= subTop && bomb.y <= subBottom) {
                     bomb.triggerExplosion();
-                    this.resolveExplosionImpact(bomb.x, bomb.y, bomb.maxExplosionRadius);
+                    this.resolveExplosionImpact(bomb.x, bomb.y, bomb.maxExplosionRadius, bomb.owner);
                     break;
                 }
             }
         }
     }
 
-    resolveExplosionImpact(expX, expY, expRad) {
+    resolveExplosionImpact(expX, expY, expRad, ownerShip = this.battleship) {
         // Verify which submarines are overlapped by this explosion radius
         this.submarines.forEach(sub => {
             if (sub.isDying) return;
@@ -2349,12 +2469,12 @@ class GameEngine {
 
             // Sub overlaps if distance < radius + bounds
             if (dist < (expRad + Math.max(sub.width/2, sub.height/2))) {
-                this.processSubmarineHit(sub);
+                this.processSubmarineHit(sub, ownerShip);
             }
         });
     }
 
-    processSubmarineHit(sub) {
+    processSubmarineHit(sub, ownerShip = this.battleship) {
         const isTargetMatch = sub.word.word.toLowerCase() === this.currentTarget.word.toLowerCase();
 
         if (sub.isBoss) {
@@ -2373,7 +2493,8 @@ class GameEngine {
                 if (sub.hp <= 0) {
                     this.destroySubmarine(sub);
                     this.bossesDefeated++;
-                    this.score += 800;
+                    this.addPlayerScore(ownerShip, 800);
+                    this.updateHUD();
                     this.floatingTexts.push(new FloatingText(sub.x + sub.width/2, sub.y - 20, "BOSS DEFEATED! +800", '#ffd000', 1.8));
                     
                     // Spawn victory fireworks
@@ -2385,7 +2506,7 @@ class GameEngine {
                 }
             } else {
                 // Incorrect hit during boss fight
-                this.applyPenalty();
+                this.applyPenalty(ownerShip);
             }
         } else {
             // Regular submarine logic
@@ -2423,7 +2544,7 @@ class GameEngine {
                 }
 
                 const scoreGained = Math.round(100 * multiplier);
-                this.score += scoreGained;
+                this.addPlayerScore(ownerShip, scoreGained);
 
                 // Visual Floating points
                 this.floatingTexts.push(new FloatingText(sub.x + sub.width/2, sub.y - 10, `+${scoreGained}`, comboColor, 1.1 + (multiplier * 0.1)));
@@ -2443,7 +2564,7 @@ class GameEngine {
                 }
             } else {
                 // Incorrect Submarine Hit
-                this.applyPenalty();
+                this.applyPenalty(ownerShip);
                 // Flag incorrect learning state
                 vocab.recordResult(sub.word.word, false);
                 this.wordsMissed.add(sub.word.word);
@@ -2452,14 +2573,26 @@ class GameEngine {
         }
     }
 
-    applyPenalty() {
+    addPlayerScore(ship, amount) {
+        if (this.mode === 'duo' && ship) {
+            ship.score += amount;
+            return;
+        }
+        this.score += amount;
+    }
+
+    applyPenalty(ship = this.battleship) {
         this.currentCombo = 0;
         this.hideComboOverlay();
         
         // Small score penalty
-        this.score = Math.max(0, this.score - 50);
+        if (this.mode === 'duo' && ship) {
+            ship.score = Math.max(0, ship.score - 50);
+        } else {
+            this.score = Math.max(0, this.score - 50);
+        }
         this.updateHUD();
-        this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 30, "COMBO RESET / -50", '#ff3c3c', 1.0));
+        this.floatingTexts.push(new FloatingText(ship.x, ship.y - 30, "COMBO RESET / -50", '#ff3c3c', 1.0));
         
         // Trigger small vibration
         this.triggerScreenShake(8);
@@ -2553,25 +2686,33 @@ class GameEngine {
         this.updateBossHpDisplay(bossSub);
     }
 
-    getReloadProgress() {
-        if (this.reloadTimer <= 0) return 1;
-        return 1 - (this.reloadTimer / this.reloadDuration);
+    getRoundScoreText() {
+        if (this.mode === 'duo' && this.battleship && this.secondBattleship) {
+            return `P1 ${this.battleship.score} / P2 ${this.secondBattleship.score}`;
+        }
+        return this.score;
+    }
+
+    getReloadProgress(ship = this.battleship) {
+        if (!ship || ship.reloadTimer <= 0) return 1;
+        return 1 - (ship.reloadTimer / ship.reloadDuration);
     }
 
     updateAmmoHUD() {
         if (!this.hudAmmo || !this.hudReloadFill || !this.hudReloadText) return;
 
-        const isReloading = this.reloadTimer > 0;
-        const reloadProgress = this.getReloadProgress();
-        this.hudAmmo.innerText = `${this.bombsRemaining} / ${this.maxBombsBeforeReload}`;
+        const ship = this.battleship;
+        const isReloading = ship && ship.reloadTimer > 0;
+        const reloadProgress = this.getReloadProgress(ship);
+        this.hudAmmo.innerText = ship ? `${ship.bombsRemaining} / ${ship.maxBombsBeforeReload}` : '0 / 0';
         this.hudReloadFill.style.width = `${Math.round(reloadProgress * 100)}%`;
 
         if (isReloading) {
-            this.hudReloadText.innerText = `RELOAD ${Math.ceil(this.reloadTimer / 60)}s`;
+            this.hudReloadText.innerText = `P1 RELOAD ${Math.ceil(ship.reloadTimer / 60)}s`;
             this.hudReloadText.classList.add('reloading');
             this.hudReloadText.classList.remove('reload-ready');
         } else {
-            this.hudReloadText.innerText = 'READY';
+            this.hudReloadText.innerText = this.secondBattleship ? 'P1 READY' : 'READY';
             this.hudReloadText.classList.add('reload-ready');
             this.hudReloadText.classList.remove('reloading');
         }
@@ -2600,24 +2741,45 @@ class GameEngine {
     }
 
     updateHUD() {
+        const isDuo = this.mode === 'duo' && this.battleship && this.secondBattleship;
+        const p1Score = isDuo ? this.battleship.score : this.score;
+        const p1Lives = isDuo ? this.battleship.lives : this.lives;
+
+        if (this.hudScoreLabel) this.hudScoreLabel.innerText = isDuo ? 'P1 SCORE' : 'SCORE';
+        if (this.hudLivesLabel) this.hudLivesLabel.innerText = isDuo ? 'P1 LIVES' : 'LIVES';
+
         // Pad score value with zeros
-        this.hudScore.innerText = String(this.score).padStart(5, '0');
+        this.hudScore.innerText = String(p1Score).padStart(5, '0');
         
         // Render heart elements
         let heartsStr = '';
-        if (this.lives === 999) {
+        if (p1Lives === 999) {
             heartsStr = '♾️ PRACTICE';
         } else {
-            for (let i = 0; i < 3; i++) {
-                heartsStr += i < this.lives ? '❤️' : '🖤';
-            }
+            heartsStr = this.renderHearts(p1Lives);
         }
         this.hudHearts.innerText = heartsStr;
+
+        if (this.hudP2Stats) {
+            this.hudP2Stats.classList.toggle('hidden', !isDuo);
+        }
+        if (isDuo) {
+            this.hudP2Score.innerText = String(this.secondBattleship.score).padStart(5, '0');
+            this.hudP2Hearts.innerText = this.renderHearts(this.secondBattleship.lives);
+        }
 
         this.hudDiff.innerText = this.difficultyStage;
         this.updateTimerHUD();
         this.hudAccuracy.innerText = `${vocab.getAccuracy()}%`;
         this.updateAmmoHUD();
+    }
+
+    renderHearts(lives) {
+        let heartsStr = '';
+        for (let i = 0; i < 3; i++) {
+            heartsStr += i < lives ? '❤️' : '🖤';
+        }
+        return heartsStr;
     }
 
     updateTimerHUD() {
@@ -2634,8 +2796,8 @@ class GameEngine {
 
         // Populate game over stats overlay
         document.getElementById('gameover-title').innerText = reason === 'timeup' ? 'TIME UP!' : 'DEFEATED!';
-        document.getElementById('go-score').innerText = this.score;
-        document.getElementById('go-best-score').innerText = this.getHighScore();
+        document.getElementById('go-score').innerText = this.getRoundScoreText();
+        document.getElementById('go-best-score').innerText = this.mode === 'duo' ? 'N/A' : this.getHighScore();
         document.getElementById('go-combo').innerText = this.highestCombo;
         document.getElementById('go-accuracy').innerText = `${vocab.getAccuracy()}%`;
         document.getElementById('go-correct').innerText = this.correctMatches;
@@ -2677,6 +2839,11 @@ class GameEngine {
         const history = this.getPlayHistory();
         historyBox.innerHTML = '';
 
+        if (this.mode === 'duo') {
+            historyBox.innerHTML = '<span style="color:#64748b; font-size: 0.85rem;">2 Player Mode does not save play history.</span>';
+            return;
+        }
+
         if (history.length === 0) {
             historyBox.innerHTML = '<span style="color:#64748b; font-size: 0.85rem;">No play history yet.</span>';
             return;
@@ -2693,6 +2860,11 @@ class GameEngine {
 
         const history = this.getPlayHistory();
         historyBox.innerHTML = '';
+
+        if (this.mode === 'duo') {
+            historyBox.innerHTML = '<span style="color:#64748b; font-size: 0.85rem;">2 Player Mode does not save play history.</span>';
+            return;
+        }
 
         if (history.length === 0) {
             historyBox.innerHTML = '<span style="color:#64748b; font-size: 0.85rem;">No play history yet.</span>';
@@ -2790,7 +2962,10 @@ class GameEngine {
 
         // 6. Draw Battleship
         if (this.battleship) {
-            this.battleship.draw(this.ctx, this.getReloadProgress(), this.bombsRemaining, this.maxBombsBeforeReload);
+            this.battleship.draw(this.ctx, this.getReloadProgress(this.battleship), this.battleship.bombsRemaining, this.battleship.maxBombsBeforeReload);
+        }
+        if (this.secondBattleship) {
+            this.secondBattleship.draw(this.ctx, this.getReloadProgress(this.secondBattleship), this.secondBattleship.bombsRemaining, this.secondBattleship.maxBombsBeforeReload);
         }
 
         // 7. Draw Waves at surface boundary
