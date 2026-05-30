@@ -2186,6 +2186,16 @@ class GameEngine {
 
     destroySubmarine(sub) {
         sub.isDying = true;
+
+        // Speak the name of the destroyed submarine (Vietnamese word)
+        if (window.speechSynthesis && sub.word && sub.word.word) {
+            const utter = new SpeechSynthesisUtterance(sub.word.word);
+            // Prefer a Vietnamese voice if available
+            const voices = window.speechSynthesis.getVoices();
+            const viVoice = voices.find(v => v.lang && v.lang.startsWith('vi'));
+            if (viVoice) utter.voice = viVoice;
+            window.speechSynthesis.speak(utter);
+        }
         
         // Explode particles
         const numParticles = sub.isBoss ? 45 : 20;
