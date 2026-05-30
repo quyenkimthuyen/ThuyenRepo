@@ -96,6 +96,45 @@ class SoundSynth {
         noise.stop(this.ctx.currentTime + 0.4);
     }
 
+    playSubmarineSinking() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        const rumble = this.ctx.createOscillator();
+        const rumbleGain = this.ctx.createGain();
+        rumble.connect(rumbleGain);
+        rumbleGain.connect(this.ctx.destination);
+        rumble.type = 'sawtooth';
+        rumble.frequency.setValueAtTime(120, now);
+        rumble.frequency.exponentialRampToValueAtTime(32, now + 0.75);
+        rumbleGain.gain.setValueAtTime(0.22, now);
+        rumbleGain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+        rumble.start(now);
+        rumble.stop(now + 0.8);
+
+        const bufferSize = this.ctx.sampleRate * 0.55;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+        }
+
+        const noise = this.ctx.createBufferSource();
+        const filter = this.ctx.createBiquadFilter();
+        const noiseGain = this.ctx.createGain();
+        noise.buffer = buffer;
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(500, now);
+        filter.frequency.exponentialRampToValueAtTime(90, now + 0.55);
+        noiseGain.gain.setValueAtTime(0.18, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+        noise.connect(filter);
+        filter.connect(noiseGain);
+        noiseGain.connect(this.ctx.destination);
+        noise.start(now);
+        noise.stop(now + 0.55);
+    }
+
     playSplash() {
         if (this.muted || !this.ctx) return;
         // High frequency soft splash
@@ -773,6 +812,7 @@ class Submarine {
         this.propellerAngle = 0;
         this.isDying = false;
         this.deathTimer = 0;
+        this.deathDuration = isBoss ? 220 : 150;
         this.damageFlashTimer = 0;
         this.minSpeedX = isBoss ? 0.45 : 0.55;
         
@@ -799,8 +839,12 @@ class Submarine {
     update(speedMultiplier) {
         if (this.isDying) {
             this.deathTimer++;
-            this.y += 0.5; // sink slowly while exploding
-            return this.deathTimer > 35; // Remove sub after explosion finished
+            const progress = Math.min(1, this.deathTimer / this.deathDuration);
+            this.x += this.speedX * 0.22;
+            this.y += 1.2 + progress * 2.8;
+            this.speedX *= 0.985;
+            this.propellerAngle += Math.max(0.04, Math.abs(this.speedX) * 0.08);
+            return this.deathTimer > this.deathDuration || this.y > window.innerHeight + this.height;
         }
 
         this.normalizeMovementSpeed(speedMultiplier);
@@ -855,14 +899,21 @@ class Submarine {
         ctx.save();
         
         // Setup glow effects
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-        ctx.shadowBlur = 8;
+        ctx.shadowColor = this.isDying ? 'rgba(255, 85, 0, 0.3)' : 'rgba(0, 0, 0, 0.4)';
+        ctx.shadowBlur = this.isDying ? 14 : 8;
         ctx.shadowOffsetY = 4;
 
         const isHeadingRight = this.speedX > 0;
+        const deathProgress = this.isDying ? Math.min(1, this.deathTimer / this.deathDuration) : 0;
+        const deathScale = this.isDying ? Math.max(0.38, 1 - deathProgress * 0.62) : 1;
+        const deathTilt = this.isDying ? (isHeadingRight ? 1 : -1) * (0.25 + deathProgress * 0.65) : 0;
         
         // Shift drawing origin for direction scaling (flip sprite)
         ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+        if (this.isDying) {
+            ctx.rotate(deathTilt);
+            ctx.scale(deathScale, deathScale);
+        }
         if (!isHeadingRight) {
             ctx.scale(-1, 1);
         }
@@ -870,6 +921,8 @@ class Submarine {
         // Damage flash override
         if (this.damageFlashTimer % 4 > 2) {
             ctx.fillStyle = '#ff3344';
+        } else if (this.isDying) {
+            ctx.fillStyle = deathProgress > 0.55 ? '#2b211d' : '#5b3426';
         } else if (frozen) {
             ctx.fillStyle = '#38bdf8'; // frozen tint
         } else {
@@ -880,14 +933,14 @@ class Submarine {
         const w = this.width;
         const h = this.height;
 
-        ctx.strokeStyle = '#0f172a';
+        ctx.strokeStyle = this.isDying ? '#0b0f14' : '#0f172a';
         ctx.lineWidth = this.isBoss ? 4 : 2;
 
         // 1. Draw Propeller (behind hull)
         ctx.save();
         ctx.translate(-w/2 + 2, 0);
         ctx.rotate(this.propellerAngle);
-        ctx.fillStyle = '#94a3b8';
+        ctx.fillStyle = this.isDying ? '#5c4033' : '#94a3b8';
         ctx.beginPath();
         ctx.ellipse(0, 0, 4, h/3, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -895,7 +948,7 @@ class Submarine {
         ctx.restore();
 
         // Propeller connection shaft
-        ctx.fillStyle = '#475569';
+        ctx.fillStyle = this.isDying ? '#3f2a22' : '#475569';
         ctx.beginPath();
         ctx.rect(-w/2, -4, 4, 8);
         ctx.fill();
@@ -906,6 +959,18 @@ class Submarine {
         ctx.roundRect(-w/2 + 3, -h/2, w - 8, h, h/2);
         ctx.fill();
         ctx.stroke();
+
+        if (this.isDying) {
+            ctx.strokeStyle = 'rgba(251, 113, 133, 0.75)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-w * 0.25, -h * 0.2);
+            ctx.lineTo(-w * 0.12, h * 0.1);
+            ctx.lineTo(w * 0.04, -h * 0.05);
+            ctx.moveTo(w * 0.18, -h * 0.22);
+            ctx.lineTo(w * 0.26, h * 0.18);
+            ctx.stroke();
+        }
 
         // Boss hazard lines
         if (this.isBoss && !frozen && !(this.damageFlashTimer % 4 > 2)) {
@@ -926,18 +991,18 @@ class Submarine {
         ctx.stroke();
 
         // 4. Periscope Pipe
-        ctx.fillStyle = '#475569';
+        ctx.fillStyle = this.isDying ? '#3f2a22' : '#475569';
         ctx.beginPath();
         ctx.rect(0, -h/2 - h/2.5, 4, h/5);
         ctx.fill();
         // Periscope lens
-        ctx.fillStyle = '#00f0ff';
+        ctx.fillStyle = this.isDying ? '#111827' : '#00f0ff';
         ctx.beginPath();
         ctx.arc(3, -h/2 - h/2.5, 3, 0, Math.PI*2);
         ctx.fill();
 
         // 5. Windows (Portholes)
-        ctx.fillStyle = frozen ? '#cbd5e1' : '#00f0ff';
+        ctx.fillStyle = this.isDying ? '#0f172a' : (frozen ? '#cbd5e1' : '#00f0ff');
         ctx.strokeStyle = '#0f172a';
         ctx.lineWidth = 1.5;
         
@@ -1953,7 +2018,16 @@ class GameEngine {
                 this.particles.push(new Particle(bubbleX, sub.y + sub.height/2 + Math.random()*8 - 4, 'bubble'));
             }
 
-            // Clean up dead exploded submarines
+            if (sub.isDying && Math.random() < 0.35) {
+                const bubbleX = sub.x + sub.width * (0.25 + Math.random() * 0.5);
+                const bubbleY = sub.y + sub.height * (0.2 + Math.random() * 0.6);
+                this.particles.push(new Particle(bubbleX, bubbleY, 'bubble'));
+                if (Math.random() < 0.45) {
+                    this.particles.push(new Particle(bubbleX, bubbleY, 'smoke', '#2f241f'));
+                }
+            }
+
+            // Clean up submarines after the sinking animation finishes.
             if (sub.isDying && event) {
                 this.submarines.splice(i, 1);
             }
@@ -2309,7 +2383,11 @@ class GameEngine {
     }
 
     destroySubmarine(sub) {
+        if (sub.isDying) return;
+
         sub.isDying = true;
+        sub.isWarning = false;
+        sub.warningTimer = 0;
 
         // Speak the name of the destroyed submarine (English word) using an English voice
         if (window.speechSynthesis && sub.word && sub.word.word) {
@@ -2321,16 +2399,19 @@ class GameEngine {
             window.speechSynthesis.speak(utter);
         }
 
-        // Explode particles
-        const numParticles = sub.isBoss ? 45 : 20;
+        // Initial blast followed by a longer sinking animation.
+        const numParticles = sub.isBoss ? 55 : 28;
         for (let k = 0; k < numParticles; k++) {
             const rx = sub.x + Math.random() * sub.width;
             const ry = sub.y + Math.random() * sub.height;
-            this.particles.push(new Particle(rx, ry, 'fire', '#ff6600'));
-            this.particles.push(new Particle(rx, ry, 'smoke', '#94a3b8'));
+            this.particles.push(new Particle(rx, ry, 'fire', k % 2 === 0 ? '#ff6600' : '#ff2d00'));
+            this.particles.push(new Particle(rx, ry, 'smoke', '#4b342a'));
+            if (k % 3 === 0) {
+                this.particles.push(new Particle(rx, ry, 'bubble'));
+            }
         }
         
-        sound.playExplosion();
+        sound.playSubmarineSinking();
         this.triggerScreenShake(sub.isBoss ? 25 : 10);
     }
 
