@@ -632,34 +632,56 @@ class Bomb {
     draw(ctx) {
         if (!this.exploded) {
             ctx.save();
-            // Draw retro metal barrel bomb
-            ctx.shadowColor = 'rgba(0,0,0,0.4)';
-            ctx.shadowBlur = 4;
-            
-            // Barrel main shape
-            ctx.fillStyle = '#4a5568';
-            ctx.strokeStyle = '#2d3748';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.rect(this.x - 8, this.y - 12, 16, 24);
-            ctx.fill();
-            ctx.stroke();
+            ctx.shadowColor = 'rgba(14, 165, 233, 0.4)';
+            ctx.shadowBlur = 6;
 
-            // Hazard stripe
-            ctx.fillStyle = '#ff7b00';
-            ctx.beginPath();
-            ctx.rect(this.x - 8, this.y - 4, 16, 8);
-            ctx.fill();
+            // Torpedo Body (sleek steel/grey cylinder)
+            const bodyGrad = ctx.createLinearGradient(this.x - 5, 0, this.x + 5, 0);
+            bodyGrad.addColorStop(0, '#64748b');
+            bodyGrad.addColorStop(0.5, '#94a3b8');
+            bodyGrad.addColorStop(1, '#475569');
 
-            // Metal ribs
-            ctx.strokeStyle = '#a0aec0';
+            ctx.fillStyle = bodyGrad;
+            ctx.strokeStyle = '#0f172a';
             ctx.lineWidth = 1.5;
+
+            // Main cylindrical body
             ctx.beginPath();
-            ctx.moveTo(this.x - 8, this.y - 8);
-            ctx.lineTo(this.x + 8, this.y - 8);
-            ctx.moveTo(this.x - 8, this.y + 8);
-            ctx.lineTo(this.x + 8, this.y + 8);
+            ctx.rect(this.x - 4, this.y - 12, 8, 20);
+            ctx.fill();
             ctx.stroke();
+
+            // Nose cone at the bottom (pointing down)
+            ctx.fillStyle = '#ef4444'; // Red tip for modern naval look
+            ctx.beginPath();
+            ctx.arc(this.x, this.y + 8, 4, 0, Math.PI); // half circle pointing down
+            ctx.fill();
+            ctx.stroke();
+
+            // Tail fins at the top
+            ctx.fillStyle = '#334155';
+            ctx.beginPath();
+            // Left fin
+            ctx.moveTo(this.x - 4, this.y - 6);
+            ctx.lineTo(this.x - 8, this.y - 12);
+            ctx.lineTo(this.x - 4, this.y - 12);
+            // Right fin
+            ctx.moveTo(this.x + 4, this.y - 6);
+            ctx.lineTo(this.x + 8, this.y - 12);
+            ctx.lineTo(this.x + 4, this.y - 12);
+            // Center fin / cap
+            ctx.moveTo(this.x - 2, this.y - 12);
+            ctx.lineTo(this.x - 2, this.y - 15);
+            ctx.lineTo(this.x + 2, this.y - 15);
+            ctx.lineTo(this.x + 2, this.y - 12);
+            ctx.fill();
+            ctx.stroke();
+
+            // High-tech status LED blinking
+            ctx.fillStyle = (Math.floor(Date.now() / 150) % 2 === 0) ? '#22c55e' : '#15803d';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y - 2, 1.5, 0, Math.PI * 2);
+            ctx.fill();
 
             ctx.restore();
         } else {
@@ -796,14 +818,14 @@ class Submarine {
         this.perspectiveScale = this.calculatePerspectiveScale(y, isBoss);
 
         if (isBoss) {
-            this.width = 240 * this.perspectiveScale;
-            this.height = 85 * this.perspectiveScale;
+            this.width = 216 * this.perspectiveScale; // 240 * 0.9 = 216
+            this.height = 76 * this.perspectiveScale; // 85 * 0.9 = 76.5 -> 76
             this.hp = 10;
             this.maxHp = 10;
             this.speedX = 0.8 * (Math.random() > 0.5 ? 1 : -1);
         } else {
-            this.width = 110 * this.perspectiveScale;
-            this.height = 42 * this.perspectiveScale;
+            this.width = 99 * this.perspectiveScale; // 110 * 0.9 = 99
+            this.height = 38 * this.perspectiveScale; // 42 * 0.9 = 37.8 -> 38
             this.speedX = (Math.random() * 0.8 + 0.6) * speedMultiplier * (Math.random() > 0.5 ? 1 : -1);
         }
 
@@ -1165,8 +1187,8 @@ class Missile {
 // ==========================================================================
 class Battleship {
     constructor(waterY) {
-        this.width = 150;
-        this.height = 48;
+        this.width = 135; // 150 * 0.9 = 135
+        this.height = 43; // 48 * 0.9 = 43.2 -> 43
         this.x = window.innerWidth / 2;
         this.y = waterY - this.height + 10;
         this.speed = 5.2;
@@ -1206,6 +1228,11 @@ class Battleship {
     }
 
     draw(ctx, reloadProgress = 1, bombsRemaining = 2, maxBombs = 2) {
+        ctx.save(); // Outer scaling save
+        ctx.translate(this.x, this.y);
+        ctx.scale(0.9, 0.9);
+        ctx.translate(-this.x, -this.y);
+
         ctx.save();
         ctx.shadowColor = 'rgba(14, 165, 233, 0.28)';
         ctx.shadowBlur = 14;
@@ -1338,6 +1365,7 @@ class Battleship {
         }
 
         ctx.restore();
+        ctx.restore(); // Restore outer scaling context
     }
 }
 
@@ -1441,6 +1469,18 @@ class GameEngine {
         
         // Loop time tracking
         this.gameTime = 0;
+
+        // Twinkling stars in the sky
+        this.stars = [];
+        for (let i = 0; i < 40; i++) {
+            this.stars.push({
+                x: Math.random(),
+                y: Math.random(),
+                size: Math.random() * 2 + 0.8,
+                phase: Math.random() * Math.PI * 2,
+                speed: Math.random() * 0.04 + 0.015
+            });
+        }
     }
 
     async init() {
@@ -1486,7 +1526,7 @@ class GameEngine {
     resizeCanvas() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
-        this.waterY = this.canvas.height * 0.2; // surface line is top 20%
+        this.waterY = this.canvas.height * 0.3; // surface line is top 30%
         if (this.battleship) {
             this.battleship.targetY = this.waterY - this.battleship.height + 10;
         }
@@ -2707,6 +2747,24 @@ class GameEngine {
         skyGrad.addColorStop(1, '#1b3f74');
         this.ctx.fillStyle = skyGrad;
         this.ctx.fillRect(0, 0, this.canvas.width, this.waterY);
+
+        // Draw twinkling stars
+        this.ctx.save();
+        this.stars.forEach(star => {
+            const x = star.x * this.canvas.width;
+            const y = star.y * (this.waterY - 15) + 5; // keep inside sky area with padding
+            star.phase += star.speed;
+            const alpha = 0.25 + Math.sin(star.phase) * 0.65;
+            const size = star.size * (0.85 + Math.sin(star.phase) * 0.15);
+            
+            this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            this.ctx.shadowColor = '#ffffff';
+            this.ctx.shadowBlur = size * 1.5;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, size, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+        this.ctx.restore();
 
         // Draw background bubbles rising randomly
         if (Math.random() < 0.05) {
