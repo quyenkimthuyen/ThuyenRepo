@@ -41,6 +41,30 @@ class SoundSynth {
         osc.stop(this.ctx.currentTime + 0.15);
     }
 
+    playReload() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = [180, 260, 360];
+
+        notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            const start = now + idx * 0.09;
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(freq, start);
+            osc.frequency.exponentialRampToValueAtTime(freq * 1.35, start + 0.08);
+
+            gain.gain.setValueAtTime(0.08, start);
+            gain.gain.exponentialRampToValueAtTime(0.01, start + 0.11);
+
+            osc.start(start);
+            osc.stop(start + 0.11);
+        });
+    }
+
     playExplosion() {
         if (this.muted || !this.ctx) return;
         const bufferSize = this.ctx.sampleRate * 0.4;
@@ -750,6 +774,7 @@ class Submarine {
         this.isDying = false;
         this.deathTimer = 0;
         this.damageFlashTimer = 0;
+        this.minSpeedX = isBoss ? 0.45 : 0.55;
         
         // Attack related
         this.isWarning = false;
@@ -761,6 +786,16 @@ class Submarine {
         this.subColor = isBoss ? '#334155' : colors[depthIndex % colors.length];
     }
 
+    normalizeMovementSpeed(speedMultiplier = 1.0) {
+        const direction = this.speedX < 0 ? -1 : 1;
+        const effectiveMultiplier = Math.max(0.35, speedMultiplier);
+        const minSpeed = this.minSpeedX * effectiveMultiplier;
+
+        if (!Number.isFinite(this.speedX) || Math.abs(this.speedX) < minSpeed) {
+            this.speedX = minSpeed * direction;
+        }
+    }
+
     update(speedMultiplier) {
         if (this.isDying) {
             this.deathTimer++;
@@ -768,15 +803,19 @@ class Submarine {
             return this.deathTimer > 35; // Remove sub after explosion finished
         }
 
+        this.normalizeMovementSpeed(speedMultiplier);
         this.x += this.speedX;
 
         // Periodic behavior: Randomly change speed slightly or change directions
         if (Math.random() < 0.003 && !this.isBoss) {
-            this.speedX = (Math.random() * 0.8 + 0.6) * speedMultiplier * Math.sign(this.speedX);
+            const direction = this.speedX < 0 ? -1 : 1;
+            const effectiveMultiplier = Math.max(0.35, speedMultiplier);
+            this.speedX = (Math.random() * 0.8 + 0.6) * effectiveMultiplier * direction;
         }
         if (Math.random() < 0.001) {
             this.speedX = -this.speedX;
         }
+        this.normalizeMovementSpeed(speedMultiplier);
 
         // Keep on screen (reverse direction when touching edge)
         if (this.x < -this.width - 20 && this.speedX < 0) {
@@ -1327,6 +1366,7 @@ class GameEngine {
         // Attack cycle triggers
         this.attackTimer = 0;
         this.activeAttacker = null;
+        this.maxConcurrentSubmarineAttackers = 2;
 
         // Physics Y coordinates
         this.waterY = 0;
@@ -1507,6 +1547,7 @@ class GameEngine {
         for (let i = 0; i < maxInitial; i++) {
             this.spawnSubmarine(i);
         }
+        this.guaranteeTargetSubmarinePresence();
 
         this.updateHUD();
         this.bossHud.classList.add('hidden');
@@ -1547,37 +1588,43 @@ class GameEngine {
     selectNewTarget() {
         const previousTarget = this.currentTarget;
         
-        // Select target via Adaptive Spaced Repetition weights
-        this.currentTarget = vocab.pickNextTarget();
+        // During a boss fight, keep the target locked to the visible boss word.
+        const activeBoss = this.submarines.find(s => s.isBoss && !s.isDying);
+        this.currentTarget = activeBoss ? activeBoss.word : vocab.pickNextTarget();
 
         // Set top bar target string
         this.targetValue.innerHTML = `${this.currentTarget.emoji || ''} ${this.currentTarget.meaning}`;
-        // Announce the target English word using English voice
-        if (window.speechSynthesis && this.currentTarget.word) {
-            const utter = new SpeechSynthesisUtterance(this.currentTarget.word);
-            const voices = window.speechSynthesis.getVoices();
-            const enVoice = voices.find(v => v.lang && v.lang.startsWith('en'));
-            if (enVoice) utter.voice = enVoice;
-            window.speechSynthesis.speak(utter);
-        }
+        this.speakCurrentTargetWord();
         
         // Ensure at least one submarine contains the correct English word
         this.guaranteeTargetSubmarinePresence();
     }
 
+    speakCurrentTargetWord() {
+        if (!window.speechSynthesis || !this.currentTarget?.word) return;
+
+        const utter = new SpeechSynthesisUtterance(this.currentTarget.word);
+        const voices = window.speechSynthesis.getVoices();
+        const enVoice = voices.find(v => v.lang && v.lang.startsWith('en'));
+        if (enVoice) utter.voice = enVoice;
+        window.speechSynthesis.speak(utter);
+    }
+
     guaranteeTargetSubmarinePresence() {
+        if (!this.currentTarget) return;
+
         // Check if any submarine is carrying the current target word
         const targetWordText = this.currentTarget.word.toLowerCase();
         
         // Don't modify submarines if a boss fight is currently active
-        const hasBoss = this.submarines.some(s => s.isBoss);
+        const hasBoss = this.submarines.some(s => s.isBoss && !s.isDying);
         if (hasBoss) return;
 
         const hasTarget = this.submarines.some(sub => !sub.isDying && sub.word.word.toLowerCase() === targetWordText);
         
         if (!hasTarget) {
             // Replace word of a random submarine or spawn a new one carrying it
-            const activeSubs = this.submarines.filter(s => !s.isDying);
+            const activeSubs = this.submarines.filter(s => !s.isDying && !s.isWarning);
             if (activeSubs.length > 0) {
                 const subToReplace = activeSubs[Math.floor(Math.random() * activeSubs.length)];
                 subToReplace.word = this.currentTarget;
@@ -1670,6 +1717,7 @@ class GameEngine {
         if (this.bombsRemaining <= 0) {
             this.reloadTimer = this.reloadDuration;
             this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 40, "RELOADING...", '#ffd000', 0.9));
+            sound.playReload();
         }
         this.updateAmmoHUD();
     }
@@ -1774,6 +1822,7 @@ class GameEngine {
             if (this.reloadTimer <= 0) {
                 this.bombsRemaining = this.maxBombsBeforeReload;
                 this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 40, "AMMO READY!", '#33ff88', 0.95));
+                this.speakCurrentTargetWord();
             }
             this.updateAmmoHUD();
         }
@@ -1829,7 +1878,7 @@ class GameEngine {
 
         for (let i = this.submarines.length - 1; i >= 0; i--) {
             const sub = this.submarines[i];
-            const event = sub.update(isFrozen ? 0.0 : subSpeedMult);
+            const event = sub.update(isFrozen ? 0.35 : subSpeedMult);
 
             if (event === 'fire_missile') {
                 this.fireMissileFromSub(sub);
@@ -1917,17 +1966,21 @@ class GameEngine {
 
     triggerSubmarineAttack() {
         if (this.submarines.length === 0) return;
-        
-        // Prevent stacking warnings
-        const alreadyWarning = this.submarines.some(s => s.isWarning);
-        if (alreadyWarning) return;
 
         const livingSubs = this.submarines.filter(s => !s.isDying);
         if (livingSubs.length === 0) return;
 
-        // Select a submarine to initiate threat warn
-        const attacker = livingSubs[Math.floor(Math.random() * livingSubs.length)];
-        attacker.triggerWarning();
+        const warningCount = livingSubs.filter(s => s.isWarning).length;
+        const availableAttackSlots = this.maxConcurrentSubmarineAttackers - warningCount;
+        if (availableAttackSlots <= 0) return;
+
+        const candidates = livingSubs.filter(s => !s.isWarning);
+        const attackerCount = Math.min(availableAttackSlots, candidates.length);
+        const shuffledCandidates = [...candidates].sort(() => Math.random() - 0.5);
+
+        for (let i = 0; i < attackerCount; i++) {
+            shuffledCandidates[i].triggerWarning();
+        }
     }
 
     fireMissileFromSub(sub) {
@@ -2295,6 +2348,7 @@ class GameEngine {
         if (!hasBoss && activeNormalSubs < maxSubs && Math.random() < 0.015) {
             this.spawnSubmarine();
         }
+        this.guaranteeTargetSubmarinePresence();
 
         // 2. Periodic Floating crates spawn
         // Spawns roughly every 20-30 seconds
@@ -2387,6 +2441,7 @@ class GameEngine {
         }
         this.ctx.fillStyle = depthGrad;
         this.ctx.fillRect(0, this.waterY, this.canvas.width, this.canvas.height);
+        this.drawSeabedDepth();
 
         // Sky drawing
         const skyGrad = this.ctx.createLinearGradient(0, 0, 0, this.waterY);
@@ -2433,6 +2488,135 @@ class GameEngine {
         if (isFrozen) {
             this.drawFrostVignette();
         }
+    }
+
+    drawSeabedDepth() {
+        const ctx = this.ctx;
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        const seabedTop = h * 0.78;
+        const time = this.gameTime * 0.015;
+
+        ctx.save();
+
+        // Soft shafts of light fade into the deep water for extra depth.
+        ctx.globalAlpha = 0.16;
+        for (let i = 0; i < 7; i++) {
+            const x = ((i * 190 + time * 28) % (w + 260)) - 130;
+            const rayGrad = ctx.createLinearGradient(x, this.waterY, x + 95, seabedTop);
+            rayGrad.addColorStop(0, 'rgba(125, 211, 252, 0.22)');
+            rayGrad.addColorStop(1, 'rgba(125, 211, 252, 0)');
+            ctx.fillStyle = rayGrad;
+            ctx.beginPath();
+            ctx.moveTo(x, this.waterY);
+            ctx.lineTo(x + 70, this.waterY);
+            ctx.lineTo(x + 210, seabedTop);
+            ctx.lineTo(x + 40, seabedTop);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+
+        // Far sand shelf with a slow parallax wave shape.
+        const farGrad = ctx.createLinearGradient(0, seabedTop - 30, 0, h);
+        farGrad.addColorStop(0, 'rgba(30, 64, 92, 0.55)');
+        farGrad.addColorStop(1, 'rgba(6, 24, 38, 0.95)');
+        ctx.fillStyle = farGrad;
+        ctx.beginPath();
+        ctx.moveTo(0, h);
+        ctx.lineTo(0, seabedTop + Math.sin(time) * 6);
+        for (let x = 0; x <= w + 80; x += 80) {
+            const y = seabedTop + Math.sin(time + x * 0.012) * 10 + Math.cos(x * 0.018) * 8;
+            ctx.quadraticCurveTo(x + 40, y - 12, x + 80, y);
+        }
+        ctx.lineTo(w, h);
+        ctx.closePath();
+        ctx.fill();
+
+        // Foreground dune gives the bottom a stronger 3D edge.
+        const frontTop = h * 0.88;
+        const frontGrad = ctx.createLinearGradient(0, frontTop - 25, 0, h);
+        frontGrad.addColorStop(0, '#1f4f64');
+        frontGrad.addColorStop(0.5, '#12384c');
+        frontGrad.addColorStop(1, '#071d2e');
+        ctx.fillStyle = frontGrad;
+        ctx.beginPath();
+        ctx.moveTo(0, h);
+        ctx.lineTo(0, frontTop);
+        for (let x = 0; x <= w + 100; x += 100) {
+            const y = frontTop + Math.sin(time * 1.4 + x * 0.01) * 12;
+            ctx.quadraticCurveTo(x + 50, y - 16, x + 100, y);
+        }
+        ctx.lineTo(w, h);
+        ctx.closePath();
+        ctx.fill();
+
+        this.drawSeabedProps(seabedTop, frontTop);
+        ctx.restore();
+    }
+
+    drawSeabedProps(seabedTop, frontTop) {
+        const ctx = this.ctx;
+        const w = this.canvas.width;
+        const time = this.gameTime * 0.04;
+        const rockColors = ['#0f2f44', '#173f55', '#254f5f', '#0b2638'];
+
+        // Back layer rocks are dimmer and smaller.
+        for (let i = 0; i < 14; i++) {
+            const x = (i * 137) % (w + 120) - 40;
+            const y = seabedTop + 28 + (i % 4) * 13;
+            const rw = 28 + (i % 5) * 9;
+            const rh = 12 + (i % 3) * 7;
+            ctx.fillStyle = rockColors[i % rockColors.length];
+            ctx.globalAlpha = 0.55;
+            ctx.beginPath();
+            ctx.ellipse(x, y, rw, rh, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.globalAlpha = 1;
+        for (let i = 0; i < 18; i++) {
+            const baseX = (i * 103) % (w + 160) - 60;
+            const baseY = frontTop + 24 + (i % 4) * 18;
+            const sway = Math.sin(time + i) * 5;
+
+            // Sea grass ribbons.
+            ctx.strokeStyle = i % 2 === 0 ? '#1faa75' : '#2dd4bf';
+            ctx.lineWidth = 3;
+            ctx.globalAlpha = 0.72;
+            for (let blade = 0; blade < 3; blade++) {
+                const bx = baseX + blade * 7;
+                ctx.beginPath();
+                ctx.moveTo(bx, baseY);
+                ctx.quadraticCurveTo(bx + sway, baseY - 24, bx + sway * 1.6, baseY - 48 - blade * 6);
+                ctx.stroke();
+            }
+
+            // Coral clusters and foreground rocks.
+            if (i % 3 === 0) {
+                ctx.strokeStyle = i % 2 === 0 ? '#f472b6' : '#fb7185';
+                ctx.lineWidth = 4;
+                ctx.globalAlpha = 0.78;
+                const coralX = baseX + 24;
+                const coralY = baseY + 5;
+                ctx.beginPath();
+                ctx.moveTo(coralX, coralY);
+                ctx.lineTo(coralX, coralY - 35);
+                ctx.moveTo(coralX, coralY - 18);
+                ctx.lineTo(coralX - 13, coralY - 29);
+                ctx.moveTo(coralX, coralY - 23);
+                ctx.lineTo(coralX + 14, coralY - 36);
+                ctx.stroke();
+            }
+
+            ctx.globalAlpha = 0.95;
+            ctx.fillStyle = rockColors[(i + 1) % rockColors.length];
+            ctx.beginPath();
+            ctx.ellipse(baseX + 12, baseY + 8, 24 + (i % 4) * 5, 10 + (i % 3) * 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.globalAlpha = 1;
     }
 
     drawWaterWaves() {
