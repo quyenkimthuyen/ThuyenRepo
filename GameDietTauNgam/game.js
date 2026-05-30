@@ -1114,7 +1114,7 @@ class Battleship {
         this.y = waterY - this.height + 14 + waveBob;
     }
 
-    draw(ctx) {
+    draw(ctx, reloadProgress = 1, bombsRemaining = 2, maxBombs = 2) {
         ctx.save();
         ctx.shadowColor = 'rgba(0,0,0,0.35)';
         ctx.shadowBlur = 8;
@@ -1186,6 +1186,44 @@ class Battleship {
         ctx.lineTo(this.x + 56, this.y + 4);
         ctx.stroke();
 
+        // Reload indicator appears above the ship while depth charges are being loaded.
+        const isReloading = reloadProgress < 1;
+        ctx.save();
+        ctx.shadowBlur = 0;
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < maxBombs; i++) {
+            ctx.fillStyle = i < bombsRemaining ? '#ffd000' : 'rgba(255, 255, 255, 0.22)';
+            ctx.strokeStyle = 'rgba(15, 23, 42, 0.8)';
+            ctx.beginPath();
+            ctx.roundRect(this.x - 15 + i * 18, this.y + this.height - 8, 10, 14, 4);
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        if (isReloading) {
+            const barWidth = 78;
+            const barHeight = 8;
+            const barX = this.x - barWidth / 2;
+            const barY = this.y - 42;
+            ctx.fillStyle = 'rgba(2, 6, 12, 0.72)';
+            ctx.strokeStyle = 'rgba(255, 208, 0, 0.75)';
+            ctx.beginPath();
+            ctx.roundRect(barX, barY, barWidth, barHeight, 999);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffd000';
+            ctx.beginPath();
+            ctx.roundRect(barX + 2, barY + 2, Math.max(4, (barWidth - 4) * reloadProgress), barHeight - 4, 999);
+            ctx.fill();
+
+            ctx.font = "bold 11px 'Fredoka', sans-serif";
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#fff7ad';
+            ctx.fillText('RELOADING', this.x, barY - 6);
+        }
+        ctx.restore();
+
         // 3. Shield Bubble effect
         if (this.shieldActive) {
             ctx.restore(); // Exit shadow save
@@ -1228,6 +1266,9 @@ class GameEngine {
         this.hudHearts = document.getElementById('hud-hearts');
         this.hudDiff = document.getElementById('hud-diff');
         this.hudAccuracy = document.getElementById('hud-accuracy');
+        this.hudAmmo = document.getElementById('hud-ammo');
+        this.hudReloadFill = document.getElementById('hud-reload-fill');
+        this.hudReloadText = document.getElementById('hud-reload-text');
         this.targetValue = document.getElementById('target-value');
         this.bossHud = document.getElementById('boss-hud');
         this.bossHpText = document.getElementById('boss-hp-text');
@@ -1266,6 +1307,10 @@ class GameEngine {
         this.keys = {};
         this.touchDir = 0; // -1: left, 1: right, 0: idle
         this.fireCooldown = 0;
+        this.maxBombsBeforeReload = 2;
+        this.bombsRemaining = this.maxBombsBeforeReload;
+        this.reloadDuration = 120; // 2 seconds at 60 FPS
+        this.reloadTimer = 0;
 
         // Entities arrays
         this.battleship = null;
@@ -1436,6 +1481,9 @@ class GameEngine {
         this.wordsMissed.clear();
         this.freezeTimer = 0;
         this.empTimer = 0;
+        this.fireCooldown = 0;
+        this.bombsRemaining = this.maxBombsBeforeReload;
+        this.reloadTimer = 0;
 
         this.bombs = [];
         this.submarines = [];
@@ -1603,12 +1651,19 @@ class GameEngine {
     }
 
     fireDepthCharge() {
-        if (this.fireCooldown > 0) return;
+        if (this.fireCooldown > 0 || this.reloadTimer > 0 || this.bombsRemaining <= 0) return;
         this.fireCooldown = 22; // 0.36 seconds delay cooldown
         
         const bomb = new Bomb(this.battleship.x, this.battleship.y + this.battleship.height - 10);
         this.bombs.push(bomb);
+        this.bombsRemaining--;
         sound.playShoot();
+
+        if (this.bombsRemaining <= 0) {
+            this.reloadTimer = this.reloadDuration;
+            this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 40, "RELOADING...", '#ffd000', 0.9));
+        }
+        this.updateAmmoHUD();
     }
 
     triggerScreenShake(duration) {
@@ -1699,6 +1754,21 @@ class GameEngine {
 
     updatePhysics() {
         if (this.fireCooldown > 0) this.fireCooldown--;
+        if (this.reloadTimer > 0) {
+            this.reloadTimer--;
+            if (this.battleship && this.reloadTimer % 12 === 0) {
+                const fx = this.battleship.x + (Math.random() * 44 - 22);
+                const fy = this.battleship.y - 8;
+                this.particles.push(new Particle(fx, fy, 'spark', '#ffd000'));
+                this.particles.push(new Particle(fx, fy, 'smoke', '#facc15'));
+            }
+
+            if (this.reloadTimer <= 0) {
+                this.bombsRemaining = this.maxBombsBeforeReload;
+                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 40, "AMMO READY!", '#33ff88', 0.95));
+            }
+            this.updateAmmoHUD();
+        }
 
         // 1. Update Battleship
         this.battleship.update(this.keys, this.touchDir, this.waterY, this.gameTime);
@@ -2172,6 +2242,30 @@ class GameEngine {
         this.updateBossHpDisplay(bossSub);
     }
 
+    getReloadProgress() {
+        if (this.reloadTimer <= 0) return 1;
+        return 1 - (this.reloadTimer / this.reloadDuration);
+    }
+
+    updateAmmoHUD() {
+        if (!this.hudAmmo || !this.hudReloadFill || !this.hudReloadText) return;
+
+        const isReloading = this.reloadTimer > 0;
+        const reloadProgress = this.getReloadProgress();
+        this.hudAmmo.innerText = `${this.bombsRemaining} / ${this.maxBombsBeforeReload}`;
+        this.hudReloadFill.style.width = `${Math.round(reloadProgress * 100)}%`;
+
+        if (isReloading) {
+            this.hudReloadText.innerText = `RELOAD ${Math.ceil(this.reloadTimer / 60)}s`;
+            this.hudReloadText.classList.add('reloading');
+            this.hudReloadText.classList.remove('reload-ready');
+        } else {
+            this.hudReloadText.innerText = 'READY';
+            this.hudReloadText.classList.add('reload-ready');
+            this.hudReloadText.classList.remove('reloading');
+        }
+    }
+
     spawnSupplyCratesAndSubmarines() {
         const hasBoss = this.submarines.some(s => s.isBoss);
         
@@ -2210,6 +2304,7 @@ class GameEngine {
 
         this.hudDiff.innerText = this.difficultyStage;
         this.hudAccuracy.innerText = `${vocab.getAccuracy()}%`;
+        this.updateAmmoHUD();
     }
 
     triggerGameOver() {
@@ -2304,7 +2399,7 @@ class GameEngine {
 
         // 6. Draw Battleship
         if (this.battleship) {
-            this.battleship.draw(this.ctx);
+            this.battleship.draw(this.ctx, this.getReloadProgress(), this.bombsRemaining, this.maxBombsBeforeReload);
         }
 
         // 7. Draw Waves at surface boundary
