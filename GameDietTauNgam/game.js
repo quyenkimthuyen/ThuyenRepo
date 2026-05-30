@@ -894,25 +894,11 @@ class Submarine {
         // Flash timer count down
         if (this.damageFlashTimer > 0) this.damageFlashTimer--;
 
-        // Warning timer count down
-        if (this.isWarning) {
-            this.warningTimer--;
-            if (this.warningTimer <= 0) {
-                this.isWarning = false;
-                return 'fire_missile';
-            }
-        }
         return null;
     }
 
     triggerDamageFlash() {
         this.damageFlashTimer = 15;
-    }
-
-    triggerWarning() {
-        this.isWarning = true;
-        this.warningTimer = this.warningDuration;
-        sound.playAlarm();
     }
 
     draw(ctx, frozen = false) {
@@ -1080,40 +1066,6 @@ class Submarine {
             ctx.restore();
         }
 
-        // 7. Draw Targeting alarm elements (flashing red alert & laser)
-        if (this.isWarning && !this.isDying) {
-            this.drawTargetingLaser(ctx);
-        }
-    }
-
-    drawTargetingLaser(ctx) {
-        ctx.save();
-        
-        const centerSubX = this.x + this.width / 2;
-        const subTopY = this.y;
-
-        // Laser warning line upward to surface
-        ctx.strokeStyle = `rgba(255, 60, 60, ${0.4 + Math.sin(this.warningTimer * 0.3) * 0.3})`;
-        ctx.lineWidth = 2.5;
-        ctx.setLineDash([5, 5]);
-        ctx.beginPath();
-        ctx.moveTo(centerSubX, subTopY);
-        ctx.lineTo(centerSubX, 0); // surface limit
-        ctx.stroke();
-
-        // Glowing targeting point at surface
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
-        ctx.beginPath();
-        ctx.arc(centerSubX, window.innerHeight * 0.2, 15 + Math.sin(this.warningTimer * 0.4) * 5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Alarm icon floating above sub
-        ctx.fillStyle = `rgba(255, 60, 60, ${0.8 + Math.sin(this.warningTimer * 0.5) * 0.2})`;
-        ctx.font = 'bold 22px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('⚠️', centerSubX, this.y - 65);
-
-        ctx.restore();
     }
 }
 
@@ -2031,11 +1983,7 @@ class GameEngine {
 
         for (let i = this.submarines.length - 1; i >= 0; i--) {
             const sub = this.submarines[i];
-            const event = sub.update(isFrozen ? 0.35 : subSpeedMult);
-
-            if (event === 'fire_missile') {
-                this.fireMissileFromSub(sub);
-            }
+            sub.update(isFrozen ? 0.35 : subSpeedMult);
 
             // Spawn passive submarine bubble streams
             if (!sub.isDying && !isFrozen && Math.random() < 0.02) {
@@ -2127,16 +2075,11 @@ class GameEngine {
         const livingSubs = this.submarines.filter(s => !s.isDying);
         if (livingSubs.length === 0) return;
 
-        const warningCount = livingSubs.filter(s => s.isWarning).length;
-        const availableAttackSlots = this.maxConcurrentSubmarineAttackers - warningCount;
-        if (availableAttackSlots <= 0) return;
-
-        const candidates = livingSubs.filter(s => !s.isWarning);
-        const attackerCount = Math.min(availableAttackSlots, candidates.length);
-        const shuffledCandidates = [...candidates].sort(() => Math.random() - 0.5);
+        const attackerCount = Math.min(this.maxConcurrentSubmarineAttackers, livingSubs.length);
+        const shuffledSubs = [...livingSubs].sort(() => Math.random() - 0.5);
 
         for (let i = 0; i < attackerCount; i++) {
-            shuffledCandidates[i].triggerWarning();
+            this.fireMissileFromSub(shuffledSubs[i]);
         }
     }
 
