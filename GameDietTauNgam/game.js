@@ -793,16 +793,17 @@ class Submarine {
         this.depthIndex = depthIndex;
         this.word = wordObj; // {word, meaning, emoji}
         this.isBoss = isBoss;
+        this.perspectiveScale = this.calculatePerspectiveScale(y, isBoss);
 
         if (isBoss) {
-            this.width = 240;
-            this.height = 85;
+            this.width = 240 * this.perspectiveScale;
+            this.height = 85 * this.perspectiveScale;
             this.hp = 10;
             this.maxHp = 10;
             this.speedX = 0.8 * (Math.random() > 0.5 ? 1 : -1);
         } else {
-            this.width = 110;
-            this.height = 42;
+            this.width = 110 * this.perspectiveScale;
+            this.height = 42 * this.perspectiveScale;
             this.speedX = (Math.random() * 0.8 + 0.6) * speedMultiplier * (Math.random() > 0.5 ? 1 : -1);
         }
 
@@ -829,6 +830,15 @@ class Submarine {
         // Color variance
         const colors = ['#1e40af', '#065f46', '#111827', '#7c2d12', '#4c1d95'];
         this.subColor = isBoss ? '#334155' : colors[depthIndex % colors.length];
+    }
+
+    calculatePerspectiveScale(y, isBoss) {
+        const minDepth = window.innerHeight * 0.48;
+        const maxDepth = window.innerHeight * 0.88;
+        const depthRatio = Math.max(0, Math.min(1, (y - minDepth) / (maxDepth - minDepth || 1)));
+        const minScale = isBoss ? 0.9 : 0.72;
+        const maxScale = isBoss ? 1.12 : 1.28;
+        return minScale + depthRatio * (maxScale - minScale);
     }
 
     normalizeMovementSpeed(speedMultiplier = 1.0) {
@@ -1404,6 +1414,9 @@ class GameEngine {
 
         // Targets selection
         this.currentTarget = null;
+        this.manualTargetChangeCooldown = 0;
+        this.manualTargetChangeCooldownDuration = 300; // 5 seconds at 60 FPS
+        this.manualTargetChangeNoticeTimer = 0;
 
         // Attack cycle triggers
         this.attackTimer = 0;
@@ -1441,7 +1454,7 @@ class GameEngine {
             }
             // ArrowUp to change target answer
             if (e.key === 'ArrowUp') {
-                this.selectNewTarget();
+                this.requestManualTargetChange();
                 e.preventDefault();
             }
         });
@@ -1624,6 +1637,8 @@ class GameEngine {
         this.fireCooldown = 0;
         this.bombsRemaining = this.maxBombsBeforeReload;
         this.reloadTimer = 0;
+        this.manualTargetChangeCooldown = 0;
+        this.manualTargetChangeNoticeTimer = 0;
 
         this.bombs = [];
         this.submarines = [];
@@ -1703,6 +1718,20 @@ class GameEngine {
         
         // Ensure at least one submarine contains the correct English word
         this.guaranteeTargetSubmarinePresence();
+    }
+
+    requestManualTargetChange() {
+        if (this.manualTargetChangeCooldown > 0) {
+            if (this.manualTargetChangeNoticeTimer <= 0 && this.battleship) {
+                const secondsLeft = Math.ceil(this.manualTargetChangeCooldown / 60);
+                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 48, `TARGET CHANGE IN ${secondsLeft}s`, '#ffd000', 0.8));
+                this.manualTargetChangeNoticeTimer = 45;
+            }
+            return;
+        }
+
+        this.selectNewTarget();
+        this.manualTargetChangeCooldown = this.manualTargetChangeCooldownDuration;
     }
 
     speakCurrentTargetWord() {
@@ -1915,6 +1944,9 @@ class GameEngine {
 
     updatePhysics() {
         if (this.fireCooldown > 0) this.fireCooldown--;
+        if (this.manualTargetChangeCooldown > 0) this.manualTargetChangeCooldown--;
+        if (this.manualTargetChangeNoticeTimer > 0) this.manualTargetChangeNoticeTimer--;
+
         if (this.reloadTimer > 0) {
             this.reloadTimer--;
             if (this.battleship && this.reloadTimer % 12 === 0) {
@@ -2582,7 +2614,9 @@ class GameEngine {
 
         // 3. Draw Submarines
         const isFrozen = this.freezeTimer > 0;
-        this.submarines.forEach(s => s.draw(this.ctx, isFrozen));
+        [...this.submarines]
+            .sort((a, b) => (a.y + a.height) - (b.y + b.height))
+            .forEach(s => s.draw(this.ctx, isFrozen));
 
         // 4. Draw Depth charge bombs
         this.bombs.forEach(b => b.draw(this.ctx));
