@@ -195,6 +195,15 @@ body, html {
     transform: translateY(-2px);
 }
 
+.mode-btn:focus-visible,
+.pulse-btn:focus-visible,
+.modal-btn:focus-visible {
+    outline: 3px solid var(--neon-yellow);
+    outline-offset: 4px;
+    box-shadow: 0 0 22px rgba(255, 208, 0, 0.45),
+                inset 0 0 10px rgba(255, 208, 0, 0.12);
+}
+
 .mode-btn.active {
     background: rgba(0, 240, 255, 0.1);
     border-color: var(--neon-blue);

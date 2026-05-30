@@ -1388,6 +1388,8 @@ class GameEngine {
 
         // Keyboard bindings
         window.addEventListener('keydown', e => {
+            if (this.handleMenuKeyboardNavigation(e)) return;
+
             this.keys[e.key] = true;
             if (this.state !== 'playing') return;
             // Space or ArrowDown to fire depth charge
@@ -1413,6 +1415,7 @@ class GameEngine {
         
         // Update high score text
         this.updateStartHighScore();
+        this.focusCurrentMenuDefault();
 
         // Start requestAnimationFrame core loop
         requestAnimationFrame(timestamp => this.loop(timestamp));
@@ -1425,6 +1428,57 @@ class GameEngine {
         if (this.battleship) {
             this.battleship.targetY = this.waterY - this.battleship.height + 10;
         }
+    }
+
+    getActiveMenuContainer() {
+        if (!this.modalPause.classList.contains('hidden')) return this.modalPause;
+        if (!this.modalGameover.classList.contains('hidden')) return this.modalGameover;
+        if (this.state === 'start' && this.screenStart.classList.contains('active')) return this.screenStart;
+        return null;
+    }
+
+    getMenuButtons(container) {
+        if (!container) return [];
+        return Array.from(container.querySelectorAll('button'))
+            .filter(btn => !btn.disabled && btn.offsetParent !== null);
+    }
+
+    focusCurrentMenuDefault() {
+        const container = this.getActiveMenuContainer();
+        const buttons = this.getMenuButtons(container);
+        if (buttons.length === 0) return;
+
+        const defaultButton = container === this.screenStart
+            ? buttons.find(btn => btn.classList.contains('active')) || buttons[0]
+            : buttons[0];
+        defaultButton.focus();
+    }
+
+    handleMenuKeyboardNavigation(e) {
+        const navKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter'];
+        if (!navKeys.includes(e.key)) return false;
+
+        const container = this.getActiveMenuContainer();
+        const buttons = this.getMenuButtons(container);
+        if (buttons.length === 0) return false;
+
+        e.preventDefault();
+        sound.init();
+
+        const currentIndex = buttons.indexOf(document.activeElement);
+        if (e.key === 'Enter') {
+            const selectedButton = currentIndex >= 0 ? buttons[currentIndex] : buttons[0];
+            selectedButton.focus();
+            selectedButton.click();
+            return true;
+        }
+
+        const step = (e.key === 'ArrowDown' || e.key === 'ArrowRight') ? 1 : -1;
+        const nextIndex = currentIndex >= 0
+            ? (currentIndex + step + buttons.length) % buttons.length
+            : 0;
+        buttons[nextIndex].focus();
+        return true;
     }
 
     setupEventListeners() {
@@ -1506,6 +1560,10 @@ class GameEngine {
     }
 
     startGame() {
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur();
+        }
+
         this.state = 'playing';
         this.score = 0;
         this.lives = this.mode === 'practice' ? 999 : 3; // unlimited practically in practice mode
@@ -1557,12 +1615,16 @@ class GameEngine {
         if (this.state !== 'playing') return;
         this.state = 'paused';
         this.modalPause.classList.remove('hidden');
+        this.focusCurrentMenuDefault();
     }
 
     resumeGame() {
         if (this.state !== 'paused') return;
         this.state = 'playing';
         this.modalPause.classList.add('hidden');
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+            document.activeElement.blur();
+        }
     }
 
     quitToMenu() {
@@ -1570,6 +1632,7 @@ class GameEngine {
         this.screenGame.classList.remove('active');
         this.screenStart.classList.add('active');
         this.updateStartHighScore();
+        this.focusCurrentMenuDefault();
     }
 
     updateStartHighScore() {
@@ -2417,6 +2480,7 @@ class GameEngine {
 
         // Toggle modals display
         this.modalGameover.classList.remove('hidden');
+        this.focusCurrentMenuDefault();
     }
 
     // ==========================================================================
