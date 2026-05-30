@@ -1463,6 +1463,9 @@ class GameEngine {
         this.timeElapsed = 0;
         this.maxGameDuration = 5 * 60 * 60; // 5 minutes at 60 FPS
         this.timeMultiplierTimer = 0;
+        this.survivalBonusInterval = 30 * 60; // 30 seconds at 60 FPS
+        this.nextSurvivalBonusAt = this.survivalBonusInterval;
+        this.finalSurvivalBonusAwarded = false;
 
         // Stats tracking
         this.correctMatches = 0;
@@ -1740,6 +1743,8 @@ class GameEngine {
         this.lives = this.mode === 'practice' ? 999 : 3; // unlimited practically in practice mode
         this.timeElapsed = 0;
         this.timeMultiplierTimer = 0;
+        this.nextSurvivalBonusAt = this.survivalBonusInterval;
+        this.finalSurvivalBonusAwarded = false;
         this.difficultyStage = 'EASY';
         this.correctMatches = 0;
         this.incorrectMatches = 0;
@@ -1863,6 +1868,7 @@ class GameEngine {
             accuracy: vocab.getAccuracy(),
             correct: this.correctMatches,
             combo: this.highestCombo,
+            survivalTime: Math.min(this.timeElapsed, this.maxGameDuration),
             duration: Math.min(this.timeElapsed, this.maxGameDuration),
             playedAt: new Date().toISOString()
         });
@@ -2104,7 +2110,9 @@ class GameEngine {
         if (this.state === 'playing') {
             this.gameTime++;
             this.timeElapsed++;
+            this.awardSurvivalBonuses();
             if (this.timeElapsed >= this.maxGameDuration) {
+                this.awardFinalSurvivalBonus();
                 this.triggerGameOver('timeup');
                 requestAnimationFrame(timestamp => this.loop(timestamp));
                 return;
@@ -2581,6 +2589,40 @@ class GameEngine {
         this.score += amount;
     }
 
+    getSurvivingScoreRecipients() {
+        if (this.mode === 'duo') {
+            return this.getActiveBattleships().filter(ship => !ship.isDisabled && ship.lives > 0);
+        }
+        return this.battleship && this.lives > 0 ? [this.battleship] : [];
+    }
+
+    awardScoreToSurvivors(amount, label, color) {
+        const recipients = this.getSurvivingScoreRecipients();
+        if (recipients.length === 0) return;
+
+        recipients.forEach(ship => {
+            this.addPlayerScore(ship, amount);
+            this.floatingTexts.push(new FloatingText(ship.x, ship.y - 56, label, color, 1.05));
+        });
+        this.updateHUD();
+    }
+
+    awardSurvivalBonuses() {
+        if (this.timeElapsed < this.nextSurvivalBonusAt) return;
+
+        this.awardScoreToSurvivors(500, "SURVIVAL +500", '#33ff88');
+        while (this.nextSurvivalBonusAt <= this.timeElapsed) {
+            this.nextSurvivalBonusAt += this.survivalBonusInterval;
+        }
+    }
+
+    awardFinalSurvivalBonus() {
+        if (this.finalSurvivalBonusAwarded) return;
+
+        this.finalSurvivalBonusAwarded = true;
+        this.awardScoreToSurvivors(1000, "FULL SURVIVAL +1000", '#ffd000');
+    }
+
     applyPenalty(ship = this.battleship) {
         this.currentCombo = 0;
         this.hideComboOverlay();
@@ -2881,9 +2923,10 @@ class GameEngine {
         row.className = 'history-row';
         const date = new Date(entry.playedAt);
         const dateText = Number.isNaN(date.getTime()) ? 'Unknown time' : date.toLocaleString();
+        const survivalText = this.formatTime(entry.survivalTime ?? entry.duration ?? 0);
         row.innerHTML = `
             <span class="history-rank">#${idx + 1}</span>
-            <span class="history-date">${dateText} • ${entry.accuracy}% ACC • ${entry.correct} OK</span>
+            <span class="history-date">${dateText} • SURV ${survivalText} • ${entry.accuracy}% ACC • ${entry.correct} OK</span>
             <span class="history-score">${entry.score}</span>
         `;
         return row;
