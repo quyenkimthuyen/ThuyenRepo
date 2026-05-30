@@ -1552,6 +1552,14 @@ class GameEngine {
 
         // Set top bar target string
         this.targetValue.innerHTML = `${this.currentTarget.emoji || ''} ${this.currentTarget.meaning}`;
+        // Announce the target English word using English voice
+        if (window.speechSynthesis && this.currentTarget.word) {
+            const utter = new SpeechSynthesisUtterance(this.currentTarget.word);
+            const voices = window.speechSynthesis.getVoices();
+            const enVoice = voices.find(v => v.lang && v.lang.startsWith('en'));
+            if (enVoice) utter.voice = enVoice;
+            window.speechSynthesis.speak(utter);
+        }
         
         // Ensure at least one submarine contains the correct English word
         this.guaranteeTargetSubmarinePresence();
@@ -2187,7 +2195,7 @@ class GameEngine {
     destroySubmarine(sub) {
         sub.isDying = true;
 
-        // Speak the name of the destroyed submarine (Vietnamese word)
+        // Speak the name of the destroyed submarine (English word) using an English voice
         if (window.speechSynthesis && sub.word && sub.word.word) {
             const utter = new SpeechSynthesisUtterance(sub.word.word);
             // Prefer an English voice if available
@@ -2196,7 +2204,7 @@ class GameEngine {
             if (enVoice) utter.voice = enVoice;
             window.speechSynthesis.speak(utter);
         }
-        
+
         // Explode particles
         const numParticles = sub.isBoss ? 45 : 20;
         for (let k = 0; k < numParticles; k++) {
