@@ -877,7 +877,8 @@ body, html {
     width: 100%;
 }
 
-.learned-words-box h3 {
+.learned-words-box h3,
+.play-history-box h3 {
     font-size: 0.85rem;
     font-weight: 700;
     color: #38bdf8;
@@ -897,15 +898,68 @@ body, html {
     padding: 4px;
 }
 
+.play-history-box {
+    text-align: left;
+    margin-bottom: 24px;
+    width: 100%;
+}
+
+#play-history-list,
+#start-play-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 132px;
+    overflow-y: auto;
+    padding: 4px;
+}
+
+.start-history-box {
+    margin-bottom: 0;
+}
+
+.history-row {
+    display: grid;
+    grid-template-columns: 34px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 6px 10px;
+    font-size: 0.78rem;
+}
+
+.history-rank {
+    color: var(--neon-yellow);
+    font-weight: 800;
+}
+
+.history-date {
+    color: #94a3b8;
+}
+
+.history-score {
+    color: var(--neon-blue);
+    font-family: var(--font-heading);
+    font-weight: 800;
+}
+
 /* custom scrollbar */
-#learned-words-list::-webkit-scrollbar {
+#learned-words-list::-webkit-scrollbar,
+#play-history-list::-webkit-scrollbar,
+#start-play-history-list::-webkit-scrollbar {
     width: 6px;
 }
-#learned-words-list::-webkit-scrollbar-track {
+#learned-words-list::-webkit-scrollbar-track,
+#play-history-list::-webkit-scrollbar-track,
+#start-play-history-list::-webkit-scrollbar-track {
     background: rgba(0,0,0,0.1);
     border-radius: 4px;
 }
-#learned-words-list::-webkit-scrollbar-thumb {
+#learned-words-list::-webkit-scrollbar-thumb,
+#play-history-list::-webkit-scrollbar-thumb,
+#start-play-history-list::-webkit-scrollbar-thumb {
     background: rgba(255,255,255,0.15);
     border-radius: 4px;
 }

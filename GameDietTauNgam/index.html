@@ -47,6 +47,13 @@
                 </div>
 
                 <button id="btn-play" class="pulse-btn">LAUNCH BATTLESHIP</button>
+
+                <div class="play-history-box start-history-box">
+                    <h3>RECENT 10 PLAYS</h3>
+                    <div id="start-play-history-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
             </div>
 
             <div class="instructions-box">
@@ -88,6 +95,10 @@
                     <div class="hud-item difficulty-container">
                         <span class="hud-label">STAGE</span>
                         <span id="hud-diff" class="hud-value text-green">EASY</span>
+                    </div>
+                    <div class="hud-item timer-container">
+                        <span class="hud-label">TIME</span>
+                        <span id="hud-time" class="hud-value neon-yellow">05:00</span>
                     </div>
                 </div>
 
@@ -184,6 +195,10 @@
                         <span id="go-score" class="stat-val neon-blue">0</span>
                     </div>
                     <div class="stat-card">
+                        <span class="stat-lbl">BEST SCORE</span>
+                        <span id="go-best-score" class="stat-val neon-yellow">0</span>
+                    </div>
+                    <div class="stat-card">
                         <span class="stat-lbl">HIGHEST COMBO</span>
                         <span id="go-combo" class="stat-val neon-yellow">0</span>
                     </div>
@@ -208,6 +223,13 @@
                 <div class="learned-words-box">
                     <h3>WORDS REVIEW</h3>
                     <div id="learned-words-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="play-history-box">
+                    <h3>RECENT 10 PLAYS</h3>
+                    <div id="play-history-list">
                         <!-- Populated by JavaScript -->
                     </div>
                 </div>

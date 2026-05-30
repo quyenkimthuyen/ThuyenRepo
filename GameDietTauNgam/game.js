@@ -1165,11 +1165,11 @@ class Missile {
 // ==========================================================================
 class Battleship {
     constructor(waterY) {
-        this.width = 110;
-        this.height = 36;
+        this.width = 150;
+        this.height = 48;
         this.x = window.innerWidth / 2;
         this.y = waterY - this.height + 10;
-        this.speed = 5.5;
+        this.speed = 5.2;
         
         // Floating motion
         this.targetY = this.y;
@@ -1207,74 +1207,100 @@ class Battleship {
 
     draw(ctx, reloadProgress = 1, bombsRemaining = 2, maxBombs = 2) {
         ctx.save();
-        ctx.shadowColor = 'rgba(0,0,0,0.35)';
-        ctx.shadowBlur = 8;
-        ctx.shadowOffsetY = 4;
+        ctx.shadowColor = 'rgba(14, 165, 233, 0.28)';
+        ctx.shadowBlur = 14;
+        ctx.shadowOffsetY = 5;
 
-        // 1. Draw hull (steel grey)
-        ctx.fillStyle = '#64748b';
-        ctx.strokeStyle = '#334155';
-        ctx.lineWidth = 2.5;
+        const hullGrad = ctx.createLinearGradient(0, this.y, 0, this.y + this.height);
+        hullGrad.addColorStop(0, '#f8fafc');
+        hullGrad.addColorStop(0.45, '#93c5fd');
+        hullGrad.addColorStop(1, '#2563eb');
 
-        // Battleship custom hull path (pointed ends)
+        // Cute rounded escort hull with a soft bow.
+        ctx.fillStyle = hullGrad;
+        ctx.strokeStyle = '#e0f2fe';
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(this.x - this.width/2 - 12, this.y + 6); // bow
-        ctx.lineTo(this.x - this.width/2, this.y + this.height);
-        ctx.lineTo(this.x + this.width/2, this.y + this.height);
-        ctx.lineTo(this.x + this.width/2 + 12, this.y + 6); // stern
-        ctx.lineTo(this.x + this.width/2 + 5, this.y);
-        ctx.lineTo(this.x - this.width/2 - 5, this.y);
+        ctx.moveTo(this.x - this.width/2 - 12, this.y + 14);
+        ctx.quadraticCurveTo(this.x - this.width/2 + 4, this.y + this.height + 4, this.x - 30, this.y + this.height);
+        ctx.lineTo(this.x + this.width/2 - 20, this.y + this.height);
+        ctx.quadraticCurveTo(this.x + this.width/2 + 25, this.y + this.height - 4, this.x + this.width/2 + 20, this.y + 18);
+        ctx.quadraticCurveTo(this.x + this.width/2 + 5, this.y - 2, this.x + this.width/2 - 12, this.y + 1);
+        ctx.lineTo(this.x - this.width/2 + 8, this.y + 1);
+        ctx.quadraticCurveTo(this.x - this.width/2 - 10, this.y + 3, this.x - this.width/2 - 12, this.y + 14);
         ctx.closePath();
         ctx.fill();
         ctx.stroke();
 
-        // Hull red bottom stripe
-        ctx.save();
-        ctx.clip();
-        ctx.fillStyle = '#b91c1c'; // Dark red
-        ctx.fillRect(this.x - this.width, this.y + this.height - 10, this.width * 2, 12);
-        ctx.restore();
-
-        // 2. Cabin deckhouse
-        ctx.fillStyle = '#94a3b8';
+        // Simple cheerful keel stripe.
+        ctx.fillStyle = '#f97316';
         ctx.beginPath();
-        ctx.roundRect(this.x - 30, this.y - 12, 60, 14, 3);
+        ctx.roundRect(this.x - this.width/2 + 12, this.y + this.height - 12, this.width * 0.82, 7, 999);
+        ctx.fill();
+
+        // Soft deck platform.
+        ctx.fillStyle = '#dbeafe';
+        ctx.strokeStyle = '#60a5fa';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(this.x - 56, this.y - 7, 112, 13, 999);
         ctx.fill();
         ctx.stroke();
 
-        // Port windows
-        ctx.fillStyle = '#0f172a';
+        // Cute command bridge.
+        const bridgeGrad = ctx.createLinearGradient(0, this.y - 44, 0, this.y + 4);
+        bridgeGrad.addColorStop(0, '#ffffff');
+        bridgeGrad.addColorStop(1, '#bfdbfe');
+        ctx.fillStyle = bridgeGrad;
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(this.x - 16, this.y - 5, 3, 0, Math.PI*2);
-        ctx.arc(this.x, this.y - 5, 3, 0, Math.PI*2);
-        ctx.arc(this.x + 16, this.y - 5, 3, 0, Math.PI*2);
-        ctx.fill();
-
-        // Antenna masts
-        ctx.strokeStyle = '#475569';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(this.x + 20, this.y - 12);
-        ctx.lineTo(this.x + 20, this.y - 25);
-        ctx.moveTo(this.x - 20, this.y - 12);
-        ctx.lineTo(this.x - 20, this.y - 28);
-        ctx.stroke();
-
-        // Gun Turrets (pointing slightly downwards/downward action)
-        ctx.fillStyle = '#334155';
-        ctx.beginPath();
-        ctx.arc(this.x - 40, this.y, 8, Math.PI, 0); // front gun base
-        ctx.arc(this.x + 40, this.y, 8, Math.PI, 0); // rear gun base
+        ctx.roundRect(this.x - 30, this.y - 34, 60, 29, 9);
         ctx.fill();
         ctx.stroke();
 
-        ctx.strokeStyle = '#1e293b';
-        ctx.lineWidth = 3;
+        // Friendly windows.
+        ctx.fillStyle = '#0ea5e9';
+        ctx.shadowColor = '#7dd3fc';
+        ctx.shadowBlur = 5;
+        for (let i = 0; i < 4; i++) {
+            ctx.beginPath();
+            ctx.roundRect(this.x - 24 + i * 14, this.y - 25, 8, 7, 3);
+            ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+
+        // Escort radar mast for an aircraft-carrier guard ship.
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
-        ctx.moveTo(this.x - 45, this.y);
-        ctx.lineTo(this.x - 56, this.y + 4);
-        ctx.moveTo(this.x + 45, this.y);
-        ctx.lineTo(this.x + 56, this.y + 4);
+        ctx.moveTo(this.x + 22, this.y - 34);
+        ctx.lineTo(this.x + 22, this.y - 55);
+        ctx.stroke();
+        ctx.strokeStyle = '#0ea5e9';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(this.x + 22, this.y - 57, 14, 4, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#93c5fd';
+        ctx.beginPath();
+        ctx.arc(this.x + 22, this.y - 44, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Small carrier-escort deck mark.
+        ctx.fillStyle = 'rgba(255,255,255,0.82)';
+        ctx.font = "bold 12px 'Fredoka', sans-serif";
+        ctx.textAlign = 'center';
+        ctx.fillText('CV', this.x, this.y + 27);
+
+        // Minimal toy-like depth charge launchers.
+        ctx.fillStyle = '#1d4ed8';
+        ctx.strokeStyle = '#eff6ff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(this.x - 64, this.y + 1, 28, 14, 7);
+        ctx.roundRect(this.x + 40, this.y + 1, 28, 14, 7);
+        ctx.fill();
         ctx.stroke();
 
         // Reload indicator appears above the ship while depth charges are being loaded.
@@ -1291,28 +1317,6 @@ class Battleship {
             ctx.stroke();
         }
 
-        if (isReloading) {
-            const barWidth = 78;
-            const barHeight = 8;
-            const barX = this.x - barWidth / 2;
-            const barY = this.y - 42;
-            ctx.fillStyle = 'rgba(2, 6, 12, 0.72)';
-            ctx.strokeStyle = 'rgba(255, 208, 0, 0.75)';
-            ctx.beginPath();
-            ctx.roundRect(barX, barY, barWidth, barHeight, 999);
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = '#ffd000';
-            ctx.beginPath();
-            ctx.roundRect(barX + 2, barY + 2, Math.max(4, (barWidth - 4) * reloadProgress), barHeight - 4, 999);
-            ctx.fill();
-
-            ctx.font = "bold 11px 'Fredoka', sans-serif";
-            ctx.textAlign = 'center';
-            ctx.fillStyle = '#fff7ad';
-            ctx.fillText('RELOADING', this.x, barY - 6);
-        }
         ctx.restore();
 
         // 3. Shield Bubble effect
@@ -1356,6 +1360,7 @@ class GameEngine {
         this.hudScore = document.getElementById('hud-score');
         this.hudHearts = document.getElementById('hud-hearts');
         this.hudDiff = document.getElementById('hud-diff');
+        this.hudTime = document.getElementById('hud-time');
         this.hudAccuracy = document.getElementById('hud-accuracy');
         this.hudAmmo = document.getElementById('hud-ammo');
         this.hudReloadFill = document.getElementById('hud-reload-fill');
@@ -1383,6 +1388,7 @@ class GameEngine {
         this.lives = 3;
         this.difficultyStage = 'EASY';
         this.timeElapsed = 0;
+        this.maxGameDuration = 5 * 60 * 60; // 5 minutes at 60 FPS
         this.timeMultiplierTimer = 0;
 
         // Stats tracking
@@ -1470,6 +1476,7 @@ class GameEngine {
         
         // Update high score text
         this.updateStartHighScore();
+        this.renderStartPlayHistory();
         this.focusCurrentMenuDefault();
 
         // Start requestAnimationFrame core loop
@@ -1550,6 +1557,8 @@ class GameEngine {
                 modeButtons.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.mode = btn.dataset.mode;
+                this.updateStartHighScore();
+                this.renderStartPlayHistory();
             });
         });
 
@@ -1689,6 +1698,7 @@ class GameEngine {
         this.screenGame.classList.remove('active');
         this.screenStart.classList.add('active');
         this.updateStartHighScore();
+        this.renderStartPlayHistory();
         this.focusCurrentMenuDefault();
     }
 
@@ -1703,6 +1713,39 @@ class GameEngine {
         if (this.score > stored) {
             localStorage.setItem(key, this.score);
         }
+    }
+
+    getHighScore() {
+        return parseInt(localStorage.getItem(`hscore_${this.mode}`) || 0);
+    }
+
+    savePlayHistory() {
+        const key = `history_${this.mode}`;
+        const history = this.getPlayHistory();
+        history.unshift({
+            score: this.score,
+            accuracy: vocab.getAccuracy(),
+            correct: this.correctMatches,
+            combo: this.highestCombo,
+            duration: Math.min(this.timeElapsed, this.maxGameDuration),
+            playedAt: new Date().toISOString()
+        });
+        localStorage.setItem(key, JSON.stringify(history.slice(0, 10)));
+    }
+
+    getPlayHistory() {
+        try {
+            return JSON.parse(localStorage.getItem(`history_${this.mode}`) || '[]');
+        } catch (e) {
+            return [];
+        }
+    }
+
+    formatTime(frameCount) {
+        const totalSeconds = Math.max(0, Math.ceil(frameCount / 60));
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
     selectNewTarget() {
@@ -1924,6 +1967,11 @@ class GameEngine {
         if (this.state === 'playing') {
             this.gameTime++;
             this.timeElapsed++;
+            if (this.timeElapsed >= this.maxGameDuration) {
+                this.triggerGameOver('timeup');
+                requestAnimationFrame(timestamp => this.loop(timestamp));
+                return;
+            }
             this.updatePhysics();
             this.handleCollisions();
             this.spawnSupplyCratesAndSubmarines();
@@ -1943,6 +1991,7 @@ class GameEngine {
     }
 
     updatePhysics() {
+        this.updateTimerHUD();
         if (this.fireCooldown > 0) this.fireCooldown--;
         if (this.manualTargetChangeCooldown > 0) this.manualTargetChangeCooldown--;
         if (this.manualTargetChangeNoticeTimer > 0) this.manualTargetChangeNoticeTimer--;
@@ -2526,17 +2575,27 @@ class GameEngine {
         this.hudHearts.innerText = heartsStr;
 
         this.hudDiff.innerText = this.difficultyStage;
+        this.updateTimerHUD();
         this.hudAccuracy.innerText = `${vocab.getAccuracy()}%`;
         this.updateAmmoHUD();
     }
 
-    triggerGameOver() {
+    updateTimerHUD() {
+        this.hudTime.innerText = this.formatTime(this.maxGameDuration - this.timeElapsed);
+    }
+
+    triggerGameOver(reason = 'defeat') {
+        if (this.state === 'gameover') return;
+
         this.state = 'gameover';
         sound.playDefeat();
         this.saveHighScore();
+        this.savePlayHistory();
 
         // Populate game over stats overlay
+        document.getElementById('gameover-title').innerText = reason === 'timeup' ? 'TIME UP!' : 'DEFEATED!';
         document.getElementById('go-score').innerText = this.score;
+        document.getElementById('go-best-score').innerText = this.getHighScore();
         document.getElementById('go-combo').innerText = this.highestCombo;
         document.getElementById('go-accuracy').innerText = `${vocab.getAccuracy()}%`;
         document.getElementById('go-correct').innerText = this.correctMatches;
@@ -2566,9 +2625,56 @@ class GameEngine {
             });
         }
 
+        this.renderPlayHistory();
+
         // Toggle modals display
         this.modalGameover.classList.remove('hidden');
         this.focusCurrentMenuDefault();
+    }
+
+    renderPlayHistory() {
+        const historyBox = document.getElementById('play-history-list');
+        const history = this.getPlayHistory();
+        historyBox.innerHTML = '';
+
+        if (history.length === 0) {
+            historyBox.innerHTML = '<span style="color:#64748b; font-size: 0.85rem;">No play history yet.</span>';
+            return;
+        }
+
+        history.forEach((entry, idx) => {
+            historyBox.appendChild(this.createHistoryRow(entry, idx));
+        });
+    }
+
+    renderStartPlayHistory() {
+        const historyBox = document.getElementById('start-play-history-list');
+        if (!historyBox) return;
+
+        const history = this.getPlayHistory();
+        historyBox.innerHTML = '';
+
+        if (history.length === 0) {
+            historyBox.innerHTML = '<span style="color:#64748b; font-size: 0.85rem;">No play history yet.</span>';
+            return;
+        }
+
+        history.forEach((entry, idx) => {
+            historyBox.appendChild(this.createHistoryRow(entry, idx));
+        });
+    }
+
+    createHistoryRow(entry, idx) {
+        const row = document.createElement('div');
+        row.className = 'history-row';
+        const date = new Date(entry.playedAt);
+        const dateText = Number.isNaN(date.getTime()) ? 'Unknown time' : date.toLocaleString();
+        row.innerHTML = `
+            <span class="history-rank">#${idx + 1}</span>
+            <span class="history-date">${dateText} • ${entry.accuracy}% ACC • ${entry.correct} OK</span>
+            <span class="history-score">${entry.score}</span>
+        `;
+        return row;
     }
 
     // ==========================================================================
