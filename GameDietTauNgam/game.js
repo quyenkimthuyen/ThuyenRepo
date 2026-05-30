@@ -1,0 +1,2386 @@
+/**
+ * Word Submarine Hunter
+ * A complete, polished, educational action arcade game.
+ * Uses HTML5 Canvas, Web Audio API synthesis, and Spaced Repetition adaptive learning.
+ */
+
+// ==========================================================================
+// 1. SOUND MANAGER (Web Audio API Synthesizer)
+// ==========================================================================
+class SoundSynth {
+    constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.savedState = false;
+    }
+
+    init() {
+        if (!this.ctx) {
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    playShoot() {
+        if (this.muted || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(60, this.ctx.currentTime + 0.15);
+
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.15);
+    }
+
+    playExplosion() {
+        if (this.muted || !this.ctx) return;
+        const bufferSize = this.ctx.sampleRate * 0.4;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        
+        // Fill buffer with random noise
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, this.ctx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 0.4);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        noise.start();
+        noise.stop(this.ctx.currentTime + 0.4);
+    }
+
+    playSplash() {
+        if (this.muted || !this.ctx) return;
+        // High frequency soft splash
+        const bufferSize = this.ctx.sampleRate * 0.25;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(2000, this.ctx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(400, this.ctx.currentTime + 0.25);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        noise.start();
+        noise.stop(this.ctx.currentTime + 0.25);
+    }
+
+    playAlarm() {
+        if (this.muted || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(950, this.ctx.currentTime + 0.15);
+
+        gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+        gain.gain.setValueAtTime(0.01, this.ctx.currentTime + 0.28);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.3);
+    }
+
+    playLaser() {
+        if (this.muted || !this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(2000, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(400, this.ctx.currentTime + 0.4);
+
+        gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.4);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.4);
+    }
+
+    playPowerup() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+        notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+            gain.gain.setValueAtTime(0.15, now + idx * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.15);
+
+            osc.start(now + idx * 0.08);
+            osc.stop(now + idx * 0.08 + 0.15);
+        });
+    }
+
+    playDamage() {
+        if (this.muted || !this.ctx) return;
+        // Low rumble distortion
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(90, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(30, this.ctx.currentTime + 0.3);
+
+        gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.3);
+    }
+
+    playVictory() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const melody = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.50]; // C5, D5, E5, G5, A5, C6
+        melody.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+            gain.gain.setValueAtTime(0.15, now + idx * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.08 + 0.2);
+
+            osc.start(now + idx * 0.08);
+            osc.stop(now + idx * 0.08 + 0.2);
+        });
+    }
+
+    playDefeat() {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const melody = [440.00, 415.30, 392.00, 349.23, 293.66]; // A4, Ab4, G4, F4, D4
+        melody.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.12);
+
+            gain.gain.setValueAtTime(0.15, now + idx * 0.12);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + idx * 0.12 + 0.25);
+
+            osc.start(now + idx * 0.12);
+            osc.stop(now + idx * 0.12 + 0.25);
+        });
+    }
+
+    toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+    }
+}
+
+// Global Sound Instance
+const sound = new SoundSynth();
+
+
+// ==========================================================================
+// 2. ADAPTIVE LEARNING SYSTEM (Spaced Repetition Vocab)
+// ==========================================================================
+class VocabularyPool {
+    constructor() {
+        this.words = [];
+        this.learningState = {}; // { word: { correct: 0, incorrect: 0, weight: 1.0 } }
+        this.correctMatches = 0;
+        this.incorrectMatches = 0;
+    }
+
+    async loadVocab() {
+        const defaultList = [
+            { "word": "Dog", "meaning": "Con chó", "emoji": "🐶" },
+            { "word": "Cat", "meaning": "Con mèo", "emoji": "🐱" },
+            { "word": "Fish", "meaning": "Con cá", "emoji": "🐟" },
+            { "word": "Apple", "meaning": "Quả táo", "emoji": "🍎" },
+            { "word": "Banana", "meaning": "Quả chuối", "emoji": "🍌" },
+            { "word": "Orange", "meaning": "Quả cam", "emoji": "🍊" },
+            { "word": "Bird", "meaning": "Con chim", "emoji": "🐦" },
+            { "word": "Lion", "meaning": "Sư tử", "emoji": "🦁" },
+            { "word": "Elephant", "meaning": "Con voi", "emoji": "🐘" },
+            { "word": "Monkey", "meaning": "Con khỉ", "emoji": "🐒" },
+            { "word": "Car", "meaning": "Xe ô tô", "emoji": "🚗" },
+            { "word": "Bicycle", "meaning": "Xe đạp", "emoji": "🚲" },
+            { "word": "Airplane", "meaning": "Máy bay", "emoji": "✈️" },
+            { "word": "Boat", "meaning": "Thuyền", "emoji": "⛵" },
+            { "word": "Sun", "meaning": "Mặt trời", "emoji": "☀️" },
+            { "word": "Moon", "meaning": "Mặt trăng", "emoji": "🌙" },
+            { "word": "Star", "meaning": "Ngôi sao", "emoji": "⭐" },
+            { "word": "Rain", "meaning": "Mưa", "emoji": "🌧️" },
+            { "word": "Snow", "meaning": "Tuyết", "emoji": "❄️" },
+            { "word": "Tree", "meaning": "Cái cây", "emoji": "🌳" },
+            { "word": "Flower", "meaning": "Bông hoa", "emoji": "🌸" },
+            { "word": "House", "meaning": "Ngôi nhà", "emoji": "🏠" },
+            { "word": "Book", "meaning": "Quyển sách", "emoji": "📖" },
+            { "word": "Pen", "meaning": "Bút mực", "emoji": "🖋️" },
+            { "word": "Pencil", "meaning": "Bút chì", "emoji": "✏️" },
+            { "word": "School", "meaning": "Trường học", "emoji": "🏫" },
+            { "word": "Teacher", "meaning": "Giáo viên", "emoji": "👩‍🏫" },
+            { "word": "Doctor", "meaning": "Bác sĩ", "emoji": "👨‍⚕️" },
+            { "word": "Run", "meaning": "Chạy", "emoji": "🏃" },
+            { "word": "Jump", "meaning": "Nhảy", "emoji": "🤾" },
+            { "word": "Swim", "meaning": "Bơi", "emoji": "🏊" },
+            { "word": "Sing", "meaning": "Hát", "emoji": "🎤" },
+            { "word": "Dance", "meaning": "Nhảy múa", "emoji": "💃" },
+            { "word": "Red", "meaning": "Màu đỏ", "emoji": "🟥" },
+            { "word": "Blue", "meaning": "Màu xanh dương", "emoji": "🟦" },
+            { "word": "Green", "meaning": "Màu xanh lá", "emoji": "🟩" },
+            { "word": "Yellow", "meaning": "Màu vàng", "emoji": "🟨" }
+        ];
+
+        try {
+            // Load vocab.json with a timeout to fall back cleanly if file loading errors out
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), 1500);
+            
+            const response = await fetch('vocab.json', { signal: controller.signal });
+            clearTimeout(id);
+
+            if (response.ok) {
+                this.words = await response.json();
+                console.log("Successfully loaded vocabulary list from vocab.json.");
+            } else {
+                this.words = defaultList;
+                console.warn("Failed to load vocab.json. Falling back to default list.");
+            }
+        } catch (e) {
+            this.words = defaultList;
+            console.warn("Local CORS blocking or network error: using default built-in vocabulary list.");
+        }
+
+        // Initialize learning states
+        this.words.forEach(item => {
+            this.learningState[item.word.toLowerCase()] = {
+                item: item,
+                correct: 0,
+                incorrect: 0,
+                weight: 1.0
+            };
+        });
+    }
+
+    recordResult(wordText, isCorrect) {
+        const key = wordText.toLowerCase();
+        if (!this.learningState[key]) return;
+        
+        const state = this.learningState[key];
+        if (isCorrect) {
+            state.correct++;
+            this.correctMatches++;
+        } else {
+            state.incorrect++;
+            this.incorrectMatches++;
+        }
+
+        // Spaced Repetition Formula
+        // Mistakes exponentially bump the weight up, correct answers lower it.
+        const baseWeight = 1.0 + (state.incorrect * 2.0) - (state.correct * 0.4);
+        state.weight = Math.max(0.15, Math.min(10.0, baseWeight));
+    }
+
+    getAccuracy() {
+        const total = this.correctMatches + this.incorrectMatches;
+        if (total === 0) return 100;
+        return Math.round((this.correctMatches / total) * 100);
+    }
+
+    pickNextTarget() {
+        // Weighted Random Selection (Rough Spaced Repetition)
+        let totalWeight = 0;
+        const pool = [];
+
+        this.words.forEach(item => {
+            const key = item.word.toLowerCase();
+            const w = this.learningState[key] ? this.learningState[key].weight : 1.0;
+            totalWeight += w;
+            pool.push({ item, cumulativeWeight: totalWeight });
+        });
+
+        const r = Math.random() * totalWeight;
+        for (let i = 0; i < pool.length; i++) {
+            if (r <= pool[i].cumulativeWeight) {
+                return pool[i].item;
+            }
+        }
+        return this.words[Math.floor(Math.random() * this.words.length)];
+    }
+
+    getRandomWrongOptions(correctWordText, count) {
+        const wrongPool = this.words.filter(w => w.word.toLowerCase() !== correctWordText.toLowerCase());
+        const shuffled = [...wrongPool].sort(() => 0.5 - Math.random());
+        return shuffled.slice(0, count);
+    }
+
+    reset() {
+        this.correctMatches = 0;
+        this.incorrectMatches = 0;
+        for (let key in this.learningState) {
+            this.learningState[key].correct = 0;
+            this.learningState[key].incorrect = 0;
+            this.learningState[key].weight = 1.0;
+        }
+    }
+}
+
+// Global Vocab Instance
+const vocab = new VocabularyPool();
+
+
+// ==========================================================================
+// 3. PARTICLE SYSTEMS & SHAPES
+// ==========================================================================
+class Particle {
+    constructor(x, y, type, color = '#ff9900') {
+        this.x = x;
+        this.y = y;
+        this.type = type; // 'smoke', 'bubble', 'fire', 'splash', 'spark', 'firework'
+        this.color = color;
+        this.life = 1.0;
+        this.decay = Math.random() * 0.03 + 0.015;
+
+        switch (type) {
+            case 'bubble':
+                this.vx = Math.random() * 0.8 - 0.4;
+                this.vy = -(Math.random() * 1.5 + 0.5);
+                this.size = Math.random() * 4 + 2;
+                this.decay = Math.random() * 0.015 + 0.005;
+                break;
+            case 'smoke':
+                this.vx = Math.random() * 0.4 - 0.2;
+                this.vy = -(Math.random() * 0.8 + 0.2);
+                this.size = Math.random() * 8 + 6;
+                break;
+            case 'fire':
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 4 + 1;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.size = Math.random() * 10 + 5;
+                this.decay = Math.random() * 0.04 + 0.02;
+                break;
+            case 'splash':
+                this.vx = Math.random() * 3 - 1.5;
+                this.vy = -(Math.random() * 4 + 2);
+                this.size = Math.random() * 5 + 2;
+                this.decay = Math.random() * 0.05 + 0.03;
+                break;
+            case 'spark':
+                const a = Math.random() * Math.PI * 2;
+                const s = Math.random() * 3 + 1;
+                this.vx = Math.cos(a) * s;
+                this.vy = Math.sin(a) * s;
+                this.size = Math.random() * 3 + 1;
+                this.decay = Math.random() * 0.06 + 0.03;
+                break;
+            case 'firework':
+                const fAngle = Math.random() * Math.PI * 2;
+                const fSpeed = Math.random() * 7 + 3;
+                this.vx = Math.cos(fAngle) * fSpeed;
+                this.vy = Math.sin(fAngle) * fSpeed;
+                this.size = Math.random() * 4 + 2;
+                this.decay = Math.random() * 0.025 + 0.01;
+                break;
+        }
+    }
+
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        
+        if (this.type === 'bubble') {
+            this.vx += Math.sin(this.life * 10) * 0.1; // Wiggle
+        } else if (this.type === 'splash' || this.type === 'firework') {
+            this.vy += 0.15; // Gravity
+        }
+        
+        this.life -= this.decay;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.life);
+        ctx.fillStyle = this.color;
+        
+        if (this.type === 'bubble') {
+            ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.fill();
+        } else {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * this.life, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+
+// Floating Score indicators
+class FloatingText {
+    constructor(x, y, text, color = '#ffdd00', scale = 1.0) {
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.color = color;
+        this.scale = scale;
+        this.life = 1.0;
+        this.decay = 0.02;
+        this.vy = -1.5;
+    }
+
+    update() {
+        this.y += this.vy;
+        this.life -= this.decay;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.life;
+        ctx.fillStyle = this.color;
+        ctx.font = `bold ${Math.round(20 * this.scale)}px 'Fredoka', sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.shadowColor = 'rgba(0,0,0,0.5)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetY = 2;
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.restore();
+    }
+}
+
+
+// ==========================================================================
+// 4. DEPTH CHARGE BOMB
+// ==========================================================================
+class Bomb {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.vy = 2.0; // Falling speed starts slow
+        this.radius = 12;
+        this.gravity = 0.08;
+        this.friction = 0.985;
+        this.inWater = false;
+        
+        this.exploded = false;
+        this.explosionRadius = 0;
+        this.maxExplosionRadius = 90;
+        this.explosionSpeed = 5;
+        
+        this.waterLine = 0; // Set by game loop
+    }
+
+    update(waterY) {
+        this.waterLine = waterY;
+
+        if (!this.exploded) {
+            // Check if entered water
+            if (this.y >= waterY && !this.inWater) {
+                this.inWater = true;
+                this.vy = 1.5; // Drag slow down
+                sound.playSplash();
+                return 'splash';
+            }
+
+            if (this.inWater) {
+                this.vy += this.gravity * 0.6; // slower gravity inside water
+                this.vy *= this.friction;
+            } else {
+                this.vy += this.gravity;
+            }
+
+            this.y += this.vy;
+
+            // Trigger explosion at 88% depth of screen
+            if (this.y > window.innerHeight * 0.9) {
+                this.triggerExplosion();
+            }
+        } else {
+            // Expand explosion circle
+            this.explosionRadius += this.explosionSpeed;
+            if (this.explosionRadius >= this.maxExplosionRadius) {
+                return 'dead';
+            }
+        }
+        return null;
+    }
+
+    triggerExplosion() {
+        this.exploded = true;
+        sound.playExplosion();
+    }
+
+    draw(ctx) {
+        if (!this.exploded) {
+            ctx.save();
+            // Draw retro metal barrel bomb
+            ctx.shadowColor = 'rgba(0,0,0,0.4)';
+            ctx.shadowBlur = 4;
+            
+            // Barrel main shape
+            ctx.fillStyle = '#4a5568';
+            ctx.strokeStyle = '#2d3748';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.rect(this.x - 8, this.y - 12, 16, 24);
+            ctx.fill();
+            ctx.stroke();
+
+            // Hazard stripe
+            ctx.fillStyle = '#ff7b00';
+            ctx.beginPath();
+            ctx.rect(this.x - 8, this.y - 4, 16, 8);
+            ctx.fill();
+
+            // Metal ribs
+            ctx.strokeStyle = '#a0aec0';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(this.x - 8, this.y - 8);
+            ctx.lineTo(this.x + 8, this.y - 8);
+            ctx.moveTo(this.x - 8, this.y + 8);
+            ctx.lineTo(this.x + 8, this.y + 8);
+            ctx.stroke();
+
+            ctx.restore();
+        } else {
+            // Draw expanding comic shockwave ring
+            ctx.save();
+            const ratio = this.explosionRadius / this.maxExplosionRadius;
+            
+            // Outer glow ring
+            const gradient = ctx.createRadialGradient(this.x, this.y, this.explosionRadius * 0.2, this.x, this.y, this.explosionRadius);
+            gradient.addColorStop(0, 'rgba(255, 230, 0, 0)');
+            gradient.addColorStop(0.5, 'rgba(255, 120, 0, 0.6)');
+            gradient.addColorStop(0.9, 'rgba(255, 40, 0, 0.85)');
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.explosionRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw crisp expanding stroke ring
+            ctx.strokeStyle = `rgba(255, 255, 255, ${1.0 - ratio})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.explosionRadius * 0.95, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+    }
+}
+
+
+// ==========================================================================
+// 5. SUPPLY CRATE
+// ==========================================================================
+class Crate {
+    constructor(x, waterY) {
+        this.x = x;
+        this.y = waterY - 5;
+        this.width = 40;
+        this.height = 40;
+        
+        // Pick random powerup type
+        const types = ['repair', 'shield', 'freeze', 'emp'];
+        this.type = types[Math.floor(Math.random() * types.length)];
+        
+        this.speedX = Math.random() * 0.6 - 0.3; // drifts slowly
+        this.bobOffset = Math.random() * Math.PI * 2;
+        this.isCollected = false;
+    }
+
+    update(waterY, time) {
+        this.x += this.speedX;
+        
+        // Bobbing on the waves
+        const waveBob = Math.sin(time * 0.05 + this.x * 0.02) * 5;
+        this.y = waterY - this.height + 15 + waveBob;
+
+        // Keep inside screen boundaries
+        if (this.x < 10 || this.x > window.innerWidth - 10) {
+            this.speedX = -this.speedX;
+        }
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.3)';
+        ctx.shadowBlur = 6;
+        ctx.shadowOffsetY = 4;
+
+        // Crate Box
+        ctx.fillStyle = '#b45309'; // Wooden brown
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(this.x - this.width/2, this.y, this.width, this.height, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        // Inner frame wood
+        ctx.strokeStyle = '#92400e';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.rect(this.x - this.width/2 + 5, this.y + 5, this.width - 10, this.height - 10);
+        ctx.stroke();
+        
+        // Diagonal cross strut
+        ctx.beginPath();
+        ctx.moveTo(this.x - this.width/2 + 5, this.y + 5);
+        ctx.lineTo(this.x + this.width/2 - 5, this.y + this.height - 5);
+        ctx.stroke();
+
+        // Power-up Symbol drawing
+        let label = '';
+        let color = '#fff';
+        switch (this.type) {
+            case 'repair':
+                label = '❤️';
+                color = '#ff3344';
+                break;
+            case 'shield':
+                label = '🛡️';
+                color = '#00e1ff';
+                break;
+            case 'freeze':
+                label = '❄️';
+                color = '#38bdf8';
+                break;
+            case 'emp':
+                label = '⚡';
+                color = '#ffd000';
+                break;
+        }
+
+        ctx.font = '20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, this.x, this.y + this.height/2 + 1);
+
+        ctx.restore();
+    }
+}
+
+
+// ==========================================================================
+// 6. ENEMY SUBMARINE
+// ==========================================================================
+class Submarine {
+    constructor(y, depthIndex, wordObj, speedMultiplier = 1.0, isBoss = false) {
+        this.y = y;
+        this.depthIndex = depthIndex;
+        this.word = wordObj; // {word, meaning, emoji}
+        this.isBoss = isBoss;
+
+        if (isBoss) {
+            this.width = 240;
+            this.height = 85;
+            this.hp = 10;
+            this.maxHp = 10;
+            this.speedX = 0.8 * (Math.random() > 0.5 ? 1 : -1);
+        } else {
+            this.width = 110;
+            this.height = 42;
+            this.speedX = (Math.random() * 0.8 + 0.6) * speedMultiplier * (Math.random() > 0.5 ? 1 : -1);
+        }
+
+        // Start offscreen
+        this.x = this.speedX > 0 ? -this.width : window.innerWidth + this.width;
+
+        this.propellerAngle = 0;
+        this.isDying = false;
+        this.deathTimer = 0;
+        this.damageFlashTimer = 0;
+        
+        // Attack related
+        this.isWarning = false;
+        this.warningTimer = 0;
+        this.warningDuration = 60; // 1 second at 60 FPS
+        
+        // Color variance
+        const colors = ['#1e40af', '#065f46', '#111827', '#7c2d12', '#4c1d95'];
+        this.subColor = isBoss ? '#334155' : colors[depthIndex % colors.length];
+    }
+
+    update(speedMultiplier) {
+        if (this.isDying) {
+            this.deathTimer++;
+            this.y += 0.5; // sink slowly while exploding
+            return this.deathTimer > 35; // Remove sub after explosion finished
+        }
+
+        this.x += this.speedX;
+
+        // Periodic behavior: Randomly change speed slightly or change directions
+        if (Math.random() < 0.003 && !this.isBoss) {
+            this.speedX = (Math.random() * 0.8 + 0.6) * speedMultiplier * Math.sign(this.speedX);
+        }
+        if (Math.random() < 0.001) {
+            this.speedX = -this.speedX;
+        }
+
+        // Keep on screen (reverse direction when touching edge)
+        if (this.x < -this.width - 20 && this.speedX < 0) {
+            this.speedX = -this.speedX;
+        } else if (this.x > window.innerWidth + 20 && this.speedX > 0) {
+            this.speedX = -this.speedX;
+        }
+
+        // Update propeller rotation
+        this.propellerAngle += Math.abs(this.speedX) * 0.25;
+
+        // Flash timer count down
+        if (this.damageFlashTimer > 0) this.damageFlashTimer--;
+
+        // Warning timer count down
+        if (this.isWarning) {
+            this.warningTimer--;
+            if (this.warningTimer <= 0) {
+                this.isWarning = false;
+                return 'fire_missile';
+            }
+        }
+        return null;
+    }
+
+    triggerDamageFlash() {
+        this.damageFlashTimer = 15;
+    }
+
+    triggerWarning() {
+        this.isWarning = true;
+        this.warningTimer = this.warningDuration;
+        sound.playAlarm();
+    }
+
+    draw(ctx, frozen = false) {
+        ctx.save();
+        
+        // Setup glow effects
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 4;
+
+        const isHeadingRight = this.speedX > 0;
+        
+        // Shift drawing origin for direction scaling (flip sprite)
+        ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+        if (!isHeadingRight) {
+            ctx.scale(-1, 1);
+        }
+
+        // Damage flash override
+        if (this.damageFlashTimer % 4 > 2) {
+            ctx.fillStyle = '#ff3344';
+        } else if (frozen) {
+            ctx.fillStyle = '#38bdf8'; // frozen tint
+        } else {
+            ctx.fillStyle = this.subColor;
+        }
+
+        // Submarine geometry (drawn responsive to width and height)
+        const w = this.width;
+        const h = this.height;
+
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = this.isBoss ? 4 : 2;
+
+        // 1. Draw Propeller (behind hull)
+        ctx.save();
+        ctx.translate(-w/2 + 2, 0);
+        ctx.rotate(this.propellerAngle);
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 4, h/3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+
+        // Propeller connection shaft
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.rect(-w/2, -4, 4, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        // 2. Main Capsule Hull
+        ctx.beginPath();
+        ctx.roundRect(-w/2 + 3, -h/2, w - 8, h, h/2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Boss hazard lines
+        if (this.isBoss && !frozen && !(this.damageFlashTimer % 4 > 2)) {
+            ctx.save();
+            ctx.clip();
+            ctx.fillStyle = '#e11d48'; // red hazard stripes
+            ctx.rotate(Math.PI / 4);
+            for (let offset = -w; offset < w; offset += 35) {
+                ctx.fillRect(offset, -h, 12, h * 2);
+            }
+            ctx.restore();
+        }
+
+        // 3. Conning Tower (Periscope Deck)
+        ctx.beginPath();
+        ctx.roundRect(-w/8, -h/2 - h/4, w/4, h/3, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        // 4. Periscope Pipe
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.rect(0, -h/2 - h/2.5, 4, h/5);
+        ctx.fill();
+        // Periscope lens
+        ctx.fillStyle = '#00f0ff';
+        ctx.beginPath();
+        ctx.arc(3, -h/2 - h/2.5, 3, 0, Math.PI*2);
+        ctx.fill();
+
+        // 5. Windows (Portholes)
+        ctx.fillStyle = frozen ? '#cbd5e1' : '#00f0ff';
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.5;
+        
+        const numWindows = this.isBoss ? 4 : 2;
+        const spacing = w / (numWindows + 1.5);
+        for (let i = 0; i < numWindows; i++) {
+            ctx.beginPath();
+            ctx.arc(-w/4 + i * spacing + (this.isBoss ? 20 : 0), -2, h/6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        // Restore flip scale
+        ctx.restore();
+
+        // 6. Draw Word bubble (English label) ABOVE the sub
+        // Drawn without translation scale to prevent text mirroring
+        if (!this.isDying) {
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Text size settings
+            const text = this.word.word;
+            ctx.font = `bold ${this.isBoss ? 24 : 17}px ${varget('--font-heading', "'Fredoka', sans-serif")}`;
+            const textWidth = ctx.measureText(text).width;
+            
+            const paddingX = 14;
+            const paddingY = 8;
+            const bubbleW = textWidth + paddingX * 2;
+            const bubbleH = (this.isBoss ? 24 : 17) + paddingY * 2;
+            
+            const bubbleX = this.x + this.width / 2 - bubbleW / 2;
+            const bubbleY = this.y - bubbleH - 12;
+
+            // Draw bubble container
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            ctx.strokeStyle = this.isBoss ? 'var(--neon-pink)' : 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            ctx.roundRect(bubbleX, bubbleY, bubbleW, bubbleH, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            // Word text
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(text, this.x + this.width / 2, bubbleY + bubbleH / 2 + 1);
+
+            ctx.restore();
+        }
+
+        // 7. Draw Targeting alarm elements (flashing red alert & laser)
+        if (this.isWarning && !this.isDying) {
+            this.drawTargetingLaser(ctx);
+        }
+    }
+
+    drawTargetingLaser(ctx) {
+        ctx.save();
+        
+        const centerSubX = this.x + this.width / 2;
+        const subTopY = this.y;
+
+        // Laser warning line upward to surface
+        ctx.strokeStyle = `rgba(255, 60, 60, ${0.4 + Math.sin(this.warningTimer * 0.3) * 0.3})`;
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(centerSubX, subTopY);
+        ctx.lineTo(centerSubX, 0); // surface limit
+        ctx.stroke();
+
+        // Glowing targeting point at surface
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+        ctx.beginPath();
+        ctx.arc(centerSubX, window.innerHeight * 0.2, 15 + Math.sin(this.warningTimer * 0.4) * 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Alarm icon floating above sub
+        ctx.fillStyle = `rgba(255, 60, 60, ${0.8 + Math.sin(this.warningTimer * 0.5) * 0.2})`;
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚠️', centerSubX, this.y - 65);
+
+        ctx.restore();
+    }
+}
+
+// Utility to retrieve CSS variables dynamically
+function varget(cssVar, fallback) {
+    if (typeof window === 'undefined') return fallback;
+    return getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim() || fallback;
+}
+
+
+// ==========================================================================
+// 7. ENEMY MISSILE ATTACKS
+// ==========================================================================
+class Missile {
+    constructor(x, y, targetY, isBossPattern = false, speedMult = 1.0) {
+        this.x = x;
+        this.y = y;
+        this.vy = -(3.8 * speedMult);
+        this.width = 10;
+        this.height = 25;
+        this.targetY = targetY; // stop at ocean surface
+        this.exploded = false;
+        
+        // Boss pattern might weave side to side
+        this.isWeaving = isBossPattern && Math.random() > 0.4;
+        this.weaveTimer = Math.random() * 100;
+        this.vx = 0;
+    }
+
+    update() {
+        if (this.isWeaving) {
+            this.weaveTimer += 0.08;
+            this.vx = Math.sin(this.weaveTimer) * 1.5;
+        }
+
+        this.x += this.vx;
+        this.y += this.vy;
+
+        // If missile exits water, trigger splash particles
+        if (this.y <= this.targetY) {
+            this.exploded = true;
+            return 'splash_surface';
+        }
+        return null;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(255, 60, 60, 0.5)';
+        ctx.shadowBlur = 6;
+
+        // Missile cylindrical body
+        ctx.fillStyle = '#cbd5e1';
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.rect(this.x - this.width/2, this.y, this.width, this.height);
+        ctx.fill();
+        ctx.stroke();
+
+        // Rocket nosecone (red)
+        ctx.fillStyle = '#ff3c3c';
+        ctx.beginPath();
+        ctx.moveTo(this.x - this.width/2, this.y);
+        ctx.lineTo(this.x, this.y - 8);
+        ctx.lineTo(this.x + this.width/2, this.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Engine tail fire
+        ctx.fillStyle = Math.random() > 0.5 ? '#ff7b00' : '#ffd000';
+        ctx.beginPath();
+        ctx.moveTo(this.x - this.width/4, this.y + this.height);
+        ctx.lineTo(this.x, this.y + this.height + 10 + Math.random()*8);
+        ctx.lineTo(this.x + this.width/4, this.y + this.height);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+    }
+}
+
+
+// ==========================================================================
+// 8. BATTLESHIP (Player Unit)
+// ==========================================================================
+class Battleship {
+    constructor(waterY) {
+        this.width = 110;
+        this.height = 36;
+        this.x = window.innerWidth / 2;
+        this.y = waterY - this.height + 10;
+        this.speed = 5.5;
+        
+        // Floating motion
+        this.targetY = this.y;
+        this.bobOffset = 0;
+
+        // Active State power-ups
+        this.shieldActive = false;
+        this.empActive = false;
+        this.frozenSubActive = false;
+    }
+
+    update(keys, touchDir, waterY, time) {
+        // Handle input motion
+        let dir = 0;
+        if (keys['a'] || keys['ArrowLeft']) dir = -1;
+        if (keys['d'] || keys['ArrowRight']) dir = 1;
+        
+        // Touch overrides keyboard
+        if (touchDir !== 0) dir = touchDir;
+
+        this.x += dir * this.speed;
+
+        // Boundary constraints
+        if (this.x < this.width/2 + 10) {
+            this.x = this.width/2 + 10;
+        }
+        if (this.x > window.innerWidth - this.width/2 - 10) {
+            this.x = window.innerWidth - this.width/2 - 10;
+        }
+
+        // Float / Bob along the water waves
+        const waveBob = Math.sin(time * 0.05 + this.x * 0.02) * 4;
+        this.y = waterY - this.height + 14 + waveBob;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,0.35)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 4;
+
+        // 1. Draw hull (steel grey)
+        ctx.fillStyle = '#64748b';
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 2.5;
+
+        // Battleship custom hull path (pointed ends)
+        ctx.beginPath();
+        ctx.moveTo(this.x - this.width/2 - 12, this.y + 6); // bow
+        ctx.lineTo(this.x - this.width/2, this.y + this.height);
+        ctx.lineTo(this.x + this.width/2, this.y + this.height);
+        ctx.lineTo(this.x + this.width/2 + 12, this.y + 6); // stern
+        ctx.lineTo(this.x + this.width/2 + 5, this.y);
+        ctx.lineTo(this.x - this.width/2 - 5, this.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Hull red bottom stripe
+        ctx.save();
+        ctx.clip();
+        ctx.fillStyle = '#b91c1c'; // Dark red
+        ctx.fillRect(this.x - this.width, this.y + this.height - 10, this.width * 2, 12);
+        ctx.restore();
+
+        // 2. Cabin deckhouse
+        ctx.fillStyle = '#94a3b8';
+        ctx.beginPath();
+        ctx.roundRect(this.x - 30, this.y - 12, 60, 14, 3);
+        ctx.fill();
+        ctx.stroke();
+
+        // Port windows
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(this.x - 16, this.y - 5, 3, 0, Math.PI*2);
+        ctx.arc(this.x, this.y - 5, 3, 0, Math.PI*2);
+        ctx.arc(this.x + 16, this.y - 5, 3, 0, Math.PI*2);
+        ctx.fill();
+
+        // Antenna masts
+        ctx.strokeStyle = '#475569';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(this.x + 20, this.y - 12);
+        ctx.lineTo(this.x + 20, this.y - 25);
+        ctx.moveTo(this.x - 20, this.y - 12);
+        ctx.lineTo(this.x - 20, this.y - 28);
+        ctx.stroke();
+
+        // Gun Turrets (pointing slightly downwards/downward action)
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.arc(this.x - 40, this.y, 8, Math.PI, 0); // front gun base
+        ctx.arc(this.x + 40, this.y, 8, Math.PI, 0); // rear gun base
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(this.x - 45, this.y);
+        ctx.lineTo(this.x - 56, this.y + 4);
+        ctx.moveTo(this.x + 45, this.y);
+        ctx.lineTo(this.x + 56, this.y + 4);
+        ctx.stroke();
+
+        // 3. Shield Bubble effect
+        if (this.shieldActive) {
+            ctx.restore(); // Exit shadow save
+            ctx.save();
+            const shieldGrad = ctx.createRadialGradient(this.x, this.y + 8, this.width * 0.4, this.x, this.y + 8, this.width * 0.7);
+            shieldGrad.addColorStop(0, 'rgba(0, 240, 255, 0.05)');
+            shieldGrad.addColorStop(0.85, 'rgba(0, 240, 255, 0.25)');
+            shieldGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+            ctx.fillStyle = shieldGrad;
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.7)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y + 8, this.width * 0.7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+        }
+
+        ctx.restore();
+    }
+}
+
+
+// ==========================================================================
+// 9. GAME ENGINE CORE
+// ==========================================================================
+class GameEngine {
+    constructor() {
+        this.canvas = document.getElementById('game-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        
+        // Navigation overlays
+        this.screenStart = document.getElementById('screen-start');
+        this.screenGame = document.getElementById('screen-game');
+        this.modalPause = document.getElementById('modal-pause');
+        this.modalGameover = document.getElementById('modal-gameover');
+        
+        // HUD text values
+        this.hudScore = document.getElementById('hud-score');
+        this.hudHearts = document.getElementById('hud-hearts');
+        this.hudDiff = document.getElementById('hud-diff');
+        this.hudAccuracy = document.getElementById('hud-accuracy');
+        this.targetValue = document.getElementById('target-value');
+        this.bossHud = document.getElementById('boss-hud');
+        this.bossHpText = document.getElementById('boss-hp-text');
+        this.bossHpFill = document.getElementById('boss-hp-fill');
+        
+        this.comboDisplay = document.getElementById('combo-display');
+        this.comboCountText = document.getElementById('combo-count');
+        this.comboTitleText = document.getElementById('combo-title');
+
+        // Power-up display timers
+        this.puShield = document.getElementById('powerup-shield');
+        this.puFreeze = document.getElementById('powerup-freeze');
+        this.puFreezeVal = document.getElementById('powerup-freeze-timer');
+        this.puEmp = document.getElementById('powerup-emp');
+        this.puEmpVal = document.getElementById('powerup-emp-timer');
+
+        // Settings / Game State
+        this.mode = 'classic'; // classic, survival, practice
+        this.state = 'start'; // start, playing, paused, gameover
+        this.score = 0;
+        this.lives = 3;
+        this.difficultyStage = 'EASY';
+        this.timeElapsed = 0;
+        this.timeMultiplierTimer = 0;
+
+        // Stats tracking
+        this.correctMatches = 0;
+        this.incorrectMatches = 0;
+        this.bossesDefeated = 0;
+        this.highestCombo = 0;
+        this.currentCombo = 0;
+        this.wordsLearned = new Set();
+        this.wordsMissed = new Set();
+
+        // Controls input
+        this.keys = {};
+        this.touchDir = 0; // -1: left, 1: right, 0: idle
+        this.fireCooldown = 0;
+
+        // Entities arrays
+        this.battleship = null;
+        this.bombs = [];
+        this.submarines = [];
+        this.missiles = [];
+        this.crates = [];
+        this.particles = [];
+        this.floatingTexts = [];
+
+        // Targets selection
+        this.currentTarget = null;
+
+        // Attack cycle triggers
+        this.attackTimer = 0;
+        this.activeAttacker = null;
+
+        // Physics Y coordinates
+        this.waterY = 0;
+
+        // Powerup Timers
+        this.freezeTimer = 0;
+        this.empTimer = 0;
+
+        // Screen Shake Frame Count
+        this.screenShakeTime = 0;
+        
+        // Loop time tracking
+        this.gameTime = 0;
+    }
+
+    async init() {
+        this.resizeCanvas();
+        window.addEventListener('resize', () => this.resizeCanvas());
+
+        // Keyboard bindings
+        window.addEventListener('keydown', e => {
+            this.keys[e.key] = true;
+            if (this.state !== 'playing') return;
+            // Space or ArrowDown to fire depth charge
+            if (e.key === ' ' || e.key === 'ArrowDown') {
+                this.fireDepthCharge();
+                e.preventDefault();
+            }
+            // ArrowUp to change target answer
+            if (e.key === 'ArrowUp') {
+                this.selectNewTarget();
+                e.preventDefault();
+            }
+        });
+        window.addEventListener('keyup', e => {
+            this.keys[e.key] = false;
+        });
+
+        // Setup DOM event listeners
+        this.setupEventListeners();
+
+        // Load vocabulary pool
+        await vocab.loadVocab();
+        
+        // Update high score text
+        this.updateStartHighScore();
+
+        // Start requestAnimationFrame core loop
+        requestAnimationFrame(timestamp => this.loop(timestamp));
+    }
+
+    resizeCanvas() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        this.waterY = this.canvas.height * 0.2; // surface line is top 20%
+        if (this.battleship) {
+            this.battleship.targetY = this.waterY - this.battleship.height + 10;
+        }
+    }
+
+    setupEventListeners() {
+        // Play button
+        document.getElementById('btn-play').addEventListener('click', () => {
+            sound.init();
+            this.startGame();
+        });
+
+        // Mode toggling
+        const modeButtons = document.querySelectorAll('.mode-btn');
+        modeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                modeButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.mode = btn.dataset.mode;
+            });
+        });
+
+        // HUD Pause & Sound
+        document.getElementById('btn-pause').addEventListener('click', () => this.pauseGame());
+        
+        const soundBtn = document.getElementById('btn-sound-toggle');
+        soundBtn.addEventListener('click', () => {
+            const isMuted = sound.toggleMute();
+            soundBtn.innerText = isMuted ? '❌' : '🔊';
+        });
+
+        // Pause Modal controls
+        document.getElementById('btn-resume').addEventListener('click', () => this.resumeGame());
+        document.getElementById('btn-restart-paused').addEventListener('click', () => {
+            this.resumeGame();
+            this.startGame();
+        });
+        document.getElementById('btn-quit-paused').addEventListener('click', () => {
+            this.resumeGame();
+            this.quitToMenu();
+        });
+
+        // Game Over Controls
+        document.getElementById('btn-play-again').addEventListener('click', () => {
+            this.modalGameover.classList.add('hidden');
+            this.startGame();
+        });
+        document.getElementById('btn-quit-gameover').addEventListener('click', () => {
+            this.modalGameover.classList.add('hidden');
+            this.quitToMenu();
+        });
+
+        // Mobile touch controls (continuous movement by holding down)
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
+        const btnFire = document.getElementById('btn-fire');
+
+        const setTouchDir = (dir) => {
+            sound.init();
+            this.touchDir = dir;
+        };
+
+        btnLeft.addEventListener('mousedown', () => setTouchDir(-1));
+        btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); setTouchDir(-1); });
+        btnLeft.addEventListener('mouseup', () => setTouchDir(0));
+        btnLeft.addEventListener('touchend', (e) => { e.preventDefault(); setTouchDir(0); });
+
+        btnRight.addEventListener('mousedown', () => setTouchDir(1));
+        btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); setTouchDir(1); });
+        btnRight.addEventListener('mouseup', () => setTouchDir(0));
+        btnRight.addEventListener('touchend', (e) => { e.preventDefault(); setTouchDir(0); });
+
+        btnFire.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            sound.init();
+            this.fireDepthCharge();
+        });
+        btnFire.addEventListener('click', () => {
+            sound.init();
+            this.fireDepthCharge();
+        });
+    }
+
+    startGame() {
+        this.state = 'playing';
+        this.score = 0;
+        this.lives = this.mode === 'practice' ? 999 : 3; // unlimited practically in practice mode
+        this.timeElapsed = 0;
+        this.timeMultiplierTimer = 0;
+        this.difficultyStage = 'EASY';
+        this.correctMatches = 0;
+        this.incorrectMatches = 0;
+        this.bossesDefeated = 0;
+        this.highestCombo = 0;
+        this.currentCombo = 0;
+        this.wordsLearned.clear();
+        this.wordsMissed.clear();
+        this.freezeTimer = 0;
+        this.empTimer = 0;
+
+        this.bombs = [];
+        this.submarines = [];
+        this.missiles = [];
+        this.crates = [];
+        this.particles = [];
+        this.floatingTexts = [];
+        
+        vocab.reset();
+
+        this.battleship = new Battleship(this.waterY);
+
+        this.screenStart.classList.remove('active');
+        this.screenGame.classList.add('active');
+
+        // Choose initial target word
+        this.selectNewTarget();
+
+        // Spawn initial submarines
+        const maxInitial = this.getMaxSubmarinesCount();
+        for (let i = 0; i < maxInitial; i++) {
+            this.spawnSubmarine(i);
+        }
+
+        this.updateHUD();
+        this.bossHud.classList.add('hidden');
+    }
+
+    pauseGame() {
+        if (this.state !== 'playing') return;
+        this.state = 'paused';
+        this.modalPause.classList.remove('hidden');
+    }
+
+    resumeGame() {
+        if (this.state !== 'paused') return;
+        this.state = 'playing';
+        this.modalPause.classList.add('hidden');
+    }
+
+    quitToMenu() {
+        this.state = 'start';
+        this.screenGame.classList.remove('active');
+        this.screenStart.classList.add('active');
+        this.updateStartHighScore();
+    }
+
+    updateStartHighScore() {
+        const stored = localStorage.getItem(`hscore_${this.mode}`) || 0;
+        document.getElementById('start-high-score').innerText = stored;
+    }
+
+    saveHighScore() {
+        const key = `hscore_${this.mode}`;
+        const stored = parseInt(localStorage.getItem(key) || 0);
+        if (this.score > stored) {
+            localStorage.setItem(key, this.score);
+        }
+    }
+
+    selectNewTarget() {
+        const previousTarget = this.currentTarget;
+        
+        // Select target via Adaptive Spaced Repetition weights
+        this.currentTarget = vocab.pickNextTarget();
+
+        // Set top bar target string
+        this.targetValue.innerHTML = `${this.currentTarget.emoji || ''} ${this.currentTarget.meaning}`;
+        
+        // Ensure at least one submarine contains the correct English word
+        this.guaranteeTargetSubmarinePresence();
+    }
+
+    guaranteeTargetSubmarinePresence() {
+        // Check if any submarine is carrying the current target word
+        const targetWordText = this.currentTarget.word.toLowerCase();
+        
+        // Don't modify submarines if a boss fight is currently active
+        const hasBoss = this.submarines.some(s => s.isBoss);
+        if (hasBoss) return;
+
+        const hasTarget = this.submarines.some(sub => !sub.isDying && sub.word.word.toLowerCase() === targetWordText);
+        
+        if (!hasTarget) {
+            // Replace word of a random submarine or spawn a new one carrying it
+            const activeSubs = this.submarines.filter(s => !s.isDying);
+            if (activeSubs.length > 0) {
+                const subToReplace = activeSubs[Math.floor(Math.random() * activeSubs.length)];
+                subToReplace.word = this.currentTarget;
+            } else {
+                this.spawnSubmarine(0, this.currentTarget);
+            }
+        }
+    }
+
+    spawnSubmarine(depthIndex = null, specificWord = null) {
+        // Assign a depth index layer to prevent visual overlapping
+        if (depthIndex === null) {
+            const occupiedIndices = this.submarines.map(s => s.depthIndex);
+            // Search for free index layers between 0 and 5
+            for (let i = 0; i < 6; i++) {
+                if (!occupiedIndices.includes(i)) {
+                    depthIndex = i;
+                    break;
+                }
+            }
+            if (depthIndex === null) depthIndex = Math.floor(Math.random() * 5);
+        }
+
+        // Depth layers are placed from y = 30% screen to 80% screen
+        // Adjust to ensure submarines appear in the lower half of the water area
+        const halfDepthStart = this.waterY + (this.canvas.height - this.waterY) / 2;
+        const minDepthY = halfDepthStart; // start at halfway down from water surface
+        const maxDepthY = this.canvas.height * 0.85; // keep upper bound near bottom
+        const subDepthY = minDepthY + (depthIndex * ((maxDepthY - minDepthY) / 6));
+
+        // Get matching or wrong options word
+        let wordObj = specificWord;
+        if (!wordObj) {
+            // 35% chance to spawn the correct target word if it isn't fully saturated
+            const targetWordText = this.currentTarget.word.toLowerCase();
+            const isTargetPresent = this.submarines.some(s => s.word.word.toLowerCase() === targetWordText);
+            
+            if (!isTargetPresent && Math.random() < 0.4) {
+                wordObj = this.currentTarget;
+            } else {
+                const wrongOptions = vocab.getRandomWrongOptions(this.currentTarget.word, 1);
+                wordObj = wrongOptions[0];
+            }
+        }
+
+        const mult = this.getDifficultySpeedMultiplier();
+        const sub = new Submarine(subDepthY, depthIndex, wordObj, mult, false);
+        // Ensure submarine does not spawn too close to the battleship horizontally
+        if (this.battleship) {
+            const minDist = 150; // minimum horizontal distance in pixels
+            if (Math.abs(sub.x - this.battleship.x) < minDist) {
+                // Shift submarine to the opposite side
+                sub.x = (sub.x < this.battleship.x) ? sub.x - minDist : sub.x + minDist;
+                // Clamp within canvas bounds
+                sub.x = Math.max(sub.width / 2, Math.min(this.canvas.width - sub.width / 2, sub.x));
+            }
+        }
+        this.submarines.push(sub);
+    }
+
+    spawnBossSubmarine() {
+        // Clear all missiles and warning systems
+        this.activeAttacker = null;
+        this.attackTimer = 0;
+        
+        // Spawn boss in middle depth layer
+        const bossY = this.canvas.height * 0.55;
+        const wordObj = this.currentTarget;
+        
+        const boss = new Submarine(bossY, 2, wordObj, 1.0, true);
+        this.submarines.push(boss);
+
+        // Visual flash trigger
+        this.triggerScreenShake(30);
+        this.bossHud.classList.remove('hidden');
+        this.updateBossHud(boss);
+
+        this.floatingTexts.push(new FloatingText(this.canvas.width/2, this.canvas.height/2 - 50, "⚠️ BOSS INCOMING ⚠️", "#ff0055", 1.8));
+    }
+
+    fireDepthCharge() {
+        if (this.fireCooldown > 0) return;
+        this.fireCooldown = 22; // 0.36 seconds delay cooldown
+        
+        const bomb = new Bomb(this.battleship.x, this.battleship.y + this.battleship.height - 10);
+        this.bombs.push(bomb);
+        sound.playShoot();
+    }
+
+    triggerScreenShake(duration) {
+        this.screenShakeTime = duration;
+        document.body.classList.add('shake-screen');
+    }
+
+    // ==========================================================================
+    // PROGRESSIVE DIFFICULTY SCALING
+    // ==========================================================================
+    getDifficultySpeedMultiplier() {
+        switch (this.difficultyStage) {
+            case 'EASY': return 1.0;
+            case 'MEDIUM': return 1.25;
+            case 'HARD': return 1.6;
+            case 'INSANE': return 2.1;
+            case 'NIGHTMARE': return 2.8;
+            default: return 1.0;
+        }
+    }
+
+    getMaxSubmarinesCount() {
+        if (this.mode === 'practice') return 3;
+        switch (this.difficultyStage) {
+            case 'EASY': return 3;
+            case 'MEDIUM': return 4;
+            case 'HARD': return 5;
+            case 'INSANE': return 6;
+            case 'NIGHTMARE': return 7;
+            default: return 3;
+        }
+    }
+
+    getAttackCooldown() {
+        if (this.mode === 'practice') return 99999; // Never attack in Practice Mode
+        switch (this.difficultyStage) {
+            case 'EASY': return 240; // 4 seconds at 60 FPS
+            case 'MEDIUM': return 180; // 3 seconds
+            case 'HARD': return 140; // 2.3 seconds
+            case 'INSANE': return 100; // 1.6 seconds
+            case 'NIGHTMARE': return 70; // 1.1 seconds
+            default: return 240;
+        }
+    }
+
+    updateDifficultyLevel() {
+        if (this.mode === 'practice') {
+            this.difficultyStage = 'PRACTICE';
+            return;
+        }
+        
+        // Increase difficulty tier every 30 seconds
+        const stages = ['EASY', 'MEDIUM', 'HARD', 'INSANE', 'NIGHTMARE'];
+        const currentTier = Math.min(stages.length - 1, Math.floor(this.timeElapsed / 1800)); // 1800 frames = 30s
+        
+        const newStage = stages[currentTier];
+        if (newStage !== this.difficultyStage) {
+            this.difficultyStage = newStage;
+            this.floatingTexts.push(new FloatingText(this.canvas.width/2, this.canvas.height/3, `STAGE UP: ${this.difficultyStage}!`, '#00ffff', 1.5));
+            sound.playVictory();
+        }
+    }
+
+    // ==========================================================================
+    // UPDATES & CORE PROCESSES
+    // ==========================================================================
+    loop(timestamp) {
+        if (this.state === 'playing') {
+            this.gameTime++;
+            this.timeElapsed++;
+            this.updatePhysics();
+            this.handleCollisions();
+            this.spawnSupplyCratesAndSubmarines();
+        }
+
+        this.drawScene();
+        
+        // Screen shake class maintenance
+        if (this.screenShakeTime > 0) {
+            this.screenShakeTime--;
+            if (this.screenShakeTime <= 0) {
+                document.body.classList.remove('shake-screen');
+            }
+        }
+
+        requestAnimationFrame(timestamp => this.loop(timestamp));
+    }
+
+    updatePhysics() {
+        if (this.fireCooldown > 0) this.fireCooldown--;
+
+        // 1. Update Battleship
+        this.battleship.update(this.keys, this.touchDir, this.waterY, this.gameTime);
+
+        // 2. Power-up Timers countdown
+        if (this.freezeTimer > 0) {
+            this.freezeTimer--;
+            if (this.freezeTimer <= 0) {
+                this.puFreeze.classList.add('hidden');
+                this.battleship.frozenSubActive = false;
+            } else {
+                this.puFreezeVal.innerText = Math.ceil(this.freezeTimer / 60);
+            }
+        }
+
+        if (this.empTimer > 0) {
+            this.empTimer--;
+            if (this.empTimer <= 0) {
+                this.puEmp.classList.add('hidden');
+                this.battleship.empActive = false;
+            } else {
+                this.puEmpVal.innerText = Math.ceil(this.empTimer / 60);
+            }
+        }
+
+        // 3. Scale progressive challenges
+        this.updateDifficultyLevel();
+
+        // 4. Update Depth Charge Bombs
+        for (let i = this.bombs.length - 1; i >= 0; i--) {
+            const bomb = this.bombs[i];
+            const event = bomb.update(this.waterY);
+            
+            if (event === 'splash') {
+                // Splash particles
+                for (let k = 0; k < 12; k++) {
+                    this.particles.push(new Particle(bomb.x, this.waterY, 'splash', '#a5f3fc'));
+                }
+            } else if (event === 'dead') {
+                this.bombs.splice(i, 1);
+            } else if (!bomb.exploded && bomb.inWater && Math.random() < 0.25) {
+                // Bubbles rising from bomb
+                this.particles.push(new Particle(bomb.x, bomb.y, 'bubble'));
+            }
+        }
+
+        // 5. Update Submarines
+        const isFrozen = this.freezeTimer > 0;
+        const subSpeedMult = this.getDifficultySpeedMultiplier();
+
+        for (let i = this.submarines.length - 1; i >= 0; i--) {
+            const sub = this.submarines[i];
+            const event = sub.update(isFrozen ? 0.0 : subSpeedMult);
+
+            if (event === 'fire_missile') {
+                this.fireMissileFromSub(sub);
+            }
+
+            // Spawn passive submarine bubble streams
+            if (!sub.isDying && !isFrozen && Math.random() < 0.02) {
+                const bubbleX = sub.speedX > 0 ? sub.x : sub.x + sub.width;
+                this.particles.push(new Particle(bubbleX, sub.y + sub.height/2 + Math.random()*8 - 4, 'bubble'));
+            }
+
+            // Clean up dead exploded submarines
+            if (sub.isDying && event) {
+                this.submarines.splice(i, 1);
+            }
+        }
+
+        // 6. Update Missiles
+        const missileSpeedMult = this.getDifficultySpeedMultiplier();
+        for (let i = this.missiles.length - 1; i >= 0; i--) {
+            const mis = this.missiles[i];
+            const event = mis.update(missileSpeedMult);
+            
+            if (event === 'splash_surface') {
+                // Water splash on surface hit
+                for (let k = 0; k < 10; k++) {
+                    this.particles.push(new Particle(mis.x, this.waterY, 'splash', '#e2e8f0'));
+                }
+                sound.playSplash();
+                
+                // Attack battleship check
+                this.checkMissileBattleshipCollision(mis);
+                this.missiles.splice(i, 1);
+            } else if (Math.random() < 0.3) {
+                // Smoke/Bubble trails from rocket engine
+                this.particles.push(new Particle(mis.x, mis.y + mis.height, 'bubble'));
+            }
+        }
+
+        // 7. Update Floating Supply Crates
+        for (let i = this.crates.length - 1; i >= 0; i--) {
+            const crate = this.crates[i];
+            crate.update(this.waterY, this.gameTime);
+            
+            // Check box collections
+            const dx = Math.abs(this.battleship.x - crate.x);
+            const dy = Math.abs(this.battleship.y + this.battleship.height/2 - (crate.y + crate.height/2));
+            
+            if (dx < (this.battleship.width/2 + crate.width/2) && dy < (this.battleship.height/2 + crate.height/2)) {
+                this.applyPowerup(crate.type);
+                this.crates.splice(i, 1);
+            }
+        }
+
+        // 8. Update Particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+            p.update();
+            if (p.life <= 0) {
+                this.particles.splice(i, 1);
+            }
+        }
+
+        // 9. Update Floating Scores
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+            const ft = this.floatingTexts[i];
+            ft.update();
+            if (ft.life <= 0) {
+                this.floatingTexts.splice(i, 1);
+            }
+        }
+
+        // 10. Update Enemy missile attack intervals
+        const hasBoss = this.submarines.some(s => s.isBoss);
+        if (this.mode !== 'practice' && this.empTimer <= 0) {
+            this.attackTimer++;
+            
+            const cooldownThreshold = this.getAttackCooldown();
+            if (this.attackTimer >= cooldownThreshold) {
+                this.triggerSubmarineAttack();
+                this.attackTimer = 0;
+            }
+        }
+    }
+
+    triggerSubmarineAttack() {
+        if (this.submarines.length === 0) return;
+        
+        // Prevent stacking warnings
+        const alreadyWarning = this.submarines.some(s => s.isWarning);
+        if (alreadyWarning) return;
+
+        const livingSubs = this.submarines.filter(s => !s.isDying);
+        if (livingSubs.length === 0) return;
+
+        // Select a submarine to initiate threat warn
+        const attacker = livingSubs[Math.floor(Math.random() * livingSubs.length)];
+        attacker.triggerWarning();
+    }
+
+    fireMissileFromSub(sub) {
+        const targetWaterY = this.waterY;
+        const speedMult = this.getDifficultySpeedMultiplier();
+
+        if (sub.isBoss) {
+            // Boss launches double missiles or wave pattern
+            const m1 = new Missile(sub.x + 30, sub.y, targetWaterY, true, speedMult);
+            const m2 = new Missile(sub.x + sub.width - 30, sub.y, targetWaterY, true, speedMult);
+            this.missiles.push(m1, m2);
+        } else {
+            const m = new Missile(sub.x + sub.width/2, sub.y, targetWaterY, false, speedMult);
+            this.missiles.push(m);
+        }
+        sound.playLaser();
+    }
+
+    checkMissileBattleshipCollision(missile) {
+        // Battleship width bounding box hit check
+        const halfW = this.battleship.width / 2;
+        const boundsLeft = this.battleship.x - halfW - 5;
+        const boundsRight = this.battleship.x + halfW + 5;
+
+        if (missile.x >= boundsLeft && missile.x <= boundsRight) {
+            // Hit!
+            if (this.battleship.shieldActive) {
+                // Shield saves ship
+                this.battleship.shieldActive = false;
+                this.puShield.classList.add('hidden');
+                
+                // Explode blue sparks
+                for (let k = 0; k < 20; k++) {
+                    this.particles.push(new Particle(this.battleship.x, this.battleship.y, 'spark', '#00f0ff'));
+                }
+                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 30, "SHIELD BLOCKED!", '#00f0ff', 1.1));
+                sound.playExplosion();
+                this.triggerScreenShake(10);
+            } else {
+                // Lost life
+                this.lives--;
+                this.triggerScreenShake(24);
+                sound.playDamage();
+                
+                // Damage sparks
+                for (let k = 0; k < 18; k++) {
+                    this.particles.push(new Particle(this.battleship.x, this.battleship.y + 10, 'fire', '#ff0033'));
+                }
+                
+                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 30, "-1 LIFE", '#ff3333', 1.3));
+                this.currentCombo = 0; // Break combo
+                this.updateHUD();
+
+                if (this.lives <= 0) {
+                    this.triggerGameOver();
+                }
+            }
+        }
+    }
+
+    applyPowerup(type) {
+        sound.playPowerup();
+        
+        switch (type) {
+            case 'repair':
+                if (this.lives < 3 || this.mode === 'practice') {
+                    this.lives++;
+                    this.updateHUD();
+                }
+                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 30, "+1 LIFE!", '#33ff88', 1.2));
+                // green sparks
+                for (let k = 0; k < 12; k++) {
+                    this.particles.push(new Particle(this.battleship.x, this.battleship.y, 'spark', '#33ff88'));
+                }
+                break;
+
+            case 'shield':
+                this.battleship.shieldActive = true;
+                this.puShield.classList.remove('hidden');
+                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 30, "SHIELD ACTIVE!", '#00e1ff', 1.2));
+                break;
+
+            case 'freeze':
+                this.freezeTimer = 300; // 5 seconds at 60 FPS
+                this.battleship.frozenSubActive = true;
+                this.puFreeze.classList.remove('hidden');
+                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 30, "SUBMARINES FROZEN!", '#38bdf8', 1.2));
+                break;
+
+            case 'emp':
+                this.empTimer = 600; // 10 seconds at 60 FPS
+                this.battleship.empActive = true;
+                this.puEmp.classList.remove('hidden');
+                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 30, "EMP ACTIVATE!", '#ffd000', 1.2));
+                
+                // Spark animations on all living subs
+                this.submarines.forEach(sub => {
+                    if (!sub.isDying) {
+                        for(let k=0; k<8; k++) {
+                            this.particles.push(new Particle(sub.x + sub.width/2, sub.y + sub.height/2, 'spark', '#ffd000'));
+                        }
+                    }
+                });
+                break;
+        }
+    }
+
+    handleCollisions() {
+        // Match active bombs against subs
+        for (let i = this.bombs.length - 1; i >= 0; i--) {
+            const bomb = this.bombs[i];
+            if (bomb.exploded) continue; // expanding ring collision is handled separately or in-instant
+
+            for (let k = 0; k < this.submarines.length; k++) {
+                const sub = this.submarines[k];
+                if (sub.isDying) continue;
+
+                // Simple Box overlapping check for direct hit
+                const subLeft = sub.x;
+                const subRight = sub.x + sub.width;
+                const subTop = sub.y;
+                const subBottom = sub.y + sub.height;
+
+                if (bomb.x >= subLeft && bomb.x <= subRight && bomb.y >= subTop && bomb.y <= subBottom) {
+                    bomb.triggerExplosion();
+                    this.resolveExplosionImpact(bomb.x, bomb.y, bomb.maxExplosionRadius);
+                    break;
+                }
+            }
+        }
+    }
+
+    resolveExplosionImpact(expX, expY, expRad) {
+        // Verify which submarines are overlapped by this explosion radius
+        this.submarines.forEach(sub => {
+            if (sub.isDying) return;
+
+            const centerSubX = sub.x + sub.width / 2;
+            const centerSubY = sub.y + sub.height / 2;
+
+            // Distance calculation
+            const dx = expX - centerSubX;
+            const dy = expY - centerSubY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            // Sub overlaps if distance < radius + bounds
+            if (dist < (expRad + Math.max(sub.width/2, sub.height/2))) {
+                this.processSubmarineHit(sub);
+            }
+        });
+    }
+
+    processSubmarineHit(sub) {
+        const isTargetMatch = sub.word.word.toLowerCase() === this.currentTarget.word.toLowerCase();
+
+        if (sub.isBoss) {
+            // Boss Battle collision logic
+            if (isTargetMatch) {
+                sub.hp--;
+                sub.triggerDamageFlash();
+                this.triggerScreenShake(12);
+                sound.playExplosion();
+
+                this.updateBossHpDisplay(sub);
+                
+                // Add floating hit indicator
+                this.floatingTexts.push(new FloatingText(sub.x + sub.width/2, sub.y - 10, "HIT! -1 HP", '#ff3c3c', 1.2));
+
+                if (sub.hp <= 0) {
+                    this.destroySubmarine(sub);
+                    this.bossesDefeated++;
+                    this.score += 800;
+                    this.floatingTexts.push(new FloatingText(sub.x + sub.width/2, sub.y - 20, "BOSS DEFEATED! +800", '#ffd000', 1.8));
+                    
+                    // Spawn victory fireworks
+                    this.triggerVictoryFireworks();
+                    this.bossHud.classList.add('hidden');
+                    
+                    // Force target cycle immediately
+                    this.selectNewTarget();
+                }
+            } else {
+                // Incorrect hit during boss fight
+                this.applyPenalty();
+            }
+        } else {
+            // Regular submarine logic
+            if (isTargetMatch) {
+                // Correct target hit
+                this.destroySubmarine(sub);
+                
+                this.correctMatches++;
+                vocab.recordResult(sub.word.word, true);
+                this.wordsLearned.add(sub.word.word);
+                this.wordsMissed.delete(sub.word.word);
+
+                // Score scaling with Combo multipliers
+                this.currentCombo++;
+                if (this.currentCombo > this.highestCombo) {
+                    this.highestCombo = this.currentCombo;
+                }
+
+                let multiplier = 1;
+                let comboMsg = "";
+                let comboColor = '#ffffff';
+
+                if (this.currentCombo >= 10) {
+                    multiplier = 3.5;
+                    comboMsg = "MEGA COMBO!";
+                    comboColor = '#ff0077';
+                } else if (this.currentCombo >= 5) {
+                    multiplier = 2.0;
+                    comboMsg = "TRIPLE HIT!";
+                    comboColor = '#ffaa00';
+                } else if (this.currentCombo >= 3) {
+                    multiplier = 1.5;
+                    comboMsg = "DOUBLE HIT!";
+                    comboColor = '#00f0ff';
+                }
+
+                const scoreGained = Math.round(100 * multiplier);
+                this.score += scoreGained;
+
+                // Visual Floating points
+                this.floatingTexts.push(new FloatingText(sub.x + sub.width/2, sub.y - 10, `+${scoreGained}`, comboColor, 1.1 + (multiplier * 0.1)));
+
+                if (comboMsg !== "") {
+                    this.showComboOverlay(comboMsg, this.currentCombo);
+                }
+
+                this.updateHUD();
+                
+                // Spawn a new target
+                this.selectNewTarget();
+
+                // Trigger Boss Spawning every 20 correct answers
+                if (this.correctMatches > 0 && this.correctMatches % 20 === 0) {
+                    this.spawnBossSubmarine();
+                }
+            } else {
+                // Incorrect Submarine Hit
+                this.applyPenalty();
+                // Flag incorrect learning state
+                vocab.recordResult(sub.word.word, false);
+                this.wordsMissed.add(sub.word.word);
+                this.wordsLearned.delete(sub.word.word);
+            }
+        }
+    }
+
+    applyPenalty() {
+        this.currentCombo = 0;
+        this.hideComboOverlay();
+        
+        // Small score penalty
+        this.score = Math.max(0, this.score - 50);
+        this.updateHUD();
+        this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 30, "COMBO RESET / -50", '#ff3c3c', 1.0));
+        
+        // Trigger small vibration
+        this.triggerScreenShake(8);
+        sound.playDamage();
+    }
+
+    destroySubmarine(sub) {
+        sub.isDying = true;
+        
+        // Explode particles
+        const numParticles = sub.isBoss ? 45 : 20;
+        for (let k = 0; k < numParticles; k++) {
+            const rx = sub.x + Math.random() * sub.width;
+            const ry = sub.y + Math.random() * sub.height;
+            this.particles.push(new Particle(rx, ry, 'fire', '#ff6600'));
+            this.particles.push(new Particle(rx, ry, 'smoke', '#94a3b8'));
+        }
+        
+        sound.playExplosion();
+        this.triggerScreenShake(sub.isBoss ? 25 : 10);
+    }
+
+    triggerVictoryFireworks() {
+        for (let i = 0; i < 4; i++) {
+            const fx = Math.random() * this.canvas.width;
+            const fy = this.canvas.height * 0.2 + Math.random() * (this.canvas.height * 0.6);
+            const colors = ['#00ff00', '#ffd000', '#ff00ff', '#00ffff', '#ff3300'];
+            const color = colors[i % colors.length];
+
+            setTimeout(() => {
+                for (let k = 0; k < 30; k++) {
+                    this.particles.push(new Particle(fx, fy, 'firework', color));
+                }
+                sound.playVictory();
+            }, i * 200);
+        }
+    }
+
+    showComboOverlay(msg, count) {
+        this.comboDisplay.classList.remove('hidden');
+        this.comboCountText.innerText = count;
+        this.comboTitleText.innerText = msg;
+        
+        // Clear previous timeouts if applicable
+        if (this.__comboTimeout) clearTimeout(this.__comboTimeout);
+        this.__comboTimeout = setTimeout(() => {
+            this.hideComboOverlay();
+        }, 2200);
+    }
+
+    hideComboOverlay() {
+        this.comboDisplay.classList.add('hidden');
+    }
+
+    updateBossHpDisplay(bossSub) {
+        const percent = Math.max(0, (bossSub.hp / bossSub.maxHp) * 100);
+        this.bossHpFill.style.width = percent + '%';
+        this.bossHpText.innerText = `${bossSub.hp} / ${bossSub.maxHp} HP`;
+    }
+
+    updateBossHud(bossSub) {
+        this.updateBossHpDisplay(bossSub);
+    }
+
+    spawnSupplyCratesAndSubmarines() {
+        const hasBoss = this.submarines.some(s => s.isBoss);
+        
+        // 1. Maintain active submarine counts
+        const maxSubs = this.getMaxSubmarinesCount();
+        const activeNormalSubs = this.submarines.filter(s => !s.isDying && !s.isBoss).length;
+        
+        // If boss is active, we don't spawn new normal subs to avoid clutter
+        if (!hasBoss && activeNormalSubs < maxSubs && Math.random() < 0.015) {
+            this.spawnSubmarine();
+        }
+
+        // 2. Periodic Floating crates spawn
+        // Spawns roughly every 20-30 seconds
+        if (Math.random() < 0.0006) {
+            const rx = Math.random() * (this.canvas.width - 80) + 40;
+            this.crates.push(new Crate(rx, this.waterY));
+            this.floatingTexts.push(new FloatingText(rx, this.waterY - 30, "SUPPLY DROP INBOUND", '#33ff88', 1.0));
+        }
+    }
+
+    updateHUD() {
+        // Pad score value with zeros
+        this.hudScore.innerText = String(this.score).padStart(5, '0');
+        
+        // Render heart elements
+        let heartsStr = '';
+        if (this.lives === 999) {
+            heartsStr = '♾️ PRACTICE';
+        } else {
+            for (let i = 0; i < 3; i++) {
+                heartsStr += i < this.lives ? '❤️' : '🖤';
+            }
+        }
+        this.hudHearts.innerText = heartsStr;
+
+        this.hudDiff.innerText = this.difficultyStage;
+        this.hudAccuracy.innerText = `${vocab.getAccuracy()}%`;
+    }
+
+    triggerGameOver() {
+        this.state = 'gameover';
+        sound.playDefeat();
+        this.saveHighScore();
+
+        // Populate game over stats overlay
+        document.getElementById('go-score').innerText = this.score;
+        document.getElementById('go-combo').innerText = this.highestCombo;
+        document.getElementById('go-accuracy').innerText = `${vocab.getAccuracy()}%`;
+        document.getElementById('go-correct').innerText = this.correctMatches;
+        document.getElementById('go-incorrect').innerText = this.incorrectMatches;
+        document.getElementById('go-bosses').innerText = this.bossesDefeated;
+
+        // Populate learned words panel
+        const reviewBox = document.getElementById('learned-words-list');
+        reviewBox.innerHTML = '';
+        
+        if (this.wordsLearned.size === 0 && this.wordsMissed.size === 0) {
+            reviewBox.innerHTML = '<span style="color:#64748b; font-size: 0.85rem;">No words matching reviews in this round.</span>';
+        } else {
+            // Mastered Tags
+            this.wordsLearned.forEach(w => {
+                const tag = document.createElement('span');
+                tag.className = 'learned-word-tag mastered';
+                tag.innerHTML = `🟢 ${w}`;
+                reviewBox.appendChild(tag);
+            });
+            // Missed Tags
+            this.wordsMissed.forEach(w => {
+                const tag = document.createElement('span');
+                tag.className = 'learned-word-tag missed';
+                tag.innerHTML = `🔴 ${w}`;
+                reviewBox.appendChild(tag);
+            });
+        }
+
+        // Toggle modals display
+        this.modalGameover.classList.remove('hidden');
+    }
+
+    // ==========================================================================
+    // RENDERINGS & GRAPHICS DRAWING
+    // ==========================================================================
+    drawScene() {
+        // Clear frame buffer
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // 1. Draw Water depths gradients background
+        const depthGrad = this.ctx.createLinearGradient(0, this.waterY, 0, this.canvas.height);
+        
+        // Freeze overlay gradient adjustment
+        if (this.freezeTimer > 0) {
+            depthGrad.addColorStop(0, '#103e68');
+            depthGrad.addColorStop(0.3, '#0b2b4e');
+            depthGrad.addColorStop(1, '#051427');
+        } else {
+            depthGrad.addColorStop(0, '#1d5587');
+            depthGrad.addColorStop(0.3, '#0d2d54');
+            depthGrad.addColorStop(1, '#051424');
+        }
+        this.ctx.fillStyle = depthGrad;
+        this.ctx.fillRect(0, this.waterY, this.canvas.width, this.canvas.height);
+
+        // Sky drawing
+        const skyGrad = this.ctx.createLinearGradient(0, 0, 0, this.waterY);
+        skyGrad.addColorStop(0, '#0c1b35');
+        skyGrad.addColorStop(1, '#1b3f74');
+        this.ctx.fillStyle = skyGrad;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.waterY);
+
+        // Draw background bubbles rising randomly
+        if (Math.random() < 0.05) {
+            const rx = Math.random() * this.canvas.width;
+            const ry = this.waterY + Math.random() * (this.canvas.height - this.waterY);
+            this.particles.push(new Particle(rx, ry, 'bubble'));
+        }
+
+        // 2. Draw Supply Crates
+        this.crates.forEach(c => c.draw(this.ctx));
+
+        // 3. Draw Submarines
+        const isFrozen = this.freezeTimer > 0;
+        this.submarines.forEach(s => s.draw(this.ctx, isFrozen));
+
+        // 4. Draw Depth charge bombs
+        this.bombs.forEach(b => b.draw(this.ctx));
+
+        // 5. Draw Missiles
+        this.missiles.forEach(m => m.draw(this.ctx));
+
+        // 6. Draw Battleship
+        if (this.battleship) {
+            this.battleship.draw(this.ctx);
+        }
+
+        // 7. Draw Waves at surface boundary
+        this.drawWaterWaves();
+
+        // 8. Draw Particle FX overlays
+        this.particles.forEach(p => p.draw(this.ctx));
+
+        // 9. Draw Floating scores
+        this.floatingTexts.forEach(ft => ft.draw(this.ctx));
+
+        // 10. Frost Vignette if Freeze active
+        if (isFrozen) {
+            this.drawFrostVignette();
+        }
+    }
+
+    drawWaterWaves() {
+        this.ctx.save();
+        this.ctx.fillStyle = 'rgba(142, 197, 214, 0.4)'; // light wave reflection
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, this.waterY);
+        
+        const waveCount = 12;
+        const widthPerWave = this.canvas.width / waveCount;
+        
+        // Double overlapping wave loops
+        for (let i = 0; i <= waveCount; i++) {
+            const px = i * widthPerWave;
+            // Bobbing sine formula offset by gameTime
+            const py = this.waterY + Math.sin(this.gameTime * 0.05 + i) * 6;
+            this.ctx.lineTo(px, py);
+        }
+        
+        this.ctx.lineTo(this.canvas.width, this.canvas.height);
+        this.ctx.lineTo(0, this.canvas.height);
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        // Crisp surface wave outline
+        this.ctx.strokeStyle = '#8ec5d6';
+        this.ctx.lineWidth = 4.0;
+        this.ctx.beginPath();
+        this.ctx.moveTo(0, this.waterY);
+        for (let i = 0; i <= waveCount; i++) {
+            const px = i * widthPerWave;
+            const py = this.waterY + Math.sin(this.gameTime * 0.05 + i) * 6;
+            this.ctx.lineTo(px, py);
+        }
+        this.ctx.stroke();
+        
+        this.ctx.restore();
+    }
+
+    drawFrostVignette() {
+        this.ctx.save();
+        
+        // Blue glowing border representing ice freeze
+        const gradient = this.ctx.createRadialGradient(
+            this.canvas.width / 2, this.canvas.height / 2, this.canvas.width * 0.35,
+            this.canvas.width / 2, this.canvas.height / 2, this.canvas.width * 0.65
+        );
+        
+        gradient.addColorStop(0, 'rgba(56, 189, 248, 0)');
+        gradient.addColorStop(0.8, 'rgba(56, 189, 248, 0.12)');
+        gradient.addColorStop(1, 'rgba(56, 189, 248, 0.35)');
+
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        this.ctx.restore();
+    }
+}
+
+// Instantiate and start engine
+window.addEventListener('load', () => {
+    const game = new GameEngine();
+    game.init();
+});

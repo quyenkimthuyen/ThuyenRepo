@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Word Submarine Hunter - Educational Arcade Game</title>
+    <!-- Google Fonts for playful, high-quality cartoon typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Outfit:wght@100..900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div id="app-container">
+        <!-- START SCREEN -->
+        <div id="screen-start" class="game-screen active">
+            <div class="logo-container">
+                <div class="bubbles-bg"></div>
+                <h1 class="game-title">WORD<br><span class="highlight">SUBMARINE</span><br>HUNTER</h1>
+                <p class="game-subtitle">Educational Naval Warfare Arcade</p>
+            </div>
+
+            <div class="menu-box">
+                <div class="high-score-tag">
+                    🏆 HIGH SCORE: <span id="start-high-score">0</span>
+                </div>
+
+                <div class="mode-selector">
+                    <h3>SELECT GAME MODE</h3>
+                    <div class="mode-buttons">
+                        <button class="mode-btn active" data-mode="classic" id="btn-mode-classic">
+                            <span class="mode-title">CLASSIC MODE</span>
+                            <span class="mode-desc">Stage progression & Boss fights</span>
+                        </button>
+                        <button class="mode-btn" data-mode="survival" id="btn-mode-survival">
+                            <span class="mode-title">SURVIVAL MODE</span>
+                            <span class="mode-desc">Endless speed and missile attacks</span>
+                        </button>
+                        <button class="mode-btn" data-mode="practice" id="btn-mode-practice">
+                            <span class="mode-title">PRACTICE MODE</span>
+                            <span class="mode-desc">No damage, slower paced learning</span>
+                        </button>
+                    </div>
+                </div>
+
+                <button id="btn-play" class="pulse-btn">LAUNCH BATTLESHIP</button>
+            </div>
+
+            <div class="instructions-box">
+                <h3>HOW TO PLAY</h3>
+                <div class="instructions-grid">
+                    <div class="inst-item">
+                        <span class="key-icon">A</span> / <span class="key-icon">D</span> or <span
+                            class="key-icon">←</span> / <span class="key-icon">→</span>
+                        <p>Move Battleship</p>
+                    </div>
+                    <div class="inst-item">
+                        <span class="key-icon font-space">SPACEBAR</span>
+                        <p>Drop Depth Charges</p>
+                    </div>
+                    <div class="inst-item">
+                        <span class="emoji-inst">🎯</span>
+                        <p>Hit sub matching the target meaning at the top!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GAME AREA SCREEN -->
+        <div id="screen-game" class="game-screen">
+            <!-- CANVAS ARENA -->
+            <canvas id="game-canvas"></canvas>
+
+            <!-- POLISHED HUD OVERLAY -->
+            <div id="hud-top">
+                <div class="hud-left glass-hud">
+                    <div class="hud-item score-container">
+                        <span class="hud-label">SCORE</span>
+                        <span id="hud-score" class="hud-value neon-blue">00000</span>
+                    </div>
+                    <div class="hud-item lives-container">
+                        <span class="hud-label">LIVES</span>
+                        <div id="hud-hearts" class="hud-value">❤️❤️❤️</div>
+                    </div>
+                    <div class="hud-item difficulty-container">
+                        <span class="hud-label">STAGE</span>
+                        <span id="hud-diff" class="hud-value text-green">EASY</span>
+                    </div>
+                </div>
+
+                <!-- TARGET BOX (MIDDLE TOP) -->
+                <div id="target-box" class="glass-hud">
+                    <span class="hud-label">TARGET MEANING</span>
+                    <div id="target-value">🐶 Con chó</div>
+                </div>
+
+                <div class="hud-right glass-hud">
+                    <div class="hud-item accuracy-container">
+                        <span class="hud-label">ACCURACY</span>
+                        <span id="hud-accuracy" class="hud-value neon-orange">100%</span>
+                    </div>
+                    <div class="hud-controls">
+                        <button id="btn-sound-toggle" class="hud-btn" title="Toggle Sound">🔊</button>
+                        <button id="btn-pause" class="hud-btn" title="Pause Game">⏸️</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOSS HEALTH BAR (CENTER TOP, BELOW TARGET) -->
+            <div id="boss-hud" class="glass-hud hidden">
+                <div class="boss-info">
+                    <span class="boss-title">⚠️ BOSS SUBMARINE ⚠️</span>
+                    <span id="boss-hp-text">10 / 10 HP</span>
+                </div>
+                <div class="boss-hp-track">
+                    <div id="boss-hp-fill"></div>
+                </div>
+            </div>
+
+            <!-- COMBO OVERLAY -->
+            <div id="combo-display" class="hidden">
+                <div class="combo-number"><span id="combo-count">0</span>x</div>
+                <div id="combo-title" class="combo-title">DOUBLE HIT!</div>
+            </div>
+
+            <!-- POWER-UP HUD INDICATORS -->
+            <div id="active-powerups">
+                <div id="powerup-shield" class="active-powerup-item hidden">
+                    🛡️ SHIELD: ACTIVE
+                </div>
+                <div id="powerup-freeze" class="active-powerup-item hidden">
+                    ❄️ FREEZE: <span id="powerup-freeze-timer">5</span>s
+                </div>
+                <div id="powerup-emp" class="active-powerup-item hidden">
+                    ⚡ EMP: <span id="powerup-emp-timer">10</span>s
+                </div>
+            </div>
+
+            <!-- MOBILE CONTROLS OVERLAY -->
+            <div id="mobile-controls">
+                <div class="mobile-dir-keys">
+                    <button id="btn-left" class="mobile-btn">◀</button>
+                    <button id="btn-right" class="mobile-btn">▶</button>
+                </div>
+                <button id="btn-fire" class="mobile-btn fire-btn">FIRE</button>
+            </div>
+        </div>
+
+        <!-- PAUSE MODAL OVERLAY -->
+        <div id="modal-pause" class="modal-overlay hidden">
+            <div class="modal-content glass-card">
+                <h2>GAME PAUSED</h2>
+                <div class="modal-buttons">
+                    <button id="btn-resume" class="modal-btn primary-btn">RESUME GAME</button>
+                    <button id="btn-restart-paused" class="modal-btn">RESTART GAME</button>
+                    <button id="btn-quit-paused" class="modal-btn cancel-btn">QUIT TO MENU</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- GAME OVER MODAL OVERLAY -->
+        <div id="modal-gameover" class="modal-overlay hidden">
+            <div class="modal-content glass-card large-modal">
+                <div class="gameover-header">
+                    <div class="gameover-skull">💀</div>
+                    <h2 id="gameover-title">DEFEATED!</h2>
+                    <p class="gameover-subtitle">Your mission has ended.</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-lbl">FINAL SCORE</span>
+                        <span id="go-score" class="stat-val neon-blue">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-lbl">HIGHEST COMBO</span>
+                        <span id="go-combo" class="stat-val neon-yellow">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-lbl">ACCURACY</span>
+                        <span id="go-accuracy" class="stat-val neon-orange">0%</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-lbl">CORRECT MATCHES</span>
+                        <span id="go-correct" class="stat-val text-green">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-lbl">INCORRECT MATCHES</span>
+                        <span id="go-incorrect" class="stat-val text-red">0</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-lbl">BOSSES DEFEATED</span>
+                        <span id="go-bosses" class="stat-val neon-pink">0</span>
+                    </div>
+                </div>
+
+                <div class="learned-words-box">
+                    <h3>WORDS REVIEW</h3>
+                    <div id="learned-words-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="modal-buttons">
+                    <button id="btn-play-again" class="modal-btn primary-btn pulse-btn">PLAY AGAIN</button>
+                    <button id="btn-quit-gameover" class="modal-btn cancel-btn">MAIN MENU</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+
+</html>
