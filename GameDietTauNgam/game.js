@@ -2190,10 +2190,10 @@ class GameEngine {
         // Speak the name of the destroyed submarine (Vietnamese word)
         if (window.speechSynthesis && sub.word && sub.word.word) {
             const utter = new SpeechSynthesisUtterance(sub.word.word);
-            // Prefer a Vietnamese voice if available
+            // Prefer an English voice if available
             const voices = window.speechSynthesis.getVoices();
-            const viVoice = voices.find(v => v.lang && v.lang.startsWith('vi'));
-            if (viVoice) utter.voice = viVoice;
+            const enVoice = voices.find(v => v.lang && v.lang.startsWith('en'));
+            if (enVoice) utter.voice = enVoice;
             window.speechSynthesis.speak(utter);
         }
         
