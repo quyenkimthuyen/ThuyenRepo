@@ -1430,7 +1430,9 @@ class GameEngine {
         this.hudLivesLabel = document.getElementById('hud-lives-label');
         this.hudHearts = document.getElementById('hud-hearts');
         this.hudP2Stats = document.getElementById('hud-p2-stats');
+        this.hudP2ScoreLabel = document.getElementById('hud-p2-score-label');
         this.hudP2Score = document.getElementById('hud-p2-score');
+        this.hudP2LivesLabel = document.getElementById('hud-p2-lives-label');
         this.hudP2Hearts = document.getElementById('hud-p2-hearts');
         this.hudDiff = document.getElementById('hud-diff');
         this.hudTime = document.getElementById('hud-time');
@@ -1771,12 +1773,12 @@ class GameEngine {
         vocab.reset();
 
         this.battleship = new Battleship(this.waterY, {
-            x: this.mode === 'duo' ? window.innerWidth * 0.35 : window.innerWidth / 2,
+            x: this.mode === 'duo' ? window.innerWidth * 0.65 : window.innerWidth / 2,
             playerLabel: 'P1'
         });
         this.secondBattleship = this.mode === 'duo'
             ? new Battleship(this.waterY, {
-                x: window.innerWidth * 0.65,
+                x: window.innerWidth * 0.35,
                 playerLabel: 'P2',
                 hullTop: '#fff7ed',
                 hullMid: '#f9a8d4',
@@ -2784,21 +2786,25 @@ class GameEngine {
 
     updateHUD() {
         const isDuo = this.mode === 'duo' && this.battleship && this.secondBattleship;
-        const p1Score = isDuo ? this.battleship.score : this.score;
-        const p1Lives = isDuo ? this.battleship.lives : this.lives;
+        const mainShip = isDuo ? this.secondBattleship : null;
+        const sideShip = isDuo ? this.battleship : null;
+        const mainScore = isDuo ? mainShip.score : this.score;
+        const mainLives = isDuo ? mainShip.lives : this.lives;
 
-        if (this.hudScoreLabel) this.hudScoreLabel.innerText = isDuo ? 'P1 SCORE' : 'SCORE';
-        if (this.hudLivesLabel) this.hudLivesLabel.innerText = isDuo ? 'P1 LIVES' : 'LIVES';
+        if (this.hudScoreLabel) this.hudScoreLabel.innerText = isDuo ? 'P2 SCORE' : 'SCORE';
+        if (this.hudLivesLabel) this.hudLivesLabel.innerText = isDuo ? 'P2 LIVES' : 'LIVES';
+        this.hudScore.classList.toggle('neon-pink', isDuo);
+        this.hudScore.classList.toggle('neon-blue', !isDuo);
 
         // Pad score value with zeros
-        this.hudScore.innerText = String(p1Score).padStart(5, '0');
+        this.hudScore.innerText = String(mainScore).padStart(5, '0');
         
         // Render heart elements
         let heartsStr = '';
-        if (p1Lives === 999) {
+        if (mainLives === 999) {
             heartsStr = '♾️ PRACTICE';
         } else {
-            heartsStr = this.renderHearts(p1Lives);
+            heartsStr = this.renderHearts(mainLives);
         }
         this.hudHearts.innerText = heartsStr;
 
@@ -2806,8 +2812,12 @@ class GameEngine {
             this.hudP2Stats.classList.toggle('hidden', !isDuo);
         }
         if (isDuo) {
-            this.hudP2Score.innerText = String(this.secondBattleship.score).padStart(5, '0');
-            this.hudP2Hearts.innerText = this.renderHearts(this.secondBattleship.lives);
+            if (this.hudP2ScoreLabel) this.hudP2ScoreLabel.innerText = 'P1 SCORE';
+            if (this.hudP2LivesLabel) this.hudP2LivesLabel.innerText = 'P1 LIVES';
+            this.hudP2Score.classList.add('neon-blue');
+            this.hudP2Score.classList.remove('neon-pink');
+            this.hudP2Score.innerText = String(sideShip.score).padStart(5, '0');
+            this.hudP2Hearts.innerText = this.renderHearts(sideShip.lives);
         }
 
         this.hudDiff.innerText = this.difficultyStage;
