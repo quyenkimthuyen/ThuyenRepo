@@ -808,11 +808,16 @@ class Submarine {
 
         // Start offscreen
         this.x = this.speedX > 0 ? -this.width : window.innerWidth + this.width;
+        this.facingRight = this.speedX > 0;
 
         this.propellerAngle = 0;
         this.isDying = false;
+        this.isWrecked = false;
         this.deathTimer = 0;
         this.deathDuration = isBoss ? 220 : 150;
+        this.wreckTargetY = null;
+        this.wreckScale = isBoss ? 0.52 : 0.42;
+        this.wreckTilt = 0;
         this.damageFlashTimer = 0;
         this.minSpeedX = isBoss ? 0.45 : 0.55;
         
@@ -837,6 +842,8 @@ class Submarine {
     }
 
     update(speedMultiplier) {
+        if (this.isWrecked) return null;
+
         if (this.isDying) {
             this.deathTimer++;
             const progress = Math.min(1, this.deathTimer / this.deathDuration);
@@ -844,7 +851,17 @@ class Submarine {
             this.y += 1.2 + progress * 2.8;
             this.speedX *= 0.985;
             this.propellerAngle += Math.max(0.04, Math.abs(this.speedX) * 0.08);
-            return this.deathTimer > this.deathDuration || this.y > window.innerHeight + this.height;
+
+            const seabedY = this.wreckTargetY || (window.innerHeight - this.height * 0.72);
+            if (this.y >= seabedY || this.deathTimer > this.deathDuration) {
+                const xMargin = this.width * 0.2;
+                this.y = seabedY;
+                this.x = Math.max(-xMargin, Math.min(window.innerWidth - this.width + xMargin, this.x));
+                this.isWrecked = true;
+                this.speedX = 0;
+                this.propellerAngle = 0;
+            }
+            return null;
         }
 
         this.normalizeMovementSpeed(speedMultiplier);
@@ -860,12 +877,15 @@ class Submarine {
             this.speedX = -this.speedX;
         }
         this.normalizeMovementSpeed(speedMultiplier);
+        this.facingRight = this.speedX > 0;
 
         // Keep on screen (reverse direction when touching edge)
         if (this.x < -this.width - 20 && this.speedX < 0) {
             this.speedX = -this.speedX;
+            this.facingRight = true;
         } else if (this.x > window.innerWidth + 20 && this.speedX > 0) {
             this.speedX = -this.speedX;
+            this.facingRight = false;
         }
 
         // Update propeller rotation
@@ -903,10 +923,15 @@ class Submarine {
         ctx.shadowBlur = this.isDying ? 14 : 8;
         ctx.shadowOffsetY = 4;
 
-        const isHeadingRight = this.speedX > 0;
+        const isHeadingRight = this.facingRight;
         const deathProgress = this.isDying ? Math.min(1, this.deathTimer / this.deathDuration) : 0;
-        const deathScale = this.isDying ? Math.max(0.38, 1 - deathProgress * 0.62) : 1;
-        const deathTilt = this.isDying ? (isHeadingRight ? 1 : -1) * (0.25 + deathProgress * 0.65) : 0;
+        const targetWreckScale = this.wreckScale || 0.42;
+        const deathScale = this.isWrecked
+            ? targetWreckScale
+            : (this.isDying ? 1 - ((1 - targetWreckScale) * deathProgress) : 1);
+        const deathTilt = this.isWrecked
+            ? this.wreckTilt
+            : (this.isDying ? this.wreckTilt * Math.max(0.35, deathProgress) : 0);
         
         // Shift drawing origin for direction scaling (flip sprite)
         ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
@@ -2018,18 +2043,13 @@ class GameEngine {
                 this.particles.push(new Particle(bubbleX, sub.y + sub.height/2 + Math.random()*8 - 4, 'bubble'));
             }
 
-            if (sub.isDying && Math.random() < 0.35) {
+            if (sub.isDying && !sub.isWrecked && Math.random() < 0.35) {
                 const bubbleX = sub.x + sub.width * (0.25 + Math.random() * 0.5);
                 const bubbleY = sub.y + sub.height * (0.2 + Math.random() * 0.6);
                 this.particles.push(new Particle(bubbleX, bubbleY, 'bubble'));
                 if (Math.random() < 0.45) {
                     this.particles.push(new Particle(bubbleX, bubbleY, 'smoke', '#2f241f'));
                 }
-            }
-
-            // Clean up submarines after the sinking animation finishes.
-            if (sub.isDying && event) {
-                this.submarines.splice(i, 1);
             }
         }
 
@@ -2388,6 +2408,18 @@ class GameEngine {
         sub.isDying = true;
         sub.isWarning = false;
         sub.warningTimer = 0;
+
+        const farSeabedY = this.canvas.height * 0.76;
+        const nearSeabedY = this.canvas.height - sub.height * 0.65;
+        const minWreckY = Math.min(nearSeabedY, Math.max(farSeabedY, sub.y + sub.height * 0.45));
+        const maxWreckY = Math.max(minWreckY, nearSeabedY);
+        sub.wreckTargetY = minWreckY + Math.random() * (maxWreckY - minWreckY);
+
+        const depthRatio = Math.max(0, Math.min(1, (sub.wreckTargetY - farSeabedY) / (nearSeabedY - farSeabedY || 1)));
+        const minScale = sub.isBoss ? 0.38 : 0.34;
+        const maxScale = sub.isBoss ? 0.68 : 0.78;
+        sub.wreckScale = minScale + depthRatio * (maxScale - minScale);
+        sub.wreckTilt = (sub.facingRight ? 1 : -1) * (0.32 + Math.random() * 0.38);
 
         // Speak the name of the destroyed submarine (English word) using an English voice
         if (window.speechSynthesis && sub.word && sub.word.word) {
