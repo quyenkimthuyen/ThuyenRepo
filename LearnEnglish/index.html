@@ -1,0 +1,1063 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f766e" />
+    <meta name="description" content="Frontend-only vocabulary app using editable JSON data." />
+    <title>English Vocab Smart App</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #020617;
+        --panel: rgba(15, 23, 42, 0.86);
+        --panel-strong: #0f172a;
+        --text: #e5f3ff;
+        --muted: #94a3b8;
+        --line: rgba(148, 163, 184, 0.22);
+        --primary: #14b8a6;
+        --accent: #818cf8;
+        --danger: #fb7185;
+        --success: #22c55e;
+        --shadow: 0 22px 60px rgba(0, 0, 0, 0.28);
+      }
+
+      :root.light {
+        color-scheme: light;
+        --bg: #ecfeff;
+        --panel: rgba(255, 255, 255, 0.9);
+        --panel-strong: #ffffff;
+        --text: #0f172a;
+        --muted: #64748b;
+        --line: rgba(15, 23, 42, 0.12);
+        --primary: #0d9488;
+        --accent: #4f46e5;
+        --danger: #e11d48;
+        --success: #16a34a;
+        --shadow: 0 22px 60px rgba(15, 23, 42, 0.12);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(20, 184, 166, 0.28), transparent 32rem),
+          radial-gradient(circle at top right, rgba(129, 140, 248, 0.24), transparent 30rem),
+          var(--bg);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      button, input, select { font: inherit; }
+      button { cursor: pointer; }
+      h1, h2, h3, p { margin: 0; }
+      h1 { font-size: 1.15rem; line-height: 1.2; }
+      h2 { margin-bottom: 0.9rem; font-size: 1.45rem; }
+      h3 { font-size: 1.05rem; }
+
+      .app { width: min(100%, 760px); min-height: 100vh; margin: 0 auto; padding: 1rem 1rem calc(5.75rem + env(safe-area-inset-bottom)); }
+      .header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: -1rem -1rem 1rem; padding: 1rem; background: linear-gradient(to bottom, var(--bg), transparent); backdrop-filter: blur(12px); }
+      .brand { display: flex; align-items: center; gap: 0.75rem; }
+      .logo { display: grid; width: 2.6rem; height: 2.6rem; place-items: center; border-radius: 1rem; background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; font-weight: 800; box-shadow: var(--shadow); }
+      .muted { color: var(--muted); }
+      .small { font-size: 0.86rem; }
+      .hidden { display: none !important; }
+      .stack { display: grid; gap: 1rem; }
+      .row { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+      .between { justify-content: space-between; }
+      .panel { border: 1px solid var(--line); border-radius: 1.35rem; padding: 1rem; background: var(--panel); box-shadow: var(--shadow); backdrop-filter: blur(18px); }
+      .pill, .icon-button, .tab, .nav-button, .button { border: 1px solid var(--line); background: var(--panel-strong); color: var(--text); }
+      .pill { border-radius: 999px; padding: 0.45rem 0.75rem; }
+      .icon-button { width: 3rem; height: 2.55rem; border-radius: 999px; }
+      .button, .tab, .nav-button { border-radius: 999px; padding: 0.75rem 0.85rem; transition: transform 0.15s ease; }
+      .button:hover, .tab:hover, .nav-button:hover { transform: translateY(-1px); }
+      .active, .primary { border-color: transparent; background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; }
+      .danger { color: white; border-color: transparent; background: linear-gradient(135deg, #f43f5e, #fb7185); }
+      .success { color: white; border-color: transparent; background: linear-gradient(135deg, #16a34a, #22c55e); }
+      .toolbar { display: grid; gap: 0.75rem; margin-bottom: 1rem; }
+      .search { width: 100%; min-height: 2.9rem; border: 1px solid var(--line); border-radius: 1rem; padding: 0 1rem; background: var(--panel-strong); color: var(--text); outline: none; }
+      .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem; }
+      .tabs.four { grid-template-columns: repeat(4, 1fr); }
+      .settings-grid { display: grid; gap: 1rem; }
+      .word-title { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; }
+      .meaning { font-size: 1.2rem; font-weight: 700; color: var(--primary); }
+      .example { border-left: 3px solid var(--primary); padding-left: 0.75rem; color: var(--muted); }
+      .badge { border-radius: 999px; padding: 0.25rem 0.55rem; background: rgba(20, 184, 166, 0.15); color: var(--primary); font-size: 0.78rem; }
+      .progress-track { overflow: hidden; height: 0.65rem; border-radius: 999px; background: rgba(148, 163, 184, 0.22); }
+      .progress-fill { height: 100%; width: 0%; border-radius: inherit; background: linear-gradient(90deg, var(--primary), var(--accent)); transition: width 0.25s ease; }
+      .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+      .stat { padding: 1rem; border-radius: 1rem; background: var(--panel-strong); border: 1px solid var(--line); }
+      .stat strong { display: block; margin-top: 0.25rem; font-size: 1.5rem; }
+      .quiz-options, .typing-form { display: grid; gap: 0.65rem; }
+      .option { width: 100%; text-align: left; border-radius: 1rem; }
+      .option:disabled { opacity: 0.45; cursor: not-allowed; }
+      .option.success:disabled { opacity: 1 !important; background: linear-gradient(135deg, #16a34a, #22c55e) !important; color: white !important; border-color: transparent !important; }
+      .option.danger:disabled { opacity: 1 !important; background: linear-gradient(135deg, #f43f5e, #fb7185) !important; color: white !important; border-color: transparent !important; }
+      .feedback { padding: 0.8rem; border-radius: 1rem; background: var(--panel-strong); border: 1px solid var(--line); }
+      .success-input, .success-input:disabled { opacity: 1 !important; border: 1.5px solid var(--success) !important; background: rgba(34, 197, 94, 0.15) !important; color: var(--text) !important; -webkit-text-fill-color: var(--text) !important; }
+      .danger-input, .danger-input:disabled { opacity: 1 !important; border: 1.5px solid var(--danger) !important; background: rgba(251, 113, 133, 0.15) !important; color: var(--text) !important; -webkit-text-fill-color: var(--text) !important; }
+      .success-text { color: var(--success); font-weight: bold; }
+      .danger-text { color: var(--danger); font-weight: bold; }
+      .char-correct { color: var(--success); font-weight: bold; }
+      .char-incorrect { color: var(--danger); font-weight: bold; text-decoration: line-through; }
+      .char-missing { color: var(--muted); font-weight: bold; border-bottom: 2px dashed var(--danger); padding: 0 1px; }
+      .diff-container { font-family: monospace; font-size: 1.15rem; letter-spacing: 1.5px; }
+      .empty { padding: 2rem 1rem; text-align: center; }
+      .nav { position: fixed; left: 50%; bottom: max(0.85rem, env(safe-area-inset-bottom)); z-index: 10; display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; width: min(calc(100% - 2rem), 720px); padding: 0.55rem; border: 1px solid var(--line); border-radius: 1.35rem; background: var(--panel); box-shadow: var(--shadow); transform: translateX(-50%); backdrop-filter: blur(20px); }
+      .action-btn { display: inline-flex; align-items: center; justify-content: center; width: 2.6rem; height: 2.6rem; border-radius: 50%; border: 1px solid var(--line); background: var(--panel-strong); color: var(--text); transition: transform 0.15s ease, background 0.15s ease; outline: none; }
+      .action-btn:hover { transform: translateY(-1px); }
+      .action-btn.play { color: var(--primary); border-color: var(--primary); background: rgba(20, 184, 166, 0.08); }
+      .action-btn.play:hover { background: rgba(20, 184, 166, 0.18); }
+      .action-btn.forgot { color: var(--danger); border-color: var(--danger); background: rgba(251, 113, 133, 0.08); }
+      .action-btn.forgot:hover { background: rgba(251, 113, 133, 0.18); }
+      .action-btn.remembered { color: var(--success); border-color: var(--success); background: rgba(34, 197, 94, 0.08); }
+      .action-btn.remembered:hover { background: rgba(34, 197, 94, 0.18); }
+      .action-btn svg { pointer-events: none; }
+      @media (max-width: 520px) { .app { padding-inline: 0.8rem; } .header { margin-inline: -0.8rem; padding-inline: 0.8rem; } .stats-grid, .tabs.four { grid-template-columns: 1fr 1fr; } .word-title { font-size: 1.7rem; } .pill { display: none; } }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="brand">
+          <div class="logo">T</div>
+          <div>
+            <h1>English Vocab</h1>
+            <p class="muted small">Smart App</p>
+          </div>
+        </div>
+        <div class="row">
+          <span class="pill" id="headerStats">0 / 0 known</span>
+          <button class="icon-button" id="themeButton" type="button" aria-label="Toggle theme">Dark</button>
+        </div>
+      </header>
+
+      <main>
+        <section id="learnPage" class="page stack"></section>
+        <section id="quizPage" class="page stack hidden"></section>
+        <section id="statsPage" class="page stack hidden"></section>
+      </main>
+    </div>
+
+    <nav class="nav" aria-label="Main navigation">
+      <button class="nav-button active" type="button" data-page="learn">Learn</button>
+      <button class="nav-button" type="button" data-page="quiz">Quiz</button>
+      <button class="nav-button" type="button" data-page="stats">Stats</button>
+    </nav>
+
+    <script>
+      const STORAGE_KEY = 'lexirise-vocabulary-store-v3';
+      const LEARNING_LIMIT = 10;
+      const DEFAULT_QUIZ_QUESTION_LIMIT = 20;
+      const MIN_QUIZ_QUESTION_LIMIT = 1;
+      const MAX_QUIZ_QUESTION_LIMIT = 100;
+      const REVIEW_INTERVAL_HOURS = [4, 12, 24, 72, 168, 336, 720];
+      const DATA_SOURCES = [
+        { name: 'toeic', label: 'TOEIC', file: 'all-topics-toeic.json' },
+        { name: 'grade9', label: 'Grade 9', file: 'all-topics-grade9.json' },
+        { name: 'grade4', label: 'Grade 4', file: 'all-topics-grade4.json' },
+      ];
+      let seedWords = [];
+
+      const state = {
+        words: [],
+        filter: 'learning',
+        topicFilter: 'all',
+        searchQuery: '',
+        theme: 'dark',
+        page: 'learn',
+        dataSourceName: DATA_SOURCES[0].name,
+        quizQuestionLimit: DEFAULT_QUIZ_QUESTION_LIMIT,
+        quizMode: 'meaning',
+        currentQuestion: null,
+        quizQuestionIds: [],
+        quizQuestionIndex: 0,
+        quizResults: [],
+        quizStartedAt: null,
+        quizHistory: [],
+        currentAnswer: null,
+        lastAutoPlayedListeningQuestionId: null,
+        revealed: {},
+        wordOrderIds: [],
+      };
+      window.state = state;
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+
+      function normalizeWords(words, topicName = 'toeic words') {
+        if (!Array.isArray(words)) throw new Error('Vocabulary JSON must be an array of words.');
+        return words.map((word, index) => {
+          const text = String(word.word || '').trim();
+          const meaning = String(word.meaning_vi || '').trim();
+          if (!text || !meaning) throw new Error(`Word ${index + 1} needs both word and meaning_vi.`);
+          return {
+            id: String(word.id || `word-${String(index + 1).padStart(3, '0')}`),
+            word: text,
+            ipa_us: String(word.ipa_us || ''),
+            meaning_vi: meaning,
+            topic: String(word.topic || topicName).trim() || topicName,
+            example: String(word.example || ''),
+            audio_us: String(word.audio_us || ''),
+            status: ['new', 'learning', 'known'].includes(word.status) ? word.status : 'new',
+            reviewLevel: Number(word.reviewLevel || 0),
+            reviewCount: Number(word.reviewCount || 0),
+            lastReviewedAt: word.lastReviewedAt,
+            nextReviewAt: word.nextReviewAt,
+            createdAt: Number(word.createdAt || Date.now()),
+          };
+        });
+      }
+
+      function loadState() {
+        try {
+          const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+          const savedState = saved?.state || saved;
+          if (!savedState) return;
+          if (Array.isArray(savedState.words)) {
+            seedWords = normalizeWords(savedState.words);
+            state.words = refillLearningQueue(seedWords.map((word) => ({ ...word })));
+          }
+          if (Array.isArray(savedState.wordOrderIds)) state.wordOrderIds = savedState.wordOrderIds;
+          if (savedState.filter) state.filter = savedState.filter;
+          if (savedState.topicFilter) state.topicFilter = savedState.topicFilter;
+          if (typeof savedState.searchQuery === 'string') state.searchQuery = savedState.searchQuery;
+          if (savedState.theme === 'light' || savedState.theme === 'dark') state.theme = savedState.theme;
+          if (DATA_SOURCES.some((source) => source.name === savedState.dataSourceName)) state.dataSourceName = savedState.dataSourceName;
+          state.quizQuestionLimit = normalizeQuizQuestionLimit(savedState.quizQuestionLimit);
+          if (savedState.quizMode) state.quizMode = savedState.quizMode;
+          if (Array.isArray(savedState.quizHistory)) state.quizHistory = savedState.quizHistory;
+        } catch (error) {
+          console.warn('Could not load saved progress.', error);
+        }
+      }
+
+      function saveState() {
+        ensureWordOrder();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          state: {
+            words: state.words,
+            wordOrderIds: state.wordOrderIds,
+            filter: state.filter,
+            topicFilter: state.topicFilter,
+            searchQuery: state.searchQuery,
+            theme: state.theme,
+            dataSourceName: state.dataSourceName,
+            quizQuestionLimit: state.quizQuestionLimit,
+            quizMode: state.quizMode,
+            quizHistory: state.quizHistory || [],
+          },
+          version: 2,
+        }));
+      }
+
+      function normalizeQuizQuestionLimit(value) {
+        const parsed = Number.parseInt(value, 10);
+        if (!Number.isFinite(parsed)) return DEFAULT_QUIZ_QUESTION_LIMIT;
+        return Math.max(MIN_QUIZ_QUESTION_LIMIT, Math.min(MAX_QUIZ_QUESTION_LIMIT, parsed));
+      }
+
+      function getDataSource() {
+        return DATA_SOURCES.find((source) => source.name === state.dataSourceName) || DATA_SOURCES[0];
+      }
+
+      function dataToTopicGroups(data) {
+        if (Array.isArray(data)) return data;
+        return Object.entries(data).map(([topic, words]) => ({ topic, words }));
+      }
+
+      function resetQuizState() {
+        state.currentQuestion = null;
+        state.currentAnswer = null;
+        state.quizQuestionIds = [];
+        state.quizQuestionIndex = 0;
+        state.quizResults = [];
+        state.quizStartedAt = null;
+        state.feedback = '';
+        state.lastAutoPlayedListeningQuestionId = null;
+      }
+
+        function importTopics(topicGroups) {
+          const normalized = topicGroups.flatMap((group) => normalizeWords(group.words, group.topic));
+          const progressById = new Map(state.words.map((word) => [word.id, word]));
+          seedWords = normalized;
+          // Preserve saved progress for each word; default to 'learning' for new words
+          state.words = normalized.map((word) => {
+            const merged = mergeWordProgress(word, progressById.get(word.id));
+            // If there is no saved status or it is still 'new', start as 'learning'
+            if (!merged.status || merged.status === 'new') {
+              merged.status = 'learning';
+            }
+            return merged;
+          });
+          ensureWordOrder();
+          if (!getTopics(state.words).includes(state.topicFilter)) state.topicFilter = 'all';
+          resetQuizState();
+          state.feedback = `Loaded ${state.words.length} words.`;
+          saveState();
+          render();
+        }
+
+      
+
+      async function loadTopicFiles() {
+        // If the page is opened via file://, use the bundled in-memory data.
+        if (location.protocol === 'file:' && typeof window.embeddedData === 'object') {
+          return dataToTopicGroups(window.embeddedData);
+        }
+        // When served over HTTP (e.g., Live Server), load the selected consolidated source file.
+        const source = getDataSource();
+        const response = await fetch(`data/${source.file}`, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`Cannot load data/${source.file}`);
+        const data = await response.json();
+        return dataToTopicGroups(data);
+      }
+
+      // Legacy function retained for potential future use; not used when loading consolidated data.
+      async function loadTopicFile(file, topicOverride) {
+        const safeFile = String(file || '').trim();
+        if (!safeFile || safeFile.includes('..') || !safeFile.endsWith('.json')) throw new Error('Invalid topic file path.');
+        const topicResponse = await fetch(`data/${safeFile}`, { cache: 'no-store' });
+        if (!topicResponse.ok) throw new Error(`Cannot load data/${safeFile}`);
+        return { topic: String(topicOverride || topicFromFileName(safeFile)).trim(), words: await topicResponse.json() };
+      }
+
+      function topicFromFileName(file) {
+        return file.replace(/\.json$/i, '');
+      }
+
+      function prettyTopic(topic) {
+        // Convert hyphens/underscores to spaces and capitalize each word
+        return topic
+          .replace(/[-_]/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase());
+      }
+
+      function mergeWordProgress(word, progress) {
+        if (!progress) return { ...word };
+        return {
+          ...word,
+          status: progress.status || word.status,
+          reviewLevel: Number(progress.reviewLevel || 0),
+          reviewCount: Number(progress.reviewCount || 0),
+          lastReviewedAt: progress.lastReviewedAt,
+          nextReviewAt: progress.nextReviewAt,
+        };
+      }
+
+      async function initializeApp() {
+        loadState();
+
+        if (location.protocol !== 'file:') {
+          try {
+            importTopics(await loadTopicFiles());
+            return;
+          } catch (error) {
+            state.feedback = 'Cannot load topic files from data/. Please start the Live Server (e.g., via VS Code) and open the served URL.';
+            console.warn('Cannot load dynamic topic data.', error);
+            render();
+          }
+          return;
+        }
+
+        if (!state.words.length) {
+          state.feedback = 'Cannot load topic files from file://. Please start the Live Server (e.g., via VS Code) and open the served URL.';
+        }
+        render();
+      }
+
+      async function resetSavedState() {
+        localStorage.removeItem(STORAGE_KEY);
+        state.words = [];
+        state.wordOrderIds = [];
+        state.filter = 'learning';
+        state.topicFilter = 'all';
+        state.searchQuery = '';
+        state.dataSourceName = DATA_SOURCES[0].name;
+        state.quizQuestionLimit = DEFAULT_QUIZ_QUESTION_LIMIT;
+        state.quizMode = 'meaning';
+        state.quizHistory = [];
+        state.revealed = {};
+        resetQuizState();
+        state.feedback = 'Saved state reset.';
+        await initializeApp();
+      }
+
+      function refillLearningQueue(words) {
+        let slots = LEARNING_LIMIT - words.filter((word) => word.status === 'learning').length;
+        if (slots <= 0) return words;
+        return words.map((word) => {
+          if (slots <= 0 || word.status !== 'new') return word;
+          slots -= 1;
+          return { ...word, status: 'learning' };
+        });
+      }
+
+      function applyReviewOutcome(word, outcome) {
+        const now = Date.now();
+        const direction = outcome === 'remembered' ? 1 : -1;
+        const nextLevel = Math.max(0, Math.min(REVIEW_INTERVAL_HOURS.length - 1, (word.reviewLevel || 0) + direction));
+        return {
+          ...word,
+          status: outcome === 'remembered' ? 'known' : 'learning',
+          reviewLevel: nextLevel,
+          reviewCount: (word.reviewCount || 0) + 1,
+          lastReviewedAt: now,
+          nextReviewAt: now + REVIEW_INTERVAL_HOURS[nextLevel] * 60 * 60 * 1000,
+        };
+      }
+
+      function getStats() {
+        const words = getTopicWords();
+        const total = words.length;
+        const known = words.filter((word) => word.status === 'known').length;
+        const learning = words.filter((word) => word.status === 'learning').length;
+        return { total, known, learning, completion: total ? Math.round((known / total) * 100) : 0 };
+      }
+
+      function getTopics(words = state.words) {
+        return [...new Set(words.map((word) => word.topic).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+      }
+
+      function getTopicWords() {
+        return state.topicFilter === 'all' ? state.words : state.words.filter((word) => word.topic === state.topicFilter);
+      }
+
+      function ensureWordOrder() {
+        const validIds = new Set(state.words.map((word) => word.id));
+        const existingIds = state.wordOrderIds.filter((id) => validIds.has(id));
+        const existingSet = new Set(existingIds);
+        const missingIds = state.words.map((word) => word.id).filter((id) => !existingSet.has(id));
+        state.wordOrderIds = [...existingIds, ...shuffle(missingIds)];
+      }
+
+      function reshuffleWordOrder() {
+        state.wordOrderIds = shuffle(state.words.map((word) => word.id));
+      }
+
+      function orderWords(words) {
+        ensureWordOrder();
+        const orderIndex = new Map(state.wordOrderIds.map((id, index) => [id, index]));
+        return [...words].sort((a, b) => (orderIndex.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(b.id) ?? Number.MAX_SAFE_INTEGER));
+      }
+
+      function getVisibleWords() {
+        const query = state.searchQuery.trim().toLowerCase();
+        const topicWords = getTopicWords();
+        const filtered = topicWords.filter((word) => {
+          const matchesFilter = state.filter === 'all' || word.status === state.filter;
+          const matchesQuery = !query || word.word.toLowerCase().includes(query) || word.meaning_vi.toLowerCase().includes(query) || word.ipa_us.toLowerCase().includes(query) || word.topic.toLowerCase().includes(query);
+          return matchesFilter && matchesQuery;
+        });
+        const ordered = orderWords(filtered);
+        return state.filter === 'learning' && !query ? ordered.slice(0, LEARNING_LIMIT) : ordered;
+      }
+
+      function speak(text) {
+        if (!('speechSynthesis' in window)) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.86;
+        const voices = window.speechSynthesis.getVoices();
+        const voice = voices.find((item) => item.lang === 'en-US') || voices.find((item) => item.lang.startsWith('en'));
+        if (voice) utterance.voice = voice;
+        window.speechSynthesis.speak(utterance);
+      }
+
+      function pronounceWord(word) {
+        if (!word) return;
+        if (word.audio_us) {
+          const audio = new Audio(word.audio_us);
+          audio.play().catch(() => speak(word.word));
+          return;
+        }
+        speak(word.word);
+      }
+
+      function autoPlayListeningQuestion() {
+        const question = state.currentQuestion;
+        if (state.page !== 'quiz' || question?.mode !== 'listening' || state.currentAnswer) return;
+        if (state.lastAutoPlayedListeningQuestionId === question.id) return;
+        state.lastAutoPlayedListeningQuestionId = question.id;
+        pronounceWord(question.word);
+      }
+
+      function shuffle(items) {
+        return [...items].sort(() => Math.random() - 0.5);
+      }
+
+      function getQuizHint(answer) {
+        if (!answer) return '';
+        const trimmed = answer.trim();
+        if (trimmed.length <= 2) {
+          return `Starts with: "${trimmed[0]}"`;
+        }
+        const firstTwo = trimmed.slice(0, 2);
+        const underscores = '_ '.repeat(trimmed.length - 2).trim();
+        return `Hint: ${firstTwo} ${underscores} (${trimmed.length} letters)`;
+      }
+
+      function diffAnswer(typed, correct) {
+        const m = typed.length;
+        const n = correct.length;
+        const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+        
+        for (let i = 1; i <= m; i++) {
+          for (let j = 1; j <= n; j++) {
+            if (typed[i - 1].toLowerCase() === correct[j - 1].toLowerCase()) {
+              dp[i][j] = dp[i - 1][j - 1] + 1;
+            } else {
+              dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+            }
+          }
+        }
+        
+        let i = m, j = n;
+        const result = [];
+        
+        while (i > 0 || j > 0) {
+          if (i > 0 && j > 0 && typed[i - 1].toLowerCase() === correct[j - 1].toLowerCase()) {
+            result.push(`<span class="char-correct">${escapeHtml(typed[i - 1])}</span>`);
+            i--;
+            j--;
+          } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+            result.push(`<span class="char-missing">${escapeHtml(correct[j - 1])}</span>`);
+            j--;
+          } else {
+            result.push(`<span class="char-incorrect">${escapeHtml(typed[i - 1])}</span>`);
+            i--;
+          }
+        }
+        
+        return result.reverse().join('');
+      }
+
+      function buildQuizQuestionIds() {
+        return shuffle(getTopicWords()).slice(0, state.quizQuestionLimit).map((word) => word.id);
+      }
+
+      function createQuizQuestion(mode) {
+        const pool = getTopicWords();
+        if (!pool.length) return null;
+        if (!state.quizQuestionIds.length) state.quizQuestionIds = buildQuizQuestionIds();
+        const word = pool.find((item) => item.id === state.quizQuestionIds[state.quizQuestionIndex]);
+        if (!word) return null;
+        const distractors = shuffle(pool.filter((item) => item.id !== word.id)).slice(0, 3);
+        const options = mode === 'word' ? shuffle([word.word, ...distractors.map((item) => item.word)]) : shuffle([word.meaning_vi, ...distractors.map((item) => item.meaning_vi)]);
+        const prompts = { meaning: word.word, word: word.meaning_vi, listening: word.word, typing: word.meaning_vi };
+        return { id: `${word.id}-${mode}-${state.quizStartedAt || Date.now()}-${state.quizQuestionIndex}`, mode, prompt: prompts[mode], answer: (mode === 'word' || mode === 'typing') ? word.word : word.meaning_vi, options, word };
+      }
+
+      function startQuiz(mode = state.quizMode) {
+        state.quizMode = mode;
+        state.quizQuestionIds = buildQuizQuestionIds();
+        state.quizQuestionIndex = 0;
+        state.quizResults = [];
+        state.quizStartedAt = Date.now();
+        state.currentQuestion = createQuizQuestion(mode);
+        state.currentAnswer = null;
+        state.lastAutoPlayedListeningQuestionId = null;
+        state.feedback = state.currentQuestion ? '' : 'Load at least 1 word to start a quiz.';
+        saveState();
+        render();
+      }
+
+      function answerQuestion(answer) {
+        if (!state.currentQuestion) return;
+        const correct = answer.trim().toLowerCase() === state.currentQuestion.answer.trim().toLowerCase();
+        state.quizResults.push({ questionId: state.currentQuestion.id, selectedAnswer: answer, isCorrect: correct, answeredAt: Date.now() });
+        state.currentAnswer = { text: answer, isCorrect: correct };
+        
+        if (correct) {
+          state.feedback = '';
+        } else if (state.quizMode === 'typing') {
+          state.feedback = `
+            <div class="danger-text" style="text-align: left;">
+              <span style="font-size: 1.1rem; display: block; margin-bottom: 0.4rem;">✗ Incorrect.</span>
+              <div style="margin-bottom: 0.3rem; font-size: 0.95rem; color: var(--text);">
+                Your answer: <span class="diff-container">${diffAnswer(answer, state.currentQuestion.answer)}</span>
+              </div>
+              <div style="font-size: 0.95rem; color: var(--muted);">
+                Correct answer: <strong style="color: var(--success);">${escapeHtml(state.currentQuestion.answer)}</strong>
+              </div>
+            </div>
+          `;
+        } else {
+          state.feedback = '';
+        }
+        
+        render();
+        if (correct) {
+          setTimeout(() => {
+            if (state.currentAnswer?.isCorrect) nextQuestion();
+          }, 350);
+        }
+      }
+
+      function nextQuestion() {
+        state.currentAnswer = null;
+        state.feedback = '';
+        state.quizQuestionIndex += 1;
+        if (state.quizQuestionIndex >= state.quizQuestionIds.length) {
+          state.currentQuestion = null;
+          state.feedback = `Test complete. You answered ${state.quizResults.length} question${state.quizResults.length === 1 ? '' : 's'}.`;
+          
+          const quizStats = getQuizStats();
+          const record = {
+            id: `quiz-${Date.now()}`,
+            timestamp: Date.now(),
+            mode: state.quizMode,
+            topic: state.topicFilter,
+            total: quizStats.total,
+            correct: quizStats.correct,
+            accuracy: quizStats.accuracy,
+            elapsed: quizStats.elapsed,
+          };
+          state.quizHistory = [record, ...(state.quizHistory || [])].slice(0, 10);
+          saveState();
+
+          render();
+          return;
+        }
+        state.currentQuestion = createQuizQuestion(state.quizMode);
+        render();
+      }
+
+      function getQuizStats() {
+        const total = state.quizResults.length;
+        const correct = state.quizResults.filter((item) => item.isCorrect).length;
+        let streak = 0;
+        for (let index = state.quizResults.length - 1; index >= 0; index -= 1) {
+          if (!state.quizResults[index].isCorrect) break;
+          streak += 1;
+        }
+        const elapsed = state.quizStartedAt ? Math.floor((Date.now() - state.quizStartedAt) / 1000) : 0;
+        return { total, correct, streak, elapsed, accuracy: total ? Math.round((correct / total) * 100) : 0 };
+      }
+
+      function render() {
+        document.documentElement.classList.toggle('light', state.theme === 'light');
+        document.getElementById('themeButton').textContent = state.theme === 'dark' ? 'Dark' : 'Light';
+        const stats = getStats();
+        document.getElementById('headerStats').textContent = `${stats.known} / ${stats.total} known`;
+        document.querySelectorAll('.page').forEach((page) => page.classList.add('hidden'));
+        document.getElementById(`${state.page}Page`).classList.remove('hidden');
+        document.querySelectorAll('.nav-button').forEach((button) => button.classList.toggle('active', button.dataset.page === state.page));
+        renderLearn();
+        renderQuiz();
+        renderStats();
+
+        if (state.page === 'quiz' && state.quizMode === 'typing' && !state.currentAnswer) {
+          const input = document.getElementById('typingAnswer');
+          if (input) input.focus();
+        }
+        autoPlayListeningQuestion();
+      }
+
+      function renderLearn() {
+        const words = getVisibleWords();
+        const topics = getTopics();
+        const topicTotal = getTopicWords().length;
+        document.getElementById('learnPage').innerHTML = `
+          <div class="panel stack">
+            <div>
+              <h2>Learn Vocabulary</h2>
+            </div>
+            <div class="toolbar">
+              <label class="muted small" for="topicSelect">Topic</label>
+              <select class="search" id="topicSelect" aria-label="Choose topic">
+                <option value="all"${state.topicFilter === 'all' ? ' selected' : ''}>All topics</option>
+                ${topics.map((topic) => `<option value="${escapeHtml(topic)}"${state.topicFilter === topic ? ' selected' : ''}>${escapeHtml(prettyTopic(topic))}</option>`).join('')}
+              </select>
+              <label class="muted small" for="searchInput">Search</label>
+              <input class="search" id="searchInput" type="search" placeholder="Search English, Vietnamese, or IPA" value="${escapeHtml(state.searchQuery)}" />
+              <p class="muted small">Status</p>
+              <div class="tabs">
+                ${filterButton('learning', 'Learning')}
+                ${filterButton('known', 'Known')}
+                ${filterButton('all', 'All Status')}
+              </div>
+            </div>
+            <p class="muted small">Showing ${words.length} of ${topicTotal} word${topicTotal === 1 ? '' : 's'}${state.topicFilter === 'all' ? '' : ` in ${escapeHtml(state.topicFilter)}`}</p>
+          </div>
+          ${words.length ? words.map(renderWordCard).join('') : renderEmptyWords(topicTotal)}
+        `;
+        document.getElementById('searchInput').addEventListener('input', (event) => {
+          const cursorPosition = event.target.selectionStart;
+          state.searchQuery = event.target.value;
+          saveState();
+          renderLearn();
+          const searchInput = document.getElementById('searchInput');
+          searchInput.focus();
+          searchInput.setSelectionRange(cursorPosition, cursorPosition);
+        });
+      }
+
+      function filterButton(filter, label) {
+        return `<button class="tab ${state.filter === filter ? 'active' : ''}" type="button" data-filter="${filter}">${label}</button>`;
+      }
+
+      function renderEmptyWords(topicTotal) {
+        if (!state.words.length) {
+          return '<div class="panel empty"><h3>No words loaded</h3><p class="muted">Open this app through a simple static server so it can read topic files from data/ automatically.</p></div>';
+        }
+        if (!topicTotal) {
+          return '<div class="panel empty"><h3>No words in this topic</h3><p class="muted">Choose All topics or load a JSON file with this topic.</p></div>';
+        }
+        return '<div class="panel empty"><h3>No words match this view</h3><p class="muted">Try All Status or clear the search text.</p></div>';
+      }
+
+      function renderWordCard(word) {
+        const isKnownFilter = state.filter === 'known';
+        const revealed = !isKnownFilter || !!state.revealed[word.id];
+        return `
+          <article class="panel stack">
+            <div class="row between">
+              <span class="badge">${escapeHtml(word.topic)} - ${escapeHtml(word.status)} - level ${word.reviewLevel || 0}${word.audio_us ? ' - audio' : ''}</span>
+            </div>
+            <div>
+              <div class="row between" style="width: 100%; gap: 1rem; align-items: center;">
+                <div class="word-title" style="line-height: 1.1;">${escapeHtml(word.word)}</div>
+                <div class="row" style="margin-left: auto; align-items: center;">
+                  <button class="action-btn play" type="button" data-pronounce="${escapeHtml(word.id)}" aria-label="Pronounce ${escapeHtml(word.word)}" title="Pronounce">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                      <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                      <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                    </svg>
+                  </button>
+                  ${word.status !== 'learning' ? `
+                    <button class="action-btn forgot" type="button" data-forgot="${escapeHtml(word.id)}" aria-label="Forgot" title="Forgot">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  ` : ''}
+                  ${word.status !== 'known' ? `
+                    <button class="action-btn remembered" type="button" data-remembered="${escapeHtml(word.id)}" aria-label="Remembered" title="Remembered">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                      </svg>
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+              <p class="muted" style="margin-top: 0.35rem;">${escapeHtml(word.ipa_us || '')}</p>
+            </div>
+            <div>${revealed ? `<p class="meaning">${escapeHtml(word.meaning_vi)}</p>` : '<p class="muted">Meaning is hidden</p>'}</div>
+            ${word.example ? `<p class="example">${escapeHtml(word.example)}</p>` : ''}
+            ${isKnownFilter ? `
+              <div class="row">
+                <button class="button" type="button" data-reveal="${escapeHtml(word.id)}">${state.revealed[word.id] ? 'Hide meaning' : 'Reveal meaning'}</button>
+              </div>
+            ` : ''}
+          </article>
+        `;
+      }
+
+      function renderQuiz() {
+        const quizStats = getQuizStats();
+        const question = state.currentQuestion;
+        const topics = getTopics();
+        const topicWords = getTopicWords();
+        const questionCount = Math.min(topicWords.length, state.quizQuestionLimit);
+        document.getElementById('quizPage').innerHTML = `
+          <div class="panel stack">
+            <div class="row between">
+              <div>
+                <h2>Quiz Practice</h2>
+                <p class="muted">${quizStats.correct}/${quizStats.total} correct - ${quizStats.streak} streak - <span id="quizElapsed">${quizStats.elapsed}</span>s${state.quizQuestionIds.length ? ` - ${Math.min(state.quizQuestionIndex + 1, state.quizQuestionIds.length)}/${state.quizQuestionIds.length}` : ''}</p>
+              </div>
+              <button class="button" type="button" id="resetQuiz">Reset</button>
+            </div>
+            <div class="toolbar">
+              <label class="muted small" for="quizTopicSelect">Quiz topic</label>
+              <select class="search" id="quizTopicSelect" aria-label="Choose quiz topic">
+                <option value="all"${state.topicFilter === 'all' ? ' selected' : ''}>All topics</option>
+                ${topics.map((topic) => `<option value="${escapeHtml(topic)}"${state.topicFilter === topic ? ' selected' : ''}>${escapeHtml(prettyTopic(topic))}</option>`).join('')}
+              </select>
+              <p class="muted small">This test will use ${questionCount} unique word${questionCount === 1 ? '' : 's'}${state.topicFilter === 'all' ? ' from all topics' : ` from ${escapeHtml(prettyTopic(state.topicFilter))}`}.</p>
+            </div>
+            <div class="progress-track"><div class="progress-fill" style="width:${quizStats.accuracy}%"></div></div>
+            <div class="tabs four">
+              ${modeButton('meaning', 'Meaning')}
+              ${modeButton('word', 'English')}
+              ${modeButton('listening', 'Listen')}
+              ${modeButton('typing', 'Typing')}
+            </div>
+          </div>
+          <div class="panel stack">
+            ${question ? renderQuestion(question) : '<div class="empty"><h3>Ready to practice?</h3><p class="muted">Choose a mode and start a quiz.</p></div>'}
+            ${state.feedback ? `<p class="feedback">${state.feedback}</p>` : ''}
+            <button class="button" type="button" id="startQuiz">${question ? 'Restart quiz' : 'Start quiz'}</button>
+          </div>
+        `;
+      }
+
+      function modeButton(mode, label) {
+        return `<button class="tab ${state.quizMode === mode ? 'active' : ''}" type="button" data-mode="${mode}">${label}</button>`;
+      }
+
+      function renderQuestion(question) {
+        if (question.mode === 'listening') {
+          return `<div class="stack"><p class="muted">Listen and choose the meaning.</p><button class="button primary" type="button" data-pronounce-current="true">Play word</button><div class="quiz-options">${question.options.map(renderOption).join('')}</div></div>`;
+        }
+        if (question.mode === 'typing') {
+          if (state.currentAnswer) {
+            const isCorrect = state.currentAnswer.isCorrect;
+            const inputClass = isCorrect ? 'search success-input' : 'search danger-input';
+            return `
+              <form class="typing-form" id="typingForm">
+                <p class="muted">Type the English word for:</p>
+                <h3>${escapeHtml(question.prompt)}</h3>
+                <input class="${inputClass}" id="typingAnswer" type="text" autocomplete="off" value="${escapeHtml(state.currentAnswer.text)}" disabled>
+                <div class="row">
+                  <button class="button primary" type="submit" autofocus>Next question</button>
+                </div>
+              </form>
+            `;
+          }
+          return `
+            <form class="typing-form" id="typingForm">
+              <p class="muted">Type the English word for:</p>
+              <h3>${escapeHtml(question.prompt)}</h3>
+              <input class="search" id="typingAnswer" type="text" autocomplete="off" placeholder="Your answer" autofocus>
+              <div class="row">
+                <button class="button primary" type="submit">Submit answer</button>
+                <button class="button" type="button" id="quizHint">Hint</button>
+              </div>
+              <p id="hintText" class="muted small hidden" style="margin-top: 0.5rem;"></p>
+            </form>
+          `;
+        }
+        return `<div class="stack"><p class="muted">Choose the correct answer for:</p><h3>${escapeHtml(question.prompt)}</h3><div class="quiz-options">${question.options.map(renderOption).join('')}</div></div>`;
+      }
+
+      function renderOption(option) {
+        if (state.currentAnswer) {
+          const isSelected = option === state.currentAnswer.text;
+          const isCorrect = option === state.currentQuestion.answer;
+          let className = 'button option';
+          if (isCorrect) className += ' success';
+          else if (isSelected) className += ' danger';
+          
+          if (isCorrect && !state.currentAnswer.isCorrect) {
+            return `<button class="${className}" type="button" data-correct-next="true">${escapeHtml(option)}</button>`;
+          }
+          return `<button class="${className}" type="button" disabled>${escapeHtml(option)}</button>`;
+        }
+        return `<button class="button option" type="button" data-answer="${escapeHtml(option)}">${escapeHtml(option)}</button>`;
+      }
+
+      function renderStats() {
+        const stats = getStats();
+        const topicWords = getTopicWords();
+        const knownWords = topicWords.filter((word) => word.status === 'known').slice(-8).reverse();
+        const learningWords = topicWords.filter((word) => word.status === 'learning').slice(0, LEARNING_LIMIT);
+        const scheduled = topicWords.filter((word) => word.nextReviewAt).length;
+        const source = getDataSource();
+
+        const quizHistoryHtml = (state.quizHistory || []).length
+          ? (state.quizHistory).map((quiz) => {
+              const dateStr = new Date(quiz.timestamp).toLocaleString('vi-VN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                day: '2-digit',
+                month: '2-digit',
+              });
+              const modeLabel = { meaning: 'Meaning', word: 'English', listening: 'Listen', typing: 'Typing' }[quiz.mode] || quiz.mode;
+              const accuracyColor = quiz.accuracy >= 80 ? 'var(--success)' : (quiz.accuracy >= 50 ? 'var(--accent)' : 'var(--danger)');
+              const topicName = quiz.topic === 'all' ? 'All topics' : prettyTopic(quiz.topic);
+              return `
+                <div style="padding: 0.85rem 1rem; border-radius: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); display: grid; gap: 0.35rem;">
+                  <div class="row between" style="gap: 0.5rem; flex-wrap: nowrap;">
+                    <span style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(topicName)}">${escapeHtml(topicName)}</span>
+                    <span class="muted small" style="white-space: nowrap;">${escapeHtml(dateStr)}</span>
+                  </div>
+                  <div class="row between small" style="gap: 0.5rem;">
+                    <span class="badge" style="background: rgba(129, 140, 248, 0.12); color: var(--accent); padding: 0.15rem 0.5rem; font-size: 0.72rem;">${escapeHtml(modeLabel)}</span>
+                    <div class="row" style="gap: 0.75rem;">
+                      <span style="font-weight: 700; color: ${accuracyColor}">${quiz.correct}/${quiz.total} (${quiz.accuracy}%)</span>
+                      <span class="muted">${quiz.elapsed}s</span>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')
+          : '<p class="muted small" style="text-align: center; padding: 1rem 0;">Chưa có lịch sử làm bài test nào.</p>';
+
+        document.getElementById('statsPage').innerHTML = `
+          <div class="panel stack">
+            <h2>Progress</h2>
+            <p class="muted small">Topic: ${state.topicFilter === 'all' ? 'All topics' : escapeHtml(state.topicFilter)}</p>
+            <div class="stats-grid">
+              ${statCard('Total Words', stats.total)}
+              ${statCard('Known', stats.known)}
+              ${statCard('Learning', stats.learning)}
+              ${statCard('Scheduled', scheduled)}
+            </div>
+            <div><div class="row between"><span>Completion</span><strong>${stats.completion}%</strong></div><div class="progress-track"><div class="progress-fill" style="width:${stats.completion}%"></div></div></div>
+            <button class="button danger" type="button" id="resetSavedState">Reset saved state</button>
+          </div>
+          <div class="panel stack">
+            <div>
+              <h2>Settings</h2>
+              <p class="muted small">Choose the vocabulary source and quiz size.</p>
+            </div>
+            <div class="settings-grid">
+              <label class="stack" for="dataSourceSelect">
+                <span class="muted small">Source name</span>
+                <select class="search" id="dataSourceSelect" aria-label="Choose vocabulary source">
+                  ${DATA_SOURCES.map((item) => `<option value="${escapeHtml(item.name)}"${state.dataSourceName === item.name ? ' selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}
+                </select>
+              </label>
+              <label class="stack" for="quizQuestionLimitInput">
+                <span class="muted small">Number of words on quiz</span>
+                <input class="search" id="quizQuestionLimitInput" type="number" min="${MIN_QUIZ_QUESTION_LIMIT}" max="${MAX_QUIZ_QUESTION_LIMIT}" step="1" value="${state.quizQuestionLimit}">
+              </label>
+            </div>
+            <p class="muted small">Current source file: data/${escapeHtml(source.file)}. The next quiz will use up to ${state.quizQuestionLimit} word${state.quizQuestionLimit === 1 ? '' : 's'}.</p>
+          </div>
+          <div class="panel stack">
+            <h3>Recent Quizzes (Last 10)</h3>
+            <div class="stack" style="gap: 0.65rem;">
+              ${quizHistoryHtml}
+            </div>
+          </div>
+          <div class="panel stack"><h3>Recently Known</h3>${knownWords.length ? knownWords.map((word) => `<p>${escapeHtml(word.word)} <span class="muted">${escapeHtml(word.meaning_vi)}</span></p>`).join('') : '<p class="muted">No known words yet.</p>'}</div>
+          <div class="panel stack"><h3>Learning Queue</h3>${learningWords.length ? learningWords.map((word) => `<p>${escapeHtml(word.word)} <span class="muted">${escapeHtml(word.meaning_vi)}</span></p>`).join('') : '<p class="muted">No learning words loaded.</p>'}</div>
+        `;
+      }
+
+      function statCard(label, value) {
+        return `<div class="stat"><span class="muted">${label}</span><strong>${value}</strong></div>`;
+      }
+
+      document.addEventListener('click', (event) => {
+        const target = event.target.closest('button');
+        if (!target) return;
+        if (target.type === 'submit') return;
+        if (target.dataset.page) state.page = target.dataset.page;
+        if (target.dataset.filter) { state.filter = target.dataset.filter; saveState(); }
+        if (target.dataset.mode) startQuiz(target.dataset.mode);
+        if (target.dataset.pronounce) pronounceWord(state.words.find((word) => word.id === target.dataset.pronounce));
+        if (target.dataset.pronounceCurrent) pronounceWord(state.currentQuestion?.word);
+        if (target.dataset.reveal) state.revealed[target.dataset.reveal] = !state.revealed[target.dataset.reveal];
+        if (target.dataset.forgot) {
+          state.words = state.words.map((word) => word.id === target.dataset.forgot ? applyReviewOutcome(word, 'forgot') : word);
+          reshuffleWordOrder();
+          saveState();
+        }
+        if (target.dataset.remembered) {
+          state.words = refillLearningQueue(state.words.map((word) => word.id === target.dataset.remembered ? applyReviewOutcome(word, 'remembered') : word));
+          reshuffleWordOrder();
+          saveState();
+        }
+        if (target.dataset.correctNext) {
+          nextQuestion();
+          return;
+        }
+        if (target.dataset.answer) answerQuestion(target.dataset.answer);
+        if (target.id === 'themeButton') { state.theme = state.theme === 'dark' ? 'light' : 'dark'; saveState(); }
+        if (target.id === 'startQuiz') startQuiz(state.quizMode);
+        if (target.id === 'resetQuiz') resetQuizState();
+        if (target.id === 'nextQuestion') {
+          nextQuestion();
+          return;
+        }
+        if (target.id === 'quizHint') {
+          const hintText = document.getElementById('hintText');
+          if (hintText && state.currentQuestion) {
+            hintText.textContent = getQuizHint(state.currentQuestion.answer);
+            hintText.classList.remove('hidden');
+          }
+          const input = document.getElementById('typingAnswer');
+          if (input) input.focus();
+          return;
+        }
+        if (target.id === 'resetSavedState') {
+          if (window.confirm('Reset all saved progress and reload fresh data?')) resetSavedState();
+          return;
+        }
+        render();
+      });
+
+
+
+      document.addEventListener('change', async (event) => {
+        if (event.target.id === 'topicSelect' || event.target.id === 'quizTopicSelect') {
+          state.topicFilter = event.target.value;
+          state.filter = 'all';
+          resetQuizState();
+          saveState();
+          render();
+          return;
+        }
+        if (event.target.id === 'dataSourceSelect') {
+          const nextSource = event.target.value;
+          if (!DATA_SOURCES.some((source) => source.name === nextSource)) return;
+          state.dataSourceName = nextSource;
+          state.topicFilter = 'all';
+          state.searchQuery = '';
+          state.filter = 'learning';
+          resetQuizState();
+          saveState();
+          try {
+            importTopics(await loadTopicFiles());
+          } catch (error) {
+            state.feedback = 'Cannot load the selected source file from data/. Please check the file exists and use Live Server.';
+            console.warn('Cannot load selected source data.', error);
+            render();
+          }
+          return;
+        }
+        if (event.target.id === 'quizQuestionLimitInput') {
+          state.quizQuestionLimit = normalizeQuizQuestionLimit(event.target.value);
+          resetQuizState();
+          saveState();
+          render();
+          return;
+        }
+      });
+
+      document.addEventListener('input', (event) => {
+        if (event.target.id !== 'typingAnswer' || state.currentAnswer || state.currentQuestion?.mode !== 'typing') return;
+        const typedAnswer = event.target.value;
+        if (typedAnswer.trim().toLowerCase() === state.currentQuestion.answer.trim().toLowerCase()) {
+          answerQuestion(typedAnswer);
+        }
+      });
+
+      document.addEventListener('submit', (event) => {
+        if (event.target.id !== 'typingForm') return;
+        event.preventDefault();
+        if (state.currentAnswer) {
+          nextQuestion();
+        } else {
+          answerQuestion(document.getElementById('typingAnswer').value);
+        }
+      });
+
+      initializeApp();
+      setInterval(() => {
+        if (state.page === 'quiz' && state.quizStartedAt) {
+          const elapsedSpan = document.getElementById('quizElapsed');
+          if (elapsedSpan) {
+            const quizStats = getQuizStats();
+            elapsedSpan.textContent = quizStats.elapsed;
+          } else {
+            renderQuiz();
+          }
+        }
+      }, 1000);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "toeic-vocab-app",
+  "version": "1.0.0",
+  "description": "Frontend‑only vocabulary learning app",
+  "scripts": {
+    "download-audio": "node scripts/download_audio.js",
+    "test": "npx -y http-server -c-1 -p 8080 & sleep 2 && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.45.0",
+    "http-server": "^14.1.1"
+  }
+}
