@@ -78,6 +78,7 @@
       .search { width: 100%; min-height: 2.9rem; border: 1px solid var(--line); border-radius: 1rem; padding: 0 1rem; background: var(--panel-strong); color: var(--text); outline: none; }
       .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem; }
       .tabs.four { grid-template-columns: repeat(4, 1fr); }
+      .tabs.five { grid-template-columns: repeat(5, 1fr); }
       .settings-grid { display: grid; gap: 1rem; }
       .word-title { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; }
       .meaning { font-size: 1.2rem; font-weight: 700; color: var(--primary); }
@@ -113,7 +114,7 @@
       .action-btn.remembered { color: var(--success); border-color: var(--success); background: rgba(34, 197, 94, 0.08); }
       .action-btn.remembered:hover { background: rgba(34, 197, 94, 0.18); }
       .action-btn svg { pointer-events: none; }
-      @media (max-width: 520px) { .app { padding-inline: 0.8rem; } .header { margin-inline: -0.8rem; padding-inline: 0.8rem; } .stats-grid, .tabs.four { grid-template-columns: 1fr 1fr; } .word-title { font-size: 1.7rem; } .pill { display: none; } }
+      @media (max-width: 520px) { .app { padding-inline: 0.8rem; } .header { margin-inline: -0.8rem; padding-inline: 0.8rem; } .stats-grid, .tabs.four, .tabs.five { grid-template-columns: 1fr 1fr; } .word-title { font-size: 1.7rem; } .pill { display: none; } }
     </style>
   </head>
   <body>
@@ -156,6 +157,8 @@
         { name: 'toeic', label: 'TOEIC', file: 'all-topics-toeic.json' },
         { name: 'grade9', label: 'Grade 9', file: 'all-topics-grade9.json' },
         { name: 'grade4', label: 'Grade 4', file: 'all-topics-grade4.json' },
+        { name: 'american-ipa', label: 'American IPA', file: 'all-topics-american-ipa.json' },
+        { name: 'english-dictation', label: 'English Dictation', file: 'all-topics-english-dictation.json' },
       ];
       let seedWords = [];
 
@@ -483,7 +486,7 @@
 
       function autoPlayListeningQuestion() {
         const question = state.currentQuestion;
-        if (state.page !== 'quiz' || question?.mode !== 'listening' || state.currentAnswer) return;
+        if (state.page !== 'quiz' || !['listening', 'dictation'].includes(question?.mode) || state.currentAnswer) return;
         if (state.lastAutoPlayedListeningQuestionId === question.id) return;
         state.lastAutoPlayedListeningQuestionId = question.id;
         pronounceWord(question.word);
@@ -551,8 +554,8 @@
         if (!word) return null;
         const distractors = shuffle(pool.filter((item) => item.id !== word.id)).slice(0, 3);
         const options = mode === 'word' ? shuffle([word.word, ...distractors.map((item) => item.word)]) : shuffle([word.meaning_vi, ...distractors.map((item) => item.meaning_vi)]);
-        const prompts = { meaning: word.word, word: word.meaning_vi, listening: word.word, typing: word.meaning_vi };
-        return { id: `${word.id}-${mode}-${state.quizStartedAt || Date.now()}-${state.quizQuestionIndex}`, mode, prompt: prompts[mode], answer: (mode === 'word' || mode === 'typing') ? word.word : word.meaning_vi, options, word };
+        const prompts = { meaning: word.word, word: word.meaning_vi, listening: word.word, typing: word.meaning_vi, dictation: word.meaning_vi };
+        return { id: `${word.id}-${mode}-${state.quizStartedAt || Date.now()}-${state.quizQuestionIndex}`, mode, prompt: prompts[mode], answer: ['word', 'typing', 'dictation'].includes(mode) ? word.word : word.meaning_vi, options, word };
       }
 
       function startQuiz(mode = state.quizMode) {
@@ -577,7 +580,7 @@
         
         if (correct) {
           state.feedback = '';
-        } else if (state.quizMode === 'typing') {
+        } else if (['typing', 'dictation'].includes(state.quizMode)) {
           state.feedback = `
             <div class="danger-text" style="text-align: left;">
               <span style="font-size: 1.1rem; display: block; margin-bottom: 0.4rem;">✗ Incorrect.</span>
@@ -654,7 +657,7 @@
         renderQuiz();
         renderStats();
 
-        if (state.page === 'quiz' && state.quizMode === 'typing' && !state.currentAnswer) {
+        if (state.page === 'quiz' && ['typing', 'dictation'].includes(state.quizMode) && !state.currentAnswer) {
           const input = document.getElementById('typingAnswer');
           if (input) input.focus();
         }
@@ -787,11 +790,12 @@
               <p class="muted small">This test will use ${questionCount} unique word${questionCount === 1 ? '' : 's'}${state.topicFilter === 'all' ? ' from all topics' : ` from ${escapeHtml(prettyTopic(state.topicFilter))}`}.</p>
             </div>
             <div class="progress-track"><div class="progress-fill" style="width:${quizStats.accuracy}%"></div></div>
-            <div class="tabs four">
+            <div class="tabs five">
               ${modeButton('meaning', 'Meaning')}
               ${modeButton('word', 'English')}
               ${modeButton('listening', 'Listen')}
               ${modeButton('typing', 'Typing')}
+              ${modeButton('dictation', 'Dictation')}
             </div>
           </div>
           <div class="panel stack">
@@ -809,6 +813,36 @@
       function renderQuestion(question) {
         if (question.mode === 'listening') {
           return `<div class="stack"><p class="muted">Listen and choose the meaning.</p><button class="button primary" type="button" data-pronounce-current="true">Play word</button><div class="quiz-options">${question.options.map(renderOption).join('')}</div></div>`;
+        }
+        if (question.mode === 'dictation') {
+          if (state.currentAnswer) {
+            const isCorrect = state.currentAnswer.isCorrect;
+            const inputClass = isCorrect ? 'search success-input' : 'search danger-input';
+            return `
+              <form class="typing-form" id="typingForm">
+                <p class="muted">Listen and type the English word you hear:</p>
+                <button class="button primary" type="button" data-pronounce-current="true">Play again</button>
+                <input class="${inputClass}" id="typingAnswer" type="text" autocomplete="off" value="${escapeHtml(state.currentAnswer.text)}" disabled>
+                <p class="muted small">IPA: ${escapeHtml(question.word.ipa_us || '')}</p>
+                <p class="muted small">${escapeHtml(question.prompt)}</p>
+                <div class="row">
+                  <button class="button primary" type="submit" autofocus>Next question</button>
+                </div>
+              </form>
+            `;
+          }
+          return `
+            <form class="typing-form" id="typingForm">
+              <p class="muted">Listen and type the English word you hear:</p>
+              <button class="button primary" type="button" data-pronounce-current="true">Play word</button>
+              <input class="search" id="typingAnswer" type="text" autocomplete="off" placeholder="Type what you hear" autofocus>
+              <div class="row">
+                <button class="button primary" type="submit">Submit answer</button>
+                <button class="button" type="button" id="quizHint">Hint</button>
+              </div>
+              <p id="hintText" class="muted small hidden" style="margin-top: 0.5rem;"></p>
+            </form>
+          `;
         }
         if (question.mode === 'typing') {
           if (state.currentAnswer) {
@@ -873,7 +907,7 @@
                 day: '2-digit',
                 month: '2-digit',
               });
-              const modeLabel = { meaning: 'Meaning', word: 'English', listening: 'Listen', typing: 'Typing' }[quiz.mode] || quiz.mode;
+              const modeLabel = { meaning: 'Meaning', word: 'English', listening: 'Listen', typing: 'Typing', dictation: 'Dictation' }[quiz.mode] || quiz.mode;
               const accuracyColor = quiz.accuracy >= 80 ? 'var(--success)' : (quiz.accuracy >= 50 ? 'var(--accent)' : 'var(--danger)');
               const topicName = quiz.topic === 'all' ? 'All topics' : prettyTopic(quiz.topic);
               return `
@@ -1029,7 +1063,7 @@
       });
 
       document.addEventListener('input', (event) => {
-        if (event.target.id !== 'typingAnswer' || state.currentAnswer || state.currentQuestion?.mode !== 'typing') return;
+        if (event.target.id !== 'typingAnswer' || state.currentAnswer || !['typing', 'dictation'].includes(state.currentQuestion?.mode)) return;
         const typedAnswer = event.target.value;
         if (typedAnswer.trim().toLowerCase() === state.currentQuestion.answer.trim().toLowerCase()) {
           answerQuestion(typedAnswer);

@@ -24,6 +24,8 @@ Current source files:
 - `data/all-topics-toeic.json`
 - `data/all-topics-grade9.json`
 - `data/all-topics-grade4.json`
+- `data/all-topics-american-ipa.json`
+- `data/all-topics-english-dictation.json`
 
 Topic file example:
 
@@ -56,6 +58,10 @@ Important fields:
 - `ipa_us`: optional American pronunciation text.
 
 Put local audio files in the `audio/` folder or use public internet audio URLs in topic JSON files under `data/`. If `audio_us` is empty or cannot play, the app falls back to browser text-to-speech.
+
+The American IPA source includes pronunciation topics for US IPA symbols, Vietnamese-friendly reading approximations, spelling-to-sound patterns, final consonants, stress and reduction, common Vietnamese pronunciation mistakes, and guided steps for reading new English words from IPA.
+
+The English Dictation source includes listening-to-spelling topics for Vietnamese learners: short and long vowels, diphthongs, final consonants, consonant clusters, th/sh/ch/j sounds, silent letters, and common difficult words.
 
 To add another source, add the JSON file in `data/` and register it in the app's `DATA_SOURCES` list.
 
@@ -93,6 +99,7 @@ Quiz modes:
 - English: shows the Vietnamese meaning and asks for the English word.
 - Listen: plays `audio_us` or text-to-speech and asks for the Vietnamese meaning.
 - Typing: shows the Vietnamese meaning and asks the user to type the answer.
+- Dictation: plays `audio_us` or text-to-speech and asks the user to type the English word they hear.
 
 Quiz behavior:
 
@@ -103,6 +110,7 @@ Quiz behavior:
 - Automatically advances to the next question after a correct answer.
 - Automatically submits typing answers when the typed text matches the correct English word.
 - Automatically plays the word audio or speech fallback when a listening question first appears.
+- Automatically plays dictation audio when a dictation question first appears.
 - Tracks total answers, correct answers, streak, elapsed time, and accuracy.
 - Supports quiz reset.
 
@@ -116,7 +124,7 @@ Quiz behavior:
 - Shows recently known words.
 - Shows the current learning queue.
 - Shows stats for the selected topic or all topics.
-- Lets the user choose the vocabulary source: TOEIC, Grade 9, or Grade 4.
+- Lets the user choose the vocabulary source: TOEIC, Grade 9, Grade 4, American IPA, or English Dictation.
 - Lets the user set the number of words used in each quiz.
 - Saves source and quiz-size preferences locally.
 - Provides a reset button to clear saved browser progress and reload fresh data from `data/`.
