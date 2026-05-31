@@ -658,6 +658,7 @@ class WordSnakeGame {
 
     updateFoods(delta) {
         const bounds = this.motoMode ? this.worldBounds : { left: 44, top: 138, right: this.width - 44, bottom: this.height - 46 };
+        const foodSpeedScale = this.motoMode ? 0.5 : 1;
         const left = bounds.left + 44;
         const right = bounds.right - 44;
         const top = bounds.top + (this.motoMode ? 44 : 0);
@@ -681,8 +682,8 @@ class WordSnakeGame {
                 food.vy += (Math.random() - 0.5) * 0.06;
             }
 
-            food.x += food.vx * delta;
-            food.y += food.vy * delta;
+            food.x += food.vx * delta * foodSpeedScale;
+            food.y += food.vy * delta * foodSpeedScale;
 
             if (food.x < left || food.x > right) {
                 food.x = Math.max(left, Math.min(right, food.x));
