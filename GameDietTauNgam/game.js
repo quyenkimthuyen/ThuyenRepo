@@ -1522,6 +1522,10 @@ class GameEngine {
         
         // Loop time tracking
         this.gameTime = 0;
+        this.fixedStepMs = 1000 / 60;
+        this.maxFrameDeltaMs = 250;
+        this.frameAccumulatorMs = 0;
+        this.lastFrameTimestamp = null;
 
         // Twinkling stars in the sky
         this.stars = [];
@@ -1779,6 +1783,8 @@ class GameEngine {
         this.crates = [];
         this.particles = [];
         this.floatingTexts = [];
+        this.frameAccumulatorMs = 0;
+        this.lastFrameTimestamp = null;
         
         vocab.reset();
 
@@ -2249,23 +2255,25 @@ class GameEngine {
     // UPDATES & CORE PROCESSES
     // ==========================================================================
     loop(timestamp) {
-        if (this.state === 'playing') {
-            this.gameTime++;
-            this.timeElapsed++;
-            this.awardSurvivalBonuses();
-            if (this.timeElapsed >= this.maxGameDuration) {
-                this.awardFinalSurvivalBonus();
-                this.triggerGameOver('timeup');
-                requestAnimationFrame(timestamp => this.loop(timestamp));
-                return;
-            }
-            this.updatePhysics();
-            this.handleCollisions();
-            this.spawnSupplyCratesAndSubmarines();
+        if (this.lastFrameTimestamp === null) {
+            this.lastFrameTimestamp = timestamp;
         }
 
+        if (this.state === 'playing') {
+            const frameDeltaMs = Math.min(timestamp - this.lastFrameTimestamp, this.maxFrameDeltaMs);
+            this.frameAccumulatorMs += frameDeltaMs;
+
+            while (this.frameAccumulatorMs >= this.fixedStepMs && this.state === 'playing') {
+                this.runFixedGameStep();
+                this.frameAccumulatorMs -= this.fixedStepMs;
+            }
+        } else {
+            this.frameAccumulatorMs = 0;
+        }
+        this.lastFrameTimestamp = timestamp;
+
         this.drawScene();
-        
+
         // Screen shake class maintenance
         if (this.screenShakeTime > 0) {
             this.screenShakeTime--;
@@ -2275,6 +2283,20 @@ class GameEngine {
         }
 
         requestAnimationFrame(timestamp => this.loop(timestamp));
+    }
+
+    runFixedGameStep() {
+        this.gameTime++;
+        this.timeElapsed++;
+        this.awardSurvivalBonuses();
+        if (this.timeElapsed >= this.maxGameDuration) {
+            this.awardFinalSurvivalBonus();
+            this.triggerGameOver('timeup');
+            return;
+        }
+        this.updatePhysics();
+        this.handleCollisions();
+        this.spawnSupplyCratesAndSubmarines();
     }
 
     updatePhysics() {
