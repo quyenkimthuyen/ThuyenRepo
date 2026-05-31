@@ -360,7 +360,7 @@ class WordSnakeGame {
         this.bestCombo = 0;
         this.correct = 0;
         this.incorrect = 0;
-        this.lives = 1;
+        this.lives = 3;
         this.frame = 0;
         this.elapsedGameSeconds = 0;
         this.timeLeft = this.gameDurationSeconds;
@@ -762,6 +762,7 @@ class WordSnakeGame {
         this.incorrect++;
         this.combo = 0;
         this.score = Math.max(0, this.score - 40);
+        this.lives = Math.max(0, this.lives - 1);
         this.wrongCooldown = 45;
         this.poisonTimer = 85;
         this.addParticles(food.x, food.y, '#ff3c3c', 12);
@@ -772,6 +773,10 @@ class WordSnakeGame {
             this.segments.pop();
         }
         this.addParticles(tailPoint.x, tailPoint.y, '#baff29', 22);
+
+        if (this.lives <= 0) {
+            this.endGame('POISONED!');
+        }
     }
 
     nextChallenge() {
@@ -874,7 +879,7 @@ class WordSnakeGame {
             : Math.round((this.correct / (this.correct + this.incorrect)) * 100);
 
         document.getElementById('hud-score').innerText = String(this.score).padStart(5, '0');
-        document.getElementById('hud-hearts').innerText = this.lives > 0 ? '❤️' : '🖤';
+        document.getElementById('hud-hearts').innerText = '❤️'.repeat(Math.max(0, this.lives)) + '🖤'.repeat(Math.max(0, 3 - this.lives));
         document.getElementById('hud-diff').innerText = this.config.label;
         document.getElementById('hud-time').innerText = this.formatTime(this.timeLeft);
         document.getElementById('hud-accuracy').innerText = `${accuracy}%`;
@@ -899,7 +904,7 @@ class WordSnakeGame {
         document.getElementById('gameover-title').innerText = title;
         document.querySelector('.gameover-subtitle').innerText = won
             ? 'You survived the full 5-minute word swim!'
-            : (title === 'OUT OF BOUNDS!' ? 'The snake crossed the arena border.' : 'The snake bit its own tail.');
+            : (title === 'POISONED!' ? 'The snake ate the wrong food three times.' : 'The snake bit its own tail.');
         document.getElementById('go-score').innerText = this.score;
         document.getElementById('go-best-score').innerText = this.getHighScore();
         document.getElementById('go-combo').innerText = this.bestCombo;
