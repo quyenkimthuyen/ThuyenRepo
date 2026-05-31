@@ -618,7 +618,7 @@ class WordSnakeGame {
             if (this.head.y > this.height - margin) this.head.heading = this.blendHeading(this.head.heading, -Math.PI / 2, wallTurnBlend);
         }
 
-        const modeSpeedScale = this.motoMode ? 0.7 : 1;
+        const modeSpeedScale = this.motoMode ? 0.8 : 1;
         const speed = this.config.speed * 60 * 0.7 * modeSpeedScale;
         this.head.vx = Math.cos(this.head.heading) * speed;
         this.head.vy = Math.sin(this.head.heading) * speed;
@@ -707,11 +707,13 @@ class WordSnakeGame {
     }
 
     checkSelfCollision() {
-        if (this.bodyBiteCooldown > 0 || this.segments.length < 5) return;
+        if (this.bodyBiteCooldown > 0 || this.segments.length < 3) return;
 
         const bodyLength = this.getSnakeBodyLength();
-        const biteRadius = this.getSnakeThickness() * 0.62;
-        for (let distance = 118; distance <= bodyLength; distance += 18) {
+        const biteRadius = this.getSnakeThickness() * (this.motoMode ? 1.05 : 0.82);
+        const safeHeadDistance = this.motoMode ? 78 : 96;
+        const sampleStep = this.motoMode ? 10 : 14;
+        for (let distance = safeHeadDistance; distance <= bodyLength; distance += sampleStep) {
             const point = this.getPointAtDistance(distance);
             if (Math.hypot(point.x - this.head.x, point.y - this.head.y) < biteRadius) {
                 this.bodyBiteCooldown = 90;
