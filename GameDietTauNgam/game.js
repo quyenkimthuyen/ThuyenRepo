@@ -1466,6 +1466,12 @@ class GameEngine {
         this.timeElapsed = 0;
         this.maxGameDuration = 5 * 60 * 60; // 5 minutes at 60 FPS
         this.timeMultiplierTimer = 0;
+        this.stageDuration = 60 * 60; // 1 minute at 60 fixed steps per second
+        this.stageBossCheckWindow = 40 * 60; // first 40 seconds of each stage
+        this.stageKillRequirement = 5;
+        this.currentStageIndex = 0;
+        this.stageKillsThisStage = 0;
+        this.stageBossTriggered = false;
         this.survivalBonusInterval = 30 * 60; // 30 seconds at 60 FPS
         this.nextSurvivalBonusAt = this.survivalBonusInterval;
         this.finalSurvivalBonusAwarded = false;
@@ -1759,6 +1765,9 @@ class GameEngine {
         this.lives = this.mode === 'practice' ? 999 : 3; // unlimited practically in practice mode
         this.timeElapsed = 0;
         this.timeMultiplierTimer = 0;
+        this.currentStageIndex = 0;
+        this.stageKillsThisStage = 0;
+        this.stageBossTriggered = false;
         this.nextSurvivalBonusAt = this.survivalBonusInterval;
         this.finalSurvivalBonusAwarded = false;
         this.difficultyStage = 'EASY';
@@ -2153,16 +2162,21 @@ class GameEngine {
         this.submarines.push(sub);
     }
 
-    spawnBossSubmarine() {
+    spawnBossSubmarine(options = {}) {
         // Clear all missiles and warning systems
         this.activeAttacker = null;
         this.attackTimer = 0;
         
         // Spawn boss in middle depth layer
         const bossY = this.canvas.height * 0.55;
-        const wordObj = this.currentTarget;
+        const wordObj = options.wordObj || this.currentTarget;
         
         const boss = new Submarine(bossY, 2, wordObj, 1.0, true);
+        if (options.hp) {
+            boss.hp = options.hp;
+            boss.maxHp = options.hp;
+        }
+        boss.isStageBoss = Boolean(options.isStageBoss);
         this.submarines.push(boss);
 
         // Visual flash trigger
@@ -2170,7 +2184,7 @@ class GameEngine {
         this.bossHud.classList.remove('hidden');
         this.updateBossHud(boss);
 
-        this.floatingTexts.push(new FloatingText(this.canvas.width/2, this.canvas.height/2 - 50, "⚠️ BOSS INCOMING ⚠️", "#ff0055", 1.8));
+        this.floatingTexts.push(new FloatingText(this.canvas.width/2, this.canvas.height/2 - 50, options.message || "⚠️ BOSS INCOMING ⚠️", "#ff0055", 1.8));
     }
 
     fireDepthCharge(ship = this.battleship) {
@@ -2239,9 +2253,15 @@ class GameEngine {
             return;
         }
         
-        // Increase difficulty tier every 30 seconds
+        // Increase difficulty tier every minute.
         const stages = ['EASY', 'MEDIUM', 'HARD', 'INSANE', 'NIGHTMARE'];
-        const currentTier = Math.min(stages.length - 1, Math.floor(this.timeElapsed / 1800)); // 1800 frames = 30s
+        const currentTier = Math.min(stages.length - 1, Math.floor(this.timeElapsed / this.stageDuration));
+
+        if (currentTier !== this.currentStageIndex) {
+            this.currentStageIndex = currentTier;
+            this.stageKillsThisStage = 0;
+            this.stageBossTriggered = false;
+        }
         
         const newStage = stages[currentTier];
         if (newStage !== this.difficultyStage) {
@@ -2249,6 +2269,45 @@ class GameEngine {
             this.floatingTexts.push(new FloatingText(this.canvas.width/2, this.canvas.height/3, `STAGE UP: ${this.difficultyStage}!`, '#00ffff', 1.5));
             sound.playVictory();
         }
+
+        this.checkStageBossRequirement();
+    }
+
+    getCurrentStageElapsedFrames() {
+        return this.timeElapsed - (this.currentStageIndex * this.stageDuration);
+    }
+
+    isWithinStageBossCheckWindow() {
+        return this.getCurrentStageElapsedFrames() <= this.stageBossCheckWindow;
+    }
+
+    recordStageSubmarineKill() {
+        if (this.mode === 'practice' || !this.isWithinStageBossCheckWindow()) return;
+        this.stageKillsThisStage++;
+    }
+
+    checkStageBossRequirement() {
+        if (this.stageBossTriggered || this.getCurrentStageElapsedFrames() < this.stageBossCheckWindow) return;
+        if (this.stageKillsThisStage >= this.stageKillRequirement) return;
+        if (this.submarines.some(s => s.isBoss && !s.isDying)) {
+            this.stageBossTriggered = true;
+            return;
+        }
+
+        this.stageBossTriggered = true;
+        this.spawnStageBossForCurrentStage();
+    }
+
+    spawnStageBossForCurrentStage() {
+        this.currentTarget = vocab.pickNextTarget();
+        this.targetValue.innerHTML = `${this.currentTarget.emoji || ''} ${this.currentTarget.meaning}`;
+        this.speakCurrentTargetWord();
+        this.spawnBossSubmarine({
+            hp: 2,
+            isStageBoss: true,
+            wordObj: this.currentTarget,
+            message: `⚠️ ${this.difficultyStage} STAGE BOSS ⚠️`
+        });
     }
 
     // ==========================================================================
@@ -2472,15 +2531,18 @@ class GameEngine {
     triggerSubmarineAttack() {
         if (this.submarines.length === 0) return;
 
-        const livingSubs = this.submarines.filter(s => !s.isDying);
-        if (livingSubs.length === 0) return;
+        const livingNormalSubs = this.submarines.filter(s => !s.isDying && !s.isBoss);
+        const livingBosses = this.submarines.filter(s => !s.isDying && s.isBoss);
+        if (livingNormalSubs.length === 0 && livingBosses.length === 0) return;
 
-        const attackerCount = Math.min(this.maxConcurrentSubmarineAttackers, livingSubs.length);
-        const shuffledSubs = [...livingSubs].sort(() => Math.random() - 0.5);
+        const attackerCount = Math.min(this.maxConcurrentSubmarineAttackers, livingNormalSubs.length);
+        const shuffledSubs = [...livingNormalSubs].sort(() => Math.random() - 0.5);
 
         for (let i = 0; i < attackerCount; i++) {
             this.fireMissileFromSub(shuffledSubs[i]);
         }
+
+        livingBosses.forEach(boss => this.fireMissileFromSub(boss));
     }
 
     fireMissileFromSub(sub) {
@@ -2685,6 +2747,7 @@ class GameEngine {
             if (isTargetMatch) {
                 // Correct target hit
                 this.destroySubmarine(sub);
+                this.recordStageSubmarineKill();
                 
                 this.correctMatches++;
                 vocab.recordResult(sub.word.word, true);
