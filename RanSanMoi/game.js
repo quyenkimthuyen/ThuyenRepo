@@ -1098,7 +1098,7 @@ class WordSnakeGame {
     }
 
     getSnakeBodyLength() {
-        return 100 + Math.max(0, this.segments.length - 1) * 34;
+        return 100 + Math.max(0, this.segments.length - 1) * 68;
     }
 
     getSnakeThickness() {
