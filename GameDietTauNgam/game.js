@@ -2224,15 +2224,19 @@ class GameEngine {
     }
 
     getMaxSubmarinesCount() {
-        if (this.mode === 'practice') return 3;
+        if (this.mode === 'practice') return 4;
         switch (this.difficultyStage) {
-            case 'EASY': return 3;
-            case 'MEDIUM': return 4;
-            case 'HARD': return 5;
-            case 'INSANE': return 6;
-            case 'NIGHTMARE': return 7;
-            default: return 3;
+            case 'EASY': return 4;
+            case 'MEDIUM': return 5;
+            case 'HARD': return 6;
+            case 'INSANE': return 7;
+            case 'NIGHTMARE': return 8;
+            default: return 4;
         }
+    }
+
+    getMinSubmarinesCount() {
+        return 4;
     }
 
     getAttackCooldown() {
@@ -2496,7 +2500,7 @@ class GameEngine {
         }
 
         // 10. Update Enemy missile attack intervals
-        const hasBoss = this.submarines.some(s => s.isBoss);
+        const hasBoss = this.submarines.some(s => s.isBoss && !s.isDying);
         if (this.mode !== 'practice' && this.empTimer <= 0) {
             this.attackTimer++;
             
@@ -2981,11 +2985,16 @@ class GameEngine {
         const hasBoss = this.submarines.some(s => s.isBoss);
         
         // 1. Maintain active submarine counts
+        const minSubs = this.getMinSubmarinesCount();
         const maxSubs = this.getMaxSubmarinesCount();
-        const activeNormalSubs = this.submarines.filter(s => !s.isDying && !s.isBoss).length;
+        const activeSubs = this.submarines.filter(s => !s.isDying).length;
         
-        // If boss is active, we don't spawn new normal subs to avoid clutter
-        if (!hasBoss && activeNormalSubs < maxSubs && Math.random() < 0.015) {
+        if (activeSubs < minSubs) {
+            const spawnCount = Math.min(minSubs - activeSubs, maxSubs - activeSubs);
+            for (let i = 0; i < spawnCount; i++) {
+                this.spawnSubmarine();
+            }
+        } else if (!hasBoss && activeSubs < maxSubs && Math.random() < 0.015) {
             this.spawnSubmarine();
         }
         this.guaranteeTargetSubmarinePresence();
