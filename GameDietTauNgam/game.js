@@ -1828,7 +1828,7 @@ class GameEngine {
         this.selectNewTarget();
 
         // Spawn initial submarines
-        const maxInitial = this.getMaxSubmarinesCount();
+        const maxInitial = this.getMinSubmarinesCount();
         for (let i = 0; i < maxInitial; i++) {
             this.spawnSubmarine(i);
         }
@@ -2224,19 +2224,15 @@ class GameEngine {
     }
 
     getMaxSubmarinesCount() {
-        if (this.mode === 'practice') return 4;
-        switch (this.difficultyStage) {
-            case 'EASY': return 4;
-            case 'MEDIUM': return 5;
-            case 'HARD': return 6;
-            case 'INSANE': return 7;
-            case 'NIGHTMARE': return 8;
-            default: return 4;
-        }
+        if (this.currentStageIndex >= 4) return 9; // final minute
+        if (this.currentStageIndex >= 2) return 9; // from minute 3
+        return 8;
     }
 
     getMinSubmarinesCount() {
-        return 4;
+        if (this.currentStageIndex >= 4) return 7; // final minute
+        if (this.currentStageIndex >= 2) return 6; // from minute 3
+        return 5;
     }
 
     getAttackCooldown() {
@@ -2293,10 +2289,6 @@ class GameEngine {
     checkStageBossRequirement() {
         if (this.stageBossTriggered || this.getCurrentStageElapsedFrames() < this.stageBossCheckWindow) return;
         if (this.stageKillsThisStage >= this.stageKillRequirement) return;
-        if (this.submarines.some(s => s.isBoss && !s.isDying)) {
-            this.stageBossTriggered = true;
-            return;
-        }
 
         this.stageBossTriggered = true;
         this.spawnStageBossForCurrentStage();
@@ -2982,19 +2974,17 @@ class GameEngine {
     }
 
     spawnSupplyCratesAndSubmarines() {
-        const hasBoss = this.submarines.some(s => s.isBoss);
-        
-        // 1. Maintain active submarine counts
+        // 1. Maintain active normal submarine counts. Bosses are extra pressure and do not count.
         const minSubs = this.getMinSubmarinesCount();
         const maxSubs = this.getMaxSubmarinesCount();
-        const activeSubs = this.submarines.filter(s => !s.isDying).length;
+        const activeNormalSubs = this.submarines.filter(s => !s.isDying && !s.isBoss).length;
         
-        if (activeSubs < minSubs) {
-            const spawnCount = Math.min(minSubs - activeSubs, maxSubs - activeSubs);
+        if (activeNormalSubs < minSubs) {
+            const spawnCount = Math.min(minSubs - activeNormalSubs, maxSubs - activeNormalSubs);
             for (let i = 0; i < spawnCount; i++) {
                 this.spawnSubmarine();
             }
-        } else if (!hasBoss && activeSubs < maxSubs && Math.random() < 0.015) {
+        } else if (activeNormalSubs < maxSubs && Math.random() < 0.015) {
             this.spawnSubmarine();
         }
         this.guaranteeTargetSubmarinePresence();
