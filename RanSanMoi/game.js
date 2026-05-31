@@ -444,7 +444,7 @@ class WordSnakeGame {
 
     createFood(item, type, index = 0) {
         const angle = Math.random() * Math.PI * 2;
-        const driftSpeed = 0.35 + Math.random() * 0.75;
+        const driftSpeed = (0.35 + Math.random() * 0.75) * 0.5;
 
         return {
             item,
@@ -671,14 +671,14 @@ class WordSnakeGame {
             food.vy += currentY * delta;
 
             const speed = Math.hypot(food.vx, food.vy) || 1;
-            const maxSpeed = 1.35;
-            const minSpeed = 0.28;
+            const maxSpeed = 0.675;
+            const minSpeed = 0.14;
             if (speed > maxSpeed) {
                 food.vx = (food.vx / speed) * maxSpeed;
                 food.vy = (food.vy / speed) * maxSpeed;
             } else if (speed < minSpeed) {
-                food.vx += (Math.random() - 0.5) * 0.12;
-                food.vy += (Math.random() - 0.5) * 0.12;
+                food.vx += (Math.random() - 0.5) * 0.06;
+                food.vy += (Math.random() - 0.5) * 0.06;
             }
 
             food.x += food.vx * delta;
@@ -687,12 +687,12 @@ class WordSnakeGame {
             if (food.x < left || food.x > right) {
                 food.x = Math.max(left, Math.min(right, food.x));
                 food.vx *= -0.85;
-                food.vy += (Math.random() - 0.5) * 0.35;
+                food.vy += (Math.random() - 0.5) * 0.175;
             }
             if (food.y < top || food.y > bottom) {
                 food.y = Math.max(top, Math.min(bottom, food.y));
                 food.vy *= -0.85;
-                food.vx += (Math.random() - 0.5) * 0.35;
+                food.vx += (Math.random() - 0.5) * 0.175;
             }
         });
     }
