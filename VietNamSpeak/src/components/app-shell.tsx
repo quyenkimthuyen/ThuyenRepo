@@ -2,21 +2,23 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 const navItems = [
-  { href: "/", label: "Dashboard" },
-  { href: "/learn/school", label: "Word" },
-  { href: "/ipa", label: "IPA Center" },
-  { href: "/rules", label: "Rules" },
-  { href: "/game", label: "Adventure" },
-  { href: "/daily", label: "Daily" }
+  { href: "/", label: "Học ngay" },
+  { href: "/learn", label: "Kho từ" },
+  { href: "/ipa", label: "Âm IPA" },
+  { href: "/rules", label: "Quy tắc" },
+  { href: "/game", label: "Ôn vui" }
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-4 sm:px-6 lg:px-8">
-      <header className="sticky top-0 z-20 mb-6 rounded-3xl border border-[var(--border)] bg-[var(--card)]/85 p-3 shadow-sm backdrop-blur">
+    <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-20 mb-6 rounded-3xl border border-[var(--border)] bg-[var(--card)]/90 p-3 shadow-sm backdrop-blur">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/" className="text-2xl font-black tracking-tight text-blue-600 dark:text-blue-300">
-            VietNamSpeak
+          <Link href="/" className="leading-tight text-blue-600 dark:text-blue-300">
+            <span className="block text-2xl font-black tracking-tight">VietNamSpeak</span>
+            <span className="text-xs font-bold text-[var(--muted-foreground)]">
+              Đánh vần tiếng Anh theo tư duy người Việt
+            </span>
           </Link>
           <nav className="flex gap-2 overflow-x-auto pb-1 sm:pb-0" aria-label="Primary navigation">
             {navItems.map((item) => (

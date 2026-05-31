@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { WordLearningCard } from "@/components/word-learning-card";
-import { WORDS, getWordById } from "@/data/words";
+import { WORDS, getNextWordId, getWordById } from "@/data/words";
 
 export function generateStaticParams() {
   return WORDS.map((word) => ({ word: word.id }));
@@ -13,5 +13,5 @@ export default async function LearnWordPage({ params }: { params: Promise<{ word
 
   if (!word) notFound();
 
-  return <WordLearningCard word={word} />;
+  return <WordLearningCard word={word} nextWordId={getNextWordId(word.id)} />;
 }

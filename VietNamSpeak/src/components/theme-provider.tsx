@@ -1,12 +1,21 @@
 "use client";
 
-import { ThemeProvider as NextThemesProvider } from "next-themes";
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  return (
-    <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
-      {children}
-    </NextThemesProvider>
-  );
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    function syncTheme() {
+      document.documentElement.classList.toggle("dark", mediaQuery.matches);
+    }
+
+    syncTheme();
+    mediaQuery.addEventListener("change", syncTheme);
+
+    return () => mediaQuery.removeEventListener("change", syncTheme);
+  }, []);
+
+  return children;
 }

@@ -2802,9 +2802,6 @@ class GameEngine {
         sub.wreckScale = minScale + depthRatio * (maxScale - minScale);
         sub.wreckTilt = (sub.facingRight ? 1 : -1) * (0.32 + Math.random() * 0.38);
 
-        // Speak the destroyed submarine vocabulary item using the current speech mode.
-        this.speakWordAudio(sub.word);
-
         // Initial blast followed by a longer sinking animation.
         const numParticles = sub.isBoss ? 55 : 28;
         for (let k = 0; k < numParticles; k++) {
