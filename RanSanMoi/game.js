@@ -618,8 +618,8 @@ class WordSnakeGame {
             if (this.head.y > this.height - margin) this.head.heading = this.blendHeading(this.head.heading, -Math.PI / 2, wallTurnBlend);
         }
 
-        const progress = Math.min(1, this.elapsedGameSeconds / this.gameDurationSeconds);
-        const speed = (this.config.speed + progress * 4.2 + Math.min(1.8, this.segments.length * 0.035)) * 60;
+        const modeSpeedScale = this.motoMode ? 0.7 : 1;
+        const speed = this.config.speed * 60 * 0.7 * modeSpeedScale;
         this.head.vx = Math.cos(this.head.heading) * speed;
         this.head.vy = Math.sin(this.head.heading) * speed;
 
