@@ -1440,6 +1440,7 @@ class GameEngine {
         this.hudAmmo = document.getElementById('hud-ammo');
         this.hudReloadFill = document.getElementById('hud-reload-fill');
         this.hudReloadText = document.getElementById('hud-reload-text');
+        this.bilingualToggleBtn = document.getElementById('btn-bilingual-toggle');
         this.targetValue = document.getElementById('target-value');
         this.bossHud = document.getElementById('boss-hud');
         this.bossHpText = document.getElementById('boss-hp-text');
@@ -1468,6 +1469,7 @@ class GameEngine {
         this.survivalBonusInterval = 30 * 60; // 30 seconds at 60 FPS
         this.nextSurvivalBonusAt = this.survivalBonusInterval;
         this.finalSurvivalBonusAwarded = false;
+        this.bilingualSpeechEnabled = true;
 
         // Stats tracking
         this.correctMatches = 0;
@@ -1682,6 +1684,14 @@ class GameEngine {
             const isMuted = sound.toggleMute();
             soundBtn.innerText = isMuted ? '❌' : '🔊';
         });
+
+        if (this.bilingualToggleBtn) {
+            this.updateBilingualSpeechButton();
+            this.bilingualToggleBtn.addEventListener('click', () => {
+                this.bilingualSpeechEnabled = !this.bilingualSpeechEnabled;
+                this.updateBilingualSpeechButton();
+            });
+        }
 
         // Pause Modal controls
         document.getElementById('btn-resume').addEventListener('click', () => this.resumeGame());
@@ -1922,14 +1932,144 @@ class GameEngine {
         this.manualTargetChangeCooldown = this.manualTargetChangeCooldownDuration;
     }
 
-    speakCurrentTargetWord() {
-        if (!window.speechSynthesis || !this.currentTarget?.word) return;
+    updateBilingualSpeechButton() {
+        if (!this.bilingualToggleBtn) return;
 
-        const utter = new SpeechSynthesisUtterance(this.currentTarget.word);
+        this.bilingualToggleBtn.classList.toggle('active', this.bilingualSpeechEnabled);
+        this.bilingualToggleBtn.innerText = this.bilingualSpeechEnabled ? 'VI+EN' : 'EN';
+        this.bilingualToggleBtn.title = this.bilingualSpeechEnabled
+            ? 'Speech: Vietnamese meaning then English word'
+            : 'Speech: English word only';
+    }
+
+    getSpeechVoice(langPrefix) {
+        if (!window.speechSynthesis) return null;
+
         const voices = window.speechSynthesis.getVoices();
-        const enVoice = voices.find(v => v.lang && v.lang.startsWith('en'));
-        if (enVoice) utter.voice = enVoice;
-        window.speechSynthesis.speak(utter);
+        const prefix = langPrefix.toLowerCase();
+        if (prefix === 'vi') {
+            return voices.find(v => (v.lang || '').toLowerCase() === 'vi-vn')
+                || voices.find(v => (v.lang || '').toLowerCase().startsWith('vi'))
+                || voices.find(v => (v.name || '').toLowerCase().includes('vietnam'));
+        }
+        return voices.find(v => v.lang && v.lang.toLowerCase().startsWith(prefix));
+    }
+
+    createSpeechUtterance(text, langPrefix) {
+        const utter = new SpeechSynthesisUtterance(text);
+        const voice = this.getSpeechVoice(langPrefix);
+        utter.lang = langPrefix === 'vi' ? 'vi-VN' : 'en-US';
+        utter.rate = langPrefix === 'vi' ? 0.92 : 0.95;
+        if (voice) utter.voice = voice;
+        return utter;
+    }
+
+    speakWithBrowserVoice(text, langPrefix, allowSystemFallback = false) {
+        return new Promise(resolve => {
+            if (!window.speechSynthesis || !text) {
+                resolve(false);
+                return;
+            }
+
+            if (langPrefix === 'vi' && !allowSystemFallback && !this.getSpeechVoice('vi')) {
+                resolve(false);
+                return;
+            }
+
+            const utter = this.createSpeechUtterance(text, langPrefix);
+            utter.onend = () => resolve(true);
+            utter.onerror = () => resolve(false);
+            window.speechSynthesis.speak(utter);
+        });
+    }
+
+    getVietnameseTtsUrls(text) {
+        const encodedText = encodeURIComponent(text);
+        return [
+            `https://api.streamelements.com/kappa/v2/speech?voice=vi-VN-HoaiMyNeural&text=${encodedText}`,
+            `https://api.streamelements.com/kappa/v2/speech?voice=vi-VN-NamMinhNeural&text=${encodedText}`,
+            `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=vi&q=${encodedText}`
+        ];
+    }
+
+    playAudioUrl(url, startupTimeoutMs = 2500, maxDurationMs = 8000) {
+        return new Promise(resolve => {
+            if (!url) {
+                resolve(false);
+                return;
+            }
+
+            if (this.currentVietnameseAudio) {
+                this.currentVietnameseAudio.pause();
+                this.currentVietnameseAudio = null;
+            }
+
+            const audio = new Audio(url);
+            this.currentVietnameseAudio = audio;
+            let settled = false;
+            let started = false;
+
+            const finish = (success) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(startupTimer);
+                clearTimeout(maxTimer);
+                resolve(success);
+            };
+
+            const startupTimer = setTimeout(() => {
+                if (!started) {
+                    audio.pause();
+                    finish(false);
+                }
+            }, startupTimeoutMs);
+            const maxTimer = setTimeout(() => {
+                audio.pause();
+                finish(false);
+            }, maxDurationMs);
+
+            audio.onplaying = () => {
+                started = true;
+                clearTimeout(startupTimer);
+            };
+            audio.onended = () => finish(true);
+            audio.onerror = () => finish(false);
+            audio.play()
+                .then(() => {
+                    started = true;
+                    clearTimeout(startupTimer);
+                })
+                .catch(() => finish(false));
+        });
+    }
+
+    async speakVietnameseText(text) {
+        for (const url of this.getVietnameseTtsUrls(text)) {
+            const played = await this.playAudioUrl(url);
+            if (played) return;
+        }
+
+        // Last resort: keep the target meaning audible even if online Vietnamese TTS is blocked.
+        await this.speakWithBrowserVoice(text, 'vi', true);
+    }
+
+    async speakWordAudio(wordObj) {
+        if (!wordObj?.word) return;
+
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+        }
+
+        if (this.bilingualSpeechEnabled && wordObj.meaning) {
+            await this.speakVietnameseText(wordObj.meaning);
+        }
+        await this.speakWithBrowserVoice(wordObj.word, 'en');
+    }
+
+    speakCurrentTargetWord() {
+        if (!this.currentTarget?.word) return;
+
+        this.speakWordAudio(this.currentTarget);
     }
 
     guaranteeTargetSubmarinePresence() {
@@ -2662,15 +2802,8 @@ class GameEngine {
         sub.wreckScale = minScale + depthRatio * (maxScale - minScale);
         sub.wreckTilt = (sub.facingRight ? 1 : -1) * (0.32 + Math.random() * 0.38);
 
-        // Speak the name of the destroyed submarine (English word) using an English voice
-        if (window.speechSynthesis && sub.word && sub.word.word) {
-            const utter = new SpeechSynthesisUtterance(sub.word.word);
-            // Prefer an English voice if available
-            const voices = window.speechSynthesis.getVoices();
-            const enVoice = voices.find(v => v.lang && v.lang.startsWith('en'));
-            if (enVoice) utter.voice = enVoice;
-            window.speechSynthesis.speak(utter);
-        }
+        // Speak the destroyed submarine vocabulary item using the current speech mode.
+        this.speakWordAudio(sub.word);
 
         // Initial blast followed by a longer sinking animation.
         const numParticles = sub.isBoss ? 55 : 28;
