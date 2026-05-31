@@ -605,7 +605,13 @@ class WordSnakeGame {
 
         const margin = 38;
         const wallTurnBlend = 1 - Math.pow(0.82, deltaFrames);
-        if (!this.motoMode) {
+        if (this.motoMode) {
+            const bounds = this.worldBounds;
+            if (this.head.x < bounds.left + margin) this.head.heading = this.blendHeading(this.head.heading, 0, wallTurnBlend);
+            if (this.head.x > bounds.right - margin) this.head.heading = this.blendHeading(this.head.heading, Math.PI, wallTurnBlend);
+            if (this.head.y < bounds.top + margin) this.head.heading = this.blendHeading(this.head.heading, Math.PI / 2, wallTurnBlend);
+            if (this.head.y > bounds.bottom - margin) this.head.heading = this.blendHeading(this.head.heading, -Math.PI / 2, wallTurnBlend);
+        } else {
             if (this.head.x < margin) this.head.heading = this.blendHeading(this.head.heading, 0, wallTurnBlend);
             if (this.head.x > this.width - margin) this.head.heading = this.blendHeading(this.head.heading, Math.PI, wallTurnBlend);
             if (this.head.y < 120 + margin) this.head.heading = this.blendHeading(this.head.heading, Math.PI / 2, wallTurnBlend);
@@ -619,7 +625,11 @@ class WordSnakeGame {
 
         this.head.x += this.head.vx * deltaSeconds;
         this.head.y += this.head.vy * deltaSeconds;
-        if (!this.motoMode) {
+        if (this.motoMode) {
+            const bounds = this.worldBounds;
+            this.head.x = Math.max(bounds.left + 24, Math.min(bounds.right - 24, this.head.x));
+            this.head.y = Math.max(bounds.top + 24, Math.min(bounds.bottom - 24, this.head.y));
+        } else {
             this.head.x = Math.max(28, Math.min(this.width - 28, this.head.x));
             this.head.y = Math.max(120, Math.min(this.height - 32, this.head.y));
         }
@@ -692,17 +702,7 @@ class WordSnakeGame {
     }
 
     checkBoundaryCollision() {
-        if (!this.motoMode) return;
-        const bounds = this.worldBounds;
-        const radius = this.getSnakeThickness() * 0.65;
-        if (
-            this.head.x < bounds.left + radius ||
-            this.head.x > bounds.right - radius ||
-            this.head.y < bounds.top + radius ||
-            this.head.y > bounds.bottom - radius
-        ) {
-            this.endGame('OUT OF BOUNDS!');
-        }
+        // Moto mode now treats the border like a soft wall and turns the snake back.
     }
 
     checkSelfCollision() {
@@ -998,19 +998,19 @@ class WordSnakeGame {
         const height = bounds.bottom - bounds.top;
 
         ctx.save();
-        ctx.strokeStyle = 'rgba(255, 208, 0, 0.8)';
-        ctx.lineWidth = 6;
-        ctx.setLineDash([22, 16]);
-        ctx.shadowColor = 'rgba(255, 208, 0, 0.35)';
-        ctx.shadowBlur = 12;
+        ctx.strokeStyle = 'rgba(15, 23, 42, 0.46)';
+        ctx.lineWidth = 5;
+        ctx.setLineDash([18, 18]);
+        ctx.shadowColor = 'rgba(15, 23, 42, 0.18)';
+        ctx.shadowBlur = 6;
         ctx.strokeRect(x, y, width, height);
         ctx.setLineDash([]);
 
-        ctx.fillStyle = 'rgba(255, 208, 0, 0.12)';
-        ctx.fillRect(x, y, width, 18);
-        ctx.fillRect(x, y + height - 18, width, 18);
-        ctx.fillRect(x, y, 18, height);
-        ctx.fillRect(x + width - 18, y, 18, height);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.08)';
+        ctx.fillRect(x, y, width, 14);
+        ctx.fillRect(x, y + height - 14, width, 14);
+        ctx.fillRect(x, y, 14, height);
+        ctx.fillRect(x + width - 14, y, 14, height);
         ctx.restore();
     }
 
