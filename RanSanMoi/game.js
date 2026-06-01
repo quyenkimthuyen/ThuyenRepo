@@ -17,7 +17,7 @@ const FALLBACK_VOCAB = [
 ];
 
 const SPEED_BOOST_MULTIPLIER = 3;
-const SPEED_BOOST_DURATION_SECONDS = 3;
+const SPEED_BOOST_DURATION_SECONDS = 1;
 const SPEED_BOOST_COOLDOWN_SECONDS = 10;
 
 const MODE_CONFIG = {
@@ -233,14 +233,11 @@ class WordSnakeGame {
             soundButton.classList.toggle('active', !muted);
         });
 
-        document.getElementById('btn-meaning-audio').addEventListener('click', () => {
-            this.fx.init();
-            this.speakCurrentTarget('vi');
+        document.getElementById('btn-meaning-audio').addEventListener('pointerdown', (event) => {
+            this.handleAudioButtonPress(event, 'vi');
         });
-
-        document.getElementById('btn-word-audio').addEventListener('click', () => {
-            this.fx.init();
-            this.speakCurrentTarget('en');
+        document.getElementById('btn-word-audio').addEventListener('pointerdown', (event) => {
+            this.handleAudioButtonPress(event, 'en');
         });
 
         const hintButton = document.getElementById('btn-hint-toggle');
@@ -834,14 +831,21 @@ class WordSnakeGame {
         this.speakTypes(item, order);
     }
 
+    handleAudioButtonPress(event, type) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.fx.init();
+        this.speakCurrentTarget(type);
+    }
+
     speakCurrentTarget(type) {
         this.lastPromptSpeechFrame = this.frame;
         this.lastPromptSpeechTimeMs = performance.now();
         this.lastPromptSpeechGameSecond = this.elapsedGameSeconds;
-        this.speakTypes(this.currentItem, [type]);
+        this.speakTypes(this.currentItem, [type], true);
     }
 
-    speakTypes(item, order) {
+    speakTypes(item, order, manual = false) {
         if (!item || !this.speechEnabled || this.fx.muted || !window.speechSynthesis) return;
 
         window.speechSynthesis.cancel();
@@ -855,11 +859,17 @@ class WordSnakeGame {
             const voice = voices.find(v => (v.lang || '').toLowerCase().startsWith(type === 'vi' ? 'vi' : 'en'));
             if (voice) utterance.voice = voice;
 
-            setTimeout(() => {
-                if (this.state === 'playing' && this.speechEnabled && !this.fx.muted) {
+            const speak = () => {
+                if ((manual || this.state === 'playing') && this.speechEnabled && !this.fx.muted) {
                     window.speechSynthesis.speak(utterance);
                 }
-            }, index * 850);
+            };
+
+            if (manual && index === 0) {
+                speak();
+            } else {
+                setTimeout(speak, index * 850);
+            }
         });
     }
 
@@ -926,7 +936,7 @@ class WordSnakeGame {
         this.speedMultiplier = SPEED_BOOST_MULTIPLIER;
         this.speedBoostUntil = this.elapsedGameSeconds + SPEED_BOOST_DURATION_SECONDS;
         this.nextSpeedBoostAt = this.elapsedGameSeconds + SPEED_BOOST_COOLDOWN_SECONDS;
-        this.speedBoostFlash = 50;
+        this.speedBoostFlash = 35;
         this.fx.tone(740, 0.08, 'square', 0.07);
         this.fx.tone(1180, 0.12, 'triangle', 0.06, 0.06);
         this.addParticles(this.head.x, this.head.y, '#38bdf8', 36);
@@ -1377,45 +1387,53 @@ class WordSnakeGame {
 
         const ctx = this.ctx;
         const head = this.worldToScreen(this.head);
-        const flashProgress = this.speedBoostFlash > 0 ? 1 - (this.speedBoostFlash / 50) : 1;
+        const flashProgress = this.speedBoostFlash > 0 ? 1 - (this.speedBoostFlash / 35) : 1;
         const boostStrength = Math.min(1, (this.speedMultiplier - 1) / (SPEED_BOOST_MULTIPLIER - 1));
-        const streakCount = 5 + Math.round(boostStrength * 8);
         const backAngle = this.head.heading + Math.PI;
-        const sideAngle = this.head.heading + Math.PI / 2;
+        const tailX = head.x + Math.cos(backAngle) * 150;
+        const tailY = head.y + Math.sin(backAngle) * 150;
+        const flareX = head.x + Math.cos(backAngle) * 44;
+        const flareY = head.y + Math.sin(backAngle) * 44;
 
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
 
         if (this.speedBoostFlash > 0) {
-            ctx.globalAlpha = Math.max(0, 0.55 * (1 - flashProgress));
+            ctx.globalAlpha = Math.max(0, 0.45 * (1 - flashProgress));
             ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 4;
+            ctx.lineWidth = 5;
             ctx.shadowColor = '#38bdf8';
-            ctx.shadowBlur = 22;
+            ctx.shadowBlur = 18;
             ctx.beginPath();
-            ctx.arc(head.x, head.y, 32 + flashProgress * 64, 0, Math.PI * 2);
+            ctx.arc(head.x, head.y, 24 + flashProgress * 48, 0, Math.PI * 2);
             ctx.stroke();
         }
 
-        for (let index = 0; index < streakCount; index++) {
-            const sideOffset = (index - (streakCount - 1) / 2) * 9;
-            const startDistance = 28 + index * 5;
-            const length = 55 + this.speedMultiplier * 28 + index * 4;
-            const startX = head.x + Math.cos(backAngle) * startDistance + Math.cos(sideAngle) * sideOffset;
-            const startY = head.y + Math.sin(backAngle) * startDistance + Math.sin(sideAngle) * sideOffset;
-            const endX = head.x + Math.cos(backAngle) * (startDistance + length) + Math.cos(sideAngle) * sideOffset;
-            const endY = head.y + Math.sin(backAngle) * (startDistance + length) + Math.sin(sideAngle) * sideOffset;
+        const beam = ctx.createLinearGradient(head.x, head.y, tailX, tailY);
+        beam.addColorStop(0, `rgba(56, 189, 248, ${0.42 + boostStrength * 0.22})`);
+        beam.addColorStop(0.45, 'rgba(0, 255, 136, 0.22)');
+        beam.addColorStop(1, 'rgba(56, 189, 248, 0)');
 
-            ctx.globalAlpha = 0.16 + boostStrength * 0.22;
-            ctx.strokeStyle = index % 2 === 0 ? '#38bdf8' : '#00ff88';
-            ctx.lineWidth = 2 + boostStrength * 3;
-            ctx.shadowColor = ctx.strokeStyle;
-            ctx.shadowBlur = 16;
-            ctx.beginPath();
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(endX, endY);
-            ctx.stroke();
-        }
+        ctx.globalAlpha = 0.9;
+        ctx.strokeStyle = beam;
+        ctx.lineWidth = 30 + boostStrength * 12;
+        ctx.lineCap = 'round';
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 22;
+        ctx.beginPath();
+        ctx.moveTo(flareX, flareY);
+        ctx.lineTo(tailX, tailY);
+        ctx.stroke();
+
+        ctx.globalAlpha = 0.75;
+        ctx.strokeStyle = '#e0faff';
+        ctx.lineWidth = 4;
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.moveTo(head.x + Math.cos(backAngle) * 30, head.y + Math.sin(backAngle) * 30);
+        ctx.lineTo(head.x + Math.cos(backAngle) * 98, head.y + Math.sin(backAngle) * 98);
+        ctx.stroke();
 
         ctx.restore();
     }
