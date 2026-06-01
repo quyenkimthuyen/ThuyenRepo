@@ -16,6 +16,10 @@ const FALLBACK_VOCAB = [
     { word: 'Run', meaning: 'Chạy', emoji: '🏃' }
 ];
 
+const SPEED_BOOST_MULTIPLIER = 3;
+const SPEED_BOOST_DURATION_SECONDS = 3;
+const SPEED_BOOST_COOLDOWN_SECONDS = 10;
+
 const MODE_CONFIG = {
     'vi-en': {
         label: 'VI -> EN',
@@ -158,7 +162,9 @@ class WordSnakeGame {
         this.growthTimer = 0;
         this.bodyBiteCooldown = 0;
         this.speedMultiplier = 1;
+        this.speedBoostUntil = 0;
         this.nextSpeedBoostAt = 0;
+        this.speedBoostFlash = 0;
         this.lastPromptSpeechFrame = -Infinity;
         this.lastPromptSpeechTimeMs = -Infinity;
         this.lastPromptSpeechGameSecond = -Infinity;
@@ -227,14 +233,14 @@ class WordSnakeGame {
             soundButton.classList.toggle('active', !muted);
         });
 
-        const speechButton = document.getElementById('btn-bilingual-toggle');
-        speechButton.addEventListener('click', () => {
-            this.speechEnabled = !this.speechEnabled;
-            speechButton.classList.toggle('active', this.speechEnabled);
-            speechButton.innerText = this.speechEnabled ? 'VOICE' : 'QUIET';
-            if (!this.speechEnabled && window.speechSynthesis) {
-                window.speechSynthesis.cancel();
-            }
+        document.getElementById('btn-meaning-audio').addEventListener('click', () => {
+            this.fx.init();
+            this.speakCurrentTarget('vi');
+        });
+
+        document.getElementById('btn-word-audio').addEventListener('click', () => {
+            this.fx.init();
+            this.speakCurrentTarget('en');
         });
 
         const hintButton = document.getElementById('btn-hint-toggle');
@@ -374,7 +380,9 @@ class WordSnakeGame {
         this.growthTimer = 0;
         this.bodyBiteCooldown = 0;
         this.speedMultiplier = 1;
+        this.speedBoostUntil = 0;
         this.nextSpeedBoostAt = 0;
+        this.speedBoostFlash = 0;
         this.lastPromptSpeechFrame = -Infinity;
         this.lastPromptSpeechTimeMs = -Infinity;
         this.lastPromptSpeechGameSecond = -Infinity;
@@ -577,6 +585,12 @@ class WordSnakeGame {
         }
         if (this.bodyBiteCooldown > 0) {
             this.bodyBiteCooldown -= delta;
+        }
+        if (this.speedMultiplier > 1 && this.elapsedGameSeconds >= this.speedBoostUntil) {
+            this.speedMultiplier = 1;
+        }
+        if (this.speedBoostFlash > 0) {
+            this.speedBoostFlash -= delta;
         }
 
         this.updateSnake(deltaSeconds, delta);
@@ -816,10 +830,21 @@ class WordSnakeGame {
         this.lastPromptSpeechFrame = this.frame;
         this.lastPromptSpeechTimeMs = performance.now();
         this.lastPromptSpeechGameSecond = this.elapsedGameSeconds;
+        const order = this.config.speechOrder || [sourceType, sourceType === 'vi' ? 'en' : 'vi'];
+        this.speakTypes(item, order);
+    }
+
+    speakCurrentTarget(type) {
+        this.lastPromptSpeechFrame = this.frame;
+        this.lastPromptSpeechTimeMs = performance.now();
+        this.lastPromptSpeechGameSecond = this.elapsedGameSeconds;
+        this.speakTypes(this.currentItem, [type]);
+    }
+
+    speakTypes(item, order) {
         if (!item || !this.speechEnabled || this.fx.muted || !window.speechSynthesis) return;
 
         window.speechSynthesis.cancel();
-        const order = this.config.speechOrder || [sourceType, sourceType === 'vi' ? 'en' : 'vi'];
 
         order.forEach((type, index) => {
             const utterance = new SpeechSynthesisUtterance(type === 'vi' ? item.meaning : item.word);
@@ -897,11 +922,14 @@ class WordSnakeGame {
 
     trySpeedBoost() {
         if (this.state !== 'playing' || this.elapsedGameSeconds < this.nextSpeedBoostAt) return;
-        if (this.speedMultiplier >= 2) return;
 
-        this.speedMultiplier = Math.min(2, Number((this.speedMultiplier + 0.1).toFixed(1)));
-        this.nextSpeedBoostAt = this.elapsedGameSeconds + 10;
-        this.addParticles(this.head.x, this.head.y, '#38bdf8', 10);
+        this.speedMultiplier = SPEED_BOOST_MULTIPLIER;
+        this.speedBoostUntil = this.elapsedGameSeconds + SPEED_BOOST_DURATION_SECONDS;
+        this.nextSpeedBoostAt = this.elapsedGameSeconds + SPEED_BOOST_COOLDOWN_SECONDS;
+        this.speedBoostFlash = 50;
+        this.fx.tone(740, 0.08, 'square', 0.07);
+        this.fx.tone(1180, 0.12, 'triangle', 0.06, 0.06);
+        this.addParticles(this.head.x, this.head.y, '#38bdf8', 36);
     }
 
     updateChainHud() {
@@ -951,6 +979,7 @@ class WordSnakeGame {
         this.drawWorldBoundary();
         this.foods.forEach(food => this.drawFood(food));
         this.drawSnake();
+        this.drawSpeedBoostEffect();
         this.drawParticles();
 
         if (this.state === 'paused') {
@@ -1341,6 +1370,54 @@ class WordSnakeGame {
             ctx.fill();
             ctx.restore();
         });
+    }
+
+    drawSpeedBoostEffect() {
+        if (this.speedMultiplier <= 1 && this.speedBoostFlash <= 0) return;
+
+        const ctx = this.ctx;
+        const head = this.worldToScreen(this.head);
+        const flashProgress = this.speedBoostFlash > 0 ? 1 - (this.speedBoostFlash / 50) : 1;
+        const boostStrength = Math.min(1, (this.speedMultiplier - 1) / (SPEED_BOOST_MULTIPLIER - 1));
+        const streakCount = 5 + Math.round(boostStrength * 8);
+        const backAngle = this.head.heading + Math.PI;
+        const sideAngle = this.head.heading + Math.PI / 2;
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+
+        if (this.speedBoostFlash > 0) {
+            ctx.globalAlpha = Math.max(0, 0.55 * (1 - flashProgress));
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 4;
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 22;
+            ctx.beginPath();
+            ctx.arc(head.x, head.y, 32 + flashProgress * 64, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        for (let index = 0; index < streakCount; index++) {
+            const sideOffset = (index - (streakCount - 1) / 2) * 9;
+            const startDistance = 28 + index * 5;
+            const length = 55 + this.speedMultiplier * 28 + index * 4;
+            const startX = head.x + Math.cos(backAngle) * startDistance + Math.cos(sideAngle) * sideOffset;
+            const startY = head.y + Math.sin(backAngle) * startDistance + Math.sin(sideAngle) * sideOffset;
+            const endX = head.x + Math.cos(backAngle) * (startDistance + length) + Math.cos(sideAngle) * sideOffset;
+            const endY = head.y + Math.sin(backAngle) * (startDistance + length) + Math.sin(sideAngle) * sideOffset;
+
+            ctx.globalAlpha = 0.16 + boostStrength * 0.22;
+            ctx.strokeStyle = index % 2 === 0 ? '#38bdf8' : '#00ff88';
+            ctx.lineWidth = 2 + boostStrength * 3;
+            ctx.shadowColor = ctx.strokeStyle;
+            ctx.shadowBlur = 16;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+        }
+
+        ctx.restore();
     }
 
     drawOverlayText(text) {
