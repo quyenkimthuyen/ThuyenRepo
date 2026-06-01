@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Word Maze Battle</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="game" class="game-shell">
+    <canvas id="gameCanvas" aria-label="Word Maze Battle game area"></canvas>
+
+    <section class="hud" aria-label="Bảng điều khiển">
+      <div class="hud-card target-card">
+        <span class="label">Nhiệm vụ</span>
+        <strong id="targetMeaning">---</strong>
+        <small>Tìm English word đúng nghĩa này</small>
+      </div>
+
+      <div class="hud-card status-card">
+        <div>
+          <span class="label">Level</span>
+          <strong id="levelText">1</strong>
+        </div>
+        <div>
+          <span class="label">Điểm</span>
+          <strong id="scoreText">0</strong>
+        </div>
+        <div>
+          <span class="label">Mạng</span>
+          <strong id="livesText" class="hearts">❤❤❤</strong>
+        </div>
+      </div>
+
+      <div class="hud-card current-card">
+        <span class="label">Đoạn đường hiện tại</span>
+        <strong id="currentWord">Chưa khám phá</strong>
+        <small id="currentMeaning">Đánh bại người giữ cửa để xem nghĩa.</small>
+      </div>
+
+      <div class="hud-card battle-card">
+        <div class="power-row">
+          <span class="label">Lực ném</span>
+          <strong id="powerText">55%</strong>
+        </div>
+        <div class="power-meter">
+          <span id="powerFill"></span>
+        </div>
+        <small id="throwStatus">Sẵn sàng ném đá</small>
+      </div>
+
+      <div class="hud-card map-card">
+        <div class="map-title">
+          <span class="label">Bản đồ 2D</span>
+          <button id="pauseButton" type="button">Pause</button>
+        </div>
+        <div id="miniMap" class="mini-map" aria-label="Bản đồ nhỏ"></div>
+      </div>
+
+      <div class="hud-card help-card">
+        <span class="label">Điều khiển</span>
+        <p id="helpText">Di chuyển: ↑ tiến, ← → rẽ, ↓ quay lại. Khi chiến đấu: ← → né, ↑ ↓ chỉnh lực, Space/Enter ném.</p>
+      </div>
+    </section>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <section id="overlay" class="overlay">
+      <div class="overlay-panel">
+        <h1 id="overlayTitle">Word Maze Battle</h1>
+        <p id="overlayText">Đi vào mê cung, đánh bại người giữ cửa và tìm đúng từ tiếng Anh theo nghĩa tiếng Việt.</p>
+        <div id="overlayTips" class="tips">
+          <span>↑ Đi tới</span>
+          <span>← → Rẽ hoặc né</span>
+          <span>Space Ném đá</span>
+        </div>
+        <button id="primaryButton" type="button">Start Game</button>
+        <button id="secondaryButton" type="button" class="ghost hidden">Resume</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

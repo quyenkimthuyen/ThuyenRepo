@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>IPA Adventure - Vietnamese Pronunciation Trainer</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="phone-shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Pronunciation Galaxy</p>
+          <h1>IPA Adventure</h1>
+        </div>
+        <div class="streak-card" aria-label="Learning streak">
+          <span>🔥</span>
+          <strong id="streakCount">1</strong>
+        </div>
+      </header>
+
+      <section class="player-card" aria-label="Player progress">
+        <div class="avatar" aria-hidden="true">🦊</div>
+        <div class="player-copy">
+          <div class="player-row">
+            <strong>Vietnamese Explorer</strong>
+            <span id="levelLabel">Level 1</span>
+          </div>
+          <div class="progress-track" aria-label="XP progress">
+            <span id="xpBar"></span>
+          </div>
+          <div class="stat-row">
+            <span><b id="xpCount">0</b> XP</span>
+            <span><b id="coinCount">0</b> coins</span>
+            <span><b id="completedCount">0</b> done</span>
+          </div>
+        </div>
+      </section>
+
+      <main>
+        <section id="learn" class="tab-panel active" aria-labelledby="learnTab">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Skill Tree</p>
+              <h2>IPA Foundation</h2>
+            </div>
+            <span class="badge">Start here</span>
+          </div>
+          <div id="skillTree" class="skill-tree"></div>
+        </section>
+
+        <section id="adventure" class="tab-panel" aria-labelledby="adventureTab">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">World Map</p>
+              <h2>🌎 Pronunciation Galaxy</h2>
+            </div>
+          </div>
+          <div id="planetMap" class="planet-map"></div>
+        </section>
+
+        <section id="game" class="tab-panel" aria-labelledby="gameTab">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Game</p>
+              <h2>🎮 IPA Adventure</h2>
+            </div>
+            <button id="newQuestionBtn" class="ghost-button">New</button>
+          </div>
+
+          <div class="mode-grid" role="group" aria-label="Game modes">
+            <button class="mode-pill active" data-mode="ipaToVn">IPA → Hint</button>
+            <button class="mode-pill" data-mode="wordToIpa">Word → IPA</button>
+            <button class="mode-pill" data-mode="meaningToWord">Meaning → Word</button>
+            <button class="mode-pill" data-mode="listenToIpa">Listen → IPA</button>
+          </div>
+
+          <article class="game-card">
+            <div class="game-topline">
+              <span id="gameModeLabel">IPA → Vietnamese Hint</span>
+              <button id="speakQuestionBtn" class="round-button" aria-label="Listen to question">▶</button>
+            </div>
+            <p id="questionText" class="question-text">/skuːl/</p>
+            <div id="answerOptions" class="answer-options"></div>
+            <p id="gameFeedback" class="feedback" aria-live="polite"></p>
+          </article>
+        </section>
+
+        <section id="review" class="tab-panel" aria-labelledby="reviewTab">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Review</p>
+              <h2>📚 Memory Garden</h2>
+            </div>
+            <button id="resetProgressBtn" class="ghost-button danger">Reset</button>
+          </div>
+          <div id="reviewContent" class="review-stack"></div>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Main navigation">
+        <button id="learnTab" class="nav-item active" data-tab="learn"><span>🏠</span>Learn</button>
+        <button id="adventureTab" class="nav-item" data-tab="adventure"><span>🗺</span>Adventure</button>
+        <button id="gameTab" class="nav-item" data-tab="game"><span>🎮</span>Game</button>
+        <button id="reviewTab" class="nav-item" data-tab="review"><span>📚</span>Review</button>
+      </nav>
+    </div>
+
+    <dialog id="lessonDialog" class="lesson-dialog">
+      <div class="dialog-card">
+        <button id="closeLessonBtn" class="close-button" aria-label="Close lesson">×</button>
+        <div id="lessonContent"></div>
+      </div>
+    </dialog>
+
+    <script src="ipa-engine.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

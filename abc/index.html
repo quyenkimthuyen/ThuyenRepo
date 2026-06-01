@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bé Vui Học Chữ</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="phone-shell">
+      <header class="app-header">
+        <div>
+          <p class="eyebrow">Lớp 1</p>
+          <h1>Bé Vui Học Chữ</h1>
+        </div>
+        <button class="sound-toggle" id="soundToggle" aria-label="Bật tắt âm thanh">🔊</button>
+      </header>
+
+      <main id="app">
+        <section class="screen active" id="homeScreen" data-screen="home">
+          <div class="hero-card">
+            <div class="mascot" aria-hidden="true">🦉</div>
+            <div>
+              <p class="eyebrow">Học bằng hình ảnh liên tưởng</p>
+              <h2>Nhìn hình, nhớ chữ, đọc thành tiếng</h2>
+              <p>Mỗi chữ cái gắn với một hình quen thuộc để bé dễ nhận diện và ghi nhớ lâu.</p>
+            </div>
+          </div>
+
+          <div class="progress-card">
+            <div class="progress-top">
+              <span>Tiến độ bảng chữ cái</span>
+              <strong id="progressText">0/29</strong>
+            </div>
+            <div class="progress-bar"><span id="progressBar"></span></div>
+          </div>
+
+          <div class="stats-grid">
+            <article>
+              <span>⭐</span>
+              <strong id="starCount">0</strong>
+              <small>Sao</small>
+            </article>
+            <article>
+              <span>⚡</span>
+              <strong id="xpCount">0</strong>
+              <small>XP</small>
+            </article>
+            <article>
+              <span>🏅</span>
+              <strong id="badgeCount">0</strong>
+              <small>Huy hiệu</small>
+            </article>
+          </div>
+
+          <button class="primary-action" data-goto="learn">Bắt đầu học</button>
+
+          <section class="module-grid" aria-label="Các bài học">
+            <button data-goto="learn"><span>🔤</span><strong>Học chữ</strong><small>Hình → chữ → âm</small></button>
+            <button data-goto="rhyme"><span>🧩</span><strong>Ghép vần</strong><small>l + a = la</small></button>
+            <button data-goto="spell"><span>🎙️</span><strong>Đánh vần</strong><small>la sắc lá</small></button>
+            <button data-goto="drag"><span>✋</span><strong>Kéo thả</strong><small>Chọn chữ đúng</small></button>
+          </section>
+
+          <section class="badge-panel">
+            <h3>Huy hiệu của bé</h3>
+            <div class="badge-list" id="badgeList"></div>
+          </section>
+        </section>
+
+        <section class="screen" id="learnScreen" data-screen="learn">
+          <div class="screen-title">
+            <button class="ghost-btn" data-prev-letter>‹</button>
+            <div>
+              <p class="eyebrow">Học chữ cái</p>
+              <h2 id="learnTitle">Chữ a</h2>
+            </div>
+            <button class="ghost-btn" data-next-letter>›</button>
+          </div>
+
+          <article class="lesson-card">
+            <div class="visual-morph">
+              <div class="concept-visual" id="conceptVisual">🍎</div>
+              <div class="morph-arrow">↓</div>
+              <div class="letter-stack">
+                <span id="lowerLetter">a</span>
+                <span id="upperLetter">A</span>
+              </div>
+            </div>
+            <h3 id="conceptName">Quả táo</h3>
+            <p id="conceptHint">Hình tròn giúp bé nhớ chữ a.</p>
+            <div class="chant-box">
+              <span id="phonicsText">a</span>
+              <span id="spellingText">a: a</span>
+              <strong id="wordText">ăn</strong>
+            </div>
+            <div class="action-row">
+              <button class="pill-btn" id="listenLetter">Nghe âm</button>
+              <button class="pill-btn success" id="completeLetter">Đã thuộc</button>
+            </div>
+          </article>
+
+          <div class="letter-strip" id="letterStrip"></div>
+        </section>
+
+        <section class="screen" id="flashScreen" data-screen="flash">
+          <div class="screen-title simple">
+            <div>
+              <p class="eyebrow">Flash Card</p>
+              <h2>Nhìn hình chọn chữ</h2>
+            </div>
+          </div>
+          <div class="game-card" id="flashCard"></div>
+        </section>
+
+        <section class="screen" id="dragScreen" data-screen="drag">
+          <div class="screen-title simple">
+            <div>
+              <p class="eyebrow">Kéo thả</p>
+              <h2>Kéo chữ vào hình</h2>
+            </div>
+          </div>
+          <div class="game-card" id="dragGame"></div>
+        </section>
+
+        <section class="screen" id="rhymeScreen" data-screen="rhyme">
+          <div class="screen-title simple">
+            <div>
+              <p class="eyebrow">Ghép vần</p>
+              <h2>Chữ + âm = vần</h2>
+            </div>
+          </div>
+          <div class="lesson-card compact" id="rhymeLesson"></div>
+        </section>
+
+        <section class="screen" id="spellScreen" data-screen="spell">
+          <div class="screen-title simple">
+            <div>
+              <p class="eyebrow">Đánh vần</p>
+              <h2>Thêm dấu để đọc từ</h2>
+            </div>
+          </div>
+          <div class="lesson-card compact" id="spellLesson"></div>
+        </section>
+
+        <section class="screen" id="gamesScreen" data-screen="games">
+          <div class="screen-title simple">
+            <div>
+              <p class="eyebrow">Sân chơi chữ cái</p>
+              <h2>5 trò chơi giáo dục</h2>
+            </div>
+          </div>
+          <div class="tab-row" id="gameTabs"></div>
+          <div class="game-card" id="gameStage"></div>
+        </section>
+
+        <section class="screen" id="mindmapScreen" data-screen="mindmap">
+          <div class="screen-title simple">
+            <div>
+              <p class="eyebrow">Mind Map</p>
+              <h2>Bảng chữ cái tiếng Việt</h2>
+            </div>
+          </div>
+          <div class="mindmap" id="mindMap"></div>
+          <div class="mind-detail" id="mindDetail"></div>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Điều hướng chính">
+        <button class="active" data-goto="home">🏠<span>Nhà</span></button>
+        <button data-goto="learn">🔤<span>Học</span></button>
+        <button data-goto="flash">🃏<span>Thẻ</span></button>
+        <button data-goto="games">🎮<span>Game</span></button>
+        <button data-goto="mindmap">🧠<span>Sơ đồ</span></button>
+      </nav>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/games.js"></script>
+    <script src="js/mindmap.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>

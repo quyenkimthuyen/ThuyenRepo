@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#78d5ff">
+  <title>English Monster Quest</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div id="app" class="app">
+    <header class="top-bar">
+      <div>
+        <p class="eyebrow">English Monster Quest</p>
+        <h1 id="worldTitle">Home Village</h1>
+      </div>
+      <button id="settingsButton" class="icon-button" aria-label="Open settings">⚙</button>
+    </header>
+
+    <section class="hud" aria-label="Player progress">
+      <div class="stat-card hearts" id="heartHud">❤ ❤ ❤</div>
+      <div class="stat-card">Lv <span id="levelHud">1</span></div>
+      <div class="stat-card xp"><span id="xpHud">0</span> XP</div>
+      <div class="stat-card coins">🪙 <span id="coinHud">0</span></div>
+      <div class="stat-card stars">⭐ <span id="starHud">0</span></div>
+    </section>
+
+    <main class="game-shell">
+      <section class="canvas-card" aria-label="Exploration map">
+        <canvas id="gameCanvas" width="960" height="720"></canvas>
+        <div class="floating-tip" id="floatingTip">Move near a Wordmon to learn and capture it!</div>
+        <div class="joystick" id="joystick" aria-label="Virtual joystick">
+          <div class="joystick-knob" id="joystickKnob"></div>
+        </div>
+      </section>
+
+      <aside class="side-panel">
+        <section class="mini-card">
+          <div class="panel-heading">
+            <h2>Minimap</h2>
+            <span id="completionBadge">0%</span>
+          </div>
+          <canvas id="miniMap" width="180" height="140"></canvas>
+        </section>
+
+        <section class="mini-card daily-card">
+          <div class="panel-heading">
+            <h2>Daily Mission</h2>
+            <span class="pill" id="dailyReward">+25 XP</span>
+          </div>
+          <p id="dailyMission">Learn 5 new words</p>
+          <div class="progress-track"><span id="dailyProgress"></span></div>
+        </section>
+      </aside>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Game sections">
+      <button data-screen="bookScreen">📘<span>Book</span></button>
+      <button data-screen="mapScreen">🗺<span>Map</span></button>
+      <button data-screen="dailyScreen">🎯<span>Daily</span></button>
+      <button data-screen="parentScreen">👪<span>Parent</span></button>
+    </nav>
+  </div>
+
+  <div id="encounterScreen" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="encounterName">
+    <div class="modal encounter-modal">
+      <button id="closeEncounter" class="close-button" aria-label="Close encounter">×</button>
+      <div class="rarity-ribbon" id="encounterRarity">Common</div>
+      <div class="wordmon-art" id="encounterArt">🐱</div>
+      <h2 id="encounterName">Catmon</h2>
+      <p class="learning-flow">Image → Pronunciation → Meaning → Spelling</p>
+      <button id="replayPronunciation" class="primary ghost">🔊 Listen again</button>
+      <div id="challengeBox" class="challenge-box"></div>
+      <div id="answerOptions" class="answer-grid"></div>
+      <p id="encounterFeedback" class="feedback" aria-live="polite"></p>
+    </div>
+  </div>
+
+  <div id="bossScreen" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="bossTitle">
+    <div class="modal boss-modal">
+      <h2 id="bossTitle">Dragon of Animals</h2>
+      <div class="boss-art">🐉</div>
+      <div class="boss-health"><span id="bossHpBar"></span></div>
+      <p id="bossStatus">Answer vocabulary questions to calm the dragon.</p>
+      <div id="bossQuestion" class="challenge-box"></div>
+      <div id="bossOptions" class="answer-grid"></div>
+    </div>
+  </div>
+
+  <section id="bookScreen" class="drawer hidden" aria-label="Vocabulary book">
+    <div class="drawer-header">
+      <div>
+        <p class="eyebrow">Collection</p>
+        <h2>Vocabulary Book</h2>
+      </div>
+      <button class="close-drawer" data-close="bookScreen">×</button>
+    </div>
+    <div id="collectionStats" class="collection-stats"></div>
+    <div id="bookGrid" class="book-grid"></div>
+  </section>
+
+  <section id="mapScreen" class="drawer hidden" aria-label="World map">
+    <div class="drawer-header">
+      <div>
+        <p class="eyebrow">Explore</p>
+        <h2>World Map</h2>
+      </div>
+      <button class="close-drawer" data-close="mapScreen">×</button>
+    </div>
+    <div id="worldList" class="world-list"></div>
+  </section>
+
+  <section id="dailyScreen" class="drawer hidden" aria-label="Daily challenge">
+    <div class="drawer-header">
+      <div>
+        <p class="eyebrow">Rewards</p>
+        <h2>Daily Challenge</h2>
+      </div>
+      <button class="close-drawer" data-close="dailyScreen">×</button>
+    </div>
+    <div id="dailyList" class="mission-list"></div>
+  </section>
+
+  <section id="parentScreen" class="drawer hidden" aria-label="Parent dashboard">
+    <div class="drawer-header">
+      <div>
+        <p class="eyebrow">Progress</p>
+        <h2>Parent Dashboard</h2>
+      </div>
+      <button class="close-drawer" data-close="parentScreen">×</button>
+    </div>
+    <div id="parentDashboard" class="dashboard-grid"></div>
+    <div class="mini-card">
+      <h3>Achievements</h3>
+      <div id="achievementList" class="achievement-list"></div>
+    </div>
+  </section>
+
+  <section id="settingsScreen" class="drawer hidden" aria-label="Settings">
+    <div class="drawer-header">
+      <div>
+        <p class="eyebrow">Audio & Save</p>
+        <h2>Settings</h2>
+      </div>
+      <button class="close-drawer" data-close="settingsScreen">×</button>
+    </div>
+    <div class="settings-list">
+      <label class="toggle-row">
+        <span>Pronunciation voice</span>
+        <input id="speechToggle" type="checkbox" checked>
+      </label>
+      <label class="toggle-row">
+        <span>Sound effects</span>
+        <input id="sfxToggle" type="checkbox" checked>
+      </label>
+      <button id="resetSave" class="danger-button">Reset saved progress</button>
+      <p class="small-note">Progress is saved on this device with LocalStorage.</p>
+    </div>
+  </section>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/game.js"></script>
+</body>
+</html>
