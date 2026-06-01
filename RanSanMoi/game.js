@@ -157,6 +157,8 @@ class WordSnakeGame {
         this.poisonTimer = 0;
         this.growthTimer = 0;
         this.bodyBiteCooldown = 0;
+        this.speedMultiplier = 1;
+        this.nextSpeedBoostAt = 0;
         this.lastPromptSpeechFrame = -Infinity;
         this.lastPromptSpeechTimeMs = -Infinity;
         this.lastPromptSpeechGameSecond = -Infinity;
@@ -190,6 +192,9 @@ class WordSnakeGame {
             this.fx.init();
             this.updatePointer(event);
             this.pointerActive = true;
+            if (event.button === 0 && event.target === this.canvas) {
+                this.trySpeedBoost();
+            }
         });
 
         document.querySelectorAll('.mode-btn').forEach((button) => {
@@ -368,6 +373,8 @@ class WordSnakeGame {
         this.poisonTimer = 0;
         this.growthTimer = 0;
         this.bodyBiteCooldown = 0;
+        this.speedMultiplier = 1;
+        this.nextSpeedBoostAt = 0;
         this.lastPromptSpeechFrame = -Infinity;
         this.lastPromptSpeechTimeMs = -Infinity;
         this.lastPromptSpeechGameSecond = -Infinity;
@@ -618,7 +625,7 @@ class WordSnakeGame {
         }
 
         const modeSpeedScale = this.motoMode ? 0.8 : 1;
-        const speed = this.config.speed * 60 * 0.7 * modeSpeedScale;
+        const speed = this.config.speed * 60 * 0.7 * modeSpeedScale * this.speedMultiplier;
         this.head.vx = Math.cos(this.head.heading) * speed;
         this.head.vy = Math.sin(this.head.heading) * speed;
 
@@ -879,13 +886,22 @@ class WordSnakeGame {
 
         document.getElementById('hud-score').innerText = String(this.score).padStart(5, '0');
         document.getElementById('hud-hearts').innerText = '❤️'.repeat(Math.max(0, this.lives)) + '🖤'.repeat(Math.max(0, 3 - this.lives));
-        document.getElementById('hud-diff').innerText = this.config.label;
+        document.getElementById('hud-diff').innerText = `${this.config.label} x${this.speedMultiplier.toFixed(1)}`;
         document.getElementById('hud-time').innerText = this.formatTime(this.timeLeft);
         document.getElementById('hud-accuracy').innerText = `${accuracy}%`;
 
         this.targetValue.innerText = this.mode === 'mixed'
             ? '🔊 LISTEN'
             : this.getLabel(this.currentItem || this.vocab[0], this.currentPromptType);
+    }
+
+    trySpeedBoost() {
+        if (this.state !== 'playing' || this.elapsedGameSeconds < this.nextSpeedBoostAt) return;
+        if (this.speedMultiplier >= 2) return;
+
+        this.speedMultiplier = Math.min(2, Number((this.speedMultiplier + 0.1).toFixed(1)));
+        this.nextSpeedBoostAt = this.elapsedGameSeconds + 10;
+        this.addParticles(this.head.x, this.head.y, '#38bdf8', 10);
     }
 
     updateChainHud() {
