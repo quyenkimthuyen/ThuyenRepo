@@ -233,11 +233,14 @@ class WordSnakeGame {
             soundButton.classList.toggle('active', !muted);
         });
 
-        document.getElementById('btn-meaning-audio').addEventListener('pointerdown', (event) => {
-            this.handleAudioButtonPress(event, 'vi');
-        });
-        document.getElementById('btn-word-audio').addEventListener('pointerdown', (event) => {
-            this.handleAudioButtonPress(event, 'en');
+        const speechButton = document.getElementById('btn-bilingual-toggle');
+        speechButton.addEventListener('click', () => {
+            this.speechEnabled = !this.speechEnabled;
+            speechButton.classList.toggle('active', this.speechEnabled);
+            speechButton.innerText = this.speechEnabled ? 'VOICE' : 'QUIET';
+            if (!this.speechEnabled && window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
         });
 
         const hintButton = document.getElementById('btn-hint-toggle');
@@ -831,21 +834,7 @@ class WordSnakeGame {
         this.speakTypes(item, order);
     }
 
-    handleAudioButtonPress(event, type) {
-        event.preventDefault();
-        event.stopPropagation();
-        this.fx.init();
-        this.speakCurrentTarget(type);
-    }
-
-    speakCurrentTarget(type) {
-        this.lastPromptSpeechFrame = this.frame;
-        this.lastPromptSpeechTimeMs = performance.now();
-        this.lastPromptSpeechGameSecond = this.elapsedGameSeconds;
-        this.speakTypes(this.currentItem, [type], true);
-    }
-
-    speakTypes(item, order, manual = false) {
+    speakTypes(item, order) {
         if (!item || !this.speechEnabled || this.fx.muted || !window.speechSynthesis) return;
 
         window.speechSynthesis.cancel();
@@ -859,17 +848,11 @@ class WordSnakeGame {
             const voice = voices.find(v => (v.lang || '').toLowerCase().startsWith(type === 'vi' ? 'vi' : 'en'));
             if (voice) utterance.voice = voice;
 
-            const speak = () => {
-                if ((manual || this.state === 'playing') && this.speechEnabled && !this.fx.muted) {
+            setTimeout(() => {
+                if (this.state === 'playing' && this.speechEnabled && !this.fx.muted) {
                     window.speechSynthesis.speak(utterance);
                 }
-            };
-
-            if (manual && index === 0) {
-                speak();
-            } else {
-                setTimeout(speak, index * 850);
-            }
+            }, index * 850);
         });
     }
 
@@ -989,6 +972,7 @@ class WordSnakeGame {
         this.drawWorldBoundary();
         this.foods.forEach(food => this.drawFood(food));
         this.drawSnake();
+        this.drawSpeedBoostReadyHint();
         this.drawSpeedBoostEffect();
         this.drawParticles();
 
@@ -1435,6 +1419,34 @@ class WordSnakeGame {
         ctx.lineTo(head.x + Math.cos(backAngle) * 98, head.y + Math.sin(backAngle) * 98);
         ctx.stroke();
 
+        ctx.restore();
+    }
+
+    drawSpeedBoostReadyHint() {
+        if (this.state !== 'playing') return;
+        if (this.speedMultiplier > 1 || this.elapsedGameSeconds < this.nextSpeedBoostAt) return;
+
+        const ctx = this.ctx;
+        const head = this.worldToScreen(this.head);
+        const pulse = (Math.sin(this.frame * 0.12) + 1) / 2;
+        const radius = this.getSnakeThickness() * (1.45 + pulse * 0.12);
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.16 + pulse * 0.12;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 3;
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 18 + pulse * 8;
+        ctx.beginPath();
+        ctx.arc(head.x, head.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.globalAlpha = 0.1 + pulse * 0.08;
+        ctx.fillStyle = '#00ff88';
+        ctx.beginPath();
+        ctx.arc(head.x, head.y, radius * 0.72, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
     }
 
