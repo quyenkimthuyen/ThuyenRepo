@@ -32,9 +32,9 @@ const MODE_CONFIG = {
         wrongHurts: true
     },
     mixed: {
-        label: 'MIXED',
-        firstPromptType: 'random',
-        speechOrder: null,
+        label: 'AUDIO',
+        firstPromptType: 'en',
+        speechOrder: ['en'],
         speed: 5.45,
         wrongHurts: true
     },
@@ -424,13 +424,12 @@ class WordSnakeGame {
 
     getTargetType() {
         if (this.mode === 'en-vi') return 'vi';
-        if (this.mode === 'mixed') return this.currentPromptType === 'vi' ? 'en' : 'vi';
         return 'en';
     }
 
     getPromptTypeForMode() {
         if (this.mode === 'en-vi') return 'en';
-        if (this.mode === 'mixed') return this.getTargetType();
+        if (this.mode === 'mixed') return 'en';
         return 'vi';
     }
 
@@ -884,8 +883,9 @@ class WordSnakeGame {
         document.getElementById('hud-time').innerText = this.formatTime(this.timeLeft);
         document.getElementById('hud-accuracy').innerText = `${accuracy}%`;
 
-        const promptLabel = this.getLabel(this.currentItem || this.vocab[0], this.currentPromptType);
-        this.targetValue.innerText = promptLabel;
+        this.targetValue.innerText = this.mode === 'mixed'
+            ? '🔊 LISTEN'
+            : this.getLabel(this.currentItem || this.vocab[0], this.currentPromptType);
     }
 
     updateChainHud() {
