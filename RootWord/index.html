@@ -1,0 +1,2534 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RootWord Map - Học từ vựng qua cấu tạo từ</title>
+  <style>
+    :root {
+      --root: #2563eb;
+      --prefix: #7c3aed;
+      --suffix: #f97316;
+      --meaning: #16a34a;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #dbe3f0;
+      --panel: rgba(255, 255, 255, 0.9);
+      --shadow: 0 20px 60px rgba(32, 52, 89, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(124, 58, 237, 0.16), transparent 30rem),
+        radial-gradient(circle at top right, rgba(37, 99, 235, 0.16), transparent 26rem),
+        linear-gradient(135deg, #f8fbff 0%, #eef4ff 100%);
+    }
+
+    button, input { font: inherit; }
+
+    .app {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 56px;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+      gap: 28px;
+      align-items: center;
+      padding: 34px;
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 32px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.72));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .hero h1 {
+      margin: 0 0 14px;
+      font-size: clamp(2rem, 5vw, 4.7rem);
+      line-height: 0.96;
+      letter-spacing: -0.06em;
+    }
+
+    .hero p {
+      max-width: 680px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.7;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      padding: 18px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(219, 227, 240, 0.9);
+    }
+
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: #344054;
+      font-weight: 700;
+    }
+
+    .dot {
+      width: 13px;
+      height: 13px;
+      border-radius: 999px;
+      box-shadow: 0 0 0 5px currentColor;
+      opacity: 0.22;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 12px;
+      z-index: 5;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      margin: 22px 0;
+      padding: 12px;
+      border: 1px solid rgba(219, 227, 240, 0.9);
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.86);
+      box-shadow: 0 14px 36px rgba(32, 52, 89, 0.08);
+      backdrop-filter: blur(16px);
+    }
+
+    .tag {
+      border: 1px solid rgba(37, 99, 235, 0.14);
+      border-radius: 999px;
+      color: #344054;
+      background: #fff;
+      font-weight: 850;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 5px 8px;
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+
+    .search {
+      width: 100%;
+      padding: 15px 18px;
+      border: 1px solid #d8e0ee;
+      border-radius: 16px;
+      outline: none;
+      color: var(--ink);
+      background: #fff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .search:focus {
+      border-color: var(--root);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+
+    .ghost-btn {
+      border: 0;
+      border-radius: 16px;
+      padding: 0 18px;
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+      background: linear-gradient(135deg, var(--root), var(--prefix));
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .ghost-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 30px rgba(37, 99, 235, 0.24);
+    }
+
+    .view-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: -8px 0 22px;
+      padding: 12px;
+      border: 1px solid rgba(219, 227, 240, 0.95);
+      border-radius: 26px;
+      background: rgba(255, 255, 255, 0.86);
+      box-shadow: 0 14px 34px rgba(32, 52, 89, 0.08);
+      backdrop-filter: blur(16px);
+    }
+
+    .tab-btn {
+      flex: 1 1 150px;
+      border: 1px solid transparent;
+      border-radius: 18px;
+      min-height: 52px;
+      padding: 13px 16px;
+      color: var(--muted);
+      text-align: center;
+      font-weight: 900;
+      cursor: pointer;
+      background: transparent;
+      transition: transform 0.2s, color 0.2s, background 0.2s, border-color 0.2s;
+    }
+
+    .tab-btn:hover,
+    .tab-btn.active {
+      transform: translateY(-1px);
+      color: var(--root);
+      border-color: rgba(37, 99, 235, 0.22);
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.11), rgba(124, 58, 237, 0.08));
+    }
+
+    .view-section {
+      display: none;
+    }
+
+    .view-section.active {
+      display: grid;
+      gap: 22px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid rgba(219, 227, 240, 0.95);
+      border-radius: 28px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 106px;
+      padding: 18px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 14px;
+      margin: 0 0 14px;
+    }
+
+    .section-title h2 {
+      margin: 0;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+    }
+
+    .section-title small {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .root-list {
+      display: grid;
+      gap: 10px;
+      max-height: 68vh;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .root-card {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid transparent;
+      border-radius: 18px;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      background: #fff;
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .root-card:hover,
+    .root-card.active {
+      transform: translateY(-2px);
+      border-color: rgba(37, 99, 235, 0.28);
+      box-shadow: 0 12px 26px rgba(37, 99, 235, 0.11);
+    }
+
+    .root-card.active {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(255, 255, 255, 0.96));
+    }
+
+    .root-name {
+      color: var(--root);
+      font-size: 1.2rem;
+      font-weight: 900;
+    }
+
+    .root-meaning {
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.4;
+    }
+
+    .count-pill {
+      padding: 7px 10px;
+      border-radius: 999px;
+      color: var(--root);
+      background: rgba(37, 99, 235, 0.1);
+      font-weight: 900;
+      font-size: 0.82rem;
+    }
+
+    .content {
+      display: grid;
+      gap: 22px;
+    }
+
+    .root-board {
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    .board-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .board-head h2 {
+      margin: 0 0 8px;
+      font-size: clamp(1.8rem, 4vw, 3.2rem);
+      letter-spacing: -0.05em;
+      color: var(--root);
+    }
+
+    .board-head p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .meaning-badge {
+      padding: 12px 16px;
+      border-radius: 18px;
+      color: var(--meaning);
+      background: rgba(22, 163, 74, 0.11);
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .mindmap {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(160px, 220px) 1fr;
+      gap: 28px;
+      align-items: center;
+      padding: 18px 0;
+    }
+
+    .mindmap::before {
+      content: "";
+      position: absolute;
+      left: 170px;
+      right: 28px;
+      top: 50%;
+      border-top: 2px dashed var(--line);
+    }
+
+    .central-node {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      place-items: center;
+      min-height: 178px;
+      border-radius: 50%;
+      color: white;
+      text-align: center;
+      background: radial-gradient(circle at 30% 20%, #60a5fa, var(--root));
+      box-shadow: 0 24px 45px rgba(37, 99, 235, 0.28);
+    }
+
+    .central-node strong {
+      display: block;
+      font-size: 1.65rem;
+      letter-spacing: -0.03em;
+    }
+
+    .central-node span {
+      display: block;
+      margin-top: 6px;
+      opacity: 0.9;
+      font-weight: 700;
+    }
+
+    .word-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .word-card {
+      border: 1px solid #dde7f4;
+      border-radius: 22px;
+      padding: 16px;
+      background: #fff;
+      cursor: pointer;
+      transition: transform 0.22s, border-color 0.22s, box-shadow 0.22s;
+    }
+
+    .word-card:hover,
+    .word-card.active {
+      transform: translateY(-4px);
+      border-color: rgba(37, 99, 235, 0.35);
+      box-shadow: 0 18px 34px rgba(32, 52, 89, 0.12);
+    }
+
+    .word-card h3 {
+      margin: 0 0 10px;
+      font-size: 1.28rem;
+      letter-spacing: -0.03em;
+    }
+
+    .formula {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 10px;
+    }
+
+    .part {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: white;
+      font-size: 0.85rem;
+      font-weight: 900;
+    }
+
+    .part.prefix { background: var(--prefix); }
+    .part.root { background: var(--root); }
+    .part.suffix { background: var(--suffix); }
+    .part.meaning { background: var(--meaning); }
+    .plus { color: #98a2b3; font-weight: 900; }
+
+    .word-meaning {
+      margin: 0;
+      color: var(--meaning);
+      font-weight: 800;
+      line-height: 1.5;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.75fr);
+      gap: 22px;
+    }
+
+    .guide-card {
+      padding: 22px;
+    }
+
+    .usage-card {
+      padding: 22px;
+    }
+
+    .contrast-card {
+      padding: 22px;
+    }
+
+    .scenario-card {
+      padding: 22px;
+    }
+
+    .guide-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .usage-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .usage-card .usage-grid,
+    .scenario-card .usage-grid,
+    .contrast-card .contrast-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .usage-group {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+      border: 1px solid #e4ebf6;
+      border-radius: 20px;
+      background: #fff;
+    }
+
+    .usage-group h3 {
+      margin: 0;
+      font-size: 1.08rem;
+      letter-spacing: -0.02em;
+    }
+
+    .usage-group > p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .usage-item {
+      padding: 12px;
+      border-radius: 16px;
+      background: #f8fbff;
+      border: 1px solid #e6edf7;
+    }
+
+    .usage-item strong {
+      color: var(--root);
+      font-size: 1.02rem;
+    }
+
+    .usage-item p {
+      margin: 6px 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .usage-item em {
+      display: block;
+      color: var(--meaning);
+      font-style: normal;
+      font-weight: 750;
+      line-height: 1.45;
+    }
+
+    .contrast-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .contrast-group {
+      display: grid;
+      gap: 14px;
+      padding: 16px;
+      border: 1px solid #e4ebf6;
+      border-radius: 20px;
+      background: #fff;
+    }
+
+    .contrast-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-weight: 900;
+    }
+
+    .contrast-vs {
+      flex: 0 0 auto;
+      padding: 6px 10px;
+      border-radius: 999px;
+      color: white;
+      background: linear-gradient(135deg, var(--root), var(--suffix));
+      font-size: 0.78rem;
+    }
+
+    .contrast-sides {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .contrast-side {
+      padding: 13px;
+      border-radius: 16px;
+      background: #f8fbff;
+      border: 1px solid #e6edf7;
+    }
+
+    .contrast-side strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 1.2rem;
+      letter-spacing: -0.03em;
+    }
+
+    .contrast-side.good strong {
+      color: var(--meaning);
+    }
+
+    .contrast-side.bad strong {
+      color: #dc2626;
+    }
+
+    .contrast-side p,
+    .contrast-note {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .guide-column {
+      padding: 16px;
+      border: 1px solid #e4ebf6;
+      border-radius: 20px;
+      background: #fff;
+    }
+
+    .guide-column h3 {
+      margin: 0 0 12px;
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    .mini-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .mini-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 13px;
+      color: var(--muted);
+      background: #f8fbff;
+      line-height: 1.35;
+    }
+
+    .mini-list strong {
+      color: var(--ink);
+    }
+
+    .detail-card,
+    .quiz-card {
+      padding: 22px;
+    }
+
+    .detail-card h2,
+    .quiz-card h2 {
+      margin: 0 0 12px;
+      font-size: 1.35rem;
+      letter-spacing: -0.03em;
+    }
+
+    .split-word {
+      margin: 10px 0 18px;
+      font-size: clamp(1.7rem, 4vw, 3rem);
+      font-weight: 950;
+      letter-spacing: -0.06em;
+    }
+
+    .part-table {
+      display: grid;
+      gap: 10px;
+    }
+
+    .part-row {
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 16px;
+      background: #f8fbff;
+      border: 1px solid #e4ebf6;
+    }
+
+    .part-row p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .family {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .family button {
+      border: 1px solid #dce6f3;
+      border-radius: 999px;
+      padding: 9px 12px;
+      color: #344054;
+      font-weight: 800;
+      cursor: pointer;
+      background: #fff;
+      transition: transform 0.2s, color 0.2s, border-color 0.2s;
+    }
+
+    .family button:hover {
+      transform: translateY(-2px);
+      color: var(--root);
+      border-color: rgba(37, 99, 235, 0.4);
+    }
+
+    .quiz-card {
+      display: grid;
+      gap: 14px;
+    }
+
+    .quiz-type {
+      width: fit-content;
+      padding: 7px 10px;
+      border-radius: 999px;
+      color: var(--prefix);
+      background: rgba(124, 58, 237, 0.1);
+      font-size: 0.82rem;
+      font-weight: 900;
+    }
+
+    .question {
+      margin: 0;
+      font-size: 1.08rem;
+      font-weight: 850;
+      line-height: 1.5;
+    }
+
+    .answers {
+      display: grid;
+      gap: 10px;
+    }
+
+    .answer {
+      border: 1px solid #dce6f3;
+      border-radius: 16px;
+      padding: 12px 14px;
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+      background: #fff;
+      transition: transform 0.2s, border-color 0.2s, background 0.2s;
+    }
+
+    .answer:hover {
+      transform: translateY(-2px);
+      border-color: rgba(37, 99, 235, 0.35);
+    }
+
+    .answer.correct {
+      border-color: rgba(22, 163, 74, 0.45);
+      background: rgba(22, 163, 74, 0.1);
+    }
+
+    .answer.wrong {
+      border-color: rgba(239, 68, 68, 0.45);
+      background: rgba(239, 68, 68, 0.08);
+    }
+
+    .explain {
+      display: none;
+      margin: 0;
+      padding: 12px;
+      border-radius: 16px;
+      color: #166534;
+      background: rgba(22, 163, 74, 0.1);
+      line-height: 1.55;
+    }
+
+    .explain.show { display: block; }
+
+    .empty {
+      padding: 28px;
+      border: 1px dashed #c7d4e6;
+      border-radius: 22px;
+      color: var(--muted);
+      text-align: center;
+      background: rgba(255, 255, 255, 0.65);
+    }
+
+    mark {
+      color: inherit;
+      background: rgba(250, 204, 21, 0.38);
+      border-radius: 6px;
+      padding: 0 3px;
+    }
+
+    @media (max-width: 920px) {
+      .hero,
+      .layout,
+      .detail-grid,
+      .guide-grid,
+      .usage-grid,
+      .contrast-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+
+      .root-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-height: none;
+      }
+
+      .mindmap {
+        grid-template-columns: 1fr;
+      }
+
+      .mindmap::before {
+        left: 50%;
+        right: auto;
+        top: 170px;
+        bottom: 30px;
+        border-top: 0;
+        border-left: 2px dashed var(--line);
+      }
+
+      .central-node {
+        width: min(220px, 70vw);
+        justify-self: center;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app {
+        width: min(100% - 20px, 1180px);
+        padding-top: 14px;
+      }
+
+      .hero,
+      .root-board,
+      .detail-card,
+      .quiz-card,
+      .usage-card,
+      .contrast-card,
+      .scenario-card {
+        padding: 18px;
+        border-radius: 22px;
+      }
+
+      .contrast-sides {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        grid-template-columns: 1fr;
+        position: static;
+      }
+
+      .ghost-btn {
+        min-height: 48px;
+      }
+
+      .tab-btn {
+        flex: 1 1 100%;
+      }
+
+      .root-list,
+      .word-grid,
+      .legend {
+        grid-template-columns: 1fr;
+      }
+
+      .board-head,
+      .part-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div>
+        <h1>RootWord Map</h1>
+        <p>Học từ vựng tiếng Anh bằng cách nhìn thấy cấu tạo của từ: tiền tố, gốc từ, hậu tố, nghĩa gốc và các từ cùng họ trong một bản đồ trực quan.</p>
+      </div>
+      <div class="legend" aria-label="Chú giải màu sắc">
+        <span><i class="dot" style="color: var(--root)"></i>Gốc từ</span>
+        <span><i class="dot" style="color: var(--prefix)"></i>Tiền tố</span>
+        <span><i class="dot" style="color: var(--suffix)"></i>Hậu tố</span>
+        <span><i class="dot" style="color: var(--meaning)"></i>Nghĩa</span>
+      </div>
+    </section>
+
+    <section class="toolbar" aria-label="Tìm kiếm">
+      <input id="searchInput" class="search" type="search" placeholder="Tìm gốc từ hoặc từ vựng: port, transport, spect..." />
+      <button id="randomQuizBtn" class="ghost-btn" type="button">Quiz mới</button>
+    </section>
+
+    <nav class="view-tabs" aria-label="Chọn chế độ học">
+      <button class="tab-btn active" type="button" data-view="roots">Root Map</button>
+      <button class="tab-btn" type="button" data-view="usage">Từ gần nghĩa</button>
+      <button class="tab-btn" type="button" data-view="contrast">Trái nghĩa gốc</button>
+      <button class="tab-btn" type="button" data-view="scenario">Tình huống</button>
+      <button class="tab-btn" type="button" data-view="topicWords">Chủ đề từ vựng</button>
+      <button class="tab-btn" type="button" data-view="quiz">Quiz luyện tập</button>
+    </nav>
+
+    <section class="layout">
+      <aside class="panel sidebar">
+        <div class="section-title">
+          <h2 id="sidebarTitle">Gốc từ phổ biến</h2>
+          <small id="rootCount"></small>
+        </div>
+        <div id="rootList" class="root-list"></div>
+      </aside>
+
+      <div class="content">
+        <section class="view-section active" data-view-panel="roots">
+          <section id="rootBoard" class="panel root-board"></section>
+          <section id="learningGuide" class="panel guide-card"></section>
+          <article id="wordDetail" class="panel detail-card"></article>
+        </section>
+
+        <section class="view-section" data-view-panel="usage">
+          <section id="usageGuide" class="panel usage-card"></section>
+        </section>
+
+        <section class="view-section" data-view-panel="contrast">
+          <section id="contrastGuide" class="panel contrast-card"></section>
+        </section>
+
+        <section class="view-section" data-view-panel="scenario">
+          <section id="scenarioGuide" class="panel scenario-card"></section>
+        </section>
+
+        <section class="view-section" data-view-panel="topicWords">
+          <section id="topicWordsGuide" class="panel scenario-card"></section>
+        </section>
+
+        <section class="view-section" data-view-panel="quiz">
+          <article id="quizBox" class="panel quiz-card"></article>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Helper giúp thêm dữ liệu mới ngắn gọn và nhất quán.
+    const P = (text, meaning) => ({ text, type: "prefix", meaning });
+    const R = (text, meaning) => ({ text, type: "root", meaning });
+    const S = (text, meaning) => ({ text, type: "suffix", meaning });
+    const W = (word, meaning, parts) => ({ word, meaning, parts });
+    const Root = (root, meaning, note, words) => ({ root, meaning, note, words });
+
+    // Muốn mở rộng app: thêm Root(...) mới hoặc thêm W(...) vào đúng nhóm bên dưới.
+    const APP_DATA = {
+      affixes: {
+        prefixes: [
+          ["anti", "against / chống lại"],
+          ["auto", "self / tự mình"],
+          ["bi", "two / hai"],
+          ["co, con", "together / cùng nhau"],
+          ["de", "down, reverse / xuống, đảo ngược"],
+          ["ex", "out / ra ngoài"],
+          ["in, im", "in, into / vào trong"],
+          ["inter", "between / giữa"],
+          ["pre", "before / trước"],
+          ["re", "again, back / lại, trở lại"],
+          ["sub", "under / dưới"],
+          ["trans", "across, through / qua"]
+        ],
+        suffixes: [
+          ["able, ible", "can be / có thể"],
+          ["er, or", "person or thing / người hoặc vật"],
+          ["ion, ation", "noun suffix / hậu tố danh từ"],
+          ["ive", "adjective suffix / hậu tố tính từ"],
+          ["less", "without / không có"],
+          ["ment", "result or process / kết quả hoặc quá trình"],
+          ["ology", "study of / ngành học"],
+          ["ous", "full of / đầy tính chất"],
+          ["ty, ity", "state or quality / trạng thái, phẩm chất"]
+        ]
+      },
+      usageGroups: [
+        {
+          title: "look / see / watch",
+          idea: "Cả ba đều liên quan đến nhìn, nhưng khác nhau ở mức độ chủ động và thời lượng quan sát.",
+          items: [
+            { word: "see", use: "Nhìn thấy một cách tự nhiên, không nhất thiết cố ý.", example: "I can see the mountains from my window. / Tôi có thể nhìn thấy núi từ cửa sổ." },
+            { word: "look", use: "Chủ động hướng mắt về phía ai/cái gì, thường dùng với at.", example: "Look at this word map. / Hãy nhìn vào bản đồ từ này." },
+            { word: "watch", use: "Nhìn chăm chú trong một khoảng thời gian, thường có chuyển động hoặc diễn biến.", example: "We watched a movie about space. / Chúng tôi xem một bộ phim về không gian." },
+            { word: "view", use: "Xem hoặc nhìn theo cách trang trọng hơn, thường dùng với cảnh, dữ liệu, tài liệu.", example: "You can view the report online. / Bạn có thể xem báo cáo trực tuyến." }
+          ]
+        },
+        {
+          title: "intelligent / smart / clever / wise",
+          idea: "Nhóm này đều nói về trí tuệ, nhưng sắc thái khác nhau: năng lực suy nghĩ, ứng biến, mưu trí hoặc sự từng trải.",
+          items: [
+            { word: "intelligent", use: "Thông minh theo nghĩa có khả năng hiểu, học và suy luận tốt; sắc thái trang trọng.", example: "She is an intelligent student. / Cô ấy là một học sinh thông minh." },
+            { word: "smart", use: "Thông minh, nhanh nhạy, thực tế; dùng rất phổ biến trong giao tiếp.", example: "That was a smart decision. / Đó là một quyết định khôn ngoan." },
+            { word: "clever", use: "Khéo léo, lanh trí, nghĩ ra cách hay; đôi khi có sắc thái ranh mãnh.", example: "He found a clever way to solve the problem. / Anh ấy tìm ra cách giải quyết rất khéo." },
+            { word: "wise", use: "Khôn ngoan nhờ kinh nghiệm, biết phán đoán đúng trong cuộc sống.", example: "My grandmother gave me wise advice. / Bà tôi cho tôi lời khuyên khôn ngoan." }
+          ]
+        },
+        {
+          title: "say / tell / speak / talk",
+          idea: "Đều liên quan đến nói, nhưng cấu trúc câu và ngữ cảnh sử dụng khác nhau.",
+          items: [
+            { word: "say", use: "Nói ra nội dung/lời nói. Trọng tâm là điều được nói.", example: "She said that she was tired. / Cô ấy nói rằng cô ấy mệt." },
+            { word: "tell", use: "Nói với ai đó, kể hoặc bảo ai làm gì. Thường cần người nghe.", example: "Please tell me the truth. / Hãy nói cho tôi sự thật." },
+            { word: "speak", use: "Nói một ngôn ngữ hoặc phát biểu trang trọng.", example: "He speaks English well. / Anh ấy nói tiếng Anh tốt." },
+            { word: "talk", use: "Trò chuyện, trao đổi qua lại; thân mật hơn speak.", example: "Can we talk after class? / Chúng ta nói chuyện sau giờ học nhé?" }
+          ]
+        },
+        {
+          title: "big / large / great / huge",
+          idea: "Đều có thể liên quan đến kích thước hoặc mức độ, nhưng sắc thái không giống nhau.",
+          items: [
+            { word: "big", use: "Lớn, phổ biến trong giao tiếp hằng ngày.", example: "They live in a big house. / Họ sống trong một căn nhà lớn." },
+            { word: "large", use: "Lớn, trang trọng hơn big; hay dùng với số lượng, kích thước đo được.", example: "A large number of people joined. / Một số lượng lớn người đã tham gia." },
+            { word: "great", use: "Lớn về tầm quan trọng, mức độ hoặc chất lượng; cũng nghĩa là tuyệt vời.", example: "It was a great success. / Đó là một thành công lớn." },
+            { word: "huge", use: "Rất lớn, nhấn mạnh kích thước hoặc mức độ.", example: "The company made a huge profit. / Công ty tạo ra lợi nhuận rất lớn." }
+          ]
+        },
+        {
+          title: "hear / listen / sound",
+          idea: "Đều liên quan đến âm thanh, nhưng khác nhau ở việc âm thanh tự đến tai hay người nghe chủ động chú ý.",
+          items: [
+            { word: "hear", use: "Nghe thấy âm thanh một cách tự nhiên, không nhất thiết cố ý.", example: "I heard a noise outside. / Tôi nghe thấy tiếng động bên ngoài." },
+            { word: "listen", use: "Chủ động lắng nghe, thường đi với to.", example: "Please listen to the teacher. / Hãy lắng nghe giáo viên." },
+            { word: "sound", use: "Nghe có vẻ như thế nào, mô tả ấn tượng âm thanh hoặc cảm giác.", example: "That sounds interesting. / Điều đó nghe có vẻ thú vị." }
+          ]
+        },
+        {
+          title: "make / do / create / produce",
+          idea: "Đều có thể dịch là làm/tạo, nhưng dùng khác nhau theo kết quả và loại hành động.",
+          items: [
+            { word: "make", use: "Tạo ra hoặc làm ra một thứ cụ thể.", example: "She made a cake. / Cô ấy làm một chiếc bánh." },
+            { word: "do", use: "Làm một hoạt động, nhiệm vụ hoặc công việc.", example: "I need to do my homework. / Tôi cần làm bài tập." },
+            { word: "create", use: "Tạo ra thứ mới, thường có tính sáng tạo.", example: "They created a new app. / Họ tạo ra một ứng dụng mới." },
+            { word: "produce", use: "Sản xuất hoặc tạo ra với quy mô/quy trình rõ hơn.", example: "The factory produces furniture. / Nhà máy sản xuất đồ nội thất." }
+          ]
+        },
+        {
+          title: "learn / study / research",
+          idea: "Đều liên quan đến học, nhưng mức độ và mục tiêu khác nhau.",
+          items: [
+            { word: "learn", use: "Học để biết hoặc có được kỹ năng/kiến thức.", example: "I am learning English roots. / Tôi đang học gốc từ tiếng Anh." },
+            { word: "study", use: "Học có chủ đích, đọc và luyện tập trong một khoảng thời gian.", example: "She studies vocabulary every night. / Cô ấy học từ vựng mỗi tối." },
+            { word: "research", use: "Nghiên cứu sâu để tìm thông tin mới hoặc câu trả lời.", example: "Scientists research language learning. / Các nhà khoa học nghiên cứu việc học ngôn ngữ." }
+          ]
+        },
+        {
+          title: "job / work / career / occupation",
+          idea: "Nhóm này đều liên quan đến công việc, nhưng khác nhau về vai trò, hoạt động và con đường dài hạn.",
+          items: [
+            { word: "job", use: "Một vị trí công việc cụ thể có trả lương.", example: "He got a new job. / Anh ấy có một công việc mới." },
+            { word: "work", use: "Công việc nói chung hoặc hành động làm việc.", example: "I have a lot of work today. / Hôm nay tôi có nhiều việc." },
+            { word: "career", use: "Sự nghiệp, con đường nghề nghiệp dài hạn.", example: "She wants a career in design. / Cô ấy muốn theo sự nghiệp thiết kế." },
+            { word: "occupation", use: "Nghề nghiệp, thường dùng trong biểu mẫu hoặc văn cảnh trang trọng.", example: "Please write your occupation here. / Vui lòng ghi nghề nghiệp của bạn ở đây." }
+          ]
+        },
+        {
+          title: "house / home / apartment",
+          idea: "Đều nói về nơi ở, nhưng house là loại nhà, home nhấn mạnh cảm giác thuộc về.",
+          items: [
+            { word: "house", use: "Căn nhà như một công trình/vật thể.", example: "They bought a small house. / Họ mua một căn nhà nhỏ." },
+            { word: "home", use: "Mái ấm, nơi mình sống và gắn bó.", example: "I want to go home. / Tôi muốn về nhà." },
+            { word: "apartment", use: "Căn hộ trong một tòa nhà.", example: "She lives in an apartment downtown. / Cô ấy sống trong căn hộ ở trung tâm." }
+          ]
+        },
+        {
+          title: "problem / issue / trouble",
+          idea: "Đều là vấn đề, nhưng mức độ nghiêm trọng và văn cảnh khác nhau.",
+          items: [
+            { word: "problem", use: "Vấn đề cần giải quyết, dùng rất rộng.", example: "We have a problem with the code. / Chúng ta có vấn đề với đoạn mã." },
+            { word: "issue", use: "Vấn đề cần thảo luận hoặc xử lý, thường trang trọng hơn problem.", example: "Security is an important issue. / Bảo mật là một vấn đề quan trọng." },
+            { word: "trouble", use: "Rắc rối, khó khăn; thường nhấn mạnh sự phiền toái.", example: "I had trouble opening the file. / Tôi gặp khó khăn khi mở file." }
+          ]
+        },
+        {
+          title: "affect / effect / influence / impact",
+          idea: "Nhóm này dễ nhầm vì đều nói về sự tác động, nhưng affect thường là động từ, effect thường là danh từ.",
+          items: [
+            { word: "affect", use: "Tác động đến, thường là động từ.", example: "Sleep affects memory. / Giấc ngủ ảnh hưởng đến trí nhớ." },
+            { word: "effect", use: "Kết quả hoặc ảnh hưởng, thường là danh từ.", example: "The effect was immediate. / Tác động xảy ra ngay lập tức." },
+            { word: "influence", use: "Ảnh hưởng đến suy nghĩ, hành vi hoặc quyết định.", example: "Teachers influence students. / Giáo viên ảnh hưởng đến học sinh." },
+            { word: "impact", use: "Tác động mạnh hoặc rõ rệt.", example: "Technology has a big impact on learning. / Công nghệ có tác động lớn đến việc học." }
+          ]
+        },
+        {
+          title: "borrow / lend / rent",
+          idea: "Đều liên quan đến lấy/cho dùng tạm, nhưng hướng hành động và tiền thuê khác nhau.",
+          items: [
+            { word: "borrow", use: "Mượn từ ai đó, người nói nhận đồ về dùng tạm.", example: "Can I borrow your pen? / Tôi mượn bút của bạn được không?" },
+            { word: "lend", use: "Cho ai đó mượn, người nói đưa đồ cho người khác dùng tạm.", example: "I can lend you my notes. / Tôi có thể cho bạn mượn vở ghi." },
+            { word: "rent", use: "Thuê hoặc cho thuê có trả tiền.", example: "We rented a car for the trip. / Chúng tôi thuê xe cho chuyến đi." }
+          ]
+        },
+        {
+          title: "bring / take / carry",
+          idea: "Đều liên quan đến mang, nhưng khác hướng di chuyển so với người nói/người nghe.",
+          items: [
+            { word: "bring", use: "Mang đến chỗ người nói hoặc người nghe.", example: "Please bring your book to class. / Hãy mang sách đến lớp." },
+            { word: "take", use: "Mang đi khỏi vị trí hiện tại hoặc đến nơi khác.", example: "Take an umbrella with you. / Hãy mang ô theo." },
+            { word: "carry", use: "Mang/vác/cầm một vật, nhấn mạnh hành động chuyên chở.", example: "He carried the box upstairs. / Anh ấy mang cái hộp lên lầu." }
+          ]
+        },
+        {
+          title: "come / go / arrive / leave",
+          idea: "Nhóm chuyển động cơ bản, khác nhau ở hướng đến/đi và thời điểm tới/rời.",
+          items: [
+            { word: "come", use: "Đi đến phía người nói/người nghe hoặc nơi đang được nhắc đến.", example: "Can you come here? / Bạn đến đây được không?" },
+            { word: "go", use: "Đi khỏi vị trí hiện tại hoặc đi đến nơi khác.", example: "I go to work by bus. / Tôi đi làm bằng xe buýt." },
+            { word: "arrive", use: "Đến nơi, nhấn mạnh thời điểm tới.", example: "The train arrived late. / Tàu đến muộn." },
+            { word: "leave", use: "Rời đi, rời khỏi một nơi.", example: "We leave at seven. / Chúng tôi rời đi lúc bảy giờ." }
+          ]
+        },
+        {
+          title: "rise / raise / grow / increase",
+          idea: "Đều liên quan đến tăng lên, nhưng có khác biệt về tự tăng hay làm cho tăng.",
+          items: [
+            { word: "rise", use: "Tự tăng lên, không cần tân ngữ.", example: "Prices are rising. / Giá cả đang tăng." },
+            { word: "raise", use: "Làm cho thứ gì đó tăng lên, cần tân ngữ.", example: "The company raised prices. / Công ty đã tăng giá." },
+            { word: "grow", use: "Tăng trưởng tự nhiên hoặc phát triển dần.", example: "The business is growing. / Doanh nghiệp đang phát triển." },
+            { word: "increase", use: "Tăng lên hoặc làm tăng, dùng được cả nội động/tác động.", example: "Sales increased by 10%. / Doanh số tăng 10%." }
+          ]
+        },
+        {
+          title: "look for / find / search / discover",
+          idea: "Đều liên quan đến tìm, nhưng khác nhau giữa quá trình tìm và kết quả tìm thấy.",
+          items: [
+            { word: "look for", use: "Tìm kiếm một thứ mình muốn thấy/lấy.", example: "I am looking for my keys. / Tôi đang tìm chìa khóa." },
+            { word: "find", use: "Tìm thấy, nhấn mạnh kết quả.", example: "I found my keys. / Tôi đã tìm thấy chìa khóa." },
+            { word: "search", use: "Tìm kiếm kỹ lưỡng hoặc có hệ thống.", example: "They searched the room. / Họ tìm kỹ căn phòng." },
+            { word: "discover", use: "Khám phá ra điều mới hoặc trước đây chưa biết.", example: "Scientists discovered a new species. / Các nhà khoa học phát hiện một loài mới." }
+          ]
+        },
+        {
+          title: "lie / lay",
+          idea: "Hai từ này dễ nhầm vì hình thức quá khứ và nghĩa khác nhau. Lie thường là nằm hoặc nói dối; lay là đặt cái gì xuống.",
+          items: [
+            { word: "lie", use: "Nằm, không cần tân ngữ. Quá khứ là lay.", example: "I need to lie down. / Tôi cần nằm xuống." },
+            { word: "lie", use: "Nói dối. Quá khứ là lied.", example: "He lied about his age. / Anh ấy nói dối về tuổi của mình." },
+            { word: "lay", use: "Đặt/để một vật xuống, cần tân ngữ. Quá khứ là laid.", example: "Please lay the book on the table. / Hãy đặt quyển sách lên bàn." }
+          ]
+        },
+        {
+          title: "few / a few / little / a little",
+          idea: "Dùng để nói số lượng ít, nhưng few/a few đi với danh từ đếm được, little/a little đi với danh từ không đếm được.",
+          items: [
+            { word: "few", use: "Rất ít, gần như không đủ; dùng với danh từ đếm được số nhiều.", example: "Few students understood the rule. / Rất ít học sinh hiểu quy tắc." },
+            { word: "a few", use: "Một vài, đủ để dùng; dùng với danh từ đếm được số nhiều.", example: "I have a few questions. / Tôi có một vài câu hỏi." },
+            { word: "little", use: "Rất ít, gần như không đủ; dùng với danh từ không đếm được.", example: "There is little time left. / Còn rất ít thời gian." },
+            { word: "a little", use: "Một chút, vẫn có đủ phần nào; dùng với danh từ không đếm được.", example: "I need a little help. / Tôi cần một chút giúp đỡ." }
+          ]
+        }
+      ],
+      antonymGroups: [
+        {
+          title: "good vs bad",
+          note: "Đây là cặp trái nghĩa cơ bản bằng hai từ riêng, không phải bad = un-good.",
+          left: { word: "good", meaning: "tốt, có chất lượng hoặc đạo đức tốt", example: "This is a good idea. / Đây là một ý tưởng tốt." },
+          right: { word: "bad", meaning: "xấu, tệ, không tốt hoặc có hại", example: "Smoking is bad for your health. / Hút thuốc có hại cho sức khỏe." }
+        },
+        {
+          title: "love vs hate",
+          note: "Hai cảm xúc trái ngược trực tiếp: yêu/thích mạnh và ghét/căm ghét.",
+          left: { word: "love", meaning: "yêu, rất thích, quan tâm sâu sắc", example: "I love learning English. / Tôi thích học tiếng Anh." },
+          right: { word: "hate", meaning: "ghét, không chịu được", example: "She hates wasting time. / Cô ấy ghét lãng phí thời gian." }
+        },
+        {
+          title: "life vs death",
+          note: "Cặp đối lập về trạng thái tồn tại, rất quan trọng trong nhiều họ từ như biology, vital, mortal.",
+          left: { word: "life", meaning: "sự sống, cuộc sống", example: "Water is important for life. / Nước quan trọng cho sự sống." },
+          right: { word: "death", meaning: "cái chết, sự kết thúc của sự sống", example: "The story is about life and death. / Câu chuyện nói về sự sống và cái chết." }
+        },
+        {
+          title: "light vs dark",
+          note: "Trái nghĩa về ánh sáng hoặc sắc thái; dark cũng có thể dùng cho màu sắc, nơi chốn, tâm trạng.",
+          left: { word: "light", meaning: "ánh sáng, sáng, nhẹ", example: "The room is full of light. / Căn phòng tràn ngập ánh sáng." },
+          right: { word: "dark", meaning: "tối, bóng tối, màu sẫm", example: "It gets dark early in winter. / Mùa đông trời tối sớm." }
+        },
+        {
+          title: "begin vs end",
+          note: "Cặp trái nghĩa về điểm khởi đầu và điểm kết thúc của một hành động/quá trình.",
+          left: { word: "begin", meaning: "bắt đầu", example: "The class begins at eight. / Lớp học bắt đầu lúc tám giờ." },
+          right: { word: "end", meaning: "kết thúc", example: "The meeting ended late. / Cuộc họp kết thúc muộn." }
+        },
+        {
+          title: "give vs take",
+          note: "Một bên là đưa ra, một bên là nhận/lấy vào; không phải tạo bằng prefix.",
+          left: { word: "give", meaning: "đưa, cho, trao", example: "Can you give me an example? / Bạn có thể cho tôi một ví dụ không?" },
+          right: { word: "take", meaning: "lấy, nhận, mang đi", example: "Please take this book. / Hãy lấy quyển sách này." }
+        },
+        {
+          title: "true vs false",
+          note: "Trái nghĩa về tính đúng/sai, hay gặp trong học thuật, logic và lập trình.",
+          left: { word: "true", meaning: "đúng, thật", example: "Her story is true. / Câu chuyện của cô ấy là thật." },
+          right: { word: "false", meaning: "sai, giả, không đúng", example: "That answer is false. / Câu trả lời đó là sai." }
+        },
+        {
+          title: "high vs low",
+          note: "Trái nghĩa về độ cao, mức độ, âm thanh, giá cả hoặc vị trí.",
+          left: { word: "high", meaning: "cao, ở mức cao", example: "The price is too high. / Giá quá cao." },
+          right: { word: "low", meaning: "thấp, ở mức thấp", example: "The battery is low. / Pin yếu." }
+        },
+        {
+          title: "old vs young",
+          note: "Trái nghĩa về tuổi tác. Với đồ vật, old thường đối lập với new hơn là young.",
+          left: { word: "old", meaning: "già, cũ, lâu năm", example: "This is an old building. / Đây là một tòa nhà cũ." },
+          right: { word: "young", meaning: "trẻ, còn ít tuổi", example: "Young children learn quickly. / Trẻ nhỏ học rất nhanh." }
+        },
+        {
+          title: "new vs old",
+          note: "Cặp này dùng cho vật, ý tưởng, thông tin hoặc trải nghiệm mới/cũ.",
+          left: { word: "new", meaning: "mới", example: "I bought a new notebook. / Tôi mua một quyển vở mới." },
+          right: { word: "old", meaning: "cũ, đã có từ trước", example: "My old phone still works. / Điện thoại cũ của tôi vẫn chạy." }
+        },
+        {
+          title: "strong vs weak",
+          note: "Trái nghĩa về sức mạnh, năng lực, ảnh hưởng hoặc mức độ.",
+          left: { word: "strong", meaning: "mạnh, vững, có sức", example: "She has a strong memory. / Cô ấy có trí nhớ tốt." },
+          right: { word: "weak", meaning: "yếu, không mạnh", example: "This argument is weak. / Lập luận này yếu." }
+        },
+        {
+          title: "rich vs poor",
+          note: "Trái nghĩa về tài chính; cũng có thể dùng bóng nghĩa như rich flavor, poor quality.",
+          left: { word: "rich", meaning: "giàu, phong phú", example: "The country is rich in culture. / Đất nước này giàu văn hóa." },
+          right: { word: "poor", meaning: "nghèo, kém chất lượng", example: "The service was poor. / Dịch vụ rất kém." }
+        },
+        {
+          title: "hot vs cold",
+          note: "Trái nghĩa về nhiệt độ; cả hai cũng có nhiều nghĩa bóng trong giao tiếp.",
+          left: { word: "hot", meaning: "nóng", example: "The soup is hot. / Món súp nóng." },
+          right: { word: "cold", meaning: "lạnh", example: "The water is cold. / Nước lạnh." }
+        },
+        {
+          title: "full vs empty",
+          note: "Trái nghĩa về mức độ chứa đựng: đầy và trống/rỗng.",
+          left: { word: "full", meaning: "đầy, no", example: "The bottle is full. / Cái chai đầy." },
+          right: { word: "empty", meaning: "trống, rỗng", example: "The room is empty. / Căn phòng trống." }
+        },
+        {
+          title: "friend vs enemy",
+          note: "Cặp đối lập về quan hệ: người cùng phe/thân thiết và người đối địch.",
+          left: { word: "friend", meaning: "bạn, người thân thiện", example: "He is my best friend. / Anh ấy là bạn thân nhất của tôi." },
+          right: { word: "enemy", meaning: "kẻ thù, người đối địch", example: "Fear can be your enemy. / Nỗi sợ có thể là kẻ thù của bạn." }
+        },
+        {
+          title: "success vs failure",
+          note: "Trái nghĩa về kết quả: đạt mục tiêu và không đạt mục tiêu.",
+          left: { word: "success", meaning: "thành công", example: "Practice is the key to success. / Luyện tập là chìa khóa thành công." },
+          right: { word: "failure", meaning: "thất bại", example: "Failure can teach us a lot. / Thất bại có thể dạy ta rất nhiều." }
+        },
+        {
+          title: "win vs lose",
+          note: "Trái nghĩa về kết quả thi đấu/cạnh tranh: thắng và thua.",
+          left: { word: "win", meaning: "thắng, giành được", example: "Our team won the game. / Đội của chúng tôi đã thắng trận." },
+          right: { word: "lose", meaning: "thua, mất", example: "Don't lose your confidence. / Đừng mất tự tin." }
+        },
+        {
+          title: "buy vs sell",
+          note: "Một bên trả tiền để lấy hàng, một bên đưa hàng để nhận tiền.",
+          left: { word: "buy", meaning: "mua", example: "I want to buy a dictionary. / Tôi muốn mua một cuốn từ điển." },
+          right: { word: "sell", meaning: "bán", example: "They sell fresh fruit. / Họ bán trái cây tươi." }
+        },
+        {
+          title: "remember vs forget",
+          note: "Trái nghĩa về trí nhớ: giữ trong đầu và không nhớ nữa.",
+          left: { word: "remember", meaning: "nhớ", example: "I remember this word. / Tôi nhớ từ này." },
+          right: { word: "forget", meaning: "quên", example: "I forgot his name. / Tôi quên tên anh ấy." }
+        },
+        {
+          title: "safe vs dangerous",
+          note: "Trái nghĩa về mức độ an toàn và nguy hiểm.",
+          left: { word: "safe", meaning: "an toàn", example: "This area is safe at night. / Khu này an toàn vào ban đêm." },
+          right: { word: "dangerous", meaning: "nguy hiểm", example: "That road is dangerous. / Con đường đó nguy hiểm." }
+        },
+        {
+          title: "public vs private",
+          note: "Trái nghĩa về phạm vi: công khai/công cộng và riêng tư/tư nhân.",
+          left: { word: "public", meaning: "công cộng, công khai", example: "This is a public park. / Đây là công viên công cộng." },
+          right: { word: "private", meaning: "riêng tư, tư nhân", example: "This is a private conversation. / Đây là cuộc trò chuyện riêng tư." }
+        },
+        {
+          title: "arrive vs leave",
+          note: "Trái nghĩa về hướng sự kiện: đến nơi và rời khỏi nơi đó.",
+          left: { word: "arrive", meaning: "đến nơi", example: "We arrived at the airport early. / Chúng tôi đến sân bay sớm." },
+          right: { word: "leave", meaning: "rời đi, rời khỏi", example: "They leave the office at six. / Họ rời văn phòng lúc sáu giờ." }
+        },
+        {
+          title: "open vs close",
+          note: "Trái nghĩa về trạng thái hoặc hành động mở và đóng.",
+          left: { word: "open", meaning: "mở, đang mở", example: "Please open the window. / Hãy mở cửa sổ." },
+          right: { word: "close", meaning: "đóng, khép lại", example: "Please close the door. / Hãy đóng cửa." }
+        },
+        {
+          title: "easy vs difficult",
+          note: "Trái nghĩa về mức độ khó: dễ làm và khó làm.",
+          left: { word: "easy", meaning: "dễ", example: "This exercise is easy. / Bài tập này dễ." },
+          right: { word: "difficult", meaning: "khó", example: "This question is difficult. / Câu hỏi này khó." }
+        }
+      ],
+      scenarioGroups: [
+        {
+          title: "Chào hỏi và làm quen",
+          goal: "Dùng khi bắt đầu cuộc trò chuyện hoặc gặp người mới.",
+          items: [
+            { phrase: "Nice to meet you.", use: "Rất vui được gặp bạn, dùng lần đầu gặp.", example: "Nice to meet you, Linh. / Rất vui được gặp bạn, Linh." },
+            { phrase: "How are you doing?", use: "Hỏi thăm thân mật hơn How are you?", example: "Hi Minh, how are you doing? / Chào Minh, bạn dạo này thế nào?" },
+            { phrase: "What do you do?", use: "Hỏi nghề nghiệp, không phải hỏi đang làm gì ngay lúc này.", example: "What do you do? I am a designer. / Bạn làm nghề gì? Tôi là nhà thiết kế." },
+            { phrase: "Where are you from?", use: "Hỏi quê quán/quốc gia/thành phố.", example: "Where are you from? / Bạn đến từ đâu?" }
+          ]
+        },
+        {
+          title: "Xin lỗi và cảm ơn",
+          goal: "Dùng khi muốn lịch sự, nhận lỗi hoặc thể hiện sự biết ơn.",
+          items: [
+            { phrase: "I'm sorry.", use: "Xin lỗi trực tiếp khi làm phiền hoặc mắc lỗi.", example: "I'm sorry for being late. / Tôi xin lỗi vì đến muộn." },
+            { phrase: "My apologies.", use: "Trang trọng hơn I'm sorry.", example: "My apologies for the mistake. / Tôi xin lỗi vì sai sót này." },
+            { phrase: "Thank you for your help.", use: "Cảm ơn cụ thể về sự giúp đỡ.", example: "Thank you for your help today. / Cảm ơn bạn đã giúp hôm nay." },
+            { phrase: "I really appreciate it.", use: "Nhấn mạnh sự biết ơn.", example: "I really appreciate it. / Tôi thật sự rất cảm kích." }
+          ]
+        },
+        {
+          title: "Đồng ý và phản đối",
+          goal: "Dùng khi trao đổi ý kiến mà vẫn lịch sự.",
+          items: [
+            { phrase: "I agree with you.", use: "Đồng ý với người khác.", example: "I agree with you on this point. / Tôi đồng ý với bạn ở điểm này." },
+            { phrase: "That makes sense.", use: "Ý đó hợp lý, nghe có lý.", example: "That makes sense to me. / Điều đó hợp lý với tôi." },
+            { phrase: "I'm not sure about that.", use: "Phản đối nhẹ hoặc chưa đồng ý hoàn toàn.", example: "I'm not sure about that solution. / Tôi chưa chắc về giải pháp đó." },
+            { phrase: "I see your point, but...", use: "Lịch sự thừa nhận ý người khác trước khi nêu ý khác.", example: "I see your point, but we need more data. / Tôi hiểu ý bạn, nhưng ta cần thêm dữ liệu." }
+          ]
+        },
+        {
+          title: "Hỏi đường",
+          goal: "Dùng khi cần tìm địa điểm hoặc hỏi cách di chuyển.",
+          items: [
+            { phrase: "How do I get to...?", use: "Hỏi cách đi đến một nơi.", example: "How do I get to the station? / Tôi đi đến nhà ga bằng cách nào?" },
+            { phrase: "Is it far from here?", use: "Hỏi nơi đó có xa không.", example: "Is it far from here? / Nó có xa đây không?" },
+            { phrase: "Go straight and turn left.", use: "Chỉ đường cơ bản.", example: "Go straight and turn left at the corner. / Đi thẳng rồi rẽ trái ở góc đường." },
+            { phrase: "It's next to...", use: "Nói vị trí cạnh một nơi khác.", example: "It's next to the bank. / Nó ở cạnh ngân hàng." }
+          ]
+        },
+        {
+          title: "Mua hàng",
+          goal: "Dùng khi hỏi giá, chọn hàng hoặc thanh toán.",
+          items: [
+            { phrase: "How much is this?", use: "Hỏi giá một món đồ.", example: "How much is this shirt? / Cái áo này bao nhiêu tiền?" },
+            { phrase: "Do you have this in another size?", use: "Hỏi size khác.", example: "Do you have this in a smaller size? / Có size nhỏ hơn không?" },
+            { phrase: "Can I pay by card?", use: "Hỏi có thể trả bằng thẻ không.", example: "Can I pay by card? / Tôi trả bằng thẻ được không?" },
+            { phrase: "I'm just looking, thanks.", use: "Nói lịch sự khi chỉ xem hàng.", example: "I'm just looking, thanks. / Tôi chỉ xem thôi, cảm ơn." }
+          ]
+        },
+        {
+          title: "Nhà hàng và gọi món",
+          goal: "Dùng khi đặt bàn, gọi món, yêu cầu thêm hoặc thanh toán.",
+          items: [
+            { phrase: "A table for two, please.", use: "Xin bàn cho hai người.", example: "A table for two, please. / Cho tôi bàn hai người." },
+            { phrase: "I'd like to order...", use: "Gọi món lịch sự.", example: "I'd like to order the chicken soup. / Tôi muốn gọi súp gà." },
+            { phrase: "Could I have the bill, please?", use: "Xin hóa đơn.", example: "Could I have the bill, please? / Cho tôi xin hóa đơn." },
+            { phrase: "Is this dish spicy?", use: "Hỏi món có cay không.", example: "Is this dish spicy? / Món này có cay không?" }
+          ]
+        },
+        {
+          title: "Sân bay và du lịch",
+          goal: "Dùng khi làm thủ tục, hỏi cổng bay, hành lý hoặc đặt phòng.",
+          items: [
+            { phrase: "Where is the check-in counter?", use: "Hỏi quầy làm thủ tục.", example: "Where is the check-in counter for this flight? / Quầy check-in chuyến này ở đâu?" },
+            { phrase: "What gate is my flight?", use: "Hỏi cổng bay.", example: "What gate is my flight? / Chuyến bay của tôi ở cổng nào?" },
+            { phrase: "I have a reservation.", use: "Nói đã đặt trước khách sạn/nhà hàng.", example: "I have a reservation under Nguyen. / Tôi có đặt chỗ tên Nguyen." },
+            { phrase: "My luggage is missing.", use: "Báo mất hành lý.", example: "My luggage is missing. / Hành lý của tôi bị thất lạc." }
+          ]
+        },
+        {
+          title: "Công việc và họp hành",
+          goal: "Dùng trong môi trường làm việc, họp nhóm và trao đổi tiến độ.",
+          items: [
+            { phrase: "What's the deadline?", use: "Hỏi hạn chót.", example: "What's the deadline for this task? / Hạn chót của việc này là khi nào?" },
+            { phrase: "Could you give me feedback?", use: "Xin góp ý.", example: "Could you give me feedback on this report? / Bạn góp ý cho báo cáo này được không?" },
+            { phrase: "Let's follow up tomorrow.", use: "Hẹn trao đổi tiếp.", example: "Let's follow up tomorrow morning. / Sáng mai ta trao đổi tiếp nhé." },
+            { phrase: "I need to reschedule the meeting.", use: "Dời lịch họp.", example: "I need to reschedule the meeting. / Tôi cần dời lịch họp." }
+          ]
+        }
+      ],
+      topicGroups: [
+        {
+          title: "Gia đình",
+          goal: "Từ vựng cơ bản để nói về người thân và quan hệ gia đình.",
+          items: [
+            { phrase: "father", use: "bố, cha", example: "My father is a teacher. / Bố tôi là giáo viên." },
+            { phrase: "mother", use: "mẹ", example: "Her mother works at a hospital. / Mẹ cô ấy làm việc ở bệnh viện." },
+            { phrase: "parent", use: "cha hoặc mẹ; phụ huynh", example: "Every parent wants their child to be safe. / Mọi phụ huynh đều muốn con mình an toàn." },
+            { phrase: "child", use: "đứa trẻ, con", example: "The child is learning to read. / Đứa trẻ đang học đọc." },
+            { phrase: "relative", use: "người thân, họ hàng", example: "We visited our relatives last weekend. / Cuối tuần trước chúng tôi thăm họ hàng." }
+          ]
+        },
+        {
+          title: "Sức khỏe",
+          goal: "Từ vựng thường dùng khi nói về triệu chứng, bệnh nhẹ và chăm sóc y tế.",
+          items: [
+            { phrase: "pain", use: "cơn đau, sự đau", example: "I have pain in my back. / Tôi bị đau lưng." },
+            { phrase: "fever", use: "sốt", example: "She has a high fever. / Cô ấy bị sốt cao." },
+            { phrase: "cough", use: "ho; cơn ho", example: "He has a bad cough. / Anh ấy ho nặng." },
+            { phrase: "medicine", use: "thuốc", example: "Take this medicine after meals. / Uống thuốc này sau bữa ăn." },
+            { phrase: "doctor", use: "bác sĩ", example: "You should see a doctor. / Bạn nên đi khám bác sĩ." }
+          ]
+        },
+        {
+          title: "Cảm xúc",
+          goal: "Từ vựng miêu tả trạng thái cảm xúc hằng ngày.",
+          items: [
+            { phrase: "happy", use: "vui, hạnh phúc", example: "I am happy to see you. / Tôi rất vui được gặp bạn." },
+            { phrase: "sad", use: "buồn", example: "She felt sad after the movie. / Cô ấy thấy buồn sau bộ phim." },
+            { phrase: "angry", use: "tức giận", example: "He was angry about the delay. / Anh ấy tức giận vì sự chậm trễ." },
+            { phrase: "worried", use: "lo lắng", example: "I'm worried about the test. / Tôi lo về bài kiểm tra." },
+            { phrase: "excited", use: "hào hứng, phấn khích", example: "The children are excited about the trip. / Bọn trẻ hào hứng về chuyến đi." }
+          ]
+        },
+        {
+          title: "Tiền bạc",
+          goal: "Từ vựng dùng khi nói về giá cả, chi tiêu và tiết kiệm.",
+          items: [
+            { phrase: "price", use: "giá của một món hàng/dịch vụ", example: "What is the price of this bag? / Giá cái túi này là bao nhiêu?" },
+            { phrase: "cost", use: "chi phí; có giá là", example: "The ticket costs ten dollars. / Vé giá mười đô." },
+            { phrase: "pay", use: "trả tiền", example: "Can I pay by card? / Tôi trả bằng thẻ được không?" },
+            { phrase: "save", use: "tiết kiệm, để dành", example: "I save money every month. / Tôi tiết kiệm tiền mỗi tháng." },
+            { phrase: "spend", use: "tiêu tiền/thời gian", example: "Don't spend too much money. / Đừng tiêu quá nhiều tiền." }
+          ]
+        },
+        {
+          title: "Tư duy",
+          goal: "Động từ học thuật giúp mô tả cách xử lý ý tưởng và thông tin.",
+          items: [
+            { phrase: "analyze", use: "phân tích chi tiết", example: "We need to analyze the data. / Chúng ta cần phân tích dữ liệu." },
+            { phrase: "compare", use: "so sánh điểm giống và khác", example: "Compare these two words. / Hãy so sánh hai từ này." },
+            { phrase: "define", use: "định nghĩa, nêu rõ nghĩa", example: "Can you define this term? / Bạn định nghĩa thuật ngữ này được không?" },
+            { phrase: "explain", use: "giải thích", example: "Please explain your answer. / Hãy giải thích câu trả lời của bạn." },
+            { phrase: "evaluate", use: "đánh giá dựa trên tiêu chí", example: "We should evaluate the results. / Chúng ta nên đánh giá kết quả." }
+          ]
+        },
+        {
+          title: "Viết học thuật",
+          goal: "Từ vựng dùng khi viết luận, báo cáo hoặc trình bày lập luận.",
+          items: [
+            { phrase: "claim", use: "luận điểm, tuyên bố cần chứng minh", example: "The claim needs evidence. / Luận điểm cần bằng chứng." },
+            { phrase: "evidence", use: "bằng chứng", example: "Use evidence to support your idea. / Hãy dùng bằng chứng để hỗ trợ ý của bạn." },
+            { phrase: "argument", use: "lập luận, chuỗi lý do", example: "Her argument is clear. / Lập luận của cô ấy rõ ràng." },
+            { phrase: "conclusion", use: "kết luận", example: "Write a short conclusion. / Hãy viết một kết luận ngắn." }
+          ]
+        },
+        {
+          title: "Công việc",
+          goal: "Từ vựng thường gặp trong môi trường làm việc và học nhóm.",
+          items: [
+            { phrase: "task", use: "nhiệm vụ, việc cần làm", example: "This task is important. / Nhiệm vụ này quan trọng." },
+            { phrase: "deadline", use: "hạn chót", example: "The deadline is Friday. / Hạn chót là thứ Sáu." },
+            { phrase: "meeting", use: "cuộc họp", example: "We have a meeting at nine. / Chúng ta có cuộc họp lúc chín giờ." },
+            { phrase: "report", use: "báo cáo", example: "I finished the report. / Tôi đã hoàn thành báo cáo." },
+            { phrase: "feedback", use: "phản hồi, góp ý", example: "Thanks for your feedback. / Cảm ơn góp ý của bạn." }
+          ]
+        }
+      ],
+      roots: [
+        Root("port", "carry / mang", "Gốc từ liên quan đến việc mang, vận chuyển hoặc đưa thứ gì đó từ nơi này sang nơi khác.", [
+          W("import", "mang vào, nhập khẩu", [P("im", "in / vào"), R("port", "carry / mang")]),
+          W("export", "mang ra, xuất khẩu", [P("ex", "out / ra ngoài"), R("port", "carry / mang")]),
+          W("transport", "vận chuyển, mang qua", [P("trans", "across / qua"), R("port", "carry / mang")]),
+          W("portable", "có thể mang theo", [R("port", "carry / mang"), S("able", "can be / có thể")]),
+          W("porter", "người khuân vác", [R("port", "carry / mang"), S("er", "person who / người làm")]),
+          W("transportation", "sự vận chuyển", [P("trans", "across / qua"), R("port", "carry / mang"), S("ation", "noun suffix / hậu tố danh từ")]),
+          W("support", "hỗ trợ, nâng đỡ", [P("sup", "under / ở dưới"), R("port", "carry / mang")]),
+          W("deport", "trục xuất, đưa ra khỏi", [P("de", "away/down / ra khỏi, xuống"), R("port", "carry / mang")])
+        ]),
+        Root("spect", "look / nhìn", "Gốc từ chỉ hành động nhìn, quan sát hoặc xem xét.", [
+          W("inspect", "kiểm tra, nhìn vào kỹ", [P("in", "into / vào trong"), R("spect", "look / nhìn")]),
+          W("respect", "tôn trọng, nhìn lại với sự coi trọng", [P("re", "back / lại"), R("spect", "look / nhìn")]),
+          W("spectator", "khán giả, người xem", [R("spect", "look / nhìn"), S("ator", "person / người")]),
+          W("prospect", "triển vọng, nhìn về phía trước", [P("pro", "forward / phía trước"), R("spect", "look / nhìn")]),
+          W("perspective", "góc nhìn, quan điểm", [P("per", "through / xuyên qua"), R("spect", "look / nhìn"), S("ive", "adjective/noun suffix / hậu tố")]),
+          W("suspect", "nghi ngờ, người bị nghi", [P("sus", "under / ở dưới"), R("spect", "look / nhìn")]),
+          W("retrospect", "nhìn lại quá khứ", [P("retro", "backward / về sau, ngược lại"), R("spect", "look / nhìn")])
+        ]),
+        Root("scrib/script", "write / viết", "Hai dạng gốc từ thường gặp liên quan đến việc viết hoặc ghi chép.", [
+          W("describe", "mô tả bằng lời viết/nói", [P("de", "down / xuống, rõ ra"), R("scrib", "write / viết")]),
+          W("prescription", "đơn thuốc, chỉ định viết sẵn", [P("pre", "before / trước"), R("script", "write / viết"), S("ion", "noun suffix / hậu tố danh từ")]),
+          W("manuscript", "bản thảo viết tay", [P("manu", "hand / tay"), R("script", "write / viết")]),
+          W("subscriber", "người đăng ký", [P("sub", "under / dưới"), R("scrib", "write / viết"), S("er", "person / người")]),
+          W("inscription", "chữ khắc, dòng ghi", [P("in", "in / vào"), R("script", "write / viết"), S("ion", "noun suffix / hậu tố danh từ")]),
+          W("transcribe", "chép lại, phiên âm", [P("trans", "across / qua"), R("scrib", "write / viết")]),
+          W("scripture", "kinh sách, văn bản thiêng", [R("script", "write / viết"), S("ure", "result / kết quả")])
+        ]),
+        Root("dict", "say / nói", "Gốc từ liên quan đến nói, tuyên bố hoặc chỉ ra bằng lời.", [
+          W("predict", "dự đoán, nói trước", [P("pre", "before / trước"), R("dict", "say / nói")]),
+          W("dictate", "đọc cho viết, ra lệnh", [R("dict", "say / nói"), S("ate", "verb suffix / hậu tố động từ")]),
+          W("contradict", "phản bác, nói ngược lại", [P("contra", "against / chống lại"), R("dict", "say / nói")]),
+          W("dictionary", "từ điển", [R("dict", "say / nói"), S("ionary", "collection / tập hợp")]),
+          W("verdict", "lời phán quyết", [P("ver", "true / đúng"), R("dict", "say / nói")]),
+          W("indicate", "chỉ ra, cho biết", [P("in", "toward / hướng vào"), R("dict", "say/show / nói, chỉ ra"), S("ate", "verb suffix / hậu tố động từ")]),
+          W("dedicate", "cống hiến, tuyên bố dành cho", [P("de", "down/away / xuống, dành ra"), R("dict", "say / nói"), S("ate", "verb suffix / hậu tố động từ")])
+        ]),
+        Root("tract", "pull / kéo", "Gốc từ chỉ hành động kéo, lôi cuốn hoặc rút ra.", [
+          W("attract", "thu hút, kéo về phía mình", [P("at", "to / về phía"), R("tract", "pull / kéo")]),
+          W("subtract", "trừ đi, kéo ra khỏi", [P("sub", "under/away / dưới, ra khỏi"), R("tract", "pull / kéo")]),
+          W("contract", "co lại, hợp đồng", [P("con", "together / cùng nhau"), R("tract", "pull / kéo")]),
+          W("tractor", "máy kéo", [R("tract", "pull / kéo"), S("or", "thing/person / vật hoặc người")]),
+          W("distract", "làm xao nhãng, kéo ra xa", [P("dis", "away / ra xa"), R("tract", "pull / kéo")]),
+          W("extract", "rút ra, chiết xuất", [P("ex", "out / ra ngoài"), R("tract", "pull / kéo")]),
+          W("retract", "rút lại", [P("re", "back / trở lại"), R("tract", "pull / kéo")])
+        ]),
+        Root("form", "shape / hình dạng", "Gốc từ nói về hình dạng, sự tạo hình hoặc biến đổi hình thức.", [
+          W("reform", "cải cách, tạo hình lại", [P("re", "again / lại"), R("form", "shape / hình dạng")]),
+          W("uniform", "đồng nhất, đồng phục", [P("uni", "one / một"), R("form", "shape / hình dạng")]),
+          W("transform", "biến đổi hình dạng", [P("trans", "across/change / qua, đổi"), R("form", "shape / hình dạng")]),
+          W("formation", "sự hình thành", [R("form", "shape / hình dạng"), S("ation", "noun suffix / hậu tố danh từ")]),
+          W("informal", "không trang trọng", [P("in", "not / không"), R("form", "shape/form / hình thức"), S("al", "adjective suffix / hậu tố tính từ")]),
+          W("conform", "tuân theo, cùng hình thức", [P("con", "together / cùng nhau"), R("form", "shape / hình dạng")]),
+          W("deform", "làm biến dạng", [P("de", "down, bad / xuống, xấu đi"), R("form", "shape / hình dạng")])
+        ]),
+        Root("struct", "build / xây dựng", "Gốc từ thể hiện việc xây dựng, sắp đặt hoặc tạo cấu trúc.", [
+          W("construct", "xây dựng", [P("con", "together / cùng nhau"), R("struct", "build / xây dựng")]),
+          W("destruction", "sự phá hủy", [P("de", "down / xuống, phá bỏ"), R("struct", "build / xây dựng"), S("ion", "noun suffix / hậu tố danh từ")]),
+          W("instruct", "hướng dẫn, xây dựng kiến thức bên trong", [P("in", "in / vào"), R("struct", "build / xây dựng")]),
+          W("structure", "cấu trúc", [R("struct", "build / xây dựng"), S("ure", "result / kết quả")]),
+          W("reconstruct", "tái xây dựng", [P("re", "again / lại"), P("con", "together / cùng nhau"), R("struct", "build / xây dựng")]),
+          W("obstruct", "cản trở, dựng chắn trước", [P("ob", "against / chống, chắn"), R("struct", "build / xây dựng")]),
+          W("infrastructure", "cơ sở hạ tầng", [P("infra", "below / bên dưới"), R("struct", "build / xây dựng"), S("ure", "result / kết quả")])
+        ]),
+        Root("ject", "throw / ném", "Gốc từ liên quan đến ném, phóng hoặc đưa một thứ ra/vào một hướng.", [
+          W("project", "dự án; phóng ra phía trước", [P("pro", "forward / phía trước"), R("ject", "throw / ném")]),
+          W("inject", "tiêm vào", [P("in", "in / vào"), R("ject", "throw / ném")]),
+          W("reject", "từ chối, ném trả lại", [P("re", "back / trở lại"), R("ject", "throw / ném")]),
+          W("eject", "đẩy ra, phóng ra", [P("e", "out / ra ngoài"), R("ject", "throw / ném")]),
+          W("projection", "sự phóng chiếu, dự báo", [P("pro", "forward / phía trước"), R("ject", "throw / ném"), S("ion", "noun suffix / hậu tố danh từ")]),
+          W("object", "vật thể; phản đối", [P("ob", "against / chống, trước mặt"), R("ject", "throw / ném")]),
+          W("subject", "chủ đề; đặt dưới", [P("sub", "under / dưới"), R("ject", "throw / ném")])
+        ]),
+        Root("mit/miss", "send / gửi", "Gốc từ chỉ việc gửi, truyền đi hoặc cho phép một điều gì đó đi qua.", [
+          W("transmit", "truyền đi", [P("trans", "across / qua"), R("mit", "send / gửi")]),
+          W("submit", "nộp, gửi lên", [P("sub", "under / dưới"), R("mit", "send / gửi")]),
+          W("permit", "cho phép", [P("per", "through / qua"), R("mit", "send / gửi")]),
+          W("mission", "nhiệm vụ, sứ mệnh", [R("miss", "send / gửi"), S("ion", "noun suffix / hậu tố danh từ")]),
+          W("dismiss", "giải tán, cho đi", [P("dis", "away / ra xa"), R("miss", "send / gửi")]),
+          W("admit", "thừa nhận, cho vào", [P("ad", "to / tới"), R("mit", "send / gửi")]),
+          W("emit", "phát ra", [P("e", "out / ra ngoài"), R("mit", "send / gửi")])
+        ]),
+        Root("vid/vis", "see / thấy", "Gốc từ liên quan đến nhìn thấy, thị giác và hình ảnh.", [
+          W("video", "hình ảnh, video", [R("vid", "see / thấy"), S("eo", "noun ending / đuôi danh từ")]),
+          W("visible", "có thể nhìn thấy", [R("vis", "see / thấy"), S("ible", "can be / có thể")]),
+          W("vision", "tầm nhìn, thị lực", [R("vis", "see / thấy"), S("ion", "noun suffix / hậu tố danh từ")]),
+          W("revise", "xem lại, sửa lại", [P("re", "again / lại"), R("vis", "see / thấy")]),
+          W("supervise", "giám sát, nhìn từ trên", [P("super", "over / ở trên"), R("vis", "see / thấy")]),
+          W("evidence", "bằng chứng, điều được nhìn thấy rõ", [P("e", "out / ra ngoài"), R("vid", "see / thấy"), S("ence", "noun suffix / hậu tố danh từ")]),
+          W("visual", "thuộc thị giác", [R("vis", "see / thấy"), S("ual", "adjective suffix / hậu tố tính từ")])
+        ]),
+        Root("cred", "believe / tin", "Gốc từ nói về niềm tin, sự đáng tin hoặc khả năng được tin tưởng.", [
+          W("credit", "tín dụng, sự tin cậy", [R("cred", "believe / tin"), S("it", "noun ending / đuôi danh từ")]),
+          W("credible", "đáng tin", [R("cred", "believe / tin"), S("ible", "can be / có thể")]),
+          W("incredible", "khó tin, phi thường", [P("in", "not / không"), R("cred", "believe / tin"), S("ible", "can be / có thể")]),
+          W("creed", "tín điều", [R("cred", "believe / tin")]),
+          W("credibility", "sự đáng tin", [R("cred", "believe / tin"), S("ibility", "quality / phẩm chất")]),
+          W("discredit", "làm mất uy tín", [P("dis", "away, not / tách ra, phủ định"), R("cred", "believe / tin"), S("it", "noun/verb ending / đuôi từ")]),
+          W("credentials", "giấy chứng nhận, bằng cấp", [R("cred", "believe / tin"), S("ential", "related to / liên quan đến"), S("s", "plural suffix / hậu tố số nhiều")])
+        ]),
+        Root("log", "word, study / lời, ngành học", "Gốc từ liên quan đến lời nói, lý luận hoặc một lĩnh vực nghiên cứu.", [
+          W("logic", "logic, lý luận", [R("log", "word/reason / lời, lý luận"), S("ic", "adjective/noun suffix / hậu tố")]),
+          W("biology", "sinh học", [P("bio", "life / sự sống"), R("log", "study / ngành học"), S("y", "noun ending / đuôi danh từ")]),
+          W("dialogue", "đối thoại", [P("dia", "through/between / qua, giữa"), R("log", "word / lời")]),
+          W("catalog", "danh mục", [P("cata", "down / xuống"), R("log", "word/list / lời, danh sách")]),
+          W("apology", "lời xin lỗi, biện giải", [P("apo", "away / ra khỏi"), R("log", "word / lời"), S("y", "noun ending / đuôi danh từ")]),
+          W("prologue", "lời mở đầu", [P("pro", "before / trước"), R("log", "word / lời")]),
+          W("monologue", "độc thoại", [P("mono", "one / một"), R("log", "word / lời")])
+        ]),
+        Root("bio", "life / sự sống", "Gốc từ xuất hiện trong các từ liên quan đến sự sống, sinh vật và tiểu sử.", [
+          W("biology", "sinh học", [R("bio", "life / sự sống"), S("ology", "study of / ngành học")]),
+          W("biography", "tiểu sử", [R("bio", "life / sự sống"), S("graphy", "writing / sự viết")]),
+          W("antibiotic", "thuốc kháng sinh", [P("anti", "against / chống lại"), R("bio", "life / sự sống"), S("tic", "adjective/noun suffix / hậu tố")]),
+          W("biodegradable", "có thể phân hủy sinh học", [R("bio", "life / sự sống"), R("degrad", "break down / phân hủy"), S("able", "can be / có thể")]),
+          W("biosphere", "sinh quyển", [R("bio", "life / sự sống"), S("sphere", "ball, field / quả cầu, phạm vi")]),
+          W("biochemistry", "hóa sinh", [R("bio", "life / sự sống"), R("chem", "chemical / hóa học"), S("istry", "field / lĩnh vực")])
+        ]),
+        Root("graph", "write, draw / viết, vẽ", "Gốc từ liên quan đến ghi lại, viết, vẽ hoặc biểu diễn bằng hình ảnh.", [
+          W("autograph", "chữ ký", [P("auto", "self / tự mình"), R("graph", "write / viết")]),
+          W("photograph", "bức ảnh", [P("photo", "light / ánh sáng"), R("graph", "write/draw / ghi lại")]),
+          W("graphic", "thuộc hình ảnh", [R("graph", "draw / vẽ"), S("ic", "adjective suffix / hậu tố tính từ")]),
+          W("paragraph", "đoạn văn", [P("para", "beside / bên cạnh"), R("graph", "write / viết")]),
+          W("geography", "địa lý", [P("geo", "earth / trái đất"), R("graph", "write / viết"), S("y", "noun ending / đuôi danh từ")]),
+          W("graphology", "ngành nghiên cứu chữ viết", [R("graph", "write / viết"), S("ology", "study of / ngành học")]),
+          W("cartography", "ngành bản đồ học", [P("carto", "map / bản đồ"), R("graph", "write/draw / vẽ, ghi"), S("y", "noun ending / đuôi danh từ")])
+        ]),
+        Root("phon", "sound / âm thanh", "Gốc từ chỉ âm thanh, tiếng nói hoặc thiết bị truyền âm.", [
+          W("telephone", "điện thoại", [P("tele", "far / xa"), R("phon", "sound / âm thanh")]),
+          W("microphone", "micro", [P("micro", "small / nhỏ"), R("phon", "sound / âm thanh")]),
+          W("symphony", "bản giao hưởng", [P("sym", "together / cùng nhau"), R("phon", "sound / âm thanh"), S("y", "noun ending / đuôi danh từ")]),
+          W("phonetic", "thuộc ngữ âm", [R("phon", "sound / âm thanh"), S("etic", "adjective suffix / hậu tố tính từ")]),
+          W("homophone", "từ đồng âm", [P("homo", "same / giống nhau"), R("phon", "sound / âm thanh")]),
+          W("phonology", "âm vị học", [R("phon", "sound / âm thanh"), S("ology", "study of / ngành học")])
+        ]),
+        Root("duc/duct", "lead / dẫn dắt", "Gốc từ liên quan đến dẫn, đưa đi hoặc điều khiển một hướng chuyển động.", [
+          W("conduct", "dẫn dắt, tiến hành", [P("con", "together / cùng nhau"), R("duct", "lead / dẫn")]),
+          W("produce", "sản xuất, đưa ra", [P("pro", "forward / ra phía trước"), R("duc", "lead / dẫn")]),
+          W("reduce", "giảm bớt, dẫn trở lại", [P("re", "back / trở lại"), R("duc", "lead / dẫn")]),
+          W("introduce", "giới thiệu, đưa vào", [P("intro", "inside / vào trong"), R("duc", "lead / dẫn")]),
+          W("education", "giáo dục, dẫn ra tri thức", [P("e", "out / ra ngoài"), R("duc", "lead / dẫn"), S("ation", "noun suffix / hậu tố danh từ")]),
+          W("deduct", "khấu trừ, dẫn ra khỏi", [P("de", "away/down / ra khỏi, xuống"), R("duct", "lead / dẫn")])
+        ]),
+        Root("fac/fact", "make, do / làm, tạo", "Gốc từ chỉ hành động làm ra, tạo nên hoặc khiến điều gì xảy ra.", [
+          W("factory", "nhà máy, nơi tạo ra", [R("fact", "make / làm, tạo"), S("ory", "place / nơi chốn")]),
+          W("manufacture", "sản xuất bằng tay/máy", [P("manu", "hand / tay"), R("fact", "make / làm, tạo"), S("ure", "process/result / quá trình, kết quả")]),
+          W("artifact", "hiện vật do con người tạo", [P("arti", "skill / kỹ năng"), R("fact", "make / làm, tạo")]),
+          W("satisfy", "làm cho đủ, thỏa mãn", [P("satis", "enough / đủ"), R("fac", "make / làm")]),
+          W("facilitate", "tạo điều kiện, làm dễ hơn", [R("fac", "make / làm"), S("ilitate", "make / làm cho")])
+        ]),
+        Root("rupt", "break / vỡ, phá", "Gốc từ liên quan đến phá vỡ, ngắt quãng hoặc làm gián đoạn.", [
+          W("rupture", "sự nứt vỡ, làm vỡ", [R("rupt", "break / vỡ, phá"), S("ure", "result / kết quả")]),
+          W("interrupt", "làm gián đoạn, chen ngang", [P("inter", "between / giữa"), R("rupt", "break / phá")]),
+          W("disrupt", "phá vỡ, làm rối loạn", [P("dis", "apart / tách ra"), R("rupt", "break / phá")]),
+          W("erupt", "phun trào, vỡ ra ngoài", [P("e", "out / ra ngoài"), R("rupt", "break / vỡ")]),
+          W("corrupt", "làm hư hỏng, tha hóa", [P("cor", "together/intensive / cùng, nhấn mạnh"), R("rupt", "break / phá")]),
+          W("bankrupt", "phá sản", [P("bank", "bench/bank / ngân hàng"), R("rupt", "break / phá")])
+        ]),
+        Root("aud", "hear / nghe", "Gốc từ xuất hiện trong các từ liên quan đến nghe, âm thanh và khán giả.", [
+          W("audio", "âm thanh", [R("aud", "hear / nghe"), S("io", "noun ending / đuôi danh từ")]),
+          W("audience", "khán giả, người nghe", [R("aud", "hear / nghe"), S("ence", "noun suffix / hậu tố danh từ")]),
+          W("audible", "có thể nghe thấy", [R("aud", "hear / nghe"), S("ible", "can be / có thể")]),
+          W("audition", "buổi thử giọng", [R("aud", "hear / nghe"), S("ition", "noun suffix / hậu tố danh từ")]),
+          W("auditorium", "khán phòng", [R("aud", "hear / nghe"), S("orium", "place / nơi chốn")])
+        ]),
+        Root("mov/mot", "move / di chuyển", "Gốc từ nói về chuyển động, cảm xúc bị lay động hoặc động lực.", [
+          W("move", "di chuyển", [R("mov", "move / di chuyển")]),
+          W("remove", "loại bỏ, di chuyển ra", [P("re", "back/away / trở lại, ra xa"), R("mov", "move / di chuyển")]),
+          W("motion", "sự chuyển động", [R("mot", "move / di chuyển"), S("ion", "noun suffix / hậu tố danh từ")]),
+          W("motivate", "thúc đẩy, tạo động lực", [R("mot", "move / lay động"), S("ivate", "verb suffix / hậu tố động từ")]),
+          W("promote", "thăng chức, thúc đẩy tiến lên", [P("pro", "forward / phía trước"), R("mot", "move / di chuyển")])
+        ]),
+        Root("ceive/cept", "take, receive / nhận, lấy", "Gốc từ liên quan đến nhận lấy, nắm bắt hoặc tiếp thu một ý tưởng.", [
+          W("receive", "nhận", [P("re", "back / trở lại"), R("ceive", "take / nhận")]),
+          W("conceive", "hình thành ý tưởng, thụ thai", [P("con", "together / cùng nhau"), R("ceive", "take / nhận")]),
+          W("deceive", "lừa dối", [P("de", "away / lệch khỏi"), R("ceive", "take / nhận")]),
+          W("accept", "chấp nhận", [P("ac", "to / tới"), R("cept", "take / nhận")]),
+          W("concept", "khái niệm, điều được nắm bắt", [P("con", "together / cùng nhau"), R("cept", "take / nắm bắt")]),
+          W("intercept", "chặn bắt", [P("inter", "between / giữa"), R("cept", "take / bắt lấy")])
+        ]),
+        Root("temp/tempor", "time / thời gian", "Gốc từ liên quan đến thời gian, thời điểm hoặc tính tạm thời.", [
+          W("temporary", "tạm thời", [R("tempor", "time / thời gian"), S("ary", "related to / liên quan đến")]),
+          W("contemporary", "đương thời, cùng thời", [P("con", "together / cùng nhau"), R("tempor", "time / thời gian"), S("ary", "adjective suffix / hậu tố tính từ")]),
+          W("tempo", "nhịp độ", [R("temp", "time / thời gian"), S("o", "noun ending / đuôi danh từ")]),
+          W("temporal", "thuộc thời gian", [R("tempor", "time / thời gian"), S("al", "adjective suffix / hậu tố tính từ")]),
+          W("extemporaneous", "ứng khẩu, không chuẩn bị trước", [P("ex", "out / ra ngoài"), R("tempor", "time / thời gian"), S("aneous", "adjective suffix / hậu tố tính từ")])
+        ]),
+        Root("terr", "earth, land / đất", "Gốc từ chỉ đất, mặt đất hoặc lãnh thổ.", [
+          W("terrain", "địa hình", [R("terr", "earth/land / đất"), S("ain", "noun ending / đuôi danh từ")]),
+          W("territory", "lãnh thổ", [R("terr", "land / đất"), S("itory", "place / nơi chốn")]),
+          W("terrestrial", "thuộc mặt đất, trên cạn", [R("terr", "earth / đất"), S("estrial", "adjective suffix / hậu tố tính từ")]),
+          W("Mediterranean", "Địa Trung Hải", [P("medi", "middle / giữa"), R("terr", "land / đất"), S("anean", "related to / liên quan đến")]),
+          W("extraterrestrial", "ngoài Trái Đất", [P("extra", "outside / bên ngoài"), R("terr", "earth / đất"), S("estrial", "adjective suffix / hậu tố tính từ")])
+        ]),
+        Root("chron", "time / thời gian", "Gốc từ dùng trong các từ liên quan đến trình tự thời gian và ghi chép thời gian.", [
+          W("chronology", "niên đại học, trình tự thời gian", [R("chron", "time / thời gian"), S("ology", "study of / ngành học")]),
+          W("chronicle", "biên niên sử", [R("chron", "time / thời gian"), S("icle", "small record / bản ghi")]),
+          W("synchronize", "đồng bộ hóa", [P("syn", "together / cùng nhau"), R("chron", "time / thời gian"), S("ize", "make / làm cho")]),
+          W("chronic", "mạn tính, kéo dài lâu", [R("chron", "time / thời gian"), S("ic", "adjective suffix / hậu tố tính từ")]),
+          W("anachronism", "điều sai thời, lỗi niên đại", [P("ana", "back / ngược lại"), R("chron", "time / thời gian"), S("ism", "state/system / trạng thái")])
+        ]),
+        Root("sens/sent", "feel / cảm nhận", "Gốc từ liên quan đến cảm giác, cảm xúc và khả năng nhận biết.", [
+          W("sense", "giác quan, cảm nhận", [R("sens", "feel / cảm nhận")]),
+          W("sensitive", "nhạy cảm", [R("sens", "feel / cảm nhận"), S("itive", "adjective suffix / hậu tố tính từ")]),
+          W("sensation", "cảm giác", [R("sens", "feel / cảm nhận"), S("ation", "noun suffix / hậu tố danh từ")]),
+          W("sentiment", "cảm xúc, tình cảm", [R("sent", "feel / cảm nhận"), S("ment", "noun suffix / hậu tố danh từ")]),
+          W("consent", "đồng ý, cùng cảm nhận/cho phép", [P("con", "together / cùng nhau"), R("sent", "feel / cảm nhận")])
+        ]),
+        Root("fin", "end, limit / kết thúc, giới hạn", "Gốc từ chỉ ranh giới, sự kết thúc hoặc việc hoàn thành.", [
+          W("finish", "hoàn thành, kết thúc", [R("fin", "end / kết thúc"), S("ish", "verb suffix / hậu tố động từ")]),
+          W("final", "cuối cùng", [R("fin", "end / kết thúc"), S("al", "adjective suffix / hậu tố tính từ")]),
+          W("define", "định nghĩa, đặt giới hạn nghĩa", [P("de", "down / rõ ra"), R("fin", "limit / giới hạn")]),
+          W("infinite", "vô hạn", [P("in", "not / không"), R("fin", "limit / giới hạn"), S("ite", "adjective suffix / hậu tố tính từ")]),
+          W("confine", "giới hạn, giam trong phạm vi", [P("con", "together / cùng nhau"), R("fin", "limit / giới hạn")])
+        ]),
+        Root("aqua", "water / nước", "Gốc từ xuất hiện trong các từ liên quan đến nước và môi trường nước.", [
+          W("aquarium", "bể cá, thủy cung", [R("aqua", "water / nước"), S("arium", "place / nơi chốn")]),
+          W("aquatic", "thuộc nước, sống dưới nước", [R("aqua", "water / nước"), S("tic", "adjective suffix / hậu tố tính từ")]),
+          W("aqueduct", "cống dẫn nước", [R("aqua", "water / nước"), R("duct", "lead / dẫn")]),
+          W("aquifer", "tầng chứa nước", [R("aqua", "water / nước"), S("fer", "carry / mang")]),
+          W("aquaculture", "nuôi trồng thủy sản", [R("aqua", "water / nước"), R("cult", "grow / nuôi trồng"), S("ure", "process / quá trình")])
+        ]),
+        Root("path", "feeling, disease / cảm xúc, bệnh", "Gốc từ có hai hướng nghĩa hay gặp: cảm xúc/cảm thông hoặc bệnh lý.", [
+          W("empathy", "sự đồng cảm", [P("em", "in / vào"), R("path", "feeling / cảm xúc"), S("y", "noun ending / đuôi danh từ")]),
+          W("sympathy", "sự cảm thông", [P("sym", "together / cùng nhau"), R("path", "feeling / cảm xúc"), S("y", "noun ending / đuôi danh từ")]),
+          W("apathy", "sự thờ ơ", [P("a", "without / không có"), R("path", "feeling / cảm xúc"), S("y", "noun ending / đuôi danh từ")]),
+          W("pathology", "bệnh lý học", [R("path", "disease / bệnh"), S("ology", "study of / ngành học")]),
+          W("pathogen", "mầm bệnh", [R("path", "disease / bệnh"), S("gen", "produce / sinh ra")])
+        ]),
+        Root("bene", "good, well / tốt", "Gốc từ mang nghĩa tốt, có lợi hoặc thiện chí.", [
+          W("benefit", "lợi ích, có lợi", [R("bene", "good / tốt"), S("fit", "do/make / làm")]),
+          W("benevolent", "nhân từ, có thiện chí", [R("bene", "good / tốt"), R("vol", "wish / mong muốn"), S("ent", "adjective suffix / hậu tố tính từ")]),
+          W("benefactor", "người làm việc thiện, ân nhân", [R("bene", "good / tốt"), R("fact", "make/do / làm"), S("or", "person / người")]),
+          W("benediction", "lời chúc phúc", [R("bene", "good / tốt"), R("dict", "say / nói"), S("ion", "noun suffix / hậu tố danh từ")])
+        ]),
+        Root("mal", "bad, badly / xấu, tệ", "Gốc từ mang nghĩa xấu, sai, có hại hoặc hoạt động không đúng.", [
+          W("malfunction", "trục trặc, hoạt động sai", [R("mal", "badly / tệ, sai"), R("function", "work / hoạt động")]),
+          W("malnutrition", "suy dinh dưỡng", [R("mal", "bad / xấu, kém"), R("nutrition", "nourishment / dinh dưỡng")]),
+          W("malware", "phần mềm độc hại", [R("mal", "bad / xấu, độc"), R("ware", "software / phần mềm")]),
+          W("malicious", "ác ý, độc hại", [R("mal", "bad / xấu"), S("icious", "full of / đầy tính chất")])
+        ]),
+        Root("voc/vok", "call, voice / gọi, tiếng nói", "Gốc từ liên quan đến gọi, lên tiếng hoặc tiếng nói.", [
+          W("vocal", "thuộc giọng nói", [R("voc", "voice / tiếng nói"), S("al", "adjective suffix / hậu tố tính từ")]),
+          W("vocabulary", "vốn từ vựng", [R("voc", "voice/word / tiếng nói, từ"), S("abulary", "collection / tập hợp")]),
+          W("invoke", "gọi đến, viện dẫn", [P("in", "in / vào"), R("vok", "call / gọi")]),
+          W("provoke", "khiêu khích, kích động", [P("pro", "forward / ra phía trước"), R("vok", "call / gọi")]),
+          W("revoke", "thu hồi, gọi lại", [P("re", "back / trở lại"), R("vok", "call / gọi")])
+        ]),
+        Root("mem", "remember / nhớ", "Gốc từ liên quan đến trí nhớ, sự tưởng niệm và ghi nhớ.", [
+          W("memory", "trí nhớ, ký ức", [R("mem", "remember / nhớ"), S("ory", "noun suffix / hậu tố danh từ")]),
+          W("memorial", "đài tưởng niệm, thuộc tưởng niệm", [R("mem", "remember / nhớ"), S("orial", "related to / liên quan đến")]),
+          W("memorize", "học thuộc, ghi nhớ", [R("mem", "remember / nhớ"), S("orize", "make/do / làm cho")]),
+          W("commemorate", "tưởng niệm", [P("com", "together / cùng nhau"), R("mem", "remember / nhớ"), S("ate", "verb suffix / hậu tố động từ")])
+        ]),
+        Root("cap/capt", "take, seize / lấy, bắt", "Gốc từ chỉ việc nắm lấy, chiếm lấy hoặc chứa được.", [
+          W("capture", "bắt giữ, chiếm lấy", [R("capt", "take/seize / bắt, lấy"), S("ure", "result / kết quả")]),
+          W("capacity", "sức chứa, năng lực", [R("cap", "take/hold / chứa, giữ"), S("acity", "quality / phẩm chất")]),
+          W("captain", "đội trưởng, thuyền trưởng", [R("capt", "take/lead / nắm quyền, dẫn"), S("ain", "person / người")]),
+          W("caption", "chú thích, dòng mô tả", [R("capt", "take / nắm bắt"), S("ion", "noun suffix / hậu tố danh từ")])
+        ]),
+        Root("ped/pod", "foot / chân", "Gốc từ liên quan đến chân, bàn chân hoặc vật có chân.", [
+          W("pedal", "bàn đạp", [R("ped", "foot / chân"), S("al", "related to / liên quan đến")]),
+          W("pedestrian", "người đi bộ", [R("ped", "foot / chân"), S("estrian", "person / người")]),
+          W("tripod", "giá ba chân", [P("tri", "three / ba"), R("pod", "foot / chân")]),
+          W("podiatry", "ngành chữa bệnh bàn chân", [R("pod", "foot / chân"), S("iatry", "medical treatment / điều trị y khoa")])
+        ]),
+        Root("manu", "hand / tay", "Gốc từ liên quan đến bàn tay, làm bằng tay hoặc thao tác thủ công.", [
+          W("manual", "thủ công; sách hướng dẫn", [R("manu", "hand / tay"), S("al", "related to / liên quan đến")]),
+          W("manufacture", "sản xuất", [R("manu", "hand / tay"), R("fact", "make / làm"), S("ure", "process / quá trình")]),
+          W("manuscript", "bản thảo viết tay", [R("manu", "hand / tay"), R("script", "write / viết")]),
+          W("manipulate", "thao túng, điều khiển bằng tay", [R("manu", "hand / tay"), S("ipulate", "handle / xử lý")])
+        ]),
+        Root("luc/lum", "light / ánh sáng", "Gốc từ chỉ ánh sáng, sự rõ ràng hoặc chiếu sáng.", [
+          W("lucid", "sáng rõ, dễ hiểu", [R("luc", "light / ánh sáng"), S("id", "adjective suffix / hậu tố tính từ")]),
+          W("illuminate", "chiếu sáng, làm sáng tỏ", [P("il", "in / vào"), R("lum", "light / ánh sáng"), S("ate", "verb suffix / hậu tố động từ")]),
+          W("luminous", "phát sáng", [R("lum", "light / ánh sáng"), S("ous", "full of / đầy tính chất")]),
+          W("translucent", "trong mờ, cho ánh sáng xuyên qua", [P("trans", "through / xuyên qua"), R("luc", "light / ánh sáng"), S("ent", "adjective suffix / hậu tố tính từ")])
+        ])
+      ],
+      quizzes: [
+        { type: "Chọn nghĩa gốc", question: "Gốc từ 'port' có nghĩa là gì?", answers: ["carry / mang", "look / nhìn", "build / xây dựng", "say / nói"], correct: 0, explain: "'port' xuất hiện trong import, export, transport và mang nghĩa carry / mang." },
+        { type: "Ghép cấu tạo từ", question: "Cấu tạo nào tạo thành từ 'transportation'?", answers: ["trans + port + ation", "re + spect + er", "con + struct + able", "pre + dict + ive"], correct: 0, explain: "transportation = trans (qua) + port (mang) + ation (hậu tố danh từ)." },
+        { type: "Đoán nghĩa", question: "Dựa vào 'pre + dict', từ 'predict' gần nghĩa nhất với lựa chọn nào?", answers: ["nói trước, dự đoán", "kéo ra khỏi", "nhìn vào", "hình thành"], correct: 0, explain: "pre = before / trước, dict = say / nói, nên predict là nói trước hoặc dự đoán." },
+        { type: "Nhận diện hậu tố", question: "Trong từ 'portable', phần nào là hậu tố?", answers: ["able", "port", "trans", "im"], correct: 0, explain: "'able' là hậu tố mang nghĩa can be / có thể, portable = có thể mang theo." },
+        { type: "Tìm gốc từ", question: "Các từ construct, instruct, structure cùng chung gốc nào?", answers: ["struct", "spect", "tract", "form"], correct: 0, explain: "'struct' nghĩa là build / xây dựng, xuất hiện trong các từ liên quan đến cấu trúc." },
+        { type: "Đoán nghĩa", question: "Nếu 'ject' = throw / ném, 'reject' gần nghĩa nào nhất?", answers: ["từ chối, ném trả lại", "nhìn kỹ", "xây dựng lại", "ghi chép"], correct: 0, explain: "re = back / trở lại, ject = throw / ném, nên reject là ném trả lại hoặc từ chối." },
+        { type: "Ghép cấu tạo từ", question: "Từ nào được tạo bởi 'auto + graph'?", answers: ["autograph", "paragraph", "photograph", "geography"], correct: 0, explain: "auto = self / tự mình, graph = write / viết, autograph là chữ ký của chính mình." },
+        { type: "Chọn nghĩa gốc", question: "Gốc 'vid/vis' thường liên quan đến điều gì?", answers: ["see / thấy", "send / gửi", "pull / kéo", "life / sự sống"], correct: 0, explain: "vid/vis xuất hiện trong video, visible, vision và liên quan đến nhìn thấy." },
+        { type: "Nhận diện tiền tố", question: "Trong từ 'antibiotic', 'anti' có nghĩa là gì?", answers: ["against / chống lại", "again / lại", "far / xa", "under / dưới"], correct: 0, explain: "anti = against / chống lại; antibiotic là chất chống lại vi sinh vật gây bệnh." },
+        { type: "Word Family", question: "Từ nào cùng họ với gốc 'mit/miss'?", answers: ["transmit", "visible", "portable", "logic"], correct: 0, explain: "transmit chứa gốc mit = send / gửi, nghĩa là truyền đi." },
+        { type: "Chọn nghĩa gốc", question: "Gốc 'duc/duct' trong introduce, reduce, conduct có nghĩa chính là gì?", answers: ["lead / dẫn dắt", "hear / nghe", "break / phá vỡ", "believe / tin"], correct: 0, explain: "duc/duct = lead / dẫn. Introduce là đưa vào, conduct là dẫn dắt hoặc tiến hành." },
+        { type: "Đoán nghĩa", question: "Nếu 'rupt' = break / phá vỡ, 'interrupt' gần nghĩa nào nhất?", answers: ["làm gián đoạn", "nhận lấy", "di chuyển ra", "nghe thấy"], correct: 0, explain: "inter = between / giữa, rupt = break / phá vỡ, nên interrupt là chen vào làm gián đoạn." },
+        { type: "Ghép cấu tạo từ", question: "Cấu tạo nào phù hợp nhất với 'audible'?", answers: ["aud + ible", "auto + graph", "trans + port", "con + cept"], correct: 0, explain: "aud = hear / nghe, ible = can be / có thể, audible nghĩa là có thể nghe thấy." },
+        { type: "Tìm gốc từ", question: "Các từ receive, accept, concept cùng liên quan đến gốc nào?", answers: ["ceive/cept", "phon", "tract", "cred"], correct: 0, explain: "ceive/cept mang nghĩa take, receive / nhận, lấy, nắm bắt." },
+        { type: "Đoán nghĩa", question: "Từ 'promote' có 'pro' = forward và 'mot' = move, nên nghĩa lõi là gì?", answers: ["thúc đẩy tiến lên", "làm vỡ", "nhìn lại", "ghi xuống"], correct: 0, explain: "pro = forward / phía trước, mot = move / di chuyển, promote là thúc đẩy hoặc đưa lên." },
+        { type: "Trái nghĩa tự nhiên", question: "Từ nào là trái nghĩa tự nhiên của 'good' mà không cần dùng prefix?", answers: ["bad", "ungood", "disgood", "ingood"], correct: 0, explain: "good đối lập tự nhiên với bad. Không dùng un-/dis-/in- để tạo dạng này." },
+        { type: "Trái nghĩa tự nhiên", question: "Cặp nào là trái nghĩa trực tiếp?", answers: ["give / take", "give / giving", "take / taken", "receive / received"], correct: 0, explain: "give = cho/trao ra, take = lấy/nhận vào. Đây là hai từ riêng có nghĩa đối lập." },
+        { type: "Trái nghĩa tự nhiên", question: "Trong cặp 'old vs young' và 'new vs old', khi nói về đồ vật mới/cũ nên chọn cặp nào?", answers: ["new / old", "young / old", "young / new", "good / bad"], correct: 0, explain: "young thường dùng cho tuổi tác của người/sinh vật. Với đồ vật, new đối lập với old." },
+        { type: "Từ dễ nhầm", question: "Bạn muốn mượn bút của ai đó. Nên dùng câu nào?", answers: ["Can I borrow your pen?", "Can I lend your pen?", "Can I sell your pen?", "Can I raise your pen?"], correct: 0, explain: "borrow = mượn từ người khác. lend = cho người khác mượn." },
+        { type: "Tình huống giao tiếp", question: "Ở nhà hàng, câu nào dùng để xin hóa đơn?", answers: ["Could I have the bill, please?", "Where is the gate?", "What do you do?", "I see your point, but..."], correct: 0, explain: "Could I have the bill, please? là cách lịch sự để xin hóa đơn." },
+        { type: "Chọn nghĩa gốc", question: "Gốc 'bene' trong benefit, benevolent mang nghĩa gì?", answers: ["good / tốt", "bad / xấu", "foot / chân", "call / gọi"], correct: 0, explain: "bene = good/well, xuất hiện trong benefit và benevolent." },
+        { type: "Chọn nghĩa gốc", question: "Gốc 'mal' trong malfunction, malware thường mang nghĩa gì?", answers: ["bad / xấu, sai", "light / ánh sáng", "remember / nhớ", "hand / tay"], correct: 0, explain: "mal = bad/badly, chỉ điều xấu, sai hoặc có hại." },
+        { type: "Từ dễ nhầm", question: "Câu nào đúng khi muốn nói 'Tôi cần nằm xuống'?", answers: ["I need to lie down.", "I need to lay down.", "I need to laid down.", "I need to lain down."], correct: 0, explain: "lie = nằm, không cần tân ngữ. Lay = đặt cái gì xuống và cần tân ngữ." },
+        { type: "Từ dễ nhầm", question: "Chọn câu đúng với danh từ không đếm được 'time'.", answers: ["There is little time left.", "There are few time left.", "There is few time left.", "There are a few time left."], correct: 0, explain: "Time là danh từ không đếm được, nên dùng little/a little thay vì few/a few." },
+        { type: "Trái nghĩa tự nhiên", question: "Cặp nào là trái nghĩa tự nhiên về hành động đến/rời đi?", answers: ["arrive / leave", "come / arrived", "go / gone", "open / close"], correct: 0, explain: "arrive = đến nơi, leave = rời khỏi nơi đó." },
+        { type: "Chủ đề từ vựng", question: "Từ nào thuộc nhóm Sức khỏe?", answers: ["fever", "deadline", "claim", "relative"], correct: 0, explain: "fever = sốt, thuộc nhóm từ vựng Sức khỏe." },
+        { type: "Chủ đề từ vựng", question: "Trong viết học thuật, 'evidence' nghĩa là gì?", answers: ["bằng chứng", "hạn chót", "người thân", "cơn ho"], correct: 0, explain: "Evidence là bằng chứng dùng để hỗ trợ claim hoặc argument." }
+      ]
+    };
+
+    const rootData = APP_DATA.roots;
+    const quizData = APP_DATA.quizzes;
+    const TOPICS = [
+      { id: "all", label: "Tất cả" },
+      { id: "academic", label: "Học thuật" },
+      { id: "daily", label: "Đời sống" },
+      { id: "emotion", label: "Cảm xúc" },
+      { id: "work", label: "Công việc" },
+      { id: "nature", label: "Thiên nhiên" },
+      { id: "tech", label: "Công nghệ" },
+      { id: "language", label: "Ngôn ngữ" },
+      { id: "society", label: "Xã hội" }
+    ];
+
+    const TOPIC_RULES = {
+      academic: ["study", "learn", "research", "logic", "biology", "geography", "chronology", "education", "concept", "define", "analyze", "compare", "explain", "evaluate", "claim", "evidence", "argument", "conclusion", "pathology", "quiz", "học", "nghiên cứu", "giáo dục", "khái niệm", "tư duy", "viết học thuật"],
+      daily: ["home", "house", "food", "water", "hot", "cold", "full", "empty", "begin", "end", "look", "see", "watch", "make", "do", "father", "mother", "parent", "child", "relative", "pain", "fever", "cough", "medicine", "doctor", "price", "cost", "pay", "save", "spend", "đời sống", "gia đình", "sức khỏe", "tiền bạc", "nhà", "nước"],
+      emotion: ["love", "hate", "empathy", "sympathy", "apathy", "feeling", "sentiment", "smart", "wise", "good", "bad", "happy", "sad", "angry", "worried", "excited", "cảm xúc", "yêu", "ghét"],
+      work: ["job", "work", "career", "factory", "produce", "conduct", "project", "support", "contract", "success", "failure", "task", "deadline", "meeting", "report", "feedback", "công việc", "sự nghiệp", "sản xuất"],
+      nature: ["bio", "life", "death", "aqua", "water", "terr", "earth", "light", "dark", "pathogen", "biosphere", "sự sống", "đất", "thiên nhiên"],
+      tech: ["video", "audio", "telephone", "microphone", "transmit", "visual", "graph", "code", "technology", "report", "online", "công nghệ", "truyền"],
+      language: ["say", "tell", "speak", "talk", "dict", "scrib", "script", "phon", "word", "dialogue", "monologue", "ngôn ngữ", "nói", "viết"],
+      society: ["friend", "enemy", "rich", "poor", "territory", "audience", "permit", "law", "verdict", "respect", "xã hội", "lãnh thổ", "khán giả"]
+    };
+
+    const state = {
+      selectedRoot: rootData[0],
+      selectedWord: rootData[0].words[5],
+      selectedUsageIndex: 0,
+      selectedAntonymIndex: 0,
+      selectedScenarioIndex: 0,
+      selectedTopicGroupIndex: 0,
+      quizIndex: 0,
+      activeView: "roots",
+      selectedTopic: "all",
+      query: ""
+    };
+
+    const rootList = document.getElementById("rootList");
+    const rootBoard = document.getElementById("rootBoard");
+    const learningGuide = document.getElementById("learningGuide");
+    const usageGuide = document.getElementById("usageGuide");
+    const contrastGuide = document.getElementById("contrastGuide");
+    const scenarioGuide = document.getElementById("scenarioGuide");
+    const topicWordsGuide = document.getElementById("topicWordsGuide");
+    const wordDetail = document.getElementById("wordDetail");
+    const quizBox = document.getElementById("quizBox");
+    const searchInput = document.getElementById("searchInput");
+    const topicFilter = document.getElementById("topicFilter");
+    const sidebarTitle = document.getElementById("sidebarTitle");
+    const rootCount = document.getElementById("rootCount");
+    const randomQuizBtn = document.getElementById("randomQuizBtn");
+    const tabButtons = document.querySelectorAll("[data-view]");
+    const viewPanels = document.querySelectorAll("[data-view-panel]");
+
+    const typeLabels = {
+      prefix: "Tiền tố",
+      root: "Gốc từ",
+      suffix: "Hậu tố",
+      meaning: "Nghĩa"
+    };
+
+    function normalize(text) {
+      return text.toLowerCase().trim();
+    }
+
+    function highlight(text) {
+      if (!state.query) return text;
+      const safeQuery = state.query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      return text.replace(new RegExp(`(${safeQuery})`, "ig"), "<mark>$1</mark>");
+    }
+
+    function partFormula(parts) {
+      return parts.map((part, index) => `
+        ${index ? '<span class="plus">+</span>' : ""}
+        <span class="part ${part.type}">${part.text}</span>
+      `).join("");
+    }
+
+    function topicLabel(topicId) {
+      return TOPICS.find(topic => topic.id === topicId)?.label || topicId;
+    }
+
+    function textForTopic(item, type) {
+      if (type === "root") {
+        return `${item.root} ${item.meaning} ${item.note} ${item.words.map(word => `${word.word} ${word.meaning} ${word.parts.map(part => `${part.text} ${part.meaning}`).join(" ")}`).join(" ")}`;
+      }
+      if (type === "usage") {
+        return `${item.title} ${item.idea} ${item.items.map(entry => `${entry.word} ${entry.use} ${entry.example}`).join(" ")}`;
+      }
+      if (type === "contrast") {
+        return `${item.title} ${item.note} ${item.left.word} ${item.left.meaning} ${item.left.example} ${item.right.word} ${item.right.meaning} ${item.right.example}`;
+      }
+      if (type === "scenario") {
+        return `${item.title} ${item.goal} ${item.items.map(entry => `${entry.phrase} ${entry.use} ${entry.example}`).join(" ")}`;
+      }
+      if (type === "topicWords") {
+        return `${item.title} ${item.goal} ${item.items.map(entry => `${entry.phrase} ${entry.use} ${entry.example}`).join(" ")}`;
+      }
+      return `${item.type} ${item.question} ${item.answers.join(" ")} ${item.explain}`;
+    }
+
+    function getTopics(item, type) {
+      const text = textForTopic(item, type).toLowerCase();
+      const matched = TOPICS
+        .filter(topic => topic.id !== "all")
+        .filter(topic => TOPIC_RULES[topic.id].some(keyword => text.includes(keyword.toLowerCase())))
+        .map(topic => topic.id);
+      return matched.length ? matched : ["daily"];
+    }
+
+    function matchesSelectedTopic(item, type) {
+      return true;
+    }
+
+    function renderTags(item, type) {
+      return "";
+    }
+
+    function renderTopicFilter() {
+      // Topic category chips were removed; main learning tabs now drive navigation.
+    }
+
+    function filterRoots() {
+      const query = normalize(state.query);
+
+      return rootData.filter(item => {
+        if (!matchesSelectedTopic(item, "root")) return false;
+        if (!query) return true;
+        const rootMatch = `${item.root} ${item.meaning} ${item.note}`.toLowerCase().includes(query);
+        const wordMatch = item.words.some(word =>
+          `${word.word} ${word.meaning} ${word.parts.map(part => `${part.text} ${part.meaning}`).join(" ")}`.toLowerCase().includes(query)
+        );
+        return rootMatch || wordMatch;
+      });
+    }
+
+    function filterUsageGroups() {
+      const query = normalize(state.query);
+      return APP_DATA.usageGroups
+        .map((group, index) => ({ group, index }))
+        .filter(({ group }) => {
+          if (!matchesSelectedTopic(group, "usage")) return false;
+          if (!query) return true;
+          const groupText = `${group.title} ${group.idea} ${group.items.map(item => `${item.word} ${item.use} ${item.example}`).join(" ")}`;
+          return groupText.toLowerCase().includes(query);
+        });
+    }
+
+    function filterAntonymGroups() {
+      const query = normalize(state.query);
+      return APP_DATA.antonymGroups
+        .map((group, index) => ({ group, index }))
+        .filter(({ group }) => {
+          if (!matchesSelectedTopic(group, "contrast")) return false;
+          if (!query) return true;
+          const groupText = `${group.title} ${group.note} ${group.left.word} ${group.left.meaning} ${group.left.example} ${group.right.word} ${group.right.meaning} ${group.right.example}`;
+          return groupText.toLowerCase().includes(query);
+        });
+    }
+
+    function filterScenarioGroups() {
+      const query = normalize(state.query);
+      return APP_DATA.scenarioGroups
+        .map((group, index) => ({ group, index }))
+        .filter(({ group }) => {
+          if (!matchesSelectedTopic(group, "scenario")) return false;
+          if (!query) return true;
+          const groupText = `${group.title} ${group.goal} ${group.items.map(item => `${item.phrase} ${item.use} ${item.example}`).join(" ")}`;
+          return groupText.toLowerCase().includes(query);
+        });
+    }
+
+    function filterTopicWordGroups() {
+      const query = normalize(state.query);
+      return APP_DATA.topicGroups
+        .map((group, index) => ({ group, index }))
+        .filter(({ group }) => {
+          if (!matchesSelectedTopic(group, "topicWords")) return false;
+          if (!query) return true;
+          const groupText = `${group.title} ${group.goal} ${group.items.map(item => `${item.phrase} ${item.use} ${item.example}`).join(" ")}`;
+          return groupText.toLowerCase().includes(query);
+        });
+    }
+
+    function filterQuizzes() {
+      const query = normalize(state.query);
+      return quizData
+        .map((quiz, index) => ({ quiz, index }))
+        .filter(({ quiz }) => {
+          if (!matchesSelectedTopic(quiz, "quiz")) return false;
+          if (!query) return true;
+          const quizText = `${quiz.type} ${quiz.question} ${quiz.answers.join(" ")} ${quiz.explain}`;
+          return quizText.toLowerCase().includes(query);
+        });
+    }
+
+    function renderRootList() {
+      if (state.activeView === "usage") {
+        const groups = filterUsageGroups();
+        sidebarTitle.textContent = "Nhóm từ gần nghĩa";
+        rootCount.textContent = `${groups.length}/${APP_DATA.usageGroups.length}`;
+
+        rootList.innerHTML = groups.length ? groups.map(({ group, index }) => `
+          <button class="root-card ${index === state.selectedUsageIndex ? "active" : ""}" type="button" data-sidebar-type="usage" data-index="${index}">
+            <span>
+              <span class="root-name">${highlight(group.title)}</span>
+              <span class="root-meaning">${highlight(group.idea)}</span>
+              ${renderTags(group, "usage")}
+            </span>
+            <span class="count-pill">${group.items.length} từ</span>
+          </button>
+        `).join("") : '<div class="empty">Không tìm thấy nhóm từ gần nghĩa phù hợp.</div>';
+        return;
+      }
+
+      if (state.activeView === "contrast") {
+        const groups = filterAntonymGroups();
+        sidebarTitle.textContent = "Cặp trái nghĩa";
+        rootCount.textContent = `${groups.length}/${APP_DATA.antonymGroups.length}`;
+
+        rootList.innerHTML = groups.length ? groups.map(({ group, index }) => `
+          <button class="root-card ${index === state.selectedAntonymIndex ? "active" : ""}" type="button" data-sidebar-type="contrast" data-index="${index}">
+            <span>
+              <span class="root-name">${highlight(group.title)}</span>
+              <span class="root-meaning">${highlight(group.note)}</span>
+              ${renderTags(group, "contrast")}
+            </span>
+            <span class="count-pill">cặp</span>
+          </button>
+        `).join("") : '<div class="empty">Không tìm thấy cặp trái nghĩa phù hợp.</div>';
+        return;
+      }
+
+      if (state.activeView === "scenario") {
+        const groups = filterScenarioGroups();
+        sidebarTitle.textContent = "Tình huống giao tiếp";
+        rootCount.textContent = `${groups.length}/${APP_DATA.scenarioGroups.length}`;
+
+        rootList.innerHTML = groups.length ? groups.map(({ group, index }) => `
+          <button class="root-card ${index === state.selectedScenarioIndex ? "active" : ""}" type="button" data-sidebar-type="scenario" data-index="${index}">
+            <span>
+              <span class="root-name">${highlight(group.title)}</span>
+              <span class="root-meaning">${highlight(group.goal)}</span>
+              ${renderTags(group, "scenario")}
+            </span>
+            <span class="count-pill">${group.items.length} mẫu</span>
+          </button>
+        `).join("") : '<div class="empty">Không tìm thấy tình huống phù hợp.</div>';
+        return;
+      }
+
+      if (state.activeView === "topicWords") {
+        const groups = filterTopicWordGroups();
+        sidebarTitle.textContent = "Chủ đề từ vựng";
+        rootCount.textContent = `${groups.length}/${APP_DATA.topicGroups.length}`;
+
+        rootList.innerHTML = groups.length ? groups.map(({ group, index }) => `
+          <button class="root-card ${index === state.selectedTopicGroupIndex ? "active" : ""}" type="button" data-sidebar-type="topicWords" data-index="${index}">
+            <span>
+              <span class="root-name">${highlight(group.title)}</span>
+              <span class="root-meaning">${highlight(group.goal)}</span>
+              ${renderTags(group, "topicWords")}
+            </span>
+            <span class="count-pill">${group.items.length} từ</span>
+          </button>
+        `).join("") : '<div class="empty">Không tìm thấy chủ đề từ vựng phù hợp.</div>';
+        return;
+      }
+
+      if (state.activeView === "quiz") {
+        const quizzes = filterQuizzes();
+        sidebarTitle.textContent = "Danh sách quiz";
+        rootCount.textContent = `${quizzes.length}/${quizData.length}`;
+
+        rootList.innerHTML = quizzes.length ? quizzes.map(({ quiz, index }) => `
+          <button class="root-card ${index === state.quizIndex ? "active" : ""}" type="button" data-sidebar-type="quiz" data-index="${index}">
+            <span>
+              <span class="root-name">${highlight(quiz.type)}</span>
+              <span class="root-meaning">${highlight(quiz.question)}</span>
+              ${renderTags(quiz, "quiz")}
+            </span>
+            <span class="count-pill">quiz</span>
+          </button>
+        `).join("") : '<div class="empty">Không tìm thấy quiz phù hợp.</div>';
+        return;
+      }
+
+      const roots = filterRoots();
+      sidebarTitle.textContent = "Gốc từ phổ biến";
+      rootCount.textContent = `${roots.length}/${rootData.length}`;
+
+      if (!roots.length) {
+        rootList.innerHTML = '<div class="empty">Không tìm thấy gốc từ hoặc từ phù hợp.</div>';
+        return;
+      }
+
+      rootList.innerHTML = roots.map(item => `
+        <button class="root-card ${item.root === state.selectedRoot.root ? "active" : ""}" type="button" data-root="${item.root}">
+          <span>
+            <span class="root-name">${highlight(item.root)}</span>
+            <span class="root-meaning">${highlight(item.meaning)}</span>
+              ${renderTags(item, "root")}
+          </span>
+          <span class="count-pill">${item.words.length} từ</span>
+        </button>
+      `).join("");
+    }
+
+    function renderBoard() {
+      const item = state.selectedRoot;
+      rootBoard.innerHTML = `
+        <div class="board-head">
+          <div>
+            <h2>${item.root}</h2>
+            <p>${item.note}</p>
+            ${renderTags(item, "root")}
+          </div>
+          <div class="meaning-badge">${item.meaning}</div>
+        </div>
+        <div class="mindmap">
+          <div class="central-node">
+            <span>
+              <strong>${item.root}</strong>
+              <span>${item.meaning}</span>
+            </span>
+          </div>
+          <div class="word-grid">
+            ${item.words.map(word => `
+              <article class="word-card ${word.word === state.selectedWord.word ? "active" : ""}" data-word="${word.word}">
+                <h3>${highlight(word.word)}</h3>
+                <div class="formula">${partFormula(word.parts)}</div>
+                <p class="word-meaning">Meaning: ${highlight(word.meaning)}</p>
+              </article>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderDetail() {
+      const word = state.selectedWord;
+      const family = state.selectedRoot.words;
+
+      wordDetail.innerHTML = `
+        <h2>Phân tích từ</h2>
+        <div class="split-word">${highlight(word.word)}</div>
+        <div class="formula">${partFormula(word.parts)}</div>
+        <div class="part-table">
+          ${word.parts.map(part => `
+            <div class="part-row">
+              <span class="part ${part.type}">${part.text}</span>
+              <p><strong>${typeLabels[part.type]}:</strong> ${part.meaning}</p>
+            </div>
+          `).join("")}
+          <div class="part-row">
+            <span class="part meaning">Meaning</span>
+            <p><strong>Nghĩa của từ hoàn chỉnh:</strong> ${word.meaning}</p>
+          </div>
+        </div>
+        <h2 style="margin-top: 22px;">Word Family</h2>
+        <div class="family">
+          ${family.map(item => `<button type="button" data-family-word="${item.word}">${item.word}</button>`).join("")}
+        </div>
+      `;
+    }
+
+    function renderLearningGuide() {
+      const totalWords = rootData.reduce((sum, item) => sum + item.words.length, 0);
+      const currentPrefixes = state.selectedRoot.words
+        .flatMap(word => word.parts)
+        .filter(part => part.type === "prefix")
+        .map(part => [part.text, part.meaning]);
+      const currentSuffixes = state.selectedRoot.words
+        .flatMap(word => word.parts)
+        .filter(part => part.type === "suffix")
+        .map(part => [part.text, part.meaning]);
+
+      const uniqueItems = items => [...new Map(items.map(item => [item[0], item])).values()];
+      const renderMiniList = items => items.slice(0, 7).map(([text, meaning]) => `
+        <li><strong>${text}</strong><span>${meaning}</span></li>
+      `).join("");
+
+      learningGuide.innerHTML = `
+        <div class="section-title">
+          <h2>Bảng học nhanh</h2>
+          <small>${rootData.length} gốc từ · ${totalWords} từ mẫu</small>
+        </div>
+        <div class="guide-grid">
+          <div class="guide-column">
+            <h3 style="color: var(--prefix);">Prefix trong nhóm này</h3>
+            <ul class="mini-list">
+              ${renderMiniList(uniqueItems(currentPrefixes.length ? currentPrefixes : APP_DATA.affixes.prefixes))}
+            </ul>
+          </div>
+          <div class="guide-column">
+            <h3 style="color: var(--suffix);">Suffix trong nhóm này</h3>
+            <ul class="mini-list">
+              ${renderMiniList(uniqueItems(currentSuffixes.length ? currentSuffixes : APP_DATA.affixes.suffixes))}
+            </ul>
+          </div>
+          <div class="guide-column">
+            <h3 style="color: var(--meaning);">Cách tự đoán nghĩa</h3>
+            <ul class="mini-list">
+              <li><strong>1</strong><span>Tách từ thành prefix + root + suffix.</span></li>
+              <li><strong>2</strong><span>Giữ root làm nghĩa lõi của từ.</span></li>
+              <li><strong>3</strong><span>Dùng prefix để biết hướng nghĩa.</span></li>
+              <li><strong>4</strong><span>Dùng suffix để đoán loại từ.</span></li>
+              <li><strong>5</strong><span>So với Word Family để nhớ lâu hơn.</span></li>
+            </ul>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderUsageGuide() {
+      const groups = filterUsageGroups();
+      const selected = groups.find(({ index }) => index === state.selectedUsageIndex) || groups[0];
+
+      usageGuide.innerHTML = `
+        <div class="section-title">
+          <h2>Phân biệt từ gần nghĩa</h2>
+          <small>${groups.length}/${APP_DATA.usageGroups.length} nhóm dễ nhầm</small>
+        </div>
+        ${selected ? `
+        <div class="usage-grid">
+          <article class="usage-group">
+            <h3>${selected.group.title}</h3>
+            ${renderTags(selected.group, "usage")}
+            <p>${selected.group.idea}</p>
+            ${selected.group.items.map(item => `
+              <div class="usage-item">
+                <strong>${item.word}</strong>
+                <p>${item.use}</p>
+                <em>${item.example}</em>
+              </div>
+            `).join("")}
+          </article>
+        </div>
+        ` : '<div class="empty">Không tìm thấy nhóm từ gần nghĩa phù hợp.</div>'}
+      `;
+    }
+
+    function renderContrastGuide() {
+      const groups = filterAntonymGroups();
+      const selected = groups.find(({ index }) => index === state.selectedAntonymIndex) || groups[0];
+
+      contrastGuide.innerHTML = `
+        <div class="section-title">
+          <h2>Gốc/từ trái nghĩa tự nhiên</h2>
+          <small>${groups.length}/${APP_DATA.antonymGroups.length} cặp đối lập</small>
+        </div>
+        ${selected ? `
+        <div class="contrast-grid">
+          <article class="contrast-group">
+            <div class="contrast-head">
+              <span>${selected.group.title}</span>
+              <span class="contrast-vs">NOT prefix-made</span>
+            </div>
+            ${renderTags(selected.group, "contrast")}
+            <div class="contrast-sides">
+              <div class="contrast-side good">
+                <strong>${selected.group.left.word}</strong>
+                <p>${selected.group.left.meaning}</p>
+                <p>${selected.group.left.example}</p>
+              </div>
+              <div class="contrast-side bad">
+                <strong>${selected.group.right.word}</strong>
+                <p>${selected.group.right.meaning}</p>
+                <p>${selected.group.right.example}</p>
+              </div>
+            </div>
+            <p class="contrast-note">${selected.group.note}</p>
+          </article>
+        </div>
+        ` : '<div class="empty">Không tìm thấy cặp trái nghĩa phù hợp.</div>'}
+      `;
+    }
+
+    function renderScenarioGuide() {
+      const groups = filterScenarioGroups();
+      const selected = groups.find(({ index }) => index === state.selectedScenarioIndex) || groups[0];
+
+      scenarioGuide.innerHTML = `
+        <div class="section-title">
+          <h2>Tình huống giao tiếp</h2>
+          <small>${groups.length}/${APP_DATA.scenarioGroups.length} nhóm tình huống</small>
+        </div>
+        ${selected ? `
+        <div class="usage-grid">
+          <article class="usage-group">
+            <h3>${selected.group.title}</h3>
+            ${renderTags(selected.group, "scenario")}
+            <p>${selected.group.goal}</p>
+            ${selected.group.items.map(item => `
+              <div class="usage-item">
+                <strong>${item.phrase}</strong>
+                <p>${item.use}</p>
+                <em>${item.example}</em>
+              </div>
+            `).join("")}
+          </article>
+        </div>
+        ` : '<div class="empty">Không tìm thấy tình huống phù hợp.</div>'}
+      `;
+    }
+
+    function renderTopicWordsGuide() {
+      const groups = filterTopicWordGroups();
+      const selected = groups.find(({ index }) => index === state.selectedTopicGroupIndex) || groups[0];
+
+      topicWordsGuide.innerHTML = `
+        <div class="section-title">
+          <h2>Chủ đề từ vựng</h2>
+          <small>${groups.length}/${APP_DATA.topicGroups.length} nhóm chủ đề</small>
+        </div>
+        ${selected ? `
+        <div class="usage-grid">
+          <article class="usage-group">
+            <h3>${selected.group.title}</h3>
+            ${renderTags(selected.group, "topicWords")}
+            <p>${selected.group.goal}</p>
+            ${selected.group.items.map(item => `
+              <div class="usage-item">
+                <strong>${item.phrase}</strong>
+                <p>${item.use}</p>
+                <em>${item.example}</em>
+              </div>
+            `).join("")}
+          </article>
+        </div>
+        ` : '<div class="empty">Không tìm thấy chủ đề từ vựng phù hợp.</div>'}
+      `;
+    }
+
+    function renderQuiz() {
+      const quiz = quizData[state.quizIndex];
+      quizBox.innerHTML = `
+        <span class="quiz-type">${quiz.type}</span>
+        <h2>Quiz luyện tập</h2>
+        ${renderTags(quiz, "quiz")}
+        <p class="question">${quiz.question}</p>
+        <div class="answers">
+          ${quiz.answers.map((answer, index) => `
+            <button class="answer" type="button" data-answer="${index}">${answer}</button>
+          `).join("")}
+        </div>
+        <p id="quizExplain" class="explain">${quiz.explain}</p>
+      `;
+    }
+
+    function selectRoot(rootName) {
+      const nextRoot = rootData.find(item => item.root === rootName);
+      if (!nextRoot) return;
+      state.selectedRoot = nextRoot;
+      state.selectedWord = nextRoot.words[0];
+      renderAll();
+    }
+
+    function selectWord(wordName) {
+      const nextWord = state.selectedRoot.words.find(item => item.word === wordName);
+      if (!nextWord) return;
+      state.selectedWord = nextWord;
+      renderBoard();
+      renderDetail();
+    }
+
+    function selectUsageGroup(index) {
+      state.selectedUsageIndex = index;
+      renderRootList();
+      renderUsageGuide();
+    }
+
+    function selectAntonymGroup(index) {
+      state.selectedAntonymIndex = index;
+      renderRootList();
+      renderContrastGuide();
+    }
+
+    function selectScenarioGroup(index) {
+      state.selectedScenarioIndex = index;
+      renderRootList();
+      renderScenarioGuide();
+    }
+
+    function selectTopicWordGroup(index) {
+      state.selectedTopicGroupIndex = index;
+      renderRootList();
+      renderTopicWordsGuide();
+    }
+
+    function selectQuiz(index) {
+      state.quizIndex = index;
+      renderRootList();
+      renderQuiz();
+    }
+
+    function checkAnswer(index) {
+      const quiz = quizData[state.quizIndex];
+      quizBox.querySelectorAll(".answer").forEach(button => {
+        const answerIndex = Number(button.dataset.answer);
+        button.disabled = true;
+        if (answerIndex === quiz.correct) button.classList.add("correct");
+        if (answerIndex === index && answerIndex !== quiz.correct) button.classList.add("wrong");
+      });
+      document.getElementById("quizExplain").classList.add("show");
+    }
+
+    function nextQuiz() {
+      state.quizIndex = (state.quizIndex + 1) % quizData.length;
+      renderQuiz();
+      setActiveView("quiz");
+    }
+
+    function setActiveView(viewName) {
+      state.activeView = viewName;
+      tabButtons.forEach(button => {
+        button.classList.toggle("active", button.dataset.view === viewName);
+      });
+      viewPanels.forEach(panel => {
+        panel.classList.toggle("active", panel.dataset.viewPanel === viewName);
+      });
+      renderRootList();
+    }
+
+    function syncSearchSelection() {
+      if (state.activeView === "usage") {
+        const groups = filterUsageGroups();
+        if (groups.length && !groups.some(({ index }) => index === state.selectedUsageIndex)) {
+          state.selectedUsageIndex = groups[0].index;
+        }
+        return;
+      }
+
+      if (state.activeView === "contrast") {
+        const groups = filterAntonymGroups();
+        if (groups.length && !groups.some(({ index }) => index === state.selectedAntonymIndex)) {
+          state.selectedAntonymIndex = groups[0].index;
+        }
+        return;
+      }
+
+      if (state.activeView === "scenario") {
+        const groups = filterScenarioGroups();
+        if (groups.length && !groups.some(({ index }) => index === state.selectedScenarioIndex)) {
+          state.selectedScenarioIndex = groups[0].index;
+        }
+        return;
+      }
+
+      if (state.activeView === "topicWords") {
+        const groups = filterTopicWordGroups();
+        if (groups.length && !groups.some(({ index }) => index === state.selectedTopicGroupIndex)) {
+          state.selectedTopicGroupIndex = groups[0].index;
+        }
+        return;
+      }
+
+      if (state.activeView === "quiz") {
+        const quizzes = filterQuizzes();
+        if (quizzes.length && !quizzes.some(({ index }) => index === state.quizIndex)) {
+          state.quizIndex = quizzes[0].index;
+        }
+        return;
+      }
+
+      const roots = filterRoots();
+      if (!roots.length) return;
+      if (!roots.some(item => item.root === state.selectedRoot.root)) {
+        state.selectedRoot = roots[0];
+        state.selectedWord = roots[0].words[0];
+      }
+
+      const query = normalize(state.query);
+      if (!query) return;
+
+      const matchedWord = state.selectedRoot.words.find(word =>
+        `${word.word} ${word.meaning}`.toLowerCase().includes(query)
+      );
+      if (matchedWord) state.selectedWord = matchedWord;
+    }
+
+    function applyTopicFilter(topicId) {
+      state.selectedTopic = topicId;
+      renderTopicFilter();
+      syncSearchSelection();
+      renderAll();
+    }
+
+    function renderAll() {
+      renderTopicFilter();
+      renderRootList();
+      renderBoard();
+      renderLearningGuide();
+      renderUsageGuide();
+      renderContrastGuide();
+      renderScenarioGuide();
+      renderTopicWordsGuide();
+      renderDetail();
+      renderQuiz();
+      setActiveView(state.activeView);
+    }
+
+    rootList.addEventListener("click", event => {
+      const sidebarItem = event.target.closest("[data-sidebar-type]");
+      if (sidebarItem) {
+        const index = Number(sidebarItem.dataset.index);
+        if (sidebarItem.dataset.sidebarType === "usage") selectUsageGroup(index);
+        if (sidebarItem.dataset.sidebarType === "contrast") selectAntonymGroup(index);
+        if (sidebarItem.dataset.sidebarType === "scenario") selectScenarioGroup(index);
+        if (sidebarItem.dataset.sidebarType === "topicWords") selectTopicWordGroup(index);
+        if (sidebarItem.dataset.sidebarType === "quiz") selectQuiz(index);
+        return;
+      }
+
+      const card = event.target.closest("[data-root]");
+      if (card) selectRoot(card.dataset.root);
+    });
+
+    rootBoard.addEventListener("click", event => {
+      const card = event.target.closest("[data-word]");
+      if (card) selectWord(card.dataset.word);
+    });
+
+    wordDetail.addEventListener("click", event => {
+      const familyButton = event.target.closest("[data-family-word]");
+      if (familyButton) selectWord(familyButton.dataset.familyWord);
+    });
+
+    quizBox.addEventListener("click", event => {
+      const answer = event.target.closest("[data-answer]");
+      if (answer) checkAnswer(Number(answer.dataset.answer));
+    });
+
+    randomQuizBtn.addEventListener("click", nextQuiz);
+
+    tabButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        setActiveView(button.dataset.view);
+        syncSearchSelection();
+        renderAll();
+      });
+    });
+
+    searchInput.addEventListener("input", event => {
+      state.query = event.target.value;
+      syncSearchSelection();
+      renderRootList();
+      renderBoard();
+      renderLearningGuide();
+      renderUsageGuide();
+      renderContrastGuide();
+      renderScenarioGuide();
+      renderTopicWordsGuide();
+      renderDetail();
+      renderQuiz();
+    });
+
+    renderAll();
+  </script>
+</body>
+</html>
