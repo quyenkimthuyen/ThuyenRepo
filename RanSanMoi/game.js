@@ -19,6 +19,8 @@ const FALLBACK_VOCAB = [
 const SPEED_BOOST_MULTIPLIER = 3;
 const SPEED_BOOST_DURATION_SECONDS = 1;
 const SPEED_BOOST_COOLDOWN_SECONDS = 10;
+const AUTO_SNAKE_MAX_COUNT = 1;
+const AUTO_SNAKE_SPAWN_STAGGER_FRAMES = 90;
 
 const MODE_CONFIG = {
     'vi-en': {
@@ -38,7 +40,7 @@ const MODE_CONFIG = {
     mixed: {
         label: 'AUDIO',
         firstPromptType: 'en',
-        speechOrder: ['en'],
+        speechOrder: ['en', 'vi'],
         speed: 5.45,
         wrongHurts: true
     },
@@ -193,6 +195,9 @@ class WordSnakeGame {
         this.nextLotusAmbientAt = 0;
         this.autoSnakeEnabled = false;
         this.autoSnake = null;
+        this.autoSnakes = [];
+        this.autoSnakeEnabledAt = 0;
+        this.autoSnakeMaxCount = 0;
         this.autoSnakeGrowthTimer = 0;
         this.autoSnakeRespawnTimer = 0;
         this.autoSnakeColorIndex = 0;
@@ -200,6 +205,8 @@ class WordSnakeGame {
         this.currentPromptType = 'vi';
         this.currentItem = null;
         this.speechEnabled = true;
+        this.speechQueue = [];
+        this.speechSpeaking = false;
         this.hintEnabled = false;
         this.motoMode = false;
         this.keys = { left: false, right: false };
@@ -346,6 +353,7 @@ class WordSnakeGame {
             const muted = this.fx.toggleMute();
             soundButton.innerText = muted ? '🔇' : '🔊';
             soundButton.classList.toggle('active', !muted);
+            if (muted) this.clearSpeechQueue();
         });
 
         const speechButton = document.getElementById('btn-bilingual-toggle');
@@ -353,9 +361,7 @@ class WordSnakeGame {
             this.speechEnabled = !this.speechEnabled;
             speechButton.classList.toggle('active', this.speechEnabled);
             speechButton.innerText = this.speechEnabled ? 'VOICE' : 'QUIET';
-            if (!this.speechEnabled && window.speechSynthesis) {
-                window.speechSynthesis.cancel();
-            }
+            if (!this.speechEnabled) this.clearSpeechQueue();
         });
 
         const hintButton = document.getElementById('btn-hint-toggle');
@@ -445,12 +451,17 @@ class WordSnakeGame {
         const nextEnabled = Boolean(enabled && this.isSurvivalMode() && this.state === 'playing');
         this.autoSnakeEnabled = nextEnabled;
         if (nextEnabled) {
+            this.autoSnake = null;
+            this.autoSnakes = [];
+            this.autoSnakeEnabledAt = this.elapsedGameSeconds;
+            this.autoSnakeMaxCount = 1;
             this.autoSnakeRespawnTimer = 0;
-            this.initAutoSnake();
             this.fx.tone(440, 0.08, 'triangle', 0.035);
             this.fx.tone(660, 0.1, 'sine', 0.03, 0.06);
         } else {
             this.autoSnake = null;
+            this.autoSnakes = [];
+            this.autoSnakeMaxCount = 0;
             this.autoSnakeRespawnTimer = 0;
         }
         this.updateAutoSnakeButton();
@@ -460,19 +471,40 @@ class WordSnakeGame {
         const button = document.getElementById('btn-auto-snake-toggle');
         if (!button) return;
         button.classList.toggle('active', this.autoSnakeEnabled);
-        const waiting = this.autoSnakeEnabled && !this.autoSnake;
-        button.title = this.autoSnakeEnabled ? 'Auto snake is on' : 'Auto snake is off';
-        button.innerText = waiting ? 'AUTO...' : (this.autoSnakeEnabled ? 'AUTO ON' : 'AUTO');
+        const count = this.getActiveAutoSnakes().length;
+        const maxCount = this.autoSnakeEnabled ? this.getAutoSnakeMaxCount() : 0;
+        const waiting = this.autoSnakeEnabled && count < maxCount;
+        button.classList.toggle('waiting', waiting);
+        button.title = waiting ? `Auto snake ${count}/${maxCount}, spawning replacement` : (this.autoSnakeEnabled ? `Auto snake ${count}/${maxCount}` : 'Auto snake is off');
+        button.setAttribute('aria-label', button.title);
+        button.setAttribute('aria-pressed', String(this.autoSnakeEnabled));
+        button.textContent = waiting ? '⏳' : '🤖';
+    }
+
+    getActiveAutoSnakes() {
+        return (this.autoSnakes || []).filter(snake => snake && snake.active);
+    }
+
+    syncPrimaryAutoSnake() {
+        this.autoSnakes = this.getActiveAutoSnakes();
+        this.autoSnake = this.autoSnakes[0] || null;
+    }
+
+    getAutoSnakeMaxCount() {
+        if (!this.autoSnakeEnabled) return 0;
+        return AUTO_SNAKE_MAX_COUNT;
     }
 
     initAutoSnake() {
-        const pond = this.getLotusPondShape(72);
+        const pond = this.getLotusPondShape(42);
         const angle = this.head.heading + Math.PI;
         let x = pond.cx + Math.cos(angle) * pond.rx * 0.38;
         let y = pond.cy + Math.sin(angle) * pond.ry * 0.38;
 
         for (let attempt = 0; attempt < 24; attempt++) {
-            if (!this.isPointOnSwampLand(x, y, 54) && Math.hypot(x - this.head.x, y - this.head.y) > 240) break;
+            const clearFromPlayer = Math.hypot(x - this.head.x, y - this.head.y) > 240;
+            const clearFromRivals = this.getActiveAutoSnakes().every(snake => Math.hypot(x - snake.head.x, y - snake.head.y) > 180);
+            if (!this.isPointOnSwampLand(x, y, 34) && clearFromPlayer && clearFromRivals) break;
             const randomAngle = Math.random() * Math.PI * 2;
             const radius = 0.18 + Math.random() * 0.55;
             x = pond.cx + Math.cos(randomAngle) * pond.rx * radius;
@@ -481,15 +513,22 @@ class WordSnakeGame {
 
         const colors = AUTO_SNAKE_COLORS[this.autoSnakeColorIndex % AUTO_SNAKE_COLORS.length];
         this.autoSnakeColorIndex++;
-        this.autoSnake = {
-            head: { x, y, vx: 0, vy: 0, heading: Math.random() * Math.PI * 2 },
+        const heading = Math.random() * Math.PI * 2;
+        const snake = {
+            head: { x, y, vx: 0, vy: 0, heading },
+            steerHeading: heading,
             trail: [{ x, y }],
             segments: 1,
             active: true,
             bodyBiteCooldown: 0,
+            growthTimer: 0,
+            aiThinkTimer: Math.random() * 2,
+            desiredHeading: heading,
+            lastDangerScore: 100,
             colors
         };
-        this.autoSnakeRespawnTimer = 0;
+        this.autoSnakes.push(snake);
+        this.syncPrimaryAutoSnake();
         this.updateAutoSnakeButton();
     }
 
@@ -554,6 +593,7 @@ class WordSnakeGame {
     }
 
     startGame() {
+        this.clearSpeechQueue();
         document.body.classList.add('snake-mode');
         document.body.classList.toggle('swamp-mode', this.mode === 'swamp');
         this.screenStart.classList.remove('active');
@@ -601,6 +641,9 @@ class WordSnakeGame {
         this.nextLotusAmbientAt = 0;
         this.autoSnakeEnabled = false;
         this.autoSnake = null;
+        this.autoSnakes = [];
+        this.autoSnakeEnabledAt = 0;
+        this.autoSnakeMaxCount = 0;
         this.autoSnakeGrowthTimer = 0;
         this.autoSnakeRespawnTimer = 0;
         this.autoSnakeColorIndex = 0;
@@ -684,7 +727,9 @@ class WordSnakeGame {
 
     createFood(item, type, index = 0) {
         const angle = Math.random() * Math.PI * 2;
-        const driftSpeed = this.isSurvivalMode() ? 0 : (0.35 + Math.random() * 0.75) * 0.5;
+        const driftSpeed = this.isSurvivalMode()
+            ? 0.08 + Math.random() * 0.1
+            : (0.35 + Math.random() * 0.75) * 0.5;
 
         return {
             item,
@@ -696,8 +741,11 @@ class WordSnakeGame {
             vy: Math.sin(angle) * driftSpeed,
             radius: 28,
             pulse: Math.random() * Math.PI * 2,
+            spawnAge: 0,
             wavePhase: Math.random() * Math.PI * 2,
-            waveStrength: 0.012 + Math.random() * 0.012,
+            waveStrength: this.isSurvivalMode()
+                ? 0.004 + Math.random() * 0.006
+                : 0.012 + Math.random() * 0.012,
             color: ['#38bdf8', '#ffd000', '#ff8c42', '#f472b6', '#00ff88'][index % 5]
         };
     }
@@ -715,7 +763,7 @@ class WordSnakeGame {
 
     placeFood(food) {
         const bounds = this.getFoodBounds();
-        const margin = 86;
+        const margin = this.isSurvivalMode() ? 46 : 86;
         let tries = 0;
 
         do {
@@ -727,7 +775,7 @@ class WordSnakeGame {
 
     getFoodBounds() {
         if (this.isSurvivalMode()) {
-            const pond = this.getLotusPondShape(48);
+            const pond = this.getLotusPondShape(18);
             return {
                 left: pond.cx - pond.rx,
                 top: pond.cy - pond.ry,
@@ -764,11 +812,14 @@ class WordSnakeGame {
             const sizeJitter = 0.78 + Math.random() * 0.5;
             const roundnessJitter = 0.9 + Math.random() * 0.18;
             const baseRadius = Math.max(34, Math.min(w, h) * radius * sizeJitter);
+            const flowerRadius = Math.max(14, baseRadius * 0.5);
+            const leafRadius = flowerRadius * 3;
             return {
                 x: b.left + w * x,
                 y: b.top + h * y,
-                rx: baseRadius * roundnessJitter,
-                ry: baseRadius * (1.02 - (roundnessJitter - 0.9) * 0.35),
+                rx: leafRadius * roundnessJitter,
+                ry: leafRadius * (0.96 + Math.random() * 0.12),
+                flowerRadius,
                 rot
             };
         };
@@ -787,12 +838,16 @@ class WordSnakeGame {
             makePatch(0.64, 0.52, 0.048, 0.72),
             makePatch(0.18, 0.65, 0.046, 0.34),
             makePatch(0.47, 0.75, 0.055, -0.38),
-            makePatch(0.77, 0.72, 0.047, 0.1)
+            makePatch(0.77, 0.72, 0.047, 0.1),
+            makePatch(0.31, 0.58, 0.04, 0.58),
+            makePatch(0.52, 0.34, 0.038, -0.62),
+            makePatch(0.69, 0.82, 0.04, -0.25),
+            makePatch(0.86, 0.55, 0.036, 0.82)
         ];
 
         const flowerRadius = (patchIndex) => {
             const patch = this.swampPatches[patchIndex];
-            return Math.max(14, Math.min(patch.rx, patch.ry) * 0.5);
+            return patch.flowerRadius;
         };
 
         this.lotusFlowers = [
@@ -800,14 +855,16 @@ class WordSnakeGame {
             makeFlower(0.7, 0.28, flowerRadius(2), 0.4),
             makeFlower(0.52, 0.47, flowerRadius(3), 0.1),
             makeFlower(0.28, 0.74, flowerRadius(6), -0.55),
-            makeFlower(0.72, 0.66, flowerRadius(7), 0.3)
+            makeFlower(0.72, 0.66, flowerRadius(7), 0.3),
+            makeFlower(0.4, 0.6, flowerRadius(8), 0.52),
+            makeFlower(0.58, 0.34, flowerRadius(9), -0.4),
+            makeFlower(0.86, 0.55, flowerRadius(11), 0.75)
         ];
     }
 
     isPointOnSwampLand(x, y, padding = 0) {
         if (!this.isSurvivalMode()) return false;
 
-        const b = this.worldBounds;
         const pond = this.getLotusPondShape(padding);
         const nx = (x - pond.cx) / pond.rx;
         const ny = (y - pond.cy) / pond.ry;
@@ -815,7 +872,8 @@ class WordSnakeGame {
             return true;
         }
 
-        return this.swampPatches.some(patch => this.isPointInSwampPatch(x, y, patch, padding));
+        return this.swampPatches.some(patch => this.isPointInSwampPatch(x, y, patch, padding)) ||
+            this.lotusFlowers.some(flower => Math.hypot(x - flower.x, y - flower.y) <= flower.radius + padding);
     }
 
     getLotusPondShape(padding = 0) {
@@ -924,6 +982,11 @@ class WordSnakeGame {
         if (this.autoSnakeGrowthTimer > 0) {
             this.autoSnakeGrowthTimer -= delta;
         }
+        this.getActiveAutoSnakes().forEach((snake) => {
+            if (snake.growthTimer > 0) {
+                snake.growthTimer -= delta;
+            }
+        });
         this.updateMeaningPopups(delta);
         this.playLotusAmbientIfNeeded();
 
@@ -1033,36 +1096,57 @@ class WordSnakeGame {
 
     updateAutoSnake(deltaSeconds, deltaFrames) {
         if (!this.autoSnakeEnabled) return;
-        if (!this.autoSnake || !this.autoSnake.active) {
+        this.syncPrimaryAutoSnake();
+        this.autoSnakeMaxCount = this.getAutoSnakeMaxCount();
+        if (this.autoSnakes.length < this.autoSnakeMaxCount) {
             this.autoSnakeRespawnTimer -= deltaFrames;
             if (this.autoSnakeRespawnTimer <= 0) {
                 this.initAutoSnake();
+                this.autoSnakeRespawnTimer = AUTO_SNAKE_SPAWN_STAGGER_FRAMES;
             }
-            return;
+        } else {
+            this.autoSnakeRespawnTimer = 0;
         }
 
-        const snake = this.autoSnake;
+        this.getActiveAutoSnakes().forEach((snake) => {
+            this.updateSingleAutoSnake(snake, deltaSeconds, deltaFrames);
+        });
+        this.syncPrimaryAutoSnake();
+    }
+
+    updateSingleAutoSnake(snake, deltaSeconds, deltaFrames) {
         if (snake.bodyBiteCooldown > 0) {
             snake.bodyBiteCooldown -= deltaFrames;
         }
 
-        const target = this.getAutoSnakeTarget();
-        let desiredHeading = target
-            ? Math.atan2(target.y - snake.head.y, target.x - snake.head.x)
-            : snake.head.heading + Math.sin(this.frame * 0.018) * 0.35;
-        desiredHeading = this.getAutoSnakeAvoidanceHeading(snake, desiredHeading);
-        desiredHeading = this.getSaferAutoSnakeHeading(snake, desiredHeading);
-        const turnRate = 5.7 * deltaSeconds;
+        snake.aiThinkTimer = (snake.aiThinkTimer || 0) - deltaFrames;
+        if (snake.aiThinkTimer <= 0) {
+            const target = this.getAutoSnakeTarget(snake);
+            let desiredHeading = target
+                ? Math.atan2(target.y - snake.head.y, target.x - snake.head.x)
+                : snake.head.heading + Math.sin(this.frame * 0.018) * 0.35;
+            desiredHeading = this.getAutoSnakeAvoidanceHeading(snake, desiredHeading, target);
+            desiredHeading = this.getAutoSnakeBodyAvoidanceHeading(snake, desiredHeading);
+            desiredHeading = this.getSaferAutoSnakeHeading(snake, desiredHeading, target);
+            snake.desiredHeading = desiredHeading;
+            snake.lastDangerScore = this.scoreAutoSnakeHeading(snake, desiredHeading, target);
+            snake.aiThinkTimer = 3;
+        }
+
+        const desiredHeading = snake.desiredHeading ?? snake.head.heading;
+        const steeringBlend = 1 - Math.pow(0.9, deltaFrames);
+        snake.steerHeading = this.blendHeading(snake.steerHeading ?? snake.head.heading, desiredHeading, steeringBlend);
+        const turnRate = ((snake.lastDangerScore ?? 100) < -20 ? 7.2 : 5.0) * deltaSeconds;
         const headingDelta = Math.atan2(
-            Math.sin(desiredHeading - snake.head.heading),
-            Math.cos(desiredHeading - snake.head.heading)
+            Math.sin(snake.steerHeading - snake.head.heading),
+            Math.cos(snake.steerHeading - snake.head.heading)
         );
         snake.head.heading += Math.max(-turnRate, Math.min(turnRate, headingDelta));
 
-        this.turnAutoSnakeAwayFromLotusPondBank(snake, 1 - Math.pow(0.82, deltaFrames), 54);
-        this.turnAutoSnakeAwayFromLotusLeaves(snake, 1 - Math.pow(0.78, deltaFrames));
+        this.turnAutoSnakeAwayFromLotusPondBank(snake, 1 - Math.pow(0.82, deltaFrames), 34);
 
-        const speed = this.config.speed * 60 * 0.7 * 0.8 * this.speedMultiplier;
+        const tightTurnSlowdown = 1 - Math.min(0.22, Math.abs(headingDelta) / Math.PI * 0.28);
+        const speed = this.config.speed * 60 * 0.7 * 0.78 * this.speedMultiplier * tightTurnSlowdown;
         snake.head.vx = Math.cos(snake.head.heading) * speed;
         snake.head.vy = Math.sin(snake.head.heading) * speed;
         snake.head.x += snake.head.vx * deltaSeconds;
@@ -1074,24 +1158,26 @@ class WordSnakeGame {
         this.resolveAutoSnakeLandCollision(snake);
 
         snake.trail.unshift({ x: snake.head.x, y: snake.head.y });
-        if (snake.trail.length > 1200) snake.trail.length = 1200;
+        if (snake.trail.length > 900) snake.trail.length = 900;
     }
 
-    getAutoSnakeTarget() {
-        if (this.foods.length === 0 || !this.autoSnake) return null;
-        const heading = this.autoSnake.head.heading;
+    getAutoSnakeTarget(snake = this.autoSnake) {
+        if (this.foods.length === 0 || !snake) return null;
+        const heading = snake.head.heading;
         return this.foods.reduce((best, food) => {
-            const distance = Math.hypot(food.x - this.autoSnake.head.x, food.y - this.autoSnake.head.y);
-            const angle = Math.atan2(food.y - this.autoSnake.head.y, food.x - this.autoSnake.head.x);
+            const distance = Math.hypot(food.x - snake.head.x, food.y - snake.head.y);
+            const angle = Math.atan2(food.y - snake.head.y, food.x - snake.head.x);
             const turn = Math.abs(Math.atan2(Math.sin(angle - heading), Math.cos(angle - heading)));
             const frontBias = Math.cos(turn);
-            const score = distance + turn * 190 + (frontBias < -0.15 ? 420 : 0);
+            const pathScore = this.scoreAutoSnakeHeading(snake, angle, food);
+            const riskyPathPenalty = Math.max(0, 65 - pathScore) * 5;
+            const score = distance + turn * 210 + (frontBias < -0.15 ? 520 : 0) + riskyPathPenalty;
             if (!best || score < best.score) return { ...food, distance, score };
             return best;
         }, null);
     }
 
-    getAutoSnakeAvoidanceHeading(snake, desiredHeading) {
+    getAutoSnakeAvoidanceHeading(snake, desiredHeading, target = null) {
         const playerDistance = Math.hypot(this.head.x - snake.head.x, this.head.y - snake.head.y);
         if (playerDistance < 230) {
             const awayFromPlayer = Math.atan2(snake.head.y - this.head.y, snake.head.x - this.head.x);
@@ -1099,22 +1185,50 @@ class WordSnakeGame {
             desiredHeading = this.blendHeading(desiredHeading, awayFromPlayer, strength);
         }
 
-        if (this.isAutoSnakeHeadingDangerous(snake, desiredHeading)) {
+        if (this.isAutoSnakeHeadingDangerous(snake, desiredHeading, target)) {
             const left = snake.head.heading - Math.PI * 0.42;
             const right = snake.head.heading + Math.PI * 0.42;
-            desiredHeading = this.scoreAutoSnakeHeading(snake, left) > this.scoreAutoSnakeHeading(snake, right) ? left : right;
+            desiredHeading = this.scoreAutoSnakeHeading(snake, left, target) > this.scoreAutoSnakeHeading(snake, right, target) ? left : right;
         }
         return desiredHeading;
     }
 
-    getSaferAutoSnakeHeading(snake, desiredHeading) {
-        const maxTurn = Math.PI * 0.62;
+    getAutoSnakeBodyAvoidanceHeading(snake, desiredHeading) {
+        const bodyLength = this.getAutoSnakeBodyLength(snake);
+        if (bodyLength < 150) return desiredHeading;
+
+        let avoidX = 0;
+        let avoidY = 0;
+        const dangerRange = Math.min(260, 125 + snake.segments * 13);
+        for (let distance = 100; distance <= bodyLength; distance += 18) {
+            const point = this.getAutoPointAtDistance(distance, snake);
+            const dx = snake.head.x - point.x;
+            const dy = snake.head.y - point.y;
+            const gap = Math.hypot(dx, dy);
+            if (gap <= 1 || gap > dangerRange) continue;
+
+            const bodyAngle = Math.atan2(point.y - snake.head.y, point.x - snake.head.x);
+            const ahead = Math.max(0, Math.cos(bodyAngle - snake.head.heading));
+            const weight = (1 - gap / dangerRange) * (0.35 + ahead * 0.9);
+            avoidX += (dx / gap) * weight;
+            avoidY += (dy / gap) * weight;
+        }
+
+        const force = Math.hypot(avoidX, avoidY);
+        if (force < 0.08) return desiredHeading;
+
+        const avoidHeading = Math.atan2(avoidY, avoidX);
+        return this.blendHeading(desiredHeading, avoidHeading, Math.min(0.62, force * 0.42));
+    }
+
+    getSaferAutoSnakeHeading(snake, desiredHeading, target = null) {
+        const maxTurn = Math.PI * 0.58;
         const delta = Math.atan2(Math.sin(desiredHeading - snake.head.heading), Math.cos(desiredHeading - snake.head.heading));
         let bestHeading = snake.head.heading + Math.max(-maxTurn, Math.min(maxTurn, delta));
-        let bestScore = this.scoreAutoSnakeHeading(snake, bestHeading);
-        [-0.72, -0.42, -0.22, 0.22, 0.42, 0.72].forEach((offset) => {
+        let bestScore = this.scoreAutoSnakeHeading(snake, bestHeading, target);
+        [-0.95, -0.72, -0.48, -0.26, 0, 0.26, 0.48, 0.72, 0.95].forEach((offset) => {
             const candidate = snake.head.heading + offset;
-            const score = this.scoreAutoSnakeHeading(snake, candidate) - Math.abs(offset - delta) * 22;
+            const score = this.scoreAutoSnakeHeading(snake, candidate, target) - Math.abs(offset - delta) * 24;
             if (score > bestScore) {
                 bestScore = score;
                 bestHeading = candidate;
@@ -1123,26 +1237,27 @@ class WordSnakeGame {
         return bestHeading;
     }
 
-    isAutoSnakeHeadingDangerous(snake, heading) {
-        return this.scoreAutoSnakeHeading(snake, heading) < -50;
+    isAutoSnakeHeadingDangerous(snake, heading, target = null) {
+        return this.scoreAutoSnakeHeading(snake, heading, target) < -35;
     }
 
-    scoreAutoSnakeHeading(snake, heading) {
+    scoreAutoSnakeHeading(snake, heading, target = null) {
         let score = 100;
-        const probes = [58, 96, 136];
+        const probes = [56, 96, 142, 196, 258];
+        const thickness = this.getAutoSnakeThickness(snake);
         probes.forEach((distance, index) => {
             const point = {
                 x: snake.head.x + Math.cos(heading) * distance,
                 y: snake.head.y + Math.sin(heading) * distance
             };
-            if (this.isPointOnSwampLand(point.x, point.y, 34)) score -= 120 - index * 16;
-            if (this.isPointNearAutoSnakeBody(point.x, point.y, 34, 112)) score -= 150 - index * 18;
-            if (this.isPointNearPlayerBody(point.x, point.y, 42)) score -= 130 - index * 16;
+            const nearWeight = Math.max(0.35, 1 - index * 0.12);
+            if (this.isPointOnSwampLand(point.x, point.y, 34)) score -= (132 - index * 14) * nearWeight;
+            if (this.isPointNearAutoSnakeBody(point.x, point.y, thickness * 1.35, 126, snake)) score -= (190 - index * 20) * nearWeight;
+            if (this.isPointNearPlayerBody(point.x, point.y, 42)) score -= (130 - index * 16) * nearWeight;
             const playerDistance = Math.hypot(point.x - this.head.x, point.y - this.head.y);
             if (playerDistance < 150) score -= (150 - playerDistance) * 0.9;
         });
 
-        const target = this.getAutoSnakeTarget();
         if (target) {
             const targetAngle = Math.atan2(target.y - snake.head.y, target.x - snake.head.x);
             const turn = Math.abs(Math.atan2(Math.sin(targetAngle - heading), Math.cos(targetAngle - heading)));
@@ -1159,14 +1274,6 @@ class WordSnakeGame {
 
         const backToCenter = Math.atan2(pond.cy - snake.head.y, pond.cx - snake.head.x);
         snake.head.heading = this.blendHeading(snake.head.heading, backToCenter, Math.max(blendAmount, 0.08));
-    }
-
-    turnAutoSnakeAwayFromLotusLeaves(snake, blendAmount) {
-        const hitPatch = this.swampPatches.find(patch => this.isPointInSwampPatch(snake.head.x, snake.head.y, patch, 72));
-        if (!hitPatch) return;
-
-        const away = Math.atan2(snake.head.y - hitPatch.y, snake.head.x - hitPatch.x);
-        snake.head.heading = this.blendHeading(snake.head.heading, away, Math.max(blendAmount, 0.12));
     }
 
     resolveAutoSnakeLandCollision(snake) {
@@ -1195,18 +1302,18 @@ class WordSnakeGame {
     }
 
     updateFoods(delta) {
-        if (this.isSurvivalMode()) return;
-
         const bounds = this.isSurvivalMode()
             ? this.getFoodBounds()
             : (this.motoMode ? this.worldBounds : { left: 44, top: 138, right: this.width - 44, bottom: this.height - 46 });
-        const foodSpeedScale = this.motoMode ? 0.5 : 1;
-        const left = bounds.left + 44;
-        const right = bounds.right - 44;
-        const top = bounds.top + (this.motoMode ? 44 : 0);
-        const bottom = bounds.bottom - 46;
+        const foodSpeedScale = this.isSurvivalMode() ? 0.42 : (this.motoMode ? 0.5 : 1);
+        const edgeMargin = this.isSurvivalMode() ? 28 : 44;
+        const left = bounds.left + edgeMargin;
+        const right = bounds.right - edgeMargin;
+        const top = bounds.top + (this.motoMode && !this.isSurvivalMode() ? 44 : edgeMargin);
+        const bottom = bounds.bottom - (this.isSurvivalMode() ? edgeMargin : 46);
 
         this.foods.forEach((food, index) => {
+            food.spawnAge = Math.min(45, (food.spawnAge || 0) + delta);
             const time = this.frame * 0.018 + food.wavePhase;
             const currentX = Math.cos(time * 0.75 + index) * food.waveStrength;
             const currentY = Math.sin(time + index * 1.7) * food.waveStrength;
@@ -1214,14 +1321,15 @@ class WordSnakeGame {
             food.vy += currentY * delta;
 
             const speed = Math.hypot(food.vx, food.vy) || 1;
-            const maxSpeed = 0.675;
-            const minSpeed = 0.14;
+            const maxSpeed = this.isSurvivalMode() ? 0.2 : 0.675;
+            const minSpeed = this.isSurvivalMode() ? 0.055 : 0.14;
             if (speed > maxSpeed) {
                 food.vx = (food.vx / speed) * maxSpeed;
                 food.vy = (food.vy / speed) * maxSpeed;
             } else if (speed < minSpeed) {
-                food.vx += (Math.random() - 0.5) * 0.06;
-                food.vy += (Math.random() - 0.5) * 0.06;
+                const nudge = this.isSurvivalMode() ? 0.018 : 0.06;
+                food.vx += (Math.random() - 0.5) * nudge;
+                food.vy += (Math.random() - 0.5) * nudge;
             }
 
             food.x += food.vx * delta * foodSpeedScale;
@@ -1239,14 +1347,18 @@ class WordSnakeGame {
             }
 
             if (this.isSurvivalMode() && this.isPointOnSwampLand(food.x, food.y, food.radius + 20)) {
-                const pond = this.getLotusPondShape(food.radius + 48);
+                const pond = this.getLotusPondShape(food.radius + 22);
                 const angleToCenter = Math.atan2(pond.cy - food.y, pond.cx - food.x);
-                food.x += Math.cos(angleToCenter) * 24;
-                food.y += Math.sin(angleToCenter) * 24;
-                food.vx = Math.cos(angleToCenter) * Math.abs(food.vx || 0.24);
-                food.vy = Math.sin(angleToCenter) * Math.abs(food.vy || 0.24);
+                food.x += Math.cos(angleToCenter) * 10;
+                food.y += Math.sin(angleToCenter) * 10;
+                food.vx = this.blendValue(food.vx, Math.cos(angleToCenter) * 0.11, 0.45);
+                food.vy = this.blendValue(food.vy, Math.sin(angleToCenter) * 0.11, 0.45);
             }
         });
+    }
+
+    blendValue(from, to, amount) {
+        return from + (to - from) * amount;
     }
 
     isFoodCorrect(food) {
@@ -1329,77 +1441,93 @@ class WordSnakeGame {
     }
 
     checkAutoSnakeFoodCollisions() {
-        if (!this.autoSnakeEnabled || !this.autoSnake || !this.autoSnake.active) return;
+        if (!this.autoSnakeEnabled) return;
 
-        for (let index = this.foods.length - 1; index >= 0; index--) {
-            const food = this.foods[index];
-            const distance = Math.hypot(food.x - this.autoSnake.head.x, food.y - this.autoSnake.head.y);
-            if (distance > food.radius + 22) continue;
+        for (const snake of this.getActiveAutoSnakes()) {
+            for (let index = this.foods.length - 1; index >= 0; index--) {
+                const food = this.foods[index];
+                const distance = Math.hypot(food.x - snake.head.x, food.y - snake.head.y);
+                if (distance > food.radius + 22) continue;
 
-            this.autoSnake.segments++;
-            this.autoSnakeGrowthTimer = 35;
-            this.fishFrenzyTimer = Math.max(this.fishFrenzyTimer, 55);
-            this.addParticles(food.x, food.y, this.autoSnake.colors?.particle || '#f97316', 16);
-            this.meaningPopups.push({
-                x: food.x,
-                y: food.y - 34,
-                text: `AUTO ate ${food.item.word}`,
-                life: 70,
-                maxLife: 70,
-                bonus: true
-            });
-            this.foods.splice(index, 1);
-            this.addRandomFood();
-            return;
+                snake.segments++;
+                snake.growthTimer = 35;
+                this.autoSnakeGrowthTimer = 35;
+                this.fishFrenzyTimer = Math.max(this.fishFrenzyTimer, 55);
+                this.addParticles(food.x, food.y, snake.colors?.particle || '#f97316', 16);
+                this.meaningPopups.push({
+                    x: food.x,
+                    y: food.y - 34,
+                    text: `AUTO ate ${food.item.word}`,
+                    life: 70,
+                    maxLife: 70,
+                    bonus: true
+                });
+                this.foods.splice(index, 1);
+                this.addRandomFood();
+                return;
+            }
         }
     }
 
     checkInterSnakeCollisions() {
-        if (!this.autoSnakeEnabled || !this.autoSnake || !this.autoSnake.active) return;
+        if (!this.autoSnakeEnabled) return;
 
         const playerThickness = this.getSnakeThickness();
-        const autoThickness = this.getAutoSnakeThickness();
-        const headDistance = Math.hypot(this.head.x - this.autoSnake.head.x, this.head.y - this.autoSnake.head.y);
-        if (headDistance < (playerThickness + autoThickness) * 0.72) {
-            this.autoSnake.active = false;
-            this.autoSnakeEnabled = false;
-            this.updateAutoSnakeButton();
-            this.addParticles(this.head.x, this.head.y, '#f97316', 28);
-            this.endGame('HEAD CRASH!');
-            return;
-        }
+        for (const snake of this.getActiveAutoSnakes()) {
+            const autoThickness = this.getAutoSnakeThickness(snake);
+            const headDistance = Math.hypot(this.head.x - snake.head.x, this.head.y - snake.head.y);
+            if (headDistance < (playerThickness + autoThickness) * 0.72) {
+                this.autoSnakes = [];
+                this.autoSnake = null;
+                this.autoSnakeEnabled = false;
+                this.updateAutoSnakeButton();
+                this.addParticles(this.head.x, this.head.y, '#f97316', 28);
+                this.endGame('HEAD CRASH!');
+                return;
+            }
 
-        if (this.isPointNearAutoSnakeBody(this.head.x, this.head.y, playerThickness * 0.78)) {
-            this.autoSnake.active = false;
-            this.autoSnakeEnabled = false;
-            this.updateAutoSnakeButton();
-            this.endGame('RIVAL BITE!');
-            return;
-        }
+            if (this.isPointNearAutoSnakeBody(this.head.x, this.head.y, playerThickness * 0.78, 78, null)) {
+                this.autoSnakes = [];
+                this.autoSnake = null;
+                this.autoSnakeEnabled = false;
+                this.updateAutoSnakeButton();
+                this.endGame('RIVAL BITE!');
+                return;
+            }
 
-        if (this.isPointNearPlayerBody(this.autoSnake.head.x, this.autoSnake.head.y, autoThickness * 0.78)) {
-            this.defeatAutoSnake('AUTO SNAKE DOWN');
+            if (this.isPointNearPlayerBody(snake.head.x, snake.head.y, autoThickness * 0.78)) {
+                this.defeatAutoSnake(snake, 'AUTO SNAKE DOWN');
+                return;
+            }
         }
     }
 
     checkAutoSnakeSelfCollision() {
-        if (!this.autoSnakeEnabled || !this.autoSnake || !this.autoSnake.active || this.autoSnake.segments < 3) return;
-        if (this.autoSnake.bodyBiteCooldown > 0) return;
+        if (!this.autoSnakeEnabled) return;
 
-        const biteRadius = this.getAutoSnakeThickness() * 0.92;
-        if (this.isPointNearAutoSnakeBody(this.autoSnake.head.x, this.autoSnake.head.y, biteRadius, 88)) {
-            this.autoSnake.bodyBiteCooldown = 90;
-            this.defeatAutoSnake('AUTO BIT TAIL');
+        for (const snake of this.getActiveAutoSnakes()) {
+            if (snake.segments < 3 || snake.bodyBiteCooldown > 0) continue;
+
+            const biteRadius = this.getAutoSnakeThickness(snake) * 0.86;
+            if (this.isPointNearAutoSnakeBody(snake.head.x, snake.head.y, biteRadius, 116, snake)) {
+                snake.bodyBiteCooldown = 90;
+                this.defeatAutoSnake(snake, 'AUTO BIT TAIL');
+                return;
+            }
         }
     }
 
-    isPointNearAutoSnakeBody(x, y, radius, safeHeadDistance = 78) {
-        if (!this.autoSnake) return false;
+    isPointNearAutoSnakeBody(x, y, radius, safeHeadDistance = 78, sourceSnake = null) {
+        const snakes = this.getActiveAutoSnakes();
+        if (snakes.length === 0) return false;
 
-        const bodyLength = this.getAutoSnakeBodyLength();
-        for (let distance = safeHeadDistance; distance <= bodyLength; distance += 12) {
-            const point = this.getAutoPointAtDistance(distance);
-            if (Math.hypot(point.x - x, point.y - y) < radius) return true;
+        for (const snake of snakes) {
+            const startDistance = snake === sourceSnake ? safeHeadDistance : 0;
+            const bodyLength = this.getAutoSnakeBodyLength(snake);
+            for (let distance = startDistance; distance <= bodyLength; distance += 12) {
+                const point = this.getAutoPointAtDistance(distance, snake);
+                if (Math.hypot(point.x - x, point.y - y) < radius) return true;
+            }
         }
         return false;
     }
@@ -1413,22 +1541,22 @@ class WordSnakeGame {
         return false;
     }
 
-    defeatAutoSnake(message) {
-        if (!this.autoSnake) return;
+    defeatAutoSnake(snake, message) {
+        if (!snake) return;
 
-        const colors = this.autoSnake.colors || AUTO_SNAKE_COLORS[0];
-        this.addParticles(this.autoSnake.head.x, this.autoSnake.head.y, colors.particle, 32);
+        const colors = snake.colors || AUTO_SNAKE_COLORS[0];
+        this.addParticles(snake.head.x, snake.head.y, colors.particle, 32);
         this.meaningPopups.push({
-            x: this.autoSnake.head.x,
-            y: this.autoSnake.head.y - 38,
+            x: snake.head.x,
+            y: snake.head.y - 38,
             text: message,
             life: 90,
             maxLife: 90,
             bonus: true
         });
-        this.autoSnake.active = false;
-        this.autoSnake = null;
-        this.autoSnakeRespawnTimer = 95;
+        snake.active = false;
+        this.syncPrimaryAutoSnake();
+        this.autoSnakeRespawnTimer = Math.min(this.autoSnakeRespawnTimer || AUTO_SNAKE_SPAWN_STAGGER_FRAMES, AUTO_SNAKE_SPAWN_STAGGER_FRAMES);
         this.updateAutoSnakeButton();
         this.fx.tone(220, 0.14, 'sawtooth', 0.04);
     }
@@ -1583,23 +1711,51 @@ class WordSnakeGame {
     speakTypes(item, order) {
         if (!item || !this.speechEnabled || this.fx.muted || !window.speechSynthesis) return;
 
-        window.speechSynthesis.cancel();
-
-        order.forEach((type, index) => {
-            const utterance = new SpeechSynthesisUtterance(type === 'vi' ? item.meaning : item.word);
-            utterance.lang = type === 'vi' ? 'vi-VN' : 'en-US';
-            utterance.rate = type === 'vi' ? 0.9 : 0.95;
-            utterance.pitch = 1.05;
-            const voices = window.speechSynthesis.getVoices();
-            const voice = voices.find(v => (v.lang || '').toLowerCase().startsWith(type === 'vi' ? 'vi' : 'en'));
-            if (voice) utterance.voice = voice;
-
-            setTimeout(() => {
-                if (this.state === 'playing' && this.speechEnabled && !this.fx.muted) {
-                    window.speechSynthesis.speak(utterance);
-                }
-            }, index * 850);
+        order.forEach((type) => {
+            this.speechQueue.push({
+                text: type === 'vi' ? item.meaning : item.word,
+                lang: type === 'vi' ? 'vi-VN' : 'en-US',
+                rate: type === 'vi' ? 0.9 : 0.95,
+                type
+            });
         });
+        this.processSpeechQueue();
+    }
+
+    processSpeechQueue() {
+        if (this.speechSpeaking || this.speechQueue.length === 0) return;
+        if (this.state !== 'playing' || !this.speechEnabled || this.fx.muted || !window.speechSynthesis) {
+            this.speechQueue = [];
+            this.speechSpeaking = false;
+            return;
+        }
+
+        const entry = this.speechQueue.shift();
+        const utterance = new SpeechSynthesisUtterance(entry.text);
+        utterance.lang = entry.lang;
+        utterance.rate = entry.rate;
+        utterance.pitch = 1.05;
+        const voices = window.speechSynthesis.getVoices();
+        const voice = voices.find(v => (v.lang || '').toLowerCase().startsWith(entry.type === 'vi' ? 'vi' : 'en'));
+        if (voice) utterance.voice = voice;
+
+        this.speechSpeaking = true;
+        utterance.onend = () => {
+            this.speechSpeaking = false;
+            this.processSpeechQueue();
+        };
+        utterance.onerror = () => {
+            this.speechSpeaking = false;
+            this.processSpeechQueue();
+        };
+
+        window.speechSynthesis.speak(utterance);
+    }
+
+    clearSpeechQueue() {
+        this.speechQueue = [];
+        this.speechSpeaking = false;
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
     }
 
     pauseGame() {
@@ -1618,8 +1774,11 @@ class WordSnakeGame {
 
     quitToMenu() {
         this.state = 'start';
+        this.clearSpeechQueue();
         this.autoSnakeEnabled = false;
         this.autoSnake = null;
+        this.autoSnakes = [];
+        this.autoSnakeMaxCount = 0;
         this.updateAutoSnakeButton();
         document.body.classList.remove('snake-mode');
         document.body.classList.remove('swamp-mode');
@@ -1627,7 +1786,6 @@ class WordSnakeGame {
         this.screenStart.classList.add('active');
         this.modalPause.classList.add('hidden');
         this.modalGameOver.classList.add('hidden');
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
         this.updateStartHighScore();
         this.renderStartPlayHistory();
     }
@@ -1635,6 +1793,7 @@ class WordSnakeGame {
     endGame(title, won = false) {
         if (this.state !== 'playing') return;
         this.state = 'gameover';
+        this.clearSpeechQueue();
         if (won) {
             this.fx.victory();
         } else {
@@ -2017,37 +2176,6 @@ class WordSnakeGame {
             ctx.stroke();
         }
 
-        for (let school = 0; school < 4; school++) {
-            const direction = school % 2 === 0 ? 1 : -1;
-            const schoolY = pondCenter.y - pond.ry * 0.35 + school * pond.ry * 0.22;
-            const speed = (18 + school * 5) * (1 + frenzy * 0.45);
-            for (let fish = 0; fish < 9; fish++) {
-                const swimWidth = pond.rx * 2.15;
-                const offset = (time * speed + fish * 34 + school * 137) % swimWidth;
-                const px = direction > 0
-                    ? pondCenter.x - pond.rx * 1.08 + offset
-                    : pondCenter.x + pond.rx * 1.08 - offset;
-                const py = schoolY + Math.sin(time * (1.6 + frenzy * 0.25) + fish * 0.8 + school) * (16 + frenzy * 3) + (fish % 3) * 7;
-                const scale = 0.72 + (fish % 3) * 0.16;
-
-                ctx.save();
-                ctx.translate(px, py);
-                ctx.rotate((direction > 0 ? 0 : Math.PI) + Math.sin(time * 2 + fish) * 0.06);
-                ctx.globalAlpha = 0.2 + frenzy * 0.08;
-                ctx.fillStyle = school % 2 === 0 ? '#f6d365' : '#9be7ff';
-                ctx.beginPath();
-                ctx.ellipse(0, 0, 9 * scale, 4 * scale, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.moveTo(-8 * scale, 0);
-                ctx.lineTo(-15 * scale, -5 * scale);
-                ctx.lineTo(-15 * scale, 5 * scale);
-                ctx.closePath();
-                ctx.fill();
-                ctx.restore();
-            }
-        }
-
         if (frenzy > 0) {
             ctx.globalAlpha = frenzy * 0.18;
             ctx.strokeStyle = '#fef9c3';
@@ -2275,20 +2403,25 @@ class WordSnakeGame {
     }
 
     drawAutoSnake() {
-        if (!this.autoSnakeEnabled || !this.autoSnake || !this.autoSnake.active) return;
+        if (!this.autoSnakeEnabled) return;
 
+        this.getActiveAutoSnakes().forEach((snake) => this.drawSingleAutoSnake(snake));
+    }
+
+    drawSingleAutoSnake(snake) {
+        if (!snake || !snake.active) return;
         const ctx = this.ctx;
-        const bodyLength = this.getAutoSnakeBodyLength();
-        const sampleSpacing = 14;
+        const bodyLength = this.getAutoSnakeBodyLength(snake);
+        const sampleSpacing = 18;
         const worldPositions = [];
         for (let distance = 0; distance <= bodyLength; distance += sampleSpacing) {
-            worldPositions.push(this.getAutoPointAtDistance(distance));
+            worldPositions.push(this.getAutoPointAtDistance(distance, snake));
         }
         const positions = worldPositions.map(point => this.worldToScreen(point));
         if (positions.length < 2) return;
 
-        const thickness = this.getAutoSnakeThickness();
-        const colors = this.autoSnake.colors || AUTO_SNAKE_COLORS[0];
+        const thickness = this.getAutoSnakeThickness(snake);
+        const colors = snake.colors || AUTO_SNAKE_COLORS[0];
         const layers = [
             { width: thickness + 12, color: colors.shadow },
             { width: thickness + 5, color: colors.dark },
@@ -2315,17 +2448,17 @@ class WordSnakeGame {
         });
         ctx.restore();
 
-        this.drawAutoSnakeHead(positions[0]);
+        this.drawAutoSnakeHead(snake, positions[0]);
     }
 
-    drawAutoSnakeHead(position) {
-        if (!this.autoSnake) return;
+    drawAutoSnakeHead(snake, position) {
+        if (!snake) return;
 
         const ctx = this.ctx;
-        const radius = this.getAutoSnakeThickness() * 1.14;
-        const angle = this.autoSnake.head.heading;
-        const pulse = this.autoSnakeGrowthTimer > 0 ? 1 + Math.sin(this.autoSnakeGrowthTimer * 0.28) * 0.05 : 1;
-        const colors = this.autoSnake.colors || AUTO_SNAKE_COLORS[0];
+        const radius = this.getAutoSnakeThickness(snake) * 1.14;
+        const angle = snake.head.heading;
+        const pulse = snake.growthTimer > 0 ? 1 + Math.sin(snake.growthTimer * 0.28) * 0.05 : 1;
+        const colors = snake.colors || AUTO_SNAKE_COLORS[0];
 
         ctx.save();
         ctx.translate(position.x, position.y);
@@ -2377,15 +2510,15 @@ class WordSnakeGame {
         return Math.max(18, base + growthPulse - poisonShrink);
     }
 
-    getAutoSnakeBodyLength() {
-        if (!this.autoSnake) return 0;
-        return 100 + Math.max(0, this.autoSnake.segments - 1) * 68;
+    getAutoSnakeBodyLength(snake = this.autoSnake) {
+        if (!snake) return 0;
+        return 100 + Math.max(0, snake.segments - 1) * 68;
     }
 
-    getAutoSnakeThickness() {
-        if (!this.autoSnake) return 18;
-        const base = 19 + Math.min(12, Math.max(0, this.autoSnake.segments - 1) * 0.85);
-        const growthPulse = this.autoSnakeGrowthTimer > 0 ? Math.sin(this.autoSnakeGrowthTimer * 0.28) * 3 : 0;
+    getAutoSnakeThickness(snake = this.autoSnake) {
+        if (!snake) return 18;
+        const base = 19 + Math.min(12, Math.max(0, snake.segments - 1) * 0.85);
+        const growthPulse = snake.growthTimer > 0 ? Math.sin(snake.growthTimer * 0.28) * 3 : 0;
         return Math.max(17, base + growthPulse);
     }
 
@@ -2413,16 +2546,16 @@ class WordSnakeGame {
         return this.trail[this.trail.length - 1] || this.head;
     }
 
-    getAutoPointAtDistance(targetDistance) {
-        if (!this.autoSnake) return { x: this.head.x, y: this.head.y };
-        if (targetDistance <= 0 || this.autoSnake.trail.length < 2) {
-            return { x: this.autoSnake.head.x, y: this.autoSnake.head.y };
+    getAutoPointAtDistance(targetDistance, snake = this.autoSnake) {
+        if (!snake) return { x: this.head.x, y: this.head.y };
+        if (targetDistance <= 0 || snake.trail.length < 2) {
+            return { x: snake.head.x, y: snake.head.y };
         }
 
         let walked = 0;
-        for (let index = 1; index < this.autoSnake.trail.length; index++) {
-            const prev = this.autoSnake.trail[index - 1];
-            const next = this.autoSnake.trail[index];
+        for (let index = 1; index < snake.trail.length; index++) {
+            const prev = snake.trail[index - 1];
+            const next = snake.trail[index];
             const segmentDistance = Math.hypot(prev.x - next.x, prev.y - next.y);
 
             if (walked + segmentDistance >= targetDistance) {
@@ -2435,7 +2568,7 @@ class WordSnakeGame {
             walked += segmentDistance;
         }
 
-        return this.autoSnake.trail[this.autoSnake.trail.length - 1] || this.autoSnake.head;
+        return snake.trail[snake.trail.length - 1] || snake.head;
     }
 
     drawSnakeHead(position) {
@@ -2538,11 +2671,12 @@ class WordSnakeGame {
         const distanceToSnake = Math.hypot(food.x - this.head.x, food.y - this.head.y);
         const snakeIsNear = this.isSurvivalMode() && distanceToSnake < 170;
         const radius = this.isSurvivalMode() ? food.radius : food.radius + Math.sin(food.pulse) * 3;
-        const bobX = this.isSurvivalMode() ? 0 : Math.cos(food.pulse * 0.7 + food.wavePhase) * 5;
-        const bobY = this.isSurvivalMode() ? 0 : Math.sin(food.pulse + food.wavePhase) * 7;
+        const bobX = this.isSurvivalMode() ? Math.cos(food.pulse * 0.45 + food.wavePhase) * 2.5 : Math.cos(food.pulse * 0.7 + food.wavePhase) * 5;
+        const bobY = this.isSurvivalMode() ? Math.sin(food.pulse * 0.55 + food.wavePhase) * 3.5 : Math.sin(food.pulse + food.wavePhase) * 7;
         const screenFood = this.worldToScreen(food);
         const drawX = screenFood.x + bobX;
         const drawY = screenFood.y + bobY;
+        const spawnAlpha = this.isSurvivalMode() ? Math.min(1, (food.spawnAge || 0) / 28) : 1;
 
         if (!this.isSurvivalMode()) {
             ctx.save();
@@ -2561,6 +2695,7 @@ class WordSnakeGame {
         }
 
         ctx.save();
+        ctx.globalAlpha = spawnAlpha;
         ctx.shadowColor = showHint
             ? 'rgba(34, 197, 94, 0.55)'
             : (snakeIsNear ? 'rgba(251, 191, 36, 0.42)' : 'rgba(56, 189, 248, 0.16)');

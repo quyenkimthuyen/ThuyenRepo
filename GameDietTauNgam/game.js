@@ -1025,6 +1025,7 @@ class Submarine {
         this.wreckTilt = 0;
         this.damageFlashTimer = 0;
         this.minSpeedX = isBoss ? 0.45 : 0.55;
+        this.appliedSpeedMultiplier = isBoss ? 1.0 : Math.max(0.35, speedMultiplier);
         
         // Attack related
         this.isWarning = false;
@@ -1059,6 +1060,11 @@ class Submarine {
     normalizeMovementSpeed(speedMultiplier = 1.0) {
         const direction = this.speedX < 0 ? -1 : 1;
         const effectiveMultiplier = Math.max(0.35, speedMultiplier);
+        const previousMultiplier = Math.max(0.35, this.appliedSpeedMultiplier || effectiveMultiplier);
+        if (Number.isFinite(this.speedX) && previousMultiplier !== effectiveMultiplier) {
+            this.speedX *= effectiveMultiplier / previousMultiplier;
+        }
+        this.appliedSpeedMultiplier = effectiveMultiplier;
         const minSpeed = this.minSpeedX * effectiveMultiplier;
 
         if (!Number.isFinite(this.speedX) || Math.abs(this.speedX) < minSpeed) {
@@ -1309,6 +1315,7 @@ class Missile {
         this.x = x;
         this.y = y;
         this.vy = -(3.8 * speedMult);
+        this.appliedSpeedMultiplier = Math.max(0.35, speedMult);
         this.width = 10;
         this.height = 25;
         this.targetY = targetY; // stop at ocean surface
@@ -1320,10 +1327,17 @@ class Missile {
         this.vx = 0;
     }
 
-    update() {
+    update(speedMult = this.appliedSpeedMultiplier) {
+        const effectiveMultiplier = Math.max(0.35, speedMult);
+        const previousMultiplier = Math.max(0.35, this.appliedSpeedMultiplier || effectiveMultiplier);
+        if (previousMultiplier !== effectiveMultiplier) {
+            this.vy *= effectiveMultiplier / previousMultiplier;
+            this.appliedSpeedMultiplier = effectiveMultiplier;
+        }
+
         if (this.isWeaving) {
             this.weaveTimer += 0.08;
-            this.vx = Math.sin(this.weaveTimer) * 1.5;
+            this.vx = Math.sin(this.weaveTimer) * 1.5 * effectiveMultiplier;
         }
 
         this.x += this.vx;
@@ -1426,30 +1440,38 @@ class Battleship {
         this.frozenSubActive = false;
     }
 
-    update(keys, touchDir, waterY, time, controlMode = 'solo') {
+    update(keys, touchDir, waterY, time, controlMode = 'solo', mouseTargetX = null) {
         const previousX = this.x;
         if (this.isDisabled) {
             this.movementDeltaX = 0;
             return;
         }
 
-        // Handle input motion
-        let dir = 0;
-        if (controlMode === 'secondary') {
-            if (keys['a']) dir = -1;
-            if (keys['d']) dir = 1;
-        } else if (controlMode === 'primaryDuo') {
-            if (keys['ArrowLeft']) dir = -1;
-            if (keys['ArrowRight']) dir = 1;
+        const canUseMouse = controlMode !== 'secondary' && Number.isFinite(mouseTargetX);
+        if (canUseMouse) {
+            const dx = mouseTargetX - this.x;
+            if (Math.abs(dx) > 2) {
+                this.x += Math.sign(dx) * Math.min(this.speed, Math.abs(dx));
+            }
         } else {
-            if (keys['a'] || keys['ArrowLeft']) dir = -1;
-            if (keys['d'] || keys['ArrowRight']) dir = 1;
-        }
-        
-        // Touch overrides keyboard
-        if (touchDir !== 0 && controlMode !== 'secondary') dir = touchDir;
+            // Handle input motion
+            let dir = 0;
+            if (controlMode === 'secondary') {
+                if (keys['a']) dir = -1;
+                if (keys['d']) dir = 1;
+            } else if (controlMode === 'primaryDuo') {
+                if (keys['ArrowLeft']) dir = -1;
+                if (keys['ArrowRight']) dir = 1;
+            } else {
+                if (keys['a'] || keys['ArrowLeft']) dir = -1;
+                if (keys['d'] || keys['ArrowRight']) dir = 1;
+            }
+            
+            // Touch overrides keyboard
+            if (touchDir !== 0 && controlMode !== 'secondary') dir = touchDir;
 
-        this.x += dir * this.speed;
+            this.x += dir * this.speed;
+        }
 
         // Boundary constraints
         if (this.x < this.width/2 + 10) {
@@ -1655,6 +1677,7 @@ class GameEngine {
         this.hudAmmo = document.getElementById('hud-ammo');
         this.hudReloadFill = document.getElementById('hud-reload-fill');
         this.hudReloadText = document.getElementById('hud-reload-text');
+        this.controlToggleBtn = document.getElementById('btn-control-toggle');
         this.bilingualToggleBtn = document.getElementById('btn-bilingual-toggle');
         this.gradeSelect = document.getElementById('grade-select');
         this.gradeSourceStatus = document.getElementById('grade-source-status');
@@ -1705,7 +1728,11 @@ class GameEngine {
         this.survivalBonusInterval = 30 * 60; // 30 seconds at 60 FPS
         this.nextSurvivalBonusAt = this.survivalBonusInterval;
         this.finalSurvivalBonusAwarded = false;
+        this.wordAudioEnabled = true;
         this.bilingualSpeechEnabled = true;
+        this.speechQueue = [];
+        this.speechQueueRunning = false;
+        this.currentVietnameseAudio = null;
 
         // Stats tracking
         this.correctMatches = 0;
@@ -1718,7 +1745,9 @@ class GameEngine {
 
         // Controls input
         this.keys = {};
+        this.controlInputMode = 'mouse';
         this.touchDir = 0; // -1: left, 1: right, 0: idle
+        this.mouseTargetX = null;
         this.fireCooldown = 0;
         this.maxBombsBeforeReload = 2;
         this.bombsRemaining = this.maxBombsBeforeReload;
@@ -1737,9 +1766,7 @@ class GameEngine {
 
         // Targets selection
         this.currentTarget = null;
-        this.manualTargetChangeCooldown = 0;
-        this.manualTargetChangeCooldownDuration = 300; // 5 seconds at 60 FPS
-        this.manualTargetChangeNoticeTimer = 0;
+        this.targetTenSecondAudioPlayed = false;
 
         // Attack cycle triggers
         this.attackTimer = 0;
@@ -1839,23 +1866,23 @@ class GameEngine {
             this.keys[e.key.toLowerCase()] = true;
             if (this.state !== 'playing') return;
             // Space or ArrowDown to fire depth charge
-            if (e.key === ' ' || e.key === 'ArrowDown') {
+            if (this.controlInputMode === 'keyboard' && (e.key === ' ' || e.key === 'ArrowDown')) {
                 this.fireDepthCharge(this.battleship);
                 e.preventDefault();
             }
-            // ArrowUp to change target answer
+            // ArrowUp toggles target word audio.
             if (e.key === 'ArrowUp') {
-                this.requestManualTargetChange();
+                this.toggleWordAudio();
                 e.preventDefault();
             }
             if (this.mode === 'duo') {
                 const key = e.key.toLowerCase();
-                if (key === 's') {
+                if (this.controlInputMode === 'keyboard' && key === 's') {
                     this.fireDepthCharge(this.secondBattleship);
                     e.preventDefault();
                 }
                 if (key === 'w') {
-                    this.requestManualTargetChange();
+                    this.toggleWordAudio();
                     e.preventDefault();
                 }
             }
@@ -1949,6 +1976,25 @@ class GameEngine {
     }
 
     setupEventListeners() {
+        this.canvas.addEventListener('mousemove', (e) => {
+            if (this.state !== 'playing' || this.controlInputMode !== 'mouse') return;
+
+            const rect = this.canvas.getBoundingClientRect();
+            this.mouseTargetX = e.clientX - rect.left;
+        });
+
+        this.canvas.addEventListener('mouseleave', () => {
+            this.mouseTargetX = null;
+        });
+
+        this.canvas.addEventListener('mousedown', (e) => {
+            if (this.state !== 'playing' || this.controlInputMode !== 'mouse' || e.button !== 0) return;
+
+            e.preventDefault();
+            sound.init();
+            this.fireDepthCharge(this.battleship);
+        });
+
         // Play button
         document.getElementById('btn-play').addEventListener('click', async () => {
             sound.init();
@@ -1993,6 +2039,13 @@ class GameEngine {
                 this.renderStartPlayHistory();
             });
         });
+
+        if (this.controlToggleBtn) {
+            this.updateControlToggleButton();
+            this.controlToggleBtn.addEventListener('click', () => {
+                this.toggleControlInputMode();
+            });
+        }
 
         // HUD Pause & Sound
         document.getElementById('btn-pause').addEventListener('click', () => this.pauseGame());
@@ -2097,8 +2150,19 @@ class GameEngine {
         this.fireCooldown = 0;
         this.bombsRemaining = this.maxBombsBeforeReload;
         this.reloadTimer = 0;
-        this.manualTargetChangeCooldown = 0;
-        this.manualTargetChangeNoticeTimer = 0;
+        this.controlInputMode = 'mouse';
+        this.mouseTargetX = null;
+        this.updateControlToggleButton();
+        this.targetTenSecondAudioPlayed = false;
+        this.speechQueue = [];
+        this.speechQueueRunning = false;
+        if (this.currentVietnameseAudio) {
+            this.currentVietnameseAudio.pause();
+            this.currentVietnameseAudio = null;
+        }
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+        }
 
         this.bombs = [];
         this.submarines = [];
@@ -2265,6 +2329,7 @@ class GameEngine {
         // Set top bar target string
         this.targetValue.innerHTML = `${this.currentTarget.emoji || ''} ${this.currentTarget.meaning}`;
         this.targetTimer = this.targetTimerDuration;
+        this.targetTenSecondAudioPlayed = false;
         this.updateTargetPressureHUD();
         this.speakCurrentTargetWord();
         
@@ -2272,18 +2337,38 @@ class GameEngine {
         this.guaranteeTargetSubmarinePresence();
     }
 
-    requestManualTargetChange() {
-        if (this.manualTargetChangeCooldown > 0) {
-            if (this.manualTargetChangeNoticeTimer <= 0 && this.battleship) {
-                const secondsLeft = Math.ceil(this.manualTargetChangeCooldown / 60);
-                this.floatingTexts.push(new FloatingText(this.battleship.x, this.battleship.y - 48, `TARGET CHANGE IN ${secondsLeft}s`, '#ffd000', 0.8));
-                this.manualTargetChangeNoticeTimer = 45;
-            }
-            return;
+    toggleWordAudio() {
+        this.wordAudioEnabled = !this.wordAudioEnabled;
+        if (!this.wordAudioEnabled) {
+            this.stopQueuedWordAudio();
         }
 
-        this.selectNewTarget();
-        this.manualTargetChangeCooldown = this.manualTargetChangeCooldownDuration;
+        const ship = this.battleship || this.secondBattleship;
+        if (ship) {
+            const message = this.wordAudioEnabled ? 'WORD AUDIO ON' : 'WORD AUDIO OFF';
+            const color = this.wordAudioEnabled ? '#33ff88' : '#ff7b00';
+            this.floatingTexts.push(new FloatingText(ship.x, ship.y - 48, message, color, 0.95));
+        }
+        sound.playPowerup();
+    }
+
+    toggleControlInputMode() {
+        this.controlInputMode = this.controlInputMode === 'mouse' ? 'keyboard' : 'mouse';
+        if (this.controlInputMode === 'keyboard') {
+            this.mouseTargetX = null;
+        }
+        this.updateControlToggleButton();
+    }
+
+    updateControlToggleButton() {
+        if (!this.controlToggleBtn) return;
+
+        const isMouseMode = this.controlInputMode === 'mouse';
+        this.controlToggleBtn.classList.toggle('active', isMouseMode);
+        this.controlToggleBtn.innerText = isMouseMode ? '🖱️' : '⌨️';
+        this.controlToggleBtn.title = isMouseMode
+            ? 'Control mode: Mouse'
+            : 'Control mode: Keyboard';
     }
 
     updateBilingualSpeechButton() {
@@ -2353,11 +2438,6 @@ class GameEngine {
                 return;
             }
 
-            if (this.currentVietnameseAudio) {
-                this.currentVietnameseAudio.pause();
-                this.currentVietnameseAudio = null;
-            }
-
             const audio = new Audio(url);
             this.currentVietnameseAudio = audio;
             let settled = false;
@@ -2368,6 +2448,9 @@ class GameEngine {
                 settled = true;
                 clearTimeout(startupTimer);
                 clearTimeout(maxTimer);
+                if (this.currentVietnameseAudio === audio) {
+                    this.currentVietnameseAudio = null;
+                }
                 resolve(success);
             };
 
@@ -2388,6 +2471,7 @@ class GameEngine {
             };
             audio.onended = () => finish(true);
             audio.onerror = () => finish(false);
+            audio.onpause = () => finish(false);
             audio.play()
                 .then(() => {
                     started = true;
@@ -2407,23 +2491,68 @@ class GameEngine {
         await this.speakWithBrowserVoice(text, 'vi', true);
     }
 
-    async speakWordAudio(wordObj) {
+    async playQueuedWordAudio(job) {
+        if (!this.wordAudioEnabled) return;
+
+        const wordObj = job.wordObj;
         if (!wordObj?.word) return;
 
+        if (job.bilingualSpeechEnabled && wordObj.meaning) {
+            await this.speakVietnameseText(wordObj.meaning);
+        }
+        if (!this.wordAudioEnabled) return;
+        await this.speakWithBrowserVoice(wordObj.word, 'en');
+    }
+
+    enqueueWordAudio(wordObj) {
+        if (!this.wordAudioEnabled) return;
+        if (!wordObj?.word) return;
+
+        this.speechQueue.push({
+            wordObj: {
+                word: wordObj.word,
+                meaning: wordObj.meaning,
+                emoji: wordObj.emoji
+            },
+            bilingualSpeechEnabled: this.bilingualSpeechEnabled
+        });
+        this.processSpeechQueue();
+    }
+
+    stopQueuedWordAudio() {
+        this.speechQueue = [];
+        if (this.currentVietnameseAudio) {
+            this.currentVietnameseAudio.pause();
+            this.currentVietnameseAudio = null;
+        }
         if (window.speechSynthesis) {
             window.speechSynthesis.cancel();
         }
+    }
 
-        if (this.bilingualSpeechEnabled && wordObj.meaning) {
-            await this.speakVietnameseText(wordObj.meaning);
+    async processSpeechQueue() {
+        if (this.speechQueueRunning) return;
+
+        this.speechQueueRunning = true;
+        while (this.speechQueue.length > 0) {
+            if (!this.wordAudioEnabled) {
+                this.speechQueue = [];
+                break;
+            }
+            const job = this.speechQueue.shift();
+            try {
+                await this.playQueuedWordAudio(job);
+            } catch (error) {
+                console.warn('Speech queue item failed:', error);
+            }
         }
-        await this.speakWithBrowserVoice(wordObj.word, 'en');
+        this.speechQueueRunning = false;
     }
 
     speakCurrentTargetWord() {
         if (!this.currentTarget?.word) return;
 
-        this.speakWordAudio(this.currentTarget);
+        this.enqueueWordAudio(this.currentTarget);
     }
 
     guaranteeTargetSubmarinePresence() {
@@ -2488,7 +2617,7 @@ class GameEngine {
             }
         }
 
-        const mult = this.getDifficultySpeedMultiplier();
+        const mult = this.getMovementSpeedMultiplier();
         const sub = new Submarine(subDepthY, depthIndex, wordObj, mult, false);
         // Ensure submarine does not spawn too close to player ships horizontally
         this.getActiveBattleships().forEach(ship => {
@@ -2540,6 +2669,7 @@ class GameEngine {
         this.currentTarget = vocab.pickNextTarget();
         this.targetValue.innerHTML = `${this.currentTarget.emoji || ''} ${this.currentTarget.meaning}`;
         this.targetTimer = this.targetTimerDuration;
+        this.targetTenSecondAudioPlayed = false;
         this.speakCurrentTargetWord();
 
         for (let i = 0; i < this.levelBossTarget; i++) {
@@ -2673,6 +2803,10 @@ class GameEngine {
         }
     }
 
+    getMovementSpeedMultiplier() {
+        return this.getDifficultySpeedMultiplier();
+    }
+
     getMaxSubmarinesCount() {
         return this.levelNormalActiveTarget;
     }
@@ -2760,6 +2894,7 @@ class GameEngine {
     spawnStageBossForCurrentStage() {
         this.currentTarget = vocab.pickNextTarget();
         this.targetValue.innerHTML = `${this.currentTarget.emoji || ''} ${this.currentTarget.meaning}`;
+        this.targetTenSecondAudioPlayed = false;
         this.speakCurrentTargetWord();
         this.spawnBossSubmarine({
             hp: this.getStageBossHp(),
@@ -2809,7 +2944,12 @@ class GameEngine {
         }
 
         if (this.targetTimer > 0) {
+            const previousTimer = this.targetTimer;
             this.targetTimer--;
+            if (!this.targetTenSecondAudioPlayed && previousTimer > 10 * 60 && this.targetTimer <= 10 * 60) {
+                this.targetTenSecondAudioPlayed = true;
+                this.speakCurrentTargetWord();
+            }
             if (this.targetTimer <= 0) {
                 this.applyTargetTimeoutPenalty();
             }
@@ -2915,18 +3055,18 @@ class GameEngine {
 
     updatePhysics() {
         this.updateTimerHUD();
-        if (this.manualTargetChangeCooldown > 0) this.manualTargetChangeCooldown--;
-        if (this.manualTargetChangeNoticeTimer > 0) this.manualTargetChangeNoticeTimer--;
         this.updateLevelUpEffect();
         this.updateTargetTimer();
 
         this.getActiveBattleships().forEach(ship => this.updateShipReload(ship));
 
         // 1. Update Battleship
-        this.battleship.update(this.keys, this.touchDir, this.waterY, this.gameTime, this.mode === 'duo' ? 'primaryDuo' : 'solo');
+        const mouseTargetX = this.controlInputMode === 'mouse' ? this.mouseTargetX : null;
+        const movementKeys = this.controlInputMode === 'keyboard' ? this.keys : {};
+        this.battleship.update(movementKeys, this.touchDir, this.waterY, this.gameTime, this.mode === 'duo' ? 'primaryDuo' : 'solo', mouseTargetX);
         this.spawnBattleshipWake(this.battleship);
         if (this.secondBattleship) {
-            this.secondBattleship.update(this.keys, 0, this.waterY, this.gameTime, 'secondary');
+            this.secondBattleship.update(movementKeys, 0, this.waterY, this.gameTime, 'secondary');
             this.spawnBattleshipWake(this.secondBattleship);
         }
 
@@ -2974,7 +3114,7 @@ class GameEngine {
 
         // 5. Update Submarines
         const isFrozen = this.freezeTimer > 0;
-        const subSpeedMult = this.getDifficultySpeedMultiplier();
+        const subSpeedMult = this.getMovementSpeedMultiplier();
 
         for (let i = this.submarines.length - 1; i >= 0; i--) {
             const sub = this.submarines[i];
@@ -2997,7 +3137,7 @@ class GameEngine {
         }
 
         // 6. Update Missiles
-        const missileSpeedMult = this.getDifficultySpeedMultiplier();
+        const missileSpeedMult = this.getMovementSpeedMultiplier();
         for (let i = this.missiles.length - 1; i >= 0; i--) {
             const mis = this.missiles[i];
             const event = mis.update(missileSpeedMult);
@@ -3091,7 +3231,6 @@ class GameEngine {
         if (ship.reloadTimer <= 0) {
             ship.bombsRemaining = ship.maxBombsBeforeReload;
             this.floatingTexts.push(new FloatingText(ship.x, ship.y - 40, "AMMO READY!", '#33ff88', 0.95));
-            this.speakCurrentTargetWord();
         }
         this.updateAmmoHUD();
     }
@@ -3159,7 +3298,7 @@ class GameEngine {
 
     fireMissileFromSub(sub) {
         const targetWaterY = this.waterY;
-        const speedMult = this.getDifficultySpeedMultiplier();
+        const speedMult = this.getMovementSpeedMultiplier();
 
         if (sub.isBoss) {
             // Boss launches double missiles or wave pattern
@@ -3782,7 +3921,7 @@ class GameEngine {
             this.hudP2Hearts.innerText = this.renderHearts(sideShip.lives);
         }
 
-        this.hudDiff.innerText = `L${this.currentStageIndex + 1} ${this.difficultyStage}`;
+        this.updateDifficultyHUD();
         this.updateTimerHUD();
         this.hudAccuracy.innerText = `${vocab.getAccuracy()}%`;
         this.updateTargetPressureHUD();
@@ -3799,6 +3938,13 @@ class GameEngine {
 
     updateTimerHUD() {
         this.hudTime.innerText = this.formatTime(this.timeElapsed);
+        this.updateDifficultyHUD();
+    }
+
+    updateDifficultyHUD() {
+        if (!this.hudDiff) return;
+        const audioLabel = this.wordAudioEnabled ? '' : ' AUDIO OFF';
+        this.hudDiff.innerText = `L${this.currentStageIndex + 1} ${this.difficultyStage}${audioLabel}`;
     }
 
     triggerGameOver(reason = 'defeat') {
