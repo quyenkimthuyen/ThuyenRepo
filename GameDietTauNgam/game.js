@@ -303,11 +303,12 @@ class VocabularyPool {
         this.correctMatches = 0;
         this.incorrectMatches = 0;
         this.grade = 4;
+        this.sourceLabel = 'Global Success Grade 4';
         this.selectionSequence = 0;
     }
 
-    async loadVocab(grade = 4) {
-        const selectedGrade = Math.min(12, Math.max(1, Number.parseInt(grade, 10) || 4));
+    async loadVocab(source = 4) {
+        const selectedSource = this.normalizeSource(source);
         const defaultList = [
             { "word": "Dog", "meaning": "Con chó", "emoji": "🐶" },
             { "word": "Cat", "meaning": "Con mèo", "emoji": "🐱" },
@@ -353,24 +354,29 @@ class VocabularyPool {
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), 1500);
 
-            const vocabPath = `global-success-vocabulary/grade${selectedGrade}.json`;
+            const vocabPath = selectedSource === 'toeic'
+                ? 'global-success-vocabulary/toeic.json'
+                : `global-success-vocabulary/grade${selectedSource}.json`;
             const response = await fetch(vocabPath, { signal: controller.signal });
             clearTimeout(id);
 
             if (response.ok) {
                 const loadedWords = await response.json();
                 this.words = this.normalizeWordList(loadedWords);
-                this.grade = selectedGrade;
+                this.grade = selectedSource;
+                this.sourceLabel = this.getSourceLabel(selectedSource);
                 console.log(`Successfully loaded vocabulary list from ${vocabPath}.`);
             } else {
                 this.words = this.normalizeWordList(defaultList);
-                this.grade = selectedGrade;
-                console.warn(`Failed to load grade ${selectedGrade} vocabulary. Falling back to default list.`);
+                this.grade = selectedSource;
+                this.sourceLabel = this.getSourceLabel(selectedSource);
+                console.warn(`Failed to load ${this.sourceLabel} vocabulary. Falling back to default list.`);
             }
         } catch (e) {
             this.words = this.normalizeWordList(defaultList);
-            this.grade = selectedGrade;
-            console.warn(`Local CORS blocking or network error: using default built-in vocabulary list for grade ${selectedGrade}.`);
+            this.grade = selectedSource;
+            this.sourceLabel = this.getSourceLabel(selectedSource);
+            console.warn(`Local CORS blocking or network error: using default built-in vocabulary list for ${this.sourceLabel}.`);
         }
 
         // Initialize learning states
@@ -391,6 +397,19 @@ class VocabularyPool {
         });
     }
 
+    normalizeSource(source) {
+        if (String(source).toLowerCase() === 'toeic') return 'toeic';
+        return Math.min(12, Math.max(1, Number.parseInt(source, 10) || 4));
+    }
+
+    getSourceLabel(source = this.grade) {
+        return source === 'toeic' ? 'TOEIC' : `Global Success Grade ${source}`;
+    }
+
+    getSourceShortLabel(source = this.grade) {
+        return source === 'toeic' ? 'TOEIC' : `G${source}`;
+    }
+
     normalizeWordList(words) {
         return words
             .filter(item => item && item.word && item.meaning)
@@ -403,7 +422,7 @@ class VocabularyPool {
     }
 
     getStatsStorageKey() {
-        return `vocab_stats_grade_${this.grade}`;
+        return this.grade === 'toeic' ? 'vocab_stats_toeic' : `vocab_stats_grade_${this.grade}`;
     }
 
     loadPersistedStats() {
@@ -1764,7 +1783,9 @@ class GameEngine {
     }
 
     getStoredVocabularyGrade() {
-        const storedGrade = Number.parseInt(localStorage.getItem('vocabulary_grade') || '4', 10);
+        const storedSource = localStorage.getItem('vocabulary_grade') || '4';
+        if (storedSource === 'toeic') return 'toeic';
+        const storedGrade = Number.parseInt(storedSource, 10);
         if (!Number.isInteger(storedGrade) || storedGrade < 1 || storedGrade > 12) return 4;
         return storedGrade;
     }
@@ -1773,9 +1794,10 @@ class GameEngine {
         if (this.gradeSelect) {
             this.gradeSelect.value = String(this.selectedGrade);
         }
-        this.updateGradeSourceStatus(`Loading Grade ${this.selectedGrade} vocabulary...`);
+        const loadingLabel = this.selectedGrade === 'toeic' ? 'TOEIC' : `Grade ${this.selectedGrade}`;
+        this.updateGradeSourceStatus(`Loading ${loadingLabel} vocabulary...`);
         await vocab.loadVocab(this.selectedGrade);
-        this.updateGradeSourceStatus(`Using Global Success Grade ${vocab.grade} • ${vocab.words.length} words`);
+        this.updateGradeSourceStatus(`Using ${vocab.sourceLabel} • ${vocab.words.length} words`);
     }
 
     updateGradeSourceStatus(text) {
@@ -1794,6 +1816,7 @@ class GameEngine {
         for (let grade = 1; grade <= 12; grade++) {
             localStorage.removeItem(`vocab_stats_grade_${grade}`);
         }
+        localStorage.removeItem('vocab_stats_toeic');
 
         vocab.clearPersistedStats();
         this.score = 0;
@@ -1936,7 +1959,9 @@ class GameEngine {
         if (this.gradeSelect) {
             this.gradeSelect.value = String(this.selectedGrade);
             this.gradeSelect.addEventListener('change', async () => {
-                this.selectedGrade = Number.parseInt(this.gradeSelect.value, 10) || 4;
+                this.selectedGrade = this.gradeSelect.value === 'toeic'
+                    ? 'toeic'
+                    : Number.parseInt(this.gradeSelect.value, 10) || 4;
                 localStorage.setItem('vocabulary_grade', String(this.selectedGrade));
                 await this.loadSelectedGradeVocabulary();
                 this.renderStartPlayHistory();
@@ -1953,7 +1978,7 @@ class GameEngine {
                 await this.loadSelectedGradeVocabulary();
                 this.updateStartHighScore();
                 this.renderStartPlayHistory();
-                this.updateGradeSourceStatus(`All progress reset • Global Success Grade ${vocab.grade} • ${vocab.words.length} words`);
+                this.updateGradeSourceStatus(`All progress reset • ${vocab.sourceLabel} • ${vocab.words.length} words`);
             });
         }
 
@@ -2178,6 +2203,7 @@ class GameEngine {
         history.unshift({
             score: this.score,
             grade: vocab.grade || this.selectedGrade,
+            sourceLabel: vocab.sourceLabel,
             accuracy: vocab.getAccuracy(),
             correct: this.correctMatches,
             combo: this.highestCombo,
@@ -3884,7 +3910,9 @@ class GameEngine {
         const date = new Date(entry.playedAt);
         const dateText = Number.isNaN(date.getTime()) ? 'Unknown time' : date.toLocaleString();
         const survivalText = this.formatTime(entry.survivalTime ?? entry.duration ?? 0);
-        const gradeText = entry.grade ? `G${entry.grade}` : `G${this.selectedGrade}`;
+        const gradeText = entry.grade === 'toeic'
+            ? 'TOEIC'
+            : (entry.grade ? `G${entry.grade}` : vocab.getSourceShortLabel(this.selectedGrade));
         row.innerHTML = `
             <span class="history-rank">#${idx + 1}</span>
             <span class="history-date">${dateText} • ${gradeText} • SURV ${survivalText} • ${entry.accuracy}% ACC • ${entry.correct} OK</span>
