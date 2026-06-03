@@ -28,6 +28,27 @@
                     🏆 HIGH SCORE: <span id="start-high-score">0</span>
                 </div>
 
+                <div class="vocab-source-box">
+                    <label for="vocab-source-select">WORD SOURCE</label>
+                    <select id="vocab-source-select">
+                        <option value="grade1">Grade 1</option>
+                        <option value="grade2">Grade 2</option>
+                        <option value="grade3">Grade 3</option>
+                        <option value="grade4" selected>Grade 4</option>
+                        <option value="grade5">Grade 5</option>
+                        <option value="grade6">Grade 6</option>
+                        <option value="grade7">Grade 7</option>
+                        <option value="grade8">Grade 8</option>
+                        <option value="grade9">Grade 9</option>
+                        <option value="grade10">Grade 10</option>
+                        <option value="grade11">Grade 11</option>
+                        <option value="grade12">Grade 12</option>
+                        <option value="toeic">TOEIC</option>
+                        <option value="all">All Grades</option>
+                    </select>
+                    <span id="vocab-source-count">Grade 4</span>
+                </div>
+
                 <div class="mode-selector">
                     <h3>SELECT GAME MODE</h3>
                     <div class="mode-buttons">
@@ -47,10 +68,15 @@
                             <span class="mode-title">PRACTICE</span>
                             <span class="mode-desc">Slower snake, no game over from wrong bites</span>
                         </button>
+                        <button class="mode-btn" data-mode="swamp" id="btn-mode-swamp">
+                            <span class="mode-title">LOTUS POND</span>
+                            <span class="mode-desc">Swim through lotus leaves and eat anything you find</span>
+                        </button>
                     </div>
                 </div>
 
                 <button id="btn-play" class="pulse-btn">START WORD SNAKE</button>
+                <button id="btn-reset-state" class="reset-state-btn" type="button">RESET LEARNING STATE</button>
 
                 <div class="play-history-box start-history-box">
                     <h3>RECENT 10 PLAYS</h3>
@@ -107,7 +133,7 @@
 
                 <!-- TARGET BOX (MIDDLE TOP) -->
                 <div id="target-box" class="glass-hud">
-                    <span class="hud-label">SNAKE HEAD PROMPT</span>
+                    <span class="hud-label">MISSION</span>
                     <div id="target-value">🐶 Con chó</div>
                 </div>
 

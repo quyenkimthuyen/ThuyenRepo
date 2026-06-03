@@ -48,8 +48,35 @@ const MODE_CONFIG = {
         speechOrder: ['vi', 'en'],
         speed: 4.25,
         wrongHurts: false
+    },
+    swamp: {
+        label: 'LOTUS',
+        firstPromptType: 'food',
+        speechOrder: [],
+        speed: 4.7,
+        wrongHurts: false,
+        survival: true
     }
 };
+
+const VOCAB_SOURCES = {
+    grade1: { label: 'Grade 1', file: 'grade1.json' },
+    grade2: { label: 'Grade 2', file: 'grade2.json' },
+    grade3: { label: 'Grade 3', file: 'grade3.json' },
+    grade4: { label: 'Grade 4', file: 'grade4.json' },
+    grade5: { label: 'Grade 5', file: 'grade5.json' },
+    grade6: { label: 'Grade 6', file: 'grade6.json' },
+    grade7: { label: 'Grade 7', file: 'grade7.json' },
+    grade8: { label: 'Grade 8', file: 'grade8.json' },
+    grade9: { label: 'Grade 9', file: 'grade9.json' },
+    grade10: { label: 'Grade 10', file: 'grade10.json' },
+    grade11: { label: 'Grade 11', file: 'grade11.json' },
+    grade12: { label: 'Grade 12', file: 'grade12.json' },
+    toeic: { label: 'TOEIC', file: 'toeic.json' },
+    all: { label: 'All Grades', file: 'merged_all_grades.json' }
+};
+
+const DEFAULT_VOCAB_SOURCE = 'grade4';
 
 class SoundFx {
     constructor() {
@@ -131,6 +158,7 @@ class WordSnakeGame {
         this.mode = 'vi-en';
         this.config = MODE_CONFIG[this.mode];
         this.vocab = FALLBACK_VOCAB;
+        this.vocabSource = this.getSavedVocabSource();
         this.state = 'loading';
         this.score = 0;
         this.bestCombo = 0;
@@ -149,6 +177,8 @@ class WordSnakeGame {
         this.trail = [];
         this.segments = [];
         this.foods = [];
+        this.swampPatches = [];
+        this.lotusFlowers = [];
         this.particles = [];
         this.currentPromptType = 'vi';
         this.currentItem = null;
@@ -176,19 +206,76 @@ class WordSnakeGame {
     }
 
     async loadVocab() {
+        const source = VOCAB_SOURCES[this.vocabSource] || VOCAB_SOURCES[DEFAULT_VOCAB_SOURCE];
+        try {
+            const response = await fetch(`global-success-vocabulary/${source.file}`);
+            if (response.ok) {
+                const data = await response.json();
+                this.vocab = this.normalizeVocab(data);
+            } else {
+                await this.loadFallbackVocabFile();
+            }
+        } catch (error) {
+            console.warn(`Using fallback vocabulary because ${source.file} could not be loaded.`, error);
+            await this.loadFallbackVocabFile();
+        }
+
+        this.state = 'start';
+        this.updateVocabSourceControl();
+        this.updateStartHighScore();
+        this.renderStartPlayHistory();
+    }
+
+    getSavedVocabSource() {
+        const saved = localStorage.getItem('word_snake_vocab_source');
+        return VOCAB_SOURCES[saved] ? saved : DEFAULT_VOCAB_SOURCE;
+    }
+
+    saveVocabSource(sourceKey) {
+        if (!VOCAB_SOURCES[sourceKey]) return;
+        this.vocabSource = sourceKey;
+        localStorage.setItem('word_snake_vocab_source', sourceKey);
+    }
+
+    updateVocabSourceControl() {
+        const select = document.getElementById('vocab-source-select');
+        const count = document.getElementById('vocab-source-count');
+        if (select) select.value = this.vocabSource;
+        if (count) {
+            const source = VOCAB_SOURCES[this.vocabSource] || VOCAB_SOURCES[DEFAULT_VOCAB_SOURCE];
+            count.innerText = `${source.label} · ${this.vocab.length} words`;
+        }
+    }
+
+    async loadFallbackVocabFile() {
         try {
             const response = await fetch('vocab.json');
             if (response.ok) {
                 const data = await response.json();
-                this.vocab = data.filter(item => item.word && item.meaning);
+                this.vocab = this.normalizeVocab(data);
             }
         } catch (error) {
-            console.warn('Using fallback vocabulary because vocab.json could not be loaded.', error);
+            console.warn('Using built-in fallback vocabulary because vocab.json could not be loaded.', error);
         }
+    }
 
-        this.state = 'start';
-        this.updateStartHighScore();
-        this.renderStartPlayHistory();
+    normalizeVocab(data) {
+        const uniqueWords = new Set();
+        return data
+            .filter(item => item && item.word && item.meaning)
+            .map(item => ({
+                word: String(item.word).trim(),
+                meaning: String(item.meaning).trim(),
+                emoji: item.emoji || '🌱',
+                topic: item.topic || '',
+                grade: item.grade || null
+            }))
+            .filter(item => {
+                const key = item.word.toLowerCase();
+                if (!item.word || !item.meaning || uniqueWords.has(key)) return false;
+                uniqueWords.add(key);
+                return true;
+            });
     }
 
     bindEvents() {
@@ -214,10 +301,21 @@ class WordSnakeGame {
             });
         });
 
+        const vocabSourceSelect = document.getElementById('vocab-source-select');
+        if (vocabSourceSelect) {
+            vocabSourceSelect.value = this.vocabSource;
+            vocabSourceSelect.addEventListener('change', async () => {
+                this.saveVocabSource(vocabSourceSelect.value);
+                this.state = 'loading';
+                await this.loadVocab();
+            });
+        }
+
         document.getElementById('btn-play').addEventListener('click', () => {
             this.fx.init();
             this.startGame();
         });
+        document.getElementById('btn-reset-state').addEventListener('click', () => this.resetLearningState());
         document.getElementById('btn-pause').addEventListener('click', () => this.pauseGame());
         document.getElementById('btn-resume').addEventListener('click', () => this.resumeGame());
         document.getElementById('btn-restart-paused').addEventListener('click', () => this.startGame());
@@ -293,7 +391,19 @@ class WordSnakeGame {
         this.pointerActive = true;
     }
 
+    isSurvivalMode() {
+        return Boolean(this.config && this.config.survival);
+    }
+
     setMotoMode(enabled) {
+        if (this.isSurvivalMode() && this.state === 'playing' && !enabled) {
+            const motoButton = document.getElementById('btn-moto-toggle');
+            if (motoButton) {
+                motoButton.classList.add('active');
+                motoButton.title = 'Lotus Pond uses moto camera';
+            }
+            return;
+        }
         if (this.motoMode === enabled) return;
 
         if (!enabled && this.state === 'playing') {
@@ -310,6 +420,18 @@ class WordSnakeGame {
     }
 
     configureWorldBounds() {
+        if (this.isSurvivalMode()) {
+            const pondWidth = Math.max(this.width * 1.85, 1320);
+            const pondHeight = Math.max((this.height - 120) * 1.65, 820);
+            this.worldBounds = {
+                left: (this.width - pondWidth) / 2,
+                top: 120 + ((this.height - 120) - pondHeight) / 2,
+                right: (this.width + pondWidth) / 2,
+                bottom: 120 + ((this.height - 120) + pondHeight) / 2
+            };
+            return;
+        }
+
         this.worldBounds = {
             left: 28,
             top: 120,
@@ -359,6 +481,7 @@ class WordSnakeGame {
 
     startGame() {
         document.body.classList.add('snake-mode');
+        document.body.classList.toggle('swamp-mode', this.mode === 'swamp');
         this.screenStart.classList.remove('active');
         this.screenGame.classList.add('active');
         this.modalPause.classList.add('hidden');
@@ -366,6 +489,14 @@ class WordSnakeGame {
         this.bossHud.classList.add('hidden');
 
         this.config = MODE_CONFIG[this.mode] || MODE_CONFIG['vi-en'];
+        if (this.isSurvivalMode()) {
+            this.motoMode = true;
+            const motoButton = document.getElementById('btn-moto-toggle');
+            if (motoButton) {
+                motoButton.classList.add('active');
+                motoButton.title = 'Lotus Pond uses moto camera';
+            }
+        }
         this.score = 0;
         this.combo = 0;
         this.bestCombo = 0;
@@ -388,6 +519,7 @@ class WordSnakeGame {
         this.lastPromptSpeechGameSecond = -Infinity;
         this.particles = [];
         this.foods = [];
+        this.swampPatches = [];
         this.trail = [];
         this.configureWorldBounds();
         const startX = this.motoMode ? (this.worldBounds.left + this.worldBounds.right) / 2 : this.width / 2;
@@ -409,11 +541,18 @@ class WordSnakeGame {
             label: ''
         }];
 
+        if (this.isSurvivalMode()) {
+            this.generateSwampTerrain();
+        }
         this.spawnFoods();
-        this.selectRandomTargetFromFoods();
+        if (!this.isSurvivalMode()) {
+            this.selectRandomTargetFromFoods();
+        }
         this.updateHUD();
         this.state = 'playing';
-        this.speakPair(this.currentItem, this.currentPromptType);
+        if (!this.isSurvivalMode()) {
+            this.speakPair(this.currentItem, this.currentPromptType);
+        }
     }
 
     getFirstPromptType() {
@@ -438,11 +577,13 @@ class WordSnakeGame {
     }
 
     getTargetType() {
+        if (this.isSurvivalMode()) return 'food';
         if (this.mode === 'en-vi') return 'vi';
         return 'en';
     }
 
     getPromptTypeForMode() {
+        if (this.isSurvivalMode()) return 'food';
         if (this.mode === 'en-vi') return 'en';
         if (this.mode === 'mixed') return 'en';
         return 'vi';
@@ -451,19 +592,19 @@ class WordSnakeGame {
     spawnFoods() {
         const targetType = this.getTargetType();
         this.foods = this.shuffle(this.vocab)
-            .slice(0, 4)
+            .slice(0, this.isSurvivalMode() ? 8 : 4)
             .map((item, index) => this.createFood(item, targetType, index));
         this.foods.forEach((food) => this.placeFood(food));
     }
 
     createFood(item, type, index = 0) {
         const angle = Math.random() * Math.PI * 2;
-        const driftSpeed = (0.35 + Math.random() * 0.75) * 0.5;
+        const driftSpeed = this.isSurvivalMode() ? 0 : (0.35 + Math.random() * 0.75) * 0.5;
 
         return {
             item,
             type,
-            label: this.getLabel(item, type),
+            label: this.isSurvivalMode() ? item.word : this.getLabel(item, type),
             x: 0,
             y: 0,
             vx: Math.cos(angle) * driftSpeed,
@@ -500,6 +641,15 @@ class WordSnakeGame {
     }
 
     getFoodBounds() {
+        if (this.isSurvivalMode()) {
+            const pond = this.getLotusPondShape(48);
+            return {
+                left: pond.cx - pond.rx,
+                top: pond.cy - pond.ry,
+                right: pond.cx + pond.rx,
+                bottom: pond.cy + pond.ry
+            };
+        }
         if (this.motoMode) return this.worldBounds;
         return {
             left: 0,
@@ -512,12 +662,99 @@ class WordSnakeGame {
     isFoodTooClose(food) {
         const headDistance = Math.hypot(food.x - this.head.x, food.y - this.head.y);
         if (headDistance < 140) return true;
+        if (this.isSurvivalMode() && this.isPointOnSwampLand(food.x, food.y, food.radius + 28)) return true;
 
         return this.foods.some(other => (
             other !== food &&
             other.x &&
             Math.hypot(food.x - other.x, food.y - other.y) < 150
         ));
+    }
+
+    generateSwampTerrain() {
+        const b = this.worldBounds;
+        const w = b.right - b.left;
+        const h = b.bottom - b.top;
+        const makePatch = (x, y, radius, rot = 0) => {
+            const sizeJitter = 0.78 + Math.random() * 0.5;
+            const roundnessJitter = 0.9 + Math.random() * 0.18;
+            const baseRadius = Math.max(34, Math.min(w, h) * radius * sizeJitter);
+            return {
+                x: b.left + w * x,
+                y: b.top + h * y,
+                rx: baseRadius * roundnessJitter,
+                ry: baseRadius * (1.02 - (roundnessJitter - 0.9) * 0.35),
+                rot
+            };
+        };
+        const makeFlower = (x, y, radius, rot = 0) => ({
+            x: b.left + w * x,
+            y: b.top + h * y,
+            radius,
+            rot
+        });
+
+        this.swampPatches = [
+            makePatch(0.22, 0.22, 0.05, -0.45),
+            makePatch(0.58, 0.24, 0.045, 0.22),
+            makePatch(0.8, 0.34, 0.054, 0.48),
+            makePatch(0.36, 0.43, 0.052, -0.18),
+            makePatch(0.64, 0.52, 0.048, 0.72),
+            makePatch(0.18, 0.65, 0.046, 0.34),
+            makePatch(0.47, 0.75, 0.055, -0.38),
+            makePatch(0.77, 0.72, 0.047, 0.1)
+        ];
+
+        const flowerRadius = (patchIndex) => {
+            const patch = this.swampPatches[patchIndex];
+            return Math.max(14, Math.min(patch.rx, patch.ry) * 0.5);
+        };
+
+        this.lotusFlowers = [
+            makeFlower(0.3, 0.32, flowerRadius(0), -0.2),
+            makeFlower(0.7, 0.28, flowerRadius(2), 0.4),
+            makeFlower(0.52, 0.47, flowerRadius(3), 0.1),
+            makeFlower(0.28, 0.74, flowerRadius(6), -0.55),
+            makeFlower(0.72, 0.66, flowerRadius(7), 0.3)
+        ];
+    }
+
+    isPointOnSwampLand(x, y, padding = 0) {
+        if (!this.isSurvivalMode()) return false;
+
+        const b = this.worldBounds;
+        const pond = this.getLotusPondShape(padding);
+        const nx = (x - pond.cx) / pond.rx;
+        const ny = (y - pond.cy) / pond.ry;
+        if (nx * nx + ny * ny > 1) {
+            return true;
+        }
+
+        return this.swampPatches.some(patch => this.isPointInSwampPatch(x, y, patch, padding));
+    }
+
+    getLotusPondShape(padding = 0) {
+        const b = this.worldBounds;
+        const width = b.right - b.left;
+        const height = b.bottom - b.top;
+        return {
+            cx: (b.left + b.right) / 2,
+            cy: (b.top + b.bottom) / 2,
+            rx: Math.max(120, width * 0.48 - padding),
+            ry: Math.max(90, height * 0.46 - padding)
+        };
+    }
+
+    isPointInSwampPatch(x, y, patch, padding = 0) {
+        const cos = Math.cos(-patch.rot);
+        const sin = Math.sin(-patch.rot);
+        const dx = x - patch.x;
+        const dy = y - patch.y;
+        const localX = dx * cos - dy * sin;
+        const localY = dx * sin + dy * cos;
+        const rx = patch.rx + padding;
+        const ry = patch.ry + padding;
+        return (localX * localX) / (rx * rx) + (localY * localY) / (ry * ry) <= 1;
     }
 
     shuffle(items) {
@@ -530,6 +767,7 @@ class WordSnakeGame {
     }
 
     selectRandomTargetFromFoods() {
+        if (this.isSurvivalMode()) return;
         if (this.foods.length === 0) {
             this.addRandomFood();
         }
@@ -627,6 +865,16 @@ class WordSnakeGame {
         const wallTurnBlend = 1 - Math.pow(0.82, deltaFrames);
         if (this.motoMode) {
             const bounds = this.worldBounds;
+            if (this.isSurvivalMode()) {
+                this.turnAwayFromLotusPondBank(wallTurnBlend, margin);
+            } else {
+                if (this.head.x < bounds.left + margin) this.head.heading = this.blendHeading(this.head.heading, 0, wallTurnBlend);
+                if (this.head.x > bounds.right - margin) this.head.heading = this.blendHeading(this.head.heading, Math.PI, wallTurnBlend);
+                if (this.head.y < bounds.top + margin) this.head.heading = this.blendHeading(this.head.heading, Math.PI / 2, wallTurnBlend);
+                if (this.head.y > bounds.bottom - margin) this.head.heading = this.blendHeading(this.head.heading, -Math.PI / 2, wallTurnBlend);
+            }
+        } else if (this.isSurvivalMode()) {
+            const bounds = this.worldBounds;
             if (this.head.x < bounds.left + margin) this.head.heading = this.blendHeading(this.head.heading, 0, wallTurnBlend);
             if (this.head.x > bounds.right - margin) this.head.heading = this.blendHeading(this.head.heading, Math.PI, wallTurnBlend);
             if (this.head.y < bounds.top + margin) this.head.heading = this.blendHeading(this.head.heading, Math.PI / 2, wallTurnBlend);
@@ -649,10 +897,16 @@ class WordSnakeGame {
             const bounds = this.worldBounds;
             this.head.x = Math.max(bounds.left + 24, Math.min(bounds.right - 24, this.head.x));
             this.head.y = Math.max(bounds.top + 24, Math.min(bounds.bottom - 24, this.head.y));
+        } else if (this.isSurvivalMode()) {
+            const bounds = this.worldBounds;
+            this.head.x = Math.max(bounds.left + 24, Math.min(bounds.right - 24, this.head.x));
+            this.head.y = Math.max(bounds.top + 24, Math.min(bounds.bottom - 24, this.head.y));
         } else {
             this.head.x = Math.max(28, Math.min(this.width - 28, this.head.x));
             this.head.y = Math.max(120, Math.min(this.height - 32, this.head.y));
         }
+
+        this.resolveSwampLandCollision();
 
         this.trail.unshift({ x: this.head.x, y: this.head.y });
         const maxTrailLength = 1200;
@@ -666,6 +920,17 @@ class WordSnakeGame {
         return from + delta * amount;
     }
 
+    turnAwayFromLotusPondBank(blendAmount, margin) {
+        const pond = this.getLotusPondShape(margin);
+        const nx = (this.head.x - pond.cx) / pond.rx;
+        const ny = (this.head.y - pond.cy) / pond.ry;
+        const distance = nx * nx + ny * ny;
+        if (distance < 0.82) return;
+
+        const backToCenter = Math.atan2(pond.cy - this.head.y, pond.cx - this.head.x);
+        this.head.heading = this.blendHeading(this.head.heading, backToCenter, Math.max(blendAmount, 0.08));
+    }
+
     updateParticles(delta) {
         this.particles.forEach((particle) => {
             particle.x += particle.vx * delta;
@@ -677,7 +942,11 @@ class WordSnakeGame {
     }
 
     updateFoods(delta) {
-        const bounds = this.motoMode ? this.worldBounds : { left: 44, top: 138, right: this.width - 44, bottom: this.height - 46 };
+        if (this.isSurvivalMode()) return;
+
+        const bounds = this.isSurvivalMode()
+            ? this.getFoodBounds()
+            : (this.motoMode ? this.worldBounds : { left: 44, top: 138, right: this.width - 44, bottom: this.height - 46 });
         const foodSpeedScale = this.motoMode ? 0.5 : 1;
         const left = bounds.left + 44;
         const right = bounds.right - 44;
@@ -715,11 +984,59 @@ class WordSnakeGame {
                 food.vy *= -0.85;
                 food.vx += (Math.random() - 0.5) * 0.175;
             }
+
+            if (this.isSurvivalMode() && this.isPointOnSwampLand(food.x, food.y, food.radius + 20)) {
+                const pond = this.getLotusPondShape(food.radius + 48);
+                const angleToCenter = Math.atan2(pond.cy - food.y, pond.cx - food.x);
+                food.x += Math.cos(angleToCenter) * 24;
+                food.y += Math.sin(angleToCenter) * 24;
+                food.vx = Math.cos(angleToCenter) * Math.abs(food.vx || 0.24);
+                food.vy = Math.sin(angleToCenter) * Math.abs(food.vy || 0.24);
+            }
         });
     }
 
     isFoodCorrect(food) {
+        if (this.isSurvivalMode()) return true;
         return food.item.word === this.currentItem.word && food.type === this.getTargetType();
+    }
+
+    resolveSwampLandCollision() {
+        if (!this.isSurvivalMode()) return;
+
+        const padding = this.getSnakeThickness() * 0.45;
+        if (!this.isPointOnSwampLand(this.head.x, this.head.y, padding)) return;
+
+        let bestAngle = this.head.heading + Math.PI;
+        let bestDepth = 0;
+        const pond = this.getLotusPondShape(padding);
+        const nx = (this.head.x - pond.cx) / pond.rx;
+        const ny = (this.head.y - pond.cy) / pond.ry;
+        if (nx * nx + ny * ny > 1) {
+            bestAngle = Math.atan2(pond.cy - this.head.y, pond.cx - this.head.x);
+            bestDepth = 999;
+        }
+
+        this.swampPatches.forEach(patch => {
+            if (!this.isPointInSwampPatch(this.head.x, this.head.y, patch, padding)) return;
+            const angle = Math.atan2(this.head.y - patch.y, this.head.x - patch.x);
+            const depth = Math.hypot(this.head.x - patch.x, this.head.y - patch.y);
+            if (depth > bestDepth) {
+                bestDepth = depth;
+                bestAngle = angle;
+            }
+        });
+
+        const b = this.worldBounds;
+        if (this.head.x < b.left + 52) bestAngle = 0;
+        if (this.head.x > b.right - 52) bestAngle = Math.PI;
+        if (this.head.y < b.top + 52) bestAngle = Math.PI / 2;
+        if (this.head.y > b.bottom - 52) bestAngle = -Math.PI / 2;
+
+        this.head.heading = this.blendHeading(this.head.heading, bestAngle, 0.32);
+        this.head.x += Math.cos(bestAngle) * 8;
+        this.head.y += Math.sin(bestAngle) * 8;
+        this.poisonTimer = Math.max(this.poisonTimer, 12);
     }
 
     checkBoundaryCollision() {
@@ -773,6 +1090,9 @@ class WordSnakeGame {
         this.growthTimer = 35;
 
         this.addParticles(food.x, food.y, '#00ff88', 18);
+        if (this.isSurvivalMode()) {
+            this.speakTypes(food.item, ['en', 'vi']);
+        }
         this.foods.splice(index, 1);
         this.nextChallenge();
     }
@@ -800,12 +1120,20 @@ class WordSnakeGame {
     }
 
     nextChallenge() {
+        if (this.isSurvivalMode()) {
+            this.currentItem = null;
+            this.currentPromptType = 'food';
+            this.addRandomFood();
+            return;
+        }
+
         this.selectRandomTargetFromFoods();
         this.addRandomFood();
         this.speakPair(this.currentItem, this.currentPromptType);
     }
 
     replayPromptAudioIfNeeded() {
+        if (this.isSurvivalMode()) return;
         if (!this.currentItem || this.elapsedGameSeconds - this.lastPromptSpeechGameSecond < 10) return;
         this.speakPair(this.currentItem, this.currentPromptType);
     }
@@ -873,6 +1201,7 @@ class WordSnakeGame {
     quitToMenu() {
         this.state = 'start';
         document.body.classList.remove('snake-mode');
+        document.body.classList.remove('swamp-mode');
         this.screenGame.classList.remove('active');
         this.screenStart.classList.add('active');
         this.modalPause.classList.add('hidden');
@@ -908,9 +1237,11 @@ class WordSnakeGame {
         document.getElementById('hud-time').innerText = this.formatTime(this.timeLeft);
         document.getElementById('hud-accuracy').innerText = `${accuracy}%`;
 
-        this.targetValue.innerText = this.mode === 'mixed'
-            ? '🔊 LISTEN'
-            : this.getLabel(this.currentItem || this.vocab[0], this.currentPromptType);
+        this.targetValue.innerText = this.isSurvivalMode()
+            ? 'LOTUS POND'
+            : (this.mode === 'mixed'
+                ? '🔊 LISTEN'
+                : this.getLabel(this.currentItem || this.vocab[0], this.currentPromptType));
     }
 
     trySpeedBoost() {
@@ -995,9 +1326,15 @@ class WordSnakeGame {
             this.height * 0.5,
             Math.max(this.width, this.height)
         );
-        gradient.addColorStop(0, '#173d6f');
-        gradient.addColorStop(0.55, '#071a31');
-        gradient.addColorStop(1, '#020711');
+        if (this.isSurvivalMode()) {
+            gradient.addColorStop(0, '#2e786f');
+            gradient.addColorStop(0.52, '#14524f');
+            gradient.addColorStop(1, '#062925');
+        } else {
+            gradient.addColorStop(0, '#173d6f');
+            gradient.addColorStop(0.55, '#071a31');
+            gradient.addColorStop(1, '#020711');
+        }
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, this.width, this.height);
 
@@ -1031,6 +1368,165 @@ class WordSnakeGame {
             ctx.stroke();
         }
         ctx.restore();
+
+        this.drawSwampTerrain();
+    }
+
+    drawSwampTerrain() {
+        if (!this.isSurvivalMode()) return;
+
+        const ctx = this.ctx;
+        const camera = this.getCamera();
+        const b = this.worldBounds;
+        const x = b.left - camera.x;
+        const y = b.top - camera.y;
+        const w = b.right - b.left;
+        const h = b.bottom - b.top;
+        const pond = this.getLotusPondShape(0);
+        const pondCenter = this.worldToScreen({ x: pond.cx, y: pond.cy });
+
+        ctx.save();
+        ctx.fillStyle = '#5a422f';
+        ctx.beginPath();
+        ctx.rect(0, 0, this.width, this.height);
+        ctx.ellipse(pondCenter.x, pondCenter.y, pond.rx + 34, pond.ry + 28, 0, 0, Math.PI * 2);
+        ctx.fill('evenodd');
+
+        ctx.fillStyle = '#4f783b';
+        ctx.beginPath();
+        ctx.ellipse(pondCenter.x, pondCenter.y, pond.rx + 34, pond.ry + 28, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const waterGradient = ctx.createRadialGradient(
+            pondCenter.x - pond.rx * 0.25,
+            pondCenter.y - pond.ry * 0.22,
+            20,
+            pondCenter.x,
+            pondCenter.y,
+            Math.max(pond.rx, pond.ry)
+        );
+        waterGradient.addColorStop(0, '#4fb7a4');
+        waterGradient.addColorStop(0.58, '#227268');
+        waterGradient.addColorStop(1, '#0c403b');
+        ctx.fillStyle = waterGradient;
+        ctx.beginPath();
+        ctx.ellipse(pondCenter.x, pondCenter.y, pond.rx, pond.ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(38, 75, 38, 0.85)';
+        ctx.lineWidth = 12;
+        ctx.beginPath();
+        ctx.ellipse(pondCenter.x, pondCenter.y, pond.rx + 18, pond.ry + 14, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(191, 226, 144, 0.55)';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([14, 18]);
+        ctx.beginPath();
+        ctx.ellipse(pondCenter.x, pondCenter.y, pond.rx + 26, pond.ry + 21, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.strokeStyle = 'rgba(214, 246, 230, 0.18)';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 34; i++) {
+            const angle = i * 1.73 + Math.sin(i * 2.1) * 0.22;
+            const reedX = pondCenter.x + Math.cos(angle) * (pond.rx + 24 + (i % 3) * 8);
+            const reedY = pondCenter.y + Math.sin(angle) * (pond.ry + 18 + (i % 4) * 5);
+            ctx.beginPath();
+            ctx.moveTo(reedX, reedY);
+            ctx.lineTo(reedX + Math.cos(angle - 0.35) * 18, reedY - 24);
+            ctx.stroke();
+        }
+
+        ctx.fillStyle = 'rgba(183, 226, 190, 0.16)';
+        for (let i = 0; i < 18; i++) {
+            const padX = x + ((i * 97 + this.frame * 0.08) % Math.max(1, w));
+            const padY = y + 58 + ((i * 53) % Math.max(1, h - 116));
+            ctx.beginPath();
+            ctx.ellipse(padX, padY, 14 + (i % 3) * 4, 8 + (i % 2) * 3, i * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        this.swampPatches.forEach((patch, index) => {
+            const p = this.worldToScreen(patch);
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(patch.rot);
+
+            const leafGradient = ctx.createRadialGradient(-patch.rx * 0.18, -patch.ry * 0.16, 4, 0, 0, patch.rx);
+            leafGradient.addColorStop(0, '#a3c95f');
+            leafGradient.addColorStop(0.5, index % 2 === 0 ? '#4f9a54' : '#438a4c');
+            leafGradient.addColorStop(1, '#1f5e42');
+            ctx.fillStyle = leafGradient;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, patch.rx, patch.ry, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = 'rgba(12, 64, 59, 0.72)';
+            ctx.beginPath();
+            ctx.moveTo(patch.rx * 0.16, 0);
+            ctx.quadraticCurveTo(patch.rx * 0.58, -patch.ry * 0.18, patch.rx * 0.86, -patch.ry * 0.06);
+            ctx.quadraticCurveTo(patch.rx * 0.48, patch.ry * 0.08, patch.rx * 0.16, 0);
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(224, 255, 208, 0.42)';
+            ctx.lineWidth = 2;
+            for (let vein = 0; vein < 10; vein++) {
+                const angle = -Math.PI * 0.88 + vein * (Math.PI * 1.58 / 9);
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.quadraticCurveTo(
+                    Math.cos(angle) * patch.rx * 0.35,
+                    Math.sin(angle) * patch.ry * 0.35,
+                    Math.cos(angle) * patch.rx * 0.86,
+                    Math.sin(angle) * patch.ry * 0.86
+                );
+                ctx.stroke();
+            }
+
+            ctx.strokeStyle = 'rgba(5, 35, 28, 0.34)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, patch.rx, patch.ry, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        });
+
+        this.lotusFlowers.forEach((flower, index) => {
+            const p = this.worldToScreen(flower);
+            const size = flower.radius;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(flower.rot + Math.sin(this.frame * 0.018 + index) * 0.04);
+
+            ctx.fillStyle = 'rgba(255, 229, 239, 0.26)';
+            ctx.beginPath();
+            ctx.arc(0, 0, size * 0.9, 0, Math.PI * 2);
+            ctx.fill();
+
+            for (let layer = 0; layer < 2; layer++) {
+                ctx.fillStyle = layer === 0 ? '#f8a7c6' : '#ffd2e3';
+                const petals = layer === 0 ? 8 : 6;
+                const petalLength = size * (layer === 0 ? 0.95 : 0.68);
+                const petalWidth = size * (layer === 0 ? 0.22 : 0.18);
+                for (let petal = 0; petal < petals; petal++) {
+                    ctx.save();
+                    ctx.rotate(petal * Math.PI * 2 / petals + layer * 0.26);
+                    ctx.beginPath();
+                    ctx.ellipse(0, -petalLength * 0.42, petalWidth, petalLength * 0.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            ctx.fillStyle = '#ffd166';
+            ctx.beginPath();
+            ctx.arc(0, 0, size * 0.18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        });
+        ctx.restore();
     }
 
     drawWorldBoundary() {
@@ -1039,6 +1535,22 @@ class WordSnakeGame {
         const ctx = this.ctx;
         const camera = this.getCamera();
         const bounds = this.worldBounds;
+        if (this.isSurvivalMode()) {
+            const pond = this.getLotusPondShape(0);
+            const center = this.worldToScreen({ x: pond.cx, y: pond.cy });
+
+            ctx.save();
+            ctx.strokeStyle = 'rgba(15, 23, 42, 0.22)';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([18, 22]);
+            ctx.beginPath();
+            ctx.ellipse(center.x, center.y, pond.rx, pond.ry, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+            return;
+        }
+
         const x = bounds.left - camera.x;
         const y = bounds.top - camera.y;
         const width = bounds.right - bounds.left;
@@ -1275,41 +1787,47 @@ class WordSnakeGame {
         food.pulse += 0.04;
         const isCorrect = this.isFoodCorrect(food);
         const showHint = this.hintEnabled && isCorrect;
-        const radius = food.radius + Math.sin(food.pulse) * 3;
-        const bobX = Math.cos(food.pulse * 0.7 + food.wavePhase) * 5;
-        const bobY = Math.sin(food.pulse + food.wavePhase) * 7;
+        const distanceToSnake = Math.hypot(food.x - this.head.x, food.y - this.head.y);
+        const snakeIsNear = this.isSurvivalMode() && distanceToSnake < 170;
+        const radius = this.isSurvivalMode() ? food.radius : food.radius + Math.sin(food.pulse) * 3;
+        const bobX = this.isSurvivalMode() ? 0 : Math.cos(food.pulse * 0.7 + food.wavePhase) * 5;
+        const bobY = this.isSurvivalMode() ? 0 : Math.sin(food.pulse + food.wavePhase) * 7;
         const screenFood = this.worldToScreen(food);
         const drawX = screenFood.x + bobX;
         const drawY = screenFood.y + bobY;
 
-        ctx.save();
-        ctx.globalAlpha = 0.36;
-        ctx.strokeStyle = '#bae6fd';
-        ctx.lineWidth = 2;
-        const wakeAngle = Math.atan2(food.vy, food.vx) + Math.PI;
-        for (let index = 1; index <= 3; index++) {
-            const wakeX = drawX + Math.cos(wakeAngle) * (radius + index * 10);
-            const wakeY = drawY + Math.sin(wakeAngle) * (radius + index * 10);
-            ctx.beginPath();
-            ctx.arc(wakeX, wakeY, radius * (0.52 + index * 0.18), wakeAngle - 0.55, wakeAngle + 0.55);
-            ctx.stroke();
+        if (!this.isSurvivalMode()) {
+            ctx.save();
+            ctx.globalAlpha = 0.36;
+            ctx.strokeStyle = '#bae6fd';
+            ctx.lineWidth = 2;
+            const wakeAngle = Math.atan2(food.vy, food.vx) + Math.PI;
+            for (let index = 1; index <= 3; index++) {
+                const wakeX = drawX + Math.cos(wakeAngle) * (radius + index * 10);
+                const wakeY = drawY + Math.sin(wakeAngle) * (radius + index * 10);
+                ctx.beginPath();
+                ctx.arc(wakeX, wakeY, radius * (0.52 + index * 0.18), wakeAngle - 0.55, wakeAngle + 0.55);
+                ctx.stroke();
+            }
+            ctx.restore();
         }
-        ctx.restore();
 
         ctx.save();
-        ctx.shadowColor = showHint ? '#00ff88' : food.color;
-        ctx.shadowBlur = showHint ? 20 : 12;
-        ctx.fillStyle = showHint ? 'rgba(0, 255, 136, 0.92)' : 'rgba(15, 23, 42, 0.9)';
-        ctx.strokeStyle = showHint ? '#00ff88' : food.color;
-        ctx.lineWidth = showHint ? 4 : 2;
+        ctx.shadowColor = showHint
+            ? 'rgba(34, 197, 94, 0.55)'
+            : (snakeIsNear ? 'rgba(251, 191, 36, 0.42)' : 'rgba(56, 189, 248, 0.16)');
+        ctx.shadowBlur = showHint ? 10 : (snakeIsNear ? 8 : 2);
+        ctx.fillStyle = showHint ? 'rgba(34, 197, 94, 0.78)' : 'rgba(15, 23, 42, 0.82)';
+        ctx.strokeStyle = showHint ? '#34d399' : 'rgba(125, 211, 252, 0.62)';
+        ctx.lineWidth = showHint ? 3 : 1.5;
         ctx.beginPath();
         ctx.arc(drawX, drawY, radius, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
 
         ctx.save();
-        ctx.globalAlpha = 0.32;
-        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 0.18;
+        ctx.fillStyle = '#dbeafe';
         ctx.beginPath();
         ctx.arc(drawX - radius * 0.28, drawY - radius * 0.32, radius * 0.24, 0, Math.PI * 2);
         ctx.fill();
@@ -1319,7 +1837,25 @@ class WordSnakeGame {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(food.item.emoji || '●', drawX, drawY + 1);
-        if (food.type === 'en') {
+        if (snakeIsNear) {
+            ctx.save();
+            ctx.globalAlpha = 0.38 + Math.sin(food.pulse * 2.4) * 0.14;
+            ctx.strokeStyle = 'rgba(254, 240, 138, 0.82)';
+            ctx.lineWidth = 1.4;
+            for (let sparkle = 0; sparkle < 4; sparkle++) {
+                const angle = food.pulse * 0.9 + sparkle * Math.PI / 2;
+                const sx = drawX + Math.cos(angle) * (radius + 9);
+                const sy = drawY + Math.sin(angle) * (radius + 8);
+                ctx.beginPath();
+                ctx.moveTo(sx - 3, sy);
+                ctx.lineTo(sx + 3, sy);
+                ctx.moveTo(sx, sy - 3);
+                ctx.lineTo(sx, sy + 3);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+        if (this.isSurvivalMode() || food.type === 'en') {
             this.drawBubbleText(drawX, drawY - radius - 18, food.item.word, false);
         }
         ctx.restore();
@@ -1332,18 +1868,30 @@ class WordSnakeGame {
         const maxWidth = Math.min(260, this.width - 40);
         const measuredWidth = Math.min(maxWidth, ctx.measureText(text).width + 28);
         const height = highlight ? 38 : 34;
-        const boxX = Math.max(12, Math.min(this.width - measuredWidth - 12, x - measuredWidth / 2));
-        const boxY = Math.max(96, y - height / 2);
+        if (
+            x < -measuredWidth / 2 ||
+            x > this.width + measuredWidth / 2 ||
+            y < 80 - height ||
+            y > this.height + height
+        ) {
+            ctx.restore();
+            return;
+        }
 
-        ctx.fillStyle = highlight ? 'rgba(0, 255, 136, 0.18)' : 'rgba(5, 13, 24, 0.86)';
-        ctx.strokeStyle = highlight ? '#00ff88' : 'rgba(255,255,255,0.18)';
-        ctx.lineWidth = 2;
+        const boxX = x - measuredWidth / 2;
+        const boxY = y - height / 2;
+
+        ctx.fillStyle = highlight ? 'rgba(34, 197, 94, 0.18)' : 'rgba(15, 23, 42, 0.74)';
+        ctx.strokeStyle = highlight ? 'rgba(52, 211, 153, 0.72)' : 'rgba(125, 211, 252, 0.24)';
+        ctx.lineWidth = highlight ? 2 : 1.5;
         ctx.beginPath();
         ctx.roundRect(boxX, boxY, measuredWidth, height, 12);
         ctx.fill();
         ctx.stroke();
 
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = highlight ? '#d1fae5' : '#cbd5e1';
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(text, boxX + measuredWidth / 2, boxY + height / 2 + 1, maxWidth - 22);
@@ -1476,7 +2024,28 @@ class WordSnakeGame {
     }
 
     getStorageKey(prefix) {
-        return `${prefix}_word_snake_${this.mode}`;
+        return this.getStorageKeyForMode(prefix, this.mode, this.vocabSource);
+    }
+
+    getStorageKeyForMode(prefix, mode, source = this.vocabSource) {
+        return `${prefix}_word_snake_${source}_${mode}`;
+    }
+
+    resetLearningState() {
+        const confirmed = window.confirm('Reset all play history and high scores for every mode?');
+        if (!confirmed) return;
+
+        Object.keys(MODE_CONFIG).forEach((mode) => {
+            localStorage.removeItem(`hscore_word_snake_${mode}`);
+            localStorage.removeItem(`history_word_snake_${mode}`);
+            Object.keys(VOCAB_SOURCES).forEach((source) => {
+                localStorage.removeItem(this.getStorageKeyForMode('hscore', mode, source));
+                localStorage.removeItem(this.getStorageKeyForMode('history', mode, source));
+            });
+        });
+
+        this.updateStartHighScore();
+        this.renderStartPlayHistory();
     }
 
     updateStartHighScore() {

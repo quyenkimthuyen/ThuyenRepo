@@ -140,6 +140,43 @@ body, html {
     letter-spacing: 1px;
 }
 
+.vocab-source-box {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 16px;
+    padding: 12px 14px;
+}
+
+.vocab-source-box label {
+    color: #bae6fd;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 1.8px;
+}
+
+#vocab-source-select {
+    width: 100%;
+    border: 1px solid rgba(0, 240, 255, 0.28);
+    border-radius: 12px;
+    background: rgba(5, 13, 24, 0.9);
+    color: #e0f2fe;
+    cursor: pointer;
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 10px 12px;
+}
+
+#vocab-source-count {
+    color: #7dd3fc;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
 /* Mode Selector Grid */
 .mode-selector {
     width: 100%;
@@ -246,6 +283,28 @@ body, html {
 
 .pulse-btn:active {
     transform: scale(0.98) translateY(1px);
+}
+
+.reset-state-btn {
+    width: 100%;
+    border: 1px solid rgba(255, 60, 60, 0.34);
+    border-radius: 999px;
+    background: rgba(255, 60, 60, 0.1);
+    color: #fecaca;
+    cursor: pointer;
+    font-family: var(--font-heading);
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 1.4px;
+    padding: 10px 18px;
+    transition: all 0.25s ease;
+}
+
+.reset-state-btn:hover {
+    background: rgba(255, 60, 60, 0.18);
+    border-color: rgba(255, 60, 60, 0.58);
+    color: #ffffff;
+    transform: translateY(-1px);
 }
 
 /* How to Play Rules */
@@ -748,6 +807,10 @@ body, html {
 }
 
 .snake-mode #boss-hud {
+    display: none !important;
+}
+
+.swamp-mode #btn-moto-toggle {
     display: none !important;
 }
 
