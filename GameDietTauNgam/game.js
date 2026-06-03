@@ -299,12 +299,15 @@ const sound = new SoundSynth();
 class VocabularyPool {
     constructor() {
         this.words = [];
-        this.learningState = {}; // { word: { correct: 0, incorrect: 0, weight: 1.0 } }
+        this.learningState = {}; // { word: { correct, incorrect, selected, lastSeenAt, weight } }
         this.correctMatches = 0;
         this.incorrectMatches = 0;
+        this.grade = 4;
+        this.selectionSequence = 0;
     }
 
-    async loadVocab() {
+    async loadVocab(grade = 4) {
+        const selectedGrade = Math.min(12, Math.max(1, Number.parseInt(grade, 10) || 4));
         const defaultList = [
             { "word": "Dog", "meaning": "Con chó", "emoji": "🐶" },
             { "word": "Cat", "meaning": "Con mèo", "emoji": "🐱" },
@@ -346,34 +349,132 @@ class VocabularyPool {
         ];
 
         try {
-            // Load vocab.json with a timeout to fall back cleanly if file loading errors out
+            // Load Global Success grade data with a timeout to fall back cleanly if file loading errors out.
             const controller = new AbortController();
             const id = setTimeout(() => controller.abort(), 1500);
-            
-            const response = await fetch('vocab.json', { signal: controller.signal });
+
+            const vocabPath = `global-success-vocabulary/grade${selectedGrade}.json`;
+            const response = await fetch(vocabPath, { signal: controller.signal });
             clearTimeout(id);
 
             if (response.ok) {
-                this.words = await response.json();
-                console.log("Successfully loaded vocabulary list from vocab.json.");
+                const loadedWords = await response.json();
+                this.words = this.normalizeWordList(loadedWords);
+                this.grade = selectedGrade;
+                console.log(`Successfully loaded vocabulary list from ${vocabPath}.`);
             } else {
-                this.words = defaultList;
-                console.warn("Failed to load vocab.json. Falling back to default list.");
+                this.words = this.normalizeWordList(defaultList);
+                this.grade = selectedGrade;
+                console.warn(`Failed to load grade ${selectedGrade} vocabulary. Falling back to default list.`);
             }
         } catch (e) {
-            this.words = defaultList;
-            console.warn("Local CORS blocking or network error: using default built-in vocabulary list.");
+            this.words = this.normalizeWordList(defaultList);
+            this.grade = selectedGrade;
+            console.warn(`Local CORS blocking or network error: using default built-in vocabulary list for grade ${selectedGrade}.`);
         }
 
         // Initialize learning states
+        this.learningState = {};
+        const persistedStats = this.loadPersistedStats();
         this.words.forEach(item => {
-            this.learningState[item.word.toLowerCase()] = {
+            const key = item.word.toLowerCase();
+            const stored = persistedStats[key] || {};
+            this.learningState[key] = {
                 item: item,
-                correct: 0,
-                incorrect: 0,
+                correct: Number(stored.correct) || 0,
+                incorrect: Number(stored.incorrect) || 0,
+                selected: Number(stored.selected) || 0,
+                lastSeenAt: Number(stored.lastSeenAt) || 0,
                 weight: 1.0
             };
+            this.learningState[key].weight = this.calculateWeight(this.learningState[key]);
         });
+    }
+
+    normalizeWordList(words) {
+        return words
+            .filter(item => item && item.word && item.meaning)
+            .map(item => ({
+                word: String(item.word).trim(),
+                meaning: String(item.meaning).trim(),
+                emoji: item.emoji || '🔹',
+                topic: item.topic || 'Từ vựng'
+            }));
+    }
+
+    getStatsStorageKey() {
+        return `vocab_stats_grade_${this.grade}`;
+    }
+
+    loadPersistedStats() {
+        try {
+            const parsed = JSON.parse(localStorage.getItem(this.getStatsStorageKey()) || '{}');
+            return parsed && typeof parsed === 'object' ? parsed : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    savePersistedStats() {
+        const stats = {};
+        Object.entries(this.learningState).forEach(([key, state]) => {
+            stats[key] = {
+                correct: state.correct,
+                incorrect: state.incorrect,
+                selected: state.selected,
+                lastSeenAt: state.lastSeenAt
+            };
+        });
+        try {
+            localStorage.setItem(this.getStatsStorageKey(), JSON.stringify(stats));
+        } catch (e) {
+            console.warn('Unable to save vocabulary learning stats.', e);
+        }
+    }
+
+    clearPersistedStats() {
+        try {
+            localStorage.removeItem(this.getStatsStorageKey());
+        } catch (e) {
+            console.warn('Unable to clear vocabulary learning stats.', e);
+        }
+
+        Object.values(this.learningState).forEach(state => {
+            state.correct = 0;
+            state.incorrect = 0;
+            state.selected = 0;
+            state.lastSeenAt = 0;
+            state.weight = this.calculateWeight(state);
+        });
+        this.correctMatches = 0;
+        this.incorrectMatches = 0;
+        this.selectionSequence = 0;
+    }
+
+    calculateWeight(state) {
+        // Prioritize words that have never/rarely appeared, then words often answered incorrectly.
+        const selected = Number(state.selected) || 0;
+        const correct = Number(state.correct) || 0;
+        const incorrect = Number(state.incorrect) || 0;
+        const attempts = correct + incorrect;
+        const errorRate = attempts > 0 ? incorrect / attempts : 0;
+        const unseenBoost = selected === 0 ? 12 : 0;
+        const rarityBoost = 8 / Math.sqrt(selected + 1);
+        const mistakeBoost = incorrect * 2.5 + errorRate * 4;
+        const masteryPenalty = Math.min(correct * 0.35, 4);
+        return Math.max(0.2, unseenBoost + rarityBoost + mistakeBoost - masteryPenalty);
+    }
+
+    markTargetSelected(item) {
+        const key = item.word.toLowerCase();
+        const state = this.learningState[key];
+        if (!state) return item;
+
+        state.selected++;
+        state.lastSeenAt = ++this.selectionSequence;
+        state.weight = this.calculateWeight(state);
+        this.savePersistedStats();
+        return item;
     }
 
     recordResult(wordText, isCorrect) {
@@ -389,10 +490,8 @@ class VocabularyPool {
             this.incorrectMatches++;
         }
 
-        // Spaced Repetition Formula
-        // Mistakes exponentially bump the weight up, correct answers lower it.
-        const baseWeight = 1.0 + (state.incorrect * 2.0) - (state.correct * 0.4);
-        state.weight = Math.max(0.15, Math.min(10.0, baseWeight));
+        state.weight = this.calculateWeight(state);
+        this.savePersistedStats();
     }
 
     getAccuracy() {
@@ -402,13 +501,27 @@ class VocabularyPool {
     }
 
     pickNextTarget() {
-        // Weighted Random Selection (Rough Spaced Repetition)
+        if (this.words.length === 0) return null;
+
+        const unseenWords = this.words.filter(item => {
+            const state = this.learningState[item.word.toLowerCase()];
+            return !state || state.selected === 0;
+        });
+        if (unseenWords.length > 0) {
+            const picked = unseenWords[Math.floor(Math.random() * unseenWords.length)];
+            return this.markTargetSelected(picked);
+        }
+
+        // Weighted selection: unseen and rarely selected words get large boosts,
+        // while frequently missed words stay in rotation until mastered.
         let totalWeight = 0;
         const pool = [];
 
         this.words.forEach(item => {
             const key = item.word.toLowerCase();
-            const w = this.learningState[key] ? this.learningState[key].weight : 1.0;
+            const state = this.learningState[key];
+            const w = state ? this.calculateWeight(state) : 1.0;
+            if (state) state.weight = w;
             totalWeight += w;
             pool.push({ item, cumulativeWeight: totalWeight });
         });
@@ -416,10 +529,10 @@ class VocabularyPool {
         const r = Math.random() * totalWeight;
         for (let i = 0; i < pool.length; i++) {
             if (r <= pool[i].cumulativeWeight) {
-                return pool[i].item;
+                return this.markTargetSelected(pool[i].item);
             }
         }
-        return this.words[Math.floor(Math.random() * this.words.length)];
+        return this.markTargetSelected(this.words[Math.floor(Math.random() * this.words.length)]);
     }
 
     getRandomWrongOptions(correctWordText, count) {
@@ -432,9 +545,7 @@ class VocabularyPool {
         this.correctMatches = 0;
         this.incorrectMatches = 0;
         for (let key in this.learningState) {
-            this.learningState[key].correct = 0;
-            this.learningState[key].incorrect = 0;
-            this.learningState[key].weight = 1.0;
+            this.learningState[key].weight = this.calculateWeight(this.learningState[key]);
         }
     }
 }
@@ -1526,6 +1637,8 @@ class GameEngine {
         this.hudReloadFill = document.getElementById('hud-reload-fill');
         this.hudReloadText = document.getElementById('hud-reload-text');
         this.bilingualToggleBtn = document.getElementById('btn-bilingual-toggle');
+        this.gradeSelect = document.getElementById('grade-select');
+        this.gradeSourceStatus = document.getElementById('grade-source-status');
         this.targetValue = document.getElementById('target-value');
         this.targetTimerText = document.getElementById('target-timer');
         this.stageQuotaText = document.getElementById('stage-quota');
@@ -1546,6 +1659,7 @@ class GameEngine {
 
         // Settings / Game State
         this.mode = 'classic'; // classic, survival, practice, duo
+        this.selectedGrade = this.getStoredVocabularyGrade();
         this.state = 'start'; // start, playing, paused, gameover
         this.score = 0;
         this.lives = 3;
@@ -1649,6 +1763,47 @@ class GameEngine {
         }
     }
 
+    getStoredVocabularyGrade() {
+        const storedGrade = Number.parseInt(localStorage.getItem('vocabulary_grade') || '4', 10);
+        if (!Number.isInteger(storedGrade) || storedGrade < 1 || storedGrade > 12) return 4;
+        return storedGrade;
+    }
+
+    async loadSelectedGradeVocabulary() {
+        if (this.gradeSelect) {
+            this.gradeSelect.value = String(this.selectedGrade);
+        }
+        this.updateGradeSourceStatus(`Loading Grade ${this.selectedGrade} vocabulary...`);
+        await vocab.loadVocab(this.selectedGrade);
+        this.updateGradeSourceStatus(`Using Global Success Grade ${vocab.grade} • ${vocab.words.length} words`);
+    }
+
+    updateGradeSourceStatus(text) {
+        if (this.gradeSourceStatus) {
+            this.gradeSourceStatus.innerText = text;
+        }
+    }
+
+    clearAllSavedProgress() {
+        const modes = ['classic', 'survival', 'practice'];
+        modes.forEach(mode => {
+            localStorage.removeItem(`hscore_${mode}`);
+            localStorage.removeItem(`history_${mode}`);
+        });
+
+        for (let grade = 1; grade <= 12; grade++) {
+            localStorage.removeItem(`vocab_stats_grade_${grade}`);
+        }
+
+        vocab.clearPersistedStats();
+        this.score = 0;
+        this.correctMatches = 0;
+        this.incorrectMatches = 0;
+        this.highestCombo = 0;
+        this.wordsLearned.clear();
+        this.wordsMissed.clear();
+    }
+
     async init() {
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
@@ -1691,7 +1846,7 @@ class GameEngine {
         this.setupEventListeners();
 
         // Load vocabulary pool
-        await vocab.loadVocab();
+        await this.loadSelectedGradeVocabulary();
         
         // Update high score text
         this.updateStartHighScore();
@@ -1772,10 +1927,35 @@ class GameEngine {
 
     setupEventListeners() {
         // Play button
-        document.getElementById('btn-play').addEventListener('click', () => {
+        document.getElementById('btn-play').addEventListener('click', async () => {
             sound.init();
+            await this.loadSelectedGradeVocabulary();
             this.startGame();
         });
+
+        if (this.gradeSelect) {
+            this.gradeSelect.value = String(this.selectedGrade);
+            this.gradeSelect.addEventListener('change', async () => {
+                this.selectedGrade = Number.parseInt(this.gradeSelect.value, 10) || 4;
+                localStorage.setItem('vocabulary_grade', String(this.selectedGrade));
+                await this.loadSelectedGradeVocabulary();
+                this.renderStartPlayHistory();
+            });
+        }
+
+        const resetVocabStateBtn = document.getElementById('btn-reset-vocab-state');
+        if (resetVocabStateBtn) {
+            resetVocabStateBtn.addEventListener('click', async () => {
+                const confirmed = window.confirm('Reset all progress? This will delete word progress, play history, and high scores for every mode and grade.');
+                if (!confirmed) return;
+
+                this.clearAllSavedProgress();
+                await this.loadSelectedGradeVocabulary();
+                this.updateStartHighScore();
+                this.renderStartPlayHistory();
+                this.updateGradeSourceStatus(`All progress reset • Global Success Grade ${vocab.grade} • ${vocab.words.length} words`);
+            });
+        }
 
         // Mode toggling
         const modeButtons = document.querySelectorAll('.mode-btn');
@@ -1997,6 +2177,7 @@ class GameEngine {
         const history = this.getPlayHistory();
         history.unshift({
             score: this.score,
+            grade: vocab.grade || this.selectedGrade,
             accuracy: vocab.getAccuracy(),
             correct: this.correctMatches,
             combo: this.highestCombo,
@@ -3703,9 +3884,10 @@ class GameEngine {
         const date = new Date(entry.playedAt);
         const dateText = Number.isNaN(date.getTime()) ? 'Unknown time' : date.toLocaleString();
         const survivalText = this.formatTime(entry.survivalTime ?? entry.duration ?? 0);
+        const gradeText = entry.grade ? `G${entry.grade}` : `G${this.selectedGrade}`;
         row.innerHTML = `
             <span class="history-rank">#${idx + 1}</span>
-            <span class="history-date">${dateText} • SURV ${survivalText} • ${entry.accuracy}% ACC • ${entry.correct} OK</span>
+            <span class="history-date">${dateText} • ${gradeText} • SURV ${survivalText} • ${entry.accuracy}% ACC • ${entry.correct} OK</span>
             <span class="history-score">${entry.score}</span>
         `;
         return row;
