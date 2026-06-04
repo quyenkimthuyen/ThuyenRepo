@@ -21,6 +21,7 @@ const SPEED_BOOST_DURATION_SECONDS = 1;
 const SPEED_BOOST_COOLDOWN_SECONDS = 10;
 const AUTO_SNAKE_MAX_COUNT = 1;
 const AUTO_SNAKE_SPAWN_STAGGER_FRAMES = 90;
+const LOTUS_HIT_EFFECT_FRAMES = 24;
 
 const MODE_CONFIG = {
     'vi-en': {
@@ -982,6 +983,12 @@ class WordSnakeGame {
         if (this.autoSnakeGrowthTimer > 0) {
             this.autoSnakeGrowthTimer -= delta;
         }
+        this.swampPatches.forEach((patch) => {
+            if (patch.hitTimer > 0) patch.hitTimer -= delta;
+        });
+        this.lotusFlowers.forEach((flower) => {
+            if (flower.hitTimer > 0) flower.hitTimer -= delta;
+        });
         this.getActiveAutoSnakes().forEach((snake) => {
             if (snake.growthTimer > 0) {
                 snake.growthTimer -= delta;
@@ -1276,6 +1283,21 @@ class WordSnakeGame {
         snake.head.heading = this.blendHeading(snake.head.heading, backToCenter, Math.max(blendAmount, 0.08));
     }
 
+    triggerLotusObstacleHit(x, y, padding) {
+        let hit = false;
+        this.swampPatches.forEach((patch) => {
+            if (!this.isPointInSwampPatch(x, y, patch, padding)) return;
+            patch.hitTimer = LOTUS_HIT_EFFECT_FRAMES;
+            hit = true;
+        });
+        this.lotusFlowers.forEach((flower) => {
+            if (Math.hypot(x - flower.x, y - flower.y) > flower.radius + padding) return;
+            flower.hitTimer = LOTUS_HIT_EFFECT_FRAMES;
+            hit = true;
+        });
+        return hit;
+    }
+
     resolveAutoSnakeLandCollision(snake) {
         if (!this.isPointOnSwampLand(snake.head.x, snake.head.y, 24)) return;
 
@@ -1286,6 +1308,12 @@ class WordSnakeGame {
                 angle = Math.atan2(snake.head.y - patch.y, snake.head.x - patch.x);
             }
         });
+        this.lotusFlowers.forEach((flower) => {
+            if (Math.hypot(snake.head.x - flower.x, snake.head.y - flower.y) <= flower.radius + 24) {
+                angle = Math.atan2(snake.head.y - flower.y, snake.head.x - flower.x);
+            }
+        });
+        this.triggerLotusObstacleHit(snake.head.x, snake.head.y, 24);
         snake.head.heading = this.blendHeading(snake.head.heading, angle, 0.35);
         snake.head.x += Math.cos(angle) * 9;
         snake.head.y += Math.sin(angle) * 9;
@@ -1374,6 +1402,7 @@ class WordSnakeGame {
 
         let bestAngle = this.head.heading + Math.PI;
         let bestDepth = 0;
+        let hitLotusObstacle = false;
         const pond = this.getLotusPondShape(padding);
         const nx = (this.head.x - pond.cx) / pond.rx;
         const ny = (this.head.y - pond.cy) / pond.ry;
@@ -1384,8 +1413,21 @@ class WordSnakeGame {
 
         this.swampPatches.forEach(patch => {
             if (!this.isPointInSwampPatch(this.head.x, this.head.y, patch, padding)) return;
+            patch.hitTimer = LOTUS_HIT_EFFECT_FRAMES;
+            hitLotusObstacle = true;
             const angle = Math.atan2(this.head.y - patch.y, this.head.x - patch.x);
             const depth = Math.hypot(this.head.x - patch.x, this.head.y - patch.y);
+            if (depth > bestDepth) {
+                bestDepth = depth;
+                bestAngle = angle;
+            }
+        });
+        this.lotusFlowers.forEach((flower) => {
+            if (Math.hypot(this.head.x - flower.x, this.head.y - flower.y) > flower.radius + padding) return;
+            flower.hitTimer = LOTUS_HIT_EFFECT_FRAMES;
+            hitLotusObstacle = true;
+            const angle = Math.atan2(this.head.y - flower.y, this.head.x - flower.x);
+            const depth = Math.hypot(this.head.x - flower.x, this.head.y - flower.y);
             if (depth > bestDepth) {
                 bestDepth = depth;
                 bestAngle = angle;
@@ -1398,9 +1440,12 @@ class WordSnakeGame {
         if (this.head.y < b.top + 52) bestAngle = Math.PI / 2;
         if (this.head.y > b.bottom - 52) bestAngle = -Math.PI / 2;
 
-        this.head.heading = this.blendHeading(this.head.heading, bestAngle, 0.32);
-        this.head.x += Math.cos(bestAngle) * 8;
-        this.head.y += Math.sin(bestAngle) * 8;
+        const gentleObstacleHit = hitLotusObstacle && bestDepth < 999;
+        const pushAmount = gentleObstacleHit ? 3 : 8;
+        const headingBlend = gentleObstacleHit ? 0.16 : 0.32;
+        this.head.heading = this.blendHeading(this.head.heading, bestAngle, headingBlend);
+        this.head.x += Math.cos(bestAngle) * pushAmount;
+        this.head.y += Math.sin(bestAngle) * pushAmount;
         this.poisonTimer = Math.max(this.poisonTimer, 12);
     }
 
@@ -2004,6 +2049,17 @@ class WordSnakeGame {
         ctx.ellipse(pondCenter.x, pondCenter.y, pond.rx, pond.ry, 0, 0, Math.PI * 2);
         ctx.fill();
 
+        const shallowWidth = (this.foods[0]?.radius || 28) * 2;
+        const shallowRx = Math.max(40, pond.rx - shallowWidth);
+        const shallowRy = Math.max(34, pond.ry - shallowWidth);
+        ctx.save();
+        ctx.fillStyle = 'rgba(96, 75, 42, 0.28)';
+        ctx.beginPath();
+        ctx.ellipse(pondCenter.x, pondCenter.y, pond.rx, pond.ry, 0, 0, Math.PI * 2);
+        ctx.ellipse(pondCenter.x, pondCenter.y, shallowRx, shallowRy, 0, 0, Math.PI * 2);
+        ctx.fill('evenodd');
+        ctx.restore();
+
         this.drawLotusPondDepthEffects(pond, pondCenter);
 
         ctx.strokeStyle = 'rgba(38, 75, 38, 0.85)';
@@ -2043,9 +2099,22 @@ class WordSnakeGame {
 
         this.swampPatches.forEach((patch, index) => {
             const p = this.worldToScreen(patch);
+            const hitPulse = Math.max(0, Math.min(1, (patch.hitTimer || 0) / LOTUS_HIT_EFFECT_FRAMES));
             ctx.save();
             ctx.translate(p.x, p.y);
             ctx.rotate(patch.rot);
+
+            if (hitPulse > 0) {
+                ctx.save();
+                ctx.globalAlpha = 0.08 + hitPulse * 0.12;
+                ctx.shadowColor = 'rgba(254, 240, 138, 0.42)';
+                ctx.shadowBlur = 7 * hitPulse;
+                ctx.fillStyle = 'rgba(254, 240, 138, 0.16)';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, patch.rx * (1.03 + hitPulse * 0.02), patch.ry * (1.03 + hitPulse * 0.02), 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
 
             const leafGradient = ctx.createRadialGradient(-patch.rx * 0.18, -patch.ry * 0.16, 4, 0, 0, patch.rx);
             leafGradient.addColorStop(0, '#a3c95f');
@@ -2080,6 +2149,10 @@ class WordSnakeGame {
 
             ctx.strokeStyle = 'rgba(5, 35, 28, 0.34)';
             ctx.lineWidth = 3;
+            if (hitPulse > 0) {
+                ctx.strokeStyle = `rgba(254, 240, 138, ${0.22 + hitPulse * 0.22})`;
+                ctx.lineWidth = 3 + hitPulse * 0.8;
+            }
             ctx.beginPath();
             ctx.ellipse(0, 0, patch.rx, patch.ry, 0, 0, Math.PI * 2);
             ctx.stroke();
@@ -2090,14 +2163,20 @@ class WordSnakeGame {
             const p = this.worldToScreen(flower);
             const size = flower.radius;
             const bonusPulse = Math.max(0, Math.min(1, this.lotusBonusTimer / 90));
+            const hitPulse = Math.max(0, Math.min(1, (flower.hitTimer || 0) / LOTUS_HIT_EFFECT_FRAMES));
             ctx.save();
             ctx.translate(p.x, p.y);
             ctx.rotate(flower.rot + Math.sin(this.frame * 0.018 + index) * 0.04);
 
-            ctx.fillStyle = bonusPulse > 0 ? `rgba(253, 224, 71, ${0.16 + bonusPulse * 0.18})` : 'rgba(255, 229, 239, 0.2)';
+            ctx.fillStyle = bonusPulse > 0 || hitPulse > 0
+                ? `rgba(253, 224, 71, ${0.16 + bonusPulse * 0.18 + hitPulse * 0.12})`
+                : 'rgba(255, 229, 239, 0.2)';
+            ctx.shadowColor = hitPulse > 0 ? 'rgba(254, 240, 138, 0.45)' : 'transparent';
+            ctx.shadowBlur = hitPulse * 6;
             ctx.beginPath();
-            ctx.arc(0, 0, size * (1.05 + bonusPulse * 0.35), 0, Math.PI * 2);
+            ctx.arc(0, 0, size * (1.05 + bonusPulse * 0.35 + hitPulse * 0.06), 0, Math.PI * 2);
             ctx.fill();
+            ctx.shadowBlur = 0;
 
             for (let layer = 0; layer < 2; layer++) {
                 ctx.fillStyle = layer === 0 ? '#f8a7c6' : '#ffd2e3';
