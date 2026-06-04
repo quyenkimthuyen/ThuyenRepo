@@ -22,6 +22,8 @@ const SPEED_BOOST_COOLDOWN_SECONDS = 10;
 const AUTO_SNAKE_MAX_COUNT = 1;
 const AUTO_SNAKE_SPAWN_STAGGER_FRAMES = 90;
 const LOTUS_HIT_EFFECT_FRAMES = 24;
+const TRAIN_STARTING_CARS = 3;
+const TRAIN_HIT_COOLDOWN_FRAMES = 70;
 
 const MODE_CONFIG = {
     'vi-en': {
@@ -200,6 +202,8 @@ class WordSnakeGame {
         this.swampPatches = [];
         this.lotusFlowers = [];
         this.trainObstacles = [];
+        this.trainCars = TRAIN_STARTING_CARS;
+        this.trainHitCooldown = 0;
         this.meaningPopups = [];
         this.fishFrenzyTimer = 0;
         this.lotusBonusTimer = 0;
@@ -652,6 +656,8 @@ class WordSnakeGame {
         this.swampPatches = [];
         this.lotusFlowers = [];
         this.trainObstacles = [];
+        this.trainCars = this.isTrainMode() ? TRAIN_STARTING_CARS : 0;
+        this.trainHitCooldown = 0;
         this.meaningPopups = [];
         this.fishFrenzyTimer = 0;
         this.lotusBonusTimer = 0;
@@ -1080,6 +1086,9 @@ class WordSnakeGame {
         }
         if (this.bodyBiteCooldown > 0) {
             this.bodyBiteCooldown -= delta;
+        }
+        if (this.trainHitCooldown > 0) {
+            this.trainHitCooldown -= delta;
         }
         if (this.speedMultiplier > 1 && this.elapsedGameSeconds >= this.speedBoostUntil) {
             this.speedMultiplier = 1;
@@ -1604,10 +1613,38 @@ class WordSnakeGame {
         if (!bestObstacle) return;
 
         bestObstacle.hitTimer = LOTUS_HIT_EFFECT_FRAMES;
+        this.damageTrainFromObstacle(bestObstacle);
         const angle = Math.atan2(this.head.y - bestObstacle.y, this.head.x - bestObstacle.x);
         this.head.heading = this.blendHeading(this.head.heading, angle, 0.18);
         this.head.x += Math.cos(angle) * 4;
         this.head.y += Math.sin(angle) * 4;
+    }
+
+    damageTrainFromObstacle(obstacle) {
+        if (!this.isTrainMode() || this.trainHitCooldown > 0) return;
+
+        this.trainHitCooldown = TRAIN_HIT_COOLDOWN_FRAMES;
+        this.combo = 0;
+        this.poisonTimer = Math.max(this.poisonTimer, 50);
+        this.fx.wrong();
+
+        if (this.trainCars > 0) {
+            const tailPoint = this.getPointAtDistance(this.getSnakeBodyLength());
+            this.trainCars = Math.max(0, this.trainCars - 1);
+            this.addParticles(tailPoint.x, tailPoint.y, '#f97316', 24);
+            this.meaningPopups.push({
+                x: obstacle.x,
+                y: obstacle.y - obstacle.ry - 24,
+                text: '-1 CAR',
+                life: 70,
+                maxLife: 70,
+                bonus: false
+            });
+        }
+
+        if (this.trainCars <= 0) {
+            this.endGame('TRAIN CRASH!');
+        }
     }
 
     checkBoundaryCollision() {
@@ -1779,6 +1816,9 @@ class WordSnakeGame {
             item: food.item,
             label: food.label
         });
+        if (this.isTrainMode()) {
+            this.trainCars++;
+        }
         this.growthTimer = 35;
 
         this.addParticles(food.x, food.y, '#00ff88', 18);
@@ -2019,7 +2059,9 @@ class WordSnakeGame {
             : Math.round((this.correct / (this.correct + this.incorrect)) * 100);
 
         document.getElementById('hud-score').innerText = String(this.score).padStart(5, '0');
-        document.getElementById('hud-hearts').innerText = '❤️'.repeat(Math.max(0, this.lives)) + '🖤'.repeat(Math.max(0, 3 - this.lives));
+        document.getElementById('hud-hearts').innerText = this.isTrainMode()
+            ? `🚃 ${Math.max(0, this.trainCars)}`
+            : '❤️'.repeat(Math.max(0, this.lives)) + '🖤'.repeat(Math.max(0, 3 - this.lives));
         document.getElementById('hud-diff').innerText = `${this.config.label} x${this.speedMultiplier.toFixed(1)}`;
         document.getElementById('hud-time').innerText = this.formatTime(this.timeLeft);
         document.getElementById('hud-accuracy').innerText = `${accuracy}%`;
@@ -2786,8 +2828,8 @@ class WordSnakeGame {
 
     drawTrain() {
         const ctx = this.ctx;
-        const bodyLength = this.getSnakeBodyLength();
         const spacing = 34;
+        const bodyLength = this.getTrainBodyLength(spacing);
         const cars = [];
         for (let distance = 0; distance <= bodyLength; distance += spacing) {
             const point = this.worldToScreen(this.getPointAtDistance(distance));
@@ -3095,7 +3137,12 @@ class WordSnakeGame {
     }
 
     getSnakeBodyLength() {
+        if (this.isTrainMode()) return this.getTrainBodyLength();
         return 100 + Math.max(0, this.segments.length - 1) * 68;
+    }
+
+    getTrainBodyLength(spacing = 34) {
+        return Math.max(0, this.trainCars || 0) * spacing;
     }
 
     getSnakeThickness() {
