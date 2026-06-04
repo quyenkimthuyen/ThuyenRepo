@@ -985,6 +985,106 @@ class Crate {
     }
 }
 
+class BattleFishObstacle {
+    constructor(wordObj, waterY, canvasWidth, canvasHeight, preferredY = null, bounds = null) {
+        this.word = {
+            word: wordObj?.word || 'fish',
+            meaning: '',
+            emoji: '🐟'
+        };
+        this.width = 98;
+        this.height = 38;
+        this.x = Math.random() > 0.5 ? -this.width : canvasWidth + this.width;
+        this.bounds = bounds;
+        this.y = preferredY ?? this.pickY(waterY, canvasHeight);
+        this.speedX = (Math.random() * 0.45 + 0.35) * (this.x < 0 ? 1 : -1);
+        this.bobOffset = Math.random() * Math.PI * 2;
+        this.color = ['#38bdf8', '#22c55e', '#facc15', '#fb7185'][Math.floor(Math.random() * 4)];
+        this.hit = false;
+    }
+
+    pickY(waterY, canvasHeight) {
+        const minY = this.bounds?.minY ?? (waterY + 80);
+        const maxY = this.bounds?.maxY ?? (canvasHeight * 0.72);
+        return minY + Math.random() * Math.max(80, maxY - minY);
+    }
+
+    update(canvasWidth, waterY, canvasHeight, time) {
+        this.x += this.speedX;
+        this.y += Math.sin(time * 0.04 + this.bobOffset) * 0.18;
+        const minY = this.bounds?.minY ?? (waterY + 70);
+        const maxY = this.bounds?.maxY ?? (canvasHeight * 0.78);
+        this.y = Math.max(minY, Math.min(maxY, this.y));
+
+        if (this.x < -this.width * 1.5 || this.x > canvasWidth + this.width * 1.5) {
+            this.speedX = -this.speedX;
+            this.x = Math.max(-this.width, Math.min(canvasWidth + this.width, this.x));
+        }
+    }
+
+    containsPoint(x, y) {
+        return x >= this.x - this.width / 2
+            && x <= this.x + this.width / 2
+            && y >= this.y - this.height / 2
+            && y <= this.y + this.height / 2;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        if (this.speedX < 0) ctx.scale(-1, 1);
+
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = this.color;
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+        ctx.ellipse(0, 0, this.width * 0.38, this.height * 0.45, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(-this.width * 0.38, 0);
+        ctx.lineTo(-this.width * 0.58, -this.height * 0.32);
+        ctx.lineTo(-this.width * 0.58, this.height * 0.32);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(this.width * 0.22, -this.height * 0.1, 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.arc(this.width * 0.23, -this.height * 0.1, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `bold 14px ${varget('--font-heading', "'Fredoka', sans-serif")}`;
+        const text = this.word.word;
+        const textWidth = ctx.measureText(text).width;
+        const bubbleW = textWidth + 18;
+        const bubbleH = 24;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.24)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.roundRect(this.x - bubbleW / 2, this.y - this.height / 2 - bubbleH - 6, bubbleW, bubbleH, 9);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(text, this.x, this.y - this.height / 2 - bubbleH / 2 - 6);
+        ctx.restore();
+    }
+}
+
 
 // ==========================================================================
 // 6. ENEMY SUBMARINE
@@ -1010,6 +1110,8 @@ class Submarine {
             this.height = 38 * this.perspectiveScale; // 42 * 0.9 = 37.8 -> 38
             this.speedX = (Math.random() * 0.8 + 0.6) * speedMultiplier * (Math.random() > 0.5 ? 1 : -1);
         }
+        if (options.width) this.width = options.width;
+        if (options.height) this.height = options.height;
 
         // Start offscreen
         this.x = this.speedX > 0 ? -this.width : window.innerWidth + this.width;
@@ -1026,6 +1128,16 @@ class Submarine {
         this.damageFlashTimer = 0;
         this.minSpeedX = isBoss ? 0.45 : 0.55;
         this.appliedSpeedMultiplier = isBoss ? 1.0 : Math.max(0.35, speedMultiplier);
+        this.hideWordBubble = Boolean(options.hideWordBubble);
+        this.isPlayerSubmarine = Boolean(options.isPlayerSubmarine);
+        this.playerLabel = options.playerLabel || '';
+        this.speed = options.speed || 5.2;
+        this.lives = options.lives || 3;
+        this.fireCooldown = 0;
+        this.maxBombsBeforeReload = 2;
+        this.bombsRemaining = this.maxBombsBeforeReload;
+        this.reloadDuration = 120;
+        this.reloadTimer = 0;
         
         // Attack related
         this.isWarning = false;
@@ -1126,6 +1238,24 @@ class Submarine {
         if (this.damageFlashTimer > 0) this.damageFlashTimer--;
 
         return null;
+    }
+
+    updatePlayer(keys, waterY, canvasWidth, canvasHeight) {
+        if (this.isDying || this.isWrecked) return;
+
+        const previousX = this.x;
+        let dirX = 0;
+        if (keys['a']) dirX = -1;
+        if (keys['d']) dirX = 1;
+
+        this.x += dirX * this.speed;
+
+        const minX = 10;
+        const maxX = canvasWidth - this.width - 10;
+        this.x = Math.max(minX, Math.min(maxX, this.x));
+        this.facingRight = this.x >= previousX;
+        this.propellerAngle += Math.max(0.08, Math.abs(this.x - previousX) * 0.28);
+        if (this.damageFlashTimer > 0) this.damageFlashTimer--;
     }
 
     triggerDamageFlash() {
@@ -1262,7 +1392,7 @@ class Submarine {
 
         // 6. Draw Word bubble (English label) ABOVE the sub
         // Drawn without translation scale to prevent text mirroring
-        if (!this.isDying) {
+        if (!this.isDying && !this.hideWordBubble) {
             ctx.save();
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -1700,7 +1830,7 @@ class GameEngine {
         this.puEmpVal = document.getElementById('powerup-emp-timer');
 
         // Settings / Game State
-        this.mode = 'classic'; // classic, survival, practice, duo
+        this.mode = 'classic'; // classic, survival, practice, duo, battle
         this.selectedGrade = this.getStoredVocabularyGrade();
         this.state = 'start'; // start, playing, paused, gameover
         this.score = 0;
@@ -1757,9 +1887,12 @@ class GameEngine {
         // Entities arrays
         this.battleship = null;
         this.secondBattleship = null;
+        this.pvpSubmarine = null;
+        this.battleWinner = null;
         this.bombs = [];
         this.submarines = [];
         this.missiles = [];
+        this.battleFishObstacles = [];
         this.crates = [];
         this.particles = [];
         this.floatingTexts = [];
@@ -1875,7 +2008,13 @@ class GameEngine {
                 this.toggleWordAudio();
                 e.preventDefault();
             }
-            if (this.mode === 'duo') {
+            if (this.mode === 'battle') {
+                const key = e.key.toLowerCase();
+                if (key === 'w' || key === 's') {
+                    this.fireBattleSubmarineMissile();
+                    e.preventDefault();
+                }
+            } else if (this.mode === 'duo') {
                 const key = e.key.toLowerCase();
                 if (this.controlInputMode === 'keyboard' && key === 's') {
                     this.fireDepthCharge(this.secondBattleship);
@@ -2167,6 +2306,7 @@ class GameEngine {
         this.bombs = [];
         this.submarines = [];
         this.missiles = [];
+        this.battleFishObstacles = [];
         this.crates = [];
         this.particles = [];
         this.floatingTexts = [];
@@ -2176,6 +2316,8 @@ class GameEngine {
         this.defeatSequenceReason = 'defeat';
         this.defeatedShips = [];
         this.levelUpEffect = null;
+        this.pvpSubmarine = null;
+        this.battleWinner = null;
         
         vocab.reset();
 
@@ -2203,13 +2345,117 @@ class GameEngine {
             })
             : null;
 
+        if (this.mode === 'battle') {
+            this.setupBattleMode();
+        }
+
         this.screenStart.classList.remove('active');
         this.screenGame.classList.add('active');
 
-        this.startLevel(0);
+        if (this.mode === 'battle') {
+            this.updateBattleTargetHUD();
+        } else {
+            this.startLevel(0);
+        }
 
         this.updateHUD();
         this.bossHud.classList.add('hidden');
+    }
+
+    setupBattleMode() {
+        this.currentTarget = null;
+        this.targetTimer = this.targetTimerDuration;
+        this.submarines = [];
+        this.missiles = [];
+        this.crates = [];
+        this.battleFishObstacles = [];
+        this.bossHud.classList.add('hidden');
+        this.battleship.maxBombsBeforeReload = 3;
+        this.battleship.bombsRemaining = this.battleship.maxBombsBeforeReload;
+        this.battleship.reloadDuration = 120;
+
+        this.pvpSubmarine = new Submarine(
+            this.waterY + (this.canvas.height - this.waterY) * 0.58,
+            3,
+            { word: 'P2', meaning: 'Player 2', emoji: '⚓' },
+            1,
+            false,
+            {
+                hideWordBubble: true,
+                isPlayerSubmarine: true,
+                playerLabel: 'P2',
+                width: this.battleship.width,
+                height: this.battleship.height,
+                speed: this.battleship.speed,
+                lives: 3
+            }
+        );
+        this.pvpSubmarine.x = this.canvas.width / 2 - this.pvpSubmarine.width / 2;
+        this.pvpSubmarine.facingRight = true;
+        this.pvpSubmarine.subColor = '#be185d';
+        this.pvpSubmarine.maxBombsBeforeReload = 3;
+        this.pvpSubmarine.bombsRemaining = this.pvpSubmarine.maxBombsBeforeReload;
+        this.pvpSubmarine.reloadDuration = this.battleship.reloadDuration;
+        this.submarines.push(this.pvpSubmarine);
+        this.maintainBattleFishObstacles(true);
+    }
+
+    updateBattleTargetHUD() {
+        if (this.targetValue) {
+            this.targetValue.innerHTML = '⚔️ BATTLE MODE';
+        }
+        if (this.targetTimerText) {
+            this.targetTimerText.innerText = this.controlInputMode === 'mouse'
+                ? 'P1: 🖱️ + CLICK'
+                : 'P1: ←/→ + ↓';
+            this.targetTimerText.classList.remove('warning');
+        }
+        if (this.stageQuotaText) {
+            this.stageQuotaText.innerText = 'P2: A/D + W/S FIRE';
+            this.stageQuotaText.classList.remove('complete');
+        }
+    }
+
+    getRandomBattleFishWord() {
+        if (!vocab.words || vocab.words.length === 0) {
+            return { word: 'fish', meaning: '', emoji: '🐟' };
+        }
+        return vocab.words[Math.floor(Math.random() * vocab.words.length)];
+    }
+
+    maintainBattleFishObstacles(reset = false) {
+        if (this.mode !== 'battle') return;
+        if (reset) this.battleFishObstacles = [];
+
+        const targetCount = 3;
+        const fishBounds = this.getBattleFishDepthBounds();
+        while (this.battleFishObstacles.length < targetCount) {
+            const lane = this.battleFishObstacles.length;
+            const spacing = (fishBounds.maxY - fishBounds.minY) / Math.max(1, targetCount - 1);
+            const y = targetCount === 1
+                ? (fishBounds.minY + fishBounds.maxY) / 2
+                : fishBounds.minY + spacing * lane;
+            this.battleFishObstacles.push(new BattleFishObstacle(
+                this.getRandomBattleFishWord(),
+                this.waterY,
+                this.canvas.width,
+                this.canvas.height,
+                y,
+                fishBounds
+            ));
+        }
+    }
+
+    getBattleFishDepthBounds() {
+        const shipBottom = this.battleship
+            ? this.battleship.y + this.battleship.height + 26
+            : this.waterY + 75;
+        const subTop = this.pvpSubmarine
+            ? this.pvpSubmarine.y - 54
+            : this.canvas.height * 0.58;
+        const minY = Math.max(this.waterY + 58, shipBottom);
+        const maxY = Math.max(minY + 44, subTop);
+        return { minY, maxY };
     }
 
     pauseGame() {
@@ -2238,7 +2484,7 @@ class GameEngine {
     }
 
     updateStartHighScore() {
-        if (this.mode === 'duo') {
+        if (this.mode === 'duo' || this.mode === 'battle') {
             document.getElementById('start-high-score').innerText = 'N/A';
             return;
         }
@@ -2247,7 +2493,7 @@ class GameEngine {
     }
 
     saveHighScore() {
-        if (this.mode === 'duo') return;
+        if (this.mode === 'duo' || this.mode === 'battle') return;
         const key = `hscore_${this.mode}`;
         const stored = parseInt(localStorage.getItem(key) || 0);
         if (this.score > stored) {
@@ -2256,12 +2502,12 @@ class GameEngine {
     }
 
     getHighScore() {
-        if (this.mode === 'duo') return 0;
+        if (this.mode === 'duo' || this.mode === 'battle') return 0;
         return parseInt(localStorage.getItem(`hscore_${this.mode}`) || 0);
     }
 
     savePlayHistory() {
-        if (this.mode === 'duo') return;
+        if (this.mode === 'duo' || this.mode === 'battle') return;
         const key = `history_${this.mode}`;
         const history = this.getPlayHistory();
         history.unshift({
@@ -2279,7 +2525,7 @@ class GameEngine {
     }
 
     getPlayHistory() {
-        if (this.mode === 'duo') return [];
+        if (this.mode === 'duo' || this.mode === 'battle') return [];
         try {
             return JSON.parse(localStorage.getItem(`history_${this.mode}`) || '[]');
         } catch (e) {
@@ -2369,6 +2615,9 @@ class GameEngine {
         this.controlToggleBtn.title = isMouseMode
             ? 'Control mode: Mouse'
             : 'Control mode: Keyboard';
+        if (this.mode === 'battle') {
+            this.updateBattleTargetHUD();
+        }
     }
 
     updateBilingualSpeechButton() {
@@ -2784,6 +3033,24 @@ class GameEngine {
         this.updateAmmoHUD();
     }
 
+    fireBattleSubmarineMissile() {
+        const sub = this.pvpSubmarine;
+        if (this.mode !== 'battle' || !sub || sub.isDying || sub.fireCooldown > 0 || sub.reloadTimer > 0 || sub.bombsRemaining <= 0) return;
+
+        sub.fireCooldown = 22;
+        sub.bombsRemaining--;
+        const missile = new Missile(sub.x + sub.width / 2, sub.y - 4, this.waterY, false, 0.4);
+        missile.isBattleProjectile = true;
+        this.missiles.push(missile);
+        sound.playLaser();
+
+        if (sub.bombsRemaining <= 0) {
+            sub.reloadTimer = sub.reloadDuration;
+            this.floatingTexts.push(new FloatingText(sub.x + sub.width / 2, sub.y - 18, "P2 RELOADING...", '#f472b6', 0.9));
+        }
+        this.updateHUD();
+    }
+
     triggerScreenShake(duration) {
         this.screenShakeTime = duration;
         document.body.classList.add('shake-screen');
@@ -2828,6 +3095,11 @@ class GameEngine {
     }
 
     updateDifficultyLevel() {
+        if (this.mode === 'battle') {
+            this.difficultyStage = 'BATTLE';
+            this.updateTargetPressureHUD();
+            return;
+        }
         if (this.mode === 'practice') {
             this.difficultyStage = 'PRACTICE';
             return;
@@ -2937,6 +3209,11 @@ class GameEngine {
     }
 
     updateTargetTimer() {
+        if (this.mode === 'battle') {
+            this.updateBattleTargetHUD();
+            return;
+        }
+
         const activeBoss = this.submarines.some(s => s.isBoss && !s.isDying);
         if (!this.currentTarget || activeBoss) {
             this.updateTargetPressureHUD();
@@ -2979,6 +3256,11 @@ class GameEngine {
     }
 
     updateTargetPressureHUD() {
+        if (this.mode === 'battle') {
+            this.updateBattleTargetHUD();
+            return;
+        }
+
         if (this.stageQuotaText) {
             if (this.levelPhase === 'boss') {
                 this.stageQuotaText.innerText = `BOSSES ${this.levelBossesDefeated} / ${this.levelBossTarget}`;
@@ -3059,6 +3341,9 @@ class GameEngine {
         this.updateTargetTimer();
 
         this.getActiveBattleships().forEach(ship => this.updateShipReload(ship));
+        if (this.mode === 'battle') {
+            this.updateShipReload(this.pvpSubmarine);
+        }
 
         // 1. Update Battleship
         const mouseTargetX = this.controlInputMode === 'mouse' ? this.mouseTargetX : null;
@@ -3068,6 +3353,12 @@ class GameEngine {
         if (this.secondBattleship) {
             this.secondBattleship.update(movementKeys, 0, this.waterY, this.gameTime, 'secondary');
             this.spawnBattleshipWake(this.secondBattleship);
+        }
+        if (this.mode === 'battle' && this.pvpSubmarine) {
+            this.pvpSubmarine.updatePlayer(this.keys, this.waterY, this.canvas.width, this.canvas.height);
+        }
+        if (this.mode === 'battle') {
+            this.updateBattleFishObstacles();
         }
 
         // 2. Power-up Timers countdown
@@ -3118,6 +3409,7 @@ class GameEngine {
 
         for (let i = this.submarines.length - 1; i >= 0; i--) {
             const sub = this.submarines[i];
+            if (sub.isPlayerSubmarine && !sub.isDying) continue;
             sub.update(isFrozen ? 0.35 : subSpeedMult);
 
             // Spawn passive submarine bubble streams
@@ -3140,7 +3432,7 @@ class GameEngine {
         const missileSpeedMult = this.getMovementSpeedMultiplier();
         for (let i = this.missiles.length - 1; i >= 0; i--) {
             const mis = this.missiles[i];
-            const event = mis.update(missileSpeedMult);
+            const event = mis.update(mis.isBattleProjectile ? mis.appliedSpeedMultiplier : missileSpeedMult);
             
             if (event === 'splash_surface') {
                 // Water splash on surface hit
@@ -3196,7 +3488,7 @@ class GameEngine {
 
         // 10. Update Enemy missile attack intervals
         const hasBoss = this.submarines.some(s => s.isBoss && !s.isDying);
-        if (this.mode !== 'practice' && this.empTimer <= 0) {
+        if (this.mode !== 'practice' && this.mode !== 'battle' && this.empTimer <= 0) {
             this.attackTimer++;
             
             const cooldownThreshold = this.getAttackCooldown();
@@ -3230,9 +3522,19 @@ class GameEngine {
 
         if (ship.reloadTimer <= 0) {
             ship.bombsRemaining = ship.maxBombsBeforeReload;
-            this.floatingTexts.push(new FloatingText(ship.x, ship.y - 40, "AMMO READY!", '#33ff88', 0.95));
+            const labelX = ship.isPlayerSubmarine ? ship.x + ship.width / 2 : ship.x;
+            this.floatingTexts.push(new FloatingText(labelX, ship.y - 40, "AMMO READY!", '#33ff88', 0.95));
         }
         this.updateAmmoHUD();
+    }
+
+    updateBattleFishObstacles() {
+        this.maintainBattleFishObstacles();
+        const fishBounds = this.getBattleFishDepthBounds();
+        this.battleFishObstacles.forEach(fish => {
+            fish.bounds = fishBounds;
+            fish.update(this.canvas.width, this.waterY, this.canvas.height, this.gameTime);
+        });
     }
 
     spawnBattleshipWake(ship) {
@@ -3335,7 +3637,9 @@ class GameEngine {
                 this.triggerScreenShake(10);
             } else {
                 // Lost life
-                if (this.mode === 'duo') {
+                if (this.mode === 'battle') {
+                    this.damageBattleBattleship(hitShip);
+                } else if (this.mode === 'duo') {
                     hitShip.lives--;
                     if (hitShip.lives <= 0) {
                         hitShip.lives = 0;
@@ -3345,19 +3649,39 @@ class GameEngine {
                 } else {
                     this.lives--;
                 }
-                this.triggerScreenShake(24);
-                sound.playDamage();
-                this.createBattleshipDamageEffect(hitShip, missile.x);
-                
-                this.floatingTexts.push(new FloatingText(hitShip.x, hitShip.y - 34, "-1 LIFE!", '#ff3333', 1.55));
-                this.currentCombo = 0; // Break combo
-                this.updateHUD();
+                if (this.mode !== 'battle') {
+                    this.triggerScreenShake(24);
+                    sound.playDamage();
+                    this.createBattleshipDamageEffect(hitShip, missile.x);
+                    
+                    this.floatingTexts.push(new FloatingText(hitShip.x, hitShip.y - 34, "-1 LIFE!", '#ff3333', 1.55));
+                    this.currentCombo = 0; // Break combo
+                    this.updateHUD();
 
-                if ((this.mode === 'duo' && this.areAllPlayerShipsDisabled()) || (this.mode !== 'duo' && this.lives <= 0)) {
-                    this.triggerGameOver();
+                    if ((this.mode === 'duo' && this.areAllPlayerShipsDisabled()) || (this.mode !== 'duo' && this.lives <= 0)) {
+                        this.triggerGameOver();
+                    }
                 }
             }
         }
+    }
+
+    damageBattleBattleship(ship) {
+        if (!ship || ship.isDisabled || this.state !== 'playing') return;
+
+        ship.lives = Math.max(0, ship.lives - 1);
+        this.lives = ship.lives;
+        this.triggerScreenShake(24);
+        sound.playDamage();
+        this.createBattleshipDamageEffect(ship, ship.x);
+        this.floatingTexts.push(new FloatingText(ship.x, ship.y - 34, "P1 -1 LIFE!", '#ff3333', 1.45));
+
+        if (ship.lives <= 0) {
+            ship.isDisabled = true;
+            this.battleWinner = 'P2 SUBMARINE WINS!';
+            this.triggerGameOver('battle');
+        }
+        this.updateHUD();
     }
 
     createBattleshipDamageEffect(ship, impactX = ship.x) {
@@ -3551,6 +3875,8 @@ class GameEngine {
     }
 
     handleCollisions() {
+        this.handleBattleFishCollisions();
+
         // Match active bombs against subs
         for (let i = this.bombs.length - 1; i >= 0; i--) {
             const bomb = this.bombs[i];
@@ -3575,6 +3901,42 @@ class GameEngine {
         }
     }
 
+    handleBattleFishCollisions() {
+        if (this.mode !== 'battle' || this.battleFishObstacles.length === 0) return;
+
+        for (let i = this.bombs.length - 1; i >= 0; i--) {
+            const bomb = this.bombs[i];
+            if (bomb.exploded) continue;
+
+            const fishIndex = this.battleFishObstacles.findIndex(fish => fish.containsPoint(bomb.x, bomb.y));
+            if (fishIndex >= 0) {
+                const fish = this.battleFishObstacles[fishIndex];
+                bomb.triggerExplosion();
+                this.hitBattleFishObstacle(fish, fishIndex);
+            }
+        }
+
+        for (let i = this.missiles.length - 1; i >= 0; i--) {
+            const missile = this.missiles[i];
+            const fishIndex = this.battleFishObstacles.findIndex(fish => fish.containsPoint(missile.x, missile.y));
+            if (fishIndex >= 0) {
+                const fish = this.battleFishObstacles[fishIndex];
+                this.hitBattleFishObstacle(fish, fishIndex);
+                this.missiles.splice(i, 1);
+            }
+        }
+    }
+
+    hitBattleFishObstacle(fish, fishIndex) {
+        this.battleFishObstacles.splice(fishIndex, 1);
+        this.enqueueWordAudio(fish.word);
+        this.floatingTexts.push(new FloatingText(fish.x, fish.y - 34, fish.word.word, '#facc15', 1.05));
+        for (let k = 0; k < 16; k++) {
+            this.particles.push(new Particle(fish.x + Math.random() * 28 - 14, fish.y + Math.random() * 20 - 10, 'bubble'));
+        }
+        sound.playSplash();
+    }
+
     resolveExplosionImpact(expX, expY, expRad, ownerShip = this.battleship) {
         // Verify which submarines are overlapped by this explosion radius
         this.submarines.forEach(sub => {
@@ -3596,6 +3958,11 @@ class GameEngine {
     }
 
     processSubmarineHit(sub, ownerShip = this.battleship) {
+        if (this.mode === 'battle' && sub.isPlayerSubmarine) {
+            this.damageBattleSubmarine(sub);
+            return;
+        }
+
         const isTargetMatch = sub.word.word.toLowerCase() === this.currentTarget.word.toLowerCase();
 
         if (sub.isBoss) {
@@ -3693,6 +4060,29 @@ class GameEngine {
                 this.wordsLearned.delete(sub.word.word);
             }
         }
+    }
+
+    damageBattleSubmarine(sub) {
+        if (!sub || sub.isDying || this.state !== 'playing') return;
+
+        sub.lives = Math.max(0, sub.lives - 1);
+        sub.triggerDamageFlash();
+        this.triggerScreenShake(18);
+        sound.playDamage();
+        this.floatingTexts.push(new FloatingText(sub.x + sub.width / 2, sub.y - 18, "P2 -1 LIFE!", '#ff3333', 1.25));
+
+        for (let k = 0; k < 16; k++) {
+            this.particles.push(new Particle(sub.x + sub.width / 2, sub.y + sub.height / 2, k % 2 === 0 ? 'spark' : 'bubble', '#f472b6'));
+        }
+
+        if (sub.lives <= 0) {
+            this.battleWinner = 'P1 BATTLESHIP WINS!';
+            this.destroySubmarine(sub);
+            setTimeout(() => {
+                if (this.state === 'playing') this.triggerGameOver('battle');
+            }, 650);
+        }
+        this.updateHUD();
     }
 
     addPlayerScore(ship, amount) {
@@ -3833,6 +4223,9 @@ class GameEngine {
     }
 
     getRoundScoreText() {
+        if (this.mode === 'battle' && this.battleship && this.pvpSubmarine) {
+            return `P1 ${this.battleship.lives}❤ / P2 ${this.pvpSubmarine.lives}❤`;
+        }
         if (this.mode === 'duo' && this.battleship && this.secondBattleship) {
             return `P1 ${this.battleship.score} / P2 ${this.secondBattleship.score}`;
         }
@@ -3848,23 +4241,32 @@ class GameEngine {
         if (!this.hudAmmo || !this.hudReloadFill || !this.hudReloadText) return;
 
         const ship = this.battleship;
+        const p2Sub = this.mode === 'battle' ? this.pvpSubmarine : null;
         const isReloading = ship && ship.reloadTimer > 0;
         const reloadProgress = this.getReloadProgress(ship);
-        this.hudAmmo.innerText = ship ? `${ship.bombsRemaining} / ${ship.maxBombsBeforeReload}` : '0 / 0';
+        this.hudAmmo.innerText = p2Sub
+            ? `P1 ${ship.bombsRemaining}/${ship.maxBombsBeforeReload} | P2 ${p2Sub.bombsRemaining}/${p2Sub.maxBombsBeforeReload}`
+            : (ship ? `${ship.bombsRemaining} / ${ship.maxBombsBeforeReload}` : '0 / 0');
         this.hudReloadFill.style.width = `${Math.round(reloadProgress * 100)}%`;
 
-        if (isReloading) {
+        if (p2Sub && p2Sub.reloadTimer > 0) {
+            this.hudReloadText.innerText = `P2 RELOAD ${Math.ceil(p2Sub.reloadTimer / 60)}s`;
+            this.hudReloadText.classList.add('reloading');
+            this.hudReloadText.classList.remove('reload-ready');
+        } else if (isReloading) {
             this.hudReloadText.innerText = `P1 RELOAD ${Math.ceil(ship.reloadTimer / 60)}s`;
             this.hudReloadText.classList.add('reloading');
             this.hudReloadText.classList.remove('reload-ready');
         } else {
-            this.hudReloadText.innerText = this.secondBattleship ? 'P1 READY' : 'READY';
+            this.hudReloadText.innerText = p2Sub ? 'P1/P2 READY' : (this.secondBattleship ? 'P1 READY' : 'READY');
             this.hudReloadText.classList.add('reload-ready');
             this.hudReloadText.classList.remove('reloading');
         }
     }
 
     spawnSupplyCratesAndSubmarines() {
+        if (this.mode === 'battle') return;
+
         // 1. Maintain exactly five active normal submarines until the level's quota is spawned.
         if (this.mode === 'practice') {
             const activePracticeSubs = this.getActiveNormalSubmarines().length;
@@ -3887,18 +4289,19 @@ class GameEngine {
 
     updateHUD() {
         const isDuo = this.mode === 'duo' && this.battleship && this.secondBattleship;
+        const isBattle = this.mode === 'battle' && this.battleship && this.pvpSubmarine;
         const mainShip = isDuo ? this.secondBattleship : null;
         const sideShip = isDuo ? this.battleship : null;
-        const mainScore = isDuo ? mainShip.score : this.score;
-        const mainLives = isDuo ? mainShip.lives : this.lives;
+        const mainScore = isDuo ? mainShip.score : (isBattle ? 'SHIP' : this.score);
+        const mainLives = isDuo ? mainShip.lives : (isBattle ? this.battleship.lives : this.lives);
 
-        if (this.hudScoreLabel) this.hudScoreLabel.innerText = isDuo ? 'P2 SCORE' : 'SCORE';
-        if (this.hudLivesLabel) this.hudLivesLabel.innerText = isDuo ? 'P2 LIVES' : 'LIVES';
-        this.hudScore.classList.toggle('neon-pink', isDuo);
-        this.hudScore.classList.toggle('neon-blue', !isDuo);
+        if (this.hudScoreLabel) this.hudScoreLabel.innerText = isDuo ? 'P2 SCORE' : (isBattle ? 'P1 UNIT' : 'SCORE');
+        if (this.hudLivesLabel) this.hudLivesLabel.innerText = isDuo ? 'P2 LIVES' : (isBattle ? 'P1 LIVES' : 'LIVES');
+        this.hudScore.classList.toggle('neon-pink', isDuo || isBattle);
+        this.hudScore.classList.toggle('neon-blue', !isDuo && !isBattle);
 
         // Pad score value with zeros
-        this.hudScore.innerText = String(mainScore).padStart(5, '0');
+        this.hudScore.innerText = isBattle ? mainScore : String(mainScore).padStart(5, '0');
         
         // Render heart elements
         let heartsStr = '';
@@ -3910,15 +4313,15 @@ class GameEngine {
         this.hudHearts.innerText = heartsStr;
 
         if (this.hudP2Stats) {
-            this.hudP2Stats.classList.toggle('hidden', !isDuo);
+            this.hudP2Stats.classList.toggle('hidden', !(isDuo || isBattle));
         }
-        if (isDuo) {
-            if (this.hudP2ScoreLabel) this.hudP2ScoreLabel.innerText = 'P1 SCORE';
-            if (this.hudP2LivesLabel) this.hudP2LivesLabel.innerText = 'P1 LIVES';
-            this.hudP2Score.classList.add('neon-blue');
-            this.hudP2Score.classList.remove('neon-pink');
-            this.hudP2Score.innerText = String(sideShip.score).padStart(5, '0');
-            this.hudP2Hearts.innerText = this.renderHearts(sideShip.lives);
+        if (isDuo || isBattle) {
+            if (this.hudP2ScoreLabel) this.hudP2ScoreLabel.innerText = isBattle ? 'P2 UNIT' : 'P1 SCORE';
+            if (this.hudP2LivesLabel) this.hudP2LivesLabel.innerText = isBattle ? 'P2 LIVES' : 'P1 LIVES';
+            this.hudP2Score.classList.toggle('neon-blue', isDuo);
+            this.hudP2Score.classList.toggle('neon-pink', isBattle);
+            this.hudP2Score.innerText = isBattle ? 'SUB' : String(sideShip.score).padStart(5, '0');
+            this.hudP2Hearts.innerText = this.renderHearts(isBattle ? this.pvpSubmarine.lives : sideShip.lives);
         }
 
         this.updateDifficultyHUD();
@@ -3969,9 +4372,11 @@ class GameEngine {
         this.savePlayHistory();
 
         // Populate game over stats overlay
-        document.getElementById('gameover-title').innerText = reason === 'timeup' ? 'TIME UP!' : 'DEFEATED!';
+        document.getElementById('gameover-title').innerText = reason === 'battle'
+            ? (this.battleWinner || 'BATTLE OVER!')
+            : (reason === 'timeup' ? 'TIME UP!' : 'DEFEATED!');
         document.getElementById('go-score').innerText = this.getRoundScoreText();
-        document.getElementById('go-best-score').innerText = this.mode === 'duo' ? 'N/A' : this.getHighScore();
+        document.getElementById('go-best-score').innerText = (this.mode === 'duo' || this.mode === 'battle') ? 'N/A' : this.getHighScore();
         document.getElementById('go-combo').innerText = this.highestCombo;
         document.getElementById('go-accuracy').innerText = `${vocab.getAccuracy()}%`;
         document.getElementById('go-correct').innerText = this.correctMatches;
@@ -3982,7 +4387,9 @@ class GameEngine {
         const reviewBox = document.getElementById('learned-words-list');
         reviewBox.innerHTML = '';
         
-        if (this.wordsLearned.size === 0 && this.wordsMissed.size === 0) {
+        if (this.mode === 'battle') {
+            reviewBox.innerHTML = '<span style="color:#64748b; font-size: 0.85rem;">Battle mode does not use vocabulary review.</span>';
+        } else if (this.wordsLearned.size === 0 && this.wordsMissed.size === 0) {
             reviewBox.innerHTML = '<span style="color:#64748b; font-size: 0.85rem;">No words matching reviews in this round.</span>';
         } else {
             // Mastered Tags
@@ -4013,8 +4420,8 @@ class GameEngine {
         const history = this.getPlayHistory();
         historyBox.innerHTML = '';
 
-        if (this.mode === 'duo') {
-            historyBox.innerHTML = '<span style="color:#64748b; font-size: 0.85rem;">2 Player Mode does not save play history.</span>';
+        if (this.mode === 'duo' || this.mode === 'battle') {
+            historyBox.innerHTML = '<span style="color:#64748b; font-size: 0.85rem;">This 2 player mode does not save play history.</span>';
             return;
         }
 
@@ -4125,6 +4532,7 @@ class GameEngine {
 
         // 2. Draw Supply Crates
         this.crates.forEach(c => c.draw(this.ctx));
+        this.battleFishObstacles.forEach(fish => fish.draw(this.ctx));
 
         // 3. Draw Submarines
         const isFrozen = this.freezeTimer > 0;
@@ -4145,6 +4553,7 @@ class GameEngine {
         if (this.secondBattleship) {
             this.secondBattleship.draw(this.ctx, this.getReloadProgress(this.secondBattleship), this.secondBattleship.bombsRemaining, this.secondBattleship.maxBombsBeforeReload);
         }
+        this.drawBattlePlayerLabels();
 
         // 7. Draw Waves at surface boundary
         this.drawWaterWaves();
@@ -4162,6 +4571,65 @@ class GameEngine {
         if (isFrozen) {
             this.drawFrostVignette();
         }
+    }
+
+    drawBattlePlayerLabels() {
+        if (this.mode !== 'battle' || !this.battleship || !this.pvpSubmarine) return;
+
+        this.ctx.save();
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.font = `bold 16px ${varget('--font-heading', "'Fredoka', sans-serif")}`;
+
+        const subCenterX = this.pvpSubmarine.x + this.pvpSubmarine.width / 2;
+        this.drawBattleSubAmmoIndicator(subCenterX, this.pvpSubmarine.y + this.pvpSubmarine.height + 18);
+        this.ctx.restore();
+    }
+
+    drawBattleSubAmmoIndicator(x, y) {
+        const sub = this.pvpSubmarine;
+        if (!sub) return;
+
+        const slotGap = 18;
+        const totalWidth = (sub.maxBombsBeforeReload - 1) * slotGap;
+        const startX = x - totalWidth / 2;
+
+        this.ctx.save();
+        this.ctx.shadowColor = 'rgba(244, 114, 182, 0.55)';
+        this.ctx.shadowBlur = 8;
+        for (let i = 0; i < sub.maxBombsBeforeReload; i++) {
+            const loaded = i < sub.bombsRemaining;
+            this.ctx.fillStyle = loaded ? '#f472b6' : 'rgba(255, 255, 255, 0.18)';
+            this.ctx.strokeStyle = loaded ? '#fce7f3' : 'rgba(255, 255, 255, 0.28)';
+            this.ctx.lineWidth = 1.5;
+            this.ctx.beginPath();
+            this.ctx.arc(startX + i * slotGap, y, 6, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.stroke();
+        }
+
+        if (sub.reloadTimer > 0) {
+            const progress = this.getReloadProgress(sub);
+            const barW = 58;
+            const barH = 5;
+            this.ctx.shadowBlur = 0;
+            this.ctx.fillStyle = 'rgba(15, 23, 42, 0.82)';
+            this.ctx.strokeStyle = 'rgba(244, 114, 182, 0.45)';
+            this.ctx.lineWidth = 1;
+            this.ctx.beginPath();
+            this.ctx.roundRect(x - barW / 2, y + 13, barW, barH, 999);
+            this.ctx.fill();
+            this.ctx.stroke();
+            this.ctx.fillStyle = '#f472b6';
+            this.ctx.beginPath();
+            this.ctx.roundRect(x - barW / 2, y + 13, barW * progress, barH, 999);
+            this.ctx.fill();
+            this.ctx.fillStyle = '#fce7f3';
+            this.ctx.font = `bold 10px ${varget('--font-heading', "'Fredoka', sans-serif")}`;
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(`${Math.ceil(sub.reloadTimer / 60)}s`, x, y + 30);
+        }
+        this.ctx.restore();
     }
 
     drawLevelUpOverlay() {
