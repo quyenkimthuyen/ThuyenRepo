@@ -59,6 +59,15 @@ const MODE_CONFIG = {
         speed: 4.7,
         wrongHurts: false,
         survival: true
+    },
+    train: {
+        label: 'TRAIN',
+        firstPromptType: 'food',
+        speechOrder: [],
+        speed: 4.35,
+        wrongHurts: false,
+        survival: true,
+        train: true
     }
 };
 
@@ -190,6 +199,7 @@ class WordSnakeGame {
         this.foods = [];
         this.swampPatches = [];
         this.lotusFlowers = [];
+        this.trainObstacles = [];
         this.meaningPopups = [];
         this.fishFrenzyTimer = 0;
         this.lotusBonusTimer = 0;
@@ -424,12 +434,16 @@ class WordSnakeGame {
         return Boolean(this.config && this.config.survival);
     }
 
+    isTrainMode() {
+        return this.mode === 'train';
+    }
+
     setMotoMode(enabled) {
         if (this.isSurvivalMode() && this.state === 'playing' && !enabled) {
             const motoButton = document.getElementById('btn-moto-toggle');
             if (motoButton) {
                 motoButton.classList.add('active');
-                motoButton.title = 'Lotus Pond uses moto camera';
+                motoButton.title = this.isTrainMode() ? 'Country Train uses moto camera' : 'Lotus Pond uses moto camera';
             }
             return;
         }
@@ -597,6 +611,7 @@ class WordSnakeGame {
         this.clearSpeechQueue();
         document.body.classList.add('snake-mode');
         document.body.classList.toggle('swamp-mode', this.mode === 'swamp');
+        document.body.classList.toggle('train-mode', this.mode === 'train');
         this.screenStart.classList.remove('active');
         this.screenGame.classList.add('active');
         this.modalPause.classList.add('hidden');
@@ -609,7 +624,7 @@ class WordSnakeGame {
             const motoButton = document.getElementById('btn-moto-toggle');
             if (motoButton) {
                 motoButton.classList.add('active');
-                motoButton.title = 'Lotus Pond uses moto camera';
+                motoButton.title = this.isTrainMode() ? 'Country Train uses moto camera' : 'Lotus Pond uses moto camera';
             }
         }
         this.score = 0;
@@ -636,6 +651,7 @@ class WordSnakeGame {
         this.foods = [];
         this.swampPatches = [];
         this.lotusFlowers = [];
+        this.trainObstacles = [];
         this.meaningPopups = [];
         this.fishFrenzyTimer = 0;
         this.lotusBonusTimer = 0;
@@ -671,7 +687,11 @@ class WordSnakeGame {
         }];
 
         if (this.isSurvivalMode()) {
-            this.generateSwampTerrain();
+            if (this.isTrainMode()) {
+                this.generateTrainTerrain();
+            } else {
+                this.generateSwampTerrain();
+            }
         }
         this.spawnFoods();
         if (!this.isSurvivalMode()) {
@@ -776,6 +796,20 @@ class WordSnakeGame {
 
     getFoodBounds() {
         if (this.isSurvivalMode()) {
+            if (this.isTrainMode()) {
+                const land = this.trainLand || {
+                    cx: (this.worldBounds.left + this.worldBounds.right) / 2,
+                    cy: (this.worldBounds.top + this.worldBounds.bottom) / 2,
+                    rx: (this.worldBounds.right - this.worldBounds.left) * 0.4,
+                    ry: (this.worldBounds.bottom - this.worldBounds.top) * 0.36
+                };
+                return {
+                    left: land.cx - land.rx,
+                    top: land.cy - land.ry,
+                    right: land.cx + land.rx,
+                    bottom: land.cy + land.ry
+                };
+            }
             const pond = this.getLotusPondShape(18);
             return {
                 left: pond.cx - pond.rx,
@@ -863,8 +897,62 @@ class WordSnakeGame {
         ];
     }
 
+    generateTrainTerrain() {
+        const b = this.worldBounds;
+        const w = b.right - b.left;
+        const h = b.bottom - b.top;
+        this.trainLand = {
+            cx: (b.left + b.right) / 2,
+            cy: (b.top + b.bottom) / 2,
+            rx: w * 0.49,
+            ry: h * 0.45
+        };
+        const makeObstacle = (type, x, y, rx, ry, rot = 0) => ({
+            type,
+            x: b.left + w * x,
+            y: b.top + h * y,
+            rx: Math.max(36, Math.min(w, h) * rx),
+            ry: Math.max(28, Math.min(w, h) * ry),
+            rot,
+            hitTimer: 0
+        });
+
+        this.trainObstacles = [
+            makeObstacle('pine', 0.42, 0.34, 0.032, 0.04, 0.08),
+            makeObstacle('pine', 0.73, 0.54, 0.035, 0.044, -0.22),
+            makeObstacle('pine', 0.5, 0.76, 0.03, 0.038, 0.32),
+            makeObstacle('house', 0.58, 0.42, 0.045, 0.038, 0.08),
+            makeObstacle('house', 0.39, 0.62, 0.047, 0.04, -0.18),
+            makeObstacle('pine', 0.18, 0.24, 0.03, 0.04, -0.12),
+            makeObstacle('pine', 0.21, 0.28, 0.034, 0.043, 0.18),
+            makeObstacle('pine', 0.25, 0.22, 0.028, 0.038, -0.28),
+            makeObstacle('house', 0.31, 0.3, 0.044, 0.036, 0.08),
+            makeObstacle('house', 0.36, 0.28, 0.04, 0.034, -0.12),
+            makeObstacle('pine', 0.65, 0.24, 0.032, 0.042, 0.22),
+            makeObstacle('pine', 0.69, 0.27, 0.03, 0.039, -0.18),
+            makeObstacle('house', 0.76, 0.3, 0.045, 0.037, 0.16),
+            makeObstacle('house', 0.8, 0.34, 0.041, 0.035, -0.1),
+            makeObstacle('pine', 0.84, 0.29, 0.03, 0.04, 0.34),
+            makeObstacle('house', 0.2, 0.7, 0.044, 0.036, -0.2),
+            makeObstacle('house', 0.25, 0.74, 0.042, 0.034, 0.12),
+            makeObstacle('pine', 0.31, 0.69, 0.033, 0.042, 0.18),
+            makeObstacle('pine', 0.34, 0.76, 0.03, 0.039, -0.28),
+            makeObstacle('pine', 0.66, 0.7, 0.032, 0.041, -0.14),
+            makeObstacle('house', 0.72, 0.73, 0.046, 0.038, 0.1),
+            makeObstacle('pine', 0.78, 0.69, 0.031, 0.04, 0.26),
+            makeObstacle('house', 0.82, 0.76, 0.04, 0.034, -0.18),
+            makeObstacle('pine', 0.57, 0.72, 0.034, 0.052, -0.08),
+            makeObstacle('pine', 0.61, 0.78, 0.032, 0.05, 0.16),
+            makeObstacle('pine', 0.88, 0.68, 0.034, 0.054, 0.08),
+            makeObstacle('pine', 0.74, 0.84, 0.03, 0.048, -0.2),
+            makeObstacle('pine', 0.14, 0.18, 0.028, 0.046, 0.12),
+            makeObstacle('pine', 0.9, 0.24, 0.03, 0.048, -0.12)
+        ];
+    }
+
     isPointOnSwampLand(x, y, padding = 0) {
         if (!this.isSurvivalMode()) return false;
+        if (this.isTrainMode()) return this.isPointOnTrainObstacle(x, y, padding);
 
         const pond = this.getLotusPondShape(padding);
         const nx = (x - pond.cx) / pond.rx;
@@ -875,6 +963,19 @@ class WordSnakeGame {
 
         return this.swampPatches.some(patch => this.isPointInSwampPatch(x, y, patch, padding)) ||
             this.lotusFlowers.some(flower => Math.hypot(x - flower.x, y - flower.y) <= flower.radius + padding);
+    }
+
+    isPointOnTrainObstacle(x, y, padding = 0) {
+        if (!this.isPointOnTrainLand(x, y, padding)) return true;
+        return this.trainObstacles.some(obstacle => this.isPointInTrainObstacle(x, y, obstacle, padding));
+    }
+
+    isPointOnTrainLand(x, y, padding = 0) {
+        if (!this.trainLand) return true;
+        const halfWidth = Math.max(120, this.trainLand.rx - padding);
+        const halfHeight = Math.max(90, this.trainLand.ry - padding);
+        return Math.abs(x - this.trainLand.cx) <= halfWidth &&
+            Math.abs(y - this.trainLand.cy) <= halfHeight;
     }
 
     getLotusPondShape(padding = 0) {
@@ -898,6 +999,18 @@ class WordSnakeGame {
         const localY = dx * sin + dy * cos;
         const rx = patch.rx + padding;
         const ry = patch.ry + padding;
+        return (localX * localX) / (rx * rx) + (localY * localY) / (ry * ry) <= 1;
+    }
+
+    isPointInTrainObstacle(x, y, obstacle, padding = 0) {
+        const cos = Math.cos(-obstacle.rot);
+        const sin = Math.sin(-obstacle.rot);
+        const dx = x - obstacle.x;
+        const dy = y - obstacle.y;
+        const localX = dx * cos - dy * sin;
+        const localY = dx * sin + dy * cos;
+        const rx = obstacle.rx + padding;
+        const ry = obstacle.ry + padding;
         return (localX * localX) / (rx * rx) + (localY * localY) / (ry * ry) <= 1;
     }
 
@@ -989,6 +1102,9 @@ class WordSnakeGame {
         this.lotusFlowers.forEach((flower) => {
             if (flower.hitTimer > 0) flower.hitTimer -= delta;
         });
+        this.trainObstacles.forEach((obstacle) => {
+            if (obstacle.hitTimer > 0) obstacle.hitTimer -= delta;
+        });
         this.getActiveAutoSnakes().forEach((snake) => {
             if (snake.growthTimer > 0) {
                 snake.growthTimer -= delta;
@@ -1035,8 +1151,10 @@ class WordSnakeGame {
         const wallTurnBlend = 1 - Math.pow(0.82, deltaFrames);
         if (this.motoMode) {
             const bounds = this.worldBounds;
-            if (this.isSurvivalMode()) {
+            if (this.isSurvivalMode() && !this.isTrainMode()) {
                 this.turnAwayFromLotusPondBank(wallTurnBlend, margin);
+            } else if (this.isTrainMode()) {
+                // Train terrain uses rectangular islands and bridges, so avoid the hidden lotus-pond ellipse steering.
             } else {
                 if (this.head.x < bounds.left + margin) this.head.heading = this.blendHeading(this.head.heading, 0, wallTurnBlend);
                 if (this.head.x > bounds.right - margin) this.head.heading = this.blendHeading(this.head.heading, Math.PI, wallTurnBlend);
@@ -1372,6 +1490,17 @@ class WordSnakeGame {
             }
 
             if (this.isSurvivalMode() && this.isPointOnSwampLand(food.x, food.y, food.radius + 20)) {
+                if (this.isTrainMode()) {
+                    const obstacle = this.trainObstacles.find(item => this.isPointInTrainObstacle(food.x, food.y, item, food.radius + 20));
+                    const angle = obstacle
+                        ? Math.atan2(food.y - obstacle.y, food.x - obstacle.x)
+                        : food.wavePhase;
+                    food.x += Math.cos(angle) * 10;
+                    food.y += Math.sin(angle) * 10;
+                    food.vx = this.blendValue(food.vx, Math.cos(angle) * 0.11, 0.45);
+                    food.vy = this.blendValue(food.vy, Math.sin(angle) * 0.11, 0.45);
+                    return;
+                }
                 const pond = this.getLotusPondShape(food.radius + 22);
                 const angleToCenter = Math.atan2(pond.cy - food.y, pond.cx - food.x);
                 food.x += Math.cos(angleToCenter) * 10;
@@ -1393,6 +1522,10 @@ class WordSnakeGame {
 
     resolveSwampLandCollision() {
         if (!this.isSurvivalMode()) return;
+        if (this.isTrainMode()) {
+            this.resolveTrainObstacleCollision();
+            return;
+        }
 
         const padding = this.getSnakeThickness() * 0.45;
         if (!this.isPointOnSwampLand(this.head.x, this.head.y, padding)) return;
@@ -1444,6 +1577,37 @@ class WordSnakeGame {
         this.head.x += Math.cos(bestAngle) * pushAmount;
         this.head.y += Math.sin(bestAngle) * pushAmount;
         this.poisonTimer = Math.max(this.poisonTimer, 12);
+    }
+
+    resolveTrainObstacleCollision() {
+        const padding = this.getSnakeThickness() * 0.42;
+        if (!this.isPointOnTrainLand(this.head.x, this.head.y, padding)) {
+            const land = this.trainLand;
+            const angle = Math.atan2(land.cy - this.head.y, land.cx - this.head.x);
+            this.head.heading = this.blendHeading(this.head.heading, angle, 0.26);
+            this.head.x += Math.cos(angle) * 7;
+            this.head.y += Math.sin(angle) * 7;
+            return;
+        }
+
+        let bestObstacle = null;
+        let bestDepth = -Infinity;
+
+        this.trainObstacles.forEach((obstacle) => {
+            if (!this.isPointInTrainObstacle(this.head.x, this.head.y, obstacle, padding)) return;
+            const depth = 1 - Math.hypot((this.head.x - obstacle.x) / (obstacle.rx + padding), (this.head.y - obstacle.y) / (obstacle.ry + padding));
+            if (depth > bestDepth) {
+                bestDepth = depth;
+                bestObstacle = obstacle;
+            }
+        });
+        if (!bestObstacle) return;
+
+        bestObstacle.hitTimer = LOTUS_HIT_EFFECT_FRAMES;
+        const angle = Math.atan2(this.head.y - bestObstacle.y, this.head.x - bestObstacle.x);
+        this.head.heading = this.blendHeading(this.head.heading, angle, 0.18);
+        this.head.x += Math.cos(angle) * 4;
+        this.head.y += Math.sin(angle) * 4;
     }
 
     checkBoundaryCollision() {
@@ -1824,6 +1988,7 @@ class WordSnakeGame {
         this.updateAutoSnakeButton();
         document.body.classList.remove('snake-mode');
         document.body.classList.remove('swamp-mode');
+        document.body.classList.remove('train-mode');
         this.screenGame.classList.remove('active');
         this.screenStart.classList.add('active');
         this.modalPause.classList.add('hidden');
@@ -1860,7 +2025,7 @@ class WordSnakeGame {
         document.getElementById('hud-accuracy').innerText = `${accuracy}%`;
 
         this.targetValue.innerText = this.isSurvivalMode()
-            ? 'LOTUS POND'
+            ? (this.isTrainMode() ? 'COUNTRY TRAIN' : 'LOTUS POND')
             : (this.mode === 'mixed'
                 ? '🔊 LISTEN'
                 : this.getLabel(this.currentItem || this.vocab[0], this.currentPromptType));
@@ -1915,6 +2080,7 @@ class WordSnakeGame {
 
     getGameOverSubtitle(title, won = false) {
         if (won) return 'You survived the full 5-minute word swim!';
+        if (this.isTrainMode()) return 'The train hit an obstacle on the countryside route.';
         if (title === 'POISONED!') return 'The snake ate the wrong food three times.';
         if (title === 'HEAD CRASH!') return 'Both snakes crashed head-first into each other.';
         if (title === 'RIVAL BITE!') return 'Your snake bit into the auto snake body.';
@@ -1932,7 +2098,11 @@ class WordSnakeGame {
         this.drawSnakeWaterWake();
         this.foods.forEach(food => this.drawFood(food));
         this.drawAutoSnake();
-        this.drawSnake();
+        if (this.isTrainMode()) {
+            this.drawTrain();
+        } else {
+            this.drawSnake();
+        }
         this.drawMeaningPopups();
         this.drawSpeedBoostReadyHint();
         this.drawSpeedBoostEffect();
@@ -2002,11 +2172,16 @@ class WordSnakeGame {
         }
         ctx.restore();
 
-        this.drawSwampTerrain();
+        if (this.isTrainMode()) {
+            this.drawTrainTerrain();
+        } else {
+            this.drawSwampTerrain();
+        }
     }
 
     drawSwampTerrain() {
         if (!this.isSurvivalMode()) return;
+        if (this.isTrainMode()) return;
 
         const ctx = this.ctx;
         const camera = this.getCamera();
@@ -2199,6 +2374,218 @@ class WordSnakeGame {
         ctx.restore();
     }
 
+    drawTrainTerrain() {
+        if (!this.isTrainMode()) return;
+
+        const ctx = this.ctx;
+        const camera = this.getCamera();
+        const b = this.worldBounds;
+        const x = b.left - camera.x;
+        const y = b.top - camera.y;
+        const w = b.right - b.left;
+        const h = b.bottom - b.top;
+        const land = this.trainLand || {
+            cx: (b.left + b.right) / 2,
+            cy: (b.top + b.bottom) / 2,
+            rx: w * 0.49,
+            ry: h * 0.45
+        };
+        const landCenter = this.worldToScreen({ x: land.cx, y: land.cy });
+
+        ctx.save();
+        const seaGradient = ctx.createRadialGradient(landCenter.x, landCenter.y, Math.min(land.rx, land.ry) * 0.35, landCenter.x, landCenter.y, Math.max(w, h) * 0.8);
+        seaGradient.addColorStop(0, '#38bdf8');
+        seaGradient.addColorStop(0.58, '#0ea5e9');
+        seaGradient.addColorStop(1, '#075985');
+        ctx.fillStyle = seaGradient;
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        ctx.globalAlpha = 0.16;
+        ctx.strokeStyle = '#dff7ff';
+        ctx.lineWidth = 2;
+        for (let wave = 0; wave < 18; wave++) {
+            const waveY = ((wave * 73 + this.frame * 0.15 - camera.y * 0.12) % (this.height + 80)) - 40;
+            ctx.beginPath();
+            for (let step = 0; step <= 36; step++) {
+                const px = (this.width / 36) * step;
+                const py = waveY + Math.sin(step * 0.9 + wave) * 6;
+                if (step === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.roundRect(landCenter.x - land.rx - 58, landCenter.y - land.ry - 48, (land.rx + 58) * 2, (land.ry + 48) * 2, 44);
+        ctx.fill();
+
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        ctx.roundRect(landCenter.x - land.rx - 38, landCenter.y - land.ry - 31, (land.rx + 38) * 2, (land.ry + 31) * 2, 36);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(226, 232, 240, 0.42)';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([14, 10]);
+        ctx.beginPath();
+        ctx.roundRect(landCenter.x - land.rx - 48, landCenter.y - land.ry - 39, (land.rx + 48) * 2, (land.ry + 39) * 2, 40);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const groundGradient = ctx.createRadialGradient(landCenter.x - land.rx * 0.25, landCenter.y - land.ry * 0.2, 20, landCenter.x, landCenter.y, Math.max(land.rx, land.ry));
+        groundGradient.addColorStop(0, '#9bd36a');
+        groundGradient.addColorStop(0.58, '#6fa04f');
+        groundGradient.addColorStop(1, '#4f7f3c');
+        ctx.fillStyle = groundGradient;
+        ctx.beginPath();
+        ctx.roundRect(landCenter.x - land.rx, landCenter.y - land.ry, land.rx * 2, land.ry * 2, 32);
+        ctx.fill();
+
+        ctx.globalAlpha = 0.18;
+        ctx.strokeStyle = '#e6c37d';
+        ctx.lineWidth = 8;
+        for (let lane = 0; lane < 5; lane++) {
+            const laneY = landCenter.y - land.ry * 0.55 + lane * land.ry * 0.26;
+            ctx.beginPath();
+            for (let step = 0; step <= 48; step++) {
+                const px = landCenter.x - land.rx * 0.82 + (land.rx * 1.64 / 48) * step;
+                const py = laneY + Math.sin(step * 0.55 + lane * 1.7) * 16;
+                if (step === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        ctx.fillStyle = 'rgba(255, 245, 196, 0.16)';
+        for (let dot = 0; dot < 44; dot++) {
+            const px = landCenter.x - land.rx * 0.82 + ((dot * 157) % Math.max(1, land.rx * 1.64));
+            const py = landCenter.y - land.ry * 0.72 + ((dot * 91) % Math.max(1, land.ry * 1.44));
+            ctx.beginPath();
+            ctx.ellipse(px, py, 3 + (dot % 3), 2 + (dot % 2), dot * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        this.trainObstacles.forEach((obstacle) => this.drawTrainObstacle(obstacle));
+        ctx.restore();
+    }
+
+    drawTrainObstacle(obstacle) {
+        const ctx = this.ctx;
+        const p = this.worldToScreen(obstacle);
+        const hitPulse = Math.max(0, Math.min(1, (obstacle.hitTimer || 0) / LOTUS_HIT_EFFECT_FRAMES));
+        const isWater = obstacle.type === 'pond' || obstacle.type === 'lake' || obstacle.type === 'river' || obstacle.type === 'coast';
+        const isTree = obstacle.type === 'tree';
+        const isPine = obstacle.type === 'pine';
+        const isHouse = obstacle.type === 'house';
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(obstacle.rot);
+        if (hitPulse > 0) {
+            ctx.shadowColor = 'rgba(254, 240, 138, 0.5)';
+            ctx.shadowBlur = hitPulse * 8;
+        }
+
+        if (isWater) {
+            const waterRy = obstacle.type === 'pond' || obstacle.type === 'lake'
+                ? Math.max(obstacle.ry, obstacle.rx * 0.86)
+                : obstacle.ry;
+            const gradient = ctx.createRadialGradient(-obstacle.rx * 0.25, -waterRy * 0.25, 4, 0, 0, obstacle.rx);
+            gradient.addColorStop(0, '#8ee4ff');
+            gradient.addColorStop(0.55, obstacle.type === 'coast' ? '#38bdf8' : '#2f9db4');
+            gradient.addColorStop(1, obstacle.type === 'coast' ? '#0369a1' : '#0f5e70');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, obstacle.rx, waterRy, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(219, 234, 254, 0.45)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        } else if (isTree) {
+            ctx.fillStyle = '#7c4a22';
+            ctx.fillRect(-obstacle.rx * 0.12, -obstacle.ry * 0.05, obstacle.rx * 0.24, obstacle.ry * 0.72);
+            const gradient = ctx.createRadialGradient(-obstacle.rx * 0.2, -obstacle.ry * 0.3, 4, 0, -obstacle.ry * 0.2, obstacle.rx);
+            gradient.addColorStop(0, '#86efac');
+            gradient.addColorStop(0.55, '#22c55e');
+            gradient.addColorStop(1, '#166534');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.ellipse(0, -obstacle.ry * 0.26, obstacle.rx, obstacle.ry * 0.78, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(20, 83, 45, 0.48)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        } else if (isPine) {
+            ctx.fillStyle = '#7c4a22';
+            ctx.fillRect(-obstacle.rx * 0.09, -obstacle.ry * 0.04, obstacle.rx * 0.18, obstacle.ry * 0.76);
+            ctx.fillStyle = '#14532d';
+            for (let layer = 0; layer < 3; layer++) {
+                const y = -obstacle.ry * (0.45 - layer * 0.22);
+                const width = obstacle.rx * (1.1 - layer * 0.18);
+                ctx.beginPath();
+                ctx.moveTo(0, y - obstacle.ry * 0.32);
+                ctx.lineTo(-width, y + obstacle.ry * 0.28);
+                ctx.lineTo(width, y + obstacle.ry * 0.28);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.strokeStyle = 'rgba(220, 252, 231, 0.32)';
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.moveTo(0, -obstacle.ry * 0.82);
+            ctx.lineTo(0, obstacle.ry * 0.28);
+            ctx.stroke();
+        } else if (isHouse) {
+            const width = obstacle.rx * 1.55;
+            const height = obstacle.ry * 1.12;
+            ctx.fillStyle = '#f5d0a9';
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(-width / 2, -height * 0.18, width, height * 0.72, 5);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#b45309';
+            ctx.beginPath();
+            ctx.moveTo(-width * 0.62, -height * 0.16);
+            ctx.lineTo(0, -height * 0.78);
+            ctx.lineTo(width * 0.62, -height * 0.16);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#60a5fa';
+            ctx.fillRect(-width * 0.28, height * 0.02, width * 0.18, height * 0.18);
+            ctx.fillStyle = '#7c2d12';
+            ctx.fillRect(width * 0.15, height * 0.08, width * 0.2, height * 0.46);
+        } else {
+            const gradient = ctx.createRadialGradient(-obstacle.rx * 0.2, -obstacle.ry * 0.35, 8, 0, 0, obstacle.rx);
+            gradient.addColorStop(0, obstacle.type === 'mountain' ? '#d6c3a5' : '#9fbd5e');
+            gradient.addColorStop(0.58, obstacle.type === 'mountain' ? '#8b7355' : '#577c36');
+            gradient.addColorStop(1, obstacle.type === 'mountain' ? '#4d3f34' : '#34522b');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, obstacle.rx, obstacle.ry, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = obstacle.type === 'mountain' ? 'rgba(60, 45, 34, 0.5)' : 'rgba(29, 72, 43, 0.45)';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+        }
+
+        if (hitPulse > 0) {
+            ctx.strokeStyle = `rgba(254, 240, 138, ${0.24 + hitPulse * 0.24})`;
+            ctx.lineWidth = 2 + hitPulse;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, obstacle.rx + 5, obstacle.ry + 5, 0, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        ctx.restore();
+    }
+
     drawLotusPondDepthEffects(pond, pondCenter) {
         if (!this.isSurvivalMode()) return;
 
@@ -2272,7 +2659,7 @@ class WordSnakeGame {
     }
 
     drawSnakeWaterWake() {
-        if (!this.isSurvivalMode() || this.trail.length < 3) return;
+        if (!this.isSurvivalMode() || this.isTrainMode() || this.trail.length < 3) return;
 
         const ctx = this.ctx;
         const bodyLength = Math.min(this.getSnakeBodyLength(), 520);
@@ -2359,6 +2746,7 @@ class WordSnakeGame {
         const camera = this.getCamera();
         const bounds = this.worldBounds;
         if (this.isSurvivalMode()) {
+            if (this.isTrainMode()) return;
             const pond = this.getLotusPondShape(0);
             const center = this.worldToScreen({ x: pond.cx, y: pond.cy });
 
@@ -2393,6 +2781,137 @@ class WordSnakeGame {
         ctx.fillRect(x, y + height - 14, width, 14);
         ctx.fillRect(x, y, 14, height);
         ctx.fillRect(x + width - 14, y, 14, height);
+        ctx.restore();
+    }
+
+    drawTrain() {
+        const ctx = this.ctx;
+        const bodyLength = this.getSnakeBodyLength();
+        const spacing = 34;
+        const cars = [];
+        for (let distance = 0; distance <= bodyLength; distance += spacing) {
+            const point = this.worldToScreen(this.getPointAtDistance(distance));
+            const next = this.worldToScreen(this.getPointAtDistance(distance + 18));
+            const angle = Math.atan2(point.y - next.y, point.x - next.x);
+            cars.push({ ...point, angle });
+        }
+        if (cars.length === 0) return;
+
+        ctx.save();
+        for (let index = cars.length - 1; index >= 1; index--) {
+            this.drawTrainCar(cars[index], index);
+        }
+        ctx.restore();
+        this.drawTrainEngine(cars[0]);
+    }
+
+    applyTrainUprightTransform(ctx, x, y, angle, scale = 1) {
+        const forwardX = Math.cos(angle);
+        const forwardY = Math.sin(angle);
+        let downX = -Math.sin(angle);
+        let downY = Math.cos(angle);
+        if (downY < 0) {
+            downX *= -1;
+            downY *= -1;
+        }
+        ctx.transform(
+            forwardX * scale,
+            forwardY * scale,
+            downX * scale,
+            downY * scale,
+            x,
+            y
+        );
+    }
+
+    drawTrainCar(car, index) {
+        const ctx = this.ctx;
+        const width = 34;
+        const height = 22;
+        const bottomY = height * 0.52;
+        const colors = ['#dc2626', '#2563eb', '#16a34a', '#ca8a04'];
+        ctx.save();
+        this.applyTrainUprightTransform(ctx, car.x, car.y, car.angle);
+
+        ctx.fillStyle = 'rgba(20, 20, 20, 0.32)';
+        ctx.beginPath();
+        ctx.roundRect(-width * 0.52, -height * 0.42 + 4, width, height * 0.86, 6);
+        ctx.fill();
+
+        ctx.fillStyle = colors[index % colors.length];
+        ctx.strokeStyle = '#1f2937';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(-width * 0.55, -height * 0.5, width, height, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(219, 234, 254, 0.86)';
+        ctx.fillRect(-width * 0.2, -height * 0.25, 7, 6);
+        ctx.fillRect(width * 0.08, -height * 0.25, 7, 6);
+
+        ctx.fillStyle = '#111827';
+        ctx.beginPath();
+        ctx.arc(-width * 0.25, bottomY, 3.4, 0, Math.PI * 2);
+        ctx.arc(width * 0.25, bottomY, 3.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    drawTrainEngine(engine) {
+        const ctx = this.ctx;
+        const width = 42;
+        const height = 26;
+        const frontX = width * 0.48;
+        const bottomY = height * 0.52;
+        const topY = -height * 0.5;
+        const pulse = this.growthTimer > 0 ? 1 + Math.sin(this.growthTimer * 0.28) * 0.03 : 1;
+        ctx.save();
+        this.applyTrainUprightTransform(ctx, engine.x, engine.y, engine.angle, pulse);
+
+        const headlightGradient = ctx.createRadialGradient(frontX + 4, 0, 2, frontX + 36, 0, 58);
+        headlightGradient.addColorStop(0, 'rgba(254, 240, 138, 0.34)');
+        headlightGradient.addColorStop(0.55, 'rgba(254, 240, 138, 0.12)');
+        headlightGradient.addColorStop(1, 'rgba(254, 240, 138, 0)');
+        ctx.fillStyle = headlightGradient;
+        ctx.beginPath();
+        ctx.moveTo(frontX, -7);
+        ctx.lineTo(frontX + 62, -24);
+        ctx.lineTo(frontX + 62, 24);
+        ctx.lineTo(frontX, 7);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(20, 20, 20, 0.35)';
+        ctx.beginPath();
+        ctx.roundRect(-width * 0.55, -height * 0.42 + 5, width * 1.1, height * 0.84, 8);
+        ctx.fill();
+
+        ctx.fillStyle = '#b91c1c';
+        ctx.strokeStyle = '#1f2937';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.roundRect(-width * 0.45, -height * 0.5, width * 0.9, height, 8);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#111827';
+        ctx.fillRect(width * 0.12, topY - 10, 9, 12);
+        ctx.fillStyle = '#fbbf24';
+        ctx.beginPath();
+        ctx.arc(frontX, 0, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fef3c7';
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+
+        ctx.fillStyle = '#dbeafe';
+        ctx.fillRect(-width * 0.24, topY + 4, 15, 9);
+        ctx.fillStyle = '#111827';
+        ctx.beginPath();
+        ctx.arc(-width * 0.25, bottomY, 4, 0, Math.PI * 2);
+        ctx.arc(width * 0.2, bottomY, 4, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
     }
 
