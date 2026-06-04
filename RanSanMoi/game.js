@@ -1823,7 +1823,7 @@ class WordSnakeGame {
 
         this.addParticles(food.x, food.y, '#00ff88', 18);
         if (this.isSurvivalMode()) {
-            this.speakTypes(food.item, ['en', 'vi']);
+            this.speakTypes(food.item, ['vi', 'en']);
             this.applyLotusPondFoodReward(food);
         }
         this.foods.splice(index, 1);

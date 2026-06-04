@@ -755,6 +755,7 @@ class Bomb {
         this.x = x;
         this.y = y;
         this.owner = owner;
+        this.vx = 0;
         this.vy = 2.0; // Falling speed starts slow
         this.radius = 12;
         this.gravity = 0.08;
@@ -788,6 +789,7 @@ class Bomb {
                 this.vy += this.gravity;
             }
 
+            this.x += this.vx;
             this.y += this.vy;
 
             // Trigger explosion at 88% depth of screen
@@ -989,7 +991,7 @@ class BattleFishObstacle {
     constructor(wordObj, waterY, canvasWidth, canvasHeight, preferredY = null, bounds = null) {
         this.word = {
             word: wordObj?.word || 'fish',
-            meaning: '',
+            meaning: wordObj?.meaning || '',
             emoji: '🐟'
         };
         this.width = 98;
@@ -2667,6 +2669,9 @@ class GameEngine {
             const utter = this.createSpeechUtterance(text, langPrefix);
             utter.onend = () => resolve(true);
             utter.onerror = () => resolve(false);
+            if (typeof window.speechSynthesis.resume === 'function') {
+                window.speechSynthesis.resume();
+            }
             window.speechSynthesis.speak(utter);
         });
     }
@@ -2764,6 +2769,34 @@ class GameEngine {
                 emoji: wordObj.emoji
             },
             bilingualSpeechEnabled: this.bilingualSpeechEnabled
+        });
+        this.processSpeechQueue();
+    }
+
+    enqueueEnglishWordAudio(wordText) {
+        if (!this.wordAudioEnabled || !wordText) return;
+
+        this.speechQueue.push({
+            wordObj: {
+                word: wordText,
+                meaning: '',
+                emoji: ''
+            },
+            bilingualSpeechEnabled: false
+        });
+        this.processSpeechQueue();
+    }
+
+    enqueueBilingualWordAudio(wordObj) {
+        if (!this.wordAudioEnabled || !wordObj?.word) return;
+
+        this.speechQueue.push({
+            wordObj: {
+                word: wordObj.word,
+                meaning: wordObj.meaning || '',
+                emoji: wordObj.emoji || ''
+            },
+            bilingualSpeechEnabled: true
         });
         this.processSpeechQueue();
     }
@@ -3020,8 +3053,16 @@ class GameEngine {
         if (!ship || ship.isDisabled || ship.fireCooldown > 0 || ship.reloadTimer > 0 || ship.bombsRemaining <= 0) return;
         ship.fireCooldown = 22; // 0.36 seconds delay cooldown
         
-        const bomb = new Bomb(ship.x, ship.y + ship.height - 10, ship);
-        this.bombs.push(bomb);
+        if (this.mode === 'battle' && ship === this.battleship) {
+            const leftBomb = new Bomb(ship.x - 10, ship.y + ship.height - 10, ship);
+            const rightBomb = new Bomb(ship.x + 10, ship.y + ship.height - 10, ship);
+            leftBomb.vx = -0.28;
+            rightBomb.vx = 0.28;
+            this.bombs.push(leftBomb, rightBomb);
+        } else {
+            const bomb = new Bomb(ship.x, ship.y + ship.height - 10, ship);
+            this.bombs.push(bomb);
+        }
         ship.bombsRemaining--;
         sound.playShoot();
 
@@ -3039,9 +3080,14 @@ class GameEngine {
 
         sub.fireCooldown = 22;
         sub.bombsRemaining--;
-        const missile = new Missile(sub.x + sub.width / 2, sub.y - 4, this.waterY, false, 0.4);
-        missile.isBattleProjectile = true;
-        this.missiles.push(missile);
+        const centerX = sub.x + sub.width / 2;
+        const leftMissile = new Missile(centerX - 10, sub.y - 4, this.waterY, false, 0.4);
+        const rightMissile = new Missile(centerX + 10, sub.y - 4, this.waterY, false, 0.4);
+        leftMissile.isBattleProjectile = true;
+        rightMissile.isBattleProjectile = true;
+        leftMissile.vx = -0.28;
+        rightMissile.vx = 0.28;
+        this.missiles.push(leftMissile, rightMissile);
         sound.playLaser();
 
         if (sub.bombsRemaining <= 0) {
@@ -3348,7 +3394,8 @@ class GameEngine {
         // 1. Update Battleship
         const mouseTargetX = this.controlInputMode === 'mouse' ? this.mouseTargetX : null;
         const movementKeys = this.controlInputMode === 'keyboard' ? this.keys : {};
-        this.battleship.update(movementKeys, this.touchDir, this.waterY, this.gameTime, this.mode === 'duo' ? 'primaryDuo' : 'solo', mouseTargetX);
+        const mainShipControlMode = (this.mode === 'duo' || this.mode === 'battle') ? 'primaryDuo' : 'solo';
+        this.battleship.update(movementKeys, this.touchDir, this.waterY, this.gameTime, mainShipControlMode, mouseTargetX);
         this.spawnBattleshipWake(this.battleship);
         if (this.secondBattleship) {
             this.secondBattleship.update(movementKeys, 0, this.waterY, this.gameTime, 'secondary');
@@ -3929,7 +3976,8 @@ class GameEngine {
 
     hitBattleFishObstacle(fish, fishIndex) {
         this.battleFishObstacles.splice(fishIndex, 1);
-        this.enqueueWordAudio(fish.word);
+        sound.init();
+        this.enqueueBilingualWordAudio(fish.word);
         this.floatingTexts.push(new FloatingText(fish.x, fish.y - 34, fish.word.word, '#facc15', 1.05));
         for (let k = 0; k < 16; k++) {
             this.particles.push(new Particle(fish.x + Math.random() * 28 - 14, fish.y + Math.random() * 20 - 10, 'bubble'));
