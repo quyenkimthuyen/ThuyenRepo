@@ -1137,7 +1137,7 @@ class WordSnakeGame {
             desiredHeading = this.getSaferAutoSnakeHeading(snake, desiredHeading, target);
             snake.desiredHeading = desiredHeading;
             snake.lastDangerScore = this.scoreAutoSnakeHeading(snake, desiredHeading, target);
-            snake.aiThinkTimer = 3;
+            snake.aiThinkTimer = 6;
         }
 
         const desiredHeading = snake.desiredHeading ?? snake.head.heading;
@@ -1176,9 +1176,7 @@ class WordSnakeGame {
             const angle = Math.atan2(food.y - snake.head.y, food.x - snake.head.x);
             const turn = Math.abs(Math.atan2(Math.sin(angle - heading), Math.cos(angle - heading)));
             const frontBias = Math.cos(turn);
-            const pathScore = this.scoreAutoSnakeHeading(snake, angle, food);
-            const riskyPathPenalty = Math.max(0, 65 - pathScore) * 5;
-            const score = distance + turn * 210 + (frontBias < -0.15 ? 520 : 0) + riskyPathPenalty;
+            const score = distance + turn * 210 + (frontBias < -0.15 ? 520 : 0);
             if (!best || score < best.score) return { ...food, distance, score };
             return best;
         }, null);
@@ -1207,19 +1205,20 @@ class WordSnakeGame {
         let avoidX = 0;
         let avoidY = 0;
         const dangerRange = Math.min(260, 125 + snake.segments * 13);
-        for (let distance = 100; distance <= bodyLength; distance += 18) {
+        const sampleDistances = [110, 170, 240].filter(distance => distance <= bodyLength);
+        sampleDistances.forEach((distance) => {
             const point = this.getAutoPointAtDistance(distance, snake);
             const dx = snake.head.x - point.x;
             const dy = snake.head.y - point.y;
             const gap = Math.hypot(dx, dy);
-            if (gap <= 1 || gap > dangerRange) continue;
+            if (gap <= 1 || gap > dangerRange) return;
 
             const bodyAngle = Math.atan2(point.y - snake.head.y, point.x - snake.head.x);
             const ahead = Math.max(0, Math.cos(bodyAngle - snake.head.heading));
             const weight = (1 - gap / dangerRange) * (0.35 + ahead * 0.9);
             avoidX += (dx / gap) * weight;
             avoidY += (dy / gap) * weight;
-        }
+        });
 
         const force = Math.hypot(avoidX, avoidY);
         if (force < 0.08) return desiredHeading;
@@ -1233,7 +1232,7 @@ class WordSnakeGame {
         const delta = Math.atan2(Math.sin(desiredHeading - snake.head.heading), Math.cos(desiredHeading - snake.head.heading));
         let bestHeading = snake.head.heading + Math.max(-maxTurn, Math.min(maxTurn, delta));
         let bestScore = this.scoreAutoSnakeHeading(snake, bestHeading, target);
-        [-0.95, -0.72, -0.48, -0.26, 0, 0.26, 0.48, 0.72, 0.95].forEach((offset) => {
+        [-0.72, -0.36, 0, 0.36, 0.72].forEach((offset) => {
             const candidate = snake.head.heading + offset;
             const score = this.scoreAutoSnakeHeading(snake, candidate, target) - Math.abs(offset - delta) * 24;
             if (score > bestScore) {
@@ -1250,8 +1249,7 @@ class WordSnakeGame {
 
     scoreAutoSnakeHeading(snake, heading, target = null) {
         let score = 100;
-        const probes = [56, 96, 142, 196, 258];
-        const thickness = this.getAutoSnakeThickness(snake);
+        const probes = [64, 132, 220];
         probes.forEach((distance, index) => {
             const point = {
                 x: snake.head.x + Math.cos(heading) * distance,
@@ -1259,7 +1257,6 @@ class WordSnakeGame {
             };
             const nearWeight = Math.max(0.35, 1 - index * 0.12);
             if (this.isPointOnSwampLand(point.x, point.y, 34)) score -= (132 - index * 14) * nearWeight;
-            if (this.isPointNearAutoSnakeBody(point.x, point.y, thickness * 1.35, 126, snake)) score -= (190 - index * 20) * nearWeight;
             if (this.isPointNearPlayerBody(point.x, point.y, 42)) score -= (130 - index * 16) * nearWeight;
             const playerDistance = Math.hypot(point.x - this.head.x, point.y - this.head.y);
             if (playerDistance < 150) score -= (150 - playerDistance) * 0.9;
