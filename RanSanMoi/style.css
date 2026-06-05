@@ -73,6 +73,10 @@ body, html {
     background: radial-gradient(circle at center, #103863 0%, #051424 100%);
     padding: 20px;
     z-index: 10;
+    justify-content: flex-start;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Animated Logo */
@@ -80,6 +84,7 @@ body, html {
     text-align: center;
     margin-bottom: 30px;
     position: relative;
+    flex: 0 0 auto;
 }
 
 .game-title {
@@ -125,6 +130,7 @@ body, html {
     flex-direction: column;
     align-items: center;
     gap: 20px;
+    flex: 0 0 auto;
 }
 
 .high-score-tag {
@@ -313,6 +319,7 @@ body, html {
     width: 100%;
     max-width: 480px;
     text-align: center;
+    flex: 0 0 auto;
 }
 
 .instructions-box h3 {
@@ -365,6 +372,54 @@ body, html {
     font-size: 0.7rem;
     color: #94a3b8;
     line-height: 1.2;
+}
+
+@media (max-height: 760px), (max-width: 520px) {
+    #screen-start {
+        padding: 14px;
+        gap: 14px;
+    }
+
+    .logo-container {
+        margin-bottom: 16px;
+    }
+
+    .game-title {
+        font-size: clamp(2.2rem, 9vw, 3rem);
+    }
+
+    .game-subtitle {
+        font-size: 0.85rem;
+        letter-spacing: 2px;
+    }
+
+    .menu-box {
+        padding: 18px;
+        gap: 14px;
+        max-width: min(480px, 100%);
+    }
+
+    .mode-buttons {
+        gap: 8px;
+    }
+
+    .mode-btn {
+        padding: 10px 12px;
+    }
+
+    .mode-btn .mode-title {
+        font-size: 0.98rem;
+    }
+
+    .pulse-btn {
+        font-size: 1.05rem;
+        padding: 13px 24px;
+    }
+
+    .instructions-box {
+        margin-top: 18px;
+        padding-bottom: 18px;
+    }
 }
 
 /* ==========================================================================
