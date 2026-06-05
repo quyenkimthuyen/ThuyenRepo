@@ -1,0 +1,2221 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bữa Cơm Miền Tây Mỗi Ngày</title>
+  <style>
+    :root {
+      --bg: #edf7df;
+      --surface: rgba(251, 255, 240, 0.92);
+      --surface-solid: #fbfff0;
+      --text: #21331c;
+      --muted: #56684a;
+      --primary: #4f7d2c;
+      --primary-dark: #31561d;
+      --accent: #d7a441;
+      --green: #78a942;
+      --green-dark: #31561d;
+      --lotus: #9f6f4d;
+      --river: #91b8a8;
+      --line: rgba(79, 125, 44, 0.2);
+      --shadow: 0 18px 45px rgba(49, 86, 29, 0.14);
+      --radius: 26px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Segoe UI", Arial, sans-serif;
+      line-height: 1.6;
+      background:
+        radial-gradient(circle at top left, rgba(120, 169, 66, 0.26), transparent 32rem),
+        radial-gradient(circle at 86% 12%, rgba(215, 164, 65, 0.18), transparent 24rem),
+        radial-gradient(circle at 20% 88%, rgba(145, 184, 168, 0.18), transparent 26rem),
+        linear-gradient(135deg, #edf7df 0%, #dceecb 48%, #c7dda8 100%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle at 12px 12px, rgba(79, 125, 44, 0.07) 2px, transparent 3px),
+        linear-gradient(rgba(79, 125, 44, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(79, 125, 44, 0.04) 1px, transparent 1px);
+      background-size: 42px 42px, 34px 34px, 34px 34px;
+      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent 74%);
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: min(1140px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 56px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.24fr 0.76fr;
+      gap: 28px;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
+
+    .hero-content,
+    .hero-note,
+    .toolbar,
+    .empty-state {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero-content {
+      position: relative;
+      overflow: hidden;
+      border-radius: 34px;
+      padding: clamp(28px, 5vw, 58px);
+    }
+
+    .hero-content::after {
+      content: "";
+      position: absolute;
+      right: -74px;
+      bottom: -88px;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: rgba(120, 169, 66, 0.18);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border: 1px solid rgba(79, 125, 44, 0.18);
+      border-radius: 999px;
+      color: var(--primary-dark);
+      background: linear-gradient(90deg, #e4f4cf, #fff4cf);
+      font-size: 0.92rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    h1 {
+      max-width: 790px;
+      margin: 18px 0 16px;
+      color: #31561d;
+      font-size: clamp(2.25rem, 6vw, 4.7rem);
+      line-height: 1.04;
+      letter-spacing: -0.055em;
+    }
+
+    .intro {
+      max-width: 740px;
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(1rem, 2vw, 1.18rem);
+    }
+
+    .hero-note {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 288px;
+      border-radius: 34px;
+      padding: 30px;
+      color: #fbfff0;
+      background:
+        linear-gradient(160deg, rgba(49, 86, 29, 0.94), rgba(79, 125, 44, 0.9) 58%, rgba(145, 184, 168, 0.86)),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cpath fill='%23fff7dd' fill-opacity='0.12' d='M24 70c32-43 75-46 111-11-37-10-70 1-111 11Zm6 36c39-22 71-19 102 11-35-7-68-2-102-11Z'/%3E%3C/svg%3E");
+    }
+
+    .hero-note strong {
+      display: block;
+      margin-bottom: 12px;
+      font-size: clamp(1.35rem, 2.5vw, 2rem);
+      line-height: 1.2;
+    }
+
+    .hero-note p {
+      margin: 0;
+      color: rgba(255, 248, 232, 0.88);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 28px;
+    }
+
+    .stat {
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(255, 248, 232, 0.16);
+      text-align: center;
+    }
+
+    .stat b {
+      display: block;
+      font-size: 1.4rem;
+    }
+
+    .stat span {
+      color: rgba(255, 248, 232, 0.78);
+      font-size: 0.86rem;
+    }
+
+    .content-layout {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 14px;
+      z-index: 5;
+      display: grid;
+      gap: 14px;
+      padding: 16px;
+      border-radius: var(--radius);
+    }
+
+    .sidebar-title {
+      margin: 0;
+      color: #31561d;
+      font-size: 1.05rem;
+      font-weight: 900;
+    }
+
+    .sidebar-note {
+      margin: -8px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .search-box {
+      position: relative;
+    }
+
+    .search-box input {
+      width: 100%;
+      border: 1px solid rgba(79, 125, 44, 0.22);
+      border-radius: 18px;
+      outline: none;
+      background: var(--surface-solid);
+      color: var(--text);
+      font: inherit;
+      padding: 15px 16px 15px 46px;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .search-box input:focus {
+      border-color: rgba(79, 125, 44, 0.52);
+      box-shadow: 0 0 0 4px rgba(213, 154, 50, 0.18);
+    }
+
+    .search-box span {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--primary);
+      font-size: 1.1rem;
+    }
+
+    .region-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 10px 14px;
+      border: 1px solid rgba(79, 125, 44, 0.2);
+      border-radius: 999px;
+      background: linear-gradient(90deg, #e4f4cf, #fff4cf);
+      color: var(--primary-dark);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .tag-filters {
+      display: grid;
+      gap: 8px;
+      max-height: calc(100vh - 270px);
+      overflow-y: auto;
+      padding: 2px 4px 2px 0;
+      scrollbar-width: thin;
+    }
+
+    .filter-label {
+      margin: 4px 0 -4px;
+      color: var(--green-dark);
+      font-size: 0.82rem;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .region-filters {
+      display: grid;
+      gap: 8px;
+    }
+
+    .tag-btn {
+      width: 100%;
+      border: 1px solid rgba(79, 125, 44, 0.2);
+      border-radius: 15px;
+      background: rgba(255, 249, 236, 0.92);
+      color: var(--primary-dark);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.92rem;
+      font-weight: 800;
+      padding: 10px 12px;
+      text-align: left;
+      transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .tag-btn:hover,
+    .tag-btn.active,
+    .region-btn:hover,
+    .region-btn.active {
+      background: var(--primary);
+      color: #fbfff0;
+      box-shadow: 0 10px 22px rgba(49, 86, 29, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .region-btn {
+      width: 100%;
+      border: 1px solid rgba(79, 125, 44, 0.2);
+      border-radius: 15px;
+      background: rgba(251, 255, 240, 0.92);
+      color: var(--primary-dark);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.92rem;
+      font-weight: 900;
+      padding: 11px 12px;
+      text-align: left;
+      transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin: 0 0 18px;
+    }
+
+    .section-heading h2 {
+      margin: 0;
+      color: #31561d;
+      font-size: clamp(1.55rem, 3vw, 2.25rem);
+      letter-spacing: -0.035em;
+    }
+
+    .result-count {
+      color: var(--muted);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .combo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(282px, 1fr));
+      gap: 18px;
+    }
+
+    .combo-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 520px;
+      overflow: hidden;
+      border: 1px solid rgba(79, 125, 44, 0.14);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: 0 14px 30px rgba(49, 86, 29, 0.09);
+      transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+    }
+
+    .combo-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 6px;
+      background: linear-gradient(90deg, var(--green-dark), var(--green), var(--accent));
+    }
+
+    .combo-card:hover {
+      border-color: rgba(79, 125, 44, 0.3);
+      box-shadow: 0 22px 45px rgba(49, 86, 29, 0.16);
+      transform: translateY(-5px);
+    }
+
+    .combo-cover {
+      position: relative;
+      height: 168px;
+      margin: 0;
+      overflow: hidden;
+      background: #e4f4cf;
+    }
+
+    .combo-cover img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.35s ease;
+    }
+
+    .combo-card:hover .combo-cover img {
+      transform: scale(1.04);
+    }
+
+    .combo-body {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      padding: 18px;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .combo-number {
+      color: var(--primary-dark);
+      font-weight: 900;
+    }
+
+    .combo-tag {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #e4f4cf, #fff4cf);
+      color: #31561d;
+      font-size: 0.84rem;
+      font-weight: 900;
+      padding: 5px 11px;
+      white-space: nowrap;
+    }
+
+    .combo-card h3 {
+      margin: 0 0 10px;
+      color: #21331c;
+      font-size: 1.24rem;
+      line-height: 1.25;
+      letter-spacing: -0.02em;
+    }
+
+    .description {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 0.96rem;
+    }
+
+    .dish-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin: 0 0 14px;
+      padding: 0;
+      list-style: none;
+    }
+
+    .dish-list li {
+      padding: 10px 11px;
+      border: 1px solid rgba(79, 125, 44, 0.14);
+      border-radius: 16px;
+      background: rgba(246, 255, 231, 0.76);
+    }
+
+    .dish-role {
+      display: block;
+      color: var(--green-dark);
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .dish-name {
+      display: block;
+      margin-top: 2px;
+      color: #21331c;
+      font-weight: 800;
+    }
+
+    .ingredients {
+      margin-top: auto;
+      padding-top: 14px;
+      border-top: 1px dashed rgba(79, 125, 44, 0.24);
+      color: #4d6040;
+      font-size: 0.95rem;
+    }
+
+    .ingredients b {
+      color: var(--green);
+    }
+
+    .empty-state {
+      display: none;
+      border-radius: var(--radius);
+      padding: 38px 24px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .empty-state.show {
+      display: block;
+    }
+
+    .empty-state strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--text);
+      font-size: 1.25rem;
+    }
+
+    footer {
+      margin-top: 38px;
+      color: rgba(33, 51, 28, 0.72);
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 940px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .content-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        position: static;
+      }
+
+      .tag-filters {
+        display: flex;
+        max-height: none;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 6px;
+      }
+
+      .tag-btn {
+        flex: 0 0 auto;
+        width: auto;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+
+      .region-filters {
+        display: flex;
+        overflow-x: auto;
+        padding-bottom: 6px;
+      }
+
+      .region-btn {
+        flex: 0 0 auto;
+        width: auto;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+
+      .combo-grid {
+        grid-template-columns: repeat(auto-fit, minmax(282px, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page {
+        width: min(100% - 22px, 1140px);
+        padding-top: 12px;
+      }
+
+      .hero-content,
+      .hero-note {
+        border-radius: 24px;
+        padding: 24px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .section-heading {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .combo-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .combo-card {
+        min-height: auto;
+      }
+
+      .combo-cover {
+        height: 154px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <section class="hero-content">
+        <span class="eyebrow">Mâm cơm quê Việt</span>
+        <h1>Bữa Cơm Việt Mỗi Ngày</h1>
+        <p class="intro">
+          Một bữa cơm Việt thường không đứng riêng một món, mà là cả mâm cơm có món mặn,
+          món canh, rau, món chua hoặc nước chấm đi kèm. Những combo dưới đây gợi ý các bữa cơm
+          hằng ngày theo từng vùng miền, giữ tinh thần cân vị và hợp với cơm trắng nóng.
+        </p>
+      </section>
+
+      <aside class="hero-note" aria-label="Điểm nhấn thực đơn">
+        <div>
+          <strong>Combo mâm cơm hoàn chỉnh theo nhiều vùng miền</strong>
+          <p>
+            Chọn miền Tây, miền Bắc, miền Trung, Đông Nam Bộ, Tây Nguyên hoặc vùng biển
+            để xem các mâm cơm có cách phối món riêng.
+          </p>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <b id="comboTotal">12</b>
+            <span>combo</span>
+          </div>
+          <div class="stat">
+            <b>4+</b>
+            <span>món mỗi mâm</span>
+          </div>
+          <div class="stat">
+            <b id="regionTotal">6</b>
+            <span>vùng miền</span>
+          </div>
+        </div>
+      </aside>
+    </header>
+
+    <div class="content-layout">
+      <aside class="toolbar" aria-label="Tìm kiếm và lọc combo bữa cơm">
+        <p class="sidebar-title">Lọc nhanh combo</p>
+        <p class="sidebar-note">Chọn phong vị hoặc tìm theo món ăn, nguyên liệu.</p>
+        <label class="search-box">
+          <span aria-hidden="true">⌕</span>
+          <input id="searchInput" type="search" placeholder="Tìm món, nguyên liệu..." autocomplete="off" />
+        </label>
+        <span id="activeRegionName" class="region-pill">Miền Tây Nam Bộ</span>
+        <p class="filter-label">Vùng miền</p>
+        <div id="regionFilters" class="region-filters" role="group" aria-label="Lọc theo vùng miền"></div>
+        <p class="filter-label">Phong vị</p>
+        <div id="tagFilters" class="tag-filters" role="group" aria-label="Lọc theo phong vị"></div>
+      </aside>
+
+      <section class="combo-content">
+        <div class="section-heading">
+          <h2>Gợi ý combo bữa cơm hằng ngày</h2>
+          <span id="resultCount" class="result-count"></span>
+        </div>
+
+        <section id="comboGrid" class="combo-grid" aria-live="polite"></section>
+
+        <section id="emptyState" class="empty-state">
+          <strong>Không tìm thấy combo phù hợp</strong>
+          <span>Hãy thử tìm theo tên món như “tép ram”, “canh chua”, “cá kho” hoặc nguyên liệu quen thuộc.</span>
+        </section>
+      </section>
+    </div>
+
+    <footer>
+      Dữ liệu được viết trực tiếp trong JavaScript và có thể mở rộng thêm nhiều vùng miền khác.
+    </footer>
+  </main>
+
+  <script>
+    const menuRegions = {
+      mienTay: {
+        name: "Miền Tây Nam Bộ",
+        combos: [
+          {
+            title: "Mâm Cơm Canh Khoai Mỡ Tép Ram",
+            tag: "Dân dã",
+            description: "Bữa cơm mềm vị, dễ ăn hằng ngày: canh tím bùi, tép ram mặn ngọt và rau luộc thanh nhẹ.",
+            dishes: [
+              { role: "Món canh", name: "Canh khoai mỡ nấu tôm khô" },
+              { role: "Món mặn", name: "Tép ram nước dừa" },
+              { role: "Rau ăn kèm", name: "Rau lang luộc" },
+              { role: "Nước chấm", name: "Nước mắm ớt tỏi" }
+            ],
+            ingredients: ["khoai mỡ", "tép đồng", "tôm khô", "nước dừa", "rau lang"]
+          },
+          {
+            title: "Mâm Cơm Cá Kho Tộ Canh Chua",
+            tag: "Đưa cơm",
+            description: "Sự kết hợp rất quen của miền Tây: cá kho keo đậm đà đi cùng canh chua thanh mát.",
+            dishes: [
+              { role: "Món mặn", name: "Cá kho tộ" },
+              { role: "Món canh", name: "Canh chua cá lóc" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" },
+              { role: "Món phụ", name: "Trứng vịt luộc" }
+            ],
+            ingredients: ["cá basa", "cá lóc", "me", "bạc hà", "cà chua", "ngò om"]
+          },
+          {
+            title: "Mâm Cơm Mắm Kho Rau Đồng",
+            tag: "Miệt vườn",
+            description: "Mắm kho thơm nồng, ăn cùng rổ rau đồng phong phú tạo nên bữa cơm rất chất Nam Bộ.",
+            dishes: [
+              { role: "Món chính", name: "Mắm kho thịt ba rọi" },
+              { role: "Rau ăn kèm", name: "Rau đồng, bông súng, kèo nèo" },
+              { role: "Món phụ", name: "Cà tím hấp" },
+              { role: "Ăn kèm", name: "Cơm trắng nóng" }
+            ],
+            ingredients: ["mắm cá linh", "thịt ba rọi", "cà tím", "sả", "rau đồng"]
+          },
+          {
+            title: "Mâm Cơm Thịt Kho Trứng Canh Rau",
+            tag: "Gia đình",
+            description: "Bữa cơm ấm bụng, quen thuộc trong nhiều nhà miền Tây với vị béo nhẹ của nước dừa.",
+            dishes: [
+              { role: "Món mặn", name: "Thịt kho trứng nước dừa" },
+              { role: "Món canh", name: "Canh rau tập tàng" },
+              { role: "Món chua", name: "Dưa giá" },
+              { role: "Nước chấm", name: "Nước mắm nguyên chất dằm ớt" }
+            ],
+            ingredients: ["thịt ba rọi", "trứng vịt", "nước dừa", "rau tập tàng", "dưa giá"]
+          },
+          {
+            title: "Mâm Cơm Cá Lóc Nướng Trui",
+            tag: "Sông nước",
+            description: "Cá lóc nướng thơm mùi rơm, cuốn rau vườn hoặc ăn cùng cơm đều rất tròn vị.",
+            dishes: [
+              { role: "Món chính", name: "Cá lóc nướng trui" },
+              { role: "Rau ăn kèm", name: "Rau sống, chuối chát, khế" },
+              { role: "Món canh", name: "Canh bầu nấu tép" },
+              { role: "Nước chấm", name: "Mắm me chua ngọt" }
+            ],
+            ingredients: ["cá lóc", "bầu", "tép", "rau sống", "chuối chát", "mắm me"]
+          },
+          {
+            title: "Mâm Cơm Canh Chua Cá Linh",
+            tag: "Mùa nước nổi",
+            description: "Canh chua cá linh và bông điên điển là hương vị đặc trưng khi con nước tràn đồng.",
+            dishes: [
+              { role: "Món canh", name: "Canh chua cá linh bông điên điển" },
+              { role: "Món mặn", name: "Cá rô kho tiêu" },
+              { role: "Rau ăn kèm", name: "Bông súng trộn chua ngọt" },
+              { role: "Ăn kèm", name: "Cơm trắng và ớt tươi" }
+            ],
+            ingredients: ["cá linh", "bông điên điển", "cá rô", "bông súng", "me", "ngò om"]
+          },
+          {
+            title: "Mâm Cơm Tép Rang Canh Bí",
+            tag: "Nhẹ nhàng",
+            description: "Một combo giản dị cho ngày thường, có vị mặn ngọt của tép và vị canh bí thanh dịu.",
+            dishes: [
+              { role: "Món mặn", name: "Tép rang nước cốt dừa" },
+              { role: "Món canh", name: "Canh bí đỏ nấu tôm" },
+              { role: "Rau ăn kèm", name: "Đậu bắp luộc" },
+              { role: "Nước chấm", name: "Chao hoặc nước mắm ớt" }
+            ],
+            ingredients: ["tép đồng", "nước cốt dừa", "bí đỏ", "tôm", "đậu bắp"]
+          },
+          {
+            title: "Mâm Cơm Lẩu Mắm Rau Đồng",
+            tag: "Sum họp",
+            description: "Một bữa no đủ cho gia đình, nồi lẩu mắm đậm đà cân bằng bằng thật nhiều rau đồng.",
+            dishes: [
+              { role: "Món chính", name: "Lẩu mắm cá sặc" },
+              { role: "Rau ăn kèm", name: "Bông điên điển, rau nhút, bông súng" },
+              { role: "Đạm thêm", name: "Tôm, cá hú, thịt ba rọi" },
+              { role: "Ăn kèm", name: "Bún tươi hoặc cơm trắng" }
+            ],
+            ingredients: ["mắm cá sặc", "cá hú", "tôm", "thịt ba rọi", "bông điên điển", "rau nhút"]
+          },
+          {
+            title: "Mâm Cơm Cá Kèo Kho Rau Răm",
+            tag: "Đậm vị",
+            description: "Cá kèo kho thơm rau răm, thêm canh chua nhẹ giúp bữa cơm cân bằng và dễ ăn hơn.",
+            dishes: [
+              { role: "Món mặn", name: "Cá kèo kho rau răm" },
+              { role: "Món canh", name: "Canh chua bông so đũa" },
+              { role: "Món phụ", name: "Cà pháo hoặc dưa leo" },
+              { role: "Nước chấm", name: "Nước mắm me" }
+            ],
+            ingredients: ["cá kèo", "rau răm", "bông so đũa", "me", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Gà Kho Gừng Rau Luộc",
+            tag: "Ấm bụng",
+            description: "Gà kho gừng thơm ấm, ăn cùng rau luộc và canh tập tàng tạo thành mâm cơm gọn mà đủ chất.",
+            dishes: [
+              { role: "Món mặn", name: "Gà ta kho gừng" },
+              { role: "Món canh", name: "Canh rau tập tàng nấu tôm" },
+              { role: "Rau ăn kèm", name: "Bầu, mướp và đậu rồng luộc" },
+              { role: "Nước chấm", name: "Kho quẹt tôm khô" }
+            ],
+            ingredients: ["gà ta", "gừng", "rau tập tàng", "tôm", "đậu rồng", "tôm khô"]
+          },
+          {
+            title: "Mâm Cơm Cá Rô Chiên Mắm Xoài",
+            tag: "Giòn thơm",
+            description: "Cá rô chiên vàng ăn với mắm xoài chua mặn, thêm tô canh cua rau đay mát lành.",
+            dishes: [
+              { role: "Món mặn", name: "Cá rô đồng chiên giòn" },
+              { role: "Món canh", name: "Canh cua rau đay mồng tơi" },
+              { role: "Món chấm", name: "Mắm xoài xanh" },
+              { role: "Rau ăn kèm", name: "Rau sống vườn nhà" }
+            ],
+            ingredients: ["cá rô", "cua đồng", "rau đay", "mồng tơi", "xoài xanh"]
+          },
+          {
+            title: "Mâm Cơm Ba Khía Trộn Canh Chua",
+            tag: "Vị quê",
+            description: "Ba khía trộn chua ngọt đậm vị, đi cùng canh chua cá đồng và rau luộc cho bữa cơm lạ miệng.",
+            dishes: [
+              { role: "Món mặn", name: "Ba khía trộn tỏi ớt" },
+              { role: "Món canh", name: "Canh chua cá đồng" },
+              { role: "Rau ăn kèm", name: "Rau muống luộc" },
+              { role: "Món phụ", name: "Đậu hũ chiên sả" }
+            ],
+            ingredients: ["ba khía", "cá đồng", "rau muống", "đậu hũ", "sả", "tỏi ớt"]
+          },
+          {
+            title: "Mâm Cơm Cá Hú Kho Thơm Canh Bầu",
+            tag: "Mặn ngọt",
+            description: "Cá hú kho thơm có vị béo, mặn, ngọt và chua nhẹ; tô canh bầu nấu tôm làm bữa cơm dịu lại.",
+            dishes: [
+              { role: "Món mặn", name: "Cá hú kho thơm" },
+              { role: "Món canh", name: "Canh bầu nấu tôm tươi" },
+              { role: "Rau ăn kèm", name: "Rau muống luộc" },
+              { role: "Nước chấm", name: "Nước mắm ớt hiểm" }
+            ],
+            ingredients: ["cá hú", "thơm", "bầu", "tôm tươi", "rau muống"]
+          },
+          {
+            title: "Mâm Cơm Khổ Qua Hầm Cá Sặc Chiên",
+            tag: "Thanh đắng",
+            description: "Canh khổ qua hầm thanh mát, hơi đăng đắng, hợp với cá sặc chiên mặn thơm và dưa chua giòn.",
+            dishes: [
+              { role: "Món canh", name: "Canh khổ qua hầm thịt" },
+              { role: "Món mặn", name: "Cá sặc chiên sả ớt" },
+              { role: "Món chua", name: "Dưa cải chua trộn đường" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["khổ qua", "thịt xay", "cá sặc", "sả", "dưa cải chua"]
+          },
+          {
+            title: "Mâm Cơm Tôm Rim Thịt Canh Chua Tép",
+            tag: "Quen nhà",
+            description: "Tôm rim thịt đậm vị ăn rất hao cơm, còn canh chua tép và rau sống giúp mâm cơm không bị ngấy.",
+            dishes: [
+              { role: "Món mặn", name: "Tôm rim thịt ba rọi" },
+              { role: "Món canh", name: "Canh chua tép bạc hà" },
+              { role: "Rau ăn kèm", name: "Rau sống, giá và rau om" },
+              { role: "Món phụ", name: "Đậu hũ chiên giòn" }
+            ],
+            ingredients: ["tôm đất", "thịt ba rọi", "tép", "bạc hà", "giá", "rau om"]
+          },
+          {
+            title: "Mâm Cơm Cá Linh Kho Mía Rau Luộc",
+            tag: "Mùa nổi",
+            description: "Cá linh kho mía ngọt hậu, xương mềm; rau luộc và canh rau đay tạo cảm giác mộc mạc, cân vị.",
+            dishes: [
+              { role: "Món mặn", name: "Cá linh kho mía" },
+              { role: "Món canh", name: "Canh rau đay nấu tép" },
+              { role: "Rau ăn kèm", name: "Bông súng, đậu bắp luộc" },
+              { role: "Nước chấm", name: "Mắm kho quẹt" }
+            ],
+            ingredients: ["cá linh", "mía lau", "rau đay", "tép", "bông súng", "đậu bắp"]
+          },
+          {
+            title: "Mâm Cơm Vịt Nấu Chao Rau Muống",
+            tag: "Béo thơm",
+            description: "Vịt nấu chao béo và thơm, thường ăn với rau muống, cải xanh; thêm gỏi dưa leo để cân bằng vị đậm.",
+            dishes: [
+              { role: "Món chính", name: "Vịt nấu chao" },
+              { role: "Rau nhúng", name: "Rau muống, cải xanh, nấm rơm" },
+              { role: "Món phụ", name: "Gỏi dưa leo rau răm" },
+              { role: "Ăn kèm", name: "Bún tươi hoặc cơm trắng" }
+            ],
+            ingredients: ["vịt xiêm", "chao", "khoai môn", "rau muống", "nấm rơm", "rau răm"]
+          },
+          {
+            title: "Mâm Cơm Ếch Xào Sả Ớt Canh Cải",
+            tag: "Cay thơm",
+            description: "Ếch đồng xào sả ớt cay thơm, ăn cùng canh cải xanh nấu tôm giúp bữa cơm đậm mà vẫn nhẹ.",
+            dishes: [
+              { role: "Món mặn", name: "Ếch xào sả ớt" },
+              { role: "Món canh", name: "Canh cải xanh nấu tôm" },
+              { role: "Rau ăn kèm", name: "Rau càng cua trộn giấm đường" },
+              { role: "Nước chấm", name: "Muối tiêu chanh" }
+            ],
+            ingredients: ["ếch đồng", "sả", "ớt", "cải xanh", "tôm", "rau càng cua"]
+          },
+          {
+            title: "Mâm Cơm Chuột Đồng Khìa Nước Dừa",
+            tag: "Đồng quê",
+            description: "Chuột đồng khìa nước dừa là món quen ở nhiều vùng ruộng đồng, hợp với canh chua và rau luộc để cân vị béo.",
+            dishes: [
+              { role: "Món mặn", name: "Chuột đồng khìa nước dừa" },
+              { role: "Món canh", name: "Canh chua rau nhút cá rô" },
+              { role: "Rau ăn kèm", name: "Rau luộc thập cẩm" },
+              { role: "Nước chấm", name: "Muối ớt chanh" }
+            ],
+            ingredients: ["chuột đồng", "nước dừa", "cá rô", "rau nhút", "rau vườn"]
+          },
+          {
+            title: "Mâm Cơm Lươn Um Lá Nhàu",
+            tag: "Đặc sản",
+            description: "Lươn um lá nhàu có vị béo, thơm và hơi nhân nhẫn; rau sống, chuối chát và canh chua làm mâm cơm hài hòa.",
+            dishes: [
+              { role: "Món chính", name: "Lươn um lá nhàu nước cốt dừa" },
+              { role: "Món canh", name: "Canh chua bông súng" },
+              { role: "Rau ăn kèm", name: "Rau sống, chuối chát, khế" },
+              { role: "Nước chấm", name: "Nước mắm me" }
+            ],
+            ingredients: ["lươn đồng", "lá nhàu", "nước cốt dừa", "bông súng", "chuối chát"]
+          },
+          {
+            title: "Mâm Cơm Cá Trê Nướng Mắm Gừng",
+            tag: "Mộc mạc",
+            description: "Cá trê nướng da giòn thịt ngọt, chấm mắm gừng cay thơm; canh mồng tơi giúp bữa cơm mát và dễ ăn.",
+            dishes: [
+              { role: "Món mặn", name: "Cá trê nướng chấm mắm gừng" },
+              { role: "Món canh", name: "Canh mồng tơi nấu tép" },
+              { role: "Rau ăn kèm", name: "Dưa leo, rau thơm, khế chua" },
+              { role: "Món phụ", name: "Cà tím nướng mỡ hành" }
+            ],
+            ingredients: ["cá trê", "gừng", "mồng tơi", "tép", "cà tím", "khế"]
+          },
+          {
+            title: "Mâm Cơm Cá Bống Kho Tiêu Canh Bí",
+            tag: "Ngày thường",
+            description: "Cá bống kho tiêu chắc thịt, cay nhẹ; canh bí xanh nấu tôm và dưa giá làm bữa cơm gọn, sạch vị.",
+            dishes: [
+              { role: "Món mặn", name: "Cá bống kho tiêu" },
+              { role: "Món canh", name: "Canh bí xanh nấu tôm" },
+              { role: "Món chua", name: "Dưa giá hẹ" },
+              { role: "Rau ăn kèm", name: "Rau thơm vườn nhà" }
+            ],
+            ingredients: ["cá bống", "tiêu", "bí xanh", "tôm", "giá", "hẹ"]
+          },
+          {
+            title: "Mâm Cơm Gỏi Sầu Đâu Khô Cá Sặc",
+            tag: "An Giang",
+            description: "Gỏi sầu đâu đắng nhẹ trộn khô cá sặc, ăn cùng cháo trắng hoặc cơm và canh chua tạo vị rất miền Tây.",
+            dishes: [
+              { role: "Món chính", name: "Gỏi sầu đâu khô cá sặc" },
+              { role: "Món canh", name: "Canh chua cá basa" },
+              { role: "Món phụ", name: "Trứng chiên hành lá" },
+              { role: "Ăn kèm", name: "Cơm trắng hoặc cháo trắng" }
+            ],
+            ingredients: ["lá sầu đâu", "khô cá sặc", "cá basa", "me", "trứng", "hành lá"]
+          },
+          {
+            title: "Mâm Cơm Cá Chốt Kho Sả Nghệ",
+            tag: "Bình dị",
+            description: "Cá chốt kho sả nghệ thơm, chắc thịt; canh rau ngót nấu tôm và rau luộc giúp mâm cơm nhẹ bụng.",
+            dishes: [
+              { role: "Món mặn", name: "Cá chốt kho sả nghệ" },
+              { role: "Món canh", name: "Canh rau ngót nấu tôm" },
+              { role: "Rau ăn kèm", name: "Bầu luộc và đậu rồng" },
+              { role: "Nước chấm", name: "Nước mắm ớt tỏi" }
+            ],
+            ingredients: ["cá chốt", "sả", "nghệ", "rau ngót", "tôm", "đậu rồng"]
+          },
+          {
+            title: "Mâm Cơm Cá Tra Kho Lạt Rau Sống",
+            tag: "Mềm vị",
+            description: "Cá tra kho lạt ít gắt hơn cá kho tộ, hợp với rau sống, bún hoặc cơm; thêm canh chua để đủ vị.",
+            dishes: [
+              { role: "Món mặn", name: "Cá tra kho lạt" },
+              { role: "Món canh", name: "Canh chua bắp chuối cá đồng" },
+              { role: "Rau ăn kèm", name: "Rau sống, bắp chuối bào, giá" },
+              { role: "Nước chấm", name: "Nước mắm nguyên chất dằm ớt" }
+            ],
+            ingredients: ["cá tra", "bắp chuối", "cá đồng", "giá", "rau sống", "me"]
+          },
+          {
+            title: "Mâm Cơm Cá Lóc Kho Nghệ Canh Chua Rau Muống",
+            tag: "Đậm quê",
+            description: "Cá lóc kho nghệ thơm và chắc thịt, đi với canh chua rau muống để cân lại vị kho đậm.",
+            dishes: [
+              { role: "Món mặn", name: "Cá lóc kho nghệ" },
+              { role: "Món canh", name: "Canh chua rau muống nấu tép" },
+              { role: "Món phụ", name: "Trứng chiên nước mắm" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["cá lóc", "nghệ", "rau muống", "tép", "trứng", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Sườn Ram Mặn Canh Cải",
+            tag: "Hao cơm",
+            description: "Sườn ram mặn ngọt rất hợp cơm trắng, canh cải xanh nấu cá thác lác giúp bữa ăn dịu và thơm hơn.",
+            dishes: [
+              { role: "Món mặn", name: "Sườn non ram mặn" },
+              { role: "Món canh", name: "Canh cải xanh cá thác lác" },
+              { role: "Món chua", name: "Dưa giá hẹ" },
+              { role: "Nước chấm", name: "Nước mắm ớt" }
+            ],
+            ingredients: ["sườn non", "cải xanh", "cá thác lác", "giá", "hẹ"]
+          },
+          {
+            title: "Mâm Cơm Mực Xào Khóm Canh Rau Ngót",
+            tag: "Chua ngọt",
+            description: "Mực xào khóm có vị chua ngọt nhẹ, phối cùng canh rau ngót nấu thịt bằm cho mâm cơm gọn và dễ ăn.",
+            dishes: [
+              { role: "Món xào", name: "Mực xào khóm cần tàu" },
+              { role: "Món canh", name: "Canh rau ngót thịt bằm" },
+              { role: "Món mặn", name: "Cá cơm kho tiêu" },
+              { role: "Rau ăn kèm", name: "Dưa leo, cà chua" }
+            ],
+            ingredients: ["mực", "khóm", "cần tàu", "rau ngót", "thịt bằm", "cá cơm"]
+          },
+          {
+            title: "Mâm Cơm Cá Mè Vinh Kho Lạt",
+            tag: "Sông Tiền",
+            description: "Cá mè vinh kho lạt béo nhẹ, ăn cùng rau sống và canh chua bông súng là kiểu phối rất miền sông nước.",
+            dishes: [
+              { role: "Món mặn", name: "Cá mè vinh kho lạt" },
+              { role: "Món canh", name: "Canh chua bông súng cá đồng" },
+              { role: "Rau ăn kèm", name: "Rau sống, giá, bắp chuối" },
+              { role: "Nước chấm", name: "Nước mắm dằm ớt" }
+            ],
+            ingredients: ["cá mè vinh", "bông súng", "cá đồng", "bắp chuối", "giá"]
+          },
+          {
+            title: "Mâm Cơm Cua Đồng Rang Me Canh Mướp",
+            tag: "Chua dịu",
+            description: "Cua rang me chua ngọt đậm vị, canh mướp nấu tép và rau luộc giúp mâm cơm mềm lại, không quá gắt.",
+            dishes: [
+              { role: "Món mặn", name: "Cua đồng rang me" },
+              { role: "Món canh", name: "Canh mướp hương nấu tép" },
+              { role: "Rau ăn kèm", name: "Rau lang luộc" },
+              { role: "Nước chấm", name: "Kho quẹt tiêu xanh" }
+            ],
+            ingredients: ["cua đồng", "me", "mướp hương", "tép", "rau lang", "tiêu xanh"]
+          },
+          {
+            title: "Mâm Cơm Bông Bí Xào Tỏi Cá Kho",
+            tag: "Vườn nhà",
+            description: "Bông bí xào tỏi giòn ngọt làm món rau chính, đi cùng cá kho tiêu và tô canh bí đao thanh mát.",
+            dishes: [
+              { role: "Món mặn", name: "Cá nục kho tiêu" },
+              { role: "Món xào", name: "Bông bí xào tỏi" },
+              { role: "Món canh", name: "Canh bí đao nấu tôm" },
+              { role: "Món chua", name: "Dưa cải chua" }
+            ],
+            ingredients: ["cá nục", "bông bí", "tỏi", "bí đao", "tôm", "dưa cải"]
+          },
+          {
+            title: "Mâm Cơm Cá Cơm Kho Khế Canh Rau Dền",
+            tag: "Chua thanh",
+            description: "Cá cơm kho khế mặn chua nhẹ, ăn cùng canh rau dền đỏ và đậu bắp luộc rất hợp những ngày nóng.",
+            dishes: [
+              { role: "Món mặn", name: "Cá cơm kho khế" },
+              { role: "Món canh", name: "Canh rau dền nấu tôm" },
+              { role: "Rau ăn kèm", name: "Đậu bắp luộc" },
+              { role: "Món phụ", name: "Đậu hũ chiên chấm nước mắm" }
+            ],
+            ingredients: ["cá cơm", "khế", "rau dền", "tôm", "đậu bắp", "đậu hũ"]
+          },
+          {
+            title: "Mâm Cơm Gà Xé Phay Cháo Đậu Xanh",
+            tag: "Nhẹ bụng",
+            description: "Gà xé phay rau răm ăn cùng cháo đậu xanh hoặc cơm đều hợp, thêm rau luộc để bữa ăn nhẹ mà đủ vị.",
+            dishes: [
+              { role: "Món chính", name: "Gà ta xé phay rau răm" },
+              { role: "Ăn kèm", name: "Cháo đậu xanh hoặc cơm trắng" },
+              { role: "Rau ăn kèm", name: "Bắp cải, rau răm, hành tây" },
+              { role: "Nước chấm", name: "Muối tiêu chanh" }
+            ],
+            ingredients: ["gà ta", "rau răm", "đậu xanh", "bắp cải", "hành tây"]
+          },
+          {
+            title: "Mâm Cơm Lòng Gà Xào Mướp Canh Chua",
+            tag: "Bình dân",
+            description: "Lòng gà xào mướp ngọt mềm là món nhà quê quen thuộc, thêm canh chua cá đồng để mâm cơm sáng vị.",
+            dishes: [
+              { role: "Món xào", name: "Lòng gà xào mướp hương" },
+              { role: "Món canh", name: "Canh chua cá đồng" },
+              { role: "Món mặn", name: "Tép rang mặn" },
+              { role: "Rau ăn kèm", name: "Rau thơm và dưa leo" }
+            ],
+            ingredients: ["lòng gà", "mướp hương", "cá đồng", "tép", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Cá Tai Tượng Chiên Xù",
+            tag: "Đãi khách",
+            description: "Cá tai tượng chiên xù thường xuất hiện trong bữa đãi khách miền Tây, ăn kèm rau cuốn và canh chua cho đỡ ngấy.",
+            dishes: [
+              { role: "Món chính", name: "Cá tai tượng chiên xù" },
+              { role: "Món canh", name: "Canh chua tôm bông súng" },
+              { role: "Rau ăn kèm", name: "Rau sống, bánh tráng, bún" },
+              { role: "Nước chấm", name: "Nước mắm me" }
+            ],
+            ingredients: ["cá tai tượng", "tôm", "bông súng", "bánh tráng", "bún", "mắm me"]
+          },
+          {
+            title: "Mâm Cơm Bông Điên Điển Xào Tép",
+            tag: "Mùa nước",
+            description: "Bông điên điển xào tép giòn ngọt, đi với cá kho và canh chua tạo mâm cơm mùa nước nổi rất hài hòa.",
+            dishes: [
+              { role: "Món xào", name: "Bông điên điển xào tép" },
+              { role: "Món mặn", name: "Cá linh kho tiêu" },
+              { role: "Món canh", name: "Canh chua bông súng" },
+              { role: "Ăn kèm", name: "Cơm trắng nóng" }
+            ],
+            ingredients: ["bông điên điển", "tép", "cá linh", "bông súng", "me"]
+          },
+          {
+            title: "Mâm Cơm Heo Quay Kho Cải Chua",
+            tag: "Tận dụng",
+            description: "Heo quay kho cải chua là món quen khi nhà còn heo quay, vị béo được cải chua và canh rau làm cân lại.",
+            dishes: [
+              { role: "Món mặn", name: "Heo quay kho cải chua" },
+              { role: "Món canh", name: "Canh hẹ đậu hũ non" },
+              { role: "Rau ăn kèm", name: "Rau sống và dưa leo" },
+              { role: "Nước chấm", name: "Nước tương ớt" }
+            ],
+            ingredients: ["heo quay", "cải chua", "hẹ", "đậu hũ non", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Cá Dứa Kho Tộ Canh Chua",
+            tag: "Béo thơm",
+            description: "Cá dứa kho tộ béo và thơm, canh chua bạc hà cùng rau luộc giúp bữa cơm đậm mà vẫn dễ ăn.",
+            dishes: [
+              { role: "Món mặn", name: "Cá dứa kho tộ" },
+              { role: "Món canh", name: "Canh chua bạc hà cà chua" },
+              { role: "Rau ăn kèm", name: "Bông cải, đậu bắp luộc" },
+              { role: "Nước chấm", name: "Nước mắm ớt tỏi" }
+            ],
+            ingredients: ["cá dứa", "bạc hà", "cà chua", "đậu bắp", "bông cải"]
+          },
+          {
+            title: "Mâm Cơm Củ Hủ Dừa Xào Tôm",
+            tag: "Bến Tre",
+            description: "Củ hủ dừa xào tôm giòn ngọt, thêm thịt kho tiêu và canh rau tập tàng thành mâm cơm miệt vườn tròn vị.",
+            dishes: [
+              { role: "Món xào", name: "Củ hủ dừa xào tôm" },
+              { role: "Món mặn", name: "Thịt ba rọi kho tiêu" },
+              { role: "Món canh", name: "Canh rau tập tàng" },
+              { role: "Món chua", name: "Dưa giá" }
+            ],
+            ingredients: ["củ hủ dừa", "tôm", "thịt ba rọi", "rau tập tàng", "dưa giá"]
+          },
+          {
+            title: "Mâm Cơm Cá Đuối Xào Lăn",
+            tag: "Ven biển",
+            description: "Cá đuối xào lăn thơm sả nghệ, vị béo nhẹ nên hợp với canh chua và rau sống để bữa ăn đỡ nặng.",
+            dishes: [
+              { role: "Món chính", name: "Cá đuối xào lăn" },
+              { role: "Món canh", name: "Canh chua cá kèo" },
+              { role: "Rau ăn kèm", name: "Rau sống, giá, bắp chuối" },
+              { role: "Nước chấm", name: "Muối ớt chanh" }
+            ],
+            ingredients: ["cá đuối", "sả", "nghệ", "cá kèo", "giá", "bắp chuối"]
+          }
+        ]
+      },
+      mienBac: {
+        name: "Miền Bắc",
+        combos: [
+          {
+            title: "Mâm Cơm Cá Kho Riềng Canh Cua",
+            tag: "Thanh vị",
+            description: "Cá kho riềng đậm mà thơm, đi cùng canh cua rau đay và cà pháo tạo mâm cơm Bắc rất quen.",
+            dishes: [
+              { role: "Món mặn", name: "Cá trắm kho riềng" },
+              { role: "Món canh", name: "Canh cua rau đay mồng tơi" },
+              { role: "Món chua", name: "Cà pháo muối" },
+              { role: "Rau ăn kèm", name: "Rau muống luộc chấm tương" }
+            ],
+            ingredients: ["cá trắm", "riềng", "cua đồng", "rau đay", "cà pháo", "rau muống"]
+          },
+          {
+            title: "Mâm Cơm Thịt Rang Cháy Cạnh",
+            tag: "Nhà quê",
+            description: "Thịt rang cạnh mặn thơm, canh rau ngót ngọt dịu và dưa cải giúp bữa cơm cân bằng.",
+            dishes: [
+              { role: "Món mặn", name: "Thịt ba chỉ rang cháy cạnh" },
+              { role: "Món canh", name: "Canh rau ngót nấu thịt bằm" },
+              { role: "Món chua", name: "Dưa cải muối" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["thịt ba chỉ", "rau ngót", "dưa cải", "hành khô", "nước mắm"]
+          },
+          {
+            title: "Mâm Cơm Đậu Phụ Sốt Cà Chả Lá Lốt",
+            tag: "Dễ ăn",
+            description: "Đậu phụ sốt cà mềm dịu, chả lá lốt thơm béo, thêm canh bí xanh cho mâm cơm nhẹ và hài hòa.",
+            dishes: [
+              { role: "Món mặn", name: "Chả lá lốt" },
+              { role: "Món phụ", name: "Đậu phụ sốt cà chua" },
+              { role: "Món canh", name: "Canh bí xanh nấu tôm" },
+              { role: "Nước chấm", name: "Nước mắm tỏi ớt" }
+            ],
+            ingredients: ["đậu phụ", "cà chua", "lá lốt", "thịt xay", "bí xanh", "tôm"]
+          },
+          {
+            title: "Mâm Cơm Cá Rán Nước Mắm Gừng",
+            tag: "Giòn thơm",
+            description: "Cá rán giòn chấm mắm gừng, ăn cùng canh cải và nộm su hào cà rốt để bớt ngấy.",
+            dishes: [
+              { role: "Món mặn", name: "Cá rô phi rán giòn" },
+              { role: "Món canh", name: "Canh cải xanh nấu gừng" },
+              { role: "Món chua", name: "Nộm su hào cà rốt" },
+              { role: "Nước chấm", name: "Nước mắm gừng" }
+            ],
+            ingredients: ["cá rô phi", "gừng", "cải xanh", "su hào", "cà rốt"]
+          },
+          {
+            title: "Mâm Cơm Sườn Chua Ngọt Rau Luộc",
+            tag: "Hài hòa",
+            description: "Sườn chua ngọt có vị đậm và sáng, hợp với rau luộc, nước luộc rau và dưa góp.",
+            dishes: [
+              { role: "Món mặn", name: "Sườn xào chua ngọt" },
+              { role: "Món canh", name: "Nước rau muống luộc dầm sấu" },
+              { role: "Rau ăn kèm", name: "Rau muống luộc" },
+              { role: "Món chua", name: "Dưa góp đu đủ cà rốt" }
+            ],
+            ingredients: ["sườn non", "rau muống", "sấu", "đu đủ", "cà rốt"]
+          }
+        ]
+      },
+      mienTrung: {
+        name: "Miền Trung",
+        combos: [
+          {
+            title: "Mâm Cơm Cá Nục Kho Ớt Canh Chua",
+            tag: "Đậm cay",
+            description: "Cá nục kho cay mặn đặc trưng miền Trung, đi với canh chua và rau sống để cân vị.",
+            dishes: [
+              { role: "Món mặn", name: "Cá nục kho ớt" },
+              { role: "Món canh", name: "Canh chua cá biển" },
+              { role: "Rau ăn kèm", name: "Rau sống, giá, bắp chuối" },
+              { role: "Nước chấm", name: "Nước mắm ớt tỏi" }
+            ],
+            ingredients: ["cá nục", "ớt", "cà chua", "me", "rau sống", "bắp chuối"]
+          },
+          {
+            title: "Mâm Cơm Thịt Luộc Mắm Nêm",
+            tag: "Mắm nêm",
+            description: "Thịt luộc cuốn rau sống chấm mắm nêm, thêm canh rau ngót để bữa cơm đỡ gắt và dễ ăn.",
+            dishes: [
+              { role: "Món chính", name: "Thịt heo luộc" },
+              { role: "Rau ăn kèm", name: "Rau sống, dưa leo, chuối chát" },
+              { role: "Món canh", name: "Canh rau ngót nấu tôm" },
+              { role: "Nước chấm", name: "Mắm nêm pha thơm ớt" }
+            ],
+            ingredients: ["thịt heo", "mắm nêm", "thơm", "rau sống", "chuối chát", "rau ngót"]
+          },
+          {
+            title: "Mâm Cơm Tôm Rim Mặn Canh Bí",
+            tag: "Gọn vị",
+            description: "Tôm rim đậm đà, canh bí đao thanh mát và dưa món tạo bữa cơm miền Trung giản dị.",
+            dishes: [
+              { role: "Món mặn", name: "Tôm rim mặn" },
+              { role: "Món canh", name: "Canh bí đao nấu thịt" },
+              { role: "Món chua", name: "Dưa món" },
+              { role: "Rau ăn kèm", name: "Rau luộc theo mùa" }
+            ],
+            ingredients: ["tôm", "bí đao", "thịt bằm", "dưa món", "rau luộc"]
+          },
+          {
+            title: "Mâm Cơm Gà Kho Sả Nghệ",
+            tag: "Thơm cay",
+            description: "Gà kho sả nghệ thơm, hơi cay, hợp với canh mồng tơi và rau sống để mâm cơm dịu hơn.",
+            dishes: [
+              { role: "Món mặn", name: "Gà kho sả nghệ" },
+              { role: "Món canh", name: "Canh mồng tơi nấu tôm" },
+              { role: "Rau ăn kèm", name: "Rau sống và dưa leo" },
+              { role: "Món chua", name: "Củ kiệu hoặc dưa cải" }
+            ],
+            ingredients: ["gà", "sả", "nghệ", "mồng tơi", "tôm", "dưa cải"]
+          },
+          {
+            title: "Mâm Cơm Hến Xào Xúc Bánh Tráng",
+            tag: "Xứ Huế",
+            description: "Hến xào thơm rau răm ăn cùng bánh tráng, thêm canh rau tập tàng tạo mâm cơm nhẹ mà đậm.",
+            dishes: [
+              { role: "Món chính", name: "Hến xào hành rau răm" },
+              { role: "Ăn kèm", name: "Bánh tráng nướng" },
+              { role: "Món canh", name: "Canh rau tập tàng" },
+              { role: "Nước chấm", name: "Nước mắm ớt xanh" }
+            ],
+            ingredients: ["hến", "rau răm", "bánh tráng", "rau tập tàng", "ớt xanh"]
+          }
+        ]
+      },
+      dongNamBo: {
+        name: "Đông Nam Bộ",
+        combos: [
+          {
+            title: "Mâm Cơm Thịt Kho Trứng Canh Khổ Qua",
+            tag: "Gia đình",
+            description: "Thịt kho trứng nước dừa ngọt dịu, canh khổ qua thanh đắng giúp bữa cơm cân bằng.",
+            dishes: [
+              { role: "Món mặn", name: "Thịt kho trứng nước dừa" },
+              { role: "Món canh", name: "Canh khổ qua nhồi thịt" },
+              { role: "Món chua", name: "Dưa giá" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["thịt ba rọi", "trứng vịt", "nước dừa", "khổ qua", "dưa giá"]
+          },
+          {
+            title: "Mâm Cơm Kho Quẹt Rau Luộc",
+            tag: "Dân dã",
+            description: "Kho quẹt tôm khô tóp mỡ đậm vị, ăn với rau luộc và canh bầu để mâm cơm không nặng.",
+            dishes: [
+              { role: "Món chấm", name: "Kho quẹt tôm khô" },
+              { role: "Rau ăn kèm", name: "Rau củ luộc thập cẩm" },
+              { role: "Món canh", name: "Canh bầu nấu tôm" },
+              { role: "Món phụ", name: "Trứng chiên hành" }
+            ],
+            ingredients: ["tôm khô", "tóp mỡ", "rau củ", "bầu", "tôm", "trứng"]
+          },
+          {
+            title: "Mâm Cơm Bò Xào Lá Lốt",
+            tag: "Thơm vườn",
+            description: "Bò xào lá lốt thơm đậm, ăn cùng canh chua và rau sống tạo bữa cơm dễ ăn.",
+            dishes: [
+              { role: "Món mặn", name: "Bò xào lá lốt" },
+              { role: "Món canh", name: "Canh chua cá hú" },
+              { role: "Rau ăn kèm", name: "Rau sống, giá, dưa leo" },
+              { role: "Nước chấm", name: "Nước mắm tỏi ớt" }
+            ],
+            ingredients: ["thịt bò", "lá lốt", "cá hú", "me", "giá", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Gà Chiên Nước Mắm",
+            tag: "Đưa cơm",
+            description: "Gà chiên nước mắm mặn ngọt, phối với canh cải và dưa chua để đỡ ngấy.",
+            dishes: [
+              { role: "Món mặn", name: "Gà chiên nước mắm" },
+              { role: "Món canh", name: "Canh cải xanh nấu tôm" },
+              { role: "Món chua", name: "Dưa cải chua" },
+              { role: "Rau ăn kèm", name: "Xà lách, cà chua" }
+            ],
+            ingredients: ["gà", "nước mắm", "cải xanh", "tôm", "dưa cải", "xà lách"]
+          },
+          {
+            title: "Mâm Cơm Cá Diêu Hồng Hấp Xì Dầu",
+            tag: "Thanh nhẹ",
+            description: "Cá hấp xì dầu mềm thơm, thêm rau luộc và canh tần ô tạo mâm cơm nhẹ nhưng đủ vị.",
+            dishes: [
+              { role: "Món chính", name: "Cá diêu hồng hấp xì dầu" },
+              { role: "Món canh", name: "Canh tần ô nấu thịt bằm" },
+              { role: "Rau ăn kèm", name: "Cải thìa luộc" },
+              { role: "Nước chấm", name: "Nước tương gừng" }
+            ],
+            ingredients: ["cá diêu hồng", "xì dầu", "gừng", "tần ô", "cải thìa"]
+          }
+        ]
+      },
+      tayNguyen: {
+        name: "Tây Nguyên",
+        combos: [
+          {
+            title: "Mâm Cơm Gà Nướng Cơm Lam",
+            tag: "Núi rừng",
+            description: "Gà nướng thơm, cơm lam dẻo, thêm muối é và canh lá bép tạo mâm cơm đặc trưng Tây Nguyên.",
+            dishes: [
+              { role: "Món chính", name: "Gà nướng mắc khén" },
+              { role: "Ăn kèm", name: "Cơm lam" },
+              { role: "Món canh", name: "Canh lá bép nấu thịt" },
+              { role: "Nước chấm", name: "Muối é ớt xanh" }
+            ],
+            ingredients: ["gà", "gạo nếp", "ống tre", "lá bép", "muối é", "ớt xanh"]
+          },
+          {
+            title: "Mâm Cơm Heo Rẫy Nướng Rau Rừng",
+            tag: "Mộc mạc",
+            description: "Heo rẫy nướng đậm khói, rau rừng luộc và canh măng giúp bữa cơm mộc mà chắc vị.",
+            dishes: [
+              { role: "Món mặn", name: "Heo rẫy nướng" },
+              { role: "Món canh", name: "Canh măng rừng nấu xương" },
+              { role: "Rau ăn kèm", name: "Rau rừng luộc" },
+              { role: "Nước chấm", name: "Muối kiến vàng" }
+            ],
+            ingredients: ["heo rẫy", "măng rừng", "xương heo", "rau rừng", "muối kiến vàng"]
+          },
+          {
+            title: "Mâm Cơm Cá Suối Chiên Giòn",
+            tag: "Suối rừng",
+            description: "Cá suối chiên giòn ăn với rau rừng và canh chua lá giang tạo bữa cơm thanh mà lạ miệng.",
+            dishes: [
+              { role: "Món mặn", name: "Cá suối chiên giòn" },
+              { role: "Món canh", name: "Canh chua lá giang" },
+              { role: "Rau ăn kèm", name: "Rau rừng luộc" },
+              { role: "Nước chấm", name: "Muối ớt chanh" }
+            ],
+            ingredients: ["cá suối", "lá giang", "rau rừng", "ớt", "chanh"]
+          },
+          {
+            title: "Mâm Cơm Bò Xào Lá Bép",
+            tag: "Đậm núi",
+            description: "Bò xào lá bép thơm vị rừng, đi với canh bí đỏ và cà đắng nướng cho mâm cơm đậm bản sắc.",
+            dishes: [
+              { role: "Món mặn", name: "Bò xào lá bép" },
+              { role: "Món canh", name: "Canh bí đỏ nấu thịt" },
+              { role: "Món phụ", name: "Cà đắng nướng" },
+              { role: "Ăn kèm", name: "Cơm trắng hoặc cơm lam" }
+            ],
+            ingredients: ["thịt bò", "lá bép", "bí đỏ", "cà đắng", "gạo nếp"]
+          },
+          {
+            title: "Mâm Cơm Gà Kho Sả Ớt Cà Đắng",
+            tag: "Cay thơm",
+            description: "Gà kho sả ớt đậm mùi, cà đắng và canh rau rừng giúp bữa cơm có vị núi rừng rõ hơn.",
+            dishes: [
+              { role: "Món mặn", name: "Gà kho sả ớt" },
+              { role: "Món canh", name: "Canh rau rừng nấu tôm khô" },
+              { role: "Món phụ", name: "Cà đắng xào tỏi" },
+              { role: "Nước chấm", name: "Muối ớt xanh" }
+            ],
+            ingredients: ["gà", "sả", "ớt", "rau rừng", "tôm khô", "cà đắng"]
+          }
+        ]
+      },
+      duyenHai: {
+        name: "Vùng Biển Duyên Hải",
+        combos: [
+          {
+            title: "Mâm Cơm Cá Thu Kho Canh Chua Cá Bớp",
+            tag: "Biển nhà",
+            description: "Cá thu kho chắc thịt, canh chua cá bớp thanh vị biển, thêm rau sống để bữa cơm hài hòa.",
+            dishes: [
+              { role: "Món mặn", name: "Cá thu kho thơm" },
+              { role: "Món canh", name: "Canh chua cá bớp" },
+              { role: "Rau ăn kèm", name: "Rau sống và dưa leo" },
+              { role: "Nước chấm", name: "Nước mắm ớt tỏi" }
+            ],
+            ingredients: ["cá thu", "thơm", "cá bớp", "me", "rau sống", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Mực Xào Dứa Tôm Hấp",
+            tag: "Tươi ngọt",
+            description: "Mực xào dứa chua ngọt, tôm hấp giữ vị tươi, canh rong biển giúp mâm cơm nhẹ và mát.",
+            dishes: [
+              { role: "Món xào", name: "Mực xào dứa cần tàu" },
+              { role: "Món phụ", name: "Tôm hấp sả" },
+              { role: "Món canh", name: "Canh rong biển nấu đậu hũ" },
+              { role: "Nước chấm", name: "Muối tiêu chanh" }
+            ],
+            ingredients: ["mực", "dứa", "tôm", "sả", "rong biển", "đậu hũ"]
+          },
+          {
+            title: "Mâm Cơm Cá Bạc Má Chiên Mắm Xoài",
+            tag: "Giòn chua",
+            description: "Cá bạc má chiên giòn chấm mắm xoài, thêm canh rau cải nấu nghêu để bữa cơm sáng vị biển.",
+            dishes: [
+              { role: "Món mặn", name: "Cá bạc má chiên giòn" },
+              { role: "Món canh", name: "Canh cải nấu nghêu" },
+              { role: "Món chấm", name: "Mắm xoài xanh" },
+              { role: "Rau ăn kèm", name: "Rau sống và cà chua" }
+            ],
+            ingredients: ["cá bạc má", "nghêu", "cải xanh", "xoài xanh", "rau sống"]
+          },
+          {
+            title: "Mâm Cơm Ghẹ Hấp Rau Muống Xào Tỏi",
+            tag: "Hải sản",
+            description: "Ghẹ hấp ngọt thịt, rau muống xào tỏi và canh chua cá biển tạo mâm cơm hải sản cân bằng.",
+            dishes: [
+              { role: "Món chính", name: "Ghẹ hấp sả" },
+              { role: "Món xào", name: "Rau muống xào tỏi" },
+              { role: "Món canh", name: "Canh chua cá biển" },
+              { role: "Nước chấm", name: "Muối ớt xanh" }
+            ],
+            ingredients: ["ghẹ", "sả", "rau muống", "tỏi", "cá biển", "ớt xanh"]
+          },
+          {
+            title: "Mâm Cơm Cá Đục Kho Tiêu Canh Nghêu",
+            tag: "Ven biển",
+            description: "Cá đục kho tiêu mặn thơm, canh nghêu rau muống ngọt thanh, thêm dưa leo để bữa cơm gọn vị.",
+            dishes: [
+              { role: "Món mặn", name: "Cá đục kho tiêu" },
+              { role: "Món canh", name: "Canh nghêu rau muống" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" },
+              { role: "Món phụ", name: "Trứng chiên hành" }
+            ],
+            ingredients: ["cá đục", "tiêu", "nghêu", "rau muống", "dưa leo", "trứng"]
+          }
+        ]
+      },
+      tayBac: {
+        name: "Tây Bắc",
+        combos: [
+          {
+            title: "Mâm Cơm Thịt Lợn Gác Bếp Canh Măng",
+            tag: "Khói bếp",
+            description: "Thịt gác bếp đậm mùi khói, canh măng chua và rau rừng luộc giúp bữa cơm bớt khô, cân vị mặn.",
+            dishes: [
+              { role: "Món mặn", name: "Thịt lợn gác bếp xé nhỏ" },
+              { role: "Món canh", name: "Canh măng chua nấu xương" },
+              { role: "Rau ăn kèm", name: "Rau rừng luộc" },
+              { role: "Nước chấm", name: "Chẳm chéo" }
+            ],
+            ingredients: ["thịt lợn gác bếp", "măng chua", "xương heo", "rau rừng", "mắc khén", "hạt dổi"]
+          },
+          {
+            title: "Mâm Cơm Cá Suối Nướng Pa Pỉnh Tộp",
+            tag: "Suối núi",
+            description: "Cá suối nướng thơm mắc khén, ăn cùng xôi nếp và canh cải mèo tạo bữa cơm Tây Bắc rõ hương núi.",
+            dishes: [
+              { role: "Món chính", name: "Cá suối nướng pa pỉnh tộp" },
+              { role: "Ăn kèm", name: "Xôi nếp nương" },
+              { role: "Món canh", name: "Canh cải mèo nấu gừng" },
+              { role: "Nước chấm", name: "Chẳm chéo ớt nướng" }
+            ],
+            ingredients: ["cá suối", "mắc khén", "hạt dổi", "nếp nương", "cải mèo", "gừng"]
+          },
+          {
+            title: "Mâm Cơm Gà Đồi Rang Gừng",
+            tag: "Ấm bụng",
+            description: "Gà đồi rang gừng chắc thịt, thêm canh bí đỏ và rau cải luộc để bữa cơm ấm mà không nặng.",
+            dishes: [
+              { role: "Món mặn", name: "Gà đồi rang gừng" },
+              { role: "Món canh", name: "Canh bí đỏ nấu xương" },
+              { role: "Rau ăn kèm", name: "Cải mèo luộc" },
+              { role: "Nước chấm", name: "Muối mắc khén" }
+            ],
+            ingredients: ["gà đồi", "gừng", "bí đỏ", "cải mèo", "mắc khén"]
+          },
+          {
+            title: "Mâm Cơm Lạp Xưởng Gác Bếp Rau Cải",
+            tag: "Mộc vị",
+            description: "Lạp xưởng gác bếp béo thơm, cần rau cải và canh măng để làm dịu vị đậm của món khô.",
+            dishes: [
+              { role: "Món mặn", name: "Lạp xưởng gác bếp áp chảo" },
+              { role: "Món canh", name: "Canh măng khô nấu thịt" },
+              { role: "Rau ăn kèm", name: "Cải mèo xào tỏi" },
+              { role: "Món chua", name: "Dưa cải muối" }
+            ],
+            ingredients: ["lạp xưởng gác bếp", "măng khô", "thịt heo", "cải mèo", "dưa cải"]
+          },
+          {
+            title: "Mâm Cơm Trâu Xào Lá Lốt",
+            tag: "Đậm núi",
+            description: "Thịt trâu xào lá lốt đậm và thơm, phối với canh rau rừng và xôi nếp để bữa cơm chắc bụng.",
+            dishes: [
+              { role: "Món mặn", name: "Thịt trâu xào lá lốt" },
+              { role: "Món canh", name: "Canh rau rừng nấu tôm khô" },
+              { role: "Ăn kèm", name: "Xôi nếp nương" },
+              { role: "Nước chấm", name: "Muối ớt mắc khén" }
+            ],
+            ingredients: ["thịt trâu", "lá lốt", "rau rừng", "tôm khô", "nếp nương", "mắc khén"]
+          }
+        ]
+      },
+      dongBac: {
+        name: "Đông Bắc",
+        combos: [
+          {
+            title: "Mâm Cơm Vịt Quay Mắc Mật Canh Măng",
+            tag: "Cao Bằng",
+            description: "Vịt quay mắc mật thơm béo, canh măng chua và rau cải luộc làm mâm cơm đỡ ngấy.",
+            dishes: [
+              { role: "Món chính", name: "Vịt quay lá mắc mật" },
+              { role: "Món canh", name: "Canh măng chua nấu xương" },
+              { role: "Rau ăn kèm", name: "Rau cải luộc" },
+              { role: "Nước chấm", name: "Xì dầu tỏi ớt" }
+            ],
+            ingredients: ["vịt", "lá mắc mật", "măng chua", "xương heo", "rau cải"]
+          },
+          {
+            title: "Mâm Cơm Khâu Nhục Rau Cải",
+            tag: "Lạng Sơn",
+            description: "Khâu nhục béo mềm cần rau cải, dưa chua và canh thanh để cân lại độ ngậy.",
+            dishes: [
+              { role: "Món mặn", name: "Khâu nhục" },
+              { role: "Món canh", name: "Canh cải xanh nấu gừng" },
+              { role: "Món chua", name: "Dưa cải muối" },
+              { role: "Rau ăn kèm", name: "Rau sống và dưa leo" }
+            ],
+            ingredients: ["thịt ba chỉ", "khoai môn", "cải xanh", "gừng", "dưa cải"]
+          },
+          {
+            title: "Mâm Cơm Cá Suối Kho Riềng",
+            tag: "Bản làng",
+            description: "Cá suối kho riềng chắc vị, ăn với canh rau bò khai và cà muối tạo bữa cơm vùng núi giản dị.",
+            dishes: [
+              { role: "Món mặn", name: "Cá suối kho riềng" },
+              { role: "Món canh", name: "Canh rau bò khai nấu tôm" },
+              { role: "Món chua", name: "Cà muối" },
+              { role: "Rau ăn kèm", name: "Rau cải luộc" }
+            ],
+            ingredients: ["cá suối", "riềng", "rau bò khai", "tôm", "cà muối", "rau cải"]
+          },
+          {
+            title: "Mâm Cơm Lợn Bản Nướng Móc Mật",
+            tag: "Thơm lá",
+            description: "Lợn bản nướng lá móc mật đậm hương, thêm canh bí và rau luộc để bữa cơm tròn vị.",
+            dishes: [
+              { role: "Món chính", name: "Lợn bản nướng lá móc mật" },
+              { role: "Món canh", name: "Canh bí xanh nấu xương" },
+              { role: "Rau ăn kèm", name: "Rau cải luộc" },
+              { role: "Nước chấm", name: "Muối tiêu chanh" }
+            ],
+            ingredients: ["lợn bản", "lá móc mật", "bí xanh", "xương heo", "rau cải"]
+          },
+          {
+            title: "Mâm Cơm Đậu Phụ Sốt Cà Rau Bò Khai",
+            tag: "Ngày thường",
+            description: "Đậu phụ sốt cà mềm, rau bò khai xào tỏi thơm nhẹ, canh su su giúp mâm cơm vùng cao dễ ăn.",
+            dishes: [
+              { role: "Món phụ", name: "Đậu phụ sốt cà chua" },
+              { role: "Món xào", name: "Rau bò khai xào tỏi" },
+              { role: "Món canh", name: "Canh su su nấu thịt bằm" },
+              { role: "Món mặn", name: "Trứng rán hành" }
+            ],
+            ingredients: ["đậu phụ", "cà chua", "rau bò khai", "su su", "thịt bằm", "trứng"]
+          }
+        ]
+      },
+      bacTrungBo: {
+        name: "Bắc Trung Bộ",
+        combos: [
+          {
+            title: "Mâm Cơm Cá Kho Nghệ Nhút Thanh Chương",
+            tag: "Nghệ An",
+            description: "Cá kho nghệ đậm màu, nhút mít chua giòn và canh rau tập tàng làm mâm cơm Bắc Trung Bộ rõ vị quê.",
+            dishes: [
+              { role: "Món mặn", name: "Cá kho nghệ" },
+              { role: "Món chua", name: "Nhút Thanh Chương" },
+              { role: "Món canh", name: "Canh rau tập tàng nấu tôm" },
+              { role: "Nước chấm", name: "Nước mắm ớt" }
+            ],
+            ingredients: ["cá đồng", "nghệ", "nhút mít", "rau tập tàng", "tôm"]
+          },
+          {
+            title: "Mâm Cơm Lươn Xào Nghệ Canh Mồng Tơi",
+            tag: "Xứ Nghệ",
+            description: "Lươn xào nghệ cay thơm, cần canh mồng tơi và rau luộc để cân vị nóng và béo.",
+            dishes: [
+              { role: "Món mặn", name: "Lươn xào nghệ" },
+              { role: "Món canh", name: "Canh mồng tơi nấu tôm" },
+              { role: "Rau ăn kèm", name: "Rau muống luộc" },
+              { role: "Món chua", name: "Dưa cải muối" }
+            ],
+            ingredients: ["lươn", "nghệ", "mồng tơi", "tôm", "rau muống", "dưa cải"]
+          },
+          {
+            title: "Mâm Cơm Hến Xào Canh Chua Khế",
+            tag: "Sông Lam",
+            description: "Hến xào xúc bánh đa giòn, canh chua khế và rau sống tạo bữa cơm thanh mà đậm.",
+            dishes: [
+              { role: "Món chính", name: "Hến xào hành răm" },
+              { role: "Ăn kèm", name: "Bánh đa nướng" },
+              { role: "Món canh", name: "Canh chua khế nấu cá" },
+              { role: "Rau ăn kèm", name: "Rau sống và giá" }
+            ],
+            ingredients: ["hến", "rau răm", "bánh đa", "khế", "cá", "giá"]
+          },
+          {
+            title: "Mâm Cơm Thịt Kho Mắm Ruốc",
+            tag: "Đậm vị",
+            description: "Thịt kho mắm ruốc mặn thơm, ăn với rau luộc và canh bí để làm mềm khẩu vị.",
+            dishes: [
+              { role: "Món mặn", name: "Thịt ba chỉ kho mắm ruốc" },
+              { role: "Rau ăn kèm", name: "Rau lang luộc" },
+              { role: "Món canh", name: "Canh bí xanh nấu tôm" },
+              { role: "Món chua", name: "Dưa món" }
+            ],
+            ingredients: ["thịt ba chỉ", "mắm ruốc", "rau lang", "bí xanh", "tôm", "dưa món"]
+          },
+          {
+            title: "Mâm Cơm Cá Biển Rim Tiêu Canh Rau",
+            tag: "Ven biển",
+            description: "Cá biển rim tiêu chắc vị, canh rau cải và cà muối tạo mâm cơm biển miền Trung giản dị.",
+            dishes: [
+              { role: "Món mặn", name: "Cá biển rim tiêu" },
+              { role: "Món canh", name: "Canh cải xanh nấu tôm" },
+              { role: "Món chua", name: "Cà muối" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["cá biển", "tiêu", "cải xanh", "tôm", "cà muối", "dưa leo"]
+          }
+        ]
+      },
+      namTrungBo: {
+        name: "Nam Trung Bộ",
+        combos: [
+          {
+            title: "Mâm Cơm Cá Ngừ Kho Thơm",
+            tag: "Biển xanh",
+            description: "Cá ngừ kho thơm đậm và chắc thịt, hợp với canh chua lá giang và rau sống để bữa cơm sáng vị.",
+            dishes: [
+              { role: "Món mặn", name: "Cá ngừ kho thơm" },
+              { role: "Món canh", name: "Canh chua lá giang cá biển" },
+              { role: "Rau ăn kèm", name: "Rau sống, dưa leo, giá" },
+              { role: "Nước chấm", name: "Nước mắm ớt tỏi" }
+            ],
+            ingredients: ["cá ngừ", "thơm", "lá giang", "cá biển", "rau sống", "giá"]
+          },
+          {
+            title: "Mâm Cơm Mực Rim Mắm Canh Rong Biển",
+            tag: "Mặn ngọt",
+            description: "Mực rim mắm ngọt mặn, canh rong biển và dưa leo giúp bữa cơm hải sản nhẹ hơn.",
+            dishes: [
+              { role: "Món mặn", name: "Mực rim nước mắm" },
+              { role: "Món canh", name: "Canh rong biển đậu hũ" },
+              { role: "Rau ăn kèm", name: "Dưa leo và xà lách" },
+              { role: "Món phụ", name: "Trứng chiên hành" }
+            ],
+            ingredients: ["mực", "nước mắm", "rong biển", "đậu hũ", "dưa leo", "trứng"]
+          },
+          {
+            title: "Mâm Cơm Tôm Đất Rim Canh Bầu",
+            tag: "Nha Trang",
+            description: "Tôm đất rim săn ngọt, canh bầu thanh và rau luộc làm mâm cơm miền biển gọn vị.",
+            dishes: [
+              { role: "Món mặn", name: "Tôm đất rim mặn ngọt" },
+              { role: "Món canh", name: "Canh bầu nấu tôm" },
+              { role: "Rau ăn kèm", name: "Rau lang luộc" },
+              { role: "Nước chấm", name: "Nước mắm ớt" }
+            ],
+            ingredients: ["tôm đất", "bầu", "rau lang", "nước mắm", "hành tím"]
+          },
+          {
+            title: "Mâm Cơm Cá Cơm Kho Tiêu",
+            tag: "Bình dân",
+            description: "Cá cơm kho tiêu nhỏ mà đậm, ăn với canh rau dền và dưa giá tạo bữa cơm rất đời thường.",
+            dishes: [
+              { role: "Món mặn", name: "Cá cơm kho tiêu" },
+              { role: "Món canh", name: "Canh rau dền nấu tôm" },
+              { role: "Món chua", name: "Dưa giá" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["cá cơm", "tiêu", "rau dền", "tôm", "dưa giá", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Gà Lá É Canh Bí",
+            tag: "Phú Yên",
+            description: "Gà lá é thơm cay nhẹ, canh bí và rau sống giúp mâm cơm miền Nam Trung Bộ vừa đậm vừa mát.",
+            dishes: [
+              { role: "Món chính", name: "Gà nấu lá é ăn với cơm" },
+              { role: "Món canh", name: "Canh bí đỏ nấu thịt" },
+              { role: "Rau ăn kèm", name: "Rau sống và dưa leo" },
+              { role: "Nước chấm", name: "Muối ớt xanh" }
+            ],
+            ingredients: ["gà", "lá é", "bí đỏ", "thịt bằm", "dưa leo", "ớt xanh"]
+          }
+        ]
+      },
+      comChay: {
+        name: "Cơm Chay Việt",
+        combos: [
+          {
+            title: "Mâm Cơm Đậu Hũ Kho Nấm Canh Rau",
+            tag: "Thanh đạm",
+            description: "Đậu hũ kho nấm có vị umami tự nhiên, canh rau và dưa leo giúp bữa cơm chay nhẹ mà đủ vị.",
+            dishes: [
+              { role: "Món mặn chay", name: "Đậu hũ kho nấm rơm" },
+              { role: "Món canh", name: "Canh rau ngót nấu nấm" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" },
+              { role: "Món chua", name: "Dưa giá chay" }
+            ],
+            ingredients: ["đậu hũ", "nấm rơm", "rau ngót", "dưa leo", "giá", "hẹ"]
+          },
+          {
+            title: "Mâm Cơm Nấm Kho Tiêu Rau Luộc",
+            tag: "Mộc vị",
+            description: "Nấm kho tiêu đậm thơm, ăn với rau luộc và canh bí xanh tạo bữa chay giản dị, dễ nấu.",
+            dishes: [
+              { role: "Món mặn chay", name: "Nấm kho tiêu" },
+              { role: "Rau ăn kèm", name: "Rau củ luộc chấm chao" },
+              { role: "Món canh", name: "Canh bí xanh nấu nấm" },
+              { role: "Món phụ", name: "Đậu hũ chiên sả" }
+            ],
+            ingredients: ["nấm", "tiêu", "rau củ", "chao", "bí xanh", "đậu hũ"]
+          },
+          {
+            title: "Mâm Cơm Cà Tím Kho Tộ",
+            tag: "Đưa cơm",
+            description: "Cà tím kho tộ mềm béo, canh chua chay và rau sống làm bữa cơm chay có đủ vị chua mặn ngọt.",
+            dishes: [
+              { role: "Món mặn chay", name: "Cà tím kho tộ" },
+              { role: "Món canh", name: "Canh chua chay nấu đậu hũ" },
+              { role: "Rau ăn kèm", name: "Rau sống, giá, dưa leo" },
+              { role: "Nước chấm", name: "Nước tương ớt" }
+            ],
+            ingredients: ["cà tím", "đậu hũ", "me", "giá", "dưa leo", "nước tương"]
+          },
+          {
+            title: "Mâm Cơm Chả Chay Xào Sả Ớt",
+            tag: "Đậm đà",
+            description: "Chả chay xào sả ớt tạo vị đậm, đi cùng canh cải và rau luộc để bữa cơm không bị khô.",
+            dishes: [
+              { role: "Món mặn chay", name: "Chả chay xào sả ớt" },
+              { role: "Món canh", name: "Canh cải xanh nấu nấm" },
+              { role: "Rau ăn kèm", name: "Đậu bắp và cà rốt luộc" },
+              { role: "Món chua", name: "Dưa cải chay" }
+            ],
+            ingredients: ["chả chay", "sả", "ớt", "cải xanh", "nấm", "đậu bắp"]
+          },
+          {
+            title: "Mâm Cơm Rau Củ Kho Quẹt Chay",
+            tag: "Vườn nhà",
+            description: "Kho quẹt chay làm từ nấm và đậu hũ, ăn với rau củ luộc và canh mướp rất hợp bữa cơm nhẹ.",
+            dishes: [
+              { role: "Món chấm", name: "Kho quẹt chay nấm đậu hũ" },
+              { role: "Rau ăn kèm", name: "Rau củ luộc thập cẩm" },
+              { role: "Món canh", name: "Canh mướp nấu nấm" },
+              { role: "Món phụ", name: "Đậu hũ non hấp gừng" }
+            ],
+            ingredients: ["nấm", "đậu hũ", "rau củ", "mướp", "gừng", "nước tương"]
+          }
+        ]
+      }
+    };
+
+    const comboGrid = document.getElementById("comboGrid");
+    const searchInput = document.getElementById("searchInput");
+    const regionFilters = document.getElementById("regionFilters");
+    const tagFilters = document.getElementById("tagFilters");
+    const resultCount = document.getElementById("resultCount");
+    const emptyState = document.getElementById("emptyState");
+    const comboTotal = document.getElementById("comboTotal");
+    const regionTotal = document.getElementById("regionTotal");
+    const activeRegionName = document.getElementById("activeRegionName");
+
+    let activeRegion = "mienTay";
+    let activeTag = "Tất cả";
+
+    function normalizeText(value) {
+      return value
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function getRegions() {
+      return Object.entries(menuRegions).map(([key, region]) => ({
+        key,
+        name: region.name
+      }));
+    }
+
+    function getCombos(regionKey = activeRegion) {
+      return menuRegions[regionKey].combos;
+    }
+
+    function getTotalCombos() {
+      return Object.values(menuRegions).reduce((total, region) => total + region.combos.length, 0);
+    }
+
+    function escapeSvgText(value) {
+      return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function createComboImage(combo, index) {
+      const palettes = [
+        ["#31561d", "#78a942", "#e7f4c8"],
+        ["#4f7d2c", "#91b85f", "#fff4cf"],
+        ["#5f7f3a", "#d7a441", "#edf7df"],
+        ["#3f6d28", "#91b8a8", "#e4f4cf"],
+        ["#6f8f3f", "#b9c96f", "#fbfff0"]
+      ];
+      const palette = palettes[index % palettes.length];
+      const shortTitle = combo.title.replace("Mâm Cơm ", "");
+      const mainDish = combo.dishes[0]?.name || combo.title;
+      const searchableText = normalizeText([
+        combo.title,
+        combo.tag,
+        combo.ingredients.join(" "),
+        combo.dishes.map((dish) => dish.name).join(" ")
+      ].join(" "));
+      const foodTypes = [
+        {
+          match: ["lau", "mam kho", "vit nau chao"],
+          art: `
+            <ellipse cx="392" cy="252" rx="176" ry="78" fill="#f6fff5" filter="url(#shadow)"/>
+            <ellipse cx="392" cy="238" rx="138" ry="50" fill="#ff8f3d" opacity="0.9"/>
+            <path d="M270 226 C320 186 456 184 514 226" fill="none" stroke="#00616b" stroke-width="16" stroke-linecap="round"/>
+            <circle cx="340" cy="220" r="18" fill="#ffe082"/>
+            <circle cx="392" cy="214" r="16" fill="#2f9e44"/>
+            <circle cx="444" cy="222" r="18" fill="#e85d8f"/>
+            <path d="M248 292 C312 326 476 326 536 292" fill="none" stroke="#f6fff5" stroke-width="18" stroke-linecap="round" opacity="0.7"/>
+          `
+        },
+        {
+          match: ["canh", "chua", "khoai mo", "rau tap tang", "rau ngot", "mong toi"],
+          art: `
+            <ellipse cx="382" cy="266" rx="164" ry="72" fill="#f6fff5" filter="url(#shadow)"/>
+            <ellipse cx="382" cy="248" rx="126" ry="44" fill="#35c2b5" opacity="0.9"/>
+            <path d="M302 238 C332 220 358 260 386 238 C414 216 442 260 470 238" fill="none" stroke="#fff8c7" stroke-width="10" stroke-linecap="round"/>
+            <circle cx="332" cy="250" r="14" fill="#ffb72c"/>
+            <circle cx="416" cy="244" r="13" fill="#2f9e44"/>
+            <path d="M474 170 C528 144 584 154 630 190 C570 184 538 210 474 170 Z" fill="#187047" opacity="0.75"/>
+          `
+        },
+        {
+          match: ["nuong", "chien xu", "chien gion", "ca loc", "ca tre", "ca tai tuong"],
+          art: `
+            <ellipse cx="384" cy="286" rx="178" ry="48" fill="#f6fff5" filter="url(#shadow)"/>
+            <path d="M248 226 C326 154 454 154 532 226 C456 286 324 286 248 226 Z" fill="#ffb72c" filter="url(#shadow)"/>
+            <path d="M520 226 L604 178 L590 226 L604 274 Z" fill="#ff8f3d"/>
+            <circle cx="318" cy="218" r="10" fill="#063f45"/>
+            <path d="M360 196 C400 218 444 218 486 196" fill="none" stroke="#fff8c7" stroke-width="10" stroke-linecap="round"/>
+            <path d="M354 254 C404 234 456 234 502 254" fill="none" stroke="#8f4a1d" stroke-width="8" stroke-linecap="round" opacity="0.45"/>
+          `
+        },
+        {
+          match: ["tom", "tep", "cua", "ba khia", "muc"],
+          art: `
+            <ellipse cx="380" cy="280" rx="162" ry="54" fill="#f6fff5" filter="url(#shadow)"/>
+            <path d="M300 230 C328 180 416 178 458 224 C420 276 334 280 300 230 Z" fill="#ff8f3d" filter="url(#shadow)"/>
+            <path d="M458 224 C500 198 534 202 568 232" fill="none" stroke="#ff8f3d" stroke-width="16" stroke-linecap="round"/>
+            <path d="M306 224 C270 198 238 202 210 232" fill="none" stroke="#ff8f3d" stroke-width="14" stroke-linecap="round"/>
+            <circle cx="344" cy="216" r="8" fill="#063f45"/>
+            <path d="M360 178 C372 152 394 152 406 178" fill="none" stroke="#fff8c7" stroke-width="8" stroke-linecap="round"/>
+            <path d="M472 258 C510 274 548 270 588 250" fill="none" stroke="#e85d8f" stroke-width="10" stroke-linecap="round"/>
+          `
+        },
+        {
+          match: ["ga", "vit", "suon", "heo", "thit", "long ga"],
+          art: `
+            <ellipse cx="386" cy="284" rx="172" ry="58" fill="#f6fff5" filter="url(#shadow)"/>
+            <path d="M292 238 C318 168 436 154 500 218 C532 250 498 298 420 302 C342 306 268 284 292 238 Z" fill="#d9852b" filter="url(#shadow)"/>
+            <circle cx="486" cy="200" r="34" fill="#ffe082"/>
+            <path d="M510 196 L566 174 L548 218 Z" fill="#ff8f3d"/>
+            <path d="M344 210 C380 236 424 236 462 210" fill="none" stroke="#fff8c7" stroke-width="10" stroke-linecap="round"/>
+            <path d="M288 300 C340 332 470 332 536 300" fill="none" stroke="#2f9e44" stroke-width="14" stroke-linecap="round" opacity="0.75"/>
+          `
+        },
+        {
+          match: ["luon", "ech", "chuot", "ca duoi"],
+          art: `
+            <ellipse cx="380" cy="284" rx="166" ry="56" fill="#f6fff5" filter="url(#shadow)"/>
+            <path d="M242 242 C324 176 420 314 532 212" fill="none" stroke="#7a4d24" stroke-width="36" stroke-linecap="round" filter="url(#shadow)"/>
+            <path d="M264 244 C340 202 420 292 512 218" fill="none" stroke="#ffb72c" stroke-width="12" stroke-linecap="round" opacity="0.85"/>
+            <circle cx="520" cy="210" r="9" fill="#063f45"/>
+            <path d="M300 164 C350 138 402 150 442 188 C390 180 356 198 300 164 Z" fill="#2f9e44"/>
+            <path d="M474 294 C520 278 560 288 604 316" fill="none" stroke="#e85d8f" stroke-width="12" stroke-linecap="round"/>
+          `
+        },
+        {
+          match: ["goi", "rau", "bong", "cu hu dua", "sau dau", "dua gia"],
+          art: `
+            <ellipse cx="382" cy="280" rx="174" ry="58" fill="#f6fff5" filter="url(#shadow)"/>
+            <path d="M282 262 C318 192 374 188 412 260 C368 246 326 248 282 262 Z" fill="#2f9e44"/>
+            <path d="M352 270 C392 188 464 188 512 268 C454 248 410 248 352 270 Z" fill="#71c55b"/>
+            <path d="M230 246 C270 196 318 206 350 268 C306 246 270 244 230 246 Z" fill="#0f766e"/>
+            <circle cx="444" cy="238" r="22" fill="#e85d8f"/>
+            <circle cx="492" cy="258" r="18" fill="#ffe082"/>
+            <path d="M278 316 C346 344 472 344 542 316" fill="none" stroke="#29b6c8" stroke-width="12" stroke-linecap="round" opacity="0.8"/>
+          `
+        }
+      ];
+      const matchedFood = foodTypes.find((type) =>
+        type.match.some((keyword) => searchableText.includes(keyword))
+      );
+      const art = matchedFood?.art || `
+        <ellipse cx="382" cy="282" rx="168" ry="58" fill="#f6fff5" filter="url(#shadow)"/>
+        <circle cx="322" cy="238" r="74" fill="#ffe082" filter="url(#shadow)"/>
+        <circle cx="418" cy="252" r="62" fill="#2f9e44" opacity="0.86"/>
+        <circle cx="494" cy="218" r="42" fill="#e85d8f" opacity="0.82"/>
+        <path d="M300 316 C370 344 478 340 552 308" fill="none" stroke="#29b6c8" stroke-width="12" stroke-linecap="round"/>
+      `;
+      const floatingAccent = index % 3 === 0
+        ? `<circle cx="622" cy="104" r="34" fill="#e85d8f" opacity="0.34"/>`
+        : index % 3 === 1
+          ? `<path d="M594 88 C648 62 698 78 728 124 C676 110 640 132 594 88 Z" fill="#fff8c7" opacity="0.42"/>`
+          : `<path d="M606 92 C640 44 706 54 732 112 C682 92 642 128 606 92 Z" fill="#2f9e44" opacity="0.45"/>`;
+      const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="760" height="420" viewBox="0 0 760 420">
+          <defs>
+            <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="${palette[0]}"/>
+              <stop offset="56%" stop-color="${palette[1]}"/>
+              <stop offset="100%" stop-color="${palette[2]}"/>
+            </linearGradient>
+            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="#31561d" flood-opacity="0.22"/>
+            </filter>
+          </defs>
+          <rect width="760" height="420" rx="34" fill="url(#bg)"/>
+          <path d="M0 304 C135 245 230 350 362 296 C510 236 598 262 760 210 L760 420 L0 420 Z" fill="#f6ffe7" opacity="0.44"/>
+          <path d="M96 104 C154 48 260 36 348 78 C292 88 205 124 96 104 Z" fill="#fff4cf" opacity="0.36"/>
+          ${floatingAccent}
+          ${art}
+          <rect x="38" y="32" width="176" height="42" rx="21" fill="#fbfff0" opacity="0.92"/>
+          <text x="126" y="59" fill="#31561d" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="800" text-anchor="middle">${escapeSvgText(combo.tag)}</text>
+          <text x="44" y="350" fill="#fbfff0" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="900">${escapeSvgText(shortTitle)}</text>
+          <text x="44" y="384" fill="#f6ffe7" opacity="0.92" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700">${escapeSvgText(mainDish)}</text>
+        </svg>
+      `;
+
+      return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+    }
+
+    function createRealImageUrl(combo, index) {
+      const searchableText = normalizeText([
+        combo.title,
+        combo.tag,
+        combo.ingredients.join(" "),
+        combo.dishes.map((dish) => dish.name).join(" ")
+      ].join(" "));
+      const foodImages = {
+        fish: [
+          "https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1580476262798-bddd9f4b7369?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1615141982883-c7ad0e69fd62?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1606851091851-e8c8c0fca5ba?auto=format&fit=crop&w=760&q=80"
+        ],
+        soup: [
+          "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1603105037880-880cd4edfb0d?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1616501268209-edfff098fdd2?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?auto=format&fit=crop&w=760&q=80"
+        ],
+        hotpot: [
+          "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1553621042-f6e147245754?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1606491956689-2ea866880c84?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1600891964599-f61ba0e24092?auto=format&fit=crop&w=760&q=80"
+        ],
+        seafood: [
+          "https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1559737558-2f5a35f4523b?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1599084993091-1cb5c0721cc6?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=760&q=80"
+        ],
+        meat: [
+          "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=760&q=80"
+        ],
+        chicken: [
+          "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1532550907401-a500c9a57435?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1604909052743-94e838986d24?auto=format&fit=crop&w=760&q=80"
+        ],
+        vegetable: [
+          "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1506806732259-39c2d0268443?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1566385101042-1a0aa0c1268c?auto=format&fit=crop&w=760&q=80"
+        ],
+        riceMeal: [
+          "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1543352634-a1c51d9f1fa7?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=760&q=80",
+          "https://images.unsplash.com/photo-1559847844-5315695dadae?auto=format&fit=crop&w=760&q=80"
+        ]
+      };
+      const imageQueries = [
+        { match: ["lau", "mam kho", "vit nau chao"], key: "hotpot" },
+        { match: ["canh", "chua", "khoai mo", "rau tap tang", "rau ngot", "mong toi"], key: "soup" },
+        { match: ["ca kho", "kho to", "kho tieu", "kho nghe", "kho lat", "ca loc", "ca tre", "ca ro", "ca bong", "ca tra", "ca dua"], key: "fish" },
+        { match: ["tep", "tom", "cua", "ba khia", "muc"], key: "seafood" },
+        { match: ["ga", "vit", "long ga"], key: "chicken" },
+        { match: ["thit", "suon", "heo", "ba roi"], key: "meat" },
+        { match: ["rau", "bong", "cu hu dua", "sau dau", "dua gia", "goi"], key: "vegetable" },
+        { match: ["luon", "ech", "chuot", "ca duoi"], key: "fish" }
+      ];
+      const matchedImage = imageQueries.find((item) =>
+        item.match.some((keyword) => searchableText.includes(keyword))
+      );
+      const imageSet = foodImages[matchedImage?.key || "riceMeal"];
+
+      return imageSet[index % imageSet.length];
+    }
+
+    function createLocalImageUrls(index, regionKey = activeRegion) {
+      const comboNumber = String(index + 1).padStart(2, "0");
+      const fileNames = [
+        `${regionKey}-combo-${comboNumber}`
+      ];
+
+      if (regionKey === "mienTay") {
+        fileNames.push(`combo-${comboNumber}`, comboNumber, String(index + 1));
+      }
+
+      return fileNames.flatMap((fileName) =>
+        ["jpg", "jpeg", "png", "webp"].map((extension) => `images/${fileName}.${extension}`)
+      );
+    }
+
+    function createImageSources(combo, index) {
+      return [
+        ...createLocalImageUrls(index),
+        createRealImageUrl(combo, index),
+        createComboImage(combo, index)
+      ];
+    }
+
+    function getTags(combos) {
+      return ["Tất cả", ...new Set(combos.map((combo) => combo.tag))];
+    }
+
+    function renderTagFilters() {
+      const tags = getTags(getCombos(activeRegion));
+      tagFilters.innerHTML = tags
+        .map((tag) => `
+          <button class="tag-btn${tag === activeTag ? " active" : ""}" type="button" data-tag="${tag}">
+            ${tag}
+          </button>
+        `)
+        .join("");
+    }
+
+    function renderRegionFilters() {
+      regionFilters.innerHTML = getRegions()
+        .map((region) => `
+          <button class="region-btn${region.key === activeRegion ? " active" : ""}" type="button" data-region="${region.key}">
+            ${region.name}
+          </button>
+        `)
+        .join("");
+    }
+
+    function createDishList(dishes) {
+      return dishes
+        .map((dish) => `
+          <li>
+            <span class="dish-role">${dish.role}</span>
+            <span class="dish-name">${dish.name}</span>
+          </li>
+        `)
+        .join("");
+    }
+
+    function createComboCard(combo, index) {
+      const imageSources = createImageSources(combo, index);
+
+      return `
+        <article class="combo-card">
+          <figure class="combo-cover">
+            <img
+              src="${imageSources[0]}"
+              data-sources="${escapeSvgText(JSON.stringify(imageSources.slice(1)))}"
+              alt="Ảnh minh họa ${combo.title}"
+              loading="lazy"
+            >
+          </figure>
+          <div class="combo-body">
+            <div class="card-top">
+              <span class="combo-number">Combo ${String(index + 1).padStart(2, "0")}</span>
+              <span class="combo-tag">${combo.tag}</span>
+            </div>
+            <h3>${combo.title}</h3>
+            <p class="description">${combo.description}</p>
+            <ul class="dish-list">${createDishList(combo.dishes)}</ul>
+            <div class="ingredients"><b>Nguyên liệu chính:</b> ${combo.ingredients.join(", ")}</div>
+          </div>
+        </article>
+      `;
+    }
+
+    function applyImageFallbacks() {
+      comboGrid.querySelectorAll("img[data-sources]").forEach((image) => {
+        image.addEventListener("error", () => {
+          const sources = JSON.parse(image.dataset.sources || "[]");
+          const nextSource = sources.shift();
+
+          if (!nextSource) {
+            return;
+          }
+
+          image.dataset.sources = JSON.stringify(sources);
+          image.src = nextSource;
+        });
+      });
+    }
+
+    function renderCombos() {
+      const keyword = normalizeText(searchInput.value.trim());
+      const combos = getCombos(activeRegion);
+
+      const filteredCombos = combos.filter((combo) => {
+        const matchesTag = activeTag === "Tất cả" || combo.tag === activeTag;
+        const searchableText = normalizeText([
+          combo.title,
+          combo.tag,
+          combo.description,
+          combo.ingredients.join(" "),
+          combo.dishes.map((dish) => `${dish.role} ${dish.name}`).join(" ")
+        ].join(" "));
+
+        return matchesTag && searchableText.includes(keyword);
+      });
+
+      comboGrid.innerHTML = filteredCombos
+        .map((combo) => createComboCard(combo, combos.indexOf(combo)))
+        .join("");
+      applyImageFallbacks();
+      resultCount.textContent = `${filteredCombos.length} combo phù hợp`;
+      comboTotal.textContent = getTotalCombos();
+      regionTotal.textContent = getRegions().length;
+      activeRegionName.textContent = menuRegions[activeRegion].name;
+      emptyState.classList.toggle("show", filteredCombos.length === 0);
+    }
+
+    regionFilters.addEventListener("click", (event) => {
+      const button = event.target.closest(".region-btn");
+
+      if (!button) {
+        return;
+      }
+
+      activeRegion = button.dataset.region;
+      activeTag = "Tất cả";
+      renderRegionFilters();
+      renderTagFilters();
+      renderCombos();
+    });
+
+    tagFilters.addEventListener("click", (event) => {
+      const button = event.target.closest(".tag-btn");
+
+      if (!button) {
+        return;
+      }
+
+      activeTag = button.dataset.tag;
+      renderTagFilters();
+      renderCombos();
+    });
+
+    searchInput.addEventListener("input", renderCombos);
+
+    renderRegionFilters();
+    renderTagFilters();
+    renderCombos();
+  </script>
+</body>
+</html>

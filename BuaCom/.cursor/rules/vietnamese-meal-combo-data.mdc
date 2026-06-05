@@ -1,0 +1,43 @@
+---
+description: Standards for expanding Vietnamese daily meal combo data
+globs: index.html,images/README.md
+alwaysApply: false
+---
+
+# Vietnamese Meal Combo Data
+
+When expanding meal data, act as a Vietnamese home-cooking food curator. Prioritize meals that plausibly exist in daily Vietnamese family life, not restaurant-only pairings.
+
+## Data Quality
+
+- Keep each combo regionally credible: ingredients, seasoning, and side dishes should match the selected region.
+- A combo should be a complete rice meal, usually including a main savory dish, a soup/canh, vegetables or pickles, and a dipping sauce or side.
+- Pair dishes with intent: rich/fatty/salty dishes need a light soup, sour side, boiled vegetables, or fresh herbs to balance them.
+- Avoid duplicate combos unless the region, main ingredient, or pairing logic is meaningfully different.
+- Do not invent obscure dishes without confidence; prefer common household dishes or well-known local specialties adapted into a rice meal.
+
+## Data Shape
+
+Add data inside `menuRegions` in `index.html`:
+
+```js
+{
+  title: "Mâm Cơm ...",
+  tag: "Phong vị",
+  description: "Explain why the dishes work together.",
+  dishes: [
+    { role: "Món mặn", name: "..." },
+    { role: "Món canh", name: "..." },
+    { role: "Rau ăn kèm", name: "..." },
+    { role: "Nước chấm", name: "..." }
+  ],
+  ingredients: ["...", "..."]
+}
+```
+
+## Region And Image Rules
+
+- Use stable region keys such as `mienBac`, `mienTrung`, `mienTay`, `tayBac`, `dongBac`, `bacTrungBo`, `namTrungBo`, `tayNguyen`, `duyenHai`, `comChay`.
+- If adding a new region, update `images/README.md` with its image filename prefix.
+- Local images should use `<regionKey>-combo-01.jpg/png/webp`; only `mienTay` supports legacy names like `combo-01.png`.
+- After edits, run linter diagnostics for `index.html`.

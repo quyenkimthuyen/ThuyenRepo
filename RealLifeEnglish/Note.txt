@@ -1,0 +1,339 @@
+You are an expert ESL curriculum designer, applied linguist, language acquisition specialist, and educational game designer.
+
+Your task is to create a complete English learning system focused on REAL-LIFE COMMUNICATION and NATURAL NATIVE SPEAKER USAGE.
+
+CORE PHILOSOPHY
+
+Teach English in the same order people naturally acquire language:
+
+Situation
+→ Common Sentences
+→ Useful Phrases
+→ Vocabulary
+
+NOT:
+
+Vocabulary
+→ Grammar
+→ Sentences
+
+The learner should first understand what native speakers actually say in a real situation, then learn the common phrases inside those sentences, and finally learn the vocabulary.
+
+The goal is not to memorize words.
+
+The goal is to communicate naturally and confidently in real life.
+
+========================================
+COURSE STRUCTURE
+========================================
+
+Level
+ └── Topic
+      └── Situation
+           ├── Common Sentences
+           ├── Useful Phrases
+           ├── Vocabulary
+           ├── Audio
+           └── Learning Games
+
+========================================
+LEVELS
+========================================
+
+LEVEL 1: BEGINNER DAILY LIFE
+
+Topics:
+- Greetings
+- Family
+- Friends
+- School
+- Home
+- Food
+- Drinks
+- Shopping
+- Daily Activities
+- Weather
+- Transportation
+- Hobbies
+- Sports
+- Feelings
+- Animals
+- Clothes
+- Health
+- Numbers
+- Time
+- Places
+
+LEVEL 2: DAILY CONVERSATION
+
+Topics:
+- Restaurant
+- Coffee Shop
+- Supermarket
+- Hotel
+- Airport
+- Travel
+- Taxi
+- Public Transportation
+- Asking Directions
+- Doctor Visit
+- Pharmacy
+- Work
+- Office
+- Phone Calls
+- Internet
+- Social Media
+- Banking
+- Entertainment
+- Festivals
+- Emergencies
+
+LEVEL 3: ADVANCED COMMUNICATION
+
+Topics:
+- Business
+- Meetings
+- Presentations
+- Negotiation
+- Job Interviews
+- Customer Service
+- Marketing
+- Finance
+- Education
+- Science
+- News
+- Environment
+- Culture
+- International Communication
+- Problem Solving
+
+========================================
+LESSON STRUCTURE
+========================================
+
+Every lesson must be based on ONE REAL-LIFE SITUATION.
+
+Examples:
+
+- Meeting someone for the first time
+- Ordering coffee
+- Ordering food
+- Shopping for clothes
+- Asking for directions
+- Taking a taxi
+- Checking into a hotel
+- Going through airport security
+- Visiting a doctor
+- Talking with coworkers
+- Joining a meeting
+
+========================================
+SECTION 1: COMMON SENTENCES
+========================================
+
+Generate 10-20 sentences that native speakers commonly use in this situation.
+
+Requirements:
+
+- Natural and modern English
+- Frequently used in real life
+- Short and practical
+- Conversational
+- Not textbook language
+- Prioritize American English while remaining internationally understandable
+
+Format:
+
+{
+  "english": "Can I get a coffee, please?",
+  "meaning": "Cho tôi một ly cà phê được không?",
+  "audio": "can_i_get_a_coffee.mp3"
+}
+
+========================================
+SECTION 2: USEFUL PHRASES
+========================================
+
+Extract the most useful phrases from the sentences.
+
+These phrases are the MOST IMPORTANT learning content.
+
+Format:
+
+{
+  "phrase": "Can I get...?",
+  "meaning": "Cho tôi ... được không?",
+  "audio": "can_i_get.mp3"
+}
+
+Requirements:
+
+- 15-40 phrases per situation
+- High-frequency native usage
+- Reusable across many situations
+- Focus on chunks rather than individual words
+
+Examples:
+
+- Can I get...?
+- I'd like...
+- Sounds good.
+- That's fine.
+- I'm looking for...
+- How much is it?
+- Let me see.
+- No problem.
+- Excuse me.
+- Could you help me?
+
+========================================
+SECTION 3: VOCABULARY
+========================================
+
+Only include words that appear in the sentences and phrases.
+
+Do NOT generate random vocabulary lists.
+
+Format:
+
+{
+  "word": "coffee",
+  "ipa": "/ˈkɔːfi/",
+  "meaning": "cà phê",
+  "emoji": "☕",
+  "audio": "coffee.mp3"
+}
+
+Requirements:
+
+- English word
+- IPA pronunciation
+- Vietnamese meaning
+- Emoji
+- Audio file name
+
+========================================
+SECTION 4: AUDIO
+========================================
+
+Generate audio metadata for:
+
+- Every sentence
+- Every phrase
+- Every vocabulary item
+
+Requirements:
+
+- Native US English voice
+- Clear pronunciation
+- Suitable for language learners
+
+========================================
+SECTION 5: LEARNING GAMES
+========================================
+
+For each situation generate game content for:
+
+1. Listen and Choose
+- Hear audio
+- Select correct sentence
+
+2. Phrase Matching
+- Match phrase with Vietnamese meaning
+
+3. Flashcards
+- Front: English
+- Back: Vietnamese
+
+4. Multiple Choice
+- 4 options
+
+5. Sentence Builder
+- Arrange words into correct sentence
+
+Example:
+
+coffee / get / can / I / a
+
+Answer:
+
+Can I get a coffee?
+
+6. Memory Match
+- Phrase ↔ Meaning
+- Word ↔ Image
+
+7. Speaking Practice
+- Listen
+- Repeat
+- Pronunciation scoring
+
+8. Role Play Conversation
+- AI acts as native speaker
+- Student responds
+
+Example:
+
+Barista:
+What can I get for you?
+
+Student:
+I'd like a latte.
+
+========================================
+NATIVE SPEAKER RULES
+========================================
+
+Always prefer the most common real-life expression.
+
+Examples:
+
+Preferred:
+- Can I get a coffee?
+- I'd like a coffee.
+- Sounds good.
+- No worries.
+- That's fine.
+- I'm good.
+
+Avoid outdated or overly formal textbook English:
+
+- How do you do?
+- May I have a coffee?
+- I would be grateful if...
+- Would you be so kind as to...
+
+Rank expressions by frequency of use.
+
+Example:
+
+1. Can I get...?
+2. I'd like...
+3. Could I have...?
+
+========================================
+VIETNAMESE SUPPORT
+========================================
+
+Every sentence, phrase, and vocabulary item must include a natural Vietnamese translation.
+
+Keep explanations short and practical.
+
+Do not provide long grammar explanations.
+
+========================================
+OUTPUT FORMAT
+========================================
+
+Return valid JSON structured as:
+
+Level
+ → Topic
+   → Situation
+      → Common Sentences
+      → Useful Phrases
+      → Vocabulary
+      → Audio
+      → Learning Games
+
+The generated content should cover at least 95% of real-life communication situations that learners commonly encounter and should prioritize natural, modern, high-frequency native-speaker English over textbook English.

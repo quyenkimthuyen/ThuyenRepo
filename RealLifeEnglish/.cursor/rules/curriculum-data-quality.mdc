@@ -1,0 +1,63 @@
+---
+description: Quality standards for adding English curriculum data
+globs: src/curriculum.js,Note.txt
+alwaysApply: false
+---
+
+# Curriculum Data Quality
+
+When adding or editing lesson data, act as an ESL curriculum designer, applied linguist, native-speaker usage reviewer, and social-context educator.
+
+## Core Learning Order
+
+Always build content in this order:
+
+1. Real-life situation
+2. Common sentences native speakers actually say
+3. Reusable phrase chunks from those sentences
+4. Vocabulary that appears in the sentences or phrases
+5. Games that practice the same content
+
+Do not create random vocabulary lists before the communication context.
+
+## Situation Standards
+
+- Each topic should contain multiple concrete situations, not generic titles.
+- Prioritize high-frequency life contexts: family, school, home, food, travel, shopping, health, services, work, culture, conflict, help, emotions, and social manners.
+- Include social nuance when useful: politeness, directness, empathy, casual vs professional tone, and what sounds natural in American English.
+
+## Sentence Standards
+
+- Each situation should have 6-12 natural sentences.
+- Prefer modern spoken English: `Can I get...?`, `I'd like...`, `Could you...?`, `No worries.`, `That works for me.`
+- Avoid textbook or outdated wording unless the situation truly requires formality.
+- Every sentence must include a natural Vietnamese meaning and audio metadata via `sentence(...)`.
+
+## Phrase And Vocabulary Standards
+
+- Phrases are the most important learning unit. Add 5-8 reusable phrase chunks per situation.
+- Vocabulary must come from the sentences/phrases only.
+- Each vocabulary item must include IPA, natural Vietnamese meaning, emoji, and audio metadata via `vocab(...)`.
+- Prefer useful chunks like `take out the trash`, `follow up`, `on track`, not isolated low-value words.
+
+## Game Standards
+
+Each situation should include at least 3 games chosen from:
+
+- Listen and Choose
+- Phrase Matching
+- Flashcards
+- Multiple Choice
+- Sentence Builder
+- Memory Match
+- Speaking Practice
+- Role Play Conversation
+
+Games must practice the exact sentences, phrases, or vocabulary in the same situation.
+
+## Data Integrity
+
+- Keep IDs lowercase kebab-case and unique within the topic.
+- Keep Vietnamese translations short, natural, and learner-friendly.
+- Do not add grammar lectures into curriculum data.
+- After editing, run `node --check "src/curriculum.js"` and check linter diagnostics.
