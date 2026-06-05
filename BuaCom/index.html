@@ -449,6 +449,30 @@
       background: rgba(246, 255, 231, 0.76);
     }
 
+    .dish-button {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      padding: 0;
+      text-align: left;
+    }
+
+    .dish-button:hover .dish-name,
+    .dish-button:focus-visible .dish-name {
+      color: var(--primary);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .dish-button:focus-visible {
+      border-radius: 12px;
+      outline: 3px solid rgba(120, 169, 66, 0.28);
+      outline-offset: 4px;
+    }
+
     .dish-role {
       display: block;
       color: var(--green-dark);
@@ -494,6 +518,120 @@
       margin-bottom: 6px;
       color: var(--text);
       font-size: 1.25rem;
+    }
+
+    .recipe-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(25, 46, 18, 0.48);
+      backdrop-filter: blur(8px);
+    }
+
+    .recipe-modal.show {
+      display: flex;
+    }
+
+    .recipe-dialog {
+      width: min(760px, 100%);
+      max-height: min(88vh, 820px);
+      overflow: auto;
+      border: 1px solid rgba(79, 125, 44, 0.2);
+      border-radius: 28px;
+      background: var(--surface-solid);
+      box-shadow: 0 28px 80px rgba(25, 46, 18, 0.28);
+    }
+
+    .recipe-header {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px 24px 16px;
+      border-bottom: 1px solid rgba(79, 125, 44, 0.14);
+      background: linear-gradient(180deg, var(--surface-solid), rgba(251, 255, 240, 0.94));
+    }
+
+    .recipe-eyebrow {
+      margin: 0 0 4px;
+      color: var(--green-dark);
+      font-size: 0.8rem;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .recipe-title {
+      margin: 0;
+      color: var(--text);
+      font-size: clamp(1.35rem, 3vw, 2rem);
+      line-height: 1.2;
+    }
+
+    .recipe-close {
+      flex: 0 0 auto;
+      width: 42px;
+      height: 42px;
+      border: 1px solid rgba(79, 125, 44, 0.18);
+      border-radius: 50%;
+      background: #f2f9e3;
+      color: var(--primary-dark);
+      cursor: pointer;
+      font-size: 1.4rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .recipe-close:hover {
+      background: var(--primary);
+      color: #fbfff0;
+    }
+
+    .recipe-body {
+      display: grid;
+      gap: 18px;
+      padding: 22px 24px 26px;
+    }
+
+    .recipe-summary {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .recipe-section {
+      padding: 16px;
+      border: 1px solid rgba(79, 125, 44, 0.14);
+      border-radius: 18px;
+      background: rgba(246, 255, 231, 0.66);
+    }
+
+    .recipe-section h4 {
+      margin: 0 0 10px;
+      color: var(--primary-dark);
+      font-size: 1rem;
+    }
+
+    .recipe-section ul,
+    .recipe-section ol {
+      margin: 0;
+      padding-left: 20px;
+      color: #34452d;
+    }
+
+    .recipe-section li + li {
+      margin-top: 6px;
+    }
+
+    .recipe-tip {
+      border-color: rgba(215, 164, 65, 0.34);
+      background: #fff7d9;
     }
 
     footer {
@@ -581,6 +719,12 @@
       .combo-cover {
         height: 154px;
       }
+
+      .recipe-header,
+      .recipe-body {
+        padding-left: 18px;
+        padding-right: 18px;
+      }
     }
   </style>
 </head>
@@ -656,6 +800,19 @@
       Dữ liệu được viết trực tiếp trong JavaScript và có thể mở rộng thêm nhiều vùng miền khác.
     </footer>
   </main>
+
+  <section id="recipeModal" class="recipe-modal" aria-hidden="true">
+    <article class="recipe-dialog" role="dialog" aria-modal="true" aria-labelledby="recipeTitle">
+      <header class="recipe-header">
+        <div>
+          <p id="recipeRole" class="recipe-eyebrow"></p>
+          <h3 id="recipeTitle" class="recipe-title"></h3>
+        </div>
+        <button id="recipeClose" class="recipe-close" type="button" aria-label="Đóng công thức">×</button>
+      </header>
+      <div id="recipeContent" class="recipe-body"></div>
+    </article>
+  </section>
 
   <script>
     const menuRegions = {
@@ -1805,6 +1962,11 @@
     const comboTotal = document.getElementById("comboTotal");
     const regionTotal = document.getElementById("regionTotal");
     const activeRegionName = document.getElementById("activeRegionName");
+    const recipeModal = document.getElementById("recipeModal");
+    const recipeRole = document.getElementById("recipeRole");
+    const recipeTitle = document.getElementById("recipeTitle");
+    const recipeContent = document.getElementById("recipeContent");
+    const recipeClose = document.getElementById("recipeClose");
 
     let activeRegion = "mienTay";
     let activeTag = "Tất cả";
@@ -2103,14 +2265,351 @@
         .join("");
     }
 
-    function createDishList(dishes) {
+    function getDishRecipe(context) {
+      const dishText = normalizeText(`${context.dish.name} ${context.dish.role}`);
+      const dishIngredients = getDishIngredients(context.dish);
+      const recipeTypes = [
+        {
+          match: ["canh chua"],
+          summary: "Món canh chua cần vị chua thanh, nước trong và rau vừa chín tới để ăn cùng món kho hoặc món mặn.",
+          steps: [
+            "Sơ chế cá, tôm hoặc nguyên liệu chính; ướp nhẹ với chút muối, nước mắm và hành tím.",
+            "Nấu nước sôi, cho me hoặc chất tạo chua vào trước rồi nêm nước mắm, đường rất nhẹ.",
+            "Cho nguyên liệu đạm vào nấu vừa chín, hớt bọt để nước canh trong.",
+            "Cho rau chua, bạc hà, giá, bông súng hoặc rau thơm vào cuối cùng rồi tắt bếp."
+          ],
+          tips: [
+            "Đừng nấu rau quá lâu, rau sẽ mềm nhũn và mất mùi đồng quê.",
+            "Nêm chua trước, mặn ngọt sau để canh không bị gắt.",
+            "Ngò om, ngò gai hoặc rau răm nên cho sau cùng mới thơm."
+          ]
+        },
+        {
+          match: ["canh", "nuoc rau"],
+          summary: "Món canh trong mâm cơm nên nhẹ vị, giúp cân bằng các món kho, chiên hoặc ram.",
+          steps: [
+            "Sơ chế rau và nguyên liệu đạm; rau để ráo để khi nấu không bị hôi nước.",
+            "Phi ít hành hoặc nấu nước dùng nhẹ, cho nguyên liệu lâu chín vào trước.",
+            "Nêm muối, nước mắm hoặc hạt nêm vừa phải, tránh làm canh mặn như món kho.",
+            "Cho rau vào sau cùng, canh sôi lại thì tắt bếp để giữ màu xanh."
+          ],
+          tips: [
+            "Canh ăn với cơm gia đình nên thanh, không cần quá nhiều dầu mỡ.",
+            "Nếu nấu tôm khô, ngâm rửa trước để bớt mặn và nước canh ngọt hơn.",
+            "Rau non chỉ cần sôi bùng một lượt là đủ."
+          ]
+        },
+        {
+          match: ["kho", "rim", "ram"],
+          summary: "Món kho, rim, ram là món đưa cơm; ngon nhất khi thấm vị nhưng không quá mặn.",
+          steps: [
+            "Sơ chế nguyên liệu, để ráo rồi ướp với nước mắm, tiêu, hành tỏi và chút đường.",
+            "Thắng màu hoặc phi thơm hành tỏi, cho nguyên liệu vào đảo săn trước khi thêm nước.",
+            "Kho lửa vừa đến khi thấm, sau đó hạ nhỏ lửa cho nước sánh lại.",
+            "Nếm lại cuối cùng; thêm tiêu, hành lá hoặc ớt để món thơm hơn."
+          ],
+          tips: [
+            "Muốn món kho ngon, đừng đổ quá nhiều nước ngay từ đầu.",
+            "Kho hai lửa sẽ thấm hơn: kho gần cạn, nghỉ một chút rồi hâm lại.",
+            "Món kho đã đậm thì nên đi với canh thanh hoặc rau luộc."
+          ]
+        },
+        {
+          match: ["chien", "ran"],
+          summary: "Món chiên/rán cần ráo, giòn vừa, ăn kèm rau hoặc món chua để không ngấy.",
+          steps: [
+            "Lau thật ráo nguyên liệu trước khi chiên để dầu không bắn và món không bị bở.",
+            "Ướp nhẹ với muối, tiêu hoặc nước mắm; không ướp quá ướt.",
+            "Làm nóng dầu rồi chiên lửa vừa, trở mặt khi mặt dưới đã vàng.",
+            "Vớt ra giấy thấm dầu, dùng nóng với nước chấm hoặc rau sống."
+          ],
+          tips: [
+            "Không trở món quá sớm, lớp vỏ dễ bị nát.",
+            "Chiên cá nên xát chút muối hoặc gừng để bớt tanh.",
+            "Ăn kèm dưa leo, rau thơm hoặc mắm chua sẽ cân vị hơn."
+          ]
+        },
+        {
+          match: ["nuong", "hap"],
+          summary: "Món nướng/hấp cần giữ mùi thơm tự nhiên của nguyên liệu và thường hợp với rau sống, muối chấm.",
+          steps: [
+            "Ướp nguyên liệu với sả, gừng, tiêu, nước mắm hoặc gia vị địa phương tùy vùng.",
+            "Nếu hấp, lót gừng, sả hoặc hành để khử mùi và tạo hương.",
+            "Nếu nướng, nướng lửa vừa để chín đều, trở nhẹ tay để không khô.",
+            "Dọn cùng rau sống, dưa leo, khế hoặc nước chấm chua cay."
+          ],
+          tips: [
+            "Món nướng ngon khi có thời gian ướp ít nhất 20-30 phút.",
+            "Không nướng lửa quá lớn từ đầu, bên ngoài cháy mà trong chưa chín.",
+            "Muối ớt chanh, mắm me hoặc mắm gừng giúp món sáng vị."
+          ]
+        },
+        {
+          match: ["xao"],
+          summary: "Món xào cần lửa lớn, thao tác nhanh để rau còn giòn và nguyên liệu không ra nước.",
+          steps: [
+            "Sơ chế nguyên liệu đồng đều kích thước để chín cùng lúc.",
+            "Phi thơm hành tỏi, cho nguyên liệu lâu chín vào trước.",
+            "Xào lửa lớn, đảo nhanh tay; nêm nước mắm, muối hoặc dầu hào vừa phải.",
+            "Cho rau thơm hoặc hành lá vào cuối, tắt bếp khi rau còn xanh."
+          ],
+          tips: [
+            "Chảo phải nóng mới xào, nếu chảo nguội món sẽ ra nước.",
+            "Không nêm quá sớm với rau nhiều nước như mướp, bầu.",
+            "Món xào đậm nên đi với canh nhẹ hoặc cơm trắng nóng."
+          ]
+        },
+        {
+          match: ["goi", "nom", "dua", "ca muoi", "nhut"],
+          summary: "Món gỏi, nộm, dưa chua giúp bữa cơm đỡ ngấy và làm nổi bật món mặn.",
+          steps: [
+            "Sơ chế rau củ thật ráo; nếu cần thì bóp nhẹ với muối rồi vắt khô.",
+            "Pha vị chua ngọt trước bằng nước mắm hoặc nước tương, đường, chanh/giấm.",
+            "Trộn rau củ với nước trộn từng ít một để không bị ra nước quá nhiều.",
+            "Cho rau thơm, đậu phộng, hành phi hoặc mè rang vào sau cùng."
+          ],
+          tips: [
+            "Trộn sát giờ ăn thì món giòn và tươi hơn.",
+            "Vị chua nên thanh, không át hết vị món chính.",
+            "Món chua rất hợp với thịt kho, món chiên, món nướng."
+          ]
+        },
+        {
+          match: ["luoc", "rau song", "rau an kem"],
+          summary: "Rau luộc và rau sống là phần cân bằng mâm cơm, giúp món đậm vị dễ ăn hơn.",
+          steps: [
+            "Nhặt rau kỹ, rửa nhiều nước và ngâm nước muối loãng nếu dùng sống.",
+            "Với rau luộc, đun nước thật sôi rồi cho chút muối để rau xanh.",
+            "Luộc vừa chín tới, vớt ra để ráo; có thể giữ lại nước luộc làm canh nhẹ.",
+            "Dọn cùng kho quẹt, chao, nước mắm hoặc nước tương tùy món."
+          ],
+          tips: [
+            "Không đậy nắp quá lâu khi luộc rau xanh.",
+            "Rau sống phải thật ráo mới ngon và không làm loãng nước chấm.",
+            "Rau luộc hợp nhất với món kho, kho quẹt, mắm hoặc món chiên."
+          ]
+        },
+        {
+          match: ["nuoc cham", "mam", "cham", "muoi", "chao", "cham cheo", "tuong"],
+          summary: "Nước chấm là phần kéo vị của cả mâm cơm; ngon khi mặn, chua, cay, ngọt cân nhau.",
+          steps: [
+            "Chuẩn bị nền vị chính: nước mắm, mắm nêm, chao, muối hoặc nước tương.",
+            "Thêm tỏi, ớt, chanh/tắc, đường hoặc gừng tùy món ăn kèm.",
+            "Khuấy tan và nếm lại bằng đầu đũa, chỉnh từng chút để không quá gắt.",
+            "Dọn lượng vừa đủ, ăn tới đâu chấm tới đó để giữ mùi thơm."
+          ],
+          tips: [
+            "Tỏi ớt giã sẽ thơm hơn băm vội.",
+            "Món cá thường hợp gừng, me hoặc chanh; món rau luộc hợp kho quẹt/chao.",
+            "Nước chấm không nên mặn quá vì món chính đã có gia vị."
+          ]
+        }
+      ];
+      const matchedRecipe = recipeTypes.find((type) =>
+        type.match.some((keyword) => dishText.includes(keyword))
+      );
+      const fallbackRecipe = {
+        summary: "Đây là món trong mâm cơm gia đình, nên nêm vừa ăn và phối với món còn lại trong combo để cân vị.",
+        steps: [
+          "Sơ chế nguyên liệu chính thật sạch, để ráo trước khi nấu.",
+          "Ướp hoặc nêm nền bằng hành tỏi, nước mắm/muối, tiêu và chút đường nếu hợp món.",
+          "Nấu lửa vừa, canh độ chín để món không khô hoặc nát.",
+          "Nếm lại cuối cùng, dọn cùng các món còn lại trong mâm cơm."
+        ],
+        tips: [
+          "Nấu cơm nhà nên nêm vừa, để còn ăn cùng canh, rau và nước chấm.",
+          "Nếu món chính đã béo hoặc mặn, hãy ăn kèm rau hoặc món chua.",
+          "Dọn món nóng đúng lúc sẽ ngon hơn để lâu trên bàn."
+        ]
+      };
+      const recipe = matchedRecipe || fallbackRecipe;
+
+      return {
+        ingredients: dishIngredients,
+        summary: recipe.summary,
+        steps: recipe.steps,
+        tips: recipe.tips
+      };
+    }
+
+    function getDishIngredients(dish) {
+      const text = normalizeText(`${dish.name} ${dish.role}`);
+      const detected = [];
+      const ingredientRules = [
+        ["ca", "cá hoặc phần cá đúng món"],
+        ["tom", "tôm hoặc tép tươi"],
+        ["tep", "tép đồng"],
+        ["cua", "cua đồng hoặc cua biển"],
+        ["ghe", "ghẹ tươi"],
+        ["ngheu", "nghêu"],
+        ["muc", "mực tươi"],
+        ["thit", "thịt heo"],
+        ["ba roi", "thịt ba rọi"],
+        ["suon", "sườn non"],
+        ["ga", "gà"],
+        ["vit", "vịt"],
+        ["bo", "thịt bò"],
+        ["trau", "thịt trâu"],
+        ["luon", "lươn"],
+        ["ech", "ếch"],
+        ["dau hu", "đậu hũ"],
+        ["nam", "nấm"],
+        ["trung", "trứng"],
+        ["rau muong", "rau muống"],
+        ["rau ngot", "rau ngót"],
+        ["mong toi", "mồng tơi"],
+        ["cai", "rau cải"],
+        ["bi", "bí hoặc bầu đúng món"],
+        ["bau", "bầu"],
+        ["khoai", "khoai đúng món"],
+        ["ca tim", "cà tím"],
+        ["dua leo", "dưa leo"],
+        ["bong", "bông/hoa rau đúng món"],
+        ["mang", "măng"],
+        ["dua", "dưa chua hoặc dưa leo đúng món"],
+        ["mam", "mắm đúng món"],
+        ["nuoc mam", "nước mắm"],
+        ["chao", "chao"],
+        ["tuong", "nước tương hoặc tương"],
+        ["muoi", "muối"],
+        ["me", "me chua"],
+        ["khe", "khế chua"],
+        ["thom", "thơm"],
+        ["sa", "sả"],
+        ["gừng", "gừng"],
+        ["gung", "gừng"],
+        ["nghe", "nghệ"],
+        ["rieng", "riềng"],
+        ["la lot", "lá lốt"],
+        ["la e", "lá é"],
+        ["rau ram", "rau răm"]
+      ];
+
+      ingredientRules.forEach(([keyword, ingredient]) => {
+        if (text.includes(keyword) && !detected.includes(ingredient)) {
+          detected.push(ingredient);
+        }
+      });
+
+      const methodIngredients = [
+        {
+          match: ["kho", "rim", "ram"],
+          ingredients: ["hành tím", "tỏi", "tiêu", "nước mắm", "đường hoặc nước màu", "ớt tùy thích"]
+        },
+        {
+          match: ["canh chua"],
+          ingredients: ["me hoặc chất tạo chua", "cà chua", "rau thơm", "nước mắm", "đường rất nhẹ"]
+        },
+        {
+          match: ["canh"],
+          ingredients: ["hành tím", "muối", "nước mắm", "tiêu", "nước dùng hoặc nước lọc"]
+        },
+        {
+          match: ["xao"],
+          ingredients: ["tỏi", "hành tím", "dầu ăn", "nước mắm hoặc muối", "tiêu"]
+        },
+        {
+          match: ["chien", "ran"],
+          ingredients: ["muối", "tiêu", "dầu ăn", "gừng hoặc chanh để khử mùi nếu cần"]
+        },
+        {
+          match: ["nuong", "hap"],
+          ingredients: ["sả hoặc gừng", "muối", "tiêu", "nước mắm hoặc muối ớt", "rau ăn kèm"]
+        },
+        {
+          match: ["goi", "nom", "tron"],
+          ingredients: ["chanh hoặc giấm", "đường", "nước mắm hoặc nước tương", "tỏi ớt", "rau thơm"]
+        },
+        {
+          match: ["luoc", "rau song"],
+          ingredients: ["rau đúng món", "muối", "nước sạch", "nước chấm ăn kèm"]
+        },
+        {
+          match: ["nuoc cham", "mam", "muoi", "cham cheo", "chao"],
+          ingredients: ["nguyên liệu nền của nước chấm", "tỏi ớt", "chanh hoặc tắc", "đường nếu cần"]
+        }
+      ];
+
+      methodIngredients.forEach((rule) => {
+        if (rule.match.some((keyword) => text.includes(keyword))) {
+          rule.ingredients.forEach((ingredient) => {
+            if (!detected.includes(ingredient)) {
+              detected.push(ingredient);
+            }
+          });
+        }
+      });
+
+      if (detected.length === 0) {
+        return ["nguyên liệu chính đúng tên món", "hành tỏi", "gia vị vừa ăn", "rau thơm hoặc rau ăn kèm nếu hợp"];
+      }
+
+      return detected.slice(0, 10);
+    }
+
+    function renderRecipeList(items, listType = "ul") {
+      const tagName = listType === "ol" ? "ol" : "ul";
+
+      return `<${tagName}>${items.map((item) => `<li>${escapeSvgText(item)}</li>`).join("")}</${tagName}>`;
+    }
+
+    function openRecipeModal(context) {
+      const recipe = getDishRecipe(context);
+      recipeRole.textContent = `${context.dish.role} · ${context.regionName}`;
+      recipeTitle.textContent = context.dish.name;
+      recipeContent.innerHTML = `
+        <p class="recipe-summary">${escapeSvgText(recipe.summary)}</p>
+        <section class="recipe-section">
+          <h4>Nguyên liệu riêng cho món này</h4>
+          ${renderRecipeList(recipe.ingredients)}
+        </section>
+        <section class="recipe-section">
+          <h4>Nguyên liệu tổng của mâm cơm</h4>
+          ${renderRecipeList(context.ingredients)}
+        </section>
+        <section class="recipe-section">
+          <h4>Cách nấu</h4>
+          ${renderRecipeList(recipe.steps, "ol")}
+        </section>
+        <section class="recipe-section recipe-tip">
+          <h4>Mẹo bếp để món ngon hơn</h4>
+          ${renderRecipeList(recipe.tips)}
+        </section>
+        <section class="recipe-section">
+          <h4>Ăn cùng trong mâm này</h4>
+          <p class="recipe-summary">${escapeSvgText(context.comboTitle)}: ${escapeSvgText(context.comboDescription)}</p>
+        </section>
+      `;
+      recipeModal.classList.add("show");
+      recipeModal.setAttribute("aria-hidden", "false");
+      recipeClose.focus();
+    }
+
+    function closeRecipeModal() {
+      recipeModal.classList.remove("show");
+      recipeModal.setAttribute("aria-hidden", "true");
+    }
+
+    function createDishList(dishes, combo) {
       return dishes
-        .map((dish) => `
+        .map((dish) => {
+          const payload = encodeURIComponent(JSON.stringify({
+            dish,
+            comboTitle: combo.title,
+            comboDescription: combo.description,
+            ingredients: combo.ingredients,
+            regionName: menuRegions[activeRegion].name
+          }));
+
+          return `
           <li>
-            <span class="dish-role">${dish.role}</span>
-            <span class="dish-name">${dish.name}</span>
+            <button class="dish-button" type="button" data-recipe="${payload}">
+              <span class="dish-role">${dish.role}</span>
+              <span class="dish-name">${dish.name}</span>
+            </button>
           </li>
-        `)
+        `;
+        })
         .join("");
     }
 
@@ -2134,7 +2633,7 @@
             </div>
             <h3>${combo.title}</h3>
             <p class="description">${combo.description}</p>
-            <ul class="dish-list">${createDishList(combo.dishes)}</ul>
+            <ul class="dish-list">${createDishList(combo.dishes, combo)}</ul>
             <div class="ingredients"><b>Nguyên liệu chính:</b> ${combo.ingredients.join(", ")}</div>
           </div>
         </article>
@@ -2209,6 +2708,31 @@
       activeTag = button.dataset.tag;
       renderTagFilters();
       renderCombos();
+    });
+
+    comboGrid.addEventListener("click", (event) => {
+      const button = event.target.closest(".dish-button");
+
+      if (!button) {
+        return;
+      }
+
+      const context = JSON.parse(decodeURIComponent(button.dataset.recipe));
+      openRecipeModal(context);
+    });
+
+    recipeClose.addEventListener("click", closeRecipeModal);
+
+    recipeModal.addEventListener("click", (event) => {
+      if (event.target === recipeModal) {
+        closeRecipeModal();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && recipeModal.classList.contains("show")) {
+        closeRecipeModal();
+      }
     });
 
     searchInput.addEventListener("input", renderCombos);
