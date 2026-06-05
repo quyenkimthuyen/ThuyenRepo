@@ -86,11 +86,67 @@
       padding: clamp(28px, 5vw, 58px);
     }
 
+    .hero-text {
+      position: relative;
+      z-index: 3;
+      max-width: 760px;
+    }
+
+    .hero-illustration {
+      position: absolute;
+      right: clamp(-70px, -4vw, -24px);
+      bottom: -38px;
+      z-index: 1;
+      width: min(48%, 420px);
+      min-width: 260px;
+      opacity: 0.26;
+      pointer-events: none;
+      filter: saturate(0.95);
+    }
+
+    .hero-illustration img,
+    .hero-illustration svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .hero-illustration img {
+      border-radius: 28px;
+      object-fit: cover;
+      aspect-ratio: 4 / 3;
+      box-shadow: 0 18px 50px rgba(49, 86, 29, 0.16);
+    }
+
+    .hero-illustration svg {
+      display: none;
+    }
+
+    .hero-illustration.use-fallback img {
+      display: none;
+    }
+
+    .hero-illustration.use-fallback svg {
+      display: block;
+    }
+
+    .hero-content::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      z-index: 2;
+      width: min(78%, 820px);
+      background:
+        linear-gradient(90deg, rgba(255, 249, 232, 0.98) 0%, rgba(255, 249, 232, 0.9) 62%, rgba(255, 249, 232, 0) 100%);
+      pointer-events: none;
+    }
+
     .hero-content::after {
       content: "";
       position: absolute;
       right: -74px;
       bottom: -88px;
+      z-index: 0;
       width: 240px;
       height: 240px;
       border-radius: 50%;
@@ -118,6 +174,7 @@
       font-size: clamp(2.25rem, 6vw, 4.7rem);
       line-height: 1.04;
       letter-spacing: -0.055em;
+      text-shadow: 0 2px 0 rgba(255, 249, 232, 0.85);
     }
 
     .intro {
@@ -189,6 +246,8 @@
       z-index: 5;
       display: grid;
       gap: 14px;
+      max-height: calc(100vh - 28px);
+      overflow: hidden;
       padding: 16px;
       border-radius: var(--radius);
     }
@@ -253,7 +312,7 @@
     .tag-filters {
       display: grid;
       gap: 8px;
-      max-height: calc(100vh - 270px);
+      max-height: 320px;
       overflow-y: auto;
       padding: 2px 4px 2px 0;
       scrollbar-width: thin;
@@ -271,6 +330,10 @@
     .region-filters {
       display: grid;
       gap: 8px;
+      max-height: 230px;
+      overflow-y: auto;
+      padding-right: 4px;
+      scrollbar-width: thin;
     }
 
     .tag-btn {
@@ -652,6 +715,8 @@
 
       .toolbar {
         position: static;
+        max-height: none;
+        overflow: visible;
       }
 
       .tag-filters {
@@ -671,7 +736,9 @@
 
       .region-filters {
         display: flex;
+        max-height: none;
         overflow-x: auto;
+        overflow-y: hidden;
         padding-bottom: 6px;
       }
 
@@ -697,6 +764,19 @@
       .hero-note {
         border-radius: 24px;
         padding: 24px;
+      }
+
+      .hero-illustration {
+        right: -90px;
+        bottom: -20px;
+        width: 330px;
+        opacity: 0.14;
+      }
+
+      .hero-content::before {
+        width: 100%;
+        background:
+          linear-gradient(180deg, rgba(255, 249, 232, 0.98) 0%, rgba(255, 249, 232, 0.92) 58%, rgba(255, 249, 232, 0.5) 100%);
       }
 
       .stats {
@@ -732,13 +812,40 @@
   <main class="page">
     <header class="hero">
       <section class="hero-content">
-        <span class="eyebrow">Mâm cơm quê Việt</span>
-        <h1>Bữa Cơm Việt Mỗi Ngày</h1>
-        <p class="intro">
-          Một bữa cơm Việt thường không đứng riêng một món, mà là cả mâm cơm có món mặn,
-          món canh, rau, món chua hoặc nước chấm đi kèm. Những combo dưới đây gợi ý các bữa cơm
-          hằng ngày theo từng vùng miền, giữ tinh thần cân vị và hợp với cơm trắng nóng.
-        </p>
+        <div class="hero-illustration" aria-hidden="true">
+          <img src="images/hero-meal.png" alt="" onerror="this.parentElement.classList.add('use-fallback')" />
+          <svg viewBox="0 0 520 360" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="260" cy="294" rx="214" ry="36" fill="#31561d" opacity="0.12"/>
+            <circle cx="252" cy="178" r="126" fill="#fff9e8" stroke="#d7a441" stroke-width="8"/>
+            <circle cx="252" cy="178" r="92" fill="#f7edd0"/>
+            <circle cx="252" cy="178" r="58" fill="#ffffff"/>
+            <path d="M207 169c34-25 69-24 100 0-25 23-71 25-100 0Z" fill="#8a5a2f" opacity="0.9"/>
+            <path d="M300 171l56-30-15 36 20 35-61-29Z" fill="#8a5a2f" opacity="0.9"/>
+            <circle cx="226" cy="164" r="6" fill="#2f2417"/>
+            <ellipse cx="367" cy="221" rx="58" ry="34" fill="#fff9e8" stroke="#78a942" stroke-width="6"/>
+            <ellipse cx="367" cy="213" rx="42" ry="19" fill="#78a942" opacity="0.85"/>
+            <path d="M337 211c20-18 42 19 62 0" fill="none" stroke="#f7edd0" stroke-width="7" stroke-linecap="round"/>
+            <ellipse cx="148" cy="226" rx="64" ry="36" fill="#fff9e8" stroke="#91b85f" stroke-width="6"/>
+            <path d="M104 218c32-40 70-39 96 0-33-10-62-9-96 0Z" fill="#4f7d2c" opacity="0.82"/>
+            <path d="M121 235c29-31 58-30 82 0-30-8-54-7-82 0Z" fill="#78a942" opacity="0.82"/>
+            <ellipse cx="271" cy="292" rx="80" ry="42" fill="#fff9e8" stroke="#d7a441" stroke-width="6"/>
+            <ellipse cx="271" cy="286" rx="52" ry="22" fill="#fbfff0"/>
+            <circle cx="238" cy="279" r="8" fill="#d7a441"/>
+            <circle cx="264" cy="274" r="7" fill="#d7a441"/>
+            <circle cx="292" cy="281" r="8" fill="#d7a441"/>
+            <path d="M93 113c44-43 95-42 138 0-55-9-88-7-138 0Z" fill="#78a942" opacity="0.28"/>
+            <path d="M320 92c57-31 102-22 139 20-54-14-90-7-139-20Z" fill="#d7a441" opacity="0.22"/>
+          </svg>
+        </div>
+        <div class="hero-text">
+          <span class="eyebrow">Mâm cơm quê Việt</span>
+          <h1>Bữa Cơm Việt Mỗi Ngày</h1>
+          <p class="intro">
+            Một bữa cơm Việt thường không đứng riêng một món, mà là cả mâm cơm có món mặn,
+            món canh, rau, món chua hoặc nước chấm đi kèm. Những combo dưới đây gợi ý các bữa cơm
+            hằng ngày theo từng vùng miền, giữ tinh thần cân vị và hợp với cơm trắng nóng.
+          </p>
+        </div>
       </section>
 
       <aside class="hero-note" aria-label="Điểm nhấn thực đơn">
@@ -1298,6 +1405,270 @@
               { role: "Nước chấm", name: "Muối ớt chanh" }
             ],
             ingredients: ["cá đuối", "sả", "nghệ", "cá kèo", "giá", "bắp chuối"]
+          },
+          {
+            title: "Mâm Cơm Mắm Chưng Hột Vịt",
+            tag: "Đậm đà",
+            description: "Mắm chưng hột vịt là món rất quen trong nhà miền Tây, ăn cùng canh bầu và rau sống để cân vị mặn thơm.",
+            dishes: [
+              { role: "Món mặn", name: "Mắm chưng hột vịt thịt bằm" },
+              { role: "Món canh", name: "Canh bầu nấu tôm khô" },
+              { role: "Rau ăn kèm", name: "Dưa leo, rau sống, chuối chát" },
+              { role: "Món chua", name: "Dưa giá hẹ" }
+            ],
+            ingredients: ["mắm cá linh", "hột vịt", "thịt bằm", "bầu", "tôm khô", "dưa giá"]
+          },
+          {
+            title: "Mâm Cơm Tôm Càng Xanh Kho Tàu",
+            tag: "Sông nước",
+            description: "Tôm càng xanh kho tàu béo gạch và thơm nước dừa, hợp với canh cải xanh và rau luộc để bữa cơm không ngấy.",
+            dishes: [
+              { role: "Món mặn", name: "Tôm càng xanh kho tàu" },
+              { role: "Món canh", name: "Canh cải xanh nấu cá thác lác" },
+              { role: "Rau ăn kèm", name: "Đậu bắp, bầu luộc" },
+              { role: "Nước chấm", name: "Nước mắm ớt tỏi" }
+            ],
+            ingredients: ["tôm càng xanh", "nước dừa", "cải xanh", "cá thác lác", "đậu bắp", "bầu"]
+          },
+          {
+            title: "Mâm Cơm Cá Linh Chiên Giòn Mắm Me",
+            tag: "Mùa nổi",
+            description: "Cá linh non chiên giòn chấm mắm me, thêm canh chua rau nhút và bông điên điển để đúng vị mùa nước nổi.",
+            dishes: [
+              { role: "Món mặn", name: "Cá linh non chiên giòn" },
+              { role: "Món canh", name: "Canh chua rau nhút cá đồng" },
+              { role: "Rau ăn kèm", name: "Bông điên điển luộc" },
+              { role: "Nước chấm", name: "Mắm me chua ngọt" }
+            ],
+            ingredients: ["cá linh", "rau nhút", "bông điên điển", "me", "rau thơm"]
+          },
+          {
+            title: "Mâm Cơm Canh Chua Bần Cá Bông Lau",
+            tag: "Ven sông",
+            description: "Trái bần tạo vị chua thanh rất miền Tây, đi cùng cá bông lau kho lạt và rau sống cho mâm cơm nhẹ mà sâu vị.",
+            dishes: [
+              { role: "Món canh", name: "Canh chua bần cá bông lau" },
+              { role: "Món mặn", name: "Cá bông lau kho lạt" },
+              { role: "Rau ăn kèm", name: "Rau sống, giá, bắp chuối" },
+              { role: "Nước chấm", name: "Nước mắm dằm ớt" }
+            ],
+            ingredients: ["cá bông lau", "trái bần", "giá", "bắp chuối", "rau sống", "ớt"]
+          },
+          {
+            title: "Mâm Cơm Cá Kèo Nướng Muối Ớt",
+            tag: "Lai rai",
+            description: "Cá kèo nướng muối ớt thơm cay, ăn với canh rau tập tàng và gỏi dưa leo để thành bữa cơm gọn vị.",
+            dishes: [
+              { role: "Món mặn", name: "Cá kèo nướng muối ớt" },
+              { role: "Món canh", name: "Canh rau tập tàng nấu tôm" },
+              { role: "Món phụ", name: "Gỏi dưa leo rau răm" },
+              { role: "Nước chấm", name: "Muối ớt chanh" }
+            ],
+            ingredients: ["cá kèo", "muối ớt", "rau tập tàng", "tôm", "dưa leo", "rau răm"]
+          },
+          {
+            title: "Mâm Cơm Ốc Bươu Xào Sả Ớt",
+            tag: "Đồng quê",
+            description: "Ốc bươu xào sả ớt dai giòn, cần canh mướp và rau luộc để cân vị cay thơm.",
+            dishes: [
+              { role: "Món mặn", name: "Ốc bươu xào sả ớt" },
+              { role: "Món canh", name: "Canh mướp nấu tép" },
+              { role: "Rau ăn kèm", name: "Rau lang luộc" },
+              { role: "Nước chấm", name: "Nước mắm gừng" }
+            ],
+            ingredients: ["ốc bươu", "sả", "ớt", "mướp", "tép", "rau lang"]
+          },
+          {
+            title: "Mâm Cơm Cá Rô Kho Tộ Canh Cải Trời",
+            tag: "Ruộng đồng",
+            description: "Cá rô kho tộ chắc thịt rất đưa cơm, canh cải trời nấu tép mang vị rau đồng thanh mát.",
+            dishes: [
+              { role: "Món mặn", name: "Cá rô đồng kho tộ" },
+              { role: "Món canh", name: "Canh cải trời nấu tép" },
+              { role: "Món chua", name: "Dưa leo trộn giấm đường" },
+              { role: "Nước chấm", name: "Nước mắm ớt" }
+            ],
+            ingredients: ["cá rô đồng", "cải trời", "tép", "dưa leo", "nước mắm"]
+          },
+          {
+            title: "Mâm Cơm Lươn Xào Sả Ớt Canh Chua",
+            tag: "Cay thơm",
+            description: "Lươn xào sả ớt béo thơm, kết hợp canh chua lá giang và rau sống để mâm cơm đậm mà không nặng.",
+            dishes: [
+              { role: "Món mặn", name: "Lươn xào sả ớt" },
+              { role: "Món canh", name: "Canh chua lá giang cá đồng" },
+              { role: "Rau ăn kèm", name: "Rau sống, bắp chuối bào" },
+              { role: "Nước chấm", name: "Muối ớt chanh" }
+            ],
+            ingredients: ["lươn", "sả", "ớt", "lá giang", "cá đồng", "bắp chuối"]
+          },
+          {
+            title: "Mâm Cơm Khô Cá Lóc Chiên Xoài Bằm",
+            tag: "Mặn chua",
+            description: "Khô cá lóc chiên mặn thơm ăn với xoài bằm chua, thêm canh rau ngót để bữa cơm dịu lại.",
+            dishes: [
+              { role: "Món mặn", name: "Khô cá lóc chiên" },
+              { role: "Món chấm", name: "Xoài xanh bằm nước mắm đường" },
+              { role: "Món canh", name: "Canh rau ngót nấu tôm" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["khô cá lóc", "xoài xanh", "rau ngót", "tôm", "dưa leo", "rau thơm"]
+          },
+          {
+            title: "Mâm Cơm Vịt Khìa Nước Dừa",
+            tag: "Nước dừa",
+            description: "Vịt khìa nước dừa mềm thơm và hơi béo, ăn cùng gỏi bắp cải và canh chua nhẹ để cân bằng.",
+            dishes: [
+              { role: "Món mặn", name: "Vịt khìa nước dừa" },
+              { role: "Món canh", name: "Canh chua cà chua bạc hà" },
+              { role: "Món phụ", name: "Gỏi bắp cải rau răm" },
+              { role: "Nước chấm", name: "Nước mắm gừng" }
+            ],
+            ingredients: ["vịt", "nước dừa", "bắp cải", "rau răm", "cà chua", "bạc hà"]
+          },
+          {
+            title: "Mâm Cơm Bồn Bồn Xào Tép",
+            tag: "Cà Mau",
+            description: "Bồn bồn giòn ngọt xào tép là vị rất miền Tây, đi cùng cá kho và canh rau để thành bữa cơm quê nhẹ nhàng.",
+            dishes: [
+              { role: "Món xào", name: "Bồn bồn xào tép" },
+              { role: "Món mặn", name: "Cá rô kho tiêu" },
+              { role: "Món canh", name: "Canh rau tập tàng" },
+              { role: "Nước chấm", name: "Nước mắm ớt tỏi" }
+            ],
+            ingredients: ["bồn bồn", "tép đồng", "cá rô", "rau tập tàng", "tiêu", "nước mắm"]
+          },
+          {
+            title: "Mâm Cơm Dưa Bồn Bồn Cá Kho",
+            tag: "Chua giòn",
+            description: "Dưa bồn bồn chua giòn giúp cân món cá kho đậm, rất hợp những bữa cơm nóng ngày mưa.",
+            dishes: [
+              { role: "Món mặn", name: "Cá hú kho tiêu" },
+              { role: "Món chua", name: "Dưa bồn bồn trộn tôm thịt" },
+              { role: "Món canh", name: "Canh bí xanh nấu tôm" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["cá hú", "dưa bồn bồn", "tôm", "thịt ba rọi", "bí xanh", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Hẹ Nước Xào Tôm",
+            tag: "Rau đồng",
+            description: "Hẹ nước xào tôm thơm nhẹ, có độ giòn mát; thêm thịt kho tiêu và canh chua để mâm cơm đủ vị.",
+            dishes: [
+              { role: "Món xào", name: "Hẹ nước xào tôm" },
+              { role: "Món mặn", name: "Thịt ba rọi kho tiêu" },
+              { role: "Món canh", name: "Canh chua cá đồng" },
+              { role: "Món chua", name: "Dưa giá" }
+            ],
+            ingredients: ["hẹ nước", "tôm", "thịt ba rọi", "cá đồng", "dưa giá", "me"]
+          },
+          {
+            title: "Mâm Cơm Đọt Choại Xào Tỏi",
+            tag: "Rau rừng",
+            description: "Đọt choại xào tỏi là món rau dân dã vùng đất phèn, ăn với cá kho và canh chua bần rất hợp vị.",
+            dishes: [
+              { role: "Món xào", name: "Đọt choại xào tỏi" },
+              { role: "Món mặn", name: "Cá lóc kho tộ" },
+              { role: "Món canh", name: "Canh chua bần cá đồng" },
+              { role: "Nước chấm", name: "Nước mắm dằm ớt" }
+            ],
+            ingredients: ["đọt choại", "tỏi", "cá lóc", "trái bần", "cá đồng", "ớt"]
+          },
+          {
+            title: "Mâm Cơm Chả Cá Thác Lác Chiên",
+            tag: "Dẻo thơm",
+            description: "Chả cá thác lác chiên dai thơm, phối với canh khổ qua và rau sống để mâm cơm vừa đậm vừa mát.",
+            dishes: [
+              { role: "Món mặn", name: "Chả cá thác lác chiên thì là" },
+              { role: "Món canh", name: "Canh khổ qua cá thác lác" },
+              { role: "Rau ăn kèm", name: "Rau sống và dưa leo" },
+              { role: "Nước chấm", name: "Nước mắm chua ngọt" }
+            ],
+            ingredients: ["cá thác lác", "thì là", "khổ qua", "rau sống", "dưa leo", "nước mắm"]
+          },
+          {
+            title: "Mâm Cơm Cá Chạch Kho Nghệ",
+            tag: "Đồng ruộng",
+            description: "Cá chạch kho nghệ thơm và béo nhẹ, cần canh rau đắng và dưa leo để bữa cơm không ngấy.",
+            dishes: [
+              { role: "Món mặn", name: "Cá chạch kho nghệ" },
+              { role: "Món canh", name: "Canh rau đắng nấu tôm" },
+              { role: "Món phụ", name: "Trứng vịt luộc" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["cá chạch", "nghệ", "rau đắng", "tôm", "trứng vịt", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Cá Ngát Kho Gừng",
+            tag: "Sông sâu",
+            description: "Cá ngát kho gừng chắc thịt, thơm ấm; canh chua bông so đũa làm dịu vị kho đậm.",
+            dishes: [
+              { role: "Món mặn", name: "Cá ngát kho gừng" },
+              { role: "Món canh", name: "Canh chua bông so đũa" },
+              { role: "Rau ăn kèm", name: "Rau sống, giá, bắp chuối" },
+              { role: "Nước chấm", name: "Nước mắm ớt" }
+            ],
+            ingredients: ["cá ngát", "gừng", "bông so đũa", "giá", "bắp chuối", "rau sống"]
+          },
+          {
+            title: "Mâm Cơm Cá Trèn Kho Tiêu",
+            tag: "Sông quê",
+            description: "Cá trèn kho tiêu béo và thơm, ăn cùng canh chua rau nhút để bữa cơm có đủ vị đậm, chua, thanh.",
+            dishes: [
+              { role: "Món mặn", name: "Cá trèn kho tiêu" },
+              { role: "Món canh", name: "Canh chua rau nhút" },
+              { role: "Rau ăn kèm", name: "Đậu bắp luộc" },
+              { role: "Món chua", name: "Dưa cải chua" }
+            ],
+            ingredients: ["cá trèn", "tiêu", "rau nhút", "đậu bắp", "dưa cải", "me"]
+          },
+          {
+            title: "Mâm Cơm Cá Sặc Kho Khóm",
+            tag: "Mặn thơm",
+            description: "Cá sặc kho khóm mặn thơm, có chút chua ngọt của khóm; canh mồng tơi và rau luộc giúp cân vị.",
+            dishes: [
+              { role: "Món mặn", name: "Cá sặc kho khóm" },
+              { role: "Món canh", name: "Canh mồng tơi nấu tép" },
+              { role: "Rau ăn kèm", name: "Rau lang luộc" },
+              { role: "Nước chấm", name: "Kho quẹt tôm khô" }
+            ],
+            ingredients: ["cá sặc", "khóm", "mồng tơi", "tép", "rau lang", "tôm khô"]
+          },
+          {
+            title: "Mâm Cơm Mắm Thái Thịt Luộc",
+            tag: "Châu Đốc",
+            description: "Mắm thái trộn đu đủ ăn cùng thịt luộc và rau sống là vị rất miền Tây, thêm canh rau cho bữa cơm mềm lại.",
+            dishes: [
+              { role: "Món mặn", name: "Mắm thái trộn đu đủ" },
+              { role: "Món phụ", name: "Thịt ba rọi luộc" },
+              { role: "Món canh", name: "Canh rau ngót nấu tôm" },
+              { role: "Rau ăn kèm", name: "Rau sống, dưa leo, chuối chát" }
+            ],
+            ingredients: ["mắm thái", "đu đủ", "thịt ba rọi", "rau ngót", "tôm", "chuối chát"]
+          },
+          {
+            title: "Mâm Cơm Cá Lóc Hấp Bầu",
+            tag: "Thanh ngọt",
+            description: "Cá lóc hấp bầu giữ vị ngọt tự nhiên, ăn cùng mắm gừng và rau sống; thêm tép rang để mâm cơm có món đậm.",
+            dishes: [
+              { role: "Món chính", name: "Cá lóc hấp bầu" },
+              { role: "Món mặn", name: "Tép rang mặn" },
+              { role: "Rau ăn kèm", name: "Rau sống, dưa leo, khế" },
+              { role: "Nước chấm", name: "Nước mắm gừng" }
+            ],
+            ingredients: ["cá lóc", "bầu", "tép", "rau sống", "khế", "gừng"]
+          },
+          {
+            title: "Mâm Cơm Bông Súng Mắm Kho",
+            tag: "Mùa nước",
+            description: "Bông súng giòn mát ăn với mắm kho là cặp rất quen, thêm cá chiên và canh nhẹ để mâm cơm đầy đặn.",
+            dishes: [
+              { role: "Món chính", name: "Mắm kho cá linh bông súng" },
+              { role: "Món mặn", name: "Cá rô chiên giòn" },
+              { role: "Món canh", name: "Canh bí đỏ nấu tôm" },
+              { role: "Rau ăn kèm", name: "Rau đồng, kèo nèo, bông súng" }
+            ],
+            ingredients: ["mắm cá linh", "bông súng", "cá rô", "bí đỏ", "tôm", "rau đồng"]
           }
         ]
       },
@@ -1363,6 +1734,630 @@
               { role: "Món chua", name: "Dưa góp đu đủ cà rốt" }
             ],
             ingredients: ["sườn non", "rau muống", "sấu", "đu đủ", "cà rốt"]
+          },
+          {
+            title: "Mâm Cơm Cá Om Dưa Cà Pháo",
+            tag: "Chua dịu",
+            description: "Cá om dưa có vị chua thanh, ăn cùng đậu phụ và cà pháo rất đúng kiểu mâm cơm Bắc ngày mát trời.",
+            dishes: [
+              { role: "Món chính", name: "Cá chép om dưa" },
+              { role: "Món phụ", name: "Đậu phụ rán" },
+              { role: "Món chua", name: "Cà pháo muối" },
+              { role: "Rau ăn kèm", name: "Rau sống và thì là" }
+            ],
+            ingredients: ["cá chép", "dưa cải chua", "đậu phụ", "cà pháo", "thì là", "rau sống"]
+          },
+          {
+            title: "Mâm Cơm Thịt Giả Cầy Canh Rau Ngót",
+            tag: "Đậm riềng",
+            description: "Thịt giả cầy thơm riềng mẻ, cần canh rau ngót và dưa leo để cân vị đậm và hơi béo.",
+            dishes: [
+              { role: "Món mặn", name: "Thịt chân giò nấu giả cầy" },
+              { role: "Món canh", name: "Canh rau ngót thịt bằm" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" },
+              { role: "Món chua", name: "Dưa cải muối" }
+            ],
+            ingredients: ["chân giò", "riềng", "mẻ", "mắm tôm", "rau ngót", "dưa cải"]
+          },
+          {
+            title: "Mâm Cơm Ốc Chuối Đậu",
+            tag: "Dân dã",
+            description: "Ốc chuối đậu béo bùi, thơm tía tô lá lốt, ăn cùng rau sống và dưa chua để mâm cơm không ngấy.",
+            dishes: [
+              { role: "Món chính", name: "Ốc nấu chuối đậu" },
+              { role: "Rau ăn kèm", name: "Rau sống, tía tô, lá lốt" },
+              { role: "Món chua", name: "Dưa cải muối" },
+              { role: "Ăn kèm", name: "Cơm trắng nóng" }
+            ],
+            ingredients: ["ốc", "chuối xanh", "đậu phụ", "tía tô", "lá lốt", "dưa cải"]
+          },
+          {
+            title: "Mâm Cơm Tôm Rang Thịt Canh Bí",
+            tag: "Quen nhà",
+            description: "Tôm rang thịt mặn ngọt là món rất hao cơm, canh bí xanh và rau luộc làm bữa cơm dịu lại.",
+            dishes: [
+              { role: "Món mặn", name: "Tôm rang thịt ba chỉ" },
+              { role: "Món canh", name: "Canh bí xanh nấu tôm" },
+              { role: "Rau ăn kèm", name: "Rau cải luộc" },
+              { role: "Nước chấm", name: "Nước mắm tỏi ớt" }
+            ],
+            ingredients: ["tôm", "thịt ba chỉ", "bí xanh", "rau cải", "nước mắm"]
+          },
+          {
+            title: "Mâm Cơm Mắm Tép Chưng Thịt",
+            tag: "Đưa cơm",
+            description: "Mắm tép chưng thịt mặn thơm, hợp nhất với rau luộc, dưa leo và bát canh rau thanh nhẹ.",
+            dishes: [
+              { role: "Món mặn", name: "Mắm tép chưng thịt" },
+              { role: "Món canh", name: "Canh mồng tơi nấu cua" },
+              { role: "Rau ăn kèm", name: "Rau củ luộc" },
+              { role: "Món chua", name: "Dưa leo ngâm chua ngọt" }
+            ],
+            ingredients: ["mắm tép", "thịt bằm", "mồng tơi", "cua đồng", "rau củ", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Trứng Đúc Thịt Canh Cà Chua",
+            tag: "Bình dân",
+            description: "Trứng đúc thịt mềm thơm, canh cà chua trứng và dưa cải là mâm cơm Bắc giản dị, dễ nấu.",
+            dishes: [
+              { role: "Món mặn", name: "Trứng đúc thịt bằm" },
+              { role: "Món canh", name: "Canh cà chua trứng" },
+              { role: "Món chua", name: "Dưa cải muối" },
+              { role: "Rau ăn kèm", name: "Rau sống và dưa leo" }
+            ],
+            ingredients: ["trứng", "thịt bằm", "cà chua", "dưa cải", "rau sống", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Thịt Đông Dưa Hành",
+            tag: "Ngày lạnh",
+            description: "Thịt đông mát béo, ăn cùng dưa hành, canh bóng hoặc canh rau để đúng tinh thần mâm cơm Bắc ngày lạnh.",
+            dishes: [
+              { role: "Món mặn", name: "Thịt đông mộc nhĩ" },
+              { role: "Món canh", name: "Canh bóng thả" },
+              { role: "Món chua", name: "Dưa hành" },
+              { role: "Rau ăn kèm", name: "Rau mùi và dưa leo" }
+            ],
+            ingredients: ["thịt chân giò", "mộc nhĩ", "bóng bì", "dưa hành", "rau mùi"]
+          },
+          {
+            title: "Mâm Cơm Lạc Rang Muối Canh Cua",
+            tag: "Tiết kiệm",
+            description: "Lạc rang muối, canh cua rau đay và cà pháo là mâm cơm rất mộc mạc nhưng đúng vị Bắc.",
+            dishes: [
+              { role: "Món mặn", name: "Lạc rang muối" },
+              { role: "Món canh", name: "Canh cua rau đay mồng tơi" },
+              { role: "Món chua", name: "Cà pháo muối xổi" },
+              { role: "Rau ăn kèm", name: "Rau muống luộc" }
+            ],
+            ingredients: ["lạc", "muối", "cua đồng", "rau đay", "mồng tơi", "cà pháo"]
+          },
+          {
+            title: "Mâm Cơm Cá Bống Kho Tương",
+            tag: "Tương quê",
+            description: "Cá bống kho tương có vị mặn bùi đặc trưng, ăn cùng rau muống luộc và canh bí đỏ rất hợp cơm.",
+            dishes: [
+              { role: "Món mặn", name: "Cá bống kho tương bần" },
+              { role: "Món canh", name: "Canh bí đỏ nấu tôm" },
+              { role: "Rau ăn kèm", name: "Rau muống luộc chấm tương" },
+              { role: "Món chua", name: "Dưa cải muối" }
+            ],
+            ingredients: ["cá bống", "tương bần", "bí đỏ", "tôm", "rau muống", "dưa cải"]
+          },
+          {
+            title: "Mâm Cơm Cá Quả Hấp Bia",
+            tag: "Thanh thơm",
+            description: "Cá quả hấp bia thơm gừng sả, ăn cùng rau sống và canh cải để mâm cơm nhẹ mà vẫn có món chính rõ.",
+            dishes: [
+              { role: "Món chính", name: "Cá quả hấp bia" },
+              { role: "Món canh", name: "Canh cải cúc nấu thịt" },
+              { role: "Rau ăn kèm", name: "Rau sống, thì là, dưa leo" },
+              { role: "Nước chấm", name: "Nước mắm gừng" }
+            ],
+            ingredients: ["cá quả", "bia", "gừng", "sả", "cải cúc", "thì là"]
+          },
+          {
+            title: "Mâm Cơm Gà Rang Lá Chanh",
+            tag: "Thơm vườn",
+            description: "Gà rang lá chanh thơm nhẹ, canh khoai sọ và nộm rau muống giúp mâm cơm đủ đậm, bùi, chua.",
+            dishes: [
+              { role: "Món mặn", name: "Gà rang lá chanh" },
+              { role: "Món canh", name: "Canh khoai sọ nấu xương" },
+              { role: "Món chua", name: "Nộm rau muống" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["gà", "lá chanh", "khoai sọ", "xương heo", "rau muống", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Bún Đậu Mắm Tôm Kiểu Cơm Nhà",
+            tag: "Mắm tôm",
+            description: "Đậu rán, thịt luộc, rau kinh giới và mắm tôm có thể thành bữa cơm nhà khi ăn cùng cơm trắng, canh nhẹ.",
+            dishes: [
+              { role: "Món chính", name: "Đậu phụ rán thịt luộc" },
+              { role: "Món canh", name: "Canh rau cải nấu gừng" },
+              { role: "Rau ăn kèm", name: "Kinh giới, tía tô, dưa leo" },
+              { role: "Nước chấm", name: "Mắm tôm chanh ớt" }
+            ],
+            ingredients: ["đậu phụ", "thịt luộc", "mắm tôm", "kinh giới", "tía tô", "rau cải"]
+          },
+          {
+            title: "Mâm Cơm Canh Sườn Sấu",
+            tag: "Mùa hè",
+            description: "Canh sườn sấu chua thanh là vị hè miền Bắc, ăn cùng trứng rán và rau luộc rất dễ chịu.",
+            dishes: [
+              { role: "Món canh", name: "Canh sườn nấu sấu" },
+              { role: "Món mặn", name: "Trứng rán hành" },
+              { role: "Rau ăn kèm", name: "Rau muống luộc" },
+              { role: "Nước chấm", name: "Nước mắm tỏi ớt" }
+            ],
+            ingredients: ["sườn non", "sấu", "trứng", "hành lá", "rau muống", "nước mắm"]
+          },
+          {
+            title: "Mâm Cơm Cá Thu Sốt Cà",
+            tag: "Dễ ăn",
+            description: "Cá thu sốt cà mềm thơm, canh rau cải và dưa góp giúp mâm cơm vừa đậm vừa thanh.",
+            dishes: [
+              { role: "Món mặn", name: "Cá thu sốt cà chua" },
+              { role: "Món canh", name: "Canh cải xanh nấu tôm" },
+              { role: "Món chua", name: "Dưa góp su hào cà rốt" },
+              { role: "Rau ăn kèm", name: "Xà lách và dưa leo" }
+            ],
+            ingredients: ["cá thu", "cà chua", "cải xanh", "tôm", "su hào", "cà rốt"]
+          },
+          {
+            title: "Mâm Cơm Nem Rán Canh Miến",
+            tag: "Cuối tuần",
+            description: "Nem rán giòn béo hợp với canh miến mộc nhĩ, rau sống và dưa góp để mâm cơm cuối tuần không ngấy.",
+            dishes: [
+              { role: "Món chính", name: "Nem rán nhân thịt miến" },
+              { role: "Món canh", name: "Canh miến mộc nhĩ" },
+              { role: "Rau ăn kèm", name: "Xà lách, rau thơm" },
+              { role: "Món chua", name: "Dưa góp đu đủ cà rốt" }
+            ],
+            ingredients: ["thịt bằm", "miến", "mộc nhĩ", "bánh đa nem", "xà lách", "đu đủ"]
+          },
+          {
+            title: "Mâm Cơm Cà Bung Đậu Phụ",
+            tag: "Bắc Bộ",
+            description: "Cà bung đậu phụ có vị bùi mềm, thơm tía tô, ăn cùng cá kho nhỏ và rau sống thành mâm cơm quê.",
+            dishes: [
+              { role: "Món chính", name: "Cà bung đậu phụ thịt ba chỉ" },
+              { role: "Món mặn", name: "Cá cơm kho tiêu" },
+              { role: "Rau ăn kèm", name: "Rau sống và tía tô" },
+              { role: "Món chua", name: "Cà pháo muối" }
+            ],
+            ingredients: ["cà tím", "đậu phụ", "thịt ba chỉ", "tía tô", "cá cơm", "cà pháo"]
+          },
+          {
+            title: "Mâm Cơm Ngan Om Sấu",
+            tag: "Mùa sấu",
+            description: "Ngan om sấu chua thanh, béo nhẹ, ăn cùng rau muống luộc và dưa góp rất hợp bữa cơm hè miền Bắc.",
+            dishes: [
+              { role: "Món chính", name: "Ngan om sấu" },
+              { role: "Rau ăn kèm", name: "Rau muống luộc" },
+              { role: "Món chua", name: "Dưa góp su hào cà rốt" },
+              { role: "Nước chấm", name: "Nước mắm gừng" }
+            ],
+            ingredients: ["ngan", "sấu", "gừng", "rau muống", "su hào", "cà rốt"]
+          },
+          {
+            title: "Mâm Cơm Vịt Luộc Canh Măng",
+            tag: "Quen nhà",
+            description: "Vịt luộc chấm mắm gừng, canh măng tiết vịt và rau sống là bữa cơm Bắc rất quen khi nhà làm vịt.",
+            dishes: [
+              { role: "Món chính", name: "Vịt luộc" },
+              { role: "Món canh", name: "Canh măng tiết vịt" },
+              { role: "Rau ăn kèm", name: "Rau húng, rau mùi, dưa leo" },
+              { role: "Nước chấm", name: "Nước mắm gừng" }
+            ],
+            ingredients: ["vịt", "măng", "tiết vịt", "gừng", "rau húng", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Lòng Gà Xào Miến",
+            tag: "Bình dân",
+            description: "Lòng gà xào miến thơm hành mộc nhĩ, đi cùng canh rau cải và dưa chua để mâm cơm không khô.",
+            dishes: [
+              { role: "Món xào", name: "Lòng gà xào miến" },
+              { role: "Món canh", name: "Canh cải xanh nấu gừng" },
+              { role: "Món chua", name: "Dưa cải muối" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["lòng gà", "miến", "mộc nhĩ", "cải xanh", "gừng", "dưa cải"]
+          },
+          {
+            title: "Mâm Cơm Cá Rô Kho Khế",
+            tag: "Chua thanh",
+            description: "Cá rô kho khế có vị chua nhẹ, chắc thịt, ăn cùng canh cua và cà pháo đúng kiểu cơm quê đồng bằng Bắc Bộ.",
+            dishes: [
+              { role: "Món mặn", name: "Cá rô đồng kho khế" },
+              { role: "Món canh", name: "Canh cua rau đay" },
+              { role: "Món chua", name: "Cà pháo muối" },
+              { role: "Rau ăn kèm", name: "Rau muống luộc" }
+            ],
+            ingredients: ["cá rô", "khế", "cua đồng", "rau đay", "cà pháo", "rau muống"]
+          },
+          {
+            title: "Mâm Cơm Cá Trắm Kho Dưa",
+            tag: "Đậm quê",
+            description: "Cá trắm kho dưa chua đậm mà không gắt, hợp với canh bí xanh và rau luộc cho bữa cơm ngày thường.",
+            dishes: [
+              { role: "Món mặn", name: "Cá trắm kho dưa chua" },
+              { role: "Món canh", name: "Canh bí xanh nấu thịt" },
+              { role: "Rau ăn kèm", name: "Rau cải luộc" },
+              { role: "Nước chấm", name: "Tương bần" }
+            ],
+            ingredients: ["cá trắm", "dưa chua", "bí xanh", "thịt bằm", "rau cải", "tương bần"]
+          },
+          {
+            title: "Mâm Cơm Canh Cua Mướp Mồng Tơi",
+            tag: "Ngày hè",
+            description: "Canh cua mướp mồng tơi ngọt mát, ăn cùng thịt rang và cà pháo là một mâm cơm Bắc rất kinh điển.",
+            dishes: [
+              { role: "Món canh", name: "Canh cua mướp mồng tơi" },
+              { role: "Món mặn", name: "Thịt rang cháy cạnh" },
+              { role: "Món chua", name: "Cà pháo muối" },
+              { role: "Rau ăn kèm", name: "Rau sống và dưa leo" }
+            ],
+            ingredients: ["cua đồng", "mướp", "mồng tơi", "thịt ba chỉ", "cà pháo", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Khoai Tây Xào Thịt Bò",
+            tag: "Dễ ăn",
+            description: "Khoai tây xào thịt bò mềm bùi, canh cà chua và dưa góp tạo bữa cơm gia đình dễ ăn cho cả trẻ nhỏ.",
+            dishes: [
+              { role: "Món xào", name: "Khoai tây xào thịt bò" },
+              { role: "Món canh", name: "Canh cà chua trứng" },
+              { role: "Món chua", name: "Dưa góp dưa leo cà rốt" },
+              { role: "Rau ăn kèm", name: "Xà lách và rau thơm" }
+            ],
+            ingredients: ["khoai tây", "thịt bò", "cà chua", "trứng", "dưa leo", "cà rốt"]
+          },
+          {
+            title: "Mâm Cơm Su Su Xào Tỏi Cá Kho",
+            tag: "Vườn nhà",
+            description: "Su su xào tỏi giòn ngọt, ăn với cá kho tiêu và canh rau ngót tạo mâm cơm Bắc gọn, sạch vị.",
+            dishes: [
+              { role: "Món xào", name: "Su su xào tỏi" },
+              { role: "Món mặn", name: "Cá nục kho tiêu" },
+              { role: "Món canh", name: "Canh rau ngót nấu thịt" },
+              { role: "Món chua", name: "Dưa cải muối" }
+            ],
+            ingredients: ["su su", "tỏi", "cá nục", "rau ngót", "thịt bằm", "dưa cải"]
+          },
+          {
+            title: "Mâm Cơm Đậu Phụ Nhồi Thịt Sốt Cà",
+            tag: "Cơm nhà",
+            description: "Đậu phụ nhồi thịt sốt cà mềm béo, canh bí và rau cải luộc giúp mâm cơm cân bằng.",
+            dishes: [
+              { role: "Món mặn", name: "Đậu phụ nhồi thịt sốt cà" },
+              { role: "Món canh", name: "Canh bí xanh nấu tôm" },
+              { role: "Rau ăn kèm", name: "Rau cải luộc" },
+              { role: "Nước chấm", name: "Nước mắm tỏi ớt" }
+            ],
+            ingredients: ["đậu phụ", "thịt bằm", "cà chua", "bí xanh", "tôm", "rau cải"]
+          },
+          {
+            title: "Mâm Cơm Mọc Sốt Cà Canh Miến",
+            tag: "Êm vị",
+            description: "Mọc sốt cà mềm thơm, canh miến nấm hương và dưa hành tạo mâm cơm Bắc nhẹ nhưng đầy đặn.",
+            dishes: [
+              { role: "Món mặn", name: "Mọc viên sốt cà chua" },
+              { role: "Món canh", name: "Canh miến nấm hương" },
+              { role: "Món chua", name: "Dưa hành" },
+              { role: "Rau ăn kèm", name: "Rau mùi và dưa leo" }
+            ],
+            ingredients: ["giò sống", "cà chua", "miến", "nấm hương", "dưa hành", "rau mùi"]
+          },
+          {
+            title: "Mâm Cơm Cá Diếc Kho Tương",
+            tag: "Đồng quê",
+            description: "Cá diếc kho tương bần có vị bùi mặn, ăn cùng rau lang luộc và canh rau dền rất hợp cơm.",
+            dishes: [
+              { role: "Món mặn", name: "Cá diếc kho tương bần" },
+              { role: "Món canh", name: "Canh rau dền nấu tôm" },
+              { role: "Rau ăn kèm", name: "Rau lang luộc" },
+              { role: "Món chua", name: "Cà muối xổi" }
+            ],
+            ingredients: ["cá diếc", "tương bần", "rau dền", "tôm", "rau lang", "cà muối"]
+          },
+          {
+            title: "Mâm Cơm Chả Xương Sông",
+            tag: "Thơm lá",
+            description: "Chả xương sông thơm mùi lá, ăn cùng canh rau cải và nộm su hào giúp bữa cơm vừa đậm vừa thanh.",
+            dishes: [
+              { role: "Món mặn", name: "Chả xương sông thịt bằm" },
+              { role: "Món canh", name: "Canh cải xanh nấu tôm" },
+              { role: "Món chua", name: "Nộm su hào cà rốt" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["lá xương sông", "thịt bằm", "cải xanh", "tôm", "su hào", "cà rốt"]
+          },
+          {
+            title: "Mâm Cơm Cá Kho Gừng Canh Cải",
+            tag: "Ấm vị",
+            description: "Cá kho gừng thơm ấm, hợp với canh cải xanh và cà muối trong những bữa cơm ngày se lạnh.",
+            dishes: [
+              { role: "Món mặn", name: "Cá trắm kho gừng" },
+              { role: "Món canh", name: "Canh cải xanh nấu thịt" },
+              { role: "Món chua", name: "Cà muối xổi" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["cá trắm", "gừng", "cải xanh", "thịt bằm", "cà muối", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Thịt Luộc Cà Pháo Mắm Tôm",
+            tag: "Mắm quê",
+            description: "Thịt luộc chấm mắm tôm, cà pháo và rau sống là mâm cơm Bắc giản dị, cần thêm canh thanh để cân vị.",
+            dishes: [
+              { role: "Món chính", name: "Thịt ba chỉ luộc" },
+              { role: "Nước chấm", name: "Mắm tôm chanh ớt" },
+              { role: "Món canh", name: "Canh rau ngót nấu tôm" },
+              { role: "Món chua", name: "Cà pháo muối" }
+            ],
+            ingredients: ["thịt ba chỉ", "mắm tôm", "rau ngót", "tôm", "cà pháo", "chanh"]
+          },
+          {
+            title: "Mâm Cơm Riêu Cua Đậu Rán",
+            tag: "Mùa hè",
+            description: "Riêu cua chua dịu, đậu rán và rau sống tạo bữa cơm hè miền Bắc nhẹ, mát và dễ ăn.",
+            dishes: [
+              { role: "Món canh", name: "Canh riêu cua cà chua" },
+              { role: "Món phụ", name: "Đậu phụ rán" },
+              { role: "Rau ăn kèm", name: "Rau sống, kinh giới, tía tô" },
+              { role: "Món chua", name: "Dưa góp dưa leo" }
+            ],
+            ingredients: ["cua đồng", "cà chua", "đậu phụ", "kinh giới", "tía tô", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Măng Xào Thịt Bò",
+            tag: "Giòn thơm",
+            description: "Măng xào thịt bò giòn thơm, đi cùng canh rau cải và dưa chua để mâm cơm không bị khô.",
+            dishes: [
+              { role: "Món xào", name: "Măng tươi xào thịt bò" },
+              { role: "Món canh", name: "Canh cải xanh nấu gừng" },
+              { role: "Món chua", name: "Dưa cải muối" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["măng tươi", "thịt bò", "cải xanh", "gừng", "dưa cải", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Cá Nục Kho Cà Chua",
+            tag: "Dễ ăn",
+            description: "Cá nục kho cà chua mềm vị, ăn với canh bí và rau luộc thành bữa cơm nhà dễ nấu.",
+            dishes: [
+              { role: "Món mặn", name: "Cá nục kho cà chua" },
+              { role: "Món canh", name: "Canh bí xanh nấu tôm" },
+              { role: "Rau ăn kèm", name: "Rau cải luộc" },
+              { role: "Món chua", name: "Dưa góp cà rốt" }
+            ],
+            ingredients: ["cá nục", "cà chua", "bí xanh", "tôm", "rau cải", "cà rốt"]
+          },
+          {
+            title: "Mâm Cơm Canh Khoai Sọ Rau Rút",
+            tag: "Bùi mát",
+            description: "Canh khoai sọ rau rút bùi mát, hợp với thịt rang và cà pháo để thành mâm cơm Bắc mùa hè.",
+            dishes: [
+              { role: "Món canh", name: "Canh khoai sọ rau rút" },
+              { role: "Món mặn", name: "Thịt rang cháy cạnh" },
+              { role: "Món chua", name: "Cà pháo muối" },
+              { role: "Rau ăn kèm", name: "Rau sống và dưa leo" }
+            ],
+            ingredients: ["khoai sọ", "rau rút", "thịt ba chỉ", "cà pháo", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Cá Trê Om Chuối Đậu",
+            tag: "Bùi béo",
+            description: "Cá trê om chuối đậu béo bùi, thơm tía tô, ăn cùng dưa chua để vị không bị nặng.",
+            dishes: [
+              { role: "Món chính", name: "Cá trê om chuối đậu" },
+              { role: "Rau ăn kèm", name: "Rau sống, tía tô, lá lốt" },
+              { role: "Món chua", name: "Dưa cải muối" },
+              { role: "Ăn kèm", name: "Cơm trắng nóng" }
+            ],
+            ingredients: ["cá trê", "chuối xanh", "đậu phụ", "tía tô", "lá lốt", "dưa cải"]
+          },
+          {
+            title: "Mâm Cơm Lòng Lợn Luộc Cháo Lòng Kiểu Nhà",
+            tag: "Quê chợ",
+            description: "Lòng lợn luộc chấm mắm gừng, ăn cùng cháo loãng và rau thơm là kiểu bữa nhà quê dân dã.",
+            dishes: [
+              { role: "Món chính", name: "Lòng lợn luộc" },
+              { role: "Ăn kèm", name: "Cháo gạo tẻ loãng" },
+              { role: "Rau ăn kèm", name: "Húng quế, rau mùi, hành lá" },
+              { role: "Nước chấm", name: "Nước mắm gừng" }
+            ],
+            ingredients: ["lòng lợn", "gạo tẻ", "gừng", "rau mùi", "hành lá", "húng quế"]
+          },
+          {
+            title: "Mâm Cơm Đậu Sốt Thịt Bằm Rau Muống",
+            tag: "Bình dị",
+            description: "Đậu sốt thịt bằm mềm thơm, rau muống luộc và nước rau dầm sấu tạo bữa cơm Bắc rất gọn vị.",
+            dishes: [
+              { role: "Món mặn", name: "Đậu phụ sốt thịt bằm" },
+              { role: "Rau ăn kèm", name: "Rau muống luộc" },
+              { role: "Món canh", name: "Nước rau muống dầm sấu" },
+              { role: "Món chua", name: "Cà pháo muối xổi" }
+            ],
+            ingredients: ["đậu phụ", "thịt bằm", "rau muống", "sấu", "cà pháo"]
+          },
+          {
+            title: "Mâm Cơm Cá Kho Làng Vũ Đại Kiểu Nhà",
+            tag: "Kho riềng",
+            description: "Cá kho riềng lâu lửa đậm thơm, ăn cùng canh cải và dưa hành để bữa cơm ngày lạnh tròn vị.",
+            dishes: [
+              { role: "Món mặn", name: "Cá trắm kho riềng lâu lửa" },
+              { role: "Món canh", name: "Canh cải xanh nấu gừng" },
+              { role: "Món chua", name: "Dưa hành" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["cá trắm", "riềng", "gừng", "cải xanh", "dưa hành", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Dọc Mùng Nấu Sườn",
+            tag: "Chua nhẹ",
+            description: "Canh dọc mùng nấu sườn chua nhẹ, ăn cùng cá rán và rau sống tạo mâm cơm dễ chịu ngày nóng.",
+            dishes: [
+              { role: "Món canh", name: "Canh dọc mùng nấu sườn" },
+              { role: "Món mặn", name: "Cá rô phi rán giòn" },
+              { role: "Rau ăn kèm", name: "Rau sống và dưa leo" },
+              { role: "Nước chấm", name: "Nước mắm gừng" }
+            ],
+            ingredients: ["dọc mùng", "sườn non", "cá rô phi", "gừng", "rau sống", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Thịt Băm Rang Mắm Tép",
+            tag: "Hao cơm",
+            description: "Thịt băm rang mắm tép khô thơm, rất hao cơm, cần canh rau và dưa leo để cân vị mặn.",
+            dishes: [
+              { role: "Món mặn", name: "Thịt băm rang mắm tép" },
+              { role: "Món canh", name: "Canh rau dền nấu tôm" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" },
+              { role: "Món chua", name: "Dưa cải muối" }
+            ],
+            ingredients: ["thịt bằm", "mắm tép", "rau dền", "tôm", "dưa leo", "dưa cải"]
+          },
+          {
+            title: "Mâm Cơm Cá Kho Chuối Xanh",
+            tag: "Bùi quê",
+            description: "Cá kho chuối xanh có vị bùi chát nhẹ, rất hợp với canh rau cải và cà muối cho mâm cơm Bắc ngày thường.",
+            dishes: [
+              { role: "Món mặn", name: "Cá trắm kho chuối xanh" },
+              { role: "Món canh", name: "Canh cải xanh nấu tôm" },
+              { role: "Món chua", name: "Cà pháo muối" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["cá trắm", "chuối xanh", "cải xanh", "tôm", "cà pháo", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Thịt Kho Tàu Kiểu Bắc",
+            tag: "Ngày nhà",
+            description: "Thịt kho tàu kiểu Bắc thường ít ngọt hơn, ăn cùng dưa cải và canh rau để bữa cơm đậm mà không ngấy.",
+            dishes: [
+              { role: "Món mặn", name: "Thịt kho tàu trứng cút" },
+              { role: "Món canh", name: "Canh cải cúc nấu thịt" },
+              { role: "Món chua", name: "Dưa cải muối" },
+              { role: "Rau ăn kèm", name: "Rau sống và dưa leo" }
+            ],
+            ingredients: ["thịt ba chỉ", "trứng cút", "cải cúc", "dưa cải", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Canh Mọc Nấm Hương",
+            tag: "Êm dịu",
+            description: "Canh mọc nấm hương thanh thơm, phối với cá rán và dưa góp tạo mâm cơm nhẹ nhưng đủ chất.",
+            dishes: [
+              { role: "Món canh", name: "Canh mọc nấm hương" },
+              { role: "Món mặn", name: "Cá rô phi rán giòn" },
+              { role: "Món chua", name: "Dưa góp đu đủ cà rốt" },
+              { role: "Nước chấm", name: "Nước mắm gừng" }
+            ],
+            ingredients: ["giò sống", "nấm hương", "cá rô phi", "đu đủ", "cà rốt", "gừng"]
+          },
+          {
+            title: "Mâm Cơm Rau Bí Xào Tỏi",
+            tag: "Rau mùa",
+            description: "Rau bí xào tỏi giòn thơm, đi cùng thịt rang và canh cua là mâm cơm Bắc giản dị, mát vị.",
+            dishes: [
+              { role: "Món xào", name: "Rau bí xào tỏi" },
+              { role: "Món mặn", name: "Thịt rang cháy cạnh" },
+              { role: "Món canh", name: "Canh cua mồng tơi" },
+              { role: "Món chua", name: "Cà muối xổi" }
+            ],
+            ingredients: ["rau bí", "tỏi", "thịt ba chỉ", "cua đồng", "mồng tơi", "cà muối"]
+          },
+          {
+            title: "Mâm Cơm Ngọn Su Su Xào Tỏi",
+            tag: "Tam Đảo",
+            description: "Ngọn su su xào tỏi xanh giòn, ăn với cá kho và canh cà chua trứng thành bữa cơm dễ ăn.",
+            dishes: [
+              { role: "Món xào", name: "Ngọn su su xào tỏi" },
+              { role: "Món mặn", name: "Cá thu kho tiêu" },
+              { role: "Món canh", name: "Canh cà chua trứng" },
+              { role: "Món chua", name: "Dưa cải muối" }
+            ],
+            ingredients: ["ngọn su su", "tỏi", "cá thu", "tiêu", "cà chua", "trứng"]
+          },
+          {
+            title: "Mâm Cơm Hến Xào Hành Răm Canh Cải",
+            tag: "Ven sông",
+            description: "Hến xào hành răm ngọt thơm, thêm canh cải và đậu rán để bữa cơm Bắc có vị sông nước nhẹ nhàng.",
+            dishes: [
+              { role: "Món xào", name: "Hến xào hành răm" },
+              { role: "Món canh", name: "Canh cải xanh nấu gừng" },
+              { role: "Món phụ", name: "Đậu phụ rán" },
+              { role: "Nước chấm", name: "Nước mắm tỏi ớt" }
+            ],
+            ingredients: ["hến", "rau răm", "cải xanh", "gừng", "đậu phụ", "nước mắm"]
+          },
+          {
+            title: "Mâm Cơm Chả Cốm Canh Bí",
+            tag: "Hà Nội",
+            description: "Chả cốm thơm dẻo, canh bí xanh và dưa góp giúp mâm cơm Hà Nội nhẹ nhàng nhưng vẫn có điểm nhấn.",
+            dishes: [
+              { role: "Món mặn", name: "Chả cốm chiên" },
+              { role: "Món canh", name: "Canh bí xanh nấu tôm" },
+              { role: "Món chua", name: "Dưa góp su hào cà rốt" },
+              { role: "Rau ăn kèm", name: "Xà lách và rau thơm" }
+            ],
+            ingredients: ["chả cốm", "bí xanh", "tôm", "su hào", "cà rốt", "xà lách"]
+          },
+          {
+            title: "Mâm Cơm Dưa Chua Xào Tóp Mỡ",
+            tag: "Tận dụng",
+            description: "Dưa chua xào tóp mỡ béo chua, ăn cùng cá kho và canh rau ngót là mâm cơm nhà rất bắt vị.",
+            dishes: [
+              { role: "Món xào", name: "Dưa chua xào tóp mỡ" },
+              { role: "Món mặn", name: "Cá bống kho tiêu" },
+              { role: "Món canh", name: "Canh rau ngót nấu thịt" },
+              { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
+            ],
+            ingredients: ["dưa cải chua", "tóp mỡ", "cá bống", "rau ngót", "thịt bằm", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Bí Đao Xào Tôm",
+            tag: "Thanh mát",
+            description: "Bí đao xào tôm ngọt mát, hợp với thịt kho tiêu và bát canh rau dền cho bữa cơm nhẹ bụng.",
+            dishes: [
+              { role: "Món xào", name: "Bí đao xào tôm" },
+              { role: "Món mặn", name: "Thịt nạc kho tiêu" },
+              { role: "Món canh", name: "Canh rau dền nấu cua" },
+              { role: "Món chua", name: "Cà pháo muối" }
+            ],
+            ingredients: ["bí đao", "tôm", "thịt nạc", "tiêu", "rau dền", "cua đồng"]
+          },
+          {
+            title: "Mâm Cơm Củ Cải Kho Thịt",
+            tag: "Mùa đông",
+            description: "Củ cải kho thịt mềm ngọt, canh cải và dưa hành tạo mâm cơm Bắc ấm vị mùa lạnh.",
+            dishes: [
+              { role: "Món mặn", name: "Củ cải kho thịt ba chỉ" },
+              { role: "Món canh", name: "Canh cải xanh nấu gừng" },
+              { role: "Món chua", name: "Dưa hành" },
+              { role: "Rau ăn kèm", name: "Rau mùi và dưa leo" }
+            ],
+            ingredients: ["củ cải", "thịt ba chỉ", "cải xanh", "gừng", "dưa hành", "rau mùi"]
+          },
+          {
+            title: "Mâm Cơm Cá Mòi Kho Dưa",
+            tag: "Hải Phòng",
+            description: "Cá mòi kho dưa béo bùi, vị chua dưa cải làm mềm mùi cá, ăn cùng rau luộc rất hao cơm.",
+            dishes: [
+              { role: "Món mặn", name: "Cá mòi kho dưa cải" },
+              { role: "Món canh", name: "Canh rau cải nấu tôm" },
+              { role: "Rau ăn kèm", name: "Rau muống luộc" },
+              { role: "Nước chấm", name: "Tương bần" }
+            ],
+            ingredients: ["cá mòi", "dưa cải", "rau cải", "tôm", "rau muống", "tương bần"]
+          },
+          {
+            title: "Mâm Cơm Chả Rươi Canh Măng",
+            tag: "Mùa rươi",
+            description: "Chả rươi thơm vỏ quýt là món mùa vụ miền Bắc, cần canh măng và rau sống để cân độ béo.",
+            dishes: [
+              { role: "Món mặn", name: "Chả rươi vỏ quýt" },
+              { role: "Món canh", name: "Canh măng tươi nấu xương" },
+              { role: "Rau ăn kèm", name: "Rau sống và dưa leo" },
+              { role: "Nước chấm", name: "Nước mắm chua ngọt" }
+            ],
+            ingredients: ["rươi", "vỏ quýt", "trứng", "măng tươi", "xương heo", "rau sống"]
           }
         ]
       },
@@ -2562,10 +3557,6 @@
         <section class="recipe-section">
           <h4>Nguyên liệu riêng cho món này</h4>
           ${renderRecipeList(recipe.ingredients)}
-        </section>
-        <section class="recipe-section">
-          <h4>Nguyên liệu tổng của mâm cơm</h4>
-          ${renderRecipeList(context.ingredients)}
         </section>
         <section class="recipe-section">
           <h4>Cách nấu</h4>
