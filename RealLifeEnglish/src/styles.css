@@ -344,6 +344,11 @@ select {
   padding: 14px;
 }
 
+.game-card--interactive {
+  display: grid;
+  gap: 10px;
+}
+
 .sentence-card {
   display: flex;
   gap: 16px;
@@ -428,6 +433,201 @@ select {
   font-size: 0.92rem;
   font-weight: 800;
   box-shadow: 0 18px 38px rgba(23, 32, 51, 0.25);
+}
+
+.practice-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: #ea580c;
+  padding: 10px 15px;
+  color: white;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.practice-button--secondary {
+  color: #172033;
+  background: #e2e8f0;
+}
+
+.practice-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.58);
+  padding: 18px;
+}
+
+.practice-modal {
+  width: min(760px, 100%);
+  max-height: min(760px, calc(100vh - 36px));
+  overflow: auto;
+  border-radius: 28px;
+  background: #fffaf0;
+  padding: clamp(18px, 4vw, 28px);
+  box-shadow: 0 28px 90px rgba(15, 23, 42, 0.34);
+}
+
+.practice-modal__header {
+  display: flex;
+  gap: 16px;
+  align-items: start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.practice-close {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #172033;
+  color: white;
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.practice-instruction,
+.practice-feedback,
+.sentence-target {
+  color: #475569;
+  line-height: 1.6;
+}
+
+.practice-question,
+.roleplay-line,
+.flashcard,
+.sentence-build {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #fed7aa;
+  border-radius: 22px;
+  background: white;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.practice-prompt-text,
+.flashcard strong,
+.roleplay-line strong {
+  color: #111827;
+  font-size: clamp(1.25rem, 3vw, 1.8rem);
+  line-height: 1.25;
+}
+
+.practice-options,
+.word-bank,
+.practice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.practice-option,
+.word-chip,
+.memory-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: white;
+  padding: 12px 14px;
+  color: #172033;
+  font-weight: 800;
+  text-align: left;
+}
+
+.practice-option {
+  flex: 1 1 220px;
+}
+
+.practice-option small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+}
+
+.practice-option.is-correct {
+  border-color: #16a34a;
+  background: #dcfce7;
+}
+
+.practice-option.is-wrong {
+  border-color: #dc2626;
+  background: #fee2e2;
+}
+
+.sentence-build {
+  min-height: 58px;
+  color: #111827;
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.word-chip:disabled {
+  opacity: 0.42;
+}
+
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.memory-card {
+  display: grid;
+  min-height: 92px;
+  place-items: center;
+  text-align: center;
+}
+
+.memory-card strong {
+  display: none;
+}
+
+.memory-card.is-open,
+.memory-card.is-matched {
+  background: white;
+}
+
+.memory-card.is-open span,
+.memory-card.is-matched span {
+  display: none;
+}
+
+.memory-card.is-open strong,
+.memory-card.is-matched strong {
+  display: block;
+}
+
+.memory-card.is-matched {
+  border-color: #16a34a;
+  background: #dcfce7;
+}
+
+.roleplay-line span {
+  color: #ea580c;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.roleplay-textarea {
+  width: 100%;
+  min-height: 100px;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  padding: 14px;
+  color: #172033;
+  font: inherit;
+  resize: vertical;
 }
 
 .vocab-list {
