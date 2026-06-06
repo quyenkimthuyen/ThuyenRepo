@@ -180,10 +180,19 @@
         quizHistory: [],
         currentAnswer: null,
         lastAutoPlayedListeningQuestionId: null,
+        autoLearn: {
+          isPlaying: false,
+          wordIds: [],
+          index: 0,
+          currentWordId: null,
+          runId: 0,
+        },
         revealed: {},
         wordOrderIds: [],
       };
       window.state = state;
+      let activeAudio = null;
+      let autoLearnRunId = 0;
 
       function escapeHtml(value) {
         return String(value ?? '')
@@ -284,6 +293,16 @@
         state.quizStartedAt = null;
         state.feedback = '';
         state.lastAutoPlayedListeningQuestionId = null;
+      }
+
+      function resetAutoLearnState() {
+        state.autoLearn = {
+          isPlaying: false,
+          wordIds: [],
+          index: 0,
+          currentWordId: null,
+          runId: 0,
+        };
       }
 
         function importTopics(topicGroups) {
@@ -462,16 +481,44 @@
         return state.filter === 'learning' && !query ? ordered.slice(0, LEARNING_LIMIT) : ordered;
       }
 
-      function speak(text) {
-        if (!('speechSynthesis' in window)) return;
+      function speak(text, lang = 'en-US') {
+        speakText(text, lang);
+      }
+
+      function speakText(text, lang = 'en-US') {
+        if (!('speechSynthesis' in window) || !text) return Promise.resolve();
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'en-US';
-        utterance.rate = 0.86;
+        utterance.lang = lang;
+        utterance.rate = lang.startsWith('vi') ? 0.92 : 0.86;
         const voices = window.speechSynthesis.getVoices();
-        const voice = voices.find((item) => item.lang === 'en-US') || voices.find((item) => item.lang.startsWith('en'));
+        const voice = voices.find((item) => item.lang === lang) || voices.find((item) => item.lang.startsWith(lang.slice(0, 2)));
         if (voice) utterance.voice = voice;
-        window.speechSynthesis.speak(utterance);
+        return new Promise((resolve) => {
+          utterance.onend = resolve;
+          utterance.onerror = resolve;
+          window.speechSynthesis.speak(utterance);
+        });
+      }
+
+      function playEnglishAudio(word) {
+        if (!word) return Promise.resolve();
+        if (word.audio_us) {
+          return new Promise((resolve) => {
+            if (activeAudio) activeAudio.pause();
+            activeAudio = new Audio(word.audio_us);
+            activeAudio.onended = resolve;
+            activeAudio.onerror = () => {
+              activeAudio = null;
+              speakText(word.word, 'en-US').then(resolve);
+            };
+            activeAudio.play().catch(() => {
+              activeAudio = null;
+              speakText(word.word, 'en-US').then(resolve);
+            });
+          });
+        }
+        return speakText(word.word, 'en-US');
       }
 
       function pronounceWord(word) {
@@ -482,6 +529,47 @@
           return;
         }
         speak(word.word);
+      }
+
+      function stopAutoLearn() {
+        autoLearnRunId += 1;
+        resetAutoLearnState();
+        if (activeAudio) {
+          activeAudio.pause();
+          activeAudio = null;
+        }
+        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        render();
+      }
+
+      async function startAutoLearn() {
+        const words = orderWords(getTopicWords());
+        if (!words.length) return;
+        const runId = autoLearnRunId + 1;
+        autoLearnRunId = runId;
+        state.autoLearn = {
+          isPlaying: true,
+          wordIds: words.map((word) => word.id),
+          index: 0,
+          currentWordId: words[0].id,
+          runId,
+        };
+        render();
+
+        for (let index = 0; index < words.length; index += 1) {
+          if (!state.autoLearn.isPlaying || state.autoLearn.runId !== runId) return;
+          const word = words[index];
+          state.autoLearn.index = index;
+          state.autoLearn.currentWordId = word.id;
+          render();
+          await speakText(word.meaning_vi, 'vi-VN');
+          if (!state.autoLearn.isPlaying || state.autoLearn.runId !== runId) return;
+          await playEnglishAudio(word);
+        }
+
+        if (state.autoLearn.runId !== runId) return;
+        resetAutoLearnState();
+        render();
       }
 
       function autoPlayListeningQuestion() {
@@ -677,7 +765,10 @@
       function renderLearn() {
         const words = getVisibleWords();
         const topics = getTopics();
-        const topicTotal = getTopicWords().length;
+        const topicWords = getTopicWords();
+        const topicTotal = topicWords.length;
+        const autoLearnWord = state.words.find((word) => word.id === state.autoLearn.currentWordId);
+        const autoLearnProgress = state.autoLearn.isPlaying ? `${Math.min(state.autoLearn.index + 1, state.autoLearn.wordIds.length)} / ${state.autoLearn.wordIds.length}` : '';
         document.getElementById('learnPage').innerHTML = `
           <div class="panel stack">
             <div>
@@ -699,6 +790,24 @@
               </div>
             </div>
             <p class="muted small">Showing ${words.length} of ${topicTotal} word${topicTotal === 1 ? '' : 's'}${state.topicFilter === 'all' ? '' : ` in ${escapeHtml(state.topicFilter)}`}</p>
+            <div class="panel stack" style="box-shadow: none; background: rgba(255, 255, 255, 0.03);">
+              <div class="row between">
+                <div>
+                  <h3>Auto Audio Learning</h3>
+                  <p class="muted small">Plays Vietnamese meaning first, then English audio for every word in this topic.</p>
+                </div>
+                <button class="button ${state.autoLearn.isPlaying ? 'danger' : 'primary'}" type="button" id="${state.autoLearn.isPlaying ? 'stopAutoLearn' : 'startAutoLearn'}" ${topicTotal ? '' : 'disabled'}>
+                  ${state.autoLearn.isPlaying ? 'Stop' : 'Start'}
+                </button>
+              </div>
+              ${state.autoLearn.isPlaying && autoLearnWord ? `
+                <div class="stat">
+                  <span class="muted small">Now playing ${autoLearnProgress}</span>
+                  <strong>${escapeHtml(autoLearnWord.word)}</strong>
+                  <p class="muted small">${escapeHtml(autoLearnWord.ipa_us || '')}</p>
+                </div>
+              ` : '<p class="muted small">Choose a topic, then press Start to listen through all words.</p>'}
+            </div>
           </div>
           ${words.length ? words.map(renderWordCard).join('') : renderEmptyWords(topicTotal)}
         `;
@@ -1031,7 +1140,10 @@
         const target = event.target.closest('button');
         if (!target) return;
         if (target.type === 'submit') return;
-        if (target.dataset.page) state.page = target.dataset.page;
+        if (target.dataset.page) {
+          if (target.dataset.page !== 'learn' && state.autoLearn.isPlaying) stopAutoLearn();
+          state.page = target.dataset.page;
+        }
         if (target.dataset.filter) { state.filter = target.dataset.filter; saveState(); }
         if (target.dataset.mode) startQuiz(target.dataset.mode);
         if (target.dataset.pronounce) pronounceWord(state.words.find((word) => word.id === target.dataset.pronounce));
@@ -1053,6 +1165,14 @@
         }
         if (target.dataset.answer) answerQuestion(target.dataset.answer);
         if (target.id === 'themeButton') { state.theme = state.theme === 'dark' ? 'light' : 'dark'; saveState(); }
+        if (target.id === 'startAutoLearn') {
+          startAutoLearn();
+          return;
+        }
+        if (target.id === 'stopAutoLearn') {
+          stopAutoLearn();
+          return;
+        }
         if (target.id === 'startQuiz') startQuiz(state.quizMode);
         if (target.id === 'resetQuiz') resetQuizState();
         if (target.id === 'nextQuestion') {
@@ -1080,6 +1200,7 @@
 
       document.addEventListener('change', async (event) => {
         if (event.target.id === 'topicSelect' || event.target.id === 'quizTopicSelect') {
+          if (state.autoLearn.isPlaying) stopAutoLearn();
           state.topicFilter = event.target.value;
           state.filter = 'all';
           resetQuizState();
@@ -1088,6 +1209,7 @@
           return;
         }
         if (event.target.id === 'dataSourceSelect') {
+          if (state.autoLearn.isPlaying) stopAutoLearn();
           const nextSource = event.target.value;
           if (!DATA_SOURCES.some((source) => source.name === nextSource)) return;
           state.dataSourceName = nextSource;

@@ -78,6 +78,7 @@ To add another source, add the JSON file in `data/` and register it in the app's
 - Displays English word, American IPA, Vietnamese meaning, and example sentence when available.
 - Lets the user reveal or hide the meaning.
 - Plays `audio_us` from a compact pronunciation button in the card action row, otherwise uses browser speech synthesis.
+- Provides Auto Audio Learning for the selected topic: the app loops through every topic word, speaks the Vietnamese meaning first, then plays the English audio or speech fallback while showing the current English word.
 - Hides `Forgot` on learning words and hides `Remembered` on known words.
 - Lets the user mark eligible words as `Remembered` or `Forgot`, then reshuffles the word order.
 - Refills the learning queue with new words after remembered words become known.
