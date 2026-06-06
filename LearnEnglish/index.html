@@ -574,8 +574,18 @@
 
       function answerQuestion(answer) {
         if (!state.currentQuestion) return;
-        const correct = answer.trim().toLowerCase() === state.currentQuestion.answer.trim().toLowerCase();
-        state.quizResults.push({ questionId: state.currentQuestion.id, selectedAnswer: answer, isCorrect: correct, answeredAt: Date.now() });
+        const question = state.currentQuestion;
+        const correct = answer.trim().toLowerCase() === question.answer.trim().toLowerCase();
+        state.quizResults.push({
+          questionId: question.id,
+          wordId: question.word.id,
+          mode: question.mode,
+          prompt: question.prompt,
+          selectedAnswer: answer,
+          correctAnswer: question.answer,
+          isCorrect: correct,
+          answeredAt: Date.now(),
+        });
         state.currentAnswer = { text: answer, isCorrect: correct };
         
         if (correct) {
@@ -585,10 +595,10 @@
             <div class="danger-text" style="text-align: left;">
               <span style="font-size: 1.1rem; display: block; margin-bottom: 0.4rem;">✗ Incorrect.</span>
               <div style="margin-bottom: 0.3rem; font-size: 0.95rem; color: var(--text);">
-                Your answer: <span class="diff-container">${diffAnswer(answer, state.currentQuestion.answer)}</span>
+                Your answer: <span class="diff-container">${diffAnswer(answer, question.answer)}</span>
               </div>
               <div style="font-size: 0.95rem; color: var(--muted);">
-                Correct answer: <strong style="color: var(--success);">${escapeHtml(state.currentQuestion.answer)}</strong>
+                Correct answer: <strong style="color: var(--success);">${escapeHtml(question.answer)}</strong>
               </div>
             </div>
           `;
@@ -769,6 +779,7 @@
       function renderQuiz() {
         const quizStats = getQuizStats();
         const question = state.currentQuestion;
+        const completedQuiz = !question && state.quizResults.length > 0;
         const topics = getTopics();
         const topicWords = getTopicWords();
         const questionCount = Math.min(topicWords.length, state.quizQuestionLimit);
@@ -799,9 +810,9 @@
             </div>
           </div>
           <div class="panel stack">
-            ${question ? renderQuestion(question) : '<div class="empty"><h3>Ready to practice?</h3><p class="muted">Choose a mode and start a quiz.</p></div>'}
+            ${question ? renderQuestion(question) : (completedQuiz ? renderQuizSummary(quizStats) : '<div class="empty"><h3>Ready to practice?</h3><p class="muted">Choose a mode and start a quiz.</p></div>')}
             ${state.feedback ? `<p class="feedback">${state.feedback}</p>` : ''}
-            <button class="button" type="button" id="startQuiz">${question ? 'Restart quiz' : 'Start quiz'}</button>
+            <button class="button" type="button" id="startQuiz">${question ? 'Restart quiz' : (completedQuiz ? 'Start new quiz' : 'Start quiz')}</button>
           </div>
         `;
       }
@@ -873,6 +884,47 @@
           `;
         }
         return `<div class="stack"><p class="muted">Choose the correct answer for:</p><h3>${escapeHtml(question.prompt)}</h3><div class="quiz-options">${question.options.map(renderOption).join('')}</div></div>`;
+      }
+
+      function renderQuizSummary(quizStats) {
+        const modeLabel = { meaning: 'Meaning', word: 'English', listening: 'Listen', typing: 'Typing', dictation: 'Dictation' }[state.quizMode] || state.quizMode;
+        const wrong = quizStats.total - quizStats.correct;
+        const resultRows = state.quizResults.map((result, index) => {
+          const word = state.words.find((item) => item.id === result.wordId);
+          const prompt = result.prompt || word?.word || '';
+          const correctAnswer = result.correctAnswer || '';
+          const statusText = result.isCorrect ? 'Correct' : 'Wrong';
+          const statusColor = result.isCorrect ? 'var(--success)' : 'var(--danger)';
+          return `
+            <div style="padding: 0.85rem 1rem; border-radius: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); display: grid; gap: 0.35rem;">
+              <div class="row between" style="gap: 0.5rem;">
+                <strong>Question ${index + 1}</strong>
+                <span class="small" style="font-weight: 700; color: ${statusColor};">${statusText}</span>
+              </div>
+              <p class="muted small">Prompt: ${escapeHtml(prompt)}</p>
+              <p class="small">Your answer: <strong>${escapeHtml(result.selectedAnswer)}</strong></p>
+              ${result.isCorrect ? '' : `<p class="small">Correct answer: <strong style="color: var(--success);">${escapeHtml(correctAnswer)}</strong></p>`}
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="stack">
+            <div>
+              <h3>Quiz Result</h3>
+              <p class="muted small">${escapeHtml(modeLabel)} mode - ${quizStats.elapsed}s</p>
+            </div>
+            <div class="stats-grid">
+              ${statCard('Correct', quizStats.correct)}
+              ${statCard('Wrong', wrong)}
+              ${statCard('Accuracy', `${quizStats.accuracy}%`)}
+              ${statCard('Total', quizStats.total)}
+            </div>
+            <div class="stack" style="gap: 0.65rem;">
+              ${resultRows}
+            </div>
+          </div>
+        `;
       }
 
       function renderOption(option) {

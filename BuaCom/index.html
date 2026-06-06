@@ -354,7 +354,9 @@
     .tag-btn:hover,
     .tag-btn.active,
     .region-btn:hover,
-    .region-btn.active {
+    .region-btn.active,
+    .view-tab:hover,
+    .view-tab.active {
       background: var(--primary);
       color: #fbfff0;
       box-shadow: 0 10px 22px rgba(49, 86, 29, 0.2);
@@ -389,6 +391,41 @@
       color: #31561d;
       font-size: clamp(1.55rem, 3vw, 2.25rem);
       letter-spacing: -0.035em;
+    }
+
+    .heading-copy {
+      display: grid;
+      gap: 4px;
+    }
+
+    .section-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+    }
+
+    .view-tabs {
+      display: inline-flex;
+      gap: 8px;
+      padding: 5px;
+      border: 1px solid rgba(79, 125, 44, 0.16);
+      border-radius: 999px;
+      background: rgba(251, 255, 240, 0.8);
+    }
+
+    .view-tab {
+      border: 1px solid transparent;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--primary-dark);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 900;
+      padding: 8px 13px;
+      transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+      white-space: nowrap;
     }
 
     .result-count {
@@ -461,6 +498,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-wrap: wrap;
       gap: 12px;
       margin-bottom: 12px;
     }
@@ -488,6 +526,32 @@
       font-size: 1.24rem;
       line-height: 1.25;
       letter-spacing: -0.02em;
+    }
+
+    .favorite-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 1px solid rgba(215, 164, 65, 0.34);
+      border-radius: 999px;
+      background: rgba(255, 249, 236, 0.92);
+      color: #7a5520;
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.86rem;
+      font-weight: 900;
+      padding: 7px 11px;
+      transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .favorite-button:hover,
+    .favorite-button.active {
+      background: #d7a441;
+      color: #fff9e8;
+      box-shadow: 0 10px 22px rgba(123, 84, 26, 0.16);
+      transform: translateY(-1px);
     }
 
     .description {
@@ -562,6 +626,43 @@
 
     .ingredients b {
       color: var(--green);
+    }
+
+    .combo-note {
+      display: grid;
+      gap: 7px;
+      margin-top: 14px;
+      border-top: 1px dashed rgba(79, 125, 44, 0.24);
+      padding-top: 12px;
+    }
+
+    .combo-note label {
+      color: var(--green-dark);
+      font-size: 0.82rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .combo-note textarea {
+      width: 100%;
+      min-height: 74px;
+      resize: vertical;
+      border: 1px solid rgba(79, 125, 44, 0.18);
+      border-radius: 16px;
+      background: rgba(255, 249, 236, 0.88);
+      color: var(--text);
+      font: inherit;
+      font-size: 0.92rem;
+      line-height: 1.45;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .combo-note textarea:focus {
+      border-color: rgba(79, 125, 44, 0.48);
+      box-shadow: 0 0 0 4px rgba(120, 169, 66, 0.16);
     }
 
     .empty-state {
@@ -788,6 +889,16 @@
         flex-direction: column;
       }
 
+      .section-actions {
+        align-items: flex-start;
+        width: 100%;
+      }
+
+      .view-tabs {
+        width: 100%;
+        overflow-x: auto;
+      }
+
       .combo-grid {
         grid-template-columns: 1fr;
       }
@@ -842,7 +953,7 @@
           <h1>Bữa Cơm Việt Mỗi Ngày</h1>
           <p class="intro">
             Một bữa cơm Việt thường không đứng riêng một món, mà là cả mâm cơm có món mặn,
-            món canh, rau, món chua hoặc nước chấm đi kèm. Những combo dưới đây gợi ý các bữa cơm
+            món canh, rau, món chua hoặc nước chấm đi kèm. Những bữa cơm dưới đây gợi ý các bữa cơm
             hằng ngày theo từng vùng miền, giữ tinh thần cân vị và hợp với cơm trắng nóng.
           </p>
         </div>
@@ -850,7 +961,7 @@
 
       <aside class="hero-note" aria-label="Điểm nhấn thực đơn">
         <div>
-          <strong>Combo mâm cơm hoàn chỉnh theo nhiều vùng miền</strong>
+          <strong>Bữa cơm hoàn chỉnh theo nhiều vùng miền</strong>
           <p>
             Chọn miền Tây, miền Bắc, miền Trung, Đông Nam Bộ, Tây Nguyên hoặc vùng biển
             để xem các mâm cơm có cách phối món riêng.
@@ -859,7 +970,7 @@
         <div class="stats">
           <div class="stat">
             <b id="comboTotal">12</b>
-            <span>combo</span>
+            <span>bữa cơm</span>
           </div>
           <div class="stat">
             <b>4+</b>
@@ -874,8 +985,8 @@
     </header>
 
     <div class="content-layout">
-      <aside class="toolbar" aria-label="Tìm kiếm và lọc combo bữa cơm">
-        <p class="sidebar-title">Lọc nhanh combo</p>
+      <aside class="toolbar" aria-label="Tìm kiếm và lọc bữa cơm">
+        <p class="sidebar-title">Lọc nhanh bữa cơm</p>
         <p class="sidebar-note">Chọn phong vị hoặc tìm theo món ăn, nguyên liệu.</p>
         <label class="search-box">
           <span aria-hidden="true">⌕</span>
@@ -890,15 +1001,27 @@
 
       <section class="combo-content">
         <div class="section-heading">
-          <h2>Gợi ý combo bữa cơm hằng ngày</h2>
-          <span id="resultCount" class="result-count"></span>
+          <div class="heading-copy">
+            <h2 id="comboHeading">Gợi ý bữa cơm hằng ngày</h2>
+            <span id="resultCount" class="result-count"></span>
+          </div>
+          <div class="section-actions">
+            <div id="viewTabs" class="view-tabs" role="tablist" aria-label="Chọn danh sách bữa cơm">
+              <button class="view-tab active" type="button" role="tab" aria-selected="true" data-view="all">
+                Tất cả bữa cơm
+              </button>
+              <button class="view-tab" type="button" role="tab" aria-selected="false" data-view="favorites">
+                Bữa cơm yêu thích
+              </button>
+            </div>
+          </div>
         </div>
 
         <section id="comboGrid" class="combo-grid" aria-live="polite"></section>
 
         <section id="emptyState" class="empty-state">
-          <strong>Không tìm thấy combo phù hợp</strong>
-          <span>Hãy thử tìm theo tên món như “tép ram”, “canh chua”, “cá kho” hoặc nguyên liệu quen thuộc.</span>
+          <strong id="emptyTitle">Không tìm thấy bữa cơm phù hợp</strong>
+          <span id="emptyMessage">Hãy thử tìm theo tên món như “tép ram”, “canh chua”, “cá kho” hoặc nguyên liệu quen thuộc.</span>
         </section>
       </section>
     </div>
@@ -1001,7 +1124,7 @@
           {
             title: "Mâm Cơm Tép Rang Canh Bí",
             tag: "Nhẹ nhàng",
-            description: "Một combo giản dị cho ngày thường, có vị mặn ngọt của tép và vị canh bí thanh dịu.",
+            description: "Một bữa cơm giản dị cho ngày thường, có vị mặn ngọt của tép và vị canh bí thanh dịu.",
             dishes: [
               { role: "Món mặn", name: "Tép rang nước cốt dừa" },
               { role: "Món canh", name: "Canh bí đỏ nấu tôm" },
@@ -2952,8 +3075,12 @@
     const searchInput = document.getElementById("searchInput");
     const regionFilters = document.getElementById("regionFilters");
     const tagFilters = document.getElementById("tagFilters");
+    const viewTabs = document.getElementById("viewTabs");
+    const comboHeading = document.getElementById("comboHeading");
     const resultCount = document.getElementById("resultCount");
     const emptyState = document.getElementById("emptyState");
+    const emptyTitle = document.getElementById("emptyTitle");
+    const emptyMessage = document.getElementById("emptyMessage");
     const comboTotal = document.getElementById("comboTotal");
     const regionTotal = document.getElementById("regionTotal");
     const activeRegionName = document.getElementById("activeRegionName");
@@ -2965,6 +3092,9 @@
 
     let activeRegion = "mienTay";
     let activeTag = "Tất cả";
+    let activeView = "all";
+    const favoriteStorageKey = "buaComFavoriteCombos";
+    let favoriteCombos = loadFavoriteCombos();
 
     function normalizeText(value) {
       return value
@@ -2986,6 +3116,72 @@
 
     function getTotalCombos() {
       return Object.values(menuRegions).reduce((total, region) => total + region.combos.length, 0);
+    }
+
+    function loadFavoriteCombos() {
+      try {
+        return JSON.parse(localStorage.getItem(favoriteStorageKey)) || {};
+      } catch (error) {
+        return {};
+      }
+    }
+
+    function saveFavoriteCombos() {
+      localStorage.setItem(favoriteStorageKey, JSON.stringify(favoriteCombos));
+    }
+
+    function getComboKey(regionKey, index) {
+      return `${regionKey}-${index}`;
+    }
+
+    function getAllComboEntries() {
+      return Object.entries(menuRegions).flatMap(([regionKey, region]) =>
+        region.combos.map((combo, index) => ({
+          combo,
+          index,
+          regionKey,
+          regionName: region.name,
+          key: getComboKey(regionKey, index)
+        }))
+      );
+    }
+
+    function getFavoriteEntries() {
+      return getAllComboEntries().filter((entry) => favoriteCombos[entry.key]);
+    }
+
+    function isFavorite(key) {
+      return Boolean(favoriteCombos[key]);
+    }
+
+    function getFavoriteNote(key) {
+      return favoriteCombos[key]?.note || "";
+    }
+
+    function toggleFavorite(key) {
+      if (favoriteCombos[key]) {
+        delete favoriteCombos[key];
+      } else {
+        favoriteCombos[key] = {
+          note: "",
+          savedAt: new Date().toISOString()
+        };
+      }
+
+      saveFavoriteCombos();
+    }
+
+    function updateFavoriteNote(key, note) {
+      if (!favoriteCombos[key]) {
+        favoriteCombos[key] = {
+          note: "",
+          savedAt: new Date().toISOString()
+        };
+      }
+
+      favoriteCombos[key].note = note;
+      favoriteCombos[key].updatedAt = new Date().toISOString();
+      saveFavoriteCombos();
     }
 
     function escapeSvgText(value) {
@@ -3227,9 +3423,9 @@
       );
     }
 
-    function createImageSources(combo, index) {
+    function createImageSources(combo, index, regionKey = activeRegion) {
       return [
-        ...createLocalImageUrls(index),
+        ...createLocalImageUrls(index, regionKey),
         createRealImageUrl(combo, index),
         createComboImage(combo, index)
       ];
@@ -3258,6 +3454,14 @@
           </button>
         `)
         .join("");
+    }
+
+    function renderViewTabs() {
+      viewTabs.querySelectorAll(".view-tab").forEach((button) => {
+        const isActive = button.dataset.view === activeView;
+        button.classList.toggle("active", isActive);
+        button.setAttribute("aria-selected", isActive ? "true" : "false");
+      });
     }
 
     function getDishRecipe(context) {
@@ -3404,7 +3608,7 @@
         type.match.some((keyword) => dishText.includes(keyword))
       );
       const fallbackRecipe = {
-        summary: "Đây là món trong mâm cơm gia đình, nên nêm vừa ăn và phối với món còn lại trong combo để cân vị.",
+        summary: "Đây là món trong mâm cơm gia đình, nên nêm vừa ăn và phối với món còn lại trong bữa cơm để cân vị.",
         steps: [
           "Sơ chế nguyên liệu chính thật sạch, để ráo trước khi nấu.",
           "Ướp hoặc nêm nền bằng hành tỏi, nước mắm/muối, tiêu và chút đường nếu hợp món.",
@@ -3581,7 +3785,7 @@
       recipeModal.setAttribute("aria-hidden", "true");
     }
 
-    function createDishList(dishes, combo) {
+    function createDishList(dishes, combo, regionName) {
       return dishes
         .map((dish) => {
           const payload = encodeURIComponent(JSON.stringify({
@@ -3589,7 +3793,7 @@
             comboTitle: combo.title,
             comboDescription: combo.description,
             ingredients: combo.ingredients,
-            regionName: menuRegions[activeRegion].name
+            regionName
           }));
 
           return `
@@ -3604,11 +3808,27 @@
         .join("");
     }
 
-    function createComboCard(combo, index) {
-      const imageSources = createImageSources(combo, index);
+    function createComboCard(entry) {
+      const { combo, index, regionKey, regionName, key } = entry;
+      const imageSources = createImageSources(combo, index, regionKey);
+      const favorite = isFavorite(key);
+      const favoriteLabel = favorite ? "Đã lưu" : "Lưu yêu thích";
+      const note = getFavoriteNote(key);
+      const noteField = favorite
+        ? `
+            <div class="combo-note">
+              <label for="note-${key}">Ghi chú riêng</label>
+              <textarea
+                id="note-${key}"
+                data-note="${key}"
+                placeholder="Ví dụ: hợp nấu cuối tuần, giảm cay cho bé..."
+              >${escapeSvgText(note)}</textarea>
+            </div>
+          `
+        : "";
 
       return `
-        <article class="combo-card">
+        <article class="combo-card" data-combo-key="${key}">
           <figure class="combo-cover">
             <img
               src="${imageSources[0]}"
@@ -3619,13 +3839,22 @@
           </figure>
           <div class="combo-body">
             <div class="card-top">
-              <span class="combo-number">Combo ${String(index + 1).padStart(2, "0")}</span>
-              <span class="combo-tag">${combo.tag}</span>
+              <span class="combo-number">${regionName} · Bữa cơm ${String(index + 1).padStart(2, "0")}</span>
+              <button
+                class="favorite-button${favorite ? " active" : ""}"
+                type="button"
+                data-favorite="${key}"
+                aria-pressed="${favorite ? "true" : "false"}"
+              >
+                ${favorite ? "♥" : "♡"} ${favoriteLabel}
+              </button>
             </div>
+            <span class="combo-tag">${combo.tag}</span>
             <h3>${combo.title}</h3>
             <p class="description">${combo.description}</p>
-            <ul class="dish-list">${createDishList(combo.dishes, combo)}</ul>
+            <ul class="dish-list">${createDishList(combo.dishes, combo, regionName)}</ul>
             <div class="ingredients"><b>Nguyên liệu chính:</b> ${combo.ingredients.join(", ")}</div>
+            ${noteField}
           </div>
         </article>
       `;
@@ -3649,30 +3878,56 @@
 
     function renderCombos() {
       const keyword = normalizeText(searchInput.value.trim());
-      const combos = getCombos(activeRegion);
+      const entries = activeView === "favorites"
+        ? getFavoriteEntries()
+        : getCombos(activeRegion).map((combo, index) => ({
+            combo,
+            index,
+            regionKey: activeRegion,
+            regionName: menuRegions[activeRegion].name,
+            key: getComboKey(activeRegion, index)
+          }));
 
-      const filteredCombos = combos.filter((combo) => {
-        const matchesTag = activeTag === "Tất cả" || combo.tag === activeTag;
+      const filteredEntries = entries.filter((entry) => {
+        const { combo } = entry;
+        const matchesTag = activeView === "favorites" || activeTag === "Tất cả" || combo.tag === activeTag;
         const searchableText = normalizeText([
+          entry.regionName,
           combo.title,
           combo.tag,
           combo.description,
           combo.ingredients.join(" "),
-          combo.dishes.map((dish) => `${dish.role} ${dish.name}`).join(" ")
+          combo.dishes.map((dish) => `${dish.role} ${dish.name}`).join(" "),
+          getFavoriteNote(entry.key)
         ].join(" "));
 
         return matchesTag && searchableText.includes(keyword);
       });
 
-      comboGrid.innerHTML = filteredCombos
-        .map((combo) => createComboCard(combo, combos.indexOf(combo)))
+      comboGrid.innerHTML = filteredEntries
+        .map((entry) => createComboCard(entry))
         .join("");
       applyImageFallbacks();
-      resultCount.textContent = `${filteredCombos.length} combo phù hợp`;
+      renderViewTabs();
+
+      comboHeading.textContent = activeView === "favorites"
+        ? "Bữa cơm yêu thích của bạn"
+        : "Gợi ý bữa cơm hằng ngày";
+      resultCount.textContent = activeView === "favorites"
+        ? `${filteredEntries.length} bữa cơm đã lưu`
+        : `${filteredEntries.length} bữa cơm phù hợp`;
       comboTotal.textContent = getTotalCombos();
       regionTotal.textContent = getRegions().length;
-      activeRegionName.textContent = menuRegions[activeRegion].name;
-      emptyState.classList.toggle("show", filteredCombos.length === 0);
+      activeRegionName.textContent = activeView === "favorites"
+        ? "Danh sách yêu thích"
+        : menuRegions[activeRegion].name;
+      emptyTitle.textContent = activeView === "favorites"
+        ? "Chưa có bữa cơm yêu thích"
+        : "Không tìm thấy bữa cơm phù hợp";
+      emptyMessage.textContent = activeView === "favorites"
+        ? "Bấm “Lưu yêu thích” trên bữa cơm bạn thích để xem lại nhanh và thêm ghi chú cho lần sau."
+        : "Hãy thử tìm theo tên món như “tép ram”, “canh chua”, “cá kho” hoặc nguyên liệu quen thuộc.";
+      emptyState.classList.toggle("show", filteredEntries.length === 0);
     }
 
     regionFilters.addEventListener("click", (event) => {
@@ -3684,6 +3939,7 @@
 
       activeRegion = button.dataset.region;
       activeTag = "Tất cả";
+      activeView = "all";
       renderRegionFilters();
       renderTagFilters();
       renderCombos();
@@ -3697,11 +3953,31 @@
       }
 
       activeTag = button.dataset.tag;
+      activeView = "all";
       renderTagFilters();
       renderCombos();
     });
 
+    viewTabs.addEventListener("click", (event) => {
+      const button = event.target.closest(".view-tab");
+
+      if (!button) {
+        return;
+      }
+
+      activeView = button.dataset.view;
+      renderCombos();
+    });
+
     comboGrid.addEventListener("click", (event) => {
+      const favoriteButton = event.target.closest(".favorite-button");
+
+      if (favoriteButton) {
+        toggleFavorite(favoriteButton.dataset.favorite);
+        renderCombos();
+        return;
+      }
+
       const button = event.target.closest(".dish-button");
 
       if (!button) {
@@ -3710,6 +3986,16 @@
 
       const context = JSON.parse(decodeURIComponent(button.dataset.recipe));
       openRecipeModal(context);
+    });
+
+    comboGrid.addEventListener("input", (event) => {
+      const noteField = event.target.closest("textarea[data-note]");
+
+      if (!noteField) {
+        return;
+      }
+
+      updateFavoriteNote(noteField.dataset.note, noteField.value);
     });
 
     recipeClose.addEventListener("click", closeRecipeModal);

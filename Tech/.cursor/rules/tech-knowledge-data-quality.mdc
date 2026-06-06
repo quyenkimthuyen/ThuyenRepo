@@ -1,0 +1,104 @@
+---
+description: Maintain expert-quality knowledge data for the Technology Knowledge Tree website
+globs:
+  - src/data.js
+  - src/**/*.js
+alwaysApply: false
+---
+
+# Technology Knowledge Data Quality Rule
+
+When updating the knowledge data for this website, write as a senior cross-functional expert in system architecture, software engineering, AI engineering, product development, data, cloud, cybersecurity, business analysis, and education technology.
+
+The site is for non-specialists. Do not write like a glossary, marketing brochure, or academic encyclopedia. Every update must help a beginner, founder, PM, BA, investor, or career switcher understand how technology is used in real products.
+
+## Required Quality Bar
+
+Every knowledge node must be:
+
+- Accurate enough for a domain expert to accept.
+- Simple enough for a 15-year-old beginner to understand.
+- Practical enough to support product and system decisions.
+- Connected to the larger system, not described in isolation.
+- Honest about tradeoffs, when not to use it, and common misunderstandings.
+
+## Required Node Fields
+
+Each new or substantially edited `node(...)` should include:
+
+- `id`: stable kebab-case identifier.
+- `title`: clear display name.
+- `category`: concise domain category.
+- `simple`: one plain-language explanation using analogy only when helpful.
+- `solves`: concrete problems this technology solves.
+- `useWhen`: practical conditions where it is a good fit.
+- `avoidWhen`: cases where it is overkill, risky, or the wrong tool.
+- `examples`: recognizable real-world product or business examples.
+- `relations`: ordered system relationship using `relation(...)`.
+- `difficulty`: one of `easy`, `medium`, `hard`, `expert`.
+- `careers`: roles that benefit from understanding it.
+- `trend`: realistic future outlook, not hype.
+- `keywords`: search terms, aliases, tools, or concepts.
+- `misconceptions`: common beginner or business misunderstandings.
+- `askAi`: useful prompts a learner can ask AI about this topic.
+- `nextSteps`: what the learner should study or do next.
+- `children`: only when the node naturally decomposes into subtopics.
+
+## Content Standards
+
+- Prefer Vietnamese explanations for learner-facing fields.
+- Keep sentences direct and concrete.
+- Use real product context: ecommerce, SaaS, fintech, edtech, enterprise, analytics, AI assistant, marketplace, internal tools.
+- Include tradeoffs: cost, complexity, team capability, security, scale, reliability, privacy, compliance, data quality.
+- Explain relationships as flows, for example `User -> Frontend -> API -> Backend -> Database -> Analytics -> AI`.
+- Avoid absolute claims like “always”, “never”, “best”, unless the statement is genuinely universal.
+- Avoid shallow descriptions such as “X is a popular technology used for Y” without why, when, and how it fits a system.
+
+## Expert Review Checklist
+
+Before finishing a data update, verify:
+
+- The node answers “what is it?”, “why use it?”, “when use it?”, and “when not use it?”.
+- A non-technical founder or PM can explain the concept back after reading it.
+- A technical reviewer would not object to the core explanation.
+- The node has a realistic relationship to other technologies.
+- The node includes at least one business/product example.
+- The difficulty level matches the operational complexity, not just the concept.
+- The career value is specific and not inflated.
+- The trend statement distinguishes stable, growing, declining, or volatile.
+- Search keywords include common English terms and tool names where useful.
+- New product templates, career maps, and roadmaps stay consistent with the node taxonomy.
+
+## Product Map Standards
+
+When adding `productTemplates`:
+
+- Start from user-facing experience, then backend/data/AI/payment/security/operations.
+- Include analytics, monitoring, and security for realistic production products.
+- Include human approval or audit log when AI or financial actions can create risk.
+- Avoid implying every product needs complex cloud, microservices, or Kubernetes.
+
+## Career Map Standards
+
+When adding `careerMaps`:
+
+- Include foundational skills, adjacent business skills, and production skills.
+- Keep the skill list practical enough for a learner to use as a roadmap.
+- Do not define a career only by tools; include concepts and responsibilities.
+
+## Roadmap Standards
+
+When adding `roadmaps`:
+
+- Use progressive levels from beginner foundation to applied system thinking.
+- Each level should have a clear learning purpose.
+- Include AI literacy where relevant, but do not force AI into topics where it adds no value.
+
+## Validation
+
+After edits:
+
+- Run `node --check "src/data.js"` and `node --check "src/app.js"` when possible.
+- Open the site or use browser verification when possible.
+- Test search for at least one newly added node.
+- Test that detail panel shows the new metadata sections.

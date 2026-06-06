@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cây Tri Thức Công Nghệ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">T</div>
+          <div>
+            <p class="eyebrow">Technology Knowledge Map</p>
+            <h1>Cây Tri Thức Công Nghệ</h1>
+          </div>
+        </div>
+
+        <div class="search-box">
+          <label for="searchInput">Tìm kiếm kiến thức</label>
+          <input id="searchInput" type="search" placeholder="AI, Database, Cloud..." />
+        </div>
+
+        <div class="filters" aria-label="Bộ lọc độ khó">
+          <button class="chip active" data-difficulty="all">Tất cả</button>
+          <button class="chip" data-difficulty="easy">Dễ</button>
+          <button class="chip" data-difficulty="medium">Trung bình</button>
+          <button class="chip" data-difficulty="hard">Khó</button>
+          <button class="chip" data-difficulty="expert">Chuyên gia</button>
+        </div>
+
+        <nav class="tree-panel" aria-label="Cây kiến thức">
+          <div id="knowledgeTree" class="tree"></div>
+        </nav>
+      </aside>
+
+      <main class="main-content">
+        <section class="hero">
+          <div>
+            <p class="eyebrow">Wikipedia + Mindmap + Product Architecture + Career Roadmap</p>
+            <h2>Muốn xây một sản phẩm số trong thời đại AI thì cần biết những gì?</h2>
+            <p>
+              Chọn một node trong cây để xem vai trò, cách dùng, ví dụ thực tế, quan hệ hệ thống
+              và lộ trình nghề nghiệp liên quan.
+            </p>
+          </div>
+          <div class="hero-stat">
+            <strong id="nodeCount">0</strong>
+            <span>node kiến thức</span>
+          </div>
+        </section>
+
+        <section class="workspace-grid">
+          <article class="card visual-card">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Interactive Tree</p>
+                <h3>Bản đồ tư duy</h3>
+              </div>
+              <button id="resetViewButton" class="ghost-button">Reset</button>
+            </div>
+            <div id="mindmapView" class="mindmap-view" aria-live="polite"></div>
+          </article>
+
+          <article class="card detail-card">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Knowledge Node</p>
+                <h3 id="detailTitle">Chọn một chủ đề</h3>
+              </div>
+              <span id="difficultyBadge" class="badge">--</span>
+            </div>
+            <div id="detailContent" class="detail-content empty-state">
+              Bắt đầu bằng cách chọn một node trong cây bên trái.
+            </div>
+          </article>
+        </section>
+
+        <section class="tabs-card card">
+          <div class="tab-list" role="tablist" aria-label="Các bản đồ học tập">
+            <button class="tab-button active" data-tab="system">System Map</button>
+            <button class="tab-button" data-tab="product">Product Map</button>
+            <button class="tab-button" data-tab="career">Career Map</button>
+            <button class="tab-button" data-tab="roadmap">Roadmap</button>
+            <button class="tab-button" data-tab="tutor">AI Tutor</button>
+          </div>
+
+          <div class="tab-panel active" id="systemPanel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Luồng hệ thống</p>
+                <h3>Người dùng đi qua những lớp công nghệ nào?</h3>
+              </div>
+            </div>
+            <div id="systemMap" class="flow-map"></div>
+          </div>
+
+          <div class="tab-panel" id="productPanel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Product Architecture</p>
+                <h3>Chọn sản phẩm để sinh sơ đồ thành phần</h3>
+              </div>
+              <select id="productSelect" class="select"></select>
+            </div>
+            <div id="productMap" class="flow-map"></div>
+          </div>
+
+          <div class="tab-panel" id="careerPanel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Career Roadmap</p>
+                <h3>Nghề này cần học những mảng nào?</h3>
+              </div>
+              <select id="careerSelect" class="select"></select>
+            </div>
+            <div id="careerMap" class="branch-map"></div>
+          </div>
+
+          <div class="tab-panel" id="roadmapPanel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Learning Path</p>
+                <h3>Lộ trình theo mục tiêu</h3>
+              </div>
+              <select id="roadmapSelect" class="select"></select>
+            </div>
+            <div id="roadmapMap" class="roadmap-map"></div>
+          </div>
+
+          <div class="tab-panel" id="tutorPanel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Mock AI Tutor</p>
+                <h3>Hỏi AI về node đang chọn</h3>
+              </div>
+              <button id="askTutorButton" class="primary-button">Hỏi AI</button>
+            </div>
+            <div id="tutorAnswer" class="tutor-answer">
+              Chọn một node rồi bấm "Hỏi AI" để nhận giải thích dễ hiểu.
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./src/data.js"></script>
+    <script src="./src/app.js"></script>
+  </body>
+</html>

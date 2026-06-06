@@ -1,0 +1,3665 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bản đồ nghề nghiệp 2026-2036</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f6fb;
+      --surface: #eef3fb;
+      --card: #ffffff;
+      --ink: #111827;
+      --muted: #667085;
+      --line: #dbe4f0;
+      --brand: #1d4ed8;
+      --brand-2: #0d9488;
+      --warm: #f59e0b;
+      --danger: #dc2626;
+      --shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+      --shadow-soft: 0 8px 24px rgba(15, 23, 42, 0.06);
+      --radius: 22px;
+      --radius-sm: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(243, 246, 251, 0.94) 22rem),
+        radial-gradient(circle at top left, rgba(29, 78, 216, 0.18), transparent 32rem),
+        radial-gradient(circle at top right, rgba(13, 148, 136, 0.14), transparent 30rem),
+        var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .container {
+      width: min(1240px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .hero {
+      padding: 34px 0 22px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .hero-card,
+    .panel,
+    .stat,
+    .career-card,
+    .roadmap-card {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(221, 227, 238, 0.78);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero-card {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(28px, 5vw, 52px);
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(245, 249, 255, 0.9)),
+        #fff;
+    }
+
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      right: -90px;
+      bottom: -120px;
+      width: 290px;
+      height: 290px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(29, 78, 216, 0.16), rgba(13, 148, 136, 0.12));
+      pointer-events: none;
+    }
+
+    .hero-card > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 7px 12px;
+      border: 1px solid rgba(36, 87, 214, 0.2);
+      border-radius: 999px;
+      color: var(--brand);
+      background: rgba(36, 87, 214, 0.07);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.12;
+    }
+
+    h1 {
+      max-width: 880px;
+      margin-top: 18px;
+      font-size: clamp(34px, 5.4vw, 68px);
+      letter-spacing: -0.055em;
+    }
+
+    h2 {
+      font-size: clamp(26px, 3.4vw, 40px);
+      letter-spacing: -0.035em;
+    }
+
+    h3 {
+      font-size: 20px;
+      letter-spacing: -0.02em;
+    }
+
+    .lead {
+      max-width: 760px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 28px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 0 18px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--ink);
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.04);
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(36, 87, 214, 0.35);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .button.primary {
+      background: var(--brand);
+      color: #fff;
+      border-color: var(--brand);
+    }
+
+    .hero-side {
+      display: grid;
+      gap: 14px;
+    }
+
+    .stat {
+      position: relative;
+      overflow: hidden;
+      padding: 22px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .stat::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 5px;
+      background: linear-gradient(180deg, var(--brand), var(--brand-2));
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 34px;
+      line-height: 1;
+      letter-spacing: -0.04em;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .hero-brief {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 24px;
+    }
+
+    .brief-card {
+      padding: 14px;
+      border: 1px solid rgba(221, 227, 238, 0.9);
+      border-radius: var(--radius-sm);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .brief-card strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .brief-card span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .role-panel {
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(221, 227, 238, 0.78);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .role-panel p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .role-grid {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .role-card {
+      display: block;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .role-card:hover {
+      transform: translateY(-1px);
+      border-color: rgba(29, 78, 216, 0.42);
+      background: #f8fbff;
+    }
+
+    .role-card strong {
+      display: block;
+    }
+
+    .role-card span {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid rgba(221, 227, 238, 0.82);
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(18px);
+    }
+
+    .nav-inner {
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      padding: 12px 0;
+    }
+
+    .nav a {
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      transition: color 0.2s ease, background 0.2s ease;
+    }
+
+    .nav a:hover {
+      background: #eef3ff;
+      color: var(--brand);
+    }
+
+    section {
+      padding: 34px 0;
+      scroll-margin-top: 76px;
+    }
+
+    section:nth-of-type(even) {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0));
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: end;
+      margin-bottom: 18px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(219, 228, 240, 0.72);
+    }
+
+    .section-head p {
+      max-width: 640px;
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .panel {
+      position: relative;
+      padding: 20px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .panel::before,
+    .career-card::before,
+    .roadmap-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 3px;
+      border-radius: var(--radius) var(--radius) 0 0;
+      background: linear-gradient(90deg, rgba(29, 78, 216, 0.85), rgba(13, 148, 136, 0.7));
+      opacity: 0.9;
+    }
+
+    .panel p,
+    .panel ul {
+      margin-bottom: 0;
+      color: var(--muted);
+    }
+
+    .panel ul {
+      padding-left: 20px;
+    }
+
+    .panel li + li {
+      margin-top: 8px;
+    }
+
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #edf4ff;
+      color: #1e40af;
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: minmax(220px, 1.35fr) repeat(5, minmax(155px, 1fr)) auto;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.72);
+      box-shadow: var(--shadow-soft);
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      color: var(--ink);
+      padding: 0 13px;
+      font: inherit;
+      outline: none;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    input:focus,
+    select:focus {
+      border-color: rgba(29, 78, 216, 0.48);
+      box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.09);
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 780px;
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 13px;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f8fbff;
+      color: #344054;
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      cursor: pointer;
+      box-shadow: inset 0 -1px 0 var(--line);
+    }
+
+    td:first-child,
+    th:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: inherit;
+      min-width: 210px;
+      box-shadow: 1px 0 0 var(--line);
+    }
+
+    th:first-child {
+      z-index: 3;
+      background: #f8fbff;
+    }
+
+    tbody tr:hover {
+      background: #f7faff;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #fbfdff;
+    }
+
+    .score {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 28px;
+      border-radius: 9px;
+      background: #edf7f5;
+      color: #05766b;
+      font-weight: 900;
+      box-shadow: inset 0 0 0 1px rgba(5, 118, 107, 0.08);
+    }
+
+    .risk-high {
+      background: #fff1f2;
+      color: #be123c;
+    }
+
+    .detail-row td {
+      background: #f8fbff;
+      padding: 0;
+    }
+
+    .career-detail {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px;
+    }
+
+    .career-detail div {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .career-detail strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .career-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .career-card {
+      position: relative;
+      padding: 20px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .career-card small {
+      display: block;
+      color: var(--brand);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .career-card p {
+      margin-bottom: 0;
+      color: var(--muted);
+    }
+
+    .rank-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.68);
+    }
+
+    .rank-tabs button {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      padding: 9px 13px;
+      color: var(--muted);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    }
+
+    .rank-tabs button:hover {
+      transform: translateY(-1px);
+      background: #eef3ff;
+      color: var(--brand);
+    }
+
+    .rank-tabs button.active {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+    }
+
+    .rank-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .rank-item {
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .rank-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      background: #eef3ff;
+      color: var(--brand);
+      font-weight: 900;
+    }
+
+    .roadmap-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .roadmap-card {
+      position: relative;
+      padding: 20px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .roadmap-card dl {
+      display: grid;
+      grid-template-columns: 118px 1fr;
+      gap: 8px 12px;
+      margin: 16px 0 0;
+    }
+
+    .roadmap-card dt {
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .roadmap-card dd {
+      margin: 0;
+    }
+
+    .quiz-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.04fr) minmax(340px, 0.96fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .quiz-form {
+      display: grid;
+      gap: 14px;
+    }
+
+    .quiz-progress {
+      position: sticky;
+      top: 58px;
+      z-index: 5;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .quiz-progress-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .quiz-progress-track {
+      height: 10px;
+      margin-top: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #edf1f7;
+    }
+
+    .quiz-progress-fill {
+      display: block;
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+      transition: width 0.25s ease;
+    }
+
+    .quiz-switch {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .quiz-switch label {
+      display: grid;
+      gap: 4px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+      transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    }
+
+    .quiz-switch label:hover {
+      transform: translateY(-1px);
+      border-color: rgba(29, 78, 216, 0.36);
+    }
+
+    .quiz-switch input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .quiz-switch strong {
+      color: var(--ink);
+    }
+
+    .quiz-switch span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .quiz-switch label:has(input:checked) {
+      border-color: rgba(36, 87, 214, 0.55);
+      background: #eef3ff;
+    }
+
+    .question-card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+    }
+
+    .question-card[hidden] {
+      display: none;
+    }
+
+    .question-card legend {
+      padding: 0;
+      color: var(--ink);
+      font-weight: 900;
+    }
+
+    .question-card p {
+      margin: 6px 0 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .option-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .option-list label {
+      display: grid;
+      grid-template-columns: 22px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fbfdff;
+      cursor: pointer;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .option-list label:hover {
+      border-color: rgba(36, 87, 214, 0.35);
+      background: #f7faff;
+    }
+
+    .option-list label:has(input:checked) {
+      border-color: rgba(29, 78, 216, 0.52);
+      background: #eef3ff;
+    }
+
+    .option-list input {
+      width: auto;
+      min-height: auto;
+      margin-top: 4px;
+      accent-color: var(--brand);
+    }
+
+    .quiz-step-actions {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fbfdff;
+    }
+
+    .quiz-step-actions span {
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .quiz-sticky {
+      position: sticky;
+      top: 78px;
+      max-height: calc(100vh - 96px);
+      overflow: auto;
+    }
+
+    .fit-summary {
+      display: grid;
+      gap: 10px;
+      margin: 16px 0;
+    }
+
+    .fit-bar {
+      display: grid;
+      grid-template-columns: 150px 1fr 42px;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .fit-bar span:nth-child(2) {
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #edf1f7;
+    }
+
+    .fit-bar i {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+    }
+
+    .recommendation-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .top-career-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+
+    .top-career-card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .metric {
+      padding: 8px;
+      border-radius: 12px;
+      background: #f8fafc;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .metric strong {
+      display: block;
+      color: var(--ink);
+      font-size: 16px;
+    }
+
+    .metric.good strong {
+      color: #047857;
+    }
+
+    .metric.warn strong {
+      color: #b45309;
+    }
+
+    .metric.risk strong {
+      color: #be123c;
+    }
+
+    .recommendation-card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+    }
+
+    .recommendation-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .match-score {
+      flex: 0 0 auto;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: #edf7f5;
+      color: #05766b;
+      font-weight: 900;
+      font-size: 13px;
+    }
+
+    .recommendation-card p {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .insight-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 16px 0;
+    }
+
+    .insight-card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fbfdff;
+    }
+
+    .insight-card strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .insight-card p,
+    .insight-card ul {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .insight-card ul {
+      padding-left: 18px;
+    }
+
+    .compare-panel {
+      margin-top: 18px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .compare-controls {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+      gap: 12px;
+      margin: 14px 0;
+    }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .compare-card {
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #fff;
+    }
+
+    .compare-card dl {
+      display: grid;
+      grid-template-columns: 106px 1fr;
+      gap: 8px 10px;
+      margin: 14px 0 0;
+      font-size: 14px;
+    }
+
+    .compare-card dt {
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    .compare-card dd {
+      margin: 0;
+    }
+
+    .note {
+      border-left: 4px solid var(--warm);
+      background: #fffbeb;
+      padding: 16px 18px;
+      border-radius: 16px;
+      color: #6b4b08;
+    }
+
+    .next-steps {
+      margin-top: 16px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #f8fbff;
+    }
+
+    .next-steps ol {
+      margin: 10px 0 0;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+
+    .mobile-cta {
+      display: none;
+      position: sticky;
+      bottom: 0;
+      z-index: 20;
+      padding: 10px 12px;
+      border-top: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(14px);
+    }
+
+    .mobile-cta-inner {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      width: min(100%, 520px);
+      margin: 0 auto;
+    }
+
+    .mobile-cta a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      border-radius: 999px;
+      background: #eef3ff;
+      color: var(--brand);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    footer {
+      padding: 36px 0 54px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    @media (max-width: 920px) {
+      .hero-grid,
+      .hero-brief,
+      .grid.two,
+      .grid.three,
+      .career-list,
+      .rank-list,
+      .roadmap-grid,
+      .quiz-layout,
+      .top-career-grid,
+      .career-detail {
+        grid-template-columns: 1fr;
+      }
+
+      .filters {
+        grid-template-columns: 1fr;
+      }
+
+      .compare-controls,
+      .compare-grid,
+      .insight-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .section-head {
+        display: block;
+      }
+
+      .quiz-sticky {
+        position: static;
+        max-height: none;
+        overflow: visible;
+      }
+
+      .mobile-cta {
+        display: block;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        width: min(100% - 24px, 1240px);
+      }
+
+      h1 {
+        font-size: 34px;
+      }
+
+      .hero {
+        padding-top: 22px;
+      }
+
+      .hero-card,
+      .panel,
+      .career-card,
+      .roadmap-card {
+        border-radius: 18px;
+      }
+
+      .quiz-switch {
+        grid-template-columns: 1fr;
+      }
+
+      .fit-bar {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+
+      .roadmap-card dl {
+        grid-template-columns: 1fr;
+      }
+
+      .recommendation-head {
+        display: grid;
+      }
+
+      .quiz-step-actions {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      .nav,
+      .filters,
+      .rank-tabs,
+      .quiz-form,
+      .hero-actions,
+      .mobile-cta,
+      .compare-panel {
+        display: none;
+      }
+
+      body {
+        background: #fff;
+      }
+
+      .hero-card,
+      .panel,
+      .stat,
+      .career-card,
+      .roadmap-card,
+      .table-wrap {
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="container hero-grid">
+      <div class="hero-card">
+        <span class="eyebrow">Bản đồ nghề nghiệp toàn cầu 2026-2036</span>
+        <h1>Chọn nghề trong thời đại AI bằng dữ liệu, năng lực người thật và giá trị xã hội.</h1>
+        <p class="lead">
+          Ứng dụng tổng hợp góc nhìn xã hội học, kinh tế học, tâm lý học, giáo dục, công nghệ và thị trường lao động để đề xuất ngành nghề phù hợp cho người trẻ trong hiện tại và 10 năm tới.
+        </p>
+        <div class="hero-actions">
+          <a class="button primary" href="#quiz">Làm trắc nghiệm nghề</a>
+          <a class="button" href="#careers">Xem bảng nghề nghiệp</a>
+          <a class="button" href="#rankings">Xem Top 10</a>
+        </div>
+        <div class="hero-brief" aria-label="Điểm vào nhanh">
+          <div class="brief-card">
+            <strong>Cho học sinh</strong>
+            <span>Làm bộ câu hỏi phổ thông để chọn hướng sau THPT.</span>
+          </div>
+          <div class="brief-card">
+            <strong>Cho người tự học</strong>
+            <span>Xem nghề dễ bắt đầu, lộ trình và công cụ AI nên dùng.</span>
+          </div>
+          <div class="brief-card">
+            <strong>Cho phụ huynh</strong>
+            <span>So sánh cơ hội, rủi ro và độ khó học của từng ngành.</span>
+          </div>
+        </div>
+      </div>
+      <aside class="hero-side" aria-label="Tóm tắt chỉ số">
+        <div class="role-panel">
+          <h3>Bắt đầu theo vai trò</h3>
+          <p>Chọn lối đi phù hợp để không phải đọc toàn bộ trang ngay từ đầu.</p>
+          <div class="role-grid">
+            <a class="role-card" href="#quiz" data-role-link="student">
+              <strong>Tôi là học sinh</strong>
+              <span>Làm bộ câu hỏi phổ thông, nhận gợi ý ngành và bước học thử.</span>
+            </a>
+            <a class="role-card" href="#careers">
+              <strong>Tôi là phụ huynh</strong>
+              <span>Xem bảng nghề, lọc theo mức đầu tư học tập và so sánh rủi ro.</span>
+            </a>
+            <a class="role-card" href="#quiz" data-role-link="general">
+              <strong>Tôi muốn chuyển hướng nghề</strong>
+              <span>Làm bộ câu hỏi người dùng chung và xem nghề phù hợp.</span>
+            </a>
+          </div>
+        </div>
+        <div class="stat"><strong>44</strong><span>Nghề được phân tích và chấm điểm</span></div>
+        <div class="stat"><strong>16</strong><span>Nhóm ngành cân bằng giữa công nghệ, con người và kinh tế</span></div>
+        <div class="stat"><strong>5</strong><span>Bảng xếp hạng theo thời gian, thu nhập, AI và điểm khởi đầu</span></div>
+      </aside>
+    </div>
+  </header>
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a href="#context">Bối cảnh</a>
+      <a href="#economy">Kinh tế</a>
+      <a href="#psychology">Tâm lý</a>
+      <a href="#education">Giáo dục</a>
+      <a href="#quiz">Trắc nghiệm</a>
+      <a href="#careers">Bảng nghề</a>
+      <a href="#groups">Nhóm ngành</a>
+      <a href="#rankings">Xếp hạng</a>
+      <a href="#roadmap">Lộ trình</a>
+      <a href="#conclusion">Kết luận</a>
+    </div>
+  </nav>
+
+  <main>
+    <section id="context">
+      <div class="container">
+        <div class="section-head">
+          <h2>1. Bối Cảnh Xã Hội</h2>
+          <p>Xã hội 10 năm qua thay đổi bởi số hóa, bất ổn địa chính trị, già hóa dân số, biến đổi khí hậu, làm việc từ xa và sự dịch chuyển giá trị sống của thế hệ trẻ.</p>
+        </div>
+        <div class="grid three">
+          <article class="panel">
+            <h3>Thay đổi lớn nhất</h3>
+            <ul>
+              <li>Kinh tế nền tảng, thương mại điện tử và mạng xã hội biến mỗi cá nhân thành một đơn vị sản xuất nội dung, dữ liệu và thương hiệu.</li>
+              <li>Làm việc linh hoạt, học trực tuyến, gig economy và di cư nhân tài toàn cầu trở thành bình thường mới.</li>
+              <li>Sức khỏe tinh thần, quyền riêng tư dữ liệu, niềm tin xã hội và tính bền vững trở thành ưu tiên chiến lược.</li>
+            </ul>
+          </article>
+          <article class="panel">
+            <h3>AI và robot thay đổi lao động</h3>
+            <p>AI sẽ thay thế phần lớn thao tác lặp lại, tăng năng suất của lao động tri thức và buộc nhiều nghề chuyển từ làm thủ công sang giám sát, thiết kế, kiểm chứng và ra quyết định. Robot tăng mạnh trong sản xuất, logistics, y tế, nông nghiệp và chăm sóc người cao tuổi.</p>
+          </article>
+          <article class="panel">
+            <h3>Công việc rủi ro cao</h3>
+            <p>Nhập liệu, tổng đài kịch bản cứng, kế toán cơ bản, dịch thuật phổ thông, viết nội dung SEO đại trà, thiết kế mẫu đơn giản, kiểm thử phần mềm lặp lại, sản xuất dây chuyền ít tùy biến và các vai trò chỉ dựa vào quy trình cố định.</p>
+          </article>
+        </div>
+        <div class="grid two" style="margin-top:16px">
+          <article class="panel">
+            <h3>Nhu cầu con người vẫn tồn tại</h3>
+            <div class="tag-row">
+              <span class="tag">Sức khỏe</span>
+              <span class="tag">An toàn</span>
+              <span class="tag">Niềm tin</span>
+              <span class="tag">Thuộc về</span>
+              <span class="tag">Giáo dục</span>
+              <span class="tag">Ý nghĩa sống</span>
+              <span class="tag">Sáng tạo</span>
+              <span class="tag">Chăm sóc</span>
+            </div>
+          </article>
+          <article class="panel">
+            <h3>Vấn đề lớn cần giải quyết</h3>
+            <p>Biến đổi khí hậu, bất bình đẳng kỹ năng, già hóa dân số, khủng hoảng sức khỏe tinh thần, an ninh mạng, đạo đức AI, chất lượng giáo dục, năng lượng sạch, an toàn thực phẩm và khả năng thích nghi của đô thị.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="economy">
+      <div class="container">
+        <div class="section-head">
+          <h2>2. Phân Tích Kinh Tế</h2>
+          <p>Giá trị kinh tế lớn nhất nằm ở nơi giao nhau giữa năng suất, dữ liệu, năng lượng, sức khỏe và khả năng giải quyết vấn đề phức tạp.</p>
+        </div>
+        <div class="grid three">
+          <article class="panel">
+            <h3>Ngành tăng trưởng nhanh</h3>
+            <p>AI, bán dẫn, an ninh mạng, điện toán đám mây, y tế số, năng lượng tái tạo, xe điện, logistics thông minh, công nghệ giáo dục, công nghệ tài chính và công nghệ sinh học.</p>
+          </article>
+          <article class="panel">
+            <h3>Thiếu nhân lực</h3>
+            <p>Chăm sóc sức khỏe, điều dưỡng, chuyên gia dữ liệu, kỹ sư AI, an ninh mạng, giáo viên giỏi, kỹ thuật viên năng lượng, chuyên gia chuỗi cung ứng, chuyên viên trị liệu tâm lý và kỹ sư hệ thống.</p>
+          </article>
+          <article class="panel">
+            <h3>Kỹ năng giá trị cao</h3>
+            <p>Tư duy hệ thống, phân tích dữ liệu, giao tiếp thuyết phục, thiết kế sản phẩm, quản trị rủi ro, hiểu khách hàng, lãnh đạo nhóm, AI literacy, an ninh thông tin và khả năng học lại nhanh.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="psychology">
+      <div class="container">
+        <div class="section-head">
+          <h2>3. Tâm Lý Con Người</h2>
+          <p>AI có thể tạo nội dung và tư vấn cơ bản, nhưng con người vẫn trả tiền cho sự tin cậy, trải nghiệm, đồng cảm, gu thẩm mỹ và trách nhiệm thật.</p>
+        </div>
+        <div class="grid three">
+          <article class="panel">
+            <h3>Sẵn sàng trả tiền cho</h3>
+            <p>Chuyên môn có trách nhiệm, chăm sóc sức khỏe, giáo dục cá nhân hóa, trải nghiệm cao cấp, thương hiệu đáng tin, cộng đồng, cố vấn, nghệ thuật có bản sắc và dịch vụ giúp giảm rủi ro.</p>
+          </article>
+          <article class="panel">
+            <h3>Nhu cầu cảm xúc khó thay thế</h3>
+            <p>Được lắng nghe, được công nhận, được thuộc về, được chữa lành, được truyền cảm hứng và cảm giác có người thật chịu trách nhiệm khi vấn đề quan trọng xảy ra.</p>
+          </article>
+          <article class="panel">
+            <h3>Gen Z và Gen Alpha</h3>
+            <p>Ưu tiên linh hoạt, học ngắn hạn, cá nhân hóa, minh bạch, tác động xã hội, sức khỏe tinh thần, đa nguồn thu nhập và sử dụng AI như bạn đồng hành học tập/làm việc.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="education">
+      <div class="container">
+        <div class="section-head">
+          <h2>4. Giáo Dục Cho Tương Lai</h2>
+          <p>Không thể học một lần cho cả đời. Lợi thế bền vững là học nền tảng sâu, thực hành liên tục và biết dùng AI để khuếch đại năng lực.</p>
+        </div>
+        <div class="grid two">
+          <article class="panel">
+            <h3>Nên học từ sớm</h3>
+            <ul>
+              <li>Tiếng Anh, toán ứng dụng, thống kê, tài chính cá nhân và tư duy phản biện.</li>
+              <li>Viết rõ ràng, thuyết trình, đàm phán, làm việc nhóm và quản trị cảm xúc.</li>
+              <li>Lập trình cơ bản, dữ liệu, AI literacy, bảo mật số và năng lực tự học.</li>
+            </ul>
+          </article>
+          <article class="panel">
+            <h3>Kiến thức dễ lỗi thời</h3>
+            <p>Công cụ phần mềm cụ thể, mẹo tối ưu nền tảng, quy trình văn phòng thủ công, kiến thức chỉ dùng để ghi nhớ, kỹ thuật marketing spam và các kỹ năng không có nền tảng nguyên lý.</p>
+          </article>
+          <article class="panel">
+            <h3>Mô hình học phù hợp</h3>
+            <p>Học theo dự án, portfolio, mentor, thực tập sớm, chứng chỉ ngắn hạn, mô phỏng thực tế, cộng đồng nghề nghiệp và vòng lặp học - làm - phản hồi - cải thiện.</p>
+          </article>
+          <article class="panel">
+            <h3>Năng lực chống thất nghiệp</h3>
+            <p>Biết đặt câu hỏi đúng, phân rã vấn đề, dùng AI hiệu quả, kiểm chứng chất lượng, hiểu con người, tạo giá trị đo được và chuyển đổi kỹ năng sang bối cảnh mới.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="quiz">
+      <div class="container">
+        <div class="section-head">
+          <h2>5. Trắc Nghiệm Định Hướng Nghề</h2>
+          <p>Trả lời trắc nghiệm để hệ thống phân tích xu hướng cá nhân, điều kiện gia đình, vùng miền, ngoại ngữ và cơ hội tại Việt Nam. Đây là công cụ định hướng, không phải kết luận tuyệt đối.</p>
+        </div>
+        <div class="quiz-layout">
+          <form class="panel quiz-form" id="quizForm">
+            <div class="note">
+              Hãy trả lời theo hoàn cảnh thật ở Việt Nam: tài chính gia đình, nơi sống, khả năng học xa nhà, ngoại ngữ và nhu cầu đi làm sớm. Đừng chọn theo hình ảnh “nghề hot”.
+            </div>
+            <div class="quiz-switch" aria-label="Chọn bộ câu hỏi">
+              <label>
+                <input type="radio" name="quizType" value="general" checked>
+                <strong>Người dùng chung</strong>
+                <span>Phù hợp người đã có trải nghiệm học/làm và muốn chọn nghề.</span>
+              </label>
+              <label>
+                <input type="radio" name="quizType" value="student">
+                <strong>Học sinh phổ thông</strong>
+                <span>Câu hỏi theo môn học, hoạt động ở trường, tổ hợp môn và hướng sau THPT.</span>
+              </label>
+            </div>
+            <div class="quiz-progress" aria-live="polite">
+              <div class="quiz-progress-top">
+                <span id="quizProgressText">Câu 0/0</span>
+                <span id="quizProgressPercent">0%</span>
+              </div>
+              <div class="quiz-progress-track">
+                <span class="quiz-progress-fill" id="quizProgressFill"></span>
+              </div>
+            </div>
+            <div id="questionList"></div>
+            <div class="quiz-step-actions">
+              <span id="quizStepLabel">Câu 1/1</span>
+              <button class="button" id="prevQuestionButton" type="button">Câu trước</button>
+              <button class="button" id="nextQuestionButton" type="button">Câu tiếp</button>
+            </div>
+            <div class="hero-actions">
+              <button class="button primary" type="submit">Xem nghề phù hợp</button>
+              <button class="button" id="clearQuizButton" type="button">Làm lại</button>
+            </div>
+          </form>
+          <aside class="panel quiz-sticky">
+            <h3>Kết quả gợi ý cá nhân</h3>
+            <p style="color:var(--muted);margin-bottom:0">
+              Hệ thống sẽ so sánh câu trả lời với đặc điểm nghề, cơ hội tại Việt Nam, khả năng đi quốc tế, mức đầu tư học tập, độ khó học và khả năng tạo giá trị xã hội.
+            </p>
+            <div class="note" style="margin-top:14px">
+              Kết quả là bản đồ định hướng, không phải kết luận cuối cùng. Hãy dùng nó để chọn 2-3 hướng cần trải nghiệm thử, hỏi chuyên gia và trao đổi với gia đình/giáo viên.
+            </div>
+            <div class="fit-summary" id="fitSummary"></div>
+            <div class="insight-grid" id="personalInsights"></div>
+            <div class="top-career-grid" id="topCareerCards"></div>
+            <div class="recommendation-grid" id="recommendationList">
+              <article class="recommendation-card">
+                <strong>Chưa có kết quả</strong>
+                <p>Quy trình gợi ý: chọn bộ câu hỏi, trả lời đầy đủ, xem Top nghề theo bối cảnh Việt Nam, so sánh 2-3 nghề rồi chọn một hướng để trải nghiệm thử trong 30 ngày.</p>
+              </article>
+            </div>
+            <div class="next-steps" id="nextSteps" hidden></div>
+            <button class="button" id="printResultButton" type="button" style="margin-top:14px;width:100%">In / lưu kết quả PDF</button>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section id="careers">
+      <div class="container">
+        <div class="section-head">
+          <h2>6. Bảng Đề Xuất Nghề Nghiệp</h2>
+          <p>Điểm 1-10 là ước lượng định hướng: AI cao nghĩa là nghề chịu tác động mạnh bởi AI, không nhất thiết là bị thay thế hoàn toàn.</p>
+        </div>
+        <div class="grid two" style="margin-bottom:16px">
+          <article class="panel">
+            <h3>Giả định chấm điểm</h3>
+            <p>Điểm được xây từ xu hướng toàn cầu, mức thiếu nhân lực, khả năng làm xuyên biên giới, tác động của AI, độ khó đào tạo và khả năng tạo giá trị xã hội. Đây là khung ra quyết định, không phải dữ liệu lương tuyển dụng theo thời gian thực.</p>
+          </article>
+          <article class="panel">
+            <h3>Cách dùng an toàn</h3>
+            <p>Hãy chọn 2-3 nghề để thử nghiệm bằng khóa học ngắn, dự án nhỏ hoặc phỏng vấn người trong nghề. Nếu nghề hợp điểm số nhưng xung đột với sức khỏe, hoàn cảnh gia đình hoặc giá trị sống, cần cân nhắc lại.</p>
+          </article>
+        </div>
+        <div class="filters">
+          <input id="searchInput" type="search" placeholder="Tìm nghề, nhóm ngành, lý do...">
+          <select id="groupFilter">
+            <option value="">Tất cả nhóm ngành</option>
+          </select>
+          <select id="sortSelect">
+            <option value="market">Sắp xếp theo nhu cầu thị trường</option>
+            <option value="income">Sắp xếp theo thu nhập</option>
+            <option value="global">Sắp xếp theo làm việc toàn cầu</option>
+            <option value="remote">Sắp xếp theo làm việc từ xa</option>
+            <option value="young">Sắp xếp theo phù hợp người trẻ</option>
+            <option value="difficultyAsc">Dễ học trước</option>
+            <option value="aiAsc">Ít bị AI tác động trước</option>
+          </select>
+          <select id="investmentFilter">
+            <option value="">Mọi mức đầu tư học tập</option>
+            <option value="low">Tự học/chi phí thấp</option>
+            <option value="medium">Chứng chỉ/cao đẳng/ngắn hạn</option>
+            <option value="high">Đại học/chuyên môn sâu</option>
+            <option value="long">Đào tạo dài hạn</option>
+          </select>
+          <select id="vietnamFilter">
+            <option value="">Mọi mức cơ hội tại Việt Nam</option>
+            <option value="high">Cơ hội Việt Nam cao</option>
+            <option value="medium">Cơ hội Việt Nam vừa</option>
+            <option value="emerging">Cơ hội mới nổi/tập trung đô thị</option>
+          </select>
+          <select id="pathwayFilter">
+            <option value="">Mọi lộ trình</option>
+            <option value="earlyJob">Có thể đi làm sớm</option>
+            <option value="university">Nên học đại học/chuyên sâu</option>
+            <option value="international">Phù hợp đi quốc tế</option>
+            <option value="localBusiness">Phù hợp kinh doanh địa phương</option>
+          </select>
+          <button class="button" id="resetButton" type="button">Đặt lại bộ lọc</button>
+        </div>
+        <div class="table-wrap" role="region" aria-label="Bảng nghề nghiệp" tabindex="0">
+          <table>
+            <thead>
+              <tr>
+                <th data-key="name">Tên nghề</th>
+                <th data-key="group">Nhóm</th>
+                <th>Nhu cầu</th>
+                <th>Thu nhập</th>
+                <th>Từ xa</th>
+                <th>Độ khó</th>
+                <th>Phù hợp trẻ</th>
+                <th>Chi tiết</th>
+              </tr>
+            </thead>
+            <tbody id="careerTable"></tbody>
+          </table>
+        </div>
+        <div class="compare-panel">
+          <h3>So sánh nhanh 2-3 nghề</h3>
+          <p style="color:var(--muted);margin-bottom:0">Chọn các nghề đang phân vân để so sánh thời gian học, mức đầu tư, cơ hội, rủi ro, thu nhập và khả năng làm từ xa.</p>
+          <div class="compare-controls">
+            <select id="compareSelect1"></select>
+            <select id="compareSelect2"></select>
+            <select id="compareSelect3"></select>
+            <button class="button" id="compareButton" type="button">So sánh</button>
+          </div>
+          <div class="compare-grid" id="compareGrid"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="groups">
+      <div class="container">
+        <div class="section-head">
+          <h2>7. Phân Loại Nghề</h2>
+          <p>Mỗi nhóm có vai trò khác nhau trong nền kinh tế. Danh sách này cân bằng giữa công nghệ, sức khỏe, giáo dục, môi trường, sáng tạo, dịch vụ con người và các nghề kỹ thuật thiết yếu.</p>
+        </div>
+        <div class="grid two" style="margin-bottom:16px">
+          <article class="panel">
+            <h3>Đã bổ sung nhóm còn thiếu</h3>
+            <p>Phân loại nghề không nên chỉ tập trung vào nghề văn phòng hoặc công nghệ số. Ứng dụng đã bổ sung các nghề kỹ thuật tay nghề cao, hạ tầng, thiết bị y tế, bán dẫn, nông nghiệp công nghệ cao và đô thị thích ứng khí hậu.</p>
+          </article>
+          <article class="panel">
+            <h3>Vì sao quan trọng?</h3>
+            <p>Những nghề này tạo giá trị thật cho xã hội, khó bị thay thế hoàn toàn bằng AI, có nhu cầu dài hạn do già hóa dân số, chuyển dịch năng lượng, đô thị hóa, an ninh chuỗi cung ứng và biến đổi khí hậu.</p>
+          </article>
+        </div>
+        <div class="career-list" id="groupCards"></div>
+      </div>
+    </section>
+
+    <section id="rankings">
+      <div class="container">
+        <div class="section-head">
+          <h2>8. Xếp Hạng Top 10</h2>
+          <p>Chọn từng tiêu chí để xem 10 nghề nổi bật. Bảng xếp hạng được tính từ điểm nhu cầu, thu nhập, khả năng toàn cầu, độ khó học và mức tác động AI.</p>
+        </div>
+        <div class="rank-tabs" id="rankTabs"></div>
+        <div class="rank-list" id="rankList"></div>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <div class="container">
+        <div class="section-head">
+          <h2>9. Lộ Trình Học Tập</h2>
+          <p>Chọn nghề trong bảng trên để xem nhanh hướng học. Tất cả lộ trình đều khuyến khích xây portfolio thật thay vì chỉ học chứng chỉ.</p>
+        </div>
+        <div class="roadmap-grid" id="roadmapGrid"></div>
+      </div>
+    </section>
+
+    <section id="conclusion">
+      <div class="container">
+        <div class="section-head">
+          <h2>Kết Luận Cho Người 18 Tuổi</h2>
+        </div>
+        <div class="grid two">
+          <article class="panel">
+            <h3>Nên ưu tiên ngành nào?</h3>
+            <p>Nếu bắt đầu từ con số 0 trong năm nay, nên ưu tiên các hướng có nền tảng rộng, nhu cầu toàn cầu và khả năng kết hợp AI: dữ liệu/AI ứng dụng, an ninh mạng, kỹ thuật phần mềm, y tế - sức khỏe, giáo dục cá nhân hóa, năng lượng xanh, tài chính số, thiết kế sản phẩm và sáng tạo nội dung có chuyên môn.</p>
+          </article>
+          <article class="panel">
+            <h3>Vì sao?</h3>
+            <p>Những hướng này giải quyết vấn đề thật, có thị trường lớn, có thể học theo dự án, tận dụng được AI để tăng năng suất và cho phép người trẻ xây năng lực toàn cầu từ sớm. Tuy nhiên, không nên chọn chỉ vì “hot”; hãy kiểm tra bằng 3 tháng học thử, 2 dự án thật và phản hồi từ người trong nghề.</p>
+          </article>
+        </div>
+        <div class="note" style="margin-top:16px">
+          Chiến lược tốt nhất: chọn một năng lực lõi có giá trị kinh tế cao, ghép với hiểu biết con người và một lĩnh vực xã hội quan trọng. Ví dụ: AI + y tế, dữ liệu + tài chính, giáo dục + công nghệ, thiết kế + hành vi người dùng, năng lượng + kỹ thuật.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      Dữ liệu trong app là khung định hướng chiến lược dựa trên xu hướng toàn cầu. Khi ra quyết định cá nhân, hãy đối chiếu với sức khỏe, sở thích, nguồn lực học tập và bối cảnh địa phương.
+    </div>
+  </footer>
+
+  <div class="mobile-cta" aria-label="Điều hướng nhanh trên điện thoại">
+    <div class="mobile-cta-inner">
+      <a href="#quiz">Trắc nghiệm</a>
+      <a href="#careers">So sánh</a>
+      <a href="#roadmap">Lộ trình</a>
+    </div>
+  </div>
+
+  <script>
+    const careers = [
+      {
+        name: "Kỹ sư AI / Machine Learning",
+        group: "Công nghệ và AI",
+        reason: "Doanh nghiệp cần tự động hóa, dự báo, cá nhân hóa và tối ưu vận hành bằng mô hình AI.",
+        ai: 9, market: 10, income: 10, global: 10, remote: 9, difficulty: 9, young: 8,
+        opportunity: "Nhu cầu toàn cầu, thu nhập cao, dễ tham gia sản phẩm xuyên biên giới.",
+        risk: "Cạnh tranh mạnh, kiến thức thay đổi nhanh, cần toán và kỹ thuật sâu.",
+        learn: "Python, toán tuyến tính, xác suất, deep learning, MLOps, sản phẩm AI.",
+        where: "Coursera, fast.ai, DeepLearning.AI, Kaggle, đại học kỹ thuật, dự án mã nguồn mở.",
+        duration: "18-36 tháng",
+        self: "Có, nếu có kỷ luật và làm dự án thật.",
+        tools: "ChatGPT, Claude, Gemini, GitHub Copilot, Jupyter, Kaggle, Weights & Biases.",
+        certs: "AWS/GCP/Azure AI, TensorFlow Developer, portfolio mô hình triển khai."
+      },
+      {
+        name: "Chuyên gia dữ liệu / Data Analyst",
+        group: "Công nghệ và AI",
+        reason: "Mọi tổ chức cần biến dữ liệu thành quyết định kinh doanh và vận hành.",
+        ai: 8, market: 9, income: 8, global: 9, remote: 9, difficulty: 6, young: 9,
+        opportunity: "Dễ bắt đầu hơn AI chuyên sâu, ứng dụng trong mọi ngành.",
+        risk: "Bị thay thế nếu chỉ làm dashboard cơ bản, cần hiểu nghiệp vụ.",
+        learn: "SQL, Excel nâng cao, Python/R, thống kê, BI, storytelling bằng dữ liệu.",
+        where: "Google Data Analytics, DataCamp, Mode SQL, Kaggle, dự án dữ liệu công khai.",
+        duration: "6-18 tháng",
+        self: "Rất phù hợp tự học.",
+        tools: "ChatGPT, Copilot, Tableau, Power BI, Looker, BigQuery, Notion AI.",
+        certs: "Google Data Analytics, Microsoft PL-300, portfolio case study."
+      },
+      {
+        name: "Kỹ sư phần mềm full-stack",
+        group: "Công nghệ và AI",
+        reason: "Sản phẩm số vẫn cần người thiết kế hệ thống, tích hợp AI và chịu trách nhiệm chất lượng.",
+        ai: 8, market: 9, income: 9, global: 10, remote: 10, difficulty: 7, young: 9,
+        opportunity: "Cơ hội remote lớn, có thể xây sản phẩm riêng, freelance hoặc startup.",
+        risk: "Code cơ bản bị AI hỗ trợ mạnh, cần nâng lên thiết kế hệ thống và sản phẩm.",
+        learn: "HTML/CSS/JS, TypeScript, React, Node.js, cơ sở dữ liệu, API, testing, cloud.",
+        where: "freeCodeCamp, The Odin Project, Frontend Masters, tài liệu chính thức, dự án cá nhân.",
+        duration: "9-24 tháng",
+        self: "Có, nếu liên tục build và deploy.",
+        tools: "Cursor, GitHub Copilot, ChatGPT, Vercel, Supabase, Docker.",
+        certs: "AWS Cloud Practitioner, GitHub portfolio, sản phẩm có người dùng thật."
+      },
+      {
+        name: "Chuyên gia an ninh mạng",
+        group: "Công nghệ và AI",
+        reason: "Tấn công mạng, rò rỉ dữ liệu và rủi ro AI khiến bảo mật trở thành nhu cầu bắt buộc.",
+        ai: 7, market: 10, income: 9, global: 9, remote: 8, difficulty: 8, young: 8,
+        opportunity: "Thiếu nhân lực nghiêm trọng, giá trị cao trong mọi ngành.",
+        risk: "Áp lực trách nhiệm lớn, cần đạo đức nghề nghiệp và học liên tục.",
+        learn: "Network, Linux, cloud security, web security, cryptography, incident response.",
+        where: "TryHackMe, Hack The Box, PortSwigger Academy, Cisco, SANS tài liệu mở.",
+        duration: "12-30 tháng",
+        self: "Có, với lab an toàn và thực hành hợp pháp.",
+        tools: "ChatGPT, Burp Suite, Wireshark, Nmap, Kali, SIEM, Copilot.",
+        certs: "Security+, CEH, eJPT, CISSP sau khi có kinh nghiệm."
+      },
+      {
+        name: "Chuyên gia sản phẩm AI / AI Product Manager",
+        group: "Công nghệ và AI",
+        reason: "Doanh nghiệp cần người nối giữa nhu cầu người dùng, dữ liệu, mô hình AI và hiệu quả kinh doanh.",
+        ai: 9, market: 9, income: 9, global: 9, remote: 8, difficulty: 7, young: 8,
+        opportunity: "Phù hợp người có tư duy kinh doanh, công nghệ và trải nghiệm người dùng.",
+        risk: "Khó nếu thiếu nền tảng kỹ thuật hoặc không đo được giá trị sản phẩm.",
+        learn: "Product discovery, prompt/system design, metric, UX, dữ liệu, pháp lý AI.",
+        where: "Reforge, Lenny's Newsletter, Maven, Product School, dự án AI no-code/MVP.",
+        duration: "12-24 tháng",
+        self: "Có, nhưng nên có mentor và dự án thực tế.",
+        tools: "ChatGPT, Claude, Perplexity, Figma, Amplitude, Linear, Notion AI.",
+        certs: "Product analytics, AI product portfolio, chứng chỉ quản lý sản phẩm."
+      },
+      {
+        name: "Nhà phát triển Blockchain / Smart Contract",
+        group: "Blockchain và Web3",
+        reason: "Tài sản số, token hóa, thanh toán xuyên biên giới và hạ tầng phi tập trung vẫn có vai trò nhất định.",
+        ai: 7, market: 6, income: 9, global: 9, remote: 10, difficulty: 8, young: 6,
+        opportunity: "Thu nhập cao ở dự án tốt, cộng đồng toàn cầu, nhiều mã nguồn mở.",
+        risk: "Biến động thị trường, rủi ro pháp lý, nhiều dự án đầu cơ.",
+        learn: "Solidity/Rust, bảo mật smart contract, kinh tế token, DeFi, pháp lý cơ bản.",
+        where: "CryptoZombies, Solidity docs, Chainlink Academy, Ethereum Foundation, hackathon.",
+        duration: "12-24 tháng",
+        self: "Có, nhưng cần chọn dự án nghiêm túc.",
+        tools: "ChatGPT, Copilot, Hardhat, Foundry, Tenderly, OpenZeppelin.",
+        certs: "Portfolio audit/smart contract, hackathon, chứng chỉ bảo mật blockchain."
+      },
+      {
+        name: "Bác sĩ / Chuyên gia y học cá nhân hóa",
+        group: "Y tế và sức khỏe",
+        reason: "Già hóa dân số, bệnh mạn tính và y học dữ liệu làm nhu cầu chăm sóc chất lượng tăng dài hạn.",
+        ai: 7, market: 10, income: 9, global: 7, remote: 4, difficulty: 10, young: 7,
+        opportunity: "Giá trị xã hội cao, khó thay thế hoàn toàn, uy tín nghề nghiệp bền vững.",
+        risk: "Thời gian đào tạo dài, áp lực lớn, yêu cầu pháp lý nghiêm ngặt.",
+        learn: "Y khoa nền tảng, chẩn đoán, giao tiếp bệnh nhân, y học dữ liệu, đạo đức.",
+        where: "Đại học y, bệnh viện, khóa CME, tạp chí y khoa, chương trình AI in medicine.",
+        duration: "6-10 năm",
+        self: "Không thể tự học hoàn toàn, cần đào tạo chính quy.",
+        tools: "Clinical decision support, ChatGPT kiểm tra kiến thức, PubMed, UpToDate.",
+        certs: "Bằng y khoa, giấy phép hành nghề, chuyên khoa, CME."
+      },
+      {
+        name: "Điều dưỡng / Chăm sóc người cao tuổi",
+        group: "Y tế và sức khỏe",
+        reason: "Dân số già ở nhiều nước tạo nhu cầu lớn về chăm sóc trực tiếp, phục hồi và hỗ trợ sinh hoạt.",
+        ai: 5, market: 10, income: 7, global: 8, remote: 3, difficulty: 6, young: 8,
+        opportunity: "Nhu cầu ổn định, có cơ hội di chuyển quốc tế, ý nghĩa xã hội rõ.",
+        risk: "Công việc vất vả, áp lực cảm xúc, cần chứng chỉ và ngoại ngữ.",
+        learn: "Điều dưỡng, sơ cứu, chăm sóc người già, giao tiếp, kiểm soát nhiễm khuẩn.",
+        where: "Trường y/điều dưỡng, bệnh viện, trung tâm chăm sóc, chương trình nghề quốc tế.",
+        duration: "1-4 năm",
+        self: "Có thể tự học bổ trợ, nhưng cần chứng chỉ chính quy.",
+        tools: "AI ghi chú chăm sóc, app quản lý thuốc, thiết bị theo dõi sức khỏe.",
+        certs: "Bằng điều dưỡng, CPR/BLS, chứng chỉ ngoại ngữ, giấy phép nước sở tại."
+      },
+      {
+        name: "Chuyên gia sức khỏe tinh thần / Tâm lý trị liệu",
+        group: "Y tế và sức khỏe",
+        reason: "Căng thẳng, cô đơn, áp lực học tập/làm việc và khủng hoảng bản sắc làm nhu cầu hỗ trợ tâm lý tăng.",
+        ai: 6, market: 9, income: 8, global: 7, remote: 8, difficulty: 8, young: 7,
+        opportunity: "Khó thay thế vì cần đồng cảm, niềm tin và trách nhiệm chuyên môn.",
+        risk: "Cần đào tạo nghiêm túc, ranh giới đạo đức rõ, dễ kiệt sức cảm xúc.",
+        learn: "Tâm lý học, tham vấn, trị liệu bằng chứng, đạo đức, giám sát ca.",
+        where: "Đại học tâm lý, hiệp hội chuyên môn, khóa CBT/ACT, thực hành có giám sát.",
+        duration: "3-7 năm",
+        self: "Chỉ tự học nền tảng, không tự xưng trị liệu khi chưa đủ chuẩn.",
+        tools: "AI hỗ trợ ghi chú, mood tracker, telehealth, thư viện nghiên cứu.",
+        certs: "Bằng tâm lý/tham vấn, chứng chỉ trị liệu, giờ thực hành có giám sát."
+      },
+      {
+        name: "Chuyên gia dinh dưỡng và lifestyle medicine",
+        group: "Y tế và sức khỏe",
+        reason: "Bệnh mạn tính liên quan lối sống tăng, người tiêu dùng muốn sống khỏe và phòng bệnh sớm.",
+        ai: 6, market: 8, income: 7, global: 7, remote: 8, difficulty: 6, young: 8,
+        opportunity: "Có thể kết hợp tư vấn, nội dung, sản phẩm số và cộng đồng.",
+        risk: "Dễ bị lẫn với thông tin giả, cần bằng chứng khoa học và chuẩn đạo đức.",
+        learn: "Dinh dưỡng, sinh lý, hành vi sức khỏe, coaching, đọc nghiên cứu.",
+        where: "Đại học/khóa dinh dưỡng, Precision Nutrition, ACSM, tài liệu y học.",
+        duration: "9-36 tháng",
+        self: "Có thể tự học bổ trợ, nên có chứng chỉ uy tín.",
+        tools: "ChatGPT, Cronometer, MyFitnessPal, wearable, telehealth, Notion AI.",
+        certs: "Registered Dietitian tùy quốc gia, Precision Nutrition, health coaching."
+      },
+      {
+        name: "Giáo viên / Learning Designer dùng AI",
+        group: "Giáo dục",
+        reason: "Học tập cá nhân hóa và đào tạo lại lực lượng lao động sẽ tăng mạnh trong thời đại AI.",
+        ai: 7, market: 9, income: 7, global: 8, remote: 8, difficulty: 6, young: 9,
+        opportunity: "Có thể dạy trực tuyến, xây khóa học, cộng đồng và sản phẩm học tập.",
+        risk: "Nội dung phổ thông bị AI hóa, cần năng lực sư phạm và kết quả học thật.",
+        learn: "Sư phạm, thiết kế chương trình, assessment, AI tutoring, video, facilitation.",
+        where: "Coursera, EdX, Learning Experience Design, trường sư phạm, cộng đồng giáo dục.",
+        duration: "6-24 tháng",
+        self: "Có, nếu dạy thử và đo tiến bộ học viên.",
+        tools: "ChatGPT, Claude, Canva, LMS, Quizizz, NotebookLM, Descript.",
+        certs: "TESOL nếu dạy tiếng Anh, instructional design, portfolio khóa học."
+      },
+      {
+        name: "Huấn luyện viên kỹ năng / Career Coach",
+        group: "Giáo dục",
+        reason: "Thị trường biến động làm người lao động cần định hướng, tái đào tạo và xây chiến lược nghề nghiệp.",
+        ai: 6, market: 8, income: 7, global: 7, remote: 9, difficulty: 5, young: 7,
+        opportunity: "Có thể bắt đầu bằng niche cụ thể và xây cộng đồng.",
+        risk: "Uy tín thấp nếu thiếu trải nghiệm thật, dễ bị cạnh tranh bởi nội dung miễn phí.",
+        learn: "Coaching, thị trường lao động, phỏng vấn, CV, personal branding, mentoring.",
+        where: "ICF resources, LinkedIn Learning, mentor cộng đồng, thực hành coaching miễn phí ban đầu.",
+        duration: "6-18 tháng",
+        self: "Có, nhưng cần phản hồi từ khách hàng thật.",
+        tools: "ChatGPT, LinkedIn, Notion AI, Calendly, Miro, assessment tools.",
+        certs: "ICF foundation, chứng chỉ coaching, case study khách hàng."
+      },
+      {
+        name: "Chuyên gia tài chính cá nhân / Wealth Advisor",
+        group: "Kinh doanh và tài chính",
+        reason: "Tầng lớp trung lưu tăng, tuổi thọ dài hơn và thị trường phức tạp làm nhu cầu quản lý tài chính tăng.",
+        ai: 7, market: 8, income: 8, global: 6, remote: 8, difficulty: 7, young: 7,
+        opportunity: "Giá trị cao khi kết hợp niềm tin, pháp lý, dữ liệu và giáo dục khách hàng.",
+        risk: "Ràng buộc pháp lý, xung đột lợi ích, thị trường biến động.",
+        learn: "Tài chính cá nhân, đầu tư, bảo hiểm, thuế, hành vi tài chính, đạo đức.",
+        where: "CFA Institute, CFP Board resources, sách tài chính, thực tập tại công ty tài chính.",
+        duration: "12-36 tháng",
+        self: "Có thể tự học nền tảng, cần giấy phép để tư vấn chính thức.",
+        tools: "ChatGPT, Excel, financial planning software, portfolio tracker, Power BI.",
+        certs: "CFP, CFA level tùy mục tiêu, chứng chỉ tư vấn đầu tư/bảo hiểm."
+      },
+      {
+        name: "Chuyên gia FinTech / Product Finance",
+        group: "Kinh doanh và tài chính",
+        reason: "Thanh toán số, ngân hàng mở, tín dụng dữ liệu và tài chính nhúng tiếp tục mở rộng.",
+        ai: 8, market: 9, income: 9, global: 8, remote: 8, difficulty: 7, young: 8,
+        opportunity: "Kết hợp công nghệ, tài chính, dữ liệu và tăng trưởng sản phẩm.",
+        risk: "Rủi ro pháp lý, bảo mật, gian lận và phụ thuộc thị trường vốn.",
+        learn: "Tài chính, API, payment, compliance, dữ liệu rủi ro, product growth.",
+        where: "Stripe docs, fintech reports, Coursera fintech, thực tập ngân hàng số/startup.",
+        duration: "12-24 tháng",
+        self: "Có, nếu xây case study sản phẩm tài chính.",
+        tools: "ChatGPT, SQL, Figma, Amplitude, Stripe sandbox, fraud detection tools.",
+        certs: "FinTech certificate, product analytics, compliance cơ bản."
+      },
+      {
+        name: "Quản lý chuỗi cung ứng / Logistics thông minh",
+        group: "Kinh doanh và tài chính",
+        reason: "Thương mại toàn cầu cần chuỗi cung ứng bền bỉ, minh bạch và tối ưu bằng dữ liệu.",
+        ai: 7, market: 9, income: 8, global: 8, remote: 6, difficulty: 6, young: 8,
+        opportunity: "Ứng dụng rộng từ bán lẻ, sản xuất đến y tế và thương mại điện tử.",
+        risk: "Áp lực vận hành, phụ thuộc địa chính trị, cần hiểu thực địa.",
+        learn: "Forecasting, inventory, procurement, vận tải, ERP, phân tích dữ liệu.",
+        where: "ASCM, Coursera supply chain, internship logistics, mô phỏng case study.",
+        duration: "9-24 tháng",
+        self: "Có thể tự học nền tảng, nên có thực tập.",
+        tools: "ChatGPT, Excel, Power BI, ERP, route optimization, digital twin.",
+        certs: "CSCP, CPIM, Lean Six Sigma, chứng chỉ ERP."
+      },
+      {
+        name: "Kỹ sư năng lượng tái tạo",
+        group: "Năng lượng và môi trường",
+        reason: "Chuyển dịch năng lượng, điện mặt trời, gió, pin lưu trữ và lưới điện thông minh cần nhân lực dài hạn.",
+        ai: 6, market: 9, income: 8, global: 8, remote: 5, difficulty: 8, young: 8,
+        opportunity: "Tạo giá trị xã hội lớn, phù hợp xu hướng đầu tư xanh.",
+        risk: "Cần nền tảng kỹ thuật, phụ thuộc chính sách và vốn hạ tầng.",
+        learn: "Điện, cơ khí, năng lượng, lưu trữ pin, grid, mô phỏng, an toàn.",
+        where: "Đại học kỹ thuật, NREL resources, Coursera renewable energy, dự án thực địa.",
+        duration: "3-5 năm",
+        self: "Tự học bổ trợ được, cần đào tạo/lab kỹ thuật.",
+        tools: "ChatGPT, PVsyst, HOMER, AutoCAD, MATLAB, GIS.",
+        certs: "Chứng chỉ điện/năng lượng, NABCEP nếu theo thị trường Mỹ, an toàn lao động."
+      },
+      {
+        name: "Chuyên gia ESG / Bền vững doanh nghiệp",
+        group: "Năng lượng và môi trường",
+        reason: "Doanh nghiệp bị áp lực đo phát thải, quản trị minh bạch và báo cáo tác động.",
+        ai: 6, market: 8, income: 8, global: 8, remote: 7, difficulty: 6, young: 8,
+        opportunity: "Kết hợp kinh doanh, môi trường, pháp lý và dữ liệu.",
+        risk: "Greenwashing, chuẩn báo cáo thay đổi, cần năng lực đo lường thật.",
+        learn: "ESG reporting, carbon accounting, climate risk, supply chain, policy.",
+        where: "GRI, SASB/ISSB resources, Coursera sustainability, báo cáo doanh nghiệp.",
+        duration: "9-24 tháng",
+        self: "Có, nếu làm case study báo cáo và đo phát thải.",
+        tools: "ChatGPT, Excel, Power BI, carbon accounting software, LCA tools.",
+        certs: "GRI, CFA ESG, carbon accounting, ISO 14001 awareness."
+      },
+      {
+        name: "Kỹ sư môi trường / Quản lý nước và rác thải",
+        group: "Năng lượng và môi trường",
+        reason: "Đô thị hóa và biến đổi khí hậu làm xử lý nước, rác, ô nhiễm và thích ứng đô thị trở nên cấp thiết.",
+        ai: 5, market: 8, income: 7, global: 7, remote: 4, difficulty: 7, young: 8,
+        opportunity: "Giải quyết vấn đề xã hội thiết yếu, nhu cầu ổn định.",
+        risk: "Dự án phụ thuộc ngân sách, công việc thực địa nhiều.",
+        learn: "Hóa/môi trường, xử lý nước, waste management, GIS, quy chuẩn.",
+        where: "Đại học môi trường, UNEP resources, dự án NGO/doanh nghiệp hạ tầng.",
+        duration: "3-5 năm",
+        self: "Tự học bổ trợ được, cần nền tảng kỹ thuật.",
+        tools: "ChatGPT, GIS, AutoCAD, sensor/IoT, mô phỏng môi trường.",
+        certs: "ISO 14001, chứng chỉ an toàn môi trường, chứng chỉ GIS."
+      },
+      {
+        name: "Nhà sáng tạo nội dung chuyên môn",
+        group: "Sáng tạo nội dung và truyền thông",
+        reason: "Người học và khách hàng cần người giải thích đáng tin trong các niche chuyên sâu.",
+        ai: 8, market: 8, income: 8, global: 9, remote: 10, difficulty: 5, young: 9,
+        opportunity: "Vốn khởi đầu thấp, có thể xây thương hiệu cá nhân và sản phẩm số.",
+        risk: "Nội dung đại trà bị AI thay thế, thu nhập biến động theo nền tảng.",
+        learn: "Nghiên cứu, viết, video, storytelling, SEO, phân phối, xây cộng đồng.",
+        where: "YouTube Creator Academy, HubSpot, newsletter hay, thực hành đăng đều.",
+        duration: "3-18 tháng",
+        self: "Rất phù hợp tự học.",
+        tools: "ChatGPT, Claude, Canva, CapCut, Descript, Midjourney, analytics.",
+        certs: "Không bắt buộc; portfolio, số liệu tăng trưởng và niềm tin cộng đồng quan trọng hơn."
+      },
+      {
+        name: "UX/UI Designer / Product Designer",
+        group: "Sáng tạo nội dung và truyền thông",
+        reason: "Sản phẩm số cần trải nghiệm tốt, hiểu hành vi người dùng và thiết kế dịch vụ có trách nhiệm.",
+        ai: 7, market: 8, income: 8, global: 9, remote: 9, difficulty: 6, young: 9,
+        opportunity: "Phù hợp người trẻ thích sáng tạo, tâm lý và công nghệ.",
+        risk: "Thiết kế hình ảnh đơn giản bị AI hóa, cần nghiên cứu và tư duy sản phẩm.",
+        learn: "Design thinking, user research, wireframe, UI, prototyping, usability testing.",
+        where: "Figma Learn, NN/g articles, DesignCourse, UX case study, redesign dự án thật.",
+        duration: "6-18 tháng",
+        self: "Có, nhưng cần critique từ designer giỏi.",
+        tools: "Figma, FigJam, ChatGPT, Maze, Framer, Midjourney, Notion.",
+        certs: "Google UX Design, portfolio case study, chứng chỉ accessibility."
+      },
+      {
+        name: "Nhà nghiên cứu công nghệ sinh học",
+        group: "Khoa học và nghiên cứu",
+        reason: "Sinh học tổng hợp, dược phẩm mới, nông nghiệp chính xác và y học cá nhân hóa có tiềm năng lớn.",
+        ai: 7, market: 8, income: 8, global: 8, remote: 4, difficulty: 10, young: 7,
+        opportunity: "Tác động cao tới sức khỏe, thực phẩm và môi trường.",
+        risk: "Đào tạo dài, cần lab, vốn nghiên cứu và quy định nghiêm ngặt.",
+        learn: "Sinh học phân tử, genetics, lab methods, bioinformatics, statistics.",
+        where: "Đại học, phòng lab, edX/MIT OCW, iGEM, bài báo khoa học.",
+        duration: "4-8 năm",
+        self: "Tự học lý thuyết được, nghiên cứu cần lab và hướng dẫn.",
+        tools: "ChatGPT, AlphaFold, Benchling, R/Python, PubMed, bioinformatics tools.",
+        certs: "Bằng đại học/sau đại học, chứng chỉ lab safety, công bố/dự án nghiên cứu."
+      },
+      {
+        name: "Nhà nghiên cứu chính sách công / Đạo đức AI",
+        group: "Khoa học và nghiên cứu",
+        reason: "AI, dữ liệu và tự động hóa cần khung quản trị, quyền riêng tư, công bằng và trách nhiệm xã hội.",
+        ai: 6, market: 7, income: 7, global: 8, remote: 7, difficulty: 7, young: 7,
+        opportunity: "Tạo ảnh hưởng xã hội, phù hợp người mạnh phân tích và viết chính sách.",
+        risk: "Thị trường việc làm nhỏ hơn công nghệ, cần uy tín học thuật/chuyên môn.",
+        learn: "Public policy, luật dữ liệu, đạo đức AI, kinh tế, phương pháp nghiên cứu.",
+        where: "OECD, UNESCO AI ethics, đại học chính sách, think tank, fellowship.",
+        duration: "2-5 năm",
+        self: "Có thể tự học nhiều, nên có dự án nghiên cứu/công bố.",
+        tools: "ChatGPT, Zotero, Elicit, Perplexity, R/Python, policy tracker.",
+        certs: "AI governance, data protection, bằng chính sách/luật/công nghệ."
+      },
+      {
+        name: "Kỹ thuật viên robot / Tự động hóa",
+        group: "Công nghệ và AI",
+        reason: "Nhà máy, kho vận, y tế và nông nghiệp cần robot để tăng năng suất và bù thiếu lao động.",
+        ai: 7, market: 8, income: 8, global: 8, remote: 4, difficulty: 7, young: 8,
+        opportunity: "Nhu cầu thực địa cao, phù hợp người thích kỹ thuật ứng dụng.",
+        risk: "Cần thiết bị, an toàn và kinh nghiệm vận hành thực tế.",
+        learn: "Cơ điện tử, PLC, ROS, cảm biến, điều khiển, bảo trì, safety.",
+        where: "Trường nghề/đại học kỹ thuật, ROS tutorials, Siemens/ABB training, makerspace.",
+        duration: "1-4 năm",
+        self: "Có thể tự học với kit nhỏ, cần thực hành thiết bị thật.",
+        tools: "ChatGPT, ROS, Arduino, Raspberry Pi, MATLAB, PLC software.",
+        certs: "PLC, robotics vendor certificates, an toàn điện/cơ khí."
+      },
+      {
+        name: "Đầu bếp sức khỏe / Food Tech Creator",
+        group: "Dịch vụ con người",
+        reason: "Con người vẫn cần ăn ngon, an toàn, cá nhân hóa theo sức khỏe và trải nghiệm văn hóa.",
+        ai: 4, market: 8, income: 7, global: 6, remote: 5, difficulty: 5, young: 8,
+        opportunity: "Có thể kết hợp dịch vụ, thương hiệu cá nhân, nội dung và sản phẩm thực phẩm.",
+        risk: "Biên lợi nhuận thấp nếu không có thương hiệu/quy trình, vận hành vất vả.",
+        learn: "Ẩm thực, dinh dưỡng, an toàn thực phẩm, vận hành, branding, content.",
+        where: "Trường nghề bếp, thực tập nhà hàng, khóa dinh dưỡng, thử nghiệm pop-up.",
+        duration: "6-24 tháng",
+        self: "Có thể tự học nhiều qua thực hành.",
+        tools: "ChatGPT, Canva, CapCut, POS, inventory app, recipe costing.",
+        certs: "Food safety, culinary certificate, nutrition basics."
+      },
+      {
+        name: "Chuyên viên chăm sóc khách hàng cao cấp",
+        group: "Dịch vụ con người",
+        reason: "Dịch vụ phức tạp cần người xử lý cảm xúc, niềm tin và tình huống ngoại lệ.",
+        ai: 6, market: 7, income: 6, global: 7, remote: 8, difficulty: 4, young: 9,
+        opportunity: "Dễ bắt đầu, học được giao tiếp, bán hàng, vận hành và hiểu khách hàng.",
+        risk: "Tổng đài kịch bản cứng bị AI thay thế, cần nâng lên customer success.",
+        learn: "Giao tiếp, CRM, xử lý xung đột, sản phẩm, dữ liệu khách hàng, upsell.",
+        where: "HubSpot Academy, Zendesk training, thực tập sales/support, role-play.",
+        duration: "3-12 tháng",
+        self: "Có, tốt nhất học qua công việc thật.",
+        tools: "ChatGPT, CRM, Zendesk, Intercom, Gong, Notion AI.",
+        certs: "HubSpot Service, Salesforce basics, customer success certificate."
+      },
+      {
+        name: "Community Builder / Quản lý cộng đồng",
+        group: "Dịch vụ con người",
+        reason: "Trong thế giới dư thừa nội dung, cộng đồng tin cậy giúp học tập, bán hàng và hỗ trợ nhau.",
+        ai: 6, market: 8, income: 7, global: 8, remote: 10, difficulty: 5, young: 9,
+        opportunity: "Vốn thấp, phù hợp creator, giáo dục, startup và thương hiệu.",
+        risk: "Khó đo ROI, dễ kiệt sức vì tương tác liên tục.",
+        learn: "Facilitation, moderation, content, event, CRM, tâm lý nhóm, analytics.",
+        where: "CMX, community-led resources, Discord/Slack groups, tổ chức sự kiện nhỏ.",
+        duration: "3-12 tháng",
+        self: "Có, nên bắt đầu bằng cộng đồng nhỏ.",
+        tools: "ChatGPT, Discord, Slack, Circle, Luma, Notion, analytics.",
+        certs: "CMX Academy, event/community portfolio."
+      },
+      {
+        name: "Prompt/System Designer cho AI Agent",
+        group: "Nghề mới có thể xuất hiện trong 10 năm tới",
+        reason: "Khi AI agent vào doanh nghiệp, cần người thiết kế quy trình, chỉ dẫn, kiểm thử và kiểm soát chất lượng agent.",
+        ai: 10, market: 8, income: 8, global: 9, remote: 10, difficulty: 6, young: 9,
+        opportunity: "Rào cản ban đầu vừa phải, nhu cầu mới trong nhiều phòng ban.",
+        risk: "Nghề thay đổi nhanh, prompt đơn giản sẽ bị hàng hóa hóa.",
+        learn: "LLM behavior, workflow design, evaluation, automation, dữ liệu, bảo mật.",
+        where: "OpenAI/Anthropic docs, Cursor docs, LangChain, dự án automation nội bộ.",
+        duration: "3-12 tháng",
+        self: "Rất phù hợp tự học qua dự án.",
+        tools: "ChatGPT, Claude, Cursor, Zapier, Make, LangChain, eval tools.",
+        certs: "Portfolio agent, case study tiết kiệm thời gian/chi phí."
+      },
+      {
+        name: "AI Safety / Model Evaluator",
+        group: "Nghề mới có thể xuất hiện trong 10 năm tới",
+        reason: "Mô hình AI mạnh hơn cần đánh giá an toàn, thiên lệch, độ tin cậy và tuân thủ.",
+        ai: 10, market: 8, income: 9, global: 9, remote: 8, difficulty: 8, young: 7,
+        opportunity: "Vai trò quan trọng khi AI đi vào y tế, tài chính, giáo dục và chính phủ.",
+        risk: "Cần nền tảng kỹ thuật và đạo đức, chuẩn nghề chưa ổn định.",
+        learn: "ML basics, red teaming, evaluation, statistics, policy, security.",
+        where: "AI Safety courses, Anthropic/OpenAI papers, METR, Alignment Forum, research lab.",
+        duration: "12-36 tháng",
+        self: "Có thể tự học, nên tham gia cộng đồng nghiên cứu.",
+        tools: "ChatGPT, Claude, Python, eval harness, Elicit, arXiv, safety benchmarks.",
+        certs: "Research portfolio, AI governance/safety certificates, publications."
+      },
+      {
+        name: "Digital Twin Designer cho đô thị/nhà máy",
+        group: "Nghề mới có thể xuất hiện trong 10 năm tới",
+        reason: "Đô thị, nhà máy và hạ tầng cần mô phỏng thời gian thực để tối ưu năng lượng, an toàn và vận hành.",
+        ai: 8, market: 7, income: 8, global: 8, remote: 6, difficulty: 8, young: 7,
+        opportunity: "Kết hợp kỹ thuật, dữ liệu, IoT và mô phỏng, tạo giá trị vận hành lớn.",
+        risk: "Yêu cầu liên ngành, dự án phụ thuộc ngân sách lớn.",
+        learn: "IoT, BIM, GIS, simulation, data engineering, cloud, domain engineering.",
+        where: "Autodesk/Siemens resources, Coursera IoT, GIS courses, dự án smart city.",
+        duration: "18-36 tháng",
+        self: "Có thể tự học nền tảng, cần dự án thực tế để giỏi.",
+        tools: "ChatGPT, Unity/Unreal, GIS, BIM, Azure Digital Twins, Python.",
+        certs: "GIS, BIM, cloud, IoT certificates."
+      },
+      {
+        name: "Human-AI Interaction Designer",
+        group: "Nghề mới có thể xuất hiện trong 10 năm tới",
+        reason: "Sản phẩm AI cần thiết kế cách con người hiểu, tin, kiểm soát và cộng tác với máy.",
+        ai: 9, market: 8, income: 8, global: 9, remote: 9, difficulty: 7, young: 8,
+        opportunity: "Nằm giữa UX, tâm lý, sản phẩm và AI, phù hợp thị trường sản phẩm mới.",
+        risk: "Cần hiểu cả người dùng lẫn giới hạn mô hình, khó nếu chỉ biết UI.",
+        learn: "HCI, UX research, cognitive psychology, LLM UX, trust & safety, prototyping.",
+        where: "NN/g, HCI papers, Figma, AI product teardowns, dự án prototype.",
+        duration: "9-24 tháng",
+        self: "Có, nếu có portfolio thử nghiệm AI UX.",
+        tools: "Figma, ChatGPT, Claude, Cursor, Maze, analytics, prototyping tools.",
+        certs: "UX certificate, HCI coursework, AI product case studies."
+      },
+      {
+        name: "Kỹ sư bán dẫn / Thiết kế vi mạch",
+        group: "Công nghệ và AI",
+        reason: "AI, xe điện, thiết bị y tế, quốc phòng và trung tâm dữ liệu đều phụ thuộc vào chip, khiến bán dẫn trở thành hạ tầng chiến lược.",
+        ai: 7, market: 9, income: 9, global: 9, remote: 5, difficulty: 10, young: 7,
+        opportunity: "Nhu cầu toàn cầu cao, liên quan chuỗi cung ứng chiến lược và có rào cản chuyên môn lớn.",
+        risk: "Đào tạo khó, cần nền tảng điện tử/toán/kỹ thuật sâu và thường cần phòng lab hoặc doanh nghiệp lớn.",
+        learn: "Điện tử số, kiến trúc máy tính, VLSI, EDA tools, verification, vật lý bán dẫn.",
+        where: "Đại học kỹ thuật, khóa VLSI, tài liệu Cadence/Synopsys, chương trình thực tập bán dẫn.",
+        duration: "3-5 năm",
+        self: "Tự học bổ trợ được, nhưng cần đào tạo chính quy và dự án/lab.",
+        tools: "ChatGPT, Verilog/SystemVerilog, SPICE, Cadence, Synopsys, MATLAB.",
+        certs: "Bằng kỹ thuật điện/điện tử, chứng chỉ EDA, portfolio thiết kế/verification."
+      },
+      {
+        name: "Kỹ sư Cloud / DevOps / SRE",
+        group: "Công nghệ và AI",
+        reason: "Sản phẩm số, AI và dữ liệu cần hạ tầng cloud ổn định, bảo mật, tiết kiệm chi phí và có khả năng mở rộng.",
+        ai: 8, market: 9, income: 9, global: 10, remote: 9, difficulty: 8, young: 8,
+        opportunity: "Nhu cầu mạnh ở công ty công nghệ, tài chính, thương mại điện tử và doanh nghiệp chuyển đổi số.",
+        risk: "Áp lực trực hệ thống cao, cần học liên tục và hiểu bảo mật, chi phí, vận hành.",
+        learn: "Linux, networking, Docker, Kubernetes, CI/CD, cloud architecture, observability.",
+        where: "AWS/GCP/Azure docs, KodeKloud, Linux Foundation, dự án deploy sản phẩm thật.",
+        duration: "12-30 tháng",
+        self: "Có, nếu làm lab cloud và vận hành dự án thật.",
+        tools: "ChatGPT, Terraform, Docker, Kubernetes, Grafana, Prometheus, GitHub Actions.",
+        certs: "AWS Solutions Architect, CKA, Azure/GCP certifications, portfolio hạ tầng."
+      },
+      {
+        name: "Chuyên gia pháp lý dữ liệu / Tuân thủ AI",
+        group: "Khoa học và nghiên cứu",
+        reason: "AI, dữ liệu cá nhân và tự động hóa ra quyết định tạo nhu cầu lớn về quyền riêng tư, trách nhiệm, kiểm toán và tuân thủ.",
+        ai: 7, market: 8, income: 8, global: 8, remote: 7, difficulty: 7, young: 7,
+        opportunity: "Nằm giữa luật, công nghệ, kinh doanh và đạo đức; phù hợp doanh nghiệp số và tổ chức công.",
+        risk: "Chuẩn pháp lý thay đổi nhanh, cần hiểu cả ngôn ngữ pháp luật lẫn vận hành công nghệ.",
+        learn: "Data protection, AI governance, compliance, risk assessment, audit, policy writing.",
+        where: "IAPP, OECD/UNESCO AI resources, khóa data privacy, thực tập pháp chế/công nghệ.",
+        duration: "12-36 tháng",
+        self: "Có thể tự học nền tảng, nên có mentor hoặc môi trường pháp chế thực tế.",
+        tools: "ChatGPT, policy tracker, GRC tools, DPIA templates, Notion, Zotero.",
+        certs: "CIPP/E, CIPM, AI governance certificate, bằng luật/chính sách/công nghệ."
+      },
+      {
+        name: "Chuyên gia nông nghiệp công nghệ cao / Food Systems",
+        group: "Năng lượng và môi trường",
+        reason: "An ninh lương thực, khí hậu cực đoan và nhu cầu thực phẩm sạch làm nông nghiệp dữ liệu, cảm biến và chuỗi cung ứng thực phẩm tăng giá trị.",
+        ai: 6, market: 8, income: 7, global: 7, remote: 4, difficulty: 7, young: 8,
+        opportunity: "Tạo giá trị xã hội rõ, phù hợp quốc gia nông nghiệp và có thể kết hợp IoT, dữ liệu, sinh học.",
+        risk: "Phụ thuộc thời tiết, vốn, đất đai, chính sách và khả năng thương mại hóa.",
+        learn: "Nông học, IoT, dữ liệu môi trường, thủy canh, an toàn thực phẩm, chuỗi cung ứng.",
+        where: "Đại học nông nghiệp/công nghệ, FAO resources, trang trại công nghệ, dự án IoT nhỏ.",
+        duration: "1-4 năm",
+        self: "Có thể tự học và thử nghiệm nhỏ, nhưng cần thực địa.",
+        tools: "ChatGPT, cảm biến IoT, GIS, Excel/Power BI, farm management software.",
+        certs: "Food safety, GlobalG.A.P awareness, IoT/GIS basics, chứng chỉ nông nghiệp sạch."
+      },
+      {
+        name: "Nhà quy hoạch đô thị thích ứng khí hậu",
+        group: "Năng lượng và môi trường",
+        reason: "Đô thị hóa, ngập lụt, nắng nóng, giao thông và nhà ở tạo nhu cầu thiết kế đô thị bền vững, an toàn và bao trùm.",
+        ai: 6, market: 8, income: 7, global: 7, remote: 5, difficulty: 8, young: 7,
+        opportunity: "Tác động lớn tới chất lượng sống, hạ tầng, môi trường và công bằng xã hội.",
+        risk: "Dự án dài, phụ thuộc chính sách/công quyền, cần phối hợp nhiều bên.",
+        learn: "Urban planning, GIS, climate adaptation, transport, housing policy, community engagement.",
+        where: "Đại học quy hoạch/kiến trúc, UN-Habitat resources, khóa GIS, dự án đô thị địa phương.",
+        duration: "3-5 năm",
+        self: "Tự học bổ trợ được, cần dự án thực tế và hiểu quy hoạch.",
+        tools: "ChatGPT, GIS, AutoCAD, QGIS, digital twin, mô phỏng khí hậu/di chuyển.",
+        certs: "GIS, urban planning degree/certificate, project portfolio."
+      },
+      {
+        name: "Kỹ thuật viên điện - HVAC - hạ tầng thông minh",
+        group: "Nghề kỹ thuật tay nghề cao",
+        reason: "Nhà ở, nhà máy, bệnh viện, trung tâm dữ liệu và đô thị xanh cần hệ thống điện, điều hòa, tiết kiệm năng lượng và bảo trì an toàn.",
+        ai: 5, market: 9, income: 7, global: 7, remote: 2, difficulty: 5, young: 9,
+        opportunity: "Nhu cầu bền vững, khó thay thế hoàn toàn, có thể học nghề và tạo thu nhập sớm.",
+        risk: "Công việc thực địa, yêu cầu an toàn cao, thu nhập phụ thuộc tay nghề và chứng chỉ.",
+        learn: "Điện dân dụng/công nghiệp, HVAC, an toàn điện, đọc bản vẽ, IoT tòa nhà, tiết kiệm năng lượng.",
+        where: "Trường nghề, trung tâm kỹ thuật, thực tập công trình, hãng thiết bị điện/HVAC.",
+        duration: "6-24 tháng",
+        self: "Có thể tự học lý thuyết, nhưng cần thực hành có giám sát.",
+        tools: "ChatGPT, đồng hồ đo điện, BIM basics, BMS, app bảo trì, checklist an toàn.",
+        certs: "Chứng chỉ điện/HVAC, an toàn lao động, chứng chỉ hãng thiết bị."
+      },
+      {
+        name: "Kỹ thuật viên thiết bị y tế",
+        group: "Nghề kỹ thuật tay nghề cao",
+        reason: "Y tế hiện đại phụ thuộc vào máy xét nghiệm, chẩn đoán hình ảnh, thiết bị theo dõi và hệ thống bệnh viện số.",
+        ai: 6, market: 8, income: 7, global: 7, remote: 3, difficulty: 6, young: 8,
+        opportunity: "Kết hợp kỹ thuật và y tế, nhu cầu tăng cùng già hóa dân số và bệnh viện thông minh.",
+        risk: "Yêu cầu chính xác, trách nhiệm an toàn bệnh nhân và đào tạo theo thiết bị cụ thể.",
+        learn: "Điện tử cơ bản, biomedical equipment, calibration, safety, bảo trì, quy trình bệnh viện.",
+        where: "Trường nghề/đại học kỹ thuật y sinh, hãng thiết bị, bệnh viện, khóa biomedical technician.",
+        duration: "1-3 năm",
+        self: "Tự học bổ trợ được, cần thực hành thiết bị và quy trình an toàn.",
+        tools: "ChatGPT, service manual, CMMS, thiết bị đo kiểm, checklist bảo trì.",
+        certs: "Biomedical equipment technician, an toàn điện y tế, chứng chỉ hãng thiết bị."
+      },
+      {
+        name: "Chuyên gia phục hồi chức năng / Vật lý trị liệu",
+        group: "Y tế và sức khỏe",
+        reason: "Già hóa dân số, chấn thương thể thao, bệnh mạn tính và nhu cầu sống khỏe làm phục hồi chức năng tăng mạnh.",
+        ai: 5, market: 9, income: 7, global: 7, remote: 4, difficulty: 7, young: 8,
+        opportunity: "Cần tiếp xúc con người, quan sát cơ thể và xây niềm tin nên khó bị thay thế hoàn toàn.",
+        risk: "Cần đào tạo chính quy, thực hành lâm sàng, thể lực và trách nhiệm đạo đức.",
+        learn: "Giải phẫu, sinh lý vận động, đánh giá chức năng, bài tập trị liệu, giao tiếp bệnh nhân.",
+        where: "Đại học/cao đẳng y, bệnh viện phục hồi, phòng khám, khóa thể thao trị liệu.",
+        duration: "2-4 năm",
+        self: "Không nên tự học để hành nghề; có thể tự học bổ trợ kiến thức.",
+        tools: "ChatGPT kiểm tra kiến thức, app theo dõi bài tập, wearable, tele-rehab tools.",
+        certs: "Bằng/chứng chỉ vật lý trị liệu, CPR/BLS, giấy phép hành nghề tùy quốc gia."
+      },
+      {
+        name: "Quản trị du lịch - khách sạn - trải nghiệm địa phương",
+        group: "Du lịch và dịch vụ trải nghiệm",
+        reason: "Việt Nam có lợi thế văn hóa, ẩm thực, thiên nhiên và du lịch quốc tế; tầng lớp trung lưu cũng tăng nhu cầu trải nghiệm chất lượng.",
+        ai: 5, market: 8, income: 7, global: 7, remote: 3, difficulty: 5, young: 9,
+        opportunity: "Phù hợp các địa phương có du lịch, có thể kết hợp ngoại ngữ, vận hành, marketing số và sản phẩm trải nghiệm.",
+        risk: "Thu nhập theo mùa, phụ thuộc chất lượng dịch vụ, ngoại ngữ, biến động du lịch và khả năng quản trị vận hành.",
+        learn: "Hospitality, ngoại ngữ, vận hành dịch vụ, thiết kế trải nghiệm, marketing du lịch, chăm sóc khách hàng.",
+        where: "Trường du lịch/khách sạn, thực tập resort/khách sạn, khóa OTA, dự án tour địa phương.",
+        duration: "6-24 tháng",
+        self: "Có thể tự học bổ trợ, nhưng cần thực hành dịch vụ thật.",
+        tools: "ChatGPT, Canva, Booking/OTA tools, CRM, Google Business, social analytics.",
+        certs: "Chứng chỉ hospitality, ngoại ngữ, nghiệp vụ hướng dẫn/khách sạn tùy vai trò."
+      },
+      {
+        name: "Kỹ thuật viên cơ khí chính xác / CNC",
+        group: "Sản xuất công nghiệp",
+        reason: "Khu công nghiệp, FDI, điện tử, ô tô, thiết bị y tế và cơ khí phụ trợ cần nhân lực vận hành máy, đọc bản vẽ và đảm bảo độ chính xác.",
+        ai: 5, market: 9, income: 7, global: 7, remote: 2, difficulty: 6, young: 9,
+        opportunity: "Có thể học nghề, đi làm sớm, tích lũy tay nghề và có lộ trình sang Nhật, Đức, Hàn nếu có ngoại ngữ.",
+        risk: "Cần kỷ luật an toàn, làm ca/kíp, môi trường nhà máy và cập nhật máy móc mới.",
+        learn: "Đọc bản vẽ, CAD/CAM, vận hành CNC, đo kiểm, vật liệu, an toàn lao động.",
+        where: "Trường nghề, doanh nghiệp cơ khí, khu công nghiệp, khóa CAD/CAM/CNC.",
+        duration: "6-24 tháng",
+        self: "Tự học lý thuyết được, cần thực hành máy thật.",
+        tools: "ChatGPT, AutoCAD/Fusion 360, CAM software, thước đo/đồng hồ so, checklist QC.",
+        certs: "Chứng chỉ nghề cơ khí/CNC, an toàn lao động, chứng chỉ CAD/CAM."
+      },
+      {
+        name: "Chuyên viên QA/QC sản xuất",
+        group: "Sản xuất công nghiệp",
+        reason: "Xuất khẩu và chuỗi cung ứng FDI yêu cầu kiểm soát chất lượng, truy xuất nguồn gốc và tuân thủ tiêu chuẩn quốc tế.",
+        ai: 6, market: 8, income: 7, global: 7, remote: 4, difficulty: 6, young: 8,
+        opportunity: "Nhu cầu rộng ở điện tử, thực phẩm, dệt may, cơ khí, dược và logistics.",
+        risk: "Áp lực lỗi sản phẩm, tiêu chuẩn thay đổi, cần kỷ luật quy trình và kỹ năng giao tiếp với sản xuất.",
+        learn: "Quality control, ISO, Lean Six Sigma, thống kê cơ bản, đọc tiêu chuẩn, root cause analysis.",
+        where: "Khu công nghiệp, khóa QA/QC, ASQ resources, thực tập nhà máy.",
+        duration: "6-18 tháng",
+        self: "Có thể tự học nền tảng, nên có thực tập nhà máy.",
+        tools: "ChatGPT, Excel, Power BI, SPC tools, checklist audit, ERP/MES.",
+        certs: "ISO 9001, Lean Six Sigma Yellow/Green Belt, chứng chỉ ngành cụ thể."
+      },
+      {
+        name: "Vận hành thương mại điện tử địa phương",
+        group: "Thương mại điện tử và kinh doanh địa phương",
+        reason: "Hộ kinh doanh, sản phẩm địa phương, nông sản, thời trang, mỹ phẩm và dịch vụ nhỏ cần bán hàng đa kênh hiệu quả.",
+        ai: 7, market: 9, income: 7, global: 6, remote: 8, difficulty: 4, young: 10,
+        opportunity: "Dễ bắt đầu, vốn học thấp, phù hợp người trẻ ở tỉnh/thành phố và có thể tạo thu nhập sớm.",
+        risk: "Cạnh tranh giá, phụ thuộc sàn/nền tảng, cần quản trị hàng tồn, dòng tiền và uy tín khách hàng.",
+        learn: "Sàn TMĐT, livestream, content bán hàng, ads cơ bản, vận hành đơn hàng, chăm sóc khách.",
+        where: "Shopee/Lazada/TikTok Shop Academy, thực hành shop nhỏ, mentor kinh doanh địa phương.",
+        duration: "3-12 tháng",
+        self: "Rất phù hợp tự học qua bán thử sản phẩm thật.",
+        tools: "ChatGPT, Canva, CapCut, TikTok Shop/Shopee tools, CRM, Excel.",
+        certs: "Không bắt buộc; số liệu đơn hàng, lợi nhuận và đánh giá khách hàng quan trọng hơn."
+      },
+      {
+        name: "Chuyên viên ngoại ngữ / Localization / Dịch vụ quốc tế",
+        group: "Ngoại ngữ và dịch vụ quốc tế",
+        reason: "Doanh nghiệp Việt Nam tham gia thương mại, du lịch, gia công dịch vụ và làm việc xuyên biên giới cần ngoại ngữ kèm hiểu biết văn hóa/nghiệp vụ.",
+        ai: 7, market: 8, income: 7, global: 9, remote: 8, difficulty: 6, young: 9,
+        opportunity: "Có thể kết hợp ngoại ngữ với du lịch, game, phần mềm, xuất nhập khẩu, chăm sóc khách hàng quốc tế.",
+        risk: "Dịch thuật phổ thông bị AI cạnh tranh; cần nâng lên biên tập, localization, domain expertise và giao tiếp khách hàng.",
+        learn: "Ngoại ngữ, viết chuyên nghiệp, văn hóa, localization, công cụ CAT, nghiệp vụ ngành.",
+        where: "Trung tâm ngoại ngữ, Coursera, cộng đồng localization, dự án dịch/biên tập thực tế.",
+        duration: "12-36 tháng",
+        self: "Có, nếu luyện đều và làm portfolio song ngữ.",
+        tools: "ChatGPT, DeepL, Trados/MemoQ, Grammarly, Notion, terminology tools.",
+        certs: "IELTS/TOEIC/JLPT/TOPIK/HSK tùy thị trường, chứng chỉ localization nếu có."
+      },
+      {
+        name: "Điều phối xuất khẩu lao động kỹ năng cao",
+        group: "Xuất khẩu lao động kỹ năng cao",
+        reason: "Nhật, Đức, Hàn, Úc và Canada thiếu nhân lực điều dưỡng, cơ khí, điện, xây dựng, nhà hàng - khách sạn và logistics.",
+        ai: 5, market: 8, income: 7, global: 9, remote: 4, difficulty: 6, young: 8,
+        opportunity: "Rất thực tế với người trẻ Việt Nam nếu có ngoại ngữ, tay nghề và hiểu quy trình pháp lý minh bạch.",
+        risk: "Rủi ro môi giới kém minh bạch, chi phí ban đầu, sốc văn hóa và yêu cầu kỷ luật cao.",
+        learn: "Ngoại ngữ, luật lao động cơ bản, kỹ năng nghề, quy trình hồ sơ, văn hóa làm việc quốc tế.",
+        where: "Trung tâm ngoại ngữ/nghề uy tín, chương trình hợp tác chính thống, doanh nghiệp phái cử được cấp phép.",
+        duration: "6-24 tháng",
+        self: "Có thể tự học ngoại ngữ, nhưng cần đơn vị pháp lý uy tín khi đi quốc tế.",
+        tools: "ChatGPT luyện phỏng vấn, app học ngoại ngữ, checklist hồ sơ, công cụ quản lý tiến độ.",
+        certs: "Chứng chỉ ngoại ngữ, chứng chỉ nghề, hồ sơ pháp lý theo thị trường đến."
+      }
+    ];
+
+    const rankModes = {
+      fiveYears: {
+        label: "Tiềm năng 5 năm",
+        score: item => item.market * 2 + item.income + item.remote + item.young - item.difficulty * 0.25
+      },
+      tenYears: {
+        label: "Tiềm năng 10 năm",
+        score: item => item.market + item.income + item.global + (10 - Math.abs(item.ai - 7)) + item.young
+      },
+      hardToReplace: {
+        label: "Khó bị AI thay thế",
+        score: item => (10 - item.ai) * 1.2 + item.market + item.income + (10 - item.difficulty) * 0.15
+      },
+      highIncome: {
+        label: "Thu nhập cao",
+        score: item => item.income * 2 + item.global + item.market
+      },
+      zeroStart: {
+        label: "Bắt đầu từ con số 0",
+        score: item => item.young * 2 + item.remote + item.market - item.difficulty
+      }
+    };
+
+    const groupDescriptions = {
+      "Công nghệ và AI": "Tạo hạ tầng, phần mềm, dữ liệu và tự động hóa cho nền kinh tế số.",
+      "Blockchain và Web3": "Phục vụ tài sản số, hợp đồng thông minh, token hóa và hạ tầng phi tập trung có chọn lọc.",
+      "Y tế và sức khỏe": "Đáp ứng già hóa dân số, bệnh mạn tính, sức khỏe tinh thần và phòng bệnh.",
+      "Giáo dục": "Giúp xã hội học lại liên tục, cá nhân hóa lộ trình và nâng cấp kỹ năng.",
+      "Kinh doanh và tài chính": "Biến dữ liệu, vốn, chuỗi cung ứng và sản phẩm thành giá trị kinh tế.",
+      "Năng lượng và môi trường": "Giải quyết khí hậu, năng lượng sạch, ô nhiễm và thích ứng đô thị.",
+      "Sáng tạo nội dung và truyền thông": "Xây niềm tin, thương hiệu, trải nghiệm và nội dung có chuyên môn.",
+      "Khoa học và nghiên cứu": "Tạo tri thức mới, quản trị rủi ro công nghệ và giải quyết bài toán dài hạn.",
+      "Dịch vụ con người": "Dựa trên đồng cảm, chăm sóc, cộng đồng và trải nghiệm trực tiếp.",
+      "Nghề mới có thể xuất hiện trong 10 năm tới": "Các vai trò sinh ra từ AI agent, mô phỏng, an toàn AI và tương tác người-máy.",
+      "Nghề kỹ thuật tay nghề cao": "Các nghề thực địa thiết yếu vận hành điện, hạ tầng, thiết bị y tế, nhà máy, tòa nhà và dịch vụ kỹ thuật mà xã hội luôn cần.",
+      "Du lịch và dịch vụ trải nghiệm": "Khai thác lợi thế văn hóa, ẩm thực, thiên nhiên, khách sạn và trải nghiệm địa phương của Việt Nam.",
+      "Sản xuất công nghiệp": "Phục vụ khu công nghiệp, FDI, cơ khí, điện tử, dệt may, thực phẩm và chuỗi cung ứng xuất khẩu.",
+      "Thương mại điện tử và kinh doanh địa phương": "Giúp hộ kinh doanh, sản phẩm địa phương và doanh nghiệp nhỏ bán hàng đa kênh.",
+      "Ngoại ngữ và dịch vụ quốc tế": "Kết nối lao động Việt Nam với du lịch, gia công dịch vụ, thương mại và khách hàng toàn cầu.",
+      "Xuất khẩu lao động kỹ năng cao": "Lộ trình tay nghề, ngoại ngữ và pháp lý để làm việc quốc tế một cách chính thống."
+    };
+
+    const dimensions = {
+      technical: "Kỹ thuật - công nghệ",
+      people: "Con người - đồng cảm",
+      creative: "Sáng tạo - truyền thông",
+      business: "Kinh doanh - tài chính",
+      science: "Nghiên cứu - phân tích",
+      field: "Thực địa - vận hành",
+      remote: "Làm việc từ xa",
+      stability: "Ổn định - dài hạn",
+      income: "Thu nhập cao",
+      difficulty: "Chịu độ khó học",
+      impact: "Tác động xã hội"
+    };
+
+    const groupProfiles = {
+      "Công nghệ và AI": { technical: 9, people: 4, creative: 5, business: 5, science: 7, field: 3, remote: 8, stability: 7, income: 9, difficulty: 8, impact: 7 },
+      "Blockchain và Web3": { technical: 8, people: 3, creative: 5, business: 7, science: 5, field: 2, remote: 9, stability: 4, income: 9, difficulty: 8, impact: 5 },
+      "Y tế và sức khỏe": { technical: 5, people: 9, creative: 3, business: 4, science: 8, field: 8, remote: 4, stability: 10, income: 8, difficulty: 8, impact: 10 },
+      "Giáo dục": { technical: 4, people: 9, creative: 7, business: 5, science: 5, field: 4, remote: 8, stability: 8, income: 6, difficulty: 6, impact: 9 },
+      "Kinh doanh và tài chính": { technical: 5, people: 6, creative: 4, business: 10, science: 6, field: 5, remote: 7, stability: 7, income: 8, difficulty: 7, impact: 6 },
+      "Năng lượng và môi trường": { technical: 7, people: 5, creative: 3, business: 5, science: 7, field: 8, remote: 4, stability: 8, income: 7, difficulty: 7, impact: 10 },
+      "Sáng tạo nội dung và truyền thông": { technical: 4, people: 7, creative: 10, business: 6, science: 4, field: 3, remote: 9, stability: 5, income: 7, difficulty: 5, impact: 6 },
+      "Khoa học và nghiên cứu": { technical: 7, people: 4, creative: 5, business: 3, science: 10, field: 5, remote: 5, stability: 7, income: 7, difficulty: 9, impact: 9 },
+      "Dịch vụ con người": { technical: 3, people: 10, creative: 6, business: 5, science: 3, field: 7, remote: 6, stability: 7, income: 6, difficulty: 4, impact: 8 },
+      "Nghề mới có thể xuất hiện trong 10 năm tới": { technical: 8, people: 6, creative: 7, business: 5, science: 7, field: 3, remote: 9, stability: 5, income: 8, difficulty: 7, impact: 7 },
+      "Nghề kỹ thuật tay nghề cao": { technical: 7, people: 5, creative: 3, business: 4, science: 5, field: 10, remote: 2, stability: 9, income: 7, difficulty: 5, impact: 8 },
+      "Du lịch và dịch vụ trải nghiệm": { technical: 3, people: 9, creative: 8, business: 7, science: 3, field: 8, remote: 4, stability: 6, income: 7, difficulty: 5, impact: 7 },
+      "Sản xuất công nghiệp": { technical: 8, people: 4, creative: 3, business: 5, science: 6, field: 9, remote: 2, stability: 8, income: 7, difficulty: 6, impact: 8 },
+      "Thương mại điện tử và kinh doanh địa phương": { technical: 5, people: 7, creative: 8, business: 9, science: 4, field: 5, remote: 8, stability: 5, income: 7, difficulty: 4, impact: 6 },
+      "Ngoại ngữ và dịch vụ quốc tế": { technical: 4, people: 8, creative: 7, business: 6, science: 4, field: 4, remote: 8, stability: 7, income: 7, difficulty: 6, impact: 7 },
+      "Xuất khẩu lao động kỹ năng cao": { technical: 6, people: 6, creative: 3, business: 5, science: 4, field: 8, remote: 3, stability: 8, income: 7, difficulty: 6, impact: 8 }
+    };
+
+    const careerProfileOverrides = {
+      "Chuyên gia dữ liệu / Data Analyst": { technical: 7, science: 9, difficulty: 6 },
+      "Kỹ sư phần mềm full-stack": { technical: 9, creative: 6, business: 5 },
+      "Chuyên gia an ninh mạng": { technical: 9, science: 7, stability: 9 },
+      "Chuyên gia sản phẩm AI / AI Product Manager": { technical: 7, people: 7, business: 9, creative: 7 },
+      "Bác sĩ / Chuyên gia y học cá nhân hóa": { people: 9, science: 10, field: 9, difficulty: 10 },
+      "Điều dưỡng / Chăm sóc người cao tuổi": { people: 10, field: 9, difficulty: 6, income: 6 },
+      "Chuyên gia sức khỏe tinh thần / Tâm lý trị liệu": { people: 10, science: 7, remote: 7, impact: 10 },
+      "Giáo viên / Learning Designer dùng AI": { people: 9, creative: 8, technical: 6, remote: 8 },
+      "Kỹ sư năng lượng tái tạo": { technical: 8, field: 8, impact: 10, remote: 4 },
+      "Nhà sáng tạo nội dung chuyên môn": { creative: 10, people: 7, business: 7, difficulty: 4 },
+      "UX/UI Designer / Product Designer": { creative: 9, people: 8, technical: 5, remote: 9 },
+      "Chuyên viên chăm sóc khách hàng cao cấp": { people: 9, business: 6, difficulty: 3 },
+      "Community Builder / Quản lý cộng đồng": { people: 10, creative: 7, remote: 9 },
+      "Prompt/System Designer cho AI Agent": { technical: 8, creative: 8, remote: 10 },
+      "AI Safety / Model Evaluator": { technical: 8, science: 9, impact: 8, difficulty: 8 },
+      "Human-AI Interaction Designer": { technical: 7, people: 8, creative: 9, science: 6 },
+      "Kỹ sư bán dẫn / Thiết kế vi mạch": { technical: 10, science: 9, field: 5, difficulty: 10, income: 9 },
+      "Kỹ sư Cloud / DevOps / SRE": { technical: 9, remote: 9, stability: 8, income: 9 },
+      "Chuyên gia pháp lý dữ liệu / Tuân thủ AI": { business: 7, science: 8, people: 6, stability: 8 },
+      "Chuyên gia nông nghiệp công nghệ cao / Food Systems": { field: 9, science: 7, impact: 10, technical: 6 },
+      "Nhà quy hoạch đô thị thích ứng khí hậu": { field: 8, science: 7, people: 7, impact: 10 },
+      "Kỹ thuật viên điện - HVAC - hạ tầng thông minh": { technical: 8, field: 10, difficulty: 5, stability: 9 },
+      "Kỹ thuật viên thiết bị y tế": { technical: 8, field: 8, people: 6, stability: 8 },
+      "Chuyên gia phục hồi chức năng / Vật lý trị liệu": { people: 9, field: 8, science: 7, impact: 9 },
+      "Quản trị du lịch - khách sạn - trải nghiệm địa phương": { people: 9, creative: 8, field: 8, business: 7 },
+      "Kỹ thuật viên cơ khí chính xác / CNC": { technical: 8, field: 10, stability: 8, difficulty: 5 },
+      "Chuyên viên QA/QC sản xuất": { technical: 6, science: 7, field: 8, stability: 8 },
+      "Vận hành thương mại điện tử địa phương": { business: 9, creative: 8, remote: 8, difficulty: 4 },
+      "Chuyên viên ngoại ngữ / Localization / Dịch vụ quốc tế": { people: 8, creative: 7, remote: 8, difficulty: 6 },
+      "Điều phối xuất khẩu lao động kỹ năng cao": { people: 8, field: 7, stability: 8, impact: 8 }
+    };
+
+    const quizQuestions = [
+      {
+        id: "energy",
+        title: "Khi có 3 giờ rảnh để học hoặc làm dự án, bạn thường muốn làm việc gì nhất?",
+        note: "Câu này đo động lực tự nhiên, thường quan trọng hơn sở thích nhất thời.",
+        options: [
+          { label: "Xây một công cụ, app, mô hình AI hoặc hệ thống tự động hóa.", weights: { technical: 9, science: 6, remote: 7 }, groups: ["Công nghệ và AI", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Tư vấn, lắng nghe, hỗ trợ hoặc giúp người khác vượt qua vấn đề.", weights: { people: 10, impact: 8, stability: 7 }, groups: ["Y tế và sức khỏe", "Dịch vụ con người", "Giáo dục"] },
+          { label: "Viết, thiết kế, làm video, kể chuyện hoặc xây thương hiệu cá nhân.", weights: { creative: 10, people: 6, remote: 8 }, groups: ["Sáng tạo nội dung và truyền thông", "Giáo dục"] },
+          { label: "Phân tích số liệu, thị trường, tiền bạc, mô hình kinh doanh hoặc chiến lược.", weights: { business: 10, science: 7, income: 8 }, groups: ["Kinh doanh và tài chính", "Công nghệ và AI"] }
+        ]
+      },
+      {
+        id: "problem",
+        title: "Bạn thích giải quyết loại vấn đề nào nhất?",
+        note: "Nghề bền vững thường đến từ loại vấn đề bạn chịu được trong nhiều năm.",
+        options: [
+          { label: "Vấn đề logic phức tạp, cần thử nghiệm nhiều lần để tìm lời giải tối ưu.", weights: { technical: 9, science: 8, difficulty: 8 }, groups: ["Công nghệ và AI", "Khoa học và nghiên cứu"] },
+          { label: "Vấn đề cảm xúc, hành vi, học tập hoặc mối quan hệ của con người.", weights: { people: 10, science: 5, impact: 9 }, groups: ["Y tế và sức khỏe", "Giáo dục", "Dịch vụ con người"] },
+          { label: "Vấn đề tăng trưởng doanh thu, vận hành, khách hàng, tài chính hoặc thị trường.", weights: { business: 10, people: 5, income: 8 }, groups: ["Kinh doanh và tài chính"] },
+          { label: "Vấn đề môi trường, năng lượng, hạ tầng, sản xuất hoặc vận hành thực tế.", weights: { field: 9, technical: 7, impact: 10 }, groups: ["Năng lượng và môi trường", "Nghề kỹ thuật tay nghề cao", "Kinh doanh và tài chính"] }
+        ]
+      },
+      {
+        id: "workStyle",
+        title: "Môi trường làm việc nào khiến bạn có năng lượng nhất?",
+        note: "Môi trường phù hợp giúp bạn đi đường dài thay vì chỉ khởi đầu hứng thú.",
+        options: [
+          { label: "Làm sâu một mình hoặc nhóm nhỏ, ít gián đoạn, nhiều thời gian tập trung.", weights: { technical: 8, science: 8, remote: 8 }, groups: ["Công nghệ và AI", "Khoa học và nghiên cứu"] },
+          { label: "Gặp người thật, trao đổi nhiều, phản hồi trực tiếp và xử lý tình huống.", weights: { people: 10, field: 7, impact: 7 }, groups: ["Y tế và sức khỏe", "Dịch vụ con người", "Giáo dục"] },
+          { label: "Môi trường linh hoạt, làm từ xa, tự quản thời gian, đo bằng kết quả.", weights: { remote: 10, creative: 6, technical: 6 }, groups: ["Sáng tạo nội dung và truyền thông", "Công nghệ và AI", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Môi trường tốc độ cao, nhiều mục tiêu, cạnh tranh và va chạm kinh doanh.", weights: { business: 10, income: 8, difficulty: 7 }, groups: ["Kinh doanh và tài chính", "Blockchain và Web3"] }
+        ]
+      },
+      {
+        id: "learning",
+        title: "Bạn sẵn sàng học một lĩnh vực khó trong bao lâu trước khi có kết quả rõ?",
+        note: "Câu này giúp tránh gợi ý nghề có đường học quá dài so với nguồn lực hiện tại.",
+        options: [
+          { label: "3-6 tháng, tôi muốn thấy kết quả nhanh và học qua dự án nhỏ.", weights: { difficulty: 3, creative: 7, people: 6, remote: 8 }, groups: ["Sáng tạo nội dung và truyền thông", "Dịch vụ con người"] },
+          { label: "6-18 tháng, tôi chấp nhận học nghiêm túc nếu có lộ trình rõ.", weights: { difficulty: 6, technical: 6, business: 6 }, groups: ["Công nghệ và AI", "Giáo dục", "Kinh doanh và tài chính"] },
+          { label: "2-4 năm, tôi muốn xây năng lực chuyên môn sâu và có chứng chỉ tốt.", weights: { difficulty: 8, science: 7, stability: 8 }, groups: ["Y tế và sức khỏe", "Năng lượng và môi trường", "Khoa học và nghiên cứu"] },
+          { label: "5 năm trở lên cũng được nếu nghề có uy tín, tác động và nền tảng bền vững.", weights: { difficulty: 10, science: 10, impact: 10, stability: 10 }, groups: ["Y tế và sức khỏe", "Khoa học và nghiên cứu"] }
+        ]
+      },
+      {
+        id: "risk",
+        title: "Bạn chấp nhận mức rủi ro nghề nghiệp nào?",
+        note: "Rủi ro gồm thu nhập biến động, thị trường thay đổi, pháp lý và cạnh tranh.",
+        options: [
+          { label: "Tôi ưu tiên ổn định, nhu cầu dài hạn và lộ trình nghề rõ ràng.", weights: { stability: 10, impact: 7, field: 5 }, groups: ["Y tế và sức khỏe", "Giáo dục", "Năng lượng và môi trường"] },
+          { label: "Tôi chấp nhận rủi ro vừa phải nếu kỹ năng có thể chuyển sang nhiều ngành.", weights: { stability: 7, technical: 7, business: 6 }, groups: ["Công nghệ và AI", "Kinh doanh và tài chính"] },
+          { label: "Tôi chấp nhận biến động để đổi lấy thu nhập cao và cơ hội toàn cầu.", weights: { income: 10, remote: 8, business: 7 }, groups: ["Blockchain và Web3", "Công nghệ và AI", "Sáng tạo nội dung và truyền thông"] },
+          { label: "Tôi thích thử cái mới, thị trường chưa rõ cũng được nếu có tiềm năng lớn.", weights: { technical: 8, creative: 8, income: 8, stability: 3 }, groups: ["Nghề mới có thể xuất hiện trong 10 năm tới", "Blockchain và Web3"] }
+        ]
+      },
+      {
+        id: "strength",
+        title: "Người khác thường đánh giá điểm mạnh nào ở bạn?",
+        note: "Hãy chọn điểm mạnh đã được người khác xác nhận, không chỉ điều bạn mong muốn.",
+        options: [
+          { label: "Tư duy logic, học công cụ nhanh, kiên nhẫn debug hoặc phân tích.", weights: { technical: 9, science: 8, difficulty: 7 }, groups: ["Công nghệ và AI", "Khoa học và nghiên cứu"] },
+          { label: "Biết lắng nghe, tạo cảm giác tin cậy, giải thích dễ hiểu.", weights: { people: 10, impact: 8, stability: 7 }, groups: ["Y tế và sức khỏe", "Giáo dục", "Dịch vụ con người"] },
+          { label: "Có gu thẩm mỹ, kể chuyện, tạo ý tưởng hoặc nhìn ra góc truyền thông.", weights: { creative: 10, people: 6, remote: 8 }, groups: ["Sáng tạo nội dung và truyền thông"] },
+          { label: "Nhạy với cơ hội, đàm phán, tổ chức nguồn lực hoặc nhìn ra mô hình kiếm tiền.", weights: { business: 10, income: 9, people: 6 }, groups: ["Kinh doanh và tài chính", "Blockchain và Web3"] }
+        ]
+      },
+      {
+        id: "motivation",
+        title: "Điều gì khiến bạn thấy công việc có ý nghĩa nhất?",
+        note: "Động lực sâu giúp bạn vượt qua giai đoạn học khó và công việc lặp lại.",
+        options: [
+          { label: "Tạo ra sản phẩm/hệ thống nhiều người dùng và có thể mở rộng toàn cầu.", weights: { technical: 8, remote: 8, income: 8 }, groups: ["Công nghệ và AI", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Giúp một người cụ thể khỏe hơn, học tốt hơn hoặc sống tốt hơn.", weights: { people: 10, impact: 10, stability: 8 }, groups: ["Y tế và sức khỏe", "Giáo dục", "Dịch vụ con người"] },
+          { label: "Giải quyết bài toán lớn của xã hội như khí hậu, sức khỏe, giáo dục, an toàn.", weights: { impact: 10, science: 7, field: 6 }, groups: ["Năng lượng và môi trường", "Khoa học và nghiên cứu", "Y tế và sức khỏe"] },
+          { label: "Đạt tự do tài chính, xây tài sản, doanh nghiệp hoặc thương hiệu riêng.", weights: { business: 9, income: 10, creative: 6 }, groups: ["Kinh doanh và tài chính", "Sáng tạo nội dung và truyền thông"] }
+        ]
+      },
+      {
+        id: "aiUse",
+        title: "Bạn muốn dùng AI trong công việc theo cách nào?",
+        note: "AI không chỉ dành cho lập trình; cách dùng AI phản ánh kiểu nghề phù hợp.",
+        options: [
+          { label: "Xây, đánh giá hoặc triển khai hệ thống AI cho người khác sử dụng.", weights: { technical: 10, science: 8, difficulty: 8 }, groups: ["Công nghệ và AI", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Dùng AI để phân tích dữ liệu, nghiên cứu, ra quyết định và kiểm chứng.", weights: { science: 9, business: 7, technical: 6 }, groups: ["Kinh doanh và tài chính", "Khoa học và nghiên cứu", "Công nghệ và AI"] },
+          { label: "Dùng AI để dạy học, tư vấn, chăm sóc, cá nhân hóa trải nghiệm con người.", weights: { people: 9, creative: 6, impact: 8 }, groups: ["Giáo dục", "Y tế và sức khỏe", "Dịch vụ con người"] },
+          { label: "Dùng AI để sản xuất nội dung, thiết kế, truyền thông và xây cộng đồng.", weights: { creative: 10, remote: 9, people: 6 }, groups: ["Sáng tạo nội dung và truyền thông"] }
+        ]
+      },
+      {
+        id: "money",
+        title: "Bạn nhìn nhận thu nhập trong lựa chọn nghề như thế nào?",
+        note: "Không có đáp án đúng sai; câu này giúp cân bằng giữa tiền, ổn định và ý nghĩa.",
+        options: [
+          { label: "Thu nhập rất quan trọng; tôi muốn tối ưu cơ hội thu nhập cao.", weights: { income: 10, business: 7, technical: 6 }, groups: ["Công nghệ và AI", "Kinh doanh và tài chính", "Blockchain và Web3"] },
+          { label: "Thu nhập quan trọng, nhưng tôi cần nghề ổn định và ít biến động.", weights: { income: 7, stability: 10, impact: 6 }, groups: ["Y tế và sức khỏe", "Năng lượng và môi trường", "Giáo dục"] },
+          { label: "Tôi ưu tiên tự do, làm từ xa và nhiều nguồn thu hơn lương cố định.", weights: { remote: 10, creative: 8, business: 7 }, groups: ["Sáng tạo nội dung và truyền thông", "Công nghệ và AI"] },
+          { label: "Tôi chấp nhận thu nhập tăng chậm nếu nghề tạo tác động xã hội rõ.", weights: { impact: 10, people: 8, stability: 7 }, groups: ["Giáo dục", "Y tế và sức khỏe", "Năng lượng và môi trường"] }
+        ]
+      },
+      {
+        id: "body",
+        title: "Bạn phù hợp với mức độ làm việc thực địa/trực tiếp nào?",
+        note: "Một số nghề tốt nhưng không phù hợp nếu bạn chỉ muốn làm online hoàn toàn.",
+        options: [
+          { label: "Tôi muốn chủ yếu làm online hoặc từ xa.", weights: { remote: 10, technical: 6, creative: 6 }, groups: ["Công nghệ và AI", "Sáng tạo nội dung và truyền thông", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Tôi làm hybrid được: online kết hợp gặp khách hàng/học viên/đội nhóm.", weights: { remote: 7, people: 7, business: 6 }, groups: ["Giáo dục", "Kinh doanh và tài chính", "Dịch vụ con người"] },
+          { label: "Tôi sẵn sàng làm trực tiếp với con người nếu công việc có ý nghĩa.", weights: { people: 10, field: 7, impact: 9 }, groups: ["Y tế và sức khỏe", "Dịch vụ con người"] },
+          { label: "Tôi thích thực địa, thiết bị, nhà máy, phòng lab, hạ tầng hoặc vận hành.", weights: { field: 10, technical: 7, science: 6 }, groups: ["Nghề kỹ thuật tay nghề cao", "Năng lượng và môi trường", "Khoa học và nghiên cứu", "Kinh doanh và tài chính"] }
+        ]
+      },
+      {
+        id: "evidence",
+        title: "Khi phải ra quyết định quan trọng, bạn tin vào điều gì nhất?",
+        note: "Cách ra quyết định ảnh hưởng mạnh đến nhóm nghề phù hợp.",
+        options: [
+          { label: "Dữ liệu, thử nghiệm, đo lường và bằng chứng định lượng.", weights: { science: 10, technical: 7, business: 6 }, groups: ["Công nghệ và AI", "Khoa học và nghiên cứu", "Kinh doanh và tài chính"] },
+          { label: "Quan sát con người, đối thoại sâu và hiểu hoàn cảnh cá nhân.", weights: { people: 10, impact: 8, creative: 5 }, groups: ["Y tế và sức khỏe", "Giáo dục", "Dịch vụ con người"] },
+          { label: "Trực giác sáng tạo, câu chuyện, hình ảnh và phản ứng của cộng đồng.", weights: { creative: 10, people: 6, remote: 7 }, groups: ["Sáng tạo nội dung và truyền thông"] },
+          { label: "Chi phí - lợi ích, rủi ro, dòng tiền và lợi thế cạnh tranh.", weights: { business: 10, income: 8, stability: 6 }, groups: ["Kinh doanh và tài chính", "Blockchain và Web3"] }
+        ]
+      },
+      {
+        id: "vietnam_region",
+        title: "Bối cảnh sống và cơ hội gần bạn hiện giống lựa chọn nào nhất?",
+        note: "Ở Việt Nam, vùng miền ảnh hưởng mạnh đến cơ hội thực tập, học nghề, việc làm và kinh doanh.",
+        options: [
+          { label: "Em/tôi ở đô thị lớn, dễ tiếp cận đại học, doanh nghiệp công nghệ, dịch vụ và startup.", weights: { remote: 7, technical: 7, business: 7, difficulty: 7 }, groups: ["Công nghệ và AI", "Kinh doanh và tài chính", "Ngoại ngữ và dịch vụ quốc tế"] },
+          { label: "Em/tôi ở tỉnh có khu công nghiệp, nhà máy, logistics hoặc FDI.", weights: { field: 9, technical: 7, stability: 8 }, groups: ["Sản xuất công nghiệp", "Nghề kỹ thuật tay nghề cao", "Kinh doanh và tài chính"] },
+          { label: "Em/tôi ở địa phương có du lịch, dịch vụ, ẩm thực, văn hóa hoặc sản phẩm bản địa.", weights: { people: 8, creative: 8, business: 7, field: 6 }, groups: ["Du lịch và dịch vụ trải nghiệm", "Thương mại điện tử và kinh doanh địa phương", "Dịch vụ con người"] },
+          { label: "Em/tôi ở vùng nông nghiệp hoặc muốn gắn với nông sản, thực phẩm, môi trường.", weights: { field: 9, impact: 9, science: 6, technical: 5 }, groups: ["Năng lượng và môi trường", "Thương mại điện tử và kinh doanh địa phương", "Sản xuất công nghiệp"] }
+        ]
+      },
+      {
+        id: "vietnam_family",
+        title: "Điều kiện tài chính và áp lực gia đình hiện gần với lựa chọn nào nhất?",
+        note: "Câu này giúp tránh gợi ý nghề có chi phí hoặc thời gian học không phù hợp.",
+        options: [
+          { label: "Cần đi làm sớm hoặc vừa học vừa làm trong 6-18 tháng.", weights: { difficulty: 4, stability: 8, business: 6, field: 7 }, groups: ["Nghề kỹ thuật tay nghề cao", "Thương mại điện tử và kinh doanh địa phương", "Sản xuất công nghiệp", "Dịch vụ con người"] },
+          { label: "Gia đình có thể đầu tư đại học/cao đẳng nếu ngành có triển vọng rõ.", weights: { difficulty: 7, science: 7, stability: 8 }, groups: ["Y tế và sức khỏe", "Công nghệ và AI", "Năng lượng và môi trường", "Kinh doanh và tài chính"] },
+          { label: "Có thể đầu tư dài hạn cho ngành khó như y, bán dẫn, nghiên cứu hoặc chuyên môn sâu.", weights: { difficulty: 10, science: 9, stability: 8 }, groups: ["Y tế và sức khỏe", "Khoa học và nghiên cứu", "Công nghệ và AI"] },
+          { label: "Muốn chọn hướng có thể đi quốc tế để tăng thu nhập và trải nghiệm.", weights: { income: 8, field: 7, people: 6, difficulty: 6 }, groups: ["Xuất khẩu lao động kỹ năng cao", "Ngoại ngữ và dịch vụ quốc tế", "Y tế và sức khỏe", "Nghề kỹ thuật tay nghề cao"] }
+        ]
+      },
+      {
+        id: "vietnam_language",
+        title: "Năng lực ngoại ngữ và mong muốn đi xa của bạn hiện thế nào?",
+        note: "Ngoại ngữ là đòn bẩy rất lớn ở Việt Nam, đặc biệt với công nghệ, du lịch, dịch vụ quốc tế và lao động kỹ năng cao.",
+        options: [
+          { label: "Ngoại ngữ còn yếu, muốn ưu tiên nghề có thể bắt đầu bằng tay nghề hoặc thực hành.", weights: { field: 9, stability: 8, difficulty: 5 }, groups: ["Nghề kỹ thuật tay nghề cao", "Sản xuất công nghiệp", "Thương mại điện tử và kinh doanh địa phương"] },
+          { label: "Có tiếng Anh khá, muốn làm việc online, công ty quốc tế hoặc khách hàng nước ngoài.", weights: { remote: 9, technical: 7, business: 6 }, groups: ["Công nghệ và AI", "Ngoại ngữ và dịch vụ quốc tế", "Sáng tạo nội dung và truyền thông"] },
+          { label: "Muốn học Nhật/Hàn/Đức/Trung để đi làm quốc tế theo diện kỹ năng.", weights: { field: 8, income: 8, stability: 8 }, groups: ["Xuất khẩu lao động kỹ năng cao", "Nghề kỹ thuật tay nghề cao", "Y tế và sức khỏe"] },
+          { label: "Thích giao tiếp với khách du lịch, khách hàng quốc tế hoặc cộng đồng đa văn hóa.", weights: { people: 9, creative: 7, business: 6 }, groups: ["Du lịch và dịch vụ trải nghiệm", "Ngoại ngữ và dịch vụ quốc tế", "Dịch vụ con người"] }
+        ]
+      },
+      {
+        id: "future",
+        title: "Trong 10 năm tới, bạn muốn bản thân trở thành kiểu chuyên gia nào?",
+        note: "Câu cuối giúp hệ thống ưu tiên định hướng dài hạn thay vì chỉ việc dễ bắt đầu.",
+        options: [
+          { label: "Chuyên gia kỹ thuật tạo ra hệ thống, sản phẩm hoặc công nghệ có quy mô lớn.", weights: { technical: 10, science: 7, income: 9, difficulty: 8 }, groups: ["Công nghệ và AI", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Chuyên gia con người: chăm sóc, dạy học, chữa lành, dẫn dắt hoặc cố vấn.", weights: { people: 10, impact: 10, stability: 8 }, groups: ["Y tế và sức khỏe", "Giáo dục", "Dịch vụ con người"] },
+          { label: "Chuyên gia kinh doanh: xây sản phẩm, quản lý vốn, thị trường hoặc tổ chức.", weights: { business: 10, income: 9, people: 6 }, groups: ["Kinh doanh và tài chính"] },
+          { label: "Chuyên gia giải quyết vấn đề xã hội lớn bằng khoa học, năng lượng, môi trường hoặc chính sách.", weights: { science: 9, impact: 10, field: 7, difficulty: 8 }, groups: ["Năng lượng và môi trường", "Khoa học và nghiên cứu"] }
+        ]
+      }
+    ];
+
+    const studentQuizQuestions = [
+      {
+        id: "student_subjects",
+        title: "Ở trường, nhóm môn nào khiến em học vào nhanh và ít bị chán nhất?",
+        note: "Không cần chọn môn điểm cao nhất; hãy chọn nhóm môn em có thể học lâu mà vẫn tò mò.",
+        options: [
+          { label: "Toán, Tin học, Vật lý hoặc các môn cần logic và giải bài.", weights: { technical: 9, science: 8, difficulty: 7 }, groups: ["Công nghệ và AI", "Khoa học và nghiên cứu", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Sinh học, Hóa học, Giáo dục sức khỏe hoặc các chủ đề về cơ thể con người.", weights: { science: 9, people: 7, impact: 9, stability: 8 }, groups: ["Y tế và sức khỏe", "Khoa học và nghiên cứu"] },
+          { label: "Ngữ văn, Ngoại ngữ, Lịch sử, Địa lý hoặc các môn cần diễn đạt và hiểu xã hội.", weights: { creative: 8, people: 8, impact: 7 }, groups: ["Giáo dục", "Sáng tạo nội dung và truyền thông", "Dịch vụ con người"] },
+          { label: "Kinh tế, hướng nghiệp, hoạt động kinh doanh nhỏ hoặc các chủ đề tiền bạc/thị trường.", weights: { business: 10, income: 8, people: 5 }, groups: ["Kinh doanh và tài chính", "Blockchain và Web3"] }
+        ]
+      },
+      {
+        id: "student_activity",
+        title: "Trong hoạt động nhóm ở lớp, em thường tự nhiên nhận vai trò nào?",
+        note: "Vai trò tự nhiên phản ánh cách em tạo giá trị khi làm việc với người khác.",
+        options: [
+          { label: "Người tìm cách làm, chia nhỏ việc, xử lý file/công cụ/kỹ thuật.", weights: { technical: 8, science: 6, remote: 6 }, groups: ["Công nghệ và AI", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Người thuyết trình, viết nội dung, làm slide, thiết kế hoặc nghĩ ý tưởng.", weights: { creative: 10, people: 6, remote: 7 }, groups: ["Sáng tạo nội dung và truyền thông", "Giáo dục"] },
+          { label: "Người kết nối các bạn, lắng nghe, hòa giải, động viên nhóm.", weights: { people: 10, impact: 8, stability: 6 }, groups: ["Giáo dục", "Y tế và sức khỏe", "Dịch vụ con người"] },
+          { label: "Người lập kế hoạch, phân công, theo dõi tiến độ và muốn nhóm đạt điểm/kết quả tốt.", weights: { business: 8, people: 6, difficulty: 6 }, groups: ["Kinh doanh và tài chính", "Dịch vụ con người"] }
+        ]
+      },
+      {
+        id: "student_free_time",
+        title: "Nếu được tự chọn một dự án trong 1 tháng, em muốn làm gì nhất?",
+        note: "Dự án tự chọn giúp nhận ra sở thích có thể biến thành kỹ năng nghề nghiệp.",
+        options: [
+          { label: "Làm website/app nhỏ, robot, mô hình AI, game hoặc tự động hóa việc gì đó.", weights: { technical: 10, creative: 5, difficulty: 7 }, groups: ["Công nghệ và AI", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Làm kênh nội dung, podcast, video, truyện tranh, thiết kế hoặc chiến dịch truyền thông.", weights: { creative: 10, people: 6, remote: 9 }, groups: ["Sáng tạo nội dung và truyền thông"] },
+          { label: "Tổ chức lớp học nhỏ, câu lạc bộ, hoạt động thiện nguyện hoặc hỗ trợ bạn học yếu hơn.", weights: { people: 10, impact: 9, creative: 5 }, groups: ["Giáo dục", "Dịch vụ con người"] },
+          { label: "Bán thử một sản phẩm/dịch vụ, quản lý ngân sách hoặc nghiên cứu nhu cầu khách hàng.", weights: { business: 10, income: 8, people: 6 }, groups: ["Kinh doanh và tài chính"] }
+        ]
+      },
+      {
+        id: "student_learning_style",
+        title: "Cách học nào phù hợp với em nhất?",
+        note: "Cách học tốt giúp chọn ngành có phương pháp đào tạo phù hợp.",
+        options: [
+          { label: "Tự mày mò qua máy tính, tài liệu, video, thử sai và sửa lỗi.", weights: { technical: 9, remote: 8, difficulty: 7 }, groups: ["Công nghệ và AI", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Có giáo viên/mentor hướng dẫn từng bước, có bài tập và phản hồi rõ.", weights: { stability: 8, people: 6, difficulty: 6 }, groups: ["Giáo dục", "Y tế và sức khỏe"] },
+          { label: "Học bằng thực hành thật: đi thực tế, làm thí nghiệm, quan sát, chạm vào thiết bị.", weights: { field: 10, science: 7, technical: 6 }, groups: ["Nghề kỹ thuật tay nghề cao", "Năng lượng và môi trường", "Khoa học và nghiên cứu", "Y tế và sức khỏe"] },
+          { label: "Học qua tranh luận, thuyết trình, case study, dự án xã hội hoặc kinh doanh.", weights: { people: 8, business: 8, creative: 6 }, groups: ["Kinh doanh và tài chính", "Giáo dục", "Dịch vụ con người"] }
+        ]
+      },
+      {
+        id: "student_pressure",
+        title: "Khi gặp bài khó hoặc dự án thất bại, phản ứng thường gặp của em là gì?",
+        note: "Khả năng chịu khó và kiểu áp lực phù hợp rất quan trọng khi chọn ngành.",
+        options: [
+          { label: "Em có thể ngồi lâu để tìm lỗi, đọc lại và thử nhiều cách.", weights: { technical: 9, science: 8, difficulty: 9 }, groups: ["Công nghệ và AI", "Khoa học và nghiên cứu"] },
+          { label: "Em cần nói chuyện với người khác, được góp ý rồi sẽ làm tiếp tốt hơn.", weights: { people: 9, creative: 5, stability: 6 }, groups: ["Giáo dục", "Dịch vụ con người", "Y tế và sức khỏe"] },
+          { label: "Em đổi cách trình bày, kể chuyện hoặc biến vấn đề thành ý tưởng mới.", weights: { creative: 9, people: 6, remote: 7 }, groups: ["Sáng tạo nội dung và truyền thông"] },
+          { label: "Em xem lại mục tiêu, thời gian, lợi ích và tìm cách làm hiệu quả hơn.", weights: { business: 9, income: 7, difficulty: 6 }, groups: ["Kinh doanh và tài chính"] }
+        ]
+      },
+      {
+        id: "student_people",
+        title: "Em thích làm việc với con người ở mức độ nào?",
+        note: "Một số nghề cần tiếp xúc người rất nhiều, một số nghề cần tập trung kỹ thuật nhiều hơn.",
+        options: [
+          { label: "Em thích làm việc yên tĩnh, ít phải giao tiếp liên tục.", weights: { technical: 8, science: 8, remote: 8, people: 3 }, groups: ["Công nghệ và AI", "Khoa học và nghiên cứu"] },
+          { label: "Em thích giao tiếp vừa phải: có nhóm nhỏ, có người dùng/khách hàng, nhưng vẫn có thời gian tập trung.", weights: { people: 6, technical: 6, creative: 6 }, groups: ["Công nghệ và AI", "Kinh doanh và tài chính", "Sáng tạo nội dung và truyền thông"] },
+          { label: "Em thích tiếp xúc, hỗ trợ, hướng dẫn, chăm sóc hoặc lắng nghe người khác.", weights: { people: 10, impact: 9, stability: 7 }, groups: ["Y tế và sức khỏe", "Giáo dục", "Dịch vụ con người"] },
+          { label: "Em thích thuyết phục, bán ý tưởng, dẫn dắt nhóm hoặc xây cộng đồng.", weights: { people: 9, business: 8, creative: 7 }, groups: ["Kinh doanh và tài chính", "Dịch vụ con người", "Sáng tạo nội dung và truyền thông"] }
+        ]
+      },
+      {
+        id: "student_local_context",
+        title: "Ở tỉnh/thành của em, cơ hội nào dễ nhìn thấy nhất?",
+        note: "Hướng nghiệp ở Việt Nam nên bắt đầu từ cơ hội thật quanh mình, rồi mới mở rộng ra toàn quốc hoặc quốc tế.",
+        options: [
+          { label: "Trường đại học, trung tâm ngoại ngữ, công ty công nghệ, dịch vụ hoặc văn phòng.", weights: { technical: 7, remote: 7, business: 6, difficulty: 7 }, groups: ["Công nghệ và AI", "Ngoại ngữ và dịch vụ quốc tế", "Kinh doanh và tài chính"] },
+          { label: "Khu công nghiệp, xưởng sản xuất, cơ khí, điện tử, logistics hoặc FDI.", weights: { field: 10, technical: 7, stability: 8 }, groups: ["Sản xuất công nghiệp", "Nghề kỹ thuật tay nghề cao", "Kinh doanh và tài chính"] },
+          { label: "Du lịch, khách sạn, nhà hàng, sự kiện, văn hóa địa phương hoặc dịch vụ khách hàng.", weights: { people: 9, creative: 8, business: 7 }, groups: ["Du lịch và dịch vụ trải nghiệm", "Ngoại ngữ và dịch vụ quốc tế", "Dịch vụ con người"] },
+          { label: "Nông nghiệp, thủy sản, thực phẩm, môi trường, sản phẩm địa phương hoặc bán hàng online.", weights: { field: 8, impact: 8, business: 7, creative: 5 }, groups: ["Năng lượng và môi trường", "Thương mại điện tử và kinh doanh địa phương", "Sản xuất công nghiệp"] }
+        ]
+      },
+      {
+        id: "student_family_finance",
+        title: "Nếu trao đổi với gia đình về chi phí học sau THPT, phương án nào thực tế nhất?",
+        note: "Câu này không đánh giá năng lực; nó giúp chọn lộ trình vừa sức với gia đình.",
+        options: [
+          { label: "Em cần lộ trình học nghề/cao đẳng/chứng chỉ để có thể đi làm sớm.", weights: { field: 8, stability: 8, difficulty: 4 }, groups: ["Nghề kỹ thuật tay nghề cao", "Sản xuất công nghiệp", "Thương mại điện tử và kinh doanh địa phương"] },
+          { label: "Em có thể học đại học nhưng vẫn muốn ngành có thực tập, làm thêm hoặc dự án sớm.", weights: { difficulty: 6, technical: 6, business: 7, remote: 7 }, groups: ["Công nghệ và AI", "Kinh doanh và tài chính", "Giáo dục"] },
+          { label: "Gia đình có thể đầu tư dài hạn nếu ngành cần bằng cấp chuyên sâu.", weights: { difficulty: 9, science: 8, stability: 8 }, groups: ["Y tế và sức khỏe", "Khoa học và nghiên cứu", "Năng lượng và môi trường"] },
+          { label: "Em muốn học ngoại ngữ/tay nghề để có cơ hội đi làm ở nước ngoài chính thống.", weights: { field: 8, income: 8, stability: 8, people: 6 }, groups: ["Xuất khẩu lao động kỹ năng cao", "Ngoại ngữ và dịch vụ quốc tế", "Nghề kỹ thuật tay nghề cao"] }
+        ]
+      },
+      {
+        id: "student_language_mobility",
+        title: "Em thấy mình phù hợp với ngoại ngữ và việc đi xa ở mức nào?",
+        note: "Ngoại ngữ có thể mở lối cho du lịch, dịch vụ quốc tế, công nghệ và xuất khẩu lao động kỹ năng cao.",
+        options: [
+          { label: "Em chưa mạnh ngoại ngữ, muốn bắt đầu bằng kỹ năng thực hành trong nước.", weights: { field: 9, technical: 6, stability: 8 }, groups: ["Nghề kỹ thuật tay nghề cao", "Sản xuất công nghiệp", "Thương mại điện tử và kinh doanh địa phương"] },
+          { label: "Em có thể học tiếng Anh để làm việc online, làm nội dung, công nghệ hoặc dịch vụ quốc tế.", weights: { remote: 9, creative: 7, technical: 6 }, groups: ["Công nghệ và AI", "Sáng tạo nội dung và truyền thông", "Ngoại ngữ và dịch vụ quốc tế"] },
+          { label: "Em muốn học Nhật/Hàn/Đức/Trung nếu có lộ trình rõ và đơn vị uy tín.", weights: { income: 8, stability: 8, field: 7 }, groups: ["Xuất khẩu lao động kỹ năng cao", "Ngoại ngữ và dịch vụ quốc tế", "Nghề kỹ thuật tay nghề cao"] },
+          { label: "Em thích giao tiếp với khách du lịch, khách hàng quốc tế hoặc người từ nhiều nền văn hóa.", weights: { people: 9, creative: 7, business: 6 }, groups: ["Du lịch và dịch vụ trải nghiệm", "Ngoại ngữ và dịch vụ quốc tế", "Dịch vụ con người"] }
+        ]
+      },
+      {
+        id: "student_parent_context",
+        title: "Về điều kiện học tập sau THPT, lựa chọn nào gần với em nhất?",
+        note: "Câu này giúp app cân nhắc thời gian học, chi phí và khả năng bắt đầu sớm.",
+        options: [
+          { label: "Em có thể học đại học dài hạn và đầu tư nhiều năm cho chuyên môn sâu.", weights: { difficulty: 9, science: 8, stability: 8 }, groups: ["Y tế và sức khỏe", "Khoa học và nghiên cứu", "Năng lượng và môi trường"] },
+          { label: "Em muốn học đại học/cao đẳng nhưng cần ngành có thể đi làm thêm hoặc thực tập sớm.", weights: { difficulty: 6, technical: 6, business: 6, remote: 7 }, groups: ["Công nghệ và AI", "Kinh doanh và tài chính", "Giáo dục"] },
+          { label: "Em cần hướng có thể tự học, học nghề hoặc tạo thu nhập trong 6-18 tháng.", weights: { difficulty: 4, creative: 7, people: 6, remote: 8 }, groups: ["Sáng tạo nội dung và truyền thông", "Dịch vụ con người", "Công nghệ và AI"] },
+          { label: "Em chưa rõ điều kiện, muốn chọn nền tảng rộng để sau này dễ chuyển hướng.", weights: { stability: 8, people: 6, technical: 6, business: 5 }, groups: ["Giáo dục", "Công nghệ và AI", "Kinh doanh và tài chính"] }
+        ]
+      },
+      {
+        id: "student_after_school",
+        title: "Sau khi tốt nghiệp THPT, em nghiêng về hướng nào?",
+        note: "Không cần chắc chắn tuyệt đối; hãy chọn hướng hiện tại em thấy hợp nhất.",
+        options: [
+          { label: "Đại học kỹ thuật/công nghệ/khoa học dữ liệu hoặc ngành liên quan máy tính.", weights: { technical: 10, science: 7, income: 8, difficulty: 8 }, groups: ["Công nghệ và AI", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Y dược, tâm lý, điều dưỡng, dinh dưỡng hoặc ngành chăm sóc sức khỏe.", weights: { people: 9, science: 9, impact: 10, stability: 9 }, groups: ["Y tế và sức khỏe"] },
+          { label: "Kinh tế, quản trị, tài chính, marketing, logistics hoặc khởi nghiệp.", weights: { business: 10, income: 8, people: 6 }, groups: ["Kinh doanh và tài chính"] },
+          { label: "Sư phạm, truyền thông, thiết kế, ngoại ngữ, xã hội, môi trường hoặc nghề sáng tạo.", weights: { creative: 8, people: 8, impact: 8 }, groups: ["Giáo dục", "Sáng tạo nội dung và truyền thông", "Năng lượng và môi trường"] }
+        ]
+      },
+      {
+        id: "student_ai",
+        title: "Em đang hoặc muốn dùng AI để làm gì?",
+        note: "Cách dùng AI cho thấy em nên đi theo hướng xây công cụ, dùng công cụ hay làm việc với con người.",
+        options: [
+          { label: "Em muốn hiểu cách AI hoạt động và tự tạo công cụ AI.", weights: { technical: 10, science: 8, difficulty: 8 }, groups: ["Công nghệ và AI", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Em muốn dùng AI để học nhanh hơn, tóm tắt, luyện ngoại ngữ, giải thích bài khó.", weights: { people: 6, science: 6, stability: 7 }, groups: ["Giáo dục", "Công nghệ và AI"] },
+          { label: "Em muốn dùng AI để làm video, thiết kế, viết, thuyết trình hoặc sáng tạo nội dung.", weights: { creative: 10, remote: 8, people: 5 }, groups: ["Sáng tạo nội dung và truyền thông"] },
+          { label: "Em muốn dùng AI để phân tích dữ liệu, thị trường, tiền bạc hoặc dự án kinh doanh.", weights: { business: 9, science: 8, income: 8 }, groups: ["Kinh doanh và tài chính", "Công nghệ và AI"] }
+        ]
+      },
+      {
+        id: "student_values",
+        title: "Điều nào làm em tự hào nhất nếu sau này làm tốt?",
+        note: "Giá trị cá nhân là nền tảng quan trọng để chọn nghề đi được 10 năm.",
+        options: [
+          { label: "Tạo ra sản phẩm công nghệ nhiều người dùng.", weights: { technical: 9, income: 8, remote: 8 }, groups: ["Công nghệ và AI", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Giúp người khác khỏe hơn, học tốt hơn hoặc vượt qua khó khăn.", weights: { people: 10, impact: 10, stability: 8 }, groups: ["Y tế và sức khỏe", "Giáo dục", "Dịch vụ con người"] },
+          { label: "Tạo nội dung, thiết kế, câu chuyện hoặc cộng đồng có ảnh hưởng tích cực.", weights: { creative: 10, people: 7, impact: 7 }, groups: ["Sáng tạo nội dung và truyền thông", "Dịch vụ con người"] },
+          { label: "Xây tài sản, doanh nghiệp, đội nhóm hoặc giải pháp giúp xã hội vận hành tốt hơn.", weights: { business: 9, income: 9, impact: 7 }, groups: ["Kinh doanh và tài chính", "Năng lượng và môi trường"] }
+        ]
+      },
+      {
+        id: "student_environment",
+        title: "Em thích không gian làm việc tương lai như thế nào?",
+        note: "Hãy tưởng tượng một ngày làm việc bình thường, không phải lúc thành công nhất.",
+        options: [
+          { label: "Máy tính, dữ liệu, công cụ số, làm từ xa hoặc văn phòng công nghệ.", weights: { technical: 8, remote: 10, income: 7 }, groups: ["Công nghệ và AI", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Bệnh viện, phòng khám, trường học, trung tâm tư vấn hoặc nơi giúp người trực tiếp.", weights: { people: 10, field: 7, impact: 10 }, groups: ["Y tế và sức khỏe", "Giáo dục", "Dịch vụ con người"] },
+          { label: "Studio, phòng sáng tạo, sự kiện, mạng xã hội hoặc cộng đồng.", weights: { creative: 10, people: 7, remote: 8 }, groups: ["Sáng tạo nội dung và truyền thông", "Dịch vụ con người"] },
+          { label: "Nhà máy, phòng lab, công trình, năng lượng, logistics hoặc môi trường thực địa.", weights: { field: 10, technical: 7, science: 7 }, groups: ["Nghề kỹ thuật tay nghề cao", "Năng lượng và môi trường", "Khoa học và nghiên cứu", "Kinh doanh và tài chính"] }
+        ]
+      },
+      {
+        id: "student_warning",
+        title: "Điều gì em muốn tránh nhất khi chọn nghề?",
+        note: "Biết điều muốn tránh giúp giảm nguy cơ chọn sai ngành chỉ vì người khác khuyên.",
+        options: [
+          { label: "Tránh công việc quá nhiều giao tiếp cảm xúc hoặc phải chăm sóc người khác liên tục.", weights: { technical: 8, science: 7, remote: 8, people: 3 }, groups: ["Công nghệ và AI", "Khoa học và nghiên cứu"] },
+          { label: "Tránh công việc ngồi máy tính quá nhiều, ít gặp người hoặc ít thấy tác động thật.", weights: { people: 9, field: 8, impact: 9 }, groups: ["Y tế và sức khỏe", "Giáo dục", "Năng lượng và môi trường"] },
+          { label: "Tránh nghề quá ổn định nhưng ít sáng tạo, ít tự do và khó xây thương hiệu riêng.", weights: { creative: 9, remote: 8, business: 6 }, groups: ["Sáng tạo nội dung và truyền thông", "Nghề mới có thể xuất hiện trong 10 năm tới"] },
+          { label: "Tránh nghề thu nhập thấp hoặc khó nhìn thấy cơ hội phát triển tài chính.", weights: { income: 10, business: 8, technical: 6 }, groups: ["Kinh doanh và tài chính", "Công nghệ và AI", "Blockchain và Web3"] }
+        ]
+      }
+    ];
+
+    const quizSets = {
+      general: {
+        title: "Người dùng chung",
+        intro: "Hoàn thành bảng câu hỏi để nhận danh sách nghề phù hợp với năng lực, điều kiện gia đình, vùng miền, ngoại ngữ và cơ hội tại Việt Nam.",
+        questions: quizQuestions
+      },
+      student: {
+        title: "Học sinh phổ thông",
+        intro: "Hoàn thành bộ câu hỏi học sinh để nhận gợi ý nghề, nhóm ngành và hướng sau THPT: học nghề, cao đẳng, đại học, kinh doanh địa phương hoặc đi quốc tế chính thống.",
+        questions: studentQuizQuestions
+      }
+    };
+
+    const tableBody = document.querySelector("#careerTable");
+    const groupFilter = document.querySelector("#groupFilter");
+    const searchInput = document.querySelector("#searchInput");
+    const sortSelect = document.querySelector("#sortSelect");
+    const resetButton = document.querySelector("#resetButton");
+    const groupCards = document.querySelector("#groupCards");
+    const rankTabs = document.querySelector("#rankTabs");
+    const rankList = document.querySelector("#rankList");
+    const roadmapGrid = document.querySelector("#roadmapGrid");
+    const quizForm = document.querySelector("#quizForm");
+    const questionList = document.querySelector("#questionList");
+    const clearQuizButton = document.querySelector("#clearQuizButton");
+    const fitSummary = document.querySelector("#fitSummary");
+    const personalInsights = document.querySelector("#personalInsights");
+    const topCareerCards = document.querySelector("#topCareerCards");
+    const recommendationList = document.querySelector("#recommendationList");
+    const nextSteps = document.querySelector("#nextSteps");
+    const printResultButton = document.querySelector("#printResultButton");
+    const quizProgressText = document.querySelector("#quizProgressText");
+    const quizProgressPercent = document.querySelector("#quizProgressPercent");
+    const quizProgressFill = document.querySelector("#quizProgressFill");
+    const quizStepLabel = document.querySelector("#quizStepLabel");
+    const prevQuestionButton = document.querySelector("#prevQuestionButton");
+    const nextQuestionButton = document.querySelector("#nextQuestionButton");
+    const investmentFilter = document.querySelector("#investmentFilter");
+    const vietnamFilter = document.querySelector("#vietnamFilter");
+    const pathwayFilter = document.querySelector("#pathwayFilter");
+    const compareSelects = [
+      document.querySelector("#compareSelect1"),
+      document.querySelector("#compareSelect2"),
+      document.querySelector("#compareSelect3")
+    ];
+    const compareButton = document.querySelector("#compareButton");
+    const compareGrid = document.querySelector("#compareGrid");
+    let activeQuestionIndex = 0;
+
+    function getActiveQuizType() {
+      return document.querySelector('input[name="quizType"]:checked')?.value ?? "general";
+    }
+
+    function getActiveQuizSet() {
+      return quizSets[getActiveQuizType()] ?? quizSets.general;
+    }
+
+    function metricTone(value, inverse = false) {
+      const score = inverse ? 10 - value : value;
+      if (score >= 8) return "good";
+      if (score >= 6) return "warn";
+      return "risk";
+    }
+
+    function scoreCell(value, inverse = false) {
+      const highRisk = inverse ? value <= 4 : value >= 8;
+      return `<span class="score ${highRisk ? "risk-high" : ""}">${value}</span>`;
+    }
+
+    function clampScore(value) {
+      return Math.max(1, Math.min(10, value));
+    }
+
+    function mergeProfiles(base, override = {}) {
+      return Object.keys(dimensions).reduce((profile, key) => {
+        profile[key] = override[key] ?? base[key] ?? 5;
+        return profile;
+      }, {});
+    }
+
+    function getCareerProfile(item) {
+      const base = groupProfiles[item.group] ?? {};
+      const override = careerProfileOverrides[item.name] ?? {};
+      const profile = mergeProfiles(base, override);
+
+      profile.remote = clampScore((profile.remote + item.remote) / 2);
+      profile.income = clampScore((profile.income + item.income) / 2);
+      profile.difficulty = clampScore((profile.difficulty + item.difficulty) / 2);
+      profile.stability = clampScore((profile.stability + item.market) / 2);
+
+      return profile;
+    }
+
+    function getLearningInvestment(item) {
+      const duration = item.duration.toLowerCase();
+      const selfStudyFriendly = item.self.toLowerCase().includes("rất phù hợp") || item.self.toLowerCase().includes("có,");
+
+      if (duration.includes("6-10 năm") || duration.includes("4-8 năm") || duration.includes("5 năm") || item.difficulty >= 10) {
+        return "long";
+      }
+
+      if (item.difficulty >= 8 || duration.includes("3-5 năm") || duration.includes("2-5 năm")) {
+        return "high";
+      }
+
+      if (selfStudyFriendly && item.difficulty <= 5) {
+        return "low";
+      }
+
+      return "medium";
+    }
+
+    function investmentLabel(value) {
+      return {
+        low: "Tự học/chi phí thấp",
+        medium: "Chứng chỉ/cao đẳng/ngắn hạn",
+        high: "Đại học/chuyên môn sâu",
+        long: "Đào tạo dài hạn"
+      }[value] ?? "Linh hoạt";
+    }
+
+    function getVietnamContext(item) {
+      const highGroups = [
+        "Y tế và sức khỏe",
+        "Nghề kỹ thuật tay nghề cao",
+        "Sản xuất công nghiệp",
+        "Thương mại điện tử và kinh doanh địa phương",
+        "Du lịch và dịch vụ trải nghiệm",
+        "Kinh doanh và tài chính"
+      ];
+      const emergingGroups = [
+        "Nghề mới có thể xuất hiện trong 10 năm tới",
+        "Blockchain và Web3",
+        "Khoa học và nghiên cứu"
+      ];
+      const internationalGroups = [
+        "Ngoại ngữ và dịch vụ quốc tế",
+        "Xuất khẩu lao động kỹ năng cao",
+        "Công nghệ và AI",
+        "Y tế và sức khỏe",
+        "Nghề kỹ thuật tay nghề cao",
+        "Du lịch và dịch vụ trải nghiệm"
+      ];
+
+      const vietnam = highGroups.includes(item.group) ? "high" : emergingGroups.includes(item.group) ? "emerging" : "medium";
+      const pathways = [];
+
+      if (item.difficulty <= 5 || ["Nghề kỹ thuật tay nghề cao", "Du lịch và dịch vụ trải nghiệm", "Thương mại điện tử và kinh doanh địa phương", "Sản xuất công nghiệp"].includes(item.group)) {
+        pathways.push("earlyJob");
+      }
+      if (item.difficulty >= 7 || ["Y tế và sức khỏe", "Khoa học và nghiên cứu", "Công nghệ và AI", "Năng lượng và môi trường"].includes(item.group)) {
+        pathways.push("university");
+      }
+      if (internationalGroups.includes(item.group) || item.global >= 8) {
+        pathways.push("international");
+      }
+      if (["Thương mại điện tử và kinh doanh địa phương", "Du lịch và dịch vụ trải nghiệm", "Dịch vụ con người"].includes(item.group)) {
+        pathways.push("localBusiness");
+      }
+
+      const region = {
+        high: "Hà Nội, TP.HCM, Đà Nẵng, Bình Dương, Đồng Nai, Bắc Ninh, Hải Phòng, Cần Thơ và các tỉnh có khu công nghiệp/du lịch.",
+        medium: "Phù hợp thành phố lớn, tỉnh có doanh nghiệp dịch vụ, trường nghề/đại học hoặc hệ sinh thái ngành liên quan.",
+        emerging: "Cơ hội tập trung ở đô thị lớn, tập đoàn công nghệ, FDI, viện nghiên cứu, startup hoặc dự án quốc tế."
+      }[vietnam];
+
+      return {
+        vietnam,
+        pathways,
+        region,
+        language: item.global >= 8 || pathways.includes("international") ? "Nên ưu tiên tiếng Anh; tùy hướng có thể thêm Nhật, Hàn, Đức hoặc Trung." : "Ngoại ngữ là lợi thế, nhưng có thể bắt đầu bằng kỹ năng nghề và giao tiếp cơ bản.",
+        payback: getLearningInvestment(item) === "low" ? "Hoàn vốn nhanh nếu làm dự án/bán hàng/thực tập sớm." : getLearningInvestment(item) === "long" ? "Hoàn vốn chậm hơn nhưng có nền tảng nghề bền vững." : "Hoàn vốn trung bình, phụ thuộc thực tập, chứng chỉ và năng lực thực hành."
+      };
+    }
+
+    function vietnamLabel(value) {
+      return {
+        high: "Cao tại Việt Nam",
+        medium: "Vừa tại Việt Nam",
+        emerging: "Mới nổi/tập trung đô thị"
+      }[value] ?? "Linh hoạt";
+    }
+
+    function pathwayLabel(value) {
+      return {
+        earlyJob: "Có thể đi làm sớm",
+        university: "Đại học/chuyên môn sâu",
+        international: "Có hướng quốc tế",
+        localBusiness: "Kinh doanh địa phương"
+      }[value] ?? "Lộ trình linh hoạt";
+    }
+
+    function getWorkDescription(item) {
+      const descriptions = {
+        "Kỹ sư AI / Machine Learning": "Hằng ngày thu thập dữ liệu, làm sạch dữ liệu, huấn luyện mô hình AI, kiểm tra mô hình dự đoán đúng hay sai và đưa mô hình vào sản phẩm thật. Công việc giống như dạy máy học từ ví dụ, rồi liên tục sửa để máy trả lời chính xác và an toàn hơn.",
+        "Chuyên gia dữ liệu / Data Analyst": "Nhận câu hỏi từ sếp hoặc phòng kinh doanh, lấy dữ liệu từ Excel/SQL/hệ thống, phân tích xu hướng và làm báo cáo dễ hiểu. Kết quả thường là dashboard, biểu đồ hoặc đề xuất: nên bán gì, giảm chi phí ở đâu, khách hàng nào đang có vấn đề.",
+        "Kỹ sư phần mềm full-stack": "Xây website/app từ giao diện người dùng đến máy chủ và cơ sở dữ liệu. Một ngày thường gồm viết code, sửa lỗi, thêm tính năng, họp với nhóm sản phẩm và đưa phiên bản mới lên mạng cho người dùng thật.",
+        "Chuyên gia an ninh mạng": "Kiểm tra hệ thống có lỗ hổng không, giám sát cảnh báo tấn công, điều tra sự cố và hướng dẫn đội kỹ thuật vá lỗi. Công việc giống như bảo vệ ngân hàng số: phải hiểu kẻ xấu có thể vào bằng đường nào và chặn trước.",
+        "Chuyên gia sản phẩm AI / AI Product Manager": "Nói chuyện với người dùng, xác định vấn đề cần giải quyết, viết yêu cầu sản phẩm AI, làm việc với kỹ sư/dữ liệu/thiết kế và đo xem sản phẩm có tạo giá trị không. Người này không nhất thiết code nhiều nhưng phải hiểu AI đủ để ra quyết định đúng.",
+        "Nhà phát triển Blockchain / Smart Contract": "Viết hợp đồng thông minh chạy trên blockchain, kiểm thử giao dịch, kiểm tra bảo mật và phối hợp với cộng đồng/dự án Web3. Công việc đòi hỏi rất cẩn thận vì lỗi nhỏ trong code có thể làm mất tiền thật.",
+        "Bác sĩ / Chuyên gia y học cá nhân hóa": "Khám bệnh, hỏi triệu chứng, đọc xét nghiệm, chẩn đoán, kê phác đồ và theo dõi bệnh nhân. Với y học cá nhân hóa, bác sĩ còn dùng dữ liệu gen, lối sống, tiền sử bệnh để chọn cách điều trị phù hợp từng người.",
+        "Điều dưỡng / Chăm sóc người cao tuổi": "Theo dõi tình trạng người bệnh/người cao tuổi, đo chỉ số sức khỏe, hỗ trợ ăn uống, vệ sinh, dùng thuốc và báo bác sĩ khi có dấu hiệu bất thường. Đây là nghề cần sự kiên nhẫn, sạch sẽ, kỷ luật và lòng trắc ẩn.",
+        "Chuyên gia sức khỏe tinh thần / Tâm lý trị liệu": "Lắng nghe thân chủ, đặt câu hỏi, đánh giá vấn đề tâm lý, hướng dẫn bài tập nhận thức/hành vi và theo dõi tiến triển qua nhiều buổi. Công việc không phải chỉ khuyên nhủ, mà cần phương pháp chuyên môn và đạo đức bảo mật.",
+        "Chuyên gia dinh dưỡng và lifestyle medicine": "Đánh giá thói quen ăn uống, giấc ngủ, vận động, chỉ số sức khỏe rồi thiết kế kế hoạch thay đổi lối sống. Có thể tư vấn cá nhân, làm nội dung giáo dục, xây thực đơn hoặc phối hợp với bác sĩ/huấn luyện viên.",
+        "Giáo viên / Learning Designer dùng AI": "Thiết kế bài học, hoạt động, bài kiểm tra và tài liệu học tập; sau đó dùng AI để cá nhân hóa bài tập hoặc phản hồi cho học viên. Công việc không chỉ đứng lớp mà còn xây trải nghiệm học giúp người học tiến bộ thật.",
+        "Huấn luyện viên kỹ năng / Career Coach": "Gặp học viên/khách hàng để hiểu mục tiêu, phân tích điểm mạnh, sửa CV, luyện phỏng vấn, lập kế hoạch học kỹ năng và theo dõi tiến độ. Người làm tốt phải có trải nghiệm thực tế, không chỉ nói động viên chung chung.",
+        "Chuyên gia tài chính cá nhân / Wealth Advisor": "Gặp khách hàng để hiểu thu nhập, chi tiêu, nợ, bảo hiểm, mục tiêu nhà cửa/hưu trí rồi lập kế hoạch tài chính. Công việc cần giải thích dễ hiểu, quản trị rủi ro và tránh tư vấn sản phẩm không phù hợp.",
+        "Chuyên gia FinTech / Product Finance": "Thiết kế hoặc vận hành sản phẩm tài chính số như ví điện tử, thanh toán, cho vay, quản lý chi tiêu. Hằng ngày phải xem dữ liệu giao dịch, trải nghiệm người dùng, rủi ro gian lận và yêu cầu pháp lý.",
+        "Quản lý chuỗi cung ứng / Logistics thông minh": "Lên kế hoạch mua hàng, tồn kho, vận chuyển, giao nhận và xử lý khi hàng chậm, thiếu hoặc chi phí tăng. Công việc giống như điều phối dòng chảy hàng hóa từ nhà cung cấp đến khách hàng sao cho đúng hạn và tiết kiệm.",
+        "Kỹ sư năng lượng tái tạo": "Khảo sát địa điểm, tính toán công suất điện mặt trời/gió, thiết kế hệ thống, kiểm tra an toàn và theo dõi hiệu suất vận hành. Công việc kết hợp văn phòng kỹ thuật với đi công trình thực tế.",
+        "Chuyên gia ESG / Bền vững doanh nghiệp": "Thu thập số liệu về phát thải, lao động, quản trị, chuỗi cung ứng; viết báo cáo bền vững và đề xuất cách giảm rủi ro môi trường-xã hội. Người làm nghề này phải biết đo lường thật, không chỉ viết báo cáo đẹp.",
+        "Kỹ sư môi trường / Quản lý nước và rác thải": "Khảo sát ô nhiễm, lấy mẫu nước/khí/rác, thiết kế hoặc vận hành hệ thống xử lý và kiểm tra đạt quy chuẩn. Công việc có nhiều phần thực địa, phòng thí nghiệm và làm hồ sơ kỹ thuật.",
+        "Nhà sáng tạo nội dung chuyên môn": "Chọn một lĩnh vực, nghiên cứu tài liệu, viết kịch bản, quay/dựng/đăng nội dung và theo dõi phản hồi người xem. Điểm khác creator giải trí là phải giải thích đúng, có trách nhiệm và xây niềm tin lâu dài.",
+        "UX/UI Designer / Product Designer": "Nghiên cứu người dùng, vẽ luồng sử dụng app/web, thiết kế màn hình, tạo prototype và kiểm tra xem người dùng có hiểu không. Công việc không chỉ làm giao diện đẹp mà là làm sản phẩm dễ dùng và giải quyết đúng vấn đề.",
+        "Nhà nghiên cứu công nghệ sinh học": "Làm thí nghiệm trong phòng lab, nuôi cấy/đo mẫu, phân tích dữ liệu sinh học, đọc bài báo và viết báo cáo nghiên cứu. Công việc tiến chậm, đòi hỏi chính xác, kiên nhẫn và tuân thủ an toàn.",
+        "Nhà nghiên cứu chính sách công / Đạo đức AI": "Đọc luật, nghiên cứu tác động xã hội của công nghệ, phỏng vấn bên liên quan và viết khuyến nghị chính sách. Công việc phù hợp người thích phân tích, viết sâu và cân bằng lợi ích của nhiều nhóm.",
+        "Kỹ thuật viên robot / Tự động hóa": "Lắp đặt, lập trình, kiểm tra cảm biến/động cơ/PLC và bảo trì robot hoặc dây chuyền tự động. Một ngày có thể vừa đọc bản vẽ, vừa sửa lỗi máy, vừa chạy thử tại nhà máy.",
+        "Đầu bếp sức khỏe / Food Tech Creator": "Thiết kế món ăn ngon và lành mạnh, thử công thức, tính chi phí, kiểm soát an toàn thực phẩm và có thể quay nội dung hoặc bán sản phẩm. Nghề này cần tay nghề bếp, hiểu dinh dưỡng và biết vận hành dịch vụ.",
+        "Chuyên viên chăm sóc khách hàng cao cấp": "Trả lời khách hàng, xử lý khiếu nại, hướng dẫn dùng sản phẩm, ghi nhận lỗi và phối hợp với sale/kỹ thuật để giữ khách. Cấp cao hơn không chỉ trả lời kịch bản mà phải hiểu cảm xúc, sản phẩm và dữ liệu khách hàng.",
+        "Community Builder / Quản lý cộng đồng": "Xây nhóm người có cùng mối quan tâm, lên nội dung, tổ chức sự kiện, điều phối thảo luận và giữ văn hóa cộng đồng lành mạnh. Kết quả tốt là cộng đồng có niềm tin, tương tác và tạo giá trị cho nhau.",
+        "Prompt/System Designer cho AI Agent": "Thiết kế chỉ dẫn cho AI, chia quy trình thành bước, kiểm thử câu trả lời, sửa lỗi hành vi và đo xem AI có giúp tiết kiệm thời gian không. Công việc giống như huấn luyện một trợ lý số làm đúng quy trình của doanh nghiệp.",
+        "AI Safety / Model Evaluator": "Tạo bộ câu hỏi kiểm tra AI, thử các tình huống nguy hiểm, đánh giá thiên lệch/sai lệch và viết báo cáo cải thiện mô hình. Nghề này giúp AI an toàn hơn trước khi đưa cho người dùng thật.",
+        "Digital Twin Designer cho đô thị/nhà máy": "Tạo mô hình số mô phỏng nhà máy, tòa nhà hoặc đô thị bằng dữ liệu cảm biến, bản đồ, quy trình vận hành. Sau đó dùng mô hình để thử kịch bản: tắc nghẽn ở đâu, tốn năng lượng chỗ nào, sự cố sẽ lan ra sao.",
+        "Human-AI Interaction Designer": "Thiết kế cách con người trò chuyện, kiểm soát và hiểu kết quả từ AI trong sản phẩm. Công việc gồm nghiên cứu hành vi người dùng, thiết kế giao diện AI, viết luồng tương tác và kiểm tra người dùng có tin/hiểu đúng không.",
+        "Kỹ sư bán dẫn / Thiết kế vi mạch": "Thiết kế, mô phỏng và kiểm tra các mạch điện rất nhỏ bên trong chip. Công việc cần dùng phần mềm chuyên dụng, đọc tài liệu kỹ thuật, kiểm tra lỗi logic và phối hợp với đội sản xuất/kiểm thử.",
+        "Kỹ sư Cloud / DevOps / SRE": "Xây và vận hành hạ tầng để website/app chạy ổn định, nhanh, bảo mật và không sập khi nhiều người dùng. Hằng ngày theo dõi hệ thống, tự động hóa triển khai, xử lý sự cố và tối ưu chi phí cloud.",
+        "Chuyên gia pháp lý dữ liệu / Tuân thủ AI": "Đọc quy định về dữ liệu cá nhân/AI, kiểm tra doanh nghiệp thu thập và dùng dữ liệu có đúng luật không, viết chính sách và hướng dẫn đội sản phẩm. Người này là cầu nối giữa luật, công nghệ và quản trị rủi ro.",
+        "Chuyên gia nông nghiệp công nghệ cao / Food Systems": "Theo dõi cây trồng/vật nuôi bằng dữ liệu, cảm biến, quy trình canh tác và tiêu chuẩn an toàn thực phẩm. Công việc có thể ở trang trại, nhà kính, doanh nghiệp thực phẩm hoặc dự án nông nghiệp số.",
+        "Nhà quy hoạch đô thị thích ứng khí hậu": "Phân tích dân cư, giao thông, ngập lụt, cây xanh, nhà ở rồi đề xuất quy hoạch giúp đô thị sống tốt hơn. Công việc gồm bản đồ, số liệu, khảo sát cộng đồng và làm việc với chính quyền/doanh nghiệp.",
+        "Kỹ thuật viên điện - HVAC - hạ tầng thông minh": "Lắp đặt, kiểm tra, bảo trì hệ thống điện, điều hòa, thông gió, cảm biến và thiết bị tòa nhà/nhà máy. Nghề này cần đi thực địa nhiều, tuân thủ an toàn và xử lý sự cố nhanh.",
+        "Kỹ thuật viên thiết bị y tế": "Lắp đặt, bảo trì, hiệu chuẩn máy móc bệnh viện như máy xét nghiệm, máy thở, monitor, thiết bị hình ảnh. Công việc giúp bác sĩ có thiết bị hoạt động đúng và an toàn cho bệnh nhân.",
+        "Chuyên gia phục hồi chức năng / Vật lý trị liệu": "Đánh giá khả năng vận động của bệnh nhân, thiết kế bài tập phục hồi, hướng dẫn tập đúng và theo dõi tiến bộ. Người làm nghề này thường hỗ trợ sau chấn thương, tai biến, phẫu thuật hoặc bệnh mạn tính.",
+        "Quản trị du lịch - khách sạn - trải nghiệm địa phương": "Đón tiếp khách, tổ chức lịch trình, xử lý đặt phòng/dịch vụ, phối hợp nhà hàng-hướng dẫn viên và tạo trải nghiệm địa phương đáng nhớ. Công việc cần giao tiếp, xử lý tình huống và hiểu văn hóa bản địa.",
+        "Kỹ thuật viên cơ khí chính xác / CNC": "Đọc bản vẽ kỹ thuật, lập trình máy CNC, chọn dao cắt, vận hành máy và đo kiểm sản phẩm cơ khí. Công việc đòi hỏi cẩn thận vì sai số nhỏ cũng làm hỏng linh kiện.",
+        "Chuyên viên QA/QC sản xuất": "Kiểm tra nguyên liệu, quy trình và sản phẩm đầu ra có đạt tiêu chuẩn không; ghi nhận lỗi và yêu cầu sửa quy trình. Nghề này giống như người gác cổng chất lượng trong nhà máy.",
+        "Vận hành thương mại điện tử địa phương": "Đưa sản phẩm lên sàn online, viết mô tả, chụp ảnh, chạy khuyến mãi, trả lời khách, xử lý đơn hàng và theo dõi doanh số. Rất phù hợp với sản phẩm địa phương, hộ kinh doanh và doanh nghiệp nhỏ.",
+        "Chuyên viên ngoại ngữ / Localization / Dịch vụ quốc tế": "Dịch và điều chỉnh nội dung/sản phẩm cho phù hợp văn hóa, hỗ trợ khách hàng quốc tế hoặc làm cầu nối với đối tác nước ngoài. Công việc không chỉ dịch chữ mà phải hiểu ngữ cảnh, thị trường và cách giao tiếp.",
+        "Điều phối xuất khẩu lao động kỹ năng cao": "Tư vấn lộ trình học nghề/ngoại ngữ, kiểm tra hồ sơ, kết nối đơn vị uy tín và theo dõi người lao động trước-sau khi đi. Công việc cần hiểu pháp lý, đạo đức và bảo vệ người lao động khỏi môi giới rủi ro."
+      };
+
+      return descriptions[item.name] ?? `Công việc thường gồm học chuyên môn ${item.group.toLowerCase()}, xử lý nhiệm vụ thực tế, phối hợp với người liên quan và tạo ra kết quả đo được cho khách hàng hoặc tổ chức.`;
+    }
+
+    function getPersonFit(item) {
+      const profile = getCareerProfile(item);
+      const traits = [];
+
+      if (profile.technical >= 7) traits.push("thích logic, công cụ, hệ thống và giải lỗi");
+      if (profile.people >= 8) traits.push("kiên nhẫn khi làm việc với con người");
+      if (profile.creative >= 8) traits.push("có gu sáng tạo, thích kể chuyện hoặc thiết kế trải nghiệm");
+      if (profile.business >= 8) traits.push("nhạy với thị trường, doanh thu, khách hàng và vận hành");
+      if (profile.science >= 8) traits.push("thích bằng chứng, nghiên cứu và học sâu");
+      if (profile.field >= 8) traits.push("không ngại thực địa, thiết bị, quy trình hoặc môi trường vận hành");
+      if (profile.remote >= 8) traits.push("tự quản thời gian tốt khi làm online/từ xa");
+      if (profile.difficulty >= 8) traits.push("chịu được đường học khó và cần kỷ luật dài hạn");
+
+      return `Phù hợp với người ${traits.slice(0, 4).join(", ")}. Nếu bạn rất ghét ${profile.people >= 8 ? "giao tiếp cảm xúc" : profile.field >= 8 ? "đi thực địa" : profile.technical >= 8 ? "học công cụ kỹ thuật" : "học đều và nhận phản hồi"}, cần thử kỹ trước khi chọn.`;
+    }
+
+    function getStartPath(item) {
+      const investment = getLearningInvestment(item);
+      const vietnamContext = getVietnamContext(item);
+      const pathwayText = vietnamContext.pathways.map(pathwayLabel).join(", ");
+
+      if (investment === "long") {
+        return `Nên đi theo đào tạo chính quy dài hạn. Bắt đầu bằng môn nền tảng, tìm trường/ngành uy tín, thực tập sớm và chuẩn bị tài chính gia đình vì thời gian hoàn vốn chậm hơn. Lộ trình phù hợp: ${pathwayText}.`;
+      }
+
+      if (investment === "high") {
+        return `Nên học bài bản qua đại học/cao đẳng/chứng chỉ chuyên môn, đồng thời làm dự án thực tế từ năm đầu. Lộ trình phù hợp: ${pathwayText}.`;
+      }
+
+      if (investment === "low") {
+        return `Có thể bắt đầu bằng tự học, khóa ngắn, thực tập, làm dự án nhỏ hoặc phụ việc trong môi trường thật. Lộ trình phù hợp: ${pathwayText}.`;
+      }
+
+      return `Có thể kết hợp tự học, chứng chỉ ngắn hạn và thực tập. Quan trọng là có sản phẩm/bài thực hành thật để chứng minh năng lực. Lộ trình phù hợp: ${pathwayText}.`;
+    }
+
+    function getIncomeStage(item) {
+      const early = item.income >= 9 ? "Mới vào nghề có thể chưa cao ngay, nhưng nếu có năng lực thực hành tốt thì tăng nhanh." : item.income >= 7 ? "Mới vào nghề thường ở mức trung bình, tăng dần theo kinh nghiệm và chất lượng portfolio/chứng chỉ." : "Giai đoạn đầu cần ưu tiên học nghề và tích lũy uy tín hơn là kỳ vọng thu nhập cao.";
+      const mid = item.market >= 9 ? "Sau 2-3 năm, nếu làm được việc thật, cơ hội tăng lương/chuyển công ty/nhận dự án khá tốt." : "Sau 2-3 năm, thu nhập phụ thuộc mạnh vào thị trường ngách, quan hệ nghề nghiệp và khả năng chứng minh kết quả.";
+      const senior = item.global >= 8 || item.remote >= 8 ? "Sau 5 năm có thể mở rộng sang khách hàng quốc tế, làm remote, tư vấn, quản lý hoặc xây sản phẩm/dịch vụ riêng." : "Sau 5 năm có thể lên vai trò chuyên gia, quản lý nhóm, vận hành cơ sở/dự án hoặc mở dịch vụ riêng nếu có uy tín.";
+
+      return `${early} ${mid} ${senior}`;
+    }
+
+    function getLongTermPath(item) {
+      const groupPaths = {
+        "Công nghệ và AI": "Có thể đi từ thực tập/junior đến senior, tech lead, kiến trúc sư hệ thống, quản lý sản phẩm kỹ thuật hoặc founder sản phẩm số.",
+        "Blockchain và Web3": "Có thể đi từ developer/auditor đến trưởng nhóm kỹ thuật, chuyên gia bảo mật smart contract hoặc xây sản phẩm Web3 nghiêm túc.",
+        "Y tế và sức khỏe": "Có thể đi từ thực hành cơ bản đến chuyên khoa/chuyên gia, quản lý phòng khám, đào tạo, nghiên cứu hoặc dịch vụ chăm sóc chất lượng cao.",
+        "Giáo dục": "Có thể đi từ giảng dạy/huấn luyện đến thiết kế chương trình, quản lý đào tạo, xây khóa học, cộng đồng học tập hoặc trung tâm riêng.",
+        "Kinh doanh và tài chính": "Có thể đi từ vận hành/phân tích đến quản lý, tư vấn, chuyên gia ngành, điều hành bộ phận hoặc tự kinh doanh.",
+        "Năng lượng và môi trường": "Có thể đi từ kỹ thuật/dự án đến quản lý dự án, chuyên gia tư vấn, ESG, quy hoạch hoặc giải pháp xanh cho doanh nghiệp.",
+        "Sáng tạo nội dung và truyền thông": "Có thể đi từ sản xuất nội dung/thiết kế đến chiến lược thương hiệu, creative lead, sản phẩm số, agency hoặc thương hiệu cá nhân.",
+        "Khoa học và nghiên cứu": "Có thể đi từ trợ lý nghiên cứu đến chuyên gia, nghiên cứu sinh, policy advisor, lab lead hoặc tư vấn chuyên môn.",
+        "Dịch vụ con người": "Có thể đi từ vai trò tuyến đầu đến chuyên gia dịch vụ, quản lý trải nghiệm khách hàng, vận hành cộng đồng hoặc mở dịch vụ riêng.",
+        "Nghề mới có thể xuất hiện trong 10 năm tới": "Có thể đi từ thử nghiệm dự án mới đến chuyên gia ngách, lead sản phẩm mới, tư vấn chuyển đổi AI hoặc xây công cụ riêng.",
+        "Nghề kỹ thuật tay nghề cao": "Có thể đi từ học việc/kỹ thuật viên đến tổ trưởng, chuyên gia bảo trì, quản lý xưởng/dự án hoặc mở đội dịch vụ kỹ thuật.",
+        "Du lịch và dịch vụ trải nghiệm": "Có thể đi từ nhân viên vận hành đến quản lý dịch vụ, thiết kế tour/trải nghiệm, điều hành cơ sở hoặc xây thương hiệu địa phương.",
+        "Sản xuất công nghiệp": "Có thể đi từ kỹ thuật viên/QA đến quản lý chuyền, kỹ sư quy trình, quản lý chất lượng hoặc quản lý nhà máy.",
+        "Thương mại điện tử và kinh doanh địa phương": "Có thể đi từ vận hành gian hàng đến quản lý kênh bán, growth, chủ shop, tư vấn TMĐT hoặc phát triển thương hiệu địa phương.",
+        "Ngoại ngữ và dịch vụ quốc tế": "Có thể đi từ dịch vụ khách hàng/dịch thuật đến account quốc tế, localization lead, đào tạo ngoại ngữ hoặc điều phối thị trường nước ngoài.",
+        "Xuất khẩu lao động kỹ năng cao": "Có thể đi từ tư vấn/điều phối hồ sơ đến quản lý chương trình, đối tác quốc tế hoặc chuyên gia bảo vệ quyền lợi lao động."
+      };
+
+      return groupPaths[item.group] ?? "Có thể phát triển từ người mới đến chuyên gia, quản lý, tư vấn hoặc tự kinh doanh nếu có năng lực thực hành và uy tín nghề nghiệp.";
+    }
+
+    function getTryPlan(item) {
+      const profile = getCareerProfile(item);
+      const project = profile.technical >= 8
+        ? "làm một sản phẩm/lab nhỏ và đưa lên portfolio"
+        : profile.people >= 8
+          ? "phỏng vấn 2 người trong nghề và thử hỗ trợ/tư vấn/tình nguyện có giám sát"
+          : profile.creative >= 8
+            ? "làm 3 sản phẩm mẫu: bài viết, video, thiết kế, chiến dịch hoặc case study"
+            : profile.field >= 8
+              ? "đi tham quan/xin phụ việc/thực tập ngắn ở xưởng, nhà máy, cơ sở dịch vụ hoặc dự án thực địa"
+              : "làm một case study nhỏ mô phỏng công việc thật";
+
+      return `Trong 30 ngày: tuần 1 đọc/xem 3 nguồn nhập môn; tuần 2 ${project}; tuần 3 hỏi người đang làm nghề về ngày làm việc, thu nhập, áp lực; tuần 4 tự chấm xem mình có muốn tiếp tục học sâu thêm 3 tháng không.`;
+    }
+
+    function getCareerDecisionInfo(item) {
+      return {
+        fit: getPersonFit(item),
+        start: getStartPath(item),
+        income: getIncomeStage(item),
+        longTerm: getLongTermPath(item),
+        tryPlan: getTryPlan(item),
+        cost: `${investmentLabel(getLearningInvestment(item))}. ${getVietnamContext(item).payback}`,
+        firstJob: item.duration
+      };
+    }
+
+    function getStarterSkills(userProfile) {
+      const skillMap = {
+        technical: ["AI literacy", "lập trình cơ bản", "tư duy hệ thống"],
+        people: ["giao tiếp", "lắng nghe sâu", "quản trị cảm xúc"],
+        creative: ["viết rõ ràng", "storytelling", "thiết kế nội dung"],
+        business: ["tài chính cá nhân", "phân tích thị trường", "bán hàng đạo đức"],
+        science: ["thống kê cơ bản", "đọc nghiên cứu", "tư duy phản biện"],
+        field: ["an toàn lao động", "quan sát thực địa", "quy trình vận hành"],
+        remote: ["tự quản thời gian", "làm việc online", "portfolio số"],
+        stability: ["học nền tảng", "kỷ luật dài hạn", "chứng chỉ nghề"],
+        income: ["đàm phán", "tạo giá trị đo được", "tiếng Anh nghề nghiệp"],
+        difficulty: ["tự học có kế hoạch", "kiên trì với bài khó", "xin phản hồi"],
+        impact: ["đạo đức nghề nghiệp", "hiểu vấn đề xã hội", "làm dự án cộng đồng"]
+      };
+
+      return Object.entries(userProfile)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .flatMap(([key]) => skillMap[key] ?? [])
+        .slice(0, 6);
+    }
+
+    function getDecisionWarnings(userProfile, topCareer) {
+      const warnings = [];
+
+      if (topCareer.difficulty >= 8 && userProfile.difficulty < 6) {
+        warnings.push("Nghề phù hợp nhưng đường học khá khó; nên thử 1 dự án nhỏ trong 30 ngày trước khi cam kết dài hạn.");
+      }
+
+      if (topCareer.ai >= 8 && userProfile.technical < 6) {
+        warnings.push("Nghề chịu tác động AI cao; cần học cách dùng AI như công cụ làm việc, không chỉ học thao tác thủ công.");
+      }
+
+      if (getCareerProfile(topCareer).people >= 8 && userProfile.people < 6) {
+        warnings.push("Nghề cần tiếp xúc con người nhiều; hãy kiểm tra mức chịu áp lực giao tiếp/cảm xúc của bản thân.");
+      }
+
+      if (topCareer.income >= 8 && topCareer.market <= 7) {
+        warnings.push("Thu nhập có thể cao nhưng thị trường biến động; nên chuẩn bị kỹ năng chuyển đổi sang ngành gần kề.");
+      }
+
+      if (!warnings.length) {
+        warnings.push("Chưa thấy xung đột lớn, nhưng vẫn nên phỏng vấn người trong nghề và trải nghiệm thử trước khi chọn ngành.");
+      }
+
+      return warnings;
+    }
+
+    function getTopGroupsFromRanked(ranked) {
+      const groupCounts = ranked.reduce((acc, item) => {
+        acc[item.group] = (acc[item.group] ?? 0) + 1;
+        return acc;
+      }, {});
+
+      return Object.entries(groupCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([group]) => group);
+    }
+
+    function renderQuestionnaire() {
+      const activeSet = getActiveQuizSet();
+      activeQuestionIndex = 0;
+
+      questionList.innerHTML = activeSet.questions.map((question, questionIndex) => `
+        <fieldset class="question-card" data-question-index="${questionIndex}">
+          <legend>${questionIndex + 1}. ${question.title}</legend>
+          <p>${question.note}</p>
+          <div class="option-list">
+            ${question.options.map((option, optionIndex) => `
+              <label>
+                <input type="radio" name="${question.id}" value="${optionIndex}">
+                <span>${option.label}</span>
+              </label>
+            `).join("")}
+          </div>
+        </fieldset>
+      `).join("");
+      showQuestion(0);
+      updateQuizProgress();
+    }
+
+    function showQuestion(index) {
+      const activeSet = getActiveQuizSet();
+      activeQuestionIndex = Math.max(0, Math.min(index, activeSet.questions.length - 1));
+
+      questionList.querySelectorAll(".question-card").forEach((card, cardIndex) => {
+        card.hidden = cardIndex !== activeQuestionIndex;
+      });
+
+      quizStepLabel.textContent = `Đang xem câu ${activeQuestionIndex + 1}/${activeSet.questions.length}`;
+      prevQuestionButton.disabled = activeQuestionIndex === 0;
+      nextQuestionButton.textContent = activeQuestionIndex === activeSet.questions.length - 1 ? "Câu cuối" : "Câu tiếp";
+      nextQuestionButton.disabled = activeQuestionIndex === activeSet.questions.length - 1;
+    }
+
+    function updateQuizProgress() {
+      const activeSet = getActiveQuizSet();
+      const answered = activeSet.questions.filter(question => quizForm.querySelector(`input[name="${question.id}"]:checked`)).length;
+      const total = activeSet.questions.length;
+      const percent = total ? Math.round((answered / total) * 100) : 0;
+
+      quizProgressText.textContent = `Câu ${answered}/${total}`;
+      quizProgressPercent.textContent = `${percent}%`;
+      quizProgressFill.style.width = `${percent}%`;
+    }
+
+    function findFirstUnansweredIndex() {
+      const activeSet = getActiveQuizSet();
+      return activeSet.questions.findIndex(question => !quizForm.querySelector(`input[name="${question.id}"]:checked`));
+    }
+
+    function getQuizResult() {
+      const formData = new FormData(quizForm);
+      const activeSet = getActiveQuizSet();
+      const totals = Object.keys(dimensions).reduce((acc, key) => ({ ...acc, [key]: 0 }), {});
+      const counts = Object.keys(dimensions).reduce((acc, key) => ({ ...acc, [key]: 0 }), {});
+      const groupScores = {};
+
+      activeSet.questions.forEach(question => {
+        const selectedIndex = Number(formData.get(question.id));
+        const selected = question.options[selectedIndex];
+
+        Object.entries(selected.weights).forEach(([key, value]) => {
+          totals[key] += value;
+          counts[key] += 1;
+        });
+
+        selected.groups.forEach((group, index) => {
+          groupScores[group] = (groupScores[group] ?? 0) + (4 - index);
+        });
+      });
+
+      const userProfile = Object.keys(dimensions).reduce((profile, key) => {
+        profile[key] = counts[key] ? totals[key] / counts[key] : 5;
+        return profile;
+      }, {});
+
+      return { userProfile, groupScores };
+    }
+
+    function scoreCareerFit(item, userProfile, groupScores) {
+      const profile = getCareerProfile(item);
+      const dimensionKeys = Object.keys(dimensions);
+      const distance = dimensionKeys.reduce((sum, key) => sum + Math.abs((userProfile[key] ?? 5) - profile[key]), 0) / dimensionKeys.length;
+      const groupBonus = (groupScores[item.group] ?? 0) * 1.4;
+      const marketBonus = item.market * 0.9 + item.young * 0.6;
+      const score = 100 - distance * 9 + groupBonus + marketBonus;
+
+      return Math.round(Math.max(35, Math.min(99, score)));
+    }
+
+    function getTopDimensionMatches(userProfile, careerProfile) {
+      return Object.entries(dimensions)
+        .map(([key, label]) => ({
+          label,
+          user: userProfile[key] ?? 5,
+          career: careerProfile[key],
+          diff: Math.abs((userProfile[key] ?? 5) - careerProfile[key])
+        }))
+        .sort((a, b) => a.diff - b.diff)
+        .slice(0, 3);
+    }
+
+    function renderFitSummary(userProfile) {
+      const strongest = Object.entries(dimensions)
+        .map(([key, label]) => ({ key, label, value: userProfile[key] ?? 5 }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+
+      fitSummary.innerHTML = strongest.map(item => `
+        <div class="fit-bar">
+          <span>${item.label}</span>
+          <span><i style="width:${item.value * 10}%"></i></span>
+          <strong>${Math.round(item.value)}</strong>
+        </div>
+      `).join("");
+    }
+
+    function renderPersonalInsights(userProfile, ranked) {
+      const topGroups = getTopGroupsFromRanked(ranked);
+      const skills = getStarterSkills(userProfile);
+      const warnings = getDecisionWarnings(userProfile, ranked[0]);
+      const topVietnamContext = ranked[0] ? getVietnamContext(ranked[0]) : null;
+
+      personalInsights.innerHTML = `
+        <article class="insight-card">
+          <strong>Top nhóm ngành nên khám phá</strong>
+          <p>${topGroups.join(", ")}</p>
+        </article>
+        <article class="insight-card">
+          <strong>3-6 kỹ năng nên học ngay</strong>
+          <p>${skills.join(", ")}</p>
+        </article>
+        <article class="insight-card">
+          <strong>Cảnh báo chọn sai ngành</strong>
+          <ul>${warnings.map(item => `<li>${item}</li>`).join("")}</ul>
+        </article>
+        <article class="insight-card">
+          <strong>Bối cảnh Việt Nam nên cân nhắc</strong>
+          <p>${topVietnamContext ? `${vietnamLabel(topVietnamContext.vietnam)}. ${topVietnamContext.region} ${topVietnamContext.language}` : "Hãy trả lời trắc nghiệm để xem bối cảnh Việt Nam phù hợp."}</p>
+        </article>
+        <article class="insight-card">
+          <strong>Cách hiểu điểm phù hợp</strong>
+          <p>Điểm dựa trên câu trả lời, đặc điểm nghề, cơ hội tại Việt Nam, độ khó học và khả năng tạo giá trị. Đây là gợi ý để thử nghiệm, không phải phán quyết cuối cùng.</p>
+        </article>
+      `;
+    }
+
+    function renderTopCareerCards(ranked) {
+      topCareerCards.innerHTML = ranked.slice(0, 5).map((item, index) => {
+        const vietnamContext = getVietnamContext(item);
+        return `
+          <article class="top-career-card">
+            <div class="recommendation-head">
+              <div>
+                <span class="tag">Top ${index + 1}</span>
+                <h3 style="margin-top:10px">${item.name}</h3>
+                <p style="color:var(--muted);margin:8px 0 0">${item.group}</p>
+              </div>
+              <span class="match-score">${item.fit}%</span>
+            </div>
+            <div class="metric-row">
+              <div class="metric ${metricTone(item.market)}"><strong>${item.market}/10</strong>Nhu cầu</div>
+              <div class="metric ${metricTone(item.income)}"><strong>${item.income}/10</strong>Thu nhập</div>
+              <div class="metric ${metricTone(item.difficulty, true)}"><strong>${item.difficulty}/10</strong>Độ khó</div>
+            </div>
+            <div class="tag-row" style="margin-top:12px">
+              <span class="tag">${vietnamLabel(vietnamContext.vietnam)}</span>
+              <span class="tag">${vietnamContext.pathways.map(pathwayLabel).join(" · ")}</span>
+            </div>
+            <div class="hero-actions" style="margin-top:12px">
+              <a class="button" href="#careers">So sánh</a>
+              <a class="button" href="#roadmap">Lộ trình</a>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderNextSteps(ranked) {
+      const topName = ranked[0]?.name ?? "nghề phù hợp nhất";
+      nextSteps.hidden = false;
+      nextSteps.innerHTML = `
+        <strong>Bước tiếp theo trong 30 ngày với ${topName}</strong>
+        <ol>
+          <li>Tuần 1: xem 3 nguồn nhập môn và ghi lại điều thích/không thích.</li>
+          <li>Tuần 2: làm một mini project hoặc bài thực hành nhỏ.</li>
+          <li>Tuần 3: hỏi ít nhất một người đang làm trong nghề.</li>
+          <li>Tuần 4: so sánh 2 nghề còn lại và quyết định có tiếp tục thử sâu hơn không.</li>
+        </ol>
+      `;
+    }
+
+    function renderRecommendations(event) {
+      event.preventDefault();
+
+      const firstUnanswered = findFirstUnansweredIndex();
+      if (firstUnanswered !== -1) {
+        showQuestion(firstUnanswered);
+        updateQuizProgress();
+        recommendationList.innerHTML = `
+          <article class="recommendation-card">
+            <strong>Cần trả lời đủ câu hỏi</strong>
+            <p>Bạn còn câu chưa trả lời. Hệ thống đã đưa bạn tới câu cần hoàn thành để kết quả gợi ý chính xác hơn.</p>
+          </article>
+        `;
+        return;
+      }
+
+      const activeSet = getActiveQuizSet();
+      const { userProfile, groupScores } = getQuizResult();
+      const ranked = careers
+        .map(item => {
+          const profile = getCareerProfile(item);
+          const fit = scoreCareerFit(item, userProfile, groupScores);
+          const matches = getTopDimensionMatches(userProfile, profile);
+          return { ...item, fit, matches };
+        })
+        .sort((a, b) => b.fit - a.fit)
+        .slice(0, 8);
+
+      renderFitSummary(userProfile);
+      renderPersonalInsights(userProfile, ranked);
+      renderTopCareerCards(ranked);
+      renderNextSteps(ranked);
+      recommendationList.innerHTML = ranked.map((item, index) => {
+        const vietnamContext = getVietnamContext(item);
+        const decisionInfo = getCareerDecisionInfo(item);
+        return `
+          <article class="recommendation-card">
+            <div class="recommendation-head">
+              <div>
+                <strong>${index + 1}. ${item.name}</strong>
+                <div style="color:var(--muted);font-size:13px">${activeSet.title} · ${item.group}</div>
+              </div>
+              <span class="match-score">${item.fit}% phù hợp</span>
+            </div>
+            <p><strong>Công việc này làm gì:</strong> ${getWorkDescription(item)}</p>
+            <p><strong>Hợp với ai:</strong> ${decisionInfo.fit}</p>
+            <p><strong>Vì sao hợp:</strong> ${item.matches.map(match => match.label).join(", ")}. ${item.reason}</p>
+            <p><strong>Cơ hội:</strong> ${item.opportunity}</p>
+            <p><strong>Bối cảnh Việt Nam:</strong> ${vietnamLabel(vietnamContext.vietnam)}. ${vietnamContext.region}</p>
+            <p><strong>Cách thử nhanh:</strong> ${decisionInfo.tryPlan}</p>
+            <p><strong>Rủi ro cần cân nhắc:</strong> ${item.risk}</p>
+            <div class="tag-row">
+              <span class="tag">Nhu cầu ${item.market}/10</span>
+              <span class="tag">Thu nhập ${item.income}/10</span>
+              <span class="tag">Từ xa ${item.remote}/10</span>
+              <span class="tag">Độ khó ${item.difficulty}/10</span>
+              <span class="tag">${vietnamContext.pathways.map(pathwayLabel).join(" · ")}</span>
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      recommendationList.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function resetQuizResult() {
+      const activeSet = getActiveQuizSet();
+      fitSummary.innerHTML = "";
+      personalInsights.innerHTML = "";
+      topCareerCards.innerHTML = "";
+      nextSteps.hidden = true;
+      nextSteps.innerHTML = "";
+      recommendationList.innerHTML = `
+        <article class="recommendation-card">
+          <strong>Chưa có kết quả</strong>
+          <p>${activeSet.intro}</p>
+        </article>
+      `;
+    }
+
+    function renderTable() {
+      const query = searchInput.value.trim().toLowerCase();
+      const group = groupFilter.value;
+      const sortKey = sortSelect.value;
+      const investment = investmentFilter.value;
+      const vietnam = vietnamFilter.value;
+      const pathway = pathwayFilter.value;
+
+      const filtered = careers
+        .filter(item => !group || item.group === group)
+        .filter(item => !investment || getLearningInvestment(item) === investment)
+        .filter(item => !vietnam || getVietnamContext(item).vietnam === vietnam)
+        .filter(item => !pathway || getVietnamContext(item).pathways.includes(pathway))
+        .filter(item => {
+          const decisionInfo = getCareerDecisionInfo(item);
+          const haystack = `${item.name} ${item.group} ${item.reason} ${item.opportunity} ${item.risk} ${getWorkDescription(item)} ${Object.values(decisionInfo).join(" ")}`.toLowerCase();
+          return haystack.includes(query);
+        })
+        .sort((a, b) => {
+          if (sortKey === "difficultyAsc") return a.difficulty - b.difficulty;
+          if (sortKey === "aiAsc") return a.ai - b.ai;
+          return b[sortKey] - a[sortKey];
+        });
+
+      tableBody.innerHTML = filtered.map(item => `
+        <tr>
+          <td><strong>${item.name}</strong></td>
+          <td>${item.group}<div class="tag-row" style="margin-top:8px"><span class="tag">${investmentLabel(getLearningInvestment(item))}</span><span class="tag">${vietnamLabel(getVietnamContext(item).vietnam)}</span></div></td>
+          <td>${scoreCell(item.market)}</td>
+          <td>${scoreCell(item.income)}</td>
+          <td>${scoreCell(item.remote)}</td>
+          <td>${scoreCell(item.difficulty, true)}</td>
+          <td>${scoreCell(item.young)}</td>
+          <td><button class="button" type="button" data-detail="${item.name}">Mở</button></td>
+        </tr>
+        <tr class="detail-row" data-detail-row="${item.name}" hidden>
+          <td colspan="8">
+            <div class="career-detail">
+              <div><strong>Công việc này làm gì</strong><p>${getWorkDescription(item)}</p></div>
+              <div><strong>Hợp với kiểu người nào</strong><p>${getCareerDecisionInfo(item).fit}</p></div>
+              <div><strong>Bắt đầu từ đâu</strong><p>${getCareerDecisionInfo(item).start}</p></div>
+              <div><strong>Bao lâu có thể đi làm</strong><p>${getCareerDecisionInfo(item).firstJob}</p></div>
+              <div><strong>Chi phí học & hoàn vốn</strong><p>${getCareerDecisionInfo(item).cost}</p></div>
+              <div><strong>Thu nhập theo giai đoạn</strong><p>${getCareerDecisionInfo(item).income}</p></div>
+              <div><strong>Đường phát triển 5-10 năm</strong><p>${getCareerDecisionInfo(item).longTerm}</p></div>
+              <div><strong>Cách thử nghề trong 30 ngày</strong><p>${getCareerDecisionInfo(item).tryPlan}</p></div>
+              <div><strong>Lý do có tương lai</strong><p>${item.reason}</p></div>
+              <div><strong>Cơ hội</strong><p>${item.opportunity}</p></div>
+              <div><strong>Rủi ro</strong><p>${item.risk}</p></div>
+              <div><strong>AI & toàn cầu</strong><p>AI tác động ${item.ai}/10, làm việc toàn cầu ${item.global}/10.</p></div>
+              <div><strong>Bối cảnh Việt Nam</strong><p>${vietnamLabel(getVietnamContext(item).vietnam)}. Khu vực phù hợp: ${getVietnamContext(item).region}</p></div>
+              <div><strong>Ngoại ngữ & hoàn vốn</strong><p>${getVietnamContext(item).language} ${getVietnamContext(item).payback}</p></div>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function renderGroups() {
+      const groups = [...new Set(careers.map(item => item.group))];
+      groupFilter.innerHTML += groups.map(group => `<option value="${group}">${group}</option>`).join("");
+      groupCards.innerHTML = groups.map(group => {
+        const names = careers.filter(item => item.group === group).map(item => item.name);
+        return `
+          <article class="career-card">
+            <small>${names.length} nghề</small>
+            <h3>${group}</h3>
+            <p>${groupDescriptions[group]}</p>
+            <div class="tag-row">${names.map(name => `<span class="tag">${name}</span>`).join("")}</div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderCompareSelectors() {
+      const options = careers.map(item => `<option value="${item.name}">${item.name}</option>`).join("");
+      compareSelects.forEach((select, index) => {
+        select.innerHTML = `<option value="">Chọn nghề ${index + 1}</option>${options}`;
+      });
+
+      compareSelects[0].value = "Chuyên gia dữ liệu / Data Analyst";
+      compareSelects[1].value = "Kỹ sư phần mềm full-stack";
+      compareSelects[2].value = "Chuyên gia sức khỏe tinh thần / Tâm lý trị liệu";
+    }
+
+    function renderComparison() {
+      const selected = compareSelects
+        .map(select => careers.find(item => item.name === select.value))
+        .filter(Boolean);
+
+      if (!selected.length) {
+        compareGrid.innerHTML = `
+          <article class="compare-card">
+            <strong>Chưa chọn nghề</strong>
+            <p style="color:var(--muted)">Hãy chọn ít nhất 2 nghề để so sánh.</p>
+          </article>
+        `;
+        return;
+      }
+
+      compareGrid.innerHTML = selected.map(item => `
+        <article class="compare-card">
+          <span class="tag">${item.group}</span>
+          <h3 style="margin-top:10px">${item.name}</h3>
+          <dl>
+            <dt>Làm gì</dt><dd>${getWorkDescription(item)}</dd>
+            <dt>Hợp với ai</dt><dd>${getCareerDecisionInfo(item).fit}</dd>
+            <dt>Bắt đầu</dt><dd>${getCareerDecisionInfo(item).start}</dd>
+            <dt>Thời gian</dt><dd>${item.duration}</dd>
+            <dt>Đầu tư học</dt><dd>${investmentLabel(getLearningInvestment(item))}</dd>
+            <dt>Hoàn vốn</dt><dd>${getCareerDecisionInfo(item).cost}</dd>
+            <dt>Thu nhập</dt><dd>${getCareerDecisionInfo(item).income}</dd>
+            <dt>5-10 năm</dt><dd>${getCareerDecisionInfo(item).longTerm}</dd>
+            <dt>Thử 30 ngày</dt><dd>${getCareerDecisionInfo(item).tryPlan}</dd>
+            <dt>Việt Nam</dt><dd>${vietnamLabel(getVietnamContext(item).vietnam)}</dd>
+            <dt>Khu vực</dt><dd>${getVietnamContext(item).region}</dd>
+            <dt>Nhu cầu</dt><dd>${item.market}/10</dd>
+            <dt>Thu nhập</dt><dd>${item.income}/10</dd>
+            <dt>Từ xa</dt><dd>${item.remote}/10</dd>
+            <dt>Độ khó</dt><dd>${item.difficulty}/10</dd>
+            <dt>Cơ hội</dt><dd>${item.opportunity}</dd>
+            <dt>Rủi ro</dt><dd>${item.risk}</dd>
+          </dl>
+        </article>
+      `).join("");
+    }
+
+    function renderRanks(modeKey = "fiveYears") {
+      [...rankTabs.children].forEach(button => {
+        button.classList.toggle("active", button.dataset.mode === modeKey);
+      });
+
+      const mode = rankModes[modeKey];
+      const top = [...careers]
+        .sort((a, b) => mode.score(b) - mode.score(a))
+        .slice(0, 10);
+
+      rankList.innerHTML = top.map((item, index) => `
+        <article class="rank-item">
+          <span class="rank-number">${index + 1}</span>
+          <div>
+            <strong>${item.name}</strong>
+            <div style="color:var(--muted);font-size:13px">${item.group}</div>
+          </div>
+          <span class="score">${Math.round(mode.score(item))}</span>
+        </article>
+      `).join("");
+    }
+
+    function renderRankTabs() {
+      rankTabs.innerHTML = Object.entries(rankModes).map(([key, mode], index) => `
+        <button type="button" class="${index === 0 ? "active" : ""}" data-mode="${key}">${mode.label}</button>
+      `).join("");
+
+      rankTabs.addEventListener("click", event => {
+        const button = event.target.closest("button[data-mode]");
+        if (button) renderRanks(button.dataset.mode);
+      });
+    }
+
+    function renderRoadmaps() {
+      const priority = [
+        "Kỹ sư AI / Machine Learning",
+        "Chuyên gia dữ liệu / Data Analyst",
+        "Kỹ sư phần mềm full-stack",
+        "Chuyên gia an ninh mạng",
+        "Kỹ sư Cloud / DevOps / SRE",
+        "Giáo viên / Learning Designer dùng AI",
+        "Chuyên gia sức khỏe tinh thần / Tâm lý trị liệu",
+        "Chuyên gia phục hồi chức năng / Vật lý trị liệu",
+        "Kỹ sư năng lượng tái tạo",
+        "Kỹ thuật viên điện - HVAC - hạ tầng thông minh",
+        "UX/UI Designer / Product Designer",
+        "Prompt/System Designer cho AI Agent",
+        "Chuyên gia tài chính cá nhân / Wealth Advisor",
+        "Nhà sáng tạo nội dung chuyên môn",
+        "Điều dưỡng / Chăm sóc người cao tuổi"
+      ];
+
+      const selected = priority.map(name => careers.find(item => item.name === name)).filter(Boolean);
+      roadmapGrid.innerHTML = selected.map(item => `
+        <article class="roadmap-card">
+          <small class="tag">${item.group}</small>
+          <h3 style="margin-top:12px">${item.name}</h3>
+          <dl>
+            <dt>Cần học</dt><dd>${item.learn}</dd>
+            <dt>Học ở đâu</dt><dd>${item.where}</dd>
+            <dt>Thời gian</dt><dd>${item.duration}</dd>
+            <dt>Tự học?</dt><dd>${item.self}</dd>
+            <dt>Công cụ AI</dt><dd>${item.tools}</dd>
+            <dt>Chứng chỉ</dt><dd>${item.certs}</dd>
+          </dl>
+        </article>
+      `).join("");
+    }
+
+    function initSortableHeaders() {
+      document.querySelectorAll("th[data-key]").forEach(header => {
+        header.addEventListener("click", () => {
+          const rows = [...tableBody.querySelectorAll("tr:not(.detail-row)")];
+          const columnIndex = [...header.parentElement.children].indexOf(header);
+          const direction = header.dataset.direction === "asc" ? "desc" : "asc";
+          header.dataset.direction = direction;
+          rows.sort((a, b) => {
+            const first = a.children[columnIndex].textContent.trim();
+            const second = b.children[columnIndex].textContent.trim();
+            return direction === "asc" ? first.localeCompare(second, "vi") : second.localeCompare(first, "vi");
+          });
+          const pairs = rows.map(row => {
+            const detailName = row.querySelector("button[data-detail]")?.dataset.detail;
+            return {
+              row,
+              detailRow: detailName ? tableBody.querySelector(`[data-detail-row="${detailName}"]`) : null
+            };
+          });
+
+          tableBody.innerHTML = "";
+          pairs.forEach(({ row, detailRow }) => {
+            tableBody.appendChild(row);
+            if (detailRow) tableBody.appendChild(detailRow);
+          });
+        });
+      });
+    }
+
+    questionList.addEventListener("change", () => {
+      updateQuizProgress();
+      const activeSet = getActiveQuizSet();
+      if (activeQuestionIndex < activeSet.questions.length - 1) {
+        showQuestion(activeQuestionIndex + 1);
+      }
+    });
+
+    prevQuestionButton.addEventListener("click", () => {
+      showQuestion(activeQuestionIndex - 1);
+    });
+
+    nextQuestionButton.addEventListener("click", () => {
+      showQuestion(activeQuestionIndex + 1);
+    });
+
+    tableBody.addEventListener("click", event => {
+      const button = event.target.closest("button[data-detail]");
+      if (!button) return;
+
+      const row = tableBody.querySelector(`[data-detail-row="${button.dataset.detail}"]`);
+      if (!row) return;
+
+      row.hidden = !row.hidden;
+      button.textContent = row.hidden ? "Mở" : "Đóng";
+    });
+
+    document.querySelectorAll("[data-role-link]").forEach(link => {
+      link.addEventListener("click", () => {
+        const type = link.dataset.roleLink;
+        const input = document.querySelector(`input[name="quizType"][value="${type}"]`);
+        if (input) {
+          input.checked = true;
+          renderQuestionnaire();
+          resetQuizResult();
+        }
+      });
+    });
+
+    quizForm.addEventListener("submit", renderRecommendations);
+    clearQuizButton.addEventListener("click", () => {
+      const activeType = getActiveQuizType();
+      quizForm.reset();
+      document.querySelector(`input[name="quizType"][value="${activeType}"]`).checked = true;
+      renderQuestionnaire();
+      resetQuizResult();
+    });
+
+    document.querySelectorAll('input[name="quizType"]').forEach(input => {
+      input.addEventListener("change", () => {
+        renderQuestionnaire();
+        resetQuizResult();
+      });
+    });
+
+    searchInput.addEventListener("input", renderTable);
+    groupFilter.addEventListener("change", renderTable);
+    sortSelect.addEventListener("change", renderTable);
+    investmentFilter.addEventListener("change", renderTable);
+    vietnamFilter.addEventListener("change", renderTable);
+    pathwayFilter.addEventListener("change", renderTable);
+    compareButton.addEventListener("click", renderComparison);
+    compareSelects.forEach(select => select.addEventListener("change", renderComparison));
+    printResultButton.addEventListener("click", () => window.print());
+    resetButton.addEventListener("click", () => {
+      searchInput.value = "";
+      groupFilter.value = "";
+      sortSelect.value = "market";
+      investmentFilter.value = "";
+      vietnamFilter.value = "";
+      pathwayFilter.value = "";
+      renderTable();
+    });
+
+    renderQuestionnaire();
+    renderGroups();
+    renderCompareSelectors();
+    renderComparison();
+    renderRankTabs();
+    renderRanks();
+    renderRoadmaps();
+    renderTable();
+    initSortableHeaders();
+  </script>
+</body>
+</html>

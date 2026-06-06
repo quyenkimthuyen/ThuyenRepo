@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bản đồ khái niệm xã hội</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="hero">
+      <div class="hero-copy-block">
+        <p class="eyebrow">XaHoi Concept Atlas</p>
+        <h1>Khám phá xã hội từ trung tâm là con người</h1>
+        <p class="hero-copy">
+          Chuyển đổi giữa cây phân cấp, mạng lưới quan hệ và dòng thời gian để thấy nhu cầu, cảm xúc, quan hệ, thể chế và công nghệ cùng định hình đời sống con người.
+        </p>
+      </div>
+      <div class="human-hero" aria-label="Con người là trung tâm của bản đồ">
+        <div class="human-orbit human-orbit--outer"></div>
+        <div class="human-orbit human-orbit--inner"></div>
+        <div class="human-core">
+          <span class="human-core__icon" aria-hidden="true">☉</span>
+          <strong>Con người</strong>
+          <span>Trung tâm phân tích</span>
+        </div>
+        <div class="orbit-label orbit-label--top">Nhu cầu</div>
+        <div class="orbit-label orbit-label--right">Thể chế</div>
+        <div class="orbit-label orbit-label--bottom">Quan hệ</div>
+        <div class="orbit-label orbit-label--left">Văn hóa</div>
+      </div>
+    </section>
+
+    <section class="insight-strip" aria-label="Thông tin tổng quan">
+      <div class="hero-card">
+        <span class="hero-card__number" id="concept-count">190+</span>
+        <span>khái niệm xoay quanh con người và các hệ thống bao quanh.</span>
+      </div>
+      <p>
+        Mỗi chế độ xem đều bắt đầu từ con người, sau đó mở rộng ra nhu cầu, quan hệ, văn hóa, thể chế, kinh tế, công nghệ và môi trường sống.
+      </p>
+    </section>
+
+    <nav class="view-switcher" aria-label="Chọn chế độ xem">
+      <button class="view-button active" type="button" data-view="tree" aria-pressed="true">
+        <span>🌳</span>
+        Cây
+      </button>
+      <button class="view-button" type="button" data-view="network" aria-pressed="false">
+        <span>🕸️</span>
+        Mạng lưới
+      </button>
+      <button class="view-button" type="button" data-view="timeline" aria-pressed="false">
+        <span>⏳</span>
+        Timeline
+      </button>
+    </nav>
+
+    <section class="focus-strip" aria-label="Chọn góc nhìn">
+      <span class="focus-strip__label">Góc nhìn</span>
+      <button class="focus-chip active" type="button" data-focus="core" aria-pressed="true">Tổng quan</button>
+      <button class="focus-chip" type="button" data-focus="self" aria-pressed="false">Nội tâm & nhu cầu</button>
+      <button class="focus-chip" type="button" data-focus="relations" aria-pressed="false">Quan hệ</button>
+      <button class="focus-chip" type="button" data-focus="systems" aria-pressed="false">Hệ thống xã hội</button>
+      <button class="focus-chip" type="button" data-focus="all" aria-pressed="false">Tất cả</button>
+    </section>
+
+    <section class="discovery-bar" aria-label="Tìm kiếm và lộ trình khám phá">
+      <form class="search-box" id="search-form">
+        <label for="concept-search">Tìm khái niệm</label>
+        <div>
+          <input id="concept-search" type="search" placeholder="Ví dụ: Gia đình, Bất bình đẳng, Căng thẳng..." autocomplete="off">
+          <button type="submit">Đi tới</button>
+        </div>
+        <div class="search-results" id="search-results" role="listbox"></div>
+      </form>
+
+      <div class="learning-paths" aria-label="Lộ trình khám phá nhanh">
+        <span>Lộ trình</span>
+        <button type="button" data-path-target="human">Con người</button>
+        <button type="button" data-path-target="relationship">Quan hệ</button>
+        <button type="button" data-path-target="power-inequality">Bất bình đẳng</button>
+        <button type="button" data-path-target="rights">Quyền</button>
+        <button type="button" data-path-target="technology">Công nghệ</button>
+      </div>
+    </section>
+
+    <section class="workspace">
+      <aside class="guide-panel">
+        <p class="panel-label">Hướng dẫn</p>
+        <h2 id="view-title">Cây con người trung tâm</h2>
+        <p id="view-description">
+          Con người là gốc, từ đó mở ra thân thể, nhu cầu, năng lực hành động, quan hệ và các hệ thống xã hội bao quanh.
+        </p>
+        <nav class="breadcrumb" id="breadcrumb" aria-label="Đường dẫn khái niệm"></nav>
+        <div class="selected-card" id="selected-card">
+          <span class="selected-card__hint">Đang chọn</span>
+          <strong>Con người</strong>
+          <p>Chủ thể trung tâm tạo nghĩa, xây quan hệ và chịu tác động của mọi cấu trúc xã hội.</p>
+        </div>
+        <div class="relation-panel" id="relation-panel" aria-label="Quan hệ liên quan"></div>
+        <div class="legend" id="legend" aria-label="Chú giải nhóm khái niệm"></div>
+      </aside>
+
+      <section class="visual-panel" aria-live="polite">
+        <div class="toolbar">
+          <span id="status-text">Chế độ cây đang hiển thị cấu trúc lấy con người làm trung tâm.</span>
+          <button class="ghost-button" type="button" id="reset-button">Làm mới</button>
+        </div>
+        <div class="visual-stage" id="visual-stage"></div>
+      </section>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

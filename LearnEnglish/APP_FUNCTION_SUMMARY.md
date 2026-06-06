@@ -112,6 +112,7 @@ Quiz behavior:
 - Automatically plays the word audio or speech fallback when a listening question first appears.
 - Automatically plays dictation audio when a dictation question first appears.
 - Tracks total answers, correct answers, streak, elapsed time, and accuracy.
+- Shows a quiz result summary after the final question, including correct count, wrong count, accuracy, elapsed time, and each question's selected/correct answer.
 - Supports quiz reset.
 
 ### Progress And Stats
