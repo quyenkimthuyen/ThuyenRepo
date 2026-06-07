@@ -1,0 +1,1165 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta
+    name="description"
+    content="Trang chủ tổng hợp các ứng dụng web nhỏ trong ThuyenRepo: học tiếng Anh, game giáo dục, bản đồ tri thức, hướng nghiệp và ôn thi."
+  />
+  <title>ThuyenRepo Hub - Tổng hợp ứng dụng</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f3eb;
+      --surface: rgba(255, 255, 255, 0.78);
+      --surface-solid: #ffffff;
+      --ink: #172033;
+      --muted: #667085;
+      --line: rgba(23, 32, 51, 0.12);
+      --brand: #2457d6;
+      --brand-dark: #163a98;
+      --brand-soft: rgba(36, 87, 214, 0.12);
+      --mint: #0f9f7a;
+      --amber: #d98806;
+      --rose: #d83f6a;
+      --violet: #7957d5;
+      --shadow: 0 24px 80px rgba(23, 32, 51, 0.13);
+      --shadow-soft: 0 14px 38px rgba(23, 32, 51, 0.08);
+      --radius: 28px;
+      --radius-sm: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family:
+        Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Arial, sans-serif;
+      background:
+        radial-gradient(circle at 8% 10%, rgba(36, 87, 214, 0.18), transparent 30rem),
+        radial-gradient(circle at 88% 4%, rgba(15, 159, 122, 0.16), transparent 32rem),
+        radial-gradient(circle at 78% 82%, rgba(216, 63, 106, 0.14), transparent 28rem),
+        linear-gradient(135deg, #f8f3ea 0%, #eef5ff 48%, #f7f0ff 100%);
+      line-height: 1.6;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .page-shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 56px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 14px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 12px 14px 12px 18px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.76);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border-radius: 15px;
+      color: #ffffff;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--brand), var(--violet));
+      box-shadow: 0 12px 26px rgba(36, 87, 214, 0.28);
+    }
+
+    .brand strong,
+    .brand span:last-child {
+      display: block;
+    }
+
+    .brand small {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.2;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    .nav-links a {
+      padding: 10px 14px;
+      border-radius: 999px;
+      transition: 160ms ease;
+    }
+
+    .nav-links a:hover {
+      color: var(--brand-dark);
+      background: var(--brand-soft);
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) 0.92fr;
+      gap: 28px;
+      align-items: stretch;
+      padding: 74px 0 34px;
+    }
+
+    .hero-copy,
+    .hero-panel,
+    .toolbar,
+    .app-card,
+    .section-note {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(18px);
+    }
+
+    .hero-copy {
+      position: relative;
+      overflow: hidden;
+      padding: clamp(30px, 5vw, 56px);
+      border-radius: var(--radius);
+    }
+
+    .hero-copy::after {
+      position: absolute;
+      right: -72px;
+      bottom: -88px;
+      width: 240px;
+      height: 240px;
+      content: "";
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(36, 87, 214, 0.18), transparent 68%);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 18px;
+      padding: 8px 13px;
+      color: var(--brand-dark);
+      font-size: 0.88rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      border: 1px solid rgba(36, 87, 214, 0.16);
+      border-radius: 999px;
+      background: rgba(36, 87, 214, 0.08);
+    }
+
+    .eyebrow::before {
+      width: 9px;
+      height: 9px;
+      content: "";
+      border-radius: 999px;
+      background: var(--mint);
+      box-shadow: 0 0 0 6px rgba(15, 159, 122, 0.12);
+    }
+
+    h1 {
+      max-width: 760px;
+      margin: 0;
+      font-size: clamp(2.4rem, 6vw, 5.75rem);
+      line-height: 0.95;
+      letter-spacing: -0.075em;
+    }
+
+    .hero-copy > p:not(.eyebrow) {
+      max-width: 650px;
+      margin: 24px 0 0;
+      color: #4b5565;
+      font-size: clamp(1rem, 2vw, 1.2rem);
+    }
+
+    .hero-actions {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 18px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      font-weight: 850;
+      transition:
+        transform 160ms ease,
+        box-shadow 160ms ease,
+        background 160ms ease;
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+    }
+
+    .button.primary {
+      color: #ffffff;
+      background: linear-gradient(135deg, var(--brand), var(--violet));
+      box-shadow: 0 16px 34px rgba(36, 87, 214, 0.26);
+    }
+
+    .button.ghost {
+      color: var(--brand-dark);
+      border-color: rgba(36, 87, 214, 0.2);
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+    .hero-panel {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 22px;
+      padding: 26px;
+      border-radius: var(--radius);
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+
+    .panel-title h2 {
+      margin: 0;
+      font-size: 1.32rem;
+      letter-spacing: -0.035em;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      color: #075c47;
+      font-size: 0.82rem;
+      font-weight: 800;
+      border-radius: 999px;
+      background: rgba(15, 159, 122, 0.12);
+    }
+
+    .status-pill::before {
+      width: 8px;
+      height: 8px;
+      content: "";
+      border-radius: 999px;
+      background: var(--mint);
+    }
+
+    .feature-list {
+      display: grid;
+      gap: 12px;
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .feature-list li {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 14px;
+      border: 1px solid rgba(23, 32, 51, 0.08);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.62);
+    }
+
+    .feature-icon {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border-radius: 14px;
+      color: #ffffff;
+      font-weight: 900;
+      background: var(--brand);
+    }
+
+    .feature-list strong {
+      display: block;
+      line-height: 1.25;
+    }
+
+    .feature-list span:last-child {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .stat {
+      padding: 16px;
+      border: 1px solid rgba(23, 32, 51, 0.08);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.68);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.55rem;
+      line-height: 1;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 88px;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      margin: 24px 0;
+      padding: 14px;
+      border-radius: 24px;
+    }
+
+    .search {
+      position: relative;
+    }
+
+    .search input {
+      width: 100%;
+      min-height: 52px;
+      padding: 0 18px 0 46px;
+      color: var(--ink);
+      border: 1px solid rgba(23, 32, 51, 0.12);
+      border-radius: 18px;
+      outline: none;
+      background: rgba(255, 255, 255, 0.86);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+    }
+
+    .search input:focus {
+      border-color: rgba(36, 87, 214, 0.42);
+      box-shadow: 0 0 0 4px rgba(36, 87, 214, 0.1);
+    }
+
+    .search::before {
+      position: absolute;
+      top: 50%;
+      left: 17px;
+      content: "⌕";
+      color: var(--muted);
+      font-size: 1.25rem;
+      transform: translateY(-50%);
+    }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .filter-button {
+      min-height: 42px;
+      padding: 0 14px;
+      color: #4b5565;
+      font-weight: 800;
+      border: 1px solid rgba(23, 32, 51, 0.1);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.68);
+      cursor: pointer;
+      transition: 150ms ease;
+    }
+
+    .filter-button:hover,
+    .filter-button.is-active {
+      color: #ffffff;
+      border-color: transparent;
+      background: var(--ink);
+      box-shadow: 0 12px 24px rgba(23, 32, 51, 0.14);
+    }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 22px;
+      margin: 44px 0 18px;
+    }
+
+    .section-head h2 {
+      margin: 0;
+      font-size: clamp(1.55rem, 3vw, 2.35rem);
+      line-height: 1;
+      letter-spacing: -0.055em;
+    }
+
+    .section-head p {
+      max-width: 560px;
+      margin: 10px 0 0;
+      color: var(--muted);
+    }
+
+    .result-count {
+      flex: none;
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 800;
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .app-card {
+      position: relative;
+      display: flex;
+      min-height: 305px;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 22px;
+      border-radius: 24px;
+      transition:
+        transform 180ms ease,
+        box-shadow 180ms ease,
+        border-color 180ms ease;
+    }
+
+    .app-card::before {
+      position: absolute;
+      inset: 0;
+      content: "";
+      opacity: 0.12;
+      background:
+        radial-gradient(circle at top right, var(--accent, var(--brand)), transparent 14rem),
+        linear-gradient(135deg, var(--accent, var(--brand)), transparent 58%);
+      pointer-events: none;
+    }
+
+    .app-card:hover {
+      border-color: rgba(36, 87, 214, 0.28);
+      box-shadow: var(--shadow);
+      transform: translateY(-5px);
+    }
+
+    .app-card > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .app-icon {
+      display: grid;
+      width: 54px;
+      height: 54px;
+      place-items: center;
+      border-radius: 18px;
+      color: #ffffff;
+      font-size: 1.2rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--accent, var(--brand)), #172033);
+      box-shadow: 0 16px 32px rgba(23, 32, 51, 0.16);
+    }
+
+    .category {
+      padding: 7px 10px;
+      color: color-mix(in srgb, var(--accent, var(--brand)) 70%, #172033);
+      font-size: 0.78rem;
+      font-weight: 900;
+      border: 1px solid color-mix(in srgb, var(--accent, var(--brand)) 26%, transparent);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--accent, var(--brand)) 10%, white);
+    }
+
+    .app-card h3 {
+      margin: 0;
+      font-size: 1.35rem;
+      line-height: 1.15;
+      letter-spacing: -0.035em;
+    }
+
+    .app-card p {
+      margin: 12px 0 0;
+      color: #5f6b7a;
+      font-size: 0.98rem;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 18px;
+    }
+
+    .tag {
+      padding: 6px 9px;
+      color: #596579;
+      font-size: 0.76rem;
+      font-weight: 800;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(23, 32, 51, 0.07);
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: auto;
+      padding-top: 22px;
+    }
+
+    .open-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--brand-dark);
+      font-weight: 900;
+    }
+
+    .open-link::after {
+      content: "→";
+      transition: transform 150ms ease;
+    }
+
+    .app-card:hover .open-link::after {
+      transform: translateX(4px);
+    }
+
+    .path {
+      max-width: 50%;
+      overflow: hidden;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 750;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .section-note {
+      margin-top: 34px;
+      padding: 22px;
+      border-radius: 24px;
+      color: #4b5565;
+    }
+
+    .section-note strong {
+      color: var(--ink);
+    }
+
+    .empty-state {
+      display: none;
+      padding: 42px 22px;
+      color: var(--muted);
+      text-align: center;
+      border: 1px dashed rgba(23, 32, 51, 0.22);
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.48);
+    }
+
+    .empty-state.is-visible {
+      display: block;
+    }
+
+    footer {
+      margin-top: 38px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 0.92rem;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .toolbar {
+        grid-template-columns: 1fr;
+      }
+
+      .filters {
+        justify-content: flex-start;
+      }
+
+      .app-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .topbar {
+        align-items: flex-start;
+        border-radius: 26px;
+      }
+
+      .nav-links {
+        display: none;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .page-shell {
+        width: min(100% - 22px, 1180px);
+        padding-top: 12px;
+      }
+
+      .hero {
+        padding-top: 42px;
+      }
+
+      .hero-copy,
+      .hero-panel {
+        padding: 22px;
+      }
+
+      .stats,
+      .app-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        top: 78px;
+      }
+
+      .section-head {
+        display: block;
+      }
+
+      .result-count {
+        display: block;
+        margin-top: 8px;
+      }
+
+      .card-actions {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .path {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar" aria-label="Thanh điều hướng">
+      <a class="brand" href="#">
+        <span class="brand-mark">TR</span>
+        <span>
+          <strong>ThuyenRepo Hub</strong>
+          <small>Tổng hợp ứng dụng HTML trong repo</small>
+        </span>
+      </a>
+      <nav class="nav-links" aria-label="Điều hướng nhanh">
+        <a href="#apps">Ứng dụng</a>
+        <a href="#guide">Cách chạy</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <div class="hero-copy">
+          <p class="eyebrow">Workspace dashboard</p>
+          <h1 id="page-title">Một cửa vào tất cả ứng dụng nhỏ.</h1>
+          <p>
+            Trang chủ này gom các dự án web trong ThuyenRepo thành một bảng điều khiển dễ duyệt:
+            học tiếng Anh, game giáo dục, bản đồ tri thức, hướng nghiệp, ôn thi và đời sống.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#apps">Khám phá ứng dụng</a>
+            <a class="button ghost" href="VietNamSpeak/out/index.html" target="_blank" rel="noopener noreferrer">Mở VietNamSpeak</a>
+          </div>
+        </div>
+
+        <aside class="hero-panel" aria-label="Tóm tắt thư mục">
+          <div>
+            <div class="panel-title">
+              <h2>Kho mini app</h2>
+              <span class="status-pill">Sẵn sàng mở</span>
+            </div>
+            <ul class="feature-list">
+              <li>
+                <span class="feature-icon">EN</span>
+                <span>
+                  <strong>Học ngôn ngữ qua nhiều kiểu trải nghiệm</strong>
+                  <span>Từ IPA, root word, tình huống đời thật đến trò chơi phản xạ.</span>
+                </span>
+              </li>
+              <li>
+                <span class="feature-icon">AI</span>
+                <span>
+                  <strong>Tri thức, nghề nghiệp và ôn thi</strong>
+                  <span>Các bản đồ khái niệm giúp định hướng học tập và khám phá chủ đề.</span>
+                </span>
+              </li>
+              <li>
+                <span class="feature-icon">JS</span>
+                <span>
+                  <strong>Phần lớn chạy trực tiếp bằng HTML/CSS/JS</strong>
+                  <span>Phù hợp mở bằng Live Server để đường dẫn và module hoạt động ổn định.</span>
+                </span>
+              </li>
+            </ul>
+          </div>
+          <div class="stats" aria-label="Thống kê nhanh">
+            <div class="stat">
+              <strong>16</strong>
+              <span>ứng dụng</span>
+            </div>
+            <div class="stat">
+              <strong>5</strong>
+              <span>nhóm nội dung</span>
+            </div>
+            <div class="stat">
+              <strong>1</strong>
+              <span>trang tổng hợp</span>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      <section id="apps" aria-labelledby="apps-title">
+        <div class="toolbar" aria-label="Tìm kiếm và lọc ứng dụng">
+          <label class="search">
+            <span hidden>Tìm ứng dụng</span>
+            <input id="searchInput" type="search" placeholder="Tìm theo tên, chủ đề hoặc công nghệ..." autocomplete="off" />
+          </label>
+          <div class="filters" role="list" aria-label="Danh mục ứng dụng">
+            <button class="filter-button is-active" type="button" data-filter="all">Tất cả</button>
+            <button class="filter-button" type="button" data-filter="english">Tiếng Anh</button>
+            <button class="filter-button" type="button" data-filter="game">Game</button>
+            <button class="filter-button" type="button" data-filter="knowledge">Tri thức</button>
+            <button class="filter-button" type="button" data-filter="life">Đời sống</button>
+            <button class="filter-button" type="button" data-filter="exam">Ôn thi</button>
+          </div>
+        </div>
+
+        <div class="section-head">
+          <div>
+            <h2 id="apps-title">Danh sách ứng dụng</h2>
+            <p>Chọn một thẻ để mở app tương ứng trong tab mới. Các đường dẫn đều là tương đối từ trang chủ này.</p>
+          </div>
+          <span class="result-count" id="resultCount">16 ứng dụng</span>
+        </div>
+
+        <div class="app-grid" id="appGrid">
+          <article class="app-card" data-category="life" data-search="bua com mien tay bua com viet moi ngay am thuc doi song vietnam food" style="--accent: #4f7d2c">
+            <div class="card-top">
+              <span class="app-icon">BC</span>
+              <span class="category">Đời sống</span>
+            </div>
+            <h3>Bữa Cơm Việt Mỗi Ngày</h3>
+            <p>Gợi ý bữa cơm, thực đơn và cảm hứng ẩm thực Việt với phong cách miền Tây gần gũi.</p>
+            <div class="tag-list">
+              <span class="tag">Ẩm thực</span>
+              <span class="tag">Gia đình</span>
+              <span class="tag">HTML</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="BuaCom/index.html" target="_blank" rel="noopener noreferrer">Mở ứng dụng</a>
+              <span class="path">BuaCom/index.html</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="exam" data-search="tuyen sinh lop 10 tphcm on thi toan van anh de thi that" style="--accent: #1d4ed8">
+            <div class="card-top">
+              <span class="app-icon">10</span>
+              <span class="category">Ôn thi</span>
+            </div>
+            <h3>Ôn Thi Lớp 10 TP.HCM</h3>
+            <p>Lộ trình luyện Toán, Văn, Anh theo đề thật TP.HCM, có khu vực kiến thức và đề thi.</p>
+            <div class="tag-list">
+              <span class="tag">Tuyển sinh</span>
+              <span class="tag">Đề thật</span>
+              <span class="tag">Lộ trình</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="TuyenSinhLop10/web-html/index.html" target="_blank" rel="noopener noreferrer">Mở ứng dụng</a>
+              <span class="path">TuyenSinhLop10/web-html</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="english" data-search="learn english vocab vocabulary smart app json tu vung tieng anh" style="--accent: #0f9f7a">
+            <div class="card-top">
+              <span class="app-icon">EV</span>
+              <span class="category">Tiếng Anh</span>
+            </div>
+            <h3>English Vocab Smart App</h3>
+            <p>Ứng dụng học từ vựng frontend-only với dữ liệu JSON dễ chỉnh sửa và mở rộng.</p>
+            <div class="tag-list">
+              <span class="tag">Vocabulary</span>
+              <span class="tag">JSON</span>
+              <span class="tag">Frontend</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="LearnEnglish/index.html" target="_blank" rel="noopener noreferrer">Mở ứng dụng</a>
+              <span class="path">LearnEnglish/index.html</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="english" data-search="vietnam speak ipa pronunciation vietnamese hint audio speaking practice nextjs" style="--accent: #7957d5">
+            <div class="card-top">
+              <span class="app-icon">IPA</span>
+              <span class="category">Tiếng Anh</span>
+            </div>
+            <h3>VietNamSpeak</h3>
+            <p>Học phát âm tiếng Anh qua IPA, gợi ý đọc kiểu Việt, nghe, ghi âm và luyện nói.</p>
+            <div class="tag-list">
+              <span class="tag">IPA</span>
+              <span class="tag">Pronunciation</span>
+              <span class="tag">Next export</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="VietNamSpeak/out/index.html" target="_blank" rel="noopener noreferrer">Mở ứng dụng</a>
+              <span class="path">VietNamSpeak/out</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="english" data-search="real life english giao tiep tinh huong bai hoc curriculum" style="--accent: #d98806">
+            <div class="card-top">
+              <span class="app-icon">RL</span>
+              <span class="category">Tiếng Anh</span>
+            </div>
+            <h3>Real Life English</h3>
+            <p>Bài học tiếng Anh theo tình huống đời thật, tập trung câu thông dụng và từ vựng thực chiến.</p>
+            <div class="tag-list">
+              <span class="tag">Conversation</span>
+              <span class="tag">Situations</span>
+              <span class="tag">ES Modules</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="RealLifeEnglish/index.html" target="_blank" rel="noopener noreferrer">Mở ứng dụng</a>
+              <span class="path">RealLifeEnglish/index.html</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="english knowledge" data-search="rootword map hoc tu vung qua cau tao tu prefix suffix root" style="--accent: #9a5bd7">
+            <div class="card-top">
+              <span class="app-icon">RW</span>
+              <span class="category">Tiếng Anh</span>
+            </div>
+            <h3>RootWord Map</h3>
+            <p>Bản đồ học từ vựng qua gốc từ, tiền tố, hậu tố và cấu tạo từ.</p>
+            <div class="tag-list">
+              <span class="tag">Root word</span>
+              <span class="tag">Mind map</span>
+              <span class="tag">Vocabulary</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="RootWord/index.html" target="_blank" rel="noopener noreferrer">Mở ứng dụng</a>
+              <span class="path">RootWord/index.html</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="english knowledge" data-search="ipa mind map adventure vietnamese pronunciation trainer phat am" style="--accent: #0ea5e9">
+            <div class="card-top">
+              <span class="app-icon">IA</span>
+              <span class="category">Tiếng Anh</span>
+            </div>
+            <h3>IPA Adventure</h3>
+            <p>Công cụ luyện phát âm và khám phá IPA dành cho người Việt học tiếng Anh.</p>
+            <div class="tag-list">
+              <span class="tag">IPA</span>
+              <span class="tag">Mind map</span>
+              <span class="tag">Pronunciation</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="IPAMindMap/index.html" target="_blank" rel="noopener noreferrer">Mở ứng dụng</a>
+              <span class="path">IPAMindMap/index.html</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="game english" data-search="word snake hunter ran san moi game tieng anh vietnamese learning" style="--accent: #10b981">
+            <div class="card-top">
+              <span class="app-icon">SN</span>
+              <span class="category">Game</span>
+            </div>
+            <h3>Word Snake Hunter</h3>
+            <p>Game rắn săn mồi kết hợp học từ tiếng Anh và phản xạ chọn đáp án.</p>
+            <div class="tag-list">
+              <span class="tag">Arcade</span>
+              <span class="tag">Vocabulary</span>
+              <span class="tag">Canvas</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="RanSanMoi/index.html" target="_blank" rel="noopener noreferrer">Mở game</a>
+              <span class="path">RanSanMoi/index.html</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="game english" data-search="word submarine hunter diet tau ngam educational arcade vocabulary" style="--accent: #2563eb">
+            <div class="card-top">
+              <span class="app-icon">SB</span>
+              <span class="category">Game</span>
+            </div>
+            <h3>Word Submarine Hunter</h3>
+            <p>Game bắn tàu ngầm giáo dục, luyện từ vựng qua cơ chế arcade nhanh và vui.</p>
+            <div class="tag-list">
+              <span class="tag">Arcade</span>
+              <span class="tag">Submarine</span>
+              <span class="tag">Learning game</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="GameDietTauNgam/index.html" target="_blank" rel="noopener noreferrer">Mở game</a>
+              <span class="path">GameDietTauNgam/index.html</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="game english" data-search="dao vang gold miner english vocabulary kids hook game" style="--accent: #c78417">
+            <div class="card-top">
+              <span class="app-icon">GM</span>
+              <span class="category">Game</span>
+            </div>
+            <h3>Gold Miner English</h3>
+            <p>Đào vàng học từ vựng: thả móc chọn đúng cục vàng theo nghĩa, âm thanh hoặc chủ đề.</p>
+            <div class="tag-list">
+              <span class="tag">Kids</span>
+              <span class="tag">Vocabulary</span>
+              <span class="tag">ES Modules</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="DaoVang/index.html" target="_blank" rel="noopener noreferrer">Mở game</a>
+              <span class="path">DaoVang/index.html</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="game english" data-search="pokemon english monster quest game village vocabulary" style="--accent: #ef4444">
+            <div class="card-top">
+              <span class="app-icon">MQ</span>
+              <span class="category">Game</span>
+            </div>
+            <h3>English Monster Quest</h3>
+            <p>Phiêu lưu kiểu monster quest, biến việc học tiếng Anh thành hành trình khám phá.</p>
+            <div class="tag-list">
+              <span class="tag">Quest</span>
+              <span class="tag">English</span>
+              <span class="tag">Game</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="Pokemon/index.html" target="_blank" rel="noopener noreferrer">Mở game</a>
+              <span class="path">Pokemon/index.html</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="game english" data-search="word maze battle map vocabulary battle game" style="--accent: #14b8a6">
+            <div class="card-top">
+              <span class="app-icon">MZ</span>
+              <span class="category">Game</span>
+            </div>
+            <h3>Word Maze Battle</h3>
+            <p>Trận chiến mê cung từ vựng, phù hợp cho trải nghiệm học qua thử thách và di chuyển.</p>
+            <div class="tag-list">
+              <span class="tag">Maze</span>
+              <span class="tag">Battle</span>
+              <span class="tag">Vocabulary</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="Map/index.html" target="_blank" rel="noopener noreferrer">Mở game</a>
+              <span class="path">Map/index.html</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="english game" data-search="be vui hoc chu abc alphabet kids chu cai" style="--accent: #f97316">
+            <div class="card-top">
+              <span class="app-icon">AB</span>
+              <span class="category">Tiếng Anh</span>
+            </div>
+            <h3>Bé Vui Học Chữ</h3>
+            <p>Ứng dụng học chữ cái thân thiện cho trẻ nhỏ, thiết kế vui mắt và dễ thao tác.</p>
+            <div class="tag-list">
+              <span class="tag">Kids</span>
+              <span class="tag">Alphabet</span>
+              <span class="tag">Learning</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="abc/index.html" target="_blank" rel="noopener noreferrer">Mở ứng dụng</a>
+              <span class="path">abc/index.html</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="knowledge" data-search="xa hoi ban do khai niem con nguoi social concept map" style="--accent: #64748b">
+            <div class="card-top">
+              <span class="app-icon">XH</span>
+              <span class="category">Tri thức</span>
+            </div>
+            <h3>Bản Đồ Khái Niệm Xã Hội</h3>
+            <p>Khám phá xã hội từ trung tâm là con người qua các nhánh khái niệm trực quan.</p>
+            <div class="tag-list">
+              <span class="tag">Concept map</span>
+              <span class="tag">Xã hội</span>
+              <span class="tag">Học tập</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="XaHoi/index.html" target="_blank" rel="noopener noreferrer">Mở bản đồ</a>
+              <span class="path">XaHoi/index.html</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="knowledge" data-search="tech cay tri thuc cong nghe technology knowledge tree" style="--accent: #06b6d4">
+            <div class="card-top">
+              <span class="app-icon">TE</span>
+              <span class="category">Tri thức</span>
+            </div>
+            <h3>Cây Tri Thức Công Nghệ</h3>
+            <p>Bản đồ hệ thống hóa kiến thức công nghệ, giúp nhìn tổng quan các mảng kỹ thuật.</p>
+            <div class="tag-list">
+              <span class="tag">Technology</span>
+              <span class="tag">Knowledge tree</span>
+              <span class="tag">Roadmap</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="Tech/index.html" target="_blank" rel="noopener noreferrer">Mở bản đồ</a>
+              <span class="path">Tech/index.html</span>
+            </div>
+          </article>
+
+          <article class="app-card" data-category="life knowledge" data-search="job nghe nghiep 2026 2036 huong nghiep ai career map" style="--accent: #0d9488">
+            <div class="card-top">
+              <span class="app-icon">JB</span>
+              <span class="category">Đời sống</span>
+            </div>
+            <h3>Bản Đồ Nghề Nghiệp 2026-2036</h3>
+            <p>Công cụ định hướng nghề nghiệp trong thời đại AI dựa trên dữ liệu, năng lực và giá trị xã hội.</p>
+            <div class="tag-list">
+              <span class="tag">Career</span>
+              <span class="tag">AI era</span>
+              <span class="tag">Định hướng</span>
+            </div>
+            <div class="card-actions">
+              <a class="open-link" href="Job/index.html" target="_blank" rel="noopener noreferrer">Mở bản đồ</a>
+              <span class="path">Job/index.html</span>
+            </div>
+          </article>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+          Không tìm thấy ứng dụng phù hợp. Hãy thử từ khóa khác hoặc chọn "Tất cả".
+        </div>
+      </section>
+
+      <section class="section-note" id="guide">
+        <strong>Gợi ý chạy:</strong>
+        Mở thư mục `ThuyenRepo` bằng Live Server rồi truy cập `index.html`. Một vài app dùng ES Modules
+        hoặc bản export tĩnh nên chạy qua HTTP server sẽ ổn định hơn mở trực tiếp bằng `file://`.
+      </section>
+    </main>
+
+    <footer>
+      ThuyenRepo Hub - trang tổng hợp được tạo để duyệt nhanh các mini app trong workspace.
+    </footer>
+  </div>
+
+  <script>
+    const searchInput = document.querySelector("#searchInput");
+    const filterButtons = document.querySelectorAll("[data-filter]");
+    const cards = [...document.querySelectorAll(".app-card")];
+    const resultCount = document.querySelector("#resultCount");
+    const emptyState = document.querySelector("#emptyState");
+
+    let activeFilter = "all";
+
+    function normalizeText(value) {
+      return value
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function applyFilters() {
+      const query = normalizeText(searchInput.value.trim());
+      let visibleCount = 0;
+
+      cards.forEach((card) => {
+        const categories = card.dataset.category.split(" ");
+        const searchText = normalizeText(`${card.innerText} ${card.dataset.search}`);
+        const matchesFilter = activeFilter === "all" || categories.includes(activeFilter);
+        const matchesSearch = !query || searchText.includes(query);
+        const isVisible = matchesFilter && matchesSearch;
+
+        card.hidden = !isVisible;
+        if (isVisible) visibleCount += 1;
+      });
+
+      resultCount.textContent = `${visibleCount} ứng dụng`;
+      emptyState.classList.toggle("is-visible", visibleCount === 0);
+    }
+
+    filterButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        filterButtons.forEach((item) => item.classList.remove("is-active"));
+        button.classList.add("is-active");
+        activeFilter = button.dataset.filter;
+        applyFilters();
+      });
+    });
+
+    searchInput.addEventListener("input", applyFilters);
+  </script>
+</body>
+</html>

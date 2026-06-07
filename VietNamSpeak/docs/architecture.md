@@ -7,9 +7,8 @@ flowchart TD
   nextApp --> ipaEngine[IPA_Conversion_Engine]
   nextApp --> browserSpeech[Browser_Speech_APIs]
   nextApp --> srs[Spaced_Repetition]
-  nextApp --> supabase[Supabase]
-  supabase --> content[Words_IPA_Rules]
-  supabase --> progress[User_Progress]
+  nextApp --> localData[Local_Data]
+  localData --> content[Words_IPA_Rules]
 ```
 
 ## Layers
@@ -20,8 +19,6 @@ flowchart TD
 - `src/lib/ipa`: deterministic IPA conversion and visualizer tokens.
 - `src/lib/srs`: SM-2 and Leitner scheduling.
 - `src/hooks`: browser speech synthesis, recording, and recognition.
-- `src/lib/supabase`: Supabase clients and database types.
-- `supabase`: SQL schema, RLS policies, and seed data.
 
 ## Data Flow
 
@@ -30,11 +27,10 @@ flowchart TD
 3. The IPA engine tokenizes the IPA and emits token-level Vietnamese mappings.
 4. Browser audio reads the English word slowly or naturally.
 5. Recording and speech recognition provide MVP feedback.
-6. Game and review results can be persisted to Supabase behind RLS.
+6. Game and review state stays in the browser session for the static MVP.
 
 ## Security
 
-- Learning content is public read-only.
-- User-owned rows are protected by `auth.uid()` RLS policies.
-- Service role keys must remain server-only.
+- Learning content is bundled as public static frontend data.
+- The static MVP does not use backend credentials or server-side secrets.
 - Browser speech APIs process audio locally in the user agent unless browser speech recognition delegates to the browser vendor.

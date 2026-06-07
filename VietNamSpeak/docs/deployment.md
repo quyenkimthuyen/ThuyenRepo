@@ -1,50 +1,54 @@
 # Deployment Guide
 
-## Supabase
+## Static Build
 
-Create a Supabase project, then run:
+Build the frontend:
 
 ```bash
-supabase db push
-supabase db reset
+npm run build
 ```
 
-If you are not using the Supabase CLI, apply the SQL files manually:
-
-- `supabase/migrations/202605310001_initial_schema.sql`
-- `supabase/seed.sql`
+The generated static site is written to `out/`.
 
 ## Environment Variables
 
-Required:
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-Server-only:
-
-- `SUPABASE_SERVICE_ROLE_KEY`
-
-Future integrations:
-
-- `AZURE_SPEECH_KEY`
-- `AZURE_SPEECH_REGION`
-- `GOOGLE_TTS_API_KEY`
+No environment variables are required for the static frontend MVP.
 
 ## Vercel
 
-Set the Vercel project root to `VietNamSpeak`, add the environment variables, and deploy with the Next.js preset.
+Set the Vercel project root to `VietNamSpeak` and deploy with the default Next.js preset.
+
+## Static Hosting
+
+Upload `out/` to any static host such as Netlify, Cloudflare Pages, GitHub Pages, or an nginx server.
+
+## Local Preview
+
+```bash
+npm run build
+npm start
+```
+
+## VS Code Live Server
+
+Build the static files, then open `out/index.html` with Live Server:
+
+```bash
+npm run build
+```
+
+The workspace Live Server root is configured as `out/`, so `/_next` assets and static routes are served from the generated frontend output.
 
 ## Docker
 
 ```bash
 docker build -t vietnam-speak .
-docker run -p 3000:3000 --env-file .env.local vietnam-speak
+docker run -p 3000:80 vietnam-speak
 ```
 
 ## Performance Checklist
 
 - Keep browser-only speech components behind `"use client"`.
 - Prefer static content for public word/rule pages.
-- Move large future audio files to Supabase Storage or a CDN.
-- Use generated Supabase types once the remote schema is stable.
+- Move large future audio files to a CDN.
+- Add a backend only if synced accounts, progress, or teacher dashboards become required.
