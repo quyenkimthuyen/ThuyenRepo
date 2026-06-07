@@ -347,6 +347,50 @@ function englishPassageRange(questionNumber) {
   return null;
 }
 
+function englishQuestionType(question) {
+  const questionNumber = englishQuestionNumber(question);
+  const prompt = String(question?.prompt || "");
+  const lowerPrompt = prompt.toLowerCase();
+
+  if (/\bword\s*forms?\b/i.test(prompt) || (questionNumber >= 29 && questionNumber <= 34)) {
+    return { id: "word-form", label: "Word Forms - biến đổi từ loại", inputMode: "text" };
+  }
+  if (/\brewrite\b/i.test(prompt) || /second sentence/i.test(prompt) || questionNumber >= 37) {
+    return { id: "rewrite", label: "Rewrite - viết lại câu", inputMode: "text" };
+  }
+  if (/fill in the blank/i.test(prompt) || (questionNumber >= 35 && questionNumber <= 36)) {
+    return { id: "fill-blank", label: "Fill in the blank - điền cụm từ", inputMode: "text" };
+  }
+  if (questionNumber >= 23 && questionNumber <= 26 && !parseEnglishChoices(question).length) {
+    return { id: "reading-true-false", label: "Reading - True/False", inputMode: "choice" };
+  }
+  if (questionNumber >= 23 && questionNumber <= 28) {
+    return { id: "reading", label: "Reading comprehension - đọc hiểu", inputMode: "choice" };
+  }
+  if (questionNumber >= 17 && questionNumber <= 22) {
+    return { id: "cloze", label: "Cloze test - điền từ trong đoạn", inputMode: "choice" };
+  }
+  if (questionNumber >= 15 && questionNumber <= 16) {
+    return { id: "sign-notice", label: "Signs/Notices - biển báo, thông báo", inputMode: "choice" };
+  }
+  if (questionNumber >= 13 && questionNumber <= 14) {
+    return { id: "communication", label: "Communication - giao tiếp", inputMode: "choice" };
+  }
+  if (questionNumber >= 5 && questionNumber <= 12) {
+    return { id: "grammar-vocab", label: "Grammar & Vocabulary - ngữ pháp/từ vựng", inputMode: "choice" };
+  }
+  if (questionNumber >= 3 && questionNumber <= 4) {
+    return { id: "stress", label: "Stress - trọng âm", inputMode: "choice" };
+  }
+  if (questionNumber >= 1 && questionNumber <= 2) {
+    return { id: "pronunciation", label: "Pronunciation - phát âm", inputMode: "choice" };
+  }
+  if (lowerPrompt.includes("true") || lowerPrompt.includes("false")) {
+    return { id: "true-false", label: "True/False", inputMode: "choice" };
+  }
+  return { id: "other", label: "Tiếng Anh", inputMode: "choice" };
+}
+
 function splitEnglishTimedPrompt(question) {
   const prompt = questionPromptWithoutChoices(question);
   const questionNumber = englishQuestionNumber(question);
@@ -390,11 +434,12 @@ function renderTimedQuestionBody(question, index, exam) {
   const answer = answerForQuestion(exam, question.number);
   const splitPrompt = splitEnglishTimedPrompt(question);
   const prompt = splitPrompt.prompt || `Chọn đáp án phù hợp cho câu ${question.number || index + 1}.`;
+  const questionType = englishQuestionType(question);
 
   return `
     <div class="question-meta">
       <span>Câu ${escapeHtml(question.number || index + 1)}</span>
-      <span>${escapeHtml(question.points ? `${question.points} điểm` : "Tiếng Anh")}</span>
+      <span>${escapeHtml(questionType.label)}${escapeHtml(question.points ? ` · ${question.points} điểm` : "")}</span>
     </div>
     <div class="exam-question-text">${escapeHtml(prompt)}</div>
     ${controlForEnglishQuestion(question, answer, exam)}
@@ -538,10 +583,34 @@ function renderEnglishChoiceCheckboxes(name, questionNumber, choices) {
   `;
 }
 
+function renderEnglishTextInput(name, questionNumber, placeholder = "Nhập đáp án của em...") {
+  return `
+    <label class="exam-answer-control text-control" for="${escapeHtml(name)}">
+      Câu trả lời của em
+      <input
+        id="${escapeHtml(name)}"
+        type="text"
+        name="${escapeHtml(name)}"
+        autocomplete="off"
+        placeholder="${escapeHtml(placeholder)}"
+        aria-label="Câu trả lời câu ${escapeHtml(questionNumber)}"
+      />
+    </label>
+  `;
+}
+
 function controlForEnglishQuestion(question, answer, exam) {
   const name = `answer-${question.number}`;
   const expected = String(answer?.answer || "").trim();
   const choices = parseEnglishChoices(question);
+  const questionType = englishQuestionType(question);
+
+  if (questionType.inputMode === "text") {
+    return renderEnglishTextInput(name, question.number, questionType.id === "rewrite"
+      ? "Viết lại cả câu hoàn chỉnh..."
+      : "Nhập từ/cụm từ cần điền...");
+  }
+
   if (choices.length >= 2) {
     return renderEnglishChoiceCheckboxes(name, question.number, choices);
   }
@@ -597,11 +666,12 @@ function renderQuestionList(exam) {
     ${exam.questions
     .map((question, index) => {
       const relatedAnswers = answersForQuestion(exam, question.number);
+      const questionType = exam.subject === "TiengAnh" ? englishQuestionType(question) : null;
       return `
         <article class="detail-question-card">
           <div class="question-meta">
             <span>Câu ${escapeHtml(question.number || index + 1)}</span>
-            <span>${escapeHtml(question.points ? `${question.points} điểm` : exam.subjectLabel)}</span>
+            <span>${escapeHtml(questionType?.label || (question.points ? `${question.points} điểm` : exam.subjectLabel))}${questionType && question.points ? ` · ${escapeHtml(`${question.points} điểm`)}` : ""}</span>
           </div>
           <div class="exam-question-text">${escapeHtml(question.prompt)}</div>
           ${question.choices?.length ? `
@@ -673,9 +743,11 @@ function submitEnglishTimedExam(exam, timedOut = false) {
     const userAnswer = formData.get(`answer-${question.number}`) || "";
     const correct = gradeEnglishAnswer(userAnswer, expected);
     const points = Number(question.points || 0.25);
+    const questionType = englishQuestionType(question);
     return {
       number: question.number,
       prompt: question.prompt,
+      typeLabel: questionType.label,
       userAnswer,
       expected,
       correct,
@@ -720,7 +792,7 @@ function renderEnglishExamResult(exam, summary) {
         <article class="detail-question-card timed-result-card ${item.correct ? "correct" : "incorrect"}">
           <div class="question-meta">
             <span>Câu ${escapeHtml(item.number)}</span>
-            <span>${item.correct ? "Đúng" : "Sai"} - ${item.earned.toFixed(2)}/${item.points.toFixed(2)} điểm</span>
+            <span>${escapeHtml(item.typeLabel)} · ${item.correct ? "Đúng" : "Sai"} - ${item.earned.toFixed(2)}/${item.points.toFixed(2)} điểm</span>
           </div>
           <div class="exam-question-text">${escapeHtml(item.prompt)}</div>
           <p><b>Bạn trả lời:</b> ${escapeHtml(item.userAnswer || "Chưa trả lời")}</p>
