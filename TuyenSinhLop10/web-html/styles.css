@@ -1,7 +1,9 @@
 :root {
   --blue: #2563eb;
   --blue-dark: #1e3a8a;
+  --blue-soft: #dbeafe;
   --orange: #f97316;
+  --orange-soft: #ffedd5;
   --bg: #f8fafc;
   --surface: #ffffff;
   --text: #0f172a;
@@ -23,8 +25,9 @@ html {
 body {
   margin: 0;
   background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.13), transparent 34rem),
-    linear-gradient(180deg, #eff6ff 0, var(--bg) 28rem);
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 34rem),
+    radial-gradient(circle at 85% 8rem, rgba(249, 115, 22, 0.13), transparent 28rem),
+    linear-gradient(180deg, #eff6ff 0, var(--bg) 32rem);
   color: var(--text);
   font-family: "Be Vietnam Pro", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -53,7 +56,7 @@ textarea {
 .nav {
   width: min(1160px, calc(100% - 32px));
   margin: 0 auto;
-  min-height: 76px;
+  min-height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -87,12 +90,18 @@ textarea {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 8px;
   color: #334155;
   font-weight: 600;
 }
 
+.nav-links a {
+  border-radius: 999px;
+  padding: 9px 12px;
+}
+
 .nav-links a:hover {
+  background: #eff6ff;
   color: var(--blue);
 }
 
@@ -113,14 +122,34 @@ textarea {
 
 .hero {
   display: grid;
-  grid-template-columns: 1.4fr 0.8fr;
+  grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.85fr);
   align-items: center;
   gap: 28px;
-  min-height: 540px;
+  min-height: 560px;
+  padding-top: 54px;
+}
+
+.hero-copy {
+  position: relative;
+}
+
+.hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--blue-dark);
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.1);
 }
 
 .hero h1 {
-  font-size: clamp(36px, 6vw, 68px);
+  font-size: clamp(38px, 6.5vw, 72px);
   line-height: 1.05;
   letter-spacing: -0.055em;
   margin: 12px 0 18px;
@@ -131,6 +160,24 @@ textarea {
   font-size: 18px;
   line-height: 1.75;
   max-width: 720px;
+}
+
+.hero-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 22px 0;
+}
+
+.hero-highlights span {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: #334155;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .eyebrow {
@@ -150,6 +197,10 @@ textarea {
   align-items: center;
 }
 
+.hero-actions {
+  margin-top: 24px;
+}
+
 .button {
   border: 0;
   border-radius: 999px;
@@ -161,6 +212,13 @@ textarea {
 
 .button:hover {
   transform: translateY(-1px);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+  box-shadow: none;
 }
 
 .button.primary {
@@ -190,7 +248,29 @@ textarea {
 }
 
 .today-card {
+  position: relative;
+  overflow: hidden;
   padding: 24px;
+}
+
+.today-card::before {
+  content: "";
+  position: absolute;
+  inset: -40% -35% auto auto;
+  width: 220px;
+  height: 220px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.today-card > * {
+  position: relative;
+}
+
+.today-card-note {
+  color: #475569;
+  line-height: 1.65;
+  margin: 14px 0 0;
 }
 
 .card-title,
@@ -218,6 +298,7 @@ textarea {
 
 .task-list li {
   padding: 14px 16px;
+  border: 1px solid var(--line);
   background: #f8fafc;
   border-radius: 18px;
 }
@@ -238,10 +319,24 @@ textarea {
   grid-template-columns: repeat(4, 1fr);
   gap: 18px;
   padding-top: 0;
+  padding-bottom: 18px;
 }
 
 .stat-card {
+  position: relative;
+  overflow: hidden;
   padding: 22px;
+}
+
+.stat-card::after {
+  content: "";
+  position: absolute;
+  right: -34px;
+  top: -34px;
+  width: 96px;
+  height: 96px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
 }
 
 .stat-card span,
@@ -253,6 +348,230 @@ textarea {
   display: block;
   font-size: 34px;
   margin: 8px 0 2px;
+}
+
+.quick-path {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  padding-top: 0;
+}
+
+.quick-path a {
+  display: grid;
+  gap: 8px;
+  min-height: 140px;
+  border: 1px solid rgba(191, 219, 254, 0.9);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+  padding: 18px;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.quick-path a:hover {
+  transform: translateY(-3px);
+  border-color: var(--blue);
+  box-shadow: 0 20px 46px rgba(37, 99, 235, 0.14);
+}
+
+.quick-path span {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.quick-path strong {
+  font-size: 18px;
+}
+
+.quick-path small {
+  color: #64748b;
+  line-height: 1.55;
+}
+
+.knowledge-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+  gap: 28px;
+  align-items: center;
+  padding-top: 56px;
+}
+
+.knowledge-hero h1 {
+  font-size: clamp(38px, 6vw, 68px);
+  line-height: 1.05;
+  letter-spacing: -0.055em;
+  margin: 14px 0 18px;
+}
+
+.knowledge-hero p {
+  color: #334155;
+  font-size: 18px;
+  line-height: 1.75;
+  max-width: 760px;
+}
+
+.knowledge-map-card {
+  border: 1px solid rgba(191, 219, 254, 0.9);
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(239, 246, 255, 0.92)),
+    radial-gradient(circle at top right, rgba(249, 115, 22, 0.14), transparent 16rem);
+  box-shadow: var(--shadow);
+  padding: 24px;
+}
+
+.knowledge-map-card span {
+  display: inline-flex;
+  border-radius: 999px;
+  background: var(--blue);
+  color: #ffffff;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.knowledge-map-card ol {
+  margin: 18px 0 0;
+  padding-left: 22px;
+  color: #334155;
+  line-height: 1.8;
+  font-weight: 700;
+}
+
+.knowledge-subject {
+  padding-top: 24px;
+}
+
+.knowledge-subject[hidden] {
+  display: none;
+}
+
+.knowledge-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.study-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.07);
+  padding: 22px;
+}
+
+.study-card::after {
+  content: "";
+  position: absolute;
+  right: -42px;
+  top: -42px;
+  width: 128px;
+  height: 128px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+}
+
+.study-card.emphasis {
+  border-color: #fed7aa;
+  background: linear-gradient(135deg, #fff7ed, #ffffff);
+}
+
+.study-card.emphasis::after {
+  background: rgba(249, 115, 22, 0.16);
+}
+
+.study-card > * {
+  position: relative;
+}
+
+.study-badge {
+  display: inline-flex;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+  padding: 6px 11px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.study-card.emphasis .study-badge {
+  background: var(--orange);
+  color: #ffffff;
+}
+
+.study-card h3 {
+  margin: 14px 0;
+  font-size: 22px;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+}
+
+.study-memory {
+  display: grid;
+  gap: 10px;
+  border-radius: 18px;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  padding: 14px;
+}
+
+.study-memory p {
+  margin: 0;
+  color: #334155;
+  line-height: 1.65;
+}
+
+.study-memory b {
+  color: var(--blue-dark);
+}
+
+.study-card ul {
+  margin: 14px 0 0;
+  padding-left: 20px;
+  color: #475569;
+  line-height: 1.75;
+}
+
+.knowledge-portal-card {
+  background:
+    linear-gradient(135deg, rgba(239, 246, 255, 0.95), rgba(255, 247, 237, 0.88)),
+    #ffffff;
+}
+
+.knowledge-portal-card h3 {
+  margin: 8px 0 10px;
+  font-size: 28px;
+}
+
+.knowledge-portal-card p {
+  color: #475569;
+  line-height: 1.7;
+}
+
+.knowledge-portal-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.knowledge-portal-points span {
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .panel {
@@ -278,6 +597,9 @@ textarea {
 
 .exam-stats-panel {
   overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9)),
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 24rem);
 }
 
 .stats-summary-grid {
@@ -307,7 +629,6 @@ textarea {
 
 .exam-analysis-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(360px, 1fr);
   gap: 20px;
 }
 
@@ -315,7 +636,7 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 22px;
   padding: 22px;
-  background: white;
+  background: rgba(255, 255, 255, 0.94);
 }
 
 .essential-card {
@@ -333,6 +654,14 @@ textarea {
 
 .heatmap-card {
   min-width: 0;
+}
+
+.exam-analysis-layout .heatmap-card {
+  grid-column: 1 / -1;
+}
+
+.heatmap-card .trend-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .trend-list {
@@ -457,6 +786,77 @@ textarea {
   margin: 0 0 10px;
 }
 
+.essential-memory-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.memory-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  padding: 16px;
+  border: 1px solid var(--line);
+}
+
+.memory-card::after {
+  content: "";
+  position: absolute;
+  right: -34px;
+  top: -34px;
+  width: 96px;
+  height: 96px;
+  border-radius: 999px;
+  opacity: 0.22;
+}
+
+.memory-card span {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 900;
+  margin-bottom: 10px;
+}
+
+.memory-card p {
+  position: relative;
+  margin: 0;
+  color: #1f2937;
+  font-weight: 700;
+  line-height: 1.65;
+}
+
+.knowledge-card {
+  background: linear-gradient(135deg, #eff6ff, #ffffff);
+  border-color: #bfdbfe;
+}
+
+.knowledge-card::after {
+  background: var(--blue);
+}
+
+.knowledge-card span {
+  background: var(--blue);
+  color: #ffffff;
+}
+
+.formula-card {
+  background: linear-gradient(135deg, #fff7ed, #ffffff);
+  border-color: #fed7aa;
+}
+
+.formula-card::after {
+  background: var(--orange);
+}
+
+.formula-card span {
+  background: var(--orange);
+  color: #ffffff;
+}
+
 .essential-detail ol {
   margin: 8px 0 12px;
   padding-left: 20px;
@@ -544,7 +944,7 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 22px;
   padding: 20px;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.94);
 }
 
 .analysis-wide {
@@ -656,7 +1056,18 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 22px;
   padding: 22px;
-  background: #fff;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.question-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96)),
+    radial-gradient(circle at top right, rgba(249, 115, 22, 0.12), transparent 18rem);
+}
+
+.side-panel {
+  align-self: start;
+  background: #f8fafc;
 }
 
 .question-meta span {
@@ -672,6 +1083,48 @@ textarea {
 .question-card h3 {
   font-size: 24px;
   line-height: 1.45;
+}
+
+.literature-question-prompt {
+  display: grid;
+  gap: 14px;
+  font-size: 17px;
+}
+
+.literature-intro {
+  margin: 0;
+  color: #334155;
+}
+
+.literature-passage {
+  border: 1px solid #bfdbfe;
+  border-radius: 18px;
+  background: #eff6ff;
+  padding: 16px;
+}
+
+.literature-passage strong {
+  display: block;
+  color: var(--blue-dark);
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.literature-passage div {
+  color: #1e3a8a;
+  font-weight: 600;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.literature-task {
+  border: 1px solid #fed7aa;
+  border-radius: 18px;
+  background: #fff7ed;
+  color: #7c2d12;
+  padding: 14px 16px;
+  line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 .choices {
@@ -752,13 +1205,35 @@ textarea {
 }
 
 .exam-card {
+  position: relative;
+  overflow: hidden;
   padding: 22px;
+  min-height: 220px;
+  display: grid;
+  align-content: space-between;
+}
+
+.exam-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 5px;
+  background: linear-gradient(90deg, var(--blue), var(--orange));
+}
+
+.exam-card h3 {
+  margin: 0;
+  font-size: 24px;
 }
 
 .exam-card p,
 .analytics-grid p {
   color: #475569;
   line-height: 1.7;
+}
+
+.exam-card .button {
+  width: fit-content;
 }
 
 .mock-exam {
@@ -1563,6 +2038,68 @@ textarea {
   background: #ffffff;
 }
 
+.math-answer-box {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  color: #1e3a8a;
+  font-weight: 900;
+}
+
+.math-answer-box textarea {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  border: 1px solid #bfdbfe;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 12px 14px;
+  font: inherit;
+  line-height: 1.6;
+}
+
+.math-answer-box textarea:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  outline: none;
+}
+
+.math-result-card {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
+.math-self-check {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.self-check-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.self-check-grid label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  background: #fff7ed;
+  color: #7c2d12;
+  font-weight: 900;
+  padding: 10px 12px;
+}
+
+.self-check-grid input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--orange);
+}
+
 .timed-exam-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1603,6 +2140,7 @@ textarea {
 
 @media (max-width: 900px) {
   .hero,
+  .knowledge-hero,
   .practice-layout,
   .analytics-grid,
   .exam-analysis-layout,
@@ -1615,6 +2153,7 @@ textarea {
 
   .stats-grid,
   .exam-grid,
+  .quick-path,
   .stats-summary-grid,
   .real-exam-grid,
   .real-exam-summary,
@@ -1626,6 +2165,10 @@ textarea {
 
   .filters,
   .real-exam-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .knowledge-card-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1652,6 +2195,14 @@ textarea {
 
   .timed-exam-sidebar {
     position: static;
+  }
+
+  .self-check-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .heatmap-card .trend-list {
+    grid-template-columns: 1fr;
   }
 
   .primary-action-buttons {
@@ -1688,6 +2239,7 @@ textarea {
 
   .stats-grid,
   .exam-grid,
+  .quick-path,
   .stats-summary-grid,
   .real-exam-grid,
   .real-exam-summary,
@@ -1701,5 +2253,15 @@ textarea {
   .today-card {
     border-radius: 22px;
     padding: 20px;
+  }
+
+  .study-card,
+  .knowledge-map-card {
+    border-radius: 22px;
+    padding: 20px;
+  }
+
+  .essential-memory-grid {
+    grid-template-columns: 1fr;
   }
 }

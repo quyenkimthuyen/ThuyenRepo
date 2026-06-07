@@ -103,34 +103,36 @@ const topicNames = {
 
 const examTemplates = {
   Toan: [
-    "Bài 1: Hàm số bậc hai/parabol, đồ thị và tọa độ điểm.",
-    "Bài 2: Phương trình bậc hai, điều kiện nghiệm, hệ thức Viète.",
-    "Bài 3: Xác suất - thống kê hoặc đọc dữ liệu thực tế.",
-    "Bài 4-6: Toán thực tế, lập biểu thức/phương trình, đo lường, hình học thực tế.",
-    "Bài cuối: Hình học phẳng, tứ giác nội tiếp, đồng dạng, hệ thức và câu phân loại.",
+    "Bài 1: Parabol y = ax², tọa độ điểm, đồ thị và giao điểm cơ bản.",
+    "Bài 2: Phương trình bậc hai, điều kiện nghiệm và hệ thức Viète.",
+    "Bài 3: Xác suất - thống kê, bảng số liệu, tỉ lệ hoặc đọc dữ liệu thực tế.",
+    "Bài 4-5: Toán thực tế: chi phí, khuyến mãi, chuyển động, năng suất, điều kiện tối ưu.",
+    "Bài 6: Hình học thực tế/đo lường: diện tích, thể tích, đổi đơn vị, làm tròn.",
+    "Bài 7: Hình học phẳng phân loại: đường tròn, nội tiếp, đồng dạng, tiếp tuyến, hệ thức.",
   ],
   NguVan: [
-    "Đọc hiểu ngữ liệu ngoài SGK: nội dung, chi tiết, phép liên kết/biện pháp tu từ, thông điệp.",
-    "Viết đoạn/bài nghị luận xã hội: quan điểm, dẫn chứng, phản biện, hành động.",
-    "Nghị luận văn học hoặc đề mở về trải nghiệm đọc: phân tích chi tiết, liên hệ và diễn đạt.",
+    "Phần đọc hiểu: ngữ liệu ngoài SGK, chi tiết tiêu biểu, thông điệp, tiếng Việt trong ngữ cảnh.",
+    "Phần viết ngắn: đoạn/bài theo vấn đề rút từ ngữ liệu, có câu chủ đề, luận điểm, dẫn chứng.",
+    "Phần nghị luận xã hội: quan điểm cá nhân, phản biện nhẹ, giải pháp và liên hệ hành động.",
+    "Phần văn học/đề mở: phân tích chi tiết nghệ thuật, liên hệ tác phẩm hoặc trải nghiệm đọc.",
   ],
   TiengAnh: [
     "Câu 1-4: Ngữ âm và trọng âm.",
-    "Câu 5-16: Từ vựng, ngữ pháp, giao tiếp.",
-    "Câu 17-28: Đọc hiểu và cloze test.",
-    "Câu 29-40: Word forms, guided writing, sentence transformation.",
+    "Câu 5-16: Từ vựng, ngữ pháp, giới từ/cụm từ, biển báo/thông báo và giao tiếp.",
+    "Câu 17-22: Cloze test theo đoạn văn, kiểm tra ngữ pháp, từ vựng và liên kết câu.",
+    "Câu 23-28: Reading comprehension, True/False, main idea, detail, inference/reference.",
+    "Câu 29-34: Word forms và từ loại.",
+    "Câu 35-40: Guided writing, sentence transformation, rearrangement/rewriting.",
   ],
 };
 
 const mathExamBlueprint = [
   { topic: "HamSoBacHai", count: 1 },
-  { topic: "DoThi", count: 1 },
   { topic: "PhuongTrinhBacHai", count: 1 },
   { topic: "XacSuatThongKe", count: 1 },
   { topic: "ToanThucTe", count: 2 },
   { topic: "HinhKhongGian", count: 1 },
-  { topic: "HinhHocPhang", count: 2 },
-  { topic: "DuongTron", count: 1 },
+  { topic: "HinhHocPhang", count: 1 },
 ];
 
 const literatureExamBlueprint = [
@@ -139,7 +141,7 @@ const literatureExamBlueprint = [
   { topic: "ThongDiepVanBan", count: 1 },
   { topic: "BienPhapTuTu", count: 1 },
   { topic: "VietDoanVan", count: 1 },
-  { topic: "NghiLuanXaHoi", count: 1 },
+  { topic: "NghiLuanXaHoi", count: 2 },
   { topic: "DanChungXaHoi", count: 1 },
   { topic: "NghiLuanVanHoc", count: 1 },
 ];
@@ -756,57 +758,139 @@ const yearlyExamStats = [
     note: "Word forms và sentence transformation là nhóm dễ phân hóa.",
   },
   {
-    year: "2022-2026",
+    year: "2025",
     subject: "Toán",
-    pattern: "Dạng quen thuộc lặp lại",
-    topics: "Hàm số, phương trình bậc hai, bài toán thực tế, hình học",
-    score: "Khoảng 6-7 điểm nền",
-    level: "Nhận biết - vận dụng",
-    note: "Học sinh cần giữ điểm chắc ở bài đại số cơ bản trước khi xử lý câu khó.",
+    pattern: "7 bài theo GDPT 2018",
+    topics: "Parabol, Viète, thống kê-xác suất, toán thực tế, hình học phẳng",
+    score: "10 điểm",
+    level: "Vận dụng tăng",
+    note: "Bắt đầu thể hiện rõ cấu trúc mới, tăng dữ liệu thực tế và đọc hiểu tình huống.",
   },
   {
-    year: "2022-2026",
+    year: "2025",
+    subject: "Ngữ văn",
+    pattern: "2 phần tích hợp đọc hiểu và viết",
+    topics: "Ngữ liệu ngoài SGK, quan điểm cá nhân, nghị luận xã hội",
+    score: "10 điểm",
+    level: "Đọc hiểu - viết",
+    note: "Tiếp tục giảm học thuộc văn mẫu, yêu cầu đọc hiểu văn bản mới và lập luận riêng.",
+  },
+  {
+    year: "2025",
+    subject: "Tiếng Anh",
+    pattern: "40 câu, 4 phần",
+    topics: "Ngữ âm, grammar-vocabulary, reading/cloze, word forms, transformation",
+    score: "10 điểm",
+    level: "Trung bình - cao",
+    note: "Reading/cloze và nhóm câu cuối vẫn là phần phân loại rõ.",
+  },
+  {
+    year: "2024",
+    subject: "Toán",
+    pattern: "Đề theo cấu trúc quen thuộc",
+    topics: "Hàm số, phương trình bậc hai, toán thực tế, hình học",
+    score: "10 điểm",
+    level: "Nhận biết - vận dụng",
+    note: "Giữ lõi đại số và hình học, toán thực tế xuất hiện đều.",
+  },
+  {
+    year: "2024",
+    subject: "Ngữ văn",
+    pattern: "Đọc hiểu + viết",
+    topics: "Ngữ liệu ngoài SGK, tiếng Việt, nghị luận xã hội, văn học",
+    score: "10 điểm",
+    level: "Thông hiểu - vận dụng",
+    note: "Tập trung đọc hiểu văn bản mới, nêu thông điệp và viết có quan điểm.",
+  },
+  {
+    year: "2024",
+    subject: "Tiếng Anh",
+    pattern: "40 câu, 4 phần",
+    topics: "Từ vựng-ngữ pháp, reading, cloze, word forms, viết lại câu",
+    score: "10 điểm",
+    level: "Trung bình - cao",
+    note: "Cần chắc cụm từ, cấu trúc câu và đọc hiểu theo ngữ cảnh.",
+  },
+  {
+    year: "2023",
+    subject: "Toán",
+    pattern: "Đề theo cấu trúc quen thuộc",
+    topics: "Parabol, Viète, toán thực tế, hình học phẳng",
+    score: "10 điểm",
+    level: "Nhận biết - vận dụng cao",
+    note: "Hình học phẳng và toán thực tế tiếp tục giữ vai trò phân hóa.",
+  },
+  {
+    year: "2023",
     subject: "Ngữ văn",
     pattern: "Đọc hiểu + nghị luận",
-    topics: "Thông điệp, biện pháp tu từ, liên hệ bản thân, vấn đề đời sống",
-    score: "Khoảng 7 điểm nền",
+    topics: "Bức thư/ngữ liệu ngoài SGK, thành phần biệt lập, nghị luận xã hội, lựa chọn văn học",
+    score: "10 điểm",
     level: "Thông hiểu - vận dụng",
-    note: "Điểm cao phụ thuộc vào lập luận, dẫn chứng và diễn đạt.",
+    note: "Đề mở, yêu cầu học sinh trình bày suy nghĩ và chọn hướng viết phù hợp.",
   },
   {
-    year: "2022-2026",
+    year: "2023",
     subject: "Tiếng Anh",
-    pattern: "Trắc nghiệm + tự luận ngắn",
-    topics: "Từ loại, thì, giới từ, đọc hiểu, viết lại câu",
-    score: "Khoảng 6-8 điểm nền",
-    level: "Nhận biết - vận dụng",
-    note: "Cần luyện tốc độ và độ chính xác; sai nhỏ dễ mất điểm.",
+    pattern: "40 câu, 4 phần",
+    topics: "Grammar-vocabulary, signs/notices, cloze, reading, word forms, transformation",
+    score: "10 điểm",
+    level: "Trung bình - cao",
+    note: "Câu đọc hiểu và viết lại câu cần bám nghĩa, tránh chọn theo từ khóa đơn lẻ.",
+  },
+  {
+    year: "2022",
+    subject: "Toán",
+    pattern: "Đề theo cấu trúc quen thuộc",
+    topics: "Parabol, Viète, BMI, khuyến mãi, hình nón/hộp, SEA Games, hình học nội tiếp",
+    score: "10 điểm",
+    level: "Nhận biết - vận dụng cao",
+    note: "Nhiều tình huống thực tế cụ thể; hình học vẫn là phần phân loại lớn.",
+  },
+  {
+    year: "2022",
+    subject: "Ngữ văn",
+    pattern: "Đọc hiểu + viết",
+    topics: "Bức thông điệp của thời gian, phép liên kết, nghị luận trưởng thành, Sang thu",
+    score: "10 điểm",
+    level: "Thông hiểu - vận dụng",
+    note: "Yêu cầu đọc hiểu văn bản ngoài SGK và liên hệ quan điểm cá nhân.",
+  },
+  {
+    year: "2022",
+    subject: "Tiếng Anh",
+    pattern: "40 câu, 4 phần",
+    topics: "Pronunciation/stress, grammar-vocabulary, water cycle reading, cloze, word forms, transformation",
+    score: "10 điểm",
+    level: "Trung bình - cao",
+    note: "Cấu trúc 40 câu ổn định; word forms và transformation cần độ chính xác cao.",
   },
 ];
 
 const repeatedPatterns = {
   Toan: [
-    "Hàm số bậc hai/parabol: vẽ đồ thị, xét điểm thuộc đồ thị.",
-    "Phương trình bậc hai và hệ thức Viète.",
-    "Toán thực tế: lập biểu thức, lập phương trình/hệ phương trình.",
-    "Xác suất - thống kê: bảng số liệu, tỉ lệ, xác suất đơn giản.",
-    "Hình học thực tế: diện tích, thể tích, đường tròn, hình trụ/hộp.",
-    "Hình học phẳng: tứ giác nội tiếp, đồng dạng, chứng minh hệ thức.",
+    "Parabol/hàm số bậc hai: xét điểm thuộc đồ thị, tìm hệ số, giao điểm parabol - đường thẳng.",
+    "Phương trình bậc hai và Viète: điều kiện nghiệm, tổng - tích, biểu thức đối xứng của nghiệm.",
+    "Xác suất - thống kê: bảng số liệu, tỉ lệ phần trăm, trung bình cộng, xác suất đơn giản, tăng rõ ở 2025-2026.",
+    "Toán thực tế nhiều bước: BMI, khuyến mãi, nhiệt độ, điểm số thi đấu, chi phí, điều kiện ít nhất/nhiều nhất.",
+    "Hình học thực tế/đo lường: hình tròn, hình nón, hình trụ, hình hộp; đổi đơn vị và làm tròn.",
+    "Hình học phẳng phân loại: tứ giác nội tiếp, đường tròn, đồng dạng, tiếp tuyến, chứng minh hệ thức.",
   ],
   NguVan: [
-    "Đọc hiểu ngữ liệu ngoài SGK.",
-    "Câu hỏi thông điệp/ý nghĩa/tác dụng nghệ thuật.",
-    "Viết đoạn văn khoảng 200 chữ.",
-    "Nghị luận xã hội về vấn đề đời sống gần học sinh.",
-    "Yêu cầu liên hệ bản thân hoặc nêu giải pháp.",
+    "Đọc hiểu ngữ liệu ngoài SGK: văn bản văn học, nghị luận/thông tin, thư, đoạn trích đời sống.",
+    "Câu hỏi thông điệp/ý nghĩa/quan điểm: trả lời bằng căn cứ từ văn bản, không học thuộc văn mẫu.",
+    "Tiếng Việt trong ngữ cảnh: phép liên kết, thành phần biệt lập, biện pháp tu từ, tác dụng từ ngữ/hình ảnh.",
+    "Viết đoạn/bài theo vấn đề từ ngữ liệu: câu chủ đề, luận điểm, dẫn chứng, phản biện nhẹ, hành động.",
+    "Nghị luận xã hội gần học sinh: trưởng thành, suy nghĩ tích cực, cảm xúc, trách nhiệm, tự học, ứng xử.",
+    "Cảm thụ/nghị luận văn học hoặc đề mở: phân tích chi tiết nghệ thuật, liên hệ tác phẩm/trải nghiệm đọc.",
   ],
   TiengAnh: [
-    "Pronunciation và stress.",
-    "Tenses, passive voice, conditionals, reported speech, relative clauses.",
-    "Word forms và parts of speech.",
-    "Cloze test và reading comprehension.",
-    "Sentence transformation giữ nguyên nghĩa.",
-    "Dialogue completion/giao tiếp thường ngày.",
+    "Pronunciation/stress đầu đề: -ed, -s/-es, âm dễ nhầm, trọng âm 2-4 âm tiết.",
+    "Grammar-vocabulary câu 5-16: thì, dạng động từ, giới từ, cụm từ, biển báo/thông báo, hội thoại.",
+    "Cloze test câu 17-22: từ loại, collocation, liên từ, giới từ, mạch nghĩa trong đoạn.",
+    "Reading câu 23-28: True/False, main idea, detail, inference, reference, câu EXCEPT/NOT mentioned.",
+    "Word forms câu 29-34: noun/verb/adj/adv, tiền tố/hậu tố, nghĩa phủ định, số ít/số nhiều.",
+    "Guided writing/transformation câu 35-40: viết lại câu giữ nghĩa, rearrangement, passive, conditional, reported speech, present perfect.",
   ],
 };
 
@@ -978,6 +1062,7 @@ function renderExamStats(selectedSubject = "Toán") {
 }
 
 function renderEssentialKnowledge(subject) {
+  if (!elements.essentialList) return;
   const items = essentialKnowledge[subject] || [];
   elements.essentialList.innerHTML = items
     .map((item, index) => {
@@ -990,8 +1075,16 @@ function renderEssentialKnowledge(subject) {
             <small>Xem chi tiết</small>
           </button>
           <div class="essential-detail" hidden>
-            <p><b>Kiến thức:</b> ${escapeHtml(item.knowledge)}</p>
-            <p><b>Công thức/Cấu trúc:</b> ${escapeHtml(item.formula)}</p>
+            <div class="essential-memory-grid">
+              <section class="memory-card knowledge-card">
+                <span>Kiến thức cốt lõi</span>
+                <p>${escapeHtml(item.knowledge)}</p>
+              </section>
+              <section class="memory-card formula-card">
+                <span>Công thức / Cấu trúc cần thuộc</span>
+                <p>${escapeHtml(item.formula)}</p>
+              </section>
+            </div>
             ${evidence.length ? `
               <div class="essential-evidence">
                 <b>Đề thật đã ra:</b>
@@ -1066,6 +1159,7 @@ function renderCommonMistakes(subject) {
 }
 
 function renderQuestionWeightRecommendations() {
+  if (!elements.questionWeightList) return;
   elements.questionWeightList.innerHTML = questionWeightRecommendations
     .map((item) => `
       <div class="recommendation-item">
@@ -1133,9 +1227,14 @@ function bindEssentialDetailToggles() {
 
 function renderTopicOptions() {
   const currentSubject = elements.subjectFilter.value;
+  if (!currentSubject) {
+    elements.topicFilter.innerHTML = `<option value="all">Tất cả chuyên đề</option>`;
+    return;
+  }
+
   const topics = [...new Set(
     state.questions
-      .filter((question) => currentSubject === "all" || question.monHoc === currentSubject)
+      .filter((question) => question.monHoc === currentSubject)
       .map((question) => question.chuyenDe),
   )].sort((a, b) => topicLabel(a).localeCompare(topicLabel(b), "vi"));
 
@@ -1153,8 +1252,15 @@ function applyFilters() {
   const topic = elements.topicFilter.value;
   const level = elements.levelFilter.value;
 
+  if (!subject) {
+    state.filtered = [];
+    renderQuestion();
+    renderSubjectBars();
+    return;
+  }
+
   state.filtered = state.questions.filter((question) => {
-    const matchSubject = subject === "all" || question.monHoc === subject;
+    const matchSubject = question.monHoc === subject;
     const matchTopic = topic === "all" || question.chuyenDe === topic;
     const matchLevel = level === "all" || question.mucDo === level;
     return matchSubject && matchTopic && matchLevel;
@@ -1170,24 +1276,75 @@ function pickQuestion() {
   return state.filtered[index];
 }
 
+function renderPracticeQuestionPrompt(question) {
+  const prompt = String(question?.deBai || "");
+  if (question?.monHoc !== "NguVan") return escapeHtml(prompt);
+
+  const match = prompt.match(/^(.+?:)\s*[“"]([\s\S]+)[”"]\s*(Câu hỏi:[\s\S]*)$/);
+  if (!match) {
+    return `
+      <div class="literature-question-prompt">
+        <section class="literature-task">
+          ${escapeHtml(prompt)}
+        </section>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="literature-question-prompt">
+      <p class="literature-intro">${escapeHtml(match[1])}</p>
+      <section class="literature-passage" aria-label="Ngữ liệu">
+        <strong>Ngữ liệu</strong>
+        <div>${escapeHtml(match[2])}</div>
+      </section>
+      <section class="literature-task">
+        ${escapeHtml(match[3])}
+      </section>
+    </div>
+  `;
+}
+
 function renderQuestion() {
+  if (!elements.subjectFilter.value) {
+    state.current = null;
+    elements.feedback.hidden = true;
+    elements.feedback.className = "feedback";
+    elements.freeAnswer.value = "";
+    elements.choices.innerHTML = "";
+    elements.freeAnswerWrap.hidden = true;
+    elements.questionSubject.textContent = "Chưa chọn môn";
+    elements.questionLevel.textContent = "...";
+    elements.questionTitle.textContent = "Chọn môn học để bắt đầu luyện tập.";
+    elements.checkAnswer.disabled = true;
+    elements.nextQuestion.disabled = true;
+    elements.favoriteQuestion.disabled = true;
+    return;
+  }
+
   const question = pickQuestion();
   state.current = question;
   elements.feedback.hidden = true;
   elements.feedback.className = "feedback";
   elements.freeAnswer.value = "";
   elements.choices.innerHTML = "";
+  elements.checkAnswer.disabled = false;
+  elements.nextQuestion.disabled = false;
+  elements.favoriteQuestion.disabled = false;
 
   if (!question) {
     elements.questionSubject.textContent = "Không có dữ liệu";
     elements.questionLevel.textContent = "...";
     elements.questionTitle.textContent = "Không tìm thấy câu hỏi phù hợp với bộ lọc.";
+    elements.freeAnswerWrap.hidden = true;
+    elements.checkAnswer.disabled = true;
+    elements.favoriteQuestion.disabled = true;
     return;
   }
 
   elements.questionSubject.textContent = subjectNames[question.monHoc] || question.monHoc;
   elements.questionLevel.textContent = levelNames[question.mucDo] || question.mucDo;
-  elements.questionTitle.textContent = question.deBai;
+  elements.questionTitle.innerHTML = renderPracticeQuestionPrompt(question);
 
   if (question.luaChon?.length) {
     elements.freeAnswerWrap.hidden = true;
@@ -1260,10 +1417,6 @@ function renderProgress() {
   elements.answeredValue.textContent = state.answered;
   elements.accuracyValue.textContent = `${accuracy}%`;
   elements.xpValue.textContent = state.xp;
-  $("#aiRecommendation").textContent =
-    accuracy >= 75
-      ? "Em đang giữ tỷ lệ đúng tốt. Hãy tăng dần câu vận dụng cao và luyện đề có giới hạn thời gian."
-      : "Em nên ôn lại các câu sai ngay trong ngày và làm thêm 10 câu mức Nhận biết/Thông hiểu trước khi tăng độ khó.";
 }
 
 function renderHistory() {
@@ -1282,6 +1435,7 @@ function renderWeakness() {
 }
 
 function renderSubjectBars() {
+  if (!elements.subjectBars) return;
   const source = state.filtered.length ? state.filtered : state.questions;
   const counts = source.reduce((acc, question) => {
     acc[question.monHoc] = (acc[question.monHoc] || 0) + 1;
@@ -1324,8 +1478,8 @@ function buildMockExamQuestions(subject) {
     TiengAnh: englishExamBlueprint,
   };
   const targetCountBySubject = {
-    Toan: 10,
-    NguVan: 8,
+    Toan: 7,
+    NguVan: 9,
     TiengAnh: 40,
   };
   const blueprint = blueprintBySubject[subject] || [];

@@ -143,21 +143,32 @@ function renderPrimaryAction(exam) {
   const questionCount = exam.questions?.length || 0;
   const answerCount = exam.answerGuide?.length || 0;
   const canGradeEnglish = isEnglishGradableExam(exam);
+  const canPracticeMath = isMathPracticeExam(exam);
+  const isTimedPractice = canGradeEnglish || canPracticeMath;
+  const actionTitle = canGradeEnglish
+    ? "Làm bài Tiếng Anh có tính giờ và chấm điểm"
+    : canPracticeMath
+      ? "Làm bài Toán có tính giờ và tự đối chiếu"
+      : "Xem đề theo từng câu, mở đáp án khi cần";
+  const actionDescription = canGradeEnglish
+    ? `Đề có ${questionCount} câu và ${answerCount} đáp án đối chiếu. Đồng hồ chạy ${exam.durationMinutes} phút, nộp bài sẽ nhận điểm /10.`
+    : canPracticeMath
+      ? `Đề có ${questionCount} bài và ${answerCount} gợi ý đáp án. Đồng hồ chạy ${exam.durationMinutes} phút, nộp bài để xem hướng dẫn và tự chấm theo ý.`
+      : `Đề có ${questionCount} câu/bài và ${answerCount} gợi ý đáp án. Dùng tab Câu hỏi để đọc đề, bấm đáp án dưới từng câu để tự kiểm tra.`;
 
   detailElements.primaryAction.innerHTML = `
-    <article class="primary-action-card ${canGradeEnglish ? "english-mode" : ""}">
+    <article class="primary-action-card ${isTimedPractice ? "english-mode" : ""}">
       <div>
-        <p class="eyebrow">${canGradeEnglish ? "Chế độ thi tự động" : "Chế độ đọc và tra cứu"}</p>
-        <h3>${canGradeEnglish ? "Làm bài Tiếng Anh có tính giờ và chấm điểm" : "Xem đề theo từng câu, mở đáp án khi cần"}</h3>
-        <p>
-          ${canGradeEnglish
-            ? `Đề có ${questionCount} câu và ${answerCount} đáp án đối chiếu. Đồng hồ chạy ${exam.durationMinutes} phút, nộp bài sẽ nhận điểm /10.`
-            : `Đề có ${questionCount} câu/bài và ${answerCount} gợi ý đáp án. Dùng tab Câu hỏi để đọc đề, bấm đáp án dưới từng câu để tự kiểm tra.`}
-        </p>
+        <p class="eyebrow">${isTimedPractice ? "Chế độ thi có tính giờ" : "Chế độ đọc và tra cứu"}</p>
+        <h3>${actionTitle}</h3>
+        <p>${actionDescription}</p>
       </div>
       <div class="primary-action-buttons">
         ${canGradeEnglish ? `
           <button class="button primary" type="button" data-start-english-exam>Bắt đầu làm bài</button>
+        ` : ""}
+        ${canPracticeMath ? `
+          <button class="button primary" type="button" data-start-math-exam>Bắt đầu thi Toán</button>
         ` : ""}
         <button class="button ghost" type="button" data-scroll-questions>Xem câu hỏi</button>
         <button class="button subtle" type="button" data-open-answers>Xem đáp án tổng hợp</button>
@@ -193,8 +204,13 @@ function renderStructure(exam) {
     .join("");
 }
 
-function renderTimedExamSidebar(exam, endsAt) {
-  if (detailElements.sourcesTitle) detailElements.sourcesTitle.textContent = "Đang thi Tiếng Anh";
+function renderTimedExamSidebar(exam, endsAt, options = {}) {
+  const formId = options.formId || "englishTimedExamForm";
+  const heading = options.heading || `Đang thi ${exam.subjectLabel}`;
+  const note = options.note || "Đáp án được ẩn trong lúc làm bài. Hãy nộp bài để xem điểm và câu cần ôn lại.";
+  const submitText = options.submitText || "Nộp bài và chấm điểm";
+
+  if (detailElements.sourcesTitle) detailElements.sourcesTitle.textContent = heading;
   if (detailElements.structureTitle) detailElements.structureTitle.hidden = true;
   detailElements.structure.hidden = true;
   detailElements.sources.innerHTML = `
@@ -202,14 +218,14 @@ function renderTimedExamSidebar(exam, endsAt) {
       <div>
         <p class="eyebrow">Chế độ làm bài</p>
         <h3>${escapeHtml(exam.subjectLabel)} ${escapeHtml(exam.year)} - ${escapeHtml(exam.durationMinutes)} phút</h3>
-        <p>Đáp án được ẩn trong lúc làm bài. Hãy nộp bài để xem điểm và câu cần ôn lại.</p>
+        <p>${escapeHtml(note)}</p>
       </div>
       <div class="exam-timer" aria-live="polite">
         <span>Thời gian còn lại</span>
         <strong data-exam-timer>${formatDuration((endsAt - Date.now()) / 1000)}</strong>
       </div>
       <div class="timed-exam-actions">
-        <button class="button primary" type="submit" form="englishTimedExamForm">Nộp bài và chấm điểm</button>
+        <button class="button primary" type="submit" form="${escapeHtml(formId)}">${escapeHtml(submitText)}</button>
         <button class="button ghost" type="button" data-cancel-english-exam>Thoát chế độ thi</button>
       </div>
     </section>
@@ -231,6 +247,10 @@ function answersForQuestion(exam, questionNumber) {
 
 function isEnglishGradableExam(exam) {
   return exam?.subject === "TiengAnh" && exam.questions?.length && exam.answerGuide?.length;
+}
+
+function isMathPracticeExam(exam) {
+  return exam?.subject === "Toan" && exam.questions?.length && exam.answerGuide?.length;
 }
 
 function answerForQuestion(exam, questionNumber) {
@@ -414,7 +434,7 @@ function renderPassageQuestionGroup(groupQuestions, startIndex, exam, range) {
             data-passage-tab="${escapeHtml(groupId)}"
             data-passage-index="${offset}"
           >
-            Câu ${escapeHtml(question.number || startIndex + offset + 1)}
+            ${escapeHtml(question.number || startIndex + offset + 1)}
           </button>
         `).join("")}
       </div>
@@ -713,6 +733,119 @@ function renderEnglishExamResult(exam, summary) {
   `;
 }
 
+function renderMathExamForm(exam) {
+  const startedAt = detailState.timedMode?.startedAt || Date.now();
+  const endsAt = startedAt + exam.durationMinutes * 60 * 1000;
+  detailState.timedMode = {
+    startedAt,
+    endsAt,
+    submitted: false,
+  };
+
+  renderTimedExamSidebar(exam, endsAt, {
+    formId: "mathTimedExamForm",
+    heading: "Đang thi Toán",
+    note: "Toán là bài tự luận nên hệ thống không chấm tự động tuyệt đối. Hãy nhập đáp số/lời giải ngắn, nộp bài để đối chiếu đáp án và tự chấm theo hướng dẫn.",
+    submitText: "Nộp bài và xem đáp án",
+  });
+
+  detailElements.questions.innerHTML = `
+    <form id="mathTimedExamForm" class="timed-exam-form math-exam-form">
+      ${exam.questions.map((question, index) => `
+        <article class="detail-question-card timed-question-card">
+          <div class="question-meta">
+            <span>Bài ${escapeHtml(question.number || index + 1)}</span>
+            <span>${escapeHtml(question.points ? `${question.points} điểm` : "Toán")}</span>
+          </div>
+          <div class="exam-question-text">${escapeHtml(question.prompt)}</div>
+          <label class="math-answer-box">
+            Bài làm / đáp số của em
+            <textarea name="answer-${escapeHtml(question.number)}" rows="4" placeholder="Nhập đáp số hoặc tóm tắt các bước giải chính..."></textarea>
+          </label>
+        </article>
+      `).join("")}
+    </form>
+  `;
+
+  clearTimedExamTimer();
+  detailState.timerId = window.setInterval(() => {
+    const remainingMs = endsAt - Date.now();
+    const timer = document.querySelector("[data-exam-timer]");
+    if (timer) timer.textContent = formatDuration(remainingMs / 1000);
+    if (remainingMs <= 0) {
+      submitMathTimedExam(exam, true);
+    }
+  }, 1000);
+}
+
+function submitMathTimedExam(exam, timedOut = false) {
+  const form = detailElements.questions.querySelector("#mathTimedExamForm");
+  if (!form || detailState.timedMode?.submitted) return;
+  detailState.timedMode.submitted = true;
+  clearTimedExamTimer();
+  renderSources(exam);
+  renderStructure(exam);
+
+  const formData = new FormData(form);
+  const results = exam.questions.map((question) => {
+    const answer = answerForQuestion(exam, question.number);
+    return {
+      number: question.number,
+      prompt: question.prompt,
+      points: Number(question.points || 1),
+      userAnswer: formData.get(`answer-${question.number}`) || "",
+      expected: answer?.answer || answer?.correctAnswer || "Chưa nhập đáp án",
+      explanation: answer?.explanation || "",
+      reviewGuide: answer?.reviewGuide || null,
+    };
+  });
+
+  renderMathExamResult(exam, {
+    timedOut,
+    results,
+    total: results.reduce((sum, item) => sum + item.points, 0),
+  });
+}
+
+function renderMathExamResult(exam, summary) {
+  detailElements.questions.innerHTML = `
+    <section class="timed-exam-card result">
+      <div>
+        <p class="eyebrow">Kết quả tự đối chiếu</p>
+        <h3>${escapeHtml(exam.subjectLabel)} ${escapeHtml(exam.year)} - ${summary.total.toFixed(1)} điểm</h3>
+        <p>
+          ${summary.timedOut ? "Bài đã được tự nộp vì hết giờ." : "Bài đã được nộp."}
+          Hãy so đáp số/lời giải của em với hướng dẫn bên dưới và tự đánh dấu mức đạt từng ý.
+        </p>
+      </div>
+      <button class="button primary" type="button" data-start-math-exam>Làm lại đề này</button>
+    </section>
+
+    <div class="timed-result-list">
+      ${summary.results.map((item) => `
+        <article class="detail-question-card timed-result-card math-result-card">
+          <div class="question-meta">
+            <span>Bài ${escapeHtml(item.number)}</span>
+            <span>Tự chấm / ${item.points.toFixed(2)} điểm</span>
+          </div>
+          <div class="exam-question-text">${escapeHtml(item.prompt)}</div>
+          <div class="math-self-check">
+            <p><b>Bài làm của em:</b> ${escapeHtml(item.userAnswer || "Chưa trả lời")}</p>
+            <p><b>Đáp án/gợi ý:</b> ${escapeHtml(item.expected)}</p>
+            ${item.explanation ? `<p><b>Hướng dẫn:</b> ${escapeHtml(item.explanation)}</p>` : ""}
+            <div class="self-check-grid" aria-label="Tự chấm mức đạt">
+              <label><input type="checkbox" /> Đúng đáp số</label>
+              <label><input type="checkbox" /> Có lập luận/công thức</label>
+              <label><input type="checkbox" /> Đủ điều kiện, đơn vị, kết luận</label>
+            </div>
+          </div>
+          ${renderReviewGuide(item.reviewGuide)}
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
 function renderAnswerList(exam) {
   const answers = exam.answerGuide.length ? exam.answerGuide : exam.questions;
   if (!answers.length) {
@@ -817,9 +950,15 @@ function bindEvents() {
       if (isEnglishGradableExam(detailState.exam)) renderEnglishExamForm(detailState.exam);
       return;
     }
+    if (event.target.closest("[data-start-math-exam]")) {
+      if (isMathPracticeExam(detailState.exam)) renderMathExamForm(detailState.exam);
+      return;
+    }
     if (event.target.closest("[data-cancel-english-exam]")) {
       clearTimedExamTimer();
       detailState.timedMode = null;
+      renderSources(detailState.exam);
+      renderStructure(detailState.exam);
       renderQuestionList(detailState.exam);
     }
   });
@@ -840,6 +979,11 @@ function bindEvents() {
       if (isEnglishGradableExam(detailState.exam)) renderEnglishExamForm(detailState.exam);
       return;
     }
+    if (event.target.closest("[data-start-math-exam]")) {
+      setActiveTab("questions");
+      if (isMathPracticeExam(detailState.exam)) renderMathExamForm(detailState.exam);
+      return;
+    }
     if (event.target.closest("[data-scroll-questions]")) {
       setActiveTab("questions");
       detailElements.questions.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -855,6 +999,10 @@ function bindEvents() {
     if (event.target?.id === "englishTimedExamForm") {
       event.preventDefault();
       submitEnglishTimedExam(detailState.exam);
+    }
+    if (event.target?.id === "mathTimedExamForm") {
+      event.preventDefault();
+      submitMathTimedExam(detailState.exam);
     }
   });
 }
