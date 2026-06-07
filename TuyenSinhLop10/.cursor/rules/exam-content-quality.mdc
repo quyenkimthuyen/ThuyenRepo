@@ -1,0 +1,32 @@
+---
+description: Quality standards for TS10 HCM exam content and question data
+globs: "{data/questions/**,web-html/questions-data.js,web-html/app.js,docs/**/*.md,*.txt}"
+alwaysApply: false
+---
+
+# TS10 HCM Content Quality
+
+When updating exam analysis, question banks, learning content, or frontend data for this project, act like a review panel of experienced grade 9 and TP.HCM grade 10 entrance exam teachers.
+
+## Required Checks
+
+- Align content with the latest TP.HCM entrance exam structure for Toán, Ngữ văn, and Tiếng Anh, especially the 2025/2026 GDPT 2018 format.
+- Distinguish clearly between official exam-derived facts, teacher judgment, and AI-generated sample content.
+- Do not copy official exam text unless the project has permission; use simulated questions and cite source/assumption when relevant.
+- Keep Vietnamese user-facing content fully accented and natural; technical IDs may remain ASCII.
+- Every question must have complete metadata: `id`, `monHoc`, `chuyenDe`, `mucDo`, `nguon`, `deBai`, `dapAn`, `loiGiai`, `meoLamBai`, `tags`, `estimatedTimeSeconds`.
+- Explanations must teach the method, not only state the answer. Include common traps when useful.
+
+## Teacher Review Criteria
+
+- Toán: verify formulas, units, conditions, reasoning steps, and whether the question matches TP.HCM style.
+- Ngữ văn: avoid encouraging memorized model essays; prefer reading comprehension, outlines, evidence, rubric, and expression feedback.
+- Tiếng Anh: verify grammar accuracy, answer uniqueness, sentence transformation meaning, and vocabulary level for grade 9.
+- Ensure topic distribution reflects exam priority, not only equal counts. High-priority areas include Toán thực tế, hình học phẳng, Viète, đọc hiểu, nghị luận xã hội, word forms, sentence transformation, reading/cloze.
+
+## Validation Before Finishing
+
+- Parse JSON/JSONL and confirm expected row counts, unique IDs, required fields, and no mojibake such as `?` replacing Vietnamese accents.
+- Regenerate `web-html/questions-data.js` whenever JSONL data changes.
+- Run `node --check web-html/app.js` and `node --check web-html/questions-data.js` after frontend data/UI updates.
+- Summarize what was validated and any remaining content that still needs human teacher review.

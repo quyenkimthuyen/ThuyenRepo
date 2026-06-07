@@ -185,6 +185,85 @@ h3 {
   font-weight: 700;
 }
 
+.level-now-playing {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  border: 1px solid #bfdbfe;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 32%),
+    #eff6ff;
+  margin: 0 0 22px;
+  padding: clamp(18px, 3vw, 26px);
+  box-shadow: 0 18px 50px rgba(37, 99, 235, 0.12);
+}
+
+.level-now-playing[hidden] {
+  display: none;
+}
+
+.level-now-playing span {
+  display: block;
+  margin-bottom: 10px;
+  color: #1d4ed8;
+  font-size: 0.92rem;
+  font-weight: 900;
+  line-height: 1.5;
+}
+
+.level-now-playing strong {
+  display: block;
+  margin-bottom: 10px;
+  color: #0f172a;
+  font-size: clamp(1.45rem, 4vw, 2.45rem);
+  letter-spacing: -0.03em;
+  line-height: 1.16;
+}
+
+.level-now-playing small {
+  display: block;
+  color: #1e40af;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  font-weight: 800;
+  line-height: 1.55;
+}
+
+.level-now-playing__progress {
+  display: grid;
+  min-width: 86px;
+  min-height: 86px;
+  place-items: center;
+  border-radius: 50%;
+  background: #2563eb;
+  color: white;
+  font-size: 1.05rem;
+  font-weight: 900;
+  box-shadow: 0 14px 28px rgba(37, 99, 235, 0.24);
+}
+
+.level-now-playing__side {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+
+.stop-audio-button {
+  border: 0;
+  border-radius: 999px;
+  background: #dc2626;
+  padding: 10px 14px;
+  color: white;
+  font-size: 0.82rem;
+  font-weight: 900;
+  box-shadow: 0 10px 22px rgba(220, 38, 38, 0.18);
+}
+
+.stop-audio-button:hover {
+  background: #b91c1c;
+}
+
 .lesson-shell {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
@@ -216,6 +295,46 @@ h3 {
 
 .level-list {
   margin-bottom: 22px;
+}
+
+.level-audio-panel {
+  display: grid;
+  gap: 8px;
+  margin: -8px 0 22px;
+  border: 1px solid #bfdbfe;
+  border-radius: 20px;
+  background: #eff6ff;
+  padding: 14px;
+}
+
+.level-audio-panel small {
+  color: #1d4ed8;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.play-level-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: #2563eb;
+  padding: 11px 16px;
+  color: white;
+  font-size: 0.86rem;
+  font-weight: 900;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.2);
+}
+
+.play-level-button:disabled {
+  cursor: wait;
+  opacity: 0.82;
+}
+
+.play-level-button.is-playing {
+  background: #16a34a;
 }
 
 .level-card,
@@ -354,6 +473,81 @@ select {
   gap: 16px;
   align-items: center;
   justify-content: space-between;
+}
+
+.sentence-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #fed7aa;
+  border-radius: 18px;
+  background: #fff7ed;
+  padding: 12px 14px;
+}
+
+.sentence-toolbar small {
+  color: #9a3412;
+  font-weight: 800;
+}
+
+.play-all-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: #ea580c;
+  padding: 11px 16px;
+  color: white;
+  font-size: 0.86rem;
+  font-weight: 900;
+  box-shadow: 0 10px 22px rgba(234, 88, 12, 0.2);
+}
+
+.play-all-button:disabled {
+  cursor: wait;
+  opacity: 0.82;
+}
+
+.play-all-button.is-playing {
+  background: #16a34a;
+}
+
+.now-playing-card {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #bbf7d0;
+  border-radius: 18px;
+  background: #f0fdf4;
+  padding: 14px 16px;
+}
+
+.now-playing-card[hidden] {
+  display: none;
+}
+
+.now-playing-card span {
+  color: #15803d;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.now-playing-card strong {
+  color: #111827;
+  font-size: clamp(1.15rem, 2.6vw, 1.55rem);
+  line-height: 1.35;
+}
+
+.now-playing-card small {
+  color: #166534;
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1.5;
 }
 
 .sentence-card strong,
@@ -708,6 +902,20 @@ select {
   .stats,
   .topic-list {
     grid-template-columns: 1fr;
+  }
+
+  .level-now-playing {
+    grid-template-columns: 1fr;
+  }
+
+  .level-now-playing__progress {
+    min-width: 64px;
+    min-height: 64px;
+    justify-self: start;
+  }
+
+  .level-now-playing__side {
+    justify-items: start;
   }
 
   .lesson-header,

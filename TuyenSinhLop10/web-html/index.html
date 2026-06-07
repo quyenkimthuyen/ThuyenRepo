@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ôn thi lớp 10 TP.HCM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <nav class="nav">
+        <a class="brand" href="#home" aria-label="Trang chủ">
+          <span class="brand-mark">10</span>
+          <span>
+            <strong>TS10 TP.HCM</strong>
+            <small>AI ôn luyện cá nhân hóa</small>
+          </span>
+        </a>
+        <button class="nav-toggle" type="button" aria-label="Mở menu" data-nav-toggle>☰</button>
+        <div class="nav-links" data-nav-links>
+          <a href="#home">Trang chủ</a>
+          <a href="#exam-stats">Thống kê đề</a>
+          <a href="./real-exams.html">Đề thi thật</a>
+          <a href="#practice">Luyện tập</a>
+          <a href="#exam">Thi thử</a>
+          <a href="#analytics">Phân tích</a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero section" id="home">
+        <div class="hero-copy">
+          <p class="eyebrow">Web HTML/CSS/JS tĩnh</p>
+          <h1>Ôn thi tuyển sinh lớp 10 TP.HCM theo đúng lộ trình của em.</h1>
+          <p>
+            Hệ thống hóa kiến thức Toán, Ngữ văn, Tiếng Anh; luyện câu hỏi theo chuyên đề,
+            thi thử theo cấu trúc TP.HCM 2025/2026 và nhận gợi ý học tập cá nhân hóa.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#practice">Bắt đầu luyện ngay</a>
+            <a class="button ghost" href="#exam">Thi thử mô phỏng</a>
+          </div>
+        </div>
+        <aside class="today-card" aria-label="Kế hoạch hôm nay">
+          <div class="card-title">
+            <span>Hôm nay học gì?</span>
+            <strong>90 phút</strong>
+          </div>
+          <ul class="task-list">
+            <li><span>Toán thực tế</span><strong>20 câu</strong></li>
+            <li><span>Từ loại</span><strong>15 câu</strong></li>
+            <li><span>Nghị luận xã hội</span><strong>1 dàn ý</strong></li>
+          </ul>
+          <div class="score-prediction">
+            <span>Dự đoán Toán</span>
+            <strong>7.5 - 8.0</strong>
+          </div>
+        </aside>
+      </section>
+
+      <section class="section stats-grid" aria-label="Tổng quan tiến độ">
+        <article class="stat-card">
+          <span>Chuỗi ngày</span>
+          <strong id="streakValue">7</strong>
+          <small>ngày học liên tục</small>
+        </article>
+        <article class="stat-card">
+          <span>Câu đã làm</span>
+          <strong id="answeredValue">0</strong>
+          <small>trong phiên này</small>
+        </article>
+        <article class="stat-card">
+          <span>Tỷ lệ đúng</span>
+          <strong id="accuracyValue">0%</strong>
+          <small>tính theo bài luyện</small>
+        </article>
+        <article class="stat-card">
+          <span>XP</span>
+          <strong id="xpValue">120</strong>
+          <small>Level 3</small>
+        </article>
+      </section>
+
+      <section class="section panel exam-stats-panel" id="exam-stats">
+        <div class="section-heading">
+          <p class="eyebrow">Nhận định từ thầy cô luyện thi</p>
+          <h2>Thống kê xu hướng đề tuyển sinh lớp 10 TP.HCM</h2>
+          <p class="section-note">
+            Tổng hợp theo cấu trúc đề TP.HCM nhiều năm gần đây và cập nhật theo định hướng
+            GDPT 2018 từ 2025/2026. Nội dung giúp học sinh biết phần nào cần nắm chắc để vượt qua kỳ thi.
+          </p>
+        </div>
+
+        <div class="stats-summary-grid" id="examStatsSummary"></div>
+
+        <div class="exam-analysis-layout">
+          <article class="trend-card essential-card">
+            <h3>Kiến thức bắt buộc phải nắm</h3>
+            <div class="subject-tabs" role="tablist" aria-label="Chọn môn xem kiến thức cần nắm">
+              <button class="subject-tab active" type="button" data-essential-subject="Toan">Toán</button>
+              <button class="subject-tab" type="button" data-essential-subject="NguVan">Ngữ văn</button>
+              <button class="subject-tab" type="button" data-essential-subject="TiengAnh">Tiếng Anh</button>
+            </div>
+            <ul class="essential-list" id="essentialList"></ul>
+          </article>
+
+          <article class="trend-card heatmap-card">
+            <h3>Heatmap chuyên đề thường gặp</h3>
+            <div class="subject-tabs" role="tablist" aria-label="Chọn môn xem heatmap chuyên đề">
+              <button class="subject-tab active" type="button" data-heatmap-subject="Toán">Toán</button>
+              <button class="subject-tab" type="button" data-heatmap-subject="Ngữ văn">Ngữ văn</button>
+              <button class="subject-tab" type="button" data-heatmap-subject="Tiếng Anh">Tiếng Anh</button>
+            </div>
+            <div class="trend-list" id="examTrendList"></div>
+          </article>
+        </div>
+
+        <div class="teacher-notes">
+          <article>
+            <strong>Chiến lược đạt điểm an toàn</strong>
+            <p>Nắm chắc câu nhận biết-thông hiểu, làm đúng phần quen thuộc trước, sau đó mới xử lý câu vận dụng.</p>
+          </article>
+          <article>
+            <strong>Chiến lược đạt 8+</strong>
+            <p>Luyện đều bài toán thực tế, đọc hiểu ngữ liệu mới, viết câu Anh chính xác và làm đề bấm giờ mỗi tuần.</p>
+          </article>
+          <article>
+            <strong>Lưu ý của thầy cô</strong>
+            <p>Không học tủ; đề TP.HCM ngày càng kiểm tra năng lực đọc hiểu, mô hình hóa và trình bày lời giải.</p>
+          </article>
+        </div>
+
+        <div class="deep-analysis-grid">
+          <article class="analysis-card analysis-wide">
+            <h3>Thống kê đề theo giai đoạn/năm</h3>
+            <div class="yearly-table-wrap">
+              <table class="yearly-table">
+                <thead>
+                  <tr>
+                    <th>Năm/Giai đoạn</th>
+                    <th>Môn</th>
+                    <th>Dạng bài</th>
+                    <th>Chuyên đề</th>
+                    <th>Mức độ</th>
+                    <th>Ghi chú</th>
+                  </tr>
+                </thead>
+                <tbody id="yearlyStatsBody"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="analysis-card">
+            <h3>Dạng bài lặp lại nhiều năm</h3>
+            <div class="subject-tabs" role="tablist" aria-label="Chọn môn xem dạng bài lặp lại">
+              <button class="subject-tab active" type="button" data-pattern-subject="Toan">Toán</button>
+              <button class="subject-tab" type="button" data-pattern-subject="NguVan">Ngữ văn</button>
+              <button class="subject-tab" type="button" data-pattern-subject="TiengAnh">Tiếng Anh</button>
+            </div>
+            <ul class="compact-list" id="repeatedPatternList"></ul>
+          </article>
+
+          <article class="analysis-card">
+            <h3>Mục tiêu điểm cần nắm gì?</h3>
+            <div class="subject-tabs" role="tablist" aria-label="Chọn môn xem mục tiêu điểm">
+              <button class="subject-tab active" type="button" data-score-subject="Toan">Toán</button>
+              <button class="subject-tab" type="button" data-score-subject="NguVan">Ngữ văn</button>
+              <button class="subject-tab" type="button" data-score-subject="TiengAnh">Tiếng Anh</button>
+            </div>
+            <div class="score-target-list" id="scoreTargetList"></div>
+          </article>
+
+          <article class="analysis-card">
+            <h3>Lỗi hay mất điểm</h3>
+            <div class="subject-tabs" role="tablist" aria-label="Chọn môn xem lỗi hay mất điểm">
+              <button class="subject-tab active" type="button" data-mistake-subject="Toan">Toán</button>
+              <button class="subject-tab" type="button" data-mistake-subject="NguVan">Ngữ văn</button>
+              <button class="subject-tab" type="button" data-mistake-subject="TiengAnh">Tiếng Anh</button>
+            </div>
+            <ul class="compact-list warning-list" id="commonMistakeList"></ul>
+          </article>
+
+          <article class="analysis-card">
+            <h3>Góp ý điều chỉnh ngân hàng câu hỏi</h3>
+            <div class="recommendation-list" id="questionWeightList"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="section panel" id="practice">
+        <div class="section-heading">
+          <p class="eyebrow">Ngân hàng câu hỏi</p>
+          <h2>Luyện tập theo môn, chuyên đề và mức độ</h2>
+        </div>
+        <div class="filters">
+          <label>
+            Môn học
+            <select id="subjectFilter">
+              <option value="all">Tất cả</option>
+              <option value="Toan">Toán</option>
+              <option value="NguVan">Ngữ văn</option>
+              <option value="TiengAnh">Tiếng Anh</option>
+            </select>
+          </label>
+          <label>
+            Chuyên đề
+            <select id="topicFilter">
+              <option value="all">Tất cả chuyên đề</option>
+            </select>
+          </label>
+          <label>
+            Mức độ
+            <select id="levelFilter">
+              <option value="all">Tất cả</option>
+              <option value="NhanBiet">Nhận biết</option>
+              <option value="ThongHieu">Thông hiểu</option>
+              <option value="VanDung">Vận dụng</option>
+              <option value="VanDungCao">Vận dụng cao</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="practice-layout">
+          <article class="question-card" id="questionCard">
+            <div class="question-meta">
+              <span id="questionSubject">Đang tải</span>
+              <span id="questionLevel">...</span>
+            </div>
+            <h3 id="questionTitle">Đang tải dữ liệu câu hỏi...</h3>
+            <div class="choices" id="choices"></div>
+            <label class="answer-box" id="freeAnswerWrap">
+              Câu trả lời của em
+              <textarea id="freeAnswer" rows="4" placeholder="Nhập câu trả lời hoặc dàn ý ngắn..."></textarea>
+            </label>
+            <div class="card-actions">
+              <button class="button primary" type="button" id="checkAnswer">Kiểm tra</button>
+              <button class="button ghost" type="button" id="nextQuestion">Câu khác</button>
+              <button class="button subtle" type="button" id="favoriteQuestion">Đánh dấu</button>
+            </div>
+            <div class="feedback" id="feedback" hidden></div>
+          </article>
+
+          <aside class="side-panel">
+            <h3>Điểm yếu cần cải thiện</h3>
+            <div class="weak-list" id="weakList">
+              <span>Hình học phẳng</span>
+              <span>Viết lại câu</span>
+              <span>Nghị luận xã hội</span>
+            </div>
+            <h3>Câu hỏi gần đây</h3>
+            <ol class="history" id="historyList"></ol>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section panel" id="exam">
+        <div class="section-heading">
+          <p class="eyebrow">Thi thử</p>
+          <h2>Đề mô phỏng sát cấu trúc TP.HCM</h2>
+        </div>
+        <div class="exam-grid">
+          <article class="exam-card">
+            <h3>Toán</h3>
+            <p>7 bài, 120 phút: hàm số, Viète, xác suất-thống kê, toán thực tế, hình học phẳng.</p>
+            <button class="button primary" data-exam="Toan">Tạo đề Toán</button>
+          </article>
+          <article class="exam-card">
+            <h3>Ngữ văn</h3>
+            <p>2 phần tích hợp đọc hiểu và viết, nhấn mạnh ngữ liệu ngoài SGK và nghị luận xã hội.</p>
+            <button class="button primary" data-exam="NguVan">Tạo đề Văn</button>
+          </article>
+          <article class="exam-card">
+            <h3>Tiếng Anh</h3>
+            <p>40 câu, 90 phút: ngữ âm, ngữ pháp-từ vựng, viết, đọc hiểu và cloze test.</p>
+            <button class="button primary" data-exam="TiengAnh">Tạo đề Anh</button>
+          </article>
+        </div>
+        <div class="mock-exam" id="mockExam" hidden></div>
+      </section>
+
+      <section class="section panel" id="analytics">
+        <div class="section-heading">
+          <p class="eyebrow">Dashboard</p>
+          <h2>Phân tích học tập trong phiên hiện tại</h2>
+        </div>
+        <div class="analytics-grid">
+          <article>
+            <h3>Phân bố câu hỏi</h3>
+            <div class="bars" id="subjectBars"></div>
+          </article>
+          <article>
+            <h3>Gợi ý AI</h3>
+            <p id="aiRecommendation">
+              Nếu duy trì nhịp học hiện tại, em nên ưu tiên câu vận dụng và ôn lại câu sai mỗi ngày.
+            </p>
+          </article>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="footer">
+      <p>Dữ liệu mẫu là AI-generated theo ma trận TP.HCM, cần giáo viên kiểm duyệt trước khi dùng thương mại.</p>
+    </footer>
+
+    <script src="./questions-data.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

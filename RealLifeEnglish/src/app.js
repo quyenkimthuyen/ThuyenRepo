@@ -21,6 +21,8 @@ const speechSettings = {
   volume: 1,
 };
 
+let audioSequenceId = 0;
+
 function getActiveData() {
   const activeLevel = levels.find((level) => level.id === state.activeLevelId) ?? levels[0];
   const activeTopic =
@@ -75,11 +77,33 @@ function render() {
         ${statCard(totalSituations, "Sample situations")}
       </section>
 
+      <section class="level-now-playing" data-level-now-playing hidden aria-live="polite">
+        <div>
+          <p class="section-label" data-level-now-playing-label>Playing Full Level</p>
+          <span data-level-now-playing-meta></span>
+          <strong data-level-now-playing-english></strong>
+          <small data-level-now-playing-meaning></small>
+        </div>
+        <div class="level-now-playing__side">
+          <div class="level-now-playing__progress" data-level-now-playing-progress></div>
+          <button class="stop-audio-button" type="button" data-stop-audio>
+            Stop Audio
+          </button>
+        </div>
+      </section>
+
       <section class="lesson-shell" id="lesson">
         <aside class="sidebar">
           <p class="section-label">Levels</p>
           <div class="level-list">
             ${levelStats.map((level) => levelButton(level, activeLevel)).join("")}
+          </div>
+          <div class="level-audio-panel">
+            <button class="play-level-button" type="button" data-play-all-level>
+              <span aria-hidden="true">▶</span>
+              Play All Level
+            </button>
+            <small>Auto plays all sentences in ${activeLevel.title}.</small>
           </div>
 
           <p class="section-label">Topics</p>
@@ -137,6 +161,8 @@ function render() {
 function bindEvents() {
   document.querySelectorAll("[data-level-id]").forEach((button) => {
     button.addEventListener("click", () => {
+      audioSequenceId += 1;
+      window.speechSynthesis?.cancel();
       const level = levels.find((item) => item.id === button.dataset.levelId);
       state.activeLevelId = level.id;
       state.activeTopicId = level.topics[0].id;
@@ -147,6 +173,8 @@ function bindEvents() {
 
   document.querySelectorAll("[data-topic-id]").forEach((button) => {
     button.addEventListener("click", () => {
+      audioSequenceId += 1;
+      window.speechSynthesis?.cancel();
       const { activeLevel } = getActiveData();
       const topic = activeLevel.topics.find((item) => item.id === button.dataset.topicId);
       state.activeTopicId = topic.id;
@@ -156,6 +184,8 @@ function bindEvents() {
   });
 
   document.getElementById("situation-select").addEventListener("change", (event) => {
+    audioSequenceId += 1;
+    window.speechSynthesis?.cancel();
     state.activeSituationId = event.target.value;
     render();
   });
@@ -163,6 +193,24 @@ function bindEvents() {
   document.querySelectorAll("[data-speak-text]").forEach((button) => {
     button.addEventListener("click", () => {
       speakEnglish(button.dataset.speakText, button);
+    });
+  });
+
+  document.querySelectorAll("[data-play-all-sentences]").forEach((button) => {
+    button.addEventListener("click", () => {
+      playAllSentences(button);
+    });
+  });
+
+  document.querySelectorAll("[data-play-all-level]").forEach((button) => {
+    button.addEventListener("click", () => {
+      playAllLevel(button);
+    });
+  });
+
+  document.querySelectorAll("[data-stop-audio]").forEach((button) => {
+    button.addEventListener("click", () => {
+      stopAudioPlayback();
     });
   });
 
@@ -213,9 +261,17 @@ function contentGrid(situation) {
       ${lessonSection(
         "Common Sentences",
         situation.sentences.length,
-        situation.sentences
-          .map(
-            (sentence) => `
+        `
+          <div class="sentence-toolbar">
+            <button class="play-all-button" type="button" data-play-all-sentences>
+              <span aria-hidden="true">▶</span>
+              Play All Sentences
+            </button>
+            <small>Auto plays every sentence in this situation.</small>
+          </div>
+          ${situation.sentences
+            .map(
+              (sentence) => `
               <article class="sentence-card">
                 <div>
                   <strong>${sentence.english}</strong>
@@ -224,8 +280,9 @@ function contentGrid(situation) {
                 ${audioButton(sentence.english, "Listen to sentence")}
               </article>
             `,
-          )
-          .join(""),
+            )
+            .join("")}
+        `,
       )}
 
       ${lessonSection(
@@ -313,6 +370,190 @@ function audioButton(text, label) {
       Listen
     </button>
   `;
+}
+
+function playAllSentences(button) {
+  const { activeLevel, activeTopic, activeSituation } = getActiveData();
+  const sentences = activeSituation.sentences.map((sentence) => ({
+    ...sentence,
+    levelTitle: activeLevel.title,
+    topicTitle: activeTopic.title,
+    situationTitle: activeSituation.title,
+  }));
+
+  playSentenceSequence(button, sentences, "Play All Sentences", {
+    showLevelText: true,
+    nowPlayingLabel: "Playing Situation",
+  });
+}
+
+function playAllLevel(button) {
+  const { activeLevel } = getActiveData();
+  const sentences = activeLevel.topics.flatMap((topic) =>
+    topic.situations.flatMap((situation) =>
+      situation.sentences.map((sentence) => ({
+        ...sentence,
+        levelTitle: activeLevel.title,
+        topicTitle: topic.title,
+        situationTitle: situation.title,
+      })),
+    ),
+  );
+  playSentenceSequence(button, sentences, "Play All Level", {
+    showLevelText: true,
+    nowPlayingLabel: "Playing Full Level",
+  });
+}
+
+function playSentenceSequence(button, sentences, defaultLabel, options = {}) {
+  if (!sentences.length) {
+    showAudioMessage("There are no sentences to play.");
+    return;
+  }
+
+  if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+    showAudioMessage("Your browser does not support speech audio.");
+    return;
+  }
+
+  resetAllPlayButtons();
+  window.speechSynthesis.cancel();
+  button.disabled = true;
+  button.classList.add("is-playing");
+
+  const sequenceId = ++audioSequenceId;
+  let index = 0;
+  const nowPlayingCard = document.querySelector("[data-now-playing]");
+  const levelNowPlayingCard = document.querySelector("[data-level-now-playing]");
+
+  function playNext() {
+    if (sequenceId !== audioSequenceId) {
+      resetPlayAllButton(button, defaultLabel);
+      hideNowPlaying(nowPlayingCard);
+      hideLevelNowPlaying(levelNowPlayingCard);
+      return;
+    }
+
+    if (index >= sentences.length) {
+      resetPlayAllButton(button, defaultLabel);
+      hideNowPlaying(nowPlayingCard);
+      hideLevelNowPlaying(levelNowPlayingCard);
+      return;
+    }
+
+    const currentSentence = sentences[index];
+    button.innerHTML = `<span aria-hidden="true">▶</span> Playing ${index + 1}/${sentences.length}`;
+
+    if (options.showCurrentText) {
+      updateNowPlaying(nowPlayingCard, currentSentence);
+    }
+
+    if (options.showLevelText) {
+      updateLevelNowPlaying(
+        levelNowPlayingCard,
+        currentSentence,
+        index + 1,
+        sentences.length,
+        options.nowPlayingLabel,
+      );
+    }
+
+    const utterance = createEnglishUtterance(currentSentence.english);
+
+    utterance.onend = () => {
+      index += 1;
+      window.setTimeout(playNext, 350);
+    };
+    utterance.onerror = () => {
+      resetPlayAllButton(button, defaultLabel);
+      hideNowPlaying(nowPlayingCard);
+      hideLevelNowPlaying(levelNowPlayingCard);
+      showAudioMessage("Audio could not be played. Please try again.");
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }
+
+  playNext();
+}
+
+function updateNowPlaying(card, sentence) {
+  if (!card) {
+    return;
+  }
+
+  card.hidden = false;
+  card.querySelector("[data-now-playing-english]").textContent = sentence.english;
+  card.querySelector("[data-now-playing-meaning]").textContent = sentence.meaning;
+}
+
+function hideNowPlaying(card = document.querySelector("[data-now-playing]")) {
+  if (!card) {
+    return;
+  }
+
+  card.hidden = true;
+  card.querySelector("[data-now-playing-english]").textContent = "";
+  card.querySelector("[data-now-playing-meaning]").textContent = "";
+}
+
+function updateLevelNowPlaying(
+  card,
+  sentence,
+  currentIndex,
+  totalCount,
+  label = "Playing Full Level",
+) {
+  if (!card) {
+    return;
+  }
+
+  card.hidden = false;
+  card.querySelector("[data-level-now-playing-label]").textContent = label;
+  card.querySelector("[data-level-now-playing-meta]").textContent =
+    `${sentence.levelTitle} · ${sentence.topicTitle} · ${sentence.situationTitle}`;
+  card.querySelector("[data-level-now-playing-english]").textContent = sentence.english;
+  card.querySelector("[data-level-now-playing-meaning]").textContent = sentence.meaning;
+  card.querySelector("[data-level-now-playing-progress]").textContent =
+    `${currentIndex} / ${totalCount}`;
+}
+
+function hideLevelNowPlaying(
+  card = document.querySelector("[data-level-now-playing]"),
+) {
+  if (!card) {
+    return;
+  }
+
+  card.hidden = true;
+  card.querySelector("[data-level-now-playing-label]").textContent = "Playing Full Level";
+  card.querySelector("[data-level-now-playing-meta]").textContent = "";
+  card.querySelector("[data-level-now-playing-english]").textContent = "";
+  card.querySelector("[data-level-now-playing-meaning]").textContent = "";
+  card.querySelector("[data-level-now-playing-progress]").textContent = "";
+}
+
+function resetPlayAllButton(button, label = "Play All Sentences") {
+  button.disabled = false;
+  button.classList.remove("is-playing");
+  button.innerHTML = `<span aria-hidden="true">▶</span> ${label}`;
+}
+
+function resetAllPlayButtons() {
+  document.querySelectorAll("[data-play-all-sentences]").forEach((button) => {
+    resetPlayAllButton(button, "Play All Sentences");
+  });
+  document.querySelectorAll("[data-play-all-level]").forEach((button) => {
+    resetPlayAllButton(button, "Play All Level");
+  });
+  hideNowPlaying();
+  hideLevelNowPlaying();
+}
+
+function stopAudioPlayback() {
+  audioSequenceId += 1;
+  window.speechSynthesis?.cancel();
+  resetAllPlayButtons();
 }
 
 const practiceDescriptions = {
@@ -832,18 +1073,11 @@ function speakEnglish(text, button) {
     return;
   }
 
+  audioSequenceId += 1;
+  resetAllPlayButtons();
   window.speechSynthesis.cancel();
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "en-US";
-  utterance.rate = speechSettings.rate;
-  utterance.pitch = speechSettings.pitch;
-  utterance.volume = speechSettings.volume;
-
-  const voice = getAmericanEnglishVoice();
-  if (voice) {
-    utterance.voice = voice;
-  }
+  const utterance = createEnglishUtterance(text);
 
   button.classList.add("is-playing");
   button.disabled = true;
@@ -855,6 +1089,21 @@ function speakEnglish(text, button) {
   };
 
   window.speechSynthesis.speak(utterance);
+}
+
+function createEnglishUtterance(text) {
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "en-US";
+  utterance.rate = speechSettings.rate;
+  utterance.pitch = speechSettings.pitch;
+  utterance.volume = speechSettings.volume;
+
+  const voice = getAmericanEnglishVoice();
+  if (voice) {
+    utterance.voice = voice;
+  }
+
+  return utterance;
 }
 
 function getAmericanEnglishVoice() {

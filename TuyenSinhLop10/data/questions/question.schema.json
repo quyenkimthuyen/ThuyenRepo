@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QuestionBankItem",
+  "type": "object",
+  "required": [
+    "id",
+    "monHoc",
+    "chuyenDe",
+    "mucDo",
+    "namXuatHien",
+    "nguon",
+    "deBai",
+    "luaChon",
+    "dapAn",
+    "loiGiai",
+    "meoLamBai",
+    "tags",
+    "estimatedTimeSeconds"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "monHoc": {
+      "enum": [
+        "Toan",
+        "NguVan",
+        "TiengAnh"
+      ]
+    },
+    "chuyenDe": {
+      "type": "string"
+    },
+    "mucDo": {
+      "enum": [
+        "NhanBiet",
+        "ThongHieu",
+        "VanDung",
+        "VanDungCao"
+      ]
+    },
+    "namXuatHien": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "nguon": {
+      "type": "string"
+    },
+    "deBai": {
+      "type": "string"
+    },
+    "luaChon": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "dapAn": {
+      "type": "string"
+    },
+    "loiGiai": {
+      "type": "string"
+    },
+    "meoLamBai": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "estimatedTimeSeconds": {
+      "type": "integer",
+      "minimum": 30
+    }
+  },
+  "additionalProperties": true
+}

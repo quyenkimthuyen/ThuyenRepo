@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Đề thi thật TP.HCM | TS10 TP.HCM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <nav class="nav">
+        <a class="brand" href="./index.html#home" aria-label="Trang chủ">
+          <span class="brand-mark">10</span>
+          <span>
+            <strong>TS10 TP.HCM</strong>
+            <small>Đề thi thật theo câu</small>
+          </span>
+        </a>
+        <button class="nav-toggle" type="button" aria-label="Mở menu" data-nav-toggle>☰</button>
+        <div class="nav-links" data-nav-links>
+          <a href="./index.html#home">Trang chủ</a>
+          <a href="./real-exams.html">Kho đề thật</a>
+          <a href="./index.html#practice">Luyện tập</a>
+          <a href="./index.html#exam">Thi thử</a>
+        </div>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero section real-exam-detail-hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Đề thi thực tế</p>
+          <h1>Kho đề thật TP.HCM, xem theo câu và luyện như đi thi.</h1>
+          <p>
+            Chọn năm, chọn môn, sau đó đọc đề theo từng câu hoặc làm bài có tính giờ với môn Tiếng Anh.
+            Đáp án được đặt ngay dưới câu để dễ đối chiếu sau khi luyện.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#realExamWorkspace">Chọn đề ngay</a>
+            <a class="button ghost" href="./index.html#practice">Quay lại luyện tập</a>
+          </div>
+        </div>
+        <aside class="today-card real-exam-hero-card">
+          <div class="card-title">
+            <span>Kho hiện có</span>
+            <strong id="detailExamCount">18</strong>
+          </div>
+          <ul class="task-list">
+            <li><span>Năm</span><strong id="detailYearCount">6</strong></li>
+            <li><span>Môn</span><strong>3</strong></li>
+            <li><span>Chế độ Anh</span><strong>Có chấm điểm</strong></li>
+          </ul>
+          <div class="real-exam-flow">
+            <span>1. Chọn đề</span>
+            <span>2. Làm bài/xem câu</span>
+            <span>3. Đối chiếu đáp án</span>
+          </div>
+        </aside>
+      </section>
+
+      <section class="section panel real-exam-detail-panel" id="realExamWorkspace">
+        <div class="detail-control-card">
+          <div class="section-heading">
+            <p class="eyebrow">Bộ lọc</p>
+            <h2>Chọn đề cần xem</h2>
+          </div>
+
+          <div class="real-exam-toolbar">
+            <label>
+              Năm thi
+              <select id="detailYearFilter"></select>
+            </label>
+            <label>
+              Môn thi
+              <select id="detailSubjectFilter"></select>
+            </label>
+          </div>
+        </div>
+
+        <div id="detailExamHeader" class="detail-exam-header"></div>
+        <div id="detailPrimaryAction" class="detail-primary-action"></div>
+
+        <div class="detail-layout">
+          <article class="detail-content">
+            <div class="detail-content-head">
+              <div>
+                <p class="eyebrow">Nội dung đề</p>
+                <h2>Đọc đề, làm bài và tra đáp án</h2>
+              </div>
+              <div class="detail-tabs" role="tablist" aria-label="Chọn phần xem">
+                <button class="subject-tab active" type="button" data-detail-tab="questions">Câu hỏi</button>
+                <button class="subject-tab" type="button" data-detail-tab="answers">Đáp án tổng hợp</button>
+              </div>
+            </div>
+            <div id="detailQuestions"></div>
+            <div id="detailAnswers" hidden></div>
+          </article>
+
+          <aside class="detail-sidebar">
+            <h3 id="detailSourcesTitle">Nguồn đối chiếu</h3>
+            <div id="detailSources"></div>
+            <h3 id="detailStructureTitle">Ghi chú cấu trúc</h3>
+            <ul class="compact-list" id="detailStructure"></ul>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>Đề được nhập nguyên văn khi có nguồn text đối chiếu. Bấm “Đáp án / gợi ý cho câu này” dưới từng câu để theo dõi dễ hơn.</p>
+    </footer>
+
+    <script src="./real-exam-detail-data.js"></script>
+    <script src="./real-exams-page.js"></script>
+  </body>
+</html>
