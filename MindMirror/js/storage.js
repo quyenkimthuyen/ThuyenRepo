@@ -1,6 +1,6 @@
 (function () {
 const STORAGE_KEY = "cognitive-tree:data:v1";
-const QUIZ_STATE_VERSION = "opposing-views-complete-tree-v1";
+const QUIZ_STATE_VERSION = "opposing-views-complete-tree-v2";
 const REMOVED_SAMPLE_TREE_IDS = new Set([
   "sample_tree_understanding_love_mindfulness"
 ]);
@@ -58,7 +58,10 @@ function createSampleTrees() {
       nodes: [
         node("sample_parent_root", null, "ROOT", "Hai ý kiến đối lập: Tôi nghĩ con cần nghe lời ngay khi được nhắc làm bài; con nghĩ mình đã biết rồi và không muốn bị nhắc tiếp.", 0, createdAt),
         node("sample_parent_fact_1", "sample_parent_root", "BELIEF", "Ý kiến của tôi: Con cần nghe lời ngay khi cha mẹ nhắc làm bài.", 0, createdAt),
-        node("sample_parent_action_0", "sample_parent_fact_1", "ACTION", "Tôi nhắc nhiều lần và yêu cầu con làm ngay để giữ kỷ luật.", 0, createdAt),
+        node("sample_parent_interpretation_0", "sample_parent_fact_1", "INTERPRETATION", "Tôi hiểu rằng nếu con không làm ngay thì con đang xem nhẹ lời cha mẹ.", 0, createdAt),
+        node("sample_parent_belief_0", "sample_parent_interpretation_0", "BELIEF", "Muốn con nên người thì cha mẹ phải giữ kỷ luật thật nhanh và rõ.", 0, createdAt),
+        node("sample_parent_emotion_0", "sample_parent_belief_0", "EMOTION", "Tôi lo, sốt ruột và sợ con hình thành thói quen trì hoãn.", 0, createdAt),
+        node("sample_parent_action_0", "sample_parent_emotion_0", "ACTION", "Tôi nhắc nhiều lần và yêu cầu con làm ngay để giữ kỷ luật.", 0, createdAt),
         node("sample_parent_consequence_0", "sample_parent_action_0", "CONSEQUENCE", "Con có thể làm bài ngay lúc đó, nhưng dễ thấy bị ép và khó học cách tự chịu trách nhiệm.", 0, createdAt),
         node("sample_parent_fact_2", "sample_parent_root", "BELIEF", "Ý kiến của con: Con đã biết rồi và không muốn bị nhắc tiếp.", 1, createdAt),
         node("sample_parent_interpretation_1", "sample_parent_fact_2", "INTERPRETATION", "Tôi diễn giải câu nói đó là con đang coi thường mình.", 0, createdAt),
@@ -68,7 +71,8 @@ function createSampleTrees() {
         node("sample_parent_emotion_1", "sample_parent_belief_1", "EMOTION", "Tức giận, bị xúc phạm, lo lắng mình mất quyền làm cha mẹ.", 0, createdAt),
         node("sample_parent_action_1", "sample_parent_emotion_1", "ACTION", "Tôi lớn tiếng và nói con hỗn.", 0, createdAt),
         node("sample_parent_consequence_1", "sample_parent_action_1", "CONSEQUENCE", "Con im lặng, khóc và tránh nói chuyện với tôi.", 0, createdAt),
-        node("sample_parent_action_2", "sample_parent_belief_2", "ACTION", "Tôi có thể hỏi: 'Con cần thêm 10 phút hay cần bố/mẹ giúp phần nào?'", 1, createdAt),
+        node("sample_parent_emotion_2", "sample_parent_belief_2", "EMOTION", "Tôi bình tĩnh hơn và tò mò xem con đang cần gì.", 1, createdAt),
+        node("sample_parent_action_2", "sample_parent_emotion_2", "ACTION", "Tôi có thể hỏi: 'Con cần thêm 10 phút hay cần bố/mẹ giúp phần nào?'", 1, createdAt),
         node("sample_parent_consequence_2", "sample_parent_action_2", "CONSEQUENCE", "Cuộc nói chuyện có cơ hội chuyển từ đối đầu sang hợp tác.", 0, createdAt)
       ]
     },
@@ -81,7 +85,10 @@ function createSampleTrees() {
       nodes: [
         node("sample_job_root", null, "ROOT", "Hai ý kiến đối lập: Tôi nghĩ công ty không trân trọng công sức của mình; quản lý có thể nghĩ công việc chưa rõ ưu tiên và cả hai cần trao đổi lại.", 0, createdAt),
         node("sample_job_fact_1", "sample_job_root", "BELIEF", "Ý kiến của tôi: Công ty không trân trọng công sức nên tôi muốn nghỉ.", 0, createdAt),
-        node("sample_job_action_0", "sample_job_fact_1", "ACTION", "Tôi âm thầm tìm việc mới và giảm giao tiếp với quản lý.", 0, createdAt),
+        node("sample_job_interpretation_0", "sample_job_fact_1", "INTERPRETATION", "Tôi hiểu việc thiếu ghi nhận là dấu hiệu mình không còn được coi trọng.", 0, createdAt),
+        node("sample_job_belief_0", "sample_job_interpretation_0", "BELIEF", "Nếu nơi làm việc không thấy công sức của tôi thì rời đi là cách tự bảo vệ.", 0, createdAt),
+        node("sample_job_emotion_0", "sample_job_belief_0", "EMOTION", "Tôi mệt, tủi thân và muốn thoát khỏi cảm giác bị bỏ quên.", 0, createdAt),
+        node("sample_job_action_0", "sample_job_emotion_0", "ACTION", "Tôi âm thầm tìm việc mới và giảm giao tiếp với quản lý.", 0, createdAt),
         node("sample_job_consequence_0", "sample_job_action_0", "CONSEQUENCE", "Tôi có cảm giác tự bảo vệ mình, nhưng có thể bỏ lỡ cơ hội nói rõ nhu cầu hoặc cải thiện điều kiện làm việc.", 0, createdAt),
         node("sample_job_fact_2", "sample_job_root", "BELIEF", "Ý kiến của quản lý: Công việc đang quá tải và cần trao đổi lại ưu tiên trước khi quyết định.", 1, createdAt),
         node("sample_job_interpretation_1", "sample_job_fact_2", "INTERPRETATION", "Tôi đang diễn giải rằng công ty không trân trọng mình.", 0, createdAt),
@@ -90,7 +97,9 @@ function createSampleTrees() {
         node("sample_job_emotion_1", "sample_job_belief_1", "EMOTION", "Kiệt sức, thất vọng, tủi thân và mất động lực.", 0, createdAt),
         node("sample_job_action_1", "sample_job_emotion_1", "ACTION", "Tôi né họp, phản hồi ngắn và bắt đầu tìm việc trong tâm trạng bực bội.", 0, createdAt),
         node("sample_job_consequence_1", "sample_job_action_1", "CONSEQUENCE", "Quan hệ công việc xấu đi, tôi càng thấy mình bị cô lập.", 0, createdAt),
-        node("sample_job_action_2", "sample_job_interpretation_2", "ACTION", "Tôi có thể hẹn 30 phút để nói rõ tải việc, ưu tiên và điều kiện tiếp tục.", 1, createdAt),
+        node("sample_job_belief_2", "sample_job_interpretation_2", "BELIEF", "Trước khi quyết định lớn, tôi cần hỏi rõ thay vì chỉ dựa vào cảm giác bị bỏ quên.", 1, createdAt),
+        node("sample_job_emotion_2", "sample_job_belief_2", "EMOTION", "Tôi vẫn mệt nhưng có thêm sự bình tĩnh để kiểm tra lại sự thật.", 1, createdAt),
+        node("sample_job_action_2", "sample_job_emotion_2", "ACTION", "Tôi có thể hẹn 30 phút để nói rõ tải việc, ưu tiên và điều kiện tiếp tục.", 1, createdAt),
         node("sample_job_consequence_2", "sample_job_action_2", "CONSEQUENCE", "Tôi có thêm dữ kiện trước khi quyết định nghỉ, chuyển team hoặc thương lượng lại.", 0, createdAt)
       ]
     },
@@ -103,7 +112,10 @@ function createSampleTrees() {
       nodes: [
         node("sample_right_root", null, "ROOT", "Hai ý kiến đối lập: Tôi nghĩ cách của mình là đúng và nên làm ngay; người kia nghĩ cách đó còn rủi ro về thời gian và chất lượng.", 0, createdAt),
         node("sample_right_fact_1", "sample_right_root", "BELIEF", "Ý kiến của tôi: Cách triển khai của tôi đúng và nên làm ngay.", 0, createdAt),
-        node("sample_right_action_0", "sample_right_fact_1", "ACTION", "Tôi thúc đẩy mọi người làm theo phương án của mình nhanh hơn.", 0, createdAt),
+        node("sample_right_interpretation_0", "sample_right_fact_1", "INTERPRETATION", "Tôi hiểu sự chậm lại là đang làm mất cơ hội tốt.", 0, createdAt),
+        node("sample_right_belief_0", "sample_right_interpretation_0", "BELIEF", "Khi đã thấy hướng đúng, tôi cần đẩy nhanh để tránh lãng phí thời gian.", 0, createdAt),
+        node("sample_right_emotion_0", "sample_right_belief_0", "EMOTION", "Tôi nóng ruột, tự tin và hơi khó chịu khi người khác còn do dự.", 0, createdAt),
+        node("sample_right_action_0", "sample_right_emotion_0", "ACTION", "Tôi thúc đẩy mọi người làm theo phương án của mình nhanh hơn.", 0, createdAt),
         node("sample_right_consequence_0", "sample_right_action_0", "CONSEQUENCE", "Công việc có thể chạy nhanh hơn, nhưng người khác dễ cảm thấy không được lắng nghe và ít góp ý rủi ro.", 0, createdAt),
         node("sample_right_fact_2", "sample_right_root", "BELIEF", "Ý kiến của người kia: Cách đó còn rủi ro về thời gian và chất lượng.", 1, createdAt),
         node("sample_right_interpretation_1", "sample_right_fact_2", "INTERPRETATION", "Tôi diễn giải rằng họ đang chống đối ý tưởng của tôi.", 0, createdAt),
@@ -113,7 +125,8 @@ function createSampleTrees() {
         node("sample_right_emotion_1", "sample_right_belief_1", "EMOTION", "Khó chịu, phòng thủ, muốn chứng minh mình đúng.", 0, createdAt),
         node("sample_right_action_1", "sample_right_emotion_1", "ACTION", "Tôi ngắt lời và lặp lại lập luận của mình mạnh hơn.", 0, createdAt),
         node("sample_right_consequence_1", "sample_right_action_1", "CONSEQUENCE", "Cuộc họp chuyển thành tranh thắng thua, ít ai còn tập trung vào dữ kiện.", 0, createdAt),
-        node("sample_right_action_2", "sample_right_belief_2", "ACTION", "Tôi có thể hỏi: 'Bằng chứng nào sẽ khiến tôi cần đổi hướng?'", 1, createdAt),
+        node("sample_right_emotion_2", "sample_right_belief_2", "EMOTION", "Tôi bớt phòng thủ và sẵn sàng kiểm tra lại ý tưởng.", 1, createdAt),
+        node("sample_right_action_2", "sample_right_emotion_2", "ACTION", "Tôi có thể hỏi: 'Bằng chứng nào sẽ khiến tôi cần đổi hướng?'", 1, createdAt),
         node("sample_right_consequence_2", "sample_right_action_2", "CONSEQUENCE", "Tôi giữ được sự kiên định với mục tiêu nhưng giảm cố chấp với phương án.", 0, createdAt)
       ]
     },
@@ -133,7 +146,9 @@ function createSampleTrees() {
         node("sample_friend_emotion_1", "sample_friend_belief_1", "EMOTION", "Buồn, giận, cảm thấy bị bỏ rơi.", 0, createdAt),
         node("sample_friend_action_1", "sample_friend_emotion_1", "ACTION", "Tôi định nhắn một câu mỉa mai hoặc im lặng để người kia tự hiểu.", 0, createdAt),
         node("sample_friend_consequence_1", "sample_friend_action_1", "CONSEQUENCE", "Mối quan hệ dễ căng thẳng hơn, dù sự thật có thể chưa được kiểm chứng.", 0, createdAt),
-        node("sample_friend_action_2", "sample_friend_interpretation_2", "ACTION", "Tôi có thể nhắn: 'Mình hơi lo và cũng hơi buồn, khi nào ổn bạn trả lời mình nhé.'", 1, createdAt),
+        node("sample_friend_belief_2", "sample_friend_interpretation_2", "BELIEF", "Mình có thể nói cảm xúc thật mà chưa cần kết luận bạn ấy không quan tâm.", 1, createdAt),
+        node("sample_friend_emotion_2", "sample_friend_belief_2", "EMOTION", "Tôi vẫn buồn nhưng bớt muốn trách móc ngay.", 1, createdAt),
+        node("sample_friend_action_2", "sample_friend_emotion_2", "ACTION", "Tôi có thể nhắn: 'Mình hơi lo và cũng hơi buồn, khi nào ổn bạn trả lời mình nhé.'", 1, createdAt),
         node("sample_friend_consequence_2", "sample_friend_action_2", "CONSEQUENCE", "Tôi nói thật cảm xúc mà không biến diễn giải thành cáo buộc.", 0, createdAt)
       ]
     },
@@ -154,7 +169,8 @@ function createSampleTrees() {
         node("sample_chores_emotion_1", "sample_chores_belief_1", "EMOTION", "Tức, tủi thân, cảm giác mình gánh hết.", 0, createdAt),
         node("sample_chores_action_1", "sample_chores_emotion_1", "ACTION", "Tôi nói mỉa: 'Nhà này chắc có mỗi tôi biết rửa bát.'", 0, createdAt),
         node("sample_chores_consequence_1", "sample_chores_action_1", "CONSEQUENCE", "Người kia phòng thủ, cuộc nói chuyện chuyển thành đổ lỗi.", 0, createdAt),
-        node("sample_chores_action_2", "sample_chores_belief_2", "ACTION", "Tôi có thể đề nghị chia lịch việc nhà cụ thể cho tuần này.", 1, createdAt),
+        node("sample_chores_emotion_2", "sample_chores_belief_2", "EMOTION", "Tôi bớt trách móc và muốn biến sự bực bội thành yêu cầu rõ ràng.", 1, createdAt),
+        node("sample_chores_action_2", "sample_chores_emotion_2", "ACTION", "Tôi có thể đề nghị chia lịch việc nhà cụ thể cho tuần này.", 1, createdAt),
         node("sample_chores_consequence_2", "sample_chores_action_2", "CONSEQUENCE", "Vấn đề chuyển từ trách móc nhân cách sang thoả thuận hành vi cụ thể.", 0, createdAt)
       ]
     },
@@ -175,7 +191,8 @@ function createSampleTrees() {
         node("sample_money_emotion_1", "sample_money_belief_1", "EMOTION", "Bất an, giận, sợ mất kiểm soát tài chính.", 0, createdAt),
         node("sample_money_action_1", "sample_money_emotion_1", "ACTION", "Tôi kiểm tra sao kê và chất vấn bằng giọng buộc tội.", 0, createdAt),
         node("sample_money_consequence_1", "sample_money_action_1", "CONSEQUENCE", "Người kia cảm thấy bị kiểm soát, còn tôi vẫn không yên tâm.", 0, createdAt),
-        node("sample_money_action_2", "sample_money_belief_2", "ACTION", "Tôi có thể đề xuất ngưỡng chi tiêu cần trao đổi trước, ví dụ trên 1 triệu đồng.", 1, createdAt),
+        node("sample_money_emotion_2", "sample_money_belief_2", "EMOTION", "Tôi bớt nghi ngờ và muốn cùng nhau đặt luật rõ hơn.", 1, createdAt),
+        node("sample_money_action_2", "sample_money_emotion_2", "ACTION", "Tôi có thể đề xuất ngưỡng chi tiêu cần trao đổi trước, ví dụ trên 1 triệu đồng.", 1, createdAt),
         node("sample_money_consequence_2", "sample_money_action_2", "CONSEQUENCE", "Gia đình có quy tắc rõ hơn và giảm tranh cãi ở lần sau.", 0, createdAt)
       ]
     },
@@ -188,7 +205,10 @@ function createSampleTrees() {
       nodes: [
         node("sample_inlaws_root", null, "ROOT", "Hai ý kiến đối lập: Tôi nghĩ bố mẹ mới là người quyết định cách nuôi con; ông bà nghĩ kinh nghiệm cũ của mình vẫn đúng và đang giúp cháu.", 0, createdAt),
         node("sample_inlaws_fact_1", "sample_inlaws_root", "BELIEF", "Ý kiến của tôi: Bố mẹ mới là người quyết định quy tắc nuôi con.", 0, createdAt),
-        node("sample_inlaws_action_0", "sample_inlaws_fact_1", "ACTION", "Tôi nhắc lại quy tắc với ông bà ngay khi thấy ông bà làm khác ý mình.", 0, createdAt),
+        node("sample_inlaws_interpretation_0", "sample_inlaws_fact_1", "INTERPRETATION", "Tôi hiểu việc ông bà làm khác là quy tắc của bố mẹ đang bị xem nhẹ.", 0, createdAt),
+        node("sample_inlaws_belief_0", "sample_inlaws_interpretation_0", "BELIEF", "Nếu không nói ngay, ranh giới nuôi con sẽ ngày càng mờ đi.", 0, createdAt),
+        node("sample_inlaws_emotion_0", "sample_inlaws_belief_0", "EMOTION", "Tôi căng thẳng, lo mất quyền quyết định và muốn bảo vệ vai trò cha mẹ.", 0, createdAt),
+        node("sample_inlaws_action_0", "sample_inlaws_emotion_0", "ACTION", "Tôi nhắc lại quy tắc với ông bà ngay khi thấy ông bà làm khác ý mình.", 0, createdAt),
         node("sample_inlaws_consequence_0", "sample_inlaws_action_0", "CONSEQUENCE", "Quy tắc của bố mẹ rõ hơn, nhưng nếu nói quá căng thì quan hệ với ông bà dễ bị tổn thương.", 0, createdAt),
         node("sample_inlaws_fact_2", "sample_inlaws_root", "BELIEF", "Ý kiến của ông bà: Kinh nghiệm cũ vẫn đúng và ông bà đang thương cháu.", 1, createdAt),
         node("sample_inlaws_interpretation_1", "sample_inlaws_fact_2", "INTERPRETATION", "Tôi diễn giải rằng ông bà coi thường vai trò làm cha mẹ của tôi.", 0, createdAt),
@@ -198,7 +218,8 @@ function createSampleTrees() {
         node("sample_inlaws_emotion_1", "sample_inlaws_belief_1", "EMOTION", "Bực, căng thẳng, cảm giác bị phủ nhận.", 0, createdAt),
         node("sample_inlaws_action_1", "sample_inlaws_emotion_1", "ACTION", "Tôi nói gay gắt trước mặt con và trách ông bà không nghe lời.", 0, createdAt),
         node("sample_inlaws_consequence_1", "sample_inlaws_action_1", "CONSEQUENCE", "Không khí gia đình căng, con chứng kiến người lớn tranh cãi.", 0, createdAt),
-        node("sample_inlaws_action_2", "sample_inlaws_belief_2", "ACTION", "Tôi có thể nói riêng: 'Con biết ông bà thương cháu, nhưng chuyện đồ ngọt xin để bố mẹ quyết định.'", 1, createdAt),
+        node("sample_inlaws_emotion_2", "sample_inlaws_belief_2", "EMOTION", "Tôi vững hơn và vẫn giữ được sự kính trọng với ông bà.", 1, createdAt),
+        node("sample_inlaws_action_2", "sample_inlaws_emotion_2", "ACTION", "Tôi có thể nói riêng: 'Con biết ông bà thương cháu, nhưng chuyện đồ ngọt xin để bố mẹ quyết định.'", 1, createdAt),
         node("sample_inlaws_consequence_2", "sample_inlaws_action_2", "CONSEQUENCE", "Thông điệp về ranh giới rõ hơn mà ít làm tổn thương quan hệ.", 0, createdAt)
       ]
     },
@@ -219,7 +240,8 @@ function createSampleTrees() {
         node("sample_screen_emotion_1", "sample_screen_belief_1", "EMOTION", "Lo, giận, sợ con hư.", 0, createdAt),
         node("sample_screen_action_1", "sample_screen_emotion_1", "ACTION", "Tôi giật điện thoại và mắng con thiếu ý thức.", 0, createdAt),
         node("sample_screen_consequence_1", "sample_screen_action_1", "CONSEQUENCE", "Con phản kháng hoặc lén dùng tiếp, còn tôi càng phải kiểm soát nhiều hơn.", 0, createdAt),
-        node("sample_screen_action_2", "sample_screen_belief_2", "ACTION", "Tôi có thể cùng con đặt lịch dùng, cảnh báo trước 10 phút và thống nhất hậu quả nếu vi phạm.", 1, createdAt),
+        node("sample_screen_emotion_2", "sample_screen_belief_2", "EMOTION", "Tôi bớt hoảng và muốn dạy con tự quản từng bước.", 1, createdAt),
+        node("sample_screen_action_2", "sample_screen_emotion_2", "ACTION", "Tôi có thể cùng con đặt lịch dùng, cảnh báo trước 10 phút và thống nhất hậu quả nếu vi phạm.", 1, createdAt),
         node("sample_screen_consequence_2", "sample_screen_action_2", "CONSEQUENCE", "Con có cơ hội học tự quản thay vì chỉ sợ bị tịch thu.", 0, createdAt)
       ]
     },
@@ -240,7 +262,8 @@ function createSampleTrees() {
         node("sample_grades_emotion_1", "sample_grades_belief_1", "EMOTION", "Thất vọng, xấu hổ, lo cho tương lai của con.", 0, createdAt),
         node("sample_grades_action_1", "sample_grades_emotion_1", "ACTION", "Tôi so sánh con với bạn khác và nói con làm bố mẹ buồn.", 0, createdAt),
         node("sample_grades_consequence_1", "sample_grades_action_1", "CONSEQUENCE", "Con sợ học, giấu điểm hoặc thấy mình không đủ tốt.", 0, createdAt),
-        node("sample_grades_action_2", "sample_grades_belief_2", "ACTION", "Tôi có thể hỏi con sai phần nào và cùng lập kế hoạch ôn 20 phút mỗi ngày.", 1, createdAt),
+        node("sample_grades_emotion_2", "sample_grades_belief_2", "EMOTION", "Tôi bớt thất vọng và chuyển sang tò mò xem con đang kẹt ở đâu.", 1, createdAt),
+        node("sample_grades_action_2", "sample_grades_emotion_2", "ACTION", "Tôi có thể hỏi con sai phần nào và cùng lập kế hoạch ôn 20 phút mỗi ngày.", 1, createdAt),
         node("sample_grades_consequence_2", "sample_grades_action_2", "CONSEQUENCE", "Con nhận được hỗ trợ cụ thể và ít gắn điểm số với sự xấu hổ.", 0, createdAt)
       ]
     },
@@ -261,7 +284,8 @@ function createSampleTrees() {
         node("sample_sibling_emotion_1", "sample_sibling_belief_1", "EMOTION", "Mệt, cáu, bất lực.", 0, createdAt),
         node("sample_sibling_action_1", "sample_sibling_emotion_1", "ACTION", "Tôi quát cả hai và cất hết đồ chơi.", 0, createdAt),
         node("sample_sibling_consequence_1", "sample_sibling_action_1", "CONSEQUENCE", "Hai con ngừng tranh lúc đó nhưng vẫn chưa học cách giải quyết lần sau.", 0, createdAt),
-        node("sample_sibling_action_2", "sample_sibling_belief_2", "ACTION", "Tôi có thể tách hai con bình tĩnh, đặt lượt chơi 10 phút và yêu cầu từng bé nói nhu cầu.", 1, createdAt),
+        node("sample_sibling_emotion_2", "sample_sibling_belief_2", "EMOTION", "Tôi bớt bất lực và xem đây là lúc dạy kỹ năng cho con.", 1, createdAt),
+        node("sample_sibling_action_2", "sample_sibling_emotion_2", "ACTION", "Tôi có thể tách hai con bình tĩnh, đặt lượt chơi 10 phút và yêu cầu từng bé nói nhu cầu.", 1, createdAt),
         node("sample_sibling_consequence_2", "sample_sibling_action_2", "CONSEQUENCE", "Trẻ học gọi tên nhu cầu, chờ lượt và sửa hành vi cụ thể.", 0, createdAt)
       ]
     },
@@ -282,7 +306,8 @@ function createSampleTrees() {
         node("sample_silent_emotion_1", "sample_silent_belief_1", "EMOTION", "Bị bỏ rơi, lo lắng, tức giận.", 0, createdAt),
         node("sample_silent_action_1", "sample_silent_emotion_1", "ACTION", "Tôi liên tục hỏi dồn và nói người kia vô trách nhiệm.", 0, createdAt),
         node("sample_silent_consequence_1", "sample_silent_action_1", "CONSEQUENCE", "Người kia càng rút lui, tôi càng hoảng và căng thẳng hơn.", 0, createdAt),
-        node("sample_silent_action_2", "sample_silent_belief_2", "ACTION", "Tôi có thể nói: 'Mình tạm dừng 30 phút, sau đó quay lại nói tiếp được không?'", 1, createdAt),
+        node("sample_silent_emotion_2", "sample_silent_belief_2", "EMOTION", "Tôi bớt hoảng và thấy mình vẫn có thể yêu cầu một cuộc hẹn rõ ràng.", 1, createdAt),
+        node("sample_silent_action_2", "sample_silent_emotion_2", "ACTION", "Tôi có thể nói: 'Mình tạm dừng 30 phút, sau đó quay lại nói tiếp được không?'", 1, createdAt),
         node("sample_silent_consequence_2", "sample_silent_action_2", "CONSEQUENCE", "Cả hai có không gian hạ nhiệt mà không biến im lặng thành bỏ rơi.", 0, createdAt)
       ]
     },
@@ -295,7 +320,10 @@ function createSampleTrees() {
       nodes: [
         node("sample_eldercare_root", null, "ROOT", "Hai ý kiến đối lập: Tôi nghĩ anh chị em phải trực tiếp chia phần chăm sóc cha mẹ; họ có thể nghĩ gửi tiền hoặc hỗ trợ cách khác cũng là góp phần.", 0, createdAt),
         node("sample_eldercare_fact_1", "sample_eldercare_root", "BELIEF", "Ý kiến của tôi: Anh chị em phải trực tiếp chia việc chăm sóc cha mẹ.", 0, createdAt),
-        node("sample_eldercare_action_0", "sample_eldercare_fact_1", "ACTION", "Tôi yêu cầu mọi người thay phiên trực tiếp đưa cha mẹ đi khám và chăm sóc.", 0, createdAt),
+        node("sample_eldercare_interpretation_0", "sample_eldercare_fact_1", "INTERPRETATION", "Tôi hiểu việc không trực tiếp chăm sóc là né trách nhiệm với cha mẹ.", 0, createdAt),
+        node("sample_eldercare_belief_0", "sample_eldercare_interpretation_0", "BELIEF", "Công bằng nghĩa là mọi người phải chia phần chăm sóc nhìn thấy được.", 0, createdAt),
+        node("sample_eldercare_emotion_0", "sample_eldercare_belief_0", "EMOTION", "Tôi kiệt sức, tủi thân và muốn mọi người nhìn thấy phần mình đang gánh.", 0, createdAt),
+        node("sample_eldercare_action_0", "sample_eldercare_emotion_0", "ACTION", "Tôi yêu cầu mọi người thay phiên trực tiếp đưa cha mẹ đi khám và chăm sóc.", 0, createdAt),
         node("sample_eldercare_consequence_0", "sample_eldercare_action_0", "CONSEQUENCE", "Việc chăm sóc có thể công bằng hơn, nhưng nếu chỉ yêu cầu mà không bàn khả năng từng người thì dễ thành trách móc.", 0, createdAt),
         node("sample_eldercare_fact_2", "sample_eldercare_root", "BELIEF", "Ý kiến của họ: Gửi tiền hoặc hỗ trợ cách khác cũng là góp phần chăm sóc.", 1, createdAt),
         node("sample_eldercare_interpretation_1", "sample_eldercare_fact_2", "INTERPRETATION", "Tôi diễn giải rằng họ vô tâm và đẩy hết trách nhiệm cho tôi.", 0, createdAt),
@@ -305,7 +333,8 @@ function createSampleTrees() {
         node("sample_eldercare_emotion_1", "sample_eldercare_belief_1", "EMOTION", "Tủi thân, kiệt sức, giận dữ.", 0, createdAt),
         node("sample_eldercare_action_1", "sample_eldercare_emotion_1", "ACTION", "Tôi nhắn trong nhóm gia đình bằng giọng trách móc.", 0, createdAt),
         node("sample_eldercare_consequence_1", "sample_eldercare_action_1", "CONSEQUENCE", "Mọi người phòng thủ, cuộc trao đổi dễ thành so đo công lao.", 0, createdAt),
-        node("sample_eldercare_action_2", "sample_eldercare_belief_2", "ACTION", "Tôi có thể lập danh sách việc cần làm hằng tháng và đề nghị từng người nhận phần cụ thể.", 1, createdAt),
+        node("sample_eldercare_emotion_2", "sample_eldercare_belief_2", "EMOTION", "Tôi bớt trách móc và muốn biến gánh nặng thành kế hoạch cụ thể.", 1, createdAt),
+        node("sample_eldercare_action_2", "sample_eldercare_emotion_2", "ACTION", "Tôi có thể lập danh sách việc cần làm hằng tháng và đề nghị từng người nhận phần cụ thể.", 1, createdAt),
         node("sample_eldercare_consequence_2", "sample_eldercare_action_2", "CONSEQUENCE", "Vấn đề trở nên đo được, dễ thương lượng hơn và giảm cảm giác bị bỏ mặc.", 0, createdAt)
       ]
     },
@@ -319,7 +348,10 @@ function createSampleTrees() {
         node("sample_compare_root", null, "ROOT", "Hai ý kiến đối lập: Tôi nghĩ việc so sánh làm mình bị hạ thấp; mẹ có thể nghĩ so sánh là cách nhắc tôi cố gắng hơn.", 0, createdAt),
         node("sample_compare_fact_1", "sample_compare_root", "BELIEF", "Ý kiến của tôi: So sánh làm tôi bị hạ thấp và tổn thương.", 0, createdAt),
         node("sample_compare_fact_2", "sample_compare_root", "BELIEF", "Ý kiến của mẹ: So sánh là cách nhắc tôi cố gắng hơn cho tương lai.", 1, createdAt),
-        node("sample_compare_action_0", "sample_compare_fact_2", "ACTION", "Mẹ tiếp tục dùng ví dụ của người khác để thúc đẩy tôi thay đổi.", 0, createdAt),
+        node("sample_compare_interpretation_0", "sample_compare_fact_2", "INTERPRETATION", "Mẹ có thể hiểu rằng nếu nói ví dụ người khác, tôi sẽ có động lực cố gắng.", 0, createdAt),
+        node("sample_compare_belief_0", "sample_compare_interpretation_0", "BELIEF", "Nhắc bằng sự so sánh là cách tạo áp lực để con tiến bộ.", 0, createdAt),
+        node("sample_compare_emotion_0", "sample_compare_belief_0", "EMOTION", "Mẹ lo lắng cho tương lai của tôi và sốt ruột khi thấy tôi chưa thay đổi.", 0, createdAt),
+        node("sample_compare_action_0", "sample_compare_emotion_0", "ACTION", "Mẹ tiếp tục dùng ví dụ của người khác để thúc đẩy tôi thay đổi.", 0, createdAt),
         node("sample_compare_consequence_0", "sample_compare_action_0", "CONSEQUENCE", "Mẹ có thể nghĩ mình đang khuyên con, nhưng tôi dễ thấy xấu hổ và xa cách hơn.", 0, createdAt),
         node("sample_compare_interpretation_1", "sample_compare_fact_1", "INTERPRETATION", "Tôi diễn giải rằng mẹ thất vọng và xem tôi là kém cỏi.", 0, createdAt),
         node("sample_compare_interpretation_2", "sample_compare_fact_1", "INTERPRETATION", "Có thể mẹ đang lo cho tương lai của tôi nhưng dùng cách nói gây tổn thương.", 1, createdAt),
@@ -328,7 +360,8 @@ function createSampleTrees() {
         node("sample_compare_emotion_1", "sample_compare_belief_1", "EMOTION", "Xấu hổ, giận, muốn bỏ đi.", 0, createdAt),
         node("sample_compare_action_1", "sample_compare_emotion_1", "ACTION", "Tôi đáp trả: 'Vậy mẹ nhận anh ấy làm con đi.'", 0, createdAt),
         node("sample_compare_consequence_1", "sample_compare_action_1", "CONSEQUENCE", "Mẹ tổn thương, tôi vẫn không được hiểu đúng nhu cầu của mình.", 0, createdAt),
-        node("sample_compare_action_2", "sample_compare_belief_2", "ACTION", "Tôi có thể nói riêng: 'Khi mẹ so sánh trước mặt mọi người, con thấy xấu hổ và khó nghe lời khuyên.'", 1, createdAt),
+        node("sample_compare_emotion_2", "sample_compare_belief_2", "EMOTION", "Tôi bớt muốn đáp trả và muốn nói rõ điều làm mình đau.", 1, createdAt),
+        node("sample_compare_action_2", "sample_compare_emotion_2", "ACTION", "Tôi có thể nói riêng: 'Khi mẹ so sánh trước mặt mọi người, con thấy xấu hổ và khó nghe lời khuyên.'", 1, createdAt),
         node("sample_compare_consequence_2", "sample_compare_action_2", "CONSEQUENCE", "Tôi bảo vệ lòng tự trọng bằng cách nói rõ tác động thay vì tấn công lại.", 0, createdAt)
       ]
     },
@@ -341,7 +374,10 @@ function createSampleTrees() {
       nodes: [
         node("sample_parenting_style_root", null, "ROOT", "Hai ý kiến đối lập: Tôi nghĩ cần kỷ luật rõ và có hậu quả khi con sai; bạn đời nghĩ cần giữ kết nối, tránh làm con áp lực trước.", 0, createdAt),
         node("sample_parenting_style_fact_1", "sample_parenting_style_root", "BELIEF", "Ý kiến của tôi: Con cần kỷ luật rõ và có hậu quả khi không làm bài.", 0, createdAt),
-        node("sample_parenting_style_action_0", "sample_parenting_style_fact_1", "ACTION", "Tôi đặt hình phạt hoặc cắt thời gian chơi để con nhớ bài học.", 0, createdAt),
+        node("sample_parenting_style_interpretation_0", "sample_parenting_style_fact_1", "INTERPRETATION", "Tôi hiểu việc không phạt rõ là làm con nghĩ lỗi không quan trọng.", 0, createdAt),
+        node("sample_parenting_style_belief_0", "sample_parenting_style_interpretation_0", "BELIEF", "Kỷ luật tốt cần hậu quả đủ rõ để con nhớ và sửa.", 0, createdAt),
+        node("sample_parenting_style_emotion_0", "sample_parenting_style_belief_0", "EMOTION", "Tôi lo con thiếu trách nhiệm và sốt ruột muốn xử lý ngay.", 0, createdAt),
+        node("sample_parenting_style_action_0", "sample_parenting_style_emotion_0", "ACTION", "Tôi đặt hình phạt hoặc cắt thời gian chơi để con nhớ bài học.", 0, createdAt),
         node("sample_parenting_style_consequence_0", "sample_parenting_style_action_0", "CONSEQUENCE", "Con có thể làm theo quy tắc hơn, nhưng nếu thiếu giải thích và kết nối thì dễ chống đối hoặc sợ sai.", 0, createdAt),
         node("sample_parenting_style_fact_2", "sample_parenting_style_root", "BELIEF", "Ý kiến của bạn đời: Trước hết cần giữ kết nối và tránh làm con áp lực.", 1, createdAt),
         node("sample_parenting_style_interpretation_1", "sample_parenting_style_fact_2", "INTERPRETATION", "Tôi diễn giải rằng bạn đời phá uy của tôi và đứng về phía con.", 0, createdAt),
@@ -351,11 +387,14 @@ function createSampleTrees() {
         node("sample_parenting_style_emotion_1", "sample_parenting_style_belief_1", "EMOTION", "Tức giận, bị phản bội, lo mất vai trò làm cha mẹ.", 0, createdAt),
         node("sample_parenting_style_action_1", "sample_parenting_style_emotion_1", "ACTION", "Tôi tranh cãi với bạn đời ngay trước mặt con và nhấn mạnh rằng cách của tôi mới đúng.", 0, createdAt),
         node("sample_parenting_style_consequence_1", "sample_parenting_style_action_1", "CONSEQUENCE", "Con thấy cha mẹ chia rẽ, vấn đề bài tập bị lu mờ bởi cuộc tranh thắng thua của người lớn.", 0, createdAt),
-        node("sample_parenting_style_action_2", "sample_parenting_style_belief_2", "ACTION", "Tôi có thể nói: 'Mình tạm thống nhất nhắc con hoàn thành bài, tối nay hai vợ chồng bàn riêng cách xử lý lâu dài.'", 1, createdAt),
+        node("sample_parenting_style_emotion_2", "sample_parenting_style_belief_2", "EMOTION", "Tôi bớt cảm giác bị phản đối và muốn giữ sự hợp tác của hai vợ chồng.", 1, createdAt),
+        node("sample_parenting_style_action_2", "sample_parenting_style_emotion_2", "ACTION", "Tôi có thể nói: 'Mình tạm thống nhất nhắc con hoàn thành bài, tối nay hai vợ chồng bàn riêng cách xử lý lâu dài.'", 1, createdAt),
         node("sample_parenting_style_consequence_2", "sample_parenting_style_action_2", "CONSEQUENCE", "Cha mẹ giữ được mặt trận ổn định trước con và có không gian tìm phương pháp chung.", 0, createdAt),
         node("sample_parenting_style_fact_3", "sample_parenting_style_root", "FACT", "Cả hai đều nói rằng muốn con có trách nhiệm và cảm thấy được yêu thương.", 2, createdAt),
         node("sample_parenting_style_interpretation_3", "sample_parenting_style_fact_3", "INTERPRETATION", "Điểm chung không phải là cách phạt hay không phạt, mà là mong muốn con trưởng thành lành mạnh.", 0, createdAt),
-        node("sample_parenting_style_action_3", "sample_parenting_style_interpretation_3", "ACTION", "Hai vợ chồng có thể thống nhất 3 nguyên tắc: không phủ nhận nhau trước mặt con, hậu quả rõ ràng, và luôn có bước kết nối sau kỷ luật.", 0, createdAt),
+        node("sample_parenting_style_belief_3", "sample_parenting_style_interpretation_3", "BELIEF", "Khi nhớ điểm chung, hai vợ chồng có thể tìm phương pháp tốt hơn thay vì thắng thua.", 0, createdAt),
+        node("sample_parenting_style_emotion_3", "sample_parenting_style_belief_3", "EMOTION", "Tôi dịu xuống và thấy cả hai vẫn cùng muốn điều tốt cho con.", 0, createdAt),
+        node("sample_parenting_style_action_3", "sample_parenting_style_emotion_3", "ACTION", "Hai vợ chồng có thể thống nhất 3 nguyên tắc: không phủ nhận nhau trước mặt con, hậu quả rõ ràng, và luôn có bước kết nối sau kỷ luật.", 0, createdAt),
         node("sample_parenting_style_consequence_3", "sample_parenting_style_action_3", "CONSEQUENCE", "Con nhận được giới hạn nhất quán mà vẫn cảm thấy cha mẹ là một đội.", 0, createdAt)
       ]
     },
@@ -368,7 +407,10 @@ function createSampleTrees() {
       nodes: [
         node("sample_gentle_parenting_root", null, "ROOT", "Hai ý kiến đối lập: Tôi nghĩ nên dạy con bằng bao dung, thuyết phục và làm gương; vợ nghĩ cần la mắng hoặc phạt để con nhớ lỗi và có kỷ luật.", 0, createdAt),
         node("sample_gentle_parenting_fact_1", "sample_gentle_parenting_root", "BELIEF", "Ý kiến của tôi: Nên dạy con bằng bao dung, thuyết phục, giảng giải và làm gương.", 0, createdAt),
-        node("sample_gentle_parenting_action_0", "sample_gentle_parenting_fact_1", "ACTION", "Tôi can thiệp để con được nghe giải thích nhẹ nhàng hơn thay vì bị la mắng.", 0, createdAt),
+        node("sample_gentle_parenting_interpretation_0", "sample_gentle_parenting_fact_1", "INTERPRETATION", "Tôi hiểu rằng cách nói nhẹ nhàng giúp con thật sự hiểu lỗi hơn là chỉ sợ bị phạt.", 0, createdAt),
+        node("sample_gentle_parenting_belief_0", "sample_gentle_parenting_interpretation_0", "BELIEF", "Muốn con trưởng thành, cha mẹ cần làm gương về bình tĩnh và tôn trọng.", 0, createdAt),
+        node("sample_gentle_parenting_emotion_0", "sample_gentle_parenting_belief_0", "EMOTION", "Tôi thương con, lo con bị tổn thương và muốn bảo vệ không khí gia đình.", 0, createdAt),
+        node("sample_gentle_parenting_action_0", "sample_gentle_parenting_emotion_0", "ACTION", "Tôi can thiệp để con được nghe giải thích nhẹ nhàng hơn thay vì bị la mắng.", 0, createdAt),
         node("sample_gentle_parenting_consequence_0", "sample_gentle_parenting_action_0", "CONSEQUENCE", "Con có thể bớt sợ, nhưng nếu tôi phủ nhận vợ trước mặt con thì vợ chồng dễ đối đầu hơn.", 0, createdAt),
         node("sample_gentle_parenting_fact_2", "sample_gentle_parenting_root", "BELIEF", "Ý kiến của vợ: Cần la mắng hoặc phạt để con nhớ lỗi và có kỷ luật.", 1, createdAt),
         node("sample_gentle_parenting_fact_3", "sample_gentle_parenting_root", "FACT", "Sau đó con khóc, cúi mặt và tránh nhìn cả hai vợ chồng.", 2, createdAt),
@@ -380,12 +422,16 @@ function createSampleTrees() {
         node("sample_gentle_parenting_emotion_1", "sample_gentle_parenting_belief_1", "EMOTION", "Tôi xót con, giận vợ, lo rằng con sẽ tổn thương lâu dài.", 0, createdAt),
         node("sample_gentle_parenting_action_1", "sample_gentle_parenting_emotion_1", "ACTION", "Tôi can thiệp ngay và nói trước mặt con rằng vợ đang sai, quá nóng tính.", 0, createdAt),
         node("sample_gentle_parenting_consequence_1", "sample_gentle_parenting_action_1", "CONSEQUENCE", "Vợ cảm thấy bị phủ nhận vai trò làm mẹ, con thấy cha mẹ đối đầu và vấn đề ban đầu bị lu mờ.", 0, createdAt),
-        node("sample_gentle_parenting_action_2", "sample_gentle_parenting_belief_2", "ACTION", "Tôi có thể đợi lúc riêng tư và nói: 'Anh thấy em rất muốn con có trách nhiệm, nhưng khi mình la mắng, con có vẻ chỉ sợ chứ chưa hiểu lỗi.'", 1, createdAt),
+        node("sample_gentle_parenting_emotion_2", "sample_gentle_parenting_belief_2", "EMOTION", "Tôi bớt phán xét vợ và muốn nói chuyện từ sự công nhận ý tốt.", 1, createdAt),
+        node("sample_gentle_parenting_action_2", "sample_gentle_parenting_emotion_2", "ACTION", "Tôi có thể đợi lúc riêng tư và nói: 'Anh thấy em rất muốn con có trách nhiệm, nhưng khi mình la mắng, con có vẻ chỉ sợ chứ chưa hiểu lỗi.'", 1, createdAt),
         node("sample_gentle_parenting_consequence_2", "sample_gentle_parenting_action_2", "CONSEQUENCE", "Cuộc nói chuyện ít công kích hơn vì bắt đầu từ việc công nhận ý định tốt của vợ.", 0, createdAt),
-        node("sample_gentle_parenting_action_3", "sample_gentle_parenting_belief_3", "ACTION", "Hai vợ chồng có thể thống nhất cách xử lý: bình tĩnh gọi tên lỗi, yêu cầu con sửa hậu quả, giải thích lý do và cha mẹ làm gương xin lỗi khi mình nóng giận.", 2, createdAt),
+        node("sample_gentle_parenting_emotion_3", "sample_gentle_parenting_belief_3", "EMOTION", "Tôi thấy có hy vọng vì hai vợ chồng vẫn cùng muốn con tốt hơn.", 2, createdAt),
+        node("sample_gentle_parenting_action_3", "sample_gentle_parenting_emotion_3", "ACTION", "Hai vợ chồng có thể thống nhất cách xử lý: bình tĩnh gọi tên lỗi, yêu cầu con sửa hậu quả, giải thích lý do và cha mẹ làm gương xin lỗi khi mình nóng giận.", 2, createdAt),
         node("sample_gentle_parenting_consequence_3", "sample_gentle_parenting_action_3", "CONSEQUENCE", "Con học trách nhiệm qua sửa lỗi và quan sát cách cha mẹ kiểm soát cảm xúc, không chỉ qua nỗi sợ bị phạt.", 0, createdAt),
         node("sample_gentle_parenting_interpretation_3", "sample_gentle_parenting_fact_3", "INTERPRETATION", "Phản ứng khóc của con là tín hiệu cần xem lại cách dạy, nhưng chưa đủ để kết luận vợ là người mẹ xấu.", 0, createdAt),
-        node("sample_gentle_parenting_action_4", "sample_gentle_parenting_interpretation_3", "ACTION", "Tôi có thể hỏi con sau khi bình tĩnh: 'Con hiểu lỗi ở đâu? Lần sau con có thể làm gì khác?'", 0, createdAt),
+        node("sample_gentle_parenting_belief_4", "sample_gentle_parenting_interpretation_3", "BELIEF", "Phản ứng của con là dữ liệu để cả nhà học lại cách sửa lỗi, không phải để kết án ai.", 0, createdAt),
+        node("sample_gentle_parenting_emotion_4", "sample_gentle_parenting_belief_4", "EMOTION", "Tôi bớt căng và muốn giúp con hiểu bài học sau khi cảm xúc đã lắng xuống.", 0, createdAt),
+        node("sample_gentle_parenting_action_4", "sample_gentle_parenting_emotion_4", "ACTION", "Tôi có thể hỏi con sau khi bình tĩnh: 'Con hiểu lỗi ở đâu? Lần sau con có thể làm gì khác?'", 0, createdAt),
         node("sample_gentle_parenting_consequence_4", "sample_gentle_parenting_action_4", "CONSEQUENCE", "Trọng tâm chuyển từ trừng phạt sang học bài học và phục hồi kết nối.", 0, createdAt)
       ]
     }
