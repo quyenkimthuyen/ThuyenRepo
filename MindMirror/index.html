@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cognitive Tree</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <button class="brand" id="homeButton" type="button" aria-label="Về danh sách cây">
+        <span class="brand__logo" aria-hidden="true">CT</span>
+        <span>
+          <strong>Cognitive Tree</strong>
+          <small>Nhìn thấy cách bạn đang suy nghĩ</small>
+        </span>
+      </button>
+
+      <button class="button button--primary" id="newTreeButton" type="button">New Tree</button>
+    </header>
+
+    <nav class="tabs" aria-label="Chức năng chính">
+      <button class="tab is-active" data-view="trees" type="button">Cây tư duy</button>
+      <button class="tab" data-view="quiz" type="button">Trắc nghiệm từ cây</button>
+      <button class="tab" data-view="healing" type="button">An toàn & Chữa lành</button>
+      <button class="tab" data-view="relationship" type="button">Sự trưởng thành</button>
+      <button class="tab" data-view="conviction" type="button">Kiên định / Cố chấp</button>
+      <button class="tab" data-view="truth" type="button">Chân lý / Cái tôi</button>
+    </nav>
+
+    <main>
+      <section class="view is-active" id="treesView" aria-labelledby="treesTitle">
+        <div class="screen-header">
+          <div>
+            <h1 id="treesTitle">Tree List</h1>
+            <p>Chọn một cây để mở, hoặc tạo chủ đề mới để quan sát dòng suy nghĩ.</p>
+          </div>
+
+          <div class="import-export">
+            <button class="button button--ghost" id="exportAllButton" type="button">Export JSON</button>
+            <label class="button button--ghost" for="importFile">Import JSON</label>
+            <input class="visually-hidden" id="importFile" type="file" accept="application/json">
+          </div>
+        </div>
+
+        <div class="tree-list" id="treeList"></div>
+        <p class="empty-state" id="emptyTreeList">Chưa có cây tư duy nào. Hãy bắt đầu bằng một chủ đề đang khiến bạn bận tâm.</p>
+      </section>
+
+      <section class="view" id="editorView" aria-labelledby="editorTitle">
+        <div class="editor-toolbar">
+          <button class="button button--ghost" id="backToListButton" type="button">← Danh sách</button>
+          <div>
+            <h1 id="editorTitle">Root Problem</h1>
+            <p id="editorMeta"></p>
+          </div>
+          <button class="button button--ghost" id="downloadTreeButton" type="button">Download Tree</button>
+        </div>
+
+        <section class="tree-canvas-card" aria-label="Visual tree">
+          <div class="tree-canvas" id="treeCanvas"></div>
+        </section>
+
+        <section class="insight-panel" aria-labelledby="insightTitle">
+          <div>
+            <span class="eyebrow">Cognitive Insight Panel</span>
+            <h2 id="insightTitle">Chọn một node để tự phản biện</h2>
+          </div>
+          <div id="insightContent"></div>
+        </section>
+      </section>
+
+      <section class="view" id="quizView" aria-labelledby="quizTitle">
+        <div class="module-card">
+          <span class="eyebrow">Trắc nghiệm từ cây</span>
+          <h1 id="quizTitle">Chọn một nhánh rồi nhìn lại chính mình</h1>
+          <p>Chọn tình huống, rồi đi từng bước trong cây. Mỗi lần chọn một nút, app sẽ hiện các nút con của nút đó để bạn hiểu mình đang nghĩ gì.</p>
+
+          <div class="coach-panel">
+            <div class="coach-step"><strong>1</strong><span>Chọn tình huống</span></div>
+            <div class="coach-step"><strong>2</strong><span>Đi từng nút trong nhánh</span></div>
+            <div class="coach-step"><strong>3</strong><span>Trả lời để nhìn lại chính mình</span></div>
+          </div>
+
+          <section class="source-panel" aria-label="Trắc nghiệm từ cây tư duy">
+            <div>
+              <strong>Chọn nhánh trong cây</strong>
+              <p>Chọn một nút, app sẽ hiện tiếp các nút con của nút đó. Cứ đi như vậy cho đến khi hết nhánh.</p>
+            </div>
+            <div class="source-panel__controls">
+              <label class="field">
+                <span>1. Tình huống</span>
+                <select id="quizTreeSelect"></select>
+              </label>
+              <div class="maturity-steps" id="quizPathControls"></div>
+            </div>
+          </section>
+
+          <section class="quiz-trail" id="quizSelectedPanel">
+            <div>
+              <strong>Đường suy nghĩ đang chọn</strong>
+              <p id="quizSelectedText">Hãy chọn một tình huống rồi đi từng bước trong cây.</p>
+            </div>
+            <div class="quiz-path-list" id="quizPathTrail"></div>
+          </section>
+
+          <details class="reflection-summary" open>
+            <summary>Trắc nghiệm nhìn lại chính mình</summary>
+            <div class="maturity-steps">
+              <label class="field">
+                <span>Tôi có phân biệt chuyện thật và suy nghĩ thêm vào không?</span>
+                <select data-quiz-choice="fact">
+                  <option value="">Chọn một mức</option>
+                  <option value="reactive">Tôi xem suy nghĩ của mình là sự thật chắc chắn</option>
+                  <option value="aware">Tôi biết có phần là mình đang đoán thêm</option>
+                  <option value="mature">Tôi nhìn rõ chuyện thật trước khi kết luận</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Tôi có thử hiểu người kia không?</span>
+                <select data-quiz-choice="otherView">
+                  <option value="">Chọn một mức</option>
+                  <option value="reactive">Tôi chỉ thấy lỗi của họ</option>
+                  <option value="aware">Tôi biết có thể họ nghĩ khác tôi</option>
+                  <option value="mature">Tôi thật sự thử nhìn từ phía họ</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Cảm xúc đang dẫn tôi tới đâu?</span>
+                <select data-quiz-choice="emotion">
+                  <option value="">Chọn một mức</option>
+                  <option value="reactive">Tôi đang để giận/buồn điều khiển mình</option>
+                  <option value="aware">Tôi biết mình đang bị cảm xúc kéo đi</option>
+                  <option value="mature">Tôi dừng lại để bình tĩnh hơn rồi mới làm tiếp</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Việc tôi làm có giúp chuyện tốt hơn không?</span>
+                <select data-quiz-choice="action">
+                  <option value="">Chọn một mức</option>
+                  <option value="reactive">Việc tôi làm dễ làm chuyện căng hơn</option>
+                  <option value="aware">Tôi muốn làm nhẹ hơn nhưng chưa rõ cách</option>
+                  <option value="mature">Tôi chọn một việc nhỏ để hiểu nhau hoặc sửa phần mình</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Tôi có sẵn sàng sửa phần của mình không?</span>
+                <select data-quiz-choice="repair">
+                  <option value="">Chọn một mức</option>
+                  <option value="reactive">Tôi muốn người kia sửa trước</option>
+                  <option value="aware">Tôi thấy mình cũng có phần cần sửa</option>
+                  <option value="mature">Tôi chọn rõ một việc mình sẽ làm khác đi</option>
+                </select>
+              </label>
+            </div>
+          </details>
+
+          <div class="progress-group">
+            <div>
+              <div class="progress-label">
+                <span>Mức nhìn lại chính mình từ nhánh đã chọn</span>
+                <strong id="quizScore">0%</strong>
+              </div>
+              <div class="progress"><span id="quizBar"></span></div>
+            </div>
+          </div>
+          <div class="result-badge" id="quizResultLabel">Đang quan sát</div>
+          <p class="module-note" id="quizFeedback"></p>
+        </div>
+      </section>
+
+      <section class="view" id="healingView" aria-labelledby="healingTitle">
+        <div class="module-card">
+          <span class="eyebrow">An toàn & Chữa lành</span>
+          <h1 id="healingTitle">Trước khi phân tích, hãy kiểm tra sự an toàn bên trong</h1>
+          <p>Khi đang quá tức giận, xấu hổ hoặc tổn thương, phân tích quá sớm có thể biến thành tự trách. Hãy bắt đầu bằng trạng thái cảm xúc, ranh giới và phục hồi kết nối.</p>
+
+          <section class="safety-alert">
+            <strong>Lưu ý an toàn</strong>
+            <p>Nếu có bạo lực thể chất, đe doạ, kiểm soát nghiêm trọng, lạm dụng, hoặc trẻ em bị tổn hại, app này không thay thế chuyên gia. Hãy ưu tiên tìm hỗ trợ an toàn từ người tin cậy, chuyên gia hoặc dịch vụ khẩn cấp tại nơi bạn sống.</p>
+          </section>
+
+          <details class="reflection-summary" open>
+            <summary>1. Trước khi phân tích, tôi đang ở trạng thái nào?</summary>
+            <div class="choice-list">
+              <label class="choice-card">
+                <input type="radio" name="emotionalState" value="calm" data-healing-field="emotionalState">
+                <span>Bình tĩnh</span>
+              </label>
+              <label class="choice-card">
+                <input type="radio" name="emotionalState" value="tense" data-healing-field="emotionalState">
+                <span>Hơi căng</span>
+              </label>
+              <label class="choice-card">
+                <input type="radio" name="emotionalState" value="angry" data-healing-field="emotionalState">
+                <span>Rất tức giận</span>
+              </label>
+              <label class="choice-card">
+                <input type="radio" name="emotionalState" value="hurt" data-healing-field="emotionalState">
+                <span>Đang tổn thương</span>
+              </label>
+              <label class="choice-card">
+                <input type="radio" name="emotionalState" value="notReady" data-healing-field="emotionalState">
+                <span>Chưa sẵn sàng phân tích</span>
+              </label>
+            </div>
+            <p class="module-note" id="emotionalSafetyFeedback"></p>
+          </details>
+
+          <details class="reflection-summary" open>
+            <summary>2. Nhìn lại chính mình không phải tự trách</summary>
+            <div class="checklist">
+              <label class="check-item">
+                <input type="checkbox" data-healing-check="selfBlame">
+                <span>Tôi có đang tự đổ hết lỗi cho mình không?</span>
+              </label>
+              <label class="check-item">
+                <input type="checkbox" data-healing-check="ignoreBoundary">
+                <span>Tôi có đang bỏ qua ranh giới cá nhân không?</span>
+              </label>
+              <label class="check-item">
+                <input type="checkbox" data-healing-check="acceptHarm">
+                <span>Tôi có đang chấp nhận hành vi gây tổn thương lặp lại không?</span>
+              </label>
+            </div>
+            <p class="module-note">Nhận phần mình có thể sửa không có nghĩa là mọi lỗi thuộc về mình.</p>
+          </details>
+
+          <details class="reflection-summary" open>
+            <summary>3. Ranh giới lành mạnh</summary>
+            <div class="maturity-steps">
+              <label class="field">
+                <span>Điều tôi có thể thông cảm</span>
+                <select data-healing-choice="empathy">
+                  <option value="">Chọn một mức</option>
+                  <option value="low">Tôi chưa thể thông cảm lúc này</option>
+                  <option value="medium">Tôi có thể hiểu một phần hoàn cảnh/cảm xúc của họ</option>
+                  <option value="high">Tôi có thể thông cảm mà không xoá bỏ cảm xúc của mình</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Điều tôi không nên chấp nhận</span>
+                <select data-healing-choice="nonNegotiable">
+                  <option value="">Chọn một mức</option>
+                  <option value="low">Tôi chưa gọi tên được điều không thể chấp nhận</option>
+                  <option value="medium">Tôi biết một vài hành vi vượt ranh giới</option>
+                  <option value="high">Tôi gọi tên rõ hành vi gây tổn thương không nên lặp lại</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Ranh giới tối thiểu</span>
+                <select data-healing-choice="boundary">
+                  <option value="">Chọn một mức</option>
+                  <option value="low">Tôi chưa có ranh giới rõ</option>
+                  <option value="medium">Tôi biết mình cần ranh giới nhưng chưa biết nói sao</option>
+                  <option value="high">Tôi biết mình cần nói ranh giới nào một cách bình tĩnh</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Nếu hành vi lặp lại</span>
+                <select data-healing-choice="protection">
+                  <option value="">Chọn một mức</option>
+                  <option value="low">Tôi thường chịu đựng hoặc bùng nổ</option>
+                  <option value="medium">Tôi có thể tạm dừng hoặc rời khỏi cuộc cãi vã</option>
+                  <option value="high">Tôi có kế hoạch bảo vệ mình/con và tìm hỗ trợ nếu cần</option>
+                </select>
+              </label>
+            </div>
+          </details>
+
+          <details class="reflection-summary" open>
+            <summary>4. Phục hồi kết nối</summary>
+            <div class="checklist">
+              <label class="check-item">
+                <input type="checkbox" data-repair-check="apology">
+                <span>Tôi có cần xin lỗi phần nào không?</span>
+              </label>
+              <label class="check-item">
+                <input type="checkbox" data-repair-check="need">
+                <span>Tôi có cần nói lại nhu cầu của mình không?</span>
+              </label>
+              <label class="check-item">
+                <input type="checkbox" data-repair-check="calmTalk">
+                <span>Tôi có cần đề nghị một cuộc nói chuyện bình tĩnh hơn không?</span>
+              </label>
+              <label class="check-item">
+                <input type="checkbox" data-repair-check="reassureChild">
+                <span>Tôi có cần ôm con, trấn an con, hoặc sửa lại lời mình đã nói không?</span>
+              </label>
+            </div>
+          </details>
+
+          <div class="progress-group">
+            <div>
+              <div class="progress-label">
+                <span>Xu hướng an toàn & chữa lành</span>
+                <strong id="healingScore">0%</strong>
+              </div>
+              <div class="progress"><span id="healingBar"></span></div>
+            </div>
+          </div>
+          <div class="result-badge" id="healingResultLabel">Đang quan sát</div>
+          <p class="module-note" id="healingFeedback"></p>
+        </div>
+      </section>
+
+      <section class="view" id="relationshipView" aria-labelledby="relationshipTitle">
+        <div class="module-card">
+          <span class="eyebrow">Sự trưởng thành</span>
+          <h1 id="relationshipTitle">Chọn cách ứng xử trưởng thành hơn</h1>
+          <p>Cây tư duy là nền. Bạn chọn một tình huống, rồi chọn cách mình muốn ứng xử ở từng tầng suy nghĩ. Kết quả không phán xét đúng sai, mà cho thấy mức độ bạn đang tự nhận diện và sửa mình.</p>
+
+          <div class="coach-panel">
+            <div class="coach-step"><strong>1</strong><span>Chọn tình huống từ cây</span></div>
+            <div class="coach-step"><strong>2</strong><span>Chọn cách ứng xử theo từng tầng</span></div>
+            <div class="coach-step"><strong>3</strong><span>Tự kiểm tra mức trưởng thành</span></div>
+          </div>
+
+          <section class="source-panel" aria-label="Dữ liệu từ trắc nghiệm từ cây">
+            <div>
+              <strong>Dữ liệu từ trắc nghiệm từ cây</strong>
+              <p id="relationshipQuizSourceText">Hãy hoàn thành phần Trắc nghiệm từ cây trước, rồi quay lại đây để dùng nhánh đã chọn.</p>
+            </div>
+            <button class="button button--primary" id="applyRelationshipNodeButton" type="button">Dùng kết quả trắc nghiệm</button>
+          </section>
+
+          <details class="reflection-summary" open>
+            <summary>2. Chọn cách ứng xử theo từng tầng của cây tư duy</summary>
+            <div class="maturity-steps">
+              <label class="field">
+                <span>FACT - Khi nhìn sự kiện</span>
+                <select data-maturity-choice="fact">
+                  <option value="">Chọn cách ứng xử</option>
+                  <option value="reactive">Tôi bỏ qua sự kiện và phản ứng theo cảm giác</option>
+                  <option value="aware">Tôi có nhắc đến sự kiện nhưng còn lẫn suy diễn</option>
+                  <option value="mature">Tôi tách rõ điều đã xảy ra khỏi đánh giá của mình</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>INTERPRETATION - Khi tôi hiểu ý đối phương</span>
+                <select data-maturity-choice="interpretation">
+                  <option value="">Chọn cách ứng xử</option>
+                  <option value="reactive">Tôi xem cách hiểu của mình là sự thật chắc chắn</option>
+                  <option value="aware">Tôi biết có thể có cách hiểu khác</option>
+                  <option value="mature">Tôi chủ động hỏi lại trước khi kết luận ý định của họ</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>BELIEF - Khi giữ niềm tin</span>
+                <select data-maturity-choice="belief">
+                  <option value="">Chọn cách ứng xử</option>
+                  <option value="reactive">Tôi bám vào niềm tin như luật tuyệt đối</option>
+                  <option value="aware">Tôi nhận ra niềm tin này có ngoại lệ</option>
+                  <option value="mature">Tôi giữ giá trị cốt lõi nhưng linh hoạt cách thực hiện</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>EMOTION - Khi cảm xúc nổi lên</span>
+                <select data-maturity-choice="emotion">
+                  <option value="">Chọn cách ứng xử</option>
+                  <option value="reactive">Tôi để cảm xúc dẫn lời nói/hành động</option>
+                  <option value="aware">Tôi nhận ra mình đang nóng, buồn hoặc phòng thủ</option>
+                  <option value="mature">Tôi tạm dừng, gọi tên cảm xúc và nói nhu cầu thật</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>ACTION - Khi chọn hành động</span>
+                <select data-maturity-choice="action">
+                  <option value="">Chọn cách ứng xử</option>
+                  <option value="reactive">Tôi công kích, im lặng trừng phạt hoặc áp đặt</option>
+                  <option value="aware">Tôi cố kiềm chế nhưng vẫn còn muốn thắng</option>
+                  <option value="mature">Tôi chọn đối thoại, hỏi thêm và đề nghị cùng sửa</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>CONSEQUENCE - Khi nhìn hậu quả</span>
+                <select data-maturity-choice="consequence">
+                  <option value="">Chọn cách ứng xử</option>
+                  <option value="reactive">Tôi chỉ thấy lỗi của đối phương</option>
+                  <option value="aware">Tôi thấy phản ứng của mình có góp phần làm căng thẳng</option>
+                  <option value="mature">Tôi chủ động sửa phần mình và phục hồi kết nối</option>
+                </select>
+              </label>
+            </div>
+          </details>
+
+          <details class="reflection-summary" open>
+            <summary>Checklist trưởng thành</summary>
+            <div class="checklist">
+              <label class="check-item">
+                <input type="checkbox" data-maturity-check="separateFact">
+                <span>Tôi đã phân biệt điều thật sự xảy ra với cách tôi đang nghĩ về nó.</span>
+              </label>
+              <label class="check-item">
+                <input type="checkbox" data-maturity-check="otherView">
+                <span>Tôi đã thử nhìn từ góc của đối phương.</span>
+              </label>
+              <label class="check-item">
+                <input type="checkbox" data-maturity-check="ownPart">
+                <span>Tôi nhận ra ít nhất một phần mình có thể sửa.</span>
+              </label>
+              <label class="check-item">
+                <input type="checkbox" data-maturity-check="needNotBlame">
+                <span>Tôi có thể nói nhu cầu thay vì trách móc.</span>
+              </label>
+              <label class="check-item">
+                <input type="checkbox" data-maturity-check="repair">
+                <span>Tôi chọn một hành động phục hồi kết nối.</span>
+              </label>
+            </div>
+          </details>
+
+          <div class="progress-group">
+            <div>
+              <div class="progress-label">
+                <span>Xu hướng trưởng thành trong cách ứng xử</span>
+                <strong id="relationshipScore">0%</strong>
+              </div>
+              <div class="progress"><span id="relationshipBar"></span></div>
+            </div>
+          </div>
+          <div class="result-badge" id="relationshipResultLabel">Đang quan sát</div>
+          <p class="module-note" id="relationshipFeedback"></p>
+        </div>
+      </section>
+
+      <section class="view" id="convictionView" aria-labelledby="convictionTitle">
+        <div class="module-card">
+          <span class="eyebrow">Kiên định hay cố chấp</span>
+          <h1 id="convictionTitle">Quy trình soi lại niềm tin</h1>
+          <p>Không cần trả lời hoàn hảo. Chỉ cần viết đủ để thấy: mình đang giữ giá trị thật, hay đang bám vào một kết luận vì sợ sai?</p>
+
+          <div class="coach-panel">
+            <div class="coach-step"><strong>1</strong><span>Nói rõ điều mình tin</span></div>
+            <div class="coach-step"><strong>2</strong><span>Tìm cả chứng cứ thuận và nghịch</span></div>
+            <div class="coach-step"><strong>3</strong><span>Viết lại một phiên bản mềm hơn</span></div>
+          </div>
+
+          <section class="source-panel" aria-label="Dữ liệu từ trắc nghiệm từ cây">
+            <div>
+              <strong>Dữ liệu từ trắc nghiệm từ cây</strong>
+              <p id="convictionQuizSourceText">Hãy hoàn thành phần Trắc nghiệm từ cây trước, rồi quay lại đây để dùng nhánh đã chọn.</p>
+            </div>
+            <button class="button button--primary" id="applyConvictionNodeButton" type="button">Dùng kết quả trắc nghiệm</button>
+          </section>
+
+          <label class="field">
+            <span>Mức chắc chắn hiện tại: <strong id="certaintyValue">50%</strong></span>
+            <input id="convictionCertainty" data-conviction-field="certainty" type="range" min="0" max="100" value="50">
+          </label>
+
+          <details class="reflection-summary" open>
+            <summary>Chọn mức kiên định hay cố chấp</summary>
+            <div class="maturity-steps">
+              <label class="field">
+                <span>Bằng chứng</span>
+                <select data-conviction-choice="evidence">
+                  <option value="">Chọn mức độ</option>
+                  <option value="reactive">Tôi tin chủ yếu vì cảm giác của mình rất mạnh</option>
+                  <option value="aware">Tôi có một vài sự kiện nhưng còn lẫn suy diễn</option>
+                  <option value="mature">Tôi dựa vào điều thật sự xảy ra và biết đâu là suy nghĩ của mình thêm vào</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Phản chứng</span>
+                <select data-conviction-choice="counterEvidence">
+                  <option value="">Chọn mức độ</option>
+                  <option value="reactive">Tôi né hoặc bác bỏ ngay điều ngược với mình</option>
+                  <option value="aware">Tôi biết có ngoại lệ nhưng vẫn khó chấp nhận</option>
+                  <option value="mature">Tôi chủ động xem xét dữ kiện làm mình phải chậm lại</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Khả năng đổi ý</span>
+                <select data-conviction-choice="flexibility">
+                  <option value="">Chọn mức độ</option>
+                  <option value="reactive">Tôi gần như không chấp nhận khả năng mình sai</option>
+                  <option value="aware">Tôi có thể đổi ý nhưng cần thời gian</option>
+                  <option value="mature">Tôi biết điều kiện cụ thể khiến mình điều chỉnh quan điểm</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Cảm xúc và cái tôi</span>
+                <select data-conviction-choice="egoAwareness">
+                  <option value="">Chọn mức độ</option>
+                  <option value="reactive">Tôi thấy bị đe doạ nên càng muốn chứng minh mình đúng</option>
+                  <option value="aware">Tôi nhận ra cảm xúc đang làm mình cứng lại</option>
+                  <option value="mature">Tôi gọi tên được điều mình sợ mất và vẫn giữ bình tĩnh</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Cách bảo vệ giá trị</span>
+                <select data-conviction-choice="respect">
+                  <option value="">Chọn mức độ</option>
+                  <option value="reactive">Tôi bảo vệ quan điểm bằng công kích hoặc phủ nhận người kia</option>
+                  <option value="aware">Tôi cố nói nhẹ hơn nhưng vẫn muốn thắng</option>
+                  <option value="mature">Tôi giữ giá trị của mình mà vẫn tôn trọng phẩm giá người kia</option>
+                </select>
+              </label>
+            </div>
+          </details>
+
+          <details class="reflection-summary" open>
+            <summary id="reflectionSummaryTitle">Tự kiểm tra trước khi kết luận</summary>
+            <div class="checklist" id="convictionChecklist"></div>
+          </details>
+
+          <div class="gauge-grid">
+            <article class="gauge-card">
+              <div class="gauge" id="convictionGauge">
+                <span id="convictionScore">0%</span>
+              </div>
+              <strong>Kiên định</strong>
+            </article>
+            <article class="gauge-card">
+              <div class="gauge gauge--stubborn" id="stubbornGauge">
+                <span id="stubbornScore">100%</span>
+              </div>
+              <strong>Cố chấp</strong>
+            </article>
+          </div>
+          <div class="result-badge" id="convictionResultLabel">Đang quan sát</div>
+          <p class="module-note" id="convictionFeedback"></p>
+        </div>
+      </section>
+
+      <section class="view" id="truthView" aria-labelledby="truthTitle">
+        <div class="module-card">
+          <span class="eyebrow">Chân lý hay cái tôi</span>
+          <h1 id="truthTitle">Tôi đang bảo vệ sự thật hay hình ảnh của mình?</h1>
+          <p>Mục tiêu không phải tự kết tội mình. Mục tiêu là nhận ra khi nào mình đang phụng sự sự thật, và khi nào mình chỉ đang cố giữ hình ảnh “tôi đúng”.</p>
+
+          <div class="coach-panel">
+            <div class="coach-step"><strong>1</strong><span>Gọi tên giá trị thật</span></div>
+            <div class="coach-step"><strong>2</strong><span>Nhìn phần cái tôi đang sợ</span></div>
+            <div class="coach-step"><strong>3</strong><span>Chọn hành động làm sự thật rõ hơn</span></div>
+          </div>
+
+          <section class="source-panel" aria-label="Dữ liệu từ trắc nghiệm từ cây">
+            <div>
+              <strong>Dữ liệu từ trắc nghiệm từ cây</strong>
+              <p id="truthQuizSourceText">Hãy hoàn thành phần Trắc nghiệm từ cây trước, rồi quay lại đây để dùng nhánh đã chọn.</p>
+            </div>
+            <button class="button button--primary" id="applyTruthNodeButton" type="button">Dùng kết quả trắc nghiệm</button>
+          </section>
+
+          <details class="reflection-summary" open>
+            <summary>Chọn mức chân lý hay cái tôi</summary>
+            <div class="maturity-steps">
+              <label class="field">
+                <span>Giá trị đang bảo vệ</span>
+                <select data-truth-choice="value">
+                  <option value="">Chọn mức độ</option>
+                  <option value="reactive">Tôi chỉ cảm thấy mình đúng nhưng chưa gọi tên giá trị</option>
+                  <option value="aware">Tôi biết mình đang bảo vệ một giá trị</option>
+                  <option value="mature">Tôi phân biệt được giá trị thật với cách thể hiện của cái tôi</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Hình ảnh bản thân</span>
+                <select data-truth-choice="selfImage">
+                  <option value="">Chọn mức độ</option>
+                  <option value="reactive">Tôi rất sợ mất mặt hoặc mất vai trò</option>
+                  <option value="aware">Tôi nhận ra mình đang muốn giữ hình ảnh tốt</option>
+                  <option value="mature">Tôi có thể hạ cái tôi xuống để nhìn sự thật rõ hơn</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Đổi vai</span>
+                <select data-truth-choice="mirror">
+                  <option value="">Chọn mức độ</option>
+                  <option value="reactive">Nếu đổi vai, tôi vẫn chỉ thấy lỗi của họ</option>
+                  <option value="aware">Tôi bắt đầu thấy nếu họ làm vậy thì tôi cũng khó chịu</option>
+                  <option value="mature">Tôi đánh giá hành động của mình công bằng như khi đánh giá người khác</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Nhận sai một phần</span>
+                <select data-truth-choice="humility">
+                  <option value="">Chọn mức độ</option>
+                  <option value="reactive">Tôi thấy nhận sai là thua hoặc yếu thế</option>
+                  <option value="aware">Tôi biết mình có thể sai một phần nhưng còn khó nói ra</option>
+                  <option value="mature">Tôi có thể nhận phần mình chưa khéo mà không phủ nhận giá trị của mình</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Hành động tiếp theo</span>
+                <select data-truth-choice="truthAction">
+                  <option value="">Chọn mức độ</option>
+                  <option value="reactive">Tôi muốn làm điều giúp mình thắng</option>
+                  <option value="aware">Tôi muốn bớt căng nhưng chưa rõ nên làm gì</option>
+                  <option value="mature">Tôi chọn hành động làm sự thật rõ hơn và phục hồi kết nối</option>
+                </select>
+              </label>
+            </div>
+          </details>
+
+          <details class="reflection-summary" open>
+            <summary id="truthSummaryTitle">Tự kiểm tra động cơ</summary>
+            <div class="checklist" id="truthChecklist"></div>
+          </details>
+
+          <div class="progress-group">
+            <div>
+              <div class="progress-label">
+                <span>Xu hướng tìm kiếm sự thật</span>
+                <strong id="truthScore">0%</strong>
+              </div>
+              <div class="progress"><span id="truthBar"></span></div>
+            </div>
+
+            <div>
+              <div class="progress-label">
+                <span>Xu hướng bảo vệ cái tôi</span>
+                <strong id="egoScore">100%</strong>
+              </div>
+              <div class="progress progress--ego"><span id="egoBar"></span></div>
+            </div>
+          </div>
+          <div class="result-badge" id="truthResultLabel">Đang quan sát</div>
+          <p class="module-note" id="truthFeedback"></p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="dialog" id="treeDialog">
+    <form method="dialog" id="treeForm">
+      <h2>Tạo cây tư duy</h2>
+      <label class="field">
+        <span>Chủ đề</span>
+        <input id="treeTitleInput" type="text" placeholder="Ví dụ: Tôi đang cãi nhau với con" required>
+      </label>
+      <label class="field">
+        <span>Root Problem</span>
+        <textarea id="treeRootInput" rows="4" placeholder="Ví dụ: Tôi tức giận vì con cãi lại" required></textarea>
+      </label>
+      <div class="dialog-actions">
+        <button class="button button--ghost" value="cancel" type="button" data-close-dialog>Huỷ</button>
+        <button class="button button--primary" type="submit">Tạo</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="dialog" id="nodeDialog">
+    <form method="dialog" id="nodeForm">
+      <h2 id="nodeDialogTitle">Node</h2>
+      <label class="field" id="nodeTypeField">
+        <span>Loại node</span>
+        <select id="nodeTypeInput"></select>
+      </label>
+      <label class="field">
+        <span>Nội dung</span>
+        <textarea id="nodeContentInput" rows="4" required></textarea>
+      </label>
+      <div class="dialog-actions">
+        <button class="button button--ghost" value="cancel" type="button" data-close-dialog>Huỷ</button>
+        <button class="button button--primary" type="submit">Lưu</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script defer src="js/storage.js"></script>
+  <script defer src="js/tree.js"></script>
+  <script defer src="js/insight.js"></script>
+  <script defer src="js/ui.js"></script>
+  <script defer src="js/app.js"></script>
+</body>
+</html>
