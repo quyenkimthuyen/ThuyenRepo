@@ -543,7 +543,7 @@
       }
 
       async function startAutoLearn() {
-        const words = orderWords(getTopicWords());
+        const words = getVisibleWords();
         if (!words.length) return;
         const runId = autoLearnRunId + 1;
         autoLearnRunId = runId;
@@ -556,6 +556,8 @@
         };
         render();
 
+        const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
         for (let index = 0; index < words.length; index += 1) {
           if (!state.autoLearn.isPlaying || state.autoLearn.runId !== runId) return;
           const word = words[index];
@@ -565,6 +567,8 @@
           await speakText(word.meaning_vi, 'vi-VN');
           if (!state.autoLearn.isPlaying || state.autoLearn.runId !== runId) return;
           await playEnglishAudio(word);
+          if (!state.autoLearn.isPlaying || state.autoLearn.runId !== runId) return;
+          await delay(2000);
         }
 
         if (state.autoLearn.runId !== runId) return;
@@ -794,9 +798,9 @@
               <div class="row between">
                 <div>
                   <h3>Auto Audio Learning</h3>
-                  <p class="muted small">Plays Vietnamese meaning first, then English audio for every word in this topic.</p>
+                  <p class="muted small">Plays Vietnamese meaning first, then English audio for every word in the current queue, with a 2-second pause between words.</p>
                 </div>
-                <button class="button ${state.autoLearn.isPlaying ? 'danger' : 'primary'}" type="button" id="${state.autoLearn.isPlaying ? 'stopAutoLearn' : 'startAutoLearn'}" ${topicTotal ? '' : 'disabled'}>
+                <button class="button ${state.autoLearn.isPlaying ? 'danger' : 'primary'}" type="button" id="${state.autoLearn.isPlaying ? 'stopAutoLearn' : 'startAutoLearn'}" ${words.length ? '' : 'disabled'}>
                   ${state.autoLearn.isPlaying ? 'Stop' : 'Start'}
                 </button>
               </div>
@@ -806,7 +810,7 @@
                   <strong>${escapeHtml(autoLearnWord.word)}</strong>
                   <p class="muted small">${escapeHtml(autoLearnWord.ipa_us || '')}</p>
                 </div>
-              ` : '<p class="muted small">Choose a topic, then press Start to listen through all words.</p>'}
+              ` : '<p class="muted small">Press Start to listen through the current queue of words.</p>'}
             </div>
           </div>
           ${words.length ? words.map(renderWordCard).join('') : renderEmptyWords(topicTotal)}
