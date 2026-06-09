@@ -114,6 +114,29 @@
       .action-btn.remembered { color: var(--success); border-color: var(--success); background: rgba(34, 197, 94, 0.08); }
       .action-btn.remembered:hover { background: rgba(34, 197, 94, 0.18); }
       .action-btn svg { pointer-events: none; }
+      input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--line);
+        outline: none;
+        margin: 0.5rem 0;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        cursor: pointer;
+        transition: transform 0.1s ease;
+      }
+      input[type="range"]::-webkit-slider-thumb:hover {
+        transform: scale(1.25);
+      }
       @media (max-width: 520px) { .app { padding-inline: 0.8rem; } .header { margin-inline: -0.8rem; padding-inline: 0.8rem; } .stats-grid, .tabs.four, .tabs.five { grid-template-columns: 1fr 1fr; } .word-title { font-size: 1.7rem; } .pill { display: none; } }
     </style>
   </head>
@@ -192,6 +215,8 @@
       };
       window.state = state;
       let activeAudio = null;
+      let activeAudioResolver = null;
+      let activeSpeechResolver = null;
       let autoLearnRunId = 0;
 
       function escapeHtml(value) {
@@ -298,6 +323,7 @@
       function resetAutoLearnState() {
         state.autoLearn = {
           isPlaying: false,
+          isPaused: false,
           wordIds: [],
           index: 0,
           currentWordId: null,
@@ -495,8 +521,15 @@
         const voice = voices.find((item) => item.lang === lang) || voices.find((item) => item.lang.startsWith(lang.slice(0, 2)));
         if (voice) utterance.voice = voice;
         return new Promise((resolve) => {
-          utterance.onend = resolve;
-          utterance.onerror = resolve;
+          activeSpeechResolver = resolve;
+          utterance.onend = () => {
+            activeSpeechResolver = null;
+            resolve();
+          };
+          utterance.onerror = () => {
+            activeSpeechResolver = null;
+            resolve();
+          };
           window.speechSynthesis.speak(utterance);
         });
       }
@@ -505,15 +538,21 @@
         if (!word) return Promise.resolve();
         if (word.audio_us) {
           return new Promise((resolve) => {
+            activeAudioResolver = resolve;
             if (activeAudio) activeAudio.pause();
             activeAudio = new Audio(word.audio_us);
-            activeAudio.onended = resolve;
+            activeAudio.onended = () => {
+              activeAudioResolver = null;
+              resolve();
+            };
             activeAudio.onerror = () => {
               activeAudio = null;
+              activeAudioResolver = null;
               speakText(word.word, 'en-US').then(resolve);
             };
             activeAudio.play().catch(() => {
               activeAudio = null;
+              activeAudioResolver = null;
               speakText(word.word, 'en-US').then(resolve);
             });
           });
@@ -531,44 +570,140 @@
         speak(word.word);
       }
 
-      function stopAutoLearn() {
-        autoLearnRunId += 1;
-        resetAutoLearnState();
+      function cancelCurrentPlayback() {
         if (activeAudio) {
           activeAudio.pause();
           activeAudio = null;
         }
-        if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
+        if (activeAudioResolver) {
+          const resolve = activeAudioResolver;
+          activeAudioResolver = null;
+          resolve();
+        }
+        if (activeSpeechResolver) {
+          const resolve = activeSpeechResolver;
+          activeSpeechResolver = null;
+          resolve();
+        }
+      }
+
+      function pauseAutoLearn() {
+        if (!state.autoLearn.isPlaying) return;
+        state.autoLearn.isPaused = true;
+        if (activeAudio) {
+          activeAudio.pause();
+        }
+        if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause();
+        }
         render();
       }
 
-      async function startAutoLearn() {
+      function resumeAutoLearn() {
+        if (!state.autoLearn.isPlaying || !state.autoLearn.isPaused) return;
+        state.autoLearn.isPaused = false;
+        if (activeAudio && activeAudio.paused) {
+          activeAudio.play().catch(() => {});
+        }
+        if ('speechSynthesis' in window && window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
+        render();
+      }
+
+      function seekAutoLearn(targetIndex) {
+        if (!state.autoLearn.isPlaying) return;
+        const words = getVisibleWords();
+        if (targetIndex < 0 || targetIndex >= words.length) return;
+        
+        cancelCurrentPlayback();
+        
+        state.autoLearn.isPaused = false;
+        state.autoLearn.index = targetIndex;
+        state.autoLearn.currentWordId = words[targetIndex].id;
+        render();
+      }
+
+      function stopAutoLearn() {
+        autoLearnRunId += 1;
+        resetAutoLearnState();
+        cancelCurrentPlayback();
+        render();
+      }
+
+      async function startAutoLearn(startIndex = 0) {
         const words = getVisibleWords();
         if (!words.length) return;
         const runId = autoLearnRunId + 1;
         autoLearnRunId = runId;
         state.autoLearn = {
           isPlaying: true,
+          isPaused: false,
           wordIds: words.map((word) => word.id),
-          index: 0,
-          currentWordId: words[0].id,
+          index: startIndex,
+          currentWordId: words[startIndex]?.id || words[0].id,
           runId,
         };
         render();
 
         const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-        for (let index = 0; index < words.length; index += 1) {
-          if (!state.autoLearn.isPlaying || state.autoLearn.runId !== runId) return;
+        while (state.autoLearn.isPlaying && state.autoLearn.runId === runId && state.autoLearn.index < words.length) {
+          if (state.autoLearn.isPaused) {
+            await delay(100);
+            continue;
+          }
+
+          const index = state.autoLearn.index;
           const word = words[index];
-          state.autoLearn.index = index;
           state.autoLearn.currentWordId = word.id;
           render();
+
+          // 1. Play Vietnamese
+          if (!state.autoLearn.isPlaying || state.autoLearn.runId !== runId) return;
+          if (state.autoLearn.isPaused) continue;
           await speakText(word.meaning_vi, 'vi-VN');
+
+          // Wait if paused
+          while (state.autoLearn.isPaused && state.autoLearn.isPlaying && state.autoLearn.runId === runId) {
+            await delay(100);
+          }
+
+          // 2. Play English
           if (!state.autoLearn.isPlaying || state.autoLearn.runId !== runId) return;
+          if (state.autoLearn.index !== index) continue;
+          if (state.autoLearn.isPaused) continue;
           await playEnglishAudio(word);
+
+          // Wait if paused
+          while (state.autoLearn.isPaused && state.autoLearn.isPlaying && state.autoLearn.runId === runId) {
+            await delay(100);
+          }
+
+          // 3. Delay 2 seconds
           if (!state.autoLearn.isPlaying || state.autoLearn.runId !== runId) return;
-          await delay(2000);
+          if (state.autoLearn.index !== index) continue;
+          
+          let delayRemaining = 2000;
+          while (delayRemaining > 0 && state.autoLearn.isPlaying && state.autoLearn.runId === runId && state.autoLearn.index === index) {
+            if (!state.autoLearn.isPaused) {
+              await delay(100);
+              delayRemaining -= 100;
+            } else {
+              await delay(100);
+            }
+          }
+
+          // Move to next word if index wasn't changed manually
+          if (state.autoLearn.isPlaying && state.autoLearn.runId === runId && state.autoLearn.index === index) {
+            state.autoLearn.index += 1;
+            if (state.autoLearn.index < words.length) {
+              state.autoLearn.currentWordId = words[state.autoLearn.index].id;
+            }
+          }
         }
 
         if (state.autoLearn.runId !== runId) return;
@@ -800,15 +935,32 @@
                   <h3>Auto Audio Learning</h3>
                   <p class="muted small">Plays Vietnamese meaning first, then English audio for every word in the current queue, with a 2-second pause between words.</p>
                 </div>
-                <button class="button ${state.autoLearn.isPlaying ? 'danger' : 'primary'}" type="button" id="${state.autoLearn.isPlaying ? 'stopAutoLearn' : 'startAutoLearn'}" ${words.length ? '' : 'disabled'}>
-                  ${state.autoLearn.isPlaying ? 'Stop' : 'Start'}
-                </button>
+                <div class="row">
+                  ${state.autoLearn.isPlaying ? `
+                    <button class="button" type="button" id="togglePauseAutoLearn">
+                      ${state.autoLearn.isPaused ? 'Resume' : 'Pause'}
+                    </button>
+                    <button class="button danger" type="button" id="stopAutoLearn">
+                      Stop
+                    </button>
+                  ` : `
+                    <button class="button primary" type="button" id="startAutoLearn" ${words.length ? '' : 'disabled'}>
+                      Start
+                    </button>
+                  `}
+                </div>
               </div>
               ${state.autoLearn.isPlaying && autoLearnWord ? `
-                <div class="stat">
-                  <span class="muted small">Now playing ${autoLearnProgress}</span>
+                <div class="stat stack" style="gap: 0.5rem;">
+                  <div class="row between">
+                    <span class="muted small">Now playing ${autoLearnProgress}</span>
+                    <span class="muted small">Word ${state.autoLearn.index + 1} of ${words.length}</span>
+                  </div>
                   <strong>${escapeHtml(autoLearnWord.word)}</strong>
                   <p class="muted small">${escapeHtml(autoLearnWord.ipa_us || '')}</p>
+                  <div class="stack" style="gap: 0.25rem; margin-top: 0.5rem;">
+                    <input type="range" min="0" max="${words.length - 1}" value="${state.autoLearn.index}" id="autoLearnSlider" aria-label="Auto learn progress" />
+                  </div>
                 </div>
               ` : '<p class="muted small">Press Start to listen through the current queue of words.</p>'}
             </div>
@@ -1177,6 +1329,14 @@
           stopAutoLearn();
           return;
         }
+        if (target.id === 'togglePauseAutoLearn') {
+          if (state.autoLearn.isPaused) {
+            resumeAutoLearn();
+          } else {
+            pauseAutoLearn();
+          }
+          return;
+        }
         if (target.id === 'startQuiz') startQuiz(state.quizMode);
         if (target.id === 'resetQuiz') resetQuizState();
         if (target.id === 'nextQuestion') {
@@ -1241,6 +1401,10 @@
       });
 
       document.addEventListener('input', (event) => {
+        if (event.target.id === 'autoLearnSlider') {
+          seekAutoLearn(parseInt(event.target.value, 10));
+          return;
+        }
         if (event.target.id !== 'typingAnswer' || state.currentAnswer || !['typing', 'dictation'].includes(state.currentQuestion?.mode)) return;
         const typedAnswer = event.target.value;
         if (typedAnswer.trim().toLowerCase() === state.currentQuestion.answer.trim().toLowerCase()) {
