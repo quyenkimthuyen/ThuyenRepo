@@ -6,6 +6,8 @@ Quy uoc ten file:
 
 Voi cac vung moi, nen dat ten co tien to vung de tranh trung anh:
 - mienBac-combo-01.jpg
+- mienBac-combo-01.png
+- mienBac-combo-01.webp
 - mienTrung-combo-01.png
 - dongNamBo-combo-01.webp
 - tayNguyen-combo-01.jpg
