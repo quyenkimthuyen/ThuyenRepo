@@ -584,7 +584,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "1",
           "answer": "B. frightened",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n B v\u00ec frightened c\u00f3 \u0111u\u00f4i -ed ph\u00e1t \u00e2m /d/ sau \u00e2m h\u1eefu thanh /n/, c\u00f2n avoided, attended, suggested c\u00f3 \u0111u\u00f4i -ed ph\u00e1t \u00e2m /id/ sau /t/ ho\u1eb7c /d/. C\u1ea7n h\u1ecdc quy t\u1eafc -ed: /id/ sau /t, d/; /t/ sau \u00e2m v\u00f4 thanh; /d/ sau c\u00e1c \u00e2m c\u00f2n l\u1ea1i.",
           "reviewGuide": {
             "title": "Pronunciation - ph\u00e1t \u00e2m",
             "knowledge": "\u00d4n ph\u00e2n bi\u1ec7t \u00e2m nguy\u00ean \u00e2m/ph\u1ee5 \u00e2m v\u00e0 quy t\u1eafc ph\u00e1t \u00e2m \u0111u\u00f4i -ed, -s/-es.",
@@ -608,7 +608,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "2",
           "answer": "D. device",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n D v\u00ec device c\u00f3 \u00e2m nguy\u00ean \u00e2m kh\u00e1c nh\u00f3m; device th\u01b0\u1eddng \u0111\u1ecdc /d\u026a\u02c8va\u026as/, c\u00f2n chemist, sensor, pencil c\u00f3 \u00e2m /e/ \u1edf v\u1ecb tr\u00ed t\u01b0\u01a1ng \u1ee9ng. C\u1ea7n h\u1ecdc c\u00e1ch \u0111\u1ecdc theo phi\u00ean \u00e2m, kh\u00f4ng ch\u1ec9 nh\u00ecn ch\u1eef c\u00e1i.",
           "reviewGuide": {
             "title": "Pronunciation - ph\u00e1t \u00e2m",
             "knowledge": "\u00d4n ph\u00e2n bi\u1ec7t \u00e2m nguy\u00ean \u00e2m/ph\u1ee5 \u00e2m v\u00e0 quy t\u1eafc ph\u00e1t \u00e2m \u0111u\u00f4i -ed, -s/-es.",
@@ -632,7 +632,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "3",
           "answer": "A. listen",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n A v\u00ec listen nh\u1ea5n \u00e2m 1, c\u00f2n control, begin, decide l\u00e0 \u0111\u1ed9ng t\u1eeb hai \u00e2m ti\u1ebft th\u01b0\u1eddng nh\u1ea5n \u00e2m 2. C\u1ea7n h\u1ecdc quy t\u1eafc tr\u1ecdng \u00e2m: nhi\u1ec1u danh t\u1eeb/t\u00ednh t\u1eeb hai \u00e2m ti\u1ebft nh\u1ea5n \u00e2m 1, nhi\u1ec1u \u0111\u1ed9ng t\u1eeb hai \u00e2m ti\u1ebft nh\u1ea5n \u00e2m 2.",
           "reviewGuide": {
             "title": "Stress - tr\u1ecdng \u00e2m",
             "knowledge": "\u00d4n tr\u1ecdng \u00e2m t\u1eeb 2-4 \u00e2m ti\u1ebft, h\u1eadu t\u1ed1 v\u00e0 nh\u00f3m t\u1eeb quen thu\u1ed9c trong \u0111\u1ec1.",
@@ -656,7 +656,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "4",
           "answer": "D. important",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n D v\u00ec important nh\u1ea5n \u00e2m 2, c\u00f2n brilliant, beautiful, natural nh\u1ea5n \u00e2m 1. C\u1ea7n h\u1ecdc tr\u1ecdng \u00e2m c\u1ee7a c\u00e1c t\u00ednh t\u1eeb th\u00f4ng d\u1ee5ng v\u00e0 luy\u1ec7n \u0111\u1ecdc th\u00e0nh ti\u1ebfng t\u1eebng l\u1ef1a ch\u1ecdn.",
           "reviewGuide": {
             "title": "Stress - tr\u1ecdng \u00e2m",
             "knowledge": "\u00d4n tr\u1ecdng \u00e2m t\u1eeb 2-4 \u00e2m ti\u1ebft, h\u1eadu t\u1ed1 v\u00e0 nh\u00f3m t\u1eeb quen thu\u1ed9c trong \u0111\u1ec1.",
@@ -680,7 +680,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "5",
           "answer": "A. in",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n A v\u00ec ta n\u00f3i put something in the fridge: \u0111\u1eb7t \u0111\u1ed3 v\u00e0o b\u00ean trong t\u1ee7 l\u1ea1nh. C\u1ea7n h\u1ecdc gi\u1edbi t\u1eeb v\u1ecb tr\u00ed: in d\u00f9ng cho kh\u00f4ng gian k\u00edn/b\u00ean trong; at ch\u1ec9 \u0111i\u1ec3m; to ch\u1ec9 h\u01b0\u1edbng; with kh\u00f4ng h\u1ee3p ngh\u0129a n\u00e0y.",
           "reviewGuide": {
             "title": "Vocabulary, grammar and communication",
             "knowledge": "\u00d4n th\u00ec, d\u1ea1ng \u0111\u1ed9ng t\u1eeb, gi\u1edbi t\u1eeb/c\u1ee5m c\u1ed1 \u0111\u1ecbnh, m\u1ec7nh \u0111\u1ec1 quan h\u1ec7, c\u00e2u \u0111i\u1ec1u ki\u1ec7n v\u00e0 ph\u1ea3n h\u1ed3i h\u1ed9i tho\u1ea1i.",
@@ -716,7 +716,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "6",
           "answer": "D. or",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n D v\u00ec or mang ngh\u0129a otherwise: em n\u00ean b\u1eaft \u0111\u1ea7u ngay, n\u1ebfu kh\u00f4ng th\u00ec s\u1ebd qu\u00e1 mu\u1ed9n. C\u1ea7n h\u1ecdc li\u00ean t\u1eeb: and n\u1ed1i th\u00eam \u00fd, so ch\u1ec9 k\u1ebft qu\u1ea3, nor d\u00f9ng trong ph\u1ee7 \u0111\u1ecbnh, or c\u00f3 th\u1ec3 di\u1ec5n t\u1ea3 h\u1eadu qu\u1ea3 n\u1ebfu kh\u00f4ng l\u00e0m.",
           "reviewGuide": {
             "title": "Vocabulary, grammar and communication",
             "knowledge": "\u00d4n th\u00ec, d\u1ea1ng \u0111\u1ed9ng t\u1eeb, gi\u1edbi t\u1eeb/c\u1ee5m c\u1ed1 \u0111\u1ecbnh, m\u1ec7nh \u0111\u1ec1 quan h\u1ec7, c\u00e2u \u0111i\u1ec1u ki\u1ec7n v\u00e0 ph\u1ea3n h\u1ed3i h\u1ed9i tho\u1ea1i.",
@@ -752,7 +752,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "7",
           "answer": "C. went",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n C v\u00ec last summer l\u00e0 m\u1ed1c th\u1eddi gian \u0111\u00e3 k\u1ebft th\u00fac n\u00ean d\u00f9ng qu\u00e1 kh\u1ee9 \u0111\u01a1n: went. C\u1ea7n h\u1ecdc th\u00ec: qu\u00e1 kh\u1ee9 \u0111\u01a1n \u0111i v\u1edbi yesterday, last..., ago; hi\u1ec7n t\u1ea1i ho\u00e0n th\u00e0nh kh\u00f4ng \u0111i v\u1edbi th\u1eddi \u0111i\u1ec3m qu\u00e1 kh\u1ee9 x\u00e1c \u0111\u1ecbnh.",
           "reviewGuide": {
             "title": "Vocabulary, grammar and communication",
             "knowledge": "\u00d4n th\u00ec, d\u1ea1ng \u0111\u1ed9ng t\u1eeb, gi\u1edbi t\u1eeb/c\u1ee5m c\u1ed1 \u0111\u1ecbnh, m\u1ec7nh \u0111\u1ec1 quan h\u1ec7, c\u00e2u \u0111i\u1ec1u ki\u1ec7n v\u00e0 ph\u1ea3n h\u1ed3i h\u1ed9i tho\u1ea1i.",
@@ -788,7 +788,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "8",
           "answer": "A. traffic jams",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n A v\u00ec metro system gi\u00fap gi\u1ea3m traffic jams, t\u1ee9c \u00f9n t\u1eafc giao th\u00f4ng. C\u1ea7n h\u1ecdc collocation theo ng\u1eef c\u1ea3nh: reduce traffic jams l\u00e0 c\u1ee5m t\u1ef1 nhi\u00ean; c\u00e1c l\u1ef1a ch\u1ecdn c\u00f2n l\u1ea1i kh\u00f4ng ph\u1ea3i v\u1ea5n \u0111\u1ec1 metro tr\u1ef1c ti\u1ebfp gi\u1ea3m.",
           "reviewGuide": {
             "title": "Vocabulary, grammar and communication",
             "knowledge": "\u00d4n th\u00ec, d\u1ea1ng \u0111\u1ed9ng t\u1eeb, gi\u1edbi t\u1eeb/c\u1ee5m c\u1ed1 \u0111\u1ecbnh, m\u1ec7nh \u0111\u1ec1 quan h\u1ec7, c\u00e2u \u0111i\u1ec1u ki\u1ec7n v\u00e0 ph\u1ea3n h\u1ed3i h\u1ed9i tho\u1ea1i.",
@@ -824,7 +824,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "9",
           "answer": "C. honest",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n C v\u00ec He always tells the truth m\u00f4 t\u1ea3 ng\u01b0\u1eddi honest, trung th\u1ef1c. C\u1ea7n h\u1ecdc t\u1eeb v\u1ef1ng theo \u0111\u1ecbnh ngh\u0129a/ng\u1eef c\u1ea3nh: careful = c\u1ea9n th\u1eadn, noisy = \u1ed3n \u00e0o, busy = b\u1eadn r\u1ed9n.",
           "reviewGuide": {
             "title": "Vocabulary, grammar and communication",
             "knowledge": "\u00d4n th\u00ec, d\u1ea1ng \u0111\u1ed9ng t\u1eeb, gi\u1edbi t\u1eeb/c\u1ee5m c\u1ed1 \u0111\u1ecbnh, m\u1ec7nh \u0111\u1ec1 quan h\u1ec7, c\u00e2u \u0111i\u1ec1u ki\u1ec7n v\u00e0 ph\u1ea3n h\u1ed3i h\u1ed9i tho\u1ea1i.",
@@ -860,7 +860,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "10",
           "answer": "C. that",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n C v\u00ec features l\u00e0 danh t\u1eeb ch\u1ec9 v\u1eadt, m\u1ec7nh \u0111\u1ec1 sau b\u1ed5 ngh\u0129a cho features n\u00ean d\u00f9ng \u0111\u1ea1i t\u1eeb quan h\u1ec7 that/which; trong l\u1ef1a ch\u1ecdn ch\u1ec9 c\u00f3 that \u0111\u00fang. C\u1ea7n h\u1ecdc relative clauses: who/whom d\u00f9ng cho ng\u01b0\u1eddi, whose ch\u1ec9 s\u1edf h\u1eefu.",
           "reviewGuide": {
             "title": "Vocabulary, grammar and communication",
             "knowledge": "\u00d4n th\u00ec, d\u1ea1ng \u0111\u1ed9ng t\u1eeb, gi\u1edbi t\u1eeb/c\u1ee5m c\u1ed1 \u0111\u1ecbnh, m\u1ec7nh \u0111\u1ec1 quan h\u1ec7, c\u00e2u \u0111i\u1ec1u ki\u1ec7n v\u00e0 ph\u1ea3n h\u1ed3i h\u1ed9i tho\u1ea1i.",
@@ -896,7 +896,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "11",
           "answer": "B. subtitles",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n B v\u00ec xem phim ti\u1ebfng Anh without subtitles ngh\u0129a l\u00e0 kh\u00f4ng c\u00f3 ph\u1ee5 \u0111\u1ec1 \u0111\u1ec3 luy\u1ec7n nghe. C\u1ea7n ph\u00e2n bi\u1ec7t subtitles = ph\u1ee5 \u0111\u1ec1, lyrics = l\u1eddi b\u00e0i h\u00e1t, themes = ch\u1ee7 \u0111\u1ec1, details = chi ti\u1ebft.",
           "reviewGuide": {
             "title": "Vocabulary, grammar and communication",
             "knowledge": "\u00d4n th\u00ec, d\u1ea1ng \u0111\u1ed9ng t\u1eeb, gi\u1edbi t\u1eeb/c\u1ee5m c\u1ed1 \u0111\u1ecbnh, m\u1ec7nh \u0111\u1ec1 quan h\u1ec7, c\u00e2u \u0111i\u1ec1u ki\u1ec7n v\u00e0 ph\u1ea3n h\u1ed3i h\u1ed9i tho\u1ea1i.",
@@ -932,7 +932,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "12",
           "answer": "A. convenient",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n A v\u00ec cleaning robot l\u00e0m \u0111\u1eddi s\u1ed1ng gia \u0111\u00ecnh convenient, ti\u1ec7n l\u1ee3i. C\u1ea7n h\u1ecdc t\u00ednh t\u1eeb theo s\u1eafc th\u00e1i ngh\u0129a: convenient ph\u00f9 h\u1ee3p v\u1edbi useful v\u00e0 family life; stressful, dangerous, talkative kh\u00f4ng h\u1ee3p ng\u1eef c\u1ea3nh.",
           "reviewGuide": {
             "title": "Vocabulary, grammar and communication",
             "knowledge": "\u00d4n th\u00ec, d\u1ea1ng \u0111\u1ed9ng t\u1eeb, gi\u1edbi t\u1eeb/c\u1ee5m c\u1ed1 \u0111\u1ecbnh, m\u1ec7nh \u0111\u1ec1 quan h\u1ec7, c\u00e2u \u0111i\u1ec1u ki\u1ec7n v\u00e0 ph\u1ea3n h\u1ed3i h\u1ed9i tho\u1ea1i.",
@@ -968,7 +968,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "13",
           "answer": "B. What's the matter with you?",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n B v\u00ec I\u2019ve got a terrible stomachache l\u00e0 n\u00eau v\u1ea5n \u0111\u1ec1 s\u1ee9c kh\u1ecfe, n\u00ean h\u1ecfi What\u2019s the matter with you? C\u1ea7n h\u1ecdc m\u1eabu giao ti\u1ebfp h\u1ecfi th\u0103m b\u1ec7nh/t\u00ecnh tr\u1ea1ng: What\u2019s the matter? / What\u2019s wrong?",
           "reviewGuide": {
             "title": "Vocabulary, grammar and communication",
             "knowledge": "\u00d4n th\u00ec, d\u1ea1ng \u0111\u1ed9ng t\u1eeb, gi\u1edbi t\u1eeb/c\u1ee5m c\u1ed1 \u0111\u1ecbnh, m\u1ec7nh \u0111\u1ec1 quan h\u1ec7, c\u00e2u \u0111i\u1ec1u ki\u1ec7n v\u00e0 ph\u1ea3n h\u1ed3i h\u1ed9i tho\u1ea1i.",
@@ -1004,7 +1004,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "14",
           "answer": "D. No, thanks",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n D v\u00ec ng\u01b0\u1eddi n\u00f3i \u0111\u00e3 u\u1ed1ng \u0111\u1ee7 tr\u00e0 n\u00ean t\u1eeb ch\u1ed1i l\u1ecbch s\u1ef1: No, thanks. C\u1ea7n h\u1ecdc ph\u1ea3n h\u1ed3i l\u1eddi m\u1eddi: Yes, please/Sure \u0111\u1ec3 nh\u1eadn l\u1eddi; No, thanks \u0111\u1ec3 t\u1eeb ch\u1ed1i.",
           "reviewGuide": {
             "title": "Vocabulary, grammar and communication",
             "knowledge": "\u00d4n th\u00ec, d\u1ea1ng \u0111\u1ed9ng t\u1eeb, gi\u1edbi t\u1eeb/c\u1ee5m c\u1ed1 \u0111\u1ecbnh, m\u1ec7nh \u0111\u1ec1 quan h\u1ec7, c\u00e2u \u0111i\u1ec1u ki\u1ec7n v\u00e0 ph\u1ea3n h\u1ed3i h\u1ed9i tho\u1ea1i.",
@@ -1040,7 +1040,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "15",
           "answer": "C. E-cigarettes are not allowed here.",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n C v\u00ec bi\u1ec3n b\u00e1o cho bi\u1ebft e-cigarettes are not allowed here, t\u1ee9c kh\u00f4ng \u0111\u01b0\u1ee3c d\u00f9ng thu\u1ed1c l\u00e1 \u0111i\u1ec7n t\u1eed t\u1ea1i n\u01a1i \u0111\u00f3. C\u1ea7n h\u1ecdc c\u00e1ch \u0111\u1ecdc sign/notice: chuy\u1ec3n bi\u1ec3u t\u01b0\u1ee3ng/c\u00e2u c\u1ea5m th\u00e0nh must not / are not allowed.",
           "reviewGuide": {
             "title": "Vocabulary, grammar and communication",
             "knowledge": "\u00d4n th\u00ec, d\u1ea1ng \u0111\u1ed9ng t\u1eeb, gi\u1edbi t\u1eeb/c\u1ee5m c\u1ed1 \u0111\u1ecbnh, m\u1ec7nh \u0111\u1ec1 quan h\u1ec7, c\u00e2u \u0111i\u1ec1u ki\u1ec7n v\u00e0 ph\u1ea3n h\u1ed3i h\u1ed9i tho\u1ea1i.",
@@ -1076,7 +1076,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "16",
           "answer": "C. The special sales will last for 14 days.",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n C v\u00ec Half price for two weeks only ngh\u0129a l\u00e0 ch\u01b0\u01a1ng tr\u00ecnh gi\u1ea3m n\u1eeda gi\u00e1 k\u00e9o d\u00e0i 2 tu\u1ea7n, t\u1ee9c 14 ng\u00e0y. C\u1ea7n h\u1ecdc \u0111\u1ecdc notice: tomorrow cho th\u1eddi \u0111i\u1ec3m b\u1eaft \u0111\u1ea7u, for two weeks only cho th\u1eddi l\u01b0\u1ee3ng.",
           "reviewGuide": {
             "title": "Vocabulary, grammar and communication",
             "knowledge": "\u00d4n th\u00ec, d\u1ea1ng \u0111\u1ed9ng t\u1eeb, gi\u1edbi t\u1eeb/c\u1ee5m c\u1ed1 \u0111\u1ecbnh, m\u1ec7nh \u0111\u1ec1 quan h\u1ec7, c\u00e2u \u0111i\u1ec1u ki\u1ec7n v\u00e0 ph\u1ea3n h\u1ed3i h\u1ed9i tho\u1ea1i.",
@@ -1112,7 +1112,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "17",
           "answer": "B. appear",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n B v\u00ec c\u1ea5u tr\u00fac make + object + bare infinitive: makes a person appear to say or do something. C\u1ea7n h\u1ecdc causative verbs: make/let + O + V nguy\u00ean m\u1eabu kh\u00f4ng to; want/ask/tell + O + to V.",
           "reviewGuide": {
             "title": "Reading comprehension",
             "knowledge": "\u00d4n \u0111\u1ecdc hi\u1ec3u \u00fd ch\u00ednh, chi ti\u1ebft, True/False, c\u00e2u EXCEPT v\u00e0 suy lu\u1eadn nh\u1eb9.",
@@ -1136,7 +1136,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "18",
           "answer": "D. easier",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n D v\u00ec c\u00e2u li\u1ec7t k\u00ea realistic, cheaper to produce, and easier to spread: deepfake ng\u00e0y c\u00e0ng d\u1ec5 lan truy\u1ec1n. C\u1ea7n h\u1ecdc parallel structure v\u00e0 so ngh\u0129a trong cloze test: c\u00e1c t\u00ednh t\u1eeb so s\u00e1nh ph\u1ea3i c\u00f9ng logic v\u1edbi nhau.",
           "reviewGuide": {
             "title": "Reading comprehension",
             "knowledge": "\u00d4n \u0111\u1ecdc hi\u1ec3u \u00fd ch\u00ednh, chi ti\u1ebft, True/False, c\u00e2u EXCEPT v\u00e0 suy lu\u1eadn nh\u1eb9.",
@@ -1160,7 +1160,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "19",
           "answer": "A. When",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n A v\u00ec When a deepfake is released l\u00e0 m\u1ec7nh \u0111\u1ec1 th\u1eddi gian: khi m\u1ed9t deepfake \u0111\u01b0\u1ee3c ph\u00e1t t\u00e1n, n\u00f3 ti\u1ebfp t\u1ee5c \u1ea3nh h\u01b0\u1edfng d\u01b0 lu\u1eadn. C\u1ea7n h\u1ecdc li\u00ean t\u1eeb: when ch\u1ec9 th\u1eddi \u0111i\u1ec3m, though ch\u1ec9 nh\u01b0\u1ee3ng b\u1ed9, that kh\u00f4ng m\u1edf m\u1ec7nh \u0111\u1ec1 tr\u1ea1ng ng\u1eef th\u1eddi gian.",
           "reviewGuide": {
             "title": "Reading comprehension",
             "knowledge": "\u00d4n \u0111\u1ecdc hi\u1ec3u \u00fd ch\u00ednh, chi ti\u1ebft, True/False, c\u00e2u EXCEPT v\u00e0 suy lu\u1eadn nh\u1eb9.",
@@ -1184,7 +1184,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "20",
           "answer": "C. fame",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n C v\u00ec a convincing fake video could damage a person\u2019s fame, t\u1ee9c l\u00e0m h\u1ea1i danh ti\u1ebfng. C\u1ea7n h\u1ecdc collocation/ng\u1eef ngh\u0129a: damage someone\u2019s fame/reputation; way, style, form kh\u00f4ng h\u1ee3p ngh\u0129a.",
           "reviewGuide": {
             "title": "Reading comprehension",
             "knowledge": "\u00d4n \u0111\u1ecdc hi\u1ec3u \u00fd ch\u00ednh, chi ti\u1ebft, True/False, c\u00e2u EXCEPT v\u00e0 suy lu\u1eadn nh\u1eb9.",
@@ -1208,7 +1208,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "21",
           "answer": "C. on",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n C v\u00ec c\u1ee5m \u0111\u00fang l\u00e0 have a bad effect on someone/something. C\u1ea7n h\u1ecdc collocation v\u1edbi effect: effect on + N; kh\u00f4ng d\u00f9ng effect in/for/with trong c\u1ea5u tr\u00fac n\u00e0y.",
           "reviewGuide": {
             "title": "Reading comprehension",
             "knowledge": "\u00d4n \u0111\u1ecdc hi\u1ec3u \u00fd ch\u00ednh, chi ti\u1ebft, True/False, c\u00e2u EXCEPT v\u00e0 suy lu\u1eadn nh\u1eb9.",
@@ -1232,7 +1232,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "22",
           "answer": "B. Dangerously",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n B v\u00ec Dangerously l\u00e0 tr\u1ea1ng t\u1eeb b\u00ecnh lu\u1eadn c\u1ea3 c\u00e2u, n\u00eau m\u1ee9c \u0111\u1ed9 nguy hi\u1ec3m: deepfakes c\u00f2n khi\u1ebfn c\u00f4ng ch\u00fang nghi ng\u1edd c\u1ea3 th\u00f4ng tin th\u1eadt. C\u1ea7n h\u1ecdc sentence adverbs nh\u01b0 luckily, hopefully, traditionally, dangerously.",
           "reviewGuide": {
             "title": "Reading comprehension",
             "knowledge": "\u00d4n \u0111\u1ecdc hi\u1ec3u \u00fd ch\u00ednh, chi ti\u1ebft, True/False, c\u00e2u EXCEPT v\u00e0 suy lu\u1eadn nh\u1eb9.",
@@ -1256,7 +1256,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "23",
           "answer": "False",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n False v\u00ec b\u00e0i vi\u1ebft n\u00f3i t\u00e1c gi\u1ea3 hiking b\u1eb1ng ch\u00e2n, not ropes or pitons; pitons thu\u1ed9c thi\u1ebft b\u1ecb leo n\u00fai, kh\u00f4ng ph\u1ea3i th\u1ee9 hikers trong b\u00e0i d\u00f9ng. C\u1ea7n h\u1ecdc True/False: \u0111\u1ed1i chi\u1ebfu \u0111\u00fang \u00fd v\u0103n b\u1ea3n, kh\u00f4ng ch\u1ecdn ch\u1ec9 v\u00ec th\u1ea5y t\u1eeb kh\u00f3a.",
           "reviewGuide": {
             "title": "Cloze test",
             "knowledge": "\u00d4n \u0111i\u1ec1n t\u1eeb theo ng\u1eef c\u1ea3nh, t\u1eeb lo\u1ea1i, li\u00ean k\u1ebft c\u00e2u, collocation v\u00e0 logic \u0111o\u1ea1n v\u0103n.",
@@ -1279,7 +1279,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "24",
           "answer": "False",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n False v\u00ec Cliff Trail starts near the top v\u00e0 t\u00e1c gi\u1ea3 took a van there, kh\u00f4ng b\u1eaft \u0111\u1ea7u t\u1eeb ch\u00e2n n\u00fai. C\u1ea7n h\u1ecdc \u0111\u1ecdc chi ti\u1ebft \u0111\u1ecbnh v\u1ecb: near the top tr\u00e1i ngh\u0129a v\u1edbi from the bottom.",
           "reviewGuide": {
             "title": "Cloze test",
             "knowledge": "\u00d4n \u0111i\u1ec1n t\u1eeb theo ng\u1eef c\u1ea3nh, t\u1eeb lo\u1ea1i, li\u00ean k\u1ebft c\u00e2u, collocation v\u00e0 logic \u0111o\u1ea1n v\u0103n.",
@@ -1302,7 +1302,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "25",
           "answer": "True",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n True v\u00ec \u0111o\u1ea1n v\u0103n n\u00f3i h\u1ecd climbed down wooden ladders, passed up rock faces, and crossed the side of the mountain. C\u1ea7n h\u1ecdc True/False: n\u1ebfu m\u1ec7nh \u0111\u1ec1 t\u00f3m t\u1eaft \u0111\u00fang \u0111\u1ee7 c\u00e1c h\u00e0nh \u0111\u1ed9ng ch\u00ednh th\u00ec ch\u1ecdn True.",
           "reviewGuide": {
             "title": "Cloze test",
             "knowledge": "\u00d4n \u0111i\u1ec1n t\u1eeb theo ng\u1eef c\u1ea3nh, t\u1eeb lo\u1ea1i, li\u00ean k\u1ebft c\u00e2u, collocation v\u00e0 logic \u0111o\u1ea1n v\u0103n.",
@@ -1325,7 +1325,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "26",
           "answer": "True",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n True v\u00ec b\u00e0i vi\u1ebft n\u00eau started at 10 a.m. v\u00e0 reached the summit around 3 p.m.; 3 p.m. l\u00e0 bu\u1ed5i chi\u1ec1u. C\u1ea7n h\u1ecdc nh\u1eadn di\u1ec7n th\u1eddi gian: a.m. bu\u1ed5i s\u00e1ng, p.m. bu\u1ed5i chi\u1ec1u/t\u1ed1i.",
           "reviewGuide": {
             "title": "Cloze test",
             "knowledge": "\u00d4n \u0111i\u1ec1n t\u1eeb theo ng\u1eef c\u1ea3nh, t\u1eeb lo\u1ea1i, li\u00ean k\u1ebft c\u00e2u, collocation v\u00e0 logic \u0111o\u1ea1n v\u0103n.",
@@ -1348,7 +1348,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "27",
           "answer": "D. Cliff Trail - The Hike of A Lifetime",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n D v\u00ec to\u00e0n b\u00e0i t\u1eadp trung k\u1ec3 tr\u1ea3i nghi\u1ec7m Cliff Trail v\u00e0 ch\u00ednh t\u00e1c gi\u1ea3 g\u1ecdi \u0111\u00f3 l\u00e0 the hike of a lifetime. C\u1ea7n h\u1ecdc ch\u1ecdn title: ti\u00eau \u0111\u1ec1 t\u1ed1t ph\u1ea3i bao qu\u00e1t \u00fd ch\u00ednh, kh\u00f4ng qu\u00e1 r\u1ed9ng ho\u1eb7c qu\u00e1 h\u1eb9p.",
           "reviewGuide": {
             "title": "Cloze test",
             "knowledge": "\u00d4n \u0111i\u1ec1n t\u1eeb theo ng\u1eef c\u1ea3nh, t\u1eeb lo\u1ea1i, li\u00ean k\u1ebft c\u00e2u, collocation v\u00e0 logic \u0111o\u1ea1n v\u0103n.",
@@ -1371,7 +1371,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "28",
           "answer": "A. fear and excitement",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n A v\u00ec v\u0103n b\u1ea3n ghi tr\u1ef1c ti\u1ebfp I was both scared and excited. C\u1ea7n h\u1ecdc c\u00e2u h\u1ecfi detail: t\u00ecm c\u00e2u ch\u1ee9a th\u00f4ng tin c\u1ea3m x\u00fac r\u1ed3i ch\u1ecdn ph\u01b0\u01a1ng \u00e1n s\u00e1t ngh\u0129a.",
           "reviewGuide": {
             "title": "Cloze test",
             "knowledge": "\u00d4n \u0111i\u1ec1n t\u1eeb theo ng\u1eef c\u1ea3nh, t\u1eeb lo\u1ea1i, li\u00ean k\u1ebft c\u00e2u, collocation v\u00e0 logic \u0111o\u1ea1n v\u0103n.",
@@ -1394,7 +1394,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "29",
           "answer": "global",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n global v\u00ec ch\u1ed7 tr\u1ed1ng \u0111\u1ee9ng tr\u01b0\u1edbc danh t\u1eeb village n\u00ean c\u1ea7n t\u00ednh t\u1eeb; globe l\u00e0 danh t\u1eeb, \u0111\u1ed5i sang adjective global. C\u1ea7n h\u1ecdc word form: Adj + N, v\u00ed d\u1ee5 a global village.",
           "reviewGuide": {
             "title": "Word forms - t\u1eeb lo\u1ea1i",
             "knowledge": "\u00d4n bi\u1ebfn \u0111\u1ed5i danh t\u1eeb, \u0111\u1ed9ng t\u1eeb, t\u00ednh t\u1eeb, tr\u1ea1ng t\u1eeb, ti\u1ec1n t\u1ed1 ph\u1ee7 \u0111\u1ecbnh v\u00e0 s\u1ed1 \u00edt/s\u1ed1 nhi\u1ec1u.",
@@ -1420,7 +1420,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "30",
           "answer": "entertaining",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n entertaining v\u00ec looking forward to theo sau l\u00e0 V-ing/danh t\u1eeb, kh\u00f4ng d\u00f9ng \u0111\u1ed9ng t\u1eeb nguy\u00ean m\u1eabu. C\u1ea7n h\u1ecdc c\u1ea5u tr\u00fac: look forward to + V-ing/N.",
           "reviewGuide": {
             "title": "Word forms - t\u1eeb lo\u1ea1i",
             "knowledge": "\u00d4n bi\u1ebfn \u0111\u1ed5i danh t\u1eeb, \u0111\u1ed9ng t\u1eeb, t\u00ednh t\u1eeb, tr\u1ea1ng t\u1eeb, ti\u1ec1n t\u1ed1 ph\u1ee7 \u0111\u1ecbnh v\u00e0 s\u1ed1 \u00edt/s\u1ed1 nhi\u1ec1u.",
@@ -1446,7 +1446,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "31",
           "answer": "patient",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n patient v\u00ec sau was c\u1ea7n t\u00ednh t\u1eeb m\u00f4 t\u1ea3 ch\u1ee7 ng\u1eef; patience l\u00e0 danh t\u1eeb, t\u00ednh t\u1eeb l\u00e0 patient. C\u1ea7n h\u1ecdc c\u1ea5u tr\u00fac: be + adjective + enough + to V.",
           "reviewGuide": {
             "title": "Word forms - t\u1eeb lo\u1ea1i",
             "knowledge": "\u00d4n bi\u1ebfn \u0111\u1ed5i danh t\u1eeb, \u0111\u1ed9ng t\u1eeb, t\u00ednh t\u1eeb, tr\u1ea1ng t\u1eeb, ti\u1ec1n t\u1ed1 ph\u1ee7 \u0111\u1ecbnh v\u00e0 s\u1ed1 \u00edt/s\u1ed1 nhi\u1ec1u.",
@@ -1472,7 +1472,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "32",
           "answer": "exhibition",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n exhibition v\u00ec sau t\u00ednh t\u1eeb virtual c\u1ea7n m\u1ed9t danh t\u1eeb l\u00e0m ch\u1ee7 ng\u1eef c\u1ee7a has taken place; exhibit \u0111\u1ed5i sang danh t\u1eeb exhibition. C\u1ea7n h\u1ecdc word form: Adj + N v\u00e0 h\u1eadu t\u1ed1 danh t\u1eeb nh\u01b0 -ion.",
           "reviewGuide": {
             "title": "Word forms - t\u1eeb lo\u1ea1i",
             "knowledge": "\u00d4n bi\u1ebfn \u0111\u1ed5i danh t\u1eeb, \u0111\u1ed9ng t\u1eeb, t\u00ednh t\u1eeb, tr\u1ea1ng t\u1eeb, ti\u1ec1n t\u1ed1 ph\u1ee7 \u0111\u1ecbnh v\u00e0 s\u1ed1 \u00edt/s\u1ed1 nhi\u1ec1u.",
@@ -1498,7 +1498,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "33",
           "answer": "illegally",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n illegally v\u00ec ch\u1ed7 tr\u1ed1ng \u0111\u1ee9ng tr\u01b0\u1edbc published \u0111\u1ec3 b\u1ed5 ngh\u0129a cho \u0111\u1ed9ng t\u1eeb, c\u1ea7n tr\u1ea1ng t\u1eeb; without permission cho bi\u1ebft ngh\u0129a ph\u1ee7 \u0111\u1ecbnh. C\u1ea7n h\u1ecdc: Adv + V/V3 v\u00e0 ti\u1ec1n t\u1ed1 ph\u1ee7 \u0111\u1ecbnh il-/in-/im-/un- t\u00f9y t\u1eeb.",
           "reviewGuide": {
             "title": "Word forms - t\u1eeb lo\u1ea1i",
             "knowledge": "\u00d4n bi\u1ebfn \u0111\u1ed5i danh t\u1eeb, \u0111\u1ed9ng t\u1eeb, t\u00ednh t\u1eeb, tr\u1ea1ng t\u1eeb, ti\u1ec1n t\u1ed1 ph\u1ee7 \u0111\u1ecbnh v\u00e0 s\u1ed1 \u00edt/s\u1ed1 nhi\u1ec1u.",
@@ -1524,7 +1524,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "34",
           "answer": "explorers",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n explorers v\u00ec many c\u1ea7n danh t\u1eeb \u0111\u1ebfm \u0111\u01b0\u1ee3c s\u1ed1 nhi\u1ec1u ch\u1ec9 ng\u01b0\u1eddi; explore l\u00e0 \u0111\u1ed9ng t\u1eeb, explorer l\u00e0 ng\u01b0\u1eddi th\u00e1m hi\u1ec3m, th\u00eam -s th\u00e0nh explorers. C\u1ea7n h\u1ecdc: many + plural countable noun.",
           "reviewGuide": {
             "title": "Word forms - t\u1eeb lo\u1ea1i",
             "knowledge": "\u00d4n bi\u1ebfn \u0111\u1ed5i danh t\u1eeb, \u0111\u1ed9ng t\u1eeb, t\u00ednh t\u1eeb, tr\u1ea1ng t\u1eeb, ti\u1ec1n t\u1ed1 ph\u1ee7 \u0111\u1ecbnh v\u00e0 s\u1ed1 \u00edt/s\u1ed1 nhi\u1ec1u.",
@@ -1550,7 +1550,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "35",
           "answer": "break the habit",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n break the habit v\u00ec c\u1ee5m \u0111\u00fang l\u00e0 break the habit of doing something: b\u1ecf th\u00f3i quen l\u00e0m g\u00ec. C\u1ea7n h\u1ecdc collocation v\u1edbi habit: develop/form a habit, break the habit, eating habits.",
           "reviewGuide": {
             "title": "Sentence transformation and guided writing",
             "knowledge": "\u00d4n vi\u1ebft l\u1ea1i c\u00e2u, s\u1eafp x\u1ebfp nh\u00f3m t\u1eeb, b\u1ecb \u0111\u1ed9ng, t\u01b0\u1eddng thu\u1eadt, so s\u00e1nh, because/because of, although/despite, so/such.",
@@ -1591,7 +1591,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "36",
           "answer": "eating habits",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n eating habits v\u00ec c\u00e2u c\u1ea7n c\u1ee5m danh t\u1eeb s\u1ed1 nhi\u1ec1u l\u00e0m ch\u1ee7 ng\u1eef cho \u0111\u1ed9ng t\u1eeb play: Your eating habits play an important role.... C\u1ea7n h\u1ecdc subject-verb agreement v\u00e0 c\u1ee5m danh t\u1eeb: adjective/gerund + noun.",
           "reviewGuide": {
             "title": "Sentence transformation and guided writing",
             "knowledge": "\u00d4n vi\u1ebft l\u1ea1i c\u00e2u, s\u1eafp x\u1ebfp nh\u00f3m t\u1eeb, b\u1ecb \u0111\u1ed9ng, t\u01b0\u1eddng thu\u1eadt, so s\u00e1nh, because/because of, although/despite, so/such.",
@@ -1632,7 +1632,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "37",
           "answer": "Brenda wishes she had her own locker at school.",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n Brenda wishes she had her own locker at school. V\u00ec Brenda hi\u1ec7n kh\u00f4ng c\u00f3 t\u1ee7 ri\u00eang nh\u01b0ng mu\u1ed1n c\u00f3, d\u00f9ng wish cho \u0111i\u1ec1u tr\u00e1i v\u1edbi hi\u1ec7n t\u1ea1i: S + wish(es) + S + V qu\u00e1 kh\u1ee9 \u0111\u01a1n.",
           "reviewGuide": {
             "title": "Sentence transformation and guided writing",
             "knowledge": "\u00d4n vi\u1ebft l\u1ea1i c\u00e2u, s\u1eafp x\u1ebfp nh\u00f3m t\u1eeb, b\u1ecb \u0111\u1ed9ng, t\u01b0\u1eddng thu\u1eadt, so s\u00e1nh, because/because of, although/despite, so/such.",
@@ -1673,7 +1673,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "38",
           "answer": "Lucie doesn't mind helping her friends with exercises after class.",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n Lucie doesn\u2019t mind helping her friends with exercises after class. V\u00ec It doesn\u2019t matter to Lucie to help... ngh\u0129a l\u00e0 Lucie kh\u00f4ng phi\u1ec1n khi gi\u00fap; sau mind d\u00f9ng V-ing. C\u1ea7n h\u1ecdc: do/does not mind + V-ing.",
           "reviewGuide": {
             "title": "Sentence transformation and guided writing",
             "knowledge": "\u00d4n vi\u1ebft l\u1ea1i c\u00e2u, s\u1eafp x\u1ebfp nh\u00f3m t\u1eeb, b\u1ecb \u0111\u1ed9ng, t\u01b0\u1eddng thu\u1eadt, so s\u00e1nh, because/because of, although/despite, so/such.",
@@ -1714,7 +1714,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "39",
           "answer": "The shop has run out of roses.",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n The shop has run out of roses. V\u00ec There are no roses left ngh\u0129a l\u00e0 c\u1eeda h\u00e0ng \u0111\u00e3 h\u1ebft hoa h\u1ed3ng. C\u1ea7n h\u1ecdc phrasal verb run out of + noun v\u00e0 hi\u1ec7n t\u1ea1i ho\u00e0n th\u00e0nh has/have + V3 \u0111\u1ec3 di\u1ec5n t\u1ea3 k\u1ebft qu\u1ea3 hi\u1ec7n t\u1ea1i.",
           "reviewGuide": {
             "title": "Sentence transformation and guided writing",
             "knowledge": "\u00d4n vi\u1ebft l\u1ea1i c\u00e2u, s\u1eafp x\u1ebfp nh\u00f3m t\u1eeb, b\u1ecb \u0111\u1ed9ng, t\u01b0\u1eddng thu\u1eadt, so s\u00e1nh, because/because of, although/despite, so/such.",
@@ -1755,7 +1755,7 @@ window.REAL_EXAM_DETAILS = {
         {
           "number": "40",
           "answer": "Although the project was practical, nobody wanted to carry it out.",
-          "explanation": "\u0110\u00e1p \u00e1n \u0111\u1ed1i chi\u1ebfu t\u1eeb ngu\u1ed3n c\u00f4ng khai; n\u00ean so s\u00e1nh th\u00eam v\u1edbi \u0111\u00e1p \u00e1n ch\u00ednh th\u1ee9c c\u1ee7a S\u1edf GD&\u0110T TPHCM khi c\u1ea7n ch\u1ea5m \u0111i\u1ec3m.",
+          "explanation": "\u0110\u00e1p \u00e1n Although the project was practical, nobody wanted to carry it out. V\u00ec despite + noun phrase \u0111\u01b0\u1ee3c \u0111\u1ed5i th\u00e0nh although + clause; practicality l\u00e0 danh t\u1eeb, \u0111\u1ed5i th\u00e0nh the project was practical. C\u1ea7n h\u1ecdc: despite/in spite of + N/V-ing; although/though + S + V.",
           "reviewGuide": {
             "title": "Sentence transformation and guided writing",
             "knowledge": "\u00d4n vi\u1ebft l\u1ea1i c\u00e2u, s\u1eafp x\u1ebfp nh\u00f3m t\u1eeb, b\u1ecb \u0111\u1ed9ng, t\u01b0\u1eddng thu\u1eadt, so s\u00e1nh, because/because of, although/despite, so/such.",

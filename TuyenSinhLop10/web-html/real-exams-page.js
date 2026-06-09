@@ -347,7 +347,153 @@ function englishPassageRange(questionNumber) {
   return null;
 }
 
-function englishQuestionType(question) {
+const ENGLISH_FILL_BLANK_RANGES_BY_YEAR = {
+  2026: [
+    { from: 35, to: 36, label: "Cụm từ cần điền" },
+  ],
+  2025: [
+    {
+      from: 35,
+      to: 36,
+      label: "Từ/cụm từ gợi ý",
+      wordBank: [
+        "provide: to give something to somebody or make it available for them to use",
+        "Please provide the following information.",
+        "The exhibition provides an opportunity for local artists to show their work.",
+      ],
+    },
+  ],
+};
+
+const SIGN_NOTICE_VISUALS_BY_YEAR = {
+  2026: {
+    15: {
+      kind: "sign",
+      variant: "prohibit",
+      icon: "NO",
+      title: "NO E-CIGARETTES",
+      lines: ["E-cigarettes are not allowed here"],
+    },
+    16: {
+      kind: "notice",
+      variant: "sale",
+      title: "Sales Tomorrow",
+      lines: ["Half price", "for two weeks only"],
+    },
+  },
+  2025: {
+    15: {
+      kind: "sign",
+      variant: "prohibit",
+      icon: "NO",
+      title: "NO JUMPING",
+      lines: ["Do not jump into the water"],
+    },
+    16: {
+      kind: "notice",
+      variant: "sale",
+      title: "Tuesday Special",
+      lines: ["Buy milk tea", "Get a free cookie"],
+    },
+  },
+  2024: {
+    15: {
+      kind: "sign",
+      variant: "prohibit",
+      icon: "BIN",
+      title: "KEEP TOILET CLEAN",
+      lines: ["Do not throw trash", "into the toilet"],
+    },
+    16: {
+      kind: "notice",
+      variant: "booking",
+      title: "PR Restaurant",
+      lines: ["Please book in advance", "before you come"],
+    },
+  },
+  2023: {
+    15: {
+      kind: "sign",
+      variant: "warning",
+      icon: "TAP",
+      title: "SAVE WATER",
+      lines: ["Turn off the tap", "after use"],
+    },
+    16: {
+      kind: "notice",
+      variant: "contest",
+      title: "Writing Contest",
+      lines: ["My future city", "Write within 300 words"],
+    },
+  },
+  2022: {
+    15: {
+      kind: "sign",
+      variant: "exit",
+      icon: "EXIT",
+      title: "FIRE EXIT",
+      lines: ["Exit in the event of a fire"],
+    },
+    16: {
+      kind: "sign",
+      variant: "prohibit",
+      icon: "NO",
+      title: "NO VIOLENCE",
+      lines: ["Violence is not allowed", "at school"],
+    },
+  },
+};
+
+function englishFillBlankRange(questionNumber, exam) {
+  const ranges = ENGLISH_FILL_BLANK_RANGES_BY_YEAR[exam?.year] || [];
+  const range = ranges.find((item) => questionNumber >= item.from && questionNumber <= item.to);
+  if (range) return range;
+
+  const question = exam?.questions?.find((item) => englishQuestionNumber(item) === questionNumber);
+  if (/fill in the blanks?/i.test(question?.prompt || "")) {
+    return { from: questionNumber, to: questionNumber, label: "Cụm từ cần điền" };
+  }
+
+  return null;
+}
+
+function signNoticeVisualForQuestion(question, exam) {
+  const questionNumber = englishQuestionNumber(question);
+  return SIGN_NOTICE_VISUALS_BY_YEAR[exam?.year]?.[questionNumber] || question?.visual || null;
+}
+
+function signNoticePrompt(question, exam) {
+  const prompt = questionPromptWithoutChoices(question);
+  if (!signNoticeVisualForQuestion(question, exam)) return prompt;
+  return prompt
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter(Boolean)[0] || prompt;
+}
+
+function renderSignNoticeVisual(question, exam) {
+  const visual = signNoticeVisualForQuestion(question, exam);
+  if (!visual) return "";
+
+  const classes = [
+    "sign-notice-visual",
+    visual.kind || "notice",
+    visual.variant || "",
+  ].filter(Boolean).join(" ");
+  const lines = Array.isArray(visual.lines) ? visual.lines : [];
+
+  return `
+    <figure class="${escapeHtml(classes)}" aria-label="${escapeHtml(visual.title || "Sign or notice")}">
+      ${visual.icon ? `<div class="sign-visual-icon" aria-hidden="true"><span>${escapeHtml(visual.icon)}</span></div>` : ""}
+      <figcaption>
+        <strong>${escapeHtml(visual.title || "Notice")}</strong>
+        ${lines.map((line) => `<span>${escapeHtml(line)}</span>`).join("")}
+      </figcaption>
+    </figure>
+  `;
+}
+
+function englishQuestionType(question, exam) {
   const questionNumber = englishQuestionNumber(question);
   const prompt = String(question?.prompt || "");
   const lowerPrompt = prompt.toLowerCase();
@@ -358,7 +504,10 @@ function englishQuestionType(question) {
   if (/\brewrite\b/i.test(prompt) || /second sentence/i.test(prompt) || questionNumber >= 37) {
     return { id: "rewrite", label: "Rewrite - viết lại câu", inputMode: "text" };
   }
-  if (/fill in the blank/i.test(prompt) || (questionNumber >= 35 && questionNumber <= 36)) {
+  if (/rearrange/i.test(prompt)) {
+    return { id: "rearrange", label: "Rearrange - sắp xếp từ", inputMode: "text" };
+  }
+  if (/fill in the blank/i.test(prompt) || englishFillBlankRange(questionNumber, exam)) {
     return { id: "fill-blank", label: "Fill in the blank - điền cụm từ", inputMode: "text" };
   }
   if (questionNumber >= 23 && questionNumber <= 26 && !parseEnglishChoices(question).length) {
@@ -420,6 +569,41 @@ function splitEnglishTimedPrompt(question) {
   return { context: "", prompt: prompt || fallback };
 }
 
+function splitEnglishFillBlankPrompt(question) {
+  const splitPrompt = splitEnglishTimedPrompt(question);
+  const context = splitPrompt.context
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter((line) => line && !/^fill in the blanks?$/i.test(line));
+
+  return {
+    context,
+    prompt: splitPrompt.prompt,
+  };
+}
+
+function englishFillBlankWordBank(groupQuestions, range) {
+  if (range?.wordBank?.length) return range.wordBank;
+
+  return groupQuestions
+    .flatMap((question) => splitEnglishFillBlankPrompt(question).context)
+    .filter(Boolean)
+    .filter((answer, index, list) => list.indexOf(answer) === index);
+}
+
+function renderFillBlankWordBank(wordBank, label) {
+  if (!wordBank.length) return "";
+
+  return `
+    <aside class="fill-blank-word-bank" aria-label="${escapeHtml(label || "Cụm từ cần điền")}">
+      <strong>${escapeHtml(label || "Cụm từ cần điền")}</strong>
+      <div>
+        ${wordBank.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+      </div>
+    </aside>
+  `;
+}
+
 function renderActivePassageCard(passage, label) {
   if (!passage) return "";
   return `
@@ -432,9 +616,13 @@ function renderActivePassageCard(passage, label) {
 
 function renderTimedQuestionBody(question, index, exam) {
   const answer = answerForQuestion(exam, question.number);
-  const splitPrompt = splitEnglishTimedPrompt(question);
-  const prompt = splitPrompt.prompt || `Chọn đáp án phù hợp cho câu ${question.number || index + 1}.`;
-  const questionType = englishQuestionType(question);
+  const questionType = englishQuestionType(question, exam);
+  const splitPrompt = questionType.id === "fill-blank"
+    ? splitEnglishFillBlankPrompt(question)
+    : splitEnglishTimedPrompt(question);
+  const prompt = questionType.id === "sign-notice"
+    ? signNoticePrompt(question, exam)
+    : splitPrompt.prompt || `Chọn đáp án phù hợp cho câu ${question.number || index + 1}.`;
 
   return `
     <div class="question-meta">
@@ -442,6 +630,7 @@ function renderTimedQuestionBody(question, index, exam) {
       <span>${escapeHtml(questionType.label)}${escapeHtml(question.points ? ` · ${question.points} điểm` : "")}</span>
     </div>
     <div class="exam-question-text">${escapeHtml(prompt)}</div>
+    ${renderSignNoticeVisual(question, exam)}
     ${controlForEnglishQuestion(question, answer, exam)}
   `;
 }
@@ -500,6 +689,25 @@ function renderPassageQuestionGroup(groupQuestions, startIndex, exam, range) {
   `;
 }
 
+function renderFillBlankQuestionGroup(groupQuestions, startIndex, exam, range) {
+  const wordBank = englishFillBlankWordBank(groupQuestions, range);
+
+  if (!wordBank.length) {
+    return groupQuestions
+      .map((question, offset) => renderTimedQuestionCard(question, startIndex + offset, exam))
+      .join("");
+  }
+
+  return `
+    <section class="passage-group-card fill-blank-group-card">
+      ${renderFillBlankWordBank(wordBank, range.label)}
+      ${groupQuestions
+    .map((question, offset) => renderTimedQuestionCard(question, startIndex + offset, exam))
+    .join("")}
+    </section>
+  `;
+}
+
 function renderEnglishTimedQuestionBlocks(exam) {
   const blocks = [];
   let index = 0;
@@ -507,7 +715,24 @@ function renderEnglishTimedQuestionBlocks(exam) {
   while (index < exam.questions.length) {
     const question = exam.questions[index];
     const questionNumber = englishQuestionNumber(question);
+    const fillBlankRange = englishFillBlankRange(questionNumber, exam);
     const range = englishPassageRange(questionNumber);
+
+    if (fillBlankRange) {
+      const groupStart = index;
+      const groupQuestions = [];
+      while (index < exam.questions.length) {
+        const current = exam.questions[index];
+        const currentNumber = englishQuestionNumber(current);
+        const currentRange = englishFillBlankRange(currentNumber, exam);
+        if (!currentRange || currentRange.from !== fillBlankRange.from || currentRange.to !== fillBlankRange.to) break;
+        groupQuestions.push(current);
+        index += 1;
+      }
+
+      blocks.push(renderFillBlankQuestionGroup(groupQuestions, groupStart, exam, fillBlankRange));
+      continue;
+    }
 
     if (!range) {
       blocks.push(renderTimedQuestionCard(question, index, exam));
@@ -603,10 +828,10 @@ function controlForEnglishQuestion(question, answer, exam) {
   const name = `answer-${question.number}`;
   const expected = String(answer?.answer || "").trim();
   const choices = parseEnglishChoices(question);
-  const questionType = englishQuestionType(question);
+  const questionType = englishQuestionType(question, exam);
 
   if (questionType.inputMode === "text") {
-    return renderEnglishTextInput(name, question.number, questionType.id === "rewrite"
+    return renderEnglishTextInput(name, question.number, questionType.id === "rewrite" || questionType.id === "rearrange"
       ? "Viết lại cả câu hoàn chỉnh..."
       : "Nhập từ/cụm từ cần điền...");
   }
@@ -644,6 +869,101 @@ function renderEnglishTimedExamIntro(exam) {
   `;
 }
 
+function renderDetailQuestionCard(question, index, exam, options = {}) {
+  const relatedAnswers = answersForQuestion(exam, question.number);
+  const questionType = exam.subject === "TiengAnh" ? englishQuestionType(question, exam) : null;
+  const prompt = options.prompt ?? (questionType?.id === "sign-notice" ? signNoticePrompt(question, exam) : question.prompt);
+  const renderedChoices = question.choices?.length
+    ? question.choices
+    : questionType?.id === "sign-notice"
+      ? parseEnglishChoices(question)
+      : [];
+
+  return `
+    <article class="detail-question-card">
+      <div class="question-meta">
+        <span>Câu ${escapeHtml(question.number || index + 1)}</span>
+        <span>${escapeHtml(questionType?.label || (question.points ? `${question.points} điểm` : exam.subjectLabel))}${questionType && question.points ? ` · ${escapeHtml(`${question.points} điểm`)}` : ""}</span>
+      </div>
+      <div class="exam-question-text">${escapeHtml(prompt)}</div>
+      ${renderSignNoticeVisual(question, exam)}
+      ${renderedChoices.length ? `
+        <ol class="mock-choices">
+          ${renderedChoices.map((choice) => `<li>${escapeHtml(choice)}</li>`).join("")}
+        </ol>
+      ` : ""}
+      ${relatedAnswers.length ? `
+        <details class="inline-answer">
+          <summary>Đáp án / gợi ý cho câu này</summary>
+          <div class="inline-answer-list">
+            ${relatedAnswers.map((answer) => `
+              <section>
+                <h4>${escapeHtml(answer.number || "Đáp án")}</h4>
+                <p><b>Đáp án:</b> ${escapeHtml(answer.answer || answer.correctAnswer || "Chưa nhập")}</p>
+                ${answer.explanation ? `<p><b>Hướng dẫn:</b> ${escapeHtml(answer.explanation)}</p>` : ""}
+                ${renderReviewGuide(answer.reviewGuide)}
+              </section>
+            `).join("")}
+          </div>
+        </details>
+      ` : ""}
+    </article>
+  `;
+}
+
+function renderEnglishContentFillBlankGroup(groupQuestions, startIndex, exam, range) {
+  const wordBank = englishFillBlankWordBank(groupQuestions, range);
+
+  if (!wordBank.length) {
+    return groupQuestions
+      .map((question, offset) => renderDetailQuestionCard(question, startIndex + offset, exam))
+      .join("");
+  }
+
+  return `
+    <section class="passage-group-card fill-blank-group-card">
+      ${renderFillBlankWordBank(wordBank, range.label)}
+      ${groupQuestions
+    .map((question, offset) => renderDetailQuestionCard(question, startIndex + offset, exam, {
+      prompt: splitEnglishFillBlankPrompt(question).prompt,
+    }))
+    .join("")}
+    </section>
+  `;
+}
+
+function renderEnglishContentQuestionBlocks(exam) {
+  const blocks = [];
+  let index = 0;
+
+  while (index < exam.questions.length) {
+    const question = exam.questions[index];
+    const questionNumber = englishQuestionNumber(question);
+    const fillBlankRange = englishFillBlankRange(questionNumber, exam);
+
+    if (fillBlankRange) {
+      const groupStart = index;
+      const groupQuestions = [];
+      while (index < exam.questions.length) {
+        const current = exam.questions[index];
+        const currentNumber = englishQuestionNumber(current);
+        const currentRange = englishFillBlankRange(currentNumber, exam);
+        if (!currentRange || currentRange.from !== fillBlankRange.from || currentRange.to !== fillBlankRange.to) break;
+        groupQuestions.push(current);
+        index += 1;
+      }
+
+      blocks.push(renderEnglishContentFillBlankGroup(groupQuestions, groupStart, exam, fillBlankRange));
+      continue;
+    }
+
+    blocks.push(renderDetailQuestionCard(question, index, exam));
+    index += 1;
+  }
+
+  return blocks.join("");
+}
+
 function renderQuestionList(exam) {
   if (!exam.questions.length) {
     detailElements.questions.innerHTML = `
@@ -663,41 +983,9 @@ function renderQuestionList(exam) {
   }
 
   detailElements.questions.innerHTML = `
-    ${exam.questions
-    .map((question, index) => {
-      const relatedAnswers = answersForQuestion(exam, question.number);
-      const questionType = exam.subject === "TiengAnh" ? englishQuestionType(question) : null;
-      return `
-        <article class="detail-question-card">
-          <div class="question-meta">
-            <span>Câu ${escapeHtml(question.number || index + 1)}</span>
-            <span>${escapeHtml(questionType?.label || (question.points ? `${question.points} điểm` : exam.subjectLabel))}${questionType && question.points ? ` · ${escapeHtml(`${question.points} điểm`)}` : ""}</span>
-          </div>
-          <div class="exam-question-text">${escapeHtml(question.prompt)}</div>
-          ${question.choices?.length ? `
-            <ol class="mock-choices">
-              ${question.choices.map((choice) => `<li>${escapeHtml(choice)}</li>`).join("")}
-            </ol>
-          ` : ""}
-          ${relatedAnswers.length ? `
-            <details class="inline-answer">
-              <summary>Đáp án / gợi ý cho câu này</summary>
-              <div class="inline-answer-list">
-                ${relatedAnswers.map((answer) => `
-                  <section>
-                    <h4>${escapeHtml(answer.number || "Đáp án")}</h4>
-                    <p><b>Đáp án:</b> ${escapeHtml(answer.answer || answer.correctAnswer || "Chưa nhập")}</p>
-                    ${answer.explanation ? `<p><b>Hướng dẫn:</b> ${escapeHtml(answer.explanation)}</p>` : ""}
-                    ${renderReviewGuide(answer.reviewGuide)}
-                  </section>
-                `).join("")}
-              </div>
-            </details>
-          ` : ""}
-        </article>
-      `;
-    })
-    .join("")}
+    ${exam.subject === "TiengAnh"
+    ? renderEnglishContentQuestionBlocks(exam)
+    : exam.questions.map((question, index) => renderDetailQuestionCard(question, index, exam)).join("")}
   `;
 }
 
@@ -743,10 +1031,11 @@ function submitEnglishTimedExam(exam, timedOut = false) {
     const userAnswer = formData.get(`answer-${question.number}`) || "";
     const correct = gradeEnglishAnswer(userAnswer, expected);
     const points = Number(question.points || 0.25);
-    const questionType = englishQuestionType(question);
+    const questionType = englishQuestionType(question, exam);
     return {
       number: question.number,
-      prompt: question.prompt,
+      prompt: questionType.id === "sign-notice" ? signNoticePrompt(question, exam) : question.prompt,
+      visual: signNoticeVisualForQuestion(question, exam),
       typeLabel: questionType.label,
       userAnswer,
       expected,
@@ -795,6 +1084,7 @@ function renderEnglishExamResult(exam, summary) {
             <span>${escapeHtml(item.typeLabel)} · ${item.correct ? "Đúng" : "Sai"} - ${item.earned.toFixed(2)}/${item.points.toFixed(2)} điểm</span>
           </div>
           <div class="exam-question-text">${escapeHtml(item.prompt)}</div>
+          ${renderSignNoticeVisual({ number: item.number, visual: item.visual }, exam)}
           <p><b>Bạn trả lời:</b> ${escapeHtml(item.userAnswer || "Chưa trả lời")}</p>
           <p><b>Đáp án:</b> ${escapeHtml(item.expected)}</p>
           ${item.explanation ? `<p><b>Ghi chú:</b> ${escapeHtml(item.explanation)}</p>` : ""}
