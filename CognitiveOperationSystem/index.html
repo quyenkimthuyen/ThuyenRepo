@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Cognitive Operating System — Mô hình hóa và phát triển nhận thức cá nhân" />
+  <meta name="theme-color" content="#0f0f1a" />
+  <title>Cognitive OS</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <!-- Navigation -->
+    <nav class="nav glass" aria-label="Điều hướng chính">
+      <div class="nav-brand">
+        <span class="nav-logo">🧠</span>
+        <span class="nav-title">Cognitive OS</span>
+      </div>
+      <div class="nav-links" role="tablist">
+        <button class="nav-link active" data-screen="home" role="tab" aria-selected="true">
+          <span class="nav-icon">🏠</span>
+          <span class="nav-label">Home</span>
+        </button>
+        <button class="nav-link" data-screen="reflection" role="tab" aria-selected="false">
+          <span class="nav-icon">💬</span>
+          <span class="nav-label">Suy ngẫm</span>
+        </button>
+        <button class="nav-link" data-screen="forest" role="tab" aria-selected="false">
+          <span class="nav-icon">🌲</span>
+          <span class="nav-label">Rừng</span>
+        </button>
+        <button class="nav-link" data-screen="insights" role="tab" aria-selected="false">
+          <span class="nav-icon">✨</span>
+          <span class="nav-label">Insight</span>
+        </button>
+        <button class="nav-link" data-screen="timeline" role="tab" aria-selected="false">
+          <span class="nav-icon">📅</span>
+          <span class="nav-label">Timeline</span>
+        </button>
+      </div>
+    </nav>
+
+    <main class="main">
+      <!-- 1. Home -->
+      <section id="screen-home" class="screen active" aria-label="Trang chủ">
+        <div class="home-hero">
+          <div class="home-badge glass">EEIBVIA Framework</div>
+          <h1 class="home-title">Hôm nay bạn đang suy nghĩ điều gì?</h1>
+          <p class="home-subtitle">
+            Chia sẻ suy nghĩ — hệ thống sẽ tự động xây dựng cây nhận thức của bạn.
+          </p>
+          <div class="home-input-wrap glass">
+            <textarea
+              id="home-thought-input"
+              class="home-input"
+              placeholder="Ví dụ: Con tôi không chịu học, tôi lo lắng về tương lai của con..."
+              rows="5"
+              aria-label="Suy nghĩ của bạn"
+            ></textarea>
+          </div>
+          <button id="btn-start-reflection" class="btn btn-primary btn-lg">
+            <span>Bắt đầu suy ngẫm</span>
+            <span class="btn-arrow">→</span>
+          </button>
+          <div class="home-stats glass" id="home-stats"></div>
+        </div>
+      </section>
+
+      <!-- 2. Reflection Session -->
+      <section id="screen-reflection" class="screen" aria-label="Phiên suy ngẫm" hidden>
+        <header class="screen-header">
+          <h2>Phiên suy ngẫm</h2>
+          <div class="flow-indicator" id="flow-indicator"></div>
+        </header>
+        <div class="reflection-layout">
+          <div class="chat-timeline glass" id="chat-timeline" aria-label="Timeline hội thoại">
+            <div class="timeline-label">Timeline</div>
+            <div id="session-timeline-steps"></div>
+          </div>
+          <div class="chat-container">
+            <div class="chat-messages" id="chat-messages" role="log" aria-live="polite"></div>
+            <div class="chat-suggestions" id="chat-suggestions" hidden>
+              <span class="suggestions-label">Gợi ý trả lời</span>
+              <div class="suggestions-list" id="suggestions-list" role="listbox" aria-label="Mẫu trả lời gợi ý"></div>
+            </div>
+            <form class="chat-input-form glass" id="chat-form">
+              <textarea
+                id="chat-input"
+                class="chat-input"
+                placeholder="Chia sẻ suy nghĩ của bạn..."
+                rows="2"
+                aria-label="Tin nhắn"
+              ></textarea>
+              <button type="submit" class="btn btn-primary btn-send" aria-label="Gửi">
+                Gửi
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Cognitive Forest -->
+      <section id="screen-forest" class="screen" aria-label="Khu rừng nhận thức" hidden>
+        <header class="screen-header">
+          <h2>Cognitive Forest</h2>
+          <p class="screen-desc">Khu rừng nhận thức của bạn — mỗi cây là một lĩnh vực cuộc sống</p>
+        </header>
+        <div class="forest-grid" id="forest-grid"></div>
+        <div class="forest-detail" id="forest-detail" hidden>
+          <button class="btn btn-ghost back-btn" id="forest-back">← Quay lại</button>
+          <h3 id="forest-detail-title"></h3>
+          <div class="node-filters" id="node-filters"></div>
+          <div class="node-grid" id="node-grid"></div>
+        </div>
+      </section>
+
+      <!-- 4. Insight Center -->
+      <section id="screen-insights" class="screen" aria-label="Trung tâm insight" hidden>
+        <header class="screen-header">
+          <h2>Insight Center</h2>
+          <p class="screen-desc">Khám phá patterns nhận thức và mâu thuẫn tiềm ẩn</p>
+        </header>
+        <div class="insights-grid" id="insights-grid"></div>
+      </section>
+
+      <!-- 5. Timeline -->
+      <section id="screen-timeline" class="screen" aria-label="Timeline nhận thức" hidden>
+        <header class="screen-header">
+          <h2>Timeline</h2>
+          <p class="screen-desc">Sự thay đổi nhận thức theo thời gian</p>
+        </header>
+        <div class="timeline-container" id="timeline-container"></div>
+      </section>
+    </main>
+
+    <!-- Node Detail Modal -->
+    <dialog id="node-modal" class="modal glass">
+      <div class="modal-content">
+        <button class="modal-close" id="modal-close" aria-label="Đóng">×</button>
+        <div id="modal-body"></div>
+      </div>
+    </dialog>
+
+    <!-- Toast -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <!-- Scripts — thứ tự load quan trọng -->
+  <script src="cognitive-library.js"></script>
+  <script src="data.js"></script>
+  <script src="cognitive-tree.js"></script>
+  <script src="timeline-engine.js"></script>
+  <script src="contradiction-engine.js"></script>
+  <script src="insight-engine.js"></script>
+  <script src="reflection-engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
