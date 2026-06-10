@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Bản đồ tư duy tương tác giúp học quy tắc ráp vần tiếng Anh và phát âm chuẩn quốc tế IPA dựa theo tài liệu của tác giả Nguyễn Thị Tuyết.">
+  <title>Bản đồ Ráp vần Tiếng Anh & Phiên âm Quốc tế IPA</title>
+  <!-- Google Fonts: Outfit (tiêu đề) & Inter (nội dung) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar điều khiển & Tìm kiếm -->
+    <aside class="control-sidebar">
+      <header class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">🔤</span>
+          <div>
+            <h1>IPA Phonics</h1>
+            <p class="subtitle">Ráp Vần & Phiên Âm Tiếng Anh</p>
+          </div>
+        </div>
+        <button id="theme-toggle" class="icon-btn" title="Chuyển chế độ Sáng/Tối" aria-label="Toggle dark mode">🌓</button>
+      </header>
+
+      <section class="search-section">
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="search" id="node-search" placeholder="Tìm ký tự (a, sh, ch...) hoặc âm..." autocomplete="off">
+          <button id="clear-search" class="clear-btn" hidden>×</button>
+        </div>
+        <div class="filter-chips">
+          <button class="filter-chip active" data-filter="all">Tất cả</button>
+          <button class="filter-chip" data-filter="vowel-single">Nguyên âm đơn</button>
+          <button class="filter-chip" data-filter="vowel-digraph">Nguyên âm ghép</button>
+          <button class="filter-chip" data-filter="consonant-digraph">Phụ âm ghép</button>
+        </div>
+      </section>
+
+      <!-- Navigation Tabs -->
+      <nav class="app-tabs" role="tablist">
+        <button class="tab-btn active" id="tab-map" role="tab" aria-selected="true" aria-controls="map-view">
+          <span>🗺️</span> Bản đồ tư duy
+        </button>
+        <button class="tab-btn" id="tab-quiz" role="tab" aria-selected="false" aria-controls="quiz-view">
+          <span>🎮</span> Luyện tập
+        </button>
+      </nav>
+
+      <!-- Panel Hướng Dẫn & Thống kê sơ bộ -->
+      <section class="info-card">
+        <h3>Hướng dẫn tương tác</h3>
+        <ul>
+          <li>Lăn chuột hoặc dùng hai ngón tay để <strong>Zoom</strong> phóng to/thu nhỏ sơ đồ.</li>
+          <li>Nhấn giữ và kéo chuột để <strong>Di chuyển (Pan)</strong> sơ đồ.</li>
+          <li>Nhấp vào các nút tròn để <strong>Thu gọn / Mở rộng</strong> nhánh.</li>
+          <li>Nhấp vào nút chữ/âm để xem <strong>Chi tiết quy tắc phát âm</strong>.</li>
+        </ul>
+        <div class="stats-row">
+          <div class="stat-item">
+            <span class="stat-num" id="stat-nodes">38</span>
+            <span class="stat-label">Ký tự/Tổ hợp</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num" id="stat-rules">56</span>
+            <span class="stat-label">Quy tắc đọc</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num" id="stat-examples">150+</span>
+            <span class="stat-label">Từ ví dụ</span>
+          </div>
+        </div>
+      </section>
+
+      <footer class="app-footer">
+        <p>Dựa trên sách <em>"Ráp vần tiếng Anh, phiên âm quốc tế"</em></p>
+        <p>Tác giả: Nguyễn Thị Tuyết • NXB Đồng Nai</p>
+      </footer>
+    </aside>
+
+    <!-- Khu vực hiển thị chính -->
+    <main class="main-content">
+      <!-- Chế độ xem Bản đồ Tư duy -->
+      <div id="map-view" class="view-panel active">
+        <div class="map-controls">
+          <button id="zoom-in" class="control-btn" title="Phóng to">➕</button>
+          <button id="zoom-out" class="control-btn" title="Thu nhỏ">➖</button>
+          <button id="zoom-reset" class="control-btn" title="Đặt lại chế độ xem">🎯</button>
+          <button id="collapse-all" class="control-btn text-btn">Thu gọn hết</button>
+          <button id="expand-all" class="control-btn text-btn">Mở rộng hết</button>
+        </div>
+        
+        <!-- SVG Container chính vẽ Mindmap -->
+        <div class="svg-container" id="svg-canvas-container">
+          <svg id="mindmap-svg" width="100%" height="100%">
+            <!-- Group chứa liên kết và các node để thực hiện zoom & pan -->
+            <g id="zoom-group">
+              <g id="links-group"></g>
+              <g id="nodes-group"></g>
+            </g>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Chế độ xem Luyện tập Trắc nghiệm -->
+      <div id="quiz-view" class="view-panel">
+        <div class="quiz-container">
+          <header class="quiz-header">
+            <h2>🎮 Thử thách Ráp vần & Phiên âm</h2>
+            <div class="score-badge">Điểm: <span id="quiz-score">0</span></div>
+          </header>
+          
+          <div class="quiz-card">
+            <div class="quiz-progress">Câu hỏi <span id="quiz-current-num">1</span>/<span id="quiz-total-num">10</span></div>
+            <div class="quiz-question-box">
+              <p class="quiz-question-prompt">Từ dưới đây có chứa ký tự/tổ hợp được gạch chân phát âm thế nào?</p>
+              <div class="quiz-word-display">
+                <span id="quiz-word-before"></span><span id="quiz-word-highlight"></span><span id="quiz-word-after"></span>
+              </div>
+              <p class="quiz-word-meaning" id="quiz-word-meaning">(nghĩa của từ)</p>
+              <button id="quiz-listen-btn" class="speak-btn round-btn" title="Nghe từ này">🔊 Nghe từ mẫu</button>
+            </div>
+
+            <div class="quiz-options" id="quiz-options-grid">
+              <!-- Các lựa chọn đáp án dạng nút bấm -->
+            </div>
+            
+            <div class="quiz-feedback" id="quiz-feedback-box" hidden>
+              <p class="feedback-text" id="quiz-feedback-text"></p>
+              <p class="feedback-explanation" id="quiz-feedback-explanation"></p>
+              <button id="next-question-btn" class="primary-btn">Câu tiếp theo ➡️</button>
+            </div>
+          </div>
+
+          <div class="quiz-stats-screen" id="quiz-stats-screen" hidden>
+            <div class="quiz-result-emoji">🎉</div>
+            <h3>Hoàn thành thử thách!</h3>
+            <p class="quiz-result-text">Bạn đạt được <strong id="final-score">0</strong>/<strong id="final-total">10</strong> câu trả lời đúng.</p>
+            <button id="restart-quiz-btn" class="primary-btn">Chơi lại</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Ngăn kéo chi tiết (Details Drawer) - trượt từ phải sang -->
+    <section class="details-drawer" id="details-drawer" aria-labelledby="drawer-title" aria-hidden="true">
+      <button id="close-drawer" class="close-drawer-btn" aria-label="Đóng ngăn kéo">×</button>
+      <div class="drawer-content">
+        <header class="drawer-header">
+          <span class="drawer-badge" id="drawer-category">Nguyên âm đơn</span>
+          <h2 id="drawer-title">Ký tự A</h2>
+        </header>
+
+        <!-- Trạng thái mặc định khi chưa chọn node quy tắc cụ thể -->
+        <div id="drawer-intro" class="drawer-section">
+          <p>Nhấp vào một <strong>quy tắc phát âm (âm IPA)</strong> trên sơ đồ để xem hướng dẫn ráp vần cụ thể, nghe giọng đọc mẫu và thực hành nói.</p>
+          <div class="all-rules-list" id="drawer-all-rules-list">
+            <!-- Danh sách nhanh các quy tắc của ký tự hiện tại -->
+          </div>
+        </div>
+
+        <!-- Trạng thái hiển thị chi tiết khi click vào quy tắc cụ thể -->
+        <div id="drawer-detail-view" class="drawer-section" hidden>
+          <div class="ipa-sound-card">
+            <span class="ipa-symbol" id="detail-ipa-symbol">/æ/</span>
+            <button id="speak-ipa-btn" class="speak-btn round-btn" title="Nghe âm này">🔊</button>
+            <p class="ipa-desc" id="detail-ipa-desc">Âm A bẹt</p>
+          </div>
+
+          <div class="rule-box">
+            <h4>Quy tắc ráp vần:</h4>
+            <p id="detail-rule-text">Được phát âm là /æ/ trong từ một âm tiết kết thúc bằng phụ âm (âm đóng).</p>
+          </div>
+
+          <div class="examples-section">
+            <h4>Từ vựng ví dụ:</h4>
+            <div class="examples-list" id="detail-examples-list">
+              <!-- Danh sách từ ví dụ dạng card -->
+            </div>
+          </div>
+
+          <div class="practice-box">
+            <h4>Luyện phát âm của bạn:</h4>
+            <p class="practice-instruction">Nhấp giữ nút "Ghi âm" dưới đây và đọc từ ví dụ được chọn.</p>
+            
+            <div class="record-selector">
+              <label for="practice-word-select">Chọn từ luyện tập:</label>
+              <select id="practice-word-select">
+                <!-- Dropdown danh sách từ ví dụ -->
+              </select>
+            </div>
+
+            <div class="record-controls">
+              <button id="record-btn" class="record-btn">
+                <span class="record-icon">🎤</span>
+                <span id="record-btn-text">Giữ để nói</span>
+              </button>
+              <button id="play-recording-btn" class="record-play-btn" disabled>
+                ▶ Nghe lại giọng bạn
+              </button>
+            </div>
+            <div class="audio-feedback" id="audio-feedback-msg"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Phông mờ nền (Overlay) khi mở Drawer trên mobile -->
+    <div class="drawer-backdrop" id="drawer-backdrop"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
