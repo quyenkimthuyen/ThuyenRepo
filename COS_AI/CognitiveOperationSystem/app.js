@@ -10,6 +10,7 @@ const App = {
   activeSessionId: null,
   selectedForestTree: null,
   nodeFilter: 'all',
+  isReflecting: false,
 
   /**
    * Khởi tạo ứng dụng
@@ -21,9 +22,11 @@ const App = {
     I18n.applyStatic();
     I18n.onChange(() => {
       I18n.applyStatic();
+      this.renderAiSettings();
       this.navigate(this.currentScreen);
     });
     this.renderHomeStats();
+    this.renderAiSettings();
     this.navigate('home');
   },
 
@@ -42,6 +45,24 @@ const App = {
     // Home — bắt đầu suy ngẫm
     document.getElementById('btn-start-reflection').addEventListener('click', () => {
       this.startReflection();
+    });
+
+    document.querySelectorAll('input[name="reflection-mode"]').forEach((input) => {
+      input.addEventListener('change', () => {
+        if (!input.checked) return;
+        AiClient.setMode(input.value);
+        this.renderAiSettings();
+        this.renderReflectionModeBadge();
+      });
+    });
+
+    document.getElementById('ai-proxy-url').addEventListener('change', (e) => {
+      AiClient.setProxyUrl(e.target.value);
+      this.setAiStatus('unknown');
+    });
+
+    document.getElementById('btn-ai-test').addEventListener('click', () => {
+      this.testAiConnection();
     });
 
     // Reset dữ liệu
@@ -112,9 +133,6 @@ const App = {
     document.getElementById('test-scenario-list').addEventListener('click', (e) => {
       const card = e.target.closest('.test-scenario-card');
       if (card) {
-        if (TestMode.selectedScenarioId) {
-          this.collectTestDialogueEdits(TestMode.selectedScenarioId);
-        }
         TestMode.selectScenario(card.dataset.scenarioId);
         this.renderTestMode();
         return;
@@ -140,14 +158,6 @@ const App = {
         case 'simulate-fast':
           this.runTestSimulation(scenarioId, { delayMs: 0 });
           break;
-        case 'simulate-rerun':
-          this.runTestSimulation(scenarioId, { reset: false, backup: false, delayMs: 500 });
-          break;
-        case 'reset-dialogue':
-          TestMode.resetDialogueEdits(scenarioId);
-          this.renderTestMode();
-          this.showToast(I18n.t('test.dialogueRestored'));
-          break;
         case 'restore':
           if (TestMode.restoreSnapshot()) {
             this.showToast(I18n.t('test.restored'));
@@ -162,13 +172,6 @@ const App = {
 
     document.getElementById('btn-stop-simulation').addEventListener('click', () => {
       TestMode.stopSimulation();
-    });
-
-    document.getElementById('insights-grid').addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-exploration-seed]');
-      if (btn) {
-        this.applyExplorationSeed(btn.dataset.explorationSeed);
-      }
     });
   },
 
@@ -199,6 +202,7 @@ const App = {
     switch (screen) {
       case 'home':
         this.renderHomeStats();
+        this.renderAiSettings();
         break;
       case 'reflection':
         this.renderReflection();
@@ -276,7 +280,6 @@ const App = {
       TestMode.lastSnapshot = null;
       TestMode.simulationAbort = false;
       TestMode.isSimulating = false;
-      TestMode.dialogueEdits = {};
     }
 
     const homeInput = document.getElementById('home-thought-input');
@@ -292,7 +295,7 @@ const App = {
     this.showToast(I18n.t('home.dataReset'));
   },
 
-  startReflection() {
+  async startReflection() {
     const input = document.getElementById('home-thought-input');
     const thought = input.value.trim();
 
@@ -303,27 +306,20 @@ const App = {
     }
 
     if (this.checkCrisisAndShow(thought)) return;
+    if (this.isReflecting) return;
 
-    const { session } = ReflectionEngine.createSession(thought);
-    this.activeSessionId = session.id;
-    input.value = '';
-
-    this.showToast(I18n.t('home.sessionStarted'));
-    this.navigate('reflection');
-  },
-
-  applyExplorationSeed(seedThought) {
-    if (!seedThought) return;
-    if (this.checkCrisisAndShow(seedThought)) return;
-
-    const input = document.getElementById('home-thought-input');
-    if (input) {
-      input.value = seedThought;
-      input.focus();
+    this.setReflecting(true);
+    try {
+      const { session } = await ReflectionEngine.createSession(thought);
+      this.activeSessionId = session.id;
+      input.value = '';
+      this.showToast(I18n.t('home.sessionStarted'));
+      this.navigate('reflection');
+    } catch (err) {
+      this.showToast(err.message || I18n.t('ai.testFail'));
+    } finally {
+      this.setReflecting(false);
     }
-
-    this.navigate('home');
-    this.showToast(I18n.t('insights.explorationFilled'));
   },
 
   // ─── REFLECTION ───
@@ -343,6 +339,7 @@ const App = {
     this.renderSessionTimeline(session);
     this.renderChatMessages(session);
     this.renderReflectionSuggestions(session);
+    this.renderReflectionModeBadge();
   },
 
   renderEmptyReflection() {
@@ -468,20 +465,98 @@ const App = {
     container.scrollTop = container.scrollHeight;
   },
 
-  sendChatMessage() {
+  async sendChatMessage() {
     const input = document.getElementById('chat-input');
     const text = input.value.trim();
 
-    if (!text || !this.activeSessionId) return;
+    if (!text || !this.activeSessionId || this.isReflecting) return;
 
     if (this.checkCrisisAndShow(text)) return;
 
-    const result = ReflectionEngine.continueSession(this.activeSessionId, text);
-    if (!result) return;
+    this.setReflecting(true);
+    try {
+      const result = await ReflectionEngine.continueSession(this.activeSessionId, text);
+      if (!result) return;
 
-    input.value = '';
-    this.renderReflection();
-    this.renderHomeStats();
+      if (result.aiFallback) {
+        this.showToast(I18n.t('ai.fallbackRule'));
+      }
+
+      input.value = '';
+      this.renderReflection();
+      this.renderHomeStats();
+    } catch (err) {
+      this.showToast(err.message || I18n.t('ai.testFail'));
+    } finally {
+      this.setReflecting(false);
+    }
+  },
+
+  setReflecting(active) {
+    this.isReflecting = active;
+    const form = document.getElementById('chat-form');
+    const sendBtn = form?.querySelector('.btn-send');
+    const skipBtn = document.getElementById('btn-skip-step');
+    const chatInput = document.getElementById('chat-input');
+    if (sendBtn) sendBtn.disabled = active;
+    if (skipBtn) skipBtn.disabled = active;
+    if (chatInput) chatInput.disabled = active;
+    form?.classList.toggle('is-loading', active);
+  },
+
+  renderAiSettings() {
+    const settings = AiClient.getSettings();
+    const mode = settings.reflectionMode;
+
+    document.querySelectorAll('input[name="reflection-mode"]').forEach((input) => {
+      input.checked = input.value === mode;
+    });
+
+    const proxyRow = document.getElementById('ai-proxy-row');
+    const proxyInput = document.getElementById('ai-proxy-url');
+    if (proxyRow) proxyRow.hidden = mode !== 'cursor';
+    if (proxyInput) proxyInput.value = settings.cursorProxyUrl;
+
+    this.setAiStatus('unknown', I18n.t('ai.statusUnknown'));
+    this.renderReflectionModeBadge();
+  },
+
+  renderReflectionModeBadge() {
+    const el = document.getElementById('reflection-mode-badge');
+    if (!el) return;
+
+    if (!AiClient.isEnabled()) {
+      el.hidden = true;
+      return;
+    }
+
+    el.hidden = false;
+    el.textContent = I18n.t('ai.badgeCursor');
+    el.className = 'reflection-mode-badge mode-cursor';
+  },
+
+  setAiStatus(status, label) {
+    const pill = document.getElementById('ai-status-pill');
+    if (!pill) return;
+    pill.dataset.status = status;
+    pill.textContent = label || I18n.t(`ai.status${status.charAt(0).toUpperCase()}${status.slice(1)}`);
+  },
+
+  async testAiConnection() {
+    this.setAiStatus('checking', I18n.t('ai.statusChecking'));
+    try {
+      const health = await AiClient.checkHealth();
+      if (health.hasKey) {
+        this.setAiStatus('ok', I18n.t('ai.statusOk'));
+        this.showToast(I18n.t('ai.testOk'));
+      } else {
+        this.setAiStatus('noKey', I18n.t('ai.statusNoKey'));
+        this.showToast(I18n.t('ai.statusNoKey'));
+      }
+    } catch {
+      this.setAiStatus('error', I18n.t('ai.statusError'));
+      this.showToast(I18n.t('ai.testFail'));
+    }
   },
 
   skipReflectionStep() {
@@ -760,30 +835,6 @@ const App = {
       )}
 
       ${this.renderInsightSection(
-        I18n.t('insights.exploration'),
-        insights.explorationPrompts.length > 0
-          ? insights.explorationPrompts
-              .map(
-                (p) => `
-              <div class="exploration-prompt-card">
-                <span class="exploration-prompt-source">${this.escapeHtml(p.source)}</span>
-                <p class="exploration-prompt-text">${this.escapeHtml(p.prompt)}</p>
-                <button
-                  type="button"
-                  class="btn btn-ghost btn-sm exploration-prompt-btn"
-                  data-exploration-seed="${this.escapeAttr(p.seedThought)}"
-                >
-                  ${I18n.t('insights.explorationCta')}
-                </button>
-              </div>
-            `
-              )
-              .join('')
-          : `<div class="insight-empty">${I18n.t('insights.explorationEmpty')}</div>`,
-        insights.explorationPrompts.length > 0 ? 'exploration' : ''
-      )}
-
-      ${this.renderInsightSection(
         I18n.t('insights.biases'),
         insights.biases.length > 0
           ? insights.biases
@@ -959,38 +1010,18 @@ const App = {
       </div>
 
       <div class="test-section glass">
-        <div class="test-dialogue-header">
-          <h4>${I18n.t('test.dialogue')}</h4>
-          <div class="test-dialogue-toolbar">
-            ${
-              TestMode.hasDialogueEdits(scenario.id)
-                ? `<span class="test-dialogue-badge">${I18n.t('test.dialogueEdited')}</span>`
-                : ''
-            }
-            <button type="button" class="btn btn-ghost btn-sm" data-test-action="reset-dialogue" data-scenario-id="${scenario.id}">
-              ${I18n.t('test.resetDialogue')}
-            </button>
-            <button type="button" class="btn btn-ghost btn-sm" data-test-action="simulate-rerun" data-scenario-id="${scenario.id}">
-              ${I18n.t('test.rerunNoReset')}
-            </button>
-          </div>
-        </div>
+        <h4>${I18n.t('test.dialogue')}</h4>
         <p class="test-muted">${I18n.t('test.dialogueHint')}</p>
-        <ol class="test-dialogue-list" id="test-dialogue-list">
-          ${TestMode.getEffectiveDialogue(scenario.id)
+        <ol class="test-dialogue-list">
+          ${scenario.dialogue
             .map(
               (turn, i) => `
-            <li class="test-dialogue-item${turn.content !== scenario.dialogue[i]?.content ? ' test-dialogue-item--edited' : ''}">
+            <li class="test-dialogue-item">
               <div class="test-dialogue-step">
                 <span class="test-step-num">${i + 1}</span>
                 <span class="test-step-label">${this.escapeHtml(CognitiveLibrary.getFrameworkLabel(turn.step) || turn.step)}</span>
               </div>
-              <textarea
-                class="test-dialogue-input"
-                data-dialogue-index="${i}"
-                rows="3"
-                aria-label="${this.escapeAttr(CognitiveLibrary.getFrameworkLabel(turn.step) || turn.step)}"
-              >${this.escapeHtml(turn.content)}</textarea>
+              <p class="test-dialogue-content">${this.escapeHtml(turn.content)}</p>
               ${turn.note ? `<p class="test-dialogue-note">💡 ${this.escapeHtml(turn.note)}</p>` : ''}
             </li>
           `
@@ -1026,26 +1057,8 @@ const App = {
     `;
   },
 
-  collectTestDialogueEdits(scenarioId) {
-    const scenario = TestMode.getScenario(scenarioId);
-    if (!scenario) return null;
-
-    const dialogue = scenario.dialogue.map((turn, i) => {
-      const input = document.querySelector(
-        `#test-scenario-detail .test-dialogue-input[data-dialogue-index="${i}"]`
-      );
-      const content = input ? input.value.trim() : turn.content;
-      return { ...turn, content };
-    });
-
-    TestMode.setDialogueEdits(scenarioId, dialogue);
-    return dialogue;
-  },
-
   async runTestSimulation(scenarioId, options = {}) {
     if (TestMode.isSimulating) return;
-
-    this.collectTestDialogueEdits(scenarioId);
 
     const bar = document.getElementById('test-sim-bar');
     const statusEl = document.getElementById('test-sim-status');
@@ -1057,9 +1070,9 @@ const App = {
 
     try {
       const result = await TestMode.runSimulation(scenarioId, {
-        reset: options.reset !== false,
+        reset: true,
         delayMs: options.delayMs ?? 500,
-        backup: options.backup !== false,
+        backup: true,
         onProgress: (p) => {
           const pct = Math.round((p.completedSteps / p.totalSteps) * 100);
           progressEl.style.width = `${pct}%`;

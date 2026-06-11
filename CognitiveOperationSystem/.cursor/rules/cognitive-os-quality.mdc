@@ -1,0 +1,44 @@
+---
+description: Cognitive OS — kiến trúc, triết lý sản phẩm và checklist chất lượng khi cập nhật
+alwaysApply: true
+---
+
+# Cognitive OS — Quality Gate
+
+App suy ngẫm 7 bước (EEIBVIA), vanilla JS + LocalStorage. **Không** phải app tư vấn/chẩn đoán — mọi gợi ý chỉ để suy ngẫm thêm.
+
+## Kiến trúc (đừng phá)
+
+| File | Trách nhiệm |
+|------|-------------|
+| `cognitive-library.js` | Hằng số, pattern, keyword — không DOM |
+| `*-engine.js` | Logic phân tích/thu thập — không render UI |
+| `i18n.js` | Mọi chuỗi hiển thị `vi` + `en` |
+| `app.js` | Render, event, điều hướng màn hình |
+| `data.js` | Schema + `DataStore` |
+| `test-scenarios.js` / `test-mode.js` | Kịch bản mô phỏng |
+
+Thứ tự `<script>` trong `index.html` **có phụ thuộc** — không đổi tùy tiện.
+
+## Checklist trước khi xong task
+
+1. **i18n**: thêm/cập nhật cả `vi` và `en` (`I18N_MESSAGES`, `I18N_*` maps liên quan).
+2. **UI**: dùng `I18n.t()` / helper i18n — không hardcode chuỗi tiếng Việt trong `app.js`.
+3. **XSS**: `escapeHtml()` cho nội dung; `escapeAttr()` cho `data-*`, `aria-label`, textarea.
+4. **Tone**: câu hỏi mở / “có thể thử” — tránh “bạn nên / phải / cần đi khám”.
+5. **An toàn**: nội dung người dùng nhập → `checkCrisisAndShow()` khi bắt đầu phiên.
+6. **Phạm vi**: diff tối thiểu; khớp style, naming, comment level của file xung quanh.
+7. **Kiểm tra**: `node --check` các file `.js` đã sửa.
+
+## Khi thêm tính năng mới
+
+- Logic → engine hoặc `cognitive-library.js`; UI → `app.js` + `style.css`.
+- Pattern có keyword → đặt trong library, engine chỉ match/aggregate.
+- Có màn hình mới → `index.html` section + `navigate()` case + i18n `nav.*`.
+- Thử nghiệm: cập nhật `test-scenarios.js` (schema, `learningPoints`) nếu UX đổi.
+
+## Không làm
+
+- Không thêm framework/build step trừ khi user yêu cầu.
+- Không commit/push trừ khi user yêu cầu.
+- Không tạo file docs (README, v.v.) trừ khi user yêu cầu.

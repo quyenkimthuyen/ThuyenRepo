@@ -1,0 +1,48 @@
+---
+description: Pattern mở rộng engine — mâu thuẫn, gợi ý khám phá, kịch bản thử nghiệm
+globs: cognitive-library.js,*-engine.js,test-*.js,app.js
+alwaysApply: false
+---
+
+# Mở rộng Engine & Tính năng
+
+## Mâu thuẫn (`ContradictionEngine`)
+
+- Pattern mới → `CONTRADICTION_PATTERNS` trong `cognitive-library.js`.
+- Message ngắn, tiếng Việt (engine dùng keyword match).
+- Hiển thị qua `I18n.formatContradiction()` — không tự thêm prefix trong message.
+
+## Gợi ý suy ngẫm tiếp (`InsightEngine`)
+
+Ba lớp phải đồng bộ `id`:
+
+1. `EXPLORATION_PROMPT_RULES` — `id`, `priority` (số nhỏ = ưu tiên), `matches(insights)`, `vars?`
+2. `I18N_EXPLORATION_PROMPTS` — `source`, `prompt`, `seedThought` (cả `vi` + `en`)
+3. `InsightEngine.getExplorationPrompts()` + render trong `app.js` (`renderInsights`)
+
+Tone: câu hỏi suy ngẫm + `seedThought` cho Trang chủ — **không** ra lệnh hành động.
+
+```javascript
+// ✅ Khớp id xuyên suốt
+{ id: 'family_work', priority: 1, matches: (i) => ... }
+// I18N_EXPLORATION_PROMPTS.vi.family_work = { source, prompt, seedThought }
+```
+
+## Thử nghiệm (`TestMode`)
+
+- Kịch bản mới → push `TEST_SCENARIOS` (đủ field: `dialogue`, `expectedOutcomes`, `learningPoints`).
+- Hội thoại chỉnh sửa → `dialogueEdits[scenarioId]`; thu thập từ DOM trước simulate/đổi kịch bản.
+- `runSimulation`: dùng `getEffectiveDialogue()`; `reset`/`backup` tách cho “chạy lại không reset”.
+
+## Reflection (`ReflectionEngine`)
+
+- Keyword hành động/niềm tin → `cognitive-library.js` hoặc pattern trong engine.
+- Gợi ý trả lời chat → `REFLECTION_SUGGESTIONS` / `I18N_REFLECTION_SUGGESTIONS`.
+
+## Test nhanh sau khi sửa engine
+
+```bash
+node --check insight-engine.js cognitive-library.js app.js i18n.js
+```
+
+Với logic match: mock `insights` object và gọi `InsightEngine.getExplorationPrompts(insights)` trong node (set `I18n.locale`, mock `localStorage` nếu cần).

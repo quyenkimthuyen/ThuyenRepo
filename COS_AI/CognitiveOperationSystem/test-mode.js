@@ -9,8 +9,6 @@ const TestMode = {
   simulationAbort: false,
   lastSnapshot: null,
   isSimulating: false,
-  /** @type {Record<string, Array<{step: string, content: string, note?: string}>>} */
-  dialogueEdits: {},
 
   getScenarios() {
     return typeof TEST_SCENARIOS !== 'undefined' ? TEST_SCENARIOS : [];
@@ -29,40 +27,6 @@ const TestMode = {
   selectScenario(id) {
     this.selectedScenarioId = id;
     return this.getScenario(id);
-  },
-
-  /** Hội thoại đang dùng (bản gốc hoặc đã chỉnh sửa) */
-  getEffectiveDialogue(scenarioId) {
-    if (this.dialogueEdits[scenarioId]) {
-      return this.dialogueEdits[scenarioId];
-    }
-    const scenario = this.getScenario(scenarioId);
-    return scenario ? scenario.dialogue.map((turn) => ({ ...turn })) : [];
-  },
-
-  hasDialogueEdits(scenarioId) {
-    const scenario = this.getScenario(scenarioId);
-    if (!scenario || !this.dialogueEdits[scenarioId]) return false;
-    return this.dialogueEdits[scenarioId].some(
-      (turn, i) => turn.content !== scenario.dialogue[i]?.content
-    );
-  },
-
-  /** Lưu chỉnh sửa từ mảng hội thoại */
-  setDialogueEdits(scenarioId, dialogue) {
-    const scenario = this.getScenario(scenarioId);
-    if (!scenario) return;
-
-    const changed = dialogue.some((turn, i) => turn.content !== scenario.dialogue[i]?.content);
-    if (changed) {
-      this.dialogueEdits[scenarioId] = dialogue.map((turn) => ({ ...turn }));
-    } else {
-      delete this.dialogueEdits[scenarioId];
-    }
-  },
-
-  resetDialogueEdits(scenarioId) {
-    delete this.dialogueEdits[scenarioId];
   },
 
   /** Điền suy nghĩ ban đầu vào Home */
@@ -129,18 +93,18 @@ const TestMode = {
       DataStore.reset();
     }
 
-    const dialogue = options.dialogue || this.getEffectiveDialogue(scenarioId);
-    const { session } = ReflectionEngine.createSession(scenario.initialThought);
+    const { session } = await ReflectionEngine.createSession(scenario.initialThought, {
+      forceRule: true,
+    });
     const progress = {
       scenarioId,
       sessionId: session.id,
-      totalSteps: dialogue.length,
+      totalSteps: scenario.dialogue.length,
       completedSteps: 0,
       steps: [],
-      usedEditedDialogue: this.hasDialogueEdits(scenarioId),
     };
 
-    for (const turn of dialogue) {
+    for (const turn of scenario.dialogue) {
       if (this.simulationAbort) {
         progress.aborted = true;
         break;
@@ -150,7 +114,9 @@ const TestMode = {
         await this.delay(delayMs);
       }
 
-      const result = ReflectionEngine.continueSession(session.id, turn.content);
+      const result = await ReflectionEngine.continueSession(session.id, turn.content, {
+        forceRule: true,
+      });
       progress.completedSteps += 1;
       progress.steps.push({
         step: turn.step,

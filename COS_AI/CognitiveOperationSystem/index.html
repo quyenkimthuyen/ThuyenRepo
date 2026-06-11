@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Hệ thống nhìn lại suy nghĩ — ghi nhận và hiểu rõ hơn về bản thân" />
+  <meta name="theme-color" content="#0f0f1a" />
+  <title>Nhìn lại suy nghĩ</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app" class="app">
+    <!-- Navigation -->
+    <nav class="nav glass" data-i18n-aria="nav.main" aria-label="Điều hướng chính">
+      <div class="nav-brand">
+        <span class="nav-logo">🧠</span>
+        <span class="nav-title">Nhìn lại suy nghĩ</span>
+      </div>
+      <div class="lang-switch" role="group" data-i18n-aria="common.langSwitch" aria-label="Ngôn ngữ">
+        <button type="button" class="lang-btn active" data-lang="vi" aria-pressed="true">VI</button>
+        <button type="button" class="lang-btn" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+      <div class="nav-links" role="tablist">
+        <button class="nav-link active" data-screen="home" role="tab" aria-selected="true">
+          <span class="nav-icon">🏠</span>
+          <span class="nav-label">Trang chủ</span>
+        </button>
+        <button class="nav-link" data-screen="reflection" role="tab" aria-selected="false">
+          <span class="nav-icon">💬</span>
+          <span class="nav-label">Suy ngẫm</span>
+        </button>
+        <button class="nav-link" data-screen="forest" role="tab" aria-selected="false">
+          <span class="nav-icon">🌲</span>
+          <span class="nav-label">Bản đồ</span>
+        </button>
+        <button class="nav-link" data-screen="insights" role="tab" aria-selected="false">
+          <span class="nav-icon">✨</span>
+          <span class="nav-label">Khám phá</span>
+        </button>
+        <button class="nav-link" data-screen="timeline" role="tab" aria-selected="false">
+          <span class="nav-icon">📅</span>
+          <span class="nav-label">Dòng thời gian</span>
+        </button>
+        <button class="nav-link" data-screen="test" role="tab" aria-selected="false">
+          <span class="nav-icon">🧪</span>
+          <span class="nav-label">Thử nghiệm</span>
+        </button>
+      </div>
+    </nav>
+
+    <main class="main">
+      <!-- 1. Home -->
+      <section id="screen-home" class="screen active" data-i18n-aria="home.aria" aria-label="Trang chủ">
+        <div class="home-hero">
+          <div class="home-badge glass" id="home-framework-badge" data-i18n="home.badge">7 bước nhìn lại suy nghĩ</div>
+          <h1 class="home-title" data-i18n="home.title">Hôm nay bạn đang suy nghĩ điều gì?</h1>
+          <p class="home-subtitle" data-i18n="home.subtitle">
+            Chia sẻ suy nghĩ — hệ thống sẽ ghi nhận và sắp xếp theo 7 bước: việc xảy ra, cảm xúc, cách hiểu, niềm tin, giá trị, vai trò bản thân và hành động.
+          </p>
+          <div class="home-input-wrap glass">
+            <textarea
+              id="home-thought-input"
+              class="home-input"
+              data-i18n-placeholder="home.placeholder"
+              placeholder="Ví dụ: Con tôi không chịu học, tôi lo lắng về tương lai của con..."
+              rows="5"
+              data-i18n-aria="home.inputAria"
+              aria-label="Suy nghĩ của bạn"
+            ></textarea>
+          </div>
+          <button id="btn-start-reflection" class="btn btn-primary btn-lg">
+            <span data-i18n="home.startBtn">Bắt đầu suy ngẫm</span>
+            <span class="btn-arrow">→</span>
+          </button>
+          <div class="home-notice">
+            <p class="home-disclaimer" data-i18n="home.disclaimer">
+              Đây là công cụ tự suy ngẫm — không thay tư vấn tâm lý hay điều trị y khoa. Nếu bạn đang gặp khủng hoảng, hãy tìm người hỗ trợ chuyên môn.
+            </p>
+            <p class="home-privacy" data-i18n="home.privacy">Dữ liệu chỉ lưu trên thiết bị của bạn — không ai khác đọc được.</p>
+          </div>
+          <div class="ai-settings glass" id="ai-settings">
+            <div class="ai-settings-header">
+              <h3 class="ai-settings-title" data-i18n="ai.title">Chế độ phản hồi</h3>
+              <span class="ai-status-pill" id="ai-status-pill" data-status="unknown">—</span>
+            </div>
+            <p class="ai-settings-desc" data-i18n="ai.desc">
+              Mặc định dùng rule engine (offline). Bật Cursor AI để người dẫn suy ngẫm trả lời tự nhiên hơn — cần chạy proxy local.
+            </p>
+            <div class="ai-mode-toggle" role="radiogroup" data-i18n-aria="ai.modeAria" aria-label="Chế độ phản hồi">
+              <label class="ai-mode-option">
+                <input type="radio" name="reflection-mode" value="rule" checked />
+                <span data-i18n="ai.modeRule">Rule engine (offline)</span>
+              </label>
+              <label class="ai-mode-option">
+                <input type="radio" name="reflection-mode" value="cursor" />
+                <span data-i18n="ai.modeCursor">Cursor AI</span>
+              </label>
+            </div>
+            <div class="ai-proxy-row" id="ai-proxy-row" hidden>
+              <label class="ai-proxy-label" for="ai-proxy-url" data-i18n="ai.proxyLabel">Proxy URL</label>
+              <input
+                type="url"
+                id="ai-proxy-url"
+                class="ai-proxy-input"
+                value="http://localhost:3001"
+                autocomplete="off"
+              />
+            </div>
+            <div class="ai-actions">
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-ai-test" data-i18n="ai.testBtn">
+                Kiểm tra kết nối
+              </button>
+            </div>
+            <details class="ai-help">
+              <summary data-i18n="ai.helpTitle">Cách chạy proxy Cursor</summary>
+              <ol class="ai-help-steps" id="ai-help-steps">
+                <li data-i18n="ai.help1">Tạo API key tại Cursor Dashboard → Integrations</li>
+                <li data-i18n="ai.help2">Trong terminal: <code>cd server && npm install && export CURSOR_API_KEY="..." && npm start</code></li>
+                <li data-i18n="ai.help3">Chọn Cursor AI, bấm Kiểm tra kết nối, rồi bắt đầu suy ngẫm</li>
+              </ol>
+            </details>
+          </div>
+          <div class="home-stats glass" id="home-stats"></div>
+          <div class="home-reset glass" id="home-reset" hidden>
+            <p class="home-reset-text" data-i18n="home.resetText">Muốn bắt đầu lại từ đầu? Toàn bộ ghi nhận, phiên suy ngẫm và dòng thời gian sẽ bị xóa.</p>
+            <button type="button" id="btn-reset-data" class="btn btn-danger btn-sm" data-i18n="home.resetBtn">
+              Xóa dữ liệu và bắt đầu lại
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Reflection Session -->
+      <section id="screen-reflection" class="screen" data-i18n-aria="reflection.aria" aria-label="Phiên suy ngẫm" hidden>
+        <header class="screen-header">
+          <h2 data-i18n="reflection.title">Phiên suy ngẫm</h2>
+          <div class="flow-indicator" id="flow-indicator"></div>
+          <div class="reflection-mode-badge" id="reflection-mode-badge" hidden></div>
+        </header>
+        <div class="reflection-layout">
+          <div class="chat-timeline glass" id="chat-timeline" data-i18n-aria="reflection.progressAria" aria-label="Tiến trình hội thoại">
+            <div class="timeline-label" data-i18n="reflection.progress">Tiến trình</div>
+            <div id="session-timeline-steps"></div>
+          </div>
+          <div class="chat-container">
+            <div class="chat-messages" id="chat-messages" role="log" aria-live="polite"></div>
+            <div class="chat-suggestions" id="chat-suggestions" hidden>
+              <div class="short-suggestions" id="short-suggestions" hidden>
+                <span class="suggestions-label" data-i18n="reflection.shortSuggestions">Chọn nhanh</span>
+                <div class="suggestions-list short-suggestions-list" id="short-suggestions-list" role="listbox"></div>
+              </div>
+              <span class="suggestions-label" data-i18n="reflection.suggestions">Gợi ý trả lời</span>
+              <div class="suggestions-list" id="suggestions-list" role="listbox" data-i18n-aria="reflection.suggestionsAria" aria-label="Mẫu trả lời gợi ý"></div>
+            </div>
+            <form class="chat-input-form glass" id="chat-form">
+              <textarea
+                id="chat-input"
+                class="chat-input"
+                data-i18n-placeholder="reflection.chatPlaceholder"
+                placeholder="Chia sẻ suy nghĩ của bạn..."
+                rows="2"
+                data-i18n-aria="reflection.chatAria"
+                aria-label="Tin nhắn"
+              ></textarea>
+              <div class="chat-form-actions">
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-skip-step" data-i18n="reflection.skipStep">Bỏ qua bước này</button>
+                <button type="submit" class="btn btn-primary btn-send" data-i18n-aria="reflection.sendAria" aria-label="Gửi">
+                  <span data-i18n="reflection.send">Gửi</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Bản đồ suy nghĩ -->
+      <section id="screen-forest" class="screen" data-i18n-aria="forest.aria" aria-label="Bản đồ suy nghĩ" hidden>
+        <header class="screen-header">
+          <h2 data-i18n="forest.title">Bản đồ suy nghĩ</h2>
+          <p class="screen-desc" data-i18n="forest.desc">Mỗi nhánh là một lĩnh vực trong cuộc sống — gia đình, công việc, sức khỏe...</p>
+        </header>
+        <div class="forest-grid" id="forest-grid"></div>
+        <div class="forest-detail" id="forest-detail" hidden>
+          <button class="btn btn-ghost back-btn" id="forest-back" data-i18n="forest.back">← Quay lại</button>
+          <h3 id="forest-detail-title"></h3>
+          <div class="node-filters" id="node-filters"></div>
+          <div class="node-grid" id="node-grid"></div>
+        </div>
+      </section>
+
+      <!-- 4. Góc khám phá -->
+      <section id="screen-insights" class="screen" data-i18n-aria="insights.aria" aria-label="Góc khám phá" hidden>
+        <header class="screen-header">
+          <h2 data-i18n="insights.title">Góc khám phá</h2>
+          <p class="screen-desc" data-i18n="insights.desc">Nhìn thấy kiểu suy nghĩ lặp lại và những điểm mâu thuẫn trong lòng bạn</p>
+          <p class="insights-disclaimer" data-i18n="insights.disclaimer">Các gợi ý dưới đây chỉ để suy ngẫm thêm — không phải kết luận hay chẩn đoán.</p>
+        </header>
+        <div class="insights-grid" id="insights-grid"></div>
+      </section>
+
+      <!-- 5. Dòng thời gian -->
+      <section id="screen-timeline" class="screen" data-i18n-aria="timeline.aria" aria-label="Dòng thời gian suy nghĩ" hidden>
+        <header class="screen-header">
+          <h2 data-i18n="timeline.title">Dòng thời gian</h2>
+          <p class="screen-desc" data-i18n="timeline.desc">Theo dõi suy nghĩ và giá trị của bạn thay đổi theo thời gian</p>
+        </header>
+        <div class="timeline-container" id="timeline-container"></div>
+      </section>
+
+      <!-- 6. Thử nghiệm -->
+      <section id="screen-test" class="screen" data-i18n-aria="test.aria" aria-label="Chế độ thử nghiệm" hidden>
+        <header class="screen-header">
+          <h2 data-i18n="test.title">Thử nghiệm</h2>
+          <p class="screen-desc" data-i18n="test.desc">Kịch bản mẫu để tham khảo và mô phỏng hội thoại</p>
+        </header>
+        <div class="test-layout">
+          <aside class="test-sidebar glass" id="test-scenario-list" data-i18n-aria="test.listAria" aria-label="Danh sách kịch bản"></aside>
+          <div class="test-main" id="test-scenario-detail">
+            <div class="insight-empty test-empty" data-i18n="test.selectHint">Chọn một kịch bản bên trái để xem chi tiết.</div>
+          </div>
+        </div>
+        <div class="test-sim-bar glass" id="test-sim-bar" hidden>
+          <div class="test-sim-status" id="test-sim-status" data-i18n="test.simulating">Đang mô phỏng...</div>
+          <div class="test-sim-progress-wrap">
+            <div class="test-sim-progress" id="test-sim-progress"></div>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-stop-simulation" data-i18n="test.stop">Dừng</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Reset confirmation -->
+    <dialog id="reset-modal" class="modal glass" aria-labelledby="reset-modal-title">
+      <div class="modal-content">
+        <button class="modal-close" id="reset-modal-close" data-i18n-aria="common.close" aria-label="Đóng">×</button>
+        <h3 id="reset-modal-title" class="reset-modal-title" data-i18n="reset.title">Xóa toàn bộ dữ liệu?</h3>
+        <p class="reset-modal-desc" data-i18n="reset.desc">
+          Hành động này sẽ xóa vĩnh viễn mọi ghi nhận, phiên suy ngẫm, bản đồ suy nghĩ và dòng thời gian trên thiết bị này.
+          Bạn không thể hoàn tác.
+        </p>
+        <div class="reset-modal-actions">
+          <button type="button" class="btn btn-ghost" id="btn-reset-cancel" data-i18n="reset.cancel">Hủy</button>
+          <button type="button" class="btn btn-danger" id="btn-reset-confirm" data-i18n="reset.confirm">Xóa và bắt đầu lại</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Node Detail Modal -->
+    <dialog id="node-modal" class="modal glass">
+      <div class="modal-content">
+        <button class="modal-close" id="modal-close" data-i18n-aria="common.close" aria-label="Đóng">×</button>
+        <div id="modal-body"></div>
+      </div>
+    </dialog>
+
+    <!-- Crisis support -->
+    <dialog id="crisis-modal" class="modal glass crisis-modal">
+      <div class="modal-content crisis-modal-content">
+        <h3 class="crisis-modal-title" id="crisis-modal-title"></h3>
+        <p class="crisis-modal-body" id="crisis-modal-body"></p>
+        <ul class="crisis-hotlines" id="crisis-hotlines"></ul>
+        <p class="crisis-modal-footer" id="crisis-modal-footer"></p>
+        <button type="button" class="btn btn-primary" id="btn-crisis-understood"></button>
+      </div>
+    </dialog>
+
+    <!-- Toast -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </div>
+
+  <!-- Scripts — thứ tự load quan trọng -->
+  <script src="cognitive-library.js"></script>
+  <script src="data.js"></script>
+  <script src="i18n.js"></script>
+  <script src="safety-engine.js"></script>
+  <script src="cognitive-tree.js"></script>
+  <script src="timeline-engine.js"></script>
+  <script src="contradiction-engine.js"></script>
+  <script src="insight-engine.js"></script>
+  <script src="ai-client.js"></script>
+  <script src="reflection-engine.js"></script>
+  <script src="test-scenarios.js"></script>
+  <script src="test-mode.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

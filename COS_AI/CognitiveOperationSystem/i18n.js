@@ -36,6 +36,30 @@ const I18N_MESSAGES = {
         'Đây là công cụ tự suy ngẫm — không thay tư vấn tâm lý hay điều trị y khoa. Nếu bạn đang gặp khủng hoảng, hãy tìm người hỗ trợ chuyên môn.',
       privacy: 'Dữ liệu chỉ lưu trên thiết bị của bạn — không ai khác đọc được.',
     },
+    ai: {
+      title: 'Chế độ phản hồi',
+      desc: 'Mặc định dùng rule engine (offline). Bật Cursor AI để người dẫn suy ngẫm trả lời tự nhiên hơn — cần chạy proxy local.',
+      modeAria: 'Chế độ phản hồi',
+      modeRule: 'Rule engine (offline)',
+      modeCursor: 'Cursor AI',
+      proxyLabel: 'Proxy URL',
+      testBtn: 'Kiểm tra kết nối',
+      helpTitle: 'Cách chạy proxy Cursor',
+      help1: 'Tạo API key tại Cursor Dashboard → Integrations',
+      help2: 'Trong terminal: cd server && npm install && export CURSOR_API_KEY="..." && npm start',
+      help3: 'Chọn Cursor AI, bấm Kiểm tra kết nối, rồi bắt đầu suy ngẫm',
+      statusUnknown: 'Chưa kiểm tra',
+      statusOk: 'Proxy sẵn sàng',
+      statusNoKey: 'Thiếu CURSOR_API_KEY trên server',
+      statusError: 'Không kết nối được',
+      statusChecking: 'Đang kiểm tra...',
+      testOk: 'Kết nối Cursor proxy thành công',
+      testFail: 'Không kết nối được proxy',
+      badgeRule: 'Rule engine',
+      badgeCursor: 'Cursor AI',
+      thinking: 'Đang suy ngẫm cùng bạn...',
+      fallbackRule: 'AI tạm thời không phản hồi — đã dùng rule engine',
+    },
     safety: {
       title: 'Bạn không cần đối mặt một mình',
       body: 'Chúng tôi nhận thấy nội dung bạn chia sẻ có thể rất nặng nề. Nếu bạn đang có ý nghĩ làm hại bản thân, hãy liên hệ ngay:',
@@ -127,11 +151,6 @@ const I18N_MESSAGES = {
       disclaimer: 'Các gợi ý dưới đây chỉ để suy ngẫm thêm — không phải kết luận hay chẩn đoán.',
       contradictionPrefix: 'Có thể bạn đang',
       contradictionSuffix: 'Điều này có thể một phần do hoàn cảnh, không chỉ do lựa chọn cá nhân.',
-      exploration: '💭 Gợi ý suy ngẫm tiếp',
-      explorationEmpty:
-        'Tiếp tục suy ngẫm để nhận gợi ý phù hợp với mâu thuẫn và kiểu suy nghĩ của bạn.',
-      explorationCta: 'Suy ngẫm tiếp',
-      explorationFilled: 'Đã điền gợi ý vào Trang chủ — bạn có thể sửa rồi bắt đầu suy ngẫm',
     },
     timeline: {
       aria: 'Dòng thời gian suy nghĩ',
@@ -165,12 +184,7 @@ const I18N_MESSAGES = {
       situation: 'Tình huống',
       initialThought: 'Suy nghĩ ban đầu',
       dialogue: 'Kịch bản hội thoại (7 bước)',
-      dialogueHint:
-        'Sửa trực tiếp từng câu trả lời bên dưới, rồi Mô phỏng hoặc Chạy lại để xem ghi nhận thay đổi (ví dụ thêm “nhờ team hỗ trợ” ở bước Hành động).',
-      resetDialogue: 'Khôi phục gốc',
-      rerunNoReset: 'Chạy lại (không reset)',
-      dialogueEdited: 'Đã chỉnh sửa',
-      dialogueRestored: 'Đã khôi phục hội thoại gốc',
+      dialogueHint: 'Tham khảo từng lượt trả lời — hoặc dùng Mô phỏng để app tự chạy.',
       expected: 'Kết quả kỳ vọng',
       domain: 'Lĩnh vực',
       contradictionsMay: 'Mâu thuẫn có thể phát hiện',
@@ -228,6 +242,30 @@ const I18N_MESSAGES = {
       disclaimer:
         'This is a self-reflection tool — not a substitute for therapy or medical care. If you are in crisis, please seek professional support.',
       privacy: 'Your data stays on this device only — no one else can read it.',
+    },
+    ai: {
+      title: 'Response mode',
+      desc: 'Default is the offline rule engine. Enable Cursor AI for more natural reflection prompts — requires a local proxy.',
+      modeAria: 'Response mode',
+      modeRule: 'Rule engine (offline)',
+      modeCursor: 'Cursor AI',
+      proxyLabel: 'Proxy URL',
+      testBtn: 'Test connection',
+      helpTitle: 'How to run the Cursor proxy',
+      help1: 'Create an API key at Cursor Dashboard → Integrations',
+      help2: 'In terminal: cd server && npm install && export CURSOR_API_KEY="..." && npm start',
+      help3: 'Select Cursor AI, test connection, then start reflecting',
+      statusUnknown: 'Not checked',
+      statusOk: 'Proxy ready',
+      statusNoKey: 'CURSOR_API_KEY missing on server',
+      statusError: 'Cannot connect',
+      statusChecking: 'Checking...',
+      testOk: 'Cursor proxy connected',
+      testFail: 'Cannot reach proxy',
+      badgeRule: 'Rule engine',
+      badgeCursor: 'Cursor AI',
+      thinking: 'Reflecting with you...',
+      fallbackRule: 'AI unavailable — used rule engine instead',
     },
     safety: {
       title: 'You don\'t have to face this alone',
@@ -320,11 +358,6 @@ const I18N_MESSAGES = {
       disclaimer: 'The notes below are for reflection only — not conclusions or diagnoses.',
       contradictionPrefix: 'You might be',
       contradictionSuffix: 'This may partly come from circumstances, not only personal choice.',
-      exploration: '💭 Prompts to reflect further',
-      explorationEmpty:
-        'Keep reflecting to receive prompts matched to your contradictions and thinking patterns.',
-      explorationCta: 'Reflect further',
-      explorationFilled: 'Prompt added to Home — edit it, then start reflecting',
     },
     timeline: {
       aria: 'Thought timeline',
@@ -358,12 +391,7 @@ const I18N_MESSAGES = {
       situation: 'Situation',
       initialThought: 'Initial thought',
       dialogue: 'Dialogue script (7 steps)',
-      dialogueHint:
-        'Edit replies below, then Simulate or Re-run to see how entries change (e.g. add “ask the team for help” in Action).',
-      resetDialogue: 'Restore original',
-      rerunNoReset: 'Re-run (no reset)',
-      dialogueEdited: 'Edited',
-      dialogueRestored: 'Dialogue restored to original',
+      dialogueHint: 'Reference each reply — or use Simulate to run automatically.',
       expected: 'Expected outcomes',
       domain: 'Life area',
       contradictionsMay: 'Possible contradictions',
@@ -629,181 +657,6 @@ const I18N_REFLECTION_SUGGESTIONS = {
   },
 };
 
-const I18N_EXPLORATION_PROMPTS = {
-  vi: {
-    family_work: {
-      source: 'Giá trị & hành động',
-      prompt:
-        'Giá trị và hành động đang lệch nhau — một việc nhỏ tuần này bạn có thể làm để thể hiện điều quan trọng với bạn là gì, dù chỉ 15 phút?',
-      seedThought:
-        'Tôi coi trọng gia đình nhưng thời gian làm việc vẫn chiếm rất nhiều. Tuần này tôi có thể làm gì nhỏ để dành thêm cho người thân?',
-    },
-    health_burnout: {
-      source: 'Sức khỏe & nhịp sống',
-      prompt:
-        'Nếu sức khỏe thực sự quan trọng, một thay đổi nhỏ trong 24 giờ tới bạn có thể thử là gì — ngủ sớm hơn, nghỉ giữa giờ, hay nói không một việc?',
-      seedThought:
-        'Tôi biết sức khỏe quan trọng nhưng nhịp sống hiện tại đang làm tôi mệt. Trong 24 giờ tới, một việc nhỏ tôi có thể làm để chăm sóc bản thân là gì?',
-    },
-    work_life_balance: {
-      source: 'Cân bằng cuộc sống',
-      prompt:
-        'Điều gì khiến bạn chưa dám đặt ranh giới với công việc? Thử viết một câu bạn có thể nói với sếp hoặc đồng nghiệp.',
-      seedThought:
-        'Tôi mong có sự cân bằng nhưng vẫn làm rất nhiều giờ. Điều gì khiến tôi chưa dám đặt ranh giới — và tôi có thể nói gì với sếp hoặc team?',
-    },
-    development_pressure: {
-      source: 'Phát triển & áp lực',
-      prompt:
-        'Nếu mục tiêu là giúp người khác phát triển, cách nào vừa đặt kỳ vọng vừa giữ được kết nối — thay vì chỉ gây áp lực?',
-      seedThought:
-        'Tôi muốn người thân phát triển tốt nhưng đôi khi phản ứng của tôi có vẻ tạo áp lực. Tôi có thể thử cách nào vừa quan tâm vừa không ép buộc?',
-    },
-    control_freedom: {
-      source: 'Tự do & kiểm soát',
-      prompt:
-        'Ở đâu ranh giới giữa “bảo vệ” và “kiểm soát”? Bạn có thể tin tưởng thêm một chút vào ai — kể cả bản thân?',
-      seedThought:
-        'Tôi coi trọng tự do nhưng đôi khi muốn kiểm soát mọi thứ. Trong tình huống gần đây, tôi đang bảo vệ hay đang kiểm soát?',
-    },
-    belief_obedience: {
-      source: 'Niềm tin về con cái',
-      prompt:
-        '“Nghe lời” và “tự lập” có thể cùng tồn tại không? Một quy tắc mới trong nhà bạn muốn thử là gì?',
-      seedThought:
-        'Tôi tin con cần nghe lời nhưng cũng muốn con tự lập. Làm sao để vừa dạy con kỷ luật vừa tôn trọng tiếng nói của con?',
-    },
-    money_family: {
-      source: 'Tiền bạc & quan hệ',
-      prompt:
-        'Nếu không chỉ đo bằng tiền, “đủ” với bạn trông như thế nào trong quan hệ gia đình tuần này?',
-      seedThought:
-        'Tôi thường gắn an toàn với tiền bạc, nhưng quan hệ gia đình cũng rất quan trọng. Tuần này tôi có thể đầu tư thời gian thay vì chỉ lo kiếm tiền không?',
-    },
-    bias_catastrophizing: {
-      source: 'Kiểu suy nghĩ: tồi tệ nhất',
-      prompt:
-        'Ngoài kịch bản tồi nhất, còn hai kịch bản khác có thể xảy ra là gì — một trung bình và một khả quan hơn?',
-      seedThought:
-        'Tôi hay nghĩ đến chuyện tồi tệ nhất. Nếu nhìn lại tình huống gần đây, còn cách hiểu nào khác ngoài kết quả xấu nhất?',
-    },
-    bias_should: {
-      source: 'Quy tắc “phải/nên”',
-      prompt:
-        'Câu “tôi phải…” nào đang áp lực nhất? Thử đổi thành “tôi muốn…” hoặc “tôi chọn…” — cảm giác có khác không?',
-      seedThought:
-        'Tôi có nhiều quy tắc “phải” và “nên” trong đầu. Quy tắc nào đang tạo áp lực lớn nhất — và nếu coi đó là lựa chọn thì sao?',
-    },
-    bias_overgeneralization: {
-      source: 'Kết luận cho mọi trường hợp',
-      prompt:
-        'Có ngoại lệ nào — dù nhỏ — cho câu “luôn luôn / không bao giờ” bạn vừa nghĩ không?',
-      seedThought:
-        'Tôi hay dùng “luôn” hoặc “không bao giờ” khi nghĩ về mình hoặc người khác. Có lần nào điều đó không đúng hoàn toàn?',
-    },
-    bias_mind_reading: {
-      source: 'Đoán ý người khác',
-      prompt:
-        'Bạn chưa hỏi trực tiếp điều gì mà đang tự đoán? Một câu hỏi bạn có thể hỏi thay vì đoán là gì?',
-      seedThought:
-        'Tôi thường đoán người khác đang nghĩ gì mà chưa hỏi. Trong tình huống gần đây, tôi có thể hỏi thẳng điều gì?',
-    },
-    general_belief: {
-      source: 'Niềm tin nổi bật',
-      prompt:
-        'Niềm tin “{belief}” đang giúp hay cản bạn? Nếu nới lỏng một chút, điều gì có thể thay đổi?',
-      seedThought:
-        'Tôi thường tin rằng {belief}. Niềm tin này đang ảnh hưởng đến cách tôi hành động thế nào — và tôi có muốn giữ nguyên không?',
-    },
-  },
-  en: {
-    family_work: {
-      source: 'Values & actions',
-      prompt:
-        'Your values and actions seem misaligned — what is one small thing this week, even 15 minutes, that could show what matters to you?',
-      seedThought:
-        'Family matters to me but work still takes most of my time. What is one small thing I could do this week for someone I love?',
-    },
-    health_burnout: {
-      source: 'Health & pace of life',
-      prompt:
-        'If health truly matters, what tiny change in the next 24 hours could you try — sleep earlier, a break, or saying no to one task?',
-      seedThought:
-        'I know health matters but my current pace exhausts me. What is one small thing I can do in the next 24 hours to care for myself?',
-    },
-    work_life_balance: {
-      source: 'Work–life balance',
-      prompt:
-        'What makes it hard to set boundaries at work? Try writing one sentence you could say to your manager or team.',
-      seedThought:
-        'I want balance but still work very long hours. What stops me from setting boundaries — and what could I say to my manager or team?',
-    },
-    development_pressure: {
-      source: 'Growth & pressure',
-      prompt:
-        'If the goal is to help someone grow, how can you hold expectations and stay connected — instead of only applying pressure?',
-      seedThought:
-        'I want my loved ones to grow but my reactions sometimes feel pressuring. How can I care without forcing?',
-    },
-    control_freedom: {
-      source: 'Freedom & control',
-      prompt:
-        'Where is the line between protecting and controlling? Could you trust someone a little more — including yourself?',
-      seedThought:
-        'I value freedom but sometimes want to control everything. In a recent situation, was I protecting or controlling?',
-    },
-    belief_obedience: {
-      source: 'Beliefs about children',
-      prompt:
-        'Can “obedience” and “independence” coexist? What is one new household rule you might try?',
-      seedThought:
-        'I believe children should listen but I also want them independent. How can I teach discipline while respecting their voice?',
-    },
-    money_family: {
-      source: 'Money & relationships',
-      prompt:
-        'If “enough” is not only measured in money, what would it look like in your family relationships this week?',
-      seedThought:
-        'I often tie safety to money, but family relationships matter too. Can I invest time this week, not only effort at work?',
-    },
-    bias_catastrophizing: {
-      source: 'Pattern: worst-case thinking',
-      prompt:
-        'Besides the worst case, what are two other outcomes — one middling and one more hopeful?',
-      seedThought:
-        'I often imagine the worst outcome. Looking at a recent situation, what other interpretations are possible?',
-    },
-    bias_should: {
-      source: 'Rigid “must/should” rules',
-      prompt:
-        'Which “I must…” sentence feels heaviest? Try rewriting it as “I want…” or “I choose…” — does it feel different?',
-      seedThought:
-        'I carry many “must” and “should” rules. Which one pressures me most — and what if I treated it as a choice?',
-    },
-    bias_overgeneralization: {
-      source: 'All-or-every-time conclusions',
-      prompt:
-        'Is there any exception — however small — to the “always / never” thought you just had?',
-      seedThought:
-        'I often use “always” or “never” about myself or others. When was that not completely true?',
-    },
-    bias_mind_reading: {
-      source: 'Assuming others’ thoughts',
-      prompt:
-        'What are you assuming without asking? What is one direct question you could ask instead?',
-      seedThought:
-        'I often guess what others think without asking. In a recent situation, what could I ask directly?',
-    },
-    general_belief: {
-      source: 'Top belief',
-      prompt:
-        'Is the belief “{belief}” helping or limiting you? If you loosened it slightly, what might change?',
-      seedThought:
-        'I often believe that {belief}. How does this shape my actions — and do I want to keep it as is?',
-    },
-  },
-};
-
 const I18N_BIAS_DESCRIPTIONS = {
   vi: {
     'Confirmation Bias': 'Bạn có thể chỉ chú ý điều củng cố niềm tin sẵn có.',
@@ -912,21 +765,6 @@ const I18n = {
 
   biasLabel(item) {
     return this.locale === 'vi' ? item.labelVi || item.label : item.label;
-  },
-
-  explorationPrompt(id, vars = {}) {
-    const raw = I18N_EXPLORATION_PROMPTS[this.locale]?.[id];
-    if (!raw) return null;
-    const sub = (text) =>
-      String(text || '').replace(/\{(\w+)\}/g, (_, k) =>
-        vars[k] != null ? vars[k] : `{${k}}`
-      );
-    return {
-      id,
-      source: sub(raw.source),
-      prompt: sub(raw.prompt),
-      seedThought: sub(raw.seedThought),
-    };
   },
 
   localeDate(iso) {

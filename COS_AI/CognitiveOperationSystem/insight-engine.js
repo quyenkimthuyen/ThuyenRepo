@@ -72,32 +72,6 @@ const InsightEngine = {
   },
 
   /**
-   * Gợi ý suy ngẫm tiếp — bám mâu thuẫn, thiên kiến, niềm tin nổi bật
-   */
-  getExplorationPrompts(insights) {
-    const rules = CognitiveLibrary.EXPLORATION_PROMPT_RULES || [];
-    const sorted = [...rules].sort((a, b) => (a.priority ?? 50) - (b.priority ?? 50));
-    const matched = [];
-    const seenIds = new Set();
-
-    for (const rule of sorted) {
-      if (seenIds.has(rule.id)) continue;
-      if (!rule.matches(insights)) continue;
-
-      const vars = typeof rule.vars === 'function' ? rule.vars(insights) : {};
-      const data =
-        typeof I18n !== 'undefined' ? I18n.explorationPrompt(rule.id, vars) : null;
-      if (!data) continue;
-
-      matched.push(data);
-      seenIds.add(rule.id);
-      if (matched.length >= 4) break;
-    }
-
-    return matched;
-  },
-
-  /**
    * Tổng hợp insight đầy đủ
    */
   analyze() {
@@ -114,7 +88,7 @@ const InsightEngine = {
       .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
       .slice(0, 5);
 
-    const partial = {
+    return {
       todayDiscoveries,
       topBeliefs,
       topValues,
@@ -122,11 +96,6 @@ const InsightEngine = {
       contradictions,
       biases,
       recentlyVerified,
-    };
-
-    return {
-      ...partial,
-      explorationPrompts: this.getExplorationPrompts(partial),
       stats: CognitiveTree.getStats(),
       generatedAt: new Date().toISOString(),
     };
