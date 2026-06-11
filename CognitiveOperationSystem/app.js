@@ -16,7 +16,13 @@ const App = {
    */
   init() {
     DataStore.load();
+    I18n.init();
     this.bindEvents();
+    I18n.applyStatic();
+    I18n.onChange(() => {
+      I18n.applyStatic();
+      this.navigate(this.currentScreen);
+    });
     this.renderHomeStats();
     this.navigate('home');
   },
@@ -36,6 +42,24 @@ const App = {
     // Home — bắt đầu suy ngẫm
     document.getElementById('btn-start-reflection').addEventListener('click', () => {
       this.startReflection();
+    });
+
+    // Reset dữ liệu
+    document.getElementById('btn-reset-data').addEventListener('click', () => {
+      this.openResetModal();
+    });
+    document.getElementById('btn-reset-cancel').addEventListener('click', () => {
+      document.getElementById('reset-modal').close();
+    });
+    document.getElementById('reset-modal-close').addEventListener('click', () => {
+      document.getElementById('reset-modal').close();
+    });
+    document.getElementById('btn-reset-confirm').addEventListener('click', () => {
+      this.resetAllData();
+    });
+
+    document.querySelectorAll('[data-lang]').forEach((btn) => {
+      btn.addEventListener('click', () => I18n.setLocale(btn.dataset.lang));
     });
 
     // Chat form
@@ -72,6 +96,51 @@ const App = {
       input.value = text;
       input.focus();
       this.sendChatMessage();
+    });
+
+    // Test mode — chọn kịch bản & hành động
+    document.getElementById('test-scenario-list').addEventListener('click', (e) => {
+      const card = e.target.closest('.test-scenario-card');
+      if (card) {
+        TestMode.selectScenario(card.dataset.scenarioId);
+        this.renderTestMode();
+        return;
+      }
+    });
+
+    document.getElementById('test-scenario-detail').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-test-action]');
+      if (!btn) return;
+      const action = btn.dataset.testAction;
+      const scenarioId = btn.dataset.scenarioId || TestMode.selectedScenarioId;
+      if (!scenarioId) return;
+
+      switch (action) {
+        case 'apply-home':
+          TestMode.applyToHome(scenarioId);
+          this.showToast(I18n.t('test.filledHome'));
+          this.navigate('home');
+          break;
+        case 'simulate':
+          this.runTestSimulation(scenarioId, { delayMs: 500 });
+          break;
+        case 'simulate-fast':
+          this.runTestSimulation(scenarioId, { delayMs: 0 });
+          break;
+        case 'restore':
+          if (TestMode.restoreSnapshot()) {
+            this.showToast(I18n.t('test.restored'));
+            this.renderHomeStats();
+            this.renderTestMode();
+          } else {
+            this.showToast(I18n.t('test.noBackup'));
+          }
+          break;
+      }
+    });
+
+    document.getElementById('btn-stop-simulation').addEventListener('click', () => {
+      TestMode.stopSimulation();
     });
   },
 
@@ -115,6 +184,9 @@ const App = {
       case 'timeline':
         this.renderTimeline();
         break;
+      case 'test':
+        this.renderTestMode();
+        break;
     }
   },
 
@@ -133,22 +205,62 @@ const App = {
   renderHomeStats() {
     const stats = CognitiveTree.getStats();
     const el = document.getElementById('home-stats');
+    const resetEl = document.getElementById('home-reset');
     if (!el) return;
+
+    const hasData =
+      stats.total > 0 ||
+      DataStore.getSessions().length > 0 ||
+      DataStore.getTimeline().length > 0;
 
     el.innerHTML = `
       <div class="stat-item">
         <div class="stat-value">${stats.total}</div>
-        <div class="stat-label">Nodes</div>
+        <div class="stat-label">${I18n.t('home.statEntries')}</div>
       </div>
       <div class="stat-item">
         <div class="stat-value">${stats.byStatus?.verified || 0}</div>
-        <div class="stat-label">Xác nhận</div>
+        <div class="stat-label">${I18n.t('home.statVerified')}</div>
       </div>
       <div class="stat-item">
         <div class="stat-value">${DataStore.getSessions().length}</div>
-        <div class="stat-label">Phiên suy ngẫm</div>
+        <div class="stat-label">${I18n.t('home.statSessions')}</div>
       </div>
     `;
+
+    if (resetEl) {
+      resetEl.hidden = !hasData;
+    }
+  },
+
+  openResetModal() {
+    document.getElementById('reset-modal').showModal();
+  },
+
+  resetAllData() {
+    DataStore.reset();
+
+    this.activeSessionId = null;
+    this.selectedForestTree = null;
+    this.nodeFilter = 'all';
+
+    if (typeof TestMode !== 'undefined') {
+      TestMode.lastSnapshot = null;
+      TestMode.simulationAbort = false;
+      TestMode.isSimulating = false;
+    }
+
+    const homeInput = document.getElementById('home-thought-input');
+    const chatInput = document.getElementById('chat-input');
+    if (homeInput) homeInput.value = '';
+    if (chatInput) chatInput.value = '';
+
+    document.getElementById('node-modal').close();
+    document.getElementById('reset-modal').close();
+
+    this.renderHomeStats();
+    this.navigate('home');
+    this.showToast(I18n.t('home.dataReset'));
   },
 
   startReflection() {
@@ -156,7 +268,7 @@ const App = {
     const thought = input.value.trim();
 
     if (!thought) {
-      this.showToast('Hãy chia sẻ suy nghĩ của bạn trước.');
+      this.showToast(I18n.t('home.shareFirst'));
       input.focus();
       return;
     }
@@ -165,7 +277,7 @@ const App = {
     this.activeSessionId = session.id;
     input.value = '';
 
-    this.showToast('Đã bắt đầu phiên suy ngẫm');
+    this.showToast(I18n.t('home.sessionStarted'));
     this.navigate('reflection');
   },
 
@@ -191,8 +303,8 @@ const App = {
   renderEmptyReflection() {
     document.getElementById('chat-messages').innerHTML = `
       <div class="insight-empty" style="text-align:center;padding:2rem;">
-        Chưa có phiên suy ngẫm nào.<br>
-        Hãy bắt đầu từ trang Home.
+        ${I18n.t('reflection.empty')}<br>
+        ${I18n.t('reflection.emptyHint')}
       </div>
     `;
     document.getElementById('flow-indicator').innerHTML = '';
@@ -221,7 +333,7 @@ const App = {
             class="suggestion-chip"
             data-text="${this.escapeAttr(text)}"
             role="option"
-            title="Chọn câu trả lời này"
+            title="${this.escapeAttr(I18n.t('reflection.suggestionTitle'))}"
           >${this.escapeHtml(text)}</button>
         `
       )
@@ -237,7 +349,7 @@ const App = {
         let cls = 'flow-step';
         if (idx === currentIdx) cls += ' active';
         else if (idx < currentIdx) cls += ' done';
-        return `<span class="${cls}">${step}</span>`;
+        return `<span class="${cls}">${CognitiveLibrary.getFrameworkLabel(step)}</span>`;
       })
       .join('');
 
@@ -252,7 +364,7 @@ const App = {
       .map((step, idx) => {
         const cls = idx <= currentIdx ? 'timeline-step-item active' : 'timeline-step-item';
         const icon = idx < currentIdx ? '✓' : idx === currentIdx ? '●' : '○';
-        return `<div class="${cls}">${icon} ${step}</div>`;
+        return `<div class="${cls}">${icon} ${CognitiveLibrary.getFrameworkLabel(step)}</div>`;
       })
       .join('');
 
@@ -264,14 +376,11 @@ const App = {
     container.innerHTML = session.messages
       .map((msg) => {
         const isUser = msg.role === 'user';
-        const time = new Date(msg.timestamp).toLocaleTimeString('vi-VN', {
-          hour: '2-digit',
-          minute: '2-digit',
-        });
+        const time = I18n.localeTime(msg.timestamp);
         return `
           <div class="message message-${isUser ? 'user' : 'guide'}">
             ${this.escapeHtml(msg.content)}
-            <div class="message-meta">${isUser ? 'Bạn' : 'Reflection Guide'} · ${time}</div>
+            <div class="message-meta">${isUser ? I18n.t('reflection.you') : I18n.t('reflection.guide')} · ${time}</div>
           </div>
         `;
       })
@@ -317,22 +426,15 @@ const App = {
         const nodes = CognitiveTree.getNodesByForest(tree.id);
         const growth = CognitiveTree.getTreeGrowth(tree.id);
         const status = CognitiveTree.getTreeStatus(tree.id);
-        const statusLabels = {
-          seed: 'Hạt giống',
-          sprouting: 'Nảy mầm',
-          growing: 'Đang lớn',
-          flourishing: 'Thịnh vượng',
-        };
-
         return `
           <div class="tree-card glass" data-tree="${tree.id}" role="button" tabindex="0">
             <span class="tree-icon">${tree.icon}</span>
-            <div class="tree-name">${tree.label}</div>
-            <div class="tree-meta">${nodes.length} nodes</div>
+            <div class="tree-name">${I18n.forestLabel(tree.id)}</div>
+            <div class="tree-meta">${I18n.t('forest.entries', { n: nodes.length })}</div>
             <div class="tree-growth">
               <div class="tree-growth-bar" style="width:${growth}%"></div>
             </div>
-            <span class="tree-status status-${status}">${statusLabels[status]}</span>
+            <span class="tree-status status-${status}">${I18n.treeStatusLabel(status)}</span>
           </div>
         `;
       })
@@ -355,7 +457,7 @@ const App = {
     document.getElementById('forest-detail').hidden = false;
 
     const tree = CognitiveLibrary.FOREST_TREES.find((t) => t.id === treeId);
-    document.getElementById('forest-detail-title').textContent = `${tree.icon} ${tree.label}`;
+    document.getElementById('forest-detail-title').textContent = `${tree.icon} ${I18n.forestLabel(treeId)}`;
 
     this.renderNodeFilters();
     this.renderNodeGrid(treeId);
@@ -369,7 +471,7 @@ const App = {
       .map(
         (t) => `
         <button class="filter-chip ${t === this.nodeFilter ? 'active' : ''}" data-filter="${t}">
-          ${t === 'all' ? 'Tất cả' : t}
+          ${t === 'all' ? I18n.t('forest.filterAll') : CognitiveLibrary.getFrameworkLabel(t)}
         </button>
       `
       )
@@ -396,7 +498,7 @@ const App = {
     const grid = document.getElementById('node-grid');
 
     if (nodes.length === 0) {
-      grid.innerHTML = `<div class="insight-empty">Chưa có node nào trong cây này. Hãy bắt đầu suy ngẫm!</div>`;
+      grid.innerHTML = `<div class="insight-empty">${I18n.t('forest.empty')}</div>`;
       return;
     }
 
@@ -411,16 +513,16 @@ const App = {
 
   renderNodeCard(node) {
     const colors = CognitiveLibrary.NODE_TYPE_COLORS[node.type] || {};
-    const statusLabel = { draft: 'Nháp', candidate: 'Ứng viên', verified: 'Xác nhận' }[node.status];
+    const statusLabel = CognitiveLibrary.getNodeStatusLabel(node.status);
 
     return `
       <div class="node-card glass" data-node-id="${node.id}"
            style="background:${colors.bg};border-left-color:${colors.border}">
-        <div class="node-type" style="color:${colors.text}">${node.type}</div>
+        <div class="node-type" style="color:${colors.text}">${CognitiveLibrary.getFrameworkLabel(node.type)}</div>
         <div class="node-label">${this.escapeHtml(node.label)}</div>
         <div class="node-footer">
           <span class="node-status status-${node.status}">${statusLabel}</span>
-          <div class="confidence-bar" title="Confidence: ${node.confidence}">
+          <div class="confidence-bar" title="${this.escapeAttr(I18n.t('forest.confidence'))}: ${node.confidence}">
             <div class="confidence-fill" style="width:${node.confidence * 100}%"></div>
           </div>
         </div>
@@ -438,19 +540,19 @@ const App = {
     const modal = document.getElementById('node-modal');
     document.getElementById('modal-body').innerHTML = `
       <span class="modal-type-badge" style="background:${colors.bg};color:${colors.text};border:1px solid ${colors.border}">
-        ${node.type}
+        ${CognitiveLibrary.getFrameworkLabel(node.type)}
       </span>
       <div class="modal-label">${this.escapeHtml(node.label)}</div>
-      <div class="modal-detail-row"><span>Trạng thái</span><span>${node.status}</span></div>
-      <div class="modal-detail-row"><span>Confidence</span><span>${Math.round(node.confidence * 100)}%</span></div>
-      <div class="modal-detail-row"><span>Xuất hiện</span><span>${node.occurrences} lần</span></div>
-      <div class="modal-detail-row"><span>Cây</span><span>${this.getForestLabel(node.category)}</span></div>
-      <div class="modal-detail-row"><span>Tạo lúc</span><span>${this.formatDate(node.createdAt)}</span></div>
-      <div class="modal-detail-row"><span>Cập nhật</span><span>${this.formatDate(node.updatedAt)}</span></div>
+      <div class="modal-detail-row"><span>${I18n.t('forest.status')}</span><span>${CognitiveLibrary.getNodeStatusLabel(node.status)}</span></div>
+      <div class="modal-detail-row"><span>${I18n.t('forest.confidence')}</span><span>${Math.round(node.confidence * 100)}%</span></div>
+      <div class="modal-detail-row"><span>${I18n.t('forest.occurrences')}</span><span>${I18n.t('forest.occurrencesTimes', { n: node.occurrences })}</span></div>
+      <div class="modal-detail-row"><span>${I18n.t('forest.domain')}</span><span>${this.getForestLabel(node.category)}</span></div>
+      <div class="modal-detail-row"><span>${I18n.t('forest.created')}</span><span>${this.formatDate(node.createdAt)}</span></div>
+      <div class="modal-detail-row"><span>${I18n.t('forest.updated')}</span><span>${this.formatDate(node.updatedAt)}</span></div>
       ${
         relations.length > 0
           ? `<div style="margin-top:1rem;font-size:0.85rem;color:var(--text-secondary)">
-              ${relations.length} quan hệ liên kết
+              ${I18n.t('forest.relations', { n: relations.length })}
             </div>`
           : ''
       }
@@ -460,8 +562,7 @@ const App = {
   },
 
   getForestLabel(id) {
-    const tree = CognitiveLibrary.FOREST_TREES.find((t) => t.id === id);
-    return tree ? tree.label : id;
+    return I18n.forestLabel(id);
   },
 
   // ─── INSIGHTS ───
@@ -474,24 +575,24 @@ const App = {
 
     grid.innerHTML = `
       ${this.renderInsightSection(
-        '🔍 Khám phá hôm nay',
+        I18n.t('insights.today'),
         insights.todayDiscoveries.length > 0
           ? insights.todayDiscoveries
               .map(
                 (d) => `
               <div class="insight-item">
-                <span class="insight-rank">${d.isNew ? 'MỚI' : '↑'}</span>
-                <strong>${d.type}</strong>: ${this.escapeHtml(d.label)}
-                <span class="occurrence-badge">${d.status}</span>
+                <span class="insight-rank">${d.isNew ? I18n.t('insights.new') : '↑'}</span>
+                <strong>${CognitiveLibrary.getFrameworkLabel(d.type)}</strong>: ${this.escapeHtml(d.label)}
+                <span class="occurrence-badge">${CognitiveLibrary.getNodeStatusLabel(d.status)}</span>
               </div>
             `
               )
               .join('')
-          : '<div class="insight-empty">Chưa có khám phá hôm nay. Hãy bắt đầu suy ngẫm!</div>'
+          : `<div class="insight-empty">${I18n.t('insights.todayEmpty')}</div>`
       )}
 
       ${this.renderInsightSection(
-        '💡 Niềm tin nổi bật',
+        I18n.t('insights.topBeliefs'),
         insights.topBeliefs.length > 0
           ? insights.topBeliefs
               .map(
@@ -503,11 +604,11 @@ const App = {
             `
               )
               .join('')
-          : '<div class="insight-empty">Chưa có niềm tin được ghi nhận.</div>'
+          : `<div class="insight-empty">${I18n.t('insights.beliefsEmpty')}</div>`
       )}
 
       ${this.renderInsightSection(
-        '🌟 Giá trị nổi bật',
+        I18n.t('insights.topValues'),
         insights.topValues.length > 0
           ? insights.topValues
               .map(
@@ -519,11 +620,11 @@ const App = {
             `
               )
               .join('')
-          : '<div class="insight-empty">Chưa có giá trị được ghi nhận.</div>'
+          : `<div class="insight-empty">${I18n.t('insights.valuesEmpty')}</div>`
       )}
 
       ${this.renderInsightSection(
-        '⚡ Mâu thuẫn nhận thức',
+        I18n.t('insights.contradictions'),
         insights.contradictions.length > 0
           ? insights.contradictions
               .map(
@@ -534,12 +635,12 @@ const App = {
             `
               )
               .join('')
-          : '<div class="insight-empty">Chưa phát hiện mâu thuẫn. Tiếp tục suy ngẫm để hệ thống học thêm.</div>',
+          : `<div class="insight-empty">${I18n.t('insights.contradictionsEmpty')}</div>`,
         insights.contradictions.length > 0 ? 'warning' : ''
       )}
 
       ${this.renderInsightSection(
-        '🧩 Thiên kiến nhận thức',
+        I18n.t('insights.biases'),
         insights.biases.length > 0
           ? insights.biases
               .map(
@@ -553,7 +654,7 @@ const App = {
             `
               )
               .join('')
-          : '<div class="insight-empty">Chưa phát hiện thiên kiến. Hệ thống sẽ phân tích khi có thêm dữ liệu.</div>'
+          : `<div class="insight-empty">${I18n.t('insights.biasesEmpty')}</div>`
       )}
     `;
   },
@@ -576,7 +677,7 @@ const App = {
     if (grouped.length === 0 && narrative.length === 0) {
       container.innerHTML = `
         <div class="insight-empty" style="padding:2rem;text-align:center">
-          Timeline sẽ hiển thị khi bạn bắt đầu suy ngẫm và xây dựng cây nhận thức.
+          ${I18n.t('timeline.empty')}
         </div>
       `;
       return;
@@ -586,13 +687,13 @@ const App = {
 
     // Narrative shifts (Value/Belief theo năm)
     if (narrative.length > 0) {
-      html += '<div class="timeline-year-group"><h3 class="timeline-year">Hành trình nhận thức</h3>';
+      html += `<div class="timeline-year-group"><h3 class="timeline-year">${I18n.t('timeline.journey')}</h3>`;
       for (const entry of narrative) {
         if (entry.value) {
           html += `
             <div class="timeline-event glass">
-              <div class="timeline-event-title">${entry.year} — Value: ${this.escapeHtml(entry.value.label)}</div>
-              <div class="timeline-event-desc">Xuất hiện ${entry.value.occurrences} lần · ${entry.value.status}</div>
+              <div class="timeline-event-title">${entry.year} — ${I18n.t('timeline.valueLabel')}: ${this.escapeHtml(entry.value.label)}</div>
+              <div class="timeline-event-desc">${I18n.t('timeline.appears', { n: entry.value.occurrences })} · ${CognitiveLibrary.getNodeStatusLabel(entry.value.status)}</div>
             </div>
           `;
         }
@@ -629,6 +730,188 @@ const App = {
     container.innerHTML = html;
   },
 
+  // ─── TEST MODE ───
+
+  renderTestMode() {
+    const scenarios = TestMode.getScenarios();
+    const listEl = document.getElementById('test-scenario-list');
+
+    if (!TestMode.selectedScenarioId && scenarios.length > 0) {
+      TestMode.selectScenario(scenarios[0].id);
+    }
+
+    listEl.innerHTML = `
+      <div class="test-sidebar-title">${I18n.t('test.scenarios', { n: scenarios.length })}</div>
+      ${scenarios
+        .map((s) => {
+          const active = s.id === TestMode.selectedScenarioId ? 'active' : '';
+          return `
+            <button
+              type="button"
+              class="test-scenario-card glass ${active}"
+              data-scenario-id="${s.id}"
+            >
+              <span class="test-scenario-cat">${this.escapeHtml(TestMode.getCategoryLabel(s.category))}</span>
+              <span class="test-scenario-title">${this.escapeHtml(s.title)}</span>
+              <span class="test-scenario-tags">${s.tags.map((t) => `#${this.escapeHtml(t)}`).join(' ')}</span>
+            </button>
+          `;
+        })
+        .join('')}
+    `;
+
+    const scenario = TestMode.getScenario(TestMode.selectedScenarioId);
+    const detailEl = document.getElementById('test-scenario-detail');
+
+    if (!scenario) {
+      detailEl.innerHTML =
+        `<div class="insight-empty test-empty">${I18n.t('test.noScenarios')}</div>`;
+      return;
+    }
+
+    detailEl.innerHTML = this.renderTestScenarioDetail(scenario);
+  },
+
+  renderTestScenarioDetail(scenario) {
+    const restoreBtn = TestMode.hasSnapshot()
+      ? `<button type="button" class="btn btn-ghost" data-test-action="restore">${I18n.t('test.restore')}</button>`
+      : '';
+
+    return `
+      <div class="test-detail-header glass">
+        <div>
+          <span class="test-badge">${this.escapeHtml(TestMode.getCategoryLabel(scenario.category))}</span>
+          <h3 class="test-detail-title">${this.escapeHtml(scenario.title)}</h3>
+          <p class="test-detail-summary">${this.escapeHtml(scenario.summary)}</p>
+        </div>
+        <div class="test-actions">
+          <button type="button" class="btn btn-ghost" data-test-action="apply-home" data-scenario-id="${scenario.id}">
+            ${I18n.t('test.fillHome')}
+          </button>
+          <button type="button" class="btn btn-primary" data-test-action="simulate" data-scenario-id="${scenario.id}">
+            ${I18n.t('test.simulate')}
+          </button>
+          <button type="button" class="btn btn-ghost" data-test-action="simulate-fast" data-scenario-id="${scenario.id}">
+            ${I18n.t('test.simulateFast')}
+          </button>
+          ${restoreBtn}
+        </div>
+      </div>
+
+      <div class="test-section glass">
+        <h4>${I18n.t('test.persona')}</h4>
+        <p><strong>${this.escapeHtml(scenario.persona.name)}</strong>, ${I18n.t('test.personaAge', { age: scenario.persona.age })} — ${this.escapeHtml(scenario.persona.role)}</p>
+        <p class="test-muted">${this.escapeHtml(scenario.persona.context)}</p>
+      </div>
+
+      <div class="test-section glass">
+        <h4>${I18n.t('test.situation')}</h4>
+        <p>${this.escapeHtml(scenario.situation)}</p>
+      </div>
+
+      <div class="test-section glass">
+        <h4>${I18n.t('test.initialThought')}</h4>
+        <blockquote class="test-quote">${this.escapeHtml(scenario.initialThought)}</blockquote>
+      </div>
+
+      <div class="test-section glass">
+        <h4>${I18n.t('test.dialogue')}</h4>
+        <p class="test-muted">${I18n.t('test.dialogueHint')}</p>
+        <ol class="test-dialogue-list">
+          ${scenario.dialogue
+            .map(
+              (turn, i) => `
+            <li class="test-dialogue-item">
+              <div class="test-dialogue-step">
+                <span class="test-step-num">${i + 1}</span>
+                <span class="test-step-label">${this.escapeHtml(CognitiveLibrary.getFrameworkLabel(turn.step) || turn.step)}</span>
+              </div>
+              <p class="test-dialogue-content">${this.escapeHtml(turn.content)}</p>
+              ${turn.note ? `<p class="test-dialogue-note">💡 ${this.escapeHtml(turn.note)}</p>` : ''}
+            </li>
+          `
+            )
+            .join('')}
+        </ol>
+      </div>
+
+      <div class="test-grid-2">
+        <div class="test-section glass">
+          <h4>${I18n.t('test.expected')}</h4>
+          <ul class="test-list">
+            <li><strong>${I18n.t('test.domain')}:</strong> ${this.escapeHtml(TestMode.getCategoryLabel(scenario.expectedOutcomes.forestTree))}</li>
+            ${scenario.expectedOutcomes.highlights.map((h) => `<li>${this.escapeHtml(h)}</li>`).join('')}
+          </ul>
+          ${
+            scenario.expectedOutcomes.contradictions?.length
+              ? `<h5 class="test-subheading">${I18n.t('test.contradictionsMay')}</h5>
+                 <ul class="test-list test-list-warn">
+                   ${scenario.expectedOutcomes.contradictions.map((c) => `<li>${this.escapeHtml(c)}</li>`).join('')}
+                 </ul>`
+              : ''
+          }
+        </div>
+
+        <div class="test-section glass">
+          <h4>${I18n.t('test.learning')}</h4>
+          <ul class="test-list">
+            ${scenario.learningPoints.map((p) => `<li>${this.escapeHtml(p)}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+    `;
+  },
+
+  async runTestSimulation(scenarioId, options = {}) {
+    if (TestMode.isSimulating) return;
+
+    const bar = document.getElementById('test-sim-bar');
+    const statusEl = document.getElementById('test-sim-status');
+    const progressEl = document.getElementById('test-sim-progress');
+
+    bar.hidden = false;
+    statusEl.textContent = I18n.t('test.simulating');
+    progressEl.style.width = '0%';
+
+    try {
+      const result = await TestMode.runSimulation(scenarioId, {
+        reset: true,
+        delayMs: options.delayMs ?? 500,
+        backup: true,
+        onProgress: (p) => {
+          const pct = Math.round((p.completedSteps / p.totalSteps) * 100);
+          progressEl.style.width = `${pct}%`;
+          const stepLabel = CognitiveLibrary.getFrameworkLabel(p.currentTurn?.step) || p.currentTurn?.step || '';
+          statusEl.textContent = I18n.t('test.stepProgress', {
+            current: p.completedSteps,
+            total: p.totalSteps,
+            step: stepLabel,
+          });
+        },
+      });
+
+      bar.hidden = true;
+
+      if (result.aborted) {
+        this.showToast(I18n.t('test.simStopped'));
+        return;
+      }
+
+      this.activeSessionId = result.sessionId;
+      this.showToast(
+        I18n.t('test.simDone', {
+          entries: result.stats.total,
+          contradictions: result.insights.contradictions.length,
+        })
+      );
+      this.renderHomeStats();
+      this.navigate('reflection');
+    } catch (err) {
+      bar.hidden = true;
+      this.showToast(err.message || I18n.t('test.simFailed'));
+    }
+  },
+
   // ─── Utilities ───
 
   escapeHtml(text) {
@@ -646,14 +929,7 @@ const App = {
   },
 
   formatDate(iso) {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('vi-VN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return I18n.localeDate(iso);
   },
 };
 

@@ -59,7 +59,7 @@ const InsightEngine = {
     );
 
     return matches.map((b) => ({
-      label: b.labelVi || b.label,
+      label: typeof I18n !== 'undefined' ? I18n.biasLabel(b) : b.labelVi || b.label,
       labelEn: b.label,
       score: b.score,
       description: this.getBiasDescription(b.label),
@@ -67,16 +67,8 @@ const InsightEngine = {
   },
 
   getBiasDescription(biasName) {
-    const descriptions = {
-      'Confirmation Bias': 'Bạn có thể chỉ chú ý thông tin xác nhận niềm tin sẵn có.',
-      Overgeneralization: 'Dùng từ "luôn luôn", "không bao giờ" có thể phóng đại thực tế.',
-      'Black and White Thinking': 'Nhìn vấn đề theo hai cực, bỏ qua vùng xám.',
-      Catastrophizing: 'Dự đoán kết quả tồi tệ nhất có thể.',
-      'Mind Reading': 'Giả định biết người khác đang nghĩ gì.',
-      'Should Statements': 'Quy tắc "phải/nên" cứng nhắc gây áp lực.',
-      Personalization: 'Gán trách nhiệm quá mức cho bản thân.',
-    };
-    return descriptions[biasName] || 'Thiên kiến nhận thức có thể ảnh hưởng cách bạn diễn giải sự việc.';
+    if (typeof I18n !== 'undefined') return I18n.biasDescription(biasName);
+    return 'Kiểu suy nghĩ này có thể ảnh hưởng cách bạn hiểu sự việc.';
   },
 
   /**
@@ -117,7 +109,8 @@ const InsightEngine = {
     return {
       ...node,
       colors,
-      statusLabel: { draft: 'Nháp', candidate: 'Ứng viên', verified: 'Xác nhận' }[node.status],
+      typeLabel: CognitiveLibrary.getFrameworkLabel(node.type),
+      statusLabel: CognitiveLibrary.getNodeStatusLabel(node.status),
     };
   },
 };

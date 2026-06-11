@@ -16,6 +16,43 @@ const COGNITIVE_FRAMEWORK = {
   ACTION: 'Action',
 };
 
+/**
+ * Nhãn tiếng Việt cho 7 bước khung nhìn lại suy nghĩ (EEIBVIA).
+ * Giữ key tiếng Anh trong code; chỉ hiển thị nhãn Việt cho người dùng.
+ */
+const FRAMEWORK_LABELS_VI = {
+  Event: 'Việc xảy ra',
+  Emotion: 'Cảm xúc',
+  Interpretation: 'Cách hiểu',
+  Belief: 'Niềm tin',
+  Value: 'Giá trị',
+  Identity: 'Vai trò bản thân',
+  Action: 'Hành động',
+};
+
+/** Mô tả ngắn khung 7 bước — thay cho thuật ngữ EEIBVIA Framework */
+const EEIBVIA_DESCRIPTION_VI = '7 bước nhìn lại suy nghĩ';
+
+/** Trạng thái ghi nhận — tránh dịch máy (vd. candidate → ứng viên) */
+const NODE_STATUS_LABELS_VI = {
+  draft: 'Mới ghi nhận',
+  candidate: 'Lặp lại nhiều lần',
+  verified: 'Đã vững chắc',
+};
+
+function getFrameworkLabel(step) {
+  if (typeof I18n !== 'undefined') return I18n.frameworkLabel(step);
+  return FRAMEWORK_LABELS_VI[step] || step;
+}
+
+function getNodeStatusLabel(status) {
+  if (typeof I18n !== 'undefined') return I18n.nodeStatusLabel(status);
+  return NODE_STATUS_LABELS_VI[status] || status;
+}
+
+const getFrameworkLabelVi = getFrameworkLabel;
+const getNodeStatusLabelVi = getNodeStatusLabel;
+
 /** Thứ tự luồng câu hỏi phản chiếu */
 const REFLECTION_FLOW = [
   COGNITIVE_FRAMEWORK.EVENT,
@@ -284,39 +321,39 @@ const BELIEFS = [
  * Thiên kiến nhận thức — 30+ items
  */
 const COGNITIVE_BIASES = [
-  { label: 'Confirmation Bias', labelVi: 'Thiên kiến xác nhận', keywords: ['chỉ thấy', 'bỏ qua', 'xác nhận'] },
-  { label: 'Overgeneralization', labelVi: 'Khái quát hóa quá mức', keywords: ['luôn luôn', 'không bao giờ', 'mọi lúc'] },
-  { label: 'Black and White Thinking', labelVi: 'Tư duy đen trắng', keywords: ['hoặc', 'tất cả hoặc không', 'đen trắng'] },
-  { label: 'Catastrophizing', labelVi: 'Thảm họa hóa', keywords: ['thảm họa', 'tệ nhất', 'hủy hoại', 'thất bại'] },
-  { label: 'Availability Bias', labelVi: 'Thiên kiến sẵn có', keywords: ['nhớ', 'ví dụ gần', 'mới xảy ra'] },
-  { label: 'Mind Reading', labelVi: 'Đọc suy nghĩ', keywords: ['họ nghĩ', 'chắc chắn họ', 'biết họ'] },
-  { label: 'Fortune Telling', labelVi: 'Bói toán', keywords: ['sẽ', 'chắc chắn sẽ', 'tương lai'] },
-  { label: 'Emotional Reasoning', labelVi: 'Suy luận cảm xúc', keywords: ['cảm thấy nên', 'vì buồn nên'] },
-  { label: 'Should Statements', labelVi: 'Câu phải/nên', keywords: ['phải', 'nên', 'bắt buộc'] },
-  { label: 'Labeling', labelVi: 'Gán nhãn', keywords: ['tôi là', 'họ là', 'kẻ', 'đồ'] },
-  { label: 'Personalization', labelVi: 'Cá nhân hóa', keywords: ['tại tôi', 'lỗi tôi', 'do tôi'] },
-  { label: 'Disqualifying the Positive', labelVi: 'Phủ nhận tích cực', keywords: ['may mắn thôi', 'không tính', 'tình cờ'] },
-  { label: 'Mental Filter', labelVi: 'Bộ lọc tâm trí', keywords: ['chỉ thấy xấu', 'bỏ qua tốt'] },
+  { label: 'Confirmation Bias', labelVi: 'Chỉ tin điều mình đã tin', keywords: ['chỉ thấy', 'bỏ qua', 'xác nhận'] },
+  { label: 'Overgeneralization', labelVi: 'Kết luận cho mọi trường hợp', keywords: ['luôn luôn', 'không bao giờ', 'mọi lúc'] },
+  { label: 'Black and White Thinking', labelVi: 'Chỉ có đúng hoặc sai', keywords: ['hoặc', 'tất cả hoặc không', 'đen trắng'] },
+  { label: 'Catastrophizing', labelVi: 'Nghĩ đến chuyện tồi tệ nhất', keywords: ['thảm họa', 'tệ nhất', 'hủy hoại', 'thất bại'] },
+  { label: 'Availability Bias', labelVi: 'Tin vào điều dễ nhớ', keywords: ['nhớ', 'ví dụ gần', 'mới xảy ra'] },
+  { label: 'Mind Reading', labelVi: 'Đoán ý người khác', keywords: ['họ nghĩ', 'chắc chắn họ', 'biết họ'] },
+  { label: 'Fortune Telling', labelVi: 'Đoán trước tương lai', keywords: ['sẽ', 'chắc chắn sẽ', 'tương lai'] },
+  { label: 'Emotional Reasoning', labelVi: 'Tin vào cảm xúc như sự thật', keywords: ['cảm thấy nên', 'vì buồn nên'] },
+  { label: 'Should Statements', labelVi: 'Quy tắc phải/nên cứng nhắc', keywords: ['phải', 'nên', 'bắt buộc'] },
+  { label: 'Labeling', labelVi: 'Gán nhãn cho bản thân hoặc người khác', keywords: ['tôi là', 'họ là', 'kẻ', 'đồ'] },
+  { label: 'Personalization', labelVi: 'Đổ hết lỗi về mình', keywords: ['tại tôi', 'lỗi tôi', 'do tôi'] },
+  { label: 'Disqualifying the Positive', labelVi: 'Bỏ qua điều tốt', keywords: ['may mắn thôi', 'không tính', 'tình cờ'] },
+  { label: 'Mental Filter', labelVi: 'Chỉ nhìn mặt xấu', keywords: ['chỉ thấy xấu', 'bỏ qua tốt'] },
   { label: 'Jumping to Conclusions', labelVi: 'Vội kết luận', keywords: ['chắc là', 'rõ ràng là', 'kết luận'] },
-  { label: 'Magnification', labelVi: 'Phóng đại', keywords: ['quá lớn', 'khủng khiếp', 'kinh khủng'] },
-  { label: 'Minimization', labelVi: 'Thu nhỏ', keywords: ['không quan trọng', 'nhỏ thôi', 'bỏ qua'] },
-  { label: 'Blame', labelVi: 'Đổ lỗi', keywords: ['tại họ', 'lỗi họ', 'đổ lỗi'] },
-  { label: 'Fairness Fallacy', labelVi: 'Ảo tưởng công bằng', keywords: ['không công bằng', 'phải công bằng'] },
-  { label: 'Heaven\'s Reward Fallacy', labelVi: 'Ảo tưởng đền đáp', keywords: ['xứng đáng', 'đền đáp', 'phải được'] },
-  { label: 'Control Fallacy', labelVi: 'Ảo tưởng kiểm soát', keywords: ['kiểm soát', 'trong tay', 'quyết định mọi'] },
-  { label: 'Fallacy of Change', labelVi: 'Ảo tưởng thay đổi người khác', keywords: ['họ phải thay đổi', 'nếu họ'] },
-  { label: 'Always Being Right', labelVi: 'Luôn đúng', keywords: ['tôi đúng', 'không sai'] },
-  { label: 'Hindsight Bias', labelVi: 'Thiên kiến nhìn lại', keywords: ['đã biết', 'lẽ ra', 'hồi tưởng'] },
-  { label: 'Anchoring', labelVi: 'Neo giá', keywords: ['con số đầu', 'neo', 'tham chiếu'] },
-  { label: 'Sunk Cost Fallacy', labelVi: 'Chi phí chìm', keywords: ['đã đầu tư', 'không thể bỏ', 'đã bỏ công'] },
-  { label: 'Bandwagon Effect', labelVi: 'Hiệu ứng đám đông', keywords: ['mọi người', 'đám đông', 'theo'] },
-  { label: 'Dunning-Kruger', labelVi: 'Dunning-Kruger', keywords: ['giỏi hơn', 'không biết mình kém'] },
-  { label: 'Negativity Bias', labelVi: 'Thiên kiến tiêu cực', keywords: ['tiêu cực', 'xấu hơn', 'nhớ xấu'] },
-  { label: 'Optimism Bias', labelVi: 'Thiên kiến lạc quan', keywords: ['sẽ ổn', 'không sao', 'lạc quan'] },
-  { label: 'Self-serving Bias', labelVi: 'Thiên kiến tự phục vụ', keywords: ['nhờ tôi', 'không phải lỗi tôi'] },
-  { label: 'Fundamental Attribution Error', labelVi: 'Quy kết căn bản', keywords: ['tính cách họ', 'họ là người'] },
-  { label: 'Halo Effect', labelVi: 'Hiệu ứng hào quang', keywords: ['hoàn hảo', 'tốt mọi mặt'] },
-  { label: 'Recency Bias', labelVi: 'Thiên kiến gần đây', keywords: ['vừa rồi', 'gần đây', 'mới'] },
+  { label: 'Magnification', labelVi: 'Phóng đại vấn đề', keywords: ['quá lớn', 'khủng khiếp', 'kinh khủng'] },
+  { label: 'Minimization', labelVi: 'Coi nhẹ vấn đề', keywords: ['không quan trọng', 'nhỏ thôi', 'bỏ qua'] },
+  { label: 'Blame', labelVi: 'Đổ lỗi cho người khác', keywords: ['tại họ', 'lỗi họ', 'đổ lỗi'] },
+  { label: 'Fairness Fallacy', labelVi: 'Mong mọi thứ phải công bằng', keywords: ['không công bằng', 'phải công bằng'] },
+  { label: 'Heaven\'s Reward Fallacy', labelVi: 'Mong được đền đáp xứng đáng', keywords: ['xứng đáng', 'đền đáp', 'phải được'] },
+  { label: 'Control Fallacy', labelVi: 'Tưởng mình kiểm soát được hết', keywords: ['kiểm soát', 'trong tay', 'quyết định mọi'] },
+  { label: 'Fallacy of Change', labelVi: 'Mong thay đổi được người khác', keywords: ['họ phải thay đổi', 'nếu họ'] },
+  { label: 'Always Being Right', labelVi: 'Phải luôn đúng', keywords: ['tôi đúng', 'không sai'] },
+  { label: 'Hindsight Bias', labelVi: 'Nghĩ là mình đã biết từ trước', keywords: ['đã biết', 'lẽ ra', 'hồi tưởng'] },
+  { label: 'Anchoring', labelVi: 'Bám vào ý đầu tiên', keywords: ['con số đầu', 'neo', 'tham chiếu'] },
+  { label: 'Sunk Cost Fallacy', labelVi: 'Tiếc công đã bỏ ra nên cứ tiếp tục', keywords: ['đã đầu tư', 'không thể bỏ', 'đã bỏ công'] },
+  { label: 'Bandwagon Effect', labelVi: 'Làm theo đám đông', keywords: ['mọi người', 'đám đông', 'theo'] },
+  { label: 'Dunning-Kruger', labelVi: 'Tự tin thái quá vì thiếu hiểu biết', keywords: ['giỏi hơn', 'không biết mình kém'] },
+  { label: 'Negativity Bias', labelVi: 'Dễ nhớ điều xấu hơn điều tốt', keywords: ['tiêu cực', 'xấu hơn', 'nhớ xấu'] },
+  { label: 'Optimism Bias', labelVi: 'Tin mọi thứ sẽ ổn', keywords: ['sẽ ổn', 'không sao', 'lạc quan'] },
+  { label: 'Self-serving Bias', labelVi: 'Chỉ thấy mặt tốt của mình', keywords: ['nhờ tôi', 'không phải lỗi tôi'] },
+  { label: 'Fundamental Attribution Error', labelVi: 'Quy lỗi do tính cách người khác', keywords: ['tính cách họ', 'họ là người'] },
+  { label: 'Halo Effect', labelVi: 'Nhìn một mặt tốt rồi cho là tốt hết', keywords: ['hoàn hảo', 'tốt mọi mặt'] },
+  { label: 'Recency Bias', labelVi: 'Chỉ tin vào chuyện mới xảy ra', keywords: ['vừa rồi', 'gần đây', 'mới'] },
 ];
 
 /** Mẫu trả lời gợi ý theo từng bước — người dùng có thể chọn thay vì tự soạn */
@@ -401,8 +438,8 @@ const REFLECTION_QUESTIONS = {
   ],
   Identity: [
     'Điều này nói gì về con người bạn?',
-    'Bạn thấy mình là ai trong tình huống này?',
-    'Vai trò nào của bạn đang được kích hoạt?',
+    'Trong tình huống này, bạn thấy mình là ai?',
+    'Vai trò nào của bạn đang được đặt lên bàn cân?',
   ],
   Action: [
     'Bạn muốn làm gì tiếp theo?',
@@ -454,6 +491,13 @@ const CONTRADICTION_PATTERNS = [
 if (typeof window !== 'undefined') {
   window.CognitiveLibrary = {
     COGNITIVE_FRAMEWORK,
+    FRAMEWORK_LABELS_VI,
+    EEIBVIA_DESCRIPTION_VI,
+    NODE_STATUS_LABELS_VI,
+    getFrameworkLabel,
+    getFrameworkLabelVi,
+    getNodeStatusLabel,
+    getNodeStatusLabelVi,
     REFLECTION_FLOW,
     FOREST_TREES,
     NODE_TYPE_COLORS,

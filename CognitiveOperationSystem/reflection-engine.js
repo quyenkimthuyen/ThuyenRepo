@@ -127,20 +127,32 @@ const ReflectionEngine = {
    * Sinh câu hỏi phản chiếu
    */
   generateQuestion(flowStep, context = {}) {
-    const questions = CognitiveLibrary.REFLECTION_QUESTIONS[flowStep];
+    const questions =
+      typeof I18n !== 'undefined'
+        ? I18n.reflectionQuestions(flowStep)
+        : CognitiveLibrary.REFLECTION_QUESTIONS[flowStep];
     if (!questions || questions.length === 0) {
-      return 'Bạn muốn chia sẻ thêm điều gì?';
+      return typeof I18n !== 'undefined'
+        ? I18n.t('reflection.shareMore')
+        : 'Bạn muốn chia sẻ thêm điều gì?';
     }
 
-    // Cá nhân hóa nhẹ dựa trên context
     if (flowStep === 'Emotion' && context.eventLabel) {
-      return `Khi nghĩ về "${context.eventLabel}", bạn cảm thấy thế nào?`;
+      return typeof I18n !== 'undefined'
+        ? I18n.t('reflection.emotionWithEvent', { event: context.eventLabel })
+        : `Khi nghĩ về "${context.eventLabel}", bạn cảm thấy thế nào?`;
     }
     if (flowStep === 'Interpretation' && context.emotionLabel) {
-      return `Bạn lo điều gì sẽ xảy ra khi cảm thấy ${context.emotionLabel.toLowerCase()}?`;
+      return typeof I18n !== 'undefined'
+        ? I18n.t('reflection.interpretationWithEmotion', {
+            emotion: context.emotionLabel.toLowerCase(),
+          })
+        : `Bạn lo điều gì sẽ xảy ra khi cảm thấy ${context.emotionLabel.toLowerCase()}?`;
     }
     if (flowStep === 'Belief' && context.interpretation) {
-      return 'Điều gì khiến bạn tin như vậy?';
+      return typeof I18n !== 'undefined'
+        ? I18n.t('reflection.beliefPrompt')
+        : 'Điều gì khiến bạn tin như vậy?';
     }
 
     const idx = Math.floor(Math.random() * questions.length);
@@ -152,13 +164,16 @@ const ReflectionEngine = {
    */
   getSuggestions(session) {
     const flowStep = session?.flowStep || CognitiveLibrary.REFLECTION_FLOW[1];
-    const pool = CognitiveLibrary.REFLECTION_SUGGESTIONS[flowStep] || [];
+    const pool =
+      typeof I18n !== 'undefined'
+        ? I18n.reflectionSuggestions(flowStep)
+        : CognitiveLibrary.REFLECTION_SUGGESTIONS[flowStep] || [];
     if (pool.length === 0) return [];
 
     const lastGuide = [...(session.messages || [])]
       .reverse()
       .find((m) => m.role === 'guide');
-    if (lastGuide?.content?.includes('Insight Center')) {
+    if (typeof I18n !== 'undefined' ? I18n.isSessionEndContent(lastGuide?.content) : lastGuide?.content?.includes('Góc khám phá')) {
       return [];
     }
 
@@ -166,7 +181,10 @@ const ReflectionEngine = {
     const suggestions = [...pool];
 
     if (flowStep === 'Emotion' && eventSnippet) {
-      suggestions[0] = `Khi nghĩ về việc đó, tôi cảm thấy lo lắng và căng thẳng`;
+      suggestions[0] =
+        typeof I18n !== 'undefined'
+          ? I18n.t('reflection.emotionSuggestion')
+          : 'Khi nghĩ về việc đó, tôi cảm thấy lo lắng và căng thẳng';
     }
 
     return suggestions.slice(0, 5);
@@ -176,9 +194,15 @@ const ReflectionEngine = {
    * Câu mở đầu session
    */
   getOpeningQuestion(initialThought) {
+    const snippet = `${initialThought.slice(0, 60)}${initialThought.length > 60 ? '...' : ''}`;
     const emotions = this.extractEmotions(initialThought);
+    if (typeof I18n !== 'undefined') {
+      return emotions.length > 0
+        ? I18n.t('reflection.openingWithThought', { thought: snippet })
+        : I18n.t('reflection.openingDefault');
+    }
     if (emotions.length > 0) {
-      return `Tôi nghe thấy bạn đang đề cập đến "${initialThought.slice(0, 60)}${initialThought.length > 60 ? '...' : ''}". Điều đó khiến bạn cảm thấy thế nào?`;
+      return `Tôi nghe thấy bạn đang đề cập đến "${snippet}". Điều đó khiến bạn cảm thấy thế nào?`;
     }
     return 'Điều đó khiến bạn cảm thấy thế nào?';
   },
@@ -336,7 +360,9 @@ const ReflectionEngine = {
     // Kết thúc luồng — tổng kết
     if (nextStep === 'Action' && currentStep === 'Action' && userMessageCount >= 6) {
       nextQuestion =
-        'Cảm ơn bạn đã chia sẻ. Tôi đã cập nhật khu rừng nhận thức của bạn. Bạn có muốn khám phá Insight Center không?';
+        typeof I18n !== 'undefined'
+          ? I18n.t('reflection.sessionEnd')
+          : 'Cảm ơn bạn đã chia sẻ. Tôi đã cập nhật bản đồ suy nghĩ của bạn. Bạn có muốn xem Góc khám phá không?';
     }
 
     return {
@@ -354,16 +380,20 @@ const ReflectionEngine = {
    * Prefix cho Reflection Guide theo bước
    */
   getGuidePrefix(step) {
-    const prefixes = {
-      Event: '📍 Sự kiện',
-      Emotion: '💭 Cảm xúc',
-      Interpretation: '🔍 Diễn giải',
-      Belief: '💡 Niềm tin',
-      Value: '🌟 Giá trị',
-      Identity: '🪞 Bản sắc',
-      Action: '⚡ Hành động',
+    const label = CognitiveLibrary.getFrameworkLabel(step);
+    const icons = {
+      Event: '📍',
+      Emotion: '💭',
+      Interpretation: '🔍',
+      Belief: '💡',
+      Value: '🌟',
+      Identity: '🪞',
+      Action: '⚡',
     };
-    return prefixes[step] || '🧠 Phản chiếu';
+    const icon = icons[step] || '🧠';
+    const fallback =
+      typeof I18n !== 'undefined' ? I18n.t('reflection.fallbackReflection') : 'Suy ngẫm';
+    return `${icon} ${label || fallback}`;
   },
 
   looksLikeInterpretation(text) {

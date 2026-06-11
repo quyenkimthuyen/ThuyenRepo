@@ -27,6 +27,7 @@ function getDefaultState() {
     },
     settings: {
       theme: 'dark',
+      locale: 'vi',
     },
   };
 }
@@ -179,8 +180,17 @@ const DataStore = {
 
   /** Xóa toàn bộ dữ liệu (debug/reset) */
   reset() {
+    const locale = this._cache?.settings?.locale;
     this._cache = getDefaultState();
+    if (locale) this._cache.settings.locale = locale;
     this.persist();
+  },
+
+  /** Thay thế toàn bộ state (test mode / import) */
+  replaceState(state) {
+    this._cache = { ...getDefaultState(), ...state };
+    this.persist();
+    return this._cache;
   },
 
   /** Export JSON */

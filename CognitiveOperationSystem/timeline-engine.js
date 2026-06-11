@@ -12,7 +12,7 @@ const TimelineEngine = {
     const event = {
       id: generateId('tl'),
       type: 'session_start',
-      title: 'Bắt đầu suy ngẫm',
+      title: typeof I18n !== 'undefined' ? I18n.t('timeline.sessionStart') : 'Bắt đầu suy ngẫm',
       description: session.initialThought.slice(0, 100),
       sessionId: session.id,
       nodeIds: nodesCreated.map((n) => n.id),
@@ -34,8 +34,14 @@ const TimelineEngine = {
         const event = {
           id: generateId('tl'),
           type: node.status === 'verified' ? 'node_verified' : 'node_candidate',
-          title: `${node.type}: ${node.label}`,
-          description: `Trạng thái: ${node.status} (${node.occurrences} lần)`,
+          title: `${CognitiveLibrary.getFrameworkLabel(node.type)}: ${node.label}`,
+          description:
+            typeof I18n !== 'undefined'
+              ? I18n.t('timeline.nodeDesc', {
+                  status: CognitiveLibrary.getNodeStatusLabel(node.status),
+                  n: node.occurrences,
+                })
+              : `${CognitiveLibrary.getNodeStatusLabel(node.status)} · xuất hiện ${node.occurrences} lần`,
           nodeId: node.id,
           nodeType: node.type,
           nodeLabel: node.label,
@@ -56,8 +62,11 @@ const TimelineEngine = {
     const event = {
       id: generateId('tl'),
       type: 'value_shift',
-      title: 'Thay đổi giá trị',
-      description: `Từ "${oldValue}" sang "${newValue}"`,
+      title: typeof I18n !== 'undefined' ? I18n.t('timeline.valueShift') : 'Thay đổi giá trị',
+      description:
+        typeof I18n !== 'undefined'
+          ? I18n.t('timeline.valueShiftDesc', { from: oldValue, to: newValue })
+          : `Từ "${oldValue}" sang "${newValue}"`,
       from: oldValue,
       to: newValue,
       timestamp: new Date().toISOString(),
