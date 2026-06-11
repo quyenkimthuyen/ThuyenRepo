@@ -160,6 +160,29 @@ const ReflectionEngine = {
   },
 
   /**
+   * Chip trả lời ngắn (cảm xúc nhanh, "không biết"...)
+   */
+  getShortSuggestions(session) {
+    const flowStep = session?.flowStep || CognitiveLibrary.REFLECTION_FLOW[1];
+    const pool =
+      typeof I18n !== 'undefined' ? I18n.shortChips(flowStep) : [];
+    if (pool.length === 0) return [];
+
+    const lastGuide = [...(session.messages || [])]
+      .reverse()
+      .find((m) => m.role === 'guide');
+    if (
+      typeof I18n !== 'undefined'
+        ? I18n.isSessionEndContent(lastGuide?.content)
+        : lastGuide?.content?.includes('Góc khám phá')
+    ) {
+      return [];
+    }
+
+    return pool;
+  },
+
+  /**
    * Gợi ý mẫu trả lời theo bước hiện tại trong session
    */
   getSuggestions(session) {
@@ -188,6 +211,54 @@ const ReflectionEngine = {
     }
 
     return suggestions.slice(0, 5);
+  },
+
+  /**
+   * Tóm tắt phiên từ các ghi nhận
+   */
+  buildSessionSummary(session) {
+    const nodeIds = session?.nodeIds || [];
+    const nodes = DataStore.getNodes().filter((n) => nodeIds.includes(n.id));
+    const pick = (type) => nodes.filter((n) => n.type === type).map((n) => n.label);
+    const first = (type) => pick(type)[0] || '—';
+    const join = (type) => pick(type).join(', ') || '—';
+
+    if (typeof I18n !== 'undefined') {
+      return I18n.t('reflection.summaryTemplate', {
+        event: first('Event') !== '—' ? first('Event') : (session.initialThought || '—').slice(0, 60),
+        emotion: join('Emotion'),
+        interpretation: first('Interpretation'),
+        belief: join('Belief'),
+        value: join('Value'),
+      });
+    }
+
+    return `Event: ${first('Event')}; Emotion: ${join('Emotion')}`;
+  },
+
+  /**
+   * Tin nhắn kết thúc phiên: tóm tắt + reframe + bước nhỏ
+   */
+  buildSessionEndMessage(session) {
+    const summary = this.buildSessionSummary(session);
+    if (typeof I18n !== 'undefined') {
+      return [
+        `${I18n.t('reflection.summaryTitle')}: ${summary}`,
+        I18n.t('reflection.sessionEnd'),
+        I18n.t('reflection.reframeQuestion'),
+        I18n.t('reflection.smallStepQuestion'),
+      ].join('\n\n');
+    }
+    return 'Cảm ơn bạn đã chia sẻ.';
+  },
+
+  /**
+   * Định dạng tin nhắn người dẫn — giọng phản chiếu, ít kỹ thuật
+   */
+  formatGuideMessage(result) {
+    const stepChanged = result.flowStep !== result.previousStep;
+    if (!stepChanged) return result.nextQuestion;
+    return `${result.guidePrefix}\n\n${result.nextQuestion}`;
   },
 
   /**
@@ -351,18 +422,21 @@ const ReflectionEngine = {
     };
 
     let nextQuestion;
-    if (nextStep !== currentStep || userMessageCount === 0) {
+    const enteringNewStep = nextStep !== currentStep;
+
+    if (enteringNewStep && nextStep === 'Value' && typeof I18n !== 'undefined') {
+      nextQuestion = I18n.t('reflection.contextQuestion');
+    } else if (enteringNewStep && nextStep === 'Identity' && typeof I18n !== 'undefined') {
+      nextQuestion = I18n.t('reflection.powerQuestion');
+    } else if (enteringNewStep || userMessageCount === 0) {
       nextQuestion = this.generateQuestion(nextStep, context);
     } else {
       nextQuestion = this.generateQuestion(currentStep, context);
     }
 
-    // Kết thúc luồng — tổng kết
+    // Kết thúc luồng — tổng kết + reframe + bước nhỏ
     if (nextStep === 'Action' && currentStep === 'Action' && userMessageCount >= 6) {
-      nextQuestion =
-        typeof I18n !== 'undefined'
-          ? I18n.t('reflection.sessionEnd')
-          : 'Cảm ơn bạn đã chia sẻ. Tôi đã cập nhật bản đồ suy nghĩ của bạn. Bạn có muốn xem Góc khám phá không?';
+      nextQuestion = this.buildSessionEndMessage(session);
     }
 
     return {
@@ -486,7 +560,7 @@ const ReflectionEngine = {
     const guideMsg = {
       id: generateId('msg'),
       role: 'guide',
-      content: `${result.guidePrefix}: ${result.nextQuestion}`,
+      content: this.formatGuideMessage(result),
       flowStep: result.flowStep,
       extracted: result.extracted,
       timestamp: new Date().toISOString(),
@@ -507,6 +581,64 @@ const ReflectionEngine = {
     DataStore.setInsights(insights);
 
     return { session, result, guideMessage: guideMsg };
+  },
+
+  /**
+   * Bỏ qua bước hiện tại — không ép người dùng trả lời
+   */
+  skipCurrentStep(sessionId) {
+    const session = DataStore.getSession(sessionId);
+    if (!session) return null;
+
+    const flow = CognitiveLibrary.REFLECTION_FLOW;
+    const currentIdx = flow.indexOf(session.flowStep);
+    if (currentIdx === -1 || currentIdx >= flow.length - 1) return null;
+
+    const currentStep = session.flowStep;
+    const nextStep = flow[currentIdx + 1];
+
+    session.messages.push({
+      id: generateId('msg'),
+      role: 'user',
+      content:
+        typeof I18n !== 'undefined'
+          ? I18n.t('reflection.skippedStep')
+          : '(Đã bỏ qua bước này)',
+      flowStep: currentStep,
+      timestamp: new Date().toISOString(),
+    });
+
+    const context = {
+      eventLabel: session.initialThought,
+    };
+
+    let nextQuestion;
+    if (nextStep === 'Value' && typeof I18n !== 'undefined') {
+      nextQuestion = I18n.t('reflection.contextQuestion');
+    } else if (nextStep === 'Identity' && typeof I18n !== 'undefined') {
+      nextQuestion = I18n.t('reflection.powerQuestion');
+    } else {
+      nextQuestion = this.generateQuestion(nextStep, context);
+    }
+
+    const guidePrefix = this.getGuidePrefix(nextStep);
+    const skipNote =
+      typeof I18n !== 'undefined' ? I18n.t('reflection.skipNote') : 'Không sao.';
+    const guideMsg = {
+      id: generateId('msg'),
+      role: 'guide',
+      content: `${skipNote}\n\n${guidePrefix}\n\n${nextQuestion}`,
+      flowStep: nextStep,
+      timestamp: new Date().toISOString(),
+    };
+
+    session.messages.push(guideMsg);
+    session.flowStep = nextStep;
+    session.updatedAt = new Date().toISOString();
+
+    DataStore.updateSession(sessionId, session);
+
+    return { session, guideMessage: guideMsg };
   },
 };
 

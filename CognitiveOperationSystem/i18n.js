@@ -32,6 +32,19 @@ const I18N_MESSAGES = {
       shareFirst: 'Hãy chia sẻ suy nghĩ của bạn trước.',
       sessionStarted: 'Đã bắt đầu phiên suy ngẫm',
       dataReset: 'Đã xóa dữ liệu. Bạn có thể bắt đầu lại từ đầu.',
+      disclaimer:
+        'Đây là công cụ tự suy ngẫm — không thay tư vấn tâm lý hay điều trị y khoa. Nếu bạn đang gặp khủng hoảng, hãy tìm người hỗ trợ chuyên môn.',
+      privacy: 'Dữ liệu chỉ lưu trên thiết bị của bạn — không ai khác đọc được.',
+    },
+    safety: {
+      title: 'Bạn không cần đối mặt một mình',
+      body: 'Chúng tôi nhận thấy nội dung bạn chia sẻ có thể rất nặng nề. Nếu bạn đang có ý nghĩ làm hại bản thân, hãy liên hệ ngay:',
+      hotline1: 'Đường dây nóng quốc gia',
+      hotline1Tel: '111',
+      hotline2: 'Tổng đài tâm lý',
+      hotline2Tel: '18001929',
+      footer: 'Ứng dụng này không thay thế chuyên gia. Bạn xứng đáng được lắng nghe và được giúp đỡ.',
+      understood: 'Tôi đã hiểu',
     },
     reflection: {
       aria: 'Phiên suy ngẫm',
@@ -50,17 +63,29 @@ const I18N_MESSAGES = {
       you: 'Bạn',
       guide: 'Người dẫn suy ngẫm',
       shareMore: 'Bạn muốn chia sẻ thêm điều gì?',
-      openingDefault: 'Điều đó khiến bạn cảm thấy thế nào?',
+      openingDefault: 'Nghe có vẻ điều đó đang chạm vào bạn. Bạn cảm thấy thế nào?',
       openingWithThought:
-        'Tôi nghe thấy bạn đang đề cập đến "{thought}". Điều đó khiến bạn cảm thấy thế nào?',
-      emotionWithEvent: 'Khi nghĩ về "{event}", bạn cảm thấy thế nào?',
-      interpretationWithEmotion: 'Bạn lo điều gì sẽ xảy ra khi cảm thấy {emotion}?',
-      beliefPrompt: 'Điều gì khiến bạn tin như vậy?',
+        'Tôi nghe thấy bạn đang nói về "{thought}". Nghe có vẻ điều đó đang chạm vào bạn — bạn cảm thấy thế nào?',
+      emotionWithEvent: 'Khi nghĩ về "{event}", cảm xúc nào nổi bật nhất với bạn?',
+      interpretationWithEmotion: 'Khi cảm thấy {emotion}, bạn lo điều gì có thể xảy ra?',
+      beliefPrompt: 'Điều gì khiến bạn tin như vậy — bạn có thể kể thêm không?',
       sessionEnd:
-        'Cảm ơn bạn đã chia sẻ. Tôi đã cập nhật bản đồ suy nghĩ của bạn. Bạn có muốn xem Góc khám phá không?',
+        'Cảm ơn bạn đã chia sẻ. Tôi đã ghi nhận vào bản đồ suy nghĩ. Khi sẵn sàng, bạn có thể xem thêm ở Góc khám phá.',
       sessionEndMarker: 'Góc khám phá',
       emotionSuggestion: 'Khi nghĩ về việc đó, tôi cảm thấy lo lắng và căng thẳng',
       fallbackReflection: 'Suy ngẫm',
+      skipStep: 'Bỏ qua bước này',
+      skippedStep: '(Đã bỏ qua bước này)',
+      skipNote: 'Không sao — bạn có thể quay lại chủ đề này khi muốn.',
+      shortSuggestions: 'Chọn nhanh',
+      summaryTitle: 'Tóm tắt',
+      summaryTemplate:
+        'Bạn đang nghĩ về: {event}. Cảm xúc nổi bật: {emotion}. Cách hiểu: {interpretation}. Niềm tin: {belief}. Điều quan trọng: {value}.',
+      reframeQuestion: 'Nếu nhìn nhẹ hơn một chút, bạn có thể hiểu tình huống này theo cách nào khác?',
+      smallStepQuestion: 'Một bước nhỏ, trong khả năng của bạn hôm nay, bạn có thể thử làm gì?',
+      contextQuestion: 'Phần nào trong tình huống này đến từ hoàn cảnh, áp lực bên ngoài — không chỉ do bạn?',
+      powerQuestion: 'Trong tình huống này, ai có thể thay đổi điều gì — kể cả chính bạn?',
+      expandEmotion: 'Ngoài cảm xúc đó, còn điều gì nữa trong bạn không?',
     },
     forest: {
       aria: 'Bản đồ suy nghĩ',
@@ -99,6 +124,9 @@ const I18N_MESSAGES = {
       biases: '🧩 Kiểu suy nghĩ lệch',
       biasesEmpty: 'Chưa phát hiện kiểu suy nghĩ lệch. Hệ thống sẽ phân tích khi bạn chia sẻ thêm.',
       biasDefault: 'Kiểu suy nghĩ này có thể ảnh hưởng cách bạn hiểu sự việc.',
+      disclaimer: 'Các gợi ý dưới đây chỉ để suy ngẫm thêm — không phải kết luận hay chẩn đoán.',
+      contradictionPrefix: 'Có thể bạn đang',
+      contradictionSuffix: 'Điều này có thể một phần do hoàn cảnh, không chỉ do lựa chọn cá nhân.',
     },
     timeline: {
       aria: 'Dòng thời gian suy nghĩ',
@@ -187,6 +215,19 @@ const I18N_MESSAGES = {
       shareFirst: 'Please share your thought first.',
       sessionStarted: 'Reflection session started',
       dataReset: 'Data cleared. You can start fresh.',
+      disclaimer:
+        'This is a self-reflection tool — not a substitute for therapy or medical care. If you are in crisis, please seek professional support.',
+      privacy: 'Your data stays on this device only — no one else can read it.',
+    },
+    safety: {
+      title: 'You don\'t have to face this alone',
+      body: 'What you shared may be very heavy. If you are having thoughts of harming yourself, please reach out now:',
+      hotline1: 'National crisis line (Vietnam)',
+      hotline1Tel: '111',
+      hotline2: 'Mental health helpline',
+      hotline2Tel: '18001929',
+      footer: 'This app is not a substitute for a professional. You deserve to be heard and supported.',
+      understood: 'I understand',
     },
     reflection: {
       aria: 'Reflection session',
@@ -205,17 +246,29 @@ const I18N_MESSAGES = {
       you: 'You',
       guide: 'Reflection guide',
       shareMore: 'What else would you like to share?',
-      openingDefault: 'How does that make you feel?',
+      openingDefault: 'It sounds like this is touching something in you. How do you feel?',
       openingWithThought:
-        'I hear you mentioning "{thought}". How does that make you feel?',
-      emotionWithEvent: 'When you think about "{event}", how do you feel?',
-      interpretationWithEmotion: 'What do you fear might happen when you feel {emotion}?',
-      beliefPrompt: 'What makes you believe that?',
+        'I hear you talking about "{thought}". It sounds like this matters to you — how do you feel?',
+      emotionWithEvent: 'When you think about "{event}", which feeling stands out most?',
+      interpretationWithEmotion: 'When you feel {emotion}, what do you worry might happen?',
+      beliefPrompt: 'What makes you believe that — can you say a bit more?',
       sessionEnd:
-        'Thank you for sharing. I\'ve updated your thought map. Would you like to visit Explore?',
+        'Thank you for sharing. I\'ve added this to your thought map. When you\'re ready, you can explore more in Explore.',
       sessionEndMarker: 'Explore',
       emotionSuggestion: 'When I think about it, I feel anxious and tense',
       fallbackReflection: 'Reflection',
+      skipStep: 'Skip this step',
+      skippedStep: '(Skipped this step)',
+      skipNote: 'That\'s okay — you can return to this topic whenever you want.',
+      shortSuggestions: 'Quick picks',
+      summaryTitle: 'Summary',
+      summaryTemplate:
+        'You\'re thinking about: {event}. Main feeling: {emotion}. How you understand it: {interpretation}. Belief: {belief}. What matters: {value}.',
+      reframeQuestion: 'If you looked at this a little more gently, how else might you understand it?',
+      smallStepQuestion: 'What is one small step, within your reach today, that you might try?',
+      contextQuestion: 'What part of this situation comes from circumstances or outside pressure — not just from you?',
+      powerQuestion: 'In this situation, who might be able to change something — including you?',
+      expandEmotion: 'Besides that feeling, is there anything else inside you?',
     },
     forest: {
       aria: 'Thought map',
@@ -254,6 +307,9 @@ const I18N_MESSAGES = {
       biases: '🧩 Thinking patterns',
       biasesEmpty: 'No thinking patterns detected yet. Share more for analysis.',
       biasDefault: 'This thinking pattern may affect how you interpret events.',
+      disclaimer: 'The notes below are for reflection only — not conclusions or diagnoses.',
+      contradictionPrefix: 'You might be',
+      contradictionSuffix: 'This may partly come from circumstances, not only personal choice.',
     },
     timeline: {
       aria: 'Thought timeline',
@@ -369,11 +425,11 @@ const I18N_REFLECTION_QUESTIONS = {
     ],
     Emotion: [
       'Điều đó khiến bạn cảm thấy thế nào?',
-      'Cảm xúc nào nổi bật nhất trong bạn?',
-      'Bạn cảm nhận điều gì trong cơ thể khi nghĩ về việc này?',
+      'Cảm xúc nào nổi bật nhất — buồn, lo, tức, hay điều khác?',
+      'Trong cơ thể, bạn cảm nhận điều gì khi nghĩ về việc này?',
     ],
     Interpretation: [
-      'Bạn lo điều gì sẽ xảy ra?',
+      'Bạn đang lo điều gì có thể xảy ra?',
       'Bạn hiểu sự việc đó theo cách nào?',
       'Điều gì ý nghĩa nhất với bạn trong tình huống này?',
     ],
@@ -384,17 +440,17 @@ const I18N_REFLECTION_QUESTIONS = {
     ],
     Value: [
       'Điều gì quan trọng nhất với bạn trong việc này?',
+      'Phần nào trong tình huống này đến từ hoàn cảnh, áp lực bên ngoài?',
       'Giá trị nào đang bị đe dọa hoặc được khẳng định?',
-      'Bạn sẵn sàng hy sinh điều gì vì điều này?',
     ],
     Identity: [
-      'Điều này nói gì về con người bạn?',
       'Trong tình huống này, bạn thấy mình là ai?',
+      'Ai trong tình huống này có thể thay đổi điều gì — kể cả bạn?',
       'Vai trò nào của bạn đang được đặt lên bàn cân?',
     ],
     Action: [
+      'Một bước nhỏ, trong khả năng hôm nay, bạn có thể thử làm gì?',
       'Bạn muốn làm gì tiếp theo?',
-      'Hành động nào bạn đang cân nhắc?',
       'Nếu không có rào cản, bạn sẽ làm gì?',
     ],
   },
@@ -406,8 +462,8 @@ const I18N_REFLECTION_QUESTIONS = {
     ],
     Emotion: [
       'How did that make you feel?',
-      'Which emotion stands out most?',
-      'What do you feel in your body when you think about this?',
+      'Which feeling stands out most — sad, anxious, angry, or something else?',
+      'What do you notice in your body when you think about this?',
     ],
     Interpretation: [
       'What are you afraid might happen?',
@@ -421,19 +477,30 @@ const I18N_REFLECTION_QUESTIONS = {
     ],
     Value: [
       'What matters most to you here?',
+      'What part of this comes from circumstances or outside pressure?',
       'Which value feels threatened or affirmed?',
-      'What would you sacrifice for this?',
     ],
     Identity: [
-      'What does this say about who you are?',
       'In this situation, who do you see yourself as?',
+      'Who in this situation might be able to change something — including you?',
       'Which role of yours is being activated?',
     ],
     Action: [
+      'What is one small step, within your reach today, that you might try?',
       'What do you want to do next?',
-      'Which action are you considering?',
       'If nothing held you back, what would you do?',
     ],
+  },
+};
+
+const I18N_SHORT_CHIPS = {
+  vi: {
+    Emotion: ['Buồn', 'Lo', 'Tức', 'Mệt', 'Không biết', 'Căng thẳng'],
+    default: ['Không biết', 'Khó nói', 'Cần suy nghĩ thêm'],
+  },
+  en: {
+    Emotion: ['Sad', 'Anxious', 'Angry', 'Tired', "I don't know", 'Tense'],
+    default: ["I don't know", 'Hard to say', 'Need more time'],
   },
 };
 
@@ -655,10 +722,12 @@ const I18n = {
   localeDate(iso) {
     if (!iso) return '—';
     const loc = this.locale === 'en' ? 'en-US' : 'vi-VN';
-    return new Date(iso).toLocaleDateString(loc, {
+    return new Date(iso).toLocaleString(loc, {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
   },
 
@@ -676,6 +745,31 @@ const I18n = {
       content.includes(I18N_MESSAGES.vi.reflection.sessionEndMarker) ||
       content.includes(I18N_MESSAGES.en.reflection.sessionEndMarker)
     );
+  },
+
+  shortChips(flowStep) {
+    const pool = I18N_SHORT_CHIPS[this.locale];
+    return pool?.[flowStep] || pool?.default || [];
+  },
+
+  getCrisisResources() {
+    return {
+      title: this.t('safety.title'),
+      body: this.t('safety.body'),
+      hotlines: [
+        { label: this.t('safety.hotline1'), tel: this.t('safety.hotline1Tel') },
+        { label: this.t('safety.hotline2'), tel: this.t('safety.hotline2Tel') },
+      ],
+      footer: this.t('safety.footer'),
+      understood: this.t('safety.understood'),
+    };
+  },
+
+  formatContradiction(message) {
+    if (!message) return '';
+    const trimmed = message.replace(/\s+/g, ' ').trim();
+    const lower = trimmed.charAt(0).toLowerCase() + trimmed.slice(1);
+    return `${this.t('insights.contradictionPrefix')} ${lower}. ${this.t('insights.contradictionSuffix')}`;
   },
 
   applyStatic() {

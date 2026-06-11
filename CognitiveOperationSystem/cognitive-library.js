@@ -453,37 +453,37 @@ const CONTRADICTION_PATTERNS = [
   {
     valueKeywords: ['gia đình', 'ưu tiên', 'số một'],
     actionKeywords: ['14 giờ', 'làm việc nhiều', 'overtime', 'không có thời gian'],
-    message: 'Bạn coi gia đình là ưu tiên, nhưng hành động cho thấy công việc chiếm phần lớn thời gian.',
+    message: 'ưu tiên gia đình, trong khi thời gian dành cho công việc có vẻ khá nhiều',
   },
   {
     valueKeywords: ['sức khỏe', 'khỏe mạnh'],
     actionKeywords: ['hy sinh sức khỏe', 'không ngủ', 'làm đêm', 'stress'],
-    message: 'Bạn trân trọng sức khỏe, nhưng hành động có thể đang ảnh hưởng đến sức khỏe.',
+    message: 'coi trọng sức khỏe, nhưng nhịp sống hiện tại có vẻ đang ảnh hưởng đến sức khỏe',
   },
   {
     valueKeywords: ['cân bằng', 'work-life'],
     actionKeywords: ['14 giờ', 'làm việc cuối tuần', 'không nghỉ'],
-    message: 'Bạn mong muốn cân bằng, nhưng thời gian làm việc cho thấy sự mất cân bằng.',
+    message: 'mong có sự cân bằng, nhưng thời gian làm việc có vẻ chưa phản ánh điều đó',
   },
   {
     valueKeywords: ['tự do', 'tự chủ'],
     actionKeywords: ['kiểm soát con', 'bắt con', 'phải nghe'],
-    message: 'Bạn coi trọng tự do, nhưng có thể đang kiểm soát người khác.',
+    message: 'coi trọng tự do, nhưng đôi khi có thể đang kiểm soát người khác nhiều hơn ý muốn',
   },
   {
     valueKeywords: ['phát triển', 'học hỏi'],
     actionKeywords: ['không có thời gian học', 'không học', 'bỏ học'],
-    message: 'Bạn coi trọng phát triển, nhưng hành động ít dành cho học hỏi.',
+    message: 'coi trọng phát triển, nhưng ít thời gian thực sự dành cho học hỏi',
   },
   {
     beliefKeywords: ['con phải nghe lời'],
     valueKeywords: ['tự do', 'tự chủ'],
-    message: 'Niềm tin "con phải nghe lời" có thể mâu thuẫn với giá trị tự do.',
+    message: 'tin rằng con phải nghe lời, trong khi cũng coi trọng tự do và tự chủ',
   },
   {
     beliefKeywords: ['tiền mang lại hạnh phúc'],
     valueKeywords: ['gia đình', 'yêu thương'],
-    message: 'Niềm tin về tiền bạc có thể lấn át giá trị quan hệ gia đình.',
+    message: 'gắn hạnh phúc với tiền bạc, trong khi quan hệ gia đình cũng rất quan trọng với bạn',
   },
 ];
 

@@ -72,6 +72,12 @@
             <span data-i18n="home.startBtn">Bắt đầu suy ngẫm</span>
             <span class="btn-arrow">→</span>
           </button>
+          <div class="home-notice">
+            <p class="home-disclaimer" data-i18n="home.disclaimer">
+              Đây là công cụ tự suy ngẫm — không thay tư vấn tâm lý hay điều trị y khoa. Nếu bạn đang gặp khủng hoảng, hãy tìm người hỗ trợ chuyên môn.
+            </p>
+            <p class="home-privacy" data-i18n="home.privacy">Dữ liệu chỉ lưu trên thiết bị của bạn — không ai khác đọc được.</p>
+          </div>
           <div class="home-stats glass" id="home-stats"></div>
           <div class="home-reset glass" id="home-reset" hidden>
             <p class="home-reset-text" data-i18n="home.resetText">Muốn bắt đầu lại từ đầu? Toàn bộ ghi nhận, phiên suy ngẫm và dòng thời gian sẽ bị xóa.</p>
@@ -96,6 +102,10 @@
           <div class="chat-container">
             <div class="chat-messages" id="chat-messages" role="log" aria-live="polite"></div>
             <div class="chat-suggestions" id="chat-suggestions" hidden>
+              <div class="short-suggestions" id="short-suggestions" hidden>
+                <span class="suggestions-label" data-i18n="reflection.shortSuggestions">Chọn nhanh</span>
+                <div class="suggestions-list short-suggestions-list" id="short-suggestions-list" role="listbox"></div>
+              </div>
               <span class="suggestions-label" data-i18n="reflection.suggestions">Gợi ý trả lời</span>
               <div class="suggestions-list" id="suggestions-list" role="listbox" data-i18n-aria="reflection.suggestionsAria" aria-label="Mẫu trả lời gợi ý"></div>
             </div>
@@ -109,9 +119,12 @@
                 data-i18n-aria="reflection.chatAria"
                 aria-label="Tin nhắn"
               ></textarea>
-              <button type="submit" class="btn btn-primary btn-send" data-i18n-aria="reflection.sendAria" aria-label="Gửi">
-                <span data-i18n="reflection.send">Gửi</span>
-              </button>
+              <div class="chat-form-actions">
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-skip-step" data-i18n="reflection.skipStep">Bỏ qua bước này</button>
+                <button type="submit" class="btn btn-primary btn-send" data-i18n-aria="reflection.sendAria" aria-label="Gửi">
+                  <span data-i18n="reflection.send">Gửi</span>
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -137,6 +150,7 @@
         <header class="screen-header">
           <h2 data-i18n="insights.title">Góc khám phá</h2>
           <p class="screen-desc" data-i18n="insights.desc">Nhìn thấy kiểu suy nghĩ lặp lại và những điểm mâu thuẫn trong lòng bạn</p>
+          <p class="insights-disclaimer" data-i18n="insights.disclaimer">Các gợi ý dưới đây chỉ để suy ngẫm thêm — không phải kết luận hay chẩn đoán.</p>
         </header>
         <div class="insights-grid" id="insights-grid"></div>
       </section>
@@ -196,6 +210,17 @@
       </div>
     </dialog>
 
+    <!-- Crisis support -->
+    <dialog id="crisis-modal" class="modal glass crisis-modal">
+      <div class="modal-content crisis-modal-content">
+        <h3 class="crisis-modal-title" id="crisis-modal-title"></h3>
+        <p class="crisis-modal-body" id="crisis-modal-body"></p>
+        <ul class="crisis-hotlines" id="crisis-hotlines"></ul>
+        <p class="crisis-modal-footer" id="crisis-modal-footer"></p>
+        <button type="button" class="btn btn-primary" id="btn-crisis-understood"></button>
+      </div>
+    </dialog>
+
     <!-- Toast -->
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </div>
@@ -204,6 +229,7 @@
   <script src="cognitive-library.js"></script>
   <script src="data.js"></script>
   <script src="i18n.js"></script>
+  <script src="safety-engine.js"></script>
   <script src="cognitive-tree.js"></script>
   <script src="timeline-engine.js"></script>
   <script src="contradiction-engine.js"></script>

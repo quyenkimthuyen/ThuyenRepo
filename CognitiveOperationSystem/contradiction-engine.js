@@ -145,17 +145,17 @@ const ContradictionEngine = {
       {
         valueKw: ['gia đình', 'yêu thương'],
         actionKw: ['làm việc nhiều', '14 giờ', 'không có thời gian'],
-        msg: 'Giá trị gia đình cao nhưng hành động thiếu thời gian cho gia đình.',
+        msg: 'coi trọng gia đình, nhưng ít thời gian thực sự dành cho gia đình',
       },
       {
         valueKw: ['sức khỏe'],
         actionKw: ['stress', 'không ngủ', 'mệt'],
-        msg: 'Coi trọng sức khỏe nhưng hành động gây căng thẳng.',
+        msg: 'coi trọng sức khỏe, nhưng nhịp sống hiện tại có vẻ đang gây căng thẳng',
       },
       {
         valueKw: ['phát triển', 'học hỏi'],
         actionKw: ['bắt con học', 'ép học'],
-        msg: 'Coi trọng phát triển nhưng hành động có thể gây áp lực thay vì khuyến khích.',
+        msg: 'coi trọng phát triển, nhưng đôi khi hành động có vẻ tạo áp lực hơn là khuyến khích',
       },
     ];
 

@@ -87,7 +87,7 @@ const App = {
     });
 
     // Gợi ý trả lời — chọn mẫu câu
-    document.getElementById('suggestions-list').addEventListener('click', (e) => {
+    const onSuggestionPick = (e) => {
       const chip = e.target.closest('.suggestion-chip');
       if (!chip) return;
       const text = chip.dataset.text;
@@ -96,6 +96,16 @@ const App = {
       input.value = text;
       input.focus();
       this.sendChatMessage();
+    };
+    document.getElementById('suggestions-list').addEventListener('click', onSuggestionPick);
+    document.getElementById('short-suggestions-list').addEventListener('click', onSuggestionPick);
+
+    document.getElementById('btn-skip-step').addEventListener('click', () => {
+      this.skipReflectionStep();
+    });
+
+    document.getElementById('btn-crisis-understood').addEventListener('click', () => {
+      document.getElementById('crisis-modal').close();
     });
 
     // Test mode — chọn kịch bản & hành động
@@ -273,6 +283,8 @@ const App = {
       return;
     }
 
+    if (this.checkCrisisAndShow(thought)) return;
+
     const { session } = ReflectionEngine.createSession(thought);
     this.activeSessionId = session.id;
     input.value = '';
@@ -311,26 +323,17 @@ const App = {
     document.getElementById('session-timeline-steps').innerHTML = '';
     document.getElementById('chat-suggestions').hidden = true;
     document.getElementById('suggestions-list').innerHTML = '';
+    document.getElementById('short-suggestions').hidden = true;
+    document.getElementById('short-suggestions-list').innerHTML = '';
   },
 
-  renderReflectionSuggestions(session) {
-    const container = document.getElementById('chat-suggestions');
-    const list = document.getElementById('suggestions-list');
-    const suggestions = ReflectionEngine.getSuggestions(session);
-
-    if (!suggestions.length) {
-      container.hidden = true;
-      list.innerHTML = '';
-      return;
-    }
-
-    container.hidden = false;
-    list.innerHTML = suggestions
+  renderSuggestionChips(listEl, items, chipClass = 'suggestion-chip') {
+    listEl.innerHTML = items
       .map(
         (text) => `
           <button
             type="button"
-            class="suggestion-chip"
+            class="${chipClass}"
             data-text="${this.escapeAttr(text)}"
             role="option"
             title="${this.escapeAttr(I18n.t('reflection.suggestionTitle'))}"
@@ -338,6 +341,49 @@ const App = {
         `
       )
       .join('');
+  },
+
+  renderReflectionSuggestions(session) {
+    const container = document.getElementById('chat-suggestions');
+    const list = document.getElementById('suggestions-list');
+    const shortWrap = document.getElementById('short-suggestions');
+    const shortList = document.getElementById('short-suggestions-list');
+    const suggestions = ReflectionEngine.getSuggestions(session);
+    const shortSuggestions = ReflectionEngine.getShortSuggestions(session);
+    const skipBtn = document.getElementById('btn-skip-step');
+    const flow = CognitiveLibrary.REFLECTION_FLOW;
+    const atLastStep = flow.indexOf(session.flowStep) >= flow.length - 1;
+    const sessionEnded = session.messages?.some(
+      (m) => m.role === 'guide' && I18n.isSessionEndContent(m.content)
+    );
+
+    if (skipBtn) {
+      skipBtn.hidden = !session || atLastStep || sessionEnded;
+    }
+
+    if (!suggestions.length && !shortSuggestions.length) {
+      container.hidden = true;
+      list.innerHTML = '';
+      shortWrap.hidden = true;
+      shortList.innerHTML = '';
+      return;
+    }
+
+    container.hidden = false;
+
+    if (shortSuggestions.length) {
+      shortWrap.hidden = false;
+      this.renderSuggestionChips(shortList, shortSuggestions, 'suggestion-chip suggestion-chip-short');
+    } else {
+      shortWrap.hidden = true;
+      shortList.innerHTML = '';
+    }
+
+    if (suggestions.length) {
+      this.renderSuggestionChips(list, suggestions);
+    } else {
+      list.innerHTML = '';
+    }
   },
 
   renderFlowIndicator(currentStep) {
@@ -395,12 +441,53 @@ const App = {
 
     if (!text || !this.activeSessionId) return;
 
+    if (this.checkCrisisAndShow(text)) return;
+
     const result = ReflectionEngine.continueSession(this.activeSessionId, text);
     if (!result) return;
 
     input.value = '';
     this.renderReflection();
     this.renderHomeStats();
+  },
+
+  skipReflectionStep() {
+    if (!this.activeSessionId) return;
+    const result = ReflectionEngine.skipCurrentStep(this.activeSessionId);
+    if (!result) return;
+    this.renderReflection();
+  },
+
+  checkCrisisAndShow(text) {
+    if (typeof SafetyEngine === 'undefined') return false;
+    const { detected } = SafetyEngine.detectCrisis(text);
+    if (!detected) return false;
+    this.showCrisisModal();
+    return true;
+  },
+
+  showCrisisModal() {
+    const resources = SafetyEngine.getResources();
+    document.getElementById('crisis-modal-title').textContent = resources.title;
+    document.getElementById('crisis-modal-body').textContent = resources.body;
+    document.getElementById('crisis-modal-footer').textContent = resources.footer;
+    document.getElementById('btn-crisis-understood').textContent = resources.understood;
+
+    const hotlinesEl = document.getElementById('crisis-hotlines');
+    hotlinesEl.innerHTML = resources.hotlines
+      .map(
+        (h) => `
+          <li>
+            <a href="tel:${this.escapeAttr(h.tel)}" class="crisis-hotline-link">
+              <strong>${this.escapeHtml(h.label)}</strong>
+              <span>${this.escapeHtml(h.tel)}</span>
+            </a>
+          </li>
+        `
+      )
+      .join('');
+
+    document.getElementById('crisis-modal').showModal();
   },
 
   // ─── FOREST ───
@@ -630,7 +717,7 @@ const App = {
               .map(
                 (c) => `
               <div class="insight-item ${c.severity === 'high' ? 'danger' : 'warning'}">
-                ${this.escapeHtml(c.message)}
+                ${this.escapeHtml(I18n.formatContradiction(c.message))}
               </div>
             `
               )

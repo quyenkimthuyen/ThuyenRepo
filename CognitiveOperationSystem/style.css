@@ -351,6 +351,28 @@ body::before {
   color: var(--text-muted);
 }
 
+.home-notice {
+  margin-top: 1.25rem;
+  max-width: 32rem;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.home-disclaimer,
+.home-privacy {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.home-privacy {
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
 .home-reset {
   margin-top: 1.25rem;
   padding: 1rem 1.25rem;
@@ -518,6 +540,78 @@ body::before {
 
 .chat-suggestions {
   padding: 0.5rem 0 0.25rem;
+}
+
+.short-suggestions {
+  margin-bottom: 0.5rem;
+}
+
+.suggestion-chip-short {
+  font-size: 0.82rem;
+  padding: 0.35rem 0.65rem;
+  color: var(--text-primary);
+  border-color: rgba(139, 92, 246, 0.25);
+}
+
+.chat-form-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+
+.insights-disclaimer {
+  margin: 0.5rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  max-width: 40rem;
+}
+
+.crisis-modal-content {
+  max-width: 22rem;
+}
+
+.crisis-modal-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.1rem;
+  color: #fecaca;
+}
+
+.crisis-modal-body,
+.crisis-modal-footer {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.crisis-hotlines {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.crisis-hotline-link {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: var(--transition);
+}
+
+.crisis-hotline-link:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.4);
 }
 
 .suggestions-label {
