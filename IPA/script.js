@@ -33,7 +33,10 @@ const ipaData = {
                 { word: "cat", ipa: "kæt", meaning: "con mèo" },
                 { word: "map", ipa: "mæp", meaning: "bản đồ" },
                 { word: "hand", ipa: "hænd", meaning: "bàn tay" },
-                { word: "flag", ipa: "flæg", meaning: "lá cờ" }
+                { word: "flag", ipa: "flæg", meaning: "lá cờ" },
+                { word: "bag", ipa: "bæg", meaning: "cái túi" },
+                { word: "back", ipa: "bæk", meaning: "phía sau" },
+                { word: "dad", ipa: "dæd", meaning: "bố/cha" }
               ]
             },
             {
@@ -47,7 +50,9 @@ const ipaData = {
                 { word: "cake", ipa: "keɪk", meaning: "bánh ngọt" },
                 { word: "late", ipa: "leɪt", meaning: "muộn" },
                 { word: "name", ipa: "neɪm", meaning: "tên" },
-                { word: "game", ipa: "ɡeɪm", meaning: "trò chơi" }
+                { word: "game", ipa: "ɡeɪm", meaning: "trò chơi" },
+                { word: "face", ipa: "feɪs", meaning: "khuôn mặt" },
+                { word: "lake", ipa: "leɪk", meaning: "hồ nước" }
               ]
             },
             {
@@ -61,7 +66,9 @@ const ipaData = {
                 { word: "car", ipa: "kɑː(r)", meaning: "xe hơi" },
                 { word: "park", ipa: "pɑːk", meaning: "công viên" },
                 { word: "star", ipa: "stɑː(r)", meaning: "ngôi sao" },
-                { word: "father", ipa: "ˈfɑːðə(r)", meaning: "cha/bố" }
+                { word: "father", ipa: "ˈfɑːðə(r)", meaning: "cha/bố" },
+                { word: "dark", ipa: "dɑːk", meaning: "tối tăm" },
+                { word: "bark", ipa: "bɑːk", meaning: "sủa/vỏ cây" }
               ]
             },
             {
@@ -75,7 +82,9 @@ const ipaData = {
                 { word: "tall", ipa: "tɔːl", meaning: "cao" },
                 { word: "call", ipa: "kɔːl", meaning: "gọi điện" },
                 { word: "walk", ipa: "wɔːk", meaning: "đi bộ" },
-                { word: "water", ipa: "ˈwɔːtə(r)", meaning: "nước" }
+                { word: "water", ipa: "ˈwɔːtə(r)", meaning: "nước" },
+                { word: "talk", ipa: "tɔːk", meaning: "nói chuyện" },
+                { word: "wall", ipa: "wɔːl", meaning: "bức tường" }
               ]
             },
             {
@@ -89,7 +98,9 @@ const ipaData = {
                 { word: "about", ipa: "əˈbaʊt", meaning: "về/khoảng" },
                 { word: "banana", ipa: "bəˈnɑːnə", meaning: "quả chuối" },
                 { word: "sofa", ipa: "ˈsəʊfə", meaning: "ghế sô-fa" },
-                { word: "agree", ipa: "əˈɡriː", meaning: "đồng ý" }
+                { word: "agree", ipa: "əˈɡriː", meaning: "đồng ý" },
+                { word: "salad", ipa: "ˈsæləd", meaning: "món sa-lát" },
+                { word: "camera", ipa: "ˈkæmrə", meaning: "máy ảnh" }
               ]
             },
             {
@@ -103,7 +114,8 @@ const ipaData = {
                 { word: "care", ipa: "keə(r)", meaning: "chăm sóc" },
                 { word: "share", ipa: "ʃeə(r)", meaning: "chia sẻ" },
                 { word: "rare", ipa: "reə(r)", meaning: "hiếm" },
-                { word: "dare", ipa: "deə(r)", meaning: "dám" }
+                { word: "dare", ipa: "deə(r)", meaning: "dám" },
+                { word: "fare", ipa: "feə(r)", meaning: "tiền vé" }
               ]
             },
             {
@@ -117,7 +129,9 @@ const ipaData = {
                 { word: "village", ipa: "ˈvɪlɪdʒ", meaning: "ngôi làng" },
                 { word: "message", ipa: "ˈmesɪdʒ", meaning: "tin nhắn" },
                 { word: "cabbage", ipa: "ˈkæbɪdʒ", meaning: "bắp cải" },
-                { word: "image", ipa: "ˈɪmɪdʒ", meaning: "hình ảnh" }
+                { word: "image", ipa: "ˈɪmɪdʒ", meaning: "hình ảnh" },
+                { word: "damage", ipa: "ˈdæmɪdʒ", meaning: "thiệt hại" },
+                { word: "package", ipa: "ˈpækɪdʒ", meaning: "gói hàng" }
               ]
             },
             {
@@ -131,7 +145,24 @@ const ipaData = {
                 { word: "was", ipa: "wɒz", meaning: "thì/là (quá khứ)" },
                 { word: "wash", ipa: "wɒʃ", meaning: "rửa/giặt" },
                 { word: "what", ipa: "wɒt", meaning: "cái gì" },
-                { word: "watch", ipa: "wɒtʃ", meaning: "đồng hồ/xem" }
+                { word: "watch", ipa: "wɒtʃ", meaning: "đồng hồ/xem" },
+                { word: "want", ipa: "wɒnt", meaning: "muốn" },
+                { word: "quality", ipa: "ˈkwɒləti", meaning: "chất lượng" }
+              ]
+            },
+            {
+              id: "r-a-9",
+              label: "/eɪ/",
+              type: "rule",
+              ipa: "/eɪ/",
+              desc: "Ngoại lệ phát âm A thành /eɪ/ trước -ng/-nge",
+              rule: "Chữ A phát âm thành /eɪ/ khi đứng trước đuôi phụ âm -ng hoặc cụm -nge.",
+              examples: [
+                { word: "stranger", ipa: "ˈstreɪndʒə(r)", meaning: "người lạ" },
+                { word: "danger", ipa: "ˈdeɪndʒə(r)", meaning: "mối nguy hiểm" },
+                { word: "change", ipa: "tʃeɪndʒ", meaning: "thay đổi" },
+                { word: "arrange", ipa: "əˈreɪndʒ", meaning: "sắp xếp" },
+                { word: "angel", ipa: "ˈeɪndʒl", meaning: "thiên thần" }
               ]
             }
           ]
@@ -153,7 +184,9 @@ const ipaData = {
                 { word: "bed", ipa: "bed", meaning: "cái giường" },
                 { word: "pen", ipa: "pen", meaning: "bút bi" },
                 { word: "red", ipa: "red", meaning: "màu đỏ" },
-                { word: "desk", ipa: "desk", meaning: "bàn học" }
+                { word: "desk", ipa: "desk", meaning: "bàn học" },
+                { word: "wet", ipa: "wet", meaning: "ẩm ướt" },
+                { word: "egg", ipa: "eɡ", meaning: "quả trứng" }
               ]
             },
             {
@@ -167,7 +200,9 @@ const ipaData = {
                 { word: "he", ipa: "hiː", meaning: "anh ấy" },
                 { word: "she", ipa: "ʃiː", meaning: "cô ấy" },
                 { word: "me", ipa: "miː", meaning: "tôi" },
-                { word: "we", ipa: "wiː", meaning: "chúng ta" }
+                { word: "we", ipa: "wiː", meaning: "chúng ta" },
+                { word: "be", ipa: "biː", meaning: "thì/là/ở" },
+                { word: "these", ipa: "ðiːz", meaning: "những cái này" }
               ]
             },
             {
@@ -180,7 +215,24 @@ const ipaData = {
               examples: [
                 { word: "begin", ipa: "bɪˈɡɪn", meaning: "bắt đầu" },
                 { word: "decide", ipa: "dɪˈsaɪd", meaning: "quyết định" },
-                { word: "return", ipa: "rɪˈtɜːn", meaning: "trở về" }
+                { word: "return", ipa: "rɪˈtɜːn", meaning: "trở về" },
+                { word: "behind", ipa: "bɪˈhaɪnd", meaning: "phía sau" },
+                { word: "request", ipa: "rɪˈkwest", meaning: "yêu cầu" }
+              ]
+            },
+            {
+              id: "r-e-4",
+              label: "/ɜː/",
+              type: "rule",
+              ipa: "/ɜː/",
+              desc: "Âm Ơ dài cong lưỡi (tổ hợp er)",
+              rule: "Phát âm là /ɜː/ khi đi trước phụ âm r (er) trong âm tiết nhấn trọng âm.",
+              examples: [
+                { word: "her", ipa: "hɜː(r)", meaning: "cô ấy (tân ngữ/sở hữu)" },
+                { word: "term", ipa: "tɜːm", meaning: "học kỳ/thuật ngữ" },
+                { word: "serve", ipa: "sɜːv", meaning: "phục vụ" },
+                { word: "verb", ipa: "vɜːb", meaning: "động từ" },
+                { word: "fern", ipa: "fɜːn", meaning: "cây dương xỉ" }
               ]
             }
           ]
@@ -202,7 +254,9 @@ const ipaData = {
                 { word: "pin", ipa: "pɪn", meaning: "cái ghim" },
                 { word: "sit", ipa: "sɪt", meaning: "ngồi" },
                 { word: "big", ipa: "bɪɡ", meaning: "to lớn" },
-                { word: "wind", ipa: "wɪnd", meaning: "gió" }
+                { word: "wind", ipa: "wɪnd", meaning: "gió" },
+                { word: "milk", ipa: "mɪlk", meaning: "sữa" },
+                { word: "ring", ipa: "rɪŋ", meaning: "chiếc nhẫn" }
               ]
             },
             {
@@ -216,7 +270,9 @@ const ipaData = {
                 { word: "bite", ipa: "baɪt", meaning: "cắn" },
                 { word: "kind", ipa: "kaɪnd", meaning: "tử tế/loại" },
                 { word: "high", ipa: "haɪ", meaning: "cao" },
-                { word: "light", ipa: "laɪt", meaning: "ánh sáng" }
+                { word: "light", ipa: "laɪt", meaning: "ánh sáng" },
+                { word: "time", ipa: "taɪm", meaning: "thời gian" },
+                { word: "find", ipa: "faɪnd", meaning: "tìm kiếm" }
               ]
             },
             {
@@ -229,7 +285,24 @@ const ipaData = {
               examples: [
                 { word: "girl", ipa: "ɡɜːl", meaning: "cô gái" },
                 { word: "bird", ipa: "bɜːd", meaning: "con chim" },
-                { word: "shirt", ipa: "ʃɜːt", meaning: "áo sơ mi" }
+                { word: "shirt", ipa: "ʃɜːt", meaning: "áo sơ mi" },
+                { word: "first", ipa: "fɜːst", meaning: "đầu tiên" },
+                { word: "skirt", ipa: "skɜːt", meaning: "chân váy" }
+              ]
+            },
+            {
+              id: "r-i-4",
+              label: "/iː/",
+              type: "rule",
+              ipa: "/iː/",
+              desc: "Ngoại lệ phát âm I thành /iː/ (từ mượn gốc Pháp/hiển đại)",
+              rule: "Phát âm là /iː/ trong một số từ mượn tiếng Pháp hoặc từ gốc nước ngoài tương đối mới.",
+              examples: [
+                { word: "machine", ipa: "məˈʃiːn", meaning: "máy móc" },
+                { word: "police", ipa: "pəˈliːs", meaning: "cảnh sát" },
+                { word: "ski", ipa: "skiː", meaning: "trượt tuyết" },
+                { word: "radio", ipa: "ˈreɪdiəʊ", meaning: "máy phát thanh" },
+                { word: "piano", ipa: "piˈænəʊ", meaning: "đàn dương cầm" }
               ]
             }
           ]
@@ -251,7 +324,9 @@ const ipaData = {
                 { word: "hot", ipa: "hɒt", meaning: "nóng" },
                 { word: "dog", ipa: "dɒɡ", meaning: "con chó" },
                 { word: "box", ipa: "bɒks", meaning: "cái hộp" },
-                { word: "stop", ipa: "stɒp", meaning: "dừng lại" }
+                { word: "stop", ipa: "stɒp", meaning: "dừng lại" },
+                { word: "job", ipa: "dʒɒb", meaning: "công việc" },
+                { word: "top", ipa: "tɒp", meaning: "đỉnh/trên cùng" }
               ]
             },
             {
@@ -265,7 +340,9 @@ const ipaData = {
                 { word: "go", ipa: "ɡəʊ", meaning: "đi" },
                 { word: "home", ipa: "həʊm", meaning: "nhà" },
                 { word: "cold", ipa: "kəʊld", meaning: "lạnh" },
-                { word: "stone", ipa: "stəʊn", meaning: "hòn đá" }
+                { word: "stone", ipa: "stəʊn", meaning: "hòn đá" },
+                { word: "gold", ipa: "ɡəʊld", meaning: "vàng" },
+                { word: "old", ipa: "əʊld", meaning: "cũ/già" }
               ]
             },
             {
@@ -279,7 +356,9 @@ const ipaData = {
                 { word: "son", ipa: "sʌn", meaning: "con trai" },
                 { word: "come", ipa: "kʌm", meaning: "đến" },
                 { word: "love", ipa: "lʌv", meaning: "yêu" },
-                { word: "glove", ipa: "ɡlʌv", meaning: "găng tay" }
+                { word: "glove", ipa: "ɡlʌv", meaning: "găng tay" },
+                { word: "mother", ipa: "ˈmʌðə(r)", meaning: "mẹ" },
+                { word: "brother", ipa: "ˈbrʌðə(r)", meaning: "anh/em trai" }
               ]
             },
             {
@@ -293,7 +372,9 @@ const ipaData = {
                 { word: "do", ipa: "duː", meaning: "làm" },
                 { word: "to", ipa: "tuː", meaning: "đến/hướng tới" },
                 { word: "move", ipa: "muːv", meaning: "di chuyển" },
-                { word: "lose", ipa: "luːz", meaning: "mất/thua" }
+                { word: "lose", ipa: "luːz", meaning: "mất/thua" },
+                { word: "tomb", ipa: "tuːm", meaning: "ngôi mộ" },
+                { word: "prove", ipa: "pruːv", meaning: "chứng minh" }
               ]
             },
             {
@@ -306,7 +387,24 @@ const ipaData = {
               examples: [
                 { word: "work", ipa: "wɜːk", meaning: "làm việc" },
                 { word: "word", ipa: "wɜːd", meaning: "từ ngữ" },
-                { word: "world", ipa: "wɜːld", meaning: "thế giới" }
+                { word: "world", ipa: "wɜːld", meaning: "thế giới" },
+                { word: "worse", ipa: "wɜːs", meaning: "tồi tệ hơn" },
+                { word: "worst", ipa: "wɜːst", meaning: "tồi tệ nhất" }
+              ]
+            },
+            {
+              id: "r-o-6",
+              label: "/ɔː/",
+              type: "rule",
+              ipa: "/ɔː/",
+              desc: "Âm O dài (tổ hợp or trước phụ âm)",
+              rule: "Chữ O phát âm là /ɔː/ khi đi liền trước r tạo thành tổ hợp or.",
+              examples: [
+                { word: "for", ipa: "fɔː(r)", meaning: "cho/dành cho" },
+                { word: "horse", ipa: "hɔːs", meaning: "con ngựa" },
+                { word: "morning", ipa: "ˈmɔːnɪŋ", meaning: "buổi sáng" },
+                { word: "short", ipa: "ʃɔːt", meaning: "ngắn" },
+                { word: "port", ipa: "pɔːt", meaning: "cảng biển" }
               ]
             }
           ]
@@ -328,7 +426,9 @@ const ipaData = {
                 { word: "cup", ipa: "kʌp", meaning: "cái tách/chén" },
                 { word: "cut", ipa: "kʌt", meaning: "cắt" },
                 { word: "sun", ipa: "sʌn", meaning: "mặt trời" },
-                { word: "run", ipa: "rʌn", meaning: "chạy" }
+                { word: "run", ipa: "rʌn", meaning: "chạy" },
+                { word: "bus", ipa: "bʌs", meaning: "xe buýt" },
+                { word: "duck", ipa: "dʌk", meaning: "con vịt" }
               ]
             },
             {
@@ -342,7 +442,9 @@ const ipaData = {
                 { word: "use", ipa: "juːz", meaning: "sử dụng" },
                 { word: "cute", ipa: "kjuːt", meaning: "dễ thương" },
                 { word: "music", ipa: "ˈmjuːzɪk", meaning: "âm nhạc" },
-                { word: "unit", ipa: "ˈjuːnɪt", meaning: "đơn vị" }
+                { word: "unit", ipa: "ˈjuːnɪt", meaning: "đơn vị" },
+                { word: "tube", ipa: "tjuːb", meaning: "ống/tuýp" },
+                { word: "student", ipa: "ˈstjuːdnt", meaning: "học sinh" }
               ]
             },
             {
@@ -351,12 +453,14 @@ const ipaData = {
               type: "rule",
               ipa: "/uː/",
               desc: "Âm U dài chu môi",
-              rule: "Phát âm là /uː/ khi đứng sau các âm /r/, /l/, /dʒ/ (chữ j, ch) trong cấu trúc u_e.",
+              rule: "Phát âm là /uː/ khi đứng sau các âm /r/, /l/, /dʒ/ (chữ j, ch) trong cấu trúc u_e hoặc nguyên âm u đơn lẻ.",
               examples: [
                 { word: "rule", ipa: "ruːl", meaning: "quy luật" },
-                { word: "blue", ipa: "bluː", meaning: "màu xanh dương" },
                 { word: "June", ipa: "dʒuːn", meaning: "tháng 6" },
-                { word: "flute", ipa: "fluːt", meaning: "cây sáo" }
+                { word: "flute", ipa: "fluːt", meaning: "cây sáo" },
+                { word: "truth", ipa: "truːθ", meaning: "sự thật" },
+                { word: "rude", ipa: "ruːd", meaning: "thô lỗ" },
+                { word: "super", ipa: "ˈsuːpə(r)", meaning: "siêu cấp/tuyệt vời" }
               ]
             },
             {
@@ -370,7 +474,9 @@ const ipaData = {
                 { word: "put", ipa: "pʊt", meaning: "đặt/để" },
                 { word: "push", ipa: "pʊʃ", meaning: "đẩy" },
                 { word: "pull", ipa: "pʊl", meaning: "kéo" },
-                { word: "full", ipa: "fʊl", meaning: "đầy" }
+                { word: "full", ipa: "fʊl", meaning: "đầy" },
+                { word: "bull", ipa: "bʊl", meaning: "con bò tót" },
+                { word: "bush", ipa: "bʊʃ", meaning: "bụi cây" }
               ]
             },
             {
@@ -383,7 +489,10 @@ const ipaData = {
               examples: [
                 { word: "burn", ipa: "bɜːn", meaning: "đốt cháy" },
                 { word: "turn", ipa: "tɜːn", meaning: "xoay/lượt" },
-                { word: "nurse", ipa: "nɜːs", meaning: "y tá" }
+                { word: "nurse", ipa: "nɜːs", meaning: "y tá" },
+                { word: "hurt", ipa: "hɜːt", meaning: "đau/làm đau" },
+                { word: "purple", ipa: "ˈpɜːpl", meaning: "màu tím" },
+                { word: "fur", ipa: "fɜː(r)", meaning: "lông thú" }
               ]
             }
           ]
@@ -405,7 +514,10 @@ const ipaData = {
                 { word: "my", ipa: "maɪ", meaning: "của tôi" },
                 { word: "fly", ipa: "flaɪ", meaning: "bay/con ruồi" },
                 { word: "cry", ipa: "kraɪ", meaning: "khóc" },
-                { word: "by", ipa: "baɪ", meaning: "bởi/cạnh bên" }
+                { word: "by", ipa: "baɪ", meaning: "bởi/cạnh bên" },
+                { word: "sky", ipa: "skaɪ", meaning: "bầu trời" },
+                { word: "why", ipa: "waɪ", meaning: "tại sao" },
+                { word: "try", ipa: "traɪ", meaning: "thử/cố gắng" }
               ]
             },
             {
@@ -419,7 +531,10 @@ const ipaData = {
                 { word: "baby", ipa: "ˈbeɪbi", meaning: "em bé" },
                 { word: "happy", ipa: "ˈhæpi", meaning: "hạnh phúc" },
                 { word: "very", ipa: "ˈveri", meaning: "rất" },
-                { word: "lady", ipa: "ˈleɪdi", meaning: "quý cô" }
+                { word: "lady", ipa: "ˈleɪdi", meaning: "quý cô" },
+                { word: "family", ipa: "ˈfæməli", meaning: "gia đình" },
+                { word: "city", ipa: "ˈsɪti", meaning: "thành phố" },
+                { word: "party", ipa: "ˈpɑːti", meaning: "bữa tiệc" }
               ]
             },
             {
@@ -432,7 +547,10 @@ const ipaData = {
               examples: [
                 { word: "yes", ipa: "jes", meaning: "vâng/phải" },
                 { word: "yellow", ipa: "ˈjeləʊ", meaning: "màu vàng" },
-                { word: "young", ipa: "jʌŋ", meaning: "trẻ tuổi" }
+                { word: "young", ipa: "jʌŋ", meaning: "trẻ tuổi" },
+                { word: "you", ipa: "juː", meaning: "bạn/các bạn" },
+                { word: "yard", ipa: "jɑːd", meaning: "sân vườn" },
+                { word: "year", ipa: "jɪə(r)", meaning: "năm" }
               ]
             }
           ]
@@ -447,7 +565,7 @@ const ipaData = {
       children: [
         {
           id: "vd-ai",
-          label: "ai / ay",
+          label: "ai",
           type: "letter",
           category: "vowel-digraph",
           children: [
@@ -457,12 +575,40 @@ const ipaData = {
               type: "rule",
               ipa: "/eɪ/",
               desc: "Âm đôi A-I (đọc như 'ây')",
-              rule: "Hầu hết các tổ hợp AI hoặc AY đều phát âm là /eɪ/.",
+              rule: "Hầu hết các tổ hợp AI đều phát âm là /eɪ/.",
               examples: [
                 { word: "rain", ipa: "reɪn", meaning: "mưa" },
                 { word: "wait", ipa: "weɪt", meaning: "chờ đợi" },
-                { word: "day", ipa: "deɪn", meaning: "ngày" },
-                { word: "play", ipa: "pleɪ", meaning: "chơi" }
+                { word: "pain", ipa: "peɪn", meaning: "đau đớn" },
+                { word: "mail", ipa: "meɪl", meaning: "thư từ" },
+                { word: "tail", ipa: "teɪl", meaning: "cái đuôi" },
+                { word: "brain", ipa: "breɪn", meaning: "não bộ" },
+                { word: "nail", ipa: "neɪl", meaning: "móng tay/cây đinh" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "vd-ay",
+          label: "ay",
+          type: "letter",
+          category: "vowel-digraph",
+          children: [
+            {
+              id: "r-ay-1",
+              label: "/eɪ/",
+              type: "rule",
+              ipa: "/eɪ/",
+              desc: "Âm đôi A-I (đọc như 'ây')",
+              rule: "Hầu hết các tổ hợp AY đều phát âm là /eɪ/.",
+              examples: [
+                { word: "play", ipa: "pleɪ", meaning: "chơi" },
+                { word: "day", ipa: "deɪ", meaning: "ngày" },
+                { word: "say", ipa: "seɪ", meaning: "nói" },
+                { word: "way", ipa: "weɪ", meaning: "đường đi" },
+                { word: "stay", ipa: "steɪ", meaning: "ở lại" },
+                { word: "gray", ipa: "ɡreɪ", meaning: "màu xám" },
+                { word: "clay", ipa: "kleɪ", meaning: "đất sét" }
               ]
             }
           ]
@@ -484,7 +630,10 @@ const ipaData = {
                 { word: "meat", ipa: "miːt", meaning: "thịt" },
                 { word: "seat", ipa: "siːt", meaning: "chỗ ngồi" },
                 { word: "eat", ipa: "iːt", meaning: "ăn" },
-                { word: "tea", ipa: "tiː", meaning: "trà" }
+                { word: "tea", ipa: "tiː", meaning: "trà" },
+                { word: "clean", ipa: "kliːn", meaning: "sạch sẽ" },
+                { word: "read", ipa: "riːd", meaning: "đọc" },
+                { word: "beach", ipa: "biːtʃ", meaning: "bãi biển" }
               ]
             },
             {
@@ -498,11 +647,27 @@ const ipaData = {
                 { word: "head", ipa: "hed", meaning: "cái đầu" },
                 { word: "bread", ipa: "bred", meaning: "bánh mì" },
                 { word: "heavy", ipa: "ˈhevi", meaning: "nặng" },
-                { word: "dead", ipa: "ded", meaning: "chết" }
+                { word: "dead", ipa: "ded", meaning: "chết" },
+                { word: "sweat", ipa: "swet", meaning: "mồ hôi" },
+                { word: "ready", ipa: "ˈredi", meaning: "sẵn sàng" },
+                { word: "health", ipa: "helθ", meaning: "sức khỏe" }
               ]
             },
             {
               id: "r-ea-3",
+              label: "/eɪ/",
+              type: "rule",
+              ipa: "/eɪ/",
+              desc: "Âm đôi A-I (đọc như 'ây')",
+              rule: "Một số từ đặc biệt phát âm tổ hợp EA thành /eɪ/.",
+              examples: [
+                { word: "great", ipa: "ɡreɪt", meaning: "tuyệt vời" },
+                { word: "break", ipa: "breɪk", meaning: "làm vỡ" },
+                { word: "steak", ipa: "steɪk", meaning: "thịt bít tết" }
+              ]
+            },
+            {
+              id: "r-ea-4",
               label: "/ɪə/",
               type: "rule",
               ipa: "/ɪə/",
@@ -511,11 +676,14 @@ const ipaData = {
               examples: [
                 { word: "near", ipa: "nɪə(r)", meaning: "gần" },
                 { word: "hear", ipa: "hɪə(r)", meaning: "nghe" },
-                { word: "clear", ipa: "klɪə(r)", meaning: "rõ ràng" }
+                { word: "clear", ipa: "klɪə(r)", meaning: "rõ ràng" },
+                { word: "dear", ipa: "dɪə(r)", meaning: "thân gửi/đắt đỏ" },
+                { word: "fear", ipa: "fɪə(r)", meaning: "nỗi sợ hãi" },
+                { word: "year", ipa: "jɪə(r)", meaning: "năm" }
               ]
             },
             {
-              id: "r-ea-4",
+              id: "r-ea-5",
               label: "/eə/",
               type: "rule",
               ipa: "/eə/",
@@ -524,7 +692,8 @@ const ipaData = {
               examples: [
                 { word: "bear", ipa: "beə(r)", meaning: "con gấu" },
                 { word: "pear", ipa: "peə(r)", meaning: "quả lê" },
-                { word: "wear", ipa: "weə(r)", meaning: "mặc (áo)" }
+                { word: "wear", ipa: "weə(r)", meaning: "mặc (áo)" },
+                { word: "tear", ipa: "teə(r)", meaning: "giật, xé rách" }
               ]
             }
           ]
@@ -546,14 +715,17 @@ const ipaData = {
                 { word: "meet", ipa: "miːt", meaning: "gặp gỡ" },
                 { word: "green", ipa: "ɡriːn", meaning: "màu xanh lá" },
                 { word: "tree", ipa: "triː", meaning: "cái cây" },
-                { word: "feel", ipa: "fiːl", meaning: "cảm thấy" }
+                { word: "feel", ipa: "fiːl", meaning: "cảm thấy" },
+                { word: "sleep", ipa: "sliːp", meaning: "ngủ" },
+                { word: "teeth", ipa: "tiːθ", meaning: "răng (số nhiều)" },
+                { word: "seed", ipa: "siːd", meaning: "hạt giống" }
               ]
             }
           ]
         },
         {
           id: "vd-ei",
-          label: "ei / ey",
+          label: "ei",
           type: "letter",
           category: "vowel-digraph",
           children: [
@@ -563,11 +735,13 @@ const ipaData = {
               type: "rule",
               ipa: "/eɪ/",
               desc: "Âm đôi A-I (đọc như 'ây')",
-              rule: "Phát âm thành /eɪ/ trong phần lớn các từ chứa tổ hợp này.",
+              rule: "Tổ hợp EI phát âm thành /eɪ/ trong phần lớn các từ chứa tổ hợp này.",
               examples: [
+                { word: "eight", ipa: "eɪt", meaning: "số tám" },
                 { word: "vein", ipa: "veɪn", meaning: "tĩnh mạch" },
-                { word: "grey", ipa: "ɡreɪ", meaning: "màu xám" },
-                { word: "obey", ipa: "əˈbeɪ", meaning: "vâng lời" }
+                { word: "weight", ipa: "weɪt", meaning: "cân nặng" },
+                { word: "freight", ipa: "freɪt", meaning: "hàng hóa chuyên chở" },
+                { word: "beige", ipa: "beɪʒ", meaning: "màu be" }
               ]
             },
             {
@@ -576,11 +750,116 @@ const ipaData = {
               type: "rule",
               ipa: "/iː/",
               desc: "Âm I dài căng",
-              rule: "Phát âm thành /iː/ khi đứng sau chữ C (như ceive) hoặc một số ngoại lệ.",
+              rule: "Tổ hợp EI phát âm thành /iː/ khi đứng sau chữ C (như ceive) hoặc một số ngoại lệ.",
               examples: [
                 { word: "ceiling", ipa: "ˈsiːlɪŋ", meaning: "trần nhà" },
                 { word: "receive", ipa: "rɪˈsiːv", meaning: "nhận được" },
-                { word: "key", ipa: "kiː", meaning: "chìa khóa" }
+                { word: "deceive", ipa: "rɪˈsiːv", meaning: "lừa dối" },
+                { word: "receipt", ipa: "rɪˈsiːt", meaning: "biên lai" },
+                { word: "seize", ipa: "siːz", meaning: "nắm bắt/tịch thu" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "vd-ey",
+          label: "ey",
+          type: "letter",
+          category: "vowel-digraph",
+          children: [
+            {
+              id: "r-ey-1",
+              label: "/eɪ/",
+              type: "rule",
+              ipa: "/eɪ/",
+              desc: "Âm đôi A-I (đọc như 'ây')",
+              rule: "Tổ hợp EY phát âm thành /eɪ/ trong phần lớn các từ chứa tổ hợp này.",
+              examples: [
+                { word: "they", ipa: "ðeɪ", meaning: "họ/chúng nó" },
+                { word: "grey", ipa: "ɡreɪ", meaning: "màu xám" },
+                { word: "obey", ipa: "əˈbeɪ", meaning: "vâng lời" },
+                { word: "convey", ipa: "kənˈveɪ", meaning: "truyền đạt" },
+                { word: "survey", ipa: "ˈsɜːveɪ", meaning: "khảo sát" }
+              ]
+            },
+            {
+              id: "r-ey-2",
+              label: "/iː/",
+              type: "rule",
+              ipa: "/iː/",
+              desc: "Âm I dài căng",
+              rule: "Tổ hợp EY phát âm thành /iː/ trong một số trường hợp đặc biệt.",
+              examples: [
+                { word: "key", ipa: "kiː", meaning: "chìa khóa" },
+                { word: "honey", ipa: "ˈhʌni", meaning: "mật ong" },
+                { word: "monkey", ipa: "ˈmʌŋki", meaning: "con khỉ" },
+                { word: "donkey", ipa: "ˈdɒŋki", meaning: "con lừa" },
+                { word: "valley", ipa: "ˈvæli", meaning: "thung lũng" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "vd-ie",
+          label: "ie",
+          type: "letter",
+          category: "vowel-digraph",
+          children: [
+            {
+              id: "r-ie-1",
+              label: "/aɪ/",
+              type: "rule",
+              ipa: "/aɪ/",
+              desc: "Âm đôi A-I (đọc như 'ai')",
+              rule: "Tổ hợp IE phát âm là /aɪ/ khi đứng cuối từ một âm tiết.",
+              examples: [
+                { word: "pie", ipa: "paɪ", meaning: "bánh nướng" },
+                { word: "tie", ipa: "taɪ", meaning: "cà vạt" },
+                { word: "die", ipa: "daɪ", meaning: "chết" },
+                { word: "lie", ipa: "laɪ", meaning: "nói dối" },
+                { word: "cried", ipa: "kraɪd", meaning: "đã khóc" },
+                { word: "tried", ipa: "traɪd", meaning: "đã cố gắng" }
+              ]
+            },
+            {
+              id: "r-ie-2",
+              label: "/iː/",
+              type: "rule",
+              ipa: "/iː/",
+              desc: "Âm I dài căng",
+              rule: "Tổ hợp IE phát âm là /iː/ trong cụm ghìm ở giữa một số từ.",
+              examples: [
+                { word: "thief", ipa: "θiːf", meaning: "tên trộm" },
+                { word: "field", ipa: "fiːld", meaning: "cánh đồng" },
+                { word: "chief", ipa: "tʃiːf", meaning: "người đứng đầu" },
+                { word: "brief", ipa: "briːf", meaning: "ngắn gọn" },
+                { word: "shield", ipa: "ʃiːld", meaning: "lá chắn" },
+                { word: "belief", ipa: "bɪˈliːf", meaning: "niềm tin" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "vd-igh",
+          label: "igh",
+          type: "letter",
+          category: "vowel-digraph",
+          children: [
+            {
+              id: "r-igh-1",
+              label: "/aɪ/",
+              type: "rule",
+              ipa: "/aɪ/",
+              desc: "Âm đôi A-I (đọc như 'ai')",
+              rule: "Tổ hợp IGH luôn phát âm là /aɪ/ (với âm GH câm).",
+              examples: [
+                { word: "night", ipa: "naɪt", meaning: "ban đêm" },
+                { word: "high", ipa: "haɪ", meaning: "cao" },
+                { word: "light", ipa: "laɪt", meaning: "ánh sáng" },
+                { word: "right", ipa: "raɪt", meaning: "đúng/bên phải" },
+                { word: "fight", ipa: "faɪt", meaning: "chiến đấu" },
+                { word: "sight", ipa: "saɪt", meaning: "tầm nhìn" },
+                { word: "tight", ipa: "taɪt", meaning: "chặt chẽ" }
               ]
             }
           ]
@@ -602,14 +881,52 @@ const ipaData = {
                 { word: "boat", ipa: "bəʊt", meaning: "con thuyền" },
                 { word: "coat", ipa: "kəʊt", meaning: "áo khoác" },
                 { word: "road", ipa: "rəʊd", meaning: "con đường" },
-                { word: "soap", ipa: "səʊp", meaning: "xà phòng" }
+                { word: "soap", ipa: "səʊp", meaning: "xà phòng" },
+                { word: "goat", ipa: "ɡəʊt", meaning: "con dê" },
+                { word: "loaf", ipa: "ləʊf", meaning: "ổ bánh mì" },
+                { word: "toast", ipa: "təʊst", meaning: "bánh mì nướng" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "vd-oe",
+          label: "oe",
+          type: "letter",
+          category: "vowel-digraph",
+          children: [
+            {
+              id: "r-oe-1",
+              label: "/əʊ/",
+              type: "rule",
+              ipa: "/əʊ/",
+              desc: "Âm đôi Ơ-U (đọc như 'âu')",
+              rule: "Tổ hợp OE thường phát âm là /əʊ/ ở cuối một số từ ngắn.",
+              examples: [
+                { word: "toe", ipa: "təʊ", meaning: "ngón chân" },
+                { word: "foe", ipa: "fəʊ", meaning: "kẻ thù" },
+                { word: "goes", ipa: "ɡəʊz", meaning: "đi (chia ngôi ba)" },
+                { word: "hoe", ipa: "həʊ", meaning: "cái cuốc" },
+                { word: "woe", ipa: "wəʊ", meaning: "nỗi đau buồn" }
+              ]
+            },
+            {
+              id: "r-oe-2",
+              label: "/uː/",
+              type: "rule",
+              ipa: "/uː/",
+              desc: "Âm U dài chu môi",
+              rule: "Một số ngoại lệ phát âm tổ hợp OE thành /uː/.",
+              examples: [
+                { word: "shoe", ipa: "ʃuː", meaning: "chiếc giày" },
+                { word: "canoe", ipa: "kəˈnuː", meaning: "xuồng ba lá" }
               ]
             }
           ]
         },
         {
           id: "vd-oi",
-          label: "oi / oy",
+          label: "oi",
           type: "letter",
           category: "vowel-digraph",
           children: [
@@ -619,12 +936,40 @@ const ipaData = {
               type: "rule",
               ipa: "/ɔɪ/",
               desc: "Âm đôi O-I (đọc như 'oi')",
-              rule: "Tổ hợp OI (ở giữa từ) hoặc OY (ở cuối từ) luôn phát âm là /ɔɪ/.",
+              rule: "Tổ hợp OI (thường ở giữa từ) luôn phát âm là /ɔɪ/.",
               examples: [
                 { word: "coin", ipa: "kɔɪn", meaning: "đồng xu" },
                 { word: "oil", ipa: "ɔɪl", meaning: "dầu ăn" },
+                { word: "boil", ipa: "bɔɪl", meaning: "nước sôi" },
+                { word: "point", ipa: "pɔɪnt", meaning: "điểm số" },
+                { word: "join", ipa: "dʒɔɪn", meaning: "tham gia" },
+                { word: "voice", ipa: "vɔɪs", meaning: "giọng nói" },
+                { word: "noise", ipa: "nɔɪz", meaning: "tiếng ồn" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "vd-oy",
+          label: "oy",
+          type: "letter",
+          category: "vowel-digraph",
+          children: [
+            {
+              id: "r-oy-1",
+              label: "/ɔɪ/",
+              type: "rule",
+              ipa: "/ɔɪ/",
+              desc: "Âm đôi O-I (đọc như 'oi')",
+              rule: "Tổ hợp OY (thường ở cuối từ) luôn phát âm là /ɔɪ/.",
+              examples: [
                 { word: "boy", ipa: "bɔɪ", meaning: "cậu bé" },
-                { word: "toy", ipa: "tɔɪ", meaning: "đồ chơi" }
+                { word: "toy", ipa: "tɔɪ", meaning: "đồ chơi" },
+                { word: "joy", ipa: "dʒɔɪ", meaning: "niềm vui" },
+                { word: "annoy", ipa: "əˈnɔɪ", meaning: "làm phiền" },
+                { word: "enjoy", ipa: "enjoy", meaning: "thưởng thức/thích thú" },
+                { word: "royal", ipa: "ˈrɔɪəl", meaning: "hoàng gia" },
+                { word: "loyal", ipa: "ˈlɔɪəl", meaning: "trung thành" }
               ]
             }
           ]
@@ -646,7 +991,10 @@ const ipaData = {
                 { word: "moon", ipa: "muːn", meaning: "mặt trăng" },
                 { word: "food", ipa: "fuːd", meaning: "thức ăn" },
                 { word: "cool", ipa: "kuːl", meaning: "mát mẻ" },
-                { word: "spoon", ipa: "spuːn", meaning: "cái thìa" }
+                { word: "spoon", ipa: "spuːn", meaning: "cái thìa" },
+                { word: "room", ipa: "ruːm", meaning: "căn phòng" },
+                { word: "tooth", ipa: "tuːθ", meaning: "răng (số ít)" },
+                { word: "boot", ipa: "buːt", meaning: "đôi ủng" }
               ]
             },
             {
@@ -660,7 +1008,10 @@ const ipaData = {
                 { word: "book", ipa: "bʊk", meaning: "sách" },
                 { word: "foot", ipa: "fʊt", meaning: "bàn chân" },
                 { word: "good", ipa: "ɡʊd", meaning: "tốt" },
-                { word: "look", ipa: "lʊk", meaning: "nhìn" }
+                { word: "look", ipa: "lʊk", meaning: "nhìn" },
+                { word: "wood", ipa: "wʊd", meaning: "gỗ" },
+                { word: "cook", ipa: "kʊk", meaning: "nấu ăn" },
+                { word: "hook", ipa: "hʊk", meaning: "cái móc" }
               ]
             },
             {
@@ -691,10 +1042,13 @@ const ipaData = {
               desc: "Âm đôi A-U (đọc như 'ao')",
               rule: "Cách phát âm phổ biến nhất của tổ hợp OU.",
               examples: [
-                { word: "out", ipa: "aʊt", meaning: "ra ngoài" },
                 { word: "house", ipa: "haʊs", meaning: "ngôi nhà" },
+                { word: "out", ipa: "aʊt", meaning: "ra ngoài" },
                 { word: "mouth", ipa: "maʊθ", meaning: "cái miệng" },
-                { word: "cloud", ipa: "klaʊd", meaning: "đám mây" }
+                { word: "cloud", ipa: "klaʊd", meaning: "đám mây" },
+                { word: "mouse", ipa: "maʊs", meaning: "con chuột" },
+                { word: "sound", ipa: "saʊnd", meaning: "âm thanh" },
+                { word: "round", ipa: "raʊnd", meaning: "vòng tròn" }
               ]
             },
             {
@@ -707,7 +1061,9 @@ const ipaData = {
               examples: [
                 { word: "soup", ipa: "suːp", meaning: "súp/canh" },
                 { word: "group", ipa: "ɡruːp", meaning: "nhóm" },
-                { word: "wound", ipa: "wuːnd", meaning: "vết thương" }
+                { word: "wound", ipa: "wuːnd", meaning: "vết thương" },
+                { word: "route", ipa: "ruːt", meaning: "tuyến đường" },
+                { word: "youth", ipa: "juːθ", meaning: "tuổi trẻ" }
               ]
             },
             {
@@ -720,7 +1076,10 @@ const ipaData = {
               examples: [
                 { word: "double", ipa: "ˈdʌbl", meaning: "gấp đôi" },
                 { word: "cousin", ipa: "ˈkʌzn", meaning: "anh chị em họ" },
-                { word: "tough", ipa: "tʌf", meaning: "dai/khó khăn" }
+                { word: "tough", ipa: "tʌf", meaning: "dai/khó khăn" },
+                { word: "rough", ipa: "rʌf", meaning: "nhám/gồ ghề" },
+                { word: "trouble", ipa: "ˈtrʌbl", meaning: "rắc rối" },
+                { word: "country", ipa: "ˈkʌntri", meaning: "đất nước" }
               ]
             },
             {
@@ -733,7 +1092,9 @@ const ipaData = {
               examples: [
                 { word: "thought", ipa: "θɔːt", meaning: "suy nghĩ (V2)" },
                 { word: "bought", ipa: "bɔːt", meaning: "mua (V2)" },
-                { word: "fought", ipa: "fɔːt", meaning: "chiến đấu (V2)" }
+                { word: "fought", ipa: "fɔːt", meaning: "chiến đấu (V2)" },
+                { word: "brought", ipa: "brɔːt", meaning: "mang lại (V2)" },
+                { word: "sought", ipa: "sɔːt", meaning: "tìm kiếm (V2)" }
               ]
             }
           ]
@@ -755,7 +1116,10 @@ const ipaData = {
                 { word: "cow", ipa: "kaʊ", meaning: "con bò sữa" },
                 { word: "now", ipa: "naʊ", meaning: "bây giờ" },
                 { word: "town", ipa: "taʊn", meaning: "thị trấn" },
-                { word: "flower", ipa: "ˈflaʊə(r)", meaning: "bông hoa" }
+                { word: "flower", ipa: "ˈflaʊə(r)", meaning: "bông hoa" },
+                { word: "down", ipa: "daʊn", meaning: "xuống dưới" },
+                { word: "brown", ipa: "braʊn", meaning: "màu nâu" },
+                { word: "power", ipa: "ˈpaʊə(r)", meaning: "sức mạnh" }
               ]
             },
             {
@@ -766,10 +1130,91 @@ const ipaData = {
               desc: "Âm đôi Ơ-U (đọc như 'âu')",
               rule: "Tổ hợp OW thường được phát âm thành /əʊ/ khi ở cuối các từ chứa nhiều âm tiết hoặc động từ chỉ sự hành động chậm rãi.",
               examples: [
-                { word: "blow", ipa: "bləʊ", meaning: "thổi" },
                 { word: "snow", ipa: "snəʊ", meaning: "tuyết rơi" },
+                { word: "blow", ipa: "bləʊ", meaning: "thổi" },
                 { word: "grow", ipa: "ɡrəʊ", meaning: "lớn lên/trồng" },
-                { word: "show", ipa: "ʃəʊ", meaning: "trình diễn" }
+                { word: "show", ipa: "ʃəʊ", meaning: "trình diễn" },
+                { word: "slow", ipa: "sləʊ", meaning: "chậm chạp" },
+                { word: "bowl", ipa: "bəʊl", meaning: "cái bát/chén" },
+                { word: "row", ipa: "rəʊ", meaning: "hàng/dòng" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "vd-ue",
+          label: "ue",
+          type: "letter",
+          category: "vowel-digraph",
+          children: [
+            {
+              id: "r-ue-1",
+              label: "/uː/",
+              type: "rule",
+              ipa: "/uː/",
+              desc: "Âm U dài chu môi",
+              rule: "Tổ hợp UE thường phát âm là /uː/ sau các âm l, r.",
+              examples: [
+                { word: "blue", ipa: "bluː", meaning: "màu xanh dương" },
+                { word: "clue", ipa: "kluː", meaning: "manh mối" },
+                { word: "true", ipa: "truː", meaning: "đúng đắn" },
+                { word: "glue", ipa: "ɡluː", meaning: "keo dán" },
+                { word: "issue", ipa: "ˈɪʃuː", meaning: "vấn đề" },
+                { word: "tissue", ipa: "ˈtɪʃuː", meaning: "khăn giấy" }
+              ]
+            },
+            {
+              id: "r-ue-2",
+              label: "/juː/",
+              type: "rule",
+              ipa: "/juː/",
+              desc: "Âm đôi I-U (đọc như 'diu')",
+              rule: "Tổ hợp UE phát âm là /juː/ ở cuối một số từ khác.",
+              examples: [
+                { word: "cue", ipa: "kjuː", meaning: "gợi ý/tín hiệu" },
+                { word: "due", ipa: "djuː", meaning: "đến hạn" },
+                { word: "argue", ipa: "ˈɑːɡjuː", meaning: "tranh luận" },
+                { word: "value", ipa: "ˈvæljuː", meaning: "giá trị" },
+                { word: "rescue", ipa: "ˈreskjuː", meaning: "giải cứu" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "vd-ui",
+          label: "ui",
+          type: "letter",
+          category: "vowel-digraph",
+          children: [
+            {
+              id: "r-ui-1",
+              label: "/uː/",
+              type: "rule",
+              ipa: "/uː/",
+              desc: "Âm U dài chu môi",
+              rule: "Tổ hợp UI thường phát âm là /uː/ sau các phụ âm.",
+              examples: [
+                { word: "fruit", ipa: "fruːt", meaning: "trái cây/hoa quả" },
+                { word: "juice", ipa: "dʒuːs", meaning: "nước ép" },
+                { word: "suit", ipa: "suːt", meaning: "bộ com-lê" },
+                { word: "cruise", ipa: "kruːz", meaning: "du thuyền" },
+                { word: "bruise", ipa: "bruːz", meaning: "vết bầm tím" },
+                { word: "nuisance", ipa: "ˈnjuːsns", meaning: "sự phiền toái" }
+              ]
+            },
+            {
+              id: "r-ui-2",
+              label: "/ɪ/",
+              type: "rule",
+              ipa: "/ɪ/",
+              desc: "Âm I ngắn",
+              rule: "Phát âm thành /ɪ/ ở một số từ thông dụng đặc biệt.",
+              examples: [
+                { word: "build", ipa: "bɪld", meaning: "xây dựng" },
+                { word: "guilt", ipa: "ɡɪlt", meaning: "tội lỗi" },
+                { word: "guitar", ipa: "ɡɪˈtɑː(r)", meaning: "đàn ghi-ta" },
+                { word: "biscuit", ipa: "ˈbɪskɪt", meaning: "bánh quy" },
+                { word: "guinea", ipa: "ˈɡɪni", meaning: "đồng ghi-nê" }
               ]
             }
           ]
@@ -1006,6 +1451,535 @@ const ipaData = {
           ]
         }
       ]
+    },
+    {
+      id: "consonant-single",
+      label: "Phụ âm đơn",
+      type: "category",
+      color: "var(--color-consonant-single)",
+      children: [
+        {
+          id: "cs-b",
+          label: "b",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-b-1",
+              label: "/b/",
+              type: "rule",
+              ipa: "/b/",
+              desc: "Âm Bờ rung nhẹ môi",
+              rule: "Chữ B hầu như luôn được phát âm là /b/.",
+              examples: [
+                { word: "baby", ipa: "ˈbeɪbi", meaning: "em bé" },
+                { word: "book", ipa: "bʊk", meaning: "sách" },
+                { word: "bed", ipa: "bed", meaning: "cái giường" },
+                { word: "boy", ipa: "bɔɪ", meaning: "cậu bé" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-c",
+          label: "c",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-c-1",
+              label: "/k/",
+              type: "rule",
+              ipa: "/k/",
+              desc: "Hard C (Âm Cờ/Khờ cổ họng)",
+              rule: "Chữ C phát âm là /k/ khi đứng trước các nguyên âm a, o, u hoặc phụ âm khác.",
+              examples: [
+                { word: "cat", ipa: "kæt", meaning: "con mèo" },
+                { word: "cup", ipa: "kʌp", meaning: "cái cốc" },
+                { word: "cake", ipa: "keɪk", meaning: "bánh ngọt" },
+                { word: "cold", ipa: "kəʊld", meaning: "lạnh" }
+              ]
+            },
+            {
+              id: "r-c-2",
+              label: "/s/",
+              type: "rule",
+              ipa: "/s/",
+              desc: "Soft C (Âm Sờ nhẹ)",
+              rule: "Chữ C phát âm là /s/ khi đứng trước các nguyên âm e, i, y.",
+              examples: [
+                { word: "city", ipa: "ˈsɪti", meaning: "thành phố" },
+                { word: "cent", ipa: "sent", meaning: "đồng xu nhỏ" },
+                { word: "face", ipa: "feɪs", meaning: "khuôn mặt" },
+                { word: "nice", ipa: "naɪs", meaning: "đẹp đẽ/tốt bụng" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-d",
+          label: "d",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-d-1",
+              label: "/d/",
+              type: "rule",
+              ipa: "/d/",
+              desc: "Âm Đờ bật đầu lưỡi",
+              rule: "Chữ D thường được phát âm là /d/.",
+              examples: [
+                { word: "dog", ipa: "dɒɡ", meaning: "con chó" },
+                { word: "day", ipa: "deɪ", meaning: "ngày" },
+                { word: "desk", ipa: "desk", meaning: "bàn làm việc" },
+                { word: "dad", ipa: "dæd", meaning: "bố" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-f",
+          label: "f",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-f-1",
+              label: "/f/",
+              type: "rule",
+              ipa: "/f/",
+              desc: "Âm Phờ thổi hơi",
+              rule: "Chữ F phát âm là /f/.",
+              examples: [
+                { word: "fish", ipa: "fɪʃ", meaning: "con cá" },
+                { word: "fan", ipa: "fæn", meaning: "cái quạt" },
+                { word: "fun", ipa: "fʌn", meaning: "vui vẻ" },
+                { word: "food", ipa: "fuːd", meaning: "thức ăn" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-g",
+          label: "g",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-g-1",
+              label: "/ɡ/",
+              type: "rule",
+              ipa: "/ɡ/",
+              desc: "Hard G (Âm Gờ họng)",
+              rule: "Chữ G phát âm là /ɡ/ khi đứng trước các nguyên âm a, o, u hoặc phụ âm khác.",
+              examples: [
+                { word: "gas", ipa: "ɡæs", meaning: "khí ga" },
+                { word: "go", ipa: "ɡəʊ", meaning: "đi" },
+                { word: "gun", ipa: "ɡʌn", meaning: "khẩu súng" },
+                { word: "game", ipa: "ɡeɪm", meaning: "trò chơi" }
+              ]
+            },
+            {
+              id: "r-g-2",
+              label: "/dʒ/",
+              type: "rule",
+              ipa: "/dʒ/",
+              desc: "Soft G (Âm Jờ/Dờ rung)",
+              rule: "Chữ G phát âm là /dʒ/ khi đứng trước các nguyên âm e, i, y.",
+              examples: [
+                { word: "gem", ipa: "dʒem", meaning: "đá quý" },
+                { word: "giant", ipa: "ˈdʒaɪənt", meaning: "khổng lồ" },
+                { word: "gym", ipa: "dʒɪm", meaning: "phòng gym" },
+                { word: "orange", ipa: "ˈɒrɪndʒ", meaning: "quả cam" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-h",
+          label: "h",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-h-1",
+              label: "/h/",
+              type: "rule",
+              ipa: "/h/",
+              desc: "Âm Hờ hơi nhẹ",
+              rule: "Chữ H thường phát âm thành hơi đẩy nhẹ /h/.",
+              examples: [
+                { word: "hat", ipa: "hæt", meaning: "cái mũ" },
+                { word: "hot", ipa: "hɒt", meaning: "nóng" },
+                { word: "home", ipa: "həʊm", meaning: "nhà" },
+                { word: "house", ipa: "haʊs", meaning: "ngôi nhà" }
+              ]
+            },
+            {
+              id: "r-h-2",
+              label: "câm",
+              type: "rule",
+              ipa: "",
+              desc: "H câm (không phát âm)",
+              rule: "Chữ H hoàn toàn câm trong một số từ đặc thù.",
+              examples: [
+                { word: "hour", ipa: "ˈaʊə(r)", meaning: "giờ đồng hồ" },
+                { word: "honest", ipa: "ˈɒnɪst", meaning: "trung thực" },
+                { word: "honor", ipa: "ˈɒnə(r)", meaning: "danh dự" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-j",
+          label: "j",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-j-1",
+              label: "/dʒ/",
+              type: "rule",
+              ipa: "/dʒ/",
+              desc: "Âm Jờ/Dờ rung bật hơi",
+              rule: "Chữ J hầu như luôn được phát âm là /dʒ/.",
+              examples: [
+                { word: "job", ipa: "dʒɒb", meaning: "công việc" },
+                { word: "jam", ipa: "dʒæm", meaning: "mứt hoa quả" },
+                { word: "jump", ipa: "dʒʌmp", meaning: "nhảy" },
+                { word: "joy", ipa: "dʒɔɪ", meaning: "niềm vui" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-k",
+          label: "k",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-k-1",
+              label: "/k/",
+              type: "rule",
+              ipa: "/k/",
+              desc: "Âm Cờ/Khờ bật hơi họng",
+              rule: "Chữ K thường được phát âm là /k/.",
+              examples: [
+                { word: "king", ipa: "kɪŋ", meaning: "nhà vua" },
+                { word: "kite", ipa: "kaɪt", meaning: "cái diều" },
+                { word: "kick", ipa: "kɪk", meaning: "đá" },
+                { word: "key", ipa: "kiː", meaning: "chìa khóa" }
+              ]
+            },
+            {
+              id: "r-k-2",
+              label: "câm",
+              type: "rule",
+              ipa: "",
+              desc: "K câm (không phát âm trước N)",
+              rule: "Chữ K hoàn toàn không phát âm khi đứng đầu từ và đi liền trước N.",
+              examples: [
+                { word: "knee", ipa: "niː", meaning: "đầu gối" },
+                { word: "know", ipa: "nəʊ", meaning: "biết" },
+                { word: "knife", ipa: "naɪf", meaning: "con dao" },
+                { word: "knock", ipa: "nɒk", meaning: "gõ cửa" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-l",
+          label: "l",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-l-1",
+              label: "/l/",
+              type: "rule",
+              ipa: "/l/",
+              desc: "Âm Lờ uốn lưỡi chạm hàm trên",
+              rule: "Chữ L phát âm là /l/.",
+              examples: [
+                { word: "leg", ipa: "leɡ", meaning: "chân" },
+                { word: "lion", ipa: "ˈlaɪən", meaning: "sư tử" },
+                { word: "bell", ipa: "bel", meaning: "cái chuông" },
+                { word: "late", ipa: "leɪt", meaning: "muộn" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-m",
+          label: "m",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-m-1",
+              label: "/m/",
+              type: "rule",
+              ipa: "/m/",
+              desc: "Âm Mờ khép môi rung giọng",
+              rule: "Chữ M phát âm là /m/.",
+              examples: [
+                { word: "map", ipa: "mæp", meaning: "bản đồ" },
+                { word: "milk", ipa: "mɪlk", meaning: "sữa" },
+                { word: "meat", ipa: "miːt", meaning: "thịt" },
+                { word: "moon", ipa: "muːn", meaning: "mặt trăng" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-n",
+          label: "n",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-n-1",
+              label: "/n/",
+              type: "rule",
+              ipa: "/n/",
+              desc: "Âm Nờ đầu lưỡi chạm hàm trên",
+              rule: "Chữ N phát âm là /n/.",
+              examples: [
+                { word: "net", ipa: "net", meaning: "cái lưới" },
+                { word: "sun", ipa: "sʌn", meaning: "mặt trời" },
+                { word: "name", ipa: "neɪm", meaning: "tên" },
+                { word: "now", ipa: "naʊ", meaning: "bây giờ" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-p",
+          label: "p",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-p-1",
+              label: "/p/",
+              type: "rule",
+              ipa: "/p/",
+              desc: "Âm Pờ bặm môi bật hơi",
+              rule: "Chữ P phát âm là /p/ (âm vô thanh bật hơi mạnh từ hai môi).",
+              examples: [
+                { word: "pen", ipa: "pen", meaning: "bút viết" },
+                { word: "map", ipa: "mæp", meaning: "bản đồ" },
+                { word: "cup", ipa: "kʌp", meaning: "cái tách" },
+                { word: "play", ipa: "pleɪ", meaning: "chơi" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-q",
+          label: "q",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-q-1",
+              label: "/kw/",
+              type: "rule",
+              ipa: "/kw/",
+              desc: "Âm Quờ chu môi",
+              rule: "Chữ Q thường đi kèm chữ U (qu) và được phát âm thành cụm phụ âm ghép /kw/.",
+              examples: [
+                { word: "queen", ipa: "kwiːn", meaning: "nữ hoàng" },
+                { word: "quick", ipa: "kwɪk", meaning: "nhanh chóng" },
+                { word: "quiet", ipa: "ˈkwaɪət", meaning: "yên tĩnh" },
+                { word: "quiz", ipa: "kwɪz", meaning: "trắc nghiệm" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-r",
+          label: "r",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-r-1",
+              label: "/r/",
+              type: "rule",
+              ipa: "/r/",
+              desc: "Âm Rờ uốn lưỡi họng",
+              rule: "Chữ R thường phát âm uốn đầu lưỡi về phía sau nhưng không chạm hàm trên /r/.",
+              examples: [
+                { word: "run", ipa: "rʌn", meaning: "chạy" },
+                { word: "red", ipa: "red", meaning: "màu đỏ" },
+                { word: "rain", ipa: "reɪn", meaning: "mưa" },
+                { word: "road", ipa: "rəʊd", meaning: "con đường" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-s",
+          label: "s",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-s-1",
+              label: "/s/",
+              type: "rule",
+              ipa: "/s/",
+              desc: "Âm Sờ nhẹ xì hơi",
+              rule: "Chữ S phát âm là /s/ ở đầu từ hoặc khi đứng cạnh các âm vô thanh.",
+              examples: [
+                { word: "sun", ipa: "sʌn", meaning: "mặt trời" },
+                { word: "sit", ipa: "sɪt", meaning: "ngồi" },
+                { word: "bus", ipa: "bʌs", meaning: "xe buýt" },
+                { word: "soap", ipa: "səʊp", meaning: "xà phòng" }
+              ]
+            },
+            {
+              id: "r-s-2",
+              label: "/z/",
+              type: "rule",
+              ipa: "/z/",
+              desc: "Âm Zờ có rung dây thanh",
+              rule: "Chữ S thường phát âm thành /z/ khi đứng giữa hai nguyên âm hoặc đứng sau một phụ âm hữu thanh.",
+              examples: [
+                { word: "is", ipa: "ɪz", meaning: "là/thì" },
+                { word: "has", ipa: "hæz", meaning: "có" },
+                { word: "rose", ipa: "rəʊz", meaning: "hoa hồng" },
+                { word: "nose", ipa: "nəʊz", meaning: "cái mũi" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-t",
+          label: "t",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-t-1",
+              label: "/t/",
+              type: "rule",
+              ipa: "/t/",
+              desc: "Âm Tờ đầu lưỡi chạm lợi trên bật hơi",
+              rule: "Chữ T thường được phát âm là /t/.",
+              examples: [
+                { word: "top", ipa: "tɒp", meaning: "đỉnh/trên cùng" },
+                { word: "ten", ipa: "ten", meaning: "số mười" },
+                { word: "cat", ipa: "kæt", meaning: "con mèo" },
+                { word: "toy", ipa: "tɔɪ", meaning: "đồ chơi" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-v",
+          label: "v",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-v-1",
+              label: "/v/",
+              type: "rule",
+              ipa: "/v/",
+              desc: "Âm Vờ răng trên chạm môi dưới",
+              rule: "Chữ V phát âm là /v/.",
+              examples: [
+                { word: "van", ipa: "væn", meaning: "xe tải nhỏ" },
+                { word: "very", ipa: "ˈveri", meaning: "rất" },
+                { word: "five", ipa: "faɪv", meaning: "số năm" },
+                { word: "vein", ipa: "veɪn", meaning: "tĩnh mạch" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-w",
+          label: "w",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-w-1",
+              label: "/w/",
+              type: "rule",
+              ipa: "/w/",
+              desc: "Âm Quờ chu tròn môi",
+              rule: "Chữ W đóng vai trò phụ âm thường phát âm tròn chu môi rồi mở rộng ra.",
+              examples: [
+                { word: "wet", ipa: "wet", meaning: "ẩm ướt" },
+                { word: "win", ipa: "wɪn", meaning: "chiến thắng" },
+                { word: "water", ipa: "ˈwɔːtə(r)", meaning: "nước" },
+                { word: "wait", ipa: "weɪt", meaning: "đợi" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-x",
+          label: "x",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-x-1",
+              label: "/ks/",
+              type: "rule",
+              ipa: "/ks/",
+              desc: "Âm Cờ-Sờ phát âm nhanh",
+              rule: "Chữ X thường phát âm thành cụm phụ âm /ks/ ở cuối hoặc giữa các từ.",
+              examples: [
+                { word: "box", ipa: "bɒks", meaning: "cái hộp" },
+                { word: "fox", ipa: "fɒks", meaning: "con cáo" },
+                { word: "six", ipa: "sɪks", meaning: "số sáu" },
+                { word: "mix", ipa: "mɪks", meaning: "trộn lẫn" }
+              ]
+            },
+            {
+              id: "r-x-2",
+              label: "/z/",
+              type: "rule",
+              ipa: "/z/",
+              desc: "Âm Zờ (đứng đầu từ)",
+              rule: "Chữ X phát âm thành /z/ khi đứng ở đầu từ.",
+              examples: [
+                { word: "xylophone", ipa: "ˈzaɪləfəʊn", meaning: "đàn mộc cầm" },
+                { word: "xenon", ipa: "ˈzenɒn", meaning: "khí xenon" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "cs-z",
+          label: "z",
+          type: "letter",
+          category: "consonant-single",
+          children: [
+            {
+              id: "r-z-1",
+              label: "/z/",
+              type: "rule",
+              ipa: "/z/",
+              desc: "Âm Zờ rung chấn lưỡi",
+              rule: "Chữ Z hầu như luôn được phát âm là /z/.",
+              examples: [
+                { word: "zoo", ipa: "zuː", meaning: "vườn bách thú" },
+                { word: "zebra", ipa: "ˈzebrə", meaning: "con ngựa vằn" },
+                { word: "buzz", ipa: "bʌz", meaning: "tiếng vo ve" },
+                { word: "size", ipa: "saɪz", meaning: "kích cỡ" }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ]
 };
@@ -1179,8 +2153,8 @@ class SVGMindmap {
     };
 
     // Phân chia hai phía của Mindmap (Trái / Phải) xoay quanh gốc (0,0)
-    // Phía bên trái (Left side): vowel-single
-    const leftCategoryIds = ["vowel-single"];
+    // Phía bên trái (Left side): Toàn bộ Nguyên âm (vowel-single và vowel-digraph)
+    const leftCategoryIds = ["vowel-single", "vowel-digraph"];
     const leftCategories = leftCategoryIds
       .map(id => this.nodeMap.get(id))
       .filter(node => node && this.isNodeVisible(node.id));
@@ -1199,8 +2173,8 @@ class SVGMindmap {
       });
     }
 
-    // Phía bên phải (Right side): vowel-digraph và consonant-digraph
-    const rightCategoryIds = ["vowel-digraph", "consonant-digraph"];
+    // Phía bên phải (Right side): Toàn bộ Phụ âm (consonant-single và consonant-digraph)
+    const rightCategoryIds = ["consonant-single", "consonant-digraph"];
     const rightCategories = rightCategoryIds
       .map(id => this.nodeMap.get(id))
       .filter(node => node && this.isNodeVisible(node.id));
@@ -1621,6 +2595,7 @@ function openDetailsDrawer(node) {
   const catNames = {
     "vowel-single": "Nguyên âm đơn",
     "vowel-digraph": "Nguyên âm ghép",
+    "consonant-single": "Phụ âm đơn",
     "consonant-digraph": "Phụ âm ghép"
   };
   drawerCategory.textContent = catNames[node.category] || "Gốc sơ đồ";
@@ -2032,6 +3007,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const singleVowels = ipaData.children[0].children.length;
   const doubleVowels = ipaData.children[1].children.length;
   const digraphConsonants = ipaData.children[2].children.length;
+  const singleConsonants = ipaData.children[3] ? ipaData.children[3].children.length : 0;
 
   let totalRules = 0;
   let totalExamples = 0;
@@ -2045,7 +3021,7 @@ window.addEventListener("DOMContentLoaded", () => {
   };
   countMetrics(ipaData);
 
-  document.getElementById("stat-nodes").textContent = singleVowels + doubleVowels + digraphConsonants;
+  document.getElementById("stat-nodes").textContent = singleVowels + doubleVowels + digraphConsonants + singleConsonants;
   document.getElementById("stat-rules").textContent = totalRules;
   document.getElementById("stat-examples").textContent = `${totalExamples}+`;
 
