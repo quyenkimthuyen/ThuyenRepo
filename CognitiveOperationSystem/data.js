@@ -29,6 +29,11 @@ function getDefaultState() {
       theme: 'dark',
       locale: 'vi',
     },
+    aiOverlays: {
+      insights: null,
+      forest: null,
+      timeline: null,
+    },
   };
 }
 
@@ -165,6 +170,31 @@ const DataStore = {
     this._cache.timeline.push(event);
     this.persist();
     return event;
+  },
+
+  getAiOverlay(screen) {
+    return this.load().aiOverlays?.[screen] || null;
+  },
+
+  setAiOverlay(screen, data) {
+    this.load();
+    if (!this._cache.aiOverlays) {
+      this._cache.aiOverlays = { insights: null, forest: null, timeline: null };
+    }
+    this._cache.aiOverlays[screen] = {
+      ...data,
+      importedAt: new Date().toISOString(),
+    };
+    this.persist();
+    return this._cache.aiOverlays[screen];
+  },
+
+  clearAiOverlay(screen) {
+    this.load();
+    if (this._cache.aiOverlays) {
+      this._cache.aiOverlays[screen] = null;
+      this.persist();
+    }
   },
 
   /** Cập nhật insights cache */

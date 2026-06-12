@@ -1018,6 +1018,740 @@ const TEST_SCENARIOS = [
       'Sửa hội thoại, chạy lại (không reset) — xem ghi nhận lặp lại thế nào.',
     ],
   },
+
+  {
+    id: 'finance-investment-fomo',
+    title: 'FOMO đầu tư chứng khoán',
+    category: 'finance',
+    tags: ['đầu tư', 'FOMO', 'rủi ro', 'tiền bạc'],
+    summary:
+      'Nhân viên ngân hàng thấy bạn bè kiếm lời cổ phiếu — vay margin đầu tư, lỗ tiền và giấu vợ, càng làm nhiều giờ để gỡ.',
+
+    persona: {
+      name: 'Anh Quân',
+      age: 35,
+      role: 'Nhân viên tín dụng tại ngân hàng thương mại',
+      context:
+        'Lương ổn định, vợ là dược sĩ. Bạn cùng phòng khoe lãi chứng khoán trên nhóm chat. Quân mở tài khoản, vay margin theo lời khuyên “nhanh thôi”. Thị trường điều chỉnh, lỗ 40 triệu trong 2 tuần.',
+    },
+
+    situation:
+      'Đêm thứ Năm, Quân ngồi xem bảng điện tử chứng khoán đến 1 giờ sáng. Vợ hỏi sao gần đây anh hay căng thẳng — anh nói “công việc áp lực”. Sáng mai phải trả nợ margin một phần, anh tính xin làm thêm ca cuối tuần mà không dám thú nhận với vợ.',
+
+    initialThought:
+      'Tôi đầu tư chứng khoán theo bạn bè và bị lỗ. Tôi sợ vợ biết, lo không đủ tiền trả nợ và tự trách mình tham lam.',
+
+    dialogue: [
+      {
+        step: 'Emotion',
+        content:
+          'Tôi cảm thấy lo lắng, căng thẳng và xấu hổ. Sợ hãi mỗi khi điện thoại reo — sợ vợ hoặc sếp hỏi. Cũng ghen tị với bạn đã chốt lời.',
+        note: 'FOMO tài chính thường kèm xấu hổ — khó tách khỏi quyết định.',
+      },
+      {
+        step: 'Interpretation',
+        content:
+          'Tôi hiểu là nếu không gỡ gấp thì mất hết, gia đình sẽ tan vỡ. Mọi người sẽ coi tôi là kẻ ngu ngốc. Một lần lỗ là thất bại cả đời tài chính.',
+        note: 'Thảm họa hóa + kết luận cho mọi trường hợp.',
+      },
+      {
+        step: 'Belief',
+        content:
+          'Tôi tin tiền mang lại hạnh phúc và an toàn. Người khôn phải biết kiếm tiền nhanh. Thất bại tài chính là đáng xấu hổ, không được nói với người thân.',
+        note: 'Niềm tin về tiền + im lặng — mâu thuẫn với trung thực.',
+      },
+      {
+        step: 'Value',
+        content:
+          'Gia đình và trung thực rất quan trọng với tôi. Tôi coi trọng an toàn tài chính lâu dài. Sức khỏe tinh thần cũng quan trọng — nhưng tôi đang mất ngủ vì lo.',
+        note: 'Giá trị an toàn vs hành động đầu cơ — đối chiếu ở Action.',
+      },
+      {
+        step: 'Identity',
+        content:
+          'Tôi làm trong ngành tài chính, muốn được coi là am hiểu tiền bạc. Tôi không muốn là người thất bại trước vợ và bạn bè. Tôi thấy mình phải tự gỡ một mình.',
+        note: 'Vai trò “am hiểu tài chính” làm khó nhận sai lầm.',
+      },
+      {
+        step: 'Action',
+        content:
+          'Tôi giấu vợ về khoản lỗ, tiếp tục theo dõi thị trường đến khuya. Tôi làm việc thêm giờ để kiếm thêm tiền. Tôi chưa nhờ tư vấn độc lập hay nói thật với vợ.',
+        note: 'Im lặng + làm thêm giờ — thử sửa thành “thú nhận và lập kế hoạch trả nợ”.',
+      },
+    ],
+
+    expectedOutcomes: {
+      forestTree: 'finance',
+      nodeTypes: ['Event', 'Emotion', 'Interpretation', 'Belief', 'Value', 'Identity', 'Action'],
+      highlights: [
+        'Niềm tin: Tiền mang lại hạnh phúc',
+        'Giá trị: Gia đình',
+        'Giá trị: Trung thực',
+        'Hành động: Tránh né / im lặng',
+        'Hành động: Làm việc nhiều giờ',
+      ],
+      contradictions: ['Tiền mang lại hạnh phúc vs giấu vợ / mất an toàn tài chính'],
+      biases: ['Catastrophizing', 'Overgeneralization', 'Mind Reading'],
+    },
+
+    learningPoints: [
+      'Mở Bản đồ suy nghĩ → nhánh Tài chính — niềm tin về tiền và hành động giấu giếm.',
+      'Góc khám phá: mâu thuẫn trung thực vs im lặng; gợi ý suy ngẫm tiếp.',
+      'Sửa bước Hành động và chạy lại — so sánh ghi nhận Hành động.',
+    ],
+  },
+
+  {
+    id: 'finance-layoff-anxiety',
+    title: 'Lo sợ bị sa thải',
+    category: 'finance',
+    tags: ['sa thải', 'công việc', 'an toàn', 'tài chính'],
+    summary:
+      'Nhân viên sản xuất nghe tin công ty cắt giảm — tiết kiệm từng đồng, làm thêm ca, không dám chi cho con dù chưa chắc mất việc.',
+
+    persona: {
+      name: 'Chị Hạnh',
+      age: 40,
+      role: 'Công nhân may tại khu công nghiệp Bình Dương',
+      context:
+        'Làm công ty 11 năm, chồng lái xe grab. Hai con đang học. Tin đồn cắt 20% nhân sự cuối quý. Hạnh thấy sếp họp riêng, lo sợ tên mình trong danh sách.',
+    },
+
+    situation:
+      'Sau buổi họp toàn công ty về “tái cơ cấu”, Hạnh nhận được email mời họp 1–1 chiều mai. Cô gọi chồng, giọng run. Tối đó cô từ chối mua sách cho con, nói “mẹ tiết kiệm” — con hỏi “mẹ sao vậy?” cô im lặng.',
+
+    initialThought:
+      'Công ty có thể sa thải tôi tuần tới. Tôi lo không đủ tiền trả học phí con và sợ cả gia đình rơi vào khó khăn.',
+
+    dialogue: [
+      {
+        step: 'Emotion',
+        content:
+          'Tôi cảm thấy sợ hãi, lo lắng và bất an. Tim đập nhanh mỗi khi thấy email công ty. Buồn khi phải từ chối con.',
+        note: 'Lo mất việc thường kích hoạt sợ hãi sâu — cần ghi nhận trước khi phân tích.',
+      },
+      {
+        step: 'Interpretation',
+        content:
+          'Tôi hiểu là họp 1–1 chắc chắn là sa thải. Mất việc thì không ai thuê, con phải bỏ học, chồng không gánh nổi. Cả nhà sẽ nghèo đói.',
+        note: 'Chưa có kết quả họp đã kết luận — vội kết luận.',
+      },
+      {
+        step: 'Belief',
+        content:
+          'Tôi tin không có việc làm thì không sống được. Phải tiết kiệm mọi thứ khi có tin xấu. Người lớn phải chịu đựng, không được lộ yếu đuối với con.',
+        note: 'Niềm tin “phải giấu” có thể làm con lo thêm.',
+      },
+      {
+        step: 'Value',
+        content:
+          'Gia đình là ưu tiên số một. Giáo dục con rất quan trọng. Tôi coi trọng trung thực với người thân — nhưng đang giấu nỗi lo.',
+        note: 'Giá trị giáo dục vs hành động cắt chi sách học — xung đột tiềm ẩn.',
+      },
+      {
+        step: 'Identity',
+        content:
+          'Tôi là người mẹ, người lao động chăm chỉ. Tôi không muốn được coi là gánh nặng. Tôi thấy mình phải gánh cả nhà nếu mất việc.',
+        note: 'Vai trò “gánh nhà” tăng áp lực tự gánh một mình.',
+      },
+      {
+        step: 'Action',
+        content:
+          'Tôi làm thêm ca tăng ca mỗi khi có cơ hội. Tôi cắt chi tiêu cho con và im lặng với chồng về mức lo thật sự. Tôi chưa chuẩn bị kế hoạch tài chính hay hỏi HR nội dung họp.',
+        note: 'Phản ứng vội — thử sửa: “hỏi rõ buổi họp, bàn với chồng”.',
+      },
+    ],
+
+    expectedOutcomes: {
+      forestTree: 'finance',
+      nodeTypes: ['Event', 'Emotion', 'Interpretation', 'Belief', 'Value', 'Identity', 'Action'],
+      highlights: [
+        'Niềm tin: Không có tiền không sống được',
+        'Giá trị: Gia đình',
+        'Giá trị: Giáo dục',
+        'Hành động: Tránh né / im lặng',
+        'Hành động: Làm việc nhiều giờ',
+      ],
+      contradictions: ['Giá trị giáo dục vs cắt chi cho con vì lo sợ'],
+      biases: ['Catastrophizing', 'Fortune Telling', 'Jumping to Conclusions'],
+    },
+
+    learningPoints: [
+      'Mở Bản đồ suy nghĩ → nhánh Tài chính và Gia đình.',
+      'Góc khám phá: kịch bản ngoài “mất việc = hết đường”.',
+      'Chạy mô phỏng rồi xem Dòng thời gian — sự kiện “họp 1–1” được ghi thế nào.',
+    ],
+  },
+
+  {
+    id: 'work-resignation-dilemma',
+    title: 'Muốn nghỉ việc nhưng sợ bất ổn',
+    category: 'work',
+    tags: ['nghỉ việc', 'đổi việc', 'sợ hãi', 'công việc'],
+    summary:
+      'Nhân viên sales mệt mỏi vì áp lực KPI — muốn đổi ngành nhưng sợ lương giảm và gia đình phản đối.',
+
+    persona: {
+      name: 'Anh Bình',
+      age: 37,
+      role: 'Trưởng phòng kinh doanh tại công ty phân phối điện tử',
+      context:
+        '15 năm kinh doanh, lương tốt nhưng KPI tăng mỗi quý. Bình mơ mở quán cà phê nhỏ. Vợ lo mất thu nhập ổn định. Cha nói “đừng bỏ việc ngớ ngẩn”.',
+    },
+
+    situation:
+      'Cuối tháng, Bình không đạt KPI lần thứ hai liên tiếp. Sếp nhắc nhở trước team. Tối đó Bình tìm khóa học pha chế, rồi tắt tab vì sợ. Vợ hỏi “Anh có muốn đổi việc không?” — anh nói “ổn mà” nhưng không ngủ được.',
+
+    initialThought:
+      'Tôi mệt mỏi vì áp lực KPI và muốn đổi việc, nhưng sợ mất thu nhập ổn định. Gia đình sẽ không đồng ý nếu tôi nghỉ.',
+
+    dialogue: [
+      {
+        step: 'Emotion',
+        content:
+          'Tôi cảm thấy mệt mỏi, bế tắc và lo lắng. Ghen tị với bạn đã làm chủ quán nhỏ. Xấu hổ khi không đạt KPI trước đồng nghiệp.',
+        note: 'Muốn đổi hướng + sợ — hai cảm xúc cùng hợp lệ.',
+      },
+      {
+        step: 'Interpretation',
+        content:
+          'Tôi hiểu là nếu nghỉ việc thì hối hận cả đời, gia đình sẽ khổ. Nếu ở lại thì sẽ bệnh vì stress. Không có lựa chọn nào đúng.',
+        note: 'Tư duy đen trắng — “ở lại hoặc hủy hoại”.',
+      },
+      {
+        step: 'Belief',
+        content:
+          'Tôi tin đổi việc là không ổn định. An toàn quan trọng hơn mơ ước. Người trưởng thành phải nhịn để nuôi gia đình.',
+        note: 'Niềm tin “phải nhịn” vs giá trị phát triển bản thân.',
+      },
+      {
+        step: 'Value',
+        content:
+          'Tôi coi trọng tự do và sáng tạo trong công việc. Gia đình ổn định rất quan trọng. Sức khỏe tinh thần cũng quan trọng với tôi.',
+        note: 'Tự do vs an toàn — mâu thuẫn cốt lõi của kịch bản.',
+      },
+      {
+        step: 'Identity',
+        content:
+          'Tôi là người trưởng thành, người chồng người cha phải lo kinh tế. Tôi không muốn được coi là kẻ bỏ cuộc. Tôi cũng mơ là người làm chủ nhỏ.',
+        note: 'Hai hình ảnh bản thân — không cần chọn ngay.',
+      },
+      {
+        step: 'Action',
+        content:
+          'Tôi ở lại công việc cũ, làm việc nhiều giờ để cố đạt KPI. Tôi im lặng với vợ về mức mệt thật sự. Tôi chưa thử trải nghiệm nhỏ (part-time, thử quán cuối tuần).',
+        note: 'Im lặng + overwork — sửa thành “bàn kế hoạch thử 3 tháng”.',
+      },
+    ],
+
+    expectedOutcomes: {
+      forestTree: 'work',
+      nodeTypes: ['Event', 'Emotion', 'Interpretation', 'Belief', 'Value', 'Identity', 'Action'],
+      highlights: [
+        'Niềm tin: Đổi việc là không ổn định',
+        'Giá trị: Tự do',
+        'Giá trị: Gia đình',
+        'Hành động: Làm việc nhiều giờ',
+        'Hành động: Tránh né / im lặng',
+      ],
+      contradictions: ['Mong tự do vs ở lại vì an toàn / không thử'],
+      biases: ['Black and White Thinking', 'Catastrophizing', 'Should Statements'],
+    },
+
+    learningPoints: [
+      'Mở Bản đồ suy nghĩ → nhánh Công việc — niềm tin về ổn định.',
+      'Góc khám phá: thiên kiến đen trắng và gợi ý bước thử nhỏ.',
+      'Sửa hội thoại và chạy lại — xem Hành động và mâu thuẫn thay đổi.',
+    ],
+  },
+
+  {
+    id: 'work-presentation-fear',
+    title: 'Sợ thuyết trình trước sếp',
+    category: 'work',
+    tags: ['thuyết trình', 'sợ hãi', 'tự tin', 'công việc'],
+    summary:
+      'Chuyên viên phân tích được giao pitch trước ban giám đốc — lo sợ bị đánh giá kém, ôn kịch bản đến mất ngủ, muốn nhờ đồng nghiệp thay.',
+
+    persona: {
+      name: 'Chị Yến',
+      age: 26,
+      role: 'Chuyên viên phân tích dữ liệu tại công ty bán lẻ',
+      context:
+        'Vào công ty 2 năm, giỏi Excel nhưng ngại nói trước đám đông. Lần đầu pitch trực tiếp với GĐ và phòng ban. Đồng nghiệp khuyên “cứ tự tin” nhưng Yến tay run khi tập.',
+    },
+
+    situation:
+      'Chiều mai pitch 20 phút. Yến tập ở nhà trước gương, quên lời ở slide 5, bật khóc. Nhắn đồng nghiệp “chắc em làm không được”. Tối đó cô sửa slide lần thứ mười, nghĩ sếp sẽ nghĩ mình không đủ tài năng để thăng tiến.',
+
+    initialThought:
+      'Ngày mai tôi phải thuyết trình trước ban giám đốc. Tôi sợ nói sai, bị đánh giá kém và mất cơ hội thăng tiến.',
+
+    dialogue: [
+      {
+        step: 'Emotion',
+        content:
+          'Tôi cảm thấy sợ hãi, lo lắng và căng thẳng. Tim đập nhanh khi nghĩ đến phòng họp. Xấu hổ vì tay run khi tập nói.',
+        note: 'Lo thuyết trình là phổ biến — không đồng nghĩa “yếu kém”.',
+      },
+      {
+        step: 'Interpretation',
+        content:
+          'Tôi hiểu là nếu run hoặc vấp một câu thì sếp sẽ coi tôi là kẻ không chuyên nghiệp. Một lần trình bày tệ sẽ hủy hoại cả sự nghiệp.',
+        note: 'Phóng đại hậu quả một sự kiện.',
+      },
+      {
+        step: 'Belief',
+        content:
+          'Tôi tin phải hoàn hảo mới được công nhận. Người giỏi không được run hay ngập ngừng. Tôi không xứng đáng với vị trí này nếu không nói trôi chảy.',
+        note: 'Chủ nghĩa hoàn hảo nuôi sợ thuyết trình.',
+      },
+      {
+        step: 'Value',
+        content:
+          'Tôi coi trọng chất lượng công việc và trung thực. Muốn đóng góp giá trị thật cho team. Phát triển bản thân cũng quan trọng.',
+        note: 'Giá trị đóng góp vs tránh né cơ hội pitch.',
+      },
+      {
+        step: 'Identity',
+        content:
+          'Tôi là người làm việc, chuyên viên phân tích. Tôi không muốn được coi là nhút nhát hay kém cỏi. Tôi thấy mình phải chứng minh qua mỗi lần nói.',
+        note: 'Áp lực “chứng minh” mỗi lần xuất hiện.',
+      },
+      {
+        step: 'Action',
+        content:
+          'Tôi ôn slide đến khuya, sửa đi sửa lại nhiều lần. Tôi nhắn muốn nhờ đồng nghiệp thay nhưng chưa nói với sếp về nỗi lo. Tôi chưa tập trước một người bạn tin tưởng.',
+        note: 'Tránh né từng bước — thử sửa: “tập 10 phút với mentor”.',
+      },
+    ],
+
+    expectedOutcomes: {
+      forestTree: 'work',
+      nodeTypes: ['Event', 'Emotion', 'Interpretation', 'Belief', 'Value', 'Identity', 'Action'],
+      highlights: [
+        'Niềm tin: Phải hoàn hảo mới được yêu',
+        'Niềm tin: Tôi không xứng đáng',
+        'Hành động: Tìm kiếm giải pháp',
+      ],
+      contradictions: [],
+      biases: ['Catastrophizing', 'Should Statements', 'Magnification'],
+    },
+
+    learningPoints: [
+      'Mở Bản đồ suy nghĩ → nhánh Công việc và Bản thân.',
+      'Góc khám phá: gợi ý về quy tắc “phải hoàn hảo”.',
+      'Sửa bước Hành động (nhờ mentor tập 10 phút) và mô phỏng lại.',
+    ],
+  },
+
+  {
+    id: 'learning-language-barrier',
+    title: 'Học tiếng Anh mãi không tiến bộ',
+    category: 'learning',
+    tags: ['tiếng Anh', 'học tập', 'tự tin', 'công việc'],
+    summary:
+      'Nhân viên muốn học tiếng Anh để thăng tiến — đăng ký app, học được vài tuần rồi bỏ, tự tiện mình “dốt ngoại ngữ”.',
+
+    persona: {
+      name: 'Anh Kiệt',
+      age: 28,
+      role: 'Nhân viên logistics tại công ty xuất nhập khẩu',
+      context:
+        'Cần đọc email tiếng Anh hàng ngày, thường dùng Google dịch. Đồng nghiệp trẻ hơn giao tiếp tốt hơn. Kiệt mua gói app học 1 năm, streak 12 ngày rồi đứt.',
+    },
+
+    situation:
+      'Sếp gợi ý Kiệt tham gia cuộc họp với đối tác nước ngoài tháng sau. Kiệt đồng ý trong lúc phấn khích, về nhà lo sợ. Mở app học lại, sai phát âm một từ, tắt app và nghĩ “mình không có năng khiếu”.',
+
+    initialThought:
+      'Tôi học tiếng Anh mãi không tiến bộ và sợ mất cơ hội thăng tiến. Mỗi lần nói sai tôi cảm thấy xấu hổ và muốn bỏ cuộc.',
+
+    dialogue: [
+      {
+        step: 'Emotion',
+        content:
+          'Tôi cảm thấy xấu hổ, thất vọng và lo lắng. Ghen tị với đồng nghiệp nói lưu loát. Buồn khi nghĩ đến cuộc họp tháng sau.',
+        note: 'Xấu hổ khi học — thường làm dừng sớm hơn là thiếu năng lực.',
+      },
+      {
+        step: 'Interpretation',
+        content:
+          'Tôi hiểu là mình không có năng khiếu ngôn ngữ. Nói sai một lần là chứng tỏ sẽ không bao giờ giỏi. Sếp chắc đang hối hận vì giao tôi họp.',
+        note: 'Đoán ý sếp + kết luận “không bao giờ”.',
+      },
+      {
+        step: 'Belief',
+        content:
+          'Tôi tin trí tuệ là do bẩm sinh — không tài năng thì cố cũng vô ích. Người lớn học ngoại ngữ quá muộn. Phải giỏi hoàn hảo mới được nói.',
+        note: 'Niềm tin “bẩm sinh / quá muộn” — kiểm tra bằng ví dụ nhỏ.',
+      },
+      {
+        step: 'Value',
+        content:
+          'Tôi coi trọng phát triển và học hỏi. Công việc ổn định quan trọng. Tôi muốn được tin tưởng trong team quốc tế.',
+        note: 'Giá trị phát triển vs hành động bỏ học.',
+      },
+      {
+        step: 'Identity',
+        content:
+          'Tôi là người làm việc logistics, không phải “dân ngoại ngữ”. Tôi không muốn được cười nhạo khi phát âm sai. Tôi thấy mình phải giỏi ngay lần đầu.',
+        note: 'Gán nhãn “dốt ngoại ngữ” — có thể thử lại với bước nhỏ.',
+      },
+      {
+        step: 'Action',
+        content:
+          'Tôi bỏ app học nhiều ngày, chỉ dùng Google dịch. Tôi tránh né luyện nói trước gương. Tôi chưa nhờ đồng nghiệp giỏi tiếng Anh luyện 15 phút/tuần.',
+        note: 'Tránh né — sửa thành “nhờ đồng nghiệp hỗ trợ”.',
+      },
+    ],
+
+    expectedOutcomes: {
+      forestTree: 'learning',
+      nodeTypes: ['Event', 'Emotion', 'Interpretation', 'Belief', 'Value', 'Identity', 'Action'],
+      highlights: [
+        'Niềm tin: Trí tuệ là do bẩm sinh',
+        'Niềm tin: Phải hoàn hảo mới được yêu',
+        'Giá trị: Phát triển',
+        'Hành động: Tránh né / im lặng',
+      ],
+      contradictions: ['Coi trọng phát triển vs bỏ học / tránh luyện nói'],
+      biases: ['Overgeneralization', 'Mind Reading', 'Labeling'],
+    },
+
+    learningPoints: [
+      'Mở Bản đồ suy nghĩ → nhánh Học tập.',
+      'Góc khám phá: mâu thuẫn phát triển vs hành động; thử sửa hội thoại.',
+      'Chạy lại lần 2 (không reset) sau khi sửa — xem ghi nhận lặp lại.',
+    ],
+  },
+
+  {
+    id: 'health-medical-anxiety',
+    title: 'Lo sợ kết quả khám sức khỏe',
+    category: 'health',
+    tags: ['khám bệnh', 'lo âu', 'sức khỏe', 'gia đình'],
+    summary:
+      'Nhân viên văn phòng nhận kết quả xét nghiệm có chỉ số lệch — chưa gặp bác sĩ đã nghĩ đến bệnh nặng, tra Google đến khuya, giấu vợ.',
+
+    persona: {
+      name: 'Anh Long',
+      age: 44,
+      role: 'Kế toán trưởng tại công ty sản xuất thực phẩm',
+      context:
+        'Khám định kỳ công ty, men gan hơi cao. Bác sĩ hẹn tái khám sau 2 tuần. Long tra mạng thấy nhiều bệnh nặng. Cha mất vì ung thư gan khi Long 20 tuổi.',
+    },
+
+    situation:
+      'Nhận email kết quả xét nghiệm chiều thứ Sáu. Long đọc “men gan tăng nhẹ”, lập tức nghĩ đến bệnh của cha. Tối đó anh tra Google 2 tiếng, không ăn cơm. Vợ hỏi anh có sao không — anh nói “không sao” và trốn vào phòng làm việc.',
+
+    initialThought:
+      'Kết quả khám sức khỏe có chỉ số bất thường. Tôi lo có thể bị bệnh nặng như cha tôi và sợ không kịp nhìn con lớn.',
+
+    dialogue: [
+      {
+        step: 'Emotion',
+        content:
+          'Tôi cảm thấy sợ hãi, lo lắng và bất an. Buồn khi nhớ cha. Căng thẳng mỗi khi nhìn thấy email bệnh viện.',
+        note: 'Lo sức khỏe có thể gắn ký ức người thân — đáng ghi nhận.',
+      },
+      {
+        step: 'Interpretation',
+        content:
+          'Tôi hiểu là men gan cao chắc là bệnh nặng, có thể ung thư. Bác sĩ hẹn tái khám vì đã quá muộn. Tôi sẽ không sống đủ lâu để thấy con học đại học.',
+        note: 'Tra mạng + kết luận tồi nhất trước khi gặp bác sĩ.',
+      },
+      {
+        step: 'Belief',
+        content:
+          'Tôi tin bệnh tật chạy theo gia đình — số phận tôi giống cha. Biết tin xấu phải tự gánh, không nên làm vợ con lo. Đi khám là điều đáng sợ.',
+        note: 'Niềm tin “số phận” + giấu giếm — đối chiếu giá trị gia đình.',
+      },
+      {
+        step: 'Value',
+        content:
+          'Gia đình là ưu tiên số một. Sức khỏe quan trọng để ở bên con lâu dài. Trung thực với người thân cũng quan trọng với tôi.',
+        note: 'Trung thực vs giấu vợ — mâu thuẫn rõ.',
+      },
+      {
+        step: 'Identity',
+        content:
+          'Tôi là người cha, người chồng phải mạnh mẽ. Tôi không muốn được coi là yếu đuối. Tôi thấy mình phải kiểm soát mọi thứ — kể cả tin xấu.',
+        note: '“Phải mạnh” có thể trì hoãn đi khám đúng cách.',
+      },
+      {
+        step: 'Action',
+        content:
+          'Tôi tra cứu bệnh trên mạng đến khuya, tự dọa mình. Tôi im lặng với vợ, trì hoãn gọi bác sĩ hỏi rõ. Tôi làm việc nhiều giờ để không nghĩ — nhưng ăn uống kém.',
+        note: 'Tránh chuyên môn — sửa: “đặt lịch tái khám, nói với vợ”.',
+      },
+    ],
+
+    expectedOutcomes: {
+      forestTree: 'health',
+      nodeTypes: ['Event', 'Emotion', 'Interpretation', 'Belief', 'Value', 'Identity', 'Action'],
+      highlights: [
+        'Niềm tin: Số phận / định mệnh',
+        'Giá trị: Gia đình',
+        'Giá trị: Sức khỏe',
+        'Hành động: Tránh né / im lặng',
+      ],
+      contradictions: ['Coi trọng sức khỏe vs trì hoãn gặp bác sĩ / tra mạng hoảng'],
+      biases: ['Catastrophizing', 'Emotional Reasoning', 'Fortune Telling'],
+    },
+
+    learningPoints: [
+      'Mở Bản đồ suy nghĩ → nhánh Sức khỏe — cách hiểu vs sự kiện khám.',
+      'Góc khám phá: thiên kiến thảm họa hóa và gợi ý suy ngẫm tiếp.',
+      'Disclaimer app vẫn áp dụng — đây là suy ngẫm, không thay tư vấn y tế.',
+    ],
+  },
+
+  {
+    id: 'self-perfectionism-burnout',
+    title: 'Chủ nghĩa hoàn hảo trong công việc',
+    category: 'self',
+    tags: ['hoàn hảo', 'tự trách', 'công việc', 'bản thân'],
+    summary:
+      'Biên tập viên chỉnh sửa báo cáo đến 15 lần — deadline trễ, tự trách, tin một sai sót nhỏ sẽ hủy hoại uy tín cả năm.',
+
+    persona: {
+      name: 'Chị Quỳnh',
+      age: 31,
+      role: 'Biên tập viên nội dung tại công ty truyền thông',
+      context:
+        'Tốt nghiệp báo chí loại giỏi, được khen cẩn thận. Sếp giao báo cáo quý cho khách hàng lớn. Quỳnh sửa từng dấu phẩy, gửi bản 8 chưa hài lòng, deadline còn 6 tiếng.',
+    },
+
+    situation:
+      '23h đêm trước deadline, Quỳnh vẫn sửa slide. Đồng nghiệp nhắn “gửi bản 8 được rồi”. Cô thấy một lỗi chính tả nhỏ trong bản cũ, hoảng sợ, bắt đầu sửa lại từ đầu. Tay run, mắt đỏ vì màn hình.',
+
+    initialThought:
+      'Tôi sợ gửi báo cáo chưa hoàn hảo. Một lỗi nhỏ có thể khiến khách hàng mất tin tưởng và sếp đánh giá tôi kém cả năm.',
+
+    dialogue: [
+      {
+        step: 'Emotion',
+        content:
+          'Tôi cảm thấy căng thẳng, sợ hãi và tức giận với bản thân. Lo đến mức không ăn được. Xấu hổ nếu nghĩ đến việc gửi bản “chưa đủ tốt”.',
+        note: 'Hoàn hảo hóa thường kèm tự trách mạnh.',
+      },
+      {
+        step: 'Interpretation',
+        content:
+          'Tôi hiểu là một lỗi chính tả nghĩa là thiếu chuyên nghiệp hoàn toàn. Khách hàng sẽ hủy hợp đồng. Sếp sẽ nghĩ tôi không đủ tài năng cho vị trí này.',
+        note: 'Một chi tiết nhỏ → kết luận toàn bộ sự nghiệp.',
+      },
+      {
+        step: 'Belief',
+        content:
+          'Tôi tin phải hoàn hảo mới được yêu và công nhận. Sai lầm là đáng xấu hổ. Gửi sớm hơn deadline là thiếu trách nhiệm nếu chưa “đủ tốt”.',
+        note: 'Niềm tin cốt lõi của perfectionism.',
+      },
+      {
+        step: 'Value',
+        content:
+          'Tôi coi trọng chất lượng và trung thực trong công việc. Uy tín với khách hàng quan trọng. Sức khỏe cũng quan trọng — nhưng tôi hay bỏ qua khi deadline.',
+        note: 'Chất lượng vs sức khỏe / deadline — cân bằng thực tế.',
+      },
+      {
+        step: 'Identity',
+        content:
+          'Tôi là người làm việc cẩn thận, không muốn được coi là cẩu thả. Tôi thấy mình phải chứng minh bằng sản phẩm hoàn hảo mỗi lần.',
+        note: 'Danh tính gắn với “không sai” — rất căng.',
+      },
+      {
+        step: 'Action',
+        content:
+          'Tôi sửa báo cáo đến khuya, trễ deadline. Tôi tự trách móc thay vì hỏi sếp mức “đủ tốt”. Tôi từ chối giúp đỡ đồng nghiệp vì “bận sửa”.',
+        note: 'Over-edit — thử sửa: “gửi bản 8, ghi chú chỉnh sửa sau”.',
+      },
+    ],
+
+    expectedOutcomes: {
+      forestTree: 'self',
+      nodeTypes: ['Event', 'Emotion', 'Interpretation', 'Belief', 'Value', 'Identity', 'Action'],
+      highlights: [
+        'Niềm tin: Phải hoàn hảo mới được yêu',
+        'Niềm tin: Sai lầm là đáng xấu hổ',
+        'Hành động: Tự trách móc',
+        'Hành động: Làm việc nhiều giờ',
+      ],
+      contradictions: ['Coi trọng sức khỏe vs làm khuya / trễ deadline'],
+      biases: ['Catastrophizing', 'Should Statements', 'Magnification'],
+    },
+
+    learningPoints: [
+      'Mở Bản đồ suy nghĩ → nhánh Bản thân — niềm tin hoàn hảo.',
+      'Góc khám phá: gợi ý “đủ tốt” vs “hoàn hảo”.',
+      'Sửa bước Hành động và chạy lại — so sánh ghi nhận.',
+    ],
+  },
+
+  {
+    id: 'family-teen-rebellion',
+    title: 'Mâu thuẫn với con tuổi teen',
+    category: 'family',
+    tags: ['tuổi teen', 'gia đình', 'giao tiếp', 'tự do'],
+    summary:
+      'Mẹ đơn thân cãi với con gái 15 tuổi vì đi chơi khuya — lo con sa đà, quy tắc cứng, con càng lì, mẹ tự trách nuôi dạy sai.',
+
+    persona: {
+      name: 'Chị Loan',
+      age: 41,
+      role: 'Y tá tại bệnh viện đa khoa, mẹ đơn của bé An (15 tuổi)',
+      context:
+        'Ly hôn 5 năm, con sống với mẹ. Loan làm ca đêm, ít thời gian. An hay đi chơi với bạn, về khuya. Hôm qua An nói “mẹ không hiểu con” và đóng cửa phòng.',
+    },
+
+    situation:
+      '1 giờ sáng, An chưa về. Loan gọi 10 cuộc không nghe. Khi con về, mẹ quát, tịch thu điện thoại. An khóc nói “con ghét nhà này”. Sáng sau cả hai im lặng, Loan nghỉ ca vì mệt và tự hỏi mình có phải mẹ tồi không.',
+
+    initialThought:
+      'Con gái tôi đi chơi khuya, không nghe lời. Tôi lo con sa vào bạn xấu và tức giận vì cảm thấy mình không kiểm soát được gì.',
+
+    dialogue: [
+      {
+        step: 'Emotion',
+        content:
+          'Tôi cảm thấy tức giận, lo lắng và tủi thân. Sợ con gặp nguy hiểm. Tội lỗi vì đã quát to và nói lời nặng.',
+        note: 'Lo + tức — phổ biến với cha mẹ teen; cả hai đều hợp lệ.',
+      },
+      {
+        step: 'Interpretation',
+        content:
+          'Tôi hiểu là con coi thường mình, sẽ sa vào tệ nạn nếu không kiểm soát chặt. Hàng xóm chắc nghĩ tôi dạy con kém vì mẹ đơn.',
+        note: 'Đoán ý người khác + dự đoán tồi tệ nhất cho con.',
+      },
+      {
+        step: 'Belief',
+        content:
+          'Tôi tin con phải nghe lời cha mẹ. Mẹ đơn phải vừa là mẹ vừa là cha — không được yếu. Nếu buông lỏng một chút thì mọi thứ sụp đổ.',
+        note: 'Niềm tin kiểm soát — đối chiếu giá trị tự do của teen.',
+      },
+      {
+        step: 'Value',
+        content:
+          'An toàn của con là quan trọng nhất. Tôi coi trọng tình yêu thương và kết nối — dù đang khó nói chuyện. Tôn trọng lẫn nhau cũng quan trọng.',
+        note: 'Yêu thương vs quy tắc cứng — tìm điểm gặp.',
+      },
+      {
+        step: 'Identity',
+        content:
+          'Tôi là người mẹ, phải bảo vệ con. Tôi không muốn được coi là mẹ thất bại. Tôi thấy mình là người kiểm soát — mất kiểm soát là đáng sợ.',
+        note: 'Vai trò “kiểm soát” vs con cần tự chủ.',
+      },
+      {
+        step: 'Action',
+        content:
+          'Tôi quát mắng, tịch thu điện thoại, đặt giờ giấc cứng. Tôi làm việc ca đêm, ít trò chuyện bình thường với con. Tôi chưa ngồi nghe con giải thích bạn bè và nhu cầu đi chơi.',
+        note: 'Kiểm soát vs kết nối — sửa: “hẹn 30 phút nói chuyện cuối tuần”.',
+      },
+    ],
+
+    expectedOutcomes: {
+      forestTree: 'family',
+      nodeTypes: ['Event', 'Emotion', 'Interpretation', 'Belief', 'Value', 'Identity', 'Action'],
+      highlights: [
+        'Niềm tin: Con phải nghe lời',
+        'Giá trị: Gia đình',
+        'Giá trị: Yêu thương',
+        'Hành động: La mắng / kỷ luật con',
+      ],
+      contradictions: [
+        'Con phải nghe lời vs coi trọng tự do / tôn trọng',
+        'Yêu thương vs kiểm soát chặt',
+      ],
+      biases: ['Catastrophizing', 'Mind Reading', 'Should Statements'],
+    },
+
+    learningPoints: [
+      'Mở Bản đồ suy nghĩ → nhánh Gia đình — mâu thuẫn nghe lời vs tự do.',
+      'Góc khám phá: gợi ý ranh giới vs kiểm soát.',
+      'Sửa hội thoại (thêm “ngồi nghe con 30 phút”) và mô phỏng lại.',
+    ],
+  },
+
+  {
+    id: 'family-inlaw-expectations',
+    title: 'Áp lực từ gia đình chồng',
+    category: 'family',
+    tags: ['mẹ chồng', 'hôn nhân', 'kỳ vọng', 'gia đình'],
+    summary:
+      'Dâu trẻ bị mẹ chồng so sánh với con dâu người khác — cố gắng làm đúng ý, mệt mỏi, chồng trung lập, cô im lặng và tự trách.',
+
+    persona: {
+      name: 'Chị Hà',
+      age: 29,
+      role: 'Giáo viên mầm non, vợ của anh Tùng (kỹ sư)',
+      context:
+        'Sống cùng mẹ chồng ở ngoại thành Hà Nội sau cưới 2 năm. Mẹ chồng hay nhắc “nhà người ta dâu nấu giỏi”. Hà làm việc và nội trợ, chưa có con — bà hỏi “bao giờ có cháu”.',
+    },
+
+    situation:
+      'Bữa cơm tối Chủ nhật, mẹ chồng nhận xét canh mặn. Hà xin lỗi, vào bếp nấu lại. Chồng nói “Mẹ nói vậy thôi, em đừng buồn” rồi xem TV. Hà rửa bát, khóc trong bồn rửa, không dám nói với ai.',
+
+    initialThought:
+      'Mẹ chồng luôn chê tôi không đủ tốt so với người khác. Tôi cố gắng làm hài lòng mọi người nhưng mệt mỏi và cảm thấy không được trân trọng.',
+
+    dialogue: [
+      {
+        step: 'Emotion',
+        content:
+          'Tôi cảm thấy tủi thân, buồn và tức giận. Lo lắng mối quan hệ gia đình xấu đi. Cô đơn dù sống chung nhà đông người.',
+        note: 'Cô đơn trong nhà — cảm xúc thật, dễ bị bỏ qua.',
+      },
+      {
+        step: 'Interpretation',
+        content:
+          'Tôi hiểu là mẹ chồng không thích tôi, chồng không bảo vệ tôi. Nếu nói ra thì sẽ thành dâu bất hiếu. Hôn nhân có lẽ là sai lầm.',
+        note: 'Vội kết luận “hôn nhân sai” — kiểm tra bằng hội thoại.',
+      },
+      {
+        step: 'Belief',
+        content:
+          'Tôi tin dâu phải hiếu thảo, nhịn để hòa khí. Người vợ tốt phải hòa hợp với gia đình chồng. Nói không với người lớn là sai.',
+        note: 'Niềm tin “phải nhịn” — đối chiếu giá trị tôn trọng bản thân.',
+      },
+      {
+        step: 'Value',
+        content:
+          'Hòa hợp gia đình quan trọng với tôi. Tôi cũng coi trọng sự tôn trọng và bình đẳng trong hôn nhân. Yêu thương chồng vẫn quan trọng.',
+        note: 'Hòa hợp vs tôn trọng — mâu thuẫn cốt lõi.',
+      },
+      {
+        step: 'Identity',
+        content:
+          'Tôi là con dâu, người vợ, giáo viên. Tôi không muốn được coi là ích kỷ hay bất hiếu. Tôi thấy mình phải chứng minh đủ tốt.',
+        note: 'Áp lực “đủ tốt” — gánh nặng vai trò.',
+      },
+      {
+        step: 'Action',
+        content:
+          'Tôi im lặng, xin lỗi và cố làm đúng ý mẹ chồng. Tôi chưa nói với chồng cảm giác thật sự. Tôi tự trách móc khi nấu không vừa ý.',
+        note: 'Im lặng — sửa: “hẹn chồng nói chuyện riêng 20 phút”.',
+      },
+    ],
+
+    expectedOutcomes: {
+      forestTree: 'family',
+      nodeTypes: ['Event', 'Emotion', 'Interpretation', 'Belief', 'Value', 'Identity', 'Action'],
+      highlights: [
+        'Niềm tin: Dâu phải hiếu thảo',
+        'Giá trị: Hòa hợp',
+        'Hành động: Tránh né / im lặng',
+        'Hành động: Tự trách móc',
+      ],
+      contradictions: [],
+      biases: ['Mind Reading', 'Should Statements', 'Emotional Reasoning'],
+    },
+
+    learningPoints: [
+      'Mở Bản đồ suy nghĩ → nhánh Gia đình.',
+      'Góc khám phá: quy tắc “phải nhịn” và gợi ý đặt ranh giới nhẹ nhàng.',
+      'Thử sửa hội thoại và chạy lại — xem ghi nhận Hành động thay đổi.',
+    ],
+  },
 ];
 
 if (typeof window !== 'undefined') {

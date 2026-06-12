@@ -100,6 +100,50 @@ const InsightEngine = {
   /**
    * Tổng hợp insight đầy đủ
    */
+  mergeAiInsights(base) {
+    const overlay = DataStore.getAiOverlay('insights');
+    if (!overlay) return base;
+
+    const seenMsg = new Set(base.contradictions.map((c) => c.message));
+    const aiContradictions = (overlay.contradictions || [])
+      .filter((c) => c.message && !seenMsg.has(c.message))
+      .map((c) => ({
+        id: generateId('contradiction'),
+        type: 'ai',
+        severity: c.severity === 'high' ? 'high' : 'medium',
+        message: c.message,
+        detectedAt: overlay.importedAt,
+      }));
+
+    const aiExploration = (overlay.explorationPrompts || []).map((p) => ({
+      source: p.source,
+      prompt: p.prompt,
+      seedThought: p.seedThought,
+      fromAi: true,
+    }));
+
+    const biasKeys = new Set(base.biases.map((b) => b.label.toLowerCase()));
+    const aiBiases = (overlay.biases || [])
+      .filter((b) => b.label && !biasKeys.has(b.label.toLowerCase()))
+      .map((b) => ({
+        label: b.label,
+        labelEn: b.label,
+        score: 1,
+        description: b.description || '',
+        fromAi: true,
+      }));
+
+    return {
+      ...base,
+      contradictions: [...base.contradictions, ...aiContradictions],
+      explorationPrompts: [...aiExploration, ...base.explorationPrompts].slice(0, 6),
+      biases: [...aiBiases, ...base.biases].slice(0, 8),
+      aiSummary: overlay.summary || '',
+      aiPatterns: overlay.patterns || [],
+      aiImportedAt: overlay.importedAt,
+    };
+  },
+
   analyze() {
     const contradictions = ContradictionEngine.analyze();
     const todayDiscoveries = this.getTodayDiscoveries();
@@ -124,12 +168,16 @@ const InsightEngine = {
       recentlyVerified,
     };
 
-    return {
+    const withPrompts = {
       ...partial,
       explorationPrompts: this.getExplorationPrompts(partial),
+    };
+
+    return this.mergeAiInsights({
+      ...withPrompts,
       stats: CognitiveTree.getStats(),
       generatedAt: new Date().toISOString(),
-    };
+    });
   },
 
   /**

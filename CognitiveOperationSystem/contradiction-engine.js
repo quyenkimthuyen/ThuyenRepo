@@ -108,6 +108,13 @@ const ContradictionEngine = {
       ['phải hoàn hảo', 'sai lầm là bình thường'],
       ['làm việc chăm chỉ', 'nghỉ ngơi'],
       ['kiểm soát', 'tự do'],
+      ['con trai phải mạnh', 'được yếu đuối'],
+      ['phụ nữ phải nhẫn', 'tự chủ'],
+      ['sếp luôn có lý', 'công bằng'],
+      ['tôi phải tự lo', 'nhờ giúp'],
+      ['nợ là đáng xấu hổ', 'tiền không quyết định'],
+      ['mẹ chồng luôn đúng', 'ranh giới'],
+      ['thành công phải có nhà xe', 'hạnh phúc đơn giản'],
     ];
 
     const contradictions = [];
@@ -154,8 +161,28 @@ const ContradictionEngine = {
       },
       {
         valueKw: ['phát triển', 'học hỏi'],
-        actionKw: ['bắt con học', 'ép học'],
+        actionKw: ['bắt con học', 'ép học', 'la mắng'],
         msg: 'coi trọng phát triển, nhưng đôi khi hành động có vẻ tạo áp lực hơn là khuyến khích',
+      },
+      {
+        valueKw: ['tự chăm sóc', 'chăm sóc bản thân'],
+        actionKw: ['hy sinh', '14 giờ', 'không ngủ'],
+        msg: 'coi trọng tự chăm sóc, nhưng nhịp sống hiện tại có vẻ chưa dành chỗ cho bản thân',
+      },
+      {
+        valueKw: ['biên giới', 'ranh giới', 'nói không'],
+        actionKw: ['làm hài lòng', 'không dám từ chối'],
+        msg: 'coi trọng ranh giới, nhưng hành động có vẻ vẫn ưu tiên làm hài lòng người khác',
+      },
+      {
+        valueKw: ['trung thực', 'chân thành'],
+        actionKw: ['im lặng', 'che giấu', 'giấu'],
+        msg: 'coi trọng trung thực, nhưng đôi khi chọn im lặng hoặc che giấu',
+      },
+      {
+        valueKw: ['hiếu thảo'],
+        actionKw: ['tránh', 'im lặng', 'cãi'],
+        msg: 'coi trọng hiếu thảo, nhưng giao tiếp với cha mẹ có vẻ đang khó khăn',
       },
     ];
 

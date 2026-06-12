@@ -19,17 +19,42 @@ const ReflectionEngine = {
   },
 
   /**
-   * Match item từ library theo keywords
+   * Phủ định gần keyword — giảm false positive (vd. "không lo" không ghi Lo lắng)
+   */
+  isKeywordNegated(normalized, index) {
+    const before = normalized.slice(Math.max(0, index - 18), index);
+    return /\b(không|chưa|chẳng|đừng|không hề|chưa hề|không còn)\s+$/.test(before);
+  },
+
+  /**
+   * Match item từ library theo keywords (score = độ dài khớp; ưu tiên cụm dài)
    */
   matchFromLibrary(text, library) {
     const normalized = this.normalize(text);
     const matches = [];
 
     for (const item of library) {
-      const score = item.keywords.reduce((s, kw) => {
-        if (normalized.includes(kw.toLowerCase())) return s + kw.length;
-        return s;
-      }, 0);
+      let score = 0;
+      for (const kw of item.keywords) {
+        const k = kw.toLowerCase();
+        let searchFrom = 0;
+        while (searchFrom < normalized.length) {
+          const idx = normalized.indexOf(k, searchFrom);
+          if (idx === -1) break;
+          if (!this.isKeywordNegated(normalized, idx)) {
+            score += k.length;
+            if (k.length <= 3) {
+              const chBefore = idx > 0 ? normalized[idx - 1] : ' ';
+              const chAfter =
+                idx + k.length < normalized.length ? normalized[idx + k.length] : ' ';
+              if (/[\s,.;!?]/.test(chBefore) && /[\s,.;!?]/.test(chAfter)) {
+                score += 1;
+              }
+            }
+          }
+          searchFrom = idx + 1;
+        }
+      }
       if (score > 0) {
         matches.push({ ...item, score });
       }
@@ -37,6 +62,13 @@ const ReflectionEngine = {
 
     matches.sort((a, b) => b.score - a.score);
     return matches;
+  },
+
+  /** Rút gọn nhãn từ câu user khi không khớp library */
+  summarizeUserPhrase(text, maxLen = 60) {
+    const t = (text || '').trim().replace(/\s+/g, ' ');
+    if (!t) return '';
+    return t.length > maxLen ? `${t.slice(0, maxLen)}...` : t;
   },
 
   /**
@@ -71,39 +103,16 @@ const ReflectionEngine = {
    * Phát hiện hành động từ text
    */
   extractActions(text) {
-    const normalized = this.normalize(text);
-    const actionPatterns = [
-      { label: 'Làm việc nhiều giờ', keywords: ['14 giờ', 'làm việc nhiều', 'overtime', 'làm đêm'] },
-      { label: 'La mắng / kỷ luật con', keywords: ['la mắng', 'phạt', 'đánh', 'mắng'] },
-      { label: 'Bắt con học', keywords: ['bắt học', 'ép học', 'phải học'] },
-      { label: 'Tránh né / im lặng', keywords: ['im lặng', 'tránh', 'không nói'] },
-      { label: 'Tìm kiếm giải pháp', keywords: ['tìm cách', 'giải quyết', 'làm gì'] },
-      { label: 'Tự trách móc', keywords: ['tự trách', 'trách mình', 'tại tôi'] },
-      { label: 'Nhờ giúp đỡ', keywords: ['nhờ', 'hỏi', 'tư vấn'] },
-      { label: 'Nghỉ ngơi', keywords: ['nghỉ', 'nghỉ ngơi', 'thư giãn'] },
-      { label: 'Đầu tư thời gian cho gia đình', keywords: ['dành thời gian', 'ở bên', 'chơi cùng'] },
-      { label: 'So sánh với người khác', keywords: ['so sánh', 'nhà hàng xóm', 'con nhà'] },
-    ];
-
-    return this.matchFromLibrary(text, actionPatterns).slice(0, 2);
+    const patterns = CognitiveLibrary.ACTION_PATTERNS || [];
+    return this.matchFromLibrary(text, patterns).slice(0, 2);
   },
 
   /**
    * Phát hiện identity từ text
    */
   extractIdentity(text) {
-    const normalized = this.normalize(text);
-    const identities = [
-      { label: 'Người cha/mẹ', keywords: ['cha', 'mẹ', 'bố', 'ba', 'làm cha', 'làm mẹ'] },
-      { label: 'Người làm việc', keywords: ['nhân viên', 'làm việc', 'công việc'] },
-      { label: 'Người học', keywords: ['học sinh', 'sinh viên', 'học'] },
-      { label: 'Người trưởng thành', keywords: ['trưởng thành', 'người lớn'] },
-      { label: 'Người thất bại', keywords: ['thất bại', 'tồi', 'không đủ'] },
-      { label: 'Người bảo vệ', keywords: ['bảo vệ', 'che chở', 'hy sinh'] },
-      { label: 'Người kiểm soát', keywords: ['kiểm soát', 'quản lý', 'ra lệnh'] },
-    ];
-
-    return this.matchFromLibrary(text, identities).slice(0, 2);
+    const patterns = CognitiveLibrary.IDENTITY_PATTERNS || [];
+    return this.matchFromLibrary(text, patterns).slice(0, 2);
   },
 
   /**
@@ -354,9 +363,9 @@ const ReflectionEngine = {
     }
 
     if (currentStep === 'Belief' || beliefs.length > 0) {
-      const items = beliefs.length > 0 ? beliefs : [];
-      if (items.length === 0 && this.looksLikeBelief(text)) {
-        items.push({ label: text.slice(0, 60) });
+      const items = beliefs.length > 0 ? [...beliefs] : [];
+      if (items.length === 0 && (this.looksLikeBelief(text) || currentStep === 'Belief')) {
+        items.push({ label: this.summarizeUserPhrase(text, 60) });
       }
       for (const b of items.slice(0, 2)) {
         const { node } = CognitiveTree.upsertNode({
@@ -371,7 +380,13 @@ const ReflectionEngine = {
     }
 
     if (currentStep === 'Value' || values.length > 0) {
-      for (const v of values.slice(0, 2)) {
+      const valueItems =
+        values.length > 0
+          ? values
+          : currentStep === 'Value' && this.looksLikeValue(text)
+            ? [{ label: this.summarizeUserPhrase(text, 50) }]
+            : [];
+      for (const v of valueItems.slice(0, 2)) {
         const { node } = CognitiveTree.upsertNode({
           type: 'Value',
           label: v.label,
@@ -384,7 +399,13 @@ const ReflectionEngine = {
     }
 
     if (currentStep === 'Identity' || identities.length > 0) {
-      for (const id of identities.slice(0, 2)) {
+      const identityItems =
+        identities.length > 0
+          ? identities
+          : currentStep === 'Identity' && this.looksLikeIdentity(text)
+            ? [{ label: this.summarizeUserPhrase(text, 50) }]
+            : [];
+      for (const id of identityItems.slice(0, 2)) {
         const { node } = CognitiveTree.upsertNode({
           type: 'Identity',
           label: id.label,
@@ -397,7 +418,13 @@ const ReflectionEngine = {
     }
 
     if (currentStep === 'Action' || actions.length > 0) {
-      for (const a of actions.slice(0, 2)) {
+      const actionItems =
+        actions.length > 0
+          ? actions
+          : currentStep === 'Action' || this.looksLikeAction(text)
+            ? [{ label: this.summarizeUserPhrase(text, 50) }]
+            : [];
+      for (const a of actionItems.slice(0, 2)) {
         const { node } = CognitiveTree.upsertNode({
           type: 'Action',
           label: a.label,
@@ -472,23 +499,92 @@ const ReflectionEngine = {
 
   looksLikeInterpretation(text) {
     const n = this.normalize(text);
-    return (
-      n.includes('sẽ') ||
-      n.includes('có thể') ||
-      n.includes('lo rằng') ||
-      n.includes('nghĩ rằng') ||
-      n.includes('có lẽ')
-    );
+    const markers = [
+      'lo rằng',
+      'sợ rằng',
+      'e rằng',
+      'nghĩ rằng',
+      'có lẽ',
+      'có thể',
+      'hình như',
+      'có vẻ',
+      'dường như',
+      'cảm giác như',
+      'tôi hiểu là',
+      'tôi lo',
+      'tôi sợ',
+      'nếu không',
+      'chắc chắn sẽ',
+    ];
+    if (markers.some((m) => n.includes(m))) return true;
+    return /\b(sẽ|sẽ bị|sẽ không)\b/.test(n);
   },
 
   looksLikeBelief(text) {
     const n = this.normalize(text);
+    const markers = [
+      'tin rằng',
+      'tôi tin',
+      'niềm tin',
+      'phải',
+      'nên',
+      'bắt buộc',
+      'cần phải',
+      'đáng lẽ',
+      'luôn luôn',
+      'không bao giờ',
+      'mọi người đều',
+      'ai cũng',
+      'tất cả đều',
+    ];
+    return markers.some((m) => n.includes(m));
+  },
+
+  looksLikeValue(text) {
+    const n = this.normalize(text);
     return (
-      n.includes('phải') ||
-      n.includes('luôn') ||
-      n.includes('không bao giờ') ||
-      n.includes('tin rằng') ||
-      n.includes('nên')
+      n.includes('quan trọng') ||
+      n.includes('coi trọng') ||
+      n.includes('trân trọng') ||
+      n.includes('ưu tiên') ||
+      n.includes('điều tôi quý') ||
+      n.includes('giá trị')
+    );
+  },
+
+  looksLikeIdentity(text) {
+    const n = this.normalize(text);
+    return (
+      n.includes('tôi là') ||
+      n.includes('mình là') ||
+      n.includes('tôi thấy mình') ||
+      n.includes('vai trò') ||
+      n.includes('là người') ||
+      n.includes('là một người') ||
+      n.includes('là kiểu người') ||
+      n.includes('tôi như một') ||
+      n.includes('cảm giác mình là')
+    );
+  },
+
+  looksLikeAction(text) {
+    const n = this.normalize(text);
+    const markers = [
+      'tôi sẽ',
+      'mình sẽ',
+      'tôi muốn',
+      'mình muốn',
+      'tôi định',
+      'đang cân nhắc',
+      'dự định',
+      'sẽ thử',
+      'sẽ làm',
+      'nhờ',
+      'tìm cách',
+    ];
+    if (markers.some((m) => n.includes(m))) return true;
+    return CognitiveLibrary.ACTION_PATTERNS?.some((item) =>
+      item.keywords.some((kw) => n.includes(kw.toLowerCase()))
     );
   },
 
@@ -639,6 +735,85 @@ const ReflectionEngine = {
     DataStore.updateSession(sessionId, session);
 
     return { session, guideMessage: guideMsg };
+  },
+
+  /**
+   * Chạy lại xử lý toàn phiên — giữ nguyên tin user, cập nhật câu người dẫn từ vị trí sửa
+   */
+  replaySessionFromUserIndex(session, editedUserIdx) {
+    const nodesCreated = [];
+    let nodeIds = [];
+
+    for (let i = 0; i < session.messages.length; ) {
+      const userMsg = session.messages[i];
+      if (userMsg.role !== 'user') {
+        i += 1;
+        continue;
+      }
+
+      const prefix = session.messages.slice(0, i + 1);
+      const result = this.processMessage(userMsg.content, {
+        initialThought: session.initialThought,
+        messages: prefix,
+        flowStep: userMsg.flowStep,
+        nodeIds: [...nodeIds],
+      });
+      nodeIds = result.nodeIds;
+      nodesCreated.push(...result.nodesCreated);
+
+      const guideIdx = i + 1;
+      if (guideIdx < session.messages.length && session.messages[guideIdx].role === 'guide') {
+        if (i >= editedUserIdx) {
+          if (userMsg.flowStep === 'Event') {
+            session.messages[guideIdx].content = this.getOpeningQuestion(userMsg.content);
+            session.messages[guideIdx].flowStep = 'Emotion';
+          } else {
+            session.messages[guideIdx].content = this.formatGuideMessage(result);
+            session.messages[guideIdx].flowStep = result.flowStep;
+            session.messages[guideIdx].extracted = result.extracted;
+          }
+        }
+        i = guideIdx + 1;
+      } else {
+        i += 1;
+      }
+    }
+
+    const lastGuide = [...session.messages].reverse().find((m) => m.role === 'guide');
+    session.flowStep = lastGuide?.flowStep ?? session.flowStep;
+    session.nodeIds = nodeIds;
+
+    return nodesCreated;
+  },
+
+  /**
+   * Sửa tin nhắn user — giữ hội thoại phía sau, chạy lại xử lý để cập nhật ghi nhận
+   */
+  editUserMessage(sessionId, messageId, newText) {
+    const session = DataStore.getSession(sessionId);
+    if (!session || !newText?.trim()) return null;
+
+    const idx = session.messages.findIndex((m) => m.id === messageId);
+    if (idx === -1 || session.messages[idx].role !== 'user') return null;
+
+    const trimmed = newText.trim();
+    session.messages[idx].content = trimmed;
+    session.messages[idx].editedAt = new Date().toISOString();
+
+    if (session.messages[idx].flowStep === 'Event') {
+      session.initialThought = trimmed;
+    }
+
+    const nodesCreated = this.replaySessionFromUserIndex(session, idx);
+    session.updatedAt = new Date().toISOString();
+
+    DataStore.updateSession(sessionId, session);
+    TimelineEngine.recordNodeChanges(nodesCreated);
+
+    const insights = InsightEngine.analyze();
+    DataStore.setInsights(insights);
+
+    return { session, nodesCreated };
   },
 };
 

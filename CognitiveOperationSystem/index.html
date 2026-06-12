@@ -68,10 +68,24 @@
               aria-label="Suy nghĩ của bạn"
             ></textarea>
           </div>
-          <button id="btn-start-reflection" class="btn btn-primary btn-lg">
-            <span data-i18n="home.startBtn">Bắt đầu suy ngẫm</span>
-            <span class="btn-arrow">→</span>
-          </button>
+          <div class="home-mode-picker" role="group" data-i18n-aria="home.modePickerAria" aria-label="Chọn cách suy ngẫm">
+            <button type="button" id="btn-start-reflection" class="home-mode-card home-mode-card--primary">
+              <span class="home-mode-icon" aria-hidden="true">💬</span>
+              <span class="home-mode-text">
+                <span class="home-mode-label" data-i18n="home.modeInApp">Suy ngẫm trong app</span>
+                <span class="home-mode-desc" data-i18n="home.modeInAppDesc">Hỏi từng bước · không cần ChatGPT</span>
+              </span>
+              <span class="home-mode-arrow" aria-hidden="true">→</span>
+            </button>
+            <button type="button" id="btn-ai-assist" class="home-mode-card home-mode-card--chatgpt">
+              <span class="home-mode-icon" aria-hidden="true">✨</span>
+              <span class="home-mode-text">
+                <span class="home-mode-label" data-i18n="home.modeChatGpt">Suy ngẫm với ChatGPT</span>
+                <span class="home-mode-desc" data-i18n="home.modeChatGptDesc">Copy prompt · chat AI · dán kết quả về</span>
+              </span>
+              <span class="home-mode-arrow" aria-hidden="true">→</span>
+            </button>
+          </div>
           <div class="home-notice">
             <p class="home-disclaimer" data-i18n="home.disclaimer">
               Đây là công cụ tự suy ngẫm — không thay tư vấn tâm lý hay điều trị y khoa. Nếu bạn đang gặp khủng hoảng, hãy tìm người hỗ trợ chuyên môn.
@@ -132,10 +146,17 @@
 
       <!-- 3. Bản đồ suy nghĩ -->
       <section id="screen-forest" class="screen" data-i18n-aria="forest.aria" aria-label="Bản đồ suy nghĩ" hidden>
-        <header class="screen-header">
-          <h2 data-i18n="forest.title">Bản đồ suy nghĩ</h2>
-          <p class="screen-desc" data-i18n="forest.desc">Mỗi nhánh là một lĩnh vực trong cuộc sống — gia đình, công việc, sức khỏe...</p>
+        <header class="screen-header screen-header--with-action">
+          <div class="screen-header-text">
+            <h2 data-i18n="forest.title">Bản đồ suy nghĩ</h2>
+            <p class="screen-desc" data-i18n="forest.desc">Mỗi nhánh là một lĩnh vực trong cuộc sống — gia đình, công việc, sức khỏe...</p>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm ai-screen-trigger" data-ai-screen="forest">
+            <span aria-hidden="true">✨</span>
+            <span data-i18n="aiScreen.triggerForest">ChatGPT</span>
+          </button>
         </header>
+        <div id="forest-ai-banner" class="ai-screen-banner glass" hidden></div>
         <div class="forest-grid" id="forest-grid"></div>
         <div class="forest-detail" id="forest-detail" hidden>
           <button class="btn btn-ghost back-btn" id="forest-back" data-i18n="forest.back">← Quay lại</button>
@@ -147,19 +168,31 @@
 
       <!-- 4. Góc khám phá -->
       <section id="screen-insights" class="screen" data-i18n-aria="insights.aria" aria-label="Góc khám phá" hidden>
-        <header class="screen-header">
-          <h2 data-i18n="insights.title">Góc khám phá</h2>
-          <p class="screen-desc" data-i18n="insights.desc">Nhìn thấy kiểu suy nghĩ lặp lại và những điểm mâu thuẫn trong lòng bạn</p>
-          <p class="insights-disclaimer" data-i18n="insights.disclaimer">Các gợi ý dưới đây chỉ để suy ngẫm thêm — không phải kết luận hay chẩn đoán.</p>
+        <header class="screen-header screen-header--with-action">
+          <div class="screen-header-text">
+            <h2 data-i18n="insights.title">Góc khám phá</h2>
+            <p class="screen-desc" data-i18n="insights.desc">Nhìn thấy kiểu suy nghĩ lặp lại và những điểm mâu thuẫn trong lòng bạn</p>
+            <p class="insights-disclaimer" data-i18n="insights.disclaimer">Các gợi ý dưới đây chỉ để suy ngẫm thêm — không phải kết luận hay chẩn đoán.</p>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm ai-screen-trigger" data-ai-screen="insights">
+            <span aria-hidden="true">✨</span>
+            <span data-i18n="aiScreen.triggerInsights">ChatGPT</span>
+          </button>
         </header>
         <div class="insights-grid" id="insights-grid"></div>
       </section>
 
       <!-- 5. Dòng thời gian -->
       <section id="screen-timeline" class="screen" data-i18n-aria="timeline.aria" aria-label="Dòng thời gian suy nghĩ" hidden>
-        <header class="screen-header">
-          <h2 data-i18n="timeline.title">Dòng thời gian</h2>
-          <p class="screen-desc" data-i18n="timeline.desc">Theo dõi suy nghĩ và giá trị của bạn thay đổi theo thời gian</p>
+        <header class="screen-header screen-header--with-action">
+          <div class="screen-header-text">
+            <h2 data-i18n="timeline.title">Dòng thời gian</h2>
+            <p class="screen-desc" data-i18n="timeline.desc">Theo dõi suy nghĩ và giá trị của bạn thay đổi theo thời gian</p>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm ai-screen-trigger" data-ai-screen="timeline">
+            <span aria-hidden="true">✨</span>
+            <span data-i18n="aiScreen.triggerTimeline">ChatGPT</span>
+          </button>
         </header>
         <div class="timeline-container" id="timeline-container"></div>
       </section>
@@ -172,16 +205,24 @@
         </header>
         <div class="test-layout">
           <aside class="test-sidebar glass" id="test-scenario-list" data-i18n-aria="test.listAria" aria-label="Danh sách kịch bản"></aside>
-          <div class="test-main" id="test-scenario-detail">
-            <div class="insight-empty test-empty" data-i18n="test.selectHint">Chọn một kịch bản bên trái để xem chi tiết.</div>
+          <div class="test-main-column" id="test-main-column">
+            <div class="test-sim-bar glass" id="test-sim-bar" hidden role="status" aria-live="polite">
+              <div class="test-sim-bar-top">
+                <span class="test-sim-label" data-i18n="test.simulating">Đang mô phỏng</span>
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-stop-simulation" data-i18n="test.stop">Dừng</button>
+              </div>
+              <div class="test-sim-steps" id="test-sim-steps" aria-hidden="true"></div>
+              <div class="test-sim-meta">
+                <span class="test-sim-status" id="test-sim-status"></span>
+                <div class="test-sim-progress-wrap">
+                  <div class="test-sim-progress" id="test-sim-progress"></div>
+                </div>
+              </div>
+            </div>
+            <div class="test-main" id="test-scenario-detail">
+              <div class="insight-empty test-empty" data-i18n="test.selectHint">Chọn một kịch bản bên trái để xem chi tiết.</div>
+            </div>
           </div>
-        </div>
-        <div class="test-sim-bar glass" id="test-sim-bar" hidden>
-          <div class="test-sim-status" id="test-sim-status" data-i18n="test.simulating">Đang mô phỏng...</div>
-          <div class="test-sim-progress-wrap">
-            <div class="test-sim-progress" id="test-sim-progress"></div>
-          </div>
-          <button type="button" class="btn btn-ghost btn-sm" id="btn-stop-simulation" data-i18n="test.stop">Dừng</button>
         </div>
       </section>
     </main>
@@ -210,6 +251,230 @@
       </div>
     </dialog>
 
+    <!-- AI Assist — Bản đồ / Khám phá / Dòng thời gian -->
+    <dialog id="ai-screen-modal" class="modal glass ai-assist-modal ai-screen-modal" aria-labelledby="ai-screen-title">
+      <div class="modal-content ai-assist-content">
+        <button type="button" class="modal-close" id="ai-screen-close" data-i18n-aria="common.close" aria-label="Đóng">×</button>
+        <header class="ai-wizard-header">
+          <div class="ai-wizard-title-row">
+            <span class="ai-wizard-badge" data-i18n="aiAssist.badge">AI gián tiếp</span>
+            <h3 id="ai-screen-title" class="ai-assist-title"></h3>
+          </div>
+          <nav class="ai-stepper ai-screen-stepper" id="ai-screen-stepper" aria-label="Tiến trình">
+            <button type="button" class="ai-stepper-btn active" data-ai-screen-step="1">
+              <span class="ai-stepper-num">1</span>
+              <span class="ai-stepper-label" data-i18n="aiScreen.stepper1">Copy phân tích</span>
+            </button>
+            <button type="button" class="ai-stepper-btn" data-ai-screen-step="2">
+              <span class="ai-stepper-num">2</span>
+              <span class="ai-stepper-label" data-i18n="aiAssist.stepper2">Chat</span>
+            </button>
+            <button type="button" class="ai-stepper-btn" data-ai-screen-step="3">
+              <span class="ai-stepper-num">3</span>
+              <span class="ai-stepper-label" data-i18n="aiScreen.stepper3">Dán kết quả</span>
+            </button>
+          </nav>
+        </header>
+        <div class="ai-privacy-banner" role="note">
+          <span class="ai-privacy-icon" aria-hidden="true">🔒</span>
+          <p data-i18n="aiAssist.privacyBanner">Dữ liệu chỉ rời thiết bị khi bạn tự copy sang ChatGPT.</p>
+        </div>
+
+        <section class="ai-wizard-panel active" id="ai-screen-panel-1" data-ai-screen-panel="1">
+          <p class="ai-panel-desc" id="ai-screen-step1-desc"></p>
+          <div class="ai-prompt-card glass">
+            <div class="ai-prompt-card-head">
+              <span data-i18n="aiScreen.analysisPrompt">Prompt phân tích (kèm dữ liệu app)</span>
+              <button type="button" class="btn btn-primary btn-sm ai-copy-btn" data-screen-copy="analysis">
+                <span class="ai-copy-icon" aria-hidden="true">📋</span>
+                <span data-i18n="aiAssist.copy">Sao chép</span>
+              </button>
+            </div>
+            <textarea id="ai-screen-prompt-analysis" class="ai-assist-textarea ai-prompt-preview" rows="8" readonly></textarea>
+          </div>
+          <footer class="ai-wizard-footer">
+            <button type="button" class="btn btn-primary" id="ai-screen-next-1" data-i18n="aiScreen.step1Next">Đã copy → Chat</button>
+          </footer>
+        </section>
+
+        <section class="ai-wizard-panel" id="ai-screen-panel-2" data-ai-screen-panel="2" hidden>
+          <p class="ai-panel-desc" data-i18n="aiScreen.step2Desc">Trao đổi với ChatGPT. Khi đủ, sang bước 3 để lấy JSON.</p>
+          <a class="btn btn-primary ai-open-chatgpt" href="https://chat.openai.com/" target="_blank" rel="noopener noreferrer" data-i18n="aiAssist.openChatGpt">Mở ChatGPT ↗</a>
+          <footer class="ai-wizard-footer">
+            <button type="button" class="btn btn-ghost" id="ai-screen-back-2" data-i18n="aiAssist.stepBack">Quay lại</button>
+            <button type="button" class="btn btn-primary" id="ai-screen-next-2" data-i18n="aiScreen.step2Next">Đã xong → Dán kết quả</button>
+          </footer>
+        </section>
+
+        <section class="ai-wizard-panel" id="ai-screen-panel-3" data-ai-screen-panel="3" hidden>
+          <details class="ai-prompt-collapse glass" open>
+            <summary data-i18n="aiScreen.exportPrompt">Prompt xuất JSON</summary>
+            <textarea id="ai-screen-prompt-export" class="ai-assist-textarea" rows="5" readonly></textarea>
+            <button type="button" class="btn btn-ghost btn-sm ai-copy-btn" data-screen-copy="export">
+              <span class="ai-copy-icon" aria-hidden="true">📋</span>
+              <span data-i18n="aiAssist.copyExport">Sao chép prompt kết thúc</span>
+            </button>
+          </details>
+          <label class="ai-paste-zone-label" for="ai-screen-import" data-i18n="aiAssist.importLabel">Dán kết quả từ ChatGPT</label>
+          <div class="ai-paste-zone" id="ai-screen-paste-zone">
+            <textarea id="ai-screen-import" class="ai-paste-input" rows="6" data-i18n-placeholder="aiAssist.importPlaceholder" placeholder="Dán JSON..."></textarea>
+            <span class="ai-paste-hint" data-i18n="aiAssist.pasteHint">Ctrl+V · Xem trước trước khi lưu</span>
+          </div>
+          <div class="ai-assist-actions">
+            <button type="button" class="btn btn-ghost" id="ai-screen-back-3" data-i18n="aiAssist.stepBack">Quay lại</button>
+            <button type="button" class="btn btn-primary" id="ai-screen-preview" data-i18n="aiAssist.previewBtn">Xem trước</button>
+          </div>
+          <div id="ai-screen-preview-panel" class="ai-import-preview glass" hidden>
+            <h5 class="ai-preview-title" data-i18n="aiAssist.previewTitle">Xem trước</h5>
+            <div id="ai-screen-preview-body" class="ai-preview-body"></div>
+            <div class="ai-assist-actions ai-preview-actions">
+              <button type="button" class="btn btn-ghost" id="ai-screen-preview-back" data-i18n="aiAssist.previewBack">Quay lại sửa</button>
+              <button type="button" class="btn btn-primary" id="ai-screen-confirm" data-i18n="aiAssist.confirmImport">Xác nhận nhập</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </dialog>
+
+    <!-- AI Assist wizard (ChatGPT gián tiếp) -->
+    <dialog id="ai-assist-modal" class="modal glass ai-assist-modal" aria-labelledby="ai-assist-title">
+      <div class="modal-content ai-assist-content">
+        <button type="button" class="modal-close" id="ai-assist-close" data-i18n-aria="common.close" aria-label="Đóng">×</button>
+
+        <header class="ai-wizard-header">
+          <div class="ai-wizard-title-row">
+            <span class="ai-wizard-badge" data-i18n="aiAssist.badge">AI gián tiếp</span>
+            <h3 id="ai-assist-title" class="ai-assist-title" data-i18n="aiAssist.title">Suy ngẫm với ChatGPT</h3>
+          </div>
+          <div class="ai-flow-strip" aria-hidden="true">
+            <span class="ai-flow-node active" data-i18n="aiAssist.flowApp">App</span>
+            <span class="ai-flow-line"></span>
+            <span class="ai-flow-node" data-i18n="aiAssist.flowChat">ChatGPT</span>
+            <span class="ai-flow-line"></span>
+            <span class="ai-flow-node" data-i18n="aiAssist.flowBack">App</span>
+          </div>
+          <nav class="ai-stepper" id="ai-stepper" aria-label="Tiến trình">
+            <button type="button" class="ai-stepper-btn active" data-ai-step="1">
+              <span class="ai-stepper-num">1</span>
+              <span class="ai-stepper-label" data-i18n="aiAssist.stepper1">Copy prompt</span>
+            </button>
+            <button type="button" class="ai-stepper-btn" data-ai-step="2">
+              <span class="ai-stepper-num">2</span>
+              <span class="ai-stepper-label" data-i18n="aiAssist.stepper2">Chat</span>
+            </button>
+            <button type="button" class="ai-stepper-btn" data-ai-step="3">
+              <span class="ai-stepper-num">3</span>
+              <span class="ai-stepper-label" data-i18n="aiAssist.stepper3">Dán kết quả</span>
+            </button>
+          </nav>
+        </header>
+
+        <div class="ai-privacy-banner" role="note">
+          <span class="ai-privacy-icon" aria-hidden="true">🔒</span>
+          <p data-i18n="aiAssist.privacyBanner">Dữ liệu chỉ rời thiết bị khi bạn tự copy sang ChatGPT. App không gọi API.</p>
+        </div>
+
+        <!-- Step 1 -->
+        <section class="ai-wizard-panel active" id="ai-panel-1" data-ai-panel="1">
+          <h4 class="ai-panel-title" data-i18n="aiAssist.step1Title">Prompt mở đầu</h4>
+          <p class="ai-panel-desc" data-i18n="aiAssist.step1Desc">Nhập hoặc chỉnh suy nghĩ, rồi sao chép prompt đầu tiên vào ChatGPT.</p>
+
+          <label class="ai-field-label" for="ai-modal-thought" data-i18n="aiAssist.thoughtLabel">Suy nghĩ của bạn</label>
+          <textarea
+            id="ai-modal-thought"
+            class="ai-thought-input"
+            rows="3"
+            data-i18n-placeholder="home.placeholder"
+            placeholder="Ví dụ: Con tôi không chịu học..."
+          ></textarea>
+
+          <div class="ai-prompt-card glass">
+            <div class="ai-prompt-card-head">
+              <span data-i18n="aiAssist.promptPreview">Nội dung prompt</span>
+              <button type="button" class="btn btn-primary btn-sm ai-copy-btn" id="btn-copy-prompt1" data-copy-target="reflection">
+                <span class="ai-copy-icon" aria-hidden="true">📋</span>
+                <span data-i18n="aiAssist.copy">Sao chép prompt</span>
+              </button>
+            </div>
+            <textarea id="ai-prompt-reflection" class="ai-assist-textarea ai-prompt-preview" rows="6" readonly></textarea>
+          </div>
+
+          <footer class="ai-wizard-footer">
+            <button type="button" class="btn btn-primary" id="btn-ai-step-next-1" data-i18n="aiAssist.step1Next">Đã copy → Bước chat</button>
+          </footer>
+        </section>
+
+        <!-- Step 2 -->
+        <section class="ai-wizard-panel" id="ai-panel-2" data-ai-panel="2" hidden>
+          <h4 class="ai-panel-title" data-i18n="aiAssist.step2Title">Trò chuyện trên ChatGPT</h4>
+          <p class="ai-panel-desc" data-i18n="aiAssist.step2Desc">Trả lời từng câu hỏi theo 7 bước. Không cần vội — chat đến khi đủ.</p>
+
+          <div class="ai-eeibvia-track" id="ai-eeibvia-track" aria-hidden="true"></div>
+
+          <a
+            class="btn btn-primary ai-open-chatgpt"
+            href="https://chat.openai.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            data-i18n="aiAssist.openChatGpt"
+          >Mở ChatGPT ↗</a>
+
+          <footer class="ai-wizard-footer">
+            <button type="button" class="btn btn-ghost" id="btn-ai-step-back-2" data-i18n="aiAssist.stepBack">Quay lại</button>
+            <button type="button" class="btn btn-primary" id="btn-ai-step-next-2" data-i18n="aiAssist.step2Next">Đã chat xong → Lấy kết quả</button>
+          </footer>
+        </section>
+
+        <!-- Step 3 -->
+        <section class="ai-wizard-panel" id="ai-panel-3" data-ai-panel="3" hidden>
+          <h4 class="ai-panel-title" data-i18n="aiAssist.step3Title">Dán kết quả về app</h4>
+          <p class="ai-panel-desc" data-i18n="aiAssist.step3Desc">Copy prompt kết thúc vào chat, rồi dán JSON ChatGPT trả về.</p>
+
+          <details class="ai-prompt-collapse glass">
+            <summary data-i18n="aiAssist.exportPromptToggle">Prompt kết thúc (lấy JSON)</summary>
+            <textarea id="ai-prompt-export" class="ai-assist-textarea" rows="5" readonly></textarea>
+            <button type="button" class="btn btn-ghost btn-sm ai-copy-btn" id="btn-copy-prompt2" data-copy-target="export">
+              <span class="ai-copy-icon" aria-hidden="true">📋</span>
+              <span data-i18n="aiAssist.copyExport">Sao chép prompt kết thúc</span>
+            </button>
+          </details>
+
+          <label class="ai-paste-zone-label" for="ai-import-input" data-i18n="aiAssist.importLabel">Dán kết quả từ ChatGPT</label>
+          <div class="ai-paste-zone" id="ai-paste-zone">
+            <textarea
+              id="ai-import-input"
+              class="ai-paste-input"
+              rows="6"
+              data-i18n-placeholder="aiAssist.importPlaceholder"
+              placeholder="Dán JSON hoặc khối ```json ... ``` từ ChatGPT..."
+            ></textarea>
+            <span class="ai-paste-hint" data-i18n="aiAssist.pasteHint">Ctrl+V để dán · Sau đó bấm Xem trước</span>
+          </div>
+
+          <div class="ai-assist-actions">
+            <button type="button" class="btn btn-ghost" id="btn-ai-step-back-3" data-i18n="aiAssist.stepBack">Quay lại</button>
+            <button type="button" class="btn btn-primary" id="btn-ai-preview" data-i18n="aiAssist.previewBtn">Xem trước</button>
+          </div>
+
+          <div id="ai-import-preview" class="ai-import-preview glass" hidden>
+            <h5 class="ai-preview-title" data-i18n="aiAssist.previewTitle">Xem trước ghi nhận</h5>
+            <p class="ai-preview-desc" data-i18n="aiAssist.previewDesc">
+              Kiểm tra 7 bước trước khi lưu. Mục “bổ sung rule” là gợi ý thêm từ engine trong app.
+            </p>
+            <div class="ai-preview-legend">
+              <span class="ai-preview-tag ai" data-i18n="aiAssist.previewFromAi">Từ ChatGPT</span>
+              <span class="ai-preview-tag rule" data-i18n="aiAssist.previewFromRule">Bổ sung rule</span>
+            </div>
+            <div id="ai-preview-body" class="ai-preview-body"></div>
+            <div class="ai-assist-actions ai-preview-actions">
+              <button type="button" class="btn btn-ghost" id="btn-ai-preview-back" data-i18n="aiAssist.previewBack">Quay lại sửa</button>
+              <button type="button" class="btn btn-primary" id="btn-ai-import-confirm" data-i18n="aiAssist.confirmImport">Xác nhận nhập</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </dialog>
+
     <!-- Crisis support -->
     <dialog id="crisis-modal" class="modal glass crisis-modal">
       <div class="modal-content crisis-modal-content">
@@ -235,6 +500,8 @@
   <script src="contradiction-engine.js"></script>
   <script src="insight-engine.js"></script>
   <script src="reflection-engine.js"></script>
+  <script src="ai-assist.js"></script>
+  <script src="ai-assist-screens.js"></script>
   <script src="test-scenarios.js"></script>
   <script src="test-mode.js"></script>
   <script src="app.js"></script>

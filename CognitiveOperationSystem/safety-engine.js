@@ -4,9 +4,17 @@
 
 const SafetyEngine = {
   crisisPatterns: [
-    { keywords: ['tự tử', 'tự sát', 'muốn chết', 'không muốn sống', 'chết đi', 'kết thúc cuộc đời', 'tự hại', 'tự cắt', 'làm hại mình'] },
+    {
+      keywords: [
+        'tự tử', 'tự sát', 'muốn chết', 'không muốn sống', 'chết đi', 'kết thúc cuộc đời',
+        'tự hại', 'tự cắt', 'làm hại mình', 'muốn biến mất', 'không muốn tỉnh dậy',
+        'tự làm hại', 'cắt tay', 'uống thuốc quá liều', 'nhảy lầu', 'buồn quá muốn chết',
+        'chán sống', 'mất ý chí sống', 'không còn lý do sống',
+      ],
+    },
     { keywords: ['suicide', 'kill myself', 'want to die', 'end my life', 'self-harm', 'hurt myself', 'no reason to live'] },
-    { keywords: ['tuyệt vọng hoàn toàn', 'không còn hy vọng', 'vô vọng tuyệt đối'] },
+    { keywords: ['tuyệt vọng hoàn toàn', 'không còn hy vọng', 'vô vọng tuyệt đối', 'hết cách rồi'] },
+    { keywords: ['đánh con', 'đánh vợ', 'đánh chồng', 'bạo lực gia đình', 'bị đánh', 'bị bạo hành'] },
   ],
 
   detectCrisis(text) {

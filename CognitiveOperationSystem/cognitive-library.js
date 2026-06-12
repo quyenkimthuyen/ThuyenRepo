@@ -66,12 +66,62 @@ const REFLECTION_FLOW = [
 
 /** Các cây trong Cognitive Forest */
 const FOREST_TREES = [
-  { id: 'family', label: 'Gia đình', icon: '🌳', keywords: ['gia đình', 'con', 'vợ', 'chồng', 'cha', 'mẹ', 'bố', 'ba', 'anh', 'chị', 'em', 'nhà'] },
-  { id: 'work', label: 'Công việc', icon: '🌳', keywords: ['công việc', 'làm việc', 'sếp', 'đồng nghiệp', 'dự án', 'công ty', 'nghề', 'việc'] },
-  { id: 'finance', label: 'Tài chính', icon: '🌳', keywords: ['tiền', 'tài chính', 'nợ', 'lương', 'đầu tư', 'chi tiêu', 'giàu', 'nghèo'] },
-  { id: 'learning', label: 'Học tập', icon: '🌳', keywords: ['học', 'thi', 'điểm', 'trường', 'giáo viên', 'bài tập', 'kiến thức', 'đại học'] },
-  { id: 'health', label: 'Sức khỏe', icon: '🌳', keywords: ['sức khỏe', 'bệnh', 'mệt', 'ngủ', 'ăn', 'tập', 'thể dục', 'stress'] },
-  { id: 'self', label: 'Bản thân', icon: '🌳', keywords: ['tôi', 'mình', 'bản thân', 'tự tin', 'tự trọng', 'cảm giác', 'nghĩ'] },
+  {
+    id: 'family',
+    label: 'Gia đình',
+    icon: '🌳',
+    keywords: [
+      'gia đình', 'con', 'vợ', 'chồng', 'cha', 'mẹ', 'bố', 'ba', 'anh', 'chị', 'em', 'nhà',
+      'con cái', 'ông', 'bà', 'cô', 'dì', 'chú', 'cậu', 'con dâu', 'con rể', 'mẹ chồng', 'ba vợ',
+      'gia đình chồng', 'hôn nhân', 'ly hôn', 'vợ chồng', 'nuôi dạy', 'dạy con',
+    ],
+  },
+  {
+    id: 'work',
+    label: 'Công việc',
+    icon: '🌳',
+    keywords: [
+      'công việc', 'làm việc', 'sếp', 'đồng nghiệp', 'dự án', 'công ty', 'nghề', 'việc',
+      'deadline', 'khách hàng', 'họp', 'thăng tiến', 'promotion', 'remote', 'wfh', 'startup',
+      'cấp trên', 'boss', 'nghỉ việc', 'xin nghỉ',
+    ],
+  },
+  {
+    id: 'finance',
+    label: 'Tài chính',
+    icon: '🌳',
+    keywords: [
+      'tiền', 'tài chính', 'nợ', 'lương', 'đầu tư', 'chi tiêu', 'giàu', 'nghèo',
+      'vay', 'trả nợ', 'tiết kiệm', 'mua nhà', 'mua xe', 'tín dụng', 'ngân hàng', 'thuế',
+    ],
+  },
+  {
+    id: 'learning',
+    label: 'Học tập',
+    icon: '🌳',
+    keywords: [
+      'học', 'thi', 'điểm', 'trường', 'giáo viên', 'bài tập', 'kiến thức', 'đại học',
+      'ôn thi', 'học thêm', 'bằng cấp', 'học sinh', 'sinh viên', 'lớp học', 'kỳ thi',
+    ],
+  },
+  {
+    id: 'health',
+    label: 'Sức khỏe',
+    icon: '🌳',
+    keywords: [
+      'sức khỏe', 'bệnh', 'mệt', 'ngủ', 'ăn', 'tập', 'thể dục', 'stress',
+      'khám bệnh', 'thuốc', 'mất ngủ', 'trầm cảm', 'burnout', 'kiệt sức', 'tâm lý',
+    ],
+  },
+  {
+    id: 'self',
+    label: 'Bản thân',
+    icon: '🌳',
+    keywords: [
+      'tôi', 'mình', 'bản thân', 'tự tin', 'tự trọng', 'cảm giác', 'nghĩ',
+      'tự ti', 'mục tiêu', 'ước mơ', 'giá trị sống', 'phát triển bản thân',
+    ],
+  },
 ];
 
 /** Màu theo loại node (dùng trong UI) */
@@ -92,7 +142,7 @@ const NODE_TYPE_COLORS = {
 const EMOTIONS = [
   { label: 'Vui', keywords: ['vui', 'hạnh phúc', 'vui vẻ', 'phấn khởi'] },
   { label: 'Buồn', keywords: ['buồn', 'u sầu', 'chán nản', 'thất vọng'] },
-  { label: 'Lo lắng', keywords: ['lo', 'lo lắng', 'băn khoăn', 'bồn chồn'] },
+  { label: 'Lo lắng', keywords: ['lo lắng', 'lo âu', 'băn khoăn', 'bồn chồn', 'lo cho'] },
   { label: 'Sợ hãi', keywords: ['sợ', 'sợ hãi', 'hoảng sợ', 'kinh hãi'] },
   { label: 'Tức giận', keywords: ['tức', 'giận', 'tức giận', 'phẫn nộ'] },
   { label: 'Áp lực', keywords: ['áp lực', 'căng thẳng', 'stress', 'quá tải'] },
@@ -112,7 +162,7 @@ const EMOTIONS = [
   { label: 'Bình yên', keywords: ['bình yên', 'thanh thản', 'an nhiên'] },
   { label: 'Hồi hộp', keywords: ['hồi hộp', 'háo hức', 'mong chờ'] },
   { label: 'Mệt mỏi', keywords: ['mệt', 'kiệt sức', 'uể oải'] },
-  { label: 'Trống rỗng', keywords: ['trống rỗng', 'vô nghĩa', 'vô hồn'] },
+  { label: 'Trống rỗng', keywords: ['trống rỗng', 'trống trải', 'vô nghĩa', 'vô hồn', 'vô cảm'] },
   { label: 'Tuyệt vọng', keywords: ['tuyệt vọng', 'vô vọng'] },
   { label: 'Hối hận', keywords: ['hối hận', 'ân hận', 'tiếc nuối'] },
   { label: 'Tội lỗi', keywords: ['tội lỗi', 'có lỗi', 'cảm thấy sai'] },
@@ -142,7 +192,17 @@ const EMOTIONS = [
   { label: 'Thất vọng sâu sắc', keywords: ['vỡ mộng', 'sụp đổ'] },
   { label: 'Lạc quan', keywords: ['lạc quan', 'tích cực', 'sáng sủa'] },
   { label: 'Bi quan', keywords: ['bi quan', 'tiêu cực', 'u ám'] },
-  { label: 'Bối cảnh lo âu', keywords: ['lo âu', 'trầm cảm', 'rối loạn'] },
+  { label: 'Bối cảnh lo âu', keywords: ['trầm cảm', 'rối loạn', 'burnout', 'kiệt sức'] },
+  { label: 'Bực dọc', keywords: ['bực dọc', 'khó chịu', 'khó ở'] },
+  { label: 'Chua chát', keywords: ['chua chát', 'chua xót', 'xót xa'] },
+  { label: 'Day dứt', keywords: ['day dứt', 'bâng khuâng', 'không nguôi'] },
+  { label: 'Nghẹn lòng', keywords: ['nghẹn', 'nghẹn lòng', 'ngậm ngùi'] },
+  { label: 'Bùng nổ', keywords: ['bùng nổ', 'phát điên', 'nổi điên'] },
+  { label: 'Kiệt sức', keywords: ['kiệt sức', 'burnout', 'quá tải'] },
+  { label: 'Bất công', keywords: ['bất công', 'thiệt thòi', 'uất ức'] },
+  { label: 'Thất thế', keywords: ['thất thế', 'bị bỏ rơi', 'bị lãng quên'] },
+  { label: 'Hổ thẹn', keywords: ['hổ thẹn', 'xấu hổ trước người khác'] },
+  { label: 'Mong manh', keywords: ['mong manh', 'bấp bênh', 'không chắc'] },
 ];
 
 /**
@@ -202,6 +262,12 @@ const VALUES = [
   { label: 'Bền vững', keywords: ['bền vững', 'lâu dài'] },
   { label: 'Tự do tài chính', keywords: ['tự do tài chính', 'độc lập tài chính'] },
   { label: 'Giáo dục', keywords: ['giáo dục', 'dạy con', 'nuôi dạy'] },
+  { label: 'Thể diện', keywords: ['thể diện', 'mặt mũi', 'danh dự', 'uy tín gia đình'] },
+  { label: 'Hiếu thảo', keywords: ['hiếu thảo', 'hiếu đạo', 'cha mẹ già'] },
+  { label: 'Hòa giải', keywords: ['hòa giải', 'dung hòa', 'dễ chịu'] },
+  { label: 'Tự chăm sóc', keywords: ['tự chăm sóc', 'chăm sóc bản thân', 'self-care'] },
+  { label: 'Biên giới lành mạnh', keywords: ['biên giới', 'ranh giới', 'nói không'] },
+  { label: 'Công lý xã hội', keywords: ['công lý', 'bất công xã hội', 'quyền lợi'] },
 ];
 
 /**
@@ -315,6 +381,17 @@ const BELIEFS = [
   { label: 'Hạnh phúc phải kiếm được', keywords: ['kiếm được', 'hạnh phúc', 'xứng đáng'] },
   { label: 'Tôi không được phép nghỉ', keywords: ['không được nghỉ', 'phép'] },
   { label: 'Làm việc 14 giờ/ngày là bình thường', keywords: ['14 giờ', 'làm việc nhiều', 'overwork'] },
+  { label: 'Con trai phải mạnh mẽ', keywords: ['con trai', 'mạnh mẽ', 'đàn ông phải'] },
+  { label: 'Phụ nữ phải nhẫn nhịn', keywords: ['phụ nữ', 'nhẫn nhịn', 'cam chịu'] },
+  { label: 'Thành công phải có nhà xe', keywords: ['nhà xe', 'mua nhà', 'mua xe', 'có của'] },
+  { label: 'Mẹ chồng luôn đúng', keywords: ['mẹ chồng', 'mẹ vợ', 'gia đình chồng'] },
+  { label: 'Đồng nghiệp không đáng tin', keywords: ['đồng nghiệp', 'cạnh tranh', 'phản bội'] },
+  { label: 'Sếp luôn có lý', keywords: ['sếp', 'cấp trên', 'boss'] },
+  { label: 'Tôi phải tự lo một mình', keywords: ['tự lo', 'một mình', 'không ai giúp'] },
+  { label: 'Hạnh phúc là có con', keywords: ['có con', 'sinh con', 'mang thai'] },
+  { label: 'Tuổi trẻ phải vội vàng', keywords: ['tuổi trẻ', '30 tuổi', 'gấp gáp'] },
+  { label: 'Nợ là đáng xấu hổ', keywords: ['nợ', 'vay', 'xấu hổ vì nợ'] },
+  { label: 'Mạng xã hội phản ánh đời thật', keywords: ['mạng xã hội', 'facebook', 'instagram'] },
 ];
 
 /**
@@ -322,14 +399,14 @@ const BELIEFS = [
  */
 const COGNITIVE_BIASES = [
   { label: 'Confirmation Bias', labelVi: 'Chỉ tin điều mình đã tin', keywords: ['chỉ thấy', 'bỏ qua', 'xác nhận'] },
-  { label: 'Overgeneralization', labelVi: 'Kết luận cho mọi trường hợp', keywords: ['luôn luôn', 'không bao giờ', 'mọi lúc'] },
+  { label: 'Overgeneralization', labelVi: 'Kết luận cho mọi trường hợp', keywords: ['luôn luôn', 'không bao giờ', 'mọi lúc', 'ai cũng', 'mọi người đều', 'tất cả đều', 'toàn là'] },
   { label: 'Black and White Thinking', labelVi: 'Chỉ có đúng hoặc sai', keywords: ['hoặc', 'tất cả hoặc không', 'đen trắng'] },
-  { label: 'Catastrophizing', labelVi: 'Nghĩ đến chuyện tồi tệ nhất', keywords: ['thảm họa', 'tệ nhất', 'hủy hoại', 'thất bại'] },
+  { label: 'Catastrophizing', labelVi: 'Nghĩ đến chuyện tồi tệ nhất', keywords: ['thảm họa', 'tệ nhất', 'hủy hoại', 'thất bại', 'tồi tệ nhất', 'sụp đổ', 'vỡ mộng', 'hết đường'] },
   { label: 'Availability Bias', labelVi: 'Tin vào điều dễ nhớ', keywords: ['nhớ', 'ví dụ gần', 'mới xảy ra'] },
-  { label: 'Mind Reading', labelVi: 'Đoán ý người khác', keywords: ['họ nghĩ', 'chắc chắn họ', 'biết họ'] },
-  { label: 'Fortune Telling', labelVi: 'Đoán trước tương lai', keywords: ['sẽ', 'chắc chắn sẽ', 'tương lai'] },
+  { label: 'Mind Reading', labelVi: 'Đoán ý người khác', keywords: ['họ nghĩ', 'chắc chắn họ', 'biết họ', 'họ chắc', 'sếp chắc', 'mọi người sẽ nghĩ', 'coi thường tôi'] },
+  { label: 'Fortune Telling', labelVi: 'Đoán trước tương lai', keywords: ['chắc chắn sẽ', 'nhất định sẽ', 'sẽ không bao giờ', 'tương lai sẽ', 'rồi sẽ'] },
   { label: 'Emotional Reasoning', labelVi: 'Tin vào cảm xúc như sự thật', keywords: ['cảm thấy nên', 'vì buồn nên'] },
-  { label: 'Should Statements', labelVi: 'Quy tắc phải/nên cứng nhắc', keywords: ['phải', 'nên', 'bắt buộc'] },
+  { label: 'Should Statements', labelVi: 'Quy tắc phải/nên cứng nhắc', keywords: ['phải', 'nên', 'bắt buộc', 'đáng lẽ', 'lẽ ra phải', 'không được phép'] },
   { label: 'Labeling', labelVi: 'Gán nhãn cho bản thân hoặc người khác', keywords: ['tôi là', 'họ là', 'kẻ', 'đồ'] },
   { label: 'Personalization', labelVi: 'Đổ hết lỗi về mình', keywords: ['tại tôi', 'lỗi tôi', 'do tôi'] },
   { label: 'Disqualifying the Positive', labelVi: 'Bỏ qua điều tốt', keywords: ['may mắn thôi', 'không tính', 'tình cờ'] },
@@ -566,6 +643,57 @@ const EXPLORATION_PROMPT_RULES = [
   },
 ];
 
+/**
+ * Hành động — pattern keyword (dùng matchFromLibrary)
+ * Mở rộng: thêm { label, keywords } khi gặp cụm hành vi mới trong phản hồi user
+ */
+const ACTION_PATTERNS = [
+  { label: 'Làm việc nhiều giờ', keywords: ['14 giờ', 'làm việc nhiều', 'overtime', 'làm đêm', 'làm cuối tuần', 'cày'] },
+  { label: 'La mắng / kỷ luật con', keywords: ['la mắng', 'phạt', 'mắng', 'quát', 'đánh mắng', 'trừng phạt'] },
+  { label: 'Bắt con học', keywords: ['bắt học', 'ép học', 'bắt con', 'đi học thêm', 'học thêm'] },
+  { label: 'Tránh né / im lặng', keywords: ['im lặng', 'tránh', 'không nói', 'né tránh', 'lánh', 'trốn'] },
+  { label: 'Tìm kiếm giải pháp', keywords: ['tìm cách', 'giải quyết', 'xử lý', 'tìm giải pháp', 'đối phó'] },
+  { label: 'Nhờ giúp đỡ', keywords: ['nhờ', 'nhờ giúp', 'hỏi ý kiến', 'tư vấn', 'xin giúp', 'nhờ team', 'nhờ hỗ trợ', 'nhờ đồng nghiệp'] },
+  { label: 'Nghỉ ngơi', keywords: ['nghỉ', 'nghỉ ngơi', 'thư giãn', 'nghỉ phép', 'nghỉ việc tạm'] },
+  { label: 'Dành thời gian cho gia đình', keywords: ['dành thời gian', 'ở bên', 'về nhà sớm', 'cuối tuần ở nhà', 'đưa con đi chơi'] },
+  { label: 'So sánh với người khác', keywords: ['so sánh', 'nhà hàng xóm', 'người ta', 'đồng nghiệp khác', 'con nhà người ta'] },
+  { label: 'Tự trách móc', keywords: ['tự trách', 'trách mình', 'đổ lỗi cho mình', 'tự đổ lỗi'] },
+  { label: 'Kiểm soát / can thiệp', keywords: ['kiểm soát', 'can thiệp', 'theo dõi', 'giám sát', 'đặt luật'] },
+  { label: 'Nói chuyện / giao tiếp', keywords: ['nói chuyện', 'trò chuyện', 'ngồi xuống', 'thảo luận', 'chia sẻ'] },
+  { label: 'Từ chối / đặt ranh giới', keywords: ['từ chối', 'nói không', 'đặt ranh giới', 'từ chối lời'] },
+  { label: 'Lướt mạng / tránh thực tế', keywords: ['lướt', 'facebook', 'tiktok', 'điện thoại', 'game', 'mạng xã hội'] },
+  { label: 'Chi tiêu / mua sắm', keywords: ['chi tiêu', 'mua sắm', 'vay tiền', 'trả nợ', 'tiêu xài'] },
+  { label: 'Tập thể dục / chăm sức khỏe', keywords: ['tập thể dục', 'chạy bộ', 'yoga', 'khám bệnh', 'đi khám'] },
+  { label: 'Hy sinh nhu cầu bản thân', keywords: ['hy sinh', 'nhường', 'bỏ qua mình', 'không quan tâm bản thân'] },
+  { label: 'Đổ lỗi cho người khác', keywords: ['đổ lỗi', 'tại họ', 'tại sếp', 'tại con', 'tại vợ', 'tại chồng'] },
+  { label: 'Lên kế hoạch', keywords: ['lên kế hoạch', 'lập kế', 'cân nhắc', 'sẽ thử', 'định sẽ'] },
+  { label: 'Xin lỗi / hòa giải', keywords: ['xin lỗi', 'hòa giải', 'làm lành', 'chuộc lỗi'] },
+  { label: 'Làm việc từ xa / linh hoạt', keywords: ['làm từ xa', 'remote', 'wfh', 'work from home'] },
+  { label: 'Đổi việc / tìm việc mới', keywords: ['đổi việc', 'nghỉ việc', 'xin việc', 'ứng tuyển', 'nhảy việc'] },
+];
+
+/**
+ * Vai trò bản thân — pattern keyword
+ */
+const IDENTITY_PATTERNS = [
+  { label: 'Cha/mẹ đang thất bại', keywords: ['cha mẹ thất bại', 'làm cha mẹ tồi', 'cha mẹ tồi', 'mẹ tồi', 'bố tồi', 'cha mẹ kém'] },
+  { label: 'Người hy sinh vì gia đình', keywords: ['hy sinh', 'gánh vác', 'vì gia đình', 'người hy sinh', 'hy sinh vì con'] },
+  { label: 'Người làm việc không ngừng', keywords: ['làm việc không ngừng', 'cày cuốc', 'workaholic', 'người làm việc'] },
+  { label: 'Người gánh vác một mình', keywords: ['một mình', 'tự gánh', 'gánh hết', 'một mình lo', 'tự lo một mình'] },
+  { label: 'Người làm hài lòng người khác', keywords: ['làm hài lòng', 'people pleaser', 'chiều lòng', 'không dám từ chối'] },
+  { label: 'Người cha/mẹ nghiêm khắc', keywords: ['cha nghiêm', 'mẹ nghiêm', 'nghiêm khắc', 'cha mẹ nghiêm'] },
+  { label: 'Người thua cuộc / kém cỏi', keywords: ['thua cuộc', 'kém cỏi', 'thất bại', 'không đủ giỏi', 'người thua'] },
+  { label: 'Người trưởng thành / có trách nhiệm', keywords: ['trưởng thành', 'có trách nhiệm', 'người lớn', 'người trưởng thành'] },
+  { label: 'Người chăm chỉ / cần cù', keywords: ['chăm chỉ', 'cần cù', 'siêng năng', 'người chăm chỉ'] },
+  { label: 'Người tốt / tử tế', keywords: ['người tốt', 'tử tế', 'lương thiện', 'tốt bụng'] },
+  { label: 'Nhân viên / đồng nghiệp', keywords: ['nhân viên', 'đồng nghiệp', 'cán bộ', 'là nhân viên'] },
+  { label: 'Vợ/chồng', keywords: ['là vợ', 'là chồng', 'người vợ', 'người chồng', 'vai trò vợ', 'vai trò chồng'] },
+  { label: 'Con cái trong gia đình', keywords: ['là con', 'đứa con', 'con trai', 'con gái', 'con một', 'con út'] },
+  { label: 'Người con hiếu thảo', keywords: ['con hiếu thảo', 'hiếu thảo', 'con ngoan'] },
+  { label: 'Người sếp / lãnh đạo', keywords: ['là sếp', 'người quản lý', 'lãnh đạo', 'trưởng nhóm'] },
+  { label: 'Người không xứng đáng', keywords: ['không xứng', 'imposter', 'kẻ giả mạo', 'đáng ghét'] },
+];
+
 /** Mẫu mâu thuẫn giá trị-hành động để contradiction engine */
 const CONTRADICTION_PATTERNS = [
   {
@@ -603,6 +731,41 @@ const CONTRADICTION_PATTERNS = [
     valueKeywords: ['gia đình', 'yêu thương'],
     message: 'gắn hạnh phúc với tiền bạc, trong khi quan hệ gia đình cũng rất quan trọng với bạn',
   },
+  {
+    valueKeywords: ['tự chăm sóc', 'chăm sóc bản thân', 'sức khỏe'],
+    actionKeywords: ['hy sinh', 'bỏ qua mình', 'không quan tâm bản thân', '14 giờ'],
+    message: 'coi trọng tự chăm sóc, nhưng hành động có vẻ đang đặt nhu cầu bản thân xuống sau',
+  },
+  {
+    valueKeywords: ['biên giới', 'ranh giới', 'nói không'],
+    actionKeywords: ['làm hài lòng', 'không dám từ chối', 'chiều lòng'],
+    message: 'coi trọng ranh giới lành mạnh, nhưng đôi khi vẫn cố làm hài lòng người khác',
+  },
+  {
+    valueKeywords: ['hiếu thảo', 'cha mẹ già'],
+    actionKeywords: ['im lặng', 'tránh', 'không nói', 'cãi'],
+    message: 'coi trọng hiếu thảo, nhưng giao tiếp với cha mẹ có vẻ đang bị tránh né',
+  },
+  {
+    beliefKeywords: ['con trai phải mạnh', 'đàn ông phải'],
+    valueKeywords: ['yêu thương', 'tự do'],
+    message: 'tin vào khuôn mẫu giới tính cứng nhắc, trong khi cũng coi trọng yêu thương và tự do',
+  },
+  {
+    beliefKeywords: ['phụ nữ phải nhẫn', 'cam chịu'],
+    valueKeywords: ['công bằng', 'tự chủ', 'biên giới'],
+    message: 'tin rằng phụ nữ phải nhẫn nhịn, trong khi cũng coi trọng công bằng và tự chủ',
+  },
+  {
+    valueKeywords: ['trung thực', 'chân thành'],
+    actionKeywords: ['im lặng', 'che giấu', 'giấu', 'không nói'],
+    message: 'coi trọng trung thực, nhưng đôi khi chọn im lặng hoặc che giấu',
+  },
+  {
+    valueKeywords: ['giáo dục', 'phát triển'],
+    actionKeywords: ['la mắng', 'phạt', 'quát', 'ép học'],
+    message: 'coi trọng giáo dục và phát triển, nhưng cách tương tác có vẻ mang tính áp lực',
+  },
 ];
 
 // Export cho module pattern (global scope vì vanilla JS)
@@ -623,6 +786,8 @@ if (typeof window !== 'undefined') {
     VALUES,
     BELIEFS,
     COGNITIVE_BIASES,
+    ACTION_PATTERNS,
+    IDENTITY_PATTERNS,
     REFLECTION_QUESTIONS,
     REFLECTION_SUGGESTIONS,
     CONTRADICTION_PATTERNS,

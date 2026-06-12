@@ -8,6 +8,12 @@
 const App = {
   currentScreen: 'home',
   activeSessionId: null,
+  editingMessageId: null,
+  aiImportPreviewPayload: null,
+  aiAssistStep: 1,
+  aiScreenId: null,
+  aiScreenStep: 1,
+  aiScreenPreviewPayload: null,
   selectedForestTree: null,
   nodeFilter: 'all',
 
@@ -21,6 +27,8 @@ const App = {
     I18n.applyStatic();
     I18n.onChange(() => {
       I18n.applyStatic();
+      this.refreshAiAssistPrompts();
+      this.renderAiEeibviaTrack();
       this.navigate(this.currentScreen);
     });
     this.renderHomeStats();
@@ -42,6 +50,101 @@ const App = {
     // Home — bắt đầu suy ngẫm
     document.getElementById('btn-start-reflection').addEventListener('click', () => {
       this.startReflection();
+    });
+
+    document.getElementById('btn-ai-assist').addEventListener('click', () => {
+      this.openAiAssistModal();
+    });
+    document.getElementById('ai-assist-close').addEventListener('click', () => {
+      document.getElementById('ai-assist-modal').close();
+    });
+    document.querySelectorAll('.ai-copy-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const which = btn.dataset.copyTarget || 'reflection';
+        this.copyAiPrompt(which, btn);
+      });
+    });
+    document.getElementById('ai-modal-thought')?.addEventListener('input', (e) => {
+      const thought = e.target.value;
+      const homeInput = document.getElementById('home-thought-input');
+      if (homeInput) homeInput.value = thought;
+      this.refreshAiAssistPrompts(thought);
+    });
+    document.getElementById('btn-ai-step-next-1')?.addEventListener('click', () => {
+      this.setAiAssistStep(2);
+    });
+    document.getElementById('btn-ai-step-back-2')?.addEventListener('click', () => {
+      this.setAiAssistStep(1);
+    });
+    document.getElementById('btn-ai-step-next-2')?.addEventListener('click', () => {
+      this.setAiAssistStep(3);
+    });
+    document.getElementById('btn-ai-step-back-3')?.addEventListener('click', () => {
+      this.hideAiImportPreview();
+      this.setAiAssistStep(2);
+    });
+    document.querySelectorAll('.ai-stepper-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const step = Number(btn.dataset.aiStep);
+        if (step === 3 && !document.getElementById('ai-import-input')?.value.trim()) {
+          this.setAiAssistStep(3);
+          return;
+        }
+        if (step <= this.aiAssistStep || step === 1) {
+          this.hideAiImportPreview();
+          this.setAiAssistStep(step);
+        }
+      });
+    });
+    document.getElementById('ai-import-input')?.addEventListener('focus', () => {
+      document.getElementById('ai-paste-zone')?.classList.add('focused');
+    });
+    document.getElementById('ai-import-input')?.addEventListener('blur', () => {
+      document.getElementById('ai-paste-zone')?.classList.remove('focused');
+    });
+    document.getElementById('btn-ai-preview').addEventListener('click', () => {
+      this.previewAiImport();
+    });
+    document.getElementById('btn-ai-preview-back').addEventListener('click', () => {
+      this.hideAiImportPreview();
+    });
+    document.getElementById('btn-ai-import-confirm').addEventListener('click', () => {
+      this.confirmAiImport();
+    });
+
+    document.querySelectorAll('.ai-screen-trigger').forEach((btn) => {
+      btn.addEventListener('click', () => this.openAiScreenAssist(btn.dataset.aiScreen));
+    });
+    document.getElementById('ai-screen-close')?.addEventListener('click', () => {
+      document.getElementById('ai-screen-modal').close();
+    });
+    document.getElementById('ai-screen-next-1')?.addEventListener('click', () => this.setAiScreenStep(2));
+    document.getElementById('ai-screen-back-2')?.addEventListener('click', () => this.setAiScreenStep(1));
+    document.getElementById('ai-screen-next-2')?.addEventListener('click', () => this.setAiScreenStep(3));
+    document.getElementById('ai-screen-back-3')?.addEventListener('click', () => {
+      this.hideAiScreenPreview();
+      this.setAiScreenStep(2);
+    });
+    document.querySelectorAll('[data-screen-copy]').forEach((btn) => {
+      btn.addEventListener('click', () => this.copyAiScreenPrompt(btn.dataset.screenCopy, btn));
+    });
+    document.getElementById('ai-screen-preview')?.addEventListener('click', () => this.previewAiScreenImport());
+    document.getElementById('ai-screen-preview-back')?.addEventListener('click', () => this.hideAiScreenPreview());
+    document.getElementById('ai-screen-confirm')?.addEventListener('click', () => this.confirmAiScreenImport());
+    document.querySelectorAll('.ai-screen-stepper .ai-stepper-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const step = Number(btn.dataset.aiScreenStep);
+        if (step <= this.aiScreenStep || step === 1) {
+          this.hideAiScreenPreview();
+          this.setAiScreenStep(step);
+        }
+      });
+    });
+    document.getElementById('ai-screen-import')?.addEventListener('focus', () => {
+      document.getElementById('ai-screen-paste-zone')?.classList.add('focused');
+    });
+    document.getElementById('ai-screen-import')?.addEventListener('blur', () => {
+      document.getElementById('ai-screen-paste-zone')?.classList.remove('focused');
     });
 
     // Reset dữ liệu
@@ -102,6 +205,23 @@ const App = {
 
     document.getElementById('btn-skip-step').addEventListener('click', () => {
       this.skipReflectionStep();
+    });
+
+    document.getElementById('chat-messages').addEventListener('click', (e) => {
+      const editBtn = e.target.closest('[data-edit-message]');
+      if (editBtn) {
+        this.startEditMessage(editBtn.dataset.editMessage);
+        return;
+      }
+      const saveBtn = e.target.closest('[data-save-edit]');
+      if (saveBtn) {
+        this.saveEditMessage(saveBtn.dataset.saveEdit);
+        return;
+      }
+      const cancelBtn = e.target.closest('[data-cancel-edit]');
+      if (cancelBtn) {
+        this.cancelEditMessage();
+      }
     });
 
     document.getElementById('btn-crisis-understood').addEventListener('click', () => {
@@ -292,6 +412,393 @@ const App = {
     this.showToast(I18n.t('home.dataReset'));
   },
 
+  openAiAssistModal() {
+    const input = document.getElementById('home-thought-input');
+    const thought = input?.value.trim() || '';
+    const modalThought = document.getElementById('ai-modal-thought');
+    if (modalThought) modalThought.value = thought;
+
+    this.aiImportPreviewPayload = null;
+    this.hideAiImportPreview();
+    this.setAiAssistStep(1);
+    this.refreshAiAssistPrompts(thought);
+    this.renderAiEeibviaTrack();
+    document.getElementById('ai-assist-modal').showModal();
+
+    if (!thought) {
+      modalThought?.focus();
+    }
+  },
+
+  setAiAssistStep(step) {
+    this.aiAssistStep = step;
+    document.querySelectorAll('.ai-wizard-panel').forEach((panel) => {
+      const n = Number(panel.dataset.aiPanel);
+      panel.hidden = n !== step;
+      panel.classList.toggle('active', n === step);
+    });
+    document.querySelectorAll('.ai-stepper-btn').forEach((btn) => {
+      const n = Number(btn.dataset.aiStep);
+      btn.classList.toggle('active', n === step);
+      btn.classList.toggle('done', n < step);
+    });
+    const flowNodes = document.querySelectorAll('.ai-flow-strip .ai-flow-node');
+    flowNodes.forEach((node, i) => {
+      const active = (step === 1 && i === 0) || (step === 2 && i === 1) || (step === 3 && i === 2);
+      node.classList.toggle('active', active);
+      node.classList.toggle('done', (step === 2 && i === 0) || (step === 3 && i <= 1));
+    });
+    if (step === 3) {
+      document.getElementById('ai-import-input')?.focus();
+    }
+  },
+
+  renderAiEeibviaTrack() {
+    const track = document.getElementById('ai-eeibvia-track');
+    if (!track || typeof CognitiveLibrary === 'undefined') return;
+    const steps = CognitiveLibrary.REFLECTION_FLOW || [];
+    const icons = {
+      Event: '📍',
+      Emotion: '💭',
+      Interpretation: '🔍',
+      Belief: '💡',
+      Value: '🌟',
+      Identity: '🪞',
+      Action: '⚡',
+    };
+    track.innerHTML = steps
+      .map((step) => {
+        const label = CognitiveLibrary.getFrameworkLabel(step);
+        return `<span class="ai-eeibvia-chip" title="${this.escapeAttr(label)}">${icons[step] || '·'} ${this.escapeHtml(label)}</span>`;
+      })
+      .join('');
+  },
+
+  hideAiImportPreview() {
+    const panel = document.getElementById('ai-import-preview');
+    const body = document.getElementById('ai-preview-body');
+    if (panel) panel.hidden = true;
+    if (body) body.innerHTML = '';
+    this.aiImportPreviewPayload = null;
+  },
+
+  refreshAiAssistPrompts(thoughtOverride) {
+    if (typeof AiAssist === 'undefined') return;
+    const input = document.getElementById('home-thought-input');
+    const thought = thoughtOverride ?? input?.value.trim() ?? '';
+    const p1 = document.getElementById('ai-prompt-reflection');
+    const p2 = document.getElementById('ai-prompt-export');
+    if (p1) p1.value = AiAssist.getReflectionPrompt(thought);
+    if (p2) p2.value = AiAssist.getExportPrompt();
+  },
+
+  async copyAiPrompt(which, btnEl) {
+    if (which === 'reflection') {
+      const thought = document.getElementById('ai-modal-thought')?.value.trim() || '';
+      if (!thought) {
+        this.showToast(I18n.t('aiAssist.needThought'));
+        document.getElementById('ai-modal-thought')?.focus();
+        return;
+      }
+      this.refreshAiAssistPrompts(thought);
+    }
+    const elId = which === 'export' ? 'ai-prompt-export' : 'ai-prompt-reflection';
+    const text = document.getElementById(elId)?.value || '';
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      if (btnEl) {
+        btnEl.classList.add('copied');
+        const label = btnEl.querySelector('span:last-child');
+        const prev = label?.textContent;
+        if (label) label.textContent = I18n.t('aiAssist.copyDone');
+        setTimeout(() => {
+          btnEl.classList.remove('copied');
+          if (label && prev) label.textContent = prev;
+        }, 2000);
+      }
+      this.showToast(I18n.t('aiAssist.copied'));
+    } catch {
+      const el = document.getElementById(elId);
+      el?.focus();
+      el?.select();
+      this.showToast(I18n.t('aiAssist.copyFailed'));
+    }
+  },
+
+  previewAiImport() {
+    const raw = document.getElementById('ai-import-input')?.value.trim() || '';
+    if (!raw) {
+      this.showToast(I18n.t('aiAssist.importEmpty'));
+      return;
+    }
+
+    if (this.checkCrisisAndShow(raw)) return;
+
+    const preview = AiAssist.buildImportPreview(raw);
+    if (!preview.ok) {
+      const key =
+        preview.error === 'missing_event'
+          ? 'aiAssist.importMissingEvent'
+          : 'aiAssist.previewInvalid';
+      this.showToast(I18n.t(key));
+      this.hideAiImportPreview();
+      return;
+    }
+
+    this.aiImportPreviewPayload = preview.payload;
+    this.renderAiImportPreview(preview);
+    document.getElementById('ai-import-preview').hidden = false;
+    document.getElementById('ai-import-preview')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  },
+
+  renderAiImportPreview(preview) {
+    const body = document.getElementById('ai-preview-body');
+    if (!body) return;
+
+    const fmtItems = (items) => {
+      if (!items?.length) {
+        return `<span class="ai-preview-empty">${this.escapeHtml(I18n.t('aiAssist.previewEmptyStep'))}</span>`;
+      }
+      return items
+        .map((item) => {
+          const cls = item.source === 'rule' ? 'ai-preview-tag rule' : 'ai-preview-tag ai';
+          const title =
+            item.source === 'rule'
+              ? I18n.t('aiAssist.previewFromRule')
+              : I18n.t('aiAssist.previewFromAi');
+          return `<span class="${cls}" title="${this.escapeAttr(title)}">${this.escapeHtml(item.label)}</span>`;
+        })
+        .join('');
+    };
+
+    const stepLabel = (type) => CognitiveLibrary.getFrameworkLabel(type);
+
+    const stepColor = (type) =>
+      CognitiveLibrary.NODE_TYPE_COLORS[type]?.border || 'var(--accent)';
+
+    let html = '<div class="ai-preview-cards">';
+    for (const row of preview.rows) {
+      html += `
+        <div class="ai-preview-card" style="--step-color: ${stepColor(row.type)}">
+          <div class="ai-preview-card-head">
+            <span class="ai-preview-dot"></span>
+            <span class="ai-preview-step">${this.escapeHtml(stepLabel(row.type))}</span>
+          </div>
+          <div class="ai-preview-items">${fmtItems(row.items)}</div>
+        </div>`;
+    }
+    html += '</div>';
+
+    if (preview.ruleEnrichments?.length) {
+      html += `<div class="ai-preview-section-title">${this.escapeHtml(I18n.t('aiAssist.previewFromRule'))}</div>`;
+      html += '<div class="ai-preview-cards ai-preview-cards--rule">';
+      for (const row of preview.ruleEnrichments) {
+        html += `
+          <div class="ai-preview-card ai-preview-card--compact" style="--step-color: ${stepColor(row.type)}">
+            <div class="ai-preview-card-head">
+              <span class="ai-preview-dot"></span>
+              <span class="ai-preview-step">${this.escapeHtml(stepLabel(row.type))}</span>
+            </div>
+            <div class="ai-preview-items">${fmtItems(row.items)}</div>
+          </div>`;
+      }
+      html += '</div>';
+    }
+
+    if (preview.biases?.length) {
+      html += `<div class="ai-preview-section-title">${this.escapeHtml(I18n.t('aiAssist.previewBiases'))}</div>`;
+      html += `<div class="ai-preview-items">${fmtItems(preview.biases)}</div>`;
+    }
+
+    body.innerHTML = html;
+  },
+
+  // ─── AI ASSIST — Bản đồ / Khám phá / Timeline ───
+
+  openAiScreenAssist(screenId) {
+    if (typeof AiAssistScreens === 'undefined') return;
+    if (!AiAssistScreens.SCREENS.includes(screenId)) return;
+
+    if (DataStore.getNodes().length === 0) {
+      this.showToast(I18n.t('aiScreen.needData'));
+      return;
+    }
+
+    this.aiScreenId = screenId;
+    this.aiScreenPreviewPayload = null;
+    this.hideAiScreenPreview();
+    this.setAiScreenStep(1);
+    this.refreshAiScreenPrompts();
+
+    const titleKey = `aiScreen.title_${screenId}`;
+    document.getElementById('ai-screen-title').textContent = I18n.t(titleKey);
+    const descEl = document.getElementById('ai-screen-step1-desc');
+    if (descEl) descEl.textContent = I18n.t(`aiScreen.desc_${screenId}`);
+
+    document.getElementById('ai-screen-modal').showModal();
+  },
+
+  setAiScreenStep(step) {
+    this.aiScreenStep = step;
+    document.querySelectorAll('[data-ai-screen-panel]').forEach((panel) => {
+      const n = Number(panel.dataset.aiScreenPanel);
+      panel.hidden = n !== step;
+      panel.classList.toggle('active', n === step);
+    });
+    document.querySelectorAll('.ai-screen-stepper .ai-stepper-btn').forEach((btn) => {
+      const n = Number(btn.dataset.aiScreenStep);
+      btn.classList.toggle('active', n === step);
+      btn.classList.toggle('done', n < step);
+    });
+    if (step === 3) document.getElementById('ai-screen-import')?.focus();
+  },
+
+  refreshAiScreenPrompts() {
+    if (!this.aiScreenId || typeof AiAssistScreens === 'undefined') return;
+    const analysis = document.getElementById('ai-screen-prompt-analysis');
+    const exp = document.getElementById('ai-screen-prompt-export');
+    if (analysis) analysis.value = AiAssistScreens.getAnalysisPrompt(this.aiScreenId);
+    if (exp) exp.value = AiAssistScreens.getExportPrompt(this.aiScreenId);
+  },
+
+  async copyAiScreenPrompt(which, btnEl) {
+    const elId = which === 'export' ? 'ai-screen-prompt-export' : 'ai-screen-prompt-analysis';
+    const text = document.getElementById(elId)?.value || '';
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      if (btnEl) {
+        btnEl.classList.add('copied');
+        setTimeout(() => btnEl.classList.remove('copied'), 2000);
+      }
+      this.showToast(I18n.t('aiAssist.copied'));
+    } catch {
+      document.getElementById(elId)?.select();
+      this.showToast(I18n.t('aiAssist.copyFailed'));
+    }
+  },
+
+  hideAiScreenPreview() {
+    const panel = document.getElementById('ai-screen-preview-panel');
+    const body = document.getElementById('ai-screen-preview-body');
+    if (panel) panel.hidden = true;
+    if (body) body.innerHTML = '';
+    this.aiScreenPreviewPayload = null;
+  },
+
+  previewAiScreenImport() {
+    const raw = document.getElementById('ai-screen-import')?.value.trim() || '';
+    if (!raw) {
+      this.showToast(I18n.t('aiAssist.importEmpty'));
+      return;
+    }
+    if (this.checkCrisisAndShow(raw)) return;
+
+    const preview = AiAssistScreens.buildPreview(this.aiScreenId, raw);
+    if (!preview.ok) {
+      this.showToast(I18n.t('aiAssist.previewInvalid'));
+      this.hideAiScreenPreview();
+      return;
+    }
+
+    this.aiScreenPreviewPayload = preview.payload;
+    this.renderAiScreenPreview(preview);
+    document.getElementById('ai-screen-preview-panel').hidden = false;
+  },
+
+  renderAiScreenPreview(preview) {
+    const body = document.getElementById('ai-screen-preview-body');
+    if (!body) return;
+
+    const rowLabel = (key) => I18n.t(`aiScreen.preview_${key}`) || key;
+    let html = '<div class="ai-screen-preview-list">';
+    for (const row of preview.rows) {
+      if (!row.items?.length) continue;
+      html += `<div class="ai-screen-preview-block"><div class="ai-preview-section-title">${this.escapeHtml(rowLabel(row.label))}</div>`;
+      html += '<ul class="ai-screen-preview-ul">';
+      for (const item of row.items) {
+        html += `<li>${this.escapeHtml(item)}</li>`;
+      }
+      html += '</ul></div>';
+    }
+    html += '</div>';
+    body.innerHTML = html || `<p class="ai-preview-empty">${this.escapeHtml(I18n.t('aiScreen.previewEmpty'))}</p>`;
+  },
+
+  confirmAiScreenImport() {
+    if (!this.aiScreenPreviewPayload) {
+      this.previewAiScreenImport();
+      return;
+    }
+
+    const result = AiAssistScreens.importPayload(this.aiScreenId, this.aiScreenPreviewPayload);
+    if (!result.ok) {
+      this.showToast(I18n.t('aiAssist.importInvalid'));
+      return;
+    }
+
+    document.getElementById('ai-screen-import').value = '';
+    this.hideAiScreenPreview();
+    document.getElementById('ai-screen-modal').close();
+
+    this.showToast(I18n.t(`aiScreen.importSuccess_${this.aiScreenId}`));
+    this.renderHomeStats();
+    if (this.aiScreenId === 'insights') this.renderInsights();
+    if (this.aiScreenId === 'forest') this.renderForest();
+    if (this.aiScreenId === 'timeline') this.renderTimeline();
+  },
+
+  renderForestAiBanner() {
+    const banner = document.getElementById('forest-ai-banner');
+    const overlay = DataStore.getAiOverlay('forest');
+    if (!banner) return;
+
+    if (!overlay?.summary && !(overlay?.treeInsights?.length)) {
+      banner.hidden = true;
+      return;
+    }
+
+    const trees = (overlay.treeInsights || [])
+      .map((t) => `<li><strong>${this.escapeHtml(I18n.forestLabel(t.treeId))}</strong>: ${this.escapeHtml(t.observation || t.theme)}</li>`)
+      .join('');
+
+    banner.hidden = false;
+    banner.innerHTML = `
+      <div class="ai-screen-banner-title">${this.escapeHtml(I18n.t('aiScreen.bannerForest'))}</div>
+      ${overlay.summary ? `<p>${this.escapeHtml(overlay.summary)}</p>` : ''}
+      ${trees ? `<ul class="ai-screen-banner-list">${trees}</ul>` : ''}
+    `;
+  },
+
+  confirmAiImport() {
+    if (!this.aiImportPreviewPayload) {
+      this.previewAiImport();
+      return;
+    }
+
+    const raw = document.getElementById('ai-import-input')?.value.trim() || '';
+    if (raw && this.checkCrisisAndShow(raw)) return;
+
+    const result = AiAssist.importSession(this.aiImportPreviewPayload);
+    if (!result.ok) {
+      const key =
+        result.error === 'missing_event' ? 'aiAssist.importMissingEvent' : 'aiAssist.importInvalid';
+      this.showToast(I18n.t(key));
+      return;
+    }
+
+    document.getElementById('ai-import-input').value = '';
+    this.hideAiImportPreview();
+    document.getElementById('ai-assist-modal').close();
+
+    this.activeSessionId = result.session.id;
+    this.editingMessageId = null;
+    this.renderHomeStats();
+    this.showToast(I18n.t('aiAssist.importSuccess'));
+    this.navigate('reflection');
+  },
+
   startReflection() {
     const input = document.getElementById('home-thought-input');
     const thought = input.value.trim();
@@ -306,6 +813,7 @@ const App = {
 
     const { session } = ReflectionEngine.createSession(thought);
     this.activeSessionId = session.id;
+    this.editingMessageId = null;
     input.value = '';
 
     this.showToast(I18n.t('home.sessionStarted'));
@@ -346,6 +854,7 @@ const App = {
   },
 
   renderEmptyReflection() {
+    this.editingMessageId = null;
     document.getElementById('chat-messages').innerHTML = `
       <div class="insight-empty" style="text-align:center;padding:2rem;">
         ${I18n.t('reflection.empty')}<br>
@@ -456,16 +965,96 @@ const App = {
       .map((msg) => {
         const isUser = msg.role === 'user';
         const time = I18n.localeTime(msg.timestamp);
+        const editedTag = msg.editedAt
+          ? ` · ${I18n.t('reflection.editedLabel')}`
+          : '';
+
+        if (isUser && this.editingMessageId === msg.id) {
+          return `
+            <div class="message message-user message-editing" data-message-id="${this.escapeAttr(msg.id)}">
+              <textarea
+                class="message-edit-input"
+                id="message-edit-input-${this.escapeAttr(msg.id)}"
+                rows="3"
+                aria-label="${this.escapeAttr(I18n.t('reflection.editMessage'))}"
+              >${this.escapeHtml(msg.content)}</textarea>
+              <div class="message-edit-actions">
+                <button type="button" class="btn btn-primary btn-sm" data-save-edit="${this.escapeAttr(msg.id)}">
+                  ${I18n.t('reflection.saveEdit')}
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm" data-cancel-edit>
+                  ${I18n.t('reflection.cancelEdit')}
+                </button>
+              </div>
+            </div>
+          `;
+        }
+
+        const editBtn = isUser
+          ? `<button
+              type="button"
+              class="message-edit-btn"
+              data-edit-message="${this.escapeAttr(msg.id)}"
+              title="${this.escapeAttr(I18n.t('reflection.editMessage'))}"
+              aria-label="${this.escapeAttr(I18n.t('reflection.editMessage'))}"
+            >✎</button>`
+          : '';
+
         return `
           <div class="message message-${isUser ? 'user' : 'guide'}">
-            ${this.escapeHtml(msg.content)}
-            <div class="message-meta">${isUser ? I18n.t('reflection.you') : I18n.t('reflection.guide')} · ${time}</div>
+            <div class="message-body">${this.escapeHtml(msg.content)}</div>
+            <div class="message-meta">
+              ${isUser ? I18n.t('reflection.you') : I18n.t('reflection.guide')} · ${time}${editedTag}
+              ${editBtn}
+            </div>
           </div>
         `;
       })
       .join('');
 
     container.scrollTop = container.scrollHeight;
+
+    if (this.editingMessageId) {
+      const input = document.getElementById(`message-edit-input-${this.editingMessageId}`);
+      if (input) {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    }
+  },
+
+  startEditMessage(messageId) {
+    if (!this.activeSessionId) return;
+    this.editingMessageId = messageId;
+    this.renderReflection();
+  },
+
+  cancelEditMessage() {
+    this.editingMessageId = null;
+    this.renderReflection();
+  },
+
+  saveEditMessage(messageId) {
+    if (!this.activeSessionId || !messageId) return;
+
+    const input = document.getElementById(`message-edit-input-${messageId}`);
+    const text = input?.value.trim();
+
+    if (!text) {
+      this.showToast(I18n.t('reflection.editEmpty'));
+      input?.focus();
+      return;
+    }
+
+    if (this.checkCrisisAndShow(text)) return;
+
+    const result = ReflectionEngine.editUserMessage(this.activeSessionId, messageId, text);
+    if (!result) return;
+
+    this.editingMessageId = null;
+    this.renderReflection();
+    this.renderHomeStats();
+    this.showToast(I18n.t('reflection.messageUpdated'));
   },
 
   sendChatMessage() {
@@ -476,6 +1065,7 @@ const App = {
 
     if (this.checkCrisisAndShow(text)) return;
 
+    this.editingMessageId = null;
     const result = ReflectionEngine.continueSession(this.activeSessionId, text);
     if (!result) return;
 
@@ -537,6 +1127,7 @@ const App = {
     this.selectedForestTree = null;
     document.getElementById('forest-grid').hidden = false;
     document.getElementById('forest-detail').hidden = true;
+    this.renderForestAiBanner();
 
     const grid = document.getElementById('forest-grid');
     const trees = CognitiveLibrary.FOREST_TREES;
@@ -575,6 +1166,8 @@ const App = {
   renderForestDetail(treeId) {
     document.getElementById('forest-grid').hidden = true;
     document.getElementById('forest-detail').hidden = false;
+    const banner = document.getElementById('forest-ai-banner');
+    if (banner) banner.hidden = true;
 
     const tree = CognitiveLibrary.FOREST_TREES.find((t) => t.id === treeId);
     document.getElementById('forest-detail-title').textContent = `${tree.icon} ${I18n.forestLabel(treeId)}`;
@@ -676,6 +1269,13 @@ const App = {
             </div>`
           : ''
       }
+      ${
+        node.aiNote
+          ? `<div class="modal-ai-note" style="margin-top:1rem;padding:0.75rem;border-radius:8px;background:rgba(16,185,129,0.08);font-size:0.85rem">
+              <strong>${this.escapeHtml(I18n.t('aiScreen.nodeNote'))}</strong><br>${this.escapeHtml(node.aiNote)}
+            </div>`
+          : ''
+      }
     `;
 
     modal.showModal();
@@ -693,7 +1293,35 @@ const App = {
 
     const grid = document.getElementById('insights-grid');
 
+    const aiBadge = `<span class="ai-from-badge">${this.escapeHtml(I18n.t('aiScreen.fromChatGpt'))}</span>`;
+
     grid.innerHTML = `
+      ${
+        insights.aiSummary
+          ? this.renderInsightSection(
+              I18n.t('aiScreen.bannerInsights'),
+              `<p class="ai-summary-text">${this.escapeHtml(insights.aiSummary)}</p>`,
+              'exploration'
+            )
+          : ''
+      }
+      ${
+        insights.aiPatterns?.length
+          ? this.renderInsightSection(
+              I18n.t('aiScreen.patterns'),
+              insights.aiPatterns
+                .map(
+                  (p) => `
+                <div class="insight-item">
+                  <strong>${this.escapeHtml(p.label)}</strong>
+                  <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:0.25rem">${this.escapeHtml(p.detail || '')}</div>
+                </div>`
+                )
+                .join(''),
+              'exploration'
+            )
+          : ''
+      }
       ${this.renderInsightSection(
         I18n.t('insights.today'),
         insights.todayDiscoveries.length > 0
@@ -750,6 +1378,7 @@ const App = {
               .map(
                 (c) => `
               <div class="insight-item ${c.severity === 'high' ? 'danger' : 'warning'}">
+                ${c.type === 'ai' ? aiBadge : ''}
                 ${this.escapeHtml(I18n.formatContradiction(c.message))}
               </div>
             `
@@ -766,7 +1395,7 @@ const App = {
               .map(
                 (p) => `
               <div class="exploration-prompt-card">
-                <span class="exploration-prompt-source">${this.escapeHtml(p.source)}</span>
+                <span class="exploration-prompt-source">${this.escapeHtml(p.source)}${p.fromAi ? ` ${aiBadge}` : ''}</span>
                 <p class="exploration-prompt-text">${this.escapeHtml(p.prompt)}</p>
                 <button
                   type="button"
@@ -790,6 +1419,7 @@ const App = {
               .map(
                 (b) => `
               <div class="insight-item">
+                ${b.fromAi ? aiBadge : ''}
                 <strong>${this.escapeHtml(b.label)}</strong>
                 <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:0.25rem">
                   ${this.escapeHtml(b.description)}
@@ -828,6 +1458,18 @@ const App = {
     }
 
     let html = '';
+    const tlOverlay = DataStore.getAiOverlay('timeline');
+    if (tlOverlay?.narrativeArc || tlOverlay?.reflectionPrompt) {
+      html += `<div class="timeline-ai-block glass">
+        <h3 class="timeline-year">${this.escapeHtml(I18n.t('aiScreen.bannerTimeline'))}</h3>`;
+      if (tlOverlay.narrativeArc) {
+        html += `<p class="ai-summary-text">${this.escapeHtml(tlOverlay.narrativeArc)}</p>`;
+      }
+      if (tlOverlay.reflectionPrompt) {
+        html += `<p class="timeline-ai-prompt"><em>${this.escapeHtml(tlOverlay.reflectionPrompt)}</em></p>`;
+      }
+      html += '</div>';
+    }
 
     // Narrative shifts (Value/Belief theo năm)
     if (narrative.length > 0) {
@@ -1042,43 +1684,133 @@ const App = {
     return dialogue;
   },
 
+  initTestSimSteps(dialogue) {
+    const stepsEl = document.getElementById('test-sim-steps');
+    if (!stepsEl) return;
+
+    stepsEl.innerHTML = dialogue
+      .map((turn, i) => {
+        const label = CognitiveLibrary.getFrameworkLabel(turn.step) || turn.step;
+        return `<span class="test-sim-step-pill" data-sim-step="${i}" title="${this.escapeAttr(label)}">${i + 1}. ${this.escapeHtml(label)}</span>`;
+      })
+      .join('');
+  },
+
+  updateTestSimProgress(progress) {
+    const statusEl = document.getElementById('test-sim-status');
+    const progressEl = document.getElementById('test-sim-progress');
+    if (!statusEl || !progressEl) return;
+
+    const pct = Math.round((progress.completedSteps / progress.totalSteps) * 100);
+    progressEl.style.width = `${pct}%`;
+
+    const stepLabel =
+      CognitiveLibrary.getFrameworkLabel(progress.currentTurn?.step) ||
+      progress.currentTurn?.step ||
+      '';
+    statusEl.textContent = I18n.t('test.stepProgress', {
+      current: progress.completedSteps,
+      total: progress.totalSteps,
+      step: stepLabel,
+    });
+
+    document.querySelectorAll('.test-sim-step-pill').forEach((pill, idx) => {
+      pill.classList.remove('active', 'done');
+      if (idx < progress.completedSteps) pill.classList.add('done');
+      if (idx === progress.completedSteps - 1) pill.classList.add('active');
+    });
+
+    document.querySelectorAll('#test-dialogue-list .test-dialogue-item').forEach((item, idx) => {
+      item.classList.remove('test-dialogue-item--active', 'test-dialogue-item--done');
+      if (idx < progress.completedSteps) item.classList.add('test-dialogue-item--done');
+      if (idx === progress.completedSteps - 1) {
+        item.classList.add('test-dialogue-item--active');
+        item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
+  },
+
+  clearTestSimUI() {
+    const bar = document.getElementById('test-sim-bar');
+    const column = document.getElementById('test-main-column');
+    const progressEl = document.getElementById('test-sim-progress');
+    const stepsEl = document.getElementById('test-sim-steps');
+
+    if (bar) {
+      bar.hidden = true;
+      bar.classList.remove('test-sim-bar--done');
+    }
+    column?.classList.remove('is-simulating');
+    if (progressEl) progressEl.style.width = '0%';
+    if (stepsEl) stepsEl.replaceChildren();
+
+    document.querySelectorAll('#test-dialogue-list .test-dialogue-item').forEach((item) => {
+      item.classList.remove('test-dialogue-item--active', 'test-dialogue-item--done');
+    });
+  },
+
+  showTestSimDone(result) {
+    const bar = document.getElementById('test-sim-bar');
+    const statusEl = document.getElementById('test-sim-status');
+    const progressEl = document.getElementById('test-sim-progress');
+    const column = document.getElementById('test-main-column');
+
+    column?.classList.remove('is-simulating');
+    bar?.classList.add('test-sim-bar--done');
+    if (progressEl) progressEl.style.width = '100%';
+
+    document.querySelectorAll('.test-sim-step-pill').forEach((pill) => {
+      pill.classList.remove('active');
+      pill.classList.add('done');
+    });
+    document.querySelectorAll('#test-dialogue-list .test-dialogue-item').forEach((item) => {
+      item.classList.remove('test-dialogue-item--active');
+      item.classList.add('test-dialogue-item--done');
+    });
+
+    if (statusEl) {
+      statusEl.textContent = I18n.t('test.simDone', {
+        entries: result.stats.total,
+        contradictions: result.insights.contradictions.length,
+      });
+    }
+  },
+
   async runTestSimulation(scenarioId, options = {}) {
     if (TestMode.isSimulating) return;
 
     this.collectTestDialogueEdits(scenarioId);
+    const dialogue = TestMode.getEffectiveDialogue(scenarioId);
 
     const bar = document.getElementById('test-sim-bar');
+    const column = document.getElementById('test-main-column');
     const statusEl = document.getElementById('test-sim-status');
     const progressEl = document.getElementById('test-sim-progress');
 
+    this.initTestSimSteps(dialogue);
     bar.hidden = false;
+    bar.classList.remove('test-sim-bar--done');
+    column?.classList.add('is-simulating');
     statusEl.textContent = I18n.t('test.simulating');
     progressEl.style.width = '0%';
+    bar.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     try {
       const result = await TestMode.runSimulation(scenarioId, {
         reset: options.reset !== false,
         delayMs: options.delayMs ?? 500,
         backup: options.backup !== false,
-        onProgress: (p) => {
-          const pct = Math.round((p.completedSteps / p.totalSteps) * 100);
-          progressEl.style.width = `${pct}%`;
-          const stepLabel = CognitiveLibrary.getFrameworkLabel(p.currentTurn?.step) || p.currentTurn?.step || '';
-          statusEl.textContent = I18n.t('test.stepProgress', {
-            current: p.completedSteps,
-            total: p.totalSteps,
-            step: stepLabel,
-          });
-        },
+        dialogue,
+        onProgress: (p) => this.updateTestSimProgress(p),
       });
 
-      bar.hidden = true;
-
       if (result.aborted) {
+        this.clearTestSimUI();
         this.showToast(I18n.t('test.simStopped'));
         return;
       }
 
+      this.showTestSimDone(result);
       this.activeSessionId = result.sessionId;
       this.showToast(
         I18n.t('test.simDone', {
@@ -1087,9 +1819,11 @@ const App = {
         })
       );
       this.renderHomeStats();
+      await new Promise((resolve) => setTimeout(resolve, 1400));
+      this.clearTestSimUI();
       this.navigate('reflection');
     } catch (err) {
-      bar.hidden = true;
+      this.clearTestSimUI();
       this.showToast(err.message || I18n.t('test.simFailed'));
     }
   },
