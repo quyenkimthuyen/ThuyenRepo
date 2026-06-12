@@ -77,6 +77,7 @@ const App = {
       this.setAiAssistStep(1);
     });
     document.getElementById('btn-ai-step-next-2')?.addEventListener('click', () => {
+      this.refreshAiAssistPrompts();
       this.setAiAssistStep(3);
     });
     document.getElementById('btn-ai-step-back-3')?.addEventListener('click', () => {
@@ -430,6 +431,18 @@ const App = {
     }
   },
 
+  formatAiJsonHint(hint) {
+    if (!hint || hint === 'empty') return I18n.t('aiAssist.importEmpty');
+    if (hint === 'no_object' || hint === 'fenced_no_json') {
+      return I18n.locale === 'en' ? 'No JSON object found' : 'Không thấy khối JSON';
+    }
+    if (hint === 'missing_event') return I18n.t('aiAssist.importMissingEvent');
+    if (hint === 'invalid_payload') {
+      return I18n.locale === 'en' ? 'JSON shape not supported' : 'Cấu trúc JSON không đúng màn hình';
+    }
+    return String(hint).slice(0, 140);
+  },
+
   setAiAssistStep(step) {
     this.aiAssistStep = step;
     document.querySelectorAll('.ai-wizard-panel').forEach((panel) => {
@@ -477,9 +490,20 @@ const App = {
   hideAiImportPreview() {
     const panel = document.getElementById('ai-import-preview');
     const body = document.getElementById('ai-preview-body');
+    const statsEl = document.getElementById('ai-preview-stats');
+    const warnEl = document.getElementById('ai-preview-warnings');
     if (panel) panel.hidden = true;
     if (body) body.innerHTML = '';
+    if (statsEl) {
+      statsEl.hidden = true;
+      statsEl.textContent = '';
+    }
+    if (warnEl) {
+      warnEl.hidden = true;
+      warnEl.innerHTML = '';
+    }
     this.aiImportPreviewPayload = null;
+    this.aiImportTranscript = '';
   },
 
   refreshAiAssistPrompts(thoughtOverride) {
@@ -535,26 +559,72 @@ const App = {
 
     if (this.checkCrisisAndShow(raw)) return;
 
+    const transcript = document.getElementById('ai-import-transcript')?.value.trim() || '';
+    if (transcript && this.checkCrisisAndShow(transcript)) return;
+
     const preview = AiAssist.buildImportPreview(raw);
     if (!preview.ok) {
       const key =
         preview.error === 'missing_event'
           ? 'aiAssist.importMissingEvent'
           : 'aiAssist.previewInvalid';
-      this.showToast(I18n.t(key));
+      let msg = I18n.t(key);
+      if (preview.hint) {
+        msg += ` — ${this.formatAiJsonHint(preview.hint)}`;
+      }
+      this.showToast(msg);
       this.hideAiImportPreview();
       return;
     }
 
+    preview.transcriptTurns = transcript ? AiAssist.parseTranscript(transcript).length : 0;
     this.aiImportPreviewPayload = preview.payload;
+    this.aiImportTranscript = transcript;
     this.renderAiImportPreview(preview);
     document.getElementById('ai-import-preview').hidden = false;
     document.getElementById('ai-import-preview')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   },
 
   renderAiImportPreview(preview) {
+    const statsEl = document.getElementById('ai-preview-stats');
+    const warnEl = document.getElementById('ai-preview-warnings');
     const body = document.getElementById('ai-preview-body');
     if (!body) return;
+
+    if (statsEl && preview.stats) {
+      statsEl.hidden = false;
+      let statsText = I18n.t('aiAssist.previewStats', {
+        ai: preview.stats.aiCount,
+        rule: preview.stats.ruleCount,
+        steps: preview.stats.stepCount,
+      });
+      if (preview.transcriptTurns > 0) {
+        statsText += ` · ${I18n.t('aiAssist.previewStatsTranscript', { n: preview.transcriptTurns })}`;
+      }
+      statsEl.textContent = statsText;
+    }
+
+    if (warnEl) {
+      const warns = [];
+      if (preview.warnings?.includes('many_empty_steps')) {
+        warns.push(I18n.t('aiAssist.previewWarnManyEmpty'));
+      }
+      if (preview.warnings?.includes('no_interpretation')) {
+        warns.push(I18n.t('aiAssist.previewWarnNoInterpretation'));
+      }
+      if (preview.warnings?.includes('no_emotions')) {
+        warns.push(I18n.t('aiAssist.previewWarnNoEmotions'));
+      }
+      if (warns.length) {
+        warnEl.hidden = false;
+        warnEl.innerHTML = warns
+          .map((w) => `<div class="ai-preview-warn">${this.escapeHtml(w)}</div>`)
+          .join('');
+      } else {
+        warnEl.hidden = true;
+        warnEl.innerHTML = '';
+      }
+    }
 
     const fmtItems = (items) => {
       if (!items?.length) {
@@ -651,15 +721,39 @@ const App = {
       btn.classList.toggle('active', n === step);
       btn.classList.toggle('done', n < step);
     });
-    if (step === 3) document.getElementById('ai-screen-import')?.focus();
+    if (step === 1 || step === 3) {
+      this.refreshAiScreenPrompts({ notify: step === 3 });
+    }
+    if (step === 3) {
+      this.showAiScreenContextNote();
+      document.getElementById('ai-screen-import')?.focus();
+    } else {
+      const note = document.getElementById('ai-screen-context-note');
+      if (note) note.hidden = true;
+    }
   },
 
-  refreshAiScreenPrompts() {
+  showAiScreenContextNote() {
+    const el = document.getElementById('ai-screen-context-note');
+    if (!el || !this.aiScreenContextSyncedAt) return;
+    const time = this.aiScreenContextSyncedAt.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    el.textContent = I18n.t('aiAssist.contextNote', { time });
+    el.hidden = false;
+  },
+
+  refreshAiScreenPrompts(options = {}) {
     if (!this.aiScreenId || typeof AiAssistScreens === 'undefined') return;
     const analysis = document.getElementById('ai-screen-prompt-analysis');
     const exp = document.getElementById('ai-screen-prompt-export');
     if (analysis) analysis.value = AiAssistScreens.getAnalysisPrompt(this.aiScreenId);
     if (exp) exp.value = AiAssistScreens.getExportPrompt(this.aiScreenId);
+    this.aiScreenContextSyncedAt = new Date();
+    if (options.notify) {
+      this.showToast(I18n.t('aiAssist.contextRefreshed'));
+    }
   },
 
   async copyAiScreenPrompt(which, btnEl) {
@@ -682,9 +776,20 @@ const App = {
   hideAiScreenPreview() {
     const panel = document.getElementById('ai-screen-preview-panel');
     const body = document.getElementById('ai-screen-preview-body');
+    const statsEl = document.getElementById('ai-screen-preview-stats');
+    const warnEl = document.getElementById('ai-screen-preview-warnings');
     if (panel) panel.hidden = true;
     if (body) body.innerHTML = '';
+    if (statsEl) {
+      statsEl.hidden = true;
+      statsEl.textContent = '';
+    }
+    if (warnEl) {
+      warnEl.hidden = true;
+      warnEl.innerHTML = '';
+    }
     this.aiScreenPreviewPayload = null;
+    this.aiScreenPreviewMatchPlan = null;
   },
 
   previewAiScreenImport() {
@@ -697,32 +802,184 @@ const App = {
 
     const preview = AiAssistScreens.buildPreview(this.aiScreenId, raw);
     if (!preview.ok) {
-      this.showToast(I18n.t('aiAssist.previewInvalid'));
+      let msg = I18n.t('aiAssist.previewInvalid');
+      if (preview.hint) {
+        msg += ` — ${this.formatAiJsonHint(preview.hint)}`;
+      }
+      this.showToast(msg);
       this.hideAiScreenPreview();
       return;
     }
 
     this.aiScreenPreviewPayload = preview.payload;
+    this.aiScreenPreviewMatchPlan = preview.matchPlan;
     this.renderAiScreenPreview(preview);
     document.getElementById('ai-screen-preview-panel').hidden = false;
   },
 
+  renderAiScreenMatchBadge(status) {
+    const key =
+      status === 'apply' ? 'aiAssist.matchApply' : status === 'fuzzy' ? 'aiAssist.matchFuzzy' : 'aiAssist.matchMiss';
+    return `<span class="ai-match-badge ai-match-badge--${status}">${this.escapeHtml(I18n.t(key))}</span>`;
+  },
+
+  renderForestMatchPlan(matchPlan) {
+    if (!matchPlan) return '';
+
+    let html = `<div class="ai-preview-section-title">${this.escapeHtml(I18n.t('aiScreen.preview_relations'))}</div>`;
+    html += '<div class="ai-match-list">';
+
+    matchPlan.relations.forEach((row, idx) => {
+      const rel = row.rel;
+      const line = `${rel.sourceType}: ${rel.sourceLabel} → ${rel.targetType}: ${rel.targetLabel} (${rel.relationType})`;
+      html += `<div class="ai-match-row ai-match-row--${row.status}">`;
+      html += `<div class="ai-match-row-head">${this.renderAiScreenMatchBadge(row.status)}<span>${this.escapeHtml(line)}</span></div>`;
+      if (row.source.node) {
+        html += `<div class="ai-match-resolved">${this.escapeHtml(I18n.t('aiAssist.matchResolvedAs', { label: row.source.node.label }))}</div>`;
+      }
+      if (row.target.node) {
+        html += `<div class="ai-match-resolved">${this.escapeHtml(I18n.t('aiAssist.matchResolvedAs', { label: row.target.node.label }))}</div>`;
+      }
+      if (row.status === 'miss') {
+        html += `<p class="ai-match-resolved">${this.escapeHtml(I18n.t('aiAssist.editLabelHint'))}</p>`;
+        html += `<div class="ai-match-edit">
+          <input type="text" data-rel-fix="source" data-rel-idx="${idx}" value="${this.escapeAttr(rel.sourceLabel)}" aria-label="source" />
+          <input type="text" data-rel-fix="target" data-rel-idx="${idx}" value="${this.escapeAttr(rel.targetLabel)}" aria-label="target" />
+        </div>`;
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+
+    if (matchPlan.nodeUpdates.length) {
+      html += `<div class="ai-preview-section-title">${this.escapeHtml(I18n.t('aiScreen.preview_nodeUpdates'))}</div>`;
+      html += '<div class="ai-match-list">';
+      for (const row of matchPlan.nodeUpdates) {
+        const upd = row.upd;
+        const line = `${upd.type}: ${upd.label}${upd.category ? ` [${upd.category}]` : ''}`;
+        html += `<div class="ai-match-row ai-match-row--${row.status}">`;
+        html += `<div class="ai-match-row-head">${this.renderAiScreenMatchBadge(row.status)}<span>${this.escapeHtml(line)}</span></div>`;
+        if (row.node) {
+          html += `<div class="ai-match-resolved">${this.escapeHtml(I18n.t('aiAssist.matchResolvedAs', { label: row.node.label }))}</div>`;
+        }
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+
+    return html;
+  },
+
+  syncForestPreviewEdits() {
+    if (!this.aiScreenPreviewPayload?.relations) return;
+
+    document.querySelectorAll('#ai-screen-preview-body [data-rel-fix]').forEach((input) => {
+      const idx = Number(input.dataset.relIdx);
+      const field = input.dataset.relFix;
+      const rel = this.aiScreenPreviewPayload.relations[idx];
+      if (!rel) return;
+      if (field === 'source') rel.sourceLabel = input.value.trim();
+      if (field === 'target') rel.targetLabel = input.value.trim();
+    });
+  },
+
   renderAiScreenPreview(preview) {
+    const statsEl = document.getElementById('ai-screen-preview-stats');
+    const warnEl = document.getElementById('ai-screen-preview-warnings');
     const body = document.getElementById('ai-screen-preview-body');
     if (!body) return;
 
-    const rowLabel = (key) => I18n.t(`aiScreen.preview_${key}`) || key;
-    let html = '<div class="ai-screen-preview-list">';
-    for (const row of preview.rows) {
-      if (!row.items?.length) continue;
-      html += `<div class="ai-screen-preview-block"><div class="ai-preview-section-title">${this.escapeHtml(rowLabel(row.label))}</div>`;
-      html += '<ul class="ai-screen-preview-ul">';
-      for (const item of row.items) {
-        html += `<li>${this.escapeHtml(item)}</li>`;
+    if (statsEl && preview.stats) {
+      statsEl.hidden = false;
+      if (this.aiScreenId === 'forest') {
+        statsEl.textContent = I18n.t('aiAssist.previewForestStats', {
+          apply: preview.stats.applyRelations,
+          total: preview.stats.totalRelations,
+          updates: preview.stats.applyUpdates,
+          totalUpdates: preview.stats.totalUpdates,
+        });
+      } else if (this.aiScreenId === 'insights') {
+        statsEl.textContent = I18n.t('aiAssist.previewInsightsStats', {
+          n: preview.stats.contradictions,
+          e: preview.stats.exploration,
+          new: preview.stats.aiOnlyContradictions,
+        });
+      } else if (this.aiScreenId === 'timeline') {
+        statsEl.textContent = I18n.t('aiAssist.previewTimelineStats', {
+          m: preview.stats.milestones,
+          v: preview.stats.valueShifts,
+        });
       }
-      html += '</ul></div>';
     }
-    html += '</div>';
+
+    if (warnEl && preview.warnings?.length) {
+      const msgs = [];
+      const missRel = preview.matchPlan?.relations.filter((r) => r.status === 'miss').length || 0;
+      const fuzzyRel = preview.matchPlan?.relations.filter((r) => r.status === 'fuzzy').length || 0;
+      const overlap = preview.stats?.contradictions
+        ? preview.stats.contradictions - (preview.stats.aiOnlyContradictions || 0)
+        : 0;
+
+      if (preview.warnings.includes('forest_relations_miss') && missRel) {
+        msgs.push(I18n.t('aiAssist.warnForestMiss', { n: missRel }));
+      }
+      if (preview.warnings.includes('forest_relations_fuzzy') && fuzzyRel) {
+        msgs.push(I18n.t('aiAssist.warnForestFuzzy', { n: fuzzyRel }));
+      }
+      if (preview.warnings.includes('insights_overlap_rule') && overlap > 0) {
+        msgs.push(I18n.t('aiAssist.warnInsightsOverlap', { n: overlap }));
+      }
+
+      if (msgs.length) {
+        warnEl.hidden = false;
+        warnEl.innerHTML = msgs
+          .map((m, i) => {
+            const cls = i === 0 && missRel ? 'ai-preview-warn ai-preview-warn--error' : 'ai-preview-warn';
+            return `<div class="${cls}">${this.escapeHtml(m)}</div>`;
+          })
+          .join('');
+      } else {
+        warnEl.hidden = true;
+        warnEl.innerHTML = '';
+      }
+    } else if (warnEl) {
+      warnEl.hidden = true;
+      warnEl.innerHTML = '';
+    }
+
+    const rowLabel = (key) => I18n.t(`aiScreen.preview_${key}`) || key;
+    let html = '';
+
+    if (this.aiScreenId === 'forest' && preview.matchPlan) {
+      html += this.renderForestMatchPlan(preview.matchPlan);
+      const summaryRow = preview.rows.find((r) => r.label === 'summary');
+      if (summaryRow?.items?.length) {
+        html += `<div class="ai-preview-section-title">${this.escapeHtml(rowLabel('summary'))}</div>`;
+        html += `<p class="ai-summary-text">${this.escapeHtml(summaryRow.items[0])}</p>`;
+      }
+      const trees = preview.rows.find((r) => r.label === 'treeInsights');
+      if (trees?.items?.length) {
+        html += `<div class="ai-preview-section-title">${this.escapeHtml(rowLabel('treeInsights'))}</div>`;
+        html += '<ul class="ai-screen-preview-ul">';
+        for (const item of trees.items) {
+          html += `<li>${this.escapeHtml(item)}</li>`;
+        }
+        html += '</ul>';
+      }
+    } else {
+      html += '<div class="ai-screen-preview-list">';
+      for (const row of preview.rows) {
+        if (!row.items?.length) continue;
+        html += `<div class="ai-screen-preview-block"><div class="ai-preview-section-title">${this.escapeHtml(rowLabel(row.label))}</div>`;
+        html += '<ul class="ai-screen-preview-ul">';
+        for (const item of row.items) {
+          html += `<li>${this.escapeHtml(item)}</li>`;
+        }
+        html += '</ul></div>';
+      }
+      html += '</div>';
+    }
+
     body.innerHTML = html || `<p class="ai-preview-empty">${this.escapeHtml(I18n.t('aiScreen.previewEmpty'))}</p>`;
   },
 
@@ -730,6 +987,10 @@ const App = {
     if (!this.aiScreenPreviewPayload) {
       this.previewAiScreenImport();
       return;
+    }
+
+    if (this.aiScreenId === 'forest') {
+      this.syncForestPreviewEdits();
     }
 
     const result = AiAssistScreens.importPayload(this.aiScreenId, this.aiScreenPreviewPayload);
@@ -780,7 +1041,10 @@ const App = {
     const raw = document.getElementById('ai-import-input')?.value.trim() || '';
     if (raw && this.checkCrisisAndShow(raw)) return;
 
-    const result = AiAssist.importSession(this.aiImportPreviewPayload);
+    const transcript = this.aiImportTranscript || document.getElementById('ai-import-transcript')?.value.trim() || '';
+    if (transcript && this.checkCrisisAndShow(transcript)) return;
+
+    const result = AiAssist.importSession(this.aiImportPreviewPayload, { transcript });
     if (!result.ok) {
       const key =
         result.error === 'missing_event' ? 'aiAssist.importMissingEvent' : 'aiAssist.importInvalid';
@@ -789,6 +1053,8 @@ const App = {
     }
 
     document.getElementById('ai-import-input').value = '';
+    const transcriptEl = document.getElementById('ai-import-transcript');
+    if (transcriptEl) transcriptEl.value = '';
     this.hideAiImportPreview();
     document.getElementById('ai-assist-modal').close();
 

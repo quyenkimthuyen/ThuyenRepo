@@ -218,16 +218,78 @@ const AiAssist = {
     };
   },
 
+  diagnoseJsonError(text) {
+    const raw = (text || '').trim();
+    if (!raw) return 'empty';
+    if (raw.includes('```') && !raw.includes('{')) return 'fenced_no_json';
+    if (!raw.includes('{')) return 'no_object';
+    const slice = raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1);
+    try {
+      JSON.parse(slice);
+      return 'parse_failed';
+    } catch (e) {
+      return e.message || 'parse_failed';
+    }
+  },
+
   parseExport(text) {
+    const raw = (text || '').trim();
+    if (!raw) {
+      return { ok: false, error: 'empty', hint: 'empty' };
+    }
     const json = this.extractJsonBlock(text);
     if (!json) {
-      return { ok: false, error: 'invalid_json' };
+      return { ok: false, error: 'invalid_json', hint: this.diagnoseJsonError(text) };
     }
     const payload = this.normalizePayload(json);
     if (!payload?.initialThought && !payload?.event?.label) {
-      return { ok: false, error: 'missing_event' };
+      return { ok: false, error: 'missing_event', hint: 'missing_event' };
     }
     return { ok: true, payload };
+  },
+
+  mapTranscriptRole(label) {
+    const key = (label || '').toLowerCase();
+    if (['user', 'you', 'human', 'bạn', 'tôi', 'me'].includes(key)) return 'user';
+    return 'guide';
+  },
+
+  /**
+   * Parse nhật ký ChatGPT dạng "User: ..." / "ChatGPT: ..."
+   */
+  parseTranscript(text) {
+    const trimmed = (text || '').trim();
+    if (!trimmed) return [];
+
+    const headerRe =
+      /^(?:#{1,3}\s*)?(User|You|Human|Bạn|Tôi|Me|Assistant|ChatGPT|AI|Trợ lý)\s*:\s*/gim;
+    const hasHeaders = headerRe.test(trimmed);
+    headerRe.lastIndex = 0;
+
+    if (!hasHeaders) {
+      return [{ role: 'user', content: trimmed }];
+    }
+
+    const parts = [];
+    let lastIndex = 0;
+    let lastRole = null;
+    let match;
+
+    while ((match = headerRe.exec(trimmed)) !== null) {
+      if (lastRole !== null) {
+        const content = trimmed.slice(lastIndex, match.index).trim();
+        if (content) parts.push({ role: lastRole, content });
+      }
+      lastRole = this.mapTranscriptRole(match[1]);
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (lastRole !== null) {
+      const content = trimmed.slice(lastIndex).trim();
+      if (content) parts.push({ role: lastRole, content });
+    }
+
+    return parts;
   },
 
   buildCombinedText(data) {
@@ -346,6 +408,23 @@ const AiAssist = {
       source: 'rule',
     }));
 
+    const emptySteps = rows
+      .filter((r) => !r.items.length && r.type !== 'Event')
+      .map((r) => r.type);
+    const aiCount = rows.reduce((n, r) => n + r.items.length, 0);
+    const ruleCount = ruleEnrichments.reduce((n, r) => n + r.items.length, 0);
+
+    const warnings = [];
+    if (emptySteps.length >= 4) {
+      warnings.push('many_empty_steps');
+    }
+    if (!data.interpretation?.label) {
+      warnings.push('no_interpretation');
+    }
+    if (!data.emotions?.length) {
+      warnings.push('no_emotions');
+    }
+
     return {
       ok: true,
       payload: data,
@@ -353,6 +432,13 @@ const AiAssist = {
       rows,
       ruleEnrichments,
       biases,
+      stats: {
+        aiCount,
+        ruleCount,
+        emptySteps,
+        stepCount: rows.filter((r) => r.items.length).length,
+      },
+      warnings,
     };
   },
 
@@ -383,6 +469,23 @@ const AiAssist = {
     addFromRule('Action', rule.actions);
 
     return rule.biases || [];
+  },
+
+  appendTranscriptMessages(session, turns) {
+    const ts = () => new Date().toISOString();
+    for (const turn of turns || []) {
+      const content = (turn.content || '').trim();
+      if (!content) continue;
+      session.messages.push({
+        id: generateId('msg'),
+        role: turn.role === 'guide' ? 'guide' : 'user',
+        content,
+        flowStep: turn.role === 'guide' ? session.flowStep || 'Interpretation' : 'Event',
+        timestamp: ts(),
+        imported: true,
+        fromTranscript: true,
+      });
+    }
   },
 
   appendQuoteMessages(session, data) {
@@ -461,7 +564,7 @@ const AiAssist = {
   /**
    * Nhập kết quả ChatGPT → phiên + nodes + insights
    */
-  importSession(payload) {
+  importSession(payload, options = {}) {
     const data = this.normalizePayload(payload);
     if (!data) {
       return { ok: false, error: 'invalid_payload' };
@@ -542,7 +645,15 @@ const AiAssist = {
       imported: true,
     });
 
-    this.appendQuoteMessages(session, data);
+    const transcriptTurns = options.transcript
+      ? this.parseTranscript(options.transcript)
+      : [];
+    if (transcriptTurns.length > 0) {
+      session.transcriptImported = true;
+      this.appendTranscriptMessages(session, transcriptTurns);
+    } else {
+      this.appendQuoteMessages(session, data);
+    }
 
     const summaryParts = [];
     if (data.summary) summaryParts.push(data.summary);
@@ -599,10 +710,10 @@ const AiAssist = {
     return { ok: true, session, nodesCreated, insights };
   },
 
-  importFromText(text) {
+  importFromText(text, options = {}) {
     const parsed = this.parseExport(text);
     if (!parsed.ok) return parsed;
-    return this.importSession(parsed.payload);
+    return this.importSession(parsed.payload, options);
   },
 };
 

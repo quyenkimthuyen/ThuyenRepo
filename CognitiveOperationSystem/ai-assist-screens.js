@@ -255,11 +255,55 @@ const AiAssistScreens = {
   },
 
   parseImport(screenId, text) {
+    const raw = (text || '').trim();
+    if (!raw) {
+      return { ok: false, error: 'empty', hint: 'empty' };
+    }
     const json = typeof AiAssist !== 'undefined' ? AiAssist.extractJsonBlock(text) : null;
-    if (!json) return { ok: false, error: 'invalid_json' };
+    if (!json) {
+      const hint =
+        typeof AiAssist !== 'undefined' ? AiAssist.diagnoseJsonError(text) : 'parse_failed';
+      return { ok: false, error: 'invalid_json', hint };
+    }
     const normalized = this.normalizePayload(screenId, json);
-    if (!normalized) return { ok: false, error: 'invalid_payload' };
+    if (!normalized) return { ok: false, error: 'invalid_payload', hint: 'invalid_payload' };
     return { ok: true, payload: normalized };
+  },
+
+  normalizeLabel(label) {
+    return (label || '').toLowerCase().trim().replace(/\s+/g, ' ');
+  },
+
+  scoreLabelMatch(a, b) {
+    const na = this.normalizeLabel(a);
+    const nb = this.normalizeLabel(b);
+    if (!na || !nb) return 0;
+    if (na === nb) return 100;
+    if (na.includes(nb) || nb.includes(na)) return 80;
+    const wa = na.split(/\s+/).filter(Boolean);
+    const wb = new Set(nb.split(/\s+/).filter(Boolean));
+    let overlap = 0;
+    for (const w of wa) {
+      if (wb.has(w)) overlap += 1;
+    }
+    if (overlap >= 2) return 65;
+    if (overlap === 1 && wa.length <= 3) return 45;
+    return 0;
+  },
+
+  parsePeriod(period) {
+    const s = String(period || '').trim();
+    const yearMatch = s.match(/\b(19|20)\d{2}\b/);
+    const year = yearMatch ? Number(yearMatch[0]) : new Date().getFullYear();
+    const qMatch = s.match(/Q([1-4])/i);
+    const monthMatch = s.match(/(?:^|[^\d])(0?[1-9]|1[0-2])(?:[^\d]|$)/);
+    let month = 1;
+    if (qMatch) {
+      month = (Number(qMatch[1]) - 1) * 3 + 1;
+    } else if (monthMatch) {
+      month = Number(monthMatch[1]);
+    }
+    return { year, month };
   },
 
   normalizePayload(screenId, data) {
@@ -368,7 +412,93 @@ const AiAssistScreens = {
   buildPreview(screenId, text) {
     const parsed = this.parseImport(screenId, text);
     if (!parsed.ok) return parsed;
-    return { ok: true, payload: parsed.payload, rows: this.previewRows(screenId, parsed.payload) };
+
+    const payload = parsed.payload;
+    const rows = this.previewRows(screenId, payload);
+    const matchPlan = screenId === 'forest' ? this.planForestImport(payload) : null;
+    const stats = this.buildPreviewStats(screenId, payload, matchPlan);
+
+    return {
+      ok: true,
+      payload,
+      rows,
+      matchPlan,
+      stats,
+      warnings: stats.warnings || [],
+    };
+  },
+
+  buildPreviewStats(screenId, payload, matchPlan) {
+    const warnings = [];
+
+    if (screenId === 'forest' && matchPlan) {
+      const missRel = matchPlan.relations.filter((r) => r.status === 'miss').length;
+      const fuzzyRel = matchPlan.relations.filter((r) => r.status === 'fuzzy').length;
+      const missNode = matchPlan.nodeUpdates.filter((n) => n.status === 'miss').length;
+      if (missRel > 0) warnings.push('forest_relations_miss');
+      if (fuzzyRel > 0) warnings.push('forest_relations_fuzzy');
+      if (missNode > 0) warnings.push('forest_nodes_miss');
+      return {
+        applyRelations: matchPlan.relations.filter((r) => r.status !== 'miss').length,
+        totalRelations: matchPlan.relations.length,
+        applyUpdates: matchPlan.nodeUpdates.filter((n) => n.status !== 'miss').length,
+        totalUpdates: matchPlan.nodeUpdates.length,
+        warnings,
+      };
+    }
+
+    if (screenId === 'insights') {
+      const ruleMsgs = new Set(
+        (typeof ContradictionEngine !== 'undefined' ? ContradictionEngine.analyze() : []).map(
+          (c) => (c.message || '').toLowerCase().trim()
+        )
+      );
+      const aiOnly = (payload.contradictions || []).filter(
+        (c) => !ruleMsgs.has((c.message || '').toLowerCase().trim())
+      ).length;
+      const overlap = (payload.contradictions || []).length - aiOnly;
+      if (overlap > 0) warnings.push('insights_overlap_rule');
+      return {
+        contradictions: payload.contradictions?.length || 0,
+        exploration: payload.explorationPrompts?.length || 0,
+        aiOnlyContradictions: aiOnly,
+        warnings,
+      };
+    }
+
+    if (screenId === 'timeline') {
+      return {
+        milestones: payload.milestones?.length || 0,
+        valueShifts: payload.valueShifts?.length || 0,
+        warnings,
+      };
+    }
+
+    return { warnings };
+  },
+
+  planForestImport(payload) {
+    return {
+      relations: (payload.relations || []).map((rel) => {
+        const source = this.findNode(rel.sourceType, rel.sourceLabel);
+        const target = this.findNode(rel.targetType, rel.targetLabel);
+        let status = 'miss';
+        if (source.node && target.node) {
+          status =
+            source.match === 'exact' && target.match === 'exact' ? 'apply' : 'fuzzy';
+        }
+        return { rel, source, target, status };
+      }),
+      nodeUpdates: (payload.nodeUpdates || []).map((upd) => {
+        const hit = this.findNode(upd.type, upd.label);
+        return {
+          upd,
+          node: hit.node,
+          match: hit.match,
+          status: hit.node ? (hit.match === 'exact' ? 'apply' : 'fuzzy') : 'miss',
+        };
+      }),
+    };
   },
 
   previewRows(screenId, payload) {
@@ -407,13 +537,31 @@ const AiAssistScreens = {
 
   findNode(type, label) {
     const nodes = DataStore.getNodes().filter((n) => n.type === type);
-    const key = (label || '').toLowerCase().trim();
-    let hit = nodes.find((n) => n.label.toLowerCase().trim() === key);
-    if (hit) return hit;
-    hit = nodes.find(
-      (n) => n.label.toLowerCase().includes(key) || key.includes(n.label.toLowerCase())
-    );
-    return hit || null;
+    const key = this.normalizeLabel(label);
+    if (!key) return { node: null, match: 'miss', score: 0 };
+
+    let hit = nodes.find((n) => this.normalizeLabel(n.label) === key);
+    if (hit) return { node: hit, match: 'exact', score: 100 };
+
+    hit = nodes.find((n) => {
+      const nl = this.normalizeLabel(n.label);
+      return nl.includes(key) || key.includes(nl);
+    });
+    if (hit) return { node: hit, match: 'fuzzy', score: 80 };
+
+    let best = null;
+    let bestScore = 0;
+    for (const n of nodes) {
+      const score = this.scoreLabelMatch(label, n.label);
+      if (score > bestScore) {
+        bestScore = score;
+        best = n;
+      }
+    }
+    if (best && bestScore >= 45) {
+      return { node: best, match: 'fuzzy', score: bestScore };
+    }
+    return { node: null, match: 'miss', score: 0 };
   },
 
   importPayload(screenId, payload) {
@@ -433,24 +581,27 @@ const AiAssistScreens = {
       for (const rel of data.relations) {
         const source = this.findNode(rel.sourceType, rel.sourceLabel);
         const target = this.findNode(rel.targetType, rel.targetLabel);
-        if (source && target) {
-          CognitiveTree.linkNodes(source.id, target.id, rel.relationType);
+        if (source.node && target.node) {
+          CognitiveTree.linkNodes(source.node.id, target.node.id, rel.relationType);
           applied.relations += 1;
         } else {
-          applied.missed.push(`${rel.sourceLabel} → ${rel.targetLabel}`);
+          const miss = [];
+          if (!source.node) miss.push(rel.sourceLabel);
+          if (!target.node) miss.push(rel.targetLabel);
+          applied.missed.push(`${rel.sourceLabel} → ${rel.targetLabel} (${miss.join(', ')})`);
         }
       }
 
       for (const upd of data.nodeUpdates) {
-        const node = this.findNode(upd.type, upd.label);
-        if (!node) {
+        const hit = this.findNode(upd.type, upd.label);
+        if (!hit.node) {
           applied.missed.push(upd.label);
           continue;
         }
         const patch = {};
         if (upd.category) patch.category = upd.category;
         if (upd.note) patch.aiNote = upd.note;
-        DataStore.updateNode(node.id, patch);
+        DataStore.updateNode(hit.node.id, patch);
         applied.updates += 1;
       }
 
@@ -462,16 +613,16 @@ const AiAssistScreens = {
       const applied = { milestones: 0, shifts: 0 };
 
       for (const m of data.milestones) {
-        const yearMatch = (m.period || '').match(/\d{4}/);
-        const year = yearMatch ? Number(yearMatch[0]) : new Date().getFullYear();
+        const { year, month } = this.parsePeriod(m.period);
+        const when = new Date(year, month - 1, 15);
         DataStore.addTimelineEvent({
           id: generateId('tl'),
           type: 'ai_milestone',
           title: m.title,
           description: m.description || m.period,
-          timestamp: new Date().toISOString(),
+          timestamp: when.toISOString(),
           year,
-          month: new Date().getMonth() + 1,
+          month,
           source: 'ai',
           milestoneType: m.type,
         });

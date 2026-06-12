@@ -315,6 +315,7 @@
               <span data-i18n="aiAssist.copyExport">Sao chép prompt kết thúc</span>
             </button>
           </details>
+          <p class="ai-context-refreshed" id="ai-screen-context-note" hidden></p>
           <label class="ai-paste-zone-label" for="ai-screen-import" data-i18n="aiAssist.importLabel">Dán kết quả từ ChatGPT</label>
           <div class="ai-paste-zone" id="ai-screen-paste-zone">
             <textarea id="ai-screen-import" class="ai-paste-input" rows="6" data-i18n-placeholder="aiAssist.importPlaceholder" placeholder="Dán JSON..."></textarea>
@@ -326,6 +327,8 @@
           </div>
           <div id="ai-screen-preview-panel" class="ai-import-preview glass" hidden>
             <h5 class="ai-preview-title" data-i18n="aiAssist.previewTitle">Xem trước</h5>
+            <div id="ai-screen-preview-stats" class="ai-preview-stats" hidden></div>
+            <div id="ai-screen-preview-warnings" class="ai-preview-warnings" hidden></div>
             <div id="ai-screen-preview-body" class="ai-preview-body"></div>
             <div class="ai-assist-actions ai-preview-actions">
               <button type="button" class="btn btn-ghost" id="ai-screen-preview-back" data-i18n="aiAssist.previewBack">Quay lại sửa</button>
@@ -451,6 +454,20 @@
             <span class="ai-paste-hint" data-i18n="aiAssist.pasteHint">Ctrl+V để dán · Sau đó bấm Xem trước</span>
           </div>
 
+          <details class="ai-prompt-collapse glass ai-transcript-collapse">
+            <summary data-i18n="aiAssist.transcriptToggle">Nhật ký hội thoại ChatGPT (tùy chọn)</summary>
+            <p class="ai-panel-desc" data-i18n="aiAssist.transcriptDesc">
+              Dán log chat (User: / ChatGPT:) để lưu ngữ cảnh đầy đủ trong phiên Suy ngẫm. Nếu bỏ trống, app chỉ lưu các câu trích từ JSON.
+            </p>
+            <textarea
+              id="ai-import-transcript"
+              class="ai-paste-input"
+              rows="5"
+              data-i18n-placeholder="aiAssist.transcriptPlaceholder"
+              placeholder="User: ...&#10;ChatGPT: ..."
+            ></textarea>
+          </details>
+
           <div class="ai-assist-actions">
             <button type="button" class="btn btn-ghost" id="btn-ai-step-back-3" data-i18n="aiAssist.stepBack">Quay lại</button>
             <button type="button" class="btn btn-primary" id="btn-ai-preview" data-i18n="aiAssist.previewBtn">Xem trước</button>
@@ -465,6 +482,8 @@
               <span class="ai-preview-tag ai" data-i18n="aiAssist.previewFromAi">Từ ChatGPT</span>
               <span class="ai-preview-tag rule" data-i18n="aiAssist.previewFromRule">Bổ sung rule</span>
             </div>
+            <div id="ai-preview-stats" class="ai-preview-stats" hidden></div>
+            <div id="ai-preview-warnings" class="ai-preview-warnings" hidden></div>
             <div id="ai-preview-body" class="ai-preview-body"></div>
             <div class="ai-assist-actions ai-preview-actions">
               <button type="button" class="btn btn-ghost" id="btn-ai-preview-back" data-i18n="aiAssist.previewBack">Quay lại sửa</button>
