@@ -203,6 +203,7 @@
         quizHistory: [],
         currentAnswer: null,
         lastAutoPlayedListeningQuestionId: null,
+        quizAudioCooldownUntil: 0,
         autoLearn: {
           isPlaying: false,
           wordIds: [],
@@ -242,6 +243,7 @@
             topic: String(word.topic || topicName).trim() || topicName,
             example: String(word.example || ''),
             audio_us: String(word.audio_us || ''),
+            audio_vi: String(word.audio_vi || ''),
             status: ['new', 'learning', 'known'].includes(word.status) ? word.status : 'new',
             reviewLevel: Number(word.reviewLevel || 0),
             reviewCount: Number(word.reviewCount || 0),
@@ -353,6 +355,7 @@
         state.quizStartedAt = null;
         state.feedback = '';
         state.lastAutoPlayedListeningQuestionId = null;
+        state.quizAudioCooldownUntil = 0;
       }
 
       function resetAutoLearnState() {
@@ -597,6 +600,32 @@
         return speakText(word.word, 'en-US');
       }
 
+      function playVietnameseAudio(word) {
+        if (!word) return Promise.resolve();
+        if (word.audio_vi) {
+          return new Promise((resolve) => {
+            activeAudioResolver = resolve;
+            if (activeAudio) activeAudio.pause();
+            activeAudio = new Audio(word.audio_vi);
+            activeAudio.onended = () => {
+              activeAudioResolver = null;
+              resolve();
+            };
+            activeAudio.onerror = () => {
+              activeAudio = null;
+              activeAudioResolver = null;
+              speakText(word.meaning_vi, 'vi-VN').then(resolve);
+            };
+            activeAudio.play().catch(() => {
+              activeAudio = null;
+              activeAudioResolver = null;
+              speakText(word.meaning_vi, 'vi-VN').then(resolve);
+            });
+          });
+        }
+        return speakText(word.meaning_vi, 'vi-VN');
+      }
+
       function pronounceWord(word) {
         if (!word) return;
         if (word.audio_us) {
@@ -702,7 +731,7 @@
           // 1. Play Vietnamese
           if (!state.autoLearn.isPlaying || state.autoLearn.runId !== runId) return;
           if (state.autoLearn.isPaused) continue;
-          await speakText(word.meaning_vi, 'vi-VN');
+          await playVietnameseAudio(word);
 
           // Wait if paused
           while (state.autoLearn.isPaused && state.autoLearn.isPlaying && state.autoLearn.runId === runId) {
@@ -748,12 +777,43 @@
         render();
       }
 
+      function scheduleQuizAudioButtonRefresh() {
+        setTimeout(() => {
+          if (state.page === 'quiz' && Date.now() >= (state.quizAudioCooldownUntil || 0)) renderQuiz();
+        }, 2000);
+      }
+
+      function playQuizAudioWord(word, { respectCooldown = true } = {}) {
+        if (!word) return false;
+        const now = Date.now();
+        if (respectCooldown && now < (state.quizAudioCooldownUntil || 0)) return false;
+        state.quizAudioCooldownUntil = now + 2000;
+        pronounceWord(word);
+        renderQuiz();
+        scheduleQuizAudioButtonRefresh();
+        return true;
+      }
+
+      function playQuizAudio() {
+        const question = state.currentQuestion;
+        if (state.page !== 'quiz' || !['listening', 'dictation'].includes(question?.mode)) return false;
+        return playQuizAudioWord(question.word, { respectCooldown: true });
+      }
+
       function autoPlayListeningQuestion() {
         const question = state.currentQuestion;
         if (state.page !== 'quiz' || !['listening', 'dictation'].includes(question?.mode) || state.currentAnswer) return;
         if (state.lastAutoPlayedListeningQuestionId === question.id) return;
         state.lastAutoPlayedListeningQuestionId = question.id;
-        pronounceWord(question.word);
+        playQuizAudioWord(question.word, { respectCooldown: false });
+      }
+
+      function renderQuizPlayButton(label) {
+        const cooldownMs = Math.max(0, (state.quizAudioCooldownUntil || 0) - Date.now());
+        const disabled = cooldownMs > 0;
+        const waitSeconds = Math.ceil(cooldownMs / 1000);
+        const text = disabled ? `Wait ${waitSeconds}s` : label;
+        return `<button class="button primary" type="button" data-pronounce-current="true"${disabled ? ' disabled' : ''}>${escapeHtml(text)}</button>`;
       }
 
       function shuffle(items) {
@@ -827,6 +887,7 @@
         state.currentQuestion = createQuizQuestion(mode);
         state.currentAnswer = null;
         state.lastAutoPlayedListeningQuestionId = null;
+        state.quizAudioCooldownUntil = 0;
         state.feedback = state.currentQuestion ? '' : 'Load at least 1 word to start a quiz.';
         saveState();
         render();
@@ -901,6 +962,8 @@
           render();
           return;
         }
+        state.quizAudioCooldownUntil = 0;
+        state.lastAutoPlayedListeningQuestionId = null;
         state.currentQuestion = createQuizQuestion(state.quizMode);
         render();
       }
@@ -1132,7 +1195,7 @@
 
       function renderQuestion(question) {
         if (question.mode === 'listening') {
-          return `<div class="stack"><p class="muted">Listen and choose the meaning.</p><button class="button primary" type="button" data-pronounce-current="true">Play word</button><div class="quiz-options">${question.options.map(renderOption).join('')}</div></div>`;
+          return `<div class="stack"><p class="muted">Listen and choose the meaning.</p>${renderQuizPlayButton('Play word')}<div class="quiz-options">${question.options.map(renderOption).join('')}</div></div>`;
         }
         if (question.mode === 'dictation') {
           if (state.currentAnswer) {
@@ -1141,7 +1204,7 @@
             return `
               <form class="typing-form" id="typingForm">
                 <p class="muted">Listen and type the English word you hear:</p>
-                <button class="button primary" type="button" data-pronounce-current="true">Play again</button>
+                ${renderQuizPlayButton('Play again')}
                 <input class="${inputClass}" id="typingAnswer" type="text" autocomplete="off" value="${escapeHtml(state.currentAnswer.text)}" disabled>
                 <p class="muted small">IPA: ${escapeHtml(question.word.ipa_us || '')}</p>
                 <p class="muted small">${escapeHtml(question.prompt)}</p>
@@ -1154,7 +1217,7 @@
           return `
             <form class="typing-form" id="typingForm">
               <p class="muted">Listen and type the English word you hear:</p>
-              <button class="button primary" type="button" data-pronounce-current="true">Play word</button>
+              ${renderQuizPlayButton('Play word')}
               <input class="search" id="typingAnswer" type="text" autocomplete="off" placeholder="Type what you hear" autofocus>
               <div class="row">
                 <button class="button primary" type="submit">Submit answer</button>
@@ -1347,7 +1410,7 @@
         if (target.dataset.filter) { state.filter = target.dataset.filter; saveState(); }
         if (target.dataset.mode) startQuiz(target.dataset.mode);
         if (target.dataset.pronounce) pronounceWord(state.words.find((word) => word.id === target.dataset.pronounce));
-        if (target.dataset.pronounceCurrent) pronounceWord(state.currentQuestion?.word);
+        if (target.dataset.pronounceCurrent) playQuizAudio();
         if (target.dataset.reveal) state.revealed[target.dataset.reveal] = !state.revealed[target.dataset.reveal];
         if (target.dataset.forgot) {
           state.words = state.words.map((word) => word.id === target.dataset.forgot ? applyReviewOutcome(word, 'forgot') : word);

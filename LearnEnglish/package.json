@@ -4,6 +4,7 @@
   "description": "Frontend‑only vocabulary learning app",
   "scripts": {
     "download-audio": "node scripts/download_audio.js",
+    "generate:audio-vi:grade4": "node data/generate/generate-vietnamese-audio.mjs --dataset grade4",
     "test": "npx -y http-server -c-1 -p 8080 & sleep 2 && playwright test"
   },
   "devDependencies": {

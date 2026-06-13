@@ -41,6 +41,7 @@ Example:
   "topic": "toeic-airport",
   "example": "She refused to abandon her dream.",
   "audio_us": "https://api.dictionaryapi.dev/media/pronunciations/en/abandon-us.mp3",
+  "audio_vi": "audio/vi/word-001.mp3",
   "status": "new",
   "reviewLevel": 0,
   "reviewCount": 0,
@@ -54,10 +55,13 @@ Important fields:
 - `meaning_vi`: Vietnamese meaning.
 - `topic`: learning topic; if omitted, the app uses the source group name.
 - `audio_us`: optional audio path or internet URL, such as `audio/word.mp3` or a public `.mp3` URL.
+- `audio_vi`: optional local Vietnamese meaning audio path, such as `audio/vi/g4-0001.mp3`.
 - `example`: optional example sentence.
 - `ipa_us`: optional American pronunciation text.
 
-Put local audio files in the `audio/` folder or use public internet audio URLs in topic JSON files under `data/`. If `audio_us` is empty or cannot play, the app falls back to browser text-to-speech.
+Put local audio files in the `audio/` folder or use public internet audio URLs in topic JSON files under `data/`. If `audio_us` is empty or cannot play, the app falls back to browser text-to-speech. Vietnamese meaning audio uses `audio_vi` when present; otherwise Auto Audio Learning falls back to browser Vietnamese text-to-speech.
+
+Grade 4 Vietnamese audio can be generated once with `npm run generate:audio-vi:grade4`. See `data/generate/README-vietnamese-audio.md`.
 
 The American IPA source includes pronunciation topics for US IPA symbols, Vietnamese-friendly reading approximations, spelling-to-sound patterns, final consonants, stress and reduction, common Vietnamese pronunciation mistakes, and guided steps for reading new English words from IPA.
 
@@ -78,7 +82,7 @@ To add another source, add the JSON file in `data/` and register it in the app's
 - Displays English word, American IPA, Vietnamese meaning, and example sentence when available.
 - Lets the user reveal or hide the meaning.
 - Plays `audio_us` from a compact pronunciation button in the card action row, otherwise uses browser speech synthesis.
-- Provides Auto Audio Learning for the selected topic: the app loops through every topic word, speaks the Vietnamese meaning first, then plays the English audio or speech fallback while showing the current English word.
+- Provides Auto Audio Learning for the selected topic: the app loops through every topic word, plays the Vietnamese meaning from `audio_vi` when available (otherwise browser Vietnamese speech), then plays the English audio or speech fallback while showing the current English word.
 - Hides `Forgot` on learning words and hides `Remembered` on known words.
 - Lets the user mark eligible words as `Remembered` or `Forgot`, then reshuffles the word order.
 - Refills the learning queue with new words after remembered words become known.
@@ -112,8 +116,8 @@ Quiz behavior:
 - Compares answers case-insensitively after trimming whitespace.
 - Automatically advances to the next question after a correct answer.
 - Automatically submits typing answers when the typed text matches the correct English word.
-- Automatically plays the word audio or speech fallback when a listening question first appears.
-- Automatically plays dictation audio when a dictation question first appears.
+- Automatically plays the word audio or speech fallback when a Listen or Dictation question first appears.
+- Limits manual Play taps in Listen and Dictation to one play every 2 seconds to avoid repeated audio spam.
 - Tracks total answers, correct answers, streak, elapsed time, and accuracy.
 - Records per-word quiz attempt count and correct count for display on the Learn screen.
 - Shows a quiz result summary after the final question, including correct count, wrong count, accuracy, elapsed time, and each question's selected/correct answer.

@@ -44,6 +44,7 @@ const REQUIRED_FIELDS = [
 const BANNED_EXAMPLE_STARTS = [/^I like\b/i, /^I can see\b/i, /^This is my\b/i];
 const IPA_SYMBOL_RE = /[ˈˌːəɚɝæɑɔɛɪʊʌθðʃʒŋɡ]/;
 const URL_RE = /^https:\/\/api\.dictionaryapi\.dev\/media\/pronunciations\/en\/[a-z0-9-]+-us\.mp3$/;
+const AUDIO_VI_RE = /^audio\/vi\/g4-\d{4}\.mp3$/;
 
 const errors = [];
 const warnings = [];
@@ -135,6 +136,8 @@ const exampleTokens = [];
   }
 
   if (!URL_RE.test(entry.audio_us || '')) addError(id, `Malformed audio_us URL: ${entry.audio_us}`);
+  if (entry.audio_vi && !AUDIO_VI_RE.test(entry.audio_vi)) addError(id, `Malformed audio_vi path: ${entry.audio_vi}`);
+  if (!entry.audio_vi) addWarning(id, 'Missing audio_vi path.');
   if (!REQUIRED_TOPICS.includes(entry.topic)) addError(id, `Unknown topic: ${entry.topic}`);
   if (!['A1', 'A2'].includes(entry.cefr_level)) addError(id, `Unsupported CEFR level: ${entry.cefr_level}`);
   if (!Number.isInteger(entry.difficulty) || entry.difficulty < 1 || entry.difficulty > 3) {
