@@ -218,6 +218,7 @@
       let activeAudio = null;
       let activeAudioResolver = null;
       let activeSpeechResolver = null;
+      let activeUtterance = null;
       let autoLearnRunId = 0;
 
       function escapeHtml(value) {
@@ -555,6 +556,7 @@
         if (!('speechSynthesis' in window) || !text) return Promise.resolve();
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
+        activeUtterance = utterance;
         utterance.lang = lang;
         utterance.rate = lang.startsWith('vi') ? 0.92 : 0.86;
         const voices = window.speechSynthesis.getVoices();
@@ -564,10 +566,12 @@
           activeSpeechResolver = resolve;
           utterance.onend = () => {
             activeSpeechResolver = null;
+            activeUtterance = null;
             resolve();
           };
           utterance.onerror = () => {
             activeSpeechResolver = null;
+            activeUtterance = null;
             resolve();
           };
           window.speechSynthesis.speak(utterance);
@@ -585,16 +589,16 @@
               activeAudioResolver = null;
               resolve();
             };
-            activeAudio.onerror = () => {
+            let fallbackCalled = false;
+            const handleFallback = () => {
+              if (fallbackCalled) return;
+              fallbackCalled = true;
               activeAudio = null;
               activeAudioResolver = null;
               speakText(word.word, 'en-US').then(resolve);
             };
-            activeAudio.play().catch(() => {
-              activeAudio = null;
-              activeAudioResolver = null;
-              speakText(word.word, 'en-US').then(resolve);
-            });
+            activeAudio.onerror = handleFallback;
+            activeAudio.play().catch(handleFallback);
           });
         }
         return speakText(word.word, 'en-US');
@@ -611,16 +615,16 @@
               activeAudioResolver = null;
               resolve();
             };
-            activeAudio.onerror = () => {
+            let fallbackCalled = false;
+            const handleFallback = () => {
+              if (fallbackCalled) return;
+              fallbackCalled = true;
               activeAudio = null;
               activeAudioResolver = null;
               speakText(word.meaning_vi, 'vi-VN').then(resolve);
             };
-            activeAudio.play().catch(() => {
-              activeAudio = null;
-              activeAudioResolver = null;
-              speakText(word.meaning_vi, 'vi-VN').then(resolve);
-            });
+            activeAudio.onerror = handleFallback;
+            activeAudio.play().catch(handleFallback);
           });
         }
         return speakText(word.meaning_vi, 'vi-VN');
@@ -644,6 +648,7 @@
         if ('speechSynthesis' in window) {
           window.speechSynthesis.cancel();
         }
+        activeUtterance = null;
         if (activeAudioResolver) {
           const resolve = activeAudioResolver;
           activeAudioResolver = null;
@@ -1067,6 +1072,7 @@
         `;
         document.getElementById('searchInput').addEventListener('input', (event) => {
           const cursorPosition = event.target.selectionStart;
+          if (state.autoLearn.isPlaying) stopAutoLearn();
           state.searchQuery = event.target.value;
           saveState();
           renderLearn();
@@ -1407,7 +1413,11 @@
           if (target.dataset.page !== 'learn' && state.autoLearn.isPlaying) stopAutoLearn();
           state.page = target.dataset.page;
         }
-        if (target.dataset.filter) { state.filter = target.dataset.filter; saveState(); }
+        if (target.dataset.filter) {
+          if (state.autoLearn.isPlaying) stopAutoLearn();
+          state.filter = target.dataset.filter;
+          saveState();
+        }
         if (target.dataset.mode) startQuiz(target.dataset.mode);
         if (target.dataset.pronounce) pronounceWord(state.words.find((word) => word.id === target.dataset.pronounce));
         if (target.dataset.pronounceCurrent) playQuizAudio();
