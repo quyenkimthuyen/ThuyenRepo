@@ -90,6 +90,7 @@ To add another source, add the JSON file in `data/` and register it in the app's
 - Keeps focus in the search box while typing.
 - Filters words by topic, including `toeic words`.
 - Filters words by status: `Learning`, `Known`, or `All Status`.
+- In `All Status`, shows each word's quiz attempt count and correct percentage when that word has been tested.
 - Saves the selected filter and search query locally.
 
 ### Quiz Practice
@@ -106,6 +107,7 @@ Quiz behavior:
 
 - Shows the selected quiz topic on the quiz screen and lets the user change it before starting.
 - Builds each test from the configured number of unique words in the selected topic, or all available words when the topic has fewer words.
+- Prioritizes words with fewer quiz attempts and lower correct rates, then shuffles a shortlist so each quiz still has variety.
 - Uses multiple-choice answers for non-typing modes, with up to four choices depending on the topic size.
 - Compares answers case-insensitively after trimming whitespace.
 - Automatically advances to the next question after a correct answer.
@@ -113,6 +115,7 @@ Quiz behavior:
 - Automatically plays the word audio or speech fallback when a listening question first appears.
 - Automatically plays dictation audio when a dictation question first appears.
 - Tracks total answers, correct answers, streak, elapsed time, and accuracy.
+- Records per-word quiz attempt count and correct count for display on the Learn screen.
 - Shows a quiz result summary after the final question, including correct count, wrong count, accuracy, elapsed time, and each question's selected/correct answer.
 - Supports quiz reset.
 
@@ -152,6 +155,7 @@ Persisted data:
 - topics
 - audio paths
 - review progress
+- per-word quiz attempt count and correct count
 - selected filter
 - selected topic filter
 - search query

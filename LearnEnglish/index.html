@@ -248,8 +248,43 @@
             lastReviewedAt: word.lastReviewedAt,
             nextReviewAt: word.nextReviewAt,
             createdAt: Number(word.createdAt || Date.now()),
+            quizAttempts: Number(word.quizAttempts || 0),
+            quizCorrect: Number(word.quizCorrect || 0),
           };
         });
+      }
+
+      function recordWordQuizResult(wordId, isCorrect) {
+        const word = state.words.find((item) => item.id === wordId);
+        if (!word) return;
+        word.quizAttempts = (word.quizAttempts || 0) + 1;
+        if (isCorrect) word.quizCorrect = (word.quizCorrect || 0) + 1;
+      }
+
+      function getWordQuizAccuracy(word) {
+        const attempts = word.quizAttempts || 0;
+        if (!attempts) return null;
+        return Math.round(((word.quizCorrect || 0) / attempts) * 100);
+      }
+
+      function compareQuizPriority(a, b) {
+        const attemptsA = a.quizAttempts || 0;
+        const attemptsB = b.quizAttempts || 0;
+        if (attemptsA !== attemptsB) return attemptsA - attemptsB;
+
+        const accuracyA = attemptsA ? (a.quizCorrect || 0) / attemptsA : -1;
+        const accuracyB = attemptsB ? (b.quizCorrect || 0) / attemptsB : -1;
+        if (accuracyA !== accuracyB) return accuracyA - accuracyB;
+
+        return Math.random() - 0.5;
+      }
+
+      function buildQuizQuestionIds() {
+        const pool = [...getTopicWords()].sort(compareQuizPriority);
+        const shortlistSize = Math.min(pool.length, Math.max(state.quizQuestionLimit, state.quizQuestionLimit * 2));
+        return shuffle(pool.slice(0, shortlistSize))
+          .slice(0, state.quizQuestionLimit)
+          .map((word) => word.id);
       }
 
       function loadState() {
@@ -396,6 +431,8 @@
           reviewCount: Number(progress.reviewCount || 0),
           lastReviewedAt: progress.lastReviewedAt,
           nextReviewAt: progress.nextReviewAt,
+          quizAttempts: Number(progress.quizAttempts || 0),
+          quizCorrect: Number(progress.quizCorrect || 0),
         };
       }
 
@@ -769,10 +806,6 @@
         return result.reverse().join('');
       }
 
-      function buildQuizQuestionIds() {
-        return shuffle(getTopicWords()).slice(0, state.quizQuestionLimit).map((word) => word.id);
-      }
-
       function createQuizQuestion(mode) {
         const pool = getTopicWords();
         if (!pool.length) return null;
@@ -813,6 +846,8 @@
           isCorrect: correct,
           answeredAt: Date.now(),
         });
+        recordWordQuizResult(question.word.id, correct);
+        saveState();
         state.currentAnswer = { text: answer, isCorrect: correct };
         
         if (correct) {
@@ -994,11 +1029,20 @@
 
       function renderWordCard(word) {
         const isKnownFilter = state.filter === 'known';
+        const isAllStatusFilter = state.filter === 'all';
         const revealed = !isKnownFilter || !!state.revealed[word.id];
+        const quizAttempts = word.quizAttempts || 0;
+        const quizAccuracy = getWordQuizAccuracy(word);
+        const quizStatsLabel = isAllStatusFilter
+          ? (quizAttempts
+            ? `Quiz: ${quizAttempts} time${quizAttempts === 1 ? '' : 's'} - ${quizAccuracy}% correct`
+            : 'Quiz: not tested yet')
+          : '';
         return `
           <article class="panel stack">
             <div class="row between">
               <span class="badge">${escapeHtml(word.topic)} - ${escapeHtml(word.status)} - level ${word.reviewLevel || 0}${word.audio_us ? ' - audio' : ''}</span>
+              ${quizStatsLabel ? `<span class="muted small">${escapeHtml(quizStatsLabel)}</span>` : ''}
             </div>
             <div>
               <div class="row between" style="width: 100%; gap: 1rem; align-items: center;">
