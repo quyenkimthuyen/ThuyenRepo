@@ -106,7 +106,7 @@ async function createAgent() {
   }
   return Agent.create({
     apiKey: API_KEY,
-    model: { id: process.env.CURSOR_MODEL || 'composer-2.5' },
+    model: { id: process.env.CURSOR_MODEL || 'gemini-3.1-pro' },
     local: { cwd: PROJECT_ROOT },
   });
 }

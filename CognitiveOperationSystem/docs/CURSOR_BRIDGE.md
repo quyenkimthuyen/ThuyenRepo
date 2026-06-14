@@ -187,3 +187,6 @@ Trình duyệt (cursor-direct.js)
 
 - Bridge bind `127.0.0.1` — không expose LAN trừ khi đổi `CURSOR_BRIDGE_HOST`.
 - Không đưa `CURSOR_API_KEY` vào frontend hay LocalStorage.
+
+================
+$env:CURSOR_API_KEY = Get-Content api.txt; node cursor-bridge.mjs
