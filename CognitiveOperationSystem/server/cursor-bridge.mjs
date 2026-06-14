@@ -9,10 +9,16 @@ import http from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { loadApiKey } from './load-api-key.mjs';
 
 const PORT = Number(process.env.CURSOR_BRIDGE_PORT || 3847);
 const HOST = process.env.CURSOR_BRIDGE_HOST || '127.0.0.1';
 const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+const API_KEY = loadApiKey(PROJECT_ROOT);
+if (API_KEY && !process.env.CURSOR_API_KEY) {
+  process.env.CURSOR_API_KEY = API_KEY;
+}
 
 let Agent = null;
 let sdkError = null;
@@ -65,6 +71,15 @@ function readJson(req) {
 
 async function collectAssistantText(run) {
   let text = '';
+  try {
+    if (typeof run.text === 'function') {
+      const viaText = await run.text();
+      if (viaText?.trim()) return viaText.trim();
+    }
+  } catch {
+    /* fall through */
+  }
+
   for await (const event of run.stream()) {
     if (event.type === 'assistant') {
       for (const block of event.message.content) {
@@ -72,9 +87,12 @@ async function collectAssistantText(run) {
       }
     }
   }
-  await run.wait();
-  if (!text && run.result) {
-    text = String(run.result);
+  const result = await run.wait();
+  if (!text && result?.result) {
+    text = String(result.result);
+  }
+  if (!text.trim() && result?.status === 'error') {
+    throw new Error(`cursor_run_error (run ${result.id || 'unknown'})`);
   }
   return text.trim();
 }
@@ -83,11 +101,11 @@ async function createAgent() {
   if (!Agent) {
     throw new Error(sdkError || 'SDK not installed — run npm install in server/');
   }
-  if (!process.env.CURSOR_API_KEY) {
-    throw new Error('CURSOR_API_KEY is not set');
+  if (!API_KEY) {
+    throw new Error('CURSOR_API_KEY is not set (env or server/key.txt)');
   }
   return Agent.create({
-    apiKey: process.env.CURSOR_API_KEY,
+    apiKey: API_KEY,
     model: { id: process.env.CURSOR_MODEL || 'composer-2.5' },
     local: { cwd: PROJECT_ROOT },
   });
@@ -131,7 +149,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/health') {
       send(res, req, 200, {
         ok: true,
-        hasApiKey: Boolean(process.env.CURSOR_API_KEY),
+        hasApiKey: Boolean(API_KEY),
         sdkReady: Boolean(Agent),
         sdkError: sdkError || null,
         port: PORT,
@@ -225,7 +243,7 @@ server.listen(PORT, HOST, () => {
   console.log(`Cursor bridge listening on http://${HOST}:${PORT}`);
   console.log(`Project root: ${PROJECT_ROOT}`);
   if (!process.env.CURSOR_API_KEY) {
-    console.warn('Warning: set CURSOR_API_KEY before chatting.');
+    console.warn('Warning: set CURSOR_API_KEY or server/key.txt before chatting.');
   }
   if (sdkError) {
     console.warn('Warning: @cursor/sdk not loaded:', sdkError);

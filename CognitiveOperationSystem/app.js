@@ -279,6 +279,8 @@ const App = {
         }
         if (card.dataset.scenarioKind === 'ai-assist') {
           TestMode.selectAiAssistScenario(card.dataset.scenarioId);
+        } else if (card.dataset.scenarioKind === 'cursor-direct') {
+          TestMode.selectCursorDirectScenario(card.dataset.scenarioId);
         } else {
           TestMode.selectScenario(card.dataset.scenarioId);
         }
@@ -295,7 +297,7 @@ const App = {
         btn.dataset.scenarioId ||
         TestMode.selectedScenarioId ||
         TestMode.selectedAiAssistScenarioId;
-      if (!scenarioId && action !== 'run-all-ai-assist-tests') return;
+      if (!scenarioId && action !== 'run-all-ai-assist-tests' && action !== 'run-all-cursor-direct-tests') return;
 
       switch (action) {
         case 'apply-home':
@@ -331,6 +333,12 @@ const App = {
           break;
         case 'run-all-ai-assist-tests':
           this.runAllAiAssistTests();
+          break;
+        case 'run-cursor-direct-test':
+          this.runCursorDirectTest(scenarioId);
+          break;
+        case 'run-all-cursor-direct-tests':
+          this.runAllCursorDirectTests();
           break;
       }
     });
@@ -2378,17 +2386,28 @@ const App = {
     const scenarios = TestMode.getScenarios();
     const aiScenarios =
       typeof AiAssistTestRunner !== 'undefined' ? AiAssistTestRunner.getScenarios() : [];
+    const cursorScenarios =
+      typeof CursorDirectTestRunner !== 'undefined'
+        ? CursorDirectTestRunner.getScenarios({ mockOnly: true })
+        : [];
     const listEl = document.getElementById('test-scenario-list');
 
-    if (!TestMode.selectedScenarioId && !TestMode.selectedAiAssistScenarioId) {
+    if (
+      !TestMode.selectedScenarioId &&
+      !TestMode.selectedAiAssistScenarioId &&
+      !TestMode.selectedCursorDirectScenarioId
+    ) {
       if (scenarios.length > 0) TestMode.selectScenario(scenarios[0].id);
       else if (aiScenarios.length > 0) TestMode.selectAiAssistScenario(aiScenarios[0].id);
+      else if (cursorScenarios.length > 0) TestMode.selectCursorDirectScenario(cursorScenarios[0].id);
     }
 
     const inAppCards = scenarios
       .map((s) => {
         const active =
-          s.id === TestMode.selectedScenarioId && !TestMode.selectedAiAssistScenarioId
+          s.id === TestMode.selectedScenarioId &&
+          !TestMode.selectedAiAssistScenarioId &&
+          !TestMode.selectedCursorDirectScenarioId
             ? 'active'
             : '';
         return `
@@ -2412,14 +2431,40 @@ const App = {
       })
       .join('');
 
+    const cursorCards = cursorScenarios
+      .map((s) => {
+        const active = s.id === TestMode.selectedCursorDirectScenarioId ? 'active' : '';
+        return `
+          <button type="button" class="test-scenario-card glass test-scenario-card--cursor ${active}" data-scenario-id="${s.id}" data-scenario-kind="cursor-direct">
+            <span class="test-scenario-cat">Cursor</span>
+            <span class="test-scenario-title">${this.escapeHtml(s.title)}</span>
+            <span class="test-scenario-tags">${s.tags.map((t) => `#${this.escapeHtml(t)}`).join(' ')}</span>
+          </button>`;
+      })
+      .join('');
+
     listEl.innerHTML = `
       <div class="test-sidebar-title">${I18n.t('test.scenarios', { n: scenarios.length })}</div>
       ${inAppCards || `<p class="test-muted">${I18n.t('test.noScenarios')}</p>`}
       <div class="test-sidebar-title test-sidebar-title--sub">${I18n.t('test.aiAssistScenarios', { n: aiScenarios.length })}</div>
       ${aiCards || `<p class="test-muted">${I18n.t('test.noAiScenarios')}</p>`}
+      <div class="test-sidebar-title test-sidebar-title--sub">${I18n.t('test.cursorDirectScenarios', { n: cursorScenarios.length })}</div>
+      ${cursorCards || `<p class="test-muted">${I18n.t('test.noCursorScenarios')}</p>`}
     `;
 
     const detailEl = document.getElementById('test-scenario-detail');
+
+    if (TestMode.selectedCursorDirectScenarioId) {
+      const cursorScenario = CursorDirectTestRunner.getScenario(
+        TestMode.selectedCursorDirectScenarioId
+      );
+      if (!cursorScenario) {
+        detailEl.innerHTML = `<div class="insight-empty test-empty">${I18n.t('test.noCursorScenarios')}</div>`;
+        return;
+      }
+      detailEl.innerHTML = this.renderCursorDirectTestDetail(cursorScenario);
+      return;
+    }
 
     if (TestMode.selectedAiAssistScenarioId) {
       const aiScenario = AiAssistTestRunner.getScenario(TestMode.selectedAiAssistScenarioId);
@@ -2611,6 +2656,185 @@ const App = {
     }
     this.showToast(
       I18n.t('test.aiAssistSummary', { passed: summary.passed, total: summary.total })
+    );
+    this.renderHomeStats();
+  },
+
+  renderCursorDirectTestDetail(scenario) {
+    const restoreBtn = TestMode.hasSnapshot()
+      ? `<button type="button" class="btn btn-ghost" data-test-action="restore">${I18n.t('test.restore')}</button>`
+      : '';
+
+    return `
+      <div class="test-detail-header glass">
+        <div>
+          <span class="test-badge test-badge--cursor">Cursor</span>
+          <span class="test-badge">${this.escapeHtml(TestMode.getCategoryLabel(scenario.category))}</span>
+          <h3 class="test-detail-title">${this.escapeHtml(scenario.title)}</h3>
+          <p class="test-detail-summary">${this.escapeHtml(scenario.summary)}</p>
+        </div>
+        <div class="test-actions">
+          <button type="button" class="btn btn-primary" data-test-action="run-cursor-direct-test" data-scenario-id="${scenario.id}">
+            ${I18n.t('test.runCursorDirect')}
+          </button>
+          <button type="button" class="btn btn-ghost" data-test-action="run-all-cursor-direct-tests">
+            ${I18n.t('test.runAllCursorDirect')}
+          </button>
+          ${restoreBtn}
+        </div>
+      </div>
+
+      <div class="test-section glass">
+        <h4>${I18n.t('test.cursorDirectFlow')}</h4>
+        <ol class="test-list">
+          <li>${I18n.t('test.cursorDirectStep1')}</li>
+          <li>${I18n.t('test.cursorDirectStep2')}</li>
+          <li>${I18n.t('test.cursorDirectStep3')}</li>
+        </ol>
+        <p class="test-muted">${I18n.t('test.cursorDirectNote')}</p>
+      </div>
+
+      <div class="test-section glass">
+        <h4>${I18n.t('test.initialThought')}</h4>
+        <blockquote class="test-quote">${this.escapeHtml(scenario.initialThought)}</blockquote>
+        <p class="test-muted">Locale: <strong>${this.escapeHtml(scenario.locale || 'vi')}</strong></p>
+      </div>
+
+      <div class="test-section glass">
+        <h4>${I18n.t('test.userDialogue')}</h4>
+        <ol class="test-dialogue-list">
+          ${(scenario.userDialogue || [])
+            .map(
+              (turn, i) => `
+            <li class="test-dialogue-item">
+              <div class="test-dialogue-step">
+                <span class="test-step-num">${i + 1}</span>
+                <span class="test-step-label">${this.escapeHtml(CognitiveLibrary.getFrameworkLabel(turn.step) || turn.step)}</span>
+              </div>
+              <p class="test-dialogue-content">${this.escapeHtml(turn.content)}</p>
+            </li>`
+            )
+            .join('')}
+        </ol>
+      </div>
+
+      ${
+        scenario.cursorExport
+          ? `<div class="test-section glass">
+        <h4>${I18n.t('test.cursorExport')}</h4>
+        <pre class="test-json-preview">${this.escapeHtml(JSON.stringify(scenario.cursorExport, null, 2))}</pre>
+      </div>`
+          : ''
+      }
+
+      <div class="test-grid-2">
+        <div class="test-section glass">
+          <h4>${I18n.t('test.expectPresent')}</h4>
+          <ul class="test-list">
+            ${(scenario.expectPresent || [])
+              .map(
+                (e) =>
+                  `<li><strong>${this.escapeHtml(e.type)}</strong>: ${this.escapeHtml(e.labelContains || e.quoteContains || '')}</li>`
+              )
+              .join('')}
+          </ul>
+        </div>
+        <div class="test-section glass">
+          <h4>${I18n.t('test.expectAbsent')}</h4>
+          <ul class="test-list test-list-warn">
+            ${(scenario.expectAbsent || []).map((a) => `<li>${this.escapeHtml(a)}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+
+      <div id="cursor-direct-test-results" class="test-section glass" hidden>
+        <h4>${I18n.t('test.cursorDirectResults')}</h4>
+        <div id="cursor-direct-test-results-body"></div>
+      </div>
+    `;
+  },
+
+  renderCursorDirectTestResults(result) {
+    const panel = document.getElementById('cursor-direct-test-results');
+    const body = document.getElementById('cursor-direct-test-results-body');
+    if (!panel || !body) return;
+
+    panel.hidden = false;
+    const statusClass = result.ok ? 'test-result--pass' : 'test-result--fail';
+    body.innerHTML = `
+      <p class="test-result-summary ${statusClass}">
+        ${result.ok ? I18n.t('test.cursorDirectPass') : I18n.t('test.cursorDirectFail')}
+        — ${this.escapeHtml(result.title || result.scenarioId)}
+      </p>
+      <ul class="test-list test-result-steps">
+        ${(result.steps || [])
+          .map(
+            (s) =>
+              `<li class="${s.ok ? 'test-result-step--ok' : 'test-result-step--fail'}">
+                <strong>${this.escapeHtml(s.id)}</strong>: ${this.escapeHtml(s.detail || '')}
+              </li>`
+          )
+          .join('')}
+      </ul>
+      ${
+        result.failures?.length
+          ? `<h5 class="test-subheading">${I18n.t('test.cursorDirectFailures')}</h5>
+             <ul class="test-list test-list-warn">
+               ${result.failures
+                 .map(
+                   (f) =>
+                     `<li><strong>${this.escapeHtml(f.check)}</strong>: ${this.escapeHtml(f.message)}${f.detail ? ` — ${this.escapeHtml(f.detail)}` : ''}</li>`
+                 )
+                 .join('')}
+             </ul>`
+          : ''
+      }
+    `;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  },
+
+  runCursorDirectTest(scenarioId) {
+    if (typeof CursorDirectTestRunner === 'undefined') {
+      this.showToast(I18n.t('test.cursorDirectUnavailable'));
+      return;
+    }
+    const result = CursorDirectTestRunner.runOne(scenarioId, { backup: true });
+    this.renderCursorDirectTestResults(result);
+    this.showToast(
+      result.ok ? I18n.t('test.cursorDirectPass') : I18n.t('test.cursorDirectFail')
+    );
+    if (result.ok) this.renderHomeStats();
+  },
+
+  runAllCursorDirectTests() {
+    if (typeof CursorDirectTestRunner === 'undefined') {
+      this.showToast(I18n.t('test.cursorDirectUnavailable'));
+      return;
+    }
+    const summary = CursorDirectTestRunner.runAll({ backup: true });
+    const panel = document.getElementById('cursor-direct-test-results');
+    const body = document.getElementById('cursor-direct-test-results-body');
+    if (panel && body) {
+      panel.hidden = false;
+      body.innerHTML = `
+        <p class="test-result-summary ${summary.ok ? 'test-result--pass' : 'test-result--fail'}">
+          ${I18n.t('test.cursorDirectSummary', { passed: summary.passed, total: summary.total })}
+        </p>
+        <ul class="test-list">
+          ${summary.results
+            .map(
+              (r) =>
+                `<li class="${r.ok ? 'test-result-step--ok' : 'test-result-step--fail'}">
+                  ${r.ok ? '✓' : '✗'} ${this.escapeHtml(r.title || r.scenarioId)}
+                </li>`
+            )
+            .join('')}
+        </ul>
+      `;
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    this.showToast(
+      I18n.t('test.cursorDirectSummary', { passed: summary.passed, total: summary.total })
     );
     this.renderHomeStats();
   },

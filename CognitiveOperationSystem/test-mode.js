@@ -7,6 +7,7 @@
 const TestMode = {
   selectedScenarioId: null,
   selectedAiAssistScenarioId: null,
+  selectedCursorDirectScenarioId: null,
   simulationAbort: false,
   lastSnapshot: null,
   isSimulating: false,
@@ -30,6 +31,7 @@ const TestMode = {
   selectScenario(id) {
     this.selectedScenarioId = id;
     this.selectedAiAssistScenarioId = null;
+    this.selectedCursorDirectScenarioId = null;
     return this.getScenario(id);
   },
 
@@ -42,8 +44,24 @@ const TestMode = {
   selectAiAssistScenario(id) {
     this.selectedAiAssistScenarioId = id;
     this.selectedScenarioId = null;
+    this.selectedCursorDirectScenarioId = null;
     return typeof AiAssistTestRunner !== 'undefined'
       ? AiAssistTestRunner.getScenario(id)
+      : null;
+  },
+
+  getCursorDirectScenarios() {
+    return typeof CursorDirectTestRunner !== 'undefined'
+      ? CursorDirectTestRunner.getScenarios({ mockOnly: true })
+      : [];
+  },
+
+  selectCursorDirectScenario(id) {
+    this.selectedCursorDirectScenarioId = id;
+    this.selectedScenarioId = null;
+    this.selectedAiAssistScenarioId = null;
+    return typeof CursorDirectTestRunner !== 'undefined'
+      ? CursorDirectTestRunner.getScenario(id)
       : null;
   },
 

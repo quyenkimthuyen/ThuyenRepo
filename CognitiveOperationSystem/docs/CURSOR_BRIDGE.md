@@ -27,6 +27,50 @@ Bridge **không chạy nền** khi mở app. Chỉ khi bấm **Suy ngẫm với 
 
 ---
 
+## API key (`server/key.txt`)
+
+Bridge đọc key theo thứ tự:
+
+1. Biến môi trường `CURSOR_API_KEY`
+2. File `CURSOR_KEY_FILE` (nếu set)
+3. `server/key.txt` (cùng thư mục bridge)
+4. `/home/toc/thuyen/repo/CognitiveOperationSystem/server/key.txt` (fallback)
+
+Ví dụ:
+
+```bash
+# Tạo symlink nếu key nằm ở repo khác
+ln -sf /home/toc/thuyen/repo/CognitiveOperationSystem/server/key.txt server/key.txt
+```
+
+**Không commit** file key — thêm vào `.gitignore`.
+
+---
+
+## Test
+
+### Mock (không cần bridge, chạy mọi lúc)
+
+```bash
+node scripts/run-cursor-direct-tests.js
+```
+
+3 kịch bản: regression niềm tin giả, hallucination quarantine, JSON thưa.
+
+### Live (bridge + API key thật)
+
+```bash
+node scripts/run-cursor-direct-tests.js --live
+```
+
+Script tự start bridge nếu chưa chạy, đọc key từ `server/key.txt` hoặc đường dẫn repo ở trên.
+
+### Trong app
+
+Màn **Thử nghiệm** → mục **Cursor trực tiếp** → Chạy test (mock).
+
+---
+
 ## Cài đặt bridge (một lần)
 
 ```bash
@@ -135,6 +179,7 @@ Trình duyệt (cursor-direct.js)
 | `SDK not installed` | `cd server && npm install` |
 | CORS / fetch failed | Mở app qua `http://localhost`, không `file://` |
 | `npm install` lỗi 404 `@cursor/sdk` | `npm install --registry https://registry.npmjs.org` |
+| Live test fail / `cursor_run_error` | Key hết hạn hoặc Cursor agent lỗi — kiểm tra key trên cursor.com |
 
 ---
 
