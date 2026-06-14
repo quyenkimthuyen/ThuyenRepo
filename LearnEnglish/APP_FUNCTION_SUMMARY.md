@@ -129,7 +129,7 @@ Quiz behavior:
 - Limits manual Play taps in Listen and Dictation to one play every 2 seconds to avoid repeated audio spam.
 - Tracks total answers, correct answers, weighted score, streak, elapsed time, and accuracy.
 - Records per-word quiz attempt count and correct count for display on the Learn screen.
-- Shows a quiz result summary after the final question, including correct count, wrong count, accuracy, elapsed time, and each question's selected/correct answer.
+- Shows a quiz result summary after the final question, including correct count, wrong count, accuracy, elapsed time, total lightbulb button uses, and each question's selected/correct answer.
 - Supports quiz reset.
 
 ### Progress And Stats

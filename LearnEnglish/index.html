@@ -212,6 +212,7 @@
         quizAnswerPeekCooldownUntil: 0,
         quizAnswerPeekVisibleUntil: 0,
         quizAnswerPeekUsed: false,
+        quizAnswerPeekCount: 0,
         quizPracticeActive: false,
         quizPracticeWordIds: [],
         autoLearn: {
@@ -423,6 +424,7 @@
         state.quizAnswerPeekCooldownUntil = 0;
         state.quizAnswerPeekVisibleUntil = 0;
         state.quizAnswerPeekUsed = false;
+        state.quizAnswerPeekCount = 0;
         clearQuizAnswerPeekTimers();
       }
 
@@ -1018,6 +1020,7 @@
         state.quizAnswerPeekCooldownUntil = now + 5000;
         state.quizAnswerPeekVisibleUntil = now + 3000;
         state.quizAnswerPeekUsed = true;
+        state.quizAnswerPeekCount = (state.quizAnswerPeekCount || 0) + 1;
 
         const peekText = document.getElementById('answerPeekText');
         if (peekText) {
@@ -1098,6 +1101,7 @@
         state.quizAudioCooldownUntil = 0;
         state.quizHintRevealCount = 0;
         state.quizTypingDraft = '';
+        state.quizAnswerPeekCount = 0;
         resetQuizAnswerPeekState();
         state.feedback = state.currentQuestion ? '' : 'Load at least 1 word to start a quiz.';
         saveState();
@@ -1170,6 +1174,7 @@
             score: quizStats.score,
             accuracy: quizStats.accuracy,
             elapsed: quizStats.elapsed,
+            answerPeekCount: quizStats.answerPeekCount,
           };
           state.quizHistory = [record, ...(state.quizHistory || [])].slice(0, 10);
           saveState();
@@ -1196,7 +1201,15 @@
           streak += 1;
         }
         const elapsed = state.quizStartedAt ? Math.floor((Date.now() - state.quizStartedAt) / 1000) : 0;
-        return { total, correct, score, streak, elapsed, accuracy: total ? Math.round((score / total) * 100) : 0 };
+        return {
+          total,
+          correct,
+          score,
+          streak,
+          elapsed,
+          accuracy: total ? Math.round((score / total) * 100) : 0,
+          answerPeekCount: state.quizAnswerPeekCount || 0,
+        };
       }
 
       function restoreQuizTypingInput() {
@@ -1569,6 +1582,7 @@
               ${statCard('Wrong', wrong)}
               ${statCard('Score', `${quizStats.accuracy}%`)}
               ${statCard('Total', quizStats.total)}
+              ${statCard('Lightbulb', quizStats.answerPeekCount)}
             </div>
             <div class="stack" style="gap: 0.65rem;">
               ${resultRows}
