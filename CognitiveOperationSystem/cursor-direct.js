@@ -128,6 +128,12 @@ const CursorDirect = {
   isCursorSession(session) {
     return session?.source === 'cursor_direct';
   },
+
+  /** Đồng bộ node / timeline / insights từ tin user (giống rule engine trong app) */
+  syncSessionData(session, userText) {
+    if (typeof ReflectionEngine === 'undefined') return null;
+    return ReflectionEngine.ingestUserMessage(session, userText);
+  },
 };
 
 if (typeof window !== 'undefined') {

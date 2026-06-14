@@ -1202,12 +1202,17 @@ const App = {
       };
 
       DataStore.addSession(session);
+      CursorDirect.syncSessionData(session, thought);
+      DataStore.updateSession(session.id, { nodeIds: session.nodeIds });
+
       this.activeSessionId = session.id;
       this.editingMessageId = null;
       input.value = '';
       this._pendingCursorThought = null;
 
       this.showToast(I18n.t('home.cursorSessionStarted'));
+      this.renderHomeStats();
+      this.refreshDataScreens();
       this.navigate('reflection');
     } catch (err) {
       this._pendingCursorThought = thought;
@@ -1267,7 +1272,11 @@ const App = {
     const sendBtn = document.querySelector('#chat-form .btn-send');
     const skipBtn = document.getElementById('btn-skip-step');
     const finishBtn = document.getElementById('btn-cursor-finish');
-    if (input) input.disabled = busy;
+    if (input) {
+      input.readOnly = busy;
+      input.classList.toggle('chat-input--busy', busy);
+      input.setAttribute('aria-busy', busy ? 'true' : 'false');
+    }
     if (sendBtn) sendBtn.disabled = busy;
     if (skipBtn) skipBtn.disabled = busy;
     if (finishBtn) finishBtn.disabled = busy;
@@ -1279,10 +1288,29 @@ const App = {
         'beforeend',
         `<div class="message message-guide message-pending" id="cursor-typing-indicator">${this.escapeHtml(I18n.t('cursorDirect.thinking'))}</div>`
       );
-      container.scrollTop = container.scrollHeight;
+      if (this.isChatScrolledNearBottom(container)) {
+        container.scrollTop = container.scrollHeight;
+      }
     } else if (!busy && existing) {
       existing.remove();
     }
+  },
+
+  isChatScrolledNearBottom(container, threshold = 80) {
+    if (!container) return true;
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+  },
+
+  refreshDataScreens() {
+    if (this.currentScreen === 'insights') this.renderInsights();
+    if (this.currentScreen === 'timeline') this.renderTimeline();
+    if (this.currentScreen === 'forest') this.renderForest();
+  },
+
+  purgeCursorSessionArtifacts(sessionId) {
+    if (!sessionId) return;
+    DataStore.removeNodesBySession(sessionId);
+    DataStore.removeTimelineForSession(sessionId);
   },
 
   syncCursorReflectionHeader(session) {
@@ -1319,6 +1347,7 @@ const App = {
     };
     session.messages.push(userMsg);
     session.updatedAt = userMsg.timestamp;
+    CursorDirect.syncSessionData(session, text);
     DataStore.updateSession(session.id, session);
     input.value = '';
     this.renderReflection();
@@ -1338,6 +1367,7 @@ const App = {
       DataStore.updateSession(session.id, session);
       this.renderReflection();
       this.renderHomeStats();
+      this.refreshDataScreens();
     } catch (err) {
       session.messages = session.messages.filter((m) => m.id !== userMsg.id);
       DataStore.updateSession(session.id, session);
@@ -1386,12 +1416,14 @@ const App = {
         return;
       }
 
+      this.purgeCursorSessionArtifacts(oldSessionId);
       DataStore.removeSession(oldSessionId);
       await CursorDirect.closeSession(bridgeKey);
 
       this.activeSessionId = result.session.id;
       this.editingMessageId = null;
       this.renderHomeStats();
+      this.refreshDataScreens();
       this.showToast(I18n.t('cursorDirect.finishSuccess'));
       this.renderReflection();
     } catch (err) {
@@ -1560,6 +1592,7 @@ const App = {
     const container = document.getElementById('chat-messages');
     const isCursor =
       session && typeof CursorDirect !== 'undefined' && CursorDirect.isCursorSession(session);
+    const stickToBottom = this.isChatScrolledNearBottom(container);
     container.innerHTML = session.messages
       .map((msg) => {
         const isUser = msg.role === 'user';
@@ -1611,7 +1644,9 @@ const App = {
       })
       .join('');
 
-    container.scrollTop = container.scrollHeight;
+    if (stickToBottom) {
+      container.scrollTop = container.scrollHeight;
+    }
 
     if (this.editingMessageId) {
       const input = document.getElementById(`message-edit-input-${this.editingMessageId}`);

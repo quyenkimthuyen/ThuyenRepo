@@ -865,6 +865,46 @@ const ReflectionEngine = {
 
     return { session, nodesCreated };
   },
+
+  /**
+   * Trích node + cập nhật timeline/insights từ tin user (mode Cursor — không sinh câu guide)
+   */
+  ingestUserMessage(session, userText) {
+    if (!session || !String(userText || '').trim()) return null;
+
+    const userCount = (session.messages || []).filter((m) => m.role === 'user').length;
+    const isFirstUser = userCount <= 1;
+    let nodesCreated = [];
+
+    if (isFirstUser && !(session.nodeIds || []).length) {
+      const eventResult = this.processMessage(userText, {
+        ...session,
+        flowStep: 'Event',
+        messages: [],
+      });
+      nodesCreated.push(...eventResult.nodesCreated);
+      session.nodeIds = [...eventResult.nodeIds];
+      TimelineEngine.recordSessionStart(session, eventResult.nodesCreated);
+    }
+
+    const result = this.processMessage(userText, session);
+    const prevIds = new Set(session.nodeIds || []);
+    for (const id of result.nodeIds) prevIds.add(id);
+    session.nodeIds = [...prevIds];
+
+    const newNodes = result.nodesCreated.filter(
+      (n) => !nodesCreated.some((existing) => existing.id === n.id)
+    );
+    nodesCreated.push(...newNodes);
+
+    if (newNodes.length > 0) {
+      TimelineEngine.recordNodeChanges(newNodes);
+    }
+
+    DataStore.setInsights(InsightEngine.analyze());
+
+    return { ...result, nodesCreated };
+  },
 };
 
 if (typeof window !== 'undefined') {

@@ -174,6 +174,38 @@ const DataStore = {
     return false;
   },
 
+  /** Xóa node (và relation liên quan) thuộc một phiên — dùng trước import Cursor finish */
+  removeNodesBySession(sessionId) {
+    if (!sessionId) return 0;
+    this.load();
+    const removeIds = new Set(
+      this._cache.nodes.filter((n) => n.sourceSessionId === sessionId).map((n) => n.id)
+    );
+    if (removeIds.size === 0) return 0;
+    this._cache.nodes = this._cache.nodes.filter((n) => !removeIds.has(n.id));
+    this._cache.relations = this._cache.relations.filter(
+      (r) => !removeIds.has(r.source) && !removeIds.has(r.target)
+    );
+    this._cache.timeline = this._cache.timeline.filter(
+      (e) => !e.nodeId || !removeIds.has(e.nodeId)
+    );
+    this.persist();
+    return removeIds.size;
+  },
+
+  /** Xóa sự kiện timeline gắn sessionId (session_start khi chat Cursor) */
+  removeTimelineForSession(sessionId) {
+    if (!sessionId) return 0;
+    this.load();
+    const before = this._cache.timeline.length;
+    this._cache.timeline = this._cache.timeline.filter((e) => e.sessionId !== sessionId);
+    if (this._cache.timeline.length !== before) {
+      this.persist();
+      return before - this._cache.timeline.length;
+    }
+    return 0;
+  },
+
   /** Lấy session theo id */
   getSession(id) {
     return this.getSessions().find((s) => s.id === id);
