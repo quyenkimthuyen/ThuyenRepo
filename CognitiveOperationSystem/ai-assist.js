@@ -534,8 +534,7 @@ const AiAssist = {
       `🪞 ${label('Identity')}: ${fmt(data.identity)}`,
       `⚡ ${label('Action')}: ${fmt(data.actions)}`,
     ];
-    const title =
-      locale === 'en' ? 'EEIBVIA summary (from ChatGPT)' : 'Tóm tắt 7 bước (từ ChatGPT)';
+    const title = I18n.t('aiAssist.eeibviaSummaryTitle');
     return {
       id: generateId('msg'),
       role: 'guide',
@@ -632,9 +631,7 @@ const AiAssist = {
 
     const locale = this.getLocale();
     const importedNote =
-      locale === 'en'
-        ? '(Imported from ChatGPT reflection)'
-        : '(Đã nhập từ phiên suy ngẫm ChatGPT)';
+      typeof I18n !== 'undefined' ? I18n.t('aiAssist.importedNote') : '(Từ phiên ChatGPT)';
 
     session.messages.push({
       id: generateId('msg'),
@@ -658,14 +655,14 @@ const AiAssist = {
     const summaryParts = [];
     if (data.summary) summaryParts.push(data.summary);
     if (data.reframe) {
-      summaryParts.push(
-        locale === 'en' ? `Reframe: ${data.reframe}` : `Góc nhìn khác: ${data.reframe}`
-      );
+      const label =
+        typeof I18n !== 'undefined' ? I18n.t('aiAssist.reframeLabel') : 'Góc nhìn khác';
+      summaryParts.push(`${label}: ${data.reframe}`);
     }
     if (data.smallStep) {
-      summaryParts.push(
-        locale === 'en' ? `Small step: ${data.smallStep}` : `Bước nhỏ: ${data.smallStep}`
-      );
+      const label =
+        typeof I18n !== 'undefined' ? I18n.t('aiAssist.smallStepLabel') : 'Bước nhỏ';
+      summaryParts.push(`${label}: ${data.smallStep}`);
     }
 
     const endMarker =
@@ -673,20 +670,20 @@ const AiAssist = {
         ? I18n.t('reflection.sessionEndMarker')
         : locale === 'en'
           ? 'Explore'
-          : 'Góc khám phá';
+          : 'Khám phá';
 
     const guideContent =
       summaryParts.length > 0
         ? `${importedNote}\n\n${summaryParts.join('\n\n')}\n\n${
-            locale === 'en'
-              ? `Recorded in your cognitive map. See more in ${endMarker}.`
-              : `Đã ghi nhận vào bản đồ suy nghĩ. Xem thêm ở ${endMarker}.`
+            typeof I18n !== 'undefined'
+              ? I18n.t('aiAssist.recordedInMap', { marker: endMarker })
+              : `Đã ghi vào bản đồ suy nghĩ. Mở ${endMarker}.`
           }`
         : typeof I18n !== 'undefined'
           ? I18n.t('reflection.sessionEnd')
           : locale === 'en'
-            ? 'Thank you for sharing. Recorded in your cognitive map.'
-            : 'Cảm ơn bạn đã chia sẻ. Đã ghi nhận vào bản đồ suy nghĩ.';
+            ? 'Thank you for sharing. Saved to your thought map.'
+            : 'Cảm ơn bạn đã chia sẻ. Đã ghi vào bản đồ suy nghĩ.';
 
     session.messages.push(this.buildEeibviaSummaryMessage(data));
 

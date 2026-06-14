@@ -433,13 +433,9 @@ const App = {
 
   formatAiJsonHint(hint) {
     if (!hint || hint === 'empty') return I18n.t('aiAssist.importEmpty');
-    if (hint === 'no_object' || hint === 'fenced_no_json') {
-      return I18n.locale === 'en' ? 'No JSON object found' : 'Không thấy khối JSON';
-    }
+    if (hint === 'no_object' || hint === 'fenced_no_json') return I18n.t('aiAssist.jsonHintNoObject');
     if (hint === 'missing_event') return I18n.t('aiAssist.importMissingEvent');
-    if (hint === 'invalid_payload') {
-      return I18n.locale === 'en' ? 'JSON shape not supported' : 'Cấu trúc JSON không đúng màn hình';
-    }
+    if (hint === 'invalid_payload') return I18n.t('aiAssist.jsonHintInvalidShape');
     return String(hint).slice(0, 140);
   },
 
