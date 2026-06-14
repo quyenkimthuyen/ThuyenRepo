@@ -56,13 +56,19 @@ test.describe('Toeic Vocab App UI', () => {
     await expect(feedback).toBeVisible();
   });
 
-  test('Hint button reveals hint', async ({ page }) => {
+  test('Hint button reveals more letters on each tap', async ({ page }) => {
     await page.click('.nav-button[data-page="quiz"]');
     await page.click('.tab[data-mode="typing"]');
     await page.click('#startQuiz');
-    await page.click('#quizHint');
+    await page.waitForSelector('#quizHint', { timeout: 60000 });
     const hint = page.locator('#hintText');
+    await page.click('#quizHint');
     await expect(hint).not.toHaveClass(/hidden/);
+    const firstHint = await hint.textContent();
+    await page.click('#quizHint');
+    const secondHint = await hint.textContent();
+    expect(secondHint).not.toBe(firstHint);
+    expect(secondHint.replace(/[^a-zA-Z]/g, '').length).toBeGreaterThan(firstHint.replace(/[^a-zA-Z]/g, '').length);
   });
 
   test('Reset saved state clears data', async ({ page }) => {

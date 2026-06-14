@@ -204,6 +204,7 @@
         currentAnswer: null,
         lastAutoPlayedListeningQuestionId: null,
         quizAudioCooldownUntil: 0,
+        quizHintRevealCount: 0,
         autoLearn: {
           isPlaying: false,
           wordIds: [],
@@ -357,6 +358,7 @@
         state.feedback = '';
         state.lastAutoPlayedListeningQuestionId = null;
         state.quizAudioCooldownUntil = 0;
+        state.quizHintRevealCount = 0;
       }
 
       function resetAutoLearnState() {
@@ -825,15 +827,17 @@
         return [...items].sort(() => Math.random() - 0.5);
       }
 
-      function getQuizHint(answer) {
+      function getQuizHint(answer, revealCount = 2) {
         if (!answer) return '';
         const trimmed = answer.trim();
-        if (trimmed.length <= 2) {
-          return `Starts with: "${trimmed[0]}"`;
+        const revealed = Math.min(trimmed.length, Math.max(0, revealCount));
+        if (!revealed) return '';
+        if (revealed >= trimmed.length) {
+          return `Hint: ${trimmed} (${trimmed.length} letter${trimmed.length === 1 ? '' : 's'})`;
         }
-        const firstTwo = trimmed.slice(0, 2);
-        const underscores = '_ '.repeat(trimmed.length - 2).trim();
-        return `Hint: ${firstTwo} ${underscores} (${trimmed.length} letters)`;
+        const shown = trimmed.slice(0, revealed);
+        const underscores = '_ '.repeat(trimmed.length - revealed).trim();
+        return `Hint: ${shown} ${underscores} (${trimmed.length} letters)`;
       }
 
       function diffAnswer(typed, correct) {
@@ -893,6 +897,7 @@
         state.currentAnswer = null;
         state.lastAutoPlayedListeningQuestionId = null;
         state.quizAudioCooldownUntil = 0;
+        state.quizHintRevealCount = 0;
         state.feedback = state.currentQuestion ? '' : 'Load at least 1 word to start a quiz.';
         saveState();
         render();
@@ -968,6 +973,7 @@
           return;
         }
         state.quizAudioCooldownUntil = 0;
+        state.quizHintRevealCount = 0;
         state.lastAutoPlayedListeningQuestionId = null;
         state.currentQuestion = createQuizQuestion(state.quizMode);
         render();
@@ -1229,7 +1235,7 @@
                 <button class="button primary" type="submit">Submit answer</button>
                 <button class="button" type="button" id="quizHint">Hint</button>
               </div>
-              <p id="hintText" class="muted small hidden" style="margin-top: 0.5rem;"></p>
+              <p id="hintText" class="muted small${state.quizHintRevealCount > 0 ? '' : ' hidden'}" style="margin-top: 0.5rem;">${state.quizHintRevealCount > 0 ? escapeHtml(getQuizHint(question.answer, state.quizHintRevealCount)) : ''}</p>
             </form>
           `;
         }
@@ -1257,7 +1263,7 @@
                 <button class="button primary" type="submit">Submit answer</button>
                 <button class="button" type="button" id="quizHint">Hint</button>
               </div>
-              <p id="hintText" class="muted small hidden" style="margin-top: 0.5rem;"></p>
+              <p id="hintText" class="muted small${state.quizHintRevealCount > 0 ? '' : ' hidden'}" style="margin-top: 0.5rem;">${state.quizHintRevealCount > 0 ? escapeHtml(getQuizHint(question.answer, state.quizHintRevealCount)) : ''}</p>
             </form>
           `;
         }
@@ -1461,10 +1467,14 @@
           return;
         }
         if (target.id === 'quizHint') {
-          const hintText = document.getElementById('hintText');
-          if (hintText && state.currentQuestion) {
-            hintText.textContent = getQuizHint(state.currentQuestion.answer);
-            hintText.classList.remove('hidden');
+          if (state.currentQuestion) {
+            const answerLength = state.currentQuestion.answer.trim().length;
+            state.quizHintRevealCount = Math.min(answerLength, (state.quizHintRevealCount || 0) + 2);
+            const hintText = document.getElementById('hintText');
+            if (hintText) {
+              hintText.textContent = getQuizHint(state.currentQuestion.answer, state.quizHintRevealCount);
+              hintText.classList.remove('hidden');
+            }
           }
           const input = document.getElementById('typingAnswer');
           if (input) input.focus();

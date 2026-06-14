@@ -116,6 +116,7 @@ Quiz behavior:
 - Compares answers case-insensitively after trimming whitespace.
 - Automatically advances to the next question after a correct answer.
 - Automatically submits typing answers when the typed text matches the correct English word.
+- In Typing and Dictation, each Hint tap reveals two more letters of the answer (capped at the full word length).
 - Automatically plays the word audio or speech fallback when a Listen or Dictation question first appears.
 - Limits manual Play taps in Listen and Dictation to one play every 2 seconds to avoid repeated audio spam.
 - Tracks total answers, correct answers, streak, elapsed time, and accuracy.
