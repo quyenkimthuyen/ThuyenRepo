@@ -840,6 +840,29 @@
         return `Hint: ${shown} ${underscores} (${trimmed.length} letters)`;
       }
 
+      function getQuizAnswerLength(answer) {
+        return String(answer || '').trim().length;
+      }
+
+      function getQuizAnswerScore(result) {
+        if (!result.isCorrect) return 0;
+        if (!['typing', 'dictation'].includes(result.mode)) return 1;
+        const length = getQuizAnswerLength(result.correctAnswer);
+        if (!length) return 1;
+        const revealed = Math.min(length, Number(result.hintRevealCount || 0));
+        return Math.max(0, (length - revealed) / length);
+      }
+
+      function formatQuizQuestionScore(result) {
+        if (!result.isCorrect || !['typing', 'dictation'].includes(result.mode)) return '';
+        const length = getQuizAnswerLength(result.correctAnswer);
+        if (!length) return '';
+        const revealed = Math.min(length, Number(result.hintRevealCount || 0));
+        if (!revealed) return '';
+        const earned = length - revealed;
+        return ` (${earned}/${length} pts)`;
+      }
+
       function diffAnswer(typed, correct) {
         const m = typed.length;
         const n = correct.length;
@@ -915,6 +938,7 @@
           selectedAnswer: answer,
           correctAnswer: question.answer,
           isCorrect: correct,
+          hintRevealCount: state.quizHintRevealCount || 0,
           answeredAt: Date.now(),
         });
         recordWordQuizResult(question.word.id, correct);
@@ -963,6 +987,7 @@
             topic: state.topicFilter,
             total: quizStats.total,
             correct: quizStats.correct,
+            score: quizStats.score,
             accuracy: quizStats.accuracy,
             elapsed: quizStats.elapsed,
           };
@@ -982,13 +1007,14 @@
       function getQuizStats() {
         const total = state.quizResults.length;
         const correct = state.quizResults.filter((item) => item.isCorrect).length;
+        const score = state.quizResults.reduce((sum, item) => sum + getQuizAnswerScore(item), 0);
         let streak = 0;
         for (let index = state.quizResults.length - 1; index >= 0; index -= 1) {
           if (!state.quizResults[index].isCorrect) break;
           streak += 1;
         }
         const elapsed = state.quizStartedAt ? Math.floor((Date.now() - state.quizStartedAt) / 1000) : 0;
-        return { total, correct, streak, elapsed, accuracy: total ? Math.round((correct / total) * 100) : 0 };
+        return { total, correct, score, streak, elapsed, accuracy: total ? Math.round((score / total) * 100) : 0 };
       }
 
       function render() {
@@ -1172,7 +1198,7 @@
             <div class="row between">
               <div>
                 <h2>Quiz Practice</h2>
-                <p class="muted">${quizStats.correct}/${quizStats.total} correct - ${quizStats.streak} streak - <span id="quizElapsed">${quizStats.elapsed}</span>s${state.quizQuestionIds.length ? ` - ${Math.min(state.quizQuestionIndex + 1, state.quizQuestionIds.length)}/${state.quizQuestionIds.length}` : ''}</p>
+                <p class="muted">${quizStats.correct}/${quizStats.total} correct - ${quizStats.accuracy}% score - ${quizStats.streak} streak - <span id="quizElapsed">${quizStats.elapsed}</span>s${state.quizQuestionIds.length ? ` - ${Math.min(state.quizQuestionIndex + 1, state.quizQuestionIds.length)}/${state.quizQuestionIds.length}` : ''}</p>
               </div>
               <button class="button" type="button" id="resetQuiz">Reset</button>
             </div>
@@ -1277,7 +1303,7 @@
           const word = state.words.find((item) => item.id === result.wordId);
           const prompt = result.prompt || word?.word || '';
           const correctAnswer = result.correctAnswer || '';
-          const statusText = result.isCorrect ? 'Correct' : 'Wrong';
+          const statusText = result.isCorrect ? `Correct${formatQuizQuestionScore(result)}` : 'Wrong';
           const statusColor = result.isCorrect ? 'var(--success)' : 'var(--danger)';
           return `
             <div style="padding: 0.85rem 1rem; border-radius: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); display: grid; gap: 0.35rem;">
@@ -1301,7 +1327,7 @@
             <div class="stats-grid">
               ${statCard('Correct', quizStats.correct)}
               ${statCard('Wrong', wrong)}
-              ${statCard('Accuracy', `${quizStats.accuracy}%`)}
+              ${statCard('Score', `${quizStats.accuracy}%`)}
               ${statCard('Total', quizStats.total)}
             </div>
             <div class="stack" style="gap: 0.65rem;">
@@ -1346,6 +1372,9 @@
               const modeLabel = { meaning: 'Meaning', word: 'English', listening: 'Listen', typing: 'Typing', dictation: 'Dictation' }[quiz.mode] || quiz.mode;
               const accuracyColor = quiz.accuracy >= 80 ? 'var(--success)' : (quiz.accuracy >= 50 ? 'var(--accent)' : 'var(--danger)');
               const topicName = quiz.topic === 'all' ? 'All topics' : prettyTopic(quiz.topic);
+              const scoreLabel = ['typing', 'dictation'].includes(quiz.mode) && typeof quiz.score === 'number'
+                ? `${Math.round(quiz.score * 10) / 10}/${quiz.total}`
+                : `${quiz.correct}/${quiz.total}`;
               return `
                 <div style="padding: 0.85rem 1rem; border-radius: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); display: grid; gap: 0.35rem;">
                   <div class="row between" style="gap: 0.5rem; flex-wrap: nowrap;">
@@ -1355,7 +1384,7 @@
                   <div class="row between small" style="gap: 0.5rem;">
                     <span class="badge" style="background: rgba(129, 140, 248, 0.12); color: var(--accent); padding: 0.15rem 0.5rem; font-size: 0.72rem;">${escapeHtml(modeLabel)}</span>
                     <div class="row" style="gap: 0.75rem;">
-                      <span style="font-weight: 700; color: ${accuracyColor}">${quiz.correct}/${quiz.total} (${quiz.accuracy}%)</span>
+                      <span style="font-weight: 700; color: ${accuracyColor}">${scoreLabel} (${quiz.accuracy}%)</span>
                       <span class="muted">${quiz.elapsed}s</span>
                     </div>
                   </div>

@@ -117,9 +117,11 @@ Quiz behavior:
 - Automatically advances to the next question after a correct answer.
 - Automatically submits typing answers when the typed text matches the correct English word.
 - In Typing and Dictation, each Hint tap reveals two more letters of the answer (capped at the full word length).
+- In Typing and Dictation, each revealed hint letter reduces the question score proportionally. For example, an 8-letter word with 2 letters revealed from hints earns 6/8 of a point when answered correctly.
+- Quiz score and accuracy use weighted points in Typing and Dictation, while other modes still award full points for each correct answer.
 - Automatically plays the word audio or speech fallback when a Listen or Dictation question first appears.
 - Limits manual Play taps in Listen and Dictation to one play every 2 seconds to avoid repeated audio spam.
-- Tracks total answers, correct answers, streak, elapsed time, and accuracy.
+- Tracks total answers, correct answers, weighted score, streak, elapsed time, and accuracy.
 - Records per-word quiz attempt count and correct count for display on the Learn screen.
 - Shows a quiz result summary after the final question, including correct count, wrong count, accuracy, elapsed time, and each question's selected/correct answer.
 - Supports quiz reset.
