@@ -79,6 +79,9 @@
       .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem; }
       .tabs.four { grid-template-columns: repeat(4, 1fr); }
       .tabs.five { grid-template-columns: repeat(5, 1fr); }
+      .quiz-mode-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.45rem; }
+      .quiz-mode-col { display: grid; gap: 0.35rem; align-items: stretch; }
+      .button.compact { padding: 0.4rem 0.35rem; font-size: 0.75rem; }
       .settings-grid { display: grid; gap: 1rem; }
       .word-title { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; }
       .meaning { font-size: 1.2rem; font-weight: 700; color: var(--primary); }
@@ -137,7 +140,7 @@
       input[type="range"]::-webkit-slider-thumb:hover {
         transform: scale(1.25);
       }
-      @media (max-width: 520px) { .app { padding-inline: 0.8rem; } .header { margin-inline: -0.8rem; padding-inline: 0.8rem; } .stats-grid, .tabs.four, .tabs.five { grid-template-columns: 1fr 1fr; } .word-title { font-size: 1.7rem; } .pill { display: none; } }
+      @media (max-width: 520px) { .app { padding-inline: 0.8rem; } .header { margin-inline: -0.8rem; padding-inline: 0.8rem; } .stats-grid, .tabs.four, .tabs.five, .quiz-mode-grid { grid-template-columns: 1fr 1fr; } .word-title { font-size: 1.7rem; } .pill { display: none; } }
     </style>
   </head>
   <body>
@@ -206,6 +209,8 @@
         quizAudioCooldownUntil: 0,
         quizHintRevealCount: 0,
         quizTypingDraft: '',
+        quizPracticeActive: false,
+        quizPracticeWordIds: [],
         autoLearn: {
           isPlaying: false,
           wordIds: [],
@@ -284,12 +289,61 @@
         return Math.random() - 0.5;
       }
 
-      function buildQuizQuestionIds() {
+      function getQuizPracticeWordIds() {
         const pool = [...getTopicWords()].sort(compareQuizPriority);
         const shortlistSize = Math.min(pool.length, Math.max(state.quizQuestionLimit, state.quizQuestionLimit * 2));
         return shuffle(pool.slice(0, shortlistSize))
           .slice(0, state.quizQuestionLimit)
           .map((word) => word.id);
+      }
+
+      function buildQuizQuestionIds() {
+        const topicIds = new Set(getTopicWords().map((word) => word.id));
+        const savedIds = (state.quizPracticeWordIds || []).filter((id) => topicIds.has(id));
+        const ids = savedIds.length ? savedIds : getQuizPracticeWordIds();
+        state.quizPracticeWordIds = ids;
+        return shuffle([...ids]);
+      }
+
+      function getQuizPracticeWords() {
+        const ids = new Set(state.quizPracticeWordIds?.length ? state.quizPracticeWordIds : getQuizPracticeWordIds());
+        return orderWords(getTopicWords().filter((word) => ids.has(word.id)));
+      }
+
+      function getAutoLearnWords() {
+        if (state.page === 'quiz' && state.quizPracticeActive) return getQuizPracticeWords();
+        return getVisibleWords();
+      }
+
+      function clearQuizPracticePool() {
+        state.quizPracticeWordIds = [];
+      }
+
+      function stopQuizPractice() {
+        state.quizPracticeActive = false;
+        if (state.autoLearn.isPlaying) stopAutoLearn();
+      }
+
+      function selectQuizMode(mode) {
+        state.quizMode = mode;
+        if (state.currentQuestion) {
+          startQuiz(mode);
+          return;
+        }
+        resetQuizState();
+        saveState();
+        render();
+      }
+
+      function startQuizPractice(mode) {
+        if (!getTopicWords().length) return;
+        if (state.autoLearn.isPlaying) stopAutoLearn();
+        state.quizMode = mode;
+        state.quizPracticeWordIds = getQuizPracticeWordIds();
+        state.quizPracticeActive = true;
+        resetQuizState();
+        saveState();
+        render();
       }
 
       function loadState() {
@@ -477,6 +531,8 @@
         state.quizMode = 'meaning';
         state.quizHistory = [];
         state.revealed = {};
+        stopQuizPractice();
+        clearQuizPracticePool();
         resetQuizState();
         state.feedback = 'Saved state reset.';
         await initializeApp();
@@ -691,7 +747,7 @@
 
       function seekAutoLearn(targetIndex) {
         if (!state.autoLearn.isPlaying) return;
-        const words = getVisibleWords();
+        const words = getAutoLearnWords();
         if (targetIndex < 0 || targetIndex >= words.length) return;
         
         cancelCurrentPlayback();
@@ -710,7 +766,7 @@
       }
 
       async function startAutoLearn(startIndex = 0) {
-        const words = getVisibleWords();
+        const words = getAutoLearnWords();
         if (!words.length) return;
         const runId = autoLearnRunId + 1;
         autoLearnRunId = runId;
@@ -923,6 +979,7 @@
       }
 
       function startQuiz(mode = state.quizMode) {
+        state.quizPracticeActive = false;
         state.quizMode = mode;
         state.quizQuestionIds = buildQuizQuestionIds();
         state.quizQuestionIndex = 0;
@@ -1061,13 +1118,53 @@
         autoPlayListeningQuestion();
       }
 
+      function renderAutoLearnPanel(words) {
+        const autoLearnWord = state.words.find((word) => word.id === state.autoLearn.currentWordId);
+        const autoLearnProgress = state.autoLearn.isPlaying ? `${Math.min(state.autoLearn.index + 1, words.length)} / ${words.length}` : '';
+        return `
+          <div class="panel stack" style="box-shadow: none; background: rgba(255, 255, 255, 0.03);">
+            <div class="row between">
+              <div>
+                <h3>Auto Audio Learning</h3>
+                <p class="muted small">Plays Vietnamese meaning first, then English audio for every word in the current queue, with a 2-second pause between words.</p>
+              </div>
+              <div class="row">
+                ${state.autoLearn.isPlaying ? `
+                  <button class="button" type="button" id="togglePauseAutoLearn">
+                    ${state.autoLearn.isPaused ? 'Resume' : 'Pause'}
+                  </button>
+                  <button class="button danger" type="button" id="stopAutoLearn">
+                    Stop
+                  </button>
+                ` : `
+                  <button class="button primary" type="button" id="startAutoLearn" ${words.length ? '' : 'disabled'}>
+                    Start
+                  </button>
+                `}
+              </div>
+            </div>
+            ${state.autoLearn.isPlaying && autoLearnWord ? `
+              <div class="stat stack" style="gap: 0.5rem;">
+                <div class="row between">
+                  <span class="muted small">Now playing ${autoLearnProgress}</span>
+                  <span class="muted small">Word ${state.autoLearn.index + 1} of ${words.length}</span>
+                </div>
+                <strong>${escapeHtml(autoLearnWord.word)}</strong>
+                <p class="muted small">${escapeHtml(autoLearnWord.ipa_us || '')}</p>
+                <div class="stack" style="gap: 0.25rem; margin-top: 0.5rem;">
+                  <input type="range" min="0" max="${words.length - 1}" value="${state.autoLearn.index}" id="autoLearnSlider" aria-label="Auto learn progress" />
+                </div>
+              </div>
+            ` : '<p class="muted small">Press Start to listen through the current queue of words.</p>'}
+          </div>
+        `;
+      }
+
       function renderLearn() {
         const words = getVisibleWords();
         const topics = getTopics();
         const topicWords = getTopicWords();
         const topicTotal = topicWords.length;
-        const autoLearnWord = state.words.find((word) => word.id === state.autoLearn.currentWordId);
-        const autoLearnProgress = state.autoLearn.isPlaying ? `${Math.min(state.autoLearn.index + 1, state.autoLearn.wordIds.length)} / ${state.autoLearn.wordIds.length}` : '';
         document.getElementById('learnPage').innerHTML = `
           <div class="panel stack">
             <div>
@@ -1089,41 +1186,7 @@
               </div>
             </div>
             <p class="muted small">Showing ${words.length} of ${topicTotal} word${topicTotal === 1 ? '' : 's'}${state.topicFilter === 'all' ? '' : ` in ${escapeHtml(state.topicFilter)}`}</p>
-            <div class="panel stack" style="box-shadow: none; background: rgba(255, 255, 255, 0.03);">
-              <div class="row between">
-                <div>
-                  <h3>Auto Audio Learning</h3>
-                  <p class="muted small">Plays Vietnamese meaning first, then English audio for every word in the current queue, with a 2-second pause between words.</p>
-                </div>
-                <div class="row">
-                  ${state.autoLearn.isPlaying ? `
-                    <button class="button" type="button" id="togglePauseAutoLearn">
-                      ${state.autoLearn.isPaused ? 'Resume' : 'Pause'}
-                    </button>
-                    <button class="button danger" type="button" id="stopAutoLearn">
-                      Stop
-                    </button>
-                  ` : `
-                    <button class="button primary" type="button" id="startAutoLearn" ${words.length ? '' : 'disabled'}>
-                      Start
-                    </button>
-                  `}
-                </div>
-              </div>
-              ${state.autoLearn.isPlaying && autoLearnWord ? `
-                <div class="stat stack" style="gap: 0.5rem;">
-                  <div class="row between">
-                    <span class="muted small">Now playing ${autoLearnProgress}</span>
-                    <span class="muted small">Word ${state.autoLearn.index + 1} of ${words.length}</span>
-                  </div>
-                  <strong>${escapeHtml(autoLearnWord.word)}</strong>
-                  <p class="muted small">${escapeHtml(autoLearnWord.ipa_us || '')}</p>
-                  <div class="stack" style="gap: 0.25rem; margin-top: 0.5rem;">
-                    <input type="range" min="0" max="${words.length - 1}" value="${state.autoLearn.index}" id="autoLearnSlider" aria-label="Auto learn progress" />
-                  </div>
-                </div>
-              ` : '<p class="muted small">Press Start to listen through the current queue of words.</p>'}
-            </div>
+            ${renderAutoLearnPanel(words)}
           </div>
           ${words.length ? words.map(renderWordCard).join('') : renderEmptyWords(topicTotal)}
         `;
@@ -1211,6 +1274,25 @@
         `;
       }
 
+      function renderQuizPracticeSection() {
+        const modeLabel = { meaning: 'Meaning', word: 'English', listening: 'Listen', typing: 'Typing', dictation: 'Dictation' }[state.quizMode] || state.quizMode;
+        const words = getQuizPracticeWords();
+        return `
+          <div class="panel stack">
+            <div class="row between">
+              <div>
+                <h3>Practice quiz words</h3>
+                <p class="muted small">${escapeHtml(modeLabel)} mode - ${words.length} word${words.length === 1 ? '' : 's'} for this test</p>
+              </div>
+              <button class="button" type="button" id="exitQuizPractice">Back</button>
+            </div>
+            ${renderAutoLearnPanel(words)}
+            <button class="button primary" type="button" id="startQuiz">Start quiz</button>
+          </div>
+          ${words.length ? words.map(renderWordCard).join('') : '<div class="panel empty"><h3>No quiz words</h3><p class="muted">Choose a topic with vocabulary to practice.</p></div>'}
+        `;
+      }
+
       function renderQuiz() {
         const quizStats = getQuizStats();
         const question = state.currentQuestion;
@@ -1218,6 +1300,16 @@
         const topics = getTopics();
         const topicWords = getTopicWords();
         const questionCount = Math.min(topicWords.length, state.quizQuestionLimit);
+        const hasTopicWords = topicWords.length > 0;
+        const practiceSection = state.quizPracticeActive && !question && !completedQuiz
+          ? renderQuizPracticeSection()
+          : `
+          <div class="panel stack">
+            ${question ? renderQuestion(question) : (completedQuiz ? renderQuizSummary(quizStats) : '<div class="empty"><h3>Ready to practice?</h3><p class="muted">Practice quiz words first, or choose a mode and start a quiz.</p></div>')}
+            ${state.feedback ? `<p class="feedback">${state.feedback}</p>` : ''}
+            <button class="button" type="button" id="startQuiz">${question ? 'Restart quiz' : (completedQuiz ? 'Start new quiz' : 'Start quiz')}</button>
+          </div>
+        `;
         document.getElementById('quizPage').innerHTML = `
           <div class="panel stack">
             <div class="row between">
@@ -1236,24 +1328,25 @@
               <p class="muted small">This test will use ${questionCount} unique word${questionCount === 1 ? '' : 's'}${state.topicFilter === 'all' ? ' from all topics' : ` from ${escapeHtml(prettyTopic(state.topicFilter))}`}.</p>
             </div>
             <div class="progress-track"><div class="progress-fill" style="width:${quizStats.accuracy}%"></div></div>
-            <div class="tabs five">
-              ${modeButton('meaning', 'Meaning')}
-              ${modeButton('word', 'English')}
-              ${modeButton('listening', 'Listen')}
-              ${modeButton('typing', 'Typing')}
-              ${modeButton('dictation', 'Dictation')}
+            <div class="quiz-mode-grid">
+              ${modeColumn('meaning', 'Meaning', hasTopicWords)}
+              ${modeColumn('word', 'English', hasTopicWords)}
+              ${modeColumn('listening', 'Listen', hasTopicWords)}
+              ${modeColumn('typing', 'Typing', hasTopicWords)}
+              ${modeColumn('dictation', 'Dictation', hasTopicWords)}
             </div>
           </div>
-          <div class="panel stack">
-            ${question ? renderQuestion(question) : (completedQuiz ? renderQuizSummary(quizStats) : '<div class="empty"><h3>Ready to practice?</h3><p class="muted">Choose a mode and start a quiz.</p></div>')}
-            ${state.feedback ? `<p class="feedback">${state.feedback}</p>` : ''}
-            <button class="button" type="button" id="startQuiz">${question ? 'Restart quiz' : (completedQuiz ? 'Start new quiz' : 'Start quiz')}</button>
-          </div>
+          ${practiceSection}
         `;
       }
 
-      function modeButton(mode, label) {
-        return `<button class="tab ${state.quizMode === mode ? 'active' : ''}" type="button" data-mode="${mode}">${label}</button>`;
+      function modeColumn(mode, label, enabled = true) {
+        return `
+          <div class="quiz-mode-col">
+            <button class="tab ${state.quizMode === mode ? 'active' : ''}" type="button" data-mode="${mode}">${label}</button>
+            <button class="button compact" type="button" data-practice-mode="${mode}"${enabled ? '' : ' disabled'}>Practice</button>
+          </div>
+        `;
       }
 
       function renderQuestion(question) {
@@ -1471,6 +1564,7 @@
         if (target.type === 'submit') return;
         if (target.dataset.page) {
           if (target.dataset.page !== 'learn' && state.autoLearn.isPlaying) stopAutoLearn();
+          if (target.dataset.page !== 'quiz') stopQuizPractice();
           state.page = target.dataset.page;
         }
         if (target.dataset.filter) {
@@ -1478,7 +1572,8 @@
           state.filter = target.dataset.filter;
           saveState();
         }
-        if (target.dataset.mode) startQuiz(target.dataset.mode);
+        if (target.dataset.mode && target.classList.contains('tab')) selectQuizMode(target.dataset.mode);
+        if (target.dataset.practiceMode) startQuizPractice(target.dataset.practiceMode);
         if (target.dataset.pronounce) pronounceWord(state.words.find((word) => word.id === target.dataset.pronounce));
         if (target.dataset.pronounceCurrent) playQuizAudio();
         if (target.dataset.reveal) state.revealed[target.dataset.reveal] = !state.revealed[target.dataset.reveal];
@@ -1515,7 +1610,12 @@
           return;
         }
         if (target.id === 'startQuiz') startQuiz(state.quizMode);
-        if (target.id === 'resetQuiz') resetQuizState();
+        if (target.id === 'exitQuizPractice') stopQuizPractice();
+        if (target.id === 'resetQuiz') {
+          resetQuizState();
+          stopQuizPractice();
+          clearQuizPracticePool();
+        }
         if (target.id === 'nextQuestion') {
           nextQuestion();
           return;
@@ -1546,6 +1646,8 @@
       document.addEventListener('change', async (event) => {
         if (event.target.id === 'topicSelect' || event.target.id === 'quizTopicSelect') {
           if (state.autoLearn.isPlaying) stopAutoLearn();
+          stopQuizPractice();
+          clearQuizPracticePool();
           state.topicFilter = event.target.value;
           state.filter = 'all';
           resetQuizState();
@@ -1555,6 +1657,8 @@
         }
         if (event.target.id === 'dataSourceSelect') {
           if (state.autoLearn.isPlaying) stopAutoLearn();
+          stopQuizPractice();
+          clearQuizPracticePool();
           const nextSource = event.target.value;
           if (!DATA_SOURCES.some((source) => source.name === nextSource)) return;
           state.dataSourceName = nextSource;
@@ -1574,6 +1678,8 @@
         }
         if (event.target.id === 'quizQuestionLimitInput') {
           state.quizQuestionLimit = normalizeQuizQuestionLimit(event.target.value);
+          stopQuizPractice();
+          clearQuizPracticePool();
           resetQuizState();
           saveState();
           render();
