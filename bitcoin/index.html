@@ -10,9 +10,24 @@
       href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="./src/styles.css" />
+    <!-- Import map: cho phép Live Server chạy trực tiếp index.html (không cần npm build) -->
+    <script type="importmap">
+      {
+        "imports": {
+          "buffer": "https://esm.sh/buffer@6.0.3",
+          "bitcoinjs-lib": "https://esm.sh/bitcoinjs-lib@6.1.7",
+          "bip39": "https://esm.sh/bip39@3.1.0",
+          "bip32": "https://esm.sh/bip32@4.0.0?deps=@bitcoinerlab/secp256k1@1.2.0",
+          "@bitcoinerlab/secp256k1": "https://esm.sh/@bitcoinerlab/secp256k1@1.2.0",
+          "ecpair": "https://esm.sh/ecpair@2.1.0?deps=@bitcoinerlab/secp256k1@1.2.0",
+          "qrcode": "https://esm.sh/qrcode@1.5.4"
+        }
+      }
+    </script>
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
+    <div id="app">Đang tải ví Bitcoin...</div>
+    <script type="module" src="./src/main.js"></script>
   </body>
 </html>

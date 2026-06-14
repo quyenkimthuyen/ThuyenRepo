@@ -17,27 +17,21 @@
 
 ## Chạy ứng dụng
 
-### Cách 1: Live Server (Visual Studio Code) — khuyến nghị nếu bạn quen VS Code
+### Cách 1: Live Server (Visual Studio Code) — mở trực tiếp `index.html`
 
-Live Server chỉ mở file tĩnh, nên cần **build trước**:
+1. Trong VS Code: **File → Open Folder** → chọn thư mục `bitcoin` (quan trọng!)
+2. Cài extension **Live Server**
+3. Chuột phải file `index.html` → **Open with Live Server**
 
-```bash
-cd bitcoin
-npm install --registry=https://registry.npmjs.org/
-npm run build:live
-```
+Hoặc nhấn **Go Live** ở góc dưới phải.
 
-Sau đó trong VS Code:
+App chạy tại `http://127.0.0.1:5506` (cần **internet** để tải thư viện từ CDN).
 
-1. Mở thư mục `bitcoin` (File → Open Folder)
-2. Cài extension **Live Server** (nếu chưa có)
-3. Nhấn **Go Live** ở góc dưới phải — hoặc chuột phải `dist/index.html` → **Open with Live Server**
+**Không cần** `npm install` hay `npm run build` khi dùng cách này.
 
-App chạy tại `http://127.0.0.1:5500` (thư mục `dist` đã được cấu hình sẵn trong `.vscode/settings.json`).
+> Nếu mở cả repo cha (`repo`) thay vì folder `bitcoin`, hãy chuột phải `bitcoin/index.html` → Open with Live Server (không mở `index.html` ở thư mục gốc repo).
 
-**Lưu ý:** Mỗi khi sửa code trong `src/`, chạy lại `npm run build:live` rồi refresh trình duyệt.
-
-### Cách 2: Vite dev server (tự reload khi sửa code)
+### Cách 2: Vite (offline, tự reload khi sửa code)
 
 ```bash
 cd bitcoin
@@ -45,7 +39,13 @@ npm install --registry=https://registry.npmjs.org/
 npm run dev
 ```
 
-Mở URL hiển thị trong terminal (thường là `http://localhost:5173`).
+### Cách 3: Build production (offline, không cần CDN)
+
+```bash
+npm run build
+```
+
+Sau đó mở `dist/index.html` bằng Live Server.
 
 ## Testnet vs Mainnet
 

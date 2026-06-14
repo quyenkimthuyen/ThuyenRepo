@@ -18,7 +18,6 @@ import {
 } from './api.js';
 import { buildAndSignTransaction, enrichUtxosWithRawTx } from './transaction.js';
 import { saveWallet, loadWallet, clearWallet, hasWallet } from './storage.js';
-import './styles.css';
 
 globalThis.Buffer = Buffer;
 
