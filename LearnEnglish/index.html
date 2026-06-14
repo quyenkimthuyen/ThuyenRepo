@@ -208,13 +208,11 @@
         lastAutoPlayedListeningQuestionId: null,
         quizAudioCooldownUntil: 0,
         quizHintRevealCount: 0,
+        quizHintPressCount: 0,
         quizTypingDraft: '',
         quizAnswerPeekCooldownUntil: 0,
         quizAnswerPeekVisibleUntil: 0,
-        quizAnswerPeekUsed: false,
         quizAnswerPeekCount: 0,
-        quizPracticeActive: false,
-        quizPracticeWordIds: [],
         autoLearn: {
           isPlaying: false,
           wordIds: [],
@@ -295,39 +293,12 @@
         return Math.random() - 0.5;
       }
 
-      function getQuizPracticeWordIds() {
+      function buildQuizQuestionIds() {
         const pool = [...getTopicWords()].sort(compareQuizPriority);
         const shortlistSize = Math.min(pool.length, Math.max(state.quizQuestionLimit, state.quizQuestionLimit * 2));
         return shuffle(pool.slice(0, shortlistSize))
           .slice(0, state.quizQuestionLimit)
           .map((word) => word.id);
-      }
-
-      function buildQuizQuestionIds() {
-        const topicIds = new Set(getTopicWords().map((word) => word.id));
-        const savedIds = (state.quizPracticeWordIds || []).filter((id) => topicIds.has(id));
-        const ids = savedIds.length ? savedIds : getQuizPracticeWordIds();
-        state.quizPracticeWordIds = ids;
-        return shuffle([...ids]);
-      }
-
-      function getQuizPracticeWords() {
-        const ids = new Set(state.quizPracticeWordIds?.length ? state.quizPracticeWordIds : getQuizPracticeWordIds());
-        return orderWords(getTopicWords().filter((word) => ids.has(word.id)));
-      }
-
-      function getAutoLearnWords() {
-        if (state.page === 'quiz' && state.quizPracticeActive) return getQuizPracticeWords();
-        return getVisibleWords();
-      }
-
-      function clearQuizPracticePool() {
-        state.quizPracticeWordIds = [];
-      }
-
-      function stopQuizPractice() {
-        state.quizPracticeActive = false;
-        if (state.autoLearn.isPlaying) stopAutoLearn();
       }
 
       function selectQuizMode(mode) {
@@ -336,17 +307,6 @@
           startQuiz(mode);
           return;
         }
-        resetQuizState();
-        saveState();
-        render();
-      }
-
-      function startQuizPractice(mode) {
-        if (!getTopicWords().length) return;
-        if (state.autoLearn.isPlaying) stopAutoLearn();
-        state.quizMode = mode;
-        state.quizPracticeWordIds = getQuizPracticeWordIds();
-        state.quizPracticeActive = true;
         resetQuizState();
         saveState();
         render();
@@ -420,10 +380,10 @@
         state.lastAutoPlayedListeningQuestionId = null;
         state.quizAudioCooldownUntil = 0;
         state.quizHintRevealCount = 0;
+        state.quizHintPressCount = 0;
         state.quizTypingDraft = '';
         state.quizAnswerPeekCooldownUntil = 0;
         state.quizAnswerPeekVisibleUntil = 0;
-        state.quizAnswerPeekUsed = false;
         state.quizAnswerPeekCount = 0;
         clearQuizAnswerPeekTimers();
       }
@@ -442,7 +402,6 @@
       function resetQuizAnswerPeekState() {
         state.quizAnswerPeekCooldownUntil = 0;
         state.quizAnswerPeekVisibleUntil = 0;
-        state.quizAnswerPeekUsed = false;
         clearQuizAnswerPeekTimers();
       }
 
@@ -560,8 +519,6 @@
         state.quizMode = 'meaning';
         state.quizHistory = [];
         state.revealed = {};
-        stopQuizPractice();
-        clearQuizPracticePool();
         resetQuizState();
         state.feedback = 'Saved state reset.';
         await initializeApp();
@@ -776,7 +733,7 @@
 
       function seekAutoLearn(targetIndex) {
         if (!state.autoLearn.isPlaying) return;
-        const words = getAutoLearnWords();
+        const words = getVisibleWords();
         if (targetIndex < 0 || targetIndex >= words.length) return;
         
         cancelCurrentPlayback();
@@ -795,7 +752,7 @@
       }
 
       async function startAutoLearn(startIndex = 0) {
-        const words = getAutoLearnWords();
+        const words = getVisibleWords();
         if (!words.length) return;
         const runId = autoLearnRunId + 1;
         autoLearnRunId = runId;
@@ -937,34 +894,8 @@
         return `Hint: ${shown} ${underscores} (${trimmed.length} letters)`;
       }
 
-      function getQuizAnswerLength(answer) {
-        return String(answer || '').trim().length;
-      }
-
-      function getRevealedLetterCount(result) {
-        const length = getQuizAnswerLength(result.correctAnswer);
-        if (!length) return 0;
-        if (result.answerPeekUsed) return length;
-        return Math.min(length, Number(result.hintRevealCount || 0));
-      }
-
       function getQuizAnswerScore(result) {
-        if (!result.isCorrect) return 0;
-        if (!['typing', 'dictation'].includes(result.mode)) return 1;
-        const length = getQuizAnswerLength(result.correctAnswer);
-        if (!length) return 1;
-        const revealed = getRevealedLetterCount(result);
-        return Math.max(0, (length - revealed) / length);
-      }
-
-      function formatQuizQuestionScore(result) {
-        if (!result.isCorrect || !['typing', 'dictation'].includes(result.mode)) return '';
-        const length = getQuizAnswerLength(result.correctAnswer);
-        if (!length) return '';
-        const revealed = getRevealedLetterCount(result);
-        if (!revealed) return '';
-        const earned = length - revealed;
-        return ` (${earned}/${length} pts)`;
+        return result.isCorrect ? 1 : 0;
       }
 
       function renderQuizAnswerPeekButton() {
@@ -1019,7 +950,6 @@
         clearQuizAnswerPeekTimers();
         state.quizAnswerPeekCooldownUntil = now + 5000;
         state.quizAnswerPeekVisibleUntil = now + 3000;
-        state.quizAnswerPeekUsed = true;
         state.quizAnswerPeekCount = (state.quizAnswerPeekCount || 0) + 1;
 
         const peekText = document.getElementById('answerPeekText');
@@ -1089,7 +1019,6 @@
       }
 
       function startQuiz(mode = state.quizMode) {
-        state.quizPracticeActive = false;
         state.quizMode = mode;
         state.quizQuestionIds = buildQuizQuestionIds();
         state.quizQuestionIndex = 0;
@@ -1100,6 +1029,7 @@
         state.lastAutoPlayedListeningQuestionId = null;
         state.quizAudioCooldownUntil = 0;
         state.quizHintRevealCount = 0;
+        state.quizHintPressCount = 0;
         state.quizTypingDraft = '';
         state.quizAnswerPeekCount = 0;
         resetQuizAnswerPeekState();
@@ -1121,8 +1051,6 @@
           selectedAnswer: answer,
           correctAnswer: question.answer,
           isCorrect: correct,
-          hintRevealCount: state.quizHintRevealCount || 0,
-          answerPeekUsed: !!state.quizAnswerPeekUsed,
           answeredAt: Date.now(),
         });
         recordWordQuizResult(question.word.id, correct);
@@ -1174,6 +1102,7 @@
             score: quizStats.score,
             accuracy: quizStats.accuracy,
             elapsed: quizStats.elapsed,
+            hintPressCount: quizStats.hintPressCount,
             answerPeekCount: quizStats.answerPeekCount,
           };
           state.quizHistory = [record, ...(state.quizHistory || [])].slice(0, 10);
@@ -1207,7 +1136,8 @@
           score,
           streak,
           elapsed,
-          accuracy: total ? Math.round((score / total) * 100) : 0,
+          accuracy: total ? Math.round((correct / total) * 100) : 0,
+          hintPressCount: state.quizHintPressCount || 0,
           answerPeekCount: state.quizAnswerPeekCount || 0,
         };
       }
@@ -1397,35 +1327,6 @@
         `;
       }
 
-      function renderQuizActionButtons({ showPractice = true, startLabel = 'Start quiz' } = {}) {
-        const practiceButton = showPractice
-          ? `<button class="button" type="button" id="startQuizPractice">Practice words</button>`
-          : '';
-        return `
-          ${practiceButton}
-          <button class="button" type="button" id="startQuiz">${startLabel}</button>
-        `;
-      }
-
-      function renderQuizPracticeSection() {
-        const modeLabel = { meaning: 'Meaning', word: 'English', listening: 'Listen', typing: 'Typing', dictation: 'Dictation' }[state.quizMode] || state.quizMode;
-        const words = getQuizPracticeWords();
-        return `
-          <div class="panel stack">
-            <div class="row between">
-              <div>
-                <h3>Practice quiz words</h3>
-                <p class="muted small">${escapeHtml(modeLabel)} mode - ${words.length} word${words.length === 1 ? '' : 's'} for this test</p>
-              </div>
-              <button class="button" type="button" id="exitQuizPractice">Back</button>
-            </div>
-            ${renderAutoLearnPanel(words)}
-            ${renderQuizActionButtons({ showPractice: false })}
-          </div>
-          ${words.length ? words.map(renderWordCard).join('') : '<div class="panel empty"><h3>No quiz words</h3><p class="muted">Choose a topic with vocabulary to practice.</p></div>'}
-        `;
-      }
-
       function renderQuiz() {
         const quizStats = getQuizStats();
         const question = state.currentQuestion;
@@ -1433,19 +1334,6 @@
         const topics = getTopics();
         const topicWords = getTopicWords();
         const questionCount = Math.min(topicWords.length, state.quizQuestionLimit);
-        const hasTopicWords = topicWords.length > 0;
-        const practiceSection = state.quizPracticeActive && !question && !completedQuiz
-          ? renderQuizPracticeSection()
-          : `
-          <div class="panel stack">
-            ${question ? renderQuestion(question) : (completedQuiz ? renderQuizSummary(quizStats) : '<div class="empty"><h3>Ready to practice?</h3><p class="muted">Practice quiz words first, or choose a mode and start a quiz.</p></div>')}
-            ${state.feedback ? `<p class="feedback">${state.feedback}</p>` : ''}
-            ${renderQuizActionButtons({
-              showPractice: !question && hasTopicWords,
-              startLabel: question ? 'Restart quiz' : (completedQuiz ? 'Start new quiz' : 'Start quiz'),
-            })}
-          </div>
-        `;
         document.getElementById('quizPage').innerHTML = `
           <div class="panel stack">
             <div class="row between">
@@ -1472,7 +1360,11 @@
               ${modeButton('dictation', 'Dictation')}
             </div>
           </div>
-          ${practiceSection}
+          <div class="panel stack">
+            ${question ? renderQuestion(question) : (completedQuiz ? renderQuizSummary(quizStats) : '<div class="empty"><h3>Ready to practice?</h3><p class="muted">Choose a mode and start a quiz.</p></div>')}
+            ${state.feedback ? `<p class="feedback">${state.feedback}</p>` : ''}
+            <button class="button" type="button" id="startQuiz">${question ? 'Restart quiz' : (completedQuiz ? 'Start new quiz' : 'Start quiz')}</button>
+          </div>
         `;
       }
 
@@ -1556,7 +1448,7 @@
           const word = state.words.find((item) => item.id === result.wordId);
           const prompt = result.prompt || word?.word || '';
           const correctAnswer = result.correctAnswer || '';
-          const statusText = result.isCorrect ? `Correct${formatQuizQuestionScore(result)}` : 'Wrong';
+          const statusText = result.isCorrect ? 'Correct' : 'Wrong';
           const statusColor = result.isCorrect ? 'var(--success)' : 'var(--danger)';
           return `
             <div style="padding: 0.85rem 1rem; border-radius: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); display: grid; gap: 0.35rem;">
@@ -1582,6 +1474,7 @@
               ${statCard('Wrong', wrong)}
               ${statCard('Score', `${quizStats.accuracy}%`)}
               ${statCard('Total', quizStats.total)}
+              ${statCard('Hint', quizStats.hintPressCount)}
               ${statCard('Lightbulb', quizStats.answerPeekCount)}
             </div>
             <div class="stack" style="gap: 0.65rem;">
@@ -1626,9 +1519,7 @@
               const modeLabel = { meaning: 'Meaning', word: 'English', listening: 'Listen', typing: 'Typing', dictation: 'Dictation' }[quiz.mode] || quiz.mode;
               const accuracyColor = quiz.accuracy >= 80 ? 'var(--success)' : (quiz.accuracy >= 50 ? 'var(--accent)' : 'var(--danger)');
               const topicName = quiz.topic === 'all' ? 'All topics' : prettyTopic(quiz.topic);
-              const scoreLabel = ['typing', 'dictation'].includes(quiz.mode) && typeof quiz.score === 'number'
-                ? `${Math.round(quiz.score * 10) / 10}/${quiz.total}`
-                : `${quiz.correct}/${quiz.total}`;
+              const scoreLabel = `${quiz.correct}/${quiz.total}`;
               return `
                 <div style="padding: 0.85rem 1rem; border-radius: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); display: grid; gap: 0.35rem;">
                   <div class="row between" style="gap: 0.5rem; flex-wrap: nowrap;">
@@ -1700,7 +1591,6 @@
         if (target.type === 'submit') return;
         if (target.dataset.page) {
           if (target.dataset.page !== 'learn' && state.autoLearn.isPlaying) stopAutoLearn();
-          if (target.dataset.page !== 'quiz') stopQuizPractice();
           state.page = target.dataset.page;
         }
         if (target.dataset.filter) {
@@ -1709,7 +1599,6 @@
           saveState();
         }
         if (target.dataset.mode && target.classList.contains('tab')) selectQuizMode(target.dataset.mode);
-        if (target.id === 'startQuizPractice') startQuizPractice(state.quizMode);
         if (target.dataset.pronounce) pronounceWord(state.words.find((word) => word.id === target.dataset.pronounce));
         if (target.dataset.pronounceCurrent) playQuizAudio();
         if (target.dataset.reveal) state.revealed[target.dataset.reveal] = !state.revealed[target.dataset.reveal];
@@ -1746,12 +1635,7 @@
           return;
         }
         if (target.id === 'startQuiz') startQuiz(state.quizMode);
-        if (target.id === 'exitQuizPractice') stopQuizPractice();
-        if (target.id === 'resetQuiz') {
-          resetQuizState();
-          stopQuizPractice();
-          clearQuizPracticePool();
-        }
+        if (target.id === 'resetQuiz') resetQuizState();
         if (target.id === 'nextQuestion') {
           nextQuestion();
           return;
@@ -1759,6 +1643,7 @@
         if (target.id === 'quizHint') {
           if (state.currentQuestion) {
             const answerLength = state.currentQuestion.answer.trim().length;
+            state.quizHintPressCount = (state.quizHintPressCount || 0) + 1;
             state.quizHintRevealCount = Math.min(answerLength, (state.quizHintRevealCount || 0) + 2);
             const hintText = document.getElementById('hintText');
             if (hintText) {
@@ -1788,8 +1673,6 @@
       document.addEventListener('change', async (event) => {
         if (event.target.id === 'topicSelect' || event.target.id === 'quizTopicSelect') {
           if (state.autoLearn.isPlaying) stopAutoLearn();
-          stopQuizPractice();
-          clearQuizPracticePool();
           state.topicFilter = event.target.value;
           state.filter = 'all';
           resetQuizState();
@@ -1799,8 +1682,6 @@
         }
         if (event.target.id === 'dataSourceSelect') {
           if (state.autoLearn.isPlaying) stopAutoLearn();
-          stopQuizPractice();
-          clearQuizPracticePool();
           const nextSource = event.target.value;
           if (!DATA_SOURCES.some((source) => source.name === nextSource)) return;
           state.dataSourceName = nextSource;
@@ -1820,8 +1701,6 @@
         }
         if (event.target.id === 'quizQuestionLimitInput') {
           state.quizQuestionLimit = normalizeQuizQuestionLimit(event.target.value);
-          stopQuizPractice();
-          clearQuizPracticePool();
           resetQuizState();
           saveState();
           render();

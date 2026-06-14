@@ -110,10 +110,6 @@ Quiz modes:
 Quiz behavior:
 
 - Shows the selected quiz topic on the quiz screen and lets the user change it before starting.
-- Each quiz mode has a Practice words button above Start quiz to study the quiz word set before starting the test.
-- Quiz practice shows flashcards like the Learn screen, but only for words selected for the upcoming quiz (same priority and count as the test).
-- Quiz practice includes Auto Audio Learning for the quiz word set only.
-- After practicing, Start quiz uses the same word set that was practiced.
 - Builds each test from the configured number of unique words in the selected topic, or all available words when the topic has fewer words.
 - Prioritizes words with fewer quiz attempts and lower correct rates, then shuffles a shortlist so each quiz still has variety.
 - Uses multiple-choice answers for non-typing modes, with up to four choices depending on the topic size.
@@ -123,13 +119,13 @@ Quiz behavior:
 - Keeps the typing input value and focus when replaying audio in Typing and Dictation.
 - In Typing and Dictation, each Hint tap reveals two more letters of the answer (capped at the full word length).
 - In Typing and Dictation, a lightbulb button next to Hint briefly shows the full answer for 3 seconds, with a 5-second cooldown between uses.
-- In Typing and Dictation, each revealed hint letter reduces the question score proportionally. For example, an 8-letter word with 2 letters revealed from hints earns 6/8 of a point when answered correctly. Using the lightbulb counts as revealing the full answer for scoring.
-- Quiz score and accuracy use weighted points in Typing and Dictation, while other modes still award full points for each correct answer.
+- Hint and lightbulb uses do not reduce quiz score; the result summary shows total Hint and Lightbulb presses for the test.
+- Quiz score and accuracy count each correct answer as one full point in every mode.
 - Automatically plays the word audio or speech fallback when a Listen or Dictation question first appears.
 - Limits manual Play taps in Listen and Dictation to one play every 2 seconds to avoid repeated audio spam.
-- Tracks total answers, correct answers, weighted score, streak, elapsed time, and accuracy.
+- Tracks total answers, correct answers, score, streak, elapsed time, and accuracy.
 - Records per-word quiz attempt count and correct count for display on the Learn screen.
-- Shows a quiz result summary after the final question, including correct count, wrong count, accuracy, elapsed time, total lightbulb button uses, and each question's selected/correct answer.
+- Shows a quiz result summary after the final question, including correct count, wrong count, accuracy, elapsed time, total Hint presses, total Lightbulb presses, and each question's selected/correct answer.
 - Supports quiz reset.
 
 ### Progress And Stats
