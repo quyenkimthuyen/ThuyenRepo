@@ -83,6 +83,14 @@
               </span>
               <span class="home-mode-arrow" aria-hidden="true">→</span>
             </button>
+            <button type="button" id="btn-cursor-direct" class="home-mode-card home-mode-card--cursor">
+              <span class="home-mode-icon" aria-hidden="true">⚡</span>
+              <span class="home-mode-text">
+                <span class="home-mode-label" data-i18n="home.modeCursor">Suy ngẫm với Cursor</span>
+                <span class="home-mode-desc" data-i18n="home.modeCursorDesc">AI trực tiếp trong app · Cursor làm cầu nối</span>
+              </span>
+              <span class="home-mode-arrow" aria-hidden="true">→</span>
+            </button>
           </div>
           <div class="home-notice">
             <p class="home-disclaimer" data-i18n="home.disclaimer">
@@ -102,9 +110,17 @@
 
       <!-- 2. Reflection Session -->
       <section id="screen-reflection" class="screen" data-i18n-aria="reflection.aria" aria-label="Phiên suy ngẫm" hidden>
-        <header class="screen-header">
-          <h2 data-i18n="reflection.title">Phiên suy ngẫm</h2>
-          <div class="flow-indicator" id="flow-indicator"></div>
+        <header class="screen-header screen-header--reflection">
+          <div class="screen-header-text">
+            <h2 data-i18n="reflection.title">Phiên suy ngẫm</h2>
+            <div class="flow-indicator" id="flow-indicator"></div>
+          </div>
+          <div class="reflection-header-actions" id="reflection-header-actions" hidden>
+            <span class="cursor-session-badge glass" id="cursor-session-badge" hidden data-i18n="cursorDirect.badge">Qua Cursor</span>
+            <button type="button" id="btn-cursor-finish" class="btn btn-secondary btn-sm" hidden data-i18n="cursorDirect.finishBtn">
+              Hoàn tất & lưu vào bản đồ
+            </button>
+          </div>
         </header>
         <div class="reflection-layout">
           <div class="chat-timeline glass" id="chat-timeline" data-i18n-aria="reflection.progressAria" aria-label="Tiến trình hội thoại">
@@ -514,6 +530,25 @@
       </div>
     </dialog>
 
+    <!-- Cursor bridge setup -->
+    <dialog id="cursor-bridge-modal" class="modal glass cursor-bridge-modal" aria-labelledby="cursor-bridge-title">
+      <div class="modal-content">
+        <h3 id="cursor-bridge-title" data-i18n="cursorDirect.bridgeTitle">Cần chạy Cursor bridge</h3>
+        <p class="cursor-bridge-intro" data-i18n="cursorDirect.bridgeIntro"></p>
+        <pre class="cursor-bridge-steps" id="cursor-bridge-steps" data-i18n="cursorDirect.bridgeSteps"></pre>
+        <p class="cursor-bridge-status" id="cursor-bridge-status" hidden></p>
+        <label class="cursor-bridge-url-wrap">
+          <span data-i18n="cursorDirect.bridgeUrlLabel">URL bridge</span>
+          <input type="url" id="cursor-bridge-url" class="cursor-bridge-url-input" value="http://127.0.0.1:3847" />
+        </label>
+        <p class="cursor-bridge-docs" data-i18n="cursorDirect.docsHint">Chi tiết: docs/CURSOR_BRIDGE.md</p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="btn-cursor-bridge-close" data-i18n="cursorDirect.bridgeClose">Đóng</button>
+          <button type="button" class="btn btn-primary" id="btn-cursor-bridge-retry" data-i18n="cursorDirect.bridgeRetry">Thử lại</button>
+        </div>
+      </div>
+    </dialog>
+
     <!-- Toast -->
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </div>
@@ -530,6 +565,7 @@
   <script src="insight-engine.js"></script>
   <script src="reflection-engine.js"></script>
   <script src="ai-assist.js"></script>
+  <script src="cursor-direct.js"></script>
   <script src="ai-assist-screens.js"></script>
   <script src="test-scenarios.js"></script>
   <script src="ai-assist-test-scenarios.js"></script>

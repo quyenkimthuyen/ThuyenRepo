@@ -18,6 +18,8 @@ const App = {
   nodeFilter: 'all',
   insightsView: 'app',
   forestView: 'app',
+  cursorDirectPending: false,
+  _pendingCursorThought: null,
 
   /**
    * Khởi tạo ứng dụng
@@ -66,6 +68,23 @@ const App = {
 
     document.getElementById('btn-ai-assist').addEventListener('click', () => {
       this.openAiAssistModal();
+    });
+
+    document.getElementById('btn-cursor-direct')?.addEventListener('click', () => {
+      void this.startCursorReflection();
+    });
+
+    document.getElementById('btn-cursor-finish')?.addEventListener('click', () => {
+      void this.finishCursorReflection();
+    });
+
+    document.getElementById('btn-cursor-bridge-close')?.addEventListener('click', () => {
+      document.getElementById('cursor-bridge-modal')?.close();
+      this._pendingCursorThought = null;
+    });
+
+    document.getElementById('btn-cursor-bridge-retry')?.addEventListener('click', () => {
+      void this.retryCursorBridge();
     });
     document.getElementById('ai-assist-close').addEventListener('click', () => {
       document.getElementById('ai-assist-modal').close();
@@ -1121,6 +1140,263 @@ const App = {
     this.navigate('reflection');
   },
 
+  async startCursorReflection() {
+    const input = document.getElementById('home-thought-input');
+    const thought = input.value.trim();
+
+    if (!thought) {
+      this.showToast(I18n.t('home.shareFirst'));
+      input.focus();
+      return;
+    }
+
+    if (this.checkCrisisAndShow(thought)) return;
+
+    const health = await CursorDirect.health();
+    if (!health.ok || !health.sdkReady || !health.hasApiKey) {
+      this._pendingCursorThought = thought;
+      this.openCursorBridgeModal(health);
+      return;
+    }
+
+    if (this.cursorDirectPending) return;
+    this.cursorDirectPending = true;
+
+    try {
+      const { sessionKey, reply } = await CursorDirect.startSession(thought);
+      const now = new Date().toISOString();
+      const session = {
+        id: generateId('session'),
+        initialThought: thought,
+        messages: [
+          {
+            id: generateId('msg'),
+            role: 'user',
+            content: thought,
+            flowStep: 'Event',
+            timestamp: now,
+          },
+          {
+            id: generateId('msg'),
+            role: 'guide',
+            content: reply,
+            flowStep: 'Emotion',
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        flowStep: 'Emotion',
+        nodeIds: [],
+        createdAt: now,
+        updatedAt: new Date().toISOString(),
+        status: 'active',
+        source: 'cursor_direct',
+        cursorBridgeKey: sessionKey,
+      };
+
+      DataStore.addSession(session);
+      this.activeSessionId = session.id;
+      this.editingMessageId = null;
+      input.value = '';
+      this._pendingCursorThought = null;
+
+      this.showToast(I18n.t('home.cursorSessionStarted'));
+      this.navigate('reflection');
+    } catch (err) {
+      this._pendingCursorThought = thought;
+      this.showToast(I18n.t('cursorDirect.sendFailed'));
+      this.openCursorBridgeModal({ message: err.message, error: err.code });
+    } finally {
+      this.cursorDirectPending = false;
+    }
+  },
+
+  openCursorBridgeModal(health = {}) {
+    const modal = document.getElementById('cursor-bridge-modal');
+    const urlInput = document.getElementById('cursor-bridge-url');
+    const statusEl = document.getElementById('cursor-bridge-status');
+    if (urlInput) urlInput.value = CursorDirect.getBridgeUrl();
+
+    if (statusEl) {
+      let msg = '';
+      if (health.error === 'bridge_unreachable' || health.code === 'bridge_unreachable') {
+        msg = I18n.t('cursorDirect.bridgeUnreachable');
+      } else if (health.sdkReady === false) {
+        msg = I18n.t('cursorDirect.bridgeNoSdk');
+      } else if (health.hasApiKey === false) {
+        msg = I18n.t('cursorDirect.bridgeNoKey');
+      } else if (health.message) {
+        msg = health.message;
+      }
+      statusEl.textContent = msg;
+      statusEl.hidden = !msg;
+    }
+
+    modal?.showModal();
+  },
+
+  async retryCursorBridge() {
+    const urlInput = document.getElementById('cursor-bridge-url');
+    if (urlInput) CursorDirect.setBridgeUrl(urlInput.value);
+
+    const health = await CursorDirect.health();
+    if (health.ok && health.sdkReady && health.hasApiKey) {
+      document.getElementById('cursor-bridge-modal')?.close();
+      this.showToast(I18n.t('cursorDirect.bridgeOk'));
+      if (this._pendingCursorThought) {
+        const thought = this._pendingCursorThought;
+        const homeInput = document.getElementById('home-thought-input');
+        if (homeInput) homeInput.value = thought;
+        await this.startCursorReflection();
+      }
+      return;
+    }
+
+    this.openCursorBridgeModal(health);
+  },
+
+  setChatFormBusy(busy) {
+    const input = document.getElementById('chat-input');
+    const sendBtn = document.querySelector('#chat-form .btn-send');
+    const skipBtn = document.getElementById('btn-skip-step');
+    const finishBtn = document.getElementById('btn-cursor-finish');
+    if (input) input.disabled = busy;
+    if (sendBtn) sendBtn.disabled = busy;
+    if (skipBtn) skipBtn.disabled = busy;
+    if (finishBtn) finishBtn.disabled = busy;
+
+    const container = document.getElementById('chat-messages');
+    const existing = document.getElementById('cursor-typing-indicator');
+    if (busy && container && !existing) {
+      container.insertAdjacentHTML(
+        'beforeend',
+        `<div class="message message-guide message-pending" id="cursor-typing-indicator">${this.escapeHtml(I18n.t('cursorDirect.thinking'))}</div>`
+      );
+      container.scrollTop = container.scrollHeight;
+    } else if (!busy && existing) {
+      existing.remove();
+    }
+  },
+
+  syncCursorReflectionHeader(session) {
+    const wrap = document.getElementById('reflection-header-actions');
+    const badge = document.getElementById('cursor-session-badge');
+    const finishBtn = document.getElementById('btn-cursor-finish');
+    const isCursor =
+      session && typeof CursorDirect !== 'undefined' && CursorDirect.isCursorSession(session) && session.status !== 'completed';
+
+    if (wrap) wrap.hidden = !isCursor;
+    if (badge) badge.hidden = !isCursor;
+    if (finishBtn) {
+      finishBtn.hidden = !isCursor;
+      finishBtn.disabled = this.cursorDirectPending;
+    }
+  },
+
+  async sendCursorChatMessage(text) {
+    if (this.cursorDirectPending || !this.activeSessionId) return;
+
+    const session = DataStore.getSession(this.activeSessionId);
+    if (!session || !CursorDirect.isCursorSession(session)) return;
+
+    const input = document.getElementById('chat-input');
+    this.cursorDirectPending = true;
+    this.setChatFormBusy(true);
+
+    const userMsg = {
+      id: generateId('msg'),
+      role: 'user',
+      content: text,
+      flowStep: session.flowStep,
+      timestamp: new Date().toISOString(),
+    };
+    session.messages.push(userMsg);
+    session.updatedAt = userMsg.timestamp;
+    DataStore.updateSession(session.id, session);
+    input.value = '';
+    this.renderReflection();
+
+    try {
+      const { reply } = await CursorDirect.sendMessage(session.cursorBridgeKey, text);
+      const guideMsg = {
+        id: generateId('msg'),
+        role: 'guide',
+        content: reply,
+        flowStep: CursorDirect.inferFlowStep(session),
+        timestamp: new Date().toISOString(),
+      };
+      session.messages.push(guideMsg);
+      session.flowStep = guideMsg.flowStep;
+      session.updatedAt = guideMsg.timestamp;
+      DataStore.updateSession(session.id, session);
+      this.renderReflection();
+      this.renderHomeStats();
+    } catch (err) {
+      session.messages = session.messages.filter((m) => m.id !== userMsg.id);
+      DataStore.updateSession(session.id, session);
+      this.renderReflection();
+      this.showToast(I18n.t('cursorDirect.sendFailed'));
+      if (err.code === 'bridge_unreachable' || err.code === 'session_not_found') {
+        this.openCursorBridgeModal({ message: err.message, error: err.code });
+      }
+    } finally {
+      this.cursorDirectPending = false;
+      this.setChatFormBusy(false);
+      this.syncCursorReflectionHeader(DataStore.getSession(this.activeSessionId));
+    }
+  },
+
+  async finishCursorReflection() {
+    if (this.cursorDirectPending || !this.activeSessionId) return;
+
+    const session = DataStore.getSession(this.activeSessionId);
+    if (!session || !CursorDirect.isCursorSession(session)) return;
+
+    const userCount = (session.messages || []).filter((m) => m.role === 'user').length;
+    if (userCount < 2) {
+      this.showToast(I18n.t('cursorDirect.finishMinMessages'));
+      return;
+    }
+
+    this.cursorDirectPending = true;
+    this.setChatFormBusy(true);
+
+    const oldSessionId = session.id;
+    const bridgeKey = session.cursorBridgeKey;
+
+    try {
+      const { raw } = await CursorDirect.exportSession(bridgeKey);
+      const payload = AiAssist.extractJsonBlock(raw);
+      if (!payload) {
+        this.showToast(I18n.t('cursorDirect.exportFailed'));
+        return;
+      }
+
+      const transcript = CursorDirect.buildTranscript(session.messages);
+      const result = AiAssist.importSession(payload, { transcript });
+      if (!result.ok) {
+        this.showToast(I18n.t('cursorDirect.exportFailed'));
+        return;
+      }
+
+      DataStore.removeSession(oldSessionId);
+      await CursorDirect.closeSession(bridgeKey);
+
+      this.activeSessionId = result.session.id;
+      this.editingMessageId = null;
+      this.renderHomeStats();
+      this.showToast(I18n.t('cursorDirect.finishSuccess'));
+      this.renderReflection();
+    } catch (err) {
+      this.showToast(I18n.t('cursorDirect.exportFailed'));
+      if (err.code === 'bridge_unreachable' || err.code === 'session_not_found') {
+        this.openCursorBridgeModal({ message: err.message, error: err.code });
+      }
+    } finally {
+      this.cursorDirectPending = false;
+      this.setChatFormBusy(false);
+    }
+  },
+
   applyExplorationSeed(seedThought) {
     if (!seedThought) return;
     if (this.checkCrisisAndShow(seedThought)) return;
@@ -1152,6 +1428,7 @@ const App = {
     this.renderSessionTimeline(session);
     this.renderChatMessages(session);
     this.renderReflectionSuggestions(session);
+    this.syncCursorReflectionHeader(session);
   },
 
   renderEmptyReflection() {
@@ -1168,6 +1445,7 @@ const App = {
     document.getElementById('suggestions-list').innerHTML = '';
     document.getElementById('short-suggestions').hidden = true;
     document.getElementById('short-suggestions-list').innerHTML = '';
+    this.syncCursorReflectionHeader(null);
   },
 
   renderSuggestionChips(listEl, items, chipClass = 'suggestion-chip') {
@@ -1191,9 +1469,19 @@ const App = {
     const list = document.getElementById('suggestions-list');
     const shortWrap = document.getElementById('short-suggestions');
     const shortList = document.getElementById('short-suggestions-list');
+    const skipBtn = document.getElementById('btn-skip-step');
+
+    if (session && typeof CursorDirect !== 'undefined' && CursorDirect.isCursorSession(session)) {
+      container.hidden = true;
+      list.innerHTML = '';
+      shortWrap.hidden = true;
+      shortList.innerHTML = '';
+      if (skipBtn) skipBtn.hidden = true;
+      return;
+    }
+
     const suggestions = ReflectionEngine.getSuggestions(session);
     const shortSuggestions = ReflectionEngine.getShortSuggestions(session);
-    const skipBtn = document.getElementById('btn-skip-step');
     const flow = CognitiveLibrary.REFLECTION_FLOW;
     const atLastStep = flow.indexOf(session.flowStep) >= flow.length - 1;
     const sessionEnded = session.messages?.some(
@@ -1262,6 +1550,8 @@ const App = {
 
   renderChatMessages(session) {
     const container = document.getElementById('chat-messages');
+    const isCursor =
+      session && typeof CursorDirect !== 'undefined' && CursorDirect.isCursorSession(session);
     container.innerHTML = session.messages
       .map((msg) => {
         const isUser = msg.role === 'user';
@@ -1291,7 +1581,7 @@ const App = {
           `;
         }
 
-        const editBtn = isUser
+        const editBtn = isUser && !isCursor
           ? `<button
               type="button"
               class="message-edit-btn"
@@ -1365,6 +1655,12 @@ const App = {
     if (!text || !this.activeSessionId) return;
 
     if (this.checkCrisisAndShow(text)) return;
+
+    const session = DataStore.getSession(this.activeSessionId);
+    if (session && typeof CursorDirect !== 'undefined' && CursorDirect.isCursorSession(session)) {
+      void this.sendCursorChatMessage(text);
+      return;
+    }
 
     this.editingMessageId = null;
     const result = ReflectionEngine.continueSession(this.activeSessionId, text);

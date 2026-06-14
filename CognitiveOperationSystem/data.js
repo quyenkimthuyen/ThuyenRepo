@@ -30,6 +30,7 @@ function getDefaultState() {
       locale: 'vi',
       insightsView: 'app',
       forestView: 'app',
+      cursorBridgeUrl: 'http://127.0.0.1:3847',
     },
     aiOverlays: {
       insights: null,
@@ -159,6 +160,18 @@ const DataStore = {
     this._cache.sessions[idx] = { ...this._cache.sessions[idx], ...updates };
     this.persist();
     return this._cache.sessions[idx];
+  },
+
+  /** Xóa session theo id */
+  removeSession(id) {
+    this.load();
+    const before = this._cache.sessions.length;
+    this._cache.sessions = this._cache.sessions.filter((s) => s.id !== id);
+    if (this._cache.sessions.length !== before) {
+      this.persist();
+      return true;
+    }
+    return false;
   },
 
   /** Lấy session theo id */
