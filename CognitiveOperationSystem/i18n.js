@@ -1146,6 +1146,11 @@ const I18n = {
     return this.locale;
   },
 
+  /** Locale dùng cho prompt ChatGPT (vi | en) */
+  getPromptLocale() {
+    return this.locale === 'en' ? 'en' : 'vi';
+  },
+
   setLocale(locale) {
     const next = locale === 'en' ? 'en' : 'vi';
     if (next === this.locale) return;

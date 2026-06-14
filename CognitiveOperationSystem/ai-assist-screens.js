@@ -76,7 +76,7 @@ Rules:
 - Find semantic contradictions, not just keyword overlap
 - Identify recurring patterns and biases
 - Reply in English when chatting`,
-      export: `Export EXPLORE analysis as JSON only:
+      export: `Export EXPLORE analysis as JSON only (may wrap in \`\`\`json ... \`\`\`):
 
 {
   "summary": "2-4 sentences",
@@ -84,7 +84,9 @@ Rules:
   "explorationPrompts": [{ "source": "label", "prompt": "reflective question", "seedThought": "seed for home input" }],
   "biases": [{ "label": "bias name", "description": "short explanation" }],
   "patterns": [{ "label": "pattern", "detail": "description" }]
-}`,
+}
+
+Max 5 contradictions, 4 exploration prompts, 3 biases, 4 patterns.`,
     },
     forest: {
       analysisIntro: `You organize personal knowledge maps. Analyze nodes by life area.
@@ -94,14 +96,17 @@ Rules:
 - Suggest category fixes (family/work/finance/learning/health/self)
 - Exploratory tone, no diagnosis
 - Reply in English`,
-      export: `Export MAP analysis as JSON:
+      export: `Export MAP analysis as JSON (JSON only, may wrap in \`\`\`json ... \`\`\`):
 
 {
   "summary": "2-3 sentences",
   "relations": [{ "sourceType": "Belief", "sourceLabel": "...", "targetType": "Value", "targetLabel": "...", "relationType": "conflicts|supports|causes|related" }],
-  "nodeUpdates": [{ "type": "Belief", "label": "...", "category": "family", "note": "short note" }],
+  "nodeUpdates": [{ "type": "Belief", "label": "...", "category": "family|work|finance|learning|health|self", "note": "short note" }],
   "treeInsights": [{ "treeId": "family", "theme": "theme", "observation": "note" }]
-}`,
+}
+
+Use EEIBVIA types: Event, Emotion, Interpretation, Belief, Value, Identity, Action.
+Max 8 relations, 6 nodeUpdates, 6 treeInsights.`,
     },
     timeline: {
       analysisIntro: `You narrate cognitive development over time. Analyze timeline and dated entries.
@@ -111,15 +116,32 @@ Rules:
 - No rigid fortune-telling
 - Reflective questions only
 - Reply in English`,
-      export: `Export TIMELINE analysis as JSON:
+      export: `Export TIMELINE analysis as JSON (JSON only, may wrap in \`\`\`json ... \`\`\`):
 
 {
   "narrativeArc": "3-5 sentence story",
   "milestones": [{ "title": "...", "description": "...", "period": "2024 or 2024-Q2", "type": "shift|insight|turning_point" }],
   "valueShifts": [{ "from": "...", "to": "...", "note": "...", "period": "..." }],
   "reflectionPrompt": "one reflective question about the journey"
-}`,
+}
+
+Max 6 milestones, 4 valueShifts.`,
     },
+  },
+};
+
+const AI_SCREEN_PROMPT_LABELS = {
+  vi: {
+    dataSection: '--- DỮ LIỆU APP ---',
+    discuss: 'Trao đổi phân tích với tôi, sau đó chờ prompt xuất JSON.',
+    outputLang: 'Viết toàn bộ phân tích khi trao đổi bằng tiếng Việt.',
+    exportLang: 'Mọi giá trị chuỗi trong JSON phải bằng tiếng Việt.',
+  },
+  en: {
+    dataSection: '--- APP DATA ---',
+    discuss: 'Discuss your findings with me, then wait for my export prompt.',
+    outputLang: 'Write all discussion in English.',
+    exportLang: 'All JSON string values must be in English.',
   },
 };
 
@@ -127,6 +149,9 @@ const AiAssistScreens = {
   SCREENS: ['insights', 'forest', 'timeline'],
 
   locale() {
+    if (typeof I18n !== 'undefined' && typeof I18n.getPromptLocale === 'function') {
+      return I18n.getPromptLocale();
+    }
     return typeof I18n !== 'undefined' && I18n.locale === 'en' ? 'en' : 'vi';
   },
 
@@ -145,9 +170,11 @@ const AiAssistScreens = {
     const sessions = DataStore.getSessions();
     const relations = DataStore.getRelations();
     const timeline = DataStore.getTimeline();
+    const loc = this.locale();
 
     const base = {
       generatedAt: new Date().toISOString(),
+      locale: loc,
       nodeCount: nodes.length,
       sessionCount: sessions.length,
     };
@@ -240,18 +267,18 @@ const AiAssistScreens = {
 
   getAnalysisPrompt(screenId) {
     const loc = this.locale();
+    const labels = AI_SCREEN_PROMPT_LABELS[loc];
     const intro = AI_SCREEN_PROMPTS[loc][screenId]?.analysisIntro || '';
     const context = this.buildContext(screenId);
     const ctxJson = JSON.stringify(context, null, 2);
-    const discuss =
-      loc === 'en'
-        ? 'Discuss your findings with me, then wait for my export prompt.'
-        : 'Trao đổi phân tích với tôi, sau đó chờ prompt xuất JSON.';
-    return `${intro}\n\n--- DỮ LIỆU APP / APP DATA ---\n${ctxJson}\n\n---\n${discuss}`;
+    return `${intro}\n\n${labels.outputLang}\n\n${labels.dataSection}\n${ctxJson}\n\n---\n${labels.discuss}`;
   },
 
   getExportPrompt(screenId) {
-    return AI_SCREEN_PROMPTS[this.locale()][screenId]?.export || '';
+    const loc = this.locale();
+    const base = AI_SCREEN_PROMPTS[loc][screenId]?.export || '';
+    const labels = AI_SCREEN_PROMPT_LABELS[loc];
+    return `${base}\n\n${labels.exportLang}`;
   },
 
   parseImport(screenId, text) {

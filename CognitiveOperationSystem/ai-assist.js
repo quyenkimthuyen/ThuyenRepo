@@ -112,6 +112,9 @@ Schema:
 
 const AiAssist = {
   getLocale() {
+    if (typeof I18n !== 'undefined' && typeof I18n.getPromptLocale === 'function') {
+      return I18n.getPromptLocale();
+    }
     return typeof I18n !== 'undefined' && I18n.locale === 'en' ? 'en' : 'vi';
   },
 
@@ -122,7 +125,13 @@ const AiAssist = {
   },
 
   getExportPrompt() {
-    return AI_ASSIST_PROMPTS[this.getLocale()].export;
+    const locale = this.getLocale();
+    const base = AI_ASSIST_PROMPTS[locale].export;
+    const langLine =
+      locale === 'en'
+        ? '\n\nAll JSON string values must be in English.'
+        : '\n\nMọi giá trị chuỗi trong JSON phải bằng tiếng Việt.';
+    return base + langLine;
   },
 
   /**

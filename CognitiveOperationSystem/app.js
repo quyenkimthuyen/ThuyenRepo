@@ -33,6 +33,13 @@ const App = {
     I18n.onChange(() => {
       I18n.applyStatic();
       this.refreshAiAssistPrompts();
+      if (this.aiScreenId) {
+        this.refreshAiScreenPrompts();
+        const titleEl = document.getElementById('ai-screen-title');
+        if (titleEl) titleEl.textContent = I18n.t(`aiScreen.title_${this.aiScreenId}`);
+        const descEl = document.getElementById('ai-screen-step1-desc');
+        if (descEl) descEl.textContent = I18n.t(`aiScreen.desc_${this.aiScreenId}`);
+      }
       this.renderAiEeibviaTrack();
       this.navigate(this.currentScreen);
     });
