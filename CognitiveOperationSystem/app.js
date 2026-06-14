@@ -188,7 +188,8 @@ const App = {
 
     // Forest back
     document.getElementById('forest-back').addEventListener('click', () => {
-      this.showForestGrid();
+      this.selectedForestTree = null;
+      this.renderForest();
     });
 
     // Modal close
@@ -1414,15 +1415,16 @@ const App = {
 
   renderForest() {
     this.syncViewToggles();
-    if (this.forestView === 'chatgpt') {
-      document.getElementById('forest-app-view').hidden = true;
-      document.getElementById('forest-chatgpt-panel').hidden = false;
-      this.renderForestChatGptPanel();
-      return;
-    }
+    const panel = document.getElementById('forest-chatgpt-panel');
+    const appView = document.getElementById('forest-app-view');
+    const isChatGpt = this.forestView === 'chatgpt';
 
-    document.getElementById('forest-chatgpt-panel').hidden = true;
-    document.getElementById('forest-app-view').hidden = false;
+    if (panel) panel.hidden = !isChatGpt;
+    if (appView) appView.hidden = false;
+
+    if (isChatGpt) {
+      this.renderForestChatGptPanel();
+    }
 
     if (this.selectedForestTree) {
       this.renderForestDetail(this.selectedForestTree);
@@ -1431,17 +1433,26 @@ const App = {
     this.showForestGrid();
   },
 
+  getForestAiOverlay() {
+    return DataStore.getAiOverlay('forest');
+  },
+
   renderForestChatGptPanel() {
     const panel = document.getElementById('forest-chatgpt-panel');
     if (!panel) return;
 
-    const overlay = DataStore.getAiOverlay('forest');
+    const overlay = this.getForestAiOverlay();
     if (!overlay) {
-      panel.innerHTML = `<div class="insight-empty">${this.escapeHtml(I18n.t('screenView.forestChatgptEmpty'))}</div>`;
+      panel.innerHTML = `<div class="insight-empty insight-empty--panel">${this.escapeHtml(I18n.t('screenView.forestChatgptEmpty'))}</div>`;
       return;
     }
 
     const applied = overlay.applied;
+    const relations = overlay.relations || [];
+    const updates = overlay.nodeUpdates || [];
+    const trees = overlay.treeInsights || [];
+    const hasBody = overlay.summary || relations.length || updates.length || trees.length;
+
     const meta =
       overlay.importedAt || applied
         ? `<p class="forest-chatgpt-meta">${overlay.importedAt ? this.escapeHtml(I18n.t('screenView.chatgptImported', { time: this.formatOverlayTime(overlay.importedAt) })) : ''}${
@@ -1451,21 +1462,32 @@ const App = {
           }</p>`
         : '';
 
-    const relations = (overlay.relations || [])
+    if (!hasBody) {
+      panel.innerHTML = `
+        <div class="ai-screen-banner-title">${this.escapeHtml(I18n.t('aiScreen.bannerForest'))}</div>
+        ${meta}
+        <p class="insight-empty">${this.escapeHtml(I18n.t('screenView.forestChatgptPartial'))}</p>
+      `;
+      return;
+    }
+
+    const relationsHtml = relations
       .map(
         (r) =>
           `<li>${this.escapeHtml(`${r.sourceType}: ${r.sourceLabel} → ${r.targetType}: ${r.targetLabel}`)} <span class="forest-chatgpt-rel">(${this.escapeHtml(r.relationType)})</span></li>`
       )
       .join('');
 
-    const updates = (overlay.nodeUpdates || [])
-      .map(
-        (u) =>
-          `<li>${this.escapeHtml(`${u.type}: ${u.label}`)}${u.category ? ` · ${this.escapeHtml(I18n.forestLabel(u.category))}` : ''}${u.note ? ` — ${this.escapeHtml(u.note)}` : ''}</li>`
-      )
+    const updatesHtml = updates
+      .map((u) => {
+        let line = this.escapeHtml(`${u.type}: ${u.label}`);
+        if (u.category) line += ` · ${this.escapeHtml(I18n.forestLabel(u.category))}`;
+        if (u.note) line += ` — ${this.escapeHtml(u.note)}`;
+        return `<li>${line}</li>`;
+      })
       .join('');
 
-    const trees = (overlay.treeInsights || [])
+    const treesHtml = trees
       .map(
         (t) =>
           `<li><strong>${this.escapeHtml(I18n.forestLabel(t.treeId))}</strong>: ${this.escapeHtml(t.observation || t.theme)}</li>`
@@ -1477,18 +1499,18 @@ const App = {
       ${meta}
       ${overlay.summary ? `<p class="ai-summary-text">${this.escapeHtml(overlay.summary)}</p>` : ''}
       ${
-        relations
-          ? `<div class="forest-chatgpt-block"><h4>${this.escapeHtml(I18n.t('screenView.forestAiRelations'))}</h4><ul class="ai-screen-banner-list">${relations}</ul></div>`
+        relationsHtml
+          ? `<div class="forest-chatgpt-block"><h4>${this.escapeHtml(I18n.t('screenView.forestAiRelations'))}</h4><ul class="ai-screen-banner-list">${relationsHtml}</ul></div>`
           : ''
       }
       ${
-        updates
-          ? `<div class="forest-chatgpt-block"><h4>${this.escapeHtml(I18n.t('screenView.forestAiUpdates'))}</h4><ul class="ai-screen-banner-list">${updates}</ul></div>`
+        updatesHtml
+          ? `<div class="forest-chatgpt-block"><h4>${this.escapeHtml(I18n.t('screenView.forestAiUpdates'))}</h4><ul class="ai-screen-banner-list">${updatesHtml}</ul></div>`
           : ''
       }
       ${
-        trees
-          ? `<div class="forest-chatgpt-block"><h4>${this.escapeHtml(I18n.t('aiScreen.preview_treeInsights'))}</h4><ul class="ai-screen-banner-list">${trees}</ul></div>`
+        treesHtml
+          ? `<div class="forest-chatgpt-block"><h4>${this.escapeHtml(I18n.t('aiScreen.preview_treeInsights'))}</h4><ul class="ai-screen-banner-list">${treesHtml}</ul></div>`
           : ''
       }
     `;
@@ -1499,6 +1521,7 @@ const App = {
     document.getElementById('forest-grid').hidden = false;
     document.getElementById('forest-detail').hidden = true;
 
+    const overlay = this.forestView === 'chatgpt' ? this.getForestAiOverlay() : null;
     const grid = document.getElementById('forest-grid');
     const trees = CognitiveLibrary.FOREST_TREES;
 
@@ -1507,11 +1530,21 @@ const App = {
         const nodes = CognitiveTree.getNodesByForest(tree.id);
         const growth = CognitiveTree.getTreeGrowth(tree.id);
         const status = CognitiveTree.getTreeStatus(tree.id);
+        const treeInsight = overlay?.treeInsights?.find((t) => t.treeId === tree.id);
+        const aiNodes = nodes.filter((n) => n.aiNote).length;
         return `
-          <div class="tree-card glass" data-tree="${tree.id}" role="button" tabindex="0">
+          <div class="tree-card glass${treeInsight || aiNodes ? ' tree-card--ai' : ''}" data-tree="${tree.id}" role="button" tabindex="0">
+            ${treeInsight || aiNodes ? `<span class="tree-ai-badge">${this.escapeHtml(I18n.t('screenView.forestTreeAiHint'))}</span>` : ''}
             <span class="tree-icon">${tree.icon}</span>
             <div class="tree-name">${I18n.forestLabel(tree.id)}</div>
             <div class="tree-meta">${I18n.t('forest.entries', { n: nodes.length })}</div>
+            ${
+              treeInsight?.theme
+                ? `<div class="tree-ai-theme">${this.escapeHtml(treeInsight.theme)}</div>`
+                : aiNodes
+                  ? `<div class="tree-ai-theme">${this.escapeHtml(I18n.t('screenView.forestTreeAiNotes', { n: aiNodes }))}</div>`
+                  : ''
+            }
             <div class="tree-growth">
               <div class="tree-growth-bar" style="width:${growth}%"></div>
             </div>
@@ -1539,6 +1572,33 @@ const App = {
 
     const tree = CognitiveLibrary.FOREST_TREES.find((t) => t.id === treeId);
     document.getElementById('forest-detail-title').textContent = `${tree.icon} ${I18n.forestLabel(treeId)}`;
+
+    let insightEl = document.getElementById('forest-tree-ai-insight');
+    if (!insightEl) {
+      insightEl = document.createElement('div');
+      insightEl.id = 'forest-tree-ai-insight';
+      insightEl.className = 'forest-tree-ai-insight';
+      document.getElementById('forest-detail-title').after(insightEl);
+    }
+
+    if (this.forestView === 'chatgpt') {
+      const overlay = this.getForestAiOverlay();
+      const treeInsight = overlay?.treeInsights?.find((t) => t.treeId === treeId);
+      if (treeInsight) {
+        insightEl.hidden = false;
+        insightEl.innerHTML = `
+          <span class="tree-ai-badge">${this.escapeHtml(I18n.t('screenView.forestTreeAiHint'))}</span>
+          ${treeInsight.theme ? `<strong>${this.escapeHtml(treeInsight.theme)}</strong>` : ''}
+          ${treeInsight.observation ? `<p>${this.escapeHtml(treeInsight.observation)}</p>` : ''}
+        `;
+      } else {
+        insightEl.hidden = true;
+        insightEl.innerHTML = '';
+      }
+    } else {
+      insightEl.hidden = true;
+      insightEl.innerHTML = '';
+    }
 
     this.renderNodeFilters();
     this.renderNodeGrid(treeId);
@@ -1595,12 +1655,17 @@ const App = {
   renderNodeCard(node) {
     const colors = CognitiveLibrary.NODE_TYPE_COLORS[node.type] || {};
     const statusLabel = CognitiveLibrary.getNodeStatusLabel(node.status);
+    const aiBadge =
+      node.aiNote && this.forestView === 'chatgpt'
+        ? `<span class="node-ai-badge">${this.escapeHtml(I18n.t('screenView.forestTreeAiHint'))}</span>`
+        : '';
 
     return `
-      <div class="node-card glass" data-node-id="${node.id}"
+      <div class="node-card glass${node.aiNote && this.forestView === 'chatgpt' ? ' node-card--ai' : ''}" data-node-id="${node.id}"
            style="background:${colors.bg};border-left-color:${colors.border}">
         <div class="node-type" style="color:${colors.text}">${CognitiveLibrary.getFrameworkLabel(node.type)}</div>
         <div class="node-label">${this.escapeHtml(node.label)}</div>
+        ${aiBadge}
         <div class="node-footer">
           <span class="node-status status-${node.status}">${statusLabel}</span>
           <div class="confidence-bar" title="${this.escapeAttr(I18n.t('forest.confidence'))}: ${node.confidence}">
