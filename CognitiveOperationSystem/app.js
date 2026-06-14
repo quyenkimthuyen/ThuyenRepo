@@ -593,7 +593,7 @@ const App = {
     const transcript = document.getElementById('ai-import-transcript')?.value.trim() || '';
     if (transcript && this.checkCrisisAndShow(transcript)) return;
 
-    const preview = AiAssist.buildImportPreview(raw);
+    const preview = AiAssist.buildImportPreview(raw, { transcript });
     if (!preview.ok) {
       const key =
         preview.error === 'missing_event'
@@ -648,6 +648,13 @@ const App = {
       }
       if (preview.warnings?.includes('rule_suggestions_skipped')) {
         warns.push(I18n.t('aiAssist.previewRuleSkipped'));
+      }
+      if (preview.warnings?.includes('unanchored_quotes')) {
+        warns.push(
+          I18n.t('aiAssist.previewWarnUnanchored', {
+            n: preview.stats?.unanchoredCount || preview.anchoring?.unanchored?.length || 0,
+          })
+        );
       }
       if (warns.length) {
         warnEl.hidden = false;
@@ -713,6 +720,16 @@ const App = {
     if (preview.biases?.length) {
       html += `<div class="ai-preview-section-title">${this.escapeHtml(I18n.t('aiAssist.previewBiases'))}</div>`;
       html += `<div class="ai-preview-items">${fmtItems(preview.biases)}</div>`;
+    }
+
+    if (preview.anchoring?.unanchored?.length) {
+      html += `<div class="ai-preview-section-title">${this.escapeHtml(I18n.t('aiAssist.previewUnanchored'))}</div>`;
+      html += '<ul class="ai-preview-unanchored">';
+      for (const u of preview.anchoring.unanchored) {
+        html += `<li><strong>${this.escapeHtml(u.type)}</strong>: ${this.escapeHtml(u.label)}<br><em>${this.escapeHtml(u.quote)}</em></li>`;
+      }
+      html += '</ul>';
+      html += `<p class="ai-preview-note">${this.escapeHtml(I18n.t('aiAssist.previewUnanchoredNote'))}</p>`;
     }
 
     body.innerHTML = html;

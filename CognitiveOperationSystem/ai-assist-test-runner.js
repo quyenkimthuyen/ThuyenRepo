@@ -151,17 +151,26 @@ const AiAssistTestRunner = {
     });
     this.fail(failures, exportPromptOk, 'prompt_export');
 
-    // ── Bước 3: JSON ChatGPT khớp user ──
-    const quoteFailures = this.validateExportQuotes(scenario);
-    failures.push(...quoteFailures);
-    steps.push({
-      id: 'export_quote_alignment',
-      ok: quoteFailures.length === 0,
-      detail:
-        quoteFailures.length === 0
-          ? 'JSON mô phỏng bám lời user'
-          : `${quoteFailures.length} quote không khớp`,
-    });
+    // ── Bước 3: JSON ChatGPT khớp user (chỉ khi có userDialogue) ──
+    if ((scenario.userDialogue || []).length > 0) {
+      const quoteFailures = this.validateExportQuotes(scenario);
+      const skipHallucination =
+        (scenario.expectUnanchored || []).length > 0 &&
+        quoteFailures.every((f) => f.check === 'export_quote_alignment');
+      if (!skipHallucination) {
+        failures.push(...quoteFailures);
+      }
+      steps.push({
+        id: 'export_quote_alignment',
+        ok: skipHallucination || quoteFailures.length === 0,
+        detail:
+          quoteFailures.length === 0
+            ? 'JSON mô phỏng bám lời user'
+            : skipHallucination
+              ? 'Bỏ qua quote bịa (kịch bản hallucination)'
+              : `${quoteFailures.length} quote không khớp`,
+      });
+    }
 
     // ── Bước 4: Preview import ──
     const jsonText = JSON.stringify(scenario.chatgptExport, null, 2);
@@ -180,6 +189,33 @@ const AiAssistTestRunner = {
         ok: true,
         detail: `Rule gợi ý ${preview.stats.ruleCount} mục — chỉ preview, không import`,
       });
+    }
+
+    if (previewOk && preview.warnings?.includes('unanchored_quotes')) {
+      const n = preview.stats?.unanchoredCount || preview.anchoring?.unanchored?.length || 0;
+      const expectUnanchored = scenario.expectUnanchored?.length || 0;
+      const warnOk = expectUnanchored > 0 ? n >= expectUnanchored : false;
+      steps.push({
+        id: 'unanchored_warning',
+        ok: expectUnanchored > 0 ? warnOk : n === 0,
+        detail:
+          expectUnanchored > 0
+            ? `${n} quote chưa neo (kỳ vọng ≥${expectUnanchored})`
+            : `${n} quote chưa neo`,
+      });
+      if (expectUnanchored === 0 && n > 0) {
+        this.fail(failures, false, 'unexpected_unanchored', String(n));
+      }
+      if (expectUnanchored > 0 && n < expectUnanchored) {
+        this.fail(failures, false, 'missing_unanchored_warning', String(n));
+      }
+    } else if ((scenario.expectUnanchored || []).length > 0) {
+      steps.push({
+        id: 'unanchored_warning',
+        ok: false,
+        detail: 'Kỳ vọng cảnh báo quote chưa neo',
+      });
+      this.fail(failures, false, 'missing_unanchored_warning', '0');
     }
 
     // ── Bước 5: Import ──
@@ -246,6 +282,31 @@ const AiAssistTestRunner = {
       detail: `${importedNodes.length} node imported / ${frameworkNodes.length} tổng`,
     });
     this.fail(failures, importedOk, 'evidence_imported');
+
+    // ── Bước 8b: Niềm tin bịa → inferred, không insight ──
+    for (const label of scenario.expectUnanchored || []) {
+      const node = nodes.find((n) => this.containsText(n.label, label));
+      const inferredOk = node && node.evidenceType === 'inferred';
+      steps.push({
+        id: `unanchored_inferred_${label.slice(0, 20)}`,
+        ok: inferredOk,
+        detail: node ? `${node.evidenceType}` : 'không có node',
+      });
+      this.fail(failures, inferredOk, 'expect_unanchored_inferred', label);
+    }
+
+    for (const label of scenario.expectNotInInsights || []) {
+      const inTop = InsightEngine.analyzeRules().topBeliefs.some((b) =>
+        this.containsText(b.label, label)
+      );
+      const ok = !inTop;
+      steps.push({
+        id: `not_in_insights_${label.slice(0, 20)}`,
+        ok,
+        detail: ok ? 'Không trong topBeliefs' : 'Lọt vào topBeliefs',
+      });
+      this.fail(failures, ok, 'expect_not_in_insights', label);
+    }
 
     // ── Bước 9: Insight context chỉ node có bằng chứng ──
     if (typeof AiAssistScreens !== 'undefined' && importResult.ok) {

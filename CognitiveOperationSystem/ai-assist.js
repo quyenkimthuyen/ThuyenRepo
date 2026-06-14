@@ -38,7 +38,7 @@ Yêu cầu:
 - Chỉ trả về một khối JSON hợp lệ (có thể bọc trong \`\`\`json ... \`\`\`)
 - Không thêm giải thích ngoài JSON
 - label: nhãn ngắn gọn tiếng Việt
-- quote: trích sát ý tôi đã nói (hoặc tóm tắt 1 câu)
+- quote: trích ĐÚNG câu user đã nói trong hội thoại (không tự bịa niềm tin/giá trị mới)
 - Mỗi mảng tối đa 3 phần tử; thiếu thông tin thì dùng [] hoặc null
 
 Schema:
@@ -90,7 +90,7 @@ Requirements:
 - Return only valid JSON (may wrap in \`\`\`json ... \`\`\`)
 - No explanation outside JSON
 - label: short label in English
-- quote: close to what I said (or one-sentence summary)
+- quote: EXACT words the user said in the conversation (do not invent new beliefs/values)
 - Max 3 items per array; use [] or null if missing
 
 Schema:
@@ -325,6 +325,132 @@ const AiAssist = {
     return parts.filter(Boolean).join('\n');
   },
 
+  normalizeForMatch(text) {
+    return (text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{M}/gu, '')
+      .trim();
+  },
+
+  significantWords(text) {
+    return this.normalizeForMatch(text)
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((w) => w.length >= 2);
+  },
+
+  /** Corpus neo bằng chứng: transcript user hoặc các bước EEIBVIA trước Belief/Value/... */
+  collectAnchorCorpus(data, transcript) {
+    if ((transcript || '').trim()) {
+      return this.parseTranscript(transcript)
+        .filter((t) => t.role === 'user')
+        .map((t) => t.content)
+        .join('\n');
+    }
+    const parts = [data.initialThought];
+    if (data.event?.detail) parts.push(data.event.detail);
+    if (data.event?.label) parts.push(data.event.label);
+    for (const em of data.emotions || []) {
+      if (em?.quote) parts.push(em.quote);
+      else if (em?.label) parts.push(em.label);
+    }
+    if (data.interpretation?.detail) parts.push(data.interpretation.detail);
+    if (data.interpretation?.label) parts.push(data.interpretation.label);
+    return parts.filter(Boolean).join('\n');
+  },
+
+  isQuoteAnchored(quote, anchorCorpus, { minOverlap = 2 } = {}) {
+    const q = this.normalizeForMatch(quote);
+    const corpus = this.normalizeForMatch(anchorCorpus);
+    if (!q || !corpus) return false;
+    if (corpus.includes(q)) return true;
+    if (q.length >= 10) {
+      const snippet = q.slice(0, Math.min(24, q.length));
+      if (corpus.includes(snippet)) return true;
+    }
+    const qWords = this.significantWords(quote);
+    const cWords = new Set(this.significantWords(anchorCorpus));
+    let overlap = 0;
+    for (const w of qWords) {
+      if (cWords.has(w)) overlap += 1;
+    }
+    const required = q.length <= 20 ? 1 : minOverlap;
+    return overlap >= required;
+  },
+
+  isKnownLibraryLabel(label, type) {
+    if (typeof CognitiveLibrary === 'undefined' || !label) return false;
+    const libs = {
+      Belief: CognitiveLibrary.BELIEFS,
+      Value: CognitiveLibrary.VALUES,
+      Emotion: CognitiveLibrary.EMOTIONS,
+    };
+    const lib = libs[type];
+    if (!lib) return false;
+    const n = this.normalizeForMatch(label);
+    return lib.some((item) => this.normalizeForMatch(item.label) === n);
+  },
+
+  validateImportAnchoring(data, transcript) {
+    const unanchored = [];
+    const baseAnchor = this.collectAnchorCorpus(data, '');
+
+    if ((transcript || '').trim()) {
+      const userCorpus = this.collectAnchorCorpus(data, transcript);
+      const lists = [
+        ['Belief', data.beliefs],
+        ['Value', data.values],
+        ['Identity', data.identity],
+        ['Action', data.actions],
+      ];
+      for (const [type, items] of lists) {
+        for (const item of items || []) {
+          const quote = (item?.quote || item?.detail || item?.label || '').trim();
+          if (!quote) continue;
+          if (!this.isQuoteAnchored(quote, userCorpus, { minOverlap: 2 })) {
+            unanchored.push({ type, label: item.label, quote });
+          }
+        }
+      }
+      return { anchor: userCorpus, unanchored };
+    }
+
+    const lists = [
+      ['Belief', data.beliefs],
+      ['Value', data.values],
+      ['Identity', data.identity],
+      ['Action', data.actions],
+    ];
+
+    for (const [type, items] of lists) {
+      for (const item of items || []) {
+        const quote = (item?.quote || item?.detail || item?.label || '').trim();
+        if (!quote) continue;
+
+        const isLibrary = this.isKnownLibraryLabel(item.label, type);
+        const quoteEqualsLabel =
+          this.normalizeForMatch(quote) === this.normalizeForMatch(item.label);
+        const anchored = this.isQuoteAnchored(quote, baseAnchor, { minOverlap: 2 });
+
+        const suspicious =
+          (isLibrary && !anchored) ||
+          (quoteEqualsLabel && quote.length > 28 && !anchored && type === 'Belief');
+
+        if (suspicious) {
+          unanchored.push({ type, label: item.label, quote });
+        }
+      }
+    }
+
+    return { anchor: baseAnchor, unanchored };
+  },
+
+  isItemAnchored(type, item, anchoring) {
+    if (!item?.label || !anchoring?.unanchored?.length) return true;
+    const label = item.label;
+    return !anchoring.unanchored.some((u) => u.type === type && u.label === label);
+  },
+
   scanRuleEngine(text) {
     if (typeof ReflectionEngine === 'undefined') {
       return {
@@ -374,12 +500,13 @@ const AiAssist = {
   /**
    * Xem trước trước khi nhập — không ghi DB
    */
-  buildImportPreview(text) {
+  buildImportPreview(text, options = {}) {
     const parsed = this.parseExport(text);
     if (!parsed.ok) return parsed;
 
     const data = parsed.payload;
     const combined = this.buildCombinedText(data);
+    const anchoring = this.validateImportAnchoring(data, options.transcript || '');
     const rule = this.scanRuleEngine(combined);
     const existingKeys = new Set();
 
@@ -436,6 +563,9 @@ const AiAssist = {
     if (!data.emotions?.length) {
       warnings.push('no_emotions');
     }
+    if (anchoring.unanchored.length > 0) {
+      warnings.push('unanchored_quotes');
+    }
 
     return {
       ok: true,
@@ -444,11 +574,13 @@ const AiAssist = {
       rows,
       ruleEnrichments,
       biases,
+      anchoring,
       stats: {
         aiCount,
         ruleCount,
         emptySteps,
         stepCount: rows.filter((r) => r.items.length).length,
+        unanchoredCount: anchoring.unanchored.length,
       },
       warnings,
     };
@@ -536,16 +668,18 @@ const AiAssist = {
     };
   },
 
-  upsertTypedNode(type, item, sourceText, nodeIds, nodesCreated, sessionId) {
+  upsertTypedNode(type, item, sourceText, nodeIds, nodesCreated, sessionId, meta = {}) {
     if (!item?.label) return null;
     const quote = (item.quote || '').trim();
+    const anchored = meta.anchored !== false;
     const { node } = CognitiveTree.upsertNode({
       type,
       label: item.label,
       sourceText: quote || sourceText,
-      evidenceType: 'imported',
+      evidenceType: anchored ? 'imported' : 'inferred',
       evidence: quote ? [quote] : sourceText ? [sourceText] : [],
       sourceSessionId: sessionId,
+      userConfirmed: anchored ? null : false,
     });
     nodesCreated.push(node);
     if (nodeIds.length > 0) {
@@ -584,6 +718,10 @@ const AiAssist = {
 
     const nodesCreated = [];
     const nodeIds = [];
+    const anchoring = this.validateImportAnchoring(data, options.transcript || '');
+    const nodeMeta = (type, item) => ({
+      anchored: this.isItemAnchored(type, item, anchoring),
+    });
 
     const eventLabel = data.event?.label || initialThought.slice(0, 80);
     const eventNode = this.upsertTypedNode(
@@ -596,7 +734,15 @@ const AiAssist = {
     );
 
     for (const em of data.emotions.slice(0, 3)) {
-      this.upsertTypedNode('Emotion', em, em.quote || initialThought, nodeIds, nodesCreated, session.id);
+      this.upsertTypedNode(
+        'Emotion',
+        em,
+        em.quote || initialThought,
+        nodeIds,
+        nodesCreated,
+        session.id,
+        nodeMeta('Emotion', em)
+      );
     }
 
     if (data.interpretation) {
@@ -606,21 +752,54 @@ const AiAssist = {
         data.interpretation.detail || data.interpretation.label,
         nodeIds,
         nodesCreated,
-        session.id
+        session.id,
+        nodeMeta('Interpretation', data.interpretation)
       );
     }
 
     for (const b of data.beliefs.slice(0, 3)) {
-      this.upsertTypedNode('Belief', b, b.quote || initialThought, nodeIds, nodesCreated, session.id);
+      this.upsertTypedNode(
+        'Belief',
+        b,
+        b.quote || initialThought,
+        nodeIds,
+        nodesCreated,
+        session.id,
+        nodeMeta('Belief', b)
+      );
     }
     for (const v of data.values.slice(0, 3)) {
-      this.upsertTypedNode('Value', v, v.quote || initialThought, nodeIds, nodesCreated, session.id);
+      this.upsertTypedNode(
+        'Value',
+        v,
+        v.quote || initialThought,
+        nodeIds,
+        nodesCreated,
+        session.id,
+        nodeMeta('Value', v)
+      );
     }
     for (const id of data.identity.slice(0, 3)) {
-      this.upsertTypedNode('Identity', id, id.quote || initialThought, nodeIds, nodesCreated, session.id);
+      this.upsertTypedNode(
+        'Identity',
+        id,
+        id.quote || initialThought,
+        nodeIds,
+        nodesCreated,
+        session.id,
+        nodeMeta('Identity', id)
+      );
     }
     for (const a of data.actions.slice(0, 3)) {
-      this.upsertTypedNode('Action', a, a.quote || initialThought, nodeIds, nodesCreated, session.id);
+      this.upsertTypedNode(
+        'Action',
+        a,
+        a.quote || initialThought,
+        nodeIds,
+        nodesCreated,
+        session.id,
+        nodeMeta('Action', a)
+      );
     }
 
     session.nodeIds = nodeIds;
@@ -700,13 +879,14 @@ const AiAssist = {
     const insights = InsightEngine.analyze();
     DataStore.setInsights(insights);
 
-    return { ok: true, session, nodesCreated, insights };
+    return { ok: true, session, nodesCreated, insights, anchoring };
   },
 
   importFromText(text, options = {}) {
     const parsed = this.parseExport(text);
     if (!parsed.ok) return parsed;
-    return this.importSession(parsed.payload, options);
+    const preview = this.buildImportPreview(text, options);
+    return this.importSession(parsed.payload, { ...options, anchoring: preview.anchoring });
   },
 };
 

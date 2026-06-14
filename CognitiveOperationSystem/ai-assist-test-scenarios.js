@@ -359,8 +359,55 @@ const AI_ASSIST_TEST_SCENARIOS = [
       { type: 'Action', quoteContains: 'giấu vợ' },
     ],
     expectAbsent: ['Giàu mới được hạnh phúc', 'Tiền mang lại hạnh phúc'],
-    expectPrompt: {
+      expectPrompt: {
       reflectionContains: ['tiết kiệm', 'EEIBVIA'],
+      exportContains: ['JSON'],
+    },
+  },
+
+  {
+    id: 'chatgpt-hallucination-quarantine',
+    title: 'ChatGPT bịa niềm tin — cách ly suy diễn',
+    category: 'work',
+    tags: ['hallucination', 'anchoring', 'regression'],
+    summary:
+      'JSON có niềm tin user không hề nói → preview cảnh báo, node lưu inferred, không vào Khám phá.',
+    locale: 'vi',
+    initialThought: 'Tôi không có thời gian rảnh.',
+    userDialogue: [
+      { step: 'Emotion', content: 'mệt' },
+      { step: 'Interpretation', content: 'tôi quản lý thời gian chưa tốt' },
+    ],
+    chatgptExport: {
+      initialThought: 'Tôi không có thời gian rảnh.',
+      event: { label: 'Không có thời gian rảnh', detail: 'Tôi không có thời gian rảnh.' },
+      emotions: [{ label: 'Mệt', quote: 'mệt' }],
+      interpretation: {
+        label: 'Quản lý thời gian chưa tốt',
+        detail: 'tôi quản lý thời gian chưa tốt',
+      },
+      beliefs: [
+        {
+          label: 'Sức khỏe có thể hy sinh vì công việc',
+          quote: 'Sức khỏe có thể hy sinh vì công việc',
+        },
+      ],
+      values: [],
+      identity: [],
+      actions: [],
+      summary: '...',
+      reframe: null,
+      smallStep: null,
+    },
+    expectPresent: [
+      { type: 'Event', quoteContains: 'thời gian' },
+      { type: 'Emotion', quoteContains: 'mệt' },
+    ],
+    expectAbsent: [],
+    expectUnanchored: ['Sức khỏe có thể hy sinh vì công việc'],
+    expectNotInInsights: ['Sức khỏe có thể hy sinh vì công việc'],
+    expectPrompt: {
+      reflectionContains: ['thời gian rảnh'],
       exportContains: ['JSON'],
     },
   },

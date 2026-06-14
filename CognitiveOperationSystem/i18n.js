@@ -83,6 +83,11 @@ const I18N_MESSAGES = {
       previewFromRule: 'App gợi ý thêm (không nhập)',
       previewRuleSkipped:
         'App có thể đoán thêm từ từ khóa — những mục này không được nhập. Chỉ lưu nội dung từ JSON ChatGPT.',
+      previewWarnUnanchored:
+        '{n} mục không khớp lời bạn đã nói — sẽ lưu dạng suy diễn, không đưa vào Khám phá.',
+      previewUnanchored: 'Quote chưa neo vào hội thoại',
+      previewUnanchoredNote:
+        'Các mục này được lưu với trạng thái suy diễn. Sửa JSON (quote đúng lời bạn) hoặc dán transcript hội thoại.',
       previewBiases: 'Kiểu suy nghĩ',
       previewEmptyStep: '—',
       previewInvalid: 'Chưa đọc được kết quả — kiểm tra lại phần bạn vừa dán.',
@@ -458,6 +463,11 @@ const I18N_MESSAGES = {
       previewFromRule: 'App suggestions (not imported)',
       previewRuleSkipped:
         'The app may guess extra items from keywords — these are not saved. Only ChatGPT JSON is imported.',
+      previewWarnUnanchored:
+        '{n} items do not match what you said — saved as inferred, excluded from Explore.',
+      previewUnanchored: 'Quotes not anchored to dialogue',
+      previewUnanchoredNote:
+        'These are stored as inferred. Fix JSON quotes or paste the chat transcript.',
       previewBiases: 'Thinking patterns',
       previewEmptyStep: '—',
       previewInvalid: 'Couldn’t read that — check what you pasted.',
