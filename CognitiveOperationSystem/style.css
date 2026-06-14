@@ -220,6 +220,88 @@ body::before {
   min-width: 200px;
 }
 
+.screen-view-toggle {
+  display: inline-flex;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  margin-bottom: 1rem;
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--glass-border);
+}
+
+.view-toggle-btn {
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.4rem 0.85rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.view-toggle-btn:hover {
+  color: var(--text-primary);
+}
+
+.view-toggle-btn.active {
+  background: rgba(99, 102, 241, 0.22);
+  color: #e0e7ff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.view-toggle-btn[data-insights-view='chatgpt'].active,
+.view-toggle-btn[data-forest-view='chatgpt'].active {
+  background: rgba(16, 185, 129, 0.18);
+  color: #a7f3d0;
+}
+
+.forest-chatgpt-panel {
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+  border-left: 3px solid rgba(16, 185, 129, 0.45);
+}
+
+.forest-chatgpt-panel .ai-screen-banner-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+.forest-chatgpt-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.forest-chatgpt-block {
+  margin-top: 0.85rem;
+}
+
+.forest-chatgpt-block h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.insight-empty--panel {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.forest-chatgpt-rel {
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
+
 .ai-screen-trigger {
   flex-shrink: 0;
   margin-top: 0.15rem;
@@ -1163,6 +1245,15 @@ body::before {
   color: var(--text-muted);
   font-size: 0.9rem;
   font-style: italic;
+}
+
+.insight-section-note {
+  margin: 0.75rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--glass-border);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
 }
 
 .top-node-item {

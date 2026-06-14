@@ -263,7 +263,7 @@ const I18N_MESSAGES = {
       biasDefault: 'Kiểu này có thể ảnh hưởng cách bạn hiểu sự việc.',
       disclaimer: 'Chỉ để suy ngẫm thêm — không phải kết luận hay chẩn đoán.',
       contradictionPrefix: 'Có thể bạn đang',
-      contradictionSuffix: 'Điều này có thể một phần do hoàn cảnh, không chỉ do bạn.',
+      contradictionsNote: 'Điều này có thể một phần do hoàn cảnh — không chỉ do bạn.',
       exploration: '💭 Câu hỏi gợi mở',
       explorationEmpty: 'Suy ngẫm thêm để nhận câu hỏi phù hợp với những gì bạn vừa ghi.',
       explorationCta: 'Suy ngẫm tiếp',
@@ -330,6 +330,20 @@ const I18N_MESSAGES = {
       langVi: 'VI',
       langEn: 'EN',
       langSwitch: 'Ngôn ngữ',
+    },
+    screenView: {
+      app: 'Từ app',
+      chatgpt: 'ChatGPT',
+      forestAria: 'Chọn nguồn bản đồ',
+      insightsAria: 'Chọn nguồn khám phá',
+      chatgptImported: 'Nhập lúc {time}',
+      insightsChatgptEmpty:
+        'Chưa có phân tích ChatGPT. Bấm ChatGPT ở góc phải để sao chép prompt và nhập kết quả.',
+      forestChatgptEmpty:
+        'Chưa có phân tích ChatGPT cho bản đồ. Bấm ChatGPT ở góc phải để thêm.',
+      forestAiRelations: 'Liên kết gợi ý',
+      forestAiUpdates: 'Ghi chú trên ghi nhận',
+      forestAiApplied: 'Đã lưu {relations} liên kết · {updates} cập nhật khi nhập',
     },
   },
   en: {
@@ -592,7 +606,7 @@ const I18N_MESSAGES = {
       biasDefault: 'This pattern may shape how you read what happens.',
       disclaimer: 'For reflection only — not a conclusion or diagnosis.',
       contradictionPrefix: 'You might be',
-      contradictionSuffix: 'This may partly come from circumstances, not only from you.',
+      contradictionsNote: 'This may partly come from circumstances — not only from you.',
       exploration: '💭 Questions to sit with',
       explorationEmpty: 'Reflect more to get questions matched to what you’ve written.',
       explorationCta: 'Reflect more',
@@ -659,6 +673,20 @@ const I18N_MESSAGES = {
       langVi: 'VI',
       langEn: 'EN',
       langSwitch: 'Language',
+    },
+    screenView: {
+      app: 'From app',
+      chatgpt: 'ChatGPT',
+      forestAria: 'Choose map source',
+      insightsAria: 'Choose explore source',
+      chatgptImported: 'Imported at {time}',
+      insightsChatgptEmpty:
+        'No ChatGPT analysis yet. Tap ChatGPT (top right) to copy a prompt and import results.',
+      forestChatgptEmpty:
+        'No ChatGPT map analysis yet. Tap ChatGPT (top right) to add one.',
+      forestAiRelations: 'Suggested links',
+      forestAiUpdates: 'Notes on entries',
+      forestAiApplied: 'Saved {relations} links · {updates} updates on import',
     },
   },
 };
@@ -1252,8 +1280,12 @@ const I18n = {
   formatContradiction(message) {
     if (!message) return '';
     const trimmed = message.replace(/\s+/g, ' ').trim();
+    if (/^["「]/.test(trimmed) || /mâu thuẫn với/i.test(trimmed) || /^Niềm tin đối lập/i.test(trimmed)) {
+      return trimmed.endsWith('.') ? trimmed : `${trimmed}.`;
+    }
     const lower = trimmed.charAt(0).toLowerCase() + trimmed.slice(1);
-    return `${this.t('insights.contradictionPrefix')} ${lower}. ${this.t('insights.contradictionSuffix')}`;
+    const body = lower.replace(/\.$/, '');
+    return `${this.t('insights.contradictionPrefix')} ${body}.`;
   },
 
   applyStatic() {

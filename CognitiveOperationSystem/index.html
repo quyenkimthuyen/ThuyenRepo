@@ -154,13 +154,19 @@
             <span data-i18n="aiScreen.triggerForest">ChatGPT</span>
           </button>
         </header>
-        <div id="forest-ai-banner" class="ai-screen-banner glass" hidden></div>
+        <div class="screen-view-toggle" id="forest-view-toggle" role="tablist" data-i18n-aria="screenView.forestAria" aria-label="Nguồn bản đồ">
+          <button type="button" class="view-toggle-btn active" data-forest-view="app" role="tab" aria-selected="true" data-i18n="screenView.app">Từ app</button>
+          <button type="button" class="view-toggle-btn" data-forest-view="chatgpt" role="tab" aria-selected="false" data-i18n="screenView.chatgpt">ChatGPT</button>
+        </div>
+        <div id="forest-chatgpt-panel" class="forest-chatgpt-panel glass" hidden></div>
+        <div id="forest-app-view">
         <div class="forest-grid" id="forest-grid"></div>
         <div class="forest-detail" id="forest-detail" hidden>
           <button class="btn btn-ghost back-btn" id="forest-back" data-i18n="forest.back">← Quay lại</button>
           <h3 id="forest-detail-title"></h3>
           <div class="node-filters" id="node-filters"></div>
           <div class="node-grid" id="node-grid"></div>
+        </div>
         </div>
       </section>
 
@@ -177,6 +183,10 @@
             <span data-i18n="aiScreen.triggerInsights">ChatGPT</span>
           </button>
         </header>
+        <div class="screen-view-toggle" id="insights-view-toggle" role="tablist" data-i18n-aria="screenView.insightsAria" aria-label="Nguồn khám phá">
+          <button type="button" class="view-toggle-btn active" data-insights-view="app" role="tab" aria-selected="true" data-i18n="screenView.app">Từ app</button>
+          <button type="button" class="view-toggle-btn" data-insights-view="chatgpt" role="tab" aria-selected="false" data-i18n="screenView.chatgpt">ChatGPT</button>
+        </div>
         <div class="insights-grid" id="insights-grid"></div>
       </section>
 
@@ -305,14 +315,17 @@
         </section>
 
         <section class="ai-wizard-panel" id="ai-screen-panel-3" data-ai-screen-panel="3" hidden>
-          <details class="ai-prompt-collapse glass" open>
-            <summary data-i18n="aiScreen.exportPrompt">Prompt xuất JSON</summary>
-            <textarea id="ai-screen-prompt-export" class="ai-assist-textarea" rows="5" readonly></textarea>
-            <button type="button" class="btn btn-ghost btn-sm ai-copy-btn" data-screen-copy="export">
-              <span class="ai-copy-icon" aria-hidden="true">📋</span>
-              <span data-i18n="aiAssist.copyExport">Sao chép prompt kết thúc</span>
-            </button>
-          </details>
+          <p class="ai-panel-desc" data-i18n="aiAssist.step3Desc"></p>
+          <div class="ai-prompt-card glass">
+            <div class="ai-prompt-card-head">
+              <span data-i18n="aiAssist.exportPromptToggle">Lời kết thúc (để lấy kết quả)</span>
+              <button type="button" class="btn btn-primary btn-sm ai-copy-btn" data-screen-copy="export">
+                <span class="ai-copy-icon" aria-hidden="true">📋</span>
+                <span data-i18n="aiAssist.copyExport">Sao chép lời kết thúc</span>
+              </button>
+            </div>
+            <textarea id="ai-screen-prompt-export" class="ai-assist-textarea ai-prompt-preview" rows="5" readonly></textarea>
+          </div>
           <p class="ai-context-refreshed" id="ai-screen-context-note" hidden></p>
           <label class="ai-paste-zone-label" for="ai-screen-import" data-i18n="aiAssist.importLabel">Dán kết quả từ ChatGPT</label>
           <div class="ai-paste-zone" id="ai-screen-paste-zone">
@@ -428,17 +441,19 @@
 
         <!-- Step 3 -->
         <section class="ai-wizard-panel" id="ai-panel-3" data-ai-panel="3" hidden>
-          <h4 class="ai-panel-title" data-i18n="aiAssist.step3Title">Dán kết quả về app</h4>
-          <p class="ai-panel-desc" data-i18n="aiAssist.step3Desc">Copy prompt kết thúc vào chat, rồi dán JSON ChatGPT trả về.</p>
+          <h4 class="ai-panel-title" data-i18n="aiAssist.step3Title">Bước 3 — Mang kết quả về</h4>
+          <p class="ai-panel-desc" data-i18n="aiAssist.step3Desc"></p>
 
-          <details class="ai-prompt-collapse glass">
-            <summary data-i18n="aiAssist.exportPromptToggle">Prompt kết thúc (lấy JSON)</summary>
-            <textarea id="ai-prompt-export" class="ai-assist-textarea" rows="5" readonly></textarea>
-            <button type="button" class="btn btn-ghost btn-sm ai-copy-btn" id="btn-copy-prompt2" data-copy-target="export">
-              <span class="ai-copy-icon" aria-hidden="true">📋</span>
-              <span data-i18n="aiAssist.copyExport">Sao chép prompt kết thúc</span>
-            </button>
-          </details>
+          <div class="ai-prompt-card glass">
+            <div class="ai-prompt-card-head">
+              <span data-i18n="aiAssist.exportPromptToggle">Lời kết thúc (để lấy kết quả)</span>
+              <button type="button" class="btn btn-primary btn-sm ai-copy-btn" id="btn-copy-prompt2" data-copy-target="export">
+                <span class="ai-copy-icon" aria-hidden="true">📋</span>
+                <span data-i18n="aiAssist.copyExport">Sao chép lời kết thúc</span>
+              </button>
+            </div>
+            <textarea id="ai-prompt-export" class="ai-assist-textarea ai-prompt-preview" rows="5" readonly></textarea>
+          </div>
 
           <label class="ai-paste-zone-label" for="ai-import-input" data-i18n="aiAssist.importLabel">Dán kết quả từ ChatGPT</label>
           <div class="ai-paste-zone" id="ai-paste-zone">

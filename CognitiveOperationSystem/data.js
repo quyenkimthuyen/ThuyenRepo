@@ -28,6 +28,8 @@ function getDefaultState() {
     settings: {
       theme: 'dark',
       locale: 'vi',
+      insightsView: 'app',
+      forestView: 'app',
     },
     aiOverlays: {
       insights: null,

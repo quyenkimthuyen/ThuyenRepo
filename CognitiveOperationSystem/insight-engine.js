@@ -144,7 +144,7 @@ const InsightEngine = {
     };
   },
 
-  analyze() {
+  analyzeRules() {
     const contradictions = ContradictionEngine.analyze();
     const todayDiscoveries = this.getTodayDiscoveries();
     const topBeliefs = this.getTopByType('Belief', 5);
@@ -152,7 +152,6 @@ const InsightEngine = {
     const topEmotions = this.getTopByType('Emotion', 5);
     const biases = this.detectBiasesFromSessions();
 
-    // Nodes vừa lên verified
     const recentlyVerified = DataStore.getNodes()
       .filter((n) => n.status === 'verified')
       .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
@@ -168,16 +167,48 @@ const InsightEngine = {
       recentlyVerified,
     };
 
-    const withPrompts = {
+    return {
       ...partial,
       explorationPrompts: this.getExplorationPrompts(partial),
-    };
-
-    return this.mergeAiInsights({
-      ...withPrompts,
       stats: CognitiveTree.getStats(),
       generatedAt: new Date().toISOString(),
-    });
+    };
+  },
+
+  /** Chỉ nội dung overlay ChatGPT — không trộn rule */
+  getAiInsights() {
+    const overlay = DataStore.getAiOverlay('insights');
+    if (!overlay) return null;
+
+    return {
+      aiSummary: overlay.summary || '',
+      aiPatterns: overlay.patterns || [],
+      contradictions: (overlay.contradictions || []).map((c) => ({
+        id: generateId('contradiction'),
+        type: 'ai',
+        severity: c.severity === 'high' ? 'high' : 'medium',
+        message: c.message,
+        detectedAt: overlay.importedAt,
+      })),
+      explorationPrompts: (overlay.explorationPrompts || []).map((p) => ({
+        source: p.source,
+        prompt: p.prompt,
+        seedThought: p.seedThought,
+        fromAi: true,
+      })),
+      biases: (overlay.biases || []).map((b) => ({
+        label: b.label,
+        labelEn: b.label,
+        score: 1,
+        description: b.description || '',
+        fromAi: true,
+      })),
+      aiImportedAt: overlay.importedAt,
+    };
+  },
+
+  analyze() {
+    return this.analyzeRules();
   },
 
   /**

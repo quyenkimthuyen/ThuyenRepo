@@ -16,6 +16,8 @@ const App = {
   aiScreenPreviewPayload: null,
   selectedForestTree: null,
   nodeFilter: 'all',
+  insightsView: 'app',
+  forestView: 'app',
 
   /**
    * Khởi tạo ứng dụng
@@ -23,6 +25,9 @@ const App = {
   init() {
     DataStore.load();
     I18n.init();
+    const settings = DataStore.load().settings || {};
+    this.insightsView = settings.insightsView === 'chatgpt' ? 'chatgpt' : 'app';
+    this.forestView = settings.forestView === 'chatgpt' ? 'chatgpt' : 'app';
     this.bindEvents();
     I18n.applyStatic();
     I18n.onChange(() => {
@@ -146,6 +151,15 @@ const App = {
     });
     document.getElementById('ai-screen-import')?.addEventListener('blur', () => {
       document.getElementById('ai-screen-paste-zone')?.classList.remove('focused');
+    });
+
+    document.getElementById('insights-view-toggle')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-insights-view]');
+      if (btn) this.setInsightsView(btn.dataset.insightsView);
+    });
+    document.getElementById('forest-view-toggle')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-forest-view]');
+      if (btn) this.setForestView(btn.dataset.forestView);
     });
 
     // Reset dữ liệu
@@ -1001,31 +1015,15 @@ const App = {
 
     this.showToast(I18n.t(`aiScreen.importSuccess_${this.aiScreenId}`));
     this.renderHomeStats();
-    if (this.aiScreenId === 'insights') this.renderInsights();
-    if (this.aiScreenId === 'forest') this.renderForest();
-    if (this.aiScreenId === 'timeline') this.renderTimeline();
-  },
-
-  renderForestAiBanner() {
-    const banner = document.getElementById('forest-ai-banner');
-    const overlay = DataStore.getAiOverlay('forest');
-    if (!banner) return;
-
-    if (!overlay?.summary && !(overlay?.treeInsights?.length)) {
-      banner.hidden = true;
+    if (this.aiScreenId === 'insights') {
+      this.setInsightsView('chatgpt');
       return;
     }
-
-    const trees = (overlay.treeInsights || [])
-      .map((t) => `<li><strong>${this.escapeHtml(I18n.forestLabel(t.treeId))}</strong>: ${this.escapeHtml(t.observation || t.theme)}</li>`)
-      .join('');
-
-    banner.hidden = false;
-    banner.innerHTML = `
-      <div class="ai-screen-banner-title">${this.escapeHtml(I18n.t('aiScreen.bannerForest'))}</div>
-      ${overlay.summary ? `<p>${this.escapeHtml(overlay.summary)}</p>` : ''}
-      ${trees ? `<ul class="ai-screen-banner-list">${trees}</ul>` : ''}
-    `;
+    if (this.aiScreenId === 'forest') {
+      this.setForestView('chatgpt');
+      return;
+    }
+    if (this.aiScreenId === 'timeline') this.renderTimeline();
   },
 
   confirmAiImport() {
@@ -1375,9 +1373,57 @@ const App = {
     document.getElementById('crisis-modal').showModal();
   },
 
+  setInsightsView(mode) {
+    if (mode !== 'app' && mode !== 'chatgpt') return;
+    this.insightsView = mode;
+    const settings = DataStore.load().settings || {};
+    DataStore.save({ settings: { ...settings, insightsView: mode } });
+    this.syncViewToggles();
+    this.renderInsights();
+  },
+
+  setForestView(mode) {
+    if (mode !== 'app' && mode !== 'chatgpt') return;
+    this.forestView = mode;
+    if (mode === 'chatgpt') this.selectedForestTree = null;
+    const settings = DataStore.load().settings || {};
+    DataStore.save({ settings: { ...settings, forestView: mode } });
+    this.syncViewToggles();
+    this.renderForest();
+  },
+
+  syncViewToggles() {
+    document.querySelectorAll('[data-insights-view]').forEach((btn) => {
+      const active = btn.dataset.insightsView === this.insightsView;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-forest-view]').forEach((btn) => {
+      const active = btn.dataset.forestView === this.forestView;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+  },
+
+  formatOverlayTime(iso) {
+    if (!iso) return '';
+    return I18n.localeTime(iso);
+  },
+
   // ─── FOREST ───
 
   renderForest() {
+    this.syncViewToggles();
+    if (this.forestView === 'chatgpt') {
+      document.getElementById('forest-app-view').hidden = true;
+      document.getElementById('forest-chatgpt-panel').hidden = false;
+      this.renderForestChatGptPanel();
+      return;
+    }
+
+    document.getElementById('forest-chatgpt-panel').hidden = true;
+    document.getElementById('forest-app-view').hidden = false;
+
     if (this.selectedForestTree) {
       this.renderForestDetail(this.selectedForestTree);
       return;
@@ -1385,11 +1431,73 @@ const App = {
     this.showForestGrid();
   },
 
+  renderForestChatGptPanel() {
+    const panel = document.getElementById('forest-chatgpt-panel');
+    if (!panel) return;
+
+    const overlay = DataStore.getAiOverlay('forest');
+    if (!overlay) {
+      panel.innerHTML = `<div class="insight-empty">${this.escapeHtml(I18n.t('screenView.forestChatgptEmpty'))}</div>`;
+      return;
+    }
+
+    const applied = overlay.applied;
+    const meta =
+      overlay.importedAt || applied
+        ? `<p class="forest-chatgpt-meta">${overlay.importedAt ? this.escapeHtml(I18n.t('screenView.chatgptImported', { time: this.formatOverlayTime(overlay.importedAt) })) : ''}${
+            applied
+              ? ` · ${this.escapeHtml(I18n.t('screenView.forestAiApplied', { relations: applied.relations || 0, updates: applied.updates || 0 }))}`
+              : ''
+          }</p>`
+        : '';
+
+    const relations = (overlay.relations || [])
+      .map(
+        (r) =>
+          `<li>${this.escapeHtml(`${r.sourceType}: ${r.sourceLabel} → ${r.targetType}: ${r.targetLabel}`)} <span class="forest-chatgpt-rel">(${this.escapeHtml(r.relationType)})</span></li>`
+      )
+      .join('');
+
+    const updates = (overlay.nodeUpdates || [])
+      .map(
+        (u) =>
+          `<li>${this.escapeHtml(`${u.type}: ${u.label}`)}${u.category ? ` · ${this.escapeHtml(I18n.forestLabel(u.category))}` : ''}${u.note ? ` — ${this.escapeHtml(u.note)}` : ''}</li>`
+      )
+      .join('');
+
+    const trees = (overlay.treeInsights || [])
+      .map(
+        (t) =>
+          `<li><strong>${this.escapeHtml(I18n.forestLabel(t.treeId))}</strong>: ${this.escapeHtml(t.observation || t.theme)}</li>`
+      )
+      .join('');
+
+    panel.innerHTML = `
+      <div class="ai-screen-banner-title">${this.escapeHtml(I18n.t('aiScreen.bannerForest'))}</div>
+      ${meta}
+      ${overlay.summary ? `<p class="ai-summary-text">${this.escapeHtml(overlay.summary)}</p>` : ''}
+      ${
+        relations
+          ? `<div class="forest-chatgpt-block"><h4>${this.escapeHtml(I18n.t('screenView.forestAiRelations'))}</h4><ul class="ai-screen-banner-list">${relations}</ul></div>`
+          : ''
+      }
+      ${
+        updates
+          ? `<div class="forest-chatgpt-block"><h4>${this.escapeHtml(I18n.t('screenView.forestAiUpdates'))}</h4><ul class="ai-screen-banner-list">${updates}</ul></div>`
+          : ''
+      }
+      ${
+        trees
+          ? `<div class="forest-chatgpt-block"><h4>${this.escapeHtml(I18n.t('aiScreen.preview_treeInsights'))}</h4><ul class="ai-screen-banner-list">${trees}</ul></div>`
+          : ''
+      }
+    `;
+  },
+
   showForestGrid() {
     this.selectedForestTree = null;
     document.getElementById('forest-grid').hidden = false;
     document.getElementById('forest-detail').hidden = true;
-    this.renderForestAiBanner();
 
     const grid = document.getElementById('forest-grid');
     const trees = CognitiveLibrary.FOREST_TREES;
@@ -1428,8 +1536,6 @@ const App = {
   renderForestDetail(treeId) {
     document.getElementById('forest-grid').hidden = true;
     document.getElementById('forest-detail').hidden = false;
-    const banner = document.getElementById('forest-ai-banner');
-    if (banner) banner.hidden = true;
 
     const tree = CognitiveLibrary.FOREST_TREES.find((t) => t.id === treeId);
     document.getElementById('forest-detail-title').textContent = `${tree.icon} ${I18n.forestLabel(treeId)}`;
@@ -1532,7 +1638,7 @@ const App = {
           : ''
       }
       ${
-        node.aiNote
+        node.aiNote && this.forestView === 'chatgpt'
           ? `<div class="modal-ai-note" style="margin-top:1rem;padding:0.75rem;border-radius:8px;background:rgba(16,185,129,0.08);font-size:0.85rem">
               <strong>${this.escapeHtml(I18n.t('aiScreen.nodeNote'))}</strong><br>${this.escapeHtml(node.aiNote)}
             </div>`
@@ -1550,40 +1656,116 @@ const App = {
   // ─── INSIGHTS ───
 
   renderInsights() {
-    const insights = InsightEngine.analyze();
-    DataStore.setInsights(insights);
+    this.syncViewToggles();
+    const ruleInsights = InsightEngine.analyzeRules();
+    DataStore.setInsights(ruleInsights);
 
     const grid = document.getElementById('insights-grid');
+    grid.classList.toggle('insights-view-chatgpt', this.insightsView === 'chatgpt');
+
+    if (this.insightsView === 'chatgpt') {
+      grid.innerHTML = this.renderChatgptInsightsContent();
+      return;
+    }
+
+    grid.innerHTML = this.renderRuleInsightsContent(ruleInsights);
+  },
+
+  renderChatgptInsightsContent() {
+    const ai = InsightEngine.getAiInsights();
+    if (!ai) {
+      return `<div class="insight-empty insight-empty--panel">${this.escapeHtml(I18n.t('screenView.insightsChatgptEmpty'))}</div>`;
+    }
 
     const aiBadge = `<span class="ai-from-badge">${this.escapeHtml(I18n.t('aiScreen.fromChatGpt'))}</span>`;
+    const meta = ai.aiImportedAt
+      ? `<p class="forest-chatgpt-meta">${this.escapeHtml(I18n.t('screenView.chatgptImported', { time: this.formatOverlayTime(ai.aiImportedAt) }))}</p>`
+      : '';
 
-    grid.innerHTML = `
-      ${
-        insights.aiSummary
-          ? this.renderInsightSection(
-              I18n.t('aiScreen.bannerInsights'),
-              `<p class="ai-summary-text">${this.escapeHtml(insights.aiSummary)}</p>`,
-              'exploration'
+    let html = meta;
+
+    if (ai.aiSummary) {
+      html += this.renderInsightSection(
+        I18n.t('aiScreen.bannerInsights'),
+        `<p class="ai-summary-text">${this.escapeHtml(ai.aiSummary)}</p>`,
+        'exploration'
+      );
+    }
+
+    if (ai.aiPatterns?.length) {
+      html += this.renderInsightSection(
+        I18n.t('aiScreen.patterns'),
+        ai.aiPatterns
+          .map(
+            (p) => `
+          <div class="insight-item">
+            ${aiBadge}
+            <strong>${this.escapeHtml(p.label)}</strong>
+            <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:0.25rem">${this.escapeHtml(p.detail || '')}</div>
+          </div>`
+          )
+          .join(''),
+        'exploration'
+      );
+    }
+
+    html += this.renderInsightSection(
+      I18n.t('insights.contradictions'),
+      ai.contradictions.length > 0
+        ? `${ai.contradictions
+            .map(
+              (c) => `
+          <div class="insight-item ${c.severity === 'high' ? 'danger' : 'warning'}">
+            ${aiBadge}
+            ${this.escapeHtml(c.message)}
+          </div>`
             )
-          : ''
-      }
-      ${
-        insights.aiPatterns?.length
-          ? this.renderInsightSection(
-              I18n.t('aiScreen.patterns'),
-              insights.aiPatterns
-                .map(
-                  (p) => `
-                <div class="insight-item">
-                  <strong>${this.escapeHtml(p.label)}</strong>
-                  <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:0.25rem">${this.escapeHtml(p.detail || '')}</div>
-                </div>`
-                )
-                .join(''),
-              'exploration'
+            .join('')}
+        <p class="insight-section-note">${this.escapeHtml(I18n.t('insights.contradictionsNote'))}</p>`
+        : `<div class="insight-empty">${I18n.t('insights.contradictionsEmpty')}</div>`,
+      ai.contradictions.length > 0 ? 'warning' : ''
+    );
+
+    html += this.renderInsightSection(
+      I18n.t('insights.exploration'),
+      ai.explorationPrompts.length > 0
+        ? ai.explorationPrompts
+            .map(
+              (p) => `
+          <div class="exploration-prompt-card">
+            <span class="exploration-prompt-source">${this.escapeHtml(p.source)} ${aiBadge}</span>
+            <p class="exploration-prompt-text">${this.escapeHtml(p.prompt)}</p>
+            <button type="button" class="btn btn-ghost btn-sm exploration-prompt-btn" data-exploration-seed="${this.escapeAttr(p.seedThought)}">
+              ${I18n.t('insights.explorationCta')}
+            </button>
+          </div>`
             )
-          : ''
-      }
+            .join('')
+        : `<div class="insight-empty">${I18n.t('insights.explorationEmpty')}</div>`,
+      ai.explorationPrompts.length > 0 ? 'exploration' : ''
+    );
+
+    html += this.renderInsightSection(
+      I18n.t('insights.biases'),
+      ai.biases.length > 0
+        ? ai.biases
+            .map(
+              (b) => `
+          <div class="insight-item">
+            ${aiBadge}
+            <strong>${this.escapeHtml(b.label)}</strong>
+            <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:0.25rem">${this.escapeHtml(b.description)}</div>
+          </div>`
+            )
+            .join('')
+        : `<div class="insight-empty">${I18n.t('insights.biasesEmpty')}</div>`
+    );
+
+    return html;
+  },
+
+  renderRuleInsightsContent(insights) {
+    return `
       ${this.renderInsightSection(
         I18n.t('insights.today'),
         insights.todayDiscoveries.length > 0
@@ -1636,16 +1818,16 @@ const App = {
       ${this.renderInsightSection(
         I18n.t('insights.contradictions'),
         insights.contradictions.length > 0
-          ? insights.contradictions
+          ? `${insights.contradictions
               .map(
                 (c) => `
               <div class="insight-item ${c.severity === 'high' ? 'danger' : 'warning'}">
-                ${c.type === 'ai' ? aiBadge : ''}
                 ${this.escapeHtml(I18n.formatContradiction(c.message))}
               </div>
             `
               )
-              .join('')
+              .join('')}
+            <p class="insight-section-note">${this.escapeHtml(I18n.t('insights.contradictionsNote'))}</p>`
           : `<div class="insight-empty">${I18n.t('insights.contradictionsEmpty')}</div>`,
         insights.contradictions.length > 0 ? 'warning' : ''
       )}
@@ -1657,7 +1839,7 @@ const App = {
               .map(
                 (p) => `
               <div class="exploration-prompt-card">
-                <span class="exploration-prompt-source">${this.escapeHtml(p.source)}${p.fromAi ? ` ${aiBadge}` : ''}</span>
+                <span class="exploration-prompt-source">${this.escapeHtml(p.source)}</span>
                 <p class="exploration-prompt-text">${this.escapeHtml(p.prompt)}</p>
                 <button
                   type="button"
@@ -1681,7 +1863,6 @@ const App = {
               .map(
                 (b) => `
               <div class="insight-item">
-                ${b.fromAi ? aiBadge : ''}
                 <strong>${this.escapeHtml(b.label)}</strong>
                 <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:0.25rem">
                   ${this.escapeHtml(b.description)}
