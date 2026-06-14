@@ -205,6 +205,7 @@
         lastAutoPlayedListeningQuestionId: null,
         quizAudioCooldownUntil: 0,
         quizHintRevealCount: 0,
+        quizTypingDraft: '',
         autoLearn: {
           isPlaying: false,
           wordIds: [],
@@ -359,6 +360,7 @@
         state.lastAutoPlayedListeningQuestionId = null;
         state.quizAudioCooldownUntil = 0;
         state.quizHintRevealCount = 0;
+        state.quizTypingDraft = '';
       }
 
       function resetAutoLearnState() {
@@ -786,8 +788,18 @@
 
       function scheduleQuizAudioButtonRefresh() {
         setTimeout(() => {
-          if (state.page === 'quiz' && Date.now() >= (state.quizAudioCooldownUntil || 0)) renderQuiz();
+          if (state.page === 'quiz') updateQuizPlayButton();
         }, 2000);
+      }
+
+      function updateQuizPlayButton() {
+        const button = document.querySelector('[data-pronounce-current="true"]');
+        if (!button) return;
+        const cooldownMs = Math.max(0, (state.quizAudioCooldownUntil || 0) - Date.now());
+        const disabled = cooldownMs > 0;
+        const label = button.dataset.playLabel || 'Play word';
+        button.disabled = disabled;
+        button.textContent = disabled ? `Wait ${Math.ceil(cooldownMs / 1000)}s` : label;
       }
 
       function playQuizAudioWord(word, { respectCooldown = true } = {}) {
@@ -796,7 +808,7 @@
         if (respectCooldown && now < (state.quizAudioCooldownUntil || 0)) return false;
         state.quizAudioCooldownUntil = now + 2000;
         pronounceWord(word);
-        renderQuiz();
+        updateQuizPlayButton();
         scheduleQuizAudioButtonRefresh();
         return true;
       }
@@ -820,7 +832,7 @@
         const disabled = cooldownMs > 0;
         const waitSeconds = Math.ceil(cooldownMs / 1000);
         const text = disabled ? `Wait ${waitSeconds}s` : label;
-        return `<button class="button primary" type="button" data-pronounce-current="true"${disabled ? ' disabled' : ''}>${escapeHtml(text)}</button>`;
+        return `<button class="button primary" type="button" data-pronounce-current="true" data-play-label="${escapeHtml(label)}"${disabled ? ' disabled' : ''}>${escapeHtml(text)}</button>`;
       }
 
       function shuffle(items) {
@@ -921,6 +933,7 @@
         state.lastAutoPlayedListeningQuestionId = null;
         state.quizAudioCooldownUntil = 0;
         state.quizHintRevealCount = 0;
+        state.quizTypingDraft = '';
         state.feedback = state.currentQuestion ? '' : 'Load at least 1 word to start a quiz.';
         saveState();
         render();
@@ -930,6 +943,7 @@
         if (!state.currentQuestion) return;
         const question = state.currentQuestion;
         const correct = answer.trim().toLowerCase() === question.answer.trim().toLowerCase();
+        state.quizTypingDraft = '';
         state.quizResults.push({
           questionId: question.id,
           wordId: question.word.id,
@@ -999,6 +1013,7 @@
         }
         state.quizAudioCooldownUntil = 0;
         state.quizHintRevealCount = 0;
+        state.quizTypingDraft = '';
         state.lastAutoPlayedListeningQuestionId = null;
         state.currentQuestion = createQuizQuestion(state.quizMode);
         render();
@@ -1017,6 +1032,17 @@
         return { total, correct, score, streak, elapsed, accuracy: total ? Math.round((score / total) * 100) : 0 };
       }
 
+      function restoreQuizTypingInput() {
+        if (state.page !== 'quiz' || !['typing', 'dictation'].includes(state.quizMode) || state.currentAnswer) return;
+        const input = document.getElementById('typingAnswer');
+        if (!input || input.disabled) return;
+        const draft = state.quizTypingDraft || '';
+        if (input.value !== draft) input.value = draft;
+        input.focus();
+        const end = input.value.length;
+        input.setSelectionRange(end, end);
+      }
+
       function render() {
         document.documentElement.classList.toggle('light', state.theme === 'light');
         document.getElementById('themeButton').textContent = state.theme === 'dark' ? 'Dark' : 'Light';
@@ -1030,8 +1056,7 @@
         renderStats();
 
         if (state.page === 'quiz' && ['typing', 'dictation'].includes(state.quizMode) && !state.currentAnswer) {
-          const input = document.getElementById('typingAnswer');
-          if (input) input.focus();
+          restoreQuizTypingInput();
         }
         autoPlayListeningQuestion();
       }
@@ -1256,7 +1281,7 @@
             <form class="typing-form" id="typingForm">
               <p class="muted">Listen and type the English word you hear:</p>
               ${renderQuizPlayButton('Play word')}
-              <input class="search" id="typingAnswer" type="text" autocomplete="off" placeholder="Type what you hear" autofocus>
+              <input class="search" id="typingAnswer" type="text" autocomplete="off" placeholder="Type what you hear" value="${escapeHtml(state.quizTypingDraft || '')}" autofocus>
               <div class="row">
                 <button class="button primary" type="submit">Submit answer</button>
                 <button class="button" type="button" id="quizHint">Hint</button>
@@ -1284,7 +1309,7 @@
             <form class="typing-form" id="typingForm">
               <p class="muted">Type the English word for:</p>
               <h3>${escapeHtml(question.prompt)}</h3>
-              <input class="search" id="typingAnswer" type="text" autocomplete="off" placeholder="Your answer" autofocus>
+              <input class="search" id="typingAnswer" type="text" autocomplete="off" placeholder="Your answer" value="${escapeHtml(state.quizTypingDraft || '')}" autofocus>
               <div class="row">
                 <button class="button primary" type="submit">Submit answer</button>
                 <button class="button" type="button" id="quizHint">Hint</button>
@@ -1563,6 +1588,7 @@
         }
         if (event.target.id !== 'typingAnswer' || state.currentAnswer || !['typing', 'dictation'].includes(state.currentQuestion?.mode)) return;
         const typedAnswer = event.target.value;
+        state.quizTypingDraft = typedAnswer;
         if (typedAnswer.trim().toLowerCase() === state.currentQuestion.answer.trim().toLowerCase()) {
           answerQuestion(typedAnswer);
         }

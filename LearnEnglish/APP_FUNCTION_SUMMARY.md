@@ -116,6 +116,7 @@ Quiz behavior:
 - Compares answers case-insensitively after trimming whitespace.
 - Automatically advances to the next question after a correct answer.
 - Automatically submits typing answers when the typed text matches the correct English word.
+- Keeps the typing input value and focus when replaying audio in Typing and Dictation.
 - In Typing and Dictation, each Hint tap reveals two more letters of the answer (capped at the full word length).
 - In Typing and Dictation, each revealed hint letter reduces the question score proportionally. For example, an 8-letter word with 2 letters revealed from hints earns 6/8 of a point when answered correctly.
 - Quiz score and accuracy use weighted points in Typing and Dictation, while other modes still award full points for each correct answer.
