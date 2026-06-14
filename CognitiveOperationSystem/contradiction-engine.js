@@ -208,7 +208,11 @@ const ContradictionEngine = {
    * Chạy toàn bộ phát hiện mâu thuẫn
    */
   analyze() {
-    const nodes = DataStore.getNodes();
+    const allNodes = DataStore.getNodes();
+    const nodes =
+      typeof EvidenceEngine !== 'undefined'
+        ? EvidenceEngine.filterInsightEligible(allNodes)
+        : allNodes;
     const beliefs = nodes.filter((n) => n.type === 'Belief');
 
     const results = [

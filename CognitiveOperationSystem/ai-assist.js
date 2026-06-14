@@ -424,6 +424,9 @@ const AiAssist = {
     const ruleCount = ruleEnrichments.reduce((n, r) => n + r.items.length, 0);
 
     const warnings = [];
+    if (ruleCount > 0) {
+      warnings.push('rule_suggestions_skipped');
+    }
     if (emptySteps.length >= 4) {
       warnings.push('many_empty_steps');
     }
@@ -451,33 +454,12 @@ const AiAssist = {
     };
   },
 
-  enrichFromRuleEngine(data, nodeIds, nodesCreated) {
-    const combined = this.buildCombinedText(data);
-    const rule = this.scanRuleEngine(combined);
-    const existingKeys = this.collectLabelKeys(nodesCreated);
-
-    const addFromRule = (type, items, limit = 2) => {
-      for (const item of (items || []).slice(0, limit)) {
-        const key = this.labelKey(type, item.label);
-        if (existingKeys.has(key)) continue;
-        existingKeys.add(key);
-        this.upsertTypedNode(
-          type,
-          { label: item.label, quote: combined },
-          combined,
-          nodeIds,
-          nodesCreated
-        );
-      }
-    };
-
-    addFromRule('Emotion', rule.emotions);
-    addFromRule('Belief', rule.beliefs);
-    addFromRule('Value', rule.values);
-    addFromRule('Identity', rule.identity);
-    addFromRule('Action', rule.actions);
-
-    return rule.biases || [];
+  /**
+   * Không thêm node từ rule engine khi import ChatGPT — chỉ dùng JSON đã nhập.
+   * Rule suggestions chỉ hiện ở preview, không ghi DB.
+   */
+  enrichFromRuleEngine() {
+    return [];
   },
 
   appendTranscriptMessages(session, turns) {
@@ -554,12 +536,16 @@ const AiAssist = {
     };
   },
 
-  upsertTypedNode(type, item, sourceText, nodeIds, nodesCreated) {
+  upsertTypedNode(type, item, sourceText, nodeIds, nodesCreated, sessionId) {
     if (!item?.label) return null;
+    const quote = (item.quote || '').trim();
     const { node } = CognitiveTree.upsertNode({
       type,
       label: item.label,
-      sourceText: item.quote || sourceText,
+      sourceText: quote || sourceText,
+      evidenceType: 'imported',
+      evidence: quote ? [quote] : sourceText ? [sourceText] : [],
+      sourceSessionId: sessionId,
     });
     nodesCreated.push(node);
     if (nodeIds.length > 0) {
@@ -605,11 +591,12 @@ const AiAssist = {
       { label: eventLabel, quote: data.event?.detail || initialThought },
       initialThought,
       nodeIds,
-      nodesCreated
+      nodesCreated,
+      session.id
     );
 
     for (const em of data.emotions.slice(0, 3)) {
-      this.upsertTypedNode('Emotion', em, em.quote || initialThought, nodeIds, nodesCreated);
+      this.upsertTypedNode('Emotion', em, em.quote || initialThought, nodeIds, nodesCreated, session.id);
     }
 
     if (data.interpretation) {
@@ -618,24 +605,24 @@ const AiAssist = {
         data.interpretation,
         data.interpretation.detail || data.interpretation.label,
         nodeIds,
-        nodesCreated
+        nodesCreated,
+        session.id
       );
     }
 
     for (const b of data.beliefs.slice(0, 3)) {
-      this.upsertTypedNode('Belief', b, b.quote || initialThought, nodeIds, nodesCreated);
+      this.upsertTypedNode('Belief', b, b.quote || initialThought, nodeIds, nodesCreated, session.id);
     }
     for (const v of data.values.slice(0, 3)) {
-      this.upsertTypedNode('Value', v, v.quote || initialThought, nodeIds, nodesCreated);
+      this.upsertTypedNode('Value', v, v.quote || initialThought, nodeIds, nodesCreated, session.id);
     }
     for (const id of data.identity.slice(0, 3)) {
-      this.upsertTypedNode('Identity', id, id.quote || initialThought, nodeIds, nodesCreated);
+      this.upsertTypedNode('Identity', id, id.quote || initialThought, nodeIds, nodesCreated, session.id);
     }
     for (const a of data.actions.slice(0, 3)) {
-      this.upsertTypedNode('Action', a, a.quote || initialThought, nodeIds, nodesCreated);
+      this.upsertTypedNode('Action', a, a.quote || initialThought, nodeIds, nodesCreated, session.id);
     }
 
-    this.enrichFromRuleEngine(data, nodeIds, nodesCreated);
     session.nodeIds = nodeIds;
 
     const locale = this.getLocale();

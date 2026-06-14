@@ -49,26 +49,60 @@ const CognitiveTree = {
    * Upsert node — tăng occurrences hoặc tạo mới
    * @returns {{ node: object, isNew: boolean }}
    */
-  upsertNode({ type, label, category, sourceText = '' }) {
+  upsertNode({ type, label, category, sourceText = '', evidenceType, evidence, sourceSessionId, userConfirmed, fromLibrary, matchScore, keywordHits }) {
     const existing = DataStore.findNode(type, label);
+
+    const evidenceMeta =
+      typeof EvidenceEngine !== 'undefined'
+        ? EvidenceEngine.metaForUpsert({
+            evidenceType,
+            quote: evidence?.[0],
+            sourceText,
+            sourceSessionId,
+            fromLibrary,
+            matchScore,
+            keywordHits,
+          })
+        : { evidence: sourceText ? [sourceText] : [], sourceText };
 
     if (existing) {
       const occurrences = (existing.occurrences || 0) + 1;
       const status = this.statusFromOccurrences(occurrences);
       const confidence = this.computeConfidence(occurrences, status);
 
-      const updated = DataStore.updateNode(existing.id, {
+      const patch = {
         occurrences,
         status,
         confidence,
         category: category || existing.category,
-      });
+      };
 
+      if (typeof EvidenceEngine !== 'undefined') {
+        const stronger =
+          (evidenceMeta.evidenceConfidence || 0) >= (existing.evidenceConfidence || 0);
+        if (stronger) {
+          Object.assign(patch, {
+            evidenceType: evidenceMeta.evidenceType,
+            evidenceConfidence: evidenceMeta.evidenceConfidence,
+          });
+        }
+        if (evidenceMeta.evidence?.length) {
+          patch.evidence = [...new Set([...(existing.evidence || []), ...evidenceMeta.evidence])];
+        }
+        if (sourceSessionId) {
+          const prev = existing.sourceSessionIds || [];
+          if (!prev.includes(sourceSessionId)) {
+            patch.sourceSessionIds = [...prev, sourceSessionId];
+          }
+        }
+        if (userConfirmed !== undefined) patch.userConfirmed = userConfirmed;
+      }
+
+      const updated = DataStore.updateNode(existing.id, patch);
       return { node: updated, isNew: false };
     }
 
-    const forestCategory =
-      category || this.categorizeToForest(sourceText, label);
+    const forestCategory = category || this.categorizeToForest(sourceText, label);
 
     const node = {
       id: generateId('node'),
@@ -80,6 +114,15 @@ const CognitiveTree = {
       status: 'draft',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      ...(typeof EvidenceEngine !== 'undefined'
+        ? {
+            evidenceType: evidenceMeta.evidenceType,
+            evidence: evidenceMeta.evidence,
+            evidenceConfidence: evidenceMeta.evidenceConfidence,
+            sourceSessionIds: evidenceMeta.sourceSessionIds,
+            userConfirmed: userConfirmed ?? null,
+          }
+        : {}),
     };
 
     DataStore.addNode(node);

@@ -6,6 +6,7 @@
 
 const TestMode = {
   selectedScenarioId: null,
+  selectedAiAssistScenarioId: null,
   simulationAbort: false,
   lastSnapshot: null,
   isSimulating: false,
@@ -28,7 +29,22 @@ const TestMode = {
 
   selectScenario(id) {
     this.selectedScenarioId = id;
+    this.selectedAiAssistScenarioId = null;
     return this.getScenario(id);
+  },
+
+  getAiAssistScenarios() {
+    return typeof AiAssistTestRunner !== 'undefined'
+      ? AiAssistTestRunner.getScenarios()
+      : [];
+  },
+
+  selectAiAssistScenario(id) {
+    this.selectedAiAssistScenarioId = id;
+    this.selectedScenarioId = null;
+    return typeof AiAssistTestRunner !== 'undefined'
+      ? AiAssistTestRunner.getScenario(id)
+      : null;
   },
 
   /** Hội thoại đang dùng (bản gốc hoặc đã chỉnh sửa) */

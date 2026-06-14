@@ -27,22 +27,26 @@ const ReflectionEngine = {
   },
 
   /**
-   * Match item từ library theo keywords (score = độ dài khớp; ưu tiên cụm dài)
+   * Match item từ library theo keywords — yêu cầu đủ keyword hit để tránh false positive
    */
-  matchFromLibrary(text, library) {
+  matchFromLibrary(text, library, options = {}) {
     const normalized = this.normalize(text);
     const matches = [];
 
     for (const item of library) {
       let score = 0;
+      let keywordHits = 0;
+
       for (const kw of item.keywords) {
         const k = kw.toLowerCase();
         let searchFrom = 0;
+        let kwMatched = false;
         while (searchFrom < normalized.length) {
           const idx = normalized.indexOf(k, searchFrom);
           if (idx === -1) break;
           if (!this.isKeywordNegated(normalized, idx)) {
             score += k.length;
+            kwMatched = true;
             if (k.length <= 3) {
               const chBefore = idx > 0 ? normalized[idx - 1] : ' ';
               const chAfter =
@@ -54,13 +58,19 @@ const ReflectionEngine = {
           }
           searchFrom = idx + 1;
         }
+        if (kwMatched) keywordHits += 1;
       }
-      if (score > 0) {
-        matches.push({ ...item, score });
+
+      const requiredHits =
+        options.minKeywordHits ??
+        (item.keywords.length >= 3 ? 2 : item.keywords.length >= 2 ? 2 : 1);
+
+      if (keywordHits >= requiredHits && score > 0) {
+        matches.push({ ...item, score, keywordHits });
       }
     }
 
-    matches.sort((a, b) => b.score - a.score);
+    matches.sort((a, b) => b.score - a.score || b.keywordHits - a.keywordHits);
     return matches;
   },
 
@@ -317,29 +327,38 @@ const ReflectionEngine = {
         type: 'Event',
         label: eventLabel,
         sourceText: text,
+        evidenceType: 'direct_quote',
+        evidence: [text],
+        sourceSessionId: session.id,
       });
       extracted.event = node;
       nodesCreated.push(node);
       nodeIds.push(node.id);
     }
 
-    // Trích xuất theo bước hiện tại và text
-    const emotions = this.extractEmotions(text);
-    const values = this.extractValues(text);
-    const beliefs = this.extractBeliefs(text);
-    const actions = this.extractActions(text);
-    const identities = this.extractIdentity(text);
+    // Chỉ trích xuất theo bước EEIBVIA hiện tại — tránh gán nhầm từ keyword lẫn bước
+    const emotions = currentStep === 'Emotion' ? this.extractEmotions(text) : [];
+    const values = currentStep === 'Value' ? this.extractValues(text) : [];
+    const beliefs = currentStep === 'Belief' ? this.extractBeliefs(text) : [];
+    const actions = currentStep === 'Action' ? this.extractActions(text) : [];
+    const identities = currentStep === 'Identity' ? this.extractIdentity(text) : [];
     const biases = this.extractBiases(text);
 
-    // Luôn cố gắng map vào framework từ mọi message
-    if (currentStep === 'Emotion' || emotions.length > 0) {
-      const items = emotions.length > 0 ? emotions : [{ label: text.slice(0, 50), score: 1 }];
+    if (currentStep === 'Emotion') {
+      const items = emotions.length > 0 ? emotions : [{ label: this.summarizeUserPhrase(text, 50), score: 1 }];
       for (const em of items.slice(0, 2)) {
         const label = em.label || text.slice(0, 40);
+        const fromLibrary = em.score !== undefined && em.keywordHits !== undefined;
         const { node } = CognitiveTree.upsertNode({
           type: 'Emotion',
           label,
           sourceText: text,
+          evidenceType: fromLibrary ? 'paraphrase' : 'direct_quote',
+          evidence: [text],
+          sourceSessionId: session.id,
+          fromLibrary,
+          matchScore: em.score,
+          keywordHits: em.keywordHits,
         });
         extracted.emotions.push(node);
         nodesCreated.push(node);
@@ -350,28 +369,38 @@ const ReflectionEngine = {
       }
     }
 
-    if (currentStep === 'Interpretation' || this.looksLikeInterpretation(text)) {
+    if (currentStep === 'Interpretation') {
       const interpLabel = text.length > 60 ? text.slice(0, 60) + '...' : text;
       const { node } = CognitiveTree.upsertNode({
         type: 'Interpretation',
         label: interpLabel,
         sourceText: text,
+        evidenceType: 'direct_quote',
+        evidence: [text],
+        sourceSessionId: session.id,
       });
       extracted.interpretation = node;
       nodesCreated.push(node);
       nodeIds.push(node.id);
     }
 
-    if (currentStep === 'Belief' || beliefs.length > 0) {
+    if (currentStep === 'Belief') {
       const items = beliefs.length > 0 ? [...beliefs] : [];
       if (items.length === 0 && (this.looksLikeBelief(text) || currentStep === 'Belief')) {
         items.push({ label: this.summarizeUserPhrase(text, 60) });
       }
       for (const b of items.slice(0, 2)) {
+        const fromLibrary = b.score !== undefined && b.keywordHits !== undefined;
         const { node } = CognitiveTree.upsertNode({
           type: 'Belief',
           label: b.label,
           sourceText: text,
+          evidenceType: fromLibrary ? 'paraphrase' : 'direct_quote',
+          evidence: [text],
+          sourceSessionId: session.id,
+          fromLibrary,
+          matchScore: b.score,
+          keywordHits: b.keywordHits,
         });
         extracted.beliefs.push(node);
         nodesCreated.push(node);
@@ -379,18 +408,25 @@ const ReflectionEngine = {
       }
     }
 
-    if (currentStep === 'Value' || values.length > 0) {
+    if (currentStep === 'Value') {
       const valueItems =
         values.length > 0
           ? values
-          : currentStep === 'Value' && this.looksLikeValue(text)
+          : this.looksLikeValue(text)
             ? [{ label: this.summarizeUserPhrase(text, 50) }]
             : [];
       for (const v of valueItems.slice(0, 2)) {
+        const fromLibrary = v.score !== undefined && v.keywordHits !== undefined;
         const { node } = CognitiveTree.upsertNode({
           type: 'Value',
           label: v.label,
           sourceText: text,
+          evidenceType: fromLibrary ? 'paraphrase' : 'direct_quote',
+          evidence: [text],
+          sourceSessionId: session.id,
+          fromLibrary,
+          matchScore: v.score,
+          keywordHits: v.keywordHits,
         });
         extracted.values.push(node);
         nodesCreated.push(node);
@@ -398,18 +434,25 @@ const ReflectionEngine = {
       }
     }
 
-    if (currentStep === 'Identity' || identities.length > 0) {
+    if (currentStep === 'Identity') {
       const identityItems =
         identities.length > 0
           ? identities
-          : currentStep === 'Identity' && this.looksLikeIdentity(text)
+          : this.looksLikeIdentity(text)
             ? [{ label: this.summarizeUserPhrase(text, 50) }]
             : [];
       for (const id of identityItems.slice(0, 2)) {
+        const fromLibrary = id.score !== undefined && id.keywordHits !== undefined;
         const { node } = CognitiveTree.upsertNode({
           type: 'Identity',
           label: id.label,
           sourceText: text,
+          evidenceType: fromLibrary ? 'paraphrase' : 'direct_quote',
+          evidence: [text],
+          sourceSessionId: session.id,
+          fromLibrary,
+          matchScore: id.score,
+          keywordHits: id.keywordHits,
         });
         extracted.identity.push(node);
         nodesCreated.push(node);
@@ -417,18 +460,25 @@ const ReflectionEngine = {
       }
     }
 
-    if (currentStep === 'Action' || actions.length > 0) {
+    if (currentStep === 'Action') {
       const actionItems =
         actions.length > 0
           ? actions
-          : currentStep === 'Action' || this.looksLikeAction(text)
+          : this.looksLikeAction(text)
             ? [{ label: this.summarizeUserPhrase(text, 50) }]
             : [];
       for (const a of actionItems.slice(0, 2)) {
+        const fromLibrary = a.score !== undefined && a.keywordHits !== undefined;
         const { node } = CognitiveTree.upsertNode({
           type: 'Action',
           label: a.label,
           sourceText: text,
+          evidenceType: fromLibrary ? 'paraphrase' : 'direct_quote',
+          evidence: [text],
+          sourceSessionId: session.id,
+          fromLibrary,
+          matchScore: a.score,
+          keywordHits: a.keywordHits,
         });
         extracted.actions.push(node);
         nodesCreated.push(node);

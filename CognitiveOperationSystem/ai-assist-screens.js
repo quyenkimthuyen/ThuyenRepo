@@ -13,6 +13,7 @@ Quy tắc:
 - Không chẩn đoán bệnh lý
 - Tìm mâu thuẫn NGỮ NGHĨA (không chỉ trùng từ)
 - Nhận diện pattern lặp, thiên kiến, chủ đề ẩn
+- Dữ liệu JSON chỉ gồm ghi nhận đã có bằng chứng từ user — không suy diễn thêm
 - Trả lời tiếng Việt khi trao đổi với user`,
       export: `Xuất phân tích KHÁM PHÁ theo JSON (chỉ JSON, có thể bọc \`\`\`json):
 
@@ -75,6 +76,7 @@ Rules:
 - No clinical diagnosis
 - Find semantic contradictions, not just keyword overlap
 - Identify recurring patterns and biases
+- JSON data only includes user-backed entries — do not invent new beliefs/values
 - Reply in English when chatting`,
       export: `Export EXPLORE analysis as JSON only (may wrap in \`\`\`json ... \`\`\`):
 
@@ -166,7 +168,11 @@ const AiAssistScreens = {
   },
 
   buildContext(screenId) {
-    const nodes = DataStore.getNodes();
+    const allNodes = DataStore.getNodes();
+    const nodes =
+      typeof EvidenceEngine !== 'undefined'
+        ? EvidenceEngine.filterInsightEligible(allNodes)
+        : allNodes;
     const sessions = DataStore.getSessions();
     const relations = DataStore.getRelations();
     const timeline = DataStore.getTimeline();
@@ -175,6 +181,7 @@ const AiAssistScreens = {
     const base = {
       generatedAt: new Date().toISOString(),
       locale: loc,
+      evidencePolicy: 'only_user_backed_nodes',
       nodeCount: nodes.length,
       sessionCount: sessions.length,
     };
@@ -217,19 +224,23 @@ const AiAssistScreens = {
           20
         );
       }
+      const eligibleIds = new Set(nodes.map((n) => n.id));
       return {
         ...base,
         trees: byTree,
         relationCount: relations.length,
-        existingRelations: relations.slice(-12).map((r) => {
-          const sn = nodes.find((n) => n.id === r.source);
-          const tn = nodes.find((n) => n.id === r.target);
-          return {
-            type: r.type,
-            source: sn ? `${sn.type}:${sn.label}` : r.source,
-            target: tn ? `${tn.type}:${tn.label}` : r.target,
-          };
-        }),
+        existingRelations: relations
+          .filter((r) => eligibleIds.has(r.source) && eligibleIds.has(r.target))
+          .slice(-12)
+          .map((r) => {
+            const sn = allNodes.find((n) => n.id === r.source);
+            const tn = allNodes.find((n) => n.id === r.target);
+            return {
+              type: r.type,
+              source: sn ? `${sn.type}:${sn.label}` : r.source,
+              target: tn ? `${tn.type}:${tn.label}` : r.target,
+            };
+          }),
       };
     }
 
@@ -258,6 +269,7 @@ const AiAssistScreens = {
             type: n.type,
             label: n.label,
             at: n.createdAt,
+            evidenceType: n.evidenceType || 'legacy',
           })),
       };
     }

@@ -258,7 +258,11 @@ const App = {
         if (TestMode.selectedScenarioId) {
           this.collectTestDialogueEdits(TestMode.selectedScenarioId);
         }
-        TestMode.selectScenario(card.dataset.scenarioId);
+        if (card.dataset.scenarioKind === 'ai-assist') {
+          TestMode.selectAiAssistScenario(card.dataset.scenarioId);
+        } else {
+          TestMode.selectScenario(card.dataset.scenarioId);
+        }
         this.renderTestMode();
         return;
       }
@@ -268,8 +272,11 @@ const App = {
       const btn = e.target.closest('[data-test-action]');
       if (!btn) return;
       const action = btn.dataset.testAction;
-      const scenarioId = btn.dataset.scenarioId || TestMode.selectedScenarioId;
-      if (!scenarioId) return;
+      const scenarioId =
+        btn.dataset.scenarioId ||
+        TestMode.selectedScenarioId ||
+        TestMode.selectedAiAssistScenarioId;
+      if (!scenarioId && action !== 'run-all-ai-assist-tests') return;
 
       switch (action) {
         case 'apply-home':
@@ -299,6 +306,12 @@ const App = {
           } else {
             this.showToast(I18n.t('test.noBackup'));
           }
+          break;
+        case 'run-ai-assist-test':
+          this.runAiAssistTest(scenarioId);
+          break;
+        case 'run-all-ai-assist-tests':
+          this.runAllAiAssistTests();
           break;
       }
     });
@@ -632,6 +645,9 @@ const App = {
       }
       if (preview.warnings?.includes('no_emotions')) {
         warns.push(I18n.t('aiAssist.previewWarnNoEmotions'));
+      }
+      if (preview.warnings?.includes('rule_suggestions_skipped')) {
+        warns.push(I18n.t('aiAssist.previewRuleSkipped'));
       }
       if (warns.length) {
         warnEl.hidden = false;
@@ -1703,6 +1719,18 @@ const App = {
       <div class="modal-detail-row"><span>${I18n.t('forest.created')}</span><span>${this.formatDate(node.createdAt)}</span></div>
       <div class="modal-detail-row"><span>${I18n.t('forest.updated')}</span><span>${this.formatDate(node.updatedAt)}</span></div>
       ${
+        node.evidenceType
+          ? `<div class="modal-detail-row"><span>${this.escapeHtml(I18n.t('forest.evidenceType'))}</span><span>${this.escapeHtml(I18n.t(`forest.evidence_${node.evidenceType}`) || node.evidenceType)}</span></div>`
+          : ''
+      }
+      ${
+        node.evidence?.length
+          ? `<div class="modal-ai-note" style="margin-top:0.75rem;padding:0.75rem;border-radius:8px;background:rgba(99,102,241,0.08);font-size:0.85rem">
+              <strong>${this.escapeHtml(I18n.t('forest.evidence'))}</strong><br>${node.evidence.map((e) => this.escapeHtml(e)).join('<br>')}
+            </div>`
+          : ''
+      }
+      ${
         relations.length > 0
           ? `<div style="margin-top:1rem;font-size:0.85rem;color:var(--text-secondary)">
               ${I18n.t('forest.relations', { n: relations.length })}
@@ -2035,42 +2063,243 @@ const App = {
 
   renderTestMode() {
     const scenarios = TestMode.getScenarios();
+    const aiScenarios =
+      typeof AiAssistTestRunner !== 'undefined' ? AiAssistTestRunner.getScenarios() : [];
     const listEl = document.getElementById('test-scenario-list');
 
-    if (!TestMode.selectedScenarioId && scenarios.length > 0) {
-      TestMode.selectScenario(scenarios[0].id);
+    if (!TestMode.selectedScenarioId && !TestMode.selectedAiAssistScenarioId) {
+      if (scenarios.length > 0) TestMode.selectScenario(scenarios[0].id);
+      else if (aiScenarios.length > 0) TestMode.selectAiAssistScenario(aiScenarios[0].id);
     }
+
+    const inAppCards = scenarios
+      .map((s) => {
+        const active =
+          s.id === TestMode.selectedScenarioId && !TestMode.selectedAiAssistScenarioId
+            ? 'active'
+            : '';
+        return `
+          <button type="button" class="test-scenario-card glass ${active}" data-scenario-id="${s.id}" data-scenario-kind="in-app">
+            <span class="test-scenario-cat">${this.escapeHtml(TestMode.getCategoryLabel(s.category))}</span>
+            <span class="test-scenario-title">${this.escapeHtml(s.title)}</span>
+            <span class="test-scenario-tags">${s.tags.map((t) => `#${this.escapeHtml(t)}`).join(' ')}</span>
+          </button>`;
+      })
+      .join('');
+
+    const aiCards = aiScenarios
+      .map((s) => {
+        const active = s.id === TestMode.selectedAiAssistScenarioId ? 'active' : '';
+        return `
+          <button type="button" class="test-scenario-card glass test-scenario-card--ai ${active}" data-scenario-id="${s.id}" data-scenario-kind="ai-assist">
+            <span class="test-scenario-cat">ChatGPT</span>
+            <span class="test-scenario-title">${this.escapeHtml(s.title)}</span>
+            <span class="test-scenario-tags">${s.tags.map((t) => `#${this.escapeHtml(t)}`).join(' ')}</span>
+          </button>`;
+      })
+      .join('');
 
     listEl.innerHTML = `
       <div class="test-sidebar-title">${I18n.t('test.scenarios', { n: scenarios.length })}</div>
-      ${scenarios
-        .map((s) => {
-          const active = s.id === TestMode.selectedScenarioId ? 'active' : '';
-          return `
-            <button
-              type="button"
-              class="test-scenario-card glass ${active}"
-              data-scenario-id="${s.id}"
-            >
-              <span class="test-scenario-cat">${this.escapeHtml(TestMode.getCategoryLabel(s.category))}</span>
-              <span class="test-scenario-title">${this.escapeHtml(s.title)}</span>
-              <span class="test-scenario-tags">${s.tags.map((t) => `#${this.escapeHtml(t)}`).join(' ')}</span>
-            </button>
-          `;
-        })
-        .join('')}
+      ${inAppCards || `<p class="test-muted">${I18n.t('test.noScenarios')}</p>`}
+      <div class="test-sidebar-title test-sidebar-title--sub">${I18n.t('test.aiAssistScenarios', { n: aiScenarios.length })}</div>
+      ${aiCards || `<p class="test-muted">${I18n.t('test.noAiScenarios')}</p>`}
     `;
 
-    const scenario = TestMode.getScenario(TestMode.selectedScenarioId);
     const detailEl = document.getElementById('test-scenario-detail');
 
+    if (TestMode.selectedAiAssistScenarioId) {
+      const aiScenario = AiAssistTestRunner.getScenario(TestMode.selectedAiAssistScenarioId);
+      if (!aiScenario) {
+        detailEl.innerHTML = `<div class="insight-empty test-empty">${I18n.t('test.noAiScenarios')}</div>`;
+        return;
+      }
+      detailEl.innerHTML = this.renderAiAssistTestDetail(aiScenario);
+      return;
+    }
+
+    const scenario = TestMode.getScenario(TestMode.selectedScenarioId);
     if (!scenario) {
-      detailEl.innerHTML =
-        `<div class="insight-empty test-empty">${I18n.t('test.noScenarios')}</div>`;
+      detailEl.innerHTML = `<div class="insight-empty test-empty">${I18n.t('test.selectHint')}</div>`;
       return;
     }
 
     detailEl.innerHTML = this.renderTestScenarioDetail(scenario);
+  },
+
+  renderAiAssistTestDetail(scenario) {
+    const restoreBtn = TestMode.hasSnapshot()
+      ? `<button type="button" class="btn btn-ghost" data-test-action="restore">${I18n.t('test.restore')}</button>`
+      : '';
+
+    return `
+      <div class="test-detail-header glass">
+        <div>
+          <span class="test-badge test-badge--ai">ChatGPT</span>
+          <span class="test-badge">${this.escapeHtml(TestMode.getCategoryLabel(scenario.category))}</span>
+          <h3 class="test-detail-title">${this.escapeHtml(scenario.title)}</h3>
+          <p class="test-detail-summary">${this.escapeHtml(scenario.summary)}</p>
+        </div>
+        <div class="test-actions">
+          <button type="button" class="btn btn-primary" data-test-action="run-ai-assist-test" data-scenario-id="${scenario.id}">
+            ${I18n.t('test.runAiAssist')}
+          </button>
+          <button type="button" class="btn btn-ghost" data-test-action="run-all-ai-assist-tests">
+            ${I18n.t('test.runAllAiAssist')}
+          </button>
+          ${restoreBtn}
+        </div>
+      </div>
+
+      <div class="test-section glass">
+        <h4>${I18n.t('test.aiAssistFlow')}</h4>
+        <ol class="test-list">
+          <li>${I18n.t('test.aiAssistStep1')}</li>
+          <li>${I18n.t('test.aiAssistStep2')}</li>
+          <li>${I18n.t('test.aiAssistStep3')}</li>
+        </ol>
+        <p class="test-muted">${I18n.t('test.aiAssistNote')}</p>
+      </div>
+
+      <div class="test-section glass">
+        <h4>${I18n.t('test.initialThought')}</h4>
+        <blockquote class="test-quote">${this.escapeHtml(scenario.initialThought)}</blockquote>
+        <p class="test-muted">Locale: <strong>${this.escapeHtml(scenario.locale || 'vi')}</strong></p>
+      </div>
+
+      <div class="test-section glass">
+        <h4>${I18n.t('test.userDialogue')}</h4>
+        <ol class="test-dialogue-list">
+          ${(scenario.userDialogue || [])
+            .map(
+              (turn, i) => `
+            <li class="test-dialogue-item">
+              <div class="test-dialogue-step">
+                <span class="test-step-num">${i + 1}</span>
+                <span class="test-step-label">${this.escapeHtml(CognitiveLibrary.getFrameworkLabel(turn.step) || turn.step)}</span>
+              </div>
+              <p class="test-dialogue-content">${this.escapeHtml(turn.content)}</p>
+            </li>`
+            )
+            .join('')}
+        </ol>
+      </div>
+
+      <div class="test-section glass">
+        <h4>${I18n.t('test.chatgptExport')}</h4>
+        <pre class="test-json-preview">${this.escapeHtml(JSON.stringify(scenario.chatgptExport, null, 2))}</pre>
+      </div>
+
+      <div class="test-grid-2">
+        <div class="test-section glass">
+          <h4>${I18n.t('test.expectPresent')}</h4>
+          <ul class="test-list">
+            ${(scenario.expectPresent || [])
+              .map(
+                (e) =>
+                  `<li><strong>${this.escapeHtml(e.type)}</strong>: ${this.escapeHtml(e.labelContains || e.quoteContains || '')}</li>`
+              )
+              .join('')}
+          </ul>
+        </div>
+        <div class="test-section glass">
+          <h4>${I18n.t('test.expectAbsent')}</h4>
+          <ul class="test-list test-list-warn">
+            ${(scenario.expectAbsent || []).map((a) => `<li>${this.escapeHtml(a)}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+
+      <div id="ai-assist-test-results" class="test-section glass" hidden>
+        <h4>${I18n.t('test.aiAssistResults')}</h4>
+        <div id="ai-assist-test-results-body"></div>
+      </div>
+    `;
+  },
+
+  renderAiAssistTestResults(result) {
+    const panel = document.getElementById('ai-assist-test-results');
+    const body = document.getElementById('ai-assist-test-results-body');
+    if (!panel || !body) return;
+
+    panel.hidden = false;
+    const statusClass = result.ok ? 'test-result--pass' : 'test-result--fail';
+    body.innerHTML = `
+      <p class="test-result-summary ${statusClass}">
+        ${result.ok ? I18n.t('test.aiAssistPass') : I18n.t('test.aiAssistFail')}
+        — ${this.escapeHtml(result.title || result.scenarioId)}
+      </p>
+      <ul class="test-list test-result-steps">
+        ${(result.steps || [])
+          .map(
+            (s) =>
+              `<li class="${s.ok ? 'test-result-step--ok' : 'test-result-step--fail'}">
+                <strong>${this.escapeHtml(s.id)}</strong>: ${this.escapeHtml(s.detail || '')}
+              </li>`
+          )
+          .join('')}
+      </ul>
+      ${
+        result.failures?.length
+          ? `<h5 class="test-subheading">${I18n.t('test.aiAssistFailures')}</h5>
+             <ul class="test-list test-list-warn">
+               ${result.failures
+                 .map(
+                   (f) =>
+                     `<li><strong>${this.escapeHtml(f.check)}</strong>: ${this.escapeHtml(f.message)}${f.detail ? ` — ${this.escapeHtml(f.detail)}` : ''}</li>`
+                 )
+                 .join('')}
+             </ul>`
+          : ''
+      }
+    `;
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  },
+
+  runAiAssistTest(scenarioId) {
+    if (typeof AiAssistTestRunner === 'undefined') {
+      this.showToast(I18n.t('test.aiAssistUnavailable'));
+      return;
+    }
+    const result = AiAssistTestRunner.runOne(scenarioId, { backup: true });
+    this.renderAiAssistTestResults(result);
+    this.showToast(
+      result.ok ? I18n.t('test.aiAssistPass') : I18n.t('test.aiAssistFail')
+    );
+    if (result.ok) this.renderHomeStats();
+  },
+
+  runAllAiAssistTests() {
+    if (typeof AiAssistTestRunner === 'undefined') {
+      this.showToast(I18n.t('test.aiAssistUnavailable'));
+      return;
+    }
+    const summary = AiAssistTestRunner.runAll({ backup: true });
+    const panel = document.getElementById('ai-assist-test-results');
+    const body = document.getElementById('ai-assist-test-results-body');
+    if (panel && body) {
+      panel.hidden = false;
+      body.innerHTML = `
+        <p class="test-result-summary ${summary.ok ? 'test-result--pass' : 'test-result--fail'}">
+          ${I18n.t('test.aiAssistSummary', { passed: summary.passed, total: summary.total })}
+        </p>
+        <ul class="test-list">
+          ${summary.results
+            .map(
+              (r) =>
+                `<li class="${r.ok ? 'test-result-step--ok' : 'test-result-step--fail'}">
+                  ${r.ok ? '✓' : '✗'} ${this.escapeHtml(r.title || r.scenarioId)}
+                </li>`
+            )
+            .join('')}
+        </ul>
+      `;
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    this.showToast(
+      I18n.t('test.aiAssistSummary', { passed: summary.passed, total: summary.total })
+    );
+    this.renderHomeStats();
   },
 
   renderTestScenarioDetail(scenario) {

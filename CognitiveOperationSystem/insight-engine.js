@@ -13,7 +13,11 @@ const InsightEngine = {
    * Top nodes theo occurrences
    */
   getTopByType(type, limit = 5) {
-    return DataStore.getNodes()
+    const pool =
+      typeof EvidenceEngine !== 'undefined'
+        ? EvidenceEngine.filterInsightEligible(DataStore.getNodes())
+        : DataStore.getNodes();
+    return pool
       .filter((n) => n.type === type)
       .sort((a, b) => (b.occurrences || 0) - (a.occurrences || 0))
       .slice(0, limit);
@@ -24,7 +28,10 @@ const InsightEngine = {
    */
   getTodayDiscoveries() {
     const today = new Date().toDateString();
-    const nodes = DataStore.getNodes();
+    const nodes =
+      typeof EvidenceEngine !== 'undefined'
+        ? EvidenceEngine.filterInsightEligible(DataStore.getNodes())
+        : DataStore.getNodes();
 
     return nodes
       .filter((n) => {
@@ -58,7 +65,7 @@ const InsightEngine = {
       CognitiveLibrary.COGNITIVE_BIASES
     );
 
-    return matches.map((b) => ({
+    return matches.slice(0, 3).map((b) => ({
       label: typeof I18n !== 'undefined' ? I18n.biasLabel(b) : b.labelVi || b.label,
       labelEn: b.label,
       score: b.score,
@@ -154,6 +161,7 @@ const InsightEngine = {
 
     const recentlyVerified = DataStore.getNodes()
       .filter((n) => n.status === 'verified')
+      .filter((n) => typeof EvidenceEngine === 'undefined' || EvidenceEngine.isInsightEligible(n))
       .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
       .slice(0, 5);
 
