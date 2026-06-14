@@ -113,6 +113,9 @@
       .action-btn.forgot:hover { background: rgba(251, 113, 133, 0.18); }
       .action-btn.remembered { color: var(--success); border-color: var(--success); background: rgba(34, 197, 94, 0.08); }
       .action-btn.remembered:hover { background: rgba(34, 197, 94, 0.18); }
+      .action-btn.peek { color: #fbbf24; border-color: #fbbf24; background: rgba(251, 191, 36, 0.08); }
+      .action-btn.peek:hover:not(:disabled) { background: rgba(251, 191, 36, 0.18); }
+      .action-btn.peek:disabled { opacity: 0.45; cursor: not-allowed; }
       .action-btn svg { pointer-events: none; }
       input[type="range"] {
         -webkit-appearance: none;
@@ -206,6 +209,9 @@
         quizAudioCooldownUntil: 0,
         quizHintRevealCount: 0,
         quizTypingDraft: '',
+        quizAnswerPeekCooldownUntil: 0,
+        quizAnswerPeekVisibleUntil: 0,
+        quizAnswerPeekUsed: false,
         quizPracticeActive: false,
         quizPracticeWordIds: [],
         autoLearn: {
@@ -224,6 +230,8 @@
       let activeSpeechResolver = null;
       let activeUtterance = null;
       let autoLearnRunId = 0;
+      let quizAnswerPeekHideTimeout = null;
+      let quizAnswerPeekRefreshTimeout = null;
 
       function escapeHtml(value) {
         return String(value ?? '')
@@ -412,6 +420,28 @@
         state.quizAudioCooldownUntil = 0;
         state.quizHintRevealCount = 0;
         state.quizTypingDraft = '';
+        state.quizAnswerPeekCooldownUntil = 0;
+        state.quizAnswerPeekVisibleUntil = 0;
+        state.quizAnswerPeekUsed = false;
+        clearQuizAnswerPeekTimers();
+      }
+
+      function clearQuizAnswerPeekTimers() {
+        if (quizAnswerPeekHideTimeout) {
+          clearTimeout(quizAnswerPeekHideTimeout);
+          quizAnswerPeekHideTimeout = null;
+        }
+        if (quizAnswerPeekRefreshTimeout) {
+          clearTimeout(quizAnswerPeekRefreshTimeout);
+          quizAnswerPeekRefreshTimeout = null;
+        }
+      }
+
+      function resetQuizAnswerPeekState() {
+        state.quizAnswerPeekCooldownUntil = 0;
+        state.quizAnswerPeekVisibleUntil = 0;
+        state.quizAnswerPeekUsed = false;
+        clearQuizAnswerPeekTimers();
       }
 
       function resetAutoLearnState() {
@@ -909,12 +939,19 @@
         return String(answer || '').trim().length;
       }
 
+      function getRevealedLetterCount(result) {
+        const length = getQuizAnswerLength(result.correctAnswer);
+        if (!length) return 0;
+        if (result.answerPeekUsed) return length;
+        return Math.min(length, Number(result.hintRevealCount || 0));
+      }
+
       function getQuizAnswerScore(result) {
         if (!result.isCorrect) return 0;
         if (!['typing', 'dictation'].includes(result.mode)) return 1;
         const length = getQuizAnswerLength(result.correctAnswer);
         if (!length) return 1;
-        const revealed = Math.min(length, Number(result.hintRevealCount || 0));
+        const revealed = getRevealedLetterCount(result);
         return Math.max(0, (length - revealed) / length);
       }
 
@@ -922,10 +959,83 @@
         if (!result.isCorrect || !['typing', 'dictation'].includes(result.mode)) return '';
         const length = getQuizAnswerLength(result.correctAnswer);
         if (!length) return '';
-        const revealed = Math.min(length, Number(result.hintRevealCount || 0));
+        const revealed = getRevealedLetterCount(result);
         if (!revealed) return '';
         const earned = length - revealed;
         return ` (${earned}/${length} pts)`;
+      }
+
+      function renderQuizAnswerPeekButton() {
+        const cooldownMs = Math.max(0, (state.quizAnswerPeekCooldownUntil || 0) - Date.now());
+        const disabled = cooldownMs > 0;
+        const waitSeconds = Math.ceil(cooldownMs / 1000);
+        const title = disabled ? `Wait ${waitSeconds}s` : 'Show answer for 3 seconds';
+        return `<button class="action-btn peek" type="button" id="quizAnswerPeek" aria-label="${escapeHtml(title)}" title="${escapeHtml(title)}"${disabled ? ' disabled' : ''}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18h6"></path>
+            <path d="M10 22h4"></path>
+            <path d="M12 2a7 7 0 0 0-4 12.74V17h8v-2.26A7 7 0 0 0 12 2z"></path>
+          </svg>
+        </button>`;
+      }
+
+      function renderQuizAnswerPeekText(answer) {
+        const visible = Date.now() < (state.quizAnswerPeekVisibleUntil || 0);
+        return `<p id="answerPeekText" class="muted small${visible ? '' : ' hidden'}" style="margin-top: 0.5rem; color: var(--accent); font-weight: 700;">${visible ? `Answer: ${escapeHtml(answer)}` : ''}</p>`;
+      }
+
+      function updateQuizAnswerPeekButton() {
+        const button = document.getElementById('quizAnswerPeek');
+        if (!button) return;
+        const cooldownMs = Math.max(0, (state.quizAnswerPeekCooldownUntil || 0) - Date.now());
+        const disabled = cooldownMs > 0;
+        const waitSeconds = Math.ceil(cooldownMs / 1000);
+        const title = disabled ? `Wait ${waitSeconds}s` : 'Show answer for 3 seconds';
+        button.disabled = disabled;
+        button.setAttribute('aria-label', title);
+        button.title = title;
+      }
+
+      function scheduleQuizAnswerPeekButtonRefresh() {
+        if (quizAnswerPeekRefreshTimeout) clearTimeout(quizAnswerPeekRefreshTimeout);
+        const cooldownMs = Math.max(0, (state.quizAnswerPeekCooldownUntil || 0) - Date.now());
+        if (!cooldownMs) return;
+        quizAnswerPeekRefreshTimeout = setTimeout(() => {
+          quizAnswerPeekRefreshTimeout = null;
+          if (state.page === 'quiz') updateQuizAnswerPeekButton();
+          scheduleQuizAnswerPeekButtonRefresh();
+        }, 1000);
+      }
+
+      function peekQuizAnswer() {
+        const question = state.currentQuestion;
+        if (state.page !== 'quiz' || !question || state.currentAnswer) return;
+        if (!['typing', 'dictation'].includes(question.mode)) return;
+        const now = Date.now();
+        if (now < (state.quizAnswerPeekCooldownUntil || 0)) return;
+
+        clearQuizAnswerPeekTimers();
+        state.quizAnswerPeekCooldownUntil = now + 5000;
+        state.quizAnswerPeekVisibleUntil = now + 3000;
+        state.quizAnswerPeekUsed = true;
+
+        const peekText = document.getElementById('answerPeekText');
+        if (peekText) {
+          peekText.textContent = `Answer: ${question.answer}`;
+          peekText.classList.remove('hidden');
+        }
+        updateQuizAnswerPeekButton();
+        scheduleQuizAnswerPeekButtonRefresh();
+
+        quizAnswerPeekHideTimeout = setTimeout(() => {
+          quizAnswerPeekHideTimeout = null;
+          state.quizAnswerPeekVisibleUntil = 0;
+          const el = document.getElementById('answerPeekText');
+          if (el) {
+            el.textContent = '';
+            el.classList.add('hidden');
+          }
+        }, 3000);
       }
 
       function diffAnswer(typed, correct) {
@@ -988,6 +1098,7 @@
         state.quizAudioCooldownUntil = 0;
         state.quizHintRevealCount = 0;
         state.quizTypingDraft = '';
+        resetQuizAnswerPeekState();
         state.feedback = state.currentQuestion ? '' : 'Load at least 1 word to start a quiz.';
         saveState();
         render();
@@ -1007,6 +1118,7 @@
           correctAnswer: question.answer,
           isCorrect: correct,
           hintRevealCount: state.quizHintRevealCount || 0,
+          answerPeekUsed: !!state.quizAnswerPeekUsed,
           answeredAt: Date.now(),
         });
         recordWordQuizResult(question.word.id, correct);
@@ -1068,6 +1180,7 @@
         state.quizAudioCooldownUntil = 0;
         state.quizHintRevealCount = 0;
         state.quizTypingDraft = '';
+        resetQuizAnswerPeekState();
         state.lastAutoPlayedListeningQuestionId = null;
         state.currentQuestion = createQuizQuestion(state.quizMode);
         render();
@@ -1383,8 +1496,10 @@
               <div class="row">
                 <button class="button primary" type="submit">Submit answer</button>
                 <button class="button" type="button" id="quizHint">Hint</button>
+                ${renderQuizAnswerPeekButton()}
               </div>
               <p id="hintText" class="muted small${state.quizHintRevealCount > 0 ? '' : ' hidden'}" style="margin-top: 0.5rem;">${state.quizHintRevealCount > 0 ? escapeHtml(getQuizHint(question.answer, state.quizHintRevealCount)) : ''}</p>
+              ${renderQuizAnswerPeekText(question.answer)}
             </form>
           `;
         }
@@ -1411,8 +1526,10 @@
               <div class="row">
                 <button class="button primary" type="submit">Submit answer</button>
                 <button class="button" type="button" id="quizHint">Hint</button>
+                ${renderQuizAnswerPeekButton()}
               </div>
               <p id="hintText" class="muted small${state.quizHintRevealCount > 0 ? '' : ' hidden'}" style="margin-top: 0.5rem;">${state.quizHintRevealCount > 0 ? escapeHtml(getQuizHint(question.answer, state.quizHintRevealCount)) : ''}</p>
+              ${renderQuizAnswerPeekText(question.answer)}
             </form>
           `;
         }
@@ -1635,6 +1752,12 @@
               hintText.classList.remove('hidden');
             }
           }
+          const input = document.getElementById('typingAnswer');
+          if (input) input.focus();
+          return;
+        }
+        if (target.id === 'quizAnswerPeek') {
+          peekQuizAnswer();
           const input = document.getElementById('typingAnswer');
           if (input) input.focus();
           return;

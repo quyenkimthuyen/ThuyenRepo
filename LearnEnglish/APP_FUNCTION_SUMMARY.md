@@ -122,7 +122,8 @@ Quiz behavior:
 - Automatically submits typing answers when the typed text matches the correct English word.
 - Keeps the typing input value and focus when replaying audio in Typing and Dictation.
 - In Typing and Dictation, each Hint tap reveals two more letters of the answer (capped at the full word length).
-- In Typing and Dictation, each revealed hint letter reduces the question score proportionally. For example, an 8-letter word with 2 letters revealed from hints earns 6/8 of a point when answered correctly.
+- In Typing and Dictation, a lightbulb button next to Hint briefly shows the full answer for 3 seconds, with a 5-second cooldown between uses.
+- In Typing and Dictation, each revealed hint letter reduces the question score proportionally. For example, an 8-letter word with 2 letters revealed from hints earns 6/8 of a point when answered correctly. Using the lightbulb counts as revealing the full answer for scoring.
 - Quiz score and accuracy use weighted points in Typing and Dictation, while other modes still award full points for each correct answer.
 - Automatically plays the word audio or speech fallback when a Listen or Dictation question first appears.
 - Limits manual Play taps in Listen and Dictation to one play every 2 seconds to avoid repeated audio spam.
