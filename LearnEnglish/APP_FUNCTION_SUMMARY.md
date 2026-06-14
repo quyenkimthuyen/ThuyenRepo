@@ -110,7 +110,7 @@ Quiz modes:
 Quiz behavior:
 
 - Shows the selected quiz topic on the quiz screen and lets the user change it before starting.
-- Each quiz mode tab has a Practice button to study the quiz word set before starting the test.
+- Each quiz mode has a Practice words button above Start quiz to study the quiz word set before starting the test.
 - Quiz practice shows flashcards like the Learn screen, but only for words selected for the upcoming quiz (same priority and count as the test).
 - Quiz practice includes Auto Audio Learning for the quiz word set only.
 - After practicing, Start quiz uses the same word set that was practiced.

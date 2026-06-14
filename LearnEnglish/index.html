@@ -79,9 +79,6 @@
       .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem; }
       .tabs.four { grid-template-columns: repeat(4, 1fr); }
       .tabs.five { grid-template-columns: repeat(5, 1fr); }
-      .quiz-mode-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.45rem; }
-      .quiz-mode-col { display: grid; gap: 0.35rem; align-items: stretch; }
-      .button.compact { padding: 0.4rem 0.35rem; font-size: 0.75rem; }
       .settings-grid { display: grid; gap: 1rem; }
       .word-title { font-size: 2rem; font-weight: 800; letter-spacing: -0.04em; }
       .meaning { font-size: 1.2rem; font-weight: 700; color: var(--primary); }
@@ -140,7 +137,7 @@
       input[type="range"]::-webkit-slider-thumb:hover {
         transform: scale(1.25);
       }
-      @media (max-width: 520px) { .app { padding-inline: 0.8rem; } .header { margin-inline: -0.8rem; padding-inline: 0.8rem; } .stats-grid, .tabs.four, .tabs.five, .quiz-mode-grid { grid-template-columns: 1fr 1fr; } .word-title { font-size: 1.7rem; } .pill { display: none; } }
+      @media (max-width: 520px) { .app { padding-inline: 0.8rem; } .header { margin-inline: -0.8rem; padding-inline: 0.8rem; } .stats-grid, .tabs.four, .tabs.five { grid-template-columns: 1fr 1fr; } .word-title { font-size: 1.7rem; } .pill { display: none; } }
     </style>
   </head>
   <body>
@@ -1274,6 +1271,16 @@
         `;
       }
 
+      function renderQuizActionButtons({ showPractice = true, startLabel = 'Start quiz' } = {}) {
+        const practiceButton = showPractice
+          ? `<button class="button" type="button" id="startQuizPractice">Practice words</button>`
+          : '';
+        return `
+          ${practiceButton}
+          <button class="button" type="button" id="startQuiz">${startLabel}</button>
+        `;
+      }
+
       function renderQuizPracticeSection() {
         const modeLabel = { meaning: 'Meaning', word: 'English', listening: 'Listen', typing: 'Typing', dictation: 'Dictation' }[state.quizMode] || state.quizMode;
         const words = getQuizPracticeWords();
@@ -1287,7 +1294,7 @@
               <button class="button" type="button" id="exitQuizPractice">Back</button>
             </div>
             ${renderAutoLearnPanel(words)}
-            <button class="button primary" type="button" id="startQuiz">Start quiz</button>
+            ${renderQuizActionButtons({ showPractice: false })}
           </div>
           ${words.length ? words.map(renderWordCard).join('') : '<div class="panel empty"><h3>No quiz words</h3><p class="muted">Choose a topic with vocabulary to practice.</p></div>'}
         `;
@@ -1307,7 +1314,10 @@
           <div class="panel stack">
             ${question ? renderQuestion(question) : (completedQuiz ? renderQuizSummary(quizStats) : '<div class="empty"><h3>Ready to practice?</h3><p class="muted">Practice quiz words first, or choose a mode and start a quiz.</p></div>')}
             ${state.feedback ? `<p class="feedback">${state.feedback}</p>` : ''}
-            <button class="button" type="button" id="startQuiz">${question ? 'Restart quiz' : (completedQuiz ? 'Start new quiz' : 'Start quiz')}</button>
+            ${renderQuizActionButtons({
+              showPractice: !question && hasTopicWords,
+              startLabel: question ? 'Restart quiz' : (completedQuiz ? 'Start new quiz' : 'Start quiz'),
+            })}
           </div>
         `;
         document.getElementById('quizPage').innerHTML = `
@@ -1328,25 +1338,20 @@
               <p class="muted small">This test will use ${questionCount} unique word${questionCount === 1 ? '' : 's'}${state.topicFilter === 'all' ? ' from all topics' : ` from ${escapeHtml(prettyTopic(state.topicFilter))}`}.</p>
             </div>
             <div class="progress-track"><div class="progress-fill" style="width:${quizStats.accuracy}%"></div></div>
-            <div class="quiz-mode-grid">
-              ${modeColumn('meaning', 'Meaning', hasTopicWords)}
-              ${modeColumn('word', 'English', hasTopicWords)}
-              ${modeColumn('listening', 'Listen', hasTopicWords)}
-              ${modeColumn('typing', 'Typing', hasTopicWords)}
-              ${modeColumn('dictation', 'Dictation', hasTopicWords)}
+            <div class="tabs five">
+              ${modeButton('meaning', 'Meaning')}
+              ${modeButton('word', 'English')}
+              ${modeButton('listening', 'Listen')}
+              ${modeButton('typing', 'Typing')}
+              ${modeButton('dictation', 'Dictation')}
             </div>
           </div>
           ${practiceSection}
         `;
       }
 
-      function modeColumn(mode, label, enabled = true) {
-        return `
-          <div class="quiz-mode-col">
-            <button class="tab ${state.quizMode === mode ? 'active' : ''}" type="button" data-mode="${mode}">${label}</button>
-            <button class="button compact" type="button" data-practice-mode="${mode}"${enabled ? '' : ' disabled'}>Practice</button>
-          </div>
-        `;
+      function modeButton(mode, label) {
+        return `<button class="tab ${state.quizMode === mode ? 'active' : ''}" type="button" data-mode="${mode}">${label}</button>`;
       }
 
       function renderQuestion(question) {
@@ -1573,7 +1578,7 @@
           saveState();
         }
         if (target.dataset.mode && target.classList.contains('tab')) selectQuizMode(target.dataset.mode);
-        if (target.dataset.practiceMode) startQuizPractice(target.dataset.practiceMode);
+        if (target.id === 'startQuizPractice') startQuizPractice(state.quizMode);
         if (target.dataset.pronounce) pronounceWord(state.words.find((word) => word.id === target.dataset.pronounce));
         if (target.dataset.pronounceCurrent) playQuizAudio();
         if (target.dataset.reveal) state.revealed[target.dataset.reveal] = !state.revealed[target.dataset.reveal];
