@@ -174,12 +174,24 @@ const DataStore = {
     return false;
   },
 
+  /** Node thuộc phiên (hỗ trợ sourceSessionIds và legacy sourceSessionId) */
+  nodeBelongsToSession(node, sessionId) {
+    if (!node || !sessionId) return false;
+    if (node.sourceSessionId === sessionId) return true;
+    return (node.sourceSessionIds || []).includes(sessionId);
+  },
+
+  /** Lấy node gắn với một phiên */
+  getNodesBySession(sessionId) {
+    return this.getNodes().filter((n) => this.nodeBelongsToSession(n, sessionId));
+  },
+
   /** Xóa node (và relation liên quan) thuộc một phiên — dùng trước import Cursor finish */
   removeNodesBySession(sessionId) {
     if (!sessionId) return 0;
     this.load();
     const removeIds = new Set(
-      this._cache.nodes.filter((n) => n.sourceSessionId === sessionId).map((n) => n.id)
+      this._cache.nodes.filter((n) => this.nodeBelongsToSession(n, sessionId)).map((n) => n.id)
     );
     if (removeIds.size === 0) return 0;
     this._cache.nodes = this._cache.nodes.filter((n) => !removeIds.has(n.id));

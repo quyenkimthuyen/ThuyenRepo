@@ -2725,6 +2725,7 @@ const App = {
           <li>${I18n.t('test.cursorDirectStep1')}</li>
           <li>${I18n.t('test.cursorDirectStep2')}</li>
           <li>${I18n.t('test.cursorDirectStep3')}</li>
+          <li>${I18n.t('test.cursorDirectStep4')}</li>
         </ol>
         <p class="test-muted">${I18n.t('test.cursorDirectNote')}</p>
       </div>

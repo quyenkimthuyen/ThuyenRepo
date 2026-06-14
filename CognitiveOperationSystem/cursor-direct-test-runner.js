@@ -112,6 +112,165 @@ const CursorDirectTestRunner = {
     return session;
   },
 
+  purgeCursorSessionArtifacts(sessionId) {
+    if (!sessionId || typeof DataStore.removeNodesBySession !== 'function') return;
+    DataStore.removeNodesBySession(sessionId);
+    if (typeof DataStore.removeTimelineForSession === 'function') {
+      DataStore.removeTimelineForSession(sessionId);
+    }
+  },
+
+  /**
+   * Mô phỏng App: sync node/timeline/insights sau mỗi tin user trong phiên cursor_direct
+   */
+  replayCursorLiveSync(session) {
+    if (!session || typeof CursorDirect.syncSessionData !== 'function') return session;
+
+    session.nodeIds = [];
+    let flowStep = 'Emotion';
+    let guideCount = 0;
+    const replayed = [];
+
+    for (const msg of session.messages || []) {
+      replayed.push(msg);
+      if (msg.role === 'user') {
+        const partial = {
+          ...session,
+          messages: [...replayed],
+          flowStep,
+          nodeIds: [...(session.nodeIds || [])],
+        };
+        CursorDirect.syncSessionData(partial, msg.content);
+        session.nodeIds = partial.nodeIds;
+      } else if (msg.role === 'guide') {
+        guideCount += 1;
+        // Opening guide (sau tin user đầu) không đổi flowStep — khớp startCursorReflection
+        if (guideCount > 1) {
+          flowStep = CursorDirect.inferFlowStep({ messages: replayed });
+        }
+      }
+    }
+
+    session.flowStep = flowStep;
+    DataStore.updateSession(session.id, { nodeIds: session.nodeIds, flowStep: session.flowStep });
+    return session;
+  },
+
+  getSessionNodes(session) {
+    const byIds = (session.nodeIds || [])
+      .map((id) => DataStore.getNodes().find((n) => n.id === id))
+      .filter(Boolean);
+    if (byIds.length > 0) return byIds;
+    return typeof DataStore.getNodesBySession === 'function'
+      ? DataStore.getNodesBySession(session.id)
+      : DataStore.getNodes().filter((n) => n.sourceSessionId === session.id);
+  },
+
+  assertDuringChatSync(scenario, session, failures, steps) {
+    const spec = scenario.expectDuringChat;
+    if (!spec) return;
+
+    const sessionNodes = this.getSessionNodes(session);
+    const nodeMinOk = !spec.sessionNodeMin || sessionNodes.length >= spec.sessionNodeMin;
+    steps.push({
+      id: 'during_chat_session_nodes',
+      ok: nodeMinOk,
+      detail: `${sessionNodes.length} node(s) gắn phiên`,
+    });
+    this.fail(failures, nodeMinOk, 'during_chat_session_nodes', `cần >= ${spec.sessionNodeMin}`);
+
+    for (const nodeSpec of spec.nodesPresent || []) {
+      const matched = this.findNodesMatching(sessionNodes, nodeSpec);
+      const ok = matched.length > 0;
+      steps.push({
+        id: `during_chat_present_${nodeSpec.type}_${nodeSpec.labelContains || nodeSpec.quoteContains || 'any'}`,
+        ok,
+        detail: ok ? matched[0].label : 'Không tìm thấy trong phiên',
+      });
+      this.fail(
+        failures,
+        ok,
+        'during_chat_nodes_present',
+        `${nodeSpec.type}: ${nodeSpec.labelContains || nodeSpec.quoteContains || '?'}`
+      );
+    }
+
+    const timeline = DataStore.getTimeline();
+    if (spec.timelineSessionStart) {
+      const hasStart = timeline.some(
+        (e) => e.type === 'session_start' && e.sessionId === session.id
+      );
+      steps.push({
+        id: 'during_chat_timeline_session_start',
+        ok: hasStart,
+        detail: hasStart ? 'Có session_start' : 'Thiếu session_start',
+      });
+      this.fail(failures, hasStart, 'during_chat_timeline_session_start');
+    }
+
+    if (spec.timelineMinCount) {
+      const tlOk = timeline.length >= spec.timelineMinCount;
+      steps.push({
+        id: 'during_chat_timeline_min',
+        ok: tlOk,
+        detail: `${timeline.length} sự kiện timeline`,
+      });
+      this.fail(failures, tlOk, 'during_chat_timeline_min', `cần >= ${spec.timelineMinCount}`);
+    }
+
+    const insights = DataStore.load().insights || {};
+    if (spec.insightsUpdated) {
+      const updatedOk = Boolean(insights.lastUpdated);
+      steps.push({
+        id: 'during_chat_insights_updated',
+        ok: updatedOk,
+        detail: updatedOk ? insights.lastUpdated : 'insights chưa cập nhật',
+      });
+      this.fail(failures, updatedOk, 'during_chat_insights_updated');
+    }
+
+    if (spec.todayDiscoveriesMin) {
+      const discoveries = InsightEngine.analyze().todayDiscoveries || [];
+      const discOk = discoveries.length >= spec.todayDiscoveriesMin;
+      steps.push({
+        id: 'during_chat_today_discoveries',
+        ok: discOk,
+        detail: `${discoveries.length} khám phá hôm nay`,
+      });
+      this.fail(
+        failures,
+        discOk,
+        'during_chat_today_discoveries',
+        `cần >= ${spec.todayDiscoveriesMin}`
+      );
+    }
+
+    if (spec.topEmotionsContains) {
+      const topEmotions = InsightEngine.analyze().topEmotions || [];
+      const emoOk = topEmotions.some((e) => this.containsText(e.label, spec.topEmotionsContains));
+      steps.push({
+        id: 'during_chat_top_emotions',
+        ok: emoOk,
+        detail: emoOk ? topEmotions[0]?.label : 'Không có emotion khớp',
+      });
+      this.fail(failures, emoOk, 'during_chat_top_emotions', spec.topEmotionsContains);
+    }
+  },
+
+  assertAfterFinishCleanup(oldSessionId, failures, steps) {
+    const orphanNodes =
+      typeof DataStore.getNodesBySession === 'function'
+        ? DataStore.getNodesBySession(oldSessionId)
+        : DataStore.getNodes().filter((n) => n.sourceSessionId === oldSessionId);
+    const ok = orphanNodes.length === 0;
+    steps.push({
+      id: 'finish_no_orphan_nodes',
+      ok,
+      detail: ok ? 'Không còn node phiên cursor cũ' : orphanNodes.map((n) => n.label).join(', '),
+    });
+    this.fail(failures, ok, 'finish_no_orphan_nodes');
+  },
+
   assertImportOutcome(scenario, importResult, failures, steps) {
     const nodes = DataStore.getNodes();
 
@@ -239,6 +398,11 @@ const CursorDirectTestRunner = {
     const mockSession = this.simulateCursorSession(scenario);
     DataStore.addSession(mockSession);
 
+    if (scenario.testLiveSync || scenario.expectDuringChat) {
+      this.replayCursorLiveSync(mockSession);
+      this.assertDuringChatSync(scenario, mockSession, failures, steps);
+    }
+
     const transcript = CursorDirect.buildTranscript(mockSession.messages);
     const transcriptOk = this.containsText(transcript, scenario.initialThought);
     steps.push({
@@ -272,9 +436,15 @@ const CursorDirectTestRunner = {
     });
     this.fail(failures, preview.ok, 'import_preview', preview.error);
 
-    DataStore.removeSession(mockSession.id);
+    const oldSessionId = mockSession.id;
+    this.purgeCursorSessionArtifacts(oldSessionId);
+    DataStore.removeSession(oldSessionId);
     const importResult = AiAssist.importSession(exportData, { transcript });
     this.assertImportOutcome(scenario, importResult, failures, steps);
+
+    if (scenario.expectAfterFinish?.noOrphanSessionNodes) {
+      this.assertAfterFinishCleanup(oldSessionId, failures, steps);
+    }
 
     const ok = failures.length === 0;
     return {

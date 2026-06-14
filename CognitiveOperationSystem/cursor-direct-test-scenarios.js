@@ -141,6 +141,61 @@ const CURSOR_DIRECT_TEST_SCENARIOS = [
     expectAbsent: [],
   },
   {
+    id: 'cursor-mock-live-sync-insights',
+    title: 'Mock — đồng bộ Khám phá/Timeline khi chat Cursor',
+    category: 'integration',
+    tags: ['mock', 'cursor', 'insights', 'timeline', 'live-sync'],
+    summary:
+      'Mô phỏng syncSessionData từng lượt user (như app) — node, timeline, insights cập nhật trước khi finish.',
+    locale: 'vi',
+    testLiveSync: true,
+    initialThought: 'Tôi căng thẳng vì deadline tuần này.',
+    openingReply: 'Nghe bạn nói về deadline — cảm xúc nào nổi bật nhất?',
+    userDialogue: [
+      { step: 'Emotion', content: 'lo lắng và mệt vì áp lực công việc' },
+      { step: 'Interpretation', content: 'tôi lo sẽ không kịp hoàn thành đúng hạn' },
+    ],
+    expectDuringChat: {
+      sessionNodeMin: 2,
+      nodesPresent: [
+        { type: 'Event', quoteContains: 'deadline' },
+        { type: 'Emotion', quoteContains: 'lo lắng' },
+      ],
+      timelineSessionStart: true,
+      timelineMinCount: 1,
+      insightsUpdated: true,
+      todayDiscoveriesMin: 1,
+      topEmotionsContains: 'lo',
+    },
+    expectAfterFinish: {
+      noOrphanSessionNodes: true,
+    },
+    cursorExport: {
+      initialThought: 'Tôi căng thẳng vì deadline tuần này.',
+      event: {
+        label: 'Áp lực deadline tuần này',
+        detail: 'Tôi căng thẳng vì deadline tuần này.',
+      },
+      emotions: [{ label: 'Lo lắng', quote: 'lo lắng và mệt vì áp lực công việc' }],
+      interpretation: {
+        label: 'Lo không kịp hạn',
+        detail: 'tôi lo sẽ không kịp hoàn thành đúng hạn',
+      },
+      beliefs: [],
+      values: [],
+      identity: [],
+      actions: [],
+      summary: 'Căng thẳng deadline, lo lắng và mệt.',
+      reframe: 'Deadline là áp lực thời gian, không nhất thiết đánh giá năng lực.',
+      smallStep: 'Chọn một việc ưu tiên nhất trong tuần.',
+    },
+    expectPresent: [
+      { type: 'Event', quoteContains: 'deadline' },
+      { type: 'Emotion', quoteContains: 'lo lắng' },
+    ],
+    expectAbsent: [],
+  },
+  {
     id: 'cursor-live-minimal-vi',
     title: 'Live — một lượt qua bridge thật',
     category: 'live',
