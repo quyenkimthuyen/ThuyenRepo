@@ -23,7 +23,21 @@
             <p class="subtitle">Ráp Vần & Phiên Âm Tiếng Anh</p>
           </div>
         </div>
-        <button id="theme-toggle" class="icon-btn" title="Chuyển chế độ Sáng/Tối" aria-label="Toggle dark mode">🌓</button>
+        <div class="header-actions" style="display: flex; gap: 8px; align-items: center;">
+          <div class="help-tooltip-container">
+            <button id="help-btn" class="icon-btn" title="Hướng dẫn sử dụng" aria-label="Show help">❓</button>
+            <div class="help-tooltip-content">
+              <h3>Hướng dẫn tương tác</h3>
+              <ul>
+                <li>Lăn chuột hoặc dùng hai ngón tay để <strong>Zoom</strong> sơ đồ.</li>
+                <li>Nhấn giữ và kéo chuột để <strong>Di chuyển (Pan)</strong> sơ đồ.</li>
+                <li>Nhấp nút tròn để <strong>Thu gọn / Mở rộng</strong> nhánh.</li>
+                <li>Nhấp chữ/âm để xem <strong>Quy tắc & Ví dụ cụ thể</strong>.</li>
+              </ul>
+            </div>
+          </div>
+          <button id="theme-toggle" class="icon-btn" title="Chuyển chế độ Sáng/Tối" aria-label="Toggle dark mode">🌓</button>
+        </div>
       </header>
 
       <section class="search-section">
@@ -51,27 +65,85 @@
         </button>
       </nav>
 
-      <!-- Panel Hướng Dẫn & Thống kê sơ bộ -->
-      <section class="info-card">
-        <h3>Hướng dẫn tương tác</h3>
-        <ul>
-          <li>Lăn chuột hoặc dùng hai ngón tay để <strong>Zoom</strong> phóng to/thu nhỏ sơ đồ.</li>
-          <li>Nhấn giữ và kéo chuột để <strong>Di chuyển (Pan)</strong> sơ đồ.</li>
-          <li>Nhấp vào các nút tròn để <strong>Thu gọn / Mở rộng</strong> nhánh.</li>
-          <li>Nhấp vào nút chữ/âm để xem <strong>Chi tiết quy tắc phát âm</strong>.</li>
-        </ul>
-        <div class="stats-row">
-          <div class="stat-item">
-            <span class="stat-num" id="stat-nodes">38</span>
-            <span class="stat-label">Ký tự/Tổ hợp</span>
+      <!-- Panel Quy tắc Chi tiết & Thống kê sơ bộ (Thay cho info-card) -->
+      <section class="sidebar-detail-panel" id="sidebar-detail-panel">
+        <div id="detail-placeholder" class="detail-placeholder">
+          <p class="placeholder-text">💡 Nhấp chọn chữ cái hoặc âm trên sơ đồ để xem quy tắc phát âm, từ ví dụ và thực hành giọng đọc.</p>
+          
+          <div class="stats-row">
+            <div class="stat-item">
+              <span class="stat-num" id="stat-nodes">38</span>
+              <span class="stat-label">Ký tự/Tổ hợp</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-num" id="stat-rules">56</span>
+              <span class="stat-label">Quy tắc đọc</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-num" id="stat-examples">150+</span>
+              <span class="stat-label">Từ ví dụ</span>
+            </div>
           </div>
-          <div class="stat-item">
-            <span class="stat-num" id="stat-rules">56</span>
-            <span class="stat-label">Quy tắc đọc</span>
+        </div>
+
+        <div id="details-drawer" class="drawer-content">
+          <button id="close-drawer" class="close-drawer-btn" aria-label="Đóng ngăn kéo">×</button>
+          
+          <header class="drawer-header">
+            <span class="drawer-badge" id="drawer-category">Nguyên âm đơn</span>
+            <h2 id="drawer-title">Ký tự A</h2>
+          </header>
+
+          <!-- Trạng thái mặc định khi chưa chọn node quy tắc cụ thể -->
+          <div id="drawer-intro" class="drawer-section">
+            <p>Nhấp vào một <strong>quy tắc phát âm (âm IPA)</strong> trên sơ đồ để xem hướng dẫn ráp vần cụ thể, nghe giọng đọc mẫu và thực hành nói.</p>
+            <div class="all-rules-list" id="drawer-all-rules-list">
+              <!-- Danh sách nhanh các quy tắc của ký tự hiện tại -->
+            </div>
           </div>
-          <div class="stat-item">
-            <span class="stat-num" id="stat-examples">150+</span>
-            <span class="stat-label">Từ ví dụ</span>
+
+          <!-- Trạng thái hiển thị chi tiết khi click vào quy tắc cụ thể -->
+          <div id="drawer-detail-view" class="drawer-section" hidden>
+            <div class="ipa-sound-card">
+              <span class="ipa-symbol" id="detail-ipa-symbol">/æ/</span>
+              <button id="speak-ipa-btn" class="speak-btn round-btn" title="Nghe âm này">🔊</button>
+              <p class="ipa-desc" id="detail-ipa-desc">Âm A bẹt</p>
+            </div>
+
+            <div class="rule-box">
+              <h4>Quy tắc ráp vần:</h4>
+              <p id="detail-rule-text">Được phát âm là /æ/ trong từ một âm tiết kết thúc bằng phụ âm (âm đóng).</p>
+            </div>
+
+            <div class="examples-section">
+              <h4>Từ vựng ví dụ:</h4>
+              <div class="examples-list" id="detail-examples-list">
+                <!-- Danh sách từ ví dụ dạng card -->
+              </div>
+            </div>
+
+            <div class="practice-box">
+              <h4>Luyện phát âm của bạn:</h4>
+              <p class="practice-instruction">Nhấp giữ nút "Ghi âm" dưới đây và đọc từ ví dụ được chọn.</p>
+              
+              <div class="record-selector">
+                <label for="practice-word-select">Chọn từ luyện tập:</label>
+                <select id="practice-word-select">
+                  <!-- Dropdown danh sách từ ví dụ -->
+                </select>
+              </div>
+
+              <div class="record-controls">
+                <button id="record-btn" class="record-btn">
+                  <span class="record-icon">🎤</span>
+                  <span id="record-btn-text">Giữ để nói</span>
+                </button>
+                <button id="play-recording-btn" class="record-play-btn" disabled>
+                  ▶ Nghe lại giọng bạn
+                </button>
+              </div>
+              <div class="audio-feedback" id="audio-feedback-msg"></div>
+            </div>
           </div>
         </div>
       </section>
@@ -146,71 +218,7 @@
       </div>
     </main>
 
-    <!-- Ngăn kéo chi tiết (Details Drawer) - trượt từ phải sang -->
-    <section class="details-drawer" id="details-drawer" aria-labelledby="drawer-title" aria-hidden="true">
-      <button id="close-drawer" class="close-drawer-btn" aria-label="Đóng ngăn kéo">×</button>
-      <div class="drawer-content">
-        <header class="drawer-header">
-          <span class="drawer-badge" id="drawer-category">Nguyên âm đơn</span>
-          <h2 id="drawer-title">Ký tự A</h2>
-        </header>
 
-        <!-- Trạng thái mặc định khi chưa chọn node quy tắc cụ thể -->
-        <div id="drawer-intro" class="drawer-section">
-          <p>Nhấp vào một <strong>quy tắc phát âm (âm IPA)</strong> trên sơ đồ để xem hướng dẫn ráp vần cụ thể, nghe giọng đọc mẫu và thực hành nói.</p>
-          <div class="all-rules-list" id="drawer-all-rules-list">
-            <!-- Danh sách nhanh các quy tắc của ký tự hiện tại -->
-          </div>
-        </div>
-
-        <!-- Trạng thái hiển thị chi tiết khi click vào quy tắc cụ thể -->
-        <div id="drawer-detail-view" class="drawer-section" hidden>
-          <div class="ipa-sound-card">
-            <span class="ipa-symbol" id="detail-ipa-symbol">/æ/</span>
-            <button id="speak-ipa-btn" class="speak-btn round-btn" title="Nghe âm này">🔊</button>
-            <p class="ipa-desc" id="detail-ipa-desc">Âm A bẹt</p>
-          </div>
-
-          <div class="rule-box">
-            <h4>Quy tắc ráp vần:</h4>
-            <p id="detail-rule-text">Được phát âm là /æ/ trong từ một âm tiết kết thúc bằng phụ âm (âm đóng).</p>
-          </div>
-
-          <div class="examples-section">
-            <h4>Từ vựng ví dụ:</h4>
-            <div class="examples-list" id="detail-examples-list">
-              <!-- Danh sách từ ví dụ dạng card -->
-            </div>
-          </div>
-
-          <div class="practice-box">
-            <h4>Luyện phát âm của bạn:</h4>
-            <p class="practice-instruction">Nhấp giữ nút "Ghi âm" dưới đây và đọc từ ví dụ được chọn.</p>
-            
-            <div class="record-selector">
-              <label for="practice-word-select">Chọn từ luyện tập:</label>
-              <select id="practice-word-select">
-                <!-- Dropdown danh sách từ ví dụ -->
-              </select>
-            </div>
-
-            <div class="record-controls">
-              <button id="record-btn" class="record-btn">
-                <span class="record-icon">🎤</span>
-                <span id="record-btn-text">Giữ để nói</span>
-              </button>
-              <button id="play-recording-btn" class="record-play-btn" disabled>
-                ▶ Nghe lại giọng bạn
-              </button>
-            </div>
-            <div class="audio-feedback" id="audio-feedback-msg"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Phông mờ nền (Overlay) khi mở Drawer trên mobile -->
-    <div class="drawer-backdrop" id="drawer-backdrop"></div>
   </div>
 
   <script src="script.js"></script>

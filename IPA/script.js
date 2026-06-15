@@ -352,6 +352,21 @@ const ipaData = {
                 { word: "verb", ipa: "vɜːb", meaning: "động từ" },
                 { word: "fern", ipa: "fɜːn", meaning: "cây dương xỉ" }
               ]
+            },
+            {
+              id: "r-e-5",
+              label: "/ə/",
+              type: "rule",
+              ipa: "/ə/",
+              desc: "Âm Ơ ngắn",
+              rule: "Phát âm là /ə/ trong vần không nhấn mạnh của 1 chữ.",
+              examples: [
+                { word: "open", ipa: "ˈəʊ.pən", meaning: "mở" },
+                { word: "silent", ipa: "ˈsaɪ.lənt", meaning: "im lặng" },
+                { word: "parent", ipa: "ˈpeə.rənt", meaning: "cha mẹ" },
+                { word: "problem", ipa: "ˈprɒb.ləm", meaning: "vấn đề" },
+                { word: "student", ipa: "ˈstjuː.dənt", meaning: "học sinh" }
+              ]
             }
           ]
         },
@@ -534,7 +549,7 @@ const ipaData = {
               type: "rule",
               ipa: "/ʌ/",
               desc: "Âm Á ngắn",
-              rule: "Một số từ thông dụng phát âm O thành /ʌ/ thay vì O ngắn.",
+              rule: "o phát âm /ʌ/ trong những chữ 1 vần, và vần được nhấn mạnh trong những chữ có nhiều vần",
               examples: [
                 { word: "son", ipa: "sʌn", meaning: "con trai" },
                 { word: "come", ipa: "kʌm", meaning: "đến" },
@@ -589,6 +604,21 @@ const ipaData = {
                 { word: "short", ipa: "ʃɔːt", meaning: "ngắn" },
                 { word: "port", ipa: "pɔːt", meaning: "cảng biển" }
               ]
+            },
+            {
+              id: "r-o-7",
+              label: "/ə/",
+              type: "rule",
+              ipa: "/ə/",
+              desc: "Âm Ơ ngắn",
+              rule: "Phát âm là /ə/ trong vần không được nhấn mạnh của một chữ có nhiều vần.",
+              examples: [
+                { word: "today", ipa: "təˈdeɪ", meaning: "hôm nay" },
+                { word: "police", ipa: "pəˈliːs", meaning: "cảnh sát" },
+                { word: "computer", ipa: "kəmˈpjuː.tə(r)", meaning: "máy vi tính" },
+                { word: "lemon", ipa: "ˈlem.ən", meaning: "quả chanh vàng" },
+                { word: "freedom", ipa: "ˈfriː.dəm", meaning: "sự tự do" }
+              ]
             }
           ]
         },
@@ -599,19 +629,44 @@ const ipaData = {
           category: "vowel-single",
           children: [
             {
-              id: "r-u-1",
+              id: "p-u-ʌ",
               label: "/ʌ/",
-              type: "rule",
+              type: "pronunciation",
               ipa: "/ʌ/",
-              desc: "Âm Á ngắn",
-              rule: "Phát âm là /ʌ/ trong âm tiết khép kín kết thúc bằng phụ âm.",
-              examples: [
-                { word: "cup", ipa: "kʌp", meaning: "cái tách/chén" },
-                { word: "cut", ipa: "kʌt", meaning: "cắt" },
-                { word: "sun", ipa: "sʌn", meaning: "mặt trời" },
-                { word: "run", ipa: "rʌn", meaning: "chạy" },
-                { word: "bus", ipa: "bʌs", meaning: "xe buýt" },
-                { word: "duck", ipa: "dʌk", meaning: "con vịt" }
+              desc: "Âm Á ngắn — 2 cách nhận diện",
+              rule: "Chữ U phát âm là /ʌ/ trong âm tiết khép kín hoặc trong các tiếp đầu ngữ un-, um-.",
+              examples: [],
+              children: [
+                {
+                  id: "r-u-1a",
+                  label: "Âm tiết khép",
+                  type: "pattern",
+                  ipa: "/ʌ/",
+                  desc: "Trong âm tiết khép kín",
+                  rule: "Phát âm là /ʌ/ trong âm tiết khép kín kết thúc bằng phụ âm.",
+                  examples: [
+                    { word: "cup", ipa: "kʌp", meaning: "cái tách/chén" },
+                    { word: "cut", ipa: "kʌt", meaning: "cắt" },
+                    { word: "sun", ipa: "sʌn", meaning: "mặt trời" },
+                    { word: "run", ipa: "rʌn", meaning: "chạy" },
+                    { word: "bus", ipa: "bʌs", meaning: "xe buýt" },
+                    { word: "duck", ipa: "dʌk", meaning: "con vịt" }
+                  ]
+                },
+                {
+                  id: "r-u-1b",
+                  label: "Tiếp đầu ngữ un-, um-",
+                  type: "pattern",
+                  ipa: "/ʌ/",
+                  desc: "Trong tiếp đầu ngữ un-, um-",
+                  rule: "Phát âm là /ʌ/ trong những tiếp đầu ngữ un-, um-.",
+                  examples: [
+                    { word: "unhappy", ipa: "ʌnˈhæpi", meaning: "không hạnh phúc" },
+                    { word: "unusual", ipa: "ʌnˈjuːʒuəl", meaning: "bất thường" },
+                    { word: "umbrella", ipa: "ʌmˈbrelə", meaning: "cái ô/dù" },
+                    { word: "umpire", ipa: "ˈʌmpaɪə(r)", meaning: "trọng tài" }
+                  ]
+                }
               ]
             },
             {
@@ -687,20 +742,57 @@ const ipaData = {
           category: "vowel-single",
           children: [
             {
-              id: "r-y-1",
+              id: "p-y-ai",
               label: "/aɪ/",
-              type: "rule",
+              type: "pronunciation",
               ipa: "/aɪ/",
-              desc: "Âm đôi A-I",
-              rule: "Phát âm là /aɪ/ khi đứng cuối từ một âm tiết (thay thế cho nguyên âm i).",
-              examples: [
-                { word: "my", ipa: "maɪ", meaning: "của tôi" },
-                { word: "fly", ipa: "flaɪ", meaning: "bay/con ruồi" },
-                { word: "cry", ipa: "kraɪ", meaning: "khóc" },
-                { word: "by", ipa: "baɪ", meaning: "bởi/cạnh bên" },
-                { word: "sky", ipa: "skaɪ", meaning: "bầu trời" },
-                { word: "why", ipa: "waɪ", meaning: "tại sao" },
-                { word: "try", ipa: "traɪ", meaning: "thử/cố gắng" }
+              desc: "Âm đôi A-I — 3 cách nhận diện",
+              rule: "Chữ Y phát âm /aɪ/ khi đứng cuối từ 1 âm tiết, cấu trúc y_e hoặc vần được nhấn mạnh, hoặc trong hậu tố -ify.",
+              examples: [],
+              children: [
+                {
+                  id: "r-y-1a",
+                  label: "Cuối từ 1 âm tiết",
+                  type: "pattern",
+                  ipa: "/aɪ/",
+                  desc: "Đứng cuối từ một âm tiết",
+                  rule: "Phát âm là /aɪ/ khi đứng cuối từ một âm tiết (thay thế cho nguyên âm i).",
+                  examples: [
+                    { word: "my", ipa: "maɪ", meaning: "của tôi" },
+                    { word: "fly", ipa: "flaɪ", meaning: "bay/con ruồi" },
+                    { word: "cry", ipa: "kraɪ", meaning: "khóc" },
+                    { word: "by", ipa: "baɪ", meaning: "bởi/cạnh bên" },
+                    { word: "sky", ipa: "skaɪ", meaning: "bầu trời" },
+                    { word: "why", ipa: "waɪ", meaning: "tại sao" },
+                    { word: "try", ipa: "traɪ", meaning: "thử/cố gắng" }
+                  ]
+                },
+                {
+                  id: "r-y-1b",
+                  label: "y_e hoặc vần nhấn mạnh",
+                  type: "pattern",
+                  ipa: "/aɪ/",
+                  desc: "Cấu trúc Y + phụ âm + E hoặc vần được nhấn mạnh",
+                  rule: "Trong những chữ có 1 vần, Y + Phụ âm + E (Y dài) style, byte hay trong vần được nhấn mạnh psychology (tâm lý học) /saɪˈkɒl.ə.dʒi/.",
+                  examples: [
+                    { word: "style", ipa: "staɪl", meaning: "phong cách" },
+                    { word: "byte", ipa: "baɪt", meaning: "đơn vị dữ liệu byte" },
+                    { word: "psychology", ipa: "saɪˈkɒl.ə.dʒi", meaning: "tâm lý học" },
+                    { word: "type", ipa: "taɪp", meaning: "loại/kiểu" }
+                  ]
+                },
+                {
+                  id: "r-y-1c",
+                  label: "Hậu tố -ify",
+                  type: "pattern",
+                  ipa: "/aɪ/",
+                  desc: "Trong hậu tố -ify",
+                  rule: "Phát âm là /aɪ/ trong hậu tố '-ify'.",
+                  examples: [
+                    { word: "modify", ipa: "ˈmɒd.ɪ.faɪ", meaning: "sửa đổi" },
+                    { word: "beautify", ipa: "ˈbjuː.tɪ.faɪ", meaning: "làm đẹp" }
+                  ]
+                }
               ]
             },
             {
@@ -2249,6 +2341,31 @@ class SVGMindmap {
     this.nodeMap.clear();
 
     const traverse = (node, parentNode = null, level = 0) => {
+      // Xác định các con thực tế từ ipaData và thêm ví dụ dưới dạng nút con ảo
+      let originalChildren = node.children || [];
+      let virtualChildren = [];
+
+      const hasExamples = node.examples && node.examples.length > 0;
+      const isLeaf = originalChildren.length === 0;
+
+      if (isLeaf && hasExamples) {
+        // Lấy tối đa 2 ví dụ đầu tiên để làm nút con
+        const maxExamples = node.examples.slice(0, 2);
+        virtualChildren = maxExamples.map((ex, index) => {
+          return {
+            id: `ex-${node.id}-${index}`,
+            label: `${ex.word} (${ex.meaning})`,
+            type: "example",
+            word: ex.word,
+            ipa: ex.ipa,
+            meaning: ex.meaning,
+            children: []
+          };
+        });
+      }
+
+      const allChildren = [...originalChildren, ...virtualChildren];
+
       // Thiết lập các thuộc tính vẽ cơ bản cho từng nút
       const flatNode = {
         id: node.id,
@@ -2258,12 +2375,14 @@ class SVGMindmap {
         parent: parentNode ? parentNode.id : null,
         level: level,
         color: node.color || (parentNode ? parentNode.color : "var(--primary)"),
-        childrenIds: node.children ? node.children.map(c => c.id) : [],
-        collapsed: node.collapsed !== undefined ? node.collapsed : (level >= 2), // Mặc định thu gọn các âm nhỏ level 3
+        childrenIds: allChildren.map(c => c.id),
+        collapsed: node.collapsed !== undefined ? node.collapsed : (level >= 2), // Mặc định thu gọn từ level 2 trở đi
         ipa: node.ipa || "",
         desc: node.desc || "",
         rule: node.rule || "",
         examples: node.examples || [],
+        word: node.word || "",
+        meaning: node.meaning || "",
         x: 0,
         y: 0
       };
@@ -2271,11 +2390,9 @@ class SVGMindmap {
       this.nodes.push(flatNode);
       this.nodeMap.set(node.id, flatNode);
 
-      if (node.children) {
-        node.children.forEach(child => {
-          traverse(child, flatNode, level + 1);
-        });
-      }
+      allChildren.forEach(child => {
+        traverse(child, flatNode, level + 1);
+      });
     };
 
     traverse(this.rawTreeData);
@@ -2324,6 +2441,7 @@ class SVGMindmap {
         return 0;
       }
       if (node.collapsed || node.childrenIds.length === 0) {
+        if (node.type === "example") return 26; // Chiều cao example leaf node
         if (node.level === 4) return 30; // Chiều cao pattern leaf node
         if (node.level === 3) return 34; // Chiều cao rule / pronunciation leaf
         if (node.level === 2) return 48; // Chiều cao letter node
@@ -2338,7 +2456,12 @@ class SVGMindmap {
           visibleCount++;
         }
       });
-      const gap = node.level === 3 ? 8 : (node.level === 2 ? 12 : (node.level === 1 ? 22 : 32));
+      let gap = 32;
+      if (node.level >= 4) gap = 6;
+      else if (node.level === 3) gap = 8;
+      else if (node.level === 2) gap = 12;
+      else if (node.level === 1) gap = 22;
+      
       const totalHeight = childrenHeight + (visibleCount - 1) * gap;
       return totalHeight;
     };
@@ -2358,7 +2481,11 @@ class SVGMindmap {
 
       // Đo đạc và đặt vị trí các con
       const childrenHeights = visibleChildren.map(child => measureNode(child));
-      const gap = node.level === 3 ? 8 : (node.level === 2 ? 12 : (node.level === 1 ? 22 : 32));
+      let gap = 32;
+      if (node.level >= 4) gap = 6;
+      else if (node.level === 3) gap = 8;
+      else if (node.level === 2) gap = 12;
+      else if (node.level === 1) gap = 22;
       
       const totalHeight = childrenHeights.reduce((sum, h) => sum + h, 0) + (visibleChildren.length - 1) * gap;
       let yStart = yCenter - totalHeight / 2;
@@ -2372,6 +2499,7 @@ class SVGMindmap {
         if (node.level === 1) childHGap = this.hGap * 1.25;
         else if (node.level === 2) childHGap = this.hGap * 1.35;
         else if (node.level === 3) childHGap = this.hGap * 0.85; // Pattern nodes gần hơn
+        else if (node.level >= 4) childHGap = this.hGap * 0.80; // Example nodes gần hơn
 
         const nextX = x + directionX * childHGap;
         positionSubtree(child, nextX, childYCenter, directionX);
@@ -2459,7 +2587,8 @@ class SVGMindmap {
 
       // Bán kính thay đổi dựa trên cấp độ của nút
       let radius = 6;  // default: pattern (level 4)
-      if (node.level === 0) radius = 16;
+      if (node.type === "example") radius = 4.5;
+      else if (node.level === 0) radius = 16;
       else if (node.level === 1) radius = 11;
       else if (node.level === 2) radius = 9;
       else if (node.level === 3) radius = 7; // pronunciation / rule
@@ -2538,7 +2667,17 @@ class SVGMindmap {
     }
 
     // 3. Mở ngăn kéo chi tiết (Details Drawer)
-    openDetailsDrawer(node);
+    if (node.type === "example") {
+      if (typeof speakText === "function") {
+        speakText(node.word);
+      }
+      const parentNode = this.nodeMap.get(node.parent);
+      if (parentNode) {
+        openDetailsDrawer(parentNode);
+      }
+    } else {
+      openDetailsDrawer(node);
+    }
   }
 
   highlightPathToRoot(nodeId) {
@@ -2820,8 +2959,11 @@ const detailExamplesList = document.getElementById("detail-examples-list");
 const practiceWordSelect = document.getElementById("practice-word-select");
 
 function openDetailsDrawer(node) {
+  const placeholder = document.getElementById("detail-placeholder");
+  if (placeholder) placeholder.hidden = true;
+
   drawer.classList.add("open");
-  drawerBackdrop.classList.add("active");
+  if (drawerBackdrop) drawerBackdrop.classList.add("active");
   drawer.setAttribute("aria-hidden", "false");
 
   // Thiết lập badge danh mục
@@ -2982,13 +3124,17 @@ function showRuleDetail(ruleNode) {
 }
 
 function closeDrawer() {
+  const placeholder = document.getElementById("detail-placeholder");
+  if (placeholder) placeholder.hidden = false;
+
   drawer.classList.remove("open");
-  drawerBackdrop.classList.remove("active");
+  if (drawerBackdrop) drawerBackdrop.classList.remove("active");
   drawer.setAttribute("aria-hidden", "true");
 }
 
-document.getElementById("close-drawer").addEventListener("click", closeDrawer);
-drawerBackdrop.addEventListener("click", closeDrawer);
+const closeDrawerBtn = document.getElementById("close-drawer");
+if (closeDrawerBtn) closeDrawerBtn.addEventListener("click", closeDrawer);
+if (drawerBackdrop) drawerBackdrop.addEventListener("click", closeDrawer);
 
 
 // --- 4. TRÌNH PHÁT ÂM VÀ THU ÂM SO SÁNH (SPEECH ENGINE) ---
@@ -3134,12 +3280,16 @@ let quizScore = 0;
 
 function generateQuiz() {
   // Tạo danh sách câu hỏi ngẫu nhiên từ kho từ ví dụ
-  const allLeafNodes = mapInstance.nodes.filter(n => n.level === 3 && n.ipa);
+  const allLeafNodes = mapInstance.nodes.filter(n => (n.level === 3 || n.level === 4) && n.ipa && n.examples && n.examples.length > 0);
   const quizPool = [];
 
   allLeafNodes.forEach(ruleNode => {
-    const parentNode = mapInstance.nodeMap.get(ruleNode.parent);
-    if (!parentNode) return;
+    let letterNode = ruleNode;
+    while (letterNode && letterNode.level > 2) {
+      letterNode = mapInstance.nodeMap.get(letterNode.parent);
+    }
+    const letterPattern = letterNode ? letterNode.label : "";
+    if (!letterPattern) return;
 
     ruleNode.examples.forEach(ex => {
       // Xác định ký tự gạch chân
@@ -3202,7 +3352,7 @@ function showQuestion() {
   document.getElementById("quiz-listen-btn").onclick = () => speakText(question.word);
 
   // Tạo 4 phương án đáp án (1 đúng, 3 sai ngẫu nhiên)
-  const allIpaList = [...new Set(mapInstance.nodes.filter(n => n.level === 3 && n.ipa).map(n => n.ipa))];
+  const allIpaList = [...new Set(mapInstance.nodes.filter(n => (n.level === 3 || n.level === 4) && n.ipa).map(n => n.ipa))];
   const incorrectOptions = allIpaList.filter(ipa => ipa !== question.correctIpa);
   shuffleArray(incorrectOptions);
 
