@@ -23,20 +23,43 @@ const ipaData = {
           category: "vowel-single",
           children: [
             {
-              id: "r-a-1",
+              id: "p-a-ae",
               label: "/æ/",
-              type: "rule",
+              type: "pronunciation",
               ipa: "/æ/",
               desc: "Âm A bẹt (ngắn, miệng mở rộng sang 2 bên)",
-              rule: "Phát âm là /æ/ trong từ một âm tiết kết thúc bằng một hoặc nhiều phụ âm (âm tiết khép kín).",
-              examples: [
-                { word: "cat", ipa: "kæt", meaning: "con mèo" },
-                { word: "map", ipa: "mæp", meaning: "bản đồ" },
-                { word: "hand", ipa: "hænd", meaning: "bàn tay" },
-                { word: "flag", ipa: "flæg", meaning: "lá cờ" },
-                { word: "bag", ipa: "bæg", meaning: "cái túi" },
-                { word: "back", ipa: "bæk", meaning: "phía sau" },
-                { word: "dad", ipa: "dæd", meaning: "bố/cha" }
+              rule: "Phát âm là /æ/ trong từ một âm tiết kết thúc bằng một hoặc nhiều phụ âm.",
+              examples: [],
+              children: [
+                {
+                  id: "r-a-1-reg",
+                  label: "Âm tiết khép",
+                  type: "pattern",
+                  ipa: "/æ/",
+                  desc: "Kết thúc bằng phụ âm",
+                  rule: "Phát âm là /æ/ trong từ một âm tiết kết thúc bằng một hoặc nhiều phụ âm (âm tiết khép kín).",
+                  examples: [
+                    { word: "cat", ipa: "kæt", meaning: "con mèo" },
+                    { word: "map", ipa: "mæp", meaning: "bản đồ" },
+                    { word: "hand", ipa: "hænd", meaning: "bàn tay" },
+                    { word: "flag", ipa: "flæg", meaning: "lá cờ" },
+                    { word: "bag", ipa: "bæg", meaning: "cái túi" },
+                    { word: "back", ipa: "bæk", meaning: "phía sau" },
+                    { word: "dad", ipa: "dæd", meaning: "bố/cha" }
+                  ]
+                },
+                {
+                  id: "r-a-1-exc",
+                  label: "Ngoại lệ",
+                  type: "exception",
+                  ipa: "Khác",
+                  desc: "Các trường hợp ngoại lệ",
+                  rule: "Khi đi sau chữ w, âm a thường bị đổi giọng và đọc thành âm khác.",
+                  examples: [
+                    { word: "want", ipa: "wɒnt", meaning: "muốn (đọc là /ɒ/ hoặc /ɔː/)" },
+                    { word: "wash", ipa: "wɒʃ", meaning: "rửa, giặt (đọc là /ɒ/ hoặc /ɔː/)" }
+                  ]
+                }
               ]
             },
             {
@@ -82,19 +105,54 @@ const ipaData = {
               ]
             },
             {
-              id: "r-a-3",
+              id: "p-a-aa",
               label: "/ɑː/",
-              type: "rule",
+              type: "pronunciation",
               ipa: "/ɑː/",
               desc: "Âm A dài (mở rộng miệng, hơi phát ra từ cổ họng)",
-              rule: "Phát âm là /ɑː/ khi đi trước âm 'r' (tổ hợp ar), hoặc trong một số từ đặc biệt như father.",
-              examples: [
-                { word: "car", ipa: "kɑː(r)", meaning: "xe hơi" },
-                { word: "park", ipa: "pɑːk", meaning: "công viên" },
-                { word: "star", ipa: "stɑː(r)", meaning: "ngôi sao" },
-                { word: "father", ipa: "ˈfɑːðə(r)", meaning: "cha/bố" },
-                { word: "dark", ipa: "dɑːk", meaning: "tối tăm" },
-                { word: "bark", ipa: "bɑːk", meaning: "sủa/vỏ cây" }
+              rule: "Chữ A phát âm /ɑː/ khi đi trước 'r' hoặc 'r + phụ âm'. Có một số ngoại lệ.",
+              examples: [],
+              children: [
+                {
+                  id: "r-a-3-ar",
+                  label: "ar",
+                  type: "pattern",
+                  ipa: "/ɑː/",
+                  desc: "A đứng trước 'r' hoặc 'r + phụ âm'",
+                  rule: "Phát âm là /ɑː/ khi đi trước âm 'r' (tổ hợp ar) hoặc 'r + phụ âm'.",
+                  examples: [
+                    { word: "car", ipa: "kɑː(r)", meaning: "xe hơi" },
+                    { word: "park", ipa: "pɑːk", meaning: "công viên" },
+                    { word: "star", ipa: "stɑː(r)", meaning: "ngôi sao" },
+                    { word: "dark", ipa: "dɑːk", meaning: "tối tăm" },
+                    { word: "bark", ipa: "bɑːk", meaning: "sủa/vỏ cây" }
+                  ]
+                },
+                {
+                  id: "r-a-3-father",
+                  label: "Từ đặc biệt",
+                  type: "pattern",
+                  ipa: "/ɑː/",
+                  desc: "Một số từ đặc biệt",
+                  rule: "Một số từ không có 'r' nhưng chữ 'a' vẫn được phát âm là /ɑː/.",
+                  examples: [
+                    { word: "father", ipa: "ˈfɑːðə(r)", meaning: "cha/bố" },
+                    { word: "tomato", ipa: "təˈmɑːtəʊ", meaning: "cà chua (Anh-Anh)" }
+                  ]
+                },
+                {
+                  id: "r-a-3-exc",
+                  label: "Ngoại lệ",
+                  type: "exception",
+                  ipa: "Khác",
+                  desc: "Ngoại lệ của quy tắc",
+                  rule: "Một số từ có 'ar' hoặc tương tự nhưng không đọc là /ɑː/, hoặc ngược lại.",
+                  examples: [
+                    { word: "half", ipa: "hɑːf", meaning: "một nửa (không r nhưng đọc /ɑː/)" },
+                    { word: "quart", ipa: "kwɔːt", meaning: "một phần tư (có r nhưng đọc /ɔː/)" },
+                    { word: "warm", ipa: "wɔːm", meaning: "ấm áp (có r nhưng đọc /ɔː/)" }
+                  ]
+                }
               ]
             },
             {
@@ -102,38 +160,61 @@ const ipaData = {
               label: "/ɔː/",
               type: "pronunciation",
               ipa: "/ɔː/",
-              desc: "Âm O dài tròn môi — 2 cách nhận diện",
-              rule: "Chữ A phát âm /ɔː/ trong 2 trường hợp: đứng trước -ll/-lk hoặc đứng sau chữ W.",
+              desc: "Âm O dài tròn môi — nhiều cách nhận diện",
+              rule: "Chữ A phát âm /ɔː/ khi đi với L, W, U hoặc đi sau W.",
               examples: [],
               children: [
                 {
-                  id: "r-a-4",
-                  label: "-ll / -lk",
+                  id: "r-a-4-l",
+                  label: "al / alk",
                   type: "pattern",
                   ipa: "/ɔː/",
-                  desc: "A trước cụm -ll hoặc -lk",
-                  rule: "Phát âm là /ɔː/ khi chữ A đứng trước cụm phụ âm -ll hoặc -lk.",
+                  desc: "Đi với L (AL)",
+                  rule: "Phát âm là /ɔː/ khi chữ A đi với L như all, alk, alt.",
                   examples: [
-                    { word: "tall", ipa: "tɔːl", meaning: "cao" },
-                    { word: "call", ipa: "kɔːl", meaning: "gọi điện" },
-                    { word: "walk", ipa: "wɔːk", meaning: "đi bộ" },
+                    { word: "all", ipa: "ɔːl", meaning: "tất cả" },
+                    { word: "ball", ipa: "bɔːl", meaning: "quả bóng" },
                     { word: "talk", ipa: "tɔːk", meaning: "nói chuyện" },
-                    { word: "wall", ipa: "wɔːl", meaning: "bức tường" }
+                    { word: "walk", ipa: "wɔːk", meaning: "đi bộ" }
                   ]
                 },
                 {
-                  id: "r-a-4b",
+                  id: "r-a-4-uw",
+                  label: "au / aw",
+                  type: "pattern",
+                  ipa: "/ɔː/",
+                  desc: "Đi với U/W (AU/AW)",
+                  rule: "Phát âm là /ɔː/ khi chữ A đi với U hoặc W.",
+                  examples: [
+                    { word: "autumn", ipa: "ˈɔːtəm", meaning: "mùa thu" },
+                    { word: "law", ipa: "lɔː", meaning: "luật pháp" },
+                    { word: "draw", ipa: "drɔː", meaning: "vẽ" },
+                    { word: "caught", ipa: "kɔːt", meaning: "bắt (quá khứ của catch)" }
+                  ]
+                },
+                {
+                  id: "r-a-4-wa",
                   label: "wa-",
                   type: "pattern",
                   ipa: "/ɔː/",
-                  desc: "A sau chữ W (cấu trúc wa-)",
-                  rule: "Phát âm là /ɔː/ khi chữ A đứng ngay sau chữ W, tạo cấu trúc wa-.",
+                  desc: "Đi sau W",
+                  rule: "Phát âm là /ɔː/ khi chữ A đi ngay sau chữ W.",
                   examples: [
                     { word: "water", ipa: "ˈwɔːtə(r)", meaning: "nước" },
-                    { word: "want", ipa: "wɔːnt", meaning: "muốn" },
-                    { word: "war", ipa: "wɔː(r)", meaning: "chiến tranh" },
-                    { word: "warm", ipa: "wɔːm", meaning: "ấm áp" },
-                    { word: "ward", ipa: "wɔːd", meaning: "khu bệnh viện/giám hộ" }
+                    { word: "war", ipa: "wɔː(r)", meaning: "chiến tranh" }
+                  ]
+                },
+                {
+                  id: "r-a-4-exc",
+                  label: "Ngoại lệ",
+                  type: "exception",
+                  ipa: "/æ/ hoặc /ɑː/",
+                  desc: "Ngoại lệ của quy tắc",
+                  rule: "Đọc là /æ/ hoặc /ɑː/ thay vì /ɔː/ theo các quy tắc trên.",
+                  examples: [
+                    { word: "shall", ipa: "ʃæl", meaning: "sẽ (đọc là /æ/)" },
+                    { word: "laugh", ipa: "lɑːf", meaning: "cười (đọc là /ɑː/ hoặc /æ/)" },
+                    { word: "aunt", ipa: "ɑːnt", meaning: "dì/cô (đọc là /ɑː/ hoặc /æ/)" }
                   ]
                 }
               ]
