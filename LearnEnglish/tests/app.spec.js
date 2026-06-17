@@ -86,4 +86,54 @@ test.describe('Toeic Vocab App UI', () => {
     const header = await page.locator('#headerStats').textContent();
     expect(header).toMatch(/^0 \//); // matches "0 / <total> known"
   });
+
+  test('Quiz results display hint and lightbulb counts', async ({ page }) => {
+    // Navigate to quiz and set question limit to 1
+    await page.click('.nav-button[data-page="stats"]');
+    const limitInput = page.locator('#quizQuestionLimitInput');
+    await limitInput.fill('1');
+    await limitInput.press('Enter');
+
+    // Go to quiz page and start typing quiz
+    await page.click('.nav-button[data-page="quiz"]');
+    await page.click('.tab[data-mode="typing"]');
+    await page.click('#startQuiz');
+
+    // Wait for the typing answer input
+    await page.waitForSelector('#typingAnswer', { timeout: 60000 });
+
+    // Click Hint twice
+    await page.click('#quizHint');
+    await page.click('#quizHint');
+
+    // Click Lightbulb once
+    await page.click('#quizAnswerPeek');
+
+    // Get the correct answer from state
+    const correctWord = await page.evaluate(() => window.state.currentQuestion.answer);
+
+    // Fill in correct answer to automatically submit/advance
+    const answerInput = page.locator('#typingAnswer');
+    await answerInput.fill(correctWord);
+
+    // Wait for the result summary to be visible
+    await page.waitForSelector('.stats-grid', { timeout: 10000 });
+
+    // Verify overall hint/bulb counts in the stats grid
+    const hintStat = page.locator('.stat:has-text("Hint") strong');
+    const bulbStat = page.locator('.stat:has-text("Lightbulb") strong');
+    await expect(hintStat).toHaveText('2');
+    await expect(bulbStat).toHaveText('1');
+
+    // Verify per-question hint/bulb counts in the details list
+    const detailRow = page.locator('.row:has-text("Question 1")');
+    await expect(detailRow.locator('span[title="Hints"]')).toHaveText('2');
+    await expect(detailRow.locator('span[title="Lightbulbs"]')).toHaveText('1');
+
+    // Go to Stats page and check Recent Quizzes list item
+    await page.click('.nav-button[data-page="stats"]');
+    const recentQuizItem = page.locator('.panel:has-text("Recent Quizzes") div').first();
+    await expect(recentQuizItem.locator('span[title="Hints"]')).toHaveText('2');
+    await expect(recentQuizItem.locator('span[title="Lightbulbs"]')).toHaveText('1');
+  });
 });

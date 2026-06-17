@@ -213,6 +213,8 @@
         quizAnswerPeekCooldownUntil: 0,
         quizAnswerPeekVisibleUntil: 0,
         quizAnswerPeekCount: 0,
+        currentQuestionHintPressCount: 0,
+        currentQuestionAnswerPeekCount: 0,
         autoLearn: {
           isPlaying: false,
           wordIds: [],
@@ -385,6 +387,8 @@
         state.quizAnswerPeekCooldownUntil = 0;
         state.quizAnswerPeekVisibleUntil = 0;
         state.quizAnswerPeekCount = 0;
+        state.currentQuestionHintPressCount = 0;
+        state.currentQuestionAnswerPeekCount = 0;
         clearQuizAnswerPeekTimers();
       }
 
@@ -951,6 +955,7 @@
         state.quizAnswerPeekCooldownUntil = now + 5000;
         state.quizAnswerPeekVisibleUntil = now + 3000;
         state.quizAnswerPeekCount = (state.quizAnswerPeekCount || 0) + 1;
+        state.currentQuestionAnswerPeekCount = (state.currentQuestionAnswerPeekCount || 0) + 1;
 
         const peekText = document.getElementById('answerPeekText');
         if (peekText) {
@@ -1032,6 +1037,8 @@
         state.quizHintPressCount = 0;
         state.quizTypingDraft = '';
         state.quizAnswerPeekCount = 0;
+        state.currentQuestionHintPressCount = 0;
+        state.currentQuestionAnswerPeekCount = 0;
         resetQuizAnswerPeekState();
         state.feedback = state.currentQuestion ? '' : 'Load at least 1 word to start a quiz.';
         saveState();
@@ -1052,6 +1059,8 @@
           correctAnswer: question.answer,
           isCorrect: correct,
           answeredAt: Date.now(),
+          hintPressCount: state.currentQuestionHintPressCount || 0,
+          answerPeekCount: state.currentQuestionAnswerPeekCount || 0,
         });
         recordWordQuizResult(question.word.id, correct);
         saveState();
@@ -1114,6 +1123,8 @@
         state.quizAudioCooldownUntil = 0;
         state.quizHintRevealCount = 0;
         state.quizTypingDraft = '';
+        state.currentQuestionHintPressCount = 0;
+        state.currentQuestionAnswerPeekCount = 0;
         resetQuizAnswerPeekState();
         state.lastAutoPlayedListeningQuestionId = null;
         state.currentQuestion = createQuizQuestion(state.quizMode);
@@ -1450,11 +1461,22 @@
           const correctAnswer = result.correctAnswer || '';
           const statusText = result.isCorrect ? 'Correct' : 'Wrong';
           const statusColor = result.isCorrect ? 'var(--success)' : 'var(--danger)';
+          const hintIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 0.2rem; display: inline-block;"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+          const bulbIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 0.2rem; display: inline-block;"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a7 7 0 0 0-4 12.74V17h8v-2.26A7 7 0 0 0 12 2z"></path></svg>`;
+          const hintsAndBulbs = (result.mode === 'typing' || result.mode === 'dictation')
+            ? `<span class="muted small" style="margin-right: 0.25rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                <span title="Hints" style="display: inline-flex; align-items: center;">${hintIcon}${result.hintPressCount || 0}</span>
+                <span title="Lightbulbs" style="display: inline-flex; align-items: center;">${bulbIcon}${result.answerPeekCount || 0}</span>
+               </span>`
+            : '';
           return `
             <div style="padding: 0.85rem 1rem; border-radius: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); display: grid; gap: 0.35rem;">
               <div class="row between" style="gap: 0.5rem;">
                 <strong>Question ${index + 1}</strong>
-                <span class="small" style="font-weight: 700; color: ${statusColor};">${statusText}</span>
+                <div class="row" style="gap: 0.5rem; align-items: center;">
+                  ${hintsAndBulbs}
+                  <span class="small" style="font-weight: 700; color: ${statusColor};">${statusText}</span>
+                </div>
               </div>
               <p class="muted small">Prompt: ${escapeHtml(prompt)}</p>
               <p class="small">Your answer: <strong>${escapeHtml(result.selectedAnswer)}</strong></p>
@@ -1520,6 +1542,14 @@
               const accuracyColor = quiz.accuracy >= 80 ? 'var(--success)' : (quiz.accuracy >= 50 ? 'var(--accent)' : 'var(--danger)');
               const topicName = quiz.topic === 'all' ? 'All topics' : prettyTopic(quiz.topic);
               const scoreLabel = `${quiz.correct}/${quiz.total}`;
+              const hintIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 0.15rem; display: inline-block;"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+              const bulbIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 0.15rem; display: inline-block;"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M12 2a7 7 0 0 0-4 12.74V17h8v-2.26A7 7 0 0 0 12 2z"></path></svg>`;
+              const hintsAndBulbs = (quiz.mode === 'typing' || quiz.mode === 'dictation')
+                ? `<span class="muted" style="font-size: 0.72rem; margin-right: 0.25rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+                    <span title="Hints" style="display: inline-flex; align-items: center;">${hintIcon}${quiz.hintPressCount || 0}</span>
+                    <span title="Lightbulbs" style="display: inline-flex; align-items: center;">${bulbIcon}${quiz.answerPeekCount || 0}</span>
+                   </span>`
+                : '';
               return `
                 <div style="padding: 0.85rem 1rem; border-radius: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); display: grid; gap: 0.35rem;">
                   <div class="row between" style="gap: 0.5rem; flex-wrap: nowrap;">
@@ -1528,7 +1558,8 @@
                   </div>
                   <div class="row between small" style="gap: 0.5rem;">
                     <span class="badge" style="background: rgba(129, 140, 248, 0.12); color: var(--accent); padding: 0.15rem 0.5rem; font-size: 0.72rem;">${escapeHtml(modeLabel)}</span>
-                    <div class="row" style="gap: 0.75rem;">
+                    <div class="row" style="gap: 0.75rem; align-items: center;">
+                      ${hintsAndBulbs}
                       <span style="font-weight: 700; color: ${accuracyColor}">${scoreLabel} (${quiz.accuracy}%)</span>
                       <span class="muted">${quiz.elapsed}s</span>
                     </div>
@@ -1644,6 +1675,7 @@
           if (state.currentQuestion) {
             const answerLength = state.currentQuestion.answer.trim().length;
             state.quizHintPressCount = (state.quizHintPressCount || 0) + 1;
+            state.currentQuestionHintPressCount = (state.currentQuestionHintPressCount || 0) + 1;
             state.quizHintRevealCount = Math.min(answerLength, (state.quizHintRevealCount || 0) + 2);
             const hintText = document.getElementById('hintText');
             if (hintText) {
