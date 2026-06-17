@@ -33,6 +33,12 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function escapeHtmlAndKeepUnderline(value) {
+  return escapeHtml(value)
+    .replaceAll("&lt;u&gt;", "<u>")
+    .replaceAll("&lt;/u&gt;", "</u>");
+}
+
 function sourceTypeLabel(sourceType) {
   if (sourceType === "official_mirror_public") return "Nguồn dẫn công bố chính thức";
   if (sourceType === "mirror_public") return "Nguồn công khai";
@@ -274,6 +280,10 @@ function formatDuration(totalSeconds) {
 function normalizeEnglishAnswer(value) {
   return String(value ?? "")
     .toLowerCase()
+    .replaceAll("<u>", "")
+    .replaceAll("</u>", "")
+    .replaceAll("&lt;u&gt;", "")
+    .replaceAll("&lt;/u&gt;", "")
     .replace(/[’‘]/g, "'")
     .replace(/[“”]/g, '"')
     .replace(/\([^)]*\)/g, "")
@@ -629,7 +639,7 @@ function renderTimedQuestionBody(question, index, exam) {
       <span>Câu ${escapeHtml(question.number || index + 1)}</span>
       <span>${escapeHtml(questionType.label)}${escapeHtml(question.points ? ` · ${question.points} điểm` : "")}</span>
     </div>
-    <div class="exam-question-text">${escapeHtml(prompt)}</div>
+    <div class="exam-question-text">${escapeHtmlAndKeepUnderline(prompt)}</div>
     ${renderSignNoticeVisual(question, exam)}
     ${controlForEnglishQuestion(question, answer, exam)}
   `;
@@ -800,7 +810,7 @@ function renderEnglishChoiceCheckboxes(name, questionNumber, choices) {
               value="${escapeHtml(choice)}"
               data-answer-checkbox
             />
-            <span>${escapeHtml(choice)}</span>
+            <span>${escapeHtmlAndKeepUnderline(choice)}</span>
           </label>
         `;
   }).join("")}
@@ -885,11 +895,11 @@ function renderDetailQuestionCard(question, index, exam, options = {}) {
         <span>Câu ${escapeHtml(question.number || index + 1)}</span>
         <span>${escapeHtml(questionType?.label || (question.points ? `${question.points} điểm` : exam.subjectLabel))}${questionType && question.points ? ` · ${escapeHtml(`${question.points} điểm`)}` : ""}</span>
       </div>
-      <div class="exam-question-text">${escapeHtml(prompt)}</div>
+      <div class="exam-question-text">${escapeHtmlAndKeepUnderline(prompt)}</div>
       ${renderSignNoticeVisual(question, exam)}
       ${renderedChoices.length ? `
         <ol class="mock-choices">
-          ${renderedChoices.map((choice) => `<li>${escapeHtml(choice)}</li>`).join("")}
+          ${renderedChoices.map((choice) => `<li>${escapeHtmlAndKeepUnderline(choice)}</li>`).join("")}
         </ol>
       ` : ""}
       ${relatedAnswers.length ? `
@@ -899,7 +909,7 @@ function renderDetailQuestionCard(question, index, exam, options = {}) {
             ${relatedAnswers.map((answer) => `
               <section>
                 <h4>${escapeHtml(answer.number || "Đáp án")}</h4>
-                <p><b>Đáp án:</b> ${escapeHtml(answer.answer || answer.correctAnswer || "Chưa nhập")}</p>
+                <p><b>Đáp án:</b> ${escapeHtmlAndKeepUnderline(answer.answer || answer.correctAnswer || "Chưa nhập")}</p>
                 ${answer.explanation ? `<p><b>Hướng dẫn:</b> ${escapeHtml(answer.explanation)}</p>` : ""}
                 ${renderReviewGuide(answer.reviewGuide)}
               </section>
@@ -1083,10 +1093,10 @@ function renderEnglishExamResult(exam, summary) {
             <span>Câu ${escapeHtml(item.number)}</span>
             <span>${escapeHtml(item.typeLabel)} · ${item.correct ? "Đúng" : "Sai"} - ${item.earned.toFixed(2)}/${item.points.toFixed(2)} điểm</span>
           </div>
-          <div class="exam-question-text">${escapeHtml(item.prompt)}</div>
+          <div class="exam-question-text">${escapeHtmlAndKeepUnderline(item.prompt)}</div>
           ${renderSignNoticeVisual({ number: item.number, visual: item.visual }, exam)}
           <p><b>Bạn trả lời:</b> ${escapeHtml(item.userAnswer || "Chưa trả lời")}</p>
-          <p><b>Đáp án:</b> ${escapeHtml(item.expected)}</p>
+          <p><b>Đáp án:</b> ${escapeHtmlAndKeepUnderline(item.expected)}</p>
           ${item.explanation ? `<p><b>Ghi chú:</b> ${escapeHtml(item.explanation)}</p>` : ""}
           ${renderReviewGuide(item.reviewGuide)}
         </article>
@@ -1230,7 +1240,7 @@ function renderAnswerList(exam) {
           <span>Câu ${escapeHtml(answer.number || index + 1)}</span>
           <span>Đáp án</span>
         </div>
-        <p><b>Đáp án:</b> ${escapeHtml(answer.answer || answer.correctAnswer || "Chưa nhập")}</p>
+        <p><b>Đáp án:</b> ${escapeHtmlAndKeepUnderline(answer.answer || answer.correctAnswer || "Chưa nhập")}</p>
         ${answer.explanation ? `<p><b>Hướng dẫn:</b> ${escapeHtml(answer.explanation)}</p>` : ""}
         ${renderReviewGuide(answer.reviewGuide)}
       </article>

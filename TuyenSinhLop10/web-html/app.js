@@ -1278,7 +1278,7 @@ function pickQuestion() {
 
 function renderPracticeQuestionPrompt(question) {
   const prompt = String(question?.deBai || "");
-  if (question?.monHoc !== "NguVan") return escapeHtml(prompt);
+  if (question?.monHoc !== "NguVan") return escapeHtmlAndKeepUnderline(prompt);
 
   const match = prompt.match(/^(.+?:)\s*[“"]([\s\S]+)[”"]\s*(Câu hỏi:[\s\S]*)$/);
   if (!match) {
@@ -1352,7 +1352,7 @@ function renderQuestion() {
       const id = `choice-${index}`;
       const label = document.createElement("label");
       label.className = "choice";
-      label.innerHTML = `<input type="radio" name="choice" value="${escapeHtml(choice)}" id="${id}" /> <span>${escapeHtml(choice)}</span>`;
+      label.innerHTML = `<input type="radio" name="choice" value="${escapeHtml(choice)}" id="${id}" /> <span>${escapeHtmlAndKeepUnderline(choice)}</span>`;
       elements.choices.appendChild(label);
     });
   } else {
@@ -1364,6 +1364,10 @@ function normalize(value) {
   return String(value || "")
     .trim()
     .toLowerCase()
+    .replaceAll("<u>", "")
+    .replaceAll("</u>", "")
+    .replaceAll("&lt;u&gt;", "")
+    .replaceAll("&lt;/u&gt;", "")
     .replace(/\s+/g, " ");
 }
 
@@ -1513,10 +1517,10 @@ function renderMockAnswerControl(question, questionIndex, subject) {
                   id="${id}"
                   type="checkbox"
                   name="mock-question-${questionIndex}"
-                  value="${escapeHtml(choice)}"
+                  value="${escapeHtmlAndKeepUnderline(choice)}"
                   data-mock-checkbox
                 />
-                <span>${escapeHtml(choice)}</span>
+                <span>${escapeHtmlAndKeepUnderline(choice)}</span>
               </label>
             `;
           }).join("")}
@@ -1526,7 +1530,7 @@ function renderMockAnswerControl(question, questionIndex, subject) {
   }
 
   return question.luaChon?.length
-    ? `<ul class="mock-choices">${question.luaChon.map((choice) => `<li>${escapeHtml(choice)}</li>`).join("")}</ul>`
+    ? `<ul class="mock-choices">${question.luaChon.map((choice) => `<li>${escapeHtmlAndKeepUnderline(choice)}</li>`).join("")}</ul>`
     : "";
 }
 
@@ -1544,12 +1548,12 @@ function createMockExam(subject) {
       ${questions.map((question, index) => `
         <li>
           <article class="mock-question-item">
-            <p>${escapeHtml(question.deBai)}</p>
+            <p>${escapeHtmlAndKeepUnderline(question.deBai)}</p>
             ${renderMockAnswerControl(question, index, subject)}
             <details>
               <summary>Đáp án và lời giải</summary>
-              <p><b>Đáp án:</b> ${escapeHtml(question.dapAn)}</p>
-              <p><b>Lời giải:</b> ${escapeHtml(question.loiGiai)}</p>
+              <p><b>Đáp án:</b> ${escapeHtmlAndKeepUnderline(question.dapAn)}</p>
+              <p><b>Lời giải:</b> ${escapeHtmlAndKeepUnderline(question.loiGiai)}</p>
               <p><b>Mẹo làm bài:</b> ${escapeHtml(question.meoLamBai)}</p>
             </details>
           </article>
@@ -1567,6 +1571,12 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function escapeHtmlAndKeepUnderline(value) {
+  return escapeHtml(value)
+    .replaceAll("&lt;u&gt;", "<u>")
+    .replaceAll("&lt;/u&gt;", "</u>");
 }
 
 function bindEvents() {

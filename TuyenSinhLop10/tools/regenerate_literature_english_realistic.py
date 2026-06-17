@@ -293,11 +293,11 @@ def literature_question(i, topic_override=None, occurrence_override=None):
 
 eng_bank = {
     "Pronunciation": [
-        ("Choose the word whose underlined part is pronounced differently: wanted, needed, walked, visited.", ["wanted", "needed", "walked", "visited"], "walked", "The ending -ed in 'walked' is pronounced /t/, while the others are /id/."),
-        ("Choose the word whose underlined part is pronounced differently: books, lamps, pens, maps.", ["books", "lamps", "pens", "maps"], "pens", "The final -s in 'pens' is /z/, while the others are /s/."),
-        ("Choose the word whose underlined part is pronounced differently: stopped, watched, played, missed.", ["stopped", "watched", "played", "missed"], "played", "The ending -ed in 'played' is /d/, while the others are /t/."),
-        ("Choose the word whose underlined part is pronounced differently: machine, chair, teacher, children.", ["machine", "chair", "teacher", "children"], "machine", "'ch' in machine is pronounced /ʃ/, not /tʃ/."),
-        ("Choose the word whose underlined part is pronounced differently: city, country, center, cinema.", ["city", "country", "center", "cinema"], "country", "The letter c in country is /k/, while the others are /s/."),
+        ("Which word has the underlined part pronounced differently from that of the others?", ["want<u>ed</u>", "need<u>ed</u>", "walk<u>ed</u>", "visit<u>ed</u>"], "walk<u>ed</u>", "The ending -ed in 'walked' is pronounced /t/, while the others are /id/."),
+        ("Which word has the underlined part pronounced differently from that of the others?", ["book<u>s</u>", "lamp<u>s</u>", "pen<u>s</u>", "map<u>s</u>"], "pen<u>s</u>", "The final -s in 'pens' is /z/, while the others are /s/."),
+        ("Which word has the underlined part pronounced differently from that of the others?", ["stopp<u>ed</u>", "watch<u>ed</u>", "play<u>ed</u>", "miss<u>ed</u>"], "play<u>ed</u>", "The ending -ed in 'played' is /d/, while the others are /t/."),
+        ("Which word has the underlined part pronounced differently from that of the others?", ["ma<u>ch</u>ine", "<u>ch</u>air", "tea<u>ch</u>er", "<u>ch</u>ildren"], "ma<u>ch</u>ine", "'ch' in machine is pronounced /ʃ/, not /tʃ/."),
+        ("Which word has the underlined part pronounced differently from that of the others?", ["<u>c</u>ity", "<u>c</u>ountry", "<u>c</u>enter", "<u>c</u>inema"], "<u>c</u>ountry", "The letter c in country is /k/, while the others are /s/."),
     ],
     "Stress": [
         ("Choose the word with a different stress pattern: pollution, attention, collection, festival.", ["pollution", "attention", "collection", "festival"], "festival", "'Festival' has first-syllable stress; the others are stressed later."),
