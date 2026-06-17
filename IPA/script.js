@@ -399,6 +399,7 @@ const ipaData = {
               ipa: "/aɪ/",
               desc: "Âm đôi A-I (đọc như 'ai') — 2 cách nhận diện",
               rule: "Chữ I phát âm /aɪ/ trong 2 trường hợp: cấu trúc i_e (Magic E) hoặc đứng trước đuôi -nd/-ght.",
+              guide: "Bắt đầu bằng âm /a/: mở miệng khá rộng, lưỡi thấp.\nSau đó trượt nhanh lên âm /ɪ/: miệng hẹp hơn một chút, lưỡi nâng lên.\nHai âm được phát ra liền nhau thành một âm duy nhất: a → i.",
               examples: [],
               children: [
                 {
@@ -748,6 +749,7 @@ const ipaData = {
               ipa: "/aɪ/",
               desc: "Âm đôi A-I — 3 cách nhận diện",
               rule: "Chữ Y phát âm /aɪ/ khi đứng cuối từ 1 âm tiết, cấu trúc y_e hoặc vần được nhấn mạnh, hoặc trong hậu tố -ify.",
+              guide: "Bắt đầu bằng âm /a/: mở miệng khá rộng, lưỡi thấp.\nSau đó trượt nhanh lên âm /ɪ/: miệng hẹp hơn một chút, lưỡi nâng lên.\nHai âm được phát ra liền nhau thành một âm duy nhất: a → i.",
               examples: [],
               children: [
                 {
@@ -849,16 +851,32 @@ const ipaData = {
               label: "/eɪ/",
               type: "rule",
               ipa: "/eɪ/",
-              desc: "Âm đôi A-I (đọc như 'ây')",
-              rule: "Hầu hết các tổ hợp AI đều phát âm là /eɪ/.",
+              desc: "Âm đôi E-I (đọc như 'ây')",
+              rule: "Phát âm là /eɪ/ khi đứng trước phụ âm không phải r.",
               examples: [
                 { word: "rain", ipa: "reɪn", meaning: "mưa" },
+                { word: "train", ipa: "treɪn", meaning: "tàu hỏa" },
                 { word: "wait", ipa: "weɪt", meaning: "chờ đợi" },
                 { word: "pain", ipa: "peɪn", meaning: "đau đớn" },
                 { word: "mail", ipa: "meɪl", meaning: "thư từ" },
                 { word: "tail", ipa: "teɪl", meaning: "cái đuôi" },
                 { word: "brain", ipa: "breɪn", meaning: "não bộ" },
                 { word: "nail", ipa: "neɪl", meaning: "móng tay/cây đinh" }
+              ]
+            },
+            {
+              id: "r-ai-2",
+              label: "/eə/",
+              type: "rule",
+              ipa: "/eə/",
+              desc: "Âm đôi E-Ơ (đọc lướt từ e sang ơ)",
+              rule: "Phát âm là /eə/ khi đứng liền trước phụ âm r (tạo thành tổ hợp air).",
+              examples: [
+                { word: "hair", ipa: "heə(r)", meaning: "tóc" },
+                { word: "fair", ipa: "feə(r)", meaning: "công bằng/hội chợ" },
+                { word: "chair", ipa: "tʃeə(r)", meaning: "cái ghế" },
+                { word: "pair", ipa: "peə(r)", meaning: "đôi/cặp" },
+                { word: "stair", ipa: "steə(r)", meaning: "bậc thang" }
               ]
             }
           ]
@@ -884,6 +902,67 @@ const ipaData = {
                 { word: "stay", ipa: "steɪ", meaning: "ở lại" },
                 { word: "gray", ipa: "ɡreɪ", meaning: "màu xám" },
                 { word: "clay", ipa: "kleɪ", meaning: "đất sét" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "vd-au",
+          label: "au",
+          type: "letter",
+          category: "vowel-digraph",
+          children: [
+            {
+              id: "r-au-1",
+              label: "/ɔː/",
+              type: "rule",
+              ipa: "/ɔː/",
+              desc: "Âm O dài (không phải nguyên âm đôi trong Anh-Anh hiện đại)",
+              rule: "Tổ hợp AU thường phát âm là âm O dài /ɔː/.",
+              examples: [
+                { word: "author", ipa: "ˈɔːθə(r)", meaning: "tác giả" },
+                { word: "August", ipa: "ɔːˈɡʌst", meaning: "tháng 8" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "vd-aw",
+          label: "aw",
+          type: "letter",
+          category: "vowel-digraph",
+          children: [
+            {
+              id: "r-aw-1",
+              label: "/ɔː/",
+              type: "rule",
+              ipa: "/ɔː/",
+              desc: "Âm O dài",
+              rule: "Tổ hợp AW thường phát âm là âm O dài /ɔː/.",
+              examples: [
+                { word: "law", ipa: "lɔː", meaning: "luật pháp" },
+                { word: "saw", ipa: "sɔː", meaning: "cái cưa / nhìn (V2)" }
+              ]
+            }
+          ]
+        },
+        {
+          id: "vd-air",
+          label: "air",
+          type: "letter",
+          category: "vowel-digraph",
+          children: [
+            {
+              id: "r-air-1",
+              label: "/eə/",
+              type: "rule",
+              ipa: "/eə/",
+              desc: "Âm đôi E-Ơ (đọc lướt từ e sang ơ)",
+              rule: "Tổ hợp AIR phát âm là /eə/.",
+              examples: [
+                { word: "air", ipa: "eə(r)", meaning: "không khí" },
+                { word: "fair", ipa: "feə(r)", meaning: "công bằng/hội chợ" },
+                { word: "hair", ipa: "heə(r)", meaning: "tóc" }
               ]
             }
           ]
@@ -1088,6 +1167,7 @@ const ipaData = {
               ipa: "/aɪ/",
               desc: "Âm đôi A-I (đọc như 'ai')",
               rule: "Tổ hợp IE phát âm là /aɪ/ khi đứng cuối từ một âm tiết.",
+              guide: "Bắt đầu bằng âm /a/: mở miệng khá rộng, lưỡi thấp.\nSau đó trượt nhanh lên âm /ɪ/: miệng hẹp hơn một chút, lưỡi nâng lên.\nHai âm được phát ra liền nhau thành một âm duy nhất: a → i.",
               examples: [
                 { word: "pie", ipa: "paɪ", meaning: "bánh nướng" },
                 { word: "tie", ipa: "taɪ", meaning: "cà vạt" },
@@ -1128,6 +1208,7 @@ const ipaData = {
               ipa: "/aɪ/",
               desc: "Âm đôi A-I (đọc như 'ai')",
               rule: "Tổ hợp IGH luôn phát âm là /aɪ/ (với âm GH câm).",
+              guide: "Bắt đầu bằng âm /a/: mở miệng khá rộng, lưỡi thấp.\nSau đó trượt nhanh lên âm /ɪ/: miệng hẹp hơn một chút, lưỡi nâng lên.\nHai âm được phát ra liền nhau thành một âm duy nhất: a → i.",
               examples: [
                 { word: "night", ipa: "naɪt", meaning: "ban đêm" },
                 { word: "high", ipa: "haɪ", meaning: "cao" },
@@ -3083,6 +3164,18 @@ function showRuleDetail(ruleNode) {
   detailIpaDesc.textContent = ruleNode.desc;
   detailRuleText.textContent = ruleNode.rule;
 
+  // Hiển thị hướng dẫn phát âm nếu có
+  const detailGuideBox = document.getElementById("detail-guide-box");
+  const detailGuideText = document.getElementById("detail-guide-text");
+  if (detailGuideBox && detailGuideText) {
+    if (ruleNode.guide) {
+      detailGuideText.textContent = ruleNode.guide;
+      detailGuideBox.hidden = false;
+    } else {
+      detailGuideBox.hidden = true;
+    }
+  }
+
   // Nút nghe phát âm của chính ký tự âm đó
   const speakIpaBtn = document.getElementById("speak-ipa-btn");
   speakIpaBtn.onclick = () => speakText(ruleNode.ipa || ruleNode.label);
@@ -3166,7 +3259,53 @@ function speakText(text) {
   window.speechSynthesis.cancel();
 
   // Loại bỏ các dấu ngoặc / khi đọc âm đơn lẻ
-  const cleanText = text.replace(/\//g, "");
+  let cleanText = text.replace(/\//g, "").trim();
+
+  // Ánh xạ các ký tự phiên âm IPA sang chuỗi/từ tiếng Anh dễ đọc chuẩn xác cho công cụ TTS
+  const ipaToSpeechMap = {
+    // Nguyên âm đôi
+    "eɪ": "A",       // /eɪ/ đọc như 'ây' (dùng "A" thay vì "ay" vì "ay/aye" có thể bị TTS đọc nhầm thành /aɪ/ tức "ai")
+    "ei": "A",       // phòng hờ ký tự latin thông thường
+    "aɪ": "eye",     // /aɪ/ đọc như 'ai'
+    "aʊ": "ow",      // /aʊ/ đọc như 'ao'
+    "ɔɪ": "oy",      // /ɔɪ/ đọc như 'oi'
+    "əʊ": "oh",      // /əʊ/ đọc như 'âu'
+    "eə": "air",     // /eə/ đọc như 'e-ơ'
+    "ɪə": "ear",     // /ɪə/ đọc như 'i-ơ'
+    "ʊə": "cure",    // /ʊə/ đọc như 'u-ơ'
+    
+    // Nguyên âm đơn
+    "æ": "ae",       // /æ/ đọc a bẹt
+    "ɑː": "ah",      // /ɑː/ đọc a dài
+    "ɑ": "ah",
+    "ɒ": "ah",       // /ɒ/ đọc o ngắn
+    "ɔː": "aw",      // /ɔː/ đọc o dài
+    "ɔ": "aw",
+    "ɪ": "ih",       // /ɪ/ đọc i ngắn
+    "iː": "ee",      // /iː/ đọc i dài
+    "i": "ee",
+    "e": "eh",       // /e/ đọc e ngắn
+    "ɜː": "er",      // /ɜː/ đọc ơ dài
+    "ɜ": "er",
+    "ə": "uh",       // /ə/ đọc ơ ngắn
+    "ʌ": "uh",       // /ʌ/ đọc á ngắn
+    "uː": "oo",      // /uː/ đọc u dài
+    "ʊ": "u",        // /ʊ/ đọc u ngắn (giống ư-u)
+    
+    // Phụ âm đặc biệt
+    "ʃ": "sh",       // /ʃ/
+    "ʒ": "zh",       // /ʒ/
+    "tʃ": "ch",      // /tʃ/
+    "dʒ": "j",       // /dʒ/
+    "θ": "th",       // /θ/
+    "ð": "th",       // /ð/
+    "ŋ": "ng",       // /ŋ/
+    "j": "y"         // /j/
+  };
+
+  if (ipaToSpeechMap[cleanText]) {
+    cleanText = ipaToSpeechMap[cleanText];
+  }
 
   const utterance = new SpeechSynthesisUtterance(cleanText);
   utterance.voice = englishVoice;
@@ -3292,9 +3431,6 @@ function generateQuiz() {
     if (!letterPattern) return;
 
     ruleNode.examples.forEach(ex => {
-      // Xác định ký tự gạch chân
-      const letterPattern = parentNode.label; // e.g. "CH", "EA", "A"
-
       quizPool.push({
         word: ex.word,
         highlight: letterPattern,
