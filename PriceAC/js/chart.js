@@ -47,6 +47,9 @@ const MarketChart = (() => {
     orderedDates: []
   };
   let syncingCrosshair = false;
+  let psychologyTimeline = [];
+  let psychologyAnalysisKey = null;
+  let isPsychologyAnalyzing = false;
 
   const generateFallbackData = (asset) => {
     const start = new Date("2026-01-01T00:00:00");
@@ -123,6 +126,104 @@ const MarketChart = (() => {
       start: visibleData[0].date,
       end: visibleData[visibleData.length - 1].date
     };
+  };
+
+  const getAnalysisKey = (visibleData) => {
+    if (!visibleData.length) {
+      return null;
+    }
+
+    return [
+      currentAsset,
+      currentRange,
+      currentInterval,
+      visibleData[0].date,
+      visibleData[visibleData.length - 1].date
+    ].join("|");
+  };
+
+  const updatePsychologyStatus = (message, isBusy = false) => {
+    const status = document.querySelector("#psychology-status");
+    const button = document.querySelector("#analyze-psychology");
+
+    if (status) {
+      status.textContent = message;
+      status.classList.toggle("busy", isBusy);
+    }
+
+    if (button) {
+      button.disabled = isBusy;
+      button.textContent = isBusy ? "Đang phân tích..." : "Phân tích tâm lý vùng đang xem";
+    }
+  };
+
+  const invalidatePsychologyAnalysis = (message = "Chọn phạm vi giá rồi bấm phân tích") => {
+    psychologyTimeline = [];
+    psychologyAnalysisKey = null;
+    updatePsychologyStatus(message, false);
+  };
+
+  const applyPsychologyResult = (visibleData, timeline) => {
+    psychologyTimeline = timeline;
+    psychologyAnalysisKey = getAnalysisKey(visibleData);
+    chartSnapshot.psychologyTimeline = timeline;
+    rebuildHoverIndex(visibleData, chartSnapshot.rsiSeries, timeline);
+
+    if (chart) {
+      mountPriceSeries(visibleData, timeline);
+      chart.timeScale().fitContent();
+    } else {
+      drawFallbackChart(document.querySelector("#chart"), visibleData, timeline);
+    }
+
+    PsychologyEngine.renderPsychologyLegend(document.querySelector("#psychology-legend"));
+    updatePsychologyStatus(`Đã phân tích ${timeline.length} điểm trong vùng đang xem`, false);
+
+    const { rsiDateKey, priceDateKey } = getLatestPanelKeys();
+    renderCrosshairPanel(rsiDateKey, priceDateKey, false);
+  };
+
+  const runPsychologyAnalysis = async () => {
+    if (isPsychologyAnalyzing) {
+      return;
+    }
+
+    const visibleData = getVisibleData();
+    if (!visibleData.length) {
+      updatePsychologyStatus("Không có dữ liệu trong vùng đang xem");
+      return;
+    }
+
+    isPsychologyAnalyzing = true;
+    updatePsychologyStatus("Đang chuẩn bị dữ liệu...", true);
+
+    try {
+      const timeline = await PsychologyEngine.buildPsychologyTimelineAsync(
+        getFullData(),
+        visibleData,
+        (progress) => {
+          updatePsychologyStatus(`Đang phân tích... ${Math.round(progress * 100)}%`, true);
+        }
+      );
+
+      applyPsychologyResult(visibleData, timeline);
+    } catch (error) {
+      console.error(error);
+      updatePsychologyStatus("Phân tích thất bại — thử lại");
+    } finally {
+      isPsychologyAnalyzing = false;
+    }
+  };
+
+  const bindPsychologyControls = () => {
+    const button = document.querySelector("#analyze-psychology");
+    if (!button) {
+      return;
+    }
+
+    button.addEventListener("click", () => {
+      runPsychologyAnalysis();
+    });
   };
 
   const formatNumber = (value) => {
@@ -384,12 +485,17 @@ const MarketChart = (() => {
     });
   };
 
-  const mountPriceSeries = (visibleData, psychologyTimeline) => {
-    const segments = PsychologyEngine.buildPsychologySegments(visibleData, psychologyTimeline);
+  const mountPriceSeries = (visibleData, timeline = []) => {
+    const segments = timeline.length
+      ? PsychologyEngine.buildPsychologySegments(visibleData, timeline)
+      : [];
     const bounds = getPriceBounds(visibleData);
 
     removePriceSeries();
-    renderPsychologyBackgrounds(segments, bounds);
+
+    if (segments.length) {
+      renderPsychologyBackgrounds(segments, bounds);
+    }
 
     lineSeries = chart.addLineSeries({
       color: "#e2e8f0",
@@ -668,9 +774,13 @@ const MarketChart = (() => {
     const visibleData = getVisibleData();
     const evaluation = PsychologyEngine.evaluate(getFullData(), visibleData);
     const rsiSeries = getVisibleRsiSeries();
-    const psychologyTimeline = PsychologyEngine.buildPsychologyTimeline(getFullData(), visibleData);
 
-    chartSnapshot = { visibleData, rsiSeries, evaluation, psychologyTimeline };
+    chartSnapshot = {
+      visibleData,
+      rsiSeries,
+      evaluation,
+      psychologyTimeline
+    };
     rebuildHoverIndex(visibleData, rsiSeries, psychologyTimeline);
 
     if (chart) {
@@ -680,7 +790,12 @@ const MarketChart = (() => {
       drawFallbackChart(container, visibleData, psychologyTimeline);
     }
 
-    PsychologyEngine.renderPsychologyLegend(document.querySelector("#psychology-legend"));
+    if (!psychologyTimeline.length) {
+      const legend = document.querySelector("#psychology-legend");
+      if (legend) {
+        legend.innerHTML = "";
+      }
+    }
 
     if (rsiDailySeries && rsiWeeklySeries && rsiMonthlySeries) {
       rsiDailySeries.setData(toRsiLineData(rsiSeries.daily));
@@ -699,16 +814,19 @@ const MarketChart = (() => {
 
   const setAsset = (asset) => {
     currentAsset = asset;
+    invalidatePsychologyAnalysis();
     render();
   };
 
   const setRange = (range) => {
     currentRange = range;
+    invalidatePsychologyAnalysis();
     render();
   };
 
   const setInterval = (interval) => {
     currentInterval = interval;
+    invalidatePsychologyAnalysis();
     render();
   };
 
@@ -723,6 +841,8 @@ const MarketChart = (() => {
     createChart(document.querySelector("#chart"));
     createRsiChart(document.querySelector("#rsi-chart"));
     bindCrosshairSync();
+    bindPsychologyControls();
+    invalidatePsychologyAnalysis();
     render();
   };
 
@@ -732,6 +852,7 @@ const MarketChart = (() => {
     setRange,
     setInterval,
     setChartMode,
+    runPsychologyAnalysis,
     getCurrentData: getVisibleData
   };
 })();

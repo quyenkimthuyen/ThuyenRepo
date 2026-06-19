@@ -310,7 +310,7 @@ const PsychologyEngine = (() => {
 
   const scorePsychologyZones = (features) => {
     if (!features) {
-      return { Observing: 100 };
+      return { scores: { Observing: 100 }, rsiBlend: 50, priceVsMa50: 0, priceVsMa200: 0 };
     }
 
     const {
@@ -433,8 +433,8 @@ const PsychologyEngine = (() => {
     );
   };
 
-  const classifyPsychology = (dailySeries, endIndex = dailySeries.length - 1) => {
-    if (!dailySeries.length || endIndex + 1 < MIN_HISTORY) {
+  const classifyFromFeatures = (features) => {
+    if (!features) {
       return {
         possibleZone: "Observing",
         confidence: 0,
@@ -444,7 +444,6 @@ const PsychologyEngine = (() => {
       };
     }
 
-    const features = computeFeatures(dailySeries, endIndex);
     const scored = scorePsychologyZones(features);
     const probabilities = normalizeScores(scored.scores);
     const ranked = Object.entries(probabilities);
@@ -460,6 +459,99 @@ const PsychologyEngine = (() => {
       signals: buildSignals(features, topZone[0])
     };
   };
+
+  const prepareDailyContext = (daily) => {
+    const length = daily.length;
+    const highs = daily.map((point) => point.high ?? getClose(point));
+    const lows = daily.map((point) => point.low ?? getClose(point));
+    const rsiDailyByDate = new Map(buildRsiSeries(daily).map((point) => [point.date, point.value]));
+    const weekly = aggregateSeries(daily, "1W");
+    const monthly = aggregateSeries(daily, "1M");
+    const rsiWeeklyByDate = new Map(
+      alignHigherTimeframeRsi(daily, buildRsiSeries(weekly), getWeekStart).map((point) => [point.date, point.value])
+    );
+    const rsiMonthlyByDate = new Map(
+      alignHigherTimeframeRsi(daily, buildRsiSeries(monthly), (date) => `${date.slice(0, 7)}-01`)
+        .map((point) => [point.date, point.value])
+    );
+    const features = new Array(length);
+
+    for (let endIndex = 0; endIndex < length; endIndex += 1) {
+      const close = getClose(daily[endIndex]);
+      const date = daily[endIndex].date;
+      const swingStart = Math.max(0, endIndex + 1 - SWING_LOOKBACK);
+      let swingHigh = -Infinity;
+      let swingLow = Infinity;
+
+      for (let index = swingStart; index <= endIndex; index += 1) {
+        swingHigh = Math.max(swingHigh, highs[index]);
+        swingLow = Math.min(swingLow, lows[index]);
+      }
+
+      const drawdown = swingHigh > 0 ? ((close - swingHigh) / swingHigh) * 100 : 0;
+      const recovery = swingLow > 0 ? ((close - swingLow) / swingLow) * 100 : 0;
+      const ma20 = sma(daily, MA_FAST, endIndex);
+      const ma50 = sma(daily, MA_MID, endIndex);
+      const ma200 = sma(daily, MA_SLOW, endIndex);
+      const ma50Prev = sma(daily, MA_MID, Math.max(0, endIndex - 10));
+
+      features[endIndex] = {
+        close,
+        drawdown,
+        recovery,
+        trend20: roc(daily, 20, endIndex),
+        trend60: roc(daily, 60, endIndex),
+        volatility20: averageAbsReturn(daily, 20, endIndex),
+        volatility60: averageAbsReturn(daily, 60, endIndex),
+        rsiDaily: rsiDailyByDate.get(date) ?? 50,
+        rsiWeekly: rsiWeeklyByDate.get(date) ?? 50,
+        rsiMonthly: rsiMonthlyByDate.get(date) ?? 50,
+        priceVsMa20: ma20 ? ((close - ma20) / ma20) * 100 : 0,
+        priceVsMa50: ma50 ? ((close - ma50) / ma50) * 100 : 0,
+        priceVsMa200: ma200 ? ((close - ma200) / ma200) * 100 : 0,
+        ma50Rising: ma50 !== null && ma50Prev !== null ? ma50 > ma50Prev : false,
+        aboveMa50: ma50 !== null ? close > ma50 : false,
+        aboveMa200: ma200 !== null ? close > ma200 : false,
+        goldenStructure: ma50 !== null && ma200 !== null ? ma50 > ma200 : false
+      };
+    }
+
+    return {
+      daily,
+      features,
+      indexByDate: new Map(daily.map((point, index) => [point.date, index]))
+    };
+  };
+
+  const resolveDailyIndex = (context, date) => {
+    if (context.indexByDate.has(date)) {
+      return context.indexByDate.get(date);
+    }
+
+    for (let index = context.daily.length - 1; index >= 0; index -= 1) {
+      if (context.daily[index].date <= date) {
+        return index;
+      }
+    }
+
+    return undefined;
+  };
+
+  const makeTimelinePoint = (date, classification) => ({
+    date,
+    zone: classification.possibleZone,
+    color: zoneColors[classification.possibleZone] || zoneColors.Observing,
+    label: zoneLabelsVi[classification.possibleZone] || zoneLabelsVi.Observing,
+    confidence: classification.confidence
+  });
+
+  const observingPoint = (date) => ({
+    date,
+    zone: "Observing",
+    color: zoneColors.Observing,
+    label: zoneLabelsVi.Observing,
+    confidence: 0
+  });
 
   const buildSignals = (features, zone) => {
     if (!features) {
@@ -478,8 +570,9 @@ const PsychologyEngine = (() => {
   const evaluate = (fullSeries, visibleSeries = fullSeries) => {
     const dailySeries = aggregateSeries(fullSeries, "1D");
     const visible = aggregateSeries(visibleSeries, "1D");
-    const classification = classifyPsychology(dailySeries);
-    const features = classification.features || computeFeatures(dailySeries);
+    const endIndex = dailySeries.length - 1;
+    const features = endIndex + 1 >= MIN_HISTORY ? computeFeatures(dailySeries, endIndex) : null;
+    const classification = classifyFromFeatures(features);
     const trend = calculateTrend(visible);
 
     return {
@@ -503,39 +596,87 @@ const PsychologyEngine = (() => {
 
   const buildFeatureCache = (fullSeries) => {
     const daily = aggregateSeries(fullSeries, "1D");
-    return daily.map((_, index) => computeFeatures(daily, index));
+    return prepareDailyContext(daily).features;
   };
 
-  const buildPsychologyTimeline = (fullSeries, visibleSeries) => {
+  const classifyPsychology = (dailySeries, endIndex = dailySeries.length - 1) => {
+    if (!dailySeries.length || endIndex + 1 < MIN_HISTORY) {
+      return classifyFromFeatures(null);
+    }
+
+    const context = prepareDailyContext(dailySeries);
+    return classifyFromFeatures(context.features[endIndex]);
+  };
+
+  const buildPsychologyTimeline = (fullSeries, visibleSeries, context = null) => {
     if (!visibleSeries || !visibleSeries.length) {
       return [];
     }
 
-    const daily = aggregateSeries(fullSeries, "1D");
-    const indexByDate = new Map(daily.map((point, index) => [point.date, index]));
+    const dailyContext = context || prepareDailyContext(aggregateSeries(fullSeries, "1D"));
 
     return visibleSeries.map((point) => {
-      const endIndex = indexByDate.get(point.date);
-      if (endIndex === undefined) {
-        return {
-          date: point.date,
-          zone: "Observing",
-          color: zoneColors.Observing,
-          label: zoneLabelsVi.Observing,
-          confidence: 0
-        };
+      const endIndex = resolveDailyIndex(dailyContext, point.date);
+      if (endIndex === undefined || endIndex + 1 < MIN_HISTORY) {
+        return observingPoint(point.date);
       }
 
-      const classification = classifyPsychology(daily, endIndex);
-      return {
-        date: point.date,
-        zone: classification.possibleZone,
-        color: zoneColors[classification.possibleZone] || zoneColors.Observing,
-        label: zoneLabelsVi[classification.possibleZone] || zoneLabelsVi.Observing,
-        confidence: classification.confidence
-      };
+      return makeTimelinePoint(point.date, classifyFromFeatures(dailyContext.features[endIndex]));
     });
   };
+
+  const buildPsychologyTimelineAsync = (fullSeries, visibleSeries, onProgress = () => {}) => new Promise((resolve, reject) => {
+    const visible = visibleSeries || [];
+
+    if (!visible.length) {
+      resolve([]);
+      return;
+    }
+
+    const run = () => {
+      try {
+        onProgress(0.05);
+        const dailyContext = prepareDailyContext(aggregateSeries(fullSeries, "1D"));
+        const timeline = [];
+        let index = 0;
+        const chunkSize = 100;
+
+        const processChunk = () => {
+          const end = Math.min(index + chunkSize, visible.length);
+
+          for (; index < end; index += 1) {
+            const point = visible[index];
+            const endIndex = resolveDailyIndex(dailyContext, point.date);
+
+            if (endIndex === undefined || endIndex + 1 < MIN_HISTORY) {
+              timeline.push(observingPoint(point.date));
+              continue;
+            }
+
+            timeline.push(makeTimelinePoint(
+              point.date,
+              classifyFromFeatures(dailyContext.features[endIndex])
+            ));
+          }
+
+          onProgress(0.1 + (index / visible.length) * 0.9);
+
+          if (index < visible.length) {
+            setTimeout(processChunk, 0);
+            return;
+          }
+
+          resolve(timeline);
+        };
+
+        setTimeout(processChunk, 0);
+      } catch (error) {
+        reject(error);
+      }
+    };
+
+    setTimeout(run, 0);
+  });
 
   const buildPsychologySegments = (visibleSeries, timeline) => {
     if (!visibleSeries.length) {
@@ -709,10 +850,13 @@ const PsychologyEngine = (() => {
     normalizeCandle,
     buildMultiFrameRsi,
     buildPsychologyTimeline,
+    buildPsychologyTimelineAsync,
     buildPsychologySegments,
     filterRsiByRange,
     computeFeatures,
     classifyPsychology,
+    classifyFromFeatures,
+    prepareDailyContext,
     evaluate,
     renderPsychologyLegend,
     renderRsiPanel,
