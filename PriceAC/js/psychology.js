@@ -238,20 +238,39 @@ const PsychologyEngine = (() => {
     };
   };
 
-  const renderRsiPanel = (container, rsiByInterval) => {
+  const renderRsiPanel = (container, snapshot) => {
+    const {
+      date = "—",
+      priceText = "—",
+      rsiByInterval = {},
+      isHover = false
+    } = snapshot;
+
     const items = [
       { key: "daily", label: "Ngày", value: rsiByInterval.daily },
       { key: "weekly", label: "Tuần", value: rsiByInterval.weekly },
       { key: "monthly", label: "Tháng", value: rsiByInterval.monthly }
     ];
 
-    container.innerHTML = items.map((item) => `
-      <article class="rsi-card ${rsiTone(item.value)}">
-        <span>RSI ${item.label}</span>
-        <strong>${item.value}</strong>
-        <small>Chu kỳ ${RSI_PERIOD}</small>
+    container.innerHTML = `
+      <article class="crosshair-meta ${isHover ? "active" : ""}">
+        <div>
+          <span>Thời điểm</span>
+          <strong id="crosshair-date">${date}</strong>
+        </div>
+        <div>
+          <span>Giá</span>
+          <strong id="crosshair-price">${priceText}</strong>
+        </div>
       </article>
-    `).join("");
+      ${items.map((item) => `
+        <article class="rsi-card ${rsiTone(item.value ?? 50)}">
+          <span>RSI ${item.label}</span>
+          <strong>${item.value ?? "—"}</strong>
+          <small>Chu kỳ ${RSI_PERIOD}</small>
+        </article>
+      `).join("")}
+    `;
   };
 
   const renderCycle = (container, possibleZone) => {

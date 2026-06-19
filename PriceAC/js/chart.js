@@ -32,6 +32,19 @@ const MarketChart = (() => {
   let currentChartMode = "line";
   let marketData = {};
   let onEvaluation = () => {};
+  let chartSnapshot = {
+    visibleData: [],
+    rsiSeries: { daily: [], weekly: [], monthly: [] },
+    evaluation: null
+  };
+  let hoverIndex = {
+    priceByDate: new Map(),
+    rsiDailyByDate: new Map(),
+    rsiWeeklyByDate: new Map(),
+    rsiMonthlyByDate: new Map(),
+    orderedDates: []
+  };
+  let syncingCrosshair = false;
 
   const generateFallbackData = (asset) => {
     const start = new Date("2026-01-01T00:00:00");
@@ -108,6 +121,170 @@ const MarketChart = (() => {
       start: visibleData[0].date,
       end: visibleData[visibleData.length - 1].date
     };
+  };
+
+  const formatNumber = (value) => {
+    if (!Number.isFinite(value)) {
+      return "—";
+    }
+
+    return value.toLocaleString("en-US", {
+      minimumFractionDigits: value >= 100 ? 0 : 2,
+      maximumFractionDigits: value >= 100 ? 2 : 4
+    });
+  };
+
+  const timeToKey = (time) => {
+    if (typeof time === "string") {
+      return time;
+    }
+
+    if (time && time.year) {
+      const month = String(time.month).padStart(2, "0");
+      const day = String(time.day).padStart(2, "0");
+      return `${time.year}-${month}-${day}`;
+    }
+
+    return null;
+  };
+
+  const findNearestDate = (timeKey) => {
+    const dates = hoverIndex.orderedDates;
+    if (!dates.length || !timeKey) {
+      return null;
+    }
+
+    if (hoverIndex.priceByDate.has(timeKey)) {
+      return timeKey;
+    }
+
+    let nearest = dates[0];
+    for (let index = 0; index < dates.length; index += 1) {
+      const date = dates[index];
+      if (date <= timeKey) {
+        nearest = date;
+      }
+      if (date > timeKey) {
+        break;
+      }
+    }
+
+    return nearest;
+  };
+
+  const formatPriceText = (candle) => {
+    if (!candle) {
+      return "—";
+    }
+
+    const close = candle.close ?? candle.price;
+    if (currentChartMode !== "candle") {
+      return formatNumber(close);
+    }
+
+    return `O ${formatNumber(candle.open ?? close)} · H ${formatNumber(candle.high ?? close)} · L ${formatNumber(candle.low ?? close)} · C ${formatNumber(close)}`;
+  };
+
+  const buildPanelSnapshot = (rsiDateKey, priceDateKey, isHover = false) => {
+    const candle = priceDateKey ? hoverIndex.priceByDate.get(priceDateKey) : null;
+    const rsiDaily = rsiDateKey ? hoverIndex.rsiDailyByDate.get(rsiDateKey) : null;
+    const rsiWeekly = rsiDateKey ? hoverIndex.rsiWeeklyByDate.get(rsiDateKey) : null;
+    const rsiMonthly = rsiDateKey ? hoverIndex.rsiMonthlyByDate.get(rsiDateKey) : null;
+    const fallback = chartSnapshot.evaluation?.rsiByInterval || {};
+
+    return {
+      date: rsiDateKey || priceDateKey || "—",
+      priceText: formatPriceText(candle),
+      rsiByInterval: {
+        daily: rsiDaily ?? fallback.daily,
+        weekly: rsiWeekly ?? fallback.weekly,
+        monthly: rsiMonthly ?? fallback.monthly
+      },
+      isHover
+    };
+  };
+
+  const rebuildHoverIndex = (visibleData, rsiSeries) => {
+    hoverIndex.priceByDate = new Map(visibleData.map((point) => [point.date, point]));
+    hoverIndex.rsiDailyByDate = new Map(rsiSeries.daily.map((point) => [point.date, point.value]));
+    hoverIndex.rsiWeeklyByDate = new Map(rsiSeries.weekly.map((point) => [point.date, point.value]));
+    hoverIndex.rsiMonthlyByDate = new Map(rsiSeries.monthly.map((point) => [point.date, point.value]));
+    hoverIndex.orderedDates = visibleData.map((point) => point.date);
+  };
+
+  const renderCrosshairPanel = (rsiDateKey, priceDateKey, isHover = false) => {
+    PsychologyEngine.renderRsiPanel(
+      document.querySelector("#rsi-panel"),
+      buildPanelSnapshot(rsiDateKey, priceDateKey, isHover)
+    );
+  };
+
+  const getLatestPanelKeys = () => {
+    const priceDateKey = hoverIndex.orderedDates[hoverIndex.orderedDates.length - 1] || null;
+    const rsiDateKey = chartSnapshot.rsiSeries.daily[chartSnapshot.rsiSeries.daily.length - 1]?.date
+      || priceDateKey;
+
+    return { rsiDateKey, priceDateKey };
+  };
+
+  const setSyncedCrosshair = (targetChart, targetSeries, time, price) => {
+    if (!targetChart || !targetSeries || !Number.isFinite(price)) {
+      return;
+    }
+
+    targetChart.setCrosshairPosition(price, time, targetSeries);
+  };
+
+  const handleCrosshairMove = (source, param) => {
+    if (syncingCrosshair) {
+      return;
+    }
+
+    if (!param.time) {
+      const { rsiDateKey, priceDateKey } = getLatestPanelKeys();
+      renderCrosshairPanel(rsiDateKey, priceDateKey, false);
+      if (source !== "price" && chart) {
+        chart.clearCrosshairPosition();
+      }
+      if (source !== "rsi" && rsiChart) {
+        rsiChart.clearCrosshairPosition();
+      }
+      return;
+    }
+
+    const rsiDateKey = timeToKey(param.time);
+    const priceDateKey = findNearestDate(rsiDateKey);
+    if (!rsiDateKey) {
+      return;
+    }
+
+    renderCrosshairPanel(rsiDateKey, priceDateKey, true);
+
+    syncingCrosshair = true;
+
+    const candle = priceDateKey ? hoverIndex.priceByDate.get(priceDateKey) : null;
+    const close = candle?.close ?? candle?.price;
+    const rsiDaily = hoverIndex.rsiDailyByDate.get(rsiDateKey);
+
+    if (source === "price" && rsiChart && rsiDailySeries && Number.isFinite(rsiDaily)) {
+      setSyncedCrosshair(rsiChart, rsiDailySeries, param.time, rsiDaily);
+    }
+
+    if (source === "rsi" && chart && Number.isFinite(close)) {
+      const activeSeries = currentChartMode === "candle" ? candleSeries : lineSeries;
+      setSyncedCrosshair(chart, activeSeries, param.time, close);
+    }
+
+    syncingCrosshair = false;
+  };
+
+  const bindCrosshairSync = () => {
+    if (!chart || !rsiChart) {
+      return;
+    }
+
+    chart.subscribeCrosshairMove((param) => handleCrosshairMove("price", param));
+    rsiChart.subscribeCrosshairMove((param) => handleCrosshairMove("rsi", param));
   };
 
   const getVisibleRsiSeries = () => {
@@ -229,7 +406,7 @@ const MarketChart = (() => {
       lineWidth: 1,
       lineStyle: LightweightCharts.LineStyle.Dashed,
       axisLabelVisible: true,
-      title: "70"
+      title: ""
     });
     series.createPriceLine({
       price: 30,
@@ -237,7 +414,7 @@ const MarketChart = (() => {
       lineWidth: 1,
       lineStyle: LightweightCharts.LineStyle.Dashed,
       axisLabelVisible: true,
-      title: "30"
+      title: ""
     });
   };
 
@@ -276,7 +453,9 @@ const MarketChart = (() => {
     rsiDailySeries = rsiChart.addLineSeries({
       color: "#60a5fa",
       lineWidth: 2,
-      title: "Ngày",
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: true,
       autoscaleInfoProvider: () => ({
         priceRange: { minValue: 0, maxValue: 100 }
       })
@@ -284,7 +463,9 @@ const MarketChart = (() => {
     rsiWeeklySeries = rsiChart.addLineSeries({
       color: "#74d99f",
       lineWidth: 2,
-      title: "Tuần",
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: true,
       autoscaleInfoProvider: () => ({
         priceRange: { minValue: 0, maxValue: 100 }
       })
@@ -292,7 +473,9 @@ const MarketChart = (() => {
     rsiMonthlySeries = rsiChart.addLineSeries({
       color: "#f4b860",
       lineWidth: 2,
-      title: "Tháng",
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: true,
       autoscaleInfoProvider: () => ({
         priceRange: { minValue: 0, maxValue: 100 }
       })
@@ -384,6 +567,9 @@ const MarketChart = (() => {
     const evaluation = PsychologyEngine.evaluate(getFullData(), visibleData);
     const rsiSeries = getVisibleRsiSeries();
 
+    chartSnapshot = { visibleData, rsiSeries, evaluation };
+    rebuildHoverIndex(visibleData, rsiSeries);
+
     if (lineSeries && candleSeries) {
       lineSeries.setData(toLineData(visibleData));
       candleSeries.setData(toCandleData(visibleData));
@@ -402,7 +588,8 @@ const MarketChart = (() => {
       drawFallbackRsiChart(rsiContainer, rsiSeries);
     }
 
-    PsychologyEngine.renderRsiPanel(document.querySelector("#rsi-panel"), evaluation.rsiByInterval);
+    const { rsiDateKey, priceDateKey } = getLatestPanelKeys();
+    renderCrosshairPanel(rsiDateKey, priceDateKey, false);
     renderMarketMap(evaluation);
     onEvaluation(evaluation);
   };
@@ -432,6 +619,7 @@ const MarketChart = (() => {
     await loadAllData();
     createChart(document.querySelector("#chart"));
     createRsiChart(document.querySelector("#rsi-chart"));
+    bindCrosshairSync();
     render();
   };
 
