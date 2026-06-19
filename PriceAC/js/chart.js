@@ -16,8 +16,11 @@ const MarketChart = (() => {
     "1M": 30,
     "3M": 90,
     "1Y": 365,
+    "5Y": 365 * 5,
     "10Y": Number.MAX_SAFE_INTEGER
   };
+
+  const isElliottPsychologyRange = () => PsychologyEngine.supportsElliottWeeklyPsychology(currentRange);
 
   let chart;
   let lineSeries;
@@ -145,6 +148,7 @@ const MarketChart = (() => {
   const updatePsychologyStatus = (message, isBusy = false) => {
     const status = document.querySelector("#psychology-status");
     const button = document.querySelector("#analyze-psychology");
+    const allowed = isElliottPsychologyRange();
 
     if (status) {
       status.textContent = message;
@@ -152,15 +156,20 @@ const MarketChart = (() => {
     }
 
     if (button) {
-      button.disabled = isBusy;
-      button.textContent = isBusy ? "Đang phân tích..." : "Phân tích tâm lý vùng đang xem";
+      button.disabled = isBusy || !allowed;
+      button.textContent = isBusy
+        ? "Đang phân tích sóng tuần..."
+        : "Phân tích Elliott (khung tuần)";
     }
   };
 
-  const invalidatePsychologyAnalysis = (message = "Chọn phạm vi giá rồi bấm phân tích") => {
+  const invalidatePsychologyAnalysis = (message) => {
     psychologyTimeline = [];
     psychologyAnalysisKey = null;
-    updatePsychologyStatus(message, false);
+    const defaultMessage = isElliottPsychologyRange()
+      ? "Bấm phân tích để tô vùng tâm lý theo sóng Elliott tuần"
+      : "Chọn phạm vi 5Y hoặc 10Y để phân tích sóng Elliott";
+    updatePsychologyStatus(message || defaultMessage, false);
   };
 
   const applyPsychologyResult = (visibleData, timeline) => {
@@ -177,7 +186,7 @@ const MarketChart = (() => {
     }
 
     PsychologyEngine.renderPsychologyLegend(document.querySelector("#psychology-legend"));
-    updatePsychologyStatus(`Đã phân tích ${timeline.length} điểm trong vùng đang xem`, false);
+    updatePsychologyStatus(`Đã phân tích ${timeline.length} điểm · sóng Elliott tuần`, false);
 
     const { rsiDateKey, priceDateKey } = getLatestPanelKeys();
     renderCrosshairPanel(rsiDateKey, priceDateKey, false);
@@ -194,15 +203,20 @@ const MarketChart = (() => {
       return;
     }
 
+    if (!isElliottPsychologyRange()) {
+      updatePsychologyStatus("Chỉ hỗ trợ phân tích Elliott cho phạm vi 5Y và 10Y");
+      return;
+    }
+
     isPsychologyAnalyzing = true;
-    updatePsychologyStatus("Đang chuẩn bị dữ liệu...", true);
+    updatePsychologyStatus("Đang gộp nến tuần và đếm sóng Elliott...", true);
 
     try {
-      const timeline = await PsychologyEngine.buildPsychologyTimelineAsync(
+      const timeline = await PsychologyEngine.buildElliottWeeklyTimelineAsync(
         getFullData(),
         visibleData,
         (progress) => {
-          updatePsychologyStatus(`Đang phân tích... ${Math.round(progress * 100)}%`, true);
+          updatePsychologyStatus(`Đang phân tích sóng tuần... ${Math.round(progress * 100)}%`, true);
         }
       );
 
@@ -812,8 +826,24 @@ const MarketChart = (() => {
 
     const { rsiDateKey, priceDateKey } = getLatestPanelKeys();
     renderCrosshairPanel(rsiDateKey, priceDateKey, false);
-    renderMarketMap(evaluation);
     onEvaluation(evaluation);
+
+    const nextKey = getAnalysisKey(visibleData);
+    if (psychologyAnalysisKey && nextKey !== psychologyAnalysisKey) {
+      psychologyTimeline = [];
+      psychologyAnalysisKey = null;
+    }
+
+    if (!psychologyTimeline.length) {
+      updatePsychologyStatus(
+        isElliottPsychologyRange()
+          ? "Bấm phân tích để tô vùng tâm lý theo sóng Elliott tuần"
+          : "Chọn phạm vi 5Y hoặc 10Y để phân tích sóng Elliott",
+        false
+      );
+    } else {
+      updatePsychologyStatus(`Đã phân tích ${psychologyTimeline.length} điểm · sóng Elliott tuần`, false);
+    }
   };
 
   const setAsset = (asset) => {

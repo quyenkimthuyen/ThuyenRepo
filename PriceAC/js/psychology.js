@@ -660,7 +660,39 @@ const PsychologyEngine = (() => {
     });
   };
 
-  const buildPsychologyTimelineAsync = (fullSeries, visibleSeries, onProgress = () => {}) => new Promise((resolve, reject) => {
+  const ELLIOTT_WEEKLY_RANGES = ["5Y", "10Y"];
+
+  const supportsElliottWeeklyPsychology = (range) => ELLIOTT_WEEKLY_RANGES.includes(range);
+
+  const buildElliottWeeklyTimeline = (fullSeries, visibleSeries) => {
+    if (!visibleSeries?.length) {
+      return [];
+    }
+
+    const daily = aggregateSeries(fullSeries, "1D");
+    const weekly = aggregateSeries(daily, "1W");
+    const visibleEnd = visibleSeries[visibleSeries.length - 1].date;
+    const weeklyForModel = weekly.filter((point) => point.date <= visibleEnd);
+    const model = ElliottEngine.buildWeeklyPsychologyModel(
+      weeklyForModel.length >= 8 ? weeklyForModel : weekly
+    );
+
+    return visibleSeries.map((point) => {
+      const region = ElliottEngine.findRegionForDate(model.regions, point.date);
+
+      return {
+        date: point.date,
+        zone: region.zone,
+        color: zoneColors[region.zone] || zoneColors.Observing,
+        label: zoneLabelsVi[region.zone] || zoneLabelsVi.Observing,
+        confidence: region.confidence,
+        elliottLabel: region.elliottLabel,
+        elliottWave: region.waveId
+      };
+    });
+  };
+
+  const buildElliottWeeklyTimelineAsync = (fullSeries, visibleSeries, onProgress = () => {}) => new Promise((resolve, reject) => {
     const visible = visibleSeries || [];
 
     if (!visible.length) {
@@ -668,50 +700,21 @@ const PsychologyEngine = (() => {
       return;
     }
 
-    const run = () => {
+    setTimeout(() => {
       try {
-        onProgress(0.05);
-        const dailyContext = prepareDailyContext(aggregateSeries(fullSeries, "1D"));
-        const timeline = [];
-        let index = 0;
-        const chunkSize = 100;
-
-        const processChunk = () => {
-          const end = Math.min(index + chunkSize, visible.length);
-
-          for (; index < end; index += 1) {
-            const point = visible[index];
-            const endIndex = resolveDailyIndex(dailyContext, point.date);
-
-            if (endIndex === undefined || endIndex + 1 < MIN_HISTORY) {
-              timeline.push(observingPoint(point.date));
-              continue;
-            }
-
-            timeline.push(makeTimelinePoint(
-              point.date,
-              classifyFromFeatures(dailyContext.features[endIndex])
-            ));
-          }
-
-          onProgress(0.1 + (index / visible.length) * 0.9);
-
-          if (index < visible.length) {
-            setTimeout(processChunk, 0);
-            return;
-          }
-
-          resolve(timeline);
-        };
-
-        setTimeout(processChunk, 0);
+        onProgress(0.2);
+        const timeline = buildElliottWeeklyTimeline(fullSeries, visible);
+        onProgress(1);
+        resolve(timeline);
       } catch (error) {
         reject(error);
       }
-    };
-
-    setTimeout(run, 0);
+    }, 0);
   });
+
+  const buildPsychologyTimelineAsync = (fullSeries, visibleSeries, onProgress = () => {}) => (
+    buildElliottWeeklyTimelineAsync(fullSeries, visibleSeries, onProgress)
+  );
 
   const buildPsychologySegments = (visibleSeries, timeline) => {
     if (!visibleSeries.length) {
@@ -773,7 +776,7 @@ const PsychologyEngine = (() => {
     ];
 
     container.innerHTML = `
-      <p class="psychology-legend-note">Nền màu kết hợp RSI, xu hướng và sóng Elliott (1–5, A–C)</p>
+      <p class="psychology-legend-note">Nền màu theo sóng Elliott trên khung tuần — chỉ phạm vi 5Y và 10Y</p>
       ${featuredZones.map((zone) => `
       <span class="psych-legend-item" style="--zone-color: ${zoneColors[zone]}">
         ${zoneLabelsVi[zone]}
@@ -894,6 +897,8 @@ const PsychologyEngine = (() => {
     normalizeCandle,
     buildMultiFrameRsi,
     buildPsychologyTimeline,
+    buildElliottWeeklyTimeline,
+    buildElliottWeeklyTimelineAsync,
     buildPsychologyTimelineAsync,
     buildPsychologySegments,
     filterRsiByRange,
@@ -901,6 +906,8 @@ const PsychologyEngine = (() => {
     classifyPsychology,
     classifyFromFeatures,
     prepareDailyContext,
+    supportsElliottWeeklyPsychology,
+    ELLIOTT_WEEKLY_RANGES,
     evaluate,
     renderPsychologyLegend,
     renderRsiPanel,
