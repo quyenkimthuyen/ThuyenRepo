@@ -26,6 +26,7 @@ const MarketChart = (() => {
   let rsiDailySeries;
   let rsiWeeklySeries;
   let rsiMonthlySeries;
+  let psychologyLineSegments = [];
   let currentAsset = "bitcoin";
   let currentRange = "1M";
   let currentInterval = "1D";
@@ -42,6 +43,7 @@ const MarketChart = (() => {
     rsiDailyByDate: new Map(),
     rsiWeeklyByDate: new Map(),
     rsiMonthlyByDate: new Map(),
+    psychologyByDate: new Map(),
     orderedDates: []
   };
   let syncingCrosshair = false;
@@ -190,11 +192,15 @@ const MarketChart = (() => {
     const rsiDaily = rsiDateKey ? hoverIndex.rsiDailyByDate.get(rsiDateKey) : null;
     const rsiWeekly = rsiDateKey ? hoverIndex.rsiWeeklyByDate.get(rsiDateKey) : null;
     const rsiMonthly = rsiDateKey ? hoverIndex.rsiMonthlyByDate.get(rsiDateKey) : null;
+    const psychology = rsiDateKey ? hoverIndex.psychologyByDate.get(rsiDateKey) : null;
     const fallback = chartSnapshot.evaluation?.rsiByInterval || {};
+    const latestPsychology = chartSnapshot.psychologyTimeline?.at(-1);
 
     return {
       date: rsiDateKey || priceDateKey || "—",
       priceText: formatPriceText(candle),
+      psychologyZone: psychology?.zone || latestPsychology?.zone || chartSnapshot.evaluation?.possibleZone,
+      psychologyLabel: psychology?.label || latestPsychology?.label,
       rsiByInterval: {
         daily: rsiDaily ?? fallback.daily,
         weekly: rsiWeekly ?? fallback.weekly,
@@ -204,11 +210,12 @@ const MarketChart = (() => {
     };
   };
 
-  const rebuildHoverIndex = (visibleData, rsiSeries) => {
+  const rebuildHoverIndex = (visibleData, rsiSeries, psychologyTimeline) => {
     hoverIndex.priceByDate = new Map(visibleData.map((point) => [point.date, point]));
     hoverIndex.rsiDailyByDate = new Map(rsiSeries.daily.map((point) => [point.date, point.value]));
     hoverIndex.rsiWeeklyByDate = new Map(rsiSeries.weekly.map((point) => [point.date, point.value]));
     hoverIndex.rsiMonthlyByDate = new Map(rsiSeries.monthly.map((point) => [point.date, point.value]));
+    hoverIndex.psychologyByDate = new Map(psychologyTimeline.map((point) => [point.date, point]));
     hoverIndex.orderedDates = visibleData.map((point) => point.date);
   };
 
@@ -271,7 +278,9 @@ const MarketChart = (() => {
     }
 
     if (source === "rsi" && chart && Number.isFinite(close)) {
-      const activeSeries = currentChartMode === "candle" ? candleSeries : lineSeries;
+      const activeSeries = currentChartMode === "candle"
+        ? candleSeries
+        : (psychologyLineSegments[psychologyLineSegments.length - 1] || lineSeries);
       setSyncedCrosshair(chart, activeSeries, param.time, close);
     }
 
@@ -337,14 +346,54 @@ const MarketChart = (() => {
     `;
   };
 
+  const clearPsychologySeries = () => {
+    psychologyLineSegments.forEach((series) => chart.removeSeries(series));
+    psychologyLineSegments = [];
+  };
+
+  const renderPsychologyOverlay = (visibleData, psychologyTimeline) => {
+    if (!chart || !visibleData.length) {
+      return;
+    }
+
+    clearPsychologySeries();
+
+    const segments = PsychologyEngine.buildPsychologySegments(visibleData, psychologyTimeline);
+
+    segments.forEach((segment) => {
+      const lineSeriesSegment = chart.addLineSeries({
+        color: segment.color,
+        lineWidth: currentChartMode === "candle" ? 2 : 3,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: true
+      });
+
+      lineSeriesSegment.setData(toLineData(segment.points));
+      psychologyLineSegments.push(lineSeriesSegment);
+    });
+
+    if (lineSeries) {
+      lineSeries.applyOptions({ visible: false });
+    }
+
+    if (candleSeries) {
+      candleSeries.applyOptions({ visible: currentChartMode === "candle" });
+    }
+  };
+
   const applyChartMode = () => {
     if (!lineSeries || !candleSeries) {
       return;
     }
 
     const showCandles = currentChartMode === "candle";
-    lineSeries.applyOptions({ visible: !showCandles });
+    lineSeries.applyOptions({ visible: false });
     candleSeries.applyOptions({ visible: showCandles });
+
+    psychologyLineSegments.forEach((series) => {
+      series.applyOptions({ lineWidth: showCandles ? 2 : 3 });
+    });
   };
 
   const createChart = (container) => {
@@ -566,18 +615,22 @@ const MarketChart = (() => {
     const visibleData = getVisibleData();
     const evaluation = PsychologyEngine.evaluate(getFullData(), visibleData);
     const rsiSeries = getVisibleRsiSeries();
+    const psychologyTimeline = PsychologyEngine.buildPsychologyTimeline(visibleData);
 
-    chartSnapshot = { visibleData, rsiSeries, evaluation };
-    rebuildHoverIndex(visibleData, rsiSeries);
+    chartSnapshot = { visibleData, rsiSeries, evaluation, psychologyTimeline };
+    rebuildHoverIndex(visibleData, rsiSeries, psychologyTimeline);
 
     if (lineSeries && candleSeries) {
-      lineSeries.setData(toLineData(visibleData));
       candleSeries.setData(toCandleData(visibleData));
+      lineSeries.setData(toLineData(visibleData));
+      renderPsychologyOverlay(visibleData, psychologyTimeline);
       applyChartMode();
       chart.timeScale().fitContent();
     } else {
       drawFallbackChart(container, visibleData);
     }
+
+    PsychologyEngine.renderPsychologyLegend(document.querySelector("#psychology-legend"));
 
     if (rsiDailySeries && rsiWeeklySeries && rsiMonthlySeries) {
       rsiDailySeries.setData(toRsiLineData(rsiSeries.daily));

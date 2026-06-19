@@ -17,6 +17,35 @@ const PsychologyEngine = (() => {
   ];
 
   const RSI_PERIOD = 14;
+  const PSYCHOLOGY_WINDOW = 30;
+
+  const zoneColors = {
+    Hope: "#60a5fa",
+    Optimism: "#74d99f",
+    Belief: "#22c55e",
+    Thrill: "#a3e635",
+    Euphoria: "#f4b860",
+    Complacency: "#fbbf24",
+    Anxiety: "#fb923c",
+    Panic: "#fb7185",
+    Capitulation: "#e11d48",
+    Disbelief: "#64748b",
+    Observing: "#8ea0b7"
+  };
+
+  const zoneLabelsVi = {
+    Hope: "Hy vọng",
+    Optimism: "Lạc quan",
+    Belief: "Niềm tin",
+    Thrill: "Hưng phấn",
+    Euphoria: "Hưng phấn cực độ",
+    Complacency: "Chủ quan",
+    Anxiety: "Lo âu",
+    Panic: "Hoảng loạn",
+    Capitulation: "Bỏ cuộc",
+    Disbelief: "Nghi ngờ",
+    Observing: "Quan sát"
+  };
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -216,8 +245,12 @@ const PsychologyEngine = (() => {
       Thrill: 14 + clamp(trend, 6, 30) * 1.05
         + (rsiDaily > 66 ? 10 : 0)
         + (rsiWeekly > 66 ? 8 : 0),
+      Euphoria: 8 + clamp(trend, 12, 35) * 1.2 + (rsiBlend > 72 ? 16 : 0),
       Complacency: 10 + (rsiBlend > 70 ? 14 : 0) + (rsiMonthly > 72 ? 8 : 0),
-      Anxiety: 12 + (trend < -4 ? 18 : 0) + (volume > 70 ? 8 : 0) + (rsiBlend < 35 ? 10 : 0)
+      Anxiety: 12 + (trend < -4 ? 18 : 0) + (volume > 70 ? 8 : 0) + (rsiBlend < 35 ? 10 : 0),
+      Panic: 8 + (trend < -10 ? 20 : 0) + (rsiBlend < 28 ? 14 : 0),
+      Capitulation: 6 + (trend < -16 ? 18 : 0) + (rsiBlend < 22 ? 12 : 0),
+      Disbelief: 10 + (trend < 0 && trend > -6 ? 12 : 0) + (rsiBlend >= 35 && rsiBlend <= 48 ? 8 : 0)
     };
 
     const probabilities = normalizeScores(scores);
@@ -238,10 +271,87 @@ const PsychologyEngine = (() => {
     };
   };
 
+  const buildPsychologyTimeline = (visibleSeries, windowSize = PSYCHOLOGY_WINDOW) => {
+    if (!visibleSeries || !visibleSeries.length) {
+      return [];
+    }
+
+    return visibleSeries.map((point, index) => {
+      const slice = visibleSeries.slice(Math.max(0, index - windowSize + 1), index + 1);
+      const evaluation = evaluate(slice, slice);
+
+      return {
+        date: point.date,
+        zone: evaluation.possibleZone,
+        color: zoneColors[evaluation.possibleZone] || zoneColors.Observing,
+        label: zoneLabelsVi[evaluation.possibleZone] || zoneLabelsVi.Observing,
+        confidence: evaluation.confidence
+      };
+    });
+  };
+
+  const buildPsychologySegments = (visibleSeries, timeline) => {
+    if (!visibleSeries.length) {
+      return [];
+    }
+
+    const segments = [];
+    let currentZone = timeline[0]?.zone || "Observing";
+    let points = [visibleSeries[0]];
+
+    for (let index = 1; index < visibleSeries.length; index += 1) {
+      const zone = timeline[index]?.zone || "Observing";
+
+      if (zone !== currentZone) {
+        segments.push({
+          zone: currentZone,
+          color: timeline[index - 1]?.color || zoneColors.Observing,
+          points: [...points]
+        });
+        currentZone = zone;
+        points = [visibleSeries[index - 1], visibleSeries[index]];
+        continue;
+      }
+
+      points.push(visibleSeries[index]);
+    }
+
+    segments.push({
+      zone: currentZone,
+      color: timeline[timeline.length - 1]?.color || zoneColors.Observing,
+      points
+    });
+
+    return segments;
+  };
+
+  const renderPsychologyLegend = (container) => {
+    const featuredZones = [
+      "Hope",
+      "Optimism",
+      "Belief",
+      "Thrill",
+      "Euphoria",
+      "Complacency",
+      "Anxiety",
+      "Panic",
+      "Capitulation",
+      "Disbelief"
+    ];
+
+    container.innerHTML = featuredZones.map((zone) => `
+      <span class="psych-legend-item" style="--zone-color: ${zoneColors[zone]}">
+        ${zoneLabelsVi[zone]}
+      </span>
+    `).join("");
+  };
+
   const renderRsiPanel = (container, snapshot) => {
     const {
       date = "—",
       priceText = "—",
+      psychologyZone = null,
+      psychologyLabel = null,
       rsiByInterval = {},
       isHover = false
     } = snapshot;
@@ -262,6 +372,14 @@ const PsychologyEngine = (() => {
           <span>Giá</span>
           <strong id="crosshair-price">${priceText}</strong>
         </div>
+        ${psychologyZone ? `
+        <div>
+          <span>Tâm lý thị trường</span>
+          <strong class="psych-zone-value" style="color: ${zoneColors[psychologyZone] || zoneColors.Observing}">
+            ${psychologyLabel || psychologyZone}
+          </strong>
+        </div>
+        ` : ""}
       </article>
       ${items.map((item) => `
         <article class="rsi-card ${rsiTone(item.value ?? 50)}">
@@ -326,11 +444,16 @@ const PsychologyEngine = (() => {
 
   return {
     cycle,
+    zoneColors,
+    zoneLabelsVi,
     aggregateSeries,
     normalizeCandle,
     buildMultiFrameRsi,
+    buildPsychologyTimeline,
+    buildPsychologySegments,
     filterRsiByRange,
     evaluate,
+    renderPsychologyLegend,
     renderRsiPanel,
     renderCycle,
     renderProbabilities

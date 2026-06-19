@@ -270,8 +270,54 @@ textarea:focus {
   letter-spacing: -0.03em;
 }
 
-.crosshair-meta div:last-child strong {
+.crosshair-meta div:nth-child(2) strong {
   color: var(--green);
+}
+
+.psych-zone-value {
+  color: var(--blue) !important;
+}
+
+.psychology-legend-wrap {
+  margin: 10px 0 0;
+}
+
+.psychology-legend-title {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.psychology-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.psych-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(13, 24, 36, 0.76);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.psych-legend-item::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--zone-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--zone-color) 24%, transparent);
 }
 
 .rsi-card {
