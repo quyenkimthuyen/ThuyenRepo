@@ -320,7 +320,7 @@
 
     .filter-label {
       margin: 4px 0 -4px;
-      color: var(--green-dark);
+      color: var(--accent);
       font-size: 0.82rem;
       font-weight: 900;
       letter-spacing: 0.05em;
@@ -995,6 +995,8 @@
         <span id="activeRegionName" class="region-pill">Miền Tây Nam Bộ</span>
         <p class="filter-label">Vùng miền</p>
         <div id="regionFilters" class="region-filters" role="group" aria-label="Lọc theo vùng miền"></div>
+        <p class="filter-label">Mâm Cơm Đặc Biệt</p>
+        <div id="specialFilters" class="region-filters" role="group" aria-label="Lọc theo mâm cơm đặc biệt"></div>
         <p class="filter-label">Phong vị</p>
         <div id="tagFilters" class="tag-filters" role="group" aria-label="Lọc theo phong vị"></div>
       </aside>
@@ -1792,6 +1794,18 @@
               { role: "Rau ăn kèm", name: "Rau đồng, kèo nèo, bông súng" }
             ],
             ingredients: ["mắm cá linh", "bông súng", "cá rô", "bí đỏ", "tôm", "rau đồng"]
+          },
+          {
+            title: "Mâm Cơm Gỏi Ngó Sen Tôm Thịt",
+            tag: "Mát lành",
+            description: "Mâm cơm lấy gỏi ngó sen tôm thịt chua ngọt giòn sần sật làm món chính, kết hợp với canh chua thanh mát và tép ram đậm đà.",
+            dishes: [
+              { role: "Món chính", name: "Gỏi ngó sen tôm thịt" },
+              { role: "Món canh", name: "Canh hẹ đậu hũ non thịt bằm" },
+              { role: "Món phụ", name: "Tép rang mặn ngọt" },
+              { role: "Nước chấm", name: "Nước mắm chua ngọt ăn gỏi" }
+            ],
+            ingredients: ["ngó sen", "tôm", "thịt ba rọi", "hẹ", "đậu hũ non", "tép"]
           }
         ]
       },
@@ -2483,6 +2497,18 @@
               { role: "Nước chấm", name: "Nước mắm chua ngọt" }
             ],
             ingredients: ["rươi", "vỏ quýt", "trứng", "măng tươi", "xương heo", "rau sống"]
+          },
+          {
+            title: "Mâm Cơm Nộm Hoa Chuối Tai Heo",
+            tag: "Thanh mát",
+            description: "Bữa cơm thanh nhẹ với nộm hoa chuối tai heo giòn sần sật, ăn cùng canh cua đồng và đậu phụ tẩm hành giản dị.",
+            dishes: [
+              { role: "Món chính", name: "Nộm hoa chuối tai heo" },
+              { role: "Món canh", name: "Canh cua mồng tơi rau đay" },
+              { role: "Món phụ", name: "Đậu phụ tẩm hành" },
+              { role: "Nước chấm", name: "Nước mắm chua ngọt pha tỏi ớt" }
+            ],
+            ingredients: ["hoa chuối", "tai heo", "cua đồng", "mồng tơi", "đậu phụ", "hành lá"]
           }
         ]
       },
@@ -2548,6 +2574,18 @@
               { role: "Nước chấm", name: "Nước mắm ớt xanh" }
             ],
             ingredients: ["hến", "rau răm", "bánh tráng", "rau tập tàng", "ớt xanh"]
+          },
+          {
+            title: "Mâm Cơm Gỏi Mít Non Tôm Thịt",
+            tag: "Đậm đà",
+            description: "Gỏi mít non bùi bùi thơm ngậy trộn tôm thịt, ăn kèm bánh tráng nướng giòn và tô canh hến ngọt thanh.",
+            dishes: [
+              { role: "Món chính", name: "Gỏi mít non tôm thịt bánh tráng" },
+              { role: "Món canh", name: "Canh hến nấu rau muống" },
+              { role: "Món phụ", name: "Cá nục kho keo" },
+              { role: "Nước chấm", name: "Nước mắm ớt tỏi lý sơn" }
+            ],
+            ingredients: ["mít non", "tôm", "thịt ba rọi", "bánh tráng", "hến", "rau muống", "cá nục"]
           }
         ]
       },
@@ -2613,6 +2651,18 @@
               { role: "Nước chấm", name: "Nước tương gừng" }
             ],
             ingredients: ["cá diêu hồng", "xì dầu", "gừng", "tần ô", "cải thìa"]
+          },
+          {
+            title: "Mâm Cơm Gỏi Bưởi Tôm Mực",
+            tag: "Tươi ngọt",
+            description: "Sự kết hợp tinh tế giữa những tép bưởi mọng nước, tôm mực tươi ngon và nước trộn chua ngọt thanh nhã.",
+            dishes: [
+              { role: "Món chính", name: "Gỏi bưởi tôm mực" },
+              { role: "Món canh", name: "Canh sườn non nấu bông cải" },
+              { role: "Món phụ", name: "Đậu hũ chiên sả ớt" },
+              { role: "Ăn kèm", name: "Phồng tôm chiên giòn" }
+            ],
+            ingredients: ["bưởi", "tôm", "mực", "sườn non", "bông cải", "đậu hũ", "phồng tôm"]
           }
         ]
       },
@@ -2678,6 +2728,18 @@
               { role: "Nước chấm", name: "Muối ớt xanh" }
             ],
             ingredients: ["gà", "sả", "ớt", "rau rừng", "tôm khô", "cà đắng"]
+          },
+          {
+            title: "Mâm Cơm Gỏi Rau Dớn Tai Heo",
+            tag: "Núi rừng",
+            description: "Rau dớn rừng giòn ngọt quyện cùng tai heo sần sật và đậu phộng rang thơm, mang hương vị mộc mạc của đại ngàn Tây Nguyên.",
+            dishes: [
+              { role: "Món chính", name: "Gỏi rau dớn rừng tai heo" },
+              { role: "Món canh", name: "Canh măng le nấu sườn heo" },
+              { role: "Món phụ", name: "Cá suối kho nghệ" },
+              { role: "Nước chấm", name: "Muối ớt xanh giã lá é" }
+            ],
+            ingredients: ["rau dớn", "tai heo", "măng le", "sườn heo", "cá suối", "lá é"]
           }
         ]
       },
@@ -2743,6 +2805,18 @@
               { role: "Món phụ", name: "Trứng chiên hành" }
             ],
             ingredients: ["cá đục", "tiêu", "nghêu", "rau muống", "dưa leo", "trứng"]
+          },
+          {
+            title: "Mâm Cơm Gỏi Sứa Tai Heo",
+            tag: "Vị biển",
+            description: "Gỏi sứa giòn sần sật, thanh mát trộn cùng tai heo, đu đủ bào và nước mắm chua ngọt đậm đà phong vị biển xanh.",
+            dishes: [
+              { role: "Món chính", name: "Gỏi sứa tai heo đu đủ" },
+              { role: "Món canh", name: "Canh nghêu nấu chua khế" },
+              { role: "Món mặn", name: "Cá thu chiên sốt cà chua" },
+              { role: "Ăn kèm", name: "Bánh tráng nướng" }
+            ],
+            ingredients: ["sứa biển", "tai heo", "đu đủ", "nghêu", "khế", "cá thu", "bánh tráng"]
           }
         ]
       },
@@ -2808,6 +2882,18 @@
               { role: "Nước chấm", name: "Muối ớt mắc khén" }
             ],
             ingredients: ["thịt trâu", "lá lốt", "rau rừng", "tôm khô", "nếp nương", "mắc khén"]
+          },
+          {
+            title: "Mâm Cơm Nộm Rau Dớn Thịt Trâu",
+            tag: "Tây Bắc",
+            description: "Rau dớn rừng thanh mát trộn cùng sợi thịt trâu gác bếp xé nhỏ thơm mùi mắc khén và hạt dổi nướng đặc trưng núi rừng.",
+            dishes: [
+              { role: "Món chính", name: "Nộm rau dớn thịt trâu gác bếp" },
+              { role: "Món canh", name: "Canh cải mèo nấu gừng" },
+              { role: "Món phụ", name: "Cá suối nướng pa pỉnh tộp" },
+              { role: "Nước chấm", name: "Chẳm chéo ớt nướng" }
+            ],
+            ingredients: ["rau dớn", "thịt trâu gác bếp", "mắc khén", "cải mèo", "cá suối"]
           }
         ]
       },
@@ -2873,6 +2959,18 @@
               { role: "Món mặn", name: "Trứng rán hành" }
             ],
             ingredients: ["đậu phụ", "cà chua", "rau bò khai", "su su", "thịt bằm", "trứng"]
+          },
+          {
+            title: "Mâm Cơm Nộm Măng Chua Tai Heo",
+            tag: "Vùng cao",
+            description: "Nộm măng chua rừng giòn ngọt kết hợp cùng tai heo và lá mắc mật chiên thơm, tạo vị chua thanh lạ miệng.",
+            dishes: [
+              { role: "Món chính", name: "Nộm măng chua tai heo lá mắc mật" },
+              { role: "Món canh", name: "Canh khoai sọ nấu xương hầm" },
+              { role: "Món mặn", name: "Vịt quay mắc mật Lạng Sơn" },
+              { role: "Nước chấm", name: "Nước tương tỏi ớt" }
+            ],
+            ingredients: ["măng chua", "tai heo", "lá mắc mật", "khoai sọ", "xương heo", "vịt"]
           }
         ]
       },
@@ -2938,6 +3036,18 @@
               { role: "Rau ăn kèm", name: "Dưa leo và rau thơm" }
             ],
             ingredients: ["cá biển", "tiêu", "cải xanh", "tôm", "cà muối", "dưa leo"]
+          },
+          {
+            title: "Mâm Cơm Gỏi Vả Tôm Thịt",
+            tag: "Cố đô",
+            description: "Gỏi trái vả bùi chát nhẹ trộn tôm thịt đậm đà kiểu Huế, xúc bánh tráng mè giòn rụm.",
+            dishes: [
+              { role: "Món chính", name: "Gỏi vả tôm thịt bánh tráng" },
+              { role: "Món canh", name: "Canh bông bí nấu tôm bằm" },
+              { role: "Món mặn", name: "Cá rô đồng kho nghệ nhút" },
+              { role: "Nước chấm", name: "Nước mắm tỏi" }
+            ],
+            ingredients: ["trái vả", "tôm", "thịt ba rọi", "bánh tráng", "bông bí", "cá rô", "nghệ"]
           }
         ]
       },
@@ -3003,6 +3113,18 @@
               { role: "Nước chấm", name: "Muối ớt xanh" }
             ],
             ingredients: ["gà", "lá é", "bí đỏ", "thịt bằm", "dưa leo", "ớt xanh"]
+          },
+          {
+            title: "Mâm Cơm Gỏi Cá Mai Phan Thiết",
+            tag: "Bình Thuận",
+            description: "Gỏi cá mai tươi roi rói trộn đậu phộng, hành tây, thính bánh tráng và rau thơm, chấm nước xốt mè đậu phộng đặc trưng.",
+            dishes: [
+              { role: "Món chính", name: "Gỏi cá mai tươi ăn kèm rau sống" },
+              { role: "Món canh", name: "Canh chua cá cơm móm" },
+              { role: "Món phụ", name: "Mực rim xào khóm" },
+              { role: "Nước chấm", name: "Xốt chấm mè đậu phộng" }
+            ],
+            ingredients: ["cá mai", "rau sống", "đậu phộng", "cá cơm", "mực", "khóm"]
           }
         ]
       },
@@ -3068,6 +3190,157 @@
               { role: "Món phụ", name: "Đậu hũ non hấp gừng" }
             ],
             ingredients: ["nấm", "đậu hũ", "rau củ", "mướp", "gừng", "nước tương"]
+          },
+          {
+            title: "Mâm Cơm Gỏi Ngó Sen Chay",
+            tag: "Chay tịnh",
+            description: "Món gỏi chay thanh đạm từ ngó sen, tai heo chay dai giòn, nấm đùi gà xé sợi quyện nước sốt chua ngọt thanh tao.",
+            dishes: [
+              { role: "Món chính", name: "Gỏi ngó sen tai heo chay nấm đùi gà" },
+              { role: "Món canh", name: "Canh chua chay bông điên điển" },
+              { role: "Món phụ", name: "Đậu hũ chiên sả ớt" },
+              { role: "Ăn kèm", name: "Bánh phồng tôm chay chiên giòn" }
+            ],
+            ingredients: ["ngó sen", "tai heo chay", "nấm đùi gà", "bông điên điển", "đậu hũ", "bánh phồng chay"]
+          }
+        ]
+      },
+      mamComNgayTet: {
+        name: "Mâm Cơm Ngày Tết",
+        isSpecial: true,
+        combos: [
+          {
+            title: "Mâm Cơm Tết Cổ Truyền Miền Bắc",
+            tag: "Tết truyền thống",
+            description: "Mâm cỗ Tết đặc trưng của người Hà Nội xưa với bánh chưng, thịt đông dưa hành mằn mặn và bát canh bóng mát lành.",
+            dishes: [
+              { role: "Món chính", name: "Bánh chưng xanh" },
+              { role: "Món mặn", name: "Thịt đông chân giò" },
+              { role: "Món canh", name: "Canh bóng thập cẩm" },
+              { role: "Món phụ", name: "Giò thủ (giò xào)" },
+              { role: "Món chua", name: "Dưa hành muối" },
+              { role: "Nước chấm", name: "Nước mắm nguyên chất rắc tiêu" }
+            ],
+            ingredients: ["gạo nếp", "thịt chân giò", "nấm hương", "bóng bì", "giò thủ", "hành củ"]
+          },
+          {
+            title: "Mâm Cơm Tết Sum Vầy Miền Nam",
+            tag: "Tết Nam Bộ",
+            description: "Hương vị Tết phương Nam với nồi thịt kho hột vịt nước dừa béo ngậy cùng bát canh khổ qua nhồi thịt mong mọi khổ đau qua đi.",
+            dishes: [
+              { role: "Món chính", name: "Bánh tét nhân đậu mỡ" },
+              { role: "Món mặn", name: "Thịt kho tàu (thịt kho hột vịt)" },
+              { role: "Món canh", name: "Canh khổ qua nhồi thịt" },
+              { role: "Món phụ", name: "Lạp xưởng Mai Quế Lộ chiên" },
+              { role: "Món chua", name: "Củ kiệu tôm khô" },
+              { role: "Nước chấm", name: "Nước mắm tỏi ớt chua ngọt" }
+            ],
+            ingredients: ["gạo nếp", "thịt ba rọi", "trứng vịt", "khổ qua", "thịt heo xay", "củ kiệu", "tôm khô"]
+          },
+          {
+            title: "Mâm Cơm Tết Thanh Nhã Miền Trung",
+            tag: "Tết miền Trung",
+            description: "Hương vị Tết đậm đà của dải đất miền Trung với bánh chưng gói vuông, giò heo hon thơm lừng và tai heo ngâm nước mắm giòn sần sật.",
+            dishes: [
+              { role: "Món chính", name: "Bánh chưng đất Quảng" },
+              { role: "Món mặn", name: "Giò heo hon nghệ riềng" },
+              { role: "Món phụ", name: "Tai heo ngâm nước mắm nhĩ" },
+              { role: "Món xào", name: "Miến xào lòng gà" },
+              { role: "Món chua", name: "Dưa món miền Trung" },
+              { role: "Nước chấm", name: "Nước mắm ớt kim" }
+            ],
+            ingredients: ["gạo nếp", "giò heo", "tai heo", "miến", "lòng gà", "kiệu", "đu đủ"]
+          }
+        ]
+      },
+      mamComAnDuong: {
+        name: "Mâm Cơm An Dưỡng",
+        isSpecial: true,
+        combos: [
+          {
+            title: "Mâm Cơm Cháo Cá Đậu Xanh An Dưỡng",
+            tag: "Dễ tiêu",
+            description: "Bữa ăn nhẹ bụng, thanh nhiệt cho người mới ốm dậy với cháo cá lóc ngọt thịt nấu đậu xanh bùi ấm và gỏi tai heo rau răm hành tây.",
+            dishes: [
+              { role: "Món chính", name: "Cháo cá lóc hành gừng" },
+              { role: "Ăn kèm", name: "Đậu xanh nguyên vỏ hầm nhừ" },
+              { role: "Món phụ", name: "Trứng hấp vân (trứng cuộn)" },
+              { role: "Món chua", name: "Gỏi tai heo rau răm hành tây" },
+              { role: "Nước chấm", name: "Nước mắm gừng ấm" }
+            ],
+            ingredients: ["cá lóc", "đậu xanh", "gạo tẻ", "trứng gà", "tai heo", "hành tây", "rau răm"]
+          },
+          {
+            title: "Mâm Cơm Gà Tần Sâm Bát Bảo",
+            tag: "Bồi bổ",
+            description: "Mâm cơm giàu dưỡng chất với gà ác tần sâm thảo mộc ấm người, kết hợp rau củ hấp chấm kho quẹt chay ngọt nhẹ.",
+            dishes: [
+              { role: "Món chính", name: "Gà ác tần sâm hạt sen" },
+              { role: "Món phụ", name: "Đậu phụ non hấp hành gừng" },
+              { role: "Rau ăn kèm", name: "Bông cải và rễ củ hấp" },
+              { role: "Món canh", name: "Canh bí xanh nấu thịt ức gà" },
+              { role: "Nước chấm", name: "Nước mắm gừng nhẹ hoặc kho quẹt chay" }
+            ],
+            ingredients: ["gà ác", "nhân sâm", "hạt sen", "đậu phụ non", "bông cải", "bí xanh", "ức gà"]
+          },
+          {
+            title: "Mâm Cơm Chay Sen Trà Thanh Lọc",
+            tag: "Thanh lọc",
+            description: "Mâm cơm chay nhẹ nhàng, mát ruột với canh sen củ hạt, đậu hũ sốt nấm hương thanh nhã và rau luộc chấm muối vừng.",
+            dishes: [
+              { role: "Món chính", name: "Canh củ sen hạt sen nấm tuyết" },
+              { role: "Món mặn chay", name: "Đậu hũ non sốt nấm hương" },
+              { role: "Rau ăn kèm", name: "Rau cải chíp luộc sơ" },
+              { role: "Nước chấm", name: "Muối vừng (muối mè) giã dập" },
+              { role: "Tráng miệng", name: "Chè sen long nhãn" }
+            ],
+            ingredients: ["củ sen", "hạt sen", "nấm tuyết", "đậu hũ", "nấm hương", "cải chíp", "vừng", "long nhãn"]
+          }
+        ]
+      },
+      mamComNgayGio: {
+        name: "Mâm Cơm Ngày Giỗ",
+        isSpecial: true,
+        combos: [
+          {
+            title: "Mâm Cỗ Giỗ Truyền Thống Bắc Bộ",
+            tag: "Cúng giỗ",
+            description: "Mâm cỗ giỗ đầy đủ hương sắc bày tỏ lòng hiếu kính tổ tiên của người Bắc với xôi xéo ruốc, gà luộc cánh tiên vàng óng và đĩa xào thập cẩm.",
+            dishes: [
+              { role: "Món chính", name: "Gà ta luộc cánh tiên chấm lá chanh" },
+              { role: "Món xào", name: "Lòng mề xào thập cẩm (súp lơ, cà rốt)" },
+              { role: "Món canh", name: "Canh măng sườn móng giò" },
+              { role: "Món phụ", name: "Giò lụa truyền thống Ước Lễ" },
+              { role: "Ăn kèm", name: "Xôi xéo mỡ hành ruốc" },
+              { role: "Nước chấm", name: "Nước mắm chanh ớt hiểm" }
+            ],
+            ingredients: ["gà ta", "lòng gà", "súp lơ", "măng khô", "sườn heo", "giò lụa", "gạo nếp"]
+          },
+          {
+            title: "Mâm Cỗ Giỗ Ấm Cúng Nam Bộ",
+            tag: "Cúng giỗ",
+            description: "Mâm cúng giỗ đậm vị Nam Bộ với gà luộc ráo mỡ chấm muối tiêu chanh, lẩu tả pín lù hải sản nghi ngút khói và đĩa thịt kho rịu nước dừa.",
+            dishes: [
+              { role: "Món chính", name: "Gà luộc xé phay bóp thấu rau răm" },
+              { role: "Món canh", name: "Lẩu tả pín lù hải sản thịt bò" },
+              { role: "Món mặn", name: "Thịt heo kho rịu nước dừa chanh" },
+              { role: "Món xào", name: "Miến xào tôm mực" },
+              { role: "Nước chấm", name: "Nước mắm tỏi ớt nguyên chất và muối tiêu chanh" }
+            ],
+            ingredients: ["gà ta", "tôm", "mực", "thịt bò", "thịt heo", "nước dừa", "miến"]
+          },
+          {
+            title: "Mâm Cỗ Giỗ Cố Đô Huế",
+            tag: "Cúng giỗ",
+            description: "Mâm cỗ cúng kỵ tinh tế, tỉ mỉ của người Huế với thịt heo quay kho dưa cải chua, vả trộn tôm thịt xúc bánh tráng và chè trôi nước.",
+            dishes: [
+              { role: "Món mặn", name: "Thịt quay kho dưa cải" },
+              { role: "Món phụ", name: "Vả trộn tôm thịt xúc bánh tráng" },
+              { role: "Món canh", name: "Canh miến gà nấu lòng" },
+              { role: "Món xào", name: "Đậu cô ve xào thịt bò" },
+              { role: "Tráng miệng", name: "Chè trôi nước nhân đậu xanh" }
+            ],
+            ingredients: ["thịt heo quay", "dưa cải", "trái vả", "tôm", "miến", "gà", "đậu cô ve", "thịt bò"]
           }
         ]
       }
@@ -3076,6 +3349,7 @@
     const comboGrid = document.getElementById("comboGrid");
     const searchInput = document.getElementById("searchInput");
     const regionFilters = document.getElementById("regionFilters");
+    const specialFilters = document.getElementById("specialFilters");
     const tagFilters = document.getElementById("tagFilters");
     const viewTabs = document.getElementById("viewTabs");
     const comboHeading = document.getElementById("comboHeading");
@@ -3106,10 +3380,21 @@
     }
 
     function getRegions() {
-      return Object.entries(menuRegions).map(([key, region]) => ({
-        key,
-        name: region.name
-      }));
+      return Object.entries(menuRegions)
+        .filter(([key, region]) => !region.isSpecial)
+        .map(([key, region]) => ({
+          key,
+          name: region.name
+        }));
+    }
+
+    function getSpecialRegions() {
+      return Object.entries(menuRegions)
+        .filter(([key, region]) => region.isSpecial)
+        .map(([key, region]) => ({
+          key,
+          name: region.name
+        }));
     }
 
     function getCombos(regionKey = activeRegion) {
@@ -3450,6 +3735,16 @@
 
     function renderRegionFilters() {
       regionFilters.innerHTML = getRegions()
+        .map((region) => `
+          <button class="region-btn${region.key === activeRegion ? " active" : ""}" type="button" data-region="${region.key}">
+            ${region.name}
+          </button>
+        `)
+        .join("");
+    }
+
+    function renderSpecialFilters() {
+      specialFilters.innerHTML = getSpecialRegions()
         .map((region) => `
           <button class="region-btn${region.key === activeRegion ? " active" : ""}" type="button" data-region="${region.key}">
             ${region.name}
@@ -3943,6 +4238,23 @@
       activeTag = "Tất cả";
       activeView = "all";
       renderRegionFilters();
+      renderSpecialFilters();
+      renderTagFilters();
+      renderCombos();
+    });
+
+    specialFilters.addEventListener("click", (event) => {
+      const button = event.target.closest(".region-btn");
+
+      if (!button) {
+        return;
+      }
+
+      activeRegion = button.dataset.region;
+      activeTag = "Tất cả";
+      activeView = "all";
+      renderRegionFilters();
+      renderSpecialFilters();
       renderTagFilters();
       renderCombos();
     });
@@ -4017,6 +4329,7 @@
     searchInput.addEventListener("input", renderCombos);
 
     renderRegionFilters();
+    renderSpecialFilters();
     renderTagFilters();
     renderCombos();
   </script>
