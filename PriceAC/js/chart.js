@@ -26,7 +26,7 @@ const MarketChart = (() => {
   let rsiDailySeries;
   let rsiWeeklySeries;
   let rsiMonthlySeries;
-  let psychologyLineSegments = [];
+  let psychologyBackgroundSeries = [];
   let currentAsset = "bitcoin";
   let currentRange = "1M";
   let currentInterval = "1D";
@@ -278,9 +278,7 @@ const MarketChart = (() => {
     }
 
     if (source === "rsi" && chart && Number.isFinite(close)) {
-      const activeSeries = currentChartMode === "candle"
-        ? candleSeries
-        : (psychologyLineSegments[psychologyLineSegments.length - 1] || lineSeries);
+      const activeSeries = currentChartMode === "candle" ? candleSeries : lineSeries;
       setSyncedCrosshair(chart, activeSeries, param.time, close);
     }
 
@@ -319,67 +317,141 @@ const MarketChart = (() => {
     close: point.close ?? point.price
   }));
 
-  const drawFallbackChart = (container, data) => {
-    const prices = data.map((point) => point.close ?? point.price);
+  const hexToRgba = (hex, alpha) => {
+    const normalized = hex.replace("#", "");
+    const value = Number.parseInt(normalized, 16);
+    const red = (value >> 16) & 255;
+    const green = (value >> 8) & 255;
+    const blue = value & 255;
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+  };
+
+  const getPriceBounds = (visibleData) => {
+    const prices = visibleData.map((point) => point.close ?? point.price);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const padding = Math.max((maxPrice - minPrice) * 0.04, maxPrice * 0.002);
+
+    return {
+      top: maxPrice + padding,
+      base: minPrice - padding
+    };
+  };
+
+  const clearPsychologyBackgrounds = () => {
+    psychologyBackgroundSeries.forEach((series) => chart.removeSeries(series));
+    psychologyBackgroundSeries = [];
+  };
+
+  const removePriceSeries = () => {
+    clearPsychologyBackgrounds();
+
+    if (lineSeries) {
+      chart.removeSeries(lineSeries);
+      lineSeries = null;
+    }
+
+    if (candleSeries) {
+      chart.removeSeries(candleSeries);
+      candleSeries = null;
+    }
+  };
+
+  const renderPsychologyBackgrounds = (segments, bounds) => {
+    segments.forEach((segment) => {
+      const start = segment.points[0].date;
+      const end = segment.points[segment.points.length - 1].date;
+      const fill = hexToRgba(segment.color, PsychologyEngine.zoneBackgroundAlpha);
+
+      const series = chart.addAreaSeries({
+        baseValue: bounds.base,
+        topColor: fill,
+        bottomColor: fill,
+        lineColor: "transparent",
+        lineWidth: 0,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false
+      });
+
+      series.setData([
+        { time: start, value: bounds.top },
+        { time: end, value: bounds.top }
+      ]);
+
+      psychologyBackgroundSeries.push(series);
+    });
+  };
+
+  const mountPriceSeries = (visibleData, psychologyTimeline) => {
+    const segments = PsychologyEngine.buildPsychologySegments(visibleData, psychologyTimeline);
+    const bounds = getPriceBounds(visibleData);
+
+    removePriceSeries();
+    renderPsychologyBackgrounds(segments, bounds);
+
+    lineSeries = chart.addLineSeries({
+      color: "#e2e8f0",
+      lineWidth: 2,
+      priceLineColor: "rgba(226, 232, 240, 0.35)"
+    });
+
+    candleSeries = chart.addCandlestickSeries({
+      upColor: "#74d99f",
+      downColor: "#fb7185",
+      borderVisible: false,
+      wickUpColor: "#74d99f",
+      wickDownColor: "#fb7185"
+    });
+
+    lineSeries.setData(toLineData(visibleData));
+    candleSeries.setData(toCandleData(visibleData));
+    applyChartMode();
+  };
+
+  const drawFallbackChart = (container, visibleData, psychologyTimeline) => {
+    const prices = visibleData.map((point) => point.close ?? point.price);
     const min = Math.min(...prices);
     const max = Math.max(...prices);
     const width = Math.max(container.clientWidth, 320);
     const height = Math.max(container.clientHeight, 280);
-    const points = data.map((point, index) => {
-      const x = (index / Math.max(data.length - 1, 1)) * width;
-      const price = point.close ?? point.price;
-      const y = height - ((price - min) / Math.max(max - min, 1)) * (height - 36) - 18;
+    const segments = PsychologyEngine.buildPsychologySegments(visibleData, psychologyTimeline);
+    const chartTop = 18;
+    const chartHeight = height - 36;
+
+    const priceToY = (price) => chartTop + chartHeight - ((price - min) / Math.max(max - min, 1)) * chartHeight;
+    const indexToX = (index, total) => (index / Math.max(total - 1, 1)) * width;
+
+    const zoneRects = segments.map((segment) => {
+      const startIndex = visibleData.findIndex((point) => point.date === segment.points[0].date);
+      const endIndex = visibleData.findIndex((point) => point.date === segment.points[segment.points.length - 1].date);
+      const x = indexToX(startIndex, visibleData.length);
+      const rectWidth = Math.max(indexToX(endIndex, visibleData.length) - x, 1);
+
+      return `
+        <rect
+          x="${x}"
+          y="${chartTop}"
+          width="${rectWidth}"
+          height="${chartHeight}"
+          fill="${hexToRgba(segment.color, PsychologyEngine.zoneBackgroundAlpha)}"
+        ></rect>
+      `;
+    }).join("");
+
+    const points = visibleData.map((point, index) => {
+      const x = indexToX(index, visibleData.length);
+      const y = priceToY(point.close ?? point.price);
       return `${x},${y}`;
     }).join(" ");
 
     container.innerHTML = `
-      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Fallback price line">
-        <defs>
-          <linearGradient id="lineGradient" x1="0" x2="1">
-            <stop offset="0%" stop-color="#60a5fa"></stop>
-            <stop offset="100%" stop-color="#74d99f"></stop>
-          </linearGradient>
-        </defs>
-        <polyline points="${points}" fill="none" stroke="url(#lineGradient)" stroke-width="3"></polyline>
+      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Fallback price chart with psychology zones">
+        ${zoneRects}
+        <polyline points="${points}" fill="none" stroke="#e2e8f0" stroke-width="2"></polyline>
         <text x="16" y="30" fill="#8ea0b7" font-size="13">Lightweight Charts unavailable. Showing static fallback.</text>
       </svg>
     `;
-  };
-
-  const clearPsychologySeries = () => {
-    psychologyLineSegments.forEach((series) => chart.removeSeries(series));
-    psychologyLineSegments = [];
-  };
-
-  const renderPsychologyOverlay = (visibleData, psychologyTimeline) => {
-    if (!chart || !visibleData.length) {
-      return;
-    }
-
-    clearPsychologySeries();
-
-    const segments = PsychologyEngine.buildPsychologySegments(visibleData, psychologyTimeline);
-
-    segments.forEach((segment) => {
-      const lineSeriesSegment = chart.addLineSeries({
-        color: segment.color,
-        lineWidth: currentChartMode === "candle" ? 2 : 3,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: true
-      });
-
-      lineSeriesSegment.setData(toLineData(segment.points));
-      psychologyLineSegments.push(lineSeriesSegment);
-    });
-
-    if (lineSeries) {
-      lineSeries.applyOptions({ visible: false });
-    }
-
-    if (candleSeries) {
-      candleSeries.applyOptions({ visible: currentChartMode === "candle" });
-    }
   };
 
   const applyChartMode = () => {
@@ -388,12 +460,8 @@ const MarketChart = (() => {
     }
 
     const showCandles = currentChartMode === "candle";
-    lineSeries.applyOptions({ visible: false });
+    lineSeries.applyOptions({ visible: !showCandles });
     candleSeries.applyOptions({ visible: showCandles });
-
-    psychologyLineSegments.forEach((series) => {
-      series.applyOptions({ lineWidth: showCandles ? 2 : 3 });
-    });
   };
 
   const createChart = (container) => {
@@ -423,22 +491,6 @@ const MarketChart = (() => {
       handleScroll: true,
       handleScale: true
     });
-
-    lineSeries = chart.addLineSeries({
-      color: "#74d99f",
-      lineWidth: 3,
-      priceLineColor: "rgba(116, 217, 159, 0.4)"
-    });
-
-    candleSeries = chart.addCandlestickSeries({
-      upColor: "#74d99f",
-      downColor: "#fb7185",
-      borderVisible: false,
-      wickUpColor: "#74d99f",
-      wickDownColor: "#fb7185"
-    });
-
-    applyChartMode();
 
     new ResizeObserver(() => {
       chart.applyOptions({
@@ -620,14 +672,11 @@ const MarketChart = (() => {
     chartSnapshot = { visibleData, rsiSeries, evaluation, psychologyTimeline };
     rebuildHoverIndex(visibleData, rsiSeries, psychologyTimeline);
 
-    if (lineSeries && candleSeries) {
-      candleSeries.setData(toCandleData(visibleData));
-      lineSeries.setData(toLineData(visibleData));
-      renderPsychologyOverlay(visibleData, psychologyTimeline);
-      applyChartMode();
+    if (chart) {
+      mountPriceSeries(visibleData, psychologyTimeline);
       chart.timeScale().fitContent();
     } else {
-      drawFallbackChart(container, visibleData);
+      drawFallbackChart(container, visibleData, psychologyTimeline);
     }
 
     PsychologyEngine.renderPsychologyLegend(document.querySelector("#psychology-legend"));

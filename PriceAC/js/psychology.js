@@ -20,18 +20,20 @@ const PsychologyEngine = (() => {
   const PSYCHOLOGY_WINDOW = 30;
 
   const zoneColors = {
-    Hope: "#60a5fa",
-    Optimism: "#74d99f",
-    Belief: "#22c55e",
-    Thrill: "#a3e635",
-    Euphoria: "#f4b860",
-    Complacency: "#fbbf24",
-    Anxiety: "#fb923c",
-    Panic: "#fb7185",
-    Capitulation: "#e11d48",
+    Hope: "#3b82f6",
+    Optimism: "#10b981",
+    Belief: "#059669",
+    Thrill: "#84cc16",
+    Euphoria: "#f59e0b",
+    Complacency: "#eab308",
+    Anxiety: "#f97316",
+    Panic: "#ef4444",
+    Capitulation: "#b91c1c",
     Disbelief: "#64748b",
-    Observing: "#8ea0b7"
+    Observing: "#475569"
   };
+
+  const zoneBackgroundAlpha = 0.18;
 
   const zoneLabelsVi = {
     Hope: "Hy vọng",
@@ -445,6 +447,7 @@ const PsychologyEngine = (() => {
   return {
     cycle,
     zoneColors,
+    zoneBackgroundAlpha,
     zoneLabelsVi,
     aggregateSeries,
     normalizeCandle,
