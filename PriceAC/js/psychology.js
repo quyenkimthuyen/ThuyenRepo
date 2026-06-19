@@ -664,17 +664,35 @@ const PsychologyEngine = (() => {
 
   const supportsElliottWeeklyPsychology = (range) => ELLIOTT_WEEKLY_RANGES.includes(range);
 
+  const getWeekAnchor = (weeklySeries, date) => {
+    let anchor = weeklySeries[0]?.date;
+
+    weeklySeries.forEach((point) => {
+      if (point.date <= date) {
+        anchor = point.date;
+      }
+    });
+
+    return anchor;
+  };
+
   const buildElliottWeeklyTimeline = (fullSeries, visibleSeries) => {
     if (!visibleSeries?.length) {
       return [];
     }
 
+    const visibleStart = visibleSeries[0].date;
+    const visibleEnd = visibleSeries[visibleSeries.length - 1].date;
     const daily = aggregateSeries(fullSeries, "1D");
     const weekly = aggregateSeries(daily, "1W");
-    const visibleEnd = visibleSeries[visibleSeries.length - 1].date;
-    const weeklyForModel = weekly.filter((point) => point.date <= visibleEnd);
+    const startWeek = getWeekAnchor(weekly, visibleStart);
+    const endWeek = getWeekAnchor(weekly, visibleEnd);
+    const weeklyInRange = weekly.filter(
+      (point) => point.date >= startWeek && point.date <= endWeek
+    );
     const model = ElliottEngine.buildWeeklyPsychologyModel(
-      weeklyForModel.length >= 8 ? weeklyForModel : weekly
+      weeklyInRange.length >= 2 ? weeklyInRange : weekly.slice(-Math.max(weeklyInRange.length, 2)),
+      { rangeStart: visibleStart, rangeEnd: visibleEnd }
     );
 
     return visibleSeries.map((point) => {
@@ -776,7 +794,7 @@ const PsychologyEngine = (() => {
     ];
 
     container.innerHTML = `
-      <p class="psychology-legend-note">Nền màu theo sóng Elliott trên khung tuần — chỉ phạm vi 5Y và 10Y</p>
+      <p class="psychology-legend-note">Phủ toàn bộ khung 5Y/10Y đã chọn — mỗi giai đoạn tuần gắn một sóng Elliott và vùng tâm lý</p>
       ${featuredZones.map((zone) => `
       <span class="psych-legend-item" style="--zone-color: ${zoneColors[zone]}">
         ${zoneLabelsVi[zone]}

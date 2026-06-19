@@ -177,56 +177,129 @@ const ElliottEngine = (() => {
     return clamp(average * 2.2, 6, 20);
   };
 
-  const buildWaveRegions = (weeklySeries, swings) => {
+  const WAVE_SEQUENCE = ["1", "2", "3", "4", "5", "A", "B", "C"];
+
+  const inferMacroDirection = (weeklySeries) => {
+    const first = getClose(weeklySeries[0]);
+    const last = getClose(weeklySeries[weeklySeries.length - 1]);
+
+    if (last >= first * 1.02) {
+      return "bull";
+    }
+
+    if (last <= first * 0.98) {
+      return "bear";
+    }
+
+    return last >= first ? "bull" : "bear";
+  };
+
+  const buildPivotChain = (weeklySeries, swings) => {
+    const lastIndex = weeklySeries.length - 1;
+
+    if (!swings.length) {
+      const macro = inferMacroDirection(weeklySeries);
+      return [
+        {
+          index: 0,
+          date: weeklySeries[0].date,
+          price: getClose(weeklySeries[0]),
+          type: macro === "bull" ? "low" : "high"
+        },
+        {
+          index: lastIndex,
+          date: weeklySeries[lastIndex].date,
+          price: getClose(weeklySeries[lastIndex]),
+          type: macro === "bull" ? "high" : "low"
+        }
+      ];
+    }
+
+    const chain = [];
+    const firstSwing = swings[0];
+
+    if (firstSwing.index > 0) {
+      chain.push({
+        index: 0,
+        date: weeklySeries[0].date,
+        price: getClose(weeklySeries[0]),
+        type: firstSwing.type === "high" ? "low" : "high"
+      });
+    }
+
+    swings.forEach((swing) => chain.push(swing));
+
+    const lastSwing = chain[chain.length - 1];
+    if (lastSwing.index < lastIndex) {
+      chain.push({
+        index: lastIndex,
+        date: weeklySeries[lastIndex].date,
+        price: getClose(weeklySeries[lastIndex]),
+        type: lastSwing.type === "high" ? "low" : "high"
+      });
+    }
+
+    return chain;
+  };
+
+  const buildFullCoverageRegions = (weeklySeries, swings) => {
     const seriesStart = weeklySeries[0].date;
     const seriesEnd = weeklySeries[weeklySeries.length - 1].date;
-    const cycle = inferCycle(swings);
-    const waveSequence = ["1", "2", "3", "4", "5", "A", "B", "C"];
+    const direction = inferMacroDirection(weeklySeries);
+    const directionLabel = direction === "bull" ? "tăng" : "giảm";
+    const chain = buildPivotChain(weeklySeries, swings);
+    const regions = [];
 
-    if (!cycle) {
+    for (let index = 0; index < chain.length - 1; index += 1) {
+      const waveId = WAVE_SEQUENCE[index % WAVE_SEQUENCE.length];
+      const psych = WAVE_PSYCHOLOGY[direction][waveId];
+
+      regions.push({
+        startDate: chain[index].date,
+        endDate: chain[index + 1].date,
+        zone: psych.zone,
+        waveId,
+        elliottLabel: `${WAVE_LABELS_VI[waveId]} ${directionLabel}`,
+        confidence: clamp(52 + (index % 4) * 6, 48, 92)
+      });
+    }
+
+    if (!regions.length) {
+      const waveId = "1";
+      const psych = WAVE_PSYCHOLOGY[direction][waveId];
       return [{
         startDate: seriesStart,
         endDate: seriesEnd,
-        zone: "Observing",
-        waveId: null,
-        elliottLabel: "Chưa xác định sóng tuần",
-        confidence: 0
+        zone: psych.zone,
+        waveId,
+        elliottLabel: `${WAVE_LABELS_VI[waveId]} ${directionLabel}`,
+        confidence: 50
       }];
     }
 
-    const { pivots, direction, score } = cycle;
-    const regions = [];
-    const directionLabel = direction === "bull" ? "tăng" : "giảm";
+    return regions;
+  };
 
-    if (pivots[0].date > seriesStart) {
-      const waveId = "1";
-      const psych = WAVE_PSYCHOLOGY[direction][waveId];
-      regions.push({
-        startDate: seriesStart,
-        endDate: pivots[0].date,
-        zone: psych.zone,
-        waveId,
-        elliottLabel: `${WAVE_LABELS_VI[waveId]} ${directionLabel}`,
-        confidence: clamp(score, 0, 100)
-      });
+  const clipRegionsToRange = (regions, startDate, endDate) => {
+    if (!regions.length) {
+      return regions;
     }
 
-    pivots.forEach((pivot, index) => {
-      const waveId = waveSequence[Math.min(index, waveSequence.length - 1)];
-      const psych = WAVE_PSYCHOLOGY[direction][waveId];
-      const endDate = index + 1 < pivots.length ? pivots[index + 1].date : seriesEnd;
+    const clipped = regions
+      .map((region) => ({
+        ...region,
+        startDate: region.startDate < startDate ? startDate : region.startDate,
+        endDate: region.endDate > endDate ? endDate : region.endDate
+      }))
+      .filter((region) => region.startDate <= region.endDate);
 
-      regions.push({
-        startDate: pivot.date,
-        endDate,
-        zone: psych.zone,
-        waveId,
-        elliottLabel: `${WAVE_LABELS_VI[waveId]} ${directionLabel}`,
-        confidence: clamp(score + 8, 0, 100)
-      });
-    });
+    if (!clipped.length) {
+      return regions;
+    }
 
-    return regions;
+    clipped[0].startDate = startDate;
+    clipped[clipped.length - 1].endDate = endDate;
+    return clipped;
   };
 
   const findRegionForDate = (regions, date) => {
@@ -239,25 +312,24 @@ const ElliottEngine = (() => {
       };
     }
 
-    const direct = regions.find((region) => date >= region.startDate && date <= region.endDate);
-    if (direct) {
-      return direct;
+    for (let index = regions.length - 1; index >= 0; index -= 1) {
+      if (date >= regions[index].startDate && date <= regions[index].endDate) {
+        return regions[index];
+      }
     }
 
-    let fallback = regions[0];
-    regions.forEach((region) => {
-      if (region.startDate <= date) {
-        fallback = region;
-      }
-    });
-
-    return fallback;
+    return regions[regions.length - 1];
   };
 
-  const buildWeeklyPsychologyModel = (weeklySeries) => {
+  const buildWeeklyPsychologyModel = (weeklySeries, options = {}) => {
+    const { rangeStart, rangeEnd } = options;
     const deviation = buildWeeklyDeviation(weeklySeries);
     const swings = detectSwings(weeklySeries, deviation);
-    const regions = buildWaveRegions(weeklySeries, swings);
+    let regions = buildFullCoverageRegions(weeklySeries, swings);
+
+    if (rangeStart && rangeEnd) {
+      regions = clipRegionsToRange(regions, rangeStart, rangeEnd);
+    }
 
     return {
       weekly: weeklySeries,
@@ -316,7 +388,8 @@ const ElliottEngine = (() => {
     detectSwings,
     buildSwingCache,
     buildWeeklyDeviation,
-    buildWaveRegions,
+    buildFullCoverageRegions,
+    clipRegionsToRange,
     findRegionForDate,
     buildWeeklyPsychologyModel,
     analyzeAt
