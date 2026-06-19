@@ -22,6 +22,10 @@ const MarketChart = (() => {
   let chart;
   let lineSeries;
   let candleSeries;
+  let rsiChart;
+  let rsiDailySeries;
+  let rsiWeeklySeries;
+  let rsiMonthlySeries;
   let currentAsset = "bitcoin";
   let currentRange = "1M";
   let currentInterval = "1D";
@@ -88,6 +92,38 @@ const MarketChart = (() => {
     time: point.date,
     value: point.close ?? point.price
   }));
+
+  const toRsiLineData = (data) => data.map((point) => ({
+    time: point.date,
+    value: point.value
+  }));
+
+  const getVisibleDateRange = () => {
+    const visibleData = getVisibleData();
+    if (!visibleData.length) {
+      return null;
+    }
+
+    return {
+      start: visibleData[0].date,
+      end: visibleData[visibleData.length - 1].date
+    };
+  };
+
+  const getVisibleRsiSeries = () => {
+    const range = getVisibleDateRange();
+    const multi = PsychologyEngine.buildMultiFrameRsi(getFullData());
+
+    if (!range) {
+      return multi;
+    }
+
+    return {
+      daily: PsychologyEngine.filterRsiByRange(multi.daily, range.start, range.end),
+      weekly: PsychologyEngine.filterRsiByRange(multi.weekly, range.start, range.end),
+      monthly: PsychologyEngine.filterRsiByRange(multi.monthly, range.start, range.end)
+    };
+  };
 
   const toCandleData = (data) => data.map((point) => ({
     time: point.date,
@@ -186,6 +222,118 @@ const MarketChart = (() => {
     }).observe(container);
   };
 
+  const addRsiGuides = (series) => {
+    series.createPriceLine({
+      price: 70,
+      color: "rgba(244, 184, 96, 0.45)",
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: true,
+      title: "70"
+    });
+    series.createPriceLine({
+      price: 30,
+      color: "rgba(96, 165, 250, 0.45)",
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: true,
+      title: "30"
+    });
+  };
+
+  const createRsiChart = (container) => {
+    if (!window.LightweightCharts) {
+      return;
+    }
+
+    rsiChart = LightweightCharts.createChart(container, {
+      layout: {
+        background: { color: "#08131e" },
+        textColor: "#8ea0b7"
+      },
+      grid: {
+        vertLines: { color: "rgba(148, 163, 184, 0.08)" },
+        horzLines: { color: "rgba(148, 163, 184, 0.08)" }
+      },
+      crosshair: {
+        mode: LightweightCharts.CrosshairMode.Normal
+      },
+      rightPriceScale: {
+        borderColor: "rgba(148, 163, 184, 0.2)",
+        scaleMargins: {
+          top: 0.12,
+          bottom: 0.08
+        }
+      },
+      timeScale: {
+        borderColor: "rgba(148, 163, 184, 0.2)",
+        timeVisible: true
+      },
+      handleScroll: true,
+      handleScale: true
+    });
+
+    rsiDailySeries = rsiChart.addLineSeries({
+      color: "#60a5fa",
+      lineWidth: 2,
+      title: "Ngày",
+      autoscaleInfoProvider: () => ({
+        priceRange: { minValue: 0, maxValue: 100 }
+      })
+    });
+    rsiWeeklySeries = rsiChart.addLineSeries({
+      color: "#74d99f",
+      lineWidth: 2,
+      title: "Tuần",
+      autoscaleInfoProvider: () => ({
+        priceRange: { minValue: 0, maxValue: 100 }
+      })
+    });
+    rsiMonthlySeries = rsiChart.addLineSeries({
+      color: "#f4b860",
+      lineWidth: 2,
+      title: "Tháng",
+      autoscaleInfoProvider: () => ({
+        priceRange: { minValue: 0, maxValue: 100 }
+      })
+    });
+
+    addRsiGuides(rsiDailySeries);
+
+    new ResizeObserver(() => {
+      rsiChart.applyOptions({
+        width: container.clientWidth,
+        height: container.clientHeight
+      });
+    }).observe(container);
+  };
+
+  const drawFallbackRsiChart = (container, rsiSeries) => {
+    const width = Math.max(container.clientWidth, 320);
+    const height = Math.max(container.clientHeight, 180);
+    const seriesList = [
+      { key: "daily", color: "#60a5fa", label: "Ngày" },
+      { key: "weekly", color: "#74d99f", label: "Tuần" },
+      { key: "monthly", color: "#f4b860", label: "Tháng" }
+    ];
+
+    const toPoints = (series) => series.map((point, index) => {
+      const x = (index / Math.max(series.length - 1, 1)) * width;
+      const y = height - (point.value / 100) * (height - 28) - 14;
+      return `${x},${y}`;
+    }).join(" ");
+
+    container.innerHTML = `
+      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Fallback RSI chart">
+        <line x1="0" y1="${height * 0.3}" x2="${width}" y2="${height * 0.3}" stroke="rgba(244, 184, 96, 0.25)" stroke-dasharray="4 4"></line>
+        <line x1="0" y1="${height * 0.7}" x2="${width}" y2="${height * 0.7}" stroke="rgba(96, 165, 250, 0.25)" stroke-dasharray="4 4"></line>
+        ${seriesList.map((item) => `
+          <polyline points="${toPoints(rsiSeries[item.key])}" fill="none" stroke="${item.color}" stroke-width="2"></polyline>
+        `).join("")}
+      </svg>
+    `;
+  };
+
   const renderMarketMap = (evaluation) => {
     const mapContainer = document.querySelector("#market-map");
     const companionAssets = [
@@ -231,8 +379,10 @@ const MarketChart = (() => {
 
   const render = () => {
     const container = document.querySelector("#chart");
+    const rsiContainer = document.querySelector("#rsi-chart");
     const visibleData = getVisibleData();
     const evaluation = PsychologyEngine.evaluate(getFullData(), visibleData);
+    const rsiSeries = getVisibleRsiSeries();
 
     if (lineSeries && candleSeries) {
       lineSeries.setData(toLineData(visibleData));
@@ -241,6 +391,15 @@ const MarketChart = (() => {
       chart.timeScale().fitContent();
     } else {
       drawFallbackChart(container, visibleData);
+    }
+
+    if (rsiDailySeries && rsiWeeklySeries && rsiMonthlySeries) {
+      rsiDailySeries.setData(toRsiLineData(rsiSeries.daily));
+      rsiWeeklySeries.setData(toRsiLineData(rsiSeries.weekly));
+      rsiMonthlySeries.setData(toRsiLineData(rsiSeries.monthly));
+      rsiChart.timeScale().fitContent();
+    } else {
+      drawFallbackRsiChart(rsiContainer, rsiSeries);
     }
 
     PsychologyEngine.renderRsiPanel(document.querySelector("#rsi-panel"), evaluation.rsiByInterval);
@@ -272,6 +431,7 @@ const MarketChart = (() => {
     onEvaluation = evaluationHandler;
     await loadAllData();
     createChart(document.querySelector("#chart"));
+    createRsiChart(document.querySelector("#rsi-chart"));
     render();
   };
 

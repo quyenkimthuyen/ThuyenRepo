@@ -280,6 +280,65 @@ textarea:focus {
   color: var(--green);
 }
 
+.rsi-chart-wrap {
+  margin-bottom: 12px;
+}
+
+.rsi-chart-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.rsi-chart-heading .eyebrow {
+  margin: 0;
+}
+
+.rsi-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.rsi-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.rsi-legend-item::before {
+  content: "";
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.rsi-legend-item.daily {
+  color: #60a5fa;
+}
+
+.rsi-legend-item.weekly {
+  color: #74d99f;
+}
+
+.rsi-legend-item.monthly {
+  color: #f4b860;
+}
+
+.rsi-chart-card {
+  height: 220px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: #08131e;
+}
+
 @media (max-width: 640px) {
   .rsi-panel {
     grid-template-columns: 1fr;

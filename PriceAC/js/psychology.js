@@ -87,17 +87,19 @@ const PsychologyEngine = (() => {
     return ((last - first) / first) * 100;
   };
 
-  const calculateRsi = (series, period = RSI_PERIOD) => {
+  const getClose = (point) => point.close ?? point.price;
+
+  const buildRsiSeries = (series, period = RSI_PERIOD) => {
     if (!series || series.length < period + 1) {
-      return 50;
+      return [];
     }
 
+    const results = [];
     let avgGain = 0;
     let avgLoss = 0;
 
     for (let index = 1; index <= period; index += 1) {
-      const change = (series[index].close ?? series[index].price)
-        - (series[index - 1].close ?? series[index - 1].price);
+      const change = getClose(series[index]) - getClose(series[index - 1]);
       if (change >= 0) {
         avgGain += change;
       } else {
@@ -108,22 +110,65 @@ const PsychologyEngine = (() => {
     avgGain /= period;
     avgLoss /= period;
 
+    const pushRsi = (index) => {
+      const rsi = avgLoss === 0
+        ? 100
+        : Math.round(100 - 100 / (1 + avgGain / avgLoss));
+      results.push({ date: series[index].date, value: rsi });
+    };
+
+    pushRsi(period);
+
     for (let index = period + 1; index < series.length; index += 1) {
-      const change = (series[index].close ?? series[index].price)
-        - (series[index - 1].close ?? series[index - 1].price);
+      const change = getClose(series[index]) - getClose(series[index - 1]);
       const gain = change >= 0 ? change : 0;
       const loss = change < 0 ? Math.abs(change) : 0;
       avgGain = ((avgGain * (period - 1)) + gain) / period;
       avgLoss = ((avgLoss * (period - 1)) + loss) / period;
+      pushRsi(index);
     }
 
-    if (avgLoss === 0) {
-      return 100;
-    }
-
-    const rs = avgGain / avgLoss;
-    return Math.round(100 - 100 / (1 + rs));
+    return results;
   };
+
+  const alignHigherTimeframeRsi = (dailySeries, higherRsiSeries, getPeriodDate) => {
+    const byPeriodDate = new Map(higherRsiSeries.map((point) => [point.date, point.value]));
+    let current = null;
+
+    return dailySeries.map((day) => {
+      const periodDate = getPeriodDate(day.date);
+      if (byPeriodDate.has(periodDate)) {
+        current = byPeriodDate.get(periodDate);
+      }
+
+      return current === null ? null : { date: day.date, value: current };
+    }).filter(Boolean);
+  };
+
+  const buildMultiFrameRsi = (fullSeries) => {
+    const daily = aggregateSeries(fullSeries, "1D");
+    const weekly = aggregateSeries(fullSeries, "1W");
+    const monthly = aggregateSeries(fullSeries, "1M");
+
+    const dailyRsi = buildRsiSeries(daily);
+    const weeklyRsi = buildRsiSeries(weekly);
+    const monthlyRsi = buildRsiSeries(monthly);
+
+    return {
+      daily: dailyRsi,
+      weekly: alignHigherTimeframeRsi(daily, weeklyRsi, getWeekStart),
+      monthly: alignHigherTimeframeRsi(daily, monthlyRsi, (date) => `${date.slice(0, 7)}-01`)
+    };
+  };
+
+  const calculateRsi = (series, period = RSI_PERIOD) => {
+    const built = buildRsiSeries(series, period);
+    return built.length ? built[built.length - 1].value : 50;
+  };
+
+  const filterRsiByRange = (series, startDate, endDate) => series.filter(
+    (point) => point.date >= startDate && point.date <= endDate
+  );
 
   const calculateVolume = (series) => {
     if (!series || series.length < 2) {
@@ -264,6 +309,8 @@ const PsychologyEngine = (() => {
     cycle,
     aggregateSeries,
     normalizeCandle,
+    buildMultiFrameRsi,
+    filterRsiByRange,
     evaluate,
     renderRsiPanel,
     renderCycle,
