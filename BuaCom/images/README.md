@@ -17,6 +17,9 @@ Voi cac vung moi, nen dat ten co tien to vung de tranh trung anh:
 - bacTrungBo-combo-01.webp
 - namTrungBo-combo-01.jpg
 - comChay-combo-01.png
+- tet-combo-01.jpg/png/webp (Mâm Cơm Ngày Tết)
+- anduong-combo-01.jpg/png/webp (Mâm Cơm An Dưỡng)
+- gio-combo-01.jpg/png/webp (Mâm Cơm Ngày Giỗ)
 
 Rieng mien Tay van ho tro ten cu:
 - combo-01.jpg

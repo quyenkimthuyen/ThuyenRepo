@@ -3697,8 +3697,17 @@
 
     function createLocalImageUrls(index, regionKey = activeRegion) {
       const comboNumber = String(index + 1).padStart(2, "0");
+      let prefix = regionKey;
+      if (regionKey === "mamComNgayTet") {
+        prefix = "tet";
+      } else if (regionKey === "mamComAnDuong") {
+        prefix = "anduong";
+      } else if (regionKey === "mamComNgayGio") {
+        prefix = "gio";
+      }
+
       const fileNames = [
-        `${regionKey}-combo-${comboNumber}`
+        `${prefix}-combo-${comboNumber}`
       ];
 
       if (regionKey === "mienTay") {
@@ -3982,7 +3991,23 @@
       ];
 
       ingredientRules.forEach(([keyword, ingredient]) => {
-        if (text.includes(keyword) && !detected.includes(ingredient)) {
+        const normKeyword = normalizeText(keyword);
+        // Exclude specific words/phrases to prevent wrong matching
+        if (normKeyword === "me" && text.includes("long me")) {
+          return; // Skip matching me chua for "lòng mề"
+        }
+        if (normKeyword === "ca") {
+          if (text.includes("ca chua") || text.includes("ca rot") || text.includes("ca tim") || text.includes("ca phao")) {
+            return; // Skip matching ca for vegetable "cà"
+          }
+        }
+        if (normKeyword === "dua") {
+          if (text.includes("nuoc dua") || text.includes("cot dua") || text.includes("trai dua") || text.includes("thach dua")) {
+            return; // Skip matching dua for coconut (dừa)
+          }
+        }
+        const regex = new RegExp(`\\b${normKeyword}\\b`);
+        if (regex.test(text) && !detected.includes(ingredient)) {
           detected.push(ingredient);
         }
       });
@@ -4027,7 +4052,17 @@
       ];
 
       methodIngredients.forEach((rule) => {
-        if (rule.match.some((keyword) => text.includes(keyword))) {
+        if (rule.match.some((keyword) => {
+          const normKeyword = normalizeText(keyword);
+          if (normKeyword === "kho" && (text.includes("kho qua") || text.includes("khoai"))) {
+            return false; // Skip "kho" for "khổ qua" or "khoai"
+          }
+          if (normKeyword === "me" && text.includes("long me")) {
+            return false;
+          }
+          const regex = new RegExp(`\\b${normKeyword}\\b`);
+          return regex.test(text);
+        })) {
           rule.ingredients.forEach((ingredient) => {
             if (!detected.includes(ingredient)) {
               detected.push(ingredient);

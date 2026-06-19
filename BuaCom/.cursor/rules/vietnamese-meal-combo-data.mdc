@@ -37,7 +37,9 @@ Add data inside `menuRegions` in `index.html`:
 
 ## Region And Image Rules
 
-- Use stable region keys such as `mienBac`, `mienTrung`, `mienTay`, `tayBac`, `dongBac`, `bacTrungBo`, `namTrungBo`, `tayNguyen`, `duyenHai`, `comChay`.
+- Use stable region keys such as `mienBac`, `mienTrung`, `mienTay`, `tayBac`, `dongBac`, `bacTrungBo`, `namTrungBo`, `tayNguyen`, `duyenHai`, `comChay`, and special keys like `mamComNgayTet`, `mamComAnDuong`, `mamComNgayGio`.
 - If adding a new region, update `images/README.md` with its image filename prefix.
-- Local images should use `<regionKey>-combo-01.jpg/png/webp`; only `mienTay` supports legacy names like `combo-01.png`.
+- Local images should use `<regionKey>-combo-01.jpg/png/webp` for standard regions.
+- For special regions (`mamComNgayTet`, `mamComAnDuong`, `mamComNgayGio`), local images should be named `<specialKeyPrefix>-combo-01.jpg/png/webp` (where specialKeyPrefix is `tet`, `anduong`, or `gio` respectively).
+- Only `mienTay` supports legacy names like `combo-01.png`.
 - After edits, run linter diagnostics for `index.html`.
