@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -469,10 +470,12 @@
 
     .combo-cover {
       position: relative;
-      height: 168px;
+      width: 100%;
+      aspect-ratio: 16 / 9;
       margin: 0;
       overflow: hidden;
       background: #e4f4cf;
+      border-radius: var(--radius);
     }
 
     .combo-cover img {
@@ -480,6 +483,7 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
+      object-position: center;
       transition: transform 0.35s ease;
     }
 
@@ -789,7 +793,7 @@
       color: #34452d;
     }
 
-    .recipe-section li + li {
+    .recipe-section li+li {
       margin-top: 6px;
     }
 
@@ -907,9 +911,7 @@
         min-height: auto;
       }
 
-      .combo-cover {
-        height: 154px;
-      }
+
 
       .recipe-header,
       .recipe-body {
@@ -919,6 +921,7 @@
     }
   </style>
 </head>
+
 <body>
   <main class="page">
     <header class="hero">
@@ -926,26 +929,26 @@
         <div class="hero-illustration" aria-hidden="true">
           <img src="images/hero-meal.png" alt="" onerror="this.parentElement.classList.add('use-fallback')" />
           <svg viewBox="0 0 520 360" xmlns="http://www.w3.org/2000/svg">
-            <ellipse cx="260" cy="294" rx="214" ry="36" fill="#31561d" opacity="0.12"/>
-            <circle cx="252" cy="178" r="126" fill="#fff9e8" stroke="#d7a441" stroke-width="8"/>
-            <circle cx="252" cy="178" r="92" fill="#f7edd0"/>
-            <circle cx="252" cy="178" r="58" fill="#ffffff"/>
-            <path d="M207 169c34-25 69-24 100 0-25 23-71 25-100 0Z" fill="#8a5a2f" opacity="0.9"/>
-            <path d="M300 171l56-30-15 36 20 35-61-29Z" fill="#8a5a2f" opacity="0.9"/>
-            <circle cx="226" cy="164" r="6" fill="#2f2417"/>
-            <ellipse cx="367" cy="221" rx="58" ry="34" fill="#fff9e8" stroke="#78a942" stroke-width="6"/>
-            <ellipse cx="367" cy="213" rx="42" ry="19" fill="#78a942" opacity="0.85"/>
-            <path d="M337 211c20-18 42 19 62 0" fill="none" stroke="#f7edd0" stroke-width="7" stroke-linecap="round"/>
-            <ellipse cx="148" cy="226" rx="64" ry="36" fill="#fff9e8" stroke="#91b85f" stroke-width="6"/>
-            <path d="M104 218c32-40 70-39 96 0-33-10-62-9-96 0Z" fill="#4f7d2c" opacity="0.82"/>
-            <path d="M121 235c29-31 58-30 82 0-30-8-54-7-82 0Z" fill="#78a942" opacity="0.82"/>
-            <ellipse cx="271" cy="292" rx="80" ry="42" fill="#fff9e8" stroke="#d7a441" stroke-width="6"/>
-            <ellipse cx="271" cy="286" rx="52" ry="22" fill="#fbfff0"/>
-            <circle cx="238" cy="279" r="8" fill="#d7a441"/>
-            <circle cx="264" cy="274" r="7" fill="#d7a441"/>
-            <circle cx="292" cy="281" r="8" fill="#d7a441"/>
-            <path d="M93 113c44-43 95-42 138 0-55-9-88-7-138 0Z" fill="#78a942" opacity="0.28"/>
-            <path d="M320 92c57-31 102-22 139 20-54-14-90-7-139-20Z" fill="#d7a441" opacity="0.22"/>
+            <ellipse cx="260" cy="294" rx="214" ry="36" fill="#31561d" opacity="0.12" />
+            <circle cx="252" cy="178" r="126" fill="#fff9e8" stroke="#d7a441" stroke-width="8" />
+            <circle cx="252" cy="178" r="92" fill="#f7edd0" />
+            <circle cx="252" cy="178" r="58" fill="#ffffff" />
+            <path d="M207 169c34-25 69-24 100 0-25 23-71 25-100 0Z" fill="#8a5a2f" opacity="0.9" />
+            <path d="M300 171l56-30-15 36 20 35-61-29Z" fill="#8a5a2f" opacity="0.9" />
+            <circle cx="226" cy="164" r="6" fill="#2f2417" />
+            <ellipse cx="367" cy="221" rx="58" ry="34" fill="#fff9e8" stroke="#78a942" stroke-width="6" />
+            <ellipse cx="367" cy="213" rx="42" ry="19" fill="#78a942" opacity="0.85" />
+            <path d="M337 211c20-18 42 19 62 0" fill="none" stroke="#f7edd0" stroke-width="7" stroke-linecap="round" />
+            <ellipse cx="148" cy="226" rx="64" ry="36" fill="#fff9e8" stroke="#91b85f" stroke-width="6" />
+            <path d="M104 218c32-40 70-39 96 0-33-10-62-9-96 0Z" fill="#4f7d2c" opacity="0.82" />
+            <path d="M121 235c29-31 58-30 82 0-30-8-54-7-82 0Z" fill="#78a942" opacity="0.82" />
+            <ellipse cx="271" cy="292" rx="80" ry="42" fill="#fff9e8" stroke="#d7a441" stroke-width="6" />
+            <ellipse cx="271" cy="286" rx="52" ry="22" fill="#fbfff0" />
+            <circle cx="238" cy="279" r="8" fill="#d7a441" />
+            <circle cx="264" cy="274" r="7" fill="#d7a441" />
+            <circle cx="292" cy="281" r="8" fill="#d7a441" />
+            <path d="M93 113c44-43 95-42 138 0-55-9-88-7-138 0Z" fill="#78a942" opacity="0.28" />
+            <path d="M320 92c57-31 102-22 139 20-54-14-90-7-139-20Z" fill="#d7a441" opacity="0.22" />
           </svg>
         </div>
         <div class="hero-text">
@@ -1023,7 +1026,8 @@
 
         <section id="emptyState" class="empty-state">
           <strong id="emptyTitle">Không tìm thấy bữa cơm phù hợp</strong>
-          <span id="emptyMessage">Hãy thử tìm theo tên món như “tép ram”, “canh chua”, “cá kho” hoặc nguyên liệu quen thuộc.</span>
+          <span id="emptyMessage">Hãy thử tìm theo tên món như “tép ram”, “canh chua”, “cá kho” hoặc nguyên liệu quen
+            thuộc.</span>
         </section>
       </section>
     </div>
@@ -3295,6 +3299,189 @@
               { role: "Tráng miệng", name: "Chè sen long nhãn" }
             ],
             ingredients: ["củ sen", "hạt sen", "nấm tuyết", "đậu hũ", "nấm hương", "cải chíp", "vừng", "long nhãn"]
+          },
+          // 5 Mâm cơm dành cho người bệnh Gout + Sỏi thận
+          {
+            title: "Mâm Cơm Canh Bí Xanh Thịt Gà Viên",
+            tag: "Gout & Sỏi thận",
+            description: "Mâm cơm ít purine và ít oxalate với canh bí xanh thanh mát nấu cùng thịt ức gà viên, trứng hấp nấm đông cô mềm mại, và su su luộc giòn ngọt.",
+            dishes: [
+              { role: "Món canh", name: "Canh bí xanh nấu thịt ức gà viên" },
+              { role: "Món chính", name: "Trứng hấp nấm đông cô nhẹ vị" },
+              { role: "Món phụ", name: "Su su luộc ráo nước" },
+              { role: "Nước chấm", name: "Nước tương tỏi ớt nhẹ" }
+            ],
+            ingredients: ["bí xanh", "ức gà", "trứng", "nấm đông cô", "su su"]
+          },
+          {
+            title: "Mâm Cơm Cá Rô Phi Hấp Sả Gừng",
+            tag: "Gout & Sỏi thận",
+            description: "Bữa cơm giàu dinh dưỡng, ít purine với cá rô phi hấp gừng sả thơm lừng, ăn kèm bầu luộc chấm muối vừng và canh cải bắp ngọt thanh.",
+            dishes: [
+              { role: "Món chính", name: "Cá rô phi hấp hành gừng sả" },
+              { role: "Món canh", name: "Canh cải bắp nấu tôm đất bóc vỏ" },
+              { role: "Món phụ", name: "Bầu sao luộc" },
+              { role: "Nước chấm", name: "Nước mắm gừng nhẹ ít muối" }
+            ],
+            ingredients: ["cá rô phi", "gừng", "sả", "cải bắp", "tôm đất", "bầu"]
+          },
+          {
+            title: "Mâm Cơm Đậu Hũ Sốt Cà Chua Ít Muối",
+            tag: "Gout & Sỏi thận",
+            description: "Mâm cơm nhẹ nhàng tốt cho khớp và thận, đậu hũ non sốt cà chua tự nhiên ít muối, canh bí đỏ nấu thịt bằm ít béo và mướp hương xào tỏi.",
+            dishes: [
+              { role: "Món chính", name: "Đậu hũ non sốt cà chua hành hoa" },
+              { role: "Món canh", name: "Canh bí đỏ nấu thịt nạc bằm" },
+              { role: "Món xào", name: "Mướp hương xào tỏi ít dầu" },
+              { role: "Ăn kèm", name: "Cơm trắng dẻo" }
+            ],
+            ingredients: ["đậu hũ", "cà chua", "bí đỏ", "thịt nạc", "mướp hương"]
+          },
+          {
+            title: "Mâm Cơm Cá Lóc Kho Nghệ Thanh Đạm",
+            tag: "Gout & Sỏi thận",
+            description: "Nghệ giúp kháng viêm cho người bệnh gout, kết hợp cá lóc kho nghệ sả thơm dịu, canh mướp đắng nhồi thịt và quả lặc lày luộc.",
+            dishes: [
+              { role: "Món mặn", name: "Cá lóc kho nghệ sả ít mặn" },
+              { role: "Món canh", name: "Canh khổ qua nhồi thịt nạc" },
+              { role: "Món phụ", name: "Quả lặc lày luộc chấm muối mè" },
+              { role: "Ăn kèm", name: "Cơm trắng nóng" }
+            ],
+            ingredients: ["cá lóc", "nghệ", "sả", "khổ qua", "lặc lày", "muối mè"]
+          },
+          {
+            title: "Mâm Cơm Trứng Chiên Hành Tây Bí Đao Canh",
+            tag: "Gout & Sỏi thận",
+            description: "Mâm cơm đơn giản, hạn chế tích tụ axit uric và sỏi thận với trứng chiên hành tây ráo dầu, canh bí đao tôm khô và xà lách trộn giấm táo.",
+            dishes: [
+              { role: "Món chính", name: "Trứng gà chiên hành tây ít dầu" },
+              { role: "Món canh", name: "Canh bí đao nấu tôm khô" },
+              { role: "Món chua", name: "Xà lách dưa leo trộn dầu giấm nhẹ" },
+              { role: "Nước chấm", name: "Nước mắm nhĩ dằm ớt nhẹ" }
+            ],
+            ingredients: ["trứng gà", "hành tây", "bí đao", "tôm khô", "xà lách", "dưa leo"]
+          },
+          // 5 Mâm cơm dành cho người Trào ngược dạ dày + Suy giáp
+          {
+            title: "Mâm Cơm Cá Hồi Hấp Gừng Hành",
+            tag: "Trào ngược & Suy giáp",
+            description: "Bữa ăn giàu i-ốt và selen từ cá hồi, ấm bụng nhờ gừng tươi giảm trào ngược, kết hợp canh khoai tây su su hầm sườn non mềm ngọt.",
+            dishes: [
+              { role: "Món chính", name: "Cá hồi hấp gừng hành lá ấm bụng" },
+              { role: "Món canh", name: "Canh khoai tây cà rốt su su hầm sườn non" },
+              { role: "Món phụ", name: "Măng tây hấp tỏi chín kỹ" },
+              { role: "Ăn kèm", name: "Cơm gạo lứt muối i-ốt" }
+            ],
+            ingredients: ["cá hồi", "gừng", "khoai tây", "cà rốt", "su su", "sườn non", "măng tây"]
+          },
+          {
+            title: "Mâm Cơm Gà Ác Hấp Sả Gừng",
+            tag: "Trào ngược & Suy giáp",
+            description: "Thịt gà ác hấp mềm dễ tiêu hóa, sả gừng ấm nóng bảo vệ niêm mạc dạ dày, đi kèm canh bầu nấu tôm đất bóc vỏ và khoai lang mật hấp ngọt bùi.",
+            dishes: [
+              { role: "Món chính", name: "Thịt gà ác hấp sả gừng xé phay" },
+              { role: "Món canh", name: "Canh bầu nấu tôm tươi băm nhỏ" },
+              { role: "Món phụ", name: "Khoai lang hấp chín mềm" },
+              { role: "Nước chấm", name: "Muối tiêu chanh giã nhẹ ấm" }
+            ],
+            ingredients: ["gà ác", "sả", "gừng", "bầu", "tôm", "khoai lang"]
+          },
+          {
+            title: "Mâm Cơm Cá Lóc Kho Nghệ Sả Ấm Dạ Dày",
+            tag: "Trào ngược & Suy giáp",
+            description: "Nghệ và sả làm lành niêm mạc dạ dày rất tốt, kết hợp cá lóc kho nghệ thơm dịu, canh bí đỏ nấu thịt băm và bầu luộc chín tới.",
+            dishes: [
+              { role: "Món mặn", name: "Cá lóc kho nghệ tươi sả băm ít dầu" },
+              { role: "Món canh", name: "Canh bí đỏ nấu thịt heo nạc bằm" },
+              { role: "Món phụ", name: "Bầu luộc ráo nước chấm muối i-ốt" },
+              { role: "Ăn kèm", name: "Cơm trắng ấm" }
+            ],
+            ingredients: ["cá lóc", "nghệ", "sả", "bí đỏ", "thịt heo", "bầu"]
+          },
+          {
+            title: "Mâm Cơm Tôm Ram Sả Nghệ Canh Mướp",
+            tag: "Trào ngược & Suy giáp",
+            description: "Tôm ram sả nghệ thơm ngon không dầu mỡ, canh mướp hương thanh ngọt nấu tôm cùng bí xanh hấp mềm giúp hạn chế tiết axit dạ dày.",
+            dishes: [
+              { role: "Món mặn", name: "Tôm đất ram sả nghệ tươi ít gia vị" },
+              { role: "Món canh", name: "Canh mướp hương nấu thịt nạc băm" },
+              { role: "Món phụ", name: "Bí xanh luộc chín kỹ" },
+              { role: "Nước chấm", name: "Nước mắm nhĩ pha gừng ấm" }
+            ],
+            ingredients: ["tôm đất", "sả", "nghệ", "mướp hương", "thịt nạc", "bí xanh"]
+          },
+          {
+            title: "Mâm Cơm Trứng Hấp Thịt Bằm Cà Rốt",
+            tag: "Trào ngược & Suy giáp",
+            description: "Trứng và thịt bằm hấp mềm, dễ nhai và dễ tiêu hóa cho dạ dày, ăn cùng canh củ mài nấu thịt và đĩa đỗ cove hấp chín mềm ngọt.",
+            dishes: [
+              { role: "Món chính", name: "Trứng gà hấp thịt bằm cà rốt cách thủy" },
+              { role: "Món canh", name: "Canh củ mài nấu thịt nạc bằm thanh nhẹ" },
+              { role: "Món phụ", name: "Đậu cô ve hấp chín kỹ" },
+              { role: "Ăn kèm", name: "Cơm gạo tẻ dẻo" }
+            ],
+            ingredients: ["trứng gà", "thịt bằm", "cà rốt", "củ mài", "đậu cô ve"]
+          },
+          // 5 Mâm cơm dành cho người Mỡ máu cao
+          {
+            title: "Mâm Cơm Đậu Hũ Sốt Nấm Đông Cô",
+            tag: "Mỡ máu cao",
+            description: "Mâm cơm giàu chất xơ hòa tan từ nấm và bông cải giúp hạ cholesterol, đậu hũ non sốt nấm đông cô, canh bí đao và bông cải xanh luộc.",
+            dishes: [
+              { role: "Món chính", name: "Đậu hũ non hấp sốt nấm đông cô tươi" },
+              { role: "Món canh", name: "Canh bí đao nấu thịt nạc bằm lọc mỡ" },
+              { role: "Món phụ", name: "Bông cải xanh luộc chấm tương tỏi" },
+              { role: "Nước chấm", name: "Nước tương tỏi ớt nhẹ" }
+            ],
+            ingredients: ["đậu hũ", "nấm đông cô", "bí đao", "thịt nạc", "bông cải xanh"]
+          },
+          {
+            title: "Mâm Cơm Cá Thu Nhật Kho Thơm",
+            tag: "Mỡ máu cao",
+            description: "Axit béo Omega-3 từ cá thu Nhật hỗ trợ giảm mỡ máu, kết hợp canh rau ngót nấu tôm thịt và giá hẹ xào dầu olive thanh nhẹ.",
+            dishes: [
+              { role: "Món mặn", name: "Cá thu Nhật kho thơm ít đường mặn" },
+              { role: "Món canh", name: "Canh rau ngót nấu tôm tươi băm nhỏ" },
+              { role: "Món xào", name: "Giá đỗ xào hẹ và nấm rơm với dầu olive" },
+              { role: "Ăn kèm", name: "Cơm gạo lứt nguyên cám" }
+            ],
+            ingredients: ["cá thu", "thơm", "rau ngót", "tôm", "giá đỗ", "hẹ", "nấm rơm", "gạo lứt"]
+          },
+          {
+            title: "Mâm Cơm Ức Gà Xào Nấm Măng Tây",
+            tag: "Mỡ máu cao",
+            description: "Ức gà bỏ da ít chất béo bão hòa, xào nấm tươi măng tây giòn ngọt, canh rong biển đậu hũ non và su su hấp chấm muối mè.",
+            dishes: [
+              { role: "Món chính", name: "Thịt ức gà xào nấm hương măng tây" },
+              { role: "Món canh", name: "Canh rong biển nấu đậu hũ non và mè rang" },
+              { role: "Món phụ", name: "Su su luộc chấm muối vừng" },
+              { role: "Ăn kèm", name: "Cơm trắng trộn hạt kê" }
+            ],
+            ingredients: ["ức gà", "nấm hương", "măng tây", "rong biển", "đậu hũ", "su su", "muối vừng"]
+          },
+          {
+            title: "Mâm Cơm Cá Diêu Hồng Hấp Gừng Tỏi",
+            tag: "Mỡ máu cao",
+            description: "Cá diêu hồng hấp hành gừng tỏi thơm ngon thanh đạm, canh cải ngọt nấu tôm khô và mướp xào tỏi ít dầu.",
+            dishes: [
+              { role: "Món chính", name: "Cá diêu hồng hấp hành gừng tỏi băm" },
+              { role: "Món canh", name: "Canh cải ngọt nấu tôm khô ráo mỡ" },
+              { role: "Món phụ", name: "Mướp xào tỏi ít dầu hoặc dưa leo thái lát" },
+              { role: "Ăn kèm", name: "Cơm gạo lứt đỏ" }
+            ],
+            ingredients: ["cá diêu hồng", "gừng", "tỏi", "cải ngọt", "tôm khô", "mướp"]
+          },
+          {
+            title: "Mâm Cơm Chay Canh Củ Sen Đậu Ngự",
+            tag: "Mỡ máu cao",
+            description: "Bữa chay thanh lọc cholesterol xấu với canh củ sen đậu ngự hạt sen bùi ngậy, đậu hũ sốt cà chua ít dầu và xà lách trộn giấm táo.",
+            dishes: [
+              { role: "Món chính", name: "Canh củ sen hầm đậu ngự và hạt sen" },
+              { role: "Món phụ", name: "Đậu hũ non sốt cà chua tỏi ít dầu" },
+              { role: "Món chua", name: "Salad xà lách dưa leo trộn dầu giấm" },
+              { role: "Ăn kèm", name: "Cơm yến mạch gạo lứt" }
+            ],
+            ingredients: ["củ sen", "đậu ngự", "hạt sen", "đậu hũ", "cà chua", "xà lách", "dưa leo", "yến mạch"]
           }
         ]
       },
@@ -3341,6 +3528,90 @@
               { role: "Tráng miệng", name: "Chè trôi nước nhân đậu xanh" }
             ],
             ingredients: ["thịt heo quay", "dưa cải", "trái vả", "tôm", "miến", "gà", "đậu cô ve", "thịt bò"]
+          }
+        ]
+      },
+      mamComVanPhong: {
+        name: "Mâm Cơm Văn Phòng",
+        isSpecial: true,
+        combos: [
+          {
+            title: "Mâm Cơm Hộp Sườn Ram Mặn Ngọt",
+            tag: "Tiện lợi",
+            description: "Hộp cơm văn phòng sườn non ram mặn ngọt đậm đà đưa cơm, kết hợp cùng đậu hũ sốt cà chua mềm béo và rau cải thìa luộc xanh giòn.",
+            dishes: [
+              { role: "Món mặn", name: "Sườn non ram nước dừa" },
+              { role: "Món phụ", name: "Đậu hũ sốt cà chua" },
+              { role: "Rau ăn kèm", name: "Cải thìa luộc ráo nước" },
+              { role: "Món phụ thêm", name: "Trứng ốp la lòng đào" }
+            ],
+            ingredients: ["sườn non", "đậu hũ", "cà chua", "cải thìa", "trứng"]
+          },
+          {
+            title: "Mâm Cơm Trưa Bò Xào Bông Cải",
+            tag: "Nhanh gọn",
+            description: "Bữa trưa văn phòng đủ chất, chuẩn bị siêu tốc với thịt bò xào bông cải xanh ngọt nước, trứng hấp vân đẹp mắt và canh rau ngót thịt bằm.",
+            dishes: [
+              { role: "Món chính", name: "Thịt bò xào bông cải xanh" },
+              { role: "Món phụ", name: "Trứng cuộn hành tây chiên" },
+              { role: "Món canh", name: "Canh rau ngót nấu thịt bằm" },
+              { role: "Ăn kèm", name: "Cơm trắng nóng đựng hộp" }
+            ],
+            ingredients: ["thịt bò", "bông cải xanh", "trứng", "rau ngót", "thịt bằm"]
+          },
+          {
+            title: "Mâm Cơm Cá Hồi Teriyaki Healthy",
+            tag: "Dinh dưỡng",
+            description: "Bữa trưa văn phòng lành mạnh, giàu Omega-3 với cá hồi áp chảo sốt teriyaki thơm nhẹ, măng tây xào tỏi và canh bí đỏ tôm tươi.",
+            dishes: [
+              { role: "Món chính", name: "Cá hồi áp chảo sốt teriyaki" },
+              { role: "Món xào", name: "Măng tây xào tỏi" },
+              { role: "Món canh", name: "Canh bí đỏ nấu tôm tươi" },
+              { role: "Ăn kèm", name: "Cơm gạo lứt hạt sen" }
+            ],
+            ingredients: ["cá hồi", "măng tây", "bí đỏ", "tôm", "gạo lứt", "hạt sen"]
+          }
+        ]
+      },
+      mamComCuoiTuan: {
+        name: "Mâm Cơm Cuối Tuần",
+        isSpecial: true,
+        combos: [
+          {
+            title: "Mâm Cơm Lẩu Gà Lá É Phú Yên",
+            tag: "Sum họp",
+            description: "Nước lẩu gà ta nấu lá é cay nồng măng chua ấm nồng phù hợp cho thời tiết cuối tuần, kết hợp đĩa gỏi gà xé phay bắp cải chua ngọt mát giòn.",
+            dishes: [
+              { role: "Món chính", name: "Lẩu gà lá é Phú Yên" },
+              { role: "Món nhúng", name: "Nấm tươi nhúng lẩu" },
+              { role: "Món phụ", name: "Gỏi gà xé phay bắp cải hành tây" },
+              { role: "Ăn kèm", name: "Bún tươi hoặc mì trứng" }
+            ],
+            ingredients: ["gà ta", "lá é", "măng chua", "nấm", "bắp cải", "hành tây", "bún"]
+          },
+          {
+            title: "Mâm Cơm Cá Tai Tượng Chiên Xù",
+            tag: "Tiệc nhỏ",
+            description: "Món cá tai tượng chiên xù vẩy vàng giòn rụm cuốn bánh tráng rau sống ngập tràn, chấm mắm nêm đậm đà dậy vị Nam Bộ.",
+            dishes: [
+              { role: "Món chính", name: "Cá tai tượng chiên xù giòn rụm" },
+              { role: "Rau sống", name: "Xà lách, thơm, khế, chuối chát, rau thơm" },
+              { role: "Ăn kèm", name: "Bánh tráng cuốn bún tươi" },
+              { role: "Nước chấm", name: "Mắm nêm pha khóm (thơm) tỏi ớt" }
+            ],
+            ingredients: ["cá tai tượng", "rau sống", "thơm", "khế", "chuối chát", "bánh tráng", "bún", "mắm nêm"]
+          },
+          {
+            title: "Mâm Cơm Bò Kho Bánh Mì",
+            tag: "Ấm áp",
+            description: "Hương vị bò kho truyền thống thơm lừng thảo mộc, nạm bò và gân bò mềm giòn sần sật ăn kèm bánh mì giòn nóng hổi.",
+            dishes: [
+              { role: "Món chính", name: "Bò kho sả cà rốt gia vị truyền thống" },
+              { role: "Rau nêm", name: "Hành tây, rau om, ngò gai, húng quế" },
+              { role: "Món phụ", name: "Dưa leo hành tây chua ngọt" },
+              { role: "Ăn kèm", name: "Bánh mì nóng hổi" }
+            ],
+            ingredients: ["nạm bò", "gân bò", "cà rốt", "sả", "bánh mì", "rau thơm"]
           }
         ]
       }
@@ -3704,6 +3975,10 @@
         prefix = "anduong";
       } else if (regionKey === "mamComNgayGio") {
         prefix = "gio";
+      } else if (regionKey === "mamComVanPhong") {
+        prefix = "vanphong";
+      } else if (regionKey === "mamComCuoiTuan") {
+        prefix = "cuoituan";
       }
 
       const fileNames = [
@@ -4213,12 +4488,12 @@
       const entries = activeView === "favorites"
         ? getFavoriteEntries()
         : getCombos(activeRegion).map((combo, index) => ({
-            combo,
-            index,
-            regionKey: activeRegion,
-            regionName: menuRegions[activeRegion].name,
-            key: getComboKey(activeRegion, index)
-          }));
+          combo,
+          index,
+          regionKey: activeRegion,
+          regionName: menuRegions[activeRegion].name,
+          key: getComboKey(activeRegion, index)
+        }));
 
       const filteredEntries = entries.filter((entry) => {
         const { combo } = entry;
@@ -4369,4 +4644,5 @@
     renderCombos();
   </script>
 </body>
+
 </html>
