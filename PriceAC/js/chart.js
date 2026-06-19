@@ -201,6 +201,7 @@ const MarketChart = (() => {
       priceText: formatPriceText(candle),
       psychologyZone: psychology?.zone || latestPsychology?.zone || chartSnapshot.evaluation?.possibleZone,
       psychologyLabel: psychology?.label || latestPsychology?.label,
+      psychologyConfidence: psychology?.confidence ?? latestPsychology?.confidence ?? chartSnapshot.evaluation?.confidence,
       rsiByInterval: {
         daily: rsiDaily ?? fallback.daily,
         weekly: rsiWeekly ?? fallback.weekly,
@@ -667,7 +668,7 @@ const MarketChart = (() => {
     const visibleData = getVisibleData();
     const evaluation = PsychologyEngine.evaluate(getFullData(), visibleData);
     const rsiSeries = getVisibleRsiSeries();
-    const psychologyTimeline = PsychologyEngine.buildPsychologyTimeline(visibleData);
+    const psychologyTimeline = PsychologyEngine.buildPsychologyTimeline(getFullData(), visibleData);
 
     chartSnapshot = { visibleData, rsiSeries, evaluation, psychologyTimeline };
     rebuildHoverIndex(visibleData, rsiSeries, psychologyTimeline);

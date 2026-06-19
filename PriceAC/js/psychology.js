@@ -1,4 +1,4 @@
-/* Psychology engine: converts simple market inputs into educational probabilities. */
+/* Psychology engine: historical price features + indicator rules for market psychology zones. */
 const PsychologyEngine = (() => {
   const cycle = [
     "Disbelief",
@@ -17,7 +17,11 @@ const PsychologyEngine = (() => {
   ];
 
   const RSI_PERIOD = 14;
-  const PSYCHOLOGY_WINDOW = 30;
+  const MA_FAST = 20;
+  const MA_MID = 50;
+  const MA_SLOW = 200;
+  const SWING_LOOKBACK = 120;
+  const MIN_HISTORY = 60;
 
   const zoneColors = {
     Hope: "#3b82f6",
@@ -27,8 +31,11 @@ const PsychologyEngine = (() => {
     Euphoria: "#f59e0b",
     Complacency: "#eab308",
     Anxiety: "#f97316",
+    Denial: "#d946ef",
     Panic: "#ef4444",
     Capitulation: "#b91c1c",
+    Anger: "#7c3aed",
+    Depression: "#334155",
     Disbelief: "#64748b",
     Observing: "#475569"
   };
@@ -43,8 +50,11 @@ const PsychologyEngine = (() => {
     Euphoria: "Hưng phấn cực độ",
     Complacency: "Chủ quan",
     Anxiety: "Lo âu",
+    Denial: "Phủ nhận",
     Panic: "Hoảng loạn",
     Capitulation: "Bỏ cuộc",
+    Anger: "Phẫn nộ",
+    Depression: "Trầm cảm",
     Disbelief: "Nghi ngờ",
     Observing: "Quan sát"
   };
@@ -99,26 +109,73 @@ const PsychologyEngine = (() => {
     return Array.from(buckets.values()).sort((left, right) => left.date.localeCompare(right.date));
   };
 
-  const normalizeScores = (scores) => {
-    const total = Object.values(scores).reduce((sum, value) => sum + value, 0) || 1;
-    return Object.fromEntries(
-      Object.entries(scores)
-        .map(([key, value]) => [key, Math.round((value / total) * 100)])
-        .sort((a, b) => b[1] - a[1])
-    );
+  const getClose = (point) => point.close ?? point.price;
+
+  const sma = (series, period, endIndex = series.length - 1) => {
+    if (endIndex + 1 < period) {
+      return null;
+    }
+
+    const start = endIndex + 1 - period;
+    let total = 0;
+
+    for (let index = start; index <= endIndex; index += 1) {
+      total += getClose(series[index]);
+    }
+
+    return total / period;
   };
 
-  const calculateTrend = (series) => {
-    if (!series || series.length < 2) {
+  const windowExtreme = (series, endIndex, period, field) => {
+    const start = Math.max(0, endIndex + 1 - period);
+    let value = field === "high"
+      ? -Infinity
+      : Infinity;
+
+    for (let index = start; index <= endIndex; index += 1) {
+      const pointValue = field === "high"
+        ? series[index].high ?? getClose(series[index])
+        : series[index].low ?? getClose(series[index]);
+
+      value = field === "high"
+        ? Math.max(value, pointValue)
+        : Math.min(value, pointValue);
+    }
+
+    return value;
+  };
+
+  const roc = (series, period, endIndex = series.length - 1) => {
+    if (endIndex < period) {
       return 0;
     }
 
-    const first = series[0].close ?? series[0].price;
-    const last = series[series.length - 1].close ?? series[series.length - 1].price;
-    return ((last - first) / first) * 100;
+    const last = getClose(series[endIndex]);
+    const previous = getClose(series[endIndex - period]);
+    return previous === 0 ? 0 : ((last - previous) / previous) * 100;
   };
 
-  const getClose = (point) => point.close ?? point.price;
+  const averageAbsReturn = (series, period, endIndex = series.length - 1) => {
+    if (endIndex < 1) {
+      return 0;
+    }
+
+    const start = Math.max(1, endIndex + 1 - period);
+    let total = 0;
+    let count = 0;
+
+    for (let index = start; index <= endIndex; index += 1) {
+      const previous = getClose(series[index - 1]);
+      if (previous === 0) {
+        continue;
+      }
+
+      total += Math.abs((getClose(series[index]) - previous) / previous) * 100;
+      count += 1;
+    }
+
+    return count ? total / count : 0;
+  };
 
   const buildRsiSeries = (series, period = RSI_PERIOD) => {
     if (!series || series.length < period + 1) {
@@ -201,93 +258,281 @@ const PsychologyEngine = (() => {
     (point) => point.date >= startDate && point.date <= endDate
   );
 
-  const calculateVolume = (series) => {
+  const calculateTrend = (series) => {
     if (!series || series.length < 2) {
-      return 50;
+      return 0;
     }
 
-    const volatility = series.slice(1).reduce((sum, point, index) => {
-      const previous = series[index].close ?? series[index].price;
-      const current = point.close ?? point.price;
-      return sum + Math.abs((current - previous) / previous);
-    }, 0) / (series.length - 1);
-
-    return Math.round(clamp(45 + volatility * 1000, 35, 88));
+    const first = getClose(series[0]);
+    const last = getClose(series[series.length - 1]);
+    return first === 0 ? 0 : ((last - first) / first) * 100;
   };
 
-  const rsiTone = (value) => {
-    if (value >= 70) {
-      return "hot";
+  const computeFeatures = (dailySeries, endIndex = dailySeries.length - 1) => {
+    if (!dailySeries.length || endIndex < 0) {
+      return null;
     }
-    if (value <= 30) {
-      return "cold";
+
+    const close = getClose(dailySeries[endIndex]);
+    const swingHigh = windowExtreme(dailySeries, endIndex, SWING_LOOKBACK, "high");
+    const swingLow = windowExtreme(dailySeries, endIndex, SWING_LOOKBACK, "low");
+    const drawdown = swingHigh > 0 ? ((close - swingHigh) / swingHigh) * 100 : 0;
+    const recovery = swingLow > 0 ? ((close - swingLow) / swingLow) * 100 : 0;
+    const history = dailySeries.slice(0, endIndex + 1);
+    const weekly = aggregateSeries(history, "1W");
+    const monthly = aggregateSeries(history, "1M");
+
+    const ma20 = sma(dailySeries, MA_FAST, endIndex);
+    const ma50 = sma(dailySeries, MA_MID, endIndex);
+    const ma200 = sma(dailySeries, MA_SLOW, endIndex);
+    const ma50Prev = sma(dailySeries, MA_MID, Math.max(0, endIndex - 10));
+
+    return {
+      close,
+      drawdown,
+      recovery,
+      trend20: roc(dailySeries, 20, endIndex),
+      trend60: roc(dailySeries, 60, endIndex),
+      volatility20: averageAbsReturn(dailySeries, 20, endIndex),
+      volatility60: averageAbsReturn(dailySeries, 60, endIndex),
+      rsiDaily: calculateRsi(history),
+      rsiWeekly: calculateRsi(weekly),
+      rsiMonthly: calculateRsi(monthly),
+      priceVsMa20: ma20 ? ((close - ma20) / ma20) * 100 : 0,
+      priceVsMa50: ma50 ? ((close - ma50) / ma50) * 100 : 0,
+      priceVsMa200: ma200 ? ((close - ma200) / ma200) * 100 : 0,
+      ma50Rising: ma50 !== null && ma50Prev !== null ? ma50 > ma50Prev : false,
+      aboveMa50: ma50 !== null ? close > ma50 : false,
+      aboveMa200: ma200 !== null ? close > ma200 : false,
+      goldenStructure: ma50 !== null && ma200 !== null ? ma50 > ma200 : false
+    };
+  };
+
+  const scorePsychologyZones = (features) => {
+    if (!features) {
+      return { Observing: 100 };
     }
-    return "neutral";
+
+    const {
+      drawdown,
+      recovery,
+      trend20,
+      trend60,
+      volatility20,
+      volatility60,
+      rsiDaily,
+      rsiWeekly,
+      rsiMonthly,
+      priceVsMa50,
+      priceVsMa200,
+      ma50Rising,
+      aboveMa50,
+      aboveMa200,
+      goldenStructure
+    } = features;
+
+    const rsiBlend = Math.round((rsiDaily + rsiWeekly + rsiMonthly) / 3);
+    const volRatio = volatility60 > 0 ? volatility20 / volatility60 : 1;
+    const nearHigh = drawdown > -6;
+    const moderatePullback = drawdown <= -6 && drawdown > -18;
+    const deepPullback = drawdown <= -18;
+    const farFromLow = recovery > 25;
+    const risingFromLow = recovery > 12 && drawdown < -8;
+
+    const scores = {
+      Depression: 8
+        + (drawdown < -30 ? 24 : 0)
+        + (rsiDaily < 28 ? 18 : 0)
+        + (trend60 < -18 ? 16 : 0)
+        + (recovery < 12 ? 10 : 0),
+
+      Capitulation: 6
+        + (drawdown < -24 ? 20 : 0)
+        + (rsiDaily < 24 ? 20 : 0)
+        + (trend20 < -10 ? 16 : 0)
+        + (volRatio > 1.25 ? 12 : 0),
+
+      Anger: 8
+        + (drawdown < -20 && drawdown >= -34 ? 16 : 0)
+        + (rsiDaily >= 24 && rsiDaily <= 38 ? 12 : 0)
+        + (trend60 < -8 ? 12 : 0)
+        + (trend20 > 0 && trend60 < 0 ? 10 : 0),
+
+      Panic: 8
+        + (deepPullback ? 18 : 0)
+        + (rsiDaily < 32 ? 16 : 0)
+        + (trend20 < -8 ? 18 : 0)
+        + (volRatio > 1.35 ? 14 : 0),
+
+      Denial: 10
+        + (drawdown <= -10 && drawdown > -24 ? 16 : 0)
+        + (rsiDaily >= 35 && rsiDaily <= 52 ? 10 : 0)
+        + (trend20 < 0 && trend60 > 0 ? 14 : 0)
+        + (aboveMa200 ? 8 : 0),
+
+      Anxiety: 12
+        + (moderatePullback ? 18 : 0)
+        + (rsiDaily >= 38 && rsiDaily <= 55 ? 8 : 0)
+        + (trend20 < -3 ? 12 : 0)
+        + (volRatio > 1.1 ? 8 : 0),
+
+      Disbelief: 12
+        + (risingFromLow ? 16 : 0)
+        + (rsiDaily >= 34 && rsiDaily <= 48 ? 12 : 0)
+        + (trend20 > 2 && trend60 < 0 ? 12 : 0)
+        + (!aboveMa200 ? 8 : 0),
+
+      Hope: 14
+        + (drawdown > -18 && drawdown <= -6 ? 12 : 0)
+        + (rsiDaily >= 40 && rsiDaily <= 56 ? 12 : 0)
+        + (trend20 > 3 ? 14 : 0)
+        + (ma50Rising ? 8 : 0),
+
+      Optimism: 16
+        + (drawdown > -12 ? 10 : 0)
+        + (rsiDaily >= 48 && rsiDaily <= 62 ? 12 : 0)
+        + (aboveMa50 ? 12 : 0)
+        + (trend20 > 0 && trend60 > 0 ? 12 : 0),
+
+      Belief: 18
+        + (drawdown > -10 ? 8 : 0)
+        + (rsiDaily >= 52 && rsiDaily <= 68 ? 10 : 0)
+        + (aboveMa50 && aboveMa200 ? 14 : 0)
+        + (goldenStructure ? 10 : 0)
+        + (priceVsMa50 > 2 ? 8 : 0),
+
+      Thrill: 12
+        + (nearHigh ? 10 : 0)
+        + (rsiDaily >= 64 && rsiDaily <= 78 ? 16 : 0)
+        + (trend20 > 8 ? 14 : 0)
+        + (volRatio > 1.05 ? 6 : 0),
+
+      Euphoria: 10
+        + (drawdown > -4 ? 12 : 0)
+        + (rsiDaily > 72 || rsiWeekly > 68 ? 18 : 0)
+        + (trend20 > 12 ? 14 : 0)
+        + (farFromLow ? 8 : 0),
+
+      Complacency: 12
+        + (drawdown > -8 && drawdown <= -1 ? 12 : 0)
+        + (rsiDaily >= 55 && rsiDaily <= 70 ? 10 : 0)
+        + (Math.abs(trend20) < 4 ? 14 : 0)
+        + (volatility20 < volatility60 * 0.85 ? 12 : 0)
+        + (aboveMa50 ? 8 : 0)
+    };
+
+    return { scores, rsiBlend, priceVsMa50, priceVsMa200 };
+  };
+
+  const normalizeScores = (scores) => {
+    const total = Object.values(scores).reduce((sum, value) => sum + value, 0) || 1;
+    return Object.fromEntries(
+      Object.entries(scores)
+        .map(([key, value]) => [key, Math.round((value / total) * 100)])
+        .sort((left, right) => right[1] - left[1])
+    );
+  };
+
+  const classifyPsychology = (dailySeries, endIndex = dailySeries.length - 1) => {
+    if (!dailySeries.length || endIndex + 1 < MIN_HISTORY) {
+      return {
+        possibleZone: "Observing",
+        confidence: 0,
+        probabilities: { Observing: 100 },
+        features: null,
+        signals: []
+      };
+    }
+
+    const features = computeFeatures(dailySeries, endIndex);
+    const scored = scorePsychologyZones(features);
+    const probabilities = normalizeScores(scored.scores);
+    const ranked = Object.entries(probabilities);
+    const topZone = ranked[0] || ["Observing", 0];
+    const runnerUp = ranked[1]?.[1] || 0;
+    const confidence = clamp(topZone[1] + Math.max(0, topZone[1] - runnerUp) * 0.35, 0, 100);
+
+    return {
+      possibleZone: topZone[0],
+      confidence: Math.round(confidence),
+      probabilities,
+      features,
+      signals: buildSignals(features, topZone[0])
+    };
+  };
+
+  const buildSignals = (features, zone) => {
+    if (!features) {
+      return [];
+    }
+
+    return [
+      `Drawdown ${features.drawdown.toFixed(1)}% so với đỉnh ${SWING_LOOKBACK} phiên`,
+      `Phục hồi ${features.recovery.toFixed(1)}% từ đáy ${SWING_LOOKBACK} phiên`,
+      `RSI ${features.rsiDaily}/${features.rsiWeekly}/${features.rsiMonthly} (N/T/Th)`,
+      `Xu hướng 20/60 phiên: ${features.trend20.toFixed(1)}% / ${features.trend60.toFixed(1)}%`,
+      `Vùng ưu tiên: ${zoneLabelsVi[zone] || zone}`
+    ];
   };
 
   const evaluate = (fullSeries, visibleSeries = fullSeries) => {
     const dailySeries = aggregateSeries(fullSeries, "1D");
-    const weeklySeries = aggregateSeries(fullSeries, "1W");
-    const monthlySeries = aggregateSeries(fullSeries, "1M");
-
-    const rsiDaily = calculateRsi(dailySeries);
-    const rsiWeekly = calculateRsi(weeklySeries);
-    const rsiMonthly = calculateRsi(monthlySeries);
-    const rsiBlend = Math.round((rsiDaily + rsiWeekly + rsiMonthly) / 3);
-
-    const trend = calculateTrend(visibleSeries);
-    const volume = calculateVolume(visibleSeries);
-
-    const scores = {
-      Hope: 18 + clamp(trend, -10, 12) * 0.9 + (rsiDaily < 45 ? 10 : 0) + (rsiWeekly < 45 ? 6 : 0),
-      Optimism: 30 + clamp(trend, 0, 18) * 1.8
-        + (rsiDaily >= 48 && rsiDaily <= 64 ? 8 : 0)
-        + (rsiWeekly >= 48 && rsiWeekly <= 64 ? 8 : 0),
-      Belief: 24 + clamp(trend, 2, 25) * 1.15 + (volume > 55 ? 8 : 0) + (rsiMonthly >= 50 && rsiMonthly <= 68 ? 6 : 0),
-      Thrill: 14 + clamp(trend, 6, 30) * 1.05
-        + (rsiDaily > 66 ? 10 : 0)
-        + (rsiWeekly > 66 ? 8 : 0),
-      Euphoria: 8 + clamp(trend, 12, 35) * 1.2 + (rsiBlend > 72 ? 16 : 0),
-      Complacency: 10 + (rsiBlend > 70 ? 14 : 0) + (rsiMonthly > 72 ? 8 : 0),
-      Anxiety: 12 + (trend < -4 ? 18 : 0) + (volume > 70 ? 8 : 0) + (rsiBlend < 35 ? 10 : 0),
-      Panic: 8 + (trend < -10 ? 20 : 0) + (rsiBlend < 28 ? 14 : 0),
-      Capitulation: 6 + (trend < -16 ? 18 : 0) + (rsiBlend < 22 ? 12 : 0),
-      Disbelief: 10 + (trend < 0 && trend > -6 ? 12 : 0) + (rsiBlend >= 35 && rsiBlend <= 48 ? 8 : 0)
-    };
-
-    const probabilities = normalizeScores(scores);
-    const topZone = Object.entries(probabilities)[0] || ["Observing", 0];
+    const visible = aggregateSeries(visibleSeries, "1D");
+    const classification = classifyPsychology(dailySeries);
+    const features = classification.features || computeFeatures(dailySeries);
+    const trend = calculateTrend(visible);
 
     return {
       trend: Number(trend.toFixed(2)),
-      rsi: rsiBlend,
-      rsiByInterval: {
-        daily: rsiDaily,
-        weekly: rsiWeekly,
-        monthly: rsiMonthly
-      },
-      volume,
-      possibleZone: topZone[0],
-      confidence: topZone[1],
-      probabilities
+      rsi: features ? Math.round((features.rsiDaily + features.rsiWeekly + features.rsiMonthly) / 3) : 50,
+      rsiByInterval: features
+        ? {
+          daily: features.rsiDaily,
+          weekly: features.rsiWeekly,
+          monthly: features.rsiMonthly
+        }
+        : { daily: 50, weekly: 50, monthly: 50 },
+      volume: features ? Math.round(clamp(40 + features.volatility20 * 12, 35, 95)) : 50,
+      possibleZone: classification.possibleZone,
+      confidence: classification.confidence,
+      probabilities: classification.probabilities,
+      signals: classification.signals,
+      features
     };
   };
 
-  const buildPsychologyTimeline = (visibleSeries, windowSize = PSYCHOLOGY_WINDOW) => {
+  const buildFeatureCache = (fullSeries) => {
+    const daily = aggregateSeries(fullSeries, "1D");
+    return daily.map((_, index) => computeFeatures(daily, index));
+  };
+
+  const buildPsychologyTimeline = (fullSeries, visibleSeries) => {
     if (!visibleSeries || !visibleSeries.length) {
       return [];
     }
 
-    return visibleSeries.map((point, index) => {
-      const slice = visibleSeries.slice(Math.max(0, index - windowSize + 1), index + 1);
-      const evaluation = evaluate(slice, slice);
+    const daily = aggregateSeries(fullSeries, "1D");
+    const indexByDate = new Map(daily.map((point, index) => [point.date, index]));
 
+    return visibleSeries.map((point) => {
+      const endIndex = indexByDate.get(point.date);
+      if (endIndex === undefined) {
+        return {
+          date: point.date,
+          zone: "Observing",
+          color: zoneColors.Observing,
+          label: zoneLabelsVi.Observing,
+          confidence: 0
+        };
+      }
+
+      const classification = classifyPsychology(daily, endIndex);
       return {
         date: point.date,
-        zone: evaluation.possibleZone,
-        color: zoneColors[evaluation.possibleZone] || zoneColors.Observing,
-        label: zoneLabelsVi[evaluation.possibleZone] || zoneLabelsVi.Observing,
-        confidence: evaluation.confidence
+        zone: classification.possibleZone,
+        color: zoneColors[classification.possibleZone] || zoneColors.Observing,
+        label: zoneLabelsVi[classification.possibleZone] || zoneLabelsVi.Observing,
+        confidence: classification.confidence
       };
     });
   };
@@ -327,18 +572,28 @@ const PsychologyEngine = (() => {
     return segments;
   };
 
+  const rsiTone = (value) => {
+    if (value >= 70) {
+      return "hot";
+    }
+    if (value <= 30) {
+      return "cold";
+    }
+    return "neutral";
+  };
+
   const renderPsychologyLegend = (container) => {
     const featuredZones = [
+      "Disbelief",
       "Hope",
       "Optimism",
       "Belief",
-      "Thrill",
       "Euphoria",
       "Complacency",
       "Anxiety",
+      "Denial",
       "Panic",
-      "Capitulation",
-      "Disbelief"
+      "Capitulation"
     ];
 
     container.innerHTML = featuredZones.map((zone) => `
@@ -354,6 +609,7 @@ const PsychologyEngine = (() => {
       priceText = "—",
       psychologyZone = null,
       psychologyLabel = null,
+      psychologyConfidence = null,
       rsiByInterval = {},
       isHover = false
     } = snapshot;
@@ -378,7 +634,7 @@ const PsychologyEngine = (() => {
         <div>
           <span>Tâm lý thị trường</span>
           <strong class="psych-zone-value" style="color: ${zoneColors[psychologyZone] || zoneColors.Observing}">
-            ${psychologyLabel || psychologyZone}
+            ${psychologyLabel || psychologyZone}${psychologyConfidence ? ` · ${psychologyConfidence}%` : ""}
           </strong>
         </div>
         ` : ""}
@@ -419,7 +675,7 @@ const PsychologyEngine = (() => {
 
     container.innerHTML = entries.map(([zone, value]) => `
       <article class="psych-card">
-        <h3>${zone}</h3>
+        <h3>${zoneLabelsVi[zone] || zone}</h3>
         <strong>${value}%</strong>
         <div class="probability-track"><span style="width: ${value}%"></span></div>
       </article>
@@ -436,7 +692,7 @@ const PsychologyEngine = (() => {
       </svg>
       ${entries.map(([zone, value]) => `
       <div class="radar-row">
-        <span>${zone}</span>
+        <span>${zoneLabelsVi[zone] || zone}</span>
         <div class="probability-track"><span style="width: ${value}%"></span></div>
         <strong>${value}%</strong>
       </div>
@@ -455,6 +711,8 @@ const PsychologyEngine = (() => {
     buildPsychologyTimeline,
     buildPsychologySegments,
     filterRsiByRange,
+    computeFeatures,
+    classifyPsychology,
     evaluate,
     renderPsychologyLegend,
     renderRsiPanel,
