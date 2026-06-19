@@ -22,19 +22,43 @@ const App = (() => {
     });
   };
 
+  const activateChip = (button) => {
+    button.parentElement.querySelectorAll(".chip").forEach((chip) => chip.classList.remove("active"));
+    button.classList.add("active");
+  };
+
   const bindMarketControls = () => {
     document.querySelector("#asset-select").addEventListener("change", (event) => {
       MarketChart.setAsset(event.target.value);
     });
 
-    document.querySelector(".timeframe-tabs").addEventListener("click", (event) => {
+    document.querySelector(".interval-tabs").addEventListener("click", (event) => {
       const button = event.target.closest(".chip");
       if (!button) {
         return;
       }
 
-      document.querySelectorAll(".chip").forEach((chip) => chip.classList.remove("active"));
-      button.classList.add("active");
+      activateChip(button);
+      MarketChart.setInterval(button.dataset.interval);
+    });
+
+    document.querySelector(".chart-mode-tabs").addEventListener("click", (event) => {
+      const button = event.target.closest(".chip");
+      if (!button) {
+        return;
+      }
+
+      activateChip(button);
+      MarketChart.setChartMode(button.dataset.mode);
+    });
+
+    document.querySelector(".range-tabs").addEventListener("click", (event) => {
+      const button = event.target.closest(".chip");
+      if (!button) {
+        return;
+      }
+
+      activateChip(button);
       MarketChart.setRange(button.dataset.range);
     });
   };

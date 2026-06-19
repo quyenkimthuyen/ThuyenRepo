@@ -21,8 +21,11 @@ const MarketChart = (() => {
 
   let chart;
   let lineSeries;
+  let candleSeries;
   let currentAsset = "bitcoin";
-  let currentRange = "1D";
+  let currentRange = "1M";
+  let currentInterval = "1D";
+  let currentChartMode = "line";
   let marketData = {};
   let onEvaluation = () => {};
 
@@ -37,9 +40,17 @@ const MarketChart = (() => {
       const wave = Math.sin(index / 8) * (asset === "bitcoin" ? 3400 : 65);
       const longerWave = Math.cos(index / 21) * (asset === "bitcoin" ? 5200 : 90);
       const drift = index * (asset === "bitcoin" ? 155 : 3.2);
+      const close = Math.round((base + drift + wave + longerWave) * 100) / 100;
+      const open = Math.round((close - (asset === "bitcoin" ? 420 : 8)) * 100) / 100;
+      const high = Math.round((close + (asset === "bitcoin" ? 680 : 12)) * 100) / 100;
+      const low = Math.round((close - (asset === "bitcoin" ? 720 : 14)) * 100) / 100;
+
       data.push({
         date: date.toISOString().slice(0, 10),
-        price: Math.round((base + drift + wave + longerWave) * 100) / 100
+        open,
+        high,
+        low,
+        price: close
       });
     }
 
@@ -66,25 +77,36 @@ const MarketChart = (() => {
     marketData = Object.fromEntries(entries);
   };
 
+  const getFullData = () => marketData[currentAsset] || [];
+
   const getVisibleData = () => {
-    const source = marketData[currentAsset] || [];
-    return source.slice(-rangeLengths[currentRange]);
+    const aggregated = PsychologyEngine.aggregateSeries(getFullData(), currentInterval);
+    return aggregated.slice(-rangeLengths[currentRange]);
   };
 
-  const toChartData = (data) => data.map((point) => ({
+  const toLineData = (data) => data.map((point) => ({
     time: point.date,
-    value: point.price
+    value: point.close ?? point.price
+  }));
+
+  const toCandleData = (data) => data.map((point) => ({
+    time: point.date,
+    open: point.open ?? point.price,
+    high: point.high ?? point.price,
+    low: point.low ?? point.price,
+    close: point.close ?? point.price
   }));
 
   const drawFallbackChart = (container, data) => {
-    const prices = data.map((point) => point.price);
+    const prices = data.map((point) => point.close ?? point.price);
     const min = Math.min(...prices);
     const max = Math.max(...prices);
     const width = Math.max(container.clientWidth, 320);
     const height = Math.max(container.clientHeight, 280);
     const points = data.map((point, index) => {
       const x = (index / Math.max(data.length - 1, 1)) * width;
-      const y = height - ((point.price - min) / Math.max(max - min, 1)) * (height - 36) - 18;
+      const price = point.close ?? point.price;
+      const y = height - ((price - min) / Math.max(max - min, 1)) * (height - 36) - 18;
       return `${x},${y}`;
     }).join(" ");
 
@@ -100,6 +122,16 @@ const MarketChart = (() => {
         <text x="16" y="30" fill="#8ea0b7" font-size="13">Lightweight Charts unavailable. Showing static fallback.</text>
       </svg>
     `;
+  };
+
+  const applyChartMode = () => {
+    if (!lineSeries || !candleSeries) {
+      return;
+    }
+
+    const showCandles = currentChartMode === "candle";
+    lineSeries.applyOptions({ visible: !showCandles });
+    candleSeries.applyOptions({ visible: showCandles });
   };
 
   const createChart = (container) => {
@@ -135,6 +167,16 @@ const MarketChart = (() => {
       lineWidth: 3,
       priceLineColor: "rgba(116, 217, 159, 0.4)"
     });
+
+    candleSeries = chart.addCandlestickSeries({
+      upColor: "#74d99f",
+      downColor: "#fb7185",
+      borderVisible: false,
+      wickUpColor: "#74d99f",
+      wickDownColor: "#fb7185"
+    });
+
+    applyChartMode();
 
     new ResizeObserver(() => {
       chart.applyOptions({
@@ -190,15 +232,18 @@ const MarketChart = (() => {
   const render = () => {
     const container = document.querySelector("#chart");
     const visibleData = getVisibleData();
-    const evaluation = PsychologyEngine.evaluate(visibleData);
+    const evaluation = PsychologyEngine.evaluate(getFullData(), visibleData);
 
-    if (lineSeries) {
-      lineSeries.setData(toChartData(visibleData));
+    if (lineSeries && candleSeries) {
+      lineSeries.setData(toLineData(visibleData));
+      candleSeries.setData(toCandleData(visibleData));
+      applyChartMode();
       chart.timeScale().fitContent();
     } else {
       drawFallbackChart(container, visibleData);
     }
 
+    PsychologyEngine.renderRsiPanel(document.querySelector("#rsi-panel"), evaluation.rsiByInterval);
     renderMarketMap(evaluation);
     onEvaluation(evaluation);
   };
@@ -213,6 +258,16 @@ const MarketChart = (() => {
     render();
   };
 
+  const setInterval = (interval) => {
+    currentInterval = interval;
+    render();
+  };
+
+  const setChartMode = (mode) => {
+    currentChartMode = mode;
+    render();
+  };
+
   const init = async (evaluationHandler) => {
     onEvaluation = evaluationHandler;
     await loadAllData();
@@ -224,6 +279,8 @@ const MarketChart = (() => {
     init,
     setAsset,
     setRange,
+    setInterval,
+    setChartMode,
     getCurrentData: getVisibleData
   };
 })();

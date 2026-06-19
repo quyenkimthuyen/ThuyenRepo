@@ -35,20 +35,31 @@ const yahooChartUrl = (symbol) => {
 
 const toDateKey = (timestamp) => new Date(timestamp * 1000).toISOString().slice(0, 10);
 
+const roundPrice = (value) => Math.round(value * 100) / 100;
+
 const normalizeSeries = (result) => {
   const timestamps = result.timestamp || [];
   const quote = result.indicators && result.indicators.quote && result.indicators.quote[0];
+  const opens = quote && quote.open ? quote.open : [];
+  const highs = quote && quote.high ? quote.high : [];
+  const lows = quote && quote.low ? quote.low : [];
   const closes = quote && quote.close ? quote.close : [];
 
   return timestamps
     .map((timestamp, index) => ({
       date: toDateKey(timestamp),
+      open: opens[index],
+      high: highs[index],
+      low: lows[index],
       price: closes[index]
     }))
     .filter((point) => Number.isFinite(point.price))
     .map((point) => ({
       date: point.date,
-      price: Math.round(point.price * 100) / 100
+      open: roundPrice(point.open ?? point.price),
+      high: roundPrice(point.high ?? point.price),
+      low: roundPrice(point.low ?? point.price),
+      price: roundPrice(point.price)
     }));
 };
 

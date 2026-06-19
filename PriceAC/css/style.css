@@ -214,6 +214,78 @@ textarea:focus {
   padding-bottom: 10px;
 }
 
+.chart-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.interval-tabs,
+.chart-mode-tabs,
+.range-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.rsi-panel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.rsi-card {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(13, 24, 36, 0.76);
+}
+
+.rsi-card span,
+.rsi-card small {
+  display: block;
+  color: var(--muted);
+}
+
+.rsi-card span {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rsi-card strong {
+  display: block;
+  margin: 8px 0 4px;
+  font-size: 1.5rem;
+  letter-spacing: -0.04em;
+}
+
+.rsi-card small {
+  font-size: 0.74rem;
+}
+
+.rsi-card.hot strong {
+  color: var(--orange);
+}
+
+.rsi-card.cold strong {
+  color: var(--blue);
+}
+
+.rsi-card.neutral strong {
+  color: var(--green);
+}
+
+@media (max-width: 640px) {
+  .rsi-panel {
+    grid-template-columns: 1fr;
+  }
+}
+
 .chip {
   min-width: 52px;
   padding: 9px 12px;
