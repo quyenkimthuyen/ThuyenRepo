@@ -303,6 +303,10 @@ const MarketChart = (() => {
       psychologyZone: psychology?.zone || latestPsychology?.zone || chartSnapshot.evaluation?.possibleZone,
       psychologyLabel: psychology?.label || latestPsychology?.label,
       psychologyConfidence: psychology?.confidence ?? latestPsychology?.confidence ?? chartSnapshot.evaluation?.confidence,
+      elliottLabel: psychology?.elliottLabel
+        || latestPsychology?.elliottLabel
+        || chartSnapshot.evaluation?.features?.elliott?.label
+        || null,
       rsiByInterval: {
         daily: rsiDaily ?? fallback.daily,
         weekly: rsiWeekly ?? fallback.weekly,

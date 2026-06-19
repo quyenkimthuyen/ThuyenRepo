@@ -304,7 +304,15 @@ const PsychologyEngine = (() => {
       ma50Rising: ma50 !== null && ma50Prev !== null ? ma50 > ma50Prev : false,
       aboveMa50: ma50 !== null ? close > ma50 : false,
       aboveMa200: ma200 !== null ? close > ma200 : false,
-      goldenStructure: ma50 !== null && ma200 !== null ? ma50 > ma200 : false
+      goldenStructure: ma50 !== null && ma200 !== null ? ma50 > ma200 : false,
+      elliott: ElliottEngine.analyzeAt(
+        dailySeries,
+        ElliottEngine.buildSwingCache(
+          history,
+          clamp(averageAbsReturn(dailySeries, 60, endIndex) * 1.6, 3, 12)
+        ),
+        endIndex
+      )
     };
   };
 
@@ -421,7 +429,16 @@ const PsychologyEngine = (() => {
         + (aboveMa50 ? 8 : 0)
     };
 
-    return { scores, rsiBlend, priceVsMa50, priceVsMa200 };
+    const elliott = features.elliott;
+    if (elliott?.psychology?.zone) {
+      const elliottZone = elliott.psychology.zone;
+      scores[elliottZone] = (scores[elliottZone] || 0) + elliott.psychology.weight;
+      if (elliott.confidence >= 22) {
+        scores[elliottZone] += 10;
+      }
+    }
+
+    return { scores, rsiBlend, priceVsMa50, priceVsMa200, elliott };
   };
 
   const normalizeScores = (scores) => {
@@ -449,7 +466,11 @@ const PsychologyEngine = (() => {
     const ranked = Object.entries(probabilities);
     const topZone = ranked[0] || ["Observing", 0];
     const runnerUp = ranked[1]?.[1] || 0;
-    const confidence = clamp(topZone[1] + Math.max(0, topZone[1] - runnerUp) * 0.35, 0, 100);
+    let confidence = clamp(topZone[1] + Math.max(0, topZone[1] - runnerUp) * 0.35, 0, 100);
+
+    if (features.elliott?.psychology?.zone === topZone[0]) {
+      confidence = clamp(confidence + Math.round((features.elliott.confidence || 0) * 0.2), 0, 100);
+    }
 
     return {
       possibleZone: topZone[0],
@@ -474,6 +495,11 @@ const PsychologyEngine = (() => {
       alignHigherTimeframeRsi(daily, buildRsiSeries(monthly), (date) => `${date.slice(0, 7)}-01`)
         .map((point) => [point.date, point.value])
     );
+    const avgVolatility = length > MIN_HISTORY
+      ? averageAbsReturn(daily, 60, length - 1)
+      : 4;
+    const swingDeviation = clamp(avgVolatility * 1.6, 3, 12);
+    const swings = ElliottEngine.buildSwingCache(daily, swingDeviation);
     const features = new Array(length);
 
     for (let endIndex = 0; endIndex < length; endIndex += 1) {
@@ -512,7 +538,8 @@ const PsychologyEngine = (() => {
         ma50Rising: ma50 !== null && ma50Prev !== null ? ma50 > ma50Prev : false,
         aboveMa50: ma50 !== null ? close > ma50 : false,
         aboveMa200: ma200 !== null ? close > ma200 : false,
-        goldenStructure: ma50 !== null && ma200 !== null ? ma50 > ma200 : false
+        goldenStructure: ma50 !== null && ma200 !== null ? ma50 > ma200 : false,
+        elliott: ElliottEngine.analyzeAt(daily, swings, endIndex)
       };
     }
 
@@ -542,7 +569,9 @@ const PsychologyEngine = (() => {
     zone: classification.possibleZone,
     color: zoneColors[classification.possibleZone] || zoneColors.Observing,
     label: zoneLabelsVi[classification.possibleZone] || zoneLabelsVi.Observing,
-    confidence: classification.confidence
+    confidence: classification.confidence,
+    elliottLabel: classification.features?.elliott?.label || null,
+    elliottWave: classification.features?.elliott?.waveId || null
   });
 
   const observingPoint = (date) => ({
@@ -558,13 +587,19 @@ const PsychologyEngine = (() => {
       return [];
     }
 
-    return [
+    const signals = [
       `Drawdown ${features.drawdown.toFixed(1)}% so với đỉnh ${SWING_LOOKBACK} phiên`,
       `Phục hồi ${features.recovery.toFixed(1)}% từ đáy ${SWING_LOOKBACK} phiên`,
       `RSI ${features.rsiDaily}/${features.rsiWeekly}/${features.rsiMonthly} (N/T/Th)`,
-      `Xu hướng 20/60 phiên: ${features.trend20.toFixed(1)}% / ${features.trend60.toFixed(1)}%`,
-      `Vùng ưu tiên: ${zoneLabelsVi[zone] || zone}`
+      `Xu hướng 20/60 phiên: ${features.trend20.toFixed(1)}% / ${features.trend60.toFixed(1)}%`
     ];
+
+    if (features.elliott?.label) {
+      signals.push(`Elliott: ${features.elliott.label} → gợi ý ${zoneLabelsVi[features.elliott.psychology?.zone] || zone}`);
+    }
+
+    signals.push(`Vùng ưu tiên: ${zoneLabelsVi[zone] || zone}`);
+    return signals;
   };
 
   const evaluate = (fullSeries, visibleSeries = fullSeries) => {
@@ -737,11 +772,13 @@ const PsychologyEngine = (() => {
       "Capitulation"
     ];
 
-    container.innerHTML = featuredZones.map((zone) => `
+    container.innerHTML = `
+      <p class="psychology-legend-note">Nền màu kết hợp RSI, xu hướng và sóng Elliott (1–5, A–C)</p>
+      ${featuredZones.map((zone) => `
       <span class="psych-legend-item" style="--zone-color: ${zoneColors[zone]}">
         ${zoneLabelsVi[zone]}
       </span>
-    `).join("");
+    `).join("")}`;
   };
 
   const renderRsiPanel = (container, snapshot) => {
@@ -751,6 +788,7 @@ const PsychologyEngine = (() => {
       psychologyZone = null,
       psychologyLabel = null,
       psychologyConfidence = null,
+      elliottLabel = null,
       rsiByInterval = {},
       isHover = false
     } = snapshot;
@@ -777,6 +815,12 @@ const PsychologyEngine = (() => {
           <strong class="psych-zone-value" style="color: ${zoneColors[psychologyZone] || zoneColors.Observing}">
             ${psychologyLabel || psychologyZone}${psychologyConfidence ? ` · ${psychologyConfidence}%` : ""}
           </strong>
+        </div>
+        ` : ""}
+        ${elliottLabel ? `
+        <div>
+          <span>Sóng Elliott</span>
+          <strong class="elliott-value">${elliottLabel}</strong>
         </div>
         ` : ""}
       </article>
