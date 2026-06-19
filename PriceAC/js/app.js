@@ -1,35 +1,56 @@
-/* App controller: wires navigation, charts, probabilities, dashboard, and storage. */
+/* App controller: market chart and insight strip only. */
 const App = (() => {
-  let latestEvaluation = null;
-
-  const setActiveScreen = (target) => {
-    document.querySelectorAll(".screen").forEach((screen) => {
-      screen.classList.toggle("active", screen.dataset.screen === target);
-    });
-
-    document.querySelectorAll(".nav-item").forEach((button) => {
-      button.classList.toggle("active", button.dataset.target === target);
-    });
-  };
-
-  const bindNavigation = () => {
-    document.querySelector(".bottom-nav").addEventListener("click", (event) => {
-      const button = event.target.closest(".nav-item");
-      if (!button) {
-        return;
-      }
-      setActiveScreen(button.dataset.target);
-    });
-  };
-
   const activateChip = (button) => {
     button.parentElement.querySelectorAll(".chip").forEach((chip) => chip.classList.remove("active"));
     button.classList.add("active");
   };
 
+  const activateAsset = (button) => {
+    document.querySelectorAll(".asset-tab").forEach((tab) => {
+      const isActive = tab === button;
+      tab.classList.toggle("active", isActive);
+      tab.setAttribute("aria-selected", String(isActive));
+    });
+  };
+
+  const updateInsightStrip = (evaluation) => {
+    const zoneEl = document.querySelector("#insight-zone");
+    const zoneNoteEl = document.querySelector("#insight-zone-note");
+    const confidenceEl = document.querySelector("#insight-confidence");
+    const confidenceBar = document.querySelector("#insight-confidence-bar");
+    const trendEl = document.querySelector("#insight-trend");
+    const rsiEl = document.querySelector("#insight-rsi");
+
+    if (!evaluation) {
+      zoneEl.textContent = "Quan sát";
+      zoneNoteEl.textContent = "Theo dữ liệu hiện tại";
+      confidenceEl.textContent = "—";
+      confidenceBar.style.width = "0%";
+      trendEl.textContent = "—";
+      trendEl.className = "";
+      rsiEl.textContent = "—";
+      return;
+    }
+
+    const zoneLabel = PsychologyEngine.zoneLabelsVi[evaluation.possibleZone] || evaluation.possibleZone;
+    zoneEl.textContent = zoneLabel;
+    zoneNoteEl.textContent = evaluation.signals?.[0] || "Xác suất, không phải lời khuyên";
+    confidenceEl.textContent = `${evaluation.confidence}%`;
+    confidenceBar.style.width = `${evaluation.confidence}%`;
+    trendEl.textContent = `${evaluation.trend > 0 ? "+" : ""}${evaluation.trend}%`;
+    trendEl.className = evaluation.trend >= 0 ? "is-up" : "is-down";
+    rsiEl.textContent = String(evaluation.rsi);
+  };
+
   const bindMarketControls = () => {
-    document.querySelector("#asset-select").addEventListener("change", (event) => {
-      MarketChart.setAsset(event.target.value);
+    document.querySelector(".asset-switch").addEventListener("click", (event) => {
+      const button = event.target.closest(".asset-tab");
+      if (!button) {
+        return;
+      }
+
+      activateAsset(button);
+      MarketChart.setAsset(button.dataset.asset);
     });
 
     document.querySelector(".interval-tabs").addEventListener("click", (event) => {
@@ -63,54 +84,12 @@ const App = (() => {
     });
   };
 
-  const updateDashboard = (entries) => {
-    const latestEntry = entries[0];
-    const biasSummary = BiasAnalyzer.summarize(entries);
-
-    document.querySelector("#dashboard-sentiment").textContent = latestEvaluation
-      ? `${latestEvaluation.possibleZone} ${latestEvaluation.confidence}%`
-      : "Observing";
-    document.querySelector("#dashboard-emotion").textContent = latestEntry
-      ? latestEntry.emotion
-      : "No journal yet";
-    document.querySelector("#dashboard-bias").textContent = biasSummary.mostCommonBias;
-    document.querySelector("#dashboard-notes").textContent = String(entries.length);
-  };
-
-  const refreshReflectionViews = (entries) => {
-    const biasSummary = BiasAnalyzer.render(document.querySelector("#bias-summary"), entries);
-    updateDashboard(entries);
-    return biasSummary;
-  };
-
   const handleEvaluation = (evaluation) => {
-    latestEvaluation = evaluation;
-    PsychologyEngine.renderCycle(document.querySelector("#cycle-path"), evaluation.possibleZone);
-    PsychologyEngine.renderProbabilities(
-      document.querySelector("#probability-cards"),
-      document.querySelector("#radar-visual"),
-      evaluation.probabilities
-    );
-    updateDashboard(JournalStore.read());
-  };
-
-  const bindSettings = () => {
-    document.querySelector("#clear-journal").addEventListener("click", () => {
-      const confirmed = confirm("Clear all local journal entries?");
-      if (!confirmed) {
-        return;
-      }
-      const entries = JournalStore.clear();
-      JournalUI.refresh();
-      refreshReflectionViews(entries);
-    });
+    updateInsightStrip(evaluation);
   };
 
   const init = async () => {
-    bindNavigation();
     bindMarketControls();
-    bindSettings();
-    JournalUI.init(refreshReflectionViews);
     await MarketChart.init(handleEvaluation);
   };
 

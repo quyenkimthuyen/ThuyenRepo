@@ -158,8 +158,8 @@ const MarketChart = (() => {
     if (button) {
       button.disabled = isBusy || !allowed;
       button.textContent = isBusy
-        ? "Đang phân tích sóng tuần..."
-        : "Phân tích Elliott (khung tuần)";
+        ? "Đang phân tích..."
+        : "Phân tích Elliott";
     }
   };
 
@@ -741,49 +741,6 @@ const MarketChart = (() => {
         `).join("")}
       </svg>
     `;
-  };
-
-  const renderMarketMap = (evaluation) => {
-    const mapContainer = document.querySelector("#market-map");
-    const companionAssets = [
-      {
-        asset: assetLabels[currentAsset],
-        trend: `${evaluation.trend > 0 ? "+" : ""}${evaluation.trend}%`,
-        zone: evaluation.possibleZone,
-        confidence: evaluation.confidence
-      },
-      {
-        asset: currentAsset === "bitcoin" ? "Gold" : "Bitcoin",
-        trend: currentAsset === "bitcoin" ? "+4.8%" : "+12.4%",
-        zone: currentAsset === "bitcoin" ? "Belief" : "Optimism",
-        confidence: 58
-      },
-      {
-        asset: "S&P500",
-        trend: "+3.1%",
-        zone: "Complacency",
-        confidence: 49
-      },
-      {
-        asset: "USD",
-        trend: "-1.4%",
-        zone: "Fear",
-        confidence: 44
-      }
-    ];
-
-    mapContainer.innerHTML = companionAssets.map((item) => `
-      <article class="asset-card">
-        <div class="asset-meta">${item.trend} trend</div>
-        <h3>${item.asset}</h3>
-        <strong>${item.zone}</strong>
-        <div class="asset-meta">Possible Zone</div>
-        <div class="confidence-track" aria-label="Confidence ${item.confidence}%">
-          <span style="width: ${item.confidence}%"></span>
-        </div>
-        <div class="asset-meta">Confidence: ${item.confidence}%</div>
-      </article>
-    `).join("");
   };
 
   const render = () => {
