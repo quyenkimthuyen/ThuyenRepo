@@ -1133,6 +1133,12 @@ const MarketChart = (() => {
       getFullData(),
       visibleData
     );
+    const psychologyCache = getActivePsychologyCache();
+    marketSnapshot.investment = InvestmentAdvisor.buildRecommendation(
+      psychologyCache,
+      getFullData(),
+      marketSnapshot
+    );
     const rsiSeries = getVisibleRsiSeries();
 
     chartSnapshot = {

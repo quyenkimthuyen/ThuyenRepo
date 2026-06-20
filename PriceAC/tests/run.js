@@ -97,6 +97,7 @@ const RangeUtils = loadEngine("js/range-utils.js", "RangeUtils");
 loadEngine("js/elliott.js", "ElliottEngine");
 const PsychologyEngine = loadEngine("js/psychology.js", "PsychologyEngine");
 const MarketDataService = loadEngine("js/market-data.js", "MarketDataService");
+loadEngine("js/investment-advice.js", "InvestmentAdvisor");
 
 test("filterSeriesByDayRange respects calendar days", () => {
   const daily = [
@@ -310,6 +311,29 @@ test("elliott overlay builds zigzag for visible range", () => {
   assert.ok(overlay, "overlay should build");
   assert.ok(overlay.points.length >= 2);
   assert.ok(overlay.markers.length >= 1);
+});
+
+test("investment advice ranks zones from 10Y history", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const advice = sharedCtx.InvestmentAdvisor.buildRecommendation(
+    cache,
+    bitcoin,
+    PsychologyEngine.buildMarketSnapshot(
+      cache,
+      bitcoin,
+      RangeUtils.buildVisibleSeries(bitcoin, "1Y", "1D", PsychologyEngine.aggregateSeries)
+    )
+  );
+
+  assert.ok(advice.hasAdvice);
+  assert.ok(advice.safestZone?.zone);
+  assert.ok(advice.mostEffectiveZone?.zone);
+  assert.ok(advice.topAccumulateZones.length >= 1);
+  assert.ok(advice.action);
+  if (advice.avoidZones.length) {
+    assert.ok(advice.safestZone.safety >= advice.avoidZones[0].safety);
+  }
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

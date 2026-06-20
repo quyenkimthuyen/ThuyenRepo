@@ -100,9 +100,14 @@ const App = (() => {
     });
   };
 
+  const updateMarketUI = (snapshot) => {
+    updateInsightStrip(snapshot);
+    InvestmentAdvisor.renderPanel(document.querySelector("#investment-panel"), snapshot?.investment);
+  };
+
   const init = async () => {
     bindMarketControls();
-    await MarketChart.init(updateInsightStrip);
+    await MarketChart.init(updateMarketUI);
   };
 
   return {

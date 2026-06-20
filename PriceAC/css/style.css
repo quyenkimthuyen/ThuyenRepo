@@ -236,6 +236,256 @@ button {
   color: var(--red);
 }
 
+/* Investment recommendations */
+.investment-wrap {
+  margin-bottom: 12px;
+}
+
+.investment-panel {
+  padding: 14px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(165deg, rgba(15, 32, 48, 0.95), rgba(8, 19, 30, 0.98));
+}
+
+.investment-panel--empty {
+  padding: 14px 16px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.investment-empty {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.investment-kicker {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.investment-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.investment-title {
+  margin: 4px 0 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.investment-stance {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.investment-stance--accumulate {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+}
+
+.investment-stance--hold {
+  background: rgba(91, 156, 245, 0.15);
+  color: #5b9cf5;
+}
+
+.investment-stance--wait {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+}
+
+.investment-stance--reduce {
+  background: rgba(251, 113, 133, 0.15);
+  color: #fb7185;
+}
+
+.investment-action-card {
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(8, 19, 30, 0.55);
+}
+
+.investment-action-card strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.1rem;
+}
+
+.investment-action-card p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.investment-label {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.investment-current-metrics {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.investment-current-metrics em {
+  margin-left: 4px;
+  color: var(--text);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.investment-highlight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.investment-zone-card {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--zone-color) 35%, var(--line));
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--zone-color) 8%, transparent);
+}
+
+.investment-zone-name {
+  display: block;
+  color: var(--zone-color);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.investment-zone-metric {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.35rem;
+}
+
+.investment-zone-card small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.investment-section {
+  margin-top: 12px;
+}
+
+.investment-section h3 {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.investment-section--warn h3 {
+  color: #fb7185;
+}
+
+.investment-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.investment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--zone-color) 40%, var(--line));
+  background: color-mix(in srgb, var(--zone-color) 10%, transparent);
+  color: var(--zone-color);
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.investment-chip em {
+  font-style: normal;
+  font-size: 0.7rem;
+  opacity: 0.85;
+}
+
+.investment-chip--warn {
+  color: #fb7185;
+  border-color: rgba(251, 113, 133, 0.35);
+  background: rgba(251, 113, 133, 0.08);
+}
+
+.investment-rank-list {
+  display: grid;
+  gap: 6px;
+}
+
+.investment-rank-row {
+  display: grid;
+  grid-template-columns: 10px 1fr minmax(80px, 120px) 32px;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+}
+
+.investment-rank-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.investment-rank-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.12);
+  overflow: hidden;
+}
+
+.investment-rank-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.investment-rank-score {
+  text-align: right;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.investment-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
 /* Toolbar — 3 nhóm tách bạch */
 .chart-toolbar {
   display: flex;
@@ -629,6 +879,10 @@ button {
 
   .insight-card--zone {
     grid-column: auto;
+  }
+
+  .investment-highlight-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .chart-toolbar {
