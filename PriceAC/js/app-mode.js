@@ -1,7 +1,7 @@
 /* App mode: basic, pro (validated analysis), simulation (Pro replay). */
 var AppMode = (() => {
   const STORAGE_KEY = "priceac.app.mode";
-  const MODES = ["basic", "pro", "simulation"];
+  const MODES = ["basic", "ema", "pro", "simulation"];
   let mode = "basic";
   const listeners = new Set();
 
@@ -19,8 +19,10 @@ var AppMode = (() => {
   const getMode = () => mode;
   const isPro = () => mode === "pro";
   const isBasic = () => mode === "basic";
+  const isEma = () => mode === "ema";
   const isSimulation = () => mode === "simulation";
   const usesProAnalysis = () => mode === "pro" || mode === "simulation";
+  const getPsychologyModel = () => (mode === "ema" ? "ema" : "elliott");
 
   const setMode = (nextMode) => {
     if (!MODES.includes(nextMode)) {
@@ -58,8 +60,10 @@ var AppMode = (() => {
     getMode,
     isPro,
     isBasic,
+    isEma,
     isSimulation,
     usesProAnalysis,
+    getPsychologyModel,
     setMode,
     toggle,
     onChange,

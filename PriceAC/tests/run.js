@@ -100,6 +100,7 @@ console.log("PriceAC tests\n");
 const RangeUtils = loadEngine("js/range-utils.js", "RangeUtils");
 loadEngine("js/elliott.js", "ElliottEngine");
 const PsychologyEngine = loadEngine("js/psychology.js", "PsychologyEngine");
+const EmaPsychologyEngine = loadEngine("js/ema-mode.js", "EmaPsychologyEngine");
 const MarketDataService = loadEngine("js/market-data.js", "MarketDataService");
 loadEngine("js/investment-advice.js", "InvestmentAdvisor");
 const AppMode = loadEngine("js/app-mode.js", "AppMode");
@@ -448,8 +449,13 @@ test("investment advice ranks zones from 10Y history", () => {
   }
 });
 
-test("AppMode persists basic, pro, and simulation in localStorage", () => {
+test("AppMode persists basic, ema, pro, and simulation in localStorage", () => {
   sharedCtx.localStorage.removeItem("priceac.app.mode");
+  AppMode.setMode("ema");
+  assert.equal(AppMode.getMode(), "ema");
+  assert.equal(AppMode.isEma(), true);
+  assert.equal(AppMode.getPsychologyModel(), "ema");
+  assert.equal(AppMode.usesProAnalysis(), false);
   AppMode.setMode("pro");
   assert.equal(AppMode.getMode(), "pro");
   assert.equal(AppMode.isPro(), true);
@@ -461,6 +467,55 @@ test("AppMode persists basic, pro, and simulation in localStorage", () => {
   AppMode.setMode("basic");
   assert.equal(AppMode.isBasic(), true);
   assert.equal(AppMode.usesProAnalysis(), false);
+  assert.equal(AppMode.getPsychologyModel(), "elliott");
+});
+
+test("ema mode builds separate cache and enforces EMA/trend zone rules on bitcoin", () => {
+  const bitcoin = loadBitcoin();
+  const elliottCache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
+  const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D").slice(-PsychologyEngine.TEN_YEAR_DAYS);
+  const ema50 = EmaPsychologyEngine.computeEmaSeries(daily, 50);
+  const ema200 = EmaPsychologyEngine.computeEmaSeries(daily, 200);
+
+  assert.equal(elliottCache.model, "elliott");
+  assert.equal(emaCache.model, "ema");
+  assert.ok(emaCache.regions.length >= 2);
+
+  let checked = 0;
+  emaCache.regions.forEach((region) => {
+    const context = EmaPsychologyEngine.buildContext(daily, ema50, ema200, region.endDate);
+    if (!context.ready || region.zone === "Observing") {
+      return;
+    }
+
+    checked += 1;
+    assert.ok(
+      EmaPsychologyEngine.validateRegionRules(region, context),
+      `Zone ${region.zone} vi phạm EMA/trend tại ${region.endDate}`
+    );
+  });
+
+  assert.ok(checked >= 10, "expected enough EMA-validated regions");
+
+  const hasDifference = emaCache.regions.some((region, index) => (
+    region.zone !== elliottCache.regions[index]?.zone
+  ));
+  assert.ok(hasDifference, "EMA mode should remap at least one region vs Elliott");
+});
+
+test("ema psychology cache saves and loads with separate storage key", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
+
+  PsychologyEngine.savePsychologyCache("bitcoin", cache, "ema");
+  const loaded = PsychologyEngine.loadPsychologyCache("bitcoin", "ema");
+
+  assert.ok(loaded);
+  assert.equal(loaded.model, "ema");
+  assert.ok(PsychologyEngine.isPsychologyCacheValid(loaded, bitcoin, "ema"));
+  assert.ok(!PsychologyEngine.isPsychologyCacheValid(loaded, bitcoin, "elliott"));
+  PsychologyEngine.clearPsychologyCache("bitcoin", "ema");
 });
 
 test("elliott validation annotates regions", () => {

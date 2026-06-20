@@ -17,6 +17,9 @@ const App = (() => {
     if (mode === "pro") {
       return "Pro";
     }
+    if (mode === "ema") {
+      return "EMA";
+    }
     if (mode === "simulation") {
       return "Giả lập";
     }
@@ -33,6 +36,7 @@ const App = (() => {
 
     document.body.classList.toggle("app-mode-pro", mode === "pro");
     document.body.classList.toggle("app-mode-basic", mode === "basic");
+    document.body.classList.toggle("app-mode-ema", mode === "ema");
     document.body.classList.toggle("app-mode-simulation", mode === "simulation");
   };
 
@@ -188,7 +192,7 @@ const App = (() => {
         snapshot?.investment,
         snapshot?.crossAsset
       );
-    } else if (AppMode.isBasic()) {
+    } else if (AppMode.isBasic() || AppMode.isEma()) {
       investmentPanel.hidden = false;
       InvestmentAdvisor.renderPanel(investmentPanel, snapshot?.investment);
     } else if (investmentPanel) {

@@ -66,6 +66,39 @@ const MarketChart = (() => {
     orderedDates: []
   };
   let psychologyCaches = {};
+
+  const getPsychologyModel = () => AppMode.getPsychologyModel();
+
+  const normalizePsychologyBucket = (asset, bucket) => {
+    if (!bucket) {
+      return { elliott: null, ema: null };
+    }
+
+    if (bucket.elliott !== undefined || bucket.ema !== undefined) {
+      return {
+        elliott: bucket.elliott ?? null,
+        ema: bucket.ema ?? null
+      };
+    }
+
+    return { elliott: bucket, ema: null };
+  };
+
+  const getAssetPsychologyCache = (asset) => {
+    const bucket = normalizePsychologyBucket(asset, psychologyCaches[asset]);
+    return bucket[getPsychologyModel()] ?? null;
+  };
+
+  const setAssetPsychologyCache = (asset, cache) => {
+    psychologyCaches[asset] = {
+      ...normalizePsychologyBucket(asset, psychologyCaches[asset]),
+      [getPsychologyModel()]: cache
+    };
+  };
+
+  const getPsychologyCachesFlat = () => Object.fromEntries(
+    Object.keys(assetFiles).map((asset) => [asset, getAssetPsychologyCache(asset)])
+  );
   let isPsychologyAnalyzing = false;
   let isUpdatingPrices = false;
   let syncingCrosshair = false;
@@ -142,12 +175,16 @@ const MarketChart = (() => {
     marketData = Object.fromEntries(entries);
     psychologyCaches = Object.fromEntries(
       Object.keys(assetFiles).map((asset) => {
-        const cache = PsychologyEngine.loadPsychologyCache(asset);
+        const series = marketData[asset] || [];
+        const elliott = PsychologyEngine.loadPsychologyCache(asset, "elliott");
+        const ema = PsychologyEngine.loadPsychologyCache(asset, "ema");
+
         return [
           asset,
-          PsychologyEngine.isPsychologyCacheValid(cache, marketData[asset] || [])
-            ? cache
-            : null
+          {
+            elliott: PsychologyEngine.isPsychologyCacheValid(elliott, series, "elliott") ? elliott : null,
+            ema: PsychologyEngine.isPsychologyCacheValid(ema, series, "ema") ? ema : null
+          }
         ];
       })
     );
@@ -158,7 +195,10 @@ const MarketChart = (() => {
       ? (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped)
       : undefined;
 
-    return enrichCache ? { enrichCache } : {};
+    return {
+      model: getPsychologyModel(),
+      ...(enrichCache ? { enrichCache } : {})
+    };
   };
 
   const getActivePsychologyCache = () => {
@@ -166,7 +206,7 @@ const MarketChart = (() => {
       return ProSimulation.getPsychologyCache();
     }
 
-    return psychologyCaches[currentAsset] || null;
+    return getAssetPsychologyCache(currentAsset);
   };
 
   const buildSimulationPsychologyCache = (cursorDate) => PsychologyEngine.buildUnifiedPsychologyCache(
@@ -321,6 +361,10 @@ const MarketChart = (() => {
       return `Giả lập · ${cache.weekCount} tuần · ${cache.regionCount} giai đoạn · cập nhật ${cache.rangeEnd}`;
     }
 
+    if (AppMode.isEma()) {
+      return `EMA 50/200 · ${cache.weekCount} tuần · ${cache.regionCount} giai đoạn${analyzedAt ? ` · ${analyzedAt}` : ""}`;
+    }
+
     return `Đã lưu · ${cache.weekCount} tuần · ${cache.regionCount} giai đoạn${analyzedAt ? ` · ${analyzedAt}` : ""}`;
   };
 
@@ -359,8 +403,8 @@ const MarketChart = (() => {
         return;
       }
 
-      psychologyCaches[currentAsset] = cache;
-      PsychologyEngine.savePsychologyCache(currentAsset, cache);
+      setAssetPsychologyCache(currentAsset, cache);
+      PsychologyEngine.savePsychologyCache(currentAsset, cache, getPsychologyModel());
       render();
     } catch (error) {
       console.error(error);
@@ -612,7 +656,7 @@ const MarketChart = (() => {
       cache,
       getFullData(),
       visibleData,
-      psychologyCaches,
+      getPsychologyCachesFlat(),
       marketData,
       currentAsset
     );
@@ -836,10 +880,10 @@ const MarketChart = (() => {
       const result = await MarketDataService.updateAsset(currentAsset, currentSeries);
       marketData[currentAsset] = result.series;
 
-      const cache = psychologyCaches[currentAsset];
-      if (cache && !PsychologyEngine.isPsychologyCacheValid(cache, result.series)) {
-        psychologyCaches[currentAsset] = null;
-        PsychologyEngine.clearPsychologyCache(currentAsset);
+      const cache = getAssetPsychologyCache(currentAsset);
+      if (cache && !PsychologyEngine.isPsychologyCacheValid(cache, result.series, getPsychologyModel())) {
+        setAssetPsychologyCache(currentAsset, null);
+        PsychologyEngine.clearPsychologyCache(currentAsset, getPsychologyModel());
       }
 
       render();
@@ -1666,7 +1710,7 @@ const MarketChart = (() => {
         marketSnapshot
       );
       const crossAsset = psychologyCache && !AppMode.isSimulation()
-        ? ProAnalysis.buildCrossAssetMatrix(psychologyCaches, marketData, currentAsset)
+        ? ProAnalysis.buildCrossAssetMatrix(getPsychologyCachesFlat(), marketData, currentAsset)
         : null;
       const proAdvice = psychologyCache
         ? ProAnalysis.buildProRecommendation(psychologyCache, fullData, marketSnapshot, visibleData, crossAsset)
@@ -1693,7 +1737,7 @@ const MarketChart = (() => {
 
       marketSnapshot.investment = AppMode.isPro()
         ? proAdvice
-        : AppMode.isBasic()
+        : AppMode.isBasic() || AppMode.isEma()
           ? basicAdvice
           : { hasAdvice: false };
       marketSnapshot.modeComparison = modeComparison;
@@ -1874,12 +1918,12 @@ const MarketChart = (() => {
         getContext: () => ({
           fullData: marketData[currentAsset] || [],
           interval: currentInterval,
-          hasCache: Boolean(psychologyCaches[currentAsset])
+          hasCache: Boolean(getAssetPsychologyCache(currentAsset))
         }),
         refreshPsychology: (cursorDate) => buildSimulationPsychologyCache(cursorDate),
         getBaselineCache: () => {
           const raw = marketData[currentAsset] || [];
-          const saved = psychologyCaches[currentAsset];
+          const saved = getAssetPsychologyCache(currentAsset);
           if (saved?.regions?.length) {
             return saved;
           }

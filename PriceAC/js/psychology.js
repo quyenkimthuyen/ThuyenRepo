@@ -743,6 +743,12 @@ var PsychologyEngine = (() => {
   const PSYCHOLOGY_CACHE_VERSION = 8;
   const REFERENCE_ASSET = "bitcoin";
 
+  const getCacheStorageKey = (asset, model = "elliott") => (
+    model === "ema"
+      ? `${PSYCHOLOGY_CACHE_PREFIX}ema.${asset}`
+      : `${PSYCHOLOGY_CACHE_PREFIX}${asset}`
+  );
+
   const getTenYearDailySlice = (fullSeries) => {
     const daily = aggregateSeries(fullSeries, "1D");
     return daily.slice(-TEN_YEAR_DAYS);
@@ -914,6 +920,21 @@ var PsychologyEngine = (() => {
     const clipped = asOfDate
       ? fullSeries.filter((point) => point.date <= asOfDate)
       : fullSeries;
+
+    if (options.model === "ema" && typeof EmaPsychologyEngine !== "undefined") {
+      let cache = EmaPsychologyEngine.buildPsychologyCache(clipped);
+
+      if (!cache) {
+        return null;
+      }
+
+      if (typeof options.enrichCache === "function") {
+        cache = options.enrichCache(cache, clipped) || cache;
+      }
+
+      return cache;
+    }
+
     let cache = buildPsychologyCache(clipped);
 
     if (!cache) {
@@ -1167,7 +1188,11 @@ var PsychologyEngine = (() => {
     };
   };
 
-  const buildPsychologyCache = (fullSeries) => {
+  const buildPsychologyCache = (fullSeries, options = {}) => {
+    if (options.model === "ema" && typeof EmaPsychologyEngine !== "undefined") {
+      return EmaPsychologyEngine.buildPsychologyCache(fullSeries);
+    }
+
     const dailyTenYear = getTenYearDailySlice(fullSeries);
 
     if (dailyTenYear.length < 28) {
@@ -1185,6 +1210,7 @@ var PsychologyEngine = (() => {
 
     return {
       version: PSYCHOLOGY_CACHE_VERSION,
+      model: "elliott",
       rangeStart,
       rangeEnd,
       dataEndDate: rangeEnd,
@@ -1209,8 +1235,13 @@ var PsychologyEngine = (() => {
     }, 0);
   });
 
-  const isPsychologyCacheValid = (cache, fullSeries) => {
+  const isPsychologyCacheValid = (cache, fullSeries, model = "elliott") => {
     if (!cache || cache.version !== PSYCHOLOGY_CACHE_VERSION || !cache.regions?.length) {
+      return false;
+    }
+
+    const cacheModel = cache.model || "elliott";
+    if (cacheModel !== model) {
       return false;
     }
 
@@ -1219,21 +1250,21 @@ var PsychologyEngine = (() => {
     return Boolean(latestDate && cache.dataEndDate === latestDate);
   };
 
-  const savePsychologyCache = (asset, cache) => {
+  const savePsychologyCache = (asset, cache, model = "elliott") => {
     if (!cache) {
       return;
     }
 
     try {
-      localStorage.setItem(`${PSYCHOLOGY_CACHE_PREFIX}${asset}`, JSON.stringify(cache));
+      localStorage.setItem(getCacheStorageKey(asset, model), JSON.stringify(cache));
     } catch (error) {
       console.warn("Không lưu được phân tích tâm lý", error);
     }
   };
 
-  const loadPsychologyCache = (asset) => {
+  const loadPsychologyCache = (asset, model = "elliott") => {
     try {
-      const raw = localStorage.getItem(`${PSYCHOLOGY_CACHE_PREFIX}${asset}`);
+      const raw = localStorage.getItem(getCacheStorageKey(asset, model));
       return raw ? JSON.parse(raw) : null;
     } catch (error) {
       console.warn("Không đọc được phân tích đã lưu", error);
@@ -1241,9 +1272,9 @@ var PsychologyEngine = (() => {
     }
   };
 
-  const clearPsychologyCache = (asset) => {
+  const clearPsychologyCache = (asset, model = "elliott") => {
     try {
-      localStorage.removeItem(`${PSYCHOLOGY_CACHE_PREFIX}${asset}`);
+      localStorage.removeItem(getCacheStorageKey(asset, model));
     } catch (error) {
       console.warn("Không xóa được phân tích đã lưu", error);
     }
@@ -1547,6 +1578,7 @@ var PsychologyEngine = (() => {
     buildMarketMetrics,
     buildMarketSnapshot,
     isPsychologyCacheValid,
+    getSummaryFromRegion,
     savePsychologyCache,
     loadPsychologyCache,
     clearPsychologyCache,
