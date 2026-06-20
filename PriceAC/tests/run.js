@@ -438,12 +438,18 @@ test("investment advice ranks zones from 10Y history", () => {
       RangeUtils.buildVisibleSeries(bitcoin, "1Y", "1D", PsychologyEngine.aggregateSeries)
     )
   );
+  const legacyZones = ["Depression", "Anger", "Thrill"];
 
   assert.ok(advice.hasAdvice);
   assert.ok(advice.safestZone?.zone);
   assert.ok(advice.mostEffectiveZone?.zone);
   assert.ok(advice.topAccumulateZones.length >= 1);
   assert.ok(advice.action);
+  assert.ok(PsychologyEngine.UNIFIED_CYCLE_ZONES.includes(advice.safestZone.zone));
+  advice.zoneRanking.forEach((item) => {
+    assert.ok(!legacyZones.includes(item.zone), `legacy zone ${item.zone} should not appear`);
+    assert.ok(PsychologyEngine.UNIFIED_CYCLE_ZONES.includes(item.zone));
+  });
   if (advice.avoidZones.length) {
     assert.ok(advice.safestZone.safety >= advice.avoidZones[0].safety);
   }

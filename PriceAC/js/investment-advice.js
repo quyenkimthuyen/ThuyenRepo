@@ -3,20 +3,19 @@ var InvestmentAdvisor = (() => {
   const FORWARD_WEEKS = 8;
   const MIN_SAMPLES = 2;
 
+  const UNIFIED_CYCLE_ZONES = PsychologyEngine.UNIFIED_CYCLE_ZONES;
+
   const ZONE_EXPERT = {
-    Capitulation: { safety: 94, effectiveness: 90, stance: "accumulate", action: "Tích lũy mạnh" },
-    Depression: { safety: 90, effectiveness: 86, stance: "accumulate", action: "Tích lũy từng phần" },
-    Disbelief: { safety: 86, effectiveness: 82, stance: "accumulate", action: "Bắt đầu vị thế nhỏ" },
-    Panic: { safety: 80, effectiveness: 78, stance: "accumulate", action: "Mua thăm dò, chia lệnh" },
-    Anger: { safety: 74, effectiveness: 70, stance: "accumulate", action: "Chỉ mua khi xác nhận đáy" },
-    Hope: { safety: 76, effectiveness: 92, stance: "accumulate", action: "Vùng vàng tích lũy" },
-    Optimism: { safety: 68, effectiveness: 88, stance: "hold", action: "Giữ vị thế, thêm có kiểm soát" },
-    Belief: { safety: 58, effectiveness: 82, stance: "hold", action: "Theo xu hướng, tránh đu đỉnh" },
-    Anxiety: { safety: 52, effectiveness: 48, stance: "wait", action: "Quan sát, chờ tín hiệu rõ" },
-    Denial: { safety: 45, effectiveness: 42, stance: "wait", action: "Không mua thêm, siết stop" },
-    Thrill: { safety: 28, effectiveness: 38, stance: "reduce", action: "Chốt lời một phần" },
-    Complacency: { safety: 32, effectiveness: 35, stance: "reduce", action: "Giảm đòn bẩy, bảo vệ lợi nhuận" },
-    Euphoria: { safety: 18, effectiveness: 22, stance: "reduce", action: "Giảm rủi ro, tránh FOMO" },
+    Disbelief: { safety: 86, effectiveness: 82, stance: "accumulate", action: "Bắt đầu vị thế nhỏ — Nghi ngờ" },
+    Hope: { safety: 76, effectiveness: 92, stance: "accumulate", action: "Tích lũy — Hy vọng" },
+    Optimism: { safety: 68, effectiveness: 88, stance: "hold", action: "Giữ vị thế — Lạc quan" },
+    Belief: { safety: 58, effectiveness: 82, stance: "hold", action: "Theo xu hướng — Niềm tin" },
+    Euphoria: { safety: 18, effectiveness: 22, stance: "reduce", action: "Giảm rủi ro — Hưng phấn cực độ" },
+    Complacency: { safety: 32, effectiveness: 35, stance: "reduce", action: "Bảo vệ lợi nhuận — Chủ quan" },
+    Anxiety: { safety: 52, effectiveness: 48, stance: "wait", action: "Quan sát — Lo âu" },
+    Denial: { safety: 45, effectiveness: 42, stance: "wait", action: "Không mua thêm — Phủ nhận" },
+    Panic: { safety: 80, effectiveness: 78, stance: "accumulate", action: "Mua thăm dò — Hoảng loạn" },
+    Capitulation: { safety: 94, effectiveness: 90, stance: "accumulate", action: "Tích lũy mạnh — Bỏ cuộc" },
     Observing: { safety: 50, effectiveness: 50, stance: "wait", action: "Chờ phân tích đủ dữ liệu" }
   };
 
@@ -31,7 +30,11 @@ var InvestmentAdvisor = (() => {
 
   const getClose = (point) => point.close ?? point.price;
 
+  const getZoneLabel = (zone) => PsychologyEngine.zoneLabelsVi[zone] || zone;
+
   const getExpertProfile = (zone) => ZONE_EXPERT[zone] || ZONE_EXPERT.Observing;
+
+  const isUnifiedZone = (zone) => UNIFIED_CYCLE_ZONES.includes(zone);
 
   const findIndexOnOrAfter = (series, date) => {
     for (let index = 0; index < series.length; index += 1) {
@@ -87,6 +90,10 @@ var InvestmentAdvisor = (() => {
     const stats = new Map();
 
     cache.regions.forEach((region) => {
+      if (!isUnifiedZone(region.zone)) {
+        return;
+      }
+
       const startIndex = findIndexOnOrAfter(daily, region.startDate);
       const forward = forwardReturnPct(daily, startIndex);
       const drawdown = maxDrawdownPct(daily, startIndex);
@@ -141,12 +148,8 @@ var InvestmentAdvisor = (() => {
   const buildZoneRanking = (cache, fullSeries) => {
     const historical = buildHistoricalZoneStats(cache, fullSeries);
     const histByZone = new Map(historical.map((item) => [item.zone, item]));
-    const zones = [...new Set([
-      ...Object.keys(ZONE_EXPERT),
-      ...historical.map((item) => item.zone)
-    ])];
 
-    const ranked = zones.map((zone) => {
+    const ranked = UNIFIED_CYCLE_ZONES.map((zone) => {
       const expert = getExpertProfile(zone);
       const hist = histByZone.get(zone);
       const safety = blendScore(expert, hist, "safety");
@@ -155,7 +158,7 @@ var InvestmentAdvisor = (() => {
 
       return {
         zone,
-        label: PsychologyEngine.zoneLabelsVi[zone] || zone,
+        label: getZoneLabel(zone),
         color: PsychologyEngine.zoneColors[zone] || PsychologyEngine.zoneColors.Observing,
         stance: expert.stance,
         stanceLabel: STANCE_LABELS[expert.stance],
@@ -173,8 +176,11 @@ var InvestmentAdvisor = (() => {
       .filter((item) => item.stance === "accumulate")
       .sort((left, right) => right.composite - left.composite);
 
-    const safest = [...ranked].sort((left, right) => right.safety - left.safety)[0];
-    const mostEffective = [...ranked].sort((left, right) => right.effectiveness - left.effectiveness)[0];
+    const rankedWithHistory = ranked.filter((item) => item.samples >= MIN_SAMPLES);
+    const selectionPool = rankedWithHistory.length ? rankedWithHistory : ranked;
+
+    const safest = [...selectionPool].sort((left, right) => right.safety - left.safety)[0];
+    const mostEffective = [...selectionPool].sort((left, right) => right.effectiveness - left.effectiveness)[0];
     const avoid = ranked
       .filter((item) => item.stance === "reduce")
       .sort((left, right) => left.safety - right.safety);
@@ -191,13 +197,14 @@ var InvestmentAdvisor = (() => {
   const refineCurrentAction = (snapshot, profile) => {
     const rsi = snapshot.rsi ?? 50;
     const trend = snapshot.trend ?? 0;
+    const zoneLabel = snapshot.label || getZoneLabel(snapshot.zone);
     let action = profile.action;
-    let detail = `Vùng ${snapshot.label || PsychologyEngine.zoneLabelsVi[snapshot.zone] || snapshot.zone} · khớp sóng ${snapshot.confidence ?? 0}%`;
+    let detail = `Vùng tâm lý hiện tại: ${zoneLabel} · độ khớp sóng ${snapshot.confidence ?? 0}%`;
 
     if (profile.stance === "accumulate") {
       if (rsi > 68) {
         action = "Chờ điều chỉnh rồi mới tích lũy";
-        detail += " · RSI đang cao, tránh đu đỉnh";
+        detail += " · RSI cao, tránh đu đỉnh";
       } else if (rsi < 38 && trend < 0) {
         action = "Ưu tiên tích lũy — fear đang định giá";
         detail += " · RSI thấp trong vùng tích lũy";
@@ -230,11 +237,12 @@ var InvestmentAdvisor = (() => {
       || {
         ...getExpertProfile(currentZone),
         zone: currentZone,
-        label: PsychologyEngine.zoneLabelsVi[currentZone] || currentZone,
+        label: getZoneLabel(currentZone),
         color: PsychologyEngine.zoneColors[currentZone],
         safety: currentProfile.safety,
         effectiveness: currentProfile.effectiveness,
-        composite: Math.round(currentProfile.safety * 0.45 + currentProfile.effectiveness * 0.55)
+        composite: Math.round(currentProfile.safety * 0.45 + currentProfile.effectiveness * 0.55),
+        samples: 0
       };
 
     const current = refineCurrentAction(
@@ -257,7 +265,7 @@ var InvestmentAdvisor = (() => {
       mostEffectiveZone: ranking.mostEffective,
       topAccumulateZones: ranking.topAccumulate.slice(0, 3),
       avoidZones: ranking.avoid.slice(0, 2),
-      zoneRanking: ranking.all.filter((item) => item.samples >= MIN_SAMPLES || ZONE_EXPERT[item.zone])
+      zoneRanking: ranking.all
     };
   };
 
@@ -270,17 +278,17 @@ var InvestmentAdvisor = (() => {
       container.innerHTML = `
         <div class="investment-panel investment-panel--empty">
           <p class="investment-kicker">Khuyến nghị đầu tư</p>
-          <p class="investment-empty">Bấm <strong>Phân tích 10 năm</strong> để xây bản đồ vùng tâm lý và nhận gợi ý vùng an toàn / hiệu quả.</p>
+          <p class="investment-empty">Bấm <strong>Phân tích 10 năm</strong> để xây bản đồ vùng tâm lý và nhận gợi ý theo chu trình Elliott.</p>
         </div>
       `;
       return;
     }
 
-    const zoneCard = (item, metricLabel, metricValue) => `
+    const zoneCard = (item, metricLabel, metricValue, note = "") => `
       <article class="investment-zone-card" style="--zone-color: ${item.color}">
         <span class="investment-zone-name">${item.label}</span>
         <strong class="investment-zone-metric">${metricValue}</strong>
-        <small>${metricLabel}${item.samples ? ` · ${item.samples} giai đoạn` : ""}</small>
+        <small>${metricLabel}${item.samples ? ` · ${item.samples} giai đoạn` : ""}${note}</small>
       </article>
     `;
 
@@ -303,13 +311,13 @@ var InvestmentAdvisor = (() => {
         <header class="investment-head">
           <div>
             <p class="investment-kicker">Khuyến nghị đầu tư</p>
-            <h2 class="investment-title">Gợi ý theo vùng tâm lý · 10 năm</h2>
+            <h2 class="investment-title">Theo vùng tâm lý · 10 năm</h2>
           </div>
           <span class="investment-stance investment-stance--${advice.stance}">${advice.stanceLabel}</span>
         </header>
 
         <article class="investment-action-card">
-          <span class="investment-label">Hành động hiện tại</span>
+          <span class="investment-label">Vùng hiện tại · ${advice.currentLabel}</span>
           <strong style="color: ${advice.currentColor}">${advice.action}</strong>
           <p>${advice.actionDetail}</p>
           <div class="investment-current-metrics">
@@ -319,12 +327,12 @@ var InvestmentAdvisor = (() => {
         </article>
 
         <div class="investment-highlight-grid">
-          ${zoneCard(advice.safestZone, "Điểm an toàn", advice.safestZone.safety)}
-          ${zoneCard(advice.mostEffectiveZone, "Điểm hiệu quả", advice.mostEffectiveZone.effectiveness)}
+          ${zoneCard(advice.safestZone, "Điểm an toàn", advice.safestZone.safety, " · trên biểu đồ")}
+          ${zoneCard(advice.mostEffectiveZone, "Điểm hiệu quả", advice.mostEffectiveZone.effectiveness, " · trên biểu đồ")}
         </div>
 
         <section class="investment-section">
-          <h3>Vùng tích lũy ưu tiên (an toàn + hiệu quả)</h3>
+          <h3>Vùng tích lũy ưu tiên</h3>
           <div class="investment-chip-list">
             ${advice.topAccumulateZones.map((item) => `
               <span class="investment-chip" style="--zone-color: ${item.color}">
@@ -337,7 +345,7 @@ var InvestmentAdvisor = (() => {
 
         ${advice.avoidZones.length ? `
         <section class="investment-section investment-section--warn">
-          <h3>Nên hạn chế mua thêm</h3>
+          <h3>Vùng nên giảm vị thế</h3>
           <div class="investment-chip-list">
             ${advice.avoidZones.map((item) => `
               <span class="investment-chip investment-chip--warn" style="--zone-color: ${item.color}">
@@ -349,15 +357,16 @@ var InvestmentAdvisor = (() => {
         ` : ""}
 
         <section class="investment-section">
-          <h3>Xếp hạng vùng (tích lũy / nắm giữ)</h3>
+          <h3>Xếp hạng vùng tích lũy / nắm giữ</h3>
           <div class="investment-rank-list">${rankingRows}</div>
-          <p class="investment-note">Điểm tổng hợp từ lịch sử 8 tuần sau khi vào vùng + mô hình chuyên gia. Không phải lời khuyên tài chính chính thức.</p>
+          <p class="investment-note">Chỉ dùng 10 vùng chu trình Elliott (Nghi ngờ → … → Bỏ cuộc). Điểm tổng hợp từ lịch sử 8 tuần sau khi vào vùng. Không phải lời khuyên tài chính chính thức.</p>
         </section>
       </div>
     `;
   };
 
   return {
+    UNIFIED_CYCLE_ZONES,
     ZONE_EXPERT,
     buildHistoricalZoneStats,
     buildZoneRanking,

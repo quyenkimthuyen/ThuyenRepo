@@ -698,7 +698,7 @@ var ProAnalysis = (() => {
         zoneLabel: enriched.summary.label,
         color: PsychologyEngine.zoneColors[enriched.summary.zone],
         stance: profile.stance,
-        stanceLabel: { accumulate: "Tích lũy", hold: "Nắm giữ", wait: "Chờ", reduce: "Giảm" }[profile.stance],
+        stanceLabel: { accumulate: "Tích lũy", hold: "Nắm giữ", wait: "Chờ đợi", reduce: "Giảm vị thế" }[profile.stance],
         elliottValidated: enriched.summary.elliottValidated,
         isCurrent: asset === currentAsset
       };
@@ -727,7 +727,7 @@ var ProAnalysis = (() => {
   const refineProAction = (snapshot, profile, walkForward) => {
     const rsi = snapshot.rsi ?? 50;
     let action = profile.action;
-    let detail = `Vùng ${snapshot.label || snapshot.zone} · độ khớp mô hình ${snapshot.confidence ?? 0}%`;
+    let detail = `Vùng tâm lý hiện tại: ${snapshot.label || PsychologyEngine.zoneLabelsVi[snapshot.zone] || snapshot.zone} · độ khớp mô hình ${snapshot.confidence ?? 0}%`;
 
     if (snapshot.elliottValidated === false) {
       action = "Chờ xác thực sóng Elliott trước khi tăng vị thế";
@@ -1084,7 +1084,7 @@ var ProAnalysis = (() => {
         </header>
 
         <article class="investment-action-card">
-          <span class="investment-label">Hành động hiện tại</span>
+          <span class="investment-label">Vùng hiện tại · ${advice.currentLabel}</span>
           <strong style="color: ${advice.currentColor}">${advice.action}</strong>
           <p>${advice.actionDetail}</p>
           <div class="investment-current-metrics">
@@ -1159,7 +1159,7 @@ var ProAnalysis = (() => {
           <h3>Xếp hạng vùng (walk-forward)</h3>
           <div class="investment-rank-list">${rankingRows}</div>
           <p class="investment-note">
-            Pro xếp hạng từ ${advice.rankingSource === "out-of-sample" ? "tập test out-of-sample" : "fallback in-sample"}.
+            Pro xếp hạng 10 vùng chu trình Elliott từ ${advice.rankingSource === "out-of-sample" ? "tập test out-of-sample" : "fallback in-sample"}.
             Không phải lời khuyên tài chính chính thức.
           </p>
         </section>

@@ -1,20 +1,19 @@
 /* Psychology engine: historical price features + indicator rules for market psychology zones. */
 var PsychologyEngine = (() => {
-  const cycle = [
+  const UNIFIED_CYCLE_ZONES = [
     "Disbelief",
     "Hope",
     "Optimism",
     "Belief",
-    "Thrill",
     "Euphoria",
     "Complacency",
     "Anxiety",
     "Denial",
     "Panic",
-    "Capitulation",
-    "Anger",
-    "Depression"
+    "Capitulation"
   ];
+
+  const cycle = UNIFIED_CYCLE_ZONES;
 
   const RSI_PERIOD = 14;
   const MA_FAST = 20;
@@ -422,40 +421,36 @@ var PsychologyEngine = (() => {
     const risingFromLow = recovery > 12 && drawdown < -8;
 
     const scores = {
-      Depression: 8
+      Capitulation: 14
         + (drawdown < -30 ? 24 : 0)
-        + (rsiDaily < 28 ? 18 : 0)
-        + (trend60 < -18 ? 16 : 0)
-        + (recovery < 12 ? 10 : 0),
-
-      Capitulation: 6
         + (drawdown < -24 ? 20 : 0)
+        + (rsiDaily < 28 ? 18 : 0)
         + (rsiDaily < 24 ? 20 : 0)
+        + (trend60 < -18 ? 16 : 0)
         + (trend20 < -10 ? 16 : 0)
+        + (recovery < 12 ? 10 : 0)
         + (volRatio > 1.25 ? 12 : 0),
 
-      Anger: 8
-        + (drawdown < -20 && drawdown >= -34 ? 16 : 0)
-        + (rsiDaily >= 24 && rsiDaily <= 38 ? 12 : 0)
-        + (trend60 < -8 ? 12 : 0)
-        + (trend20 > 0 && trend60 < 0 ? 10 : 0),
-
-      Panic: 8
+      Panic: 10
         + (deepPullback ? 18 : 0)
+        + (drawdown < -20 && drawdown >= -34 ? 12 : 0)
         + (rsiDaily < 32 ? 16 : 0)
+        + (rsiDaily >= 24 && rsiDaily <= 38 ? 8 : 0)
         + (trend20 < -8 ? 18 : 0)
         + (volRatio > 1.35 ? 14 : 0),
 
-      Denial: 10
+      Denial: 12
         + (drawdown <= -10 && drawdown > -24 ? 16 : 0)
         + (rsiDaily >= 35 && rsiDaily <= 52 ? 10 : 0)
         + (trend20 < 0 && trend60 > 0 ? 14 : 0)
+        + (trend20 > 0 && trend60 < 0 ? 10 : 0)
         + (aboveMa200 ? 8 : 0),
 
       Anxiety: 12
         + (moderatePullback ? 18 : 0)
         + (rsiDaily >= 38 && rsiDaily <= 55 ? 8 : 0)
         + (trend20 < -3 ? 12 : 0)
+        + (trend60 < -8 ? 8 : 0)
         + (volRatio > 1.1 ? 8 : 0),
 
       Disbelief: 12
@@ -483,17 +478,15 @@ var PsychologyEngine = (() => {
         + (goldenStructure ? 10 : 0)
         + (priceVsMa50 > 2 ? 8 : 0),
 
-      Thrill: 12
+      Euphoria: 12
         + (nearHigh ? 10 : 0)
-        + (rsiDaily >= 64 && rsiDaily <= 78 ? 16 : 0)
-        + (trend20 > 8 ? 14 : 0)
-        + (volRatio > 1.05 ? 6 : 0),
-
-      Euphoria: 10
         + (drawdown > -4 ? 12 : 0)
+        + (rsiDaily >= 64 && rsiDaily <= 78 ? 12 : 0)
         + (rsiDaily > 72 || rsiWeekly > 68 ? 18 : 0)
-        + (trend20 > 12 ? 14 : 0)
-        + (farFromLow ? 8 : 0),
+        + (trend20 > 8 ? 14 : 0)
+        + (trend20 > 12 ? 10 : 0)
+        + (farFromLow ? 8 : 0)
+        + (volRatio > 1.05 ? 6 : 0),
 
       Complacency: 12
         + (drawdown > -8 && drawdown <= -1 ? 12 : 0)
@@ -1547,6 +1540,7 @@ var PsychologyEngine = (() => {
     SIM_MIN_CONFIDENCE,
     SIM_DAILY_BLEND_MIN_CONFIDENCE,
     SIM_HYSTERESIS_WEEKS,
+    UNIFIED_CYCLE_ZONES,
     cycle,
     zoneColors,
     zoneBackgroundAlpha,
