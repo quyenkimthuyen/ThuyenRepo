@@ -305,6 +305,35 @@ test("market data merge dedupes by date", () => {
   assert.equal(merged[1].price, 3.5);
 });
 
+test("psychology cycle law maps elliott waves to market sentiment order", () => {
+  const law = sharedCtx.ElliottEngine.PSYCHOLOGY_CYCLE_LAW;
+  assert.equal(law.join(","), [
+    "Disbelief",
+    "Hope",
+    "Optimism",
+    "Belief",
+    "Euphoria",
+    "Complacency",
+    "Anxiety",
+    "Denial",
+    "Panic"
+  ].join(","));
+
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const bullRunZones = new Set();
+  const checkpoints = ["2020-10-01", "2020-12-15", "2021-02-01", "2021-04-01"];
+
+  checkpoints.forEach((date) => {
+    const zone = PsychologyEngine.getPsychologyZoneAtDate(cache, date);
+    if (zone) {
+      bullRunZones.add(zone);
+    }
+  });
+
+  assert.ok(bullRunZones.has("Hope") || bullRunZones.has("Optimism") || bullRunZones.has("Belief"));
+});
+
 test("bitcoin aug 2022 bear decline avoids bullish psychology zones", () => {
   const bitcoin = loadBitcoin();
   const cache = PsychologyEngine.buildPsychologyCache(bitcoin);

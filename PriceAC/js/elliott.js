@@ -14,7 +14,7 @@ var ElliottEngine = (() => {
   const WAVE_PSYCHOLOGY = {
     bull: {
       1: { zone: "Hope", weight: 18 },
-      2: { zone: "Anxiety", weight: 16 },
+      2: { zone: "Optimism", weight: 16 },
       3: { zone: "Belief", weight: 22 },
       4: { zone: "Complacency", weight: 16 },
       5: { zone: "Euphoria", weight: 20 },
@@ -26,13 +26,28 @@ var ElliottEngine = (() => {
       1: { zone: "Anxiety", weight: 14 },
       2: { zone: "Denial", weight: 16 },
       3: { zone: "Panic", weight: 20 },
-      4: { zone: "Anger", weight: 12 },
-      5: { zone: "Capitulation", weight: 22 },
-      A: { zone: "Hope", weight: 14 },
-      B: { zone: "Disbelief", weight: 16 },
-      C: { zone: "Optimism", weight: 12 }
+      4: { zone: "Anxiety", weight: 12 },
+      5: { zone: "Panic", weight: 18 },
+      A: { zone: "Anxiety", weight: 14 },
+      B: { zone: "Denial", weight: 16 },
+      C: { zone: "Panic", weight: 20 }
     }
   };
+
+  // Quy luật chu trình tâm lý thị trường (theo thứ tự):
+  // Đi ngang → Nghi ngờ → Hy vọng → Lạc quan → Niềm tin → Hưng phấn cực độ
+  // → Chủ quan → Lo âu → Phủ nhận → Hoảng loạn
+  const PSYCHOLOGY_CYCLE_LAW = [
+    "Disbelief",
+    "Hope",
+    "Optimism",
+    "Belief",
+    "Euphoria",
+    "Complacency",
+    "Anxiety",
+    "Denial",
+    "Panic"
+  ];
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -183,26 +198,137 @@ var ElliottEngine = (() => {
     "Hope",
     "Optimism",
     "Belief",
-    "Thrill",
-    "Euphoria",
-    "Complacency"
+    "Euphoria"
   ]);
 
-  const DOWN_LEG_BULLISH_REMAP = {
-    Hope: "Disbelief",
-    Optimism: "Denial",
-    Belief: "Panic",
-    Thrill: "Anxiety",
-    Euphoria: "Capitulation",
-    Complacency: "Denial"
+  const measureLeg = (weeklySeries, chain, index) => {
+    const start = chain[index];
+    const end = chain[index + 1];
+    const startIdx = start.index ?? 0;
+    const endIdx = end.index ?? weeklySeries.length - 1;
+    const startPrice = start.price;
+    const endPrice = end.price;
+    const legChange = startPrice > 0 ? (endPrice - startPrice) / startPrice : 0;
+    const slice = weeklySeries.slice(startIdx, endIdx + 1);
+    const lows = slice.map((point) => point.low ?? getClose(point));
+    const highs = slice.map((point) => point.high ?? getClose(point));
+    const minPrice = lows.length ? Math.min(...lows) : Math.min(startPrice, endPrice);
+    const maxPrice = highs.length ? Math.max(...highs) : Math.max(startPrice, endPrice);
+    const rangePct = minPrice > 0 ? ((maxPrice - minPrice) / minPrice) * 100 : 0;
+    const prevLeg = index > 0 ? Math.abs(chain[index].price - chain[index - 1].price) : 0;
+    const legSize = Math.abs(endPrice - startPrice);
+    const strongLeg = prevLeg > 0 ? legSize / prevLeg >= 1.12 : legSize > 0 && rangePct >= 12;
+    const legLow = Math.min(startPrice, endPrice, minPrice);
+    const recoveryFromLow = legLow > 0 ? (endPrice - legLow) / legLow : 0;
+    const hasRecovery = legChange < -0.008 && recoveryFromLow >= 0.03;
+    const sideways = Math.abs(legChange) < 0.03 && rangePct < 8 && slice.length >= 6;
+
+    return {
+      legUp: legChange > 0.008,
+      legDown: legChange < -0.008,
+      legFlat: Math.abs(legChange) <= 0.008,
+      legChange,
+      strongLeg,
+      hasRecovery,
+      sideways,
+      rangePct,
+      durationWeeks: slice.length
+    };
   };
 
-  const UP_LEG_BEARISH_REMAP = {
-    Panic: "Denial",
-    Capitulation: "Disbelief",
-    Depression: "Hope",
-    Anger: "Denial",
-    Anxiety: "Denial"
+  const resolveBearPsychology = (waveId, leg) => {
+    if (leg.sideways || leg.legFlat) {
+      return { zone: "Disbelief", weight: 14 };
+    }
+
+    if (leg.legUp) {
+      return { zone: "Denial", weight: 16 };
+    }
+
+    if (leg.strongLeg || waveId === "3" || waveId === "5" || waveId === "C") {
+      return { zone: "Panic", weight: 20 };
+    }
+
+    if (waveId === "2" || waveId === "B") {
+      return { zone: "Denial", weight: 16 };
+    }
+
+    return { zone: "Anxiety", weight: 14 };
+  };
+
+  const resolveBullPsychology = (waveId, leg) => {
+    if (waveId === "1" && leg.legUp) {
+      return { zone: "Hope", weight: 18 };
+    }
+
+    if (waveId === "2") {
+      return { zone: "Optimism", weight: 16 };
+    }
+
+    if (waveId === "3" && leg.legUp) {
+      return { zone: "Belief", weight: 22 };
+    }
+
+    if (waveId === "4" && leg.legDown) {
+      return { zone: "Complacency", weight: 16 };
+    }
+
+    if (waveId === "5" && leg.legUp) {
+      return {
+        zone: "Euphoria",
+        weight: leg.strongLeg ? 22 : 20
+      };
+    }
+
+    if (waveId === "A" && leg.legDown) {
+      return { zone: "Anxiety", weight: 14 };
+    }
+
+    if (waveId === "B") {
+      return { zone: "Denial", weight: 16 };
+    }
+
+    if (waveId === "C" && leg.legDown) {
+      return {
+        zone: "Panic",
+        weight: leg.strongLeg ? 22 : 18
+      };
+    }
+
+    if (leg.legDown) {
+      if (leg.strongLeg) {
+        return { zone: "Panic", weight: 18 };
+      }
+
+      return {
+        zone: leg.hasRecovery ? "Complacency" : "Anxiety",
+        weight: 14
+      };
+    }
+
+    if (leg.legUp) {
+      return {
+        zone: leg.strongLeg ? "Euphoria" : "Hope",
+        weight: 16
+      };
+    }
+
+    return { zone: "Disbelief", weight: 12 };
+  };
+
+  const resolvePsychologyFromLaw = (weeklySeries, chain, index, regime) => {
+    const waveId = WAVE_SEQUENCE[index % WAVE_SEQUENCE.length];
+    const leg = measureLeg(weeklySeries, chain, index);
+
+    if (leg.sideways || (index === 0 && leg.durationWeeks >= 8 && Math.abs(leg.legChange) < 0.06)) {
+      return { zone: "Disbelief", weight: 16 };
+    }
+
+    if (regime === "bear") {
+      return resolveBearPsychology(waveId, leg);
+    }
+
+    return resolveBullPsychology(waveId, leg);
   };
 
   const inferMacroDirection = (weeklySeries) => {
@@ -254,33 +380,6 @@ var ElliottEngine = (() => {
     }
 
     return ["2", "4", "B"].includes(waveId);
-  };
-
-  const alignPsychologyToLeg = (direction, waveId, legUp, psych) => {
-    if (!psych?.zone) {
-      return psych;
-    }
-
-    const shouldBeUp = isImpulseUpLeg(direction, waveId);
-    if (legUp === shouldBeUp) {
-      return psych;
-    }
-
-    if (!legUp && BULLISH_ZONES.has(psych.zone)) {
-      return {
-        ...psych,
-        zone: DOWN_LEG_BULLISH_REMAP[psych.zone] || "Anxiety"
-      };
-    }
-
-    if (legUp && UP_LEG_BEARISH_REMAP[psych.zone]) {
-      return {
-        ...psych,
-        zone: UP_LEG_BEARISH_REMAP[psych.zone]
-      };
-    }
-
-    return psych;
   };
 
   const buildPivotChain = (weeklySeries, swings) => {
@@ -379,13 +478,7 @@ var ElliottEngine = (() => {
       const endIndex = chain[index + 1].index ?? weeklySeries.length - 1;
       const direction = inferRegimeAtIndex(weeklySeries, endIndex);
       const directionLabel = direction === "bull" ? "tăng" : "giảm";
-      const legUp = chain[index + 1].price > chain[index].price;
-      const psych = alignPsychologyToLeg(
-        direction,
-        waveId,
-        legUp,
-        WAVE_PSYCHOLOGY[direction][waveId]
-      );
+      const psych = resolvePsychologyFromLaw(weeklySeries, chain, index, direction);
 
       regions.push({
         startDate: chain[index].date,
@@ -677,6 +770,7 @@ var ElliottEngine = (() => {
   return {
     WAVE_LABELS_VI,
     WAVE_PSYCHOLOGY,
+    PSYCHOLOGY_CYCLE_LAW,
     detectSwings,
     buildSwingCache,
     buildWeeklyDeviation,

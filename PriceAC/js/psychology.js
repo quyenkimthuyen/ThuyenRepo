@@ -740,7 +740,7 @@ var PsychologyEngine = (() => {
 
   const TEN_YEAR_DAYS = 365 * 10;
   const PSYCHOLOGY_CACHE_PREFIX = "priceac.psychology.v3.";
-  const PSYCHOLOGY_CACHE_VERSION = 4;
+  const PSYCHOLOGY_CACHE_VERSION = 5;
 
   const getTenYearDailySlice = (fullSeries) => {
     const daily = aggregateSeries(fullSeries, "1D");
