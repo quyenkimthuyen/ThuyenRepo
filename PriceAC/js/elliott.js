@@ -179,19 +179,108 @@ var ElliottEngine = (() => {
 
   const WAVE_SEQUENCE = ["1", "2", "3", "4", "5", "A", "B", "C"];
 
-  const inferMacroDirection = (weeklySeries) => {
-    const first = getClose(weeklySeries[0]);
-    const last = getClose(weeklySeries[weeklySeries.length - 1]);
+  const BULLISH_ZONES = new Set([
+    "Hope",
+    "Optimism",
+    "Belief",
+    "Thrill",
+    "Euphoria",
+    "Complacency"
+  ]);
 
-    if (last >= first * 1.02) {
+  const DOWN_LEG_BULLISH_REMAP = {
+    Hope: "Disbelief",
+    Optimism: "Denial",
+    Belief: "Panic",
+    Thrill: "Anxiety",
+    Euphoria: "Capitulation",
+    Complacency: "Denial"
+  };
+
+  const UP_LEG_BEARISH_REMAP = {
+    Panic: "Denial",
+    Capitulation: "Disbelief",
+    Depression: "Hope",
+    Anger: "Denial",
+    Anxiety: "Denial"
+  };
+
+  const inferMacroDirection = (weeklySeries) => {
+    if (!weeklySeries.length) {
       return "bull";
     }
 
-    if (last <= first * 0.98) {
+    return inferRegimeAtIndex(weeklySeries, weeklySeries.length - 1);
+  };
+
+  const inferRegimeAtIndex = (weeklySeries, endIndex) => {
+    if (!weeklySeries.length) {
+      return "bull";
+    }
+
+    const index = clamp(endIndex, 0, weeklySeries.length - 1);
+    const lookbackWeeks = 78;
+    const startIndex = Math.max(0, index - lookbackWeeks);
+    const start = getClose(weeklySeries[startIndex]);
+    const last = getClose(weeklySeries[index]);
+    const recentWindow = weeklySeries.slice(Math.max(0, index - 51), index + 1);
+    const recentHigh = recentWindow.length
+      ? Math.max(...recentWindow.map(getClose))
+      : last;
+    const drawdownFromHigh = recentHigh > 0 ? (last - recentHigh) / recentHigh : 0;
+
+    if (drawdownFromHigh <= -0.18) {
       return "bear";
     }
 
-    return last >= first ? "bull" : "bear";
+    if (drawdownFromHigh >= -0.04 && last >= start * 1.05) {
+      return "bull";
+    }
+
+    if (last >= start * 1.08) {
+      return "bull";
+    }
+
+    if (last <= start * 0.92) {
+      return "bear";
+    }
+
+    return last >= start ? "bull" : "bear";
+  };
+
+  const isImpulseUpLeg = (direction, waveId) => {
+    if (direction === "bull") {
+      return ["1", "3", "5", "B"].includes(waveId);
+    }
+
+    return ["2", "4", "B"].includes(waveId);
+  };
+
+  const alignPsychologyToLeg = (direction, waveId, legUp, psych) => {
+    if (!psych?.zone) {
+      return psych;
+    }
+
+    const shouldBeUp = isImpulseUpLeg(direction, waveId);
+    if (legUp === shouldBeUp) {
+      return psych;
+    }
+
+    if (!legUp && BULLISH_ZONES.has(psych.zone)) {
+      return {
+        ...psych,
+        zone: DOWN_LEG_BULLISH_REMAP[psych.zone] || "Anxiety"
+      };
+    }
+
+    if (legUp && UP_LEG_BEARISH_REMAP[psych.zone]) {
+      return {
+        ...psych,
+        zone: UP_LEG_BEARISH_REMAP[psych.zone]
+      };
+    }
+
+    return psych;
   };
 
   const buildPivotChain = (weeklySeries, swings) => {
@@ -282,14 +371,21 @@ var ElliottEngine = (() => {
   const buildFullCoverageRegions = (weeklySeries, swings) => {
     const seriesStart = weeklySeries[0].date;
     const seriesEnd = weeklySeries[weeklySeries.length - 1].date;
-    const direction = inferMacroDirection(weeklySeries);
-    const directionLabel = direction === "bull" ? "tăng" : "giảm";
     const chain = buildPivotChain(weeklySeries, swings);
     const regions = [];
 
     for (let index = 0; index < chain.length - 1; index += 1) {
       const waveId = WAVE_SEQUENCE[index % WAVE_SEQUENCE.length];
-      const psych = WAVE_PSYCHOLOGY[direction][waveId];
+      const endIndex = chain[index + 1].index ?? weeklySeries.length - 1;
+      const direction = inferRegimeAtIndex(weeklySeries, endIndex);
+      const directionLabel = direction === "bull" ? "tăng" : "giảm";
+      const legUp = chain[index + 1].price > chain[index].price;
+      const psych = alignPsychologyToLeg(
+        direction,
+        waveId,
+        legUp,
+        WAVE_PSYCHOLOGY[direction][waveId]
+      );
 
       regions.push({
         startDate: chain[index].date,
@@ -302,8 +398,10 @@ var ElliottEngine = (() => {
     }
 
     if (!regions.length) {
+      const direction = inferMacroDirection(weeklySeries);
       const waveId = "1";
       const psych = WAVE_PSYCHOLOGY[direction][waveId];
+      const directionLabel = direction === "bull" ? "tăng" : "giảm";
       return [{
         startDate: seriesStart,
         endDate: seriesEnd,

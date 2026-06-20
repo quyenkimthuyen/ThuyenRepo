@@ -305,6 +305,21 @@ test("market data merge dedupes by date", () => {
   assert.equal(merged[1].price, 3.5);
 });
 
+test("bitcoin aug 2022 bear decline avoids bullish psychology zones", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const forbidden = new Set(["Belief", "Euphoria", "Complacency", "Thrill", "Optimism"]);
+  const checkpoints = ["2022-08-22", "2022-08-26", "2022-09-05", "2022-09-12"];
+
+  checkpoints.forEach((date) => {
+    const zone = PsychologyEngine.getPsychologyZoneAtDate(cache, date);
+    assert.ok(
+      !forbidden.has(zone),
+      `${date} should not map to bullish zone ${zone} while price was falling`
+    );
+  });
+});
+
 test("elliott regions span full weekly window", () => {
   const bitcoin = loadBitcoin();
   const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
@@ -626,8 +641,7 @@ test("weekly walk-forward accuracy report vs 10Y baseline", () => {
     minHistoryDays: 365,
     relaxedDistance: 2,
     enrichCache: (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped),
-    applyConfidenceGate: true,
-    applyDailyBlend: true
+    applyConfidenceGate: true
   });
 
   assert.ok(report, "report should build on bitcoin");
