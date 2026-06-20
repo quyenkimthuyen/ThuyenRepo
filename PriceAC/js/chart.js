@@ -291,9 +291,14 @@ const MarketChart = (() => {
   };
 
   const formatCacheStatus = (cache) => {
+    if (AppMode.isSimulation() && typeof ProSimulation !== "undefined" && ProSimulation.isPrewarming?.()) {
+      const status = ProSimulation.getStatus();
+      return `Giả lập · đang chuẩn bị ${status.prewarmProgress}/${status.prewarmTotal} tuần...`;
+    }
+
     if (!cache) {
       if (AppMode.isSimulation()) {
-        return "Giả lập · chọn khoảng thời gian và Áp dụng — phân tích tự chạy theo tuần";
+        return "Giả lập · chọn khoảng thời gian và Áp dụng — pre-run phân tích theo tuần";
       }
 
       return "Chưa có bản đồ — bấm Phân tích 10 năm để xây dựng từ nến tuần";

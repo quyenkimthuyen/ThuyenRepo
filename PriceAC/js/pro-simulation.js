@@ -26,12 +26,18 @@ var ProSimulation = (() => {
     stepBars: 1,
     timerId: null,
     psychologyCache: null,
-    lastPsychologyWeek: null
+    lastPsychologyWeek: null,
+    psychologyCacheByWeek: new Map(),
+    prewarming: false,
+    prewarmReady: false,
+    prewarmProgress: 0,
+    prewarmTotal: 0
   };
 
   let getContext = () => ({ fullData: [], interval: "1D", hasCache: false });
   let onFrame = () => {};
   let refreshPsychology = () => null;
+  let prewarmToken = 0;
 
   const clampDate = (date, min, max) => {
     if (date < min) {
@@ -120,26 +126,91 @@ var ProSimulation = (() => {
   };
 
   const clearSimPsychology = () => {
+    prewarmToken += 1;
     state.psychologyCache = null;
     state.lastPsychologyWeek = null;
+    state.psychologyCacheByWeek = new Map();
+    state.prewarming = false;
+    state.prewarmReady = false;
+    state.prewarmProgress = 0;
+    state.prewarmTotal = 0;
   };
 
-  const refreshPsychologyForCursor = (cursorDate, force = false) => {
-    if (!cursorDate || typeof refreshPsychology !== "function") {
+  const buildWeeklyAsOfDates = (timeline) => {
+    const byWeek = new Map();
+
+    timeline.forEach((date) => {
+      const weekKey = PsychologyEngine.getWeekStart(date);
+      if (!byWeek.has(weekKey)) {
+        byWeek.set(weekKey, date);
+      }
+    });
+
+    return [...byWeek.entries()].map(([weekKey, asOfDate]) => ({ weekKey, asOfDate }));
+  };
+
+  const applyPsychologyForCursor = (cursorDate) => {
+    if (!cursorDate) {
+      state.psychologyCache = null;
+      state.lastPsychologyWeek = null;
       return;
     }
 
     const weekKey = PsychologyEngine.getWeekStart(cursorDate);
-    if (!force && state.psychologyCache && state.lastPsychologyWeek === weekKey) {
+    state.lastPsychologyWeek = weekKey;
+    state.psychologyCache = state.psychologyCacheByWeek.get(weekKey) || null;
+  };
+
+  const prewarmPsychologyCaches = () => {
+    const token = ++prewarmToken;
+    const checkpoints = buildWeeklyAsOfDates(state.timeline);
+
+    state.psychologyCacheByWeek = new Map();
+    state.prewarming = checkpoints.length > 0;
+    state.prewarmReady = checkpoints.length === 0;
+    state.prewarmProgress = 0;
+    state.prewarmTotal = checkpoints.length;
+
+    if (!checkpoints.length) {
+      applyPsychologyForCursor(state.cursorDate);
+      syncUi();
       return;
     }
 
-    state.psychologyCache = refreshPsychology(cursorDate) || null;
-    state.lastPsychologyWeek = weekKey;
+    syncUi();
+
+    let index = 0;
+    const step = () => {
+      if (token !== prewarmToken) {
+        return;
+      }
+
+      if (index >= checkpoints.length) {
+        state.prewarming = false;
+        state.prewarmReady = true;
+        applyPsychologyForCursor(state.cursorDate);
+        emitFrame();
+        syncUi();
+        return;
+      }
+
+      const { weekKey, asOfDate } = checkpoints[index];
+      const cache = refreshPsychology(asOfDate);
+      if (cache) {
+        state.psychologyCacheByWeek.set(weekKey, cache);
+      }
+
+      index += 1;
+      state.prewarmProgress = index;
+      syncUi();
+      scheduleFrame(step);
+    };
+
+    scheduleFrame(step);
   };
 
   const maybeRefreshPsychology = () => {
-    refreshPsychologyForCursor(state.cursorDate, false);
+    applyPsychologyForCursor(state.cursorDate);
   };
 
   const setCursorByIndex = (index, notify = true) => {
@@ -205,11 +276,14 @@ var ProSimulation = (() => {
     clearTimer();
     clearSimPsychology();
     rebuildTimeline(false);
-    emitFrame();
+    prewarmPsychologyCaches();
     return true;
   };
 
   const play = () => {
+    if (state.prewarming || !state.prewarmReady) {
+      return;
+    }
     if (!state.timeline.length) {
       applyRangeFromInputs();
     }
@@ -302,6 +376,10 @@ var ProSimulation = (() => {
     return {
       active: true,
       playing: state.playing,
+      prewarming: state.prewarming,
+      prewarmReady: state.prewarmReady,
+      prewarmProgress: state.prewarmProgress,
+      prewarmTotal: state.prewarmTotal,
       label: `${state.cursorDate} · ${state.cursorIndex + 1}/${state.timeline.length}`,
       progress,
       cursorDate: state.cursorDate,
@@ -408,7 +486,7 @@ var ProSimulation = (() => {
 
     if (scrubber) {
       scrubber.value = String(status.progress);
-      scrubber.disabled = !status.active || !state.timeline.length;
+      scrubber.disabled = !status.active || !state.timeline.length || state.prewarming;
     }
 
     if (cursorLabel) {
@@ -418,13 +496,18 @@ var ProSimulation = (() => {
     if (statusEl) {
       const speed = SPEEDS[state.speedIndex]?.label || "1×";
       const step = STEP_OPTIONS.find((item) => item.id === state.stepBars)?.label || "1 nến";
-      statusEl.textContent = status.active
-        ? `Giả lập · ${status.playing ? "đang chạy" : "tạm dừng"} · ${speed} · ${step}${state.psychologyCache ? ` · tâm lý ${state.psychologyCache.rangeEnd}` : ""}`
-        : "Chọn khoảng thời gian, bấm Áp dụng — phân tích tự chạy tại mốc bắt đầu và cập nhật mỗi tuần (không nhìn trước tương lai).";
+
+      if (state.prewarming) {
+        statusEl.textContent = `Đang chuẩn bị giả lập · phân tích tuần ${state.prewarmProgress}/${state.prewarmTotal} (không nhìn trước tương lai)...`;
+      } else if (status.active) {
+        statusEl.textContent = `Giả lập · ${status.playing ? "đang chạy" : "tạm dừng"} · ${speed} · ${step}${state.psychologyCache ? ` · tâm lý ${state.psychologyCache.rangeEnd}` : ""}`;
+      } else {
+        statusEl.textContent = "Chọn khoảng thời gian, bấm Áp dụng — app sẽ pre-run phân tích theo tuần rồi replay mượt.";
+      }
     }
 
     if (runBtn) {
-      runBtn.disabled = !AppMode.isSimulation();
+      runBtn.disabled = !AppMode.isSimulation() || state.prewarming || !state.prewarmReady;
       runBtn.classList.toggle("active", status.playing);
     }
     if (pauseBtn) {
@@ -561,14 +644,16 @@ var ProSimulation = (() => {
     clearSimPsychology();
     seedDefaults();
     if (state.armed && state.startDate && state.endDate) {
-      rebuildTimeline(true);
-      refreshPsychologyForCursor(state.cursorDate, true);
+      rebuildTimeline(false);
+      prewarmPsychologyCaches();
     } else {
       emitFrame();
     }
   };
 
   const getPsychologyCache = () => state.psychologyCache;
+
+  const isPrewarming = () => state.prewarming;
 
   return {
     SPEEDS,
@@ -583,6 +668,7 @@ var ProSimulation = (() => {
     getCutoffDate,
     getStatus,
     getPsychologyCache,
+    isPrewarming,
     syncVisibility,
     syncUi,
     onModeChange,

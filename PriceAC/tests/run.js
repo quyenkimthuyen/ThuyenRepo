@@ -553,7 +553,7 @@ test("simulation psychology refreshes on new week only", () => {
   const afterSeek = refreshCount;
 
   assert.ok(afterArm >= 1);
-  assert.equal(afterSeek, afterArm, "same-week scrub should not re-run psychology analysis");
+  assert.equal(afterSeek, afterArm, "scrub should use precomputed weekly cache only");
 });
 
 test("pro daily rsi uses one decimal place", () => {
