@@ -153,6 +153,10 @@ var ProSimulation = (() => {
 
   const play = () => {
     if (!state.timeline.length) {
+      applyRangeFromInputs();
+    }
+
+    if (!state.timeline.length) {
       rebuildTimeline(false);
     }
 
@@ -262,6 +266,70 @@ var ProSimulation = (() => {
     document.body.classList.toggle("pro-simulation-ready", show);
   };
 
+  const syncDateInputConstraints = () => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const { fullData } = getContext();
+    const bounds = getDataBounds(fullData);
+    const startInput = document.querySelector("#sim-start");
+    const endInput = document.querySelector("#sim-end");
+
+    if (!startInput || !endInput || !bounds.min || !bounds.max) {
+      return;
+    }
+
+    const startValue = startInput.value || state.startDate || bounds.min;
+    const endValue = endInput.value || state.endDate || bounds.max;
+
+    startInput.min = bounds.min;
+    startInput.max = endValue;
+    endInput.min = startValue;
+    endInput.max = bounds.max;
+    startInput.disabled = state.playing;
+    endInput.disabled = state.playing;
+  };
+
+  const writeDateInputs = (startDate, endDate) => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const startInput = document.querySelector("#sim-start");
+    const endInput = document.querySelector("#sim-end");
+
+    if (startInput && startDate) {
+      startInput.value = startDate;
+    }
+    if (endInput && endDate) {
+      endInput.value = endDate;
+    }
+
+    syncDateInputConstraints();
+  };
+
+  const readDatesFromInputs = () => {
+    if (typeof document === "undefined") {
+      return { startDate: state.startDate, endDate: state.endDate };
+    }
+
+    const startInput = document.querySelector("#sim-start");
+    const endInput = document.querySelector("#sim-end");
+    const startDate = startInput?.value || state.startDate;
+    const endDate = endInput?.value || state.endDate;
+
+    if (startDate) {
+      state.startDate = startDate;
+    }
+    if (endDate) {
+      state.endDate = endDate;
+    }
+
+    syncDateInputConstraints();
+    return { startDate: state.startDate, endDate: state.endDate };
+  };
+
   const syncUi = () => {
     if (typeof document === "undefined") {
       return;
@@ -270,8 +338,6 @@ var ProSimulation = (() => {
     syncVisibility();
 
     const status = getStatus();
-    const startInput = document.querySelector("#sim-start");
-    const endInput = document.querySelector("#sim-end");
     const scrubber = document.querySelector("#sim-scrubber");
     const cursorLabel = document.querySelector("#sim-cursor-label");
     const statusEl = document.querySelector("#sim-status");
@@ -279,12 +345,7 @@ var ProSimulation = (() => {
     const pauseBtn = document.querySelector("#sim-pause");
     const stopBtn = document.querySelector("#sim-stop");
 
-    if (startInput && !startInput.matches(":focus") && state.startDate) {
-      startInput.value = state.startDate;
-    }
-    if (endInput && !endInput.matches(":focus") && state.endDate) {
-      endInput.value = state.endDate;
-    }
+    syncDateInputConstraints();
 
     if (scrubber) {
       scrubber.value = String(status.progress);
@@ -304,7 +365,7 @@ var ProSimulation = (() => {
     }
 
     if (runBtn) {
-      runBtn.disabled = !AppMode.isPro() || !state.startDate || !state.endDate;
+      runBtn.disabled = !AppMode.isPro();
       runBtn.classList.toggle("active", status.playing);
     }
     if (pauseBtn) {
@@ -319,13 +380,12 @@ var ProSimulation = (() => {
   };
 
   const applyRangeFromInputs = () => {
-    const startInput = document.querySelector("#sim-start");
-    const endInput = document.querySelector("#sim-end");
-    if (!startInput?.value || !endInput?.value) {
-      return;
+    const { startDate, endDate } = readDatesFromInputs();
+    if (!startDate || !endDate) {
+      return false;
     }
 
-    arm(startInput.value, endInput.value);
+    return arm(startDate, endDate);
   };
 
   const seedDefaults = () => {
@@ -333,23 +393,7 @@ var ProSimulation = (() => {
     const range = defaultRange(fullData);
     state.startDate = range.startDate;
     state.endDate = range.endDate;
-
-    if (typeof document === "undefined") {
-      return;
-    }
-
-    const startInput = document.querySelector("#sim-start");
-    const endInput = document.querySelector("#sim-end");
-    if (startInput && range.startDate) {
-      startInput.value = range.startDate;
-      startInput.min = getDataBounds(fullData).min || "";
-      startInput.max = getDataBounds(fullData).max || "";
-    }
-    if (endInput && range.endDate) {
-      endInput.value = range.endDate;
-      endInput.min = getDataBounds(fullData).min || "";
-      endInput.max = getDataBounds(fullData).max || "";
-    }
+    writeDateInputs(range.startDate, range.endDate);
   };
 
   const bindUi = () => {
@@ -363,7 +407,7 @@ var ProSimulation = (() => {
     });
 
     document.querySelector("#sim-run")?.addEventListener("click", () => {
-      if (!state.armed) {
+      if (!state.armed || !state.timeline.length) {
         applyRangeFromInputs();
       }
       play();
@@ -398,8 +442,16 @@ var ProSimulation = (() => {
     });
 
     ["#sim-start", "#sim-end"].forEach((selector) => {
-      document.querySelector(selector)?.addEventListener("change", () => {
+      const input = document.querySelector(selector);
+      input?.addEventListener("change", () => {
         pause();
+        readDatesFromInputs();
+      });
+      input?.addEventListener("input", () => {
+        if (state.playing) {
+          pause();
+        }
+        syncDateInputConstraints();
       });
     });
   };

@@ -188,6 +188,22 @@ body.is-sim-playing .sim-live-badge {
   font: inherit;
 }
 
+.sim-field input[type="date"] {
+  min-width: 148px;
+  color-scheme: dark;
+  cursor: pointer;
+}
+
+.sim-field input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.sim-field input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .sim-field--compact select {
   min-width: 96px;
 }
