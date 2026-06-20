@@ -17,18 +17,18 @@
         <p class="brand-kicker">Market Psychology Map</p>
         <h1>Tài liệu quy tắc phân tích</h1>
         <p class="docs-lead">
-          Mô tả cách app xây dựng vùng tâm lý, sóng Elliott, chỉ số kỹ thuật và khuyến nghị.
+          Mô tả cách app xây dựng vùng tâm lý theo <strong>EMA 50/200</strong>, sóng Elliott, chỉ số kỹ thuật và khuyến nghị.
           Thuật toán được hiệu chỉnh trên <strong>Bitcoin</strong> (tài sản tham chiếu); các tài sản khác dùng cùng quy tắc để tham khảo.
         </p>
       </div>
       <nav class="docs-toc" aria-label="Mục lục">
         <a href="#modes">Chế độ</a>
+        <a href="#chart">Biểu đồ</a>
         <a href="#ema">EMA 50/200</a>
         <a href="#pipeline">Pipeline</a>
         <a href="#elliott">Sóng Elliott</a>
         <a href="#psychology">Vùng tâm lý</a>
         <a href="#indicators">Chỉ số</a>
-        <a href="#pro">Pro &amp; Signal</a>
         <a href="#simulation">Giả lập</a>
         <a href="#investment">Khuyến nghị</a>
       </nav>
@@ -36,7 +36,7 @@
 
     <main class="docs-main">
       <section class="docs-section" id="modes">
-        <h2>1. Bốn chế độ phân tích</h2>
+        <h2>1. Hai chế độ phân tích</h2>
         <div class="docs-table-wrap">
           <table class="docs-table">
             <thead>
@@ -48,19 +48,9 @@
             </thead>
             <tbody>
               <tr>
-                <td><strong>Basic</strong></td>
-                <td>Bản đồ tâm lý theo Elliott</td>
-                <td>Sóng tuần + quy luật chu trình tâm lý, RSI, khuyến nghị cơ bản</td>
-              </tr>
-              <tr>
-                <td><strong>EMA</strong></td>
+                <td><strong>EMA</strong> (mặc định)</td>
                 <td>Bản đồ tâm lý theo EMA 50/200</td>
-                <td>Lọc vùng tích cực/tiêu cực bằng vị trí giá vs EMA và xu hướng</td>
-              </tr>
-              <tr>
-                <td><strong>Pro</strong></td>
-                <td>Phân tích có kiểm chứng</td>
-                <td>Elliott validated, walk-forward OOS, Signal Score, macro, đa tài sản</td>
+                <td>Vùng tâm lý lọc theo EMA + xu hướng, RSI, khuyến nghị đầu tư, overlay Elliott/EMA trên giá</td>
               </tr>
               <tr>
                 <td><strong>Giả lập</strong></td>
@@ -71,19 +61,47 @@
           </table>
         </div>
         <p class="docs-note">
-          Basic, Pro và Giả lập dùng pipeline Elliott (<code>model: elliott</code>).
-          Chế độ EMA dùng cùng khung thời gian sóng nhưng gán lại vùng theo EMA 50 ngày / EMA 200 ngày (<code>model: ema</code>).
-          Mỗi model lưu cache riêng — cần bấm <strong>Phân tích 10 năm</strong> khi đổi sang EMA lần đầu.
+          App dùng một pipeline thống nhất (<code>model: ema</code>).
+          Bấm <strong>Phân tích 10 năm</strong> để xây cache; dữ liệu lưu trong localStorage theo từng tài sản.
         </p>
       </section>
 
+      <section class="docs-section" id="chart">
+        <h2>2. Biểu đồ giá &amp; overlay</h2>
+        <p>Trên thanh công cụ phạm vi xem có hai nút bật/tắt trên biểu đồ giá:</p>
+        <div class="docs-table-wrap">
+          <table class="docs-table docs-table--wide">
+            <thead>
+              <tr>
+                <th>Nút</th>
+                <th>Hiển thị</th>
+                <th>Ghi chú</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>EMA 50/200</strong></td>
+                <td>Đường EMA 50 (xanh dương) và EMA 200 (cam)</td>
+                <td>Tính từ nến ngày, căn theo phạm vi đang xem; bật/tắt độc lập</td>
+              </tr>
+              <tr>
+                <td><strong>Elliott</strong></td>
+                <td>Zigzag sóng + nhãn 1–5, A–B–C</td>
+                <td>Cần <strong>Phân tích 10 năm</strong> trước; hiển thị sóng trên khung đang xem</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Nền màu trên biểu đồ = <strong>vùng tâm lý</strong> (10 năm, nến tuần). Biểu đồ RSI (2D / Tuần / Tháng) nằm bên dưới, đồng bộ thời gian với giá.</p>
+      </section>
+
       <section class="docs-section" id="ema">
-        <h2>2. Chế độ EMA 50 / 200</h2>
+        <h2>3. Quy tắc EMA 50 / 200</h2>
         <p>
-          EMA mode lấy khung thời gian từ sóng Elliott tuần, sau đó <strong>lọc</strong> vùng tâm lý theo vị trí giá so với EMA và hướng xu hướng ngắn hạn (~20 ngày).
+          Khung thời gian giai đoạn lấy từ sóng Elliott tuần; tên vùng tâm lý được <strong>lọc lại</strong> theo vị trí giá so với EMA và xu hướng ngắn hạn (~20 ngày).
         </p>
 
-        <h3>2.1 Quy tắc cốt lõi</h3>
+        <h3>3.1 Quy tắc cốt lõi</h3>
         <div class="docs-table-wrap">
           <table class="docs-table docs-table--wide">
             <thead>
@@ -97,7 +115,7 @@
               <tr>
                 <td>Giá <strong>trên EMA50 và EMA200</strong></td>
                 <td>Chỉ tích cực</td>
-                <td>Hy vọng, Lạc quan, Niềm tin, Hưng phấn, Chủ quan</td>
+                <td>Nghi ngờ, Hy vọng, Lạc quan, Niềm tin, Hưng phấn, Chủ quan</td>
               </tr>
               <tr>
                 <td>Giá <strong>dưới EMA50</strong></td>
@@ -107,7 +125,7 @@
               <tr>
                 <td><strong>Xu hướng tăng</strong> (giá / EMA50 dốc lên)</td>
                 <td>Chỉ tích cực</td>
-                <td>Không gán Niềm tin / Hưng phấn khi giá đang giảm</td>
+                <td>Không gán vùng bullish khi giá đang giảm</td>
               </tr>
               <tr>
                 <td><strong>Xu hướng giảm</strong></td>
@@ -118,50 +136,53 @@
           </table>
         </div>
 
-        <h3>2.2 Bỏ cuộc</h3>
+        <h3>3.2 Bỏ cuộc</h3>
         <p>
-          Giữ quy tắc Elliott: <strong>Bỏ cuộc</strong> chỉ sau <strong>Hoảng loạn</strong>, khi giá dưới EMA50 và không còn xu hướng tăng (đi ngang cuối leg sập).
+          <strong>Bỏ cuộc</strong> chỉ sau <strong>Hoảng loạn</strong>, khi giá dưới EMA50 và không còn xu hướng tăng (đi ngang cuối leg sập).
         </p>
 
-        <h3>2.3 Ưu tiên quy tắc</h3>
+        <h3>3.3 Ưu tiên quy tắc</h3>
         <ol>
           <li>Dưới EMA50 → luôn tiêu cực (kể cả hồi phục ngắn).</li>
           <li>Trên cả hai EMA + xu hướng tăng → tích cực mạnh nhất.</li>
           <li>Giữa EMA50–200 → theo xu hướng giá ngắn hạn.</li>
-          <li>Không đủ điều kiện (đầu chuỗi dữ liệu) → <em>Quan sát</em>.</li>
+          <li>Chưa đủ dữ liệu EMA (~200 ngày) → <em>Quan sát</em>.</li>
         </ol>
       </section>
 
       <section class="docs-section" id="pipeline">
-        <h2>3. Pipeline phân tích</h2>
+        <h2>4. Pipeline phân tích</h2>
         <ol class="docs-steps">
-          <li><strong>Dữ liệu 10 năm</strong> — lấy tối đa 3 650 ngày gần nhất, gộp thành nến tuần.</li>
-          <li><strong>Sóng Elliott</strong> — phát hiện swing tuần, gán chuỗi 1-2-3-4-5-A-B-C.</li>
-          <li><strong>Quy luật vùng tâm lý</strong> — ánh xạ sóng + hướng giá thực tế → zone (xem mục 4).</li>
-          <li><strong>Enrich (Pro)</strong> — gắn nhãn validation Elliott; <em>không đổi</em> tên vùng tâm lý.</li>
+          <li><strong>Dữ liệu 10 năm</strong> — tối đa 3 650 ngày gần nhất, gộp nến tuần.</li>
+          <li><strong>Sóng Elliott</strong> — phát hiện swing tuần, chuỗi 1-2-3-4-5-A-B-C.</li>
+          <li><strong>Gán vùng Elliott</strong> — ánh xạ sóng + hướng giá (mục 6).</li>
+          <li><strong>Lọc EMA</strong> — <code>EmaPsychologyEngine</code> gán lại zone theo EMA50/200 + trend.</li>
           <li><strong>Walk-forward (Giả lập)</strong> — mỗi tuần chỉ dùng dữ liệu ≤ ngày con trỏ.</li>
         </ol>
-        <p class="docs-note">Cache phân tích lưu localStorage; đổi thuật toán cần bấm lại <strong>Phân tích 10 năm</strong>.</p>
+        <p class="docs-note">
+          Đổi thuật toán hoặc cập nhật giá mới → bấm lại <strong>Phân tích 10 năm</strong>.
+          Cache version hiện tại: <strong>v8</strong>.
+        </p>
       </section>
 
       <section class="docs-section" id="elliott">
-        <h2>4. Quy tắc sóng Elliott</h2>
+        <h2>5. Sóng Elliott (khung thời gian)</h2>
 
-        <h3>4.1 Khung thời gian &amp; phát hiện swing</h3>
+        <h3>5.1 Phát hiện swing</h3>
         <ul>
-          <li>Mô hình chính chạy trên <strong>nến tuần</strong> (10 năm).</li>
-          <li>Độ lệch swing (<em>deviation</em>) = trung bình biến động 25 tuần × 2,2, giới hạn 6–20%.</li>
-          <li>Thuật toán zigzag: đảo chiều khi giá lệch ≥ ngưỡng deviation so với cực gần nhất.</li>
-          <li>Chuỗi sóng lặp: <code>1 → 2 → 3 → 4 → 5 → A → B → C</code> trên các leg giữa điểm xoay.</li>
+          <li>Chạy trên <strong>nến tuần</strong> (10 năm).</li>
+          <li>Độ lệch swing = trung bình biến động 25 tuần × 2,2, giới hạn 6–20%.</li>
+          <li>Zigzag: đảo chiều khi giá lệch ≥ ngưỡng so với cực gần nhất.</li>
+          <li>Chuỗi: <code>1 → 2 → 3 → 4 → 5 → A → B → C</code>.</li>
         </ul>
 
-        <h3>4.2 Nhãn sóng trên biểu đồ</h3>
+        <h3>5.2 Nhãn trên biểu đồ</h3>
         <p>
-          Hướng sóng hiển thị (<em>tăng</em> / <em>giảm</em>) dựa trên regime cục bộ:
-          drawdown từ đỉnh 52 tuần ≤ −18% → bear; ngược lại bull trong ngữ cảnh 78 tuần (~18 tháng).
+          Hướng sóng (<em>tăng</em> / <em>giảm</em>) theo regime: drawdown từ đỉnh 52 tuần ≤ −18% → bear; ngược lại bull (ngữ cảnh 78 tuần).
+          Nút <strong>Elliott</strong> vẽ zigzag và marker sóng trên phạm vi đang xem.
         </p>
 
-        <h3>4.3 Validation Elliott (Pro)</h3>
+        <h3>5.3 Tỷ lệ sóng (tham chiếu nội bộ)</h3>
         <div class="docs-table-wrap">
           <table class="docs-table">
             <thead>
@@ -171,162 +192,123 @@
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>2, 4, B (hồi)</td>
-                <td>Độ dài leg / leg trước ∈ [24%, 82%]</td>
-              </tr>
-              <tr>
-                <td>3 (xuôi)</td>
-                <td>Leg ≥ 85% leg sóng 1</td>
-              </tr>
-              <tr>
-                <td>5 (xuôi)</td>
-                <td>Leg trong biên 70–125% leg sóng 3</td>
-              </tr>
-              <tr>
-                <td>Khác</td>
-                <td>Tỷ lệ leg / leg trước ∈ [35%, 280%]</td>
-              </tr>
+              <tr><td>2, 4, B (hồi)</td><td>Leg / leg trước ∈ [24%, 82%]</td></tr>
+              <tr><td>3 (xuôi)</td><td>Leg ≥ 85% leg sóng 1</td></tr>
+              <tr><td>5 (xuôi)</td><td>Leg trong biên 70–125% leg sóng 3</td></tr>
+              <tr><td>Khác</td><td>Tỷ lệ leg / leg trước ∈ [35%, 280%]</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="docs-note">Marker Elliott mờ = chưa validated; sáng = pass quy tắc trên.</p>
+        <p class="docs-note">Bảng trên dùng khi đánh giá chất lượng sóng; app không hiển thị điểm validation riêng trên UI.</p>
       </section>
 
       <section class="docs-section" id="psychology">
-        <h2>5. Quy luật vùng tâm lý (Elliott)</h2>
+        <h2>6. Chu trình vùng tâm lý</h2>
 
-        <h3>5.1 Chu trình đầy đủ</h3>
+        <h3>6.1 Mười vùng chuẩn</h3>
         <p class="docs-cycle">
           Nghi ngờ → Hy vọng → Lạc quan → Niềm tin → Hưng phấn cực độ → Chủ quan → Lo âu → Phủ nhận → Hoảng loạn → <strong>Bỏ cuộc</strong>
         </p>
+        <p>App chỉ dùng 10 vùng này (+ <em>Quan sát</em> khi thiếu dữ liệu). Không dùng các tên cũ như Trầm cảm, Phẫn nộ, Hưng phấn (Thrill).</p>
 
-        <h3>5.2 Ánh xạ sóng Elliott + hướng giá</h3>
+        <h3>6.2 Ánh xạ sóng Elliott + hướng giá (trước khi lọc EMA)</h3>
         <div class="docs-table-wrap">
           <table class="docs-table docs-table--wide">
             <thead>
               <tr>
                 <th>Giai đoạn</th>
                 <th>Điều kiện giá</th>
-                <th>Vùng (EN)</th>
                 <th>Tiếng Việt</th>
               </tr>
             </thead>
             <tbody>
-              <tr><td>Đi ngang dài</td><td>Biến động &lt; 3%, dao động hẹp ≥ 4 tuần</td><td>Disbelief</td><td>Nghi ngờ</td></tr>
-              <tr><td>Sóng 1 tăng</td><td>Giá lên (leg &gt; +0,8%)</td><td>Hope</td><td>Hy vọng</td></tr>
-              <tr><td>Sóng 2</td><td>Xu hướng tăng còn nguyên</td><td>Optimism</td><td>Lạc quan</td></tr>
-              <tr><td>Sóng 3 tăng</td><td>Giá lên</td><td>Belief</td><td>Niềm tin</td></tr>
-              <tr><td>Sóng 5 tăng mạnh</td><td>Leg mạnh (&gt; 12% so với leg trước)</td><td>Euphoria</td><td>Hưng phấn cực độ</td></tr>
-              <tr><td>Sóng 4 giảm có hồi</td><td>Giảm nhưng hồi phục ≥ 3% từ đáy leg</td><td>Complacency</td><td>Chủ quan</td></tr>
-              <tr><td>Sóng A giảm</td><td>Giá xuống</td><td>Anxiety</td><td>Lo âu</td></tr>
-              <tr><td>Sóng B</td><td>Tiếp tục downtrend (dead-cat)</td><td>Denial</td><td>Phủ nhận</td></tr>
-              <tr><td>Sóng C giảm mạnh</td><td>Leg giảm (mạnh nếu &gt; 12% leg trước)</td><td>Panic</td><td>Hoảng loạn</td></tr>
-              <tr><td>Sau Hoảng loạn</td><td>Giá <strong>không tăng thêm</strong> một khoảng (đi ngang cuối leg Panic)</td><td>Capitulation</td><td>Bỏ cuộc</td></tr>
+              <tr><td>Đi ngang dài</td><td>Biến động &lt; 3%, ≥ 4 tuần</td><td>Nghi ngờ</td></tr>
+              <tr><td>Sóng 1 tăng</td><td>Giá lên (leg &gt; +0,8%)</td><td>Hy vọng</td></tr>
+              <tr><td>Sóng 2</td><td>Xu hướng tăng còn nguyên</td><td>Lạc quan</td></tr>
+              <tr><td>Sóng 3 tăng</td><td>Giá lên</td><td>Niềm tin</td></tr>
+              <tr><td>Sóng 5 tăng mạnh</td><td>Leg &gt; 12% leg trước</td><td>Hưng phấn cực độ</td></tr>
+              <tr><td>Sóng 4 giảm có hồi</td><td>Hồi phục ≥ 3% từ đáy leg</td><td>Chủ quan</td></tr>
+              <tr><td>Sóng A giảm</td><td>Giá xuống</td><td>Lo âu</td></tr>
+              <tr><td>Sóng B</td><td>Downtrend (dead-cat)</td><td>Phủ nhận</td></tr>
+              <tr><td>Sóng C giảm mạnh</td><td>Leg giảm mạnh</td><td>Hoảng loạn</td></tr>
+              <tr><td>Sau Hoảng loạn</td><td>Giá không tăng thêm, đi ngang</td><td>Bỏ cuộc</td></tr>
             </tbody>
           </table>
         </div>
 
-        <h3>5.3 Quy tắc bổ sung</h3>
+        <h3>6.3 Quy tắc bổ sung</h3>
         <ul>
-          <li><strong>Bỏ cuộc</strong> không gán trong lúc giá đang sập mạnh — đó là Hoảng loạn. Bỏ cuộc xuất hiện ở đoạn cuối leg Panic khi giá ngừng rơi và đi ngang.</li>
-          <li>Trong <strong>downtrend</strong> (drawdown &gt; 15% từ đỉnh 52 tuần): rally ngắn → Phủ nhận, không gán Hy vọng / Niềm tin sai ngữ cảnh.</li>
-          <li>Leg <strong>giảm</strong> không giữ zone bullish (Hy vọng, Lạc quan, Niềm tin, Hưng phấn).</li>
-          <li>Sau Panic, nếu phục hồi &lt; 10% → tiếp tục coi là Bỏ cuộc; ≥ 10% → Hy vọng (chu kỳ mới).</li>
+          <li><strong>Bỏ cuộc</strong> không gán khi giá đang sập mạnh — đó là Hoảng loạn.</li>
+          <li>Downtrend (drawdown &gt; 15% từ đỉnh 52 tuần): rally ngắn → Phủ nhận.</li>
+          <li>Leg giảm không giữ zone bullish (Hy vọng, Lạc quan, Niềm tin, Hưng phấn).</li>
+          <li>Sau lọc EMA (mục 3), zone cuối cùng phải khớp cả Elliott lẫn EMA/trend.</li>
         </ul>
       </section>
 
       <section class="docs-section" id="indicators">
-        <h2>6. Chỉ số kỹ thuật</h2>
+        <h2>7. Chỉ số kỹ thuật</h2>
 
-        <h3>6.1 RSI</h3>
+        <h3>7.1 RSI</h3>
         <div class="docs-table-wrap">
           <table class="docs-table">
             <thead>
               <tr><th>Chỉ số</th><th>Chu kỳ</th><th>Dùng cho</th></tr>
             </thead>
             <tbody>
-              <tr><td>RSI 2D</td><td>14 (gộp 2 ngày)</td><td>Biểu đồ RSI, Pro Signal, insight strip</td></tr>
-              <tr><td>RSI tuần</td><td>14</td><td>Blend tâm lý, insight</td></tr>
-              <tr><td>RSI tháng</td><td>14</td><td>Blend tâm lý, insight</td></tr>
+              <tr><td>RSI 2D</td><td>14 (gộp 2 ngày)</td><td>Biểu đồ RSI, insight strip, hover panel</td></tr>
+              <tr><td>RSI tuần</td><td>14</td><td>Biểu đồ RSI, insight</td></tr>
+              <tr><td>RSI tháng</td><td>14</td><td>Biểu đồ RSI, insight</td></tr>
             </tbody>
           </table>
         </div>
-        <p>Insight RSI = trung bình (2D + Tuần + Tháng). Pro hiển thị RSI 1D (2D) làm một chữ số thập phân.</p>
+        <p>Insight strip hiển thị RSI = trung bình (2D + Tuần + Tháng). Có thể bật/tắt từng đường RSI trên biểu đồ phụ.</p>
 
-        <h3>6.2 Xu hướng &amp; trung bình động</h3>
+        <h3>7.2 EMA trên biểu đồ giá</h3>
         <ul>
-          <li><strong>Xu hướng</strong> (insight): % thay đổi trên phạm vi đang xem.</li>
-          <li><strong>MA 20 / 50 / 200</strong> (ngày): dùng trong scoring tâm lý phụ (drawdown, golden cross).</li>
-          <li><strong>Drawdown 120 phiên</strong> và <strong>phục hồi từ đáy</strong>: đo vị thế trong chu kỳ.</li>
-          <li><strong>Macro (Pro)</strong>: giá vs MA200, drawdown 52 tuần, xu hướng 26 tuần.</li>
+          <li><strong>EMA 50</strong> và <strong>EMA 200</strong> — exponential moving average trên nến ngày.</li>
+          <li>Dùng cho overlay trực quan (nút EMA 50/200) và cho quy tắc lọc vùng tâm lý.</li>
+          <li>Xu hướng ngắn hạn: % thay đổi giá ~20 ngày hoặc độ dốc EMA50.</li>
         </ul>
 
-        <h3>6.3 Phạm vi xem biểu đồ</h3>
-        <p>1D, 2D, 1W, 1M, 3M, 1Y, 5Y, 10Y — lọc theo <strong>ngày lịch</strong>, không phải số nến cố định.</p>
-      </section>
-
-      <section class="docs-section" id="pro">
-        <h2>7. Pro &amp; Pro Signal Score</h2>
-
-        <h3>7.1 Walk-forward (OOS)</h3>
-        <ul>
-          <li>Chia vùng tâm lý 10Y: ~70% train / 30% test theo thời gian.</li>
-          <li>Xếp hạng zone trên tập test (lợi nhuận kỳ vọng 8 tuần).</li>
-          <li><strong>Edge</strong> = hiệu quả test − hiệu quả train.</li>
-        </ul>
-
-        <h3>7.2 Pro Signal Score (0–100)</h3>
-        <div class="docs-table-wrap">
-          <table class="docs-table">
-            <thead>
-              <tr><th>Hệ số</th><th>Trọng số</th><th>Pass khi</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Elliott xác thực</td><td>20</td><td>Sóng hiện tại pass validation</td></tr>
-              <tr><td>Out-of-sample</td><td>20</td><td>Zone test có ≥ 2 mẫu, TB forward &gt; 0</td></tr>
-              <tr><td>RSI 1D khớp stance</td><td>15</td><td>RSI phù hợp accumulate / reduce / neutral</td></tr>
-              <tr><td>Bối cảnh vĩ mô</td><td>15</td><td>MA200 &amp; drawdown khớp stance</td></tr>
-              <tr><td>Đa tài sản</td><td>15</td><td>≥ 2/4 tài sản cùng stance</td></tr>
-              <tr><td>Walk-forward edge</td><td>15</td><td>Edge ≥ 0</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p class="docs-grades">
-          <span class="grade-chip grade-a">A ≥ 80</span>
-          <span class="grade-chip grade-b">B ≥ 65</span>
-          <span class="grade-chip grade-c">C ≥ 50</span>
-          <span class="grade-chip grade-d">D &lt; 50</span>
-        </p>
+        <h3>7.3 Phạm vi xem</h3>
+        <p>1D, 2D, 1W, 1M, 3M, 1Y, 5Y, 10Y — lọc theo <strong>ngày lịch</strong>. Khung nến: Ngày / Tuần / Tháng.</p>
       </section>
 
       <section class="docs-section" id="simulation">
         <h2>8. Chế độ Giả lập</h2>
         <ul>
-          <li>Chọn khoảng thời gian → <strong>Áp dụng</strong> → pre-run phân tích <strong>từng tuần</strong> (checkpoint cuối tuần).</li>
-          <li>Mỗi tuần chỉ dùng dữ liệu ≤ ngày checkpoint — không lookahead.</li>
-          <li><strong>Hysteresis 2 tuần</strong>: zone trên biểu đồ chỉ đổi khi tín hiệu mới giữ ≥ 2 tuần (giảm nhảy zone khi replay).</li>
-          <li><strong>Độ khớp mô hình</strong>: so walk-forward từng tuần với baseline 10Y (hindsight) cùng thuật toán.</li>
-          <li>Baseline = cache đã lưu hoặc phân tích full 10Y cùng pipeline unified.</li>
+          <li>Chọn khoảng thời gian → <strong>Áp dụng</strong> → pre-run phân tích <strong>từng tuần</strong>.</li>
+          <li>Mỗi tuần chỉ dùng dữ liệu ≤ ngày checkpoint — <strong>không lookahead</strong>.</li>
+          <li>Cùng pipeline EMA (<code>model: ema</code>) như chế độ EMA.</li>
+          <li><strong>Hysteresis 2 tuần</strong>: zone chỉ đổi khi tín hiệu mới giữ ≥ 2 tuần.</li>
+          <li><strong>Độ khớp mô hình</strong>: so walk-forward từng tuần với baseline 10Y (cache đã lưu).</li>
         </ul>
+        <p class="docs-note">Khi chạy giả lập, panel khuyến nghị đầu tư được ẩn; insight strip cập nhật theo ngày con trỏ replay.</p>
       </section>
 
       <section class="docs-section" id="investment">
         <h2>9. Khuyến nghị đầu tư</h2>
-        <p>Dựa trên vùng tâm lý hiện tại + hiệu chỉnh lịch sử 10Y (forward return 8 tuần):</p>
+        <p>
+          Hiển thị ở chế độ <strong>EMA</strong>. Dựa trên vùng tâm lý hiện tại + lịch sử 10Y (forward return 8 tuần).
+          Chỉ xếp hạng <strong>10 vùng chu trình</strong> — thuật ngữ thống nhất với biểu đồ.
+        </p>
         <div class="docs-table-wrap">
           <table class="docs-table docs-table--wide">
             <thead>
-              <tr><th>Stance</th><th>Vùng ví dụ</th><th>Hành động gợi ý</th></tr>
+              <tr><th>Stance</th><th>Vùng</th><th>Hành động gợi ý</th></tr>
             </thead>
             <tbody>
-              <tr><td>Tích lũy</td><td>Bỏ cuộc, Hoảng loạn, Hy vọng, Nghi ngờ</td><td>Mua / tích lũy có kiểm soát</td></tr>
+              <tr><td>Tích lũy</td><td>Nghi ngờ, Hy vọng, Hoảng loạn, Bỏ cuộc</td><td>Mua / tích lũy có kiểm soát</td></tr>
               <tr><td>Nắm giữ</td><td>Lạc quan, Niềm tin</td><td>Giữ vị thế, tránh đu đỉnh</td></tr>
               <tr><td>Chờ đợi</td><td>Lo âu, Phủ nhận, Quan sát</td><td>Quan sát, chờ xác nhận</td></tr>
-              <tr><td>Giảm vị thế</td><td>Chủ quan, Hưng phấn</td><td>Chốt lời / giảm rủi ro</td></tr>
+              <tr><td>Giảm vị thế</td><td>Chủ quan, Hưng phấn cực độ</td><td>Chốt lời / giảm rủi ro</td></tr>
             </tbody>
           </table>
         </div>
+        <p>
+          Panel hiển thị: vùng hiện tại, vùng an toàn / hiệu quả nhất (theo lịch sử trên biểu đồ),
+          top vùng tích lũy, và xếp hạng vùng tích lũy / nắm giữ.
+        </p>
         <p class="docs-disclaimer">
           Khuyến nghị mang tính mô hình học thuật, không phải lời khuyên đầu tư cá nhân.
         </p>
@@ -334,7 +316,7 @@
     </main>
 
     <footer class="docs-footer">
-      <p>Market Psychology Map · Cập nhật theo mã nguồn <code>js/elliott.js</code>, <code>js/ema-mode.js</code>, <code>js/psychology.js</code>, <code>js/pro-analysis.js</code></p>
+      <p>Market Psychology Map · <code>js/ema-mode.js</code> · <code>js/elliott.js</code> · <code>js/psychology.js</code> · <code>js/investment-advice.js</code></p>
       <a href="index.html">Quay lại ứng dụng</a>
     </footer>
   </div>

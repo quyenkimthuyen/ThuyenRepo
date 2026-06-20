@@ -1,4 +1,4 @@
-/* Pro replay simulation: walk historical dates and refresh charts/indicators. */
+/* EMA psychology replay: walk-forward weekly checkpoints, same zones as EMA mode. */
 var ProSimulation = (() => {
   const SPEEDS = [
     { id: "0.5x", label: "0.5×", ms: 900 },
@@ -660,7 +660,7 @@ var ProSimulation = (() => {
     }
 
     if (cursorLabel) {
-      cursorLabel.textContent = status.active ? status.label : "Chưa chạy giả lập";
+      cursorLabel.textContent = status.active ? status.label : "Chưa chạy giả lập EMA";
     }
 
     if (statusEl) {
@@ -668,11 +668,11 @@ var ProSimulation = (() => {
       const step = STEP_OPTIONS.find((item) => item.id === state.stepBars)?.label || "1 nến";
 
       if (state.prewarming) {
-        statusEl.textContent = `Đang chuẩn bị giả lập · phân tích tuần ${state.prewarmProgress}/${state.prewarmTotal} (không nhìn trước tương lai)...`;
+        statusEl.textContent = `Đang chuẩn bị giả lập EMA · phân tích tuần ${state.prewarmProgress}/${state.prewarmTotal} (checkpoint 1 tuần, không nhìn trước)...`;
       } else if (status.active) {
-        statusEl.textContent = `Giả lập · ${status.playing ? "đang chạy" : "tạm dừng"} · ${speed} · ${step}${state.psychologyCache ? ` · tâm lý ${state.psychologyCache.rangeEnd}` : ""}`;
+        statusEl.textContent = `Giả lập EMA · ${status.playing ? "đang chạy" : "tạm dừng"} · ${speed} · ${step}${state.psychologyCache ? ` · vùng ${state.psychologyCache.rangeEnd}` : ""}`;
       } else {
-        statusEl.textContent = "Chọn khoảng thời gian, bấm Áp dụng — app sẽ pre-run phân tích theo tuần rồi replay mượt.";
+        statusEl.textContent = "Chọn khoảng thời gian, bấm Áp dụng — pre-run vùng tâm lý EMA theo tuần rồi replay.";
       }
     }
 

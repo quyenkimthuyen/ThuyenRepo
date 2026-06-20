@@ -15,7 +15,7 @@ const App = (() => {
 
   const modeLabel = (mode) => {
     if (mode === "simulation") {
-      return "Giả lập";
+      return "Giả lập EMA";
     }
 
     return "EMA";
