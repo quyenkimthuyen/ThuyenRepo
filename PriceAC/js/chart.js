@@ -153,7 +153,19 @@ const MarketChart = (() => {
     );
   };
 
-  const getActivePsychologyCache = () => psychologyCaches[currentAsset] || null;
+  const getActivePsychologyCache = () => {
+    if (AppMode.isSimulation() && typeof ProSimulation !== "undefined") {
+      return ProSimulation.getPsychologyCache();
+    }
+
+    return psychologyCaches[currentAsset] || null;
+  };
+
+  const buildSimulationPsychologyCache = (cursorDate) => {
+    const raw = marketData[currentAsset] || [];
+    const clipped = raw.filter((point) => point.date <= cursorDate);
+    return PsychologyEngine.buildPsychologyCache(clipped);
+  };
 
   const getElliottOverlayCache = () => {
     const cache = getActivePsychologyCache();
@@ -274,15 +286,24 @@ const MarketChart = (() => {
     if (button) {
       button.disabled = isBusy;
       button.textContent = isBusy ? "Đang phân tích..." : "Phân tích 10 năm";
+      button.hidden = AppMode.isSimulation();
     }
   };
 
   const formatCacheStatus = (cache) => {
     if (!cache) {
+      if (AppMode.isSimulation()) {
+        return "Giả lập · chọn khoảng thời gian và Áp dụng — phân tích tự chạy theo tuần";
+      }
+
       return "Chưa có bản đồ — bấm Phân tích 10 năm để xây dựng từ nến tuần";
     }
 
     const analyzedAt = PsychologyEngine.formatAnalyzedAt(cache.analyzedAt);
+    if (AppMode.isSimulation()) {
+      return `Giả lập · ${cache.weekCount} tuần · ${cache.regionCount} giai đoạn · cập nhật ${cache.rangeEnd}`;
+    }
+
     return `Đã lưu · ${cache.weekCount} tuần · ${cache.regionCount} giai đoạn${analyzedAt ? ` · ${analyzedAt}` : ""}`;
   };
 
@@ -291,6 +312,9 @@ const MarketChart = (() => {
   };
 
   const runPsychologyAnalysis = async () => {
+    if (AppMode.isSimulation()) {
+      return;
+    }
     if (isPsychologyAnalyzing) {
       return;
     }
@@ -1713,20 +1737,20 @@ const MarketChart = (() => {
     const { rsiDateKey, priceDateKey } = getLatestPanelKeys();
     renderCrosshairPanel(rsiDateKey, priceDateKey, false);
 
-    if (!simPlaying) {
-      if (!psychologyTimeline.length) {
-        const legend = document.querySelector("#psychology-legend");
-        if (legend) {
-          legend.innerHTML = "";
-        }
-      } else {
-        PsychologyEngine.renderPsychologyLegend(document.querySelector("#psychology-legend"));
+    if (!psychologyTimeline.length) {
+      const legend = document.querySelector("#psychology-legend");
+      if (legend) {
+        legend.innerHTML = "";
       }
-
-      onMarketUpdate(marketSnapshot);
-      syncPsychologyStatus();
+    } else {
+      PsychologyEngine.renderPsychologyLegend(document.querySelector("#psychology-legend"));
     }
 
+    if (!simPlaying) {
+      onMarketUpdate(marketSnapshot);
+    }
+
+    syncPsychologyStatus();
     syncElliottChip(marketSnapshot);
   };
 
@@ -1834,6 +1858,7 @@ const MarketChart = (() => {
           interval: currentInterval,
           hasCache: Boolean(psychologyCaches[currentAsset])
         }),
+        refreshPsychology: (cursorDate) => buildSimulationPsychologyCache(cursorDate),
         onFrame: () => {
           render();
         }

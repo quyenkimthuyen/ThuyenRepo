@@ -493,8 +493,8 @@ test("pro signal score series aligns to visible chart", () => {
 test("simulation mode builds timeline and cutoff date", () => {
   const bitcoin = loadBitcoin();
   const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
-  const end = daily.at(-1).date;
-  const start = daily.at(-120).date;
+  const end = daily.at(-120).date;
+  const start = daily.at(-240).date;
 
   AppMode.setMode("simulation");
 
@@ -502,8 +502,11 @@ test("simulation mode builds timeline and cutoff date", () => {
     getContext: () => ({
       fullData: bitcoin,
       interval: "1D",
-      hasCache: true
+      hasCache: false
     }),
+    refreshPsychology: (cursorDate) => PsychologyEngine.buildPsychologyCache(
+      bitcoin.filter((point) => point.date <= cursorDate)
+    ),
     onFrame: () => {}
   });
 
@@ -511,11 +514,46 @@ test("simulation mode builds timeline and cutoff date", () => {
   assert.ok(ProSimulation.isActive());
   assert.equal(ProSimulation.getCutoffDate(), start);
   assert.equal(ProSimulation.getStatus().progress, 0);
+  assert.ok(ProSimulation.getPsychologyCache()?.regions?.length >= 1);
+  assert.equal(ProSimulation.getPsychologyCache().rangeEnd, start);
 
   ProSimulation.seekPercent(100);
   assert.equal(ProSimulation.getCutoffDate(), end);
   ProSimulation.stop();
   assert.ok(!ProSimulation.isActive());
+  assert.ok(!ProSimulation.getPsychologyCache());
+});
+
+test("simulation psychology refreshes on new week only", () => {
+  const bitcoin = loadBitcoin();
+  const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
+  let refreshCount = 0;
+
+  AppMode.setMode("simulation");
+  ProSimulation.init({
+    getContext: () => ({ fullData: bitcoin, interval: "1D", hasCache: false }),
+    refreshPsychology: (cursorDate) => {
+      refreshCount += 1;
+      return PsychologyEngine.buildPsychologyCache(
+        bitcoin.filter((point) => point.date <= cursorDate)
+      );
+    },
+    onFrame: () => {}
+  });
+
+  const anchorWeek = PsychologyEngine.getWeekStart(daily[200].date);
+  const sameWeek = daily.filter((point) => PsychologyEngine.getWeekStart(point.date) === anchorWeek);
+  const start = sameWeek[0].date;
+  const end = sameWeek[sameWeek.length - 1].date;
+
+  ProSimulation.arm(start, end);
+  const afterArm = refreshCount;
+
+  ProSimulation.seekPercent(100);
+  const afterSeek = refreshCount;
+
+  assert.ok(afterArm >= 1);
+  assert.equal(afterSeek, afterArm, "same-week scrub should not re-run psychology analysis");
 });
 
 test("pro daily rsi uses one decimal place", () => {

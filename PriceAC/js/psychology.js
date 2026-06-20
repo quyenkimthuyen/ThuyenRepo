@@ -1118,6 +1118,7 @@ var PsychologyEngine = (() => {
     TEN_YEAR_DAYS,
     aggregateSeries,
     normalizeCandle,
+    getWeekStart,
     buildMultiFrameRsi,
     alignRsiToVisible,
     buildPsychologyCache,

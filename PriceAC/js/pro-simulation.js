@@ -24,11 +24,14 @@ var ProSimulation = (() => {
     cursorIndex: 0,
     speedIndex: 1,
     stepBars: 1,
-    timerId: null
+    timerId: null,
+    psychologyCache: null,
+    lastPsychologyWeek: null
   };
 
   let getContext = () => ({ fullData: [], interval: "1D", hasCache: false });
   let onFrame = () => {};
+  let refreshPsychology = () => null;
 
   const clampDate = (date, min, max) => {
     if (date < min) {
@@ -116,6 +119,29 @@ var ProSimulation = (() => {
     });
   };
 
+  const clearSimPsychology = () => {
+    state.psychologyCache = null;
+    state.lastPsychologyWeek = null;
+  };
+
+  const refreshPsychologyForCursor = (cursorDate, force = false) => {
+    if (!cursorDate || typeof refreshPsychology !== "function") {
+      return;
+    }
+
+    const weekKey = PsychologyEngine.getWeekStart(cursorDate);
+    if (!force && state.psychologyCache && state.lastPsychologyWeek === weekKey) {
+      return;
+    }
+
+    state.psychologyCache = refreshPsychology(cursorDate) || null;
+    state.lastPsychologyWeek = weekKey;
+  };
+
+  const maybeRefreshPsychology = () => {
+    refreshPsychologyForCursor(state.cursorDate, false);
+  };
+
   const setCursorByIndex = (index, notify = true) => {
     if (!state.timeline.length) {
       return;
@@ -124,6 +150,7 @@ var ProSimulation = (() => {
     state.cursorIndex = Math.max(0, Math.min(index, state.timeline.length - 1));
     state.cursorDate = state.timeline[state.cursorIndex];
     state.armed = true;
+    maybeRefreshPsychology();
 
     if (notify) {
       emitFrame();
@@ -150,8 +177,7 @@ var ProSimulation = (() => {
       setCursorByIndex(0, false);
     } else {
       const found = state.timeline.indexOf(state.cursorDate);
-      state.cursorIndex = found >= 0 ? found : state.timeline.length - 1;
-      state.cursorDate = state.timeline[state.cursorIndex];
+      setCursorByIndex(found >= 0 ? found : state.timeline.length - 1, false);
     }
 
     if (notify) {
@@ -177,7 +203,9 @@ var ProSimulation = (() => {
     state.armed = true;
     state.playing = false;
     clearTimer();
-    rebuildTimeline(true);
+    clearSimPsychology();
+    rebuildTimeline(false);
+    emitFrame();
     return true;
   };
 
@@ -217,6 +245,7 @@ var ProSimulation = (() => {
     state.cursorDate = null;
     state.cursorIndex = 0;
     state.timeline = [];
+    clearSimPsychology();
     flushFrame();
   };
 
@@ -390,8 +419,8 @@ var ProSimulation = (() => {
       const speed = SPEEDS[state.speedIndex]?.label || "1×";
       const step = STEP_OPTIONS.find((item) => item.id === state.stepBars)?.label || "1 nến";
       statusEl.textContent = status.active
-        ? `Giả lập · ${status.playing ? "đang chạy" : "tạm dừng"} · ${speed} · ${step}`
-        : "Chọn khoảng thời gian quá khứ, bấm Áp dụng rồi Run để xem chỉ số tiến hóa từng bước (không nhìn trước tương lai).";
+        ? `Giả lập · ${status.playing ? "đang chạy" : "tạm dừng"} · ${speed} · ${step}${state.psychologyCache ? ` · tâm lý ${state.psychologyCache.rangeEnd}` : ""}`
+        : "Chọn khoảng thời gian, bấm Áp dụng — phân tích tự chạy tại mốc bắt đầu và cập nhật mỗi tuần (không nhìn trước tương lai).";
     }
 
     if (runBtn) {
@@ -489,6 +518,7 @@ var ProSimulation = (() => {
   const init = (options = {}) => {
     getContext = options.getContext || getContext;
     onFrame = options.onFrame || onFrame;
+    refreshPsychology = options.refreshPsychology || refreshPsychology;
     bindUi();
 
     if (typeof document === "undefined") {
@@ -519,6 +549,7 @@ var ProSimulation = (() => {
     if (!AppMode.isSimulation()) {
       stop();
     } else {
+      clearSimPsychology();
       seedDefaults();
     }
     syncVisibility();
@@ -527,13 +558,17 @@ var ProSimulation = (() => {
 
   const onContextChange = () => {
     pause();
+    clearSimPsychology();
     seedDefaults();
     if (state.armed && state.startDate && state.endDate) {
       rebuildTimeline(true);
+      refreshPsychologyForCursor(state.cursorDate, true);
     } else {
       emitFrame();
     }
   };
+
+  const getPsychologyCache = () => state.psychologyCache;
 
   return {
     SPEEDS,
@@ -547,6 +582,7 @@ var ProSimulation = (() => {
     isPlaying,
     getCutoffDate,
     getStatus,
+    getPsychologyCache,
     syncVisibility,
     syncUi,
     onModeChange,
