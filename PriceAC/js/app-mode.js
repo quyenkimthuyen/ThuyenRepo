@@ -1,4 +1,4 @@
-/* App mode: EMA psychology map and historical simulation replay. */
+/* App mode: EMA psychology map and EMA-based weekly simulation replay. */
 var AppMode = (() => {
   const STORAGE_KEY = "priceac.app.mode";
   const MODES = ["ema", "simulation"];

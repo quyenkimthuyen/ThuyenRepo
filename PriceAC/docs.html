@@ -29,7 +29,7 @@
         <a href="#elliott">Sóng Elliott</a>
         <a href="#psychology">Vùng tâm lý</a>
         <a href="#indicators">Chỉ số</a>
-        <a href="#simulation">Giả lập</a>
+        <a href="#simulation">Giả lập theo EMA</a>
         <a href="#investment">Khuyến nghị</a>
       </nav>
     </header>
@@ -53,9 +53,9 @@
                 <td>Vùng tâm lý lọc theo EMA + xu hướng, RSI, khuyến nghị đầu tư, overlay Elliott/EMA trên giá</td>
               </tr>
               <tr>
-                <td><strong>Giả lập</strong></td>
-                <td>Replay lịch sử không nhìn trước</td>
-                <td>Walk-forward theo tuần, hysteresis hiển thị, độ khớp vs baseline 10Y</td>
+                <td><strong>Giả lập theo EMA</strong></td>
+                <td>Replay vùng tâm lý EMA theo lịch sử</td>
+                <td>Cùng quy tắc zone EMA; checkpoint mỗi tuần, hysteresis, độ khớp vs baseline 10Y</td>
               </tr>
             </tbody>
           </table>
@@ -157,7 +157,7 @@
           <li><strong>Sóng Elliott</strong> — phát hiện swing tuần, chuỗi 1-2-3-4-5-A-B-C.</li>
           <li><strong>Gán vùng Elliott</strong> — ánh xạ sóng + hướng giá (mục 6).</li>
           <li><strong>Lọc EMA</strong> — <code>EmaPsychologyEngine</code> gán lại zone theo EMA50/200 + trend.</li>
-          <li><strong>Walk-forward (Giả lập)</strong> — mỗi tuần chỉ dùng dữ liệu ≤ ngày con trỏ.</li>
+          <li><strong>Walk-forward (Giả lập theo EMA)</strong> — checkpoint mỗi tuần, chỉ dùng dữ liệu ≤ ngày con trỏ.</li>
         </ol>
         <p class="docs-note">
           Đổi thuật toán hoặc cập nhật giá mới → bấm lại <strong>Phân tích 10 năm</strong>.
@@ -275,15 +275,20 @@
       </section>
 
       <section class="docs-section" id="simulation">
-        <h2>8. Chế độ Giả lập</h2>
+        <h2>8. Chế độ Giả lập theo EMA</h2>
+        <p>
+          Giả lập theo EMA dùng <strong>cùng cách xác định vùng tâm lý</strong> như chế độ EMA
+          (<code>EmaPsychologyEngine</code> trên khung Elliott tuần), nhưng replay theo thời gian thực
+          với quy tắc walk-forward.
+        </p>
         <ul>
-          <li>Chọn khoảng thời gian → <strong>Áp dụng</strong> → pre-run phân tích <strong>từng tuần</strong>.</li>
-          <li>Mỗi tuần chỉ dùng dữ liệu ≤ ngày checkpoint — <strong>không lookahead</strong>.</li>
+          <li>Chọn khoảng thời gian → <strong>Áp dụng</strong> → pre-run vùng tâm lý EMA <strong>từng tuần</strong> (checkpoint cách 1 tuần).</li>
+          <li>Mỗi checkpoint chỉ dùng dữ liệu ≤ ngày tuần đó — <strong>không lookahead</strong>.</li>
           <li>Cùng pipeline EMA (<code>model: ema</code>) như chế độ EMA.</li>
           <li><strong>Hysteresis 2 tuần</strong>: zone chỉ đổi khi tín hiệu mới giữ ≥ 2 tuần.</li>
           <li><strong>Độ khớp mô hình</strong>: so walk-forward từng tuần với baseline 10Y (cache đã lưu).</li>
         </ul>
-        <p class="docs-note">Khi chạy giả lập, panel khuyến nghị đầu tư được ẩn; insight strip cập nhật theo ngày con trỏ replay.</p>
+        <p class="docs-note">Khi chạy giả lập theo EMA, panel khuyến nghị đầu tư được ẩn; insight strip cập nhật theo ngày con trỏ replay.</p>
       </section>
 
       <section class="docs-section" id="investment">

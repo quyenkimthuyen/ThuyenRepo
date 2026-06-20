@@ -282,12 +282,12 @@ const MarketChart = (() => {
   const formatCacheStatus = (cache) => {
     if (AppMode.isSimulation() && typeof ProSimulation !== "undefined" && ProSimulation.isPrewarming?.()) {
       const status = ProSimulation.getStatus();
-      return `Giả lập EMA · đang chuẩn bị ${status.prewarmProgress}/${status.prewarmTotal} tuần...`;
+      return `Giả lập theo EMA · đang chuẩn bị ${status.prewarmProgress}/${status.prewarmTotal} tuần...`;
     }
 
     if (!cache) {
       if (AppMode.isSimulation()) {
-        return "Giả lập EMA · chọn khoảng thời gian và Áp dụng — pre-run vùng tâm lý EMA theo tuần";
+        return "Giả lập theo EMA · chọn khoảng thời gian và Áp dụng — pre-run vùng tâm lý EMA theo tuần";
       }
 
       return "Chưa có bản đồ — bấm Phân tích 10 năm để xây dựng từ nến tuần";
@@ -295,7 +295,7 @@ const MarketChart = (() => {
 
     const analyzedAt = PsychologyEngine.formatAnalyzedAt(cache.analyzedAt);
     if (AppMode.isSimulation()) {
-      return `Giả lập EMA · ${cache.weekCount} tuần · ${cache.regionCount} giai đoạn · cập nhật ${cache.rangeEnd}`;
+      return `Giả lập theo EMA · ${cache.weekCount} tuần · ${cache.regionCount} giai đoạn · cập nhật ${cache.rangeEnd}`;
     }
 
     return `EMA 50/200 · ${cache.weekCount} tuần · ${cache.regionCount} giai đoạn${analyzedAt ? ` · ${analyzedAt}` : ""}`;
