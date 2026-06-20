@@ -1,0 +1,56 @@
+---
+description: PriceAC — quy tắc engine phân tích tài chính (tâm lý, Elliott, phạm vi, khuyến nghị)
+globs:
+  - js/psychology.js
+  - js/elliott.js
+  - js/range-utils.js
+  - js/investment-advice.js
+  - js/market-data.js
+  - tests/run.js
+alwaysApply: false
+---
+
+# PriceAC — Analysis Engines
+
+Viết như **nhà phân tích giá + đầu tư định lượng**: logic phải giải thích được, tái lập được, có test.
+
+## Nguyên tắc phân tích
+
+- **Chu kỳ tâm lý 10 năm** luôn từ nến **tuần** (`buildPsychologyCache`); mọi phạm vi/xem ngắn **chiếu** từ cache, không rebuild mỗi lần đổi range.
+- **Elliott** gắn region tuần → psychology zone; không tách logic sóng khỏi `elliott.js` trừ khi refactor có test.
+- **RSI đa khung**: 2D + tuần + tháng; align về timeline giá đang hiển thị với forward-fill, không `.filter` làm lệch độ dài.
+- **Khuyến nghị đầu tư**: kết hợp lịch sử (forward return ~8 tuần) + profile chuyên gia; luôn `hasAdvice: false` khi chưa có cache.
+
+## Module thuần (test Node)
+
+Engine export dùng `var Name = (() => { ... })();` để `tests/run.js` load được.
+
+Thêm hàm → export + test trong `tests/run.js`. Test tối thiểu cho thay đổi:
+- mọi key `RANGE_DAY_COUNT` × interval (`buildVisibleSeries`)
+- `alignRsiToVisible` độ dài khớp visible
+- `buildPsychologyCache` + `projectPsychologyToSeries`
+- `InvestmentAdvisor.buildRecommendation` khi có cache
+
+## Ví dụ
+
+```javascript
+// ❌ BAD — RSI ngắn hơn giá → chart lỗi đồng bộ
+return visibleSeries.map(...).filter(Boolean);
+
+// ✅ GOOD — cùng length, forward-fill
+return visibleSeries.map((point) => ({ date: point.date, value: lastValue }));
+```
+
+```javascript
+// ❌ BAD — phạm vi = 30 nến tuần khi user chọn 1M
+return fullSeries.slice(-30);
+
+// ✅ GOOD — 30 ngày lịch rồi aggregate
+return aggregateSeries(buildVisibleDailySlice(daily, "1M"), interval);
+```
+
+## Cache & dữ liệu
+
+- `isPsychologyCacheValid`: `dataEndDate` phải khớp ngày cuối series.
+- Merge giá: dedupe theo `date`, sort tăng dần (`sanitizeSeries`).
+- Yahoo symbol map nằm **một chỗ** trong `market-data.js` + `fetch-market-data.js`.

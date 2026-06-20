@@ -9,9 +9,19 @@ const assets = [
     output: "bitcoin.json"
   },
   {
+    key: "ethereum",
+    symbol: "ETH-USD",
+    output: "ethereum.json"
+  },
+  {
     key: "gold",
     symbol: "GC=F",
     output: "gold.json"
+  },
+  {
+    key: "sp500",
+    symbol: "^GSPC",
+    output: "sp500.json"
   }
 ];
 

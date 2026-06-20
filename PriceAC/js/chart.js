@@ -2,12 +2,16 @@
 const MarketChart = (() => {
   const assetFiles = {
     bitcoin: "data/bitcoin.json",
-    gold: "data/gold.json"
+    ethereum: "data/ethereum.json",
+    gold: "data/gold.json",
+    sp500: "data/sp500.json"
   };
 
   const assetLabels = {
     bitcoin: "Bitcoin",
-    gold: "Gold"
+    ethereum: "Ethereum",
+    gold: "Vàng",
+    sp500: "S&P 500"
   };
 
   const getVisibleData = () => RangeUtils.buildVisibleSeries(
@@ -67,19 +71,25 @@ const MarketChart = (() => {
 
   const generateFallbackData = (asset) => {
     const start = new Date("2026-01-01T00:00:00");
-    const base = asset === "bitcoin" ? 100000 : 3300;
+    const profiles = {
+      bitcoin: { base: 100000, wave: 3400, long: 5200, drift: 155, open: 420, high: 680, low: 720 },
+      ethereum: { base: 3500, wave: 120, long: 180, drift: 5.5, open: 14, high: 22, low: 24 },
+      gold: { base: 3300, wave: 65, long: 90, drift: 3.2, open: 8, high: 12, low: 14 },
+      sp500: { base: 5500, wave: 45, long: 70, drift: 2.8, open: 6, high: 10, low: 11 }
+    };
+    const profile = profiles[asset] || profiles.bitcoin;
     const data = [];
 
     for (let index = 0; index < 3650; index += 1) {
       const date = new Date(start);
       date.setDate(start.getDate() + index);
-      const wave = Math.sin(index / 8) * (asset === "bitcoin" ? 3400 : 65);
-      const longerWave = Math.cos(index / 21) * (asset === "bitcoin" ? 5200 : 90);
-      const drift = index * (asset === "bitcoin" ? 155 : 3.2);
-      const close = Math.round((base + drift + wave + longerWave) * 100) / 100;
-      const open = Math.round((close - (asset === "bitcoin" ? 420 : 8)) * 100) / 100;
-      const high = Math.round((close + (asset === "bitcoin" ? 680 : 12)) * 100) / 100;
-      const low = Math.round((close - (asset === "bitcoin" ? 720 : 14)) * 100) / 100;
+      const wave = Math.sin(index / 8) * profile.wave;
+      const longerWave = Math.cos(index / 21) * profile.long;
+      const drift = index * profile.drift;
+      const close = Math.round((profile.base + drift + wave + longerWave) * 100) / 100;
+      const open = Math.round((close - profile.open) * 100) / 100;
+      const high = Math.round((close + profile.high) * 100) / 100;
+      const low = Math.round((close - profile.low) * 100) / 100;
 
       data.push({
         date: date.toISOString().slice(0, 10),

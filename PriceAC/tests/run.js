@@ -262,6 +262,19 @@ test("psychology cache works for gold dataset", () => {
   assert.ok(cache.weekCount >= 50);
 });
 
+test("psychology cache works for ethereum and sp500", () => {
+  const loadJson = (name) => JSON.parse(
+    fs.readFileSync(path.join(root, `data/${name}.json`), "utf8")
+  );
+
+  ["ethereum", "sp500"].forEach((asset) => {
+    const series = loadJson(asset);
+    const cache = PsychologyEngine.buildPsychologyCache(series);
+    assert.ok(cache, `${asset} cache should build`);
+    assert.ok(cache.regions.length >= 2);
+  });
+});
+
 test("market data merge dedupes by date", () => {
   const base = [
     { date: "2024-01-01", open: 1, high: 2, low: 0.5, price: 1.5 },

@@ -1,0 +1,43 @@
+---
+description: PriceAC — kiến trúc sản phẩm, chất lượng phân tích tài chính và checklist trước khi merge
+alwaysApply: true
+---
+
+# PriceAC — Quality Gate
+
+Ứng dụng **bản đồ tâm lý thị trường** (BTC, ETH, Vàng, S&P 500): nến ngày, Elliott khung tuần 10 năm, RSI 2D/T/Th, khuyến nghị vùng. Vanilla JS, không build step.
+
+**Không phải** lời khuyên đầu tư cấp phép. Mọi copy UI phải tránh cam kết lợi nhuận; giữ disclaimer ở panel khuyến nghị.
+
+## Kiến trúc (đừng phá)
+
+| File | Trách nhiệm |
+|------|-------------|
+| `js/range-utils.js` | Lọc phạm vi theo **ngày lịch**, dedupe/sort — thuần, test được |
+| `js/elliott.js` | Sóng Elliott + vùng trên nến tuần |
+| `js/psychology.js` | RSI, cache 10Y, snapshot, legend/panel |
+| `js/investment-advice.js` | Khuyến nghị vùng từ lịch sử + mô hình chuyên gia |
+| `js/market-data.js` | Yahoo fetch, merge, patch localStorage |
+| `js/chart.js` | Lightweight Charts, đồng bộ trục, render |
+| `js/app.js` | Binding UI, insight strip |
+| `tests/run.js` | Test hồi quy — **bắt buộc chạy** khi đổi engine |
+
+Thứ tự `<script>` trong `index.html` **có phụ thuộc** — không đổi tùy tiện.
+
+## Checklist trước khi xong task
+
+1. `cd PriceAC && npm test` — **21+ tests pass**; thêm test khi đổi logic phạm vi/RSI/cache/khuyến nghị.
+2. `node --check` mọi file `.js` đã sửa.
+3. **Phạm vi giá**: dùng `RangeUtils` (calendar days), không đếm số nến thô.
+4. **RSI**: `alignRsiToVisible` phải **cùng số điểm** với series giá hiển thị; khung ngày RSI là **2D** (không 1D).
+5. **Cache tâm lý**: đổi schema → tăng `PSYCHOLOGY_CACHE_VERSION` và xử lý invalidate.
+6. **Tài sản mới**: cập nhật đủ `chart.js` (`assetFiles`), `market-data.js` (`symbols`), `fetch-market-data.js`, `data/*.json`, tab `index.html`, test cache.
+7. **Chính tả tiếng Việt**: kiểm tra copy UI (vd. «đu đỉnh» hai từ, không «đuỉnh»).
+8. Diff tối thiểu; khớp style file lân cận; không thêm framework/npm dep trừ khi user yêu cầu.
+9. Không commit/push/README trừ khi user yêu cầu.
+
+## Không làm
+
+- Không vẽ overlay Elliott / đổi toolbar nếu user không yêu cầu.
+- Không hardcode giá hoặc «chắc chắn tăng/giảm» trong khuyến nghị.
+- Không sửa `data/*.json` tay khi có thể dùng `npm run fetch-data`.

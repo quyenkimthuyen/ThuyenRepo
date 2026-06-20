@@ -2,7 +2,9 @@
 var MarketDataService = (() => {
   const symbols = {
     bitcoin: "BTC-USD",
-    gold: "GC=F"
+    ethereum: "ETH-USD",
+    gold: "GC=F",
+    sp500: "^GSPC"
   };
 
   const PATCH_PREFIX = "priceac.market.patch.v1.";
