@@ -30,8 +30,6 @@ const MarketChart = (() => {
   let rsiMonthlySeries;
   let rsiGuideSeries;
   let psychologyBackgroundSeries = [];
-  let elliottWaveSeries = null;
-  let currentElliottMarkers = [];
   let currentAsset = "bitcoin";
   let currentRange = "1M";
   let currentInterval = "1D";
@@ -63,7 +61,6 @@ const MarketChart = (() => {
     weekly: true,
     monthly: true
   };
-  let elliottOverlayVisible = false;
 
   const generateFallbackData = (asset) => {
     const start = new Date("2026-01-01T00:00:00");
@@ -638,85 +635,6 @@ const MarketChart = (() => {
     };
   };
 
-  const clearElliottOverlay = () => {
-    if (elliottWaveSeries && chart) {
-      chart.removeSeries(elliottWaveSeries);
-      elliottWaveSeries = null;
-    }
-
-    currentElliottMarkers = [];
-
-    if (lineSeries) {
-      lineSeries.setMarkers([]);
-    }
-
-    if (candleSeries) {
-      candleSeries.setMarkers([]);
-    }
-  };
-
-  const applyElliottMarkers = () => {
-    if (!currentElliottMarkers.length) {
-      return;
-    }
-
-    const activeSeries = currentChartMode === "candle" ? candleSeries : lineSeries;
-    const inactiveSeries = currentChartMode === "candle" ? lineSeries : candleSeries;
-
-    if (inactiveSeries) {
-      inactiveSeries.setMarkers([]);
-    }
-
-    if (activeSeries) {
-      activeSeries.setMarkers(currentElliottMarkers);
-    }
-  };
-
-  const renderElliottOverlay = (visibleData) => {
-    clearElliottOverlay();
-
-    if (!elliottOverlayVisible || !chart || !visibleData.length) {
-      return;
-    }
-
-    const cache = getActivePsychologyCache();
-    if (!cache) {
-      return;
-    }
-
-    const overlay = ElliottEngine.buildVisibleWaveOverlay(cache, visibleData);
-    if (!overlay?.points?.length) {
-      return;
-    }
-
-    elliottWaveSeries = chart.addLineSeries({
-      color: "#f0b45c",
-      lineWidth: 2,
-      lineStyle: LightweightCharts.LineStyle.Dashed,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      crosshairMarkerVisible: false
-    });
-    elliottWaveSeries.setData(overlay.points);
-    currentElliottMarkers = overlay.markers || [];
-    applyElliottMarkers();
-  };
-
-  const syncElliottToggleButton = () => {
-    const button = document.querySelector("#toggle-elliott-waves");
-    if (!button) {
-      return;
-    }
-
-    const hasCache = Boolean(getActivePsychologyCache());
-    button.disabled = !hasCache;
-    button.classList.toggle("active", elliottOverlayVisible && hasCache);
-    button.setAttribute("aria-pressed", String(elliottOverlayVisible && hasCache));
-    button.title = hasCache
-      ? "Hiển thị sóng Elliott trên biểu đồ giá"
-      : "Cần Phân tích 10 năm trước";
-  };
-
   const clearPsychologyBackgrounds = () => {
     psychologyBackgroundSeries.forEach((series) => chart.removeSeries(series));
     psychologyBackgroundSeries = [];
@@ -786,7 +704,6 @@ const MarketChart = (() => {
 
     if (!clean.length) {
       clearPsychologyBackgrounds();
-      clearElliottOverlay();
       return;
     }
 
@@ -801,8 +718,6 @@ const MarketChart = (() => {
     if (segments.length && chart) {
       renderPsychologyBackgrounds(segments, bounds);
     }
-
-    renderElliottOverlay(clean);
   };
 
   const drawFallbackChart = (container, visibleData, psychologyTimeline) => {
@@ -841,38 +756,10 @@ const MarketChart = (() => {
       return `${x},${y}`;
     }).join(" ");
 
-    const dateToIndex = new Map(visibleData.map((point, index) => [point.date, index]));
-    const cache = getActivePsychologyCache();
-    const elliottOverlay = elliottOverlayVisible && cache
-      ? ElliottEngine.buildVisibleWaveOverlay(cache, visibleData)
-      : null;
-
-    const elliottZigzag = elliottOverlay?.points?.length
-      ? elliottOverlay.points.map((point) => {
-        const index = dateToIndex.get(point.time)
-          ?? visibleData.findIndex((row) => row.date >= point.time);
-        const safeIndex = index >= 0 ? index : visibleData.length - 1;
-        return `${indexToX(safeIndex, visibleData.length)},${priceToY(point.value)}`;
-      }).join(" ")
-      : "";
-
-    const elliottLabels = elliottOverlay?.markers?.map((marker) => {
-      const index = dateToIndex.get(marker.time) ?? 0;
-      const price = elliottOverlay.pivots.find((pivot) => pivot.date === marker.time)?.price ?? min;
-      const x = indexToX(index, visibleData.length);
-      const y = priceToY(price) + (marker.position === "belowBar" ? 14 : -10);
-
-      return `
-        <text x="${x}" y="${y}" fill="#f0b45c" font-size="11" font-weight="700" text-anchor="middle">${marker.text}</text>
-      `;
-    }).join("") || "";
-
     container.innerHTML = `
       <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Fallback price chart with psychology zones">
         ${zoneRects}
-        ${elliottZigzag ? `<polyline points="${elliottZigzag}" fill="none" stroke="#f0b45c" stroke-width="2" stroke-dasharray="6 4"></polyline>` : ""}
         <polyline points="${points}" fill="none" stroke="#e2e8f0" stroke-width="2"></polyline>
-        ${elliottLabels}
         <text x="16" y="30" fill="#8ea0b7" font-size="13">Lightweight Charts unavailable. Showing static fallback.</text>
       </svg>
     `;
@@ -1062,7 +949,6 @@ const MarketChart = (() => {
     const showCandles = currentChartMode === "candle";
     lineSeries.applyOptions({ visible: !showCandles });
     candleSeries.applyOptions({ visible: showCandles });
-    applyElliottMarkers();
   };
 
   const createChart = (container) => {
@@ -1150,7 +1036,6 @@ const MarketChart = (() => {
     renderCrosshairPanel(rsiDateKey, priceDateKey, false);
     onMarketUpdate(marketSnapshot);
     syncPsychologyStatus();
-    syncElliottToggleButton();
   };
 
   const setAsset = (asset) => {
@@ -1202,27 +1087,6 @@ const MarketChart = (() => {
     setRsiLineVisible(key, !rsiVisibility[key]);
   };
 
-  const toggleElliottOverlay = () => {
-    if (!getActivePsychologyCache()) {
-      return;
-    }
-
-    elliottOverlayVisible = !elliottOverlayVisible;
-    syncElliottToggleButton();
-    render();
-  };
-
-  const bindElliottControls = () => {
-    const button = document.querySelector("#toggle-elliott-waves");
-    if (!button) {
-      return;
-    }
-
-    button.addEventListener("click", () => {
-      toggleElliottOverlay();
-    });
-  };
-
   const init = async (marketUpdateHandler) => {
     onMarketUpdate = marketUpdateHandler;
     await loadAllData();
@@ -1232,7 +1096,6 @@ const MarketChart = (() => {
     bindCrosshairSync();
     bindPsychologyControls();
     bindPriceUpdateControls();
-    bindElliottControls();
     syncRsiToggleButtons();
     updatePriceStatus("");
     render();
@@ -1246,7 +1109,6 @@ const MarketChart = (() => {
     setChartMode,
     toggleRsiLine,
     setRsiLineVisible,
-    toggleElliottOverlay,
     runPsychologyAnalysis,
     runPriceUpdate,
     getCurrentData: getVisibleData
