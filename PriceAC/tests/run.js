@@ -88,7 +88,7 @@ const loadGold = () => JSON.parse(
   fs.readFileSync(path.join(root, "data/gold.json"), "utf8")
 );
 
-const RANGE_KEYS = ["1D", "1W", "1M", "3M", "1Y", "5Y", "10Y"];
+const RANGE_KEYS = ["1D", "2D", "1W", "1M", "3M", "1Y", "5Y", "10Y"];
 const INTERVAL_KEYS = ["1D", "1W", "1M"];
 
 console.log("PriceAC tests\n");
@@ -134,6 +134,12 @@ test("sanitizeSeries sorts and dedupes candles", () => {
   assert.equal(out[0].date, "2024-01-01");
   assert.equal(out[0].price, 1);
   assert.equal(out[2].date, "2024-01-03");
+});
+
+test("2D daily range is about 2 days", () => {
+  const bitcoin = loadBitcoin();
+  const daily = RangeUtils.buildVisibleDailySlice(bitcoin, "2D");
+  assert.ok(daily.length >= 2 && daily.length <= 2, `2D daily length ${daily.length}`);
 });
 
 test("1M daily range is about 30 days", () => {
@@ -225,11 +231,11 @@ test("RSI aligned to visible chart dates for all ranges", () => {
       );
       const aligned = PsychologyEngine.alignRsiToVisible(visible, multi);
 
-      assert.equal(aligned.daily.length, visible.length, `${rangeKey}/${intervalKey} daily rsi length`);
+      assert.equal(aligned.twoDay.length, visible.length, `${rangeKey}/${intervalKey} twoDay rsi length`);
       assert.equal(aligned.weekly.length, visible.length, `${rangeKey}/${intervalKey} weekly rsi length`);
       assert.equal(aligned.monthly.length, visible.length, `${rangeKey}/${intervalKey} monthly rsi length`);
 
-      aligned.daily.forEach((point, index) => {
+      aligned.twoDay.forEach((point, index) => {
         assert.equal(point.date, visible[index].date);
         assert.ok(point.value >= 0 && point.value <= 100);
       });

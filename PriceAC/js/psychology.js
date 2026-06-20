@@ -78,6 +78,20 @@ var PsychologyEngine = (() => {
     return date.toISOString().slice(0, 10);
   };
 
+  const MS_PER_DAY = 86400000;
+
+  const parseDateMs = (dateStr) => new Date(`${dateStr}T12:00:00Z`).getTime();
+
+  const get2DayBucketStart = (dateStr, originDateStr) => {
+    const originMs = parseDateMs(originDateStr);
+    const dateMs = parseDateMs(dateStr);
+    const dayOffset = Math.floor((dateMs - originMs) / MS_PER_DAY);
+    const bucketStartOffset = Math.floor(dayOffset / 2) * 2;
+    const bucketMs = originMs + bucketStartOffset * MS_PER_DAY;
+
+    return new Date(bucketMs).toISOString().slice(0, 10);
+  };
+
   const aggregateSeries = (series, interval) => {
     if (!series || !series.length) {
       return [];
@@ -89,13 +103,22 @@ var PsychologyEngine = (() => {
     }
 
     const buckets = new Map();
+    const originDate = normalized[0].date;
 
     normalized.forEach((candle) => {
-      const key = interval === "1W" ? getWeekStart(candle.date) : candle.date.slice(0, 7);
+      let key;
+      if (interval === "2D") {
+        key = get2DayBucketStart(candle.date, originDate);
+      } else if (interval === "1W") {
+        key = getWeekStart(candle.date);
+      } else {
+        key = candle.date.slice(0, 7);
+      }
+
       const existing = buckets.get(key);
 
       if (!existing) {
-        buckets.set(key, { ...candle });
+        buckets.set(key, { ...candle, date: key });
         return;
       }
 
@@ -235,15 +258,21 @@ var PsychologyEngine = (() => {
 
   const buildMultiFrameRsi = (fullSeries) => {
     const daily = aggregateSeries(fullSeries, "1D");
+    const twoDay = aggregateSeries(fullSeries, "2D");
     const weekly = aggregateSeries(fullSeries, "1W");
     const monthly = aggregateSeries(fullSeries, "1M");
+    const originDate = daily[0]?.date;
 
-    const dailyRsi = buildRsiSeries(daily);
+    const twoDayRsi = buildRsiSeries(twoDay);
     const weeklyRsi = buildRsiSeries(weekly);
     const monthlyRsi = buildRsiSeries(monthly);
 
     return {
-      daily: dailyRsi,
+      twoDay: alignHigherTimeframeRsi(
+        daily,
+        twoDayRsi,
+        (date) => get2DayBucketStart(date, originDate)
+      ),
       weekly: alignHigherTimeframeRsi(daily, weeklyRsi, getWeekStart),
       monthly: alignHigherTimeframeRsi(daily, monthlyRsi, (date) => `${date.slice(0, 7)}-01`)
     };
@@ -280,7 +309,7 @@ var PsychologyEngine = (() => {
 
   const alignRsiToVisible = (visibleSeries, multiRsi) => {
     if (!visibleSeries?.length) {
-      return { daily: [], weekly: [], monthly: [] };
+      return { twoDay: [], weekly: [], monthly: [] };
     }
 
     const buildAligned = (source) => {
@@ -297,7 +326,7 @@ var PsychologyEngine = (() => {
     };
 
     return {
-      daily: buildAligned(multiRsi.daily),
+      twoDay: buildAligned(multiRsi.twoDay),
       weekly: buildAligned(multiRsi.weekly),
       monthly: buildAligned(multiRsi.monthly)
     };
@@ -635,7 +664,7 @@ var PsychologyEngine = (() => {
     const signals = [
       `Drawdown ${features.drawdown.toFixed(1)}% so với đỉnh ${SWING_LOOKBACK} phiên`,
       `Phục hồi ${features.recovery.toFixed(1)}% từ đáy ${SWING_LOOKBACK} phiên`,
-      `RSI ${features.rsiDaily}/${features.rsiWeekly}/${features.rsiMonthly} (N/T/Th)`,
+      `RSI ${features.rsiDaily}/${features.rsiWeekly}/${features.rsiMonthly} (2D/T/Th)`,
       `Xu hướng 20/60 phiên: ${features.trend20.toFixed(1)}% / ${features.trend60.toFixed(1)}%`
     ];
 
@@ -655,16 +684,20 @@ var PsychologyEngine = (() => {
     const classification = classifyFromFeatures(features);
     const trend = calculateTrend(visible);
 
+    const multi = buildMultiFrameRsi(fullSeries);
+
     return {
       trend: Number(trend.toFixed(2)),
-      rsi: features ? Math.round((features.rsiDaily + features.rsiWeekly + features.rsiMonthly) / 3) : 50,
-      rsiByInterval: features
-        ? {
-          daily: features.rsiDaily,
-          weekly: features.rsiWeekly,
-          monthly: features.rsiMonthly
-        }
-        : { daily: 50, weekly: 50, monthly: 50 },
+      rsi: Math.round(
+        ((multi.twoDay.at(-1)?.value ?? 50)
+          + (multi.weekly.at(-1)?.value ?? 50)
+          + (multi.monthly.at(-1)?.value ?? 50)) / 3
+      ),
+      rsiByInterval: {
+        twoDay: multi.twoDay.at(-1)?.value ?? 50,
+        weekly: multi.weekly.at(-1)?.value ?? 50,
+        monthly: multi.monthly.at(-1)?.value ?? 50
+      },
       volume: features ? Math.round(clamp(40 + features.volatility20 * 12, 35, 95)) : 50,
       possibleZone: classification.possibleZone,
       confidence: classification.confidence,
@@ -835,14 +868,14 @@ var PsychologyEngine = (() => {
     const visible = aggregateSeries(visibleSeries, "1D");
     const multi = buildMultiFrameRsi(fullSeries);
     const rsiByInterval = {
-      daily: multi.daily.at(-1)?.value ?? 50,
+      twoDay: multi.twoDay.at(-1)?.value ?? 50,
       weekly: multi.weekly.at(-1)?.value ?? 50,
       monthly: multi.monthly.at(-1)?.value ?? 50
     };
 
     return {
       trend: Number(calculateTrend(visible).toFixed(2)),
-      rsi: Math.round((rsiByInterval.daily + rsiByInterval.weekly + rsiByInterval.monthly) / 3),
+      rsi: Math.round((rsiByInterval.twoDay + rsiByInterval.weekly + rsiByInterval.monthly) / 3),
       rsiByInterval
     };
   };
@@ -969,7 +1002,7 @@ var PsychologyEngine = (() => {
     } = snapshot;
 
     const items = [
-      { key: "daily", label: "N", value: rsiByInterval.daily },
+      { key: "twoDay", label: "2D", value: rsiByInterval.twoDay },
       { key: "weekly", label: "T", value: rsiByInterval.weekly },
       { key: "monthly", label: "Th", value: rsiByInterval.monthly }
     ];

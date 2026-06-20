@@ -25,7 +25,7 @@ const MarketChart = (() => {
   let lineSeries;
   let candleSeries;
   let rsiChart;
-  let rsiDailySeries;
+  let rsiTwoDaySeries;
   let rsiWeeklySeries;
   let rsiMonthlySeries;
   let rsiGuideSeries;
@@ -40,13 +40,13 @@ const MarketChart = (() => {
   let onMarketUpdate = () => {};
   let chartSnapshot = {
     visibleData: [],
-    rsiSeries: { daily: [], weekly: [], monthly: [] },
+    rsiSeries: { twoDay: [], weekly: [], monthly: [] },
     marketSnapshot: null,
     psychologyTimeline: []
   };
   let hoverIndex = {
     priceByDate: new Map(),
-    rsiDailyByDate: new Map(),
+    rsiTwoDayByDate: new Map(),
     rsiWeeklyByDate: new Map(),
     rsiMonthlyByDate: new Map(),
     psychologyByDate: new Map(),
@@ -59,7 +59,7 @@ const MarketChart = (() => {
   let syncingTimeScale = false;
   let pendingFitFrame = null;
   const rsiVisibility = {
-    daily: true,
+    twoDay: true,
     weekly: true,
     monthly: true
   };
@@ -348,7 +348,7 @@ const MarketChart = (() => {
 
   const buildPanelSnapshot = (rsiDateKey, priceDateKey, isHover = false) => {
     const candle = priceDateKey ? hoverIndex.priceByDate.get(priceDateKey) : null;
-    const rsiDaily = rsiDateKey ? hoverIndex.rsiDailyByDate.get(rsiDateKey) : null;
+    const rsiTwoDay = rsiDateKey ? hoverIndex.rsiTwoDayByDate.get(rsiDateKey) : null;
     const rsiWeekly = rsiDateKey ? hoverIndex.rsiWeeklyByDate.get(rsiDateKey) : null;
     const rsiMonthly = rsiDateKey ? hoverIndex.rsiMonthlyByDate.get(rsiDateKey) : null;
     const psychology = rsiDateKey ? hoverIndex.psychologyByDate.get(rsiDateKey) : null;
@@ -366,7 +366,7 @@ const MarketChart = (() => {
         || fallback.elliottLabel
         || null,
       rsiByInterval: {
-        daily: rsiDaily ?? fallback.rsiByInterval?.daily,
+        twoDay: rsiTwoDay ?? fallback.rsiByInterval?.twoDay,
         weekly: rsiWeekly ?? fallback.rsiByInterval?.weekly,
         monthly: rsiMonthly ?? fallback.rsiByInterval?.monthly
       },
@@ -376,7 +376,7 @@ const MarketChart = (() => {
 
   const rebuildHoverIndex = (visibleData, rsiSeries, psychologyTimeline) => {
     hoverIndex.priceByDate = new Map(visibleData.map((point) => [point.date, point]));
-    hoverIndex.rsiDailyByDate = new Map(rsiSeries.daily.map((point) => [point.date, point.value]));
+    hoverIndex.rsiTwoDayByDate = new Map(rsiSeries.twoDay.map((point) => [point.date, point.value]));
     hoverIndex.rsiWeeklyByDate = new Map(rsiSeries.weekly.map((point) => [point.date, point.value]));
     hoverIndex.rsiMonthlyByDate = new Map(rsiSeries.monthly.map((point) => [point.date, point.value]));
     hoverIndex.psychologyByDate = new Map(psychologyTimeline.map((point) => [point.date, point]));
@@ -392,7 +392,7 @@ const MarketChart = (() => {
 
   const getLatestPanelKeys = () => {
     const priceDateKey = hoverIndex.orderedDates[hoverIndex.orderedDates.length - 1] || null;
-    const rsiDateKey = chartSnapshot.rsiSeries.daily[chartSnapshot.rsiSeries.daily.length - 1]?.date
+    const rsiDateKey = chartSnapshot.rsiSeries.twoDay[chartSnapshot.rsiSeries.twoDay.length - 1]?.date
       || priceDateKey;
 
     return { rsiDateKey, priceDateKey };
@@ -490,10 +490,10 @@ const MarketChart = (() => {
   };
 
   const pickRsiCrosshairValue = (dateKey) => {
-    if (rsiVisibility.daily) {
-      const value = hoverIndex.rsiDailyByDate.get(dateKey);
+    if (rsiVisibility.twoDay) {
+      const value = hoverIndex.rsiTwoDayByDate.get(dateKey);
       if (Number.isFinite(value)) {
-        return { series: rsiDailySeries, value };
+        return { series: rsiTwoDaySeries, value };
       }
     }
 
@@ -901,11 +901,11 @@ const MarketChart = (() => {
   };
 
   const applyRsiVisibility = () => {
-    if (!rsiDailySeries) {
+    if (!rsiTwoDaySeries) {
       return;
     }
 
-    rsiDailySeries.applyOptions({ visible: rsiVisibility.daily });
+    rsiTwoDaySeries.applyOptions({ visible: rsiVisibility.twoDay });
     rsiWeeklySeries.applyOptions({ visible: rsiVisibility.weekly });
     rsiMonthlySeries.applyOptions({ visible: rsiVisibility.monthly });
   };
@@ -920,7 +920,7 @@ const MarketChart = (() => {
   };
 
   const ensureRsiSeries = () => {
-    if (!rsiChart || rsiDailySeries) {
+    if (!rsiChart || rsiTwoDaySeries) {
       return;
     }
 
@@ -934,7 +934,7 @@ const MarketChart = (() => {
       })
     };
 
-    rsiDailySeries = rsiChart.addLineSeries({
+    rsiTwoDaySeries = rsiChart.addLineSeries({
       ...rsiSeriesOptions,
       color: "#5b9cf5"
     });
@@ -983,8 +983,8 @@ const MarketChart = (() => {
       return;
     }
 
-    const anchor = rsiSeries.daily.length
-      ? rsiSeries.daily
+    const anchor = rsiSeries.twoDay.length
+      ? rsiSeries.twoDay
       : rsiSeries.weekly.length
         ? rsiSeries.weekly
         : rsiSeries.monthly;
@@ -998,11 +998,11 @@ const MarketChart = (() => {
   const updateRsiSeriesData = (rsiSeries) => {
     ensureRsiSeries();
 
-    if (!rsiDailySeries) {
+    if (!rsiTwoDaySeries) {
       return;
     }
 
-    rsiDailySeries.setData(toRsiLineData(rsiSeries.daily));
+    rsiTwoDaySeries.setData(toRsiLineData(rsiSeries.twoDay));
     rsiWeeklySeries.setData(toRsiLineData(rsiSeries.weekly));
     rsiMonthlySeries.setData(toRsiLineData(rsiSeries.monthly));
     updateRsiGuideData(rsiSeries);
@@ -1052,7 +1052,7 @@ const MarketChart = (() => {
     const width = Math.max(container.clientWidth, 320);
     const height = Math.max(container.clientHeight, 140);
     const seriesList = [
-      { key: "daily", color: "#5b9cf5", label: "Ngày" },
+      { key: "twoDay", color: "#5b9cf5", label: "2D" },
       { key: "weekly", color: "#3dd68c", label: "Tuần" },
       { key: "monthly", color: "#f0b45c", label: "Tháng" }
     ].filter((item) => rsiVisibility[item.key]);
