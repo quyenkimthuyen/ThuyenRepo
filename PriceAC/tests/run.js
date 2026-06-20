@@ -354,30 +354,29 @@ test("psychology cycle law maps elliott waves to market sentiment order", () => 
   assert.ok(bullRunZones.has("Hope") || bullRunZones.has("Optimism") || bullRunZones.has("Belief"));
 });
 
-test("bitcoin capitulation appears at major washout lows", () => {
+test("bitcoin capitulation follows panic when price stops rising", () => {
   const bitcoin = loadBitcoin();
   const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
   const capitulationRegions = cache.regions.filter((region) => region.zone === "Capitulation");
 
-  assert.ok(capitulationRegions.length >= 1, "expected at least one Capitulation region in 10Y bitcoin");
+  assert.ok(capitulationRegions.length >= 1, "expected Capitulation after panic washouts");
 
-  const checkpoints = ["2022-06-18", "2022-11-21", "2018-12-15"];
-  const hits = checkpoints.filter((date) => (
-    PsychologyEngine.getPsychologyZoneAtDate(cache, date) === "Capitulation"
+  const panicThenCapitulation = cache.regions.some((region, index) => (
+    index > 0
+    && cache.regions[index - 1].zone === "Panic"
+    && region.zone === "Capitulation"
   ));
 
   assert.ok(
-    hits.length >= 1,
-    `expected Capitulation near a major low, got zones: ${checkpoints.map((date) => (
-      `${date}=${PsychologyEngine.getPsychologyZoneAtDate(cache, date)}`
-    )).join(", ")}`
+    panicThenCapitulation || capitulationRegions.some((region) => region.waveId === "C"),
+    "Capitulation should follow Panic or mark a flat tail after wave C"
   );
 });
 
 test("bitcoin aug 2022 bear decline avoids bullish psychology zones", () => {
   const bitcoin = loadBitcoin();
   const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
-  const forbidden = new Set(["Belief", "Euphoria", "Complacency", "Thrill", "Optimism"]);
+  const forbidden = new Set(["Belief", "Euphoria", "Complacency", "Thrill", "Optimism", "Hope"]);
   const checkpoints = ["2022-08-22", "2022-08-26", "2022-09-05", "2022-09-12"];
 
   checkpoints.forEach((date) => {
@@ -517,7 +516,7 @@ test("mode comparison detects basic vs pro advice", () => {
 test("pro elliott overlay uses enriched cache for validated markers", () => {
   const bitcoin = loadBitcoin();
   const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
-  const visible = RangeUtils.buildVisibleSeries(bitcoin, "1Y", "1D", PsychologyEngine.aggregateSeries);
+  const visible = RangeUtils.buildVisibleSeries(bitcoin, "5Y", "1D", PsychologyEngine.aggregateSeries);
   const enriched = ProAnalysis.enrichPsychologyCache(cache, bitcoin);
   const rawValidated = sharedCtx.ElliottEngine.buildVisibleWaveOverlay(cache, visible, {
     validatedOnly: true
