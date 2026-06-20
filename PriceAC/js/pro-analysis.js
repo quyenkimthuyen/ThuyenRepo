@@ -273,6 +273,10 @@ var ProAnalysis = (() => {
 
   const buildMacroContext = (fullSeries) => {
     const daily = PsychologyEngine.aggregateSeries(fullSeries, "1D");
+    return buildMacroContextFromDaily(daily);
+  };
+
+  const buildMacroContextFromDaily = (daily) => {
     if (daily.length < 60) {
       return null;
     }
@@ -513,6 +517,157 @@ var ProAnalysis = (() => {
     });
 
     return { upper, lower };
+  };
+
+  const resolveDailyIndex = (daily, date) => {
+    for (let index = daily.length - 1; index >= 0; index -= 1) {
+      if (daily[index].date <= date) {
+        return index;
+      }
+    }
+
+    return -1;
+  };
+
+  const resolveRsiValue = (rsiByDate, daily, date) => {
+    const index = resolveDailyIndex(daily, date);
+    if (index < 0) {
+      return 50;
+    }
+
+    return rsiByDate.get(daily[index].date) ?? 50;
+  };
+
+  const buildEnrichedCaches = (psychologyCaches, marketData) => Object.fromEntries(
+    Object.keys(psychologyCaches).map((asset) => {
+      const cache = psychologyCaches[asset];
+      const series = marketData[asset] || [];
+      return [
+        asset,
+        cache?.regions?.length && series.length
+          ? enrichPsychologyCache(cache, series)
+          : null
+      ];
+    })
+  );
+
+  const buildCrossAssetAtDate = (enrichedByAsset, currentAsset, date) => {
+    const rows = Object.entries(enrichedByAsset).map(([asset, enriched]) => {
+      if (!enriched) {
+        return null;
+      }
+
+      const region = ElliottEngine.findRegionForDate(enriched.regions, date);
+      const profile = InvestmentAdvisor.ZONE_EXPERT[region.zone]
+        || InvestmentAdvisor.ZONE_EXPERT.Observing;
+
+      return {
+        asset,
+        stance: profile.stance,
+        isCurrent: asset === currentAsset
+      };
+    }).filter(Boolean);
+
+    const stanceCounts = rows.reduce((acc, row) => {
+      acc[row.stance] = (acc[row.stance] || 0) + 1;
+      return acc;
+    }, {});
+
+    return {
+      rows,
+      dominantStance: Object.entries(stanceCounts).sort((left, right) => right[1] - left[1])[0]?.[0] || null
+    };
+  };
+
+  const buildSignalScoreAtDate = (
+    enrichedCache,
+    fullSeries,
+    date,
+    daily,
+    rsiByDate,
+    enrichedByAsset,
+    currentAsset
+  ) => {
+    const region = ElliottEngine.findRegionForDate(enrichedCache.regions, date);
+    const zone = region?.zone || "Observing";
+    const stance = InvestmentAdvisor.ZONE_EXPERT[zone]?.stance || "wait";
+    const dailyIndex = resolveDailyIndex(daily, date);
+    const dailySlice = dailyIndex >= 0 ? daily.slice(0, dailyIndex + 1) : daily;
+    const completedRegions = enrichedCache.regions.filter((item) => item.endDate < date);
+    const walkForwardDetail = buildWalkForwardDetail(
+      { ...enrichedCache, regions: completedRegions },
+      fullSeries,
+      zone
+    );
+    const macro = buildMacroContextFromDaily(dailySlice);
+    const rsi1d = resolveRsiValue(rsiByDate, daily, date);
+    const crossAsset = buildCrossAssetAtDate(enrichedByAsset, currentAsset, date);
+    const snapshot = {
+      zone,
+      label: PsychologyEngine.zoneLabelsVi[zone] || zone,
+      rsi: rsi1d,
+      rsiByInterval: { twoDay: rsi1d, weekly: 50, monthly: 50 }
+    };
+
+    return buildProSignalScore(
+      {
+        summary: {
+          zone,
+          elliottValidated: region?.elliottValidated,
+          validationNote: region?.validationNote
+        }
+      },
+      walkForwardDetail,
+      macro,
+      crossAsset,
+      snapshot,
+      stance
+    );
+  };
+
+  const buildSignalScoreSeries = (
+    cache,
+    fullSeries,
+    visibleData,
+    psychologyCaches,
+    marketData,
+    currentAsset
+  ) => {
+    if (!cache?.regions?.length || !visibleData?.length) {
+      return [];
+    }
+
+    const enrichedCache = enrichPsychologyCache(cache, fullSeries);
+    const daily = PsychologyEngine.aggregateSeries(fullSeries, "1D");
+    const rsiByDate = new Map(buildRsiSeries(daily).map((point) => [point.date, point.value]));
+    const enrichedByAsset = buildEnrichedCaches(psychologyCaches, marketData);
+    const step = visibleData.length > 420 ? Math.ceil(visibleData.length / 420) : 1;
+    let lastScore = 50;
+    let lastGrade = "C";
+
+    return visibleData.map((point, index) => {
+      const shouldCompute = index % step === 0 || index === visibleData.length - 1;
+
+      if (shouldCompute) {
+        const signal = buildSignalScoreAtDate(
+          enrichedCache,
+          fullSeries,
+          point.date,
+          daily,
+          rsiByDate,
+          enrichedByAsset,
+          currentAsset
+        );
+        lastScore = signal.score;
+        lastGrade = signal.grade;
+      }
+
+      return {
+        date: point.date,
+        value: lastScore,
+        grade: lastGrade
+      };
+    });
   };
 
   const buildCrossAssetMatrix = (psychologyCaches, marketData, currentAsset) => {
@@ -1022,6 +1177,7 @@ var ProAnalysis = (() => {
     buildScenarios,
     buildProBrief,
     buildAtrBands,
+    buildSignalScoreSeries,
     buildRiskPlan,
     buildVolumeProxySeries,
     buildCrossAssetMatrix,

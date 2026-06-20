@@ -997,6 +997,8 @@ var PsychologyEngine = (() => {
       psychologyLabel = null,
       psychologyConfidence = null,
       elliottLabel = null,
+      proSignalScore = null,
+      proSignalGrade = null,
       rsiByInterval = {},
       isHover = false
     } = snapshot;
@@ -1039,6 +1041,13 @@ var PsychologyEngine = (() => {
           </div>
           ` : ""}
         </div>
+        ${Number.isFinite(proSignalScore) ? `
+        <div class="rsi-inline signal-inline" aria-label="Pro Signal Score">
+          <span class="rsi-pill signal-score ${proSignalGrade === "A" ? "is-strong" : proSignalGrade === "D" ? "is-weak" : ""}">
+            <em>Score</em> ${proSignalScore} · ${proSignalGrade || "—"}
+          </span>
+        </div>
+        ` : ""}
         <div class="rsi-inline" aria-label="RSI đa khung">
           ${items.map((item) => `
             <span class="rsi-pill ${rsiTone(item.value ?? 50)} ${item.key}">

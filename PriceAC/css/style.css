@@ -1007,9 +1007,37 @@ button {
 
 .chart-stack {
   display: grid;
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: 1.15fr 0.95fr;
   gap: 8px;
   min-height: min(72vh, 640px);
+}
+
+.chart-stack.has-signal {
+  grid-template-rows: 1.1fr 0.85fr 0.7fr;
+  min-height: min(78vh, 760px);
+}
+
+.chart-block--signal {
+  padding: 10px 12px 12px;
+  border-color: rgba(240, 180, 92, 0.22);
+}
+
+.signal-block-note {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.signal-inline .signal-score {
+  border-color: rgba(240, 180, 92, 0.35);
+  color: #f0b45c;
+}
+
+.signal-score.is-strong {
+  color: #3dd68c;
+}
+
+.signal-score.is-weak {
+  color: #fb7185;
 }
 
 .chart-block {

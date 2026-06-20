@@ -457,5 +457,26 @@ test("pro brief includes scenarios and analogs", () => {
   assert.ok("items" in brief.analogs);
 });
 
+test("pro signal score series aligns to visible chart", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const visible = RangeUtils.buildVisibleSeries(bitcoin, "3M", "1D", PsychologyEngine.aggregateSeries);
+  const series = ProAnalysis.buildSignalScoreSeries(
+    cache,
+    bitcoin,
+    visible,
+    { bitcoin: cache },
+    { bitcoin },
+    "bitcoin"
+  );
+
+  assert.equal(series.length, visible.length);
+  series.forEach((point, index) => {
+    assert.equal(point.date, visible[index].date);
+    assert.ok(point.value >= 0 && point.value <= 100);
+    assert.ok(["A", "B", "C", "D"].includes(point.grade));
+  });
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
