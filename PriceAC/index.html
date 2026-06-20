@@ -23,9 +23,7 @@
       <div class="header-actions">
         <a class="header-link-docs" href="docs.html">Quy tắc</a>
         <div class="mode-switch" role="tablist" aria-label="Chế độ phân tích">
-          <button type="button" class="mode-tab active" data-mode="basic" role="tab" aria-selected="true">Basic</button>
-          <button type="button" class="mode-tab" data-mode="ema" role="tab" aria-selected="false">EMA</button>
-          <button type="button" class="mode-tab" data-mode="pro" role="tab" aria-selected="false">Pro</button>
+          <button type="button" class="mode-tab active" data-mode="ema" role="tab" aria-selected="true">EMA</button>
           <button type="button" class="mode-tab" data-mode="simulation" role="tab" aria-selected="false">Giả lập</button>
         </div>
         <div class="asset-switch" role="tablist" aria-label="Chọn tài sản">
@@ -67,8 +65,6 @@
       </article>
     </section>
 
-    <section class="pro-brief-wrap" id="pro-brief" aria-label="Tóm tắt Pro" hidden></section>
-
     <section class="chart-toolbar" aria-label="Điều khiển biểu đồ">
       <div class="toolbar-group">
         <span class="toolbar-label">Khung nến</span>
@@ -103,6 +99,13 @@
           <button
             type="button"
             class="elliott-chip"
+            id="ema-chip"
+            aria-pressed="false"
+            title="Bật/tắt EMA 50 và EMA 200 trên biểu đồ giá"
+          >EMA 50/200</button>
+          <button
+            type="button"
+            class="elliott-chip"
             id="elliott-chip"
             aria-pressed="false"
             title="Bật/tắt sóng Elliott trên biểu đồ · cần Phân tích 10 năm"
@@ -131,13 +134,6 @@
           <div id="rsi-chart" class="rsi-chart-card" aria-label="Biểu đồ RSI"></div>
         </div>
 
-        <div class="chart-block chart-block--signal" id="signal-chart-block" hidden>
-          <div class="rsi-block-head">
-            <span class="rsi-block-title">Pro Signal Score</span>
-            <small class="signal-block-note">0–100 · A≥80 · B≥65 · C≥50</small>
-          </div>
-          <div id="signal-chart" class="rsi-chart-card" aria-label="Biểu đồ Pro Signal Score"></div>
-        </div>
       </div>
     </section>
 
@@ -147,8 +143,6 @@
     </section>
 
     <section class="investment-wrap" id="investment-panel" aria-label="Khuyến nghị đầu tư"></section>
-
-    <section class="mode-compare-wrap" id="mode-compare" aria-label="So sánh Basic và Pro" hidden></section>
   </div>
 
   <section class="sim-panel-wrap sim-dock" id="pro-simulation" aria-label="Chế độ giả lập" hidden>
@@ -156,7 +150,7 @@
       <header class="sim-head">
         <div>
           <p class="sim-kicker">Chế độ Giả lập</p>
-          <h2 class="sim-title">Replay chỉ số theo thời gian · phương pháp Pro</h2>
+          <h2 class="sim-title">Replay chỉ số theo thời gian · walk-forward</h2>
         </div>
         <span class="sim-live-badge" id="sim-cursor-label">Chưa chạy giả lập</span>
       </header>
@@ -214,7 +208,6 @@
   <script src="js/ema-mode.js"></script>
   <script src="js/investment-advice.js"></script>
   <script src="js/app-mode.js"></script>
-  <script src="js/pro-analysis.js"></script>
   <script src="js/pro-simulation.js"></script>
   <script src="js/chart.js"></script>
   <script src="js/app.js"></script>

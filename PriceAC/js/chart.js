@@ -29,18 +29,14 @@ const MarketChart = (() => {
   let lineSeries;
   let candleSeries;
   let rsiChart;
-  let signalChart;
   let rsiTwoDaySeries;
   let rsiWeeklySeries;
   let rsiMonthlySeries;
   let rsiGuideSeries;
-  let signalScoreSeries;
-  let signalGuideSeries;
+  let ema50Series = null;
+  let ema200Series = null;
   let psychologyBackgroundSeries = [];
   let elliottWaveSeries = null;
-  let volumeHistogramSeries = null;
-  let atrUpperSeries = null;
-  let atrLowerSeries = null;
   let currentElliottMarkers = [];
   let currentAsset = "bitcoin";
   let currentRange = "1M";
@@ -51,7 +47,6 @@ const MarketChart = (() => {
   let chartSnapshot = {
     visibleData: [],
     rsiSeries: { twoDay: [], weekly: [], monthly: [] },
-    signalSeries: [],
     marketSnapshot: null,
     psychologyTimeline: []
   };
@@ -60,45 +55,16 @@ const MarketChart = (() => {
     rsiTwoDayByDate: new Map(),
     rsiWeeklyByDate: new Map(),
     rsiMonthlyByDate: new Map(),
-    signalByDate: new Map(),
-    signalGradeByDate: new Map(),
     psychologyByDate: new Map(),
     orderedDates: []
   };
   let psychologyCaches = {};
 
-  const getPsychologyModel = () => AppMode.getPsychologyModel();
-
-  const normalizePsychologyBucket = (asset, bucket) => {
-    if (!bucket) {
-      return { elliott: null, ema: null };
-    }
-
-    if (bucket.elliott !== undefined || bucket.ema !== undefined) {
-      return {
-        elliott: bucket.elliott ?? null,
-        ema: bucket.ema ?? null
-      };
-    }
-
-    return { elliott: bucket, ema: null };
-  };
-
-  const getAssetPsychologyCache = (asset) => {
-    const bucket = normalizePsychologyBucket(asset, psychologyCaches[asset]);
-    return bucket[getPsychologyModel()] ?? null;
-  };
+  const getAssetPsychologyCache = (asset = currentAsset) => psychologyCaches[asset] ?? null;
 
   const setAssetPsychologyCache = (asset, cache) => {
-    psychologyCaches[asset] = {
-      ...normalizePsychologyBucket(asset, psychologyCaches[asset]),
-      [getPsychologyModel()]: cache
-    };
+    psychologyCaches[asset] = cache;
   };
-
-  const getPsychologyCachesFlat = () => Object.fromEntries(
-    Object.keys(assetFiles).map((asset) => [asset, getAssetPsychologyCache(asset)])
-  );
   let isPsychologyAnalyzing = false;
   let isUpdatingPrices = false;
   let syncingCrosshair = false;
@@ -110,9 +76,8 @@ const MarketChart = (() => {
     monthly: true
   };
   let elliottOverlayVisible = false;
+  let emaOverlayVisible = false;
   let simLastOverlayDate = null;
-  let simLastSignalRenderAt = 0;
-  let signalChartBindingsAttached = false;
 
   const isSimulationPlayback = () => typeof ProSimulation !== "undefined"
     && AppMode.isSimulation()
@@ -176,30 +141,17 @@ const MarketChart = (() => {
     psychologyCaches = Object.fromEntries(
       Object.keys(assetFiles).map((asset) => {
         const series = marketData[asset] || [];
-        const elliott = PsychologyEngine.loadPsychologyCache(asset, "elliott");
-        const ema = PsychologyEngine.loadPsychologyCache(asset, "ema");
+        const cache = PsychologyEngine.loadPsychologyCache(asset, "ema");
 
         return [
           asset,
-          {
-            elliott: PsychologyEngine.isPsychologyCacheValid(elliott, series, "elliott") ? elliott : null,
-            ema: PsychologyEngine.isPsychologyCacheValid(ema, series, "ema") ? ema : null
-          }
+          PsychologyEngine.isPsychologyCacheValid(cache, series, "ema") ? cache : null
         ];
       })
     );
   };
 
-  const getPsychologyPipelineOptions = () => {
-    const enrichCache = AppMode.usesProAnalysis()
-      ? (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped)
-      : undefined;
-
-    return {
-      model: getPsychologyModel(),
-      ...(enrichCache ? { enrichCache } : {})
-    };
-  };
+  const getPsychologyPipelineOptions = () => ({ model: "ema" });
 
   const getActivePsychologyCache = () => {
     if (AppMode.isSimulation() && typeof ProSimulation !== "undefined") {
@@ -217,18 +169,7 @@ const MarketChart = (() => {
     }
   );
 
-  const getElliottOverlayCache = () => {
-    const cache = getActivePsychologyCache();
-    if (!cache) {
-      return null;
-    }
-
-    if (!AppMode.usesProAnalysis() || cache.summary?.elliottValidated !== undefined) {
-      return cache;
-    }
-
-    return ProAnalysis.enrichPsychologyCache(cache, getFullData());
-  };
+  const getElliottOverlayCache = () => getActivePsychologyCache();
 
   const getProjectedPsychologyTimeline = (visibleData) => {
     const cache = getActivePsychologyCache();
@@ -264,10 +205,6 @@ const MarketChart = (() => {
     if (rsiChart) {
       rsiChart.clearCrosshairPosition();
     }
-
-    if (signalChart) {
-      signalChart.clearCrosshairPosition();
-    }
   };
 
   const safeSetCrosshairPosition = (targetChart, value, time, series) => {
@@ -297,7 +234,7 @@ const MarketChart = (() => {
     });
   };
 
-  const getSyncedSubCharts = () => [rsiChart, signalChart].filter(Boolean);
+  const getSyncedSubCharts = () => (rsiChart ? [rsiChart] : []);
 
   const resetSyncedTimeScales = () => {
     if (!chart) {
@@ -361,11 +298,7 @@ const MarketChart = (() => {
       return `Giả lập · ${cache.weekCount} tuần · ${cache.regionCount} giai đoạn · cập nhật ${cache.rangeEnd}`;
     }
 
-    if (AppMode.isEma()) {
-      return `EMA 50/200 · ${cache.weekCount} tuần · ${cache.regionCount} giai đoạn${analyzedAt ? ` · ${analyzedAt}` : ""}`;
-    }
-
-    return `Đã lưu · ${cache.weekCount} tuần · ${cache.regionCount} giai đoạn${analyzedAt ? ` · ${analyzedAt}` : ""}`;
+    return `EMA 50/200 · ${cache.weekCount} tuần · ${cache.regionCount} giai đoạn${analyzedAt ? ` · ${analyzedAt}` : ""}`;
   };
 
   const syncPsychologyStatus = () => {
@@ -404,7 +337,7 @@ const MarketChart = (() => {
       }
 
       setAssetPsychologyCache(currentAsset, cache);
-      PsychologyEngine.savePsychologyCache(currentAsset, cache, getPsychologyModel());
+      PsychologyEngine.savePsychologyCache(currentAsset, cache, "ema");
       render();
     } catch (error) {
       console.error(error);
@@ -512,23 +445,15 @@ const MarketChart = (() => {
         monthly: rsiMonthly ?? fallback.rsiByInterval?.monthly
       },
       rsiIntervalLabels: fallback.rsiIntervalLabels,
-      proSignalScore: AppMode.usesProAnalysis()
-        ? (rsiDateKey ? hoverIndex.signalByDate.get(rsiDateKey) : fallback.proSignalScore)
-        : null,
-      proSignalGrade: AppMode.usesProAnalysis()
-        ? (rsiDateKey ? hoverIndex.signalGradeByDate.get(rsiDateKey) : fallback.proSignalGrade)
-        : null,
       isHover
     };
   };
 
-  const rebuildHoverIndex = (visibleData, rsiSeries, psychologyTimeline, signalSeries = []) => {
+  const rebuildHoverIndex = (visibleData, rsiSeries, psychologyTimeline) => {
     hoverIndex.priceByDate = new Map(visibleData.map((point) => [point.date, point]));
     hoverIndex.rsiTwoDayByDate = new Map(rsiSeries.twoDay.map((point) => [point.date, point.value]));
     hoverIndex.rsiWeeklyByDate = new Map(rsiSeries.weekly.map((point) => [point.date, point.value]));
     hoverIndex.rsiMonthlyByDate = new Map(rsiSeries.monthly.map((point) => [point.date, point.value]));
-    hoverIndex.signalByDate = new Map(signalSeries.map((point) => [point.date, point.value]));
-    hoverIndex.signalGradeByDate = new Map(signalSeries.map((point) => [point.date, point.grade]));
     hoverIndex.psychologyByDate = new Map(psychologyTimeline.map((point) => [point.date, point]));
     hoverIndex.orderedDates = visibleData.map((point) => point.date);
   };
@@ -568,9 +493,6 @@ const MarketChart = (() => {
       if (source !== "rsi" && rsiChart) {
         rsiChart.clearCrosshairPosition();
       }
-      if (source !== "signal" && signalChart) {
-        signalChart.clearCrosshairPosition();
-      }
       return;
     }
 
@@ -587,32 +509,14 @@ const MarketChart = (() => {
     const candle = priceDateKey ? hoverIndex.priceByDate.get(priceDateKey) : null;
     const close = candle?.close ?? candle?.price;
     const rsiTarget = pickRsiCrosshairValue(rsiDateKey);
-    const signalValue = hoverIndex.signalByDate.get(rsiDateKey);
 
     if (source === "price" && rsiChart && rsiTarget.series && Number.isFinite(rsiTarget.value)) {
       safeSetCrosshairPosition(rsiChart, rsiTarget.value, param.time, rsiTarget.series);
     }
 
-    if (source === "price" && signalChart && signalScoreSeries && Number.isFinite(signalValue)) {
-      safeSetCrosshairPosition(signalChart, signalValue, param.time, signalScoreSeries);
-    }
-
     if (source === "rsi" && chart && Number.isFinite(close)) {
       const activeSeries = currentChartMode === "candle" ? candleSeries : lineSeries;
       safeSetCrosshairPosition(chart, close, param.time, activeSeries);
-    }
-
-    if (source === "rsi" && signalChart && signalScoreSeries && Number.isFinite(signalValue)) {
-      safeSetCrosshairPosition(signalChart, signalValue, param.time, signalScoreSeries);
-    }
-
-    if (source === "signal" && chart && Number.isFinite(close)) {
-      const activeSeries = currentChartMode === "candle" ? candleSeries : lineSeries;
-      safeSetCrosshairPosition(chart, close, param.time, activeSeries);
-    }
-
-    if (source === "signal" && rsiChart && rsiTarget.series && Number.isFinite(rsiTarget.value)) {
-      safeSetCrosshairPosition(rsiChart, rsiTarget.value, param.time, rsiTarget.series);
     }
 
     syncingCrosshair = false;
@@ -626,73 +530,13 @@ const MarketChart = (() => {
     if (rsiChart) {
       rsiChart.subscribeCrosshairMove((param) => handleCrosshairMove("rsi", param));
     }
-
-    if (signalChart) {
-      signalChart.subscribeCrosshairMove((param) => handleCrosshairMove("signal", param));
-    }
   };
 
   const getVisibleRsiSeries = () => {
     const visibleData = getVisibleData();
     const fullData = getFullData();
-
-    if (AppMode.usesProAnalysis()) {
-      return ProAnalysis.alignRsiForPro(fullData, visibleData);
-    }
-
     const multi = PsychologyEngine.buildMultiFrameRsi(fullData);
     return PsychologyEngine.alignRsiToVisible(visibleData, multi);
-  };
-
-  const getVisibleSignalSeries = () => {
-    const visibleData = getVisibleData();
-    const cache = getActivePsychologyCache();
-
-    if (!AppMode.usesProAnalysis() || !cache?.regions?.length || !visibleData.length) {
-      return [];
-    }
-
-    return ProAnalysis.buildSignalScoreSeries(
-      cache,
-      getFullData(),
-      visibleData,
-      getPsychologyCachesFlat(),
-      marketData,
-      currentAsset
-    );
-  };
-
-  const clearSignalChart = () => {
-    if (signalScoreSeries) {
-      signalScoreSeries.setData([]);
-    }
-    if (signalGuideSeries) {
-      signalGuideSeries.setData([]);
-    }
-
-    const signalContainer = document.querySelector("#signal-chart");
-    if (signalContainer && !signalChart) {
-      signalContainer.innerHTML = "";
-    }
-
-    syncSignalChartVisibility(false);
-  };
-  const syncSignalChartVisibility = (hasSeries) => {
-    const block = document.querySelector("#signal-chart-block");
-    const stack = document.querySelector(".chart-stack");
-    const show = AppMode.usesProAnalysis() && hasSeries;
-
-    if (block) {
-      block.hidden = !show;
-    }
-
-    if (stack) {
-      stack.classList.toggle("has-signal", show);
-    }
-
-    if (show) {
-      scheduleSignalChartLayout();
-    }
   };
 
   const syncChartTimeScales = () => {
@@ -783,68 +627,6 @@ const MarketChart = (() => {
   const bindTimeScaleSync = () => {
     bindChartTimeScale(chart);
     bindChartTimeScale(rsiChart);
-    bindChartTimeScale(signalChart);
-  };
-
-  const attachSignalChartBindings = () => {
-    if (!signalChart || signalChartBindingsAttached) {
-      return;
-    }
-
-    bindChartTimeScale(signalChart);
-    signalChart.subscribeCrosshairMove((param) => handleCrosshairMove("signal", param));
-    signalChartBindingsAttached = true;
-  };
-
-  const resizeSignalChart = () => {
-    const container = document.querySelector("#signal-chart");
-    if (!signalChart || !container) {
-      return false;
-    }
-
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-    if (width < 1 || height < 1) {
-      return false;
-    }
-
-    signalChart.applyOptions({ width, height });
-    return true;
-  };
-
-  const scheduleSignalChartLayout = () => {
-    const attempt = (retriesLeft = 3) => {
-      if (resizeSignalChart()) {
-        if (!syncingTimeScale) {
-          syncChartTimeScales();
-        }
-        return;
-      }
-
-      if (retriesLeft > 0 && typeof requestAnimationFrame === "function") {
-        requestAnimationFrame(() => attempt(retriesLeft - 1));
-      }
-    };
-
-    if (typeof requestAnimationFrame === "function") {
-      requestAnimationFrame(() => attempt());
-    } else {
-      attempt();
-    }
-  };
-
-  const ensureSignalChart = () => {
-    const container = document.querySelector("#signal-chart");
-    if (!container || !window.LightweightCharts) {
-      return false;
-    }
-
-    if (!signalChart) {
-      createSignalChart(container);
-      attachSignalChartBindings();
-    }
-
-    return Boolean(signalChart);
   };
 
   const updatePriceStatus = (message, isBusy = false) => {
@@ -881,9 +663,9 @@ const MarketChart = (() => {
       marketData[currentAsset] = result.series;
 
       const cache = getAssetPsychologyCache(currentAsset);
-      if (cache && !PsychologyEngine.isPsychologyCacheValid(cache, result.series, getPsychologyModel())) {
+      if (cache && !PsychologyEngine.isPsychologyCacheValid(cache, result.series, "ema")) {
         setAssetPsychologyCache(currentAsset, null);
-        PsychologyEngine.clearPsychologyCache(currentAsset, getPsychologyModel());
+        PsychologyEngine.clearPsychologyCache(currentAsset, "ema");
       }
 
       render();
@@ -950,74 +732,98 @@ const MarketChart = (() => {
     psychologyBackgroundSeries = [];
   };
 
-  const clearAtrBands = () => {
-    if (atrUpperSeries && chart) {
-      chart.removeSeries(atrUpperSeries);
-      atrUpperSeries = null;
+  const clearEmaOverlay = () => {
+    if (ema50Series && chart) {
+      chart.removeSeries(ema50Series);
+      ema50Series = null;
     }
 
-    if (atrLowerSeries && chart) {
-      chart.removeSeries(atrLowerSeries);
-      atrLowerSeries = null;
+    if (ema200Series && chart) {
+      chart.removeSeries(ema200Series);
+      ema200Series = null;
     }
   };
 
-  const renderAtrBands = (visibleData) => {
-    clearAtrBands();
+  const findDailyIndexOnOrBefore = (daily, date) => {
+    for (let index = daily.length - 1; index >= 0; index -= 1) {
+      if (daily[index].date <= date) {
+        return index;
+      }
+    }
 
-    if (!AppMode.isPro() || !chart || !visibleData.length) {
+    return -1;
+  };
+
+  const buildVisibleEmaLines = (fullData, visibleData) => {
+    const daily = PsychologyEngine.aggregateSeries(fullData, "1D");
+    if (daily.length < 50 || !visibleData.length) {
+      return { ema50: [], ema200: [] };
+    }
+
+    const ema50Full = EmaPsychologyEngine.computeEmaSeries(daily, 50);
+    const ema200Full = EmaPsychologyEngine.computeEmaSeries(daily, 200);
+
+    const mapSeries = (emaSeries) => visibleData.reduce((points, point) => {
+      const index = findDailyIndexOnOrBefore(daily, point.date);
+      if (index >= 0 && emaSeries[index] !== null) {
+        points.push({
+          time: point.date,
+          value: Number(emaSeries[index].toFixed(2))
+        });
+      }
+
+      return points;
+    }, []);
+
+    return {
+      ema50: mapSeries(ema50Full),
+      ema200: mapSeries(ema200Full)
+    };
+  };
+
+  const renderEmaOverlay = (visibleData) => {
+    clearEmaOverlay();
+
+    if (!emaOverlayVisible || !chart || !visibleData.length) {
       return;
     }
 
-    const bands = ProAnalysis.buildAtrBands(visibleData);
-    if (!bands.upper.length) {
+    const lines = buildVisibleEmaLines(getFullData(), visibleData);
+    if (!lines.ema50.length) {
       return;
     }
 
-    atrUpperSeries = chart.addLineSeries({
-      color: "rgba(91, 156, 245, 0.28)",
-      lineWidth: 1,
-      lineStyle: LightweightCharts.LineStyle.Dotted,
+    ema50Series = chart.addLineSeries({
+      color: "#7dd3fc",
+      lineWidth: 2,
       priceLineVisible: false,
-      lastValueVisible: false,
-      crosshairMarkerVisible: false
+      lastValueVisible: true,
+      crosshairMarkerVisible: false,
+      title: "EMA50"
     });
-    atrLowerSeries = chart.addLineSeries({
-      color: "rgba(251, 113, 133, 0.28)",
-      lineWidth: 1,
-      lineStyle: LightweightCharts.LineStyle.Dotted,
+    ema200Series = chart.addLineSeries({
+      color: "#f59e0b",
+      lineWidth: 2,
       priceLineVisible: false,
-      lastValueVisible: false,
-      crosshairMarkerVisible: false
+      lastValueVisible: true,
+      crosshairMarkerVisible: false,
+      title: "EMA200"
     });
-    atrUpperSeries.setData(bands.upper);
-    atrLowerSeries.setData(bands.lower);
+    ema50Series.setData(lines.ema50);
+    ema200Series.setData(lines.ema200);
   };
 
-  const clearVolumeHistogram = () => {
-    if (volumeHistogramSeries && chart) {
-      chart.removeSeries(volumeHistogramSeries);
-      volumeHistogramSeries = null;
-    }
-  };
-
-  const renderVolumeProxy = (visibleData) => {
-    clearVolumeHistogram();
-
-    if (!AppMode.isPro() || !chart || !visibleData.length) {
+  const syncEmaChip = () => {
+    const chip = document.querySelector("#ema-chip");
+    if (!chip) {
       return;
     }
 
-    volumeHistogramSeries = chart.addHistogramSeries({
-      priceFormat: { type: "volume" },
-      priceScaleId: "volume-proxy"
-    });
-
-    chart.priceScale("volume-proxy").applyOptions({
-      scaleMargins: { top: 0.82, bottom: 0 }
-    });
-
-    volumeHistogramSeries.setData(ProAnalysis.buildVolumeProxySeries(visibleData));
+    chip.classList.toggle("active", emaOverlayVisible);
+    chip.setAttribute("aria-pressed", String(emaOverlayVisible));
+    chip.title = emaOverlayVisible
+      ? "Đang hiển thị EMA 50 và EMA 200"
+      : "Bật EMA 50 và EMA 200 trên biểu đồ giá";
   };
 
   const clearElliottOverlay = () => {
@@ -1067,7 +873,7 @@ const MarketChart = (() => {
     }
 
     const overlay = ElliottEngine.buildVisibleWaveOverlay(cache, visibleData, {
-      validatedOnly: AppMode.usesProAnalysis()
+      validatedOnly: false
     });
     if (!overlay?.points?.length) {
       return;
@@ -1188,8 +994,7 @@ const MarketChart = (() => {
     if (!clean.length) {
       clearPsychologyBackgrounds();
       clearElliottOverlay();
-      clearVolumeHistogram();
-      clearAtrBands();
+      clearEmaOverlay();
       return;
     }
 
@@ -1206,8 +1011,7 @@ const MarketChart = (() => {
     }
 
     renderElliottOverlay(clean);
-    renderVolumeProxy(clean);
-    renderAtrBands(clean);
+    renderEmaOverlay(clean);
   };
 
   const updateSimulationChart = (visibleData, psychologyTimeline) => {
@@ -1234,6 +1038,7 @@ const MarketChart = (() => {
     }
 
     renderElliottOverlay(clean);
+    renderEmaOverlay(clean);
   };
 
   const drawFallbackChart = (container, visibleData, psychologyTimeline) => {
@@ -1276,7 +1081,7 @@ const MarketChart = (() => {
     const cache = getElliottOverlayCache();
     const elliottOverlay = elliottOverlayVisible && cache
       ? ElliottEngine.buildVisibleWaveOverlay(cache, visibleData, {
-        validatedOnly: AppMode.usesProAnalysis()
+        validatedOnly: false
       })
       : null;
 
@@ -1487,140 +1292,6 @@ const MarketChart = (() => {
     `;
   };
 
-  const ensureSignalSeries = () => {
-    if (!signalChart || signalScoreSeries) {
-      return;
-    }
-
-    const seriesOptions = {
-      lineWidth: 2,
-      lastValueVisible: false,
-      priceLineVisible: false,
-      crosshairMarkerVisible: true,
-      autoscaleInfoProvider: () => ({
-        priceRange: { minValue: 0, maxValue: 100 }
-      })
-    };
-
-    signalScoreSeries = signalChart.addLineSeries({
-      ...seriesOptions,
-      color: "#f0b45c"
-    });
-
-    signalGuideSeries = signalChart.addLineSeries({
-      color: "transparent",
-      lineWidth: 0,
-      lastValueVisible: false,
-      priceLineVisible: false,
-      crosshairMarkerVisible: false,
-      autoscaleInfoProvider: () => ({
-        priceRange: { minValue: 0, maxValue: 100 }
-      })
-    });
-
-    [
-      { price: 80, color: "rgba(61, 214, 140, 0.55)", title: "A" },
-      { price: 65, color: "rgba(91, 156, 245, 0.55)", title: "B" },
-      { price: 50, color: "rgba(255, 159, 90, 0.55)", title: "C" }
-    ].forEach((line) => {
-      signalGuideSeries.createPriceLine({
-        price: line.price,
-        color: line.color,
-        lineWidth: 1,
-        lineStyle: LightweightCharts.LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: line.title
-      });
-    });
-  };
-
-  const updateSignalGuideData = (signalSeries) => {
-    if (!signalGuideSeries || !signalSeries.length) {
-      return;
-    }
-
-    signalGuideSeries.setData(signalSeries.map((point) => ({
-      time: point.date,
-      value: 50
-    })));
-  };
-
-  const updateSignalSeriesData = (signalSeries) => {
-    if (!signalSeries.length) {
-      return;
-    }
-
-    if (!ensureSignalChart()) {
-      return;
-    }
-
-    ensureSignalSeries();
-    signalScoreSeries.setData(toRsiLineData(signalSeries));
-    updateSignalGuideData(signalSeries);
-    scheduleSignalChartLayout();
-  };
-
-  const createSignalChart = (container) => {
-    if (!window.LightweightCharts) {
-      return;
-    }
-
-    signalChart = LightweightCharts.createChart(container, {
-      layout: {
-        background: { color: "#08131e" },
-        textColor: "#8ea0b7"
-      },
-      grid: {
-        vertLines: { color: "rgba(148, 163, 184, 0.06)" },
-        horzLines: { color: "rgba(148, 163, 184, 0.06)" }
-      },
-      crosshair: {
-        mode: LightweightCharts.CrosshairMode.Normal
-      },
-      rightPriceScale: {
-        borderColor: "rgba(148, 163, 184, 0.2)",
-        minimumWidth: 72
-      },
-      timeScale: {
-        borderColor: "rgba(148, 163, 184, 0.2)",
-        timeVisible: false
-      },
-      handleScroll: true,
-      handleScale: true
-    });
-
-    ensureSignalSeries();
-
-    new ResizeObserver(() => {
-      signalChart.applyOptions({
-        width: container.clientWidth,
-        height: container.clientHeight
-      });
-    }).observe(container);
-  };
-
-  const drawFallbackSignalChart = (container, signalSeries) => {
-    const width = Math.max(container.clientWidth, 320);
-    const height = Math.max(container.clientHeight, 120);
-    const toPoints = signalSeries.map((point, index) => {
-      const x = (index / Math.max(signalSeries.length - 1, 1)) * width;
-      const y = height - (point.value / 100) * (height - 24) - 12;
-      return `${x},${y}`;
-    }).join(" ");
-
-    container.innerHTML = `
-      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Biểu đồ Pro Signal Score">
-        <line x1="0" y1="${height * 0.2}" x2="${width}" y2="${height * 0.2}" stroke="rgba(61, 214, 140, 0.55)" stroke-dasharray="5 4"></line>
-        <line x1="0" y1="${height * 0.35}" x2="${width}" y2="${height * 0.35}" stroke="rgba(91, 156, 245, 0.55)" stroke-dasharray="5 4"></line>
-        <line x1="0" y1="${height * 0.5}" x2="${width}" y2="${height * 0.5}" stroke="rgba(255, 159, 90, 0.55)" stroke-dasharray="5 4"></line>
-        <text x="6" y="${height * 0.2 - 4}" fill="rgba(61, 214, 140, 0.8)" font-size="11">80 A</text>
-        <text x="6" y="${height * 0.35 - 4}" fill="rgba(91, 156, 245, 0.8)" font-size="11">65 B</text>
-        <text x="6" y="${height * 0.5 - 4}" fill="rgba(255, 159, 90, 0.8)" font-size="11">50 C</text>
-        <polyline points="${toPoints}" fill="none" stroke="#f0b45c" stroke-width="2"></polyline>
-      </svg>
-    `;
-  };
-
   const applyChartMode = () => {
     if (!lineSeries || !candleSeries) {
       return;
@@ -1678,18 +1349,9 @@ const MarketChart = (() => {
     const psychologyTimeline = getProjectedPsychologyTimeline(visibleData);
     let marketSnapshot;
     let rsiSeries;
-    let signalSeries;
 
     if (simPlaying) {
       rsiSeries = getVisibleRsiSeries();
-      const now = Date.now();
-      if (now - simLastSignalRenderAt >= 600) {
-        signalSeries = getVisibleSignalSeries();
-        simLastSignalRenderAt = now;
-      } else {
-        signalSeries = chartSnapshot.signalSeries || [];
-      }
-
       marketSnapshot = {
         ...(chartSnapshot.marketSnapshot || {}),
         simulation: ProSimulation.getStatus(),
@@ -1697,54 +1359,17 @@ const MarketChart = (() => {
       };
     } else {
       simLastOverlayDate = null;
-      simLastSignalRenderAt = 0;
 
       marketSnapshot = PsychologyEngine.buildMarketSnapshot(
         psychologyCache,
         fullData,
         visibleData
       );
-      const basicAdvice = InvestmentAdvisor.buildRecommendation(
-        psychologyCache,
-        fullData,
-        marketSnapshot
-      );
-      const crossAsset = psychologyCache && !AppMode.isSimulation()
-        ? ProAnalysis.buildCrossAssetMatrix(getPsychologyCachesFlat(), marketData, currentAsset)
-        : null;
-      const proAdvice = psychologyCache
-        ? ProAnalysis.buildProRecommendation(psychologyCache, fullData, marketSnapshot, visibleData, crossAsset)
-        : { hasAdvice: false };
-      const modeComparison = AppMode.isSimulation()
-        ? null
-        : ProAnalysis.buildModeComparison(basicAdvice, proAdvice);
       rsiSeries = getVisibleRsiSeries();
-      signalSeries = getVisibleSignalSeries();
-
-      if (AppMode.usesProAnalysis() && psychologyCache) {
-        marketSnapshot = ProAnalysis.enhanceMarketSnapshot(
-          marketSnapshot,
-          psychologyCache,
-          fullData,
-          visibleData,
-          crossAsset,
-          proAdvice
-        );
-        const lastSignal = signalSeries.at(-1);
-        marketSnapshot.proSignalScore = lastSignal?.value ?? null;
-        marketSnapshot.proSignalGrade = lastSignal?.grade ?? null;
-      }
-
-      marketSnapshot.investment = AppMode.isPro()
-        ? proAdvice
-        : AppMode.isBasic() || AppMode.isEma()
-          ? basicAdvice
-          : { hasAdvice: false };
-      marketSnapshot.modeComparison = modeComparison;
+      marketSnapshot.investment = AppMode.isEma()
+        ? InvestmentAdvisor.buildRecommendation(psychologyCache, fullData, marketSnapshot)
+        : { hasAdvice: false };
       marketSnapshot.appMode = AppMode.getMode();
-      marketSnapshot.crossAsset = crossAsset;
-      marketSnapshot.basicInvestment = basicAdvice;
-      marketSnapshot.proInvestment = proAdvice;
       marketSnapshot.simulation = typeof ProSimulation !== "undefined"
         ? ProSimulation.getStatus()
         : { active: false };
@@ -1753,11 +1378,10 @@ const MarketChart = (() => {
     chartSnapshot = {
       visibleData,
       rsiSeries,
-      signalSeries,
       marketSnapshot,
       psychologyTimeline
     };
-    rebuildHoverIndex(visibleData, rsiSeries, psychologyTimeline, signalSeries);
+    rebuildHoverIndex(visibleData, rsiSeries, psychologyTimeline);
     clearChartCrosshairs();
 
     if (chart && visibleData.length) {
@@ -1779,23 +1403,6 @@ const MarketChart = (() => {
       drawFallbackRsiChart(rsiContainer, rsiSeries);
     }
 
-    const signalContainer = document.querySelector("#signal-chart");
-    if (!AppMode.usesProAnalysis()) {
-      clearSignalChart();
-    } else if (signalSeries.length > 0) {
-      syncSignalChartVisibility(true);
-      if (window.LightweightCharts) {
-        updateSignalSeriesData(signalSeries);
-      } else if (signalContainer) {
-        drawFallbackSignalChart(signalContainer, signalSeries);
-      }
-    } else {
-      syncSignalChartVisibility(false);
-      if (signalContainer && !signalChart) {
-        signalContainer.innerHTML = "";
-      }
-    }
-
     const { rsiDateKey, priceDateKey } = getLatestPanelKeys();
     renderCrosshairPanel(rsiDateKey, priceDateKey, false);
 
@@ -1814,6 +1421,7 @@ const MarketChart = (() => {
 
     syncPsychologyStatus();
     syncElliottChip(marketSnapshot);
+    syncEmaChip();
   };
 
   const setAsset = (asset) => {
@@ -1886,14 +1494,18 @@ const MarketChart = (() => {
     render();
   };
 
-  const bindElliottControls = () => {
-    const chip = document.querySelector("#elliott-chip");
-    if (!chip) {
-      return;
-    }
+  const toggleEmaOverlay = () => {
+    emaOverlayVisible = !emaOverlayVisible;
+    render();
+  };
 
-    chip.addEventListener("click", () => {
+  const bindElliottControls = () => {
+    document.querySelector("#elliott-chip")?.addEventListener("click", () => {
       toggleElliottOverlay();
+    });
+
+    document.querySelector("#ema-chip")?.addEventListener("click", () => {
+      toggleEmaOverlay();
     });
   };
 
@@ -1949,6 +1561,7 @@ const MarketChart = (() => {
     toggleRsiLine,
     setRsiLineVisible,
     toggleElliottOverlay,
+    toggleEmaOverlay,
     runPsychologyAnalysis,
     runPriceUpdate,
     getCurrentData: getVisibleData

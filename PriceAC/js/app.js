@@ -14,16 +14,11 @@ const App = (() => {
   };
 
   const modeLabel = (mode) => {
-    if (mode === "pro") {
-      return "Pro";
-    }
-    if (mode === "ema") {
-      return "EMA";
-    }
     if (mode === "simulation") {
       return "Giả lập";
     }
-    return "Basic";
+
+    return "EMA";
   };
 
   const syncModeToggle = () => {
@@ -34,26 +29,8 @@ const App = (() => {
       button.setAttribute("aria-selected", String(isActive));
     });
 
-    document.body.classList.toggle("app-mode-pro", mode === "pro");
-    document.body.classList.toggle("app-mode-basic", mode === "basic");
     document.body.classList.toggle("app-mode-ema", mode === "ema");
     document.body.classList.toggle("app-mode-simulation", mode === "simulation");
-  };
-
-  const syncRsiModeLabels = () => {
-    const usesPro = AppMode.usesProAnalysis();
-    const twoDayToggle = document.querySelector('.rsi-toggle[data-rsi="twoDay"]');
-    if (twoDayToggle) {
-      twoDayToggle.textContent = usesPro ? "1D" : "2D";
-      twoDayToggle.title = usesPro
-        ? "RSI 1 ngày (chuẩn Pro)"
-        : "RSI 2 ngày (Basic)";
-    }
-
-    const rsiNote = document.querySelector("#insight-rsi + small");
-    if (rsiNote) {
-      rsiNote.textContent = usesPro ? "1D · T · Th" : "2D · T · Th";
-    }
   };
 
   const updateInsightStrip = (snapshot) => {
@@ -77,16 +54,10 @@ const App = (() => {
       return;
     }
 
-    const confidenceLabel = snapshot.confidenceLabel || "khớp cấu trúc sóng";
     zoneEl.textContent = snapshot.label || snapshot.zone;
-    zoneNoteEl.textContent = `Giai đoạn hiện tại · ${snapshot.confidence}% ${confidenceLabel}`;
+    zoneNoteEl.textContent = `Giai đoạn hiện tại · ${snapshot.confidence}% khớp cấu trúc`;
 
-    let waveText = snapshot.elliottLabel || "—";
-    if (AppMode.usesProAnalysis() && snapshot.elliottValidated === false) {
-      waveText += " (chưa xác thực)";
-    }
-    waveEl.textContent = waveText;
-
+    waveEl.textContent = snapshot.elliottLabel || "—";
     trendEl.textContent = `${snapshot.trend > 0 ? "+" : ""}${snapshot.trend}%`;
     trendEl.className = snapshot.trend >= 0 ? "is-up" : "is-down";
     rsiEl.textContent = String(snapshot.rsi);
@@ -112,7 +83,6 @@ const App = (() => {
 
       AppMode.setMode(button.dataset.mode);
       syncModeToggle();
-      syncRsiModeLabels();
     });
 
     document.querySelector(".asset-switch").addEventListener("click", (event) => {
@@ -169,30 +139,9 @@ const App = (() => {
     if (!AppMode.isSimulation()) {
       updateInsightStrip(snapshot);
     }
-    syncRsiModeLabels();
-
-    const mode = snapshot?.appMode || AppMode.getMode();
-
-    ProAnalysis.renderProBrief(
-      document.querySelector("#pro-brief"),
-      AppMode.isPro() ? snapshot?.proBrief : null
-    );
-
-    ProAnalysis.renderModeComparison(
-      document.querySelector("#mode-compare"),
-      AppMode.isSimulation() ? null : snapshot?.modeComparison,
-      mode
-    );
 
     const investmentPanel = document.querySelector("#investment-panel");
-    if (AppMode.isPro()) {
-      investmentPanel.hidden = false;
-      ProAnalysis.renderProPanel(
-        investmentPanel,
-        snapshot?.investment,
-        snapshot?.crossAsset
-      );
-    } else if (AppMode.isBasic() || AppMode.isEma()) {
+    if (AppMode.isEma()) {
       investmentPanel.hidden = false;
       InvestmentAdvisor.renderPanel(investmentPanel, snapshot?.investment);
     } else if (investmentPanel) {
@@ -203,7 +152,6 @@ const App = (() => {
 
   const init = async () => {
     syncModeToggle();
-    syncRsiModeLabels();
     bindMarketControls();
     await MarketChart.init(updateMarketUI);
   };

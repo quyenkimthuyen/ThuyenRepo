@@ -1,13 +1,18 @@
-/* App mode: basic, pro (validated analysis), simulation (Pro replay). */
+/* App mode: EMA psychology map and historical simulation replay. */
 var AppMode = (() => {
   const STORAGE_KEY = "priceac.app.mode";
-  const MODES = ["basic", "ema", "pro", "simulation"];
-  let mode = "basic";
+  const MODES = ["ema", "simulation"];
+  let mode = "ema";
   const listeners = new Set();
 
   const load = () => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved === "basic" || saved === "pro") {
+        mode = "ema";
+        return;
+      }
+
       if (MODES.includes(saved)) {
         mode = saved;
       }
@@ -17,12 +22,9 @@ var AppMode = (() => {
   };
 
   const getMode = () => mode;
-  const isPro = () => mode === "pro";
-  const isBasic = () => mode === "basic";
   const isEma = () => mode === "ema";
   const isSimulation = () => mode === "simulation";
-  const usesProAnalysis = () => mode === "pro" || mode === "simulation";
-  const getPsychologyModel = () => (mode === "ema" ? "ema" : "elliott");
+  const getPsychologyModel = () => "ema";
 
   const setMode = (nextMode) => {
     if (!MODES.includes(nextMode)) {
@@ -58,11 +60,8 @@ var AppMode = (() => {
 
   return {
     getMode,
-    isPro,
-    isBasic,
     isEma,
     isSimulation,
-    usesProAnalysis,
     getPsychologyModel,
     setMode,
     toggle,

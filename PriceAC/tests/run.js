@@ -104,19 +104,12 @@ const EmaPsychologyEngine = loadEngine("js/ema-mode.js", "EmaPsychologyEngine");
 const MarketDataService = loadEngine("js/market-data.js", "MarketDataService");
 loadEngine("js/investment-advice.js", "InvestmentAdvisor");
 const AppMode = loadEngine("js/app-mode.js", "AppMode");
-const ProAnalysis = loadEngine("js/pro-analysis.js", "ProAnalysis");
 const ProSimulation = loadEngine("js/pro-simulation.js", "ProSimulation");
 
-const enrichBitcoinCache = (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped);
-
-const buildUnifiedBitcoinCache = (fullSeries, asOfDate = null) => PsychologyEngine.buildUnifiedPsychologyCache(
+const buildSimWalkForwardCache = (fullSeries, cursorDate) => PsychologyEngine.buildUnifiedPsychologyCache(
   fullSeries,
-  asOfDate
-    ? { asOfDate, enrichCache: enrichBitcoinCache }
-    : { enrichCache: enrichBitcoinCache }
+  { asOfDate: cursorDate, model: "ema" }
 );
-
-const buildSimWalkForwardCache = (fullSeries, cursorDate) => buildUnifiedBitcoinCache(fullSeries, cursorDate);
 
 test("filterSeriesByDayRange respects calendar days", () => {
   const daily = [
@@ -267,24 +260,18 @@ test("reference asset is bitcoin for psychology tuning", () => {
   assert.equal(PsychologyEngine.REFERENCE_ASSET, "bitcoin");
 });
 
-test("basic pro and simulation use the same unified psychology pipeline on bitcoin", () => {
+test("ema and simulation use the same unified psychology pipeline on bitcoin", () => {
   const bitcoin = loadBitcoin();
   const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
   const date = daily[600].date;
 
-  const basic = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { asOfDate: date });
-  const pro = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
-    asOfDate: date,
-    enrichCache: enrichBitcoinCache
-  });
+  const ema = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { asOfDate: date, model: "ema" });
   const simulation = buildSimWalkForwardCache(bitcoin, date);
 
-  const basicZone = PsychologyEngine.getPsychologyZoneAtDate(basic, date);
-  const proZone = PsychologyEngine.getPsychologyZoneAtDate(pro, date);
+  const emaZone = PsychologyEngine.getPsychologyZoneAtDate(ema, date);
   const simZone = PsychologyEngine.getPsychologyZoneAtDate(simulation, date);
 
-  assert.equal(proZone, basicZone, "pro enrich must not change zone labels");
-  assert.equal(simZone, basicZone, "simulation must use the same zone algorithm as basic/pro");
+  assert.equal(simZone, emaZone, "simulation must use the same EMA zone algorithm");
 });
 
 test("psychology cache covers 10Y and projects to visible range", () => {
@@ -455,25 +442,17 @@ test("investment advice ranks zones from 10Y history", () => {
   }
 });
 
-test("AppMode persists basic, ema, pro, and simulation in localStorage", () => {
+test("AppMode persists ema and simulation in localStorage", () => {
   sharedCtx.localStorage.removeItem("priceac.app.mode");
   AppMode.setMode("ema");
   assert.equal(AppMode.getMode(), "ema");
   assert.equal(AppMode.isEma(), true);
   assert.equal(AppMode.getPsychologyModel(), "ema");
-  assert.equal(AppMode.usesProAnalysis(), false);
-  AppMode.setMode("pro");
-  assert.equal(AppMode.getMode(), "pro");
-  assert.equal(AppMode.isPro(), true);
-  assert.equal(AppMode.usesProAnalysis(), true);
   AppMode.setMode("simulation");
   assert.equal(AppMode.isSimulation(), true);
-  assert.equal(AppMode.usesProAnalysis(), true);
-  assert.equal(AppMode.isPro(), false);
-  AppMode.setMode("basic");
-  assert.equal(AppMode.isBasic(), true);
-  assert.equal(AppMode.usesProAnalysis(), false);
-  assert.equal(AppMode.getPsychologyModel(), "elliott");
+  assert.equal(AppMode.getPsychologyModel(), "ema");
+  AppMode.setMode("ema");
+  assert.equal(AppMode.isEma(), true);
 });
 
 test("ema mode builds separate cache and enforces EMA/trend zone rules on bitcoin", () => {
@@ -524,125 +503,6 @@ test("ema psychology cache saves and loads with separate storage key", () => {
   PsychologyEngine.clearPsychologyCache("bitcoin", "ema");
 });
 
-test("elliott validation annotates regions", () => {
-  const bitcoin = loadBitcoin();
-  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
-  const enriched = ProAnalysis.enrichPsychologyCache(cache, bitcoin);
-
-  assert.ok(enriched.regions.length >= 2);
-  assert.ok("elliottValidated" in enriched.regions[0]);
-  assert.ok(enriched.summary.validationNote);
-  assert.ok(!enriched.regions[0].elliottLabel.includes("Giai đoạn"));
-});
-
-test("pro walk-forward ranking builds out-of-sample stats", () => {
-  const bitcoin = loadBitcoin();
-  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
-  const walkForward = ProAnalysis.buildWalkForwardRanking(cache, bitcoin);
-
-  assert.ok(walkForward.trainRegionCount >= 2);
-  assert.ok(walkForward.testRegionCount >= 0);
-  if (walkForward.testRanking) {
-    assert.ok(walkForward.testRanking.safest?.zone);
-  }
-});
-
-test("pro recommendation includes risk plan and mode", () => {
-  const bitcoin = loadBitcoin();
-  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
-  const visible = RangeUtils.buildVisibleSeries(bitcoin, "3M", "1D", PsychologyEngine.aggregateSeries);
-  const snapshot = PsychologyEngine.buildMarketSnapshot(cache, bitcoin, visible);
-  const advice = ProAnalysis.buildProRecommendation(cache, bitcoin, snapshot, visible);
-
-  assert.ok(advice.hasAdvice);
-  assert.equal(advice.mode, "pro");
-  assert.ok(advice.riskPlan?.positionLabel);
-  assert.ok(Number.isFinite(advice.riskPlan.invalidationPrice));
-});
-
-test("mode comparison detects basic vs pro advice", () => {
-  const bitcoin = loadBitcoin();
-  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
-  const visible = RangeUtils.buildVisibleSeries(bitcoin, "1Y", "1D", PsychologyEngine.aggregateSeries);
-  const snapshot = PsychologyEngine.buildMarketSnapshot(cache, bitcoin, visible);
-  const basic = sharedCtx.InvestmentAdvisor.buildRecommendation(cache, bitcoin, snapshot);
-  const pro = ProAnalysis.buildProRecommendation(cache, bitcoin, snapshot, visible);
-  const comparison = ProAnalysis.buildModeComparison(basic, pro);
-
-  assert.ok(comparison);
-  assert.ok(comparison.basicAction);
-  assert.ok(comparison.proAction);
-});
-
-test("pro elliott overlay uses enriched cache for validated markers", () => {
-  const bitcoin = loadBitcoin();
-  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
-  const visible = RangeUtils.buildVisibleSeries(bitcoin, "5Y", "1D", PsychologyEngine.aggregateSeries);
-  const enriched = ProAnalysis.enrichPsychologyCache(cache, bitcoin);
-  const rawValidated = sharedCtx.ElliottEngine.buildVisibleWaveOverlay(cache, visible, {
-    validatedOnly: true
-  });
-  const enrichedValidated = sharedCtx.ElliottEngine.buildVisibleWaveOverlay(enriched, visible, {
-    validatedOnly: true
-  });
-
-  assert.equal(rawValidated?.markers?.length ?? 0, 0);
-  assert.ok((enrichedValidated?.markers?.length ?? 0) >= 1);
-});
-
-test("pro signal score and macro context build from 10Y data", () => {
-  const bitcoin = loadBitcoin();
-  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
-  const visible = RangeUtils.buildVisibleSeries(bitcoin, "3M", "1D", PsychologyEngine.aggregateSeries);
-  const snapshot = PsychologyEngine.buildMarketSnapshot(cache, bitcoin, visible);
-  const advice = ProAnalysis.buildProRecommendation(cache, bitcoin, snapshot, visible);
-
-  assert.ok(advice.signal?.score >= 0 && advice.signal.score <= 100);
-  assert.ok(["A", "B", "C", "D"].includes(advice.signal.grade));
-  assert.equal(advice.signal.factors.length, 6);
-  assert.ok(advice.macro?.summary);
-  assert.ok(advice.walkForwardDetail?.trainRegionCount >= 1);
-});
-
-test("pro brief includes scenarios and analogs", () => {
-  const bitcoin = loadBitcoin();
-  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
-  const visible = RangeUtils.buildVisibleSeries(bitcoin, "1Y", "1D", PsychologyEngine.aggregateSeries);
-  const brief = ProAnalysis.buildProBrief(
-    cache,
-    bitcoin,
-    PsychologyEngine.buildMarketSnapshot(cache, bitcoin, visible),
-    visible,
-    null,
-    "accumulate"
-  );
-
-  assert.ok(brief.signal);
-  assert.ok(brief.scenarios?.bullTarget);
-  assert.ok("items" in brief.analogs);
-});
-
-test("pro signal score series aligns to visible chart", () => {
-  const bitcoin = loadBitcoin();
-  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
-  const visible = RangeUtils.buildVisibleSeries(bitcoin, "3M", "1D", PsychologyEngine.aggregateSeries);
-  const series = ProAnalysis.buildSignalScoreSeries(
-    cache,
-    bitcoin,
-    visible,
-    { bitcoin: cache },
-    { bitcoin },
-    "bitcoin"
-  );
-
-  assert.equal(series.length, visible.length);
-  series.forEach((point, index) => {
-    assert.equal(point.date, visible[index].date);
-    assert.ok(point.value >= 0 && point.value <= 100);
-    assert.ok(["A", "B", "C", "D"].includes(point.grade));
-  });
-});
-
 test("simulation mode builds timeline and cutoff date", () => {
   const bitcoin = loadBitcoin();
   const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
@@ -658,7 +518,7 @@ test("simulation mode builds timeline and cutoff date", () => {
       hasCache: false
     }),
     refreshPsychology: (cursorDate) => buildSimWalkForwardCache(bitcoin, cursorDate),
-    getBaselineCache: () => buildUnifiedBitcoinCache(bitcoin),
+    getBaselineCache: () => PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" }),
     onFrame: () => {}
   });
 
@@ -678,7 +538,7 @@ test("simulation mode builds timeline and cutoff date", () => {
 
 test("psychology compare uses zone at date for walk-forward vs 10Y", () => {
   const bitcoin = loadBitcoin();
-  const baseline = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const baseline = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
   const walkForward = PsychologyEngine.buildPsychologyCache(bitcoin.slice(0, 400));
   const date = PsychologyEngine.aggregateSeries(bitcoin, "1D")[399].date;
   const comparison = PsychologyEngine.comparePsychologyAtDate(walkForward, baseline, date);
@@ -691,7 +551,7 @@ test("psychology compare uses zone at date for walk-forward vs 10Y", () => {
 test("simulation accuracy tracks weekly zone match against 10Y baseline", () => {
   const bitcoin = loadBitcoin();
   const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
-  const baseline = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const baseline = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
 
   AppMode.setMode("simulation");
   ProSimulation.init({
@@ -741,17 +601,13 @@ test("simulation psychology refreshes on new week only", () => {
   assert.equal(afterSeek, afterArm, "scrub should use precomputed weekly cache only");
 });
 
-test("daily blend adjusts unvalidated low-confidence zones", () => {
+test("daily blend can adjust zones on walk-forward cache", () => {
   const bitcoin = loadBitcoin();
   const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
   const asOfDate = daily[620].date;
-  const clipped = bitcoin.filter((point) => point.date <= asOfDate);
-  let cache = PsychologyEngine.buildPsychologyCache(clipped);
-  cache = ProAnalysis.enrichPsychologyCache(cache, clipped) || cache;
 
   const blended = PsychologyEngine.buildWalkForwardPsychologyCache(bitcoin, asOfDate, {
-    enrichCache: (entry, series) => ProAnalysis.enrichPsychologyCache(entry, series),
-    applyConfidenceGate: false,
+    model: "ema",
     applyDailyBlend: true
   });
 
@@ -769,7 +625,7 @@ test("weekly walk-forward accuracy report vs 10Y baseline", () => {
     endDate: end,
     minHistoryDays: 365,
     relaxedDistance: 2,
-    enrichCache: enrichBitcoinCache
+    model: "ema"
   });
 
   assert.ok(report, "report should build on bitcoin");
@@ -799,7 +655,7 @@ test("weekly walk-forward accuracy report vs 10Y baseline", () => {
     ProSimulation.init({
       getContext: () => ({ fullData: bitcoin, interval: "1D", hasCache: false }),
       refreshPsychology: (cursorDate) => buildSimWalkForwardCache(bitcoin, cursorDate),
-      getBaselineCache: () => buildUnifiedBitcoinCache(bitcoin),
+      getBaselineCache: () => PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" }),
       onFrame: () => {}
     });
     ProSimulation.arm(start, end);
@@ -866,19 +722,6 @@ test("week-end checkpoints are not earlier than week-start checkpoints", () => {
     const startPoint = weekStart.find((item) => item.weekKey === endPoint.weekKey);
     assert.ok(startPoint);
     assert.ok(endPoint.asOfDate >= startPoint.asOfDate);
-  });
-});
-
-test("pro daily rsi uses one decimal place", () => {
-  const bitcoin = loadBitcoin();
-  const visible = RangeUtils.buildVisibleSeries(bitcoin, "1M", "1D", PsychologyEngine.aggregateSeries);
-  const aligned = ProAnalysis.alignRsiForPro(bitcoin, visible);
-
-  aligned.twoDay.forEach((point) => {
-    const decimals = String(point.value).includes(".")
-      ? String(point.value).split(".")[1].length
-      : 0;
-    assert.ok(decimals <= 1, `RSI 1D has too many decimals: ${point.value}`);
   });
 });
 

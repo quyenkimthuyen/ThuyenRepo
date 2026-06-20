@@ -1109,7 +1109,9 @@ var PsychologyEngine = (() => {
       return null;
     }
 
-    const baseline = buildPsychologyCache(fullSeries);
+    const baseline = options.model === "ema"
+      ? buildUnifiedPsychologyCache(fullSeries, { model: "ema" })
+      : buildPsychologyCache(fullSeries);
     if (!baseline) {
       return null;
     }
@@ -1136,10 +1138,12 @@ var PsychologyEngine = (() => {
 
     const legacyEntries = buildComparisonEntries(fullSeries, baseline, legacyCheckpoints, {
       mode: "legacy",
+      model: options.model,
       relaxedDistance
     });
     const enhancedEntries = buildComparisonEntries(fullSeries, baseline, checkpoints, {
       mode: "enhanced",
+      model: options.model,
       relaxedDistance,
       enrichCache: options.enrichCache,
       applyConfidenceGate: options.applyConfidenceGate,
@@ -1423,8 +1427,6 @@ var PsychologyEngine = (() => {
       psychologyLabel = null,
       psychologyConfidence = null,
       elliottLabel = null,
-      proSignalScore = null,
-      proSignalGrade = null,
       rsiByInterval = {},
       isHover = false
     } = snapshot;
@@ -1467,13 +1469,6 @@ var PsychologyEngine = (() => {
           </div>
           ` : ""}
         </div>
-        ${Number.isFinite(proSignalScore) ? `
-        <div class="rsi-inline signal-inline" aria-label="Pro Signal Score">
-          <span class="rsi-pill signal-score ${proSignalGrade === "A" ? "is-strong" : proSignalGrade === "D" ? "is-weak" : ""}">
-            <em>Score</em> ${proSignalScore} · ${proSignalGrade || "—"}
-          </span>
-        </div>
-        ` : ""}
         <div class="rsi-inline" aria-label="RSI đa khung">
           ${items.map((item) => `
             <span class="rsi-pill ${rsiTone(item.value ?? 50)} ${item.key}">
