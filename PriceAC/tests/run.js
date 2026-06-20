@@ -295,5 +295,20 @@ test("psychology cache round-trips through localStorage", () => {
   assert.equal(loaded.regionCount, cache.regionCount);
 });
 
+test("elliott overlay builds zigzag for visible range", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const visible = RangeUtils.buildVisibleSeries(bitcoin, "1Y", "1D", PsychologyEngine.aggregateSeries);
+  const overlay = sharedCtx.ElliottEngine.buildVisibleWaveOverlay(cache, visible);
+
+  assert.ok(overlay, "overlay should build");
+  assert.ok(overlay.points.length >= 2);
+  assert.ok(overlay.markers.length >= 1);
+  overlay.markers.forEach((marker) => {
+    assert.ok(marker.text);
+    assert.ok(marker.time >= visible[0].date && marker.time <= visible[visible.length - 1].date);
+  });
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
