@@ -24,23 +24,23 @@ const PsychologyEngine = (() => {
   const MIN_HISTORY = 60;
 
   const zoneColors = {
-    Hope: "#3b82f6",
-    Optimism: "#10b981",
-    Belief: "#059669",
-    Thrill: "#84cc16",
-    Euphoria: "#f59e0b",
-    Complacency: "#eab308",
-    Anxiety: "#f97316",
-    Denial: "#d946ef",
-    Panic: "#ef4444",
-    Capitulation: "#b91c1c",
-    Anger: "#7c3aed",
-    Depression: "#334155",
-    Disbelief: "#64748b",
-    Observing: "#475569"
+    Hope: "#5B9FFF",
+    Optimism: "#3DDBA8",
+    Belief: "#34D399",
+    Thrill: "#B8E986",
+    Euphoria: "#FFC857",
+    Complacency: "#FFE066",
+    Anxiety: "#FF9F5A",
+    Denial: "#E879F9",
+    Panic: "#FF6B6B",
+    Capitulation: "#E53E3E",
+    Anger: "#B794F6",
+    Depression: "#718096",
+    Disbelief: "#A0AEC0",
+    Observing: "#4A5568"
   };
 
-  const zoneBackgroundAlpha = 0.18;
+  const zoneBackgroundAlpha = 0.32;
 
   const zoneLabelsVi = {
     Hope: "Hy vọng",
@@ -924,43 +924,45 @@ const PsychologyEngine = (() => {
     } = snapshot;
 
     const items = [
-      { key: "daily", label: "Ngày", value: rsiByInterval.daily },
-      { key: "weekly", label: "Tuần", value: rsiByInterval.weekly },
-      { key: "monthly", label: "Tháng", value: rsiByInterval.monthly }
+      { key: "daily", label: "N", value: rsiByInterval.daily },
+      { key: "weekly", label: "T", value: rsiByInterval.weekly },
+      { key: "monthly", label: "Th", value: rsiByInterval.monthly }
     ];
 
     container.innerHTML = `
-      <article class="crosshair-meta ${isHover ? "active" : ""}">
-        <div>
-          <span>Thời điểm</span>
-          <strong id="crosshair-date">${date}</strong>
+      <div class="hover-bar ${isHover ? "is-active" : ""}">
+        <div class="hover-fields">
+          <div class="hover-field">
+            <span>Thời điểm</span>
+            <strong id="crosshair-date">${date}</strong>
+          </div>
+          <div class="hover-field">
+            <span>Giá</span>
+            <strong id="crosshair-price">${priceText}</strong>
+          </div>
+          ${psychologyZone ? `
+          <div class="hover-field hover-field--zone">
+            <span>Tâm lý</span>
+            <strong class="psych-zone-value" style="color: ${zoneColors[psychologyZone] || zoneColors.Observing}">
+              ${psychologyLabel || psychologyZone}
+            </strong>
+          </div>
+          ` : ""}
+          ${elliottLabel ? `
+          <div class="hover-field">
+            <span>Sóng</span>
+            <strong class="elliott-value">${elliottLabel}</strong>
+          </div>
+          ` : ""}
         </div>
-        <div>
-          <span>Giá</span>
-          <strong id="crosshair-price">${priceText}</strong>
+        <div class="rsi-inline" aria-label="RSI đa khung">
+          ${items.map((item) => `
+            <span class="rsi-pill ${rsiTone(item.value ?? 50)} ${item.key}">
+              <em>${item.label}</em> ${item.value ?? "—"}
+            </span>
+          `).join("")}
         </div>
-        ${psychologyZone ? `
-        <div>
-          <span>Tâm lý thị trường</span>
-          <strong class="psych-zone-value" style="color: ${zoneColors[psychologyZone] || zoneColors.Observing}">
-            ${psychologyLabel || psychologyZone}${psychologyConfidence ? ` · khớp ${psychologyConfidence}%` : ""}
-          </strong>
-        </div>
-        ` : ""}
-        ${elliottLabel ? `
-        <div>
-          <span>Sóng Elliott</span>
-          <strong class="elliott-value">${elliottLabel}</strong>
-        </div>
-        ` : ""}
-      </article>
-      ${items.map((item) => `
-        <article class="rsi-card ${rsiTone(item.value ?? 50)}">
-          <span>RSI ${item.label}</span>
-          <strong>${item.value ?? "—"}</strong>
-          <small>Chu kỳ ${RSI_PERIOD}</small>
-        </article>
-      `).join("")}
+      </div>
     `;
   };
 

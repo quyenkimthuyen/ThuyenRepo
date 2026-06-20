@@ -1,7 +1,7 @@
 /* App controller: market chart and insight strip only. */
 const App = (() => {
   const activateChip = (button) => {
-    button.parentElement.querySelectorAll(".chip").forEach((chip) => chip.classList.remove("active"));
+    button.parentElement.querySelectorAll(".seg-btn").forEach((chip) => chip.classList.remove("active"));
     button.classList.add("active");
   };
 
@@ -61,7 +61,7 @@ const App = (() => {
     });
 
     document.querySelector(".interval-tabs").addEventListener("click", (event) => {
-      const button = event.target.closest(".chip");
+      const button = event.target.closest(".seg-btn");
       if (!button) {
         return;
       }
@@ -71,7 +71,7 @@ const App = (() => {
     });
 
     document.querySelector(".chart-mode-tabs").addEventListener("click", (event) => {
-      const button = event.target.closest(".chip");
+      const button = event.target.closest(".seg-btn");
       if (!button) {
         return;
       }
@@ -81,7 +81,7 @@ const App = (() => {
     });
 
     document.querySelector(".range-tabs").addEventListener("click", (event) => {
-      const button = event.target.closest(".chip");
+      const button = event.target.closest(".seg-btn");
       if (!button) {
         return;
       }

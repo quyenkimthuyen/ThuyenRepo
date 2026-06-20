@@ -51,69 +51,52 @@
       <article class="insight-card">
         <span class="insight-label">RSI</span>
         <strong id="insight-rsi">—</strong>
-        <small>Ngày · Tuần · Tháng</small>
+        <small>N · T · Th</small>
       </article>
     </section>
 
-    <section class="control-deck" aria-label="Điều khiển biểu đồ">
-      <div class="control-group">
-        <span class="control-label">Khung nến</span>
-        <div class="interval-tabs chip-row" role="tablist" aria-label="Khung nến">
-          <button type="button" class="chip active" data-interval="1D">Ngày</button>
-          <button type="button" class="chip" data-interval="1W">Tuần</button>
-          <button type="button" class="chip" data-interval="1M">Tháng</button>
+    <section class="chart-toolbar" aria-label="Điều khiển biểu đồ">
+      <div class="toolbar-group">
+        <span class="toolbar-label">Khung nến</span>
+        <div class="segmented interval-tabs" role="tablist" aria-label="Khung nến">
+          <button type="button" class="seg-btn active" data-interval="1D">Ngày</button>
+          <button type="button" class="seg-btn" data-interval="1W">Tuần</button>
+          <button type="button" class="seg-btn" data-interval="1M">Tháng</button>
         </div>
       </div>
-      <div class="control-group">
-        <span class="control-label">Loại biểu đồ</span>
-        <div class="chart-mode-tabs chip-row" role="tablist" aria-label="Loại biểu đồ">
-          <button type="button" class="chip active" data-mode="line">Đường</button>
-          <button type="button" class="chip" data-mode="candle">Nến</button>
+
+      <div class="toolbar-group">
+        <span class="toolbar-label">Biểu đồ</span>
+        <div class="segmented chart-mode-tabs" role="tablist" aria-label="Loại biểu đồ">
+          <button type="button" class="seg-btn active" data-mode="line">Đường</button>
+          <button type="button" class="seg-btn" data-mode="candle">Nến</button>
         </div>
       </div>
-      <div class="control-group control-group--wide">
-        <span class="control-label">Phạm vi xem</span>
-        <div class="timeframe-tabs range-tabs chip-row" role="tablist" aria-label="Phạm vi xem">
-          <button type="button" class="chip" data-range="1D">1D</button>
-          <button type="button" class="chip" data-range="1W">1W</button>
-          <button type="button" class="chip active" data-range="1M">1M</button>
-          <button type="button" class="chip" data-range="3M">3M</button>
-          <button type="button" class="chip" data-range="1Y">1Y</button>
-          <button type="button" class="chip" data-range="5Y">5Y</button>
-          <button type="button" class="chip" data-range="10Y">10Y</button>
+
+      <div class="toolbar-group toolbar-group--range">
+        <span class="toolbar-label">Phạm vi</span>
+        <div class="segmented segmented--scroll range-tabs" role="tablist" aria-label="Phạm vi xem">
+          <button type="button" class="seg-btn" data-range="1D">1D</button>
+          <button type="button" class="seg-btn" data-range="1W">1W</button>
+          <button type="button" class="seg-btn active" data-range="1M">1M</button>
+          <button type="button" class="seg-btn" data-range="3M">3M</button>
+          <button type="button" class="seg-btn" data-range="1Y">1Y</button>
+          <button type="button" class="seg-btn" data-range="5Y">5Y</button>
+          <button type="button" class="seg-btn" data-range="10Y">10Y</button>
         </div>
       </div>
     </section>
 
-    <section class="chart-workspace" aria-label="Biểu đồ giá và RSI">
-      <div class="rsi-panel" id="rsi-panel" aria-label="Thông số theo thời điểm"></div>
+    <section class="chart-workspace" aria-label="Biểu đồ giá">
+      <div class="hover-panel" id="rsi-panel" aria-label="Chi tiết theo thời điểm"></div>
 
-      <div class="chart-block chart-block--price">
-        <div class="block-head">
-          <h2>Giá</h2>
-          <p class="block-hint">Nền màu tham chiếu từ bản đồ 10 năm đã lưu</p>
-        </div>
+      <div class="chart-block">
         <div id="chart" class="chart-card" aria-label="Biểu đồ giá"></div>
-      </div>
-
-      <div class="chart-block chart-block--rsi">
-        <div class="block-head">
-          <div>
-            <h2>RSI</h2>
-            <p class="block-hint">Ngày · Tuần · Tháng</p>
-          </div>
-          <div class="rsi-legend" aria-label="Chú thích RSI">
-            <span class="rsi-legend-item daily">Ngày</span>
-            <span class="rsi-legend-item weekly">Tuần</span>
-            <span class="rsi-legend-item monthly">Tháng</span>
-          </div>
-        </div>
-        <div id="rsi-chart" class="rsi-chart-card" aria-label="Biểu đồ RSI"></div>
       </div>
     </section>
 
     <section class="legend-panel" aria-label="Chú thích vùng tâm lý">
-      <span class="psychology-legend-title">Vùng tâm lý (10 năm · nến tuần)</span>
+      <span class="psychology-legend-title">Vùng tâm lý · 10 năm · nến tuần</span>
       <div class="psychology-legend" id="psychology-legend"></div>
     </section>
   </div>
