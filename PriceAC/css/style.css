@@ -264,6 +264,40 @@ button {
   flex-wrap: wrap;
 }
 
+.toolbar-range-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.toolbar-range-row .segmented--scroll {
+  flex: 1;
+  min-width: 0;
+}
+
+.elliott-chip {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid rgba(240, 180, 92, 0.28);
+  border-radius: 6px;
+  background: rgba(240, 180, 92, 0.08);
+  color: #f0b45c;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.elliott-chip.has-wave {
+  max-width: 88px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .toolbar-label {
   flex: 0 0 72px;
   color: var(--muted);
@@ -310,15 +344,6 @@ button {
   background: var(--surface-2);
   color: var(--text);
   box-shadow: inset 0 0 0 1px var(--line-strong);
-}
-
-.elliott-badge {
-  color: #f0b45c;
-  cursor: default;
-}
-
-.elliott-badge:disabled {
-  opacity: 1;
 }
 
 /* Chart */
@@ -605,6 +630,10 @@ button {
     flex: 1;
     min-width: 0;
     border-right: 0;
+  }
+
+  .toolbar-range-row {
+    width: 100%;
   }
 
   .toolbar-label {
