@@ -161,11 +161,16 @@ const MarketChart = (() => {
     return psychologyCaches[currentAsset] || null;
   };
 
-  const buildSimulationPsychologyCache = (cursorDate) => {
-    const raw = marketData[currentAsset] || [];
-    const clipped = raw.filter((point) => point.date <= cursorDate);
-    return PsychologyEngine.buildPsychologyCache(clipped);
-  };
+  const buildSimulationPsychologyCache = (cursorDate) => PsychologyEngine.buildWalkForwardPsychologyCache(
+    marketData[currentAsset] || [],
+    cursorDate,
+    {
+      enrichCache: (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped),
+      applyConfidenceGate: true,
+      applyDailyBlend: true,
+      minConfidence: PsychologyEngine.SIM_MIN_CONFIDENCE
+    }
+  );
 
   const getElliottOverlayCache = () => {
     const cache = getActivePsychologyCache();

@@ -791,6 +791,373 @@ var PsychologyEngine = (() => {
     };
   };
 
+  const zoneCycleDistance = (leftZone, rightZone) => {
+    const leftIndex = cycle.indexOf(leftZone);
+    const rightIndex = cycle.indexOf(rightZone);
+
+    if (leftIndex < 0 || rightIndex < 0) {
+      return null;
+    }
+
+    return Math.abs(leftIndex - rightIndex);
+  };
+
+  const SIM_MIN_CONFIDENCE = 60;
+  const SIM_DAILY_BLEND_MIN_CONFIDENCE = 58;
+  const SIM_HYSTERESIS_WEEKS = 2;
+
+  const cloneCache = (cache, regions, summary) => ({
+    ...cache,
+    regions,
+    summary: summary || cache.summary
+  });
+
+  const applyConfidenceGateToCache = (cache, minConfidence = SIM_MIN_CONFIDENCE) => {
+    if (!cache?.regions?.length) {
+      return cache;
+    }
+
+    const regions = cache.regions.map((region) => {
+      if ((region.confidence ?? 0) < minConfidence) {
+        return {
+          ...region,
+          zone: "Observing",
+          label: zoneLabelsVi.Observing
+        };
+      }
+
+      return region;
+    });
+    const activeRegion = ElliottEngine.findRegionForDate(regions, cache.rangeEnd) || regions.at(-1);
+
+    return cloneCache(cache, regions, {
+      ...cache.summary,
+      zone: activeRegion.zone,
+      label: zoneLabelsVi[activeRegion.zone] || zoneLabelsVi.Observing,
+      confidence: activeRegion.confidence
+    });
+  };
+
+  const overrideZoneAtDate = (cache, date, zone, patch = {}) => {
+    if (!cache?.regions?.length || !date || !zone) {
+      return cache;
+    }
+
+    const regions = cache.regions.map((region) => {
+      if (date < region.startDate || date > region.endDate) {
+        return region;
+      }
+
+      return {
+        ...region,
+        zone,
+        label: zoneLabelsVi[zone] || zoneLabelsVi.Observing,
+        confidence: patch.confidence ?? region.confidence
+      };
+    });
+    const activeRegion = ElliottEngine.findRegionForDate(regions, cache.rangeEnd) || regions.at(-1);
+
+    return cloneCache(cache, regions, {
+      ...cache.summary,
+      zone: activeRegion.zone,
+      label: zoneLabelsVi[activeRegion.zone] || zoneLabelsVi.Observing,
+      confidence: activeRegion.confidence,
+      elliottLabel: activeRegion.elliottLabel,
+      elliottWave: activeRegion.waveId,
+      elliottValidated: activeRegion.elliottValidated,
+      validationNote: activeRegion.validationNote
+    });
+  };
+
+  const blendDailyPsychologyAtDate = (cache, clippedSeries, asOfDate) => {
+    if (!cache?.regions?.length) {
+      return cache;
+    }
+
+    const daily = aggregateSeries(clippedSeries, "1D");
+    const endIndex = daily.findIndex((point) => point.date === asOfDate);
+    if (endIndex < MIN_HISTORY - 1) {
+      return cache;
+    }
+
+    const classification = classifyPsychology(daily, endIndex);
+    const elliottZone = getPsychologyZoneAtDate(cache, asOfDate);
+    const dailyZone = classification.possibleZone;
+    if (!elliottZone || !dailyZone || dailyZone === elliottZone) {
+      return cache;
+    }
+
+    const distance = zoneCycleDistance(elliottZone, dailyZone);
+    const region = ElliottEngine.findRegionForDate(cache.regions, asOfDate);
+    if (region?.elliottValidated === true || region?.elliottLabel) {
+      return cache;
+    }
+
+    const lowElliottConfidence = (region?.confidence ?? 0) < 65;
+
+    if (
+      distance !== null
+      && distance <= 2
+      && (lowElliottConfidence || classification.confidence >= SIM_DAILY_BLEND_MIN_CONFIDENCE)
+    ) {
+      return overrideZoneAtDate(cache, asOfDate, dailyZone, {
+        confidence: Math.round(((region?.confidence ?? 50) + classification.confidence) / 2)
+      });
+    }
+
+    return cache;
+  };
+
+  const buildWalkForwardPsychologyCache = (fullSeries, asOfDate, options = {}) => {
+    const clipped = fullSeries.filter((point) => point.date <= asOfDate);
+    let cache = buildPsychologyCache(clipped);
+    if (!cache) {
+      return null;
+    }
+
+    if (typeof options.enrichCache === "function") {
+      cache = options.enrichCache(cache, clipped) || cache;
+    }
+
+    if (options.applyConfidenceGate !== false) {
+      cache = applyConfidenceGateToCache(cache, options.minConfidence ?? SIM_MIN_CONFIDENCE);
+    }
+
+    if (options.applyDailyBlend !== false) {
+      cache = blendDailyPsychologyAtDate(cache, clipped, asOfDate);
+    }
+
+    return cache;
+  };
+
+  const createSimulationHysteresisState = () => ({
+    stableZone: null,
+    pendingZone: null,
+    pendingWeeks: 0
+  });
+
+  const applySimulationHysteresis = (
+    cache,
+    asOfDate,
+    hysteresisState,
+    weeksRequired = SIM_HYSTERESIS_WEEKS
+  ) => {
+    if (!cache || !asOfDate || !hysteresisState) {
+      return cache;
+    }
+
+    const rawZone = getPsychologyZoneAtDate(cache, asOfDate);
+    if (!rawZone) {
+      return cache;
+    }
+
+    if (!hysteresisState.stableZone) {
+      hysteresisState.stableZone = rawZone;
+      hysteresisState.pendingZone = null;
+      hysteresisState.pendingWeeks = 0;
+      return cache;
+    }
+
+    if (rawZone === hysteresisState.stableZone) {
+      hysteresisState.pendingZone = null;
+      hysteresisState.pendingWeeks = 0;
+      return cache;
+    }
+
+    if (rawZone === hysteresisState.pendingZone) {
+      hysteresisState.pendingWeeks += 1;
+    } else {
+      hysteresisState.pendingZone = rawZone;
+      hysteresisState.pendingWeeks = 1;
+    }
+
+    if (hysteresisState.pendingWeeks >= weeksRequired) {
+      hysteresisState.stableZone = rawZone;
+      hysteresisState.pendingZone = null;
+      hysteresisState.pendingWeeks = 0;
+      return cache;
+    }
+
+    return overrideZoneAtDate(cache, asOfDate, hysteresisState.stableZone);
+  };
+
+  const resolveWalkForwardCache = (fullSeries, asOfDate, pipeline = {}) => {
+    const mode = pipeline.mode || "enhanced";
+    if (mode === "legacy") {
+      return buildPsychologyCache(fullSeries.filter((point) => point.date <= asOfDate));
+    }
+
+    let cache = buildWalkForwardPsychologyCache(fullSeries, asOfDate, pipeline);
+    if (cache && pipeline.hysteresisState && (pipeline.hysteresisWeeks ?? SIM_HYSTERESIS_WEEKS) > 0) {
+      cache = applySimulationHysteresis(
+        cache,
+        asOfDate,
+        pipeline.hysteresisState,
+        pipeline.hysteresisWeeks ?? SIM_HYSTERESIS_WEEKS
+      );
+    }
+
+    return cache;
+  };
+
+  const summarizeComparisonEntries = (entries, relaxedDistance = 2) => {
+    const comparable = entries.filter((entry) => entry.comparable);
+    const matched = comparable.filter((entry) => entry.match);
+    const relaxedMatched = comparable.filter((entry) => entry.relaxedMatch);
+    const mismatchPairs = {};
+
+    comparable
+      .filter((entry) => !entry.match)
+      .forEach((entry) => {
+        const key = `${entry.walkForwardZone}->${entry.baselineZone}`;
+        mismatchPairs[key] = (mismatchPairs[key] || 0) + 1;
+      });
+
+    const toPercent = (count) => (
+      comparable.length ? Math.round((count / comparable.length) * 1000) / 10 : null
+    );
+
+    return {
+      totalWeeks: entries.length,
+      comparableWeeks: comparable.length,
+      matchedWeeks: matched.length,
+      relaxedMatchedWeeks: relaxedMatched.length,
+      accuracyPercent: toPercent(matched.length),
+      relaxedAccuracyPercent: toPercent(relaxedMatched.length),
+      errorPercent: comparable.length
+        ? Math.round(((comparable.length - matched.length) / comparable.length) * 1000) / 10
+        : null,
+      mismatchPairs: Object.entries(mismatchPairs)
+        .sort((left, right) => right[1] - left[1])
+        .map(([pair, count]) => ({ pair, count }))
+    };
+  };
+
+  const buildWeeklyWalkForwardCheckpoints = (dailySeries, startDate, endDate, useWeekEnd = true) => {
+    const byWeek = new Map();
+
+    dailySeries
+      .filter((point) => point.date >= startDate && point.date <= endDate)
+      .forEach((point) => {
+        const weekKey = getWeekStart(point.date);
+        if (useWeekEnd) {
+          byWeek.set(weekKey, point.date);
+          return;
+        }
+
+        if (!byWeek.has(weekKey)) {
+          byWeek.set(weekKey, point.date);
+        }
+      });
+
+    return [...byWeek.entries()].map(([weekKey, asOfDate]) => ({ weekKey, asOfDate }));
+  };
+
+  const buildComparisonEntries = (fullSeries, baseline, checkpoints, pipeline = {}) => {
+    const relaxedDistance = pipeline.relaxedDistance ?? 2;
+    const hysteresisState = pipeline.applyHysteresis
+      ? createSimulationHysteresisState()
+      : null;
+    const activePipeline = {
+      ...pipeline,
+      hysteresisState
+    };
+
+    return checkpoints.map(({ weekKey, asOfDate }) => {
+      const walkForwardCache = resolveWalkForwardCache(fullSeries, asOfDate, activePipeline);
+      const comparison = comparePsychologyAtDate(walkForwardCache, baseline, asOfDate);
+      const distance = comparison.comparable
+        ? zoneCycleDistance(comparison.walkForwardZone, comparison.baselineZone)
+        : null;
+
+      return {
+        weekKey,
+        asOfDate,
+        ...comparison,
+        cycleDistance: distance,
+        relaxedMatch: comparison.comparable && distance !== null && distance <= relaxedDistance
+      };
+    });
+  };
+
+  const buildWalkForwardAccuracyReport = (fullSeries, options = {}) => {
+    const daily = aggregateSeries(fullSeries, "1D");
+    if (daily.length < 28) {
+      return null;
+    }
+
+    const baseline = buildPsychologyCache(fullSeries);
+    if (!baseline) {
+      return null;
+    }
+
+    const minHistoryDays = options.minHistoryDays ?? 365;
+    const relaxedDistance = options.relaxedDistance ?? 2;
+    const startIndex = Math.min(Math.max(minHistoryDays, 0), daily.length - 1);
+    const startDate = options.startDate ?? daily[startIndex]?.date;
+    const endDate = options.endDate ?? daily.at(-1).date;
+
+    if (!startDate || !endDate || startDate > endDate) {
+      return null;
+    }
+
+    const checkpoints = buildWeeklyWalkForwardCheckpoints(
+      daily,
+      startDate,
+      endDate,
+      options.useWeekEnd !== false
+    );
+    const legacyCheckpoints = options.includeLegacyWeekStart
+      ? buildWeeklyWalkForwardCheckpoints(daily, startDate, endDate, false)
+      : checkpoints;
+
+    const legacyEntries = buildComparisonEntries(fullSeries, baseline, legacyCheckpoints, {
+      mode: "legacy",
+      relaxedDistance
+    });
+    const enhancedEntries = buildComparisonEntries(fullSeries, baseline, checkpoints, {
+      mode: "enhanced",
+      relaxedDistance,
+      enrichCache: options.enrichCache,
+      applyConfidenceGate: options.applyConfidenceGate,
+      applyDailyBlend: options.applyDailyBlend,
+      hysteresisWeeks: options.hysteresisWeeks ?? SIM_HYSTERESIS_WEEKS,
+      minConfidence: options.minConfidence ?? SIM_MIN_CONFIDENCE
+    });
+
+    const legacy = summarizeComparisonEntries(legacyEntries, relaxedDistance);
+    const enhanced = summarizeComparisonEntries(enhancedEntries, relaxedDistance);
+
+    return {
+      startDate,
+      endDate,
+      minHistoryDays,
+      relaxedDistance,
+      legacy,
+      enhanced,
+      improvement: {
+        accuracyDelta: enhanced.accuracyPercent !== null && legacy.accuracyPercent !== null
+          ? Math.round((enhanced.accuracyPercent - legacy.accuracyPercent) * 10) / 10
+          : null,
+        relaxedAccuracyDelta: enhanced.relaxedAccuracyPercent !== null && legacy.relaxedAccuracyPercent !== null
+          ? Math.round((enhanced.relaxedAccuracyPercent - legacy.relaxedAccuracyPercent) * 10) / 10
+          : null,
+        errorDelta: legacy.errorPercent !== null && enhanced.errorPercent !== null
+          ? Math.round((legacy.errorPercent - enhanced.errorPercent) * 10) / 10
+          : null
+      },
+      totalWeeks: enhanced.totalWeeks,
+      comparableWeeks: enhanced.comparableWeeks,
+      matchedWeeks: enhanced.matchedWeeks,
+      relaxedMatchedWeeks: enhanced.relaxedMatchedWeeks,
+      accuracyPercent: enhanced.accuracyPercent,
+      relaxedAccuracyPercent: enhanced.relaxedAccuracyPercent,
+      errorPercent: enhanced.errorPercent,
+      mismatchPairs: enhanced.mismatchPairs,
+      entries: enhancedEntries
+    };
+  };
+
   const buildPsychologyCache = (fullSeries) => {
     const dailyTenYear = getTenYearDailySlice(fullSeries);
 
@@ -1137,6 +1504,9 @@ var PsychologyEngine = (() => {
   };
 
   return {
+    SIM_MIN_CONFIDENCE,
+    SIM_DAILY_BLEND_MIN_CONFIDENCE,
+    SIM_HYSTERESIS_WEEKS,
     cycle,
     zoneColors,
     zoneBackgroundAlpha,
@@ -1151,6 +1521,17 @@ var PsychologyEngine = (() => {
     buildPsychologyCacheAsync,
     getPsychologyZoneAtDate,
     comparePsychologyAtDate,
+    zoneCycleDistance,
+    buildWeeklyWalkForwardCheckpoints,
+    buildWalkForwardPsychologyCache,
+    buildWalkForwardAccuracyReport,
+    applyConfidenceGateToCache,
+    blendDailyPsychologyAtDate,
+    createSimulationHysteresisState,
+    applySimulationHysteresis,
+    resolveWalkForwardCache,
+    SIM_MIN_CONFIDENCE,
+    SIM_HYSTERESIS_WEEKS,
     projectPsychologyToSeries,
     buildMarketMetrics,
     buildMarketSnapshot,

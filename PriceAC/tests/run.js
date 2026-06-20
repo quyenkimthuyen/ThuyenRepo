@@ -106,6 +106,16 @@ const AppMode = loadEngine("js/app-mode.js", "AppMode");
 const ProAnalysis = loadEngine("js/pro-analysis.js", "ProAnalysis");
 const ProSimulation = loadEngine("js/pro-simulation.js", "ProSimulation");
 
+const buildSimWalkForwardCache = (fullSeries, cursorDate) => PsychologyEngine.buildWalkForwardPsychologyCache(
+  fullSeries,
+  cursorDate,
+  {
+    enrichCache: (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped),
+    applyConfidenceGate: true,
+    applyDailyBlend: true
+  }
+);
+
 test("filterSeriesByDayRange respects calendar days", () => {
   const daily = [
     { date: "2024-01-01" },
@@ -504,9 +514,7 @@ test("simulation mode builds timeline and cutoff date", () => {
       interval: "1D",
       hasCache: false
     }),
-    refreshPsychology: (cursorDate) => PsychologyEngine.buildPsychologyCache(
-      bitcoin.filter((point) => point.date <= cursorDate)
-    ),
+    refreshPsychology: (cursorDate) => buildSimWalkForwardCache(bitcoin, cursorDate),
     getBaselineCache: () => PsychologyEngine.buildPsychologyCache(bitcoin),
     onFrame: () => {}
   });
@@ -545,9 +553,7 @@ test("simulation accuracy tracks weekly zone match against 10Y baseline", () => 
   AppMode.setMode("simulation");
   ProSimulation.init({
     getContext: () => ({ fullData: bitcoin, interval: "1D", hasCache: false }),
-    refreshPsychology: (cursorDate) => PsychologyEngine.buildPsychologyCache(
-      bitcoin.filter((point) => point.date <= cursorDate)
-    ),
+    refreshPsychology: (cursorDate) => buildSimWalkForwardCache(bitcoin, cursorDate),
     getBaselineCache: () => baseline,
     onFrame: () => {}
   });
@@ -572,9 +578,7 @@ test("simulation psychology refreshes on new week only", () => {
     getContext: () => ({ fullData: bitcoin, interval: "1D", hasCache: false }),
     refreshPsychology: (cursorDate) => {
       refreshCount += 1;
-      return PsychologyEngine.buildPsychologyCache(
-        bitcoin.filter((point) => point.date <= cursorDate)
-      );
+      return buildSimWalkForwardCache(bitcoin, cursorDate);
     },
     onFrame: () => {}
   });
@@ -592,6 +596,120 @@ test("simulation psychology refreshes on new week only", () => {
 
   assert.ok(afterArm >= 1);
   assert.equal(afterSeek, afterArm, "scrub should use precomputed weekly cache only");
+});
+
+test("weekly walk-forward accuracy report vs 10Y baseline", () => {
+  const bitcoin = loadBitcoin();
+  const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
+  const end = daily.at(-1).date;
+  const start = daily[Math.max(0, daily.length - 730)].date;
+  const report = PsychologyEngine.buildWalkForwardAccuracyReport(bitcoin, {
+    startDate: start,
+    endDate: end,
+    minHistoryDays: 365,
+    relaxedDistance: 2,
+    enrichCache: (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped),
+    applyConfidenceGate: true,
+    applyDailyBlend: true
+  });
+
+  assert.ok(report, "report should build on bitcoin");
+  assert.ok(report.legacy);
+  assert.ok(report.enhanced);
+  assert.ok(report.comparableWeeks >= 50, "need enough weekly checkpoints");
+  assert.ok(report.accuracyPercent >= 0 && report.accuracyPercent <= 100);
+  assert.ok(report.errorPercent >= 0 && report.errorPercent <= 100);
+  assert.equal(
+    Math.round((report.accuracyPercent + report.errorPercent) * 10) / 10,
+    100,
+    "accuracy + error should sum to 100"
+  );
+  assert.ok(report.relaxedAccuracyPercent >= report.accuracyPercent);
+  assert.ok(report.improvement.accuracyDelta !== null);
+  assert.ok(
+    report.enhanced.accuracyPercent >= report.legacy.accuracyPercent,
+    `enhanced accuracy ${report.enhanced.accuracyPercent}% should beat legacy ${report.legacy.accuracyPercent}%`
+  );
+  assert.ok(
+    report.improvement.errorDelta >= 0,
+    "enhanced pipeline should not increase error vs legacy"
+  );
+
+  const viaSimulation = (() => {
+    AppMode.setMode("simulation");
+    ProSimulation.init({
+      getContext: () => ({ fullData: bitcoin, interval: "1D", hasCache: false }),
+      refreshPsychology: (cursorDate) => buildSimWalkForwardCache(bitcoin, cursorDate),
+      getBaselineCache: () => PsychologyEngine.buildPsychologyCache(bitcoin),
+      onFrame: () => {}
+    });
+    ProSimulation.arm(start, end);
+    return ProSimulation.getAccuracySummaryForCursor(end);
+  })();
+
+  assert.approx(viaSimulation.percent, report.accuracyPercent, 2);
+
+  if (process.env.SIM_ACCURACY_REPORT === "1") {
+    console.log("\n--- Simulation walk-forward vs 10Y (Bitcoin, ~2Y) ---");
+    console.log(`Tuần so sánh: ${report.comparableWeeks}`);
+    console.log(`Legacy: ${report.legacy.accuracyPercent}% · Enhanced: ${report.enhanced.accuracyPercent}% (+${report.improvement.accuracyDelta})`);
+    console.log(`Khớp chính xác: ${report.accuracyPercent}% · sai số: ${report.errorPercent}%`);
+    console.log(`Khớp lỏng: ${report.relaxedAccuracyPercent}% (+${report.improvement.relaxedAccuracyDelta})`);
+    console.log("Lệch nhiều nhất:", report.mismatchPairs.slice(0, 5));
+  }
+});
+
+test("weekly walk-forward accuracy report works on gold", () => {
+  const gold = loadGold();
+  const report = PsychologyEngine.buildWalkForwardAccuracyReport(gold, {
+    minHistoryDays: 180,
+    relaxedDistance: 2,
+    enrichCache: (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped)
+  });
+
+  assert.ok(report);
+  assert.ok(report.comparableWeeks >= 20);
+  assert.ok(Number.isFinite(report.accuracyPercent));
+  assert.ok(report.enhanced.accuracyPercent >= report.legacy.accuracyPercent);
+});
+
+test("walk-forward enhancements apply confidence gate and hysteresis", () => {
+  const bitcoin = loadBitcoin();
+  const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
+  const asOfDate = daily[500].date;
+  const clipped = bitcoin.filter((point) => point.date <= asOfDate);
+  const raw = PsychologyEngine.buildPsychologyCache(clipped);
+  const gated = PsychologyEngine.applyConfidenceGateToCache(raw, 100);
+
+  assert.ok(raw);
+  assert.ok(gated);
+  assert.ok(gated.regions.every((region) => region.zone === "Observing"));
+
+  const hysteresis = PsychologyEngine.createSimulationHysteresisState();
+  const first = PsychologyEngine.applySimulationHysteresis(raw, asOfDate, hysteresis, 2);
+  const secondDate = daily[507].date;
+  const secondRaw = PsychologyEngine.buildPsychologyCache(
+    bitcoin.filter((point) => point.date <= secondDate)
+  );
+  const held = PsychologyEngine.applySimulationHysteresis(secondRaw, secondDate, hysteresis, 2);
+  const firstZone = PsychologyEngine.getPsychologyZoneAtDate(first, asOfDate);
+  const heldZone = PsychologyEngine.getPsychologyZoneAtDate(held, secondDate);
+  assert.equal(firstZone, heldZone, "hysteresis should hold zone for one week flip");
+});
+
+test("week-end checkpoints are not earlier than week-start checkpoints", () => {
+  const bitcoin = loadBitcoin();
+  const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
+  const start = daily[400].date;
+  const end = daily[500].date;
+  const weekStart = PsychologyEngine.buildWeeklyWalkForwardCheckpoints(daily, start, end, false);
+  const weekEnd = PsychologyEngine.buildWeeklyWalkForwardCheckpoints(daily, start, end, true);
+
+  weekEnd.forEach((endPoint) => {
+    const startPoint = weekStart.find((item) => item.weekKey === endPoint.weekKey);
+    assert.ok(startPoint);
+    assert.ok(endPoint.asOfDate >= startPoint.asOfDate);
+  });
 });
 
 test("pro daily rsi uses one decimal place", () => {

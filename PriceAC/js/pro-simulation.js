@@ -33,7 +33,8 @@ var ProSimulation = (() => {
     prewarmProgress: 0,
     prewarmTotal: 0,
     baselineCache: null,
-    accuracyLog: []
+    accuracyLog: [],
+    hysteresis: null
   };
 
   let getContext = () => ({ fullData: [], interval: "1D", hasCache: false });
@@ -171,6 +172,7 @@ var ProSimulation = (() => {
     state.prewarmTotal = 0;
     state.baselineCache = null;
     state.accuracyLog = [];
+    state.hysteresis = PsychologyEngine.createSimulationHysteresisState();
   };
 
   const buildAccuracyEntry = (weekKey, asOfDate, walkForwardCache) => {
@@ -179,6 +181,9 @@ var ProSimulation = (() => {
       state.baselineCache,
       asOfDate
     );
+    const distance = comparison.comparable
+      ? PsychologyEngine.zoneCycleDistance(comparison.walkForwardZone, comparison.baselineZone)
+      : null;
 
     return {
       weekKey,
@@ -186,7 +191,9 @@ var ProSimulation = (() => {
       simZone: comparison.walkForwardZone,
       baselineZone: comparison.baselineZone,
       match: comparison.match,
-      comparable: comparison.comparable
+      comparable: comparison.comparable,
+      cycleDistance: distance,
+      relaxedMatch: comparison.comparable && distance !== null && distance <= 2
     };
   };
 
@@ -195,7 +202,9 @@ var ProSimulation = (() => {
       return {
         hasAccuracy: false,
         percent: null,
+        relaxedPercent: null,
         matched: 0,
+        relaxedMatched: 0,
         comparable: 0,
         total: 0,
         current: null
@@ -205,6 +214,7 @@ var ProSimulation = (() => {
     const entries = state.accuracyLog.filter((entry) => entry.asOfDate <= cursorDate);
     const comparableEntries = entries.filter((entry) => entry.comparable);
     const matched = comparableEntries.filter((entry) => entry.match).length;
+    const relaxedMatched = comparableEntries.filter((entry) => entry.relaxedMatch).length;
     const currentWeek = PsychologyEngine.getWeekStart(cursorDate);
     const current = entries.find((entry) => entry.weekKey === currentWeek) || null;
 
@@ -213,23 +223,40 @@ var ProSimulation = (() => {
       percent: comparableEntries.length
         ? Math.round((matched / comparableEntries.length) * 100)
         : null,
+      relaxedPercent: comparableEntries.length
+        ? Math.round((relaxedMatched / comparableEntries.length) * 100)
+        : null,
       matched,
+      relaxedMatched,
       comparable: comparableEntries.length,
       total: entries.length,
       current
     };
   };
+
   const buildWeeklyAsOfDates = (timeline) => {
     const byWeek = new Map();
 
     timeline.forEach((date) => {
       const weekKey = PsychologyEngine.getWeekStart(date);
-      if (!byWeek.has(weekKey)) {
-        byWeek.set(weekKey, date);
-      }
+      byWeek.set(weekKey, date);
     });
 
     return [...byWeek.entries()].map(([weekKey, asOfDate]) => ({ weekKey, asOfDate }));
+  };
+
+  const resolveWalkForwardCacheAtDate = (asOfDate) => {
+    if (!asOfDate) {
+      return null;
+    }
+
+    const weekKey = PsychologyEngine.getWeekStart(asOfDate);
+    const stored = state.psychologyCacheByWeek.get(weekKey);
+    if (stored && stored.rangeEnd <= asOfDate) {
+      return stored;
+    }
+
+    return refreshPsychology(asOfDate);
   };
 
   const applyPsychologyForCursor = (cursorDate) => {
@@ -241,7 +268,33 @@ var ProSimulation = (() => {
 
     const weekKey = PsychologyEngine.getWeekStart(cursorDate);
     state.lastPsychologyWeek = weekKey;
-    state.psychologyCache = state.psychologyCacheByWeek.get(weekKey) || null;
+
+    const relevant = state.accuracyLog
+      .filter((entry) => entry.asOfDate <= cursorDate)
+      .sort((left, right) => left.asOfDate.localeCompare(right.asOfDate));
+
+    const hysteresis = PsychologyEngine.createSimulationHysteresisState();
+    let cache = null;
+
+    relevant.forEach((entry) => {
+      const raw = resolveWalkForwardCacheAtDate(entry.asOfDate);
+      if (raw) {
+        cache = PsychologyEngine.applySimulationHysteresis(raw, entry.asOfDate, hysteresis);
+      }
+    });
+
+    state.hysteresis = hysteresis;
+
+    if (cache && cache.rangeEnd <= cursorDate) {
+      state.psychologyCache = cache;
+      return;
+    }
+
+    const raw = resolveWalkForwardCacheAtDate(cursorDate);
+    state.psychologyCache = raw
+      ? PsychologyEngine.applySimulationHysteresis(raw, cursorDate, hysteresis)
+      : null;
+    state.hysteresis = hysteresis;
   };
 
   const prewarmPsychologyCaches = () => {
@@ -493,15 +546,15 @@ var ProSimulation = (() => {
     }
 
     pctEl.textContent = `${summary.percent}%`;
-    pctEl.classList.toggle("is-strong", summary.percent >= 70);
-    pctEl.classList.toggle("is-weak", summary.percent < 50);
+    pctEl.classList.toggle("is-strong", summary.percent >= 50);
+    pctEl.classList.toggle("is-weak", summary.percent < 35);
 
     const current = summary.current;
     const currentLine = current
-      ? `Tuần này: ${current.match ? "Khớp" : "Lệch"} · giả lập ${PsychologyEngine.zoneLabelsVi[current.simZone] || "—"} vs 10Y ${PsychologyEngine.zoneLabelsVi[current.baselineZone] || "—"}`
+      ? `Tuần này: ${current.match ? "Khớp" : "Lệch"}${current.relaxedMatch && !current.match ? " (gần đúng)" : ""} · ${PsychologyEngine.zoneLabelsVi[current.simZone] || "—"} vs 10Y ${PsychologyEngine.zoneLabelsVi[current.baselineZone] || "—"}`
       : "";
 
-    detailEl.textContent = `Đã qua ${summary.comparable} tuần · khớp ${summary.matched}/${summary.comparable}. ${currentLine} So sánh vùng walk-forward với bản đồ 10 năm.`;
+    detailEl.textContent = `Chính xác ${summary.matched}/${summary.comparable} tuần · gần đúng ${summary.relaxedMatched}/${summary.comparable} (${summary.relaxedPercent}%). ${currentLine} So với bản đồ 10 năm.`;
   };
 
   const syncVisibility = () => {
