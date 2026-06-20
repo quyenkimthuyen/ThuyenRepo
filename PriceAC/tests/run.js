@@ -409,17 +409,20 @@ test("mode comparison detects basic vs pro advice", () => {
   assert.ok(comparison.proAction);
 });
 
-test("elliott overlay validatedOnly filters unvalidated markers", () => {
+test("pro elliott overlay uses enriched cache for validated markers", () => {
   const bitcoin = loadBitcoin();
   const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
-  const enriched = ProAnalysis.enrichPsychologyCache(cache, bitcoin);
   const visible = RangeUtils.buildVisibleSeries(bitcoin, "1Y", "1D", PsychologyEngine.aggregateSeries);
-  const allOverlay = sharedCtx.ElliottEngine.buildVisibleWaveOverlay(enriched, visible);
-  const validatedOverlay = sharedCtx.ElliottEngine.buildVisibleWaveOverlay(enriched, visible, {
+  const enriched = ProAnalysis.enrichPsychologyCache(cache, bitcoin);
+  const rawValidated = sharedCtx.ElliottEngine.buildVisibleWaveOverlay(cache, visible, {
+    validatedOnly: true
+  });
+  const enrichedValidated = sharedCtx.ElliottEngine.buildVisibleWaveOverlay(enriched, visible, {
     validatedOnly: true
   });
 
-  assert.ok(allOverlay.markers.length >= validatedOverlay.markers.length);
+  assert.equal(rawValidated?.markers?.length ?? 0, 0);
+  assert.ok((enrichedValidated?.markers?.length ?? 0) >= 1);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

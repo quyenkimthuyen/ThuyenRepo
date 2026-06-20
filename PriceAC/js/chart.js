@@ -139,6 +139,17 @@ const MarketChart = (() => {
 
   const getActivePsychologyCache = () => psychologyCaches[currentAsset] || null;
 
+  const getElliottOverlayCache = () => {
+    const cache = getActivePsychologyCache();
+    if (!cache) {
+      return null;
+    }
+
+    return AppMode.isPro()
+      ? ProAnalysis.enrichPsychologyCache(cache, getFullData())
+      : cache;
+  };
+
   const getProjectedPsychologyTimeline = (visibleData) => {
     const cache = getActivePsychologyCache();
     return cache ? PsychologyEngine.projectPsychologyToSeries(cache, visibleData) : [];
@@ -728,7 +739,7 @@ const MarketChart = (() => {
       return;
     }
 
-    const cache = getActivePsychologyCache();
+    const cache = getElliottOverlayCache();
     if (!cache) {
       return;
     }
@@ -912,7 +923,7 @@ const MarketChart = (() => {
     }).join(" ");
 
     const dateToIndex = new Map(visibleData.map((point, index) => [point.date, index]));
-    const cache = getActivePsychologyCache();
+    const cache = getElliottOverlayCache();
     const elliottOverlay = elliottOverlayVisible && cache
       ? ElliottEngine.buildVisibleWaveOverlay(cache, visibleData, {
         validatedOnly: AppMode.isPro()
