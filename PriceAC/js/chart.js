@@ -153,6 +153,14 @@ const MarketChart = (() => {
     );
   };
 
+  const getPsychologyPipelineOptions = () => {
+    const enrichCache = AppMode.usesProAnalysis()
+      ? (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped)
+      : undefined;
+
+    return enrichCache ? { enrichCache } : {};
+  };
+
   const getActivePsychologyCache = () => {
     if (AppMode.isSimulation() && typeof ProSimulation !== "undefined") {
       return ProSimulation.getPsychologyCache();
@@ -161,13 +169,11 @@ const MarketChart = (() => {
     return psychologyCaches[currentAsset] || null;
   };
 
-  const buildSimulationPsychologyCache = (cursorDate) => PsychologyEngine.buildWalkForwardPsychologyCache(
+  const buildSimulationPsychologyCache = (cursorDate) => PsychologyEngine.buildUnifiedPsychologyCache(
     marketData[currentAsset] || [],
-    cursorDate,
     {
-      enrichCache: (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped),
-      applyConfidenceGate: true,
-      minConfidence: PsychologyEngine.SIM_MIN_CONFIDENCE
+      asOfDate: cursorDate,
+      ...getPsychologyPipelineOptions()
     }
   );
 
@@ -177,9 +183,11 @@ const MarketChart = (() => {
       return null;
     }
 
-    return AppMode.usesProAnalysis()
-      ? ProAnalysis.enrichPsychologyCache(cache, getFullData())
-      : cache;
+    if (!AppMode.usesProAnalysis() || cache.summary?.elliottValidated !== undefined) {
+      return cache;
+    }
+
+    return ProAnalysis.enrichPsychologyCache(cache, getFullData());
   };
 
   const getProjectedPsychologyTimeline = (visibleData) => {
@@ -342,7 +350,8 @@ const MarketChart = (() => {
         fullData,
         (progress) => {
           updatePsychologyStatus(`Đang phân tích 10 năm... ${Math.round(progress * 100)}%`, true);
-        }
+        },
+        getPsychologyPipelineOptions()
       );
 
       if (!cache) {
@@ -1875,7 +1884,7 @@ const MarketChart = (() => {
             return saved;
           }
 
-          return PsychologyEngine.buildPsychologyCache(raw);
+          return PsychologyEngine.buildUnifiedPsychologyCache(raw, getPsychologyPipelineOptions());
         },
         onFrame: () => {
           render();

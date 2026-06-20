@@ -740,7 +740,8 @@ var PsychologyEngine = (() => {
 
   const TEN_YEAR_DAYS = 365 * 10;
   const PSYCHOLOGY_CACHE_PREFIX = "priceac.psychology.v3.";
-  const PSYCHOLOGY_CACHE_VERSION = 5;
+  const PSYCHOLOGY_CACHE_VERSION = 7;
+  const REFERENCE_ASSET = "bitcoin";
 
   const getTenYearDailySlice = (fullSeries) => {
     const daily = aggregateSeries(fullSeries, "1D");
@@ -908,9 +909,13 @@ var PsychologyEngine = (() => {
     return cache;
   };
 
-  const buildWalkForwardPsychologyCache = (fullSeries, asOfDate, options = {}) => {
-    const clipped = fullSeries.filter((point) => point.date <= asOfDate);
+  const buildUnifiedPsychologyCache = (fullSeries, options = {}) => {
+    const asOfDate = options.asOfDate ?? options.cursorDate ?? null;
+    const clipped = asOfDate
+      ? fullSeries.filter((point) => point.date <= asOfDate)
+      : fullSeries;
     let cache = buildPsychologyCache(clipped);
+
     if (!cache) {
       return null;
     }
@@ -919,16 +924,20 @@ var PsychologyEngine = (() => {
       cache = options.enrichCache(cache, clipped) || cache;
     }
 
-    if (options.applyConfidenceGate !== false) {
+    if (options.applyConfidenceGate === true) {
       cache = applyConfidenceGateToCache(cache, options.minConfidence ?? SIM_MIN_CONFIDENCE);
     }
 
     if (options.applyDailyBlend === true) {
-      cache = blendDailyPsychologyAtDate(cache, clipped, asOfDate);
+      cache = blendDailyPsychologyAtDate(cache, clipped, cache.rangeEnd);
     }
 
     return cache;
   };
+
+  const buildWalkForwardPsychologyCache = (fullSeries, asOfDate, options = {}) => (
+    buildUnifiedPsychologyCache(fullSeries, { ...options, asOfDate })
+  );
 
   const createSimulationHysteresisState = () => ({
     stableZone: null,
@@ -1187,11 +1196,11 @@ var PsychologyEngine = (() => {
     };
   };
 
-  const buildPsychologyCacheAsync = (fullSeries, onProgress = () => {}) => new Promise((resolve, reject) => {
+  const buildPsychologyCacheAsync = (fullSeries, onProgress = () => {}, options = {}) => new Promise((resolve, reject) => {
     setTimeout(() => {
       try {
         onProgress(0.2);
-        const cache = buildPsychologyCache(fullSeries);
+        const cache = buildUnifiedPsychologyCache(fullSeries, options);
         onProgress(1);
         resolve(cache);
       } catch (error) {
@@ -1512,12 +1521,14 @@ var PsychologyEngine = (() => {
     zoneBackgroundAlpha,
     zoneLabelsVi,
     TEN_YEAR_DAYS,
+    REFERENCE_ASSET,
     aggregateSeries,
     normalizeCandle,
     getWeekStart,
     buildMultiFrameRsi,
     alignRsiToVisible,
     buildPsychologyCache,
+    buildUnifiedPsychologyCache,
     buildPsychologyCacheAsync,
     getPsychologyZoneAtDate,
     comparePsychologyAtDate,

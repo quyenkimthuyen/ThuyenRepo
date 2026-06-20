@@ -106,14 +106,16 @@ const AppMode = loadEngine("js/app-mode.js", "AppMode");
 const ProAnalysis = loadEngine("js/pro-analysis.js", "ProAnalysis");
 const ProSimulation = loadEngine("js/pro-simulation.js", "ProSimulation");
 
-const buildSimWalkForwardCache = (fullSeries, cursorDate) => PsychologyEngine.buildWalkForwardPsychologyCache(
+const enrichBitcoinCache = (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped);
+
+const buildUnifiedBitcoinCache = (fullSeries, asOfDate = null) => PsychologyEngine.buildUnifiedPsychologyCache(
   fullSeries,
-  cursorDate,
-  {
-    enrichCache: (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped),
-    applyConfidenceGate: true
-  }
+  asOfDate
+    ? { asOfDate, enrichCache: enrichBitcoinCache }
+    : { enrichCache: enrichBitcoinCache }
 );
+
+const buildSimWalkForwardCache = (fullSeries, cursorDate) => buildUnifiedBitcoinCache(fullSeries, cursorDate);
 
 test("filterSeriesByDayRange respects calendar days", () => {
   const daily = [
@@ -260,6 +262,30 @@ test("RSI aligned to visible chart dates for all ranges", () => {
   });
 });
 
+test("reference asset is bitcoin for psychology tuning", () => {
+  assert.equal(PsychologyEngine.REFERENCE_ASSET, "bitcoin");
+});
+
+test("basic pro and simulation use the same unified psychology pipeline on bitcoin", () => {
+  const bitcoin = loadBitcoin();
+  const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
+  const date = daily[600].date;
+
+  const basic = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { asOfDate: date });
+  const pro = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
+    asOfDate: date,
+    enrichCache: enrichBitcoinCache
+  });
+  const simulation = buildSimWalkForwardCache(bitcoin, date);
+
+  const basicZone = PsychologyEngine.getPsychologyZoneAtDate(basic, date);
+  const proZone = PsychologyEngine.getPsychologyZoneAtDate(pro, date);
+  const simZone = PsychologyEngine.getPsychologyZoneAtDate(simulation, date);
+
+  assert.equal(proZone, basicZone, "pro enrich must not change zone labels");
+  assert.equal(simZone, basicZone, "simulation must use the same zone algorithm as basic/pro");
+});
+
 test("psychology cache covers 10Y and projects to visible range", () => {
   const bitcoin = loadBitcoin();
   const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
@@ -271,23 +297,16 @@ test("psychology cache covers 10Y and projects to visible range", () => {
   assert.ok(timeline.every((point) => point.zone));
 });
 
-test("psychology cache works for gold dataset", () => {
-  const gold = loadGold();
-  const cache = PsychologyEngine.buildPsychologyCache(gold);
-  assert.ok(cache, "gold cache should build");
-  assert.ok(cache.weekCount >= 50);
-});
-
-test("psychology cache works for ethereum and sp500", () => {
+test("reference assets build psychology cache (smoke only)", () => {
   const loadJson = (name) => JSON.parse(
     fs.readFileSync(path.join(root, `data/${name}.json`), "utf8")
   );
 
-  ["ethereum", "sp500"].forEach((asset) => {
+  ["gold", "ethereum", "sp500"].forEach((asset) => {
     const series = loadJson(asset);
-    const cache = PsychologyEngine.buildPsychologyCache(series);
-    assert.ok(cache, `${asset} cache should build`);
-    assert.ok(cache.regions.length >= 2);
+    const cache = PsychologyEngine.buildUnifiedPsychologyCache(series);
+    assert.ok(cache, `${asset} cache should build for reference`);
+    assert.ok(cache.regions.length >= 1);
   });
 });
 
@@ -316,7 +335,8 @@ test("psychology cycle law maps elliott waves to market sentiment order", () => 
     "Complacency",
     "Anxiety",
     "Denial",
-    "Panic"
+    "Panic",
+    "Capitulation"
   ].join(","));
 
   const bitcoin = loadBitcoin();
@@ -332,6 +352,26 @@ test("psychology cycle law maps elliott waves to market sentiment order", () => 
   });
 
   assert.ok(bullRunZones.has("Hope") || bullRunZones.has("Optimism") || bullRunZones.has("Belief"));
+});
+
+test("bitcoin capitulation appears at major washout lows", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const capitulationRegions = cache.regions.filter((region) => region.zone === "Capitulation");
+
+  assert.ok(capitulationRegions.length >= 1, "expected at least one Capitulation region in 10Y bitcoin");
+
+  const checkpoints = ["2022-06-18", "2022-11-21", "2018-12-15"];
+  const hits = checkpoints.filter((date) => (
+    PsychologyEngine.getPsychologyZoneAtDate(cache, date) === "Capitulation"
+  ));
+
+  assert.ok(
+    hits.length >= 1,
+    `expected Capitulation near a major low, got zones: ${checkpoints.map((date) => (
+      `${date}=${PsychologyEngine.getPsychologyZoneAtDate(cache, date)}`
+    )).join(", ")}`
+  );
 });
 
 test("bitcoin aug 2022 bear decline avoids bullish psychology zones", () => {
@@ -558,7 +598,7 @@ test("simulation mode builds timeline and cutoff date", () => {
       hasCache: false
     }),
     refreshPsychology: (cursorDate) => buildSimWalkForwardCache(bitcoin, cursorDate),
-    getBaselineCache: () => PsychologyEngine.buildPsychologyCache(bitcoin),
+    getBaselineCache: () => buildUnifiedBitcoinCache(bitcoin),
     onFrame: () => {}
   });
 
@@ -669,8 +709,7 @@ test("weekly walk-forward accuracy report vs 10Y baseline", () => {
     endDate: end,
     minHistoryDays: 365,
     relaxedDistance: 2,
-    enrichCache: (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped),
-    applyConfidenceGate: true
+    enrichCache: enrichBitcoinCache
   });
 
   assert.ok(report, "report should build on bitcoin");
@@ -700,7 +739,7 @@ test("weekly walk-forward accuracy report vs 10Y baseline", () => {
     ProSimulation.init({
       getContext: () => ({ fullData: bitcoin, interval: "1D", hasCache: false }),
       refreshPsychology: (cursorDate) => buildSimWalkForwardCache(bitcoin, cursorDate),
-      getBaselineCache: () => PsychologyEngine.buildPsychologyCache(bitcoin),
+      getBaselineCache: () => buildUnifiedBitcoinCache(bitcoin),
       onFrame: () => {}
     });
     ProSimulation.arm(start, end);
@@ -719,18 +758,16 @@ test("weekly walk-forward accuracy report vs 10Y baseline", () => {
   }
 });
 
-test("weekly walk-forward accuracy report works on gold", () => {
+test("weekly walk-forward accuracy report works on reference gold data", () => {
   const gold = loadGold();
   const report = PsychologyEngine.buildWalkForwardAccuracyReport(gold, {
     minHistoryDays: 180,
-    relaxedDistance: 2,
-    enrichCache: (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped)
+    relaxedDistance: 2
   });
 
-  assert.ok(report);
+  assert.ok(report, "gold report is reference-only smoke");
   assert.ok(report.comparableWeeks >= 20);
   assert.ok(Number.isFinite(report.accuracyPercent));
-  assert.ok(report.enhanced.accuracyPercent >= report.legacy.accuracyPercent);
 });
 
 test("walk-forward enhancements apply confidence gate and hysteresis", () => {

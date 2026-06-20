@@ -27,16 +27,16 @@ var ElliottEngine = (() => {
       2: { zone: "Denial", weight: 16 },
       3: { zone: "Panic", weight: 20 },
       4: { zone: "Anxiety", weight: 12 },
-      5: { zone: "Panic", weight: 18 },
+      5: { zone: "Capitulation", weight: 22 },
       A: { zone: "Anxiety", weight: 14 },
       B: { zone: "Denial", weight: 16 },
-      C: { zone: "Panic", weight: 20 }
+      C: { zone: "Capitulation", weight: 22 }
     }
   };
 
   // Quy luật chu trình tâm lý thị trường (theo thứ tự):
   // Đi ngang → Nghi ngờ → Hy vọng → Lạc quan → Niềm tin → Hưng phấn cực độ
-  // → Chủ quan → Lo âu → Phủ nhận → Hoảng loạn
+  // → Chủ quan → Lo âu → Phủ nhận → Hoảng loạn → Bỏ cuộc (đáy cực đoan)
   const PSYCHOLOGY_CYCLE_LAW = [
     "Disbelief",
     "Hope",
@@ -46,7 +46,8 @@ var ElliottEngine = (() => {
     "Complacency",
     "Anxiety",
     "Denial",
-    "Panic"
+    "Panic",
+    "Capitulation"
   ];
 
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -194,6 +195,11 @@ var ElliottEngine = (() => {
 
   const WAVE_SEQUENCE = ["1", "2", "3", "4", "5", "A", "B", "C"];
 
+  // Ngưỡng regime/capitulation hiệu chỉnh trên dữ liệu tuần Bitcoin (tài sản tham chiếu).
+  const REGIME_LOOKBACK_WEEKS = 78;
+  const REGIME_BEAR_DRAWDOWN = -0.18;
+  const CAPITULATION_MIN_DRAWDOWN = -0.25;
+
   const BULLISH_ZONES = new Set([
     "Hope",
     "Optimism",
@@ -232,17 +238,39 @@ var ElliottEngine = (() => {
       hasRecovery,
       sideways,
       rangePct,
-      durationWeeks: slice.length
+      durationWeeks: slice.length,
+      endIndex: endIdx
     };
   };
 
-  const resolveBearPsychology = (waveId, leg) => {
-    if (leg.sideways || leg.legFlat) {
-      return { zone: "Disbelief", weight: 14 };
+  const isCapitulationLeg = (weeklySeries, leg, regime) => {
+    if (!leg.legDown) {
+      return false;
     }
 
-    if (leg.legUp) {
-      return { zone: "Denial", weight: 16 };
+    const endIdx = leg.endIndex ?? weeklySeries.length - 1;
+    const recentWindow = weeklySeries.slice(Math.max(0, endIdx - 51), endIdx + 1);
+    const recentHigh = recentWindow.length
+      ? Math.max(...recentWindow.map(getClose))
+      : getClose(weeklySeries[endIdx]);
+    const last = getClose(weeklySeries[endIdx]);
+    const drawdownFromHigh = recentHigh > 0 ? (last - recentHigh) / recentHigh : 0;
+
+    if (drawdownFromHigh > -0.20 && regime !== "bear") {
+      return false;
+    }
+
+    return (
+      leg.legChange <= -0.18
+      || (drawdownFromHigh <= -0.40 && leg.legChange <= -0.08)
+      || (drawdownFromHigh <= -0.30 && leg.strongLeg && leg.legChange <= -0.10)
+      || (regime === "bear" && drawdownFromHigh <= CAPITULATION_MIN_DRAWDOWN && leg.legChange <= -0.12)
+    );
+  };
+
+  const resolveDeclinePsychology = (waveId, leg, capitulation) => {
+    if (capitulation) {
+      return { zone: "Capitulation", weight: 22 };
     }
 
     if (leg.strongLeg || waveId === "3" || waveId === "5" || waveId === "C") {
@@ -256,7 +284,19 @@ var ElliottEngine = (() => {
     return { zone: "Anxiety", weight: 14 };
   };
 
-  const resolveBullPsychology = (waveId, leg) => {
+  const resolveBearPsychology = (weeklySeries, waveId, leg) => {
+    if (leg.sideways || leg.legFlat) {
+      return { zone: "Disbelief", weight: 14 };
+    }
+
+    if (leg.legUp) {
+      return { zone: "Denial", weight: 16 };
+    }
+
+    return resolveDeclinePsychology(waveId, leg, isCapitulationLeg(weeklySeries, leg, "bear"));
+  };
+
+  const resolveBullPsychology = (weeklySeries, waveId, leg, regime) => {
     if (waveId === "1" && leg.legUp) {
       return { zone: "Hope", weight: 18 };
     }
@@ -289,6 +329,10 @@ var ElliottEngine = (() => {
     }
 
     if (waveId === "C" && leg.legDown) {
+      if (isCapitulationLeg(weeklySeries, leg, regime)) {
+        return { zone: "Capitulation", weight: 22 };
+      }
+
       return {
         zone: "Panic",
         weight: leg.strongLeg ? 22 : 18
@@ -296,6 +340,10 @@ var ElliottEngine = (() => {
     }
 
     if (leg.legDown) {
+      if (isCapitulationLeg(weeklySeries, leg, regime)) {
+        return { zone: "Capitulation", weight: 22 };
+      }
+
       if (leg.strongLeg) {
         return { zone: "Panic", weight: 18 };
       }
@@ -325,10 +373,10 @@ var ElliottEngine = (() => {
     }
 
     if (regime === "bear") {
-      return resolveBearPsychology(waveId, leg);
+      return resolveBearPsychology(weeklySeries, waveId, leg);
     }
 
-    return resolveBullPsychology(waveId, leg);
+    return resolveBullPsychology(weeklySeries, waveId, leg, regime);
   };
 
   const inferMacroDirection = (weeklySeries) => {
@@ -345,7 +393,7 @@ var ElliottEngine = (() => {
     }
 
     const index = clamp(endIndex, 0, weeklySeries.length - 1);
-    const lookbackWeeks = 78;
+    const lookbackWeeks = REGIME_LOOKBACK_WEEKS;
     const startIndex = Math.max(0, index - lookbackWeeks);
     const start = getClose(weeklySeries[startIndex]);
     const last = getClose(weeklySeries[index]);
@@ -355,7 +403,7 @@ var ElliottEngine = (() => {
       : last;
     const drawdownFromHigh = recentHigh > 0 ? (last - recentHigh) / recentHigh : 0;
 
-    if (drawdownFromHigh <= -0.18) {
+    if (drawdownFromHigh <= REGIME_BEAR_DRAWDOWN) {
       return "bear";
     }
 
