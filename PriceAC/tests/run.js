@@ -373,6 +373,7 @@ test("elliott validation annotates regions", () => {
   assert.ok(enriched.regions.length >= 2);
   assert.ok("elliottValidated" in enriched.regions[0]);
   assert.ok(enriched.summary.validationNote);
+  assert.ok(!enriched.regions[0].elliottLabel.includes("Giai đoạn"));
 });
 
 test("pro walk-forward ranking builds out-of-sample stats", () => {

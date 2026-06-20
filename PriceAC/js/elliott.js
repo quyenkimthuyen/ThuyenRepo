@@ -473,21 +473,26 @@ var ElliottEngine = (() => {
     };
   };
 
+  const formatWaveMarkerText = (waveId) => {
+    if (!waveId) {
+      return "";
+    }
+
+    const label = WAVE_LABELS_VI[waveId] || `Sóng ${waveId}`;
+    return label.replace(/^Sóng\s+/, "");
+  };
+
   const annotateRegionsWithValidation = (weeklySeries, regions, swings) => {
     const chain = buildPivotChain(weeklySeries, swings);
 
     return regions.map((region, index) => {
       const validation = validateWaveLeg(chain, index, region.waveId);
-      const elliottLabel = validation.elliottValidated
-        ? region.elliottLabel
-        : `Giai đoạn ${region.waveId || index + 1} (chưa xác thực)`;
 
       return {
         ...region,
         elliottValidated: validation.elliottValidated,
         validationNote: validation.validationNote,
-        elliottLabel,
-        displayLabel: elliottLabel
+        displayLabel: region.elliottLabel
       };
     });
   };
@@ -562,9 +567,9 @@ var ElliottEngine = (() => {
         return {
           time: region.startDate,
           position: price >= prevPrice ? "belowBar" : "aboveBar",
-          color: "#f0b45c",
+          color: region.elliottValidated === false ? "rgba(240, 180, 92, 0.55)" : "#f0b45c",
           shape: "circle",
-          text: String(region.waveId)
+          text: formatWaveMarkerText(region.waveId)
         };
       });
 
@@ -584,6 +589,7 @@ var ElliottEngine = (() => {
     analyzeAt,
     buildVisibleWaveOverlay,
     annotateRegionsWithValidation,
-    validateWaveLeg
+    validateWaveLeg,
+    formatWaveMarkerText
   };
 })();
