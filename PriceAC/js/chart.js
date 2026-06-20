@@ -36,6 +36,8 @@ const MarketChart = (() => {
   let psychologyBackgroundSeries = [];
   let elliottWaveSeries = null;
   let volumeHistogramSeries = null;
+  let atrUpperSeries = null;
+  let atrLowerSeries = null;
   let currentElliottMarkers = [];
   let currentAsset = "bitcoin";
   let currentRange = "1M";
@@ -672,6 +674,50 @@ const MarketChart = (() => {
     psychologyBackgroundSeries = [];
   };
 
+  const clearAtrBands = () => {
+    if (atrUpperSeries && chart) {
+      chart.removeSeries(atrUpperSeries);
+      atrUpperSeries = null;
+    }
+
+    if (atrLowerSeries && chart) {
+      chart.removeSeries(atrLowerSeries);
+      atrLowerSeries = null;
+    }
+  };
+
+  const renderAtrBands = (visibleData) => {
+    clearAtrBands();
+
+    if (!AppMode.isPro() || !chart || !visibleData.length) {
+      return;
+    }
+
+    const bands = ProAnalysis.buildAtrBands(visibleData);
+    if (!bands.upper.length) {
+      return;
+    }
+
+    atrUpperSeries = chart.addLineSeries({
+      color: "rgba(91, 156, 245, 0.28)",
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dotted,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false
+    });
+    atrLowerSeries = chart.addLineSeries({
+      color: "rgba(251, 113, 133, 0.28)",
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dotted,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false
+    });
+    atrUpperSeries.setData(bands.upper);
+    atrLowerSeries.setData(bands.lower);
+  };
+
   const clearVolumeHistogram = () => {
     if (volumeHistogramSeries && chart) {
       chart.removeSeries(volumeHistogramSeries);
@@ -867,6 +913,7 @@ const MarketChart = (() => {
       clearPsychologyBackgrounds();
       clearElliottOverlay();
       clearVolumeHistogram();
+      clearAtrBands();
       return;
     }
 
@@ -884,6 +931,7 @@ const MarketChart = (() => {
 
     renderElliottOverlay(clean);
     renderVolumeProxy(clean);
+    renderAtrBands(clean);
   };
 
   const drawFallbackChart = (container, visibleData, psychologyTimeline) => {
@@ -1201,8 +1249,11 @@ const MarketChart = (() => {
       fullData,
       marketSnapshot
     );
+    const crossAsset = psychologyCache
+      ? ProAnalysis.buildCrossAssetMatrix(psychologyCaches, marketData, currentAsset)
+      : null;
     const proAdvice = psychologyCache
-      ? ProAnalysis.buildProRecommendation(psychologyCache, fullData, marketSnapshot, visibleData)
+      ? ProAnalysis.buildProRecommendation(psychologyCache, fullData, marketSnapshot, visibleData, crossAsset)
       : { hasAdvice: false };
     const modeComparison = ProAnalysis.buildModeComparison(basicAdvice, proAdvice);
 
@@ -1211,16 +1262,16 @@ const MarketChart = (() => {
         marketSnapshot,
         psychologyCache,
         fullData,
-        visibleData
+        visibleData,
+        crossAsset,
+        proAdvice
       );
     }
 
     marketSnapshot.investment = AppMode.isPro() ? proAdvice : basicAdvice;
     marketSnapshot.modeComparison = modeComparison;
     marketSnapshot.appMode = AppMode.getMode();
-    marketSnapshot.crossAsset = psychologyCache
-      ? ProAnalysis.buildCrossAssetMatrix(psychologyCaches, marketData, currentAsset)
-      : null;
+    marketSnapshot.crossAsset = crossAsset;
     marketSnapshot.basicInvestment = basicAdvice;
     marketSnapshot.proInvestment = proAdvice;
 

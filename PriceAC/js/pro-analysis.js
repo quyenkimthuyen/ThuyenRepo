@@ -233,6 +233,288 @@ var ProAnalysis = (() => {
     return notes;
   };
 
+  const findIndexOnOrAfter = (series, date) => {
+    for (let index = 0; index < series.length; index += 1) {
+      if (series[index].date >= date) {
+        return index;
+      }
+    }
+
+    return -1;
+  };
+
+  const forwardReturnPct = (series, startIndex, weeks = 8) => {
+    const endIndex = Math.min(startIndex + weeks * 7, series.length - 1);
+    if (startIndex < 0 || endIndex <= startIndex) {
+      return null;
+    }
+
+    const startPrice = getClose(series[startIndex]);
+    const endPrice = getClose(series[endIndex]);
+    if (!startPrice) {
+      return null;
+    }
+
+    return ((endPrice - startPrice) / startPrice) * 100;
+  };
+
+  const movingAverage = (series, period, endIndex = series.length - 1) => {
+    if (endIndex < period - 1) {
+      return null;
+    }
+
+    let sum = 0;
+    for (let index = endIndex - period + 1; index <= endIndex; index += 1) {
+      sum += getClose(series[index]);
+    }
+
+    return sum / period;
+  };
+
+  const buildMacroContext = (fullSeries) => {
+    const daily = PsychologyEngine.aggregateSeries(fullSeries, "1D");
+    if (daily.length < 60) {
+      return null;
+    }
+
+    const endIndex = daily.length - 1;
+    const close = getClose(daily[endIndex]);
+    const ma50 = movingAverage(daily, 50, endIndex);
+    const ma200 = movingAverage(daily, 200, endIndex);
+    const lookback = Math.min(252, daily.length - 1);
+    const swingHigh = Math.max(...daily.slice(endIndex - lookback, endIndex + 1).map(getClose));
+    const drawdown = swingHigh > 0 ? ((close - swingHigh) / swingHigh) * 100 : 0;
+    const volRecent = [];
+    for (let index = Math.max(1, endIndex - 19); index <= endIndex; index += 1) {
+      const prev = getClose(daily[index - 1]);
+      if (prev) {
+        volRecent.push(Math.abs((getClose(daily[index]) - prev) / prev));
+      }
+    }
+    const volBaseline = [];
+    for (let index = Math.max(1, endIndex - 59); index <= endIndex; index += 1) {
+      const prev = getClose(daily[index - 1]);
+      if (prev) {
+        volBaseline.push(Math.abs((getClose(daily[index]) - prev) / prev));
+      }
+    }
+    const recentVol = volRecent.length
+      ? volRecent.reduce((sum, value) => sum + value, 0) / volRecent.length
+      : 0;
+    const baseVol = volBaseline.length
+      ? volBaseline.reduce((sum, value) => sum + value, 0) / volBaseline.length
+      : recentVol;
+    const volRatio = baseVol > 0 ? recentVol / baseVol : 1;
+    const volatilityRegime = volRatio >= 1.25 ? "cao" : volRatio <= 0.8 ? "thấp" : "bình thường";
+
+    return {
+      close: Number(close.toFixed(2)),
+      drawdown: Number(drawdown.toFixed(1)),
+      aboveMa50: ma50 ? close > ma50 : null,
+      aboveMa200: ma200 ? close > ma200 : null,
+      goldenCross: ma50 && ma200 ? ma50 > ma200 : null,
+      volatilityRegime,
+      summary: [
+        `Drawdown ${drawdown.toFixed(1)}% từ đỉnh ~1 năm`,
+        ma50 && ma200
+          ? (close > ma200 ? "Trên MA200" : "Dưới MA200")
+          : null,
+        `Biến động ${volatilityRegime}`
+      ].filter(Boolean).join(" · ")
+    };
+  };
+
+  const buildWalkForwardDetail = (cache, fullSeries, zone) => {
+    const { train, test, splitDate } = splitRegionsForWalkForward(cache.regions);
+    const trainStats = InvestmentAdvisor.buildHistoricalZoneStats({ ...cache, regions: train }, fullSeries);
+    const testStats = InvestmentAdvisor.buildHistoricalZoneStats({ ...cache, regions: test }, fullSeries);
+    const trainZone = trainStats.find((item) => item.zone === zone) || null;
+    const testZone = testStats.find((item) => item.zone === zone) || null;
+    const edge = trainZone && testZone
+      ? Number((testZone.avgForward - trainZone.avgForward).toFixed(2))
+      : null;
+
+    return {
+      splitDate,
+      trainRegionCount: train.length,
+      testRegionCount: test.length,
+      trainZone,
+      testZone,
+      edge,
+      generalizes: testZone ? testZone.avgForward > 0 && testZone.winRate >= 50 : null
+    };
+  };
+
+  const buildHistoricalAnalogs = (cache, fullSeries, zone, limit = 3) => {
+    const { test } = splitRegionsForWalkForward(cache.regions);
+    const daily = PsychologyEngine.aggregateSeries(fullSeries, "1D");
+    const analogs = test
+      .filter((region) => region.zone === zone)
+      .slice(-limit)
+      .map((region) => {
+        const startIndex = findIndexOnOrAfter(daily, region.startDate);
+        const forward = forwardReturnPct(daily, startIndex);
+
+        return {
+          date: region.startDate,
+          elliottLabel: region.elliottLabel,
+          forwardReturn: forward === null ? null : Number(forward.toFixed(2)),
+          validated: region.elliottValidated
+        };
+      })
+      .filter((item) => item.forwardReturn !== null);
+
+    const avgForward = analogs.length
+      ? Number((analogs.reduce((sum, item) => sum + item.forwardReturn, 0) / analogs.length).toFixed(2))
+      : null;
+
+    return { items: analogs, avgForward, sampleCount: analogs.length };
+  };
+
+  const buildScenarios = (visibleData, stance, riskPlan) => {
+    const close = getClose(visibleData.at(-1));
+    const atr = computeAtr(visibleData) ?? close * 0.02;
+    const isDefensive = stance === "reduce" || stance === "wait";
+    const bullTarget = Number((close + atr * 1.8).toFixed(2));
+    const baseTarget = Number((close + (isDefensive ? -atr * 0.4 : atr * 0.6)).toFixed(2));
+    const risk = Math.abs(close - riskPlan.invalidationPrice) || atr * 2;
+    const reward = Math.abs(bullTarget - close);
+    const riskReward = risk > 0 ? Number((reward / risk).toFixed(2)) : null;
+
+    return {
+      bullTarget,
+      baseTarget,
+      invalidation: riskPlan.invalidationPrice,
+      riskReward,
+      horizonWeeks: riskPlan.horizonWeeks
+    };
+  };
+
+  const buildProSignalScore = (enriched, walkForwardDetail, macro, crossAsset, snapshot, stance) => {
+    const rsi1d = snapshot.rsiByInterval?.twoDay ?? snapshot.rsi ?? 50;
+    const factors = [];
+
+    factors.push({
+      id: "elliott",
+      label: "Elliott xác thực",
+      pass: enriched.summary.elliottValidated === true,
+      weight: 20,
+      detail: enriched.summary.validationNote || enriched.summary.elliottLabel
+    });
+
+    const testZone = walkForwardDetail.testZone;
+    factors.push({
+      id: "oos",
+      label: "Out-of-sample",
+      pass: Boolean(testZone && testZone.samples >= MIN_TEST_REGIONS && testZone.avgForward > 0),
+      weight: 20,
+      detail: testZone
+        ? `${testZone.samples} mẫu · TB +${testZone.avgForward}% / 8 tuần`
+        : "Chưa đủ mẫu test"
+    });
+
+    const rsiPass = stance === "accumulate"
+      ? rsi1d < 65
+      : stance === "reduce"
+        ? rsi1d > 55
+        : rsi1d >= 35 && rsi1d <= 65;
+    factors.push({
+      id: "rsi",
+      label: "RSI 1D khớp stance",
+      pass: rsiPass,
+      weight: 15,
+      detail: `RSI 1D = ${Math.round(rsi1d)}`
+    });
+
+    const macroPass = stance === "accumulate"
+      ? macro?.aboveMa200 === true
+      : stance === "reduce"
+        ? macro?.aboveMa200 === false || (macro?.drawdown ?? 0) > -8
+        : true;
+    factors.push({
+      id: "macro",
+      label: "Bối cảnh vĩ mô",
+      pass: macroPass,
+      weight: 15,
+      detail: macro?.summary || "Thiếu dữ liệu MA"
+    });
+
+    const currentRow = crossAsset?.rows?.find((row) => row.isCurrent);
+    const alignedAssets = crossAsset?.rows?.filter((row) => row.stance === stance).length ?? 0;
+    factors.push({
+      id: "cross",
+      label: "Đa tài sản",
+      pass: alignedAssets >= 2 || currentRow?.stance === stance,
+      weight: 15,
+      detail: `${alignedAssets}/4 tài sản cùng hướng ${stance}`
+    });
+
+    factors.push({
+      id: "edge",
+      label: "Walk-forward edge",
+      pass: walkForwardDetail.edge === null ? false : walkForwardDetail.edge >= 0,
+      weight: 15,
+      detail: walkForwardDetail.edge === null
+        ? "Chưa tính được edge"
+        : `Test vs train: ${walkForwardDetail.edge >= 0 ? "+" : ""}${walkForwardDetail.edge}%`
+    });
+
+    const score = factors.reduce((sum, factor) => sum + (factor.pass ? factor.weight : 0), 0);
+    const grade = score >= 80 ? "A" : score >= 65 ? "B" : score >= 50 ? "C" : "D";
+
+    return {
+      score,
+      grade,
+      label: grade === "A" ? "Tín hiệu mạnh" : grade === "B" ? "Khả thi" : grade === "C" ? "Yếu" : "Tránh",
+      factors
+    };
+  };
+
+  const buildProBrief = (cache, fullSeries, snapshot, visibleData, crossAsset, stance) => {
+    const enriched = enrichPsychologyCache(cache, fullSeries);
+    const walkForwardDetail = buildWalkForwardDetail(enriched, fullSeries, enriched.summary.zone);
+    const macro = buildMacroContext(fullSeries);
+    const analogs = buildHistoricalAnalogs(enriched, fullSeries, enriched.summary.zone);
+    const riskPlan = buildRiskPlan(stance, visibleData.length ? visibleData : fullSeries.slice(-90));
+    const scenarios = buildScenarios(visibleData.length ? visibleData : fullSeries.slice(-90), stance, riskPlan);
+    const signal = buildProSignalScore(
+      enriched,
+      walkForwardDetail,
+      macro,
+      crossAsset,
+      snapshot,
+      stance
+    );
+
+    return {
+      signal,
+      macro,
+      walkForwardDetail,
+      analogs,
+      scenarios,
+      riskPlan
+    };
+  };
+
+  const buildAtrBands = (series, period = 14, multiplier = 2) => {
+    if (!series?.length) {
+      return { upper: [], lower: [] };
+    }
+
+    const upper = [];
+    const lower = [];
+
+    series.forEach((point, index) => {
+      const slice = series.slice(0, index + 1);
+      const atr = computeAtr(slice, period) ?? 0;
+      const close = getClose(point);
+      upper.push({ time: point.date, value: Number((close + multiplier * atr).toFixed(4)) });
+      lower.push({ time: point.date, value: Number((close - multiplier * atr).toFixed(4)) });
+    });
+
+    return { upper, lower };
+  };
+
   const buildCrossAssetMatrix = (psychologyCaches, marketData, currentAsset) => {
     const rows = Object.keys(psychologyCaches).map((asset) => {
       const cache = psychologyCaches[asset];
@@ -317,7 +599,7 @@ var ProAnalysis = (() => {
     };
   };
 
-  const buildProRecommendation = (cache, fullSeries, snapshot, visibleData = []) => {
+  const buildProRecommendation = (cache, fullSeries, snapshot, visibleData = [], crossAsset = null) => {
     if (!cache?.regions?.length || !fullSeries?.length) {
       return { hasAdvice: false, mode: "pro" };
     }
@@ -350,12 +632,33 @@ var ProAnalysis = (() => {
 
     const current = refineProAction(proSnapshot, currentProfile, walkForward);
     const riskPlan = buildRiskPlan(current.stance, visibleData.length ? visibleData : fullSeries.slice(-90));
+    const walkForwardDetail = buildWalkForwardDetail(enrichedCache, fullSeries, currentZone);
+    const macro = buildMacroContext(fullSeries);
+    const analogs = buildHistoricalAnalogs(enrichedCache, fullSeries, currentZone);
+    const scenarios = buildScenarios(
+      visibleData.length ? visibleData : fullSeries.slice(-90),
+      current.stance,
+      riskPlan
+    );
+    const signal = buildProSignalScore(
+      enrichedCache,
+      walkForwardDetail,
+      macro,
+      crossAsset,
+      proSnapshot,
+      current.stance
+    );
 
     return {
       hasAdvice: true,
       mode: "pro",
       rankingSource: walkForward.usesOutOfSample ? "out-of-sample" : "in-sample-fallback",
       walkForward,
+      walkForwardDetail,
+      signal,
+      macro,
+      analogs,
+      scenarios,
       currentZone,
       currentLabel: currentRank.label,
       currentColor: currentRank.color,
@@ -393,13 +696,16 @@ var ProAnalysis = (() => {
       testSamples: proAdvice.walkForward?.testRegionCount ?? 0,
       splitDate: proAdvice.walkForward?.splitDate,
       elliottValidated: proAdvice.elliottValidated,
+      proScore: proAdvice.signal?.score ?? null,
+      proGrade: proAdvice.signal?.grade ?? null,
+      proScoreLabel: proAdvice.signal?.label ?? null,
       note: sameStance
-        ? "Hai mode đồng ý hướng hành động"
-        : "Khác biệt — Pro dùng walk-forward + xác thực Elliott + khung rủi ro"
+        ? `Hai mode đồng ý · Pro score ${proAdvice.signal?.score ?? "—"}/100 (${proAdvice.signal?.grade ?? "—"})`
+        : `Khác biệt · Pro score ${proAdvice.signal?.score ?? "—"}/100 — walk-forward + Elliott + macro`
     };
   };
 
-  const enhanceMarketSnapshot = (snapshot, cache, fullSeries, visibleData) => {
+  const enhanceMarketSnapshot = (snapshot, cache, fullSeries, visibleData, crossAsset = null, proAdvice = null) => {
     const enriched = enrichPsychologyCache(cache, fullSeries);
     const daily = PsychologyEngine.aggregateSeries(fullSeries, "1D");
     const dailyRsi = buildRsiSeries(daily);
@@ -423,8 +729,86 @@ var ProAnalysis = (() => {
       rsiIntervalLabels: { twoDay: "1D", weekly: "T", monthly: "Th" },
       rsiNote: "RSI 1D chuẩn (Pro) thay cho 2D",
       volumeProxy: computeVolumeProxy(visibleData),
-      dataQuality: buildDataQualityNotes(fullSeries, cache)
+      dataQuality: buildDataQualityNotes(fullSeries, cache),
+      proBrief: proAdvice
+        ? {
+          signal: proAdvice.signal,
+          macro: proAdvice.macro,
+          walkForwardDetail: proAdvice.walkForwardDetail,
+          analogs: proAdvice.analogs,
+          scenarios: proAdvice.scenarios,
+          riskPlan: proAdvice.riskPlan
+        }
+        : buildProBrief(
+          cache,
+          fullSeries,
+          snapshot,
+          visibleData,
+          crossAsset,
+          InvestmentAdvisor.ZONE_EXPERT[enriched.summary.zone]?.stance || "wait"
+        )
     };
+  };
+
+  const renderProBrief = (container, brief) => {
+    if (!container) {
+      return;
+    }
+
+    if (!brief?.signal) {
+      container.innerHTML = "";
+      container.hidden = true;
+      return;
+    }
+
+    const factorChips = brief.signal.factors.map((factor) => `
+      <span class="pro-factor ${factor.pass ? "is-pass" : "is-fail"}" title="${factor.detail}">
+        ${factor.pass ? "✓" : "✗"} ${factor.label}
+      </span>
+    `).join("");
+
+    const analogRows = brief.analogs?.items?.length
+      ? brief.analogs.items.map((item) => `
+        <span class="pro-analog">
+          ${item.date} · <em>${item.forwardReturn > 0 ? "+" : ""}${item.forwardReturn}%</em>
+        </span>
+      `).join("")
+      : "<span class='pro-analog'>Chưa có analog OOS cho vùng này</span>";
+
+    container.hidden = false;
+    container.innerHTML = `
+      <div class="pro-brief-panel">
+        <div class="pro-score-block">
+          <div class="pro-score-ring" style="--score: ${brief.signal.score}">
+            <strong>${brief.signal.score}</strong>
+            <span>${brief.signal.grade}</span>
+          </div>
+          <div>
+            <p class="pro-brief-kicker">Pro Signal Score</p>
+            <h2 class="pro-brief-title">${brief.signal.label}</h2>
+            <p class="pro-brief-macro">${brief.macro?.summary || ""}</p>
+          </div>
+        </div>
+        <div class="pro-factor-list">${factorChips}</div>
+        <div class="pro-brief-grid">
+          <article>
+            <span>Kịch bản 8 tuần</span>
+            <strong>Lên ${brief.scenarios?.bullTarget ?? "—"}</strong>
+            <small>R:R ≈ ${brief.scenarios?.riskReward ?? "—"} · invalidation ${brief.scenarios?.invalidation ?? "—"}</small>
+          </article>
+          <article>
+            <span>Walk-forward</span>
+            <strong>${brief.walkForwardDetail?.testZone?.avgForward != null ? `${brief.walkForwardDetail.testZone.avgForward > 0 ? "+" : ""}${brief.walkForwardDetail.testZone.avgForward}%` : "—"}</strong>
+            <small>Test ${brief.walkForwardDetail?.testRegionCount ?? 0} giai đoạn · edge ${brief.walkForwardDetail?.edge ?? "—"}%</small>
+          </article>
+          <article>
+            <span>Analog lịch sử (OOS)</span>
+            <strong>${brief.analogs?.avgForward != null ? `${brief.analogs.avgForward > 0 ? "+" : ""}${brief.analogs.avgForward}%` : "—"}</strong>
+            <div class="pro-analog-list">${analogRows}</div>
+          </article>
+        </div>
+      </div>
+    `;
   };
 
   const renderModeComparison = (container, comparison, appMode) => {
@@ -462,10 +846,10 @@ var ProAnalysis = (() => {
             <strong>${comparison.proStance}</strong>
             <p>${comparison.proAction}</p>
             <small>
-              ${comparison.rankingSource === "out-of-sample"
-    ? `Walk-forward · ${comparison.testSamples} giai đoạn test`
+              Score ${comparison.proScore ?? "—"}/100 (${comparison.proGrade ?? "—"})
+              · ${comparison.rankingSource === "out-of-sample"
+    ? `OOS ${comparison.testSamples} giai đoạn`
     : "Fallback in-sample"}
-              ${comparison.elliottValidated === false ? " · Sóng chưa xác thực" : ""}
             </small>
           </article>
         </div>
@@ -520,12 +904,24 @@ var ProAnalysis = (() => {
       </div>
     `).join("") || "";
 
+    const factorRows = advice.signal?.factors?.map((factor) => `
+      <div class="pro-factor-row ${factor.pass ? "is-pass" : "is-fail"}">
+        <span>${factor.pass ? "✓" : "✗"} ${factor.label}</span>
+        <em>${factor.detail}</em>
+      </div>
+    `).join("") || "";
+
+    const wf = advice.walkForwardDetail;
+    const analogItems = advice.analogs?.items?.map((item) => `
+      <span class="pro-analog">${item.date}: ${item.forwardReturn > 0 ? "+" : ""}${item.forwardReturn}%</span>
+    `).join("") || "<span class='pro-analog'>Không có analog OOS</span>";
+
     container.innerHTML = `
       <div class="investment-panel investment-panel--pro">
         <header class="investment-head">
           <div>
             <p class="investment-kicker">Khuyến nghị Pro</p>
-            <h2 class="investment-title">Walk-forward · Elliott xác thực · Khung rủi ro</h2>
+            <h2 class="investment-title">Score ${advice.signal?.score ?? "—"}/100 · ${advice.signal?.label ?? "—"}</h2>
           </div>
           <span class="investment-stance investment-stance--${advice.stance}">${advice.stanceLabel}</span>
         </header>
@@ -551,6 +947,43 @@ var ProAnalysis = (() => {
           </div>
           <p class="investment-note">${advice.riskPlan.note}</p>
         </article>
+
+        <section class="investment-section">
+          <h3>Đồng thuận tín hiệu (6 yếu tố)</h3>
+          <div class="pro-factor-rows">${factorRows}</div>
+        </section>
+
+        <section class="investment-section">
+          <h3>Kịch bản &amp; R:R (8 tuần)</h3>
+          <div class="investment-risk-grid">
+            <div><span>Mục tiêu lạc quan</span><strong>${advice.scenarios?.bullTarget ?? "—"}</strong></div>
+            <div><span>Kịch bản cơ sở</span><strong>${advice.scenarios?.baseTarget ?? "—"}</strong></div>
+            <div><span>R:R</span><strong>${advice.scenarios?.riskReward ?? "—"}</strong></div>
+            <div><span>Macro</span><strong>${advice.macro?.drawdown ?? "—"}%</strong></div>
+          </div>
+        </section>
+
+        <section class="investment-section">
+          <h3>Walk-forward minh bạch (train vs test)</h3>
+          <div class="wf-compare-grid">
+            <article>
+              <span>Train (in-sample)</span>
+              <strong>${wf?.trainZone?.avgForward != null ? `${wf.trainZone.avgForward > 0 ? "+" : ""}${wf.trainZone.avgForward}%` : "—"}</strong>
+              <small>${wf?.trainZone?.samples ?? 0} mẫu · win ${wf?.trainZone?.winRate ?? "—"}%</small>
+            </article>
+            <article>
+              <span>Test (out-of-sample)</span>
+              <strong>${wf?.testZone?.avgForward != null ? `${wf.testZone.avgForward > 0 ? "+" : ""}${wf.testZone.avgForward}%` : "—"}</strong>
+              <small>${wf?.testZone?.samples ?? 0} mẫu · edge ${wf?.edge ?? "—"}%</small>
+            </article>
+          </div>
+        </section>
+
+        <section class="investment-section">
+          <h3>Analog lịch sử (chỉ tập test)</h3>
+          <div class="pro-analog-list">${analogItems}</div>
+          <p class="investment-note">TB analog OOS: ${advice.analogs?.avgForward != null ? `${advice.analogs.avgForward > 0 ? "+" : ""}${advice.analogs.avgForward}%` : "—"}</p>
+        </section>
 
         <div class="investment-highlight-grid">
           ${zoneCard(advice.safestZone, "An toàn (OOS)", advice.safestZone.safety)}
@@ -582,12 +1015,20 @@ var ProAnalysis = (() => {
     alignDailyRsi,
     enrichPsychologyCache,
     buildWalkForwardRanking,
+    buildWalkForwardDetail,
+    buildProSignalScore,
+    buildMacroContext,
+    buildHistoricalAnalogs,
+    buildScenarios,
+    buildProBrief,
+    buildAtrBands,
     buildRiskPlan,
     buildVolumeProxySeries,
     buildCrossAssetMatrix,
     buildProRecommendation,
     buildModeComparison,
     enhanceMarketSnapshot,
+    renderProBrief,
     renderModeComparison,
     renderProPanel
   };

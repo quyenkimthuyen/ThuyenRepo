@@ -425,5 +425,37 @@ test("pro elliott overlay uses enriched cache for validated markers", () => {
   assert.ok((enrichedValidated?.markers?.length ?? 0) >= 1);
 });
 
+test("pro signal score and macro context build from 10Y data", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const visible = RangeUtils.buildVisibleSeries(bitcoin, "3M", "1D", PsychologyEngine.aggregateSeries);
+  const snapshot = PsychologyEngine.buildMarketSnapshot(cache, bitcoin, visible);
+  const advice = ProAnalysis.buildProRecommendation(cache, bitcoin, snapshot, visible);
+
+  assert.ok(advice.signal?.score >= 0 && advice.signal.score <= 100);
+  assert.ok(["A", "B", "C", "D"].includes(advice.signal.grade));
+  assert.equal(advice.signal.factors.length, 6);
+  assert.ok(advice.macro?.summary);
+  assert.ok(advice.walkForwardDetail?.trainRegionCount >= 1);
+});
+
+test("pro brief includes scenarios and analogs", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const visible = RangeUtils.buildVisibleSeries(bitcoin, "1Y", "1D", PsychologyEngine.aggregateSeries);
+  const brief = ProAnalysis.buildProBrief(
+    cache,
+    bitcoin,
+    PsychologyEngine.buildMarketSnapshot(cache, bitcoin, visible),
+    visible,
+    null,
+    "accumulate"
+  );
+
+  assert.ok(brief.signal);
+  assert.ok(brief.scenarios?.bullTarget);
+  assert.ok("items" in brief.analogs);
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

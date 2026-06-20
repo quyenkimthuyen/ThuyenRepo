@@ -149,6 +149,10 @@ const App = (() => {
   const updateMarketUI = (snapshot) => {
     updateInsightStrip(snapshot);
     syncRsiModeLabels();
+    ProAnalysis.renderProBrief(
+      document.querySelector("#pro-brief"),
+      AppMode.isPro() ? snapshot?.proBrief : null
+    );
     ProAnalysis.renderModeComparison(
       document.querySelector("#mode-compare"),
       snapshot?.modeComparison,
