@@ -601,6 +601,35 @@ test("simulation psychology refreshes on new week only", () => {
   assert.equal(afterSeek, afterArm, "scrub should use precomputed weekly cache only");
 });
 
+test("simulation freezes historical psychology zones as later weeks advance", () => {
+  const bitcoin = loadBitcoin();
+  const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
+  const week1Date = daily[420].date;
+  const week2Date = daily[455].date;
+  const sampleDate = daily[405].date;
+
+  const cache1 = buildSimWalkForwardCache(bitcoin, week1Date);
+  const cache2 = buildSimWalkForwardCache(bitcoin, week2Date);
+  const hysteresis = PsychologyEngine.createSimulationHysteresisState();
+
+  const display1 = PsychologyEngine.applySimulationHysteresis(cache1, week1Date, hysteresis);
+  const frozen1 = PsychologyEngine.mergeFrozenPsychologyRegions([], display1, week1Date);
+  const composed1 = PsychologyEngine.composeSimulationPsychologyCache(display1, frozen1, week1Date);
+  const zoneAfterWeek1 = PsychologyEngine.getPsychologyZoneAtDate(composed1, sampleDate);
+
+  const display2 = PsychologyEngine.applySimulationHysteresis(cache2, week2Date, hysteresis);
+  const frozen2 = PsychologyEngine.mergeFrozenPsychologyRegions(frozen1, display2, week2Date);
+  const composed2 = PsychologyEngine.composeSimulationPsychologyCache(display2, frozen2, week2Date);
+  const zoneAfterWeek2 = PsychologyEngine.getPsychologyZoneAtDate(composed2, sampleDate);
+
+  assert.ok(zoneAfterWeek1, "week 1 should resolve a psychology zone");
+  assert.equal(
+    zoneAfterWeek2,
+    zoneAfterWeek1,
+    "historical zone must stay frozen after later weekly checkpoints"
+  );
+});
+
 test("daily blend can adjust zones on walk-forward cache", () => {
   const bitcoin = loadBitcoin();
   const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");

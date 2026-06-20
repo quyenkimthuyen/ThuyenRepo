@@ -252,7 +252,7 @@ var ProSimulation = (() => {
 
     const weekKey = PsychologyEngine.getWeekStart(asOfDate);
     const stored = state.psychologyCacheByWeek.get(weekKey);
-    if (stored && stored.rangeEnd <= asOfDate) {
+    if (stored) {
       return stored;
     }
 
@@ -274,27 +274,32 @@ var ProSimulation = (() => {
       .sort((left, right) => left.asOfDate.localeCompare(right.asOfDate));
 
     const hysteresis = PsychologyEngine.createSimulationHysteresisState();
-    let cache = null;
+    let frozenRegions = [];
+    let displayCache = null;
 
     relevant.forEach((entry) => {
       const raw = resolveWalkForwardCacheAtDate(entry.asOfDate);
-      if (raw) {
-        cache = PsychologyEngine.applySimulationHysteresis(raw, entry.asOfDate, hysteresis);
+      if (!raw) {
+        return;
       }
+
+      displayCache = PsychologyEngine.applySimulationHysteresis(raw, entry.asOfDate, hysteresis);
+      frozenRegions = PsychologyEngine.mergeFrozenPsychologyRegions(
+        frozenRegions,
+        displayCache,
+        entry.asOfDate
+      );
     });
 
-    state.hysteresis = hysteresis;
-
-    if (cache && cache.rangeEnd <= cursorDate) {
-      state.psychologyCache = cache;
-      return;
+    const raw = resolveWalkForwardCacheAtDate(cursorDate);
+    if (raw) {
+      displayCache = PsychologyEngine.applySimulationHysteresis(raw, cursorDate, hysteresis);
     }
 
-    const raw = resolveWalkForwardCacheAtDate(cursorDate);
-    state.psychologyCache = raw
-      ? PsychologyEngine.applySimulationHysteresis(raw, cursorDate, hysteresis)
-      : null;
     state.hysteresis = hysteresis;
+    state.psychologyCache = displayCache
+      ? PsychologyEngine.composeSimulationPsychologyCache(displayCache, frozenRegions, cursorDate)
+      : null;
   };
 
   const prewarmPsychologyCaches = () => {

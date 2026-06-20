@@ -1004,6 +1004,124 @@ var PsychologyEngine = (() => {
     return overrideZoneAtDate(cache, asOfDate, hysteresisState.stableZone);
   };
 
+  const getFrozenRegionsEnd = (frozenRegions) => (
+    frozenRegions.length ? frozenRegions[frozenRegions.length - 1].endDate : null
+  );
+
+  const nextCalendarDate = (date) => {
+    const parsed = new Date(`${date}T12:00:00Z`);
+    parsed.setUTCDate(parsed.getUTCDate() + 1);
+    return parsed.toISOString().slice(0, 10);
+  };
+
+  const mergeFrozenPsychologyRegions = (frozenRegions, cache, asOfDate) => {
+    if (!cache?.regions?.length || !asOfDate) {
+      return frozenRegions;
+    }
+
+    const merged = [...frozenRegions];
+    let frozenEnd = getFrozenRegionsEnd(merged);
+    const sorted = [...cache.regions].sort((left, right) => (
+      left.startDate.localeCompare(right.startDate)
+    ));
+
+    sorted.forEach((region) => {
+      if (region.endDate > asOfDate) {
+        return;
+      }
+
+      if (frozenEnd && region.endDate <= frozenEnd) {
+        return;
+      }
+
+      let startDate = region.startDate;
+      if (frozenEnd && startDate <= frozenEnd) {
+        startDate = nextCalendarDate(frozenEnd);
+      }
+
+      if (startDate > region.endDate) {
+        return;
+      }
+
+      merged.push({
+        ...region,
+        startDate,
+        endDate: region.endDate
+      });
+      frozenEnd = region.endDate;
+    });
+
+    return merged;
+  };
+
+  const buildSimulationActiveRegion = (cache, cursorDate, frozenRegions) => {
+    if (!cache?.regions?.length || !cursorDate) {
+      return null;
+    }
+
+    const region = ElliottEngine.findRegionForDate(cache.regions, cursorDate);
+    if (!region) {
+      return null;
+    }
+
+    const frozenEnd = getFrozenRegionsEnd(frozenRegions);
+    let startDate = region.startDate;
+    if (frozenEnd && startDate <= frozenEnd) {
+      startDate = nextCalendarDate(frozenEnd);
+    }
+
+    if (startDate > cursorDate) {
+      return null;
+    }
+
+    const endDate = region.endDate > cursorDate ? cursorDate : region.endDate;
+    if (startDate > endDate) {
+      return null;
+    }
+
+    return {
+      ...region,
+      startDate,
+      endDate
+    };
+  };
+
+  const composeSimulationPsychologyCache = (baseCache, frozenRegions, cursorDate) => {
+    if (!baseCache || !cursorDate) {
+      return baseCache;
+    }
+
+    const activeRegion = buildSimulationActiveRegion(baseCache, cursorDate, frozenRegions);
+    const regions = activeRegion
+      ? [...frozenRegions, activeRegion]
+      : [...frozenRegions];
+
+    if (!regions.length) {
+      return {
+        ...baseCache,
+        rangeStart: baseCache.rangeStart,
+        rangeEnd: cursorDate,
+        regionCount: 0
+      };
+    }
+
+    const active = ElliottEngine.findRegionForDate(regions, cursorDate) || regions.at(-1);
+
+    return {
+      ...cloneCache(baseCache, regions, {
+        ...getSummaryFromRegion(active),
+        zone: active.zone,
+        label: zoneLabelsVi[active.zone] || zoneLabelsVi.Observing,
+        confidence: active.confidence,
+        elliottLabel: active.elliottLabel,
+        elliottWave: active.waveId
+      }),
+      rangeStart: regions[0].startDate,
+      rangeEnd: cursorDate,
+      regionCount: regions.length
+    };
+  };
+
   const resolveWalkForwardCache = (fullSeries, asOfDate, pipeline = {}) => {
     const mode = pipeline.mode || "enhanced";
     if (mode === "legacy") {
@@ -1565,6 +1683,8 @@ var PsychologyEngine = (() => {
     blendDailyPsychologyAtDate,
     createSimulationHysteresisState,
     applySimulationHysteresis,
+    mergeFrozenPsychologyRegions,
+    composeSimulationPsychologyCache,
     resolveWalkForwardCache,
     SIM_MIN_CONFIDENCE,
     SIM_HYSTERESIS_WEEKS,

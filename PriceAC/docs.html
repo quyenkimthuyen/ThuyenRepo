@@ -286,7 +286,7 @@
           <li>Mỗi checkpoint chỉ dùng dữ liệu ≤ ngày tuần đó — <strong>không lookahead</strong>.</li>
           <li>Cùng pipeline EMA (<code>model: ema</code>) như chế độ EMA.</li>
           <li><strong>Hysteresis 2 tuần</strong>: zone chỉ đổi khi tín hiệu mới giữ ≥ 2 tuần.</li>
-          <li><strong>Độ khớp mô hình</strong>: so walk-forward từng tuần với baseline 10Y (cache đã lưu).</li>
+          <li><strong>Ghi đóng băng vùng lịch sử</strong>: vùng đã hoàn thành tại mỗi checkpoint tuần được lưu cố định; tuần sau không được sửa lại zone của quá khứ dù Elliott walk-forward có thể thay đổi khi có thêm dữ liệu.</li>
         </ul>
         <p class="docs-note">Khi chạy giả lập theo EMA, panel khuyến nghị đầu tư được ẩn; insight strip cập nhật theo ngày con trỏ replay.</p>
       </section>
