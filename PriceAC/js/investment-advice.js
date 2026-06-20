@@ -206,7 +206,7 @@ var InvestmentAdvisor = (() => {
 
     if (profile.stance === "reduce") {
       if (rsi > 70 || trend > 8) {
-        action = "Giảm vị thế — rủi ro đuỉnh cao";
+        action = "Giảm vị thế — rủi ro đu đỉnh cao";
         detail += " · Xu hướng và RSI báo quá nóng";
       }
     }
