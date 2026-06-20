@@ -81,9 +81,39 @@ var ProSimulation = (() => {
     }
   };
 
-  const emitFrame = () => {
+  let pendingFrame = false;
+
+  const scheduleFrame = (callback) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(callback);
+      return;
+    }
+
+    if (typeof setTimeout === "function") {
+      setTimeout(callback, 0);
+      return;
+    }
+
+    callback();
+  };
+
+  const flushFrame = () => {
+    pendingFrame = false;
     onFrame();
     syncUi();
+  };
+
+  const emitFrame = () => {
+    if (pendingFrame) {
+      return;
+    }
+
+    pendingFrame = true;
+    scheduleFrame(() => {
+      pendingFrame = false;
+      onFrame();
+      syncUi();
+    });
   };
 
   const setCursorByIndex = (index, notify = true) => {
@@ -177,7 +207,7 @@ var ProSimulation = (() => {
   const pause = () => {
     state.playing = false;
     clearTimer();
-    syncUi();
+    flushFrame();
   };
 
   const stop = () => {
@@ -187,7 +217,7 @@ var ProSimulation = (() => {
     state.cursorDate = null;
     state.cursorIndex = 0;
     state.timeline = [];
-    emitFrame();
+    flushFrame();
   };
 
   const scheduleTick = () => {

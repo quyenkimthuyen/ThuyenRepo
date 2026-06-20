@@ -162,7 +162,9 @@ const App = (() => {
   };
 
   const updateMarketUI = (snapshot) => {
-    updateInsightStrip(snapshot);
+    if (!AppMode.isSimulation()) {
+      updateInsightStrip(snapshot);
+    }
     syncRsiModeLabels();
 
     const mode = snapshot?.appMode || AppMode.getMode();

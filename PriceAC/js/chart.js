@@ -77,6 +77,14 @@ const MarketChart = (() => {
     monthly: true
   };
   let elliottOverlayVisible = false;
+  let simLastOverlayDate = null;
+  let simLastSignalRenderAt = 0;
+  let signalChartBindingsAttached = false;
+
+  const isSimulationPlayback = () => typeof ProSimulation !== "undefined"
+    && AppMode.isSimulation()
+    && ProSimulation.isActive()
+    && ProSimulation.isPlaying();
 
   const generateFallbackData = (asset) => {
     const start = new Date("2026-01-01T00:00:00");
@@ -418,8 +426,12 @@ const MarketChart = (() => {
         monthly: rsiMonthly ?? fallback.rsiByInterval?.monthly
       },
       rsiIntervalLabels: fallback.rsiIntervalLabels,
-      proSignalScore: rsiDateKey ? hoverIndex.signalByDate.get(rsiDateKey) : fallback.proSignalScore,
-      proSignalGrade: rsiDateKey ? hoverIndex.signalGradeByDate.get(rsiDateKey) : fallback.proSignalGrade,
+      proSignalScore: AppMode.usesProAnalysis()
+        ? (rsiDateKey ? hoverIndex.signalByDate.get(rsiDateKey) : fallback.proSignalScore)
+        : null,
+      proSignalGrade: AppMode.usesProAnalysis()
+        ? (rsiDateKey ? hoverIndex.signalGradeByDate.get(rsiDateKey) : fallback.proSignalGrade)
+        : null,
       isHover
     };
   };
@@ -564,6 +576,21 @@ const MarketChart = (() => {
     );
   };
 
+  const clearSignalChart = () => {
+    if (signalScoreSeries) {
+      signalScoreSeries.setData([]);
+    }
+    if (signalGuideSeries) {
+      signalGuideSeries.setData([]);
+    }
+
+    const signalContainer = document.querySelector("#signal-chart");
+    if (signalContainer && !signalChart) {
+      signalContainer.innerHTML = "";
+    }
+
+    syncSignalChartVisibility(false);
+  };
   const syncSignalChartVisibility = (hasSeries) => {
     const block = document.querySelector("#signal-chart-block");
     const stack = document.querySelector(".chart-stack");
@@ -575,6 +602,10 @@ const MarketChart = (() => {
 
     if (stack) {
       stack.classList.toggle("has-signal", show);
+    }
+
+    if (show) {
+      scheduleSignalChartLayout();
     }
   };
 
@@ -637,40 +668,97 @@ const MarketChart = (() => {
     return { series: null, value: null };
   };
 
-  const bindTimeScaleSync = () => {
-    if (!chart) {
+  const bindChartTimeScale = (targetChart) => {
+    if (!chart || !targetChart) {
       return;
     }
 
-    const bindChart = (targetChart) => {
-      if (!targetChart) {
+    targetChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      if (syncingTimeScale || !range) {
         return;
       }
 
-      targetChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-        if (syncingTimeScale || !range) {
-          return;
+      syncingTimeScale = true;
+      try {
+        if (targetChart !== chart) {
+          chart.timeScale().setVisibleLogicalRange(range);
         }
-
-        syncingTimeScale = true;
-        try {
-          if (targetChart !== chart) {
-            chart.timeScale().setVisibleLogicalRange(range);
+        getSyncedSubCharts().forEach((peer) => {
+          if (peer !== targetChart) {
+            peer.timeScale().setVisibleLogicalRange(range);
           }
-          getSyncedSubCharts().forEach((peer) => {
-            if (peer !== targetChart) {
-              peer.timeScale().setVisibleLogicalRange(range);
-            }
-          });
-        } finally {
-          syncingTimeScale = false;
+        });
+      } finally {
+        syncingTimeScale = false;
+      }
+    });
+  };
+
+  const bindTimeScaleSync = () => {
+    bindChartTimeScale(chart);
+    bindChartTimeScale(rsiChart);
+    bindChartTimeScale(signalChart);
+  };
+
+  const attachSignalChartBindings = () => {
+    if (!signalChart || signalChartBindingsAttached) {
+      return;
+    }
+
+    bindChartTimeScale(signalChart);
+    signalChart.subscribeCrosshairMove((param) => handleCrosshairMove("signal", param));
+    signalChartBindingsAttached = true;
+  };
+
+  const resizeSignalChart = () => {
+    const container = document.querySelector("#signal-chart");
+    if (!signalChart || !container) {
+      return false;
+    }
+
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    if (width < 1 || height < 1) {
+      return false;
+    }
+
+    signalChart.applyOptions({ width, height });
+    return true;
+  };
+
+  const scheduleSignalChartLayout = () => {
+    const attempt = (retriesLeft = 3) => {
+      if (resizeSignalChart()) {
+        if (!syncingTimeScale) {
+          syncChartTimeScales();
         }
-      });
+        return;
+      }
+
+      if (retriesLeft > 0 && typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(() => attempt(retriesLeft - 1));
+      }
     };
 
-    bindChart(chart);
-    bindChart(rsiChart);
-    bindChart(signalChart);
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => attempt());
+    } else {
+      attempt();
+    }
+  };
+
+  const ensureSignalChart = () => {
+    const container = document.querySelector("#signal-chart");
+    if (!container || !window.LightweightCharts) {
+      return false;
+    }
+
+    if (!signalChart) {
+      createSignalChart(container);
+      attachSignalChartBindings();
+    }
+
+    return Boolean(signalChart);
   };
 
   const updatePriceStatus = (message, isBusy = false) => {
@@ -1036,6 +1124,32 @@ const MarketChart = (() => {
     renderAtrBands(clean);
   };
 
+  const updateSimulationChart = (visibleData, psychologyTimeline) => {
+    if (!chart || !visibleData.length) {
+      return;
+    }
+
+    const clean = sanitizeVisibleData(visibleData);
+    updatePriceSeriesData(clean);
+
+    const lastDate = clean[clean.length - 1]?.date;
+    if (!lastDate || lastDate === simLastOverlayDate) {
+      return;
+    }
+
+    simLastOverlayDate = lastDate;
+    const segments = psychologyTimeline.length
+      ? PsychologyEngine.buildPsychologySegments(clean, psychologyTimeline)
+      : [];
+
+    clearPsychologyBackgrounds();
+    if (segments.length) {
+      renderPsychologyBackgrounds(segments, getPriceBounds(clean));
+    }
+
+    renderElliottOverlay(clean);
+  };
+
   const drawFallbackChart = (container, visibleData, psychologyTimeline) => {
     const prices = visibleData.map((point) => point.close ?? point.price);
     const min = Math.min(...prices);
@@ -1346,13 +1460,18 @@ const MarketChart = (() => {
   };
 
   const updateSignalSeriesData = (signalSeries) => {
-    if (!signalChart) {
+    if (!signalSeries.length) {
+      return;
+    }
+
+    if (!ensureSignalChart()) {
       return;
     }
 
     ensureSignalSeries();
     signalScoreSeries.setData(toRsiLineData(signalSeries));
     updateSignalGuideData(signalSeries);
+    scheduleSignalChartLayout();
   };
 
   const createSignalChart = (container) => {
@@ -1467,58 +1586,83 @@ const MarketChart = (() => {
   const render = () => {
     const container = document.querySelector("#chart");
     const visibleData = sanitizeVisibleData(getVisibleData());
+    const simPlaying = isSimulationPlayback();
     const psychologyCache = getActivePsychologyCache();
     const fullData = getFullData();
     const psychologyTimeline = getProjectedPsychologyTimeline(visibleData);
-    let marketSnapshot = PsychologyEngine.buildMarketSnapshot(
-      psychologyCache,
-      fullData,
-      visibleData
-    );
-    const basicAdvice = InvestmentAdvisor.buildRecommendation(
-      psychologyCache,
-      fullData,
-      marketSnapshot
-    );
-    const crossAsset = psychologyCache && !AppMode.isSimulation()
-      ? ProAnalysis.buildCrossAssetMatrix(psychologyCaches, marketData, currentAsset)
-      : null;
-    const proAdvice = psychologyCache
-      ? ProAnalysis.buildProRecommendation(psychologyCache, fullData, marketSnapshot, visibleData, crossAsset)
-      : { hasAdvice: false };
-    const modeComparison = AppMode.isSimulation()
-      ? null
-      : ProAnalysis.buildModeComparison(basicAdvice, proAdvice);
-    const rsiSeries = getVisibleRsiSeries();
-    const signalSeries = getVisibleSignalSeries();
+    let marketSnapshot;
+    let rsiSeries;
+    let signalSeries;
 
-    if (AppMode.usesProAnalysis() && psychologyCache) {
-      marketSnapshot = ProAnalysis.enhanceMarketSnapshot(
-        marketSnapshot,
+    if (simPlaying) {
+      rsiSeries = getVisibleRsiSeries();
+      const now = Date.now();
+      if (now - simLastSignalRenderAt >= 600) {
+        signalSeries = getVisibleSignalSeries();
+        simLastSignalRenderAt = now;
+      } else {
+        signalSeries = chartSnapshot.signalSeries || [];
+      }
+
+      marketSnapshot = {
+        ...(chartSnapshot.marketSnapshot || {}),
+        simulation: ProSimulation.getStatus(),
+        appMode: AppMode.getMode()
+      };
+    } else {
+      simLastOverlayDate = null;
+      simLastSignalRenderAt = 0;
+
+      marketSnapshot = PsychologyEngine.buildMarketSnapshot(
         psychologyCache,
         fullData,
-        visibleData,
-        crossAsset,
-        proAdvice
+        visibleData
       );
-      const lastSignal = signalSeries.at(-1);
-      marketSnapshot.proSignalScore = lastSignal?.value ?? null;
-      marketSnapshot.proSignalGrade = lastSignal?.grade ?? null;
-    }
-
-    marketSnapshot.investment = AppMode.isPro()
-      ? proAdvice
-      : AppMode.isBasic()
-        ? basicAdvice
+      const basicAdvice = InvestmentAdvisor.buildRecommendation(
+        psychologyCache,
+        fullData,
+        marketSnapshot
+      );
+      const crossAsset = psychologyCache && !AppMode.isSimulation()
+        ? ProAnalysis.buildCrossAssetMatrix(psychologyCaches, marketData, currentAsset)
+        : null;
+      const proAdvice = psychologyCache
+        ? ProAnalysis.buildProRecommendation(psychologyCache, fullData, marketSnapshot, visibleData, crossAsset)
         : { hasAdvice: false };
-    marketSnapshot.modeComparison = modeComparison;
-    marketSnapshot.appMode = AppMode.getMode();
-    marketSnapshot.crossAsset = crossAsset;
-    marketSnapshot.basicInvestment = basicAdvice;
-    marketSnapshot.proInvestment = proAdvice;
-    marketSnapshot.simulation = typeof ProSimulation !== "undefined"
-      ? ProSimulation.getStatus()
-      : { active: false };
+      const modeComparison = AppMode.isSimulation()
+        ? null
+        : ProAnalysis.buildModeComparison(basicAdvice, proAdvice);
+      rsiSeries = getVisibleRsiSeries();
+      signalSeries = getVisibleSignalSeries();
+
+      if (AppMode.usesProAnalysis() && psychologyCache) {
+        marketSnapshot = ProAnalysis.enhanceMarketSnapshot(
+          marketSnapshot,
+          psychologyCache,
+          fullData,
+          visibleData,
+          crossAsset,
+          proAdvice
+        );
+        const lastSignal = signalSeries.at(-1);
+        marketSnapshot.proSignalScore = lastSignal?.value ?? null;
+        marketSnapshot.proSignalGrade = lastSignal?.grade ?? null;
+      }
+
+      marketSnapshot.investment = AppMode.isPro()
+        ? proAdvice
+        : AppMode.isBasic()
+          ? basicAdvice
+          : { hasAdvice: false };
+      marketSnapshot.modeComparison = modeComparison;
+      marketSnapshot.appMode = AppMode.getMode();
+      marketSnapshot.crossAsset = crossAsset;
+      marketSnapshot.basicInvestment = basicAdvice;
+      marketSnapshot.proInvestment = proAdvice;
+      marketSnapshot.simulation = typeof ProSimulation !== "undefined"
+        ? ProSimulation.getStatus()
+        : { active: false };
+    }
 
     chartSnapshot = {
       visibleData,
@@ -1531,9 +1675,13 @@ const MarketChart = (() => {
     clearChartCrosshairs();
 
     if (chart && visibleData.length) {
-      mountPriceSeries(visibleData, psychologyTimeline);
-      resetSyncedTimeScales();
-      scheduleFitChartsToVisibleData();
+      if (simPlaying) {
+        updateSimulationChart(visibleData, psychologyTimeline);
+      } else {
+        mountPriceSeries(visibleData, psychologyTimeline);
+        resetSyncedTimeScales();
+        scheduleFitChartsToVisibleData();
+      }
     } else if (!chart) {
       drawFallbackChart(container, visibleData, psychologyTimeline);
     }
@@ -1546,28 +1694,39 @@ const MarketChart = (() => {
     }
 
     const signalContainer = document.querySelector("#signal-chart");
-    syncSignalChartVisibility(signalSeries.length > 0);
-    if (signalChart && signalSeries.length) {
-      updateSignalSeriesData(signalSeries);
-    } else if (signalContainer && signalSeries.length) {
-      drawFallbackSignalChart(signalContainer, signalSeries);
-    } else if (signalContainer) {
-      signalContainer.innerHTML = "";
-    }
-
-    if (!psychologyTimeline.length) {
-      const legend = document.querySelector("#psychology-legend");
-      if (legend) {
-        legend.innerHTML = "";
+    if (!AppMode.usesProAnalysis()) {
+      clearSignalChart();
+    } else if (signalSeries.length > 0) {
+      syncSignalChartVisibility(true);
+      if (window.LightweightCharts) {
+        updateSignalSeriesData(signalSeries);
+      } else if (signalContainer) {
+        drawFallbackSignalChart(signalContainer, signalSeries);
       }
     } else {
-      PsychologyEngine.renderPsychologyLegend(document.querySelector("#psychology-legend"));
+      syncSignalChartVisibility(false);
+      if (signalContainer && !signalChart) {
+        signalContainer.innerHTML = "";
+      }
     }
 
     const { rsiDateKey, priceDateKey } = getLatestPanelKeys();
     renderCrosshairPanel(rsiDateKey, priceDateKey, false);
-    onMarketUpdate(marketSnapshot);
-    syncPsychologyStatus();
+
+    if (!simPlaying) {
+      if (!psychologyTimeline.length) {
+        const legend = document.querySelector("#psychology-legend");
+        if (legend) {
+          legend.innerHTML = "";
+        }
+      } else {
+        PsychologyEngine.renderPsychologyLegend(document.querySelector("#psychology-legend"));
+      }
+
+      onMarketUpdate(marketSnapshot);
+      syncPsychologyStatus();
+    }
+
     syncElliottChip(marketSnapshot);
   };
 
@@ -1657,7 +1816,6 @@ const MarketChart = (() => {
     await loadAllData();
     createChart(document.querySelector("#chart"));
     createRsiChart(document.querySelector("#rsi-chart"));
-    createSignalChart(document.querySelector("#signal-chart"));
     bindTimeScaleSync();
     bindCrosshairSync();
     bindPsychologyControls();
