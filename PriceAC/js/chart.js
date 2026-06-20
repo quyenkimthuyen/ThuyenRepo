@@ -163,7 +163,16 @@ const MarketChart = (() => {
     return cache ? PsychologyEngine.projectPsychologyToSeries(cache, visibleData) : [];
   };
 
-  const getFullData = () => marketData[currentAsset] || [];
+  const getFullData = () => {
+    const raw = marketData[currentAsset] || [];
+    const cutoff = typeof ProSimulation !== "undefined" ? ProSimulation.getCutoffDate() : null;
+
+    if (!cutoff) {
+      return raw;
+    }
+
+    return raw.filter((point) => point.date <= cutoff);
+  };
 
   const toRsiLineData = (data) => data.map((point) => ({
     time: point.date,
@@ -434,8 +443,14 @@ const MarketChart = (() => {
   };
 
   const getLatestPanelKeys = () => {
-    const priceDateKey = hoverIndex.orderedDates[hoverIndex.orderedDates.length - 1] || null;
-    const rsiDateKey = chartSnapshot.rsiSeries.twoDay[chartSnapshot.rsiSeries.twoDay.length - 1]?.date
+    const simDate = typeof ProSimulation !== "undefined" && ProSimulation.isActive()
+      ? ProSimulation.getCutoffDate()
+      : null;
+    const priceDateKey = simDate
+      || hoverIndex.orderedDates[hoverIndex.orderedDates.length - 1]
+      || null;
+    const rsiDateKey = simDate
+      || chartSnapshot.rsiSeries.twoDay[chartSnapshot.rsiSeries.twoDay.length - 1]?.date
       || priceDateKey;
 
     return { rsiDateKey, priceDateKey };
@@ -1495,6 +1510,9 @@ const MarketChart = (() => {
     marketSnapshot.crossAsset = crossAsset;
     marketSnapshot.basicInvestment = basicAdvice;
     marketSnapshot.proInvestment = proAdvice;
+    marketSnapshot.simulation = typeof ProSimulation !== "undefined"
+      ? ProSimulation.getStatus()
+      : { active: false };
 
     chartSnapshot = {
       visibleData,
@@ -1549,7 +1567,11 @@ const MarketChart = (() => {
 
   const setAsset = (asset) => {
     currentAsset = asset;
-    render();
+    if (typeof ProSimulation !== "undefined") {
+      ProSimulation.onContextChange();
+    } else {
+      render();
+    }
   };
 
   const setRange = (range) => {
@@ -1558,12 +1580,20 @@ const MarketChart = (() => {
     }
 
     currentRange = range;
-    render();
+    if (typeof ProSimulation !== "undefined" && ProSimulation.isActive()) {
+      ProSimulation.rebuildTimeline(true);
+    } else {
+      render();
+    }
   };
 
   const setInterval = (interval) => {
     currentInterval = interval;
-    render();
+    if (typeof ProSimulation !== "undefined") {
+      ProSimulation.onContextChange();
+    } else {
+      render();
+    }
   };
 
   const setChartMode = (mode) => {
@@ -1628,8 +1658,23 @@ const MarketChart = (() => {
     bindPriceUpdateControls();
     bindElliottControls();
     AppMode.onChange(() => {
+      if (typeof ProSimulation !== "undefined") {
+        ProSimulation.onModeChange();
+      }
       render();
     });
+    if (typeof ProSimulation !== "undefined") {
+      ProSimulation.init({
+        getContext: () => ({
+          fullData: marketData[currentAsset] || [],
+          interval: currentInterval,
+          hasCache: Boolean(psychologyCaches[currentAsset])
+        }),
+        onFrame: () => {
+          render();
+        }
+      });
+    }
     syncRsiToggleButtons();
     updatePriceStatus("");
     render();

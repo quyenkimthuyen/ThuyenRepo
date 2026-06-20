@@ -66,6 +66,50 @@
 
     <section class="pro-brief-wrap" id="pro-brief" aria-label="Tóm tắt Pro" hidden></section>
 
+    <section class="sim-panel-wrap" id="pro-simulation" aria-label="Giả lập Pro" hidden>
+      <div class="sim-panel">
+        <header class="sim-head">
+          <div>
+            <p class="sim-kicker">Giả lập Pro</p>
+            <h2 class="sim-title">Replay chỉ số theo thời gian</h2>
+          </div>
+          <span class="sim-live-badge" id="sim-cursor-label">Chưa chạy giả lập</span>
+        </header>
+
+        <div class="sim-controls">
+          <label class="sim-field">
+            <span>Từ</span>
+            <input type="date" id="sim-start" aria-label="Ngày bắt đầu giả lập">
+          </label>
+          <label class="sim-field">
+            <span>Đến</span>
+            <input type="date" id="sim-end" aria-label="Ngày kết thúc giả lập">
+          </label>
+          <button type="button" class="secondary-button" id="sim-apply">Áp dụng</button>
+
+          <div class="sim-transport">
+            <button type="button" class="sim-btn" id="sim-run" title="Chạy">▶ Run</button>
+            <button type="button" class="sim-btn" id="sim-pause" title="Tạm dừng">⏸ Pause</button>
+            <button type="button" class="sim-btn" id="sim-stop" title="Kết thúc giả lập">⏹ Stop</button>
+          </div>
+
+          <label class="sim-field sim-field--compact">
+            <span>Tốc độ</span>
+            <select id="sim-speed" aria-label="Tốc độ giả lập"></select>
+          </label>
+          <label class="sim-field sim-field--compact">
+            <span>Bước</span>
+            <select id="sim-step" aria-label="Số nến mỗi bước"></select>
+          </label>
+        </div>
+
+        <div class="sim-scrubber-wrap">
+          <input type="range" id="sim-scrubber" min="0" max="100" value="0" aria-label="Vị trí giả lập">
+        </div>
+        <p class="sim-status" id="sim-status"></p>
+      </div>
+    </section>
+
     <section class="chart-toolbar" aria-label="Điều khiển biểu đồ">
       <div class="toolbar-group">
         <span class="toolbar-label">Khung nến</span>
@@ -156,6 +200,7 @@
   <script src="js/investment-advice.js"></script>
   <script src="js/app-mode.js"></script>
   <script src="js/pro-analysis.js"></script>
+  <script src="js/pro-simulation.js"></script>
   <script src="js/chart.js"></script>
   <script src="js/app.js"></script>
 </body>

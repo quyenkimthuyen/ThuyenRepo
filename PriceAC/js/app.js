@@ -78,9 +78,12 @@ const App = (() => {
     if (analysisMetaEl) {
       const analyzedAt = PsychologyEngine.formatAnalyzedAt(snapshot.analyzedAt);
       const modeTag = AppMode.isPro() ? " · Pro" : " · Basic";
+      const simTag = snapshot.simulation?.active
+        ? ` · Giả lập ${snapshot.simulation.cursorDate}${snapshot.simulation.playing ? " ▶" : ""}`
+        : "";
       analysisMetaEl.textContent = analyzedAt
-        ? `Bản đồ 10 năm · ${snapshot.weekCount} tuần · lưu ${analyzedAt}${modeTag}`
-        : `Bản đồ 10 năm · ${snapshot.weekCount} tuần${modeTag}`;
+        ? `Bản đồ 10 năm · ${snapshot.weekCount} tuần · lưu ${analyzedAt}${modeTag}${simTag}`
+        : `Bản đồ 10 năm · ${snapshot.weekCount} tuần${modeTag}${simTag}`;
     }
   };
 

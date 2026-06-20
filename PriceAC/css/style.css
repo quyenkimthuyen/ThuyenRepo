@@ -102,6 +102,141 @@ button {
   margin: 0 0 14px;
 }
 
+.sim-panel-wrap {
+  margin: 0 0 14px;
+}
+
+.sim-panel-wrap[hidden] {
+  display: none !important;
+}
+
+.sim-panel {
+  padding: 14px 16px;
+  border: 1px solid rgba(91, 156, 245, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(91, 156, 245, 0.08), rgba(8, 19, 30, 0.5));
+}
+
+.sim-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.sim-kicker {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sim-title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.sim-live-badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(91, 156, 245, 0.14);
+  color: #9ec5ff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+body.is-simulating .sim-live-badge {
+  background: rgba(240, 180, 92, 0.16);
+  color: #f0b45c;
+}
+
+body.is-sim-playing .sim-live-badge {
+  animation: sim-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes sim-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+.sim-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+}
+
+.sim-field {
+  display: grid;
+  gap: 4px;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.sim-field input,
+.sim-field select {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.sim-field--compact select {
+  min-width: 96px;
+}
+
+.sim-transport {
+  display: flex;
+  gap: 6px;
+}
+
+.sim-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.sim-btn.active,
+#sim-run.active {
+  border-color: rgba(61, 214, 140, 0.45);
+  background: rgba(61, 214, 140, 0.12);
+  color: #3dd68c;
+}
+
+.sim-scrubber-wrap {
+  margin-top: 12px;
+}
+
+.sim-scrubber-wrap input[type="range"] {
+  width: 100%;
+  accent-color: #5b9cf5;
+}
+
+.sim-status {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+body.is-simulating .chart-workspace {
+  outline: 1px solid rgba(240, 180, 92, 0.22);
+  outline-offset: 4px;
+  border-radius: 16px;
+}
+
 .pro-brief-panel {
   padding: 16px 18px;
   border: 1px solid rgba(240, 180, 92, 0.28);
@@ -1342,6 +1477,19 @@ button {
 
   .pro-brief-grid {
     grid-template-columns: 1fr;
+  }
+
+  .sim-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .sim-transport {
+    width: 100%;
+  }
+
+  .sim-btn {
+    flex: 1;
   }
 
   .investment-risk-grid {

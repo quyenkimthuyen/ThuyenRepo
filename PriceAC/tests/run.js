@@ -52,7 +52,11 @@ const sharedCtx = {
     }
   },
   URLSearchParams,
-  fetch: global.fetch
+  fetch: global.fetch,
+  document: {
+    querySelector: () => null,
+    body: { classList: { toggle() {} } }
+  }
 };
 
 vm.createContext(sharedCtx);
@@ -100,6 +104,7 @@ const MarketDataService = loadEngine("js/market-data.js", "MarketDataService");
 loadEngine("js/investment-advice.js", "InvestmentAdvisor");
 const AppMode = loadEngine("js/app-mode.js", "AppMode");
 const ProAnalysis = loadEngine("js/pro-analysis.js", "ProAnalysis");
+const ProSimulation = loadEngine("js/pro-simulation.js", "ProSimulation");
 
 test("filterSeriesByDayRange respects calendar days", () => {
   const daily = [
@@ -476,6 +481,32 @@ test("pro signal score series aligns to visible chart", () => {
     assert.ok(point.value >= 0 && point.value <= 100);
     assert.ok(["A", "B", "C", "D"].includes(point.grade));
   });
+});
+
+test("pro simulation builds timeline and cutoff date", () => {
+  const bitcoin = loadBitcoin();
+  const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
+  const end = daily.at(-1).date;
+  const start = daily.at(-120).date;
+
+  ProSimulation.init({
+    getContext: () => ({
+      fullData: bitcoin,
+      interval: "1D",
+      hasCache: true
+    }),
+    onFrame: () => {}
+  });
+
+  assert.ok(ProSimulation.arm(start, end));
+  assert.ok(ProSimulation.isActive());
+  assert.equal(ProSimulation.getCutoffDate(), start);
+  assert.equal(ProSimulation.getStatus().progress, 0);
+
+  ProSimulation.seekPercent(100);
+  assert.equal(ProSimulation.getCutoffDate(), end);
+  ProSimulation.stop();
+  assert.ok(!ProSimulation.isActive());
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
