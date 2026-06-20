@@ -153,7 +153,7 @@ const MarketChart = (() => {
       return null;
     }
 
-    return AppMode.isPro()
+    return AppMode.usesProAnalysis()
       ? ProAnalysis.enrichPsychologyCache(cache, getFullData())
       : cache;
   };
@@ -538,7 +538,7 @@ const MarketChart = (() => {
     const visibleData = getVisibleData();
     const fullData = getFullData();
 
-    if (AppMode.isPro()) {
+    if (AppMode.usesProAnalysis()) {
       return ProAnalysis.alignRsiForPro(fullData, visibleData);
     }
 
@@ -550,7 +550,7 @@ const MarketChart = (() => {
     const visibleData = getVisibleData();
     const cache = getActivePsychologyCache();
 
-    if (!AppMode.isPro() || !cache?.regions?.length || !visibleData.length) {
+    if (!AppMode.usesProAnalysis() || !cache?.regions?.length || !visibleData.length) {
       return [];
     }
 
@@ -567,7 +567,7 @@ const MarketChart = (() => {
   const syncSignalChartVisibility = (hasSeries) => {
     const block = document.querySelector("#signal-chart-block");
     const stack = document.querySelector(".chart-stack");
-    const show = AppMode.isPro() && hasSeries;
+    const show = AppMode.usesProAnalysis() && hasSeries;
 
     if (block) {
       block.hidden = !show;
@@ -893,7 +893,7 @@ const MarketChart = (() => {
     }
 
     const overlay = ElliottEngine.buildVisibleWaveOverlay(cache, visibleData, {
-      validatedOnly: AppMode.isPro()
+      validatedOnly: AppMode.usesProAnalysis()
     });
     if (!overlay?.points?.length) {
       return;
@@ -1076,7 +1076,7 @@ const MarketChart = (() => {
     const cache = getElliottOverlayCache();
     const elliottOverlay = elliottOverlayVisible && cache
       ? ElliottEngine.buildVisibleWaveOverlay(cache, visibleData, {
-        validatedOnly: AppMode.isPro()
+        validatedOnly: AppMode.usesProAnalysis()
       })
       : null;
 
@@ -1480,17 +1480,19 @@ const MarketChart = (() => {
       fullData,
       marketSnapshot
     );
-    const crossAsset = psychologyCache
+    const crossAsset = psychologyCache && !AppMode.isSimulation()
       ? ProAnalysis.buildCrossAssetMatrix(psychologyCaches, marketData, currentAsset)
       : null;
     const proAdvice = psychologyCache
       ? ProAnalysis.buildProRecommendation(psychologyCache, fullData, marketSnapshot, visibleData, crossAsset)
       : { hasAdvice: false };
-    const modeComparison = ProAnalysis.buildModeComparison(basicAdvice, proAdvice);
+    const modeComparison = AppMode.isSimulation()
+      ? null
+      : ProAnalysis.buildModeComparison(basicAdvice, proAdvice);
     const rsiSeries = getVisibleRsiSeries();
     const signalSeries = getVisibleSignalSeries();
 
-    if (AppMode.isPro() && psychologyCache) {
+    if (AppMode.usesProAnalysis() && psychologyCache) {
       marketSnapshot = ProAnalysis.enhanceMarketSnapshot(
         marketSnapshot,
         psychologyCache,
@@ -1504,7 +1506,11 @@ const MarketChart = (() => {
       marketSnapshot.proSignalGrade = lastSignal?.grade ?? null;
     }
 
-    marketSnapshot.investment = AppMode.isPro() ? proAdvice : basicAdvice;
+    marketSnapshot.investment = AppMode.isPro()
+      ? proAdvice
+      : AppMode.isBasic()
+        ? basicAdvice
+        : { hasAdvice: false };
     marketSnapshot.modeComparison = modeComparison;
     marketSnapshot.appMode = AppMode.getMode();
     marketSnapshot.crossAsset = crossAsset;

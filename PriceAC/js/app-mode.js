@@ -1,13 +1,14 @@
-/* App mode: basic (legacy) vs pro (validated analysis + risk framework). */
+/* App mode: basic, pro (validated analysis), simulation (Pro replay). */
 var AppMode = (() => {
   const STORAGE_KEY = "priceac.app.mode";
+  const MODES = ["basic", "pro", "simulation"];
   let mode = "basic";
   const listeners = new Set();
 
   const load = () => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved === "basic" || saved === "pro") {
+      if (MODES.includes(saved)) {
         mode = saved;
       }
     } catch (error) {
@@ -18,9 +19,11 @@ var AppMode = (() => {
   const getMode = () => mode;
   const isPro = () => mode === "pro";
   const isBasic = () => mode === "basic";
+  const isSimulation = () => mode === "simulation";
+  const usesProAnalysis = () => mode === "pro" || mode === "simulation";
 
   const setMode = (nextMode) => {
-    if (nextMode !== "basic" && nextMode !== "pro") {
+    if (!MODES.includes(nextMode)) {
       return;
     }
 
@@ -40,7 +43,8 @@ var AppMode = (() => {
   };
 
   const toggle = () => {
-    setMode(mode === "pro" ? "basic" : "pro");
+    const index = MODES.indexOf(mode);
+    setMode(MODES[(index + 1) % MODES.length]);
   };
 
   const onChange = (listener) => {
@@ -54,6 +58,8 @@ var AppMode = (() => {
     getMode,
     isPro,
     isBasic,
+    isSimulation,
+    usesProAnalysis,
     setMode,
     toggle,
     onChange,

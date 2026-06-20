@@ -261,7 +261,7 @@ var ProSimulation = (() => {
       return;
     }
 
-    const show = AppMode.isPro();
+    const show = AppMode.isSimulation();
     panel.hidden = !show;
     document.body.classList.toggle("pro-simulation-ready", show);
   };
@@ -360,12 +360,12 @@ var ProSimulation = (() => {
       const speed = SPEEDS[state.speedIndex]?.label || "1×";
       const step = STEP_OPTIONS.find((item) => item.id === state.stepBars)?.label || "1 nến";
       statusEl.textContent = status.active
-        ? `Giả lập Pro · ${status.playing ? "đang chạy" : "tạm dừng"} · ${speed} · ${step}`
+        ? `Giả lập · ${status.playing ? "đang chạy" : "tạm dừng"} · ${speed} · ${step}`
         : "Chọn khoảng thời gian quá khứ, bấm Áp dụng rồi Run để xem chỉ số tiến hóa từng bước (không nhìn trước tương lai).";
     }
 
     if (runBtn) {
-      runBtn.disabled = !AppMode.isPro();
+      runBtn.disabled = !AppMode.isSimulation();
       runBtn.classList.toggle("active", status.playing);
     }
     if (pauseBtn) {
@@ -486,7 +486,7 @@ var ProSimulation = (() => {
   };
 
   const onModeChange = () => {
-    if (!AppMode.isPro()) {
+    if (!AppMode.isSimulation()) {
       stop();
     } else {
       seedDefaults();

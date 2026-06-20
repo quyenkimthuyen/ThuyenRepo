@@ -356,13 +356,19 @@ test("investment advice ranks zones from 10Y history", () => {
   }
 });
 
-test("AppMode persists basic and pro in localStorage", () => {
+test("AppMode persists basic, pro, and simulation in localStorage", () => {
   sharedCtx.localStorage.removeItem("priceac.app.mode");
   AppMode.setMode("pro");
   assert.equal(AppMode.getMode(), "pro");
   assert.equal(AppMode.isPro(), true);
+  assert.equal(AppMode.usesProAnalysis(), true);
+  AppMode.setMode("simulation");
+  assert.equal(AppMode.isSimulation(), true);
+  assert.equal(AppMode.usesProAnalysis(), true);
+  assert.equal(AppMode.isPro(), false);
   AppMode.setMode("basic");
   assert.equal(AppMode.isBasic(), true);
+  assert.equal(AppMode.usesProAnalysis(), false);
 });
 
 test("elliott validation annotates regions", () => {
@@ -484,11 +490,13 @@ test("pro signal score series aligns to visible chart", () => {
   });
 });
 
-test("pro simulation builds timeline and cutoff date", () => {
+test("simulation mode builds timeline and cutoff date", () => {
   const bitcoin = loadBitcoin();
   const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
   const end = daily.at(-1).date;
   const start = daily.at(-120).date;
+
+  AppMode.setMode("simulation");
 
   ProSimulation.init({
     getContext: () => ({

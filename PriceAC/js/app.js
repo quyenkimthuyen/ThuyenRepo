@@ -13,6 +13,16 @@ const App = (() => {
     });
   };
 
+  const modeLabel = (mode) => {
+    if (mode === "pro") {
+      return "Pro";
+    }
+    if (mode === "simulation") {
+      return "Giả lập";
+    }
+    return "Basic";
+  };
+
   const syncModeToggle = () => {
     const mode = AppMode.getMode();
     document.querySelectorAll(".mode-tab").forEach((button) => {
@@ -23,20 +33,22 @@ const App = (() => {
 
     document.body.classList.toggle("app-mode-pro", mode === "pro");
     document.body.classList.toggle("app-mode-basic", mode === "basic");
+    document.body.classList.toggle("app-mode-simulation", mode === "simulation");
   };
 
   const syncRsiModeLabels = () => {
+    const usesPro = AppMode.usesProAnalysis();
     const twoDayToggle = document.querySelector('.rsi-toggle[data-rsi="twoDay"]');
     if (twoDayToggle) {
-      twoDayToggle.textContent = AppMode.isPro() ? "1D" : "2D";
-      twoDayToggle.title = AppMode.isPro()
+      twoDayToggle.textContent = usesPro ? "1D" : "2D";
+      twoDayToggle.title = usesPro
         ? "RSI 1 ngày (chuẩn Pro)"
         : "RSI 2 ngày (Basic)";
     }
 
     const rsiNote = document.querySelector("#insight-rsi + small");
     if (rsiNote) {
-      rsiNote.textContent = AppMode.isPro() ? "1D · T · Th" : "2D · T · Th";
+      rsiNote.textContent = usesPro ? "1D · T · Th" : "2D · T · Th";
     }
   };
 
@@ -66,7 +78,7 @@ const App = (() => {
     zoneNoteEl.textContent = `Giai đoạn hiện tại · ${snapshot.confidence}% ${confidenceLabel}`;
 
     let waveText = snapshot.elliottLabel || "—";
-    if (AppMode.isPro() && snapshot.elliottValidated === false) {
+    if (AppMode.usesProAnalysis() && snapshot.elliottValidated === false) {
       waveText += " (chưa xác thực)";
     }
     waveEl.textContent = waveText;
@@ -77,9 +89,9 @@ const App = (() => {
 
     if (analysisMetaEl) {
       const analyzedAt = PsychologyEngine.formatAnalyzedAt(snapshot.analyzedAt);
-      const modeTag = AppMode.isPro() ? " · Pro" : " · Basic";
+      const modeTag = ` · ${modeLabel(snapshot.appMode || AppMode.getMode())}`;
       const simTag = snapshot.simulation?.active
-        ? ` · Giả lập ${snapshot.simulation.cursorDate}${snapshot.simulation.playing ? " ▶" : ""}`
+        ? ` · ${snapshot.simulation.cursorDate}${snapshot.simulation.playing ? " ▶" : ""}`
         : "";
       analysisMetaEl.textContent = analyzedAt
         ? `Bản đồ 10 năm · ${snapshot.weekCount} tuần · lưu ${analyzedAt}${modeTag}${simTag}`
@@ -152,24 +164,34 @@ const App = (() => {
   const updateMarketUI = (snapshot) => {
     updateInsightStrip(snapshot);
     syncRsiModeLabels();
+
+    const mode = snapshot?.appMode || AppMode.getMode();
+
     ProAnalysis.renderProBrief(
       document.querySelector("#pro-brief"),
       AppMode.isPro() ? snapshot?.proBrief : null
     );
+
     ProAnalysis.renderModeComparison(
       document.querySelector("#mode-compare"),
-      snapshot?.modeComparison,
-      snapshot?.appMode || AppMode.getMode()
+      AppMode.isSimulation() ? null : snapshot?.modeComparison,
+      mode
     );
 
+    const investmentPanel = document.querySelector("#investment-panel");
     if (AppMode.isPro()) {
+      investmentPanel.hidden = false;
       ProAnalysis.renderProPanel(
-        document.querySelector("#investment-panel"),
+        investmentPanel,
         snapshot?.investment,
         snapshot?.crossAsset
       );
-    } else {
-      InvestmentAdvisor.renderPanel(document.querySelector("#investment-panel"), snapshot?.investment);
+    } else if (AppMode.isBasic()) {
+      investmentPanel.hidden = false;
+      InvestmentAdvisor.renderPanel(investmentPanel, snapshot?.investment);
+    } else if (investmentPanel) {
+      investmentPanel.innerHTML = "";
+      investmentPanel.hidden = true;
     }
   };
 
