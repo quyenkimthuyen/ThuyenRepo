@@ -660,79 +660,188 @@ const PsychologyEngine = (() => {
     });
   };
 
-  const ELLIOTT_WEEKLY_RANGES = ["5Y", "10Y"];
+  const TEN_YEAR_DAYS = 365 * 10;
+  const PSYCHOLOGY_CACHE_PREFIX = "priceac.psychology.v3.";
+  const PSYCHOLOGY_CACHE_VERSION = 3;
 
-  const supportsElliottWeeklyPsychology = (range) => ELLIOTT_WEEKLY_RANGES.includes(range);
-
-  const getWeekAnchor = (weeklySeries, date) => {
-    let anchor = weeklySeries[0]?.date;
-
-    weeklySeries.forEach((point) => {
-      if (point.date <= date) {
-        anchor = point.date;
-      }
-    });
-
-    return anchor;
-  };
-
-  const buildElliottWeeklyTimeline = (fullSeries, visibleSeries) => {
-    if (!visibleSeries?.length) {
-      return [];
-    }
-
-    const visibleStart = visibleSeries[0].date;
-    const visibleEnd = visibleSeries[visibleSeries.length - 1].date;
+  const getTenYearDailySlice = (fullSeries) => {
     const daily = aggregateSeries(fullSeries, "1D");
-    const weekly = aggregateSeries(daily, "1W");
-    const startWeek = getWeekAnchor(weekly, visibleStart);
-    const endWeek = getWeekAnchor(weekly, visibleEnd);
-    const weeklyInRange = weekly.filter(
-      (point) => point.date >= startWeek && point.date <= endWeek
-    );
-    const model = ElliottEngine.buildWeeklyPsychologyModel(
-      weeklyInRange.length >= 2 ? weeklyInRange : weekly.slice(-Math.max(weeklyInRange.length, 2)),
-      { rangeStart: visibleStart, rangeEnd: visibleEnd }
-    );
-
-    return visibleSeries.map((point) => {
-      const region = ElliottEngine.findRegionForDate(model.regions, point.date);
-
-      return {
-        date: point.date,
-        zone: region.zone,
-        color: zoneColors[region.zone] || zoneColors.Observing,
-        label: zoneLabelsVi[region.zone] || zoneLabelsVi.Observing,
-        confidence: region.confidence,
-        elliottLabel: region.elliottLabel,
-        elliottWave: region.waveId
-      };
-    });
+    return daily.slice(-TEN_YEAR_DAYS);
   };
 
-  const buildElliottWeeklyTimelineAsync = (fullSeries, visibleSeries, onProgress = () => {}) => new Promise((resolve, reject) => {
-    const visible = visibleSeries || [];
+  const regionToTimelinePoint = (date, region) => ({
+    date,
+    zone: region.zone,
+    color: zoneColors[region.zone] || zoneColors.Observing,
+    label: zoneLabelsVi[region.zone] || zoneLabelsVi.Observing,
+    confidence: region.confidence,
+    elliottLabel: region.elliottLabel,
+    elliottWave: region.waveId
+  });
 
-    if (!visible.length) {
-      resolve([]);
-      return;
+  const getSummaryFromRegion = (region) => ({
+    zone: region.zone,
+    label: zoneLabelsVi[region.zone] || zoneLabelsVi.Observing,
+    confidence: region.confidence,
+    elliottLabel: region.elliottLabel,
+    elliottWave: region.waveId
+  });
+
+  const buildPsychologyCache = (fullSeries) => {
+    const dailyTenYear = getTenYearDailySlice(fullSeries);
+
+    if (dailyTenYear.length < 28) {
+      return null;
     }
 
+    const rangeStart = dailyTenYear[0].date;
+    const rangeEnd = dailyTenYear[dailyTenYear.length - 1].date;
+    const weekly = aggregateSeries(dailyTenYear, "1W");
+    const model = ElliottEngine.buildWeeklyPsychologyModel(weekly, {
+      rangeStart,
+      rangeEnd
+    });
+    const latestRegion = ElliottEngine.findRegionForDate(model.regions, rangeEnd);
+
+    return {
+      version: PSYCHOLOGY_CACHE_VERSION,
+      rangeStart,
+      rangeEnd,
+      dataEndDate: rangeEnd,
+      weekCount: weekly.length,
+      regionCount: model.regions.length,
+      regions: model.regions,
+      summary: getSummaryFromRegion(latestRegion),
+      analyzedAt: new Date().toISOString()
+    };
+  };
+
+  const buildPsychologyCacheAsync = (fullSeries, onProgress = () => {}) => new Promise((resolve, reject) => {
     setTimeout(() => {
       try {
         onProgress(0.2);
-        const timeline = buildElliottWeeklyTimeline(fullSeries, visible);
+        const cache = buildPsychologyCache(fullSeries);
         onProgress(1);
-        resolve(timeline);
+        resolve(cache);
       } catch (error) {
         reject(error);
       }
     }, 0);
   });
 
-  const buildPsychologyTimelineAsync = (fullSeries, visibleSeries, onProgress = () => {}) => (
-    buildElliottWeeklyTimelineAsync(fullSeries, visibleSeries, onProgress)
-  );
+  const isPsychologyCacheValid = (cache, fullSeries) => {
+    if (!cache || cache.version !== PSYCHOLOGY_CACHE_VERSION || !cache.regions?.length) {
+      return false;
+    }
+
+    const daily = aggregateSeries(fullSeries, "1D");
+    const latestDate = daily.at(-1)?.date;
+    return Boolean(latestDate && cache.dataEndDate === latestDate);
+  };
+
+  const savePsychologyCache = (asset, cache) => {
+    if (!cache) {
+      return;
+    }
+
+    try {
+      localStorage.setItem(`${PSYCHOLOGY_CACHE_PREFIX}${asset}`, JSON.stringify(cache));
+    } catch (error) {
+      console.warn("Không lưu được phân tích tâm lý", error);
+    }
+  };
+
+  const loadPsychologyCache = (asset) => {
+    try {
+      const raw = localStorage.getItem(`${PSYCHOLOGY_CACHE_PREFIX}${asset}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+      console.warn("Không đọc được phân tích đã lưu", error);
+      return null;
+    }
+  };
+
+  const clearPsychologyCache = (asset) => {
+    try {
+      localStorage.removeItem(`${PSYCHOLOGY_CACHE_PREFIX}${asset}`);
+    } catch (error) {
+      console.warn("Không xóa được phân tích đã lưu", error);
+    }
+  };
+
+  const projectPsychologyToSeries = (cache, visibleSeries) => {
+    if (!cache?.regions?.length || !visibleSeries?.length) {
+      return [];
+    }
+
+    return visibleSeries.map((point) => {
+      if (point.date < cache.rangeStart || point.date > cache.rangeEnd) {
+        return observingPoint(point.date);
+      }
+
+      return regionToTimelinePoint(
+        point.date,
+        ElliottEngine.findRegionForDate(cache.regions, point.date)
+      );
+    });
+  };
+
+  const buildMarketMetrics = (fullSeries, visibleSeries) => {
+    const visible = aggregateSeries(visibleSeries, "1D");
+    const multi = buildMultiFrameRsi(fullSeries);
+    const rsiByInterval = {
+      daily: multi.daily.at(-1)?.value ?? 50,
+      weekly: multi.weekly.at(-1)?.value ?? 50,
+      monthly: multi.monthly.at(-1)?.value ?? 50
+    };
+
+    return {
+      trend: Number(calculateTrend(visible).toFixed(2)),
+      rsi: Math.round((rsiByInterval.daily + rsiByInterval.weekly + rsiByInterval.monthly) / 3),
+      rsiByInterval
+    };
+  };
+
+  const buildMarketSnapshot = (cache, fullSeries, visibleSeries) => {
+    const metrics = buildMarketMetrics(fullSeries, visibleSeries);
+
+    if (!cache) {
+      return {
+        ...metrics,
+        hasAnalysis: false
+      };
+    }
+
+    return {
+      ...metrics,
+      hasAnalysis: true,
+      analyzedAt: cache.analyzedAt,
+      weekCount: cache.weekCount,
+      regionCount: cache.regionCount,
+      rangeStart: cache.rangeStart,
+      rangeEnd: cache.rangeEnd,
+      ...cache.summary
+    };
+  };
+
+  const formatAnalyzedAt = (isoDate) => {
+    if (!isoDate) {
+      return "";
+    }
+
+    const date = new Date(isoDate);
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+
+    return date.toLocaleString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  };
 
   const buildPsychologySegments = (visibleSeries, timeline) => {
     if (!visibleSeries.length) {
@@ -794,7 +903,7 @@ const PsychologyEngine = (() => {
     ];
 
     container.innerHTML = `
-      <p class="psychology-legend-note">Phủ toàn bộ khung 5Y/10Y đã chọn — mỗi giai đoạn tuần gắn một sóng Elliott và vùng tâm lý</p>
+      <p class="psychology-legend-note">Bản đồ 10 năm (nến tuần) — mỗi giai đoạn gắn một sóng Elliott và vùng tâm lý</p>
       ${featuredZones.map((zone) => `
       <span class="psych-legend-item" style="--zone-color: ${zoneColors[zone]}">
         ${zoneLabelsVi[zone]}
@@ -834,7 +943,7 @@ const PsychologyEngine = (() => {
         <div>
           <span>Tâm lý thị trường</span>
           <strong class="psych-zone-value" style="color: ${zoneColors[psychologyZone] || zoneColors.Observing}">
-            ${psychologyLabel || psychologyZone}${psychologyConfidence ? ` · ${psychologyConfidence}%` : ""}
+            ${psychologyLabel || psychologyZone}${psychologyConfidence ? ` · khớp ${psychologyConfidence}%` : ""}
           </strong>
         </div>
         ` : ""}
@@ -911,25 +1020,23 @@ const PsychologyEngine = (() => {
     zoneColors,
     zoneBackgroundAlpha,
     zoneLabelsVi,
+    TEN_YEAR_DAYS,
     aggregateSeries,
     normalizeCandle,
     buildMultiFrameRsi,
-    buildPsychologyTimeline,
-    buildElliottWeeklyTimeline,
-    buildElliottWeeklyTimelineAsync,
-    buildPsychologyTimelineAsync,
+    buildPsychologyCache,
+    buildPsychologyCacheAsync,
+    projectPsychologyToSeries,
+    buildMarketMetrics,
+    buildMarketSnapshot,
+    isPsychologyCacheValid,
+    savePsychologyCache,
+    loadPsychologyCache,
+    clearPsychologyCache,
+    formatAnalyzedAt,
     buildPsychologySegments,
     filterRsiByRange,
-    computeFeatures,
-    classifyPsychology,
-    classifyFromFeatures,
-    prepareDailyContext,
-    supportsElliottWeeklyPsychology,
-    ELLIOTT_WEEKLY_RANGES,
-    evaluate,
     renderPsychologyLegend,
-    renderRsiPanel,
-    renderCycle,
-    renderProbabilities
+    renderRsiPanel
   };
 })();

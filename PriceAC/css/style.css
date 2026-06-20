@@ -55,7 +55,32 @@ button {
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.psychology-status {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.psychology-status.busy {
+  color: var(--accent);
+}
+
+.analysis-meta {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 
 .brand {
@@ -166,19 +191,7 @@ button {
 }
 
 .insight-meter {
-  height: 4px;
-  margin-top: 10px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.12);
-}
-
-.insight-meter span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, var(--accent), var(--green));
-  transition: width 280ms ease;
+  display: none;
 }
 
 #insight-trend.is-up {
@@ -425,35 +438,17 @@ button {
   color: #f0b45c;
 }
 
-/* Elliott panel */
-.elliott-panel {
-  padding: 16px;
+/* Legend panel */
+.legend-panel {
+  padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: linear-gradient(160deg, rgba(21, 31, 43, 0.55), rgba(11, 17, 25, 0.9));
+  background: rgba(11, 17, 25, 0.65);
 }
 
-.elliott-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 12px;
-}
-
-.elliott-head h2 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-.elliott-desc {
-  margin: 6px 0 0;
-  max-width: 52ch;
-  color: var(--muted);
-  font-size: 0.84rem;
-  line-height: 1.5;
+.legend-panel .psychology-legend-title {
+  display: block;
+  margin-bottom: 10px;
 }
 
 .primary-button {
@@ -480,17 +475,6 @@ button {
 .primary-button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-.psychology-status {
-  margin: 0 0 12px;
-  color: var(--muted);
-  font-size: 0.82rem;
-  line-height: 1.45;
-}
-
-.psychology-status.busy {
-  color: var(--accent);
 }
 
 .psychology-legend-wrap {
@@ -543,17 +527,24 @@ button {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--zone-color) 22%, transparent);
 }
 
-.market-footer {
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 0.78rem;
-  text-align: center;
-  line-height: 1.5;
-}
+@media (max-width: 639px) {
+  .market-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
 
-/* Responsive */
+  .header-actions {
+    justify-content: space-between;
+  }
+
+  .asset-switch {
+    flex: 1;
+  }
+
+  .block-head {
+    flex-direction: column;
+  }
+}
 @media (min-width: 640px) {
   .market-app {
     padding: 28px 24px 40px;
@@ -591,20 +582,5 @@ button {
 
   .rsi-chart-card {
     height: 220px;
-  }
-}
-
-@media (max-width: 639px) {
-  .market-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .asset-switch {
-    align-self: flex-start;
-  }
-
-  .block-head {
-    flex-direction: column;
   }
 }

@@ -242,6 +242,43 @@ const ElliottEngine = (() => {
     return chain;
   };
 
+  const scoreRegionConfidence = (chain, index) => {
+    if (chain.length < 2) {
+      return 50;
+    }
+
+    const legSize = Math.abs(chain[index + 1].price - chain[index].price);
+    const prevLeg = index > 0 ? Math.abs(chain[index].price - chain[index - 1].price) : null;
+    const waveId = WAVE_SEQUENCE[index % WAVE_SEQUENCE.length];
+    let score = 56;
+
+    if (prevLeg && prevLeg > 0) {
+      const ratio = legSize / prevLeg;
+
+      if (waveId === "2" || waveId === "4" || waveId === "B") {
+        if (ratio >= 0.32 && ratio <= 0.68) {
+          score += 24;
+        } else if (ratio >= 0.22 && ratio <= 0.82) {
+          score += 12;
+        }
+      } else if (ratio >= 0.75 && ratio <= 2.4) {
+        score += 20;
+      } else if (ratio >= 0.45 && ratio <= 3) {
+        score += 8;
+      }
+    } else {
+      score += 10;
+    }
+
+    if (chain.length >= 8) {
+      score += 8;
+    } else if (chain.length >= 5) {
+      score += 4;
+    }
+
+    return clamp(score, 40, 94);
+  };
+
   const buildFullCoverageRegions = (weeklySeries, swings) => {
     const seriesStart = weeklySeries[0].date;
     const seriesEnd = weeklySeries[weeklySeries.length - 1].date;
@@ -260,7 +297,7 @@ const ElliottEngine = (() => {
         zone: psych.zone,
         waveId,
         elliottLabel: `${WAVE_LABELS_VI[waveId]} ${directionLabel}`,
-        confidence: clamp(52 + (index % 4) * 6, 48, 92)
+        confidence: scoreRegionConfidence(chain, index)
       });
     }
 

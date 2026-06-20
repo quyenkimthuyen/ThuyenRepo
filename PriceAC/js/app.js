@@ -13,33 +13,40 @@ const App = (() => {
     });
   };
 
-  const updateInsightStrip = (evaluation) => {
+  const updateInsightStrip = (snapshot) => {
     const zoneEl = document.querySelector("#insight-zone");
     const zoneNoteEl = document.querySelector("#insight-zone-note");
-    const confidenceEl = document.querySelector("#insight-confidence");
-    const confidenceBar = document.querySelector("#insight-confidence-bar");
+    const waveEl = document.querySelector("#insight-wave");
     const trendEl = document.querySelector("#insight-trend");
     const rsiEl = document.querySelector("#insight-rsi");
+    const analysisMetaEl = document.querySelector("#insight-analysis-meta");
 
-    if (!evaluation) {
-      zoneEl.textContent = "Quan sát";
-      zoneNoteEl.textContent = "Theo dữ liệu hiện tại";
-      confidenceEl.textContent = "—";
-      confidenceBar.style.width = "0%";
-      trendEl.textContent = "—";
-      trendEl.className = "";
-      rsiEl.textContent = "—";
+    if (!snapshot?.hasAnalysis) {
+      zoneEl.textContent = "Chưa phân tích";
+      zoneNoteEl.textContent = "Bấm Phân tích 10 năm để xây bản đồ tâm lý";
+      waveEl.textContent = "—";
+      trendEl.textContent = snapshot ? `${snapshot.trend > 0 ? "+" : ""}${snapshot.trend}%` : "—";
+      trendEl.className = snapshot && snapshot.trend >= 0 ? "is-up" : snapshot ? "is-down" : "";
+      rsiEl.textContent = snapshot ? String(snapshot.rsi) : "—";
+      if (analysisMetaEl) {
+        analysisMetaEl.textContent = "";
+      }
       return;
     }
 
-    const zoneLabel = PsychologyEngine.zoneLabelsVi[evaluation.possibleZone] || evaluation.possibleZone;
-    zoneEl.textContent = zoneLabel;
-    zoneNoteEl.textContent = evaluation.signals?.[0] || "Xác suất, không phải lời khuyên";
-    confidenceEl.textContent = `${evaluation.confidence}%`;
-    confidenceBar.style.width = `${evaluation.confidence}%`;
-    trendEl.textContent = `${evaluation.trend > 0 ? "+" : ""}${evaluation.trend}%`;
-    trendEl.className = evaluation.trend >= 0 ? "is-up" : "is-down";
-    rsiEl.textContent = String(evaluation.rsi);
+    zoneEl.textContent = snapshot.label || snapshot.zone;
+    zoneNoteEl.textContent = `Giai đoạn hiện tại · ${snapshot.confidence}% khớp cấu trúc sóng`;
+    waveEl.textContent = snapshot.elliottLabel || "—";
+    trendEl.textContent = `${snapshot.trend > 0 ? "+" : ""}${snapshot.trend}%`;
+    trendEl.className = snapshot.trend >= 0 ? "is-up" : "is-down";
+    rsiEl.textContent = String(snapshot.rsi);
+
+    if (analysisMetaEl) {
+      const analyzedAt = PsychologyEngine.formatAnalyzedAt(snapshot.analyzedAt);
+      analysisMetaEl.textContent = analyzedAt
+        ? `Bản đồ 10 năm · ${snapshot.weekCount} tuần · lưu ${analyzedAt}`
+        : `Bản đồ 10 năm · ${snapshot.weekCount} tuần`;
+    }
   };
 
   const bindMarketControls = () => {
@@ -84,13 +91,9 @@ const App = (() => {
     });
   };
 
-  const handleEvaluation = (evaluation) => {
-    updateInsightStrip(evaluation);
-  };
-
   const init = async () => {
     bindMarketControls();
-    await MarketChart.init(handleEvaluation);
+    await MarketChart.init(updateInsightStrip);
   };
 
   return {

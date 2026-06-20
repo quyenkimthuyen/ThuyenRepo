@@ -17,33 +17,39 @@
         <span class="brand-mark" aria-hidden="true"></span>
         <div>
           <p class="brand-kicker">Market Psychology Map</p>
-          <h1>Quan sát thị trường</h1>
+          <h1>Thị trường</h1>
         </div>
       </div>
-      <div class="asset-switch" role="tablist" aria-label="Chọn tài sản">
-        <button type="button" class="asset-tab active" data-asset="bitcoin" role="tab" aria-selected="true">Bitcoin</button>
-        <button type="button" class="asset-tab" data-asset="gold" role="tab" aria-selected="false">Vàng</button>
+      <div class="header-actions">
+        <div class="asset-switch" role="tablist" aria-label="Chọn tài sản">
+          <button type="button" class="asset-tab active" data-asset="bitcoin" role="tab" aria-selected="true">Bitcoin</button>
+          <button type="button" class="asset-tab" data-asset="gold" role="tab" aria-selected="false">Vàng</button>
+        </div>
+        <button class="primary-button" id="analyze-psychology" type="button">Phân tích 10 năm</button>
       </div>
     </header>
+
+    <p class="psychology-status" id="psychology-status">Chưa có bản đồ — bấm Phân tích 10 năm để xây dựng từ nến tuần</p>
+    <p class="analysis-meta" id="insight-analysis-meta"></p>
 
     <section class="insight-strip" id="market-insight" aria-label="Tóm tắt thị trường">
       <article class="insight-card insight-card--zone">
         <span class="insight-label">Vùng tâm lý</span>
-        <strong id="insight-zone">Quan sát</strong>
-        <small id="insight-zone-note">Theo dữ liệu hiện tại</small>
+        <strong id="insight-zone">Chưa phân tích</strong>
+        <small id="insight-zone-note">Bấm Phân tích 10 năm để xây bản đồ tâm lý</small>
       </article>
       <article class="insight-card">
-        <span class="insight-label">Độ tin cậy</span>
-        <strong id="insight-confidence">—</strong>
-        <div class="insight-meter" aria-hidden="true"><span id="insight-confidence-bar" style="width: 0%"></span></div>
+        <span class="insight-label">Sóng Elliott</span>
+        <strong id="insight-wave">—</strong>
+        <small>Khung tuần · 10 năm</small>
       </article>
       <article class="insight-card">
         <span class="insight-label">Xu hướng</span>
         <strong id="insight-trend">—</strong>
-        <small>Trong phạm vi đã chọn</small>
+        <small>Phạm vi đang xem</small>
       </article>
       <article class="insight-card">
-        <span class="insight-label">RSI trung bình</span>
+        <span class="insight-label">RSI</span>
         <strong id="insight-rsi">—</strong>
         <small>Ngày · Tuần · Tháng</small>
       </article>
@@ -66,7 +72,7 @@
         </div>
       </div>
       <div class="control-group control-group--wide">
-        <span class="control-label">Phạm vi</span>
+        <span class="control-label">Phạm vi xem</span>
         <div class="timeframe-tabs range-tabs chip-row" role="tablist" aria-label="Phạm vi xem">
           <button type="button" class="chip" data-range="1D">1D</button>
           <button type="button" class="chip" data-range="1W">1W</button>
@@ -85,7 +91,7 @@
       <div class="chart-block chart-block--price">
         <div class="block-head">
           <h2>Giá</h2>
-          <p class="block-hint">Di chuột trên biểu đồ để xem chi tiết từng thời điểm</p>
+          <p class="block-hint">Nền màu tham chiếu từ bản đồ 10 năm đã lưu</p>
         </div>
         <div id="chart" class="chart-card" aria-label="Biểu đồ giá"></div>
       </div>
@@ -93,8 +99,8 @@
       <div class="chart-block chart-block--rsi">
         <div class="block-head">
           <div>
-            <h2>RSI đa khung</h2>
-            <p class="block-hint">Ngày · Tuần · Tháng (chu kỳ 14)</p>
+            <h2>RSI</h2>
+            <p class="block-hint">Ngày · Tuần · Tháng</p>
           </div>
           <div class="rsi-legend" aria-label="Chú thích RSI">
             <span class="rsi-legend-item daily">Ngày</span>
@@ -106,26 +112,10 @@
       </div>
     </section>
 
-    <section class="elliott-panel" aria-label="Phân tích sóng Elliott">
-      <div class="elliott-head">
-        <div>
-          <h2>Sóng Elliott · khung tuần</h2>
-          <p class="elliott-desc">Phân tích toàn bộ phạm vi 5Y hoặc 10Y — mỗi giai đoạn gắn một vùng tâm lý trên nền biểu đồ giá.</p>
-        </div>
-        <button class="primary-button" id="analyze-psychology" type="button">
-          Phân tích Elliott
-        </button>
-      </div>
-      <p class="psychology-status" id="psychology-status">Chọn phạm vi 5Y hoặc 10Y để phân tích sóng Elliott</p>
-      <div class="psychology-legend-wrap">
-        <span class="psychology-legend-title">Vùng tâm lý</span>
-        <div class="psychology-legend" id="psychology-legend" aria-label="Chú thích nền màu tâm lý"></div>
-      </div>
+    <section class="legend-panel" aria-label="Chú thích vùng tâm lý">
+      <span class="psychology-legend-title">Vùng tâm lý (10 năm · nến tuần)</span>
+      <div class="psychology-legend" id="psychology-legend"></div>
     </section>
-
-    <footer class="market-footer">
-      Công cụ quan sát tâm lý thị trường — mang tính giáo dục, không phải khuyến nghị đầu tư.
-    </footer>
   </div>
 
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>

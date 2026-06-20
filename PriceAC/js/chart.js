@@ -20,7 +20,6 @@ const MarketChart = (() => {
     "10Y": Number.MAX_SAFE_INTEGER
   };
 
-  const isElliottPsychologyRange = () => PsychologyEngine.supportsElliottWeeklyPsychology(currentRange);
 
   let chart;
   let lineSeries;
@@ -35,11 +34,12 @@ const MarketChart = (() => {
   let currentInterval = "1D";
   let currentChartMode = "line";
   let marketData = {};
-  let onEvaluation = () => {};
+  let onMarketUpdate = () => {};
   let chartSnapshot = {
     visibleData: [],
     rsiSeries: { daily: [], weekly: [], monthly: [] },
-    evaluation: null
+    marketSnapshot: null,
+    psychologyTimeline: []
   };
   let hoverIndex = {
     priceByDate: new Map(),
@@ -50,8 +50,7 @@ const MarketChart = (() => {
     orderedDates: []
   };
   let syncingCrosshair = false;
-  let psychologyTimeline = [];
-  let psychologyAnalysisKey = null;
+  let psychologyCaches = {};
   let isPsychologyAnalyzing = false;
 
   const generateFallbackData = (asset) => {
@@ -100,6 +99,24 @@ const MarketChart = (() => {
       Object.keys(assetFiles).map(async (asset) => [asset, await loadJson(asset)])
     );
     marketData = Object.fromEntries(entries);
+    psychologyCaches = Object.fromEntries(
+      Object.keys(assetFiles).map((asset) => {
+        const cache = PsychologyEngine.loadPsychologyCache(asset);
+        return [
+          asset,
+          PsychologyEngine.isPsychologyCacheValid(cache, marketData[asset] || [])
+            ? cache
+            : null
+        ];
+      })
+    );
+  };
+
+  const getActivePsychologyCache = () => psychologyCaches[currentAsset] || null;
+
+  const getProjectedPsychologyTimeline = (visibleData) => {
+    const cache = getActivePsychologyCache();
+    return cache ? PsychologyEngine.projectPsychologyToSeries(cache, visibleData) : [];
   };
 
   const getFullData = () => marketData[currentAsset] || [];
@@ -131,24 +148,9 @@ const MarketChart = (() => {
     };
   };
 
-  const getAnalysisKey = (visibleData) => {
-    if (!visibleData.length) {
-      return null;
-    }
-
-    return [
-      currentAsset,
-      currentRange,
-      currentInterval,
-      visibleData[0].date,
-      visibleData[visibleData.length - 1].date
-    ].join("|");
-  };
-
   const updatePsychologyStatus = (message, isBusy = false) => {
     const status = document.querySelector("#psychology-status");
     const button = document.querySelector("#analyze-psychology");
-    const allowed = isElliottPsychologyRange();
 
     if (status) {
       status.textContent = message;
@@ -156,40 +158,22 @@ const MarketChart = (() => {
     }
 
     if (button) {
-      button.disabled = isBusy || !allowed;
-      button.textContent = isBusy
-        ? "Đang phân tích..."
-        : "Phân tích Elliott";
+      button.disabled = isBusy;
+      button.textContent = isBusy ? "Đang phân tích..." : "Phân tích 10 năm";
     }
   };
 
-  const invalidatePsychologyAnalysis = (message) => {
-    psychologyTimeline = [];
-    psychologyAnalysisKey = null;
-    const defaultMessage = isElliottPsychologyRange()
-      ? "Bấm phân tích để tô vùng tâm lý theo sóng Elliott tuần"
-      : "Chọn phạm vi 5Y hoặc 10Y để phân tích sóng Elliott";
-    updatePsychologyStatus(message || defaultMessage, false);
-  };
-
-  const applyPsychologyResult = (visibleData, timeline) => {
-    psychologyTimeline = timeline;
-    psychologyAnalysisKey = getAnalysisKey(visibleData);
-    chartSnapshot.psychologyTimeline = timeline;
-    rebuildHoverIndex(visibleData, chartSnapshot.rsiSeries, timeline);
-
-    if (chart) {
-      mountPriceSeries(visibleData, timeline);
-      chart.timeScale().fitContent();
-    } else {
-      drawFallbackChart(document.querySelector("#chart"), visibleData, timeline);
+  const formatCacheStatus = (cache) => {
+    if (!cache) {
+      return "Chưa có bản đồ — bấm Phân tích 10 năm để xây dựng từ nến tuần";
     }
 
-    PsychologyEngine.renderPsychologyLegend(document.querySelector("#psychology-legend"));
-    updatePsychologyStatus(`Đã phân tích ${timeline.length} điểm · sóng Elliott tuần`, false);
+    const analyzedAt = PsychologyEngine.formatAnalyzedAt(cache.analyzedAt);
+    return `Đã lưu · ${cache.weekCount} tuần · ${cache.regionCount} giai đoạn${analyzedAt ? ` · ${analyzedAt}` : ""}`;
+  };
 
-    const { rsiDateKey, priceDateKey } = getLatestPanelKeys();
-    renderCrosshairPanel(rsiDateKey, priceDateKey, false);
+  const syncPsychologyStatus = () => {
+    updatePsychologyStatus(formatCacheStatus(getActivePsychologyCache()), false);
   };
 
   const runPsychologyAnalysis = async () => {
@@ -197,30 +181,31 @@ const MarketChart = (() => {
       return;
     }
 
-    const visibleData = getVisibleData();
-    if (!visibleData.length) {
-      updatePsychologyStatus("Không có dữ liệu trong vùng đang xem");
-      return;
-    }
-
-    if (!isElliottPsychologyRange()) {
-      updatePsychologyStatus("Chỉ hỗ trợ phân tích Elliott cho phạm vi 5Y và 10Y");
+    const fullData = getFullData();
+    if (!fullData.length) {
+      updatePsychologyStatus("Không có dữ liệu để phân tích");
       return;
     }
 
     isPsychologyAnalyzing = true;
-    updatePsychologyStatus("Đang gộp nến tuần và đếm sóng Elliott...", true);
+    updatePsychologyStatus("Đang phân tích 10 năm dữ liệu tuần...", true);
 
     try {
-      const timeline = await PsychologyEngine.buildElliottWeeklyTimelineAsync(
-        getFullData(),
-        visibleData,
+      const cache = await PsychologyEngine.buildPsychologyCacheAsync(
+        fullData,
         (progress) => {
-          updatePsychologyStatus(`Đang phân tích sóng tuần... ${Math.round(progress * 100)}%`, true);
+          updatePsychologyStatus(`Đang phân tích 10 năm... ${Math.round(progress * 100)}%`, true);
         }
       );
 
-      applyPsychologyResult(visibleData, timeline);
+      if (!cache) {
+        updatePsychologyStatus("Không đủ dữ liệu (cần tối thiểu ~1 tháng)");
+        return;
+      }
+
+      psychologyCaches[currentAsset] = cache;
+      PsychologyEngine.savePsychologyCache(currentAsset, cache);
+      render();
     } catch (error) {
       console.error(error);
       updatePsychologyStatus("Phân tích thất bại — thử lại");
@@ -308,23 +293,23 @@ const MarketChart = (() => {
     const rsiWeekly = rsiDateKey ? hoverIndex.rsiWeeklyByDate.get(rsiDateKey) : null;
     const rsiMonthly = rsiDateKey ? hoverIndex.rsiMonthlyByDate.get(rsiDateKey) : null;
     const psychology = rsiDateKey ? hoverIndex.psychologyByDate.get(rsiDateKey) : null;
-    const fallback = chartSnapshot.evaluation?.rsiByInterval || {};
+    const fallback = chartSnapshot.marketSnapshot || {};
     const latestPsychology = chartSnapshot.psychologyTimeline?.at(-1);
 
     return {
       date: rsiDateKey || priceDateKey || "—",
       priceText: formatPriceText(candle),
-      psychologyZone: psychology?.zone || latestPsychology?.zone || chartSnapshot.evaluation?.possibleZone,
-      psychologyLabel: psychology?.label || latestPsychology?.label,
-      psychologyConfidence: psychology?.confidence ?? latestPsychology?.confidence ?? chartSnapshot.evaluation?.confidence,
+      psychologyZone: psychology?.zone || latestPsychology?.zone || fallback.zone || null,
+      psychologyLabel: psychology?.label || latestPsychology?.label || fallback.label || null,
+      psychologyConfidence: psychology?.confidence ?? latestPsychology?.confidence ?? fallback.confidence ?? null,
       elliottLabel: psychology?.elliottLabel
         || latestPsychology?.elliottLabel
-        || chartSnapshot.evaluation?.features?.elliott?.label
+        || fallback.elliottLabel
         || null,
       rsiByInterval: {
-        daily: rsiDaily ?? fallback.daily,
-        weekly: rsiWeekly ?? fallback.weekly,
-        monthly: rsiMonthly ?? fallback.monthly
+        daily: rsiDaily ?? fallback.rsiByInterval?.daily,
+        weekly: rsiWeekly ?? fallback.rsiByInterval?.weekly,
+        monthly: rsiMonthly ?? fallback.rsiByInterval?.monthly
       },
       isHover
     };
@@ -747,13 +732,18 @@ const MarketChart = (() => {
     const container = document.querySelector("#chart");
     const rsiContainer = document.querySelector("#rsi-chart");
     const visibleData = getVisibleData();
-    const evaluation = PsychologyEngine.evaluate(getFullData(), visibleData);
+    const psychologyTimeline = getProjectedPsychologyTimeline(visibleData);
+    const marketSnapshot = PsychologyEngine.buildMarketSnapshot(
+      getActivePsychologyCache(),
+      getFullData(),
+      visibleData
+    );
     const rsiSeries = getVisibleRsiSeries();
 
     chartSnapshot = {
       visibleData,
       rsiSeries,
-      evaluation,
+      marketSnapshot,
       psychologyTimeline
     };
     rebuildHoverIndex(visibleData, rsiSeries, psychologyTimeline);
@@ -770,6 +760,8 @@ const MarketChart = (() => {
       if (legend) {
         legend.innerHTML = "";
       }
+    } else {
+      PsychologyEngine.renderPsychologyLegend(document.querySelector("#psychology-legend"));
     }
 
     if (rsiDailySeries && rsiWeeklySeries && rsiMonthlySeries) {
@@ -783,41 +775,22 @@ const MarketChart = (() => {
 
     const { rsiDateKey, priceDateKey } = getLatestPanelKeys();
     renderCrosshairPanel(rsiDateKey, priceDateKey, false);
-    onEvaluation(evaluation);
-
-    const nextKey = getAnalysisKey(visibleData);
-    if (psychologyAnalysisKey && nextKey !== psychologyAnalysisKey) {
-      psychologyTimeline = [];
-      psychologyAnalysisKey = null;
-    }
-
-    if (!psychologyTimeline.length) {
-      updatePsychologyStatus(
-        isElliottPsychologyRange()
-          ? "Bấm phân tích để tô vùng tâm lý theo sóng Elliott tuần"
-          : "Chọn phạm vi 5Y hoặc 10Y để phân tích sóng Elliott",
-        false
-      );
-    } else {
-      updatePsychologyStatus(`Đã phân tích ${psychologyTimeline.length} điểm · sóng Elliott tuần`, false);
-    }
+    onMarketUpdate(marketSnapshot);
+    syncPsychologyStatus();
   };
 
   const setAsset = (asset) => {
     currentAsset = asset;
-    invalidatePsychologyAnalysis();
     render();
   };
 
   const setRange = (range) => {
     currentRange = range;
-    invalidatePsychologyAnalysis();
     render();
   };
 
   const setInterval = (interval) => {
     currentInterval = interval;
-    invalidatePsychologyAnalysis();
     render();
   };
 
@@ -826,14 +799,13 @@ const MarketChart = (() => {
     render();
   };
 
-  const init = async (evaluationHandler) => {
-    onEvaluation = evaluationHandler;
+  const init = async (marketUpdateHandler) => {
+    onMarketUpdate = marketUpdateHandler;
     await loadAllData();
     createChart(document.querySelector("#chart"));
     createRsiChart(document.querySelector("#rsi-chart"));
     bindCrosshairSync();
     bindPsychologyControls();
-    invalidatePsychologyAnalysis();
     render();
   };
 
