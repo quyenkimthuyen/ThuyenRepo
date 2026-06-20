@@ -25,9 +25,12 @@
           <button type="button" class="asset-tab active" data-asset="bitcoin" role="tab" aria-selected="true">Bitcoin</button>
           <button type="button" class="asset-tab" data-asset="gold" role="tab" aria-selected="false">Vàng</button>
         </div>
+        <button class="secondary-button" id="update-prices" type="button">Cập nhật giá</button>
         <button class="primary-button" id="analyze-psychology" type="button">Phân tích 10 năm</button>
       </div>
     </header>
+
+    <p class="price-update-status" id="price-update-status"></p>
 
     <p class="psychology-status" id="psychology-status">Chưa có bản đồ — bấm Phân tích 10 năm để xây dựng từ nến tuần</p>
     <p class="analysis-meta" id="insight-analysis-meta"></p>
@@ -90,20 +93,22 @@
     <section class="chart-workspace" aria-label="Biểu đồ giá">
       <div class="hover-panel" id="rsi-panel" aria-label="Chi tiết theo thời điểm"></div>
 
-      <div class="chart-block">
-        <div id="chart" class="chart-card" aria-label="Biểu đồ giá"></div>
-      </div>
-
-      <div class="chart-block chart-block--rsi">
-        <div class="rsi-block-head">
-          <span class="rsi-block-title">RSI</span>
-          <div class="rsi-toggles" role="group" aria-label="Chọn đường RSI hiển thị">
-            <button type="button" class="rsi-toggle active daily" data-rsi="daily" aria-pressed="true">Ngày</button>
-            <button type="button" class="rsi-toggle active weekly" data-rsi="weekly" aria-pressed="true">Tuần</button>
-            <button type="button" class="rsi-toggle active monthly" data-rsi="monthly" aria-pressed="true">Tháng</button>
-          </div>
+      <div class="chart-stack">
+        <div class="chart-block chart-block--price">
+          <div id="chart" class="chart-card" aria-label="Biểu đồ giá"></div>
         </div>
-        <div id="rsi-chart" class="rsi-chart-card" aria-label="Biểu đồ RSI"></div>
+
+        <div class="chart-block chart-block--rsi">
+          <div class="rsi-block-head">
+            <span class="rsi-block-title">RSI</span>
+            <div class="rsi-toggles" role="group" aria-label="Chọn đường RSI hiển thị">
+              <button type="button" class="rsi-toggle active daily" data-rsi="daily" aria-pressed="true">Ngày</button>
+              <button type="button" class="rsi-toggle active weekly" data-rsi="weekly" aria-pressed="true">Tuần</button>
+              <button type="button" class="rsi-toggle active monthly" data-rsi="monthly" aria-pressed="true">Tháng</button>
+            </div>
+          </div>
+          <div id="rsi-chart" class="rsi-chart-card" aria-label="Biểu đồ RSI"></div>
+        </div>
       </div>
     </section>
 
@@ -115,6 +120,7 @@
 
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <script src="js/elliott.js"></script>
+  <script src="js/market-data.js"></script>
   <script src="js/psychology.js"></script>
   <script src="js/chart.js"></script>
   <script src="js/app.js"></script>

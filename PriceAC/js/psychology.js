@@ -258,6 +258,45 @@ const PsychologyEngine = (() => {
     (point) => point.date >= startDate && point.date <= endDate
   );
 
+  const resolveRsiAtDate = (series, date) => {
+    if (!series?.length) {
+      return null;
+    }
+
+    const direct = series.find((point) => point.date === date);
+    if (direct) {
+      return direct.value;
+    }
+
+    let value = null;
+    series.forEach((point) => {
+      if (point.date <= date) {
+        value = point.value;
+      }
+    });
+
+    return value;
+  };
+
+  const alignRsiToVisible = (visibleSeries, multiRsi) => {
+    if (!visibleSeries?.length) {
+      return { daily: [], weekly: [], monthly: [] };
+    }
+
+    const buildAligned = (source) => visibleSeries
+      .map((point) => {
+        const value = resolveRsiAtDate(source, point.date);
+        return value === null ? null : { date: point.date, value };
+      })
+      .filter(Boolean);
+
+    return {
+      daily: buildAligned(multiRsi.daily),
+      weekly: buildAligned(multiRsi.weekly),
+      monthly: buildAligned(multiRsi.monthly)
+    };
+  };
+
   const calculateTrend = (series) => {
     if (!series || series.length < 2) {
       return 0;
@@ -1026,6 +1065,7 @@ const PsychologyEngine = (() => {
     aggregateSeries,
     normalizeCandle,
     buildMultiFrameRsi,
+    alignRsiToVisible,
     buildPsychologyCache,
     buildPsychologyCacheAsync,
     projectPsychologyToSeries,

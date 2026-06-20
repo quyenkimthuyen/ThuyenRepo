@@ -80,7 +80,9 @@ const MarketChart = (() => {
   };
   let psychologyCaches = {};
   let isPsychologyAnalyzing = false;
+  let isUpdatingPrices = false;
   let syncingCrosshair = false;
+  let syncingTimeScale = false;
   const rsiVisibility = {
     daily: true,
     weekly: true,
@@ -122,7 +124,8 @@ const MarketChart = (() => {
         throw new Error(`Unable to load ${asset}`);
       }
       const data = await response.json();
-      return Array.isArray(data) ? data : (data.prices || data.data || []);
+      const array = Array.isArray(data) ? data : (data.prices || data.data || []);
+      return MarketDataService.applyPatches(asset, array);
     } catch (error) {
       console.info("Using generated fallback data", error);
       return generateFallbackData(asset);
@@ -423,18 +426,115 @@ const MarketChart = (() => {
   };
 
   const getVisibleRsiSeries = () => {
-    const range = getVisibleDateRange();
+    const visibleData = getVisibleData();
     const multi = PsychologyEngine.buildMultiFrameRsi(getFullData());
+    return PsychologyEngine.alignRsiToVisible(visibleData, multi);
+  };
 
-    if (!range) {
-      return multi;
+  const syncChartTimeScales = () => {
+    if (!chart || !rsiChart || syncingTimeScale) {
+      return;
     }
 
-    return {
-      daily: PsychologyEngine.filterRsiByRange(multi.daily, range.start, range.end),
-      weekly: PsychologyEngine.filterRsiByRange(multi.weekly, range.start, range.end),
-      monthly: PsychologyEngine.filterRsiByRange(multi.monthly, range.start, range.end)
-    };
+    const range = chart.timeScale().getVisibleLogicalRange();
+    if (!range) {
+      return;
+    }
+
+    syncingTimeScale = true;
+    rsiChart.timeScale().setVisibleLogicalRange(range);
+    syncingTimeScale = false;
+  };
+
+  const bindTimeScaleSync = () => {
+    if (!chart || !rsiChart) {
+      return;
+    }
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      if (syncingTimeScale || !range) {
+        return;
+      }
+
+      syncingTimeScale = true;
+      rsiChart.timeScale().setVisibleLogicalRange(range);
+      syncingTimeScale = false;
+    });
+
+    rsiChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      if (syncingTimeScale || !range) {
+        return;
+      }
+
+      syncingTimeScale = true;
+      chart.timeScale().setVisibleLogicalRange(range);
+      syncingTimeScale = false;
+    });
+  };
+
+  const updatePriceStatus = (message, isBusy = false) => {
+    const status = document.querySelector("#price-update-status");
+    if (!status) {
+      return;
+    }
+
+    status.textContent = message;
+    status.classList.toggle("busy", isBusy);
+  };
+
+  const runPriceUpdate = async () => {
+    if (isUpdatingPrices) {
+      return;
+    }
+
+    const currentSeries = getFullData();
+    if (!currentSeries.length) {
+      updatePriceStatus("Không có dữ liệu để cập nhật");
+      return;
+    }
+
+    isUpdatingPrices = true;
+    updatePriceStatus("Đang tải giá mới nhất...", true);
+
+    const button = document.querySelector("#update-prices");
+    if (button) {
+      button.disabled = true;
+    }
+
+    try {
+      const result = await MarketDataService.updateAsset(currentAsset, currentSeries);
+      marketData[currentAsset] = result.series;
+
+      const cache = psychologyCaches[currentAsset];
+      if (cache && !PsychologyEngine.isPsychologyCacheValid(cache, result.series)) {
+        psychologyCaches[currentAsset] = null;
+        PsychologyEngine.clearPsychologyCache(currentAsset);
+      }
+
+      render();
+
+      const addedText = result.added > 0 ? ` · +${result.added} ngày mới` : " · cập nhật nến gần nhất";
+      updatePriceStatus(`Giá đến ${result.updatedTo}${addedText}`, false);
+    } catch (error) {
+      console.error(error);
+      updatePriceStatus("Không tải được giá — kiểm tra mạng hoặc thử lại", false);
+    } finally {
+      isUpdatingPrices = false;
+      if (button) {
+        button.disabled = false;
+      }
+    }
+  };
+
+  const bindPriceUpdateControls = () => {
+    const button = document.querySelector("#update-prices");
+    if (!button) {
+      return;
+    }
+
+    button.addEventListener("click", () => {
+      runPriceUpdate();
+    });
   };
 
   const toCandleData = (data) => data.map((point) => ({
@@ -667,6 +767,7 @@ const MarketChart = (() => {
 
     if (rsiChart) {
       rsiChart.timeScale().fitContent();
+      syncChartTimeScales();
     }
   };
 
@@ -689,11 +790,11 @@ const MarketChart = (() => {
       },
       rightPriceScale: {
         borderColor: "rgba(148, 163, 184, 0.2)",
-        scaleMargins: { top: 0.1, bottom: 0.08 }
+        minimumWidth: 72
       },
       timeScale: {
         borderColor: "rgba(148, 163, 184, 0.2)",
-        timeVisible: true
+        timeVisible: false
       },
       handleScroll: true,
       handleScale: true
@@ -763,7 +864,8 @@ const MarketChart = (() => {
         mode: LightweightCharts.CrosshairMode.Normal
       },
       rightPriceScale: {
-        borderColor: "rgba(148, 163, 184, 0.2)"
+        borderColor: "rgba(148, 163, 184, 0.2)",
+        minimumWidth: 72
       },
       timeScale: {
         borderColor: "rgba(148, 163, 184, 0.2)",
@@ -810,6 +912,7 @@ const MarketChart = (() => {
     const rsiContainer = document.querySelector("#rsi-chart");
     if (rsiChart) {
       updateRsiSeriesData(rsiSeries);
+      syncChartTimeScales();
     } else if (rsiContainer) {
       drawFallbackRsiChart(rsiContainer, rsiSeries);
     }
@@ -879,9 +982,12 @@ const MarketChart = (() => {
     await loadAllData();
     createChart(document.querySelector("#chart"));
     createRsiChart(document.querySelector("#rsi-chart"));
+    bindTimeScaleSync();
     bindCrosshairSync();
     bindPsychologyControls();
+    bindPriceUpdateControls();
     syncRsiToggleButtons();
+    updatePriceStatus("");
     render();
   };
 
@@ -894,6 +1000,7 @@ const MarketChart = (() => {
     toggleRsiLine,
     setRsiLineVisible,
     runPsychologyAnalysis,
+    runPriceUpdate,
     getCurrentData: getVisibleData
   };
 })();
