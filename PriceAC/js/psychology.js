@@ -1,5 +1,5 @@
 /* Psychology engine: historical price features + indicator rules for market psychology zones. */
-const PsychologyEngine = (() => {
+var PsychologyEngine = (() => {
   const cycle = [
     "Disbelief",
     "Hope",
@@ -283,12 +283,18 @@ const PsychologyEngine = (() => {
       return { daily: [], weekly: [], monthly: [] };
     }
 
-    const buildAligned = (source) => visibleSeries
-      .map((point) => {
-        const value = resolveRsiAtDate(source, point.date);
-        return value === null ? null : { date: point.date, value };
-      })
-      .filter(Boolean);
+    const buildAligned = (source) => {
+      let lastValue = 50;
+
+      return visibleSeries.map((point) => {
+        const resolved = resolveRsiAtDate(source, point.date);
+        if (resolved !== null) {
+          lastValue = resolved;
+        }
+
+        return { date: point.date, value: lastValue };
+      });
+    };
 
     return {
       daily: buildAligned(multiRsi.daily),

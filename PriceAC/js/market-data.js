@@ -1,5 +1,5 @@
 /* Fetch latest daily quotes (Yahoo Finance) and merge into local series + localStorage patches. */
-const MarketDataService = (() => {
+var MarketDataService = (() => {
   const symbols = {
     bitcoin: "BTC-USD",
     gold: "GC=F"

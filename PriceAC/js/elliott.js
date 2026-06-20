@@ -1,5 +1,5 @@
 /* Elliott Wave on weekly candles: swing detection and psychology regions. */
-const ElliottEngine = (() => {
+var ElliottEngine = (() => {
   const WAVE_LABELS_VI = {
     1: "Sóng 1",
     2: "Sóng 2",
