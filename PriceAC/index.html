@@ -21,6 +21,10 @@
         </div>
       </div>
       <div class="header-actions">
+        <div class="mode-switch" role="tablist" aria-label="Chế độ phân tích">
+          <button type="button" class="mode-tab active" data-mode="basic" role="tab" aria-selected="true">Basic</button>
+          <button type="button" class="mode-tab" data-mode="pro" role="tab" aria-selected="false">Pro</button>
+        </div>
         <div class="asset-switch" role="tablist" aria-label="Chọn tài sản">
           <button type="button" class="asset-tab active" data-asset="bitcoin" role="tab" aria-selected="true">Bitcoin</button>
           <button type="button" class="asset-tab" data-asset="ethereum" role="tab" aria-selected="false">Ethereum</button>
@@ -59,6 +63,8 @@
         <small>2D · T · Th</small>
       </article>
     </section>
+
+    <section class="mode-compare-wrap" id="mode-compare" aria-label="So sánh Basic và Pro" hidden></section>
 
     <section class="chart-toolbar" aria-label="Điều khiển biểu đồ">
       <div class="toolbar-group">
@@ -138,6 +144,8 @@
   <script src="js/market-data.js"></script>
   <script src="js/psychology.js"></script>
   <script src="js/investment-advice.js"></script>
+  <script src="js/app-mode.js"></script>
+  <script src="js/pro-analysis.js"></script>
   <script src="js/chart.js"></script>
   <script src="js/app.js"></script>
 </body>

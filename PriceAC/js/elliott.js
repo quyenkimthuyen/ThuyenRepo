@@ -419,7 +419,80 @@ var ElliottEngine = (() => {
 
   const buildSwingCache = (series, deviationPct = 8) => detectSwings(series, deviationPct);
 
-  const buildVisibleWaveOverlay = (cache, visibleSeries) => {
+  const legSizeAt = (chain, legIndex) => {
+    if (legIndex < 0 || legIndex >= chain.length - 1) {
+      return 0;
+    }
+
+    return Math.abs(chain[legIndex + 1].price - chain[legIndex].price);
+  };
+
+  const validateWaveLeg = (chain, legIndex, waveId) => {
+    if (legIndex < 1 || !chain[legIndex + 1]) {
+      return { elliottValidated: false, validationNote: "Chưa đủ điểm xoay" };
+    }
+
+    const leg = legSizeAt(chain, legIndex);
+    const prevLeg = legSizeAt(chain, legIndex - 1);
+
+    if (!prevLeg) {
+      return { elliottValidated: false, validationNote: "Chưa đủ sóng trước" };
+    }
+
+    const ratio = leg / prevLeg;
+
+    if (waveId === "2" || waveId === "4" || waveId === "B") {
+      const ok = ratio >= 0.24 && ratio <= 0.82;
+      return {
+        elliottValidated: ok,
+        validationNote: ok ? "Hồi sóng trong chuẩn Elliott" : "Hồi sóng ngoài biên chuẩn"
+      };
+    }
+
+    if (waveId === "3") {
+      const leg1 = legSizeAt(chain, 0);
+      const ok = leg >= leg1 * 0.85;
+      return {
+        elliottValidated: ok,
+        validationNote: ok ? "Sóng 3 không ngắn nhất" : "Sóng 3 yếu so với sóng 1"
+      };
+    }
+
+    if (waveId === "5") {
+      const leg3 = legSizeAt(chain, legIndex - 2);
+      const ok = leg <= leg3 * 1.25 || leg >= leg3 * 0.7;
+      return {
+        elliottValidated: ok,
+        validationNote: ok ? "Sóng 5 trong biên độ hợp lý" : "Sóng 5 bất thường"
+      };
+    }
+
+    return {
+      elliottValidated: ratio >= 0.35 && ratio <= 2.8,
+      validationNote: "Cấu trúc đang kiểm tra"
+    };
+  };
+
+  const annotateRegionsWithValidation = (weeklySeries, regions, swings) => {
+    const chain = buildPivotChain(weeklySeries, swings);
+
+    return regions.map((region, index) => {
+      const validation = validateWaveLeg(chain, index, region.waveId);
+      const elliottLabel = validation.elliottValidated
+        ? region.elliottLabel
+        : `Giai đoạn ${region.waveId || index + 1} (chưa xác thực)`;
+
+      return {
+        ...region,
+        elliottValidated: validation.elliottValidated,
+        validationNote: validation.validationNote,
+        elliottLabel,
+        displayLabel: elliottLabel
+      };
+    });
+  };
+
+  const buildVisibleWaveOverlay = (cache, visibleSeries, options = {}) => {
     if (!cache?.regions?.length || !visibleSeries?.length) {
       return null;
     }
@@ -481,6 +554,7 @@ var ElliottEngine = (() => {
 
     const markers = overlapping
       .filter((region) => region.startDate >= visibleStart && region.startDate <= visibleEnd && region.waveId)
+      .filter((region) => !options.validatedOnly || region.elliottValidated)
       .map((region, index, regions) => {
         const price = priceAt(region.startDate);
         const prevPrice = index > 0 ? priceAt(regions[index - 1].startDate) : price;
@@ -508,6 +582,8 @@ var ElliottEngine = (() => {
     findRegionForDate,
     buildWeeklyPsychologyModel,
     analyzeAt,
-    buildVisibleWaveOverlay
+    buildVisibleWaveOverlay,
+    annotateRegionsWithValidation,
+    validateWaveLeg
   };
 })();

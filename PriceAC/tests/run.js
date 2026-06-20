@@ -98,6 +98,8 @@ loadEngine("js/elliott.js", "ElliottEngine");
 const PsychologyEngine = loadEngine("js/psychology.js", "PsychologyEngine");
 const MarketDataService = loadEngine("js/market-data.js", "MarketDataService");
 loadEngine("js/investment-advice.js", "InvestmentAdvisor");
+const AppMode = loadEngine("js/app-mode.js", "AppMode");
+const ProAnalysis = loadEngine("js/pro-analysis.js", "ProAnalysis");
 
 test("filterSeriesByDayRange respects calendar days", () => {
   const daily = [
@@ -347,6 +349,77 @@ test("investment advice ranks zones from 10Y history", () => {
   if (advice.avoidZones.length) {
     assert.ok(advice.safestZone.safety >= advice.avoidZones[0].safety);
   }
+});
+
+test("AppMode persists basic and pro in localStorage", () => {
+  sharedCtx.localStorage.removeItem("priceac.app.mode");
+  AppMode.setMode("pro");
+  assert.equal(AppMode.getMode(), "pro");
+  assert.equal(AppMode.isPro(), true);
+  AppMode.setMode("basic");
+  assert.equal(AppMode.isBasic(), true);
+});
+
+test("elliott validation annotates regions", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const enriched = ProAnalysis.enrichPsychologyCache(cache, bitcoin);
+
+  assert.ok(enriched.regions.length >= 2);
+  assert.ok("elliottValidated" in enriched.regions[0]);
+  assert.ok(enriched.summary.validationNote);
+});
+
+test("pro walk-forward ranking builds out-of-sample stats", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const walkForward = ProAnalysis.buildWalkForwardRanking(cache, bitcoin);
+
+  assert.ok(walkForward.trainRegionCount >= 2);
+  assert.ok(walkForward.testRegionCount >= 0);
+  if (walkForward.testRanking) {
+    assert.ok(walkForward.testRanking.safest?.zone);
+  }
+});
+
+test("pro recommendation includes risk plan and mode", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const visible = RangeUtils.buildVisibleSeries(bitcoin, "3M", "1D", PsychologyEngine.aggregateSeries);
+  const snapshot = PsychologyEngine.buildMarketSnapshot(cache, bitcoin, visible);
+  const advice = ProAnalysis.buildProRecommendation(cache, bitcoin, snapshot, visible);
+
+  assert.ok(advice.hasAdvice);
+  assert.equal(advice.mode, "pro");
+  assert.ok(advice.riskPlan?.positionLabel);
+  assert.ok(Number.isFinite(advice.riskPlan.invalidationPrice));
+});
+
+test("mode comparison detects basic vs pro advice", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const visible = RangeUtils.buildVisibleSeries(bitcoin, "1Y", "1D", PsychologyEngine.aggregateSeries);
+  const snapshot = PsychologyEngine.buildMarketSnapshot(cache, bitcoin, visible);
+  const basic = sharedCtx.InvestmentAdvisor.buildRecommendation(cache, bitcoin, snapshot);
+  const pro = ProAnalysis.buildProRecommendation(cache, bitcoin, snapshot, visible);
+  const comparison = ProAnalysis.buildModeComparison(basic, pro);
+
+  assert.ok(comparison);
+  assert.ok(comparison.basicAction);
+  assert.ok(comparison.proAction);
+});
+
+test("elliott overlay validatedOnly filters unvalidated markers", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const enriched = ProAnalysis.enrichPsychologyCache(cache, bitcoin);
+  const visible = RangeUtils.buildVisibleSeries(bitcoin, "1Y", "1D", PsychologyEngine.aggregateSeries);
+  const allOverlay = sharedCtx.ElliottEngine.buildVisibleWaveOverlay(enriched, visible);
+  const validatedOverlay = sharedCtx.ElliottEngine.buildVisibleWaveOverlay(enriched, visible, {
+    validatedOnly: true
+  });
+
+  assert.ok(allOverlay.markers.length >= validatedOverlay.markers.length);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

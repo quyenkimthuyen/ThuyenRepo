@@ -1001,10 +1001,16 @@ var PsychologyEngine = (() => {
       isHover = false
     } = snapshot;
 
+    const intervalLabels = snapshot.rsiIntervalLabels || {
+      twoDay: "2D",
+      weekly: "T",
+      monthly: "Th"
+    };
+
     const items = [
-      { key: "twoDay", label: "2D", value: rsiByInterval.twoDay },
-      { key: "weekly", label: "T", value: rsiByInterval.weekly },
-      { key: "monthly", label: "Th", value: rsiByInterval.monthly }
+      { key: "twoDay", label: intervalLabels.twoDay, value: rsiByInterval.twoDay },
+      { key: "weekly", label: intervalLabels.weekly, value: rsiByInterval.weekly },
+      { key: "monthly", label: intervalLabels.monthly, value: rsiByInterval.monthly }
     ];
 
     container.innerHTML = `

@@ -35,6 +35,7 @@ const MarketChart = (() => {
   let rsiGuideSeries;
   let psychologyBackgroundSeries = [];
   let elliottWaveSeries = null;
+  let volumeHistogramSeries = null;
   let currentElliottMarkers = [];
   let currentAsset = "bitcoin";
   let currentRange = "1M";
@@ -380,6 +381,7 @@ const MarketChart = (() => {
         weekly: rsiWeekly ?? fallback.rsiByInterval?.weekly,
         monthly: rsiMonthly ?? fallback.rsiByInterval?.monthly
       },
+      rsiIntervalLabels: fallback.rsiIntervalLabels,
       isHover
     };
   };
@@ -463,7 +465,13 @@ const MarketChart = (() => {
 
   const getVisibleRsiSeries = () => {
     const visibleData = getVisibleData();
-    const multi = PsychologyEngine.buildMultiFrameRsi(getFullData());
+    const fullData = getFullData();
+
+    if (AppMode.isPro()) {
+      return ProAnalysis.alignRsiForPro(fullData, visibleData);
+    }
+
+    const multi = PsychologyEngine.buildMultiFrameRsi(fullData);
     return PsychologyEngine.alignRsiToVisible(visibleData, multi);
   };
 
@@ -653,6 +661,32 @@ const MarketChart = (() => {
     psychologyBackgroundSeries = [];
   };
 
+  const clearVolumeHistogram = () => {
+    if (volumeHistogramSeries && chart) {
+      chart.removeSeries(volumeHistogramSeries);
+      volumeHistogramSeries = null;
+    }
+  };
+
+  const renderVolumeProxy = (visibleData) => {
+    clearVolumeHistogram();
+
+    if (!AppMode.isPro() || !chart || !visibleData.length) {
+      return;
+    }
+
+    volumeHistogramSeries = chart.addHistogramSeries({
+      priceFormat: { type: "volume" },
+      priceScaleId: "volume-proxy"
+    });
+
+    chart.priceScale("volume-proxy").applyOptions({
+      scaleMargins: { top: 0.82, bottom: 0 }
+    });
+
+    volumeHistogramSeries.setData(ProAnalysis.buildVolumeProxySeries(visibleData));
+  };
+
   const clearElliottOverlay = () => {
     if (elliottWaveSeries && chart) {
       chart.removeSeries(elliottWaveSeries);
@@ -699,7 +733,9 @@ const MarketChart = (() => {
       return;
     }
 
-    const overlay = ElliottEngine.buildVisibleWaveOverlay(cache, visibleData);
+    const overlay = ElliottEngine.buildVisibleWaveOverlay(cache, visibleData, {
+      validatedOnly: AppMode.isPro()
+    });
     if (!overlay?.points?.length) {
       return;
     }
@@ -819,6 +855,7 @@ const MarketChart = (() => {
     if (!clean.length) {
       clearPsychologyBackgrounds();
       clearElliottOverlay();
+      clearVolumeHistogram();
       return;
     }
 
@@ -835,6 +872,7 @@ const MarketChart = (() => {
     }
 
     renderElliottOverlay(clean);
+    renderVolumeProxy(clean);
   };
 
   const drawFallbackChart = (container, visibleData, psychologyTimeline) => {
@@ -876,7 +914,9 @@ const MarketChart = (() => {
     const dateToIndex = new Map(visibleData.map((point, index) => [point.date, index]));
     const cache = getActivePsychologyCache();
     const elliottOverlay = elliottOverlayVisible && cache
-      ? ElliottEngine.buildVisibleWaveOverlay(cache, visibleData)
+      ? ElliottEngine.buildVisibleWaveOverlay(cache, visibleData, {
+        validatedOnly: AppMode.isPro()
+      })
       : null;
 
     const elliottZigzag = elliottOverlay?.points?.length
@@ -1137,18 +1177,42 @@ const MarketChart = (() => {
   const render = () => {
     const container = document.querySelector("#chart");
     const visibleData = sanitizeVisibleData(getVisibleData());
+    const psychologyCache = getActivePsychologyCache();
+    const fullData = getFullData();
     const psychologyTimeline = getProjectedPsychologyTimeline(visibleData);
-    const marketSnapshot = PsychologyEngine.buildMarketSnapshot(
-      getActivePsychologyCache(),
-      getFullData(),
+    let marketSnapshot = PsychologyEngine.buildMarketSnapshot(
+      psychologyCache,
+      fullData,
       visibleData
     );
-    const psychologyCache = getActivePsychologyCache();
-    marketSnapshot.investment = InvestmentAdvisor.buildRecommendation(
+    const basicAdvice = InvestmentAdvisor.buildRecommendation(
       psychologyCache,
-      getFullData(),
+      fullData,
       marketSnapshot
     );
+    const proAdvice = psychologyCache
+      ? ProAnalysis.buildProRecommendation(psychologyCache, fullData, marketSnapshot, visibleData)
+      : { hasAdvice: false };
+    const modeComparison = ProAnalysis.buildModeComparison(basicAdvice, proAdvice);
+
+    if (AppMode.isPro() && psychologyCache) {
+      marketSnapshot = ProAnalysis.enhanceMarketSnapshot(
+        marketSnapshot,
+        psychologyCache,
+        fullData,
+        visibleData
+      );
+    }
+
+    marketSnapshot.investment = AppMode.isPro() ? proAdvice : basicAdvice;
+    marketSnapshot.modeComparison = modeComparison;
+    marketSnapshot.appMode = AppMode.getMode();
+    marketSnapshot.crossAsset = psychologyCache
+      ? ProAnalysis.buildCrossAssetMatrix(psychologyCaches, marketData, currentAsset)
+      : null;
+    marketSnapshot.basicInvestment = basicAdvice;
+    marketSnapshot.proInvestment = proAdvice;
+
     const rsiSeries = getVisibleRsiSeries();
 
     chartSnapshot = {
@@ -1270,6 +1334,9 @@ const MarketChart = (() => {
     bindPsychologyControls();
     bindPriceUpdateControls();
     bindElliottControls();
+    AppMode.onChange(() => {
+      render();
+    });
     syncRsiToggleButtons();
     updatePriceStatus("");
     render();
