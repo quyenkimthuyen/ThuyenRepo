@@ -1007,7 +1007,12 @@ var PsychologyEngine = (() => {
   const resolveWalkForwardCache = (fullSeries, asOfDate, pipeline = {}) => {
     const mode = pipeline.mode || "enhanced";
     if (mode === "legacy") {
-      return buildPsychologyCache(fullSeries.filter((point) => point.date <= asOfDate));
+      const clipped = fullSeries.filter((point) => point.date <= asOfDate);
+      if (pipeline.model === "ema") {
+        return buildUnifiedPsychologyCache(clipped, { model: "ema" });
+      }
+
+      return buildPsychologyCache(clipped);
     }
 
     let cache = buildWalkForwardPsychologyCache(fullSeries, asOfDate, pipeline);
