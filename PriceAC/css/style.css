@@ -17,6 +17,7 @@
   --radius-lg: 16px;
   --radius-md: 12px;
   --radius-sm: 8px;
+  --sim-dock-height: 0px;
   color-scheme: dark;
 }
 
@@ -124,6 +125,47 @@ body.app-mode-simulation #insight-analysis-meta {
 
 .sim-panel-wrap {
   margin: 0 0 14px;
+}
+
+.sim-panel-wrap.sim-dock {
+  margin: 0;
+}
+
+body.app-mode-simulation.pro-simulation-ready {
+  padding-bottom: calc(var(--sim-dock-height) + env(safe-area-inset-bottom, 0px));
+}
+
+body.app-mode-simulation.pro-simulation-ready .sim-panel-wrap.sim-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 300;
+  padding: 8px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(6, 10, 16, 0.35), rgba(6, 10, 16, 0.97) 24%);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid rgba(91, 156, 245, 0.3);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.48);
+}
+
+body.app-mode-simulation.pro-simulation-ready .sim-panel-wrap.sim-dock .sim-panel {
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  max-height: min(44vh, 380px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+body.app-mode-simulation.pro-simulation-ready .sim-dock .sim-title {
+  font-size: 0.92rem;
+}
+
+body.app-mode-simulation.pro-simulation-ready .sim-dock .sim-head {
+  margin-bottom: 8px;
+}
+
+body.app-mode-simulation.pro-simulation-ready .sim-dock .sim-status {
+  margin-bottom: 0;
 }
 
 .sim-panel-wrap[hidden] {
@@ -264,6 +306,61 @@ body.is-sim-playing .sim-live-badge {
   margin: 8px 0 0;
   color: var(--muted);
   font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.sim-accuracy {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(61, 214, 140, 0.22);
+  border-radius: 12px;
+  background: rgba(61, 214, 140, 0.06);
+}
+
+.sim-accuracy[hidden] {
+  display: none !important;
+}
+
+.sim-accuracy-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.sim-accuracy-kicker {
+  display: block;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.sim-accuracy-head small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+#sim-accuracy-pct {
+  font-size: 1.35rem;
+  line-height: 1;
+  color: #9ec5ff;
+}
+
+#sim-accuracy-pct.is-strong {
+  color: #3dd68c;
+}
+
+#sim-accuracy-pct.is-weak {
+  color: #fb7185;
+}
+
+.sim-accuracy-detail {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
   line-height: 1.45;
 }
 

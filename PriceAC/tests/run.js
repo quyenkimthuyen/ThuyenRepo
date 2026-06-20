@@ -507,6 +507,7 @@ test("simulation mode builds timeline and cutoff date", () => {
     refreshPsychology: (cursorDate) => PsychologyEngine.buildPsychologyCache(
       bitcoin.filter((point) => point.date <= cursorDate)
     ),
+    getBaselineCache: () => PsychologyEngine.buildPsychologyCache(bitcoin),
     onFrame: () => {}
   });
 
@@ -522,6 +523,43 @@ test("simulation mode builds timeline and cutoff date", () => {
   ProSimulation.stop();
   assert.ok(!ProSimulation.isActive());
   assert.ok(!ProSimulation.getPsychologyCache());
+});
+
+test("psychology compare uses zone at date for walk-forward vs 10Y", () => {
+  const bitcoin = loadBitcoin();
+  const baseline = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const walkForward = PsychologyEngine.buildPsychologyCache(bitcoin.slice(0, 400));
+  const date = PsychologyEngine.aggregateSeries(bitcoin, "1D")[399].date;
+  const comparison = PsychologyEngine.comparePsychologyAtDate(walkForward, baseline, date);
+
+  assert.ok(comparison.walkForwardZone);
+  assert.ok(comparison.baselineZone);
+  assert.equal(typeof comparison.match, "boolean");
+});
+
+test("simulation accuracy tracks weekly zone match against 10Y baseline", () => {
+  const bitcoin = loadBitcoin();
+  const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
+  const baseline = PsychologyEngine.buildPsychologyCache(bitcoin);
+
+  AppMode.setMode("simulation");
+  ProSimulation.init({
+    getContext: () => ({ fullData: bitcoin, interval: "1D", hasCache: false }),
+    refreshPsychology: (cursorDate) => PsychologyEngine.buildPsychologyCache(
+      bitcoin.filter((point) => point.date <= cursorDate)
+    ),
+    getBaselineCache: () => baseline,
+    onFrame: () => {}
+  });
+
+  const start = daily[300].date;
+  const end = daily[330].date;
+  ProSimulation.arm(start, end);
+
+  const summary = ProSimulation.getAccuracySummaryForCursor(ProSimulation.getCutoffDate());
+  assert.ok(summary.hasAccuracy);
+  assert.ok(summary.percent >= 0 && summary.percent <= 100);
+  assert.ok(summary.comparable >= 1);
 });
 
 test("simulation psychology refreshes on new week only", () => {

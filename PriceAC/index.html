@@ -67,50 +67,6 @@
 
     <section class="pro-brief-wrap" id="pro-brief" aria-label="Tóm tắt Pro" hidden></section>
 
-    <section class="sim-panel-wrap" id="pro-simulation" aria-label="Chế độ giả lập" hidden>
-      <div class="sim-panel">
-        <header class="sim-head">
-          <div>
-            <p class="sim-kicker">Chế độ Giả lập</p>
-            <h2 class="sim-title">Replay chỉ số theo thời gian · phương pháp Pro</h2>
-          </div>
-          <span class="sim-live-badge" id="sim-cursor-label">Chưa chạy giả lập</span>
-        </header>
-
-        <div class="sim-controls">
-          <label class="sim-field">
-            <span>Từ</span>
-            <input type="date" id="sim-start" aria-label="Ngày bắt đầu giả lập">
-          </label>
-          <label class="sim-field">
-            <span>Đến</span>
-            <input type="date" id="sim-end" aria-label="Ngày kết thúc giả lập">
-          </label>
-          <button type="button" class="secondary-button" id="sim-apply">Áp dụng</button>
-
-          <div class="sim-transport">
-            <button type="button" class="sim-btn" id="sim-run" title="Chạy">▶ Run</button>
-            <button type="button" class="sim-btn" id="sim-pause" title="Tạm dừng">⏸ Pause</button>
-            <button type="button" class="sim-btn" id="sim-stop" title="Kết thúc giả lập">⏹ Stop</button>
-          </div>
-
-          <label class="sim-field sim-field--compact">
-            <span>Tốc độ</span>
-            <select id="sim-speed" aria-label="Tốc độ giả lập"></select>
-          </label>
-          <label class="sim-field sim-field--compact">
-            <span>Bước</span>
-            <select id="sim-step" aria-label="Số nến mỗi bước"></select>
-          </label>
-        </div>
-
-        <div class="sim-scrubber-wrap">
-          <input type="range" id="sim-scrubber" min="0" max="100" value="0" aria-label="Vị trí giả lập">
-        </div>
-        <p class="sim-status" id="sim-status"></p>
-      </div>
-    </section>
-
     <section class="chart-toolbar" aria-label="Điều khiển biểu đồ">
       <div class="toolbar-group">
         <span class="toolbar-label">Khung nến</span>
@@ -192,6 +148,61 @@
 
     <section class="mode-compare-wrap" id="mode-compare" aria-label="So sánh Basic và Pro" hidden></section>
   </div>
+
+  <section class="sim-panel-wrap sim-dock" id="pro-simulation" aria-label="Chế độ giả lập" hidden>
+    <div class="sim-panel">
+      <header class="sim-head">
+        <div>
+          <p class="sim-kicker">Chế độ Giả lập</p>
+          <h2 class="sim-title">Replay chỉ số theo thời gian · phương pháp Pro</h2>
+        </div>
+        <span class="sim-live-badge" id="sim-cursor-label">Chưa chạy giả lập</span>
+      </header>
+
+      <div class="sim-controls">
+        <label class="sim-field">
+          <span>Từ</span>
+          <input type="date" id="sim-start" aria-label="Ngày bắt đầu giả lập">
+        </label>
+        <label class="sim-field">
+          <span>Đến</span>
+          <input type="date" id="sim-end" aria-label="Ngày kết thúc giả lập">
+        </label>
+        <button type="button" class="secondary-button" id="sim-apply">Áp dụng</button>
+
+        <div class="sim-transport">
+          <button type="button" class="sim-btn" id="sim-run" title="Chạy">▶ Run</button>
+          <button type="button" class="sim-btn" id="sim-pause" title="Tạm dừng">⏸ Pause</button>
+          <button type="button" class="sim-btn" id="sim-stop" title="Kết thúc giả lập">⏹ Stop</button>
+        </div>
+
+        <label class="sim-field sim-field--compact">
+          <span>Tốc độ</span>
+          <select id="sim-speed" aria-label="Tốc độ giả lập"></select>
+        </label>
+        <label class="sim-field sim-field--compact">
+          <span>Bước</span>
+          <select id="sim-step" aria-label="Số nến mỗi bước"></select>
+        </label>
+      </div>
+
+      <div class="sim-scrubber-wrap">
+        <input type="range" id="sim-scrubber" min="0" max="100" value="0" aria-label="Vị trí giả lập">
+      </div>
+      <p class="sim-status" id="sim-status"></p>
+
+      <div class="sim-accuracy" id="sim-accuracy" hidden>
+        <div class="sim-accuracy-head">
+          <div>
+            <span class="sim-accuracy-kicker">Độ khớp mô hình</span>
+            <small>Walk-forward vs bản đồ 10 năm</small>
+          </div>
+          <strong id="sim-accuracy-pct">—</strong>
+        </div>
+        <p class="sim-accuracy-detail" id="sim-accuracy-detail"></p>
+      </div>
+    </div>
+  </section>
 
   <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
   <script src="js/elliott.js"></script>

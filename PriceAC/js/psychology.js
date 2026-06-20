@@ -765,6 +765,32 @@ var PsychologyEngine = (() => {
     elliottWave: region.waveId
   });
 
+  const getPsychologyZoneAtDate = (cache, date) => {
+    if (!cache?.regions?.length || !date) {
+      return null;
+    }
+
+    if (date < cache.rangeStart || date > cache.rangeEnd) {
+      return null;
+    }
+
+    return ElliottEngine.findRegionForDate(cache.regions, date)?.zone || null;
+  };
+
+  const comparePsychologyAtDate = (walkForwardCache, baselineCache, date) => {
+    const walkForwardZone = getPsychologyZoneAtDate(walkForwardCache, date);
+    const baselineZone = getPsychologyZoneAtDate(baselineCache, date);
+    const comparable = Boolean(walkForwardZone && baselineZone);
+
+    return {
+      date,
+      walkForwardZone,
+      baselineZone,
+      comparable,
+      match: comparable && walkForwardZone === baselineZone
+    };
+  };
+
   const buildPsychologyCache = (fullSeries) => {
     const dailyTenYear = getTenYearDailySlice(fullSeries);
 
@@ -1123,6 +1149,8 @@ var PsychologyEngine = (() => {
     alignRsiToVisible,
     buildPsychologyCache,
     buildPsychologyCacheAsync,
+    getPsychologyZoneAtDate,
+    comparePsychologyAtDate,
     projectPsychologyToSeries,
     buildMarketMetrics,
     buildMarketSnapshot,

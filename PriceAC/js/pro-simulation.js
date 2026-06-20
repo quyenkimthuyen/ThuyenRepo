@@ -31,13 +31,48 @@ var ProSimulation = (() => {
     prewarming: false,
     prewarmReady: false,
     prewarmProgress: 0,
-    prewarmTotal: 0
+    prewarmTotal: 0,
+    baselineCache: null,
+    accuracyLog: []
   };
 
   let getContext = () => ({ fullData: [], interval: "1D", hasCache: false });
   let onFrame = () => {};
   let refreshPsychology = () => null;
+  let getBaselineCache = () => null;
   let prewarmToken = 0;
+  let dockResizeObserver = null;
+
+  const syncDockHeight = () => {
+    if (typeof document === "undefined" || !document.documentElement?.style) {
+      return;
+    }
+
+    const dock = document.querySelector("#pro-simulation");
+    if (!dock || dock.hidden || !AppMode.isSimulation()) {
+      document.documentElement.style.setProperty("--sim-dock-height", "0px");
+      return;
+    }
+
+    document.documentElement.style.setProperty("--sim-dock-height", `${dock.offsetHeight}px`);
+  };
+
+  const bindDockResize = () => {
+    if (typeof document === "undefined" || typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const dock = document.querySelector("#pro-simulation");
+    if (!dock) {
+      return;
+    }
+
+    dockResizeObserver?.disconnect();
+    dockResizeObserver = new ResizeObserver(() => {
+      syncDockHeight();
+    });
+    dockResizeObserver.observe(dock);
+  };
 
   const clampDate = (date, min, max) => {
     if (date < min) {
@@ -134,8 +169,56 @@ var ProSimulation = (() => {
     state.prewarmReady = false;
     state.prewarmProgress = 0;
     state.prewarmTotal = 0;
+    state.baselineCache = null;
+    state.accuracyLog = [];
   };
 
+  const buildAccuracyEntry = (weekKey, asOfDate, walkForwardCache) => {
+    const comparison = PsychologyEngine.comparePsychologyAtDate(
+      walkForwardCache,
+      state.baselineCache,
+      asOfDate
+    );
+
+    return {
+      weekKey,
+      asOfDate,
+      simZone: comparison.walkForwardZone,
+      baselineZone: comparison.baselineZone,
+      match: comparison.match,
+      comparable: comparison.comparable
+    };
+  };
+
+  const getAccuracySummary = (cursorDate = state.cursorDate) => {
+    if (!cursorDate || !state.accuracyLog.length) {
+      return {
+        hasAccuracy: false,
+        percent: null,
+        matched: 0,
+        comparable: 0,
+        total: 0,
+        current: null
+      };
+    }
+
+    const entries = state.accuracyLog.filter((entry) => entry.asOfDate <= cursorDate);
+    const comparableEntries = entries.filter((entry) => entry.comparable);
+    const matched = comparableEntries.filter((entry) => entry.match).length;
+    const currentWeek = PsychologyEngine.getWeekStart(cursorDate);
+    const current = entries.find((entry) => entry.weekKey === currentWeek) || null;
+
+    return {
+      hasAccuracy: comparableEntries.length > 0,
+      percent: comparableEntries.length
+        ? Math.round((matched / comparableEntries.length) * 100)
+        : null,
+      matched,
+      comparable: comparableEntries.length,
+      total: entries.length,
+      current
+    };
+  };
   const buildWeeklyAsOfDates = (timeline) => {
     const byWeek = new Map();
 
@@ -163,6 +246,8 @@ var ProSimulation = (() => {
 
   const prewarmPsychologyCaches = () => {
     const token = ++prewarmToken;
+    state.baselineCache = typeof getBaselineCache === "function" ? getBaselineCache() : null;
+    state.accuracyLog = [];
     const checkpoints = buildWeeklyAsOfDates(state.timeline);
 
     state.psychologyCacheByWeek = new Map();
@@ -199,6 +284,7 @@ var ProSimulation = (() => {
       if (cache) {
         state.psychologyCacheByWeek.set(weekKey, cache);
       }
+      state.accuracyLog.push(buildAccuracyEntry(weekKey, asOfDate, cache));
 
       index += 1;
       state.prewarmProgress = index;
@@ -384,8 +470,38 @@ var ProSimulation = (() => {
       progress,
       cursorDate: state.cursorDate,
       startDate: state.startDate,
-      endDate: state.endDate
+      endDate: state.endDate,
+      accuracy: getAccuracySummary()
     };
+  };
+
+  const syncAccuracyUi = () => {
+    const block = document.querySelector("#sim-accuracy");
+    const pctEl = document.querySelector("#sim-accuracy-pct");
+    const detailEl = document.querySelector("#sim-accuracy-detail");
+
+    if (!block || !pctEl || !detailEl) {
+      return;
+    }
+
+    const summary = getAccuracySummary();
+    const show = state.prewarmReady && isActive() && summary.hasAccuracy;
+    block.hidden = !show;
+
+    if (!show) {
+      return;
+    }
+
+    pctEl.textContent = `${summary.percent}%`;
+    pctEl.classList.toggle("is-strong", summary.percent >= 70);
+    pctEl.classList.toggle("is-weak", summary.percent < 50);
+
+    const current = summary.current;
+    const currentLine = current
+      ? `Tuần này: ${current.match ? "Khớp" : "Lệch"} · giả lập ${PsychologyEngine.zoneLabelsVi[current.simZone] || "—"} vs 10Y ${PsychologyEngine.zoneLabelsVi[current.baselineZone] || "—"}`
+      : "";
+
+    detailEl.textContent = `Đã qua ${summary.comparable} tuần · khớp ${summary.matched}/${summary.comparable}. ${currentLine} So sánh vùng walk-forward với bản đồ 10 năm.`;
   };
 
   const syncVisibility = () => {
@@ -401,6 +517,7 @@ var ProSimulation = (() => {
     const show = AppMode.isSimulation();
     panel.hidden = !show;
     document.body.classList.toggle("pro-simulation-ready", show);
+    syncDockHeight();
   };
 
   const syncDateInputConstraints = () => {
@@ -519,6 +636,8 @@ var ProSimulation = (() => {
 
     document.body.classList.toggle("is-simulating", status.active);
     document.body.classList.toggle("is-sim-playing", status.playing);
+    syncAccuracyUi();
+    scheduleFrame(syncDockHeight);
   };
 
   const applyRangeFromInputs = () => {
@@ -602,7 +721,9 @@ var ProSimulation = (() => {
     getContext = options.getContext || getContext;
     onFrame = options.onFrame || onFrame;
     refreshPsychology = options.refreshPsychology || refreshPsychology;
+    getBaselineCache = options.getBaselineCache || getBaselineCache;
     bindUi();
+    bindDockResize();
 
     if (typeof document === "undefined") {
       return;
@@ -655,6 +776,8 @@ var ProSimulation = (() => {
 
   const isPrewarming = () => state.prewarming;
 
+  const getAccuracySummaryForCursor = (cursorDate) => getAccuracySummary(cursorDate);
+
   return {
     SPEEDS,
     init,
@@ -669,6 +792,7 @@ var ProSimulation = (() => {
     getStatus,
     getPsychologyCache,
     isPrewarming,
+    getAccuracySummaryForCursor,
     syncVisibility,
     syncUi,
     onModeChange,

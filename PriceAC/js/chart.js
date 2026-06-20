@@ -1864,6 +1864,15 @@ const MarketChart = (() => {
           hasCache: Boolean(psychologyCaches[currentAsset])
         }),
         refreshPsychology: (cursorDate) => buildSimulationPsychologyCache(cursorDate),
+        getBaselineCache: () => {
+          const raw = marketData[currentAsset] || [];
+          const saved = psychologyCaches[currentAsset];
+          if (saved?.regions?.length) {
+            return saved;
+          }
+
+          return PsychologyEngine.buildPsychologyCache(raw);
+        },
         onFrame: () => {
           render();
         }
