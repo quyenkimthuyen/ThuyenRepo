@@ -419,6 +419,84 @@ var ElliottEngine = (() => {
 
   const buildSwingCache = (series, deviationPct = 8) => detectSwings(series, deviationPct);
 
+  const buildVisibleWaveOverlay = (cache, visibleSeries) => {
+    if (!cache?.regions?.length || !visibleSeries?.length) {
+      return null;
+    }
+
+    const visibleStart = visibleSeries[0].date;
+    const visibleEnd = visibleSeries[visibleSeries.length - 1].date;
+
+    const priceAt = (date) => {
+      const exact = visibleSeries.find((point) => point.date === date);
+      if (exact) {
+        return exact.close ?? exact.price;
+      }
+
+      let last = null;
+      visibleSeries.forEach((point) => {
+        if (point.date <= date) {
+          last = point.close ?? point.price;
+        }
+      });
+
+      return last;
+    };
+
+    const overlapping = cache.regions.filter(
+      (region) => region.endDate >= visibleStart && region.startDate <= visibleEnd
+    );
+
+    if (!overlapping.length) {
+      return null;
+    }
+
+    const boundaryDates = new Set([visibleStart, visibleEnd]);
+    overlapping.forEach((region) => {
+      if (region.startDate >= visibleStart && region.startDate <= visibleEnd) {
+        boundaryDates.add(region.startDate);
+      }
+      if (region.endDate >= visibleStart && region.endDate <= visibleEnd) {
+        boundaryDates.add(region.endDate);
+      }
+    });
+
+    const pivots = [...boundaryDates]
+      .sort((left, right) => left.localeCompare(right))
+      .map((date) => ({
+        date,
+        price: priceAt(date),
+        region: findRegionForDate(cache.regions, date)
+      }))
+      .filter((point) => Number.isFinite(point.price));
+
+    if (pivots.length < 2) {
+      return null;
+    }
+
+    const points = pivots.map((point) => ({
+      time: point.date,
+      value: point.price
+    }));
+
+    const markers = overlapping
+      .filter((region) => region.startDate >= visibleStart && region.startDate <= visibleEnd && region.waveId)
+      .map((region, index, regions) => {
+        const price = priceAt(region.startDate);
+        const prevPrice = index > 0 ? priceAt(regions[index - 1].startDate) : price;
+
+        return {
+          time: region.startDate,
+          position: price >= prevPrice ? "belowBar" : "aboveBar",
+          color: "#f0b45c",
+          shape: "circle",
+          text: String(region.waveId)
+        };
+      });
+
+    return { points, markers, pivots };
+  };
+
   return {
     WAVE_LABELS_VI,
     WAVE_PSYCHOLOGY,
@@ -429,6 +507,7 @@ var ElliottEngine = (() => {
     clipRegionsToRange,
     findRegionForDate,
     buildWeeklyPsychologyModel,
-    analyzeAt
+    analyzeAt,
+    buildVisibleWaveOverlay
   };
 })();

@@ -13,27 +13,6 @@ const App = (() => {
     });
   };
 
-  const updateElliottChip = (snapshot) => {
-    const chip = document.querySelector("#elliott-chip");
-    if (!chip) {
-      return;
-    }
-
-    if (!snapshot?.hasAnalysis || !snapshot.elliottLabel) {
-      chip.textContent = "Elliott";
-      chip.classList.remove("has-wave");
-      chip.title = "Sóng Elliott · khung tuần 10 năm";
-      return;
-    }
-
-    chip.textContent = snapshot.elliottLabel
-      .replace(/^Sóng\s+/, "")
-      .replace(/\s+tăng$/, " ↑")
-      .replace(/\s+giảm$/, " ↓");
-    chip.classList.add("has-wave");
-    chip.title = snapshot.elliottLabel;
-  };
-
   const updateInsightStrip = (snapshot) => {
     const zoneEl = document.querySelector("#insight-zone");
     const zoneNoteEl = document.querySelector("#insight-zone-note");
@@ -52,7 +31,6 @@ const App = (() => {
       if (analysisMetaEl) {
         analysisMetaEl.textContent = "";
       }
-      updateElliottChip(snapshot);
       return;
     }
 
@@ -69,8 +47,6 @@ const App = (() => {
         ? `Bản đồ 10 năm · ${snapshot.weekCount} tuần · lưu ${analyzedAt}`
         : `Bản đồ 10 năm · ${snapshot.weekCount} tuần`;
     }
-
-    updateElliottChip(snapshot);
   };
 
   const bindMarketControls = () => {

@@ -289,7 +289,24 @@ button {
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  cursor: default;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.elliott-chip:hover:not(:disabled) {
+  background: rgba(240, 180, 92, 0.14);
+  border-color: rgba(240, 180, 92, 0.45);
+}
+
+.elliott-chip.active {
+  background: rgba(240, 180, 92, 0.2);
+  border-color: rgba(240, 180, 92, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(240, 180, 92, 0.25);
+}
+
+.elliott-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .elliott-chip.has-wave {
