@@ -299,8 +299,81 @@ button {
 }
 
 .chart-card {
-  height: min(58vh, 480px);
-  min-height: 300px;
+  height: min(50vh, 440px);
+  min-height: 280px;
+}
+
+.chart-block--rsi {
+  padding: 10px 12px 12px;
+}
+
+.rsi-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.rsi-block-title {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.rsi-toggles {
+  display: flex;
+  gap: 6px;
+}
+
+.rsi-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+  transition: opacity 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.rsi-toggle::before {
+  content: "";
+  width: 14px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.35;
+}
+
+.rsi-toggle.daily { color: #5b9cf5; }
+.rsi-toggle.weekly { color: #3dd68c; }
+.rsi-toggle.monthly { color: #f0b45c; }
+
+.rsi-toggle.active {
+  border-color: color-mix(in srgb, currentColor 40%, var(--line));
+  background: color-mix(in srgb, currentColor 10%, var(--surface));
+}
+
+.rsi-toggle.active::before {
+  opacity: 1;
+}
+
+.rsi-toggle:not(.active) {
+  opacity: 0.45;
+}
+
+.rsi-chart-card {
+  height: 150px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: #070d14;
 }
 
 /* Hover bar — gọn, RSI inline */
@@ -509,6 +582,10 @@ button {
 
 @media (min-width: 900px) {
   .chart-card {
-    height: 500px;
+    height: 420px;
+  }
+
+  .rsi-chart-card {
+    height: 165px;
   }
 }

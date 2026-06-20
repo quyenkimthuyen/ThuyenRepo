@@ -10,20 +10,53 @@ const MarketChart = (() => {
     gold: "Gold"
   };
 
-  const rangeLengths = {
-    "1D": 2,
+  const rangeDayCount = {
+    "1D": 1,
     "1W": 7,
     "1M": 30,
     "3M": 90,
     "1Y": 365,
     "5Y": 365 * 5,
-    "10Y": Number.MAX_SAFE_INTEGER
+    "10Y": 365 * 10
   };
 
+  const parseDateMs = (dateStr) => new Date(`${dateStr}T12:00:00Z`).getTime();
+
+  const filterSeriesByDayRange = (dailySeries, dayCount) => {
+    if (!dailySeries.length) {
+      return [];
+    }
+
+    const endMs = parseDateMs(dailySeries[dailySeries.length - 1].date);
+    const startMs = endMs - (dayCount - 1) * 86400000;
+
+    return dailySeries.filter((point) => parseDateMs(point.date) >= startMs);
+  };
+
+  const getVisibleData = () => {
+    const daily = PsychologyEngine.aggregateSeries(getFullData(), "1D");
+
+    if (!daily.length) {
+      return [];
+    }
+
+    const dayCount = rangeDayCount[currentRange] ?? 30;
+    let inRange = filterSeriesByDayRange(daily, dayCount);
+
+    if (inRange.length < 2) {
+      inRange = daily.slice(-Math.min(Math.max(dayCount, 2), daily.length));
+    }
+
+    return PsychologyEngine.aggregateSeries(inRange, currentInterval);
+  };
 
   let chart;
   let lineSeries;
   let candleSeries;
+  let rsiChart;
+  let rsiDailySeries;
+  let rsiWeeklySeries;
+  let rsiMonthlySeries;
   let psychologyBackgroundSeries = [];
   let currentAsset = "bitcoin";
   let currentRange = "1M";
@@ -47,6 +80,12 @@ const MarketChart = (() => {
   };
   let psychologyCaches = {};
   let isPsychologyAnalyzing = false;
+  let syncingCrosshair = false;
+  const rsiVisibility = {
+    daily: true,
+    weekly: true,
+    monthly: true
+  };
 
   const generateFallbackData = (asset) => {
     const start = new Date("2026-01-01T00:00:00");
@@ -82,7 +121,8 @@ const MarketChart = (() => {
       if (!response.ok) {
         throw new Error(`Unable to load ${asset}`);
       }
-      return response.json();
+      const data = await response.json();
+      return Array.isArray(data) ? data : (data.prices || data.data || []);
     } catch (error) {
       console.info("Using generated fallback data", error);
       return generateFallbackData(asset);
@@ -116,10 +156,10 @@ const MarketChart = (() => {
 
   const getFullData = () => marketData[currentAsset] || [];
 
-  const getVisibleData = () => {
-    const aggregated = PsychologyEngine.aggregateSeries(getFullData(), currentInterval);
-    return aggregated.slice(-rangeLengths[currentRange]);
-  };
+  const toRsiLineData = (data) => data.map((point) => ({
+    time: point.date,
+    value: point.value
+  }));
 
   const toLineData = (data) => data.map((point) => ({
     time: point.date,
@@ -329,10 +369,20 @@ const MarketChart = (() => {
     return { rsiDateKey, priceDateKey };
   };
 
-  const handleCrosshairMove = (param) => {
+  const handleCrosshairMove = (source, param) => {
+    if (syncingCrosshair) {
+      return;
+    }
+
     if (!param.time) {
       const { rsiDateKey, priceDateKey } = getLatestPanelKeys();
       renderCrosshairPanel(rsiDateKey, priceDateKey, false);
+      if (source !== "price" && chart) {
+        chart.clearCrosshairPosition();
+      }
+      if (source !== "rsi" && rsiChart) {
+        rsiChart.clearCrosshairPosition();
+      }
       return;
     }
 
@@ -343,14 +393,33 @@ const MarketChart = (() => {
     }
 
     renderCrosshairPanel(rsiDateKey, priceDateKey, true);
+
+    syncingCrosshair = true;
+
+    const candle = priceDateKey ? hoverIndex.priceByDate.get(priceDateKey) : null;
+    const close = candle?.close ?? candle?.price;
+    const rsiDaily = hoverIndex.rsiDailyByDate.get(rsiDateKey);
+
+    if (source === "price" && rsiChart && rsiDailySeries && rsiVisibility.daily && Number.isFinite(rsiDaily)) {
+      rsiChart.setCrosshairPosition(rsiDaily, param.time, rsiDailySeries);
+    }
+
+    if (source === "rsi" && chart && Number.isFinite(close)) {
+      const activeSeries = currentChartMode === "candle" ? candleSeries : lineSeries;
+      chart.setCrosshairPosition(close, param.time, activeSeries);
+    }
+
+    syncingCrosshair = false;
   };
 
   const bindCrosshairSync = () => {
-    if (!chart) {
-      return;
+    if (chart) {
+      chart.subscribeCrosshairMove((param) => handleCrosshairMove("price", param));
     }
 
-    chart.subscribeCrosshairMove(handleCrosshairMove);
+    if (rsiChart) {
+      rsiChart.subscribeCrosshairMove((param) => handleCrosshairMove("rsi", param));
+    }
   };
 
   const getVisibleRsiSeries = () => {
@@ -402,18 +471,36 @@ const MarketChart = (() => {
     psychologyBackgroundSeries = [];
   };
 
-  const removePriceSeries = () => {
-    clearPsychologyBackgrounds();
-
-    if (lineSeries) {
-      chart.removeSeries(lineSeries);
-      lineSeries = null;
+  const ensurePriceSeries = () => {
+    if (!chart || lineSeries) {
+      return;
     }
 
-    if (candleSeries) {
-      chart.removeSeries(candleSeries);
-      candleSeries = null;
+    lineSeries = chart.addLineSeries({
+      color: "#e2e8f0",
+      lineWidth: 2,
+      priceLineColor: "rgba(226, 232, 240, 0.35)"
+    });
+
+    candleSeries = chart.addCandlestickSeries({
+      upColor: "#74d99f",
+      downColor: "#fb7185",
+      borderVisible: false,
+      wickUpColor: "#74d99f",
+      wickDownColor: "#fb7185"
+    });
+  };
+
+  const updatePriceSeriesData = (visibleData) => {
+    ensurePriceSeries();
+
+    if (!lineSeries || !candleSeries) {
+      return;
     }
+
+    lineSeries.setData(toLineData(visibleData));
+    candleSeries.setData(toCandleData(visibleData));
+    applyChartMode();
   };
 
   const renderPsychologyBackgrounds = (segments, bounds) => {
@@ -448,29 +535,12 @@ const MarketChart = (() => {
       : [];
     const bounds = getPriceBounds(visibleData);
 
-    removePriceSeries();
+    clearPsychologyBackgrounds();
+    updatePriceSeriesData(visibleData);
 
-    if (segments.length) {
+    if (segments.length && chart) {
       renderPsychologyBackgrounds(segments, bounds);
     }
-
-    lineSeries = chart.addLineSeries({
-      color: "#e2e8f0",
-      lineWidth: 2,
-      priceLineColor: "rgba(226, 232, 240, 0.35)"
-    });
-
-    candleSeries = chart.addCandlestickSeries({
-      upColor: "#74d99f",
-      downColor: "#fb7185",
-      borderVisible: false,
-      wickUpColor: "#74d99f",
-      wickDownColor: "#fb7185"
-    });
-
-    lineSeries.setData(toLineData(visibleData));
-    candleSeries.setData(toCandleData(visibleData));
-    applyChartMode();
   };
 
   const drawFallbackChart = (container, visibleData, psychologyTimeline) => {
@@ -514,6 +584,153 @@ const MarketChart = (() => {
         ${zoneRects}
         <polyline points="${points}" fill="none" stroke="#e2e8f0" stroke-width="2"></polyline>
         <text x="16" y="30" fill="#8ea0b7" font-size="13">Lightweight Charts unavailable. Showing static fallback.</text>
+      </svg>
+    `;
+  };
+
+  const applyRsiVisibility = () => {
+    if (!rsiDailySeries) {
+      return;
+    }
+
+    rsiDailySeries.applyOptions({ visible: rsiVisibility.daily });
+    rsiWeeklySeries.applyOptions({ visible: rsiVisibility.weekly });
+    rsiMonthlySeries.applyOptions({ visible: rsiVisibility.monthly });
+  };
+
+  const syncRsiToggleButtons = () => {
+    document.querySelectorAll(".rsi-toggle").forEach((button) => {
+      const key = button.dataset.rsi;
+      const isOn = Boolean(rsiVisibility[key]);
+      button.classList.toggle("active", isOn);
+      button.setAttribute("aria-pressed", String(isOn));
+    });
+  };
+
+  const ensureRsiSeries = () => {
+    if (!rsiChart || rsiDailySeries) {
+      return;
+    }
+
+    const rsiSeriesOptions = {
+      lineWidth: 2,
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: true,
+      autoscaleInfoProvider: () => ({
+        priceRange: { minValue: 0, maxValue: 100 }
+      })
+    };
+
+    rsiDailySeries = rsiChart.addLineSeries({
+      ...rsiSeriesOptions,
+      color: "#5b9cf5"
+    });
+    rsiWeeklySeries = rsiChart.addLineSeries({
+      ...rsiSeriesOptions,
+      color: "#3dd68c"
+    });
+    rsiMonthlySeries = rsiChart.addLineSeries({
+      ...rsiSeriesOptions,
+      color: "#f0b45c"
+    });
+
+    rsiDailySeries.createPriceLine({
+      price: 70,
+      color: "rgba(255, 159, 90, 0.35)",
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: false
+    });
+    rsiDailySeries.createPriceLine({
+      price: 30,
+      color: "rgba(91, 156, 245, 0.35)",
+      lineWidth: 1,
+      lineStyle: LightweightCharts.LineStyle.Dashed,
+      axisLabelVisible: false
+    });
+
+    applyRsiVisibility();
+  };
+
+  const updateRsiSeriesData = (rsiSeries) => {
+    ensureRsiSeries();
+
+    if (!rsiDailySeries) {
+      return;
+    }
+
+    rsiDailySeries.setData(toRsiLineData(rsiSeries.daily));
+    rsiWeeklySeries.setData(toRsiLineData(rsiSeries.weekly));
+    rsiMonthlySeries.setData(toRsiLineData(rsiSeries.monthly));
+    applyRsiVisibility();
+
+    if (rsiChart) {
+      rsiChart.timeScale().fitContent();
+    }
+  };
+
+  const createRsiChart = (container) => {
+    if (!window.LightweightCharts) {
+      return;
+    }
+
+    rsiChart = LightweightCharts.createChart(container, {
+      layout: {
+        background: { color: "#08131e" },
+        textColor: "#8ea0b7"
+      },
+      grid: {
+        vertLines: { color: "rgba(148, 163, 184, 0.06)" },
+        horzLines: { color: "rgba(148, 163, 184, 0.06)" }
+      },
+      crosshair: {
+        mode: LightweightCharts.CrosshairMode.Normal
+      },
+      rightPriceScale: {
+        borderColor: "rgba(148, 163, 184, 0.2)",
+        scaleMargins: { top: 0.1, bottom: 0.08 }
+      },
+      timeScale: {
+        borderColor: "rgba(148, 163, 184, 0.2)",
+        timeVisible: true
+      },
+      handleScroll: true,
+      handleScale: true
+    });
+
+    ensureRsiSeries();
+
+    new ResizeObserver(() => {
+      rsiChart.applyOptions({
+        width: container.clientWidth,
+        height: container.clientHeight
+      });
+    }).observe(container);
+  };
+
+  const drawFallbackRsiChart = (container, rsiSeries) => {
+    const width = Math.max(container.clientWidth, 320);
+    const height = Math.max(container.clientHeight, 140);
+    const seriesList = [
+      { key: "daily", color: "#5b9cf5", label: "Ngày" },
+      { key: "weekly", color: "#3dd68c", label: "Tuần" },
+      { key: "monthly", color: "#f0b45c", label: "Tháng" }
+    ].filter((item) => rsiVisibility[item.key]);
+
+    const toPoints = (series) => series.map((point, index) => {
+      const x = (index / Math.max(series.length - 1, 1)) * width;
+      const y = height - (point.value / 100) * (height - 24) - 12;
+      return `${x},${y}`;
+    }).join(" ");
+
+    container.innerHTML = `
+      <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Biểu đồ RSI">
+        <line x1="0" y1="${height * 0.3}" x2="${width}" y2="${height * 0.3}" stroke="rgba(255, 159, 90, 0.2)" stroke-dasharray="4 4"></line>
+        <line x1="0" y1="${height * 0.7}" x2="${width}" y2="${height * 0.7}" stroke="rgba(91, 156, 245, 0.2)" stroke-dasharray="4 4"></line>
+        ${seriesList.map((item) => `
+          <polyline points="${toPoints(rsiSeries[item.key])}" fill="none" stroke="${item.color}" stroke-width="2"></polyline>
+        `).join("")}
       </svg>
     `;
   };
@@ -590,6 +807,13 @@ const MarketChart = (() => {
       drawFallbackChart(container, visibleData, psychologyTimeline);
     }
 
+    const rsiContainer = document.querySelector("#rsi-chart");
+    if (rsiChart) {
+      updateRsiSeriesData(rsiSeries);
+    } else if (rsiContainer) {
+      drawFallbackRsiChart(rsiContainer, rsiSeries);
+    }
+
     if (!psychologyTimeline.length) {
       const legend = document.querySelector("#psychology-legend");
       if (legend) {
@@ -625,12 +849,39 @@ const MarketChart = (() => {
     render();
   };
 
+  const setRsiLineVisible = (key, visible) => {
+    if (!Object.prototype.hasOwnProperty.call(rsiVisibility, key)) {
+      return;
+    }
+
+    rsiVisibility[key] = visible;
+
+    const enabledCount = Object.values(rsiVisibility).filter(Boolean).length;
+    if (enabledCount === 0) {
+      rsiVisibility[key] = true;
+    }
+
+    applyRsiVisibility();
+    syncRsiToggleButtons();
+
+    const rsiContainer = document.querySelector("#rsi-chart");
+    if (!rsiChart && rsiContainer) {
+      drawFallbackRsiChart(rsiContainer, chartSnapshot.rsiSeries);
+    }
+  };
+
+  const toggleRsiLine = (key) => {
+    setRsiLineVisible(key, !rsiVisibility[key]);
+  };
+
   const init = async (marketUpdateHandler) => {
     onMarketUpdate = marketUpdateHandler;
     await loadAllData();
     createChart(document.querySelector("#chart"));
+    createRsiChart(document.querySelector("#rsi-chart"));
     bindCrosshairSync();
     bindPsychologyControls();
+    syncRsiToggleButtons();
     render();
   };
 
@@ -640,6 +891,8 @@ const MarketChart = (() => {
     setRange,
     setInterval,
     setChartMode,
+    toggleRsiLine,
+    setRsiLineVisible,
     runPsychologyAnalysis,
     getCurrentData: getVisibleData
   };

@@ -89,6 +89,15 @@ const App = (() => {
       activateChip(button);
       MarketChart.setRange(button.dataset.range);
     });
+
+    document.querySelector(".rsi-toggles")?.addEventListener("click", (event) => {
+      const button = event.target.closest(".rsi-toggle");
+      if (!button) {
+        return;
+      }
+
+      MarketChart.toggleRsiLine(button.dataset.rsi);
+    });
   };
 
   const init = async () => {
