@@ -23,6 +23,8 @@ var ProAnalysis = (() => {
 
   const getClose = (point) => point?.close ?? point?.price ?? 0;
 
+  const formatRsi = (value) => Number((value ?? 50).toFixed(1));
+
   const buildRsiSeries = (series, period = RSI_PERIOD) => {
     if (!series?.length) {
       return [];
@@ -44,7 +46,7 @@ var ProAnalysis = (() => {
           avgGain /= period;
           avgLoss /= period;
           const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-          values.push({ date: series[index].date, value: clamp(100 - 100 / (1 + rs), 0, 100) });
+          values.push({ date: series[index].date, value: formatRsi(clamp(100 - 100 / (1 + rs), 0, 100)) });
         }
         continue;
       }
@@ -52,7 +54,7 @@ var ProAnalysis = (() => {
       avgGain = (avgGain * (period - 1) + gain) / period;
       avgLoss = (avgLoss * (period - 1) + loss) / period;
       const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-      values.push({ date: series[index].date, value: clamp(100 - 100 / (1 + rs), 0, 100) });
+      values.push({ date: series[index].date, value: formatRsi(clamp(100 - 100 / (1 + rs), 0, 100)) });
     }
 
     return values;
@@ -76,7 +78,7 @@ var ProAnalysis = (() => {
         }
       }
 
-      return { date: point.date, value: lastValue };
+      return { date: point.date, value: formatRsi(lastValue) };
     });
   };
 
@@ -427,7 +429,7 @@ var ProAnalysis = (() => {
       label: "RSI 1D khớp stance",
       pass: rsiPass,
       weight: 15,
-      detail: `RSI 1D = ${Math.round(rsi1d)}`
+      detail: `RSI 1D = ${formatRsi(rsi1d)}`
     });
 
     const macroPass = stance === "accumulate"
@@ -605,8 +607,8 @@ var ProAnalysis = (() => {
     const snapshot = {
       zone,
       label: PsychologyEngine.zoneLabelsVi[zone] || zone,
-      rsi: rsi1d,
-      rsiByInterval: { twoDay: rsi1d, weekly: 50, monthly: 50 }
+      rsi: formatRsi(rsi1d),
+      rsiByInterval: { twoDay: formatRsi(rsi1d), weekly: 50, monthly: 50 }
     };
 
     return buildProSignalScore(
@@ -875,9 +877,9 @@ var ProAnalysis = (() => {
       elliottLabel: enriched.summary.elliottLabel,
       elliottValidated: enriched.summary.elliottValidated,
       validationNote: enriched.summary.validationNote,
-      rsi: Math.round((lastDailyRsi + (snapshot.rsiByInterval?.weekly ?? 50) + (snapshot.rsiByInterval?.monthly ?? 50)) / 3),
+      rsi: formatRsi((lastDailyRsi + (snapshot.rsiByInterval?.weekly ?? 50) + (snapshot.rsiByInterval?.monthly ?? 50)) / 3),
       rsiByInterval: {
-        twoDay: lastDailyRsi,
+        twoDay: formatRsi(lastDailyRsi),
         weekly: snapshot.rsiByInterval?.weekly ?? 50,
         monthly: snapshot.rsiByInterval?.monthly ?? 50
       },

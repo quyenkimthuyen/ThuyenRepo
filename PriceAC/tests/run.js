@@ -509,5 +509,18 @@ test("pro simulation builds timeline and cutoff date", () => {
   assert.ok(!ProSimulation.isActive());
 });
 
+test("pro daily rsi uses one decimal place", () => {
+  const bitcoin = loadBitcoin();
+  const visible = RangeUtils.buildVisibleSeries(bitcoin, "1M", "1D", PsychologyEngine.aggregateSeries);
+  const aligned = ProAnalysis.alignRsiForPro(bitcoin, visible);
+
+  aligned.twoDay.forEach((point) => {
+    const decimals = String(point.value).includes(".")
+      ? String(point.value).split(".")[1].length
+      : 0;
+    assert.ok(decimals <= 1, `RSI 1D has too many decimals: ${point.value}`);
+  });
+});
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);
