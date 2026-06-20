@@ -889,7 +889,7 @@ var PsychologyEngine = (() => {
 
     const distance = zoneCycleDistance(elliottZone, dailyZone);
     const region = ElliottEngine.findRegionForDate(cache.regions, asOfDate);
-    if (region?.elliottValidated === true || region?.elliottLabel) {
+    if (region?.elliottValidated === true) {
       return cache;
     }
 
@@ -923,7 +923,7 @@ var PsychologyEngine = (() => {
       cache = applyConfidenceGateToCache(cache, options.minConfidence ?? SIM_MIN_CONFIDENCE);
     }
 
-    if (options.applyDailyBlend !== false) {
+    if (options.applyDailyBlend === true) {
       cache = blendDailyPsychologyAtDate(cache, clipped, asOfDate);
     }
 

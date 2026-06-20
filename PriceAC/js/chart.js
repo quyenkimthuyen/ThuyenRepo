@@ -167,7 +167,6 @@ const MarketChart = (() => {
     {
       enrichCache: (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped),
       applyConfidenceGate: true,
-      applyDailyBlend: true,
       minConfidence: PsychologyEngine.SIM_MIN_CONFIDENCE
     }
   );

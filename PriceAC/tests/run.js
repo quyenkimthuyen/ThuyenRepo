@@ -111,8 +111,7 @@ const buildSimWalkForwardCache = (fullSeries, cursorDate) => PsychologyEngine.bu
   cursorDate,
   {
     enrichCache: (cache, clipped) => ProAnalysis.enrichPsychologyCache(cache, clipped),
-    applyConfidenceGate: true,
-    applyDailyBlend: true
+    applyConfidenceGate: true
   }
 );
 
@@ -596,6 +595,24 @@ test("simulation psychology refreshes on new week only", () => {
 
   assert.ok(afterArm >= 1);
   assert.equal(afterSeek, afterArm, "scrub should use precomputed weekly cache only");
+});
+
+test("daily blend adjusts unvalidated low-confidence zones", () => {
+  const bitcoin = loadBitcoin();
+  const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
+  const asOfDate = daily[620].date;
+  const clipped = bitcoin.filter((point) => point.date <= asOfDate);
+  let cache = PsychologyEngine.buildPsychologyCache(clipped);
+  cache = ProAnalysis.enrichPsychologyCache(cache, clipped) || cache;
+
+  const blended = PsychologyEngine.buildWalkForwardPsychologyCache(bitcoin, asOfDate, {
+    enrichCache: (entry, series) => ProAnalysis.enrichPsychologyCache(entry, series),
+    applyConfidenceGate: false,
+    applyDailyBlend: true
+  });
+
+  assert.ok(blended);
+  assert.ok(blended.regions.length >= 1);
 });
 
 test("weekly walk-forward accuracy report vs 10Y baseline", () => {
