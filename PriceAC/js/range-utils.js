@@ -1,9 +1,6 @@
 /* Pure helpers for calendar-based visible range filtering (unit-testable). */
 var RangeUtils = (() => {
   const RANGE_DAY_COUNT = {
-    "1D": 1,
-    "2D": 2,
-    "1W": 7,
     "1M": 30,
     "3M": 90,
     "1Y": 365,

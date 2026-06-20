@@ -92,7 +92,7 @@ const loadGold = () => JSON.parse(
   fs.readFileSync(path.join(root, "data/gold.json"), "utf8")
 );
 
-const RANGE_KEYS = ["1D", "2D", "1W", "1M", "3M", "1Y", "5Y", "10Y"];
+const RANGE_KEYS = ["1M", "3M", "1Y", "5Y", "10Y"];
 const INTERVAL_KEYS = ["1D", "1W", "1M"];
 
 console.log("PriceAC tests\n");
@@ -124,14 +124,17 @@ test("filterSeriesByDayRange respects calendar days", () => {
   assert.equal(slice[1].date, "2024-01-04");
 });
 
-test("buildVisibleDailySlice enforces minimum points for 1D", () => {
+test("buildVisibleDailySlice enforces minimum points", () => {
   const daily = [{ date: "2024-06-18" }, { date: "2024-06-19" }];
-  const slice = RangeUtils.buildVisibleDailySlice(daily, "1D");
+  const slice = RangeUtils.buildVisibleDailySlice(daily, "1M");
   assert.equal(slice.length, 2);
 });
 
 test("isValidRangeKey rejects unknown ranges", () => {
   assert.ok(RangeUtils.isValidRangeKey("1M"));
+  assert.ok(!RangeUtils.isValidRangeKey("1D"));
+  assert.ok(!RangeUtils.isValidRangeKey("2D"));
+  assert.ok(!RangeUtils.isValidRangeKey("1W"));
   assert.ok(!RangeUtils.isValidRangeKey("2Y"));
   assert.ok(!RangeUtils.isValidRangeKey(""));
 });
@@ -147,12 +150,6 @@ test("sanitizeSeries sorts and dedupes candles", () => {
   assert.equal(out[0].date, "2024-01-01");
   assert.equal(out[0].price, 1);
   assert.equal(out[2].date, "2024-01-03");
-});
-
-test("2D daily range is about 2 days", () => {
-  const bitcoin = loadBitcoin();
-  const daily = RangeUtils.buildVisibleDailySlice(bitcoin, "2D");
-  assert.ok(daily.length >= 2 && daily.length <= 2, `2D daily length ${daily.length}`);
 });
 
 test("1M daily range is about 30 days", () => {
@@ -212,7 +209,7 @@ test("all range and interval combinations produce valid visible series", () => {
 
 test("range switch sequence keeps monotonic dates", () => {
   const bitcoin = loadBitcoin();
-  const sequence = ["1M", "1Y", "1W", "10Y", "3M", "5Y", "1D"];
+  const sequence = ["1M", "1Y", "3M", "5Y", "10Y"];
 
   sequence.forEach((rangeKey) => {
     const visible = RangeUtils.buildVisibleSeries(
