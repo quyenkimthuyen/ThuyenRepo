@@ -111,6 +111,13 @@ const buildSimWalkForwardCache = (fullSeries, cursorDate) => PsychologyEngine.bu
   { asOfDate: cursorDate, model: "ema", walkForwardDisplay: false }
 );
 
+const buildEmaContextAt = (series, date) => {
+  const daily = PsychologyEngine.aggregateSeries(series, "1D");
+  const ema50 = EmaPsychologyEngine.computeEmaSeries(daily, 50);
+  const ema200 = EmaPsychologyEngine.computeEmaSeries(daily, 200);
+  return EmaPsychologyEngine.buildContext(daily, ema50, ema200, new Map(), date);
+};
+
 test("filterSeriesByDayRange respects calendar days", () => {
   const daily = [
     { date: "2024-01-01" },
@@ -663,13 +670,6 @@ test("impulse wave psychology law holds on all assets", () => {
   });
 });
 
-const buildEmaContextAt = (series, date) => {
-  const daily = PsychologyEngine.aggregateSeries(series, "1D");
-  const ema50 = EmaPsychologyEngine.computeEmaSeries(daily, 50);
-  const ema200 = EmaPsychologyEngine.computeEmaSeries(daily, 200);
-  return EmaPsychologyEngine.buildContext(daily, ema50, ema200, new Map(), date);
-};
-
 test("trend wave rules map psychology by direction and EMA position", () => {
   const bitcoin = loadBitcoin();
   const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
@@ -770,7 +770,7 @@ test("ema mode never shows panic above EMA50 during uptrend on bitcoin", () => {
 
 test("ema bull impulse waves 3 and 5 stay positive above EMA50 in uptrend", () => {
   const forbidden = new Set(["Anxiety", "Denial", "Panic", "Capitulation"]);
-  const bullish = new Set(["Belief", "Euphoria", "Optimism", "Complacency"]);
+  const bullish = new Set(["Belief", "Euphoria", "Optimism", "Complacency", "Hope"]);
   const cases = [
     {
       asset: "bitcoin",

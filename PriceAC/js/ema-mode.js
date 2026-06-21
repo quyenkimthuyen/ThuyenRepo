@@ -774,12 +774,28 @@ var EmaPsychologyEngine = (() => {
       return true;
     }
 
-    if (macroTrend === "up" && POSITIVE_ZONES.has(region.zone)) {
-      return true;
+    if (macroTrend === "up") {
+      if (POSITIVE_ZONES.has(region.zone)) {
+        return true;
+      }
+
+      if (["2", "4", "A"].includes(waveId) && region.zone === "Anxiety") {
+        return true;
+      }
+
+      if (waveId === "C" && (region.zone === "Panic" || region.zone === "Anxiety")) {
+        return true;
+      }
     }
 
-    if (macroTrend === "down" && (NEGATIVE_ZONES.has(region.zone) || region.zone === "Disbelief")) {
-      return true;
+    if (macroTrend === "down") {
+      if (NEGATIVE_ZONES.has(region.zone) || region.zone === "Disbelief") {
+        return true;
+      }
+
+      if (waveId === "B" && region.zone === "Hope") {
+        return true;
+      }
     }
 
     if (waveId && ElliottEngine.IMPULSE_WAVES?.has(waveId)) {
