@@ -757,7 +757,10 @@ test("ema display cache uses walk-forward pipeline like simulation", () => {
   const endDate = daily.at(-1).date;
   const startIndex = Math.max(0, daily.length - 400);
   const sample = bitcoin.filter((point) => point.date >= daily[startIndex].date);
-  const emaDisplay = PsychologyEngine.buildUnifiedPsychologyCache(sample, { model: "ema" });
+  const emaDisplay = PsychologyEngine.buildUnifiedPsychologyCache(sample, {
+    model: "ema",
+    walkForwardDisplay: true
+  });
   const snapshot = PsychologyEngine.buildUnifiedPsychologyCache(sample, {
     model: "ema",
     walkForwardDisplay: false

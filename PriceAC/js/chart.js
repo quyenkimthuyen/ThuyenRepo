@@ -151,7 +151,10 @@ const MarketChart = (() => {
     );
   };
 
-  const getPsychologyPipelineOptions = () => ({ model: "ema" });
+  const getPsychologyPipelineOptions = () => ({
+    model: "ema",
+    walkForwardDisplay: false
+  });
 
   const getActivePsychologyCache = () => {
     if (AppMode.isSimulation() && typeof ProSimulation !== "undefined") {

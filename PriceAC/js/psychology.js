@@ -1063,7 +1063,7 @@ var PsychologyEngine = (() => {
     if (
       options.model === "ema"
       && !asOfDate
-      && options.walkForwardDisplay !== false
+      && options.walkForwardDisplay === true
       && typeof EmaPsychologyEngine !== "undefined"
     ) {
       return buildEmaWalkForwardDisplayCache(fullSeries, options);
@@ -1510,7 +1510,7 @@ var PsychologyEngine = (() => {
     if (
       options.model === "ema"
       && !asOfDate
-      && options.walkForwardDisplay !== false
+      && options.walkForwardDisplay === true
     ) {
       return buildEmaWalkForwardDisplayCacheAsync(fullSeries, onProgress, options);
     }
