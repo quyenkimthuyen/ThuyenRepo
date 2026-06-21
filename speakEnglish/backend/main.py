@@ -1,5 +1,11 @@
 """PronounceLab Personal — FastAPI local service."""
 
+try:
+    import static_ffmpeg
+    static_ffmpeg.add_paths()
+except Exception as e:
+    print(f"Warning: Failed to load static-ffmpeg: {e}")
+
 from pathlib import Path
 
 from fastapi import FastAPI

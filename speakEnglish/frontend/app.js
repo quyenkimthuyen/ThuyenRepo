@@ -57,7 +57,6 @@ async function init() {
   await loadConfig();
   await loadWords();
   loadSettings();
-  loadHistory();
   bindEvents();
   renderWordList();
   showWord(0);
@@ -405,7 +404,10 @@ async function replaySegment(box) {
 
 async function checkBackend() {
   try {
-    const res = await fetch(`${getApiBase()}/api/v1/health`, { signal: AbortSignal.timeout(3000) });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(`${getApiBase()}/api/v1/health`, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
       els.serviceStatus.textContent = `● Backend: online (${data.alignment_method}/${data.scoring_method})`;
