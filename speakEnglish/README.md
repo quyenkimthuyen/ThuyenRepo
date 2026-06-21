@@ -125,6 +125,25 @@ python -m http.server 5500
 
 5. Truy cập http://localhost:5500
 
+### Script Windows (khởi động / restart backend)
+
+```powershell
+cd speakEnglish
+
+# Chạy lần đầu (cửa sổ hiện tại)
+.\run_backend.bat
+
+# Restart: dừng process port 8000 rồi chạy lại
+.\restart_backend.bat
+
+# Restart trong cửa sổ mới (double-click tiện hơn)
+.\restart_backend.bat --new-window
+
+# Hoặc PowerShell
+powershell -ExecutionPolicy Bypass -File .\restart_backend.ps1
+powershell -ExecutionPolicy Bypass -File .\restart_backend.ps1 -NewWindow
+```
+
 ## Cấu hình
 
 ### Biến môi trường (backend)
