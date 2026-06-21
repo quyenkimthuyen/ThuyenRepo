@@ -24,8 +24,32 @@ cd frontend && node --test tests/*.test.mjs
 | API | `backend/tests/test_api.py` | health, evaluate OK/lỗi, cleanup |
 | Performance | `backend/tests/test_performance.py` | API < 5s, health < 200ms |
 | Phoneme utils | `backend/tests/test_phoneme_utils.py` | label, gợi ý, parse IPA |
+| **Chấm điểm** | `backend/tests/test_score_mode.py` | JSON phoneme, pass/fail, labels |
 | Core logic | `frontend/tests/core.test.mjs` | wordsMatch, timing, VAD RMS |
+| **Chấm điểm logic** | `frontend/tests/score-mode.test.mjs` | auto-score, pass criteria, API shape |
+| **Integration** | `frontend/tests/integration/*.test.mjs` | HTTP thật frontend→backend, CORS |
+| **E2E Chrome/Edge** | `frontend/tests/e2e/*.spec.mjs` | UI, micro fake, score online |
 | Data | `frontend/tests/words.data.test.mjs` | schema words.json |
+
+```bash
+# Chỉ unit (nhanh)
+cd backend && .venv/bin/pytest tests/ -v
+cd frontend && node --test tests/*.test.mjs
+
+# Integration
+cd frontend && node --test tests/integration/*.test.mjs
+
+# E2E Chrome
+cd frontend && npm install && npx playwright install chromium
+npx playwright test --project=chromium
+
+# E2E Edge (Windows / sau khi cài Edge)
+npx playwright install msedge
+npx playwright test --project=msedge
+
+# Bỏ E2E (CI nhanh)
+RUN_E2E=0 ./scripts/run_tests.sh
+```
 
 ### Ngưỡng hiệu năng (automated)
 
@@ -63,7 +87,8 @@ cd frontend && node --test tests/*.test.mjs
 
 | Mục | Chi tiết |
 |-----|----------|
-| **Steps** | 1. Chạy backend 2. Chọn **Chấm điểm** 3. Đọc từ → im lặng 0.5s |
+| **Automated** | `backend/tests/test_score_mode.py`, `frontend/tests/score-mode.test.mjs` |
+| **Steps** | 1. Chạy backend 2. Chọn **Chấm điểm** 3. Đọc từ → im lặng ~0.35s |
 | **Expected** | - Micro vàng "Đang chấm điểm" - Phoneme boxes có màu trong **≤ 5s** - Footer: Backend online |
 | **Pass** | Không hiện lỗi đỏ backend |
 

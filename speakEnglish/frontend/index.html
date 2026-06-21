@@ -38,16 +38,17 @@
 
       <section class="live-panel" id="live-panel">
         <div class="live-header">
-          <button id="btn-live-toggle" class="btn btn-live" title="Bật/tắt micro liên tục">
-            <span class="icon">🎙</span> <span id="live-toggle-label">Bật micro live</span>
-          </button>
-          <button id="btn-evaluate-now" class="btn btn-ghost btn-sm hidden" title="Chấm điểm ngay">
-            Chấm điểm
-          </button>
-          <div class="mic-indicator" id="mic-indicator" data-state="off">
+          <button
+            type="button"
+            id="btn-live-toggle"
+            class="mic-indicator"
+            data-state="off"
+            title="Bật/tắt micro"
+            aria-pressed="false"
+          >
             <div class="mic-icon-wrap">
-              <span class="mic-icon">🎙</span>
-              <span class="mic-ring"></span>
+              <span class="mic-icon" aria-hidden="true">🎙</span>
+              <span class="mic-ring" aria-hidden="true"></span>
             </div>
             <div class="mic-meta">
               <span id="mic-status-label" class="mic-status-label">Micro tắt</span>
@@ -55,7 +56,10 @@
                 <div id="vad-level" class="vad-level"></div>
               </div>
             </div>
-          </div>
+          </button>
+          <button id="btn-evaluate-now" class="btn btn-ghost btn-sm hidden" title="Chấm điểm ngay">
+            Chấm điểm
+          </button>
         </div>
         <div class="live-transcript-box">
           <p class="live-label">Bạn đang đọc:</p>

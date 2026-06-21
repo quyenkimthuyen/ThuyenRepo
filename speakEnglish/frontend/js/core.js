@@ -22,6 +22,57 @@ export const MAX_LATENCY_MS = 5000;
 export const TEXT_MATCH_DELAY_MS = 200;
 export const MAX_TEXT_RESPONSE_MS = 750;
 export const MAX_SCORE_RESPONSE_MS = 3000;
+export const MIN_BLOB_BYTES = 500;
+export const MIN_UPLOAD_BYTES = 800;
+
+export function isScoreMode(practiceMode) {
+  return practiceMode === PRACTICE_MODE.SCORE;
+}
+
+/** Chế độ chấm điểm: có tự gọi API sau khi kết thúc câu không */
+export function shouldAutoScoreOnUtteranceEnd({ practiceMode, autoEvaluate }) {
+  return isScoreMode(practiceMode) && autoEvaluate !== false;
+}
+
+export function isAudioReadyForScore(blobSize, minBytes = MIN_BLOB_BYTES) {
+  return Number(blobSize) >= minBytes;
+}
+
+/** Tiêu chí đạt từ (giống renderEvaluation trong app) */
+export function isEvaluationPassed(data, passScore = 80) {
+  if (!data?.phonemes?.length) return false;
+  const allOk = data.phonemes.every((p) => p.label === 'ok');
+  return data.passed ?? (allOk || data.overall_score >= passScore);
+}
+
+export function uploadFilenameForMime(mimeType) {
+  if (mimeType?.includes('mp4')) return 'recording.mp4';
+  if (mimeType?.includes('ogg')) return 'recording.ogg';
+  if (mimeType?.includes('wav')) return 'recording.wav';
+  return 'recording.webm';
+}
+
+/** Kiểm tra JSON evaluate đủ field cho UI chấm điểm */
+export function validateEvaluateResponse(data) {
+  const errors = [];
+  if (!data || typeof data !== 'object') return ['root must be object'];
+  if (!data.word) errors.push('missing word');
+  if (typeof data.overall_score !== 'number') errors.push('missing overall_score');
+  if (typeof data.passed !== 'boolean' && data.passed !== undefined) {
+    errors.push('passed must be boolean if set');
+  }
+  if (!Array.isArray(data.phonemes)) {
+    errors.push('missing phonemes array');
+  } else {
+    data.phonemes.forEach((p, i) => {
+      if (!p.ipa) errors.push(`phonemes[${i}].ipa`);
+      if (typeof p.score !== 'number') errors.push(`phonemes[${i}].score`);
+      if (!['ok', 'warn', 'mis'].includes(p.label)) errors.push(`phonemes[${i}].label`);
+      if (!('start' in p) || !('end' in p)) errors.push(`phonemes[${i}].timing`);
+    });
+  }
+  return errors;
+}
 
 export function normalizeWord(s) {
   return String(s || '').toLowerCase().replace(/[^a-z']/g, '').trim();

@@ -92,8 +92,6 @@ const els = {
   serviceStatus: $('service-status'),
   btnLiveToggle: $('btn-live-toggle'),
   btnEvaluateNow: $('btn-evaluate-now'),
-  liveToggleLabel: $('live-toggle-label'),
-  micIndicator: $('mic-indicator'),
   micStatusLabel: $('mic-status-label'),
   vadLevel: $('vad-level'),
   liveTranscriptFinal: $('live-transcript-final'),
@@ -139,8 +137,9 @@ function setupAutoStartMic() {
 
 function setMicState(state, label) {
   micState = state;
-  if (els.micIndicator) {
-    els.micIndicator.dataset.state = state;
+  if (els.btnLiveToggle) {
+    els.btnLiveToggle.dataset.state = state;
+    els.btnLiveToggle.setAttribute('aria-pressed', state !== MIC_STATE.OFF ? 'true' : 'false');
   }
   if (els.micStatusLabel && label) {
     els.micStatusLabel.textContent = label;
@@ -796,8 +795,6 @@ async function startLiveMode() {
 
     liveModeActive = true;
     micEngine.start();
-    els.btnLiveToggle.classList.add('active');
-    els.liveToggleLabel.textContent = 'Tắt micro';
     const hangSec = (getHangoverMsSetting() / 1000).toFixed(1);
     els.recordingIndicator.innerHTML =
       `<span class="pulse"></span> Nói xong → im lặng ~${hangSec}s → phản hồi`;
@@ -852,8 +849,6 @@ function stopLiveMode() {
   }
   els.vadLevel.style.width = '0%';
 
-  els.btnLiveToggle.classList.remove('active');
-  els.liveToggleLabel.textContent = 'Bật micro live';
   setMicState(MIC_STATE.OFF, 'Micro tắt');
   els.recordingIndicator.classList.add('hidden');
   els.btnRecord.disabled = false;

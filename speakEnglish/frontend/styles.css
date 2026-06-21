@@ -179,34 +179,43 @@ body {
   flex-wrap: wrap;
 }
 
-.btn-live {
-  background: var(--surface-2);
-  color: var(--text);
-  border: 1px solid var(--pending);
-}
-
-.btn-live.active {
-  background: rgba(231, 76, 60, 0.15);
-  border-color: var(--record);
-  color: var(--record);
-}
-
-.btn-live.active .icon {
-  animation: pulse-dot 1s infinite;
-}
-
-.btn-sm {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.8rem;
-}
-
-/* Mic indicator: đỏ=tắt, xanh=sẵn sàng, vàng=đang xử lý */
+/* Mic control: một nút — icon + trạng thái + VAD */
 .mic-indicator {
   display: flex;
   align-items: center;
   gap: 0.65rem;
   flex: 1;
   min-width: 140px;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.mic-indicator:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+.mic-indicator:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.mic-indicator:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-sm {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
 }
 
 .mic-icon-wrap {

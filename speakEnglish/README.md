@@ -200,10 +200,25 @@ Xem thêm: `backend/scripts/setup_aligner.sh mfa`
 
 | Suite | Số test | Nội dung |
 |-------|---------|----------|
-| Backend pytest | 22 | API, phoneme utils, latency < 5s |
-| Frontend node | 19 | wordsMatch, timing, VAD, words.json |
+| Backend pytest | 29 | API, score mode, phoneme, latency |
+| Frontend unit | 33 | wordsMatch, VAD, score logic |
+| **Integration** | 5 | HTTP thật frontend → backend, CORS |
+| **E2E Playwright** | 12×2 | Chrome + Edge: UI, micro, score online |
 
-Chi tiết manual E2E: [TEST_PLAN.md](TEST_PLAN.md)
+```bash
+# Nhanh — không E2E browser
+RUN_E2E=0 ./scripts/run_tests.sh
+
+# Chỉ E2E Chrome
+cd frontend && npm install && npx playwright install chromium
+npx playwright test --project=chromium
+
+# E2E Edge (Windows / sau khi cài Edge)
+npx playwright install msedge
+npx playwright test --project=msedge
+```
+
+Chi tiết: [TEST_PLAN.md](TEST_PLAN.md)
 
 ## API
 
