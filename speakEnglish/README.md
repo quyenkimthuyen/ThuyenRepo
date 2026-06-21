@@ -4,6 +4,7 @@
 
 ## Tính năng
 
+- **Micro live (real-time):** bật micro liên tục, nhận dạng giọng nói theo thời gian thực (Web Speech API), hiển thị text đang đọc ngay khi có âm thanh
 - Hiển thị từ + IPA + phoneme boxes
 - Phát mẫu (TTS trình duyệt hoặc file audio)
 - Ghi âm qua WebAudio API → gửi tới FastAPI local
@@ -250,6 +251,13 @@ Chỉnh `frontend/data/words.json`, thêm mục theo schema:
 5. Trong ≤ 5 giây: phoneme boxes hiện màu + % confidence
 6. Click ô phoneme → replay đoạn audio tương ứng
 7. Nếu đạt → tự chuyển từ tiếp theo
+
+### Chế độ micro live
+
+1. Nhấn **Bật micro live** (hoặc tự bật nếu bật setting)
+2. Nói từ mục tiêu — text hiện ra ngay (chữ xám = đang nhận diện, chữ trắng = đã chốt)
+3. Thanh VAD nhấp nháy khi có âm thanh vào micro
+4. Khi nhận diện đúng từ → tự gửi audio gần nhất lên backend chấm phoneme (có thể tắt trong Settings)
 
 ## Ghi chú triển khai
 

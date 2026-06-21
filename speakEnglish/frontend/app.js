@@ -18,6 +18,22 @@ let serverAudioUrl = null;
 let audioContext = null;
 let isRecording = false;
 
+// Live mode state
+let liveModeActive = false;
+let speechRecognition = null;
+let micStream = null;
+let liveMediaRecorder = null;
+let audioRingChunks = [];
+let liveAnalyser = null;
+let vadAnimationId = null;
+let liveTranscriptFinal = '';
+let liveTranscriptInterim = '';
+let isEvaluating = false;
+let lastEvaluateTime = 0;
+const RING_CHUNK_MS = 500;
+const MAX_RING_CHUNKS = 24; // ~12 giây
+const EVALUATE_COOLDOWN_MS = 2500;
+
 // DOM refs
 const $ = (id) => document.getElementById(id);
 
@@ -46,9 +62,18 @@ const els = {
   feedbackList: $('feedback-list'),
   settingsPanel: $('settings-panel'),
   settingAutoplay: $('setting-autoplay'),
+  settingLiveAuto: $('setting-live-auto'),
+  settingAutoEvaluate: $('setting-auto-evaluate'),
   settingApiUrl: $('setting-api-url'),
   settingPassScore: $('setting-pass-score'),
   serviceStatus: $('service-status'),
+  btnLiveToggle: $('btn-live-toggle'),
+  liveToggleLabel: $('live-toggle-label'),
+  liveStatus: $('live-status'),
+  vadLevel: $('vad-level'),
+  liveTranscriptFinal: $('live-transcript-final'),
+  liveTranscriptInterim: $('live-transcript-interim'),
+  liveTranscriptPlaceholder: $('live-transcript-placeholder'),
 };
 
 // ─── Init ───────────────────────────────────────────────────────────────────
@@ -61,6 +86,12 @@ async function init() {
   renderWordList();
   showWord(0);
   checkBackend();
+  initLiveSpeech();
+
+  if (els.settingLiveAuto?.checked) {
+    // Cần user gesture trên một số trình duyệt — thử bật sau 500ms
+    setTimeout(() => startLiveMode(), 600);
+  }
 }
 
 async function loadConfig() {
@@ -81,6 +112,8 @@ async function loadWords() {
 function loadSettings() {
   const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
   els.settingAutoplay.checked = saved.autoPlaySample ?? config.autoPlaySample ?? true;
+  els.settingLiveAuto.checked = saved.liveAutoStart ?? true;
+  els.settingAutoEvaluate.checked = saved.autoEvaluate ?? true;
   els.settingApiUrl.value = saved.apiBaseUrl ?? config.apiBaseUrl ?? 'http://127.0.0.1:8000';
   els.settingPassScore.value = saved.passScore ?? config.thresholds?.overallPass ?? 80;
 }
@@ -88,6 +121,8 @@ function loadSettings() {
 function saveSettings() {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify({
     autoPlaySample: els.settingAutoplay.checked,
+    liveAutoStart: els.settingLiveAuto.checked,
+    autoEvaluate: els.settingAutoEvaluate.checked,
     apiBaseUrl: els.settingApiUrl.value,
     passScore: parseInt(els.settingPassScore.value, 10),
   }));
@@ -146,6 +181,7 @@ function showWord(index) {
 
   resetEvaluationUI();
   renderPendingPhonemes(w.phonemes || []);
+  clearLiveTranscript();
 
   if (els.settingAutoplay.checked) {
     playSample();
@@ -186,6 +222,250 @@ function prevWord() {
   if (currentIndex > 0) {
     showWord(currentIndex - 1);
   }
+}
+
+// ─── Live mode: micro liên tục + nhận dạng real-time ─────────────────────
+
+function initLiveSpeech() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    els.liveStatus.textContent = 'Trình duyệt không hỗ trợ nhận dạng giọng nói (dùng Chrome/Edge)';
+    els.btnLiveToggle.disabled = true;
+    return;
+  }
+
+  speechRecognition = new SpeechRecognition();
+  speechRecognition.continuous = true;
+  speechRecognition.interimResults = true;
+  speechRecognition.lang = 'en-US';
+  speechRecognition.maxAlternatives = 1;
+
+  speechRecognition.onresult = (event) => {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const text = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        liveTranscriptFinal += text + ' ';
+        onFinalSpeech(text.trim());
+      } else {
+        interim += text;
+      }
+    }
+    liveTranscriptInterim = interim;
+    updateLiveTranscriptUI();
+  };
+
+  speechRecognition.onerror = (event) => {
+    if (event.error === 'no-speech' || event.error === 'aborted') return;
+    console.warn('SpeechRecognition error:', event.error);
+    if (event.error === 'not-allowed') {
+      els.liveStatus.textContent = 'Bị chặn quyền micro';
+      stopLiveMode();
+    }
+  };
+
+  speechRecognition.onend = () => {
+    if (liveModeActive) {
+      try {
+        speechRecognition.start();
+      } catch {
+        // restart sau khi user gesture
+      }
+    }
+  };
+}
+
+function normalizeWord(s) {
+  return s.toLowerCase().replace(/[^a-z']/g, '').trim();
+}
+
+function wordsMatch(spoken, target) {
+  const s = normalizeWord(spoken);
+  const t = normalizeWord(target);
+  if (!s || !t) return false;
+  if (s === t || s.includes(t) || t.includes(s)) return true;
+  // Cho phép sai lệch nhỏ (ví dụ "helou" ~ "hello")
+  if (Math.abs(s.length - t.length) <= 2) {
+    let diff = 0;
+    const maxLen = Math.max(s.length, t.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (s[i] !== t[i]) diff++;
+    }
+    return diff <= 2;
+  }
+  return false;
+}
+
+function onFinalSpeech(text) {
+  if (!text) return;
+  const w = words[currentIndex];
+  const tokens = text.split(/\s+/).filter(Boolean);
+  const lastToken = tokens[tokens.length - 1] || text;
+
+  if (els.settingAutoEvaluate?.checked && wordsMatch(lastToken, w.word)) {
+    maybeAutoEvaluate();
+  }
+}
+
+async function maybeAutoEvaluate() {
+  const now = Date.now();
+  if (isEvaluating || now - lastEvaluateTime < EVALUATE_COOLDOWN_MS) return;
+  if (!audioRingChunks.length) return;
+
+  lastEvaluateTime = now;
+  const mimeType = liveMediaRecorder?.mimeType || 'audio/webm';
+  const blob = new Blob(audioRingChunks, { type: mimeType });
+  if (blob.size < 500) return;
+
+  userAudioBlob = blob;
+  if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
+  userAudioUrl = URL.createObjectURL(blob);
+  els.btnReplayUser.disabled = false;
+
+  await evaluateRecording(blob);
+}
+
+function updateLiveTranscriptUI() {
+  const w = words[currentIndex];
+  const finalText = liveTranscriptFinal.trim();
+  const interimText = liveTranscriptInterim;
+
+  els.liveTranscriptFinal.textContent = finalText;
+  els.liveTranscriptInterim.textContent = interimText;
+
+  const hasText = finalText || interimText;
+  els.liveTranscriptPlaceholder.classList.toggle('hidden', !!hasText);
+
+  // Highlight nếu khớp từ mục tiêu
+  const combined = (finalText + ' ' + interimText).trim();
+  const lastWord = combined.split(/\s+/).pop() || '';
+  if (wordsMatch(lastWord, w?.word)) {
+    els.liveTranscriptInterim.classList.add('match');
+    els.liveTranscriptFinal.classList.add('match');
+  } else {
+    els.liveTranscriptInterim.classList.remove('match');
+    els.liveTranscriptFinal.classList.remove('match');
+  }
+}
+
+function clearLiveTranscript() {
+  liveTranscriptFinal = '';
+  liveTranscriptInterim = '';
+  els.liveTranscriptFinal.textContent = '';
+  els.liveTranscriptInterim.textContent = '';
+  els.liveTranscriptFinal.classList.remove('match');
+  els.liveTranscriptInterim.classList.remove('match');
+  els.liveTranscriptPlaceholder.classList.remove('hidden');
+}
+
+async function startLiveMode() {
+  if (liveModeActive) return;
+
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    // VAD visualizer
+    if (!audioContext) audioContext = new AudioContext();
+    const source = audioContext.createMediaStreamSource(micStream);
+    liveAnalyser = audioContext.createAnalyser();
+    liveAnalyser.fftSize = 256;
+    source.connect(liveAnalyser);
+    startVadLoop();
+
+    // Rolling audio buffer cho đánh giá phát âm
+    audioRingChunks = [];
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : 'audio/webm';
+    liveMediaRecorder = new MediaRecorder(micStream, { mimeType });
+    liveMediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        audioRingChunks.push(e.data);
+        if (audioRingChunks.length > MAX_RING_CHUNKS) {
+          audioRingChunks.shift();
+        }
+      }
+    };
+    liveMediaRecorder.start(RING_CHUNK_MS);
+
+    // Speech recognition
+    speechRecognition.start();
+
+    liveModeActive = true;
+    els.btnLiveToggle.classList.add('active');
+    els.liveToggleLabel.textContent = 'Tắt micro live';
+    els.liveStatus.textContent = 'Đang nghe...';
+    els.liveStatus.className = 'live-status listening';
+    els.recordingIndicator.classList.remove('hidden');
+    els.recordingIndicator.innerHTML = '<span class="pulse"></span> Micro live — nói để thấy text';
+    els.btnRecord.disabled = true;
+  } catch (err) {
+    alert('Không thể bật micro: ' + err.message);
+  }
+}
+
+function stopLiveMode() {
+  if (!liveModeActive) return;
+
+  liveModeActive = false;
+
+  if (speechRecognition) {
+    try { speechRecognition.stop(); } catch { /* ignore */ }
+  }
+
+  if (liveMediaRecorder?.state !== 'inactive') {
+    liveMediaRecorder.stop();
+  }
+  liveMediaRecorder = null;
+
+  if (micStream) {
+    micStream.getTracks().forEach((t) => t.stop());
+    micStream = null;
+  }
+
+  if (vadAnimationId) {
+    cancelAnimationFrame(vadAnimationId);
+    vadAnimationId = null;
+  }
+  els.vadLevel.style.width = '0%';
+
+  els.btnLiveToggle.classList.remove('active');
+  els.liveToggleLabel.textContent = 'Bật micro live';
+  els.liveStatus.textContent = 'Micro tắt';
+  els.liveStatus.className = 'live-status';
+  els.recordingIndicator.classList.add('hidden');
+  els.btnRecord.disabled = false;
+}
+
+function toggleLiveMode() {
+  if (liveModeActive) {
+    stopLiveMode();
+  } else {
+    startLiveMode();
+  }
+}
+
+function startVadLoop() {
+  if (!liveAnalyser) return;
+  const data = new Uint8Array(liveAnalyser.frequencyBinCount);
+
+  const tick = () => {
+    if (!liveModeActive || !liveAnalyser) return;
+    liveAnalyser.getByteFrequencyData(data);
+    const avg = data.reduce((a, b) => a + b, 0) / data.length;
+    const pct = Math.min(100, (avg / 128) * 100);
+    els.vadLevel.style.width = `${pct}%`;
+
+    if (pct > 15) {
+      els.liveStatus.textContent = 'Đang nghe bạn nói...';
+      els.liveStatus.className = 'live-status speaking';
+    } else if (liveModeActive) {
+      els.liveStatus.textContent = 'Đang nghe...';
+      els.liveStatus.className = 'live-status listening';
+    }
+    vadAnimationId = requestAnimationFrame(tick);
+  };
+  tick();
 }
 
 // ─── Audio: TTS sample ──────────────────────────────────────────────────────
@@ -259,12 +539,16 @@ function replayUserAudio() {
 
 // ─── Evaluation API ─────────────────────────────────────────────────────────
 
-async function evaluateRecording() {
+async function evaluateRecording(blob = null) {
   const w = words[currentIndex];
+  const audioBlob = blob || userAudioBlob;
+  if (!audioBlob) return;
+
+  isEvaluating = true;
   els.spinner.classList.remove('hidden');
 
   const formData = new FormData();
-  formData.append('file', userAudioBlob, 'recording.webm');
+  formData.append('file', audioBlob, 'recording.webm');
   formData.append('target_word', w.word);
   formData.append('target_ipa', w.ipa);
   formData.append('target_phonemes', JSON.stringify(w.phonemes || []));
@@ -277,17 +561,21 @@ async function evaluateRecording() {
 
     const data = await res.json();
     els.spinner.classList.add('hidden');
+    isEvaluating = false;
 
     if (!res.ok) {
       const msg = data.detail?.error || data.error || 'Lỗi không xác định';
-      alert('Lỗi đánh giá: ' + msg);
+      console.warn('Lỗi đánh giá:', msg);
       return;
     }
 
     renderEvaluation(data);
   } catch (err) {
     els.spinner.classList.add('hidden');
-    alert('Không kết nối được backend. Hãy chạy: uvicorn main:app --port 8000\n\n' + err.message);
+    isEvaluating = false;
+    if (!blob) {
+      alert('Không kết nối được backend. Hãy chạy: uvicorn main:app --port 8000\n\n' + err.message);
+    }
   }
 }
 
@@ -425,6 +713,7 @@ async function checkBackend() {
 
 function bindEvents() {
   els.btnPlaySample.addEventListener('click', playSample);
+  els.btnLiveToggle.addEventListener('click', toggleLiveMode);
   els.btnRecord.addEventListener('click', startRecording);
   els.btnStop.addEventListener('click', stopRecording);
   els.btnReplayUser.addEventListener('click', replayUserAudio);
@@ -442,6 +731,8 @@ function bindEvents() {
     els.settingsPanel.classList.add('hidden');
     checkBackend();
   });
+
+  window.addEventListener('beforeunload', () => stopLiveMode());
 }
 
 init();

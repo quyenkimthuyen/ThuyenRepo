@@ -32,12 +32,31 @@
         <p id="current-ipa" class="ipa-text">—</p>
       </section>
 
+      <section class="live-panel" id="live-panel">
+        <div class="live-header">
+          <button id="btn-live-toggle" class="btn btn-live" title="Bật/tắt micro liên tục">
+            <span class="icon">🎙</span> <span id="live-toggle-label">Bật micro live</span>
+          </button>
+          <div class="vad-meter" title="Mức âm thanh">
+            <div id="vad-level" class="vad-level"></div>
+          </div>
+          <span id="live-status" class="live-status">Micro tắt</span>
+        </div>
+        <div class="live-transcript-box">
+          <p class="live-label">Bạn đang đọc:</p>
+          <p id="live-transcript" class="live-transcript">
+            <span id="live-transcript-final"></span><span id="live-transcript-interim" class="interim"></span>
+          </p>
+          <p id="live-transcript-placeholder" class="live-placeholder">Bật micro live — nói để thấy text hiện ra theo thời gian thực</p>
+        </div>
+      </section>
+
       <section class="controls">
         <button id="btn-play-sample" class="btn btn-primary">
           <span class="icon">▶</span> Nghe mẫu
         </button>
         <button id="btn-record" class="btn btn-record">
-          <span class="icon">●</span> Ghi âm
+          <span class="icon">●</span> Ghi âm 1 lần
         </button>
         <button id="btn-stop" class="btn btn-stop" disabled>
           <span class="icon">■</span> Dừng
@@ -80,6 +99,14 @@
       <label class="setting-row">
         <input type="checkbox" id="setting-autoplay" checked>
         Tự phát mẫu khi mở từ
+      </label>
+      <label class="setting-row">
+        <input type="checkbox" id="setting-live-auto" checked>
+        Tự bật micro live khi mở app
+      </label>
+      <label class="setting-row">
+        <input type="checkbox" id="setting-auto-evaluate" checked>
+        Tự chấm điểm khi nhận diện đúng từ
       </label>
       <label class="setting-row">
         API URL
