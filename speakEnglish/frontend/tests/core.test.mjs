@@ -5,18 +5,16 @@ import {
   wordsMatch,
   extractSpokenWord,
   getSilenceMsFromSetting,
-  getSilenceMsForMode,
-  getFastProcessDelay,
-  getBlockMsFromSetting,
-  msUntilNextBlock,
-  shouldProcessBlock,
+  getHangoverMs,
+  canStartProcessing,
+  createVadState,
+  updateEnergyVad,
+  buildUtteranceBlob,
   computeRms,
   isSpeaking,
-  TEXT_FAST_MS,
-  SCORE_FAST_MS,
-  DEFAULT_BLOCK_SEC,
+  PROCESS_COOLDOWN_MS,
+  MIN_SPEECH_MS,
   MAX_TEXT_RESPONSE_MS,
-  MAX_SCORE_RESPONSE_MS,
 } from '../js/core.js';
 
 describe('normalizeWord', () => {
@@ -61,54 +59,51 @@ describe('extractSpokenWord', () => {
   });
 });
 
-describe('block processor timing', () => {
-  it('default 2s block', () => {
-    assert.equal(getBlockMsFromSetting(2), 2000);
-    assert.equal(getBlockMsFromSetting(undefined), DEFAULT_BLOCK_SEC * 1000);
+describe('energy VAD', () => {
+  it('default hangover ~350ms', () => {
+    assert.equal(getSilenceMsFromSetting(0.35), 350);
+    assert.ok(getHangoverMs(0.35, true) <= 400);
   });
 
-  it('clamps block range', () => {
-    assert.equal(getBlockMsFromSetting(0.1), 500);
-    assert.equal(getBlockMsFromSetting(99), 10000);
+  it('detects speech start and end', () => {
+    let state = createVadState();
+    const hangover = 300;
+    state = updateEnergyVad(state, 0.05, 1000, { hangoverMs: hangover });
+    assert.equal(state.speechStarted, true);
+    state = updateEnergyVad(state, 0.05, 1200, { hangoverMs: hangover });
+    state = updateEnergyVad(state, 0.001, 1300, { hangoverMs: hangover });
+    state = updateEnergyVad(state, 0.001, 1610, { hangoverMs: hangover });
+    assert.equal(state.speechEnded, true);
   });
 
-  it('countdown until next block', () => {
-    const start = 1000;
-    const blockMs = 2000;
-    assert.equal(msUntilNextBlock(1500, start, blockMs), 1500);
-    assert.equal(msUntilNextBlock(3000, start, blockMs), 0);
+  it('ignores too-short bursts', () => {
+    let state = createVadState();
+    const hangover = 200;
+    state = updateEnergyVad(state, 0.04, 0, { hangoverMs: hangover });
+    state = updateEnergyVad(state, 0.001, 250, { hangoverMs: hangover });
+    assert.equal(state.speechEnded, false);
   });
 
-  it('shouldProcessBlock requires signal', () => {
-    assert.equal(shouldProcessBlock({ hadSpeech: false, hasText: false, hasAudio: false }), false);
-    assert.equal(shouldProcessBlock({ hadSpeech: true, hasText: false, hasAudio: false }), true);
-    assert.equal(shouldProcessBlock({ hadSpeech: false, hasText: true, hasAudio: false }), true);
+  it('processing cooldown', () => {
+    assert.equal(canStartProcessing(0, 500, PROCESS_COOLDOWN_MS), true);
+    assert.equal(canStartProcessing(100, 400, PROCESS_COOLDOWN_MS), false);
+    assert.equal(canStartProcessing(100, 500, PROCESS_COOLDOWN_MS), true);
+  });
+
+  it('text hangover under latency budget', () => {
+    assert.ok(getHangoverMs(0.35, true) + PROCESS_COOLDOWN_MS < MAX_TEXT_RESPONSE_MS);
   });
 });
 
-describe('silence timing (legacy helpers)', () => {
-  it('default 0.5s silence', () => {
-    assert.equal(getSilenceMsFromSetting(0.5), 500);
+describe('buildUtteranceBlob', () => {
+  it('returns null for empty', () => {
+    assert.equal(buildUtteranceBlob([]), null);
   });
 
-  it('text mode caps at 500ms', () => {
-    assert.equal(getSilenceMsForMode(1.0, true), 500);
-  });
-
-  it('score mode caps at 700ms', () => {
-    assert.equal(getSilenceMsForMode(1.0, false), 700);
-  });
-
-  it('fast path text final under budget', () => {
-    assert.ok(getFastProcessDelay(true, true, 0.5) <= MAX_TEXT_RESPONSE_MS);
-  });
-
-  it('fast path score final under budget', () => {
-    assert.ok(getFastProcessDelay(false, true, 0.5) <= MAX_SCORE_RESPONSE_MS);
-  });
-
-  it('text final faster than score', () => {
-    assert.ok(TEXT_FAST_MS < SCORE_FAST_MS);
+  it('merges chunks', () => {
+    const b = buildUtteranceBlob([new Blob(['a']), new Blob(['b'])], 'audio/webm');
+    assert.ok(b instanceof Blob);
+    assert.equal(b.type, 'audio/webm');
   });
 });
 

@@ -12,14 +12,15 @@ export const MIC_STATE = {
   SAMPLE: 'sample',
 };
 
-export const TEXT_FAST_MS = 280;
-export const SCORE_FAST_MS = 450;
-export const DEFAULT_BLOCK_SEC = 2;
-export const MIN_BLOCK_SEC = 0.5;
-export const MAX_BLOCK_SEC = 10;
+export const PROCESS_COOLDOWN_MS = 350;
+export const MIN_SPEECH_MS = 180;
+export const MAX_UTTERANCE_MS = 5000;
+export const DEFAULT_SILENCE_SEC = 0.35;
+export const MIN_SILENCE_SEC = 0.2;
+export const MAX_SILENCE_SEC = 1.2;
 export const MAX_LATENCY_MS = 5000;
-export const MAX_TEXT_RESPONSE_MS = 800;
-export const MAX_SCORE_RESPONSE_MS = 3500;
+export const MAX_TEXT_RESPONSE_MS = 750;
+export const MAX_SCORE_RESPONSE_MS = 3000;
 
 export function normalizeWord(s) {
   return String(s || '').toLowerCase().replace(/[^a-z']/g, '').trim();
@@ -49,37 +50,88 @@ export function extractSpokenWord(finalText, interimText) {
 
 export function getSilenceMsFromSetting(silenceSec) {
   const sec = parseFloat(silenceSec);
-  return Math.round((Number.isFinite(sec) ? sec : 0.5) * 1000);
-}
-
-export function getSilenceMsForMode(silenceSec, isTextMode) {
-  const base = getSilenceMsFromSetting(silenceSec);
-  return isTextMode ? Math.min(base, 500) : Math.min(base, 700);
-}
-
-export function getFastProcessDelay(isTextMode, isFinal, silenceSec) {
-  if (isTextMode) {
-    return isFinal ? TEXT_FAST_MS : TEXT_FAST_MS + 120;
-  }
-  return isFinal ? SCORE_FAST_MS : getSilenceMsForMode(silenceSec, false);
-}
-
-export function getBlockMsFromSetting(blockSec) {
-  const sec = parseFloat(blockSec);
-  if (!Number.isFinite(sec)) return Math.round(DEFAULT_BLOCK_SEC * 1000);
-  const clamped = Math.min(MAX_BLOCK_SEC, Math.max(MIN_BLOCK_SEC, sec));
+  if (!Number.isFinite(sec)) return Math.round(DEFAULT_SILENCE_SEC * 1000);
+  const clamped = Math.min(MAX_SILENCE_SEC, Math.max(MIN_SILENCE_SEC, sec));
   return Math.round(clamped * 1000);
 }
 
-/** Còn bao nhiêu ms tới lần xử lý block tiếp theo */
-export function msUntilNextBlock(nowMs, blockStartedAt, blockMs) {
-  if (!blockStartedAt || !blockMs) return 0;
-  return Math.max(0, blockMs - (nowMs - blockStartedAt));
+/** Hangover VAD — text nhanh hơn score một chút */
+export function getHangoverMs(silenceSec, isTextMode) {
+  const base = getSilenceMsFromSetting(silenceSec);
+  return isTextMode ? Math.min(base, 400) : Math.min(base, 550);
 }
 
-/** Block hiện tại có đủ tín hiệu để xử lý không */
-export function shouldProcessBlock({ hadSpeech, hasText, hasAudio }) {
-  return !!(hadSpeech || hasText || hasAudio);
+export function canStartProcessing(lastProcessAt, nowMs, cooldownMs = PROCESS_COOLDOWN_MS) {
+  if (!lastProcessAt) return true;
+  return nowMs - lastProcessAt >= cooldownMs;
+}
+
+export function createVadState() {
+  return {
+    noiseFloor: 0.008,
+    speaking: false,
+    speechStartAt: 0,
+    lastSpeechAt: 0,
+  };
+}
+
+/**
+ * VAD năng lượng thích ứng — ngưỡng tự calibrate theo noise floor
+ * @returns {{ noiseFloor, speaking, speechStartAt, lastSpeechAt, isSpeech, threshold, speechStarted, speechEnded, silentFor }}
+ */
+export function updateEnergyVad(state, rms, nowMs, options = {}) {
+  const {
+    hangoverMs = 350,
+    thresholdMul = 2.4,
+    minThreshold = 0.011,
+    noiseAlpha = 0.08,
+  } = options;
+
+  const next = { ...state };
+
+  if (!next.speaking && rms < next.noiseFloor * 1.6) {
+    next.noiseFloor = next.noiseFloor * (1 - noiseAlpha) + rms * noiseAlpha;
+  }
+
+  const threshold = Math.max(minThreshold, next.noiseFloor * thresholdMul);
+  const isSpeech = rms > threshold;
+
+  let speechStarted = false;
+  let speechEnded = false;
+  let silentFor = 0;
+
+  if (isSpeech) {
+    if (!next.speaking) {
+      next.speaking = true;
+      next.speechStartAt = nowMs;
+      speechStarted = true;
+    }
+    next.lastSpeechAt = nowMs;
+  } else if (next.speaking) {
+    silentFor = nowMs - next.lastSpeechAt;
+    if (silentFor >= hangoverMs) {
+      const duration = next.lastSpeechAt - next.speechStartAt;
+      if (duration >= MIN_SPEECH_MS) {
+        speechEnded = true;
+      }
+      next.speaking = false;
+    }
+  }
+
+  return {
+    ...next,
+    isSpeech,
+    threshold,
+    speechStarted,
+    speechEnded,
+    silentFor,
+  };
+}
+
+export function buildUtteranceBlob(chunks, mimeType = 'audio/webm') {
+  const valid = (chunks || []).filter((c) => c?.size > 0);
+  if (!valid.length) return null;
+  return new Blob(valid.slice(-12), { type: mimeType });
 }
 
 /** RMS từ byte time-domain (AnalyserNode) */

@@ -5,13 +5,12 @@
 import {
   PRACTICE_MODE,
   MIC_STATE,
-  normalizeWord,
   wordsMatch,
-  extractSpokenWord,
-  getBlockMsFromSetting,
-  msUntilNextBlock,
-  shouldProcessBlock,
+  getHangoverMs,
+  computeRms,
+  buildUtteranceBlob,
 } from './js/core.js';
+import { MicEngine, MIC_PHASE } from './js/mic-engine.js';
 
 const STORAGE_KEY = 'pronouncelab_history';
 
@@ -32,7 +31,8 @@ let serverAudioUrl = null;
 let audioContext = null;
 let isRecording = false;
 
-// Live mode state
+// Live mic pipeline
+let micEngine = null;
 let liveModeActive = false;
 let speechRecognition = null;
 let micStream = null;
@@ -40,48 +40,19 @@ let liveMediaRecorder = null;
 let audioRingChunks = [];
 let liveAnalyser = null;
 let vadAnimationId = null;
-let liveTranscriptFinal = '';
-let liveTranscriptInterim = '';
 let isEvaluating = false;
-let lastEvaluateTime = 0;
-const RING_CHUNK_MS = 250;
-const MAX_RING_CHUNKS = 20;
-const EVALUATE_COOLDOWN_MS = 600;
-const SPEECH_RMS_THRESHOLD = 0.010;
-const MIN_SPEECH_MS = 200;
-const MIN_BLOB_BYTES = 100;
-const MIC_RESET_IDLE_MS = 3000;
-const MAX_SCORE_AUDIO_SEC = 3;
-
-const SETTINGS_KEY = 'pronouncelab_settings';
-
-// Utterance session
-let utteranceActive = false;
-let utteranceChunks = [];
-let firstSoundAt = 0;
-let lastSoundAt = 0;
-let utteranceEnding = false;
-let speechSilenceTimer = null;
 let liveMimeType = 'audio/webm';
-let lastRmsActivityAt = 0;
-let micWatchdogTimer = null;
-let vadEndPending = false;
-let fastProcessTimer = null;
 
-// Block processor — xử lý input mỗi N giây
-let blockProcessTimer = null;
-let blockIntervalStart = 0;
-let blockHadSpeech = false;
-let blockPausedAt = 0;
-let blockPausedRemaining = 0;
-
-// Chặn micro thu tiếng TTS/mẫu của app
 let isSamplePlaying = false;
 let speechRecognitionPaused = false;
 let sampleResumeTimer = null;
-const SAMPLE_TAIL_MS = 600;
+const RING_CHUNK_MS = 100;
+const MAX_RING_CHUNKS = 30;
+const SAMPLE_TAIL_MS = 500;
+const MAX_SCORE_AUDIO_SEC = 3;
+const MIN_BLOB_BYTES = 100;
+const SETTINGS_KEY = 'pronouncelab_settings';
 
-// DOM refs
 const $ = (id) => document.getElementById(id);
 
 const els = {
@@ -124,7 +95,6 @@ const els = {
   liveTranscriptInterim: $('live-transcript-interim'),
   liveTranscriptPlaceholder: $('live-transcript-placeholder'),
   liveHint: $('live-hint'),
-  settingBlockSec: $('setting-block-sec'),
   settingSilenceSec: $('setting-silence-sec'),
   modeText: $('mode-text'),
   modeScore: $('mode-score'),
@@ -192,8 +162,7 @@ function loadSettings() {
   els.settingAutoplay.checked = saved.autoPlaySample ?? config.autoPlaySample ?? true;
   els.settingLiveAuto.checked = saved.liveAutoStart ?? true;
   els.settingAutoEvaluate.checked = saved.autoEvaluate ?? true;
-  els.settingBlockSec.value = saved.blockSec ?? config.blockSec ?? 2;
-  els.settingSilenceSec.value = saved.silenceSec ?? config.silenceSec ?? 0.5;
+  els.settingSilenceSec.value = saved.silenceSec ?? config.silenceSec ?? 0.35;
   els.settingApiUrl.value = saved.apiBaseUrl ?? config.apiBaseUrl ?? 'http://127.0.0.1:8000';
   els.settingPassScore.value = saved.passScore ?? config.thresholds?.overallPass ?? 80;
   practiceMode = saved.practiceMode ?? config.practiceMode ?? PRACTICE_MODE.TEXT;
@@ -204,8 +173,7 @@ function saveSettings() {
     autoPlaySample: els.settingAutoplay.checked,
     liveAutoStart: els.settingLiveAuto.checked,
     autoEvaluate: els.settingAutoEvaluate.checked,
-    blockSec: parseFloat(els.settingBlockSec.value) || 2,
-    silenceSec: parseFloat(els.settingSilenceSec.value) || 0.5,
+    silenceSec: parseFloat(els.settingSilenceSec.value) || 0.35,
     apiBaseUrl: els.settingApiUrl.value,
     passScore: parseInt(els.settingPassScore.value, 10),
     practiceMode,
@@ -240,9 +208,9 @@ function applyPracticeModeUI() {
   els.appRoot?.classList.toggle('mode-score', !textActive);
 
   if (els.liveTranscriptPlaceholder) {
-    const sec = parseFloat(els.settingBlockSec?.value) || 2;
+    const sec = parseFloat(els.settingSilenceSec?.value) || 0.35;
     els.liveTranscriptPlaceholder.textContent =
-      `Micro tự động — xử lý mỗi ${sec} giây một lần`;
+      `Nói từ — im lặng ~${sec}s → phản hồi ngay`;
   }
 
   els.btnEvaluateNow?.classList.toggle('hidden', textActive || !liveModeActive);
@@ -257,113 +225,41 @@ function applyPracticeModeUI() {
   }
 }
 
-function getBlockMs() {
-  return getBlockMsFromSetting(parseFloat(els.settingBlockSec?.value) || 2);
+function getHangoverMsSetting() {
+  return getHangoverMs(parseFloat(els.settingSilenceSec?.value) || 0.35, isTextMode());
 }
 
-function clearBlockProcessTimer() {
-  if (blockProcessTimer) {
-    clearTimeout(blockProcessTimer);
-    blockProcessTimer = null;
-  }
+function micPhaseToState(phase) {
+  const map = {
+    [MIC_PHASE.OFF]: MIC_STATE.OFF,
+    [MIC_PHASE.READY]: MIC_STATE.READY,
+    [MIC_PHASE.HEARING]: MIC_STATE.HEARING,
+    [MIC_PHASE.PROCESSING]: MIC_STATE.PROCESSING,
+    [MIC_PHASE.COOLDOWN]: MIC_STATE.READY,
+    [MIC_PHASE.SAMPLE]: MIC_STATE.SAMPLE,
+  };
+  return map[phase] ?? MIC_STATE.READY;
 }
 
-function scheduleNextBlock(delayMs = null) {
-  if (!liveModeActive) return;
-  clearBlockProcessTimer();
-  const wait = delayMs ?? getBlockMs();
-  blockIntervalStart = Date.now();
-  blockProcessTimer = setTimeout(onBlockTick, wait);
-}
-
-function startBlockProcessor() {
-  blockHadSpeech = false;
-  blockPausedAt = 0;
-  blockPausedRemaining = 0;
-  scheduleNextBlock();
-}
-
-function stopBlockProcessor() {
-  clearBlockProcessTimer();
-  blockHadSpeech = false;
-  blockPausedAt = 0;
-  blockPausedRemaining = 0;
-}
-
-function pauseBlockProcessor() {
-  if (!blockProcessTimer) return;
-  blockPausedRemaining = msUntilNextBlock(Date.now(), blockIntervalStart, getBlockMs());
-  if (blockPausedRemaining <= 0) blockPausedRemaining = getBlockMs();
-  blockPausedAt = Date.now();
-  clearBlockProcessTimer();
-}
-
-function resumeBlockProcessor() {
-  if (!liveModeActive || blockProcessTimer) return;
-  const wait = blockPausedRemaining > 0 ? blockPausedRemaining : getBlockMs();
-  blockPausedRemaining = 0;
-  blockPausedAt = 0;
-  scheduleNextBlock(wait);
-}
-
-function markBlockActivity() {
-  blockHadSpeech = true;
-}
-
-async function onBlockTick() {
-  blockProcessTimer = null;
-  if (!liveModeActive) return;
-
-  if (isListeningBlocked()) {
-    scheduleNextBlock();
-    return;
-  }
-
-  if (isEvaluating || utteranceEnding || isAdvancing) {
-    blockProcessTimer = setTimeout(onBlockTick, 250);
-    return;
-  }
-
-  const hasText = !!getSpokenWord();
-  const hasAudio = utteranceChunks.length > 0 || audioRingChunks.length > 0;
-  const shouldProcess = shouldProcessBlock({
-    hadSpeech: blockHadSpeech,
-    hasText,
-    hasAudio: hasAudio && (utteranceActive || blockHadSpeech),
+function createMicEngine() {
+  return new MicEngine({
+    hangoverMs: getHangoverMsSetting(),
+    onSpeechStart: () => {
+      micEngine?.beginCapture(audioRingChunks.slice(-4));
+      if (liveMediaRecorder?.state === 'recording') {
+        try { liveMediaRecorder.requestData(); } catch { /* ignore */ }
+      }
+    },
+    onPhaseChange: (phase, label) => {
+      if (phase !== MIC_PHASE.OFF) {
+        setMicState(micPhaseToState(phase), label);
+      }
+    },
+    onLevel: (_rms, pct) => {
+      if (els.vadLevel) els.vadLevel.style.width = `${pct}%`;
+    },
+    onUtteranceComplete: handleUtteranceComplete,
   });
-
-  blockHadSpeech = false;
-
-  const autoOn = els.settingAutoEvaluate?.checked !== false;
-  const runProcess = shouldProcess && (isTextMode() || autoOn);
-
-  if (runProcess) {
-    await onUtteranceEnd('block');
-  }
-
-  scheduleNextBlock();
-}
-
-function getBlockCountdownLabel() {
-  const remaining = msUntilNextBlock(Date.now(), blockIntervalStart, getBlockMs());
-  if (remaining <= 0 || !blockProcessTimer) return 'Sẵn sàng thu âm';
-  return `Xử lý sau ${(remaining / 1000).toFixed(1)}s...`;
-}
-
-/** @deprecated — block processor thay thế silence timer */
-function clearFastProcessTimer() {
-  if (fastProcessTimer) {
-    clearTimeout(fastProcessTimer);
-    fastProcessTimer = null;
-  }
-}
-
-function clearSpeechSilenceTimer() {
-  if (speechSilenceTimer) {
-    clearTimeout(speechSilenceTimer);
-    speechSilenceTimer = null;
-  }
-  clearFastProcessTimer();
 }
 
 function getApiBase() {
@@ -421,11 +317,8 @@ function showWord(index) {
   renderPendingPhonemes(w.phonemes || []);
   clearLiveTranscript();
   hideLiveHint();
-  resetUtteranceSession();
-  if (liveModeActive) {
-    blockHadSpeech = false;
-    startBlockProcessor();
-  }
+  micEngine?.resetSession();
+  syncTranscriptFromEngine();
 
   if (els.settingAutoplay.checked) {
     playSample();
@@ -468,7 +361,7 @@ function prevWord() {
   }
 }
 
-// ─── Live mode: micro liên tục + nhận dạng real-time ─────────────────────
+// ─── Live mic (MicEngine + VAD năng lượng) ─────────────────────────────────
 
 function initLiveSpeech() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -485,23 +378,18 @@ function initLiveSpeech() {
   speechRecognition.maxAlternatives = 1;
 
   speechRecognition.onresult = (event) => {
-    if (isSamplePlaying || speechRecognitionPaused) return;
-    noteSoundActivity();
-    markBlockActivity();
+    if (!micEngine || isListeningBlocked()) return;
     let interim = '';
-    let gotFinal = false;
+    let finalPart = '';
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const text = event.results[i][0].transcript;
-      if (event.results[i].isFinal) {
-        liveTranscriptFinal += text + ' ';
-        gotFinal = true;
-      } else {
-        interim += text;
-      }
+      if (event.results[i].isFinal) finalPart += text;
+      else interim += text;
     }
-    liveTranscriptInterim = interim;
-    updateLiveTranscriptUI();
-    onSpeechActivity(gotFinal);
+    if (finalPart) micEngine.pushTranscript(finalPart, interim);
+    else if (interim) micEngine.pushTranscript('', interim);
+    syncTranscriptFromEngine();
+    updateRealtimeHint();
   };
 
   speechRecognition.onerror = (event) => {
@@ -515,17 +403,29 @@ function initLiveSpeech() {
 
   speechRecognition.onend = () => {
     if (liveModeActive && !speechRecognitionPaused && !isSamplePlaying) {
-      try {
-        speechRecognition.start();
-      } catch {
-        // restart sau khi user gesture
-      }
+      try { speechRecognition.start(); } catch { /* ignore */ }
     }
   };
 }
 
+function syncTranscriptFromEngine() {
+  if (!micEngine) return;
+  const finalText = micEngine.transcriptFinal.trim();
+  const interimText = micEngine.transcriptInterim;
+  els.liveTranscriptFinal.textContent = finalText;
+  els.liveTranscriptInterim.textContent = interimText;
+  const hasText = finalText || interimText;
+  els.liveTranscriptPlaceholder.classList.toggle('hidden', !!hasText);
+
+  const w = words[currentIndex];
+  const lastWord = micEngine.getSpokenWord();
+  const match = wordsMatch(lastWord, w?.word);
+  els.liveTranscriptInterim.classList.toggle('match', match);
+  els.liveTranscriptFinal.classList.toggle('match', match);
+}
+
 function getSpokenWord() {
-  return extractSpokenWord(liveTranscriptFinal, liveTranscriptInterim);
+  return micEngine?.getSpokenWord() || '';
 }
 
 function showLiveHint(message, type = 'warn') {
@@ -539,47 +439,6 @@ function hideLiveHint() {
   if (!els.liveHint) return;
   els.liveHint.classList.add('hidden');
   els.liveHint.textContent = '';
-}
-
-function noteSoundActivity() {
-  lastRmsActivityAt = Date.now();
-}
-
-function startMicWatchdog() {
-  stopMicWatchdog();
-  lastRmsActivityAt = Date.now();
-  micWatchdogTimer = setInterval(() => {
-    if (!liveModeActive || isListeningBlocked()) return;
-    if (isEvaluating || utteranceEnding || isSamplePlaying) return;
-    if (micState === MIC_STATE.PROCESSING) return;
-
-    const idle = Date.now() - lastRmsActivityAt;
-    if (idle < MIC_RESET_IDLE_MS) return;
-
-    // Đang nói gần đây → chưa reset
-    if (utteranceActive && (Date.now() - lastSoundAt) < MIC_RESET_IDLE_MS) return;
-
-    softResetMicrophone();
-  }, 800);
-}
-
-function stopMicWatchdog() {
-  if (micWatchdogTimer) {
-    clearInterval(micWatchdogTimer);
-    micWatchdogTimer = null;
-  }
-}
-
-async function restartSpeechRecognition() {
-  if (!speechRecognition || !liveModeActive) return;
-  speechRecognitionPaused = false;
-  try { speechRecognition.stop(); } catch { /* ignore */ }
-  await new Promise((r) => setTimeout(r, 100));
-  if (liveModeActive) {
-    try { speechRecognition.start(); } catch (e) {
-      console.warn('SpeechRecognition restart:', e);
-    }
-  }
 }
 
 function setupMediaRecorder() {
@@ -596,45 +455,32 @@ function setupMediaRecorder() {
 
   liveMediaRecorder = new MediaRecorder(micStream, { mimeType: liveMimeType });
   liveMediaRecorder.ondataavailable = (e) => {
-    if (e.data.size > 0) {
-      audioRingChunks.push(e.data);
-      if (audioRingChunks.length > MAX_RING_CHUNKS) {
-        audioRingChunks.shift();
-      }
-      if (utteranceActive) {
-        utteranceChunks.push(e.data);
-      }
-    }
+    if (e.data.size <= 0) return;
+    audioRingChunks.push(e.data);
+    if (audioRingChunks.length > MAX_RING_CHUNKS) audioRingChunks.shift();
+    micEngine?.pushAudioChunk(e.data);
   };
   liveMediaRecorder.start(RING_CHUNK_MS);
 }
 
-async function restartMediaRecorder() {
-  if (!micStream || !liveModeActive) return;
-  audioRingChunks = [];
-  utteranceChunks = [];
-  setupMediaRecorder();
+async function flushRecorderData() {
+  if (!liveMediaRecorder || liveMediaRecorder.state !== 'recording') return;
+  return new Promise((resolve) => {
+    const handler = (e) => {
+      if (e.data.size > 0) {
+        audioRingChunks.push(e.data);
+        micEngine?.pushAudioChunk(e.data);
+      }
+      liveMediaRecorder.removeEventListener('dataavailable', handler);
+      resolve();
+    };
+    liveMediaRecorder.addEventListener('dataavailable', handler);
+    try { liveMediaRecorder.requestData(); } catch { resolve(); }
+    setTimeout(resolve, 80);
+  });
 }
 
-async function softResetMicrophone() {
-  if (!liveModeActive || isEvaluating || utteranceEnding || isSamplePlaying) return;
-
-  resetUtteranceSession();
-  vadEndPending = false;
-  clearSpeechSilenceTimer();
-
-  if (audioContext?.state === 'suspended') {
-    await audioContext.resume();
-  }
-
-  await restartSpeechRecognition();
-  await restartMediaRecorder();
-
-  lastRmsActivityAt = Date.now();
-  setMicState(MIC_STATE.READY, getBlockCountdownLabel());
-}
-
-/** Chuyển blob audio → WAV 16kHz mono (ổn định hơn webm ghép chunk) */
+/** Chuyển blob audio → WAV 16kHz mono */
 async function convertBlobToWav(blob) {
   if (!audioContext) audioContext = new AudioContext();
   if (audioContext.state === 'suspended') await audioContext.resume();
@@ -697,161 +543,69 @@ async function prepareUploadBlob(blob) {
   }
 }
 
-function resetUtteranceSession() {
-  utteranceActive = false;
-  utteranceChunks = [];
-  firstSoundAt = 0;
-  lastSoundAt = 0;
-  utteranceEnding = false;
-  vadEndPending = false;
-  clearSpeechSilenceTimer();
+async function handleUtteranceComplete(payload) {
+  if (!liveModeActive || isListeningBlocked() || isAdvancing) return;
+
+  await flushRecorderData();
+
+  if (isTextMode()) {
+    await processTextUtterance(payload.spoken);
+    return;
+  }
+
+  if (!els.settingAutoEvaluate?.checked) return;
+
+  const blob = payload.getBlob(liveMimeType);
+  if (!blob || blob.size < MIN_BLOB_BYTES) {
+    showLiveHint('Không đủ audio — nói rõ hơn', 'warn');
+    return;
+  }
+
+  userAudioBlob = blob;
+  if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
+  userAudioUrl = URL.createObjectURL(blob);
+  els.btnReplayUser.disabled = false;
+
+  showLiveHint('Đang phân tích phát âm...', 'warn');
+  await evaluateRecording(blob, { fromLive: true });
 }
 
-/** Text mode: xử lý một lần mỗi block */
-async function processTextUtterance() {
+/** Text mode: so khớp ngay khi kết thúc câu */
+async function processTextUtterance(spoken) {
   const w = words[currentIndex];
-  const spoken = getSpokenWord();
+  const word = spoken || getSpokenWord();
 
-  if (!spoken) {
+  if (!word) {
     showLiveHint('Không nghe rõ — thử đọc lại', 'warn');
     return;
   }
 
-  if (wordsMatch(spoken, w.word)) {
+  if (wordsMatch(word, w.word)) {
     isAdvancing = true;
-    showLiveHint(`✓ Đúng "${spoken}"! Chuyển từ...`, 'ok');
+    showLiveHint(`✓ Đúng "${word}"! Chuyển từ...`, 'ok');
     recordAttempt(w.word, true, 100);
-    await new Promise((r) => setTimeout(r, 180));
+    await new Promise((r) => setTimeout(r, 120));
     hideLiveHint();
-    clearLiveTranscript();
+    micEngine?.clearTranscript();
+    syncTranscriptFromEngine();
     nextWord();
     isAdvancing = false;
   } else {
-    showLiveHint(`✗ Nghe "${spoken}" — cần "${w.word}" (${w.ipa})`, 'mis');
+    showLiveHint(`✗ Nghe "${word}" — cần "${w.word}" (${w.ipa})`, 'mis');
   }
 }
 
-/** Xử lý input thu trong block hiện tại */
-async function onUtteranceEnd(source = 'block') {
-  if (!liveModeActive || isListeningBlocked() || isEvaluating || utteranceEnding || isAdvancing) {
-    return;
-  }
+async function triggerEvaluate(source = 'manual') {
+  if (!isScoreMode() || isListeningBlocked() || isEvaluating) return false;
 
-  const hasText = !!getSpokenWord();
-  const hasAudio = audioRingChunks.length > 0 || utteranceChunks.length > 0;
-
-  if (isTextMode() && !blockHadSpeech && !utteranceActive && !hasText) {
-    resetUtteranceSession();
-    return;
-  }
-  if (isScoreMode() && !hasAudio && !hasText && !blockHadSpeech) {
-    resetUtteranceSession();
-    return;
-  }
-
-  utteranceEnding = true;
-  setMicState(MIC_STATE.PROCESSING, 'Đang xử lý...');
-  clearSpeechSilenceTimer();
-
-  try {
-    if (isTextMode()) {
-      await processTextUtterance();
-    } else {
-      const ok = await triggerEvaluate(source);
-      if (!ok) {
-        showLiveHint('Không đủ audio — nói rõ hơn trong block tiếp theo', 'warn');
-      }
-    }
-  } finally {
-    utteranceEnding = false;
-    resetUtteranceSession();
-    blockHadSpeech = false;
-    if (liveModeActive && !isListeningBlocked()) {
-      lastRmsActivityAt = Date.now();
-      setMicState(MIC_STATE.READY, getBlockCountdownLabel());
-    }
-  }
-}
-
-/** Ghi nhận hoạt động giọng nói trong block hiện tại */
-function onSpeechActivity() {
-  if (!liveModeActive || isListeningBlocked() || micState === MIC_STATE.PROCESSING) return;
-  markBlockActivity();
-  updateRealtimeHint();
-}
-
-function getAudioLevel() {
-  if (!liveAnalyser) return { rms: 0, pct: 0 };
-  const buf = new Uint8Array(liveAnalyser.fftSize);
-  liveAnalyser.getByteTimeDomainData(buf);
-  let sum = 0;
-  for (let i = 0; i < buf.length; i++) {
-    const v = (buf[i] - 128) / 128;
-    sum += v * v;
-  }
-  const rms = Math.sqrt(sum / buf.length);
-  const pct = Math.min(100, rms * 400);
-  return { rms, pct };
-}
-
-function buildUtteranceBlob() {
-  const chunks = utteranceChunks.length >= 1
-    ? utteranceChunks.slice(-8)
-    : audioRingChunks.slice(-8);
-  if (!chunks.length) return null;
-  return new Blob(chunks, { type: liveMimeType });
-}
-
-async function flushRecorderData() {
-  if (!liveMediaRecorder || liveMediaRecorder.state !== 'recording') return;
-  return new Promise((resolve) => {
-    const handler = (e) => {
-      if (e.data.size > 0) {
-        audioRingChunks.push(e.data);
-        if (utteranceActive || utteranceChunks.length === 0) {
-          utteranceChunks.push(e.data);
-        }
-      }
-      liveMediaRecorder.removeEventListener('dataavailable', handler);
-      resolve();
-    };
-    liveMediaRecorder.addEventListener('dataavailable', handler);
-    try {
-      liveMediaRecorder.requestData();
-    } catch {
-      resolve();
-    }
-    setTimeout(resolve, 100);
-  });
-}
-
-async function triggerEvaluate(source = 'vad') {
-  if (!isScoreMode()) return false;
-  if (isListeningBlocked()) return false;
-  if (!els.settingAutoEvaluate?.checked && source !== 'manual') return false;
-  if (isEvaluating) return false;
-
-  const now = Date.now();
-  if (source !== 'manual' && now - lastEvaluateTime < EVALUATE_COOLDOWN_MS) return false;
-
-  clearSpeechSilenceTimer();
   await flushRecorderData();
+  const blob = micEngine?.getBlob(liveMimeType)
+    || buildUtteranceBlob(audioRingChunks.slice(-8), liveMimeType);
 
-  const blob = buildUtteranceBlob();
   if (!blob || blob.size < MIN_BLOB_BYTES) {
+    if (source === 'manual') showLiveHint('Chưa có audio — nói trước rồi bấm Chấm điểm', 'warn');
     return false;
   }
-
-  const speechDuration = lastSoundAt > firstSoundAt
-    ? lastSoundAt - firstSoundAt
-    : getBlockMs();
-  if (blockHadSpeech && speechDuration < MIN_SPEECH_MS && source === 'block') {
-    return false;
-  }
-
-  lastEvaluateTime = now;
-  setMicState(MIC_STATE.PROCESSING, 'Đang chấm điểm...');
-  showLiveHint('Đang phân tích phát âm...', 'warn');
 
   userAudioBlob = blob;
   if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
@@ -859,7 +613,6 @@ async function triggerEvaluate(source = 'vad') {
   els.btnReplayUser.disabled = false;
 
   await evaluateRecording(blob, { fromLive: true });
-  resetUtteranceSession();
   return true;
 }
 
@@ -876,44 +629,16 @@ function updateRealtimeHint() {
   if (wordsMatch(spoken, w.word)) {
     const msg = isTextMode()
       ? `✓ Nghe "${spoken}" — khớp!`
-      : `✓ Nghe "${spoken}" — chờ chu kỳ block`;
+      : `✓ Nghe "${spoken}" — im lặng ngắn để chấm`;
     showLiveHint(msg, 'ok');
   } else {
     showLiveHint(`✗ Nghe "${spoken}" — cần đọc "${w.word}" (${w.ipa})`, 'mis');
   }
 }
 
-function updateLiveTranscriptUI() {
-  const w = words[currentIndex];
-  const finalText = liveTranscriptFinal.trim();
-  const interimText = liveTranscriptInterim;
-
-  els.liveTranscriptFinal.textContent = finalText;
-  els.liveTranscriptInterim.textContent = interimText;
-
-  const hasText = finalText || interimText;
-  els.liveTranscriptPlaceholder.classList.toggle('hidden', !!hasText || utteranceActive);
-
-  const lastWord = getSpokenWord();
-  if (wordsMatch(lastWord, w?.word)) {
-    els.liveTranscriptInterim.classList.add('match');
-    els.liveTranscriptFinal.classList.add('match');
-  } else {
-    els.liveTranscriptInterim.classList.remove('match');
-    els.liveTranscriptFinal.classList.remove('match');
-  }
-
-  updateRealtimeHint();
-}
-
 function clearLiveTranscript() {
-  liveTranscriptFinal = '';
-  liveTranscriptInterim = '';
-  els.liveTranscriptFinal.textContent = '';
-  els.liveTranscriptInterim.textContent = '';
-  els.liveTranscriptFinal.classList.remove('match');
-  els.liveTranscriptInterim.classList.remove('match');
-  els.liveTranscriptPlaceholder.classList.remove('hidden');
+  micEngine?.clearTranscript();
+  syncTranscriptFromEngine();
   hideLiveHint();
 }
 
@@ -923,42 +648,37 @@ async function startLiveMode() {
   try {
     autoStartDone = true;
     micStream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true },
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
     });
 
     if (!audioContext) audioContext = new AudioContext();
-    if (audioContext.state === 'suspended') {
-      await audioContext.resume();
-    }
+    if (audioContext.state === 'suspended') await audioContext.resume();
 
     const source = audioContext.createMediaStreamSource(micStream);
     liveAnalyser = audioContext.createAnalyser();
-    liveAnalyser.fftSize = 2048;
-    liveAnalyser.smoothingTimeConstant = 0.4;
+    liveAnalyser.fftSize = 1024;
+    liveAnalyser.smoothingTimeConstant = 0.3;
     source.connect(liveAnalyser);
-    startVadLoop();
-    startMicWatchdog();
-    startBlockProcessor();
 
+    micEngine = createMicEngine();
+    micEngine.setHangoverMs(getHangoverMsSetting());
     audioRingChunks = [];
-    utteranceChunks = [];
     setupMediaRecorder();
+    startVadLoop();
 
     if (speechRecognition) {
-      try {
-        speechRecognition.start();
-      } catch (e) {
+      try { speechRecognition.start(); } catch (e) {
         console.warn('SpeechRecognition start:', e);
       }
     }
 
     liveModeActive = true;
+    micEngine.start();
     els.btnLiveToggle.classList.add('active');
     els.liveToggleLabel.textContent = 'Tắt micro';
-    setMicState(MIC_STATE.READY, getBlockCountdownLabel());
-    const blockSec = getBlockMs() / 1000;
+    const hangSec = (getHangoverMsSetting() / 1000).toFixed(1);
     els.recordingIndicator.innerHTML =
-      `<span class="pulse"></span> Block ${blockSec}s — nói trong khung, tự xử lý mỗi ${blockSec}s`;
+      `<span class="pulse"></span> Nói xong → im lặng ~${hangSec}s → phản hồi`;
     els.recordingIndicator.classList.remove('hidden');
     els.btnRecord.disabled = true;
     if (isScoreMode()) {
@@ -975,9 +695,9 @@ function stopLiveMode() {
   if (!liveModeActive) return;
 
   liveModeActive = false;
-  stopBlockProcessor();
-  clearSpeechSilenceTimer();
-  stopMicWatchdog();
+  micEngine?.stop();
+  micEngine = null;
+
   if (sampleResumeTimer) {
     clearTimeout(sampleResumeTimer);
     sampleResumeTimer = null;
@@ -1013,23 +733,20 @@ function stopLiveMode() {
   els.btnRecord.disabled = false;
   els.phonemeContainer.classList.remove('live-mode');
   els.btnEvaluateNow?.classList.add('hidden');
-  resetUtteranceSession();
 }
 
 function toggleLiveMode() {
-  if (liveModeActive) {
-    stopLiveMode();
-  } else {
-    startLiveMode();
-  }
+  if (liveModeActive) stopLiveMode();
+  else startLiveMode();
 }
 
 function startVadLoop() {
-  if (!liveAnalyser) return;
-  vadEndPending = false;
+  if (!liveAnalyser || !micEngine) return;
+
+  const buf = new Uint8Array(liveAnalyser.fftSize);
 
   const tick = () => {
-    if (!liveModeActive || !liveAnalyser) return;
+    if (!liveModeActive || !liveAnalyser || !micEngine) return;
 
     if (isListeningBlocked()) {
       els.vadLevel.style.width = '0%';
@@ -1037,36 +754,9 @@ function startVadLoop() {
       return;
     }
 
-    const { rms, pct } = getAudioLevel();
-    els.vadLevel.style.width = `${pct}%`;
-
-    const now = Date.now();
-    const isSpeakingNow = rms > SPEECH_RMS_THRESHOLD;
-
-    if (isSpeakingNow) {
-      noteSoundActivity();
-      markBlockActivity();
-      vadEndPending = false;
-      if (!utteranceActive && !isEvaluating && !utteranceEnding && !isAdvancing) {
-        utteranceActive = true;
-        utteranceChunks = [...audioRingChunks.slice(-3)];
-        firstSoundAt = now;
-        lastSoundAt = now;
-        if (liveMediaRecorder?.state === 'recording') {
-          try { liveMediaRecorder.requestData(); } catch { /* ignore */ }
-        }
-        hideLiveHint();
-        els.liveTranscriptPlaceholder.classList.add('hidden');
-      }
-      lastSoundAt = now;
-      if (micState !== MIC_STATE.PROCESSING) {
-        setMicState(MIC_STATE.HEARING, 'Đang nghe bạn nói...');
-      }
-    } else if (liveModeActive && !isEvaluating && !utteranceEnding && !isAdvancing
-      && micState !== MIC_STATE.PROCESSING) {
-      setMicState(MIC_STATE.READY, getBlockCountdownLabel());
-    }
-
+    liveAnalyser.getByteTimeDomainData(buf);
+    const rms = computeRms(buf);
+    micEngine.tick(rms);
     vadAnimationId = requestAnimationFrame(tick);
   };
   tick();
@@ -1079,18 +769,14 @@ function pauseListeningForSample() {
   }
   isSamplePlaying = true;
   speechRecognitionPaused = true;
-  pauseBlockProcessor();
-  clearSpeechSilenceTimer();
-  resetUtteranceSession();
+  micEngine?.setSampleMode(true);
+  micEngine?.pause();
   clearLiveTranscript();
 
   if (speechRecognition && liveModeActive) {
     try { speechRecognition.stop(); } catch { /* ignore */ }
   }
-
-  if (liveModeActive && els.micStatusLabel) {
-    setMicState(MIC_STATE.SAMPLE, 'Đang phát mẫu...');
-  }
+  setMicState(MIC_STATE.SAMPLE, 'Đang phát mẫu...');
 }
 
 function resumeListeningAfterSample() {
@@ -1103,11 +789,11 @@ function resumeListeningAfterSample() {
 
     isSamplePlaying = false;
     speechRecognitionPaused = false;
+    micEngine?.resume();
 
     if (liveModeActive && speechRecognition) {
       try { speechRecognition.start(); } catch { /* ignore */ }
-      resumeBlockProcessor();
-      setMicState(MIC_STATE.READY, getBlockCountdownLabel());
+      setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     }
   }, SAMPLE_TAIL_MS);
 }
@@ -1191,7 +877,7 @@ async function startRecording() {
         const w = words[currentIndex];
         if (spoken && wordsMatch(spoken, w?.word)) {
           setMicState(MIC_STATE.PROCESSING, 'Đang xử lý...');
-          await processTextUtterance();
+          await processTextUtterance(spoken);
           if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
         } else {
           showLiveHint(`Bật micro live và đọc "${w?.word}" — hoặc chuyển sang chế độ Chấm điểm`, 'warn');
@@ -1269,10 +955,7 @@ async function evaluateRecording(blob = null, options = {}) {
         ? (data.detail?.error || JSON.stringify(data.detail))
         : (data.detail || data.error || `HTTP ${res.status}`);
       showLiveHint('Lỗi chấm điểm: ' + msg, 'mis');
-      if (liveModeActive) {
-        lastRmsActivityAt = Date.now();
-        setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
-      }
+      if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
       return;
     }
 
@@ -1283,10 +966,7 @@ async function evaluateRecording(blob = null, options = {}) {
     const msg = `Không kết nối backend (${getApiBase()}). Chạy: ./run_backend.sh`;
     if (fromLive) {
       showLiveHint(msg, 'mis');
-      if (liveModeActive) {
-        lastRmsActivityAt = Date.now();
-        setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
-      }
+      if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     } else if (!blob) {
       alert(msg + '\n\n' + err.message);
     }
@@ -1468,9 +1148,7 @@ function bindEvents() {
   els.btnCloseSettings.addEventListener('click', () => {
     saveSettings();
     applyPracticeModeUI();
-    if (liveModeActive) {
-      startBlockProcessor();
-    }
+    micEngine?.setHangoverMs(getHangoverMsSetting());
     els.settingsPanel.classList.add('hidden');
     checkBackend();
   });
