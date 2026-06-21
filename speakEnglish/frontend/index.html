@@ -44,17 +44,25 @@
           <button id="btn-evaluate-now" class="btn btn-ghost btn-sm hidden" title="Chấm điểm ngay">
             Chấm điểm
           </button>
-          <div class="vad-meter" title="Mức âm thanh">
-            <div id="vad-level" class="vad-level"></div>
+          <div class="mic-indicator" id="mic-indicator" data-state="off">
+            <div class="mic-icon-wrap">
+              <span class="mic-icon">🎙</span>
+              <span class="mic-ring"></span>
+            </div>
+            <div class="mic-meta">
+              <span id="mic-status-label" class="mic-status-label">Micro tắt</span>
+              <div class="vad-meter" title="Mức âm thanh">
+                <div id="vad-level" class="vad-level"></div>
+              </div>
+            </div>
           </div>
-          <span id="live-status" class="live-status">Micro tắt</span>
         </div>
         <div class="live-transcript-box">
           <p class="live-label">Bạn đang đọc:</p>
           <p id="live-transcript" class="live-transcript">
             <span id="live-transcript-final"></span><span id="live-transcript-interim" class="interim"></span>
           </p>
-          <p id="live-transcript-placeholder" class="live-placeholder">Bật micro live — đọc đúng từ hiển thị để qua từ tiếp theo</p>
+          <p id="live-transcript-placeholder" class="live-placeholder">Micro tự động nghe — có âm thanh, im lặng 1s → xử lý</p>
           <p id="live-hint" class="live-hint hidden"></p>
         </div>
       </section>
@@ -110,15 +118,15 @@
       </label>
       <label class="setting-row">
         <input type="checkbox" id="setting-live-auto" checked>
-        Tự bật micro live khi mở app
+        Tự bật micro khi chạm màn hình
       </label>
       <label class="setting-row">
         <input type="checkbox" id="setting-auto-evaluate" checked>
-        Tự chấm điểm sau khi im lặng ~2 giây
+        Tự chấm điểm sau khi im lặng ~1 giây
       </label>
       <label class="setting-row">
         Thời gian im lặng (giây)
-        <input type="number" id="setting-silence-sec" value="2" min="1" max="5" step="0.5">
+        <input type="number" id="setting-silence-sec" value="1" min="0.5" max="5" step="0.5">
       </label>
       <label class="setting-row">
         API URL

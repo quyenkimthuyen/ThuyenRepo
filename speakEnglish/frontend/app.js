@@ -5,6 +5,7 @@
 const STORAGE_KEY = 'pronouncelab_history';
 const SETTINGS_KEY = 'pronouncelab_settings';
 const PRACTICE_MODE = { TEXT: 'text', SCORE: 'score' };
+const MIC_STATE = { OFF: 'off', READY: 'ready', HEARING: 'hearing', PROCESSING: 'processing', SAMPLE: 'sample' };
 
 /** @type {object} */
 let config = {};
@@ -13,6 +14,8 @@ let words = [];
 let currentIndex = 0;
 let practiceMode = PRACTICE_MODE.TEXT;
 let isAdvancing = false;
+let micState = MIC_STATE.OFF;
+let autoStartDone = false;
 let mediaRecorder = null;
 let audioChunks = [];
 let userAudioBlob = null;
@@ -91,7 +94,8 @@ const els = {
   btnLiveToggle: $('btn-live-toggle'),
   btnEvaluateNow: $('btn-evaluate-now'),
   liveToggleLabel: $('live-toggle-label'),
-  liveStatus: $('live-status'),
+  micIndicator: $('mic-indicator'),
+  micStatusLabel: $('mic-status-label'),
   vadLevel: $('vad-level'),
   liveTranscriptFinal: $('live-transcript-final'),
   liveTranscriptInterim: $('live-transcript-interim'),
@@ -111,13 +115,36 @@ async function init() {
   loadSettings();
   applyPracticeModeUI();
   bindEvents();
+  setupAutoStartMic();
   renderWordList();
   showWord(0);
   checkBackend();
   initLiveSpeech();
+  setMicState(MIC_STATE.OFF, 'Micro tắt');
 
   if (els.settingLiveAuto?.checked) {
-    showLiveHint('Nhấn "Bật micro live" để bắt đầu (trình duyệt cần thao tác của bạn)', 'warn');
+    showLiveHint('Chạm màn hình để bật micro tự động', 'warn');
+  }
+}
+
+function setupAutoStartMic() {
+  const tryStart = () => {
+    if (autoStartDone || liveModeActive || !els.settingLiveAuto?.checked) return;
+    autoStartDone = true;
+    hideLiveHint();
+    startLiveMode();
+  };
+  els.appRoot?.addEventListener('click', tryStart, { once: true });
+  els.btnLiveToggle?.addEventListener('click', () => { autoStartDone = true; }, { once: true });
+}
+
+function setMicState(state, label) {
+  micState = state;
+  if (els.micIndicator) {
+    els.micIndicator.dataset.state = state;
+  }
+  if (els.micStatusLabel && label) {
+    els.micStatusLabel.textContent = label;
   }
 }
 
@@ -141,7 +168,7 @@ function loadSettings() {
   els.settingAutoplay.checked = saved.autoPlaySample ?? config.autoPlaySample ?? true;
   els.settingLiveAuto.checked = saved.liveAutoStart ?? true;
   els.settingAutoEvaluate.checked = saved.autoEvaluate ?? true;
-  els.settingSilenceSec.value = saved.silenceSec ?? 2;
+  els.settingSilenceSec.value = saved.silenceSec ?? config.silenceSec ?? 1;
   els.settingApiUrl.value = saved.apiBaseUrl ?? config.apiBaseUrl ?? 'http://127.0.0.1:8000';
   els.settingPassScore.value = saved.passScore ?? config.thresholds?.overallPass ?? 80;
   practiceMode = saved.practiceMode ?? config.practiceMode ?? PRACTICE_MODE.TEXT;
@@ -185,9 +212,8 @@ function applyPracticeModeUI() {
   els.appRoot?.classList.toggle('mode-score', !textActive);
 
   if (els.liveTranscriptPlaceholder) {
-    els.liveTranscriptPlaceholder.textContent = textActive
-      ? 'Bật micro live — đọc đúng từ hiển thị để qua từ tiếp theo'
-      : 'Bật micro live — nói từ rồi dừng ~2 giây để chấm điểm phoneme';
+    els.liveTranscriptPlaceholder.textContent =
+      'Micro tự động nghe — có âm thanh, im lặng 1s → xử lý';
   }
 
   els.btnEvaluateNow?.classList.toggle('hidden', textActive || !liveModeActive);
@@ -310,7 +336,7 @@ function prevWord() {
 function initLiveSpeech() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRecognition) {
-    els.liveStatus.textContent = 'Trình duyệt không hỗ trợ nhận dạng giọng nói (dùng Chrome/Edge)';
+    setMicState(MIC_STATE.OFF, 'Trình duyệt không hỗ trợ (dùng Chrome/Edge)');
     els.btnLiveToggle.disabled = true;
     return;
   }
@@ -341,7 +367,7 @@ function initLiveSpeech() {
     if (event.error === 'no-speech' || event.error === 'aborted') return;
     console.warn('SpeechRecognition error:', event.error);
     if (event.error === 'not-allowed') {
-      els.liveStatus.textContent = 'Bị chặn quyền micro';
+      setMicState(MIC_STATE.OFF, 'Bị chặn quyền micro');
       stopLiveMode();
     }
   };
@@ -413,49 +439,67 @@ function clearSpeechSilenceTimer() {
   }
 }
 
-/** Text mode: khớp từ → qua từ tiếp theo */
-function checkTextModePass() {
-  if (!isTextMode() || !liveModeActive || isAdvancing || isEvaluating || isListeningBlocked()) return;
-
+/** Text mode: xử lý sau im lặng 1s */
+async function processTextUtterance() {
   const w = words[currentIndex];
   const spoken = getSpokenWord();
-  if (!spoken || !wordsMatch(spoken, w?.word)) return;
 
-  isAdvancing = true;
-  clearSpeechSilenceTimer();
-  showLiveHint(`✓ Đúng "${spoken}"! Chuyển từ tiếp theo...`, 'ok');
-  recordAttempt(w.word, true, 100);
-
-  setTimeout(() => {
-    hideLiveHint();
-    nextWord();
-    isAdvancing = false;
-  }, 700);
-}
-
-/** Backup: sau khi SpeechRecognition có text */
-function onSpeechActivity() {
-  if (!liveModeActive || isListeningBlocked()) return;
-
-  if (isTextMode()) {
-    checkTextModePass();
-    clearSpeechSilenceTimer();
-    speechSilenceTimer = setTimeout(() => {
-      if (!liveModeActive || isAdvancing) return;
-      const spoken = getSpokenWord();
-      const w = words[currentIndex];
-      if (spoken && w && !wordsMatch(spoken, w.word)) {
-        showLiveHint(`✗ Nghe "${spoken}" — cần đọc "${w.word}" (${w.ipa})`, 'mis');
-      }
-    }, getSilenceMs());
+  if (!spoken) {
+    showLiveHint('Không nghe rõ — thử đọc lại', 'warn');
     return;
   }
 
-  if (!els.settingAutoEvaluate?.checked) return;
+  if (wordsMatch(spoken, w.word)) {
+    isAdvancing = true;
+    showLiveHint(`✓ Đúng "${spoken}"! Chuyển từ...`, 'ok');
+    recordAttempt(w.word, true, 100);
+    await new Promise((r) => setTimeout(r, 500));
+    hideLiveHint();
+    clearLiveTranscript();
+    nextWord();
+    isAdvancing = false;
+  } else {
+    showLiveHint(`✗ Nghe "${spoken}" — cần "${w.word}" (${w.ipa})`, 'mis');
+  }
+}
+
+/** Có âm thanh → im lặng 1s → xử lý (cả 2 chế độ) */
+async function onUtteranceEnd() {
+  if (!liveModeActive || isListeningBlocked() || isEvaluating || utteranceEnding || isAdvancing) {
+    return;
+  }
+  if (!utteranceActive && !getSpokenWord()) {
+    resetUtteranceSession();
+    return;
+  }
+
+  utteranceEnding = true;
+  setMicState(MIC_STATE.PROCESSING, 'Đang xử lý...');
+  clearSpeechSilenceTimer();
+
+  try {
+    if (isTextMode()) {
+      await processTextUtterance();
+    } else {
+      await triggerEvaluate('vad');
+    }
+  } finally {
+    utteranceEnding = false;
+    resetUtteranceSession();
+    if (liveModeActive && !isListeningBlocked()) {
+      setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
+    }
+  }
+}
+
+/** Backup khi SpeechRecognition có text */
+function onSpeechActivity() {
+  if (!liveModeActive || isListeningBlocked() || micState === MIC_STATE.PROCESSING) return;
+
   clearSpeechSilenceTimer();
   speechSilenceTimer = setTimeout(() => {
-    if (liveModeActive && !isEvaluating && !utteranceEnding) {
-      triggerEvaluate('speech');
+    if (liveModeActive && !isEvaluating && !utteranceEnding && !isAdvancing) {
+      onUtteranceEnd();
     }
   }, getSilenceMs());
 }
@@ -506,20 +550,17 @@ async function triggerEvaluate(source = 'vad') {
   if (!isScoreMode()) return;
   if (isListeningBlocked()) return;
   if (!els.settingAutoEvaluate?.checked && source !== 'manual') return;
-  if (utteranceEnding || isEvaluating) return;
+  if (isEvaluating) return;
 
   const now = Date.now();
-  if (now - lastEvaluateTime < EVALUATE_COOLDOWN_MS) return;
+  if (source !== 'manual' && now - lastEvaluateTime < EVALUATE_COOLDOWN_MS) return;
 
-  utteranceEnding = true;
   clearSpeechSilenceTimer();
-
   await flushRecorderData();
 
   const blob = buildUtteranceBlob();
   if (!blob || blob.size < MIN_BLOB_BYTES) {
-    utteranceEnding = false;
-    if (source === 'speech' && getSpokenWord()) {
+    if (getSpokenWord()) {
       showLiveHint('Không đủ audio — nói to hơn hoặc gần micro hơn', 'warn');
     }
     return;
@@ -529,13 +570,11 @@ async function triggerEvaluate(source = 'vad') {
     ? lastSoundAt - firstSoundAt
     : getSilenceMs();
   if (utteranceActive && speechDuration < MIN_SPEECH_MS && source === 'vad') {
-    utteranceEnding = false;
     return;
   }
 
   lastEvaluateTime = now;
-  els.liveStatus.textContent = 'Đang gọi API chấm điểm...';
-  els.liveStatus.className = 'live-status speaking';
+  setMicState(MIC_STATE.PROCESSING, 'Đang chấm điểm...');
   showLiveHint('Đang phân tích phát âm...', 'warn');
 
   userAudioBlob = blob;
@@ -543,11 +582,8 @@ async function triggerEvaluate(source = 'vad') {
   userAudioUrl = URL.createObjectURL(blob);
   els.btnReplayUser.disabled = false;
 
-  try {
-    await evaluateRecording(blob, { fromLive: true });
-  } finally {
-    resetUtteranceSession();
-  }
+  await evaluateRecording(blob, { fromLive: true });
+  resetUtteranceSession();
 }
 
 function updateRealtimeHint() {
@@ -563,7 +599,7 @@ function updateRealtimeHint() {
   if (wordsMatch(spoken, w.word)) {
     const msg = isTextMode()
       ? `✓ Nghe "${spoken}" — khớp!`
-      : `✓ Nghe "${spoken}" — khớp, chờ im lặng để chấm điểm...`;
+      : `✓ Nghe "${spoken}" — im lặng 1s để chấm`;
     showLiveHint(msg, 'ok');
   } else {
     showLiveHint(`✗ Nghe "${spoken}" — cần đọc "${w.word}" (${w.ipa})`, 'mis');
@@ -591,7 +627,6 @@ function updateLiveTranscriptUI() {
   }
 
   updateRealtimeHint();
-  if (isTextMode()) checkTextModePass();
 }
 
 function clearLiveTranscript() {
@@ -605,14 +640,11 @@ function clearLiveTranscript() {
   hideLiveHint();
 }
 
-async function onUtteranceEnd() {
-  await triggerEvaluate('vad');
-}
-
 async function startLiveMode() {
   if (liveModeActive) return;
 
   try {
+    autoStartDone = true;
     micStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true },
     });
@@ -660,17 +692,11 @@ async function startLiveMode() {
     }
 
     liveModeActive = true;
-    utteranceEnding = false;
     els.btnLiveToggle.classList.add('active');
-    els.liveToggleLabel.textContent = 'Tắt micro live';
-    els.liveStatus.textContent = isTextMode()
-      ? 'Đang nghe... (đọc đúng từ để qua)'
-      : 'Đang nghe... (nói rồi im lặng ~2s)';
-    els.liveStatus.className = 'live-status listening';
+    els.liveToggleLabel.textContent = 'Tắt micro';
+    setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     els.recordingIndicator.classList.remove('hidden');
-    els.recordingIndicator.innerHTML = isTextMode()
-      ? '<span class="pulse"></span> Micro live — đọc đúng từ để qua'
-      : '<span class="pulse"></span> Nói từ → im lặng ~2s để chấm điểm';
+    els.recordingIndicator.innerHTML = '<span class="pulse"></span> Micro tự động — im lặng 1s sau khi nói';
     els.btnRecord.disabled = true;
     if (isScoreMode()) {
       els.phonemeContainer.classList.add('live-mode');
@@ -717,8 +743,7 @@ function stopLiveMode() {
 
   els.btnLiveToggle.classList.remove('active');
   els.liveToggleLabel.textContent = 'Bật micro live';
-  els.liveStatus.textContent = 'Micro tắt';
-  els.liveStatus.className = 'live-status';
+  setMicState(MIC_STATE.OFF, 'Micro tắt');
   els.recordingIndicator.classList.add('hidden');
   els.btnRecord.disabled = false;
   els.phonemeContainer.classList.remove('live-mode');
@@ -756,7 +781,7 @@ function startVadLoop() {
 
     if (isSpeaking) {
       vadEndPending = false;
-      if (!utteranceActive && !isEvaluating && !utteranceEnding) {
+      if (!utteranceActive && !isEvaluating && !utteranceEnding && !isAdvancing) {
         utteranceActive = true;
         utteranceChunks = [...audioRingChunks.slice(-3)];
         firstSoundAt = now;
@@ -769,25 +794,24 @@ function startVadLoop() {
         els.liveTranscriptPlaceholder.classList.add('hidden');
       }
       lastSoundAt = now;
-      els.liveStatus.textContent = 'Đang nghe bạn nói...';
-      els.liveStatus.className = 'live-status speaking';
-    } else if (utteranceActive && !isEvaluating && !utteranceEnding) {
+      if (micState !== MIC_STATE.PROCESSING) {
+        setMicState(MIC_STATE.HEARING, 'Đang nghe bạn nói...');
+      }
+    } else if (utteranceActive && !isEvaluating && !utteranceEnding && !isAdvancing) {
       const silentFor = now - lastSoundAt;
       const remaining = Math.max(0, silenceMs - silentFor);
-      if (silentFor >= silenceMs && isScoreMode()) {
+      if (silentFor >= silenceMs) {
         if (!vadEndPending) {
           vadEndPending = true;
           onUtteranceEnd();
         }
-      } else if (remaining <= 1000 && isScoreMode()) {
-        els.liveStatus.textContent = `Chờ im lặng ${(remaining / 1000).toFixed(1)}s...`;
-        els.liveStatus.className = 'live-status listening';
+      } else if (remaining <= 800 && micState !== MIC_STATE.PROCESSING) {
+        setMicState(MIC_STATE.READY, `Chờ im lặng ${(remaining / 1000).toFixed(1)}s...`);
+      } else if (micState !== MIC_STATE.PROCESSING) {
+        setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
       }
-    } else if (liveModeActive && !isEvaluating) {
-      els.liveStatus.textContent = isTextMode()
-        ? 'Đang nghe... (đọc đúng từ để qua)'
-        : 'Đang nghe... (nói rồi im lặng ~2s)';
-      els.liveStatus.className = 'live-status listening';
+    } else if (liveModeActive && !isEvaluating && !isAdvancing && micState !== MIC_STATE.PROCESSING) {
+      setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     }
 
     vadAnimationId = requestAnimationFrame(tick);
@@ -810,9 +834,8 @@ function pauseListeningForSample() {
     try { speechRecognition.stop(); } catch { /* ignore */ }
   }
 
-  if (liveModeActive && els.liveStatus) {
-    els.liveStatus.textContent = '🔊 Đang phát mẫu — micro tạm tắt';
-    els.liveStatus.className = 'live-status';
+  if (liveModeActive && els.micStatusLabel) {
+    setMicState(MIC_STATE.SAMPLE, 'Đang phát mẫu...');
   }
 }
 
@@ -829,10 +852,7 @@ function resumeListeningAfterSample() {
 
     if (liveModeActive && speechRecognition) {
       try { speechRecognition.start(); } catch { /* ignore */ }
-      els.liveStatus.textContent = isTextMode()
-        ? 'Đang nghe... (đọc đúng từ để qua)'
-        : 'Đang nghe... (nói rồi im lặng ~2s)';
-      els.liveStatus.className = 'live-status listening';
+      setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     }
   }, SAMPLE_TAIL_MS);
 }
@@ -915,7 +935,9 @@ async function startRecording() {
         const spoken = getSpokenWord();
         const w = words[currentIndex];
         if (spoken && wordsMatch(spoken, w?.word)) {
-          checkTextModePass();
+          setMicState(MIC_STATE.PROCESSING, 'Đang xử lý...');
+          await processTextUtterance();
+          if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
         } else {
           showLiveHint(`Bật micro live và đọc "${w?.word}" — hoặc chuyển sang chế độ Chấm điểm`, 'warn');
         }
@@ -959,6 +981,7 @@ async function evaluateRecording(blob = null, options = {}) {
   if (!audioBlob) return;
 
   isEvaluating = true;
+  setMicState(MIC_STATE.PROCESSING, 'Đang chấm điểm...');
   els.spinner.classList.remove('hidden');
 
   const formData = new FormData();
@@ -983,6 +1006,7 @@ async function evaluateRecording(blob = null, options = {}) {
         : (data.detail || data.error || 'Lỗi không xác định');
       if (fromLive) {
         showLiveHint('Lỗi phân tích: ' + msg, 'mis');
+        if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
       } else {
         console.warn('Lỗi đánh giá:', msg);
       }
@@ -994,7 +1018,8 @@ async function evaluateRecording(blob = null, options = {}) {
     els.spinner.classList.add('hidden');
     isEvaluating = false;
     if (fromLive) {
-      showLiveHint(`Không kết nối backend (${getApiBase()}). Chạy: cd backend && uvicorn main:app --port 8000`, 'mis');
+      showLiveHint(`Không kết nối backend (${getApiBase()}). Chạy: ./run_backend.sh`, 'mis');
+      if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     } else if (!blob) {
       alert('Không kết nối được backend. Hãy chạy: uvicorn main:app --port 8000\n\n' + err.message);
     }
@@ -1022,11 +1047,12 @@ function renderEvaluation(data, options = {}) {
 
   if (passed) {
     els.btnRetry.classList.add('hidden');
-    showLiveHint(`✓ Đúng rồi! (${data.overall_score}%) — chuyển từ tiếp theo...`, 'ok');
-    const delay = fromLive ? 1200 : 1500;
+    showLiveHint(`✓ Đúng rồi! (${data.overall_score}%) — chuyển từ...`, 'ok');
+    const delay = fromLive ? 800 : 1500;
     setTimeout(() => {
       hideLiveHint();
       nextWord();
+      if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     }, delay);
   } else {
     els.btnRetry.classList.remove('hidden');
@@ -1035,8 +1061,8 @@ function renderEvaluation(data, options = {}) {
       ? issues.map((p) => `${p.ipa}: ${p.suggestion}`).join(' · ')
       : `Chưa đạt (${data.overall_score}%) — thử đọc lại "${data.word}"`;
     showLiveHint(hintText, 'mis');
-    if (fromLive) {
-      els.liveStatus.textContent = 'Đọc lại từ này...';
+    if (fromLive && liveModeActive) {
+      setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     }
   }
 }

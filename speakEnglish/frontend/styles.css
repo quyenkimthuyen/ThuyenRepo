@@ -200,11 +200,102 @@ body {
   font-size: 0.8rem;
 }
 
-.vad-meter {
+/* Mic indicator: đỏ=tắt, xanh=sẵn sàng, vàng=đang xử lý */
+.mic-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
   flex: 1;
-  min-width: 80px;
-  max-width: 160px;
-  height: 8px;
+  min-width: 140px;
+}
+
+.mic-icon-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mic-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  z-index: 1;
+  transition: transform 0.15s;
+}
+
+.mic-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.mic-indicator[data-state="off"] .mic-icon { filter: grayscale(0.2); }
+.mic-indicator[data-state="off"] .mic-ring {
+  border-color: var(--mis);
+  box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4);
+}
+
+.mic-indicator[data-state="ready"] .mic-ring {
+  border-color: var(--ok);
+  box-shadow: 0 0 12px rgba(46, 204, 113, 0.35);
+}
+
+.mic-indicator[data-state="hearing"] .mic-ring {
+  border-color: var(--ok);
+  box-shadow: 0 0 16px rgba(46, 204, 113, 0.55);
+  animation: mic-hearing 0.8s ease-in-out infinite;
+}
+
+.mic-indicator[data-state="processing"] .mic-ring {
+  border-color: var(--warn);
+  box-shadow: 0 0 14px rgba(241, 196, 15, 0.5);
+  animation: mic-processing 1s linear infinite;
+}
+
+.mic-indicator[data-state="sample"] .mic-ring {
+  border-color: var(--accent);
+  opacity: 0.7;
+}
+
+@keyframes mic-hearing {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+@keyframes mic-processing {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.mic-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.mic-status-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mic-indicator[data-state="off"] .mic-status-label { color: var(--mis); }
+.mic-indicator[data-state="ready"] .mic-status-label { color: var(--ok); }
+.mic-indicator[data-state="hearing"] .mic-status-label { color: var(--ok); }
+.mic-indicator[data-state="processing"] .mic-status-label { color: var(--warn); }
+.mic-indicator[data-state="sample"] .mic-status-label { color: var(--accent); }
+
+.vad-meter {
+  width: 100%;
+  max-width: none;
+  height: 6px;
   background: var(--surface-2);
   border-radius: 999px;
   overflow: hidden;
@@ -213,23 +304,17 @@ body {
 .vad-level {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, var(--ok), var(--accent));
+  background: var(--ok);
   border-radius: 999px;
   transition: width 0.05s linear;
 }
 
-.live-status {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  white-space: nowrap;
+.mic-indicator[data-state="processing"] .vad-level {
+  background: var(--warn);
 }
 
-.live-status.listening {
-  color: var(--record);
-}
-
-.live-status.speaking {
-  color: var(--ok);
+.mic-indicator[data-state="off"] .vad-level {
+  background: var(--mis);
 }
 
 .live-transcript-box {
