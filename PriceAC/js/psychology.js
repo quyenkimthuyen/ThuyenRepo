@@ -1392,7 +1392,7 @@ var PsychologyEngine = (() => {
     }
 
     const baseline = options.model === "ema"
-      ? buildUnifiedPsychologyCache(fullSeries, { model: "ema" })
+      ? buildUnifiedPsychologyCache(fullSeries, { model: "ema", walkForwardDisplay: false })
       : buildPsychologyCache(fullSeries);
     if (!baseline) {
       return null;
