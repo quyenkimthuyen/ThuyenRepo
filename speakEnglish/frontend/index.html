@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PronounceLab Personal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>PronounceLab <span class="accent">Personal</span></h1>
+      <p class="subtitle">Luyện phát âm 1000 từ — xử lý local, bảo mật riêng tư</p>
+    </header>
+
+    <nav class="toolbar">
+      <div class="word-nav">
+        <button id="btn-prev" class="btn btn-ghost" title="Từ trước">←</button>
+        <select id="word-select" class="word-select"></select>
+        <button id="btn-next" class="btn btn-ghost" title="Từ sau">→</button>
+      </div>
+      <div class="progress-info">
+        <span id="word-index">1 / 20</span>
+        <span id="history-badge" class="badge" title="Số lần thử">0 lần</span>
+      </div>
+      <button id="btn-settings" class="btn btn-ghost" title="Cài đặt">⚙</button>
+    </nav>
+
+    <main class="main-card">
+      <section class="word-display">
+        <h2 id="current-word" class="word-text">—</h2>
+        <p id="current-ipa" class="ipa-text">—</p>
+      </section>
+
+      <section class="controls">
+        <button id="btn-play-sample" class="btn btn-primary">
+          <span class="icon">▶</span> Nghe mẫu
+        </button>
+        <button id="btn-record" class="btn btn-record">
+          <span class="icon">●</span> Ghi âm
+        </button>
+        <button id="btn-stop" class="btn btn-stop" disabled>
+          <span class="icon">■</span> Dừng
+        </button>
+        <button id="btn-replay-user" class="btn btn-ghost" disabled>
+          <span class="icon">↺</span> Nghe lại
+        </button>
+        <button id="btn-retry" class="btn btn-warn hidden">
+          Thử lại
+        </button>
+      </section>
+
+      <div id="recording-indicator" class="recording-indicator hidden">
+        <span class="pulse"></span> Đang ghi âm...
+      </div>
+
+      <div id="spinner" class="spinner hidden">
+        <div class="spinner-ring"></div>
+        <p>Đang phân tích phát âm...</p>
+      </div>
+
+      <section id="score-section" class="score-section hidden">
+        <div class="overall-score">
+          <span>Điểm tổng:</span>
+          <strong id="overall-score">—</strong>
+          <span id="pass-status" class="pass-status"></span>
+        </div>
+      </section>
+
+      <section id="phoneme-container" class="phoneme-container"></section>
+
+      <section id="feedback-section" class="feedback-section hidden">
+        <h3>Gợi ý cải thiện</h3>
+        <ul id="feedback-list"></ul>
+      </section>
+    </main>
+
+    <aside id="settings-panel" class="settings-panel hidden">
+      <h3>Cài đặt</h3>
+      <label class="setting-row">
+        <input type="checkbox" id="setting-autoplay" checked>
+        Tự phát mẫu khi mở từ
+      </label>
+      <label class="setting-row">
+        API URL
+        <input type="text" id="setting-api-url" value="http://127.0.0.1:8000">
+      </label>
+      <label class="setting-row">
+        Ngưỡng đạt (%)
+        <input type="number" id="setting-pass-score" value="80" min="50" max="100">
+      </label>
+      <button id="btn-close-settings" class="btn btn-ghost">Đóng</button>
+    </aside>
+
+    <footer class="footer">
+      <p id="service-status" class="status-offline">● Backend: đang kiểm tra...</p>
+    </footer>
+  </div>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

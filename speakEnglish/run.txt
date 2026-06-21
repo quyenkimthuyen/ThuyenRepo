@@ -1,0 +1,77 @@
+Đã triển khai xong PronounceLab Personal trong speakEnglish/. Tóm tắt:
+
+  Cấu trúc repository
+
+  speakEnglish/
+  ├── README.md                    # Hướng dẫn cài đặt đầy đủ
+  ├── TEST_PLAN.md                 # 5 test cases + curl tests
+  ├── .gitignore
+  ├── frontend/
+  │   ├── index.html               # UI chính
+  │   ├── app.js                   # Ghi âm, API, phoneme boxes, localStorage
+  │   ├── styles.css               # Dark theme responsive
+  │   ├── config.json              # API URL, thresholds
+  │   └── data/words.json          # 20 từ demo (schema sẵn cho 1000 từ)
+  └── backend/
+      ├── main.py                  # FastAPI + CORS + serve audio
+      ├── config.py                # Aligner/scorer/thresholds
+      ├── requirements.txt
+      ├── api/evaluate.py          # POST /api/v1/evaluate
+      ├── services/
+      │   ├── audio_processor.py   # Resample 16kHz mono (ffmpeg)
+      │   ├── aligner.py           # MFA / Gentle / fallback
+      │   ├── scorer.py            # GOP / wav2vec2 / fallback MFCC
+      │   ├── phoneme_utils.py     # Labels + gợi ý tiếng Việt
+      │   └── evaluator.py         # Pipeline orchestrator
+      └── scripts/setup_aligner.sh # Hướng dẫn cài Gentle/MFA
+
+  Chạy nhanh (không tự cài — làm thủ công)
+
+  1. Backend:
+
+  cd speakEnglish/backend
+  python3 -m venv .venv && source .venv/bin/activate
+  pip install -r requirements.txt
+  # Cần ffmpeg: sudo apt install ffmpeg
+  uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+
+  2. Frontend:
+
+  cd speakEnglish/frontend
+  python3 -m http.server 5500
+  # Mở http://localhost:5500
+
+  Kiến trúc
+
+  ┌───────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │ Thành phần        │ Mô tả                                                                                                                           │
+  ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Frontend          │ Vanilla JS — WebAudio ghi âm, POST blob tới backend, render phoneme boxes (xám/xanh/vàng/đỏ), replay segment, lưu lịch sử       │
+  │                   │ localStorage                                                                                                                    │
+  ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Backend           │ FastAPI POST /api/v1/evaluate — resample → align → score → JSON                                                                 │
+  ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Fallback (mặc     │ Chạy ngay không cần MFA/Gentle — alignment theo tỷ lệ thời gian, scoring MFCC                                                   │
+  │ định)             │                                                                                                                                 │
+  ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ Nâng cao          │ ALIGNMENT_METHOD=gentle|mfa, SCORING_METHOD=wav2vec2                                                                            │
+  └───────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Tiêu chí chấm điểm
+
+  • Score ≥ 0.75 → ok (xanh)
+  • 0.50–0.74 → warn (vàng)
+  • < 0.50 → mis (đỏ)
+  • Đạt từ: tất cả phoneme ok HOẶC overall_score ≥ 80
+
+  Mở rộng lên 1000 từ
+
+  Thêm vào frontend/data/words.json:
+
+  {"word":"example","ipa":"/ɪɡˈzæmpəl/","phonemes":["ɪ","ɡ","z","æ","m","p","ə","l"],"audio_sample_url":""}
+
+  Chi tiết cài Gentle/MFA, đổi thresholds, và test plan nằm trong README.md (README.md) và TEST_PLAN.md (TEST_PLAN.md).
+
+
+
+
