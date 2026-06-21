@@ -285,6 +285,16 @@ var ElliottEngine = (() => {
   const CAPITULATION_MIN_WEEKS = 4;
   const BULLISH_ZONES = new Set(["Hope", "Optimism", "Belief", "Euphoria"]);
   const BEARISH_ZONES = new Set(["Anxiety", "Denial", "Panic", "Capitulation"]);
+  const IMPULSE_WAVES = new Set(["1", "3", "5"]);
+  const CORRECTIVE_WAVES = new Set(["2", "4"]);
+  const BULL_IMPULSE_NEGATIVE = BEARISH_ZONES;
+  const BEAR_IMPULSE_POSITIVE = new Set(["Hope", "Optimism", "Belief", "Euphoria", "Complacency"]);
+  const BEAR_CORRECTIVE_BULLISH = new Set(["Hope", "Optimism", "Belief", "Euphoria"]);
+  const BULL_CORRECTIVE_STRONG_BULL = new Set(["Belief", "Euphoria"]);
+  const DEFAULT_BULL_IMPULSE = { 1: "Hope", 3: "Belief", 5: "Euphoria" };
+  const DEFAULT_BEAR_IMPULSE = { 1: "Disbelief", 3: "Panic", 5: "Denial" };
+  const DEFAULT_BEAR_CORRECTIVE = { 2: "Denial", 4: "Anxiety" };
+  const DEFAULT_BULL_CORRECTIVE = { 2: "Anxiety", 4: "Complacency" };
   const STRONG_BULL_UP_LEG = 0.10;
   const BULL_UP_ZONE_BY_WAVE = {
     1: "Hope",
@@ -398,7 +408,7 @@ var ElliottEngine = (() => {
 
         if (macroRegime === "bear") {
           psych = leg.legUp
-            ? { zone: "Hope", weight: 14 }
+            ? { zone: "Disbelief", weight: 14 }
             : { zone: "Disbelief", weight: 16 };
           break;
         }
@@ -437,7 +447,7 @@ var ElliottEngine = (() => {
       case "4":
         if (macroRegime === "bear") {
           psych = leg.legUp
-            ? { zone: "Hope", weight: 14 }
+            ? { zone: "Denial", weight: 14 }
             : { zone: "Anxiety", weight: 14 };
           break;
         }
@@ -561,6 +571,53 @@ var ElliottEngine = (() => {
     };
   };
 
+  const resolveBullImpulseZone = (waveId, leg) => {
+    if (waveId === "5" && leg?.legUp && !leg?.strongLeg) {
+      return "Belief";
+    }
+
+    if (waveId === "5" && leg?.legUp && leg?.strongLeg) {
+      return "Euphoria";
+    }
+
+    return DEFAULT_BULL_IMPULSE[waveId] || "Hope";
+  };
+
+  const enforceWavePsychologyLaw = (psych, waveId, macroRegime, leg = null) => {
+    if (!psych?.zone || !waveId) {
+      return psych;
+    }
+
+    const macro = macroRegime === "bear" ? "bear" : "bull";
+    let zone = psych.zone;
+
+    if (IMPULSE_WAVES.has(waveId)) {
+      if (macro === "bull" && BULL_IMPULSE_NEGATIVE.has(zone)) {
+        zone = resolveBullImpulseZone(waveId, leg);
+      }
+
+      if (macro === "bear" && BEAR_IMPULSE_POSITIVE.has(zone)) {
+        zone = DEFAULT_BEAR_IMPULSE[waveId] || "Disbelief";
+      }
+    }
+
+    if (CORRECTIVE_WAVES.has(waveId)) {
+      if (macro === "bear" && BEAR_CORRECTIVE_BULLISH.has(zone)) {
+        zone = DEFAULT_BEAR_CORRECTIVE[waveId] || "Denial";
+      }
+
+      if (macro === "bull" && BULL_CORRECTIVE_STRONG_BULL.has(zone)) {
+        zone = DEFAULT_BULL_CORRECTIVE[waveId] || "Anxiety";
+      }
+    }
+
+    if (zone === psych.zone) {
+      return psych;
+    }
+
+    return { ...psych, zone };
+  };
+
   const applyCapitulationTails = (weeklySeries, regions, chain) => {
     const output = [];
 
@@ -618,7 +675,8 @@ var ElliottEngine = (() => {
     let psych = resolvePsychologyByWaveLaw(waveId, leg, prevZone, macroRegime);
     psych = applyCorrectionPhaseGuard(psych, leg, prevZone, inCorrection);
     psych = applyBullUptrendGuard(psych, leg, macroRegime, waveId);
-    return applyLegDirectionGuard(psych, waveId, leg);
+    psych = applyLegDirectionGuard(psych, waveId, leg);
+    return enforceWavePsychologyLaw(psych, waveId, macroRegime, leg);
   };
 
   const inferMacroDirection = (weeklySeries) => {
@@ -1081,6 +1139,9 @@ var ElliottEngine = (() => {
     buildVisibleWaveOverlay,
     annotateRegionsWithValidation,
     validateWaveLeg,
-    formatWaveMarkerText
+    formatWaveMarkerText,
+    enforceWavePsychologyLaw,
+    IMPULSE_WAVES,
+    CORRECTIVE_WAVES
   };
 })();

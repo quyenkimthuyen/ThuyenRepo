@@ -576,22 +576,53 @@ test("elliott bull macro avoids denial on strong upward legs", () => {
   });
 });
 
-test("ema accumulation uptrend remaps bear wave 2 denial to hope", () => {
-  const bitcoin = loadBitcoin();
-  const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
-  const rallyRegion = emaCache.regions.find((region) => (
-    region.waveId === "2"
-    && region.emaContext?.regime === "accumulation"
-    && region.emaContext?.trendUp
-    && region.startDate >= "2026-03-01"
-  ));
+test("impulse wave psychology law holds on all assets", () => {
+  const assets = ["bitcoin", "gold", "ethereum", "sp500"];
+  const bullImpulseForbidden = new Set(["Anxiety", "Denial", "Panic", "Capitulation"]);
+  const bearImpulseForbidden = new Set(["Hope", "Optimism", "Belief", "Euphoria", "Complacency"]);
+  const bearCorrectiveForbidden = new Set(["Hope", "Optimism", "Belief", "Euphoria"]);
 
-  if (rallyRegion) {
-    assert.ok(
-      ["Hope", "Optimism", "Belief", "Disbelief"].includes(rallyRegion.zone),
-      `accumulation rally should stay positive, got ${rallyRegion.zone}`
+  assets.forEach((assetFile) => {
+    const series = JSON.parse(
+      fs.readFileSync(path.join(root, `data/${assetFile}.json`), "utf8")
     );
-  }
+    const models = [
+      ["elliott", PsychologyEngine.buildPsychologyCache(series)],
+      ["ema", PsychologyEngine.buildUnifiedPsychologyCache(series, { model: "ema" })]
+    ];
+
+    models.forEach(([modelName, cache]) => {
+      cache.regions.forEach((region) => {
+        if (!region.waveId || region.zone === "Observing") {
+          return;
+        }
+
+        const macro = region.macroRegime || "bull";
+        const waveId = region.waveId;
+
+        if (macro === "bull" && ["1", "3", "5"].includes(waveId)) {
+          assert.ok(
+            !bullImpulseForbidden.has(region.zone),
+            `${assetFile} ${modelName} bull wave ${waveId} at ${region.startDate} cannot be ${region.zone}`
+          );
+        }
+
+        if (macro === "bear" && ["1", "3", "5"].includes(waveId)) {
+          assert.ok(
+            !bearImpulseForbidden.has(region.zone),
+            `${assetFile} ${modelName} bear wave ${waveId} at ${region.startDate} cannot be ${region.zone}`
+          );
+        }
+
+        if (macro === "bear" && ["2", "4"].includes(waveId)) {
+          assert.ok(
+            !bearCorrectiveForbidden.has(region.zone),
+            `${assetFile} ${modelName} bear wave ${waveId} at ${region.startDate} cannot be ${region.zone}`
+          );
+        }
+      });
+    });
+  });
 });
 
 test("psychology segments use lower opacity for low confidence zones", () => {

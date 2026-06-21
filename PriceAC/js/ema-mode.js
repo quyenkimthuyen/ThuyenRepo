@@ -395,64 +395,64 @@ var EmaPsychologyEngine = (() => {
 
     const regime = classifyEmaRegime(context);
     const polarity = resolvePolarity(regime);
+    let zone;
+    let weight = 18;
+    let confidence = elliottConfidence;
 
     if (prevZone === "Panic" && context.belowEma50 && !context.trendUp) {
-      return {
-        zone: "Capitulation",
-        weight: 22,
-        confidence: elliottConfidence
-      };
-    }
+      zone = "Capitulation";
+      weight = 22;
+    } else if (context.drawdown <= -0.35 && context.belowEma50 && context.trendDown) {
+      zone = prevZone === "Panic" ? "Capitulation" : "Panic";
+      weight = 20;
+    } else if (context.goldenCrossRecent && (waveId === "1" || waveId === "2")) {
+      zone = macroRegime === "bear" ? "Disbelief" : "Hope";
+    } else {
+      zone = pickWaveZone(waveId, regime, macroRegime);
 
-    if (context.drawdown <= -0.35 && context.belowEma50 && context.trendDown) {
-      return {
-        zone: prevZone === "Panic" ? "Capitulation" : "Panic",
-        weight: 20,
-        confidence: elliottConfidence
-      };
-    }
-
-    if (context.goldenCrossRecent && (waveId === "1" || waveId === "2")) {
-      return {
-        zone: macroRegime === "bear" ? "Disbelief" : "Hope",
-        weight: 18,
-        confidence: elliottConfidence
-      };
-    }
-
-    let zone = pickWaveZone(waveId, regime, macroRegime);
-
-    if (polarity.soft && elliottZone && zoneAllowed(elliottZone, polarity)) {
-      zone = elliottZone;
-    } else if (!zoneAllowed(zone, polarity)) {
-      if (polarity.allowPositive && !polarity.allowNegative) {
-        zone = POSITIVE_ZONES.has(zone) ? zone : "Hope";
-      } else if (polarity.allowNegative && !polarity.allowPositive) {
-        zone = NEGATIVE_ZONES.has(zone) ? zone : "Anxiety";
-      } else if (elliottZone && zoneAllowed(elliottZone, polarity)) {
+      if (polarity.soft && elliottZone && zoneAllowed(elliottZone, polarity)) {
         zone = elliottZone;
-      } else {
-        zone = "Observing";
+      } else if (!zoneAllowed(zone, polarity)) {
+        if (polarity.allowPositive && !polarity.allowNegative) {
+          zone = POSITIVE_ZONES.has(zone) ? zone : "Hope";
+        } else if (polarity.allowNegative && !polarity.allowPositive) {
+          zone = NEGATIVE_ZONES.has(zone) ? zone : "Anxiety";
+        } else if (elliottZone && zoneAllowed(elliottZone, polarity)) {
+          zone = elliottZone;
+        } else {
+          zone = "Observing";
+        }
+      }
+
+      zone = applyRsiGate(zone, context, elliottConfidence);
+
+      if (regime === "neutral") {
+        confidence = Math.min(confidence, 52);
+      }
+
+      if (confidence < LOW_CONFIDENCE_THRESHOLD && regime === "neutral" && zone !== "Observing") {
+        if (!elliottZone || !zoneAllowed(elliottZone, polarity)) {
+          zone = "Observing";
+          confidence = Math.min(confidence, 48);
+        }
       }
     }
 
-    zone = applyRsiGate(zone, context, elliottConfidence);
-
-    let confidence = elliottConfidence;
-    if (regime === "neutral") {
-      confidence = Math.min(confidence, 52);
-    }
-
-    if (confidence < LOW_CONFIDENCE_THRESHOLD && regime === "neutral" && zone !== "Observing") {
-      if (!elliottZone || !zoneAllowed(elliottZone, polarity)) {
-        zone = "Observing";
-        confidence = Math.min(confidence, 48);
-      }
-    }
+    const leg = {
+      legUp: context.trendUp,
+      legDown: context.trendDown,
+      strongLeg: context.trendPct > 0.08
+    };
+    const enforced = ElliottEngine.enforceWavePsychologyLaw(
+      { zone, weight, confidence },
+      waveId,
+      macroRegime,
+      leg
+    );
 
     return {
-      zone,
-      weight: 18,
+      zone: enforced.zone,
+      weight,
       confidence: Math.round(confidence)
     };
   };
@@ -646,6 +646,25 @@ var EmaPsychologyEngine = (() => {
   const validateRegionRules = (region, context) => {
     if (!context?.ready || region.zone === "Observing") {
       return true;
+    }
+
+    const macroRegime = region.macroRegime || "bull";
+    const waveId = region.waveId;
+
+    if (waveId && ElliottEngine.IMPULSE_WAVES?.has(waveId)) {
+      if (macroRegime === "bear" && NEGATIVE_ZONES.has(region.zone)) {
+        return true;
+      }
+
+      if (macroRegime === "bull" && POSITIVE_ZONES.has(region.zone)) {
+        return true;
+      }
+    }
+
+    if (waveId && ElliottEngine.CORRECTIVE_WAVES?.has(waveId) && macroRegime === "bear") {
+      if (NEGATIVE_ZONES.has(region.zone) || region.zone === "Disbelief") {
+        return true;
+      }
     }
 
     const regime = classifyEmaRegime(context);
