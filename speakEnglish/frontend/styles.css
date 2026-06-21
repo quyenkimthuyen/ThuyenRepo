@@ -67,6 +67,43 @@ body {
   flex-wrap: wrap;
 }
 
+.mode-switch {
+  display: flex;
+  width: 100%;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  background: var(--bg);
+  border-radius: var(--radius);
+  border: 1px solid var(--surface-2);
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 0.5rem 0.6rem;
+  border: none;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.mode-btn:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.app.mode-text .mode-score-only {
+  display: none !important;
+}
+
 .word-nav {
   display: flex;
   gap: 0.5rem;
@@ -551,6 +588,10 @@ body {
   border: 1px solid var(--surface-2);
   background: var(--bg);
   color: var(--text);
+}
+
+.setting-row.hidden {
+  display: none;
 }
 
 .footer {

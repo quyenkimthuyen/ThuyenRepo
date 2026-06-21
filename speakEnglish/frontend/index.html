@@ -14,6 +14,10 @@
     </header>
 
     <nav class="toolbar">
+      <div class="mode-switch" role="tablist" aria-label="Chế độ luyện tập">
+        <button id="mode-text" class="mode-btn active" type="button" role="tab">📝 Chỉ text</button>
+        <button id="mode-score" class="mode-btn" type="button" role="tab">🎯 Chấm điểm</button>
+      </div>
       <div class="word-nav">
         <button id="btn-prev" class="btn btn-ghost" title="Từ trước">←</button>
         <select id="word-select" class="word-select"></select>
@@ -50,7 +54,7 @@
           <p id="live-transcript" class="live-transcript">
             <span id="live-transcript-final"></span><span id="live-transcript-interim" class="interim"></span>
           </p>
-          <p id="live-transcript-placeholder" class="live-placeholder">Bật micro live — nói từ rồi dừng ~2 giây để nhận phản hồi</p>
+          <p id="live-transcript-placeholder" class="live-placeholder">Bật micro live — đọc đúng từ hiển thị để qua từ tiếp theo</p>
           <p id="live-hint" class="live-hint hidden"></p>
         </div>
       </section>
@@ -82,7 +86,7 @@
         <p>Đang phân tích phát âm...</p>
       </div>
 
-      <section id="score-section" class="score-section hidden">
+      <section id="score-section" class="score-section hidden mode-score-only">
         <div class="overall-score">
           <span>Điểm tổng:</span>
           <strong id="overall-score">—</strong>
@@ -90,9 +94,9 @@
         </div>
       </section>
 
-      <section id="phoneme-container" class="phoneme-container"></section>
+      <section id="phoneme-container" class="phoneme-container mode-score-only"></section>
 
-      <section id="feedback-section" class="feedback-section hidden">
+      <section id="feedback-section" class="feedback-section hidden mode-score-only">
         <h3>Gợi ý cải thiện</h3>
         <ul id="feedback-list"></ul>
       </section>
