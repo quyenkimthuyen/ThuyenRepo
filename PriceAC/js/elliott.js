@@ -220,11 +220,11 @@ var ElliottEngine = (() => {
 
   // Macro Elliott tuần — tối ưu cho Bitcoin chu kỳ ~4 năm (halving).
   const BTC_CYCLE_WEEKS = 208;
-  const BTC_CYCLE_MIN_LOW_WEEKS = 52;
+  const BTC_CYCLE_MIN_LOW_WEEKS = 150;
   const MACRO_EXTREMA_WINDOW = 26;
   const MACRO_MIN_LEG_PCT = 0.15;
   const MACRO_MIN_WEEKS = 8;
-  const MACRO_MAX_PIVOTS_PER_CYCLE = 6;
+  const MACRO_MAX_PIVOTS_PER_CYCLE = 10;
   const MAJOR_DEVIATION_LOOKBACK_WEEKS = 52;
   const MAJOR_DEVIATION_MULTIPLIER = 3.8;
   const MAJOR_DEVIATION_MIN = 12;
@@ -329,10 +329,12 @@ var ElliottEngine = (() => {
           filtered[index - 1].index,
           filtered[index + 1].index
         );
-        const legBefore = Math.abs(filtered[index].price - filtered[index - 1].price);
-        const legAfter = Math.abs(filtered[index + 1].price - filtered[index].price);
-        const base = Math.max(filtered[index - 1].price, filtered[index + 1].price, 1);
-        const minorLeg = Math.min(legBefore, legAfter) / base < MACRO_MIN_LEG_PCT;
+        const p1 = filtered[index - 1].price;
+        const p2 = filtered[index].price;
+        const p3 = filtered[index + 1].price;
+        const changeBefore = Math.abs(p2 - p1) / Math.max(p1, p2, 1);
+        const changeAfter = Math.abs(p3 - p2) / Math.max(p2, p3, 1);
+        const minorLeg = Math.min(changeBefore, changeAfter) < MACRO_MIN_LEG_PCT;
         const tooClose = spanWeeks < MACRO_MIN_WEEKS * 2;
 
         if (minorLeg || tooClose) {
@@ -378,7 +380,9 @@ var ElliottEngine = (() => {
         let smallest = Infinity;
 
         for (let index = 1; index < current.length - 1; index += 1) {
-          const bridge = Math.abs(current[index + 1].price - current[index - 1].price);
+          const p1 = current[index - 1].price;
+          const p2 = current[index + 1].price;
+          const bridge = Math.abs(p2 - p1) / Math.max(p1, p2, 1);
           if (bridge < smallest) {
             smallest = bridge;
             removeAt = index;
@@ -478,7 +482,16 @@ var ElliottEngine = (() => {
       const lastStartIndex = starts[starts.length - 1];
       const gapWeeks = pivot.index - chain[lastStartIndex].index;
 
-      if (gapWeeks >= BTC_CYCLE_MIN_LOW_WEEKS) {
+      let maxPrice = 0;
+      for (let i = lastStartIndex; i < index; i++) {
+        if (chain[i].type === "high" && chain[i].price > maxPrice) {
+          maxPrice = chain[i].price;
+        }
+      }
+      const drawdown = maxPrice > 0 ? (maxPrice - pivot.price) / maxPrice : 0;
+      const requiredGap = drawdown >= 0.70 ? 110 : 180;
+
+      if (gapWeeks >= requiredGap) {
         starts.push(index);
       }
     });
@@ -551,6 +564,23 @@ var ElliottEngine = (() => {
     const endPrice = end.price;
     const legChange = startPrice > 0 ? (endPrice - startPrice) / startPrice : 0;
     const slice = weeklySeries.slice(startIdx, endIdx + 1);
+    if (!slice.length) {
+      return {
+        legUp: false,
+        legDown: false,
+        legFlat: true,
+        legChange: 0,
+        strongLeg: false,
+        hasRecovery: false,
+        hasFlatTail: false,
+        sideways: false,
+        rangePct: 0,
+        durationWeeks: 0,
+        endIndex: endIdx,
+        recoveryFromLow: 0
+      };
+    }
+
     const lows = slice.map((point) => point.low ?? getClose(point));
     const highs = slice.map((point) => point.high ?? getClose(point));
     const minPrice = lows.length ? Math.min(...lows) : Math.min(startPrice, endPrice);
@@ -568,9 +598,9 @@ var ElliottEngine = (() => {
       && slice.length >= CAPITULATION_MIN_WEEKS
     );
     const tailCount = Math.min(CAPITULATION_MIN_WEEKS, slice.length);
-    const tailSlice = slice.slice(-tailCount);
-    const tailStart = getClose(tailSlice[0]);
-    const tailEnd = getClose(tailSlice[tailSlice.length - 1]);
+    const tailSlice = tailCount > 0 ? slice.slice(-tailCount) : [];
+    const tailStart = tailSlice.length ? getClose(tailSlice[0]) : startPrice;
+    const tailEnd = tailSlice.length ? getClose(tailSlice[tailSlice.length - 1]) : endPrice;
     const hasFlatTail = (
       tailSlice.length >= 3
       && tailStart > 0
@@ -717,7 +747,7 @@ var ElliottEngine = (() => {
 
       case "A":
         psych = leg.legDown
-          ? { zone: "Anxiety", weight: 14 }
+          ? { zone: "Panic", weight: 18 }
           : { zone: "Denial", weight: 14 };
         break;
 
@@ -976,11 +1006,10 @@ var ElliottEngine = (() => {
     const lastIndex = weeklySeries.length - 1;
 
     if (!swings.length) {
-      const macro = inferMacroDirection(weeklySeries);
-      return [
-        findExtremePivot(weeklySeries, 0, lastIndex, macro === "bull" ? "low" : "high"),
-        findExtremePivot(weeklySeries, 0, lastIndex, macro === "bull" ? "high" : "low")
-      ];
+      const p1 = findExtremePivot(weeklySeries, 0, lastIndex, "low");
+      const p2 = findExtremePivot(weeklySeries, 0, lastIndex, "high");
+      const chain = [p1, p2].sort((left, right) => left.index - right.index);
+      return normalizeSwingAlternation(collapseAdjacentDatePivots(chain));
     }
 
     const normalized = normalizeSwingAlternation(swings);
@@ -1351,10 +1380,8 @@ var ElliottEngine = (() => {
       return null;
     }
 
-    const points = pivots.map((pivot) => ({
-      time: pivot.date,
-      value: pivot.price
-    }));
+    const points = [];
+    const markers = [];
 
     const markerDates = new Set(
       sourcePivots
@@ -1362,30 +1389,97 @@ var ElliottEngine = (() => {
         .map((pivot) => pivot.date)
     );
 
-    const markers = [];
+    if (options.includeMidpoints) {
+      const visibleTimestamps = visibleSeries.map(point => new Date(point.date).getTime());
+      const findClosestIndex = (date) => {
+        let bestIdx = 0;
+        let bestDiff = Infinity;
+        const targetTime = new Date(date).getTime();
+        for (let idx = 0; idx < visibleTimestamps.length; idx++) {
+          const diff = Math.abs(visibleTimestamps[idx] - targetTime);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestIdx = idx;
+          }
+        }
+        return bestIdx;
+      };
 
-    pivots.forEach((pivot) => {
-      if (!markerDates.has(pivot.date)) {
-        return;
+      for (let i = 0; i < pivots.length; i++) {
+        points.push({
+          time: pivots[i].date,
+          value: pivots[i].price
+        });
+
+        if (i < pivots.length - 1) {
+          const startPivot = pivots[i];
+          const endPivot = pivots[i + 1];
+
+          const startIdx = findClosestIndex(startPivot.date);
+          const endIdx = findClosestIndex(endPivot.date);
+
+          if (endIdx - startIdx >= 2) {
+            const midIdx = Math.round((startIdx + endIdx) / 2);
+            const midDate = visibleSeries[midIdx].date;
+
+            const time_A = new Date(startPivot.date).getTime();
+            const time_B = new Date(endPivot.date).getTime();
+            const time_mid = new Date(midDate).getTime();
+
+            if (time_B > time_A) {
+              const t = (time_mid - time_A) / (time_B - time_A);
+              const midPrice = startPivot.price + t * (endPivot.price - startPivot.price);
+
+              points.push({
+                time: midDate,
+                value: Number(midPrice.toFixed(2))
+              });
+
+              const region = findRegionForDate(cache.regions, midDate);
+              if (region?.waveId) {
+                if (!(options.validatedOnly && region.elliottValidated === false)) {
+                  markers.push({
+                    time: midDate,
+                    position: "inBar",
+                    color: region.elliottValidated === false ? "rgba(56, 189, 248, 0.55)" : "#38bdf8",
+                    shape: "circle",
+                    text: formatWaveMarkerText(region.waveId)
+                  });
+                }
+              }
+            }
+          }
+        }
       }
+    } else {
+      pivots.forEach((pivot) => {
+        points.push({
+          time: pivot.date,
+          value: pivot.price
+        });
 
-      const region = findRegionForDate(cache.regions, pivot.date);
-      if (!region?.waveId) {
-        return;
-      }
+        if (!markerDates.has(pivot.date)) {
+          return;
+        }
 
-      if (options.validatedOnly && region.elliottValidated === false) {
-        return;
-      }
+        const region = findRegionForDate(cache.regions, pivot.date);
+        if (!region?.waveId) {
+          return;
+        }
 
-      markers.push({
-        time: pivot.date,
-        position: pivot.type === "low" ? "belowBar" : "aboveBar",
-        color: region.elliottValidated === false ? "rgba(240, 180, 92, 0.55)" : "#f0b45c",
-        shape: "circle",
-        text: formatWaveMarkerText(region.waveId)
+        if (options.validatedOnly && region.elliottValidated === false) {
+          return;
+        }
+
+        markers.push({
+          time: pivot.date,
+          position: pivot.type === "low" ? "belowBar" : "aboveBar",
+          color: region.elliottValidated === false ? "rgba(240, 180, 92, 0.55)" : "#f0b45c",
+          shape: "circle",
+          text: formatWaveMarkerText(region.waveId)
+        });
       });
-    });
+    }
 
     return { points, markers, pivots };
   };

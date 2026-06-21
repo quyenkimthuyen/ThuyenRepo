@@ -19,6 +19,11 @@ const assert = {
       throw new Error(message || `Expected ${expected}, got ${actual}`);
     }
   },
+  notEqual(actual, expected, message) {
+    if (actual === expected) {
+      throw new Error(message || `Expected actual to not equal expected`);
+    }
+  },
   approx(actual, expected, tolerance = 1, message) {
     if (Math.abs(actual - expected) > tolerance) {
       throw new Error(message || `Expected ~${expected}, got ${actual}`);
@@ -80,7 +85,7 @@ const test = (name, fn) => {
   } catch (error) {
     failed += 1;
     console.error(`  ✗ ${name}`);
-    console.error(`    ${error.message}`);
+    console.error(`    ${error.stack || error.message}`);
   }
 };
 
@@ -1156,6 +1161,30 @@ test("week-end checkpoints are not earlier than week-start checkpoints", () => {
     const startPoint = weekStart.find((item) => item.weekKey === endPoint.weekKey);
     assert.ok(startPoint);
     assert.ok(endPoint.asOfDate >= startPoint.asOfDate);
+  });
+});
+
+test("elliott overlay builds midpoint markers when includeMidpoints is true", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const visible = RangeUtils.buildVisibleSeries(bitcoin, "1Y", "1D", PsychologyEngine.aggregateSeries);
+  
+  const overlay = sharedCtx.ElliottEngine.buildVisibleWaveOverlay(cache, visible, {
+    validatedOnly: false,
+    includeMidpoints: true
+  });
+
+  assert.ok(overlay, "overlay should build");
+  assert.ok(overlay.points.length >= 3);
+  assert.ok(overlay.markers.length >= 1);
+  
+  overlay.markers.forEach((marker) => {
+    assert.equal(marker.position, "inBar", "markers must be placed inBar when using midpoints");
+  });
+
+  overlay.markers.forEach((marker) => {
+    const matchedPoint = overlay.points.find((p) => p.time === marker.time);
+    assert.ok(matchedPoint, `marker time ${marker.time} should exist as a point in the points array`);
   });
 });
 

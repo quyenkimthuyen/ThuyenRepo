@@ -877,7 +877,8 @@ const MarketChart = (() => {
     }
 
     const overlay = ElliottEngine.buildVisibleWaveOverlay(cache, visibleData, {
-      validatedOnly: false
+      validatedOnly: false,
+      includeMidpoints: true
     });
     if (!overlay?.points?.length) {
       return;
@@ -1082,10 +1083,10 @@ const MarketChart = (() => {
     }).join(" ");
 
     const dateToIndex = new Map(visibleData.map((point, index) => [point.date, index]));
-    const cache = getElliottOverlayCache();
     const elliottOverlay = elliottOverlayVisible && cache
       ? ElliottEngine.buildVisibleWaveOverlay(cache, visibleData, {
-        validatedOnly: false
+        validatedOnly: false,
+        includeMidpoints: true
       })
       : null;
 
@@ -1100,9 +1101,10 @@ const MarketChart = (() => {
 
     const elliottLabels = elliottOverlay?.markers?.map((marker) => {
       const index = dateToIndex.get(marker.time) ?? 0;
-      const price = elliottOverlay.pivots.find((pivot) => pivot.date === marker.time)?.price ?? min;
+      const point = elliottOverlay.points.find((p) => p.time === marker.time);
+      const price = point ? point.value : min;
       const x = indexToX(index, visibleData.length);
-      const y = priceToY(price) + (marker.position === "belowBar" ? 14 : -10);
+      const y = priceToY(price) + (marker.position === "belowBar" ? 14 : (marker.position === "aboveBar" ? -10 : -4));
 
       return `
         <text x="${x}" y="${y}" fill="#f0b45c" font-size="11" font-weight="700" text-anchor="middle">${marker.text}</text>
