@@ -382,6 +382,58 @@ var EmaPsychologyEngine = (() => {
     return zone;
   };
 
+  const applyEmaTrendGuard = (zone, waveId, macroRegime, context) => {
+    if (!context.ready || zone === "Observing" || !waveId) {
+      return zone;
+    }
+
+    const impulse = ElliottEngine.IMPULSE_WAVES?.has(waveId);
+    const panicLike = zone === "Panic" || zone === "Capitulation";
+
+    if (context.aboveEma50 && context.trendUp && panicLike) {
+      if (waveId === "5") {
+        return context.trendPct > 0.08 ? "Euphoria" : "Belief";
+      }
+
+      if (waveId === "3") {
+        return "Belief";
+      }
+
+      if (waveId === "1") {
+        return macroRegime === "bear" ? "Disbelief" : "Hope";
+      }
+
+      return macroRegime === "bear" ? "Denial" : "Optimism";
+    }
+
+    if (macroRegime === "bull" && impulse && NEGATIVE_ZONES.has(zone)) {
+      if (waveId === "5") {
+        return context.aboveEma50 && context.trendUp ? "Euphoria" : "Belief";
+      }
+
+      if (waveId === "3") {
+        return "Belief";
+      }
+
+      return "Hope";
+    }
+
+    if (
+      macroRegime === "bull"
+      && ["3", "5"].includes(waveId)
+      && context.aboveEma50
+      && context.trendUp
+    ) {
+      if (waveId === "5") {
+        return context.trendPct > 0.08 ? "Euphoria" : "Belief";
+      }
+
+      return "Belief";
+    }
+
+    return zone;
+  };
+
   const resolveZone = (waveId, prevZone, context, options = {}) => {
     const {
       elliottZone = null,
@@ -451,7 +503,7 @@ var EmaPsychologyEngine = (() => {
     );
 
     return {
-      zone: enforced.zone,
+      zone: applyEmaTrendGuard(enforced.zone, waveId, macroRegime, context),
       weight,
       confidence: Math.round(confidence)
     };
@@ -703,6 +755,7 @@ var EmaPsychologyEngine = (() => {
     buildContext,
     classifyEmaRegime,
     resolveZone,
+    applyEmaTrendGuard,
     splitRegionByEmaRegime,
     applyEmaRulesToRegions,
     buildPsychologyCache,

@@ -607,7 +607,7 @@ test("impulse wave psychology law holds on all assets", () => {
           );
         }
 
-        if (macro === "bear" && ["1", "3", "5"].includes(waveId)) {
+        if (modelName === "elliott" && macro === "bear" && ["1", "3", "5"].includes(waveId)) {
           assert.ok(
             !bearImpulseForbidden.has(region.zone),
             `${assetFile} ${modelName} bear wave ${waveId} at ${region.startDate} cannot be ${region.zone}`
@@ -622,6 +622,86 @@ test("impulse wave psychology law holds on all assets", () => {
         }
       });
     });
+  });
+});
+
+const buildEmaContextAt = (series, date) => {
+  const daily = PsychologyEngine.aggregateSeries(series, "1D");
+  const ema50 = EmaPsychologyEngine.computeEmaSeries(daily, 50);
+  const ema200 = EmaPsychologyEngine.computeEmaSeries(daily, 200);
+  return EmaPsychologyEngine.buildContext(daily, ema50, ema200, new Map(), date);
+};
+
+test("ema mode never shows panic above EMA50 during uptrend on bitcoin", () => {
+  const bitcoin = loadBitcoin();
+  const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
+  let checked = 0;
+
+  emaCache.regions.forEach((region) => {
+    const context = buildEmaContextAt(bitcoin, region.endDate);
+    if (!context.ready || !context.aboveEma50 || !context.trendUp) {
+      return;
+    }
+
+    checked += 1;
+    assert.ok(
+      region.zone !== "Panic" && region.zone !== "Capitulation",
+      `${region.startDate} should not be ${region.zone} while price is above EMA50 in uptrend`
+    );
+  });
+
+  assert.ok(checked >= 3, "expected several above-EMA50 uptrend regions on bitcoin");
+});
+
+test("ema bull impulse waves 3 and 5 stay positive above EMA50 in uptrend", () => {
+  const forbidden = new Set(["Anxiety", "Denial", "Panic", "Capitulation"]);
+  const bullish = new Set(["Belief", "Euphoria", "Optimism", "Complacency"]);
+  const cases = [
+    {
+      asset: "bitcoin",
+      assertBullMacro: false,
+      minChecked: 1
+    },
+    {
+      asset: "sp500",
+      assertBullMacro: true,
+      minChecked: 2
+    }
+  ];
+
+  cases.forEach(({ asset, assertBullMacro, minChecked }) => {
+    const series = JSON.parse(
+      fs.readFileSync(path.join(root, `data/${asset}.json`), "utf8")
+    );
+    const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(series, { model: "ema" });
+    let checked = 0;
+
+    emaCache.regions.forEach((region) => {
+      if (!["3", "5"].includes(region.waveId)) {
+        return;
+      }
+
+      if (assertBullMacro && region.macroRegime !== "bull") {
+        return;
+      }
+
+      const context = buildEmaContextAt(series, region.endDate);
+      if (!context.ready || !context.aboveEma50 || !context.trendUp) {
+        return;
+      }
+
+      checked += 1;
+      assert.ok(
+        !forbidden.has(region.zone),
+        `${asset} wave ${region.waveId} at ${region.startDate} above EMA50 should not be ${region.zone}`
+      );
+      assert.ok(
+        bullish.has(region.zone),
+        `${asset} wave ${region.waveId} at ${region.startDate} above EMA50 should be bullish psychology`
+      );
+    });
+
+    assert.ok(checked >= minChecked, `expected impulse wave 3/5 above EMA50 on ${asset}`);
   });
 });
 
