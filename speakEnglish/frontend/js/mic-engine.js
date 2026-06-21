@@ -132,8 +132,6 @@ export class MicEngine {
     this.vad = vad;
 
     if (vad.speechStarted) {
-      this.capturing = true;
-      this.utteranceChunks = [];
       this.onSpeechStart?.();
       this.setPhase(MIC_PHASE.HEARING, 'Đang nghe bạn nói...');
     }

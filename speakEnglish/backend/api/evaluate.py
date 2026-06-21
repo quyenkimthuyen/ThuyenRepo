@@ -29,7 +29,7 @@ async def evaluate(
     if not file.filename:
         raise HTTPException(status_code=400, detail={"error": "No audio file provided"})
 
-    allowed = {".webm", ".wav", ".ogg", ".mp3", ".m4a"}
+    allowed = {".webm", ".wav", ".ogg", ".mp3", ".m4a", ".mp4"}
     ext = Path(file.filename).suffix.lower()
     if ext not in allowed:
         raise HTTPException(

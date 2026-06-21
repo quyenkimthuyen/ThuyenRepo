@@ -19,6 +19,7 @@ export const DEFAULT_SILENCE_SEC = 0.35;
 export const MIN_SILENCE_SEC = 0.2;
 export const MAX_SILENCE_SEC = 1.2;
 export const MAX_LATENCY_MS = 5000;
+export const TEXT_MATCH_DELAY_MS = 200;
 export const MAX_TEXT_RESPONSE_MS = 750;
 export const MAX_SCORE_RESPONSE_MS = 3000;
 
