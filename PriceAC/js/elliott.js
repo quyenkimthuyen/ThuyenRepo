@@ -284,6 +284,18 @@ var ElliottEngine = (() => {
   const CAPITULATION_FLAT_CHANGE = 0.05;
   const CAPITULATION_MIN_WEEKS = 4;
   const BULLISH_ZONES = new Set(["Hope", "Optimism", "Belief", "Euphoria"]);
+  const BEARISH_ZONES = new Set(["Anxiety", "Denial", "Panic", "Capitulation"]);
+  const STRONG_BULL_UP_LEG = 0.10;
+  const BULL_UP_ZONE_BY_WAVE = {
+    1: "Hope",
+    2: "Optimism",
+    3: "Belief",
+    4: "Complacency",
+    5: "Euphoria",
+    A: "Hope",
+    B: "Optimism",
+    C: "Belief"
+  };
 
   const measureLeg = (weeklySeries, chain, index) => {
     const start = chain[index];
@@ -532,6 +544,23 @@ var ElliottEngine = (() => {
     return { ...psych, zone: "Denial" };
   };
 
+  const applyBullUptrendGuard = (psych, leg, macroRegime, waveId) => {
+    if (
+      macroRegime !== "bull"
+      || !leg.legUp
+      || leg.legChange < STRONG_BULL_UP_LEG
+      || !psych?.zone
+      || !BEARISH_ZONES.has(psych.zone)
+    ) {
+      return psych;
+    }
+
+    return {
+      ...psych,
+      zone: BULL_UP_ZONE_BY_WAVE[waveId] || "Hope"
+    };
+  };
+
   const applyCapitulationTails = (weeklySeries, regions, chain) => {
     const output = [];
 
@@ -588,6 +617,7 @@ var ElliottEngine = (() => {
     const inCorrection = inferCorrectionPhase(weeklySeries, leg, prevZone, prevRegions);
     let psych = resolvePsychologyByWaveLaw(waveId, leg, prevZone, macroRegime);
     psych = applyCorrectionPhaseGuard(psych, leg, prevZone, inCorrection);
+    psych = applyBullUptrendGuard(psych, leg, macroRegime, waveId);
     return applyLegDirectionGuard(psych, waveId, leg);
   };
 

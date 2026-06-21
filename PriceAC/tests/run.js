@@ -546,6 +546,54 @@ test("elliott bear macro maps wave 2 rallies to denial not optimism", () => {
   }
 });
 
+test("elliott bull macro avoids denial on strong upward legs", () => {
+  const bitcoin = loadBitcoin();
+  const weekly = PsychologyEngine.aggregateSeries(bitcoin, "1W");
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const forbidden = new Set(["Denial", "Anxiety", "Panic"]);
+
+  cache.regions.forEach((region) => {
+    if (region.macroRegime !== "bull") {
+      return;
+    }
+
+    const startIndex = weekly.findIndex((point) => point.date >= region.startDate);
+    const endIndex = weekly.findIndex((point) => point.date >= region.endDate);
+    if (startIndex < 0 || endIndex < 0) {
+      return;
+    }
+
+    const startPrice = weekly[startIndex].close ?? weekly[startIndex].price;
+    const endPrice = weekly[endIndex].close ?? weekly[endIndex].price;
+    const change = startPrice > 0 ? (endPrice - startPrice) / startPrice : 0;
+
+    if (change >= 0.10) {
+      assert.ok(
+        !forbidden.has(region.zone),
+        `${region.startDate} bull leg +${Math.round(change * 100)}% should not map to ${region.zone}`
+      );
+    }
+  });
+});
+
+test("ema accumulation uptrend remaps bear wave 2 denial to hope", () => {
+  const bitcoin = loadBitcoin();
+  const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
+  const rallyRegion = emaCache.regions.find((region) => (
+    region.waveId === "2"
+    && region.emaContext?.regime === "accumulation"
+    && region.emaContext?.trendUp
+    && region.startDate >= "2026-03-01"
+  ));
+
+  if (rallyRegion) {
+    assert.ok(
+      ["Hope", "Optimism", "Belief", "Disbelief"].includes(rallyRegion.zone),
+      `accumulation rally should stay positive, got ${rallyRegion.zone}`
+    );
+  }
+});
+
 test("psychology segments use lower opacity for low confidence zones", () => {
   const bitcoin = loadBitcoin();
   const cache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });

@@ -345,7 +345,19 @@ var EmaPsychologyEngine = (() => {
       return true;
     }
 
-    return polarity.soft;
+    if (!polarity.soft) {
+      return false;
+    }
+
+    if (polarity.allowPositive && !polarity.allowNegative && negative) {
+      return false;
+    }
+
+    if (polarity.allowNegative && !polarity.allowPositive && positive) {
+      return false;
+    }
+
+    return true;
   };
 
   const applyRsiGate = (zone, context, elliottConfidence) => {
