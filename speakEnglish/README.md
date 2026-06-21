@@ -255,9 +255,9 @@ Chỉnh `frontend/data/words.json`, thêm mục theo schema:
 ### Chế độ micro live
 
 1. Nhấn **Bật micro live** (hoặc tự bật nếu bật setting)
-2. Nói từ mục tiêu — text hiện ra ngay (chữ xám = đang nhận diện, chữ trắng = đã chốt)
-3. Thanh VAD nhấp nháy khi có âm thanh vào micro
-4. Khi nhận diện đúng từ → tự gửi audio gần nhất lên backend chấm phoneme (có thể tắt trong Settings)
+2. **Nói từ mục tiêu** — text hiện ra ngay; nếu sai từ sẽ có chú thích đỏ ngay lập tức
+3. **Im lặng ~2 giây** sau khi nói → app tự gọi API chấm phoneme
+4. **Đúng** → tự chuyển từ tiếp theo; **Sai** → hiện gợi ý từng phoneme, đọc lại cùng từ
 
 ## Ghi chú triển khai
 

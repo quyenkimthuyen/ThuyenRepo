@@ -47,7 +47,8 @@
           <p id="live-transcript" class="live-transcript">
             <span id="live-transcript-final"></span><span id="live-transcript-interim" class="interim"></span>
           </p>
-          <p id="live-transcript-placeholder" class="live-placeholder">Bật micro live — nói để thấy text hiện ra theo thời gian thực</p>
+          <p id="live-transcript-placeholder" class="live-placeholder">Bật micro live — nói từ rồi dừng ~2 giây để nhận phản hồi</p>
+          <p id="live-hint" class="live-hint hidden"></p>
         </div>
       </section>
 
@@ -106,7 +107,11 @@
       </label>
       <label class="setting-row">
         <input type="checkbox" id="setting-auto-evaluate" checked>
-        Tự chấm điểm khi nhận diện đúng từ
+        Tự chấm điểm sau khi im lặng ~2 giây
+      </label>
+      <label class="setting-row">
+        Thời gian im lặng (giây)
+        <input type="number" id="setting-silence-sec" value="2" min="1" max="5" step="0.5">
       </label>
       <label class="setting-row">
         API URL

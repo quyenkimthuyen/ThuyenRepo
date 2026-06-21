@@ -232,6 +232,47 @@ body {
   display: none;
 }
 
+.live-hint {
+  margin: 0.5rem 0 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.live-hint.warn {
+  background: rgba(241, 196, 15, 0.12);
+  color: var(--warn);
+  border-left: 3px solid var(--warn);
+}
+
+.live-hint.mis {
+  background: rgba(231, 76, 60, 0.12);
+  color: #f5a9a3;
+  border-left: 3px solid var(--mis);
+}
+
+.live-hint.ok {
+  background: rgba(46, 204, 113, 0.12);
+  color: var(--ok);
+  border-left: 3px solid var(--ok);
+}
+
+/* Live mode: luôn hiện gợi ý phoneme sai */
+.phoneme-container.live-mode .phoneme-box .phoneme-suggestion {
+  display: block;
+}
+
+.phoneme-container.live-mode .phoneme-char.mis,
+.phoneme-container.live-mode .phoneme-char.warn {
+  animation: phoneme-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes phoneme-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
 .controls {
   display: flex;
   flex-wrap: wrap;
