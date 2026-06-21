@@ -8,7 +8,6 @@ import {
   wordsMatch,
   getHangoverMs,
   computeRms,
-  buildUtteranceBlob,
   TEXT_MATCH_DELAY_MS,
 } from './js/core.js';
 import { MicEngine, MIC_PHASE } from './js/mic-engine.js';
@@ -479,9 +478,9 @@ function hideLiveHint() {
 
 function setupMediaRecorder() {
   if (!micStream) return;
-  if (liveMediaRecorder?.state === 'recording') {
-    try { liveMediaRecorder.stop(); } catch { /* ignore */ }
-  }
+  if (phraseRecorder?.state === 'recording') return;
+
+  stopRingRecorder();
 
   liveMimeType = pickRecorderMimeType();
 
@@ -494,6 +493,21 @@ function setupMediaRecorder() {
   liveMediaRecorder.start(RING_CHUNK_MS);
 }
 
+function stopRingRecorder() {
+  if (!liveMediaRecorder) return;
+  if (liveMediaRecorder.state !== 'inactive') {
+    try { liveMediaRecorder.stop(); } catch { /* ignore */ }
+  }
+  liveMediaRecorder = null;
+}
+
+function resumeRingRecorder() {
+  if (!micStream || !liveModeActive || phraseRecorder?.state === 'recording') return;
+  if (!liveMediaRecorder || liveMediaRecorder.state === 'inactive') {
+    setupMediaRecorder();
+  }
+}
+
 function pickRecorderMimeType() {
   if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus';
   if (MediaRecorder.isTypeSupported('audio/webm')) return 'audio/webm';
@@ -501,17 +515,12 @@ function pickRecorderMimeType() {
   return 'audio/webm';
 }
 
-function uploadFilenameForMime(mimeType) {
-  if (mimeType?.includes('mp4')) return 'recording.mp4';
-  if (mimeType?.includes('ogg')) return 'recording.ogg';
-  return 'recording.webm';
-}
-
 /** Ghi âm 1 câu — stop() tạo file webm/mp4 hợp lệ (không ghép chunk) */
 function startPhraseRecording() {
   if (!micStream || phraseRecorder?.state === 'recording') return;
 
   stopPhraseRecordingSync();
+  stopRingRecorder();
   phraseChunks = [];
 
   try {
@@ -523,7 +532,14 @@ function startPhraseRecording() {
   } catch (e) {
     console.warn('phraseRecorder start:', e);
     phraseRecorder = null;
+    resumeRingRecorder();
   }
+}
+
+function phraseBlobFromChunks() {
+  if (!phraseChunks.length) return null;
+  if (phraseChunks.length === 1) return phraseChunks[0];
+  return phraseChunks.reduce((best, c) => (c.size > best.size ? c : best), phraseChunks[0]);
 }
 
 function stopPhraseRecordingSync() {
@@ -534,30 +550,33 @@ function stopPhraseRecordingSync() {
 
 function stopPhraseRecording() {
   return new Promise((resolve) => {
-    if (!phraseRecorder || phraseRecorder.state === 'inactive') {
-      const blob = phraseChunks.length
-        ? new Blob(phraseChunks, { type: liveMimeType })
-        : null;
+    const finish = () => {
+      const blob = phraseBlobFromChunks();
       phraseRecorder = null;
       phraseChunks = [];
-      resolve(blob);
-      return;
-    }
-
-    phraseRecorder.onstop = () => {
-      const blob = phraseChunks.length
-        ? new Blob(phraseChunks, { type: liveMimeType })
-        : null;
-      phraseRecorder = null;
-      phraseChunks = [];
+      resumeRingRecorder();
       resolve(blob);
     };
 
-    try {
-      phraseRecorder.stop();
-    } catch {
-      resolve(null);
+    if (!phraseRecorder || phraseRecorder.state === 'inactive') {
+      finish();
+      return;
     }
+
+    phraseRecorder.onstop = finish;
+
+    const stopNow = () => {
+      try {
+        phraseRecorder.stop();
+      } catch {
+        finish();
+      }
+    };
+
+    try {
+      phraseRecorder.requestData();
+    } catch { /* ignore */ }
+    setTimeout(stopNow, 60);
   });
 }
 
@@ -566,9 +585,11 @@ async function getPhraseAudioBlob() {
     return stopPhraseRecording();
   }
   if (phraseChunks.length) {
-    return new Blob(phraseChunks, { type: liveMimeType });
+    const blob = phraseBlobFromChunks();
+    phraseChunks = [];
+    return blob;
   }
-  return buildUtteranceBlob(audioRingChunks.slice(-12), liveMimeType);
+  return null;
 }
 
 async function flushRecorderData() {
@@ -652,16 +673,11 @@ async function prepareUploadBlob(blob) {
   if (!blob || blob.size < MIN_BLOB_BYTES) {
     throw new Error('Audio quá ngắn — nói rõ hơn và thử lại');
   }
-  try {
-    const wav = await convertBlobToWav(blob);
-    if (wav.size < MIN_UPLOAD_BYTES) {
-      throw new Error('WAV quá ngắn sau khi xử lý');
-    }
-    return { blob: wav, filename: 'recording.wav' };
-  } catch (e) {
-    console.warn('WAV convert failed:', e);
-    return { blob, filename: uploadFilenameForMime(blob.type || liveMimeType) };
+  const wav = await convertBlobToWav(blob);
+  if (wav.size < MIN_UPLOAD_BYTES) {
+    throw new Error('WAV quá ngắn sau khi xử lý');
   }
+  return { blob: wav, filename: 'recording.wav' };
 }
 
 async function handleUtteranceComplete(payload) {
@@ -834,7 +850,7 @@ function stopLiveMode() {
   }
 
   if (liveMediaRecorder?.state !== 'inactive') {
-    liveMediaRecorder.stop();
+    try { liveMediaRecorder.stop(); } catch { /* ignore */ }
   }
   liveMediaRecorder = null;
 
@@ -892,6 +908,7 @@ function pauseListeningForSample() {
   speechRecognitionPaused = true;
   stopPhraseRecordingSync();
   phraseChunks = [];
+  stopRingRecorder();
   micEngine?.setSampleMode(true);
   micEngine?.pause();
   clearLiveTranscript();
@@ -913,6 +930,7 @@ function resumeListeningAfterSample() {
     isSamplePlaying = false;
     speechRecognitionPaused = false;
     micEngine?.resume();
+    resumeRingRecorder();
 
     if (liveModeActive && speechRecognition) {
       try { speechRecognition.start(); } catch { /* ignore */ }
@@ -1055,7 +1073,10 @@ async function evaluateRecording(blob = null, options = {}) {
   } catch (prepErr) {
     els.spinner.classList.add('hidden');
     isEvaluating = false;
-    const msg = prepErr.message || 'Không xử lý được audio';
+    let msg = prepErr.message || 'Không xử lý được audio';
+    if (/decode|encoding|Unable to decode/i.test(msg)) {
+      msg = 'Không đọc được audio — nói rõ hơn (~0.5s) rồi thử lại';
+    }
     showLiveHint('Lỗi audio: ' + msg, 'mis');
     if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     return;
@@ -1085,9 +1106,12 @@ async function evaluateRecording(blob = null, options = {}) {
     isEvaluating = false;
 
     if (!res.ok) {
-      const msg = typeof data.detail === 'object'
+      let msg = typeof data.detail === 'object'
         ? (data.detail?.error || JSON.stringify(data.detail))
         : (data.detail || data.error || `HTTP ${res.status}`);
+      if (/ffmpeg failed/i.test(msg)) {
+        msg = 'File audio không hợp lệ — nói rõ hơn (~0.5s) rồi thử lại';
+      }
       showLiveHint('Lỗi chấm điểm: ' + msg, 'mis');
       if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
       return;
