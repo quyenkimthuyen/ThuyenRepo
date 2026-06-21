@@ -466,7 +466,13 @@ test("ema mode builds separate cache and enforces EMA/trend zone rules on bitcoi
 
   let checked = 0;
   emaCache.regions.forEach((region) => {
-    const context = EmaPsychologyEngine.buildContext(daily, ema50, ema200, region.endDate);
+    const context = EmaPsychologyEngine.buildContext(
+      daily,
+      ema50,
+      ema200,
+      new Map(),
+      region.endDate
+    );
     if (!context.ready || region.zone === "Observing") {
       return;
     }
@@ -484,6 +490,48 @@ test("ema mode builds separate cache and enforces EMA/trend zone rules on bitcoi
     region.zone !== elliottCache.regions[index]?.zone
   ));
   assert.ok(hasDifference, "EMA mode should remap at least one region vs Elliott");
+});
+
+test("ema mode splits long regions when EMA regime changes with confirmation", () => {
+  const bitcoin = loadBitcoin();
+  const elliottCache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
+
+  assert.ok(
+    emaCache.regions.length >= elliottCache.regions.length,
+    "weekly EMA refinement should not reduce region count"
+  );
+});
+
+test("elliott bear macro maps wave 2 rallies to denial not optimism", () => {
+  const bitcoin = loadBitcoin();
+  const weekly = PsychologyEngine.aggregateSeries(bitcoin, "1W");
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const bearWave2 = cache.regions.find((region) => (
+    region.macroRegime === "bear" && region.waveId === "2"
+  ));
+
+  if (bearWave2) {
+    assert.ok(
+      ["Denial", "Anxiety", "Disbelief"].includes(bearWave2.zone),
+      `bear wave 2 should be bearish psychology, got ${bearWave2.zone}`
+    );
+  }
+});
+
+test("psychology segments use lower opacity for low confidence zones", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
+  const visible = RangeUtils.buildVisibleSeries(bitcoin, "1Y", "1D", PsychologyEngine.aggregateSeries);
+  const timeline = PsychologyEngine.projectPsychologyToSeries(cache, visible);
+  const segments = PsychologyEngine.buildPsychologySegments(visible, timeline);
+  const low = segments.find((segment) => segment.lowConfidence);
+  const high = segments.find((segment) => !segment.lowConfidence && segment.opacity);
+
+  assert.ok(segments.length >= 1);
+  if (low && high) {
+    assert.ok(low.opacity < high.opacity, "low confidence segments should be more transparent");
+  }
 });
 
 test("ema psychology cache saves and loads with separate storage key", () => {

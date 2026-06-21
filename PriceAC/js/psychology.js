@@ -40,6 +40,15 @@ var PsychologyEngine = (() => {
   };
 
   const zoneBackgroundAlpha = 0.32;
+  const LOW_CONFIDENCE_THRESHOLD = 55;
+
+  const zoneAlphaForConfidence = (confidence) => {
+    if (confidence == null || confidence < LOW_CONFIDENCE_THRESHOLD) {
+      return zoneBackgroundAlpha * 0.42;
+    }
+
+    return zoneBackgroundAlpha * (0.58 + (confidence / 100) * 0.42);
+  };
 
   const zoneLabelsVi = {
     Hope: "Hy vọng",
@@ -733,7 +742,7 @@ var PsychologyEngine = (() => {
 
   const TEN_YEAR_DAYS = 365 * 10;
   const PSYCHOLOGY_CACHE_PREFIX = "priceac.psychology.v3.";
-  const PSYCHOLOGY_CACHE_VERSION = 8;
+  const PSYCHOLOGY_CACHE_VERSION = 9;
   const REFERENCE_ASSET = "bitcoin";
 
   const getCacheStorageKey = (asset, model = "elliott") => (
@@ -753,6 +762,7 @@ var PsychologyEngine = (() => {
     color: zoneColors[region.zone] || zoneColors.Observing,
     label: zoneLabelsVi[region.zone] || zoneLabelsVi.Observing,
     confidence: region.confidence,
+    lowConfidence: (region.confidence ?? 100) < LOW_CONFIDENCE_THRESHOLD || region.zone === "Observing",
     elliottLabel: region.elliottLabel,
     elliottWave: region.waveId
   });
@@ -1487,9 +1497,12 @@ var PsychologyEngine = (() => {
       const zone = timeline[index]?.zone || "Observing";
 
       if (zone !== currentZone) {
+        const prevPoint = timeline[index - 1];
         segments.push({
           zone: currentZone,
-          color: timeline[index - 1]?.color || zoneColors.Observing,
+          color: prevPoint?.color || zoneColors.Observing,
+          opacity: zoneAlphaForConfidence(prevPoint?.confidence),
+          lowConfidence: prevPoint?.lowConfidence,
           points: [...points]
         });
         currentZone = zone;
@@ -1500,9 +1513,12 @@ var PsychologyEngine = (() => {
       points.push(visibleSeries[index]);
     }
 
+    const lastPoint = timeline[timeline.length - 1];
     segments.push({
       zone: currentZone,
-      color: timeline[timeline.length - 1]?.color || zoneColors.Observing,
+      color: lastPoint?.color || zoneColors.Observing,
+      opacity: zoneAlphaForConfidence(lastPoint?.confidence),
+      lowConfidence: lastPoint?.lowConfidence,
       points
     });
 
@@ -1662,6 +1678,8 @@ var PsychologyEngine = (() => {
     cycle,
     zoneColors,
     zoneBackgroundAlpha,
+    zoneAlphaForConfidence,
+    LOW_CONFIDENCE_THRESHOLD,
     zoneLabelsVi,
     TEN_YEAR_DAYS,
     REFERENCE_ASSET,

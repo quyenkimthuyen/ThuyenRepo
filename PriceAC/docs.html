@@ -96,58 +96,73 @@
       </section>
 
       <section class="docs-section" id="ema">
-        <h2>3. Quy tắc EMA 50 / 200</h2>
+        <h2>3. Quy tắc EMA 50 / 200 (lớp regime)</h2>
         <p>
-          Khung thời gian giai đoạn lấy từ sóng Elliott tuần; tên vùng tâm lý được <strong>lọc lại</strong> theo vị trí giá so với EMA và xu hướng ngắn hạn (~20 ngày).
+          Elliott chia <strong>khung thời gian</strong> (nến tuần). EMA lọc lại <strong>tên vùng</strong> theo regime thị trường.
+          Mỗi region Elliott dài có thể được <strong>cắt nhỏ theo tuần</strong> khi regime EMA đổi ≥ 2 tuần liên tiếp.
         </p>
 
-        <h3>3.1 Quy tắc cốt lõi</h3>
+        <h3>3.1 Năm regime EMA</h3>
         <div class="docs-table-wrap">
           <table class="docs-table docs-table--wide">
             <thead>
               <tr>
+                <th>Regime</th>
                 <th>Điều kiện</th>
-                <th>Vùng được phép</th>
-                <th>Ví dụ</th>
+                <th>Vùng ưu tiên</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>Giá <strong>trên EMA50 và EMA200</strong></td>
-                <td>Chỉ tích cực</td>
-                <td>Nghi ngờ, Hy vọng, Lạc quan, Niềm tin, Hưng phấn, Chủ quan</td>
+                <td><strong>Bull mạnh</strong></td>
+                <td>Trên EMA50 &amp; EMA200 + xu hướng tăng</td>
+                <td>Chỉ tích cực (Hy vọng → Hưng phấn)</td>
               </tr>
               <tr>
-                <td>Giá <strong>dưới EMA50</strong></td>
-                <td>Chỉ tiêu cực</td>
-                <td>Lo âu, Phủ nhận, Hoảng loạn, Bỏ cuộc</td>
+                <td><strong>Tích lũy</strong></td>
+                <td>Trên EMA50, dưới EMA200 — hoặc golden cross ≤ 8 tuần</td>
+                <td>Nghi ngờ, Hy vọng, Lạc quan (tích lũy đáy)</td>
               </tr>
               <tr>
-                <td><strong>Xu hướng tăng</strong> (giá / EMA50 dốc lên)</td>
-                <td>Chỉ tích cực</td>
-                <td>Không gán vùng bullish khi giá đang giảm</td>
+                <td><strong>Phân phối</strong></td>
+                <td>Dưới EMA50, trên EMA200 — hoặc death cross ≤ 8 tuần</td>
+                <td>Lo âu, Phủ nhận, Chủ quan (phân phối đỉnh)</td>
               </tr>
               <tr>
-                <td><strong>Xu hướng giảm</strong></td>
-                <td>Chỉ tiêu cực</td>
-                <td>Không gán Hy vọng / Lạc quan trong downtrend</td>
+                <td><strong>Bear mạnh</strong></td>
+                <td>Dưới cả hai EMA + xu hướng giảm</td>
+                <td>Chỉ tiêu cực (Lo âu → Bỏ cuộc)</td>
+              </tr>
+              <tr>
+                <td><strong>Trung lập</strong></td>
+                <td>Tín hiệu hỗn hợp</td>
+                <td>Giữ zone Elliott nếu hợp lệ, hoặc <em>Quan sát</em></td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <h3>3.2 Bỏ cuộc</h3>
+        <h3>3.2 Tín hiệu bổ sung</h3>
+        <ul>
+          <li><strong>Drawdown</strong> từ đỉnh ~156 tuần: DD ≤ −35% + dưới EMA50 → ưu tiên Hoảng loạn / Bỏ cuộc.</li>
+          <li><strong>RSI tuần</strong> (khi confidence Elliott &lt; 55): RSI ≥ 70 hạn chế zone quá bullish; RSI ≤ 30 + DD sâu → Nghi ngờ thay vì Hoảng loạn.</li>
+          <li><strong>Golden cross</strong> gần đây + sóng 1–2 → Hy vọng (bull) / Nghi ngờ (bear macro).</li>
+          <li><strong>Bỏ cuộc</strong> sau Hoảng loạn khi dưới EMA50 và không còn trend tăng.</li>
+        </ul>
+
+        <h3>3.3 Cắt region theo tuần</h3>
         <p>
-          <strong>Bỏ cuộc</strong> chỉ sau <strong>Hoảng loạn</strong>, khi giá dưới EMA50 và không còn xu hướng tăng (đi ngang cuối leg sập).
+          Trong một leg Elliott dài, app kiểm tra regime EMA <strong>mỗi tuần</strong>.
+          Khi regime mới giữ ≥ <strong>2 tuần</strong>, region được tách — tránh gán một zone cho cả đoạn
+          trong khi giá đã đổi phía EMA giữa chừng.
         </p>
 
-        <h3>3.3 Ưu tiên quy tắc</h3>
-        <ol>
-          <li>Dưới EMA50 → luôn tiêu cực (kể cả hồi phục ngắn).</li>
-          <li>Trên cả hai EMA + xu hướng tăng → tích cực mạnh nhất.</li>
-          <li>Giữa EMA50–200 → theo xu hướng giá ngắn hạn.</li>
-          <li>Chưa đủ dữ liệu EMA (~200 ngày) → <em>Quan sát</em>.</li>
-        </ol>
+        <h3>3.4 Độ tin cậy &amp; hiển thị</h3>
+        <ul>
+          <li>Confidence Elliott &lt; 55 + regime trung lập → <em>Quan sát</em>.</li>
+          <li>Vùng confidence thấp: nền biểu đồ <strong>mờ hơn</strong> (opacity theo confidence).</li>
+          <li>Chưa đủ ~200 ngày EMA → <em>Quan sát</em>.</li>
+        </ul>
       </section>
 
       <section class="docs-section" id="pipeline">
@@ -156,12 +171,12 @@
           <li><strong>Dữ liệu 10 năm</strong> — tối đa 3 650 ngày gần nhất, gộp nến tuần.</li>
           <li><strong>Sóng Elliott</strong> — phát hiện swing tuần, chuỗi 1-2-3-4-5-A-B-C.</li>
           <li><strong>Gán vùng Elliott</strong> — ánh xạ sóng + hướng giá (mục 6).</li>
-          <li><strong>Lọc EMA</strong> — <code>EmaPsychologyEngine</code> gán lại zone theo EMA50/200 + trend.</li>
+          <li><strong>Lọc EMA</strong> — regime 5 trạng thái, cắt region theo tuần, RSI/drawdown gate.</li>
           <li><strong>Walk-forward (Giả lập theo EMA)</strong> — checkpoint mỗi tuần, chỉ dùng dữ liệu ≤ ngày con trỏ.</li>
         </ol>
         <p class="docs-note">
           Đổi thuật toán hoặc cập nhật giá mới → bấm lại <strong>Phân tích 10 năm</strong>.
-          Cache version hiện tại: <strong>v8</strong>.
+          Cache version hiện tại: <strong>v9</strong> (regime EMA nâng cao + macro Elliott).
         </p>
       </section>
 
@@ -211,7 +226,11 @@
         </p>
         <p>App chỉ dùng 10 vùng này (+ <em>Quan sát</em> khi thiếu dữ liệu). Không dùng các tên cũ như Trầm cảm, Phẫn nộ, Hưng phấn (Thrill).</p>
 
-        <h3>6.2 Ánh xạ sóng Elliott + hướng giá (trước khi lọc EMA)</h3>
+        <h3>6.2 Ánh xạ sóng Elliott (trước lọc EMA) — phụ thuộc macro regime</h3>
+        <p>
+          Mỗi leg lưu <code>macroRegime</code> (bull/bear, drawdown 52 tuần).
+          Cùng một số sóng có zone khác nhau trong bull vs bear — ví dụ sóng 2 bear rally → <strong>Phủ nhận</strong>, không phải Lạc quan.
+        </p>
         <div class="docs-table-wrap">
           <table class="docs-table docs-table--wide">
             <thead>
@@ -239,9 +258,10 @@
         <h3>6.3 Quy tắc bổ sung</h3>
         <ul>
           <li><strong>Bỏ cuộc</strong> không gán khi giá đang sập mạnh — đó là Hoảng loạn.</li>
-          <li>Downtrend (drawdown &gt; 15% từ đỉnh 52 tuần): rally ngắn → Phủ nhận.</li>
+          <li>Downtrend macro: rally ngắn (sóng 2/5 bear) → Phủ nhận / Lo âu.</li>
           <li>Leg giảm không giữ zone bullish (Hy vọng, Lạc quan, Niềm tin, Hưng phấn).</li>
-          <li>Sau lọc EMA (mục 3), zone cuối cùng phải khớp cả Elliott lẫn EMA/trend.</li>
+          <li>Sóng 3 ngắn hơn sóng 1 (vi phạm Elliott) → giảm confidence.</li>
+          <li>Sau lọc EMA (mục 3), zone cuối khớp regime + có thể cắt region theo tuần.</li>
         </ul>
       </section>
 
@@ -261,7 +281,7 @@
             </tbody>
           </table>
         </div>
-        <p>Insight strip hiển thị RSI = trung bình (2D + Tuần + Tháng). Có thể bật/tắt từng đường RSI trên biểu đồ phụ.</p>
+        <p>Insight strip hiển thị RSI = trung bình (2D + Tuần + Tháng). RSI tuần còn tham gia <strong>gate zone</strong> khi confidence Elliott thấp (mục 3.2).</p>
 
         <h3>7.2 EMA trên biểu đồ giá</h3>
         <ul>

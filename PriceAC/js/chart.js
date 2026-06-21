@@ -966,7 +966,7 @@ const MarketChart = (() => {
     segments.forEach((segment) => {
       const start = segment.points[0].date;
       const end = segment.points[segment.points.length - 1].date;
-      const fill = hexToRgba(segment.color, PsychologyEngine.zoneBackgroundAlpha);
+      const fill = hexToRgba(segment.color, segment.opacity ?? PsychologyEngine.zoneBackgroundAlpha);
 
       const series = chart.addAreaSeries({
         baseValue: bounds.base,
@@ -1066,7 +1066,7 @@ const MarketChart = (() => {
           y="${chartTop}"
           width="${rectWidth}"
           height="${chartHeight}"
-          fill="${hexToRgba(segment.color, PsychologyEngine.zoneBackgroundAlpha)}"
+          fill="${hexToRgba(segment.color, segment.opacity ?? PsychologyEngine.zoneBackgroundAlpha)}"
         ></rect>
       `;
     }).join("");

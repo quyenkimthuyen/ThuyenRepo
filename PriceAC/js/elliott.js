@@ -23,11 +23,11 @@ var ElliottEngine = (() => {
       C: { zone: "Panic", weight: 18 }
     },
     bear: {
-      1: { zone: "Hope", weight: 18 },
-      2: { zone: "Optimism", weight: 16 },
-      3: { zone: "Belief", weight: 22 },
-      4: { zone: "Complacency", weight: 16 },
-      5: { zone: "Euphoria", weight: 20 },
+      1: { zone: "Disbelief", weight: 16 },
+      2: { zone: "Denial", weight: 16 },
+      3: { zone: "Panic", weight: 18 },
+      4: { zone: "Anxiety", weight: 14 },
+      5: { zone: "Denial", weight: 14 },
       A: { zone: "Anxiety", weight: 14 },
       B: { zone: "Denial", weight: 16 },
       C: { zone: "Panic", weight: 18 }
@@ -284,7 +284,7 @@ var ElliottEngine = (() => {
     );
   };
 
-  const resolvePsychologyByWaveLaw = (waveId, leg, prevZone) => {
+  const resolvePsychologyByWaveLaw = (waveId, leg, prevZone, macroRegime = "bull") => {
     if (isPostPanicConsolidation(leg, prevZone)) {
       return { zone: "Capitulation", weight: 22 };
     }
@@ -302,22 +302,52 @@ var ElliottEngine = (() => {
           break;
         }
 
+        if (macroRegime === "bear") {
+          psych = leg.legUp
+            ? { zone: "Hope", weight: 14 }
+            : { zone: "Disbelief", weight: 16 };
+          break;
+        }
+
         psych = leg.legUp
           ? { zone: "Hope", weight: 18 }
           : { zone: "Disbelief", weight: 14 };
         break;
 
       case "2":
-        psych = { zone: "Optimism", weight: 16 };
+        if (macroRegime === "bear") {
+          psych = leg.legUp
+            ? { zone: "Denial", weight: 16 }
+            : { zone: "Anxiety", weight: 14 };
+          break;
+        }
+
+        psych = leg.legUp
+          ? { zone: "Optimism", weight: 16 }
+          : { zone: "Anxiety", weight: 14 };
         break;
 
       case "3":
+        if (macroRegime === "bear") {
+          psych = leg.legDown
+            ? { zone: "Panic", weight: 20 }
+            : { zone: "Denial", weight: 14 };
+          break;
+        }
+
         psych = leg.legUp
           ? { zone: "Belief", weight: 22 }
           : { zone: "Anxiety", weight: 14 };
         break;
 
       case "4":
+        if (macroRegime === "bear") {
+          psych = leg.legUp
+            ? { zone: "Hope", weight: 14 }
+            : { zone: "Anxiety", weight: 14 };
+          break;
+        }
+
         if (leg.legDown && leg.hasRecovery) {
           psych = { zone: "Complacency", weight: 16 };
           break;
@@ -329,6 +359,13 @@ var ElliottEngine = (() => {
         break;
 
       case "5":
+        if (macroRegime === "bear") {
+          psych = leg.legUp
+            ? { zone: "Denial", weight: 14 }
+            : { zone: "Anxiety", weight: 14 };
+          break;
+        }
+
         if (leg.legUp && leg.strongLeg) {
           psych = { zone: "Euphoria", weight: 22 };
           break;
@@ -464,8 +501,10 @@ var ElliottEngine = (() => {
   const resolvePsychologyFromLaw = (weeklySeries, chain, index, prevZone = null, prevRegions = []) => {
     const waveId = WAVE_SEQUENCE[index % WAVE_SEQUENCE.length];
     const leg = measureLeg(weeklySeries, chain, index);
+    const endIndex = chain[index + 1].index ?? weeklySeries.length - 1;
+    const macroRegime = inferRegimeAtIndex(weeklySeries, endIndex);
     const inCorrection = inferCorrectionPhase(weeklySeries, leg, prevZone, prevRegions);
-    let psych = resolvePsychologyByWaveLaw(waveId, leg, prevZone);
+    let psych = resolvePsychologyByWaveLaw(waveId, leg, prevZone, macroRegime);
     psych = applyCorrectionPhaseGuard(psych, leg, prevZone, inCorrection);
     return applyLegDirectionGuard(psych, waveId, leg);
   };
@@ -589,6 +628,14 @@ var ElliottEngine = (() => {
       score += 10;
     }
 
+    if (waveId === "3" && index >= 2) {
+      const wave1Leg = Math.abs(chain[index].price - chain[index - 1].price);
+      const wave3Leg = Math.abs(chain[index + 1].price - chain[index].price);
+      if (wave3Leg < wave1Leg * 0.9) {
+        score -= 16;
+      }
+    }
+
     if (chain.length >= 8) {
       score += 8;
     } else if (chain.length >= 5) {
@@ -617,6 +664,7 @@ var ElliottEngine = (() => {
         endDate: chain[index + 1].date,
         zone: psych.zone,
         waveId,
+        macroRegime: direction,
         elliottLabel: `${WAVE_LABELS_VI[waveId]} ${directionLabel}`,
         confidence: scoreRegionConfidence(chain, index)
       });
