@@ -13,13 +13,13 @@ var ElliottEngine = (() => {
 
   const WAVE_PSYCHOLOGY = {
     bull: {
-      1: { zone: "Hope", weight: 18 },
-      2: { zone: "Optimism", weight: 16 },
+      1: { zone: "Disbelief", weight: 18 },
+      2: { zone: "Anxiety", weight: 16 },
       3: { zone: "Belief", weight: 22 },
       4: { zone: "Complacency", weight: 16 },
       5: { zone: "Euphoria", weight: 20 },
       A: { zone: "Anxiety", weight: 14 },
-      B: { zone: "Denial", weight: 16 },
+      B: { zone: "Hope", weight: 16 },
       C: { zone: "Panic", weight: 18 }
     },
     bear: {
@@ -27,10 +27,10 @@ var ElliottEngine = (() => {
       2: { zone: "Denial", weight: 16 },
       3: { zone: "Panic", weight: 18 },
       4: { zone: "Anxiety", weight: 14 },
-      5: { zone: "Denial", weight: 14 },
-      A: { zone: "Anxiety", weight: 14 },
-      B: { zone: "Denial", weight: 16 },
-      C: { zone: "Panic", weight: 18 }
+      5: { zone: "Capitulation", weight: 18 },
+      A: { zone: "Disbelief", weight: 14 },
+      B: { zone: "Hope", weight: 16 },
+      C: { zone: "Capitulation", weight: 18 }
     }
   };
 
@@ -291,8 +291,8 @@ var ElliottEngine = (() => {
   const BEAR_IMPULSE_POSITIVE = new Set(["Hope", "Optimism", "Belief", "Euphoria", "Complacency"]);
   const BEAR_CORRECTIVE_BULLISH = new Set(["Hope", "Optimism", "Belief", "Euphoria"]);
   const BULL_CORRECTIVE_STRONG_BULL = new Set(["Belief", "Euphoria"]);
-  const DEFAULT_BULL_IMPULSE = { 1: "Hope", 3: "Belief", 5: "Euphoria" };
-  const DEFAULT_BEAR_IMPULSE = { 1: "Disbelief", 3: "Panic", 5: "Denial" };
+  const DEFAULT_BULL_IMPULSE = { 1: "Disbelief", 3: "Belief", 5: "Euphoria" };
+  const DEFAULT_BEAR_IMPULSE = { 1: "Disbelief", 3: "Panic", 5: "Capitulation" };
   const DEFAULT_BEAR_CORRECTIVE = { 2: "Denial", 4: "Anxiety" };
   const DEFAULT_BULL_CORRECTIVE = { 2: "Anxiety", 4: "Complacency" };
   const STRONG_BULL_UP_LEG = 0.10;
@@ -394,7 +394,7 @@ var ElliottEngine = (() => {
     }
 
     if (leg.sideways || (waveId === "1" && leg.legFlat && leg.durationWeeks >= CAPITULATION_MIN_WEEKS)) {
-      return { zone: "Disbelief", weight: 16 };
+      return { zone: "Capitulation", weight: 18 };
     }
 
     let psych;
@@ -414,7 +414,7 @@ var ElliottEngine = (() => {
         }
 
         psych = leg.legUp
-          ? { zone: "Hope", weight: 18 }
+          ? { zone: "Disbelief", weight: 18 }
           : { zone: "Disbelief", weight: 14 };
         break;
 
@@ -427,7 +427,7 @@ var ElliottEngine = (() => {
         }
 
         psych = leg.legUp
-          ? { zone: "Optimism", weight: 16 }
+          ? { zone: "Anxiety", weight: 16 }
           : { zone: "Anxiety", weight: 14 };
         break;
 
@@ -466,7 +466,7 @@ var ElliottEngine = (() => {
         if (macroRegime === "bear") {
           psych = leg.legUp
             ? { zone: "Denial", weight: 14 }
-            : { zone: "Anxiety", weight: 14 };
+            : { zone: "Capitulation", weight: 18 };
           break;
         }
 
@@ -487,7 +487,7 @@ var ElliottEngine = (() => {
         break;
 
       case "B":
-        psych = { zone: "Denial", weight: 16 };
+        psych = { zone: macroRegime === "bear" ? "Hope" : "Hope", weight: 16 };
         break;
 
       case "C":

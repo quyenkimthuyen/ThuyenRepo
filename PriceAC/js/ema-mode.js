@@ -5,6 +5,9 @@ var EmaPsychologyEngine = (() => {
   const TREND_LOOKBACK_DAYS = 20;
   const TREND_THRESHOLD = 0.01;
   const EMA_SLOPE_THRESHOLD = 0.004;
+  const SIDEWAYS_TREND_PCT = 0.008;
+  const SIDEWAYS_EMA_SLOPE = 0.0025;
+  const SIDEWAYS_MAX_DRAWDOWN = 0.14;
   const DRAWDOWN_LOOKBACK_DAYS = 156 * 7;
   const GOLDEN_CROSS_LOOKBACK_DAYS = 56;
   const REGIME_CONFIRM_WEEKS = 2;
@@ -27,27 +30,32 @@ var EmaPsychologyEngine = (() => {
     "Capitulation"
   ]);
 
-  const WAVE_BULL = {
-    1: "Hope",
-    2: "Optimism",
+  // Xu hướng tăng: sóng 1–5 + ABC điều chỉnh
+  const WAVE_UPTREND = {
+    1: "Disbelief",
+    2: "Anxiety",
     3: "Belief",
     4: "Complacency",
     5: "Euphoria",
     A: "Anxiety",
-    B: "Denial",
+    B: "Hope",
     C: "Panic"
   };
 
-  const WAVE_BEAR = {
+  // Xu hướng giảm: sóng 1'–5' + ABC tích lũy
+  const WAVE_DOWNTREND = {
     1: "Disbelief",
     2: "Denial",
     3: "Panic",
     4: "Anxiety",
-    5: "Denial",
-    A: "Anxiety",
-    B: "Denial",
-    C: "Panic"
+    5: "Capitulation",
+    A: "Disbelief",
+    B: "Hope",
+    C: "Capitulation"
   };
+
+  const WAVE_BULL = WAVE_UPTREND;
+  const WAVE_BEAR = WAVE_DOWNTREND;
 
   const WAVE_ACCUMULATION = {
     1: "Disbelief",
@@ -261,6 +269,124 @@ var EmaPsychologyEngine = (() => {
     };
   };
 
+  const classifyMacroTrend = (context) => {
+    if (!context.ready) {
+      return "unknown";
+    }
+
+    const rangeBound = (
+      Math.abs(context.trendPct) <= SIDEWAYS_TREND_PCT
+      && Math.abs(context.emaSlope) <= SIDEWAYS_EMA_SLOPE
+      && context.drawdown > -SIDEWAYS_MAX_DRAWDOWN
+      && context.drawdown < 0.06
+    );
+
+    if (rangeBound && !context.trendUp && !context.trendDown) {
+      return "sideways";
+    }
+
+    if (context.aboveBoth && (context.trendUp || context.emaSlope > SIDEWAYS_EMA_SLOPE)) {
+      return "up";
+    }
+
+    if (
+      context.belowEma50
+      && context.belowEma200
+      && (context.trendDown || context.emaSlope < -SIDEWAYS_EMA_SLOPE)
+    ) {
+      return "down";
+    }
+
+    if (context.trendUp && !context.trendDown && context.aboveEma50) {
+      return "up";
+    }
+
+    if (context.trendDown && !context.trendUp && context.belowEma50) {
+      return "down";
+    }
+
+    if (Math.abs(context.trendPct) <= SIDEWAYS_TREND_PCT * 2 && Math.abs(context.emaSlope) <= SIDEWAYS_EMA_SLOPE * 2) {
+      return "sideways";
+    }
+
+    if (context.trendUp) {
+      return "up";
+    }
+
+    if (context.trendDown) {
+      return "down";
+    }
+
+    return "sideways";
+  };
+
+  const pickTrendWaveZone = (waveId, macroTrend) => {
+    if (macroTrend === "sideways") {
+      return "Capitulation";
+    }
+
+    const table = macroTrend === "down" ? WAVE_DOWNTREND : WAVE_UPTREND;
+    return table[waveId] || "Observing";
+  };
+
+  const trendToMacroRegime = (macroTrend) => (macroTrend === "down" ? "bear" : "bull");
+
+  const applyTrendWaveEmaRules = (zone, waveId, macroTrend, context) => {
+    if (!context.ready || !waveId || macroTrend === "sideways") {
+      return macroTrend === "sideways" ? "Capitulation" : zone;
+    }
+
+    let next = zone;
+
+    if (macroTrend === "up") {
+      if (["3", "5"].includes(waveId)) {
+        next = context.aboveBoth
+          ? (waveId === "5" ? "Euphoria" : "Belief")
+          : (waveId === "5" ? "Optimism" : "Hope");
+      }
+
+      if (waveId === "A" && context.belowEma50) {
+        next = "Anxiety";
+      }
+
+      if (waveId === "C") {
+        next = context.belowEma50 ? "Panic" : "Anxiety";
+      }
+
+      if (context.aboveEma50 && (next === "Panic" || next === "Capitulation")) {
+        next = waveId === "5" ? "Euphoria" : "Belief";
+      }
+    }
+
+    if (macroTrend === "down") {
+      if (waveId === "3") {
+        next = context.belowEma50 ? "Panic" : "Denial";
+      }
+
+      if (waveId === "5") {
+        next = context.belowEma50 ? "Capitulation" : "Anxiety";
+      }
+
+      if (waveId === "A") {
+        next = "Disbelief";
+      }
+
+      if (waveId === "B") {
+        next = "Hope";
+      }
+
+      if (waveId === "C") {
+        next = "Capitulation";
+      }
+
+      if (context.aboveEma50 && context.trendUp && next === "Panic" && waveId !== "3") {
+        next = "Denial";
+      }
+    }
+
+    return next;
+  };
+
   const classifyEmaRegime = (context) => {
     if (!context.ready) {
       return "unknown";
@@ -382,62 +508,12 @@ var EmaPsychologyEngine = (() => {
     return zone;
   };
 
-  const applyEmaTrendGuard = (zone, waveId, macroRegime, context) => {
-    if (!context.ready || zone === "Observing" || !waveId) {
-      return zone;
-    }
-
-    const impulse = ElliottEngine.IMPULSE_WAVES?.has(waveId);
-    const panicLike = zone === "Panic" || zone === "Capitulation";
-
-    if (context.aboveEma50 && context.trendUp && panicLike) {
-      if (waveId === "5") {
-        return context.trendPct > 0.08 ? "Euphoria" : "Belief";
-      }
-
-      if (waveId === "3") {
-        return "Belief";
-      }
-
-      if (waveId === "1") {
-        return macroRegime === "bear" ? "Disbelief" : "Hope";
-      }
-
-      return macroRegime === "bear" ? "Denial" : "Optimism";
-    }
-
-    if (macroRegime === "bull" && impulse && NEGATIVE_ZONES.has(zone)) {
-      if (waveId === "5") {
-        return context.aboveEma50 && context.trendUp ? "Euphoria" : "Belief";
-      }
-
-      if (waveId === "3") {
-        return "Belief";
-      }
-
-      return "Hope";
-    }
-
-    if (
-      macroRegime === "bull"
-      && ["3", "5"].includes(waveId)
-      && context.aboveEma50
-      && context.trendUp
-    ) {
-      if (waveId === "5") {
-        return context.trendPct > 0.08 ? "Euphoria" : "Belief";
-      }
-
-      return "Belief";
-    }
-
-    return zone;
-  };
+  const applyEmaTrendGuard = (zone, waveId, macroRegime, context) => (
+    applyTrendWaveEmaRules(zone, waveId, classifyMacroTrend(context), context)
+  );
 
   const resolveZone = (waveId, prevZone, context, options = {}) => {
     const {
-      elliottZone = null,
-      macroRegime = "bull",
       elliottConfidence = 50
     } = options;
 
@@ -445,50 +521,31 @@ var EmaPsychologyEngine = (() => {
       return { zone: "Observing", weight: 0, confidence: 0 };
     }
 
-    const regime = classifyEmaRegime(context);
-    const polarity = resolvePolarity(regime);
-    let zone;
+    const macroTrend = classifyMacroTrend(context);
+    const macroRegime = trendToMacroRegime(macroTrend);
     let weight = 18;
     let confidence = elliottConfidence;
+    let zone;
 
-    if (prevZone === "Panic" && context.belowEma50 && !context.trendUp) {
+    if (macroTrend === "sideways") {
+      zone = "Capitulation";
+      confidence = Math.min(confidence, 58);
+    } else if (prevZone === "Panic" && context.belowEma50 && !context.trendUp) {
       zone = "Capitulation";
       weight = 22;
     } else if (context.drawdown <= -0.35 && context.belowEma50 && context.trendDown) {
       zone = prevZone === "Panic" ? "Capitulation" : "Panic";
       weight = 20;
-    } else if (context.goldenCrossRecent && (waveId === "1" || waveId === "2")) {
-      zone = macroRegime === "bear" ? "Disbelief" : "Hope";
     } else {
-      zone = pickWaveZone(waveId, regime, macroRegime);
-
-      if (polarity.soft && elliottZone && zoneAllowed(elliottZone, polarity)) {
-        zone = elliottZone;
-      } else if (!zoneAllowed(zone, polarity)) {
-        if (polarity.allowPositive && !polarity.allowNegative) {
-          zone = POSITIVE_ZONES.has(zone) ? zone : "Hope";
-        } else if (polarity.allowNegative && !polarity.allowPositive) {
-          zone = NEGATIVE_ZONES.has(zone) ? zone : "Anxiety";
-        } else if (elliottZone && zoneAllowed(elliottZone, polarity)) {
-          zone = elliottZone;
-        } else {
-          zone = "Observing";
-        }
-      }
-
+      zone = pickTrendWaveZone(waveId, macroTrend);
       zone = applyRsiGate(zone, context, elliottConfidence);
 
-      if (regime === "neutral") {
+      if (classifyEmaRegime(context) === "neutral") {
         confidence = Math.min(confidence, 52);
       }
-
-      if (confidence < LOW_CONFIDENCE_THRESHOLD && regime === "neutral" && zone !== "Observing") {
-        if (!elliottZone || !zoneAllowed(elliottZone, polarity)) {
-          zone = "Observing";
-          confidence = Math.min(confidence, 48);
-        }
-      }
     }
+
+    zone = applyTrendWaveEmaRules(zone, waveId, macroTrend, context);
 
     const leg = {
       legUp: context.trendUp,
@@ -503,7 +560,7 @@ var EmaPsychologyEngine = (() => {
     );
 
     return {
-      zone: applyEmaTrendGuard(enforced.zone, waveId, macroRegime, context),
+      zone: applyTrendWaveEmaRules(enforced.zone, waveId, macroTrend, context),
       weight,
       confidence: Math.round(confidence)
     };
@@ -626,23 +683,32 @@ var EmaPsychologyEngine = (() => {
       pieces.forEach((piece) => {
         const context = buildContext(daily, ema50, ema200, weeklyRsiLookup, piece.endDate);
         const regime = classifyEmaRegime(context);
+        const macroTrend = classifyMacroTrend(context);
         const psych = resolveZone(piece.waveId, prevZone, context, {
-          elliottZone: piece.zone,
-          macroRegime: piece.macroRegime || "bull",
           elliottConfidence: piece.confidence ?? 50
         });
         prevZone = psych.zone;
+
+        const trendLabels = {
+          up: "xu hướng tăng",
+          down: "xu hướng giảm",
+          sideways: "đi ngang",
+          unknown: "—"
+        };
 
         output.push({
           ...piece,
           zone: psych.zone,
           confidence: psych.confidence ?? piece.confidence ?? 50,
           lowConfidence: (psych.confidence ?? piece.confidence ?? 50) < LOW_CONFIDENCE_THRESHOLD,
-          elliottLabel: piece.elliottLabel
-            ? `${piece.elliottLabel} · ${formatEmaLabel(context, regime)}`
-            : formatEmaLabel(context, regime),
+          elliottLabel: macroTrend === "sideways"
+            ? `EMA · ${trendLabels.sideways} · không vẽ sóng`
+            : piece.elliottLabel
+              ? `${piece.elliottLabel} · ${formatEmaLabel(context, regime)} · ${trendLabels[macroTrend] || "—"}`
+              : `${formatEmaLabel(context, regime)} · ${trendLabels[macroTrend] || "—"}`,
           emaContext: {
             regime,
+            macroTrend,
             aboveBoth: context.aboveBoth,
             belowEma50: context.belowEma50,
             belowEma200: context.belowEma200,
@@ -754,6 +820,9 @@ var EmaPsychologyEngine = (() => {
     computeEmaSeries,
     buildContext,
     classifyEmaRegime,
+    classifyMacroTrend,
+    pickTrendWaveZone,
+    applyTrendWaveEmaRules,
     resolveZone,
     applyEmaTrendGuard,
     splitRegionByEmaRegime,

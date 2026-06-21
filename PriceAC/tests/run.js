@@ -108,7 +108,7 @@ const ProSimulation = loadEngine("js/pro-simulation.js", "ProSimulation");
 
 const buildSimWalkForwardCache = (fullSeries, cursorDate) => PsychologyEngine.buildUnifiedPsychologyCache(
   fullSeries,
-  { asOfDate: cursorDate, model: "ema" }
+  { asOfDate: cursorDate, model: "ema", walkForwardDisplay: false }
 );
 
 test("filterSeriesByDayRange respects calendar days", () => {
@@ -262,7 +262,11 @@ test("ema and simulation use the same unified psychology pipeline on bitcoin", (
   const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
   const date = daily[600].date;
 
-  const ema = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { asOfDate: date, model: "ema" });
+  const ema = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
+    asOfDate: date,
+    model: "ema",
+    walkForwardDisplay: false
+  });
   const simulation = buildSimWalkForwardCache(bitcoin, date);
 
   const emaZone = PsychologyEngine.getPsychologyZoneAtDate(ema, date);
@@ -482,7 +486,10 @@ test("AppMode persists ema and simulation in localStorage", () => {
 test("ema mode builds separate cache and enforces EMA/trend zone rules on bitcoin", () => {
   const bitcoin = loadBitcoin();
   const elliottCache = PsychologyEngine.buildPsychologyCache(bitcoin);
-  const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
+  const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
+    model: "ema",
+    walkForwardDisplay: false
+  });
   const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D").slice(-PsychologyEngine.TEN_YEAR_DAYS);
   const ema50 = EmaPsychologyEngine.computeEmaSeries(daily, 50);
   const ema200 = EmaPsychologyEngine.computeEmaSeries(daily, 200);
@@ -522,7 +529,10 @@ test("ema mode builds separate cache and enforces EMA/trend zone rules on bitcoi
 test("ema mode splits long regions when EMA regime changes with confirmation", () => {
   const bitcoin = loadBitcoin();
   const elliottCache = PsychologyEngine.buildPsychologyCache(bitcoin);
-  const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
+  const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
+    model: "ema",
+    walkForwardDisplay: false
+  });
 
   assert.ok(
     emaCache.regions.length >= elliottCache.regions.length,
@@ -588,7 +598,7 @@ test("impulse wave psychology law holds on all assets", () => {
     );
     const models = [
       ["elliott", PsychologyEngine.buildPsychologyCache(series)],
-      ["ema", PsychologyEngine.buildUnifiedPsychologyCache(series, { model: "ema" })]
+      ["ema", PsychologyEngine.buildUnifiedPsychologyCache(series, { model: "ema", walkForwardDisplay: false })]
     ];
 
     models.forEach(([modelName, cache]) => {
@@ -632,10 +642,61 @@ const buildEmaContextAt = (series, date) => {
   return EmaPsychologyEngine.buildContext(daily, ema50, ema200, new Map(), date);
 };
 
+test("trend wave rules map psychology by direction and EMA position", () => {
+  const bitcoin = loadBitcoin();
+  const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
+    model: "ema",
+    walkForwardDisplay: false
+  });
+  const forbiddenUp = new Set(["Panic", "Capitulation"]);
+  const forbiddenDown = new Set(["Euphoria", "Optimism", "Belief"]);
+  let upWave35 = 0;
+  let downWave35 = 0;
+
+  emaCache.regions.forEach((region) => {
+    const context = buildEmaContextAt(bitcoin, region.endDate);
+    if (!context.ready) {
+      return;
+    }
+
+    const trend = EmaPsychologyEngine.classifyMacroTrend(context);
+
+    if (trend === "sideways") {
+      assert.equal(region.zone, "Capitulation", `${region.startDate} sideways should be Capitulation`);
+      return;
+    }
+
+    if (trend === "up" && ["3", "5"].includes(region.waveId) && context.aboveBoth) {
+      upWave35 += 1;
+      assert.ok(!forbiddenUp.has(region.zone), `uptrend wave ${region.waveId} above EMA50/200 cannot be ${region.zone}`);
+      assert.ok(
+        ["Belief", "Euphoria"].includes(region.zone),
+        `uptrend wave ${region.waveId} above EMA50/200 should be Belief/Euphoria`
+      );
+    }
+
+    if (trend === "down" && ["3", "5"].includes(region.waveId) && context.belowEma50) {
+      downWave35 += 1;
+      assert.ok(!forbiddenDown.has(region.zone), `downtrend wave ${region.waveId} below EMA50 cannot be ${region.zone}`);
+      assert.ok(
+        ["Panic", "Capitulation", "Denial", "Anxiety"].includes(region.zone),
+        `downtrend wave ${region.waveId} below EMA50 should be bearish psychology`
+      );
+    }
+  });
+
+  assert.ok(upWave35 >= 1, "expected uptrend wave 3/5 above both EMAs");
+  assert.ok(downWave35 >= 1, "expected downtrend wave 3/5 below EMA50");
+});
+
 test("ema display cache uses walk-forward pipeline like simulation", () => {
   const bitcoin = loadBitcoin();
-  const emaDisplay = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
-  const snapshot = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
+  const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
+  const endDate = daily.at(-1).date;
+  const startIndex = Math.max(0, daily.length - 400);
+  const sample = bitcoin.filter((point) => point.date >= daily[startIndex].date);
+  const emaDisplay = PsychologyEngine.buildUnifiedPsychologyCache(sample, { model: "ema" });
+  const snapshot = PsychologyEngine.buildUnifiedPsychologyCache(sample, {
     model: "ema",
     walkForwardDisplay: false
   });
@@ -647,9 +708,7 @@ test("ema display cache uses walk-forward pipeline like simulation", () => {
     "walk-forward display should keep weekly region history"
   );
 
-  const endDate = bitcoin[bitcoin.length - 1].date;
-  const simComposed = PsychologyEngine.buildEmaWalkForwardDisplayCache(bitcoin);
-
+  const simComposed = PsychologyEngine.buildEmaWalkForwardDisplayCache(sample);
   assert.equal(
     PsychologyEngine.getPsychologyZoneAtDate(emaDisplay, endDate),
     PsychologyEngine.getPsychologyZoneAtDate(simComposed, endDate),
@@ -659,7 +718,10 @@ test("ema display cache uses walk-forward pipeline like simulation", () => {
 
 test("ema mode never shows panic above EMA50 during uptrend on bitcoin", () => {
   const bitcoin = loadBitcoin();
-  const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
+  const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
+    model: "ema",
+    walkForwardDisplay: false
+  });
   let checked = 0;
 
   emaCache.regions.forEach((region) => {
@@ -698,7 +760,10 @@ test("ema bull impulse waves 3 and 5 stay positive above EMA50 in uptrend", () =
     const series = JSON.parse(
       fs.readFileSync(path.join(root, `data/${asset}.json`), "utf8")
     );
-    const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(series, { model: "ema" });
+    const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(series, {
+      model: "ema",
+      walkForwardDisplay: false
+    });
     let checked = 0;
 
     emaCache.regions.forEach((region) => {
@@ -732,7 +797,10 @@ test("ema bull impulse waves 3 and 5 stay positive above EMA50 in uptrend", () =
 
 test("psychology segments use lower opacity for low confidence zones", () => {
   const bitcoin = loadBitcoin();
-  const cache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
+  const cache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
+    model: "ema",
+    walkForwardDisplay: false
+  });
   const visible = RangeUtils.buildVisibleSeries(bitcoin, "1Y", "1D", PsychologyEngine.aggregateSeries);
   const timeline = PsychologyEngine.projectPsychologyToSeries(cache, visible);
   const segments = PsychologyEngine.buildPsychologySegments(visible, timeline);
@@ -747,7 +815,10 @@ test("psychology segments use lower opacity for low confidence zones", () => {
 
 test("ema psychology cache saves and loads with separate storage key", () => {
   const bitcoin = loadBitcoin();
-  const cache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
+  const cache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
+    model: "ema",
+    walkForwardDisplay: false
+  });
 
   PsychologyEngine.savePsychologyCache("bitcoin", cache, "ema");
   const loaded = PsychologyEngine.loadPsychologyCache("bitcoin", "ema");
@@ -774,7 +845,10 @@ test("simulation mode builds timeline and cutoff date", () => {
       hasCache: false
     }),
     refreshPsychology: (cursorDate) => buildSimWalkForwardCache(bitcoin, cursorDate),
-    getBaselineCache: () => PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" }),
+    getBaselineCache: () => PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
+      model: "ema",
+      walkForwardDisplay: false
+    }),
     onFrame: () => {}
   });
 
@@ -794,7 +868,10 @@ test("simulation mode builds timeline and cutoff date", () => {
 
 test("psychology compare uses zone at date for walk-forward vs 10Y", () => {
   const bitcoin = loadBitcoin();
-  const baseline = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
+  const baseline = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
+    model: "ema",
+    walkForwardDisplay: false
+  });
   const walkForward = PsychologyEngine.buildPsychologyCache(bitcoin.slice(0, 400));
   const date = PsychologyEngine.aggregateSeries(bitcoin, "1D")[399].date;
   const comparison = PsychologyEngine.comparePsychologyAtDate(walkForward, baseline, date);
@@ -807,7 +884,10 @@ test("psychology compare uses zone at date for walk-forward vs 10Y", () => {
 test("simulation accuracy tracks weekly zone match against 10Y baseline", () => {
   const bitcoin = loadBitcoin();
   const daily = PsychologyEngine.aggregateSeries(bitcoin, "1D");
-  const baseline = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
+  const baseline = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
+    model: "ema",
+    walkForwardDisplay: false
+  });
 
   AppMode.setMode("simulation");
   ProSimulation.init({
@@ -940,7 +1020,10 @@ test("weekly walk-forward accuracy report vs 10Y baseline", () => {
     ProSimulation.init({
       getContext: () => ({ fullData: bitcoin, interval: "1D", hasCache: false }),
       refreshPsychology: (cursorDate) => buildSimWalkForwardCache(bitcoin, cursorDate),
-      getBaselineCache: () => PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" }),
+      getBaselineCache: () => PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
+      model: "ema",
+      walkForwardDisplay: false
+    }),
       onFrame: () => {}
     });
     ProSimulation.arm(start, end);
