@@ -5,8 +5,6 @@
 import {
   PRACTICE_MODE,
   MIC_STATE,
-  TEXT_FAST_MS,
-  SCORE_FAST_MS,
   normalizeWord,
   wordsMatch,
   extractSpokenWord,
@@ -53,9 +51,9 @@ const SPEECH_RMS_THRESHOLD = 0.010;
 const MIN_SPEECH_MS = 200;
 const MIN_BLOB_BYTES = 100;
 const MIC_RESET_IDLE_MS = 3000;
-const TEXT_FAST_MS = 280;
-const SCORE_FAST_MS = 450;
 const MAX_SCORE_AUDIO_SEC = 3;
+
+const SETTINGS_KEY = 'pronouncelab_settings';
 
 // Utterance session
 let utteranceActive = false;
@@ -249,13 +247,11 @@ function applyPracticeModeUI() {
 }
 
 function getSilenceMs() {
-  const sec = parseFloat(els.settingSilenceSec?.value) || 0.5;
-  return Math.round(sec * 1000);
+  return getSilenceMsFromSetting(parseFloat(els.settingSilenceSec?.value) || 0.5);
 }
 
-function getSilenceMsForMode() {
-  const base = getSilenceMs();
-  return isTextMode() ? Math.min(base, 500) : Math.min(base, 700);
+function getModeSilenceMs() {
+  return getSilenceMsForMode(parseFloat(els.settingSilenceSec?.value) || 0.5, isTextMode());
 }
 
 function clearFastProcessTimer() {
@@ -428,31 +424,8 @@ function initLiveSpeech() {
   };
 }
 
-function normalizeWord(s) {
-  return s.toLowerCase().replace(/[^a-z']/g, '').trim();
-}
-
-function wordsMatch(spoken, target) {
-  const s = normalizeWord(spoken);
-  const t = normalizeWord(target);
-  if (!s || !t) return false;
-  if (s === t || s.includes(t) || t.includes(s)) return true;
-  // Cho phép sai lệch nhỏ (ví dụ "helou" ~ "hello")
-  if (Math.abs(s.length - t.length) <= 2) {
-    let diff = 0;
-    const maxLen = Math.max(s.length, t.length);
-    for (let i = 0; i < maxLen; i++) {
-      if (s[i] !== t[i]) diff++;
-    }
-    return diff <= 2;
-  }
-  return false;
-}
-
 function getSpokenWord() {
-  const combined = (liveTranscriptFinal + ' ' + liveTranscriptInterim).trim();
-  if (!combined) return '';
-  return combined.split(/\s+/).pop() || combined;
+  return extractSpokenWord(liveTranscriptFinal, liveTranscriptInterim);
 }
 
 function showLiveHint(message, type = 'warn') {
@@ -717,15 +690,17 @@ function onSpeechActivity(isFinal = false) {
   const spoken = getSpokenWord();
 
   if (spoken && w && wordsMatch(spoken, w.word)) {
-    const delay = isTextMode()
-      ? (isFinal ? TEXT_FAST_MS : TEXT_FAST_MS + 120)
-      : (isFinal ? SCORE_FAST_MS : getSilenceMsForMode());
+    const delay = getFastProcessDelay(
+      isTextMode(),
+      isFinal,
+      parseFloat(els.settingSilenceSec?.value) || 0.5,
+    );
     scheduleFastProcess(delay);
     return;
   }
 
   clearSpeechSilenceTimer();
-  const delay = getSilenceMsForMode();
+  const delay = getModeSilenceMs();
   speechSilenceTimer = setTimeout(() => {
     speechSilenceTimer = null;
     if (liveModeActive && !isEvaluating && !utteranceEnding && !isAdvancing) {
@@ -992,7 +967,7 @@ function startVadLoop() {
 
     const now = Date.now();
     const isSpeaking = rms > SPEECH_RMS_THRESHOLD;
-    const silenceMs = getSilenceMsForMode();
+    const silenceMs = getModeSilenceMs();
 
     if (isSpeaking) {
       noteSoundActivity();

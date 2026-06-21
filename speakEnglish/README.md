@@ -173,6 +173,19 @@ export ALIGNMENT_METHOD=mfa
 
 Xem thêm: `backend/scripts/setup_aligner.sh mfa`
 
+## Kiểm thử (Tests)
+
+```bash
+./scripts/run_tests.sh
+```
+
+| Suite | Số test | Nội dung |
+|-------|---------|----------|
+| Backend pytest | 22 | API, phoneme utils, latency < 5s |
+| Frontend node | 19 | wordsMatch, timing, VAD, words.json |
+
+Chi tiết manual E2E: [TEST_PLAN.md](TEST_PLAN.md)
+
 ## API
 
 ### `POST /api/v1/evaluate`

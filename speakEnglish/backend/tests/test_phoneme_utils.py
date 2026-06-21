@@ -52,6 +52,3 @@ def test_build_phoneme_result_shape():
     assert r["label"] == "ok"
     assert r["start"] == 0.1
     assert "suggestion" in r
-
-
-# helper if missing - check phoneme_utils doesn't have words_match_phoneme_label

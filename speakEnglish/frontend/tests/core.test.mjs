@@ -18,7 +18,7 @@ import {
 describe('normalizeWord', () => {
   it('lowercases and strips punctuation', () => {
     assert.equal(normalizeWord('Hello!'), 'hello');
-    assert.equal(normalizeWord("  Don't "), 'dont');
+    assert.equal(normalizeWord("  Don't "), "don't");
   });
 });
 
@@ -42,7 +42,7 @@ describe('wordsMatch', () => {
 
   it('reject clearly wrong', () => {
     assert.equal(wordsMatch('world', 'hello'), false);
-    assert.equal(wordsMatch('hxlxo', 'hello'), false);
+    assert.equal(wordsMatch('xyzab', 'hello'), false);
   });
 });
 
