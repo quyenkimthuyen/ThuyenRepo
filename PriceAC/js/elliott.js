@@ -218,7 +218,13 @@ var ElliottEngine = (() => {
     return clamp(average * 2.2, 6, 20);
   };
 
-  // Chỉ giữ swing lớn nhất trên khung tuần (macro Elliott).
+  // Macro Elliott tuần — tối ưu cho Bitcoin chu kỳ ~4 năm (halving).
+  const BTC_CYCLE_WEEKS = 208;
+  const BTC_CYCLE_MIN_LOW_WEEKS = 52;
+  const MACRO_EXTREMA_WINDOW = 26;
+  const MACRO_MIN_LEG_PCT = 0.15;
+  const MACRO_MIN_WEEKS = 8;
+  const MACRO_MAX_PIVOTS_PER_CYCLE = 6;
   const MAJOR_DEVIATION_LOOKBACK_WEEKS = 52;
   const MAJOR_DEVIATION_MULTIPLIER = 3.8;
   const MAJOR_DEVIATION_MIN = 12;
@@ -258,6 +264,143 @@ var ElliottEngine = (() => {
     return Math.abs(rightIndex - leftIndex);
   };
 
+  const detectLocalExtremaPivots = (weeklySeries, windowWeeks = MACRO_EXTREMA_WINDOW) => {
+    if (!weeklySeries?.length || weeklySeries.length < windowWeeks + 2) {
+      return [];
+    }
+
+    const half = Math.floor(windowWeeks / 2);
+    const raw = [];
+
+    for (let index = half; index < weeklySeries.length - half; index += 1) {
+      let isHigh = true;
+      let isLow = true;
+      const high = getHigh(weeklySeries[index]);
+      const low = getLow(weeklySeries[index]);
+
+      for (let probe = index - half; probe <= index + half; probe += 1) {
+        if (probe === index) {
+          continue;
+        }
+
+        if (getHigh(weeklySeries[probe]) > high) {
+          isHigh = false;
+        }
+
+        if (getLow(weeklySeries[probe]) < low) {
+          isLow = false;
+        }
+      }
+
+      if (isHigh) {
+        raw.push({
+          index,
+          date: weeklySeries[index].date,
+          price: high,
+          type: "high"
+        });
+      } else if (isLow) {
+        raw.push({
+          index,
+          date: weeklySeries[index].date,
+          price: low,
+          type: "low"
+        });
+      }
+    }
+
+    return normalizeSwingAlternation(raw);
+  };
+
+  const pruneCloseMacroPivots = (pivots, weeklySeries) => {
+    if (pivots.length < 3) {
+      return pivots;
+    }
+
+    let filtered = [...pivots];
+    let changed = true;
+
+    while (changed && filtered.length > 2) {
+      changed = false;
+
+      for (let index = 1; index < filtered.length - 1; index += 1) {
+        const spanWeeks = weeksBetween(
+          weeklySeries,
+          filtered[index - 1].index,
+          filtered[index + 1].index
+        );
+        const legBefore = Math.abs(filtered[index].price - filtered[index - 1].price);
+        const legAfter = Math.abs(filtered[index + 1].price - filtered[index].price);
+        const base = Math.max(filtered[index - 1].price, filtered[index + 1].price, 1);
+        const minorLeg = Math.min(legBefore, legAfter) / base < MACRO_MIN_LEG_PCT;
+        const tooClose = spanWeeks < MACRO_MIN_WEEKS * 2;
+
+        if (minorLeg || tooClose) {
+          filtered.splice(index, 1);
+          changed = true;
+          break;
+        }
+      }
+    }
+
+    return normalizeSwingAlternation(filtered);
+  };
+
+  const pruneFourYearBuckets = (
+    pivots,
+    weeklySeries,
+    cycleWeeks = BTC_CYCLE_WEEKS,
+    maxPerCycle = MACRO_MAX_PIVOTS_PER_CYCLE
+  ) => {
+    if (pivots.length <= maxPerCycle) {
+      return pivots;
+    }
+
+    const tagged = pivots.map((pivot, order) => ({ ...pivot, order }));
+    const origin = tagged[0].index;
+    const buckets = new Map();
+
+    tagged.forEach((pivot) => {
+      const bucket = Math.floor((pivot.index - origin) / cycleWeeks);
+      if (!buckets.has(bucket)) {
+        buckets.set(bucket, []);
+      }
+      buckets.get(bucket).push(pivot);
+    });
+
+    const keep = new Set();
+
+    buckets.forEach((bucketPivots) => {
+      let current = [...bucketPivots];
+
+      while (current.length > maxPerCycle && current.length > 2) {
+        let removeAt = 1;
+        let smallest = Infinity;
+
+        for (let index = 1; index < current.length - 1; index += 1) {
+          const bridge = Math.abs(current[index + 1].price - current[index - 1].price);
+          if (bridge < smallest) {
+            smallest = bridge;
+            removeAt = index;
+          }
+        }
+
+        current.splice(removeAt, 1);
+      }
+
+      current.forEach((pivot) => keep.add(pivot.order));
+    });
+
+    return pivots.filter((_, order) => keep.has(order));
+  };
+
+  const detectMajorWeeklySwings = (weeklySeries) => {
+    let pivots = detectLocalExtremaPivots(weeklySeries, MACRO_EXTREMA_WINDOW);
+    pivots = pruneCloseMacroPivots(pivots, weeklySeries);
+    pivots = pruneFourYearBuckets(pivots, weeklySeries);
+    return pivots;
+  };
+
   const filterMajorSwings = (swings, weeklySeries, minLegPctOfRange = MAJOR_LEG_MIN_RANGE_PCT) => {
     if (swings.length < 3 || weeklySeries.length < 3) {
       return swings;
@@ -294,12 +437,6 @@ var ElliottEngine = (() => {
     return normalizeSwingAlternation(filtered);
   };
 
-  const detectMajorWeeklySwings = (weeklySeries) => {
-    const deviation = buildMajorWeeklyDeviation(weeklySeries);
-    const swings = detectSwings(weeklySeries, deviation);
-    return filterMajorSwings(swings, weeklySeries);
-  };
-
   const findExtremePivot = (weeklySeries, fromIndex, toIndex, type) => {
     const pick = type === "high" ? getHigh : getLow;
     let best = {
@@ -325,10 +462,46 @@ var ElliottEngine = (() => {
     return best;
   };
 
-  const findCycleStart = (chain) => {
-    const cycle = inferCycle(chain);
-    return cycle?.start ?? 0;
+  const findMacroCycleStarts = (chain) => {
+    const starts = [];
+
+    chain.forEach((pivot, index) => {
+      if (pivot.type !== "low") {
+        return;
+      }
+
+      if (!starts.length) {
+        starts.push(index);
+        return;
+      }
+
+      const lastStartIndex = starts[starts.length - 1];
+      const gapWeeks = pivot.index - chain[lastStartIndex].index;
+
+      if (gapWeeks >= BTC_CYCLE_MIN_LOW_WEEKS) {
+        starts.push(index);
+      }
+    });
+
+    return starts.length ? starts : [0];
   };
+
+  const findCycleStartForLeg = (legIndex, cycleStarts) => {
+    let cycleStart = cycleStarts[0];
+
+    cycleStarts.forEach((candidate) => {
+      if (candidate <= legIndex) {
+        cycleStart = candidate;
+      }
+    });
+
+    return cycleStart;
+  };
+
+  const findCycleStart = (chain) => findCycleStartForLeg(
+    Math.max(0, chain.length - 2),
+    findMacroCycleStarts(chain)
+  );
 
   const waveIdForLeg = (legIndex, cycleStart) => {
     const offset = ((legIndex - cycleStart) % WAVE_SEQUENCE.length + WAVE_SEQUENCE.length) % WAVE_SEQUENCE.length;
@@ -888,10 +1061,11 @@ var ElliottEngine = (() => {
     const seriesStart = weeklySeries[0].date;
     const seriesEnd = weeklySeries[weeklySeries.length - 1].date;
     const chain = buildPivotChain(weeklySeries, swings);
-    const cycleStart = findCycleStart(chain);
+    const cycleStarts = findMacroCycleStarts(chain);
     let regions = [];
 
     for (let index = 0; index < chain.length - 1; index += 1) {
+      const cycleStart = findCycleStartForLeg(index, cycleStarts);
       const waveId = waveIdForLeg(index, cycleStart);
       const endIndex = chain[index + 1].index ?? weeklySeries.length - 1;
       const direction = inferRegimeAtIndex(weeklySeries, endIndex);
@@ -1222,10 +1396,13 @@ var ElliottEngine = (() => {
     PSYCHOLOGY_CYCLE_LAW,
     detectSwings,
     detectMajorWeeklySwings,
+    detectLocalExtremaPivots,
     normalizeSwingAlternation,
     filterMajorSwings,
     buildPivotChain,
+    findMacroCycleStarts,
     findCycleStart,
+    findCycleStartForLeg,
     waveIdForLeg,
     buildSwingCache,
     buildWeeklyDeviation,

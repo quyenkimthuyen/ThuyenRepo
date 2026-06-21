@@ -401,6 +401,10 @@ test("elliott weekly keeps major swings only with fewer wider regions", () => {
 
   assert.ok(majorSwings.length >= 4, "need macro swing structure on 10Y weekly");
   assert.ok(
+    majorSwings.length <= 24,
+    `macro swings ${majorSwings.length} should stay coarse for 4Y BTC cycles`
+  );
+  assert.ok(
     majorSwings.length <= minorSwings.length,
     `major swings ${majorSwings.length} should not exceed minor ${minorSwings.length}`
   );
@@ -415,7 +419,22 @@ test("elliott weekly keeps major swings only with fewer wider regions", () => {
     return sum + Math.max(1, end - start);
   }, 0) / cache.regions.length;
 
-  assert.ok(avgRegionWeeks >= 6, `average major region should span weeks, got ${avgRegionWeeks}`);
+  assert.ok(avgRegionWeeks >= 15, `average major region should span weeks, got ${avgRegionWeeks}`);
+});
+
+test("bitcoin elliott macro pivots follow 4Y structural highs and lows", () => {
+  const bitcoin = loadBitcoin();
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+  const pivotDates = new Set(cache.pivots.map((pivot) => pivot.date));
+
+  assert.ok(cache.pivots.length >= 8 && cache.pivots.length <= 24);
+  assert.ok(pivotDates.has("2018-12-10"), "should mark 2018 macro low");
+  assert.ok(pivotDates.has("2021-11-08") || pivotDates.has("2021-04-12"), "should mark 2021 bull high");
+  assert.ok(pivotDates.has("2022-11-21") || pivotDates.has("2022-11-14"), "should mark 2022 bear low");
+
+  for (let index = 1; index < cache.pivots.length; index += 1) {
+    assert.notEqual(cache.pivots[index].type, cache.pivots[index - 1].type);
+  }
 });
 
 test("dedupeByDate removes duplicate candles", () => {
