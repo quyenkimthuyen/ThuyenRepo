@@ -766,8 +766,21 @@ var EmaPsychologyEngine = (() => {
       return true;
     }
 
+    const macroTrend = region.emaContext?.macroTrend || classifyMacroTrend(context);
     const macroRegime = region.macroRegime || "bull";
     const waveId = region.waveId;
+
+    if (macroTrend === "sideways" && region.zone === "Capitulation") {
+      return true;
+    }
+
+    if (macroTrend === "up" && POSITIVE_ZONES.has(region.zone)) {
+      return true;
+    }
+
+    if (macroTrend === "down" && (NEGATIVE_ZONES.has(region.zone) || region.zone === "Disbelief")) {
+      return true;
+    }
 
     if (waveId && ElliottEngine.IMPULSE_WAVES?.has(waveId)) {
       if (macroRegime === "bear" && NEGATIVE_ZONES.has(region.zone)) {

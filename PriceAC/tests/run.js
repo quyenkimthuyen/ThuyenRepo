@@ -610,6 +610,34 @@ test("impulse wave psychology law holds on all assets", () => {
         const macro = region.macroRegime || "bull";
         const waveId = region.waveId;
 
+        if (modelName === "ema") {
+          const context = buildEmaContextAt(series, region.endDate);
+          const trend = EmaPsychologyEngine.classifyMacroTrend(context);
+
+          if (trend === "up" && ["1", "3", "5"].includes(waveId)) {
+            assert.ok(
+              !bullImpulseForbidden.has(region.zone),
+              `${assetFile} ${modelName} uptrend wave ${waveId} at ${region.startDate} cannot be ${region.zone}`
+            );
+          }
+
+          if (trend === "down" && ["1", "3", "5"].includes(waveId)) {
+            assert.ok(
+              !bearImpulseForbidden.has(region.zone),
+              `${assetFile} ${modelName} downtrend wave ${waveId} at ${region.startDate} cannot be ${region.zone}`
+            );
+          }
+
+          if (trend === "down" && ["2", "4"].includes(waveId)) {
+            assert.ok(
+              !bearCorrectiveForbidden.has(region.zone),
+              `${assetFile} ${modelName} downtrend wave ${waveId} at ${region.startDate} cannot be ${region.zone}`
+            );
+          }
+
+          return;
+        }
+
         if (macro === "bull" && ["1", "3", "5"].includes(waveId)) {
           assert.ok(
             !bullImpulseForbidden.has(region.zone),
@@ -771,12 +799,13 @@ test("ema bull impulse waves 3 and 5 stay positive above EMA50 in uptrend", () =
         return;
       }
 
-      if (assertBullMacro && region.macroRegime !== "bull") {
+      const context = buildEmaContextAt(series, region.endDate);
+      const trend = EmaPsychologyEngine.classifyMacroTrend(context);
+      if (!context.ready || trend !== "up" || !context.aboveEma50 || !context.trendUp) {
         return;
       }
 
-      const context = buildEmaContextAt(series, region.endDate);
-      if (!context.ready || !context.aboveEma50 || !context.trendUp) {
+      if (assertBullMacro && region.macroRegime !== "bull") {
         return;
       }
 
