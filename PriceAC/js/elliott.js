@@ -51,6 +51,8 @@ var ElliottEngine = (() => {
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
   const getClose = (point) => point.close ?? point.price;
+  const getHigh = (point) => point.high ?? getClose(point);
+  const getLow = (point) => point.low ?? getClose(point);
 
   const detectSwings = (series, deviationPct = 8) => {
     if (!series || series.length < 3) {
@@ -63,41 +65,66 @@ var ElliottEngine = (() => {
     let extreme = {
       index: 0,
       date: series[0].date,
-      price: getClose(series[0]),
-      type: "low"
+      price: getHigh(series[0]),
+      type: "high"
     };
 
-    for (let index = 1; index < series.length; index += 1) {
-      const price = getClose(series[index]);
+    for (let index = 0; index < series.length; index += 1) {
+      const high = getHigh(series[index]);
+      const low = getLow(series[index]);
 
       if (direction === "seekHigh") {
-        if (price >= extreme.price) {
-          extreme = { index, date: series[index].date, price, type: "high" };
-          continue;
+        if (high >= extreme.price) {
+          extreme = { index, date: series[index].date, price: high, type: "high" };
         }
 
-        if ((extreme.price - price) / extreme.price >= threshold) {
+        if (extreme.price > 0 && (extreme.price - low) / extreme.price >= threshold) {
           swings.push({ ...extreme });
-          extreme = { index, date: series[index].date, price, type: "low" };
+          extreme = { index, date: series[index].date, price: low, type: "low" };
           direction = "seekLow";
         }
 
         continue;
       }
 
-      if (price <= extreme.price) {
-        extreme = { index, date: series[index].date, price, type: "low" };
-        continue;
+      if (low <= extreme.price) {
+        extreme = { index, date: series[index].date, price: low, type: "low" };
       }
 
-      if ((price - extreme.price) / extreme.price >= threshold) {
+      if (extreme.price > 0 && (high - extreme.price) / extreme.price >= threshold) {
         swings.push({ ...extreme });
-        extreme = { index, date: series[index].date, price, type: "high" };
+        extreme = { index, date: series[index].date, price: high, type: "high" };
         direction = "seekHigh";
       }
     }
 
     return swings;
+  };
+
+  const normalizeSwingAlternation = (swings) => {
+    if (!swings.length) {
+      return swings;
+    }
+
+    const output = [{ ...swings[0] }];
+
+    for (let index = 1; index < swings.length; index += 1) {
+      const current = swings[index];
+      const previous = output[output.length - 1];
+
+      if (current.type === previous.type) {
+        const keepCurrent = current.type === "high"
+          ? current.price >= previous.price
+          : current.price <= previous.price;
+
+        output[output.length - 1] = keepCurrent ? { ...current } : { ...previous };
+        continue;
+      }
+
+      output.push({ ...current });
+    }
+
+    return output;
   };
 
   const legSize = (fromPivot, toPivot) => Math.abs(toPivot.price - fromPivot.price);
@@ -264,13 +291,48 @@ var ElliottEngine = (() => {
       }
     }
 
-    return filtered;
+    return normalizeSwingAlternation(filtered);
   };
 
   const detectMajorWeeklySwings = (weeklySeries) => {
     const deviation = buildMajorWeeklyDeviation(weeklySeries);
     const swings = detectSwings(weeklySeries, deviation);
     return filterMajorSwings(swings, weeklySeries);
+  };
+
+  const findExtremePivot = (weeklySeries, fromIndex, toIndex, type) => {
+    const pick = type === "high" ? getHigh : getLow;
+    let best = {
+      index: fromIndex,
+      date: weeklySeries[fromIndex].date,
+      price: pick(weeklySeries[fromIndex]),
+      type
+    };
+
+    for (let index = fromIndex + 1; index <= toIndex; index += 1) {
+      const price = pick(weeklySeries[index]);
+
+      if (type === "high" ? price > best.price : price < best.price) {
+        best = {
+          index,
+          date: weeklySeries[index].date,
+          price,
+          type
+        };
+      }
+    }
+
+    return best;
+  };
+
+  const findCycleStart = (chain) => {
+    const cycle = inferCycle(chain);
+    return cycle?.start ?? 0;
+  };
+
+  const waveIdForLeg = (legIndex, cycleStart) => {
+    const offset = ((legIndex - cycleStart) % WAVE_SEQUENCE.length + WAVE_SEQUENCE.length) % WAVE_SEQUENCE.length;
+    return WAVE_SEQUENCE[offset];
   };
 
   const WAVE_SEQUENCE = ["1", "2", "3", "4", "5", "A", "B", "C"];
@@ -666,8 +728,8 @@ var ElliottEngine = (() => {
     return output;
   };
 
-  const resolvePsychologyFromLaw = (weeklySeries, chain, index, prevZone = null, prevRegions = []) => {
-    const waveId = WAVE_SEQUENCE[index % WAVE_SEQUENCE.length];
+  const resolvePsychologyFromLaw = (weeklySeries, chain, index, prevZone = null, prevRegions = [], cycleStart = 0) => {
+    const waveId = waveIdForLeg(index, cycleStart);
     const leg = measureLeg(weeklySeries, chain, index);
     const endIndex = chain[index + 1].index ?? weeklySeries.length - 1;
     const macroRegime = inferRegimeAtIndex(weeklySeries, endIndex);
@@ -722,62 +784,69 @@ var ElliottEngine = (() => {
     return last >= start ? "bull" : "bear";
   };
 
+  const collapseAdjacentDatePivots = (chain) => {
+    const output = [];
+
+    chain.forEach((pivot) => {
+      const previous = output[output.length - 1];
+      if (previous?.date === pivot.date) {
+        return;
+      }
+
+      output.push(pivot);
+    });
+
+    return output;
+  };
+
   const buildPivotChain = (weeklySeries, swings) => {
     const lastIndex = weeklySeries.length - 1;
 
     if (!swings.length) {
       const macro = inferMacroDirection(weeklySeries);
       return [
-        {
-          index: 0,
-          date: weeklySeries[0].date,
-          price: getClose(weeklySeries[0]),
-          type: macro === "bull" ? "low" : "high"
-        },
-        {
-          index: lastIndex,
-          date: weeklySeries[lastIndex].date,
-          price: getClose(weeklySeries[lastIndex]),
-          type: macro === "bull" ? "high" : "low"
-        }
+        findExtremePivot(weeklySeries, 0, lastIndex, macro === "bull" ? "low" : "high"),
+        findExtremePivot(weeklySeries, 0, lastIndex, macro === "bull" ? "high" : "low")
       ];
     }
 
+    const normalized = normalizeSwingAlternation(swings);
     const chain = [];
-    const firstSwing = swings[0];
+    const firstSwing = normalized[0];
 
     if (firstSwing.index > 0) {
-      chain.push({
-        index: 0,
-        date: weeklySeries[0].date,
-        price: getClose(weeklySeries[0]),
-        type: firstSwing.type === "high" ? "low" : "high"
-      });
+      chain.push(findExtremePivot(
+        weeklySeries,
+        0,
+        Math.max(0, firstSwing.index - 1),
+        firstSwing.type === "high" ? "low" : "high"
+      ));
     }
 
-    swings.forEach((swing) => chain.push(swing));
+    normalized.forEach((swing) => chain.push({ ...swing }));
 
     const lastSwing = chain[chain.length - 1];
     if (lastSwing.index < lastIndex) {
-      chain.push({
-        index: lastIndex,
-        date: weeklySeries[lastIndex].date,
-        price: getClose(weeklySeries[lastIndex]),
-        type: lastSwing.type === "high" ? "low" : "high"
-      });
+      const fromIndex = Math.min(lastSwing.index + 1, lastIndex);
+      chain.push(findExtremePivot(
+        weeklySeries,
+        fromIndex,
+        lastIndex,
+        lastSwing.type === "high" ? "low" : "high"
+      ));
     }
 
-    return chain;
+    return normalizeSwingAlternation(collapseAdjacentDatePivots(chain));
   };
 
-  const scoreRegionConfidence = (chain, index) => {
+  const scoreRegionConfidence = (chain, index, cycleStart = 0) => {
     if (chain.length < 2) {
       return 50;
     }
 
     const legSize = Math.abs(chain[index + 1].price - chain[index].price);
     const prevLeg = index > 0 ? Math.abs(chain[index].price - chain[index - 1].price) : null;
-    const waveId = WAVE_SEQUENCE[index % WAVE_SEQUENCE.length];
+    const waveId = waveIdForLeg(index, cycleStart);
     let score = 56;
 
     if (prevLeg && prevLeg > 0) {
@@ -819,15 +888,16 @@ var ElliottEngine = (() => {
     const seriesStart = weeklySeries[0].date;
     const seriesEnd = weeklySeries[weeklySeries.length - 1].date;
     const chain = buildPivotChain(weeklySeries, swings);
+    const cycleStart = findCycleStart(chain);
     let regions = [];
 
     for (let index = 0; index < chain.length - 1; index += 1) {
-      const waveId = WAVE_SEQUENCE[index % WAVE_SEQUENCE.length];
+      const waveId = waveIdForLeg(index, cycleStart);
       const endIndex = chain[index + 1].index ?? weeklySeries.length - 1;
       const direction = inferRegimeAtIndex(weeklySeries, endIndex);
       const directionLabel = direction === "bull" ? "tăng" : "giảm";
       const prevZone = regions.length ? regions[regions.length - 1].zone : null;
-      const psych = resolvePsychologyFromLaw(weeklySeries, chain, index, prevZone, regions);
+      const psych = resolvePsychologyFromLaw(weeklySeries, chain, index, prevZone, regions, cycleStart);
 
       regions.push({
         startDate: chain[index].date,
@@ -836,7 +906,7 @@ var ElliottEngine = (() => {
         waveId,
         macroRegime: direction,
         elliottLabel: `${WAVE_LABELS_VI[waveId]} ${directionLabel}`,
-        confidence: scoreRegionConfidence(chain, index)
+        confidence: scoreRegionConfidence(chain, index, cycleStart)
       });
     }
 
@@ -907,6 +977,7 @@ var ElliottEngine = (() => {
     const { rangeStart, rangeEnd } = options;
     const deviation = buildMajorWeeklyDeviation(weeklySeries);
     const swings = detectMajorWeeklySwings(weeklySeries);
+    const pivots = buildPivotChain(weeklySeries, swings);
     let regions = buildFullCoverageRegions(weeklySeries, swings);
 
     if (rangeStart && rangeEnd) {
@@ -916,6 +987,7 @@ var ElliottEngine = (() => {
     return {
       weekly: weeklySeries,
       swings,
+      pivots,
       regions,
       deviation
     };
@@ -1047,76 +1119,99 @@ var ElliottEngine = (() => {
       return null;
     }
 
-    const visibleStart = visibleSeries[0].date;
-    const visibleEnd = visibleSeries[visibleSeries.length - 1].date;
+    const sourcePivots = cache.pivots?.length
+      ? cache.pivots
+      : (cache.swings?.length ? buildPivotChain(
+        cache.weekly || [],
+        cache.swings
+      ) : null);
 
-    const priceAt = (date) => {
-      const exact = visibleSeries.find((point) => point.date === date);
-      if (exact) {
-        return exact.close ?? exact.price;
-      }
-
-      let last = null;
-      visibleSeries.forEach((point) => {
-        if (point.date <= date) {
-          last = point.close ?? point.price;
-        }
-      });
-
-      return last;
-    };
-
-    const overlapping = cache.regions.filter(
-      (region) => region.endDate >= visibleStart && region.startDate <= visibleEnd
-    );
-
-    if (!overlapping.length) {
+    if (!sourcePivots || sourcePivots.length < 2) {
       return null;
     }
 
-    const boundaryDates = new Set([visibleStart, visibleEnd]);
-    overlapping.forEach((region) => {
-      if (region.startDate >= visibleStart && region.startDate <= visibleEnd) {
-        boundaryDates.add(region.startDate);
-      }
-      if (region.endDate >= visibleStart && region.endDate <= visibleEnd) {
-        boundaryDates.add(region.endDate);
-      }
-    });
+    const visibleStart = visibleSeries[0].date;
+    const visibleEnd = visibleSeries[visibleSeries.length - 1].date;
+    const chain = [];
+    const before = sourcePivots.filter((pivot) => pivot.date < visibleStart).at(-1);
+    const inside = sourcePivots.filter((pivot) => pivot.date >= visibleStart && pivot.date <= visibleEnd);
+    const after = sourcePivots.find((pivot) => pivot.date > visibleEnd);
 
-    const pivots = [...boundaryDates]
-      .sort((left, right) => left.localeCompare(right))
-      .map((date) => ({
-        date,
-        price: priceAt(date),
-        region: findRegionForDate(cache.regions, date)
-      }))
-      .filter((point) => Number.isFinite(point.price));
+    if (before) {
+      chain.push(before);
+    }
+
+    chain.push(...inside);
+
+    if (after) {
+      chain.push(after);
+    } else {
+      const lastPivot = sourcePivots[sourcePivots.length - 1];
+      if (lastPivot.date < visibleEnd) {
+        const trailingType = lastPivot.type === "high" ? "low" : "high";
+        let startIndex = 0;
+
+        for (let index = 0; index < visibleSeries.length; index += 1) {
+          if (visibleSeries[index].date > lastPivot.date) {
+            startIndex = index;
+            break;
+          }
+        }
+
+        if (startIndex < visibleSeries.length) {
+          chain.push(findExtremePivot(
+            visibleSeries,
+            startIndex,
+            visibleSeries.length - 1,
+            trailingType
+          ));
+        }
+      }
+    }
+
+    const pivots = normalizeSwingAlternation(
+      chain.sort((left, right) => left.date.localeCompare(right.date))
+    );
 
     if (pivots.length < 2) {
       return null;
     }
 
-    const points = pivots.map((point) => ({
-      time: point.date,
-      value: point.price
+    const points = pivots.map((pivot) => ({
+      time: pivot.date,
+      value: pivot.price
     }));
 
-    const markers = overlapping
-      .filter((region) => region.startDate >= visibleStart && region.startDate <= visibleEnd && region.waveId)
-      .filter((region) => !options.validatedOnly || region.elliottValidated)
-      .map((region, index, regions) => {
-        const price = priceAt(region.startDate);
-        const prevPrice = index > 0 ? priceAt(regions[index - 1].startDate) : price;
+    const markerDates = new Set(
+      sourcePivots
+        .filter((pivot) => pivot.date >= visibleStart && pivot.date <= visibleEnd)
+        .map((pivot) => pivot.date)
+    );
 
-        return {
-          time: region.startDate,
-          position: price >= prevPrice ? "belowBar" : "aboveBar",
-          color: region.elliottValidated === false ? "rgba(240, 180, 92, 0.55)" : "#f0b45c",
-          shape: "circle",
-          text: formatWaveMarkerText(region.waveId)
-        };
+    const markers = [];
+
+    pivots.forEach((pivot) => {
+      if (!markerDates.has(pivot.date)) {
+        return;
+      }
+
+      const region = findRegionForDate(cache.regions, pivot.date);
+      if (!region?.waveId) {
+        return;
+      }
+
+      if (options.validatedOnly && region.elliottValidated === false) {
+        return;
+      }
+
+      markers.push({
+        time: pivot.date,
+        position: pivot.type === "low" ? "belowBar" : "aboveBar",
+        color: region.elliottValidated === false ? "rgba(240, 180, 92, 0.55)" : "#f0b45c",
+        shape: "circle",
+        text: formatWaveMarkerText(region.waveId)
       });
+    });
 
     return { points, markers, pivots };
   };
@@ -1127,7 +1222,11 @@ var ElliottEngine = (() => {
     PSYCHOLOGY_CYCLE_LAW,
     detectSwings,
     detectMajorWeeklySwings,
+    normalizeSwingAlternation,
     filterMajorSwings,
+    buildPivotChain,
+    findCycleStart,
+    waveIdForLeg,
     buildSwingCache,
     buildWeeklyDeviation,
     buildMajorWeeklyDeviation,

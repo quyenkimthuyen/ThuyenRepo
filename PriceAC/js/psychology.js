@@ -742,7 +742,7 @@ var PsychologyEngine = (() => {
 
   const TEN_YEAR_DAYS = 365 * 10;
   const PSYCHOLOGY_CACHE_PREFIX = "priceac.psychology.v3.";
-  const PSYCHOLOGY_CACHE_VERSION = 12;
+  const PSYCHOLOGY_CACHE_VERSION = 13;
   const REFERENCE_ASSET = "bitcoin";
 
   const getCacheStorageKey = (asset, model = "elliott") => (
@@ -1496,6 +1496,9 @@ var PsychologyEngine = (() => {
       weekCount: weekly.length,
       regionCount: model.regions.length,
       regions: model.regions,
+      swings: model.swings,
+      pivots: model.pivots,
+      weekly,
       summary: getSummaryFromRegion(latestRegion),
       analyzedAt: new Date().toISOString()
     };
@@ -1533,6 +1536,10 @@ var PsychologyEngine = (() => {
 
     const cacheModel = cache.model || "elliott";
     if (cacheModel !== model) {
+      return false;
+    }
+
+    if (cacheModel === "elliott" && (!cache.pivots?.length || !cache.swings?.length)) {
       return false;
     }
 

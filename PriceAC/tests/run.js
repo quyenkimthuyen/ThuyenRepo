@@ -437,7 +437,7 @@ test("psychology cache round-trips through localStorage", () => {
   assert.equal(loaded.regionCount, cache.regionCount);
 });
 
-test("elliott overlay builds zigzag for visible range", () => {
+test("elliott overlay builds zigzag through weekly pivot highs and lows", () => {
   const bitcoin = loadBitcoin();
   const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
   const visible = RangeUtils.buildVisibleSeries(bitcoin, "1Y", "1D", PsychologyEngine.aggregateSeries);
@@ -446,6 +446,21 @@ test("elliott overlay builds zigzag for visible range", () => {
   assert.ok(overlay, "overlay should build");
   assert.ok(overlay.points.length >= 2);
   assert.ok(overlay.markers.length >= 1);
+  assert.ok(cache.pivots?.length >= 4, "cache should store weekly pivot chain");
+
+  for (let index = 1; index < overlay.pivots.length; index += 1) {
+    assert.notEqual(
+      overlay.pivots[index].type,
+      overlay.pivots[index - 1].type,
+      `pivot ${overlay.pivots[index].date} should alternate high/low`
+    );
+  }
+
+  for (let index = 1; index < overlay.points.length - 1; index += 1) {
+    const prevRise = overlay.points[index].value > overlay.points[index - 1].value;
+    const nextRise = overlay.points[index + 1].value > overlay.points[index].value;
+    assert.notEqual(prevRise, nextRise, `zigzag should reverse at pivot ${overlay.points[index].time}`);
+  }
 });
 
 test("investment advice ranks zones from 10Y history", () => {
