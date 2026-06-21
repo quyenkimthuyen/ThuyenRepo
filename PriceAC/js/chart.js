@@ -165,6 +165,7 @@ const MarketChart = (() => {
     marketData[currentAsset] || [],
     {
       asOfDate: cursorDate,
+      walkForwardDisplay: false,
       ...getPsychologyPipelineOptions()
     }
   );
@@ -1540,7 +1541,10 @@ const MarketChart = (() => {
             return saved;
           }
 
-          return PsychologyEngine.buildUnifiedPsychologyCache(raw, getPsychologyPipelineOptions());
+          return PsychologyEngine.buildUnifiedPsychologyCache(raw, {
+            ...getPsychologyPipelineOptions(),
+            walkForwardDisplay: false
+          });
         },
         onFrame: () => {
           render();

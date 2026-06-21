@@ -632,6 +632,31 @@ const buildEmaContextAt = (series, date) => {
   return EmaPsychologyEngine.buildContext(daily, ema50, ema200, new Map(), date);
 };
 
+test("ema display cache uses walk-forward pipeline like simulation", () => {
+  const bitcoin = loadBitcoin();
+  const emaDisplay = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });
+  const snapshot = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, {
+    model: "ema",
+    walkForwardDisplay: false
+  });
+
+  assert.ok(emaDisplay?.walkForwardDisplay);
+  assert.ok(!snapshot?.walkForwardDisplay);
+  assert.ok(
+    emaDisplay.regionCount >= snapshot.regionCount,
+    "walk-forward display should keep weekly region history"
+  );
+
+  const endDate = bitcoin[bitcoin.length - 1].date;
+  const simComposed = PsychologyEngine.buildEmaWalkForwardDisplayCache(bitcoin);
+
+  assert.equal(
+    PsychologyEngine.getPsychologyZoneAtDate(emaDisplay, endDate),
+    PsychologyEngine.getPsychologyZoneAtDate(simComposed, endDate),
+    "EMA display and simulation composed cache should agree at data end"
+  );
+});
+
 test("ema mode never shows panic above EMA50 during uptrend on bitcoin", () => {
   const bitcoin = loadBitcoin();
   const emaCache = PsychologyEngine.buildUnifiedPsychologyCache(bitcoin, { model: "ema" });

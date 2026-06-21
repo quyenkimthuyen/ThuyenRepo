@@ -742,7 +742,7 @@ var PsychologyEngine = (() => {
 
   const TEN_YEAR_DAYS = 365 * 10;
   const PSYCHOLOGY_CACHE_PREFIX = "priceac.psychology.v3.";
-  const PSYCHOLOGY_CACHE_VERSION = 10;
+  const PSYCHOLOGY_CACHE_VERSION = 11;
   const REFERENCE_ASSET = "bitcoin";
 
   const getCacheStorageKey = (asset, model = "elliott") => (
@@ -918,8 +918,157 @@ var PsychologyEngine = (() => {
     return cache;
   };
 
+  const buildEmaWalkForwardDisplayCache = (fullSeries, options = {}) => {
+    if (typeof EmaPsychologyEngine === "undefined") {
+      return null;
+    }
+
+    const daily = aggregateSeries(fullSeries, "1D");
+    const tenYearSlice = getTenYearDailySlice(fullSeries);
+
+    if (tenYearSlice.length < 28) {
+      return null;
+    }
+
+    const rangeStart = tenYearSlice[0].date;
+    const rangeEnd = tenYearSlice[tenYearSlice.length - 1].date;
+    const checkpoints = buildWeeklyWalkForwardCheckpoints(
+      daily,
+      rangeStart,
+      rangeEnd,
+      options.useWeekEnd !== false
+    );
+
+    if (!checkpoints.length) {
+      return EmaPsychologyEngine.buildPsychologyCache(fullSeries);
+    }
+
+    let frozenRegions = [];
+    let displayCache = null;
+    const hysteresis = createSimulationHysteresisState();
+    const hysteresisWeeks = options.hysteresisWeeks ?? SIM_HYSTERESIS_WEEKS;
+
+    checkpoints.forEach(({ asOfDate }) => {
+      const clipped = fullSeries.filter((point) => point.date <= asOfDate);
+      let cache = EmaPsychologyEngine.buildPsychologyCache(clipped);
+
+      if (!cache) {
+        return;
+      }
+
+      if (typeof options.enrichCache === "function") {
+        cache = options.enrichCache(cache, clipped) || cache;
+      }
+
+      displayCache = applySimulationHysteresis(cache, asOfDate, hysteresis, hysteresisWeeks);
+      frozenRegions = mergeFrozenPsychologyRegions(frozenRegions, displayCache, asOfDate);
+    });
+
+    const composed = composeSimulationPsychologyCache(displayCache, frozenRegions, rangeEnd);
+
+    if (!composed) {
+      return null;
+    }
+
+    return {
+      ...composed,
+      version: PSYCHOLOGY_CACHE_VERSION,
+      model: "ema",
+      dataEndDate: rangeEnd,
+      walkForwardDisplay: true,
+      analyzedAt: new Date().toISOString()
+    };
+  };
+
+  const buildEmaWalkForwardDisplayCacheAsync = (fullSeries, onProgress = () => {}, options = {}) => new Promise((resolve, reject) => {
+    try {
+      const daily = aggregateSeries(fullSeries, "1D");
+      const tenYearSlice = getTenYearDailySlice(fullSeries);
+
+      if (tenYearSlice.length < 28) {
+        resolve(null);
+        return;
+      }
+
+      const rangeStart = tenYearSlice[0].date;
+      const rangeEnd = tenYearSlice[tenYearSlice.length - 1].date;
+      const checkpoints = buildWeeklyWalkForwardCheckpoints(
+        daily,
+        rangeStart,
+        rangeEnd,
+        options.useWeekEnd !== false
+      );
+
+      if (!checkpoints.length) {
+        resolve(EmaPsychologyEngine.buildPsychologyCache(fullSeries));
+        return;
+      }
+
+      let frozenRegions = [];
+      let displayCache = null;
+      const hysteresis = createSimulationHysteresisState();
+      const hysteresisWeeks = options.hysteresisWeeks ?? SIM_HYSTERESIS_WEEKS;
+      let index = 0;
+
+      const step = () => {
+        if (index >= checkpoints.length) {
+          try {
+            const composed = composeSimulationPsychologyCache(displayCache, frozenRegions, rangeEnd);
+            if (!composed) {
+              resolve(null);
+              return;
+            }
+
+            resolve({
+              ...composed,
+              version: PSYCHOLOGY_CACHE_VERSION,
+              model: "ema",
+              dataEndDate: rangeEnd,
+              walkForwardDisplay: true,
+              analyzedAt: new Date().toISOString()
+            });
+          } catch (error) {
+            reject(error);
+          }
+          return;
+        }
+
+        const { asOfDate } = checkpoints[index];
+        const clipped = fullSeries.filter((point) => point.date <= asOfDate);
+        let cache = EmaPsychologyEngine.buildPsychologyCache(clipped);
+
+        if (cache) {
+          if (typeof options.enrichCache === "function") {
+            cache = options.enrichCache(cache, clipped) || cache;
+          }
+
+          displayCache = applySimulationHysteresis(cache, asOfDate, hysteresis, hysteresisWeeks);
+          frozenRegions = mergeFrozenPsychologyRegions(frozenRegions, displayCache, asOfDate);
+        }
+
+        index += 1;
+        onProgress(index / checkpoints.length);
+        setTimeout(step, 0);
+      };
+
+      step();
+    } catch (error) {
+      reject(error);
+    }
+  });
+
   const buildUnifiedPsychologyCache = (fullSeries, options = {}) => {
     const asOfDate = options.asOfDate ?? options.cursorDate ?? null;
+
+    if (
+      options.model === "ema"
+      && !asOfDate
+      && options.walkForwardDisplay !== false
+      && typeof EmaPsychologyEngine !== "undefined"
+    ) {
+      return buildEmaWalkForwardDisplayCache(fullSeries, options);
+    }
+
     const clipped = asOfDate
       ? fullSeries.filter((point) => point.date <= asOfDate)
       : fullSeries;
@@ -1352,18 +1501,30 @@ var PsychologyEngine = (() => {
     };
   };
 
-  const buildPsychologyCacheAsync = (fullSeries, onProgress = () => {}, options = {}) => new Promise((resolve, reject) => {
-    setTimeout(() => {
-      try {
-        onProgress(0.2);
-        const cache = buildUnifiedPsychologyCache(fullSeries, options);
-        onProgress(1);
-        resolve(cache);
-      } catch (error) {
-        reject(error);
-      }
-    }, 0);
-  });
+  const buildPsychologyCacheAsync = (fullSeries, onProgress = () => {}, options = {}) => {
+    const asOfDate = options.asOfDate ?? options.cursorDate ?? null;
+
+    if (
+      options.model === "ema"
+      && !asOfDate
+      && options.walkForwardDisplay !== false
+    ) {
+      return buildEmaWalkForwardDisplayCacheAsync(fullSeries, onProgress, options);
+    }
+
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          onProgress(0.2);
+          const cache = buildUnifiedPsychologyCache(fullSeries, options);
+          onProgress(1);
+          resolve(cache);
+        } catch (error) {
+          reject(error);
+        }
+      }, 0);
+    });
+  };
 
   const isPsychologyCacheValid = (cache, fullSeries, model = "elliott") => {
     if (!cache || cache.version !== PSYCHOLOGY_CACHE_VERSION || !cache.regions?.length) {
@@ -1690,6 +1851,7 @@ var PsychologyEngine = (() => {
     alignRsiToVisible,
     buildPsychologyCache,
     buildUnifiedPsychologyCache,
+    buildEmaWalkForwardDisplayCache,
     buildPsychologyCacheAsync,
     getPsychologyZoneAtDate,
     comparePsychologyAtDate,
