@@ -742,7 +742,7 @@ var PsychologyEngine = (() => {
 
   const TEN_YEAR_DAYS = 365 * 10;
   const PSYCHOLOGY_CACHE_PREFIX = "priceac.psychology.v3.";
-  const PSYCHOLOGY_CACHE_VERSION = 9;
+  const PSYCHOLOGY_CACHE_VERSION = 10;
   const REFERENCE_ASSET = "bitcoin";
 
   const getCacheStorageKey = (asset, model = "elliott") => (

@@ -98,7 +98,7 @@ const INTERVAL_KEYS = ["1D", "1W", "1M"];
 console.log("PriceAC tests\n");
 
 const RangeUtils = loadEngine("js/range-utils.js", "RangeUtils");
-loadEngine("js/elliott.js", "ElliottEngine");
+const ElliottEngine = loadEngine("js/elliott.js", "ElliottEngine");
 const PsychologyEngine = loadEngine("js/psychology.js", "PsychologyEngine");
 const EmaPsychologyEngine = loadEngine("js/ema-mode.js", "EmaPsychologyEngine");
 const MarketDataService = loadEngine("js/market-data.js", "MarketDataService");
@@ -378,6 +378,33 @@ test("elliott regions span full weekly window", () => {
   const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
   assert.equal(cache.regions[0].startDate, cache.rangeStart);
   assert.equal(cache.regions[cache.regions.length - 1].endDate, cache.rangeEnd);
+});
+
+test("elliott weekly keeps major swings only with fewer wider regions", () => {
+  const bitcoin = loadBitcoin();
+  const weekly = PsychologyEngine.aggregateSeries(bitcoin, "1W").slice(-520);
+  const minorDeviation = ElliottEngine.buildWeeklyDeviation(weekly);
+  const minorSwings = ElliottEngine.detectSwings(weekly, minorDeviation);
+  const majorSwings = ElliottEngine.detectMajorWeeklySwings(weekly);
+  const cache = PsychologyEngine.buildPsychologyCache(bitcoin);
+
+  assert.ok(majorSwings.length >= 4, "need macro swing structure on 10Y weekly");
+  assert.ok(
+    majorSwings.length <= minorSwings.length,
+    `major swings ${majorSwings.length} should not exceed minor ${minorSwings.length}`
+  );
+  assert.ok(
+    cache.regions.length <= minorSwings.length,
+    "major-wave regions should be fewer than minor swing count"
+  );
+
+  const avgRegionWeeks = cache.regions.reduce((sum, region) => {
+    const start = weekly.findIndex((point) => point.date >= region.startDate);
+    const end = weekly.findIndex((point) => point.date >= region.endDate);
+    return sum + Math.max(1, end - start);
+  }, 0) / cache.regions.length;
+
+  assert.ok(avgRegionWeeks >= 6, `average major region should span weeks, got ${avgRegionWeeks}`);
 });
 
 test("dedupeByDate removes duplicate candles", () => {

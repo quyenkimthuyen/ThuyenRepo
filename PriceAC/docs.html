@@ -176,19 +176,19 @@
         </ol>
         <p class="docs-note">
           Đổi thuật toán hoặc cập nhật giá mới → bấm lại <strong>Phân tích 10 năm</strong>.
-          Cache version hiện tại: <strong>v9</strong> (regime EMA nâng cao + macro Elliott).
+          Cache version hiện tại: <strong>v10</strong> (sóng Elliott macro tuần + regime EMA nâng cao).
         </p>
       </section>
 
       <section class="docs-section" id="elliott">
         <h2>5. Sóng Elliott (khung thời gian)</h2>
 
-        <h3>5.1 Phát hiện swing</h3>
+        <h3>5.1 Phát hiện swing — chỉ sóng lớn (macro) trên tuần</h3>
         <ul>
-          <li>Chạy trên <strong>nến tuần</strong> (10 năm).</li>
-          <li>Độ lệch swing = trung bình biến động 25 tuần × 2,2, giới hạn 6–20%.</li>
-          <li>Zigzag: đảo chiều khi giá lệch ≥ ngưỡng so với cực gần nhất.</li>
-          <li>Chuỗi: <code>1 → 2 → 3 → 4 → 5 → A → B → C</code>.</li>
+          <li>Chạy trên <strong>nến tuần</strong> (10 năm) — không dùng swing nhỏ intraweek.</li>
+          <li>Ngưỡng zigzag macro: biến động 52 tuần × 3,8, giới hạn <strong>12–35%</strong> (thay vì 6–20% cho swing nhỏ).</li>
+          <li>Lọc thêm: mỗi leg phải ≥ <strong>8% biên độ</strong> toàn cửa sổ 10Y; pivot quá gần (&lt; 3 tuần) bị loại.</li>
+          <li>Chuỗi sóng lớn: <code>1 → 2 → 3 → 4 → 5 → A → B → C</code> — một chu kỳ macro bull/bear.</li>
         </ul>
 
         <h3>5.2 Nhãn trên biểu đồ</h3>

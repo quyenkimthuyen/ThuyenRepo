@@ -191,6 +191,88 @@ var ElliottEngine = (() => {
     return clamp(average * 2.2, 6, 20);
   };
 
+  // Chỉ giữ swing lớn nhất trên khung tuần (macro Elliott).
+  const MAJOR_DEVIATION_LOOKBACK_WEEKS = 52;
+  const MAJOR_DEVIATION_MULTIPLIER = 3.8;
+  const MAJOR_DEVIATION_MIN = 12;
+  const MAJOR_DEVIATION_MAX = 35;
+  const MAJOR_LEG_MIN_RANGE_PCT = 0.08;
+  const MAJOR_MIN_WEEKS_BETWEEN = 3;
+
+  const buildMajorWeeklyDeviation = (weeklySeries) => {
+    if (weeklySeries.length < 4) {
+      return MAJOR_DEVIATION_MIN;
+    }
+
+    let total = 0;
+    let count = 0;
+    const end = weeklySeries.length - 1;
+    const start = Math.max(1, end - MAJOR_DEVIATION_LOOKBACK_WEEKS);
+
+    for (let index = start; index <= end; index += 1) {
+      const previous = getClose(weeklySeries[index - 1]);
+      if (!previous) {
+        continue;
+      }
+
+      total += Math.abs((getClose(weeklySeries[index]) - previous) / previous) * 100;
+      count += 1;
+    }
+
+    const average = count ? total / count : 8;
+    return clamp(average * MAJOR_DEVIATION_MULTIPLIER, MAJOR_DEVIATION_MIN, MAJOR_DEVIATION_MAX);
+  };
+
+  const weeksBetween = (weeklySeries, leftIndex, rightIndex) => {
+    if (leftIndex < 0 || rightIndex < 0 || leftIndex >= weeklySeries.length || rightIndex >= weeklySeries.length) {
+      return 0;
+    }
+
+    return Math.abs(rightIndex - leftIndex);
+  };
+
+  const filterMajorSwings = (swings, weeklySeries, minLegPctOfRange = MAJOR_LEG_MIN_RANGE_PCT) => {
+    if (swings.length < 3 || weeklySeries.length < 3) {
+      return swings;
+    }
+
+    const closes = weeklySeries.map(getClose);
+    const range = Math.max(...closes) - Math.min(...closes);
+    if (range <= 0) {
+      return swings;
+    }
+
+    const minLeg = range * minLegPctOfRange;
+    let filtered = [...swings];
+    let changed = true;
+
+    while (changed && filtered.length > 2) {
+      changed = false;
+
+      for (let index = 1; index < filtered.length - 1; index += 1) {
+        const legBefore = Math.abs(filtered[index].price - filtered[index - 1].price);
+        const legAfter = Math.abs(filtered[index + 1].price - filtered[index].price);
+        const spanWeeks = weeksBetween(weeklySeries, filtered[index - 1].index, filtered[index + 1].index);
+        const minorPivot = Math.min(legBefore, legAfter) < minLeg
+          || spanWeeks < MAJOR_MIN_WEEKS_BETWEEN;
+
+        if (minorPivot) {
+          filtered.splice(index, 1);
+          changed = true;
+          break;
+        }
+      }
+    }
+
+    return filtered;
+  };
+
+  const detectMajorWeeklySwings = (weeklySeries) => {
+    const deviation = buildMajorWeeklyDeviation(weeklySeries);
+    const swings = detectSwings(weeklySeries, deviation);
+    return filterMajorSwings(swings, weeklySeries);
+  };
+
   const WAVE_SEQUENCE = ["1", "2", "3", "4", "5", "A", "B", "C"];
 
   // Ngưỡng hiệu chỉnh trên dữ liệu tuần Bitcoin (tài sản tham chiếu).
@@ -735,8 +817,8 @@ var ElliottEngine = (() => {
 
   const buildWeeklyPsychologyModel = (weeklySeries, options = {}) => {
     const { rangeStart, rangeEnd } = options;
-    const deviation = buildWeeklyDeviation(weeklySeries);
-    const swings = detectSwings(weeklySeries, deviation);
+    const deviation = buildMajorWeeklyDeviation(weeklySeries);
+    const swings = detectMajorWeeklySwings(weeklySeries);
     let regions = buildFullCoverageRegions(weeklySeries, swings);
 
     if (rangeStart && rangeEnd) {
@@ -956,8 +1038,11 @@ var ElliottEngine = (() => {
     WAVE_PSYCHOLOGY,
     PSYCHOLOGY_CYCLE_LAW,
     detectSwings,
+    detectMajorWeeklySwings,
+    filterMajorSwings,
     buildSwingCache,
     buildWeeklyDeviation,
+    buildMajorWeeklyDeviation,
     buildFullCoverageRegions,
     clipRegionsToRange,
     findRegionForDate,
