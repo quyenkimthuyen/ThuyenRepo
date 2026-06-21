@@ -16,7 +16,8 @@ def resample_audio(input_path: Path, output_path: Path | None = None) -> Path:
         output_path = input_path.with_suffix(".16k.wav")
 
     cmd = [
-        "ffmpeg", "-y", "-i", str(input_path),
+        "ffmpeg", "-y", "-nostdin", "-hide_banner", "-loglevel", "error",
+        "-i", str(input_path),
         "-ar", str(TARGET_SAMPLE_RATE),
         "-ac", str(TARGET_CHANNELS),
         "-f", "wav",
