@@ -49,6 +49,12 @@ let utteranceEnding = false;
 let speechSilenceTimer = null;
 let liveMimeType = 'audio/webm';
 
+// Chặn micro thu tiếng TTS/mẫu của app
+let isSamplePlaying = false;
+let speechRecognitionPaused = false;
+let sampleResumeTimer = null;
+const SAMPLE_TAIL_MS = 600;
+
 // DOM refs
 const $ = (id) => document.getElementById(id);
 
@@ -316,6 +322,7 @@ function initLiveSpeech() {
   speechRecognition.maxAlternatives = 1;
 
   speechRecognition.onresult = (event) => {
+    if (isSamplePlaying || speechRecognitionPaused) return;
     let interim = '';
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const text = event.results[i][0].transcript;
@@ -340,7 +347,7 @@ function initLiveSpeech() {
   };
 
   speechRecognition.onend = () => {
-    if (liveModeActive) {
+    if (liveModeActive && !speechRecognitionPaused && !isSamplePlaying) {
       try {
         speechRecognition.start();
       } catch {
@@ -408,7 +415,7 @@ function clearSpeechSilenceTimer() {
 
 /** Text mode: khớp từ → qua từ tiếp theo */
 function checkTextModePass() {
-  if (!isTextMode() || !liveModeActive || isAdvancing || isEvaluating) return;
+  if (!isTextMode() || !liveModeActive || isAdvancing || isEvaluating || isListeningBlocked()) return;
 
   const w = words[currentIndex];
   const spoken = getSpokenWord();
@@ -428,7 +435,7 @@ function checkTextModePass() {
 
 /** Backup: sau khi SpeechRecognition có text */
 function onSpeechActivity() {
-  if (!liveModeActive) return;
+  if (!liveModeActive || isListeningBlocked()) return;
 
   if (isTextMode()) {
     checkTextModePass();
@@ -497,6 +504,7 @@ async function flushRecorderData() {
 
 async function triggerEvaluate(source = 'vad') {
   if (!isScoreMode()) return;
+  if (isListeningBlocked()) return;
   if (!els.settingAutoEvaluate?.checked && source !== 'manual') return;
   if (utteranceEnding || isEvaluating) return;
 
@@ -679,6 +687,13 @@ function stopLiveMode() {
 
   liveModeActive = false;
   clearSpeechSilenceTimer();
+  if (sampleResumeTimer) {
+    clearTimeout(sampleResumeTimer);
+    sampleResumeTimer = null;
+  }
+  isSamplePlaying = false;
+  speechRecognitionPaused = false;
+  speechSynthesis?.cancel();
 
   if (speechRecognition) {
     try { speechRecognition.stop(); } catch { /* ignore */ }
@@ -725,6 +740,12 @@ function startVadLoop() {
 
   const tick = () => {
     if (!liveModeActive || !liveAnalyser) return;
+
+    if (isListeningBlocked()) {
+      els.vadLevel.style.width = '0%';
+      vadAnimationId = requestAnimationFrame(tick);
+      return;
+    }
 
     const { rms, pct } = getAudioLevel();
     els.vadLevel.style.width = `${pct}%`;
@@ -774,22 +795,98 @@ function startVadLoop() {
   tick();
 }
 
+function pauseListeningForSample() {
+  if (sampleResumeTimer) {
+    clearTimeout(sampleResumeTimer);
+    sampleResumeTimer = null;
+  }
+  isSamplePlaying = true;
+  speechRecognitionPaused = true;
+  clearSpeechSilenceTimer();
+  resetUtteranceSession();
+  clearLiveTranscript();
+
+  if (speechRecognition && liveModeActive) {
+    try { speechRecognition.stop(); } catch { /* ignore */ }
+  }
+
+  if (liveModeActive && els.liveStatus) {
+    els.liveStatus.textContent = '🔊 Đang phát mẫu — micro tạm tắt';
+    els.liveStatus.className = 'live-status';
+  }
+}
+
+function resumeListeningAfterSample() {
+  if (!isSamplePlaying) return;
+  if (sampleResumeTimer) clearTimeout(sampleResumeTimer);
+
+  sampleResumeTimer = setTimeout(() => {
+    sampleResumeTimer = null;
+    if (!isSamplePlaying) return;
+
+    isSamplePlaying = false;
+    speechRecognitionPaused = false;
+
+    if (liveModeActive && speechRecognition) {
+      try { speechRecognition.start(); } catch { /* ignore */ }
+      els.liveStatus.textContent = isTextMode()
+        ? 'Đang nghe... (đọc đúng từ để qua)'
+        : 'Đang nghe... (nói rồi im lặng ~2s)';
+      els.liveStatus.className = 'live-status listening';
+    }
+  }, SAMPLE_TAIL_MS);
+}
+
+function isListeningBlocked() {
+  return isSamplePlaying || speechRecognitionPaused;
+}
+
 // ─── Audio: TTS sample ──────────────────────────────────────────────────────
 
 function playSample() {
   const w = words[currentIndex];
+  const guardMic = liveModeActive;
+
+  if (guardMic) pauseListeningForSample();
+
+  const finishSample = () => {
+    if (guardMic) resumeListeningAfterSample();
+  };
+
   if (w.audio_sample_url) {
-    new Audio(w.audio_sample_url).play();
+    const audio = new Audio(w.audio_sample_url);
+    audio.onended = finishSample;
+    audio.onerror = finishSample;
+    audio.play().catch(finishSample);
     return;
   }
-  // Browser TTS fallback (offline)
+
   if ('speechSynthesis' in window) {
     const utter = new SpeechSynthesisUtterance(w.word);
     utter.lang = 'en-US';
     utter.rate = 0.85;
+    let finished = false;
+    const done = () => {
+      if (finished) return;
+      finished = true;
+      finishSample();
+    };
+    utter.onend = done;
+    utter.onerror = done;
     speechSynthesis.cancel();
     speechSynthesis.speak(utter);
+
+    // Một số trình duyệt không gọi onend — dự phòng
+    if (guardMic) {
+      const maxMs = Math.max(2500, w.word.length * 180);
+      setTimeout(() => {
+        if (isSamplePlaying && !speechSynthesis.speaking) done();
+      }, maxMs);
+    }
+    return;
   }
+
+  finishSample();
 }
 
 // ─── Audio: Recording ───────────────────────────────────────────────────────
