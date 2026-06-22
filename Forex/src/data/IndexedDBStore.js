@@ -11,6 +11,23 @@ import { createLogger } from '../utils/logger.js';
 const log = createLogger('IndexedDBStore');
 
 /**
+ * IDBKeyRange on the compound primary key [symbol, timeframe, timestamp].
+ * @param {string} symbol
+ * @param {string} timeframe
+ * @param {number} [from]
+ * @param {number} [to]
+ * @returns {IDBKeyRange}
+ */
+function candleKeyRange(symbol, timeframe, from, to) {
+  const lower = from ?? 0;
+  const upper = to ?? Number.MAX_SAFE_INTEGER;
+  return IDBKeyRange.bound(
+    [symbol, timeframe, lower],
+    [symbol, timeframe, upper]
+  );
+}
+
+/**
  * IndexedDB wrapper with batch write support.
  */
 export class IndexedDBStore {
@@ -103,15 +120,12 @@ export class IndexedDBStore {
    */
   async countCandles(symbol, timeframe) {
     const db = await this.open();
+    const range = candleKeyRange(symbol, timeframe);
 
     return new Promise((resolve, reject) => {
       const tx = db.transaction(Config.DB_STORES.CANDLES, 'readonly');
-      const index = tx.objectStore(Config.DB_STORES.CANDLES).index('bySymbolTf');
-      const range = IDBKeyRange.bound(
-        [symbol, timeframe, 0],
-        [symbol, timeframe, Number.MAX_SAFE_INTEGER]
-      );
-      const request = index.count(range);
+      const store = tx.objectStore(Config.DB_STORES.CANDLES);
+      const request = store.count(range);
       request.onsuccess = () => resolve(request.result ?? 0);
       request.onerror = () => reject(request.error);
     });
@@ -127,20 +141,12 @@ export class IndexedDBStore {
    */
   async getCandles(symbol, timeframe, from, to) {
     const db = await this.open();
+    const range = candleKeyRange(symbol, timeframe, from, to);
 
     return new Promise((resolve, reject) => {
       const tx = db.transaction(Config.DB_STORES.CANDLES, 'readonly');
       const store = tx.objectStore(Config.DB_STORES.CANDLES);
-      const index = store.index('bySymbolTf');
-
-      const lower = from ?? 0;
-      const upper = to ?? Number.MAX_SAFE_INTEGER;
-      const range = IDBKeyRange.bound(
-        [symbol, timeframe, lower],
-        [symbol, timeframe, upper]
-      );
-
-      const request = index.getAll(range);
+      const request = store.getAll(range);
       request.onsuccess = () => resolve(request.result ?? []);
       request.onerror = () => reject(request.error);
     });

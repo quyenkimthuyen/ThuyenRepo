@@ -227,6 +227,9 @@ class StrategyViewImpl {
       bus.on(Events.DATA_UPDATED, () => {
         this.#refreshToolbar();
       }),
+      bus.on(Events.APP_READY, () => {
+        this.#refreshToolbar();
+      }),
     ];
 
     this.#unsub = () => unsubs.forEach((fn) => fn());

@@ -157,13 +157,16 @@ const DataManager = {
   async getDataHealth() {
     const probe = await probeDefaultData();
     const datasets = await this.listDatasets();
+    const eurusdMeta = datasets.find((d) => d.symbol === 'EURUSD' && d.timeframe === 'H1');
     const eurusdH1Count = await this.getCandleCount('EURUSD', 'H1');
+    const eurusdH1MetaCount = eurusdMeta?.count ?? 0;
     return {
       protocol: typeof window !== 'undefined' ? window.location.protocol : 'unknown',
       href: typeof window !== 'undefined' ? window.location.href : '',
       ...probe,
       indexedDbDatasets: datasets.length,
       eurusdH1Count,
+      eurusdH1MetaCount,
       datasets: datasets.map((d) => ({
         key: d.key,
         count: d.count,
@@ -185,19 +188,13 @@ const DataManager = {
    */
   async listRunnableDatasets() {
     const datasets = await this.listDatasets();
-    const runnable = [];
-
-    for (const meta of datasets) {
-      if (meta.count <= 0) continue;
-      const actual = await this.getCandleCount(meta.symbol, meta.timeframe);
-      if (actual > 0) runnable.push({ ...meta, count: actual });
-    }
-
-    return runnable.sort((a, b) => {
-      const sym = a.symbol.localeCompare(b.symbol);
-      if (sym !== 0) return sym;
-      return Config.TIMEFRAMES.indexOf(a.timeframe) - Config.TIMEFRAMES.indexOf(b.timeframe);
-    });
+    return datasets
+      .filter((d) => d.count > 0)
+      .sort((a, b) => {
+        const sym = a.symbol.localeCompare(b.symbol);
+        if (sym !== 0) return sym;
+        return Config.TIMEFRAMES.indexOf(a.timeframe) - Config.TIMEFRAMES.indexOf(b.timeframe);
+      });
   },
 
   /**

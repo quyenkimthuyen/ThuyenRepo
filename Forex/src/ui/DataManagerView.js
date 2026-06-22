@@ -83,10 +83,11 @@ class DataManagerViewImpl {
 
     try {
       const h = await DataManager.getDataHealth();
-      const ok = h.eurusdH1Count > 0;
+      const candleCount = Math.max(h.eurusdH1Count, h.eurusdH1MetaCount ?? 0);
+      const ok = candleCount > 0;
       box.className = `data-health${ok ? ' data-health-ok' : ' data-health-warn'}`;
       if (ok) {
-        box.textContent = `Data OK — EURUSD H1: ${h.eurusdH1Count.toLocaleString()} candles · ${h.indexedDbDatasets} datasets in IndexedDB`;
+        box.textContent = `Data OK — EURUSD H1: ${candleCount.toLocaleString()} candles · ${h.indexedDbDatasets} datasets in IndexedDB`;
       } else if (h.protocol === 'file:') {
         box.textContent = 'Không load được qua file:// — chạy: cd Forex && python3 -m http.server 8080 rồi mở http://localhost:8080';
       } else {
