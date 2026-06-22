@@ -71,7 +71,7 @@ export const PanelManager = {
             `[${new Date().toLocaleTimeString()}] Price Action Research Lab initialized.`,
           ]),
           el('div', { class: 'log-entry' }, [
-            'Phase 8 — Dashboard, Heatmaps & Reports ready.',
+            'Phase 9 — Grid Search, Walk Forward & Monte Carlo ready.',
           ]),
         ]),
       ]),

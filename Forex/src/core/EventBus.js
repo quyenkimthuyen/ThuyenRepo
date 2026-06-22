@@ -116,4 +116,7 @@ export const Events = Object.freeze({
   TRADE_CLOSED: 'trade:closed',
   STATISTICS_COMPUTED: 'statistics:computed',
   REPORT_GENERATED: 'report:generated',
+  OPTIMIZATION_COMPLETE: 'optimization:complete',
+  WALK_FORWARD_COMPLETE: 'walkforward:complete',
+  MONTE_CARLO_COMPLETE: 'montecarlo:complete',
 });

@@ -12,7 +12,7 @@
  */
 export const Config = Object.freeze({
   APP_NAME: 'Price Action Research Lab',
-  APP_VERSION: '0.8.0',
+  APP_VERSION: '0.9.0',
   APP_SHORT_NAME: 'PARL',
 
   /** Supported trading symbols (extensible). */
@@ -48,6 +48,7 @@ export const Config = Object.freeze({
     SIMULATION_RESULTS: 'parl_simulation_results',
     STATISTICS_RESULTS: 'parl_statistics_results',
     REPORT_RESULTS: 'parl_report_results',
+    RESEARCH_RESULTS: 'parl_research_results',
   }),
 
   /** IndexedDB database name and schema version. */
@@ -119,6 +120,17 @@ export const Config = Object.freeze({
     PARTIAL_CLOSE_AT_R: 0,
     PARTIAL_CLOSE_PERCENT: 50,
     INITIAL_BALANCE: 10000,
+  }),
+
+  /** Research optimizer defaults. */
+  OPTIMIZER: Object.freeze({
+    MAX_COMBINATIONS: 500,
+    DEFAULT_RANK_METRIC: 'expectancy',
+    MONTE_CARLO_ITERATIONS: 1000,
+    WALK_FORWARD_FOLDS: 5,
+    IN_SAMPLE_RATIO: 0.7,
+    OOS_RATIO: 0.15,
+    STEP_RATIO: 0.1,
   }),
 });
 

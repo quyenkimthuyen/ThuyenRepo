@@ -17,6 +17,7 @@ import { StrategyView } from './StrategyView.js';
 import { SimulationView } from './SimulationView.js';
 import { StatisticsView } from './StatisticsView.js';
 import { ReportsView } from './ReportsView.js';
+import { OptimizerView } from './OptimizerView.js';
 
 const log = createLogger('Layout');
 
@@ -28,6 +29,7 @@ const VIEWS = [
   { id: 'simulation', label: 'Simulation', icon: '🔬' },
   { id: 'statistics', label: 'Statistics', icon: '📊' },
   { id: 'reports', label: 'Reports', icon: '📋' },
+  { id: 'optimizer', label: 'Optimizer', icon: '🧪' },
 ];
 
 /**
@@ -134,6 +136,10 @@ const Layout = {
       placeholder.className = 'panel-body';
       this.#activeView = ReportsView;
       ReportsView.mount(placeholder);
+    } else if (viewId === 'optimizer') {
+      placeholder.className = 'panel-body';
+      this.#activeView = OptimizerView;
+      OptimizerView.mount(placeholder);
     } else {
       const view = VIEWS.find((v) => v.id === viewId);
       const title = el('h2', { class: 'view-title' }, [view?.label ?? viewId]);
@@ -160,6 +166,7 @@ const Layout = {
     if (viewId === 'simulation') return 'Phase 6 — Trade Engine active';
     if (viewId === 'statistics') return 'Phase 7 — Statistics active';
     if (viewId === 'reports') return 'Phase 8 — Dashboard & Reports active';
+    if (viewId === 'optimizer') return 'Phase 9 — Optimizer active';
     return 'Coming in a future phase';
   },
 
@@ -175,6 +182,7 @@ const Layout = {
       simulation: 'Backtest setups across pairs, timeframes, and parameter combinations.',
       statistics: 'Expectancy, profit factor, drawdown, and performance analytics.',
       reports: 'Export results as CSV, JSON, PNG, or PDF reports.',
+      optimizer: 'Grid search, walk-forward validation, and Monte Carlo risk analysis.',
     };
     return descriptions[viewId] ?? 'Module under development.';
   },
