@@ -16,15 +16,15 @@ const log = createLogger('StrategyView');
 /**
  * Strategy workspace view.
  */
-export const StrategyView = {
+class StrategyViewImpl {
   /** @type {HTMLElement|null} */
-  #container: null,
+  #container = null;
 
   /** @type {string|null} */
-  #selectedId: null,
+  #selectedId = null;
 
   /** @type {Function|null} */
-  #unsub: null,
+  #unsub = null;
 
   /**
    * @param {HTMLElement} container
@@ -49,7 +49,7 @@ export const StrategyView = {
     this.#bindEvents();
     this.#renderDetail();
     log.info('Strategy view mounted');
-  },
+  }
 
   unmount() {
     this.#unsub?.();
@@ -58,7 +58,7 @@ export const StrategyView = {
       this.#container.innerHTML = '';
       this.#container.classList.add('panel-body-fill');
     }
-  },
+  }
 
   /**
    * @param {Record<string, unknown>} settings
@@ -84,7 +84,7 @@ export const StrategyView = {
         el('button', { class: 'btn btn-secondary', id: 'strat-run-all' }, ['Run All Enabled']),
       ]),
     ]);
-  },
+  }
 
   /**
    * @param {import('../plugin/PluginRegistry.js').PluginDescriptor[]} plugins
@@ -113,7 +113,7 @@ export const StrategyView = {
     });
 
     return el('aside', { class: 'strategy-list', id: 'strategy-list' }, items);
-  },
+  }
 
   /**
    * @returns {HTMLElement}
@@ -122,7 +122,7 @@ export const StrategyView = {
     return el('div', { class: 'strategy-detail', id: 'strategy-detail' }, [
       el('p', { class: 'strategy-loading' }, ['Select a strategy…']),
     ]);
-  },
+  }
 
   #bindEvents() {
     this.#container?.querySelector('#strategy-list')?.addEventListener('click', (e) => {
@@ -147,7 +147,7 @@ export const StrategyView = {
       this.#refreshPluginList();
       this.#renderDetail();
     });
-  },
+  }
 
   #refreshPluginList() {
     const list = this.#container?.querySelector('#strategy-list');
@@ -165,7 +165,7 @@ export const StrategyView = {
       });
       this.#renderDetail();
     });
-  },
+  }
 
   #renderDetail() {
     const panel = this.#container?.querySelector('#strategy-detail');
@@ -249,7 +249,7 @@ export const StrategyView = {
         });
       }
     });
-  },
+  }
 
   /**
    * @param {import('../strategy/ParameterSchema.js').ParamDefinition} def
@@ -291,7 +291,7 @@ export const StrategyView = {
       field.appendChild(el('span', { class: 'strategy-param-hint' }, [def.description]));
     }
     return field;
-  },
+  }
 
   /**
    * @param {import('../strategy/ParameterSchema.js').ParamDefinition[]} schema
@@ -322,7 +322,7 @@ export const StrategyView = {
       level: 'info',
       time: new Date(),
     });
-  },
+  }
 
   async #runSelected() {
     if (!this.#selectedId) return;
@@ -344,7 +344,7 @@ export const StrategyView = {
         time: new Date(),
       });
     }
-  },
+  }
 
   async #runAll() {
     const symbol = /** @type {HTMLSelectElement} */ (
@@ -357,5 +357,7 @@ export const StrategyView = {
     await StrategyEngine.runAll(symbol, timeframe);
     this.#refreshPluginList();
     this.#renderDetail();
-  },
-};
+  }
+}
+
+export const StrategyView = new StrategyViewImpl();

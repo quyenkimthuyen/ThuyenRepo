@@ -41,9 +41,9 @@ const METRIC_GROUPS = [
 /**
  * Statistics view controller.
  */
-export const StatisticsView = {
+class StatisticsViewImpl {
   /** @type {HTMLElement|null} */
-  #container: null,
+  #container = null;
 
   /**
    * @param {HTMLElement} container
@@ -78,14 +78,14 @@ export const StatisticsView = {
     this.#bindEvents();
     this.#render(StatisticsEngine.getLastReport());
     log.info('Statistics view mounted');
-  },
+  }
 
   unmount() {
     if (this.#container) {
       this.#container.innerHTML = '';
       this.#container.classList.add('panel-body-fill');
     }
-  },
+  }
 
   #bindEvents() {
     this.#container?.querySelector('#stats-refresh')?.addEventListener('click', () => {
@@ -110,7 +110,7 @@ export const StatisticsView = {
     bus.on(Events.SIMULATION_COMPLETE, () => {
       setTimeout(() => this.#render(StatisticsEngine.getLastReport()), 50);
     });
-  },
+  }
 
   /**
    * @param {import('../statistics/StatisticsEngine.js').StatisticsReport|null} report
@@ -151,7 +151,7 @@ export const StatisticsView = {
 
     this.#drawEquityCurve(stats.equityCurve);
     this.#drawDrawdown(stats.equityCurve);
-  },
+  }
 
   /**
    * @param {import('../statistics/EquityCurve.js').EquityPoint[]} curve
@@ -195,7 +195,7 @@ export const StatisticsView = {
       else ctx.lineTo(x, y);
     });
     ctx.stroke();
-  },
+  }
 
   /**
    * @param {import('../statistics/EquityCurve.js').EquityPoint[]} curve
@@ -231,7 +231,7 @@ export const StatisticsView = {
     ctx.lineTo(w, 0);
     ctx.closePath();
     ctx.fill();
-  },
+  }
 
   #clearCharts() {
     for (const id of ['equity-canvas', 'drawdown-canvas']) {
@@ -239,5 +239,7 @@ export const StatisticsView = {
       const ctx = canvas?.getContext('2d');
       if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
-  },
-};
+  }
+}
+
+export const StatisticsView = new StatisticsViewImpl();

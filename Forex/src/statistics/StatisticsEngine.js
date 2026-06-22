@@ -28,9 +28,9 @@ const log = createLogger('StatisticsEngine');
 /**
  * Main statistics service module.
  */
-const StatisticsEngine = {
+class StatisticsEngine {
   /** @type {StatisticsReport|null} */
-  #lastReport: null,
+  #lastReport = null;
 
   /**
    * @param {{ bus: import('../core/EventBus.js').EventBus }} _ctx
@@ -47,14 +47,14 @@ const StatisticsEngine = {
       );
     });
     log.info('Statistics engine ready');
-  },
+  }
 
   /**
    * @returns {StatisticsReport|null}
    */
   getLastReport() {
     return this.#lastReport;
-  },
+  }
 
   /**
    * Compute statistics from trade array.
@@ -89,7 +89,7 @@ const StatisticsEngine = {
 
     log.info(`Computed stats for ${trades.length} trades`);
     return report;
-  },
+  }
 
   /**
    * Recompute from last simulation result.
@@ -105,7 +105,7 @@ const StatisticsEngine = {
       sim.symbol,
       sim.timeframe
     );
-  },
-};
+  }
+}
 
-export default StatisticsEngine;
+export default new StatisticsEngine();

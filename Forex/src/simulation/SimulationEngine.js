@@ -33,12 +33,12 @@ const log = createLogger('SimulationEngine');
 /**
  * Main simulation service module.
  */
-const SimulationEngine = {
+class SimulationEngine {
   /** @type {TradeConfig} */
-  #config: getDefaultTradeConfig(),
+  #config = getDefaultTradeConfig();
 
   /** @type {SimulationResult|null} */
-  #lastResult: null,
+  #lastResult = null;
 
   /**
    * @param {{ bus: import('../core/EventBus.js').EventBus }} _ctx
@@ -49,14 +49,14 @@ const SimulationEngine = {
       getDefaultTradeConfig()
     );
     log.info('Simulation engine ready');
-  },
+  }
 
   /**
    * @returns {TradeConfig}
    */
   getConfig() {
     return { ...this.#config };
-  },
+  }
 
   /**
    * @param {Partial<TradeConfig>} partial
@@ -64,14 +64,14 @@ const SimulationEngine = {
   setConfig(partial) {
     this.#config = mergeTradeConfig({ ...this.#config, ...partial });
     saveToStorage(Config.STORAGE_KEYS.SIMULATION_CONFIG, this.#config);
-  },
+  }
 
   /**
    * @returns {SimulationResult|null}
    */
   getLastResult() {
     return this.#lastResult;
-  },
+  }
 
   /**
    * Mode 1: One setup, one pair — run strategy scan then simulate trades.
@@ -113,7 +113,7 @@ const SimulationEngine = {
 
     log.info(`Mode 1 complete: ${trades.length} trades`);
     return result;
-  },
+  }
 
   /**
    * Simulate from existing signals without re-scanning.
@@ -142,7 +142,7 @@ const SimulationEngine = {
     this.#lastResult = result;
     bus.emit(Events.SIMULATION_COMPLETE, result);
     return result;
-  },
-};
+  }
+}
 
-export default SimulationEngine;
+export default new SimulationEngine();

@@ -31,7 +31,11 @@ export const TopBar = {
         el('span', { class: 'timeframe-badge' }, [Config.DEFAULT_TIMEFRAME]),
       ]),
       el('div', { class: 'topbar-right' }, [
-        el('button', { class: 'btn-icon', title: 'Settings', 'aria-label': 'Settings' }, ['⚙']),
+        el('button', {
+          class: 'btn-icon docs-btn',
+          title: 'Documentation (Ctrl+9 / F1)',
+          'aria-label': 'Documentation',
+        }, ['📖']),
         el('span', { class: 'version-tag' }, [`v${Config.APP_VERSION}`]),
       ]),
     ]);
@@ -44,5 +48,8 @@ export const TopBar = {
   init(shell) {
     const toggle = shell.querySelector('.sidebar-toggle');
     toggle?.addEventListener('click', () => bus.emit(Events.SIDEBAR_TOGGLE));
+
+    const docsBtn = shell.querySelector('.docs-btn');
+    docsBtn?.addEventListener('click', () => bus.emit(Events.NAVIGATE, { view: 'docs' }));
   },
 };

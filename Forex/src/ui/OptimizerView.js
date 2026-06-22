@@ -21,9 +21,9 @@ let activeTab = 'grid';
 /**
  * Optimizer workspace view.
  */
-export const OptimizerView = {
+class OptimizerViewImpl {
   /** @type {HTMLElement|null} */
-  #container: null,
+  #container = null;
 
   /**
    * @param {HTMLElement} container
@@ -53,14 +53,14 @@ export const OptimizerView = {
     this.#bindEvents();
     this.#renderTab();
     log.info('Optimizer view mounted');
-  },
+  }
 
   unmount() {
     if (this.#container) {
       this.#container.innerHTML = '';
       this.#container.classList.add('panel-body-fill');
     }
-  },
+  }
 
   /**
    * @param {Record<string, unknown>} settings
@@ -81,7 +81,7 @@ export const OptimizerView = {
       el('select', { class: 'data-select', id: 'opt-symbol' }, symOpts),
       el('select', { class: 'data-select', id: 'opt-tf' }, tfOpts),
     ]);
-  },
+  }
 
   #bindEvents() {
     this.#container?.querySelector('#opt-tabs')?.addEventListener('click', (e) => {
@@ -101,7 +101,7 @@ export const OptimizerView = {
     bus.on(Events.OPTIMIZATION_COMPLETE, (r) => this.#renderGridResults(r));
     bus.on(Events.WALK_FORWARD_COMPLETE, (r) => this.#renderWalkForwardResults(r));
     bus.on(Events.MONTE_CARLO_COMPLETE, (r) => this.#renderMonteCarloResults(r));
-  },
+  }
 
   #renderTab() {
     const content = this.#container?.querySelector('#opt-content');
@@ -124,7 +124,7 @@ export const OptimizerView = {
       const last = ResearchEngine.getLastMonteCarloResult();
       if (last) this.#renderMonteCarloResults(last);
     }
-  },
+  }
 
   /**
    * @param {HTMLElement} content
@@ -171,7 +171,7 @@ export const OptimizerView = {
     ]));
 
     content.querySelector('#opt-run-grid')?.addEventListener('click', () => this.#runGrid());
-  },
+  }
 
   /**
    * @param {HTMLElement} content
@@ -197,7 +197,7 @@ export const OptimizerView = {
       el('button', { class: 'btn btn-primary', id: 'opt-run-wf' }, ['Run Walk Forward']),
     ]));
     content.querySelector('#opt-run-wf')?.addEventListener('click', () => this.#runWalkForward());
-  },
+  }
 
   /**
    * @param {HTMLElement} content
@@ -220,7 +220,7 @@ export const OptimizerView = {
       el('button', { class: 'btn btn-primary', id: 'opt-run-mc' }, ['Run Monte Carlo']),
     ]));
     content.querySelector('#opt-run-mc')?.addEventListener('click', () => this.#runMonteCarlo());
-  },
+  }
 
   #readSelectors() {
     return {
@@ -228,7 +228,7 @@ export const OptimizerView = {
       symbol: /** @type {HTMLSelectElement} */ (this.#container.querySelector('#opt-symbol')).value,
       timeframe: /** @type {HTMLSelectElement} */ (this.#container.querySelector('#opt-tf')).value,
     };
-  },
+  }
 
   #readParamGrid() {
     /** @type {Record<string, number[]>} */
@@ -241,7 +241,7 @@ export const OptimizerView = {
       if (values.length) grid[key] = values;
     });
     return grid;
-  },
+  }
 
   async #runGrid() {
     const { strategyId, symbol, timeframe } = this.#readSelectors();
@@ -271,7 +271,7 @@ export const OptimizerView = {
       bus.emit(Events.LOG_MESSAGE, { message: err.message, level: 'error', time: new Date() });
     }
     if (progress) progress.textContent = '';
-  },
+  }
 
   async #runWalkForward() {
     const { strategyId, symbol, timeframe } = this.#readSelectors();
@@ -284,7 +284,7 @@ export const OptimizerView = {
     } catch (err) {
       bus.emit(Events.LOG_MESSAGE, { message: err.message, level: 'error', time: new Date() });
     }
-  },
+  }
 
   async #runMonteCarlo() {
     const iterations = parseInt(/** @type {HTMLInputElement} */ (this.#container.querySelector('#mc-iterations')).value, 10);
@@ -293,7 +293,7 @@ export const OptimizerView = {
     } catch (err) {
       bus.emit(Events.LOG_MESSAGE, { message: err.message, level: 'error', time: new Date() });
     }
-  },
+  }
 
   /**
    * @param {import('../optimizer/GridSearchEngine.js').GridSearchResult} result
@@ -331,7 +331,7 @@ export const OptimizerView = {
     wrap.querySelector('#opt-export-grid')?.addEventListener('click', () => {
       downloadFile(JSON.stringify(result, null, 2), 'grid_search.json', 'application/json');
     });
-  },
+  }
 
   /**
    * @param {import('../optimizer/WalkForwardEngine.js').WalkForwardResult} result
@@ -365,7 +365,7 @@ export const OptimizerView = {
       ]),
       el('tbody', {}, rows),
     ]));
-  },
+  }
 
   /**
    * @param {import('../optimizer/MonteCarloEngine.js').MonteCarloResult} result
@@ -389,7 +389,7 @@ export const OptimizerView = {
       this.#mcCard('P50 (median)', p50),
       this.#mcCard('P95 (best)', p95),
     ]));
-  },
+  }
 
   /**
    * @param {string} label
@@ -401,7 +401,7 @@ export const OptimizerView = {
       el('span', { class: 'opt-card-label' }, [label]),
       el('span', { class: 'opt-card-value' }, [value]),
     ]);
-  },
+  }
 
   /**
    * @param {string} label
@@ -416,5 +416,7 @@ export const OptimizerView = {
         `Net $${iter.netProfit.toFixed(2)} · DD $${iter.maxDrawdown.toFixed(2)} (${iter.maxDrawdownPercent.toFixed(1)}%)`,
       ]),
     ]);
-  },
-};
+  }
+}
+
+export const OptimizerView = new OptimizerViewImpl();

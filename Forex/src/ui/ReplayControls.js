@@ -11,12 +11,12 @@ import { getSession, getSessionColor } from '../chart/SessionUtils.js';
 /**
  * Replay toolbar with play/pause, step, speed, and jump controls.
  */
-export const ReplayControls = {
+class ReplayControlsImpl {
   /** @type {HTMLElement|null} */
-  #root: null,
+  #root = null;
 
   /** @type {Function|null} */
-  #onAction: null,
+  #onAction = null;
 
   /**
    * Render the replay control bar.
@@ -75,7 +75,7 @@ export const ReplayControls = {
     });
 
     return this.#root;
-  },
+  }
 
   /**
    * Update the progress and OHLC display.
@@ -107,5 +107,7 @@ export const ReplayControls = {
       session.textContent = `${formatTimestamp(candle.timestamp)} UTC · ${sess}`;
       session.style.color = getSessionColor(sess);
     }
-  },
-};
+  }
+}
+
+export const ReplayControls = new ReplayControlsImpl();

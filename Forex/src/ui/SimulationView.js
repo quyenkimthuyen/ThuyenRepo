@@ -16,9 +16,9 @@ const log = createLogger('SimulationView');
 /**
  * Simulation view controller.
  */
-export const SimulationView = {
+class SimulationViewImpl {
   /** @type {HTMLElement|null} */
-  #container: null,
+  #container = null;
 
   /**
    * @param {HTMLElement} container
@@ -43,14 +43,14 @@ export const SimulationView = {
 
     this.#bindEvents();
     log.info('Simulation view mounted');
-  },
+  }
 
   unmount() {
     if (this.#container) {
       this.#container.innerHTML = '';
       this.#container.classList.add('panel-body-fill');
     }
-  },
+  }
 
   /**
    * @param {Record<string, unknown>} settings
@@ -82,7 +82,7 @@ export const SimulationView = {
         el('button', { class: 'btn btn-sm', id: 'sim-export' }, ['Export JSON']),
       ]),
     ]);
-  },
+  }
 
   /**
    * @param {import('../simulation/TradeConfig.js').TradeConfig} config
@@ -130,13 +130,13 @@ export const SimulationView = {
         ]),
       ]),
     ]);
-  },
+  }
 
   #bindEvents() {
     this.#container?.querySelector('#sim-run')?.addEventListener('click', () => this.#run());
     this.#container?.querySelector('#sim-export')?.addEventListener('click', () => this.#export());
     bus.on(Events.SIMULATION_COMPLETE, (result) => this.#renderResults(result));
-  },
+  }
 
   #readConfig() {
     const root = this.#container;
@@ -150,7 +150,7 @@ export const SimulationView = {
       partialCloseAtR: parseFloat(/** @type {HTMLInputElement} */ (root.querySelector('#sim-partial-r')).value),
       partialClosePercent: parseFloat(/** @type {HTMLInputElement} */ (root.querySelector('#sim-partial-pct')).value),
     };
-  },
+  }
 
   async #run() {
     const strategyId = /** @type {HTMLSelectElement} */ (this.#container.querySelector('#sim-strategy')).value;
@@ -171,7 +171,7 @@ export const SimulationView = {
         time: new Date(),
       });
     }
-  },
+  }
 
   #export() {
     const result = SimulationEngine.getLastResult();
@@ -180,7 +180,7 @@ export const SimulationView = {
       return;
     }
     downloadFile(JSON.stringify(result, null, 2), `simulation_${result.strategyId}.json`, 'application/json');
-  },
+  }
 
   /**
    * @param {import('../simulation/SimulationEngine.js').SimulationResult} result
@@ -237,7 +237,7 @@ export const SimulationView = {
       ]),
       el('tbody', {}, rows),
     ]));
-  },
+  }
 
   /**
    * @param {string} label
@@ -249,5 +249,7 @@ export const SimulationView = {
       el('span', { class: 'sim-card-label' }, [label]),
       el('span', { class: 'sim-card-value' }, [value]),
     ]);
-  },
-};
+  }
+}
+
+export const SimulationView = new SimulationViewImpl();

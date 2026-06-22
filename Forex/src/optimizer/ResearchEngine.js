@@ -20,15 +20,15 @@ const log = createLogger('ResearchEngine');
 /**
  * Main research / optimization service module.
  */
-const ResearchEngine = {
+class ResearchEngine {
   /** @type {import('./GridSearchEngine.js').GridSearchResult|null} */
-  #lastGrid: null,
+  #lastGrid = null;
 
   /** @type {import('./WalkForwardEngine.js').WalkForwardResult|null} */
-  #lastWalkForward: null,
+  #lastWalkForward = null;
 
   /** @type {import('./MonteCarloEngine.js').MonteCarloResult|null} */
-  #lastMonteCarlo: null,
+  #lastMonteCarlo = null;
 
   /**
    * @param {{ bus: import('../core/EventBus.js').EventBus }} _ctx
@@ -39,11 +39,11 @@ const ResearchEngine = {
     this.#lastWalkForward = saved.walkForward ?? null;
     this.#lastMonteCarlo = saved.monteCarlo ?? null;
     log.info('Research engine ready');
-  },
+  }
 
-  getLastGridResult() { return this.#lastGrid; },
-  getLastWalkForwardResult() { return this.#lastWalkForward; },
-  getLastMonteCarloResult() { return this.#lastMonteCarlo; },
+  getLastGridResult() { return this.#lastGrid; }
+  getLastWalkForwardResult() { return this.#lastWalkForward; }
+  getLastMonteCarloResult() { return this.#lastMonteCarlo; }
 
   /**
    * @param {Object} options
@@ -82,7 +82,7 @@ const ResearchEngine = {
 
     log.info(`Grid search done: ${result.totalCombinations} combinations`);
     return result;
-  },
+  }
 
   /**
    * @param {Object} options
@@ -125,7 +125,7 @@ const ResearchEngine = {
 
     log.info(`Walk-forward done: ${result.folds.length} folds`);
     return result;
-  },
+  }
 
   /**
    * @param {Object} [options]
@@ -158,7 +158,7 @@ const ResearchEngine = {
 
     log.info(`Monte Carlo done: ${iterations} iterations`);
     return result;
-  },
+  }
 
   #persist() {
     saveToStorage(Config.STORAGE_KEYS.RESEARCH_RESULTS, {
@@ -166,7 +166,7 @@ const ResearchEngine = {
       walkForward: this.#lastWalkForward,
       monteCarlo: this.#lastMonteCarlo,
     });
-  },
-};
+  }
+}
 
-export default ResearchEngine;
+export default new ResearchEngine();

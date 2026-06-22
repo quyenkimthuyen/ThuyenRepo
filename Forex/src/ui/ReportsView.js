@@ -26,9 +26,9 @@ let activeDimension = 'month';
 /**
  * Reports view controller.
  */
-export const ReportsView = {
+class ReportsViewImpl {
   /** @type {HTMLElement|null} */
-  #container: null,
+  #container = null;
 
   /**
    * @param {HTMLElement} container
@@ -57,14 +57,14 @@ export const ReportsView = {
     this.#bindEvents();
     this.#render(ReportEngine.getLastReport());
     log.info('Reports view mounted');
-  },
+  }
 
   unmount() {
     if (this.#container) {
       this.#container.innerHTML = '';
       this.#container.classList.add('panel-body-fill');
     }
-  },
+  }
 
   #bindEvents() {
     this.#container?.querySelector('#reports-refresh')?.addEventListener('click', () => {
@@ -93,7 +93,7 @@ export const ReportsView = {
     bus.on(Events.STATISTICS_COMPUTED, () => {
       setTimeout(() => this.#render(ReportEngine.getLastReport()), 50);
     });
-  },
+  }
 
   /**
    * @param {import('../report/ReportEngine.js').ResearchReport|null} report
@@ -118,7 +118,7 @@ export const ReportsView = {
     if (activeTab === 'dashboard') this.#renderDashboard(content, report);
     else if (activeTab === 'heatmaps') this.#renderHeatmaps(content, report);
     else this.#renderExport(content, report);
-  },
+  }
 
   /**
    * @param {HTMLElement} content
@@ -141,7 +141,7 @@ export const ReportsView = {
 
     content.append(cards, chartPanel);
     requestAnimationFrame(() => this.#drawEquityCurve(report.stats.equityCurve));
-  },
+  }
 
   /**
    * @param {HTMLElement} content
@@ -185,7 +185,7 @@ export const ReportsView = {
     }
 
     content.append(dimBar, grid);
-  },
+  }
 
   /**
    * @param {HTMLElement} content
@@ -218,7 +218,7 @@ export const ReportsView = {
     content.querySelector('#export-pdf')?.addEventListener('click', () => {
       openPrintReport(report);
     });
-  },
+  }
 
   /**
    * @param {import('../report/ReportEngine.js').ResearchReport} report
@@ -259,7 +259,7 @@ export const ReportsView = {
     }
 
     return canvas;
-  },
+  }
 
   /**
    * @param {import('../statistics/EquityCurve.js').EquityPoint[]} curve
@@ -295,7 +295,7 @@ export const ReportsView = {
       else ctx.lineTo(x, y);
     });
     ctx.stroke();
-  },
+  }
 
   /**
    * @param {number} value
@@ -313,5 +313,7 @@ export const ReportsView = {
       return `rgba(239, 68, 68, ${0.25 + intensity * 0.65})`;
     }
     return 'rgba(90, 106, 130, 0.3)';
-  },
-};
+  }
+}
+
+export const ReportsView = new ReportsViewImpl();

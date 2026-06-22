@@ -36,9 +36,9 @@ const log = createLogger('ReportEngine');
 /**
  * Main report service module.
  */
-const ReportEngine = {
+class ReportEngine {
   /** @type {ResearchReport|null} */
-  #lastReport: null,
+  #lastReport = null;
 
   /**
    * @param {{ bus: import('../core/EventBus.js').EventBus }} _ctx
@@ -52,14 +52,14 @@ const ReportEngine = {
     });
 
     log.info('Report engine ready');
-  },
+  }
 
   /**
    * @returns {ResearchReport|null}
    */
   getLastReport() {
     return this.#lastReport;
-  },
+  }
 
   /**
    * Build a research report from simulation + statistics data.
@@ -102,7 +102,7 @@ const ReportEngine = {
 
     log.info(`Report built for ${sim.strategyId}`);
     return report;
-  },
+  }
 
   /**
    * Rebuild report from latest simulation and statistics.
@@ -117,7 +117,7 @@ const ReportEngine = {
     }
 
     return this.buildReport(sim, statsReport);
-  },
-};
+  }
+}
 
-export default ReportEngine;
+export default new ReportEngine();

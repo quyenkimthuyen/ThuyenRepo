@@ -19,6 +19,7 @@ import { StatisticsView } from './StatisticsView.js';
 import { ReportsView } from './ReportsView.js';
 import { OptimizerView } from './OptimizerView.js';
 import { SignalsView } from './SignalsView.js';
+import { DocsView } from './DocsView.js';
 
 const log = createLogger('Layout');
 
@@ -32,17 +33,18 @@ const VIEWS = [
   { id: 'reports', label: 'Reports', icon: '📋' },
   { id: 'optimizer', label: 'Optimizer', icon: '🧪' },
   { id: 'signals', label: 'AI Signals', icon: '🎯' },
+  { id: 'docs', label: 'Docs', icon: '📖' },
 ];
 
 /**
  * Layout module — builds the professional trading shell.
  */
-const Layout = {
+class Layout {
   /** @type {string} */
-  currentView: 'chart',
+  currentView = 'chart';
 
   /** @type {{ unmount?: Function }|null} */
-  #activeView: null,
+  #activeView = null;
 
   /**
    * Initialize the layout inside #app.
@@ -78,7 +80,7 @@ const Layout = {
     this.#bindEvents(eventBus);
     this.#navigate('chart');
     log.info('Layout ready');
-  },
+  }
 
   /**
    * @param {import('../core/EventBus.js').EventBus} eventBus
@@ -95,7 +97,7 @@ const Layout = {
         sidebarCollapsed: !collapsed,
       });
     });
-  },
+  }
 
   /**
    * Switch the active view in the main content area.
@@ -146,6 +148,10 @@ const Layout = {
       placeholder.className = 'panel-body';
       this.#activeView = SignalsView;
       SignalsView.mount(placeholder);
+    } else if (viewId === 'docs') {
+      placeholder.className = 'panel-body';
+      this.#activeView = DocsView;
+      DocsView.mount(placeholder);
     } else {
       const view = VIEWS.find((v) => v.id === viewId);
       const title = el('h2', { class: 'view-title' }, [view?.label ?? viewId]);
@@ -159,7 +165,7 @@ const Layout = {
     }
 
     bus.emit(Events.VIEW_ACTIVE, { view: viewId });
-  },
+  }
 
   /**
    * @param {string} viewId
@@ -174,8 +180,9 @@ const Layout = {
     if (viewId === 'reports') return 'Phase 8 — Dashboard & Reports active';
     if (viewId === 'optimizer') return 'Phase 9 — Optimizer active';
     if (viewId === 'signals') return 'Phase 10 — AI Scoring active';
+    if (viewId === 'docs') return 'Documentation & usage guide';
     return 'Coming in a future phase';
-  },
+  }
 
   /**
    * @param {string} viewId
@@ -191,9 +198,10 @@ const Layout = {
       reports: 'Export results as CSV, JSON, PNG, or PDF reports.',
       optimizer: 'Grid search, walk-forward validation, and Monte Carlo risk analysis.',
       signals: 'AI signal scores with trend, momentum, session, and PA quality factors.',
+      docs: 'Installation, usage guide, keyboard shortcuts, and FAQ.',
     };
     return descriptions[viewId] ?? 'Module under development.';
-  },
-};
+  }
+}
 
-export default Layout;
+export default new Layout();

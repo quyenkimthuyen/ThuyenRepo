@@ -31,9 +31,9 @@ const log = createLogger('ScoringEngine');
 /**
  * Main AI scoring service module.
  */
-const ScoringEngine = {
+class ScoringEngine {
   /** @type {ScoredSignalSet|null} */
-  #lastScored: null,
+  #lastScored = null;
 
   /**
    * @param {{ bus: import('../core/EventBus.js').EventBus }} _ctx
@@ -46,14 +46,14 @@ const ScoringEngine = {
     });
 
     log.info('Scoring engine ready');
-  },
+  }
 
   /**
    * @returns {ScoredSignalSet|null}
    */
   getLastScored() {
     return this.#lastScored;
-  },
+  }
 
   /**
    * Score signals from a strategy scan result.
@@ -96,7 +96,7 @@ const ScoringEngine = {
 
     log.info(`Scored ${scored.length} signals for ${strategyId}`);
     return set;
-  },
+  }
 
   /**
    * Get signals meeting minimum AI score threshold.
@@ -106,7 +106,7 @@ const ScoringEngine = {
   getFilteredSignals(minScore) {
     if (!this.#lastScored) return [];
     return filterByMinScore(this.#lastScored.signals, minScore);
-  },
-};
+  }
+}
 
-export default ScoringEngine;
+export default new ScoringEngine();

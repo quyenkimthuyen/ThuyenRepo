@@ -33,12 +33,12 @@ const log = createLogger('StrategyEngine');
 /**
  * Main strategy engine module.
  */
-const StrategyEngine = {
+class StrategyEngine {
   /** @type {Record<string, StrategyConfig>} */
-  #configs: {},
+  #configs = {};
 
   /** @type {Record<string, ScanResult>} */
-  #lastResults: {},
+  #lastResults = {};
 
   /**
    * @param {{ bus: import('../core/EventBus.js').EventBus }} _ctx
@@ -49,14 +49,14 @@ const StrategyEngine = {
     this.#lastResults = loadFromStorage(Config.STORAGE_KEYS.STRATEGY_RESULTS, {});
     this.#ensureDefaults();
     log.info(`Strategy engine ready — ${registry.size} plugins loaded`);
-  },
+  }
 
   /**
    * @returns {import('../plugin/PluginRegistry.js').PluginDescriptor[]}
    */
   listPlugins() {
     return registry.getAll();
-  },
+  }
 
   /**
    * @param {string} strategyId
@@ -64,7 +64,7 @@ const StrategyEngine = {
    */
   getConfig(strategyId) {
     return this.#configs[strategyId] ?? { enabled: true, params: {} };
-  },
+  }
 
   /**
    * @param {string} strategyId
@@ -81,7 +81,7 @@ const StrategyEngine = {
     };
     this.#persistConfigs();
     bus.emit(Events.STRATEGY_PARAMS_CHANGED, { strategyId, config: this.#configs[strategyId] });
-  },
+  }
 
   /**
    * @param {string} strategyId
@@ -89,7 +89,7 @@ const StrategyEngine = {
    */
   getLastResult(strategyId) {
     return this.#lastResults[strategyId];
-  },
+  }
 
   /**
    * Run a single strategy scan on candle data.
@@ -154,7 +154,7 @@ const StrategyEngine = {
 
     log.info(`Scan complete: ${strategyId} → ${signals.length} signals`);
     return result;
-  },
+  }
 
   /**
    * Run all enabled strategies.
@@ -183,7 +183,7 @@ const StrategyEngine = {
     }
 
     return results;
-  },
+  }
 
   /**
    * Export signals from last scan as JSON string.
@@ -194,7 +194,7 @@ const StrategyEngine = {
     const result = this.#lastResults[strategyId];
     if (!result) throw new Error('No scan results to export');
     return JSON.stringify(result, null, 2);
-  },
+  }
 
   #ensureDefaults() {
     for (const plugin of registry.getAll()) {
@@ -209,11 +209,11 @@ const StrategyEngine = {
       }
     }
     this.#persistConfigs();
-  },
+  }
 
   #persistConfigs() {
     saveToStorage(Config.STORAGE_KEYS.STRATEGIES, this.#configs);
-  },
-};
+  }
+}
 
-export default StrategyEngine;
+export default new StrategyEngine();

@@ -15,12 +15,12 @@ const log = createLogger('DataManagerView');
 /**
  * Data Manager view controller.
  */
-export const DataManagerView = {
+class DataManagerViewImpl {
   /** @type {HTMLElement|null} */
-  #container: null,
+  #container = null;
 
   /** @type {Function|null} */
-  #unsub: null,
+  #unsub = null;
 
   /**
    * Mount the view into the workspace container.
@@ -36,7 +36,7 @@ export const DataManagerView = {
     this.#unsub = bus.on(Events.DATA_UPDATED, () => this.refresh());
     await this.refresh();
     log.info('Data Manager view mounted');
-  },
+  }
 
   /**
    * Tear down the view.
@@ -48,7 +48,7 @@ export const DataManagerView = {
       this.#container.innerHTML = '';
       this.#container.classList.add('panel-body-fill');
     }
-  },
+  }
 
   /**
    * Reload the dataset table.
@@ -72,7 +72,7 @@ export const DataManagerView = {
     for (const ds of datasets.sort((a, b) => a.symbol.localeCompare(b.symbol))) {
       tbody.appendChild(this.#renderRow(ds));
     }
-  },
+  }
 
   /**
    * @returns {HTMLElement}
@@ -129,7 +129,7 @@ export const DataManagerView = {
         'Data is stored locally in IndexedDB.',
       ]),
     ]);
-  },
+  }
 
   /**
    * @param {import('../data/Candle.js').DatasetMetadata} ds
@@ -170,7 +170,7 @@ export const DataManagerView = {
         }, ['✕']),
       ]),
     ]);
-  },
+  }
 
   /**
    * @param {import('../data/Candle.js').DatasetMetadata} ds
@@ -185,7 +185,7 @@ export const DataManagerView = {
     } catch {
       cell.textContent = 'Error';
     }
-  },
+  }
 
   #bindEvents() {
     const fileInput = this.#container.querySelector('#import-file');
@@ -247,5 +247,7 @@ export const DataManagerView = {
         });
       }
     });
-  },
-};
+  }
+}
+
+export const DataManagerView = new DataManagerViewImpl();

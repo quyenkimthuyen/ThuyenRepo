@@ -17,12 +17,12 @@ const log = createLogger('PerformanceEngine');
 /**
  * Performance optimization service module.
  */
-const PerformanceEngine = {
+class PerformanceEngine {
   /** @type {WorkerPool|null} */
-  #pool: null,
+  #pool = null;
 
   /** @type {boolean} */
-  #workersEnabled: false,
+  #workersEnabled = false;
 
   /**
    * @param {{ bus: import('../core/EventBus.js').EventBus }} _ctx
@@ -49,14 +49,14 @@ const PerformanceEngine = {
     });
 
     log.info(`Performance engine ready — workers: ${this.#workersEnabled}`);
-  },
+  }
 
   /**
    * @returns {boolean}
    */
   workersEnabled() {
     return this.#workersEnabled;
-  },
+  }
 
   /**
    * Run backtest on worker or main thread.
@@ -78,7 +78,7 @@ const PerformanceEngine = {
       );
     }
     return runBacktest(...args);
-  },
+  }
 
   /**
    * Run Monte Carlo on worker or main thread.
@@ -94,7 +94,7 @@ const PerformanceEngine = {
       );
     }
     return runMonteCarlo(trades, initialBalance, iterations);
-  },
+  }
 
   /**
    * Score signals batch on worker or main thread.
@@ -110,7 +110,7 @@ const PerformanceEngine = {
       );
     }
     return scoreSignalsBatch(signals, candles, spreadPips);
-  },
-};
+  }
+}
 
-export default PerformanceEngine;
+export default new PerformanceEngine();

@@ -15,12 +15,12 @@ const log = createLogger('PanelManager');
 /**
  * Manages resizable split panels in the main workspace.
  */
-export const PanelManager = {
+class PanelManagerImpl {
   /** @type {number} */
-  leftPanelWidth: 280,
+  leftPanelWidth = 280;
 
   /** @type {number} */
-  bottomPanelHeight: 200,
+  bottomPanelHeight = 200;
 
   /**
    * Render the panel layout.
@@ -76,7 +76,7 @@ export const PanelManager = {
         ]),
       ]),
     ]);
-  },
+  }
 
   /**
    * Attach resize drag handlers.
@@ -108,7 +108,7 @@ export const PanelManager = {
     });
 
     log.info('Panel manager initialized');
-  },
+  }
 
   /**
    * Refresh watchlist from stored dataset metadata.
@@ -141,7 +141,7 @@ export const PanelManager = {
         ]));
       }
     }
-  },
+  }
 
   /**
    * @param {string} message
@@ -157,7 +157,7 @@ export const PanelManager = {
     ]);
     logPanel.appendChild(entry);
     logPanel.scrollTop = logPanel.scrollHeight;
-  },
+  }
 
   /**
    * @param {MouseEvent} e
@@ -218,5 +218,7 @@ export const PanelManager = {
 
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
-  },
-};
+  }
+}
+
+export const PanelManager = new PanelManagerImpl();

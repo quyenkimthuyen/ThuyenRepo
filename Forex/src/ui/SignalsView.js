@@ -16,9 +16,9 @@ let minScoreFilter = 0;
 /**
  * Signals scoring view controller.
  */
-export const SignalsView = {
+class SignalsViewImpl {
   /** @type {HTMLElement|null} */
-  #container: null,
+  #container = null;
 
   /**
    * @param {HTMLElement} container
@@ -46,14 +46,14 @@ export const SignalsView = {
     this.#bindEvents();
     this.#render(ScoringEngine.getLastScored());
     log.info('Signals view mounted');
-  },
+  }
 
   unmount() {
     if (this.#container) {
       this.#container.innerHTML = '';
       this.#container.classList.add('panel-body-fill');
     }
-  },
+  }
 
   #bindEvents() {
     const slider = this.#container?.querySelector('#sig-min-score');
@@ -65,7 +65,7 @@ export const SignalsView = {
     });
 
     bus.on(Events.SIGNALS_SCORED, (set) => this.#render(set));
-  },
+  }
 
   /**
    * @param {import('../scoring/ScoringEngine.js').ScoredSignalSet|null} set
@@ -124,5 +124,7 @@ export const SignalsView = {
     if (filtered.length > 100) {
       list.appendChild(el('p', { class: 'signals-more' }, [`Showing 100 of ${filtered.length} signals`]));
     }
-  },
-};
+  }
+}
+
+export const SignalsView = new SignalsViewImpl();

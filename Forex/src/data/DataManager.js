@@ -18,6 +18,15 @@ import { createLogger } from '../utils/logger.js';
 const log = createLogger('DataManager');
 
 /**
+ * Emit a log message to the UI panel.
+ * @param {string} message
+ * @param {'info'|'warn'|'error'} [level='info']
+ */
+function emitDataLog(message, level = 'info') {
+  bus.emit(Events.LOG_MESSAGE, { message, level, time: new Date() });
+}
+
+/**
  * Main data service — singleton module with initialize() lifecycle.
  */
 const DataManager = {
@@ -27,7 +36,7 @@ const DataManager = {
   async initialize(_ctx) {
     await store.open();
     log.info('DataManager ready');
-    this.#log('IndexedDB initialized — data layer active');
+    emitDataLog('IndexedDB initialized — data layer active');
   },
 
   /**
@@ -106,7 +115,7 @@ const DataManager = {
 
     const metadata = await this.saveCandles(result.symbol, result.timeframe, result.candles);
 
-    this.#log(
+    emitDataLog(
       `Imported ${result.candles.length} candles for ${result.symbol} ${result.timeframe}` +
       (result.skipped ? ` (${result.skipped} skipped)` : '')
     );
@@ -146,7 +155,7 @@ const DataManager = {
       }
     }
 
-    this.#log(`Exported ${candles.length} candles → ${baseName}.${format}${gzip ? '.gz' : ''}`);
+    emitDataLog(`Exported ${candles.length} candles → ${baseName}.${format}${gzip ? '.gz' : ''}`);
     bus.emit(Events.DATA_EXPORTED, { symbol, timeframe, format, count: candles.length });
   },
 
@@ -168,7 +177,7 @@ const DataManager = {
    */
   async deleteDataset(symbol, timeframe) {
     await store.deleteDataset(symbol, timeframe);
-    this.#log(`Deleted dataset ${symbol} ${timeframe}`);
+    emitDataLog(`Deleted dataset ${symbol} ${timeframe}`);
     bus.emit(Events.DATA_UPDATED, { deleted: { symbol, timeframe } });
   },
 
@@ -182,17 +191,10 @@ const DataManager = {
   async generateSample(symbol, timeframe, count) {
     const candles = generateSample(symbol, timeframe, count);
     const metadata = await this.saveCandles(symbol, timeframe, candles);
-    this.#log(`Generated ${candles.length} sample candles for ${symbol} ${timeframe}`);
+    emitDataLog(`Generated ${candles.length} sample candles for ${symbol} ${timeframe}`);
     return metadata;
   },
 
-  /**
-   * @param {string} message
-   * @param {'info'|'warn'|'error'} [level='info']
-   */
-  #log(message, level = 'info') {
-    bus.emit(Events.LOG_MESSAGE, { message, level, time: new Date() });
-  },
 };
 
 export default DataManager;

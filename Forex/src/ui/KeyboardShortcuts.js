@@ -19,6 +19,8 @@ const SHORTCUTS = {
   'ctrl+6': () => bus.emit(Events.NAVIGATE, { view: 'reports' }),
   'ctrl+7': () => bus.emit(Events.NAVIGATE, { view: 'optimizer' }),
   'ctrl+8': () => bus.emit(Events.NAVIGATE, { view: 'signals' }),
+  'ctrl+9': () => bus.emit(Events.NAVIGATE, { view: 'docs' }),
+  'f1': () => bus.emit(Events.NAVIGATE, { view: 'docs' }),
 };
 
 /** Chart replay shortcuts — only when chart view is active. */
@@ -33,9 +35,9 @@ const CHART_SHORTCUTS = {
 /**
  * Keyboard shortcuts module.
  */
-const KeyboardShortcuts = {
+class KeyboardShortcuts {
   /** @type {string} */
-  activeView: 'chart',
+  activeView = 'chart';
 
   /**
    * @param {{ bus: import('../core/EventBus.js').EventBus }} ctx
@@ -44,9 +46,9 @@ const KeyboardShortcuts = {
     ctx.bus.on(Events.VIEW_ACTIVE, ({ view }) => {
       this.activeView = view;
     });
-    document.addEventListener('keydown', this.#handleKeydown);
+    document.addEventListener('keydown', (e) => this.#handleKeydown(e));
     log.info('Keyboard shortcuts active');
-  },
+  }
 
   /**
    * @param {KeyboardEvent} e
@@ -78,7 +80,7 @@ const KeyboardShortcuts = {
         chartAction();
       }
     }
-  },
-};
+  }
+}
 
-export default KeyboardShortcuts;
+export default new KeyboardShortcuts();

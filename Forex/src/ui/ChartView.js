@@ -18,24 +18,24 @@ const log = createLogger('ChartView');
 /**
  * Main chart workspace view.
  */
-export const ChartView = {
+class ChartViewImpl {
   /** @type {HTMLElement|null} */
-  #container: null,
+  #container = null;
 
   /** @type {ChartEngine|null} */
-  #chart: null,
+  #chart = null;
 
   /** @type {ReplayEngine|null} */
-  #replay: null,
+  #replay = null;
 
   /** @type {string} */
-  #symbol: Config.DEFAULT_SYMBOL,
+  #symbol = Config.DEFAULT_SYMBOL;
 
   /** @type {string} */
-  #timeframe: Config.DEFAULT_TIMEFRAME,
+  #timeframe = Config.DEFAULT_TIMEFRAME;
 
   /** @type {Function|null} */
-  #unsubs: null,
+  #unsubs = null;
 
   /**
    * Mount the chart view.
@@ -68,7 +68,7 @@ export const ChartView = {
     await this.#loadChart();
 
     log.info('Chart view mounted');
-  },
+  }
 
   /**
    * Tear down the view.
@@ -86,7 +86,7 @@ export const ChartView = {
       this.#container.classList.remove('chart-view-root');
       this.#container.classList.add('panel-body-fill');
     }
-  },
+  }
 
   /**
    * @returns {HTMLElement}
@@ -115,7 +115,7 @@ export const ChartView = {
         'Loading…',
       ]),
     ]);
-  },
+  }
 
   #wireReplay() {
     if (!this.#replay) return;
@@ -137,7 +137,7 @@ export const ChartView = {
       ReplayControls.update(state, this.#replay?.getCurrentCandle());
       bus.emit(Events.REPLAY_STATE, state);
     });
-  },
+  }
 
   #bindEvents() {
     const unsubs = [];
@@ -182,7 +182,7 @@ export const ChartView = {
     });
 
     this.#unsubs = () => unsubs.forEach((fn) => fn());
-  },
+  }
 
   async #loadChart() {
     const status = document.getElementById('chart-status');
@@ -231,7 +231,7 @@ export const ChartView = {
         time: new Date(),
       });
     }
-  },
+  }
 
   /**
    * @param {string} action
@@ -275,12 +275,14 @@ export const ChartView = {
       default:
         break;
     }
-  },
+  }
 
   #syncSelectors() {
     const sym = this.#container?.querySelector('#chart-symbol');
     const tf = this.#container?.querySelector('#chart-timeframe');
     if (sym) /** @type {HTMLSelectElement} */ (sym).value = this.#symbol;
     if (tf) /** @type {HTMLSelectElement} */ (tf).value = this.#timeframe;
-  },
-};
+  }
+}
+
+export const ChartView = new ChartViewImpl();

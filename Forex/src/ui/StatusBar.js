@@ -10,9 +10,9 @@ import { el } from '../utils/dom.js';
 /**
  * StatusBar component factory.
  */
-export const StatusBar = {
+class StatusBarImpl {
   /** @type {HTMLElement|null} */
-  #statusText: null,
+  #statusText = null;
 
   /**
    * Render the status bar element.
@@ -27,7 +27,7 @@ export const StatusBar = {
       el('span', { class: 'status-item' }, [`${Config.TARGET_FPS} FPS target`]),
       el('span', { class: 'status-item status-time', id: 'status-time' }, ['']),
     ]);
-  },
+  }
 
   /**
    * Attach listeners and start clock.
@@ -49,12 +49,14 @@ export const StatusBar = {
         this.#statusText.textContent = `View: ${view}`;
       }
     });
-  },
+  }
 
   #updateClock() {
     const clock = document.getElementById('status-time');
     if (clock) {
       clock.textContent = new Date().toLocaleTimeString();
     }
-  },
-};
+  }
+}
+
+export const StatusBar = new StatusBarImpl();
