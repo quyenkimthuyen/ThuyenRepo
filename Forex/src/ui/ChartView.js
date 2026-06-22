@@ -74,7 +74,7 @@ class ChartViewImpl {
    * Tear down the view.
    */
   unmount() {
-    this.#unsubs?.forEach((fn) => fn());
+    this.#unsubs?.();
     this.#unsubs = null;
     this.#replay?.destroy();
     this.#chart?.destroy();
