@@ -72,7 +72,8 @@ class App {
 
   #registerModules() {
     this.#loader.registerAll([
-      { id: 'layout', path: '../ui/Layout.js' },
+      { id: 'data', path: '../data/DataManager.js' },
+      { id: 'layout', path: '../ui/Layout.js', dependsOn: ['data'] },
       { id: 'keyboard', path: '../ui/KeyboardShortcuts.js', dependsOn: ['layout'] },
     ]);
   }

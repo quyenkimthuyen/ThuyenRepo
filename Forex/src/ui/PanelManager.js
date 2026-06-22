@@ -8,6 +8,7 @@ import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
 import { el, clamp, loadFromStorage, saveToStorage } from '../utils/dom.js';
 import { createLogger } from '../utils/logger.js';
+import DataManager from '../data/DataManager.js';
 
 const log = createLogger('PanelManager');
 
@@ -45,7 +46,7 @@ export const PanelManager = {
             el('span', { class: 'panel-title' }, ['Watchlist']),
           ]),
           el('div', { class: 'panel-body' }, [
-            this.#renderWatchlist(),
+            el('div', { class: 'watchlist', id: 'watchlist' }, []),
           ]),
         ]),
         el('div', { class: 'resize-handle resize-v', 'data-resize': 'left' }),
@@ -70,7 +71,7 @@ export const PanelManager = {
             `[${new Date().toLocaleTimeString()}] Price Action Research Lab initialized.`,
           ]),
           el('div', { class: 'log-entry' }, [
-            'Phase 1 complete — UI shell, theme, and module loader active.',
+            'Phase 3 — Candlestick Chart & Replay Engine ready.',
           ]),
         ]),
       ]),
@@ -89,22 +90,73 @@ export const PanelManager = {
       handle.addEventListener('mousedown', (e) => this.#startResize(e, handle, workspace));
     });
 
+    this.#refreshWatchlist();
+    bus.on(Events.DATA_UPDATED, () => this.#refreshWatchlist());
+    bus.on(Events.LOG_MESSAGE, ({ message, level, time }) => {
+      this.#appendLog(message, level, time);
+    });
+
+    const watchlist = document.getElementById('watchlist');
+    watchlist?.addEventListener('click', (e) => {
+      const item = /** @type {HTMLElement} */ (e.target).closest('.watchlist-item');
+      if (!item?.dataset.symbol) return;
+      bus.emit(Events.NAVIGATE, { view: 'chart' });
+      bus.emit(Events.CHART_LOAD, {
+        symbol: item.dataset.symbol,
+        timeframe: item.dataset.timeframe,
+      });
+    });
+
     log.info('Panel manager initialized');
   },
 
   /**
-   * @returns {HTMLElement}
+   * Refresh watchlist from stored dataset metadata.
    */
-  #renderWatchlist() {
-    const items = Config.SYMBOLS.map((symbol) =>
-      el('div', { class: 'watchlist-item' }, [
-        el('span', { class: 'watchlist-symbol' }, [symbol]),
-        el('span', { class: 'watchlist-tf' }, [Config.DEFAULT_TIMEFRAME]),
-        el('span', { class: 'watchlist-status' }, ['No data']),
-      ])
-    );
+  async #refreshWatchlist() {
+    const container = document.getElementById('watchlist');
+    if (!container) return;
 
-    return el('div', { class: 'watchlist' }, items);
+    const datasets = await DataManager.listDatasets();
+    const metaMap = new Map(datasets.map((d) => [`${d.symbol}|${d.timeframe}`, d]));
+
+    container.innerHTML = '';
+
+    for (const symbol of Config.SYMBOLS) {
+      for (const tf of Config.TIMEFRAMES) {
+        const meta = metaMap.get(`${symbol}|${tf}`);
+        const status = meta
+          ? `${meta.count.toLocaleString()} candles`
+          : 'No data';
+
+        container.appendChild(el('div', {
+          class: 'watchlist-item',
+          dataset: { symbol, timeframe: tf },
+        }, [
+          el('span', { class: 'watchlist-symbol' }, [symbol]),
+          el('span', { class: 'watchlist-tf' }, [tf]),
+          el('span', {
+            class: `watchlist-status${meta ? ' watchlist-status-ok' : ''}`,
+          }, [status]),
+        ]));
+      }
+    }
+  },
+
+  /**
+   * @param {string} message
+   * @param {string} [level='info']
+   * @param {Date} [time=new Date()]
+   */
+  #appendLog(message, level = 'info', time = new Date()) {
+    const logPanel = document.getElementById('panel-log');
+    if (!logPanel) return;
+
+    const entry = el('div', { class: `log-entry log-${level}` }, [
+      `[${time.toLocaleTimeString()}] ${message}`,
+    ]);
+    logPanel.appendChild(entry);
+    logPanel.scrollTop = logPanel.scrollHeight;
   },
 
   /**

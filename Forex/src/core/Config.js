@@ -12,7 +12,7 @@
  */
 export const Config = Object.freeze({
   APP_NAME: 'Price Action Research Lab',
-  APP_VERSION: '0.1.0',
+  APP_VERSION: '0.3.0',
   APP_SHORT_NAME: 'PARL',
 
   /** Supported trading symbols (extensible). */
@@ -44,15 +44,53 @@ export const Config = Object.freeze({
     PANEL_SIZES: 'parl_panel_sizes',
   }),
 
-  /** IndexedDB database name (used in Phase 2). */
+  /** IndexedDB database name and schema version. */
   DB_NAME: 'parl_data',
   DB_VERSION: 1,
+
+  /** IndexedDB object store names. */
+  DB_STORES: Object.freeze({
+    CANDLES: 'candles',
+    METADATA: 'metadata',
+  }),
+
+  /** Batch size for IndexedDB bulk writes. */
+  DB_BATCH_SIZE: 5000,
+
+  /** Milliseconds per timeframe (extensible). */
+  TIMEFRAME_MS: Object.freeze({
+    M15: 15 * 60 * 1000,
+    M30: 30 * 60 * 1000,
+    H1: 60 * 60 * 1000,
+    H4: 4 * 60 * 60 * 1000,
+    D1: 24 * 60 * 60 * 1000,
+  }),
+
+  /** Default sample data size for demo generation. */
+  SAMPLE_CANDLE_COUNT: 2000,
 
   /** Performance targets. */
   TARGET_FPS: 60,
 
   /** Default risk-reward ratios for future optimization. */
   DEFAULT_RR_OPTIONS: Object.freeze([1, 1.5, 2, 2.5, 3, 4, 5]),
+
+  /** Chart rendering options. */
+  CHART: Object.freeze({
+    DEFAULT_VISIBLE_BARS: 150,
+    EMA_PERIODS: Object.freeze([20, 50]),
+    PRICE_PRECISION: 5,
+    MIN_MOVE: 0.00001,
+  }),
+
+  /** Replay engine options. */
+  REPLAY: Object.freeze({
+    LOOKBACK_BARS: 50,
+    BASE_INTERVAL_MS: 500,
+    SPEED_NORMAL: 1,
+    SPEED_FAST: 4,
+    SPEED_ULTRA: 16,
+  }),
 });
 
 /**

@@ -5,14 +5,14 @@
 
 import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
-import { Config } from '../core/Config.js';
-import { bus, Events } from '../core/EventBus.js';
 import { el, $, loadFromStorage, saveToStorage } from '../utils/dom.js';
 import { createLogger } from '../utils/logger.js';
 import { TopBar } from './TopBar.js';
 import { Sidebar } from './Sidebar.js';
 import { StatusBar } from './StatusBar.js';
 import { PanelManager } from './PanelManager.js';
+import { DataManagerView } from './DataManagerView.js';
+import { ChartView } from './ChartView.js';
 
 const log = createLogger('Layout');
 
@@ -32,6 +32,9 @@ const VIEWS = [
 const Layout = {
   /** @type {string} */
   currentView: 'chart',
+
+  /** @type {{ unmount?: Function }|null} */
+  #activeView: null,
 
   /**
    * Initialize the layout inside #app.
@@ -98,17 +101,42 @@ const Layout = {
     });
 
     const placeholder = $('#view-placeholder');
-    const view = VIEWS.find((v) => v.id === viewId);
+    this.#activeView?.unmount?.();
+    this.#activeView = null;
     placeholder.innerHTML = '';
+    placeholder.className = 'panel-body panel-body-fill';
 
-    const title = el('h2', { class: 'view-title' }, [view?.label ?? viewId]);
-    const desc = el('p', { class: 'view-desc' }, [
-      this.#getViewDescription(viewId),
-    ]);
-    const badge = el('span', { class: 'phase-badge' }, ['Phase 1 — Coming in next phases']);
+    if (viewId === 'data') {
+      placeholder.className = 'panel-body';
+      this.#activeView = DataManagerView;
+      DataManagerView.mount(placeholder);
+    } else if (viewId === 'chart') {
+      placeholder.className = 'panel-body';
+      this.#activeView = ChartView;
+      ChartView.mount(placeholder);
+    } else {
+      const view = VIEWS.find((v) => v.id === viewId);
+      const title = el('h2', { class: 'view-title' }, [view?.label ?? viewId]);
+      const desc = el('p', { class: 'view-desc' }, [
+        this.#getViewDescription(viewId),
+      ]);
+      const badge = el('span', { class: 'phase-badge' }, [
+        this.#getPhaseBadge(viewId),
+      ]);
+      placeholder.append(title, desc, badge);
+    }
 
-    placeholder.append(title, desc, badge);
     bus.emit(Events.VIEW_ACTIVE, { view: viewId });
+  },
+
+  /**
+   * @param {string} viewId
+   * @returns {string}
+   */
+  #getPhaseBadge(viewId) {
+    if (viewId === 'chart') return 'Phase 3 — Chart & Replay active';
+    if (viewId === 'data') return 'Phase 2 — Data Manager active';
+    return 'Coming in a future phase';
   },
 
   /**
