@@ -1,0 +1,326 @@
+/**
+ * Application shell layout — topbar, sidebar, main content, statusbar.
+ */
+
+#app {
+  height: 100vh;
+  width: 100vw;
+}
+
+.app-shell,
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.shell-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-bg-base);
+}
+
+/* ── Top Bar ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--topbar-height);
+  padding: 0 var(--space-md);
+  background: var(--color-bg-raised);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  z-index: 100;
+}
+
+.topbar-left,
+.topbar-center,
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.topbar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.app-logo {
+  font-weight: 700;
+  font-size: var(--font-size-md);
+  color: var(--color-accent);
+  letter-spacing: 0.5px;
+}
+
+.app-title {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.symbol-badge,
+.timeframe-badge {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+}
+
+.timeframe-badge {
+  color: var(--color-accent);
+  border-color: var(--color-accent-muted);
+}
+
+.version-tag {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--color-bg-raised);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  transition: width var(--transition-normal);
+  overflow: hidden;
+}
+
+.shell[data-collapsed="true"] .sidebar {
+  width: var(--sidebar-collapsed-width);
+}
+
+.shell[data-collapsed="true"] .nav-label,
+.shell[data-collapsed="true"] .sidebar-footer-text {
+  display: none;
+}
+
+.sidebar-nav {
+  flex: 1;
+  padding: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  transition: background var(--transition-fast), color var(--transition-fast);
+  width: 100%;
+  text-align: left;
+}
+
+.nav-item:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+.nav-item.active {
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+}
+
+.nav-icon {
+  font-size: var(--font-size-md);
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.nav-label {
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.sidebar-footer {
+  padding: var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.sidebar-footer-text {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ── Status Bar ── */
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  height: var(--statusbar-height);
+  padding: 0 var(--space-md);
+  background: var(--color-bg-raised);
+  border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.status-item {
+  white-space: nowrap;
+}
+
+.status-ready {
+  color: var(--color-bull);
+}
+
+.status-spacer {
+  flex: 1;
+}
+
+/* ── Panel Workspace ── */
+.panel-workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.panel-row {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.panel-row-top {
+  min-height: 0;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg-base);
+  overflow: hidden;
+}
+
+.panel-left {
+  flex-shrink: 0;
+}
+
+.panel-center {
+  flex: 1;
+  min-width: 0;
+}
+
+.panel-bottom {
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  height: var(--panel-header-height);
+  padding: 0 var(--space-md);
+  background: var(--color-bg-raised);
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.panel-title {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary);
+}
+
+.panel-body {
+  flex: 1;
+  overflow: auto;
+  padding: var(--space-sm);
+}
+
+.panel-body-fill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+}
+
+/* ── Resize Handles ── */
+.resize-handle {
+  flex-shrink: 0;
+  background: var(--color-border);
+  transition: background var(--transition-fast);
+  z-index: 10;
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  background: var(--color-accent);
+}
+
+.resize-v {
+  width: var(--resize-handle-size);
+  cursor: col-resize;
+}
+
+.resize-h {
+  height: var(--resize-handle-size);
+  cursor: row-resize;
+}
+
+/* ── View Placeholder ── */
+.view-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+
+.view-desc {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-align: center;
+  max-width: 480px;
+  margin-bottom: var(--space-lg);
+}
+
+.phase-badge {
+  font-size: var(--font-size-xs);
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-lg);
+  background: var(--color-accent-muted);
+  color: var(--color-accent);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+/* ── Boot Error ── */
+.boot-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: var(--space-md);
+  color: var(--color-bear);
+}
+
+.boot-error button {
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--color-accent);
+  color: white;
+  border-radius: var(--radius-md);
+}
