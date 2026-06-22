@@ -184,7 +184,7 @@ export const StrategyView = {
     panel.appendChild(el('div', { class: 'strategy-detail-header' }, [
       el('h3', { class: 'strategy-detail-title' }, [plugin.name]),
       el('p', { class: 'strategy-detail-desc' }, [plugin.description]),
-      el('span', { class: 'phase-badge' }, ['Phase 5 — Signal logic pending']),
+      el('span', { class: 'phase-badge' }, ['Phase 5 — Signal logic active']),
     ]));
 
     panel.appendChild(el('div', { class: 'strategy-detail-meta' }, [

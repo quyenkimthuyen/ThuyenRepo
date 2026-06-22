@@ -14,6 +14,9 @@ import { PanelManager } from './PanelManager.js';
 import { DataManagerView } from './DataManagerView.js';
 import { ChartView } from './ChartView.js';
 import { StrategyView } from './StrategyView.js';
+import { SimulationView } from './SimulationView.js';
+import { StatisticsView } from './StatisticsView.js';
+import { ReportsView } from './ReportsView.js';
 
 const log = createLogger('Layout');
 
@@ -119,6 +122,18 @@ const Layout = {
       placeholder.className = 'panel-body';
       this.#activeView = StrategyView;
       StrategyView.mount(placeholder);
+    } else if (viewId === 'simulation') {
+      placeholder.className = 'panel-body';
+      this.#activeView = SimulationView;
+      SimulationView.mount(placeholder);
+    } else if (viewId === 'statistics') {
+      placeholder.className = 'panel-body';
+      this.#activeView = StatisticsView;
+      StatisticsView.mount(placeholder);
+    } else if (viewId === 'reports') {
+      placeholder.className = 'panel-body';
+      this.#activeView = ReportsView;
+      ReportsView.mount(placeholder);
     } else {
       const view = VIEWS.find((v) => v.id === viewId);
       const title = el('h2', { class: 'view-title' }, [view?.label ?? viewId]);
@@ -141,7 +156,10 @@ const Layout = {
   #getPhaseBadge(viewId) {
     if (viewId === 'chart') return 'Phase 3 — Chart & Replay active';
     if (viewId === 'data') return 'Phase 2 — Data Manager active';
-    if (viewId === 'strategy') return 'Phase 4 — Strategy Engine active';
+    if (viewId === 'strategy') return 'Phase 5 — Price Action setups active';
+    if (viewId === 'simulation') return 'Phase 6 — Trade Engine active';
+    if (viewId === 'statistics') return 'Phase 7 — Statistics active';
+    if (viewId === 'reports') return 'Phase 8 — Dashboard & Reports active';
     return 'Coming in a future phase';
   },
 

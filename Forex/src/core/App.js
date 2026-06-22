@@ -74,7 +74,10 @@ class App {
     this.#loader.registerAll([
       { id: 'data', path: '../data/DataManager.js' },
       { id: 'strategy', path: '../strategy/StrategyEngine.js', dependsOn: ['data'] },
-      { id: 'layout', path: '../ui/Layout.js', dependsOn: ['data', 'strategy'] },
+      { id: 'simulation', path: '../simulation/SimulationEngine.js', dependsOn: ['data', 'strategy'] },
+      { id: 'statistics', path: '../statistics/StatisticsEngine.js', dependsOn: ['simulation'] },
+      { id: 'report', path: '../report/ReportEngine.js', dependsOn: ['simulation', 'statistics'] },
+      { id: 'layout', path: '../ui/Layout.js', dependsOn: ['data', 'strategy', 'simulation', 'statistics', 'report'] },
       { id: 'keyboard', path: '../ui/KeyboardShortcuts.js', dependsOn: ['layout'] },
     ]);
   }

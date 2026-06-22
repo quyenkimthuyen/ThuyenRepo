@@ -89,7 +89,7 @@ const StrategyEngine = {
    */
   getLastResult(strategyId) {
     return this.#lastResults[strategyId];
-  }
+  },
 
   /**
    * Run a single strategy scan on candle data.
@@ -117,6 +117,7 @@ const StrategyEngine = {
     const strategy = registry.createInstance(strategyId);
 
     strategy.initialize(params);
+    strategy.setRunContext({ symbol, timeframe });
 
     const warmup = strategy.getWarmupBars();
     const signals = [];

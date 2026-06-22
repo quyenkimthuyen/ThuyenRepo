@@ -78,6 +78,15 @@ export class BaseStrategy {
   }
 
   /**
+   * Set symbol/timeframe for the current scan run.
+   * @param {{ symbol: string, timeframe: string }} ctx
+   */
+  setRunContext(ctx) {
+    this._setState('symbol', ctx.symbol);
+    this._setState('timeframe', ctx.timeframe);
+  }
+
+  /**
    * Hook for subclasses after parameter validation.
    */
   onInitialize() {}

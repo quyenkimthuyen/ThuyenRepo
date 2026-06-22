@@ -1,0 +1,181 @@
+/**
+ * Phase 5 strategy test cases per STRATEGY_SPECIFICATION.md §7.
+ * Run: node tests/strategy/run.mjs
+ */
+
+import { BreakRetestStrategy } from '../../src/strategies/BreakRetestStrategy.js';
+import { EMAPullbackStrategy } from '../../src/strategies/EMAPullbackStrategy.js';
+import { LiquidityGrabStrategy } from '../../src/strategies/LiquidityGrabStrategy.js';
+import { createContext } from '../../src/strategy/StrategyContext.js';
+
+const H = 3600000;
+let passed = 0;
+let failed = 0;
+
+/**
+ * @param {number} i
+ * @param {number} o
+ * @param {number} h
+ * @param {number} l
+ * @param {number} c
+ * @param {number} [vol]
+ * @returns {import('../../src/data/Candle.js').Candle}
+ */
+function c(i, o, h, l, close, vol = 500) {
+  return { timestamp: i * H, open: o, high: h, low: l, close, volume: vol };
+}
+
+/**
+ * @param {import('../../src/strategy/BaseStrategy.js').BaseStrategy} strategy
+ * @param {import('../../src/data/Candle.js').Candle[]} candles
+ * @param {string} symbol
+ * @returns {import('../../src/strategy/Signal.js').Signal[]}
+ */
+function runScan(strategy, candles, symbol = 'EURUSD') {
+  strategy.initialize(strategy.getParameterSchema().reduce((p, d) => {
+    p[d.key] = d.default;
+    return p;
+  }, {}));
+  strategy.setRunContext({ symbol, timeframe: 'H1' });
+
+  const signals = [];
+  const warmup = strategy.getWarmupBars();
+
+  for (let i = 0; i < candles.length; i++) {
+    strategy.calculate(candles, i);
+    if (i < warmup) continue;
+    const ctx = createContext(symbol, 'H1', candles, i, strategy.getParams());
+    const sig = strategy.generateSignal(ctx);
+    if (sig && strategy.validate(sig)) signals.push(sig);
+  }
+
+  return signals;
+}
+
+/**
+ * @param {string} name
+ * @param {boolean} condition
+ */
+function assert(name, condition) {
+  if (condition) {
+    passed++;
+    console.log(`  ✓ ${name}`);
+  } else {
+    failed++;
+    console.error(`  ✗ ${name}`);
+  }
+}
+
+console.log('\n=== Break & Retest Tests ===\n');
+
+{
+  const candles = [];
+  for (let i = 0; i < 30; i++) {
+    candles.push(c(i, 1.0840, 1.0845, 1.0838, 1.0842));
+  }
+  candles.push(c(30, 1.0848, 1.08502, 1.0847, 1.08495));
+  const signals = runScan(new BreakRetestStrategy(), candles);
+  assert('BR-01: Breakout không đủ pips → no signal', signals.length === 0);
+}
+
+{
+  const candles = [];
+  for (let i = 0; i < 95; i++) {
+    candles.push(c(i, 1.0840, 1.0845, 1.0838, 1.0842));
+  }
+  for (let i = 95; i < 100; i++) {
+    candles.push(c(i, 1.0840, 1.0845, 1.0838, 1.0840));
+  }
+  candles.push(c(100, 1.0848, 1.08520, 1.0847, 1.08512));
+  for (let i = 101; i < 103; i++) {
+    candles.push(c(i, 1.0850, 1.0852, 1.0848, 1.0851));
+  }
+  candles.push(c(103, 1.0849, 1.08510, 1.08440, 1.08500));
+  const signals = runScan(new BreakRetestStrategy(), candles);
+  assert('BR-02: Breakout + retest → 1 LONG', signals.length === 1 && signals[0].direction === 'long');
+}
+
+{
+  const candles = [];
+  for (let i = 0; i < 95; i++) candles.push(c(i, 1.0840, 1.0845, 1.0838, 1.0842));
+  for (let i = 95; i < 100; i++) candles.push(c(i, 1.0840, 1.0845, 1.0838, 1.0840));
+  candles.push(c(100, 1.0848, 1.08520, 1.0847, 1.08512));
+  for (let i = 101; i <= 112; i++) {
+    candles.push(c(i, 1.0850, 1.0853, 1.0849, 1.0852));
+  }
+  const signals = runScan(new BreakRetestStrategy(), candles);
+  assert('BR-03: Quá retestMaxBars → no signal', signals.length === 0);
+}
+
+{
+  const candles = [];
+  for (let i = 0; i < 95; i++) candles.push(c(i, 1.0840, 1.0845, 1.0838, 1.0842));
+  for (let i = 95; i < 100; i++) candles.push(c(i, 1.0840, 1.0845, 1.0838, 1.0840));
+  candles.push(c(100, 1.0848, 1.08520, 1.0840, 1.08512));
+  candles.push(c(101, 1.0850, 1.0851, 1.0835, 1.0838));
+  const signals = runScan(new BreakRetestStrategy(), candles);
+  assert('BR-04: Invalidation → no signal', signals.length === 0);
+}
+
+console.log('\n=== Liquidity Grab Tests ===\n');
+
+const LG_PAD = 25;
+
+{
+  const candles = [];
+  for (let i = 0; i < LG_PAD + 20; i++) candles.push(c(i, 1.0855, 1.0860, 1.0853, 1.0858));
+  candles.push(c(LG_PAD + 20, 1.0860, 1.08635, 1.0859, 1.08610));
+  const signals = runScan(new LiquidityGrabStrategy(), candles);
+  assert('LG-01: Sweep but close above level → no short', signals.filter((s) => s.direction === 'short').length === 0);
+}
+
+{
+  const candles = [];
+  for (let i = 0; i < LG_PAD + 20; i++) candles.push(c(i, 1.0855, 1.0860, 1.0853, 1.0858));
+  candles.push(c(LG_PAD + 20, 1.08575, 1.08635, 1.08550, 1.08560, 600));
+  const signals = runScan(new LiquidityGrabStrategy(), candles);
+  const shorts = signals.filter((s) => s.direction === 'short');
+  assert('LG-02: Sweep + close below + wick → 1 SHORT', shorts.length === 1);
+}
+
+{
+  const candles = [];
+  for (let i = 0; i < LG_PAD + 20; i++) candles.push(c(i, 1.0855, 1.0860, 1.0853, 1.0858));
+  candles.push(c(LG_PAD + 20, 1.08600, 1.08632, 1.08568, 1.08570, 600));
+  const signals = runScan(new LiquidityGrabStrategy(), candles);
+  assert('LG-03: Wick ratio too small → no signal', signals.length === 0);
+}
+
+{
+  const candles = [];
+  for (let i = 0; i < LG_PAD + 20; i++) candles.push(c(i, 1.0845, 1.0848, 1.0840, 1.0845));
+  candles.push(c(LG_PAD + 20, 1.08400, 1.08420, 1.08365, 1.08415, 600));
+  const signals = runScan(new LiquidityGrabStrategy(), candles);
+  const longs = signals.filter((s) => s.direction === 'long');
+  assert('LG-04: Bullish grab → 1 LONG', longs.length === 1);
+}
+
+{
+  const candles = [];
+  for (let i = 0; i < LG_PAD + 20; i++) candles.push(c(i, 1.0855, 1.0860, 1.0853, 1.0858));
+  candles.push(c(LG_PAD + 20, 1.08575, 1.08635, 1.08550, 1.08560, 600));
+  candles.push(c(LG_PAD + 21, 1.08570, 1.08632, 1.08545, 1.08555, 600));
+  const signals = runScan(new LiquidityGrabStrategy(), candles);
+  assert('LG-05: Duplicate level → 1 signal only', signals.length === 1);
+}
+
+console.log('\n=== EMA Pullback Tests ===\n');
+
+{
+  const candles = [];
+  let price = 1.0800;
+  for (let i = 0; i < 80; i++) {
+    price -= 0.0001;
+    candles.push(c(i, price, price + 0.0003, price - 0.0003, price - 0.00005));
+  }
+  const signals = runScan(new EMAPullbackStrategy(), candles);
+  assert('EP-01: Downtrend data → no long signals', signals.filter((s) => s.direction === 'long').length === 0);
+}
+
+console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);
+process.exit(failed > 0 ? 1 : 0);

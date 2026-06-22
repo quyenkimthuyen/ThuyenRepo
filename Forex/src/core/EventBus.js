@@ -111,4 +111,9 @@ export const Events = Object.freeze({
   STRATEGY_RUN: 'strategy:run',
   STRATEGY_PARAMS_CHANGED: 'strategy:params:changed',
   SIGNALS_GENERATED: 'signals:generated',
+  SIMULATION_RUN: 'simulation:run',
+  SIMULATION_COMPLETE: 'simulation:complete',
+  TRADE_CLOSED: 'trade:closed',
+  STATISTICS_COMPUTED: 'statistics:computed',
+  REPORT_GENERATED: 'report:generated',
 });
