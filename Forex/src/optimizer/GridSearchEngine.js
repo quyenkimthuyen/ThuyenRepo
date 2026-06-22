@@ -69,6 +69,7 @@ export async function runGridSearch({
   rankMetric = 'expectancy',
   maxCombinations = 500,
   onProgress,
+  backtestFn = runBacktest,
 }) {
   const start = performance.now();
   const combos = buildCombinations(paramGrid);
@@ -77,15 +78,12 @@ export async function runGridSearch({
     throw new Error(`Too many combinations (${combos.length}). Max is ${maxCombinations}.`);
   }
 
-  /** @type {(typeof runBacktest)} */
-  const backtest = options.backtestFn ?? runBacktest;
-
   /** @type {GridSearchEntry[]} */
   const entries = [];
 
   for (let i = 0; i < combos.length; i++) {
     const params = combos[i];
-    const result = await backtest(strategyId, symbol, timeframe, candles, params, tradeConfig);
+    const result = await backtestFn(strategyId, symbol, timeframe, candles, params, tradeConfig);
     const rank = getRankValue(result.stats, rankMetric);
 
     entries.push({ params, result, rank });
