@@ -115,7 +115,7 @@ export class IndexedDBStore {
       request.onsuccess = () => resolve(request.result ?? 0);
       request.onerror = () => reject(request.error);
     });
-  },
+  }
 
   /**
    * Read all candles for a symbol/timeframe, optionally within a range.
