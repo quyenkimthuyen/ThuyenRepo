@@ -12,7 +12,7 @@ import SimulationEngine from '../simulation/SimulationEngine.js';
 import { mergeTradeConfig } from '../simulation/TradeConfig.js';
 import { runGridSearch } from './GridSearchEngine.js';
 import { runWalkForward } from './WalkForwardEngine.js';
-import { runMonteCarlo } from './MonteCarloEngine.js';
+import PerformanceEngine from '../performance/PerformanceEngine.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('ResearchEngine');
@@ -67,6 +67,7 @@ const ResearchEngine = {
       candles,
       tradeConfig,
       maxCombinations: max,
+      backtestFn: PerformanceEngine.runBacktest.bind(PerformanceEngine),
     });
 
     this.#lastGrid = result;
@@ -143,7 +144,7 @@ const ResearchEngine = {
     const balance = SimulationEngine.getConfig().initialBalance;
     const iterations = options.iterations ?? Config.OPTIMIZER.MONTE_CARLO_ITERATIONS;
 
-    const result = runMonteCarlo(trades, balance, iterations);
+    const result = await PerformanceEngine.runMonteCarlo(trades, balance, iterations);
 
     this.#lastMonteCarlo = result;
     this.#persist();

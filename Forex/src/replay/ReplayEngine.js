@@ -5,6 +5,7 @@
  */
 
 import { Config } from '../core/Config.js';
+import { limitChartCandles } from '../performance/CandleSampler.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('ReplayEngine');
@@ -88,8 +89,15 @@ export class ReplayEngine {
    */
   getVisibleCandles() {
     if (this.#candles.length === 0) return [];
-    if (this.#mode === 'live') return this.#candles;
-    return this.#candles.slice(0, this.#index + 1);
+
+    let visible;
+    if (this.#mode === 'live') {
+      visible = this.#candles;
+    } else {
+      visible = this.#candles.slice(0, this.#index + 1);
+    }
+
+    return limitChartCandles(visible);
   }
 
   /**

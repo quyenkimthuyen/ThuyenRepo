@@ -18,6 +18,7 @@ import { SimulationView } from './SimulationView.js';
 import { StatisticsView } from './StatisticsView.js';
 import { ReportsView } from './ReportsView.js';
 import { OptimizerView } from './OptimizerView.js';
+import { SignalsView } from './SignalsView.js';
 
 const log = createLogger('Layout');
 
@@ -30,6 +31,7 @@ const VIEWS = [
   { id: 'statistics', label: 'Statistics', icon: '📊' },
   { id: 'reports', label: 'Reports', icon: '📋' },
   { id: 'optimizer', label: 'Optimizer', icon: '🧪' },
+  { id: 'signals', label: 'AI Signals', icon: '🎯' },
 ];
 
 /**
@@ -140,6 +142,10 @@ const Layout = {
       placeholder.className = 'panel-body';
       this.#activeView = OptimizerView;
       OptimizerView.mount(placeholder);
+    } else if (viewId === 'signals') {
+      placeholder.className = 'panel-body';
+      this.#activeView = SignalsView;
+      SignalsView.mount(placeholder);
     } else {
       const view = VIEWS.find((v) => v.id === viewId);
       const title = el('h2', { class: 'view-title' }, [view?.label ?? viewId]);
@@ -167,6 +173,7 @@ const Layout = {
     if (viewId === 'statistics') return 'Phase 7 — Statistics active';
     if (viewId === 'reports') return 'Phase 8 — Dashboard & Reports active';
     if (viewId === 'optimizer') return 'Phase 9 — Optimizer active';
+    if (viewId === 'signals') return 'Phase 10 — AI Scoring active';
     return 'Coming in a future phase';
   },
 
@@ -183,6 +190,7 @@ const Layout = {
       statistics: 'Expectancy, profit factor, drawdown, and performance analytics.',
       reports: 'Export results as CSV, JSON, PNG, or PDF reports.',
       optimizer: 'Grid search, walk-forward validation, and Monte Carlo risk analysis.',
+      signals: 'AI signal scores with trend, momentum, session, and PA quality factors.',
     };
     return descriptions[viewId] ?? 'Module under development.';
   },

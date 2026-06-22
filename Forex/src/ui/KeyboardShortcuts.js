@@ -18,6 +18,7 @@ const SHORTCUTS = {
   'ctrl+5': () => bus.emit(Events.NAVIGATE, { view: 'statistics' }),
   'ctrl+6': () => bus.emit(Events.NAVIGATE, { view: 'reports' }),
   'ctrl+7': () => bus.emit(Events.NAVIGATE, { view: 'optimizer' }),
+  'ctrl+8': () => bus.emit(Events.NAVIGATE, { view: 'signals' }),
 };
 
 /** Chart replay shortcuts — only when chart view is active. */

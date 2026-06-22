@@ -119,4 +119,5 @@ export const Events = Object.freeze({
   OPTIMIZATION_COMPLETE: 'optimization:complete',
   WALK_FORWARD_COMPLETE: 'walkforward:complete',
   MONTE_CARLO_COMPLETE: 'montecarlo:complete',
+  SIGNALS_SCORED: 'signals:scored',
 });

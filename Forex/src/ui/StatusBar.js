@@ -40,7 +40,7 @@ export const StatusBar = {
 
     bus.on(Events.APP_READY, () => {
       if (this.#statusText) {
-        this.#statusText.textContent = 'Application initialized — Phase 1';
+        this.#statusText.textContent = 'PARL v1.0.0 — All phases ready';
       }
     });
 

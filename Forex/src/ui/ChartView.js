@@ -4,6 +4,7 @@
  */
 
 import { Config } from '../core/Config.js';
+import { limitChartCandles } from '../performance/CandleSampler.js';
 import { bus, Events } from '../core/EventBus.js';
 import { el, loadFromStorage } from '../utils/dom.js';
 import DataManager from '../data/DataManager.js';
@@ -200,11 +201,15 @@ export const ChartView = {
       }
 
       this.#replay?.load(candles);
-      this.#chart?.setCandles(candles);
+      const chartCandles = limitChartCandles(candles);
+      this.#chart?.setCandles(chartCandles);
       ReplayControls.update(this.#replay.getState(), candles[candles.length - 1]);
 
       if (status) {
-        status.textContent = `${candles.length.toLocaleString()} candles loaded`;
+        const chartNote = chartCandles.length < candles.length
+          ? ` (chart: ${chartCandles.length.toLocaleString()})`
+          : '';
+        status.textContent = `${candles.length.toLocaleString()} candles loaded${chartNote}`;
       }
 
       bus.emit(Events.CHART_LOADED, {

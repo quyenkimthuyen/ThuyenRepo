@@ -56,6 +56,7 @@ export function getRankValue(stats, metric) {
  * @param {RankMetric} [options.rankMetric='expectancy']
  * @param {number} [options.maxCombinations=500]
  * @param {(progress: number) => void} [options.onProgress]
+ * @param {typeof runBacktest} [options.backtestFn]
  * @returns {Promise<GridSearchResult>}
  */
 export async function runGridSearch({
@@ -76,12 +77,15 @@ export async function runGridSearch({
     throw new Error(`Too many combinations (${combos.length}). Max is ${maxCombinations}.`);
   }
 
+  /** @type {(typeof runBacktest)} */
+  const backtest = options.backtestFn ?? runBacktest;
+
   /** @type {GridSearchEntry[]} */
   const entries = [];
 
   for (let i = 0; i < combos.length; i++) {
     const params = combos[i];
-    const result = runBacktest(strategyId, symbol, timeframe, candles, params, tradeConfig);
+    const result = await backtest(strategyId, symbol, timeframe, candles, params, tradeConfig);
     const rank = getRankValue(result.stats, rankMetric);
 
     entries.push({ params, result, rank });

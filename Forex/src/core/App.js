@@ -77,8 +77,10 @@ class App {
       { id: 'simulation', path: '../simulation/SimulationEngine.js', dependsOn: ['data', 'strategy'] },
       { id: 'statistics', path: '../statistics/StatisticsEngine.js', dependsOn: ['simulation'] },
       { id: 'report', path: '../report/ReportEngine.js', dependsOn: ['simulation', 'statistics'] },
-      { id: 'research', path: '../optimizer/ResearchEngine.js', dependsOn: ['data', 'strategy', 'simulation'] },
-      { id: 'layout', path: '../ui/Layout.js', dependsOn: ['data', 'strategy', 'simulation', 'statistics', 'report', 'research'] },
+      { id: 'research', path: '../optimizer/ResearchEngine.js', dependsOn: ['data', 'strategy', 'simulation', 'performance'] },
+      { id: 'performance', path: '../performance/PerformanceEngine.js' },
+      { id: 'scoring', path: '../scoring/ScoringEngine.js', dependsOn: ['data', 'simulation', 'performance'] },
+      { id: 'layout', path: '../ui/Layout.js', dependsOn: ['data', 'strategy', 'simulation', 'statistics', 'report', 'research', 'scoring'] },
       { id: 'keyboard', path: '../ui/KeyboardShortcuts.js', dependsOn: ['layout'] },
     ]);
   }
