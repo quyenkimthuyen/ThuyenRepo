@@ -13,7 +13,7 @@ import { importFromText } from './DataImporter.js';
 import { exportCSV, exportJSON, downloadFile, downloadBinary } from './DataExporter.js';
 import { compress, decompress } from './Compression.js';
 import { generateSample } from './SampleDataGenerator.js';
-import { loadDefaultDatasets } from './DefaultDataLoader.js';
+import { loadDefaultDatasets, probeDefaultData } from './DefaultDataLoader.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('DataManager');
@@ -28,6 +28,14 @@ function emitDataLog(message, level = 'info') {
 }
 
 /**
+ * @param {string} message
+ */
+function setBootMessage(message) {
+  const boot = document.querySelector('.boot-screen');
+  if (boot) boot.textContent = message;
+}
+
+/**
  * Main data service — singleton module with initialize() lifecycle.
  */
 const DataManager = {
@@ -36,7 +44,9 @@ const DataManager = {
    */
   async initialize(_ctx) {
     await store.open();
+    setBootMessage('Loading EURUSD / GBPUSD market data…');
     await this.seedDefaults();
+    setBootMessage('Starting Price Action Research Lab…');
 
     log.info('DataManager ready');
     emitDataLog('IndexedDB initialized — data layer active');
@@ -48,6 +58,21 @@ const DataManager = {
    * @returns {Promise<import('./DefaultDataLoader.js').DefaultLoadResult>}
    */
   async seedDefaults(options = {}) {
+    if (options.force) {
+      const probe = await probeDefaultData();
+      if (probe.ok) {
+        const res = await fetch(
+          new URL('manifest.json', probe.bases[0] ?? 'data/defaults/')
+        );
+        if (res.ok) {
+          const manifest = await res.json();
+          for (const ds of manifest.datasets ?? []) {
+            await this.deleteDataset(ds.symbol, ds.timeframe);
+          }
+        }
+      }
+    }
+
     const result = await loadDefaultDatasets(
       (symbol, timeframe, candles) => this.saveCandles(symbol, timeframe, candles),
       () => this.listDatasets(),
@@ -63,7 +88,8 @@ const DataManager = {
     }
 
     for (const err of result.errors) {
-      emitDataLog(err, 'error');
+      const level = err.startsWith('Used built-in fallback') ? 'warn' : 'error';
+      emitDataLog(err, level);
     }
 
     if (result.loaded.length === 0 && result.errors.length === 0) {
@@ -71,13 +97,35 @@ const DataManager = {
       const hasData = datasets.some((d) => d.count > 0);
       if (!hasData) {
         emitDataLog(
-          'No market data in IndexedDB. Open Data Manager → "Load Default Data", or import a CSV/JSON file.',
+          'No market data in IndexedDB. Click "Reload Default Data" or import CSV/JSON.',
           'warn'
         );
       }
     }
 
+    bus.emit(Events.DATA_UPDATED, { seeded: result.loaded });
     return result;
+  },
+
+  /**
+   * Diagnostic snapshot for troubleshooting empty data issues.
+   * @returns {Promise<Record<string, unknown>>}
+   */
+  async getDataHealth() {
+    const probe = await probeDefaultData();
+    const datasets = await this.listDatasets();
+    const eurusdH1 = await this.getCandles('EURUSD', 'H1');
+    return {
+      protocol: typeof window !== 'undefined' ? window.location.protocol : 'unknown',
+      href: typeof window !== 'undefined' ? window.location.href : '',
+      ...probe,
+      indexedDbDatasets: datasets.length,
+      eurusdH1Count: eurusdH1.length,
+      datasets: datasets.map((d) => ({
+        key: d.key,
+        count: d.count,
+      })),
+    };
   },
 
   /**

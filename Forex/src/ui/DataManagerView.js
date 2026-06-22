@@ -35,6 +35,7 @@ class DataManagerViewImpl {
     this.#bindEvents();
     this.#unsub = bus.on(Events.DATA_UPDATED, () => this.refresh());
     await this.refresh();
+    await this.#refreshHealth();
     log.info('Data Manager view mounted');
   }
 
@@ -63,14 +64,33 @@ class DataManagerViewImpl {
     if (datasets.length === 0) {
       tbody.appendChild(el('tr', {}, [
         el('td', { colspan: '7', class: 'data-empty' }, [
-          'No data stored. Import a CSV/JSON file or generate sample data.',
+          'No data stored. Click "Reload Default Data" or import a CSV/JSON file.',
         ]),
       ]));
+      await this.#refreshHealth();
       return;
     }
 
     for (const ds of datasets.sort((a, b) => a.symbol.localeCompare(b.symbol))) {
       tbody.appendChild(this.#renderRow(ds));
+    }
+    await this.#refreshHealth();
+  }
+
+  async #refreshHealth() {
+    const box = this.#container?.querySelector('#data-health');
+    if (!box) return;
+
+    try {
+      const h = await DataManager.getDataHealth();
+      const ok = h.eurusdH1Count > 0;
+      box.className = `data-health${ok ? ' data-health-ok' : ' data-health-warn'}`;
+      box.textContent = ok
+        ? `Data OK — EURUSD H1: ${h.eurusdH1Count.toLocaleString()} candles · ${h.indexedDbDatasets} datasets in IndexedDB`
+        : `No data loaded — protocol: ${h.protocol} · manifest: ${h.manifest ? 'found' : 'MISSING'} · gzip: ${h.compression ? 'yes' : 'no (using .json fallback)'}`;
+    } catch (err) {
+      box.className = 'data-health data-health-warn';
+      box.textContent = `Health check failed: ${err.message}`;
     }
   }
 
@@ -86,6 +106,7 @@ class DataManagerViewImpl {
     );
 
     return el('div', { class: 'data-manager' }, [
+      el('div', { class: 'data-health', id: 'data-health' }, ['Checking data…']),
       el('div', { class: 'data-toolbar' }, [
         el('div', { class: 'data-toolbar-group' }, [
           el('label', { class: 'data-label' }, ['Symbol']),
@@ -104,7 +125,7 @@ class DataManagerViewImpl {
         ]),
         el('div', { class: 'data-toolbar-group' }, [
           el('button', { class: 'btn btn-secondary', id: 'btn-load-defaults' }, [
-            'Load Default Data',
+            'Reload Default Data',
           ]),
           el('button', { class: 'btn btn-secondary', id: 'btn-gen-all' }, [
             'Generate Sample (All Pairs)',
@@ -226,11 +247,11 @@ class DataManagerViewImpl {
       btn.disabled = true;
       btn.textContent = 'Loading…';
       try {
-        await DataManager.seedDefaults();
+        await DataManager.seedDefaults({ force: true });
         await this.refresh();
       } finally {
         btn.disabled = false;
-        btn.textContent = 'Load Default Data';
+        btn.textContent = 'Reload Default Data';
       }
     });
 

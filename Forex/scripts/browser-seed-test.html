@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>PARL seed test</title></head>
+<body>
+<pre id="out">Running seed test…</pre>
+<script type="module">
+import DataManager from '../src/data/DataManager.js';
+const out = document.getElementById('out');
+try {
+  await DataManager.initialize({});
+  const h = await DataManager.getDataHealth();
+  out.textContent = JSON.stringify(h, null, 2);
+} catch (e) {
+  out.textContent = 'ERROR: ' + e.stack;
+}
+</script>
+</body>
+</html>

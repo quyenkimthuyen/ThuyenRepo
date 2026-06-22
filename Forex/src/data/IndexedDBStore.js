@@ -66,10 +66,18 @@ export class IndexedDBStore {
 
     for (let i = 0; i < candles.length; i += batchSize) {
       const batch = candles.slice(i, i + batchSize);
-      await this.#runTransaction(db, Config.DB_STORES.CANDLES, 'readwrite', (store) => {
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(Config.DB_STORES.CANDLES, 'readwrite');
+        const store = tx.objectStore(Config.DB_STORES.CANDLES);
+
         for (const candle of batch) {
-          store.put(candle);
+          const req = store.put(candle);
+          req.onerror = () => reject(req.error);
         }
+
+        tx.oncomplete = () => resolve(undefined);
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
       });
       written += batch.length;
     }

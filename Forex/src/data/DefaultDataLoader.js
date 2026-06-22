@@ -1,6 +1,6 @@
 /**
  * Load bundled default forex datasets on first launch.
- * Files live in data/defaults/ (gzipped JSON from Dukascopy).
+ * Files live in data/defaults/ (gzipped or plain JSON from Dukascopy).
  * @module data/DefaultDataLoader
  */
 
@@ -8,11 +8,9 @@ import { datasetKey } from './Candle.js';
 import { decompress, isCompressionSupported } from './Compression.js';
 import { importFromText } from './DataImporter.js';
 import { createLogger } from '../utils/logger.js';
+import { FALLBACK_SEEDS } from './fallbackSeed.js';
 
 const log = createLogger('DefaultDataLoader');
-
-/** Resolve bundled data URLs relative to this module (works with any server root). */
-const DEFAULT_DATA_BASE = new URL('../../../data/defaults/', import.meta.url);
 
 /**
  * @typedef {Object} DefaultManifest
@@ -27,21 +25,90 @@ const DEFAULT_DATA_BASE = new URL('../../../data/defaults/', import.meta.url);
  */
 
 /**
+ * Candidate base URLs for data/defaults (module path + page path fallbacks).
+ * @returns {string[]}
+ */
+function getCandidateBases() {
+  const bases = new Set();
+  try {
+    bases.add(new URL('../../../data/defaults/', import.meta.url).href);
+  } catch { /* ignore */ }
+  if (typeof document !== 'undefined') {
+    try {
+      bases.add(new URL('data/defaults/', document.baseURI).href);
+    } catch { /* ignore */ }
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      bases.add(new URL('data/defaults/', window.location.href).href);
+    } catch { /* ignore */ }
+  }
+  return [...bases];
+}
+
+/**
+ * @param {string} path
+ * @returns {Promise<Response|null>}
+ */
+async function fetchFirst(path) {
+  for (const base of getCandidateBases()) {
+    try {
+      const res = await fetch(new URL(path, base));
+      if (res.ok) return res;
+      log.warn(`HTTP ${res.status} for ${new URL(path, base).href}`);
+    } catch (err) {
+      log.warn(`Fetch failed for ${path} at ${base}`, err);
+    }
+  }
+  return null;
+}
+
+/**
  * Fetch and parse the defaults manifest.
  * @returns {Promise<DefaultManifest|null>}
  */
 async function fetchManifest() {
+  const res = await fetchFirst('manifest.json');
+  if (!res) return null;
   try {
-    const res = await fetch(new URL('manifest.json', DEFAULT_DATA_BASE));
-    if (!res.ok) {
-      log.warn(`Manifest HTTP ${res.status}`);
-      return null;
-    }
     return /** @type {DefaultManifest} */ (await res.json());
   } catch (err) {
-    log.warn('Could not load default data manifest', err);
+    log.warn('Invalid manifest JSON', err);
     return null;
   }
+}
+
+/**
+ * Load dataset bytes + logical filename for importFromText.
+ * @param {string} gzipFile
+ * @returns {Promise<{ text: string, filename: string }|null>}
+ */
+async function loadDatasetText(gzipFile) {
+  const plainFile = gzipFile.replace(/\.gz$/, '');
+
+  if (isCompressionSupported()) {
+    const gzRes = await fetchFirst(gzipFile);
+    if (gzRes) {
+      try {
+        const buffer = new Uint8Array(await gzRes.arrayBuffer());
+        const text = await decompress(buffer);
+        return { text, filename: plainFile };
+      } catch (err) {
+        log.warn(`Gzip decompress failed for ${gzipFile}`, err);
+      }
+    }
+  }
+
+  const jsonRes = await fetchFirst(plainFile);
+  if (jsonRes) {
+    try {
+      return { text: await jsonRes.text(), filename: plainFile };
+    } catch (err) {
+      log.warn(`Plain JSON read failed for ${plainFile}`, err);
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -73,22 +140,16 @@ export async function loadDefaultDatasets(saveCandles, listDatasets, getCandleCo
 
   if (typeof window !== 'undefined' && window.location.protocol === 'file:') {
     result.errors.push(
-      'Opened via file:// — bundled data cannot load. Run from HTTP server: cd Forex && python3 -m http.server 8080'
-    );
-    return result;
-  }
-
-  if (!isCompressionSupported()) {
-    result.errors.push(
-      'Browser lacks DecompressionStream — cannot read .json.gz bundles. Use Chrome 80+, Edge 80+, Firefox 113+, or Safari 16.4+.'
+      'Opened via file:// — data cannot load. Run: cd Forex && python3 -m http.server 8080 then open http://localhost:8080'
     );
     return result;
   }
 
   const manifest = await fetchManifest();
   if (!manifest?.datasets?.length) {
+    const bases = getCandidateBases().join(' | ');
     result.errors.push(
-      'Default data manifest not found. Ensure the data/defaults/ folder is deployed and the app is served over HTTP (not file://).'
+      `Cannot reach data/defaults/manifest.json. Tried: ${bases}. Copy the full Forex folder including data/defaults/.`
     );
     return result;
   }
@@ -107,23 +168,17 @@ export async function loadDefaultDatasets(saveCandles, listDatasets, getCandleCo
     }
 
     try {
-      const fileRes = await fetch(new URL(ds.file, DEFAULT_DATA_BASE));
-      if (!fileRes.ok) {
-        const msg = `Missing default file: ${ds.file} (HTTP ${fileRes.status})`;
-        log.warn(msg);
+      const payload = await loadDatasetText(ds.file);
+      if (!payload) {
+        const msg = `Cannot load ${ds.file} or ${ds.file.replace(/\.gz$/, '')} from data/defaults/`;
         result.errors.push(msg);
         continue;
       }
 
-      const buffer = new Uint8Array(await fileRes.arrayBuffer());
-      const text = await decompress(buffer);
-      const jsonName = ds.file.replace(/\.gz$/, '');
-      const imported = importFromText(text, jsonName, ds.symbol, ds.timeframe);
+      const imported = importFromText(payload.text, payload.filename, ds.symbol, ds.timeframe);
 
       if (imported.candles.length === 0) {
-        const msg = `No valid candles in ${ds.file}`;
-        log.warn(msg);
-        result.errors.push(msg);
+        result.errors.push(`No valid candles in ${ds.file}`);
         continue;
       }
 
@@ -131,11 +186,45 @@ export async function loadDefaultDatasets(saveCandles, listDatasets, getCandleCo
       result.loaded.push(metadata);
       log.info(`Seeded ${metadata.symbol} ${metadata.timeframe}: ${metadata.count} candles`);
     } catch (err) {
-      const msg = `Failed to seed ${ds.file}: ${err instanceof Error ? err.message : String(err)}`;
+      const msg = `Failed to seed ${ds.symbol} ${ds.timeframe}: ${err instanceof Error ? err.message : String(err)}`;
       log.warn(msg, err);
       result.errors.push(msg);
     }
   }
 
+  if (result.loaded.length === 0 && result.errors.length > 0) {
+    for (const seed of FALLBACK_SEEDS) {
+      const key = datasetKey(seed.symbol, seed.timeframe);
+      if (!options.force) {
+        const needs = await datasetNeedsSeed(existing, seed.symbol, seed.timeframe, getCandleCount);
+        if (!needs) continue;
+      }
+      try {
+        const metadata = await saveCandles(seed.symbol, seed.timeframe, seed.candles);
+        result.loaded.push(metadata);
+        result.errors.push(
+          `Used built-in fallback for ${seed.symbol} ${seed.timeframe} (${seed.candles.length} candles). Deploy data/defaults/ for full history.`
+        );
+      } catch (err) {
+        result.errors.push(`Fallback seed failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  }
+
   return result;
+}
+
+/**
+ * Quick connectivity check for diagnostics UI.
+ * @returns {Promise<{ ok: boolean, bases: string[], manifest: boolean, compression: boolean }>}
+ */
+export async function probeDefaultData() {
+  const bases = getCandidateBases();
+  const manifest = await fetchManifest();
+  return {
+    ok: Boolean(manifest?.datasets?.length),
+    bases,
+    manifest: Boolean(manifest),
+    compression: isCompressionSupported(),
+  };
 }

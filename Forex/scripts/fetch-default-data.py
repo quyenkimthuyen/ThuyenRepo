@@ -99,10 +99,12 @@ def fetch_timeframe(symbol: str, instrument: str, timeframe: str, interval, star
 def save_dataset(output_dir: Path, symbol: str, timeframe: str, candles: list) -> Path:
     payload = {"symbol": symbol, "timeframe": timeframe, "candles": candles}
     raw = json.dumps(payload, separators=(",", ":"))
-    out = output_dir / f"{symbol}_{timeframe}.json.gz"
-    with gzip.open(out, "wt", encoding="utf-8") as f:
+    gz_out = output_dir / f"{symbol}_{timeframe}.json.gz"
+    with gzip.open(gz_out, "wt", encoding="utf-8") as f:
         f.write(raw)
-    return out
+    plain_out = output_dir / f"{symbol}_{timeframe}.json"
+    plain_out.write_text(raw, encoding="utf-8")
+    return gz_out
 
 
 def main():
