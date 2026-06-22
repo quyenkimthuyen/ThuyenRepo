@@ -36,6 +36,24 @@ function setBootMessage(message) {
 }
 
 /**
+ * Load remaining default datasets after boot (non-blocking).
+ */
+function seedRemainingInBackground() {
+  DataManager.seedDefaults()
+    .then((result) => {
+      if (result.loaded.length > 0) {
+        const summary = result.loaded
+          .map((d) => `${d.symbol} ${d.timeframe}`)
+          .join(', ');
+        emitDataLog(`Background load complete — ${summary}`);
+      }
+    })
+    .catch((err) => {
+      emitDataLog(`Background data load failed: ${err.message}`, 'warn');
+    });
+}
+
+/**
  * Main data service — singleton module with initialize() lifecycle.
  */
 const DataManager = {
@@ -62,28 +80,10 @@ const DataManager = {
     }
 
     setBootMessage('Starting Price Action Research Lab…');
-    this.#seedRemainingInBackground();
+    seedRemainingInBackground();
 
     log.info('DataManager ready');
     emitDataLog('IndexedDB initialized — data layer active');
-  },
-
-  /**
-   * Load remaining default datasets after boot (non-blocking).
-   */
-  #seedRemainingInBackground() {
-    this.seedDefaults()
-      .then((result) => {
-        if (result.loaded.length > 0) {
-          const summary = result.loaded
-            .map((d) => `${d.symbol} ${d.timeframe}`)
-            .join(', ');
-          emitDataLog(`Background load complete — ${summary}`);
-        }
-      })
-      .catch((err) => {
-        emitDataLog(`Background data load failed: ${err.message}`, 'warn');
-      });
   },
 
   /**
