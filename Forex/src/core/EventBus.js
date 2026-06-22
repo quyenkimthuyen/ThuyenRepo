@@ -107,4 +107,8 @@ export const Events = Object.freeze({
   REPLAY_TICK: 'replay:tick',
   REPLAY_STATE: 'replay:state',
   REPLAY_COMMAND: 'replay:command',
+  STRATEGY_REGISTERED: 'strategy:registered',
+  STRATEGY_RUN: 'strategy:run',
+  STRATEGY_PARAMS_CHANGED: 'strategy:params:changed',
+  SIGNALS_GENERATED: 'signals:generated',
 });

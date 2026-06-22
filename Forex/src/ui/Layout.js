@@ -13,6 +13,7 @@ import { StatusBar } from './StatusBar.js';
 import { PanelManager } from './PanelManager.js';
 import { DataManagerView } from './DataManagerView.js';
 import { ChartView } from './ChartView.js';
+import { StrategyView } from './StrategyView.js';
 
 const log = createLogger('Layout');
 
@@ -114,6 +115,10 @@ const Layout = {
       placeholder.className = 'panel-body';
       this.#activeView = ChartView;
       ChartView.mount(placeholder);
+    } else if (viewId === 'strategy') {
+      placeholder.className = 'panel-body';
+      this.#activeView = StrategyView;
+      StrategyView.mount(placeholder);
     } else {
       const view = VIEWS.find((v) => v.id === viewId);
       const title = el('h2', { class: 'view-title' }, [view?.label ?? viewId]);
@@ -136,6 +141,7 @@ const Layout = {
   #getPhaseBadge(viewId) {
     if (viewId === 'chart') return 'Phase 3 — Chart & Replay active';
     if (viewId === 'data') return 'Phase 2 — Data Manager active';
+    if (viewId === 'strategy') return 'Phase 4 — Strategy Engine active';
     return 'Coming in a future phase';
   },
 

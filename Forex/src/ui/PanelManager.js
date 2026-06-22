@@ -71,7 +71,7 @@ export const PanelManager = {
             `[${new Date().toLocaleTimeString()}] Price Action Research Lab initialized.`,
           ]),
           el('div', { class: 'log-entry' }, [
-            'Phase 3 — Candlestick Chart & Replay Engine ready.',
+            'Phase 4 — Strategy Engine & Plugin System ready.',
           ]),
         ]),
       ]),
