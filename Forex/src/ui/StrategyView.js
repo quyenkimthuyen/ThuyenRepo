@@ -6,6 +6,7 @@
 import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
 import { el, loadFromStorage } from '../utils/dom.js';
+import DataManager from '../data/DataManager.js';
 import StrategyEngine from '../strategy/StrategyEngine.js';
 import { registry } from '../plugin/PluginRegistry.js';
 import { downloadFile } from '../data/DataExporter.js';
@@ -23,7 +24,16 @@ class StrategyViewImpl {
   /** @type {string|null} */
   #selectedId = null;
 
-  /** @type {Function|null} */
+  /** @type {string|null} */
+  #selectedSymbol = null;
+
+  /** @type {string|null} */
+  #selectedTimeframe = null;
+
+  /** @type {import('../data/Candle.js').DatasetMetadata[]} */
+  #runnableDatasets = [];
+
+  /** @type {(() => void)|null} */
   #unsub = null;
 
   /**
@@ -38,8 +48,10 @@ class StrategyViewImpl {
     const plugins = StrategyEngine.listPlugins();
     this.#selectedId = plugins[0]?.id ?? null;
 
+    await this.#refreshDataState(settings);
+
     container.appendChild(el('div', { class: 'strategy-view' }, [
-      this.#renderToolbar(settings),
+      this.#renderToolbar(),
       el('div', { class: 'strategy-body' }, [
         this.#renderPluginList(plugins),
         this.#renderDetailPanel(),
@@ -61,29 +73,99 @@ class StrategyViewImpl {
   }
 
   /**
-   * @param {Record<string, unknown>} settings
+   * @param {Record<string, unknown>} [settings]
+   */
+  async #refreshDataState(settings = loadFromStorage(Config.STORAGE_KEYS.SETTINGS, {})) {
+    this.#runnableDatasets = await DataManager.listRunnableDatasets();
+
+    if (this.#runnableDatasets.length === 0) {
+      this.#selectedSymbol = null;
+      this.#selectedTimeframe = null;
+      return;
+    }
+
+    const symbols = this.#availableSymbols();
+    const preferredSymbol = typeof settings.symbol === 'string' ? settings.symbol : Config.DEFAULT_SYMBOL;
+    this.#selectedSymbol = symbols.includes(preferredSymbol) ? preferredSymbol : symbols[0];
+
+    const timeframes = this.#availableTimeframes(this.#selectedSymbol);
+    const preferredTf = typeof settings.timeframe === 'string' ? settings.timeframe : Config.DEFAULT_TIMEFRAME;
+    this.#selectedTimeframe = timeframes.includes(preferredTf) ? preferredTf : timeframes[0];
+  }
+
+  /**
+   * @returns {string[]}
+   */
+  #availableSymbols() {
+    return [...new Set(this.#runnableDatasets.map((d) => d.symbol))];
+  }
+
+  /**
+   * @param {string} symbol
+   * @returns {string[]}
+   */
+  #availableTimeframes(symbol) {
+    const tfs = this.#runnableDatasets
+      .filter((d) => d.symbol === symbol)
+      .map((d) => d.timeframe);
+    return Config.TIMEFRAMES.filter((tf) => tfs.includes(tf));
+  }
+
+  /**
    * @returns {HTMLElement}
    */
-  #renderToolbar(settings) {
-    const symbolOptions = Config.SYMBOLS.map((s) =>
-      el('option', { value: s, selected: s === settings.symbol }, [s])
-    );
-    const tfOptions = Config.TIMEFRAMES.map((t) =>
-      el('option', { value: t, selected: t === settings.timeframe }, [t])
-    );
+  #renderToolbar() {
+    const hasData = this.#runnableDatasets.length > 0;
+    const children = [];
 
-    return el('div', { class: 'strategy-toolbar' }, [
-      el('div', { class: 'strategy-toolbar-group' }, [
+    if (hasData) {
+      const symbolOptions = this.#availableSymbols().map((s) =>
+        el('option', { value: s, selected: s === this.#selectedSymbol }, [s])
+      );
+      const tfOptions = this.#availableTimeframes(this.#selectedSymbol ?? '').map((t) =>
+        el('option', { value: t, selected: t === this.#selectedTimeframe }, [t])
+      );
+
+      children.push(el('div', { class: 'strategy-toolbar-group', id: 'strat-data-selectors' }, [
         el('label', { class: 'data-label' }, ['Symbol']),
         el('select', { class: 'data-select', id: 'strat-symbol' }, symbolOptions),
         el('label', { class: 'data-label' }, ['TF']),
         el('select', { class: 'data-select', id: 'strat-timeframe' }, tfOptions),
-      ]),
-      el('div', { class: 'strategy-toolbar-group' }, [
-        el('button', { class: 'btn btn-primary', id: 'strat-run-selected' }, ['Run Selected']),
-        el('button', { class: 'btn btn-secondary', id: 'strat-run-all' }, ['Run All Enabled']),
-      ]),
-    ]);
+      ]));
+    } else {
+      children.push(el('div', { class: 'strategy-toolbar-group', id: 'strat-no-data' }, [
+        el('span', { class: 'strategy-no-data-hint' }, [
+          'Chưa có dữ liệu nến. Vào Data Manager → Reload Default Data hoặc import file.',
+        ]),
+      ]));
+    }
+
+    children.push(el('div', { class: 'strategy-toolbar-group' }, [
+      el('button', {
+        class: 'btn btn-primary',
+        id: 'strat-run-selected',
+        disabled: !hasData,
+      }, ['Run Selected']),
+      el('button', {
+        class: 'btn btn-secondary',
+        id: 'strat-run-all',
+        disabled: !hasData,
+      }, ['Run All Enabled']),
+    ]));
+
+    return el('div', { class: 'strategy-toolbar', id: 'strategy-toolbar' }, children);
+  }
+
+  async #refreshToolbar() {
+    const settings = loadFromStorage(Config.STORAGE_KEYS.SETTINGS, {});
+    await this.#refreshDataState(settings);
+
+    const toolbar = this.#container?.querySelector('#strategy-toolbar');
+    if (!toolbar) return;
+
+    const newToolbar = this.#renderToolbar();
+    toolbar.replaceWith(newToolbar);
+    this.#bindToolbarEvents();
   }
 
   /**
@@ -129,10 +211,50 @@ class StrategyViewImpl {
       const item = /** @type {HTMLElement} */ (e.target).closest('.strategy-plugin-item');
       if (!item?.dataset.id) return;
       this.#selectedId = item.dataset.id;
-      this.#container?.querySelectorAll('.strategy-plugin-item').forEach((el) => {
-        el.classList.toggle('active', el.dataset.id === this.#selectedId);
+      this.#container?.querySelectorAll('.strategy-plugin-item').forEach((node) => {
+        node.classList.toggle('active', node.dataset.id === this.#selectedId);
       });
       this.#renderDetail();
+    });
+
+    this.#bindToolbarEvents();
+
+    const unsubs = [
+      bus.on(Events.SIGNALS_GENERATED, () => {
+        this.#refreshPluginList();
+        this.#renderDetail();
+      }),
+      bus.on(Events.DATA_UPDATED, () => {
+        this.#refreshToolbar();
+      }),
+    ];
+
+    this.#unsub = () => unsubs.forEach((fn) => fn());
+  }
+
+  #bindToolbarEvents() {
+    this.#container?.querySelector('#strat-symbol')?.addEventListener('change', (e) => {
+      this.#selectedSymbol = /** @type {HTMLSelectElement} */ (e.target).value;
+      const tfs = this.#availableTimeframes(this.#selectedSymbol);
+      this.#selectedTimeframe = tfs.includes(this.#selectedTimeframe ?? '')
+        ? this.#selectedTimeframe
+        : tfs[0] ?? null;
+
+      const tfSelect = this.#container?.querySelector('#strat-timeframe');
+      if (!tfSelect) return;
+
+      tfSelect.innerHTML = '';
+      for (const tf of tfs) {
+        const opt = document.createElement('option');
+        opt.value = tf;
+        opt.textContent = tf;
+        opt.selected = tf === this.#selectedTimeframe;
+        tfSelect.appendChild(opt);
+      }
+    });
+
+    this.#container?.querySelector('#strat-timeframe')?.addEventListener('change', (e) => {
+      this.#selectedTimeframe = /** @type {HTMLSelectElement} */ (e.target).value;
     });
 
     this.#container?.querySelector('#strat-run-selected')?.addEventListener('click', () => {
@@ -141,11 +263,6 @@ class StrategyViewImpl {
 
     this.#container?.querySelector('#strat-run-all')?.addEventListener('click', () => {
       this.#runAll();
-    });
-
-    this.#unsub = bus.on(Events.SIGNALS_GENERATED, () => {
-      this.#refreshPluginList();
-      this.#renderDetail();
     });
   }
 
@@ -160,8 +277,8 @@ class StrategyViewImpl {
       const item = /** @type {HTMLElement} */ (e.target).closest('.strategy-plugin-item');
       if (!item?.dataset.id) return;
       this.#selectedId = item.dataset.id;
-      newList.querySelectorAll('.strategy-plugin-item').forEach((el) => {
-        el.classList.toggle('active', el.dataset.id === this.#selectedId);
+      newList.querySelectorAll('.strategy-plugin-item').forEach((node) => {
+        node.classList.toggle('active', node.dataset.id === this.#selectedId);
       });
       this.#renderDetail();
     });
@@ -324,17 +441,36 @@ class StrategyViewImpl {
     });
   }
 
+  /**
+   * @returns {{ symbol: string, timeframe: string }|null}
+   */
+  #getRunSelection() {
+    if (!this.#selectedSymbol || !this.#selectedTimeframe) return null;
+
+    const symbolEl = this.#container?.querySelector('#strat-symbol');
+    const tfEl = this.#container?.querySelector('#strat-timeframe');
+
+    return {
+      symbol: symbolEl
+        ? /** @type {HTMLSelectElement} */ (symbolEl).value
+        : this.#selectedSymbol,
+      timeframe: tfEl
+        ? /** @type {HTMLSelectElement} */ (tfEl).value
+        : this.#selectedTimeframe,
+    };
+  }
+
   async #runSelected() {
     if (!this.#selectedId) return;
-    const symbol = /** @type {HTMLSelectElement} */ (
-      this.#container.querySelector('#strat-symbol')
-    ).value;
-    const timeframe = /** @type {HTMLSelectElement} */ (
-      this.#container.querySelector('#strat-timeframe')
-    ).value;
+    const selection = this.#getRunSelection();
+    if (!selection) return;
 
     try {
-      await StrategyEngine.runStrategy(this.#selectedId, symbol, timeframe);
+      await StrategyEngine.runStrategy(
+        this.#selectedId,
+        selection.symbol,
+        selection.timeframe
+      );
       this.#refreshPluginList();
       this.#renderDetail();
     } catch (err) {
@@ -347,14 +483,10 @@ class StrategyViewImpl {
   }
 
   async #runAll() {
-    const symbol = /** @type {HTMLSelectElement} */ (
-      this.#container.querySelector('#strat-symbol')
-    ).value;
-    const timeframe = /** @type {HTMLSelectElement} */ (
-      this.#container.querySelector('#strat-timeframe')
-    ).value;
+    const selection = this.#getRunSelection();
+    if (!selection) return;
 
-    await StrategyEngine.runAll(symbol, timeframe);
+    await StrategyEngine.runAll(selection.symbol, selection.timeframe);
     this.#refreshPluginList();
     this.#renderDetail();
   }

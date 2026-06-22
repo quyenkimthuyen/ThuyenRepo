@@ -151,48 +151,49 @@ export async function loadDefaultDatasets(saveCandles, listDatasets, getCandleCo
     result.errors.push(
       `Cannot reach data/defaults/manifest.json. Tried: ${bases}. Copy the full Forex folder including data/defaults/.`
     );
-    return result;
   }
 
   const existing = await listDatasets();
 
-  for (const ds of manifest.datasets) {
-    const key = datasetKey(ds.symbol, ds.timeframe);
+  if (manifest?.datasets?.length) {
+    for (const ds of manifest.datasets) {
+      const key = datasetKey(ds.symbol, ds.timeframe);
 
-    if (!options.force) {
-      const needs = await datasetNeedsSeed(existing, ds.symbol, ds.timeframe, getCandleCount);
-      if (!needs) {
-        result.skipped.push(key);
-        continue;
+      if (!options.force) {
+        const needs = await datasetNeedsSeed(existing, ds.symbol, ds.timeframe, getCandleCount);
+        if (!needs) {
+          result.skipped.push(key);
+          continue;
+        }
       }
-    }
 
-    try {
-      const payload = await loadDatasetText(ds.file);
-      if (!payload) {
-        const msg = `Cannot load ${ds.file} or ${ds.file.replace(/\.gz$/, '')} from data/defaults/`;
+      try {
+        const payload = await loadDatasetText(ds.file);
+        if (!payload) {
+          const msg = `Cannot load ${ds.file} or ${ds.file.replace(/\.gz$/, '')} from data/defaults/`;
+          result.errors.push(msg);
+          continue;
+        }
+
+        const imported = importFromText(payload.text, payload.filename, ds.symbol, ds.timeframe);
+
+        if (imported.candles.length === 0) {
+          result.errors.push(`No valid candles in ${ds.file}`);
+          continue;
+        }
+
+        const metadata = await saveCandles(imported.symbol, imported.timeframe, imported.candles);
+        result.loaded.push(metadata);
+        log.info(`Seeded ${metadata.symbol} ${metadata.timeframe}: ${metadata.count} candles`);
+      } catch (err) {
+        const msg = `Failed to seed ${ds.symbol} ${ds.timeframe}: ${err instanceof Error ? err.message : String(err)}`;
+        log.warn(msg, err);
         result.errors.push(msg);
-        continue;
       }
-
-      const imported = importFromText(payload.text, payload.filename, ds.symbol, ds.timeframe);
-
-      if (imported.candles.length === 0) {
-        result.errors.push(`No valid candles in ${ds.file}`);
-        continue;
-      }
-
-      const metadata = await saveCandles(imported.symbol, imported.timeframe, imported.candles);
-      result.loaded.push(metadata);
-      log.info(`Seeded ${metadata.symbol} ${metadata.timeframe}: ${metadata.count} candles`);
-    } catch (err) {
-      const msg = `Failed to seed ${ds.symbol} ${ds.timeframe}: ${err instanceof Error ? err.message : String(err)}`;
-      log.warn(msg, err);
-      result.errors.push(msg);
     }
   }
 
-  if (result.loaded.length === 0 && result.errors.length > 0) {
+  if (result.loaded.length === 0) {
     for (const seed of FALLBACK_SEEDS) {
       const key = datasetKey(seed.symbol, seed.timeframe);
       if (!options.force) {

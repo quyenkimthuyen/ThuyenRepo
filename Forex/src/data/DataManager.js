@@ -137,6 +137,29 @@ const DataManager = {
   },
 
   /**
+   * Datasets that have at least one candle (usable for strategy scan / backtest).
+   * @returns {Promise<import('./Candle.js').DatasetMetadata[]>}
+   */
+  async listRunnableDatasets() {
+    const datasets = await this.listDatasets();
+    const runnable = [];
+
+    for (const meta of datasets) {
+      if (meta.count > 0) {
+        const actual = (await this.getCandles(meta.symbol, meta.timeframe)).length;
+        if (actual > 0) runnable.push({ ...meta, count: actual });
+      }
+    }
+
+    return runnable.sort((a, b) => {
+      const sym = a.symbol.localeCompare(b.symbol);
+      if (sym !== 0) return sym;
+      const order = Config.TIMEFRAMES;
+      return order.indexOf(a.timeframe) - order.indexOf(b.timeframe);
+    });
+  },
+
+  /**
    * Get candles for a symbol/timeframe.
    * @param {string} symbol
    * @param {string} timeframe
