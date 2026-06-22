@@ -45,11 +45,55 @@ const DataManager = {
   async initialize(_ctx) {
     await store.open();
     setBootMessage('Loading EURUSD / GBPUSD market data…');
-    await this.seedDefaults();
+
+    let eurusdH1 = await this.getCandleCount('EURUSD', 'H1');
+    if (eurusdH1 === 0) {
+      await this.seedDefaults({ fallbackOnly: true });
+      eurusdH1 = await this.getCandleCount('EURUSD', 'H1');
+    }
+    if (eurusdH1 === 0) {
+      emitDataLog('Quick seed failed — loading EURUSD H1 from data/defaults/…', 'warn');
+      await this.seedDefaults({ priorityOnly: true });
+      eurusdH1 = await this.getCandleCount('EURUSD', 'H1');
+    }
+    if (eurusdH1 === 0) {
+      emitDataLog('Default files unavailable — generating sample EURUSD H1…', 'warn');
+      await this.generateSample('EURUSD', 'H1');
+    }
+
     setBootMessage('Starting Price Action Research Lab…');
+    this.#seedRemainingInBackground();
 
     log.info('DataManager ready');
     emitDataLog('IndexedDB initialized — data layer active');
+  },
+
+  /**
+   * Load remaining default datasets after boot (non-blocking).
+   */
+  #seedRemainingInBackground() {
+    this.seedDefaults()
+      .then((result) => {
+        if (result.loaded.length > 0) {
+          const summary = result.loaded
+            .map((d) => `${d.symbol} ${d.timeframe}`)
+            .join(', ');
+          emitDataLog(`Background load complete — ${summary}`);
+        }
+      })
+      .catch((err) => {
+        emitDataLog(`Background data load failed: ${err.message}`, 'warn');
+      });
+  },
+
+  /**
+   * Fast candle count without loading all OHLCV rows.
+   * @param {string} symbol
+   * @param {string} timeframe
+   * @returns {Promise<number>}
+   */
+  async getCandleCount(symbol, timeframe) {
+    return store.countCandles(symbol, timeframe);
   },
 
   /**
@@ -60,10 +104,9 @@ const DataManager = {
   async seedDefaults(options = {}) {
     if (options.force) {
       const probe = await probeDefaultData();
-      if (probe.ok) {
-        const res = await fetch(
-          new URL('manifest.json', probe.bases[0] ?? 'data/defaults/')
-        );
+      const base = probe.workingBase ?? probe.bases[0];
+      if (probe.ok && base) {
+        const res = await fetch(new URL('manifest.json', base));
         if (res.ok) {
           const manifest = await res.json();
           for (const ds of manifest.datasets ?? []) {
@@ -76,7 +119,7 @@ const DataManager = {
     const result = await loadDefaultDatasets(
       (symbol, timeframe, candles) => this.saveCandles(symbol, timeframe, candles),
       () => this.listDatasets(),
-      async (symbol, timeframe) => (await this.getCandles(symbol, timeframe)).length,
+      (symbol, timeframe) => this.getCandleCount(symbol, timeframe),
       options
     );
 
@@ -114,13 +157,13 @@ const DataManager = {
   async getDataHealth() {
     const probe = await probeDefaultData();
     const datasets = await this.listDatasets();
-    const eurusdH1 = await this.getCandles('EURUSD', 'H1');
+    const eurusdH1Count = await this.getCandleCount('EURUSD', 'H1');
     return {
       protocol: typeof window !== 'undefined' ? window.location.protocol : 'unknown',
       href: typeof window !== 'undefined' ? window.location.href : '',
       ...probe,
       indexedDbDatasets: datasets.length,
-      eurusdH1Count: eurusdH1.length,
+      eurusdH1Count,
       datasets: datasets.map((d) => ({
         key: d.key,
         count: d.count,
@@ -145,17 +188,15 @@ const DataManager = {
     const runnable = [];
 
     for (const meta of datasets) {
-      if (meta.count > 0) {
-        const actual = (await this.getCandles(meta.symbol, meta.timeframe)).length;
-        if (actual > 0) runnable.push({ ...meta, count: actual });
-      }
+      if (meta.count <= 0) continue;
+      const actual = await this.getCandleCount(meta.symbol, meta.timeframe);
+      if (actual > 0) runnable.push({ ...meta, count: actual });
     }
 
     return runnable.sort((a, b) => {
       const sym = a.symbol.localeCompare(b.symbol);
       if (sym !== 0) return sym;
-      const order = Config.TIMEFRAMES;
-      return order.indexOf(a.timeframe) - order.indexOf(b.timeframe);
+      return Config.TIMEFRAMES.indexOf(a.timeframe) - Config.TIMEFRAMES.indexOf(b.timeframe);
     });
   },
 

@@ -85,9 +85,13 @@ class DataManagerViewImpl {
       const h = await DataManager.getDataHealth();
       const ok = h.eurusdH1Count > 0;
       box.className = `data-health${ok ? ' data-health-ok' : ' data-health-warn'}`;
-      box.textContent = ok
-        ? `Data OK — EURUSD H1: ${h.eurusdH1Count.toLocaleString()} candles · ${h.indexedDbDatasets} datasets in IndexedDB`
-        : `No data loaded — protocol: ${h.protocol} · manifest: ${h.manifest ? 'found' : 'MISSING'} · gzip: ${h.compression ? 'yes' : 'no (using .json fallback)'}`;
+      if (ok) {
+        box.textContent = `Data OK — EURUSD H1: ${h.eurusdH1Count.toLocaleString()} candles · ${h.indexedDbDatasets} datasets in IndexedDB`;
+      } else if (h.protocol === 'file:') {
+        box.textContent = 'Không load được qua file:// — chạy: cd Forex && python3 -m http.server 8080 rồi mở http://localhost:8080';
+      } else {
+        box.textContent = `Chưa có dữ liệu — manifest: ${h.manifest ? 'OK' : 'MISSING'} · gzip: ${h.compression ? 'yes' : 'no'} · base: ${h.workingBase ?? 'none'}`;
+      }
     } catch (err) {
       box.className = 'data-health data-health-warn';
       box.textContent = `Health check failed: ${err.message}`;
@@ -212,17 +216,17 @@ class DataManagerViewImpl {
   }
 
   #bindEvents() {
-    const fileInput = this.#container.querySelector('#import-file');
+    const fileInput = this.#container?.querySelector('#import-file');
 
     fileInput?.addEventListener('change', async (e) => {
       const file = /** @type {HTMLInputElement} */ (e.target).files?.[0];
       if (!file) return;
 
       const symbol = /** @type {HTMLSelectElement} */ (
-        this.#container.querySelector('#import-symbol')
+        this.#container?.querySelector('#import-symbol')
       ).value;
       const timeframe = /** @type {HTMLSelectElement} */ (
-        this.#container.querySelector('#import-tf')
+        this.#container?.querySelector('#import-tf')
       ).value;
 
       try {
@@ -240,30 +244,62 @@ class DataManagerViewImpl {
       fileInput.value = '';
     });
 
-    this.#container.querySelector('#btn-load-defaults')?.addEventListener('click', async () => {
+    this.#container?.querySelector('#btn-load-defaults')?.addEventListener('click', async () => {
       const btn = /** @type {HTMLButtonElement} */ (
-        this.#container.querySelector('#btn-load-defaults')
+        this.#container?.querySelector('#btn-load-defaults')
       );
+      const health = this.#container?.querySelector('#data-health');
       btn.disabled = true;
       btn.textContent = 'Loading…';
+      if (health) {
+        health.className = 'data-health';
+        health.textContent = 'Đang tải dữ liệu mặc định…';
+      }
+
       try {
-        await DataManager.seedDefaults({ force: true });
+        const result = await DataManager.seedDefaults({ force: true });
         await this.refresh();
+
+        if (result.loaded.length === 0) {
+          const msg = result.errors.join(' · ') || 'Không tải được dataset nào';
+          bus.emit(Events.LOG_MESSAGE, { message: msg, level: 'error', time: new Date() });
+        }
+      } catch (err) {
+        bus.emit(Events.LOG_MESSAGE, {
+          message: `Reload failed: ${err.message}`,
+          level: 'error',
+          time: new Date(),
+        });
+        await this.#refreshHealth();
       } finally {
         btn.disabled = false;
         btn.textContent = 'Reload Default Data';
       }
     });
 
-    this.#container.querySelector('#btn-gen-all')?.addEventListener('click', async () => {
-      const timeframe = Config.DEFAULT_TIMEFRAME;
-      for (const symbol of Config.SYMBOLS) {
-        await DataManager.generateSample(symbol, timeframe);
+    this.#container?.querySelector('#btn-gen-all')?.addEventListener('click', async () => {
+      const btn = /** @type {HTMLButtonElement} */ (
+        this.#container?.querySelector('#btn-gen-all')
+      );
+      btn.disabled = true;
+      try {
+        const timeframe = Config.DEFAULT_TIMEFRAME;
+        for (const symbol of Config.SYMBOLS) {
+          await DataManager.generateSample(symbol, timeframe);
+        }
+        await this.refresh();
+      } catch (err) {
+        bus.emit(Events.LOG_MESSAGE, {
+          message: `Sample generation failed: ${err.message}`,
+          level: 'error',
+          time: new Date(),
+        });
+      } finally {
+        btn.disabled = false;
       }
-      await this.refresh();
     });
 
-    this.#container.addEventListener('click', async (e) => {
+    this.#container?.addEventListener('click', async (e) => {
       const btn = /** @type {HTMLElement} */ (e.target).closest('[data-action]');
       if (!btn) return;
 

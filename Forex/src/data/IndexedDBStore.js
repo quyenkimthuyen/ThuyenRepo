@@ -96,6 +96,28 @@ export class IndexedDBStore {
   }
 
   /**
+   * Count candles for a symbol/timeframe without loading them into memory.
+   * @param {string} symbol
+   * @param {string} timeframe
+   * @returns {Promise<number>}
+   */
+  async countCandles(symbol, timeframe) {
+    const db = await this.open();
+
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(Config.DB_STORES.CANDLES, 'readonly');
+      const index = tx.objectStore(Config.DB_STORES.CANDLES).index('bySymbolTf');
+      const range = IDBKeyRange.bound(
+        [symbol, timeframe, 0],
+        [symbol, timeframe, Number.MAX_SAFE_INTEGER]
+      );
+      const request = index.count(range);
+      request.onsuccess = () => resolve(request.result ?? 0);
+      request.onerror = () => reject(request.error);
+    });
+  },
+
+  /**
    * Read all candles for a symbol/timeframe, optionally within a range.
    * @param {string} symbol
    * @param {string} timeframe
