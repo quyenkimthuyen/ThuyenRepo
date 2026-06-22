@@ -36,18 +36,48 @@ const DataManager = {
    */
   async initialize(_ctx) {
     await store.open();
-
-    const seeded = await loadDefaultDatasets(
-      (symbol, timeframe, candles) => this.saveCandles(symbol, timeframe, candles),
-      () => this.listDatasets()
-    );
-    if (seeded.length > 0) {
-      const summary = seeded.map((d) => `${d.symbol} ${d.timeframe} (${d.count.toLocaleString()})`).join(', ');
-      emitDataLog(`Loaded default data — ${summary}`);
-    }
+    await this.seedDefaults();
 
     log.info('DataManager ready');
     emitDataLog('IndexedDB initialized — data layer active');
+  },
+
+  /**
+   * Load bundled EURUSD/GBPUSD datasets from data/defaults/.
+   * @param {{ force?: boolean }} [options] - Re-import even if metadata already exists
+   * @returns {Promise<import('./DefaultDataLoader.js').DefaultLoadResult>}
+   */
+  async seedDefaults(options = {}) {
+    const result = await loadDefaultDatasets(
+      (symbol, timeframe, candles) => this.saveCandles(symbol, timeframe, candles),
+      () => this.listDatasets(),
+      async (symbol, timeframe) => (await this.getCandles(symbol, timeframe)).length,
+      options
+    );
+
+    if (result.loaded.length > 0) {
+      const summary = result.loaded
+        .map((d) => `${d.symbol} ${d.timeframe} (${d.count.toLocaleString()})`)
+        .join(', ');
+      emitDataLog(`Loaded default data — ${summary}`);
+    }
+
+    for (const err of result.errors) {
+      emitDataLog(err, 'error');
+    }
+
+    if (result.loaded.length === 0 && result.errors.length === 0) {
+      const datasets = await this.listDatasets();
+      const hasData = datasets.some((d) => d.count > 0);
+      if (!hasData) {
+        emitDataLog(
+          'No market data in IndexedDB. Open Data Manager → "Load Default Data", or import a CSV/JSON file.',
+          'warn'
+        );
+      }
+    }
+
+    return result;
   },
 
   /**

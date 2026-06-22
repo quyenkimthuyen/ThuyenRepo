@@ -103,6 +103,9 @@ class DataManagerViewImpl {
           ]),
         ]),
         el('div', { class: 'data-toolbar-group' }, [
+          el('button', { class: 'btn btn-secondary', id: 'btn-load-defaults' }, [
+            'Load Default Data',
+          ]),
           el('button', { class: 'btn btn-secondary', id: 'btn-gen-all' }, [
             'Generate Sample (All Pairs)',
           ]),
@@ -214,6 +217,21 @@ class DataManagerViewImpl {
       }
 
       fileInput.value = '';
+    });
+
+    this.#container.querySelector('#btn-load-defaults')?.addEventListener('click', async () => {
+      const btn = /** @type {HTMLButtonElement} */ (
+        this.#container.querySelector('#btn-load-defaults')
+      );
+      btn.disabled = true;
+      btn.textContent = 'Loading…';
+      try {
+        await DataManager.seedDefaults();
+        await this.refresh();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Load Default Data';
+      }
     });
 
     this.#container.querySelector('#btn-gen-all')?.addEventListener('click', async () => {
