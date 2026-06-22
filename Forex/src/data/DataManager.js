@@ -13,6 +13,7 @@ import { importFromText } from './DataImporter.js';
 import { exportCSV, exportJSON, downloadFile, downloadBinary } from './DataExporter.js';
 import { compress, decompress } from './Compression.js';
 import { generateSample } from './SampleDataGenerator.js';
+import { loadDefaultDatasets } from './DefaultDataLoader.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('DataManager');
@@ -35,6 +36,16 @@ const DataManager = {
    */
   async initialize(_ctx) {
     await store.open();
+
+    const seeded = await loadDefaultDatasets(
+      (symbol, timeframe, candles) => this.saveCandles(symbol, timeframe, candles),
+      () => this.listDatasets()
+    );
+    if (seeded.length > 0) {
+      const summary = seeded.map((d) => `${d.symbol} ${d.timeframe} (${d.count.toLocaleString()})`).join(', ');
+      emitDataLog(`Loaded default data — ${summary}`);
+    }
+
     log.info('DataManager ready');
     emitDataLog('IndexedDB initialized — data layer active');
   },

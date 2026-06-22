@@ -5,7 +5,7 @@
  */
 
 /** @typedef {'EURUSD'|'GBPUSD'} Symbol */
-/** @typedef {'H1'} Timeframe */
+/** @typedef {'H1'|'H4'|'D1'|'W'} Timeframe */
 
 /**
  * Immutable application configuration object.
@@ -19,7 +19,7 @@ export const Config = Object.freeze({
   SYMBOLS: Object.freeze(['EURUSD', 'GBPUSD']),
 
   /** Supported timeframes (extensible). */
-  TIMEFRAMES: Object.freeze(['H1']),
+  TIMEFRAMES: Object.freeze(['H1', 'H4', 'D1', 'W']),
 
   /** Default symbol and timeframe on first launch. */
   DEFAULT_SYMBOL: 'EURUSD',
@@ -72,6 +72,7 @@ export const Config = Object.freeze({
     H1: 60 * 60 * 1000,
     H4: 4 * 60 * 60 * 1000,
     D1: 24 * 60 * 60 * 1000,
+    W: 7 * 24 * 60 * 60 * 1000,
   }),
 
   /** Default sample data size for demo generation. */
