@@ -1,5 +1,5 @@
 /**
- * AI signal scores view — factor breakdown, filtering, and score calibration.
+ * AI signal scores — list + simulation calibration (tabbed layout).
  * @module ui/SignalsView
  */
 
@@ -21,7 +21,7 @@ const FACTOR_LABELS = {
   momentum: 'Momentum',
   location: 'Vị trí SL',
   volatility: 'Biến động',
-  priceActionQuality: 'PA quality',
+  priceActionQuality: 'PA',
   rr: 'RR',
   session: 'Phiên',
   spread: 'Spread',
@@ -38,20 +38,11 @@ function strategyLabel(strategyId) {
 /** @type {number} */
 let minScoreFilter = 0;
 
+/** @type {'list' | 'calibration'} */
+let activeTab = 'list';
+
 /** @type {import('../scoring/ScoreCalibration.js').WeightSuggestion|null} */
 let lastWeightSuggestion = null;
-
-/**
- * @param {string} label
- * @param {string} value
- * @returns {HTMLElement}
- */
-function metaChip(label, value) {
-  return el('span', { class: 'signals-chip', title: label }, [
-    el('span', { class: 'signals-chip-label' }, [`${label}: `]),
-    value,
-  ]);
-}
 
 /**
  * @param {number} pct
@@ -59,6 +50,19 @@ function metaChip(label, value) {
  */
 function fmtPct(pct) {
   return `${pct.toFixed(1)}%`;
+}
+
+/**
+ * @param {string} label
+ * @param {string} value
+ * @param {string} [tone]
+ * @returns {HTMLElement}
+ */
+function statCard(label, value, tone = '') {
+  return el('div', { class: `signals-stat${tone ? ` signals-stat-${tone}` : ''}` }, [
+    el('span', { class: 'signals-stat-label' }, [label]),
+    el('span', { class: 'signals-stat-value' }, [value]),
+  ]);
 }
 
 /**
@@ -77,20 +81,43 @@ class SignalsViewImpl {
     container.classList.remove('panel-body-fill');
 
     container.appendChild(el('div', { class: 'signals-view' }, [
-      el('div', { class: 'signals-toolbar' }, [
-        el('span', { class: 'signals-title' }, ['AI Signal Scores']),
-        el('div', { class: 'signals-toolbar-actions' }, [
+      el('div', { class: 'signals-header' }, [
+        el('div', { class: 'signals-header-top' }, [
+          el('span', { class: 'signals-title' }, ['AI Signals']),
+          el('span', { class: 'signals-subtitle' }, ['Chấm & lọc setup — không dự đoán thắng/thua']),
+          createHelpButton('signals'),
+        ]),
+        el('div', { class: 'signals-context', id: 'signals-context' }, [
+          el('p', { class: 'signals-empty-hint' }, ['Chạy Strategies (Ctrl+3) để quét tín hiệu.']),
+        ]),
+      ]),
+      el('div', { class: 'signals-tabbar', id: 'signals-tabbar' }, [
+        el('button', {
+          type: 'button',
+          class: 'signals-tab active',
+          dataset: { tab: 'list' },
+        }, ['Danh sách']),
+        el('button', {
+          type: 'button',
+          class: 'signals-tab',
+          dataset: { tab: 'calibration' },
+        }, ['Đối chiếu Simulation']),
+      ]),
+      el('div', { class: 'signals-panel signals-panel-list', id: 'signals-panel-list' }, [
+        el('div', { class: 'signals-list-controls' }, [
           el('label', { class: 'signals-filter' }, [
             'Min score',
             el('input', { type: 'range', id: 'sig-min-score', min: '0', max: '100', value: '0' }),
             el('span', { id: 'sig-min-label' }, ['0']),
           ]),
-          createHelpButton('signals'),
+          el('span', { class: 'signals-list-hint' }, ['Bấm signal → mở Chart kiểm tra setup']),
         ]),
+        el('div', { class: 'signals-list', id: 'signals-list' }),
       ]),
-      el('div', { class: 'signals-meta', id: 'signals-meta' }, ['Run a strategy scan first (Ctrl+3).']),
-      el('div', { class: 'signals-calibration', id: 'signals-calibration' }),
-      el('div', { class: 'signals-list', id: 'signals-list' }),
+      el('div', {
+        class: 'signals-panel signals-panel-calibration hidden',
+        id: 'signals-panel-calibration',
+      }),
     ]));
 
     this.#bindEvents();
@@ -114,22 +141,56 @@ class SignalsViewImpl {
       this.#render(ScoringEngine.getLastScored());
     });
 
+    this.#container?.querySelector('#signals-tabbar')?.addEventListener('click', (e) => {
+      const btn = /** @type {HTMLElement} */ (e.target).closest('.signals-tab');
+      if (!btn?.dataset.tab) return;
+      activeTab = /** @type {'list'|'calibration'} */ (btn.dataset.tab);
+      this.#container?.querySelectorAll('.signals-tab').forEach((tab) => {
+        tab.classList.toggle('active', tab.dataset.tab === activeTab);
+      });
+      this.#syncPanels();
+    });
+
     bus.on(Events.SIGNALS_SCORED, (set) => this.#render(set));
     bus.on(Events.SIMULATION_COMPLETE, () => this.#render(ScoringEngine.getLastScored()));
+  }
+
+  #syncPanels() {
+    const listPanel = this.#container?.querySelector('#signals-panel-list');
+    const calPanel = this.#container?.querySelector('#signals-panel-calibration');
+    listPanel?.classList.toggle('hidden', activeTab !== 'list');
+    calPanel?.classList.toggle('hidden', activeTab !== 'calibration');
   }
 
   /**
    * @param {import('../scoring/ScoringEngine.js').ScoredSignalSet|null} set
    */
   #render(set) {
-    const meta = this.#container?.querySelector('#signals-meta');
-    const calibration = this.#container?.querySelector('#signals-calibration');
-    const list = this.#container?.querySelector('#signals-list');
+    this.#renderContext(set);
+    this.#renderList(set);
+    this.#renderCalibrationPanel(set);
+    this.#syncPanels();
+
+    const calTab = this.#container?.querySelector('.signals-tab[data-tab="calibration"]');
+    const sim = SimulationEngine.getLastResult();
+    const report = set ? ScoringEngine.getCalibrationReport(sim, Math.max(minScoreFilter, 65)) : null;
+    if (calTab) {
+      calTab.classList.toggle('signals-tab-ready', Boolean(report?.matched));
+    }
+  }
+
+  /**
+   * @param {import('../scoring/ScoringEngine.js').ScoredSignalSet|null} set
+   */
+  #renderContext(set) {
+    const ctx = this.#container?.querySelector('#signals-context');
+    if (!ctx) return;
 
     if (!set || set.signals.length === 0) {
-      if (meta) meta.textContent = 'No signals — run Strategy scan (Ctrl+3) first.';
-      if (calibration) calibration.innerHTML = '';
-      if (list) list.innerHTML = '';
+      ctx.innerHTML = '';
+      ctx.appendChild(el('p', { class: 'signals-empty-hint' }, [
+        'Chạy Strategies (Ctrl+3) để quét tín hiệu.',
+      ]));
       return;
     }
 
@@ -137,80 +198,153 @@ class SignalsViewImpl {
       (s) => (s.scoreBreakdown?.score ?? s.confidence) >= minScoreFilter
     );
 
-    if (meta) {
-      meta.innerHTML = '';
-      meta.appendChild(el('div', { class: 'signals-scan-summary' }, [
-        metaChip('Strategy', `${strategyLabel(set.strategyId)} (${set.strategyId})`),
-        metaChip('Symbol', set.symbol),
-        metaChip('TF', set.timeframe),
-        metaChip('Signals', `${filtered.length}/${set.signals.length}`),
-        metaChip('Avg score', `${set.avgScore.toFixed(0)}/100`),
-      ]));
-      meta.appendChild(el('p', { class: 'signals-scan-hint' }, [
-        'Bấm signal → Chart mở đúng Symbol/TF, nhảy tới nến setup, vẽ Entry / SL / TP.',
-      ]));
-    }
+    ctx.innerHTML = '';
+    ctx.appendChild(el('div', { class: 'signals-context-chips' }, [
+      el('span', { class: 'signals-chip signals-chip-strategy' }, [
+        strategyLabel(set.strategyId),
+      ]),
+      el('span', { class: 'signals-chip' }, [set.symbol]),
+      el('span', { class: 'signals-chip' }, [set.timeframe]),
+      el('span', { class: 'signals-chip' }, [`${filtered.length}/${set.signals.length} hiển thị`]),
+      el('span', { class: 'signals-chip' }, [`TB ${set.avgScore.toFixed(0)}/100`]),
+    ]));
+  }
 
-    this.#renderCalibration(calibration, set);
-
+  /**
+   * @param {import('../scoring/ScoringEngine.js').ScoredSignalSet|null} set
+   */
+  #renderList(set) {
+    const list = this.#container?.querySelector('#signals-list');
     if (!list) return;
     list.innerHTML = '';
+
+    if (!set || set.signals.length === 0) return;
+
+    const filtered = set.signals.filter(
+      (s) => (s.scoreBreakdown?.score ?? s.confidence) >= minScoreFilter
+    );
+
+    if (filtered.length === 0) {
+      list.appendChild(el('p', { class: 'signals-empty-hint' }, [
+        'Không có signal nào ≥ Min score. Giảm thanh trượt hoặc scan lại.',
+      ]));
+      return;
+    }
 
     for (const signal of filtered.slice(0, 100)) {
       list.appendChild(this.#renderSignalCard(signal));
     }
 
     if (filtered.length > 100) {
-      list.appendChild(el('p', { class: 'signals-more' }, [`Showing 100 of ${filtered.length} signals`]));
+      list.appendChild(el('p', { class: 'signals-more' }, [
+        `Hiển thị 100 / ${filtered.length} signal`,
+      ]));
     }
   }
 
   /**
-   * @param {HTMLElement|null} root
-   * @param {import('../scoring/ScoringEngine.js').ScoredSignalSet} set
+   * @param {import('../scoring/ScoringEngine.js').ScoredSignalSet|null} set
    */
-  #renderCalibration(root, set) {
+  #renderCalibrationPanel(set) {
+    const root = this.#container?.querySelector('#signals-panel-calibration');
     if (!root) return;
     root.innerHTML = '';
+
+    if (!set) {
+      root.appendChild(this.#renderCalibrationEmpty(
+        'Chưa có signal đã chấm.',
+        ['Strategies (Ctrl+3) → Run scan', 'Simulation (Ctrl+4) cùng Symbol/TF', 'Quay lại tab này']
+      ));
+      return;
+    }
 
     const sim = SimulationEngine.getLastResult();
     const report = ScoringEngine.getCalibrationReport(sim, Math.max(minScoreFilter, 65));
     const weights = ScoringEngine.getWeights();
 
-    const panel = el('div', { class: 'signals-cal-panel' }, [
-      el('div', { class: 'signals-cal-header' }, [
-        el('strong', {}, ['Điểm AI vs kết quả thực tế']),
-        el('span', { class: 'signals-cal-sub' }, [
-          'So sánh điểm signal với lệnh Simulation (cùng Strategy / Symbol / TF).',
-        ]),
-      ]),
-    ]);
-
     if (!report.matched) {
-      panel.appendChild(el('p', { class: 'signals-cal-empty' }, [report.reason ?? 'Chưa có dữ liệu.']));
-      root.appendChild(panel);
+      root.appendChild(this.#renderCalibrationEmpty(
+        report.reason ?? 'Chưa đối chiếu được.',
+        [
+          `Scan: ${strategyLabel(set.strategyId)} · ${set.symbol} ${set.timeframe}`,
+          'Simulation (Ctrl+4) — chọn đúng Strategy / Symbol / TF',
+          'Run Simulation rồi mở lại tab này',
+        ]
+      ));
       return;
     }
 
-    panel.appendChild(el('p', { class: 'signals-cal-meta' }, [
-      `${report.matchedTrades} lệnh khớp`,
-      report.skippedTrades ? ` · ${report.skippedTrades} lệnh không ghép được điểm` : '',
-      ` · tương quan điểm/lãi: ${(report.scoreProfitCorrelation ?? 0).toFixed(2)}`,
-      ` · WR điểm ≥${report.minScoreCutoffUsed}: ${fmtPct(report.highScoreWinRate ?? 0)}`,
-      ` vs <${report.minScoreCutoffUsed}: ${fmtPct(report.lowScoreWinRate ?? 0)}`,
-    ]));
+    const corr = report.scoreProfitCorrelation ?? 0;
+    const corrTone = corr > 0.15 ? 'good' : corr < -0.05 ? 'bad' : '';
 
-    panel.appendChild(el('table', { class: 'signals-cal-table' }, [
+    root.appendChild(el('div', { class: 'signals-cal-layout' }, [
+      el('p', { class: 'signals-cal-intro' }, [
+        `${report.matchedTrades} lệnh khớp điểm AI`,
+        report.skippedTrades ? ` (${report.skippedTrades} lệnh không ghép được)` : '',
+        ` · Strategy ${strategyLabel(set.strategyId)} · ${set.symbol} ${set.timeframe}`,
+      ]),
+      el('div', { class: 'signals-stats-row' }, [
+        statCard('Tương quan điểm–lãi', corr.toFixed(2), corrTone),
+        statCard(`WR ≥ ${report.minScoreCutoffUsed}`, fmtPct(report.highScoreWinRate ?? 0), 'good'),
+        statCard(`WR < ${report.minScoreCutoffUsed}`, fmtPct(report.lowScoreWinRate ?? 0)),
+        statCard('Lệnh khớp', String(report.matchedTrades)),
+      ]),
+      this.#renderDetailsSection('Theo nhóm điểm', this.#renderBucketTable(report.buckets ?? [])),
+      report.factors?.length
+        ? this.#renderDetailsSection(
+          'Yếu tố khác biệt (thắng vs thua)',
+          this.#renderFactorTable(report.factors.slice(0, 6))
+        )
+        : null,
+      this.#renderDetailsSection(
+        'Trọng số chấm điểm',
+        this.#renderWeightsBlock(weights)
+      ),
+    ].filter(Boolean)));
+  }
+
+  /**
+   * @param {string} message
+   * @param {string[]} steps
+   * @returns {HTMLElement}
+   */
+  #renderCalibrationEmpty(message, steps) {
+    return el('div', { class: 'signals-cal-empty-state' }, [
+      el('p', { class: 'signals-cal-empty-title' }, [message]),
+      el('ol', { class: 'signals-cal-steps' }, steps.map((s) => el('li', {}, [s]))),
+    ]);
+  }
+
+  /**
+   * @param {string} title
+   * @param {HTMLElement} body
+   * @returns {HTMLElement}
+   */
+  #renderDetailsSection(title, body) {
+    const details = el('details', { class: 'signals-cal-details' }, [
+      el('summary', { class: 'signals-cal-summary' }, [title]),
+      el('div', { class: 'signals-cal-details-body' }, [body]),
+    ]);
+    details.open = title.startsWith('Theo nhóm');
+    return details;
+  }
+
+  /**
+   * @param {import('../scoring/ScoreCalibration.js').ScoreBucketSummary[]} buckets
+   * @returns {HTMLElement}
+   */
+  #renderBucketTable(buckets) {
+    return el('table', { class: 'signals-cal-table' }, [
       el('thead', {}, [
         el('tr', {}, [
-          el('th', {}, ['Nhóm điểm']),
+          el('th', {}, ['Nhóm']),
           el('th', {}, ['Lệnh']),
-          el('th', {}, ['Win rate']),
-          el('th', {}, ['Lãi TB/lệnh']),
-          el('th', {}, ['Lãi tổng']),
+          el('th', {}, ['WR']),
+          el('th', {}, ['Lãi TB']),
+          el('th', {}, ['Tổng']),
         ]),
       ]),
-      el('tbody', {}, (report.buckets ?? []).map((b) =>
+      el('tbody', {}, buckets.map((b) =>
         el('tr', {}, [
           el('td', {}, [b.label]),
           el('td', {}, [String(b.trades)]),
@@ -219,97 +353,101 @@ class SignalsViewImpl {
           el('td', { class: 'signals-cal-mono' }, [b.trades ? `$${b.netProfit.toFixed(2)}` : '—']),
         ])
       )),
-    ]));
+    ]);
+  }
 
-    if (report.factors?.length) {
-      panel.appendChild(el('p', { class: 'signals-cal-section-title' }, [
-        'Yếu tố phân biệt thắng / thua (trung bình điểm yếu tố)',
-      ]));
-      panel.appendChild(el('table', { class: 'signals-cal-table signals-cal-table-factors' }, [
-        el('thead', {}, [
-          el('tr', {}, [
-            el('th', {}, ['Yếu tố']),
-            el('th', {}, ['Thắng']),
-            el('th', {}, ['Thua']),
-            el('th', {}, ['Chênh']),
-          ]),
-        ]),
-        el('tbody', {}, report.factors.map((f) =>
-          el('tr', {}, [
-            el('td', {}, [FACTOR_LABELS[f.factor] ?? f.factor]),
-            el('td', { class: 'signals-cal-mono' }, [f.avgWin.toFixed(0)]),
-            el('td', { class: 'signals-cal-mono' }, [f.avgLoss.toFixed(0)]),
-            el('td', { class: `signals-cal-mono${f.delta >= 0 ? ' signals-cal-pos' : ' signals-cal-neg'}` }, [
-              `${f.delta >= 0 ? '+' : ''}${f.delta.toFixed(1)}`,
-            ]),
-          ])
-        )),
-      ]));
-    }
-
-    const weightRows = Object.entries(weights).map(([key, value]) =>
-      el('tr', {}, [
-        el('td', {}, [FACTOR_LABELS[key] ?? key]),
-        el('td', { class: 'signals-cal-mono' }, [`${(value * 100).toFixed(1)}%`]),
-        el('td', { class: 'signals-cal-mono', id: `sig-weight-suggest-${key}` }, ['—']),
-      ])
-    );
-
-    panel.appendChild(el('p', { class: 'signals-cal-section-title' }, ['Trọng số chấm điểm (đang dùng)']));
-    panel.appendChild(el('table', { class: 'signals-cal-table signals-cal-table-weights', id: 'sig-weights-table' }, [
+  /**
+   * @param {import('../scoring/ScoreCalibration.js').FactorDiscrimination[]} factors
+   * @returns {HTMLElement}
+   */
+  #renderFactorTable(factors) {
+    return el('table', { class: 'signals-cal-table' }, [
       el('thead', {}, [
         el('tr', {}, [
           el('th', {}, ['Yếu tố']),
-          el('th', {}, ['Hiện tại']),
-          el('th', {}, ['Gợi ý']),
+          el('th', {}, ['Thắng']),
+          el('th', {}, ['Thua']),
+          el('th', {}, ['Chênh']),
         ]),
       ]),
-      el('tbody', {}, weightRows),
-    ]));
-
-    const suggestNote = el('p', { class: 'signals-cal-note', id: 'sig-weight-note' }, [
-      'Bấm 「Gợi ý trọng số」 để tối ưu trên lệnh đã mô phỏng (sample nhỏ dễ học vẹt).',
+      el('tbody', {}, factors.map((f) =>
+        el('tr', {}, [
+          el('td', {}, [FACTOR_LABELS[f.factor] ?? f.factor]),
+          el('td', { class: 'signals-cal-mono' }, [f.avgWin.toFixed(0)]),
+          el('td', { class: 'signals-cal-mono' }, [f.avgLoss.toFixed(0)]),
+          el('td', { class: `signals-cal-mono${f.delta >= 0 ? ' signals-cal-pos' : ' signals-cal-neg'}` }, [
+            `${f.delta >= 0 ? '+' : ''}${f.delta.toFixed(1)}`,
+          ]),
+        ])
+      )),
     ]);
-    panel.appendChild(suggestNote);
+  }
 
-    panel.appendChild(el('div', { class: 'signals-cal-actions' }, [
-      el('button', { class: 'btn btn-sm btn-secondary', id: 'sig-suggest-weights', type: 'button' }, [
-        'Gợi ý trọng số',
+  /**
+   * @param {Record<string, number>} weights
+   * @returns {HTMLElement}
+   */
+  #renderWeightsBlock(weights) {
+    const wrap = el('div', { class: 'signals-weights-block' }, [
+      el('p', { class: 'signals-cal-note', id: 'sig-weight-note' }, [
+        'Gợi ý trọng số dựa trên lệnh đã mô phỏng — cần ≥10 lệnh; kiểm tra lại trên period khác.',
       ]),
-      el('button', { class: 'btn btn-sm btn-primary', id: 'sig-apply-weights', type: 'button', disabled: true }, [
-        'Áp dụng gợi ý',
+      el('table', { class: 'signals-cal-table' }, [
+        el('thead', {}, [
+          el('tr', {}, [
+            el('th', {}, ['Yếu tố']),
+            el('th', {}, ['Hiện tại']),
+            el('th', {}, ['Gợi ý']),
+          ]),
+        ]),
+        el('tbody', {}, Object.entries(weights).map(([key, value]) =>
+          el('tr', {}, [
+            el('td', {}, [FACTOR_LABELS[key] ?? key]),
+            el('td', { class: 'signals-cal-mono' }, [`${(value * 100).toFixed(1)}%`]),
+            el('td', { class: 'signals-cal-mono', id: `sig-weight-suggest-${key}` }, ['—']),
+          ])
+        )),
       ]),
-      el('button', { class: 'btn btn-sm', id: 'sig-reset-weights', type: 'button' }, [
-        'Về mặc định',
+      el('div', { class: 'signals-cal-actions' }, [
+        el('button', { class: 'btn btn-sm btn-secondary', id: 'sig-suggest-weights', type: 'button' }, [
+          'Gợi ý trọng số',
+        ]),
+        el('button', { class: 'btn btn-sm btn-primary', id: 'sig-apply-weights', type: 'button', disabled: true }, [
+          'Áp dụng',
+        ]),
+        el('button', { class: 'btn btn-sm', id: 'sig-reset-weights', type: 'button' }, [
+          'Mặc định',
+        ]),
       ]),
-    ]));
+    ]);
 
-    root.appendChild(panel);
-
-    if (lastWeightSuggestion) {
-      this.#fillWeightSuggestion(lastWeightSuggestion);
-    }
-
-    root.querySelector('#sig-suggest-weights')?.addEventListener('click', () => {
+    wrap.querySelector('#sig-suggest-weights')?.addEventListener('click', () => {
+      const sim = SimulationEngine.getLastResult();
       if (!sim) return;
       lastWeightSuggestion = ScoringEngine.suggestWeights(sim);
       this.#fillWeightSuggestion(lastWeightSuggestion);
-      const applyBtn = /** @type {HTMLButtonElement} */ (root.querySelector('#sig-apply-weights'));
+      const applyBtn = /** @type {HTMLButtonElement} */ (wrap.querySelector('#sig-apply-weights'));
       if (applyBtn) applyBtn.disabled = false;
     });
 
-    root.querySelector('#sig-apply-weights')?.addEventListener('click', async () => {
+    wrap.querySelector('#sig-apply-weights')?.addEventListener('click', async () => {
       if (!lastWeightSuggestion) return;
       await ScoringEngine.applyWeights(lastWeightSuggestion.weights);
       lastWeightSuggestion = null;
       this.#render(ScoringEngine.getLastScored());
     });
 
-    root.querySelector('#sig-reset-weights')?.addEventListener('click', async () => {
+    wrap.querySelector('#sig-reset-weights')?.addEventListener('click', async () => {
       lastWeightSuggestion = null;
       await ScoringEngine.resetWeights();
       this.#render(ScoringEngine.getLastScored());
     });
+
+    if (lastWeightSuggestion) {
+      this.#fillWeightSuggestion(lastWeightSuggestion);
+    }
+
+    return wrap;
   }
 
   /**
@@ -338,47 +476,24 @@ class SignalsViewImpl {
     const score = breakdown?.score ?? signal.confidence;
     const grade = breakdown?.grade ?? '?';
     const jumpAt = signal.time || signal.screenshotPosition?.timestamp;
-    const barIndex = signal.screenshotPosition?.candleIndex;
-
-    const factors = breakdown?.factors;
-    const factorBars = factors
-      ? Object.entries(factors).map(([name, value]) =>
-        el('div', { class: 'signal-factor' }, [
-          el('span', { class: 'signal-factor-name' }, [FACTOR_LABELS[name] ?? name]),
-          el('div', { class: 'signal-factor-bar' }, [
-            el('div', { class: 'signal-factor-fill', style: `width:${value}%` }),
-          ]),
-          el('span', { class: 'signal-factor-val' }, [String(value)]),
-        ])
-      )
-      : [];
 
     const card = el('button', {
       type: 'button',
-      class: 'signal-card signal-card-action',
-      title: 'Mở Chart tại thời điểm signal và xem Entry / SL / TP',
+      class: 'signal-card signal-card-compact',
+      title: 'Mở Chart tại nến signal',
     }, [
-      el('div', { class: 'signal-card-tags' }, [
-        el('span', { class: 'signals-chip signals-chip-strategy' }, [strategyLabel(signal.strategyId)]),
-        el('span', { class: 'signals-chip' }, [signal.pair]),
-        el('span', { class: 'signals-chip' }, [signal.timeframe]),
-        barIndex != null ? el('span', { class: 'signals-chip' }, [`Bar ${barIndex}`]) : null,
-      ].filter(Boolean)),
-      el('div', { class: 'signal-card-header' }, [
+      el('div', { class: 'signal-card-row' }, [
         el('span', { class: `signal-grade grade-${grade}` }, [grade]),
-        el('span', { class: 'signal-score' }, [`${score}/100`]),
+        el('span', { class: 'signal-score' }, [`${score}`]),
         el('span', { class: `signal-dir signal-${signal.direction}` }, [signal.direction.toUpperCase()]),
         el('span', { class: 'signal-rr' }, [`${signal.rr.toFixed(1)}R`]),
-      ]),
-      el('div', { class: 'signal-card-meta' }, [
         el('span', { class: 'signal-time' }, [formatTimestamp(jumpAt)]),
-        el('span', { class: 'signal-prices' }, [
-          `Entry ${signal.entry.toFixed(5)} · SL ${signal.sl.toFixed(5)} · TP ${signal.tp.toFixed(5)}`,
-        ]),
+        el('span', { class: 'signal-open-hint' }, ['Chart →']),
       ]),
-      el('p', { class: 'signal-reason' }, [signal.reason || 'No reason']),
-      el('div', { class: 'signal-factors' }, factorBars),
-      el('span', { class: 'signal-open-hint' }, ['→ Kiểm chứng setup trên Chart']),
+      el('p', { class: 'signal-reason signal-reason-compact' }, [
+        signal.reason || '—',
+        ` · E ${signal.entry.toFixed(5)} · SL ${signal.sl.toFixed(5)} · TP ${signal.tp.toFixed(5)}`,
+      ]),
     ]);
 
     card.addEventListener('click', () => {

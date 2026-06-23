@@ -3,7 +3,7 @@
  * @module scoring/ScoreCalibration
  */
 
-import { composeScoreFromFactors, scoreToGrade } from './SignalScoreEngine.js';
+import { composeScoreFromFactors } from './SignalScoreEngine.js';
 import { getDefaultScoringWeights, normalizeScoringWeights } from './ScoringWeights.js';
 
 /** @typedef {import('../simulation/TradeSimulator.js').TradeResult} TradeResult */
@@ -55,8 +55,8 @@ import { getDefaultScoringWeights, normalizeScoringWeights } from './ScoringWeig
 /** @type {Array<{ label: string, min: number, max: number }>} */
 export const SCORE_BUCKETS = [
   { label: 'A (80+)', min: 80, max: 100 },
-  { label: 'B (65–79)', min: 65, max: 79 },
-  { label: 'C (50–64)', min: 50, max: 64 },
+  { label: 'B (65-79)', min: 65, max: 79 },
+  { label: 'C (50-64)', min: 50, max: 64 },
   { label: 'D/F (<50)', min: 0, max: 49 },
 ];
 
@@ -205,7 +205,7 @@ export function buildCalibrationReport(scoredSet, simResult, minScoreCutoff = 65
   if (!calibrationContextsMatch(scoredSet, simResult)) {
     return {
       matched: false,
-      reason: 'Ch?y Simulation (Ctrl+4) cùng Strategy / Symbol / TF v?i l?n scan g?n nh?t.',
+      reason: 'Ch\u1ea1y Simulation (Ctrl+4) c\u00f9ng Strategy / Symbol / TF v\u1edbi l\u1ea7n scan g\u1ea7n nh\u1ea5t.',
     };
   }
 
@@ -213,7 +213,7 @@ export function buildCalibrationReport(scoredSet, simResult, minScoreCutoff = 65
   if (joined.length === 0) {
     return {
       matched: false,
-      reason: 'Không ghép ???c l?nh v?i ?i?m AI — th? scan + simulation l?i.',
+      reason: 'Kh\u00f4ng gh\u00e9p \u0111\u01b0\u1ee3c l\u1ec7nh v\u1edbi \u0111i\u1ec3m AI \u2014 th\u1eed scan + simulation l\u1ea1i.',
     };
   }
 
@@ -261,7 +261,7 @@ export function suggestScoringWeights(rows, baseWeights = getDefaultScoringWeigh
       weights: { ...baseWeights },
       fitness: calibrationFitness(rows, baseWeights),
       baselineFitness: calibrationFitness(rows, baseWeights),
-      note: 'C?n ?10 l?nh kh?p ?i?m AI ?? g?i ý tr?ng s? ?áng tin.',
+      note: 'C\u1ea7n \u226510 l\u1ec7nh kh\u1edbp \u0111i\u1ec3m AI \u0111\u1ec3 g\u1ee3i \u00fd tr\u1ecdng s\u1ed1 \u0111\u00e1ng tin.',
     };
   }
 
@@ -297,8 +297,8 @@ export function suggestScoringWeights(rows, baseWeights = getDefaultScoringWeigh
     fitness: bestFitness,
     baselineFitness,
     note: bestFitness > baselineFitness
-      ? 'Tr?ng s? g?i ý tách l?nh th?ng/thua t?t h?n m?c ??nh trên sample này — v?n c?n Walk Forward.'
-      : 'M?c ??nh ?ã ?n trên sample này; t?ng s? l?nh ho?c ??i period tr??c khi áp d?ng.',
+      ? 'Tr\u1ecdng s\u1ed1 g\u1ee3i \u00fd t\u00e1ch l\u1ec7nh th\u1eafng/thua t\u1ed1t h\u01a1n m\u1eb7c \u0111\u1ecbnh tr\u00ean sample n\u00e0y \u2014 v\u1eabn c\u1ea7n Walk Forward.'
+      : 'M\u1eb7c \u0111\u1ecbnh \u0111\u00e3 \u1ed5n tr\u00ean sample n\u00e0y; t\u0103ng s\u1ed1 l\u1ec7nh ho\u1eb7c \u0111\u1ed5i period tr\u01b0\u1edbc khi \u00e1p d\u1ee5ng.',
   };
 }
 

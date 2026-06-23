@@ -515,7 +515,19 @@ export const CONTEXT_DOC_SECTIONS = [
       },
       {
         type: 'h3',
-        text: 'Điểm AI vs kết quả thực tế (calibration)',
+        text: 'Hai tab trên màn hình',
+      },
+      {
+        type: 'table',
+        headers: ['Tab', 'Dùng khi'],
+        rows: [
+          ['Danh sách', 'Lọc Min score, bấm signal → Chart kiểm tra setup (mặc định)'],
+          ['Đối chiếu Simulation', 'Sau Ctrl+4 — win rate theo nhóm điểm, yếu tố thắng/thua, gợi ý trọng số'],
+        ],
+      },
+      {
+        type: 'h3',
+        text: 'Đối chiếu Simulation (tab 2)',
       },
       {
         type: 'p',
