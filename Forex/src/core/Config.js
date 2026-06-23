@@ -50,6 +50,7 @@ export const Config = Object.freeze({
     REPORT_RESULTS: 'parl_report_results',
     RESEARCH_RESULTS: 'parl_research_results',
     SCORED_SIGNALS: 'parl_scored_signals',
+    SCORING_WEIGHTS: 'parl_scoring_weights',
   }),
 
   /** IndexedDB database name and schema version. */

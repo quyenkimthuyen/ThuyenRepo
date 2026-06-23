@@ -10,6 +10,16 @@ import DataManager from '../data/DataManager.js';
 import SimulationEngine from '../simulation/SimulationEngine.js';
 import PerformanceEngine from '../performance/PerformanceEngine.js';
 import { scoreSignalsBatch, filterByMinScore } from './SignalScoreEngine.js';
+import {
+  buildCalibrationReport,
+  suggestWeightsFromSimulation,
+} from './ScoreCalibration.js';
+import {
+  getScoringWeights,
+  saveScoringWeights,
+  resetScoringWeights,
+  getDefaultScoringWeights,
+} from './ScoringWeights.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('ScoringEngine');
@@ -106,6 +116,77 @@ class ScoringEngine {
   getFilteredSignals(minScore) {
     if (!this.#lastScored) return [];
     return filterByMinScore(this.#lastScored.signals, minScore);
+  }
+
+  /**
+   * @returns {Record<string, number>}
+   */
+  getWeights() {
+    return getScoringWeights();
+  }
+
+  /**
+   * @param {import('../simulation/SimulationEngine.js').SimulationResult|null} simResult
+   * @param {number} [minScoreCutoff]
+   */
+  getCalibrationReport(simResult, minScoreCutoff = 65) {
+    return buildCalibrationReport(this.#lastScored, simResult, minScoreCutoff);
+  }
+
+  /**
+   * @param {import('../simulation/SimulationEngine.js').SimulationResult} simResult
+   */
+  suggestWeights(simResult) {
+    if (!this.#lastScored) {
+      return {
+        weights: getDefaultScoringWeights(),
+        fitness: 0,
+        baselineFitness: 0,
+        note: 'Chưa có signal đã chấm — scan Strategies trước.',
+      };
+    }
+    return suggestWeightsFromSimulation(this.#lastScored, simResult, getScoringWeights());
+  }
+
+  /**
+   * @param {Record<string, number>} weights
+   */
+  async applyWeights(weights) {
+    saveScoringWeights(weights);
+    if (!this.#lastScored) return null;
+    const candles = await DataManager.getCandles(
+      this.#lastScored.symbol,
+      this.#lastScored.timeframe
+    );
+    const spread = SimulationEngine.getConfig().spreadPips;
+    const rescored = scoreSignalsBatch(
+      this.#lastScored.signals.map(({ scoreBreakdown, confidence, ...base }) => base),
+      candles,
+      spread
+    );
+    const set = {
+      ...this.#lastScored,
+      signals: rescored,
+      avgScore: rescored.length
+        ? rescored.reduce((s, sig) => s + (sig.scoreBreakdown?.score ?? 0), 0) / rescored.length
+        : 0,
+      scoredAt: Date.now(),
+    };
+    this.#lastScored = set;
+    saveToStorage(Config.STORAGE_KEYS.SCORED_SIGNALS, set);
+    bus.emit(Events.SIGNALS_SCORED, set);
+    bus.emit(Events.LOG_MESSAGE, {
+      message: `Đã áp trọng số AI mới — avg ${set.avgScore.toFixed(0)}/100`,
+      level: 'info',
+      time: new Date(),
+    });
+    return set;
+  }
+
+  async resetWeights() {
+    resetScoringWeights();
+    if (!this.#lastScored) return null;
+    return this.applyWeights(getDefaultScoringWeights());
   }
 }
 

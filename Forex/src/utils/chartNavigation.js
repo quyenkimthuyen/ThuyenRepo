@@ -64,6 +64,56 @@ export function signalToChartHighlight(signal) {
 }
 
 /**
+ * @param {'long'|'short'} direction
+ * @param {number} entry
+ * @param {number} sl
+ * @param {number} tp
+ * @returns {number}
+ */
+function computeRiskReward(direction, entry, sl, tp) {
+  const risk = Math.abs(entry - sl);
+  if (risk <= 0) return 0;
+  const reward = direction === 'long' ? tp - entry : entry - tp;
+  return Math.max(0, reward / risk);
+}
+
+/**
+ * Build chart overlay from a simulated trade; prefers original signal for setup metadata.
+ * @param {import('../simulation/TradeSimulator.js').TradeResult} trade
+ * @param {import('../strategy/Signal.js').Signal} [sourceSignal]
+ * @returns {ChartSignalHighlight}
+ */
+export function tradeToChartHighlight(trade, sourceSignal) {
+  const base = sourceSignal
+    ? signalToChartHighlight(sourceSignal)
+    : signalToChartHighlight({
+        id: trade.signalId,
+        strategyId: trade.strategyId,
+        pair: trade.symbol,
+        timeframe: trade.timeframe,
+        direction: trade.direction,
+        entry: trade.entryPrice,
+        sl: trade.sl,
+        tp: trade.tp,
+        rr: computeRiskReward(trade.direction, trade.entryPrice, trade.sl, trade.tp),
+        reason: trade.reason ?? `${trade.outcome} · ${trade.exitReason}`,
+        time: trade.entryTime,
+        screenshotPosition: { timestamp: trade.entryTime, candleIndex: trade.entryBar },
+      });
+
+  return {
+    ...base,
+    entry: trade.entryPrice,
+    sl: trade.sl,
+    tp: trade.tp,
+    time: trade.entryTime,
+    candleIndex: trade.entryBar,
+    rr: computeRiskReward(trade.direction, trade.entryPrice, trade.sl, trade.tp),
+    reason: trade.reason ?? base.reason,
+  };
+}
+
+/**
  * Fallback for signals scanned before setup metadata existed.
  * @param {import('../strategy/Signal.js').Signal} signal
  * @returns {SignalSetupAnnotations|undefined}

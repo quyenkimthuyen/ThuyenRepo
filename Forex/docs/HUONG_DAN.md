@@ -109,25 +109,38 @@ Expectancy, profit factor, max drawdown, Sharpe, streaks, equity curve, drawdown
 
 ### Optimizer (Ctrl+7)
 
-**Mục đích:** tìm tham số tốt (Grid Search), kiểm tra overfit (Walk Forward), đánh giá rủi ro chuỗi lệnh (Monte Carlo).
+**Mục đích:** tìm cài đặt tốt (Grid Search), tránh “học vẹt” quá khứ (Walk Forward), xem chuỗi thua có thể làm tài khoản tệ cỡ nào (Monte Carlo).
 
-Chi tiết từng tab, tham số và cách đọc kết quả: trong app **Ctrl+9** → mục **Optimizer**, hoặc nút 📖 khi đang ở Optimizer (Ctrl+7).
+Chi tiết từng tab và **từ điển thuật ngữ** (Overfit, Iterations, Ruin Rate…): trong app **Ctrl+9** → mục **Optimizer** hoặc **Từ điển thuật ngữ**, hoặc nút 📖 khi đang ở Optimizer.
 
-| Tab | Làm gì | Cần trước |
-|-----|--------|-----------|
-| Grid Search | Thử combo tham số, xếp hạng Expectancy/PF/… | Data + Symbol/TF |
-| Walk Forward | IS/OOS rolling — params từ Strategies | Save Parameters sau Grid |
-| Monte Carlo | Xáo thứ tự lệnh — P5/P50/P95, Ruin Rate | Simulation (Ctrl+4) |
+| Tab | Làm gì (nói đơn giản) | Cần trước |
+|-----|------------------------|-----------|
+| Grid Search | Thử nhiều combo cài đặt, xếp hạng theo lãi/lệnh, PF… | Data + Symbol/TF |
+| Walk Forward | Lãi đoạn cũ có còn ở đoạn mới ngay sau không | Save Parameters sau Grid |
+| Monte Carlo | Xáo thứ tự lệnh — xem kịch bản xấu (P5) và % gần cháy (Ruin Rate) | Simulation (Ctrl+4) |
 
 Grid/Walk Forward dùng spread & lot từ **Simulation**. Tối đa **500** combo mỗi lần Grid Search.
 
 ### AI Signals (Ctrl+8)
 
-Mỗi signal được chấm **0–100** sau khi scan.
+Chấm **0–100** sau mỗi scan Strategies — **theo quy tắc**, không phải AI dự đoán thắng/thua.
 
-8 yếu tố: trend, momentum, location, volatility, PA quality, RR, session, spread.
+**8 yếu tố** (mỗi yếu tố 0–100, có trọng số): trend (15%), momentum (12%), location (13%), volatility (10%), priceActionQuality (15%), rr (12%), session (13%), spread (10%).
 
-Lọc signal bằng thanh trượt **Min score**.
+| Yếu tố | Điểm cao khi |
+|--------|----------------|
+| trend | Giá + EMA20/50 cùng hướng lệnh |
+| momentum | Nến xác nhận mạnh |
+| location | SL gần entry |
+| volatility | Biến động vừa phải |
+| priceActionQuality | Râu rejection rõ |
+| rr | RR ≥ 2–3 |
+| session | London / New York |
+| spread | Spread thấp (từ Simulation) |
+
+**Grade:** A ≥80 · B ≥65 · C ≥50 · D ≥35 · F &lt;35
+
+Lọc bằng thanh **Min score** — chỉ ảnh hưởng danh sách ở màn này. **Simulation vẫn chạy toàn bộ signal.** Điểm A vẫn có thể LOSS — xem thêm mục **AI Signals** trong app (Ctrl+9).
 
 ---
 
@@ -148,7 +161,7 @@ Lọc signal bằng thanh trượt **Min score**.
 | IndexedDB | Nến OHLCV |
 | LocalStorage | Cài đặt, tham số strategy, kết quả simulation |
 
-Xóa dữ liệu site trong trình duyệt = reset toàn bộ. Nên export kết quả trước khi xóa.
+**Reset app** (Data Manager → cuối màn hình): xóa toàn bộ IndexedDB + LocalStorage (`parl_*`), tải lại trang như lúc mới cài. Export trước nếu cần giữ dữ liệu. Cách này thay cho việc xóa “site data” thủ công trong trình duyệt.
 
 ---
 

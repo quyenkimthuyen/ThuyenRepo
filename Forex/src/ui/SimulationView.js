@@ -12,6 +12,8 @@ import StrategyEngine from '../strategy/StrategyEngine.js';
 import { downloadFile } from '../data/DataExporter.js';
 import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
+import { formatTimestamp } from '../data/TimeframeUtils.js';
+import { requestChartFocus, tradeToChartHighlight } from '../utils/chartNavigation.js';
 import {
   buildSymbolOptions,
   buildTimeframeOptions,
@@ -284,6 +286,36 @@ class SimulationViewImpl {
   }
 
   /**
+   * @param {import('../simulation/TradeSimulator.js').TradeResult} trade
+   * @returns {import('../strategy/Signal.js').Signal|undefined}
+   */
+  #findSignalForTrade(trade) {
+    const scan = StrategyEngine.getLastResult(trade.strategyId);
+    if (!scan) return undefined;
+    if (scan.symbol !== trade.symbol || scan.timeframe !== trade.timeframe) return undefined;
+    return scan.signals.find((s) => s.id === trade.signalId);
+  }
+
+  /**
+   * @param {import('../simulation/TradeSimulator.js').TradeResult} trade
+   */
+  #openTradeOnChart(trade) {
+    const sourceSignal = this.#findSignalForTrade(trade);
+    const highlight = tradeToChartHighlight(trade, sourceSignal);
+    requestChartFocus({
+      symbol: trade.symbol,
+      timeframe: trade.timeframe,
+      jumpTo: highlight.time,
+      signal: highlight,
+    });
+    bus.emit(Events.LOG_MESSAGE, {
+      message: `Chart: ${highlight.strategyName} · ${trade.symbol} ${trade.timeframe} @ ${formatTimestamp(highlight.time)} (${trade.outcome})`,
+      level: 'info',
+      time: new Date(),
+    });
+  }
+
+  /**
    * @param {import('../simulation/SimulationEngine.js').SimulationResult} result
    */
   #renderResults(result) {
@@ -303,16 +335,24 @@ class SimulationViewImpl {
     ]));
 
     tableWrap.innerHTML = '';
+    tableWrap.appendChild(el('p', { class: 'sim-table-hint' }, [
+      'Bấm một dòng lệnh → Chart mở đúng Symbol/TF, nhảy tới nến vào lệnh, vẽ Entry / SL / TP.',
+    ]));
+
     if (result.trades.length === 0) {
       tableWrap.appendChild(el('p', { class: 'sim-empty' }, ['No trades executed.']));
       return;
     }
 
-    const rows = result.trades.map((t) =>
-      el('tr', {}, [
+    const rows = result.trades.map((t) => {
+      const row = el('tr', {
+        class: 'sim-row-action',
+        title: 'Mở Chart tại thời điểm vào lệnh',
+      }, [
         el('td', {}, [t.direction.toUpperCase()]),
         el('td', { class: `sim-outcome sim-${t.outcome}` }, [t.outcome]),
         el('td', {}, [t.exitReason]),
+        el('td', { class: 'sim-mono sim-time' }, [formatTimestamp(t.entryTime)]),
         el('td', { class: 'sim-mono' }, [t.entryPrice.toFixed(5)]),
         el('td', { class: 'sim-mono' }, [t.exitPrice.toFixed(5)]),
         el('td', { class: 'sim-mono' }, [t.pips.toFixed(1)]),
@@ -320,8 +360,10 @@ class SimulationViewImpl {
           `$${t.profit.toFixed(2)}`,
         ]),
         el('td', {}, [String(t.durationBars)]),
-      ])
-    );
+      ]);
+      row.addEventListener('click', () => this.#openTradeOnChart(t));
+      return row;
+    });
 
     tableWrap.appendChild(el('table', { class: 'data-table sim-table' }, [
       el('thead', {}, [
@@ -329,6 +371,7 @@ class SimulationViewImpl {
           el('th', {}, ['Dir']),
           el('th', {}, ['Outcome']),
           el('th', {}, ['Exit']),
+          el('th', {}, ['Entry time']),
           el('th', {}, ['Entry']),
           el('th', {}, ['Exit Px']),
           el('th', {}, ['Pips']),

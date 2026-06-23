@@ -89,6 +89,7 @@ export const bus = new EventBus();
 export const Events = Object.freeze({
   APP_READY: 'app:ready',
   APP_ERROR: 'app:error',
+  APP_DATA_RESET: 'app:data:reset',
   MODULE_LOADED: 'module:loaded',
   MODULE_ERROR: 'module:error',
   NAVIGATE: 'ui:navigate',

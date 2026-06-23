@@ -164,6 +164,20 @@ class DataManagerViewImpl {
         'Dữ liệu Dukascopy: khoảng trống cuối tuần là bình thường. ',
         'Cột Gaps chỉ báo thiếu nến bất thường (không tính T7/CN).',
       ]),
+      el('div', { class: 'data-reset-zone' }, [
+        el('div', { class: 'data-reset-copy' }, [
+          el('strong', {}, ['Reset toàn bộ app']),
+          el('p', {}, [
+            'Xóa mọi nến (IndexedDB), cài đặt, tham số strategy, kết quả simulation/statistics/reports, điểm AI Signals. ',
+            'App tải lại như lúc mới cài (sẽ tự tải EURUSD H1 nếu trống). Không hoàn tác được — export trước nếu cần.',
+          ]),
+        ]),
+        el('button', {
+          class: 'btn btn-danger',
+          id: 'btn-reset-app',
+          type: 'button',
+        }, ['Reset app']),
+      ]),
     ]);
   }
 
@@ -346,6 +360,35 @@ class DataManagerViewImpl {
         });
       } finally {
         btn.disabled = false;
+      }
+    });
+
+    this.#container?.querySelector('#btn-reset-app')?.addEventListener('click', async () => {
+      const ok = confirm(
+        'Reset toàn bộ app?\n\n' +
+        '• Xóa mọi nến trong IndexedDB\n' +
+        '• Xóa cài đặt, tham số strategy, kết quả simulation/statistics/reports, điểm AI\n' +
+        '• App sẽ tải lại như lúc mới cài\n\n' +
+        'Không hoàn tác được. Export dữ liệu trước nếu cần.'
+      );
+      if (!ok) return;
+      if (!confirm('Xác nhận lần cuối: xóa TOÀN BỘ dữ liệu app?')) return;
+
+      const btn = /** @type {HTMLButtonElement} */ (
+        this.#container?.querySelector('#btn-reset-app')
+      );
+      btn.disabled = true;
+      btn.textContent = 'Đang reset…';
+      try {
+        await DataManager.resetAppData();
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Reset app';
+        bus.emit(Events.LOG_MESSAGE, {
+          message: `Reset thất bại: ${err.message}`,
+          level: 'error',
+          time: new Date(),
+        });
       }
     });
 
