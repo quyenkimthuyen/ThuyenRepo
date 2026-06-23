@@ -37,6 +37,66 @@
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   font-family: var(--font-mono);
+  max-width: 42rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-signal-banner {
+  flex-shrink: 0;
+  padding: var(--space-sm) var(--space-md);
+  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-bg-raised));
+  border-bottom: 1px solid var(--color-border);
+}
+
+.chart-signal-banner-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xs);
+}
+
+.chart-signal-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-base);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--color-text-secondary);
+}
+
+.chart-signal-chip-strategy {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.chart-signal-dir-long {
+  color: var(--color-bull);
+}
+
+.chart-signal-dir-short {
+  color: var(--color-bear);
+}
+
+.chart-signal-banner-reason,
+.chart-signal-banner-levels {
+  margin: 0 0 4px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.chart-signal-banner-levels {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+}
+
+.chart-signal-banner-hint {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
 }
 
 .chart-toggle {

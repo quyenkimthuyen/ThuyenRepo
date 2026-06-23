@@ -4,7 +4,6 @@
  */
 
 import { Config } from '../core/Config.js';
-import { limitChartCandles } from '../performance/CandleSampler.js';
 import { bus, Events } from '../core/EventBus.js';
 import { el, loadFromStorage } from '../utils/dom.js';
 import DataManager from '../data/DataManager.js';
@@ -20,6 +19,7 @@ import {
   resolveDatasetSelection,
 } from '../utils/runnableDatasets.js';
 import { takePendingChartFocus } from '../utils/chartNavigation.js';
+import { formatTimestamp } from '../data/TimeframeUtils.js';
 
 const log = createLogger('ChartView');
 
@@ -51,6 +51,12 @@ class ChartViewImpl {
   /** @type {number|null} */
   #pendingJump = null;
 
+  /** @type {import('../utils/chartNavigation.js').ChartSignalHighlight|null} */
+  #pendingSignal = null;
+
+  /** @type {import('../utils/chartNavigation.js').ChartSignalHighlight|null} */
+  #activeSignal = null;
+
   /**
    * Mount the chart view.
    * @param {HTMLElement} container
@@ -70,6 +76,7 @@ class ChartViewImpl {
       this.#symbol = pending.symbol;
       this.#timeframe = pending.timeframe;
       if (pending.jumpTo != null) this.#pendingJump = pending.jumpTo;
+      if (pending.signal) this.#pendingSignal = pending.signal;
     }
 
     this.#runnableDatasets = await DataManager.listRunnableDatasets();
@@ -88,6 +95,7 @@ class ChartViewImpl {
 
     container.appendChild(el('div', { class: 'chart-view' }, [
       this.#renderToolbar(),
+      el('div', { class: 'chart-signal-banner', id: 'chart-signal-banner', hidden: true }),
       chartContainer,
       ReplayControls.render((action, payload) => this.#handleReplayAction(action, payload)),
     ]));
@@ -163,7 +171,10 @@ class ChartViewImpl {
       if (!this.#chart) return;
 
       if (fullRefresh || index < 2) {
-        this.#chart.setCandles(visible);
+        this.#chart.setCandles(visible, { fit: !this.#activeSignal });
+        if (this.#activeSignal) {
+          this.#chart.setSignalOverlay(this.#activeSignal, visible);
+        }
       } else {
         this.#chart.updateCandle(candle, visible);
       }
@@ -181,10 +192,11 @@ class ChartViewImpl {
   #bindEvents() {
     const unsubs = [];
 
-    unsubs.push(bus.on(Events.CHART_LOAD, ({ symbol, timeframe, jumpTo }) => {
+    unsubs.push(bus.on(Events.CHART_LOAD, ({ symbol, timeframe, jumpTo, signal }) => {
       this.#symbol = symbol;
       this.#timeframe = timeframe;
       if (jumpTo != null) this.#pendingJump = jumpTo;
+      if (signal) this.#pendingSignal = signal;
       this.#syncSelectors();
       this.#loadChart();
     }));
@@ -206,16 +218,19 @@ class ChartViewImpl {
 
     this.#container?.querySelector('#chart-symbol')?.addEventListener('change', (e) => {
       this.#symbol = /** @type {HTMLSelectElement} */ (e.target).value;
+      this.#clearSignalContext();
       this.#syncTimeframeOptions();
       this.#loadChart();
     });
 
     this.#container?.querySelector('#chart-timeframe')?.addEventListener('change', (e) => {
       this.#timeframe = /** @type {HTMLSelectElement} */ (e.target).value;
+      this.#clearSignalContext();
       this.#loadChart();
     });
 
     this.#container?.querySelector('#chart-reload')?.addEventListener('click', () => {
+      this.#clearSignalContext();
       this.#loadChart();
     });
 
@@ -245,21 +260,32 @@ class ChartViewImpl {
       }
 
       this.#replay?.load(candles);
-      const chartCandles = limitChartCandles(candles);
-      this.#chart?.setCandles(chartCandles);
-      ReplayControls.update(this.#replay.getState(), candles[candles.length - 1]);
-
-      if (status) {
-        const chartNote = chartCandles.length < candles.length
-          ? ` (chart: ${chartCandles.length.toLocaleString()})`
-          : '';
-        status.textContent = `${candles.length.toLocaleString()} candles loaded${chartNote}`;
-      }
 
       if (this.#pendingJump != null) {
-        this.#replay?.jumpToDate(this.#pendingJump);
+        this.#replay.jumpToDate(this.#pendingJump);
         this.#pendingJump = null;
-        ReplayControls.update(this.#replay.getState(), this.#replay.getCurrentCandle());
+      } else {
+        const visible = this.#replay.getVisibleCandles();
+        this.#chart?.setCandles(visible);
+      }
+
+      ReplayControls.update(this.#replay.getState(), this.#replay.getCurrentCandle());
+
+      if (this.#pendingSignal) {
+        this.#activeSignal = this.#pendingSignal;
+        this.#pendingSignal = null;
+        const visible = this.#replay.getVisibleCandles();
+        this.#chart?.setSignalOverlay(this.#activeSignal, visible);
+        this.#showSignalBanner(this.#activeSignal);
+      }
+
+      if (status) {
+        if (this.#activeSignal) {
+          status.textContent = `${this.#activeSignal.symbol} ${this.#activeSignal.timeframe} · ${this.#activeSignal.strategyName} · ${this.#activeSignal.direction.toUpperCase()} @ ${formatTimestamp(this.#activeSignal.time)}`;
+        } else {
+          const visibleCount = this.#replay?.getVisibleCandles().length ?? candles.length;
+          status.textContent = `${visibleCount.toLocaleString()} / ${candles.length.toLocaleString()} candles`;
+        }
       }
 
       bus.emit(Events.CHART_LOADED, {
@@ -371,6 +397,53 @@ class ChartViewImpl {
       tfSel.appendChild(opt);
     }
     if (this.#timeframe) /** @type {HTMLSelectElement} */ (tfSel).value = this.#timeframe;
+  }
+
+  #clearSignalContext() {
+    this.#activeSignal = null;
+    this.#pendingSignal = null;
+    this.#chart?.clearSignalOverlay();
+    const banner = this.#container?.querySelector('#chart-signal-banner');
+    if (banner) {
+      banner.hidden = true;
+      banner.innerHTML = '';
+    }
+  }
+
+  /**
+   * @param {import('../utils/chartNavigation.js').ChartSignalHighlight} signal
+   */
+  #showSignalBanner(signal) {
+    const banner = this.#container?.querySelector('#chart-signal-banner');
+    if (!banner) return;
+
+    banner.hidden = false;
+    banner.innerHTML = '';
+
+    const chips = [
+      el('span', { class: 'chart-signal-chip chart-signal-chip-strategy' }, [signal.strategyName]),
+      el('span', { class: 'chart-signal-chip' }, [signal.symbol]),
+      el('span', { class: 'chart-signal-chip' }, [signal.timeframe]),
+      el('span', { class: `chart-signal-chip chart-signal-dir-${signal.direction}` }, [
+        signal.direction.toUpperCase(),
+      ]),
+    ];
+    if (signal.score != null) {
+      chips.push(el('span', { class: 'chart-signal-chip' }, [`AI ${Math.round(signal.score)}/100`]));
+    }
+    if (signal.candleIndex != null) {
+      chips.push(el('span', { class: 'chart-signal-chip' }, [`Bar ${signal.candleIndex}`]));
+    }
+    chips.push(el('span', { class: 'chart-signal-chip chart-signal-time' }, [formatTimestamp(signal.time)]));
+
+    banner.appendChild(el('div', { class: 'chart-signal-banner-main' }, chips));
+    banner.appendChild(el('p', { class: 'chart-signal-banner-reason' }, [signal.reason || '']));
+    banner.appendChild(el('p', { class: 'chart-signal-banner-levels' }, [
+      `Entry ${signal.entry.toFixed(5)} · SL ${signal.sl.toFixed(5)} · TP ${signal.tp.toFixed(5)} · ${signal.rr.toFixed(1)}R`,
+    ]));
+    banner.appendChild(el('p', { class: 'chart-signal-banner-hint' }, [
+      'Replay dừng tại nến signal — mũi tên → xem setup hình thành từng bước (không lộ tương lai).',
+    ]));
   }
 }
 

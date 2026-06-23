@@ -36,6 +36,51 @@
   color: var(--color-text-muted);
   font-family: var(--font-mono);
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.signals-scan-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.signals-scan-hint {
+  margin: 0;
+  font-family: var(--font-sans, inherit);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.signals-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.signals-chip-label {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.signals-chip-strategy {
+  color: var(--color-accent);
+  border-color: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
+}
+
+.signal-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
 }
 
 .signals-list {

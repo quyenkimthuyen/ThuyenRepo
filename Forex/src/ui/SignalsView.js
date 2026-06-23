@@ -8,7 +8,7 @@ import { el } from '../utils/dom.js';
 import ScoringEngine from '../scoring/ScoringEngine.js';
 import { registry } from '../plugin/PluginRegistry.js';
 import { formatTimestamp } from '../data/TimeframeUtils.js';
-import { requestChartFocus } from '../utils/chartNavigation.js';
+import { requestChartFocus, signalToChartHighlight } from '../utils/chartNavigation.js';
 import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -24,6 +24,18 @@ function strategyLabel(strategyId) {
 
 /** @type {number} */
 let minScoreFilter = 0;
+
+/**
+ * @param {string} label
+ * @param {string} value
+ * @returns {HTMLElement}
+ */
+function metaChip(label, value) {
+  return el('span', { class: 'signals-chip', title: label }, [
+    el('span', { class: 'signals-chip-label' }, [`${label}: `]),
+    value,
+  ]);
+}
 
 /**
  * Signals scoring view controller.
@@ -98,7 +110,17 @@ class SignalsViewImpl {
     );
 
     if (meta) {
-      meta.textContent = `${strategyLabel(set.strategyId)} (${set.strategyId}) · ${set.symbol} ${set.timeframe} · ${filtered.length}/${set.signals.length} signals · avg ${set.avgScore.toFixed(0)}/100 · bấm signal để mở Chart`;
+      meta.innerHTML = '';
+      meta.appendChild(el('div', { class: 'signals-scan-summary' }, [
+        metaChip('Strategy', `${strategyLabel(set.strategyId)} (${set.strategyId})`),
+        metaChip('Symbol', set.symbol),
+        metaChip('TF', set.timeframe),
+        metaChip('Signals', `${filtered.length}/${set.signals.length}`),
+        metaChip('Avg score', `${set.avgScore.toFixed(0)}/100`),
+      ]));
+      meta.appendChild(el('p', { class: 'signals-scan-hint' }, [
+        'Bấm signal → Chart mở đúng Symbol/TF, nhảy tới nến setup, vẽ Entry / SL / TP.',
+      ]));
     }
 
     if (!list) return;
@@ -108,6 +130,8 @@ class SignalsViewImpl {
       const breakdown = signal.scoreBreakdown;
       const score = breakdown?.score ?? signal.confidence;
       const grade = breakdown?.grade ?? '?';
+      const jumpAt = signal.time || signal.screenshotPosition?.timestamp;
+      const barIndex = signal.screenshotPosition?.candleIndex;
 
       const factors = breakdown?.factors;
       const factorBars = factors
@@ -122,38 +146,44 @@ class SignalsViewImpl {
         )
         : [];
 
-      const jumpAt = signal.time || signal.screenshotPosition?.timestamp;
       const card = el('button', {
         type: 'button',
         class: 'signal-card signal-card-action',
-        title: 'Mở Chart tại thời điểm signal',
+        title: 'Mở Chart tại thời điểm signal và xem Entry / SL / TP',
       }, [
+        el('div', { class: 'signal-card-tags' }, [
+          el('span', { class: 'signals-chip signals-chip-strategy' }, [strategyLabel(signal.strategyId)]),
+          el('span', { class: 'signals-chip' }, [signal.pair]),
+          el('span', { class: 'signals-chip' }, [signal.timeframe]),
+          barIndex != null ? el('span', { class: 'signals-chip' }, [`Bar ${barIndex}`]) : null,
+        ].filter(Boolean)),
         el('div', { class: 'signal-card-header' }, [
           el('span', { class: `signal-grade grade-${grade}` }, [grade]),
           el('span', { class: 'signal-score' }, [`${score}/100`]),
-          el('span', { class: 'signal-strategy' }, [strategyLabel(signal.strategyId)]),
           el('span', { class: `signal-dir signal-${signal.direction}` }, [signal.direction.toUpperCase()]),
           el('span', { class: 'signal-rr' }, [`${signal.rr.toFixed(1)}R`]),
         ]),
         el('div', { class: 'signal-card-meta' }, [
           el('span', { class: 'signal-time' }, [formatTimestamp(jumpAt)]),
           el('span', { class: 'signal-prices' }, [
-            `E ${signal.entry.toFixed(5)} · SL ${signal.sl.toFixed(5)} · TP ${signal.tp.toFixed(5)}`,
+            `Entry ${signal.entry.toFixed(5)} · SL ${signal.sl.toFixed(5)} · TP ${signal.tp.toFixed(5)}`,
           ]),
         ]),
         el('p', { class: 'signal-reason' }, [signal.reason || 'No reason']),
         el('div', { class: 'signal-factors' }, factorBars),
-        el('span', { class: 'signal-open-hint' }, ['→ Xem trên Chart']),
+        el('span', { class: 'signal-open-hint' }, ['→ Kiểm chứng setup trên Chart']),
       ]);
 
       card.addEventListener('click', () => {
+        const highlight = signalToChartHighlight(signal);
         requestChartFocus({
           symbol: signal.pair,
           timeframe: signal.timeframe,
-          jumpTo: jumpAt,
+          jumpTo: highlight.time,
+          signal: highlight,
         });
         bus.emit(Events.LOG_MESSAGE, {
-          message: `Chart: ${signal.pair} ${signal.timeframe} @ ${formatTimestamp(jumpAt)} (${strategyLabel(signal.strategyId)})`,
+          message: `Chart: ${highlight.strategyName} · ${highlight.symbol} ${highlight.timeframe} @ ${formatTimestamp(highlight.time)}`,
           level: 'info',
           time: new Date(),
         });

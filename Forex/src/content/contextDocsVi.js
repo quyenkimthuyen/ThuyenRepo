@@ -439,7 +439,7 @@ export const CONTEXT_DOC_SECTIONS = [
       {
         type: 'callout',
         variant: 'tip',
-        text: 'Workflow: Scan (Ctrl+3) → kéo Min score → bấm signal → Chart tự mở đúng Symbol/TF và nhảy replay tới thời điểm signal.',
+        text: 'Workflow: Scan (Ctrl+3) → lọc Min score → bấm signal. Chart hiện banner Strategy/Symbol/TF, nhảy replay tới nến signal, vẽ Entry (xanh dương) / SL (đỏ) / TP (xanh) và mũi tên entry.',
       },
     ],
   },
