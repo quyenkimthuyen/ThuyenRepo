@@ -85,17 +85,24 @@ Ba setup Price Action (chi tiết trong `docs/STRATEGY_SPECIFICATION.md`):
 | `ema-pullback` | EMA Pullback |
 | `liquidity-grab` | Liquidity Grab |
 
-- Chỉnh tham số từng strategy
-- **Run Selected** — scan một strategy
-- **Run All Enabled** — scan tất cả strategy đang bật
+- Chỉnh tham số từng strategy → **Save Parameters**
+- **Run Selected** — quét một strategy (chỉ sinh signal, chấm điểm AI)
+- **Run All Enabled** — quét mọi strategy đang bật (AI Signals giữ scan cuối)
+
+**Không bắt buộc** Run Strategies trước Simulation nếu bạn chỉ cần lãi/lỗ sau spread — Simulation tự quét lại. Nên Run Strategies khi muốn lọc signal / xem Chart trước hoặc Export JSON.
 
 ### Simulation (Ctrl+4)
 
-Backtest Mode 1: một setup, một cặp, một timeframe.
+**Run Simulation** = quét lại strategy + mô phỏng lệnh (spread, slippage, trailing…).
+
+| Chỉ Strategies | Thêm khi Simulation |
+|------------------|---------------------|
+| Signal + điểm AI | Bảng lệnh win/loss |
+| Xem Chart | Statistics, Reports, Monte Carlo |
 
 Cấu hình: spread, slippage, lot size, trailing stop, break-even, partial close.
 
-Kết quả tự cập nhật Statistics và Reports.
+Kết quả tự cập nhật Statistics và Reports. Chi tiết trong app: **Ctrl+9** → **Run Strategies vs Simulation**.
 
 ### Statistics (Ctrl+5)
 

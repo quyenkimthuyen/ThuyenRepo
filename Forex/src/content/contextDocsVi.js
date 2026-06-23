@@ -60,6 +60,11 @@ export const CONTEXT_DOC_SECTIONS = [
       },
       {
         type: 'callout',
+        variant: 'info',
+        text: 'Run Strategies vs Simulation — có cần quét Strategies trước không? Xem mục **Run Strategies vs Simulation** (Ctrl+9).',
+      },
+      {
+        type: 'callout',
         variant: 'warn',
         text: 'PARL KHÔNG: kết nối broker, đặt lệnh live, thay journal/tâm lý, hay “dự đoán chắc thắng”. AI Signals chỉ lọc chất lượng setup — Simulation vẫn dùng toàn bộ signal từ scan (chưa theo Min score).',
       },
@@ -71,11 +76,11 @@ export const CONTEXT_DOC_SECTIONS = [
         type: 'steps',
         steps: [
           { title: 'Dữ liệu nến', body: 'Data Manager — import, Reload Default, Cập nhật/Xóa theo Symbol+TF.' },
-          { title: 'Scan chiến lược', body: 'Strategies — sinh signal (entry, SL, TP); chọn Symbol/TF có data.' },
-          { title: 'Lọc & kiểm chứng', body: 'AI Signals — Min score → bấm signal → Chart vẽ setup (Entry/SL/TP, chú thích màu).' },
-          { title: 'Mô phỏng lệnh', body: 'Simulation — tính spread, trượt giá, trailing, chốt một phần.' },
-          { title: 'Đánh giá', body: 'Statistics + Reports — lãi trung bình/lệnh, mức sụt tài khoản, biểu đồ.' },
-          { title: 'Tối ưu & kiểm định', body: 'Optimizer — thử nhiều cài đặt, kiểm tra theo thời gian, xáo thứ tự lệnh.' },
+          { title: 'Chỉnh & (tuỳ chọn) quét', body: 'Strategies — Save tham số; Run nếu muốn lọc signal / xem Chart trước (không bắt buộc trước Simulation).' },
+          { title: 'Mô phỏng lệnh', body: 'Simulation — tự quét + spread/SL/TP; kết quả cho Statistics & Reports.' },
+          { title: 'Lọc & kiểm chứng', body: 'AI Signals tab Danh sách — Min score → bấm signal → Chart.' },
+          { title: 'Đánh giá', body: 'Statistics + Reports; AI Signals tab Đối chiếu Simulation sau Ctrl+4.' },
+          { title: 'Tối ưu & kiểm định', body: 'Optimizer — thử cài đặt, Walk Forward, Monte Carlo.' },
         ],
       },
       {
@@ -243,6 +248,31 @@ export const CONTEXT_DOC_SECTIONS = [
         type: 'callout',
         variant: 'warn',
         text: 'Simulation dùng TOÀN BỘ signal từ scan — chưa lọc Min score ở AI Signals. Scan xong AI chấm điểm tự động.',
+      },
+      {
+        type: 'h3',
+        text: 'Run Strategies vs Run Simulation',
+      },
+      {
+        type: 'p',
+        text: 'Run ở Strategies chỉ quét tín hiệu (Entry/SL/TP). Run Simulation quét lại rồi giả lập lệnh có spread, trailing… — không nhất thiết phải Run Strategies trước nếu bạn chỉ cần số liệu lãi/lỗ.',
+      },
+      {
+        type: 'table',
+        headers: ['', 'Strategies — Run', 'Simulation — Run'],
+        rows: [
+          ['Làm gì', 'Quét tín hiệu trên lịch sử nến', 'Quét lại + mô phỏng từng lệnh'],
+          ['Spread / phí', 'Không', 'Có (cấu hình Simulation)'],
+          ['Statistics / Reports', 'Không', 'Có'],
+          ['AI Signals chấm điểm', 'Có', 'Có (sau bước quét lại)'],
+          ['Min score', 'Chỉ lọc danh sách AI Signals', 'Không lọc — mô phỏng hết signal'],
+          ['Số strategy/lần', 'Run All = nhiều strategy', 'Một strategy chọn trên màn hình'],
+        ],
+      },
+      {
+        type: 'callout',
+        variant: 'tip',
+        text: 'Không bắt buộc Run Strategies trước Simulation. Nên Run Strategies khi: chỉnh tham số + Save, lọc signal / xem Chart trước, Export JSON, hoặc quét nhiều strategy (Run All). Chi tiết: Ctrl+9 → mục 「Run Strategies vs Simulation」.',
       },
 
       { type: 'h2', text: '1. Break & Retest (break-retest)' },
@@ -554,11 +584,11 @@ export const CONTEXT_DOC_SECTIONS = [
       {
         type: 'steps',
         steps: [
-          { title: '1. Scan', body: 'Strategies (Ctrl+3) — app tự chấm điểm sau scan.' },
-          { title: '2. Lọc', body: 'AI Signals — kéo Min score (ví dụ 65–80).' },
-          { title: '3. Kiểm tra mắt', body: 'Bấm signal → Chart nhảy tới nến, vẽ Entry (xanh dương) / SL (đỏ) / TP (xanh).' },
-          { title: '4. Chạy số', body: 'Simulation → xem calibration AI vs lệnh + Statistics tổng thể.' },
-          { title: '5. Tinh chỉnh (tùy chọn)', body: 'Gợi ý trọng số → áp dụng nếu điểm cao thật sự gắn lệnh tốt hơn trên sample khác.' },
+          { title: '1. (Tuỳ chọn) Strategies', body: 'Ctrl+3 — Save tham số, Run nếu muốn lọc / xem Chart trước. Không bắt buộc trước Simulation.' },
+          { title: '2. Simulation', body: 'Ctrl+4 — Run (tự quét + mô phỏng). Cùng Strategy/Symbol/TF cho tab Đối chiếu.' },
+          { title: '3. Lọc & Chart', body: 'AI Signals tab Danh sách — Min score → bấm signal.' },
+          { title: '4. Đối chiếu', body: 'AI Signals tab Đối chiếu Simulation — WR theo nhóm điểm.' },
+          { title: '5. Tinh chỉnh (tuỳ chọn)', body: 'Gợi ý trọng số — kiểm tra lại trên period khác.' },
         ],
       },
     ],
@@ -574,6 +604,24 @@ export const CONTEXT_DOC_SECTIONS = [
       {
         type: 'p',
         text: 'Giả lập việc vào lệnh trên quá khứ: khớp giá vào, chạm cắt lỗ/chốt lời, kéo SL, chốt một phần… như trade thật nhưng không dùng tiền thật. Kết quả dùng cho Statistics, Reports và tab “xáo thứ tự lệnh” (Monte Carlo) trong Optimizer.',
+      },
+      {
+        type: 'callout',
+        variant: 'info',
+        text: 'Run Simulation tự quét lại strategy (giống Strategies) rồi mô phỏng lệnh — không cần Run Strategies trước nếu tham số đã Save và bạn chỉ cần xem lãi/lỗ. Mỗi lần bấm Run vẫn quét lại để khớp cài đặt hiện tại.',
+      },
+      {
+        type: 'h3',
+        text: 'Khác gì Run Strategies?',
+      },
+      {
+        type: 'table',
+        headers: ['Chỉ Strategies', 'Thêm khi Simulation'],
+        rows: [
+          ['Danh sách signal + chấm điểm AI', 'Bảng lệnh win/loss + lãi $'],
+          ['Xem Chart từng setup', 'Statistics, Reports, Monte Carlo'],
+          ['Không trừ spread', 'Spread, slippage, trailing, BE, partial'],
+        ],
       },
       {
         type: 'table',
@@ -894,6 +942,105 @@ export const CONTEXT_DOC_SECTIONS = [
     ],
   },
   {
+    id: 'run-guide',
+    title: 'Run Strategies vs Simulation',
+    subtitle: 'Khi nào Run ở đâu — có bắt buộc quét Strategies trước không?',
+    icon: '▶️',
+    viewIds: ['docs'],
+    blocks: [
+      {
+        type: 'callout',
+        variant: 'info',
+        text: 'Tóm tắt: Run Simulation đủ để có signal + điểm AI + lãi/lỗ. Run Strategies thêm khi bạn muốn xem/lọc signal trên Chart trước, Export JSON, hoặc quét nhiều strategy (Run All).',
+      },
+      {
+        type: 'h3',
+        text: 'Strategies (Ctrl+3) — Run Selected / Run All',
+      },
+      {
+        type: 'p',
+        text: 'Chỉ bước quét: duyệt từng nến, tìm setup, sinh signal (Entry, SL, TP). Không giả lập khớp lệnh, không trừ spread, không ra bảng win/loss.',
+      },
+      {
+        type: 'ul',
+        items: [
+          'Tự chấm điểm AI → cập nhật AI Signals.',
+          'Lưu Last Scan, Export JSON signal.',
+          'Run All Enabled: chạy lần lượt mọi strategy ON — AI Signals chỉ giữ strategy scan cuối.',
+        ],
+      },
+      {
+        type: 'h3',
+        text: 'Simulation (Ctrl+4) — Run Simulation',
+      },
+      {
+        type: 'p',
+        text: 'Hai bước nối tiếp: (1) quét lại strategy với tham số đã Save — giống Strategies; (2) mô phỏng từng lệnh với spread, slippage, lot, trailing, break-even, chốt một phần.',
+      },
+      {
+        type: 'ul',
+        items: [
+          'Ra bảng lệnh + win rate, net profit, profit factor…',
+          'Cập nhật Statistics, Reports, nguồn Monte Carlo.',
+          'Chấm lại AI Signals (do có quét lại).',
+          'Một strategy mỗi lần Run (chọn trên màn Simulation).',
+        ],
+      },
+      {
+        type: 'h3',
+        text: 'Bảng so sánh',
+      },
+      {
+        type: 'table',
+        headers: ['', 'Strategies Run', 'Simulation Run'],
+        rows: [
+          ['Quét tín hiệu', 'Có', 'Có (tự động trước khi mô phỏng)'],
+          ['Mô phỏng lệnh + spread', 'Không', 'Có'],
+          ['Statistics / Reports', 'Không', 'Có'],
+          ['AI Signals', 'Có', 'Có'],
+          ['Min score lọc lệnh mô phỏng', 'Không', 'Không — mô phỏng toàn bộ signal'],
+          ['Bắt buộc chạy trước?', 'Không', 'Không (nếu chỉ cần số liệu lãi/lỗ)'],
+        ],
+      },
+      {
+        type: 'h3',
+        text: 'Có nhất thiết Run Strategies trước?',
+      },
+      {
+        type: 'p',
+        text: 'Không. Bạn có thể: Data → Simulation (Run) → Statistics. Simulation tự quét và chấm điểm.',
+      },
+      {
+        type: 'table',
+        headers: ['Bạn muốn', 'Gợi ý'],
+        rows: [
+          ['Chỉ biết setup có lãi sau spread', 'Simulation đủ — không cần Strategies trước'],
+          ['Lọc signal đẹp, xem Chart trước', 'Strategies Run (hoặc Simulation Run rồi AI Signals)'],
+          ['Đối chiếu điểm AI vs lệnh', 'Simulation cùng Strategy/Symbol/TF → AI Signals tab Đối chiếu'],
+          ['So sánh nhiều strategy', 'Strategies Run All từng cái; Simulation từng strategy riêng'],
+        ],
+      },
+      {
+        type: 'h3',
+        text: 'Workflow gợi ý',
+      },
+      {
+        type: 'steps',
+        steps: [
+          { title: 'Lần đầu setup', body: 'Strategies → chỉnh tham số → Save Parameters.' },
+          { title: 'Tuỳ chọn', body: 'Strategies Run → AI Signals lọc → Chart kiểm tra mắt.' },
+          { title: 'Chạy số', body: 'Simulation Run (cùng Symbol/TF).' },
+          { title: 'Đánh giá', body: 'Statistics / Reports + AI Signals tab Đối chiếu.' },
+        ],
+      },
+      {
+        type: 'callout',
+        variant: 'warn',
+        text: 'Mỗi lần Run Simulation đều quét lại — hơi trùng với Strategies nhưng đảm bảo khớp tham số hiện tại. Min score chỉ ẩn signal trên AI Signals, không giảm số lệnh trong Simulation.',
+      },
+    ],
+  },
+  {
     id: 'shortcuts',
     title: 'Phím tắt',
     icon: '⌨️',
@@ -949,6 +1096,10 @@ export const CONTEXT_DOC_SECTIONS = [
       { type: 'p', text: 'Dấu hiệu “học vẹt” quá khứ (overfit) — thử ít tham số hơn, chọn combo có nhiều lệnh, hoặc kiểm tra giai đoạn/cặp khác.' },
       { type: 'h3', text: 'AI score cao mà lệnh vẫn LOSS?' },
       { type: 'p', text: 'Bình thường. Điểm AI đánh giá setup lúc vào lệnh (trend, nến, RR, phiên…), không dự đoán giá sau đó. Simulation không lọc theo Min score — xem Statistics / Walk Forward để đánh giá setup có lãi về lâu dài.' },
+      { type: 'h3', text: 'Có bắt buộc Run Strategies trước Simulation?' },
+      { type: 'p', text: 'Không. Simulation tự quét lại strategy rồi mô phỏng lệnh. Chỉ cần Strategies trước khi bạn muốn lọc signal / Chart trước, Export JSON, hoặc Run All nhiều strategy. Xem Ctrl+9 → Run Strategies vs Simulation.' },
+      { type: 'h3', text: 'Run Strategies và Run Simulation khác gì?' },
+      { type: 'p', text: 'Strategies chỉ sinh signal + chấm điểm AI. Simulation quét lại + giả lập lệnh (spread, trailing…) → Statistics/Reports. Chi tiết: Ctrl+9 → Run Strategies vs Simulation.' },
       { type: 'h3', text: 'Reset app làm gì?' },
       { type: 'p', text: 'Data Manager → Reset app: xóa IndexedDB (nến), mọi key parl_* (settings, strategy params, simulation/statistics/reports, AI scores), rồi tải lại trang. Giống cài mới — boot sẽ tự seed EURUSD H1 nếu trống. Không hoàn tác — export trước nếu cần.' },
       { type: 'h3', text: 'Watchlist biến mất?' },
