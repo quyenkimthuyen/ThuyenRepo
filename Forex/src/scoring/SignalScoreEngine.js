@@ -14,6 +14,7 @@ import {
   scoreSession,
   scoreSpread,
 } from './ScoreFactors.js';
+import { getScoringWeights } from './ScoringWeights.js';
 
 /** @typedef {import('../strategy/Signal.js').Signal} Signal */
 /** @typedef {import('../data/Candle.js').Candle} Candle */
@@ -74,13 +75,31 @@ export function scoreToGrade(score) {
 }
 
 /**
+ * @param {ScoreFactors} factors
+ * @param {Record<string, number>} weights
+ * @returns {number}
+ */
+export function composeScoreFromFactors(factors, weights) {
+  let totalWeight = 0;
+  let weighted = 0;
+  for (const [key, weight] of Object.entries(weights)) {
+    const value = factors[/** @type {keyof ScoreFactors} */ (key)];
+    if (typeof value !== 'number') continue;
+    weighted += value * weight;
+    totalWeight += weight;
+  }
+  return Math.round(weighted / (totalWeight || 1));
+}
+
+/**
  * Compute weighted AI score for a single signal.
  * @param {Signal} signal
  * @param {Candle[]} candles
  * @param {number} [spreadPips]
+ * @param {Record<string, number>} [weights]
  * @returns {SignalScore}
  */
-export function scoreSignal(signal, candles, spreadPips) {
+export function scoreSignal(signal, candles, spreadPips, weights) {
   const spread = spreadPips ?? Config.SIMULATION.SPREAD_PIPS;
   const index = resolveSignalBarIndex(signal, candles);
 
@@ -96,11 +115,11 @@ export function scoreSignal(signal, candles, spreadPips) {
     spread: scoreSpread(spread),
   };
 
-  const weights = Config.SCORING.WEIGHTS;
+  const activeWeights = weights ?? getScoringWeights();
   let totalWeight = 0;
   let weighted = 0;
 
-  for (const [key, weight] of Object.entries(weights)) {
+  for (const [key, weight] of Object.entries(activeWeights)) {
     const value = factors[/** @type {keyof ScoreFactors} */ (key)];
     weighted += value * weight;
     totalWeight += weight;

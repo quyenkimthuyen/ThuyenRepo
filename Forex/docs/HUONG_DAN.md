@@ -123,11 +123,24 @@ Grid/Walk Forward dùng spread & lot từ **Simulation**. Tối đa **500** comb
 
 ### AI Signals (Ctrl+8)
 
-Mỗi signal được chấm **0–100** sau khi scan.
+Chấm **0–100** sau mỗi scan Strategies — **theo quy tắc**, không phải AI dự đoán thắng/thua.
 
-8 yếu tố: trend, momentum, location, volatility, PA quality, RR, session, spread.
+**8 yếu tố** (mỗi yếu tố 0–100, có trọng số): trend (15%), momentum (12%), location (13%), volatility (10%), priceActionQuality (15%), rr (12%), session (13%), spread (10%).
 
-Lọc signal bằng thanh trượt **Min score**.
+| Yếu tố | Điểm cao khi |
+|--------|----------------|
+| trend | Giá + EMA20/50 cùng hướng lệnh |
+| momentum | Nến xác nhận mạnh |
+| location | SL gần entry |
+| volatility | Biến động vừa phải |
+| priceActionQuality | Râu rejection rõ |
+| rr | RR ≥ 2–3 |
+| session | London / New York |
+| spread | Spread thấp (từ Simulation) |
+
+**Grade:** A ≥80 · B ≥65 · C ≥50 · D ≥35 · F &lt;35
+
+Lọc bằng thanh **Min score** — chỉ ảnh hưởng danh sách ở màn này. **Simulation vẫn chạy toàn bộ signal.** Điểm A vẫn có thể LOSS — xem thêm mục **AI Signals** trong app (Ctrl+9).
 
 ---
 
@@ -148,7 +161,7 @@ Lọc signal bằng thanh trượt **Min score**.
 | IndexedDB | Nến OHLCV |
 | LocalStorage | Cài đặt, tham số strategy, kết quả simulation |
 
-Xóa dữ liệu site trong trình duyệt = reset toàn bộ. Nên export kết quả trước khi xóa.
+**Reset app** (Data Manager → cuối màn hình): xóa toàn bộ IndexedDB + LocalStorage (`parl_*`), tải lại trang như lúc mới cài. Export trước nếu cần giữ dữ liệu. Cách này thay cho việc xóa “site data” thủ công trong trình duyệt.
 
 ---
 

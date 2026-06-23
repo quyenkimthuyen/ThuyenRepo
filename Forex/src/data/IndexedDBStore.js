@@ -203,6 +203,18 @@ export class IndexedDBStore {
     });
   }
 
+  /** Delete every candle row and metadata record. */
+  async clearAll() {
+    const db = await this.open();
+    await this.#runTransaction(db, Config.DB_STORES.CANDLES, 'readwrite', (store) => {
+      store.clear();
+    });
+    await this.#runTransaction(db, Config.DB_STORES.METADATA, 'readwrite', (store) => {
+      store.clear();
+    });
+    log.info('IndexedDB cleared');
+  }
+
   /**
    * @param {IDBDatabase} db
    * @param {string} storeName

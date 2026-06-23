@@ -6,6 +6,7 @@
 
 import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
+import { clearParlLocalStorage } from '../utils/dom.js';
 import { datasetKey, toStoredCandle } from './Candle.js';
 import { store } from './IndexedDBStore.js';
 import { mergeCandles, detectGaps, computeStats } from './CandleMerge.js';
@@ -366,6 +367,18 @@ const DataManager = {
       bus.emit(Events.DATA_UPDATED, { deletedTimeframe: timeframe, count: targets.length });
     }
     return targets.length;
+  },
+
+  /**
+   * Wipe all app data (IndexedDB + localStorage) and reload — like a fresh install.
+   * @returns {Promise<void>}
+   */
+  async resetAppData() {
+    await store.clearAll();
+    clearParlLocalStorage();
+    emitDataLog('Đã xóa toàn bộ dữ liệu app — đang tải lại…', 'warn');
+    bus.emit(Events.APP_DATA_RESET);
+    window.location.reload();
   },
 
 };

@@ -82,6 +82,28 @@ export function saveToStorage(key, value) {
 }
 
 /**
+ * List localStorage keys owned by PARL (prefix parl_).
+ * @returns {string[]}
+ */
+export function listParlStorageKeys() {
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith('parl_')) keys.push(key);
+  }
+  return keys;
+}
+
+/**
+ * Remove all PARL keys from localStorage (settings, results, strategy params…).
+ */
+export function clearParlLocalStorage() {
+  for (const key of listParlStorageKeys()) {
+    localStorage.removeItem(key);
+  }
+}
+
+/**
  * Resolve a path relative to the app HTML (works with Live Server / subpaths).
  * @param {string} relativePath
  * @returns {string}
