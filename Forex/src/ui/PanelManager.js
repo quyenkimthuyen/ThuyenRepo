@@ -131,29 +131,28 @@ class PanelManagerImpl {
     const container = document.getElementById('watchlist');
     if (!container) return;
 
-    const datasets = await DataManager.listDatasets();
-    const metaMap = new Map(datasets.map((d) => [`${d.symbol}|${d.timeframe}`, d]));
+    const datasets = await DataManager.listRunnableDatasets();
 
     container.innerHTML = '';
 
-    for (const symbol of Config.SYMBOLS) {
-      for (const tf of Config.TIMEFRAMES) {
-        const meta = metaMap.get(`${symbol}|${tf}`);
-        const status = meta
-          ? `${meta.count.toLocaleString()} candles`
-          : 'No data';
+    if (datasets.length === 0) {
+      container.appendChild(el('div', { class: 'watchlist-empty' }, [
+        'Chưa có dữ liệu — mở Data Manager.',
+      ]));
+      return;
+    }
 
-        container.appendChild(el('div', {
-          class: 'watchlist-item',
-          dataset: { symbol, timeframe: tf },
-        }, [
-          el('span', { class: 'watchlist-symbol' }, [symbol]),
-          el('span', { class: 'watchlist-tf' }, [tf]),
-          el('span', {
-            class: `watchlist-status${meta ? ' watchlist-status-ok' : ''}`,
-          }, [status]),
-        ]));
-      }
+    for (const meta of datasets) {
+      container.appendChild(el('div', {
+        class: 'watchlist-item',
+        dataset: { symbol: meta.symbol, timeframe: meta.timeframe },
+      }, [
+        el('span', { class: 'watchlist-symbol' }, [meta.symbol]),
+        el('span', { class: 'watchlist-tf' }, [meta.timeframe]),
+        el('span', { class: 'watchlist-status watchlist-status-ok' }, [
+          `${meta.count.toLocaleString()} candles`,
+        ]),
+      ]));
     }
   }
 

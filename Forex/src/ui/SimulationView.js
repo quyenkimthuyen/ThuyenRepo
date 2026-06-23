@@ -6,11 +6,17 @@
 import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
 import { el, loadFromStorage } from '../utils/dom.js';
+import DataManager from '../data/DataManager.js';
 import SimulationEngine from '../simulation/SimulationEngine.js';
 import StrategyEngine from '../strategy/StrategyEngine.js';
 import { downloadFile } from '../data/DataExporter.js';
 import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
+import {
+  buildSymbolOptions,
+  buildTimeframeOptions,
+  resolveDatasetSelection,
+} from '../utils/runnableDatasets.js';
 
 const log = createLogger('SimulationView');
 
@@ -20,6 +26,18 @@ const log = createLogger('SimulationView');
 class SimulationViewImpl {
   /** @type {HTMLElement|null} */
   #container = null;
+
+  /** @type {string|null} */
+  #selectedSymbol = null;
+
+  /** @type {string|null} */
+  #selectedTimeframe = null;
+
+  /** @type {import('../data/Candle.js').DatasetMetadata[]} */
+  #runnableDatasets = [];
+
+  /** @type {(() => void)|null} */
+  #unsub = null;
 
   /**
    * @param {HTMLElement} container
@@ -33,8 +51,10 @@ class SimulationViewImpl {
     const plugins = StrategyEngine.listPlugins();
     const config = SimulationEngine.getConfig();
 
+    await this.#refreshDataState(settings);
+
     container.appendChild(el('div', { class: 'simulation-view' }, [
-      this.#renderToolbar(settings, plugins),
+      this.#renderToolbar(plugins),
       this.#renderConfig(config),
       el('div', { class: 'sim-summary', id: 'sim-summary' }, [
         el('p', { class: 'sim-empty' }, ['Run a simulation to see results.']),
@@ -47,6 +67,8 @@ class SimulationViewImpl {
   }
 
   unmount() {
+    this.#unsub?.();
+    this.#unsub = null;
     if (this.#container) {
       this.#container.innerHTML = '';
       this.#container.classList.add('panel-body-fill');
@@ -54,36 +76,76 @@ class SimulationViewImpl {
   }
 
   /**
-   * @param {Record<string, unknown>} settings
+   * @param {Record<string, unknown>} [settings]
+   */
+  async #refreshDataState(settings = loadFromStorage(Config.STORAGE_KEYS.SETTINGS, {})) {
+    this.#runnableDatasets = await DataManager.listRunnableDatasets();
+    const resolved = resolveDatasetSelection(
+      this.#runnableDatasets,
+      typeof settings.symbol === 'string' ? settings.symbol : Config.DEFAULT_SYMBOL,
+      typeof settings.timeframe === 'string' ? settings.timeframe : Config.DEFAULT_TIMEFRAME
+    );
+    this.#selectedSymbol = resolved.symbol;
+    this.#selectedTimeframe = resolved.timeframe;
+  }
+
+  /**
    * @param {import('../plugin/PluginRegistry.js').PluginDescriptor[]} plugins
    * @returns {HTMLElement}
    */
-  #renderToolbar(settings, plugins) {
+  #renderToolbar(plugins) {
+    const hasData = this.#runnableDatasets.length > 0;
     const stratOpts = plugins.map((p) =>
       el('option', { value: p.id }, [p.name])
     );
-    const symOpts = Config.SYMBOLS.map((s) =>
-      el('option', { value: s, selected: s === settings.symbol }, [s])
-    );
-    const tfOpts = Config.TIMEFRAMES.map((t) =>
-      el('option', { value: t, selected: t === settings.timeframe }, [t])
-    );
 
-    return el('div', { class: 'sim-toolbar' }, [
+    const children = [
       el('div', { class: 'sim-toolbar-group' }, [
         el('label', { class: 'data-label' }, ['Strategy']),
         el('select', { class: 'data-select', id: 'sim-strategy' }, stratOpts),
+      ]),
+    ];
+
+    if (hasData) {
+      children[0].append(
         el('label', { class: 'data-label' }, ['Symbol']),
-        el('select', { class: 'data-select', id: 'sim-symbol' }, symOpts),
+        el('select', { class: 'data-select', id: 'sim-symbol' }, buildSymbolOptions(
+          this.#runnableDatasets,
+          this.#selectedSymbol
+        )),
         el('label', { class: 'data-label' }, ['TF']),
-        el('select', { class: 'data-select', id: 'sim-tf' }, tfOpts),
-      ]),
-      el('div', { class: 'sim-toolbar-group' }, [
-        el('button', { class: 'btn btn-primary', id: 'sim-run' }, ['Run Simulation']),
-        el('button', { class: 'btn btn-sm', id: 'sim-export' }, ['Export JSON']),
-        createHelpButton('simulation'),
-      ]),
-    ]);
+        el('select', { class: 'data-select', id: 'sim-tf' }, buildTimeframeOptions(
+          this.#runnableDatasets,
+          this.#selectedSymbol,
+          this.#selectedTimeframe
+        ))
+      );
+    } else {
+      children.push(el('span', { class: 'sim-no-data-hint' }, [
+        'Chưa có dữ liệu — mở Data Manager để import hoặc tải mặc định.',
+      ]));
+    }
+
+    children.push(el('div', { class: 'sim-toolbar-group' }, [
+      el('button', {
+        class: 'btn btn-primary',
+        id: 'sim-run',
+        disabled: !hasData,
+      }, ['Run Simulation']),
+      el('button', { class: 'btn btn-sm', id: 'sim-export' }, ['Export JSON']),
+      createHelpButton('simulation'),
+    ]));
+
+    return el('div', { class: 'sim-toolbar', id: 'sim-toolbar' }, children);
+  }
+
+  async #refreshToolbar() {
+    const plugins = StrategyEngine.listPlugins();
+    await this.#refreshDataState();
+    const toolbar = this.#container?.querySelector('#sim-toolbar');
+    if (!toolbar) return;
+    toolbar.replaceWith(this.#renderToolbar(plugins));
+    this.#bindToolbarEvents();
   }
 
   /**
@@ -135,9 +197,46 @@ class SimulationViewImpl {
   }
 
   #bindEvents() {
+    this.#bindToolbarEvents();
+    const unsubData = bus.on(Events.DATA_UPDATED, () => this.#refreshToolbar());
+    const unsubSim = bus.on(Events.SIMULATION_COMPLETE, (result) => this.#renderResults(result));
+    this.#unsub = () => {
+      unsubData();
+      unsubSim();
+    };
+  }
+
+  #bindToolbarEvents() {
     this.#container?.querySelector('#sim-run')?.addEventListener('click', () => this.#run());
     this.#container?.querySelector('#sim-export')?.addEventListener('click', () => this.#export());
-    bus.on(Events.SIMULATION_COMPLETE, (result) => this.#renderResults(result));
+
+    this.#container?.querySelector('#sim-symbol')?.addEventListener('change', (e) => {
+      this.#selectedSymbol = /** @type {HTMLSelectElement} */ (e.target).value;
+      const resolved = resolveDatasetSelection(
+        this.#runnableDatasets,
+        this.#selectedSymbol,
+        this.#selectedTimeframe ?? undefined
+      );
+      this.#selectedTimeframe = resolved.timeframe;
+
+      const tfSelect = this.#container?.querySelector('#sim-tf');
+      if (!tfSelect) return;
+      tfSelect.innerHTML = '';
+      for (const opt of buildTimeframeOptions(
+        this.#runnableDatasets,
+        this.#selectedSymbol,
+        this.#selectedTimeframe
+      )) {
+        tfSelect.appendChild(opt);
+      }
+      if (this.#selectedTimeframe) {
+        /** @type {HTMLSelectElement} */ (tfSelect).value = this.#selectedTimeframe;
+      }
+    });
+
+    this.#container?.querySelector('#sim-tf')?.addEventListener('change', (e) => {
+      this.#selectedTimeframe = /** @type {HTMLSelectElement} */ (e.target).value;
+    });
   }
 
   #readConfig() {

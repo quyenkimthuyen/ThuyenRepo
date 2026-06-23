@@ -13,6 +13,12 @@ import { parseValueList, countCombinations, defaultGridForParam } from '../optim
 import { downloadFile } from '../data/DataExporter.js';
 import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
+import DataManager from '../data/DataManager.js';
+import {
+  buildSymbolOptions,
+  buildTimeframeOptions,
+  resolveDatasetSelection,
+} from '../utils/runnableDatasets.js';
 
 const log = createLogger('OptimizerView');
 
@@ -26,6 +32,18 @@ class OptimizerViewImpl {
   /** @type {HTMLElement|null} */
   #container = null;
 
+  /** @type {string|null} */
+  #selectedSymbol = null;
+
+  /** @type {string|null} */
+  #selectedTimeframe = null;
+
+  /** @type {import('../data/Candle.js').DatasetMetadata[]} */
+  #runnableDatasets = [];
+
+  /** @type {(() => void)|null} */
+  #unsub = null;
+
   /**
    * @param {HTMLElement} container
    */
@@ -36,6 +54,8 @@ class OptimizerViewImpl {
 
     const settings = loadFromStorage(Config.STORAGE_KEYS.SETTINGS, {});
     const plugins = StrategyEngine.listPlugins();
+
+    await this.#refreshDataState(settings);
 
     container.appendChild(el('div', { class: 'optimizer-view' }, [
       el('div', { class: 'opt-toolbar' }, [
@@ -58,10 +78,26 @@ class OptimizerViewImpl {
   }
 
   unmount() {
+    this.#unsub?.();
+    this.#unsub = null;
     if (this.#container) {
       this.#container.innerHTML = '';
       this.#container.classList.add('panel-body-fill');
     }
+  }
+
+  /**
+   * @param {Record<string, unknown>} [settings]
+   */
+  async #refreshDataState(settings = loadFromStorage(Config.STORAGE_KEYS.SETTINGS, {})) {
+    this.#runnableDatasets = await DataManager.listRunnableDatasets();
+    const resolved = resolveDatasetSelection(
+      this.#runnableDatasets,
+      typeof settings.symbol === 'string' ? settings.symbol : Config.DEFAULT_SYMBOL,
+      typeof settings.timeframe === 'string' ? settings.timeframe : Config.DEFAULT_TIMEFRAME
+    );
+    this.#selectedSymbol = resolved.symbol;
+    this.#selectedTimeframe = resolved.timeframe;
   }
 
   /**
@@ -70,22 +106,45 @@ class OptimizerViewImpl {
    * @returns {HTMLElement}
    */
   #renderSelectors(settings, plugins) {
+    const hasData = this.#runnableDatasets.length > 0;
     const stratOpts = plugins.map((p) => el('option', { value: p.id }, [p.name]));
-    const symOpts = Config.SYMBOLS.map((s) =>
-      el('option', { value: s, selected: s === settings.symbol }, [s])
-    );
-    const tfOpts = Config.TIMEFRAMES.map((t) =>
-      el('option', { value: t, selected: t === settings.timeframe }, [t])
-    );
 
-    return el('div', { class: 'opt-selectors' }, [
+    const children = [
       el('select', { class: 'data-select', id: 'opt-strategy' }, stratOpts),
-      el('select', { class: 'data-select', id: 'opt-symbol' }, symOpts),
-      el('select', { class: 'data-select', id: 'opt-tf' }, tfOpts),
-    ]);
+    ];
+
+    if (hasData) {
+      children.push(
+        el('select', { class: 'data-select', id: 'opt-symbol' }, buildSymbolOptions(
+          this.#runnableDatasets,
+          this.#selectedSymbol
+        )),
+        el('select', { class: 'data-select', id: 'opt-tf' }, buildTimeframeOptions(
+          this.#runnableDatasets,
+          this.#selectedSymbol,
+          this.#selectedTimeframe
+        ))
+      );
+    } else {
+      children.push(el('span', { class: 'opt-no-data-hint' }, ['Chưa có dữ liệu']));
+    }
+
+    return el('div', { class: 'opt-selectors', id: 'opt-selectors' }, children);
+  }
+
+  async #refreshSelectors() {
+    const plugins = StrategyEngine.listPlugins();
+    await this.#refreshDataState();
+    const old = this.#container?.querySelector('#opt-selectors');
+    if (!old) return;
+    old.replaceWith(this.#renderSelectors({}, plugins));
+    this.#bindSelectorEvents();
+    if (activeTab === 'grid') this.#renderTab();
   }
 
   #bindEvents() {
+    this.#bindSelectorEvents();
+
     this.#container?.querySelector('#opt-tabs')?.addEventListener('click', (e) => {
       const btn = /** @type {HTMLElement} */ (e.target).closest('.opt-tab');
       if (!btn?.dataset.tab) return;
@@ -96,13 +155,47 @@ class OptimizerViewImpl {
       this.#renderTab();
     });
 
+    const unsubs = [
+      bus.on(Events.OPTIMIZATION_COMPLETE, (r) => this.#renderGridResults(r)),
+      bus.on(Events.WALK_FORWARD_COMPLETE, (r) => this.#renderWalkForwardResults(r)),
+      bus.on(Events.MONTE_CARLO_COMPLETE, (r) => this.#renderMonteCarloResults(r)),
+      bus.on(Events.DATA_UPDATED, () => this.#refreshSelectors()),
+    ];
+    this.#unsub = () => unsubs.forEach((fn) => fn());
+  }
+
+  #bindSelectorEvents() {
     this.#container?.querySelector('#opt-strategy')?.addEventListener('change', () => {
       if (activeTab === 'grid') this.#renderTab();
     });
 
-    bus.on(Events.OPTIMIZATION_COMPLETE, (r) => this.#renderGridResults(r));
-    bus.on(Events.WALK_FORWARD_COMPLETE, (r) => this.#renderWalkForwardResults(r));
-    bus.on(Events.MONTE_CARLO_COMPLETE, (r) => this.#renderMonteCarloResults(r));
+    this.#container?.querySelector('#opt-symbol')?.addEventListener('change', (e) => {
+      this.#selectedSymbol = /** @type {HTMLSelectElement} */ (e.target).value;
+      const resolved = resolveDatasetSelection(
+        this.#runnableDatasets,
+        this.#selectedSymbol,
+        this.#selectedTimeframe ?? undefined
+      );
+      this.#selectedTimeframe = resolved.timeframe;
+
+      const tfSelect = this.#container?.querySelector('#opt-tf');
+      if (!tfSelect) return;
+      tfSelect.innerHTML = '';
+      for (const opt of buildTimeframeOptions(
+        this.#runnableDatasets,
+        this.#selectedSymbol,
+        this.#selectedTimeframe
+      )) {
+        tfSelect.appendChild(opt);
+      }
+      if (this.#selectedTimeframe) {
+        /** @type {HTMLSelectElement} */ (tfSelect).value = this.#selectedTimeframe;
+      }
+    });
+
+    this.#container?.querySelector('#opt-tf')?.addEventListener('change', (e) => {
+      this.#selectedTimeframe = /** @type {HTMLSelectElement} */ (e.target).value;
+    });
   }
 
   #renderTab() {
@@ -225,6 +318,9 @@ class OptimizerViewImpl {
   }
 
   #readSelectors() {
+    if (this.#runnableDatasets.length === 0) {
+      throw new Error('Chưa có dữ liệu nến — mở Data Manager để import hoặc tải mặc định.');
+    }
     return {
       strategyId: /** @type {HTMLSelectElement} */ (this.#container.querySelector('#opt-strategy')).value,
       symbol: /** @type {HTMLSelectElement} */ (this.#container.querySelector('#opt-symbol')).value,

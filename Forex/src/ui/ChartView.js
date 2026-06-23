@@ -13,6 +13,12 @@ import { ReplayEngine } from '../replay/ReplayEngine.js';
 import { ReplayControls } from './ReplayControls.js';
 import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
+import {
+  buildSymbolOptions,
+  buildTimeframeOptions,
+  fillDatasetSelectors,
+  resolveDatasetSelection,
+} from '../utils/runnableDatasets.js';
 
 const log = createLogger('ChartView');
 
@@ -35,6 +41,9 @@ class ChartViewImpl {
   /** @type {string} */
   #timeframe = Config.DEFAULT_TIMEFRAME;
 
+  /** @type {import('../data/Candle.js').DatasetMetadata[]} */
+  #runnableDatasets = [];
+
   /** @type {Function|null} */
   #unsubs = null;
 
@@ -51,6 +60,15 @@ class ChartViewImpl {
     const settings = loadFromStorage(Config.STORAGE_KEYS.SETTINGS, {});
     this.#symbol = settings.symbol ?? Config.DEFAULT_SYMBOL;
     this.#timeframe = settings.timeframe ?? Config.DEFAULT_TIMEFRAME;
+
+    this.#runnableDatasets = await DataManager.listRunnableDatasets();
+    const resolved = resolveDatasetSelection(
+      this.#runnableDatasets,
+      this.#symbol,
+      this.#timeframe
+    );
+    if (resolved.symbol) this.#symbol = resolved.symbol;
+    if (resolved.timeframe) this.#timeframe = resolved.timeframe;
 
     const chartContainer = el('div', { class: 'chart-container', id: 'chart-container' });
 
@@ -93,17 +111,25 @@ class ChartViewImpl {
    * @returns {HTMLElement}
    */
   #renderToolbar() {
-    const symbolOptions = Config.SYMBOLS.map((s) =>
-      el('option', { value: s, selected: s === this.#symbol }, [s])
-    );
-    const tfOptions = Config.TIMEFRAMES.map((t) =>
-      el('option', { value: t, selected: t === this.#timeframe }, [t])
+    const symbolOptions = buildSymbolOptions(this.#runnableDatasets, this.#symbol);
+    const tfOptions = buildTimeframeOptions(
+      this.#runnableDatasets,
+      this.#symbol,
+      this.#timeframe
     );
 
     return el('div', { class: 'chart-toolbar' }, [
       el('div', { class: 'chart-toolbar-group' }, [
-        el('select', { class: 'data-select', id: 'chart-symbol' }, symbolOptions),
-        el('select', { class: 'data-select', id: 'chart-timeframe' }, tfOptions),
+        el('select', {
+          class: 'data-select',
+          id: 'chart-symbol',
+          disabled: this.#runnableDatasets.length === 0,
+        }, symbolOptions),
+        el('select', {
+          class: 'data-select',
+          id: 'chart-timeframe',
+          disabled: this.#runnableDatasets.length === 0,
+        }, tfOptions),
         el('button', { class: 'btn btn-sm', id: 'chart-reload' }, ['Reload']),
       ]),
       el('div', { class: 'chart-toolbar-group' }, [
@@ -159,12 +185,16 @@ class ChartViewImpl {
       /* ResizeObserver in ChartEngine handles this */
     }));
 
-    unsubs.push(bus.on(Events.DATA_UPDATED, () => {
-      if (this.#container) this.#loadChart();
+    unsubs.push(bus.on(Events.DATA_UPDATED, async () => {
+      if (this.#container) {
+        await this.#refreshDatasetSelectors();
+        this.#loadChart();
+      }
     }));
 
     this.#container?.querySelector('#chart-symbol')?.addEventListener('change', (e) => {
       this.#symbol = /** @type {HTMLSelectElement} */ (e.target).value;
+      this.#syncTimeframeOptions();
       this.#loadChart();
     });
 
@@ -284,6 +314,45 @@ class ChartViewImpl {
     const tf = this.#container?.querySelector('#chart-timeframe');
     if (sym) /** @type {HTMLSelectElement} */ (sym).value = this.#symbol;
     if (tf) /** @type {HTMLSelectElement} */ (tf).value = this.#timeframe;
+  }
+
+  async #refreshDatasetSelectors() {
+    this.#runnableDatasets = await DataManager.listRunnableDatasets();
+    const symSel = this.#container?.querySelector('#chart-symbol');
+    const tfSel = this.#container?.querySelector('#chart-timeframe');
+    if (!symSel || !tfSel) return;
+
+    const resolved = fillDatasetSelectors(
+      /** @type {HTMLSelectElement} */ (symSel),
+      /** @type {HTMLSelectElement} */ (tfSel),
+      this.#runnableDatasets,
+      this.#symbol,
+      this.#timeframe
+    );
+    if (resolved.symbol) this.#symbol = resolved.symbol;
+    if (resolved.timeframe) this.#timeframe = resolved.timeframe;
+  }
+
+  #syncTimeframeOptions() {
+    const tfSel = this.#container?.querySelector('#chart-timeframe');
+    if (!tfSel) return;
+
+    const resolved = resolveDatasetSelection(
+      this.#runnableDatasets,
+      this.#symbol,
+      this.#timeframe
+    );
+    this.#timeframe = resolved.timeframe ?? this.#timeframe;
+
+    tfSel.innerHTML = '';
+    for (const opt of buildTimeframeOptions(
+      this.#runnableDatasets,
+      this.#symbol,
+      this.#timeframe
+    )) {
+      tfSel.appendChild(opt);
+    }
+    if (this.#timeframe) /** @type {HTMLSelectElement} */ (tfSel).value = this.#timeframe;
   }
 }
 

@@ -94,7 +94,7 @@ export const CONTEXT_DOC_SECTIONS = [
         type: 'table',
         headers: ['Thành phần', 'Ý nghĩa'],
         rows: [
-          ['Symbol / TF', 'Cặp tiền và khung nến đang xem'],
+          ['Symbol / TF', 'Chỉ liệt kê cặp đã có nến trong IndexedDB'],
           ['Reload', 'Tải lại dữ liệu từ IndexedDB'],
           ['EMA 20/50', 'Đối chiếu xu hướng với signal'],
           ['Watchlist', 'Click đổi cặp nhanh — chỉ hiện ở Chart và Data Manager'],
@@ -141,9 +141,11 @@ export const CONTEXT_DOC_SECTIONS = [
         headers: ['Nút / thành phần', 'Cách dùng'],
         rows: [
           ['Import File', 'Chọn Symbol + TF, rồi chọn CSV/JSON/.gz'],
-          ['Reload Default Data', 'Tải data/defaults/ (~3 năm). Đợi 1–2 phút full history'],
+          ['Cập nhật', 'Chọn Symbol + TF → tải lại dataset đó từ data/defaults/'],
+          ['Xóa', 'Chọn Symbol + TF → xóa dataset đó khỏi IndexedDB'],
+          ['Reload Default Data', 'Tải toàn bộ data/defaults/ (~3 năm). Đợi 1–2 phút full history'],
           ['Generate Sample', 'Nến giả lập nhanh để test'],
-          ['Health bar', 'Data OK = sẵn sàng scan'],
+          ['Health bar', 'Data OK = có ít nhất một dataset sẵn sàng scan'],
         ],
       },
       { type: 'code', text: 'timestamp,datetime,open,high,low,close,volume' },

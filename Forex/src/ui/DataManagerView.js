@@ -84,11 +84,12 @@ class DataManagerViewImpl {
 
     try {
       const h = await DataManager.getDataHealth();
-      const candleCount = Math.max(h.eurusdH1Count, h.eurusdH1MetaCount ?? 0);
-      const ok = candleCount > 0;
+      const runnable = await DataManager.listRunnableDatasets();
+      const totalCandles = runnable.reduce((sum, d) => sum + d.count, 0);
+      const ok = runnable.length > 0;
       box.className = `data-health${ok ? ' data-health-ok' : ' data-health-warn'}`;
       if (ok) {
-        box.textContent = `Data OK — EURUSD H1: ${candleCount.toLocaleString()} candles · ${h.indexedDbDatasets} datasets in IndexedDB`;
+        box.textContent = `Data OK — ${runnable.length} dataset(s), ${totalCandles.toLocaleString()} candles · ${h.indexedDbDatasets} in IndexedDB`;
       } else if (h.protocol === 'file:') {
         box.textContent = 'Không load được qua file:// — chạy: cd Forex && python3 -m http.server 8080 rồi mở http://localhost:8080';
       } else {
@@ -133,11 +134,11 @@ class DataManagerViewImpl {
           el('button', { class: 'btn btn-secondary', id: 'btn-load-defaults' }, [
             'Reload Default Data',
           ]),
-          el('button', { class: 'btn btn-secondary', id: 'btn-reload-eurusd-h1' }, [
-            'Cập nhật EURUSD H1',
+          el('button', { class: 'btn btn-secondary', id: 'btn-update-dataset' }, [
+            'Cập nhật',
           ]),
-          el('button', { class: 'btn btn-danger btn-sm', id: 'btn-delete-h1' }, [
-            'Xóa tất cả H1',
+          el('button', { class: 'btn btn-danger btn-sm', id: 'btn-delete-dataset' }, [
+            'Xóa',
           ]),
           el('button', { class: 'btn btn-secondary', id: 'btn-gen-all' }, [
             'Generate Sample (All Pairs)',
@@ -162,9 +163,9 @@ class DataManagerViewImpl {
         ]),
       ]),
       el('div', { class: 'data-hint' }, [
-        'Dữ liệu Dukascopy: chart H1 có khoảng trống cuối tuần (thị trường đóng cửa) — bình thường. ',
-        'Cột Gaps chỉ báo thiếu nến bất thường (không tính T7/CN). ',
-        'CSV/JSON/.gz → IndexedDB.',
+        'Chọn Symbol + TF rồi Import, Cập nhật (tải lại từ data/defaults), hoặc Xóa dataset đó. ',
+        'Dữ liệu Dukascopy: khoảng trống cuối tuần là bình thường. ',
+        'Cột Gaps chỉ báo thiếu nến bất thường (không tính T7/CN).',
       ]),
     ]);
   }
@@ -236,6 +237,20 @@ class DataManagerViewImpl {
    * @param {string} doneLabel
    * @param {() => Promise<unknown>} action
    */
+  /**
+   * @returns {{ symbol: string, timeframe: string }}
+   */
+  #getImportPair() {
+    return {
+      symbol: /** @type {HTMLSelectElement} */ (
+        this.#container?.querySelector('#import-symbol')
+      ).value,
+      timeframe: /** @type {HTMLSelectElement} */ (
+        this.#container?.querySelector('#import-tf')
+      ).value,
+    };
+  }
+
   async #runReload(btnId, loadingLabel, doneLabel, action) {
     const btn = /** @type {HTMLButtonElement} */ (
       this.#container?.querySelector(`#${btnId}`)
@@ -304,29 +319,31 @@ class DataManagerViewImpl {
       );
     });
 
-    this.#container?.querySelector('#btn-reload-eurusd-h1')?.addEventListener('click', async () => {
-      await this.#runReload('btn-reload-eurusd-h1', 'Đang tải…', 'Cập nhật EURUSD H1', () =>
-        DataManager.reloadBundledDataset('EURUSD', 'H1')
+    this.#container?.querySelector('#btn-update-dataset')?.addEventListener('click', async () => {
+      const { symbol, timeframe } = this.#getImportPair();
+      await this.#runReload('btn-update-dataset', 'Đang tải…', 'Cập nhật', () =>
+        DataManager.reloadBundledDataset(symbol, timeframe)
       );
     });
 
-    this.#container?.querySelector('#btn-delete-h1')?.addEventListener('click', async () => {
-      if (!confirm('Xóa toàn bộ dữ liệu H1 (mọi cặp) trong IndexedDB?')) return;
+    this.#container?.querySelector('#btn-delete-dataset')?.addEventListener('click', async () => {
+      const { symbol, timeframe } = this.#getImportPair();
+      if (!confirm(`Xóa toàn bộ dữ liệu ${symbol} ${timeframe} trong IndexedDB?`)) return;
       const btn = /** @type {HTMLButtonElement} */ (
-        this.#container?.querySelector('#btn-delete-h1')
+        this.#container?.querySelector('#btn-delete-dataset')
       );
       btn.disabled = true;
       try {
-        const count = await DataManager.deleteTimeframe('H1');
+        await DataManager.deleteDataset(symbol, timeframe);
         await this.refresh();
         bus.emit(Events.LOG_MESSAGE, {
-          message: count > 0 ? `Đã xóa ${count} dataset H1.` : 'Không có dữ liệu H1.',
+          message: `Đã xóa ${symbol} ${timeframe}.`,
           level: 'info',
           time: new Date(),
         });
       } catch (err) {
         bus.emit(Events.LOG_MESSAGE, {
-          message: `Xóa H1 thất bại: ${err.message}`,
+          message: `Xóa thất bại: ${err.message}`,
           level: 'error',
           time: new Date(),
         });

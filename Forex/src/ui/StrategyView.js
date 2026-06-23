@@ -12,6 +12,13 @@ import { registry } from '../plugin/PluginRegistry.js';
 import { downloadFile } from '../data/DataExporter.js';
 import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
+import {
+  buildSymbolOptions,
+  buildTimeframeOptions,
+  resolveDatasetSelection,
+  uniqueSymbols,
+  timeframesForSymbol,
+} from '../utils/runnableDatasets.js';
 
 const log = createLogger('StrategyView');
 
@@ -79,26 +86,20 @@ class StrategyViewImpl {
   async #refreshDataState(settings = loadFromStorage(Config.STORAGE_KEYS.SETTINGS, {})) {
     this.#runnableDatasets = await DataManager.listRunnableDatasets();
 
-    if (this.#runnableDatasets.length === 0) {
-      this.#selectedSymbol = null;
-      this.#selectedTimeframe = null;
-      return;
-    }
-
-    const symbols = this.#availableSymbols();
-    const preferredSymbol = typeof settings.symbol === 'string' ? settings.symbol : Config.DEFAULT_SYMBOL;
-    this.#selectedSymbol = symbols.includes(preferredSymbol) ? preferredSymbol : symbols[0];
-
-    const timeframes = this.#availableTimeframes(this.#selectedSymbol);
-    const preferredTf = typeof settings.timeframe === 'string' ? settings.timeframe : Config.DEFAULT_TIMEFRAME;
-    this.#selectedTimeframe = timeframes.includes(preferredTf) ? preferredTf : timeframes[0];
+    const resolved = resolveDatasetSelection(
+      this.#runnableDatasets,
+      typeof settings.symbol === 'string' ? settings.symbol : Config.DEFAULT_SYMBOL,
+      typeof settings.timeframe === 'string' ? settings.timeframe : Config.DEFAULT_TIMEFRAME
+    );
+    this.#selectedSymbol = resolved.symbol;
+    this.#selectedTimeframe = resolved.timeframe;
   }
 
   /**
    * @returns {string[]}
    */
   #availableSymbols() {
-    return [...new Set(this.#runnableDatasets.map((d) => d.symbol))];
+    return uniqueSymbols(this.#runnableDatasets);
   }
 
   /**
@@ -106,10 +107,7 @@ class StrategyViewImpl {
    * @returns {string[]}
    */
   #availableTimeframes(symbol) {
-    const tfs = this.#runnableDatasets
-      .filter((d) => d.symbol === symbol)
-      .map((d) => d.timeframe);
-    return Config.TIMEFRAMES.filter((tf) => tfs.includes(tf));
+    return timeframesForSymbol(this.#runnableDatasets, symbol);
   }
 
   /**
@@ -120,18 +118,18 @@ class StrategyViewImpl {
     const children = [];
 
     if (hasData) {
-      const symbolOptions = this.#availableSymbols().map((s) =>
-        el('option', { value: s, selected: s === this.#selectedSymbol }, [s])
-      );
-      const tfOptions = this.#availableTimeframes(this.#selectedSymbol ?? '').map((t) =>
-        el('option', { value: t, selected: t === this.#selectedTimeframe }, [t])
-      );
-
       children.push(el('div', { class: 'strategy-toolbar-group', id: 'strat-data-selectors' }, [
         el('label', { class: 'data-label' }, ['Symbol']),
-        el('select', { class: 'data-select', id: 'strat-symbol' }, symbolOptions),
+        el('select', { class: 'data-select', id: 'strat-symbol' }, buildSymbolOptions(
+          this.#runnableDatasets,
+          this.#selectedSymbol
+        )),
         el('label', { class: 'data-label' }, ['TF']),
-        el('select', { class: 'data-select', id: 'strat-timeframe' }, tfOptions),
+        el('select', { class: 'data-select', id: 'strat-timeframe' }, buildTimeframeOptions(
+          this.#runnableDatasets,
+          this.#selectedSymbol,
+          this.#selectedTimeframe
+        )),
       ]));
     } else {
       children.push(el('div', { class: 'strategy-toolbar-group', id: 'strat-no-data' }, [
