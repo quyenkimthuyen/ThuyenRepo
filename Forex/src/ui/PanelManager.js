@@ -12,6 +12,9 @@ import DataManager from '../data/DataManager.js';
 
 const log = createLogger('PanelManager');
 
+/** Views where the data watchlist sidebar is shown. */
+const WATCHLIST_VIEWS = new Set(['chart', 'data']);
+
 /**
  * Manages resizable split panels in the main workspace.
  */
@@ -35,7 +38,7 @@ class PanelManagerImpl {
     this.leftPanelWidth = saved.left ?? 280;
     this.bottomPanelHeight = saved.bottom ?? 200;
 
-    return el('div', { class: 'panel-workspace' }, [
+    return el('div', { class: 'panel-workspace watchlist-visible', id: 'panel-workspace' }, [
       el('div', { class: 'panel-row panel-row-top' }, [
         el('div', {
           class: 'panel panel-left',
@@ -92,6 +95,7 @@ class PanelManagerImpl {
 
     this.#refreshWatchlist();
     bus.on(Events.DATA_UPDATED, () => this.#refreshWatchlist());
+    bus.on(Events.VIEW_ACTIVE, ({ view }) => this.#setWatchlistVisible(view));
     bus.on(Events.LOG_MESSAGE, ({ message, level, time }) => {
       this.#appendLog(message, level, time);
     });
@@ -108,6 +112,16 @@ class PanelManagerImpl {
     });
 
     log.info('Panel manager initialized');
+  }
+
+  /**
+   * Show watchlist only on views that use it (chart navigation, data overview).
+   * @param {string} viewId
+   */
+  #setWatchlistVisible(viewId) {
+    const workspace = document.getElementById('panel-workspace');
+    if (!workspace) return;
+    workspace.classList.toggle('watchlist-visible', WATCHLIST_VIEWS.has(viewId));
   }
 
   /**

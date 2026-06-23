@@ -9,6 +9,7 @@ import { el, loadFromStorage } from '../utils/dom.js';
 import SimulationEngine from '../simulation/SimulationEngine.js';
 import StrategyEngine from '../strategy/StrategyEngine.js';
 import { downloadFile } from '../data/DataExporter.js';
+import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('SimulationView');
@@ -80,6 +81,7 @@ class SimulationViewImpl {
       el('div', { class: 'sim-toolbar-group' }, [
         el('button', { class: 'btn btn-primary', id: 'sim-run' }, ['Run Simulation']),
         el('button', { class: 'btn btn-sm', id: 'sim-export' }, ['Export JSON']),
+        createHelpButton('simulation'),
       ]),
     ]);
   }

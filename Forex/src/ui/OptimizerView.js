@@ -11,6 +11,7 @@ import StrategyEngine from '../strategy/StrategyEngine.js';
 import ResearchEngine from '../optimizer/ResearchEngine.js';
 import { parseValueList, countCombinations, defaultGridForParam } from '../optimizer/ParameterGrid.js';
 import { downloadFile } from '../data/DataExporter.js';
+import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('OptimizerView');
@@ -40,6 +41,7 @@ class OptimizerViewImpl {
       el('div', { class: 'opt-toolbar' }, [
         el('span', { class: 'opt-title' }, ['Research Optimizer']),
         this.#renderSelectors(settings, plugins),
+        createHelpButton('optimizer'),
       ]),
       el('div', { class: 'opt-tabs', id: 'opt-tabs' }, [
         el('button', { class: 'opt-tab active', dataset: { tab: 'grid' } }, ['Grid Search']),

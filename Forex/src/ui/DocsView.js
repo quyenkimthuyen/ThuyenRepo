@@ -1,17 +1,28 @@
 /**
- * In-app documentation and usage guide.
+ * In-app documentation — full Vietnamese guide with per-view sections.
  * @module ui/DocsView
  */
 
 import { Config } from '../core/Config.js';
+import { bus, Events } from '../core/EventBus.js';
 import { el } from '../utils/dom.js';
-import { DOC_SECTIONS } from '../content/appDocs.js';
+import { CONTEXT_DOC_SECTIONS } from '../content/contextDocsVi.js';
+import { renderDocBlock } from './DocRenderer.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('DocsView');
 
 /** @type {string} */
-let activeSection = DOC_SECTIONS[0]?.id ?? 'overview';
+let activeSection = CONTEXT_DOC_SECTIONS[0]?.id ?? 'overview';
+
+/**
+ * @param {string} sectionId
+ */
+export function setDocsSection(sectionId) {
+  if (CONTEXT_DOC_SECTIONS.some((s) => s.id === sectionId)) {
+    activeSection = sectionId;
+  }
+}
 
 /**
  * Documentation view controller.
@@ -22,15 +33,17 @@ class DocsViewImpl {
 
   /**
    * @param {HTMLElement} container
+   * @param {string} [sectionId]
    */
-  async mount(container) {
+  async mount(container, sectionId) {
+    if (sectionId) setDocsSection(sectionId);
     this.#container = container;
     container.innerHTML = '';
     container.classList.remove('panel-body-fill');
 
     container.appendChild(el('div', { class: 'docs-view' }, [
       el('div', { class: 'docs-header' }, [
-        el('h2', { class: 'docs-title' }, ['Documentation']),
+        el('h2', { class: 'docs-title' }, ['Tài liệu hướng dẫn']),
         el('span', { class: 'docs-version' }, [`${Config.APP_NAME} v${Config.APP_VERSION}`]),
       ]),
       el('div', { class: 'docs-body' }, [
@@ -54,7 +67,7 @@ class DocsViewImpl {
    * @returns {HTMLElement[]}
    */
   #renderNav() {
-    return DOC_SECTIONS.map((section) => {
+    return CONTEXT_DOC_SECTIONS.map((section) => {
       const btn = el('button', {
         class: `docs-nav-item${section.id === activeSection ? ' active' : ''}`,
         dataset: { section: section.id },
@@ -77,76 +90,25 @@ class DocsViewImpl {
 
   #renderSection() {
     const content = this.#container?.querySelector('#docs-content');
-    const section = DOC_SECTIONS.find((s) => s.id === activeSection);
+    const section = CONTEXT_DOC_SECTIONS.find((s) => s.id === activeSection);
     if (!content || !section) return;
 
     content.innerHTML = '';
     content.appendChild(el('h3', { class: 'docs-section-title' }, [
       `${section.icon} ${section.title}`,
     ]));
+    if (section.subtitle) {
+      content.appendChild(el('p', { class: 'docs-p docs-subtitle' }, [section.subtitle]));
+    }
 
     for (const block of section.blocks) {
-      content.appendChild(this.#renderBlock(block));
-    }
-  }
-
-  /**
-   * @param {import('../content/appDocs.js').DocBlock} block
-   * @returns {HTMLElement}
-   */
-  #renderBlock(block) {
-    switch (block.type) {
-      case 'h2':
-        return el('h4', { class: 'docs-h2' }, [block.text ?? '']);
-      case 'h3':
-        return el('h4', { class: 'docs-h3' }, [block.text ?? '']);
-      case 'p':
-        return el('p', { class: 'docs-p' }, [block.text ?? '']);
-      case 'ul':
-        return el('ul', { class: 'docs-list' },
-          (block.items ?? []).map((item) => el('li', {}, [item]))
-        );
-      case 'ol':
-        return el('ol', { class: 'docs-list' },
-          (block.items ?? []).map((item) => el('li', {}, [item]))
-        );
-      case 'code':
-        return el('pre', { class: 'docs-code' }, [
-          el('code', {}, [block.text ?? '']),
-        ]);
-      case 'callout':
-        return el('div', { class: `docs-callout docs-callout-${block.variant ?? 'info'}` }, [
-          block.text ?? '',
-        ]);
-      case 'steps':
-        return el('div', { class: 'docs-steps' },
-          (block.steps ?? []).map((step, i) =>
-            el('div', { class: 'docs-step' }, [
-              el('span', { class: 'docs-step-num' }, [String(i + 1)]),
-              el('div', { class: 'docs-step-body' }, [
-                el('strong', {}, [step.title]),
-                el('p', {}, [step.body]),
-              ]),
-            ])
-          )
-        );
-      case 'table': {
-        const head = el('thead', {}, [
-          el('tr', {}, (block.headers ?? []).map((h) => el('th', {}, [h]))),
-        ]);
-        const body = el('tbody', {},
-          (block.rows ?? []).map((row) =>
-            el('tr', {}, row.map((cell) => el('td', {}, [cell])))
-          )
-        );
-        return el('div', { class: 'docs-table-wrap' }, [
-          el('table', { class: 'docs-table' }, [head, body]),
-        ]);
-      }
-      default:
-        return el('div', {}, []);
+      content.appendChild(renderDocBlock(block));
     }
   }
 }
 
 export const DocsView = new DocsViewImpl();
+
+bus.on(Events.NAVIGATE, ({ view, section }) => {
+  if (view === 'docs' && section) setDocsSection(section);
+});

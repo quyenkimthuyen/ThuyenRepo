@@ -8,6 +8,7 @@ import { el } from '../utils/dom.js';
 import StatisticsEngine from '../statistics/StatisticsEngine.js';
 import SimulationEngine from '../simulation/SimulationEngine.js';
 import { downloadFile } from '../data/DataExporter.js';
+import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('StatisticsView');
@@ -59,6 +60,7 @@ class StatisticsViewImpl {
         el('div', { class: 'stats-toolbar-actions' }, [
           el('button', { class: 'btn btn-sm', id: 'stats-refresh' }, ['Refresh']),
           el('button', { class: 'btn btn-sm', id: 'stats-export' }, ['Export JSON']),
+          createHelpButton('statistics'),
         ]),
       ]),
       el('div', { class: 'stats-meta', id: 'stats-meta' }, ['No data — run a simulation first.']),

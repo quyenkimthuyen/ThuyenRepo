@@ -10,6 +10,7 @@ import DataManager from '../data/DataManager.js';
 import StrategyEngine from '../strategy/StrategyEngine.js';
 import { registry } from '../plugin/PluginRegistry.js';
 import { downloadFile } from '../data/DataExporter.js';
+import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('StrategyView');
@@ -151,6 +152,7 @@ class StrategyViewImpl {
         id: 'strat-run-all',
         disabled: !hasData,
       }, ['Run All Enabled']),
+      createHelpButton('strategy'),
     ]));
 
     return el('div', { class: 'strategy-toolbar', id: 'strategy-toolbar' }, children);

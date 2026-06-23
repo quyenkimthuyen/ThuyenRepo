@@ -13,6 +13,7 @@ import {
   downloadCanvasPNG,
   openPrintReport,
 } from '../report/ReportExporter.js';
+import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('ReportsView');
@@ -43,6 +44,7 @@ class ReportsViewImpl {
         el('span', { class: 'reports-title' }, ['Research Dashboard & Reports']),
         el('div', { class: 'reports-toolbar-actions' }, [
           el('button', { class: 'btn btn-sm', id: 'reports-refresh' }, ['Refresh']),
+          createHelpButton('reports'),
         ]),
       ]),
       el('div', { class: 'reports-tabs', id: 'reports-tabs' }, [

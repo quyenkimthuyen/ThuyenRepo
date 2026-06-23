@@ -6,6 +6,7 @@
 import { bus, Events } from '../core/EventBus.js';
 import { el } from '../utils/dom.js';
 import ScoringEngine from '../scoring/ScoringEngine.js';
+import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('SignalsView');
@@ -37,6 +38,7 @@ class SignalsViewImpl {
             el('input', { type: 'range', id: 'sig-min-score', min: '0', max: '100', value: '0' }),
             el('span', { id: 'sig-min-label' }, ['0']),
           ]),
+          createHelpButton('signals'),
         ]),
       ]),
       el('div', { class: 'signals-meta', id: 'signals-meta' }, ['Run a strategy scan first (Ctrl+3).']),

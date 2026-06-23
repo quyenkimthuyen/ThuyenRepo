@@ -11,6 +11,7 @@ import DataManager from '../data/DataManager.js';
 import { ChartEngine } from '../chart/ChartEngine.js';
 import { ReplayEngine } from '../replay/ReplayEngine.js';
 import { ReplayControls } from './ReplayControls.js';
+import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('ChartView');
@@ -114,6 +115,7 @@ class ChartViewImpl {
       el('div', { class: 'chart-toolbar-group chart-status', id: 'chart-status' }, [
         'Loading…',
       ]),
+      createHelpButton('chart'),
     ]);
   }
 

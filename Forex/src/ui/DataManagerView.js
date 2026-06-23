@@ -8,6 +8,7 @@ import { bus, Events } from '../core/EventBus.js';
 import { el } from '../utils/dom.js';
 import { formatTimestamp } from '../data/TimeframeUtils.js';
 import DataManager from '../data/DataManager.js';
+import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('DataManagerView');
@@ -136,6 +137,7 @@ class DataManagerViewImpl {
             'Generate Sample (All Pairs)',
           ]),
         ]),
+        createHelpButton('data'),
       ]),
       el('div', { class: 'data-table-wrap' }, [
         el('table', { class: 'data-table' }, [

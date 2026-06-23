@@ -5,7 +5,9 @@
 
 import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
+import { docSectionForView } from '../content/contextDocsVi.js';
 import { el } from '../utils/dom.js';
+import { getActiveView } from './activeView.js';
 
 /**
  * TopBar component factory.
@@ -33,8 +35,8 @@ export const TopBar = {
       el('div', { class: 'topbar-right' }, [
         el('button', {
           class: 'btn-icon docs-btn',
-          title: 'Documentation (Ctrl+9 / F1)',
-          'aria-label': 'Documentation',
+          title: 'Hướng dẫn mục đang mở (Ctrl+9 / F1 = tài liệu đầy đủ)',
+          'aria-label': 'Hướng dẫn theo ngữ cảnh',
         }, ['📖']),
         el('span', { class: 'version-tag' }, [`v${Config.APP_VERSION}`]),
       ]),
@@ -50,6 +52,9 @@ export const TopBar = {
     toggle?.addEventListener('click', () => bus.emit(Events.SIDEBAR_TOGGLE));
 
     const docsBtn = shell.querySelector('.docs-btn');
-    docsBtn?.addEventListener('click', () => bus.emit(Events.NAVIGATE, { view: 'docs' }));
+    docsBtn?.addEventListener('click', () => {
+      const section = docSectionForView(getActiveView());
+      bus.emit(Events.DOCS_OPEN, { section });
+    });
   },
 };

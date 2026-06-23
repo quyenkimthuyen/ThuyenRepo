@@ -20,6 +20,8 @@ import { ReportsView } from './ReportsView.js';
 import { OptimizerView } from './OptimizerView.js';
 import { SignalsView } from './SignalsView.js';
 import { DocsView } from './DocsView.js';
+import { ContextHelpPanel } from './ContextHelpPanel.js';
+import { setActiveView } from './activeView.js';
 
 const log = createLogger('Layout');
 
@@ -33,7 +35,7 @@ const VIEWS = [
   { id: 'reports', label: 'Reports', icon: '📋' },
   { id: 'optimizer', label: 'Optimizer', icon: '🧪' },
   { id: 'signals', label: 'AI Signals', icon: '🎯' },
-  { id: 'docs', label: 'Docs', icon: '📖' },
+  { id: 'docs', label: 'Tài liệu', icon: '📖' },
 ];
 
 /**
@@ -76,6 +78,7 @@ class Layout {
     Sidebar.init(shell, VIEWS);
     PanelManager.init(shell);
     StatusBar.init(shell);
+    ContextHelpPanel.init(document.body);
 
     this.#bindEvents(eventBus);
     this.#navigate('chart');
@@ -86,7 +89,7 @@ class Layout {
    * @param {import('../core/EventBus.js').EventBus} eventBus
    */
   #bindEvents(eventBus) {
-    eventBus.on(Events.NAVIGATE, ({ view }) => this.#navigate(view));
+    eventBus.on(Events.NAVIGATE, ({ view, section }) => this.#navigate(view, section));
     eventBus.on(Events.SIDEBAR_TOGGLE, () => {
       const shell = $('.shell');
       const collapsed = shell.dataset.collapsed === 'true';
@@ -102,9 +105,11 @@ class Layout {
   /**
    * Switch the active view in the main content area.
    * @param {string} viewId
+   * @param {string} [docsSection]
    */
-  #navigate(viewId) {
+  #navigate(viewId, docsSection) {
     this.currentView = viewId;
+    setActiveView(viewId);
 
     document.querySelectorAll('.nav-item').forEach((item) => {
       item.classList.toggle('active', item.dataset.view === viewId);
@@ -151,7 +156,7 @@ class Layout {
     } else if (viewId === 'docs') {
       placeholder.className = 'panel-body';
       this.#activeView = DocsView;
-      DocsView.mount(placeholder);
+      DocsView.mount(placeholder, docsSection);
     } else {
       const view = VIEWS.find((v) => v.id === viewId);
       const title = el('h2', { class: 'view-title' }, [view?.label ?? viewId]);
