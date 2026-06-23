@@ -2,7 +2,21 @@
 
 **Price Action Research Lab** — nền tảng nghiên cứu Price Action chạy hoàn toàn trên trình duyệt.
 
-> Đây **không phải** bot giao dịch. PARL giúp bạn tìm setup, cặp tiền, timeframe và tham số nào cho kết quả tốt nhất.
+> Đây **không phải** bot giao dịch. PARL giúp trader PA trả lời: *setup nào, cặp/khung nào, tham số nào có edge thật sau spread* — trước khi risk tiền thật.
+
+## PARL giải quyết vấn đề gì?
+
+| Vấn đề | Cách app hỗ trợ |
+|--------|-----------------|
+| Không biết setup nào có edge | Strategies scan + Simulation backtest |
+| Dễ tự lừa khi xem chart | Replay bar-by-bar; kiểm chứng signal trên Chart |
+| Quá nhiều signal | AI Signals chấm điểm, lọc Min score |
+| Tối ưu tham số thiếu kiểm định | Optimizer: walk-forward, Monte Carlo |
+| Công cụ rời rạc | Data, chart, backtest, báo cáo trong một app local |
+
+**PARL không** kết nối broker, không đặt lệnh live, không thay journal hay quản lý tâm lý.
+
+Chi tiết từng màn hình: trong app bấm **Ctrl+9** hoặc **F1**, hoặc nút 📖 trên từng view.
 
 ## Cài đặt & chạy
 
@@ -95,9 +109,17 @@ Expectancy, profit factor, max drawdown, Sharpe, streaks, equity curve, drawdown
 
 ### Optimizer (Ctrl+7)
 
-- **Grid Search:** thử mọi tổ hợp tham số (tối đa 500)
-- **Walk Forward:** kiểm định in-sample / out-of-sample
-- **Monte Carlo:** xáo thứ tự lệnh — cần chạy Simulation trước
+**Mục đích:** tìm tham số tốt (Grid Search), kiểm tra overfit (Walk Forward), đánh giá rủi ro chuỗi lệnh (Monte Carlo).
+
+Chi tiết từng tab, tham số và cách đọc kết quả: trong app **Ctrl+9** → mục **Optimizer**, hoặc nút 📖 khi đang ở Optimizer (Ctrl+7).
+
+| Tab | Làm gì | Cần trước |
+|-----|--------|-----------|
+| Grid Search | Thử combo tham số, xếp hạng Expectancy/PF/… | Data + Symbol/TF |
+| Walk Forward | IS/OOS rolling — params từ Strategies | Save Parameters sau Grid |
+| Monte Carlo | Xáo thứ tự lệnh — P5/P50/P95, Ruin Rate | Simulation (Ctrl+4) |
+
+Grid/Walk Forward dùng spread & lot từ **Simulation**. Tối đa **500** combo mỗi lần Grid Search.
 
 ### AI Signals (Ctrl+8)
 

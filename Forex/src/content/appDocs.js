@@ -37,12 +37,53 @@ export const DOC_SECTIONS = [
     blocks: [
       {
         type: 'p',
-        text: `${Config.APP_NAME} (PARL) is a frontend-only research platform for Price Action setups. It is NOT a trading bot — use it to discover which setup, pair, timeframe, and parameters perform best.`,
+        text: `${Config.APP_NAME} (PARL) is a frontend-only research platform for Price Action traders. It answers: “Does this setup, on this pair/timeframe, with these parameters, have real edge after spread?” — not “should I trade live right now?”`,
       },
       {
         type: 'callout',
         variant: 'info',
-        text: 'All data stays in your browser (IndexedDB + LocalStorage). No backend, no server required.',
+        text: 'All data stays in your browser (IndexedDB + LocalStorage). No backend, no broker connection, no auto-trading.',
+      },
+      {
+        type: 'h3',
+        text: 'Problems traders face',
+      },
+      {
+        type: 'ul',
+        items: [
+          'Unknown which PA setup (B&R, EMA pullback, liquidity grab) actually has edge on real data.',
+          'Hindsight bias when reviewing charts manually.',
+          'Shallow backtests — signals counted without spread, SL/TP, trailing.',
+          'Too many signals — hard to know which deserve a visual review.',
+          'Parameter tweaking without walk-forward or Monte Carlo validation.',
+          'Fragmented toolchain — data, chart, and Excel in different places.',
+        ],
+      },
+      {
+        type: 'h3',
+        text: 'How PARL helps',
+      },
+      {
+        type: 'table',
+        headers: ['Pain point', 'Module'],
+        rows: [
+          ['Which setup works?', 'Strategies (bar-by-bar scan) → Simulation (realistic trade engine)'],
+          ['Avoid hindsight', 'Chart + Replay; click AI Signals to verify setup at signal time'],
+          ['Filter signals', 'AI Signals — 0–100 score, Min score slider'],
+          ['Optimize parameters', 'Optimizer — grid search, walk-forward, Monte Carlo'],
+          ['Measure results', 'Statistics + Reports — expectancy, PF, drawdown, heatmaps'],
+          ['Manage OHLCV', 'Data Manager — local IndexedDB import/export'],
+        ],
+      },
+      {
+        type: 'callout',
+        variant: 'tip',
+        text: 'Best for: systematic PA research before risking real money. Not a live trading bot.',
+      },
+      {
+        type: 'callout',
+        variant: 'warn',
+        text: 'PARL does NOT: connect to brokers, place live orders, replace a trading journal, or guarantee wins. AI Signals filters display quality only — Simulation still uses all scan signals unless you tighten strategy params.',
       },
       {
         type: 'h3',
@@ -63,10 +104,11 @@ export const DOC_SECTIONS = [
       {
         type: 'steps',
         steps: [
-          { title: 'Import data', body: 'Data Manager — import CSV/JSON or reload bundled defaults.' },
-          { title: 'Scan strategies', body: 'Strategies — run scan to generate signals (bar-by-bar, no lookahead).' },
-          { title: 'Simulate trades', body: 'Simulation — backtest with spread, slippage, SL/TP, trailing.' },
-          { title: 'Analyze results', body: 'Statistics, Reports, Optimizer, AI Signals.' },
+          { title: 'Import data', body: 'Data Manager — CSV/JSON or reload bundled defaults per Symbol+TF.' },
+          { title: 'Scan strategies', body: 'Strategies — bar-by-bar signals (entry, SL, TP).' },
+          { title: 'Filter & verify', body: 'AI Signals — Min score → click signal → Chart with setup annotations.' },
+          { title: 'Simulate trades', body: 'Simulation — spread, slippage, SL/TP, trailing.' },
+          { title: 'Analyze results', body: 'Statistics, Reports, Optimizer.' },
         ],
       },
     ],

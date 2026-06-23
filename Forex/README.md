@@ -1,6 +1,6 @@
 # Price Action Research Lab (PARL)
 
-A **frontend-only** research platform for discovering which Price Action setups perform best. Not a trading bot — no auto-trading, no backend.
+A **frontend-only** research platform for Price Action traders: discover which setups, pairs, timeframes, and parameters have real edge after spread — before risking live capital. Not a trading bot — no auto-trading, no backend, no broker connection.
 
 **Version:** 1.0.0
 
