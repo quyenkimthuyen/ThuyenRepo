@@ -4621,6 +4621,40 @@
     const favoriteStorageKey = "buaComFavoriteCombos";
     let favoriteCombos = loadFavoriteCombos();
 
+    const activeStateStorageKey = "buaComActiveState";
+
+    function loadActiveState() {
+      try {
+        const state = JSON.parse(localStorage.getItem(activeStateStorageKey));
+        if (state) {
+          if (state.activeRegion && menuRegions[state.activeRegion]) {
+            activeRegion = state.activeRegion;
+          }
+          if (state.activeTag) {
+            activeTag = state.activeTag;
+          }
+          if (state.activeView) {
+            activeView = state.activeView;
+          }
+        }
+      } catch (e) {
+        console.error("Error loading active state:", e);
+      }
+    }
+
+    function saveActiveState() {
+      try {
+        localStorage.setItem(
+          activeStateStorageKey,
+          JSON.stringify({ activeRegion, activeTag, activeView })
+        );
+      } catch (e) {
+        console.error("Error saving active state:", e);
+      }
+    }
+
+    loadActiveState();
+
     function normalizeText(value) {
       return value
         .toLowerCase()
@@ -5525,6 +5559,7 @@
       activeRegion = button.dataset.region;
       activeTag = "Tất cả";
       activeView = "all";
+      saveActiveState();
       renderRegionFilters();
       renderSpecialFilters();
       renderTagFilters();
@@ -5541,6 +5576,7 @@
       activeRegion = button.dataset.region;
       activeTag = "Tất cả";
       activeView = "all";
+      saveActiveState();
       renderRegionFilters();
       renderSpecialFilters();
       renderTagFilters();
@@ -5556,6 +5592,7 @@
 
       activeTag = button.dataset.tag;
       activeView = "all";
+      saveActiveState();
       renderTagFilters();
       renderCombos();
     });
@@ -5568,6 +5605,7 @@
       }
 
       activeView = button.dataset.view;
+      saveActiveState();
       renderCombos();
     });
 
