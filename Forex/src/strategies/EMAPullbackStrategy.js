@@ -166,6 +166,8 @@ export class EMAPullbackStrategy extends BaseStrategy {
       this._setState('lastSignalIndex', index);
       this._setState('lastSignalDirection', 'long');
 
+      const fastPeriod = Number(this._getParam('emaFast'));
+
       return createSignal({
         time: candle.timestamp,
         pair: symbol,
@@ -179,6 +181,20 @@ export class EMAPullbackStrategy extends BaseStrategy {
         reason: `EMA pullback long: trend up, touch EMA${this._getParam('emaFast')} (${formatPrice(emaFast, symbol)}), bullish confirm`,
         screenshotPosition: { candleIndex: index, timestamp: candle.timestamp },
         strategyId: EMAPullbackStrategy.id,
+        setup: {
+          levels: [{
+            kind: 'ema-zone',
+            label: `EMA${fastPeriod} zone`,
+            price: zoneLower,
+            priceTo: zoneUpper,
+          }],
+          markers: [{ label: 'Pullback + confirm', time: candle.timestamp, role: 'confirm' }],
+          steps: [
+            `1. Xu hướng tăng (EMA${fastPeriod} > EMA slow)`,
+            '2. Pullback chạm vùng xanh (không vẽ đường EMA)',
+            '3. Nến bullish confirm → Entry',
+          ],
+        },
       });
     }
 
@@ -222,6 +238,20 @@ export class EMAPullbackStrategy extends BaseStrategy {
       reason: `EMA pullback short: trend down, touch EMA${this._getParam('emaFast')} (${formatPrice(emaFast, symbol)}), bearish confirm`,
       screenshotPosition: { candleIndex: index, timestamp: candle.timestamp },
       strategyId: EMAPullbackStrategy.id,
+      setup: {
+        levels: [{
+          kind: 'ema-zone',
+          label: `EMA${Number(this._getParam('emaFast'))} zone`,
+          price: zoneLower,
+          priceTo: zoneUpper,
+        }],
+        markers: [{ label: 'Pullback + confirm', time: candle.timestamp, role: 'confirm' }],
+        steps: [
+          `1. Xu hướng giảm (EMA${Number(this._getParam('emaFast'))} < EMA slow)`,
+          '2. Pullback chạm vùng xanh (không vẽ đường EMA)',
+          '3. Nến bearish confirm → Entry',
+        ],
+      },
     });
   }
 

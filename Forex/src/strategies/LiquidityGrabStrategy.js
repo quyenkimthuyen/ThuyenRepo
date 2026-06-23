@@ -199,6 +199,15 @@ export class LiquidityGrabStrategy extends BaseStrategy {
       reason: `Liquidity grab short: swept ${formatPrice(levelHigh, symbol)}, rejected bar ${index}`,
       screenshotPosition: { candleIndex: index, timestamp: candle.timestamp },
       strategyId: LiquidityGrabStrategy.id,
+      setup: {
+        levels: [{ kind: 'liquidity', label: 'Liquidity', price: levelHigh }],
+        markers: [{ label: 'Sweep + reject', time: candle.timestamp, role: 'sweep' }],
+        steps: [
+          '1. Giá quét vượt liquidity tím',
+          '2. Râu rejection + đóng lại trong vùng',
+          '3. Entry short tại nến xác nhận',
+        ],
+      },
     });
   }
 
@@ -258,6 +267,15 @@ export class LiquidityGrabStrategy extends BaseStrategy {
       reason: `Liquidity grab long: swept ${formatPrice(levelLow, symbol)}, rejected bar ${index}`,
       screenshotPosition: { candleIndex: index, timestamp: candle.timestamp },
       strategyId: LiquidityGrabStrategy.id,
+      setup: {
+        levels: [{ kind: 'liquidity', label: 'Liquidity', price: levelLow }],
+        markers: [{ label: 'Sweep + reject', time: candle.timestamp, role: 'sweep' }],
+        steps: [
+          '1. Giá quét xuống liquidity tím',
+          '2. Râu rejection + đóng lại trên vùng',
+          '3. Entry long tại nến xác nhận',
+        ],
+      },
     });
   }
 

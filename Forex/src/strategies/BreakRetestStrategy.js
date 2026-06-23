@@ -218,6 +218,29 @@ export class BreakRetestStrategy extends BaseStrategy {
         reason: `Bullish B&R: broke ${formatPrice(pending.level, symbol)}, retest bar ${r - pending.breakoutBar}, entry on confirmation`,
         screenshotPosition: { candleIndex: r, timestamp: candle.timestamp },
         strategyId: BreakRetestStrategy.id,
+        setup: {
+          levels: [
+            { kind: 'break-level', label: 'Mức B&R', price: pending.level },
+            { kind: 'invalidation', label: 'Vô hiệu', price: pending.invalidation },
+          ],
+          markers: [
+            {
+              label: 'Breakout',
+              time: pending.breakoutCandle.timestamp,
+              role: 'breakout',
+            },
+            {
+              label: 'Retest + Entry',
+              time: candle.timestamp,
+              role: 'entry',
+            },
+          ],
+          steps: [
+            '1. Giá phá vượt swing level (Breakout)',
+            '2. Hồi retest vùng level cam',
+            '3. Nến xác nhận → Entry xanh dương',
+          ],
+        },
       });
     }
 
@@ -258,6 +281,21 @@ export class BreakRetestStrategy extends BaseStrategy {
       reason: `Bearish B&R: broke ${formatPrice(pending.level, symbol)}, retest bar ${r - pending.breakoutBar}, entry on confirmation`,
       screenshotPosition: { candleIndex: r, timestamp: candle.timestamp },
       strategyId: BreakRetestStrategy.id,
+      setup: {
+        levels: [
+          { kind: 'break-level', label: 'Mức B&R', price: pending.level },
+          { kind: 'invalidation', label: 'Vô hiệu', price: pending.invalidation },
+        ],
+        markers: [
+          { label: 'Breakout', time: pending.breakoutCandle.timestamp, role: 'breakout' },
+          { label: 'Retest + Entry', time: candle.timestamp, role: 'entry' },
+        ],
+        steps: [
+          '1. Giá phá xuống swing level (Breakout)',
+          '2. Hồi retest vùng level cam',
+          '3. Nến xác nhận → Entry xanh dương',
+        ],
+      },
     });
   }
 

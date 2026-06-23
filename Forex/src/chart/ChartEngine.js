@@ -8,6 +8,11 @@ import { Config } from '../core/Config.js';
 import { toChartCandle, toChartCandles } from './CandleAdapter.js';
 import { getChartOptions, getCandlestickColors, getEmaColor, getPriceFormat } from './ChartTheme.js';
 import { buildEmaLineData } from './EMAIndicator.js';
+import {
+  MARKER_ROLE_COLORS,
+  styleForSetupLevel,
+  TRADE_LEVEL_STYLES,
+} from './SetupAnnotationStyles.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('ChartEngine');
@@ -87,37 +92,91 @@ export class ChartEngine {
     const candle = visibleCandles[index];
     if (!candle) return;
 
-    const markerTime = Math.floor(candle.timestamp / 1000);
-    const isLong = highlight.direction === 'long';
+    const markers = [];
 
-    this.#candleSeries.setMarkers([
-      {
-        time: markerTime,
-        position: isLong ? 'belowBar' : 'aboveBar',
-        color: isLong ? '#22c55e' : '#ef4444',
-        shape: isLong ? 'arrowUp' : 'arrowDown',
-        text: 'Entry',
-      },
-    ]);
-
-    const specs = [
-      { price: highlight.entry, color: '#3b82f6', title: 'Entry' },
-      { price: highlight.sl, color: '#ef4444', title: 'SL' },
-      { price: highlight.tp, color: '#22c55e', title: 'TP' },
-    ];
-
-    for (const spec of specs) {
-      const line = this.#candleSeries.createPriceLine({
-        price: spec.price,
-        color: spec.color,
+    for (const level of highlight.setup?.levels ?? []) {
+      const style = styleForSetupLevel(level.kind);
+      this.#priceLines.push(this.#candleSeries.createPriceLine({
+        price: level.price,
+        color: style.color,
         lineWidth: 2,
-        lineStyle: 2,
+        lineStyle: style.lineStyle,
         axisLabelVisible: true,
-        title: spec.title,
-      });
-      this.#priceLines.push(line);
+        title: level.label,
+      }));
+      if (level.priceTo != null && level.priceTo !== level.price) {
+        this.#priceLines.push(this.#candleSeries.createPriceLine({
+          price: level.priceTo,
+          color: style.color,
+          lineWidth: 1,
+          lineStyle: style.lineStyle,
+          axisLabelVisible: false,
+          title: '',
+        }));
+      }
     }
 
+    for (const spec of [
+      { key: 'entry', price: highlight.entry },
+      { key: 'sl', price: highlight.sl },
+      { key: 'tp', price: highlight.tp },
+    ]) {
+      const style = TRADE_LEVEL_STYLES[spec.key];
+      this.#priceLines.push(this.#candleSeries.createPriceLine({
+        price: spec.price,
+        color: style.color,
+        lineWidth: 2,
+        lineStyle: style.lineStyle,
+        axisLabelVisible: true,
+        title: style.title ?? spec.key.toUpperCase(),
+      }));
+    }
+
+    const isLong = highlight.direction === 'long';
+    const entryTime = Math.floor(candle.timestamp / 1000);
+
+    for (const m of highlight.setup?.markers ?? []) {
+      const t = Math.floor(m.time / 1000);
+      const role = m.role ?? 'entry';
+      const color = MARKER_ROLE_COLORS[role] ?? '#94a3b8';
+      let shape = 'circle';
+      let position = 'aboveBar';
+
+      if (role === 'breakout') {
+        shape = 'circle';
+        position = isLong ? 'belowBar' : 'aboveBar';
+      } else if (role === 'sweep') {
+        shape = isLong ? 'arrowUp' : 'arrowDown';
+        position = isLong ? 'belowBar' : 'aboveBar';
+      } else if (role === 'entry') {
+        shape = isLong ? 'arrowUp' : 'arrowDown';
+        position = isLong ? 'belowBar' : 'aboveBar';
+      } else if (role === 'confirm') {
+        shape = isLong ? 'arrowUp' : 'arrowDown';
+        position = isLong ? 'belowBar' : 'aboveBar';
+      }
+
+      markers.push({
+        time: t,
+        position,
+        color,
+        shape,
+        text: m.label,
+      });
+    }
+
+    if (!markers.some((m) => m.time === entryTime)) {
+      markers.push({
+        time: entryTime,
+        position: isLong ? 'belowBar' : 'aboveBar',
+        color: TRADE_LEVEL_STYLES.entry.color,
+        shape: isLong ? 'arrowUp' : 'arrowDown',
+        text: 'Entry',
+      });
+    }
+
+    markers.sort((a, b) => a.time - b.time);
+    this.#candleSeries.setMarkers(markers);
     this.focusOnCandleIndex(index);
   }
 

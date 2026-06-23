@@ -7,6 +7,10 @@ import { bus, Events } from '../core/EventBus.js';
 import { registry } from '../plugin/PluginRegistry.js';
 
 /**
+ * @typedef {import('../chart/SetupAnnotationStyles.js').SignalSetupAnnotations} SignalSetupAnnotations
+ */
+
+/**
  * @typedef {Object} ChartSignalHighlight
  * @property {string} strategyId
  * @property {string} strategyName
@@ -21,6 +25,7 @@ import { registry } from '../plugin/PluginRegistry.js';
  * @property {number} time
  * @property {number} [candleIndex]
  * @property {number} [score]
+ * @property {SignalSetupAnnotations} [setup]
  */
 
 /**
@@ -54,7 +59,43 @@ export function signalToChartHighlight(signal) {
     time,
     candleIndex: signal.screenshotPosition?.candleIndex,
     score: signal.scoreBreakdown?.score ?? signal.confidence,
+    setup: signal.setup ?? inferSetupFromSignal(signal),
   };
+}
+
+/**
+ * Fallback for signals scanned before setup metadata existed.
+ * @param {import('../strategy/Signal.js').Signal} signal
+ * @returns {SignalSetupAnnotations|undefined}
+ */
+function inferSetupFromSignal(signal) {
+  const reason = signal.reason ?? '';
+  const priceMatch = reason.match(/(\d+\.\d{4,5})/);
+  const price = priceMatch ? parseFloat(priceMatch[1]) : null;
+  const time = signal.time || signal.screenshotPosition?.timestamp || 0;
+
+  if (signal.strategyId === 'break-retest' && price != null) {
+    return {
+      levels: [{ kind: 'break-level', label: 'M?c B&R', price }],
+      markers: [{ label: 'Entry', time, role: 'entry' }],
+      steps: ['Phá level ? retest ? entry (scan l?i ?? xem ?? b??c)'],
+    };
+  }
+  if (signal.strategyId === 'liquidity-grab' && price != null) {
+    return {
+      levels: [{ kind: 'liquidity', label: 'Liquidity', price }],
+      markers: [{ label: 'Sweep', time, role: 'sweep' }],
+      steps: ['Quét liquidity ? rejection ? entry'],
+    };
+  }
+  if (signal.strategyId === 'ema-pullback' && price != null) {
+    return {
+      levels: [{ kind: 'ema-zone', label: 'EMA zone', price }],
+      markers: [{ label: 'Confirm', time, role: 'confirm' }],
+      steps: ['Pullback EMA zone ? n?n confirm'],
+    };
+  }
+  return undefined;
 }
 
 /**

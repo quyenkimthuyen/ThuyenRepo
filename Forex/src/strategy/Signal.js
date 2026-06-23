@@ -14,6 +14,10 @@ import { Config } from '../core/Config.js';
  */
 
 /**
+ * @typedef {import('../chart/SetupAnnotationStyles.js').SignalSetupAnnotations} SignalSetupAnnotations
+ */
+
+/**
  * @typedef {Object} Signal
  * @property {string} id - Unique signal identifier
  * @property {number} time - Signal timestamp (epoch ms)
@@ -28,6 +32,7 @@ import { Config } from '../core/Config.js';
  * @property {string} reason - Human-readable setup description
  * @property {ScreenshotPosition} screenshotPosition
  * @property {string} strategyId - Originating strategy plugin ID
+ * @property {SignalSetupAnnotations} [setup] - Chart annotation hints for setup review
  */
 
 let signalCounter = 0;
@@ -71,6 +76,7 @@ export function createSignal(fields) {
       timestamp: fields.time ?? 0,
     },
     strategyId: fields.strategyId,
+    ...(fields.setup ? { setup: fields.setup } : {}),
   };
 }
 

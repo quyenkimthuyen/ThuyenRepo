@@ -20,6 +20,11 @@ import {
 } from '../utils/runnableDatasets.js';
 import { takePendingChartFocus } from '../utils/chartNavigation.js';
 import { formatTimestamp } from '../data/TimeframeUtils.js';
+import {
+  SETUP_LEVEL_STYLES,
+  TRADE_LEVEL_STYLES,
+  MARKER_ROLE_COLORS,
+} from '../chart/SetupAnnotationStyles.js';
 
 const log = createLogger('ChartView');
 
@@ -56,6 +61,9 @@ class ChartViewImpl {
 
   /** @type {import('../utils/chartNavigation.js').ChartSignalHighlight|null} */
   #activeSignal = null;
+
+  /** @type {boolean|null} */
+  #emaRestore = null;
 
   /**
    * Mount the chart view.
@@ -96,6 +104,7 @@ class ChartViewImpl {
     container.appendChild(el('div', { class: 'chart-view' }, [
       this.#renderToolbar(),
       el('div', { class: 'chart-signal-banner', id: 'chart-signal-banner', hidden: true }),
+      el('div', { class: 'chart-setup-legend', id: 'chart-setup-legend', hidden: true }),
       chartContainer,
       ReplayControls.render((action, payload) => this.#handleReplayAction(action, payload)),
     ]));
@@ -277,6 +286,8 @@ class ChartViewImpl {
         const visible = this.#replay.getVisibleCandles();
         this.#chart?.setSignalOverlay(this.#activeSignal, visible);
         this.#showSignalBanner(this.#activeSignal);
+        this.#renderSetupLegend(this.#activeSignal);
+        this.#applySignalEmaMode(true);
       }
 
       if (status) {
@@ -403,10 +414,34 @@ class ChartViewImpl {
     this.#activeSignal = null;
     this.#pendingSignal = null;
     this.#chart?.clearSignalOverlay();
+    this.#applySignalEmaMode(false);
     const banner = this.#container?.querySelector('#chart-signal-banner');
     if (banner) {
       banner.hidden = true;
       banner.innerHTML = '';
+    }
+    const legend = this.#container?.querySelector('#chart-setup-legend');
+    if (legend) {
+      legend.hidden = true;
+      legend.innerHTML = '';
+    }
+  }
+
+  /**
+   * @param {boolean} hideForSignal
+   */
+  #applySignalEmaMode(hideForSignal) {
+    const checkbox = this.#container?.querySelector('#chart-ema');
+    if (hideForSignal) {
+      if (this.#emaRestore === null) {
+        this.#emaRestore = /** @type {HTMLInputElement} */ (checkbox)?.checked ?? true;
+      }
+      if (checkbox) /** @type {HTMLInputElement} */ (checkbox).checked = false;
+      this.#chart?.setEmaVisible(false);
+    } else if (this.#emaRestore !== null) {
+      if (checkbox) /** @type {HTMLInputElement} */ (checkbox).checked = this.#emaRestore;
+      this.#chart?.setEmaVisible(this.#emaRestore);
+      this.#emaRestore = null;
     }
   }
 
@@ -441,9 +476,59 @@ class ChartViewImpl {
     banner.appendChild(el('p', { class: 'chart-signal-banner-levels' }, [
       `Entry ${signal.entry.toFixed(5)} · SL ${signal.sl.toFixed(5)} · TP ${signal.tp.toFixed(5)} · ${signal.rr.toFixed(1)}R`,
     ]));
+
+    if (signal.setup?.steps?.length) {
+      banner.appendChild(el('ol', { class: 'chart-signal-steps' }, signal.setup.steps.map((step) =>
+        el('li', {}, [step])
+      )));
+    }
+
     banner.appendChild(el('p', { class: 'chart-signal-banner-hint' }, [
-      'Replay dừng tại nến signal — mũi tên → xem setup hình thành từng bước (không lộ tương lai).',
+      'Replay dừng tại nến signal — dùng ← → để xem từng bước setup (không lộ tương lai). EMA ẩn khi xem signal.',
     ]));
+  }
+
+  /**
+   * @param {import('../utils/chartNavigation.js').ChartSignalHighlight} signal
+   */
+  #renderSetupLegend(signal) {
+    const legend = this.#container?.querySelector('#chart-setup-legend');
+    if (!legend) return;
+
+    const items = [];
+
+    for (const level of signal.setup?.levels ?? []) {
+      const style = SETUP_LEVEL_STYLES[level.kind] ?? { color: '#94a3b8' };
+      items.push(el('span', { class: 'chart-legend-item' }, [
+        el('span', { class: 'chart-legend-swatch', style: `background:${style.color}` }),
+        level.label,
+      ]));
+    }
+
+    for (const [key, style] of Object.entries(TRADE_LEVEL_STYLES)) {
+      items.push(el('span', { class: 'chart-legend-item' }, [
+        el('span', { class: 'chart-legend-swatch', style: `background:${style.color}` }),
+        style.title,
+      ]));
+    }
+
+    for (const m of signal.setup?.markers ?? []) {
+      const color = MARKER_ROLE_COLORS[m.role ?? 'entry'] ?? '#94a3b8';
+      items.push(el('span', { class: 'chart-legend-item' }, [
+        el('span', { class: 'chart-legend-dot', style: `background:${color}` }),
+        m.label,
+      ]));
+    }
+
+    if (items.length === 0) {
+      legend.hidden = true;
+      return;
+    }
+
+    legend.hidden = false;
+    legend.innerHTML = '';
+    legend.appendChild(el('span', { class: 'chart-legend-title' }, ['Chú thích:']));
+    legend.appendChild(el('div', { class: 'chart-legend-items' }, items));
   }
 }
 
