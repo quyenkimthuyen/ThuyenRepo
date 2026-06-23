@@ -74,7 +74,7 @@ export const CONTEXT_DOC_SECTIONS = [
       {
         type: 'callout',
         variant: 'tip',
-        text: 'Lần đầu: vào Data Manager (Ctrl+2) → Reload Default Data hoặc Generate Sample.',
+        text: 'Lần đầu: vào Data Manager (Ctrl+2) → Reload Default Data hoặc Import file.',
       },
     ],
   },
@@ -144,7 +144,6 @@ export const CONTEXT_DOC_SECTIONS = [
           ['Cập nhật', 'Chọn Symbol + TF → tải lại dataset đó từ data/defaults/'],
           ['Xóa', 'Chọn Symbol + TF → xóa dataset đó khỏi IndexedDB'],
           ['Reload Default Data', 'Tải toàn bộ data/defaults/ (~3 năm). Đợi 1–2 phút full history'],
-          ['Generate Sample', 'Nến giả lập nhanh để test'],
           ['Health bar', 'Data OK = có ít nhất một dataset sẵn sàng scan'],
         ],
       },
@@ -434,8 +433,13 @@ export const CONTEXT_DOC_SECTIONS = [
       },
       {
         type: 'callout',
+        variant: 'info',
+        text: 'Mỗi signal gắn strategyId (Break & Retest, EMA Pullback, …). Thanh meta hiển thị lần scan gần nhất. Run All Enabled: chỉ giữ kết quả strategy scan cuối cùng — muốn xem từng strategy thì Run Selected từng cái.',
+      },
+      {
+        type: 'callout',
         variant: 'tip',
-        text: 'Workflow: Scan (Ctrl+3) → kéo Min score 65–80 → mở Chart kiểm tra top signal → Simulation với cùng Symbol/TF.',
+        text: 'Workflow: Scan (Ctrl+3) → kéo Min score → bấm signal → Chart tự mở đúng Symbol/TF và nhảy replay tới thời điểm signal.',
       },
     ],
   },

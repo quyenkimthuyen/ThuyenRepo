@@ -41,7 +41,7 @@ Open `http://localhost:8080`. Do not open `index.html` directly (`file://` break
 
 - **Import:** CSV, JSON, or `.gz` files
 - **Export:** Download candles as CSV/JSON
-- **Generate sample:** Create demo OHLCV data for testing
+- **Reload defaults:** Load bundled OHLCV from `data/defaults/`
 - **Storage:** IndexedDB (`parl_data` database)
 
 **CSV format:**

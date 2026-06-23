@@ -19,6 +19,7 @@ import {
   fillDatasetSelectors,
   resolveDatasetSelection,
 } from '../utils/runnableDatasets.js';
+import { takePendingChartFocus } from '../utils/chartNavigation.js';
 
 const log = createLogger('ChartView');
 
@@ -47,6 +48,9 @@ class ChartViewImpl {
   /** @type {Function|null} */
   #unsubs = null;
 
+  /** @type {number|null} */
+  #pendingJump = null;
+
   /**
    * Mount the chart view.
    * @param {HTMLElement} container
@@ -60,6 +64,13 @@ class ChartViewImpl {
     const settings = loadFromStorage(Config.STORAGE_KEYS.SETTINGS, {});
     this.#symbol = settings.symbol ?? Config.DEFAULT_SYMBOL;
     this.#timeframe = settings.timeframe ?? Config.DEFAULT_TIMEFRAME;
+
+    const pending = takePendingChartFocus();
+    if (pending) {
+      this.#symbol = pending.symbol;
+      this.#timeframe = pending.timeframe;
+      if (pending.jumpTo != null) this.#pendingJump = pending.jumpTo;
+    }
 
     this.#runnableDatasets = await DataManager.listRunnableDatasets();
     const resolved = resolveDatasetSelection(
@@ -170,9 +181,10 @@ class ChartViewImpl {
   #bindEvents() {
     const unsubs = [];
 
-    unsubs.push(bus.on(Events.CHART_LOAD, ({ symbol, timeframe }) => {
+    unsubs.push(bus.on(Events.CHART_LOAD, ({ symbol, timeframe, jumpTo }) => {
       this.#symbol = symbol;
       this.#timeframe = timeframe;
+      if (jumpTo != null) this.#pendingJump = jumpTo;
       this.#syncSelectors();
       this.#loadChart();
     }));
@@ -225,7 +237,7 @@ class ChartViewImpl {
 
       if (candles.length === 0) {
         if (status) {
-          status.textContent = 'No data — generate sample or import in Data Manager';
+          status.textContent = 'No data — import or reload defaults in Data Manager';
         }
         this.#replay?.load([]);
         this.#chart?.setCandles([]);
@@ -242,6 +254,12 @@ class ChartViewImpl {
           ? ` (chart: ${chartCandles.length.toLocaleString()})`
           : '';
         status.textContent = `${candles.length.toLocaleString()} candles loaded${chartNote}`;
+      }
+
+      if (this.#pendingJump != null) {
+        this.#replay?.jumpToDate(this.#pendingJump);
+        this.#pendingJump = null;
+        ReplayControls.update(this.#replay.getState(), this.#replay.getCurrentCandle());
       }
 
       bus.emit(Events.CHART_LOADED, {

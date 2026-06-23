@@ -13,7 +13,7 @@ python3 -m http.server 8080
 
 Open [http://localhost:8080](http://localhost:8080)
 
-On first launch: **Data Manager** → generate sample data or import CSV.
+On first launch: **Data Manager** → reload default data or import CSV.
 
 ## Features
 

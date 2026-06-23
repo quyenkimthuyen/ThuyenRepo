@@ -13,7 +13,7 @@ python3 -m http.server 8080
 
 Mở trình duyệt: **http://localhost:8080**
 
-Lần đầu: vào **Data Manager (Ctrl+2)** → Generate Sample hoặc Import CSV.
+Lần đầu: vào **Data Manager (Ctrl+2)** → Reload Default Data hoặc Import CSV.
 
 ---
 
@@ -37,7 +37,7 @@ Lần đầu: vào **Data Manager (Ctrl+2)** → Generate Sample hoặc Import C
 
 - Import file CSV, JSON hoặc `.gz`
 - Export dữ liệu để backup
-- Generate sample — tạo dữ liệu demo nhanh
+- Cập nhật / Xóa theo Symbol + TF đã chọn
 - Dữ liệu lưu trong **IndexedDB** (local, không gửi server)
 
 **Định dạng CSV:**
@@ -134,7 +134,7 @@ Xóa dữ liệu site trong trình duyệt = reset toàn bộ. Nên export kết
 
 | Vấn đề | Cách xử lý |
 |--------|------------|
-| Chart trống | Import hoặc generate data ở Data Manager |
+| Chart trống | Reload Default Data hoặc Import ở Data Manager |
 | Statistics trống | Chạy Simulation (Ctrl+4) trước |
 | Monte Carlo lỗi | Cần có kết quả Simulation |
 | Grid search chậm | Giảm số tổ hợp tham số |

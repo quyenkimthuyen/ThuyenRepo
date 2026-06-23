@@ -53,6 +53,25 @@
   padding: var(--space-md);
 }
 
+.signal-card-action {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.signal-card-action:hover {
+  border-color: var(--color-accent);
+  background: var(--color-bg-raised);
+}
+
+.signal-card-action:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .signal-card-header {
   display: flex;
   align-items: center;
@@ -93,6 +112,29 @@
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   font-family: var(--font-mono);
+}
+
+.signal-strategy {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.signal-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.signal-open-hint {
+  display: block;
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-xs);
+  color: var(--color-accent);
 }
 
 .signal-reason {

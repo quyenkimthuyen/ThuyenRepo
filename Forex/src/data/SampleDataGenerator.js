@@ -18,6 +18,7 @@ const VOLATILITY = 0.0008;
 
 /**
  * Generate synthetic candle data using a random walk model.
+ * Used by automated tests only — not exposed in the UI.
  * @param {string} symbol
  * @param {string} timeframe
  * @param {number} [count=Config.SAMPLE_CANDLE_COUNT]
@@ -46,18 +47,4 @@ export function generateSample(symbol, timeframe, count = Config.SAMPLE_CANDLE_C
   }
 
   return sortCandles(candles);
-}
-
-/**
- * Generate sample data for all configured symbols.
- * @param {string} timeframe
- * @param {number} count
- * @returns {Array<{ symbol: string, timeframe: string, candles: import('./Candle.js').Candle[] }>}
- */
-export function generateAllSamples(timeframe, count) {
-  return Config.SYMBOLS.map((symbol) => ({
-    symbol,
-    timeframe,
-    candles: generateSample(symbol, timeframe, count),
-  }));
 }

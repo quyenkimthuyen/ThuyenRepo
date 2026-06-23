@@ -140,9 +140,6 @@ class DataManagerViewImpl {
           el('button', { class: 'btn btn-danger btn-sm', id: 'btn-delete-dataset' }, [
             'Xóa',
           ]),
-          el('button', { class: 'btn btn-secondary', id: 'btn-gen-all' }, [
-            'Generate Sample (All Pairs)',
-          ]),
         ]),
         createHelpButton('data'),
       ]),
@@ -344,28 +341,6 @@ class DataManagerViewImpl {
       } catch (err) {
         bus.emit(Events.LOG_MESSAGE, {
           message: `Xóa thất bại: ${err.message}`,
-          level: 'error',
-          time: new Date(),
-        });
-      } finally {
-        btn.disabled = false;
-      }
-    });
-
-    this.#container?.querySelector('#btn-gen-all')?.addEventListener('click', async () => {
-      const btn = /** @type {HTMLButtonElement} */ (
-        this.#container?.querySelector('#btn-gen-all')
-      );
-      btn.disabled = true;
-      try {
-        const timeframe = Config.DEFAULT_TIMEFRAME;
-        for (const symbol of Config.SYMBOLS) {
-          await DataManager.generateSample(symbol, timeframe);
-        }
-        await this.refresh();
-      } catch (err) {
-        bus.emit(Events.LOG_MESSAGE, {
-          message: `Sample generation failed: ${err.message}`,
           level: 'error',
           time: new Date(),
         });

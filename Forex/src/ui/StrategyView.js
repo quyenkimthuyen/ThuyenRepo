@@ -134,7 +134,7 @@ class StrategyViewImpl {
     } else {
       children.push(el('div', { class: 'strategy-toolbar-group', id: 'strat-no-data' }, [
         el('span', { class: 'strategy-no-data-hint' }, [
-          'Chưa có dữ liệu nến. Mở Data Manager → Reload Default Data, Generate Sample, hoặc Import file. Cần chạy app qua http:// (không mở file://).',
+          'Chưa có dữ liệu nến. Mở Data Manager → Reload Default Data hoặc Import file. Cần chạy app qua http:// (không mở file://).',
         ]),
       ]));
     }

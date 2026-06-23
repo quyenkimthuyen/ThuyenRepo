@@ -63,7 +63,7 @@ export const DOC_SECTIONS = [
       {
         type: 'steps',
         steps: [
-          { title: 'Import data', body: 'Data Manager — import CSV/JSON or generate sample candles.' },
+          { title: 'Import data', body: 'Data Manager — import CSV/JSON or reload bundled defaults.' },
           { title: 'Scan strategies', body: 'Strategies — run scan to generate signals (bar-by-bar, no lookahead).' },
           { title: 'Simulate trades', body: 'Simulation — backtest with spread, slippage, SL/TP, trailing.' },
           { title: 'Analyze results', body: 'Statistics, Reports, Optimizer, AI Signals.' },
@@ -105,7 +105,7 @@ python3 -m http.server 8080
       {
         type: 'callout',
         variant: 'tip',
-        text: 'First launch: go to Data Manager (Ctrl+2) and generate sample data or import your OHLCV CSV.',
+        text: 'First launch: go to Data Manager (Ctrl+2) and reload default data or import your OHLCV CSV.',
       },
     ],
   },
@@ -123,7 +123,7 @@ python3 -m http.server 8080
         items: [
           'Import CSV/JSON or .gz compressed files',
           'Export candles for backup',
-          'Generate sample data for quick testing',
+          'Reload bundled default data from data/defaults/',
           'View gap detection and candle counts per symbol',
         ],
       },
@@ -335,7 +335,7 @@ python3 -m http.server 8080
       },
       {
         type: 'p',
-        text: 'Import data in Data Manager or generate sample data for your symbol/timeframe, then reload Chart.',
+        text: 'Import or reload default data in Data Manager for your symbol/timeframe, then reload Chart.',
       },
       {
         type: 'h3',

@@ -9,6 +9,7 @@ import { bus, Events } from '../core/EventBus.js';
 import { el, clamp, loadFromStorage, saveToStorage } from '../utils/dom.js';
 import { createLogger } from '../utils/logger.js';
 import DataManager from '../data/DataManager.js';
+import { requestChartFocus } from '../utils/chartNavigation.js';
 
 const log = createLogger('PanelManager');
 
@@ -104,8 +105,7 @@ class PanelManagerImpl {
     watchlist?.addEventListener('click', (e) => {
       const item = /** @type {HTMLElement} */ (e.target).closest('.watchlist-item');
       if (!item?.dataset.symbol) return;
-      bus.emit(Events.NAVIGATE, { view: 'chart' });
-      bus.emit(Events.CHART_LOAD, {
+      requestChartFocus({
         symbol: item.dataset.symbol,
         timeframe: item.dataset.timeframe,
       });

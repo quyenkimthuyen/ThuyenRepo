@@ -6,10 +6,21 @@
 import { bus, Events } from '../core/EventBus.js';
 import { el } from '../utils/dom.js';
 import ScoringEngine from '../scoring/ScoringEngine.js';
+import { registry } from '../plugin/PluginRegistry.js';
+import { formatTimestamp } from '../data/TimeframeUtils.js';
+import { requestChartFocus } from '../utils/chartNavigation.js';
 import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('SignalsView');
+
+/**
+ * @param {string} strategyId
+ * @returns {string}
+ */
+function strategyLabel(strategyId) {
+  return registry.get(strategyId)?.name ?? strategyId;
+}
 
 /** @type {number} */
 let minScoreFilter = 0;
@@ -87,7 +98,7 @@ class SignalsViewImpl {
     );
 
     if (meta) {
-      meta.textContent = `${set.strategyId} · ${set.symbol} ${set.timeframe} · ${filtered.length}/${set.signals.length} signals · avg ${set.avgScore.toFixed(0)}/100`;
+      meta.textContent = `${strategyLabel(set.strategyId)} (${set.strategyId}) · ${set.symbol} ${set.timeframe} · ${filtered.length}/${set.signals.length} signals · avg ${set.avgScore.toFixed(0)}/100 · bấm signal để mở Chart`;
     }
 
     if (!list) return;
@@ -111,16 +122,44 @@ class SignalsViewImpl {
         )
         : [];
 
-      list.appendChild(el('div', { class: 'signal-card' }, [
+      const jumpAt = signal.time || signal.screenshotPosition?.timestamp;
+      const card = el('button', {
+        type: 'button',
+        class: 'signal-card signal-card-action',
+        title: 'Mở Chart tại thời điểm signal',
+      }, [
         el('div', { class: 'signal-card-header' }, [
           el('span', { class: `signal-grade grade-${grade}` }, [grade]),
           el('span', { class: 'signal-score' }, [`${score}/100`]),
+          el('span', { class: 'signal-strategy' }, [strategyLabel(signal.strategyId)]),
           el('span', { class: `signal-dir signal-${signal.direction}` }, [signal.direction.toUpperCase()]),
           el('span', { class: 'signal-rr' }, [`${signal.rr.toFixed(1)}R`]),
         ]),
+        el('div', { class: 'signal-card-meta' }, [
+          el('span', { class: 'signal-time' }, [formatTimestamp(jumpAt)]),
+          el('span', { class: 'signal-prices' }, [
+            `E ${signal.entry.toFixed(5)} · SL ${signal.sl.toFixed(5)} · TP ${signal.tp.toFixed(5)}`,
+          ]),
+        ]),
         el('p', { class: 'signal-reason' }, [signal.reason || 'No reason']),
         el('div', { class: 'signal-factors' }, factorBars),
-      ]));
+        el('span', { class: 'signal-open-hint' }, ['→ Xem trên Chart']),
+      ]);
+
+      card.addEventListener('click', () => {
+        requestChartFocus({
+          symbol: signal.pair,
+          timeframe: signal.timeframe,
+          jumpTo: jumpAt,
+        });
+        bus.emit(Events.LOG_MESSAGE, {
+          message: `Chart: ${signal.pair} ${signal.timeframe} @ ${formatTimestamp(jumpAt)} (${strategyLabel(signal.strategyId)})`,
+          level: 'info',
+          time: new Date(),
+        });
+      });
+
+      list.appendChild(card);
     }
 
     if (filtered.length > 100) {

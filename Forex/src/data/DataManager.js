@@ -12,7 +12,6 @@ import { mergeCandles, detectGaps, computeStats } from './CandleMerge.js';
 import { importFromText } from './DataImporter.js';
 import { exportCSV, exportJSON, downloadFile, downloadBinary } from './DataExporter.js';
 import { compress, decompress } from './Compression.js';
-import { generateSample } from './SampleDataGenerator.js';
 import { loadDefaultDatasets, probeDefaultData } from './DefaultDataLoader.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -75,8 +74,10 @@ const DataManager = {
       eurusdH1 = await this.getCandleCount('EURUSD', 'H1');
     }
     if (eurusdH1 === 0) {
-      emitDataLog('Default files unavailable — generating sample EURUSD H1…', 'warn');
-      await this.generateSample('EURUSD', 'H1');
+      emitDataLog(
+        'Chưa có dữ liệu — mở Data Manager → Reload Default Data hoặc Import (cần chạy qua http://).',
+        'warn'
+      );
     }
 
     setBootMessage('Starting Price Action Research Lab…');
@@ -365,20 +366,6 @@ const DataManager = {
       bus.emit(Events.DATA_UPDATED, { deletedTimeframe: timeframe, count: targets.length });
     }
     return targets.length;
-  },
-
-  /**
-   * Generate and store synthetic sample data.
-   * @param {string} symbol
-   * @param {string} timeframe
-   * @param {number} [count]
-   * @returns {Promise<import('./Candle.js').DatasetMetadata>}
-   */
-  async generateSample(symbol, timeframe, count) {
-    const candles = generateSample(symbol, timeframe, count);
-    const metadata = await this.saveCandles(symbol, timeframe, candles);
-    emitDataLog(`Generated ${candles.length} sample candles for ${symbol} ${timeframe}`);
-    return metadata;
   },
 
 };
