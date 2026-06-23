@@ -4,6 +4,7 @@
  */
 
 import { el, resolveAppAsset } from '../utils/dom.js';
+import { getStrategyDiagram } from '../content/strategyDiagrams.js';
 
 /**
  * @param {import('../content/contextDocsVi.js').DocBlock} block
@@ -59,11 +60,29 @@ export function renderDocBlock(block) {
       ]);
     }
     case 'image': {
-      const portrait = block.layout === 'portrait';
+      const portrait = block.layout === 'portrait' || block.diagramId;
+      const figureClass = `docs-figure${portrait ? ' docs-figure-portrait' : ''}`;
+
+      if (block.diagramId) {
+        const svg = getStrategyDiagram(block.diagramId);
+        const figure = el('figure', { class: figureClass });
+        if (svg) {
+          const wrap = el('div', { class: 'docs-svg-wrap' });
+          wrap.innerHTML = svg;
+          figure.appendChild(wrap);
+        } else {
+          figure.appendChild(el('p', { class: 'docs-img-fallback' }, [
+            `Không tìm thấy sơ đồ: ${block.diagramId}`,
+          ]));
+        }
+        if (block.caption) {
+          figure.appendChild(el('figcaption', { class: 'docs-figcaption' }, [block.caption]));
+        }
+        return figure;
+      }
+
       const src = resolveAppAsset(block.src ?? '');
-      const figure = el('figure', {
-        class: `docs-figure${portrait ? ' docs-figure-portrait' : ''}`,
-      }, [
+      const figure = el('figure', { class: figureClass }, [
         el('img', {
           class: 'docs-img',
           src,

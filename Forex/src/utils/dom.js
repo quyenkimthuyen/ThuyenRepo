@@ -88,6 +88,11 @@ export function saveToStorage(key, value) {
  */
 export function resolveAppAsset(relativePath) {
   const clean = relativePath.replace(/^\//, '');
+  try {
+    return new URL(`../../${clean}`, import.meta.url).href;
+  } catch {
+    /* fall through */
+  }
   if (typeof document !== 'undefined') {
     try {
       return new URL(clean, document.baseURI).href;
