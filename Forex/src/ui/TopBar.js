@@ -28,10 +28,6 @@ export const TopBar = {
         el('span', { class: 'app-logo' }, [Config.APP_SHORT_NAME]),
         el('span', { class: 'app-title' }, [Config.APP_NAME]),
       ]),
-      el('div', { class: 'topbar-center' }, [
-        el('span', { class: 'symbol-badge' }, [Config.DEFAULT_SYMBOL]),
-        el('span', { class: 'timeframe-badge' }, [Config.DEFAULT_TIMEFRAME]),
-      ]),
       el('div', { class: 'topbar-right' }, [
         el('button', {
           class: 'btn-icon docs-btn',

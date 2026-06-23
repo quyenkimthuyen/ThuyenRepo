@@ -167,63 +167,221 @@ export const CONTEXT_DOC_SECTIONS = [
   {
     id: 'strategy',
     title: 'Strategies — Scan chiến lược',
-    subtitle: 'Sinh signal Price Action bar-by-bar, không lookahead.',
+    subtitle: 'Ba setup Price Action: engine duyệt từng nến, không nhìn trước tương lai.',
     icon: '⚙️',
     viewIds: ['strategy'],
     blocks: [
-      { type: 'h3', text: 'Mục đích' },
+      { type: 'h3', text: 'Engine hoạt động thế nào?' },
       {
         type: 'p',
-        text: 'Chạy plugin trên dữ liệu đã lưu → signal (entry, SL, TP, R:R). Input cho Simulation và AI scoring.',
+        text: 'Mỗi nến i, engine chỉ dùng dữ liệu candles[0..i]. Tại mỗi bar: calculate() cập nhật state → generateSignal() kiểm tra điều kiện → nếu hợp lệ sinh 1 signal (entry=close nến đó, SL/TP theo RR). Không lookahead.',
       },
       {
-        type: 'table',
-        headers: ['Thành phần', 'Ý nghĩa'],
-        rows: [
-          ['Symbol / TF', 'Chỉ hiện khi đã có nến'],
-          ['Run Selected', 'Scan một strategy'],
-          ['Run All Enabled', 'Scan mọi strategy ON'],
-          ['Save Parameters', 'Lưu tham số local'],
-          ['Last Scan', 'Kết quả lần chạy gần nhất'],
+        type: 'steps',
+        steps: [
+          { title: 'Chọn Symbol + TF', body: 'Chỉ hiện khi IndexedDB đã có nến. Phải khớp dữ liệu bạn muốn nghiên cứu.' },
+          { title: 'Bật strategy (ON)', body: 'Tick plugin trong danh sách trái. Tắt strategy không cần scan.' },
+          { title: 'Chỉnh tham số', body: 'Panel phải — Save Parameters để lưu local. Optimizer có thể ghi đè sau Grid Search.' },
+          { title: 'Run Selected / Run All', body: 'Quét toàn bộ lịch sử bar-by-bar. Kết quả → Last Scan + AI scoring tự động.' },
         ],
       },
-      { type: 'h3', text: 'Break & Retest' },
       {
         type: 'table',
-        headers: ['Tham số', 'Ý nghĩa'],
+        headers: ['Thành phần UI', 'Ý nghĩa'],
         rows: [
-          ['Breakout (pips)', 'Vượt swing tối thiểu bao nhiêu pip'],
-          ['Retest Max Bars', 'Chờ retest tối đa bao nến'],
-          ['Risk Reward', 'Hệ số TP/SL'],
-          ['Swing Lookback', 'Độ rộng tìm swing'],
-        ],
-      },
-      { type: 'h3', text: 'EMA Pullback' },
-      {
-        type: 'table',
-        headers: ['Tham số', 'Ý nghĩa'],
-        rows: [
-          ['EMA Fast/Slow', 'Xác định xu hướng (20/50)'],
-          ['Pullback Tolerance', 'Khoảng chạm EMA cho phép (pip)'],
-          ['Min Trend Bars', 'Nến xác nhận xu hướng'],
-          ['Risk Reward', 'Hệ số R:R'],
-        ],
-      },
-      { type: 'h3', text: 'Liquidity Grab' },
-      {
-        type: 'table',
-        headers: ['Tham số', 'Ý nghĩa'],
-        rows: [
-          ['Swing Lookback', 'Vùng swing / liquidity'],
-          ['Grab Pips', 'Vượt swing thêm bao nhiêu pip'],
-          ['Wick Ratio', 'Râu rejection tối thiểu'],
-          ['Risk Reward', 'Hệ số R:R'],
+          ['Run Selected', 'Scan một strategy đang chọn'],
+          ['Run All Enabled', 'Scan mọi strategy đang ON'],
+          ['Save Parameters', 'Lưu tham số vào LocalStorage'],
+          ['Last Scan', 'Số signal, thời gian chạy gần nhất'],
+          ['Export JSON', 'Xuất signal để phân tích ngoài app'],
         ],
       },
       {
         type: 'callout',
         variant: 'warn',
-        text: 'Scan xong tự chấm AI. Simulation dùng toàn bộ signal — chưa lọc Min score.',
+        text: 'Simulation dùng TOÀN BỘ signal từ scan — chưa lọc Min score ở AI Signals. Scan xong AI chấm điểm tự động.',
+      },
+
+      { type: 'h2', text: '1. Break & Retest (break-retest)' },
+      {
+        type: 'p',
+        text: 'Ý tưởng: giá phá vỡ swing high/low, sau đó retest level cũ (đổi vai support/resistance) rồi tiếp tục theo hướng breakout. Dùng state machine 2 giai đoạn — không phải tín hiệu ngay tại nến breakout.',
+      },
+      {
+        type: 'image',
+        src: 'assets/docs/strategies/break-retest-long.svg',
+        alt: 'Sơ đồ Break and Retest Long',
+        caption: 'LONG: (1) Swing high = level kháng cự → (2) Breakout close vượt level + breakoutPips → (3) Trong retestMaxBars, nến retest chạm vùng level + nến xác nhận tăng → Entry tại close nến retest.',
+      },
+      { type: 'h3', text: 'Khi nào có tín hiệu LONG?' },
+      {
+        type: 'ol',
+        items: [
+          'Swing high = max(high) của swingLookback nến trước (không tính nến hiện tại).',
+          'Nến breakout: close ≥ level + breakoutPips (mặc định 5 pip).',
+          'Trong tối đa retestMaxBars nến sau breakout: nến retest chạm vùng level ±2 pip.',
+          'Nến retest là nến xác nhận tăng: close > open, close ở 40% trên của range.',
+          'Close retest không phá invalidation (đáy nến breakout − buffer).',
+        ],
+      },
+      { type: 'h3', text: 'Khi nào có tín hiệu SHORT?' },
+      {
+        type: 'p',
+        text: 'Đối xứng: swing low, close phá xuống dưới level − breakoutPips, retest vùng level từ dưới, nến xác nhận giảm, SL trên đỉnh retest.',
+      },
+      { type: 'h3', text: 'Khi nào KHÔNG có tín hiệu?' },
+      {
+        type: 'ul',
+        items: [
+          'Breakout không đủ pip (close chưa vượt ngưỡng).',
+          'Quá retestMaxBars mà chưa retest → setup hết hạn.',
+          'Trước khi retest, close phá invalidation → setup hủy.',
+          'Nến retest chạm level nhưng không phải nến xác nhận (doji, body yếu).',
+        ],
+      },
+      {
+        type: 'table',
+        headers: ['Tham số', 'Mặc định', 'Tác dụng'],
+        rows: [
+          ['breakoutPips', '5', 'Close phải vượt level thêm X pip mới coi là breakout thật'],
+          ['retestMaxBars', '10', 'Chờ retest tối đa bao nhiêu nến — ngắn = ít signal, dài = nhiều cơ hội retest'],
+          ['swingLookback', '5', 'Độ rộng tìm swing — lớn = level “cứng” hơn, ít signal hơn'],
+          ['rr', '2', 'TP = entry ± RR × khoảng cách SL'],
+        ],
+      },
+      {
+        type: 'callout',
+        variant: 'tip',
+        text: 'Entry = close nến retest. SL = dưới đáy retest (long) hoặc trên đỉnh retest (short) + 1 pip buffer. Signal có reason dạng "Bullish B&R: broke 1.08450, retest bar 3…".',
+      },
+
+      { type: 'h2', text: '2. EMA Pullback (ema-pullback)' },
+      {
+        type: 'p',
+        text: 'Ý tưởng: xu hướng xác nhận bởi EMA nhanh/chậm, chờ giá hồi về vùng EMA nhanh, entry khi nến xác nhận hướng trend. Tín hiệu tại CÙNG nến pullback — không chờ nến sau.',
+      },
+      {
+        type: 'image',
+        src: 'assets/docs/strategies/ema-pullback-long.svg',
+        alt: 'Sơ đồ EMA Pullback Long',
+        caption: 'LONG: EMA20 > EMA50, xu hướng tăng xác nhận → giá hồi chạm vùng EMA20 (± pullbackTolerancePips) → nến tăng xác nhận, close trên EMA20, low vẫn trên EMA50.',
+      },
+      { type: 'h3', text: 'Xu hướng tăng (đủ điều kiện LONG)' },
+      {
+        type: 'ul',
+        items: [
+          'EMA fast > EMA slow và EMA fast đang dốc lên (so với trendBars nến trước).',
+          'Close > EMA slow — giá trên xu hướng dài.',
+          'Ít nhất 60% số nến trong trendBars có close cao hơn nến trước.',
+          'Khoảng cách EMA fast–slow từ 3 đến 50 pip (tránh sideway và overextended).',
+        ],
+      },
+      { type: 'h3', text: 'Khi nào có tín hiệu tại nến i?' },
+      {
+        type: 'ol',
+        items: [
+          'LONG: uptrend OK + low chạm vùng EMA fast ± tolerance + nến xác nhận tăng + close > EMA fast + low > EMA slow (không phá slow).',
+          'SHORT: downtrend đối xứng + high chạm vùng EMA + nến giảm xác nhận + close < EMA fast + high < EMA slow.',
+        ],
+      },
+      { type: 'h3', text: 'Khi nào KHÔNG có tín hiệu?' },
+      {
+        type: 'ul',
+        items: [
+          'EMA20 và EMA50 quá gần (< 3 pip) hoặc quá xa (> 50 pip).',
+          'Chạm EMA nhưng close không phục hồi đúng phía (close dưới EMA fast khi muốn long).',
+          'Low (long) hoặc high (short) phá qua EMA slow — trend bị nghi ngờ.',
+          'Trong trendBars nến sau signal trước (cooldown — tránh trùng lặp).',
+        ],
+      },
+      {
+        type: 'table',
+        headers: ['Tham số', 'Mặc định', 'Tác dụng'],
+        rows: [
+          ['emaFast / emaSlow', '20 / 50', 'Cặp EMA xác định trend và vùng pullback'],
+          ['pullbackTolerancePips', '3', 'Vùng chấp nhận quanh EMA fast — rộng = nhiều signal hơn'],
+          ['trendBars', '5', 'Số nến xác nhận xu hướng + cooldown sau mỗi signal'],
+          ['rr', '2', 'Hệ số risk:reward cho TP'],
+        ],
+      },
+      {
+        type: 'callout',
+        variant: 'tip',
+        text: 'Setup đẹp: chỉ râu chạm EMA, thân nến đóng cửa phía trên EMA (wick rejection). Confidence AI cộng thêm điểm cho pattern này.',
+      },
+
+      { type: 'h2', text: '3. Liquidity Grab (liquidity-grab)' },
+      {
+        type: 'p',
+        text: 'Ý tưởng: false breakout — giá quét qua swing high/low (lấy liquidity / stop hunt), rồi đóng cửa quay lại trong range. Tín hiệu NGAY tại nến grab (single-bar), không chờ retest.',
+      },
+      {
+        type: 'image',
+        src: 'assets/docs/strategies/liquidity-grab-short.svg',
+        alt: 'Sơ đồ Liquidity Grab Short',
+        caption: 'SHORT: High quét trên swing high thêm grabPips, nhưng close đóng cửa DƯỚI level + râu trên ≥ wickRatio × range + nến giảm xác nhận.',
+      },
+      {
+        type: 'image',
+        src: 'assets/docs/strategies/liquidity-grab-long.svg',
+        alt: 'Sơ đồ Liquidity Grab Long',
+        caption: 'LONG: Low quét dưới swing low, close quay lại TRÊN level + râu dưới lớn + nến tăng xác nhận.',
+      },
+      { type: 'h3', text: 'SHORT — đủ 4 điều kiện cùng lúc' },
+      {
+        type: 'ol',
+        items: [
+          'high ≥ swingHigh + grabPips (quét đỉnh đủ xa).',
+          'close < swingHigh (đóng cửa quay lại dưới level — false breakout).',
+          'Râu trên / range nến ≥ wickRatio (mặc định 0.6 = 60%).',
+          'Nến xác nhận giảm. SL = trên high nến grab + buffer.',
+        ],
+      },
+      { type: 'h3', text: 'LONG — đối xứng' },
+      {
+        type: 'ol',
+        items: [
+          'low ≤ swingLow − grabPips.',
+          'close > swingLow.',
+          'Râu dưới / range ≥ wickRatio + nến tăng xác nhận.',
+          'SL = dưới low nến grab.',
+        ],
+      },
+      { type: 'h3', text: 'Khi nào KHÔNG có tín hiệu?' },
+      {
+        type: 'ul',
+        items: [
+          'Quét swing nhưng close vẫn ngoài level (breakout thật, không phải grab).',
+          'Râu rejection quá nhỏ (< wickRatio).',
+          'Volume nến grab < 80% trung bình (nếu data có volume).',
+          'Đã có signal cùng hướng từ cùng level trong swingLookback×2 nến gần đây.',
+        ],
+      },
+      {
+        type: 'table',
+        headers: ['Tham số', 'Mặc định', 'Tác dụng'],
+        rows: [
+          ['swingLookback', '7', 'Độ rộng tìm swing bị quét'],
+          ['grabPips', '3', 'Phải vượt swing thêm X pip — lọc touch nhẹ'],
+          ['wickRatio', '0.6', 'Râu rejection tối thiểu — cao = setup “sạch” hơn, ít signal'],
+          ['rr', '2', 'TP theo bội số R'],
+        ],
+      },
+
+      { type: 'h3', text: 'Nến xác nhận (dùng chung cả 3 strategy)' },
+      {
+        type: 'table',
+        headers: ['Loại', 'Điều kiện'],
+        rows: [
+          ['Tăng', 'close > open VÀ close nằm ở 40% trên của range nến'],
+          ['Giảm', 'close < open VÀ close nằm ở 40% dưới của range nến'],
+          ['Doji', 'Range < 0.5 pip → KHÔNG được coi là xác nhận'],
+        ],
+      },
+      {
+        type: 'callout',
+        variant: 'info',
+        text: 'Sau scan: mở AI Signals lọc điểm → Chart Jump to date tại timestamp signal để đối chiếu bằng mắt. Reason trên mỗi signal mô tả level giá và bar index.',
       },
     ],
   },

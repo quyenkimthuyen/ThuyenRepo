@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" role="img" aria-label="Liquidity Grab Short">
+  <defs>
+    <style>
+      .bg { fill: #0f1419; }
+      .grid { stroke: #1e2a38; stroke-width: 1; }
+      .level { stroke: #f59e0b; stroke-width: 2; stroke-dasharray: 6 4; }
+      .wick { stroke: #8b9cb3; stroke-width: 2; }
+      .bull { fill: #22c55e; stroke: #22c55e; }
+      .bear { fill: #ef4444; stroke: #ef4444; }
+      .label { fill: #c8d4e0; font: 600 13px Inter, sans-serif; }
+      .note { fill: #8b9cb3; font: 12px Inter, sans-serif; }
+      .grab-zone { fill: rgba(239,68,68,0.15); }
+      .entry { stroke: #ef4444; stroke-width: 2; }
+      .sl { stroke: #f87171; stroke-width: 2; stroke-dasharray: 4 3; }
+      .tp { stroke: #22c55e; stroke-width: 2; stroke-dasharray: 4 3; }
+    </style>
+  </defs>
+  <rect class="bg" width="720" height="320"/>
+  <line class="grid" x1="40" y1="80" x2="680" y2="80"/>
+  <line class="grid" x1="40" y1="140" x2="680" y2="140"/>
+  <line class="grid" x1="40" y1="200" x2="680" y2="200"/>
+  <line class="grid" x1="40" y1="260" x2="680" y2="260"/>
+  <line class="level" x1="60" y1="140" x2="660" y2="140"/>
+  <text class="label" x="62" y="132">Swing High  vùng liquidity (stop buy)</text>
+  <rect class="grab-zone" x="280" y="100" width="80" height="45" rx="4"/>
+  <text class="note" x="285" y="118">Quét thêm grabPips</text>
+  <!-- prior candles -->
+  <line class="wick" x1="120" y1="165" x2="120" y2="125"/><rect class="bull" x="112" y="140" width="16" height="20"/>
+  <line class="wick" x1="170" y1="160" x2="170" y2="130"/><rect class="bear" x="162" y="138" width="16" height="18"/>
+  <line class="wick" x1="220" y1="158" x2="220" y2="128"/><rect class="bull" x="212" y="135" width="16" height="18"/>
+  <!-- grab candle with long upper wick -->
+  <line class="wick" x1="320" y1="95" x2="320" y2="175"/><rect class="bear" x="312" y="148" width="16" height="22"/>
+  <text class="note" x="350" y="105">High v°ãt level, close quay l¡i d°Ûi level</text>
+  <text class="note" x="350" y="122">Râu trên e wickRatio × range + n¿n gi£m xác nh­n</text>
+  <!-- follow through -->
+  <line class="wick" x1="400" y1="170" x2="400" y2="145"/><rect class="bear" x="392" y="150" width="16" height="18"/>
+  <line class="wick" x1="460" y1="185" x2="460" y2="155"/><rect class="bear" x="452" y="162" width="16" height="18"/>
+  <line class="entry" x1="280" y1="170" x2="620" y2="170"/>
+  <text class="label" x="625" y="174" fill="#ef4444">Entry SHORT</text>
+  <line class="sl" x1="280" y1="98" x2="620" y2="98"/>
+  <text class="label" x="625" y="102" fill="#f87171">SL trên Énh grab</text>
+  <line class="tp" x1="280" y1="230" x2="620" y2="230"/>
+  <text class="label" x="625" y="234" fill="#22c55e">TP theo RR</text>
+  <text class="note" x="60" y="300">Tín hiÇu ngay t¡i n¿n grab  không chÝ retest (single-bar pattern)</text>
+</svg>

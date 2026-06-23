@@ -58,6 +58,20 @@ export function renderDocBlock(block) {
         el('table', { class: 'docs-table' }, [head, body]),
       ]);
     }
+    case 'image': {
+      const figure = el('figure', { class: 'docs-figure' }, [
+        el('img', {
+          class: 'docs-img',
+          src: block.src ?? '',
+          alt: block.alt ?? block.caption ?? '',
+          loading: 'lazy',
+        }),
+      ]);
+      if (block.caption) {
+        figure.appendChild(el('figcaption', { class: 'docs-figcaption' }, [block.caption]));
+      }
+      return figure;
+    }
     default:
       return el('div', {}, []);
   }
