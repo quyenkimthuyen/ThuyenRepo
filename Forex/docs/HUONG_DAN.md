@@ -109,15 +109,15 @@ Expectancy, profit factor, max drawdown, Sharpe, streaks, equity curve, drawdown
 
 ### Optimizer (Ctrl+7)
 
-**Mục đích:** tìm tham số tốt (Grid Search), kiểm tra overfit (Walk Forward), đánh giá rủi ro chuỗi lệnh (Monte Carlo).
+**Mục đích:** tìm cài đặt tốt (Grid Search), tránh “học vẹt” quá khứ (Walk Forward), xem chuỗi thua có thể làm tài khoản tệ cỡ nào (Monte Carlo).
 
-Chi tiết từng tab, tham số và cách đọc kết quả: trong app **Ctrl+9** → mục **Optimizer**, hoặc nút 📖 khi đang ở Optimizer (Ctrl+7).
+Chi tiết từng tab và **từ điển thuật ngữ** (Overfit, Iterations, Ruin Rate…): trong app **Ctrl+9** → mục **Optimizer** hoặc **Từ điển thuật ngữ**, hoặc nút 📖 khi đang ở Optimizer.
 
-| Tab | Làm gì | Cần trước |
-|-----|--------|-----------|
-| Grid Search | Thử combo tham số, xếp hạng Expectancy/PF/… | Data + Symbol/TF |
-| Walk Forward | IS/OOS rolling — params từ Strategies | Save Parameters sau Grid |
-| Monte Carlo | Xáo thứ tự lệnh — P5/P50/P95, Ruin Rate | Simulation (Ctrl+4) |
+| Tab | Làm gì (nói đơn giản) | Cần trước |
+|-----|------------------------|-----------|
+| Grid Search | Thử nhiều combo cài đặt, xếp hạng theo lãi/lệnh, PF… | Data + Symbol/TF |
+| Walk Forward | Lãi đoạn cũ có còn ở đoạn mới ngay sau không | Save Parameters sau Grid |
+| Monte Carlo | Xáo thứ tự lệnh — xem kịch bản xấu (P5) và % gần cháy (Ruin Rate) | Simulation (Ctrl+4) |
 
 Grid/Walk Forward dùng spread & lot từ **Simulation**. Tối đa **500** combo mỗi lần Grid Search.
 
