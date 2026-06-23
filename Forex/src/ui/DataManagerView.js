@@ -136,6 +136,9 @@ class DataManagerViewImpl {
           el('button', { class: 'btn btn-secondary', id: 'btn-reload-eurusd-h1' }, [
             'Cập nhật EURUSD H1',
           ]),
+          el('button', { class: 'btn btn-danger btn-sm', id: 'btn-delete-h1' }, [
+            'Xóa tất cả H1',
+          ]),
           el('button', { class: 'btn btn-secondary', id: 'btn-gen-all' }, [
             'Generate Sample (All Pairs)',
           ]),
@@ -305,6 +308,31 @@ class DataManagerViewImpl {
       await this.#runReload('btn-reload-eurusd-h1', 'Đang tải…', 'Cập nhật EURUSD H1', () =>
         DataManager.reloadBundledDataset('EURUSD', 'H1')
       );
+    });
+
+    this.#container?.querySelector('#btn-delete-h1')?.addEventListener('click', async () => {
+      if (!confirm('Xóa toàn bộ dữ liệu H1 (mọi cặp) trong IndexedDB?')) return;
+      const btn = /** @type {HTMLButtonElement} */ (
+        this.#container?.querySelector('#btn-delete-h1')
+      );
+      btn.disabled = true;
+      try {
+        const count = await DataManager.deleteTimeframe('H1');
+        await this.refresh();
+        bus.emit(Events.LOG_MESSAGE, {
+          message: count > 0 ? `Đã xóa ${count} dataset H1.` : 'Không có dữ liệu H1.',
+          level: 'info',
+          time: new Date(),
+        });
+      } catch (err) {
+        bus.emit(Events.LOG_MESSAGE, {
+          message: `Xóa H1 thất bại: ${err.message}`,
+          level: 'error',
+          time: new Date(),
+        });
+      } finally {
+        btn.disabled = false;
+      }
     });
 
     this.#container?.querySelector('#btn-gen-all')?.addEventListener('click', async () => {

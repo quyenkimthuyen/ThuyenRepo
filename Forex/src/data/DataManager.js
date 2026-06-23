@@ -350,6 +350,24 @@ const DataManager = {
   },
 
   /**
+   * Delete all stored datasets for a timeframe (e.g. all H1).
+   * @param {string} timeframe
+   * @returns {Promise<number>} Number of datasets removed
+   */
+  async deleteTimeframe(timeframe) {
+    const datasets = await this.listDatasets();
+    const targets = datasets.filter((d) => d.timeframe === timeframe);
+    for (const ds of targets) {
+      await store.deleteDataset(ds.symbol, ds.timeframe);
+    }
+    if (targets.length > 0) {
+      emitDataLog(`Deleted ${targets.length} dataset(s) for timeframe ${timeframe}`);
+      bus.emit(Events.DATA_UPDATED, { deletedTimeframe: timeframe, count: targets.length });
+    }
+    return targets.length;
+  },
+
+  /**
    * Generate and store synthetic sample data.
    * @param {string} symbol
    * @param {string} timeframe
