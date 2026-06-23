@@ -42,6 +42,12 @@ export class ChartEngine {
   /** @type {import('../../vendor/lightweight-charts.mjs').IPriceLine[]} */
   #priceLines = [];
 
+  /** @type {'normal'|'signal'} */
+  #paddingMode = 'normal';
+
+  /** @type {import('../utils/chartNavigation.js').ChartSignalHighlight|null} */
+  #activeHighlight = null;
+
   /**
    * Create the chart inside a DOM container.
    * @param {HTMLElement} container
@@ -74,6 +80,9 @@ export class ChartEngine {
 
     this.#candleSeries.setData(toChartCandles(candles));
     this.#updateEma(candles);
+    if (this.#activeHighlight) {
+      this.refreshSignalScale();
+    }
     if (options.fit !== false) {
       this.#chart?.timeScale().fitContent();
     }
@@ -177,6 +186,9 @@ export class ChartEngine {
 
     markers.sort((a, b) => a.time - b.time);
     this.#candleSeries.setMarkers(markers);
+    this.#activeHighlight = highlight;
+    this.#applyViewportPadding('signal');
+    this.#applySignalAutoscale(highlight);
     this.focusOnCandleIndex(index);
   }
 
@@ -187,6 +199,90 @@ export class ChartEngine {
       this.#candleSeries?.removePriceLine(line);
     }
     this.#priceLines = [];
+    this.#activeHighlight = null;
+    this.#applyViewportPadding('normal');
+    this.#candleSeries?.applyOptions({ autoscaleInfoProvider: undefined });
+  }
+
+  /**
+   * @param {'normal'|'signal'} mode
+   */
+  #applyViewportPadding(mode) {
+    if (!this.#chart || this.#paddingMode === mode) return;
+    this.#paddingMode = mode;
+
+    const isSignal = mode === 'signal';
+    const chartCfg = Config.CHART;
+
+    this.#chart.applyOptions({
+      rightPriceScale: {
+        scaleMargins: isSignal
+          ? { ...chartCfg.SIGNAL_PRICE_SCALE_MARGINS }
+          : { ...chartCfg.PRICE_SCALE_MARGINS },
+        minimumWidth: isSignal
+          ? chartCfg.SIGNAL_PRICE_SCALE_MIN_WIDTH
+          : chartCfg.PRICE_SCALE_MIN_WIDTH,
+      },
+      timeScale: {
+        rightOffset: isSignal
+          ? chartCfg.SIGNAL_TIME_RIGHT_OFFSET
+          : chartCfg.TIME_RIGHT_OFFSET,
+      },
+    });
+  }
+
+  /**
+   * @param {import('../utils/chartNavigation.js').ChartSignalHighlight} highlight
+   */
+  #applySignalAutoscale(highlight) {
+    if (!this.#candleSeries) return;
+
+    const extraPrices = this.#collectOverlayPrices(highlight);
+    const pad = Config.CHART.SIGNAL_AUTOSCALE_PADDING_RATIO;
+
+    this.#candleSeries.applyOptions({
+      autoscaleInfoProvider: (original) => {
+        const base = original();
+        if (!base?.priceRange) return base;
+
+        let minValue = base.priceRange.minValue;
+        let maxValue = base.priceRange.maxValue;
+
+        for (const price of extraPrices) {
+          minValue = Math.min(minValue, price);
+          maxValue = Math.max(maxValue, price);
+        }
+
+        const span = Math.max(maxValue - minValue, Config.CHART.MIN_MOVE * 10);
+        return {
+          priceRange: {
+            minValue: minValue - span * pad,
+            maxValue: maxValue + span * pad,
+          },
+        };
+      },
+    });
+  }
+
+  /**
+   * @param {import('../utils/chartNavigation.js').ChartSignalHighlight} highlight
+   * @returns {number[]}
+   */
+  #collectOverlayPrices(highlight) {
+    const prices = [highlight.entry, highlight.sl, highlight.tp];
+    for (const level of highlight.setup?.levels ?? []) {
+      prices.push(level.price);
+      if (level.priceTo != null) prices.push(level.priceTo);
+    }
+    return prices;
+  }
+
+  /**
+   * Re-apply autoscale after candle data changes while signal overlay is active.
+   */
+  refreshSignalScale() {
+    if (!this.#activeHighlight) return;
+    this.#chart?.priceScale('right').applyOptions({ autoScale: true });
   }
 
   /**
@@ -197,7 +293,7 @@ export class ChartEngine {
   focusOnCandleIndex(index, contextBars = 35) {
     if (!this.#chart) return;
     const from = Math.max(0, index - contextBars);
-    const to = index + 8;
+    const to = index + (this.#paddingMode === 'signal' ? 12 : 8);
     this.#chart.timeScale().setVisibleLogicalRange({ from, to });
   }
 

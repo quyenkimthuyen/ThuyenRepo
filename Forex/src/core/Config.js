@@ -90,6 +90,16 @@ export const Config = Object.freeze({
     EMA_PERIODS: Object.freeze([20, 50]),
     PRICE_PRECISION: 5,
     MIN_MOVE: 0.00001,
+    /** Vertical gap between candles and chart top/bottom (fraction of pane). */
+    PRICE_SCALE_MARGINS: Object.freeze({ top: 0.1, bottom: 0.1 }),
+    /** Extra padding when signal levels + axis labels are shown. */
+    SIGNAL_PRICE_SCALE_MARGINS: Object.freeze({ top: 0.18, bottom: 0.18 }),
+    PRICE_SCALE_MIN_WIDTH: 80,
+    SIGNAL_PRICE_SCALE_MIN_WIDTH: 100,
+    TIME_RIGHT_OFFSET: 10,
+    SIGNAL_TIME_RIGHT_OFFSET: 18,
+    /** Expand autoscale range beyond candles + overlay prices. */
+    SIGNAL_AUTOSCALE_PADDING_RATIO: 0.12,
   }),
 
   /** Replay engine options. */

@@ -38,13 +38,14 @@ export function getChartOptions() {
     },
     rightPriceScale: {
       borderColor: '#2a3548',
-      scaleMargins: { top: 0.05, bottom: 0.05 },
+      scaleMargins: { ...Config.CHART.PRICE_SCALE_MARGINS },
+      minimumWidth: Config.CHART.PRICE_SCALE_MIN_WIDTH,
     },
     timeScale: {
       borderColor: '#2a3548',
       timeVisible: true,
       secondsVisible: false,
-      rightOffset: 5,
+      rightOffset: Config.CHART.TIME_RIGHT_OFFSET,
       barSpacing: 8,
       minBarSpacing: 2,
     },
