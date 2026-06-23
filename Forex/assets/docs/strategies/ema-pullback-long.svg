@@ -1,46 +1,50 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" role="img" aria-label="EMA Pullback Long">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 720" role="img" aria-label="EMA Pullback Long - doc">
   <defs>
     <style>
       .bg { fill: #0f1419; }
-      .grid { stroke: #1e2a38; stroke-width: 1; }
+      .panel { fill: #151c26; stroke: #2a3548; stroke-width: 1; }
       .ema-fast { stroke: #3b82f6; stroke-width: 2.5; fill: none; }
       .ema-slow { stroke: #a855f7; stroke-width: 2; fill: none; stroke-dasharray: 5 4; }
       .wick { stroke: #8b9cb3; stroke-width: 2; }
       .bull { fill: #22c55e; stroke: #22c55e; }
-      .bear { fill: #ef4444; stroke: #ef4444; }
-      .label { fill: #c8d4e0; font: 600 13px Inter, sans-serif; }
-      .note { fill: #8b9cb3; font: 12px Inter, sans-serif; }
-      .zone { fill: rgba(59,130,246,0.12); stroke: #3b82f6; stroke-width: 1; stroke-dasharray: 4 3; }
-      .entry { stroke: #22c55e; stroke-width: 2; }
-      .sl { stroke: #ef4444; stroke-width: 2; stroke-dasharray: 4 3; }
+      .title { fill: #e2e8f0; font: 700 14px Inter, sans-serif; }
+      .step { fill: #3b82f6; font: 700 11px Inter, sans-serif; }
+      .note { fill: #94a3b8; font: 11px Inter, sans-serif; }
+      .zone { fill: rgba(59,130,246,0.15); stroke: #3b82f6; stroke-width: 1; stroke-dasharray: 4 3; }
     </style>
   </defs>
-  <rect class="bg" width="720" height="320"/>
-  <line class="grid" x1="40" y1="80" x2="680" y2="80"/>
-  <line class="grid" x1="40" y1="160" x2="680" y2="160"/>
-  <line class="grid" x1="40" y1="240" x2="680" y2="240"/>
-  <!-- EMA slow -->
-  <path class="ema-slow" d="M60,220 C120,215 180,205 240,195 300,188 360,182 420,178 480,174 540,170 600,168 660,166"/>
-  <text class="label" x="62" y="250">EMA 50 (ch­m)</text>
-  <!-- EMA fast -->
-  <path class="ema-fast" d="M60,235 C120,225 180,210 240,195 300,180 360,168 420,158 480,150 540,145 600,142 660,140"/>
-  <text class="label" x="62" y="132" fill="#3b82f6">EMA 20 (nhanh)  vùng pullback</text>
-  <!-- pullback zone -->
-  <rect class="zone" x="330" y="138" width="90" height="28" rx="4"/>
-  <!-- uptrend candles -->
-  <line class="wick" x1="100" y1="210" x2="100" y2="170"/><rect class="bull" x="92" y="185" width="16" height="20"/>
-  <line class="wick" x1="150" y1="200" x2="150" y2="160"/><rect class="bull" x="142" y="170" width="16" height="25"/>
-  <line class="wick" x1="200" y1="190" x2="200" y2="150"/><rect class="bull" x="192" y="160" width="16" height="25"/>
-  <line class="wick" x1="250" y1="180" x2="250" y2="140"/><rect class="bull" x="242" y="150" width="16" height="25"/>
-  <!-- pullback candle -->
-  <line class="wick" x1="370" y1="175" x2="370" y2="145"/><rect class="bull" x="362" y="150" width="16" height="20"/>
-  <text class="note" x="300" y="210">Low ch¡m EMA20, close trên EMA20, n¿n xác nh­n tng</text>
-  <!-- resume -->
-  <line class="wick" x1="430" y1="155" x2="430" y2="120"/><rect class="bull" x="422" y="128" width="16" height="22"/>
-  <line class="wick" x1="490" y1="140" x2="490" y2="105"/><rect class="bull" x="482" y="112" width="16" height="22"/>
-  <line class="entry" x1="300" y1="170" x2="620" y2="170"/>
-  <text class="label" x="625" y="174" fill="#22c55e">Entry</text>
-  <line class="sl" x1="300" y1="188" x2="620" y2="188"/>
-  <text class="label" x="625" y="192" fill="#ef4444">SL d°Ûi áy pullback</text>
-  <text class="note" x="60" y="290">iÁu kiÇn: EMA20 &gt; EMA50, xu h°Ûng tng xác nh­n, spread EMA 350 pips</text>
+  <rect class="bg" width="380" height="720" rx="8"/>
+  <text class="title" x="190" y="28" text-anchor="middle">EMA Pullback — LONG</text>
+
+  <rect class="panel" x="16" y="44" width="348" height="160" rx="6"/>
+  <text class="step" x="28" y="64">? Xu h??ng t?ng xác nh?n</text>
+  <text class="note" x="28" y="88">EMA20 &gt; EMA50, EMA20 d?c lên</text>
+  <text class="note" x="28" y="104">Close &gt; EMA50, spread EMA 3–50 pip</text>
+  <path class="ema-slow" d="M40,150 C120,145 200,138 280,132 340,128"/>
+  <path class="ema-fast" d="M40,165 C120,155 200,142 280,128 340,118"/>
+  <text class="note" x="28" y="178" fill="#a855f7">EMA 50</text>
+  <text class="note" x="28" y="192" fill="#3b82f6">EMA 20</text>
+
+  <rect class="panel" x="16" y="220" width="348" height="200" rx="6"/>
+  <text class="step" x="28" y="240">? Pullback ch?m EMA20</text>
+  <rect class="zone" x="40" y="268" width="300" height="36" rx="4"/>
+  <text class="note" x="48" y="286">Vùng ± pullbackTolerancePips</text>
+  <line class="wick" x1="100" y1="310" x2="100" y2="265"/><rect class="bull" x="92" y="278" width="14" height="24"/>
+  <line class="wick" x1="180" y1="318" x2="180" y2="272"/><rect class="bull" x="172" y="280" width="14" height="28"/>
+  <line class="wick" x1="260" y1="315" x2="260" y2="278"/><rect class="bull" x="252" y="285" width="14" height="22"/>
+  <text class="note" x="28" y="350">Low ch?m vùng EMA fast</text>
+  <text class="note" x="28" y="366">Low v?n trên EMA50</text>
+
+  <rect class="panel" x="16" y="436" width="348" height="200" rx="6"/>
+  <text class="step" x="28" y="456">? Entry cùng n?n pullback</text>
+  <line class="wick" x1="190" y1="510" x2="190" y2="475"/><rect class="bull" x="182" y="482" width="14" height="24"/>
+  <text class="note" x="28" y="500">N?n xác nh?n t?ng</text>
+  <text class="note" x="28" y="516">Close &gt; EMA20</text>
+  <text class="note" x="28" y="548" fill="#22c55e">Entry = close n?n i</text>
+  <text class="note" x="28" y="564" fill="#ef4444">SL d??i ?áy pullback</text>
+  <text class="note" x="28" y="580" fill="#22c55e">TP theo RR</text>
+  <text class="note" x="28" y="612">??p: râu ch?m EMA, thân ?óng trên EMA</text>
+
+  <text class="note" x="190" y="680" text-anchor="middle">Cooldown trendBars n?n sau m?i signal</text>
+  <text class="note" x="190" y="700" text-anchor="middle">Phá EMA50 ? không LONG</text>
 </svg>

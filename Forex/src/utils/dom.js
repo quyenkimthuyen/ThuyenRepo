@@ -80,3 +80,20 @@ export function loadFromStorage(key, fallback) {
 export function saveToStorage(key, value) {
   localStorage.setItem(key, JSON.stringify(value));
 }
+
+/**
+ * Resolve a path relative to the app HTML (works with Live Server / subpaths).
+ * @param {string} relativePath
+ * @returns {string}
+ */
+export function resolveAppAsset(relativePath) {
+  const clean = relativePath.replace(/^\//, '');
+  if (typeof document !== 'undefined') {
+    try {
+      return new URL(clean, document.baseURI).href;
+    } catch {
+      /* fall through */
+    }
+  }
+  return `/${clean}`;
+}

@@ -3,7 +3,7 @@
  * @module ui/DocRenderer
  */
 
-import { el } from '../utils/dom.js';
+import { el, resolveAppAsset } from '../utils/dom.js';
 
 /**
  * @param {import('../content/contextDocsVi.js').DocBlock} block
@@ -59,14 +59,27 @@ export function renderDocBlock(block) {
       ]);
     }
     case 'image': {
-      const figure = el('figure', { class: 'docs-figure' }, [
+      const portrait = block.layout === 'portrait';
+      const src = resolveAppAsset(block.src ?? '');
+      const figure = el('figure', {
+        class: `docs-figure${portrait ? ' docs-figure-portrait' : ''}`,
+      }, [
         el('img', {
           class: 'docs-img',
-          src: block.src ?? '',
+          src,
           alt: block.alt ?? block.caption ?? '',
           loading: 'lazy',
         }),
       ]);
+      const img = figure.querySelector('img');
+      img?.addEventListener('error', () => {
+        figure.classList.add('docs-figure-error');
+        if (block.caption && !figure.querySelector('.docs-img-fallback')) {
+          figure.appendChild(el('p', { class: 'docs-img-fallback' }, [
+            `Không tải được hình: ${block.caption}`,
+          ]));
+        }
+      });
       if (block.caption) {
         figure.appendChild(el('figcaption', { class: 'docs-figcaption' }, [block.caption]));
       }

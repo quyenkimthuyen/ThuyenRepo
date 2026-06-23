@@ -273,6 +273,30 @@
   text-align: center;
 }
 
+.docs-figure-portrait {
+  max-width: 100%;
+}
+
+.docs-figure-portrait .docs-img {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.docs-figure-error .docs-img {
+  min-height: 120px;
+  opacity: 0.35;
+}
+
+.docs-img-fallback {
+  font-size: var(--font-size-xs);
+  color: var(--color-warning);
+  text-align: center;
+  margin: var(--space-sm) 0 0;
+}
+
 @media (max-width: 768px) {
   .docs-body {
     flex-direction: column;

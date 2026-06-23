@@ -133,6 +133,9 @@ class DataManagerViewImpl {
           el('button', { class: 'btn btn-secondary', id: 'btn-load-defaults' }, [
             'Reload Default Data',
           ]),
+          el('button', { class: 'btn btn-secondary', id: 'btn-reload-eurusd-h1' }, [
+            'Cập nhật EURUSD H1',
+          ]),
           el('button', { class: 'btn btn-secondary', id: 'btn-gen-all' }, [
             'Generate Sample (All Pairs)',
           ]),
@@ -156,8 +159,9 @@ class DataManagerViewImpl {
         ]),
       ]),
       el('div', { class: 'data-hint' }, [
-        'Supported: CSV (timestamp,open,high,low,close,volume), JSON, .gz compressed. ',
-        'Data is stored locally in IndexedDB.',
+        'Dữ liệu Dukascopy: chart H1 có khoảng trống cuối tuần (thị trường đóng cửa) — bình thường. ',
+        'Cột Gaps chỉ báo thiếu nến bất thường (không tính T7/CN). ',
+        'CSV/JSON/.gz → IndexedDB.',
       ]),
     ]);
   }
@@ -211,10 +215,54 @@ class DataManagerViewImpl {
     try {
       const gaps = await DataManager.findGaps(ds.symbol, ds.timeframe);
       const total = gaps.reduce((sum, g) => sum + g.missingCount, 0);
-      cell.textContent = gaps.length === 0 ? 'None' : `${gaps.length} (${total} candles)`;
+      if (gaps.length === 0) {
+        cell.textContent = 'OK';
+      } else {
+        cell.textContent = `${gaps.length} lỗ (${total} nến)`;
+        cell.title = 'Thiếu nến giữa phiên — không tính cuối tuần/lễ';
+      }
       cell.classList.toggle('data-gaps-warn', gaps.length > 0);
     } catch {
       cell.textContent = 'Error';
+    }
+  }
+
+  /**
+   * @param {string} btnId
+   * @param {string} loadingLabel
+   * @param {string} doneLabel
+   * @param {() => Promise<unknown>} action
+   */
+  async #runReload(btnId, loadingLabel, doneLabel, action) {
+    const btn = /** @type {HTMLButtonElement} */ (
+      this.#container?.querySelector(`#${btnId}`)
+    );
+    const health = this.#container?.querySelector('#data-health');
+    btn.disabled = true;
+    btn.textContent = loadingLabel;
+    if (health) {
+      health.className = 'data-health';
+      health.textContent = 'Đang tải dữ liệu…';
+    }
+
+    try {
+      const result = await action();
+      await this.refresh();
+
+      if (result && typeof result === 'object' && 'loaded' in result && result.loaded.length === 0) {
+        const msg = result.errors?.join(' · ') || 'Không tải được dataset nào';
+        bus.emit(Events.LOG_MESSAGE, { message: msg, level: 'error', time: new Date() });
+      }
+    } catch (err) {
+      bus.emit(Events.LOG_MESSAGE, {
+        message: `Reload failed: ${err.message}`,
+        level: 'error',
+        time: new Date(),
+      });
+      await this.#refreshHealth();
+    } finally {
+      btn.disabled = false;
+      btn.textContent = doneLabel;
     }
   }
 
@@ -248,36 +296,15 @@ class DataManagerViewImpl {
     });
 
     this.#container?.querySelector('#btn-load-defaults')?.addEventListener('click', async () => {
-      const btn = /** @type {HTMLButtonElement} */ (
-        this.#container?.querySelector('#btn-load-defaults')
+      await this.#runReload('btn-load-defaults', 'Loading…', 'Reload Default Data', () =>
+        DataManager.seedDefaults({ force: true })
       );
-      const health = this.#container?.querySelector('#data-health');
-      btn.disabled = true;
-      btn.textContent = 'Loading…';
-      if (health) {
-        health.className = 'data-health';
-        health.textContent = 'Đang tải dữ liệu mặc định…';
-      }
+    });
 
-      try {
-        const result = await DataManager.seedDefaults({ force: true });
-        await this.refresh();
-
-        if (result.loaded.length === 0) {
-          const msg = result.errors.join(' · ') || 'Không tải được dataset nào';
-          bus.emit(Events.LOG_MESSAGE, { message: msg, level: 'error', time: new Date() });
-        }
-      } catch (err) {
-        bus.emit(Events.LOG_MESSAGE, {
-          message: `Reload failed: ${err.message}`,
-          level: 'error',
-          time: new Date(),
-        });
-        await this.#refreshHealth();
-      } finally {
-        btn.disabled = false;
-        btn.textContent = 'Reload Default Data';
-      }
+    this.#container?.querySelector('#btn-reload-eurusd-h1')?.addEventListener('click', async () => {
+      await this.#runReload('btn-reload-eurusd-h1', 'Đang tải…', 'Cập nhật EURUSD H1', () =>
+        DataManager.reloadBundledDataset('EURUSD', 'H1')
+      );
     });
 
     this.#container?.querySelector('#btn-gen-all')?.addEventListener('click', async () => {

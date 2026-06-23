@@ -98,7 +98,7 @@ const DataManager = {
 
   /**
    * Load bundled EURUSD/GBPUSD datasets from data/defaults/.
-   * @param {{ force?: boolean }} [options] - Re-import even if metadata already exists
+   * @param {{ force?: boolean, priorityOnly?: boolean, fallbackOnly?: boolean, only?: Array<{ symbol: string, timeframe: string }> }} [options]
    * @returns {Promise<import('./DefaultDataLoader.js').DefaultLoadResult>}
    */
   async seedDefaults(options = {}) {
@@ -109,7 +109,12 @@ const DataManager = {
         const res = await fetch(new URL('manifest.json', base));
         if (res.ok) {
           const manifest = await res.json();
-          for (const ds of manifest.datasets ?? []) {
+          const targets = options.only?.length
+            ? manifest.datasets?.filter((ds) =>
+                options.only.some((o) => o.symbol === ds.symbol && o.timeframe === ds.timeframe)
+              ) ?? []
+            : manifest.datasets ?? [];
+          for (const ds of targets) {
             await this.deleteDataset(ds.symbol, ds.timeframe);
           }
         }
@@ -148,6 +153,18 @@ const DataManager = {
 
     bus.emit(Events.DATA_UPDATED, { seeded: result.loaded });
     return result;
+  },
+
+  /**
+   * Re-import one bundled dataset from data/defaults/ (replace, not merge).
+   * @param {string} symbol
+   * @param {string} timeframe
+   */
+  async reloadBundledDataset(symbol, timeframe) {
+    return this.seedDefaults({
+      force: true,
+      only: [{ symbol, timeframe }],
+    });
   },
 
   /**
@@ -217,10 +234,11 @@ const DataManager = {
    * @param {string} symbol
    * @param {string} timeframe
    * @param {import('./Candle.js').Candle[]} incoming
+   * @param {{ replace?: boolean }} [options]
    * @returns {Promise<import('./Candle.js').DatasetMetadata>}
    */
-  async saveCandles(symbol, timeframe, incoming) {
-    const existing = await this.getCandles(symbol, timeframe);
+  async saveCandles(symbol, timeframe, incoming, options = {}) {
+    const existing = options.replace ? [] : await this.getCandles(symbol, timeframe);
     const merged = mergeCandles(existing, incoming);
     const stored = merged.map((c) => toStoredCandle(symbol, timeframe, c));
 
@@ -317,7 +335,7 @@ const DataManager = {
    */
   async findGaps(symbol, timeframe) {
     const candles = await this.getCandles(symbol, timeframe);
-    return detectGaps(candles, timeframe);
+    return detectGaps(candles, timeframe, { forexMarket: true });
   },
 
   /**

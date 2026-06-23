@@ -149,8 +149,14 @@ async function datasetNeedsSeed(existing, symbol, timeframe, getCandleCount) {
 /**
  * @param {DefaultManifest['datasets']} datasets
  * @param {boolean} priorityOnly
+ * @param {Array<{ symbol: string, timeframe: string }>} [only]
  */
-function selectDatasets(datasets, priorityOnly) {
+function selectDatasets(datasets, priorityOnly, only) {
+  if (only?.length) {
+    return datasets.filter((ds) =>
+      only.some((o) => o.symbol === ds.symbol && o.timeframe === ds.timeframe)
+    );
+  }
   if (!priorityOnly) return datasets;
   return datasets.filter((ds) =>
     BOOT_PRIORITY.some((p) => p.symbol === ds.symbol && p.timeframe === ds.timeframe)
@@ -162,7 +168,7 @@ function selectDatasets(datasets, priorityOnly) {
  * @param {(symbol: string, timeframe: string, candles: import('./Candle.js').Candle[]) => Promise<import('./Candle.js').DatasetMetadata>} saveCandles
  * @param {() => Promise<import('./Candle.js').DatasetMetadata[]>} listDatasets
  * @param {(symbol: string, timeframe: string) => Promise<number>} getCandleCount
- * @param {{ force?: boolean, priorityOnly?: boolean, fallbackOnly?: boolean }} [options]
+ * @param {{ force?: boolean, priorityOnly?: boolean, fallbackOnly?: boolean, only?: Array<{ symbol: string, timeframe: string }> }} [options]
  * @returns {Promise<DefaultLoadResult>}
  */
 export async function loadDefaultDatasets(saveCandles, listDatasets, getCandleCount, options = {}) {
@@ -192,7 +198,7 @@ export async function loadDefaultDatasets(saveCandles, listDatasets, getCandleCo
 
   const existing = await listDatasets();
   const targets = manifest?.datasets?.length
-    ? selectDatasets(manifest.datasets, Boolean(options.priorityOnly))
+    ? selectDatasets(manifest.datasets, Boolean(options.priorityOnly), options.only)
     : [];
 
   for (const ds of targets) {
@@ -221,7 +227,9 @@ export async function loadDefaultDatasets(saveCandles, listDatasets, getCandleCo
         continue;
       }
 
-      const metadata = await saveCandles(imported.symbol, imported.timeframe, imported.candles);
+      const metadata = await saveCandles(imported.symbol, imported.timeframe, imported.candles, {
+        replace: Boolean(options.force),
+      });
       result.loaded.push(metadata);
       log.info(`Seeded ${metadata.symbol} ${metadata.timeframe}: ${metadata.count} candles`);
     } catch (err) {

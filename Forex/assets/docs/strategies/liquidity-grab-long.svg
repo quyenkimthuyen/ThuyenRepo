@@ -1,35 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" role="img" aria-label="Liquidity Grab Long">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 720" role="img" aria-label="Liquidity Grab Long - doc">
   <defs>
     <style>
       .bg { fill: #0f1419; }
-      .grid { stroke: #1e2a38; stroke-width: 1; }
-      .level { stroke: #f59e0b; stroke-width: 2; stroke-dasharray: 6 4; }
+      .panel { fill: #151c26; stroke: #2a3548; stroke-width: 1; }
+      .level { stroke: #f59e0b; stroke-width: 2; stroke-dasharray: 5 4; }
       .wick { stroke: #8b9cb3; stroke-width: 2; }
       .bull { fill: #22c55e; stroke: #22c55e; }
-      .bear { fill: #ef4444; stroke: #ef4444; }
-      .label { fill: #c8d4e0; font: 600 13px Inter, sans-serif; }
-      .note { fill: #8b9cb3; font: 12px Inter, sans-serif; }
-      .grab-zone { fill: rgba(34,197,94,0.15); }
-      .entry { stroke: #22c55e; stroke-width: 2; }
-      .sl { stroke: #ef4444; stroke-width: 2; stroke-dasharray: 4 3; }
+      .title { fill: #e2e8f0; font: 700 14px Inter, sans-serif; }
+      .step { fill: #3b82f6; font: 700 11px Inter, sans-serif; }
+      .note { fill: #94a3b8; font: 11px Inter, sans-serif; }
+      .grab { fill: rgba(34,197,94,0.12); }
     </style>
   </defs>
-  <rect class="bg" width="720" height="320"/>
-  <line class="grid" x1="40" y1="80" x2="680" y2="80"/>
-  <line class="grid" x1="40" y1="140" x2="680" y2="140"/>
-  <line class="grid" x1="40" y1="200" x2="680" y2="200"/>
-  <line class="level" x1="60" y1="200" x2="660" y2="200"/>
-  <text class="label" x="62" y="192">Swing Low  vùng liquidity (stop sell)</text>
-  <rect class="grab-zone" x="280" y="195" width="80" height="45" rx="4"/>
-  <line class="wick" x1="120" y1="175" x2="120" y2="215"/><rect class="bear" x="112" y="185" width="16" height="22"/>
-  <line class="wick" x1="170" y1="170" x2="170" y2="210"/><rect class="bull" x="162" y="180" width="16" height="22"/>
-  <line class="wick" x1="220" y1="168" x2="220" y2="208"/><rect class="bear" x="212" y="178" width="16" height="22"/>
-  <line class="wick" x1="320" y1="250" x2="320" y2="165"/><rect class="bull" x="312" y="178" width="16" height="20"/>
-  <text class="note" x="350" y="255">Low quét d°Ûi level, close quay l¡i trên level</text>
-  <text class="note" x="350" y="272">Râu d°Ûi lÛn + n¿n tng xác nh­n ’ LONG</text>
-  <line class="wick" x1="400" y1="185" x2="400" y2="150"/><rect class="bull" x="392" y="158" width="16" height="22"/>
-  <line class="entry" x1="280" y1="198" x2="620" y2="198"/>
-  <text class="label" x="625" y="202" fill="#22c55e">Entry LONG</text>
-  <line class="sl" x1="280" y1="252" x2="620" y2="252"/>
-  <text class="label" x="625" y="256" fill="#ef4444">SL d°Ûi áy grab</text>
+  <rect class="bg" width="380" height="720" rx="8"/>
+  <text class="title" x="190" y="28" text-anchor="middle">Liquidity Grab — LONG</text>
+
+  <rect class="panel" x="16" y="44" width="348" height="140" rx="6"/>
+  <text class="step" x="28" y="64">? Swing Low (liquidity)</text>
+  <line class="level" x1="40" y1="130" x2="340" y2="130"/>
+  <text class="note" x="40" y="122">Vùng stop sell phía d??i ?áy</text>
+  <line class="wick" x1="120" y1="125" x2="120" y2="95"/><rect class="bear" x="112" y="102" width="14" height="18"/>
+
+  <rect class="panel" x="16" y="200" width="348" height="220" rx="6"/>
+  <text class="step" x="28" y="220">? N?n grab (cùng 1 n?n)</text>
+  <rect class="grab" x="40" y="248" width="300" height="55" rx="4"/>
+  <line class="level" x1="40" y1="248" x2="340" y2="248"/>
+  <line class="wick" x1="190" y1="303" x2="190" y2="228"/><rect class="bull" x="182" y="250" width="14" height="22"/>
+  <text class="note" x="28" y="300">Low ? level ? grabPips</text>
+  <text class="note" x="28" y="316">Close &gt; level (quay l?i trong range)</text>
+  <text class="note" x="28" y="332">Râu d??i ? wickRatio × range</text>
+  <text class="note" x="28" y="348">N?n t?ng xác nh?n</text>
+
+  <rect class="panel" x="16" y="436" width="348" height="180" rx="6"/>
+  <text class="step" x="28" y="456">? Entry LONG ngay</text>
+  <text class="note" x="28" y="480" fill="#22c55e">Entry = close n?n grab</text>
+  <text class="note" x="28" y="500" fill="#ef4444">SL = d??i low n?n grab</text>
+  <text class="note" x="28" y="520" fill="#22c55e">TP theo RR</text>
+
+  <text class="note" x="190" y="670" text-anchor="middle">??i x?ng v?i SHORT ? swing high</text>
+  <text class="note" x="190" y="690" text-anchor="middle">Tín hi?u ngay — không ch? n?n sau</text>
 </svg>

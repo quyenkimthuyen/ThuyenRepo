@@ -209,6 +209,7 @@ export const CONTEXT_DOC_SECTIONS = [
       },
       {
         type: 'image',
+        layout: 'portrait',
         src: 'assets/docs/strategies/break-retest-long.svg',
         alt: 'Sơ đồ Break and Retest Long',
         caption: 'LONG: (1) Swing high = level kháng cự → (2) Breakout close vượt level + breakoutPips → (3) Trong retestMaxBars, nến retest chạm vùng level + nến xác nhận tăng → Entry tại close nến retest.',
@@ -262,6 +263,7 @@ export const CONTEXT_DOC_SECTIONS = [
       },
       {
         type: 'image',
+        layout: 'portrait',
         src: 'assets/docs/strategies/ema-pullback-long.svg',
         alt: 'Sơ đồ EMA Pullback Long',
         caption: 'LONG: EMA20 > EMA50, xu hướng tăng xác nhận → giá hồi chạm vùng EMA20 (± pullbackTolerancePips) → nến tăng xác nhận, close trên EMA20, low vẫn trên EMA50.',
@@ -317,12 +319,14 @@ export const CONTEXT_DOC_SECTIONS = [
       },
       {
         type: 'image',
+        layout: 'portrait',
         src: 'assets/docs/strategies/liquidity-grab-short.svg',
         alt: 'Sơ đồ Liquidity Grab Short',
         caption: 'SHORT: High quét trên swing high thêm grabPips, nhưng close đóng cửa DƯỚI level + râu trên ≥ wickRatio × range + nến giảm xác nhận.',
       },
       {
         type: 'image',
+        layout: 'portrait',
         src: 'assets/docs/strategies/liquidity-grab-long.svg',
         alt: 'Sơ đồ Liquidity Grab Long',
         caption: 'LONG: Low quét dưới swing low, close quay lại TRÊN level + râu dưới lớn + nến tăng xác nhận.',

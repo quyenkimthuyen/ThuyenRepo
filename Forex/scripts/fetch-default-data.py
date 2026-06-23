@@ -117,7 +117,19 @@ def main():
         default=",".join(TIMEFRAMES.keys()),
         help="Comma-separated timeframes (default: H1,H4,D1,W)",
     )
+    parser.add_argument(
+        "--symbols",
+        type=str,
+        default=",".join(SYMBOLS.keys()),
+        help="Comma-separated symbols (default: EURUSD,GBPUSD)",
+    )
     args = parser.parse_args()
+
+    symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
+    for sym in symbols:
+        if sym not in SYMBOLS:
+            print(f"Unknown symbol: {sym}. Supported: {', '.join(SYMBOLS)}", file=sys.stderr)
+            sys.exit(1)
 
     timeframes = [tf.strip().upper() for tf in args.timeframes.split(",") if tf.strip()]
     for tf in timeframes:
@@ -141,7 +153,8 @@ def main():
         "datasets": [],
     }
 
-    for symbol, instrument in SYMBOLS.items():
+    for symbol in symbols:
+        instrument = SYMBOLS[symbol]
         print(f"Fetching {symbol} ...")
         for timeframe in timeframes:
             candles = fetch_timeframe(symbol, instrument, timeframe, TIMEFRAMES[timeframe], start, end)
@@ -168,7 +181,11 @@ def main():
         try:
             prev = json.loads(manifest_path.read_text(encoding="utf-8"))
             keep_tfs = set(timeframes)
-            existing = [ds for ds in prev.get("datasets", []) if ds.get("timeframe") not in keep_tfs]
+            keep_syms = set(symbols)
+            existing = [
+                ds for ds in prev.get("datasets", [])
+                if ds.get("timeframe") not in keep_tfs or ds.get("symbol") not in keep_syms
+            ]
         except (json.JSONDecodeError, OSError):
             existing = []
 
