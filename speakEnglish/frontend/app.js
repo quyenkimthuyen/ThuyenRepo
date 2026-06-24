@@ -6,7 +6,7 @@ import {
   PRACTICE_MODE,
   MIC_STATE,
   wordsMatch,
-  wordsMatchExact,
+  textMatchExact,
   getHangoverMs,
   computeRms,
   TEXT_MATCH_DELAY_MS,
@@ -205,7 +205,7 @@ function getPassThreshold() {
 }
 
 function spokenMatchesTarget(spoken, target) {
-  if (isTextMode()) return wordsMatchExact(spoken, target);
+  if (isTextMode()) return textMatchExact(spoken, target);
   return wordsMatch(spoken, target);
 }
 
@@ -536,7 +536,7 @@ function applyPracticeModeUI() {
     const sec = parseFloat(els.settingSilenceSec?.value) || 0.35;
     const threshold = getPassThreshold();
     els.liveTranscriptPlaceholder.textContent = isTextMode()
-      ? 'Đọc đúng 100% từ → tự chuyển từ tiếp'
+      ? 'Đọc đúng 100% (từ hoặc cụm từ) → tự chuyển tiếp'
       : `Đọc từ → im lặng ~${sec}s → chấm IPA → đạt ≥${threshold}% tự sang từ`;
   }
 
@@ -1333,7 +1333,7 @@ async function processTextUtterance(spoken) {
     return;
   }
 
-  if (!wordsMatchExact(word, w.word)) {
+  if (!textMatchExact(word, w.word)) {
     showLiveHint(`✗ Nghe "${word}" — cần đúng 100% "${w.word}"`, 'mis');
     return;
   }
@@ -1360,7 +1360,7 @@ function updateRealtimeHint() {
     return;
   }
 
-  if (wordsMatchExact(spoken, w.word)) {
+  if (textMatchExact(spoken, w.word)) {
     const msg = isTextMode()
       ? `✓ "${spoken}" — khớp 100%!`
       : `✓ Nghe "${spoken}" — im lặng ngắn để tự chấm`;
@@ -1668,7 +1668,7 @@ async function startRecording() {
       } else {
         const spoken = getSpokenWord();
         const w = words[currentIndex];
-        if (spoken && wordsMatchExact(spoken, w?.word)) {
+        if (spoken && textMatchExact(spoken, w?.word)) {
           setMicState(MIC_STATE.PROCESSING, 'Đang xử lý...');
           await processTextUtterance(spoken);
           if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');

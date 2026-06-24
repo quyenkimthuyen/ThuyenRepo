@@ -2,9 +2,12 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   normalizeWord,
+  normalizeTextForMatch,
   wordsMatch,
   wordsMatchExact,
+  textMatchExact,
   extractSpokenWord,
+  extractSpokenText,
   getSilenceMsFromSetting,
   getHangoverMs,
   canStartProcessing,
@@ -25,15 +28,56 @@ describe('normalizeWord', () => {
   });
 });
 
-describe('wordsMatchExact', () => {
-  it('requires exact normalized match', () => {
-    assert.equal(wordsMatchExact('hello', 'hello'), true);
-    assert.equal(wordsMatchExact('Hello', 'hello'), true);
+describe('textMatchExact', () => {
+  it('single word exact', () => {
+    assert.equal(textMatchExact('hello', 'hello'), true);
+    assert.equal(textMatchExact('Hello', 'hello'), true);
   });
 
-  it('rejects fuzzy or partial', () => {
-    assert.equal(wordsMatchExact('helo', 'hello'), false);
-    assert.equal(wordsMatchExact('say hello', 'hello'), false);
+  it('rejects fuzzy or extra words for single target', () => {
+    assert.equal(textMatchExact('helo', 'hello'), false);
+    assert.equal(textMatchExact('say hello', 'hello'), false);
+  });
+
+  it('matches multi-word phrases', () => {
+    assert.equal(textMatchExact('living room', 'living room'), true);
+    assert.equal(textMatchExact('Living Room', 'living room'), true);
+    assert.equal(textMatchExact('police officer', 'police officer'), true);
+  });
+
+  it('rejects partial phrase', () => {
+    assert.equal(textMatchExact('room', 'living room'), false);
+    assert.equal(textMatchExact('living', 'living room'), false);
+    assert.equal(textMatchExact('the living room', 'living room'), false);
+  });
+});
+
+describe('wordsMatchExact', () => {
+  it('aliases textMatchExact', () => {
+    assert.equal(wordsMatchExact('hello', 'hello'), true);
+    assert.equal(wordsMatchExact('living room', 'living room'), true);
+  });
+});
+
+describe('extractSpokenText', () => {
+  it('merges final and interim into phrase', () => {
+    assert.equal(extractSpokenText('living ', 'living room'), 'living room');
+    assert.equal(extractSpokenText('police ', 'officer'), 'police officer');
+  });
+
+  it('returns full line for sentence-ready matching', () => {
+    assert.equal(extractSpokenText('I like ', 'apples'), 'i like apples');
+  });
+
+  it('empty input', () => {
+    assert.equal(extractSpokenText('', ''), '');
+  });
+});
+
+describe('extractSpokenWord', () => {
+  it('returns last token from phrase', () => {
+    assert.equal(extractSpokenWord('living room', ''), 'room');
+    assert.equal(extractSpokenWord('i said ', 'hello'), 'hello');
   });
 });
 
@@ -58,17 +102,6 @@ describe('wordsMatch', () => {
   it('reject clearly wrong', () => {
     assert.equal(wordsMatch('world', 'hello'), false);
     assert.equal(wordsMatch('xyzab', 'hello'), false);
-  });
-});
-
-describe('extractSpokenWord', () => {
-  it('returns last token', () => {
-    assert.equal(extractSpokenWord('i said ', 'hello'), 'hello');
-    assert.equal(extractSpokenWord('hello ', ''), 'hello');
-  });
-
-  it('empty input', () => {
-    assert.equal(extractSpokenWord('', ''), '');
   });
 });
 

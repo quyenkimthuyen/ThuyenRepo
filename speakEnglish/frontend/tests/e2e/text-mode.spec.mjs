@@ -21,6 +21,6 @@ test.describe('Chế độ Chỉ text', () => {
   });
 
   test('placeholder describes auto-advance', async ({ page }) => {
-    await expect(page.locator('#live-transcript-placeholder')).toContainText(/chuyển từ/i);
+    await expect(page.locator('#live-transcript-placeholder')).toContainText(/chuyển tiếp/i);
   });
 });

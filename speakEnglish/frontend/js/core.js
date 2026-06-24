@@ -78,6 +78,15 @@ export function normalizeWord(s) {
   return String(s || '').toLowerCase().replace(/[^a-z']/g, '').trim();
 }
 
+/** Chuẩn hóa câu/cụm từ — giữ khoảng trắng giữa các từ */
+export function normalizeTextForMatch(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9'\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function wordsMatch(spoken, target) {
   const s = normalizeWord(spoken);
   const t = normalizeWord(target);
@@ -94,15 +103,35 @@ export function wordsMatch(spoken, target) {
   return false;
 }
 
-/** Chế độ text: khớp chính xác 100% (không fuzzy) */
-export function wordsMatchExact(spoken, target) {
-  const s = normalizeWord(spoken);
-  const t = normalizeWord(target);
+/** Chế độ text: khớp chính xác 100% — hỗ trợ cụm từ và câu (mở rộng sau) */
+export function textMatchExact(spoken, target) {
+  const s = normalizeTextForMatch(spoken);
+  const t = normalizeTextForMatch(target);
   return s.length > 0 && s === t;
 }
 
+/** @deprecated Dùng textMatchExact — giữ cho tương thích test cũ */
+export function wordsMatchExact(spoken, target) {
+  return textMatchExact(spoken, target);
+}
+
+/** Ghép final + interim thành câu đang nói (không chỉ lấy từ cuối) */
+export function extractSpokenText(finalText, interimText) {
+  const final = normalizeTextForMatch(finalText);
+  const interim = normalizeTextForMatch(interimText);
+  if (!final) return interim;
+  if (!interim) return final;
+  if (interim.startsWith(final)) return interim;
+  if (final.startsWith(interim)) return final;
+  if (final.endsWith(interim) || interim.endsWith(final)) {
+    return final.length >= interim.length ? final : interim;
+  }
+  return normalizeTextForMatch(`${final} ${interim}`);
+}
+
+/** Lấy token cuối — dùng khi cần gợi ý nhanh (score mode) */
 export function extractSpokenWord(finalText, interimText) {
-  const combined = (`${finalText || ''} ${interimText || ''}`).trim();
+  const combined = extractSpokenText(finalText, interimText);
   if (!combined) return '';
   return combined.split(/\s+/).pop() || combined;
 }

@@ -4,6 +4,7 @@
 
 import {
   extractSpokenWord,
+  extractSpokenText,
   createVadState,
   updateEnergyVad,
   canStartProcessing,
@@ -117,6 +118,11 @@ export class MicEngine {
   }
 
   getSpokenWord() {
+    return extractSpokenText(this.transcriptFinal, this.transcriptInterim);
+  }
+
+  /** Token cuối — gợi ý score mode */
+  getSpokenToken() {
     return extractSpokenWord(this.transcriptFinal, this.transcriptInterim);
   }
 
