@@ -173,6 +173,7 @@ body {
   margin: 0;
   letter-spacing: 0.02em;
   line-height: 1.15;
+  min-height: 3.2rem;
 }
 
 .word-meaning {
@@ -216,13 +217,14 @@ body {
   font-size: 0.9rem;
 }
 
-/* Score zone */
+/* Score zone — footprint cố định, tránh giật khi chuyển từ */
 .score-zone {
   margin-bottom: 1.25rem;
   padding: 1rem;
   border-radius: var(--radius);
   background: var(--bg);
   border: 1px solid var(--surface-2);
+  min-height: 18.5rem;
 }
 
 .score-zone-head {
@@ -231,7 +233,8 @@ body {
   justify-content: space-between;
   gap: 0.75rem;
   margin-bottom: 0.75rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-height: 1.75rem;
 }
 
 .score-zone-title,
@@ -250,6 +253,7 @@ body {
 .score-status-label {
   font-size: 0.8rem;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .score-zone.scoring .score-status-label {
@@ -277,6 +281,8 @@ body {
   background: var(--surface);
   border: 1px solid var(--surface-2);
   margin-bottom: 1rem;
+  min-height: 9.25rem;
+  box-sizing: border-box;
 }
 
 .score-hero {
@@ -286,10 +292,13 @@ body {
   gap: 0.5rem;
   flex-wrap: wrap;
   margin-bottom: 0.65rem;
+  min-height: 2.35rem;
 }
 
 .score-hero.hidden {
-  display: none;
+  display: flex !important;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .score-hero-label {
@@ -301,6 +310,8 @@ body {
   font-size: 1.75rem;
   font-weight: 700;
   color: var(--text);
+  min-width: 3.5rem;
+  text-align: center;
 }
 
 .score-hero.scoring {
@@ -314,6 +325,9 @@ body {
   overflow-x: auto;
   padding: 0.25rem 0 0.35rem;
   -webkit-overflow-scrolling: touch;
+  min-height: 6.35rem;
+  align-items: flex-start;
+  box-sizing: border-box;
 }
 
 .phoneme-strip::-webkit-scrollbar {
@@ -332,6 +346,11 @@ body {
   font-size: 0.85rem;
   color: var(--text-muted);
   padding: 0.5rem 0;
+  min-height: 5.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .phoneme-strip.scoring:not(.has-results) .phoneme-idle-hint {
@@ -436,6 +455,14 @@ body {
   border-radius: 999px;
   font-size: 0.8rem;
   font-weight: 600;
+  min-width: 4.75rem;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.pass-status.pass-status-pending {
+  background: rgba(90, 106, 130, 0.15);
+  color: var(--text-muted);
 }
 
 .pass-status.passed {
@@ -454,7 +481,7 @@ body {
   border-radius: 8px;
 }
 
-.phoneme-strip.scoring:not(.has-results) .phoneme-char {
+.phoneme-strip.scoring:not(.has-results) .phoneme-char.pending {
   animation: phoneme-pulse 0.9s ease-in-out infinite;
 }
 
@@ -755,7 +782,7 @@ body {
 }
 
 /* Live mode: luôn hiện gợi ý phoneme sai */
-.phoneme-strip.live-mode .phoneme-box .phoneme-suggestion {
+.phoneme-strip.live-mode .phoneme-box .phoneme-suggestion:not(.phoneme-suggestion-slot) {
   display: block;
 }
 
@@ -900,8 +927,10 @@ body {
   flex-direction: column;
   align-items: center;
   min-width: 56px;
+  min-height: 5.85rem;
   cursor: pointer;
   transition: transform 0.15s;
+  box-sizing: border-box;
 }
 
 .phoneme-box:hover {
@@ -944,10 +973,16 @@ body {
   margin-top: 0.2rem;
   line-height: 1.2;
   display: none;
+  min-height: 1.7rem;
 }
 
-.phoneme-box.show-suggestion .phoneme-suggestion,
-.phoneme-box:hover .phoneme-suggestion {
+.phoneme-suggestion.phoneme-suggestion-slot {
+  display: block;
+  visibility: hidden;
+}
+
+.phoneme-box.show-suggestion .phoneme-suggestion:not(.phoneme-suggestion-slot),
+.phoneme-box:hover .phoneme-suggestion:not(.phoneme-suggestion-slot) {
   display: block;
 }
 

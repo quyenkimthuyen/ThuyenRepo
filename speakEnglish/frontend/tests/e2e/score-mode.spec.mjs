@@ -21,7 +21,8 @@ test.describe('Chế độ Chấm điểm + backend', () => {
     await expect(page.locator('#score-zone')).toBeVisible();
     await expect(page.locator('#phoneme-container')).toBeVisible();
     await expect(page.locator('#quiz-results-table')).toBeVisible();
-    await expect(page.locator('.phoneme-idle-hint')).toBeVisible();
+    await expect(page.locator('#phoneme-container .phoneme-char').first()).toBeVisible();
+    await expect(page.locator('#score-section')).toBeVisible();
   });
 
   test('evaluate API reachable from page context (CORS)', async ({ page }) => {

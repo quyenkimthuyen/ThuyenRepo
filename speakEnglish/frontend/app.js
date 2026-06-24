@@ -315,20 +315,42 @@ function renderQuizSummary() {
     </tr>`;
   }).join('');
 
+  updateQuizSummaryStats(rows);
+  bindQuizRowClicks();
+}
+
+function updateQuizSummaryStats(rows = quizSessionResults) {
+  const data = rows.length
+    ? rows
+    : words.map((w) => ({ word: w.word, score: null, passed: null, status: 'pending' }));
   const threshold = getPassThreshold();
-  const scored = rows.filter((r) => r.score != null);
-  const passedCount = rows.filter((r) => r.passed).length;
+  const scored = data.filter((r) => r.score != null);
+  const passedCount = data.filter((r) => r.passed).length;
   const avg = scored.length
     ? Math.round(scored.reduce((sum, r) => sum + r.score, 0) / scored.length)
     : null;
   if (els.quizSummaryStats) {
-    els.quizSummaryStats.textContent = `${passedCount}/${rows.length} đạt · TB ${avg ?? '—'}% · ngưỡng ${threshold}%`;
+    els.quizSummaryStats.textContent = `${passedCount}/${data.length} đạt · TB ${avg ?? '—'}% · ngưỡng ${threshold}%`;
   }
+}
 
-  els.quizResultsBody.querySelectorAll('.quiz-row').forEach((tr) => {
+function bindQuizRowClicks() {
+  els.quizResultsBody?.querySelectorAll('.quiz-row').forEach((tr) => {
     tr.addEventListener('click', () => {
       showWord(parseInt(tr.dataset.index, 10), { autoplay: false });
     });
+  });
+}
+
+/** Chỉ đổi dòng hiện tại — tránh rebuild bảng quiz khi chuyển từ */
+function updateQuizCurrentRow() {
+  if (!els.quizResultsBody?.children.length) {
+    renderQuizSummary();
+    return;
+  }
+  els.quizResultsBody.querySelectorAll('.quiz-row').forEach((tr) => {
+    const idx = parseInt(tr.dataset.index, 10);
+    tr.classList.toggle('current', idx === currentIndex);
   });
 }
 
@@ -727,7 +749,7 @@ function showWord(index, options = {}) {
   }
   lastScoredAtIndex = -1;
   resetWordFailStreak();
-  renderQuizSummary();
+  updateQuizCurrentRow();
   persistQuizSession();
 }
 
@@ -803,10 +825,36 @@ function endScoringOverlay() {
   els.scoreZone?.classList.remove('scoring');
 }
 
-function renderPhonemeIdle() {
+function setScoreHeroPending() {
+  if (!els.scoreSection) return;
+  els.scoreSection.classList.remove('hidden', 'scoring');
+  els.overallScore.textContent = '—';
+  els.passStatus.textContent = 'Chưa chấm';
+  els.passStatus.className = 'pass-status pass-status-pending';
+}
+
+function renderTargetPhonemes(word) {
   if (!isScoreMode() || !els.phonemeContainer) return;
+  const phonemes = word?.phonemes || [];
   els.phonemeContainer.classList.remove('has-results');
-  els.phonemeContainer.innerHTML = '<p class="phoneme-idle-hint">Nói xong → im lặng ngắn để chấm chi tiết từng âm IPA</p>';
+  if (!phonemes.length) {
+    els.phonemeContainer.innerHTML = '<p class="phoneme-idle-hint">Nói xong → im lặng ngắn để chấm chi tiết từng âm IPA</p>';
+    return;
+  }
+  els.phonemeContainer.innerHTML = phonemes
+    .map((ipa, i) => `
+      <div class="phoneme-box phoneme-box-pending" data-index="${i}">
+        <div class="phoneme-char pending">${ipa}</div>
+        <span class="phoneme-score">—</span>
+        <span class="phoneme-suggestion phoneme-suggestion-slot" aria-hidden="true">&nbsp;</span>
+      </div>
+    `)
+    .join('');
+}
+
+function renderPhonemeIdle(word = words[currentIndex]) {
+  if (!isScoreMode() || !els.phonemeContainer) return;
+  renderTargetPhonemes(word);
 }
 
 function restoreWordScoreUI(word) {
@@ -826,13 +874,14 @@ function restoreWordScoreUI(word) {
   }
 
   setScoreState('idle', 'Sẵn sàng chấm');
-  els.scoreSection.classList.add('hidden');
-  els.phonemeContainer?.classList.remove('has-results');
-  renderPhonemeIdle();
+  setScoreHeroPending();
+  els.feedbackSection?.classList.add('hidden');
+  els.feedbackList.innerHTML = '';
+  renderPhonemeIdle(word);
 }
 
 function renderPendingPhonemes(_phonemes) {
-  renderPhonemeIdle();
+  renderPhonemeIdle(words[currentIndex]);
 }
 
 function renderEvaluationDisplay(data, options = {}) {
@@ -1769,7 +1818,9 @@ async function evaluateRecording(blob = null, options = {}) {
   setScoreState('scoring', 'Đang chấm điểm...');
   if (!fromLive) els.spinner.classList.remove('hidden');
   beginScoringOverlay();
-  els.phonemeContainer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  if (!fromLive) {
+    els.phonemeContainer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
 
   try {
     let uploadBlob;
@@ -1900,7 +1951,7 @@ function renderPhonemeResults(phonemes, showSuggestionsAlways = false) {
       <div class="phoneme-box${showSuggestionsAlways && p.suggestion ? ' show-suggestion' : ''}" data-index="${i}" data-start="${p.start}" data-end="${p.end}">
         <div class="phoneme-char ${p.label}">${p.ipa}</div>
         <span class="phoneme-score">${Math.round(p.score * 100)}%</span>
-        ${p.suggestion ? `<span class="phoneme-suggestion">${p.suggestion}</span>` : ''}
+        <span class="phoneme-suggestion${p.suggestion ? '' : ' phoneme-suggestion-slot'}"${p.suggestion ? '' : ' aria-hidden="true"'}>${p.suggestion || '\u00a0'}</span>
       </div>
     `)
     .join('');
