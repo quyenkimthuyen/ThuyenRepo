@@ -10,6 +10,7 @@ import {
   computeRms,
   TEXT_MATCH_DELAY_MS,
   shouldAutoScoreOnUtteranceEnd,
+  MIN_SPEECH_MS,
 } from './js/core.js';
 import { MicEngine, MIC_PHASE } from './js/mic-engine.js';
 
@@ -37,6 +38,7 @@ let micEngine = null;
 let liveModeActive = false;
 let speechRecognition = null;
 let micStream = null;
+let micSourceNode = null;
 let liveMediaRecorder = null;
 let audioRingChunks = [];
 let liveAnalyser = null;
@@ -49,7 +51,6 @@ let textMatchTimer = null;
 let utterancePcmChunks = [];
 let utteranceCapturing = false;
 let pcmCaptureNode = null;
-let pcmCaptureSource = null;
 let pcmSilentGain = null;
 
 let isSamplePlaying = false;
@@ -270,8 +271,10 @@ function createMicEngine() {
     hangoverMs: getHangoverMsSetting(),
     allowAudioOnly: isScoreMode(),
     onSpeechStart: () => {
-      startUtteranceCapture();
-      startPhraseRecording();
+      if (isScoreMode()) {
+        startPhraseRecording();
+        startUtteranceCapture();
+      }
     },
     onPhaseChange: (phase, label) => {
       if (phase !== MIC_PHASE.OFF) {
@@ -541,6 +544,7 @@ function initLiveSpeech() {
     updateRealtimeHint();
     if (isScoreMode() && liveModeActive && (finalPart || interim)) {
       startUtteranceCapture();
+      startPhraseRecording();
     }
     tryScheduleTextAdvance();
   };
@@ -631,9 +635,8 @@ function hideLiveHint() {
 // ─── PCM capture (score mode) — ổn định hơn MediaRecorder ghép chunk ───────
 
 function ensurePcmCaptureGraph() {
-  if (pcmCaptureNode || !micStream) return;
-  if (!audioContext) audioContext = new AudioContext();
-  pcmCaptureSource = audioContext.createMediaStreamSource(micStream);
+  if (pcmCaptureNode || !micSourceNode || !audioContext) return;
+
   pcmCaptureNode = audioContext.createScriptProcessor(2048, 1, 1);
   pcmSilentGain = audioContext.createGain();
   pcmSilentGain.gain.value = 0;
@@ -641,7 +644,7 @@ function ensurePcmCaptureGraph() {
     if (!utteranceCapturing) return;
     utterancePcmChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
   };
-  pcmCaptureSource.connect(pcmCaptureNode);
+  micSourceNode.connect(pcmCaptureNode);
   pcmCaptureNode.connect(pcmSilentGain);
   pcmSilentGain.connect(audioContext.destination);
 }
@@ -664,10 +667,6 @@ function teardownPcmCapture() {
     try { pcmCaptureNode.disconnect(); } catch { /* ignore */ }
     pcmCaptureNode.onaudioprocess = null;
     pcmCaptureNode = null;
-  }
-  if (pcmCaptureSource) {
-    try { pcmCaptureSource.disconnect(); } catch { /* ignore */ }
-    pcmCaptureSource = null;
   }
   if (pcmSilentGain) {
     try { pcmSilentGain.disconnect(); } catch { /* ignore */ }
@@ -732,7 +731,7 @@ async function resampleFloat32ToWav(float32Data, srcSampleRate) {
 async function buildWavFromPcmChunks(chunks, srcSampleRate) {
   if (!chunks?.length) return null;
   const totalLen = chunks.reduce((n, c) => n + c.length, 0);
-  const minSamples = Math.floor(srcSampleRate * 0.2);
+  const minSamples = Math.floor(srcSampleRate * (MIN_SPEECH_MS / 1000) * 0.75);
   if (totalLen < minSamples) return null;
 
   const merged = new Float32Array(totalLen);
@@ -745,7 +744,7 @@ async function buildWavFromPcmChunks(chunks, srcSampleRate) {
 }
 
 function setupMediaRecorder() {
-  if (!micStream) return;
+  if (!micStream || isScoreMode()) return;
   if (phraseRecorder?.state === 'recording') return;
 
   stopRingRecorder();
@@ -770,7 +769,8 @@ function stopRingRecorder() {
 }
 
 function resumeRingRecorder() {
-  if (!micStream || !liveModeActive || phraseRecorder?.state === 'recording') return;
+  if (!micStream || !liveModeActive || isScoreMode()) return;
+  if (phraseRecorder?.state === 'recording') return;
   if (!liveMediaRecorder || liveMediaRecorder.state === 'inactive') {
     setupMediaRecorder();
   }
@@ -783,13 +783,14 @@ function pickRecorderMimeType() {
   return 'audio/webm';
 }
 
-/** Ghi âm 1 câu — stop() tạo file webm/mp4 hợp lệ (không ghép chunk) */
+/** Ghi âm 1 câu — cùng cơ chế với nút Ghi âm 1 lần (webm/mp4 hợp lệ) */
 function startPhraseRecording() {
   if (!micStream || phraseRecorder?.state === 'recording') return;
 
   stopPhraseRecordingSync();
   stopRingRecorder();
   phraseChunks = [];
+  liveMimeType = pickRecorderMimeType();
 
   try {
     phraseRecorder = new MediaRecorder(micStream, { mimeType: liveMimeType });
@@ -844,41 +845,31 @@ function stopPhraseRecording() {
     try {
       phraseRecorder.requestData();
     } catch { /* ignore */ }
-    setTimeout(stopNow, 60);
+    setTimeout(stopNow, 120);
   });
 }
 
+/** Live score: ưu tiên webm từ phraseRecorder (giống Ghi âm 1 lần), PCM chỉ dự phòng */
 async function getScoreAudioBlob() {
   stopUtteranceCapture();
   const pcmChunks = utterancePcmChunks;
   utterancePcmChunks = [];
 
+  const phraseBlob = await stopPhraseRecording();
+  if (phraseBlob && phraseBlob.size >= MIN_BLOB_BYTES) {
+    return phraseBlob;
+  }
+
   if (pcmChunks.length && audioContext) {
     try {
       const wav = await buildWavFromPcmChunks(pcmChunks, audioContext.sampleRate);
-      if (wav && wav.size >= MIN_BLOB_BYTES) {
-        stopPhraseRecordingSync();
-        phraseChunks = [];
-        resumeRingRecorder();
-        return wav;
-      }
+      if (wav && wav.size >= MIN_BLOB_BYTES) return wav;
     } catch (e) {
       console.warn('PCM → WAV failed:', e);
     }
   }
 
-  return getPhraseAudioBlob();
-}
-
-async function getPhraseAudioBlob() {
-  if (phraseRecorder?.state === 'recording') {
-    return stopPhraseRecording();
-  }
-  if (phraseChunks.length) {
-    const blob = phraseBlobFromChunks();
-    phraseChunks = [];
-    return blob;
-  }
+  if (phraseBlob && phraseBlob.size > 0) return phraseBlob;
   return null;
 }
 
@@ -948,8 +939,12 @@ async function handleUtteranceComplete(payload) {
   await processScoreUtterance();
 }
 
-/** Score mode: im lặng sau câu → tự gọi API chấm → đạt thì chuyển từ */
+/** Score mode: im lặng sau câu → tự gọi API chấm (cùng pipeline với Ghi âm 1 lần) */
 async function processScoreUtterance() {
+  if (isEvaluating) return;
+
+  await new Promise((r) => setTimeout(r, 80));
+
   const blob = await getScoreAudioBlob();
   if (!blob || blob.size < MIN_BLOB_BYTES) {
     showLiveHint('Không đủ audio — nói rõ hơn (~0.5s)', 'warn');
@@ -1033,16 +1028,22 @@ async function startLiveMode() {
     if (!audioContext) audioContext = new AudioContext();
     if (audioContext.state === 'suspended') await audioContext.resume();
 
-    const source = audioContext.createMediaStreamSource(micStream);
+    micSourceNode = audioContext.createMediaStreamSource(micStream);
     liveAnalyser = audioContext.createAnalyser();
     liveAnalyser.fftSize = 1024;
     liveAnalyser.smoothingTimeConstant = 0.3;
-    source.connect(liveAnalyser);
+    micSourceNode.connect(liveAnalyser);
+
+    liveMimeType = pickRecorderMimeType();
+    audioRingChunks = [];
+    if (isScoreMode()) {
+      ensurePcmCaptureGraph();
+    } else {
+      setupMediaRecorder();
+    }
 
     micEngine = createMicEngine();
     micEngine.setHangoverMs(getHangoverMsSetting());
-    audioRingChunks = [];
-    setupMediaRecorder();
     startVadLoop();
 
     if (speechRecognition) {
@@ -1077,10 +1078,10 @@ function stopLiveMode() {
   clearTextMatchTimer();
   micEngine?.stop();
   micEngine = null;
+  teardownPcmCapture();
   stopPhraseRecordingSync();
   phraseRecorder = null;
   phraseChunks = [];
-  teardownPcmCapture();
 
   if (sampleResumeTimer) {
     clearTimeout(sampleResumeTimer);
@@ -1098,6 +1099,12 @@ function stopLiveMode() {
     try { liveMediaRecorder.stop(); } catch { /* ignore */ }
   }
   liveMediaRecorder = null;
+
+  if (micSourceNode) {
+    try { micSourceNode.disconnect(); } catch { /* ignore */ }
+    micSourceNode = null;
+  }
+  liveAnalyser = null;
 
   if (micStream) {
     micStream.getTracks().forEach((t) => t.stop());
