@@ -5,7 +5,7 @@
 
 import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
-import { loadFromStorage, saveToStorage } from '../utils/dom.js';
+import { loadPersistedResult, savePersistedResult } from '../utils/resultsPersistence.js';
 import DataManager from '../data/DataManager.js';
 import StrategyEngine from '../strategy/StrategyEngine.js';
 import SimulationEngine from '../simulation/SimulationEngine.js';
@@ -38,7 +38,9 @@ class ResearchEngine {
    * @param {{ bus: import('../core/EventBus.js').EventBus }} _ctx
    */
   async initialize(_ctx) {
-    const saved = loadFromStorage(Config.STORAGE_KEYS.RESEARCH_RESULTS, {});
+    const saved = /** @type {{ grid?: unknown, walkForward?: unknown, monteCarlo?: unknown }} */ (
+      await loadPersistedResult(Config.STORAGE_KEYS.RESEARCH_RESULTS, {})
+    );
     this.#lastGrid = saved.grid ?? null;
     this.#lastWalkForward = saved.walkForward ?? null;
     this.#lastMonteCarlo = saved.monteCarlo ?? null;
@@ -57,6 +59,7 @@ class ResearchEngine {
    * @param {Record<string, number[]|string[]|boolean[]>} options.paramGrid
    * @param {import('./GridSearchEngine.js').RankMetric} [options.rankMetric]
    * @param {(progress: number) => void} [options.onProgress]
+   * @param {boolean} [options.autoWalkForward]
    * @returns {Promise<import('./GridSearchEngine.js').GridSearchResult>}
    */
   async runGridSearch(options) {
@@ -65,6 +68,7 @@ class ResearchEngine {
 
     const tradeConfig = mergeTradeConfig(SimulationEngine.getConfig());
     const max = Config.OPTIMIZER.MAX_COMBINATIONS;
+    const autoWf = options.autoWalkForward ?? Config.OPTIMIZER.AUTO_WALK_FORWARD_AFTER_GRID;
 
     const result = await runGridSearch({
       ...options,
@@ -74,12 +78,41 @@ class ResearchEngine {
       backtestFn: PerformanceEngine.runBacktest.bind(PerformanceEngine),
     });
 
+    if (autoWf && result.best?.params) {
+      const opt = Config.OPTIMIZER;
+      try {
+        const wf = runWalkForward({
+          strategyId: options.strategyId,
+          symbol: options.symbol,
+          timeframe: options.timeframe,
+          candles,
+          params: result.best.params,
+          tradeConfig,
+          inSampleRatio: opt.IN_SAMPLE_RATIO,
+          oosRatio: opt.OOS_RATIO,
+          stepRatio: opt.STEP_RATIO,
+          maxFolds: opt.WALK_FORWARD_FOLDS,
+        });
+        result.walkForward = wf;
+        this.#lastWalkForward = wf;
+      } catch (err) {
+        bus.emit(Events.LOG_MESSAGE, {
+          message: `Walk-forward on best combo skipped: ${err instanceof Error ? err.message : String(err)}`,
+          level: 'warn',
+          time: new Date(),
+        });
+      }
+    }
+
     this.#lastGrid = result;
-    this.#persist();
+    await this.#persist();
 
     bus.emit(Events.OPTIMIZATION_COMPLETE, result);
+    const wfNote = result.walkForward
+      ? ` · WF OOS avg $${result.walkForward.avgOosNetProfit.toFixed(2)}`
+      : '';
     bus.emit(Events.LOG_MESSAGE, {
-      message: `Grid search: ${result.totalCombinations} combos, best ${options.rankMetric ?? 'expectancy'} = ${result.best?.rank.toFixed(2) ?? 'N/A'}`,
+      message: `Grid search: ${result.totalCombinations} combos, best ${options.rankMetric ?? 'expectancy'} = ${result.best?.rank.toFixed(2) ?? 'N/A'}${wfNote}`,
       level: 'info',
       time: new Date(),
     });
@@ -118,7 +151,7 @@ class ResearchEngine {
     });
 
     this.#lastWalkForward = result;
-    this.#persist();
+    await this.#persist();
 
     bus.emit(Events.WALK_FORWARD_COMPLETE, result);
     bus.emit(Events.LOG_MESSAGE, {
@@ -151,7 +184,7 @@ class ResearchEngine {
     const result = await PerformanceEngine.runMonteCarlo(trades, balance, iterations);
 
     this.#lastMonteCarlo = result;
-    this.#persist();
+    await this.#persist();
 
     bus.emit(Events.MONTE_CARLO_COMPLETE, result);
     bus.emit(Events.LOG_MESSAGE, {
@@ -164,16 +197,17 @@ class ResearchEngine {
     return result;
   }
 
-  #persist() {
-    const ok = saveToStorage(Config.STORAGE_KEYS.RESEARCH_RESULTS, {
+  async #persist() {
+    const payload = {
       grid: stripGridSearchForStorage(this.#lastGrid),
       walkForward: stripWalkForwardForStorage(this.#lastWalkForward),
       monteCarlo: this.#lastMonteCarlo,
-    });
+    };
+    const ok = await savePersistedResult(Config.STORAGE_KEYS.RESEARCH_RESULTS, payload);
 
     if (!ok) {
       bus.emit(Events.LOG_MESSAGE, {
-        message: 'Không lưu được kết quả optimizer vào browser storage (quota) — vẫn giữ trong phiên hiện tại.',
+        message: 'Không lưu được kết quả optimizer — vẫn giữ trong phiên hiện tại.',
         level: 'warn',
         time: new Date(),
       });

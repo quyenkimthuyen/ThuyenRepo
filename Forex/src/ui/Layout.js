@@ -18,6 +18,7 @@ import { SimulationView } from './SimulationView.js';
 import { StatisticsView } from './StatisticsView.js';
 import { ReportsView } from './ReportsView.js';
 import { OptimizerView } from './OptimizerView.js';
+import { CompareView } from './CompareView.js';
 import { SignalsView } from './SignalsView.js';
 import { DocsView } from './DocsView.js';
 import { ContextHelpPanel } from './ContextHelpPanel.js';
@@ -30,6 +31,7 @@ const VIEWS = [
   { id: 'chart', label: 'Chart', icon: '📈' },
   { id: 'data', label: 'Data Manager', icon: '💾' },
   { id: 'strategy', label: 'Strategies', icon: '⚙️' },
+  { id: 'compare', label: 'Compare', icon: '⚖️' },
   { id: 'simulation', label: 'Simulation', icon: '🔬' },
   { id: 'statistics', label: 'Statistics', icon: '📊' },
   { id: 'reports', label: 'Reports', icon: '📋' },
@@ -133,6 +135,10 @@ class Layout {
       placeholder.className = 'panel-body';
       this.#activeView = StrategyView;
       StrategyView.mount(placeholder);
+    } else if (viewId === 'compare') {
+      placeholder.className = 'panel-body';
+      this.#activeView = CompareView;
+      CompareView.mount(placeholder);
     } else if (viewId === 'simulation') {
       placeholder.className = 'panel-body';
       this.#activeView = SimulationView;
@@ -180,6 +186,7 @@ class Layout {
     if (viewId === 'chart') return 'Phase 3 — Chart & Replay active';
     if (viewId === 'data') return 'Phase 2 — Data Manager active';
     if (viewId === 'strategy') return 'Phase 5 — Price Action setups active';
+    if (viewId === 'compare') return 'Strategy compare — rank setups on same data';
     if (viewId === 'simulation') return 'Phase 6 — Trade Engine active';
     if (viewId === 'statistics') return 'Phase 7 — Statistics active';
     if (viewId === 'reports') return 'Phase 8 — Dashboard & Reports active';
@@ -198,6 +205,7 @@ class Layout {
       chart: 'Professional candlestick chart with replay, drawing tools, and trade markers.',
       data: 'Download, store, and manage historical OHLCV data locally via IndexedDB.',
       strategy: 'Plugin-based Price Action strategy engine with configurable parameters.',
+      compare: 'Run multiple strategies on the same symbol/timeframe and rank by expectancy.',
       simulation: 'Backtest setups across pairs, timeframes, and parameter combinations.',
       statistics: 'Expectancy, profit factor, drawdown, and performance analytics.',
       reports: 'Export results as CSV, JSON, PNG, or PDF reports.',

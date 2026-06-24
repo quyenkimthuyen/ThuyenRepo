@@ -5,7 +5,7 @@
 
 import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
-import { loadFromStorage, saveToStorage } from '../utils/dom.js';
+import { loadPersistedResult, savePersistedResult } from '../utils/resultsPersistence.js';
 import SimulationEngine from '../simulation/SimulationEngine.js';
 import { computeStatistics } from './StatisticsCalculator.js';
 import { createLogger } from '../utils/logger.js';
@@ -36,7 +36,7 @@ class StatisticsEngine {
    * @param {{ bus: import('../core/EventBus.js').EventBus }} _ctx
    */
   async initialize(_ctx) {
-    this.#lastReport = loadFromStorage(Config.STORAGE_KEYS.STATISTICS_RESULTS, null);
+    this.#lastReport = await loadPersistedResult(Config.STORAGE_KEYS.STATISTICS_RESULTS, null);
     bus.on(Events.SIMULATION_COMPLETE, (result) => {
       this.computeFromTrades(
         result.trades,
@@ -78,7 +78,7 @@ class StatisticsEngine {
     };
 
     this.#lastReport = report;
-    saveToStorage(Config.STORAGE_KEYS.STATISTICS_RESULTS, report);
+    savePersistedResult(Config.STORAGE_KEYS.STATISTICS_RESULTS, report);
 
     bus.emit(Events.STATISTICS_COMPUTED, report);
     bus.emit(Events.LOG_MESSAGE, {

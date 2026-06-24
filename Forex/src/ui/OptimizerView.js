@@ -286,6 +286,14 @@ class OptimizerViewImpl {
           el('option', { value: 'winRate' }, ['Win Rate']),
         ]),
       ]),
+      el('label', { class: 'opt-field opt-field-check' }, [
+        el('input', {
+          type: 'checkbox',
+          id: 'opt-auto-wf',
+          checked: Config.OPTIMIZER.AUTO_WALK_FORWARD_AFTER_GRID,
+        }),
+        ' Auto walk-forward on best combo',
+      ]),
       el('div', { class: 'opt-actions' }, [
         el('button', { class: 'btn btn-primary', id: 'opt-run-grid' }, ['Run Grid Search']),
         el('span', { class: 'opt-progress', id: 'opt-progress' }, ['']),
@@ -386,12 +394,17 @@ class OptimizerViewImpl {
 
     if (progress) progress.textContent = `0 / ${total}`;
     try {
+      const autoWalkForward = /** @type {HTMLInputElement} */ (
+        this.#container.querySelector('#opt-auto-wf')
+      )?.checked ?? Config.OPTIMIZER.AUTO_WALK_FORWARD_AFTER_GRID;
+
       await ResearchEngine.runGridSearch({
         strategyId,
         symbol,
         timeframe,
         paramGrid,
         rankMetric: /** @type {import('../optimizer/GridSearchEngine.js').RankMetric} */ (rankMetric),
+        autoWalkForward,
         onProgress: (p) => {
           if (progress) progress.textContent = `${Math.round(p * total)} / ${total}`;
         },
@@ -493,6 +506,20 @@ class OptimizerViewImpl {
         el('tbody', {}, rows),
       ]),
     ]));
+
+    if (result.walkForward) {
+      const wf = result.walkForward;
+      wrap.appendChild(el('div', { class: 'opt-wf-inline' }, [
+        el('h4', { class: 'opt-wf-inline-title' }, [
+          `Walk-forward on best combo (${wf.folds.length} folds)`,
+        ]),
+        el('div', { class: 'opt-summary-cards' }, [
+          this.#card('Avg IS', `$${wf.avgIsNetProfit.toFixed(2)}`),
+          this.#card('Avg OOS', `$${wf.avgOosNetProfit.toFixed(2)}`),
+          this.#card('OOS profitable', `${wf.oosWinRate.toFixed(0)}%`),
+        ]),
+      ]));
+    }
 
     wrap.querySelector('#opt-export-grid')?.addEventListener('click', () => {
       downloadFile(JSON.stringify(result, null, 2), 'grid_search.json', 'application/json');

@@ -6,6 +6,7 @@
 import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
 import { loadFromStorage, saveToStorage } from '../utils/dom.js';
+import { loadPersistedResult, savePersistedResult } from '../utils/resultsPersistence.js';
 import DataManager from '../data/DataManager.js';
 import SimulationEngine from '../simulation/SimulationEngine.js';
 import PerformanceEngine from '../performance/PerformanceEngine.js';
@@ -53,6 +54,8 @@ class ScoringEngine {
    */
   async initialize(_ctx) {
     this.#lastScored = loadFromStorage(Config.STORAGE_KEYS.SCORED_SIGNALS, null);
+    const fromIdb = await loadPersistedResult(Config.STORAGE_KEYS.SCORED_SIGNALS, null);
+    if (fromIdb) this.#lastScored = fromIdb;
 
     if (!this.#listenerReady) {
       this.#listenerReady = true;
@@ -101,7 +104,7 @@ class ScoringEngine {
     };
 
     this.#lastScored = set;
-    saveToStorage(Config.STORAGE_KEYS.SCORED_SIGNALS, set);
+    await savePersistedResult(Config.STORAGE_KEYS.SCORED_SIGNALS, set);
 
     bus.emit(Events.SIGNALS_SCORED, set);
     bus.emit(Events.LOG_MESSAGE, {
@@ -179,7 +182,7 @@ class ScoringEngine {
       scoredAt: Date.now(),
     };
     this.#lastScored = set;
-    saveToStorage(Config.STORAGE_KEYS.SCORED_SIGNALS, set);
+    await savePersistedResult(Config.STORAGE_KEYS.SCORED_SIGNALS, set);
     bus.emit(Events.SIGNALS_SCORED, set);
     bus.emit(Events.LOG_MESSAGE, {
       message: `Đã áp trọng số AI mới — avg ${set.avgScore.toFixed(0)}/100`,

@@ -29,6 +29,7 @@ import { runBacktest } from './BacktestRunner.js';
  * @property {GridSearchEntry[]} entries
  * @property {GridSearchEntry|null} best
  * @property {number} durationMs
+ * @property {import('./WalkForwardEngine.js').WalkForwardResult} [walkForward]
  */
 
 /**

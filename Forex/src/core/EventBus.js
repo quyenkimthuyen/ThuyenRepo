@@ -122,5 +122,6 @@ export const Events = Object.freeze({
   WALK_FORWARD_COMPLETE: 'walkforward:complete',
   MONTE_CARLO_COMPLETE: 'montecarlo:complete',
   SIGNALS_SCORED: 'signals:scored',
+  STRATEGY_COMPARE_COMPLETE: 'strategy:compare:complete',
   DOCS_OPEN: 'docs:open',
 });

@@ -23,6 +23,8 @@ import { Config } from '../core/Config.js';
  * @property {number} partialCloseAtR
  * @property {number} partialClosePercent
  * @property {number} initialBalance
+ * @property {number} minAiScore - 0 = off; only simulate signals at/above this AI score
+ * @property {boolean} compareAiFilter - run baseline (all signals) vs filtered side-by-side
  */
 
 /**
@@ -43,6 +45,8 @@ export function getDefaultTradeConfig() {
     partialCloseAtR: s.PARTIAL_CLOSE_AT_R,
     partialClosePercent: s.PARTIAL_CLOSE_PERCENT,
     initialBalance: s.INITIAL_BALANCE,
+    minAiScore: 0,
+    compareAiFilter: false,
   };
 }
 

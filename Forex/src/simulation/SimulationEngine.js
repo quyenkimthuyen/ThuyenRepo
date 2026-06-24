@@ -6,8 +6,10 @@
 import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
 import { loadFromStorage, saveToStorage } from '../utils/dom.js';
+import { loadPersistedResult, savePersistedResult } from '../utils/resultsPersistence.js';
 import DataManager from '../data/DataManager.js';
 import StrategyEngine from '../strategy/StrategyEngine.js';
+import { scoreSignalsBatch, filterByMinScore } from '../scoring/SignalScoreEngine.js';
 import { getDefaultTradeConfig, mergeTradeConfig } from './TradeConfig.js';
 import { simulateTrades, summarizeTrades } from './TradeSimulator.js';
 import { createLogger } from '../utils/logger.js';
@@ -28,6 +30,15 @@ const log = createLogger('SimulationEngine');
  */
 
 /**
+ * @typedef {Object} AiFilterComparison
+ * @property {number} minScore
+ * @property {number} baselineSignalCount
+ * @property {number} filteredSignalCount
+ * @property {ReturnType<typeof summarizeTrades>} baselineSummary
+ * @property {ReturnType<typeof summarizeTrades>} filteredSummary
+ */
+
+/**
  * @typedef {Object} SimulationResult
  * @property {string} strategyId
  * @property {string} symbol
@@ -37,6 +48,7 @@ const log = createLogger('SimulationEngine');
  * @property {number} signalCount
  * @property {number} durationMs
  * @property {SimulationRunContext} [runContext]
+ * @property {AiFilterComparison|null} [aiComparison]
  */
 
 /**
@@ -57,7 +69,7 @@ class SimulationEngine {
       Config.STORAGE_KEYS.SIMULATION_CONFIG,
       getDefaultTradeConfig()
     );
-    const saved = loadFromStorage(Config.STORAGE_KEYS.SIMULATION_RESULTS, null);
+    const saved = await loadPersistedResult(Config.STORAGE_KEYS.SIMULATION_RESULTS, null);
     if (saved && Array.isArray(saved.trades)) {
       this.#lastResult = saved;
     }
@@ -102,7 +114,35 @@ class SimulationEngine {
       emitSignals: false,
     });
     const candles = await DataManager.getCandles(symbol, timeframe);
-    const trades = simulateTrades(scan.signals, candles, config);
+
+    const minScore = config.minAiScore ?? 0;
+    /** @type {import('../strategy/Signal.js').Signal[]} */
+    let signalsToTrade = scan.signals;
+    /** @type {AiFilterComparison|null} */
+    let aiComparison = null;
+
+    if (minScore > 0) {
+      const scored = scoreSignalsBatch(scan.signals, candles, config.spreadPips);
+      const filtered = filterByMinScore(scored, minScore);
+      const filteredIds = new Set(filtered.map((s) => s.id));
+      const filteredSignals = scan.signals.filter((s) => filteredIds.has(s.id));
+
+      if (config.compareAiFilter) {
+        const baselineTrades = simulateTrades(scan.signals, candles, config);
+        const filteredTrades = simulateTrades(filteredSignals, candles, config);
+        aiComparison = {
+          minScore,
+          baselineSignalCount: scan.signals.length,
+          filteredSignalCount: filteredSignals.length,
+          baselineSummary: summarizeTrades(baselineTrades, config.initialBalance),
+          filteredSummary: summarizeTrades(filteredTrades, config.initialBalance),
+        };
+      }
+
+      signalsToTrade = filteredSignals;
+    }
+
+    const trades = simulateTrades(signalsToTrade, candles, config);
     const summary = summarizeTrades(trades, config.initialBalance);
 
     const result = {
@@ -111,13 +151,14 @@ class SimulationEngine {
       timeframe,
       trades,
       summary,
-      signalCount: scan.signals.length,
+      signalCount: signalsToTrade.length,
       durationMs: Math.round(performance.now() - start),
       runContext: { strategyId, symbol, timeframe, config: { ...config } },
+      aiComparison,
     };
 
     this.#lastResult = result;
-    saveToStorage(Config.STORAGE_KEYS.SIMULATION_RESULTS, result);
+    await savePersistedResult(Config.STORAGE_KEYS.SIMULATION_RESULTS, result);
 
     bus.emit(Events.SIMULATION_RUN, result);
     bus.emit(Events.SIMULATION_COMPLETE, result);
@@ -129,8 +170,16 @@ class SimulationEngine {
       barsScanned: scan.barsScanned,
       durationMs: scan.durationMs,
     });
+
+    let logMsg = `Simulation: ${trades.length} trades, WR ${summary.winRate.toFixed(1)}%, Net $${summary.netProfit.toFixed(2)}`;
+    if (aiComparison) {
+      logMsg += ` (AI ≥${minScore}: ${aiComparison.filteredSignalCount}/${aiComparison.baselineSignalCount} signals)`;
+    } else if (minScore > 0) {
+      logMsg += ` (AI filter ≥${minScore})`;
+    }
+
     bus.emit(Events.LOG_MESSAGE, {
-      message: `Simulation: ${trades.length} trades, WR ${summary.winRate.toFixed(1)}%, Net $${summary.netProfit.toFixed(2)}`,
+      message: logMsg,
       level: 'info',
       time: new Date(),
     });
@@ -167,10 +216,11 @@ class SimulationEngine {
         timeframe,
         config: { ...this.#config },
       },
+      aiComparison: null,
     };
 
     this.#lastResult = result;
-    saveToStorage(Config.STORAGE_KEYS.SIMULATION_RESULTS, result);
+    await savePersistedResult(Config.STORAGE_KEYS.SIMULATION_RESULTS, result);
     bus.emit(Events.SIMULATION_COMPLETE, result);
     return result;
   }

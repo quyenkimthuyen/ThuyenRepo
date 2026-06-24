@@ -203,6 +203,36 @@ class SimulationViewImpl {
           el('input', { type: 'number', class: 'data-select', id: 'sim-partial-pct', value: String(config.partialClosePercent), step: '5' }),
         ]),
       ]),
+      el('div', { class: 'sim-config-row sim-ai-row' }, [
+        el('label', { class: 'sim-field sim-field-check' }, [
+          el('input', {
+            type: 'checkbox',
+            id: 'sim-ai-filter',
+            checked: (config.minAiScore ?? 0) > 0,
+          }),
+          ' AI score filter',
+        ]),
+        el('label', { class: 'sim-field' }, [
+          'Min score',
+          el('input', {
+            type: 'number',
+            class: 'data-select',
+            id: 'sim-min-ai',
+            value: String(config.minAiScore > 0 ? config.minAiScore : Config.SIMULATION.DEFAULT_MIN_AI_SCORE),
+            min: '0',
+            max: '100',
+            step: '1',
+          }),
+        ]),
+        el('label', { class: 'sim-field sim-field-check' }, [
+          el('input', {
+            type: 'checkbox',
+            id: 'sim-ai-compare',
+            checked: Boolean(config.compareAiFilter),
+          }),
+          ' Compare vs all signals',
+        ]),
+      ]),
     ]);
   }
 
@@ -235,6 +265,9 @@ class SimulationViewImpl {
       '#sim-be',
       '#sim-partial-r',
       '#sim-partial-pct',
+      '#sim-ai-filter',
+      '#sim-min-ai',
+      '#sim-ai-compare',
     ];
 
     for (const sel of selectors) {
@@ -284,6 +317,10 @@ class SimulationViewImpl {
 
   #readConfig() {
     const root = this.#container;
+    const useAiFilter = /** @type {HTMLInputElement} */ (root.querySelector('#sim-ai-filter'))?.checked ?? false;
+    const minAiRaw = parseInt(/** @type {HTMLInputElement} */ (root.querySelector('#sim-min-ai')).value, 10);
+    const compareAiFilter = /** @type {HTMLInputElement} */ (root.querySelector('#sim-ai-compare'))?.checked ?? false;
+
     return {
       orderType: /** @type {HTMLSelectElement} */ (root.querySelector('#sim-order-type')).value,
       spreadPips: parseFloat(/** @type {HTMLInputElement} */ (root.querySelector('#sim-spread')).value),
@@ -293,6 +330,8 @@ class SimulationViewImpl {
       breakEvenAtR: parseFloat(/** @type {HTMLInputElement} */ (root.querySelector('#sim-be')).value),
       partialCloseAtR: parseFloat(/** @type {HTMLInputElement} */ (root.querySelector('#sim-partial-r')).value),
       partialClosePercent: parseFloat(/** @type {HTMLInputElement} */ (root.querySelector('#sim-partial-pct')).value),
+      minAiScore: useAiFilter ? Math.max(0, Math.min(100, minAiRaw || 0)) : 0,
+      compareAiFilter: useAiFilter && compareAiFilter,
     };
   }
 
@@ -366,6 +405,8 @@ class SimulationViewImpl {
       'breakEvenAtR',
       'partialCloseAtR',
       'partialClosePercent',
+      'minAiScore',
+      'compareAiFilter',
     ];
     for (const key of keys) {
       if (saved.config[key] !== current.config[key]) return false;
@@ -453,6 +494,16 @@ class SimulationViewImpl {
     setVal('#sim-be', cfg.breakEvenAtR);
     setVal('#sim-partial-r', cfg.partialCloseAtR);
     setVal('#sim-partial-pct', cfg.partialClosePercent);
+    const aiFilter = root.querySelector('#sim-ai-filter');
+    const minAi = root.querySelector('#sim-min-ai');
+    const aiCompare = root.querySelector('#sim-ai-compare');
+    if (aiFilter) /** @type {HTMLInputElement} */ (aiFilter).checked = (cfg.minAiScore ?? 0) > 0;
+    if (minAi) {
+      /** @type {HTMLInputElement} */ (minAi).value = String(
+        cfg.minAiScore > 0 ? cfg.minAiScore : Config.SIMULATION.DEFAULT_MIN_AI_SCORE
+      );
+    }
+    if (aiCompare) /** @type {HTMLInputElement} */ (aiCompare).checked = Boolean(cfg.compareAiFilter);
   }
 
   /**
@@ -509,6 +560,29 @@ class SimulationViewImpl {
       this.#card('Signals', String(result.signalCount)),
       this.#card('Balance', `$${s.finalBalance.toFixed(2)}`),
     ]));
+
+    if (result.aiComparison) {
+      const cmp = result.aiComparison;
+      const b = cmp.baselineSummary;
+      const f = cmp.filteredSummary;
+      summary.appendChild(el('div', { class: 'sim-ai-compare' }, [
+        el('div', { class: 'sim-ai-compare-title' }, [
+          `AI filter ≥ ${cmp.minScore} — ${cmp.filteredSignalCount} / ${cmp.baselineSignalCount} signals`,
+        ]),
+        el('div', { class: 'sim-ai-compare-grid' }, [
+          el('div', { class: 'sim-ai-col' }, [
+            el('h5', {}, ['All signals']),
+            el('p', { class: 'sim-ai-stat' }, [`Trades: ${b.totalTrades} · WR ${b.winRate.toFixed(1)}%`]),
+            el('p', { class: 'sim-ai-stat' }, [`Net $${b.netProfit.toFixed(2)} · Exp $${b.expectancy.toFixed(2)}`]),
+          ]),
+          el('div', { class: 'sim-ai-col' }, [
+            el('h5', {}, [`Filtered ≥ ${cmp.minScore}`]),
+            el('p', { class: 'sim-ai-stat' }, [`Trades: ${f.totalTrades} · WR ${f.winRate.toFixed(1)}%`]),
+            el('p', { class: 'sim-ai-stat' }, [`Net $${f.netProfit.toFixed(2)} · Exp $${f.expectancy.toFixed(2)}`]),
+          ]),
+        ]),
+      ]));
+    }
 
     tableWrap.innerHTML = '';
     tableWrap.appendChild(el('p', { class: 'sim-table-hint' }, [

@@ -18,6 +18,7 @@ const SUITES = [
   { file: 'replay/ReplayTests.js', label: 'Replay Engine' },
   { file: 'strategy/Phase5Tests.js', label: 'Strategies (Phase 5)' },
   { file: 'simulation/TradeTests.js', label: 'Trade Simulation' },
+  { file: 'research/CompareTests.js', label: 'Compare & Persistence' },
   { file: 'utils/ChartNavigationTests.js', label: 'Chart Navigation' },
   { file: 'utils/StorageUtilsTests.js', label: 'Storage Utils' },
   { file: 'statistics/StatisticsTests.js', label: 'Statistics' },

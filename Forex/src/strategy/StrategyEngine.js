@@ -8,6 +8,7 @@ import { bus, Events } from '../core/EventBus.js';
 import { registry } from '../plugin/PluginRegistry.js';
 import { createContext } from './StrategyContext.js';
 import { loadFromStorage, saveToStorage } from '../utils/dom.js';
+import { loadPersistedResult, savePersistedResult } from '../utils/resultsPersistence.js';
 import DataManager from '../data/DataManager.js';
 import { createLogger } from '../utils/logger.js';
 import { registerBuiltinStrategies } from '../strategies/index.js';
@@ -46,7 +47,9 @@ class StrategyEngine {
   async initialize(_ctx) {
     registerBuiltinStrategies();
     this.#configs = loadFromStorage(Config.STORAGE_KEYS.STRATEGIES, {});
-    this.#lastResults = loadFromStorage(Config.STORAGE_KEYS.STRATEGY_RESULTS, {});
+    this.#lastResults = /** @type {Record<string, ScanResult>} */ (
+      await loadPersistedResult(Config.STORAGE_KEYS.STRATEGY_RESULTS, {})
+    );
     this.#ensureDefaults();
     log.info(`Strategy engine ready — ${registry.size} plugins loaded`);
   }
@@ -153,7 +156,7 @@ class StrategyEngine {
     };
 
     this.#lastResults[strategyId] = result;
-    saveToStorage(Config.STORAGE_KEYS.STRATEGY_RESULTS, this.#lastResults);
+    await savePersistedResult(Config.STORAGE_KEYS.STRATEGY_RESULTS, this.#lastResults);
 
     bus.emit(Events.STRATEGY_RUN, result);
     if (options.emitSignals !== false) {

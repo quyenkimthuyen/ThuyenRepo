@@ -58,6 +58,10 @@ export class IndexedDBStore {
           db.createObjectStore(Config.DB_STORES.METADATA, { keyPath: 'key' });
         }
 
+        if (!db.objectStoreNames.contains(Config.DB_STORES.RESULTS)) {
+          db.createObjectStore(Config.DB_STORES.RESULTS, { keyPath: 'key' });
+        }
+
         log.info('Database schema created / upgraded');
       };
 
@@ -203,7 +207,42 @@ export class IndexedDBStore {
     });
   }
 
-  /** Delete every candle row and metadata record. */
+  /**
+   * @param {string} key
+   * @param {unknown} value
+   */
+  async putJsonResult(key, value) {
+    const db = await this.open();
+    await this.#runTransaction(db, Config.DB_STORES.RESULTS, 'readwrite', (store) => {
+      store.put({ key, value, updatedAt: Date.now() });
+    });
+  }
+
+  /**
+   * @param {string} key
+   * @returns {Promise<unknown|undefined>}
+   */
+  async getJsonResult(key) {
+    const db = await this.open();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(Config.DB_STORES.RESULTS, 'readonly');
+      const request = tx.objectStore(Config.DB_STORES.RESULTS).get(key);
+      request.onsuccess = () => resolve(request.result?.value);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * @param {string} key
+   */
+  async deleteJsonResult(key) {
+    const db = await this.open();
+    await this.#runTransaction(db, Config.DB_STORES.RESULTS, 'readwrite', (store) => {
+      store.delete(key);
+    });
+  }
+
+  /** Delete every candle row, metadata record, and persisted result blob. */
   async clearAll() {
     const db = await this.open();
     await this.#runTransaction(db, Config.DB_STORES.CANDLES, 'readwrite', (store) => {
@@ -212,6 +251,11 @@ export class IndexedDBStore {
     await this.#runTransaction(db, Config.DB_STORES.METADATA, 'readwrite', (store) => {
       store.clear();
     });
+    if (db.objectStoreNames.contains(Config.DB_STORES.RESULTS)) {
+      await this.#runTransaction(db, Config.DB_STORES.RESULTS, 'readwrite', (store) => {
+        store.clear();
+      });
+    }
     log.info('IndexedDB cleared');
   }
 

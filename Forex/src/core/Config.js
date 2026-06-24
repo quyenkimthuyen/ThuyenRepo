@@ -51,16 +51,18 @@ export const Config = Object.freeze({
     RESEARCH_RESULTS: 'parl_research_results',
     SCORED_SIGNALS: 'parl_scored_signals',
     SCORING_WEIGHTS: 'parl_scoring_weights',
+    STRATEGY_COMPARE: 'parl_strategy_compare',
   }),
 
   /** IndexedDB database name and schema version. */
   DB_NAME: 'parl_data',
-  DB_VERSION: 1,
+  DB_VERSION: 2,
 
   /** IndexedDB object store names. */
   DB_STORES: Object.freeze({
     CANDLES: 'candles',
     METADATA: 'metadata',
+    RESULTS: 'results',
   }),
 
   /** Batch size for IndexedDB bulk writes. */
@@ -133,6 +135,7 @@ export const Config = Object.freeze({
     PARTIAL_CLOSE_AT_R: 0,
     PARTIAL_CLOSE_PERCENT: 50,
     INITIAL_BALANCE: 10000,
+    DEFAULT_MIN_AI_SCORE: 65,
   }),
 
   /** Research optimizer defaults. */
@@ -144,8 +147,10 @@ export const Config = Object.freeze({
     IN_SAMPLE_RATIO: 0.7,
     OOS_RATIO: 0.15,
     STEP_RATIO: 0.1,
-    /** Max grid rows saved to localStorage (stats only, no trades/signals). */
-    PERSIST_GRID_TOP: 50,
+    /** Max grid rows persisted to IndexedDB (stats only, no trades/signals). */
+    PERSIST_GRID_TOP: 100,
+    /** Run walk-forward on best grid combo by default. */
+    AUTO_WALK_FORWARD_AFTER_GRID: true,
   }),
 
   /** AI signal scoring factor weights (must sum to 1.0). */

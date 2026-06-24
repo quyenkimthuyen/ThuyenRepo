@@ -5,7 +5,7 @@
 
 import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
-import { loadFromStorage, saveToStorage } from '../utils/dom.js';
+import { loadPersistedResult, savePersistedResult } from '../utils/resultsPersistence.js';
 import SimulationEngine from '../simulation/SimulationEngine.js';
 import StatisticsEngine from '../statistics/StatisticsEngine.js';
 import { computeAllHeatmaps } from '../analytics/HeatmapCalculator.js';
@@ -44,7 +44,7 @@ class ReportEngine {
    * @param {{ bus: import('../core/EventBus.js').EventBus }} _ctx
    */
   async initialize(_ctx) {
-    this.#lastReport = loadFromStorage(Config.STORAGE_KEYS.REPORT_RESULTS, null);
+    this.#lastReport = await loadPersistedResult(Config.STORAGE_KEYS.REPORT_RESULTS, null);
 
     bus.on(Events.STATISTICS_COMPUTED, () => this.refreshFromSimulation());
 
@@ -88,7 +88,7 @@ class ReportEngine {
     };
 
     this.#lastReport = report;
-    saveToStorage(Config.STORAGE_KEYS.REPORT_RESULTS, report);
+    savePersistedResult(Config.STORAGE_KEYS.REPORT_RESULTS, report);
 
     bus.emit(Events.REPORT_GENERATED, report);
     bus.emit(Events.LOG_MESSAGE, {
