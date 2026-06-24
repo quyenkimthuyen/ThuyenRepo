@@ -13,6 +13,10 @@ import { mergeTradeConfig } from '../simulation/TradeConfig.js';
 import { runGridSearch } from './GridSearchEngine.js';
 import { runWalkForward } from './WalkForwardEngine.js';
 import PerformanceEngine from '../performance/PerformanceEngine.js';
+import {
+  stripGridSearchForStorage,
+  stripWalkForwardForStorage,
+} from './researchPersistence.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('ResearchEngine');
@@ -161,11 +165,19 @@ class ResearchEngine {
   }
 
   #persist() {
-    saveToStorage(Config.STORAGE_KEYS.RESEARCH_RESULTS, {
-      grid: this.#lastGrid,
-      walkForward: this.#lastWalkForward,
+    const ok = saveToStorage(Config.STORAGE_KEYS.RESEARCH_RESULTS, {
+      grid: stripGridSearchForStorage(this.#lastGrid),
+      walkForward: stripWalkForwardForStorage(this.#lastWalkForward),
       monteCarlo: this.#lastMonteCarlo,
     });
+
+    if (!ok) {
+      bus.emit(Events.LOG_MESSAGE, {
+        message: 'Không lưu được kết quả optimizer vào browser storage (quota) — vẫn giữ trong phiên hiện tại.',
+        level: 'warn',
+        time: new Date(),
+      });
+    }
   }
 }
 

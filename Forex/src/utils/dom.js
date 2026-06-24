@@ -76,9 +76,16 @@ export function loadFromStorage(key, fallback) {
  * Save a value to localStorage as JSON.
  * @param {string} key
  * @param {unknown} value
+ * @returns {boolean} False when quota is exceeded or save fails
  */
 export function saveToStorage(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (err) {
+    console.warn(`[Storage] Failed to save "${key}":`, err);
+    return false;
+  }
 }
 
 /**

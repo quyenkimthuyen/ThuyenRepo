@@ -144,6 +144,8 @@ export const Config = Object.freeze({
     IN_SAMPLE_RATIO: 0.7,
     OOS_RATIO: 0.15,
     STEP_RATIO: 0.1,
+    /** Max grid rows saved to localStorage (stats only, no trades/signals). */
+    PERSIST_GRID_TOP: 50,
   }),
 
   /** AI signal scoring factor weights (must sum to 1.0). */

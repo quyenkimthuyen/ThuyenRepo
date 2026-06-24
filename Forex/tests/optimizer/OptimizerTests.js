@@ -6,6 +6,7 @@
 import { parseValueList, buildCombinations, countCombinations, defaultGridForParam } from '../../src/optimizer/ParameterGrid.js';
 import { runMonteCarlo } from '../../src/optimizer/MonteCarloEngine.js';
 import { getRankValue } from '../../src/optimizer/GridSearchEngine.js';
+import { stripBacktestResult, stripGridSearchForStorage } from '../../src/optimizer/researchPersistence.js';
 import { computeStatistics } from '../../src/statistics/StatisticsCalculator.js';
 
 let passed = 0;
@@ -62,6 +63,40 @@ console.log('\n=== Optimizer Tests ===\n');
   const stats = computeStatistics([trade(1, 20), trade(2, -10)], 10000);
   assert('OP-09: Rank expectancy', getRankValue(stats, 'expectancy') === 5);
   assert('OP-10: Rank PF', getRankValue(stats, 'profitFactor') === 2);
+}
+
+{
+  const signals = Array.from({ length: 100 }, (_, i) => ({ id: `s${i}`, time: i }));
+  const trades = Array.from({ length: 80 }, (_, i) => trade(i, i % 2 ? 10 : -5));
+  const full = {
+    signals,
+    trades,
+    stats: computeStatistics(trades, 10000),
+    barsScanned: 5000,
+    durationMs: 120,
+  };
+  const stripped = stripBacktestResult(full);
+  assert('OP-11: Strip backtest drops arrays', !('signals' in stripped) && !('trades' in stripped));
+  assert('OP-12: Strip keeps counts', stripped.signalCount === 100 && stripped.tradeCount === 80);
+
+  const grid = {
+    strategyId: 'ema-pullback',
+    symbol: 'EURUSD',
+    timeframe: 'H1',
+    rankMetric: 'expectancy',
+    totalCombinations: 200,
+    durationMs: 999,
+    entries: Array.from({ length: 200 }, (_, i) => ({
+      params: { rr: 1 + (i % 3) },
+      rank: 200 - i,
+      result: full,
+    })),
+    best: null,
+  };
+  grid.best = grid.entries[0];
+  const persisted = stripGridSearchForStorage(grid, 50);
+  assert('OP-13: Grid persist caps rows', persisted.entries.length === 50);
+  assert('OP-14: Grid persist strips trades', !('trades' in persisted.entries[0].result));
 }
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);
