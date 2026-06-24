@@ -67,10 +67,10 @@ class SimulationViewImpl {
     this.#bindEvents();
 
     const last = SimulationEngine.getLastResult();
-    if (last) {
-      this.#restoreRunContext(last);
-      this.#renderResults(last);
+    if (last?.runContext) {
+      this.#applyRunContext(last.runContext);
     }
+    this.#syncResultsWithSettings();
 
     log.info('Simulation view mounted');
   }
@@ -155,6 +155,7 @@ class SimulationViewImpl {
     if (!toolbar) return;
     toolbar.replaceWith(this.#renderToolbar(plugins));
     this.#bindToolbarEvents();
+    this.#syncResultsWithSettings();
   }
 
   /**
@@ -207,17 +208,48 @@ class SimulationViewImpl {
 
   #bindEvents() {
     this.#bindToolbarEvents();
+    this.#bindConfigEvents();
     const unsubData = bus.on(Events.DATA_UPDATED, () => this.#refreshToolbar());
-    const unsubSim = bus.on(Events.SIMULATION_COMPLETE, (result) => this.#renderResults(result));
+    const unsubSim = bus.on(Events.SIMULATION_COMPLETE, (result) => {
+      if (result.runContext) {
+        this.#applyRunContext(result.runContext);
+      }
+      this.#renderResults(result);
+    });
     this.#unsub = () => {
       unsubData();
       unsubSim();
     };
   }
 
+  #bindConfigEvents() {
+    const root = this.#container;
+    if (!root) return;
+
+    const selectors = [
+      '#sim-order-type',
+      '#sim-spread',
+      '#sim-slippage',
+      '#sim-lot',
+      '#sim-trailing',
+      '#sim-be',
+      '#sim-partial-r',
+      '#sim-partial-pct',
+    ];
+
+    for (const sel of selectors) {
+      root.querySelector(sel)?.addEventListener('change', () => this.#syncResultsWithSettings());
+      root.querySelector(sel)?.addEventListener('input', () => this.#syncResultsWithSettings());
+    }
+  }
+
   #bindToolbarEvents() {
     this.#container?.querySelector('#sim-run')?.addEventListener('click', () => this.#run());
     this.#container?.querySelector('#sim-export')?.addEventListener('click', () => this.#export());
+
+    this.#container?.querySelector('#sim-strategy')?.addEventListener('change', () => {
+      this.#syncResultsWithSettings();
+    });
 
     this.#container?.querySelector('#sim-symbol')?.addEventListener('change', (e) => {
       this.#selectedSymbol = /** @type {HTMLSelectElement} */ (e.target).value;
@@ -241,10 +273,12 @@ class SimulationViewImpl {
       if (this.#selectedTimeframe) {
         /** @type {HTMLSelectElement} */ (tfSelect).value = this.#selectedTimeframe;
       }
+      this.#syncResultsWithSettings();
     });
 
     this.#container?.querySelector('#sim-tf')?.addEventListener('change', (e) => {
       this.#selectedTimeframe = /** @type {HTMLSelectElement} */ (e.target).value;
+      this.#syncResultsWithSettings();
     });
   }
 
@@ -285,31 +319,116 @@ class SimulationViewImpl {
 
   #export() {
     const result = SimulationEngine.getLastResult();
-    if (!result) {
-      bus.emit(Events.LOG_MESSAGE, { message: 'No results to export', level: 'warn', time: new Date() });
+    const current = this.#readRunContext();
+    if (!result || !this.#contextMatches(result.runContext, current)) {
+      bus.emit(Events.LOG_MESSAGE, {
+        message: 'Không có kết quả khớp cài đặt hiện tại để export',
+        level: 'warn',
+        time: new Date(),
+      });
       return;
     }
     downloadFile(JSON.stringify(result, null, 2), `simulation_${result.strategyId}.json`, 'application/json');
   }
 
   /**
-   * Restore toolbar selectors to match the last simulation run.
-   * @param {import('../simulation/SimulationEngine.js').SimulationResult} result
+   * @returns {import('../simulation/SimulationEngine.js').SimulationRunContext|null}
    */
-  #restoreRunContext(result) {
-    const strat = this.#container?.querySelector('#sim-strategy');
-    const sym = this.#container?.querySelector('#sim-symbol');
-    const tf = this.#container?.querySelector('#sim-tf');
+  #readRunContext() {
+    const root = this.#container;
+    if (!root?.querySelector('#sim-strategy')) return null;
 
-    if (strat) strat.value = result.strategyId;
+    return {
+      strategyId: /** @type {HTMLSelectElement} */ (root.querySelector('#sim-strategy')).value,
+      symbol: /** @type {HTMLSelectElement} */ (root.querySelector('#sim-symbol')).value,
+      timeframe: /** @type {HTMLSelectElement} */ (root.querySelector('#sim-tf')).value,
+      config: this.#readConfig(),
+    };
+  }
 
-    if (sym && result.symbol) {
-      sym.value = result.symbol;
-      this.#selectedSymbol = result.symbol;
+  /**
+   * @param {import('../simulation/SimulationEngine.js').SimulationRunContext|undefined} saved
+   * @param {import('../simulation/SimulationEngine.js').SimulationRunContext|null} current
+   * @returns {boolean}
+   */
+  #contextMatches(saved, current) {
+    if (!saved || !current) return false;
+    if (saved.strategyId !== current.strategyId) return false;
+    if (saved.symbol !== current.symbol) return false;
+    if (saved.timeframe !== current.timeframe) return false;
+
+    const keys = [
+      'orderType',
+      'spreadPips',
+      'slippagePips',
+      'lotSize',
+      'trailingStopPips',
+      'breakEvenAtR',
+      'partialCloseAtR',
+      'partialClosePercent',
+    ];
+    for (const key of keys) {
+      if (saved.config[key] !== current.config[key]) return false;
+    }
+    return true;
+  }
+
+  /**
+   * Show results only when they match the current toolbar + config.
+   */
+  #syncResultsWithSettings() {
+    const last = SimulationEngine.getLastResult();
+    const current = this.#readRunContext();
+    if (last && this.#contextMatches(last.runContext, current)) {
+      this.#renderResults(last);
+      return;
+    }
+    this.#clearResultsDisplay(Boolean(last?.runContext));
+  }
+
+  /**
+   * @param {boolean} [settingsChanged=false]
+   */
+  #clearResultsDisplay(settingsChanged = false) {
+    const summary = this.#container?.querySelector('#sim-summary');
+    const tableWrap = this.#container?.querySelector('#sim-table-wrap');
+    if (!summary || !tableWrap) return;
+
+    summary.innerHTML = '';
+    tableWrap.innerHTML = '';
+
+    if (settingsChanged) {
+      summary.appendChild(el('p', { class: 'sim-empty sim-stale' }, [
+        'Đã thay đổi cài đặt — bấm Run Simulation để xem kết quả mới.',
+      ]));
+    } else {
+      summary.appendChild(el('p', { class: 'sim-empty' }, [
+        'Run a simulation to see results.',
+      ]));
+    }
+  }
+
+  /**
+   * Apply saved run context to toolbar + config inputs.
+   * @param {import('../simulation/SimulationEngine.js').SimulationRunContext} ctx
+   */
+  #applyRunContext(ctx) {
+    const root = this.#container;
+    if (!root) return;
+
+    const strat = root.querySelector('#sim-strategy');
+    const sym = root.querySelector('#sim-symbol');
+    const tf = root.querySelector('#sim-tf');
+
+    if (strat) strat.value = ctx.strategyId;
+
+    if (sym && ctx.symbol) {
+      sym.value = ctx.symbol;
+      this.#selectedSymbol = ctx.symbol;
     }
 
-    if (tf && result.timeframe) {
-      this.#selectedTimeframe = result.timeframe;
+    if (tf && ctx.timeframe) {
+      this.#selectedTimeframe = ctx.timeframe;
       tf.innerHTML = '';
       for (const opt of buildTimeframeOptions(
         this.#runnableDatasets,
@@ -318,8 +437,22 @@ class SimulationViewImpl {
       )) {
         tf.appendChild(opt);
       }
-      tf.value = result.timeframe;
+      tf.value = ctx.timeframe;
     }
+
+    const cfg = ctx.config;
+    const setVal = (id, value) => {
+      const el = root.querySelector(id);
+      if (el) /** @type {HTMLInputElement|HTMLSelectElement} */ (el).value = String(value);
+    };
+    setVal('#sim-order-type', cfg.orderType);
+    setVal('#sim-spread', cfg.spreadPips);
+    setVal('#sim-slippage', cfg.slippagePips);
+    setVal('#sim-lot', cfg.lotSize);
+    setVal('#sim-trailing', cfg.trailingStopPips);
+    setVal('#sim-be', cfg.breakEvenAtR);
+    setVal('#sim-partial-r', cfg.partialCloseAtR);
+    setVal('#sim-partial-pct', cfg.partialClosePercent);
   }
 
   /**
@@ -363,6 +496,7 @@ class SimulationViewImpl {
     const s = result.summary;
     summary.innerHTML = '';
     summary.appendChild(el('div', { class: 'sim-run-meta' }, [
+      el('span', { class: 'sim-run-meta-ok' }, ['Kết quả khớp cài đặt hiện tại']),
       el('span', {}, [
         `${result.strategyId} · ${result.symbol} ${result.timeframe} · ${result.durationMs}ms`,
       ]),

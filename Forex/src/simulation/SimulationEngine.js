@@ -20,6 +20,14 @@ const log = createLogger('SimulationEngine');
  */
 
 /**
+ * @typedef {Object} SimulationRunContext
+ * @property {string} strategyId
+ * @property {string} symbol
+ * @property {string} timeframe
+ * @property {import('./TradeConfig.js').TradeConfig} config
+ */
+
+/**
  * @typedef {Object} SimulationResult
  * @property {string} strategyId
  * @property {string} symbol
@@ -28,6 +36,7 @@ const log = createLogger('SimulationEngine');
  * @property {Object} summary
  * @property {number} signalCount
  * @property {number} durationMs
+ * @property {SimulationRunContext} [runContext]
  */
 
 /**
@@ -102,6 +111,7 @@ class SimulationEngine {
       summary,
       signalCount: scan.signals.length,
       durationMs: Math.round(performance.now() - start),
+      runContext: { strategyId, symbol, timeframe, config: { ...config } },
     };
 
     this.#lastResult = result;
@@ -141,9 +151,16 @@ class SimulationEngine {
       summary,
       signalCount: signals.length,
       durationMs: Math.round(performance.now() - start),
+      runContext: {
+        strategyId,
+        symbol,
+        timeframe,
+        config: { ...this.#config },
+      },
     };
 
     this.#lastResult = result;
+    saveToStorage(Config.STORAGE_KEYS.SIMULATION_RESULTS, result);
     bus.emit(Events.SIMULATION_COMPLETE, result);
     return result;
   }

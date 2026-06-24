@@ -57,10 +57,29 @@
 }
 
 .sim-run-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
   margin-bottom: var(--space-sm);
   font-size: var(--font-size-xs);
   font-family: var(--font-mono);
   color: var(--color-text-muted);
+}
+
+.sim-run-meta-ok {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-bull) 12%, transparent);
+  color: var(--color-bull);
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.sim-stale {
+  color: var(--color-text-secondary);
+  border-left: 3px solid var(--color-accent);
+  padding-left: var(--space-sm);
 }
 
 .sim-cards {
