@@ -151,7 +151,10 @@ const els = {
 
 // ─── Init ───────────────────────────────────────────────────────────────────
 
+let initRunCount = 0;
+
 async function init() {
+  initRunCount += 1;
   await loadConfig();
   loadEvalCache();
   loadSettings();
@@ -888,8 +891,60 @@ function armIdleSampleTimer() {
   scheduleIdleSample();
 }
 
+function updateWordHero(index) {
+  const w = words[index];
+  if (!w) return;
+
+  suppressWordSelectChange = true;
+  els.wordSelect.value = String(index);
+  suppressWordSelectChange = false;
+
+  els.wordIndex.textContent = `${index + 1} / ${words.length}`;
+  els.currentWord.textContent = w.word;
+  els.currentIpa.textContent = w.ipa || '—';
+  if (els.currentMeaning) {
+    const parts = [];
+    if (w.emoji) parts.push(w.emoji);
+    if (w.meaning) parts.push(w.meaning);
+    els.currentMeaning.textContent = parts.join(' ') || '';
+    els.currentMeaning.classList.toggle('hidden', parts.length === 0);
+  }
+  updateHistoryBadge(w.word);
+}
+
+/** Chuyển từ sau khi đạt — không reset micro / rebuild toàn trang */
+function advanceScoreWordLive(options = {}) {
+  const { autoplay = false } = options;
+  const nextIndex = currentIndex + 1;
+  if (nextIndex >= words.length) return;
+
+  clearPassAdvanceTimer();
+  disarmIdleSampleTimer();
+
+  currentIndex = nextIndex;
+  sessionStorage.setItem(WORD_INDEX_KEY, String(currentIndex));
+
+  updateWordHero(currentIndex);
+  hideLiveHint();
+  clearTextMatchTimer();
+  clearScoreMatchTimer();
+  lastScoredAtIndex = -1;
+  resetWordFailStreak();
+  els.btnRetry.classList.add('hidden');
+
+  prepareMicForNextUtterance();
+  restoreWordScoreUI(words[currentIndex]);
+  updateQuizCurrentRow();
+  persistQuizSession();
+
+  if (autoplay && shouldAutoplaySample()) {
+    playSample({ fromAutoplay: true });
+  }
+  armIdleSampleTimer();
+}
+
 function showWord(index, options = {}) {
-  const { autoplay = true } = options;
+  const { autoplay = true, preserveLiveMic = false } = options;
   const idx = Number(index);
   if (!Number.isFinite(idx)) return;
 
@@ -901,32 +956,28 @@ function showWord(index, options = {}) {
   sessionStorage.setItem(WORD_INDEX_KEY, String(currentIndex));
   const w = words[currentIndex];
 
-  suppressWordSelectChange = true;
-  els.wordSelect.value = String(currentIndex);
-  suppressWordSelectChange = false;
+  updateWordHero(currentIndex);
 
-  els.wordIndex.textContent = `${currentIndex + 1} / ${words.length}`;
-  els.currentWord.textContent = w.word;
-  els.currentIpa.textContent = w.ipa || '—';
-  if (els.currentMeaning) {
-    const parts = [];
-    if (w.emoji) parts.push(w.emoji);
-    if (w.meaning) parts.push(w.meaning);
-    els.currentMeaning.textContent = parts.join(' ') || '';
-    els.currentMeaning.classList.toggle('hidden', parts.length === 0);
+  if (!preserveLiveMic || !liveModeActive) {
+    resetEvaluationUI();
+  } else {
+    els.btnRetry.classList.add('hidden');
   }
-  updateHistoryBadge(w.word);
-
-  resetEvaluationUI();
   if (isScoreMode()) {
     restoreWordScoreUI(w);
   }
-  clearLiveTranscript();
-  hideLiveHint();
-  clearTextMatchTimer();
-  clearScoreMatchTimer();
-  micEngine?.resetSession();
-  syncTranscriptFromEngine();
+  if (!preserveLiveMic || !liveModeActive) {
+    clearLiveTranscript();
+    hideLiveHint();
+    clearTextMatchTimer();
+    clearScoreMatchTimer();
+    micEngine?.resetSession();
+    syncTranscriptFromEngine();
+  } else {
+    clearTextMatchTimer();
+    clearScoreMatchTimer();
+    prepareMicForNextUtterance();
+  }
 
   if (autoplay && shouldAutoplaySample()) {
     playSample({ fromAutoplay: true });
@@ -1068,6 +1119,28 @@ function renderTargetPhonemes(word) {
 function renderPhonemeIdle(word = words[currentIndex]) {
   if (!isScoreMode() || !els.phonemeContainer) return;
   renderTargetPhonemes(word);
+}
+
+function showScoreEvalError(message, wordIndex = currentIndex) {
+  setScoreState('error', 'Lỗi chấm điểm');
+  showLiveHint(message, 'mis');
+  const w = words[wordIndex];
+  const cached = w ? getCachedEvaluation(w.word) : null;
+  if (cached) {
+    renderEvaluationDisplay(cached, { showSuggestionsAlways: liveModeActive });
+    setScoreState('done', `Điểm ${cached.overall_score}%`);
+    return;
+  }
+  if (
+    currentWordEvaluation
+    && w
+    && normalizeWordKey(currentWordEvaluation.word) === normalizeWordKey(w.word)
+  ) {
+    renderEvaluationDisplay(currentWordEvaluation, { showSuggestionsAlways: liveModeActive });
+    setScoreState('done', `Điểm ${currentWordEvaluation.overall_score}%`);
+    return;
+  }
+  restoreWordScoreUI(w);
 }
 
 function restoreWordScoreUI(word) {
@@ -1627,7 +1700,8 @@ async function processScoreUtterance() {
   const blob = await getScoreAudioBlob();
   if (!blob || blob.size < MIN_BLOB_BYTES) {
     setScoreState('error', 'Không đủ audio — nói rõ hơn');
-    restoreWordScoreUI(words[currentIndex]);
+    showLiveHint('Không đủ audio — nói rõ hơn', 'warn');
+    prepareMicForNextUtterance();
     return;
   }
 
@@ -2092,7 +2166,7 @@ async function evaluateRecording(blob = null, options = {}) {
       }
       setScoreState('error', 'Lỗi audio');
       showLiveHint('Lỗi audio: ' + msg, 'mis');
-      restoreWordScoreUI(words[evalWordIndex]);
+      showScoreEvalError('Lỗi audio: ' + msg, evalWordIndex);
       return;
     }
 
@@ -2123,8 +2197,7 @@ async function evaluateRecording(blob = null, options = {}) {
         msg = 'File audio không hợp lệ — nói rõ hơn (~0.5s) rồi thử lại';
       }
       setScoreState('error', 'Lỗi chấm điểm');
-      showLiveHint('Lỗi chấm điểm: ' + msg, 'mis');
-      restoreWordScoreUI(words[evalWordIndex]);
+      showScoreEvalError('Lỗi chấm điểm: ' + msg, evalWordIndex);
       return;
     }
 
@@ -2136,8 +2209,7 @@ async function evaluateRecording(blob = null, options = {}) {
     const msg = `Không kết nối backend (${getApiBase()}). Chạy: ./run_backend.sh`;
     setScoreState('error', 'Lỗi kết nối');
     if (fromLive) {
-      showLiveHint(msg, 'mis');
-      restoreWordScoreUI(words[evalWordIndex]);
+      showScoreEvalError(msg, evalWordIndex);
     } else if (!blob) {
       alert(msg + '\n\n' + err.message);
     }
@@ -2154,9 +2226,7 @@ function renderEvaluation(data, options = {}) {
 
   cacheEvaluation(data);
   if (!renderEvaluationDisplay(data, { showSuggestionsAlways: fromLive || liveModeActive })) {
-    setScoreState('error', 'Thiếu dữ liệu');
-    showLiveHint('Phản hồi thiếu dữ liệu phoneme', 'mis');
-    restoreWordScoreUI(words[atIndex]);
+    showScoreEvalError('Phản hồi thiếu dữ liệu phoneme', atIndex);
     return;
   }
 
@@ -2196,9 +2266,14 @@ async function advanceAfterPass(data) {
   isAdvancing = true;
   clearScoreMatchTimer();
   hideLiveHint();
-  prepareMicForNextUtterance();
   const playSampleOnAdvance = shouldAutoplaySample();
-  nextWord({ autoplay: playSampleOnAdvance });
+
+  if (liveModeActive && isScoreMode()) {
+    advanceScoreWordLive({ autoplay: playSampleOnAdvance });
+  } else {
+    prepareMicForNextUtterance();
+    nextWord({ autoplay: playSampleOnAdvance, preserveLiveMic: liveModeActive });
+  }
   isAdvancing = false;
 }
 
@@ -2409,5 +2484,32 @@ function bindEvents() {
 
   window.addEventListener('beforeunload', () => stopLiveMode());
 }
+
+/** Hooks cho E2E — kiểm tra không reload / không reset UI toàn trang khi chấm */
+window.__pronounceLabTest = {
+  getInitCount: () => initRunCount,
+  getCurrentIndex: () => currentIndex,
+  getPhonemeBoxCount: () => els.phonemeContainer?.querySelectorAll('.phoneme-box').length ?? 0,
+  runMockEvaluate: async (overallScore = 55, passed = false) => {
+    const w = words[currentIndex];
+    if (!w) return null;
+    const phonemes = (w.phonemes || ['ə']).map((ipa, i) => ({
+      ipa,
+      score: overallScore / 100,
+      label: overallScore >= 80 ? 'ok' : 'mis',
+      start: i * 0.1,
+      end: (i + 1) * 0.1,
+      suggestion: overallScore >= 80 ? '' : 'thử lại',
+    }));
+    renderEvaluation({
+      word: w.word,
+      ipa: w.ipa,
+      overall_score: overallScore,
+      passed,
+      phonemes,
+    }, { fromLive: liveModeActive, wordIndex: currentIndex });
+    return { index: currentIndex, word: w.word };
+  },
+};
 
 init();
