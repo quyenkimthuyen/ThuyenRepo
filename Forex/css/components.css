@@ -19,6 +19,11 @@
 }
 
 /* ── Watchlist ── */
+.panel-left .panel-body {
+  container-type: inline-size;
+  container-name: watchlist-panel;
+}
+
 .watchlist {
   display: flex;
   flex-direction: column;
@@ -28,11 +33,26 @@
 .watchlist-item {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  flex-wrap: wrap;
+  gap: 4px var(--space-sm);
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background var(--transition-fast);
+}
+
+@container watchlist-panel (max-width: 260px) {
+  .watchlist-item {
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .watchlist-status {
+    flex-basis: 100%;
+    font-size: 10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .watchlist-item:hover {

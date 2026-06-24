@@ -307,7 +307,9 @@ class OptimizerViewImpl {
           el('input', { type: 'number', class: 'data-select', id: 'wf-folds', value: String(opt.WALK_FORWARD_FOLDS), min: '2', max: '10' }),
         ]),
       ]),
-      el('button', { class: 'btn btn-primary', id: 'opt-run-wf' }, ['Run Walk Forward']),
+      el('div', { class: 'opt-actions' }, [
+        el('button', { class: 'btn btn-primary', id: 'opt-run-wf' }, ['Run Walk Forward']),
+      ]),
     ]));
     content.querySelector('#opt-run-wf')?.addEventListener('click', () => this.#runWalkForward());
   }
@@ -330,7 +332,9 @@ class OptimizerViewImpl {
           step: '100',
         }),
       ]),
-      el('button', { class: 'btn btn-primary', id: 'opt-run-mc' }, ['Run Monte Carlo']),
+      el('div', { class: 'opt-actions' }, [
+        el('button', { class: 'btn btn-primary', id: 'opt-run-mc' }, ['Run Monte Carlo']),
+      ]),
     ]));
     content.querySelector('#opt-run-mc')?.addEventListener('click', () => this.#runMonteCarlo());
   }

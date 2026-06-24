@@ -97,6 +97,7 @@ class PanelManagerImpl {
     this.#refreshWatchlist();
     bus.on(Events.DATA_UPDATED, () => this.#refreshWatchlist());
     bus.on(Events.VIEW_ACTIVE, ({ view }) => this.#setWatchlistVisible(view));
+    bus.on(Events.CHART_SIGNAL_REVIEW, ({ active }) => this.#setSignalReviewMode(active));
     bus.on(Events.LOG_MESSAGE, ({ message, level, time }) => {
       this.#appendLog(message, level, time);
     });
@@ -122,6 +123,16 @@ class PanelManagerImpl {
     const workspace = document.getElementById('panel-workspace');
     if (!workspace) return;
     workspace.classList.toggle('watchlist-visible', WATCHLIST_VIEWS.has(viewId));
+  }
+
+  /**
+   * Hide watchlist while reviewing a signal on chart (more room for candles + guide).
+   * @param {boolean} active
+   */
+  #setSignalReviewMode(active) {
+    const workspace = document.getElementById('panel-workspace');
+    if (!workspace) return;
+    workspace.classList.toggle('watchlist-signal-mode', active);
   }
 
   /**

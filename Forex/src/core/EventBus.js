@@ -105,6 +105,7 @@ export const Events = Object.freeze({
   LOG_MESSAGE: 'ui:log',
   CHART_LOAD: 'chart:load',
   CHART_LOADED: 'chart:loaded',
+  CHART_SIGNAL_REVIEW: 'chart:signal:review',
   REPLAY_TICK: 'replay:tick',
   REPLAY_STATE: 'replay:state',
   REPLAY_COMMAND: 'replay:command',

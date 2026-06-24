@@ -14,6 +14,163 @@
   overflow: hidden;
 }
 
+.chart-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chart-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.chart-body.chart-signal-active .chart-main {
+  border-right: 1px solid var(--color-border);
+}
+
+/* ── Signal review side panel ── */
+.chart-signal-panel {
+  flex: 0 0 min(300px, 34%);
+  max-width: 340px;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: color-mix(in srgb, var(--color-accent) 6%, var(--color-bg-raised));
+  border-left: 1px solid var(--color-border);
+  overflow: auto;
+}
+
+.chart-signal-panel[hidden] {
+  display: none !important;
+}
+
+.chart-signal-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.chart-signal-panel-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.chart-signal-close {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.chart-signal-dir {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.chart-signal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  flex-shrink: 0;
+}
+
+.chart-signal-meta-item {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.chart-signal-meta-score {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.chart-signal-reason {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+.chart-signal-levels-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.chart-signal-level {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--color-bg-base);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.chart-signal-level-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.chart-signal-level-value {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.chart-signal-level-sl {
+  color: var(--color-bear);
+}
+
+.chart-signal-level-tp {
+  color: var(--color-bull);
+}
+
+.chart-signal-steps-wrap {
+  flex: 1;
+  min-height: 0;
+}
+
+.chart-signal-steps-title {
+  display: block;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-xs);
+}
+
+.chart-signal-hint {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  padding-top: var(--space-xs);
+  border-top: 1px solid var(--color-border);
+}
+
 /* ── Toolbar ── */
 .chart-toolbar {
   display: flex;
@@ -43,20 +200,6 @@
   white-space: nowrap;
 }
 
-.chart-signal-banner {
-  flex-shrink: 0;
-  padding: var(--space-sm) var(--space-md);
-  background: color-mix(in srgb, var(--color-accent) 8%, var(--color-bg-raised));
-  border-bottom: 1px solid var(--color-border);
-}
-
-.chart-signal-banner-main {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-xs);
-}
-
 .chart-signal-chip {
   display: inline-block;
   padding: 2px 8px;
@@ -71,6 +214,7 @@
 .chart-signal-chip-strategy {
   color: var(--color-accent);
   font-weight: 600;
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
 }
 
 .chart-signal-dir-long {
@@ -81,29 +225,16 @@
   color: var(--color-bear);
 }
 
-.chart-signal-banner-reason,
-.chart-signal-banner-levels {
-  margin: 0 0 4px;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.chart-signal-banner-levels {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
-}
-
-.chart-signal-banner-hint {
-  margin: 0;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-}
-
 .chart-signal-steps {
-  margin: 0 0 var(--space-xs) var(--space-md);
-  padding: 0;
+  margin: 0;
+  padding-left: 1.1rem;
   font-size: var(--font-size-sm);
+  line-height: 1.45;
   color: var(--color-text-secondary);
+}
+
+.chart-signal-steps li + li {
+  margin-top: 4px;
 }
 
 .chart-setup-legend {
@@ -241,6 +372,25 @@
 }
 
 @media (max-width: 900px) {
+  .chart-body.chart-signal-active {
+    flex-direction: column;
+  }
+
+  .chart-body.chart-signal-active .chart-main {
+    border-right: none;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .chart-signal-panel {
+    flex: 0 0 auto;
+    max-width: none;
+    min-width: 0;
+    width: 100%;
+    max-height: 38%;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+  }
+
   .replay-info {
     flex-wrap: wrap;
     margin-left: 0;

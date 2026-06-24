@@ -101,12 +101,16 @@ class ChartViewImpl {
     this.#replay = new ReplayEngine();
     this.#chart = new ChartEngine();
 
-    container.appendChild(el('div', { class: 'chart-view' }, [
+    container.appendChild(el('div', { class: 'chart-view', id: 'chart-view-root' }, [
       this.#renderToolbar(),
-      el('div', { class: 'chart-signal-banner', id: 'chart-signal-banner', hidden: true }),
-      el('div', { class: 'chart-setup-legend', id: 'chart-setup-legend', hidden: true }),
-      chartContainer,
-      ReplayControls.render((action, payload) => this.#handleReplayAction(action, payload)),
+      el('div', { class: 'chart-body', id: 'chart-body' }, [
+        el('div', { class: 'chart-main' }, [
+          el('div', { class: 'chart-setup-legend', id: 'chart-setup-legend', hidden: true }),
+          chartContainer,
+          ReplayControls.render((action, payload) => this.#handleReplayAction(action, payload)),
+        ]),
+        el('aside', { class: 'chart-signal-panel', id: 'chart-signal-panel', hidden: true }),
+      ]),
     ]));
 
     this.#chart.mount(chartContainer);
@@ -285,7 +289,7 @@ class ChartViewImpl {
         this.#pendingSignal = null;
         const visible = this.#replay.getVisibleCandles();
         this.#chart?.setSignalOverlay(this.#activeSignal, visible);
-        this.#showSignalBanner(this.#activeSignal);
+        this.#showSignalPanel(this.#activeSignal);
         this.#renderSetupLegend(this.#activeSignal);
         this.#applySignalEmaMode(true);
       }
@@ -411,19 +415,41 @@ class ChartViewImpl {
   }
 
   #clearSignalContext() {
+    const hadSignal = this.#activeSignal != null;
     this.#activeSignal = null;
     this.#pendingSignal = null;
     this.#chart?.clearSignalOverlay();
     this.#applySignalEmaMode(false);
-    const banner = this.#container?.querySelector('#chart-signal-banner');
-    if (banner) {
-      banner.hidden = true;
-      banner.innerHTML = '';
+
+    const panel = this.#container?.querySelector('#chart-signal-panel');
+    if (panel) {
+      panel.hidden = true;
+      panel.innerHTML = '';
     }
     const legend = this.#container?.querySelector('#chart-setup-legend');
     if (legend) {
       legend.hidden = true;
       legend.innerHTML = '';
+    }
+
+    this.#container?.querySelector('#chart-view-root')?.classList.remove('chart-signal-active');
+    this.#container?.querySelector('#chart-body')?.classList.remove('chart-signal-active');
+
+    if (hadSignal) {
+      bus.emit(Events.CHART_SIGNAL_REVIEW, { active: false });
+    }
+  }
+
+  #dismissSignalReview() {
+    this.#clearSignalContext();
+    const candles = this.#replay?.getVisibleCandles();
+    if (candles?.length) {
+      this.#chart?.setCandles(candles, { fit: true });
+    }
+    const status = this.#container?.querySelector('#chart-status');
+    if (status && this.#replay) {
+      const total = this.#replay.getState().total ?? candles?.length ?? 0;
+      status.textContent = `${candles?.length.toLocaleString() ?? 0} / ${total.toLocaleString()} candles`;
     }
   }
 
@@ -448,43 +474,84 @@ class ChartViewImpl {
   /**
    * @param {import('../utils/chartNavigation.js').ChartSignalHighlight} signal
    */
-  #showSignalBanner(signal) {
-    const banner = this.#container?.querySelector('#chart-signal-banner');
-    if (!banner) return;
+  #showSignalPanel(signal) {
+    const panel = this.#container?.querySelector('#chart-signal-panel');
+    if (!panel) return;
 
-    banner.hidden = false;
-    banner.innerHTML = '';
+    panel.hidden = false;
+    panel.innerHTML = '';
 
-    const chips = [
-      el('span', { class: 'chart-signal-chip chart-signal-chip-strategy' }, [signal.strategyName]),
-      el('span', { class: 'chart-signal-chip' }, [signal.symbol]),
-      el('span', { class: 'chart-signal-chip' }, [signal.timeframe]),
-      el('span', { class: `chart-signal-chip chart-signal-dir-${signal.direction}` }, [
-        signal.direction.toUpperCase(),
+    this.#container?.querySelector('#chart-view-root')?.classList.add('chart-signal-active');
+    this.#container?.querySelector('#chart-body')?.classList.add('chart-signal-active');
+    bus.emit(Events.CHART_SIGNAL_REVIEW, { active: true });
+
+    const header = el('div', { class: 'chart-signal-panel-head' }, [
+      el('div', { class: 'chart-signal-panel-title' }, [
+        el('span', { class: 'chart-signal-chip chart-signal-chip-strategy' }, [signal.strategyName]),
+        el('span', { class: `chart-signal-dir chart-signal-dir-${signal.direction}` }, [
+          signal.direction.toUpperCase(),
+        ]),
       ]),
-    ];
-    if (signal.score != null) {
-      chips.push(el('span', { class: 'chart-signal-chip' }, [`AI ${Math.round(signal.score)}/100`]));
-    }
-    if (signal.candleIndex != null) {
-      chips.push(el('span', { class: 'chart-signal-chip' }, [`Bar ${signal.candleIndex}`]));
-    }
-    chips.push(el('span', { class: 'chart-signal-chip chart-signal-time' }, [formatTimestamp(signal.time)]));
+      el('button', {
+        type: 'button',
+        class: 'btn btn-sm chart-signal-close',
+        title: 'Đóng hướng dẫn signal',
+      }, ['×']),
+    ]);
+    header.querySelector('.chart-signal-close')?.addEventListener('click', () => this.#dismissSignalReview());
+    panel.appendChild(header);
 
-    banner.appendChild(el('div', { class: 'chart-signal-banner-main' }, chips));
-    banner.appendChild(el('p', { class: 'chart-signal-banner-reason' }, [signal.reason || '']));
-    banner.appendChild(el('p', { class: 'chart-signal-banner-levels' }, [
-      `Entry ${signal.entry.toFixed(5)} · SL ${signal.sl.toFixed(5)} · TP ${signal.tp.toFixed(5)} · ${signal.rr.toFixed(1)}R`,
+    const meta = [
+      el('span', { class: 'chart-signal-meta-item' }, [signal.symbol]),
+      el('span', { class: 'chart-signal-meta-item' }, [signal.timeframe]),
+    ];
+    if (signal.candleIndex != null) {
+      meta.push(el('span', { class: 'chart-signal-meta-item' }, [`Bar ${signal.candleIndex}`]));
+    }
+    meta.push(el('span', { class: 'chart-signal-meta-item chart-signal-meta-time' }, [
+      formatTimestamp(signal.time),
+    ]));
+    if (signal.score != null) {
+      meta.push(el('span', { class: 'chart-signal-meta-item chart-signal-meta-score' }, [
+        `AI ${Math.round(signal.score)}/100`,
+      ]));
+    }
+    panel.appendChild(el('div', { class: 'chart-signal-meta' }, meta));
+
+    if (signal.reason) {
+      panel.appendChild(el('p', { class: 'chart-signal-reason' }, [signal.reason]));
+    }
+
+    panel.appendChild(el('div', { class: 'chart-signal-levels-grid' }, [
+      el('div', { class: 'chart-signal-level' }, [
+        el('span', { class: 'chart-signal-level-label' }, ['Entry']),
+        el('span', { class: 'chart-signal-level-value' }, [signal.entry.toFixed(5)]),
+      ]),
+      el('div', { class: 'chart-signal-level' }, [
+        el('span', { class: 'chart-signal-level-label' }, ['SL']),
+        el('span', { class: 'chart-signal-level-value chart-signal-level-sl' }, [signal.sl.toFixed(5)]),
+      ]),
+      el('div', { class: 'chart-signal-level' }, [
+        el('span', { class: 'chart-signal-level-label' }, ['TP']),
+        el('span', { class: 'chart-signal-level-value chart-signal-level-tp' }, [signal.tp.toFixed(5)]),
+      ]),
+      el('div', { class: 'chart-signal-level' }, [
+        el('span', { class: 'chart-signal-level-label' }, ['RR']),
+        el('span', { class: 'chart-signal-level-value' }, [`${signal.rr.toFixed(1)}R`]),
+      ]),
     ]));
 
     if (signal.setup?.steps?.length) {
-      banner.appendChild(el('ol', { class: 'chart-signal-steps' }, signal.setup.steps.map((step) =>
-        el('li', {}, [step])
-      )));
+      panel.appendChild(el('div', { class: 'chart-signal-steps-wrap' }, [
+        el('span', { class: 'chart-signal-steps-title' }, ['Các bước setup']),
+        el('ol', { class: 'chart-signal-steps' }, signal.setup.steps.map((step) =>
+          el('li', {}, [step])
+        )),
+      ]));
     }
 
-    banner.appendChild(el('p', { class: 'chart-signal-banner-hint' }, [
-      'Replay dừng tại nến signal — dùng ← → để xem từng bước setup (không lộ tương lai). EMA ẩn khi xem signal.',
+    panel.appendChild(el('p', { class: 'chart-signal-hint' }, [
+      'Replay dừng tại nến signal. Dùng ← → để xem từng bước (không lộ tương lai). EMA ẩn khi xem signal.',
     ]));
   }
 
