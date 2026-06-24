@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Download default forex data (EURUSD, GBPUSD) from Dukascopy and save as gzipped JSON.
+Download default forex/crypto data (EURUSD, GBPUSD, BTCUSD) from Dukascopy and save as gzipped JSON.
 
 Timeframes: H1, H4, D1, W
 
@@ -29,6 +29,14 @@ except ImportError:
 SYMBOLS = {
     "EURUSD": "EUR/USD",
     "GBPUSD": "GBP/USD",
+    "BTCUSD": "BTC/USD",
+}
+
+# Decimal places when rounding OHLC in exported JSON
+PRICE_DECIMALS = {
+    "EURUSD": 5,
+    "GBPUSD": 5,
+    "BTCUSD": 2,
 }
 
 TIMEFRAMES = {
@@ -54,16 +62,17 @@ def month_ranges(start: datetime, end: datetime):
         cursor = nxt
 
 
-def df_to_candles(df) -> list:
+def df_to_candles(df, symbol: str) -> list:
+    decimals = PRICE_DECIMALS.get(symbol, 5)
     candles = []
     for ts, row in df.iterrows():
         candles.append(
             {
                 "timestamp": int(ts.timestamp() * 1000),
-                "open": round(float(row["open"]), 5),
-                "high": round(float(row["high"]), 5),
-                "low": round(float(row["low"]), 5),
-                "close": round(float(row["close"]), 5),
+                "open": round(float(row["open"]), decimals),
+                "high": round(float(row["high"]), decimals),
+                "low": round(float(row["low"]), decimals),
+                "close": round(float(row["close"]), decimals),
                 "volume": round(float(row["volume"]), 2),
             }
         )
@@ -74,7 +83,8 @@ def fetch_timeframe(symbol: str, instrument: str, timeframe: str, interval, star
     import pandas as pd
 
     frames = []
-    if timeframe == "H1":
+    chunk_by_month = timeframe == "H1" or (symbol == "BTCUSD" and timeframe == "H4")
+    if chunk_by_month:
         for chunk_start, chunk_end in month_ranges(start, end):
             label = chunk_start.strftime("%Y-%m")
             print(f"  {symbol} {timeframe} {label} ...", flush=True)
@@ -93,7 +103,7 @@ def fetch_timeframe(symbol: str, instrument: str, timeframe: str, interval, star
     merged = pd.concat(frames)
     merged = merged[~merged.index.duplicated(keep="last")]
     merged.sort_index(inplace=True)
-    return df_to_candles(merged)
+    return df_to_candles(merged, symbol)
 
 
 def save_dataset(output_dir: Path, symbol: str, timeframe: str, candles: list) -> Path:

@@ -48,6 +48,7 @@ export function priceToPips(priceDiff, symbol) {
  * @returns {string}
  */
 export function formatPrice(price, symbol) {
+  if (symbol === 'BTCUSD') return price.toFixed(2);
   const decimals = symbol === 'XAUUSD' ? 2 : symbol === 'USDJPY' ? 3 : 5;
   return price.toFixed(decimals);
 }

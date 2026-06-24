@@ -77,7 +77,7 @@ header('Data Layer');
 
 {
   s.assert('DL-14: Config timeframes', Config.TIMEFRAMES.includes('H4') && Config.TIMEFRAMES.includes('W'));
-  s.assert('DL-15: Config symbols', Config.SYMBOLS.includes('EURUSD') && Config.SYMBOLS.includes('GBPUSD'));
+  s.assert('DL-15: Config symbols', Config.SYMBOLS.includes('EURUSD') && Config.SYMBOLS.includes('GBPUSD') && Config.SYMBOLS.includes('BTCUSD'));
 }
 
 process.exit(footer(s.finish()));

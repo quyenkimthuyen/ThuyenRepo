@@ -4,7 +4,7 @@
  * @module core/Config
  */
 
-/** @typedef {'EURUSD'|'GBPUSD'} Symbol */
+/** @typedef {'EURUSD'|'GBPUSD'|'BTCUSD'} Symbol */
 /** @typedef {'H1'|'H4'|'D1'|'W'} Timeframe */
 
 /**
@@ -16,7 +16,7 @@ export const Config = Object.freeze({
   APP_SHORT_NAME: 'PARL',
 
   /** Supported trading symbols (extensible). */
-  SYMBOLS: Object.freeze(['EURUSD', 'GBPUSD']),
+  SYMBOLS: Object.freeze(['EURUSD', 'GBPUSD', 'BTCUSD']),
 
   /** Supported timeframes (extensible). */
   TIMEFRAMES: Object.freeze(['H1', 'H4', 'D1', 'W']),
