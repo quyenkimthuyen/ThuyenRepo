@@ -4,6 +4,7 @@
  */
 
 import { registry } from '../plugin/PluginRegistry.js';
+import { registerBuiltinStrategies } from '../strategies/index.js';
 import { createContext } from '../strategy/StrategyContext.js';
 import { simulateTrades } from '../simulation/TradeSimulator.js';
 import { computeStatistics } from '../statistics/StatisticsCalculator.js';
@@ -34,6 +35,7 @@ import { computeStatistics } from '../statistics/StatisticsCalculator.js';
  * @returns {BacktestResult}
  */
 export function runBacktest(strategyId, symbol, timeframe, candles, params, tradeConfig) {
+  registerBuiltinStrategies();
   const start = performance.now();
   const strategy = registry.createInstance(strategyId);
 

@@ -294,7 +294,17 @@ class StrategyViewImpl {
     const plugin = registry.get(this.#selectedId);
     if (!plugin) return;
 
-    const instance = registry.createInstance(this.#selectedId);
+    let instance;
+    try {
+      instance = StrategyEngine.createInstance(this.#selectedId);
+    } catch (err) {
+      panel.innerHTML = '';
+      panel.appendChild(el('p', { class: 'strategy-error' }, [
+        err instanceof Error ? err.message : String(err),
+      ]));
+      return;
+    }
+
     const schema = instance.getParameterSchema();
     const config = StrategyEngine.getConfig(this.#selectedId);
     const last = StrategyEngine.getLastResult(this.#selectedId);

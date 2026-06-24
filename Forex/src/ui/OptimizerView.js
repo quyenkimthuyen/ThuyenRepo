@@ -6,7 +6,6 @@
 import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
 import { el, loadFromStorage } from '../utils/dom.js';
-import { registry } from '../plugin/PluginRegistry.js';
 import StrategyEngine from '../strategy/StrategyEngine.js';
 import ResearchEngine from '../optimizer/ResearchEngine.js';
 import { parseValueList, countCombinations, defaultGridForParam } from '../optimizer/ParameterGrid.js';
@@ -238,7 +237,17 @@ class OptimizerViewImpl {
    */
   #renderGridPanel(content) {
     const strategyId = /** @type {HTMLSelectElement} */ (this.#container.querySelector('#opt-strategy')).value;
-    const instance = registry.createInstance(strategyId);
+
+    let instance;
+    try {
+      instance = StrategyEngine.createInstance(strategyId);
+    } catch (err) {
+      content.appendChild(el('div', { class: 'opt-panel opt-error' }, [
+        el('p', { class: 'opt-desc opt-error-text' }, [err instanceof Error ? err.message : String(err)]),
+      ]));
+      return;
+    }
+
     const schema = instance.getParameterSchema();
 
     const paramRows = schema

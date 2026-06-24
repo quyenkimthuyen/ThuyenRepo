@@ -47,9 +47,6 @@ class ReportEngine {
     this.#lastReport = loadFromStorage(Config.STORAGE_KEYS.REPORT_RESULTS, null);
 
     bus.on(Events.STATISTICS_COMPUTED, () => this.refreshFromSimulation());
-    bus.on(Events.SIMULATION_COMPLETE, () => {
-      setTimeout(() => this.refreshFromSimulation(), 30);
-    });
 
     log.info('Report engine ready');
   }

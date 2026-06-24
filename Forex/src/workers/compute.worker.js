@@ -2,9 +2,12 @@
  * Compute Web Worker — runs backtests and Monte Carlo off the main thread.
  */
 
+import { registerBuiltinStrategies } from '../strategies/index.js';
 import { runBacktest } from '../optimizer/BacktestRunner.js';
 import { runMonteCarlo } from '../optimizer/MonteCarloEngine.js';
 import { scoreSignalsBatch } from '../scoring/SignalScoreEngine.js';
+
+registerBuiltinStrategies();
 
 /**
  * @param {MessageEvent} event

@@ -23,9 +23,15 @@ export const BUILTIN_STRATEGIES = [
   WyckoffRangeTestStrategy,
 ];
 
+/** @type {boolean} */
+let builtinsRegistered = false;
+
 /**
  * Register all built-in strategy plugins with the registry.
+ * Safe to call multiple times (main thread and workers).
  */
 export function registerBuiltinStrategies() {
+  if (builtinsRegistered) return;
   registry.registerAll(BUILTIN_STRATEGIES);
+  builtinsRegistered = true;
 }

@@ -98,7 +98,9 @@ class SimulationEngine {
     const start = performance.now();
     const config = mergeTradeConfig({ ...this.#config, ...configOverride });
 
-    const scan = await StrategyEngine.runStrategy(strategyId, symbol, timeframe);
+    const scan = await StrategyEngine.runStrategy(strategyId, symbol, timeframe, undefined, {
+      emitSignals: false,
+    });
     const candles = await DataManager.getCandles(symbol, timeframe);
     const trades = simulateTrades(scan.signals, candles, config);
     const summary = summarizeTrades(trades, config.initialBalance);
@@ -119,6 +121,14 @@ class SimulationEngine {
 
     bus.emit(Events.SIMULATION_RUN, result);
     bus.emit(Events.SIMULATION_COMPLETE, result);
+    bus.emit(Events.SIGNALS_GENERATED, {
+      strategyId: scan.strategyId,
+      symbol: scan.symbol,
+      timeframe: scan.timeframe,
+      signals: scan.signals,
+      barsScanned: scan.barsScanned,
+      durationMs: scan.durationMs,
+    });
     bus.emit(Events.LOG_MESSAGE, {
       message: `Simulation: ${trades.length} trades, WR ${summary.winRate.toFixed(1)}%, Net $${summary.netProfit.toFixed(2)}`,
       level: 'info',

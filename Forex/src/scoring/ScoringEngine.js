@@ -45,15 +45,21 @@ class ScoringEngine {
   /** @type {ScoredSignalSet|null} */
   #lastScored = null;
 
+  /** @type {boolean} */
+  #listenerReady = false;
+
   /**
    * @param {{ bus: import('../core/EventBus.js').EventBus }} _ctx
    */
   async initialize(_ctx) {
     this.#lastScored = loadFromStorage(Config.STORAGE_KEYS.SCORED_SIGNALS, null);
 
-    bus.on(Events.SIGNALS_GENERATED, async (result) => {
-      await this.scoreFromScan(result.strategyId, result.symbol, result.timeframe, result.signals);
-    });
+    if (!this.#listenerReady) {
+      this.#listenerReady = true;
+      bus.on(Events.SIGNALS_GENERATED, async (result) => {
+        await this.scoreFromScan(result.strategyId, result.symbol, result.timeframe, result.signals);
+      });
+    }
 
     log.info('Scoring engine ready');
   }

@@ -52,6 +52,16 @@ class StrategyEngine {
   }
 
   /**
+   * Create a strategy instance by plugin ID.
+   * @param {string} strategyId
+   * @returns {import('../strategy/BaseStrategy.js').BaseStrategy}
+   */
+  createInstance(strategyId) {
+    registerBuiltinStrategies();
+    return registry.createInstance(strategyId);
+  }
+
+  /**
    * @returns {import('../plugin/PluginRegistry.js').PluginDescriptor[]}
    */
   listPlugins() {
@@ -97,9 +107,10 @@ class StrategyEngine {
    * @param {string} symbol
    * @param {string} timeframe
    * @param {Record<string, unknown>} [paramOverrides]
+   * @param {{ emitSignals?: boolean }} [options]
    * @returns {Promise<ScanResult>}
    */
-  async runStrategy(strategyId, symbol, timeframe, paramOverrides) {
+  async runStrategy(strategyId, symbol, timeframe, paramOverrides, options = {}) {
     const start = performance.now();
     const plugin = registry.get(strategyId);
 
@@ -145,7 +156,9 @@ class StrategyEngine {
     saveToStorage(Config.STORAGE_KEYS.STRATEGY_RESULTS, this.#lastResults);
 
     bus.emit(Events.STRATEGY_RUN, result);
-    bus.emit(Events.SIGNALS_GENERATED, result);
+    if (options.emitSignals !== false) {
+      bus.emit(Events.SIGNALS_GENERATED, result);
+    }
     bus.emit(Events.LOG_MESSAGE, {
       message: `${plugin.name}: ${signals.length} signals on ${symbol} ${timeframe} (${result.durationMs}ms)`,
       level: 'info',
