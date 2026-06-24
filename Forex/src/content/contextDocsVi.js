@@ -450,6 +450,20 @@ export const CONTEXT_DOC_SECTIONS = [
         type: 'p',
         text: 'Ý tưởng: sau sóng trend, giá nén trong nến mẹ (inside bar) rồi break theo hướng trend. Phù hợp EUR/GBP trên 4H và 1D khi thị trường pause trước continuation.',
       },
+      {
+        type: 'image',
+        layout: 'portrait',
+        diagramId: 'inside-bar-breakout-long',
+        alt: 'Sơ đồ Inside Bar Breakout Long',
+        caption: 'Nến mẹ (vàng) → inside bar (xám) → close phá mother high khi giá trên EMA → LONG. SL dưới mother low.',
+      },
+      {
+        type: 'image',
+        layout: 'portrait',
+        diagramId: 'inside-bar-breakout-short',
+        alt: 'Sơ đồ Inside Bar Breakout Short',
+        caption: 'Đối xứng: trend giảm, inside bar trong nến mẹ, close phá mother low dưới EMA → SHORT.',
+      },
       { type: 'h3', text: 'LONG' },
       {
         type: 'ol',
@@ -481,6 +495,20 @@ export const CONTEXT_DOC_SECTIONS = [
       {
         type: 'p',
         text: 'Ý tưởng: giá chạm swing high/low (không cần quét vượt như Liquidity Grab), nến pin rejection (râu dài, thân nhỏ) + nến xác nhận → vào theo hướng bounce/fade.',
+      },
+      {
+        type: 'image',
+        layout: 'portrait',
+        diagramId: 'pin-bar-rejection-short',
+        alt: 'Sơ đồ Pin Bar Rejection Short',
+        caption: 'Giá chạm swing high → pin bar râu trên dài + nến giảm → SHORT tại close. Không cần quét vượt level.',
+      },
+      {
+        type: 'image',
+        layout: 'portrait',
+        diagramId: 'pin-bar-rejection-long',
+        alt: 'Sơ đồ Pin Bar Rejection Long',
+        caption: 'Chạm swing low → hammer/pin râu dưới + nến tăng → LONG tại close.',
       },
       { type: 'h3', text: 'Khác Liquidity Grab' },
       {
