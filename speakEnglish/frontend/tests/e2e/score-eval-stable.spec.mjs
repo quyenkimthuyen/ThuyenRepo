@@ -61,22 +61,22 @@ test.describe('Chế độ Chấm điểm — không reload khi chấm', () => {
   });
 
   test('chấm lại cùng từ — phoneme boxes không rebuild', async ({ page }) => {
+    await page.evaluate(() => {
+      window.__pronounceLabTest.getPhonemeBoxNodes().forEach((node, i) => {
+        node.dataset.stableId = `box-${i}`;
+      });
+    });
+
     await page.evaluate(() => window.__pronounceLabTest.runMockEvaluate(50, false));
     await expect(page.locator('#overall-score')).toHaveText('50%');
-
-    const firstBoxId = await page.evaluate(() => {
-      const box = document.querySelector('#phoneme-container .phoneme-box');
-      return box ? box.dataset.index : null;
-    });
 
     await page.evaluate(() => window.__pronounceLabTest.runMockEvaluate(70, false));
     await expect(page.locator('#overall-score')).toHaveText('70%');
 
-    const sameStructure = await page.evaluate(() => {
-      const boxes = [...document.querySelectorAll('#phoneme-container .phoneme-box')];
-      return boxes.length > 0 && boxes.every((b) => b.querySelector('.phoneme-char'));
-    });
-    expect(sameStructure).toBe(true);
-    expect(firstBoxId).not.toBeNull();
+    const stableIds = await page.evaluate(() =>
+      window.__pronounceLabTest.getPhonemeBoxNodes().map((node) => node.dataset.stableId),
+    );
+    expect(stableIds.length).toBeGreaterThan(0);
+    expect(stableIds.every((id) => id?.startsWith('box-'))).toBe(true);
   });
 });

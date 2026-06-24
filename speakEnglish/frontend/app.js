@@ -161,6 +161,7 @@ async function init() {
   await initVocabulary();
   applyPracticeModeUI();
   bindEvents();
+  bindPhonemeDelegation();
   setupAutoStartMic();
   checkBackend();
   initLiveSpeech();
@@ -933,7 +934,7 @@ function advanceScoreWordLive(options = {}) {
   els.btnRetry.classList.add('hidden');
 
   prepareMicForNextUtterance();
-  restoreWordScoreUI(words[currentIndex]);
+  syncScorePanelForWord(words[currentIndex]);
   updateQuizCurrentRow();
   persistQuizSession();
 
@@ -955,6 +956,7 @@ function showWord(index, options = {}) {
   currentIndex = Math.max(0, Math.min(idx, words.length - 1));
   sessionStorage.setItem(WORD_INDEX_KEY, String(currentIndex));
   const w = words[currentIndex];
+  lastAppliedEvalSignature = '';
 
   updateWordHero(currentIndex);
 
@@ -964,7 +966,7 @@ function showWord(index, options = {}) {
     els.btnRetry.classList.add('hidden');
   }
   if (isScoreMode()) {
-    restoreWordScoreUI(w);
+    syncScorePanelForWord(w, { force: !preserveLiveMic });
   }
   if (!preserveLiveMic || !liveModeActive) {
     clearLiveTranscript();
@@ -1060,117 +1062,212 @@ function endScoringOverlay() {
   els.scoreZone?.classList.remove('scoring');
 }
 
-function setScoreHeroPending() {
-  if (!els.scoreSection) return;
-  els.scoreSection.classList.remove('hidden', 'scoring');
-  els.overallScore.textContent = '—';
-  els.passStatus.textContent = 'Chưa chấm';
-  els.passStatus.className = 'pass-status pass-status-pending';
+let lastAppliedEvalSignature = '';
+
+function patchText(el, value) {
+  if (el && el.textContent !== value) el.textContent = value;
 }
 
-function renderTargetPhonemes(word) {
-  if (!isScoreMode() || !els.phonemeContainer) return;
-  const phonemes = word?.phonemes || [];
+function patchClass(el, className) {
+  if (el && el.className !== className) el.className = className;
+}
+
+function evaluationSignature(data) {
+  if (!data?.phonemes?.length) return '';
+  const parts = data.phonemes.map(
+    (p) => `${p.ipa}:${p.label}:${Math.round(p.score * 100)}:${p.suggestion || ''}`,
+  );
+  return `${normalizeWordKey(data.word)}|${data.overall_score}|${parts.join(',')}`;
+}
+
+function clearPhonemeIdleHint(container) {
+  container?.querySelector('.phoneme-idle-hint')?.remove();
+}
+
+function createPendingPhonemeBoxHtml(ipa, index) {
+  return `
+    <div class="phoneme-box phoneme-box-pending" data-index="${index}">
+      <div class="phoneme-char pending">${ipa}</div>
+      <span class="phoneme-score">—</span>
+      <span class="phoneme-suggestion phoneme-suggestion-slot" aria-hidden="true">&nbsp;</span>
+    </div>
+  `;
+}
+
+function createEmptyPhonemeBoxHtml(index) {
+  return `
+    <div class="phoneme-box phoneme-box-pending" data-index="${index}">
+      <div class="phoneme-char pending">?</div>
+      <span class="phoneme-score">—</span>
+      <span class="phoneme-suggestion phoneme-suggestion-slot" aria-hidden="true">&nbsp;</span>
+    </div>
+  `;
+}
+
+/** Giữ DOM phoneme boxes — chỉ thêm/xóa khi số lượng đổi */
+function ensurePhonemeBoxes(count, buildHtml) {
   const container = els.phonemeContainer;
-  if (!phonemes.length) {
-    container.classList.remove('has-results');
-    container.innerHTML = `<p class="phoneme-idle-hint">${getLiveSilenceHintText()} — chi tiết IPA</p>`;
+  if (!container) return [];
+
+  clearPhonemeIdleHint(container);
+  let boxes = [...container.querySelectorAll('.phoneme-box')];
+
+  while (boxes.length > count) {
+    boxes[boxes.length - 1]?.remove();
+    boxes = [...container.querySelectorAll('.phoneme-box')];
+  }
+
+  while (boxes.length < count) {
+    const i = boxes.length;
+    container.insertAdjacentHTML('beforeend', buildHtml(i));
+    boxes = [...container.querySelectorAll('.phoneme-box')];
+  }
+
+  return boxes;
+}
+
+function patchPhonemeBoxPending(box, ipa, index) {
+  const char = box.querySelector('.phoneme-char');
+  if (char) {
+    patchText(char, ipa);
+    patchClass(char, 'phoneme-char pending');
+  }
+  const scoreEl = box.querySelector('.phoneme-score');
+  patchText(scoreEl, '—');
+  const sug = box.querySelector('.phoneme-suggestion');
+  if (sug) {
+    patchText(sug, '\u00a0');
+    patchClass(sug, 'phoneme-suggestion phoneme-suggestion-slot');
+    sug.setAttribute('aria-hidden', 'true');
+  }
+  patchClass(box, 'phoneme-box phoneme-box-pending');
+  box.classList.remove('show-suggestion', 'active');
+  box.dataset.index = String(index);
+  delete box.dataset.start;
+  delete box.dataset.end;
+}
+
+function patchPhonemeBoxResult(box, p, index, showSuggestionsAlways) {
+  const char = box.querySelector('.phoneme-char');
+  if (char) {
+    patchText(char, p.ipa);
+    patchClass(char, `phoneme-char ${p.label}`);
+  }
+  const scoreEl = box.querySelector('.phoneme-score');
+  patchText(scoreEl, `${Math.round(p.score * 100)}%`);
+
+  let sug = box.querySelector('.phoneme-suggestion');
+  if (p.suggestion) {
+    if (!sug) {
+      sug = document.createElement('span');
+      box.appendChild(sug);
+    }
+    patchText(sug, p.suggestion);
+    patchClass(sug, 'phoneme-suggestion');
+    sug.removeAttribute('aria-hidden');
+  } else if (sug) {
+    patchText(sug, '\u00a0');
+    patchClass(sug, 'phoneme-suggestion phoneme-suggestion-slot');
+    sug.setAttribute('aria-hidden', 'true');
+  }
+
+  const boxClass = `phoneme-box${showSuggestionsAlways && p.suggestion ? ' show-suggestion' : ''}`;
+  patchClass(box, boxClass);
+  box.dataset.index = String(index);
+  const start = String(p.start);
+  const end = String(p.end);
+  if (box.dataset.start !== start) box.dataset.start = start;
+  if (box.dataset.end !== end) box.dataset.end = end;
+}
+
+function updateScoreHero(overallScore, passed, options = {}) {
+  const { pending = false } = options;
+  if (!els.scoreSection) return;
+
+  els.scoreSection.classList.remove('hidden');
+
+  if (pending) {
+    patchText(els.overallScore, '—');
+    patchText(els.passStatus, 'Chưa chấm');
+    patchClass(els.passStatus, 'pass-status pass-status-pending');
     return;
   }
 
-  const boxes = container.querySelectorAll('.phoneme-box');
-  if (boxes.length === phonemes.length) {
+  patchText(els.overallScore, `${overallScore}%`);
+  patchText(els.passStatus, passed ? '✓ Đạt' : '✗ Chưa đạt');
+  patchClass(els.passStatus, `pass-status ${passed ? 'passed' : 'failed'}`);
+}
+
+function syncPhonemeStripPending(targetPhonemes) {
+  const container = els.phonemeContainer;
+  if (!container) return;
+
+  if (!targetPhonemes?.length) {
+    container.querySelectorAll('.phoneme-box').forEach((box) => box.remove());
     container.classList.remove('has-results');
-    boxes.forEach((box, i) => {
-      const char = box.querySelector('.phoneme-char');
-      if (char) {
-        char.textContent = phonemes[i];
-        char.className = 'phoneme-char pending';
-      }
-      const scoreEl = box.querySelector('.phoneme-score');
-      if (scoreEl) scoreEl.textContent = '—';
-      const sug = box.querySelector('.phoneme-suggestion');
-      if (sug) {
-        sug.textContent = '\u00a0';
-        sug.className = 'phoneme-suggestion phoneme-suggestion-slot';
-        sug.setAttribute('aria-hidden', 'true');
-      }
-      box.className = 'phoneme-box phoneme-box-pending';
-      box.classList.remove('show-suggestion', 'active');
-      box.dataset.index = String(i);
-      delete box.dataset.start;
-      delete box.dataset.end;
-    });
+    let hint = container.querySelector('.phoneme-idle-hint');
+    const hintText = `${getLiveSilenceHintText()} — chi tiết IPA`;
+    if (!hint) {
+      container.insertAdjacentHTML('beforeend', `<p class="phoneme-idle-hint">${hintText}</p>`);
+    } else {
+      patchText(hint, hintText);
+    }
     return;
   }
 
+  const boxes = ensurePhonemeBoxes(targetPhonemes.length, (i) => createPendingPhonemeBoxHtml(targetPhonemes[i], i));
+  targetPhonemes.forEach((ipa, i) => patchPhonemeBoxPending(boxes[i], ipa, i));
   container.classList.remove('has-results');
-  container.innerHTML = phonemes
-    .map((ipa, i) => `
-      <div class="phoneme-box phoneme-box-pending" data-index="${i}">
-        <div class="phoneme-char pending">${ipa}</div>
-        <span class="phoneme-score">—</span>
-        <span class="phoneme-suggestion phoneme-suggestion-slot" aria-hidden="true">&nbsp;</span>
-      </div>
-    `)
-    .join('');
 }
 
-function renderPhonemeIdle(word = words[currentIndex]) {
-  if (!isScoreMode() || !els.phonemeContainer) return;
-  renderTargetPhonemes(word);
+function syncPhonemeStripResults(phonemes, showSuggestionsAlways = false) {
+  const container = els.phonemeContainer;
+  if (!container || !phonemes?.length) return;
+
+  const boxes = ensurePhonemeBoxes(phonemes.length, createEmptyPhonemeBoxHtml);
+  phonemes.forEach((p, i) => patchPhonemeBoxResult(boxes[i], p, i, showSuggestionsAlways));
+  container.classList.add('has-results');
 }
 
-function showScoreEvalError(message, wordIndex = currentIndex) {
-  setScoreState('error', 'Lỗi chấm điểm');
-  showLiveHint(message, 'mis');
-  const w = words[wordIndex];
-  const cached = w ? getCachedEvaluation(w.word) : null;
-  if (cached) {
-    renderEvaluationDisplay(cached, { showSuggestionsAlways: liveModeActive });
-    setScoreState('done', `Điểm ${cached.overall_score}%`);
-    return;
-  }
-  if (
-    currentWordEvaluation
-    && w
-    && normalizeWordKey(currentWordEvaluation.word) === normalizeWordKey(w.word)
-  ) {
-    renderEvaluationDisplay(currentWordEvaluation, { showSuggestionsAlways: liveModeActive });
-    setScoreState('done', `Điểm ${currentWordEvaluation.overall_score}%`);
-    return;
-  }
-  restoreWordScoreUI(w);
-}
-
-function restoreWordScoreUI(word) {
+function syncScorePanelForWord(word, options = {}) {
+  const { force = false } = options;
   if (!isScoreMode() || !word) return;
+
   endScoringOverlay();
 
   const cached = getCachedEvaluation(word.word);
   if (cached) {
-    renderEvaluationDisplay(cached, { showSuggestionsAlways: liveModeActive });
+    applyEvaluationDisplay(cached, { showSuggestionsAlways: liveModeActive, force });
     setScoreState('done', `Điểm ${cached.overall_score}%`);
     return;
   }
-  if (currentWordEvaluation && normalizeWordKey(currentWordEvaluation.word) === normalizeWordKey(word.word)) {
-    renderEvaluationDisplay(currentWordEvaluation, { showSuggestionsAlways: liveModeActive });
+
+  if (
+    !force
+    && currentWordEvaluation
+    && normalizeWordKey(currentWordEvaluation.word) === normalizeWordKey(word.word)
+  ) {
+    applyEvaluationDisplay(currentWordEvaluation, { showSuggestionsAlways: liveModeActive, force });
     setScoreState('done', `Điểm ${currentWordEvaluation.overall_score}%`);
     return;
   }
 
+  lastAppliedEvalSignature = '';
   setScoreState('idle', 'Sẵn sàng chấm');
-  setScoreHeroPending();
-  renderPhonemeIdle(word);
+  updateScoreHero(0, false, { pending: true });
+  syncPhonemeStripPending(word.phonemes || []);
 }
 
-function renderPendingPhonemes(_phonemes) {
-  renderPhonemeIdle(words[currentIndex]);
-}
-
-function renderEvaluationDisplay(data, options = {}) {
-  const { showSuggestionsAlways = false } = options;
+function applyEvaluationDisplay(data, options = {}) {
+  const { showSuggestionsAlways = false, force = false } = options;
   if (!data?.phonemes?.length) return false;
+
+  const signature = evaluationSignature(data);
+  if (!force && signature === lastAppliedEvalSignature) {
+    endScoringOverlay();
+    return true;
+  }
+  lastAppliedEvalSignature = signature;
 
   endScoringOverlay();
   currentWordEvaluation = data;
@@ -1179,18 +1276,56 @@ function renderEvaluationDisplay(data, options = {}) {
   const allOk = data.phonemes.every((p) => p.label === 'ok');
   const passed = data.passed ?? (allOk || data.overall_score >= passScore);
 
-  els.scoreSection.classList.remove('hidden');
-  els.overallScore.textContent = `${data.overall_score}%`;
-  els.passStatus.textContent = passed ? '✓ Đạt' : '✗ Chưa đạt';
-  els.passStatus.className = `pass-status ${passed ? 'passed' : 'failed'}`;
+  updateScoreHero(data.overall_score, passed);
 
-  serverAudioUrl = data.audio_url
-    ? `${getApiBase()}${data.audio_url}`
-    : null;
+  const nextAudioUrl = data.audio_url ? `${getApiBase()}${data.audio_url}` : null;
+  if (serverAudioUrl !== nextAudioUrl) serverAudioUrl = nextAudioUrl;
 
-  els.phonemeContainer?.classList.add('has-results');
-  renderPhonemeResults(data.phonemes, showSuggestionsAlways);
+  syncPhonemeStripResults(data.phonemes, showSuggestionsAlways);
   return true;
+}
+
+function setScoreHeroPending() {
+  updateScoreHero(0, false, { pending: true });
+}
+
+function showScoreEvalError(message, wordIndex = currentIndex) {
+  setScoreState('error', 'Lỗi chấm điểm');
+  showLiveHint(message, 'mis');
+  const w = words[wordIndex];
+  const cached = w ? getCachedEvaluation(w.word) : null;
+  if (cached) {
+    applyEvaluationDisplay(cached, { showSuggestionsAlways: liveModeActive });
+    setScoreState('done', `Điểm ${cached.overall_score}%`);
+    return;
+  }
+  if (
+    currentWordEvaluation
+    && w
+    && normalizeWordKey(currentWordEvaluation.word) === normalizeWordKey(w.word)
+  ) {
+    applyEvaluationDisplay(currentWordEvaluation, { showSuggestionsAlways: liveModeActive });
+    setScoreState('done', `Điểm ${currentWordEvaluation.overall_score}%`);
+    return;
+  }
+  restoreWordScoreUI(w);
+}
+
+function restoreWordScoreUI(word) {
+  syncScorePanelForWord(word);
+}
+
+function renderPhonemeIdle(word = words[currentIndex]) {
+  if (!isScoreMode()) return;
+  syncPhonemeStripPending(word?.phonemes || []);
+}
+
+function renderPendingPhonemes(_phonemes) {
+  renderPhonemeIdle(words[currentIndex]);
+}
+
+function renderEvaluationDisplay(data, options = {}) {
+  return applyEvaluationDisplay(data, options);
 }
 
 function nextWord(options = {}) {
@@ -2278,67 +2413,28 @@ async function advanceAfterPass(data) {
 }
 
 function renderPhonemeResults(phonemes, showSuggestionsAlways = false) {
-  endScoringOverlay();
-  const container = els.phonemeContainer;
-  if (!container) return;
+  syncPhonemeStripResults(phonemes, showSuggestionsAlways);
+}
 
-  const boxes = container.querySelectorAll('.phoneme-box');
-  if (boxes.length === phonemes.length) {
-    container.classList.add('has-results');
-    phonemes.forEach((p, i) => {
-      const box = boxes[i];
-      const char = box.querySelector('.phoneme-char');
-      if (char) {
-        char.textContent = p.ipa;
-        char.className = `phoneme-char ${p.label}`;
-      }
-      const scoreEl = box.querySelector('.phoneme-score');
-      if (scoreEl) scoreEl.textContent = `${Math.round(p.score * 100)}%`;
-      let sug = box.querySelector('.phoneme-suggestion');
-      if (p.suggestion) {
-        if (!sug) {
-          sug = document.createElement('span');
-          sug.className = 'phoneme-suggestion';
-          box.appendChild(sug);
-        }
-        sug.textContent = p.suggestion;
-        sug.className = 'phoneme-suggestion';
-        sug.removeAttribute('aria-hidden');
-      } else if (sug) {
-        sug.textContent = '\u00a0';
-        sug.className = 'phoneme-suggestion phoneme-suggestion-slot';
-        sug.setAttribute('aria-hidden', 'true');
-      }
-      box.className = `phoneme-box${showSuggestionsAlways && p.suggestion ? ' show-suggestion' : ''}`;
-      box.dataset.index = String(i);
-      box.dataset.start = String(p.start);
-      box.dataset.end = String(p.end);
-    });
-    bindPhonemeBoxEvents();
-    return;
-  }
+function bindPhonemeDelegation() {
+  if (!els.phonemeContainer || els.phonemeContainer.dataset.bound) return;
+  els.phonemeContainer.dataset.bound = '1';
 
-  container.classList.add('has-results');
-  container.innerHTML = phonemes
-    .map((p, i) => `
-      <div class="phoneme-box${showSuggestionsAlways && p.suggestion ? ' show-suggestion' : ''}" data-index="${i}" data-start="${p.start}" data-end="${p.end}">
-        <div class="phoneme-char ${p.label}">${p.ipa}</div>
-        <span class="phoneme-score">${Math.round(p.score * 100)}%</span>
-        <span class="phoneme-suggestion${p.suggestion ? '' : ' phoneme-suggestion-slot'}"${p.suggestion ? '' : ' aria-hidden="true"'}>${p.suggestion || '\u00a0'}</span>
-      </div>
-    `)
-    .join('');
-  bindPhonemeBoxEvents();
+  els.phonemeContainer.addEventListener('click', (e) => {
+    const box = e.target.closest('.phoneme-box');
+    if (box) replaySegment(box);
+  });
+
+  els.phonemeContainer.addEventListener('touchstart', (e) => {
+    const box = e.target.closest('.phoneme-box');
+    if (!box) return;
+    e.preventDefault();
+    box.classList.toggle('show-suggestion');
+  }, { passive: false });
 }
 
 function bindPhonemeBoxEvents() {
-  els.phonemeContainer?.querySelectorAll('.phoneme-box').forEach((box) => {
-    box.onclick = () => replaySegment(box);
-    box.ontouchstart = (e) => {
-      e.preventDefault();
-      box.classList.toggle('show-suggestion');
-    };
-  });
+  /* delegated — bindPhonemeDelegation */
 }
 
 // ─── Segment replay ─────────────────────────────────────────────────────────
@@ -2490,6 +2586,7 @@ window.__pronounceLabTest = {
   getInitCount: () => initRunCount,
   getCurrentIndex: () => currentIndex,
   getPhonemeBoxCount: () => els.phonemeContainer?.querySelectorAll('.phoneme-box').length ?? 0,
+  getPhonemeBoxNodes: () => [...(els.phonemeContainer?.querySelectorAll('.phoneme-box') || [])],
   runMockEvaluate: async (overallScore = 55, passed = false) => {
     const w = words[currentIndex];
     if (!w) return null;
