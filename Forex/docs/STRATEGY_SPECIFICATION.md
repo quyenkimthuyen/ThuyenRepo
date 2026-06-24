@@ -487,7 +487,113 @@ Bar g: high = 1.08635 (+3.5 pips), close = 1.08580, upperWick/range = 0.65
 
 ---
 
-## 6. Thứ tự thực thi trong Engine
+## 6. Inside Bar Breakout
+
+**Plugin ID:** `inside-bar-breakout`  
+**Category:** Price Action — continuation after consolidation
+
+### 6.1 Parameters
+
+| Param | Default | Range | Description |
+|-------|---------|-------|-------------|
+| `trendEma` | 50 | 20 / 50 / 200 | Long when close > EMA; short when close < EMA |
+| `motherMinRangePips` | 10 | 3–80 | Mother bar minimum range (pips) |
+| `breakoutBufferPips` | 1 | 0–10 | Close must exceed mother extreme by buffer |
+| `maxWaitBars` | 3 | 1–10 | Bars after inside bar to allow breakout |
+| `rr` | 2 | 1–10 | Risk-reward |
+
+### 6.2 Pattern detection
+
+At bar `i` (with `i >= 2`):
+
+```text
+mother = candles[i - 2]
+inside = candles[i - 1]
+
+insideBar = inside.high < mother.high AND inside.low > mother.low
+motherRangePips >= motherMinRangePips
+```
+
+When detected in `calculate()`, store pending setup until `expiresAtBar = (i - 1) + maxWaitBars`.
+
+### 6.3 Long signal
+
+At bar `b` while pending is active:
+
+```text
+1. close[b] > mother.high + breakoutBufferPips × pipSize
+2. close[b] > EMA(trendEma)
+3. entry = close[b]
+4. sl = mother.low - slBufferPips × pipSize
+5. tp = entry + rr × (entry - sl)
+```
+
+### 6.4 Short signal
+
+```text
+1. close[b] < mother.low - breakoutBufferPips × pipSize
+2. close[b] < EMA(trendEma)
+3. entry = close[b]
+4. sl = mother.high + slBufferPips × pipSize
+5. tp = entry - rr × (sl - entry)
+```
+
+### 6.5 State
+
+Pending setup cleared after signal or expiry. New inside-bar pattern replaces pending.
+
+---
+
+## 7. Pin Bar Rejection
+
+**Plugin ID:** `pin-bar-rejection`  
+**Category:** Price Action — rejection at swing S/R (no sweep required)
+
+### 7.1 Parameters
+
+| Param | Default | Range | Description |
+|-------|---------|-------|-------------|
+| `swingLookback` | 7 | 3–30 | Swing high/low lookback |
+| `retestTolerancePips` | 2 | 1–10 | Level touch zone |
+| `minWickRatio` | 0.55 | 0.4–0.85 | Rejection wick / range |
+| `maxBodyRatio` | 0.35 | 0.15–0.5 | Max body / range |
+| `rr` | 2 | 1–10 | Risk-reward |
+
+### 7.2 Swing levels
+
+Same as §2.3 at bar `i` before signal candle.
+
+### 7.3 Short at swing high
+
+```text
+1. touchesZone(candle, swingHigh, retestTolerancePips)
+2. upperWick / range >= minWickRatio
+3. body / range <= maxBodyRatio
+4. bearishConfirmation(candle)
+5. entry = close; sl = high + slBuffer; tp per RR
+```
+
+### 7.4 Long at swing low
+
+```text
+1. touchesZone(candle, swingLow, retestTolerancePips)
+2. lowerWick / range >= minWickRatio
+3. body / range <= maxBodyRatio
+4. bullishConfirmation(candle)
+5. entry = close; sl = low - slBuffer; tp per RR
+```
+
+### 7.5 Duplicate prevention
+
+No repeat signal same direction from level within `retestTolerancePips` for `swingLookback × 2` bars.
+
+### 7.6 Difference from Liquidity Grab
+
+Pin Bar requires **touch** of swing zone only — **no** `grabPips` sweep beyond level.
+
+---
+
+## 8. Thứ tự thực thi trong Engine
 
 Tại mỗi bar `i` (warmup đủ):
 
@@ -501,11 +607,11 @@ Tại mỗi bar `i` (warmup đủ):
 
 ---
 
-## 7. Test cases bắt buộc (Phase 5)
+## 9. Test cases bắt buộc (Phase 5)
 
 Mỗi strategy cần pass các case sau trước khi merge:
 
-### 7.1 Break & Retest
+### 9.1 Break & Retest
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -515,7 +621,7 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | BR-04 | Breakout long, close phá invalidation | Không signal |
 | BR-05 | 2 breakout cùng level | Chỉ 1 signal (cái đầu hoặc expiry) |
 
-### 7.2 EMA Pullback
+### 9.2 EMA Pullback
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -525,7 +631,7 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | EP-04 | emaSpread < 3 pips | Không signal |
 | EP-05 | 2 signal liên tiếp trong cooldown | Chỉ 1 |
 
-### 7.3 Liquidity Grab
+### 9.3 Liquidity Grab
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -535,9 +641,28 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | LG-04 | Bullish grab đáy đối xứng | 1 LONG |
 | LG-05 | Duplicate level trong window | Chỉ 1 |
 
+### 9.4 Inside Bar Breakout
+
+| # | Input | Kỳ vọng |
+|---|-------|---------|
+| IB-01 | Mother range quá nhỏ | Không signal |
+| IB-02 | Inside + break up + trên EMA | 1 LONG |
+| IB-03 | Inside + break down + dưới EMA | 1 SHORT |
+| IB-04 | Quá maxWaitBars không break | Không signal |
+
+### 9.5 Pin Bar Rejection
+
+| # | Input | Kỳ vọng |
+|---|-------|---------|
+| PB-01 | Chạm swing nhưng body lớn | Không short |
+| PB-02 | Pin bear tại swing high | 1 SHORT |
+| PB-03 | Pin bull tại swing low | 1 LONG |
+| PB-04 | Wick quá nhỏ | Không signal |
+| PB-05 | Duplicate level | Chỉ 1 |
+
 ---
 
-## 8. Ghi chú triển khai
+## 10. Ghi chú triển khai
 
 1. **Pip helper:** tạo `src/utils/pip.js` — `getPipSize(symbol)`, `pipsToPrice(pips, symbol)`
 2. **Shared helpers:** `src/strategy/helpers/CandlePatterns.js` — `isBullishConfirmation`, `isBearishConfirmation`, `touchesZone`
@@ -547,10 +672,11 @@ Mỗi strategy cần pass các case sau trước khi merge:
 
 ---
 
-## 9. Changelog
+## 11. Changelog
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.1.0 | 2026-06-23 | Added Inside Bar Breakout + Pin Bar Rejection |
 | 1.0.0 | 2026-06-22 | Initial specification for 3 PA setups |
 
 ---

@@ -302,7 +302,7 @@ python3 -m http.server 8080
     blocks: [
       {
         type: 'p',
-        text: 'All strategy logic is defined in docs/STRATEGY_SPECIFICATION.md. Three built-in Price Action setups:',
+        text: 'All strategy logic is defined in docs/STRATEGY_SPECIFICATION.md. Five built-in Price Action setups:',
       },
       {
         type: 'h3',
@@ -327,6 +327,22 @@ python3 -m http.server 8080
       {
         type: 'p',
         text: 'Fade false breakouts beyond swing highs/lows (stop hunt). Requires wick rejection and close back inside range.',
+      },
+      {
+        type: 'h3',
+        text: 'Inside Bar Breakout (inside-bar-breakout)',
+      },
+      {
+        type: 'p',
+        text: 'Mother bar + inside bar consolidation, then breakout in EMA trend direction. Params: trendEma, motherMinRangePips, breakoutBufferPips, maxWaitBars, rr.',
+      },
+      {
+        type: 'h3',
+        text: 'Pin Bar Rejection (pin-bar-rejection)',
+      },
+      {
+        type: 'p',
+        text: 'Pin-bar rejection at swing support/resistance (touch zone, no sweep required). Params: swingLookback, retestTolerancePips, minWickRatio, maxBodyRatio, rr.',
       },
       {
         type: 'callout',

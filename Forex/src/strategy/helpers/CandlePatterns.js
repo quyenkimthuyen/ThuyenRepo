@@ -107,3 +107,32 @@ export function getLevelZone(level, tolerancePips, symbol) {
   const tol = pipsToPrice(tolerancePips, symbol);
   return { upper: level + tol, lower: level - tol };
 }
+
+/**
+ * Inside bar: child range fully within mother range.
+ * @param {Candle} child
+ * @param {Candle} mother
+ * @returns {boolean}
+ */
+export function isInsideBar(child, mother) {
+  return child.high < mother.high && child.low > mother.low;
+}
+
+/**
+ * Pin bar rejection pattern (wick dominant, small body).
+ * @param {Candle} candle
+ * @param {'long'|'short'} direction — long = hammer at support, short = shooting star at resistance
+ * @param {number} minWickRatio
+ * @param {number} maxBodyRatio
+ * @returns {boolean}
+ */
+export function isPinBar(candle, direction, minWickRatio, maxBodyRatio) {
+  const wicks = getWicks(candle);
+  if (wicks.range <= 0) return false;
+  if (bodyRatio(candle) > maxBodyRatio) return false;
+
+  if (direction === 'long') {
+    return wicks.lower / wicks.range >= minWickRatio;
+  }
+  return wicks.upper / wicks.range >= minWickRatio;
+}

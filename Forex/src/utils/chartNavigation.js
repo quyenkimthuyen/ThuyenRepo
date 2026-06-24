@@ -145,6 +145,20 @@ function inferSetupFromSignal(signal) {
       steps: ['Pullback EMA zone ? n?n confirm'],
     };
   }
+  if (signal.strategyId === 'inside-bar-breakout' && price != null) {
+    return {
+      levels: [{ kind: 'break-level', label: 'Mother level', price }],
+      markers: [{ label: 'Breakout', time, role: 'entry' }],
+      steps: ['Inside bar nén ? break mother bar theo trend'],
+    };
+  }
+  if (signal.strategyId === 'pin-bar-rejection' && price != null) {
+    return {
+      levels: [{ kind: 'liquidity', label: 'Swing level', price }],
+      markers: [{ label: 'Pin reject', time, role: 'sweep' }],
+      steps: ['Ch?m swing ? pin bar rejection ? entry'],
+    };
+  }
   return undefined;
 }
 

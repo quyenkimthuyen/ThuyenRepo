@@ -75,6 +75,8 @@ Three built-in Price Action setups (see `docs/STRATEGY_SPECIFICATION.md`):
 | `break-retest` | Break & Retest |
 | `ema-pullback` | EMA Pullback |
 | `liquidity-grab` | Liquidity Grab |
+| `inside-bar-breakout` | Inside Bar Breakout |
+| `pin-bar-rejection` | Pin Bar Rejection |
 
 - Configure parameters per strategy
 - **Run Selected** — scan one strategy

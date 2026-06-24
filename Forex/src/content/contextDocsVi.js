@@ -215,7 +215,7 @@ export const CONTEXT_DOC_SECTIONS = [
   {
     id: 'strategy',
     title: 'Strategies — Scan chiến lược',
-    subtitle: 'Ba setup Price Action: engine duyệt từng nến, không nhìn trước tương lai.',
+    subtitle: 'Năm setup Price Action: engine duyệt từng nến, không nhìn trước tương lai.',
     icon: '⚙️',
     viewIds: ['strategy'],
     blocks: [
@@ -445,7 +445,65 @@ export const CONTEXT_DOC_SECTIONS = [
         ],
       },
 
-      { type: 'h3', text: 'Nến xác nhận (dùng chung cả 3 strategy)' },
+      { type: 'h2', text: '4. Inside Bar Breakout (inside-bar-breakout)' },
+      {
+        type: 'p',
+        text: 'Ý tưởng: sau sóng trend, giá nén trong nến mẹ (inside bar) rồi break theo hướng trend. Phù hợp EUR/GBP trên 4H và 1D khi thị trường pause trước continuation.',
+      },
+      { type: 'h3', text: 'LONG' },
+      {
+        type: 'ol',
+        items: [
+          'Nến mẹ đủ rộng (motherMinRangePips).',
+          'Nến kế là inside bar (high/low nằm trong nến mẹ).',
+          'Close phá mother high + buffer, đồng thời close > EMA trend.',
+          'SL dưới mother low; TP theo RR.',
+        ],
+      },
+      { type: 'h3', text: 'SHORT — đối xứng' },
+      {
+        type: 'p',
+        text: 'Close phá mother low, close < EMA trend, SL trên mother high.',
+      },
+      {
+        type: 'table',
+        headers: ['Tham số', 'Mặc định', 'Gợi ý 4H / 1D'],
+        rows: [
+          ['trendEma', '50', '50 (4H), 50–200 (1D)'],
+          ['motherMinRangePips', '10', '15–25 (4H), 30–50 (1D)'],
+          ['breakoutBufferPips', '1', '1–2 pip'],
+          ['maxWaitBars', '3', '2–5 nến chờ break'],
+          ['rr', '2', '2–3'],
+        ],
+      },
+
+      { type: 'h2', text: '5. Pin Bar Rejection (pin-bar-rejection)' },
+      {
+        type: 'p',
+        text: 'Ý tưởng: giá chạm swing high/low (không cần quét vượt như Liquidity Grab), nến pin rejection (râu dài, thân nhỏ) + nến xác nhận → vào theo hướng bounce/fade.',
+      },
+      { type: 'h3', text: 'Khác Liquidity Grab' },
+      {
+        type: 'table',
+        headers: ['', 'Pin Bar Rejection', 'Liquidity Grab'],
+        rows: [
+          ['Chạm level', 'Chạm vùng swing là đủ', 'Phải quét qua swing + grabPips'],
+          ['Pattern', 'Pin bar (wick + body nhỏ)', 'Sweep + đóng lại trong range'],
+        ],
+      },
+      {
+        type: 'table',
+        headers: ['Tham số', 'Mặc định', 'Tác dụng'],
+        rows: [
+          ['swingLookback', '7', 'Độ rộng swing S/R — lớn hơn trên 1D'],
+          ['retestTolerancePips', '2', 'Vùng chạm level'],
+          ['minWickRatio', '0.55', 'Râu rejection tối thiểu'],
+          ['maxBodyRatio', '0.35', 'Thân nến phải nhỏ'],
+          ['rr', '2', 'TP theo R'],
+        ],
+      },
+
+      { type: 'h3', text: 'Nến xác nhận (dùng chung các strategy)' },
       {
         type: 'table',
         headers: ['Loại', 'Điều kiện'],

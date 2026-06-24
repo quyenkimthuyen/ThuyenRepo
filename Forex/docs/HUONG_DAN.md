@@ -84,6 +84,8 @@ Ba setup Price Action (chi tiết trong `docs/STRATEGY_SPECIFICATION.md`):
 | `break-retest` | Break & Retest |
 | `ema-pullback` | EMA Pullback |
 | `liquidity-grab` | Liquidity Grab |
+| `inside-bar-breakout` | Inside Bar Breakout |
+| `pin-bar-rejection` | Pin Bar Rejection |
 
 - Chỉnh tham số từng strategy → **Save Parameters**
 - **Run Selected** — quét một strategy (chỉ sinh signal, chấm điểm AI)

@@ -33,8 +33,10 @@ const defaultParams = new BreakRetestStrategy().getParameterSchema().reduce((p, 
 }, {});
 
 {
-  s.assert('INT-01: Registry has 3 strategies', registry.size === 3);
+  s.assert('INT-01: Registry has 5 strategies', registry.size === 5);
   s.assert('INT-02: break-retest registered', registry.has('break-retest'));
+  s.assert('INT-02b: inside-bar-breakout registered', registry.has('inside-bar-breakout'));
+  s.assert('INT-02c: pin-bar-rejection registered', registry.has('pin-bar-rejection'));
 }
 
 {
@@ -69,6 +71,16 @@ const defaultParams = new BreakRetestStrategy().getParameterSchema().reduce((p, 
 {
   const bt = runBacktest('ema-pullback', 'EURUSD', 'H1', candles, {}, tradeConfig);
   s.assert('INT-09: EMA pullback backtest', bt.barsScanned > 0);
+}
+
+{
+  const bt = runBacktest('inside-bar-breakout', 'EURUSD', 'H1', candles, {}, tradeConfig);
+  s.assert('INT-09b: Inside bar backtest', bt.barsScanned > 0);
+}
+
+{
+  const bt = runBacktest('pin-bar-rejection', 'EURUSD', 'H1', candles, {}, tradeConfig);
+  s.assert('INT-09c: Pin bar backtest', bt.barsScanned > 0);
 }
 
 {

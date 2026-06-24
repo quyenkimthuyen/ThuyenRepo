@@ -6,6 +6,8 @@
 import { BreakRetestStrategy } from '../../src/strategies/BreakRetestStrategy.js';
 import { EMAPullbackStrategy } from '../../src/strategies/EMAPullbackStrategy.js';
 import { LiquidityGrabStrategy } from '../../src/strategies/LiquidityGrabStrategy.js';
+import { InsideBarBreakoutStrategy } from '../../src/strategies/InsideBarBreakoutStrategy.js';
+import { PinBarRejectionStrategy } from '../../src/strategies/PinBarRejectionStrategy.js';
 import { createContext } from '../../src/strategy/StrategyContext.js';
 
 const H = 3600000;
@@ -29,11 +31,12 @@ function c(i, o, h, l, close, vol = 500) {
  * @param {import('../../src/strategy/BaseStrategy.js').BaseStrategy} strategy
  * @param {import('../../src/data/Candle.js').Candle[]} candles
  * @param {string} symbol
+ * @param {Record<string, unknown>} [paramOverrides]
  * @returns {import('../../src/strategy/Signal.js').Signal[]}
  */
-function runScan(strategy, candles, symbol = 'EURUSD') {
+function runScan(strategy, candles, symbol = 'EURUSD', paramOverrides = {}) {
   strategy.initialize(strategy.getParameterSchema().reduce((p, d) => {
-    p[d.key] = d.default;
+    p[d.key] = paramOverrides[d.key] ?? d.default;
     return p;
   }, {}));
   strategy.setRunContext({ symbol, timeframe: 'H1' });
@@ -175,6 +178,110 @@ console.log('\n=== EMA Pullback Tests ===\n');
   }
   const signals = runScan(new EMAPullbackStrategy(), candles);
   assert('EP-01: Downtrend data → no long signals', signals.filter((s) => s.direction === 'long').length === 0);
+}
+
+console.log('\n=== Inside Bar Breakout Tests ===\n');
+
+const IB_PARAMS = { trendEma: 20, motherMinRangePips: 10, breakoutBufferPips: 1, maxWaitBars: 3, rr: 2 };
+
+/**
+ * @param {number} count
+ * @returns {import('../../src/data/Candle.js').Candle[]}
+ */
+function uptrendCandles(count) {
+  const candles = [];
+  for (let i = 0; i < count; i++) {
+    const price = 1.0800 + i * 0.0002;
+    candles.push(c(i, price, price + 0.0003, price - 0.0002, price + 0.0001));
+  }
+  return candles;
+}
+
+{
+  const candles = uptrendCandles(32);
+  candles[30] = c(30, 1.0860, 1.0864, 1.0858, 1.0862);
+  candles[31] = c(31, 1.0861, 1.0863, 1.0859, 1.0862);
+  candles.push(c(32, 1.0862, 1.0866, 1.0860, 1.0865));
+  const signals = runScan(new InsideBarBreakoutStrategy(), candles, 'EURUSD', IB_PARAMS);
+  assert('IB-01: Mother range too small → no signal', signals.length === 0);
+}
+
+{
+  const candles = uptrendCandles(32);
+  candles[30] = c(30, 1.0860, 1.0880, 1.0850, 1.0870);
+  candles[31] = c(31, 1.0870, 1.0875, 1.0860, 1.0872);
+  candles.push(c(32, 1.0875, 1.0885, 1.0870, 1.0882));
+  const signals = runScan(new InsideBarBreakoutStrategy(), candles, 'EURUSD', IB_PARAMS);
+  assert('IB-02: Inside bar + bullish breakout → 1 LONG', signals.length === 1 && signals[0].direction === 'long');
+}
+
+{
+  const candles = [];
+  for (let i = 0; i < 32; i++) {
+    const price = 1.1000 - i * 0.0002;
+    candles.push(c(i, price, price + 0.0002, price - 0.0003, price - 0.0001));
+  }
+  candles[30] = c(30, 1.0940, 1.0950, 1.0920, 1.0930);
+  candles[31] = c(31, 1.0930, 1.0945, 1.0925, 1.0935);
+  candles.push(c(32, 1.0930, 1.0935, 1.0910, 1.0915));
+  const signals = runScan(new InsideBarBreakoutStrategy(), candles, 'EURUSD', IB_PARAMS);
+  assert('IB-03: Inside bar + bearish breakout → 1 SHORT', signals.length === 1 && signals[0].direction === 'short');
+}
+
+{
+  const candles = uptrendCandles(32);
+  candles[30] = c(30, 1.0860, 1.0880, 1.0850, 1.0870);
+  candles[31] = c(31, 1.0870, 1.0875, 1.0860, 1.0872);
+  for (let i = 32; i <= 35; i++) {
+    candles.push(c(i, 1.0870, 1.0878, 1.0868, 1.0875));
+  }
+  const signals = runScan(new InsideBarBreakoutStrategy(), candles, 'EURUSD', IB_PARAMS);
+  assert('IB-04: No breakout within maxWaitBars → no signal', signals.length === 0);
+}
+
+console.log('\n=== Pin Bar Rejection Tests ===\n');
+
+const PB_PAD = 25;
+
+{
+  const candles = [];
+  for (let i = 0; i < PB_PAD + 20; i++) candles.push(c(i, 1.0855, 1.0860, 1.0853, 1.0858));
+  candles.push(c(PB_PAD + 20, 1.0856, 1.0862, 1.0850, 1.0858, 600));
+  const signals = runScan(new PinBarRejectionStrategy(), candles);
+  assert('PB-01: Touch swing but body too large → no short', signals.filter((s) => s.direction === 'short').length === 0);
+}
+
+{
+  const candles = [];
+  for (let i = 0; i < PB_PAD + 20; i++) candles.push(c(i, 1.0855, 1.0860, 1.0853, 1.0858));
+  candles.push(c(PB_PAD + 20, 1.0855, 1.0863, 1.0850, 1.0851, 600));
+  const signals = runScan(new PinBarRejectionStrategy(), candles);
+  assert('PB-02: Bearish pin at swing high → 1 SHORT', signals.filter((s) => s.direction === 'short').length === 1);
+}
+
+{
+  const candles = [];
+  for (let i = 0; i < PB_PAD + 20; i++) candles.push(c(i, 1.0845, 1.0848, 1.0840, 1.0845));
+  candles.push(c(PB_PAD + 20, 1.0841, 1.0845, 1.0836, 1.0844, 600));
+  const signals = runScan(new PinBarRejectionStrategy(), candles);
+  assert('PB-03: Bullish pin at swing low → 1 LONG', signals.filter((s) => s.direction === 'long').length === 1);
+}
+
+{
+  const candles = [];
+  for (let i = 0; i < PB_PAD + 20; i++) candles.push(c(i, 1.0855, 1.0860, 1.0853, 1.0858));
+  candles.push(c(PB_PAD + 20, 1.0858, 1.0862, 1.0854, 1.0856, 600));
+  const signals = runScan(new PinBarRejectionStrategy(), candles);
+  assert('PB-04: Wick too small → no signal', signals.length === 0);
+}
+
+{
+  const candles = [];
+  for (let i = 0; i < PB_PAD + 20; i++) candles.push(c(i, 1.0855, 1.0860, 1.0853, 1.0858));
+  candles.push(c(PB_PAD + 20, 1.0854, 1.0860, 1.0850, 1.0851, 600));
+  candles.push(c(PB_PAD + 21, 1.0853, 1.0860, 1.0849, 1.0850, 600));
+  const signals = runScan(new PinBarRejectionStrategy(), candles);
+  assert('PB-05: Duplicate swing level → 1 signal only', signals.length === 1);
 }
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);
