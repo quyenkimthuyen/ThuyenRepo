@@ -63,8 +63,11 @@ const MIN_BLOB_BYTES = 500;
 const MIN_UPLOAD_BYTES = 800;
 const SETTINGS_KEY = 'pronouncelab_settings';
 const WORD_INDEX_KEY = 'pronouncelab_word_index';
+const EVAL_CACHE_KEY = 'pronouncelab_eval_cache';
 /** @type {Record<string, object>} Kết quả chấm gần nhất theo từ */
 const lastEvaluations = {};
+/** Kết quả đang hiển thị cho từ hiện tại */
+let currentWordEvaluation = null;
 let passAdvanceTimer = null;
 let suppressWordSelectChange = false;
 
@@ -119,6 +122,7 @@ const els = {
 async function init() {
   await loadConfig();
   await loadWords();
+  loadEvalCache();
   loadSettings();
   applyPracticeModeUI();
   bindEvents();
@@ -377,28 +381,87 @@ function resetEvaluationUI() {
   serverAudioUrl = null;
 }
 
+function normalizeWordKey(word) {
+  return String(word || '').toLowerCase().trim();
+}
+
+function loadEvalCache() {
+  try {
+    const raw = sessionStorage.getItem(EVAL_CACHE_KEY);
+    if (!raw) return;
+    Object.assign(lastEvaluations, JSON.parse(raw));
+  } catch {
+    /* ignore */
+  }
+}
+
+function persistEvalCache() {
+  try {
+    sessionStorage.setItem(EVAL_CACHE_KEY, JSON.stringify(lastEvaluations));
+  } catch {
+    /* ignore */
+  }
+}
+
 function cacheEvaluation(data) {
   if (!data?.word || !Array.isArray(data.phonemes) || !data.phonemes.length) return;
-  lastEvaluations[data.word] = data;
+  const key = normalizeWordKey(data.word);
+  lastEvaluations[key] = data;
+  if (words[currentIndex] && normalizeWordKey(words[currentIndex].word) === key) {
+    currentWordEvaluation = data;
+  }
+  persistEvalCache();
 }
 
 function getCachedEvaluation(word) {
-  return word ? lastEvaluations[word] : null;
+  return lastEvaluations[normalizeWordKey(word)] || null;
+}
+
+function hasEvaluationForWord(word) {
+  if (!word) return false;
+  const key = normalizeWordKey(word.word || word);
+  if (lastEvaluations[key]) return true;
+  return Boolean(
+    currentWordEvaluation && normalizeWordKey(currentWordEvaluation.word) === key,
+  );
+}
+
+function beginScoringOverlay() {
+  if (!isScoreMode()) return;
+  els.phonemeContainer?.classList.add('scoring');
+  els.scoreSection?.classList.add('scoring');
+}
+
+function endScoringOverlay() {
+  els.phonemeContainer?.classList.remove('scoring');
+  els.scoreSection?.classList.remove('scoring');
 }
 
 function restoreWordScoreUI(word) {
   if (!isScoreMode() || !word) return;
+  endScoringOverlay();
+
   const cached = getCachedEvaluation(word.word);
-  if (cached && renderEvaluationDisplay(cached, { showSuggestionsAlways: liveModeActive })) {
+  if (cached) {
+    renderEvaluationDisplay(cached, { showSuggestionsAlways: liveModeActive });
     return;
   }
+  if (currentWordEvaluation && normalizeWordKey(currentWordEvaluation.word) === normalizeWordKey(word.word)) {
+    renderEvaluationDisplay(currentWordEvaluation, { showSuggestionsAlways: liveModeActive });
+    return;
+  }
+
   els.scoreSection.classList.add('hidden');
+  els.phonemeContainer?.classList.remove('has-results');
   renderPendingPhonemes(word.phonemes || []);
 }
 
 function renderPendingPhonemes(phonemes) {
   if (!isScoreMode()) return;
-  els.phonemeContainer.classList.remove('scoring');
+  if (hasEvaluationForWord(words[currentIndex])) return;
+
+  endScoringOverlay();
+  els.phonemeContainer.classList.remove('has-results');
   els.phonemeContainer.innerHTML = phonemes
     .map((p) => `
       <div class="phoneme-box" data-ipa="${p}">
@@ -409,27 +472,12 @@ function renderPendingPhonemes(phonemes) {
     .join('');
 }
 
-function renderScoringPhonemes(phonemes) {
-  if (!isScoreMode() || !phonemes?.length) return;
-  els.phonemeContainer.classList.add('scoring');
-  const hasScored = els.phonemeContainer.querySelector(
-    '.phoneme-char.ok, .phoneme-char.warn, .phoneme-char.mis',
-  );
-  if (hasScored) return;
-
-  els.phonemeContainer.innerHTML = phonemes
-    .map((p) => `
-      <div class="phoneme-box" data-ipa="${p}">
-        <div class="phoneme-char pending">${p}</div>
-        <span class="phoneme-score">…</span>
-      </div>
-    `)
-    .join('');
-}
-
 function renderEvaluationDisplay(data, options = {}) {
   const { showSuggestionsAlways = false } = options;
   if (!data?.phonemes?.length) return false;
+
+  endScoringOverlay();
+  currentWordEvaluation = data;
 
   const passScore = parseInt(els.settingPassScore.value, 10);
   const allOk = data.phonemes.every((p) => p.label === 'ok');
@@ -444,6 +492,7 @@ function renderEvaluationDisplay(data, options = {}) {
     ? `${getApiBase()}${data.audio_url}`
     : null;
 
+  els.phonemeContainer?.classList.add('has-results');
   renderPhonemeResults(data.phonemes, showSuggestionsAlways);
   renderFeedback(data.phonemes);
   return true;
@@ -1267,7 +1316,7 @@ async function evaluateRecording(blob = null, options = {}) {
   isEvaluating = true;
   setMicState(MIC_STATE.PROCESSING, 'Đang chấm điểm...');
   els.spinner.classList.remove('hidden');
-  renderScoringPhonemes(words[currentIndex]?.phonemes || []);
+  beginScoringOverlay();
   els.phonemeContainer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   let uploadBlob;
@@ -1323,7 +1372,7 @@ async function evaluateRecording(blob = null, options = {}) {
       return;
     }
 
-    renderEvaluation(data, { fromLive, evalWordIndex });
+    renderEvaluation(data, { fromLive });
   } catch (err) {
     els.spinner.classList.add('hidden');
     isEvaluating = false;
@@ -1339,7 +1388,9 @@ async function evaluateRecording(blob = null, options = {}) {
 }
 
 function renderEvaluation(data, options = {}) {
-  const { fromLive = false, evalWordIndex = currentIndex } = options;
+  const { fromLive = false } = options;
+
+  cacheEvaluation(data);
   if (!renderEvaluationDisplay(data, { showSuggestionsAlways: fromLive || liveModeActive })) {
     showLiveHint('Phản hồi thiếu dữ liệu phoneme', 'mis');
     restoreWordScoreUI(words[currentIndex]);
@@ -1347,7 +1398,6 @@ function renderEvaluation(data, options = {}) {
     return;
   }
 
-  cacheEvaluation(data);
   els.phonemeContainer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   const passScore = parseInt(els.settingPassScore.value, 10);
@@ -1358,27 +1408,13 @@ function renderEvaluation(data, options = {}) {
 
   if (passed) {
     els.btnRetry.classList.add('hidden');
-    showLiveHint(`✓ Đúng rồi! (${data.overall_score}%) — chuyển từ...`, 'ok');
-    const delay = fromLive ? 1800 : 1200;
-    const targetWord = data.word;
-
-    clearPassAdvanceTimer();
-    isAdvancing = true;
-    passAdvanceTimer = setTimeout(() => {
-      passAdvanceTimer = null;
-      if (words[evalWordIndex]?.word !== targetWord) {
-        isAdvancing = false;
-        return;
-      }
-      if (currentIndex !== evalWordIndex) {
-        isAdvancing = false;
-        return;
-      }
-      hideLiveHint();
-      nextWord({ autoplay: !fromLive });
-      isAdvancing = false;
-      if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
-    }, delay);
+    showLiveHint(
+      `✓ Đạt ${data.overall_score}% — kết quả giữ tới lần chấm sau (bấm → để sang từ tiếp)`,
+      'ok',
+    );
+    if (fromLive && liveModeActive) {
+      setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
+    }
   } else {
     els.btnRetry.classList.remove('hidden');
     const issues = data.phonemes.filter((p) => p.label !== 'ok' && p.suggestion);
@@ -1393,7 +1429,8 @@ function renderEvaluation(data, options = {}) {
 }
 
 function renderPhonemeResults(phonemes, showSuggestionsAlways = false) {
-  els.phonemeContainer.classList.remove('scoring');
+  endScoringOverlay();
+  els.phonemeContainer.classList.add('has-results');
   els.phonemeContainer.innerHTML = phonemes
     .map((p, i) => `
       <div class="phoneme-box${showSuggestionsAlways && p.suggestion ? ' show-suggestion' : ''}" data-index="${i}" data-start="${p.start}" data-end="${p.end}">

@@ -205,12 +205,37 @@ body {
   margin-bottom: 0.55rem;
 }
 
-.phoneme-container.scoring .phoneme-char {
+.phoneme-container.has-results::before {
+  content: 'Kết quả chấm (lần gần nhất)';
+  color: var(--accent);
+}
+
+.phoneme-container.scoring.has-results::before {
+  content: 'Kết quả chấm (lần gần nhất) — đang chấm lại…';
+}
+
+.score-inline.scoring {
+  opacity: 0.75;
+}
+
+.score-inline.scoring .overall-score strong::after {
+  content: ' …';
+  color: var(--warn);
+  font-size: 0.9rem;
+}
+
+.phoneme-container.scoring:not(.has-results) .phoneme-char {
   animation: phoneme-pulse 0.9s ease-in-out infinite;
 }
 
-.phoneme-container.scoring .phoneme-score {
+.phoneme-container.scoring:not(.has-results) .phoneme-score {
   color: var(--warn);
+}
+
+.phoneme-container.scoring.has-results {
+  outline: 2px solid rgba(241, 196, 15, 0.35);
+  outline-offset: 4px;
+  border-radius: var(--radius);
 }
 
 /* Live speech panel */
