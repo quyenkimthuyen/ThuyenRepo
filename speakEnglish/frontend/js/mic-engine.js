@@ -42,6 +42,7 @@ export class MicEngine {
     this.onUtteranceComplete = options.onUtteranceComplete;
     this.onSpeechStart = options.onSpeechStart;
     this.allowAudioOnly = options.allowAudioOnly ?? false;
+    this.skipUtteranceCooldown = options.skipUtteranceCooldown ?? false;
 
     this.phase = MIC_PHASE.OFF;
     this.paused = false;
@@ -197,7 +198,14 @@ export class MicEngine {
     } finally {
       this._processing = false;
       this.endCapture();
-      this.enterCooldown();
+      if (this.skipUtteranceCooldown) {
+        this.clearCooldown();
+        if (!this.paused && this.phase !== MIC_PHASE.OFF && this.phase !== MIC_PHASE.SAMPLE) {
+          this.setPhase(MIC_PHASE.READY, 'Sẵn sàng thu âm');
+        }
+      } else {
+        this.enterCooldown();
+      }
     }
   }
 

@@ -608,7 +608,52 @@ body {
 
 .score-section {
   text-align: center;
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.ipa-score-panel {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ipa-score-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.score-status-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.ipa-score-panel.scoring .score-status-label {
+  color: var(--warn);
+}
+
+.ipa-score-panel:not(.scoring) .score-status-label:empty {
+  display: none;
+}
+
+.score-spinner {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.score-spinner-ring {
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--warn);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 .score-inline {

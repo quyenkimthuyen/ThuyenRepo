@@ -34,14 +34,22 @@
       <section class="word-display">
         <h2 id="current-word" class="word-text">—</h2>
         <p id="current-ipa" class="ipa-text">—</p>
-        <section id="score-section" class="score-inline hidden mode-score-only">
-          <span class="overall-score">
-            Điểm:
-            <strong id="overall-score">—</strong>
-            <span id="pass-status" class="pass-status"></span>
-          </span>
+        <section id="ipa-score-panel" class="ipa-score-panel mode-score-only">
+          <div class="ipa-score-head">
+            <span id="score-status-label" class="score-status-label">Sẵn sàng chấm</span>
+            <div id="score-spinner" class="score-spinner hidden" aria-hidden="true">
+              <div class="score-spinner-ring"></div>
+            </div>
+          </div>
+          <section id="score-section" class="score-inline hidden">
+            <span class="overall-score">
+              Điểm:
+              <strong id="overall-score">—</strong>
+              <span id="pass-status" class="pass-status"></span>
+            </span>
+          </section>
+          <section id="phoneme-container" class="phoneme-container ipa-phonemes" aria-label="Chấm từng âm IPA"></section>
         </section>
-        <section id="phoneme-container" class="phoneme-container ipa-phonemes mode-score-only" aria-label="Chấm từng âm IPA"></section>
       </section>
 
       <section class="live-panel" id="live-panel">

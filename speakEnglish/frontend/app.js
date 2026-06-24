@@ -43,7 +43,9 @@ let liveMediaRecorder = null;
 let audioRingChunks = [];
 let liveAnalyser = null;
 let vadAnimationId = null;
-let isEvaluating = false;
+let scoreApiBusy = false;
+let lastMicUiState = MIC_STATE.OFF;
+let lastMicUiLabel = 'Micro tắt';
 let liveMimeType = 'audio/webm';
 let phraseRecorder = null;
 let phraseChunks = [];
@@ -93,6 +95,9 @@ const els = {
   recordingIndicator: $('recording-indicator'),
   spinner: $('spinner'),
   scoreSection: $('score-section'),
+  ipaScorePanel: $('ipa-score-panel'),
+  scoreStatusLabel: $('score-status-label'),
+  scoreSpinner: $('score-spinner'),
   overallScore: $('overall-score'),
   passStatus: $('pass-status'),
   phonemeContainer: $('phoneme-container'),
@@ -153,6 +158,14 @@ function setupAutoStartMic() {
 }
 
 function setMicState(state, label) {
+  if (liveModeActive && isScoreMode() && state === MIC_STATE.PROCESSING) {
+    return;
+  }
+  if (state !== MIC_STATE.PROCESSING) {
+    lastMicUiState = state;
+    if (label) lastMicUiLabel = label;
+  }
+
   micState = state;
   if (els.btnLiveToggle) {
     els.btnLiveToggle.dataset.state = state;
@@ -161,6 +174,40 @@ function setMicState(state, label) {
   if (els.micStatusLabel && label) {
     els.micStatusLabel.textContent = label;
   }
+}
+
+function setScoreState(mode, text) {
+  if (els.scoreStatusLabel && text) {
+    els.scoreStatusLabel.textContent = text;
+  }
+  els.ipaScorePanel?.classList.toggle('scoring', mode === 'scoring');
+  els.scoreSpinner?.classList.toggle('hidden', mode !== 'scoring');
+}
+
+function syncMicStateFromEngine() {
+  if (!liveModeActive || !micEngine) return;
+  const phase = micEngine.phase;
+  if (isScoreMode() && (phase === MIC_PHASE.PROCESSING || phase === MIC_PHASE.COOLDOWN)) {
+    setMicState(lastMicUiState, lastMicUiLabel);
+    return;
+  }
+  const labels = {
+    [MIC_PHASE.READY]: 'Sẵn sàng thu âm',
+    [MIC_PHASE.HEARING]: 'Đang nghe bạn nói...',
+    [MIC_PHASE.SAMPLE]: 'Đang phát mẫu...',
+  };
+  setMicState(micPhaseToState(phase), labels[phase] || lastMicUiLabel);
+}
+
+function prepareMicForNextUtterance() {
+  if (!liveModeActive || !micEngine) return;
+  micEngine.clearTranscript();
+  syncTranscriptFromEngine();
+  micEngine.clearCooldown();
+  if (micEngine.phase === MIC_PHASE.COOLDOWN || micEngine.phase === MIC_PHASE.PROCESSING) {
+    micEngine.setPhase(MIC_PHASE.READY, 'Sẵn sàng thu âm');
+  }
+  syncMicStateFromEngine();
 }
 
 async function loadConfig() {
@@ -271,6 +318,8 @@ function createMicEngine() {
   return new MicEngine({
     hangoverMs: getHangoverMsSetting(),
     allowAudioOnly: isScoreMode(),
+    cooldownMs: isScoreMode() ? 80 : undefined,
+    skipUtteranceCooldown: isScoreMode(),
     onSpeechStart: () => {
       if (isScoreMode()) {
         startPhraseRecording();
@@ -278,9 +327,14 @@ function createMicEngine() {
       }
     },
     onPhaseChange: (phase, label) => {
-      if (phase !== MIC_PHASE.OFF) {
-        setMicState(micPhaseToState(phase), label);
+      if (phase === MIC_PHASE.OFF) {
+        setMicState(MIC_STATE.OFF, label || 'Micro tắt');
+        return;
       }
+      if (isScoreMode() && (phase === MIC_PHASE.PROCESSING || phase === MIC_PHASE.COOLDOWN)) {
+        return;
+      }
+      setMicState(micPhaseToState(phase), label);
     },
     onLevel: (_rms, pct) => {
       if (els.vadLevel) els.vadLevel.style.width = `${pct}%`;
@@ -435,11 +489,13 @@ function beginScoringOverlay() {
   if (!isScoreMode()) return;
   els.phonemeContainer?.classList.add('scoring');
   els.scoreSection?.classList.add('scoring');
+  els.ipaScorePanel?.classList.add('scoring');
 }
 
 function endScoringOverlay() {
   els.phonemeContainer?.classList.remove('scoring');
   els.scoreSection?.classList.remove('scoring');
+  els.ipaScorePanel?.classList.remove('scoring');
 }
 
 function restoreWordScoreUI(word) {
@@ -449,13 +505,16 @@ function restoreWordScoreUI(word) {
   const cached = getCachedEvaluation(word.word);
   if (cached) {
     renderEvaluationDisplay(cached, { showSuggestionsAlways: liveModeActive });
+    setScoreState('done', `Điểm ${cached.overall_score}%`);
     return;
   }
   if (currentWordEvaluation && normalizeWordKey(currentWordEvaluation.word) === normalizeWordKey(word.word)) {
     renderEvaluationDisplay(currentWordEvaluation, { showSuggestionsAlways: liveModeActive });
+    setScoreState('done', `Điểm ${currentWordEvaluation.overall_score}%`);
     return;
   }
 
+  setScoreState('idle', 'Sẵn sàng chấm');
   els.scoreSection.classList.add('hidden');
   els.phonemeContainer?.classList.remove('has-results');
   renderPendingPhonemes(word.phonemes || []);
@@ -605,7 +664,7 @@ function clearScoreMatchTimer() {
 
 /** Chế độ chấm điểm: SR nghe được từ → im lặng hangover → tự chấm (không phụ thuộc VAD) */
 function tryScheduleScoreEvaluate() {
-  if (!isScoreMode() || !liveModeActive || isListeningBlocked() || isAdvancing || isEvaluating) {
+  if (!isScoreMode() || !liveModeActive || isListeningBlocked() || isAdvancing || scoreApiBusy) {
     clearScoreMatchTimer();
     return;
   }
@@ -627,7 +686,7 @@ function tryScheduleScoreEvaluate() {
 
   scoreMatchTimer = setTimeout(async () => {
     scoreMatchTimer = null;
-    if (!liveModeActive || !isScoreMode() || isEvaluating || isAdvancing || isListeningBlocked()) {
+    if (!liveModeActive || !isScoreMode() || scoreApiBusy || isAdvancing || isListeningBlocked()) {
       return;
     }
     if (!getSpokenWord()?.trim()) return;
@@ -965,7 +1024,8 @@ async function prepareUploadBlob(blob) {
 }
 
 async function handleUtteranceComplete(payload) {
-  if (!liveModeActive || isListeningBlocked() || isAdvancing || isEvaluating) return;
+  if (!liveModeActive || isListeningBlocked() || isAdvancing) return;
+  if (isScoreMode() && scoreApiBusy) return;
 
   if (isTextMode()) {
     await processTextUtterance(payload.spoken);
@@ -985,7 +1045,7 @@ async function handleUtteranceComplete(payload) {
 
 /** Score mode: im lặng sau câu → tự gọi API chấm (cùng pipeline với Ghi âm 1 lần) */
 async function processScoreUtterance() {
-  if (isEvaluating) return;
+  if (scoreApiBusy) return;
 
   clearScoreMatchTimer();
 
@@ -1003,7 +1063,7 @@ async function processScoreUtterance() {
   userAudioUrl = URL.createObjectURL(blob);
   els.btnReplayUser.disabled = false;
 
-  showLiveHint('Đang chấm điểm...', 'warn');
+  showLiveHint('Đang gửi audio chấm điểm...', 'warn');
   await evaluateRecording(blob, { fromLive: true });
 }
 
@@ -1038,7 +1098,7 @@ async function processTextUtterance(spoken) {
 
 function updateRealtimeHint() {
   const w = words[currentIndex];
-  if (!w || isEvaluating || isAdvancing) return;
+  if (!w || isAdvancing) return;
 
   const spoken = getSpokenWord();
   if (!spoken) {
@@ -1364,40 +1424,39 @@ async function evaluateRecording(blob = null, options = {}) {
   const w = words[evalWordIndex];
   const audioBlob = blob || userAudioBlob;
   if (!audioBlob || !w) return;
+  if (scoreApiBusy) return;
 
   clearPassAdvanceTimer();
   isAdvancing = false;
+  scoreApiBusy = true;
 
-  isEvaluating = true;
-  setMicState(MIC_STATE.PROCESSING, 'Đang chấm điểm...');
-  els.spinner.classList.remove('hidden');
+  setScoreState('scoring', 'Đang chấm điểm...');
+  if (!fromLive) els.spinner.classList.remove('hidden');
   beginScoringOverlay();
   els.phonemeContainer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-  let uploadBlob;
-  let filename;
   try {
-    ({ blob: uploadBlob, filename } = await prepareUploadBlob(audioBlob));
-  } catch (prepErr) {
-    els.spinner.classList.add('hidden');
-    isEvaluating = false;
-    let msg = prepErr.message || 'Không xử lý được audio';
-    if (/decode|encoding|Unable to decode/i.test(msg)) {
-      msg = 'Không đọc được audio — nói rõ hơn (~0.5s) rồi thử lại';
+    let uploadBlob;
+    let filename;
+    try {
+      ({ blob: uploadBlob, filename } = await prepareUploadBlob(audioBlob));
+    } catch (prepErr) {
+      let msg = prepErr.message || 'Không xử lý được audio';
+      if (/decode|encoding|Unable to decode/i.test(msg)) {
+        msg = 'Không đọc được audio — nói rõ hơn (~0.5s) rồi thử lại';
+      }
+      setScoreState('error', 'Lỗi audio');
+      showLiveHint('Lỗi audio: ' + msg, 'mis');
+      restoreWordScoreUI(words[currentIndex]);
+      return;
     }
-    showLiveHint('Lỗi audio: ' + msg, 'mis');
-    restoreWordScoreUI(words[currentIndex]);
-    if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
-    return;
-  }
 
-  const formData = new FormData();
-  formData.append('file', uploadBlob, filename);
-  formData.append('target_word', w.word);
-  formData.append('target_ipa', w.ipa);
-  formData.append('target_phonemes', JSON.stringify(w.phonemes || []));
+    const formData = new FormData();
+    formData.append('file', uploadBlob, filename);
+    formData.append('target_word', w.word);
+    formData.append('target_ipa', w.ipa);
+    formData.append('target_phonemes', JSON.stringify(w.phonemes || []));
 
-  try {
     const res = await fetch(`${getApiBase()}/api/v1/evaluate`, {
       method: 'POST',
       body: formData,
@@ -1411,9 +1470,6 @@ async function evaluateRecording(blob = null, options = {}) {
       data = { error: raw || 'Phản hồi không hợp lệ từ server' };
     }
 
-    els.spinner.classList.add('hidden');
-    isEvaluating = false;
-
     if (!res.ok) {
       let msg = typeof data.detail === 'object'
         ? (data.detail?.error || JSON.stringify(data.detail))
@@ -1421,24 +1477,27 @@ async function evaluateRecording(blob = null, options = {}) {
       if (/ffmpeg failed/i.test(msg)) {
         msg = 'File audio không hợp lệ — nói rõ hơn (~0.5s) rồi thử lại';
       }
+      setScoreState('error', 'Lỗi chấm điểm');
       showLiveHint('Lỗi chấm điểm: ' + msg, 'mis');
       restoreWordScoreUI(words[currentIndex]);
-      if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
       return;
     }
 
     renderEvaluation(data, { fromLive });
+    if (fromLive) prepareMicForNextUtterance();
   } catch (err) {
-    els.spinner.classList.add('hidden');
-    isEvaluating = false;
     const msg = `Không kết nối backend (${getApiBase()}). Chạy: ./run_backend.sh`;
+    setScoreState('error', 'Lỗi kết nối');
     if (fromLive) {
       showLiveHint(msg, 'mis');
       restoreWordScoreUI(words[currentIndex]);
-      if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     } else if (!blob) {
       alert(msg + '\n\n' + err.message);
     }
+  } finally {
+    scoreApiBusy = false;
+    if (!fromLive) els.spinner.classList.add('hidden');
+    if (fromLive) syncMicStateFromEngine();
   }
 }
 
@@ -1447,12 +1506,13 @@ function renderEvaluation(data, options = {}) {
 
   cacheEvaluation(data);
   if (!renderEvaluationDisplay(data, { showSuggestionsAlways: fromLive || liveModeActive })) {
+    setScoreState('error', 'Thiếu dữ liệu');
     showLiveHint('Phản hồi thiếu dữ liệu phoneme', 'mis');
     restoreWordScoreUI(words[currentIndex]);
-    if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     return;
   }
 
+  setScoreState('done', `Điểm ${data.overall_score}%`);
   els.phonemeContainer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   const passScore = parseInt(els.settingPassScore.value, 10);
@@ -1467,9 +1527,6 @@ function renderEvaluation(data, options = {}) {
       `✓ Đạt ${data.overall_score}% — kết quả giữ tới lần chấm sau (bấm → để sang từ tiếp)`,
       'ok',
     );
-    if (fromLive && liveModeActive) {
-      setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
-    }
   } else {
     els.btnRetry.classList.remove('hidden');
     const issues = data.phonemes.filter((p) => p.label !== 'ok' && p.suggestion);
@@ -1477,9 +1534,6 @@ function renderEvaluation(data, options = {}) {
       ? issues.map((p) => `${p.ipa}: ${p.suggestion}`).join(' · ')
       : `Chưa đạt (${data.overall_score}%) — thử đọc lại "${data.word}"`;
     showLiveHint(hintText, 'mis');
-    if (fromLive && liveModeActive) {
-      setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
-    }
   }
 }
 
