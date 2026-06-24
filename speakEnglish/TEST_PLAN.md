@@ -80,6 +80,15 @@ File `frontend/tests/e2e/user-journey.spec.mjs` mô phỏng thao tác người d
 
 Dùng **fake microphone** (Playwright) + hooks `window.__pronounceLabTest` để mô phỏng chấm điểm / khớp text mà không cần nói thật.
 
+File `frontend/tests/e2e/score-eval-api.spec.mjs` — luồng **đọc xong → `fetch /api/v1/evaluate` → cập nhật UI** (mock response qua Playwright `page.route`), kiểm tra `initCount` và DOM phoneme không rebuild.
+
+```bash
+npx playwright test score-eval-api --project=chromium
+npx playwright test score-timers --project=chromium
+```
+
+File `frontend/tests/e2e/score-timers.spec.mjs` — **timer im lặng** (`tryScheduleScoreEvaluate` → `processScoreUtterance`) và **idle autoplay** (tự phát mẫu sau N giây không thao tác, chỉ khi micro bật + autoplay bật).
+
 ---
 
 ## Manual E2E (micro + trình duyệt)

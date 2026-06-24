@@ -152,6 +152,8 @@ const els = {
 // ─── Init ───────────────────────────────────────────────────────────────────
 
 let initRunCount = 0;
+/** E2E: inject audio cho processScoreUtterance khi fake mic không ghi được */
+let e2eInjectScoreBlob = null;
 
 async function init() {
   initRunCount += 1;
@@ -1740,6 +1742,15 @@ function stopPhraseRecording() {
 
 /** Live score: ưu tiên webm từ phraseRecorder (giống Ghi âm 1 lần), PCM chỉ dự phòng */
 async function getScoreAudioBlob() {
+  if (e2eInjectScoreBlob) {
+    const injected = e2eInjectScoreBlob;
+    e2eInjectScoreBlob = null;
+    stopUtteranceCapture();
+    utterancePcmChunks = [];
+    await stopPhraseRecording();
+    return injected;
+  }
+
   stopUtteranceCapture();
   const pcmChunks = utterancePcmChunks;
   utterancePcmChunks = [];
@@ -2581,11 +2592,48 @@ function bindEvents() {
   window.addEventListener('beforeunload', () => stopLiveMode());
 }
 
+/** WAV 16kHz mono — đủ lớn cho upload evaluate (E2E) */
+function createTestWavBlob(durationSec = 0.6, sampleRate = 16000, freq = 440) {
+  const numSamples = Math.floor(durationSec * sampleRate);
+  const dataSize = numSamples * 2;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+  const writeStr = (offset, str) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, 'data');
+  view.setUint32(40, dataSize, true);
+  for (let i = 0; i < numSamples; i++) {
+    const t = i / sampleRate;
+    const sample = Math.sin(2 * Math.PI * freq * t) * 0.25;
+    const int16 = Math.max(-32768, Math.min(32767, Math.floor(sample * 32767)));
+    view.setInt16(44 + i * 2, int16, true);
+  }
+  return new Blob([buffer], { type: 'audio/wav' });
+}
+
 /** Hooks cho E2E — mô phỏng thao tác người dùng trên browser */
 window.__pronounceLabTest = {
   getInitCount: () => initRunCount,
   getCurrentIndex: () => currentIndex,
   getPracticeMode: () => practiceMode,
+  getCurrentWord: () => {
+    const w = words[currentIndex];
+    return w
+      ? { word: w.word, ipa: w.ipa, phonemes: [...(w.phonemes || [])] }
+      : null;
+  },
   getState: () => ({
     initCount: initRunCount,
     currentIndex,
@@ -2635,12 +2683,83 @@ window.__pronounceLabTest = {
     }, { fromLive: liveModeActive, wordIndex: currentIndex });
     return { index: currentIndex, word: w.word };
   },
+  createTestWavBlob,
+  /** Đọc xong (transcript) → gọi evaluateRecording + fetch API thật trong page */
+  simulateScoreReadAndEvaluate: async () => {
+    const w = words[currentIndex];
+    if (!w || !isScoreMode()) return { error: 'not_score_mode' };
+    if (!liveModeActive) return { error: 'mic_off' };
+
+    micEngine?.pushTranscript(w.word, '');
+    syncTranscriptFromEngine();
+    noteUserInput();
+
+    const before = {
+      initCount: initRunCount,
+      index: currentIndex,
+      word: w.word,
+      boxCount: els.phonemeContainer?.querySelectorAll('.phoneme-box').length ?? 0,
+    };
+
+    const blob = createTestWavBlob();
+    await evaluateRecording(blob, { fromLive: true });
+
+    return {
+      before,
+      after: {
+        initCount: initRunCount,
+        index: currentIndex,
+        word: words[currentIndex]?.word ?? null,
+        boxCount: els.phonemeContainer?.querySelectorAll('.phoneme-box').length ?? 0,
+      },
+    };
+  },
   simulateTextPass: async () => {
     const w = words[currentIndex];
     if (!w || !isTextMode()) return null;
     const before = currentIndex;
     await processTextUtterance(w.word);
     return { before, after: currentIndex, word: words[currentIndex]?.word };
+  },
+  getIdleSampleState: () => ({
+    armed: idleSampleArmed,
+    hasTimer: Boolean(idleSampleTimer),
+    isSamplePlaying,
+    idleSec: getIdleSampleSec(),
+    shouldAutoplay: shouldAutoplaySample(),
+  }),
+  getScoreSilenceState: () => ({
+    hasTimer: Boolean(scoreMatchTimer),
+    hangMs: getHangoverMsSetting(),
+    spoken: getSpokenWord()?.trim() || '',
+    scoreApiBusy,
+  }),
+  /** SR có transcript → lên lịch chấm sau hangover (E2E inject audio) */
+  armScoreSilenceEvaluate: () => {
+    const w = words[currentIndex];
+    if (!w || !isScoreMode() || !liveModeActive) return { error: 'precondition' };
+    e2eInjectScoreBlob = createTestWavBlob();
+    micEngine?.pushTranscript(w.word, '');
+    syncTranscriptFromEngine();
+    tryScheduleScoreEvaluate();
+    return {
+      hasTimer: Boolean(scoreMatchTimer),
+      hangMs: getHangoverMsSetting(),
+      spoken: getSpokenWord()?.trim() || '',
+    };
+  },
+  /** Chạy ngay callback timer im lặng (cùng logic sau hangover) */
+  flushScoreSilenceTimer: async () => {
+    if (!scoreMatchTimer) return { error: 'no_timer' };
+    clearTimeout(scoreMatchTimer);
+    scoreMatchTimer = null;
+    if (!liveModeActive || !isScoreMode() || scoreApiBusy || isAdvancing || isListeningBlocked()) {
+      return { error: 'blocked' };
+    }
+    if (!getSpokenWord()?.trim()) return { error: 'no_spoken' };
+    const initBefore = initRunCount;
+    await processScoreUtterance();
+    return { initCount: initRunCount, unchanged: initRunCount === initBefore };
   },
 };
 
