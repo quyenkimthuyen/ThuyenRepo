@@ -162,6 +162,57 @@ body {
   margin: 0.5rem 0 0;
 }
 
+.app.mode-score .ipa-text {
+  margin-bottom: 0.35rem;
+}
+
+.score-inline {
+  text-align: center;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.score-inline.hidden {
+  display: none;
+}
+
+.score-inline .overall-score {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+.score-inline .overall-score strong {
+  font-size: 1.35rem;
+  color: var(--text);
+  margin: 0 0.35rem;
+}
+
+.ipa-phonemes {
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--surface-2);
+}
+
+.ipa-phonemes::before {
+  content: 'Chấm từng âm';
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.55rem;
+}
+
+.phoneme-container.scoring .phoneme-char {
+  animation: phoneme-pulse 0.9s ease-in-out infinite;
+}
+
+.phoneme-container.scoring .phoneme-score {
+  color: var(--warn);
+}
+
 /* Live speech panel */
 .live-panel {
   background: var(--bg);
@@ -535,6 +586,10 @@ body {
   margin-bottom: 1.25rem;
 }
 
+.score-inline {
+  text-align: center;
+}
+
 .overall-score {
   font-size: 1rem;
   color: var(--text-muted);
@@ -607,7 +662,8 @@ body {
 .phoneme-char.mis { background: var(--mis); color: #fff; }
 
 .phoneme-score {
-  font-size: 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 700;
   color: var(--text-muted);
   margin-top: 0.25rem;
 }

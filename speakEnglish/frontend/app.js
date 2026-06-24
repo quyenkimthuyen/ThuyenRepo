@@ -216,6 +216,10 @@ function applyPracticeModeUI() {
   els.appRoot?.classList.toggle('mode-text', textActive);
   els.appRoot?.classList.toggle('mode-score', !textActive);
 
+  if (!textActive) {
+    renderPendingPhonemes(words[currentIndex]?.phonemes || []);
+  }
+
   if (els.liveTranscriptPlaceholder) {
     const sec = parseFloat(els.settingSilenceSec?.value) || 0.35;
     els.liveTranscriptPlaceholder.textContent = isTextMode()
@@ -346,14 +350,32 @@ function resetEvaluationUI() {
     URL.revokeObjectURL(userAudioUrl);
     userAudioUrl = null;
   }
+  if (isScoreMode()) {
+    renderPendingPhonemes(words[currentIndex]?.phonemes || []);
+  }
 }
 
 function renderPendingPhonemes(phonemes) {
+  if (!isScoreMode()) return;
+  els.phonemeContainer.classList.remove('scoring');
   els.phonemeContainer.innerHTML = phonemes
     .map((p) => `
       <div class="phoneme-box" data-ipa="${p}">
         <div class="phoneme-char pending">${p}</div>
         <span class="phoneme-score">—</span>
+      </div>
+    `)
+    .join('');
+}
+
+function renderScoringPhonemes(phonemes) {
+  if (!isScoreMode() || !phonemes?.length) return;
+  els.phonemeContainer.classList.add('scoring');
+  els.phonemeContainer.innerHTML = phonemes
+    .map((p) => `
+      <div class="phoneme-box" data-ipa="${p}">
+        <div class="phoneme-char pending">${p}</div>
+        <span class="phoneme-score">…</span>
       </div>
     `)
     .join('');
@@ -1169,6 +1191,8 @@ async function evaluateRecording(blob = null, options = {}) {
   isEvaluating = true;
   setMicState(MIC_STATE.PROCESSING, 'Đang chấm điểm...');
   els.spinner.classList.remove('hidden');
+  renderScoringPhonemes(words[currentIndex]?.phonemes || []);
+  els.phonemeContainer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   let uploadBlob;
   let filename;
@@ -1182,6 +1206,7 @@ async function evaluateRecording(blob = null, options = {}) {
       msg = 'Không đọc được audio — nói rõ hơn (~0.5s) rồi thử lại';
     }
     showLiveHint('Lỗi audio: ' + msg, 'mis');
+    renderPendingPhonemes(words[currentIndex]?.phonemes || []);
     if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     return;
   }
@@ -1217,6 +1242,7 @@ async function evaluateRecording(blob = null, options = {}) {
         msg = 'File audio không hợp lệ — nói rõ hơn (~0.5s) rồi thử lại';
       }
       showLiveHint('Lỗi chấm điểm: ' + msg, 'mis');
+      renderPendingPhonemes(words[currentIndex]?.phonemes || []);
       if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
       return;
     }
@@ -1228,6 +1254,7 @@ async function evaluateRecording(blob = null, options = {}) {
     const msg = `Không kết nối backend (${getApiBase()}). Chạy: ./run_backend.sh`;
     if (fromLive) {
       showLiveHint(msg, 'mis');
+      renderPendingPhonemes(words[currentIndex]?.phonemes || []);
       if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     } else if (!blob) {
       alert(msg + '\n\n' + err.message);
@@ -1237,6 +1264,12 @@ async function evaluateRecording(blob = null, options = {}) {
 
 function renderEvaluation(data, options = {}) {
   const { fromLive = false } = options;
+  if (!data?.phonemes?.length) {
+    showLiveHint('Phản hồi thiếu dữ liệu phoneme', 'mis');
+    if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
+    return;
+  }
+
   const passScore = parseInt(els.settingPassScore.value, 10);
   const allOk = data.phonemes.every((p) => p.label === 'ok');
   const passed = data.passed ?? (allOk || data.overall_score >= passScore);
@@ -1251,13 +1284,14 @@ function renderEvaluation(data, options = {}) {
     : null;
 
   renderPhonemeResults(data.phonemes, fromLive);
+  els.phonemeContainer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   renderFeedback(data.phonemes);
   recordAttempt(data.word, passed, data.overall_score);
 
   if (passed) {
     els.btnRetry.classList.add('hidden');
     showLiveHint(`✓ Đúng rồi! (${data.overall_score}%) — chuyển từ...`, 'ok');
-    const delay = fromLive ? 350 : 1200;
+    const delay = fromLive ? 1800 : 1200;
     setTimeout(() => {
       hideLiveHint();
       nextWord();
@@ -1277,6 +1311,7 @@ function renderEvaluation(data, options = {}) {
 }
 
 function renderPhonemeResults(phonemes, showSuggestionsAlways = false) {
+  els.phonemeContainer.classList.remove('scoring');
   els.phonemeContainer.innerHTML = phonemes
     .map((p, i) => `
       <div class="phoneme-box${showSuggestionsAlways && p.suggestion ? ' show-suggestion' : ''}" data-index="${i}" data-start="${p.start}" data-end="${p.end}">

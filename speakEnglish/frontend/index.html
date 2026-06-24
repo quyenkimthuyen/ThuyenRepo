@@ -34,6 +34,14 @@
       <section class="word-display">
         <h2 id="current-word" class="word-text">—</h2>
         <p id="current-ipa" class="ipa-text">—</p>
+        <section id="score-section" class="score-inline hidden mode-score-only">
+          <span class="overall-score">
+            Điểm:
+            <strong id="overall-score">—</strong>
+            <span id="pass-status" class="pass-status"></span>
+          </span>
+        </section>
+        <section id="phoneme-container" class="phoneme-container ipa-phonemes mode-score-only" aria-label="Chấm từng âm IPA"></section>
       </section>
 
       <section class="live-panel" id="live-panel">
@@ -97,16 +105,6 @@
         <div class="spinner-ring"></div>
         <p>Đang phân tích phát âm...</p>
       </div>
-
-      <section id="score-section" class="score-section hidden mode-score-only">
-        <div class="overall-score">
-          <span>Điểm tổng:</span>
-          <strong id="overall-score">—</strong>
-          <span id="pass-status" class="pass-status"></span>
-        </div>
-      </section>
-
-      <section id="phoneme-container" class="phoneme-container mode-score-only"></section>
 
       <section id="feedback-section" class="feedback-section hidden mode-score-only">
         <h3>Gợi ý cải thiện</h3>
