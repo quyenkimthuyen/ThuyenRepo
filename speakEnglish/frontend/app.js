@@ -82,6 +82,8 @@ const lastEvaluations = {};
 /** Kết quả đang hiển thị cho từ hiện tại */
 let currentWordEvaluation = null;
 let passAdvanceTimer = null;
+let idleSampleTimer = null;
+let idleSampleArmed = false;
 let suppressWordSelectChange = false;
 /** @type {Array<{word:string, text:object, score:object}>} */
 let quizSessionResults = [];
@@ -122,6 +124,7 @@ const els = {
   quizSummaryTitle: $('quiz-summary-title'),
   settingsPanel: $('settings-panel'),
   settingAutoplay: $('setting-autoplay'),
+  settingIdleSampleSec: $('setting-idle-sample-sec'),
   settingLiveAuto: $('setting-live-auto'),
   settingAutoEvaluate: $('setting-auto-evaluate'),
   settingApiUrl: $('setting-api-url'),
@@ -610,6 +613,9 @@ async function startQuizSession(options = {}) {
 function loadSettings() {
   const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
   els.settingAutoplay.checked = saved.autoPlaySample ?? config.autoPlaySample ?? true;
+  if (els.settingIdleSampleSec) {
+    els.settingIdleSampleSec.value = saved.idleSampleSec ?? config.idleSampleSec ?? 10;
+  }
   els.settingLiveAuto.checked = saved.liveAutoStart ?? config.liveAutoStart ?? true;
   els.settingAutoEvaluate.checked = saved.autoEvaluate ?? true;
   els.settingSilenceSec.value = saved.silenceSec ?? config.silenceSec ?? 0.35;
@@ -623,6 +629,7 @@ function loadSettings() {
 function saveSettings() {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify({
     autoPlaySample: els.settingAutoplay.checked,
+    idleSampleSec: parseInt(els.settingIdleSampleSec?.value, 10) || 0,
     liveAutoStart: els.settingLiveAuto.checked,
     autoEvaluate: els.settingAutoEvaluate.checked,
     silenceSec: parseFloat(els.settingSilenceSec.value) || 0.35,
@@ -707,6 +714,7 @@ function createMicEngine() {
     cooldownMs: isScoreMode() ? 80 : undefined,
     skipUtteranceCooldown: isScoreMode(),
     onSpeechStart: () => {
+      noteUserInput();
       if (isScoreMode()) {
         startPhraseRecording();
         startUtteranceCapture();
@@ -813,12 +821,67 @@ function clearPassAdvanceTimer() {
   }
 }
 
+function getIdleSampleSec() {
+  const sec = parseInt(els.settingIdleSampleSec?.value, 10);
+  if (!Number.isFinite(sec) || sec <= 0) return 0;
+  return Math.min(120, sec);
+}
+
+function clearIdleSampleTimer() {
+  if (idleSampleTimer) {
+    clearTimeout(idleSampleTimer);
+    idleSampleTimer = null;
+  }
+}
+
+function disarmIdleSampleTimer() {
+  idleSampleArmed = false;
+  clearIdleSampleTimer();
+}
+
+function noteUserInput() {
+  if (!idleSampleArmed) return;
+  scheduleIdleSample();
+}
+
+function scheduleIdleSample() {
+  clearIdleSampleTimer();
+  const sec = getIdleSampleSec();
+  if (!sec || !words.length || !idleSampleArmed) return;
+
+  idleSampleTimer = setTimeout(() => {
+    idleSampleTimer = null;
+    if (!idleSampleArmed || !words.length) return;
+    if (isSamplePlaying || isAdvancing || scoreApiBusy || isRecording) {
+      scheduleIdleSample();
+      return;
+    }
+    playSample({
+      fromIdle: true,
+      onDone: () => {
+        if (idleSampleArmed) scheduleIdleSample();
+      },
+    });
+  }, sec * 1000);
+}
+
+function armIdleSampleTimer() {
+  const sec = getIdleSampleSec();
+  if (!sec) {
+    disarmIdleSampleTimer();
+    return;
+  }
+  idleSampleArmed = true;
+  scheduleIdleSample();
+}
+
 function showWord(index, options = {}) {
   const { autoplay = true } = options;
   const idx = Number(index);
   if (!Number.isFinite(idx)) return;
 
   clearPassAdvanceTimer();
+  disarmIdleSampleTimer();
   isAdvancing = false;
 
   currentIndex = Math.max(0, Math.min(idx, words.length - 1));
@@ -853,12 +916,13 @@ function showWord(index, options = {}) {
   syncTranscriptFromEngine();
 
   if (autoplay && els.settingAutoplay.checked) {
-    playSample();
+    playSample({ fromAutoplay: true });
   }
   lastScoredAtIndex = -1;
   resetWordFailStreak();
   updateQuizCurrentRow();
   persistQuizSession();
+  armIdleSampleTimer();
 }
 
 function resetEvaluationUI() {
@@ -1082,6 +1146,7 @@ function initLiveSpeech() {
     }
     if (finalPart) micEngine.pushTranscript(finalPart, interim);
     else if (interim) micEngine.pushTranscript('', interim);
+    if (finalPart || interim) noteUserInput();
     syncTranscriptFromEngine();
     updateRealtimeHint();
     if (isScoreMode() && liveModeActive && (finalPart || interim)) {
@@ -1515,6 +1580,7 @@ async function prepareUploadBlob(blob) {
 
 async function handleUtteranceComplete(payload) {
   if (!liveModeActive || isListeningBlocked() || isAdvancing) return;
+  if (payload?.spoken) noteUserInput();
 
   if (isTextMode()) {
     await processTextUtterance(payload.spoken);
@@ -1528,6 +1594,7 @@ async function handleUtteranceComplete(payload) {
 async function processScoreUtterance() {
   if (scoreApiBusy) return;
   if (lastScoredAtIndex === currentIndex) return;
+  noteUserInput();
 
   clearScoreMatchTimer();
 
@@ -1838,7 +1905,10 @@ function isListeningBlocked() {
 
 // ─── Audio: TTS sample ──────────────────────────────────────────────────────
 
-function playSample() {
+function playSample(options = {}) {
+  const { onDone, fromIdle = false, fromAutoplay = false } = options;
+  if (!fromIdle && !fromAutoplay) noteUserInput();
+
   const w = words[currentIndex];
   const guardMic = liveModeActive;
 
@@ -1846,6 +1916,7 @@ function playSample() {
 
   const finishSample = () => {
     if (guardMic) resumeListeningAfterSample();
+    onDone?.();
   };
 
   if (w.audio_sample_url) {
@@ -1887,6 +1958,7 @@ function playSample() {
 // ─── Audio: Recording ───────────────────────────────────────────────────────
 
 async function startRecording() {
+  noteUserInput();
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     audioChunks = [];
@@ -2272,6 +2344,7 @@ function bindEvents() {
     applyPracticeModeUI();
     micEngine?.setHangoverMs(getHangoverMsSetting());
     refreshSilenceHints();
+    armIdleSampleTimer();
     els.settingsPanel.classList.add('hidden');
     checkBackend();
     if (topicChanged || sizeChanged) {
@@ -2282,6 +2355,10 @@ function bindEvents() {
   els.settingSilenceSec?.addEventListener('input', () => {
     micEngine?.setHangoverMs(getHangoverMsSetting());
     refreshSilenceHints();
+  });
+
+  els.settingIdleSampleSec?.addEventListener('input', () => {
+    if (idleSampleArmed) armIdleSampleTimer();
   });
 
   window.addEventListener('beforeunload', () => stopLiveMode());
