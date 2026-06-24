@@ -62,6 +62,8 @@ const MAX_SCORE_AUDIO_SEC = 3;
 const MIN_BLOB_BYTES = 500;
 const MIN_UPLOAD_BYTES = 800;
 const SETTINGS_KEY = 'pronouncelab_settings';
+/** @type {Record<string, object>} Kết quả chấm gần nhất theo từ */
+const lastEvaluations = {};
 
 const $ = (id) => document.getElementById(id);
 
@@ -217,7 +219,7 @@ function applyPracticeModeUI() {
   els.appRoot?.classList.toggle('mode-score', !textActive);
 
   if (!textActive) {
-    renderPendingPhonemes(words[currentIndex]?.phonemes || []);
+    restoreWordScoreUI(words[currentIndex]);
   }
 
   if (els.liveTranscriptPlaceholder) {
@@ -327,7 +329,7 @@ function showWord(index) {
   updateHistoryBadge(w.word);
 
   resetEvaluationUI();
-  renderPendingPhonemes(w.phonemes || []);
+  restoreWordScoreUI(w);
   clearLiveTranscript();
   hideLiveHint();
   clearTextMatchTimer();
@@ -340,19 +342,36 @@ function showWord(index) {
 }
 
 function resetEvaluationUI() {
-  els.scoreSection.classList.add('hidden');
   els.feedbackSection.classList.add('hidden');
   els.btnRetry.classList.add('hidden');
-  els.btnReplayUser.disabled = true;
-  userAudioBlob = null;
+  if (!liveModeActive) {
+    els.btnReplayUser.disabled = true;
+    userAudioBlob = null;
+    if (userAudioUrl) {
+      URL.revokeObjectURL(userAudioUrl);
+      userAudioUrl = null;
+    }
+  }
   serverAudioUrl = null;
-  if (userAudioUrl) {
-    URL.revokeObjectURL(userAudioUrl);
-    userAudioUrl = null;
+}
+
+function cacheEvaluation(data) {
+  if (!data?.word || !Array.isArray(data.phonemes) || !data.phonemes.length) return;
+  lastEvaluations[data.word] = data;
+}
+
+function getCachedEvaluation(word) {
+  return word ? lastEvaluations[word] : null;
+}
+
+function restoreWordScoreUI(word) {
+  if (!isScoreMode() || !word) return;
+  const cached = getCachedEvaluation(word.word);
+  if (cached && renderEvaluationDisplay(cached, { showSuggestionsAlways: liveModeActive })) {
+    return;
   }
-  if (isScoreMode()) {
-    renderPendingPhonemes(words[currentIndex]?.phonemes || []);
-  }
+  els.scoreSection.classList.add('hidden');
+  renderPendingPhonemes(word.phonemes || []);
 }
 
 function renderPendingPhonemes(phonemes) {
@@ -371,6 +390,11 @@ function renderPendingPhonemes(phonemes) {
 function renderScoringPhonemes(phonemes) {
   if (!isScoreMode() || !phonemes?.length) return;
   els.phonemeContainer.classList.add('scoring');
+  const hasScored = els.phonemeContainer.querySelector(
+    '.phoneme-char.ok, .phoneme-char.warn, .phoneme-char.mis',
+  );
+  if (hasScored) return;
+
   els.phonemeContainer.innerHTML = phonemes
     .map((p) => `
       <div class="phoneme-box" data-ipa="${p}">
@@ -379,6 +403,28 @@ function renderScoringPhonemes(phonemes) {
       </div>
     `)
     .join('');
+}
+
+function renderEvaluationDisplay(data, options = {}) {
+  const { showSuggestionsAlways = false } = options;
+  if (!data?.phonemes?.length) return false;
+
+  const passScore = parseInt(els.settingPassScore.value, 10);
+  const allOk = data.phonemes.every((p) => p.label === 'ok');
+  const passed = data.passed ?? (allOk || data.overall_score >= passScore);
+
+  els.scoreSection.classList.remove('hidden');
+  els.overallScore.textContent = `${data.overall_score}%`;
+  els.passStatus.textContent = passed ? '✓ Đạt' : '✗ Chưa đạt';
+  els.passStatus.className = `pass-status ${passed ? 'passed' : 'failed'}`;
+
+  serverAudioUrl = data.audio_url
+    ? `${getApiBase()}${data.audio_url}`
+    : null;
+
+  renderPhonemeResults(data.phonemes, showSuggestionsAlways);
+  renderFeedback(data.phonemes);
+  return true;
 }
 
 function nextWord() {
@@ -836,6 +882,7 @@ async function processScoreUtterance() {
   const blob = await getScoreAudioBlob();
   if (!blob || blob.size < MIN_BLOB_BYTES) {
     showLiveHint('Không đủ audio — nói rõ hơn (~0.5s)', 'warn');
+    restoreWordScoreUI(words[currentIndex]);
     return;
   }
 
@@ -942,6 +989,7 @@ async function startLiveMode() {
     els.btnRecord.disabled = true;
     if (isScoreMode()) {
       els.phonemeContainer.classList.add('live-mode');
+      restoreWordScoreUI(words[currentIndex]);
     }
     hideLiveHint();
   } catch (err) {
@@ -1206,7 +1254,7 @@ async function evaluateRecording(blob = null, options = {}) {
       msg = 'Không đọc được audio — nói rõ hơn (~0.5s) rồi thử lại';
     }
     showLiveHint('Lỗi audio: ' + msg, 'mis');
-    renderPendingPhonemes(words[currentIndex]?.phonemes || []);
+    restoreWordScoreUI(words[currentIndex]);
     if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     return;
   }
@@ -1242,7 +1290,7 @@ async function evaluateRecording(blob = null, options = {}) {
         msg = 'File audio không hợp lệ — nói rõ hơn (~0.5s) rồi thử lại';
       }
       showLiveHint('Lỗi chấm điểm: ' + msg, 'mis');
-      renderPendingPhonemes(words[currentIndex]?.phonemes || []);
+      restoreWordScoreUI(words[currentIndex]);
       if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
       return;
     }
@@ -1254,7 +1302,7 @@ async function evaluateRecording(blob = null, options = {}) {
     const msg = `Không kết nối backend (${getApiBase()}). Chạy: ./run_backend.sh`;
     if (fromLive) {
       showLiveHint(msg, 'mis');
-      renderPendingPhonemes(words[currentIndex]?.phonemes || []);
+      restoreWordScoreUI(words[currentIndex]);
       if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     } else if (!blob) {
       alert(msg + '\n\n' + err.message);
@@ -1264,28 +1312,20 @@ async function evaluateRecording(blob = null, options = {}) {
 
 function renderEvaluation(data, options = {}) {
   const { fromLive = false } = options;
-  if (!data?.phonemes?.length) {
+  if (!renderEvaluationDisplay(data, { showSuggestionsAlways: fromLive || liveModeActive })) {
     showLiveHint('Phản hồi thiếu dữ liệu phoneme', 'mis');
+    restoreWordScoreUI(words[currentIndex]);
     if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     return;
   }
+
+  cacheEvaluation(data);
+  els.phonemeContainer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
   const passScore = parseInt(els.settingPassScore.value, 10);
   const allOk = data.phonemes.every((p) => p.label === 'ok');
   const passed = data.passed ?? (allOk || data.overall_score >= passScore);
 
-  els.scoreSection.classList.remove('hidden');
-  els.overallScore.textContent = `${data.overall_score}%`;
-  els.passStatus.textContent = passed ? '✓ Đạt' : '✗ Chưa đạt';
-  els.passStatus.className = `pass-status ${passed ? 'passed' : 'failed'}`;
-
-  serverAudioUrl = data.audio_url
-    ? `${getApiBase()}${data.audio_url}`
-    : null;
-
-  renderPhonemeResults(data.phonemes, fromLive);
-  els.phonemeContainer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  renderFeedback(data.phonemes);
   recordAttempt(data.word, passed, data.overall_score);
 
   if (passed) {
@@ -1431,11 +1471,10 @@ function bindEvents() {
   els.btnStop.addEventListener('click', stopRecording);
   els.btnReplayUser.addEventListener('click', replayUserAudio);
   els.btnRetry.addEventListener('click', () => {
-    resetEvaluationUI();
-    const w = words[currentIndex];
-    renderPendingPhonemes(w.phonemes || []);
+    els.btnRetry.classList.add('hidden');
     clearLiveTranscript();
     hideLiveHint();
+    restoreWordScoreUI(words[currentIndex]);
   });
   els.btnPrev.addEventListener('click', prevWord);
   els.btnNext.addEventListener('click', nextWord);
