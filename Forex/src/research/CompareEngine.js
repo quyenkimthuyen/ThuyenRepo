@@ -103,7 +103,7 @@ class CompareEngineImpl {
 
     bus.emit(Events.STRATEGY_COMPARE_COMPLETE, result);
     bus.emit(Events.LOG_MESSAGE, {
-      message: `Strategy compare: ${rows.length} setups on ${symbol} ${timeframe} — best ${rows[0]?.strategyName ?? '—'} (Exp $${rows[0]?.stats.expectancy.toFixed(2) ?? '0'})`,
+      message: `Strategy compare: ${rows.length} setups on ${symbol} ${timeframe} â€” best ${rows[0]?.strategyName ?? 'â€”'} (Exp $${rows[0]?.stats.expectancy.toFixed(2) ?? '0'})`,
       level: 'info',
       time: new Date(),
     });

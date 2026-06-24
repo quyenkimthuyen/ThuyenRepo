@@ -1,5 +1,5 @@
 /**
- * Strategy compare view � rank setups on the same pair/timeframe.
+ * Strategy compare view — rank setups on the same pair/timeframe.
  * @module ui/CompareView
  */
 
@@ -51,7 +51,7 @@ class CompareViewImpl {
       this.#renderToolbar(plugins),
       el('div', { class: 'compare-results', id: 'compare-results' }, [
         el('p', { class: 'compare-empty' }, [
-          'Ch?n symbol/TF v� c�c strategy, b?m Compare ?? x?p h?ng expectancy tr�n c�ng d? li?u.',
+          'Chọn symbol/TF và các strategy, bấm Compare để xếp hạng expectancy trên cùng dữ liệu.',
         ]),
       ]),
     ]));
@@ -172,7 +172,7 @@ class CompareViewImpl {
 
     if (!symbol || !timeframe || ids.length === 0) {
       bus.emit(Events.LOG_MESSAGE, {
-        message: 'Ch?n �t nh?t m?t strategy ?? so s�nh',
+        message: 'Chọn ít nhất một strategy để so sánh',
         level: 'warn',
         time: new Date(),
       });
@@ -180,7 +180,7 @@ class CompareViewImpl {
     }
 
     const wrap = this.#container?.querySelector('#compare-results');
-    if (wrap) wrap.innerHTML = '<p class="compare-empty">?ang ch?y�</p>';
+    if (wrap) wrap.innerHTML = '<p class="compare-empty">Đang chạy…</p>';
 
     try {
       await CompareEngine.compare(ids, symbol, timeframe);
@@ -190,7 +190,7 @@ class CompareViewImpl {
         level: 'error',
         time: new Date(),
       });
-      if (wrap) wrap.innerHTML = '<p class="compare-empty">Compare th?t b?i.</p>';
+      if (wrap) wrap.innerHTML = '<p class="compare-empty">Compare thất bại.</p>';
     }
   }
 
@@ -203,7 +203,7 @@ class CompareViewImpl {
 
     wrap.innerHTML = '';
     wrap.appendChild(el('p', { class: 'compare-meta' }, [
-      `${result.symbol} ${result.timeframe} � ${result.rows.length} strategies � `,
+      `${result.symbol} ${result.timeframe} · ${result.rows.length} strategies · `,
       new Date(result.comparedAt).toLocaleString(),
     ]));
 

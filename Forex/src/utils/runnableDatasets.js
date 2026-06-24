@@ -1,5 +1,5 @@
 /**
- * Helpers for Symbol/TF selectors — only pairs with candles in IndexedDB.
+ * Helpers for Symbol/TF selectors â€” only pairs with candles in IndexedDB.
  * @module utils/runnableDatasets
  */
 
@@ -60,7 +60,7 @@ export function resolveDatasetSelection(datasets, preferredSymbol, preferredTime
 export function buildSymbolOptions(datasets, selectedSymbol) {
   const symbols = uniqueSymbols(datasets);
   if (symbols.length === 0) {
-    return [el('option', { value: '' }, ['Ch?a có d? li?u'])];
+    return [el('option', { value: '' }, ['ChÆ°a cÃ³ dá»¯ liá»‡u'])];
   }
   return symbols.map((s) =>
     el('option', { value: s, selected: s === selectedSymbol }, [s])
@@ -75,11 +75,11 @@ export function buildSymbolOptions(datasets, selectedSymbol) {
  */
 export function buildTimeframeOptions(datasets, symbol, selectedTimeframe) {
   if (!symbol) {
-    return [el('option', { value: '' }, ['—'])];
+    return [el('option', { value: '' }, ['â€”'])];
   }
   const tfs = timeframesForSymbol(datasets, symbol);
   if (tfs.length === 0) {
-    return [el('option', { value: '' }, ['—'])];
+    return [el('option', { value: '' }, ['â€”'])];
   }
   return tfs.map((t) =>
     el('option', { value: t, selected: t === selectedTimeframe }, [t])
