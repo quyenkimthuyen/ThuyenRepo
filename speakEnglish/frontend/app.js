@@ -261,21 +261,32 @@ function getQuizRowsForMode(mode = practiceMode) {
   });
 }
 
-function formatHangoverSec(ms) {
-  const sec = Math.round((ms / 1000) * 100) / 100;
-  if (Number.isInteger(sec)) return String(sec);
-  return sec.toFixed(2).replace(/0$/, '');
+function getSilenceSecSetting() {
+  const sec = parseFloat(els.settingSilenceSec?.value);
+  if (!Number.isFinite(sec)) return 0.35;
+  return Math.round(Math.min(1.2, Math.max(0.2, sec)) * 100) / 100;
+}
+
+function formatSilenceSecLabel(sec) {
+  const s = Math.round(sec * 100) / 100;
+  if (Number.isInteger(s)) return String(s);
+  return s.toFixed(2).replace(/0$/, '');
 }
 
 function getLiveSilenceHintText() {
-  const hangSec = formatHangoverSec(getHangoverMsSetting());
+  const hangSec = formatSilenceSecLabel(getSilenceSecSetting());
   const action = isTextMode() ? 'chuyển từ' : 'chấm điểm';
   return `Nói xong → im lặng ~${hangSec}s → ${action}`;
 }
 
-function refreshLiveSilenceHint() {
-  if (!els.recordingIndicator || !liveModeActive) return;
-  els.recordingIndicator.innerHTML = `<span class="pulse"></span> ${getLiveSilenceHintText()}`;
+function refreshSilenceHints() {
+  if (els.recordingIndicator && liveModeActive) {
+    els.recordingIndicator.innerHTML = `<span class="pulse"></span> ${getLiveSilenceHintText()}`;
+  }
+  const idleHint = els.phonemeContainer?.querySelector('.phoneme-idle-hint');
+  if (idleHint) {
+    idleHint.textContent = `${getLiveSilenceHintText()} — chi tiết IPA`;
+  }
 }
 
 function initQuizSessionResults() {
@@ -355,7 +366,7 @@ function renderQuizSummary() {
   const rows = getQuizRowsForMode();
   const modeLabel = isTextMode() ? 'Chỉ text' : 'Chấm điểm';
   if (els.quizSummaryTitle) {
-    els.quizSummaryTitle.textContent = `Bảng tổng kết · ${modeLabel}`;
+    els.quizSummaryTitle.textContent = `Bảng tổng kết bài quiz · ${modeLabel}`;
   }
 
   els.quizResultsBody.innerHTML = rows.map((row, i) => {
@@ -1611,7 +1622,7 @@ function clearLiveTranscript() {
 }
 
 function updateLiveModeChrome() {
-  refreshLiveSilenceHint();
+  refreshSilenceHints();
   els.recordingIndicator.classList.remove('hidden');
   els.btnRecord.disabled = true;
   els.phonemeContainer.classList.toggle('live-mode', isScoreMode());
@@ -2249,6 +2260,7 @@ function bindEvents() {
     settingsTopicId = getTopicId();
     settingsQuizSize = getQuizSize();
     els.settingsPanel.classList.remove('hidden');
+    refreshSilenceHints();
   });
   els.btnNewQuiz?.addEventListener('click', () => {
     startQuizSession({ newQuiz: true });
@@ -2259,12 +2271,17 @@ function bindEvents() {
     saveSettings();
     applyPracticeModeUI();
     micEngine?.setHangoverMs(getHangoverMsSetting());
-    refreshLiveSilenceHint();
+    refreshSilenceHints();
     els.settingsPanel.classList.add('hidden');
     checkBackend();
     if (topicChanged || sizeChanged) {
       await startQuizSession({ newQuiz: true });
     }
+  });
+
+  els.settingSilenceSec?.addEventListener('input', () => {
+    micEngine?.setHangoverMs(getHangoverMsSetting());
+    refreshSilenceHints();
   });
 
   window.addEventListener('beforeunload', () => stopLiveMode());
