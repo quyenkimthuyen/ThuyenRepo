@@ -103,11 +103,90 @@ export function wordsMatch(spoken, target) {
   return false;
 }
 
-/** Chế độ text: khớp chính xác 100% — hỗ trợ cụm từ và câu (mở rộng sau) */
+/** Nhóm chính tả tương đương (Anh–Mỹ, SR hay nhầm) */
+const SPELLING_VARIANT_GROUPS = [
+  ['liveable', 'livable'],
+  ['colour', 'color'],
+  ['favourite', 'favorite'],
+  ['behaviour', 'behavior'],
+  ['honour', 'honor'],
+  ['labour', 'labor'],
+  ['neighbour', 'neighbor'],
+  ['theatre', 'theater'],
+  ['centre', 'center'],
+  ['metre', 'meter'],
+  ['organise', 'organize'],
+  ['organised', 'organized'],
+  ['recognise', 'recognize'],
+  ['realise', 'realize'],
+];
+
+const SPELLING_VARIANT_LOOKUP = new Map();
+for (const group of SPELLING_VARIANT_GROUPS) {
+  for (const form of group) {
+    if (!SPELLING_VARIANT_LOOKUP.has(form)) {
+      SPELLING_VARIANT_LOOKUP.set(form, new Set(group));
+    } else {
+      for (const alt of group) SPELLING_VARIANT_LOOKUP.get(form).add(alt);
+    }
+  }
+}
+
+/** Sinh các biến thể chính tả chấp nhận được của một token */
+export function expandTokenSpellingVariants(token) {
+  const variants = new Set([token]);
+  const mapped = SPELLING_VARIANT_LOOKUP.get(token);
+  if (mapped) mapped.forEach((v) => variants.add(v));
+
+  // liveable ↔ livable (e trước -able)
+  if (token.endsWith('eable') && token.length > 5) {
+    variants.add(`${token.slice(0, -5)}able`);
+  }
+  if (token.endsWith('able') && !token.endsWith('eable')) {
+    const stem = token.slice(0, -4);
+    if (stem.length >= 2) variants.add(`${stem}eable`);
+  }
+
+  // -ise ↔ -ize, -isation ↔ -ization
+  if (token.endsWith('isation')) {
+    variants.add(`${token.slice(0, -7)}ization`);
+  } else if (token.endsWith('ization')) {
+    variants.add(`${token.slice(0, -7)}isation`);
+  } else if (token.endsWith('ise')) {
+    variants.add(`${token.slice(0, -3)}ize`);
+  } else if (token.endsWith('ize')) {
+    variants.add(`${token.slice(0, -3)}ise`);
+  } else if (token.endsWith('ised')) {
+    variants.add(`${token.slice(0, -4)}ized`);
+  } else if (token.endsWith('ized')) {
+    variants.add(`${token.slice(0, -4)}ised`);
+  }
+
+  return variants;
+}
+
+export function tokensSpellingMatch(spokenToken, targetToken) {
+  if (spokenToken === targetToken) return true;
+  const spokenVars = expandTokenSpellingVariants(spokenToken);
+  const targetVars = expandTokenSpellingVariants(targetToken);
+  for (const s of spokenVars) {
+    if (targetVars.has(s)) return true;
+  }
+  return false;
+}
+
+/** Chế độ text: khớp 100% — cụm từ/câu + biến thể chính tả (liveable/livable) */
 export function textMatchExact(spoken, target) {
   const s = normalizeTextForMatch(spoken);
   const t = normalizeTextForMatch(target);
-  return s.length > 0 && s === t;
+  if (!s || !t) return false;
+  if (s === t) return true;
+
+  const spokenTokens = s.split(' ');
+  const targetTokens = t.split(' ');
+  if (spokenTokens.length !== targetTokens.length) return false;
+
+  return spokenTokens.every((tok, i) => tokensSpellingMatch(tok, targetTokens[i]));
 }
 
 /** @deprecated Dùng textMatchExact — giữ cho tương thích test cũ */

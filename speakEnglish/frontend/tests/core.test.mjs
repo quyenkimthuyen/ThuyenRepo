@@ -8,6 +8,7 @@ import {
   textMatchExact,
   extractSpokenWord,
   extractSpokenText,
+  expandTokenSpellingVariants,
   getSilenceMsFromSetting,
   getHangoverMs,
   canStartProcessing,
@@ -49,6 +50,27 @@ describe('textMatchExact', () => {
     assert.equal(textMatchExact('room', 'living room'), false);
     assert.equal(textMatchExact('living', 'living room'), false);
     assert.equal(textMatchExact('the living room', 'living room'), false);
+  });
+
+  it('accepts BrE/AmE spelling variants', () => {
+    assert.equal(textMatchExact('livable', 'liveable'), true);
+    assert.equal(textMatchExact('liveable', 'livable'), true);
+    assert.equal(textMatchExact('organize', 'organise'), true);
+    assert.equal(textMatchExact('color', 'colour'), true);
+  });
+
+  it('still rejects real mispronunciation spellings', () => {
+    assert.equal(textMatchExact('livible', 'liveable'), false);
+    assert.equal(textMatchExact('livebel', 'liveable'), false);
+  });
+});
+
+describe('expandTokenSpellingVariants', () => {
+  it('links liveable and livable', () => {
+    const liveable = expandTokenSpellingVariants('liveable');
+    const livable = expandTokenSpellingVariants('livable');
+    assert.ok(liveable.has('livable'));
+    assert.ok(livable.has('liveable'));
   });
 });
 
