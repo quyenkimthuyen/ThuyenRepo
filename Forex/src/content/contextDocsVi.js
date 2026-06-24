@@ -56,12 +56,12 @@ export const CONTEXT_DOC_SECTIONS = [
       {
         type: 'callout',
         variant: 'tip',
-        text: 'Gặp từ khó như Overfit, Walk Forward, Monte Carlo, Ruin Rate…? Mở mục **Từ điển thuật ngữ** trong tài liệu (Ctrl+9) — giải thích bằng tiếng đời thường, kèm tên tiếng Anh trên app.',
+        text: 'Gặp từ khó như Overfit, Walk Forward, Monte Carlo, Ruin Rate…? Mở mục **Từ điển thuật ngữ** trong tài liệu (Ctrl+0) — giải thích bằng tiếng đời thường, kèm tên tiếng Anh trên app.',
       },
       {
         type: 'callout',
         variant: 'info',
-        text: 'Run Strategies vs Simulation — có cần quét Strategies trước không? Xem mục **Run Strategies vs Simulation** (Ctrl+9).',
+        text: 'Run Strategies vs Simulation — có cần quét Strategies trước không? Xem mục **Run Strategies vs Simulation** (Ctrl+0).',
       },
       {
         type: 'callout',
@@ -79,7 +79,7 @@ export const CONTEXT_DOC_SECTIONS = [
           { title: 'Chỉnh & (tuỳ chọn) quét', body: 'Strategies — Save tham số; Run nếu muốn lọc signal / xem Chart trước (không bắt buộc trước Simulation).' },
           { title: 'Mô phỏng lệnh', body: 'Simulation — tự quét + spread/SL/TP; kết quả cho Statistics & Reports.' },
           { title: 'Lọc & kiểm chứng', body: 'AI Signals tab Danh sách — Min score → bấm signal → Chart.' },
-          { title: 'Đánh giá', body: 'Statistics + Reports; AI Signals tab Đối chiếu Simulation sau Ctrl+4.' },
+          { title: 'Đánh giá', body: 'Statistics + Reports; AI Signals tab Đối chiếu Simulation sau Ctrl+5.' },
           { title: 'Tối ưu & kiểm định', body: 'Optimizer — thử cài đặt, Walk Forward, Monte Carlo.' },
         ],
       },
@@ -111,7 +111,7 @@ export const CONTEXT_DOC_SECTIONS = [
     blocks: [
       {
         type: 'p',
-        text: 'PARL chạy hoàn toàn trên trình duyệt. Dữ liệu lưu IndexedDB + LocalStorage — không gửi lên server.',
+        text: 'PARL chạy hoàn toàn trên trình duyệt. Nến + kết quả nghiên cứu lớn lưu IndexedDB; cài đặt nhẹ lưu LocalStorage — không gửi lên server.',
       },
       {
         type: 'code',
@@ -144,13 +144,13 @@ export const CONTEXT_DOC_SECTIONS = [
           ['Reload', 'Tải lại dữ liệu từ IndexedDB'],
           ['EMA 20/50', 'Đối chiếu xu hướng với signal'],
           ['Watchlist', 'Click đổi cặp nhanh — chỉ hiện ở Chart và Data Manager'],
-          ['Replay', 'Space=Play, mũi tên= từng nến, Jump= nhảy ngày'],
+          ['Replay', 'Space=Play, mũi tên= từng nến, Jump= nhảy ngày (UTC)'],
         ],
       },
       {
         type: 'callout',
         variant: 'tip',
-        text: 'Sau scan: mở Chart cùng Symbol/TF, Jump to date tại thời điểm signal từ AI Signals.',
+        text: 'Sau scan: mở Chart cùng Symbol/TF, Jump to date (UTC) tại thời điểm signal từ AI Signals hoặc bấm dòng lệnh trong Simulation.',
       },
       { type: 'h3', text: 'Phím tắt Replay (khi đang ở Chart)' },
       {
@@ -272,7 +272,7 @@ export const CONTEXT_DOC_SECTIONS = [
       {
         type: 'callout',
         variant: 'tip',
-        text: 'Không bắt buộc Run Strategies trước Simulation. Nên Run Strategies khi: chỉnh tham số + Save, lọc signal / xem Chart trước, Export JSON, hoặc quét nhiều strategy (Run All). Chi tiết: Ctrl+9 → mục 「Run Strategies vs Simulation」.',
+        text: 'Không bắt buộc Run Strategies trước Simulation. Nên Run Strategies khi: chỉnh tham số + Save, lọc signal / xem Chart trước, Export JSON, hoặc quét nhiều strategy (Run All). Chi tiết: Ctrl+0 → mục 「Run Strategies vs Simulation」.',
       },
 
       { type: 'h2', text: '1. Break & Retest (break-retest)' },
@@ -656,6 +656,40 @@ export const CONTEXT_DOC_SECTIONS = [
     ],
   },
   {
+    id: 'compare',
+    title: 'Compare — So sánh strategy',
+    subtitle: 'Xếp hạng nhiều setup trên cùng Symbol/TF theo expectancy.',
+    icon: '⚖️',
+    viewIds: ['compare'],
+    blocks: [
+      { type: 'h3', text: 'Mục đích' },
+      {
+        type: 'p',
+        text: 'Trả lời nhanh: trên cùng bộ nến, strategy nào cho expectancy tốt nhất sau spread — trước khi tối ưu tham số sâu hoặc chọn một setup “chính”.',
+      },
+      {
+        type: 'table',
+        headers: ['Bước', 'Thao tác'],
+        rows: [
+          ['1', 'Chọn Symbol + TF (cùng data đang nghiên cứu)'],
+          ['2', 'Tick/bỏ tick từng strategy trong danh sách'],
+          ['3', 'Bấm Compare — app scan + mô phỏng lệnh từng setup'],
+          ['4', 'Đọc bảng: Signals, Trades, WR, Net, Exp, PF, Max DD — hàng #1 highlight'],
+        ],
+      },
+      {
+        type: 'callout',
+        variant: 'info',
+        text: 'Dùng spread/lot từ Simulation (Ctrl+5). Chỉnh Simulation trước nếu muốn số liệu sát điều kiện trade thật. Kết quả lưu IndexedDB — mở lại Compare vẫn thấy lần chạy gần nhất.',
+      },
+      {
+        type: 'callout',
+        variant: 'tip',
+        text: 'Workflow: Compare (Ctrl+4) → chọn setup tốt → Strategies Save tham số → Simulation backtest chi tiết → Optimizer nếu cần tinh chỉnh.',
+      },
+    ],
+  },
+  {
     id: 'signals',
     title: 'AI Signals — Chấm & lọc tín hiệu',
     subtitle: 'Điểm 0–100 theo quy tắc — ưu tiên setup đẹp, không dự đoán thắng/thua.',
@@ -678,7 +712,7 @@ export const CONTEXT_DOC_SECTIONS = [
       },
       {
         type: 'p',
-        text: 'Điểm tổng = trung bình có trọng số của 8 yếu tố dưới đây. Chấm ngay tại nến signal, dùng spread từ cấu hình Simulation (Ctrl+4).',
+        text: 'Điểm tổng = trung bình có trọng số của 8 yếu tố dưới đây. Chấm ngay tại nến signal, dùng spread từ cấu hình Simulation (Ctrl+5).',
       },
       {
         type: 'table',
@@ -722,14 +756,14 @@ export const CONTEXT_DOC_SECTIONS = [
         type: 'table',
         headers: ['Màn hình', 'Có lọc theo Min score?'],
         rows: [
-          ['AI Signals (Ctrl+8)', 'Có — chỉ ẩn/bớt signal dưới ngưỡng'],
-          ['Simulation (Ctrl+4)', 'Không — mô phỏng TOÀN BỘ signal từ scan'],
-          ['Statistics / Reports', 'Không — đọc kết quả simulation gần nhất'],
+          ['AI Signals (Ctrl+9)', 'Có — lọc danh sách xem trên màn này'],
+          ['Simulation (Ctrl+5)', 'Có — bật AI score filter + Min score; tuỳ chọn Compare vs all signals'],
+          ['Statistics / Reports', 'Theo kết quả Simulation gần nhất (đã lọc nếu bật filter)'],
         ],
       },
       {
         type: 'p',
-        text: 'Muốn simulation ít lệnh hơn: chỉnh tham số strategy chặt hơn hoặc tắt strategy yếu. Min score hiện chỉ dùng để ưu tiên xem chart.',
+        text: 'Muốn backtest chỉ signal điểm cao: Simulation → tick AI score filter, đặt Min score, (tuỳ chọn) Compare vs all signals để xem lọc có cải thiện Net/Exp không.',
       },
       {
         type: 'callout',
@@ -745,7 +779,7 @@ export const CONTEXT_DOC_SECTIONS = [
         headers: ['Tab', 'Dùng khi'],
         rows: [
           ['Danh sách', 'Lọc Min score, bấm signal → Chart kiểm tra setup (mặc định)'],
-          ['Đối chiếu Simulation', 'Sau Ctrl+4 — win rate theo nhóm điểm, yếu tố thắng/thua, gợi ý trọng số'],
+          ['Đối chiếu Simulation', 'Sau Ctrl+5 — win rate theo nhóm điểm, yếu tố thắng/thua, gợi ý trọng số'],
         ],
       },
       {
@@ -754,7 +788,7 @@ export const CONTEXT_DOC_SECTIONS = [
       },
       {
         type: 'p',
-        text: 'Sau khi chạy Simulation (Ctrl+4) cùng Strategy / Symbol / TF với lần scan gần nhất, panel 「Điểm AI vs kết quả thực tế」 hiện ở AI Signals: win rate theo nhóm điểm (A/B/C…), yếu tố nào khác biệt giữa lệnh thắng/thua, tương quan điểm–lãi.',
+        text: 'Sau khi chạy Simulation (Ctrl+5) cùng Strategy / Symbol / TF với lần scan gần nhất, panel 「Điểm AI vs kết quả thực tế」 hiện ở AI Signals: win rate theo nhóm điểm (A/B/C…), yếu tố nào khác biệt giữa lệnh thắng/thua, tương quan điểm–lãi.',
       },
       {
         type: 'table',
@@ -778,7 +812,7 @@ export const CONTEXT_DOC_SECTIONS = [
         type: 'steps',
         steps: [
           { title: '1. (Tuỳ chọn) Strategies', body: 'Ctrl+3 — Save tham số, Run nếu muốn lọc / xem Chart trước. Không bắt buộc trước Simulation.' },
-          { title: '2. Simulation', body: 'Ctrl+4 — Run (tự quét + mô phỏng). Cùng Strategy/Symbol/TF cho tab Đối chiếu.' },
+          { title: '2. Simulation', body: 'Ctrl+5 — Run; bật AI filter nếu muốn chỉ trade signal điểm cao.' },
           { title: '3. Lọc & Chart', body: 'AI Signals tab Danh sách — Min score → bấm signal.' },
           { title: '4. Đối chiếu', body: 'AI Signals tab Đối chiếu Simulation — WR theo nhóm điểm.' },
           { title: '5. Tinh chỉnh (tuỳ chọn)', body: 'Gợi ý trọng số — kiểm tra lại trên period khác.' },
@@ -826,12 +860,15 @@ export const CONTEXT_DOC_SECTIONS = [
           ['Trailing', 'Tự kéo cắt lỗ theo giá khi lệnh đang lãi (0 = tắt)'],
           ['Break-even at R', 'Khi lãi đủ X lần rủi ro → dời SL về điểm vào (hòa vốn)'],
           ['Partial at R / %', 'Chốt một phần lệnh khi đạt X lần rủi ro'],
+          ['AI score filter', 'Bật → chỉ mô phỏng signal có điểm AI ≥ Min score'],
+          ['Min score', 'Ngưỡng 0–100 (mặc định 65 khi bật filter)'],
+          ['Compare vs all signals', 'So song song: toàn bộ signal vs đã lọc (WR, Net, Exp)'],
         ],
       },
       {
         type: 'callout',
         variant: 'tip',
-        text: 'Chạy Strategies (Ctrl+3) trước để có tín hiệu, hoặc Simulation sẽ quét lại. Sau đó xem Statistics / Reports; nếu cần đánh giá rủi ro chuỗi thua → Optimizer tab Monte Carlo. Bấm một dòng lệnh trong bảng kết quả → Chart nhảy tới nến vào lệnh (giống AI Signals).',
+        text: 'Chạy Strategies (Ctrl+3) trước nếu muốn xem signal trước; Simulation tự quét lại khi Run. Sau đó Statistics/Reports; Monte Carlo cần danh sách lệnh từ Simulation. Bấm một dòng lệnh → Chart nhảy tới nến entry.',
       },
     ],
   },
@@ -858,7 +895,7 @@ export const CONTEXT_DOC_SECTIONS = [
       {
         type: 'callout',
         variant: 'tip',
-        text: 'Đường equity đi lên đều + mức sụt tài khoản thấp = setup ổn hơn. Màn hình trống → chạy Simulation (Ctrl+4) trước.',
+        text: 'Đường equity đi lên đều + mức sụt tài khoản thấp = setup ổn hơn. Màn hình trống → chạy Simulation (Ctrl+5) trước.',
       },
     ],
   },
@@ -950,7 +987,7 @@ export const CONTEXT_DOC_SECTIONS = [
       {
         type: 'callout',
         variant: 'warn',
-        text: 'Grid Search và Walk Forward dùng cấu hình lệnh từ Simulation (spread, trượt giá, lot, số dư…). Chỉnh ở Simulation (Ctrl+4) trước nếu muốn số liệu sát trade thật.',
+        text: 'Grid Search và Walk Forward dùng cấu hình lệnh từ Simulation (spread, trượt giá, lot, số dư…). Chỉnh ở Simulation (Ctrl+5) trước nếu muốn số liệu sát trade thật.',
       },
       {
         type: 'h3',
@@ -959,10 +996,10 @@ export const CONTEXT_DOC_SECTIONS = [
       {
         type: 'steps',
         steps: [
-          { title: '1. Grid Search', body: 'Chọn Strategy + Symbol + TF → tick tham số muốn thử → Run → xem bảng Top Results.' },
+          { title: '1. Grid Search', body: 'Tick tham số → (tuỳ chọn) Auto walk-forward on best combo → Run → Top Results + WF tóm tắt nếu bật.' },
           { title: '2. Áp cài đặt', body: 'Copy combo tốt (cột Params) → Strategies → dán/chỉnh → Save Parameters.' },
           { title: '3. Walk Forward', body: 'Tab Walk Forward → Run — so sánh lãi đoạn “học” (IS) vs đoạn “thử” (OOS).' },
-          { title: '4. Simulation', body: 'Ctrl+4 mô phỏng lệnh với cài đặt đã chọn — tạo danh sách lệnh.' },
+          { title: '4. Simulation', body: 'Ctrl+5 mô phỏng lệnh với cài đặt đã chọn — tạo danh sách lệnh.' },
           { title: '5. Monte Carlo', body: 'Tab Monte Carlo → Run — đọc Ruin Rate và P5 (kịch bản xấu).' },
         ],
       },
@@ -979,6 +1016,7 @@ export const CONTEXT_DOC_SECTIONS = [
           ['Ô giá trị', 'Danh sách: 2,3,4,5 hoặc dải: 10:50:10 (bắt đầu:kết thúc:bước).'],
           ['Rank by', 'Xếp hạng combo theo chỉ số — mặc định Expectancy (lãi trung bình/lệnh).'],
           ['Run Grid Search', 'Bắt đầu — thanh progress hiện X / tổng combo.'],
+          ['Auto walk-forward on best combo', 'Sau grid, tự WF combo xếp hạng #1 — xem IS/OOS ngay dưới Top Results'],
           ['Top Results', '20 combo đầu: Params, Trades, WR, Net, Exp, PF. Export JSON để lưu.'],
         ],
       },
@@ -1068,7 +1106,7 @@ export const CONTEXT_DOC_SECTIONS = [
       {
         type: 'callout',
         variant: 'warn',
-        text: 'Bắt buộc chạy Simulation (Ctrl+4) trước — Monte Carlo không tạo lệnh mới, chỉ xáo lại lệnh đã có. Đổi cài đặt → Simulation lại → Monte Carlo lại.',
+        text: 'Bắt buộc chạy Simulation (Ctrl+5) trước — Monte Carlo không tạo lệnh mới, chỉ xáo lại lệnh đã có. Đổi cài đặt → Simulation lại → Monte Carlo lại.',
       },
       {
         type: 'h3',
@@ -1130,7 +1168,7 @@ export const CONTEXT_DOC_SECTIONS = [
       {
         type: 'callout',
         variant: 'tip',
-        text: 'Mở Optimizer (Ctrl+7) — phần đầu cũng có bảng từ ngữ tương tự, gắn trực tiếp với 3 tab Grid Search, Walk Forward, Monte Carlo.',
+        text: 'Mở Optimizer (Ctrl+8) — phần đầu cũng có bảng từ ngữ tương tự, gắn trực tiếp với 3 tab Grid Search, Walk Forward, Monte Carlo.',
       },
     ],
   },
@@ -1164,7 +1202,7 @@ export const CONTEXT_DOC_SECTIONS = [
       },
       {
         type: 'h3',
-        text: 'Simulation (Ctrl+4) — Run Simulation',
+        text: 'Simulation (Ctrl+5) — Run Simulation',
       },
       {
         type: 'p',
@@ -1247,12 +1285,13 @@ export const CONTEXT_DOC_SECTIONS = [
           ['Ctrl+1', 'Chart'],
           ['Ctrl+2', 'Data Manager'],
           ['Ctrl+3', 'Strategies'],
-          ['Ctrl+4', 'Simulation'],
-          ['Ctrl+5', 'Statistics'],
-          ['Ctrl+6', 'Reports'],
-          ['Ctrl+7', 'Optimizer'],
-          ['Ctrl+8', 'AI Signals'],
-          ['Ctrl+9 / F1', 'Tài liệu đầy đủ'],
+          ['Ctrl+4', 'Compare'],
+          ['Ctrl+5', 'Simulation'],
+          ['Ctrl+6', 'Statistics'],
+          ['Ctrl+7', 'Reports'],
+          ['Ctrl+8', 'Optimizer'],
+          ['Ctrl+9', 'AI Signals'],
+          ['Ctrl+0 / F1', 'Tài liệu đầy đủ'],
           ['📖 (top bar)', 'Hướng dẫn theo mục đang mở'],
           ['📖 Hướng dẫn', 'Nút trên từng màn hình'],
         ],
@@ -1280,21 +1319,21 @@ export const CONTEXT_DOC_SECTIONS = [
       { type: 'h3', text: 'Không có Symbol/TF ở Strategies?' },
       { type: 'p', text: 'Chưa có nến trong IndexedDB. Vào Data Manager → Reload Default Data hoặc Import. Phải chạy qua http://.' },
       { type: 'h3', text: 'Statistics / Reports trống?' },
-      { type: 'p', text: 'Chạy Simulation (Ctrl+4) trước. Hai mục này đọc kết quả simulation gần nhất.' },
+      { type: 'p', text: 'Chạy Simulation (Ctrl+5) trước. Hai mục này đọc kết quả simulation gần nhất.' },
       { type: 'h3', text: 'Monte Carlo báo không có lệnh?' },
-      { type: 'p', text: 'Monte Carlo chỉ xáo lại lệnh từ Simulation — không tạo lệnh mới. Chạy Simulation (Ctrl+4) trước.' },
+      { type: 'p', text: 'Monte Carlo chỉ xáo lại lệnh từ Simulation — không tạo lệnh mới. Chạy Simulation (Ctrl+5) trước.' },
       { type: 'h3', text: 'Grid search quá chậm / quá nhiều combo?' },
       { type: 'p', text: `Giảm số combo (tối đa ${Config.OPTIMIZER.MAX_COMBINATIONS}): bỏ tick bớt tham số hoặc rút dải giá trị. Dataset lớn tự dùng Web Workers.` },
       { type: 'h3', text: 'Walk Forward tệ dù Grid Search đẹp?' },
       { type: 'p', text: 'Dấu hiệu “học vẹt” quá khứ (overfit) — thử ít tham số hơn, chọn combo có nhiều lệnh, hoặc kiểm tra giai đoạn/cặp khác.' },
       { type: 'h3', text: 'AI score cao mà lệnh vẫn LOSS?' },
-      { type: 'p', text: 'Bình thường. Điểm AI đánh giá setup lúc vào lệnh (trend, nến, RR, phiên…), không dự đoán giá sau đó. Simulation không lọc theo Min score — xem Statistics / Walk Forward để đánh giá setup có lãi về lâu dài.' },
+      { type: 'p', text: 'Bình thường. Điểm AI đánh giá setup lúc vào lệnh (trend, nến, RR, phiên…), không dự đoán giá sau đó. Muốn backtest chỉ signal điểm cao → bật AI score filter ở Simulation (Ctrl+5).' },
       { type: 'h3', text: 'Có bắt buộc Run Strategies trước Simulation?' },
-      { type: 'p', text: 'Không. Simulation tự quét lại strategy rồi mô phỏng lệnh. Chỉ cần Strategies trước khi bạn muốn lọc signal / Chart trước, Export JSON, hoặc Run All nhiều strategy. Xem Ctrl+9 → Run Strategies vs Simulation.' },
+      { type: 'p', text: 'Không. Simulation tự quét lại strategy rồi mô phỏng lệnh. Chỉ cần Strategies trước khi bạn muốn lọc signal / Chart trước, Export JSON, hoặc Run All nhiều strategy. Xem Ctrl+0 → Run Strategies vs Simulation.' },
       { type: 'h3', text: 'Run Strategies và Run Simulation khác gì?' },
-      { type: 'p', text: 'Strategies chỉ sinh signal + chấm điểm AI. Simulation quét lại + giả lập lệnh (spread, trailing…) → Statistics/Reports. Chi tiết: Ctrl+9 → Run Strategies vs Simulation.' },
+      { type: 'p', text: 'Strategies chỉ sinh signal + chấm điểm AI. Simulation quét lại + giả lập lệnh (spread, trailing…) → Statistics/Reports. Chi tiết: Ctrl+0 → Run Strategies vs Simulation.' },
       { type: 'h3', text: 'Reset app làm gì?' },
-      { type: 'p', text: 'Data Manager → Reset app: xóa IndexedDB (nến), mọi key parl_* (settings, strategy params, simulation/statistics/reports, AI scores), rồi tải lại trang. Giống cài mới — boot sẽ tự seed EURUSD H1 nếu trống. Không hoàn tác — export trước nếu cần.' },
+      { type: 'p', text: 'Data Manager → Reset app: xóa IndexedDB (nến + kết quả lớn), mọi key parl_* (settings, tham số strategy), rồi tải lại trang. Giống cài mới — boot sẽ tự seed EURUSD H1 nếu trống. Không hoàn tác — export trước nếu cần.' },
       { type: 'h3', text: 'Watchlist biến mất?' },
       { type: 'p', text: 'Watchlist chỉ hiện ở Chart và Data Manager — các mục khác ẩn để tập trung workspace.' },
     ],

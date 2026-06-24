@@ -26,11 +26,12 @@ Open `http://localhost:8080`. Do not open `index.html` directly (`file://` break
 ```
 1. Import data     →  Data Manager (Ctrl+2)
 2. Scan strategy   →  Strategies (Ctrl+3)
-3. Run backtest    →  Simulation (Ctrl+4)
-4. Review metrics  →  Statistics (Ctrl+5)
-5. Export report   →  Reports (Ctrl+6)
-6. Optimize params →  Optimizer (Ctrl+7)
-7. Score signals   →  AI Signals (Ctrl+8) — auto after scan
+3. Compare setups  →  Compare (Ctrl+4) — optional, same symbol/TF
+4. Run backtest    →  Simulation (Ctrl+5)
+5. Review metrics  →  Statistics (Ctrl+6)
+6. Export report   →  Reports (Ctrl+7)
+7. Optimize params →  Optimizer (Ctrl+8)
+8. Score signals   →  AI Signals (Ctrl+9) — auto after scan
 ```
 
 ---
@@ -52,9 +53,11 @@ timestamp,datetime,open,high,low,close,volume
 ### Chart (Ctrl+1)
 
 - Candlestick chart with EMA 20 and EMA 50
-- **Replay controls:** Play, Pause, Next, Previous, Reset, Live
+- **Replay controls:** Play, Pause, Next, Previous, Reset, Live, **Jump to date**
+- Jump date field uses **UTC** (matches candle timestamps)
 - Replay never reveals future candles
 - For datasets > 50,000 bars, chart shows the most recent window
+- Signal review: entry/SL/TP overlay from AI Signals or Simulation trade list
 
 **Replay shortcuts (chart view only):**
 
@@ -68,7 +71,7 @@ timestamp,datetime,open,high,low,close,volume
 
 ### Strategies (Ctrl+3)
 
-Three built-in Price Action setups (see `docs/STRATEGY_SPECIFICATION.md`):
+Seven built-in Price Action setups (see `docs/STRATEGY_SPECIFICATION.md`):
 
 | ID | Name |
 |----|------|
@@ -77,13 +80,25 @@ Three built-in Price Action setups (see `docs/STRATEGY_SPECIFICATION.md`):
 | `liquidity-grab` | Liquidity Grab |
 | `inside-bar-breakout` | Inside Bar Breakout |
 | `pin-bar-rejection` | Pin Bar Rejection |
+| `wyckoff-spring-utad` | Wyckoff Spring / UTAD |
+| `wyckoff-range-test` | Wyckoff Range Test |
 
 - Configure parameters per strategy
 - **Run Selected** — scan one strategy
 - **Run All Enabled** — scan all active plugins
 - Signals export as JSON
 
-### Simulation (Ctrl+4)
+### Compare (Ctrl+4)
+
+Run multiple strategies on the **same symbol and timeframe** and rank by expectancy.
+
+- Tick which strategies to include (all enabled by default)
+- **Compare** — scans each setup, simulates trades with current Simulation settings, sorts by expectancy
+- Best row highlighted; results persist across sessions
+
+Use this before committing to one setup or before deep parameter tuning.
+
+### Simulation (Ctrl+5)
 
 Mode 1: one strategy, one pair, one timeframe.
 
@@ -92,15 +107,21 @@ Mode 1: one strategy, one pair, one timeframe.
 - Spread, slippage, lot size
 - Trailing stop, break-even, partial close
 
+**AI score filter (optional):**
+- Enable **AI score filter** and set **Min score** (default 65)
+- Simulation scores signals, then trades only those at/above the threshold
+- **Compare vs all signals** — side-by-side summary: all signals vs filtered set (WR, Net, Expectancy)
+- Primary trade list uses the **filtered** set when filter is on
+
 Results automatically update Statistics and Reports.
 
-### Statistics (Ctrl+5)
+### Statistics (Ctrl+6)
 
 Metrics: win rate, expectancy, profit factor, max drawdown, Sharpe, streaks, avg RR/SL/TP.
 
 Includes equity curve and drawdown charts. Export JSON.
 
-### Reports (Ctrl+6)
+### Reports (Ctrl+7)
 
 **Dashboard tab:** summary cards + equity curve
 
@@ -112,23 +133,24 @@ Includes equity curve and drawdown charts. Export JSON.
 - Dashboard PNG
 - Print / Save as PDF
 
-### Optimizer (Ctrl+7)
+### Optimizer (Ctrl+8)
 
 **Grid Search**
 - Select parameters and value lists (`1,2,3` or `10:50:10`)
 - Max 500 combinations
 - Rank by expectancy, net profit, PF, Sharpe, or win rate
+- **Auto walk-forward on best combo** (default on) — after grid finishes, validates the top-ranked parameter set with rolling IS/OOS folds; summary shown below Top Results
 
 **Walk Forward**
 - Rolling in-sample / out-of-sample windows
-- Uses current strategy parameters
+- Uses current strategy parameters (or best combo from grid)
 
 **Monte Carlo**
 - Requires prior simulation
 - Shuffles trade order (default 1000 iterations)
 - Shows P5 / P50 / P95 balance distribution
 
-### AI Signals (Ctrl+8)
+### AI Signals (Ctrl+9)
 
 Every signal scored 0–100 after strategy scan.
 
@@ -136,7 +158,7 @@ Every signal scored 0–100 after strategy scan.
 
 **Grades:** A (≥80), B (≥65), C (≥50), D (≥35), F (<35)
 
-Use the min-score slider to filter low-quality signals.
+Use the min-score slider to filter the signal list. To **backtest** only high-score signals, enable **AI score filter** in Simulation.
 
 ---
 
@@ -145,8 +167,16 @@ Use the min-score slider to filter low-quality signals.
 | Shortcut | View |
 |----------|------|
 | Ctrl+B | Toggle sidebar |
-| Ctrl+1–8 | Navigate views |
-| Ctrl+9 / F1 | Documentation |
+| Ctrl+1 | Chart |
+| Ctrl+2 | Data Manager |
+| Ctrl+3 | Strategies |
+| Ctrl+4 | Compare |
+| Ctrl+5 | Simulation |
+| Ctrl+6 | Statistics |
+| Ctrl+7 | Reports |
+| Ctrl+8 | Optimizer |
+| Ctrl+9 | AI Signals |
+| Ctrl+0 / F1 | Documentation |
 
 ---
 
@@ -154,10 +184,12 @@ Use the min-score slider to filter low-quality signals.
 
 | Storage | Content |
 |---------|---------|
-| IndexedDB | OHLCV candles |
-| LocalStorage | Settings, strategy configs, simulation & statistics results |
+| IndexedDB (`parl_data`) | OHLCV candles **and** large result blobs (simulation, statistics, reports, optimizer, scored signals, strategy compare) |
+| LocalStorage | Lightweight settings, strategy parameter configs, panel sizes |
 
-Clear browser site data to reset. Export results before clearing.
+Large results migrate automatically from older LocalStorage saves to IndexedDB on first load.
+
+Clear browser site data (or **Reset app** in Data Manager) to wipe everything. Export results before clearing.
 
 ---
 
@@ -169,6 +201,8 @@ Clear browser site data to reset. Export results before clearing.
 | No statistics | Run Simulation first |
 | Monte Carlo error | Run Simulation to generate trades |
 | Grid search slow | Reduce parameter combinations; workers activate at 10k+ candles |
+| Grid search storage error | Reload app — results now use IndexedDB; old quota errors should not recur |
+| Jump date wrong timezone | Jump field is UTC — match timestamps shown in replay bar |
 | Boot error: private field `#log` | Update to latest PARL. Use modern Chrome/Edge/Firefox and serve via `http://` |
 
 ---
@@ -177,4 +211,4 @@ Clear browser site data to reset. Export results before clearing.
 
 - `docs/STRATEGY_SPECIFICATION.md` — exact strategy rules
 - `docs/HUONG_DAN.md` — Vietnamese guide
-- In-app docs: **Ctrl+9**
+- In-app docs: **Ctrl+0** or **F1**

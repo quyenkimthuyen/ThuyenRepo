@@ -177,7 +177,7 @@ python3 -m http.server 8080
         type: 'ul',
         items: [
           'Candlestick chart with EMA 20/50 overlays',
-          'Replay mode: Play, Pause, Next/Prev candle, Jump to date',
+          'Replay mode: Play, Pause, Next/Prev candle, Jump to date (UTC)',
           'Replay never shows future candles (no lookahead)',
           'Large datasets: chart renders last 50,000 bars for performance',
         ],
@@ -197,19 +197,33 @@ python3 -m http.server 8080
       },
       {
         type: 'h3',
-        text: '4. Simulation (Ctrl+4)',
+        text: '4. Compare (Ctrl+4)',
+      },
+      {
+        type: 'ul',
+        items: [
+          'Run multiple strategies on the same symbol/timeframe',
+          'Ranks by expectancy using current Simulation trade settings',
+          'Tick strategies to include; best row highlighted',
+        ],
+      },
+      {
+        type: 'h3',
+        text: '5. Simulation (Ctrl+5)',
       },
       {
         type: 'ul',
         items: [
           'Mode 1: one setup, one pair — full trade engine backtest',
           'Configure spread, slippage, lot size, trailing, break-even, partial close',
+          'Optional AI score filter — trade only signals ≥ min score',
+          'Compare vs all signals — side-by-side baseline vs filtered summary',
           'Results feed Statistics, Reports, and Monte Carlo automatically',
         ],
       },
       {
         type: 'h3',
-        text: '5. Statistics (Ctrl+5)',
+        text: '6. Statistics (Ctrl+6)',
       },
       {
         type: 'ul',
@@ -221,7 +235,7 @@ python3 -m http.server 8080
       },
       {
         type: 'h3',
-        text: '6. Reports (Ctrl+6)',
+        text: '7. Reports (Ctrl+7)',
       },
       {
         type: 'ul',
@@ -233,26 +247,28 @@ python3 -m http.server 8080
       },
       {
         type: 'h3',
-        text: '7. Optimizer (Ctrl+7)',
+        text: '8. Optimizer (Ctrl+8)',
       },
       {
         type: 'ul',
         items: [
           'Grid Search — test parameter combinations (max 500 combos)',
+          'Auto walk-forward on best combo after grid (default on)',
           'Walk Forward — rolling in-sample / out-of-sample validation',
           'Monte Carlo — shuffle trade order for risk distribution (uses last simulation)',
+          'Large results stored in IndexedDB (no localStorage quota errors)',
         ],
       },
       {
         type: 'h3',
-        text: '8. AI Signals (Ctrl+8)',
+        text: '9. AI Signals (Ctrl+9)',
       },
       {
         type: 'ul',
         items: [
           'Auto-scored after each strategy scan (0–100)',
           'Factors: trend, momentum, location, volatility, PA quality, RR, session, spread',
-          'Filter by minimum score with slider',
+          'Filter list by minimum score — use Simulation AI filter to backtest filtered signals only',
         ],
       },
     ],
@@ -270,12 +286,13 @@ python3 -m http.server 8080
           ['Ctrl+1', 'Chart'],
           ['Ctrl+2', 'Data Manager'],
           ['Ctrl+3', 'Strategies'],
-          ['Ctrl+4', 'Simulation'],
-          ['Ctrl+5', 'Statistics'],
-          ['Ctrl+6', 'Reports'],
-          ['Ctrl+7', 'Optimizer'],
-          ['Ctrl+8', 'AI Signals'],
-          ['Ctrl+9 / F1', 'Documentation (this page)'],
+          ['Ctrl+4', 'Compare'],
+          ['Ctrl+5', 'Simulation'],
+          ['Ctrl+6', 'Statistics'],
+          ['Ctrl+7', 'Reports'],
+          ['Ctrl+8', 'Optimizer'],
+          ['Ctrl+9', 'AI Signals'],
+          ['Ctrl+0 / F1', 'Documentation (this page)'],
         ],
       },
       {
@@ -364,8 +381,8 @@ python3 -m http.server 8080
         type: 'table',
         headers: ['Storage', 'Content'],
         rows: [
-          ['IndexedDB (parl_data)', 'OHLCV candle history'],
-          ['LocalStorage', 'Settings, strategy params, simulation & statistics results'],
+          ['IndexedDB (parl_data)', 'OHLCV candles + large results (simulation, stats, reports, optimizer, AI scores, compare)'],
+          ['LocalStorage', 'Settings, strategy parameter configs, panel sizes'],
         ],
       },
       {
@@ -401,7 +418,7 @@ python3 -m http.server 8080
       },
       {
         type: 'p',
-        text: 'Run Simulation first (Ctrl+4). Statistics and Reports update automatically when simulation completes.',
+        text: 'Run Simulation first (Ctrl+5). Statistics and Reports update automatically when simulation completes.',
       },
       {
         type: 'h3',

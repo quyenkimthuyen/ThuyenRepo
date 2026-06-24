@@ -19,20 +19,21 @@ On first launch: **Data Manager** → reload default data or import CSV.
 
 | Module | Shortcut | Description |
 |--------|----------|-------------|
-| Chart | Ctrl+1 | Candlestick chart + bar-by-bar replay |
+| Chart | Ctrl+1 | Candlestick chart + bar-by-bar replay (UTC jump) |
 | Data Manager | Ctrl+2 | Import/export OHLCV via IndexedDB |
-| Strategies | Ctrl+3 | Break & Retest, EMA Pullback, Liquidity Grab |
-| Simulation | Ctrl+4 | Trade engine backtest (spread, SL/TP, trailing) |
-| Statistics | Ctrl+5 | Expectancy, PF, drawdown, equity curve |
-| Reports | Ctrl+6 | Dashboard, heatmaps, CSV/JSON/PNG/PDF export |
-| Optimizer | Ctrl+7 | Grid search, walk-forward, Monte Carlo |
-| AI Signals | Ctrl+8 | 0–100 signal scores with factor breakdown |
-| Documentation | Ctrl+9 / F1 | In-app usage guide |
+| Strategies | Ctrl+3 | 7 Price Action setups (Break & Retest, EMA, Wyckoff, …) |
+| Compare | Ctrl+4 | Rank strategies on same symbol/TF by expectancy |
+| Simulation | Ctrl+5 | Backtest + optional AI score filter & compare |
+| Statistics | Ctrl+6 | Expectancy, PF, drawdown, equity curve |
+| Reports | Ctrl+7 | Dashboard, heatmaps, CSV/JSON/PNG/PDF export |
+| Optimizer | Ctrl+8 | Grid search (+ auto walk-forward), WF, Monte Carlo |
+| AI Signals | Ctrl+9 | 0–100 signal scores with factor breakdown |
+| Documentation | Ctrl+0 / F1 | In-app usage guide |
 
 ## Tech stack
 
 - HTML5, CSS3, Vanilla JavaScript ES2023
-- IndexedDB + LocalStorage
+- IndexedDB (candles + large research results) + LocalStorage (settings)
 - Lightweight Charts
 - Web Workers for heavy computations
 
@@ -41,7 +42,7 @@ On first launch: **Data Manager** → reload default data or import CSV.
 - [Usage guide (English)](docs/USAGE.md)
 - [Hướng dẫn sử dụng (Tiếng Việt)](docs/HUONG_DAN.md)
 - [Strategy specification](docs/STRATEGY_SPECIFICATION.md)
-- In-app: press **Ctrl+9** or **F1**
+- In-app: press **Ctrl+0** or **F1**
 
 ## Project structure
 
@@ -56,6 +57,7 @@ Forex/
 │   ├── chart/      # Chart engine
 │   ├── strategy/   # Plugin system
 │   ├── strategies/ # Built-in PA setups
+│   ├── research/   # Strategy compare engine
 │   ├── simulation/ # Trade engine
 │   ├── statistics/ # Performance metrics
 │   ├── analytics/  # Heatmaps
@@ -70,10 +72,7 @@ Forex/
 ## Run tests
 
 ```bash
-node tests/strategy/Phase5Tests.js
-node tests/simulation/TradeTests.js
-node tests/statistics/StatisticsTests.js
-node tests/scoring/ScoringTests.js
+node tests/run-all.mjs
 ```
 
 ## License
