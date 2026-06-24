@@ -28,7 +28,7 @@ cd frontend && node --test tests/*.test.mjs
 | Core logic | `frontend/tests/core.test.mjs` | wordsMatch, timing, VAD RMS |
 | **Chấm điểm logic** | `frontend/tests/score-mode.test.mjs` | auto-score, pass criteria, API shape |
 | **Integration** | `frontend/tests/integration/*.test.mjs` | HTTP thật frontend→backend, CORS |
-| **E2E Chrome/Edge** | `frontend/tests/e2e/*.spec.mjs` | UI, micro fake, score online |
+| **E2E Chrome/Edge** | `frontend/tests/e2e/*.spec.mjs` | UI, micro fake, luồng người dùng |
 | Data | `frontend/tests/words.data.test.mjs` | schema words.json |
 
 ```bash
@@ -47,6 +47,9 @@ npx playwright test --project=chromium
 npx playwright install msedge
 npx playwright test --project=msedge
 
+# Chỉ luồng người dùng (nhanh)
+npx playwright test user-journey --project=chromium
+
 # Bỏ E2E (CI nhanh)
 RUN_E2E=0 ./scripts/run_tests.sh
 ```
@@ -60,6 +63,22 @@ RUN_E2E=0 ./scripts/run_tests.sh
 | Fast-path text (logic) | ≤ 800 ms |
 | Fast-path score (logic) | ≤ 3500 ms |
 | Im lặng mặc định | 500 ms |
+
+---
+
+## Automated E2E — mô phỏng browser (Playwright)
+
+File `frontend/tests/e2e/user-journey.spec.mjs` mô phỏng thao tác người dùng:
+
+| Nhóm | Kiểm tra |
+|------|----------|
+| Khởi động | Từ, quiz info, bảng tổng kết, nút Tiếp/Trước, dropdown |
+| Chỉ text | Đọc đúng → chuyển từ, bảng quiz, bật/tắt micro |
+| Chấm điểm | Chấm fail/pass, đổi chế độ, nghe mẫu khi micro tắt |
+| Cài đặt | Mở/đóng panel, lưu im lặng |
+| Phiên quiz | Highlight dòng hiện tại, click dòng → nhảy từ |
+
+Dùng **fake microphone** (Playwright) + hooks `window.__pronounceLabTest` để mô phỏng chấm điểm / khớp text mà không cần nói thật.
 
 ---
 

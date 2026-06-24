@@ -2581,12 +2581,40 @@ function bindEvents() {
   window.addEventListener('beforeunload', () => stopLiveMode());
 }
 
-/** Hooks cho E2E — kiểm tra không reload / không reset UI toàn trang khi chấm */
+/** Hooks cho E2E — mô phỏng thao tác người dùng trên browser */
 window.__pronounceLabTest = {
   getInitCount: () => initRunCount,
   getCurrentIndex: () => currentIndex,
+  getPracticeMode: () => practiceMode,
+  getState: () => ({
+    initCount: initRunCount,
+    currentIndex,
+    practiceMode,
+    liveModeActive,
+    word: words[currentIndex]?.word ?? null,
+    quizSize: words.length,
+  }),
   getPhonemeBoxCount: () => els.phonemeContainer?.querySelectorAll('.phoneme-box').length ?? 0,
   getPhonemeBoxNodes: () => [...(els.phonemeContainer?.querySelectorAll('.phoneme-box') || [])],
+  getQuizRow: (index = currentIndex) => {
+    const row = getQuizRowsForMode()[index];
+    return row ? { ...row } : null;
+  },
+  getQuizSummaryTitle: () => els.quizSummaryTitle?.textContent ?? '',
+  navigateToWord: (index, options = {}) => {
+    showWord(index, { autoplay: false, ...options });
+    return { index: currentIndex, word: words[currentIndex]?.word };
+  },
+  clickNext: (options = {}) => {
+    const before = currentIndex;
+    nextWord({ autoplay: false, ...options });
+    return { before, after: currentIndex, word: words[currentIndex]?.word };
+  },
+  clickPrev: () => {
+    const before = currentIndex;
+    prevWord();
+    return { before, after: currentIndex, word: words[currentIndex]?.word };
+  },
   runMockEvaluate: async (overallScore = 55, passed = false) => {
     const w = words[currentIndex];
     if (!w) return null;
@@ -2606,6 +2634,13 @@ window.__pronounceLabTest = {
       phonemes,
     }, { fromLive: liveModeActive, wordIndex: currentIndex });
     return { index: currentIndex, word: w.word };
+  },
+  simulateTextPass: async () => {
+    const w = words[currentIndex];
+    if (!w || !isTextMode()) return null;
+    const before = currentIndex;
+    await processTextUtterance(w.word);
+    return { before, after: currentIndex, word: words[currentIndex]?.word };
   },
 };
 
