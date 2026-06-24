@@ -48,6 +48,7 @@ let liveMimeType = 'audio/webm';
 let phraseRecorder = null;
 let phraseChunks = [];
 let textMatchTimer = null;
+let scoreMatchTimer = null;
 let utterancePcmChunks = [];
 let utteranceCapturing = false;
 let pcmCaptureNode = null;
@@ -362,6 +363,7 @@ function showWord(index, options = {}) {
   clearLiveTranscript();
   hideLiveHint();
   clearTextMatchTimer();
+  clearScoreMatchTimer();
   micEngine?.resetSession();
   syncTranscriptFromEngine();
 
@@ -545,6 +547,8 @@ function initLiveSpeech() {
     if (isScoreMode() && liveModeActive && (finalPart || interim)) {
       startUtteranceCapture();
       startPhraseRecording();
+      setMicState(MIC_STATE.HEARING, 'Đang nghe bạn nói...');
+      tryScheduleScoreEvaluate();
     }
     tryScheduleTextAdvance();
   };
@@ -590,6 +594,45 @@ function clearTextMatchTimer() {
     clearTimeout(textMatchTimer);
     textMatchTimer = null;
   }
+}
+
+function clearScoreMatchTimer() {
+  if (scoreMatchTimer) {
+    clearTimeout(scoreMatchTimer);
+    scoreMatchTimer = null;
+  }
+}
+
+/** Chế độ chấm điểm: SR nghe được từ → im lặng hangover → tự chấm (không phụ thuộc VAD) */
+function tryScheduleScoreEvaluate() {
+  if (!isScoreMode() || !liveModeActive || isListeningBlocked() || isAdvancing || isEvaluating) {
+    clearScoreMatchTimer();
+    return;
+  }
+  if (!shouldAutoScoreOnUtteranceEnd({
+    practiceMode,
+    autoEvaluate: els.settingAutoEvaluate?.checked,
+  })) {
+    return;
+  }
+
+  const spoken = getSpokenWord()?.trim();
+  if (!spoken) {
+    clearScoreMatchTimer();
+    return;
+  }
+
+  clearScoreMatchTimer();
+  const hangMs = getHangoverMsSetting();
+
+  scoreMatchTimer = setTimeout(async () => {
+    scoreMatchTimer = null;
+    if (!liveModeActive || !isScoreMode() || isEvaluating || isAdvancing || isListeningBlocked()) {
+      return;
+    }
+    if (!getSpokenWord()?.trim()) return;
+    await processScoreUtterance();
+  }, hangMs);
 }
 
 /** Chế độ text: thấy khớp → chuyển từ ngay (không chờ im lặng) */
@@ -936,12 +979,15 @@ async function handleUtteranceComplete(payload) {
     return;
   }
 
+  clearScoreMatchTimer();
   await processScoreUtterance();
 }
 
 /** Score mode: im lặng sau câu → tự gọi API chấm (cùng pipeline với Ghi âm 1 lần) */
 async function processScoreUtterance() {
   if (isEvaluating) return;
+
+  clearScoreMatchTimer();
 
   await new Promise((r) => setTimeout(r, 80));
 
@@ -1076,6 +1122,7 @@ function stopLiveMode() {
   clearPassAdvanceTimer();
   isAdvancing = false;
   clearTextMatchTimer();
+  clearScoreMatchTimer();
   micEngine?.stop();
   micEngine = null;
   teardownPcmCapture();
@@ -1162,6 +1209,7 @@ function pauseListeningForSample() {
   phraseChunks = [];
   stopUtteranceCapture();
   utterancePcmChunks = [];
+  clearScoreMatchTimer();
   stopRingRecorder();
   micEngine?.setSampleMode(true);
   micEngine?.pause();
