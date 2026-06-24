@@ -221,12 +221,9 @@ body {
   font-size: 0.9rem;
 }
 
-/* Score zone — IPA + bảng quiz (dưới live-panel) */
+/* Score zone — IPA (dưới live-panel) */
 .score-zone {
   margin-bottom: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
 }
 
 .ipa-score-panel {
@@ -235,6 +232,20 @@ body {
   background: var(--bg);
   border: 1px solid var(--surface-2);
   min-height: 11.5rem;
+  contain: layout style;
+}
+
+.phoneme-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding: 0.25rem 0 0.35rem;
+  -webkit-overflow-scrolling: touch;
+  min-height: 6.35rem;
+  align-items: flex-start;
+  box-sizing: border-box;
+  contain: layout style;
 }
 
 .ipa-score-head {
@@ -325,18 +336,6 @@ body {
 
 .score-hero.scoring {
   opacity: 0.75;
-}
-
-.phoneme-strip {
-  display: flex;
-  flex-wrap: nowrap;
-  gap: 0.45rem;
-  overflow-x: auto;
-  padding: 0.25rem 0 0.35rem;
-  -webkit-overflow-scrolling: touch;
-  min-height: 6.35rem;
-  align-items: flex-start;
-  box-sizing: border-box;
 }
 
 .phoneme-strip::-webkit-scrollbar {

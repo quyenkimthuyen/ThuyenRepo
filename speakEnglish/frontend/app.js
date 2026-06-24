@@ -83,7 +83,7 @@ const lastEvaluations = {};
 let currentWordEvaluation = null;
 let passAdvanceTimer = null;
 let suppressWordSelectChange = false;
-/** @type {Array<{word:string, score:number|null, passed:boolean|null, status:string}>} */
+/** @type {Array<{word:string, text:object, score:object}>} */
 let quizSessionResults = [];
 let lastScoredAtIndex = -1;
 const SAMPLE_REPLAY_AFTER_FAILS = 3;
@@ -119,6 +119,7 @@ const els = {
   phonemeContainer: $('phoneme-container'),
   quizResultsBody: $('quiz-results-body'),
   quizSummaryStats: $('quiz-summary-stats'),
+  quizSummaryTitle: $('quiz-summary-title'),
   settingsPanel: $('settings-panel'),
   settingAutoplay: $('setting-autoplay'),
   settingLiveAuto: $('setting-live-auto'),
@@ -219,13 +220,66 @@ function spokenMatchesTarget(spoken, target) {
   return wordsMatch(spoken, target);
 }
 
+function createEmptyQuizModeResult() {
+  return { score: null, passed: null, status: 'pending' };
+}
+
+function createEmptyQuizResultRow(word) {
+  return {
+    word,
+    text: createEmptyQuizModeResult(),
+    score: createEmptyQuizModeResult(),
+  };
+}
+
+function normalizeQuizResultRow(row, word = row?.word) {
+  if (row?.text && row?.score) {
+    return { word: word || row.word, text: { ...row.text }, score: { ...row.score } };
+  }
+  const legacy = {
+    score: row?.score ?? null,
+    passed: row?.passed ?? null,
+    status: row?.status ?? 'pending',
+  };
+  const fresh = createEmptyQuizResultRow(word || row?.word || '');
+  fresh.score = { ...legacy };
+  return fresh;
+}
+
+function getQuizModeKey(mode = practiceMode) {
+  return mode === PRACTICE_MODE.TEXT ? 'text' : 'score';
+}
+
+function getQuizRowsForMode(mode = practiceMode) {
+  const key = getQuizModeKey(mode);
+  const source = quizSessionResults.length
+    ? quizSessionResults
+    : words.map((w) => createEmptyQuizResultRow(w.word));
+  return source.map((row) => {
+    const normalized = normalizeQuizResultRow(row);
+    return { word: normalized.word, ...normalized[key] };
+  });
+}
+
+function formatHangoverSec(ms) {
+  const sec = Math.round((ms / 1000) * 100) / 100;
+  if (Number.isInteger(sec)) return String(sec);
+  return sec.toFixed(2).replace(/0$/, '');
+}
+
+function getLiveSilenceHintText() {
+  const hangSec = formatHangoverSec(getHangoverMsSetting());
+  const action = isTextMode() ? 'chuyển từ' : 'chấm điểm';
+  return `Nói xong → im lặng ~${hangSec}s → ${action}`;
+}
+
+function refreshLiveSilenceHint() {
+  if (!els.recordingIndicator || !liveModeActive) return;
+  els.recordingIndicator.innerHTML = `<span class="pulse"></span> ${getLiveSilenceHintText()}`;
+}
+
 function initQuizSessionResults() {
-  quizSessionResults = words.map((w) => ({
-    word: w.word,
-    score: null,
-    passed: null,
-    status: 'pending',
-  }));
+  quizSessionResults = words.map((w) => createEmptyQuizResultRow(w.word));
   renderQuizSummary();
 }
 
@@ -263,13 +317,8 @@ function restoreQuizSession(topicId, quizSize) {
   };
     quizSessionResults = Array.isArray(saved.quizSessionResults)
       && saved.quizSessionResults.length === words.length
-      ? saved.quizSessionResults
-      : words.map((w) => ({
-        word: w.word,
-        score: null,
-        passed: null,
-        status: 'pending',
-      }));
+      ? saved.quizSessionResults.map((row, i) => normalizeQuizResultRow(row, words[i]?.word))
+      : words.map((w) => createEmptyQuizResultRow(w.word));
     return true;
   } catch {
     return false;
@@ -285,22 +334,29 @@ function recordQuizSessionResult(word, score, passed, kind = 'score', wordIndex 
     ? wordIndex
     : words.findIndex((w) => normalizeWordKey(w.word) === normalizeWordKey(word));
   if (idx < 0 || idx >= words.length) return;
-  quizSessionResults[idx] = {
-    word: words[idx].word,
-    score: kind === 'text' ? 100 : score,
+  const modeKey = kind === 'text' ? 'text' : 'score';
+  if (!quizSessionResults[idx]) {
+    quizSessionResults[idx] = createEmptyQuizResultRow(words[idx].word);
+  } else {
+    quizSessionResults[idx] = normalizeQuizResultRow(quizSessionResults[idx], words[idx].word);
+  }
+  quizSessionResults[idx][modeKey] = {
+    score,
     passed,
     status: passed ? 'pass' : 'fail',
   };
-  renderQuizSummary();
+  updateQuizRow(idx);
   persistQuizSession();
 }
 
 function renderQuizSummary() {
   if (!els.quizResultsBody) return;
 
-  const rows = quizSessionResults.length
-    ? quizSessionResults
-    : words.map((w) => ({ word: w.word, score: null, passed: null, status: 'pending' }));
+  const rows = getQuizRowsForMode();
+  const modeLabel = isTextMode() ? 'Chỉ text' : 'Chấm điểm';
+  if (els.quizSummaryTitle) {
+    els.quizSummaryTitle.textContent = `Bảng tổng kết · ${modeLabel}`;
+  }
 
   els.quizResultsBody.innerHTML = rows.map((row, i) => {
     const isCurrent = i === currentIndex;
@@ -327,10 +383,8 @@ function renderQuizSummary() {
   bindQuizRowClicks();
 }
 
-function updateQuizSummaryStats(rows = quizSessionResults) {
-  const data = rows.length
-    ? rows
-    : words.map((w) => ({ word: w.word, score: null, passed: null, status: 'pending' }));
+function updateQuizSummaryStats(rows = null) {
+  const data = rows ?? getQuizRowsForMode();
   const threshold = isScoreMode() ? getPassThreshold() : getTextPassThreshold();
   const scored = data.filter((r) => r.score != null);
   const passedCount = data.filter((r) => r.passed).length;
@@ -360,6 +414,37 @@ function updateQuizCurrentRow() {
     const idx = parseInt(tr.dataset.index, 10);
     tr.classList.toggle('current', idx === currentIndex);
   });
+}
+
+/** Cập nhật một dòng quiz — tránh rebuild cả bảng sau mỗi lần chấm */
+function updateQuizRow(index) {
+  if (!els.quizResultsBody) return;
+  const row = getQuizRowsForMode()[index];
+  if (!row) return;
+
+  let tr = els.quizResultsBody.querySelector(`tr.quiz-row[data-index="${index}"]`);
+  if (!tr) {
+    renderQuizSummary();
+    return;
+  }
+
+  const scoreText = row.score == null ? '—' : `${row.score}%`;
+  let resultLabel = 'Chưa đọc';
+  let resultClass = 'pending';
+  if (row.status === 'pass') {
+    resultLabel = '✓ Đạt';
+    resultClass = 'pass';
+  } else if (row.status === 'fail') {
+    resultLabel = '✗ Chưa';
+    resultClass = 'fail';
+  }
+
+  tr.className = `quiz-row ${resultClass}${index === currentIndex ? ' current' : ''}`;
+  if (tr.cells[2]) tr.cells[2].textContent = scoreText;
+  if (tr.cells[3]) {
+    tr.cells[3].innerHTML = `<span class="quiz-result-badge ${resultClass}">${resultLabel}</span>`;
+  }
+  updateQuizSummaryStats();
 }
 
 function syncMicStateFromEngine() {
@@ -572,6 +657,8 @@ function applyPracticeModeUI() {
     restoreWordScoreUI(words[currentIndex]);
   }
 
+  renderQuizSummary();
+
   if (els.liveTranscriptPlaceholder) {
     els.liveTranscriptPlaceholder.textContent = isTextMode()
       ? 'Đọc đúng 100% (từ hoặc cụm từ) → tự chuyển tiếp'
@@ -744,7 +831,9 @@ function showWord(index, options = {}) {
   updateHistoryBadge(w.word);
 
   resetEvaluationUI();
-  restoreWordScoreUI(w);
+  if (isScoreMode()) {
+    restoreWordScoreUI(w);
+  }
   clearLiveTranscript();
   hideLiveHint();
   clearTextMatchTimer();
@@ -843,12 +932,41 @@ function setScoreHeroPending() {
 function renderTargetPhonemes(word) {
   if (!isScoreMode() || !els.phonemeContainer) return;
   const phonemes = word?.phonemes || [];
-  els.phonemeContainer.classList.remove('has-results');
+  const container = els.phonemeContainer;
   if (!phonemes.length) {
-    els.phonemeContainer.innerHTML = '<p class="phoneme-idle-hint">Nói xong → im lặng ngắn để chấm chi tiết từng âm IPA</p>';
+    container.classList.remove('has-results');
+    container.innerHTML = `<p class="phoneme-idle-hint">${getLiveSilenceHintText()} — chi tiết IPA</p>`;
     return;
   }
-  els.phonemeContainer.innerHTML = phonemes
+
+  const boxes = container.querySelectorAll('.phoneme-box');
+  if (boxes.length === phonemes.length) {
+    container.classList.remove('has-results');
+    boxes.forEach((box, i) => {
+      const char = box.querySelector('.phoneme-char');
+      if (char) {
+        char.textContent = phonemes[i];
+        char.className = 'phoneme-char pending';
+      }
+      const scoreEl = box.querySelector('.phoneme-score');
+      if (scoreEl) scoreEl.textContent = '—';
+      const sug = box.querySelector('.phoneme-suggestion');
+      if (sug) {
+        sug.textContent = '\u00a0';
+        sug.className = 'phoneme-suggestion phoneme-suggestion-slot';
+        sug.setAttribute('aria-hidden', 'true');
+      }
+      box.className = 'phoneme-box phoneme-box-pending';
+      box.classList.remove('show-suggestion', 'active');
+      box.dataset.index = String(i);
+      delete box.dataset.start;
+      delete box.dataset.end;
+    });
+    return;
+  }
+
+  container.classList.remove('has-results');
+  container.innerHTML = phonemes
     .map((ipa, i) => `
       <div class="phoneme-box phoneme-box-pending" data-index="${i}">
         <div class="phoneme-char pending">${ipa}</div>
@@ -1493,9 +1611,7 @@ function clearLiveTranscript() {
 }
 
 function updateLiveModeChrome() {
-  const hangSec = (getHangoverMsSetting() / 1000).toFixed(1);
-  els.recordingIndicator.innerHTML =
-    `<span class="pulse"></span> Nói xong → im lặng ~${hangSec}s → phản hồi`;
+  refreshLiveSilenceHint();
   els.recordingIndicator.classList.remove('hidden');
   els.btnRecord.disabled = true;
   els.phonemeContainer.classList.toggle('live-mode', isScoreMode());
@@ -1957,14 +2073,54 @@ async function advanceAfterPass(data) {
   clearScoreMatchTimer();
   hideLiveHint();
   prepareMicForNextUtterance();
-  nextWord({ autoplay: els.settingAutoplay.checked });
+  const playSampleOnAdvance = els.settingAutoplay.checked && !liveModeActive;
+  nextWord({ autoplay: playSampleOnAdvance });
   isAdvancing = false;
 }
 
 function renderPhonemeResults(phonemes, showSuggestionsAlways = false) {
   endScoringOverlay();
-  els.phonemeContainer.classList.add('has-results');
-  els.phonemeContainer.innerHTML = phonemes
+  const container = els.phonemeContainer;
+  if (!container) return;
+
+  const boxes = container.querySelectorAll('.phoneme-box');
+  if (boxes.length === phonemes.length) {
+    container.classList.add('has-results');
+    phonemes.forEach((p, i) => {
+      const box = boxes[i];
+      const char = box.querySelector('.phoneme-char');
+      if (char) {
+        char.textContent = p.ipa;
+        char.className = `phoneme-char ${p.label}`;
+      }
+      const scoreEl = box.querySelector('.phoneme-score');
+      if (scoreEl) scoreEl.textContent = `${Math.round(p.score * 100)}%`;
+      let sug = box.querySelector('.phoneme-suggestion');
+      if (p.suggestion) {
+        if (!sug) {
+          sug = document.createElement('span');
+          sug.className = 'phoneme-suggestion';
+          box.appendChild(sug);
+        }
+        sug.textContent = p.suggestion;
+        sug.className = 'phoneme-suggestion';
+        sug.removeAttribute('aria-hidden');
+      } else if (sug) {
+        sug.textContent = '\u00a0';
+        sug.className = 'phoneme-suggestion phoneme-suggestion-slot';
+        sug.setAttribute('aria-hidden', 'true');
+      }
+      box.className = `phoneme-box${showSuggestionsAlways && p.suggestion ? ' show-suggestion' : ''}`;
+      box.dataset.index = String(i);
+      box.dataset.start = String(p.start);
+      box.dataset.end = String(p.end);
+    });
+    bindPhonemeBoxEvents();
+    return;
+  }
+
+  container.classList.add('has-results');
+  container.innerHTML = phonemes
     .map((p, i) => `
       <div class="phoneme-box${showSuggestionsAlways && p.suggestion ? ' show-suggestion' : ''}" data-index="${i}" data-start="${p.start}" data-end="${p.end}">
         <div class="phoneme-char ${p.label}">${p.ipa}</div>
@@ -1973,13 +2129,16 @@ function renderPhonemeResults(phonemes, showSuggestionsAlways = false) {
       </div>
     `)
     .join('');
+  bindPhonemeBoxEvents();
+}
 
-  els.phonemeContainer.querySelectorAll('.phoneme-box').forEach((box) => {
-    box.addEventListener('click', () => replaySegment(box));
-    box.addEventListener('touchstart', (e) => {
+function bindPhonemeBoxEvents() {
+  els.phonemeContainer?.querySelectorAll('.phoneme-box').forEach((box) => {
+    box.onclick = () => replaySegment(box);
+    box.ontouchstart = (e) => {
       e.preventDefault();
       box.classList.toggle('show-suggestion');
-    });
+    };
   });
 }
 
@@ -2100,6 +2259,7 @@ function bindEvents() {
     saveSettings();
     applyPracticeModeUI();
     micEngine?.setHangoverMs(getHangoverMsSetting());
+    refreshLiveSilenceHint();
     els.settingsPanel.classList.add('hidden');
     checkBackend();
     if (topicChanged || sizeChanged) {
