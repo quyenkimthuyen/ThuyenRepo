@@ -57,7 +57,9 @@ class OptimizerViewImpl {
 
     await this.#refreshDataState(settings);
 
-    container.appendChild(el('div', { class: 'optimizer-view' }, [
+    container.classList.add('panel-body-optimizer');
+
+    container.appendChild(el('div', { class: 'optimizer-view opt-mode-grid', id: 'optimizer-root' }, [
       el('div', { class: 'opt-toolbar' }, [
         el('span', { class: 'opt-title' }, ['Research Optimizer']),
         this.#renderSelectors(settings, plugins),
@@ -68,8 +70,10 @@ class OptimizerViewImpl {
         el('button', { class: 'opt-tab', dataset: { tab: 'walkforward' } }, ['Walk Forward']),
         el('button', { class: 'opt-tab', dataset: { tab: 'montecarlo' } }, ['Monte Carlo']),
       ]),
-      el('div', { class: 'opt-content', id: 'opt-content' }),
-      el('div', { class: 'opt-results', id: 'opt-results' }),
+      el('div', { class: 'opt-body', id: 'opt-body' }, [
+        el('div', { class: 'opt-content', id: 'opt-content' }),
+        el('div', { class: 'opt-results', id: 'opt-results' }),
+      ]),
     ]));
 
     this.#bindEvents();
@@ -81,6 +85,7 @@ class OptimizerViewImpl {
     this.#unsub?.();
     this.#unsub = null;
     if (this.#container) {
+      this.#container.classList.remove('panel-body-optimizer');
       this.#container.innerHTML = '';
       this.#container.classList.add('panel-body-fill');
     }
@@ -201,7 +206,11 @@ class OptimizerViewImpl {
   #renderTab() {
     const content = this.#container?.querySelector('#opt-content');
     const results = this.#container?.querySelector('#opt-results');
+    const root = this.#container?.querySelector('#optimizer-root');
     if (!content || !results) return;
+
+    root?.classList.toggle('opt-mode-grid', activeTab === 'grid');
+    root?.classList.toggle('opt-mode-stack', activeTab !== 'grid');
 
     content.innerHTML = '';
     results.innerHTML = '';
@@ -210,14 +219,17 @@ class OptimizerViewImpl {
       this.#renderGridPanel(content);
       const last = ResearchEngine.getLastGridResult();
       if (last) this.#renderGridResults(last);
+      else this.#renderGridResultsPlaceholder(results);
     } else if (activeTab === 'walkforward') {
       this.#renderWalkForwardPanel(content);
       const last = ResearchEngine.getLastWalkForwardResult();
       if (last) this.#renderWalkForwardResults(last);
+      else this.#renderResultsPlaceholder(results, 'Walk Forward', 'Chạy Walk Forward để xem kết quả in-sample / out-of-sample.');
     } else {
       this.#renderMonteCarloPanel(content);
       const last = ResearchEngine.getLastMonteCarloResult();
       if (last) this.#renderMonteCarloResults(last);
+      else this.#renderResultsPlaceholder(results, 'Monte Carlo', 'Chạy Monte Carlo sau khi có lệnh từ Simulation.');
     }
   }
 
@@ -248,7 +260,13 @@ class OptimizerViewImpl {
 
     content.appendChild(el('div', { class: 'opt-panel' }, [
       el('p', { class: 'opt-desc' }, ['Test every parameter combination. Max ', String(Config.OPTIMIZER.MAX_COMBINATIONS), ' combos.']),
-      el('div', { class: 'opt-param-grid' }, paramRows),
+      el('div', { class: 'opt-param-section' }, [
+        el('div', { class: 'opt-param-section-head' }, [
+          el('span', { class: 'opt-param-section-title' }, ['Parameters']),
+          el('span', { class: 'opt-param-section-hint' }, ['Tick để đưa vào grid']),
+        ]),
+        el('div', { class: 'opt-param-grid' }, paramRows),
+      ]),
       el('label', { class: 'opt-field' }, [
         'Rank by',
         el('select', { class: 'data-select', id: 'opt-rank' }, [
@@ -394,6 +412,41 @@ class OptimizerViewImpl {
   }
 
   /**
+   * @param {HTMLElement} wrap
+   */
+  #renderGridResultsPlaceholder(wrap) {
+    this.#renderResultsPlaceholder(wrap, 'Top Results', 'Chạy Grid Search — kết quả xếp hạng combo sẽ hiển thị ở đây.');
+  }
+
+  /**
+   * @param {HTMLElement} wrap
+   * @param {string} title
+   * @param {string} hint
+   */
+  #renderResultsPlaceholder(wrap, title, hint) {
+    wrap.appendChild(el('div', { class: 'opt-results-placeholder' }, [
+      el('h4', {}, [title]),
+      el('p', {}, [hint]),
+    ]));
+  }
+
+  /**
+   * @param {Record<string, unknown>} params
+   * @returns {HTMLElement}
+   */
+  #formatParamsCell(params) {
+    const entries = Object.entries(params);
+    if (entries.length === 0) {
+      return el('span', { class: 'opt-mono' }, ['—']);
+    }
+    return el('div', { class: 'opt-params-stack' },
+      entries.map(([key, value]) =>
+        el('span', { class: 'opt-param-chip', title: `${key}=${value}` }, [`${key}=${value}`])
+      )
+    );
+  }
+
+  /**
    * @param {import('../optimizer/GridSearchEngine.js').GridSearchResult} result
    */
   #renderGridResults(result) {
@@ -409,8 +462,8 @@ class OptimizerViewImpl {
     const top = result.entries.slice(0, 20);
     const rows = top.map((entry, i) =>
       el('tr', {}, [
-        el('td', {}, [String(i + 1)]),
-        el('td', { class: 'opt-mono' }, [JSON.stringify(entry.params)]),
+        el('td', { class: 'opt-rank-cell' }, [String(i + 1)]),
+        el('td', { class: 'opt-params-cell' }, [this.#formatParamsCell(entry.params)]),
         el('td', {}, [String(entry.result.stats.totalTrades)]),
         el('td', {}, [`${entry.result.stats.winRate.toFixed(1)}%`]),
         el('td', { class: 'opt-mono' }, [`$${entry.result.stats.netProfit.toFixed(2)}`]),
@@ -419,11 +472,13 @@ class OptimizerViewImpl {
       ])
     );
 
-    wrap.appendChild(el('table', { class: 'data-table opt-table' }, [
-      el('thead', {}, [
-        el('tr', {}, ['#', 'Params', 'Trades', 'WR', 'Net', 'Exp', 'PF'].map((h) => el('th', {}, [h]))),
+    wrap.appendChild(el('div', { class: 'opt-table-scroll' }, [
+      el('table', { class: 'data-table opt-table' }, [
+        el('thead', {}, [
+          el('tr', {}, ['#', 'Params', 'Trades', 'WR', 'Net', 'Exp', 'PF'].map((h) => el('th', {}, [h]))),
+        ]),
+        el('tbody', {}, rows),
       ]),
-      el('tbody', {}, rows),
     ]));
 
     wrap.querySelector('#opt-export-grid')?.addEventListener('click', () => {
@@ -457,11 +512,13 @@ class OptimizerViewImpl {
       ])
     );
 
-    wrap.appendChild(el('table', { class: 'data-table opt-table' }, [
-      el('thead', {}, [
-        el('tr', {}, ['Fold', 'IS Start', 'IS Trades', 'IS Net', 'OOS Trades', 'OOS Net'].map((h) => el('th', {}, [h]))),
+    wrap.appendChild(el('div', { class: 'opt-table-scroll' }, [
+      el('table', { class: 'data-table opt-table' }, [
+        el('thead', {}, [
+          el('tr', {}, ['Fold', 'IS Start', 'IS Trades', 'IS Net', 'OOS Trades', 'OOS Net'].map((h) => el('th', {}, [h]))),
+        ]),
+        el('tbody', {}, rows),
       ]),
-      el('tbody', {}, rows),
     ]));
   }
 
