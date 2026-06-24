@@ -915,11 +915,18 @@ function updateWordHero(index) {
   updateHistoryBadge(w.word);
 }
 
+/** Index từ tiếp theo; từ cuối → quay về đầu bài */
+function getNextWordIndex(fromIndex = currentIndex) {
+  if (!words.length) return 0;
+  return fromIndex >= words.length - 1 ? 0 : fromIndex + 1;
+}
+
 /** Chuyển từ sau khi đạt — không reset micro / rebuild toàn trang */
 function advanceScoreWordLive(options = {}) {
   const { autoplay = false } = options;
-  const nextIndex = currentIndex + 1;
-  if (nextIndex >= words.length) return;
+  if (!words.length) return;
+
+  const nextIndex = getNextWordIndex();
 
   clearPassAdvanceTimer();
   disarmIdleSampleTimer();
@@ -1331,9 +1338,8 @@ function renderEvaluationDisplay(data, options = {}) {
 }
 
 function nextWord(options = {}) {
-  if (currentIndex < words.length - 1) {
-    showWord(currentIndex + 1, options);
-  }
+  if (!words.length) return;
+  showWord(getNextWordIndex(), options);
 }
 
 function prevWord() {
@@ -2404,15 +2410,14 @@ function renderEvaluation(data, options = {}) {
 async function advanceAfterPass(data) {
   const atLast = currentIndex >= words.length - 1;
 
-  if (atLast) {
-    setScoreState('done', `Hoàn thành · ${data.overall_score}%`);
-    return;
-  }
-
   isAdvancing = true;
   clearScoreMatchTimer();
   hideLiveHint();
   const playSampleOnAdvance = shouldAutoplaySample();
+
+  if (atLast) {
+    setScoreState('done', `Hết bài — từ đầu · ${data.overall_score}%`);
+  }
 
   if (liveModeActive && isScoreMode()) {
     advanceScoreWordLive({ autoplay: playSampleOnAdvance });
