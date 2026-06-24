@@ -24,15 +24,18 @@
         <button id="btn-next" class="btn btn-ghost" title="Từ sau">→</button>
       </div>
       <div class="progress-info">
+        <span id="quiz-info" class="quiz-info">—</span>
         <span id="word-index">1 / 20</span>
         <span id="history-badge" class="badge" title="Số lần thử">0 lần</span>
       </div>
+      <button id="btn-new-quiz" class="btn btn-ghost btn-sm" type="button" title="Bài ngẫu nhiên mới">🔀 Bài mới</button>
       <button id="btn-settings" class="btn btn-ghost" title="Cài đặt">⚙</button>
     </nav>
 
     <main class="main-card">
       <section class="word-display">
         <h2 id="current-word" class="word-text">—</h2>
+        <p id="current-meaning" class="word-meaning hidden"></p>
         <p id="current-ipa" class="ipa-text">—</p>
         <section id="ipa-score-panel" class="ipa-score-panel mode-score-only">
           <div class="ipa-score-head">
@@ -122,6 +125,14 @@
 
     <aside id="settings-panel" class="settings-panel hidden">
       <h3>Cài đặt</h3>
+      <label class="setting-row">
+        Chủ đề
+        <select id="setting-topic" class="setting-select"></select>
+      </label>
+      <label class="setting-row">
+        Số từ mỗi bài
+        <input type="number" id="setting-quiz-size" value="30" min="5" max="100" step="1">
+      </label>
       <label class="setting-row">
         <input type="checkbox" id="setting-autoplay" checked>
         Tự phát mẫu khi mở từ

@@ -13,6 +13,7 @@ export async function seedSettings(page, settings = {}) {
     silenceSec: 0.35,
     apiBaseUrl: E2E_BACKEND_URL,
     practiceMode: 'text',
+    quizSize: 30,
   };
   const merged = { ...defaults, ...settings };
   await page.addInitScript((data) => {

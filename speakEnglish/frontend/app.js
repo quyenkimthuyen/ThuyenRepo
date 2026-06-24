@@ -13,6 +13,7 @@ import {
   MIN_SPEECH_MS,
 } from './js/core.js';
 import { MicEngine, MIC_PHASE } from './js/mic-engine.js';
+import { loadManifest, buildQuizSession } from './js/vocabulary.js';
 
 const STORAGE_KEY = 'pronouncelab_history';
 
@@ -20,6 +21,9 @@ const STORAGE_KEY = 'pronouncelab_history';
 let config = {};
 /** @type {Array} */
 let words = [];
+/** @type {object|null} */
+let vocabularyManifest = null;
+let currentQuizMeta = { topicId: '', quizSize: 30, totalInTopic: 0 };
 let currentIndex = 0;
 let practiceMode = PRACTICE_MODE.TEXT;
 let isAdvancing = false;
@@ -83,6 +87,8 @@ const els = {
   historyBadge: $('history-badge'),
   currentWord: $('current-word'),
   currentIpa: $('current-ipa'),
+  currentMeaning: $('current-meaning'),
+  quizInfo: $('quiz-info'),
   btnPlaySample: $('btn-play-sample'),
   btnRecord: $('btn-record'),
   btnStop: $('btn-stop'),
@@ -119,6 +125,9 @@ const els = {
   liveTranscriptPlaceholder: $('live-transcript-placeholder'),
   liveHint: $('live-hint'),
   settingSilenceSec: $('setting-silence-sec'),
+  settingTopic: $('setting-topic'),
+  settingQuizSize: $('setting-quiz-size'),
+  btnNewQuiz: $('btn-new-quiz'),
   modeText: $('mode-text'),
   modeScore: $('mode-score'),
   appRoot: document.querySelector('.app'),
@@ -128,21 +137,20 @@ const els = {
 
 async function init() {
   await loadConfig();
-  await loadWords();
   loadEvalCache();
   loadSettings();
+  await initVocabulary();
   applyPracticeModeUI();
   bindEvents();
   setupAutoStartMic();
-  renderWordList();
-  const savedIndex = parseInt(sessionStorage.getItem(WORD_INDEX_KEY) || '0', 10);
-  showWord(Number.isFinite(savedIndex) ? savedIndex : 0);
   checkBackend();
   initLiveSpeech();
   setMicState(MIC_STATE.OFF, 'Micro tắt');
 
   if (els.settingLiveAuto?.checked) {
-    showLiveHint('Chạm màn hình để bật micro tự động', 'warn');
+    startLiveMode({ silent: true }).catch(() => {
+      showLiveHint('Chạm màn hình để bật micro tự động', 'warn');
+    });
   }
 }
 
@@ -219,20 +227,105 @@ async function loadConfig() {
   }
 }
 
-async function loadWords() {
+async function loadDemoWords() {
   const res = await fetch('data/words.json');
   const data = await res.json();
   words = data.words || [];
+  currentQuizMeta = { topicId: 'demo', quizSize: words.length, totalInTopic: words.length };
+  updateQuizInfo();
+  renderWordList();
+}
+
+function getTopicId() {
+  return els.settingTopic?.value
+    || vocabularyManifest?.defaultTopicId
+    || '';
+}
+
+function getQuizSize() {
+  const n = parseInt(els.settingQuizSize?.value, 10);
+  if (Number.isFinite(n) && n > 0) return n;
+  return vocabularyManifest?.defaultQuizSize ?? config.defaultQuizSize ?? 30;
+}
+
+function populateTopicSelect() {
+  if (!vocabularyManifest?.topics?.length || !els.settingTopic) return;
+  els.settingTopic.innerHTML = vocabularyManifest.topics
+    .map((t) => `<option value="${t.id}">${t.label} (${t.count})</option>`)
+    .join('');
+  const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+  const topicId = saved.topicId || vocabularyManifest.defaultTopicId;
+  if (topicId && [...els.settingTopic.options].some((o) => o.value === topicId)) {
+    els.settingTopic.value = topicId;
+  }
+}
+
+function updateQuizInfo() {
+  if (!els.quizInfo) return;
+  const topic = vocabularyManifest?.topics?.find((t) => t.id === currentQuizMeta.topicId);
+  const label = topic?.label || (currentQuizMeta.topicId === 'demo' ? 'Demo' : 'Chủ đề');
+  els.quizInfo.textContent = `${label} · ${words.length}/${currentQuizMeta.totalInTopic || words.length} từ`;
+}
+
+async function initVocabulary() {
+  try {
+    vocabularyManifest = await loadManifest();
+    populateTopicSelect();
+    const savedIndex = parseInt(sessionStorage.getItem(WORD_INDEX_KEY) || '0', 10);
+    await startQuizSession({
+      index: Number.isFinite(savedIndex) ? savedIndex : 0,
+      autoplay: false,
+    });
+  } catch (err) {
+    console.warn('Vocabulary load failed, using demo words.json:', err);
+    await loadDemoWords();
+    const savedIndex = parseInt(sessionStorage.getItem(WORD_INDEX_KEY) || '0', 10);
+    showWord(Number.isFinite(savedIndex) ? savedIndex : 0, { autoplay: false });
+  }
+}
+
+async function startQuizSession(options = {}) {
+  const topicId = options.topicId ?? getTopicId();
+  const quizSize = options.quizSize ?? getQuizSize();
+
+  if (!vocabularyManifest || !topicId) {
+    await loadDemoWords();
+    showWord(options.index ?? 0, { autoplay: options.autoplay !== false });
+    return;
+  }
+
+  const session = await buildQuizSession({ topicId, quizSize });
+  words = session.words;
+  currentQuizMeta = {
+    topicId: session.topicId,
+    quizSize: session.quizSize,
+    totalInTopic: session.totalInTopic,
+  };
+  updateQuizInfo();
+  renderWordList();
+  const maxIdx = Math.max(0, words.length - 1);
+  let index = 0;
+  if (options.newQuiz) {
+    sessionStorage.setItem(WORD_INDEX_KEY, '0');
+    index = 0;
+  } else {
+    const saved = Number.isFinite(options.index)
+      ? options.index
+      : parseInt(sessionStorage.getItem(WORD_INDEX_KEY) || '0', 10);
+    index = Math.min(Math.max(0, saved), maxIdx);
+  }
+  showWord(index, { autoplay: options.autoplay !== false });
 }
 
 function loadSettings() {
   const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
   els.settingAutoplay.checked = saved.autoPlaySample ?? config.autoPlaySample ?? true;
-  els.settingLiveAuto.checked = saved.liveAutoStart ?? true;
+  els.settingLiveAuto.checked = saved.liveAutoStart ?? config.liveAutoStart ?? true;
   els.settingAutoEvaluate.checked = saved.autoEvaluate ?? true;
   els.settingSilenceSec.value = saved.silenceSec ?? config.silenceSec ?? 0.35;
   els.settingApiUrl.value = saved.apiBaseUrl ?? config.apiBaseUrl ?? 'http://127.0.0.1:8000';
   els.settingPassScore.value = saved.passScore ?? config.thresholds?.overallPass ?? 80;
+  els.settingQuizSize.value = saved.quizSize ?? config.defaultQuizSize ?? vocabularyManifest?.defaultQuizSize ?? 30;
   practiceMode = saved.practiceMode ?? config.practiceMode ?? PRACTICE_MODE.TEXT;
 }
 
@@ -244,6 +337,8 @@ function saveSettings() {
     silenceSec: parseFloat(els.settingSilenceSec.value) || 0.35,
     apiBaseUrl: els.settingApiUrl.value,
     passScore: parseInt(els.settingPassScore.value, 10),
+    topicId: els.settingTopic?.value || vocabularyManifest?.defaultTopicId || '',
+    quizSize: getQuizSize(),
     practiceMode,
   }));
 }
@@ -257,14 +352,16 @@ function isTextMode() {
 }
 
 function setPracticeMode(mode) {
+  if (practiceMode === mode) return;
   practiceMode = mode;
   saveSettings();
+  const wasLive = liveModeActive;
   applyPracticeModeUI();
-  if (liveModeActive) {
-    stopLiveMode();
-    showLiveHint('Đã đổi chế độ — chạm để bật lại micro', 'warn');
-    autoStartDone = false;
-    setupAutoStartMic();
+  if (wasLive) {
+    reconfigureLiveMode();
+  } else if (els.settingLiveAuto?.checked) {
+    autoStartDone = true;
+    startLiveMode();
   }
 }
 
@@ -380,7 +477,10 @@ function updateHistoryBadge(word) {
 
 function renderWordList() {
   els.wordSelect.innerHTML = words
-    .map((w, i) => `<option value="${i}">${w.word}</option>`)
+    .map((w, i) => {
+      const prefix = w.emoji ? `${w.emoji} ` : '';
+      return `<option value="${i}">${prefix}${w.word}</option>`;
+    })
     .join('');
 }
 
@@ -409,7 +509,14 @@ function showWord(index, options = {}) {
 
   els.wordIndex.textContent = `${currentIndex + 1} / ${words.length}`;
   els.currentWord.textContent = w.word;
-  els.currentIpa.textContent = w.ipa;
+  els.currentIpa.textContent = w.ipa || '—';
+  if (els.currentMeaning) {
+    const parts = [];
+    if (w.emoji) parts.push(w.emoji);
+    if (w.meaning) parts.push(w.meaning);
+    els.currentMeaning.textContent = parts.join(' ') || '';
+    els.currentMeaning.classList.toggle('hidden', parts.length === 0);
+  }
   updateHistoryBadge(w.word);
 
   resetEvaluationUI();
@@ -1122,7 +1229,60 @@ function clearLiveTranscript() {
   hideLiveHint();
 }
 
-async function startLiveMode() {
+function updateLiveModeChrome() {
+  const hangSec = (getHangoverMsSetting() / 1000).toFixed(1);
+  els.recordingIndicator.innerHTML =
+    `<span class="pulse"></span> Nói xong → im lặng ~${hangSec}s → phản hồi`;
+  els.recordingIndicator.classList.remove('hidden');
+  els.btnRecord.disabled = true;
+  els.phonemeContainer.classList.toggle('live-mode', isScoreMode());
+  if (isScoreMode()) {
+    restoreWordScoreUI(words[currentIndex]);
+  }
+  hideLiveHint();
+}
+
+function attachLivePipeline() {
+  liveMimeType = pickRecorderMimeType();
+  audioRingChunks = [];
+
+  stopPhraseRecordingSync();
+  phraseRecorder = null;
+  phraseChunks = [];
+  stopRingRecorder();
+  teardownPcmCapture();
+
+  if (isScoreMode()) {
+    ensurePcmCaptureGraph();
+  } else {
+    setupMediaRecorder();
+  }
+
+  if (micEngine) {
+    micEngine.stop();
+    micEngine = null;
+  }
+  clearPassAdvanceTimer();
+  isAdvancing = false;
+  clearTextMatchTimer();
+  clearScoreMatchTimer();
+
+  micEngine = createMicEngine();
+  micEngine.setHangoverMs(getHangoverMsSetting());
+  startVadLoop();
+  liveModeActive = true;
+  micEngine.start();
+  updateLiveModeChrome();
+}
+
+function reconfigureLiveMode() {
+  if (!micStream) return;
+  attachLivePipeline();
+  syncMicStateFromEngine();
+}
+
+async function startLiveMode(options = {}) {
+  const { silent = false } = options;
   if (liveModeActive) return;
 
   try {
@@ -1140,38 +1300,16 @@ async function startLiveMode() {
     liveAnalyser.smoothingTimeConstant = 0.3;
     micSourceNode.connect(liveAnalyser);
 
-    liveMimeType = pickRecorderMimeType();
-    audioRingChunks = [];
-    if (isScoreMode()) {
-      ensurePcmCaptureGraph();
-    } else {
-      setupMediaRecorder();
-    }
-
-    micEngine = createMicEngine();
-    micEngine.setHangoverMs(getHangoverMsSetting());
-    startVadLoop();
+    attachLivePipeline();
 
     if (speechRecognition) {
       try { speechRecognition.start(); } catch (e) {
         console.warn('SpeechRecognition start:', e);
       }
     }
-
-    liveModeActive = true;
-    micEngine.start();
-    const hangSec = (getHangoverMsSetting() / 1000).toFixed(1);
-    els.recordingIndicator.innerHTML =
-      `<span class="pulse"></span> Nói xong → im lặng ~${hangSec}s → phản hồi`;
-    els.recordingIndicator.classList.remove('hidden');
-    els.btnRecord.disabled = true;
-    if (isScoreMode()) {
-      els.phonemeContainer.classList.add('live-mode');
-      restoreWordScoreUI(words[currentIndex]);
-    }
-    hideLiveHint();
   } catch (err) {
-    alert('Không thể bật micro: ' + err.message);
+    if (!silent) alert('Không thể bật micro: ' + err.message);
+    throw err;
   }
 }
 
@@ -1238,6 +1376,10 @@ function toggleLiveMode() {
 
 function startVadLoop() {
   if (!liveAnalyser || !micEngine) return;
+  if (vadAnimationId) {
+    cancelAnimationFrame(vadAnimationId);
+    vadAnimationId = null;
+  }
 
   const buf = new Uint8Array(liveAnalyser.fftSize);
 
@@ -1670,13 +1812,27 @@ function bindEvents() {
     if (suppressWordSelectChange) return;
     showWord(parseInt(e.target.value, 10));
   });
-  els.btnSettings.addEventListener('click', () => els.settingsPanel.classList.remove('hidden'));
-  els.btnCloseSettings.addEventListener('click', () => {
+  let settingsTopicId = getTopicId();
+  let settingsQuizSize = getQuizSize();
+  els.btnSettings.addEventListener('click', () => {
+    settingsTopicId = getTopicId();
+    settingsQuizSize = getQuizSize();
+    els.settingsPanel.classList.remove('hidden');
+  });
+  els.btnNewQuiz?.addEventListener('click', () => {
+    startQuizSession({ newQuiz: true });
+  });
+  els.btnCloseSettings.addEventListener('click', async () => {
+    const topicChanged = els.settingTopic?.value !== settingsTopicId;
+    const sizeChanged = getQuizSize() !== settingsQuizSize;
     saveSettings();
     applyPracticeModeUI();
     micEngine?.setHangoverMs(getHangoverMsSetting());
     els.settingsPanel.classList.add('hidden');
     checkBackend();
+    if (topicChanged || sizeChanged) {
+      await startQuizSession({ newQuiz: true });
+    }
   });
 
   window.addEventListener('beforeunload', () => stopLiveMode());

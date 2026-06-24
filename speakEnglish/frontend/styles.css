@@ -123,10 +123,23 @@ body {
 
 .progress-info {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   align-items: center;
   font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+.quiz-info {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
 }
 
 .badge {
@@ -153,6 +166,16 @@ body {
   font-weight: 700;
   margin: 0;
   letter-spacing: 0.02em;
+}
+
+.word-meaning {
+  margin: 0.35rem 0 0;
+  font-size: 1rem;
+  color: var(--text-muted);
+}
+
+.word-meaning.hidden {
+  display: none;
 }
 
 .ipa-text {
@@ -802,7 +825,9 @@ body {
 }
 
 .setting-row input[type="text"],
-.setting-row input[type="number"] {
+.setting-row input[type="number"],
+.setting-row select,
+.setting-select {
   padding: 0.5rem;
   border-radius: 8px;
   border: 1px solid var(--surface-2);
