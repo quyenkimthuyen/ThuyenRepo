@@ -478,7 +478,7 @@ const ipaData = {
               type: "rule",
               ipa: "/ɒ/",
               desc: "Âm O ngắn (miệng mở tròn hơi dẹt)",
-              rule: "Phát âm là /ɒ/ (UK) hoặc /ɑː/ (US) trong âm tiết khép kín kết thúc bằng phụ âm.",
+              rule: "Phát âm là /ɒ/ (giọng Anh-Anh) trong âm tiết khép kín kết thúc bằng phụ âm.",
               examples: [
                 { word: "hot", ipa: "hɒt", meaning: "nóng" },
                 { word: "dog", ipa: "dɒɡ", meaning: "con chó" },
@@ -1233,7 +1233,7 @@ const ipaData = {
               type: "rule",
               ipa: "/əʊ/",
               desc: "Âm đôi Ơ-U (đọc như 'âu')",
-              rule: "Tổ hợp OA hầu hết phát âm là /əʊ/ (UK) hoặc /oʊ/ (US) trong từ một âm tiết.",
+              rule: "Tổ hợp OA hầu hết phát âm là /əʊ/ (giọng Anh-Anh) trong từ một âm tiết.",
               examples: [
                 { word: "boat", ipa: "bəʊt", meaning: "con thuyền" },
                 { word: "coat", ipa: "kəʊt", meaning: "áo khoác" },
@@ -3160,7 +3160,20 @@ function showRuleDetail(ruleNode) {
   drawerDetailView.hidden = false;
 
   // Điền dữ liệu quy tắc
-  detailIpaSymbol.textContent = ruleNode.ipa || "âm câm";
+  const ipaText = ruleNode.ipa || "âm câm";
+  detailIpaSymbol.textContent = ipaText;
+
+  // Điều chỉnh kích thước chữ linh động tránh tràn chữ
+  if (ipaText.length > 8) {
+    detailIpaSymbol.style.fontSize = "20px";
+  } else if (ipaText.length > 5) {
+    detailIpaSymbol.style.fontSize = "26px";
+  } else if (ipaText.length > 3) {
+    detailIpaSymbol.style.fontSize = "32px";
+  } else {
+    detailIpaSymbol.style.fontSize = "40px";
+  }
+
   detailIpaDesc.textContent = ruleNode.desc;
   detailRuleText.textContent = ruleNode.rule;
 
@@ -3238,8 +3251,9 @@ function loadVoices() {
   if (!('speechSynthesis' in window)) return;
 
   const voices = window.speechSynthesis.getVoices();
-  // Ưu tiên chọn giọng đọc tiếng Anh chuẩn tự nhiên
-  englishVoice = voices.find(v => v.lang.startsWith("en-US") && v.name.includes("Google")) ||
+  // Ưu tiên chọn giọng đọc tiếng Anh Anh chuẩn tự nhiên
+  englishVoice = voices.find(v => v.lang.startsWith("en-GB") && v.name.includes("Google")) ||
+    voices.find(v => v.lang.startsWith("en-GB")) ||
     voices.find(v => v.lang.startsWith("en")) ||
     voices[0];
 }
@@ -3309,7 +3323,7 @@ function speakText(text) {
 
   const utterance = new SpeechSynthesisUtterance(cleanText);
   utterance.voice = englishVoice;
-  utterance.lang = "en-US";
+  utterance.lang = "en-GB";
   utterance.rate = 0.85; // Đọc chậm một chút để dễ nghe vần
   window.speechSynthesis.speak(utterance);
 }
