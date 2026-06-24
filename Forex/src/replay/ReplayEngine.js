@@ -5,6 +5,7 @@
  */
 
 import { Config } from '../core/Config.js';
+import { findNearestCandleIndex } from '../data/TimeframeUtils.js';
 import { limitChartCandles } from '../performance/CandleSampler.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -241,17 +242,8 @@ export class ReplayEngine {
 
     if (this.#candles.length === 0) return;
 
-    let targetIndex = 0;
-    for (let i = 0; i < this.#candles.length; i++) {
-      if (this.#candles[i].timestamp <= timestamp) {
-        targetIndex = i;
-      } else {
-        break;
-      }
-    }
-
     this.#mode = 'replay';
-    this.#index = targetIndex;
+    this.#index = findNearestCandleIndex(this.#candles, timestamp);
     this.#emitState();
     this.#emitTick(true);
   }

@@ -19,7 +19,7 @@ import {
   resolveDatasetSelection,
 } from '../utils/runnableDatasets.js';
 import { takePendingChartFocus } from '../utils/chartNavigation.js';
-import { formatTimestamp } from '../data/TimeframeUtils.js';
+import { alignToTimeframe, formatTimestamp } from '../data/TimeframeUtils.js';
 import {
   SETUP_LEVEL_STYLES,
   TRADE_LEVEL_STYLES,
@@ -184,9 +184,12 @@ class ChartViewImpl {
       if (!this.#chart) return;
 
       if (fullRefresh || index < 2) {
-        this.#chart.setCandles(visible, { fit: !this.#activeSignal });
+        const replayMode = this.#replay?.getState().mode === 'replay';
+        this.#chart.setCandles(visible, { fit: !this.#activeSignal && !replayMode });
         if (this.#activeSignal) {
           this.#chart.setSignalOverlay(this.#activeSignal, visible);
+        } else if (replayMode && visible.length > 0) {
+          this.#chart.focusOnCandleIndex(visible.length - 1);
         }
       } else {
         this.#chart.updateCandle(candle, visible);
@@ -275,7 +278,7 @@ class ChartViewImpl {
       this.#replay?.load(candles);
 
       if (this.#pendingJump != null) {
-        this.#replay.jumpToDate(this.#pendingJump);
+        this.#replay.jumpToDate(alignToTimeframe(this.#pendingJump, this.#timeframe));
         this.#pendingJump = null;
       } else {
         const visible = this.#replay.getVisibleCandles();
@@ -360,9 +363,13 @@ class ChartViewImpl {
       case 'speed':
         this.#replay.setSpeed(/** @type {number} */ (payload.speed));
         break;
-      case 'jump':
-        if (payload.date) this.#replay.jumpToDate(/** @type {number} */ (payload.date));
+      case 'jump': {
+        const raw = /** @type {number} */ (payload.date);
+        if (!Number.isFinite(raw)) break;
+        const aligned = alignToTimeframe(raw, this.#timeframe);
+        this.#replay.jumpToDate(aligned);
         break;
+      }
       default:
         break;
     }

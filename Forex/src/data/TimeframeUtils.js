@@ -86,3 +86,70 @@ export function nextCandleTime(timestamp, timeframe) {
 export function formatTimestamp(timestamp) {
   return new Date(timestamp).toISOString().replace('T', ' ').slice(0, 16);
 }
+
+/**
+ * Value for `<input type="datetime-local">` — UTC fields (matches candle timestamps).
+ * @param {number} timestamp
+ * @returns {string}
+ */
+export function timestampToDatetimeLocalValue(timestamp) {
+  return new Date(timestamp).toISOString().slice(0, 16);
+}
+
+/**
+ * Parse datetime-local input as UTC (app candles use UTC epoch ms).
+ * @param {string} value - `YYYY-MM-DDTHH:mm`
+ * @returns {number} Epoch ms, or NaN if invalid
+ */
+export function parseDatetimeLocalAsUtc(value) {
+  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!match) return NaN;
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  return Date.UTC(year, month, day, hour, minute, 0, 0);
+}
+
+/**
+ * @param {{ timestamp: number }[]} candles
+ * @param {number} timestamp
+ * @returns {number}
+ */
+export function findCandleIndexAtOrBefore(candles, timestamp) {
+  if (candles.length === 0) return 0;
+  if (timestamp <= candles[0].timestamp) return 0;
+
+  const last = candles.length - 1;
+  if (timestamp >= candles[last].timestamp) return last;
+
+  let lo = 0;
+  let hi = last;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (candles[mid].timestamp <= timestamp) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo;
+}
+
+/**
+ * Nearest candle open to a timestamp (ties prefer the earlier bar).
+ * @param {{ timestamp: number }[]} candles
+ * @param {number} timestamp
+ * @returns {number}
+ */
+export function findNearestCandleIndex(candles, timestamp) {
+  if (candles.length === 0) return 0;
+  if (timestamp <= candles[0].timestamp) return 0;
+
+  const last = candles.length - 1;
+  if (timestamp >= candles[last].timestamp) return last;
+
+  const floorIdx = findCandleIndexAtOrBefore(candles, timestamp);
+  const ceilIdx = Math.min(floorIdx + 1, last);
+  const floorDist = timestamp - candles[floorIdx].timestamp;
+  const ceilDist = candles[ceilIdx].timestamp - timestamp;
+  return ceilDist < floorDist ? ceilIdx : floorIdx;
+}

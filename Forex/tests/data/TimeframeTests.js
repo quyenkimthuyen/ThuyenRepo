@@ -9,6 +9,9 @@ import {
   nextCandleTime,
   getTimeframeMs,
   formatTimestamp,
+  parseDatetimeLocalAsUtc,
+  timestampToDatetimeLocalValue,
+  findNearestCandleIndex,
 } from '../../src/data/TimeframeUtils.js';
 
 const s = createSuite('Timeframe Utils');
@@ -50,6 +53,29 @@ const W = 7 * D;
 {
   const ts = Date.UTC(2024, 5, 3, 10, 0, 0);
   s.assert('TF-14: formatTimestamp', formatTimestamp(ts).includes('2024-06-03'));
+}
+
+{
+  const ts = Date.UTC(2024, 5, 3, 14, 30, 0);
+  s.assertEq('TF-15: datetime-local value', timestampToDatetimeLocalValue(ts), '2024-06-03T14:30');
+  s.assertEq('TF-16: parse UTC input', parseDatetimeLocalAsUtc('2024-06-03T14:30'), ts);
+  s.assert('TF-17: parse rejects invalid', Number.isNaN(parseDatetimeLocalAsUtc('bad')));
+}
+
+{
+  const bars = [
+    { timestamp: Date.UTC(2024, 0, 1, 10, 0, 0) },
+    { timestamp: Date.UTC(2024, 0, 1, 11, 0, 0) },
+    { timestamp: Date.UTC(2024, 0, 1, 12, 0, 0) },
+  ];
+  s.assertEq('TF-18: nearest exact', findNearestCandleIndex(bars, bars[1].timestamp), 1);
+  s.assertEq('TF-19: nearest before first', findNearestCandleIndex(bars, bars[0].timestamp - 1), 0);
+  s.assertEq('TF-20: nearest after last', findNearestCandleIndex(bars, bars[2].timestamp + 1), 2);
+  s.assertEq(
+    'TF-21: nearest between bars',
+    findNearestCandleIndex(bars, Date.UTC(2024, 0, 1, 11, 45, 0)),
+    2
+  );
 }
 
 process.exit(footer(s.finish()));

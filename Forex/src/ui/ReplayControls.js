@@ -5,7 +5,11 @@
 
 import { Config } from '../core/Config.js';
 import { el } from '../utils/dom.js';
-import { formatTimestamp } from '../data/TimeframeUtils.js';
+import {
+  formatTimestamp,
+  parseDatetimeLocalAsUtc,
+  timestampToDatetimeLocalValue,
+} from '../data/TimeframeUtils.js';
 import { getSession, getSessionColor } from '../chart/SessionUtils.js';
 
 /**
@@ -38,7 +42,12 @@ class ReplayControlsImpl {
         el('button', { class: 'btn btn-sm replay-speed-btn', dataset: { action: 'speed', speed: String(Config.REPLAY.SPEED_ULTRA) } }, ['16x']),
       ]),
       el('div', { class: 'replay-group replay-jump' }, [
-        el('input', { type: 'datetime-local', class: 'replay-date-input', id: 'replay-jump-date', title: 'Jump to date' }),
+        el('input', {
+          type: 'datetime-local',
+          class: 'replay-date-input',
+          id: 'replay-jump-date',
+          title: 'Jump to date (UTC)',
+        }),
         el('button', { class: 'btn btn-sm', dataset: { action: 'jump' } }, ['Jump']),
       ]),
       el('div', { class: 'replay-group replay-mode' }, [
@@ -66,8 +75,9 @@ class ReplayControlsImpl {
         const input = /** @type {HTMLInputElement} */ (
           this.#root?.querySelector('#replay-jump-date')
         );
-        if (input?.value) {
-          this.#onAction('jump', { date: new Date(input.value).getTime() });
+        const date = input?.value ? parseDatetimeLocalAsUtc(input.value) : NaN;
+        if (Number.isFinite(date)) {
+          this.#onAction('jump', { date });
         }
       } else {
         this.#onAction(action);
@@ -82,6 +92,19 @@ class ReplayControlsImpl {
    * @param {import('../replay/ReplayEngine.js').ReplayState} state
    * @param {import('../data/Candle.js').Candle} [candle]
    */
+  /**
+   * Sync the jump date field to a candle timestamp (UTC).
+   * @param {number} timestamp
+   */
+  setJumpDate(timestamp) {
+    const input = /** @type {HTMLInputElement|undefined} */ (
+      this.#root?.querySelector('#replay-jump-date')
+    );
+    if (input && Number.isFinite(timestamp)) {
+      input.value = timestampToDatetimeLocalValue(timestamp);
+    }
+  }
+
   update(state, candle) {
     const progress = document.getElementById('replay-progress');
     const ohlc = document.getElementById('replay-ohlc');
@@ -106,6 +129,10 @@ class ReplayControlsImpl {
       const sess = getSession(candle.timestamp);
       session.textContent = `${formatTimestamp(candle.timestamp)} UTC · ${sess}`;
       session.style.color = getSessionColor(sess);
+    }
+
+    if (candle) {
+      this.setJumpDate(candle.timestamp);
     }
   }
 }

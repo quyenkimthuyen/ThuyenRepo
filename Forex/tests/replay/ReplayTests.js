@@ -56,6 +56,23 @@ const candles = Array.from({ length: 100 }, (_, i) => candle(i, 1.08, 1.09, 1.07
 {
   const replay = new ReplayEngine();
   replay.load(candles);
+  const between = candles[50].timestamp + 2000000;
+  replay.jumpToDate(between);
+  s.assert('RP-08b: Jump nearest between bars', replay.getState().index === 51);
+  replay.destroy();
+}
+
+{
+  const replay = new ReplayEngine();
+  replay.load(candles);
+  replay.jumpToDate(candles[99].timestamp + 999999);
+  s.assert('RP-08c: Jump after last candle', replay.getState().index === 99);
+  replay.destroy();
+}
+
+{
+  const replay = new ReplayEngine();
+  replay.load(candles);
   replay.resetReplay();
   while (replay.next()) { /* advance */ }
   s.assert('RP-10: End of replay', replay.getState().index === candles.length - 1);
