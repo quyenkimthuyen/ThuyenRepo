@@ -465,6 +465,7 @@ function updateQuizRow(index) {
 
 function syncMicStateFromEngine() {
   if (!liveModeActive || !micEngine) return;
+  if (isSamplePlaying) return;
   const phase = micEngine.phase;
   if (isScoreMode() && (phase === MIC_PHASE.PROCESSING || phase === MIC_PHASE.COOLDOWN)) {
     setMicState(lastMicUiState, lastMicUiLabel);
@@ -1871,6 +1872,12 @@ function startVadLoop() {
   const tick = () => {
     if (!liveModeActive || !liveAnalyser || !micEngine) return;
 
+    if (isSamplePlaying) {
+      if (els.vadLevel) els.vadLevel.style.width = '100%';
+      vadAnimationId = requestAnimationFrame(tick);
+      return;
+    }
+
     if (isListeningBlocked()) {
       els.vadLevel.style.width = '0%';
       vadAnimationId = requestAnimationFrame(tick);
@@ -1885,12 +1892,17 @@ function startVadLoop() {
   tick();
 }
 
-function pauseListeningForSample() {
+function beginSamplePlayback() {
   if (sampleResumeTimer) {
     clearTimeout(sampleResumeTimer);
     sampleResumeTimer = null;
   }
   isSamplePlaying = true;
+  setMicState(MIC_STATE.SAMPLE, 'Đang phát mẫu...');
+  if (els.vadLevel) els.vadLevel.style.width = '100%';
+
+  if (!liveModeActive) return;
+
   speechRecognitionPaused = true;
   stopPhraseRecordingSync();
   phraseChunks = [];
@@ -1902,13 +1914,12 @@ function pauseListeningForSample() {
   micEngine?.pause();
   clearLiveTranscript();
 
-  if (speechRecognition && liveModeActive) {
+  if (speechRecognition) {
     try { speechRecognition.stop(); } catch { /* ignore */ }
   }
-  setMicState(MIC_STATE.SAMPLE, 'Đang phát mẫu...');
 }
 
-function resumeListeningAfterSample() {
+function endSamplePlayback() {
   if (!isSamplePlaying) return;
   if (sampleResumeTimer) clearTimeout(sampleResumeTimer);
 
@@ -1918,13 +1929,19 @@ function resumeListeningAfterSample() {
 
     isSamplePlaying = false;
     speechRecognitionPaused = false;
-    micEngine?.resume();
-    resumeRingRecorder();
 
-    if (liveModeActive && speechRecognition) {
-      try { speechRecognition.start(); } catch { /* ignore */ }
+    if (liveModeActive) {
+      micEngine?.setSampleMode(false);
+      micEngine?.resume();
+      resumeRingRecorder();
+      if (speechRecognition) {
+        try { speechRecognition.start(); } catch { /* ignore */ }
+      }
       setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
+    } else {
+      setMicState(MIC_STATE.OFF, 'Micro tắt');
     }
+    if (els.vadLevel) els.vadLevel.style.width = '0%';
   }, SAMPLE_TAIL_MS);
 }
 
@@ -1939,12 +1956,10 @@ function playSample(options = {}) {
   if (!fromIdle && !fromAutoplay) noteUserInput();
 
   const w = words[currentIndex];
-  const guardMic = liveModeActive;
-
-  if (guardMic) pauseListeningForSample();
+  beginSamplePlayback();
 
   const finishSample = () => {
-    if (guardMic) resumeListeningAfterSample();
+    endSamplePlayback();
     onDone?.();
   };
 
@@ -1971,13 +1986,10 @@ function playSample(options = {}) {
     speechSynthesis.cancel();
     speechSynthesis.speak(utter);
 
-    // Một số trình duyệt không gọi onend — dự phòng
-    if (guardMic) {
-      const maxMs = Math.max(2500, w.word.length * 180);
-      setTimeout(() => {
-        if (isSamplePlaying && !speechSynthesis.speaking) done();
-      }, maxMs);
-    }
+    const maxMs = Math.max(2500, w.word.length * 180);
+    setTimeout(() => {
+      if (isSamplePlaying && !speechSynthesis.speaking) done();
+    }, maxMs);
     return;
   }
 
