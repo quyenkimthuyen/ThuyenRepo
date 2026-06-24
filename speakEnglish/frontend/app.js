@@ -10,6 +10,8 @@ import {
   textMatchPractice,
   textMatchWithThreshold,
   textSimilarityPercent,
+  extractPracticeMatchSnippet,
+  extractSpokenText,
   getHangoverMs,
   computeRms,
   TEXT_MATCH_DELAY_MS,
@@ -668,6 +670,8 @@ function applyPracticeModeUI() {
   const textActive = isTextMode();
   els.modeText?.classList.toggle('active', textActive);
   els.modeScore?.classList.toggle('active', !textActive);
+  els.modeText?.setAttribute('aria-selected', textActive ? 'true' : 'false');
+  els.modeScore?.setAttribute('aria-selected', textActive ? 'false' : 'true');
   els.appRoot?.classList.toggle('mode-text', textActive);
   els.appRoot?.classList.toggle('mode-score', !textActive);
 
@@ -800,7 +804,7 @@ function registerWordFailure() {
   } else {
     showLiveHint(`Nghe lại mẫu (sai ${SAMPLE_REPLAY_AFTER_FAILS} lần)`, 'warn');
   }
-  playSample();
+  if (shouldAutoplaySample()) playSample();
 }
 
 // ─── Word navigation ────────────────────────────────────────────────────────
@@ -819,6 +823,10 @@ function clearPassAdvanceTimer() {
     clearTimeout(passAdvanceTimer);
     passAdvanceTimer = null;
   }
+}
+
+function shouldAutoplaySample() {
+  return Boolean(els.settingAutoplay?.checked && liveModeActive);
 }
 
 function getIdleSampleSec() {
@@ -847,7 +855,7 @@ function noteUserInput() {
 function scheduleIdleSample() {
   clearIdleSampleTimer();
   const sec = getIdleSampleSec();
-  if (!sec || !words.length || !idleSampleArmed) return;
+  if (!sec || !words.length || !idleSampleArmed || !shouldAutoplaySample()) return;
 
   idleSampleTimer = setTimeout(() => {
     idleSampleTimer = null;
@@ -866,6 +874,10 @@ function scheduleIdleSample() {
 }
 
 function armIdleSampleTimer() {
+  if (!shouldAutoplaySample()) {
+    disarmIdleSampleTimer();
+    return;
+  }
   const sec = getIdleSampleSec();
   if (!sec) {
     disarmIdleSampleTimer();
@@ -915,7 +927,7 @@ function showWord(index, options = {}) {
   micEngine?.resetSession();
   syncTranscriptFromEngine();
 
-  if (autoplay && els.settingAutoplay.checked) {
+  if (autoplay && shouldAutoplaySample()) {
     playSample({ fromAutoplay: true });
   }
   lastScoredAtIndex = -1;
@@ -1175,17 +1187,28 @@ function initLiveSpeech() {
 
 function syncTranscriptFromEngine() {
   if (!micEngine) return;
-  const finalText = micEngine.transcriptFinal.trim();
-  const interimText = micEngine.transcriptInterim;
-  els.liveTranscriptFinal.textContent = finalText;
-  els.liveTranscriptInterim.textContent = interimText;
-  const hasText = finalText || interimText;
+  const rawFinal = micEngine.transcriptFinal.trim();
+  const rawInterim = micEngine.transcriptInterim;
+  const combined = extractSpokenText(rawFinal, rawInterim);
+  const w = words[currentIndex];
+
+  let displayFinal = rawFinal;
+  let displayInterim = rawInterim;
+  if (isTextMode() && w?.word && combined) {
+    const snippet = extractPracticeMatchSnippet(combined, w.word);
+    if (snippet) {
+      displayFinal = snippet;
+      displayInterim = '';
+    }
+  }
+
+  els.liveTranscriptFinal.textContent = displayFinal;
+  els.liveTranscriptInterim.textContent = displayInterim;
+  const hasText = Boolean(displayFinal || displayInterim);
   els.liveTranscriptPlaceholder.classList.toggle('hidden', !!hasText);
 
-  const w = words[currentIndex];
-  const lastWord = micEngine.getSpokenWord();
   if (!isScoreMode()) {
-    const match = spokenMatchesTarget(lastWord, w?.word);
+    const match = spokenMatchesTarget(combined || rawFinal, w?.word);
     els.liveTranscriptInterim.classList.toggle('match', match);
     els.liveTranscriptFinal.classList.toggle('match', match);
   } else {
@@ -1631,7 +1654,8 @@ async function processTextUtterance(spoken) {
   if (!spokenMatchesTarget(word, w.word)) {
     const score = textSimilarityPercent(word, w.word);
     const need = getTextPassThreshold();
-    showLiveHint(`✗ "${word}" — ${score}% (cần ≥${need}%) · "${w.word}"`, 'mis');
+    const display = extractPracticeMatchSnippet(word, w.word) || word;
+    showLiveHint(`✗ "${display}" — ${score}% (cần ≥${need}%) · "${w.word}"`, 'mis');
     registerWordFailure();
     micEngine?.clearTranscript();
     syncTranscriptFromEngine();
@@ -1663,6 +1687,9 @@ function updateRealtimeHint() {
   if (!w || isAdvancing) return;
 
   const spoken = getSpokenWord();
+  const display = isTextMode() && w?.word
+    ? (extractPracticeMatchSnippet(spoken, w.word) || spoken)
+    : spoken;
   if (!spoken) {
     if (!isTextMode()) hideLiveHint();
     return;
@@ -1672,13 +1699,13 @@ function updateRealtimeHint() {
     const score = textSimilarityPercent(spoken, w.word);
     const need = getTextPassThreshold();
     const msg = score >= 100
-      ? `✓ "${spoken}" — khớp!`
-      : `✓ "${spoken}" ~${score}% (≥${need}%)`;
+      ? `✓ "${display}" — khớp!`
+      : `✓ "${display}" ~${score}% (≥${need}%)`;
     showLiveHint(msg, 'ok');
   } else {
     const score = textSimilarityPercent(spoken, w.word);
     const need = getTextPassThreshold();
-    showLiveHint(`✗ "${spoken}" — ${score}% (cần ≥${need}%) · "${w.word}"`, 'mis');
+    showLiveHint(`✗ "${display}" — ${score}% (cần ≥${need}%) · "${w.word}"`, 'mis');
   }
 }
 
@@ -1730,6 +1757,7 @@ function attachLivePipeline() {
   liveModeActive = true;
   micEngine.start();
   updateLiveModeChrome();
+  armIdleSampleTimer();
 }
 
 function reconfigureLiveMode() {
@@ -1773,6 +1801,7 @@ async function startLiveMode(options = {}) {
 function stopLiveMode() {
   if (!liveModeActive) return;
 
+  disarmIdleSampleTimer();
   liveModeActive = false;
   clearPassAdvanceTimer();
   isAdvancing = false;
@@ -1827,7 +1856,7 @@ function stopLiveMode() {
 
 function toggleLiveMode() {
   if (liveModeActive) stopLiveMode();
-  else startLiveMode();
+  else startLiveMode().then(() => armIdleSampleTimer()).catch(() => {});
 }
 
 function startVadLoop() {
@@ -2156,7 +2185,7 @@ async function advanceAfterPass(data) {
   clearScoreMatchTimer();
   hideLiveHint();
   prepareMicForNextUtterance();
-  const playSampleOnAdvance = els.settingAutoplay.checked && !liveModeActive;
+  const playSampleOnAdvance = shouldAutoplaySample();
   nextWord({ autoplay: playSampleOnAdvance });
   isAdvancing = false;
 }
@@ -2359,6 +2388,11 @@ function bindEvents() {
 
   els.settingIdleSampleSec?.addEventListener('input', () => {
     if (idleSampleArmed) armIdleSampleTimer();
+  });
+
+  els.settingAutoplay?.addEventListener('change', () => {
+    if (shouldAutoplaySample()) armIdleSampleTimer();
+    else disarmIdleSampleTimer();
   });
 
   window.addEventListener('beforeunload', () => stopLiveMode());

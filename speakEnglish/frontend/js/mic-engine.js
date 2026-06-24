@@ -114,6 +114,10 @@ export class MicEngine {
 
   pushTranscript(finalPart, interimPart) {
     if (finalPart) this.transcriptFinal += `${finalPart} `;
+    const tokens = this.transcriptFinal.trim().split(/\s+/).filter(Boolean);
+    if (tokens.length > 14) {
+      this.transcriptFinal = `${tokens.slice(-10).join(' ')} `;
+    }
     if (interimPart !== undefined) this.transcriptInterim = interimPart;
   }
 

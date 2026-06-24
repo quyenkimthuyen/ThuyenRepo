@@ -190,6 +190,98 @@ export function collapseConsecutiveTokens(tokens) {
   return out;
 }
 
+/** Cụm mục tiêu không khoảng trắng: "viet nam" → "vietnam" */
+export function compactPhrase(tokens) {
+  return tokens.filter(Boolean).join('');
+}
+
+/** SR gộp cả cụm thành một token */
+export function singleTokenMatchesPhrase(token, targetTokens) {
+  if (!token || !targetTokens.length) return false;
+  return tokensSpellingMatch(token, compactPhrase(targetTokens));
+}
+
+/** Chỉ xét đuôi transcript — tránh SR tích lũy cả câu dài */
+export function tailTokensForMatch(spokenTokens, targetTokenCount, margin = 5) {
+  const keep = Math.max(targetTokenCount + margin, 8);
+  if (spokenTokens.length <= keep) return spokenTokens;
+  return spokenTokens.slice(-keep);
+}
+
+function phrasePrefixAllowed(prefix, targetTokens) {
+  if (prefix.length === 0) return true;
+  if (prefix.some((t) => TEXT_PREFIX_BLOCK.has(t))) return false;
+  return prefix.every(
+    (t) => t.length <= 4 && !tokensSpellingMatch(t, targetTokens[0]),
+  );
+}
+
+/**
+ * Tìm cửa sổ khớp cụm mục tiêu (token rời hoặc SR gộp "vietnam" cho "Viet Nam").
+ * @returns {{ start: number, end: number } | null}
+ */
+export function findPhraseMatchSpan(spokenTokens, targetTokens) {
+  if (!spokenTokens.length || !targetTokens.length) return null;
+
+  const n = targetTokens.length;
+  const compact = compactPhrase(targetTokens);
+
+  for (let i = 0; i < spokenTokens.length; i += 1) {
+    if (singleTokenMatchesPhrase(spokenTokens[i], targetTokens)) {
+      if (phrasePrefixAllowed(spokenTokens.slice(0, i), targetTokens)) {
+        return { start: i, end: i + 1 };
+      }
+    }
+  }
+
+  for (let i = 0; i <= spokenTokens.length - n; i += 1) {
+    const window = spokenTokens.slice(i, i + n);
+    if (window.every((tok, j) => tokensSpellingMatch(tok, targetTokens[j]))) {
+      if (phrasePrefixAllowed(spokenTokens.slice(0, i), targetTokens)) {
+        return { start: i, end: i + n };
+      }
+    }
+  }
+
+  for (let i = 0; i < spokenTokens.length; i += 1) {
+    let acc = '';
+    for (let j = i; j < spokenTokens.length; j += 1) {
+      acc += spokenTokens[j];
+      if (acc.length > compact.length) break;
+      if (tokensSpellingMatch(acc, compact)) {
+        if (phrasePrefixAllowed(spokenTokens.slice(0, i), targetTokens)) {
+          return { start: i, end: j + 1 };
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+export function findPhraseWindowMatch(spokenTokens, targetTokens) {
+  return findPhraseMatchSpan(spokenTokens, targetTokens) != null;
+}
+
+export function prepareSpokenTokensForMatch(spoken, target) {
+  const targetTokens = normalizeTextForMatch(target).split(' ').filter(Boolean);
+  let spokenTokens = collapseConsecutiveTokens(
+    normalizeTextForMatch(spoken).split(' ').filter(Boolean),
+  );
+  spokenTokens = stripLeadingArticles(spokenTokens);
+  spokenTokens = tailTokensForMatch(spokenTokens, targetTokens.length);
+  return { spokenTokens, targetTokens };
+}
+
+/** Đoạn transcript đáng hiển thị / chấm — không cả câu SR lặp vô hạn */
+export function extractPracticeMatchSnippet(spoken, target) {
+  const { spokenTokens, targetTokens } = prepareSpokenTokensForMatch(spoken, target);
+  if (!spokenTokens.length) return '';
+  const span = findPhraseMatchSpan(spokenTokens, targetTokens);
+  if (span) return spokenTokens.slice(span.start, span.end).join(' ');
+  return spokenTokens.slice(-Math.max(targetTokens.length, 3)).join(' ');
+}
+
 /** Bỏ mạo từ đầu câu do SR thêm: "the living room" */
 export function stripLeadingArticles(tokens) {
   const articles = new Set(['the', 'a', 'an']);
@@ -219,18 +311,11 @@ export function textMatchExact(spoken, target) {
 export function textMatchPractice(spoken, target) {
   if (textMatchExact(spoken, target)) return true;
 
-  const targetTokens = normalizeTextForMatch(target).split(' ').filter(Boolean);
-  if (!targetTokens.length) return false;
-
-  let spokenTokens = collapseConsecutiveTokens(
-    normalizeTextForMatch(spoken).split(' ').filter(Boolean),
-  );
-  if (!spokenTokens.length) return false;
+  const { spokenTokens, targetTokens } = prepareSpokenTokensForMatch(spoken, target);
+  if (!targetTokens.length || !spokenTokens.length) return false;
 
   if (textMatchExact(spokenTokens.join(' '), target)) return true;
-
-  spokenTokens = stripLeadingArticles(spokenTokens);
-  if (textMatchExact(spokenTokens.join(' '), target)) return true;
+  if (findPhraseWindowMatch(spokenTokens, targetTokens)) return true;
 
   if (spokenTokens.length < targetTokens.length) return false;
 
@@ -240,13 +325,7 @@ export function textMatchPractice(spoken, target) {
   }
 
   const prefix = spokenTokens.slice(0, -targetTokens.length);
-  if (prefix.length === 0) return true;
-  if (prefix.some((t) => TEXT_PREFIX_BLOCK.has(t))) return false;
-
-  // Tiền tố ngắn / không trùng âm mục tiêu — coi là nhiễu SR (vd. "tito timetable")
-  return prefix.every(
-    (t) => t.length <= 4 && !tokensSpellingMatch(t, targetTokens[0]),
-  );
+  return phrasePrefixAllowed(prefix, targetTokens);
 }
 
 function levenshteinDistance(a, b) {
@@ -282,14 +361,21 @@ export function similarityPercent(a, b) {
 export function textSimilarityPercent(spoken, target) {
   if (textMatchPractice(spoken, target)) return 100;
 
+  const { spokenTokens, targetTokens } = prepareSpokenTokensForMatch(spoken, target);
   const targetNorm = normalizeTextForMatch(target);
-  const targetTokens = targetNorm.split(' ').filter(Boolean);
   if (!targetNorm) return 0;
 
-  let spokenTokens = stripLeadingArticles(
-    collapseConsecutiveTokens(normalizeTextForMatch(spoken).split(' ').filter(Boolean)),
-  );
   let best = similarityPercent(spoken, target);
+
+  const snippet = extractPracticeMatchSnippet(spoken, target);
+  if (snippet) best = Math.max(best, similarityPercent(snippet, targetNorm));
+
+  const compact = compactPhrase(targetTokens);
+  for (const tok of spokenTokens) {
+    if (singleTokenMatchesPhrase(tok, targetTokens)) {
+      best = Math.max(best, similarityPercent(tok, compact));
+    }
+  }
 
   if (spokenTokens.length >= targetTokens.length) {
     const suffix = spokenTokens.slice(-targetTokens.length).join(' ');

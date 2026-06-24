@@ -94,6 +94,19 @@ describe('textMatchPractice', () => {
     assert.equal(textMatchPractice('room', 'living room'), false);
     assert.equal(textMatchPractice('tito room', 'timetable'), false);
   });
+
+  it('accepts SR merged phrase token for spaced target', () => {
+    assert.equal(textMatchPractice('vietnam', 'Viet Nam'), true);
+    assert.equal(textMatchPractice('viet nam', 'Viet Nam'), true);
+    assert.equal(
+      textMatchPractice(
+        'vietnam vietnam vietnam vietnam vape nam vietnam vietnam vietnam vietnam vietnam',
+        'Viet Nam',
+      ),
+      true,
+    );
+    assert.equal(textMatchPractice('vietnamese', 'Viet Nam'), false);
+  });
 });
 
 describe('textMatchWithThreshold', () => {

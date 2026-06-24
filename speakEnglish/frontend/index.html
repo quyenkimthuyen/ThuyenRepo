@@ -7,16 +7,27 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app">
+  <div class="app mode-text">
     <header class="header">
       <h1>PronounceLab <span class="accent">Personal</span></h1>
-      <p class="subtitle">Luyện phát âm theo chủ đề — quiz ngẫu nhiên, chấm IPA local</p>
     </header>
 
     <nav class="toolbar">
       <div class="mode-switch" role="tablist" aria-label="Chế độ luyện tập">
-        <button id="mode-text" class="mode-btn active" type="button" role="tab">📝 Chỉ text</button>
-        <button id="mode-score" class="mode-btn" type="button" role="tab">🎯 Chấm điểm</button>
+        <button id="mode-text" class="mode-card active" type="button" role="tab" aria-selected="true">
+          <span class="mode-card-glyph" aria-hidden="true">Aa</span>
+          <span class="mode-card-text">
+            <span class="mode-card-name">Chỉ text</span>
+            <span class="mode-card-hint">Nhận diện giọng · khớp chữ</span>
+          </span>
+        </button>
+        <button id="mode-score" class="mode-card" type="button" role="tab" aria-selected="false">
+          <span class="mode-card-glyph" aria-hidden="true">IPA</span>
+          <span class="mode-card-text">
+            <span class="mode-card-name">Chấm điểm</span>
+            <span class="mode-card-hint">Phân tích IPA từng âm</span>
+          </span>
+        </button>
       </div>
       <div class="toolbar-row">
         <span id="quiz-info" class="quiz-info">—</span>
