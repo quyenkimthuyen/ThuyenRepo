@@ -97,7 +97,7 @@ export const CONTEXT_DOC_SECTIONS = [
         items: [
           `Cặp: ${Config.SYMBOLS.join(', ')}`,
           `Khung: ${Config.TIMEFRAMES.join(', ')}`,
-          'Chiến lược: Break & Retest, EMA Pullback, Liquidity Grab',
+          'Chiến lược: Break & Retest, EMA Pullback, Liquidity Grab, Inside Bar, Pin Bar, Wyckoff Spring/UTAD, Wyckoff Range Test',
         ],
       },
     ],
@@ -529,6 +529,113 @@ export const CONTEXT_DOC_SECTIONS = [
           ['maxBodyRatio', '0.35', 'Thân nến phải nhỏ'],
           ['rr', '2', 'TP theo R'],
         ],
+      },
+
+      { type: 'h2', text: '6. Wyckoff Spring / UTAD (wyckoff-spring-utad)' },
+      {
+        type: 'p',
+        text: 'Ý tưởng Wyckoff: sau giai đoạn tích lũy/phân phối trong trading range, giá quét qua biên range (spring ở đáy, UTAD ở đỉnh) rồi đóng cửa quay lại trong range — vào lệnh NGAY tại nến spring/UTAD. Khác Liquidity Grab: bắt buộc có range consolidation trước đó.',
+      },
+      {
+        type: 'image',
+        layout: 'portrait',
+        diagramId: 'wyckoff-spring-utad-long',
+        alt: 'So do Wyckoff Spring Long',
+        caption: 'Gia sideway trong range (vang) → nen spring quet duoi range low nhung dong cua tren bien → LONG ngay tai close. SL duoi day spring.',
+      },
+      {
+        type: 'image',
+        layout: 'portrait',
+        diagramId: 'wyckoff-spring-utad-short',
+        alt: 'So do Wyckoff UTAD Short',
+        caption: 'Doi xung: UTAD quet tren range high, dong cua quay lai trong range → SHORT tai close. Bat buoc co phase tich luy truoc.',
+      },
+      { type: 'h3', text: 'LONG — Spring' },
+      {
+        type: 'ol',
+        items: [
+          'Trading range: max(high) / min(low) của rangeLookback nến trước, chiều cao ≥ minRangePips.',
+          '≥ minInsideRatio số close nằm trong range (sideway thật, không trend).',
+          'low quét dưới rangeLow − sweepPips, close > rangeLow (false break).',
+          'Râu dưới ≥ wickRatio + nến xác nhận tăng → LONG tại close.',
+        ],
+      },
+      { type: 'h3', text: 'SHORT — UTAD' },
+      {
+        type: 'p',
+        text: 'Đối xứng: high quét trên rangeHigh + sweepPips, close < rangeHigh, râu trên rejection + nến giảm.',
+      },
+      {
+        type: 'table',
+        headers: ['', 'Wyckoff Spring/UTAD', 'Liquidity Grab'],
+        rows: [
+          ['Level', 'Biên trading range (dài hơn)', 'Swing high/low ngắn'],
+          ['Bối cảnh', 'Bắt buộc consolidation trong range', 'Không cần range'],
+          ['Entry', 'Tại nến spring/UTAD', 'Tại nến quét swing'],
+        ],
+      },
+      {
+        type: 'table',
+        headers: ['Tham số', 'Mặc định', 'Gợi ý 4H / 1D'],
+        rows: [
+          ['rangeLookback', '20', '20–30 (4H), 30–50 (1D)'],
+          ['minRangePips', '15', '15–25 (4H), 30–60 (1D)'],
+          ['minInsideRatio', '0.65', '0.6–0.75'],
+          ['sweepPips', '2', '2–4'],
+          ['wickRatio', '0.55', '0.5–0.65'],
+          ['rr', '2', '2–3'],
+        ],
+      },
+
+      { type: 'h2', text: '7. Wyckoff Range Test (wyckoff-range-test)' },
+      {
+        type: 'p',
+        text: 'Ý tưởng Wyckoff cổ điển: sau spring/UTAD, giá rally rồi quay lại test biên range lần hai (higher low / lower high) — entry tại nến test, không vào ngay tại spring/UTAD. Conservative hơn strategy §6.',
+      },
+      {
+        type: 'image',
+        layout: 'portrait',
+        diagramId: 'wyckoff-range-test-long',
+        alt: 'So do Wyckoff Range Test Long',
+        caption: '① Spring (chua vao) → ② Rally roi bien → ③ Test higher low tai range low + nen xanh = LONG tai nen test.',
+      },
+      {
+        type: 'image',
+        layout: 'portrait',
+        diagramId: 'wyckoff-range-test-short',
+        alt: 'So do Wyckoff Range Test Short',
+        caption: 'Doi xung: UTAD → giam manh → test lower high tai range high → SHORT. An toan hon vao ngay tai UTAD.',
+      },
+      { type: 'h3', text: 'Luồng LONG' },
+      {
+        type: 'ol',
+        items: [
+          'Nến spring hợp lệ (giống §6) → ghi nhận setup, chưa vào lệnh.',
+          'Trong testMaxBars nến: giá rally ≥ rallyMinPips phía trên rangeLow.',
+          'Nến test chạm vùng rangeLow ± testTolerancePips, low > đáy spring (không phá spring).',
+          'Nến xác nhận tăng → LONG tại close test.',
+        ],
+      },
+      { type: 'h3', text: 'Luồng SHORT — đối xứng UTAD test' },
+      {
+        type: 'p',
+        text: 'UTAD → giá giảm ≥ rallyMinPips → test lại rangeHigh với high thấp hơn đỉnh UTAD → SHORT.',
+      },
+      {
+        type: 'table',
+        headers: ['Tham số', 'Mặc định', 'Tác dụng'],
+        rows: [
+          ['testMaxBars', '8', 'Thời gian chờ test sau spring/UTAD'],
+          ['rallyMinPips', '5', 'Phải có sóng rời biên trước khi test hợp lệ'],
+          ['testTolerancePips', '3', 'Vùng chạm biên range khi test'],
+          ['eventWickRatio', '0.5', 'Wick tối thiểu trên nến spring/UTAD (arm setup)'],
+          ['testWickRatio', '0.45', 'Wick tối thiểu trên nến test entry'],
+        ],
+      },
+      {
+        type: 'callout',
+        variant: 'tip',
+        text: 'Dùng §6 khi muốn vào sớm tại spring/UTAD; dùng §7 khi muốn xác nhận test lần hai theo Wyckoff. Có thể bật cả hai strategy và so sánh trên Simulation.',
       },
 
       { type: 'h3', text: 'Nến xác nhận (dùng chung các strategy)' },

@@ -9,6 +9,8 @@ import { EMAPullbackStrategy } from './EMAPullbackStrategy.js';
 import { LiquidityGrabStrategy } from './LiquidityGrabStrategy.js';
 import { InsideBarBreakoutStrategy } from './InsideBarBreakoutStrategy.js';
 import { PinBarRejectionStrategy } from './PinBarRejectionStrategy.js';
+import { WyckoffSpringUtadStrategy } from './WyckoffSpringUtadStrategy.js';
+import { WyckoffRangeTestStrategy } from './WyckoffRangeTestStrategy.js';
 
 /** All built-in strategy classes. */
 export const BUILTIN_STRATEGIES = [
@@ -17,6 +19,8 @@ export const BUILTIN_STRATEGIES = [
   LiquidityGrabStrategy,
   InsideBarBreakoutStrategy,
   PinBarRejectionStrategy,
+  WyckoffSpringUtadStrategy,
+  WyckoffRangeTestStrategy,
 ];
 
 /**

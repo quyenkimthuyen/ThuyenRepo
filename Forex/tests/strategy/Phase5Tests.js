@@ -8,6 +8,8 @@ import { EMAPullbackStrategy } from '../../src/strategies/EMAPullbackStrategy.js
 import { LiquidityGrabStrategy } from '../../src/strategies/LiquidityGrabStrategy.js';
 import { InsideBarBreakoutStrategy } from '../../src/strategies/InsideBarBreakoutStrategy.js';
 import { PinBarRejectionStrategy } from '../../src/strategies/PinBarRejectionStrategy.js';
+import { WyckoffSpringUtadStrategy } from '../../src/strategies/WyckoffSpringUtadStrategy.js';
+import { WyckoffRangeTestStrategy } from '../../src/strategies/WyckoffRangeTestStrategy.js';
 import { createContext } from '../../src/strategy/StrategyContext.js';
 
 const H = 3600000;
@@ -282,6 +284,108 @@ const PB_PAD = 25;
   candles.push(c(PB_PAD + 21, 1.0853, 1.0860, 1.0849, 1.0850, 600));
   const signals = runScan(new PinBarRejectionStrategy(), candles);
   assert('PB-05: Duplicate swing level → 1 signal only', signals.length === 1);
+}
+
+console.log('\n=== Wyckoff Spring / UTAD Tests ===\n');
+
+const WY_SPRING_PARAMS = {
+  rangeLookback: 15,
+  minRangePips: 8,
+  minInsideRatio: 0.6,
+  sweepPips: 2,
+  wickRatio: 0.5,
+  rr: 2,
+};
+
+/**
+ * @param {number} n
+ * @param {number} [low]
+ * @param {number} [high]
+ * @returns {import('../../src/data/Candle.js').Candle[]}
+ */
+function buildConsolidationRange(n, low = 1.0850, high = 1.0865) {
+  const candles = [];
+  for (let i = 0; i < n; i++) {
+    if (i % 2 === 0) {
+      candles.push(c(i, 1.0863, high, high - 0.0005, 1.0862));
+    } else {
+      candles.push(c(i, 1.0852, low + 0.0005, low, 1.0853));
+    }
+  }
+  return candles;
+}
+
+{
+  const candles = buildConsolidationRange(30);
+  candles.push(c(30, 1.0852, 1.0854, 1.08475, 1.0848));
+  const signals = runScan(new WyckoffSpringUtadStrategy(), candles, 'EURUSD', WY_SPRING_PARAMS);
+  assert('WS-01: Spring sweep but close below range → no long', signals.filter((s) => s.direction === 'long').length === 0);
+}
+
+{
+  const candles = buildConsolidationRange(30);
+  candles.push(c(30, 1.08525, 1.0855, 1.08475, 1.0854, 600));
+  const signals = runScan(new WyckoffSpringUtadStrategy(), candles, 'EURUSD', WY_SPRING_PARAMS);
+  assert('WS-02: Valid spring in range → 1 LONG', signals.filter((s) => s.direction === 'long').length === 1);
+}
+
+{
+  const candles = buildConsolidationRange(30);
+  candles.push(c(30, 1.0864, 1.08675, 1.0862, 1.08625, 600));
+  const signals = runScan(new WyckoffSpringUtadStrategy(), candles, 'EURUSD', WY_SPRING_PARAMS);
+  assert('WS-03: Valid UTAD in range → 1 SHORT', signals.filter((s) => s.direction === 'short').length === 1);
+}
+
+{
+  const candles = [];
+  for (let i = 0; i < 35; i++) {
+    const price = 1.0800 + i * 0.0003;
+    candles.push(c(i, price, price + 0.0002, price - 0.0001, price + 0.00015));
+  }
+  const signals = runScan(new WyckoffSpringUtadStrategy(), candles, 'EURUSD', WY_SPRING_PARAMS);
+  assert('WS-04: Trending market (no consolidation) → no signal', signals.length === 0);
+}
+
+console.log('\n=== Wyckoff Range Test Tests ===\n');
+
+const WY_TEST_PARAMS = {
+  rangeLookback: 15,
+  minRangePips: 8,
+  minInsideRatio: 0.6,
+  sweepPips: 2,
+  testMaxBars: 6,
+  testTolerancePips: 3,
+  rallyMinPips: 5,
+  eventWickRatio: 0.5,
+  testWickRatio: 0.4,
+  rr: 2,
+};
+
+{
+  const candles = buildConsolidationRange(30);
+  candles.push(c(30, 1.08525, 1.0855, 1.08475, 1.0854, 600));
+  candles.push(c(31, 1.0855, 1.0868, 1.0854, 1.0866));
+  candles.push(c(32, 1.0853, 1.0855, 1.0847, 1.0849));
+  const signals = runScan(new WyckoffRangeTestStrategy(), candles, 'EURUSD', WY_TEST_PARAMS);
+  assert('WT-01: Test breaks spring low → no long', signals.filter((s) => s.direction === 'long').length === 0);
+}
+
+{
+  const candles = buildConsolidationRange(30);
+  candles.push(c(30, 1.08525, 1.0855, 1.08475, 1.0854, 600));
+  candles.push(c(31, 1.0855, 1.0870, 1.0854, 1.0868));
+  candles.push(c(32, 1.0865, 1.0868, 1.0858, 1.0866));
+  candles.push(c(33, 1.0854, 1.0856, 1.08515, 1.0855, 600));
+  const signals = runScan(new WyckoffRangeTestStrategy(), candles, 'EURUSD', WY_TEST_PARAMS);
+  assert('WT-02: Spring + rally + higher-low test → 1 LONG', signals.filter((s) => s.direction === 'long').length === 1);
+}
+
+{
+  const candles = buildConsolidationRange(30);
+  candles.push(c(30, 1.08525, 1.0855, 1.08475, 1.0854, 600));
+  candles.push(c(31, 1.08535, 1.08542, 1.08525, 1.0853, 600));
+  const signals = runScan(new WyckoffRangeTestStrategy(), candles, 'EURUSD', WY_TEST_PARAMS);
+  assert('WT-03: No rally before test → no signal', signals.length === 0);
 }
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);

@@ -159,6 +159,20 @@ function inferSetupFromSignal(signal) {
       steps: ['Ch?m swing ? pin bar rejection ? entry'],
     };
   }
+  if (signal.strategyId === 'wyckoff-spring-utad' && price != null) {
+    return {
+      levels: [{ kind: 'break-level', label: 'Range boundary', price }],
+      markers: [{ label: 'Spring/UTAD', time, role: 'sweep' }],
+      steps: ['Range tich luy ? quet bien ? dong lai trong range ? entry'],
+    };
+  }
+  if (signal.strategyId === 'wyckoff-range-test' && price != null) {
+    return {
+      levels: [{ kind: 'break-level', label: 'Range boundary', price }],
+      markers: [{ label: 'Test', time, role: 'confirm' }],
+      steps: ['Spring/UTAD ? rally ? test lai bien ? entry'],
+    };
+  }
   return undefined;
 }
 

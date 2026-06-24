@@ -593,7 +593,98 @@ Pin Bar requires **touch** of swing zone only — **no** `grabPips` sweep beyond
 
 ---
 
-## 8. Thứ tự thực thi trong Engine
+## 8. Wyckoff Spring / UTAD (`wyckoff-spring-utad`)
+
+**Category:** Wyckoff — false break of consolidation range
+
+### 8.1 Parameters
+
+| Param | Default | Range | Description |
+|-------|---------|-------|-------------|
+| `rangeLookback` | 20 | 10–60 | Bars defining horizontal range |
+| `minRangePips` | 15 | 5–80 | Minimum range height |
+| `minInsideRatio` | 0.65 | 0.4–0.95 | Share of closes inside range |
+| `sweepPips` | 2 | 1–20 | Breach beyond boundary |
+| `wickRatio` | 0.55 | 0.35–0.85 | Rejection wick / range |
+| `rr` | 2 | 1–10 | Risk-reward |
+
+### 8.2 Trading range
+
+At bar `i` (excluding current candle):
+
+```text
+rangeHigh = max(high[j])  j ∈ [i - rangeLookback, i - 1]
+rangeLow  = min(low[j])   j ∈ [i - rangeLookback, i - 1]
+rangeWidthPips >= minRangePips
+closeInsideRatio >= minInsideRatio
+```
+
+### 8.3 Spring (LONG)
+
+```text
+1. low <= rangeLow - sweepPips
+2. close > rangeLow
+3. lowerWick / range >= wickRatio
+4. bullishConfirmation(candle)
+5. entry = close; sl below spring low; tp per RR
+```
+
+### 8.4 UTAD (SHORT)
+
+```text
+1. high >= rangeHigh + sweepPips
+2. close < rangeHigh
+3. upperWick / range >= wickRatio
+4. bearishConfirmation(candle)
+5. entry = close; sl above UTAD high; tp per RR
+```
+
+### 8.5 Difference from Liquidity Grab
+
+| | Wyckoff Spring/UTAD | Liquidity Grab |
+|--|---------------------|----------------|
+| Level | Range boundary (longer lookback) | Swing point |
+| Context | Consolidation required | None |
+| Entry | Spring/UTAD bar | Grab bar |
+
+---
+
+## 9. Wyckoff Range Test (`wyckoff-range-test`)
+
+**Category:** Wyckoff — secondary test after spring/UTAD
+
+### 9.1 Parameters
+
+| Param | Default | Range | Description |
+|-------|---------|-------|-------------|
+| `rangeLookback` | 20 | 10–60 | Range definition |
+| `minRangePips` | 15 | 5–80 | Min range height |
+| `minInsideRatio` | 0.65 | 0.4–0.95 | Consolidation quality |
+| `sweepPips` | 2 | 1–20 | Spring/UTAD sweep |
+| `testMaxBars` | 8 | 2–25 | Bars to wait for test |
+| `testTolerancePips` | 3 | 1–10 | Test touch zone |
+| `rallyMinPips` | 5 | 2–40 | Min rally away from boundary |
+| `eventWickRatio` | 0.5 | 0.35–0.85 | Wick on spring/UTAD arm bar |
+| `testWickRatio` | 0.45 | 0.3–0.8 | Wick on test entry bar |
+| `rr` | 2 | 1–10 | Risk-reward |
+
+### 9.2 State machine
+
+```text
+1. Valid spring/UTAD → store pending event (no signal on event bar)
+2. Track rallyHigh / rallyLow until expiry or invalidation
+3. LONG test: touches rangeLow zone, low > springLow, rally >= rallyMinPips, bullish confirm
+4. SHORT test: touches rangeHigh zone, high < utadHigh, rally >= rallyMinPips, bearish confirm
+```
+
+### 9.3 Invalidation
+
+- Spring pending cancelled if a later bar breaks below `springLow - sweepPips`
+- UTAD pending cancelled if a later bar breaks above `utadHigh + sweepPips`
+
+---
+
+## 10. Thứ tự thực thi trong Engine
 
 Tại mỗi bar `i` (warmup đủ):
 
@@ -607,11 +698,11 @@ Tại mỗi bar `i` (warmup đủ):
 
 ---
 
-## 9. Test cases bắt buộc (Phase 5)
+## 11. Test cases bắt buộc (Phase 5)
 
 Mỗi strategy cần pass các case sau trước khi merge:
 
-### 9.1 Break & Retest
+### 11.1 Break & Retest
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -621,7 +712,7 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | BR-04 | Breakout long, close phá invalidation | Không signal |
 | BR-05 | 2 breakout cùng level | Chỉ 1 signal (cái đầu hoặc expiry) |
 
-### 9.2 EMA Pullback
+### 11.2 EMA Pullback
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -631,7 +722,7 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | EP-04 | emaSpread < 3 pips | Không signal |
 | EP-05 | 2 signal liên tiếp trong cooldown | Chỉ 1 |
 
-### 9.3 Liquidity Grab
+### 11.3 Liquidity Grab
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -641,7 +732,7 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | LG-04 | Bullish grab đáy đối xứng | 1 LONG |
 | LG-05 | Duplicate level trong window | Chỉ 1 |
 
-### 9.4 Inside Bar Breakout
+### 11.4 Inside Bar Breakout
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -650,7 +741,7 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | IB-03 | Inside + break down + dưới EMA | 1 SHORT |
 | IB-04 | Quá maxWaitBars không break | Không signal |
 
-### 9.5 Pin Bar Rejection
+### 11.5 Pin Bar Rejection
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -660,22 +751,40 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | PB-04 | Wick quá nhỏ | Không signal |
 | PB-05 | Duplicate level | Chỉ 1 |
 
+### 11.6 Wyckoff Spring / UTAD
+
+| # | Input | Kỳ vọng |
+|---|-------|---------|
+| WS-01 | Spring sweep nhưng close dưới rangeLow | Không long |
+| WS-02 | Spring hợp lệ trong range | 1 LONG |
+| WS-03 | UTAD hợp lệ trong range | 1 SHORT |
+| WS-04 | Thị trường trend (không consolidation) | Không signal |
+
+### 11.7 Wyckoff Range Test
+
+| # | Input | Kỳ vọng |
+|---|-------|---------|
+| WT-01 | Test phá đáy spring | Không long |
+| WT-02 | Spring + rally + higher-low test | 1 LONG |
+| WT-03 | Chưa rally đủ trước test | Không signal |
+
 ---
 
-## 10. Ghi chú triển khai
+## 12. Ghi chú triển khai
 
 1. **Pip helper:** tạo `src/utils/pip.js` — `getPipSize(symbol)`, `pipsToPrice(pips, symbol)`
-2. **Shared helpers:** `src/strategy/helpers/CandlePatterns.js` — `isBullishConfirmation`, `isBearishConfirmation`, `touchesZone`
-3. **State persistence:** Break & Retest dùng object state trong `calculate()` / `generateSignal()`; Liquidity Grab stateless (single bar)
+2. **Shared helpers:** `CandlePatterns.js`, `WyckoffRange.js` (trading range, spring, UTAD, test)
+3. **State persistence:** Break & Retest + Wyckoff Range Test dùng pending state; Liquidity Grab / Wyckoff Spring-UTAD single-bar entry
 4. **Reason string:** luôn có level giá (5 decimals), bar index, hướng
 5. **Không** dùng dữ liệu `candles[i+1]` trong bất kỳ điều kiện nào
 
 ---
 
-## 11. Changelog
+## 13. Changelog
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2.0 | 2026-06-22 | Added Wyckoff Spring/UTAD + Wyckoff Range Test |
 | 1.1.0 | 2026-06-23 | Added Inside Bar Breakout + Pin Bar Rejection |
 | 1.0.0 | 2026-06-22 | Initial specification for 3 PA setups |
 
