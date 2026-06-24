@@ -76,24 +76,26 @@
       </section>
 
       <section id="score-zone" class="score-zone mode-score-only">
-        <header class="score-zone-head">
-          <h3 class="score-zone-title">Chấm từ hiện tại</h3>
-          <div class="score-zone-status">
-            <span id="score-status-label" class="score-status-label">Sẵn sàng chấm</span>
-            <div id="score-spinner" class="score-spinner hidden" aria-hidden="true">
-              <div class="score-spinner-ring"></div>
+        <section class="ipa-score-panel" aria-label="Chấm IPA">
+          <header class="ipa-score-head">
+            <h3 class="ipa-score-title">Chấm IPA</h3>
+            <div class="score-zone-status">
+              <span id="score-status-label" class="score-status-label">Sẵn sàng chấm</span>
+              <div id="score-spinner" class="score-spinner hidden" aria-hidden="true">
+                <div class="score-spinner-ring"></div>
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        <div id="current-score-card" class="current-score-card">
-          <div id="score-section" class="score-hero">
-            <span class="score-hero-label">Điểm</span>
-            <strong id="overall-score" class="score-hero-value">—</strong>
-            <span id="pass-status" class="pass-status"></span>
+          <div id="current-score-card" class="current-score-card">
+            <div id="score-section" class="score-hero">
+              <span class="score-hero-label">Điểm</span>
+              <strong id="overall-score" class="score-hero-value">—</strong>
+              <span id="pass-status" class="pass-status pass-status-pending">Chưa chấm</span>
+            </div>
+            <section id="phoneme-container" class="phoneme-strip" aria-label="Chi tiết từng âm IPA"></section>
           </div>
-          <section id="phoneme-container" class="phoneme-strip" aria-label="Chi tiết từng âm IPA"></section>
-        </div>
+        </section>
 
         <section id="quiz-summary" class="quiz-summary">
           <header class="quiz-summary-head">
@@ -140,11 +142,6 @@
         <div class="spinner-ring"></div>
         <p>Đang phân tích phát âm...</p>
       </div>
-
-      <section id="feedback-section" class="feedback-section hidden mode-score-only">
-        <h3>Gợi ý cải thiện</h3>
-        <ul id="feedback-list"></ul>
-      </section>
     </main>
 
     <aside id="settings-panel" class="settings-panel hidden">
@@ -178,8 +175,13 @@
           Im lặng kết thúc (giây)
           <input type="number" id="setting-silence-sec" value="0.35" min="0.2" max="1.2" step="0.05">
         </label>
+        <label class="setting-row mode-text-only">
+          Ngưỡng khớp text (%)
+          <input type="number" id="setting-text-pass-score" value="100" min="50" max="100" step="1">
+          <span class="setting-hint">100% = đúng chính tả; hạ xuống cho từ trùng âm / SR gần đúng</span>
+        </label>
         <label class="setting-row mode-score-only">
-          Ngưỡng đạt chấm điểm (%)
+          Ngưỡng đạt chấm IPA (%)
           <input type="number" id="setting-pass-score" value="80" min="50" max="100" step="1">
           <span class="setting-hint">Đạt ≥ ngưỡng này → tự sang từ tiếp</span>
         </label>

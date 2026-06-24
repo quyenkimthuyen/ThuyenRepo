@@ -6,6 +6,11 @@ import {
   wordsMatch,
   wordsMatchExact,
   textMatchExact,
+  textMatchPractice,
+  textMatchWithThreshold,
+  textSimilarityPercent,
+  similarityPercent,
+  collapseConsecutiveTokens,
   extractSpokenWord,
   extractSpokenText,
   expandTokenSpellingVariants,
@@ -62,6 +67,59 @@ describe('textMatchExact', () => {
   it('still rejects real mispronunciation spellings', () => {
     assert.equal(textMatchExact('livible', 'liveable'), false);
     assert.equal(textMatchExact('livebel', 'liveable'), false);
+  });
+});
+
+describe('textMatchPractice', () => {
+  it('keeps strict exact behaviour', () => {
+    assert.equal(textMatchPractice('timetable', 'timetable'), true);
+    assert.equal(textMatchPractice('living room', 'living room'), true);
+  });
+
+  it('rejects say + target (not isolated word)', () => {
+    assert.equal(textMatchPractice('say hello', 'hello'), false);
+  });
+
+  it('accepts SR duplicate tail', () => {
+    assert.equal(textMatchPractice('timetable timetable', 'timetable'), true);
+    assert.equal(textMatchPractice('tito timetable timetable', 'timetable'), true);
+  });
+
+  it('accepts article prefix for phrases', () => {
+    assert.equal(textMatchPractice('the living room', 'living room'), true);
+    assert.equal(textMatchPractice('the timetable', 'timetable'), true);
+  });
+
+  it('rejects partial phrase', () => {
+    assert.equal(textMatchPractice('room', 'living room'), false);
+    assert.equal(textMatchPractice('tito room', 'timetable'), false);
+  });
+});
+
+describe('textMatchWithThreshold', () => {
+  it('100% keeps practice-only pass', () => {
+    assert.equal(textMatchWithThreshold('timetable', 'timetable', 100), true);
+    assert.equal(textMatchWithThreshold('there', 'their', 100), false);
+  });
+
+  it('lower threshold allows near homophones', () => {
+    assert.equal(textMatchWithThreshold('there', 'their', 60), true);
+    assert.equal(textMatchWithThreshold('meet', 'meat', 75), true);
+  });
+
+  it('rejects clearly different words', () => {
+    assert.equal(textMatchWithThreshold('world', 'hello', 80), false);
+  });
+});
+
+describe('textSimilarityPercent', () => {
+  it('returns 100 on practice match', () => {
+    assert.equal(textSimilarityPercent('tito timetable timetable', 'timetable'), 100);
+  });
+
+  it('scores homophone pairs below 100', () => {
+    assert.ok(textSimilarityPercent('there', 'their') >= 50);
+    assert.ok(textSimilarityPercent('there', 'their') < 100);
   });
 });
 

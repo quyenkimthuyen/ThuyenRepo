@@ -108,6 +108,10 @@ body {
   display: none !important;
 }
 
+.app.mode-score .mode-text-only {
+  display: none !important;
+}
+
 .toolbar-row {
   display: flex;
   align-items: center;
@@ -217,17 +221,23 @@ body {
   font-size: 0.9rem;
 }
 
-/* Score zone — footprint cố định, tránh giật khi chuyển từ */
+/* Score zone — IPA + bảng quiz (dưới live-panel) */
 .score-zone {
   margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ipa-score-panel {
   padding: 1rem;
   border-radius: var(--radius);
   background: var(--bg);
   border: 1px solid var(--surface-2);
-  min-height: 18.5rem;
+  min-height: 11.5rem;
 }
 
-.score-zone-head {
+.ipa-score-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -237,7 +247,7 @@ body {
   min-height: 1.75rem;
 }
 
-.score-zone-title,
+.ipa-score-title,
 .quiz-summary-title {
   margin: 0;
   font-size: 0.95rem;
@@ -280,7 +290,6 @@ body {
   border-radius: calc(var(--radius) - 2px);
   background: var(--surface);
   border: 1px solid var(--surface-2);
-  margin-bottom: 1rem;
   min-height: 9.25rem;
   box-sizing: border-box;
 }
@@ -359,8 +368,10 @@ body {
 
 /* Quiz summary table */
 .quiz-summary {
-  border-top: 1px solid var(--surface-2);
-  padding-top: 0.85rem;
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: var(--bg);
+  border: 1px solid var(--surface-2);
 }
 
 .quiz-summary-head {
@@ -495,17 +506,13 @@ body {
   border-radius: var(--radius);
 }
 
-/* Live speech panel — footprint cố định, tránh giật khi đổi từ */
+/* Live speech panel — giống nhau ở cả hai chế độ */
 .live-panel {
   background: var(--bg);
   border: 1px solid var(--surface-2);
   border-radius: var(--radius);
   padding: 1rem;
   margin-bottom: 1.25rem;
-  min-height: 11.5rem;
-}
-
-.app.mode-text .live-panel {
   min-height: 13.25rem;
 }
 
@@ -675,10 +682,6 @@ body {
 }
 
 .live-transcript-box {
-  min-height: 5.75rem;
-}
-
-.app.mode-text .live-transcript-box {
   min-height: 7.5rem;
 }
 
@@ -984,29 +987,6 @@ body {
 .phoneme-box.show-suggestion .phoneme-suggestion:not(.phoneme-suggestion-slot),
 .phoneme-box:hover .phoneme-suggestion:not(.phoneme-suggestion-slot) {
   display: block;
-}
-
-.feedback-section {
-  margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--surface-2);
-}
-
-.feedback-section h3 {
-  font-size: 0.95rem;
-  margin: 0 0 0.5rem;
-  color: var(--text-muted);
-}
-
-#feedback-list {
-  margin: 0;
-  padding-left: 1.2rem;
-  font-size: 0.9rem;
-  color: var(--text);
-}
-
-#feedback-list li {
-  margin-bottom: 0.3rem;
 }
 
 .settings-panel {

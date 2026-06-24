@@ -175,6 +175,29 @@ export function tokensSpellingMatch(spokenToken, targetToken) {
   return false;
 }
 
+/** Động từ / mở đầu SR hay thêm — không coi là khớp nếu đứng trước từ mục tiêu */
+const TEXT_PREFIX_BLOCK = new Set([
+  'say', 'repeat', 'read', 'spell', 'pronounce', 'define', 'what', 'is', 'its', "it's",
+]);
+
+/** Gom token lặp liên tiếp: "timetable timetable" → "timetable" */
+export function collapseConsecutiveTokens(tokens) {
+  const out = [];
+  for (const t of tokens) {
+    if (!t) continue;
+    if (out[out.length - 1] !== t) out.push(t);
+  }
+  return out;
+}
+
+/** Bỏ mạo từ đầu câu do SR thêm: "the living room" */
+export function stripLeadingArticles(tokens) {
+  const articles = new Set(['the', 'a', 'an']);
+  let i = 0;
+  while (i < tokens.length && articles.has(tokens[i])) i += 1;
+  return tokens.slice(i);
+}
+
 /** Chế độ text: khớp 100% — cụm từ/câu + biến thể chính tả (liveable/livable) */
 export function textMatchExact(spoken, target) {
   const s = normalizeTextForMatch(spoken);
@@ -187,6 +210,100 @@ export function textMatchExact(spoken, target) {
   if (spokenTokens.length !== targetTokens.length) return false;
 
   return spokenTokens.every((tok, i) => tokensSpellingMatch(tok, targetTokens[i]));
+}
+
+/**
+ * Chế độ text khi luyện tập — strict trước, sau đó chịu SR nhiễu/lặp:
+ * dedupe, bỏ mạo từ, khớp cụm mục tiêu ở cuối nếu tiền tố là rác ngắn.
+ */
+export function textMatchPractice(spoken, target) {
+  if (textMatchExact(spoken, target)) return true;
+
+  const targetTokens = normalizeTextForMatch(target).split(' ').filter(Boolean);
+  if (!targetTokens.length) return false;
+
+  let spokenTokens = collapseConsecutiveTokens(
+    normalizeTextForMatch(spoken).split(' ').filter(Boolean),
+  );
+  if (!spokenTokens.length) return false;
+
+  if (textMatchExact(spokenTokens.join(' '), target)) return true;
+
+  spokenTokens = stripLeadingArticles(spokenTokens);
+  if (textMatchExact(spokenTokens.join(' '), target)) return true;
+
+  if (spokenTokens.length < targetTokens.length) return false;
+
+  const suffix = spokenTokens.slice(-targetTokens.length);
+  if (!suffix.every((tok, i) => tokensSpellingMatch(tok, targetTokens[i]))) {
+    return false;
+  }
+
+  const prefix = spokenTokens.slice(0, -targetTokens.length);
+  if (prefix.length === 0) return true;
+  if (prefix.some((t) => TEXT_PREFIX_BLOCK.has(t))) return false;
+
+  // Tiền tố ngắn / không trùng âm mục tiêu — coi là nhiễu SR (vd. "tito timetable")
+  return prefix.every(
+    (t) => t.length <= 4 && !tokensSpellingMatch(t, targetTokens[0]),
+  );
+}
+
+function levenshteinDistance(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 0; i < a.length; i += 1) {
+    const curr = [i + 1];
+    for (let j = 0; j < b.length; j += 1) {
+      const cost = a[i] === b[j] ? 0 : 1;
+      curr[j + 1] = Math.min(curr[j] + 1, prev[j + 1] + 1, prev[j] + cost);
+    }
+    prev = curr;
+  }
+  return prev[b.length];
+}
+
+/** Độ giống chuỗi 0–100 (Levenshtein) */
+export function similarityPercent(a, b) {
+  const x = normalizeTextForMatch(a);
+  const y = normalizeTextForMatch(b);
+  if (!x || !y) return 0;
+  if (x === y) return 100;
+  const dist = levenshteinDistance(x, y);
+  const maxLen = Math.max(x.length, y.length);
+  return Math.round((1 - dist / maxLen) * 100);
+}
+
+/**
+ * % khớp text — ưu tiên khớp practice, sau đó so suffix SR (nhiễu đầu câu).
+ */
+export function textSimilarityPercent(spoken, target) {
+  if (textMatchPractice(spoken, target)) return 100;
+
+  const targetNorm = normalizeTextForMatch(target);
+  const targetTokens = targetNorm.split(' ').filter(Boolean);
+  if (!targetNorm) return 0;
+
+  let spokenTokens = stripLeadingArticles(
+    collapseConsecutiveTokens(normalizeTextForMatch(spoken).split(' ').filter(Boolean)),
+  );
+  let best = similarityPercent(spoken, target);
+
+  if (spokenTokens.length >= targetTokens.length) {
+    const suffix = spokenTokens.slice(-targetTokens.length).join(' ');
+    best = Math.max(best, similarityPercent(suffix, targetNorm));
+  }
+
+  return best;
+}
+
+/** Chế độ text: practice strict trước, sau đó % tương đồng ≥ ngưỡng (từ trùng âm / SR gần đúng) */
+export function textMatchWithThreshold(spoken, target, threshold = 100) {
+  if (textMatchPractice(spoken, target)) return true;
+  if (threshold >= 100) return false;
+  return textSimilarityPercent(spoken, target) >= threshold;
 }
 
 /** @deprecated Dùng textMatchExact — giữ cho tương thích test cũ */

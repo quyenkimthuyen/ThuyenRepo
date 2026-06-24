@@ -7,6 +7,9 @@ import {
   MIC_STATE,
   wordsMatch,
   textMatchExact,
+  textMatchPractice,
+  textMatchWithThreshold,
+  textSimilarityPercent,
   getHangoverMs,
   computeRms,
   TEXT_MATCH_DELAY_MS,
@@ -116,14 +119,13 @@ const els = {
   phonemeContainer: $('phoneme-container'),
   quizResultsBody: $('quiz-results-body'),
   quizSummaryStats: $('quiz-summary-stats'),
-  feedbackSection: $('feedback-section'),
-  feedbackList: $('feedback-list'),
   settingsPanel: $('settings-panel'),
   settingAutoplay: $('setting-autoplay'),
   settingLiveAuto: $('setting-live-auto'),
   settingAutoEvaluate: $('setting-auto-evaluate'),
   settingApiUrl: $('setting-api-url'),
   settingPassScore: $('setting-pass-score'),
+  settingTextPassScore: $('setting-text-pass-score'),
   serviceStatus: $('service-status'),
   btnLiveToggle: $('btn-live-toggle'),
   micStatusLabel: $('mic-status-label'),
@@ -206,8 +208,14 @@ function getPassThreshold() {
   return Math.min(100, Math.max(50, n));
 }
 
+function getTextPassThreshold() {
+  const n = parseInt(els.settingTextPassScore?.value, 10);
+  if (!Number.isFinite(n)) return 100;
+  return Math.min(100, Math.max(50, n));
+}
+
 function spokenMatchesTarget(spoken, target) {
-  if (isTextMode()) return textMatchExact(spoken, target);
+  if (isTextMode()) return textMatchWithThreshold(spoken, target, getTextPassThreshold());
   return wordsMatch(spoken, target);
 }
 
@@ -323,7 +331,7 @@ function updateQuizSummaryStats(rows = quizSessionResults) {
   const data = rows.length
     ? rows
     : words.map((w) => ({ word: w.word, score: null, passed: null, status: 'pending' }));
-  const threshold = getPassThreshold();
+  const threshold = isScoreMode() ? getPassThreshold() : getTextPassThreshold();
   const scored = data.filter((r) => r.score != null);
   const passedCount = data.filter((r) => r.passed).length;
   const avg = scored.length
@@ -511,6 +519,7 @@ function loadSettings() {
   els.settingSilenceSec.value = saved.silenceSec ?? config.silenceSec ?? 0.35;
   els.settingApiUrl.value = saved.apiBaseUrl ?? config.apiBaseUrl ?? 'http://127.0.0.1:8000';
   els.settingPassScore.value = saved.passScore ?? config.thresholds?.overallPass ?? 80;
+  els.settingTextPassScore.value = saved.textPassScore ?? config.thresholds?.textPass ?? 100;
   els.settingQuizSize.value = saved.quizSize ?? config.defaultQuizSize ?? vocabularyManifest?.defaultQuizSize ?? 30;
   practiceMode = saved.practiceMode ?? config.practiceMode ?? PRACTICE_MODE.TEXT;
 }
@@ -523,6 +532,7 @@ function saveSettings() {
     silenceSec: parseFloat(els.settingSilenceSec.value) || 0.35,
     apiBaseUrl: els.settingApiUrl.value,
     passScore: parseInt(els.settingPassScore.value, 10),
+    textPassScore: parseInt(els.settingTextPassScore.value, 10),
     topicId: els.settingTopic?.value || vocabularyManifest?.defaultTopicId || '',
     quizSize: getQuizSize(),
     practiceMode,
@@ -563,11 +573,9 @@ function applyPracticeModeUI() {
   }
 
   if (els.liveTranscriptPlaceholder) {
-    const sec = parseFloat(els.settingSilenceSec?.value) || 0.35;
-    const threshold = getPassThreshold();
     els.liveTranscriptPlaceholder.textContent = isTextMode()
       ? 'Đọc đúng 100% (từ hoặc cụm từ) → tự chuyển tiếp'
-      : `Đọc từ → im lặng ~${sec}s → chấm IPA → đạt ≥${threshold}% tự sang từ`;
+      : 'Đọc từ → im lặng ngắn để chấm IPA bên dưới';
   }
 
   if (textActive) {
@@ -754,7 +762,6 @@ function showWord(index, options = {}) {
 }
 
 function resetEvaluationUI() {
-  els.feedbackSection.classList.add('hidden');
   els.btnRetry.classList.add('hidden');
   if (!liveModeActive) {
     els.btnReplayUser.disabled = true;
@@ -875,8 +882,6 @@ function restoreWordScoreUI(word) {
 
   setScoreState('idle', 'Sẵn sàng chấm');
   setScoreHeroPending();
-  els.feedbackSection?.classList.add('hidden');
-  els.feedbackList.innerHTML = '';
   renderPhonemeIdle(word);
 }
 
@@ -906,7 +911,6 @@ function renderEvaluationDisplay(data, options = {}) {
 
   els.phonemeContainer?.classList.add('has-results');
   renderPhonemeResults(data.phonemes, showSuggestionsAlways);
-  renderFeedback(data.phonemes);
   return true;
 }
 
@@ -1428,8 +1432,10 @@ async function processTextUtterance(spoken) {
     return;
   }
 
-  if (!textMatchExact(word, w.word)) {
-    showLiveHint(`✗ Nghe "${word}" — cần đúng 100% "${w.word}"`, 'mis');
+  if (!spokenMatchesTarget(word, w.word)) {
+    const score = textSimilarityPercent(word, w.word);
+    const need = getTextPassThreshold();
+    showLiveHint(`✗ "${word}" — ${score}% (cần ≥${need}%) · "${w.word}"`, 'mis');
     registerWordFailure();
     micEngine?.clearTranscript();
     syncTranscriptFromEngine();
@@ -1438,9 +1444,14 @@ async function processTextUtterance(spoken) {
 
   isAdvancing = true;
   resetWordFailStreak();
-  showLiveHint(`✓ Đúng 100% "${word}"!`, 'ok');
-  recordAttempt(w.word, true, 100);
-  recordQuizSessionResult(w.word, 100, true, 'text', currentIndex);
+  const score = textSimilarityPercent(word, w.word);
+  const need = getTextPassThreshold();
+  showLiveHint(
+    score >= 100 ? `✓ Đúng "${word}"!` : `✓ "${word}" ~${score}% (≥${need}%)`,
+    'ok',
+  );
+  recordAttempt(w.word, true, score);
+  recordQuizSessionResult(w.word, score, true, 'text', currentIndex);
   await new Promise((r) => setTimeout(r, 100));
   hideLiveHint();
   micEngine?.clearTranscript();
@@ -1461,10 +1472,17 @@ function updateRealtimeHint() {
     return;
   }
 
-  if (textMatchExact(spoken, w.word)) {
-    showLiveHint(`✓ "${spoken}" — khớp 100%!`, 'ok');
+  if (spokenMatchesTarget(spoken, w.word)) {
+    const score = textSimilarityPercent(spoken, w.word);
+    const need = getTextPassThreshold();
+    const msg = score >= 100
+      ? `✓ "${spoken}" — khớp!`
+      : `✓ "${spoken}" ~${score}% (≥${need}%)`;
+    showLiveHint(msg, 'ok');
   } else {
-    showLiveHint(`✗ "${spoken}" — cần đúng 100% "${w.word}"`, 'mis');
+    const score = textSimilarityPercent(spoken, w.word);
+    const need = getTextPassThreshold();
+    showLiveHint(`✗ "${spoken}" — ${score}% (cần ≥${need}%) · "${w.word}"`, 'mis');
   }
 }
 
@@ -1764,7 +1782,7 @@ async function startRecording() {
       } else {
         const spoken = getSpokenWord();
         const w = words[currentIndex];
-        if (spoken && textMatchExact(spoken, w?.word)) {
+        if (spoken && spokenMatchesTarget(spoken, w?.word)) {
           setMicState(MIC_STATE.PROCESSING, 'Đang xử lý...');
           await processTextUtterance(spoken);
           if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
@@ -1963,18 +1981,6 @@ function renderPhonemeResults(phonemes, showSuggestionsAlways = false) {
       box.classList.toggle('show-suggestion');
     });
   });
-}
-
-function renderFeedback(phonemes) {
-  const issues = phonemes.filter((p) => p.label !== 'ok' && p.suggestion);
-  if (issues.length === 0) {
-    els.feedbackSection.classList.add('hidden');
-    return;
-  }
-  els.feedbackSection.classList.remove('hidden');
-  els.feedbackList.innerHTML = issues
-    .map((p) => `<li><strong>${p.ipa}</strong>: ${p.suggestion} (${Math.round(p.score * 100)}%)</li>`)
-    .join('');
 }
 
 // ─── Segment replay ─────────────────────────────────────────────────────────
