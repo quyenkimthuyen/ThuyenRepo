@@ -14,6 +14,9 @@
   --mode-glow: rgba(59, 158, 255, 0.12);
   --ok: #2ecc71;
   --warn: #f1c40f;
+  --sample: #a78bfa;
+  --sample-soft: rgba(167, 139, 250, 0.14);
+  --sample-glow: rgba(167, 139, 250, 0.45);
   --mis: #e74c3c;
   --pending: #5a6a82;
   --record: #e74c3c;
@@ -762,14 +765,14 @@ body {
 }
 
 .mic-indicator[data-state="sample"] {
-  border-color: rgba(241, 196, 15, 0.55);
-  background: rgba(241, 196, 15, 0.1);
+  border-color: rgba(167, 139, 250, 0.5);
+  background: var(--sample-soft);
 }
 
 .mic-indicator[data-state="sample"] .mic-ring {
-  border-color: var(--warn);
+  border-color: var(--sample);
   opacity: 1;
-  box-shadow: 0 0 16px rgba(241, 196, 15, 0.55);
+  box-shadow: 0 0 14px var(--sample-glow);
   animation: mic-sample 1.1s ease-in-out infinite;
 }
 
@@ -813,14 +816,14 @@ body {
 .mic-indicator[data-state="ready"] .mic-status-label { color: var(--ok); }
 .mic-indicator[data-state="hearing"] .mic-status-label { color: var(--ok); }
 .mic-indicator[data-state="processing"] .mic-status-label { color: var(--warn); }
-.mic-indicator[data-state="sample"] .mic-status-label { color: var(--warn); }
+.mic-indicator[data-state="sample"] .mic-status-label { color: var(--sample); }
 
 .mic-indicator[data-state="sample"] .mic-icon {
-  filter: drop-shadow(0 0 6px rgba(241, 196, 15, 0.65));
+  filter: drop-shadow(0 0 5px var(--sample-glow));
 }
 
 .mic-indicator[data-state="sample"] .vad-level {
-  background: var(--warn);
+  background: var(--sample);
 }
 
 .vad-meter {
