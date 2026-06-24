@@ -22,13 +22,14 @@ describe('vocabulary manifest', () => {
   it('has topics with words', () => {
     assert.ok(manifest.topics.length >= 10);
     assert.ok(manifest.totalWords >= 1000);
+    assert.equal(manifest.topicNaming, 'filename');
   });
 
   it('topic file words pass schema', () => {
     const topic = manifest.topics[0];
     const topicPath = join(dir, `../data/vocabulary/topics/${topic.id}.json`);
     const data = JSON.parse(readFileSync(topicPath, 'utf8'));
-    assert.equal(data.topicId, topic.id);
+    assert.equal(data.topic, topic.id);
     assert.ok(data.words.length >= 5);
     const errors = data.words.flatMap((w, i) => validateWordEntry(w, i));
     assert.deepEqual(errors, []);

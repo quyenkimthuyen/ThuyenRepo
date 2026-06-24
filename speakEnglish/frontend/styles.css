@@ -104,34 +104,19 @@ body {
   display: none !important;
 }
 
-.word-nav {
+.toolbar-row {
   display: flex;
-  gap: 0.5rem;
-  flex: 1;
-  min-width: 200px;
-}
-
-.word-select {
-  flex: 1;
-  padding: 0.5rem 0.75rem;
-  border-radius: var(--radius);
-  border: 1px solid var(--surface-2);
-  background: var(--surface);
-  color: var(--text);
-  font-size: 0.95rem;
-}
-
-.progress-info {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
   align-items: center;
-  font-size: 0.85rem;
-  color: var(--text-muted);
+  gap: 0.5rem;
+  width: 100%;
+  flex-wrap: wrap;
 }
 
 .quiz-info {
-  max-width: 12rem;
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -152,24 +137,42 @@ body {
 .main-card {
   background: var(--surface);
   border-radius: calc(var(--radius) + 4px);
-  padding: 2rem 1.5rem;
+  padding: 1.5rem 1.25rem;
   box-shadow: var(--shadow);
 }
 
-.word-display {
+/* Word hero */
+.word-hero {
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--surface-2);
+}
+
+.word-hero-top {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.word-progress {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 .word-text {
-  font-size: 2.5rem;
+  font-size: 2.75rem;
   font-weight: 700;
   margin: 0;
   letter-spacing: 0.02em;
+  line-height: 1.15;
 }
 
 .word-meaning {
-  margin: 0.35rem 0 0;
+  margin: 0.4rem 0 0;
   font-size: 1rem;
   color: var(--text-muted);
 }
@@ -178,84 +181,284 @@ body {
   display: none;
 }
 
-.ipa-text {
-  font-size: 1.25rem;
+.ipa-pill {
+  display: inline-block;
+  margin: 0.65rem auto 0;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(59, 158, 255, 0.12);
+  border: 1px solid rgba(59, 158, 255, 0.25);
   color: var(--accent);
   font-family: "Charis SIL", "Doulos SIL", "Segoe UI", serif;
-  margin: 0.5rem 0 0;
+  font-size: 1.05rem;
 }
 
-.app.mode-score .ipa-text {
-  margin-bottom: 0.35rem;
+.word-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.score-inline {
-  text-align: center;
-  margin: 0.5rem 0 0.25rem;
-}
-
-.score-inline.hidden {
-  display: none;
-}
-
-.score-inline .overall-score {
-  font-size: 0.95rem;
-  color: var(--text-muted);
-}
-
-.score-inline .overall-score strong {
-  font-size: 1.35rem;
+.word-select {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--surface-2);
+  background: var(--bg);
   color: var(--text);
-  margin: 0 0.35rem;
-}
-
-.ipa-phonemes {
-  margin-top: 0.65rem;
-  padding-top: 0.65rem;
-  border-top: 1px dashed var(--surface-2);
-}
-
-.ipa-phonemes::before {
-  content: 'Chấm từng âm';
-  display: block;
-  width: 100%;
-  text-align: center;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 0.55rem;
-}
-
-.phoneme-container.has-results::before {
-  content: 'Kết quả chấm (lần gần nhất)';
-  color: var(--accent);
-}
-
-.phoneme-container.scoring.has-results::before {
-  content: 'Kết quả chấm (lần gần nhất) — đang chấm lại…';
-}
-
-.score-inline.scoring {
-  opacity: 0.75;
-}
-
-.score-inline.scoring .overall-score strong::after {
-  content: ' …';
-  color: var(--warn);
   font-size: 0.9rem;
 }
 
-.phoneme-container.scoring:not(.has-results) .phoneme-char {
-  animation: phoneme-pulse 0.9s ease-in-out infinite;
+/* Score zone */
+.score-zone {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: var(--bg);
+  border: 1px solid var(--surface-2);
 }
 
-.phoneme-container.scoring:not(.has-results) .phoneme-score {
+.score-zone-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.score-zone-title,
+.quiz-summary-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.score-zone-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.score-status-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.score-zone.scoring .score-status-label {
   color: var(--warn);
 }
 
-.phoneme-container.scoring.has-results {
+.score-spinner {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.score-spinner-ring {
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--warn);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.current-score-card {
+  padding: 0.75rem;
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--surface);
+  border: 1px solid var(--surface-2);
+  margin-bottom: 1rem;
+}
+
+.score-hero {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.65rem;
+}
+
+.score-hero.hidden {
+  display: none;
+}
+
+.score-hero-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.score-hero-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.score-hero.scoring {
+  opacity: 0.75;
+}
+
+.phoneme-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding: 0.25rem 0 0.35rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.phoneme-strip::-webkit-scrollbar {
+  height: 4px;
+}
+
+.phoneme-strip::-webkit-scrollbar-thumb {
+  background: var(--surface-2);
+  border-radius: 4px;
+}
+
+.phoneme-idle-hint {
+  margin: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  padding: 0.5rem 0;
+}
+
+.phoneme-strip.scoring:not(.has-results) .phoneme-idle-hint {
+  color: var(--warn);
+}
+
+/* Quiz summary table */
+.quiz-summary {
+  border-top: 1px solid var(--surface-2);
+  padding-top: 0.85rem;
+}
+
+.quiz-summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.quiz-summary-stats {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.quiz-table-wrap {
+  max-height: 220px;
+  overflow: auto;
+  border-radius: 8px;
+  border: 1px solid var(--surface-2);
+}
+
+.quiz-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.quiz-table th,
+.quiz-table td {
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+  border-bottom: 1px solid var(--surface-2);
+}
+
+.quiz-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.quiz-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.quiz-row {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.quiz-row:hover {
+  background: rgba(59, 158, 255, 0.08);
+}
+
+.quiz-row.current {
+  background: rgba(59, 158, 255, 0.15);
+  outline: 1px solid rgba(59, 158, 255, 0.35);
+}
+
+.quiz-result-badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.quiz-result-badge.pending {
+  background: rgba(90, 106, 130, 0.25);
+  color: var(--pending);
+}
+
+.quiz-result-badge.pass {
+  background: rgba(46, 204, 113, 0.2);
+  color: var(--ok);
+}
+
+.quiz-result-badge.fail {
+  background: rgba(231, 76, 60, 0.2);
+  color: var(--mis);
+}
+
+.pass-status {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.pass-status.passed {
+  background: rgba(46, 204, 113, 0.2);
+  color: var(--ok);
+}
+
+.pass-status.failed {
+  background: rgba(231, 76, 60, 0.2);
+  color: var(--mis);
+}
+
+.phoneme-strip.scoring.has-results {
+  outline: 2px solid rgba(241, 196, 15, 0.35);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.phoneme-strip.scoring:not(.has-results) .phoneme-char {
+  animation: phoneme-pulse 0.9s ease-in-out infinite;
+}
+
+.phoneme-strip.scoring:not(.has-results) .phoneme-score {
+  color: var(--warn);
+}
+
+.phoneme-strip.scoring.has-results {
   outline: 2px solid rgba(241, 196, 15, 0.35);
   outline-offset: 4px;
   border-radius: var(--radius);
@@ -494,12 +697,12 @@ body {
 }
 
 /* Live mode: luôn hiện gợi ý phoneme sai */
-.phoneme-container.live-mode .phoneme-box .phoneme-suggestion {
+.phoneme-strip.live-mode .phoneme-box .phoneme-suggestion {
   display: block;
 }
 
-.phoneme-container.live-mode .phoneme-char.mis,
-.phoneme-container.live-mode .phoneme-char.warn {
+.phoneme-strip.live-mode .phoneme-char.mis,
+.phoneme-strip.live-mode .phoneme-char.warn {
   animation: phoneme-pulse 1.2s ease-in-out infinite;
 }
 
@@ -629,95 +832,9 @@ body {
   to { transform: rotate(360deg); }
 }
 
-.score-section {
-  text-align: center;
-  margin-bottom: 0.75rem;
-}
-
-.ipa-score-panel {
-  margin-top: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.ipa-score-head {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 1.5rem;
-  margin-bottom: 0.5rem;
-}
-
-.score-status-label {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.ipa-score-panel.scoring .score-status-label {
-  color: var(--warn);
-}
-
-.ipa-score-panel:not(.scoring) .score-status-label:empty {
-  display: none;
-}
-
-.score-spinner {
-  width: 1rem;
-  height: 1rem;
+.phoneme-strip .phoneme-box {
   flex-shrink: 0;
-}
-
-.score-spinner-ring {
-  width: 100%;
-  height: 100%;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--warn);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-.score-inline {
-  text-align: center;
-}
-
-.overall-score {
-  font-size: 1rem;
-  color: var(--text-muted);
-}
-
-.overall-score strong {
-  font-size: 1.5rem;
-  color: var(--text);
-  margin: 0 0.5rem;
-}
-
-.pass-status {
-  display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.pass-status.passed {
-  background: rgba(46, 204, 113, 0.2);
-  color: var(--ok);
-}
-
-.pass-status.failed {
-  background: rgba(231, 76, 60, 0.2);
-  color: var(--mis);
-}
-
-.phoneme-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  justify-content: center;
-  min-height: 80px;
+  min-width: 52px;
 }
 
 .phoneme-box {
@@ -814,6 +931,27 @@ body {
 
 .settings-panel h3 {
   margin-top: 0;
+}
+
+.settings-group {
+  border: none;
+  margin: 0 0 1.1rem;
+  padding: 0;
+}
+
+.settings-group legend {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.55rem;
+}
+
+.setting-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
 }
 
 .setting-row {

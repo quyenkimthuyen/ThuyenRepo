@@ -27,7 +27,7 @@ export async function loadTopicWords(topicId) {
   const res = await fetch(`data/vocabulary/topics/${topicId}.json`);
   if (!res.ok) throw new Error(`topic HTTP ${res.status}`);
   const data = await res.json();
-  const words = Array.isArray(data.words) ? data.words : [];
+  const words = Array.isArray(data) ? data : (Array.isArray(data.words) ? data.words : []);
   topicCache.set(topicId, words);
   return words;
 }

@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Import Global Success vocabulary into frontend/data/vocabulary/."""
+"""Import vocabulary: one source file = one topic (filename = topic name)."""
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
+import shutil
 import sys
-from collections import defaultdict
 from pathlib import Path
 
 try:
@@ -22,27 +21,6 @@ OUT_DIR = REPO / "frontend" / "data" / "vocabulary"
 TOPICS_DIR = OUT_DIR / "topics"
 
 SKIP_FILES = {"merged_all_grades.json", "quality_report.json"}
-SOURCE_LABELS = {
-    "grade1": "Lớp 1",
-    "grade2": "Lớp 2",
-    "grade3": "Lớp 3",
-    "grade4": "Lớp 4",
-    "grade5": "Lớp 5",
-    "grade6": "Lớp 6",
-    "grade7": "Lớp 7",
-    "grade8": "Lớp 8",
-    "grade9": "Lớp 9",
-    "grade10": "Lớp 10",
-    "grade11": "Lớp 11",
-    "grade12": "Lớp 12",
-    "toeic": "TOEIC",
-}
-
-
-def topic_id(label: str) -> str:
-    key = label.strip().lower()
-    digest = hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
-    return f"t-{digest}"
 
 
 def ipa_to_phonemes(ipa: str) -> list[str]:
@@ -51,10 +29,10 @@ def ipa_to_phonemes(ipa: str) -> list[str]:
     return [t for t in tokens if t.strip()]
 
 
-def enrich_word(entry: dict, source: str, grade: int | None) -> dict:
+def enrich_word(entry: dict, topic_name: str) -> dict | None:
     word = str(entry.get("word", "")).strip()
     if not word:
-        return {}
+        return None
 
     ipa_raw = ipa_convert(word) or word
     ipa = f"/{ipa_raw}/"
@@ -62,36 +40,15 @@ def enrich_word(entry: dict, source: str, grade: int | None) -> dict:
     if not phonemes:
         phonemes = list(word.lower())
 
-    topic = str(entry.get("topic") or "Khác").strip()
     return {
         "word": word,
         "ipa": ipa,
         "phonemes": phonemes,
         "meaning": entry.get("meaning", ""),
         "emoji": entry.get("emoji", ""),
-        "topic": topic,
-        "topicId": topic_id(topic),
-        "grade": grade if grade is not None else entry.get("grade"),
-        "source": source,
+        "topic": topic_name,
         "audio_sample_url": "",
     }
-
-
-def load_sources() -> list[tuple[str, list[dict]]]:
-    sources: list[tuple[str, list[dict]]] = []
-    for path in sorted(SRC_DIR.glob("*.json")):
-        if path.name in SKIP_FILES:
-            continue
-        source_id = path.stem
-        data = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(data, list):
-            continue
-        grade = None
-        m = re.match(r"grade(\d+)", source_id)
-        if m:
-            grade = int(m.group(1))
-        sources.append((source_id, data, grade))  # type: ignore[arg-type]
-    return sources  # type: ignore[return-value]
 
 
 def main() -> None:
@@ -99,62 +56,60 @@ def main() -> None:
         print(f"Source not found: {SRC_DIR}", file=sys.stderr)
         sys.exit(1)
 
-    TOPICS_DIR.mkdir(parents=True, exist_ok=True)
+    if TOPICS_DIR.exists():
+        shutil.rmtree(TOPICS_DIR)
+    TOPICS_DIR.mkdir(parents=True)
 
-    by_topic: dict[str, list[dict]] = defaultdict(list)
-    seen_per_topic: dict[str, set[str]] = defaultdict(set)
-    source_meta: list[dict] = []
+    topics_manifest: list[dict] = []
+    total_words = 0
     total_raw = 0
 
-    for source_id, rows, grade in load_sources():
-        count = 0
+    for path in sorted(SRC_DIR.glob("*.json")):
+        if path.name in SKIP_FILES:
+            continue
+
+        topic_name = path.stem
+        rows = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(rows, list):
+            continue
+
+        seen: set[str] = set()
+        words: list[dict] = []
         for row in rows:
             total_raw += 1
-            item = enrich_word(row, source_id, grade)
+            item = enrich_word(row, topic_name)
             if not item:
                 continue
-            tid = item["topicId"]
             key = item["word"].lower()
-            if key in seen_per_topic[tid]:
+            if key in seen:
                 continue
-            seen_per_topic[tid].add(key)
-            by_topic[tid].append(item)
-            count += 1
-        source_meta.append({
-            "id": source_id,
-            "label": SOURCE_LABELS.get(source_id, source_id),
-            "wordCount": count,
-        })
+            seen.add(key)
+            words.append(item)
 
-    topic_labels: dict[str, str] = {}
-    for items in by_topic.values():
-        for item in items:
-            topic_labels[item["topicId"]] = item["topic"]
-
-    topics_manifest = []
-    for tid in sorted(by_topic.keys(), key=lambda x: topic_labels[x]):
-        items = sorted(by_topic[tid], key=lambda w: w["word"].lower())
-        out_path = TOPICS_DIR / f"{tid}.json"
+        words.sort(key=lambda w: w["word"].lower())
+        out_path = TOPICS_DIR / f"{topic_name}.json"
         out_path.write_text(
-            json.dumps({"topicId": tid, "label": topic_labels[tid], "words": items}, ensure_ascii=False, indent=2),
+            json.dumps({"topic": topic_name, "words": words}, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
         topics_manifest.append({
-            "id": tid,
-            "label": topic_labels[tid],
-            "count": len(items),
+            "id": topic_name,
+            "label": topic_name,
+            "file": f"{topic_name}.json",
+            "count": len(words),
         })
+        total_words += len(words)
 
-    topics_manifest.sort(key=lambda t: (-t["count"], t["label"]))
+    topics_manifest.sort(key=lambda t: t["label"])
 
     manifest = {
-        "version": 1,
+        "version": 2,
         "source": "GameDietTauNgam/global-success-vocabulary",
-        "totalWords": sum(t["count"] for t in topics_manifest),
+        "topicNaming": "filename",
+        "totalWords": total_words,
         "totalTopics": len(topics_manifest),
         "defaultTopicId": topics_manifest[0]["id"] if topics_manifest else "",
         "defaultQuizSize": 30,
-        "sources": source_meta,
         "topics": topics_manifest,
     }
 
@@ -164,8 +119,8 @@ def main() -> None:
         encoding="utf-8",
     )
 
-    print(f"Built {manifest['totalWords']} words in {manifest['totalTopics']} topics (from {total_raw} raw rows)")
-    print(f"Output: {OUT_DIR}")
+    print(f"Built {total_words} words in {len(topics_manifest)} topic files (from {total_raw} raw rows)")
+    print(f"Output: {TOPICS_DIR}")
 
 
 if __name__ == "__main__":

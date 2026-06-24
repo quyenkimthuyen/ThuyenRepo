@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   normalizeWord,
   wordsMatch,
+  wordsMatchExact,
   extractSpokenWord,
   getSilenceMsFromSetting,
   getHangoverMs,
@@ -21,6 +22,18 @@ describe('normalizeWord', () => {
   it('lowercases and strips punctuation', () => {
     assert.equal(normalizeWord('Hello!'), 'hello');
     assert.equal(normalizeWord("  Don't "), "don't");
+  });
+});
+
+describe('wordsMatchExact', () => {
+  it('requires exact normalized match', () => {
+    assert.equal(wordsMatchExact('hello', 'hello'), true);
+    assert.equal(wordsMatchExact('Hello', 'hello'), true);
+  });
+
+  it('rejects fuzzy or partial', () => {
+    assert.equal(wordsMatchExact('helo', 'hello'), false);
+    assert.equal(wordsMatchExact('say hello', 'hello'), false);
   });
 });
 

@@ -94,6 +94,13 @@ export function wordsMatch(spoken, target) {
   return false;
 }
 
+/** Chế độ text: khớp chính xác 100% (không fuzzy) */
+export function wordsMatchExact(spoken, target) {
+  const s = normalizeWord(spoken);
+  const t = normalizeWord(target);
+  return s.length > 0 && s === t;
+}
+
 export function extractSpokenWord(finalText, interimText) {
   const combined = (`${finalText || ''} ${interimText || ''}`).trim();
   if (!combined) return '';

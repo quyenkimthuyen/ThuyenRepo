@@ -17,9 +17,11 @@ test.describe('Chế độ Chấm điểm + backend', () => {
     await expect(page.locator('#service-status')).toContainText(/online/i);
   });
 
-  test('phoneme section visible in score mode', async ({ page }) => {
+  test('score zone and quiz summary visible in score mode', async ({ page }) => {
+    await expect(page.locator('#score-zone')).toBeVisible();
     await expect(page.locator('#phoneme-container')).toBeVisible();
-    await expect(page.locator('.phoneme-box').first()).toBeVisible();
+    await expect(page.locator('#quiz-results-table')).toBeVisible();
+    await expect(page.locator('.phoneme-idle-hint')).toBeVisible();
   });
 
   test('evaluate API reachable from page context (CORS)', async ({ page }) => {
@@ -40,7 +42,7 @@ test.describe('Chế độ Chấm điểm + backend', () => {
     await expect(page.locator('#btn-live-toggle')).toHaveAttribute('data-state', /ready|hearing/, {
       timeout: 10000,
     });
-    await expect(page.locator('#live-transcript-placeholder')).toContainText(/tự chấm/i);
+    await expect(page.locator('#live-transcript-placeholder')).toContainText(/chấm IPA/i);
   });
 
   test('settings API URL matches test backend', async ({ page }) => {

@@ -6,6 +6,7 @@ import {
   PRACTICE_MODE,
   MIC_STATE,
   wordsMatch,
+  wordsMatchExact,
   getHangoverMs,
   computeRms,
   TEXT_MATCH_DELAY_MS,
@@ -78,6 +79,8 @@ const lastEvaluations = {};
 let currentWordEvaluation = null;
 let passAdvanceTimer = null;
 let suppressWordSelectChange = false;
+/** @type {Array<{word:string, score:number|null, passed:boolean|null, status:string}>} */
+let quizSessionResults = [];
 
 const $ = (id) => document.getElementById(id);
 
@@ -101,12 +104,14 @@ const els = {
   recordingIndicator: $('recording-indicator'),
   spinner: $('spinner'),
   scoreSection: $('score-section'),
-  ipaScorePanel: $('ipa-score-panel'),
+  scoreZone: $('score-zone'),
   scoreStatusLabel: $('score-status-label'),
   scoreSpinner: $('score-spinner'),
   overallScore: $('overall-score'),
   passStatus: $('pass-status'),
   phonemeContainer: $('phoneme-container'),
+  quizResultsBody: $('quiz-results-body'),
+  quizSummaryStats: $('quiz-summary-stats'),
   feedbackSection: $('feedback-section'),
   feedbackList: $('feedback-list'),
   settingsPanel: $('settings-panel'),
@@ -117,7 +122,6 @@ const els = {
   settingPassScore: $('setting-pass-score'),
   serviceStatus: $('service-status'),
   btnLiveToggle: $('btn-live-toggle'),
-  btnEvaluateNow: $('btn-evaluate-now'),
   micStatusLabel: $('mic-status-label'),
   vadLevel: $('vad-level'),
   liveTranscriptFinal: $('live-transcript-final'),
@@ -188,8 +192,86 @@ function setScoreState(mode, text) {
   if (els.scoreStatusLabel && text) {
     els.scoreStatusLabel.textContent = text;
   }
-  els.ipaScorePanel?.classList.toggle('scoring', mode === 'scoring');
+  els.scoreZone?.classList.toggle('scoring', mode === 'scoring');
   els.scoreSpinner?.classList.toggle('hidden', mode !== 'scoring');
+}
+
+function getPassThreshold() {
+  const n = parseInt(els.settingPassScore?.value, 10);
+  if (!Number.isFinite(n)) return 80;
+  return Math.min(100, Math.max(50, n));
+}
+
+function spokenMatchesTarget(spoken, target) {
+  if (isTextMode()) return wordsMatchExact(spoken, target);
+  return wordsMatch(spoken, target);
+}
+
+function initQuizSessionResults() {
+  quizSessionResults = words.map((w) => ({
+    word: w.word,
+    score: null,
+    passed: null,
+    status: 'pending',
+  }));
+  renderQuizSummary();
+}
+
+function recordQuizSessionResult(word, score, passed, kind = 'score') {
+  const idx = words.findIndex((w) => normalizeWordKey(w.word) === normalizeWordKey(word));
+  if (idx < 0) return;
+  quizSessionResults[idx] = {
+    word,
+    score: kind === 'text' ? 100 : score,
+    passed,
+    status: passed ? 'pass' : 'fail',
+  };
+  renderQuizSummary();
+}
+
+function renderQuizSummary() {
+  if (!els.quizResultsBody) return;
+
+  const rows = quizSessionResults.length
+    ? quizSessionResults
+    : words.map((w) => ({ word: w.word, score: null, passed: null, status: 'pending' }));
+
+  els.quizResultsBody.innerHTML = rows.map((row, i) => {
+    const isCurrent = i === currentIndex;
+    const scoreText = row.score == null ? '—' : `${row.score}%`;
+    let resultLabel = 'Chưa đọc';
+    let resultClass = 'pending';
+    if (row.status === 'pass') {
+      resultLabel = '✓ Đạt';
+      resultClass = 'pass';
+    } else if (row.status === 'fail') {
+      resultLabel = '✗ Chưa';
+      resultClass = 'fail';
+    }
+
+    return `<tr class="quiz-row ${resultClass}${isCurrent ? ' current' : ''}" data-index="${i}">
+      <td>${i + 1}</td>
+      <td>${row.word}</td>
+      <td>${scoreText}</td>
+      <td><span class="quiz-result-badge ${resultClass}">${resultLabel}</span></td>
+    </tr>`;
+  }).join('');
+
+  const threshold = getPassThreshold();
+  const scored = rows.filter((r) => r.score != null);
+  const passedCount = rows.filter((r) => r.passed).length;
+  const avg = scored.length
+    ? Math.round(scored.reduce((sum, r) => sum + r.score, 0) / scored.length)
+    : null;
+  if (els.quizSummaryStats) {
+    els.quizSummaryStats.textContent = `${passedCount}/${rows.length} đạt · TB ${avg ?? '—'}% · ngưỡng ${threshold}%`;
+  }
+
+  els.quizResultsBody.querySelectorAll('.quiz-row').forEach((tr) => {
+    tr.addEventListener('click', () => {
+      showWord(parseInt(tr.dataset.index, 10), { autoplay: false });
+    });
+  });
 }
 
 function syncMicStateFromEngine() {
@@ -234,6 +316,7 @@ async function loadDemoWords() {
   currentQuizMeta = { topicId: 'demo', quizSize: words.length, totalInTopic: words.length };
   updateQuizInfo();
   renderWordList();
+  initQuizSessionResults();
 }
 
 function getTopicId() {
@@ -264,7 +347,7 @@ function updateQuizInfo() {
   if (!els.quizInfo) return;
   const topic = vocabularyManifest?.topics?.find((t) => t.id === currentQuizMeta.topicId);
   const label = topic?.label || (currentQuizMeta.topicId === 'demo' ? 'Demo' : 'Chủ đề');
-  els.quizInfo.textContent = `${label} · ${words.length}/${currentQuizMeta.totalInTopic || words.length} từ`;
+  els.quizInfo.textContent = `Quiz ${label} · ${words.length}/${currentQuizMeta.totalInTopic || words.length} từ`;
 }
 
 async function initVocabulary() {
@@ -303,6 +386,7 @@ async function startQuizSession(options = {}) {
   };
   updateQuizInfo();
   renderWordList();
+  initQuizSessionResults();
   const maxIdx = Math.max(0, words.length - 1);
   let index = 0;
   if (options.newQuiz) {
@@ -378,14 +462,11 @@ function applyPracticeModeUI() {
 
   if (els.liveTranscriptPlaceholder) {
     const sec = parseFloat(els.settingSilenceSec?.value) || 0.35;
+    const threshold = getPassThreshold();
     els.liveTranscriptPlaceholder.textContent = isTextMode()
-      ? 'Đọc đúng từ → tự chuyển từ tiếp theo'
-      : `Đọc từ → im lặng ~${sec}s → tự chấm → đạt thì chuyển từ`;
+      ? 'Đọc đúng 100% từ → tự chuyển từ tiếp'
+      : `Đọc từ → im lặng ~${sec}s → chấm IPA → đạt ≥${threshold}% tự sang từ`;
   }
-
-  els.btnEvaluateNow?.classList.add('hidden');
-  els.settingAutoEvaluate?.closest('.setting-row')?.classList.toggle('hidden', textActive);
-  els.settingPassScore?.closest('.setting-row')?.classList.toggle('hidden', textActive);
 
   if (textActive) {
     els.serviceStatus.textContent = '● Chế độ text — không cần backend';
@@ -531,6 +612,7 @@ function showWord(index, options = {}) {
   if (autoplay && els.settingAutoplay.checked) {
     playSample();
   }
+  renderQuizSummary();
 }
 
 function resetEvaluationUI() {
@@ -596,13 +678,19 @@ function beginScoringOverlay() {
   if (!isScoreMode()) return;
   els.phonemeContainer?.classList.add('scoring');
   els.scoreSection?.classList.add('scoring');
-  els.ipaScorePanel?.classList.add('scoring');
+  els.scoreZone?.classList.add('scoring');
 }
 
 function endScoringOverlay() {
   els.phonemeContainer?.classList.remove('scoring');
   els.scoreSection?.classList.remove('scoring');
-  els.ipaScorePanel?.classList.remove('scoring');
+  els.scoreZone?.classList.remove('scoring');
+}
+
+function renderPhonemeIdle() {
+  if (!isScoreMode() || !els.phonemeContainer) return;
+  els.phonemeContainer.classList.remove('has-results');
+  els.phonemeContainer.innerHTML = '<p class="phoneme-idle-hint">Nói xong → im lặng ngắn để chấm chi tiết từng âm IPA</p>';
 }
 
 function restoreWordScoreUI(word) {
@@ -624,23 +712,11 @@ function restoreWordScoreUI(word) {
   setScoreState('idle', 'Sẵn sàng chấm');
   els.scoreSection.classList.add('hidden');
   els.phonemeContainer?.classList.remove('has-results');
-  renderPendingPhonemes(word.phonemes || []);
+  renderPhonemeIdle();
 }
 
-function renderPendingPhonemes(phonemes) {
-  if (!isScoreMode()) return;
-  if (hasEvaluationForWord(words[currentIndex])) return;
-
-  endScoringOverlay();
-  els.phonemeContainer.classList.remove('has-results');
-  els.phonemeContainer.innerHTML = phonemes
-    .map((p) => `
-      <div class="phoneme-box" data-ipa="${p}">
-        <div class="phoneme-char pending">${p}</div>
-        <span class="phoneme-score">—</span>
-      </div>
-    `)
-    .join('');
+function renderPendingPhonemes(_phonemes) {
+  renderPhonemeIdle();
 }
 
 function renderEvaluationDisplay(data, options = {}) {
@@ -650,7 +726,7 @@ function renderEvaluationDisplay(data, options = {}) {
   endScoringOverlay();
   currentWordEvaluation = data;
 
-  const passScore = parseInt(els.settingPassScore.value, 10);
+  const passScore = getPassThreshold();
   const allOk = data.phonemes.every((p) => p.label === 'ok');
   const passed = data.passed ?? (allOk || data.overall_score >= passScore);
 
@@ -746,7 +822,7 @@ function syncTranscriptFromEngine() {
 
   const w = words[currentIndex];
   const lastWord = micEngine.getSpokenWord();
-  const match = wordsMatch(lastWord, w?.word);
+  const match = spokenMatchesTarget(lastWord, w?.word);
   els.liveTranscriptInterim.classList.toggle('match', match);
   els.liveTranscriptFinal.classList.toggle('match', match);
 }
@@ -810,7 +886,7 @@ function tryScheduleTextAdvance() {
 
   const w = words[currentIndex];
   const spoken = getSpokenWord();
-  if (!w || !spoken || !wordsMatch(spoken, w.word)) {
+  if (!w || !spoken || !spokenMatchesTarget(spoken, w.word)) {
     clearTextMatchTimer();
     return;
   }
@@ -822,7 +898,7 @@ function tryScheduleTextAdvance() {
     textMatchTimer = null;
     if (!liveModeActive || isAdvancing || !isTextMode()) return;
     const latest = getSpokenWord();
-    if (latest && wordsMatch(latest, w.word)) {
+    if (latest && spokenMatchesTarget(latest, w.word)) {
       await processTextUtterance(latest);
     }
   }, TEXT_MATCH_DELAY_MS);
@@ -1187,14 +1263,15 @@ async function processTextUtterance(spoken) {
     return;
   }
 
-  if (!wordsMatch(word, w.word)) {
-    showLiveHint(`✗ Nghe "${word}" — cần "${w.word}" (${w.ipa})`, 'mis');
+  if (!wordsMatchExact(word, w.word)) {
+    showLiveHint(`✗ Nghe "${word}" — cần đúng 100% "${w.word}"`, 'mis');
     return;
   }
 
   isAdvancing = true;
-  showLiveHint(`✓ Đúng "${word}"!`, 'ok');
+  showLiveHint(`✓ Đúng 100% "${word}"!`, 'ok');
   recordAttempt(w.word, true, 100);
+  recordQuizSessionResult(w.word, 100, true, 'text');
   await new Promise((r) => setTimeout(r, 100));
   hideLiveHint();
   micEngine?.clearTranscript();
@@ -1213,13 +1290,15 @@ function updateRealtimeHint() {
     return;
   }
 
-  if (wordsMatch(spoken, w.word)) {
+  if (wordsMatchExact(spoken, w.word)) {
     const msg = isTextMode()
-      ? `✓ Nghe "${spoken}" — khớp!`
+      ? `✓ "${spoken}" — khớp 100%!`
       : `✓ Nghe "${spoken}" — im lặng ngắn để tự chấm`;
     showLiveHint(msg, 'ok');
+  } else if (isTextMode()) {
+    showLiveHint(`✗ "${spoken}" — cần đúng 100% "${w.word}"`, 'mis');
   } else {
-    showLiveHint(`✗ Nghe "${spoken}" — cần đọc "${w.word}" (${w.ipa})`, 'mis');
+    showLiveHint(`✗ Nghe "${spoken}" — cần đọc "${w.word}"`, 'mis');
   }
 }
 
@@ -1366,7 +1445,6 @@ function stopLiveMode() {
   els.recordingIndicator.classList.add('hidden');
   els.btnRecord.disabled = false;
   els.phonemeContainer.classList.remove('live-mode');
-  els.btnEvaluateNow?.classList.add('hidden');
 }
 
 function toggleLiveMode() {
@@ -1520,7 +1598,7 @@ async function startRecording() {
       } else {
         const spoken = getSpokenWord();
         const w = words[currentIndex];
-        if (spoken && wordsMatch(spoken, w?.word)) {
+        if (spoken && wordsMatchExact(spoken, w?.word)) {
           setMicState(MIC_STATE.PROCESSING, 'Đang xử lý...');
           await processTextUtterance(spoken);
           if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
@@ -1655,28 +1733,47 @@ function renderEvaluation(data, options = {}) {
   }
 
   setScoreState('done', `Điểm ${data.overall_score}%`);
-  els.phonemeContainer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-  const passScore = parseInt(els.settingPassScore.value, 10);
+  const passScore = getPassThreshold();
   const allOk = data.phonemes.every((p) => p.label === 'ok');
   const passed = data.passed ?? (allOk || data.overall_score >= passScore);
 
   recordAttempt(data.word, passed, data.overall_score);
+  recordQuizSessionResult(data.word, data.overall_score, passed);
 
   if (passed) {
     els.btnRetry.classList.add('hidden');
-    showLiveHint(
-      `✓ Đạt ${data.overall_score}% — kết quả giữ tới lần chấm sau (bấm → để sang từ tiếp)`,
-      'ok',
-    );
+    if (fromLive && liveModeActive) {
+      void advanceAfterPass(data);
+    } else {
+      showLiveHint(`✓ Đạt ${data.overall_score}% (≥${passScore}%)`, 'ok');
+    }
   } else {
     els.btnRetry.classList.remove('hidden');
     const issues = data.phonemes.filter((p) => p.label !== 'ok' && p.suggestion);
     const hintText = issues.length
       ? issues.map((p) => `${p.ipa}: ${p.suggestion}`).join(' · ')
-      : `Chưa đạt (${data.overall_score}%) — thử đọc lại "${data.word}"`;
+      : `Chưa đạt ${data.overall_score}% (cần ≥${passScore}%) — thử đọc lại "${data.word}"`;
     showLiveHint(hintText, 'mis');
   }
+}
+
+async function advanceAfterPass(data) {
+  const passScore = getPassThreshold();
+  const atLast = currentIndex >= words.length - 1;
+
+  if (atLast) {
+    showLiveHint(`✓ Hoàn thành bài! Đạt ${data.overall_score}%`, 'ok');
+    return;
+  }
+
+  isAdvancing = true;
+  showLiveHint(`✓ Đạt ${data.overall_score}% (≥${passScore}%) — chuyển từ...`, 'ok');
+  await new Promise((r) => setTimeout(r, 450));
+  hideLiveHint();
+  prepareMicForNextUtterance();
+  nextWord();
+  isAdvancing = false;
 }
 
 function renderPhonemeResults(phonemes, showSuggestionsAlways = false) {

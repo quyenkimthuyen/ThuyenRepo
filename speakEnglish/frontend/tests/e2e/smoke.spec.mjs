@@ -4,7 +4,7 @@ test.describe('Smoke — Chrome & Edge', () => {
   test('loads app and first word', async ({ page }) => {
     await openApp(page);
     await expect(page.locator('#word-index')).toHaveText(/\d+ \/ \d+/);
-    await expect(page.locator('#quiz-info')).toContainText(/từ/);
+    await expect(page.locator('#quiz-info')).toContainText(/Quiz/);
     await expect(page.locator('#mode-text')).toHaveClass(/active/);
     await expect(page.locator('#live-transcript-placeholder')).toBeVisible();
   });

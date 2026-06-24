@@ -10,7 +10,7 @@
   <div class="app">
     <header class="header">
       <h1>PronounceLab <span class="accent">Personal</span></h1>
-      <p class="subtitle">Luyện phát âm 1000 từ — xử lý local, bảo mật riêng tư</p>
+      <p class="subtitle">Luyện phát âm theo chủ đề — quiz ngẫu nhiên, chấm IPA local</p>
     </header>
 
     <nav class="toolbar">
@@ -18,41 +18,27 @@
         <button id="mode-text" class="mode-btn active" type="button" role="tab">📝 Chỉ text</button>
         <button id="mode-score" class="mode-btn" type="button" role="tab">🎯 Chấm điểm</button>
       </div>
-      <div class="word-nav">
-        <button id="btn-prev" class="btn btn-ghost" title="Từ trước">←</button>
-        <select id="word-select" class="word-select"></select>
-        <button id="btn-next" class="btn btn-ghost" title="Từ sau">→</button>
-      </div>
-      <div class="progress-info">
+      <div class="toolbar-row">
         <span id="quiz-info" class="quiz-info">—</span>
-        <span id="word-index">1 / 20</span>
-        <span id="history-badge" class="badge" title="Số lần thử">0 lần</span>
+        <button id="btn-new-quiz" class="btn btn-ghost btn-sm" type="button" title="Bài ngẫu nhiên mới">🔀 Bài mới</button>
+        <button id="btn-settings" class="btn btn-ghost btn-sm" title="Cài đặt">⚙ Cài đặt</button>
       </div>
-      <button id="btn-new-quiz" class="btn btn-ghost btn-sm" type="button" title="Bài ngẫu nhiên mới">🔀 Bài mới</button>
-      <button id="btn-settings" class="btn btn-ghost" title="Cài đặt">⚙</button>
     </nav>
 
     <main class="main-card">
-      <section class="word-display">
+      <section class="word-hero">
+        <div class="word-hero-top">
+          <span id="word-index" class="word-progress">1 / 30</span>
+          <span id="history-badge" class="badge" title="Số lần thử">0 lần</span>
+        </div>
         <h2 id="current-word" class="word-text">—</h2>
         <p id="current-meaning" class="word-meaning hidden"></p>
-        <p id="current-ipa" class="ipa-text">—</p>
-        <section id="ipa-score-panel" class="ipa-score-panel mode-score-only">
-          <div class="ipa-score-head">
-            <span id="score-status-label" class="score-status-label">Sẵn sàng chấm</span>
-            <div id="score-spinner" class="score-spinner hidden" aria-hidden="true">
-              <div class="score-spinner-ring"></div>
-            </div>
-          </div>
-          <section id="score-section" class="score-inline hidden">
-            <span class="overall-score">
-              Điểm:
-              <strong id="overall-score">—</strong>
-              <span id="pass-status" class="pass-status"></span>
-            </span>
-          </section>
-          <section id="phoneme-container" class="phoneme-container ipa-phonemes" aria-label="Chấm từng âm IPA"></section>
-        </section>
+        <p id="current-ipa" class="ipa-pill" title="Phiên âm IPA">—</p>
+        <div class="word-nav">
+          <button id="btn-prev" class="btn btn-ghost" type="button" title="Từ trước">←</button>
+          <select id="word-select" class="word-select" aria-label="Chọn từ trong bài"></select>
+          <button id="btn-next" class="btn btn-ghost" type="button" title="Từ sau">→</button>
+        </div>
       </section>
 
       <section class="live-panel" id="live-panel">
@@ -76,9 +62,6 @@
               </div>
             </div>
           </button>
-          <button id="btn-evaluate-now" class="btn btn-ghost btn-sm hidden" title="Chấm điểm ngay" hidden>
-            Chấm điểm
-          </button>
         </div>
         <div class="live-transcript-box">
           <p class="live-label">Bạn đang đọc:</p>
@@ -90,22 +73,61 @@
         </div>
       </section>
 
+      <section id="score-zone" class="score-zone mode-score-only">
+        <header class="score-zone-head">
+          <h3 class="score-zone-title">Chấm từ hiện tại</h3>
+          <div class="score-zone-status">
+            <span id="score-status-label" class="score-status-label">Sẵn sàng chấm</span>
+            <div id="score-spinner" class="score-spinner hidden" aria-hidden="true">
+              <div class="score-spinner-ring"></div>
+            </div>
+          </div>
+        </header>
+
+        <div id="current-score-card" class="current-score-card">
+          <div id="score-section" class="score-hero hidden">
+            <span class="score-hero-label">Điểm</span>
+            <strong id="overall-score" class="score-hero-value">—</strong>
+            <span id="pass-status" class="pass-status"></span>
+          </div>
+          <section id="phoneme-container" class="phoneme-strip" aria-label="Chi tiết từng âm IPA"></section>
+        </div>
+
+        <section id="quiz-summary" class="quiz-summary">
+          <header class="quiz-summary-head">
+            <h3 class="quiz-summary-title">Bảng tổng kết bài quiz</h3>
+            <span id="quiz-summary-stats" class="quiz-summary-stats">0/0 đạt · TB —%</span>
+          </header>
+          <div class="quiz-table-wrap">
+            <table id="quiz-results-table" class="quiz-table" aria-label="Kết quả từng từ">
+              <thead>
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">Từ</th>
+                  <th scope="col">Điểm</th>
+                  <th scope="col">Kết quả</th>
+                </tr>
+              </thead>
+              <tbody id="quiz-results-body"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
       <section class="controls">
-        <button id="btn-play-sample" class="btn btn-primary">
+        <button id="btn-play-sample" class="btn btn-primary" type="button">
           <span class="icon">▶</span> Nghe mẫu
         </button>
-        <button id="btn-record" class="btn btn-record">
+        <button id="btn-record" class="btn btn-record" type="button">
           <span class="icon">●</span> Ghi âm 1 lần
         </button>
-        <button id="btn-stop" class="btn btn-stop" disabled>
+        <button id="btn-stop" class="btn btn-stop" type="button" disabled>
           <span class="icon">■</span> Dừng
         </button>
-        <button id="btn-replay-user" class="btn btn-ghost" disabled>
+        <button id="btn-replay-user" class="btn btn-ghost" type="button" disabled>
           <span class="icon">↺</span> Nghe lại
         </button>
-        <button id="btn-retry" class="btn btn-warn hidden">
-          Thử lại
-        </button>
+        <button id="btn-retry" class="btn btn-warn hidden" type="button">Thử lại</button>
       </section>
 
       <div id="recording-indicator" class="recording-indicator hidden">
@@ -125,39 +147,49 @@
 
     <aside id="settings-panel" class="settings-panel hidden">
       <h3>Cài đặt</h3>
-      <label class="setting-row">
-        Chủ đề
-        <select id="setting-topic" class="setting-select"></select>
-      </label>
-      <label class="setting-row">
-        Số từ mỗi bài
-        <input type="number" id="setting-quiz-size" value="30" min="5" max="100" step="1">
-      </label>
-      <label class="setting-row">
-        <input type="checkbox" id="setting-autoplay" checked>
-        Tự phát mẫu khi mở từ
-      </label>
-      <label class="setting-row">
-        <input type="checkbox" id="setting-live-auto" checked>
-        Tự bật micro khi chạm màn hình
-      </label>
-      <label class="setting-row">
-        <input type="checkbox" id="setting-auto-evaluate" checked>
-        Tự chấm điểm khi kết thúc câu
-      </label>
-      <label class="setting-row">
-        Im lặng kết thúc (giây)
-        <input type="number" id="setting-silence-sec" value="0.35" min="0.2" max="1.2" step="0.05">
-      </label>
-      <label class="setting-row">
-        API URL
-        <input type="text" id="setting-api-url" value="http://127.0.0.1:8000">
-      </label>
-      <label class="setting-row">
-        Ngưỡng đạt (%)
-        <input type="number" id="setting-pass-score" value="80" min="50" max="100">
-      </label>
-      <button id="btn-close-settings" class="btn btn-ghost">Đóng</button>
+      <fieldset class="settings-group">
+        <legend>Bài quiz</legend>
+        <label class="setting-row">
+          Chủ đề
+          <select id="setting-topic" class="setting-select"></select>
+        </label>
+        <label class="setting-row">
+          Số từ mỗi bài
+          <input type="number" id="setting-quiz-size" value="30" min="5" max="100" step="1">
+        </label>
+      </fieldset>
+      <fieldset class="settings-group">
+        <legend>Luyện tập</legend>
+        <label class="setting-row">
+          <input type="checkbox" id="setting-autoplay" checked>
+          Tự phát mẫu khi mở từ
+        </label>
+        <label class="setting-row">
+          <input type="checkbox" id="setting-live-auto" checked>
+          Tự bật micro khi chạm màn hình
+        </label>
+        <label class="setting-row mode-score-only">
+          <input type="checkbox" id="setting-auto-evaluate" checked>
+          Tự chấm điểm khi kết thúc câu
+        </label>
+        <label class="setting-row">
+          Im lặng kết thúc (giây)
+          <input type="number" id="setting-silence-sec" value="0.35" min="0.2" max="1.2" step="0.05">
+        </label>
+        <label class="setting-row mode-score-only">
+          Ngưỡng đạt chấm điểm (%)
+          <input type="number" id="setting-pass-score" value="80" min="50" max="100" step="1">
+          <span class="setting-hint">Đạt ≥ ngưỡng này → tự sang từ tiếp</span>
+        </label>
+      </fieldset>
+      <fieldset class="settings-group mode-score-only">
+        <legend>Backend chấm điểm</legend>
+        <label class="setting-row">
+          API URL
+          <input type="text" id="setting-api-url" value="http://127.0.0.1:8000">
+        </label>
+      </fieldset>
+      <button id="btn-close-settings" class="btn btn-ghost" type="button">Đóng</button>
     </aside>
 
     <footer class="footer">
