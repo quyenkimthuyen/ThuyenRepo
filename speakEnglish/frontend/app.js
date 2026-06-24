@@ -62,8 +62,11 @@ const MAX_SCORE_AUDIO_SEC = 3;
 const MIN_BLOB_BYTES = 500;
 const MIN_UPLOAD_BYTES = 800;
 const SETTINGS_KEY = 'pronouncelab_settings';
+const WORD_INDEX_KEY = 'pronouncelab_word_index';
 /** @type {Record<string, object>} Kết quả chấm gần nhất theo từ */
 const lastEvaluations = {};
+let passAdvanceTimer = null;
+let suppressWordSelectChange = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -121,7 +124,8 @@ async function init() {
   bindEvents();
   setupAutoStartMic();
   renderWordList();
-  showWord(0);
+  const savedIndex = parseInt(sessionStorage.getItem(WORD_INDEX_KEY) || '0', 10);
+  showWord(Number.isFinite(savedIndex) ? savedIndex : 0);
   checkBackend();
   initLiveSpeech();
   setMicState(MIC_STATE.OFF, 'Micro tắt');
@@ -318,11 +322,29 @@ function renderWordList() {
     .join('');
 }
 
-function showWord(index) {
-  currentIndex = Math.max(0, Math.min(index, words.length - 1));
+function clearPassAdvanceTimer() {
+  if (passAdvanceTimer) {
+    clearTimeout(passAdvanceTimer);
+    passAdvanceTimer = null;
+  }
+}
+
+function showWord(index, options = {}) {
+  const { autoplay = true } = options;
+  const idx = Number(index);
+  if (!Number.isFinite(idx)) return;
+
+  clearPassAdvanceTimer();
+  isAdvancing = false;
+
+  currentIndex = Math.max(0, Math.min(idx, words.length - 1));
+  sessionStorage.setItem(WORD_INDEX_KEY, String(currentIndex));
   const w = words[currentIndex];
 
-  els.wordSelect.value = currentIndex;
+  suppressWordSelectChange = true;
+  els.wordSelect.value = String(currentIndex);
+  suppressWordSelectChange = false;
+
   els.wordIndex.textContent = `${currentIndex + 1} / ${words.length}`;
   els.currentWord.textContent = w.word;
   els.currentIpa.textContent = w.ipa;
@@ -336,7 +358,7 @@ function showWord(index) {
   micEngine?.resetSession();
   syncTranscriptFromEngine();
 
-  if (els.settingAutoplay.checked) {
+  if (autoplay && els.settingAutoplay.checked) {
     playSample();
   }
 }
@@ -427,9 +449,9 @@ function renderEvaluationDisplay(data, options = {}) {
   return true;
 }
 
-function nextWord() {
+function nextWord(options = {}) {
   if (currentIndex < words.length - 1) {
-    showWord(currentIndex + 1);
+    showWord(currentIndex + 1, options);
   }
 }
 
@@ -1001,6 +1023,8 @@ function stopLiveMode() {
   if (!liveModeActive) return;
 
   liveModeActive = false;
+  clearPassAdvanceTimer();
+  isAdvancing = false;
   clearTextMatchTimer();
   micEngine?.stop();
   micEngine = null;
@@ -1232,9 +1256,13 @@ function replayUserAudio() {
 
 async function evaluateRecording(blob = null, options = {}) {
   const { fromLive = false } = options;
-  const w = words[currentIndex];
+  const evalWordIndex = currentIndex;
+  const w = words[evalWordIndex];
   const audioBlob = blob || userAudioBlob;
-  if (!audioBlob) return;
+  if (!audioBlob || !w) return;
+
+  clearPassAdvanceTimer();
+  isAdvancing = false;
 
   isEvaluating = true;
   setMicState(MIC_STATE.PROCESSING, 'Đang chấm điểm...');
@@ -1295,7 +1323,7 @@ async function evaluateRecording(blob = null, options = {}) {
       return;
     }
 
-    renderEvaluation(data, { fromLive });
+    renderEvaluation(data, { fromLive, evalWordIndex });
   } catch (err) {
     els.spinner.classList.add('hidden');
     isEvaluating = false;
@@ -1311,7 +1339,7 @@ async function evaluateRecording(blob = null, options = {}) {
 }
 
 function renderEvaluation(data, options = {}) {
-  const { fromLive = false } = options;
+  const { fromLive = false, evalWordIndex = currentIndex } = options;
   if (!renderEvaluationDisplay(data, { showSuggestionsAlways: fromLive || liveModeActive })) {
     showLiveHint('Phản hồi thiếu dữ liệu phoneme', 'mis');
     restoreWordScoreUI(words[currentIndex]);
@@ -1332,9 +1360,23 @@ function renderEvaluation(data, options = {}) {
     els.btnRetry.classList.add('hidden');
     showLiveHint(`✓ Đúng rồi! (${data.overall_score}%) — chuyển từ...`, 'ok');
     const delay = fromLive ? 1800 : 1200;
-    setTimeout(() => {
+    const targetWord = data.word;
+
+    clearPassAdvanceTimer();
+    isAdvancing = true;
+    passAdvanceTimer = setTimeout(() => {
+      passAdvanceTimer = null;
+      if (words[evalWordIndex]?.word !== targetWord) {
+        isAdvancing = false;
+        return;
+      }
+      if (currentIndex !== evalWordIndex) {
+        isAdvancing = false;
+        return;
+      }
       hideLiveHint();
-      nextWord();
+      nextWord({ autoplay: !fromLive });
+      isAdvancing = false;
       if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
     }, delay);
   } else {
@@ -1478,7 +1520,10 @@ function bindEvents() {
   });
   els.btnPrev.addEventListener('click', prevWord);
   els.btnNext.addEventListener('click', nextWord);
-  els.wordSelect.addEventListener('change', (e) => showWord(parseInt(e.target.value, 10)));
+  els.wordSelect.addEventListener('change', (e) => {
+    if (suppressWordSelectChange) return;
+    showWord(parseInt(e.target.value, 10));
+  });
   els.btnSettings.addEventListener('click', () => els.settingsPanel.classList.remove('hidden'));
   els.btnCloseSettings.addEventListener('click', () => {
     saveSettings();
