@@ -48,6 +48,10 @@ class SimulationEngine {
       Config.STORAGE_KEYS.SIMULATION_CONFIG,
       getDefaultTradeConfig()
     );
+    const saved = loadFromStorage(Config.STORAGE_KEYS.SIMULATION_RESULTS, null);
+    if (saved && Array.isArray(saved.trades)) {
+      this.#lastResult = saved;
+    }
     log.info('Simulation engine ready');
   }
 

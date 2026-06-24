@@ -65,6 +65,13 @@ class SimulationViewImpl {
     ]));
 
     this.#bindEvents();
+
+    const last = SimulationEngine.getLastResult();
+    if (last) {
+      this.#restoreRunContext(last);
+      this.#renderResults(last);
+    }
+
     log.info('Simulation view mounted');
   }
 
@@ -286,6 +293,36 @@ class SimulationViewImpl {
   }
 
   /**
+   * Restore toolbar selectors to match the last simulation run.
+   * @param {import('../simulation/SimulationEngine.js').SimulationResult} result
+   */
+  #restoreRunContext(result) {
+    const strat = this.#container?.querySelector('#sim-strategy');
+    const sym = this.#container?.querySelector('#sim-symbol');
+    const tf = this.#container?.querySelector('#sim-tf');
+
+    if (strat) strat.value = result.strategyId;
+
+    if (sym && result.symbol) {
+      sym.value = result.symbol;
+      this.#selectedSymbol = result.symbol;
+    }
+
+    if (tf && result.timeframe) {
+      this.#selectedTimeframe = result.timeframe;
+      tf.innerHTML = '';
+      for (const opt of buildTimeframeOptions(
+        this.#runnableDatasets,
+        this.#selectedSymbol,
+        this.#selectedTimeframe
+      )) {
+        tf.appendChild(opt);
+      }
+      tf.value = result.timeframe;
+    }
+  }
+
+  /**
    * @param {import('../simulation/TradeSimulator.js').TradeResult} trade
    * @returns {import('../strategy/Signal.js').Signal|undefined}
    */
@@ -325,6 +362,11 @@ class SimulationViewImpl {
 
     const s = result.summary;
     summary.innerHTML = '';
+    summary.appendChild(el('div', { class: 'sim-run-meta' }, [
+      el('span', {}, [
+        `${result.strategyId} · ${result.symbol} ${result.timeframe} · ${result.durationMs}ms`,
+      ]),
+    ]));
     summary.appendChild(el('div', { class: 'sim-cards' }, [
       this.#card('Trades', String(s.totalTrades)),
       this.#card('Win Rate', `${s.winRate.toFixed(1)}%`),
