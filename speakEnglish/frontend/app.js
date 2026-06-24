@@ -9,6 +9,7 @@ import {
   getHangoverMs,
   computeRms,
   TEXT_MATCH_DELAY_MS,
+  shouldAutoScoreOnUtteranceEnd,
 } from './js/core.js';
 import { MicEngine, MIC_PHASE } from './js/mic-engine.js';
 
@@ -45,6 +46,11 @@ let liveMimeType = 'audio/webm';
 let phraseRecorder = null;
 let phraseChunks = [];
 let textMatchTimer = null;
+let utterancePcmChunks = [];
+let utteranceCapturing = false;
+let pcmCaptureNode = null;
+let pcmCaptureSource = null;
+let pcmSilentGain = null;
 
 let isSamplePlaying = false;
 let speechRecognitionPaused = false;
@@ -214,10 +220,10 @@ function applyPracticeModeUI() {
     const sec = parseFloat(els.settingSilenceSec?.value) || 0.35;
     els.liveTranscriptPlaceholder.textContent = isTextMode()
       ? 'Đọc đúng từ → tự chuyển từ tiếp theo'
-      : `Nói từ — im lặng ~${sec}s → chấm điểm`;
+      : `Đọc từ → im lặng ~${sec}s → tự chấm → đạt thì chuyển từ`;
   }
 
-  els.btnEvaluateNow?.classList.toggle('hidden', textActive || !liveModeActive);
+  els.btnEvaluateNow?.classList.add('hidden');
   els.settingAutoEvaluate?.closest('.setting-row')?.classList.toggle('hidden', textActive);
   els.settingPassScore?.closest('.setting-row')?.classList.toggle('hidden', textActive);
 
@@ -248,7 +254,11 @@ function micPhaseToState(phase) {
 function createMicEngine() {
   return new MicEngine({
     hangoverMs: getHangoverMsSetting(),
-    onSpeechStart: () => startPhraseRecording(),
+    allowAudioOnly: isScoreMode(),
+    onSpeechStart: () => {
+      startUtteranceCapture();
+      startPhraseRecording();
+    },
     onPhaseChange: (phase, label) => {
       if (phase !== MIC_PHASE.OFF) {
         setMicState(micPhaseToState(phase), label);
@@ -390,6 +400,9 @@ function initLiveSpeech() {
     else if (interim) micEngine.pushTranscript('', interim);
     syncTranscriptFromEngine();
     updateRealtimeHint();
+    if (isScoreMode() && liveModeActive && (finalPart || interim)) {
+      startUtteranceCapture();
+    }
     tryScheduleTextAdvance();
   };
 
@@ -474,6 +487,122 @@ function hideLiveHint() {
   if (!els.liveHint) return;
   els.liveHint.classList.add('hidden');
   els.liveHint.textContent = '';
+}
+
+// ─── PCM capture (score mode) — ổn định hơn MediaRecorder ghép chunk ───────
+
+function ensurePcmCaptureGraph() {
+  if (pcmCaptureNode || !micStream) return;
+  if (!audioContext) audioContext = new AudioContext();
+  pcmCaptureSource = audioContext.createMediaStreamSource(micStream);
+  pcmCaptureNode = audioContext.createScriptProcessor(2048, 1, 1);
+  pcmSilentGain = audioContext.createGain();
+  pcmSilentGain.gain.value = 0;
+  pcmCaptureNode.onaudioprocess = (e) => {
+    if (!utteranceCapturing) return;
+    utterancePcmChunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+  };
+  pcmCaptureSource.connect(pcmCaptureNode);
+  pcmCaptureNode.connect(pcmSilentGain);
+  pcmSilentGain.connect(audioContext.destination);
+}
+
+function startUtteranceCapture() {
+  if (!isScoreMode() || !liveModeActive || isListeningBlocked()) return;
+  if (!utteranceCapturing) utterancePcmChunks = [];
+  utteranceCapturing = true;
+  ensurePcmCaptureGraph();
+}
+
+function stopUtteranceCapture() {
+  utteranceCapturing = false;
+}
+
+function teardownPcmCapture() {
+  stopUtteranceCapture();
+  utterancePcmChunks = [];
+  if (pcmCaptureNode) {
+    try { pcmCaptureNode.disconnect(); } catch { /* ignore */ }
+    pcmCaptureNode.onaudioprocess = null;
+    pcmCaptureNode = null;
+  }
+  if (pcmCaptureSource) {
+    try { pcmCaptureSource.disconnect(); } catch { /* ignore */ }
+    pcmCaptureSource = null;
+  }
+  if (pcmSilentGain) {
+    try { pcmSilentGain.disconnect(); } catch { /* ignore */ }
+    pcmSilentGain = null;
+  }
+}
+
+function pcmFloat32ToWavBlob(floatSamples, sampleRate) {
+  const pcm = new Int16Array(floatSamples.length);
+  for (let i = 0; i < floatSamples.length; i++) {
+    const sample = Math.max(-1, Math.min(1, floatSamples[i]));
+    pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+  }
+
+  const wavBuf = new ArrayBuffer(44 + pcm.length * 2);
+  const view = new DataView(wavBuf);
+  const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + pcm.length * 2, true);
+  writeStr(8, 'WAVE');
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeStr(36, 'data');
+  view.setUint32(40, pcm.length * 2, true);
+  let off = 44;
+  for (let i = 0; i < pcm.length; i++, off += 2) {
+    view.setInt16(off, pcm[i], true);
+  }
+
+  return new Blob([wavBuf], { type: 'audio/wav' });
+}
+
+async function resampleFloat32ToWav(float32Data, srcSampleRate) {
+  const targetSr = 16000;
+  const maxSamples = Math.floor(srcSampleRate * MAX_SCORE_AUDIO_SEC);
+  const startSample = Math.max(0, float32Data.length - maxSamples);
+  const sliceLen = float32Data.length - startSample;
+  const slice = float32Data.subarray(startSample);
+
+  const offline = new OfflineAudioContext(
+    1,
+    Math.max(1, Math.ceil(sliceLen * targetSr / srcSampleRate)),
+    targetSr,
+  );
+  const sliceBuf = offline.createBuffer(1, sliceLen, srcSampleRate);
+  sliceBuf.copyToChannel(slice, 0);
+  const src = offline.createBufferSource();
+  src.buffer = sliceBuf;
+  src.connect(offline.destination);
+  src.start();
+  const rendered = await offline.startRendering();
+  return pcmFloat32ToWavBlob(rendered.getChannelData(0), targetSr);
+}
+
+async function buildWavFromPcmChunks(chunks, srcSampleRate) {
+  if (!chunks?.length) return null;
+  const totalLen = chunks.reduce((n, c) => n + c.length, 0);
+  const minSamples = Math.floor(srcSampleRate * 0.2);
+  if (totalLen < minSamples) return null;
+
+  const merged = new Float32Array(totalLen);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return resampleFloat32ToWav(merged, srcSampleRate);
 }
 
 function setupMediaRecorder() {
@@ -580,6 +709,28 @@ function stopPhraseRecording() {
   });
 }
 
+async function getScoreAudioBlob() {
+  stopUtteranceCapture();
+  const pcmChunks = utterancePcmChunks;
+  utterancePcmChunks = [];
+
+  if (pcmChunks.length && audioContext) {
+    try {
+      const wav = await buildWavFromPcmChunks(pcmChunks, audioContext.sampleRate);
+      if (wav && wav.size >= MIN_BLOB_BYTES) {
+        stopPhraseRecordingSync();
+        phraseChunks = [];
+        resumeRingRecorder();
+        return wav;
+      }
+    } catch (e) {
+      console.warn('PCM → WAV failed:', e);
+    }
+  }
+
+  return getPhraseAudioBlob();
+}
+
 async function getPhraseAudioBlob() {
   if (phraseRecorder?.state === 'recording') {
     return stopPhraseRecording();
@@ -614,64 +765,24 @@ async function convertBlobToWav(blob) {
   const arrayBuffer = await blob.arrayBuffer();
   const decoded = await audioContext.decodeAudioData(arrayBuffer.slice(0));
 
-  const srcSr = decoded.sampleRate;
-  const maxSamples = Math.floor(srcSr * MAX_SCORE_AUDIO_SEC);
-  const startSample = Math.max(0, decoded.length - maxSamples);
-  const sliceLen = decoded.length - startSample;
-
-  const targetSr = 16000;
-  const offline = new OfflineAudioContext(
-    1,
-    Math.max(1, Math.ceil(sliceLen * targetSr / srcSr)),
-    targetSr,
-  );
-
-  const sliceBuf = offline.createBuffer(decoded.numberOfChannels, sliceLen, srcSr);
-  for (let c = 0; c < decoded.numberOfChannels; c++) {
-    sliceBuf.copyToChannel(decoded.getChannelData(c).subarray(startSample), c);
+  const merged = new Float32Array(decoded.length);
+  for (let i = 0; i < decoded.length; i++) {
+    let sum = 0;
+    for (let c = 0; c < decoded.numberOfChannels; c++) {
+      sum += decoded.getChannelData(c)[i];
+    }
+    merged[i] = sum / decoded.numberOfChannels;
   }
 
-  const src = offline.createBufferSource();
-  src.buffer = sliceBuf;
-  src.connect(offline.destination);
-  src.start();
-  const rendered = await offline.startRendering();
-
-  const ch0 = rendered.getChannelData(0);
-  const pcm = new Int16Array(ch0.length);
-  for (let i = 0; i < ch0.length; i++) {
-    const sample = Math.max(-1, Math.min(1, ch0[i]));
-    pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
-  }
-
-  const wavBuf = new ArrayBuffer(44 + pcm.length * 2);
-  const view = new DataView(wavBuf);
-  const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
-
-  writeStr(0, 'RIFF');
-  view.setUint32(4, 36 + pcm.length * 2, true);
-  writeStr(8, 'WAVE');
-  writeStr(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, targetSr, true);
-  view.setUint32(28, targetSr * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeStr(36, 'data');
-  view.setUint32(40, pcm.length * 2, true);
-  let off = 44;
-  for (let i = 0; i < pcm.length; i++, off += 2) {
-    view.setInt16(off, pcm[i], true);
-  }
-
-  return new Blob([wavBuf], { type: 'audio/wav' });
+  return resampleFloat32ToWav(merged, decoded.sampleRate);
 }
 
 async function prepareUploadBlob(blob) {
   if (!blob || blob.size < MIN_BLOB_BYTES) {
     throw new Error('Audio quá ngắn — nói rõ hơn và thử lại');
+  }
+  if (blob.type === 'audio/wav' && blob.size >= MIN_UPLOAD_BYTES) {
+    return { blob, filename: 'recording.wav' };
   }
   const wav = await convertBlobToWav(blob);
   if (wav.size < MIN_UPLOAD_BYTES) {
@@ -681,16 +792,26 @@ async function prepareUploadBlob(blob) {
 }
 
 async function handleUtteranceComplete(payload) {
-  if (!liveModeActive || isListeningBlocked() || isAdvancing) return;
+  if (!liveModeActive || isListeningBlocked() || isAdvancing || isEvaluating) return;
 
   if (isTextMode()) {
     await processTextUtterance(payload.spoken);
     return;
   }
 
-  if (!els.settingAutoEvaluate?.checked) return;
+  if (!shouldAutoScoreOnUtteranceEnd({
+    practiceMode,
+    autoEvaluate: els.settingAutoEvaluate?.checked,
+  })) {
+    return;
+  }
 
-  const blob = await getPhraseAudioBlob();
+  await processScoreUtterance();
+}
+
+/** Score mode: im lặng sau câu → tự gọi API chấm → đạt thì chuyển từ */
+async function processScoreUtterance() {
+  const blob = await getScoreAudioBlob();
   if (!blob || blob.size < MIN_BLOB_BYTES) {
     showLiveHint('Không đủ audio — nói rõ hơn (~0.5s)', 'warn');
     return;
@@ -701,7 +822,7 @@ async function handleUtteranceComplete(payload) {
   userAudioUrl = URL.createObjectURL(blob);
   els.btnReplayUser.disabled = false;
 
-  showLiveHint('Đang phân tích phát âm...', 'warn');
+  showLiveHint('Đang chấm điểm...', 'warn');
   await evaluateRecording(blob, { fromLive: true });
 }
 
@@ -734,25 +855,6 @@ async function processTextUtterance(spoken) {
   isAdvancing = false;
 }
 
-async function triggerEvaluate(source = 'manual') {
-  if (!isScoreMode() || isListeningBlocked() || isEvaluating) return false;
-
-  const blob = await getPhraseAudioBlob();
-
-  if (!blob || blob.size < MIN_BLOB_BYTES) {
-    if (source === 'manual') showLiveHint('Chưa có audio — nói trước rồi bấm Chấm điểm', 'warn');
-    return false;
-  }
-
-  userAudioBlob = blob;
-  if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
-  userAudioUrl = URL.createObjectURL(blob);
-  els.btnReplayUser.disabled = false;
-
-  await evaluateRecording(blob, { fromLive: true });
-  return true;
-}
-
 function updateRealtimeHint() {
   const w = words[currentIndex];
   if (!w || isEvaluating || isAdvancing) return;
@@ -766,7 +868,7 @@ function updateRealtimeHint() {
   if (wordsMatch(spoken, w.word)) {
     const msg = isTextMode()
       ? `✓ Nghe "${spoken}" — khớp!`
-      : `✓ Nghe "${spoken}" — im lặng ngắn để chấm`;
+      : `✓ Nghe "${spoken}" — im lặng ngắn để tự chấm`;
     showLiveHint(msg, 'ok');
   } else {
     showLiveHint(`✗ Nghe "${spoken}" — cần đọc "${w.word}" (${w.ipa})`, 'mis');
@@ -818,7 +920,6 @@ async function startLiveMode() {
     els.btnRecord.disabled = true;
     if (isScoreMode()) {
       els.phonemeContainer.classList.add('live-mode');
-      els.btnEvaluateNow?.classList.remove('hidden');
     }
     hideLiveHint();
   } catch (err) {
@@ -836,6 +937,7 @@ function stopLiveMode() {
   stopPhraseRecordingSync();
   phraseRecorder = null;
   phraseChunks = [];
+  teardownPcmCapture();
 
   if (sampleResumeTimer) {
     clearTimeout(sampleResumeTimer);
@@ -908,6 +1010,8 @@ function pauseListeningForSample() {
   speechRecognitionPaused = true;
   stopPhraseRecordingSync();
   phraseChunks = [];
+  stopUtteranceCapture();
+  utterancePcmChunks = [];
   stopRingRecorder();
   micEngine?.setSampleMode(true);
   micEngine?.pause();
@@ -1288,7 +1392,6 @@ function bindEvents() {
   els.modeScore?.addEventListener('click', () => setPracticeMode(PRACTICE_MODE.SCORE));
   els.btnPlaySample.addEventListener('click', playSample);
   els.btnLiveToggle.addEventListener('click', toggleLiveMode);
-  els.btnEvaluateNow?.addEventListener('click', () => triggerEvaluate('manual'));
   els.btnRecord.addEventListener('click', startRecording);
   els.btnStop.addEventListener('click', stopRecording);
   els.btnReplayUser.addEventListener('click', replayUserAudio);

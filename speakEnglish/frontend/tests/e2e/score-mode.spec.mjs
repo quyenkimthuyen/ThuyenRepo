@@ -33,12 +33,14 @@ test.describe('Chế độ Chấm điểm + backend', () => {
     expect(result.status).toBe('ok');
   });
 
-  test('live mic + evaluate button in score mode', async ({ page, browserName }) => {
+  test('live mic auto-score hint in score mode', async ({ page, browserName }) => {
     test.skip(browserName === 'firefox', 'Chỉ Chrome/Edge');
 
     await page.locator('#btn-live-toggle').click();
-    await expect(page.locator('#btn-evaluate-now')).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('#btn-live-toggle')).toHaveAttribute('data-state', /ready|hearing/);
+    await expect(page.locator('#btn-live-toggle')).toHaveAttribute('data-state', /ready|hearing/, {
+      timeout: 10000,
+    });
+    await expect(page.locator('#live-transcript-placeholder')).toContainText(/tự chấm/i);
   });
 
   test('settings API URL matches test backend', async ({ page }) => {

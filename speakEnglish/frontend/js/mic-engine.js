@@ -29,6 +29,7 @@ export const MIC_PHASE = {
  * @property {(rms: number, pct: number) => void} [onLevel]
  * @property {(payload: { spoken: string, getBlob: (mime: string) => Blob|null }) => Promise<void>} [onUtteranceComplete]
  * @property {() => void} [onSpeechStart]
+ * @property {boolean} [allowAudioOnly] — chấm điểm: không cần transcript, chỉ cần VAD đủ dài
  */
 
 export class MicEngine {
@@ -40,6 +41,7 @@ export class MicEngine {
     this.onLevel = options.onLevel;
     this.onUtteranceComplete = options.onUtteranceComplete;
     this.onSpeechStart = options.onSpeechStart;
+    this.allowAudioOnly = options.allowAudioOnly ?? false;
 
     this.phase = MIC_PHASE.OFF;
     this.paused = false;
@@ -174,7 +176,8 @@ export class MicEngine {
 
     const spoken = this.getSpokenWord();
     const hasAudio = this.utteranceChunks.length > 0;
-    if (!spoken && !hasAudio) {
+    const speechLongEnough = duration >= MIN_SPEECH_MS;
+    if (!spoken && !hasAudio && !(this.allowAudioOnly && speechLongEnough)) {
       this.endCapture();
       return;
     }

@@ -22,9 +22,11 @@ header('Default Data');
   const manifestPath = join(DEFAULTS, 'manifest.json');
   s.assert('DD-01: manifest.json exists', existsSync(manifestPath));
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  s.assert('DD-02: manifest has datasets', manifest.datasets?.length >= 8);
+  s.assert('DD-02: manifest has datasets', manifest.datasets?.length >= 11);
   s.assert('DD-03: EURUSD H1 in manifest', manifest.datasets.some((d) => d.symbol === 'EURUSD' && d.timeframe === 'H1'));
   s.assert('DD-03b: BTCUSD H4 in manifest', manifest.datasets.some((d) => d.symbol === 'BTCUSD' && d.timeframe === 'H4'));
+  s.assert('DD-03c: BTCUSD D1 in manifest', manifest.datasets.some((d) => d.symbol === 'BTCUSD' && d.timeframe === 'D1'));
+  s.assert('DD-03d: BTCUSD W in manifest', manifest.datasets.some((d) => d.symbol === 'BTCUSD' && d.timeframe === 'W'));
 }
 
 for (const tf of ['H1', 'H4', 'D1', 'W']) {
@@ -56,6 +58,15 @@ for (const tf of ['H1', 'H4', 'D1', 'W']) {
     const text = gunzipSync(readFileSync(gzPath)).toString();
     const result = importFromText(text, 'BTCUSD_H4.json', 'BTCUSD', 'H4');
     return result.candles.length > 15000;
+  })());
+}
+
+for (const tf of ['D1', 'W']) {
+  s.assert(`DD-btc-${tf}: BTCUSD ${tf} imports`, (() => {
+    const gzPath = join(DEFAULTS, `BTCUSD_${tf}.json.gz`);
+    if (!existsSync(gzPath)) return false;
+    const text = gunzipSync(readFileSync(gzPath)).toString();
+    return importFromText(text, `BTCUSD_${tf}.json`, 'BTCUSD', tf).candles.length > 100;
   })());
 }
 
