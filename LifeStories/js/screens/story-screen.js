@@ -125,7 +125,7 @@ function showStoryComplete(state, story) {
   choicesArea.innerHTML = `
     <div class="story-complete-panel">
       <h2 data-i18n="storyComplete">${t('storyComplete')}</h2>
-      ${isFirstComplete ? '<div class="xp-badge">+' + story.xpReward + ' XP</div>' : ''}
+      ${isFirstComplete ? '<div class="xp-badge">' + tFormat('xpBadge', { n: story.xpReward }) + '</div>' : ''}
       <div class="complete-actions">
         <button class="btn btn-primary" id="btn-home" data-i18n="backToHome">${t('backToHome')}</button>
         <button class="btn btn-secondary" id="btn-profile" data-i18n="viewProfile">${t('viewProfile')}</button>

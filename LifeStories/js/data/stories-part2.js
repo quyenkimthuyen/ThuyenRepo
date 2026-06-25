@@ -7,7 +7,7 @@ const STORIES_PART2 = [
     title: { en: 'The Competition', vi: 'Cuộc Thi' },
     description: {
       en: 'The national science fair is in two weeks. Your teammate Hoa found a flaw in your project. The rival team might be cheating.',
-      vi: 'Hội thi khoa học quốc gia còn hai tuần. Đồng đội Hoa phát hiện lỗi trong dự án. Đội đối thủ có thể đang gian lận.',
+      vi: 'Hội thi Khoa học còn hai tuần nữa. Hoa — đồng đội của bạn — phát hiện lỗi trong dự án. Đội đối thủ thì có vẻ đang gian lận.',
     },
     xpReward: 110,
     totalScenes: 12,
@@ -236,7 +236,7 @@ const STORIES_PART2 = [
     title: { en: 'First Snow', vi: 'Tuyết Đầu Mùa' },
     description: {
       en: 'Mai sits next to you in literature class. She lent you her notes. Winter break is coming, and she asked if you\'re free on Saturday.',
-      vi: 'Mai ngồi cạnh bạn trong lớp Văn. Cô ấy cho bạn mượn vở. Kỳ nghỉ đông sắp đến, và cô ấy hỏi bạn có rảnh thứ Bảy không.',
+      vi: 'Mai ngồi cạnh bạn trong lớp Văn, từng cho mượn vở. Kỳ nghỉ đông sắp đến — cô ấy hỏi thứ Bảy bạn có rảnh không.',
     },
     xpReward: 100,
     totalScenes: 14,
@@ -498,7 +498,7 @@ const STORIES_PART2 = [
     title: { en: 'After the Fall', vi: 'Sau Cú Ngã' },
     description: {
       en: 'You didn\'t make the basketball team. Your essay was rejected from the school magazine. Dad says "try harder." You want to disappear.',
-      vi: 'Bạn không vào đội bóng rổ. Bài văn bị từ chối khỏi tạp chí trường. Bố nói "cố gắng hơn." Bạn muốn biến mất.',
+      vi: 'Bạn trượt đội bóng rổ. Bài văn bị từ chối khỏi tạp chí trường. Bố bảo "cố lên đi." Bạn chỉ muốn biến mất.',
     },
     xpReward: 130,
     totalScenes: 13,

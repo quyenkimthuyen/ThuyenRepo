@@ -18,7 +18,7 @@ const STORIES = [
     title: { en: 'The Night Before', vi: 'Đêm Trước Kỳ Thi' },
     description: {
       en: 'Tomorrow is the math final. Your friend Lan is panicking. Your phone buzzes with a study group invite. Mom wants you in bed by ten.',
-      vi: 'Ngày mai là thi Toán cuối kỳ. Bạn Lan đang hoảng loạn. Điện thoại rung với lời mời học nhóm. Mẹ muốn bạn đi ngủ trước mười giờ.',
+      vi: 'Ngày mai thi Toán cuối kỳ. Lan nhắn hoảng loạn nhờ giúp bài. Điện thoại reo — lời mời học nhóm. Mẹ bảo mười giờ phải ngủ.',
     },
     xpReward: 100,
     totalScenes: 12,
@@ -269,7 +269,7 @@ const STORIES = [
     title: { en: 'Crossroads', vi: 'Ngã Ba Đường' },
     description: {
       en: 'University applications are due next month. Your parents want medicine. Your heart wants design. Your counselor wants to talk.',
-      vi: 'Hồ sơ đại học nộp tháng sau. Bố mẹ muốn con học y. Trái tim bạn muốn thiết kế. Cố vấn học đường muốn nói chuyện.',
+      vi: 'Tháng sau hết hạn nộp hồ sơ đại học. Bố mẹ muốn bạn học Y. Bạn lại mơ đến Thiết kế. Cô Thảo — cố vấn học đường — muốn nói chuyện.',
     },
     xpReward: 120,
     totalScenes: 13,

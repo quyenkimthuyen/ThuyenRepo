@@ -66,6 +66,7 @@ function updateBottomNav(activeScreen) {
 function initApp() {
   const savedLang = localStorage.getItem('lifechoices_lang');
   if (savedLang) setLang(savedLang);
+  else document.title = t('pageTitle');
   updateLangButton();
 
   document.getElementById('btn-lang').addEventListener('click', () => {
