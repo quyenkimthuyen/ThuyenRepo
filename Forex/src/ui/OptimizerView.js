@@ -8,7 +8,7 @@ import { bus, Events } from '../core/EventBus.js';
 import { el, loadFromStorage } from '../utils/dom.js';
 import StrategyEngine from '../strategy/StrategyEngine.js';
 import ResearchEngine from '../optimizer/ResearchEngine.js';
-import { parseValueList, countCombinations, defaultGridForParam } from '../optimizer/ParameterGrid.js';
+import { parseValueList, countCombinations, defaultGridForParam, augmentParamGrid } from '../optimizer/ParameterGrid.js';
 import { downloadFile } from '../data/DataExporter.js';
 import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
@@ -254,7 +254,8 @@ class OptimizerViewImpl {
       .filter((d) => d.type === 'number' || d.type === 'integer')
       .map((def) => {
         const defaults = defaultGridForParam(def).join(',');
-        return el('label', { class: 'opt-param-row' }, [
+        const isTrendEma = strategyId === 'break-retest' && ['emaFast', 'emaSlow', 'trendBars'].includes(def.key);
+        const children = [
           el('input', { type: 'checkbox', class: 'opt-param-check', dataset: { key: def.key }, checked: def.key === 'rr' }),
           el('span', { class: 'opt-param-label' }, [def.label]),
           el('input', {
@@ -264,7 +265,11 @@ class OptimizerViewImpl {
             value: defaults,
             placeholder: 'e.g. 1,2,3 or 10:50:10',
           }),
-        ]);
+        ];
+        if (isTrendEma) {
+          children.push(el('span', { class: 'opt-param-hint' }, ['Bật EMA trend filter khi chạy grid']));
+        }
+        return el('label', { class: 'opt-param-row' }, children);
       });
 
     content.appendChild(el('div', { class: 'opt-panel' }, [
@@ -382,7 +387,7 @@ class OptimizerViewImpl {
 
   async #runGrid() {
     const { strategyId, symbol, timeframe } = this.#readSelectors();
-    const paramGrid = this.#readParamGrid();
+    const paramGrid = augmentParamGrid(strategyId, this.#readParamGrid());
     const rankMetric = /** @type {HTMLSelectElement} */ (this.#container.querySelector('#opt-rank')).value;
     const progress = this.#container?.querySelector('#opt-progress');
 

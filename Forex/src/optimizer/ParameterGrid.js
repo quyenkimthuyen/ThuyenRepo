@@ -89,3 +89,24 @@ export function defaultGridForParam(def) {
 
   return [...new Set(values.map((v) => def.type === 'integer' ? Math.round(v) : v))];
 }
+
+/** Params that require trend filter when grid-optimized (per strategy). */
+const TREND_FILTER_DEPENDENTS = Object.freeze({
+  'break-retest': ['emaFast', 'emaSlow', 'trendBars'],
+});
+
+/**
+ * When optimizing trend EMA params, force useTrendFilter on so combos actually apply.
+ * @param {string} strategyId
+ * @param {Record<string, number[]|string[]|boolean[]>} paramGrid
+ * @returns {Record<string, number[]|string[]|boolean[]>}
+ */
+export function augmentParamGrid(strategyId, paramGrid) {
+  const dependents = TREND_FILTER_DEPENDENTS[strategyId];
+  if (!dependents) return paramGrid;
+
+  const optimizingTrend = dependents.some((key) => paramGrid[key]?.length);
+  if (!optimizingTrend) return paramGrid;
+
+  return { ...paramGrid, useTrendFilter: [true] };
+}

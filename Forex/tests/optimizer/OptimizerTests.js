@@ -3,7 +3,7 @@
  * Run: node tests/optimizer/OptimizerTests.js
  */
 
-import { parseValueList, buildCombinations, countCombinations, defaultGridForParam } from '../../src/optimizer/ParameterGrid.js';
+import { parseValueList, buildCombinations, countCombinations, defaultGridForParam, augmentParamGrid } from '../../src/optimizer/ParameterGrid.js';
 import { runMonteCarlo } from '../../src/optimizer/MonteCarloEngine.js';
 import { getRankValue } from '../../src/optimizer/GridSearchEngine.js';
 import { stripBacktestResult, stripGridSearchForStorage } from '../../src/optimizer/researchPersistence.js';
@@ -49,6 +49,13 @@ console.log('\n=== Optimizer Tests ===\n');
   const def = { key: 'rr', label: 'RR', type: 'number', default: 2, min: 1, max: 5, step: 0.5 };
   const grid = defaultGridForParam(def);
   assert('OP-05: Default grid has 3', grid.length === 3);
+}
+
+{
+  const grid = augmentParamGrid('break-retest', { emaFast: [10, 20, 30] });
+  assert('OP-05b: Trend EMA grid forces filter', grid.useTrendFilter?.length === 1 && grid.useTrendFilter[0] === true);
+  const plain = augmentParamGrid('break-retest', { rr: [1, 2] });
+  assert('OP-05c: Non-trend grid unchanged', !('useTrendFilter' in plain));
 }
 
 {

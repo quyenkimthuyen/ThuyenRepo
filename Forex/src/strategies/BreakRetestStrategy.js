@@ -97,7 +97,7 @@ export class BreakRetestStrategy extends BaseStrategy {
         default: 20,
         min: 5,
         max: 100,
-        description: 'Fast EMA period when trend filter is on',
+        description: 'Fast EMA period — chỉ có hiệu lực khi EMA Trend Filter bật (Optimizer tự bật khi tick param này)',
       },
       {
         key: 'emaSlow',
@@ -106,7 +106,7 @@ export class BreakRetestStrategy extends BaseStrategy {
         default: 50,
         min: 10,
         max: 200,
-        description: 'Slow EMA period when trend filter is on',
+        description: 'Slow EMA period — chỉ có hiệu lực khi EMA Trend Filter bật (Optimizer tự bật khi tick param này)',
       },
       {
         key: 'trendBars',

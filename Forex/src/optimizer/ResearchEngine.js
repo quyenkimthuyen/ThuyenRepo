@@ -11,6 +11,7 @@ import StrategyEngine from '../strategy/StrategyEngine.js';
 import SimulationEngine from '../simulation/SimulationEngine.js';
 import { mergeTradeConfig } from '../simulation/TradeConfig.js';
 import { runGridSearch } from './GridSearchEngine.js';
+import { augmentParamGrid } from './ParameterGrid.js';
 import { runWalkForward } from './WalkForwardEngine.js';
 import PerformanceEngine from '../performance/PerformanceEngine.js';
 import {
@@ -69,9 +70,13 @@ class ResearchEngine {
     const tradeConfig = mergeTradeConfig(SimulationEngine.getConfig());
     const max = Config.OPTIMIZER.MAX_COMBINATIONS;
     const autoWf = options.autoWalkForward ?? Config.OPTIMIZER.AUTO_WALK_FORWARD_AFTER_GRID;
+    const baseParams = StrategyEngine.getConfig(options.strategyId).params ?? {};
+    const paramGrid = augmentParamGrid(options.strategyId, options.paramGrid);
 
     const result = await runGridSearch({
       ...options,
+      paramGrid,
+      baseParams,
       candles,
       tradeConfig,
       maxCombinations: max,

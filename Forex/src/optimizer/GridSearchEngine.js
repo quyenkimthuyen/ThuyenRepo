@@ -53,6 +53,7 @@ export function getRankValue(stats, metric) {
  * @param {string} options.timeframe
  * @param {Candle[]} options.candles
  * @param {Record<string, number[]|string[]|boolean[]>} options.paramGrid
+ * @param {Record<string, unknown>} [options.baseParams]
  * @param {TradeConfig} options.tradeConfig
  * @param {RankMetric} [options.rankMetric='expectancy']
  * @param {number} [options.maxCombinations=500]
@@ -66,6 +67,7 @@ export async function runGridSearch({
   timeframe,
   candles,
   paramGrid,
+  baseParams = {},
   tradeConfig,
   rankMetric = 'expectancy',
   maxCombinations = 500,
@@ -83,7 +85,7 @@ export async function runGridSearch({
   const entries = [];
 
   for (let i = 0; i < combos.length; i++) {
-    const params = combos[i];
+    const params = { ...baseParams, ...combos[i] };
     const result = await backtestFn(strategyId, symbol, timeframe, candles, params, tradeConfig);
     const rank = getRankValue(result.stats, rankMetric);
 
