@@ -1,15 +1,20 @@
 let currentEngine = null;
 
+function isComicStory(story) {
+  return story?.visualStyle === 'comic';
+}
+
 function renderStoryScreen(container, state, params) {
   const story = getStoryById(params.storyId);
   if (!story) { navigateTo('home'); return; }
 
   const savedProgress = params.replay ? null : getStoryProgress(state, story.id);
   currentEngine = new StoryEngine(story, savedProgress);
+  const comic = isComicStory(story);
 
   container.innerHTML = `
-    <div class="story-screen" id="story-ui">
-      <div class="story-bg" id="story-bg">
+    <div class="story-screen${comic ? ' story-screen--comic' : ''}" id="story-ui">
+      <div class="story-bg${comic ? ' comic-panel' : ''}" id="story-bg">
         <div class="story-progress-top">
           <div class="story-progress-label">
             <span>${tl(story.title)}</span>
@@ -17,11 +22,22 @@ function renderStoryScreen(container, state, params) {
           </div>
           <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
         </div>
-        <div class="character-avatar" id="char-avatar"></div>
+        ${comic ? `
+          <div class="comic-frame" id="comic-frame">
+            <div class="comic-frame__border"></div>
+            <img class="comic-illustration" id="comic-img" alt="" />
+            <div class="comic-caption" id="comic-caption"></div>
+            <div class="comic-character-badge" id="comic-badge">
+              <span class="comic-character-badge__emoji" id="char-avatar"></span>
+            </div>
+          </div>
+        ` : '<div class="character-avatar" id="char-avatar"></div>'}
       </div>
-      <div class="dialogue-panel">
-        <div class="character-name" id="char-name"></div>
-        <div class="dialogue-text" id="dialogue-text"></div>
+      <div class="dialogue-panel${comic ? ' dialogue-panel--comic' : ''}">
+        <div class="dialogue-bubble" id="dialogue-bubble">
+          <div class="character-name" id="char-name"></div>
+          <div class="dialogue-text" id="dialogue-text"></div>
+        </div>
       </div>
       <div id="choices-area"></div>
       <div id="consequence-area"></div>
@@ -32,14 +48,49 @@ function renderStoryScreen(container, state, params) {
   renderCurrentScene(state, story);
 }
 
+function updateComicIllustration(story, scene) {
+  const art = typeof getComicArtForScene === 'function'
+    ? getComicArtForScene(story.id, scene.id)
+    : null;
+  const img = document.getElementById('comic-img');
+  const caption = document.getElementById('comic-caption');
+  const bg = document.getElementById('story-bg');
+
+  if (!img) return;
+
+  if (art) {
+    if (img.src !== new URL(art.src, window.location.href).href) {
+      img.style.opacity = '0';
+      img.onload = () => { img.style.opacity = '1'; };
+      img.src = art.src;
+    }
+    img.alt = tl(art.caption);
+    img.classList.remove('comic-illustration--hidden');
+    if (caption) caption.textContent = tl(art.caption);
+    bg.dataset.mood = art.mood || '';
+  } else {
+    img.classList.add('comic-illustration--hidden');
+    if (caption) caption.textContent = '';
+    bg.dataset.mood = 'neutral';
+  }
+}
+
 function renderCurrentScene(state, story) {
   const engine = currentEngine;
   const scene = engine.getCurrentScene();
   if (!scene) { showStoryComplete(state, story); return; }
 
   const char = engine.getCharacter(scene.character) || { name: { en: '...', vi: '...' }, emoji: '', color: '#888' };
+  const comic = isComicStory(story);
 
-  document.getElementById('char-avatar').textContent = char.emoji || '💬';
+  const avatarEl = document.getElementById('char-avatar');
+  if (comic) {
+    avatarEl.textContent = char.emoji || '💬';
+    updateComicIllustration(story, scene);
+  } else {
+    avatarEl.textContent = char.emoji || '💬';
+  }
+
   document.getElementById('char-name').textContent = tl(char.name);
   document.getElementById('char-name').style.color = char.color;
   document.getElementById('dialogue-text').textContent = tl(scene.dialogue);
@@ -50,7 +101,14 @@ function renderCurrentScene(state, story) {
 
   const choicesArea = document.getElementById('choices-area');
   const consequenceArea = document.getElementById('consequence-area');
+  const dialogueBubble = document.getElementById('dialogue-bubble');
   consequenceArea.innerHTML = '';
+
+  if (dialogueBubble) {
+    dialogueBubble.classList.remove('dialogue-bubble--enter');
+    void dialogueBubble.offsetWidth;
+    dialogueBubble.classList.add('dialogue-bubble--enter');
+  }
 
   if (engine.lastConsequenceMessages?.length) {
     engine.lastConsequenceMessages.forEach(msg => {
@@ -65,13 +123,14 @@ function renderCurrentScene(state, story) {
   }
 
   if (scene.choices && scene.choices.length > 0) {
-    choicesArea.innerHTML = '<div class="choices-panel"><p class="choices-label" data-i18n="choose">' + t('choose') + '</p></div>';
+    choicesArea.innerHTML = '<div class="choices-panel' + (comic ? ' choices-panel--comic' : '') + '"><p class="choices-label" data-i18n="choose">' + t('choose') + '</p></div>';
     const panel = choicesArea.querySelector('.choices-panel');
 
     scene.choices.forEach((choice, idx) => {
       const btn = document.createElement('button');
-      btn.className = 'btn-choice';
+      btn.className = 'btn-choice' + (comic ? ' btn-choice--comic' : '');
       btn.textContent = tl(choice.text);
+      btn.style.animationDelay = (idx * 0.08) + 's';
       btn.addEventListener('click', () => onChoiceMade(state, story, idx));
       panel.appendChild(btn);
     });

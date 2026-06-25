@@ -76,10 +76,11 @@ function showStoryList(container, state, stageId) {
     const progressPct = progress ? Math.round((progress.visitedScenes?.length || 0) / story.totalScenes * 100) : 0;
 
     html += `
-      <div class="story-card ${statusClass}" data-story-id="${story.id}">
+      <div class="story-card ${statusClass}${story.visualStyle === 'comic' ? ' story-card--comic' : ''}" data-story-id="${story.id}">
         <div class="story-card-header">
           <div>
             <span class="story-category" data-i18n="category_${story.category}">${t('category_' + story.category)}</span>
+            ${story.visualStyle === 'comic' ? '<span class="story-card-badge-comic">📖 ' + t('comicBadge') + '</span>' : ''}
             <h3>${tl(story.title)}</h3>
           </div>
           ${statusText ? '<span class="story-status ' + statusClass + '">' + statusText + '</span>' : ''}

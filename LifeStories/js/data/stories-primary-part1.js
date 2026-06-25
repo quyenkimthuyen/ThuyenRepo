@@ -4,6 +4,7 @@ const PRIMARY_STORIES = [
     id: 'ps-01',
     lifeStage: 'primary_school',
     category: 'friendship',
+    visualStyle: 'comic',
     title: { en: 'The Empty Chair', vi: 'Chiếc Ghế Trống' },
     description: {
       en: 'A new student named An sits alone every recess. Your best friend Minh says you two should stay a pair — just the two of you, like always.',

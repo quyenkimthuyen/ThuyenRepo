@@ -299,6 +299,22 @@ body::before {
 
 .story-card.in-progress { border-left: 3px solid var(--accent-gold); }
 
+.story-card--comic {
+  border-color: rgba(212, 168, 83, 0.35);
+  background: linear-gradient(135deg, rgba(212, 168, 83, 0.06), var(--bg-card));
+}
+
+.story-card-badge-comic {
+  display: inline-block;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(255, 107, 107, 0.15);
+  color: #ff8a8a;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
 .story-card-header {
   display: flex;
   justify-content: space-between;
@@ -683,3 +699,197 @@ body::before {
 @media (min-width: 768px) {
   .story-list { grid-template-columns: 1fr 1fr; }
 }
+
+/* ═══ Comic Story Mode ═══ */
+.story-screen--comic {
+  background: #1a1520;
+}
+
+.story-screen--comic .story-bg.comic-panel {
+  background: #2a2035;
+  min-height: 340px;
+  align-items: flex-end;
+  padding-bottom: 0;
+}
+
+.story-screen--comic .story-bg.comic-panel::after {
+  background: linear-gradient(to top, #1a1520 0%, transparent 50%);
+}
+
+.story-screen--comic .story-bg[data-mood="morning"] { background: linear-gradient(180deg, #87CEEB 0%, #2a2035 100%); }
+.story-screen--comic .story-bg[data-mood="playful"] { background: linear-gradient(180deg, #7EC850 0%, #2a2035 100%); }
+.story-screen--comic .story-bg[data-mood="tense"] { background: linear-gradient(180deg, #9B72CF 0%, #2a2035 100%); }
+.story-screen--comic .story-bg[data-mood="warm"] { background: linear-gradient(180deg, #FFB88C 0%, #2a2035 100%); }
+.story-screen--comic .story-bg[data-mood="sunset"] { background: linear-gradient(180deg, #FF9A6C 0%, #2a2035 100%); }
+
+.comic-frame {
+  position: relative;
+  width: calc(100% - 2rem);
+  max-width: 720px;
+  margin: 3.5rem auto 0;
+  z-index: 1;
+  animation: comicPanelIn 0.6s ease;
+}
+
+@keyframes comicPanelIn {
+  from { opacity: 0; transform: scale(0.96) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.comic-frame__border {
+  position: absolute;
+  inset: -4px;
+  border: 4px solid #fff;
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 2px #333,
+    6px 6px 0 rgba(0,0,0,0.4);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.comic-illustration {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  transition: opacity 0.45s ease;
+}
+
+.comic-illustration--hidden {
+  opacity: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.comic-caption {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: rgba(255,255,255,0.92);
+  color: #333;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  border: 2px solid #333;
+  z-index: 3;
+  text-align: center;
+}
+
+.comic-character-badge {
+  position: absolute;
+  top: -18px;
+  right: 20px;
+  width: 52px;
+  height: 52px;
+  background: #fff;
+  border: 3px solid #333;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
+  z-index: 4;
+}
+
+.comic-character-badge__emoji {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.dialogue-panel--comic {
+  background: transparent;
+  border-top: none;
+  padding: 1rem 1.5rem 0.5rem;
+}
+
+.dialogue-bubble {
+  position: relative;
+}
+
+.dialogue-panel--comic .dialogue-bubble {
+  background: #fff;
+  color: #222;
+  border: 3px solid #333;
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.25);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.dialogue-panel--comic .dialogue-bubble::before {
+  content: '';
+  position: absolute;
+  top: -14px;
+  left: 40px;
+  border: 12px solid transparent;
+  border-bottom-color: #333;
+}
+
+.dialogue-panel--comic .dialogue-bubble::after {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 43px;
+  border: 9px solid transparent;
+  border-bottom-color: #fff;
+}
+
+.dialogue-bubble--enter {
+  animation: bubblePop 0.35s ease;
+}
+
+@keyframes bubblePop {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.dialogue-panel--comic .character-name {
+  color: #c05070;
+  font-weight: 700;
+}
+
+.dialogue-panel--comic .dialogue-text {
+  color: #333;
+}
+
+.choices-panel--comic {
+  background: #1a1520;
+}
+
+.btn-choice--comic {
+  background: #fff;
+  color: #333;
+  border: 2px solid #333;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 #333;
+  animation: choiceSlide 0.4s ease backwards;
+}
+
+.btn-choice--comic:hover {
+  background: #FFF9E6;
+  border-color: var(--accent-gold);
+  box-shadow: 3px 3px 0 var(--accent-gold-dim);
+  transform: translate(-2px, -2px);
+}
+
+@keyframes choiceSlide {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.story-screen--comic .consequence-toast {
+  background: rgba(255, 200, 100, 0.2);
+  border-color: rgba(255, 200, 100, 0.5);
+  color: #ffd080;
+}
+
+@media (max-width: 600px) {
+  .comic-frame { margin-top: 3rem; width: calc(100% - 1rem); }
+  .comic-caption { font-size: 0.75rem; }
+  .comic-character-badge { width: 44px; height: 44px; top: -14px; }
+}
+
