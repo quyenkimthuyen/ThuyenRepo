@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Life Trading Simulator — Trade Your Future</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="header">
+    <div class="header-brand">
+      <h1>Life Trading Simulator</h1>
+      <p class="tagline">Trade Your Future</p>
+    </div>
+    <div class="header-stats">
+      <div class="stat-pill"><span class="label">Tuổi</span><span id="stat-age">18</span></div>
+      <div class="stat-pill"><span class="label">Tuần</span><span id="stat-week">1</span></div>
+      <div class="stat-pill"><span class="label">Thời gian</span><span id="stat-time">168h</span></div>
+      <div class="stat-pill"><span class="label">Năng lượng</span><span id="stat-energy">100</span></div>
+      <div class="stat-pill"><span class="label">Tiền</span><span id="stat-money">$1000</span></div>
+    </div>
+    <div class="header-actions">
+      <button id="btn-save" class="btn btn-secondary">Lưu</button>
+      <button id="btn-load" class="btn btn-secondary">Tải</button>
+      <button id="btn-new-game" class="btn btn-danger">Game mới</button>
+    </div>
+  </header>
+
+  <main class="dashboard">
+    <!-- Player Assets -->
+    <section class="panel panel-assets">
+      <h2>Tài sản cuộc đời</h2>
+      <div class="asset-grid">
+        <div class="asset-bar" data-stat="health">
+          <span class="asset-label">Sức khỏe</span>
+          <div class="bar-track"><div class="bar-fill health" id="bar-health"></div></div>
+          <span class="asset-value" id="val-health">100</span>
+        </div>
+        <div class="asset-bar" data-stat="wealth">
+          <span class="asset-label">Tài sản</span>
+          <div class="bar-track"><div class="bar-fill wealth" id="bar-wealth"></div></div>
+          <span class="asset-value" id="val-wealth">100</span>
+        </div>
+        <div class="asset-bar" data-stat="happiness">
+          <span class="asset-label">Hạnh phúc</span>
+          <div class="bar-track"><div class="bar-fill happiness" id="bar-happiness"></div></div>
+          <span class="asset-value" id="val-happiness">100</span>
+        </div>
+        <div class="asset-bar" data-stat="knowledge">
+          <span class="asset-label">Kiến thức</span>
+          <div class="bar-track"><div class="bar-fill knowledge" id="bar-knowledge"></div></div>
+          <span class="asset-value" id="val-knowledge">0</span>
+        </div>
+        <div class="asset-bar" data-stat="relationships">
+          <span class="asset-label">Quan hệ</span>
+          <div class="bar-track"><div class="bar-fill relationships" id="bar-relationships"></div></div>
+          <span class="asset-value" id="val-relationships">50</span>
+        </div>
+        <div class="asset-bar" data-stat="confidence">
+          <span class="asset-label">Tự tin</span>
+          <div class="bar-track"><div class="bar-fill confidence" id="bar-confidence"></div></div>
+          <span class="asset-value" id="val-confidence">50</span>
+        </div>
+        <div class="asset-bar" data-stat="reputation">
+          <span class="asset-label">Uy tín</span>
+          <div class="bar-track"><div class="bar-fill reputation" id="bar-reputation"></div></div>
+          <span class="asset-value" id="val-reputation">50</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Portfolio -->
+    <section class="panel panel-portfolio">
+      <h2>Life Portfolio</h2>
+      <div class="portfolio-chart" id="portfolio-chart"></div>
+      <div class="portfolio-sliders" id="portfolio-sliders"></div>
+    </section>
+
+    <!-- Emotions -->
+    <section class="panel panel-emotions">
+      <h2>Cảm xúc</h2>
+      <div class="emotion-grid" id="emotion-grid"></div>
+    </section>
+
+    <!-- Drawdowns -->
+    <section class="panel panel-drawdown">
+      <h2>Drawdown</h2>
+      <div class="drawdown-list" id="drawdown-list"></div>
+    </section>
+
+    <!-- Market Events -->
+    <section class="panel panel-market">
+      <h2>Market of Life</h2>
+      <div id="market-event" class="market-event empty">Chưa có sự kiện thị trường</div>
+    </section>
+
+    <!-- Life Chart -->
+    <section class="panel panel-chart">
+      <h2>Life Chart</h2>
+      <div class="chart-controls">
+        <label><input type="checkbox" id="chart-wealth" checked> Wealth</label>
+        <label><input type="checkbox" id="chart-happiness" checked> Happiness</label>
+        <label><input type="checkbox" id="chart-health" checked> Health</label>
+        <label><input type="checkbox" id="chart-knowledge" checked> Knowledge</label>
+      </div>
+      <canvas id="life-chart"></canvas>
+    </section>
+
+    <!-- Open Trades -->
+    <section class="panel panel-open-trades">
+      <h2>Open Trades <span class="badge" id="open-count">0</span></h2>
+      <div id="open-trades-list" class="trades-list"></div>
+    </section>
+
+    <!-- Available Trades -->
+    <section class="panel panel-trades">
+      <h2>Chọn Trade tuần này</h2>
+      <div class="trade-filters">
+        <button class="filter-btn active" data-filter="all">Tất cả</button>
+        <button class="filter-btn" data-filter="career">Career</button>
+        <button class="filter-btn" data-filter="learning">Learning</button>
+        <button class="filter-btn" data-filter="health">Health</button>
+        <button class="filter-btn" data-filter="family">Family</button>
+        <button class="filter-btn" data-filter="fun">Fun</button>
+      </div>
+      <div id="available-trades" class="trades-grid"></div>
+      <button id="btn-next-week" class="btn btn-primary btn-large" disabled>Kết thúc tuần →</button>
+    </section>
+
+    <!-- Closed Trades -->
+    <section class="panel panel-closed-trades">
+      <h2>Closed Trades</h2>
+      <div id="closed-trades-list" class="trades-list scrollable"></div>
+    </section>
+
+    <!-- Journal -->
+    <section class="panel panel-journal">
+      <h2>Trading Journal</h2>
+      <div id="journal-list" class="journal-list scrollable"></div>
+    </section>
+
+    <!-- AI Mirror -->
+    <section class="panel panel-ai-mirror">
+      <h2>AI Mirror</h2>
+      <div id="ai-mirror" class="ai-mirror-content">
+        <p class="mirror-placeholder">Thực hiện thêm quyết định để AI Mirror phản chiếu hành vi của bạn.</p>
+      </div>
+      <div id="archetype" class="archetype-box hidden"></div>
+    </section>
+  </main>
+
+  <!-- Trade Modal -->
+  <div id="trade-modal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" id="modal-close">&times;</button>
+      <h3 id="modal-title"></h3>
+      <p id="modal-desc" class="modal-desc"></p>
+      <div class="modal-details">
+        <div class="detail-group">
+          <h4>Cost</h4>
+          <ul id="modal-cost"></ul>
+        </div>
+        <div class="detail-group">
+          <h4>Potential Reward</h4>
+          <ul id="modal-reward"></ul>
+        </div>
+        <div class="detail-group">
+          <h4>Risk</h4>
+          <ul id="modal-risk"></ul>
+        </div>
+        <div class="detail-group">
+          <h4>Xác suất & Delay</h4>
+          <p id="modal-prob"></p>
+        </div>
+      </div>
+      <div class="modal-journal">
+        <label>Lý do quyết định:</label>
+        <textarea id="modal-reason" placeholder="Tại sao bạn chọn trade này?"></textarea>
+        <label>Cảm xúc hiện tại:</label>
+        <select id="modal-emotion">
+          <option value="confident">Tự tin</option>
+          <option value="fearful">Lo lắng</option>
+          <option value="excited">Hào hứng</option>
+          <option value="stressed">Căng thẳng</option>
+          <option value="calm">Bình tĩnh</option>
+          <option value="greedy">Tham lam</option>
+          <option value="disciplined">Kỷ luật</option>
+        </select>
+      </div>
+      <button id="modal-confirm" class="btn btn-primary btn-large">Thực hiện Trade</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
