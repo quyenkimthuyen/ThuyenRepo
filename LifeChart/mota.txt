@@ -1,0 +1,491 @@
+Tôi nghĩ **Life Trading Simulator** thực sự có tiềm năng hơn "Game cuộc đời" vì nó có một cơ chế rất mạnh:
+
+> Cuộc sống là một chuỗi các giao dịch (trades).
+>
+> Mỗi quyết định đều là một lệnh Buy hoặc Sell tương lai của chính mình.
+
+Người chơi không học cách kiếm tiền.
+
+Người chơi học:
+
+* Quản trị rủi ro.
+* Kiểm soát cảm xúc.
+* Tư duy xác suất.
+* Tư duy dài hạn.
+* Phân bổ nguồn lực.
+
+Đây là những năng lực tạo ra cả sức khỏe, tài chính và hạnh phúc.
+
+---
+
+# PROMPT CHO CURSOR
+
+Bạn là một Senior Game Designer, Behavioral Psychologist, Product Strategist và Full Stack Developer.
+
+Hãy xây dựng một web app HTML/CSS/JavaScript tên:
+
+# Life Trading Simulator
+
+Tagline:
+
+"Trade Your Future"
+
+---
+
+# Ý TƯỞNG CỐT LÕI
+
+Mỗi quyết định trong cuộc sống là một giao dịch.
+
+Người dùng không giao dịch tiền.
+
+Người dùng giao dịch:
+
+* Thời gian
+* Năng lượng
+* Sự tập trung
+* Kiến thức
+* Các mối quan hệ
+* Sức khỏe
+
+Mỗi quyết định đều có:
+
+* Cost
+* Risk
+* Reward
+* Delay
+
+Ứng dụng giúp người dùng nhận ra cách họ đang giao dịch tương lai của chính mình.
+
+---
+
+# MỤC TIÊU
+
+Người dùng phải dần học được:
+
+1. Không phải mọi giao dịch đều thắng.
+
+2. Quản trị rủi ro quan trọng hơn lợi nhuận.
+
+3. Tư duy dài hạn tạo ra kết quả vượt trội.
+
+4. Cảm xúc thường phá hỏng quyết định.
+
+5. Chuỗi quyết định nhỏ tạo nên cuộc đời.
+
+---
+
+# CORE GAME LOOP
+
+Người chơi bắt đầu ở tuổi 18.
+
+Mỗi vòng = 1 tuần cuộc sống.
+
+Mỗi tuần người chơi nhận:
+
+```javascript
+{
+  time: 168,
+  energy: 100,
+  money: 1000
+}
+```
+
+---
+
+# TÀI SẢN CỦA NGƯỜI CHƠI
+
+```javascript
+{
+  age: 18,
+
+  health: 100,
+  wealth: 100,
+  happiness: 100,
+
+  knowledge: 0,
+
+  relationships: 50,
+
+  confidence: 50,
+
+  reputation: 50,
+
+  energy: 100,
+
+  timeCapital: 168
+}
+```
+
+---
+
+# KHÁI NIỆM LIFE PORTFOLIO
+
+Người chơi có Portfolio cuộc đời.
+
+Ví dụ:
+
+```text
+40% Career
+20% Learning
+20% Health
+10% Family
+10% Fun
+```
+
+Mọi quyết định đều ảnh hưởng tới Portfolio.
+
+---
+
+# HỆ THỐNG TRADE
+
+Ví dụ:
+
+## Trade 1
+
+Học AI 20 giờ
+
+Cost:
+
+* 20 giờ
+* 10 năng lượng
+
+Potential Reward:
+
+* +5 kiến thức
+* +2 thu nhập tương lai
+
+Risk:
+
+* Không thấy kết quả ngay
+
+Delay:
+
+* 8 tuần
+
+---
+
+## Trade 2
+
+Xem Netflix 20 giờ
+
+Cost:
+
+* 20 giờ
+
+Reward:
+
+* +5 hạnh phúc ngắn hạn
+
+Risk:
+
+* Mất cơ hội phát triển
+
+Delay:
+
+* 0
+
+---
+
+Người dùng liên tục phải chọn trade.
+
+---
+
+# HỆ THỐNG XÁC SUẤT
+
+Không được sử dụng kết quả cố định.
+
+Ví dụ:
+
+```javascript
+{
+ successRate: 0.65,
+ reward: 10,
+ risk: 5
+}
+```
+
+Mỗi quyết định đều có xác suất.
+
+Mục tiêu là dạy người dùng tư duy:
+
+Expected Value
+
+thay vì
+
+Đúng/Sai.
+
+---
+
+# HỆ THỐNG MARKET OF LIFE
+
+Tạo các sự kiện thị trường.
+
+Ví dụ:
+
+* AI Boom
+* Recession
+* Health Crisis
+* Economic Growth
+* Family Emergency
+
+Những sự kiện này thay đổi lợi thế của các trade.
+
+---
+
+# HỆ THỐNG CẢM XÚC
+
+Theo dõi:
+
+```javascript
+fear
+greed
+stress
+confidence
+discipline
+```
+
+Ví dụ:
+
+Nếu người chơi thắng liên tục:
+
+confidence tăng
+
+nguy cơ overconfidence tăng.
+
+---
+
+Nếu thua liên tục:
+
+fear tăng.
+
+---
+
+Điều này ảnh hưởng tới các quyết định tiếp theo.
+
+---
+
+# LIFE CHART
+
+Tạo biểu đồ giống trading chart.
+
+Nhưng thay vì giá.
+
+Hiển thị:
+
+* Wealth Curve
+* Happiness Curve
+* Health Curve
+* Knowledge Curve
+
+Theo thời gian.
+
+---
+
+# DRAWDOWN SYSTEM
+
+Khái niệm cực quan trọng.
+
+Ví dụ:
+
+Người chơi:
+
+* thức khuya liên tục
+* bỏ tập
+* làm việc quá sức
+
+Ban đầu vẫn tăng thu nhập.
+
+Sau đó:
+
+Health Drawdown xuất hiện.
+
+---
+
+Hiển thị:
+
+```text
+Health Drawdown -35%
+```
+
+---
+
+Tương tự:
+
+Relationship Drawdown
+
+Confidence Drawdown
+
+Knowledge Drawdown
+
+---
+
+# JOURNAL
+
+Tạo Trading Journal.
+
+Mỗi quyết định lưu:
+
+```javascript
+{
+ week: 12,
+ decision: "...",
+ reason: "...",
+ outcome: "...",
+ emotion: "...",
+}
+```
+
+---
+
+# AI MIRROR
+
+Không phải AI Coach.
+
+Tên module:
+
+AI Mirror
+
+AI không đưa lời khuyên.
+
+AI chỉ phản ánh.
+
+Ví dụ:
+
+```text
+Trong 30 quyết định gần đây:
+
+- 70% lựa chọn ưu tiên phần thưởng ngắn hạn
+- Bạn tăng rủi ro sau chuỗi thắng
+- Bạn giảm đầu tư học tập khi stress tăng
+```
+
+---
+
+# HỆ THỐNG NHẬN DIỆN NHÀ ĐẦU TƯ CUỘC ĐỜI
+
+Sau mỗi 50 quyết định.
+
+AI phân loại:
+
+Ví dụ:
+
+### The Gambler
+
+Rủi ro cao
+Thiếu kiên nhẫn
+
+---
+
+### The Builder
+
+Tư duy dài hạn
+Kỷ luật cao
+
+---
+
+### The Protector
+
+An toàn cao
+Tăng trưởng thấp
+
+---
+
+### The Explorer
+
+Thích thử nghiệm
+Chấp nhận thất bại
+
+---
+
+Người chơi không bị đánh giá.
+
+Chỉ được phản chiếu.
+
+---
+
+# GIAO DIỆN
+
+Dashboard hiện đại.
+
+Các khu vực:
+
+* Portfolio
+* Life Chart
+* Open Trades
+* Closed Trades
+* Journal
+* AI Mirror
+* Market Events
+
+---
+
+# CÔNG NGHỆ
+
+Sử dụng:
+
+* HTML
+* CSS
+* Vanilla JavaScript
+
+Không framework.
+
+Sử dụng:
+
+* Chart.js
+* LocalStorage
+
+---
+
+# MVP
+
+Phiên bản đầu tiên phải có:
+
+* 100 quyết định mẫu
+* Hệ thống trade
+* Hệ thống xác suất
+* Market Events
+* Journal
+* Life Chart
+* AI Mirror
+* Save/Load LocalStorage
+
+Không cần backend.
+
+Không cần đăng nhập.
+
+Không cần AI thật.
+
+Sử dụng Rule Engine để mô phỏng AI Mirror.
+
+---
+
+# TRIẾT LÝ THIẾT KẾ
+
+Người chơi không học cách kiếm tiền.
+
+Người chơi học:
+
+"Cuộc đời là danh mục đầu tư của các quyết định."
+
+Mục tiêu cuối cùng không phải Wealth Max.
+
+Mà là:
+
+```text
+Wealth
++
+Health
++
+Relationships
++
+Knowledge
++
+Happiness
+```
+
+được tối ưu cân bằng trong thời gian dài.
+
+---
+
+Điều tôi thích nhất ở ý tưởng này là: nếu làm tốt, nó không còn là game nữa. Nó trở thành một **"trình mô phỏng tư duy ra quyết định"**, nơi người dùng nhìn thấy các mô hình tâm lý giống hệt những gì xảy ra trong trading, kinh doanh, sức khỏe, hôn nhân và sự nghiệp. Đó là một ý tưởng khác biệt hơn rất nhiều so với các ứng dụng self-help hiện nay.
+

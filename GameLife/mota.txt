@@ -1,0 +1,386 @@
+Đây là prompt tôi khuyên bạn dùng với Cursor. Tôi đã điều chỉnh theo hướng **MVP nhỏ nhưng có khả năng chứng minh ý tưởng cốt lõi** trước, tránh xây quá lớn rồi không hoàn thành.
+
+---
+
+# PROMPT CHO CURSOR
+
+Bạn là một Senior Product Architect, Game Designer, UX Designer và Full Stack Developer.
+
+Hãy xây dựng một ứng dụng web HTML/CSS/JavaScript thuần (không cần backend ở phiên bản đầu tiên) với mục tiêu:
+
+> Giúp người dùng hình thành tư duy ra quyết định tốt hơn thông qua các tình huống mô phỏng cuộc sống và phản hồi từ AI.
+
+Ứng dụng KHÔNG phải game giải trí.
+
+Ứng dụng KHÔNG dạy lý thuyết.
+
+Ứng dụng KHÔNG nói người dùng đúng hay sai.
+
+Ứng dụng hoạt động như một "Phòng tập tư duy" nơi người dùng luyện tập các quyết định nhỏ mỗi ngày.
+
+---
+
+# TRIẾT LÝ SẢN PHẨM
+
+Mục tiêu cuối cùng là giúp người dùng cải thiện 3 nhu cầu cốt lõi:
+
+1. Khỏe hơn
+2. Giàu hơn
+3. Hạnh phúc hơn
+
+Ứng dụng không giải quyết vấn đề khi nó đã xảy ra.
+
+Ứng dụng giúp người dùng nhận ra mô hình tư duy dẫn tới vấn đề trước khi vấn đề xuất hiện.
+
+---
+
+# MÔ HÌNH TƯ DUY CẦN HUẤN LUYỆN
+
+Ứng dụng phải huấn luyện 5 năng lực:
+
+## 1. Tư duy hệ quả
+
+Mọi quyết định đều tạo ra hậu quả ngắn hạn và dài hạn.
+
+---
+
+## 2. Tư duy xác suất
+
+Không có đúng sai tuyệt đối.
+
+Mọi lựa chọn đều mang xác suất thành công và thất bại khác nhau.
+
+---
+
+## 3. Tư duy phản tỉnh
+
+Sau mỗi quyết định người dùng phải tự trả lời:
+
+"Tại sao tôi chọn như vậy?"
+
+---
+
+## 4. Tư duy hệ thống
+
+Kết quả lớn đến từ:
+
+* thói quen nhỏ
+* quyết định nhỏ
+* thời gian
+
+---
+
+## 5. Tư duy cân bằng
+
+Người dùng không được tối ưu duy nhất tiền bạc.
+
+Ứng dụng phải mô phỏng nhiều chỉ số cùng lúc.
+
+---
+
+# CÁC CHỈ SỐ NHÂN VẬT
+
+Tạo nhân vật với các thuộc tính:
+
+```javascript
+{
+  health: 100,
+  wealth: 100,
+  happiness: 100,
+  knowledge: 100,
+  relationships: 100,
+  age: 18,
+  energy: 100
+}
+```
+
+Hiển thị bằng dashboard.
+
+---
+
+# GAME LOOP
+
+Mỗi ngày hệ thống sinh ra một tình huống.
+
+Ví dụ:
+
+"Bạn vừa nhận được 500$."
+
+Lựa chọn:
+
+A. Mua điện thoại mới
+
+B. Đầu tư học kỹ năng
+
+C. Tiết kiệm
+
+D. Chia sẻ với gia đình
+
+---
+
+Mỗi lựa chọn tạo:
+
+* tác động ngắn hạn
+* tác động dài hạn
+
+Một số tác động phải bị ẩn.
+
+Người chơi chỉ thấy kết quả sau nhiều vòng.
+
+---
+
+# HỆ THỐNG SỰ KIỆN
+
+Tạo tối thiểu:
+
+50 tình huống
+
+chia thành:
+
+## Tài chính
+
+* tiêu dùng
+* đầu tư
+* tiết kiệm
+* nợ
+
+## Sức khỏe
+
+* ăn uống
+* tập luyện
+* ngủ nghỉ
+* stress
+
+## Quan hệ
+
+* gia đình
+* bạn bè
+* đồng nghiệp
+
+## Học tập
+
+* đọc sách
+* học kỹ năng
+* xây dự án
+
+## Khủng hoảng
+
+* mất việc
+* bệnh tật
+* thất bại
+* cơ hội bất ngờ
+
+---
+
+# HỆ THỐNG HẬU QUẢ TRỄ
+
+Đây là tính năng quan trọng nhất.
+
+Ví dụ:
+
+Ngày 5:
+
+Người dùng bỏ tập thể dục.
+
+Không có gì xảy ra.
+
+Ngày 30:
+
+Sức khỏe giảm.
+
+Ngày 60:
+
+Năng lượng giảm.
+
+Ngày 90:
+
+Khả năng làm việc giảm.
+
+Người dùng phải thấy:
+
+"Một quyết định trước đây đã góp phần tạo nên kết quả này."
+
+---
+
+# HỆ THỐNG NHẬN DIỆN MÔ HÌNH TƯ DUY
+
+Theo dõi:
+
+* lựa chọn ngắn hạn
+* lựa chọn dài hạn
+* mức độ chấp nhận rủi ro
+* xu hướng học tập
+* xu hướng né tránh
+
+Sau mỗi 20 quyết định tạo báo cáo:
+
+Ví dụ:
+
+```text
+Bạn thường:
+
+- Ưu tiên phần thưởng ngắn hạn
+- Tránh rủi ro
+- Đầu tư ít vào học tập
+- Quan tâm mạnh tới các mối quan hệ
+```
+
+Không đánh giá đúng sai.
+
+Chỉ phản ánh hành vi.
+
+---
+
+# HỆ THỐNG AI COACH
+
+Tạo module AI Coach.
+
+Không được nói:
+
+"Bạn sai."
+
+Không được nói:
+
+"Bạn nên làm thế này."
+
+Chỉ được hỏi:
+
+* Điều gì khiến bạn chọn phương án này?
+* Nếu kết quả xấu xảy ra bạn nghĩ nguyên nhân là gì?
+* Bạn có thấy mô hình lặp lại nào không?
+
+AI đóng vai trò gương phản chiếu.
+
+---
+
+# GIAO DIỆN
+
+Thiết kế hiện đại.
+
+Bao gồm:
+
+## Dashboard
+
+Hiển thị:
+
+* Health
+* Wealth
+* Happiness
+* Knowledge
+* Relationships
+
+---
+
+## Event Card
+
+Hiển thị tình huống hiện tại.
+
+Các lựa chọn dạng card.
+
+---
+
+## Timeline
+
+Hiển thị:
+
+* quyết định
+* hậu quả phát sinh
+
+---
+
+## Insight Panel
+
+Hiển thị:
+
+* mô hình tư duy
+* xu hướng hành vi
+* báo cáo phản tỉnh
+
+---
+
+# CÔNG NGHỆ
+
+Sử dụng:
+
+* HTML
+* CSS
+* Vanilla JavaScript
+
+Không framework.
+
+Tách:
+
+```text
+index.html
+css/
+js/
+data/
+```
+
+---
+
+# KIẾN TRÚC
+
+Sử dụng:
+
+Event Engine
+
+Decision Engine
+
+Consequence Engine
+
+Personality Analyzer
+
+AI Coach Module
+
+Timeline Module
+
+Save/Load Module
+
+---
+
+# DỮ LIỆU
+
+Lưu toàn bộ dữ liệu vào LocalStorage.
+
+Người dùng có thể:
+
+* lưu tiến trình
+* tiếp tục chơi
+
+---
+
+# MỤC TIÊU MVP
+
+Phiên bản đầu tiên phải chạy hoàn chỉnh offline.
+
+Có:
+
+* Dashboard
+* 50 tình huống
+* Hệ thống hậu quả trễ
+* Phân tích mô hình tư duy
+* Timeline lịch sử
+* LocalStorage
+
+Không cần backend.
+
+Không cần đăng nhập.
+
+Không cần AI thật.
+
+Tạo AI Coach giả lập bằng rule engine.
+
+---
+
+# MỤC TIÊU DÀI HẠN
+
+Thiết kế code theo hướng sau này có thể tích hợp:
+
+* OpenAI API
+* Gemini API
+* Claude API
+
+để AI cá nhân hóa hành trình phát triển tư duy cho từng người dùng.
+
+---

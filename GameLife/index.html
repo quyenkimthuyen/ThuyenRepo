@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GameLife — Phòng Tập Tư Duy</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <header class="header">
+      <div class="header-brand">
+        <h1>GameLife</h1>
+        <p class="tagline">Phòng tập tư duy — Luyện quyết định mỗi ngày</p>
+      </div>
+      <div class="header-actions">
+        <span class="day-badge" id="day-display">Ngày 1</span>
+        <button class="btn btn-ghost" id="btn-save">Lưu</button>
+        <button class="btn btn-ghost" id="btn-new">Mới</button>
+      </div>
+    </header>
+
+    <div id="welcome-screen" class="welcome-screen">
+      <div class="welcome-card">
+        <h2>Chào mừng đến Phòng Tập Tư Duy</h2>
+        <p>Ứng dụng giúp bạn nhận ra mô hình tư duy trước khi vấn đề xuất hiện. Không có đúng hay sai — chỉ có phản chiếu.</p>
+        <div class="welcome-actions">
+          <button class="btn btn-primary" id="btn-start">Bắt đầu hành trình</button>
+          <button class="btn btn-secondary" id="btn-continue" style="display:none">Tiếp tục</button>
+        </div>
+      </div>
+    </div>
+
+    <main id="game-screen" class="game-screen" style="display:none">
+      <section class="dashboard" id="dashboard">
+        <div class="stat-card" data-stat="health">
+          <div class="stat-icon">❤️</div>
+          <div class="stat-info">
+            <span class="stat-label">Sức khỏe</span>
+            <div class="stat-bar"><div class="stat-fill" id="bar-health"></div></div>
+            <span class="stat-value" id="val-health">100</span>
+          </div>
+        </div>
+        <div class="stat-card" data-stat="wealth">
+          <div class="stat-icon">💰</div>
+          <div class="stat-info">
+            <span class="stat-label">Tài sản</span>
+            <div class="stat-bar"><div class="stat-fill" id="bar-wealth"></div></div>
+            <span class="stat-value" id="val-wealth">100</span>
+          </div>
+        </div>
+        <div class="stat-card" data-stat="happiness">
+          <div class="stat-icon">😊</div>
+          <div class="stat-info">
+            <span class="stat-label">Hạnh phúc</span>
+            <div class="stat-bar"><div class="stat-fill" id="bar-happiness"></div></div>
+            <span class="stat-value" id="val-happiness">100</span>
+          </div>
+        </div>
+        <div class="stat-card" data-stat="knowledge">
+          <div class="stat-icon">📚</div>
+          <div class="stat-info">
+            <span class="stat-label">Kiến thức</span>
+            <div class="stat-bar"><div class="stat-fill" id="bar-knowledge"></div></div>
+            <span class="stat-value" id="val-knowledge">100</span>
+          </div>
+        </div>
+        <div class="stat-card" data-stat="relationships">
+          <div class="stat-icon">🤝</div>
+          <div class="stat-info">
+            <span class="stat-label">Quan hệ</span>
+            <div class="stat-bar"><div class="stat-fill" id="bar-relationships"></div></div>
+            <span class="stat-value" id="val-relationships">100</span>
+          </div>
+        </div>
+        <div class="stat-card stat-mini" data-stat="energy">
+          <span class="stat-label">Năng lượng</span>
+          <span class="stat-value" id="val-energy">100</span>
+        </div>
+        <div class="stat-card stat-mini" data-stat="age">
+          <span class="stat-label">Tuổi</span>
+          <span class="stat-value" id="val-age">18</span>
+        </div>
+      </section>
+
+      <div class="main-grid">
+        <section class="event-section">
+          <div class="event-card" id="event-card">
+            <span class="event-category" id="event-category">Tài chính</span>
+            <p class="event-text" id="event-text">Đang tải tình huống...</p>
+            <div class="choices" id="choices"></div>
+          </div>
+
+          <div class="reflection-panel" id="reflection-panel" style="display:none">
+            <div class="coach-question">
+              <span class="coach-label">AI Coach</span>
+              <p id="coach-question"></p>
+            </div>
+            <textarea id="reflection-input" placeholder="Tại sao bạn chọn như vậy?" rows="3"></textarea>
+            <button class="btn btn-primary" id="btn-reflect">Ghi nhận phản tỉnh</button>
+          </div>
+        </section>
+
+        <aside class="sidebar">
+          <div class="panel">
+            <h3>Timeline</h3>
+            <div class="timeline" id="timeline"></div>
+          </div>
+
+          <div class="panel">
+            <h3>Insight</h3>
+            <div class="insights" id="insights"></div>
+          </div>
+
+          <div class="panel" id="report-panel" style="display:none">
+            <h3>Báo cáo phản tỉnh</h3>
+            <div id="report-content"></div>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <script src="data/events.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/consequence-engine.js"></script>
+  <script src="js/decision-engine.js"></script>
+  <script src="js/event-engine.js"></script>
+  <script src="js/personality-analyzer.js"></script>
+  <script src="js/ai-coach.js"></script>
+  <script src="js/timeline.js"></script>
+  <script src="js/save-load.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
