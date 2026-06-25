@@ -106,6 +106,41 @@ const App = (() => {
       close: 'Đóng',
       importSuccess: 'Nhập dữ liệu thành công!',
       importError: 'File không hợp lệ.',
+      showOnboarding: 'Xem lại hướng dẫn',
+      onboardingSkip: 'Bỏ qua',
+      onboardingPrev: 'Trước',
+      onboardingNext: 'Tiếp',
+      onboardingStart: 'Bắt đầu hành trình',
+      ob1Title: 'Chào mừng đến Gương Nhận Thức',
+      ob1Desc: 'Ứng dụng giúp bạn nhìn thấy cách mình nghĩ, phản ứng và diễn giải sự kiện trong cuộc đời.',
+      ob1Not: 'Không phải game. Không phải self-help. Không phải therapy.',
+      ob2Title: 'Triết lý cốt lõi',
+      ob2Desc: 'Cuộc đời không chỉ là Sự kiện → Quyết định → Kết quả. Điều quan trọng nhất là cách bạn diễn giải sự kiện.',
+      ob2Flow: ['Giai đoạn đời', 'Sự kiện', 'Diễn giải', 'Cảm xúc', 'Quyết định', 'Kết quả', 'Suy ngẫm', 'Nhận diện khuôn mẫu'],
+      ob3Title: 'Flow mỗi sự kiện',
+      ob3Desc: 'Mỗi lần bạn sẽ đi qua 5 bước:',
+      ob3Steps: [
+        ['Sự kiện + Suy nghĩ', 'Đọc tình huống và viết suy nghĩ đầu tiên — tự do, không đúng/sai'],
+        ['Cảm xúc', 'Chọn hoặc mô tả cảm xúc của bạn'],
+        ['Quyết định', 'Chọn hướng xử lý tiếp theo'],
+        ['Hệ quả', 'Xem kết quả ngay và sau đó — phụ thuộc quyết định'],
+        ['Suy ngẫm', 'Bạn học được gì? Có làm khác không?'],
+      ],
+      ob4Title: '4 khu vực chính',
+      ob4Journey: 'Chọn giai đoạn, bắt đầu sự kiện, xây dựng hành trình',
+      ob4Dashboard: 'Biểu đồ tư duy, cảm xúc, khuôn mẫu ngôn ngữ, gương phản chiếu',
+      ob4Timeline: 'Xem lại mọi sự kiện và chuỗi suy nghĩ đầy đủ',
+      ob4Simulation: 'Thử tình huống giai đoạn khác — không cần đúng tuổi',
+      ob5Title: 'Mẹo sử dụng',
+      ob5Tips: [
+        'Viết suy nghĩ thật — càng trung thực, gương càng chính xác',
+        'Chú ý suy nghĩ đầu tiên — đó là dữ liệu quan trọng nhất',
+        'Hoàn thành 3–5 sự kiện rồi xem Bảng điều khiển',
+        'Gương nhận thức không phán xét — chỉ phản chiếu khuôn mẫu',
+        'Dữ liệu lưu trên máy bạn — xuất backup qua ⚙ Cài đặt',
+      ],
+      ob6Title: 'Sẵn sàng bắt đầu!',
+      ob6Desc: 'Chọn giai đoạn cuộc đời phù hợp với bạn hiện tại, rồi bấm "Bắt đầu sự kiện mới". Không cần đúng tuổi thật.',
     },
     en: {
       appTitle: 'Cognitive Mirror',
@@ -210,6 +245,41 @@ const App = (() => {
       close: 'Close',
       importSuccess: 'Data imported successfully!',
       importError: 'Invalid file.',
+      showOnboarding: 'View guide again',
+      onboardingSkip: 'Skip',
+      onboardingPrev: 'Back',
+      onboardingNext: 'Next',
+      onboardingStart: 'Start journey',
+      ob1Title: 'Welcome to Cognitive Mirror',
+      ob1Desc: 'This app helps you see how you think, react, and interpret events throughout life.',
+      ob1Not: 'Not a game. Not self-help. Not therapy.',
+      ob2Title: 'Core philosophy',
+      ob2Desc: 'Life is not just Event → Decision → Outcome. What matters most is how you interpret events.',
+      ob2Flow: ['Life Stage', 'Event', 'Interpretation', 'Emotion', 'Decision', 'Outcome', 'Reflection', 'Pattern Recognition'],
+      ob3Title: 'Flow per event',
+      ob3Desc: 'Each time you go through 5 steps:',
+      ob3Steps: [
+        ['Event + Thought', 'Read the situation and write your first thought — freely, no right/wrong'],
+        ['Emotion', 'Choose or describe how you feel'],
+        ['Decision', 'Choose what you would do next'],
+        ['Consequences', 'See immediate and later outcomes — based on your decision'],
+        ['Reflection', 'What did you learn? Would you do differently?'],
+      ],
+      ob4Title: 'Four main areas',
+      ob4Journey: 'Pick a stage, start events, build your journey',
+      ob4Dashboard: 'Thinking charts, emotions, language patterns, mirror reflections',
+      ob4Timeline: 'Revisit every event and full thought chain',
+      ob4Simulation: 'Try scenarios from other stages — no need to match your age',
+      ob5Title: 'Tips for use',
+      ob5Tips: [
+        'Write honestly — the more authentic, the clearer the mirror',
+        'Focus on your first thought — that is the most valuable data',
+        'Complete 3–5 events, then check the Dashboard',
+        'The mirror does not judge — it only reflects patterns',
+        'Data stays on your device — export backup via ⚙ Settings',
+      ],
+      ob6Title: 'Ready to begin!',
+      ob6Desc: 'Choose the life stage that fits you now, then tap "Start new event". Your real age does not need to match.',
     },
   };
 
@@ -246,6 +316,8 @@ const App = (() => {
   let emotionTrendChart = null;
   let patternChart = null;
   let timelineFilter = 'all';
+  let onboardingStep = 0;
+  const ONBOARDING_TOTAL = 6;
 
   function t(key) {
     const lang = state?.language || 'vi';
@@ -265,6 +337,7 @@ const App = (() => {
       applyLanguage();
       showView('journey');
       renderJourney();
+      if (!state.onboardingCompleted) openOnboarding();
     } catch (err) {
       $('#loading-screen').innerHTML = `<div class="error-screen"><p>${t('loadError')}</p><p style="font-size:0.85rem;margin-top:0.5rem">${err.message}</p></div>`;
     }
@@ -298,6 +371,76 @@ const App = (() => {
       timelineFilter = e.target.value;
       renderTimeline();
     });
+
+    $('#btn-onboarding-skip')?.addEventListener('click', finishOnboarding);
+    $('#btn-onboarding-prev')?.addEventListener('click', () => {
+      if (onboardingStep > 0) { onboardingStep--; renderOnboarding(); }
+    });
+    $('#btn-onboarding-next')?.addEventListener('click', () => {
+      if (onboardingStep < ONBOARDING_TOTAL - 1) {
+        onboardingStep++;
+        renderOnboarding();
+      } else {
+        finishOnboarding();
+      }
+    });
+    $('#btn-show-onboarding')?.addEventListener('click', () => {
+      closeSettings();
+      openOnboarding();
+    });
+  }
+
+  function openOnboarding() {
+    onboardingStep = 0;
+    $('#onboarding-modal')?.classList.remove('hidden');
+    renderOnboarding();
+  }
+
+  function finishOnboarding() {
+    state = Storage.completeOnboarding(state);
+    $('#onboarding-modal')?.classList.add('hidden');
+    showView('journey');
+    renderJourney();
+  }
+
+  function renderOnboarding() {
+    const body = $('#onboarding-body');
+    const progress = $('#onboarding-progress');
+    if (!body || !progress) return;
+
+    progress.innerHTML = Array.from({ length: ONBOARDING_TOTAL }, (_, i) => {
+      let cls = 'step-dot';
+      if (i === onboardingStep) cls += ' active';
+      else if (i < onboardingStep) cls += ' done';
+      return `<div class="${cls}"></div>`;
+    }).join('');
+
+    const lang = state.language;
+    const steps = I18N[lang].ob3Steps || I18N.en.ob3Steps;
+    const tips = I18N[lang].ob5Tips || I18N.en.ob5Tips;
+    const flow = I18N[lang].ob2Flow || I18N.en.ob2Flow;
+
+    const slides = [
+      `<h2>${t('ob1Title')}</h2><p>${t('ob1Desc')}</p><p><em>${t('ob1Not')}</em></p>`,
+      `<h2>${t('ob2Title')}</h2><p>${t('ob2Desc')}</p><div class="onboarding-flow">${flow.map((s) => `<span>${s}</span>`).join('')}</div>`,
+      `<h2>${t('ob3Title')}</h2><p>${t('ob3Desc')}</p><ul class="onboarding-list">${steps.map(([title, desc]) => `<li><strong>${title}</strong> — ${desc}</li>`).join('')}</ul>`,
+      `<h2>${t('ob4Title')}</h2><div class="onboarding-tabs">
+        <div class="onboarding-tab-item"><strong>${t('navJourney')}</strong>${t('ob4Journey')}</div>
+        <div class="onboarding-tab-item"><strong>${t('navDashboard')}</strong>${t('ob4Dashboard')}</div>
+        <div class="onboarding-tab-item"><strong>${t('navTimeline')}</strong>${t('ob4Timeline')}</div>
+        <div class="onboarding-tab-item"><strong>${t('navSimulation')}</strong>${t('ob4Simulation')}</div>
+      </div>`,
+      `<h2>${t('ob5Title')}</h2><ul class="onboarding-list">${tips.map((tip) => `<li>${tip}</li>`).join('')}</ul>`,
+      `<h2>${t('ob6Title')}</h2><p>${t('ob6Desc')}</p>`,
+    ];
+
+    body.innerHTML = slides[onboardingStep] || slides[0];
+
+    $('#btn-onboarding-skip').textContent = t('onboardingSkip');
+    $('#btn-onboarding-prev').textContent = t('onboardingPrev');
+    $('#btn-onboarding-prev').style.visibility = onboardingStep === 0 ? 'hidden' : 'visible';
+    const isLast = onboardingStep === ONBOARDING_TOTAL - 1;
+    $('#btn-onboarding-next').textContent = isLast ? t('onboardingStart') : t('onboardingNext');
   }
 
   function openSettings() {
@@ -343,9 +486,11 @@ const App = (() => {
     state = Storage.reset();
     journey = null;
     completion = null;
+    onboardingStep = 0;
     closeSettings();
     applyLanguage();
     showView('journey');
+    openOnboarding();
   }
 
   function applyLanguage() {
@@ -366,6 +511,8 @@ const App = (() => {
       'settings-title': 'settingsTitle', 'settings-about': 'settingsAbout',
       'btn-export': 'exportData', 'btn-import-label': 'importData',
       'btn-reset': 'resetData', 'btn-close-settings': 'close',
+      'btn-show-onboarding': 'showOnboarding',
+      'btn-onboarding-skip': 'onboardingSkip',
     };
     for (const [id, key] of Object.entries(textIds)) {
       const el = $(`#${id}`);
@@ -373,6 +520,7 @@ const App = (() => {
     }
     $$('.lang-btn').forEach((b) => b.classList.toggle('active', b.dataset.lang === lang));
     populateTimelineFilter();
+    if (!$('#onboarding-modal')?.classList.contains('hidden')) renderOnboarding();
   }
 
   function populateTimelineFilter() {

@@ -20,6 +20,7 @@ const Storage = (() => {
       self_awareness: 50,
     },
     patternHistory: [],
+    onboardingCompleted: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
@@ -101,6 +102,12 @@ const Storage = (() => {
     return merged;
   }
 
+  function completeOnboarding(state) {
+    state.onboardingCompleted = true;
+    save(state);
+    return state;
+  }
+
   function getStats(state) {
     const real = state.timeline.filter((e) => !e.simulation);
     const simulated = state.timeline.length - real.length;
@@ -124,6 +131,7 @@ const Storage = (() => {
     setStage,
     setSimulationStage,
     clearSimulation,
+    completeOnboarding,
     exportData,
     importData,
     getStats,

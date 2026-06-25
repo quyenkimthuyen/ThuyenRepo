@@ -115,6 +115,21 @@
     </footer>
   </div>
 
+  <div id="onboarding-modal" class="modal hidden">
+    <div class="modal-backdrop" id="onboarding-backdrop"></div>
+    <div class="modal-content onboarding-content">
+      <div class="onboarding-progress" id="onboarding-progress"></div>
+      <div id="onboarding-body" class="onboarding-body"></div>
+      <div class="onboarding-actions">
+        <button class="btn btn-secondary" id="btn-onboarding-skip"></button>
+        <div class="onboarding-nav">
+          <button class="btn btn-secondary" id="btn-onboarding-prev"></button>
+          <button class="btn" id="btn-onboarding-next"></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="settings-modal" class="modal hidden">
     <div class="modal-backdrop" id="settings-backdrop"></div>
     <div class="modal-content">
@@ -127,6 +142,7 @@
           <input type="file" id="import-file" accept=".json" hidden>
         </label>
         <button class="btn btn-danger" id="btn-reset"></button>
+        <button class="btn btn-secondary" id="btn-show-onboarding"></button>
       </div>
       <button class="btn btn-secondary modal-close" id="btn-close-settings"></button>
     </div>
