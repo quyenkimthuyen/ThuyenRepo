@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Cognitive Mirror: Life Journey - A cognitive mirror that helps people see their own thinking patterns.">
+  <title>Cognitive Mirror: Life Journey</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="brand">
+          <span class="brand-icon">◉</span>
+          <div>
+            <h1 id="app-title">Cognitive Mirror</h1>
+            <p id="app-subtitle" class="subtitle">Life Journey</p>
+          </div>
+        </div>
+        <nav class="main-nav" id="main-nav">
+          <button class="nav-btn active" data-view="journey" id="nav-journey"></button>
+          <button class="nav-btn" data-view="dashboard" id="nav-dashboard"></button>
+          <button class="nav-btn" data-view="timeline" id="nav-timeline"></button>
+          <button class="nav-btn" data-view="simulation" id="nav-simulation"></button>
+        </nav>
+        <div class="header-actions">
+          <div class="lang-toggle">
+            <button class="lang-btn" data-lang="vi" id="lang-vi">VI</button>
+            <button class="lang-btn" data-lang="en" id="lang-en">EN</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <!-- Journey View -->
+      <section id="view-journey" class="view active">
+        <div id="journey-content"></div>
+      </section>
+
+      <!-- Dashboard View -->
+      <section id="view-dashboard" class="view">
+        <div class="dashboard-grid">
+          <div class="card card-wide">
+            <h2 id="dash-radar-title"></h2>
+            <div class="chart-wrap">
+              <canvas id="radar-chart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <h2 id="dash-profile-title"></h2>
+            <div id="profile-scores" class="profile-scores"></div>
+          </div>
+          <div class="card">
+            <h2 id="dash-emotion-title"></h2>
+            <div class="chart-wrap chart-sm">
+              <canvas id="emotion-chart"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <h2 id="dash-patterns-title"></h2>
+            <div id="pattern-analysis"></div>
+          </div>
+          <div class="card">
+            <h2 id="dash-phrases-title"></h2>
+            <div id="frequent-phrases"></div>
+          </div>
+          <div class="card card-wide">
+            <h2 id="dash-mirror-title"></h2>
+            <div id="ai-mirror" class="mirror-reflections"></div>
+          </div>
+          <div class="card card-wide">
+            <h2 id="dash-map-title"></h2>
+            <div id="life-journey-map" class="journey-map"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Timeline View -->
+      <section id="view-timeline" class="view">
+        <h2 id="timeline-title"></h2>
+        <div id="timeline-list" class="timeline-list"></div>
+        <div id="timeline-detail" class="timeline-detail hidden"></div>
+      </section>
+
+      <!-- Simulation View -->
+      <section id="view-simulation" class="view">
+        <div class="simulation-intro">
+          <h2 id="sim-title"></h2>
+          <p id="sim-desc"></p>
+        </div>
+        <div id="sim-stages" class="stage-grid"></div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p id="footer-text"></p>
+    </footer>
+  </div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/mirror-engine.js"></script>
+  <script src="js/profile-engine.js"></script>
+  <script src="js/event-engine.js"></script>
+  <script src="js/timeline-engine.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
