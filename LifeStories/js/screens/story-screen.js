@@ -25,7 +25,7 @@ function renderStoryScreen(container, state, params) {
         ${comic ? `
           <div class="comic-frame" id="comic-frame">
             <div class="comic-frame__border"></div>
-            <img class="comic-illustration" id="comic-img" alt="" />
+            <div class="comic-illustration" id="comic-art" role="img" aria-live="polite"></div>
             <div class="comic-caption" id="comic-caption"></div>
             <div class="comic-character-badge" id="comic-badge">
               <span class="comic-character-badge__emoji" id="char-avatar"></span>
@@ -52,26 +52,29 @@ function updateComicIllustration(story, scene) {
   const art = typeof getComicArtForScene === 'function'
     ? getComicArtForScene(story.id, scene.id)
     : null;
-  const img = document.getElementById('comic-img');
+  const artEl = document.getElementById('comic-art');
   const caption = document.getElementById('comic-caption');
   const bg = document.getElementById('story-bg');
 
-  if (!img) return;
+  if (!artEl) return;
 
-  if (art) {
-    if (img.src !== new URL(art.src, window.location.href).href) {
-      img.style.opacity = '0';
-      img.onload = () => { img.style.opacity = '1'; };
-      img.src = art.src;
+  if (art && art.svg) {
+    if (artEl.dataset.artKey !== art.key) {
+      artEl.innerHTML = art.svg;
+      artEl.dataset.artKey = art.key;
+      artEl.classList.remove('comic-illustration--hidden');
+      artEl.classList.add('comic-illustration--show');
     }
-    img.alt = tl(art.caption);
-    img.classList.remove('comic-illustration--hidden');
+    artEl.setAttribute('aria-label', tl(art.caption));
     if (caption) caption.textContent = tl(art.caption);
-    bg.dataset.mood = art.mood || '';
+    if (bg) bg.dataset.mood = art.mood || '';
   } else {
-    img.classList.add('comic-illustration--hidden');
+    artEl.innerHTML = '';
+    artEl.dataset.artKey = '';
+    artEl.classList.add('comic-illustration--hidden');
+    artEl.classList.remove('comic-illustration--show');
     if (caption) caption.textContent = '';
-    bg.dataset.mood = 'neutral';
+    if (bg) bg.dataset.mood = 'neutral';
   }
 }
 

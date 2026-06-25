@@ -707,13 +707,14 @@ body::before {
 
 .story-screen--comic .story-bg.comic-panel {
   background: #2a2035;
-  min-height: 340px;
+  min-height: 360px;
   align-items: flex-end;
   padding-bottom: 0;
+  overflow: visible;
 }
 
 .story-screen--comic .story-bg.comic-panel::after {
-  background: linear-gradient(to top, #1a1520 0%, transparent 50%);
+  display: none;
 }
 
 .story-screen--comic .story-bg[data-mood="morning"] { background: linear-gradient(180deg, #87CEEB 0%, #2a2035 100%); }
@@ -727,7 +728,7 @@ body::before {
   width: calc(100% - 2rem);
   max-width: 720px;
   margin: 3.5rem auto 0;
-  z-index: 1;
+  z-index: 5;
   animation: comicPanelIn 0.6s ease;
 }
 
@@ -751,15 +752,25 @@ body::before {
 .comic-illustration {
   display: block;
   width: 100%;
-  height: auto;
+  line-height: 0;
   border-radius: 4px;
-  transition: opacity 0.45s ease;
+  overflow: hidden;
+  min-height: 180px;
+  background: #fff;
+}
+
+.comic-illustration svg {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .comic-illustration--hidden {
-  opacity: 0;
-  height: 0;
-  overflow: hidden;
+  display: none;
+}
+
+.comic-illustration--show {
+  animation: comicPanelIn 0.45s ease;
 }
 
 .comic-caption {
