@@ -1,6 +1,10 @@
+let selectedStageId = null;
+
 function renderHome(container, state) {
-  const stage = LIFE_STAGES.find(s => s.id === 'high_school');
-  const stories = getStoriesForStage('high_school');
+  const unlockedStages = LIFE_STAGES.filter(s => s.unlocked);
+  if (!selectedStageId || !unlockedStages.find(s => s.id === selectedStageId)) {
+    selectedStageId = unlockedStages[0]?.id || 'high_school';
+  }
 
   container.innerHTML = `
     <div class="screen-header">
@@ -8,42 +12,60 @@ function renderHome(container, state) {
       <p data-i18n="yourChoices">${t('yourChoices')}</p>
     </div>
     <div class="stage-grid" id="stage-grid"></div>
-    <div id="story-list-container" class="hidden"></div>
+    <div id="story-list-container"></div>
   `;
 
   const grid = container.querySelector('#stage-grid');
 
   LIFE_STAGES.forEach(s => {
-    const isActive = s.id === 'high_school';
+    const isActive = s.id === selectedStageId;
+    const stageDescKey = 'stageDesc_' + s.id;
+    const hasDesc = I18N[currentLang][stageDescKey] || I18N.en[stageDescKey];
     const card = document.createElement('div');
-    card.className = `stage-card${s.unlocked ? '' : ' locked'}${isActive ? ' active' : ''}`;
+    card.className = `stage-card${s.unlocked ? '' : ' locked'}${isActive && s.unlocked ? ' active' : ''}`;
     card.innerHTML = `
       ${s.unlocked ? '<span class="stage-badge" data-i18n="unlocked">' + t('unlocked') + '</span>' : ''}
       <h3 data-i18n="${s.id}">${t(s.id)}</h3>
       <p class="stage-meta">${s.unlocked ? s.storyCount + ' ' + t('stories') : t('stageLocked')}</p>
-      ${isActive ? '<p class="stage-meta" style="margin-top:0.5rem" data-i18n="stageDesc_high_school">' + t('stageDesc_high_school') + '</p>' : ''}
+      ${isActive && s.unlocked && hasDesc ? '<p class="stage-meta" style="margin-top:0.5rem" data-i18n="' + stageDescKey + '">' + t(stageDescKey) + '</p>' : ''}
     `;
     if (s.unlocked) {
-      card.addEventListener('click', () => showStoryList(container, state, s.id));
+      card.addEventListener('click', () => {
+        selectedStageId = s.id;
+        showStoryList(container, state, s.id);
+        grid.querySelectorAll('.stage-card').forEach(c => c.classList.remove('active'));
+        card.classList.add('active');
+        const descKey = 'stageDesc_' + s.id;
+        const desc = I18N[currentLang][descKey] || I18N.en[descKey];
+        const existingDesc = card.querySelector('.stage-desc');
+        if (existingDesc) existingDesc.remove();
+        if (desc) {
+          const p = document.createElement('p');
+          p.className = 'stage-meta stage-desc';
+          p.style.marginTop = '0.5rem';
+          p.textContent = desc;
+          card.appendChild(p);
+        }
+      });
     }
     grid.appendChild(card);
   });
 
-  if (stage.unlocked) {
-    showStoryList(container, state, 'high_school');
-  }
-
+  showStoryList(container, state, selectedStageId);
   applyI18n(container);
 }
 
 function showStoryList(container, state, stageId) {
   const listContainer = container.querySelector('#story-list-container');
-  listContainer.classList.remove('hidden');
   const stories = getStoriesForStage(stageId);
 
   let html = `<div class="screen-header" style="margin-top:2rem">
     <h2 data-i18n="${stageId}">${t(stageId)}</h2>
   </div><div class="story-list">`;
+
+  if (stories.length === 0) {
+    html += '<div class="empty-state">' + t('stageLocked') + '</div>';
+  }
 
   stories.forEach(story => {
     const progress = getStoryProgress(state, story.id);

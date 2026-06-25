@@ -1,5 +1,6 @@
 function renderStoryMap(container, state) {
-  const stories = getStoriesForStage('high_school');
+  const unlockedStages = LIFE_STAGES.filter(s => s.unlocked);
+  const stories = unlockedStages.flatMap(s => getStoriesForStage(s.id));
 
   let html = `
     <div class="screen-header">
@@ -12,7 +13,13 @@ function renderStoryMap(container, state) {
     html += '<div class="empty-state" data-i18n="noInsights">' + t('noInsights') + '</div>';
   }
 
+  let lastStage = '';
   stories.forEach(story => {
+    if (story.lifeStage !== lastStage) {
+      lastStage = story.lifeStage;
+      html += `<h3 style="font-family:var(--font-display);color:var(--accent-gold);margin:1rem 0 0.5rem" data-i18n="${story.lifeStage}">${t(story.lifeStage)}</h3>`;
+    }
+
     const isCompleted = state.completedStories.includes(story.id);
     const branches = state.exploredBranches[story.id] || [];
     const progress = getStoryProgress(state, story.id);
