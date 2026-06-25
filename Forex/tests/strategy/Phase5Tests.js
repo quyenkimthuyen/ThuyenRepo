@@ -122,6 +122,42 @@ console.log('\n=== Break & Retest Tests ===\n');
   assert('BR-04: Invalidation → no signal', signals.length === 0);
 }
 
+{
+  const candles = [];
+  for (let i = 0; i < 95; i++) {
+    candles.push(c(i, 1.0840, 1.0845, 1.0838, 1.0842));
+  }
+  for (let i = 95; i < 100; i++) {
+    candles.push(c(i, 1.0840, 1.0845, 1.0838, 1.0840));
+  }
+  candles.push(c(100, 1.0848, 1.08520, 1.0847, 1.08512));
+  for (let i = 101; i < 103; i++) {
+    candles.push(c(i, 1.0850, 1.0852, 1.0848, 1.0851));
+  }
+  candles.push(c(103, 1.0849, 1.08510, 1.08440, 1.08500));
+  const signals = runScan(new BreakRetestStrategy(), candles, 'EURUSD', { useTrendFilter: true });
+  assert('BR-05: Trend filter blocks sideways B&R', signals.length === 0);
+}
+
+{
+  const candles = [];
+  for (let i = 0; i < 95; i++) {
+    const base = 1.0780 + i * 0.00006;
+    candles.push(c(i, base, base + 0.0005, base - 0.0002, base + 0.00035));
+  }
+  for (let i = 95; i < 100; i++) {
+    const base = 1.0780 + i * 0.00006;
+    candles.push(c(i, base, base + 0.0005, base - 0.0002, base));
+  }
+  candles.push(c(100, 1.0848, 1.08520, 1.0847, 1.08512));
+  for (let i = 101; i < 103; i++) {
+    candles.push(c(i, 1.0850, 1.0852, 1.0848, 1.0851));
+  }
+  candles.push(c(103, 1.0849, 1.08510, 1.08440, 1.08500));
+  const signals = runScan(new BreakRetestStrategy(), candles, 'EURUSD', { useTrendFilter: true });
+  assert('BR-06: Trend filter allows uptrend B&R long', signals.length === 1 && signals[0].direction === 'long');
+}
+
 console.log('\n=== Liquidity Grab Tests ===\n');
 
 const LG_PAD = 25;

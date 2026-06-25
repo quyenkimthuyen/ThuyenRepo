@@ -67,3 +67,48 @@ export function countLowerCloses(candles, start, end) {
   }
   return count;
 }
+
+/**
+ * Dual-EMA trend: fast above slow, rising fast EMA, price on trend side, momentum window.
+ * @param {Candle[]} candles
+ * @param {number} index
+ * @param {{ fastPeriod?: number, slowPeriod?: number, trendBars?: number }} [options]
+ * @returns {'up'|'down'|'none'}
+ */
+export function detectEmaDualTrend(candles, index, options = {}) {
+  const fastPeriod = options.fastPeriod ?? 20;
+  const slowPeriod = options.slowPeriod ?? 50;
+  const trendBars = options.trendBars ?? 5;
+
+  const emaFast = emaAtIndex(candles, index, fastPeriod);
+  const emaSlow = emaAtIndex(candles, index, slowPeriod);
+  const emaFastPrev = emaAtIndex(candles, index - trendBars, fastPeriod);
+
+  if (emaFast === null || emaSlow === null || emaFastPrev === null) return 'none';
+
+  const minCount = Math.ceil(trendBars * 0.6);
+  const windowStart = index - trendBars + 1;
+
+  const higherCloses = countHigherCloses(candles, windowStart, index);
+  const lowerCloses = countLowerCloses(candles, windowStart, index);
+
+  if (
+    emaFast > emaSlow &&
+    emaFast > emaFastPrev &&
+    candles[index].close > emaSlow &&
+    higherCloses >= minCount
+  ) {
+    return 'up';
+  }
+
+  if (
+    emaFast < emaSlow &&
+    emaFast < emaFastPrev &&
+    candles[index].close < emaSlow &&
+    lowerCloses >= minCount
+  ) {
+    return 'down';
+  }
+
+  return 'none';
+}

@@ -23,6 +23,7 @@ import {
   slBufferAbove,
 } from '../strategy/helpers/TradeLevels.js';
 import { computeConfidence } from '../strategy/helpers/ConfidenceScore.js';
+import { detectEmaDualTrend, emaAtIndex } from '../strategy/helpers/EmaHelper.js';
 
 /**
  * @typedef {Object} PendingSetup
@@ -82,11 +83,49 @@ export class BreakRetestStrategy extends BaseStrategy {
         min: 3,
         max: 20,
       },
+      {
+        key: 'useTrendFilter',
+        label: 'EMA Trend Filter',
+        type: 'boolean',
+        default: false,
+        description: 'Long only in uptrend, short only in downtrend (EMA 20/50)',
+      },
+      {
+        key: 'emaFast',
+        label: 'Trend EMA Fast',
+        type: 'integer',
+        default: 20,
+        min: 5,
+        max: 100,
+        description: 'Fast EMA period when trend filter is on',
+      },
+      {
+        key: 'emaSlow',
+        label: 'Trend EMA Slow',
+        type: 'integer',
+        default: 50,
+        min: 10,
+        max: 200,
+        description: 'Slow EMA period when trend filter is on',
+      },
+      {
+        key: 'trendBars',
+        label: 'Trend Confirm Bars',
+        type: 'integer',
+        default: 5,
+        min: 3,
+        max: 20,
+        description: 'Bars used to confirm EMA slope and close momentum',
+      },
     ];
   }
 
   getWarmupBars() {
-    return Number(this._getParam('swingLookback') ?? 5) + 20;
+    const swing = Number(this._getParam('swingLookback') ?? 5) + 20;
+    if (!this._getParam('useTrendFilter')) return swing;
+    const emaSlow = Number(this._getParam('emaSlow') ?? 50);
+    const trendBars = Number(this._getParam('trendBars') ?? 5);
+    return Math.max(swing, emaSlow + trendBars + 5);
   }
 
   onInitialize() {
@@ -129,7 +168,7 @@ export class BreakRetestStrategy extends BaseStrategy {
 
       if (levelHigh !== null) {
         const threshold = levelHigh + breakoutPips * pip;
-        if (c.close >= threshold) {
+        if (c.close >= threshold && this.#allowsDirection(candles, index, 'long', true)) {
           pending = {
             direction: 'long',
             level: levelHigh,
@@ -143,7 +182,7 @@ export class BreakRetestStrategy extends BaseStrategy {
 
       if (levelLow !== null) {
         const threshold = levelLow - breakoutPips * pip;
-        if (c.close <= threshold) {
+        if (c.close <= threshold && this.#allowsDirection(candles, index, 'short', true)) {
           pending = {
             direction: 'short',
             level: levelLow,
@@ -181,6 +220,7 @@ export class BreakRetestStrategy extends BaseStrategy {
 
     if (pending.direction === 'long') {
       if (candle.close < pending.invalidation) return null;
+      if (!this.#allowsDirection(candles, r, 'long', false)) return null;
 
       const retestTouch = touchesZone(candle, pending.level, RETEST_TOLERANCE_PIPS, symbol);
       if (!retestTouch || !isBullishConfirmation(candle, symbol)) return null;
@@ -193,7 +233,7 @@ export class BreakRetestStrategy extends BaseStrategy {
       const wickTouch = candle.low <= pending.level && candle.close > pending.level;
 
       const confidence = computeConfidence(candle.timestamp, rr, {
-        trendAlignment: true,
+        trendAlignment: this.#allowsDirection(candles, r, 'long', false),
         momentum: bodyRatio(candle) > 0.5,
         preciseLocation,
         qualityWick: wickTouch,
@@ -236,15 +276,16 @@ export class BreakRetestStrategy extends BaseStrategy {
             },
           ],
           steps: [
-            '1. Giá phá vượt swing level (Breakout)',
-            '2. Hồi retest vùng level cam',
-            '3. Nến xác nhận → Entry xanh dương',
+            '1. Xu hướng tăng (EMA20 > EMA50) nếu bật trend filter',
+            '2. Giá phá vượt swing level (Breakout)',
+            '3. Hồi retest vùng level → nến xác nhận → Entry',
           ],
         },
       });
     }
 
     if (candle.close > pending.invalidation) return null;
+    if (!this.#allowsDirection(candles, r, 'short', false)) return null;
 
     const retestTouch = touchesZone(candle, pending.level, RETEST_TOLERANCE_PIPS, symbol);
     if (!retestTouch || !isBearishConfirmation(candle, symbol)) return null;
@@ -256,7 +297,7 @@ export class BreakRetestStrategy extends BaseStrategy {
     const preciseLocation = Math.abs(candle.high - pending.level) <= pipsToPrice(1, symbol);
 
     const confidence = computeConfidence(candle.timestamp, rr, {
-      trendAlignment: true,
+      trendAlignment: this.#allowsDirection(candles, r, 'short', false),
       momentum: bodyRatio(candle) > 0.5,
       preciseLocation,
       qualityWick: wickTouch,
@@ -291,12 +332,51 @@ export class BreakRetestStrategy extends BaseStrategy {
           { label: 'Retest + Entry', time: candle.timestamp, role: 'entry' },
         ],
         steps: [
-          '1. Giá phá xuống swing level (Breakout)',
-          '2. Hồi retest vùng level cam',
-          '3. Nến xác nhận → Entry xanh dương',
+          '1. Xu hướng giảm (EMA20 < EMA50) nếu bật trend filter',
+          '2. Giá phá xuống swing level (Breakout)',
+          '3. Hồi retest vùng level → nến xác nhận → Entry',
         ],
       },
     });
+  }
+
+  /**
+   * @param {import('../data/Candle.js').Candle[]} candles
+   * @param {number} index
+   * @param {'long'|'short'} direction
+   * @param {boolean} [strict] - Full dual-EMA trend at breakout; relaxed EMA stack at retest entry
+   * @returns {boolean}
+   */
+  #allowsDirection(candles, index, direction, strict = true) {
+    if (!this._getParam('useTrendFilter')) return true;
+
+    const fastPeriod = Number(this._getParam('emaFast'));
+    const slowPeriod = Number(this._getParam('emaSlow'));
+    const trendBars = Number(this._getParam('trendBars'));
+
+    const trend = strict
+      ? detectEmaDualTrend(candles, index, { fastPeriod, slowPeriod, trendBars })
+      : this.#relaxedEmaTrend(candles, index, fastPeriod, slowPeriod);
+
+    return direction === 'long' ? trend === 'up' : trend === 'down';
+  }
+
+  /**
+   * @param {import('../data/Candle.js').Candle[]} candles
+   * @param {number} index
+   * @param {number} fastPeriod
+   * @param {number} slowPeriod
+   * @returns {'up'|'down'|'none'}
+   */
+  #relaxedEmaTrend(candles, index, fastPeriod, slowPeriod) {
+    const emaFast = emaAtIndex(candles, index, fastPeriod);
+    const emaSlow = emaAtIndex(candles, index, slowPeriod);
+    if (emaFast === null || emaSlow === null) return 'none';
+
+    const close = candles[index].close;
+    if (emaFast > emaSlow && close > emaSlow) return 'up';
+    if (emaFast < emaSlow && close < emaSlow) return 'down';
+    return 'none';
   }
 
   /**

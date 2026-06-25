@@ -20,8 +20,7 @@ import {
 import { computeConfidence } from '../strategy/helpers/ConfidenceScore.js';
 import {
   emaAtIndex,
-  countHigherCloses,
-  countLowerCloses,
+  detectEmaDualTrend,
 } from '../strategy/helpers/EmaHelper.js';
 
 /**
@@ -261,40 +260,10 @@ export class EMAPullbackStrategy extends BaseStrategy {
    * @returns {'up'|'down'|'none'}
    */
   #detectTrend(candles, index) {
-    const fastPeriod = Number(this._getParam('emaFast'));
-    const slowPeriod = Number(this._getParam('emaSlow'));
-    const trendBars = Number(this._getParam('trendBars'));
-
-    const emaFast = emaAtIndex(candles, index, fastPeriod);
-    const emaSlow = emaAtIndex(candles, index, slowPeriod);
-    const emaFastPrev = emaAtIndex(candles, index - trendBars, fastPeriod);
-
-    if (emaFast === null || emaSlow === null || emaFastPrev === null) return 'none';
-
-    const minCount = Math.ceil(trendBars * 0.6);
-    const windowStart = index - trendBars + 1;
-
-    const higherCloses = countHigherCloses(candles, windowStart, index);
-    const lowerCloses = countLowerCloses(candles, windowStart, index);
-
-    if (
-      emaFast > emaSlow &&
-      emaFast > emaFastPrev &&
-      candles[index].close > emaSlow &&
-      higherCloses >= minCount
-    ) {
-      return 'up';
-    }
-
-    if (
-      emaFast < emaSlow &&
-      emaFast < emaFastPrev &&
-      candles[index].close < emaSlow &&
-      lowerCloses >= minCount
-    ) {
-      return 'down';
-    }
-
-    return 'none';
+    return detectEmaDualTrend(candles, index, {
+      fastPeriod: Number(this._getParam('emaFast')),
+      slowPeriod: Number(this._getParam('emaSlow')),
+      trendBars: Number(this._getParam('trendBars')),
+    });
   }
 }
