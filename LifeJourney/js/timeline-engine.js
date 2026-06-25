@@ -2,7 +2,7 @@
  * Life journey timeline management.
  */
 const TimelineEngine = (() => {
-  function createEntry({ event, stageId, thought, emotion, emotionCustom, decision, consequences, reflection, patterns, simulation }) {
+  function createEntry({ event, stageId, thought, emotion, emotionCustom, emotionLabel, decision, consequences, reflection, patterns, simulation }) {
     return {
       id: `entry-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       eventId: event.id,
@@ -10,7 +10,9 @@ const TimelineEngine = (() => {
       eventDescription: event.description,
       category: event.category,
       thought,
-      emotion: emotionCustom || emotion,
+      emotion,
+      emotionCustom: emotionCustom || '',
+      emotionLabel: emotionLabel || emotionCustom || emotion,
       decision,
       consequences,
       reflection,
@@ -53,7 +55,8 @@ const TimelineEngine = (() => {
   function formatEntrySummary(entry, lang) {
     const desc = entry.eventDescription?.[lang] || entry.eventDescription?.en || '';
     const date = new Date(entry.timestamp).toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-US');
-    return { desc, date, emotion: entry.emotion, thought: entry.thought };
+    const emotion = entry.emotionLabel || entry.emotionCustom || entry.emotion || '';
+    return { desc, date, emotion, thought: entry.thought };
   }
 
   return {

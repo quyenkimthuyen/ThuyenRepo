@@ -6,10 +6,15 @@
   <meta name="description" content="Cognitive Mirror: Life Journey - A cognitive mirror that helps people see their own thinking patterns.">
   <title>Cognitive Mirror: Life Journey</title>
   <link rel="stylesheet" href="css/styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="js/vendor/chart.umd.min.js"></script>
 </head>
 <body>
-  <div id="app">
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-spinner"></div>
+    <p id="loading-text">Đang tải...</p>
+  </div>
+
+  <div id="app" class="hidden">
     <header class="app-header">
       <div class="header-inner">
         <div class="brand">
@@ -26,6 +31,7 @@
           <button class="nav-btn" data-view="simulation" id="nav-simulation"></button>
         </nav>
         <div class="header-actions">
+          <button class="icon-btn" id="btn-settings" title="Settings">⚙</button>
           <div class="lang-toggle">
             <button class="lang-btn" data-lang="vi" id="lang-vi">VI</button>
             <button class="lang-btn" data-lang="en" id="lang-en">EN</button>
@@ -35,13 +41,12 @@
     </header>
 
     <main class="app-main">
-      <!-- Journey View -->
       <section id="view-journey" class="view active">
         <div id="journey-content"></div>
       </section>
 
-      <!-- Dashboard View -->
       <section id="view-dashboard" class="view">
+        <p id="mirror-disclaimer" class="mirror-disclaimer"></p>
         <div class="dashboard-grid">
           <div class="card card-wide">
             <h2 id="dash-radar-title"></h2>
@@ -55,13 +60,22 @@
           </div>
           <div class="card">
             <h2 id="dash-emotion-title"></h2>
-            <div class="chart-wrap chart-sm">
+            <div class="chart-wrap chart-sm" id="emotion-chart-wrap">
               <canvas id="emotion-chart"></canvas>
             </div>
           </div>
           <div class="card">
+            <h2 id="dash-emotion-trend-title"></h2>
+            <div class="chart-wrap chart-sm" id="emotion-trend-wrap">
+              <canvas id="emotion-trend-chart"></canvas>
+            </div>
+          </div>
+          <div class="card">
             <h2 id="dash-patterns-title"></h2>
-            <div id="pattern-analysis"></div>
+            <div class="chart-wrap chart-sm" id="pattern-chart-wrap">
+              <canvas id="pattern-chart"></canvas>
+            </div>
+            <div id="pattern-analysis" class="pattern-tags"></div>
           </div>
           <div class="card">
             <h2 id="dash-phrases-title"></h2>
@@ -78,14 +92,15 @@
         </div>
       </section>
 
-      <!-- Timeline View -->
       <section id="view-timeline" class="view">
-        <h2 id="timeline-title"></h2>
+        <div class="timeline-header">
+          <h2 id="timeline-title"></h2>
+          <select id="timeline-filter" class="filter-select"></select>
+        </div>
         <div id="timeline-list" class="timeline-list"></div>
         <div id="timeline-detail" class="timeline-detail hidden"></div>
       </section>
 
-      <!-- Simulation View -->
       <section id="view-simulation" class="view">
         <div class="simulation-intro">
           <h2 id="sim-title"></h2>
@@ -98,6 +113,23 @@
     <footer class="app-footer">
       <p id="footer-text"></p>
     </footer>
+  </div>
+
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-backdrop" id="settings-backdrop"></div>
+    <div class="modal-content">
+      <h2 id="settings-title"></h2>
+      <p id="settings-about" class="settings-about"></p>
+      <div class="settings-actions">
+        <button class="btn btn-secondary" id="btn-export"></button>
+        <label class="btn btn-secondary file-label">
+          <span id="btn-import-label"></span>
+          <input type="file" id="import-file" accept=".json" hidden>
+        </label>
+        <button class="btn btn-danger" id="btn-reset"></button>
+      </div>
+      <button class="btn btn-secondary modal-close" id="btn-close-settings"></button>
+    </div>
   </div>
 
   <script src="js/storage.js"></script>

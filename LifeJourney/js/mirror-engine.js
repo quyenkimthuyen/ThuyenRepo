@@ -5,18 +5,18 @@
 const MirrorEngine = (() => {
   const PATTERNS = {
     ownership: {
-      en: ['what can i do', 'my responsibility', 'i will', 'i can change', 'my part', 'i should', 'i need to', 'up to me', 'my choice', 'i take', 'i own'],
-      vi: ['tôi có thể làm gì', 'trách nhiệm của tôi', 'tôi sẽ', 'tôi có thể thay đổi', 'phần của tôi', 'tôi nên', 'tôi cần', 'tùy tôi', 'lựa chọn của tôi', 'tôi chịu', 'do tôi'],
+      en: ['what can i do', 'my responsibility', 'i will', 'i can change', 'my part', 'i should', 'i need to', 'up to me', 'my choice', 'i take', 'i own', 'i could have', 'my fault', 'i control'],
+      vi: ['tôi có thể làm gì', 'trách nhiệm của tôi', 'tôi sẽ', 'tôi có thể thay đổi', 'phần của tôi', 'tôi nên', 'tôi cần', 'tùy tôi', 'lựa chọn của tôi', 'tôi chịu', 'do tôi', 'lỗi của tôi', 'tôi kiểm soát', 'mình phải'],
       weight: 1,
     },
     growth: {
-      en: ['i can improve', 'i learned', 'lesson', 'grow', 'practice', 'try again', 'develop', 'progress', 'better next', 'feedback', 'opportunity to learn'],
-      vi: ['tôi có thể cải thiện', 'tôi học được', 'bài học', 'phát triển', 'luyện tập', 'thử lại', 'tiến bộ', 'lần sau tốt hơn', 'phản hồi', 'cơ hội học'],
+      en: ['i can improve', 'i learned', 'lesson', 'grow', 'practice', 'try again', 'develop', 'progress', 'better next', 'feedback', 'opportunity to learn', 'next time', 'get better'],
+      vi: ['tôi có thể cải thiện', 'tôi học được', 'bài học', 'phát triển', 'luyện tập', 'thử lại', 'tiến bộ', 'lần sau tốt hơn', 'phản hồi', 'cơ hội học', 'lần tới', 'tốt hơn'],
       weight: 1,
     },
     victim: {
-      en: ["it's unfair", 'their fault', 'not my fault', 'they always', 'blame', 'why me', 'unfair', 'against me', 'nobody cares', 'they did', 'because of them'],
-      vi: ['bất công', 'lỗi của họ', 'không phải lỗi tôi', 'họ luôn', 'đổ lỗi', 'tại sao lại tôi', 'chống lại tôi', 'không ai quan tâm', 'do họ', 'vì họ'],
+      en: ["it's unfair", 'their fault', 'not my fault', 'they always', 'blame', 'why me', 'unfair', 'against me', 'nobody cares', 'they did', 'because of them', 'picked on me', 'singled out'],
+      vi: ['bất công', 'lỗi của họ', 'không phải lỗi tôi', 'họ luôn', 'đổ lỗi', 'tại sao lại tôi', 'chống lại tôi', 'không ai quan tâm', 'do họ', 'vì họ', 'bắt nạt', 'oán trách'],
       weight: 1,
     },
     fixed: {
@@ -179,6 +179,50 @@ const MirrorEngine = (() => {
     return reflections;
   }
 
+  function getLiveHints(text, lang) {
+    const { detected } = analyzeText(text);
+    if (detected.length === 0) return [];
+    const labels = {
+      vi: {
+        ownership: 'Chủ động',
+        growth: 'Phát triển',
+        victim: 'Nạn nhân',
+        fixed: 'Cố định',
+        catastrophic: 'Thảm họa',
+        opportunity: 'Cơ hội',
+        fear: 'Lo lắng',
+      },
+      en: {
+        ownership: 'Ownership',
+        growth: 'Growth',
+        victim: 'Victim',
+        fixed: 'Fixed',
+        catastrophic: 'Catastrophic',
+        opportunity: 'Opportunity',
+        fear: 'Fear',
+      },
+    };
+    const L = labels[lang] || labels.en;
+    return detected.slice(0, 3).map((d) => L[d.pattern] || d.pattern);
+  }
+
+  function getEntryReflection(entry, lang) {
+    const { detected } = analyzeEntry(entry);
+    if (detected.length === 0) return null;
+    const isVi = lang === 'vi';
+    const top = detected[0].pattern;
+    const map = {
+      ownership: isVi ? 'Ngôn ngữ của bạn cho thấy tư duy chủ động.' : 'Your language shows ownership thinking.',
+      growth: isVi ? 'Bạn đang dùng ngôn ngữ phát triển.' : 'You are using growth-oriented language.',
+      victim: isVi ? 'Bạn đang tập trung vào điều ngoài tầm kiểm soát.' : 'You are focusing on what is outside your control.',
+      fixed: isVi ? 'Bạn đang dùng ngôn ngữ cho thấy niềm tin cố định.' : 'You are using language that suggests fixed beliefs.',
+      catastrophic: isVi ? 'Bạn đang phóng đại mức độ nghiêm trọng.' : 'You are amplifying how severe this feels.',
+      opportunity: isVi ? 'Bạn đang nhìn thấy khả năng trong tình huống.' : 'You are seeing possibility in the situation.',
+      fear: isVi ? 'Ngôn ngữ của bạn mang sắc thái lo lắng.' : 'Your language carries worry.',
+    };
+    return map[top] || null;
+  }
+
   function getFrequentPhrases(timeline, lang, limit = 10) {
     const words = {};
     const stopWords = new Set(
@@ -207,6 +251,8 @@ const MirrorEngine = (() => {
     aggregatePatterns,
     analyzeWithProvider,
     generateReflections,
+    getLiveHints,
+    getEntryReflection,
     getFrequentPhrases,
     PATTERNS,
   };

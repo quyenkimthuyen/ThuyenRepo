@@ -84,6 +84,29 @@ const Storage = (() => {
     save(state);
   }
 
+  function exportData(state) {
+    return JSON.stringify(state, null, 2);
+  }
+
+  function importData(json) {
+    const data = JSON.parse(json);
+    const merged = { ...defaultState(), ...data };
+    save(merged);
+    return merged;
+  }
+
+  function getStats(state) {
+    const real = state.timeline.filter((e) => !e.simulation);
+    const simulated = state.timeline.length - real.length;
+    return {
+      totalEntries: state.timeline.length,
+      realEntries: real.length,
+      simulatedEntries: simulated,
+      eventsExplored: state.usedEventIds.length,
+      daysActive: new Set(state.timeline.map((e) => (e.timestamp || '').slice(0, 10))).size,
+    };
+  }
+
   return {
     load,
     save,
@@ -95,5 +118,8 @@ const Storage = (() => {
     setStage,
     setSimulationStage,
     clearSimulation,
+    exportData,
+    importData,
+    getStats,
   };
 })();

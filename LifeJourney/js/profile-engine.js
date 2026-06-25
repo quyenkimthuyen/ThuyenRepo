@@ -86,7 +86,7 @@ const ProfileEngine = (() => {
   function getEmotionTrends(timeline) {
     const trends = {};
     for (const entry of timeline) {
-      const em = entry.emotion || 'unknown';
+      const em = entry.emotionLabel || entry.emotionCustom || entry.emotion || 'unknown';
       if (!trends[em]) trends[em] = { count: 0, dates: [] };
       trends[em].count++;
       trends[em].dates.push(entry.timestamp);
@@ -100,10 +100,29 @@ const ProfileEngine = (() => {
       const date = (entry.timestamp || '').slice(0, 10);
       if (!date) continue;
       if (!buckets[date]) buckets[date] = {};
-      const em = entry.emotion || 'unknown';
+      const em = entry.emotionLabel || entry.emotion || 'unknown';
       buckets[date][em] = (buckets[date][em] || 0) + 1;
     }
     return buckets;
+  }
+
+  function getEmotionTimelineData(timeline, maxPoints = 12) {
+    const sorted = [...timeline].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const slice = sorted.slice(-maxPoints);
+    const emotionScores = { angry: 1, sad: 2, frustrated: 3, curious: 4, calm: 5, hopeful: 6, unknown: 3 };
+    return {
+      labels: slice.map((e) => (e.timestamp || '').slice(5, 10)),
+      values: slice.map((e) => emotionScores[e.emotion] || 3),
+      emotions: slice.map((e) => e.emotionLabel || e.emotionCustom || e.emotion),
+    };
+  }
+
+  function getProfileDelta(before, after) {
+    const delta = {};
+    for (const key of Object.keys(before)) {
+      delta[key] = (after[key] || 0) - (before[key] || 0);
+    }
+    return delta;
   }
 
   return {
@@ -113,5 +132,7 @@ const ProfileEngine = (() => {
     getRadarData,
     getEmotionTrends,
     getEmotionOverTime,
+    getEmotionTimelineData,
+    getProfileDelta,
   };
 })();
