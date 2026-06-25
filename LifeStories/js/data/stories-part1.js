@@ -1,6 +1,6 @@
 const LIFE_STAGES = [
   { id: 'primary_school', unlocked: true, storyCount: 5 },
-  { id: 'middle_school', unlocked: false, storyCount: 0 },
+  { id: 'middle_school', unlocked: true, storyCount: 5 },
   { id: 'high_school', unlocked: true, storyCount: 5 },
   { id: 'university', unlocked: false, storyCount: 0 },
   { id: 'working_adult', unlocked: false, storyCount: 0 },
