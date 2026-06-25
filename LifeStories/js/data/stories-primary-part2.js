@@ -4,6 +4,7 @@ const PRIMARY_STORIES_PART2 = [
     id: 'ps-03',
     lifeStage: 'primary_school',
     category: 'sharing',
+    visualStyle: 'flat',
     title: { en: 'The Extra Lunch', vi: 'Hộp Cơm Thừa' },
     description: {
       en: 'Mom packed extra spring rolls — your favorite. At lunch, Tú opens an empty box. He forgot his lunch at home.',
@@ -207,6 +208,7 @@ const PRIMARY_STORIES_PART2 = [
     id: 'ps-04',
     lifeStage: 'primary_school',
     category: 'courage',
+    visualStyle: 'crayon',
     title: { en: 'The Dog at the Alley', vi: 'Con Chó Cuối Ngõ' },
     description: {
       en: 'The shortcut home goes through an alley. A big dog lies in the middle. Your friends are watching to see what you do.',
@@ -396,6 +398,7 @@ const PRIMARY_STORIES_PART2 = [
     id: 'ps-05',
     lifeStage: 'primary_school',
     category: 'responsibility',
+    visualStyle: 'papercut',
     title: { en: 'The Teacher\'s Plant', vi: 'Cây Cảnh Của Cô' },
     description: {
       en: 'You were chosen to water the class plant this week. On Thursday, you forget — too excited about the field trip tomorrow.',

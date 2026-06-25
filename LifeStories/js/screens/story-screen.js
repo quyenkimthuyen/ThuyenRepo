@@ -1,7 +1,11 @@
 let currentEngine = null;
 
-function isComicStory(story) {
-  return story?.visualStyle === 'comic';
+function isIllustratedStory(story) {
+  return typeof isIllustratedStyle === 'function' && isIllustratedStyle(story?.visualStyle);
+}
+
+function getStoryVisualStyle(story) {
+  return story?.visualStyle || 'comic';
 }
 
 function renderStoryScreen(container, state, params) {
@@ -10,11 +14,12 @@ function renderStoryScreen(container, state, params) {
 
   const savedProgress = params.replay ? null : getStoryProgress(state, story.id);
   currentEngine = new StoryEngine(story, savedProgress);
-  const comic = isComicStory(story);
+  const illustrated = isIllustratedStory(story);
+  const vStyle = getStoryVisualStyle(story);
 
   container.innerHTML = `
-    <div class="story-screen${comic ? ' story-screen--comic' : ''}" id="story-ui">
-      <div class="story-bg${comic ? ' comic-panel' : ''}" id="story-bg">
+    <div class="story-screen${illustrated ? ' story-screen--illustrated story-screen--' + vStyle : ''}" id="story-ui">
+      <div class="story-bg${illustrated ? ' illus-panel' : ''}" id="story-bg">
         <div class="story-progress-top">
           <div class="story-progress-label">
             <span>${tl(story.title)}</span>
@@ -22,18 +27,18 @@ function renderStoryScreen(container, state, params) {
           </div>
           <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
         </div>
-        ${comic ? `
-          <div class="comic-frame" id="comic-frame">
-            <div class="comic-frame__border"></div>
-            <div class="comic-illustration" id="comic-art" role="img" aria-live="polite"></div>
-            <div class="comic-caption" id="comic-caption"></div>
-            <div class="comic-character-badge" id="comic-badge">
-              <span class="comic-character-badge__emoji" id="char-avatar"></span>
+        ${illustrated ? `
+          <div class="illus-frame illus-frame--${vStyle}" id="illus-frame">
+            <div class="illus-frame__border"></div>
+            <div class="illus-art" id="illus-art" role="img" aria-live="polite"></div>
+            <div class="illus-caption" id="illus-caption"></div>
+            <div class="illus-character-badge" id="illus-badge">
+              <span class="illus-character-badge__emoji" id="char-avatar"></span>
             </div>
           </div>
         ` : '<div class="character-avatar" id="char-avatar"></div>'}
       </div>
-      <div class="dialogue-panel${comic ? ' dialogue-panel--comic' : ''}">
+      <div class="dialogue-panel${illustrated ? ' dialogue-panel--illustrated dialogue-panel--' + vStyle : ''}">
         <div class="dialogue-bubble" id="dialogue-bubble">
           <div class="character-name" id="char-name"></div>
           <div class="dialogue-text" id="dialogue-text"></div>
@@ -48,12 +53,12 @@ function renderStoryScreen(container, state, params) {
   renderCurrentScene(state, story);
 }
 
-function updateComicIllustration(story, scene) {
-  const art = typeof getComicArtForScene === 'function'
-    ? getComicArtForScene(story.id, scene.id)
+function updateStoryIllustration(story, scene) {
+  const art = typeof getStoryArtForScene === 'function'
+    ? getStoryArtForScene(story.id, scene.id)
     : null;
-  const artEl = document.getElementById('comic-art');
-  const caption = document.getElementById('comic-caption');
+  const artEl = document.getElementById('illus-art');
+  const caption = document.getElementById('illus-caption');
   const bg = document.getElementById('story-bg');
 
   if (!artEl) return;
@@ -62,8 +67,8 @@ function updateComicIllustration(story, scene) {
     if (artEl.dataset.artKey !== art.key) {
       artEl.innerHTML = art.svg;
       artEl.dataset.artKey = art.key;
-      artEl.classList.remove('comic-illustration--hidden');
-      artEl.classList.add('comic-illustration--show');
+      artEl.classList.remove('illus-art--hidden');
+      artEl.classList.add('illus-art--show');
     }
     artEl.setAttribute('aria-label', tl(art.caption));
     if (caption) caption.textContent = tl(art.caption);
@@ -71,8 +76,8 @@ function updateComicIllustration(story, scene) {
   } else {
     artEl.innerHTML = '';
     artEl.dataset.artKey = '';
-    artEl.classList.add('comic-illustration--hidden');
-    artEl.classList.remove('comic-illustration--show');
+    artEl.classList.add('illus-art--hidden');
+    artEl.classList.remove('illus-art--show');
     if (caption) caption.textContent = '';
     if (bg) bg.dataset.mood = 'neutral';
   }
@@ -84,12 +89,13 @@ function renderCurrentScene(state, story) {
   if (!scene) { showStoryComplete(state, story); return; }
 
   const char = engine.getCharacter(scene.character) || { name: { en: '...', vi: '...' }, emoji: '', color: '#888' };
-  const comic = isComicStory(story);
+  const illustrated = isIllustratedStory(story);
+  const vStyle = getStoryVisualStyle(story);
 
   const avatarEl = document.getElementById('char-avatar');
-  if (comic) {
+  if (illustrated) {
     avatarEl.textContent = char.emoji || '💬';
-    updateComicIllustration(story, scene);
+    updateStoryIllustration(story, scene);
   } else {
     avatarEl.textContent = char.emoji || '💬';
   }
@@ -126,12 +132,12 @@ function renderCurrentScene(state, story) {
   }
 
   if (scene.choices && scene.choices.length > 0) {
-    choicesArea.innerHTML = '<div class="choices-panel' + (comic ? ' choices-panel--comic' : '') + '"><p class="choices-label" data-i18n="choose">' + t('choose') + '</p></div>';
+    choicesArea.innerHTML = '<div class="choices-panel' + (illustrated ? ' choices-panel--illustrated choices-panel--' + vStyle : '') + '"><p class="choices-label" data-i18n="choose">' + t('choose') + '</p></div>';
     const panel = choicesArea.querySelector('.choices-panel');
 
     scene.choices.forEach((choice, idx) => {
       const btn = document.createElement('button');
-      btn.className = 'btn-choice' + (comic ? ' btn-choice--comic' : '');
+      btn.className = 'btn-choice' + (illustrated ? ' btn-choice--illustrated btn-choice--' + vStyle : '');
       btn.textContent = tl(choice.text);
       btn.style.animationDelay = (idx * 0.08) + 's';
       btn.addEventListener('click', () => onChoiceMade(state, story, idx));

@@ -242,6 +242,7 @@ const PRIMARY_STORIES = [
     id: 'ps-02',
     lifeStage: 'primary_school',
     category: 'honesty',
+    visualStyle: 'watercolor',
     title: { en: 'The Broken Pencil', vi: 'Cây Bút Chì Gãy' },
     description: {
       en: 'You borrowed Linh\'s pencil during a test. It snapped in your hand. Nobody saw. Linh will look for it after class.',

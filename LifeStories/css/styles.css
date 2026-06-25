@@ -299,21 +299,47 @@ body::before {
 
 .story-card.in-progress { border-left: 3px solid var(--accent-gold); }
 
+.story-card--illustrated,
 .story-card--comic {
   border-color: rgba(212, 168, 83, 0.35);
   background: linear-gradient(135deg, rgba(212, 168, 83, 0.06), var(--bg-card));
 }
 
+.story-card--watercolor {
+  border-color: rgba(160, 180, 220, 0.4);
+  background: linear-gradient(135deg, rgba(200, 220, 240, 0.1), var(--bg-card));
+}
+
+.story-card--flat {
+  border-color: rgba(78, 205, 196, 0.4);
+  background: linear-gradient(135deg, rgba(255, 107, 107, 0.06), var(--bg-card));
+}
+
+.story-card--crayon {
+  border-color: rgba(255, 154, 108, 0.4);
+  background: linear-gradient(135deg, rgba(255, 218, 185, 0.1), var(--bg-card));
+}
+
+.story-card--papercut {
+  border-color: rgba(126, 200, 160, 0.4);
+  background: linear-gradient(135deg, rgba(255, 228, 196, 0.1), var(--bg-card));
+}
+
+.story-card-badge-illus,
 .story-card-badge-comic {
   display: inline-block;
   font-size: 0.7rem;
   padding: 0.15rem 0.5rem;
   border-radius: 4px;
-  background: rgba(255, 107, 107, 0.15);
-  color: #ff8a8a;
   margin-left: 0.5rem;
   vertical-align: middle;
 }
+
+.story-card-badge--comic { background: rgba(255, 107, 107, 0.15); color: #ff8a8a; }
+.story-card-badge--watercolor { background: rgba(150, 180, 220, 0.2); color: #a0c0e8; }
+.story-card-badge--flat { background: rgba(78, 205, 196, 0.2); color: #4ecdc4; }
+.story-card-badge--crayon { background: rgba(255, 154, 108, 0.2); color: #ff9a6c; }
+.story-card-badge--papercut { background: rgba(126, 200, 160, 0.2); color: #7ec8a0; }
 
 .story-card-header {
   display: flex;
@@ -700,11 +726,18 @@ body::before {
   .story-list { grid-template-columns: 1fr 1fr; }
 }
 
-/* ═══ Comic Story Mode ═══ */
+/* ═══ Illustrated Story Mode ═══ */
+.story-screen--illustrated,
 .story-screen--comic {
   background: #1a1520;
 }
 
+.story-screen--watercolor { background: #1a1828; }
+.story-screen--flat { background: #141820; }
+.story-screen--crayon { background: #1f1810; }
+.story-screen--papercut { background: #181614; }
+
+.story-screen--illustrated .story-bg.illus-panel,
 .story-screen--comic .story-bg.comic-panel {
   background: #2a2035;
   min-height: 360px;
@@ -713,42 +746,83 @@ body::before {
   overflow: visible;
 }
 
+.story-screen--illustrated .story-bg.illus-panel::after,
 .story-screen--comic .story-bg.comic-panel::after {
   display: none;
 }
 
+.story-screen--illustrated .story-bg[data-mood="morning"],
 .story-screen--comic .story-bg[data-mood="morning"] { background: linear-gradient(180deg, #87CEEB 0%, #2a2035 100%); }
+.story-screen--illustrated .story-bg[data-mood="calm"] { background: linear-gradient(180deg, #B8D4F0 0%, #2a2838 100%); }
+.story-screen--illustrated .story-bg[data-mood="playful"],
 .story-screen--comic .story-bg[data-mood="playful"] { background: linear-gradient(180deg, #7EC850 0%, #2a2035 100%); }
+.story-screen--illustrated .story-bg[data-mood="tense"],
 .story-screen--comic .story-bg[data-mood="tense"] { background: linear-gradient(180deg, #9B72CF 0%, #2a2035 100%); }
+.story-screen--illustrated .story-bg[data-mood="warm"],
 .story-screen--comic .story-bg[data-mood="warm"] { background: linear-gradient(180deg, #FFB88C 0%, #2a2035 100%); }
+.story-screen--illustrated .story-bg[data-mood="sunset"],
 .story-screen--comic .story-bg[data-mood="sunset"] { background: linear-gradient(180deg, #FF9A6C 0%, #2a2035 100%); }
 
+.illus-frame,
 .comic-frame {
   position: relative;
   width: calc(100% - 2rem);
   max-width: 720px;
   margin: 3.5rem auto 0;
   z-index: 5;
-  animation: comicPanelIn 0.6s ease;
+  animation: illusPanelIn 0.6s ease;
 }
 
-@keyframes comicPanelIn {
+@keyframes illusPanelIn {
   from { opacity: 0; transform: scale(0.96) translateY(12px); }
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+.illus-frame__border,
 .comic-frame__border {
   position: absolute;
   inset: -4px;
-  border: 4px solid #fff;
   border-radius: 6px;
-  box-shadow:
-    0 0 0 2px #333,
-    6px 6px 0 rgba(0,0,0,0.4);
   pointer-events: none;
   z-index: 2;
 }
 
+/* Comic — viền đậm kiểu truyện tranh */
+.illus-frame--comic .illus-frame__border,
+.comic-frame__border {
+  border: 4px solid #fff;
+  box-shadow: 0 0 0 2px #333, 6px 6px 0 rgba(0,0,0,0.4);
+}
+
+/* Watercolor — viền mềm */
+.illus-frame--watercolor .illus-frame__border {
+  border: 3px solid rgba(255,255,255,0.7);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(120, 150, 200, 0.35);
+}
+
+/* Flat — không viền, góc vuông */
+.illus-frame--flat .illus-frame__border {
+  border: none;
+  border-radius: 0;
+  box-shadow: 8px 8px 0 #FF6B6B;
+}
+
+/* Crayon — viền ngoằn ngoèo */
+.illus-frame--crayon .illus-frame__border {
+  border: 5px solid #FFDAB9;
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 #C08060, -2px -2px 0 #87CEEB;
+}
+
+/* Papercut — đổ bóng lớp giấy */
+.illus-frame--papercut .illus-frame__border {
+  border: none;
+  border-radius: 4px;
+  box-shadow: 6px 8px 0 rgba(80, 60, 40, 0.25), 12px 14px 0 rgba(80, 60, 40, 0.12);
+}
+
+.illus-art,
 .comic-illustration {
   display: block;
   width: 100%;
@@ -759,24 +833,30 @@ body::before {
   background: #fff;
 }
 
+.illus-frame--watercolor .illus-art { border-radius: 14px; }
+.illus-frame--flat .illus-art { border-radius: 0; }
+.illus-frame--crayon .illus-art { border-radius: 8px; background: #FFF8E7; }
+.illus-frame--papercut .illus-art { border-radius: 2px; background: #F5F0E8; }
+
+.illus-art svg,
 .comic-illustration svg {
   display: block;
   width: 100%;
   height: auto;
 }
 
+.illus-art svg text,
 .comic-illustration svg text {
   font-family: 'Be Vietnam Pro', 'Segoe UI', Tahoma, Arial, sans-serif !important;
 }
 
-.comic-illustration--hidden {
-  display: none;
-}
+.illus-art--hidden,
+.comic-illustration--hidden { display: none; }
 
-.comic-illustration--show {
-  animation: comicPanelIn 0.45s ease;
-}
+.illus-art--show,
+.comic-illustration--show { animation: illusPanelIn 0.45s ease; }
 
+.illus-caption,
 .comic-caption {
   position: absolute;
   bottom: 12px;
@@ -789,11 +869,44 @@ body::before {
   font-weight: 600;
   padding: 0.45rem 0.85rem;
   border-radius: 4px;
-  border: 2px solid #333;
   z-index: 3;
   text-align: center;
 }
 
+.illus-frame--comic .illus-caption,
+.comic-caption { border: 2px solid #333; }
+
+.illus-frame--watercolor .illus-caption {
+  border: none;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.88);
+  color: #607090;
+}
+
+.illus-frame--flat .illus-caption {
+  border: none;
+  border-radius: 0;
+  background: #FFE66D;
+  color: #333;
+  font-weight: 700;
+}
+
+.illus-frame--crayon .illus-caption {
+  border: 3px solid #C08060;
+  border-radius: 8px;
+  background: #FFF8E7;
+  color: #806040;
+}
+
+.illus-frame--papercut .illus-caption {
+  border: none;
+  border-radius: 2px;
+  background: #FFF9F0;
+  box-shadow: 3px 4px 0 rgba(80,60,40,0.2);
+  color: #504030;
+}
+
+.illus-character-badge,
 .comic-character-badge {
   position: absolute;
   top: -18px;
@@ -801,39 +914,95 @@ body::before {
   width: 52px;
   height: 52px;
   background: #fff;
-  border: 3px solid #333;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
   z-index: 4;
 }
 
+.illus-frame--comic .illus-character-badge,
+.comic-character-badge {
+  border: 3px solid #333;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
+}
+
+.illus-frame--watercolor .illus-character-badge {
+  border: 2px solid rgba(180, 200, 230, 0.8);
+  box-shadow: 0 4px 12px rgba(120, 150, 200, 0.3);
+}
+
+.illus-frame--flat .illus-character-badge {
+  border: 3px solid #FF6B6B;
+  border-radius: 8px;
+  box-shadow: 4px 4px 0 #4ECDC4;
+}
+
+.illus-frame--crayon .illus-character-badge {
+  border: 4px solid #C08060;
+  box-shadow: 3px 3px 0 #87CEEB;
+}
+
+.illus-frame--papercut .illus-character-badge {
+  border: none;
+  box-shadow: 4px 5px 0 rgba(80,60,40,0.25);
+}
+
+.illus-character-badge__emoji,
 .comic-character-badge__emoji {
   font-size: 1.6rem;
   line-height: 1;
 }
 
+.dialogue-panel--illustrated,
 .dialogue-panel--comic {
   background: transparent;
   border-top: none;
   padding: 1rem 1.5rem 0.5rem;
 }
 
-.dialogue-bubble {
+.dialogue-panel--illustrated .dialogue-bubble,
+.dialogue-panel--comic .dialogue-bubble {
+  position: relative;
+  background: #fff;
+  color: #222;
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  max-width: 720px;
+  margin: 0 auto;
   position: relative;
 }
 
-.dialogue-panel--comic .dialogue-bubble {
-  background: #fff;
-  color: #222;
+.dialogue-panel--comic .dialogue-bubble,
+.dialogue-panel--illustrated.dialogue-panel--comic .dialogue-bubble {
   border: 3px solid #333;
-  border-radius: 16px;
-  padding: 1.25rem 1.5rem;
   box-shadow: 4px 4px 0 rgba(0,0,0,0.25);
-  max-width: 720px;
-  margin: 0 auto;
+}
+
+.dialogue-panel--watercolor .dialogue-bubble {
+  border: none;
+  box-shadow: 0 4px 20px rgba(150, 180, 220, 0.25);
+  background: rgba(255,255,255,0.95);
+}
+
+.dialogue-panel--flat .dialogue-bubble {
+  border: 4px solid #4ECDC4;
+  border-radius: 0;
+  box-shadow: 6px 6px 0 #FF6B6B;
+}
+
+.dialogue-panel--crayon .dialogue-bubble {
+  border: 4px solid #C08060;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 #87CEEB;
+  background: #FFF8E7;
+}
+
+.dialogue-panel--papercut .dialogue-bubble {
+  border: none;
+  border-radius: 4px;
+  box-shadow: 5px 6px 0 rgba(80,60,40,0.2);
+  background: #FFF9F0;
 }
 
 .dialogue-panel--comic .dialogue-bubble::before {
@@ -863,32 +1032,70 @@ body::before {
   to { opacity: 1; transform: scale(1); }
 }
 
+.dialogue-panel--illustrated .character-name,
 .dialogue-panel--comic .character-name {
-  color: #c05070;
   font-weight: 700;
 }
 
-.dialogue-panel--comic .dialogue-text {
-  color: #333;
-}
+.dialogue-panel--comic .character-name { color: #c05070; }
+.dialogue-panel--watercolor .character-name { color: #7090b0; }
+.dialogue-panel--flat .character-name { color: #FF6B6B; }
+.dialogue-panel--crayon .character-name { color: #A06040; }
+.dialogue-panel--papercut .character-name { color: #508050; }
 
-.choices-panel--comic {
-  background: #1a1520;
-}
+.dialogue-panel--illustrated .dialogue-text,
+.dialogue-panel--comic .dialogue-text { color: #333; }
 
+.choices-panel--illustrated,
+.choices-panel--comic { background: #1a1520; }
+
+.story-screen--watercolor .choices-panel--illustrated { background: #1a1828; }
+.story-screen--flat .choices-panel--illustrated { background: #141820; }
+.story-screen--crayon .choices-panel--illustrated { background: #1f1810; }
+.story-screen--papercut .choices-panel--illustrated { background: #181614; }
+
+.btn-choice--illustrated,
 .btn-choice--comic {
   background: #fff;
   color: #333;
-  border: 2px solid #333;
   border-radius: 12px;
-  box-shadow: 3px 3px 0 #333;
   animation: choiceSlide 0.4s ease backwards;
 }
 
+.btn-choice--comic {
+  border: 2px solid #333;
+  box-shadow: 3px 3px 0 #333;
+}
+
+.btn-choice--watercolor {
+  border: 2px solid rgba(150, 180, 220, 0.6);
+  box-shadow: 0 3px 12px rgba(120, 150, 200, 0.2);
+  border-radius: 20px;
+}
+
+.btn-choice--flat {
+  border: 3px solid #4ECDC4;
+  border-radius: 0;
+  box-shadow: 4px 4px 0 #FF6B6B;
+}
+
+.btn-choice--crayon {
+  border: 3px solid #C08060;
+  box-shadow: 3px 3px 0 #87CEEB;
+  background: #FFF8E7;
+}
+
+.btn-choice--papercut {
+  border: none;
+  box-shadow: 4px 5px 0 rgba(80,60,40,0.2);
+  background: #FFF9F0;
+  border-radius: 4px;
+}
+
+.btn-choice--illustrated:hover,
 .btn-choice--comic:hover {
   background: #FFF9E6;
   border-color: var(--accent-gold);
-  box-shadow: 3px 3px 0 var(--accent-gold-dim);
   transform: translate(-2px, -2px);
 }
 
@@ -897,6 +1104,7 @@ body::before {
   to { opacity: 1; transform: translateX(0); }
 }
 
+.story-screen--illustrated .consequence-toast,
 .story-screen--comic .consequence-toast {
   background: rgba(255, 200, 100, 0.2);
   border-color: rgba(255, 200, 100, 0.5);
@@ -904,8 +1112,8 @@ body::before {
 }
 
 @media (max-width: 600px) {
-  .comic-frame { margin-top: 3rem; width: calc(100% - 1rem); }
-  .comic-caption { font-size: 0.75rem; }
-  .comic-character-badge { width: 44px; height: 44px; top: -14px; }
+  .illus-frame, .comic-frame { margin-top: 3rem; width: calc(100% - 1rem); }
+  .illus-caption, .comic-caption { font-size: 0.75rem; }
+  .illus-character-badge, .comic-character-badge { width: 44px; height: 44px; top: -14px; }
 }
 

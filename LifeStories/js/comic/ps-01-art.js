@@ -17,9 +17,8 @@ const PS01_SCENE_ILLUSTRATION = {
   'ps01-09': 'ending', 'ps01-10': 'ending',
 };
 
-function getComicArtForScene(storyId, sceneId) {
-  if (storyId !== 'ps-01') return null;
+function getPS01Art(sceneId) {
   const key = PS01_SCENE_ILLUSTRATION[sceneId];
   if (!key) return null;
-  return { key, ...PS01_COMIC_ART[key], svg: PS01_SVG[key] };
+  return { key, style: 'comic', ...PS01_COMIC_ART[key], svg: PS01_SVG[key] };
 }

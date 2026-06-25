@@ -1,5 +1,23 @@
 let selectedStageId = null;
 
+const ILLUSTRATION_ICONS = {
+  comic: '📖',
+  watercolor: '🎨',
+  flat: '◼',
+  crayon: '🖍',
+  papercut: '✂️',
+};
+
+function getIllustrationBadgeHtml(story) {
+  if (!story.visualStyle || typeof isIllustratedStyle !== 'function' || !isIllustratedStyle(story.visualStyle)) {
+    return '';
+  }
+  const label = ILLUSTRATION_STYLE_LABELS?.[story.visualStyle];
+  const icon = ILLUSTRATION_ICONS[story.visualStyle] || '🖼';
+  const text = label ? tl(label) : t('comicBadge');
+  return '<span class="story-card-badge-illus story-card-badge--' + story.visualStyle + '">' + icon + ' ' + text + '</span>';
+}
+
 function renderHome(container, state) {
   const unlockedStages = LIFE_STAGES.filter(s => s.unlocked);
   if (!selectedStageId || !unlockedStages.find(s => s.id === selectedStageId)) {
@@ -75,12 +93,16 @@ function showStoryList(container, state, stageId) {
     const statusText = isCompleted ? t('completed') : isInProgress ? t('inProgress') : '';
     const progressPct = progress ? Math.round((progress.visitedScenes?.length || 0) / story.totalScenes * 100) : 0;
 
+    const illusClass = story.visualStyle && isIllustratedStyle?.(story.visualStyle)
+      ? ' story-card--illustrated story-card--' + story.visualStyle
+      : '';
+
     html += `
-      <div class="story-card ${statusClass}${story.visualStyle === 'comic' ? ' story-card--comic' : ''}" data-story-id="${story.id}">
+      <div class="story-card ${statusClass}${illusClass}" data-story-id="${story.id}">
         <div class="story-card-header">
           <div>
             <span class="story-category" data-i18n="category_${story.category}">${t('category_' + story.category)}</span>
-            ${story.visualStyle === 'comic' ? '<span class="story-card-badge-comic">📖 ' + t('comicBadge') + '</span>' : ''}
+            ${getIllustrationBadgeHtml(story)}
             <h3>${tl(story.title)}</h3>
           </div>
           ${statusText ? '<span class="story-status ' + statusClass + '">' + statusText + '</span>' : ''}
