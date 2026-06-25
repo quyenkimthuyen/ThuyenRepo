@@ -473,7 +473,10 @@ const App = (() => {
   }
 
   function renderCompletion(container) {
-    const { insight, delta, patterns } = completion;
+    const { delta, patterns, entrySnapshot } = completion;
+    const insight = entrySnapshot
+      ? MirrorEngine.getEntryReflection(entrySnapshot, state.language)
+      : null;
     const deltaHtml = Object.entries(delta)
       .filter(([, v]) => Math.abs(v) >= 1)
       .map(([k, v]) => {
@@ -802,12 +805,16 @@ const App = (() => {
     });
 
     state = Storage.addTimelineEntry(state, entry);
-    state = Storage.markEventUsed(state, journey.event.id);
     state.thinkingProfile = ProfileEngine.evolveProfile(state.thinkingProfile, entry, patterns.scores);
-    Storage.updateProfile(state, state.thinkingProfile);
+    state = Storage.markEventUsed(state, journey.event.id);
+    state = Storage.updateProfile(state, state.thinkingProfile);
 
     completion = {
-      insight: MirrorEngine.getEntryReflection(entry, lang),
+      entrySnapshot: {
+        thought: journey.thought,
+        decision: decisionText,
+        reflection: journey.reflection,
+      },
       delta: ProfileEngine.getProfileDelta(profileBefore, state.thinkingProfile),
       patterns,
     };

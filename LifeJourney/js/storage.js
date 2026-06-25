@@ -56,32 +56,38 @@ const Storage = (() => {
       state.usedEventIds.push(eventId);
     }
     save(state);
+    return state;
   }
 
   function updateProfile(state, profile) {
     state.thinkingProfile = profile;
     save(state);
+    return state;
   }
 
   function setLanguage(state, lang) {
     state.language = lang;
     save(state);
+    return state;
   }
 
   function setStage(state, stageId) {
     state.currentStage = stageId;
     state.simulationStage = null;
     save(state);
+    return state;
   }
 
   function setSimulationStage(state, stageId) {
     state.simulationStage = stageId;
     save(state);
+    return state;
   }
 
   function clearSimulation(state) {
     state.simulationStage = null;
     save(state);
+    return state;
   }
 
   function exportData(state) {
