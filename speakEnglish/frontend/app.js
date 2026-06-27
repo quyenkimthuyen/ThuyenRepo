@@ -20,6 +20,7 @@ import {
 } from './js/core.js';
 import { MicEngine, MIC_PHASE } from './js/mic-engine.js';
 import { loadManifest, buildQuizSession } from './js/vocabulary.js';
+import { renderViSpellingStrip } from './js/vi-spelling.js';
 
 const STORAGE_KEY = 'pronouncelab_history';
 
@@ -101,6 +102,7 @@ const els = {
   historyBadge: $('history-badge'),
   currentWord: $('current-word'),
   currentIpa: $('current-ipa'),
+  viSpellContainer: $('vi-spell-container'),
   currentMeaning: $('current-meaning'),
   quizInfo: $('quiz-info'),
   btnPlaySample: $('btn-play-sample'),
@@ -1115,6 +1117,7 @@ function updateWordHero(index) {
   els.wordIndex.textContent = `${index + 1} / ${words.length}`;
   els.currentWord.textContent = w.word;
   els.currentIpa.textContent = w.ipa || '—';
+  renderViSpellingStrip(els.viSpellContainer, w);
   if (els.currentMeaning) {
     const parts = [];
     if (w.emoji) parts.push(w.emoji);

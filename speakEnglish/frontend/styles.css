@@ -324,6 +324,92 @@ body {
   transition: background 0.25s, border-color 0.25s, color 0.25s;
 }
 
+.vi-spell-block {
+  margin: 0.55rem auto 0;
+  max-width: 100%;
+}
+
+.vi-spell-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.vi-spell-container {
+  display: flex;
+  justify-content: center;
+  min-height: 2.1rem;
+}
+
+.vi-spell-pill {
+  display: inline-block;
+  margin: 0;
+  padding: 0.28rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(120, 180, 255, 0.1);
+  border: 1px solid rgba(120, 180, 255, 0.28);
+  color: #9ec8ff;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.vi-syllable-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem 0.2rem;
+}
+
+.vi-syllable-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.05rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: var(--radius);
+  background: rgba(120, 180, 255, 0.1);
+  border: 1px solid rgba(120, 180, 255, 0.22);
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.vi-syllable-chip.vi-syllable-stress {
+  border-color: rgba(255, 196, 120, 0.55);
+  background: rgba(255, 196, 120, 0.12);
+}
+
+.vi-syllable-chip.vi-syllable-stress-secondary {
+  border-color: rgba(180, 220, 255, 0.45);
+}
+
+.vi-syllable-body {
+  color: #c8e0ff;
+  font-weight: 500;
+}
+
+.vi-syllable-stress .vi-syllable-body {
+  color: #ffd9a8;
+  font-weight: 700;
+}
+
+.vi-syllable-coda {
+  color: #ff9f7a;
+  font-weight: 800;
+  font-size: 0.92em;
+  letter-spacing: 0.02em;
+}
+
+.vi-syllable-sep {
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 0 0.05rem;
+  user-select: none;
+}
+
 .word-nav {
   display: flex;
   gap: 0.5rem;
