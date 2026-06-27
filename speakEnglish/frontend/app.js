@@ -1253,10 +1253,6 @@ function openSettingsPanel() {
   els.settingsPanel?.classList.remove('hidden');
   refreshSilenceHints();
   populateTtsVoiceSelect();
-  els.settingsPanel?.scrollTo({ top: 0, behavior: 'auto' });
-  if (isReadingMode()) {
-    els.settingReadingPassScore?.focus();
-  }
 }
 
 function applyPracticeModeUI() {
