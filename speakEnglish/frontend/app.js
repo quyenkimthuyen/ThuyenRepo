@@ -131,6 +131,7 @@ const els = {
   viSpellContainer: $('vi-spell-container'),
   currentMeaning: $('current-meaning'),
   quizInfo: $('quiz-info'),
+  passageToolbarInfo: $('passage-toolbar-info'),
   btnPlaySample: $('btn-play-sample'),
   btnRetry: $('btn-retry'),
   btnPrev: $('btn-prev'),
@@ -188,8 +189,6 @@ const els = {
   passageLibraryEmpty: $('passage-library-empty'),
   passageTitle: $('passage-title'),
   btnPassageStart: $('btn-passage-start'),
-  btnPassageSettings: $('btn-passage-settings'),
-  btnPassageSettingsImport: $('btn-passage-settings-import'),
   btnPassageChange: $('btn-passage-change'),
   btnPassagePrev: $('btn-passage-prev'),
   btnPassageNext: $('btn-passage-next'),
@@ -1028,14 +1027,16 @@ function getPracticeTargetText() {
 }
 
 function updatePassageUI(options = {}) {
-  const { scrollToActive = false } = options;
+  const { skipScroll = false } = options;
   const hasSession = Boolean(passageSession?.sentences?.length);
   els.passageImport?.classList.toggle('hidden', hasSession);
   els.passageReading?.classList.toggle('hidden', !hasSession);
+  els.btnPassageChange?.classList.toggle('hidden', !hasSession);
 
   if (!hasSession) {
     if (els.passageDisplay) els.passageDisplay.innerHTML = '';
     if (els.passageProgress) els.passageProgress.textContent = '—';
+    if (els.passageToolbarInfo) els.passageToolbarInfo.textContent = 'Import đoạn văn';
     return;
   }
 
@@ -1051,10 +1052,18 @@ function updatePassageUI(options = {}) {
       ? `Hoàn thành ${total} câu`
       : `Câu ${current} / ${total} · ${done} đã xong`;
   }
+  if (els.passageToolbarInfo) {
+    const title = passageSession.name || deriveDefaultPassageName(passageSession.rawText);
+    const done = passageSession.sentences.filter((s) => s.completed).length;
+    const progress = isPassageComplete(passageSession)
+      ? `Hoàn thành ${total} câu`
+      : `Câu ${current}/${total} · ${done} xong`;
+    els.passageToolbarInfo.textContent = `${title} · ${progress}`;
+  }
   if (els.passageDisplay) {
     els.passageDisplay.innerHTML = renderPassageDisplay(passageSession);
-    if (scrollToActive) {
-      requestAnimationFrame(() => scrollPassageToActiveSentence());
+    if (!skipScroll) {
+      queuePassageScrollToActive();
     }
   }
   if (els.btnPassagePrev) {
@@ -1072,11 +1081,23 @@ function updatePassageUI(options = {}) {
 }
 
 function isPassageSentenceVisible(container, sentenceEl) {
-  const pad = 10;
+  const pad = 16;
   const containerRect = container.getBoundingClientRect();
   const sentenceRect = sentenceEl.getBoundingClientRect();
   return sentenceRect.top >= containerRect.top + pad
     && sentenceRect.bottom <= containerRect.bottom - pad;
+}
+
+let passageScrollRaf = 0;
+
+function queuePassageScrollToActive() {
+  if (passageScrollRaf) cancelAnimationFrame(passageScrollRaf);
+  passageScrollRaf = requestAnimationFrame(() => {
+    passageScrollRaf = requestAnimationFrame(() => {
+      passageScrollRaf = 0;
+      scrollPassageToActiveSentence({ force: true });
+    });
+  });
 }
 
 function focusPassageSentence(container, sentenceEl) {
@@ -1089,7 +1110,7 @@ function focusPassageSentence(container, sentenceEl) {
   sentenceEl.focus({ preventScroll: true });
 }
 
-/** Cuộn khung đoạn văn tới câu đang đọc nếu bị che khuất */
+/** Cuộn khung đoạn văn (overflow) tới câu đang đọc */
 function scrollPassageToActiveSentence(options = {}) {
   const container = els.passageDisplay;
   if (!container || !passageSession) return;
@@ -1101,10 +1122,18 @@ function scrollPassageToActiveSentence(options = {}) {
 
   const needsScroll = options.force || !isPassageSentenceVisible(container, sentenceEl);
   if (needsScroll) {
-    sentenceEl.scrollIntoView({
+    const containerRect = container.getBoundingClientRect();
+    const sentenceRect = sentenceEl.getBoundingClientRect();
+    const maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
+    const delta = sentenceRect.top - containerRect.top;
+    const targetScroll = container.scrollTop
+      + delta
+      - (container.clientHeight / 2)
+      + (sentenceRect.height / 2);
+
+    container.scrollTo({
+      top: Math.max(0, Math.min(maxScroll, targetScroll)),
       behavior: options.smooth === false ? 'auto' : 'smooth',
-      block: 'center',
-      inline: 'nearest',
     });
   }
   focusPassageSentence(container, sentenceEl);
@@ -1113,7 +1142,7 @@ function scrollPassageToActiveSentence(options = {}) {
 function refreshPassageFromSpoken(spoken) {
   if (!isReadingMode() || !passageSession) return;
   updateSessionWordProgress(passageSession, spoken || '');
-  updatePassageUI();
+  updatePassageUI({ skipScroll: true });
 }
 
 function startPassageSession(rawText, options = {}) {
@@ -1154,7 +1183,7 @@ function startPassageSession(rawText, options = {}) {
   if (els.passageName) els.passageName.value = passageName;
 
   persistPassageSession();
-  updatePassageUI({ scrollToActive: true });
+  updatePassageUI();
   clearLiveTranscript();
   hideLiveHint();
   resetWordFailStreak();
@@ -1165,13 +1194,22 @@ function startPassageSession(rawText, options = {}) {
   return true;
 }
 
+function resetPassageImportForm() {
+  if (els.passageInput) els.passageInput.value = '';
+  if (els.passageName) els.passageName.value = '';
+  if (els.passageSaveList) els.passageSaveList.checked = true;
+  if (els.passageFile) els.passageFile.value = '';
+}
+
 function showPassageImport() {
   passageSession = null;
   persistPassageSession();
-  updatePassageUI();
+  resetPassageImportForm();
+  updatePassageUI({ skipScroll: true });
   renderPassageLibraryList();
   clearLiveTranscript();
   hideLiveHint();
+  els.passageName?.focus();
 }
 
 function goToPassageSentence(index) {
@@ -1179,7 +1217,7 @@ function goToPassageSentence(index) {
   const idx = Math.max(0, Math.min(index, passageSession.sentences.length - 1));
   passageSession.currentIndex = idx;
   persistPassageSession();
-  updatePassageUI({ scrollToActive: true });
+  updatePassageUI();
   clearLiveTranscript();
   hideLiveHint();
   resetWordFailStreak();
@@ -1196,7 +1234,7 @@ function advancePassageSentence() {
     advancePassageIndex(passageSession);
   }
   persistPassageSession();
-  updatePassageUI({ scrollToActive: true });
+  updatePassageUI();
   clearLiveTranscript();
   hideLiveHint();
   resetWordFailStreak();
@@ -1239,7 +1277,7 @@ function applyPracticeModeUI() {
   if (readingActive) {
     els.passagePanel?.classList.remove('hidden');
     renderPassageLibraryList();
-    updatePassageUI({ scrollToActive: Boolean(passageSession?.sentences?.length) });
+    updatePassageUI({ skipScroll: !passageSession?.sentences?.length });
   } else {
     els.passagePanel?.classList.add('hidden');
   }
@@ -3262,14 +3300,11 @@ function bindEvents() {
   });
   let settingsTopicId = getTopicId();
   let settingsQuizSize = getQuizSize();
-  const bindOpenSettings = () => openSettingsPanel();
   els.btnSettings?.addEventListener('click', () => {
     settingsTopicId = getTopicId();
     settingsQuizSize = getQuizSize();
-    bindOpenSettings();
+    openSettingsPanel();
   });
-  els.btnPassageSettings?.addEventListener('click', bindOpenSettings);
-  els.btnPassageSettingsImport?.addEventListener('click', bindOpenSettings);
   els.btnNewQuiz?.addEventListener('click', () => {
     startQuizSession({ newQuiz: true });
   });

@@ -237,6 +237,10 @@ body {
   display: none !important;
 }
 
+.app.mode-reading .mode-text-only {
+  display: none !important;
+}
+
 .app.mode-reading .word-hero,
 .app.mode-reading .quiz-summary-page {
   display: none !important;
@@ -247,12 +251,14 @@ body {
   display: none !important;
 }
 
-.app.mode-reading .toolbar-row {
-  justify-content: flex-end;
-}
-
-.app.mode-reading .settings-group.mode-reading-only {
-  display: block !important;
+.passage-toolbar-info {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .app.mode-reading .mode-reading-only.hidden {
@@ -1457,30 +1463,14 @@ body {
 
 .passage-reading-head {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.2rem;
   margin-bottom: 0.75rem;
 }
 
-.passage-reading-actions {
-  display: flex;
-  flex-shrink: 0;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.passage-library-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.65rem;
-}
-
-.passage-library-head .passage-library-title {
-  margin: 0;
+.passage-library-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.95rem;
 }
 
 .passage-progress {
@@ -1500,6 +1490,8 @@ body {
   line-height: 1.75;
   font-size: clamp(1.05rem, 3.8vw, 1.35rem);
   scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  overflow-anchor: none;
 }
 
 .passage-sentence {
@@ -1601,10 +1593,6 @@ body {
   border-top: 1px solid var(--surface-2);
 }
 
-.passage-library-title {
-  font-size: 0.95rem;
-}
-
 .passage-library-empty {
   margin: 0;
   font-size: 0.85rem;
@@ -1659,13 +1647,6 @@ body {
   display: flex;
   flex-shrink: 0;
   gap: 0.35rem;
-}
-
-.passage-reading-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  min-width: 0;
 }
 
 .passage-title {
