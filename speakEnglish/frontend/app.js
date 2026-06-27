@@ -123,6 +123,7 @@ const els = {
   quizSummaryTitle: $('quiz-summary-title'),
   settingsPanel: $('settings-panel'),
   settingAutoplay: $('setting-autoplay'),
+  settingTtsVoice: $('setting-tts-voice'),
   settingIdleSampleSec: $('setting-idle-sample-sec'),
   settingLiveAuto: $('setting-live-auto'),
   settingAutoEvaluate: $('setting-auto-evaluate'),
@@ -162,6 +163,7 @@ async function init() {
   bindEvents();
   bindPhonemeDelegation();
   setupAutoStartMic();
+  initTtsVoiceSelect();
   checkBackend();
   initLiveSpeech();
   setMicState(MIC_STATE.OFF, 'Micro tắt');
@@ -222,7 +224,7 @@ function updateMicLevelVisual(pct) {
   if (isMicInputBlocked()) pct = 0;
   const level = Math.min(100, Math.max(0, pct)) / 100;
   if (els.vadLevel) {
-    els.vadLevel.style.transform = `scaleX(${level})`;
+    els.vadLevel.style.width = `${level * 100}%`;
   }
   const btn = els.btnLiveToggle;
   if (!btn || btn.dataset.levelLive !== 'true') return;
@@ -231,7 +233,7 @@ function updateMicLevelVisual(pct) {
 }
 
 function resetMicLevelVisual() {
-  if (els.vadLevel) els.vadLevel.style.transform = 'scaleX(0)';
+  if (els.vadLevel) els.vadLevel.style.width = '0%';
   const btn = els.btnLiveToggle;
   if (!btn) return;
   btn.dataset.levelLive = 'false';
@@ -502,6 +504,40 @@ function updateQuizRow(index) {
   updateQuizSummaryStats();
 }
 
+function capturePageScroll() {
+  return { x: window.scrollX, y: window.scrollY };
+}
+
+function restorePageScroll(pos) {
+  if (!pos) return;
+  const apply = () => {
+    if (window.scrollX !== pos.x || window.scrollY !== pos.y) {
+      window.scrollTo(pos.x, pos.y);
+    }
+  };
+  apply();
+  requestAnimationFrame(apply);
+  requestAnimationFrame(() => requestAnimationFrame(apply));
+}
+
+function runWithPreservedScroll(fn) {
+  const scrollPos = capturePageScroll();
+  try {
+    return fn();
+  } finally {
+    restorePageScroll(scrollPos);
+  }
+}
+
+async function runWithPreservedScrollAsync(fn) {
+  const scrollPos = capturePageScroll();
+  try {
+    return await fn();
+  } finally {
+    restorePageScroll(scrollPos);
+  }
+}
+
 function syncMicStateFromEngine() {
   refreshMicAvailabilityUi();
 }
@@ -694,6 +730,9 @@ function loadSettings() {
   els.settingTextPassScore.value = saved.textPassScore ?? config.thresholds?.textPass ?? 100;
   els.settingQuizSize.value = saved.quizSize ?? config.defaultQuizSize ?? vocabularyManifest?.defaultQuizSize ?? 30;
   practiceMode = saved.practiceMode ?? config.practiceMode ?? PRACTICE_MODE.TEXT;
+  if (els.settingTtsVoice && saved.ttsVoiceUri) {
+    els.settingTtsVoice.dataset.savedUri = saved.ttsVoiceUri;
+  }
 }
 
 function saveSettings() {
@@ -709,7 +748,78 @@ function saveSettings() {
     topicId: els.settingTopic?.value || vocabularyManifest?.defaultTopicId || '',
     quizSize: getQuizSize(),
     practiceMode,
+    ttsVoiceUri: els.settingTtsVoice?.value || '',
   }));
+}
+
+function escapeHtmlAttr(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;');
+}
+
+function getTtsVoices() {
+  if (!('speechSynthesis' in window)) return [];
+  return speechSynthesis.getVoices();
+}
+
+function getEnglishTtsVoices() {
+  return getTtsVoices()
+    .filter((v) => /^en([-_]|$)/i.test(v.lang))
+    .sort((a, b) => {
+      const rank = (v) => {
+        if (/en-US/i.test(v.lang)) return 0;
+        if (/en-GB/i.test(v.lang)) return 1;
+        if (/en-AU/i.test(v.lang)) return 2;
+        return 3;
+      };
+      const byLocale = rank(a) - rank(b);
+      if (byLocale !== 0) return byLocale;
+      return a.name.localeCompare(b.name);
+    });
+}
+
+function populateTtsVoiceSelect() {
+  const sel = els.settingTtsVoice;
+  if (!sel) return;
+
+  const voices = getEnglishTtsVoices();
+  const savedUri = sel.dataset.savedUri || sel.value || '';
+  const options = ['<option value="">Mặc định trình duyệt</option>'];
+  voices.forEach((v) => {
+    const label = `${v.name} (${v.lang})`;
+    options.push(`<option value="${escapeHtmlAttr(v.voiceURI)}">${escapeHtmlAttr(label)}</option>`);
+  });
+  sel.innerHTML = options.join('');
+
+  if (savedUri && [...sel.options].some((o) => o.value === savedUri)) {
+    sel.value = savedUri;
+  } else {
+    sel.value = '';
+  }
+}
+
+function initTtsVoiceSelect() {
+  if (!els.settingTtsVoice) return;
+  const refresh = () => populateTtsVoiceSelect();
+  refresh();
+  if ('speechSynthesis' in window) {
+    speechSynthesis.addEventListener('voiceschanged', refresh);
+  }
+}
+
+function resolveSelectedTtsVoice() {
+  const uri = els.settingTtsVoice?.value;
+  if (!uri) return null;
+  return getTtsVoices().find((v) => v.voiceURI === uri) || null;
+}
+
+function configureSampleUtterance(utter) {
+  const voice = resolveSelectedTtsVoice();
+  utter.lang = voice?.lang || 'en-US';
+  utter.rate = 0.85;
+  if (voice) utter.voice = voice;
 }
 
 function isScoreMode() {
@@ -1004,34 +1114,36 @@ function getNextWordIndex(fromIndex = currentIndex) {
 
 /** Chuyển từ sau khi đạt — không reset micro / rebuild toàn trang */
 function advanceScoreWordLive(options = {}) {
-  const { autoplay = false } = options;
-  if (!words.length) return;
+  runWithPreservedScroll(() => {
+    const { autoplay = false } = options;
+    if (!words.length) return;
 
-  const nextIndex = getNextWordIndex();
+    const nextIndex = getNextWordIndex();
 
-  clearPassAdvanceTimer();
-  disarmIdleSampleTimer();
+    clearPassAdvanceTimer();
+    disarmIdleSampleTimer();
 
-  currentIndex = nextIndex;
-  sessionStorage.setItem(WORD_INDEX_KEY, String(currentIndex));
+    currentIndex = nextIndex;
+    sessionStorage.setItem(WORD_INDEX_KEY, String(currentIndex));
 
-  updateWordHero(currentIndex);
-  hideLiveHint();
-  clearTextMatchTimer();
-  clearScoreMatchTimer();
-  lastScoredAtIndex = -1;
-  resetWordFailStreak();
-  els.btnRetry.classList.add('hidden');
+    updateWordHero(currentIndex);
+    hideLiveHint();
+    clearTextMatchTimer();
+    clearScoreMatchTimer();
+    lastScoredAtIndex = -1;
+    resetWordFailStreak();
+    els.btnRetry.classList.add('hidden');
 
-  prepareMicForNextUtterance();
-  syncScorePanelForWord(words[currentIndex]);
-  updateQuizCurrentRow();
-  persistQuizSession();
+    prepareMicForNextUtterance();
+    syncScorePanelForWord(words[currentIndex]);
+    updateQuizCurrentRow();
+    persistQuizSession();
 
-  if (autoplay && shouldAutoplaySample()) {
-    playSample({ fromAutoplay: true });
-  }
-  armIdleSampleTimer();
+    if (autoplay && shouldAutoplaySample()) {
+      playSample({ fromAutoplay: true });
+    }
+    armIdleSampleTimer();
+  });
 }
 
 function showWord(index, options = {}) {
@@ -2286,8 +2398,7 @@ function playSample(options = {}) {
 
   if ('speechSynthesis' in window) {
     const utter = new SpeechSynthesisUtterance(w.word);
-    utter.lang = 'en-US';
-    utter.rate = 0.85;
+    configureSampleUtterance(utter);
     let finished = false;
     const done = () => {
       if (finished) return;
@@ -2319,6 +2430,7 @@ async function evaluateRecording(blob = null, options = {}) {
   if (!audioBlob || !w) return;
   if (scoreApiBusy) return;
 
+  return runWithPreservedScrollAsync(async () => {
   clearPassAdvanceTimer();
   scoreApiBusy = true;
   refreshMicAvailabilityUi();
@@ -2328,9 +2440,6 @@ async function evaluateRecording(blob = null, options = {}) {
   beginScoringOverlay({
     preservePhonemeResults: fromLive && els.phonemeContainer?.classList.contains('has-results'),
   });
-  if (!fromLive) {
-    els.phonemeContainer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
 
   try {
     let uploadBlob;
@@ -2396,9 +2505,11 @@ async function evaluateRecording(blob = null, options = {}) {
     if (!fromLive) els.spinner.classList.add('hidden');
     refreshMicAvailabilityUi();
   }
+  });
 }
 
 function renderEvaluation(data, options = {}) {
+  runWithPreservedScroll(() => {
   const { fromLive = false, wordIndex = currentIndex } = options;
   const atIndex = Math.min(Math.max(0, wordIndex), words.length - 1);
 
@@ -2431,6 +2542,7 @@ function renderEvaluation(data, options = {}) {
       prepareMicForNextUtterance();
     }
   }
+  });
 }
 
 async function advanceAfterPass(data) {
@@ -2585,6 +2697,7 @@ function bindEvents() {
     settingsQuizSize = getQuizSize();
     els.settingsPanel.classList.remove('hidden');
     refreshSilenceHints();
+    populateTtsVoiceSelect();
   });
   els.btnNewQuiz?.addEventListener('click', () => {
     startQuizSession({ newQuiz: true });

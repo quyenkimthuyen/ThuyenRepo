@@ -57,6 +57,14 @@ body {
   color: var(--text);
   min-height: 100vh;
   line-height: 1.5;
+  overflow-anchor: none;
+}
+
+.main-card,
+.quiz-summary-page,
+.score-zone,
+.live-panel {
+  overflow-anchor: none;
 }
 
 .app {
@@ -523,6 +531,7 @@ body {
 .quiz-table-wrap {
   max-height: 220px;
   overflow: auto;
+  overflow-anchor: none;
   border-radius: 8px;
   border: 1px solid var(--surface-2);
 }
@@ -567,6 +576,7 @@ body {
 .quiz-row.current {
   background: rgba(59, 158, 255, 0.15);
   outline: 1px solid rgba(59, 158, 255, 0.35);
+  scroll-margin: 0;
 }
 
 .quiz-result-badge {
@@ -873,19 +883,14 @@ body {
   background: var(--surface-2);
   border-radius: 999px;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .vad-level {
   height: 100%;
-  width: 100%;
+  width: 0%;
   background: var(--ok);
   border-radius: 999px;
-  transform: scaleX(0);
-  transform-origin: center;
-  transition: transform 0.05s linear;
+  transition: width 0.05s linear;
 }
 
 .mic-indicator[data-state="processing"] .vad-level {
