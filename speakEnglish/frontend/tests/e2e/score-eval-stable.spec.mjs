@@ -48,6 +48,7 @@ test.describe('Chế độ Chấm điểm — không reload khi chấm', () => {
     const wordBefore = await page.locator('#current-word').textContent();
 
     await page.evaluate(() => window.__pronounceLabTest.runMockEvaluate(92, true));
+    await page.evaluate(() => window.__pronounceLabTest.flushPassAdvance());
 
     const initAfter = await page.evaluate(() => window.__pronounceLabTest.getInitCount());
     const indexAfter = await page.evaluate(() => window.__pronounceLabTest.getCurrentIndex());

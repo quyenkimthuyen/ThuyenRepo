@@ -88,7 +88,10 @@ let suppressWordSelectChange = false;
 let quizSessionResults = [];
 let lastScoredAtIndex = -1;
 const SAMPLE_REPLAY_AFTER_FAILS = 3;
+const PASS_ADVANCE_DELAY_MS = 1500;
 let wordFailStreak = 0;
+let passAdvancePending = false;
+let passAdvancePayload = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -505,7 +508,7 @@ function syncMicStateFromEngine() {
 
 function isMicInputBlocked() {
   if (!liveModeActive || isSamplePlaying) return false;
-  if (scoreApiBusy || isAdvancing) return true;
+  if (passAdvancePending || scoreApiBusy || isAdvancing) return true;
   if (!micEngine) return false;
   if (micEngine._processing) return true;
   if (micEngine.phase === MIC_PHASE.PROCESSING) return true;
@@ -514,6 +517,7 @@ function isMicInputBlocked() {
 }
 
 function getMicBusyLabel() {
+  if (passAdvancePending) return 'Đã đạt — chuẩn bị chuyển từ...';
   if (scoreApiBusy) return 'Đang chấm điểm — chưa nghe';
   if (isAdvancing) return 'Đang chuyển từ...';
   if (micEngine?.phase === MIC_PHASE.PROCESSING) return 'Đang xử lý...';
@@ -870,6 +874,43 @@ function clearPassAdvanceTimer() {
     clearTimeout(passAdvanceTimer);
     passAdvanceTimer = null;
   }
+  passAdvancePending = false;
+  passAdvancePayload = null;
+}
+
+function scheduleAdvanceAfterPass(data, atIndex) {
+  clearPassAdvanceTimer();
+  passAdvancePending = true;
+  passAdvancePayload = { data, atIndex };
+  refreshMicAvailabilityUi();
+  setScoreState('done', `✓ Đạt ${data.overall_score}% — chuyển từ sau ${PASS_ADVANCE_DELAY_MS / 1000}s`);
+
+  passAdvanceTimer = setTimeout(() => {
+    passAdvanceTimer = null;
+    const payload = passAdvancePayload;
+    passAdvancePayload = null;
+    passAdvancePending = false;
+    if (!payload || !liveModeActive || currentIndex !== payload.atIndex) {
+      refreshMicAvailabilityUi();
+      return;
+    }
+    void advanceAfterPass(payload.data);
+  }, PASS_ADVANCE_DELAY_MS);
+}
+
+function flushPassAdvance() {
+  if (!passAdvanceTimer || !passAdvancePayload) return false;
+  clearTimeout(passAdvanceTimer);
+  passAdvanceTimer = null;
+  const payload = passAdvancePayload;
+  passAdvancePayload = null;
+  passAdvancePending = false;
+  if (!liveModeActive || currentIndex !== payload.atIndex) {
+    refreshMicAvailabilityUi();
+    return false;
+  }
+  void advanceAfterPass(payload.data);
+  return true;
 }
 
 function shouldAutoplaySample() {
@@ -1097,17 +1138,23 @@ function hasEvaluationForWord(word) {
   );
 }
 
-function beginScoringOverlay() {
+function beginScoringOverlay(options = {}) {
   if (!isScoreMode()) return;
-  els.phonemeContainer?.classList.add('scoring');
-  els.scoreSection?.classList.add('scoring');
+  const preserve = options.preservePhonemeResults
+    && els.phonemeContainer?.classList.contains('has-results');
+  if (!preserve) {
+    els.phonemeContainer?.classList.add('scoring');
+    els.scoreSection?.classList.add('scoring');
+  } else {
+    els.scoreZone?.classList.add('scoring-live-rescore');
+  }
   els.scoreZone?.classList.add('scoring');
 }
 
 function endScoringOverlay() {
   els.phonemeContainer?.classList.remove('scoring');
   els.scoreSection?.classList.remove('scoring');
-  els.scoreZone?.classList.remove('scoring');
+  els.scoreZone?.classList.remove('scoring', 'scoring-live-rescore');
 }
 
 let lastAppliedEvalSignature = '';
@@ -2278,7 +2325,9 @@ async function evaluateRecording(blob = null, options = {}) {
 
   setScoreState('scoring', 'Đang chấm điểm...');
   if (!fromLive) els.spinner.classList.remove('hidden');
-  beginScoringOverlay();
+  beginScoringOverlay({
+    preservePhonemeResults: fromLive && els.phonemeContainer?.classList.contains('has-results'),
+  });
   if (!fromLive) {
     els.phonemeContainer?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
@@ -2372,7 +2421,7 @@ function renderEvaluation(data, options = {}) {
     resetWordFailStreak();
     els.btnRetry.classList.add('hidden');
     if (fromLive && liveModeActive && atIndex === currentIndex) {
-      void advanceAfterPass(data);
+      scheduleAdvanceAfterPass(data, atIndex);
     }
   } else {
     els.btnRetry.classList.remove('hidden');
@@ -2391,17 +2440,16 @@ async function advanceAfterPass(data) {
   refreshMicAvailabilityUi();
   clearScoreMatchTimer();
   hideLiveHint();
-  const playSampleOnAdvance = shouldAutoplaySample();
 
   if (atLast) {
     setScoreState('done', `Hết bài — từ đầu · ${data.overall_score}%`);
   }
 
   if (liveModeActive && isScoreMode()) {
-    advanceScoreWordLive({ autoplay: playSampleOnAdvance });
+    advanceScoreWordLive({ autoplay: false });
   } else {
     prepareMicForNextUtterance();
-    nextWord({ autoplay: playSampleOnAdvance, preserveLiveMic: liveModeActive });
+    nextWord({ autoplay: false, preserveLiveMic: liveModeActive });
   }
   isAdvancing = false;
   refreshMicAvailabilityUi();
@@ -2664,6 +2712,7 @@ window.__pronounceLabTest = {
     }, { fromLive: liveModeActive, wordIndex: currentIndex });
     return { index: currentIndex, word: w.word };
   },
+  flushPassAdvance: () => flushPassAdvance(),
   createTestWavBlob,
   /** Đọc xong (transcript) → gọi evaluateRecording + fetch API thật trong page */
   simulateScoreReadAndEvaluate: async () => {

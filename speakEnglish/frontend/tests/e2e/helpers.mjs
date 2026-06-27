@@ -36,10 +36,13 @@ export async function getTestState(page) {
 }
 
 export async function mockScore(page, score, passed) {
-  return page.evaluate(
+  await page.evaluate(
     ([s, p]) => window.__pronounceLabTest.runMockEvaluate(s, p),
     [score, passed],
   );
+  if (passed) {
+    await page.evaluate(() => window.__pronounceLabTest.flushPassAdvance());
+  }
 }
 
 export async function mockTextPass(page) {
