@@ -224,7 +224,7 @@ function updateMicLevelVisual(pct) {
   if (isMicInputBlocked()) pct = 0;
   const level = Math.min(100, Math.max(0, pct)) / 100;
   if (els.vadLevel) {
-    els.vadLevel.style.width = `${level * 100}%`;
+    els.vadLevel.style.transform = `scaleX(${level})`;
   }
   const btn = els.btnLiveToggle;
   if (!btn || btn.dataset.levelLive !== 'true') return;
@@ -233,7 +233,9 @@ function updateMicLevelVisual(pct) {
 }
 
 function resetMicLevelVisual() {
-  if (els.vadLevel) els.vadLevel.style.width = '0%';
+  if (els.vadLevel) {
+    els.vadLevel.style.transform = 'scaleX(0)';
+  }
   const btn = els.btnLiveToggle;
   if (!btn) return;
   btn.dataset.levelLive = 'false';

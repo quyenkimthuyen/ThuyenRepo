@@ -886,11 +886,15 @@ body {
 }
 
 .vad-level {
+  display: block;
   height: 100%;
-  width: 0%;
+  width: 100%;
   background: var(--ok);
   border-radius: 999px;
-  transition: width 0.05s linear;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.05s linear;
+  will-change: transform;
 }
 
 .mic-indicator[data-state="processing"] .vad-level {
