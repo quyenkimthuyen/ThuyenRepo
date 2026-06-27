@@ -18,6 +18,8 @@
   --sample-soft: rgba(167, 139, 250, 0.14);
   --sample-glow: rgba(167, 139, 250, 0.45);
   --mis: #e74c3c;
+  --busy: #fb923c;
+  --busy-glow: rgba(251, 146, 60, 0.48);
   --pending: #5a6a82;
   --record: #e74c3c;
   --radius: 12px;
@@ -773,6 +775,25 @@ body {
   border-color: var(--warn);
   box-shadow: 0 0 14px rgba(241, 196, 15, 0.5);
   animation: mic-processing 1s linear infinite;
+}
+
+.mic-indicator[data-state="busy"] {
+  border-color: rgba(251, 146, 60, 0.45);
+  background: rgba(251, 146, 60, 0.08);
+}
+
+.mic-indicator[data-state="busy"] .mic-ring {
+  border-color: var(--busy);
+  box-shadow: 0 0 14px var(--busy-glow);
+  animation: mic-busy 1.1s ease-in-out infinite;
+}
+
+.mic-indicator[data-state="busy"] .mic-status-label { color: var(--busy); }
+.mic-indicator[data-state="busy"] .vad-level { background: var(--busy); }
+
+@keyframes mic-busy {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.65; transform: scale(0.97); }
 }
 
 .mic-indicator[data-state="sample"] {

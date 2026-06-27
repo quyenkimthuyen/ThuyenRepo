@@ -9,6 +9,7 @@ export const MIC_STATE = {
   READY: 'ready',
   HEARING: 'hearing',
   PROCESSING: 'processing',
+  BUSY: 'busy',
   SAMPLE: 'sample',
 };
 

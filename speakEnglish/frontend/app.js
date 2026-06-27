@@ -189,10 +189,7 @@ function setupAutoStartMic() {
 }
 
 function setMicState(state, label) {
-  if (liveModeActive && isScoreMode() && state === MIC_STATE.PROCESSING) {
-    return;
-  }
-  if (state !== MIC_STATE.PROCESSING) {
+  if (state !== MIC_STATE.BUSY && state !== MIC_STATE.PROCESSING) {
     lastMicUiState = state;
     if (label) lastMicUiLabel = label;
   }
@@ -212,7 +209,11 @@ function syncMicLevelLiveFlag() {
   const btn = els.btnLiveToggle;
   if (!btn) return;
   const state = btn.dataset.state || MIC_STATE.OFF;
-  const levelLive = liveModeActive && state !== MIC_STATE.OFF && state !== MIC_STATE.SAMPLE;
+  const levelLive = liveModeActive
+    && state !== MIC_STATE.OFF
+    && state !== MIC_STATE.SAMPLE
+    && state !== MIC_STATE.BUSY
+    && state !== MIC_STATE.PROCESSING;
   btn.dataset.levelLive = levelLive ? 'true' : 'false';
   if (!levelLive) {
     btn.style.removeProperty('--mic-level-scale');
@@ -221,6 +222,7 @@ function syncMicLevelLiveFlag() {
 }
 
 function updateMicLevelVisual(pct) {
+  if (isMicInputBlocked()) pct = 0;
   const level = Math.min(100, Math.max(0, pct)) / 100;
   if (els.vadLevel) {
     els.vadLevel.style.transform = `scaleX(${level})`;
@@ -504,13 +506,40 @@ function updateQuizRow(index) {
 }
 
 function syncMicStateFromEngine() {
-  if (!liveModeActive || !micEngine) return;
+  refreshMicAvailabilityUi();
+}
+
+function isMicInputBlocked() {
+  if (!liveModeActive || isSamplePlaying) return false;
+  if (scoreApiBusy || isAdvancing) return true;
+  if (!micEngine) return false;
+  if (micEngine._processing) return true;
+  if (micEngine.phase === MIC_PHASE.PROCESSING) return true;
+  if (micEngine.phase === MIC_PHASE.COOLDOWN) return true;
+  return false;
+}
+
+function getMicBusyLabel() {
+  if (scoreApiBusy) return 'Đang chấm điểm — chưa nghe';
+  if (isAdvancing) return 'Đang chuyển từ...';
+  if (micEngine?.phase === MIC_PHASE.PROCESSING) return 'Đang xử lý...';
+  if (micEngine?.phase === MIC_PHASE.COOLDOWN) return 'Chuẩn bị nghe...';
+  return 'Micro đang bận...';
+}
+
+function refreshMicAvailabilityUi() {
+  if (!liveModeActive) return;
   if (isSamplePlaying) return;
-  const phase = micEngine.phase;
-  if (isScoreMode() && (phase === MIC_PHASE.PROCESSING || phase === MIC_PHASE.COOLDOWN)) {
-    setMicState(lastMicUiState, lastMicUiLabel);
+
+  if (isMicInputBlocked()) {
+    setMicState(MIC_STATE.BUSY, getMicBusyLabel());
+    updateMicLevelVisual(0);
     return;
   }
+
+  if (!micEngine) return;
+
+  const phase = micEngine.phase;
   const labels = isScoreMode()
     ? {
         [MIC_PHASE.READY]: 'Sẵn sàng thu âm',
@@ -770,24 +799,7 @@ function createMicEngine() {
         setMicState(MIC_STATE.OFF, label || 'Micro tắt');
         return;
       }
-      if (isScoreMode()) {
-        if (phase === MIC_PHASE.PROCESSING || phase === MIC_PHASE.COOLDOWN) {
-          return;
-        }
-        if (phase === MIC_PHASE.HEARING) {
-          setMicState(MIC_STATE.HEARING, 'Đang nghe...');
-          return;
-        }
-        if (phase === MIC_PHASE.READY) {
-          setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
-          return;
-        }
-        if (phase === MIC_PHASE.SAMPLE) {
-          setMicState(MIC_STATE.SAMPLE, 'Đang phát mẫu...');
-        }
-        return;
-      }
-      setMicState(micPhaseToState(phase), label);
+      refreshMicAvailabilityUi();
     },
     onLevel: (_rms, pct) => {
       updateMicLevelVisual(pct);
@@ -1924,6 +1936,7 @@ async function processTextUtterance(spoken) {
   }
 
   isAdvancing = true;
+  refreshMicAvailabilityUi();
   resetWordFailStreak();
   const score = textSimilarityPercent(word, w.word);
   const need = getTextPassThreshold();
@@ -1939,6 +1952,7 @@ async function processTextUtterance(spoken) {
   syncTranscriptFromEngine();
   nextWord();
   isAdvancing = false;
+  refreshMicAvailabilityUi();
 }
 
 function updateRealtimeHint() {
@@ -2285,9 +2299,9 @@ async function startRecording() {
         const spoken = getSpokenWord();
         const w = words[currentIndex];
         if (spoken && spokenMatchesTarget(spoken, w?.word)) {
-          setMicState(MIC_STATE.PROCESSING, 'Đang xử lý...');
+          refreshMicAvailabilityUi();
           await processTextUtterance(spoken);
-          if (liveModeActive) setMicState(MIC_STATE.READY, 'Sẵn sàng thu âm');
+          refreshMicAvailabilityUi();
         } else {
           showLiveHint(`Bật micro live và đọc "${w?.word}" — hoặc chuyển sang chế độ Chấm điểm`, 'warn');
         }
@@ -2334,6 +2348,7 @@ async function evaluateRecording(blob = null, options = {}) {
 
   clearPassAdvanceTimer();
   scoreApiBusy = true;
+  refreshMicAvailabilityUi();
 
   setScoreState('scoring', 'Đang chấm điểm...');
   if (!fromLive) els.spinner.classList.remove('hidden');
@@ -2404,7 +2419,7 @@ async function evaluateRecording(blob = null, options = {}) {
   } finally {
     scoreApiBusy = false;
     if (!fromLive) els.spinner.classList.add('hidden');
-    if (fromLive) syncMicStateFromEngine();
+    refreshMicAvailabilityUi();
   }
 }
 
@@ -2447,6 +2462,7 @@ async function advanceAfterPass(data) {
   const atLast = currentIndex >= words.length - 1;
 
   isAdvancing = true;
+  refreshMicAvailabilityUi();
   clearScoreMatchTimer();
   hideLiveHint();
   const playSampleOnAdvance = shouldAutoplaySample();
@@ -2462,6 +2478,7 @@ async function advanceAfterPass(data) {
     nextWord({ autoplay: playSampleOnAdvance, preserveLiveMic: liveModeActive });
   }
   isAdvancing = false;
+  refreshMicAvailabilityUi();
 }
 
 function renderPhonemeResults(phonemes, showSuggestionsAlways = false) {
