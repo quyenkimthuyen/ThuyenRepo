@@ -104,7 +104,7 @@ export function renderPassageDisplay(session) {
       return `<span class="${classes.join(' ')}">${escapeHtml(token.display)}</span>`;
     }).join(' ');
 
-    return `<p class="${classes.join(' ')}" data-sentence-index="${si}">${wordHtml}</p>`;
+    return `<p class="${classes.join(' ')}" data-sentence-index="${si}" role="text"${isActive ? ' aria-current="true"' : ''}>${wordHtml}</p>`;
   }).join('');
 }
 

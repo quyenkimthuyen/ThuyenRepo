@@ -238,9 +238,21 @@ body {
 }
 
 .app.mode-reading .word-hero,
-.app.mode-reading .quiz-summary-page,
-.app.mode-reading .toolbar-row {
+.app.mode-reading .quiz-summary-page {
   display: none !important;
+}
+
+.app.mode-reading .quiz-info,
+.app.mode-reading #btn-new-quiz {
+  display: none !important;
+}
+
+.app.mode-reading .toolbar-row {
+  justify-content: flex-end;
+}
+
+.app.mode-reading .settings-group.mode-reading-only {
+  display: block !important;
 }
 
 .app.mode-reading .mode-reading-only.hidden {
@@ -1445,10 +1457,30 @@ body {
 
 .passage-reading-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+}
+
+.passage-reading-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.passage-library-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.passage-library-head .passage-library-title {
+  margin: 0;
 }
 
 .passage-progress {
@@ -1464,14 +1496,24 @@ body {
   padding: 1.25rem 1.1rem;
   max-height: min(52vh, 28rem);
   overflow-y: auto;
+  overflow-x: hidden;
   line-height: 1.75;
   font-size: clamp(1.05rem, 3.8vw, 1.35rem);
+  scroll-behavior: smooth;
 }
 
 .passage-sentence {
   margin: 0 0 1rem;
   color: var(--text-muted);
   transition: color 0.2s ease;
+  scroll-margin: 1.25rem 0;
+  outline: none;
+}
+
+.passage-sentence:focus-visible {
+  outline: 2px solid var(--mode-accent-border);
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 
 .passage-sentence:last-child {
@@ -1560,7 +1602,6 @@ body {
 }
 
 .passage-library-title {
-  margin: 0 0 0.65rem;
   font-size: 0.95rem;
 }
 

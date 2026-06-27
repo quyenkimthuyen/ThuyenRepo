@@ -77,7 +77,10 @@
             <button id="btn-passage-start" class="btn btn-primary" type="button">Bắt đầu đọc</button>
           </div>
           <section class="passage-library" aria-label="Đoạn văn đã lưu">
-            <h3 class="passage-library-title">Đoạn đã lưu</h3>
+            <div class="passage-library-head">
+              <h3 class="passage-library-title">Đoạn đã lưu</h3>
+              <button id="btn-passage-settings-import" class="btn btn-ghost btn-sm" type="button" title="Cài đặt đọc đoạn">⚙ Cài đặt</button>
+            </div>
             <p id="passage-library-empty" class="passage-library-empty">Chưa có đoạn nào được lưu.</p>
             <ul id="passage-library-list" class="passage-library-list"></ul>
           </section>
@@ -88,7 +91,10 @@
               <strong id="passage-title" class="passage-title">—</strong>
               <span id="passage-progress" class="passage-progress">Câu 1 / 1</span>
             </div>
-            <button id="btn-passage-change" class="btn btn-ghost btn-sm" type="button" title="Import đoạn văn khác">✎ Đổi đoạn</button>
+            <div class="passage-reading-actions">
+              <button id="btn-passage-settings" class="btn btn-ghost btn-sm" type="button" title="Cài đặt đọc đoạn">⚙ Cài đặt</button>
+              <button id="btn-passage-change" class="btn btn-ghost btn-sm" type="button" title="Import đoạn văn khác">✎ Đổi đoạn</button>
+            </div>
           </div>
           <div id="passage-display" class="passage-display" aria-live="polite"></div>
           <div class="passage-sentence-nav">
@@ -248,7 +254,7 @@
           <input type="checkbox" id="setting-auto-evaluate" checked>
           Tự chấm điểm khi kết thúc câu
         </label>
-        <label class="setting-row">
+        <label class="setting-row mode-not-reading">
           Im lặng kết thúc (giây)
           <input type="number" id="setting-silence-sec" value="0.35" min="0.2" max="1.2" step="0.05">
         </label>
