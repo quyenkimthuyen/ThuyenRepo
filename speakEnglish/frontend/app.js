@@ -92,7 +92,6 @@ let quizSessionResults = [];
 let lastScoredAtIndex = -1;
 const SAMPLE_REPLAY_AFTER_FAILS = 3;
 let wordFailStreak = 0;
-const WAVEFORM_BARS = 56;
 let waveformCtx = null;
 
 const $ = (id) => document.getElementById(id);
@@ -2128,6 +2127,16 @@ function syncWaveformChrome() {
   wrap.dataset.state = els.btnLiveToggle?.dataset.state || MIC_STATE.OFF;
 }
 
+function drawWaveformBaseline(ctx, w, h, dpr) {
+  const centerY = h / 2;
+  ctx.strokeStyle = 'rgba(139, 156, 179, 0.18)';
+  ctx.lineWidth = Math.max(1, dpr);
+  ctx.beginPath();
+  ctx.moveTo(0, centerY);
+  ctx.lineTo(w, centerY);
+  ctx.stroke();
+}
+
 function clearMicWaveform() {
   const canvas = els.micWaveform;
   const ctx = ensureWaveformCanvas();
@@ -2135,20 +2144,9 @@ function clearMicWaveform() {
 
   const w = canvas.width;
   const h = canvas.height;
-  ctx.clearRect(0, 0, w, h);
-
   const dpr = window.devicePixelRatio || 1;
-  const gap = 2 * dpr;
-  const barCount = WAVEFORM_BARS;
-  const barWidth = Math.max(1, (w - gap * (barCount - 1)) / barCount);
-  const centerY = h / 2;
-  const idleH = Math.max(2, 2 * dpr);
-
-  ctx.fillStyle = 'rgba(139, 156, 179, 0.22)';
-  for (let i = 0; i < barCount; i++) {
-    const x = i * (barWidth + gap);
-    ctx.fillRect(x, centerY - idleH / 2, barWidth, idleH);
-  }
+  ctx.clearRect(0, 0, w, h);
+  drawWaveformBaseline(ctx, w, h, dpr);
 }
 
 function drawMicWaveform(timeDomainBytes, { listening = true } = {}) {
@@ -2159,31 +2157,38 @@ function drawMicWaveform(timeDomainBytes, { listening = true } = {}) {
   const w = canvas.width;
   const h = canvas.height;
   const dpr = window.devicePixelRatio || 1;
-  ctx.clearRect(0, 0, w, h);
-
-  const barCount = WAVEFORM_BARS;
-  const gap = 2 * dpr;
-  const barWidth = Math.max(1, (w - gap * (barCount - 1)) / barCount);
   const centerY = h / 2;
-  const maxBarH = h * 0.88;
-  const step = Math.max(1, Math.floor(timeDomainBytes.length / barCount));
+  const amp = h * 0.44 * (listening ? 1 : 0.12);
+  const len = timeDomainBytes.length;
+  const sliceWidth = w / Math.max(1, len - 1);
   const baseColor = getWaveformFillColor();
 
-  for (let i = 0; i < barCount; i++) {
-    let peak = 0;
-    const start = i * step;
-    for (let j = 0; j < step && start + j < timeDomainBytes.length; j++) {
-      const v = Math.abs((timeDomainBytes[start + j] - 128) / 128);
-      if (v > peak) peak = v;
-    }
+  ctx.clearRect(0, 0, w, h);
+  drawWaveformBaseline(ctx, w, h, dpr);
 
-    const level = listening ? peak : peak * 0.15;
-    const barH = Math.max(2 * dpr, level * maxBarH);
-    const x = i * (barWidth + gap);
-    const alpha = listening ? 0.28 + Math.min(1, level * 2.8) * 0.72 : 0.18;
-    ctx.fillStyle = listening ? colorWithAlpha(baseColor, alpha) : 'rgba(139, 156, 179, 0.2)';
-    ctx.fillRect(x, centerY - barH / 2, barWidth, barH);
+  ctx.beginPath();
+  ctx.moveTo(0, centerY);
+  for (let i = 0; i < len; i++) {
+    const v = (timeDomainBytes[i] - 128) / 128;
+    ctx.lineTo(i * sliceWidth, centerY - v * amp);
   }
+  ctx.lineTo(w, centerY);
+  ctx.closePath();
+  ctx.fillStyle = colorWithAlpha(baseColor, listening ? 0.14 : 0.05);
+  ctx.fill();
+
+  ctx.beginPath();
+  for (let i = 0; i < len; i++) {
+    const v = (timeDomainBytes[i] - 128) / 128;
+    const y = centerY - v * amp;
+    if (i === 0) ctx.moveTo(0, y);
+    else ctx.lineTo(i * sliceWidth, y);
+  }
+  ctx.strokeStyle = colorWithAlpha(baseColor, listening ? 0.9 : 0.28);
+  ctx.lineWidth = Math.max(1.5, 2 * dpr);
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
 }
 
 function colorWithAlpha(color, alpha) {
