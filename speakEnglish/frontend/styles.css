@@ -851,6 +851,37 @@ body {
   background: var(--mis);
 }
 
+.mic-waveform-wrap {
+  --waveform-fill: var(--ok);
+  width: 100%;
+  height: 2.5rem;
+  margin-bottom: 0.65rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  opacity: 0.45;
+  transition: opacity 0.2s;
+}
+
+.mic-waveform-wrap[data-active="true"] {
+  opacity: 1;
+}
+
+.mic-waveform-wrap[data-state="sample"] {
+  --waveform-fill: var(--sample);
+}
+
+.mic-waveform-wrap[data-state="processing"] {
+  --waveform-fill: var(--warn);
+}
+
+.mic-waveform {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .live-transcript-box {
   min-height: 7.5rem;
 }

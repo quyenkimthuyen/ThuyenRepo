@@ -92,6 +92,8 @@ let quizSessionResults = [];
 let lastScoredAtIndex = -1;
 const SAMPLE_REPLAY_AFTER_FAILS = 3;
 let wordFailStreak = 0;
+const WAVEFORM_BARS = 56;
+let waveformCtx = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -136,6 +138,8 @@ const els = {
   btnLiveToggle: $('btn-live-toggle'),
   micStatusLabel: $('mic-status-label'),
   vadLevel: $('vad-level'),
+  micWaveformWrap: $('mic-waveform-wrap'),
+  micWaveform: $('mic-waveform'),
   liveTranscriptFinal: $('live-transcript-final'),
   liveTranscriptInterim: $('live-transcript-interim'),
   liveTranscriptPlaceholder: $('live-transcript-placeholder'),
@@ -168,6 +172,7 @@ async function init() {
   checkBackend();
   initLiveSpeech();
   setMicState(MIC_STATE.OFF, 'Micro tắt');
+  clearMicWaveform();
 
   if (els.settingLiveAuto?.checked) {
     startLiveMode({ silent: true }).catch(() => {
@@ -204,6 +209,7 @@ function setMicState(state, label) {
   if (els.micStatusLabel && label) {
     els.micStatusLabel.textContent = label;
   }
+  syncWaveformChrome();
 }
 
 function setScoreState(mode, text) {
@@ -1980,6 +1986,8 @@ function attachLivePipeline() {
 
   micEngine = createMicEngine();
   micEngine.setHangoverMs(getHangoverMsSetting());
+  syncWaveformChrome();
+  ensureWaveformCanvas();
   startVadLoop();
   liveModeActive = true;
   micEngine.start();
@@ -2074,6 +2082,9 @@ function stopLiveMode() {
     vadAnimationId = null;
   }
   els.vadLevel.style.width = '0%';
+  syncWaveformChrome();
+  clearMicWaveform();
+  waveformCtx = null;
 
   setMicState(MIC_STATE.OFF, 'Micro tắt');
   els.recordingIndicator.classList.add('hidden');
@@ -2084,6 +2095,112 @@ function stopLiveMode() {
 function toggleLiveMode() {
   if (liveModeActive) stopLiveMode();
   else startLiveMode().then(() => armIdleSampleTimer()).catch(() => {});
+}
+
+function getWaveformFillColor() {
+  const wrap = els.micWaveformWrap;
+  if (!wrap) return '#34d399';
+  const css = getComputedStyle(wrap);
+  const raw = css.getPropertyValue('--waveform-fill').trim();
+  return raw || '#34d399';
+}
+
+function ensureWaveformCanvas() {
+  const canvas = els.micWaveform;
+  if (!canvas) return null;
+
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.max(1, Math.floor(rect.width * dpr));
+  const h = Math.max(1, Math.floor(rect.height * dpr));
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w;
+    canvas.height = h;
+  }
+  if (!waveformCtx) waveformCtx = canvas.getContext('2d');
+  return waveformCtx;
+}
+
+function syncWaveformChrome() {
+  const wrap = els.micWaveformWrap;
+  if (!wrap) return;
+  wrap.dataset.active = liveModeActive ? 'true' : 'false';
+  wrap.dataset.state = els.btnLiveToggle?.dataset.state || MIC_STATE.OFF;
+}
+
+function clearMicWaveform() {
+  const canvas = els.micWaveform;
+  const ctx = ensureWaveformCanvas();
+  if (!ctx || !canvas) return;
+
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  const dpr = window.devicePixelRatio || 1;
+  const gap = 2 * dpr;
+  const barCount = WAVEFORM_BARS;
+  const barWidth = Math.max(1, (w - gap * (barCount - 1)) / barCount);
+  const centerY = h / 2;
+  const idleH = Math.max(2, 2 * dpr);
+
+  ctx.fillStyle = 'rgba(139, 156, 179, 0.22)';
+  for (let i = 0; i < barCount; i++) {
+    const x = i * (barWidth + gap);
+    ctx.fillRect(x, centerY - idleH / 2, barWidth, idleH);
+  }
+}
+
+function drawMicWaveform(timeDomainBytes, { listening = true } = {}) {
+  const canvas = els.micWaveform;
+  const ctx = ensureWaveformCanvas();
+  if (!ctx || !canvas || !timeDomainBytes?.length) return;
+
+  const w = canvas.width;
+  const h = canvas.height;
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0, 0, w, h);
+
+  const barCount = WAVEFORM_BARS;
+  const gap = 2 * dpr;
+  const barWidth = Math.max(1, (w - gap * (barCount - 1)) / barCount);
+  const centerY = h / 2;
+  const maxBarH = h * 0.88;
+  const step = Math.max(1, Math.floor(timeDomainBytes.length / barCount));
+  const baseColor = getWaveformFillColor();
+
+  for (let i = 0; i < barCount; i++) {
+    let peak = 0;
+    const start = i * step;
+    for (let j = 0; j < step && start + j < timeDomainBytes.length; j++) {
+      const v = Math.abs((timeDomainBytes[start + j] - 128) / 128);
+      if (v > peak) peak = v;
+    }
+
+    const level = listening ? peak : peak * 0.15;
+    const barH = Math.max(2 * dpr, level * maxBarH);
+    const x = i * (barWidth + gap);
+    const alpha = listening ? 0.28 + Math.min(1, level * 2.8) * 0.72 : 0.18;
+    ctx.fillStyle = listening ? colorWithAlpha(baseColor, alpha) : 'rgba(139, 156, 179, 0.2)';
+    ctx.fillRect(x, centerY - barH / 2, barWidth, barH);
+  }
+}
+
+function colorWithAlpha(color, alpha) {
+  const a = Math.min(1, Math.max(0, alpha));
+  const hex = color.match(/^#([0-9a-f]{6})$/i);
+  if (hex) {
+    const n = parseInt(hex[1], 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
+  const rgb = color.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
+  if (rgb) {
+    return `rgba(${rgb[1]}, ${rgb[2]}, ${rgb[3]}, ${a})`;
+  }
+  return color;
 }
 
 function startVadLoop() {
@@ -2098,21 +2215,26 @@ function startVadLoop() {
   const tick = () => {
     if (!liveModeActive || !liveAnalyser || !micEngine) return;
 
+    liveAnalyser.getByteTimeDomainData(buf);
+    const listening = !isSamplePlaying && !isListeningBlocked();
+
     if (isSamplePlaying) {
       if (els.vadLevel) els.vadLevel.style.width = '100%';
+      drawMicWaveform(buf, { listening: false });
       vadAnimationId = requestAnimationFrame(tick);
       return;
     }
 
-    if (isListeningBlocked()) {
+    if (!listening) {
       els.vadLevel.style.width = '0%';
+      drawMicWaveform(buf, { listening: false });
       vadAnimationId = requestAnimationFrame(tick);
       return;
     }
 
-    liveAnalyser.getByteTimeDomainData(buf);
     const rms = computeRms(buf);
     micEngine.tick(rms);
+    drawMicWaveform(buf, { listening: true });
     vadAnimationId = requestAnimationFrame(tick);
   };
   tick();
@@ -2595,6 +2717,11 @@ function bindEvents() {
   });
 
   window.addEventListener('beforeunload', () => stopLiveMode());
+  window.addEventListener('resize', () => {
+    waveformCtx = null;
+    if (liveModeActive) ensureWaveformCanvas();
+    else clearMicWaveform();
+  });
 }
 
 /** WAV 16kHz mono — đủ lớn cho upload evaluate (E2E) */
