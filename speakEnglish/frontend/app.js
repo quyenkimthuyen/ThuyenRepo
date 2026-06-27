@@ -224,10 +224,9 @@ function syncMicLevelLiveFlag() {
 
 const MIC_LEVEL_GAIN = 550;
 
-function shouldShowMicLevelMeter() {
-  if (!liveModeActive || isSamplePlaying) return false;
-  const state = els.btnLiveToggle?.dataset.state || MIC_STATE.OFF;
-  return state !== MIC_STATE.OFF && state !== MIC_STATE.SAMPLE;
+/** Thanh VAD luôn phản ánh âm lượng thật khi micro đang bật (kể cả busy/processing). */
+function shouldAnimateMicLevelMeter() {
+  return liveModeActive && !isSamplePlaying && !!liveAnalyser;
 }
 
 function pctToMeterWidth(pct) {
@@ -239,7 +238,7 @@ function pctToMeterWidth(pct) {
 
 function updateMicLevelVisual(pct) {
   if (!els.vadLevel) return;
-  if (!shouldShowMicLevelMeter()) {
+  if (!shouldAnimateMicLevelMeter()) {
     els.vadLevel.style.width = '0%';
     return;
   }
@@ -585,6 +584,7 @@ function getMicBusyLabel() {
 
 function refreshMicAvailabilityUi() {
   if (!liveModeActive) return;
+  ensureVadLoopRunning();
   if (isSamplePlaying) return;
 
   if (isMicInputBlocked()) {
@@ -2200,8 +2200,8 @@ function attachLivePipeline() {
 
   micEngine = createMicEngine();
   micEngine.setHangoverMs(getHangoverMsSetting());
-  startVadLoop();
   liveModeActive = true;
+  startVadLoop();
   micEngine.start();
   updateLiveModeChrome();
   armIdleSampleTimer();
@@ -2305,8 +2305,14 @@ function toggleLiveMode() {
   else startLiveMode().then(() => armIdleSampleTimer()).catch(() => {});
 }
 
+function ensureVadLoopRunning() {
+  if (liveModeActive && liveAnalyser && micEngine && !vadAnimationId) {
+    startVadLoop();
+  }
+}
+
 function startVadLoop() {
-  if (!liveAnalyser || !micEngine) return;
+  if (!liveAnalyser) return;
   if (vadAnimationId) {
     cancelAnimationFrame(vadAnimationId);
     vadAnimationId = null;
@@ -2315,7 +2321,9 @@ function startVadLoop() {
   const buf = new Uint8Array(liveAnalyser.fftSize);
 
   const tick = () => {
-    if (!liveModeActive || !liveAnalyser || !micEngine) return;
+    vadAnimationId = requestAnimationFrame(tick);
+
+    if (!liveModeActive || !liveAnalyser) return;
 
     liveAnalyser.getByteTimeDomainData(buf);
     const rms = computeRms(buf);
@@ -2325,23 +2333,20 @@ function startVadLoop() {
     if (isSamplePlaying) {
       updateMicLevelVisual(100);
       updateMicRingVisual(0);
-      vadAnimationId = requestAnimationFrame(tick);
       return;
     }
 
     if (!listening) {
       updateMicLevelVisual(0);
       updateMicRingVisual(0);
-      vadAnimationId = requestAnimationFrame(tick);
       return;
     }
 
     updateMicLevelVisual(pct);
     updateMicRingVisual(pct);
-    micEngine.tick(rms);
-    vadAnimationId = requestAnimationFrame(tick);
+    if (micEngine) micEngine.tick(rms);
   };
-  tick();
+  vadAnimationId = requestAnimationFrame(tick);
 }
 
 function beginSamplePlayback() {
@@ -2810,6 +2815,7 @@ window.__pronounceLabTest = {
     liveModeActive,
     word: words[currentIndex]?.word ?? null,
     quizSize: words.length,
+    vadLoopActive: vadAnimationId != null,
   }),
   getPhonemeBoxCount: () => els.phonemeContainer?.querySelectorAll('.phoneme-box').length ?? 0,
   getPhonemeBoxNodes: () => [...(els.phonemeContainer?.querySelectorAll('.phoneme-box') || [])],
