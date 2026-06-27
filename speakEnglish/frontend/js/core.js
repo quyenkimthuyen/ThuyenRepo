@@ -2,7 +2,11 @@
  * Pure logic — dùng chung app + unit tests
  */
 
-export const PRACTICE_MODE = { TEXT: 'text', SCORE: 'score' };
+export const PRACTICE_MODE = { TEXT: 'text', SCORE: 'score', READING: 'reading' };
+
+export function isTextLikeMode(practiceMode) {
+  return practiceMode === PRACTICE_MODE.TEXT || practiceMode === PRACTICE_MODE.READING;
+}
 
 export const MIC_STATE = {
   OFF: 'off',
@@ -396,6 +400,65 @@ export function textMatchWithThreshold(spoken, target, threshold = 100) {
 /** @deprecated Dùng textMatchExact — giữ cho tương thích test cũ */
 export function wordsMatchExact(spoken, target) {
   return textMatchExact(spoken, target);
+}
+
+/** Tách đoạn văn tiếng Anh thành các câu */
+export function splitIntoSentences(text) {
+  const cleaned = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) return [];
+
+  const parts = cleaned.split(/(?<=[.!?])\s+/);
+  return parts.map((part) => part.trim()).filter(Boolean);
+}
+
+/** Token hiển thị trong câu — giữ dấu câu gắn với từ */
+export function tokenizeSentenceDisplay(sentence) {
+  const tokens = [];
+  const regex = /\S+/g;
+  let match;
+  while ((match = regex.exec(sentence)) !== null) {
+    const display = match[0];
+    const normalized = normalizeTextForMatch(display);
+    tokens.push({ display, normalized, isWord: Boolean(normalized) });
+  }
+  return tokens;
+}
+
+/**
+ * Số từ (theo thứ tự) đã khớp ở đầu câu mục tiêu — dùng suffix SR để chịu transcript tích lũy.
+ */
+export function countMatchedPrefixTokens(spoken, targetSentence) {
+  const targetNorms = tokenizeSentenceDisplay(targetSentence)
+    .filter((t) => t.isWord)
+    .map((t) => t.normalized);
+  if (!targetNorms.length) return 0;
+
+  let spokenTokens = collapseConsecutiveTokens(
+    normalizeTextForMatch(spoken).split(' ').filter(Boolean),
+  );
+  spokenTokens = tailTokensForMatch(spokenTokens, targetNorms.length);
+
+  for (let k = targetNorms.length; k >= 1; k -= 1) {
+    const suffix = spokenTokens.slice(-k);
+    if (suffix.length < k) continue;
+    if (suffix.every((tok, i) => tokensSpellingMatch(tok, targetNorms[i]))) {
+      return k;
+    }
+  }
+
+  let matched = 0;
+  let si = 0;
+  while (matched < targetNorms.length && si < spokenTokens.length) {
+    if (tokensSpellingMatch(spokenTokens[si], targetNorms[matched])) {
+      matched += 1;
+    }
+    si += 1;
+  }
+  return matched;
 }
 
 /** Ghép final + interim thành câu đang nói (không chỉ lấy từ cuối) */

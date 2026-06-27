@@ -17,10 +17,25 @@ import {
   TEXT_MATCH_DELAY_MS,
   shouldAutoScoreOnUtteranceEnd,
   MIN_SPEECH_MS,
+  isTextLikeMode as coreIsTextLikeMode,
+  countMatchedPrefixTokens,
 } from './js/core.js';
 import { MicEngine, MIC_PHASE } from './js/mic-engine.js';
 import { loadManifest, buildQuizSession } from './js/vocabulary.js';
 import { renderViSpellingStrip } from './js/vi-spelling.js';
+import {
+  PASSAGE_SESSION_KEY,
+  createPassageSession,
+  getCurrentSentence,
+  getSentenceWordCount,
+  updateSessionWordProgress,
+  markCurrentSentenceComplete,
+  advancePassageIndex,
+  isPassageComplete,
+  renderPassageDisplay,
+  serializePassageSession,
+  deserializePassageSession,
+} from './js/passage.js';
 
 const STORAGE_KEY = 'pronouncelab_history';
 
@@ -93,6 +108,7 @@ const PASS_ADVANCE_DELAY_MS = 1500;
 let wordFailStreak = 0;
 let passAdvancePending = false;
 let passAdvancePayload = null;
+let passageSession = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -145,8 +161,20 @@ const els = {
   settingQuizSize: $('setting-quiz-size'),
   btnNewQuiz: $('btn-new-quiz'),
   modeText: $('mode-text'),
+  modeReading: $('mode-reading'),
   modeScore: $('mode-score'),
   appRoot: document.querySelector('.app'),
+  passagePanel: $('passage-panel'),
+  passageImport: $('passage-import'),
+  passageReading: $('passage-reading'),
+  passageInput: $('passage-input'),
+  passageFile: $('passage-file'),
+  btnPassageStart: $('btn-passage-start'),
+  btnPassageChange: $('btn-passage-change'),
+  btnPassagePrev: $('btn-passage-prev'),
+  btnPassageNext: $('btn-passage-next'),
+  passageProgress: $('passage-progress'),
+  passageDisplay: $('passage-display'),
 };
 
 // ─── Init ───────────────────────────────────────────────────────────────────
@@ -160,6 +188,7 @@ async function init() {
   await loadConfig();
   loadEvalCache();
   loadSettings();
+  restorePassageSession();
   await initVocabulary();
   applyPracticeModeUI();
   bindEvents();
@@ -283,8 +312,16 @@ function getTextPassThreshold() {
 }
 
 function spokenMatchesTarget(spoken, target) {
-  if (isTextMode()) return textMatchWithThreshold(spoken, target, getTextPassThreshold());
+  if (isTextLikeMode()) return textMatchWithThreshold(spoken, target, getTextPassThreshold());
   return wordsMatch(spoken, target);
+}
+
+function isReadingMode() {
+  return practiceMode === PRACTICE_MODE.READING;
+}
+
+function isTextLikeMode() {
+  return coreIsTextLikeMode(practiceMode);
 }
 
 function createEmptyQuizModeResult() {
@@ -342,6 +379,7 @@ function formatSilenceSecLabel(sec) {
 
 function getLiveSilenceHintText() {
   const hangSec = formatSilenceSecLabel(getSilenceSecSetting());
+  if (isReadingMode()) return `Đọc đúng câu → tự chuyển câu tiếp`;
   const action = isTextMode() ? 'chuyển từ' : 'chấm điểm';
   return `Nói xong → im lặng ~${hangSec}s → ${action}`;
 }
@@ -865,29 +903,198 @@ function setPracticeMode(mode) {
   }
 }
 
+function restorePassageSession() {
+  try {
+    const raw = sessionStorage.getItem(PASSAGE_SESSION_KEY);
+    if (!raw) return;
+    passageSession = deserializePassageSession(JSON.parse(raw));
+  } catch {
+    passageSession = null;
+  }
+}
+
+function persistPassageSession() {
+  if (!passageSession?.rawText) {
+    sessionStorage.removeItem(PASSAGE_SESSION_KEY);
+    return;
+  }
+  try {
+    sessionStorage.setItem(PASSAGE_SESSION_KEY, JSON.stringify(serializePassageSession(passageSession)));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function getCurrentPassageSentence() {
+  return getCurrentSentence(passageSession);
+}
+
+function getPracticeTargetText() {
+  if (isReadingMode()) return getCurrentPassageSentence()?.text ?? '';
+  return words[currentIndex]?.word ?? '';
+}
+
+function updatePassageUI() {
+  const hasSession = Boolean(passageSession?.sentences?.length);
+  els.passageImport?.classList.toggle('hidden', hasSession);
+  els.passageReading?.classList.toggle('hidden', !hasSession);
+
+  if (!hasSession) {
+    if (els.passageDisplay) els.passageDisplay.innerHTML = '';
+    if (els.passageProgress) els.passageProgress.textContent = '—';
+    return;
+  }
+
+  const total = passageSession.sentences.length;
+  const current = passageSession.currentIndex + 1;
+  const sentence = getCurrentPassageSentence();
+  if (els.passageProgress) {
+    const done = passageSession.sentences.filter((s) => s.completed).length;
+    els.passageProgress.textContent = isPassageComplete(passageSession)
+      ? `Hoàn thành ${total} câu`
+      : `Câu ${current} / ${total} · ${done} đã xong`;
+  }
+  if (els.passageDisplay) {
+    els.passageDisplay.innerHTML = renderPassageDisplay(passageSession);
+  }
+  if (els.btnPassagePrev) {
+    els.btnPassagePrev.disabled = passageSession.currentIndex <= 0;
+  }
+  if (els.btnPassageNext) {
+    els.btnPassageNext.disabled = passageSession.currentIndex >= total - 1;
+  }
+  if (sentence && els.liveTranscriptPlaceholder && isReadingMode()) {
+    const preview = sentence.text.length > 72
+      ? `${sentence.text.slice(0, 72)}…`
+      : sentence.text;
+    els.liveTranscriptPlaceholder.textContent = `Đọc câu hiện tại: "${preview}"`;
+  }
+}
+
+function refreshPassageFromSpoken(spoken) {
+  if (!isReadingMode() || !passageSession) return;
+  updateSessionWordProgress(passageSession, spoken || '');
+  updatePassageUI();
+}
+
+function startPassageSession(rawText) {
+  const text = String(rawText || '').trim();
+  if (!text) {
+    showLiveHint('Vui lòng nhập hoặc chọn đoạn văn tiếng Anh', 'warn');
+    return false;
+  }
+
+  passageSession = createPassageSession(text);
+  if (!passageSession.sentences.length) {
+    passageSession = null;
+    showLiveHint('Không tách được câu nào — thử thêm dấu chấm hoặc xuống dòng', 'warn');
+    return false;
+  }
+
+  persistPassageSession();
+  updatePassageUI();
+  clearLiveTranscript();
+  hideLiveHint();
+  resetWordFailStreak();
+  if (shouldAutoplaySample()) {
+    playSample({ fromAutoplay: true });
+  }
+  armIdleSampleTimer();
+  return true;
+}
+
+function showPassageImport() {
+  passageSession = null;
+  persistPassageSession();
+  if (els.passageInput && !els.passageInput.value.trim()) {
+    els.passageInput.value = '';
+  }
+  updatePassageUI();
+  clearLiveTranscript();
+  hideLiveHint();
+}
+
+function goToPassageSentence(index) {
+  if (!passageSession?.sentences?.length) return;
+  const idx = Math.max(0, Math.min(index, passageSession.sentences.length - 1));
+  passageSession.currentIndex = idx;
+  persistPassageSession();
+  updatePassageUI();
+  clearLiveTranscript();
+  hideLiveHint();
+  resetWordFailStreak();
+  prepareMicForNextUtterance();
+  if (shouldAutoplaySample()) {
+    playSample({ fromAutoplay: true });
+  }
+}
+
+function advancePassageSentence() {
+  if (!passageSession) return;
+  markCurrentSentenceComplete(passageSession);
+  if (!isPassageComplete(passageSession)) {
+    advancePassageIndex(passageSession);
+  }
+  persistPassageSession();
+  updatePassageUI();
+  clearLiveTranscript();
+  hideLiveHint();
+  resetWordFailStreak();
+  prepareMicForNextUtterance();
+  if (isPassageComplete(passageSession)) {
+    showLiveHint('🎉 Bạn đã đọc xong toàn bộ đoạn văn!', 'ok');
+    return;
+  }
+  if (shouldAutoplaySample()) {
+    playSample({ fromAutoplay: true });
+  }
+  armIdleSampleTimer();
+}
+
 function applyPracticeModeUI() {
   const textActive = isTextMode();
-  els.modeText?.classList.toggle('active', textActive);
-  els.modeScore?.classList.toggle('active', !textActive);
-  els.modeText?.setAttribute('aria-selected', textActive ? 'true' : 'false');
-  els.modeScore?.setAttribute('aria-selected', textActive ? 'false' : 'true');
-  els.appRoot?.classList.toggle('mode-text', textActive);
-  els.appRoot?.classList.toggle('mode-score', !textActive);
+  const readingActive = isReadingMode();
+  const scoreActive = isScoreMode();
 
-  if (!textActive) {
+  els.modeText?.classList.toggle('active', textActive);
+  els.modeReading?.classList.toggle('active', readingActive);
+  els.modeScore?.classList.toggle('active', scoreActive);
+  els.modeText?.setAttribute('aria-selected', textActive ? 'true' : 'false');
+  els.modeReading?.setAttribute('aria-selected', readingActive ? 'true' : 'false');
+  els.modeScore?.setAttribute('aria-selected', scoreActive ? 'true' : 'false');
+  els.appRoot?.classList.toggle('mode-text', textActive);
+  els.appRoot?.classList.toggle('mode-reading', readingActive);
+  els.appRoot?.classList.toggle('mode-score', scoreActive);
+
+  if (readingActive) {
+    els.passagePanel?.classList.remove('hidden');
+    updatePassageUI();
+  } else {
+    els.passagePanel?.classList.add('hidden');
+  }
+
+  if (!textActive && !readingActive) {
     restoreWordScoreUI(words[currentIndex]);
   }
 
-  renderQuizSummary();
-
-  if (els.liveTranscriptPlaceholder) {
-    els.liveTranscriptPlaceholder.textContent = isTextMode()
-      ? 'Đọc đúng 100% (từ hoặc cụm từ) → tự chuyển tiếp'
-      : 'Đọc từ → im lặng ngắn để chấm IPA bên dưới';
+  if (!readingActive) {
+    renderQuizSummary();
   }
 
-  if (textActive) {
-    els.serviceStatus.textContent = '● Chế độ text — không cần backend';
+  if (els.liveTranscriptPlaceholder) {
+    if (readingActive) {
+      updatePassageUI();
+    } else {
+      els.liveTranscriptPlaceholder.textContent = isTextMode()
+        ? 'Đọc đúng 100% (từ hoặc cụm từ) → tự chuyển tiếp'
+        : 'Đọc từ → im lặng ngắn để chấm IPA bên dưới';
+    }
+  }
+
+  if (textActive || readingActive) {
+    els.serviceStatus.textContent = readingActive
+      ? '● Chế độ đọc đoạn — không cần backend'
+      : '● Chế độ text — không cần backend';
     els.serviceStatus.className = 'status-online';
   } else {
     checkBackend();
@@ -895,7 +1102,7 @@ function applyPracticeModeUI() {
 }
 
 function getHangoverMsSetting() {
-  return getHangoverMs(parseFloat(els.settingSilenceSec?.value) || 0.35, isTextMode());
+  return getHangoverMs(parseFloat(els.settingSilenceSec?.value) || 0.35, isTextLikeMode());
 }
 
 function micPhaseToState(phase) {
@@ -1627,12 +1834,12 @@ function syncTranscriptFromEngine() {
   const rawFinal = micEngine.transcriptFinal.trim();
   const rawInterim = micEngine.transcriptInterim;
   const combined = extractSpokenText(rawFinal, rawInterim);
-  const w = words[currentIndex];
+  const targetText = getPracticeTargetText();
 
   let displayFinal = rawFinal;
   let displayInterim = rawInterim;
-  if (isTextMode() && w?.word && combined) {
-    const snippet = extractPracticeMatchSnippet(combined, w.word);
+  if (isTextLikeMode() && targetText && combined) {
+    const snippet = extractPracticeMatchSnippet(combined, targetText);
     if (snippet) {
       displayFinal = snippet;
       displayInterim = '';
@@ -1644,8 +1851,12 @@ function syncTranscriptFromEngine() {
   const hasText = Boolean(displayFinal || displayInterim);
   els.liveTranscriptPlaceholder.classList.toggle('hidden', !!hasText);
 
+  if (isReadingMode() && combined) {
+    refreshPassageFromSpoken(combined);
+  }
+
   if (!isScoreMode()) {
-    const match = spokenMatchesTarget(combined || rawFinal, w?.word);
+    const match = spokenMatchesTarget(combined || rawFinal, targetText);
     els.liveTranscriptInterim.classList.toggle('match', match);
     els.liveTranscriptFinal.classList.toggle('match', match);
   } else {
@@ -1708,29 +1919,36 @@ function tryScheduleScoreEvaluate() {
   }, hangMs);
 }
 
-/** Chế độ text: thấy khớp → chuyển từ ngay (không chờ im lặng) */
+/** Chế độ text/đọc đoạn: thấy khớp → chuyển tiếp ngay (không chờ im lặng) */
 function tryScheduleTextAdvance() {
-  if (!isTextMode() || !liveModeActive || isAdvancing || isListeningBlocked()) {
+  if (!isTextLikeMode() || !liveModeActive || isAdvancing || isListeningBlocked()) {
     clearTextMatchTimer();
     return;
   }
 
-  const w = words[currentIndex];
+  if (isReadingMode() && !getCurrentPassageSentence()) {
+    clearTextMatchTimer();
+    return;
+  }
+
+  const target = getPracticeTargetText();
   const spoken = getSpokenWord();
-  if (!w || !spoken || !spokenMatchesTarget(spoken, w.word)) {
+  if (!target || !spoken || !spokenMatchesTarget(spoken, target)) {
     clearTextMatchTimer();
     return;
   }
 
   if (textMatchTimer) return;
 
-  showLiveHint(`✓ "${spoken}" khớp — chuyển từ...`, 'ok');
+  const advanceLabel = isReadingMode() ? 'chuyển câu' : 'chuyển từ';
+  showLiveHint(`✓ "${extractPracticeMatchSnippet(spoken, target) || spoken}" khớp — ${advanceLabel}...`, 'ok');
   textMatchTimer = setTimeout(async () => {
     textMatchTimer = null;
-    if (!liveModeActive || isAdvancing || !isTextMode()) return;
+    if (!liveModeActive || isAdvancing || !isTextLikeMode()) return;
     const latest = getSpokenWord();
-    if (latest && spokenMatchesTarget(latest, w.word)) {
-      await processTextUtterance(latest);
+    if (latest && spokenMatchesTarget(latest, target)) {
+      if (isReadingMode()) await processReadingUtterance(latest);
+      else await processTextUtterance(latest);
     }
   }, TEXT_MATCH_DELAY_MS);
 }
@@ -2051,6 +2269,11 @@ async function handleUtteranceComplete(payload) {
   if (!liveModeActive || isListeningBlocked() || isAdvancing) return;
   if (payload?.spoken) noteUserInput();
 
+  if (isReadingMode()) {
+    await processReadingUtterance(payload.spoken);
+    return;
+  }
+
   if (isTextMode()) {
     await processTextUtterance(payload.spoken);
     return;
@@ -2082,6 +2305,58 @@ async function processScoreUtterance() {
   userAudioUrl = URL.createObjectURL(blob);
 
   await evaluateRecording(blob, { fromLive: true });
+}
+
+/** Đọc đoạn: khớp cả câu → chuyển câu tiếp theo */
+async function processReadingUtterance(spoken) {
+  if (isAdvancing) return;
+  clearTextMatchTimer();
+
+  const sentence = getCurrentPassageSentence();
+  const word = spoken || getSpokenWord();
+
+  if (!sentence) {
+    showLiveHint('Import đoạn văn trước khi bắt đầu đọc', 'warn');
+    return;
+  }
+
+  if (!word) {
+    showLiveHint('Không nghe rõ — thử đọc lại', 'warn');
+    return;
+  }
+
+  refreshPassageFromSpoken(word);
+
+  if (!spokenMatchesTarget(word, sentence.text)) {
+    const score = textSimilarityPercent(word, sentence.text);
+    const need = getTextPassThreshold();
+    const matched = countMatchedPrefixTokens(word, sentence.text);
+    const total = getSentenceWordCount(sentence);
+    const display = extractPracticeMatchSnippet(word, sentence.text) || word;
+    showLiveHint(
+      `✗ "${display}" — ${matched}/${total} từ · ${score}% (cần ≥${need}%)`,
+      'mis',
+    );
+    registerWordFailure();
+    return;
+  }
+
+  isAdvancing = true;
+  refreshMicAvailabilityUi();
+  resetWordFailStreak();
+  const score = textSimilarityPercent(word, sentence.text);
+  const need = getTextPassThreshold();
+  showLiveHint(
+    score >= 100 ? `✓ Đúng câu!` : `✓ Câu ~${score}% (≥${need}%)`,
+    'ok',
+  );
+  await new Promise((r) => setTimeout(r, 100));
+  hideLiveHint();
+  micEngine?.clearTranscript();
+  syncTranscriptFromEngine();
+  advancePassageSentence();
+  isAdvancing = false;
+  refreshMicAvailabilityUi();
 }
 
 /** Text mode: khớp → chuyển từ tiếp theo */
@@ -2130,6 +2405,40 @@ async function processTextUtterance(spoken) {
 
 function updateRealtimeHint() {
   if (isScoreMode()) return;
+
+  if (isReadingMode()) {
+    const sentence = getCurrentPassageSentence();
+    if (!sentence || isAdvancing) return;
+
+    const spoken = getSpokenWord();
+    const display = spoken
+      ? (extractPracticeMatchSnippet(spoken, sentence.text) || spoken)
+      : '';
+    if (!spoken) {
+      hideLiveHint();
+      return;
+    }
+
+    refreshPassageFromSpoken(spoken);
+    const matched = countMatchedPrefixTokens(spoken, sentence.text);
+    const total = getSentenceWordCount(sentence);
+
+    if (spokenMatchesTarget(spoken, sentence.text)) {
+      const score = textSimilarityPercent(spoken, sentence.text);
+      const need = getTextPassThreshold();
+      const msg = score >= 100
+        ? `✓ "${display}" — khớp cả câu!`
+        : `✓ "${display}" ~${score}% (≥${need}%)`;
+      showLiveHint(msg, 'ok');
+    } else if (matched > 0) {
+      showLiveHint(`✓ ${matched}/${total} từ đúng — tiếp tục đọc`, 'ok');
+    } else {
+      const score = textSimilarityPercent(spoken, sentence.text);
+      const need = getTextPassThreshold();
+      showLiveHint(`✗ "${display}" — ${score}% (cần ≥${need}%)`, 'mis');
+    }
+    return;
+  }
 
   const w = words[currentIndex];
   if (!w || isAdvancing) return;
@@ -2412,6 +2721,12 @@ function playSample(options = {}) {
   const { onDone, fromIdle = false, fromAutoplay = false } = options;
   if (!fromIdle && !fromAutoplay) noteUserInput();
 
+  const sampleText = getPracticeTargetText();
+  if (!sampleText) {
+    onDone?.();
+    return;
+  }
+
   const w = words[currentIndex];
   beginSamplePlayback();
 
@@ -2420,7 +2735,7 @@ function playSample(options = {}) {
     onDone?.();
   };
 
-  if (w.audio_sample_url) {
+  if (!isReadingMode() && w?.audio_sample_url) {
     const audio = new Audio(w.audio_sample_url);
     audio.onended = finishSample;
     audio.onerror = finishSample;
@@ -2429,7 +2744,7 @@ function playSample(options = {}) {
   }
 
   if ('speechSynthesis' in window) {
-    const utter = new SpeechSynthesisUtterance(w.word);
+    const utter = new SpeechSynthesisUtterance(sampleText);
     configureSampleUtterance(utter);
     let finished = false;
     const done = () => {
@@ -2442,7 +2757,7 @@ function playSample(options = {}) {
     speechSynthesis.cancel();
     speechSynthesis.speak(utter);
 
-    const maxMs = Math.max(2500, w.word.length * 180);
+    const maxMs = Math.max(2500, sampleText.length * 180);
     setTimeout(() => {
       if (isSamplePlaying && !speechSynthesis.speaking) done();
     }, maxMs);
@@ -2678,8 +2993,10 @@ async function replaySegment(box) {
 // ─── Backend health ─────────────────────────────────────────────────────────
 
 async function checkBackend() {
-  if (isTextMode()) {
-    els.serviceStatus.textContent = '● Chế độ text — không cần backend';
+  if (isTextLikeMode()) {
+    els.serviceStatus.textContent = isReadingMode()
+      ? '● Chế độ đọc đoạn — không cần backend'
+      : '● Chế độ text — không cần backend';
     els.serviceStatus.className = 'status-online';
     return;
   }
@@ -2705,7 +3022,34 @@ async function checkBackend() {
 
 function bindEvents() {
   els.modeText?.addEventListener('click', () => setPracticeMode(PRACTICE_MODE.TEXT));
+  els.modeReading?.addEventListener('click', () => setPracticeMode(PRACTICE_MODE.READING));
   els.modeScore?.addEventListener('click', () => setPracticeMode(PRACTICE_MODE.SCORE));
+  els.btnPassageStart?.addEventListener('click', () => {
+    startPassageSession(els.passageInput?.value || '');
+  });
+  els.btnPassageChange?.addEventListener('click', () => {
+    showPassageImport();
+  });
+  els.btnPassagePrev?.addEventListener('click', () => {
+    if (!passageSession) return;
+    goToPassageSentence(passageSession.currentIndex - 1);
+  });
+  els.btnPassageNext?.addEventListener('click', () => {
+    if (!passageSession) return;
+    goToPassageSentence(passageSession.currentIndex + 1);
+  });
+  els.passageFile?.addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      if (els.passageInput) els.passageInput.value = text;
+      startPassageSession(text);
+    } catch {
+      showLiveHint('Không đọc được file — thử file .txt khác', 'warn');
+    }
+    event.target.value = '';
+  });
   els.btnPlaySample.addEventListener('click', playSample);
   els.btnLiveToggle.addEventListener('click', toggleLiveMode);
   els.btnRetry.addEventListener('click', () => {
@@ -2897,6 +3241,33 @@ window.__pronounceLabTest = {
     await processTextUtterance(w.word);
     return { before, after: currentIndex, word: words[currentIndex]?.word };
   },
+  startPassage: (text) => {
+    const ok = startPassageSession(text);
+    return {
+      ok,
+      sentenceCount: passageSession?.sentences?.length ?? 0,
+      currentIndex: passageSession?.currentIndex ?? 0,
+    };
+  },
+  simulateReadingPass: async (spoken) => {
+    if (!isReadingMode()) return { error: 'not_reading_mode' };
+    const sentence = getCurrentPassageSentence();
+    if (!sentence) return { error: 'no_passage' };
+    const before = passageSession?.currentIndex ?? 0;
+    await processReadingUtterance(spoken || sentence.text);
+    return {
+      before,
+      after: passageSession?.currentIndex ?? 0,
+      complete: isPassageComplete(passageSession),
+    };
+  },
+  getPassageState: () => ({
+    hasSession: Boolean(passageSession),
+    currentIndex: passageSession?.currentIndex ?? -1,
+    sentenceCount: passageSession?.sentences?.length ?? 0,
+    currentSentence: getCurrentPassageSentence()?.text ?? null,
+    complete: passageSession ? isPassageComplete(passageSession) : false,
+  }),
   getIdleSampleState: () => ({
     armed: idleSampleArmed,
     hasTimer: Boolean(idleSampleTimer),

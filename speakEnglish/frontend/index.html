@@ -21,6 +21,13 @@
             <span class="mode-card-hint">Nhận diện giọng · khớp chữ</span>
           </span>
         </button>
+        <button id="mode-reading" class="mode-card" type="button" role="tab" aria-selected="false">
+          <span class="mode-card-glyph" aria-hidden="true">¶</span>
+          <span class="mode-card-text">
+            <span class="mode-card-name">Đọc đoạn</span>
+            <span class="mode-card-hint">Import văn · đọc từng câu</span>
+          </span>
+        </button>
         <button id="mode-score" class="mode-card" type="button" role="tab" aria-selected="false">
           <span class="mode-card-glyph" aria-hidden="true">IPA</span>
           <span class="mode-card-text">
@@ -37,6 +44,38 @@
     </nav>
 
     <main class="main-card">
+      <section id="passage-panel" class="passage-panel mode-reading-only hidden" aria-label="Đọc đoạn văn">
+        <div id="passage-import" class="passage-import">
+          <h2 class="passage-import-title">Import đoạn văn tiếng Anh</h2>
+          <p class="passage-import-hint">Dán văn bản hoặc chọn file .txt — chương trình tách từng câu để bạn đọc theo.</p>
+          <textarea
+            id="passage-input"
+            class="passage-input"
+            rows="6"
+            placeholder="Ví dụ: The sun rises in the east. Birds sing in the morning."
+            aria-label="Nội dung đoạn văn"
+          ></textarea>
+          <div class="passage-import-actions">
+            <label class="btn btn-ghost btn-sm passage-file-label">
+              📄 Chọn file .txt
+              <input type="file" id="passage-file" accept=".txt,text/plain" hidden>
+            </label>
+            <button id="btn-passage-start" class="btn btn-primary" type="button">Bắt đầu đọc</button>
+          </div>
+        </div>
+        <div id="passage-reading" class="passage-reading hidden">
+          <div class="passage-reading-head">
+            <span id="passage-progress" class="passage-progress">Câu 1 / 1</span>
+            <button id="btn-passage-change" class="btn btn-ghost btn-sm" type="button" title="Import đoạn văn khác">✎ Đổi đoạn</button>
+          </div>
+          <div id="passage-display" class="passage-display" aria-live="polite"></div>
+          <div class="passage-sentence-nav">
+            <button id="btn-passage-prev" class="btn btn-ghost btn-sm" type="button" title="Câu trước">← Câu trước</button>
+            <button id="btn-passage-next" class="btn btn-ghost btn-sm" type="button" title="Câu sau">Câu sau →</button>
+          </div>
+        </div>
+      </section>
+
       <section class="word-hero">
         <div class="word-hero-top">
           <span id="word-index" class="word-progress">1 / 30</span>
