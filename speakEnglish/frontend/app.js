@@ -1213,7 +1213,6 @@ function advancePassageSentence() {
 
 function openSettingsPanel() {
   els.settingsPanel?.classList.remove('hidden');
-  applyPracticeModeUI();
   refreshSilenceHints();
   populateTtsVoiceSelect();
   els.settingsPanel?.scrollTo({ top: 0, behavior: 'auto' });
