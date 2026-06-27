@@ -877,24 +877,26 @@ body {
 }
 
 .vad-meter {
+  position: relative;
   width: 100%;
   max-width: none;
-  height: 8px;
+  height: 10px;
   background: var(--surface-2);
   border-radius: 999px;
   overflow: hidden;
 }
 
 .vad-level {
-  display: block;
-  height: 100%;
-  width: 100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  max-width: 100%;
   background: var(--ok);
   border-radius: 999px;
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.05s linear;
-  will-change: transform;
+  transition: width 0.05s linear;
+  pointer-events: none;
 }
 
 .mic-indicator[data-state="processing"] .vad-level {

@@ -220,12 +220,32 @@ function syncMicLevelLiveFlag() {
   }
 }
 
+const MIC_LEVEL_GAIN = 550;
+
+function shouldShowMicLevelMeter() {
+  if (!liveModeActive || isSamplePlaying) return false;
+  const state = els.btnLiveToggle?.dataset.state || MIC_STATE.OFF;
+  return state !== MIC_STATE.OFF && state !== MIC_STATE.SAMPLE;
+}
+
+function pctToMeterWidth(pct) {
+  const raw = Math.min(100, Math.max(0, pct)) / 100;
+  if (raw < 0.01) return 0;
+  const boosted = Math.min(1, raw * 1.25);
+  return Math.max(boosted * 100, 8);
+}
+
 function updateMicLevelVisual(pct) {
-  if (isMicInputBlocked()) pct = 0;
-  const level = Math.min(100, Math.max(0, pct)) / 100;
-  if (els.vadLevel) {
-    els.vadLevel.style.transform = `scaleX(${level})`;
+  if (!els.vadLevel) return;
+  if (!shouldShowMicLevelMeter()) {
+    els.vadLevel.style.width = '0%';
+    return;
   }
+  els.vadLevel.style.width = `${pctToMeterWidth(pct)}%`;
+}
+
+function updateMicRingVisual(pct) {
+  const level = Math.min(100, Math.max(0, pct)) / 100;
   const btn = els.btnLiveToggle;
   if (!btn || btn.dataset.levelLive !== 'true') return;
   btn.style.setProperty('--mic-level-scale', String(1 + level * 0.14));
@@ -233,9 +253,7 @@ function updateMicLevelVisual(pct) {
 }
 
 function resetMicLevelVisual() {
-  if (els.vadLevel) {
-    els.vadLevel.style.transform = 'scaleX(0)';
-  }
+  if (els.vadLevel) els.vadLevel.style.width = '0%';
   const btn = els.btnLiveToggle;
   if (!btn) return;
   btn.dataset.levelLive = 'false';
@@ -569,7 +587,6 @@ function refreshMicAvailabilityUi() {
 
   if (isMicInputBlocked()) {
     setMicState(MIC_STATE.BUSY, getMicBusyLabel());
-    updateMicLevelVisual(0);
     return;
   }
 
@@ -912,7 +929,7 @@ function createMicEngine() {
       refreshMicAvailabilityUi();
     },
     onLevel: (_rms, pct) => {
-      updateMicLevelVisual(pct);
+      updateMicRingVisual(pct);
     },
     onUtteranceComplete: handleUtteranceComplete,
   });
@@ -2298,21 +2315,26 @@ function startVadLoop() {
     if (!liveModeActive || !liveAnalyser || !micEngine) return;
 
     liveAnalyser.getByteTimeDomainData(buf);
+    const rms = computeRms(buf);
+    const pct = Math.min(100, rms * MIC_LEVEL_GAIN);
     const listening = !isSamplePlaying && !isListeningBlocked();
 
     if (isSamplePlaying) {
       updateMicLevelVisual(100);
+      updateMicRingVisual(0);
       vadAnimationId = requestAnimationFrame(tick);
       return;
     }
 
     if (!listening) {
       updateMicLevelVisual(0);
+      updateMicRingVisual(0);
       vadAnimationId = requestAnimationFrame(tick);
       return;
     }
 
-    const rms = computeRms(buf);
+    updateMicLevelVisual(pct);
+    updateMicRingVisual(pct);
     micEngine.tick(rms);
     vadAnimationId = requestAnimationFrame(tick);
   };
