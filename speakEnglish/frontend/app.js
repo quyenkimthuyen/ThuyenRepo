@@ -35,13 +35,10 @@ let practiceMode = PRACTICE_MODE.TEXT;
 let isAdvancing = false;
 let micState = MIC_STATE.OFF;
 let autoStartDone = false;
-let mediaRecorder = null;
-let audioChunks = [];
 let userAudioBlob = null;
 let userAudioUrl = null;
 let serverAudioUrl = null;
 let audioContext = null;
-let isRecording = false;
 
 // Live mic pipeline
 let micEngine = null;
@@ -104,9 +101,6 @@ const els = {
   currentMeaning: $('current-meaning'),
   quizInfo: $('quiz-info'),
   btnPlaySample: $('btn-play-sample'),
-  btnRecord: $('btn-record'),
-  btnStop: $('btn-stop'),
-  btnReplayUser: $('btn-replay-user'),
   btnRetry: $('btn-retry'),
   btnPrev: $('btn-prev'),
   btnNext: $('btn-next'),
@@ -913,7 +907,7 @@ function scheduleIdleSample() {
   idleSampleTimer = setTimeout(() => {
     idleSampleTimer = null;
     if (!idleSampleArmed || !words.length) return;
-    if (isSamplePlaying || isAdvancing || scoreApiBusy || isRecording) {
+    if (isSamplePlaying || isAdvancing || scoreApiBusy) {
       scheduleIdleSample();
       return;
     }
@@ -1049,7 +1043,6 @@ function showWord(index, options = {}) {
 function resetEvaluationUI() {
   els.btnRetry.classList.add('hidden');
   if (!liveModeActive) {
-    els.btnReplayUser.disabled = true;
     userAudioBlob = null;
     if (userAudioUrl) {
       URL.revokeObjectURL(userAudioUrl);
@@ -1726,7 +1719,7 @@ function pickRecorderMimeType() {
   return 'audio/webm';
 }
 
-/** Ghi âm 1 câu — cùng cơ chế với nút Ghi âm 1 lần (webm/mp4 hợp lệ) */
+/** Ghi âm 1 câu — webm/mp4 từ phraseRecorder */
 function startPhraseRecording() {
   if (!micStream || phraseRecorder?.state === 'recording') return;
 
@@ -1792,7 +1785,7 @@ function stopPhraseRecording() {
   });
 }
 
-/** Live score: ưu tiên webm từ phraseRecorder (giống Ghi âm 1 lần), PCM chỉ dự phòng */
+/** Live score: ưu tiên webm từ phraseRecorder, PCM dự phòng */
 async function getScoreAudioBlob() {
   if (e2eInjectScoreBlob) {
     const injected = e2eInjectScoreBlob;
@@ -1885,7 +1878,7 @@ async function handleUtteranceComplete(payload) {
   // Score mode: SR + tryScheduleScoreEvaluate xử lý chấm — tránh chấm/VAD trùng
 }
 
-/** Score mode: im lặng sau câu → tự gọi API chấm (cùng pipeline với Ghi âm 1 lần) */
+/** Score mode: im lặng sau câu → tự gọi API chấm */
 async function processScoreUtterance() {
   if (scoreApiBusy) return;
   if (lastScoredAtIndex === currentIndex) return;
@@ -1906,7 +1899,6 @@ async function processScoreUtterance() {
   userAudioBlob = blob;
   if (userAudioUrl) URL.revokeObjectURL(userAudioUrl);
   userAudioUrl = URL.createObjectURL(blob);
-  els.btnReplayUser.disabled = false;
 
   await evaluateRecording(blob, { fromLive: true });
 }
@@ -1993,7 +1985,6 @@ function clearLiveTranscript() {
 function updateLiveModeChrome() {
   refreshSilenceHints();
   els.recordingIndicator.classList.remove('hidden');
-  els.btnRecord.disabled = true;
   els.phonemeContainer.classList.toggle('live-mode', isScoreMode());
   if (isScoreMode()) {
     restoreWordScoreUI(words[currentIndex]);
@@ -2125,7 +2116,6 @@ function stopLiveMode() {
 
   setMicState(MIC_STATE.OFF, 'Micro tắt');
   els.recordingIndicator.classList.add('hidden');
-  els.btnRecord.disabled = false;
   els.phonemeContainer.classList.remove('live-mode');
 }
 
@@ -2270,70 +2260,6 @@ function playSample(options = {}) {
   }
 
   finishSample();
-}
-
-// ─── Audio: Recording ───────────────────────────────────────────────────────
-
-async function startRecording() {
-  noteUserInput();
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    audioChunks = [];
-    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-      ? 'audio/webm;codecs=opus'
-      : 'audio/webm';
-    mediaRecorder = new MediaRecorder(stream, { mimeType });
-
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) audioChunks.push(e.data);
-    };
-
-    mediaRecorder.onstop = async () => {
-      stream.getTracks().forEach((t) => t.stop());
-      userAudioBlob = new Blob(audioChunks, { type: mimeType });
-      userAudioUrl = URL.createObjectURL(userAudioBlob);
-      els.btnReplayUser.disabled = false;
-      if (isScoreMode()) {
-        await evaluateRecording();
-      } else {
-        const spoken = getSpokenWord();
-        const w = words[currentIndex];
-        if (spoken && spokenMatchesTarget(spoken, w?.word)) {
-          refreshMicAvailabilityUi();
-          await processTextUtterance(spoken);
-          refreshMicAvailabilityUi();
-        } else {
-          showLiveHint(`Bật micro live và đọc "${w?.word}" — hoặc chuyển sang chế độ Chấm điểm`, 'warn');
-        }
-      }
-    };
-
-    mediaRecorder.start();
-    isRecording = true;
-    els.btnRecord.classList.add('recording');
-    els.btnRecord.disabled = true;
-    els.btnStop.disabled = false;
-    els.recordingIndicator.classList.remove('hidden');
-  } catch (err) {
-    alert('Không thể truy cập microphone: ' + err.message);
-  }
-}
-
-function stopRecording() {
-  if (mediaRecorder && isRecording) {
-    mediaRecorder.stop();
-    isRecording = false;
-    els.btnRecord.classList.remove('recording');
-    els.btnRecord.disabled = false;
-    els.btnStop.disabled = true;
-    els.recordingIndicator.classList.add('hidden');
-  }
-}
-
-function replayUserAudio() {
-  if (userAudioUrl) {
-    new Audio(userAudioUrl).play();
-  }
 }
 
 // ─── Evaluation API ─────────────────────────────────────────────────────────
@@ -2590,9 +2516,6 @@ function bindEvents() {
   els.modeScore?.addEventListener('click', () => setPracticeMode(PRACTICE_MODE.SCORE));
   els.btnPlaySample.addEventListener('click', playSample);
   els.btnLiveToggle.addEventListener('click', toggleLiveMode);
-  els.btnRecord.addEventListener('click', startRecording);
-  els.btnStop.addEventListener('click', stopRecording);
-  els.btnReplayUser.addEventListener('click', replayUserAudio);
   els.btnRetry.addEventListener('click', () => {
     els.btnRetry.classList.add('hidden');
     lastScoredAtIndex = -1;
