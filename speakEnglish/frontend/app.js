@@ -92,7 +92,6 @@ let quizSessionResults = [];
 let lastScoredAtIndex = -1;
 const SAMPLE_REPLAY_AFTER_FAILS = 3;
 let wordFailStreak = 0;
-let waveformCtx = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -137,8 +136,6 @@ const els = {
   btnLiveToggle: $('btn-live-toggle'),
   micStatusLabel: $('mic-status-label'),
   vadLevel: $('vad-level'),
-  micWaveformWrap: $('mic-waveform-wrap'),
-  micWaveform: $('mic-waveform'),
   liveTranscriptFinal: $('live-transcript-final'),
   liveTranscriptInterim: $('live-transcript-interim'),
   liveTranscriptPlaceholder: $('live-transcript-placeholder'),
@@ -171,7 +168,7 @@ async function init() {
   checkBackend();
   initLiveSpeech();
   setMicState(MIC_STATE.OFF, 'Micro tắt');
-  clearMicWaveform();
+  resetMicLevelVisual();
 
   if (els.settingLiveAuto?.checked) {
     startLiveMode({ silent: true }).catch(() => {
@@ -208,7 +205,39 @@ function setMicState(state, label) {
   if (els.micStatusLabel && label) {
     els.micStatusLabel.textContent = label;
   }
-  syncWaveformChrome();
+  syncMicLevelLiveFlag();
+}
+
+function syncMicLevelLiveFlag() {
+  const btn = els.btnLiveToggle;
+  if (!btn) return;
+  const state = btn.dataset.state || MIC_STATE.OFF;
+  const levelLive = liveModeActive && state !== MIC_STATE.OFF && state !== MIC_STATE.SAMPLE;
+  btn.dataset.levelLive = levelLive ? 'true' : 'false';
+  if (!levelLive) {
+    btn.style.removeProperty('--mic-level-scale');
+    btn.style.removeProperty('--mic-level-glow');
+  }
+}
+
+function updateMicLevelVisual(pct) {
+  const level = Math.min(100, Math.max(0, pct)) / 100;
+  if (els.vadLevel) {
+    els.vadLevel.style.transform = `scaleX(${level})`;
+  }
+  const btn = els.btnLiveToggle;
+  if (!btn || btn.dataset.levelLive !== 'true') return;
+  btn.style.setProperty('--mic-level-scale', String(1 + level * 0.14));
+  btn.style.setProperty('--mic-level-glow', String(level));
+}
+
+function resetMicLevelVisual() {
+  if (els.vadLevel) els.vadLevel.style.transform = 'scaleX(0)';
+  const btn = els.btnLiveToggle;
+  if (!btn) return;
+  btn.dataset.levelLive = 'false';
+  btn.style.removeProperty('--mic-level-scale');
+  btn.style.removeProperty('--mic-level-glow');
 }
 
 function setScoreState(mode, text) {
@@ -761,7 +790,7 @@ function createMicEngine() {
       setMicState(micPhaseToState(phase), label);
     },
     onLevel: (_rms, pct) => {
-      if (els.vadLevel) els.vadLevel.style.width = `${pct}%`;
+      updateMicLevelVisual(pct);
     },
     onUtteranceComplete: handleUtteranceComplete,
   });
@@ -1985,8 +2014,6 @@ function attachLivePipeline() {
 
   micEngine = createMicEngine();
   micEngine.setHangoverMs(getHangoverMsSetting());
-  syncWaveformChrome();
-  ensureWaveformCanvas();
   startVadLoop();
   liveModeActive = true;
   micEngine.start();
@@ -2080,10 +2107,7 @@ function stopLiveMode() {
     cancelAnimationFrame(vadAnimationId);
     vadAnimationId = null;
   }
-  els.vadLevel.style.width = '0%';
-  syncWaveformChrome();
-  clearMicWaveform();
-  waveformCtx = null;
+  resetMicLevelVisual();
 
   setMicState(MIC_STATE.OFF, 'Micro tắt');
   els.recordingIndicator.classList.add('hidden');
@@ -2094,118 +2118,6 @@ function stopLiveMode() {
 function toggleLiveMode() {
   if (liveModeActive) stopLiveMode();
   else startLiveMode().then(() => armIdleSampleTimer()).catch(() => {});
-}
-
-function getWaveformFillColor() {
-  const wrap = els.micWaveformWrap;
-  if (!wrap) return '#34d399';
-  const css = getComputedStyle(wrap);
-  const raw = css.getPropertyValue('--waveform-fill').trim();
-  return raw || '#34d399';
-}
-
-function ensureWaveformCanvas() {
-  const canvas = els.micWaveform;
-  if (!canvas) return null;
-
-  const dpr = window.devicePixelRatio || 1;
-  const rect = canvas.getBoundingClientRect();
-  const w = Math.max(1, Math.floor(rect.width * dpr));
-  const h = Math.max(1, Math.floor(rect.height * dpr));
-  if (canvas.width !== w || canvas.height !== h) {
-    canvas.width = w;
-    canvas.height = h;
-  }
-  if (!waveformCtx) waveformCtx = canvas.getContext('2d');
-  return waveformCtx;
-}
-
-function syncWaveformChrome() {
-  const wrap = els.micWaveformWrap;
-  if (!wrap) return;
-  wrap.dataset.active = liveModeActive ? 'true' : 'false';
-  wrap.dataset.state = els.btnLiveToggle?.dataset.state || MIC_STATE.OFF;
-}
-
-function drawWaveformBaseline(ctx, w, h, dpr) {
-  const centerY = h / 2;
-  ctx.strokeStyle = 'rgba(139, 156, 179, 0.18)';
-  ctx.lineWidth = Math.max(1, dpr);
-  ctx.beginPath();
-  ctx.moveTo(0, centerY);
-  ctx.lineTo(w, centerY);
-  ctx.stroke();
-}
-
-function clearMicWaveform() {
-  const canvas = els.micWaveform;
-  const ctx = ensureWaveformCanvas();
-  if (!ctx || !canvas) return;
-
-  const w = canvas.width;
-  const h = canvas.height;
-  const dpr = window.devicePixelRatio || 1;
-  ctx.clearRect(0, 0, w, h);
-  drawWaveformBaseline(ctx, w, h, dpr);
-}
-
-function drawMicWaveform(timeDomainBytes, { listening = true } = {}) {
-  const canvas = els.micWaveform;
-  const ctx = ensureWaveformCanvas();
-  if (!ctx || !canvas || !timeDomainBytes?.length) return;
-
-  const w = canvas.width;
-  const h = canvas.height;
-  const dpr = window.devicePixelRatio || 1;
-  const centerY = h / 2;
-  const amp = h * 0.44 * (listening ? 1 : 0.12);
-  const len = timeDomainBytes.length;
-  const sliceWidth = w / Math.max(1, len - 1);
-  const baseColor = getWaveformFillColor();
-
-  ctx.clearRect(0, 0, w, h);
-  drawWaveformBaseline(ctx, w, h, dpr);
-
-  ctx.beginPath();
-  ctx.moveTo(0, centerY);
-  for (let i = 0; i < len; i++) {
-    const v = (timeDomainBytes[i] - 128) / 128;
-    ctx.lineTo(i * sliceWidth, centerY - v * amp);
-  }
-  ctx.lineTo(w, centerY);
-  ctx.closePath();
-  ctx.fillStyle = colorWithAlpha(baseColor, listening ? 0.14 : 0.05);
-  ctx.fill();
-
-  ctx.beginPath();
-  for (let i = 0; i < len; i++) {
-    const v = (timeDomainBytes[i] - 128) / 128;
-    const y = centerY - v * amp;
-    if (i === 0) ctx.moveTo(0, y);
-    else ctx.lineTo(i * sliceWidth, y);
-  }
-  ctx.strokeStyle = colorWithAlpha(baseColor, listening ? 0.9 : 0.28);
-  ctx.lineWidth = Math.max(1.5, 2 * dpr);
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-  ctx.stroke();
-}
-
-function colorWithAlpha(color, alpha) {
-  const a = Math.min(1, Math.max(0, alpha));
-  const hex = color.match(/^#([0-9a-f]{6})$/i);
-  if (hex) {
-    const n = parseInt(hex[1], 16);
-    const r = (n >> 16) & 255;
-    const g = (n >> 8) & 255;
-    const b = n & 255;
-    return `rgba(${r}, ${g}, ${b}, ${a})`;
-  }
-  const rgb = color.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/i);
-  if (rgb) {
-    return `rgba(${rgb[1]}, ${rgb[2]}, ${rgb[3]}, ${a})`;
-  }
-  return color;
 }
 
 function startVadLoop() {
@@ -2224,22 +2136,19 @@ function startVadLoop() {
     const listening = !isSamplePlaying && !isListeningBlocked();
 
     if (isSamplePlaying) {
-      if (els.vadLevel) els.vadLevel.style.width = '100%';
-      drawMicWaveform(buf, { listening: false });
+      updateMicLevelVisual(100);
       vadAnimationId = requestAnimationFrame(tick);
       return;
     }
 
     if (!listening) {
-      els.vadLevel.style.width = '0%';
-      drawMicWaveform(buf, { listening: false });
+      updateMicLevelVisual(0);
       vadAnimationId = requestAnimationFrame(tick);
       return;
     }
 
     const rms = computeRms(buf);
     micEngine.tick(rms);
-    drawMicWaveform(buf, { listening: true });
     vadAnimationId = requestAnimationFrame(tick);
   };
   tick();
@@ -2252,7 +2161,7 @@ function beginSamplePlayback() {
   }
   isSamplePlaying = true;
   setMicState(MIC_STATE.SAMPLE, 'Đang phát mẫu...');
-  if (els.vadLevel) els.vadLevel.style.width = '100%';
+  updateMicLevelVisual(100);
 
   if (!liveModeActive) return;
 
@@ -2294,7 +2203,7 @@ function endSamplePlayback() {
     } else {
       setMicState(MIC_STATE.OFF, 'Micro tắt');
     }
-    if (els.vadLevel) els.vadLevel.style.width = '0%';
+    updateMicLevelVisual(0);
   }, SAMPLE_TAIL_MS);
 }
 
@@ -2722,11 +2631,6 @@ function bindEvents() {
   });
 
   window.addEventListener('beforeunload', () => stopLiveMode());
-  window.addEventListener('resize', () => {
-    waveformCtx = null;
-    if (liveModeActive) ensureWaveformCanvas();
-    else clearMicWaveform();
-  });
 }
 
 /** WAV 16kHz mono — đủ lớn cho upload evaluate (E2E) */

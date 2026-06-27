@@ -738,7 +738,18 @@ body {
   inset: 0;
   border-radius: 50%;
   border: 3px solid transparent;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.05s linear;
+}
+
+.mic-indicator[data-level-live="true"] .mic-ring {
+  animation: none;
+  transform: scale(var(--mic-level-scale, 1));
+  box-shadow: 0 0 calc(10px + var(--mic-level-glow, 0) * 22px)
+    rgba(46, 204, 113, calc(0.28 + var(--mic-level-glow, 0) * 0.55));
+}
+
+.mic-indicator[data-level-live="true"] .mic-icon {
+  transform: scale(calc(1 + var(--mic-level-glow, 0) * 0.1));
 }
 
 .mic-indicator[data-state="off"] .mic-icon { filter: grayscale(0.2); }
@@ -829,18 +840,23 @@ body {
 .vad-meter {
   width: 100%;
   max-width: none;
-  height: 6px;
+  height: 8px;
   background: var(--surface-2);
   border-radius: 999px;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .vad-level {
   height: 100%;
-  width: 0%;
+  width: 100%;
   background: var(--ok);
   border-radius: 999px;
-  transition: width 0.05s linear;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.05s linear;
 }
 
 .mic-indicator[data-state="processing"] .vad-level {
@@ -849,37 +865,6 @@ body {
 
 .mic-indicator[data-state="off"] .vad-level {
   background: var(--mis);
-}
-
-.mic-waveform-wrap {
-  --waveform-fill: var(--ok);
-  width: 100%;
-  height: 2.5rem;
-  margin-bottom: 0.65rem;
-  border-radius: 8px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  overflow: hidden;
-  opacity: 0.45;
-  transition: opacity 0.2s;
-}
-
-.mic-waveform-wrap[data-active="true"] {
-  opacity: 1;
-}
-
-.mic-waveform-wrap[data-state="sample"] {
-  --waveform-fill: var(--sample);
-}
-
-.mic-waveform-wrap[data-state="processing"] {
-  --waveform-fill: var(--warn);
-}
-
-.mic-waveform {
-  display: block;
-  width: 100%;
-  height: 100%;
 }
 
 .live-transcript-box {
