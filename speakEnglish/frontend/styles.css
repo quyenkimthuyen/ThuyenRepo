@@ -233,6 +233,10 @@ body {
   display: none !important;
 }
 
+.app.mode-reading .mode-not-reading {
+  display: none !important;
+}
+
 .app.mode-reading .word-hero,
 .app.mode-reading .quiz-summary-page,
 .app.mode-reading .toolbar-row {
@@ -1515,6 +1519,118 @@ body {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.95rem;
+}
+
+.passage-name-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.65rem;
+}
+
+.passage-name-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.passage-name-input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.passage-save-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.passage-library {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--surface-2);
+}
+
+.passage-library-title {
+  margin: 0 0 0.65rem;
+  font-size: 0.95rem;
+}
+
+.passage-library-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.passage-library-empty.hidden {
+  display: none;
+}
+
+.passage-library-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.passage-library-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.passage-library-item-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.passage-library-item-name {
+  display: block;
+  font-weight: 700;
+  font-size: 0.92rem;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.passage-library-item-meta {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.passage-library-item-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.35rem;
+}
+
+.passage-reading-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.passage-title {
+  font-size: 1rem;
+  line-height: 1.3;
+  word-break: break-word;
 }
 
 @media (max-width: 480px) {

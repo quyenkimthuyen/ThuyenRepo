@@ -36,6 +36,14 @@ import {
   serializePassageSession,
   deserializePassageSession,
 } from './js/passage.js';
+import {
+  loadPassageLibrary,
+  upsertPassage,
+  deletePassage,
+  getPassageById,
+  deriveDefaultPassageName,
+  formatPassageMeta,
+} from './js/passage-library.js';
 
 const STORAGE_KEY = 'pronouncelab_history';
 
@@ -109,6 +117,8 @@ let wordFailStreak = 0;
 let passAdvancePending = false;
 let passAdvancePayload = null;
 let passageSession = null;
+/** @type {{ version: number, passages: Array }} */
+let passageLibrary = loadPassageLibrary();
 
 const $ = (id) => document.getElementById(id);
 
@@ -148,6 +158,9 @@ const els = {
   settingApiUrl: $('setting-api-url'),
   settingPassScore: $('setting-pass-score'),
   settingTextPassScore: $('setting-text-pass-score'),
+  settingReadingPassScore: $('setting-reading-pass-score'),
+  settingReadingAutoplay: $('setting-reading-autoplay'),
+  settingReadingIdleSampleSec: $('setting-reading-idle-sample-sec'),
   serviceStatus: $('service-status'),
   btnLiveToggle: $('btn-live-toggle'),
   micStatusLabel: $('mic-status-label'),
@@ -168,7 +181,12 @@ const els = {
   passageImport: $('passage-import'),
   passageReading: $('passage-reading'),
   passageInput: $('passage-input'),
+  passageName: $('passage-name'),
+  passageSaveList: $('passage-save-list'),
   passageFile: $('passage-file'),
+  passageLibraryList: $('passage-library-list'),
+  passageLibraryEmpty: $('passage-library-empty'),
+  passageTitle: $('passage-title'),
   btnPassageStart: $('btn-passage-start'),
   btnPassageChange: $('btn-passage-change'),
   btnPassagePrev: $('btn-passage-prev'),
@@ -189,6 +207,7 @@ async function init() {
   loadEvalCache();
   loadSettings();
   restorePassageSession();
+  renderPassageLibraryList();
   await initVocabulary();
   applyPracticeModeUI();
   bindEvents();
@@ -311,8 +330,21 @@ function getTextPassThreshold() {
   return Math.min(100, Math.max(50, n));
 }
 
+function getReadingPassThreshold() {
+  const n = parseInt(els.settingReadingPassScore?.value, 10);
+  if (!Number.isFinite(n)) return 100;
+  return Math.min(100, Math.max(50, n));
+}
+
+function getPracticePassThreshold() {
+  if (isReadingMode()) return getReadingPassThreshold();
+  if (isTextMode()) return getTextPassThreshold();
+  return getPassThreshold();
+}
+
 function spokenMatchesTarget(spoken, target) {
-  if (isTextLikeMode()) return textMatchWithThreshold(spoken, target, getTextPassThreshold());
+  if (isTextMode()) return textMatchWithThreshold(spoken, target, getTextPassThreshold());
+  if (isReadingMode()) return textMatchWithThreshold(spoken, target, getReadingPassThreshold());
   return wordsMatch(spoken, target);
 }
 
@@ -787,6 +819,15 @@ function loadSettings() {
   els.settingApiUrl.value = saved.apiBaseUrl ?? config.apiBaseUrl ?? 'http://127.0.0.1:8000';
   els.settingPassScore.value = saved.passScore ?? config.thresholds?.overallPass ?? 80;
   els.settingTextPassScore.value = saved.textPassScore ?? config.thresholds?.textPass ?? 100;
+  if (els.settingReadingPassScore) {
+    els.settingReadingPassScore.value = saved.readingPassScore ?? config.thresholds?.readingPass ?? 100;
+  }
+  if (els.settingReadingAutoplay) {
+    els.settingReadingAutoplay.checked = saved.readingAutoPlaySample ?? config.readingAutoPlaySample ?? true;
+  }
+  if (els.settingReadingIdleSampleSec) {
+    els.settingReadingIdleSampleSec.value = saved.readingIdleSampleSec ?? config.readingIdleSampleSec ?? 10;
+  }
   els.settingQuizSize.value = saved.quizSize ?? config.defaultQuizSize ?? vocabularyManifest?.defaultQuizSize ?? 30;
   practiceMode = saved.practiceMode ?? config.practiceMode ?? PRACTICE_MODE.TEXT;
   if (els.settingTtsVoice && saved.ttsVoiceUri) {
@@ -804,6 +845,9 @@ function saveSettings() {
     apiBaseUrl: els.settingApiUrl.value,
     passScore: parseInt(els.settingPassScore.value, 10),
     textPassScore: parseInt(els.settingTextPassScore.value, 10),
+    readingPassScore: parseInt(els.settingReadingPassScore?.value, 10),
+    readingAutoPlaySample: els.settingReadingAutoplay?.checked,
+    readingIdleSampleSec: parseInt(els.settingReadingIdleSampleSec?.value, 10) || 0,
     topicId: els.settingTopic?.value || vocabularyManifest?.defaultTopicId || '',
     quizSize: getQuizSize(),
     practiceMode,
@@ -903,6 +947,53 @@ function setPracticeMode(mode) {
   }
 }
 
+function escapeHtmlText(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function renderPassageLibraryList() {
+  const listEl = els.passageLibraryList;
+  if (!listEl) return;
+
+  const items = passageLibrary.passages || [];
+  els.passageLibraryEmpty?.classList.toggle('hidden', items.length > 0);
+
+  listEl.innerHTML = items.map((passage) => {
+    const { sentenceCount, dateLabel } = formatPassageMeta(passage);
+    const meta = `${sentenceCount} câu${dateLabel ? ` · ${dateLabel}` : ''}`;
+    return `<li class="passage-library-item" data-passage-id="${escapeHtmlAttr(passage.id)}">
+      <div class="passage-library-item-main">
+        <span class="passage-library-item-name">${escapeHtmlText(passage.name)}</span>
+        <span class="passage-library-item-meta">${escapeHtmlText(meta)}</span>
+      </div>
+      <div class="passage-library-item-actions">
+        <button type="button" class="btn btn-ghost btn-sm btn-passage-open" data-passage-id="${escapeHtmlAttr(passage.id)}">Mở</button>
+        <button type="button" class="btn btn-ghost btn-sm btn-passage-delete" data-passage-id="${escapeHtmlAttr(passage.id)}" title="Xóa">✕</button>
+      </div>
+    </li>`;
+  }).join('');
+}
+
+function loadSavedPassage(passageId, options = {}) {
+  const saved = getPassageById(passageLibrary, passageId);
+  if (!saved) {
+    showLiveHint('Không tìm thấy đoạn văn trong danh sách', 'warn');
+    return false;
+  }
+  if (els.passageInput) els.passageInput.value = saved.rawText;
+  if (els.passageName) els.passageName.value = saved.name;
+  return startPassageSession(saved.rawText, {
+    name: saved.name,
+    passageId: saved.id,
+    saveToLibrary: false,
+    ...options,
+  });
+}
+
 function restorePassageSession() {
   try {
     const raw = sessionStorage.getItem(PASSAGE_SESSION_KEY);
@@ -948,6 +1039,9 @@ function updatePassageUI() {
   const total = passageSession.sentences.length;
   const current = passageSession.currentIndex + 1;
   const sentence = getCurrentPassageSentence();
+  if (els.passageTitle) {
+    els.passageTitle.textContent = passageSession.name || deriveDefaultPassageName(passageSession.rawText);
+  }
   if (els.passageProgress) {
     const done = passageSession.sentences.filter((s) => s.completed).length;
     els.passageProgress.textContent = isPassageComplete(passageSession)
@@ -977,11 +1071,30 @@ function refreshPassageFromSpoken(spoken) {
   updatePassageUI();
 }
 
-function startPassageSession(rawText) {
+function startPassageSession(rawText, options = {}) {
   const text = String(rawText || '').trim();
   if (!text) {
     showLiveHint('Vui lòng nhập hoặc chọn đoạn văn tiếng Anh', 'warn');
     return false;
+  }
+
+  const saveToLibrary = options.saveToLibrary ?? Boolean(els.passageSaveList?.checked);
+  const requestedName = options.name ?? els.passageName?.value ?? '';
+  let passageId = options.passageId ?? null;
+  let passageName = requestedName.trim() || deriveDefaultPassageName(text);
+
+  if (saveToLibrary) {
+    const result = upsertPassage(passageLibrary, {
+      id: passageId,
+      name: passageName,
+      rawText: text,
+    });
+    passageLibrary = result.library;
+    if (result.passage) {
+      passageId = result.passage.id;
+      passageName = result.passage.name;
+    }
+    renderPassageLibraryList();
   }
 
   passageSession = createPassageSession(text);
@@ -990,6 +1103,10 @@ function startPassageSession(rawText) {
     showLiveHint('Không tách được câu nào — thử thêm dấu chấm hoặc xuống dòng', 'warn');
     return false;
   }
+
+  passageSession.passageId = passageId;
+  passageSession.name = passageName;
+  if (els.passageName) els.passageName.value = passageName;
 
   persistPassageSession();
   updatePassageUI();
@@ -1006,10 +1123,8 @@ function startPassageSession(rawText) {
 function showPassageImport() {
   passageSession = null;
   persistPassageSession();
-  if (els.passageInput && !els.passageInput.value.trim()) {
-    els.passageInput.value = '';
-  }
   updatePassageUI();
+  renderPassageLibraryList();
   clearLiveTranscript();
   hideLiveHint();
 }
@@ -1068,6 +1183,7 @@ function applyPracticeModeUI() {
 
   if (readingActive) {
     els.passagePanel?.classList.remove('hidden');
+    renderPassageLibraryList();
     updatePassageUI();
   } else {
     els.passagePanel?.classList.add('hidden');
@@ -1252,13 +1368,23 @@ function flushPassAdvance() {
 }
 
 function shouldAutoplaySample() {
-  return Boolean(els.settingAutoplay?.checked && liveModeActive);
+  if (!liveModeActive) return false;
+  if (isReadingMode()) return Boolean(els.settingReadingAutoplay?.checked);
+  return Boolean(els.settingAutoplay?.checked);
 }
 
 function getIdleSampleSec() {
-  const sec = parseInt(els.settingIdleSampleSec?.value, 10);
+  const input = isReadingMode()
+    ? els.settingReadingIdleSampleSec
+    : els.settingIdleSampleSec;
+  const sec = parseInt(input?.value, 10);
   if (!Number.isFinite(sec) || sec <= 0) return 0;
   return Math.min(120, sec);
+}
+
+function hasPracticeTarget() {
+  if (isReadingMode()) return Boolean(getCurrentPassageSentence());
+  return Boolean(words.length);
 }
 
 function clearIdleSampleTimer() {
@@ -1281,11 +1407,11 @@ function noteUserInput() {
 function scheduleIdleSample() {
   clearIdleSampleTimer();
   const sec = getIdleSampleSec();
-  if (!sec || !words.length || !idleSampleArmed || !shouldAutoplaySample()) return;
+  if (!sec || !hasPracticeTarget() || !idleSampleArmed || !shouldAutoplaySample()) return;
 
   idleSampleTimer = setTimeout(() => {
     idleSampleTimer = null;
-    if (!idleSampleArmed || !words.length) return;
+    if (!idleSampleArmed || !hasPracticeTarget()) return;
     if (isSamplePlaying || isAdvancing || scoreApiBusy) {
       scheduleIdleSample();
       return;
@@ -2329,7 +2455,7 @@ async function processReadingUtterance(spoken) {
 
   if (!spokenMatchesTarget(word, sentence.text)) {
     const score = textSimilarityPercent(word, sentence.text);
-    const need = getTextPassThreshold();
+    const need = getReadingPassThreshold();
     const matched = countMatchedPrefixTokens(word, sentence.text);
     const total = getSentenceWordCount(sentence);
     const display = extractPracticeMatchSnippet(word, sentence.text) || word;
@@ -2345,7 +2471,7 @@ async function processReadingUtterance(spoken) {
   refreshMicAvailabilityUi();
   resetWordFailStreak();
   const score = textSimilarityPercent(word, sentence.text);
-  const need = getTextPassThreshold();
+  const need = getReadingPassThreshold();
   showLiveHint(
     score >= 100 ? `✓ Đúng câu!` : `✓ Câu ~${score}% (≥${need}%)`,
     'ok',
@@ -2425,7 +2551,7 @@ function updateRealtimeHint() {
 
     if (spokenMatchesTarget(spoken, sentence.text)) {
       const score = textSimilarityPercent(spoken, sentence.text);
-      const need = getTextPassThreshold();
+      const need = getReadingPassThreshold();
       const msg = score >= 100
         ? `✓ "${display}" — khớp cả câu!`
         : `✓ "${display}" ~${score}% (≥${need}%)`;
@@ -2434,7 +2560,7 @@ function updateRealtimeHint() {
       showLiveHint(`✓ ${matched}/${total} từ đúng — tiếp tục đọc`, 'ok');
     } else {
       const score = textSimilarityPercent(spoken, sentence.text);
-      const need = getTextPassThreshold();
+      const need = getReadingPassThreshold();
       showLiveHint(`✗ "${display}" — ${score}% (cần ≥${need}%)`, 'mis');
     }
     return;
@@ -3027,6 +3153,20 @@ function bindEvents() {
   els.btnPassageStart?.addEventListener('click', () => {
     startPassageSession(els.passageInput?.value || '');
   });
+  els.passageLibraryList?.addEventListener('click', (event) => {
+    const openBtn = event.target.closest('.btn-passage-open');
+    const deleteBtn = event.target.closest('.btn-passage-delete');
+    if (openBtn?.dataset.passageId) {
+      loadSavedPassage(openBtn.dataset.passageId);
+      return;
+    }
+    if (deleteBtn?.dataset.passageId) {
+      const id = deleteBtn.dataset.passageId;
+      if (passageSession?.passageId === id) showPassageImport();
+      passageLibrary = deletePassage(passageLibrary, id);
+      renderPassageLibraryList();
+    }
+  });
   els.btnPassageChange?.addEventListener('click', () => {
     showPassageImport();
   });
@@ -3044,6 +3184,9 @@ function bindEvents() {
     try {
       const text = await file.text();
       if (els.passageInput) els.passageInput.value = text;
+      if (els.passageName && !els.passageName.value.trim()) {
+        els.passageName.value = file.name.replace(/\.txt$/i, '').replace(/[_-]+/g, ' ');
+      }
       startPassageSession(text);
     } catch {
       showLiveHint('Không đọc được file — thử file .txt khác', 'warn');
@@ -3105,6 +3248,15 @@ function bindEvents() {
   els.settingAutoplay?.addEventListener('change', () => {
     if (shouldAutoplaySample()) armIdleSampleTimer();
     else disarmIdleSampleTimer();
+  });
+
+  els.settingReadingAutoplay?.addEventListener('change', () => {
+    if (shouldAutoplaySample()) armIdleSampleTimer();
+    else disarmIdleSampleTimer();
+  });
+
+  els.settingReadingIdleSampleSec?.addEventListener('input', () => {
+    if (idleSampleArmed) armIdleSampleTimer();
   });
 
   window.addEventListener('beforeunload', () => stopLiveMode());
@@ -3241,14 +3393,20 @@ window.__pronounceLabTest = {
     await processTextUtterance(w.word);
     return { before, after: currentIndex, word: words[currentIndex]?.word };
   },
-  startPassage: (text) => {
-    const ok = startPassageSession(text);
+  startPassage: (text, options = {}) => {
+    const ok = startPassageSession(text, options);
     return {
       ok,
       sentenceCount: passageSession?.sentences?.length ?? 0,
       currentIndex: passageSession?.currentIndex ?? 0,
+      passageId: passageSession?.passageId ?? null,
+      name: passageSession?.name ?? null,
     };
   },
+  getPassageLibrary: () => ({
+    count: passageLibrary.passages.length,
+    passages: passageLibrary.passages.map((p) => ({ id: p.id, name: p.name })),
+  }),
   simulateReadingPass: async (spoken) => {
     if (!isReadingMode()) return { error: 'not_reading_mode' };
     const sentence = getCurrentPassageSentence();
@@ -3267,6 +3425,9 @@ window.__pronounceLabTest = {
     sentenceCount: passageSession?.sentences?.length ?? 0,
     currentSentence: getCurrentPassageSentence()?.text ?? null,
     complete: passageSession ? isPassageComplete(passageSession) : false,
+    passageId: passageSession?.passageId ?? null,
+    name: passageSession?.name ?? null,
+    readingPassThreshold: getReadingPassThreshold(),
   }),
   getIdleSampleState: () => ({
     armed: idleSampleArmed,

@@ -31,6 +31,8 @@ export function createPassageSession(rawText) {
 
   return {
     rawText: trimmed,
+    name: '',
+    passageId: null,
     sentences,
     currentIndex: 0,
   };
@@ -110,6 +112,8 @@ export function serializePassageSession(session) {
   if (!session?.rawText) return null;
   return {
     rawText: session.rawText,
+    name: session.name || '',
+    passageId: session.passageId || null,
     currentIndex: session.currentIndex,
     sentences: session.sentences.map((s) => ({
       text: s.text,
@@ -122,6 +126,8 @@ export function serializePassageSession(session) {
 export function deserializePassageSession(data) {
   if (!data?.rawText) return null;
   const session = createPassageSession(data.rawText);
+  session.name = data.name || '';
+  session.passageId = data.passageId || null;
   data.sentences?.forEach((saved, i) => {
     const sentence = session.sentences[i];
     if (!sentence || sentence.text !== saved.text) return;

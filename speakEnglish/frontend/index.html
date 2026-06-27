@@ -48,6 +48,16 @@
         <div id="passage-import" class="passage-import">
           <h2 class="passage-import-title">Import đoạn văn tiếng Anh</h2>
           <p class="passage-import-hint">Dán văn bản hoặc chọn file .txt — chương trình tách từng câu để bạn đọc theo.</p>
+          <label class="passage-name-row" for="passage-name">
+            <span class="passage-name-label">Tên đoạn văn</span>
+            <input
+              type="text"
+              id="passage-name"
+              class="passage-name-input"
+              maxlength="80"
+              placeholder="VD: Daily conversation, News article…"
+            >
+          </label>
           <textarea
             id="passage-input"
             class="passage-input"
@@ -56,16 +66,28 @@
             aria-label="Nội dung đoạn văn"
           ></textarea>
           <div class="passage-import-actions">
+            <label class="passage-save-row">
+              <input type="checkbox" id="passage-save-list" checked>
+              Lưu vào danh sách
+            </label>
             <label class="btn btn-ghost btn-sm passage-file-label">
               📄 Chọn file .txt
               <input type="file" id="passage-file" accept=".txt,text/plain" hidden>
             </label>
             <button id="btn-passage-start" class="btn btn-primary" type="button">Bắt đầu đọc</button>
           </div>
+          <section class="passage-library" aria-label="Đoạn văn đã lưu">
+            <h3 class="passage-library-title">Đoạn đã lưu</h3>
+            <p id="passage-library-empty" class="passage-library-empty">Chưa có đoạn nào được lưu.</p>
+            <ul id="passage-library-list" class="passage-library-list"></ul>
+          </section>
         </div>
         <div id="passage-reading" class="passage-reading hidden">
           <div class="passage-reading-head">
-            <span id="passage-progress" class="passage-progress">Câu 1 / 1</span>
+            <div class="passage-reading-meta">
+              <strong id="passage-title" class="passage-title">—</strong>
+              <span id="passage-progress" class="passage-progress">Câu 1 / 1</span>
+            </div>
             <button id="btn-passage-change" class="btn btn-ghost btn-sm" type="button" title="Import đoạn văn khác">✎ Đổi đoạn</button>
           </div>
           <div id="passage-display" class="passage-display" aria-live="polite"></div>
@@ -191,7 +213,7 @@
 
     <aside id="settings-panel" class="settings-panel hidden">
       <h3>Cài đặt</h3>
-      <fieldset class="settings-group">
+      <fieldset class="settings-group mode-not-reading">
         <legend>Bài quiz</legend>
         <label class="setting-row">
           Chủ đề
@@ -204,7 +226,7 @@
       </fieldset>
       <fieldset class="settings-group">
         <legend>Luyện tập</legend>
-        <label class="setting-row">
+        <label class="setting-row mode-not-reading">
           <input type="checkbox" id="setting-autoplay" checked>
           Tự phát mẫu khi mở từ
         </label>
@@ -213,7 +235,7 @@
           <select id="setting-tts-voice" class="setting-select" aria-label="Giọng đọc mẫu"></select>
           <span class="setting-hint">Khi không có file audio mẫu · giọng tiếng Anh của trình duyệt</span>
         </label>
-        <label class="setting-row">
+        <label class="setting-row mode-not-reading">
           Tự phát mẫu nếu im lặng (giây)
           <input type="number" id="setting-idle-sample-sec" value="10" min="0" max="120" step="1">
           <span class="setting-hint">0 = tắt · không nghe thấy bạn đọc</span>
@@ -239,6 +261,23 @@
           Ngưỡng đạt chấm IPA (%)
           <input type="number" id="setting-pass-score" value="80" min="50" max="100" step="1">
           <span class="setting-hint">Đạt ≥ ngưỡng này → tự sang từ tiếp</span>
+        </label>
+      </fieldset>
+      <fieldset class="settings-group mode-reading-only">
+        <legend>Đọc đoạn văn</legend>
+        <label class="setting-row">
+          Ngưỡng khớp câu (%)
+          <input type="number" id="setting-reading-pass-score" value="100" min="50" max="100" step="1">
+          <span class="setting-hint">100% = đúng chính tả; hạ xuống cho SR gần đúng / từ trùng âm</span>
+        </label>
+        <label class="setting-row">
+          <input type="checkbox" id="setting-reading-autoplay" checked>
+          Tự phát mẫu khi mở câu
+        </label>
+        <label class="setting-row">
+          Tự phát mẫu nếu im lặng (giây)
+          <input type="number" id="setting-reading-idle-sample-sec" value="10" min="0" max="120" step="1">
+          <span class="setting-hint">0 = tắt · không nghe thấy bạn đọc</span>
         </label>
       </fieldset>
       <fieldset class="settings-group mode-score-only">
