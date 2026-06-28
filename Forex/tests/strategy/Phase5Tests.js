@@ -11,6 +11,7 @@ import { PinBarRejectionStrategy } from '../../src/strategies/PinBarRejectionStr
 import { WyckoffSpringUtadStrategy } from '../../src/strategies/WyckoffSpringUtadStrategy.js';
 import { WyckoffRangeTestStrategy } from '../../src/strategies/WyckoffRangeTestStrategy.js';
 import { SessionLiquiditySweepStrategy } from '../../src/strategies/SessionLiquiditySweepStrategy.js';
+import { BtcDailySweepStrategy } from '../../src/strategies/BtcDailySweepStrategy.js';
 import { createContext } from '../../src/strategy/StrategyContext.js';
 
 const H = 3600000;
@@ -511,6 +512,38 @@ const SLS_PARAMS = {
   candles.push(cUtc(2024, 5, 10, 8, 1.0858, 1.08612, 1.0854, 1.08555, 1200));
   const signals = runScan(new SessionLiquiditySweepStrategy(), candles, 'EURUSD', SLS_PARAMS);
   assert('SLS-03: Grab too shallow → no signal', signals.length === 0);
+}
+
+const BDS_PARAMS = { grabPips: 50, wickRatio: 0.5, rr: 2, minDayRangePips: 0 };
+
+{
+  const candles = [];
+  candles.push(cUtc(2024, 5, 7, 12, 49300, 49800, 49200, 49700, 1000));
+  candles.push(cUtc(2024, 5, 8, 12, 49400, 50000, 49000, 49800, 1000));
+  candles.push(cUtc(2024, 5, 9, 12, 49900, 50120, 49800, 49850, 1200));
+  const signals = runScan(new BtcDailySweepStrategy(), candles, 'BTCUSD', BDS_PARAMS);
+  assert('BDS-01: Prev-day high sweep → 1 SHORT', signals.length === 1 && signals[0].direction === 'short');
+}
+
+{
+  const candles = [];
+  candles.push(cUtc(2024, 5, 7, 12, 49990, 50010, 49985, 50000, 1000));
+  candles.push(cUtc(2024, 5, 8, 12, 49995, 50010, 49990, 50000, 1000));
+  candles.push(cUtc(2024, 5, 9, 12, 49900, 50120, 49800, 49850, 1200));
+  const signals = runScan(new BtcDailySweepStrategy(), candles, 'BTCUSD', {
+    ...BDS_PARAMS,
+    minDayRangePips: 400,
+  });
+  assert('BDS-02: Prev-day range too narrow → no signal', signals.length === 0);
+}
+
+{
+  const candles = [];
+  candles.push(cUtc(2024, 5, 7, 12, 49300, 49800, 49200, 49700, 1000));
+  candles.push(cUtc(2024, 5, 8, 12, 49400, 50000, 49000, 49800, 1000));
+  candles.push(cUtc(2024, 5, 9, 12, 49950, 50030, 49850, 49900, 1200));
+  const signals = runScan(new BtcDailySweepStrategy(), candles, 'BTCUSD', BDS_PARAMS);
+  assert('BDS-03: Grab too shallow → no signal', signals.length === 0);
 }
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);

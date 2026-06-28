@@ -78,9 +78,9 @@ export const CONTEXT_DOC_SECTIONS = [
           { title: 'Dữ liệu nến', body: 'Data Manager — import, Reload Default, Cập nhật/Xóa theo Symbol+TF.' },
           { title: 'Chỉnh & (tuỳ chọn) quét', body: 'Strategies — Save tham số; Run nếu muốn lọc signal / xem Chart trước (không bắt buộc trước Simulation).' },
           { title: 'Mô phỏng lệnh', body: 'Simulation — tự quét + spread/SL/TP; kết quả cho Statistics & Reports.' },
-          { title: 'Lọc & kiểm chứng', body: 'AI Signals tab Danh sách — Min score → bấm signal → Chart.' },
-          { title: 'Đánh giá', body: 'Statistics + Reports; AI Signals tab Đối chiếu Simulation sau Ctrl+5.' },
-          { title: 'Tối ưu & kiểm định', body: 'Optimizer — thử cài đặt, Walk Forward, Monte Carlo.' },
+          { title: 'Lọc & kiểm chứng', body: 'AI Signals — Min score → bấm signal → Chart xem setup.' },
+          { title: 'Tối ưu & kiểm định', body: 'Optimizer — Grid Search → Sensitivity → Walk Forward → Monte Carlo.' },
+          { title: 'Đánh giá', body: 'Ưu tiên Expectancy + đủ lệnh; WF OOS ổn định quan trọng hơn Net in-sample.' },
         ],
       },
       {
@@ -97,7 +97,7 @@ export const CONTEXT_DOC_SECTIONS = [
         items: [
           `Cặp: ${Config.SYMBOLS.join(', ')}`,
           `Khung: ${Config.TIMEFRAMES.join(', ')}`,
-          'Chiến lược: Break & Retest, EMA Pullback, Liquidity Grab, Session Liquidity Sweep, Inside Bar, Pin Bar, Wyckoff Spring/UTAD, Wyckoff Range Test',
+          'Chiến lược: Break & Retest, EMA Pullback, Liquidity Grab, Session Liquidity Sweep, BTC Daily Sweep, Inside Bar, Pin Bar, Wyckoff Spring/UTAD, Wyckoff Range Test',
         ],
       },
     ],
@@ -738,6 +738,27 @@ export const CONTEXT_DOC_SECTIONS = [
         text: 'Chiến lược selective — kỳ vọng vài chục lệnh/năm trên H1, không phải scalping. Luôn kiểm tra OOS trước khi áp param vào live.',
       },
 
+      { type: 'h2', text: '9. BTC Daily Sweep (btc-daily-sweep)' },
+      {
+        type: 'p',
+        text: 'Chiến lược tối giản cho **BTCUSD D1**: fade quét **đỉnh/đáy ngày UTC hôm trước** — 1 nến sweep + rejection, không phiên Á/London, không swing, không indicator. Chỉ **4 param**.',
+      },
+      {
+        type: 'table',
+        headers: ['Tham số', 'Mặc định', 'Tác dụng'],
+        rows: [
+          ['grabPips', '100', 'Quét vượt prev-day level ($100 trên BTC)'],
+          ['wickRatio', '0.6', 'Râu rejection trên nến sweep'],
+          ['rr', '2', 'Risk-reward'],
+          ['minDayRangePips', '700', 'Bỏ ngày hôm qua range quá hẹp (sideway)'],
+        ],
+      },
+      {
+        type: 'callout',
+        variant: 'tip',
+        text: 'Grid EURUSD H1 (Session Sweep) và BTC D1 (Daily Sweep): Suggest from data → Grid 4 param → Walk Forward. Backtest mặc định BTC D1 ~82 lệnh, Net ~$16k in-sample (2017–2026) — WF OOS vẫn cần kiểm tra.',
+      },
+
       { type: 'h3', text: 'Nến xác nhận (dùng chung các strategy)' },
       {
         type: 'table',
@@ -1094,7 +1115,7 @@ export const CONTEXT_DOC_SECTIONS = [
         type: 'table',
         headers: ['Thành phần', 'Ý nghĩa'],
         rows: [
-          ['Strategy', 'Chiến lược cần thử — 8 setup: Break & Retest, EMA Pullback, Liquidity Grab, Session Liquidity Sweep, Inside Bar Breakout, Pin Bar Rejection, Wyckoff Spring/UTAD, Wyckoff Range Test'],
+          ['Strategy', 'Chiến lược cần thử — 9 setup (gồm BTC Daily Sweep cho BTC D1)'],
           ['Symbol / TF', 'Chỉ hiện cặp đã có nến — phải khớp data bạn đang nghiên cứu'],
         ],
       },
@@ -1354,7 +1375,7 @@ export const CONTEXT_DOC_SECTIONS = [
           ['Compare vs all signals', 'So sánh backtest: toàn bộ vs đã lọc AI'],
         ],
       },
-      { type: 'h3', text: '4. Tám chiến lược (Strategies)' },
+      { type: 'h3', text: '4. Chín chiến lược (Strategies)' },
       {
         type: 'table',
         headers: ['ID / Tên', 'Hiểu đơn giản'],
@@ -1362,7 +1383,8 @@ export const CONTEXT_DOC_SECTIONS = [
           ['break-retest — Break & Retest', 'Phá swing → chờ retest level → entry (2 pha)'],
           ['ema-pullback — EMA Pullback', 'Trend EMA20/50 → hồi chạm EMA → entry cùng nến'],
           ['liquidity-grab — Liquidity Grab', 'Quét swing high/low + rejection — entry ngay 1 nến'],
-          ['session-liquidity-sweep — Session Liquidity Sweep', 'Quét biên phiên Á/London/swing — chờ nến confirm (2 pha)'],
+          ['session-liquidity-sweep — Session Liquidity Sweep', 'Quét biên phiên Á/London — chờ nến confirm (2 pha)'],
+          ['btc-daily-sweep — BTC Daily Sweep', 'Quét đỉnh/đáy ngày UTC hôm trước — 1 nến (BTC D1)'],
           ['inside-bar-breakout — Inside Bar Breakout', 'Nến mẹ + inside bar → break theo trend EMA'],
           ['pin-bar-rejection — Pin Bar Rejection', 'Pin bar chạm swing — không cần quét vượt level'],
           ['wyckoff-spring-utad — Wyckoff Spring/UTAD', 'Quét biên range tích lũy → đóng lại trong range'],

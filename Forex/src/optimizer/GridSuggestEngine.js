@@ -51,6 +51,7 @@ const STRATEGY_CHECK_KEYS = Object.freeze({
   'inside-bar-breakout': ['motherMinRangePips', 'breakoutBufferPips', 'rr'],
   'liquidity-grab': ['swingLookback', 'grabPips', 'rr'],
   'session-liquidity-sweep': ['grabPips', 'wickRatio', 'minVolatilityRatio', 'rr', 'sessionEndHour'],
+  'btc-daily-sweep': ['grabPips', 'wickRatio', 'minDayRangePips', 'rr'],
   'wyckoff-range-test': ['minRangePips', 'rangeLookback', 'rr'],
   'wyckoff-spring-utad': ['minRangePips', 'sweepPips', 'rr'],
 });
@@ -210,7 +211,8 @@ export function suggestGridString(def, stats, key = def.key) {
     testTolerancePips: () => formatRange(0.15 * R, 0.4 * R, 0.5, def),
     motherMinRangePips: () => formatRange(0.5 * R, 1.5 * R, 1, def),
     minRangePips: () => formatRange(0.8 * R, 2.0 * R, 1, def),
-    grabPips: () => formatRange(0.2 * R, 0.6 * R, 0.5, def),
+    grabPips: () => formatRange(0.04 * R, 0.12 * R, 10, def),
+    minDayRangePips: () => formatRange(0.25 * R, 0.6 * R, 50, def),
     minVolatilityRatio: () => formatRange(0.8, 1.2, 0.1, def),
     sweepPips: () => formatRange(0.2 * R, 0.8 * R, 0.5, def),
     rallyMinPips: () => formatRange(0.5 * R, 1.5 * R, 1, def),
