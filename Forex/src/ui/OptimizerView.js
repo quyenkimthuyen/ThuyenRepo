@@ -372,15 +372,10 @@ class OptimizerViewImpl {
     content.querySelector('#opt-run-grid')?.addEventListener('click', () => this.#runGrid());
     content.querySelector('#opt-suggest-grid')?.addEventListener('click', () => this.#suggestGridFromData(strategyId, schema));
     content.querySelector('#opt-restore-grid')?.addEventListener('click', () => {
-      this.#gridFormByStrategy[strategyId] = this.#buildDefaultGridFormState(schema);
-      this.#renderGridPanel(content);
-      const last = this.#gridResult ?? ResearchEngine.getLastGridResult();
-      const results = this.#container?.querySelector('#opt-results');
-      if (results) {
-        results.innerHTML = '';
-        if (last) this.#renderGridResults(last);
-        else this.#renderGridResultsPlaceholder(results);
-      }
+      const defaults = this.#buildDefaultGridFormState(schema);
+      this.#gridFormByStrategy[strategyId] = defaults;
+      this.#applyGridFormStateToDom(defaults, schema);
+      this.#setSuggestStatus('');
       bus.emit(Events.LOG_MESSAGE, {
         message: 'Grid Search: restored default parameter grid',
         level: 'info',
@@ -410,6 +405,30 @@ class OptimizerViewImpl {
    * @property {string} [suggestMessage]
    * @property {boolean} [suggestError]
    */
+
+  /**
+   * @param {GridFormState} formState
+   * @param {import('../strategy/ParameterSchema.js').ParamDefinition[]} schema
+   */
+  #applyGridFormStateToDom(formState, schema) {
+    for (const def of schema.filter((d) => d.type === 'number' || d.type === 'integer')) {
+      const saved = formState.params[def.key];
+      const check = this.#container?.querySelector(`.opt-param-check[data-key="${def.key}"]`);
+      const input = this.#container?.querySelector(`.opt-param-values[data-key="${def.key}"]`);
+      if (check) {
+        /** @type {HTMLInputElement} */ (check).checked = saved?.checked ?? def.key === 'rr';
+      }
+      if (input) {
+        /** @type {HTMLInputElement} */ (input).value = saved?.values ?? defaultGridForParam(def).join(',');
+      }
+    }
+
+    const rank = /** @type {HTMLSelectElement|null} */ (this.#container?.querySelector('#opt-rank'));
+    if (rank) rank.value = formState.rankMetric;
+
+    const autoWf = /** @type {HTMLInputElement|null} */ (this.#container?.querySelector('#opt-auto-wf'));
+    if (autoWf) autoWf.checked = formState.autoWalkForward;
+  }
 
   /**
    * @param {import('../strategy/ParameterSchema.js').ParamDefinition[]} schema
