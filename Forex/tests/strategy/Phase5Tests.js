@@ -465,7 +465,7 @@ function buildVolatilityWarmup(count, startDay = 1) {
 const SLS_PARAMS = {
   asianEndHour: 7,
   londonEndHour: 12,
-  sessionStartHour: 6,
+  sessionStartHour: 7,
   sessionEndHour: 20,
   grabPips: 5,
   wickRatio: 0.55,
@@ -474,7 +474,12 @@ const SLS_PARAMS = {
   swingLookback: 8,
   minVolatilityRatio: 0.8,
   volatilityLookback: 14,
-  usePrevAsian: true,
+  usePrevAsian: false,
+  useSwingLevels: false,
+  minSessionRangePips: 0,
+  maxVolatilityRatio: 0,
+  confirmClosePips: 0,
+  tradeCooldownBars: 0,
 };
 
 {

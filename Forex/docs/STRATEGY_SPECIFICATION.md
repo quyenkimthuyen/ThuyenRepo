@@ -687,7 +687,7 @@ closeInsideRatio >= minInsideRatio
 ## 10. Strategy 8 — Session Liquidity Sweep
 
 **Plugin ID:** `session-liquidity-sweep`  
-**Version:** 1.1.0  
+**Version:** 1.2.0  
 **Category:** Price Action — session structure (EURUSD H1–oriented, works on any symbol/TF)  
 **Ý tưởng:** Quét thanh khoản tại biên phiên (Asian / London / swing) trong khung giờ active, **chờ nến xác nhận** (2-phase) rồi fade false breakout. Khác Liquidity Grab: nhiều nguồn level + pending confirmation + lọc phiên/volatility.
 
@@ -700,13 +700,18 @@ closeInsideRatio >= minInsideRatio
 | `sessionStartHour` | 6 | Chỉ xét sweep/entry từ giờ UTC này |
 | `sessionEndHour` | 20 | Không xét sau giờ UTC này |
 | `grabPips` | 5 | Pip tối thiểu vượt level để coi là sweep |
-| `wickRatio` | 0.65 | Tỷ lệ wick tối thiểu trên **nến sweep** |
-| `confirmMaxBars` | 2 | Số nến tối đa chờ xác nhận sau sweep |
+| `wickRatio` | 0.6 | Tỷ lệ wick tối thiểu trên **nến sweep** |
+| `confirmMaxBars` | 1 | Số nến tối đa chờ xác nhận sau sweep |
 | `rr` | 1.5 | Risk-reward |
-| `swingLookback` | 10 | Swing high/low fallback |
-| `minVolatilityRatio` | 0.95 | Avg range 14 nến ≥ ratio × median 50 cửa sổ |
+| `swingLookback` | 10 | Swing lookback (khi `useSwingLevels=true`) |
+| `minVolatilityRatio` | 1.1 | Avg range 14 nến ≥ ratio × median 50 cửa sổ |
 | `volatilityLookback` | 14 | Lookback tính biến động |
 | `usePrevAsian` | true | Dùng Asian range **ngày hôm trước** trong London sớm |
+| `useSwingLevels` | false | Fallback swing high/low (grid: tắt = lãi tốt hơn) |
+| `minSessionRangePips` | 0 | Bỏ qua range phiên quá hẹp (0 = tắt) |
+| `maxVolatilityRatio` | 0 | Cap biến động cực đoan (0 = tắt) |
+| `confirmClosePips` | 0 | Close xác nhận phải vượt level thêm X pip (0 = tắt) |
+| `tradeCooldownBars` | 0 | Số nến tối thiểu giữa hai entry |
 
 ### 10.2 Session ranges (UTC)
 
@@ -810,7 +815,7 @@ Bar 9 (confirm): high = 1.08580, close = 1.08520, bearish → SHORT entry 1.0852
 
 ### 10.10 Gợi ý tối ưu (EURUSD H1)
 
-Grid search gợi ý (in-sample Dukascopy 2023–2026): `grabPips=5`, `wickRatio=0.65`, `confirmMaxBars=2`, `minVolatilityRatio=0.95`, `rr=1.5`, `swingLookback=10` → ~64 lệnh, WR ~52%, PF ~1.24. **Phải walk-forward trước khi tin.**
+Grid search gợi ý (in-sample Dukascopy EURUSD H1 2023–2026, v1.2): `grabPips=5`, `wickRatio=0.6`, `confirmMaxBars=1`, `minVolatilityRatio=1.1`, `rr=1.5`, `useSwingLevels=false` → ~23 lệnh, WR ~65%, Net ~\$388, PF ~2.47. **Walk-forward OOS gần hòa — vẫn phải kiểm tra lại trước khi tin.**
 
 ---
 
