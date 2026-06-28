@@ -138,6 +138,13 @@ function inferSetupFromSignal(signal) {
       steps: ['Quét liquidity ? rejection ? entry'],
     };
   }
+  if (signal.strategyId === 'session-liquidity-sweep' && price != null) {
+    return {
+      levels: [{ kind: 'liquidity', label: 'Session range', price }],
+      markers: [{ label: 'Session sweep', time, role: 'sweep' }],
+      steps: ['Asian range ? sweep trong London/overlap ? rejection ? entry'],
+    };
+  }
   if (signal.strategyId === 'ema-pullback' && price != null) {
     return {
       levels: [{ kind: 'ema-zone', label: 'EMA zone', price }],

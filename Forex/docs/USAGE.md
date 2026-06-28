@@ -78,6 +78,7 @@ Seven built-in Price Action setups (see `docs/STRATEGY_SPECIFICATION.md`):
 | `break-retest` | Break & Retest |
 | `ema-pullback` | EMA Pullback |
 | `liquidity-grab` | Liquidity Grab |
+| `session-liquidity-sweep` | Session Liquidity Sweep (Asian range, London/overlap) |
 | `inside-bar-breakout` | Inside Bar Breakout |
 | `pin-bar-rejection` | Pin Bar Rejection |
 | `wyckoff-spring-utad` | Wyckoff Spring / UTAD |

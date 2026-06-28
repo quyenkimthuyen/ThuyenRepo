@@ -10,6 +10,7 @@ import { InsideBarBreakoutStrategy } from '../../src/strategies/InsideBarBreakou
 import { PinBarRejectionStrategy } from '../../src/strategies/PinBarRejectionStrategy.js';
 import { WyckoffSpringUtadStrategy } from '../../src/strategies/WyckoffSpringUtadStrategy.js';
 import { WyckoffRangeTestStrategy } from '../../src/strategies/WyckoffRangeTestStrategy.js';
+import { SessionLiquiditySweepStrategy } from '../../src/strategies/SessionLiquiditySweepStrategy.js';
 import { createContext } from '../../src/strategy/StrategyContext.js';
 
 const H = 3600000;
@@ -422,6 +423,85 @@ const WY_TEST_PARAMS = {
   candles.push(c(31, 1.08535, 1.08542, 1.08525, 1.0853, 600));
   const signals = runScan(new WyckoffRangeTestStrategy(), candles, 'EURUSD', WY_TEST_PARAMS);
   assert('WT-03: No rally before test → no signal', signals.length === 0);
+}
+
+console.log('\n=== Session Liquidity Sweep Tests ===\n');
+
+/**
+ * @param {number} year
+ * @param {number} month
+ * @param {number} day
+ * @param {number} hour
+ * @param {number} o
+ * @param {number} h
+ * @param {number} l
+ * @param {number} close
+ * @param {number} [vol]
+ * @returns {import('../../src/data/Candle.js').Candle}
+ */
+function cUtc(year, month, day, hour, o, h, l, close, vol = 800) {
+  return {
+    timestamp: Date.UTC(year, month, day, hour, 0, 0),
+    open: o,
+    high: h,
+    low: l,
+    close,
+    volume: vol,
+  };
+}
+
+/** @returns {import('../../src/data/Candle.js').Candle[]} */
+function buildVolatilityWarmup(count, startDay = 1) {
+  const candles = [];
+  for (let i = 0; i < count; i++) {
+    const day = startDay + Math.floor(i / 24);
+    const hour = i % 24;
+    const base = 1.085 + (i % 5) * 0.0002;
+    candles.push(cUtc(2024, 5, day, hour, base, base + 0.0015, base - 0.0012, base + 0.0004, 900));
+  }
+  return candles;
+}
+
+const SLS_PARAMS = {
+  asianEndHour: 7,
+  sessionStartHour: 7,
+  sessionEndHour: 17,
+  grabPips: 5,
+  wickRatio: 0.65,
+  rr: 1.5,
+  swingLookback: 10,
+  minVolatilityRatio: 0.8,
+  volatilityLookback: 14,
+};
+
+{
+  const candles = buildVolatilityWarmup(90, 1);
+  for (let h = 0; h < 7; h++) {
+    candles.push(cUtc(2024, 5, 10, h, 1.0850, 1.0860, 1.0833, 1.0855, 900));
+  }
+  candles.push(cUtc(2024, 5, 10, 8, 1.0858, 1.08658, 1.0854, 1.08555, 1200));
+  const signals = runScan(new SessionLiquiditySweepStrategy(), candles, 'EURUSD', SLS_PARAMS);
+  assert('SLS-01: Asian high sweep in London → 1 SHORT', signals.length === 1 && signals[0].direction === 'short');
+}
+
+{
+  const candles = buildVolatilityWarmup(90, 1);
+  for (let h = 0; h < 7; h++) {
+    candles.push(cUtc(2024, 5, 10, h, 1.0850, 1.0860, 1.0833, 1.0855, 900));
+  }
+  candles.push(cUtc(2024, 5, 10, 20, 1.0858, 1.08658, 1.0854, 1.08555, 1200));
+  const signals = runScan(new SessionLiquiditySweepStrategy(), candles, 'EURUSD', SLS_PARAMS);
+  assert('SLS-02: Outside session window → no signal', signals.length === 0);
+}
+
+{
+  const candles = buildVolatilityWarmup(90, 1);
+  for (let h = 0; h < 7; h++) {
+    candles.push(cUtc(2024, 5, 10, h, 1.0850, 1.0860, 1.0833, 1.0855, 900));
+  }
+  candles.push(cUtc(2024, 5, 10, 8, 1.0858, 1.08612, 1.0854, 1.08555, 1200));
+  const signals = runScan(new SessionLiquiditySweepStrategy(), candles, 'EURUSD', SLS_PARAMS);
+  assert('SLS-03: Grab too shallow → no signal', signals.length === 0);
 }
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);

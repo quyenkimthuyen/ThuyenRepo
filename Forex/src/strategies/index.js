@@ -11,6 +11,7 @@ import { InsideBarBreakoutStrategy } from './InsideBarBreakoutStrategy.js';
 import { PinBarRejectionStrategy } from './PinBarRejectionStrategy.js';
 import { WyckoffSpringUtadStrategy } from './WyckoffSpringUtadStrategy.js';
 import { WyckoffRangeTestStrategy } from './WyckoffRangeTestStrategy.js';
+import { SessionLiquiditySweepStrategy } from './SessionLiquiditySweepStrategy.js';
 
 /** All built-in strategy classes. */
 export const BUILTIN_STRATEGIES = [
@@ -21,6 +22,7 @@ export const BUILTIN_STRATEGIES = [
   PinBarRejectionStrategy,
   WyckoffSpringUtadStrategy,
   WyckoffRangeTestStrategy,
+  SessionLiquiditySweepStrategy,
 ];
 
 /** @type {boolean} */
