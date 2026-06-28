@@ -43,6 +43,35 @@ export function getVaryingParamKeys(entries) {
 }
 
 /**
+ * Param keys to plot in sensitivity — prefers keys from the grid search run.
+ * @param {import('./GridSearchEngine.js').GridSearchEntry[]} entries
+ * @param {string[]} [optimizedParamKeys]
+ * @returns {string[]}
+ */
+export function getSensitivityParamKeys(entries, optimizedParamKeys) {
+  const varying = new Set(getVaryingParamKeys(entries));
+  if (!optimizedParamKeys?.length) {
+    return [...varying];
+  }
+  const fromRun = optimizedParamKeys.filter((key) => varying.has(key));
+  return fromRun.length ? fromRun : optimizedParamKeys.filter((key) =>
+    entries.some((e) => e.params[key] !== undefined)
+  );
+}
+
+/**
+ * Format param grid for display (e.g. rr: 1.5:3:0.5).
+ * @param {Record<string, (number|string|boolean)[]>} [paramGrid]
+ * @returns {string}
+ */
+export function formatParamGridSummary(paramGrid) {
+  if (!paramGrid || !Object.keys(paramGrid).length) return '';
+  return Object.entries(paramGrid)
+    .map(([key, values]) => `${key}: ${values.join(', ')}`)
+    .join(' · ');
+}
+
+/**
  * @param {number[]} values
  * @returns {number}
  */

@@ -16,6 +16,8 @@ import {
 import {
   buildSensitivitySeries,
   getVaryingParamKeys,
+  getSensitivityParamKeys,
+  formatParamGridSummary,
 } from '../../src/optimizer/GridSensitivity.js';
 import { computeStatistics } from '../../src/statistics/StatisticsCalculator.js';
 
@@ -166,6 +168,10 @@ console.log('\n=== Optimizer Tests ===\n');
 
   const varying = getVaryingParamKeys(entries);
   assert('OP-21: Varying params detected', varying.includes('rr') && varying.includes('swing'));
+
+  const sensKeys = getSensitivityParamKeys(entries, ['rr', 'swing']);
+  assert('OP-21b: Sensitivity keys from grid run', sensKeys.join(',') === 'rr,swing');
+  assert('OP-21c: Grid summary', formatParamGridSummary({ rr: [1.5, 2, 3] }).includes('rr'));
 
   const rrSeries = buildSensitivitySeries(entries, 'rr', 5);
   assert('OP-22: RR sensitivity buckets', rrSeries.length === 4);

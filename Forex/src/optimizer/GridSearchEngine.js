@@ -31,6 +31,8 @@ import { runBacktest } from './BacktestRunner.js';
  * @property {GridSearchEntry|null} best
  * @property {number} durationMs
  * @property {boolean} [parallel]
+ * @property {string[]} [optimizedParamKeys] - Params included in the grid search run
+ * @property {Record<string, (number|string|boolean)[]>} [paramGrid] - Value lists used in the run
  * @property {import('./WalkForwardEngine.js').WalkForwardResult} [walkForward]
  */
 
@@ -192,5 +194,7 @@ export async function runGridSearch({
     best: entries[0] ?? null,
     durationMs: Math.round(performance.now() - start),
     parallel: useParallel,
+    optimizedParamKeys: Object.keys(paramGrid),
+    paramGrid,
   };
 }

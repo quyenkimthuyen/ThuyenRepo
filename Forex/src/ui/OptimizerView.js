@@ -12,7 +12,8 @@ import { parseValueList, countCombinations, defaultGridForParam, augmentParamGri
 import { suggestParamGridFromData } from '../optimizer/GridSuggestEngine.js';
 import {
   buildSensitivitySeries,
-  getVaryingParamKeys,
+  getSensitivityParamKeys,
+  formatParamGridSummary,
   MIN_TRADES_PER_SENSITIVITY_POINT,
 } from '../optimizer/GridSensitivity.js';
 import { drawGridSensitivityChart } from '../optimizer/GridSensitivityChart.js';
@@ -822,10 +823,18 @@ class OptimizerViewImpl {
    * @param {HTMLElement} content
    */
   #renderSensitivityConfigPanel(content) {
+    const last = this.#gridResult ?? ResearchEngine.getLastGridResult();
+    const gridNote = last?.paramGrid
+      ? formatParamGridSummary(last.paramGrid)
+      : '';
+
     content.appendChild(el('div', { class: 'opt-panel' }, [
       el('p', { class: 'opt-desc' }, [
-        'Trung binh theo tung gia tri tham so (in-sample). Chon param va metric ben phai.',
+        'Bieu do lay du lieu tu lan Grid Search gan nhat — chi cac param da tick trong grid.',
       ]),
+      gridNote
+        ? el('p', { class: 'opt-desc opt-grid-run-summary' }, [`Grid da chay: ${gridNote}`])
+        : el('p', { class: 'opt-desc opt-desc-note' }, ['Chua co ket qua grid — chay Grid Search truoc.']),
       el('p', { class: 'opt-desc opt-desc-note' }, [
         'Net Profit phu thuoc so lenh — so sanh kem Exp khi trade count chenh nhau nhieu.',
       ]),
@@ -840,15 +849,16 @@ class OptimizerViewImpl {
     if (!wrap || activeTab !== 'sensitivity') return;
 
     this.#gridResult = result;
-    const varying = getVaryingParamKeys(result.entries);
+    const paramKeys = getSensitivityParamKeys(result.entries, result.optimizedParamKeys);
+    const gridSummary = formatParamGridSummary(result.paramGrid);
 
     wrap.innerHTML = '';
 
-    if (!varying.length) {
+    if (!paramKeys.length) {
       this.#renderResultsPlaceholder(
         wrap,
         'Param Sensitivity',
-        'Cần grid search với ít nhất 2 giá trị khác nhau cho một tham số.'
+        'Can grid search voi it nhat 1 param da tick va 2 gia tri khac nhau.'
       );
       return;
     }
@@ -861,7 +871,7 @@ class OptimizerViewImpl {
         el('label', { class: 'opt-sensitivity-field' }, [
           'Parameter',
           el('select', { class: 'data-select', id: 'opt-sensitivity-param' },
-            varying.map((key) => el('option', { value: key }, [key]))),
+            paramKeys.map((key) => el('option', { value: key }, [key]))),
         ]),
         el('div', { class: 'opt-sensitivity-metrics' }, [
           el('label', { class: 'opt-sensitivity-metric' }, [
@@ -938,7 +948,9 @@ class OptimizerViewImpl {
 
     const buckets = series.length;
     const combos = series.reduce((sum, p) => sum + p.sampleCount, 0);
-    hint.textContent = `TB theo ${paramKey} — ${buckets} gia tri — ${combos} combo — an diem < ${MIN_TRADES_PER_SENSITIVITY_POINT} lenh TB`;
+    const gridSummary = formatParamGridSummary(this.#gridResult.paramGrid);
+    const gridPart = gridSummary ? `Grid: ${gridSummary} — ` : '';
+    hint.textContent = `${gridPart}TB theo ${paramKey} — ${buckets} gia tri — ${combos} combo — an diem < ${MIN_TRADES_PER_SENSITIVITY_POINT} lenh TB`;
   }
 
   /**

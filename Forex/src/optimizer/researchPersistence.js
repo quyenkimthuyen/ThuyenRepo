@@ -55,6 +55,8 @@ export function stripGridSearchForStorage(result, maxEntries = Config.OPTIMIZER.
     entries,
     best: entries[0] ?? null,
     durationMs: result.durationMs,
+    optimizedParamKeys: result.optimizedParamKeys,
+    paramGrid: result.paramGrid,
   };
 }
 
