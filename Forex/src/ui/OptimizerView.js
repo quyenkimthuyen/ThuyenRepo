@@ -56,6 +56,9 @@ class OptimizerViewImpl {
   /** @type {(() => void)|null} */
   #sensitivityResizeHandler = null;
 
+  /** @type {Record<string, GridFormState>} */
+  #gridFormByStrategy = {};
+
   /**
    * @param {HTMLElement} container
    */
@@ -230,6 +233,13 @@ class OptimizerViewImpl {
     const root = this.#container?.querySelector('#optimizer-root');
     if (!content || !results) return;
 
+    const strategySelect = /** @type {HTMLSelectElement|null} */ (
+      this.#container?.querySelector('#opt-strategy')
+    );
+    if (strategySelect && this.#container?.querySelector('#opt-run-grid')) {
+      this.#captureGridFormState(strategySelect.value);
+    }
+
     if (this.#sensitivityResizeHandler) {
       window.removeEventListener('resize', this.#sensitivityResizeHandler);
       this.#sensitivityResizeHandler = null;
@@ -285,14 +295,17 @@ class OptimizerViewImpl {
     }
 
     const schema = instance.getParameterSchema();
+    const formState = this.#getGridFormState(strategyId, schema);
 
     const paramRows = schema
       .filter((d) => d.type === 'number' || d.type === 'integer')
       .map((def) => {
-        const defaults = defaultGridForParam(def).join(',');
+        const saved = formState.params[def.key];
+        const defaults = saved?.values ?? defaultGridForParam(def).join(',');
+        const checked = saved?.checked ?? def.key === 'rr';
         const isTrendEma = strategyId === 'break-retest' && ['emaFast', 'emaSlow', 'trendBars'].includes(def.key);
         const children = [
-          el('input', { type: 'checkbox', class: 'opt-param-check', dataset: { key: def.key }, checked: def.key === 'rr' }),
+          el('input', { type: 'checkbox', class: 'opt-param-check', dataset: { key: def.key }, checked }),
           el('span', { class: 'opt-param-label' }, [def.label]),
           el('input', {
             type: 'text',
@@ -314,12 +327,20 @@ class OptimizerViewImpl {
         el('div', { class: 'opt-param-section-head' }, [
           el('span', { class: 'opt-param-section-title' }, ['Parameters']),
           el('span', { class: 'opt-param-section-hint' }, ['Tick để đưa vào grid']),
-          el('button', {
-            type: 'button',
-            class: 'btn btn-secondary opt-suggest-btn',
-            id: 'opt-suggest-grid',
-            title: 'Điền lưới tham số từ biến động nến hiện tại',
-          }, ['Suggest from data']),
+          el('div', { class: 'opt-param-section-actions' }, [
+            el('button', {
+              type: 'button',
+              class: 'btn btn-secondary opt-suggest-btn',
+              id: 'opt-suggest-grid',
+              title: 'Điền lưới tham số từ biến động nến hiện tại',
+            }, ['Suggest from data']),
+            el('button', {
+              type: 'button',
+              class: 'btn btn-secondary opt-suggest-btn',
+              id: 'opt-restore-grid',
+              title: 'Khôi phục lưới mặc định cho strategy này',
+            }, ['Restore defaults']),
+          ]),
         ]),
         el('div', { class: 'opt-param-grid' }, paramRows),
         el('div', { class: 'opt-suggest-status', id: 'opt-suggest-hint', 'aria-live': 'polite' }, []),
@@ -338,7 +359,7 @@ class OptimizerViewImpl {
         el('input', {
           type: 'checkbox',
           id: 'opt-auto-wf',
-          checked: Config.OPTIMIZER.AUTO_WALK_FORWARD_AFTER_GRID,
+          checked: formState.autoWalkForward,
         }),
         ' Auto walk-forward on best combo',
       ]),
@@ -350,6 +371,115 @@ class OptimizerViewImpl {
 
     content.querySelector('#opt-run-grid')?.addEventListener('click', () => this.#runGrid());
     content.querySelector('#opt-suggest-grid')?.addEventListener('click', () => this.#suggestGridFromData(strategyId, schema));
+    content.querySelector('#opt-restore-grid')?.addEventListener('click', () => {
+      this.#gridFormByStrategy[strategyId] = this.#buildDefaultGridFormState(schema);
+      this.#renderGridPanel(content);
+      const last = this.#gridResult ?? ResearchEngine.getLastGridResult();
+      const results = this.#container?.querySelector('#opt-results');
+      if (results) {
+        results.innerHTML = '';
+        if (last) this.#renderGridResults(last);
+        else this.#renderGridResultsPlaceholder(results);
+      }
+      bus.emit(Events.LOG_MESSAGE, {
+        message: 'Grid Search: restored default parameter grid',
+        level: 'info',
+        time: new Date(),
+      });
+    });
+
+    const rankSelect = /** @type {HTMLSelectElement|null} */ (content.querySelector('#opt-rank'));
+    if (rankSelect) rankSelect.value = formState.rankMetric;
+
+    if (formState.suggestMessage) {
+      this.#setSuggestStatus(formState.suggestMessage, formState.suggestError ?? false);
+    }
+  }
+
+  /**
+   * @typedef {Object} GridFormParamState
+   * @property {string} values
+   * @property {boolean} checked
+   */
+
+  /**
+   * @typedef {Object} GridFormState
+   * @property {Record<string, GridFormParamState>} params
+   * @property {string} rankMetric
+   * @property {boolean} autoWalkForward
+   * @property {string} [suggestMessage]
+   * @property {boolean} [suggestError]
+   */
+
+  /**
+   * @param {import('../strategy/ParameterSchema.js').ParamDefinition[]} schema
+   * @returns {GridFormState}
+   */
+  #buildDefaultGridFormState(schema) {
+    /** @type {Record<string, GridFormParamState>} */
+    const params = {};
+    for (const def of schema.filter((d) => d.type === 'number' || d.type === 'integer')) {
+      params[def.key] = {
+        values: defaultGridForParam(def).join(','),
+        checked: def.key === 'rr',
+      };
+    }
+    return {
+      params,
+      rankMetric: Config.OPTIMIZER.DEFAULT_RANK_METRIC,
+      autoWalkForward: Config.OPTIMIZER.AUTO_WALK_FORWARD_AFTER_GRID,
+    };
+  }
+
+  /**
+   * @param {string} strategyId
+   * @param {import('../strategy/ParameterSchema.js').ParamDefinition[]} schema
+   * @returns {GridFormState}
+   */
+  #getGridFormState(strategyId, schema) {
+    return this.#gridFormByStrategy[strategyId] ?? this.#buildDefaultGridFormState(schema);
+  }
+
+  /**
+   * @param {string} strategyId
+   */
+  #captureGridFormState(strategyId) {
+    if (!this.#container?.querySelector('#opt-run-grid')) return;
+
+    /** @type {Record<string, GridFormParamState>} */
+    const params = {};
+    this.#container.querySelectorAll('.opt-param-check').forEach((cb) => {
+      const key = /** @type {HTMLElement} */ (cb).dataset.key;
+      if (!key) return;
+      const input = this.#container.querySelector(`.opt-param-values[data-key="${key}"]`);
+      params[key] = {
+        checked: /** @type {HTMLInputElement} */ (cb).checked,
+        values: input ? /** @type {HTMLInputElement} */ (input).value : '',
+      };
+    });
+
+    const rank = /** @type {HTMLSelectElement|null} */ (this.#container.querySelector('#opt-rank'));
+    const autoWf = /** @type {HTMLInputElement|null} */ (this.#container.querySelector('#opt-auto-wf'));
+    const hint = this.#container.querySelector('#opt-suggest-hint');
+
+    this.#gridFormByStrategy[strategyId] = {
+      params,
+      rankMetric: rank?.value ?? Config.OPTIMIZER.DEFAULT_RANK_METRIC,
+      autoWalkForward: autoWf?.checked ?? Config.OPTIMIZER.AUTO_WALK_FORWARD_AFTER_GRID,
+      suggestMessage: hint?.textContent?.trim() ?? '',
+      suggestError: hint?.classList.contains('opt-suggest-status-error') ?? false,
+    };
+  }
+
+  /**
+   * @param {string} strategyId
+   * @param {import('../strategy/ParameterSchema.js').ParamDefinition[]} schema
+   */
+  #persistGridFormState(strategyId, schema) {
+    this.#captureGridFormState(strategyId);
+    if (!this.#gridFormByStrategy[strategyId]) {
+      this.#gridFormByStrategy[strategyId] = this.#buildDefaultGridFormState(schema);
+    }
   }
 
   /**
@@ -379,7 +509,13 @@ class OptimizerViewImpl {
       }
 
       const total = countCombinations(augmentParamGrid(strategyId, this.#readParamGrid()));
-      this.#setSuggestStatus(`${suggestion.message} — ${total} combo nếu chạy ngay`);
+      const statusMsg = `${suggestion.message} — ${total} combo nếu chạy ngay`;
+      this.#setSuggestStatus(statusMsg);
+      this.#persistGridFormState(strategyId, schema);
+      if (this.#gridFormByStrategy[strategyId]) {
+        this.#gridFormByStrategy[strategyId].suggestMessage = statusMsg;
+        this.#gridFormByStrategy[strategyId].suggestError = false;
+      }
       bus.emit(Events.LOG_MESSAGE, {
         message: `Grid suggest: ${suggestion.message}`,
         level: 'info',
