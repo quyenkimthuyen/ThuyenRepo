@@ -32,7 +32,7 @@ export function buildAnalysisMarkers(analysis) {
       position: pivot.type === 'high' ? 'aboveBar' : 'belowBar',
       color: pivot.type === 'high' ? '#f59e0b' : '#3b82f6',
       shape: pivot.type === 'high' ? 'arrowDown' : 'arrowUp',
-      text: pivot.type === 'high' ? '??nh' : '?�y',
+      text: pivot.type === 'high' ? 'Đỉnh' : 'Đáy',
     });
   }
 
@@ -61,8 +61,8 @@ export function buildCyclePriceLines(analysis) {
   if (cycleHigh == null || cycleLow == null) return [];
 
   return [
-    { price: cycleHigh, color: '#22c55e', title: '??nh chu k?' },
-    { price: cycleLow, color: '#ef4444', title: '?�y chu k?' },
+    { price: cycleHigh, color: '#22c55e', title: 'Đỉnh chu kỳ' },
+    { price: cycleLow, color: '#ef4444', title: 'Đáy chu kỳ' },
   ];
 }
 

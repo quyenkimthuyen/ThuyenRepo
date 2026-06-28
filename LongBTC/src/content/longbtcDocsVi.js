@@ -28,30 +28,30 @@ export const LONG_BTC_DOC_SECTIONS = [
   {
     id: 'overview',
     title: 'T?ng quan LongBTC',
-    subtitle: 'N?n t?ng nghiên c?u ??u t? BTC dài h?n',
+    subtitle: 'N?n t?ng nghiï¿½n c?u ??u t? BTC dï¿½i h?n',
     icon: '??',
     viewIds: ['dashboard'],
     blocks: [
       {
         type: 'p',
-        text: `${Config.APP_NAME} giúp nghiên c?u chu k? Bitcoin theo pipeline: Chu k? halving 4 n?m ? Xu h??ng t?ng/gi?m/?i ngang ? Sóng Elliott ? Chu k? tâm lý th? tr??ng.`,
+        text: `${Config.APP_NAME} giï¿½p nghiï¿½n c?u chu k? Bitcoin theo pipeline: Chu k? halving 4 n?m â‘¡ Xu h??ng t?ng/gi?m/?i ngang ? Sï¿½ng Elliott â‘  Chu k? tï¿½m lï¿½ th? tr??ng.`,
       },
       {
         type: 'callout',
         variant: 'warn',
-        text: '?ây là công c? nghiên c?u, KHÔNG ph?i l?i khuyên ??u t?. Quá kh? không ??m b?o t??ng lai.',
+        text: '?ï¿½y lï¿½ cï¿½ng c? nghiï¿½n c?u, KHï¿½NG ph?i l?i khuyï¿½n ??u t?. Quï¿½ kh? khï¿½ng ??m b?o t??ng lai.',
       },
       {
         type: 'h3',
-        text: 'Quy trình phân tích',
+        text: 'Quy trï¿½nh phï¿½n tï¿½ch',
       },
       {
         type: 'ol',
         items: [
-          'Xác ??nh v? trí trong chu k? halving 4 n?m',
-          'Phân tích xu h??ng qua c?u trúc swing (HH/HL, LH/LL)',
-          '??m sóng Elliott trên các ?o?n xu h??ng',
-          'Ánh x? sang giai ?o?n tâm lý th? tr??ng',
+          'Xï¿½c ??nh v? trï¿½ trong chu k? halving 4 n?m',
+          'Phï¿½n tï¿½ch xu h??ng qua c?u trï¿½c swing (HH/HL, LH/LL)',
+          '??m sï¿½ng Elliott trï¿½n cï¿½c ?o?n xu h??ng',
+          'ï¿½nh x? sang giai ?o?n tï¿½m lï¿½ th? tr??ng',
         ],
       },
     ],
@@ -64,14 +64,14 @@ export const LONG_BTC_DOC_SECTIONS = [
     blocks: [
       {
         type: 'p',
-        text: 'Bi?u ?? n?n BTC v?i overlay phân tích: swing pivot, ?o?n xu h??ng, ??nh/?áy chu k?. Khuy?n ngh? dùng khung W (tu?n) ho?c D1 (ngày) cho phân tích dài h?n.',
+        text: 'Bi?u ?? n?n BTC v?i overlay phï¿½n tï¿½ch: swing pivot, ?o?n xu h??ng, ??nh/?ï¿½y chu k?. Khuy?n ngh? dï¿½ng khung W (tu?n) ho?c D1 (ngï¿½y) cho phï¿½n tï¿½ch dï¿½i h?n.',
       },
       {
         type: 'ul',
         items: [
-          'B?t/t?t overlay Swing, Xu h??ng, Chu k? trên toolbar',
-          'EMA 200 h? tr? xác nh?n xu h??ng dài h?n',
-          'Replay: phân tích t?ng giai ?o?n l?ch s?',
+          'B?t/t?t overlay Swing, Xu h??ng, Chu k? trï¿½n toolbar',
+          'EMA 200 h? tr? xï¿½c nh?n xu h??ng dï¿½i h?n',
+          'Replay: phï¿½n tï¿½ch t?ng giai ?o?n l?ch s?',
         ],
       },
     ],
@@ -84,7 +84,7 @@ export const LONG_BTC_DOC_SECTIONS = [
     blocks: [
       {
         type: 'p',
-        text: 'Bitcoin halving x?y ra kho?ng 4 n?m/l?n, gi?m m?t n?a ph?n th??ng kh?i. Chu k? th??ng có 4 giai ?o?n: Tích l?y ? T?ng tr??ng ? Phân ph?i ? Gi?m giá.',
+        text: 'Bitcoin halving x?y ra kho?ng 4 n?m/l?n, gi?m m?t n?a ph?n th??ng kh?i. Chu k? th??ng cï¿½ 4 giai ?o?n: Tï¿½ch l?y ? T?ng tr??ng ? Phï¿½n ph?i ? Gi?m giï¿½.',
       },
       {
         type: 'ul',
@@ -105,31 +105,31 @@ export const LONG_BTC_DOC_SECTIONS = [
     blocks: [
       {
         type: 'p',
-        text: 'Xu h??ng ???c xác ??nh qua swing pivot (zigzag) và quy t?c HH/HL (t?ng) ho?c LH/LL (gi?m).',
+        text: 'Xu h??ng ???c xï¿½c ??nh qua swing pivot (zigzag) vï¿½ quy t?c HH/HL (t?ng) ho?c LH/LL (gi?m).',
       },
     ],
   },
   {
     id: 'elliott',
-    title: 'Sóng Elliott',
+    title: 'Sï¿½ng Elliott',
     icon: '??',
     viewIds: ['elliott'],
     blocks: [
       {
         type: 'p',
-        text: 'Thu?t toán heuristic gán nhãn sóng xung (1-5) ho?c ?i?u ch?nh (ABC) d?a trên các ?o?n xu h??ng. Nên xác nh?n th? công trên bi?u ??.',
+        text: 'Thu?t toï¿½n heuristic gï¿½n nhï¿½n sï¿½ng xung (1-5) ho?c ?i?u ch?nh (ABC) d?a trï¿½n cï¿½c ?o?n xu h??ng. Nï¿½n xï¿½c nh?n th? cï¿½ng trï¿½n bi?u ??.',
       },
     ],
   },
   {
     id: 'psychology',
-    title: 'Chu k? tâm lý',
+    title: 'Chu k? tï¿½m lï¿½',
     icon: '??',
     viewIds: ['psychology'],
     blocks: [
       {
         type: 'p',
-        text: 'K?t h?p v? trí chu k? halving, xu h??ng hi?n t?i và sóng Elliott ?? ??c l??ng giai ?o?n tâm lý: L?c quan, S? hãi, H?ng ph?n c?c ??, Hy v?ng, v.v.',
+        text: 'K?t h?p v? trï¿½ chu k? halving, xu h??ng hi?n t?i vï¿½ sï¿½ng Elliott ?? ??c l??ng giai ?o?n tï¿½m lï¿½: L?c quan, S? hï¿½i, H?ng ph?n c?c ??, Hy v?ng, v.v.',
       },
     ],
   },
@@ -141,7 +141,7 @@ export const LONG_BTC_DOC_SECTIONS = [
     blocks: [
       {
         type: 'p',
-        text: 'T?i d? li?u BTCUSD (W, D1, H4) t? data/defaults ho?c import CSV/JSON. D? li?u l?u c?c b? trong IndexedDB.',
+        text: 'Ch? h? tr? BTCUSD (W, D1, H4). T?i d? li?u t? data/defaults ho?c import CSV/JSON. D? li?u EUR/GBP c? s? t? xï¿½a khi kh?i ??ng app.',
       },
       {
         type: 'callout',
@@ -152,7 +152,7 @@ export const LONG_BTC_DOC_SECTIONS = [
   },
   {
     id: 'shortcuts',
-    title: 'Phím t?t',
+    title: 'Phï¿½m t?t',
     icon: '??',
     blocks: [
       {
@@ -162,10 +162,10 @@ export const LONG_BTC_DOC_SECTIONS = [
           'Ctrl+2: T?ng quan',
           'Ctrl+3: Chu k? 4 n?m',
           'Ctrl+4: Xu h??ng',
-          'Ctrl+5: Sóng Elliott',
-          'Ctrl+6: Tâm lý th? tr??ng',
+          'Ctrl+5: Sï¿½ng Elliott',
+          'Ctrl+6: Tï¿½m lï¿½ th? tr??ng',
           'Ctrl+7: Data Manager',
-          'Ctrl+0 / F1: Tài li?u',
+          'Ctrl+0 / F1: Tï¿½i li?u',
         ],
       },
     ],

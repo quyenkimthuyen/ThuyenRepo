@@ -54,6 +54,17 @@ function seedRemainingInBackground() {
 }
 
 /**
+ * Remove legacy PARL IndexedDB (forex era).
+ */
+function deleteLegacyDatabase() {
+  try {
+    indexedDB.deleteDatabase('parl_data');
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
  * Main data service — singleton module with initialize() lifecycle.
  */
 const DataManager = {
@@ -62,6 +73,8 @@ const DataManager = {
    */
   async initialize(_ctx) {
     await store.open();
+    deleteLegacyDatabase();
+    await this.purgeNonBtcDatasets();
     setBootMessage('Đang tải dữ liệu BTCUSD…');
 
     let btcW = await this.getCandleCount('BTCUSD', 'W');
@@ -99,7 +112,7 @@ const DataManager = {
   },
 
   /**
-   * Load bundled EURUSD/GBPUSD datasets from data/defaults/.
+   * Load bundled BTCUSD datasets from data/defaults/.
    * @param {{ force?: boolean, priorityOnly?: boolean, fallbackOnly?: boolean, only?: Array<{ symbol: string, timeframe: string }> }} [options]
    * @returns {Promise<import('./DefaultDataLoader.js').DefaultLoadResult>}
    */
@@ -176,29 +189,54 @@ const DataManager = {
   async getDataHealth() {
     const probe = await probeDefaultData();
     const datasets = await this.listDatasets();
-    const eurusdMeta = datasets.find((d) => d.symbol === 'EURUSD' && d.timeframe === 'H1');
-    const eurusdH1Count = await this.getCandleCount('EURUSD', 'H1');
-    const eurusdH1MetaCount = eurusdMeta?.count ?? 0;
+    const btcW = datasets.find((d) => d.symbol === 'BTCUSD' && d.timeframe === 'W');
+    const btcWCount = await this.getCandleCount('BTCUSD', 'W');
     return {
       protocol: typeof window !== 'undefined' ? window.location.protocol : 'unknown',
       href: typeof window !== 'undefined' ? window.location.href : '',
       ...probe,
       indexedDbDatasets: datasets.length,
-      eurusdH1Count,
-      eurusdH1MetaCount,
+      btcWCount,
+      btcWMetaCount: btcW?.count ?? 0,
       datasets: datasets.map((d) => ({
         key: d.key,
+        symbol: d.symbol,
+        timeframe: d.timeframe,
         count: d.count,
       })),
     };
   },
 
   /**
-   * List all stored datasets.
+   * Delete all non-BTC datasets from IndexedDB (legacy EUR/GBP cleanup).
+   * @returns {Promise<number>} Number of datasets removed
+   */
+  async purgeNonBtcDatasets() {
+    const all = await store.getAllMetadata();
+    let removed = 0;
+    for (const ds of all) {
+      if (ds.symbol !== 'BTCUSD') {
+        await store.deleteDataset(ds.symbol, ds.timeframe);
+        removed++;
+      }
+    }
+    if (removed > 0) {
+      emitDataLog(
+        `Đã xóa ${removed} dataset không phải BTC (dữ liệu EUR/GBP cũ trong trình duyệt).`,
+        'warn'
+      );
+      bus.emit(Events.DATA_UPDATED, { purgedForex: removed });
+    }
+    return removed;
+  },
+
+  /**
+   * List all stored datasets (BTC only).
    * @returns {Promise<import('./Candle.js').DatasetMetadata[]>}
    */
   async listDatasets() {
-    return store.getAllMetadata();
+    const all = await store.getAllMetadata();
+    return all.filter((d) => d.symbol === 'BTCUSD');
   },
 
   /**
@@ -337,7 +375,7 @@ const DataManager = {
    */
   async findGaps(symbol, timeframe) {
     const candles = await this.getCandles(symbol, timeframe);
-    return detectGaps(candles, timeframe, { forexMarket: true });
+    return detectGaps(candles, timeframe, { forexMarket: false });
   },
 
   /**

@@ -89,20 +89,20 @@ export function saveToStorage(key, value) {
 }
 
 /**
- * List localStorage keys owned by PARL (prefix parl_).
+ * List localStorage keys owned by LongBTC (prefix longbtc_ or legacy parl_).
  * @returns {string[]}
  */
 export function listParlStorageKeys() {
   const keys = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key?.startsWith('parl_')) keys.push(key);
+    if (key?.startsWith('parl_') || key?.startsWith('longbtc_')) keys.push(key);
   }
   return keys;
 }
 
 /**
- * Remove all PARL keys from localStorage (settings, results, strategy params…).
+ * Remove all app keys from localStorage (settings, legacy forex results…).
  */
 export function clearParlLocalStorage() {
   for (const key of listParlStorageKeys()) {

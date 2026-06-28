@@ -24,7 +24,7 @@ import { wavePsychologyHint } from './ElliottWaveAnalyzer.js';
  */
 
 /**
- * Phase index ranges within a halving cycle (0�10 mapped to progress 0�1).
+ * Phase index ranges within a halving cycle (0�10 mapped to progress 0�1).
  * @type {Record<string, [number, number]>}
  */
 const CYCLE_PHASE_MAP = {
@@ -81,11 +81,11 @@ export function assessPsychology(cycle, trend, waves) {
     }
   }
 
-  cycleNote = `Chu k? halving #${cycle.halvingIndex + 1}: ${cycle.phaseLabel} (${cycle.progressPct.toFixed(1)}%)`;
-  trendNote = `Xu h??ng: ${trend.direction} (?? tin c?y ${trend.confidence}%)`;
+  cycleNote = `Chu kỳ halving #${cycle.halvingIndex + 1}: ${cycle.phaseLabel} (${cycle.progressPct.toFixed(1)}%)`;
+  trendNote = `Xu hướng: ${trend.direction} (độ tin cậy ${trend.confidence}%)`;
   waveNote = lastWave
     ? wavePsychologyHint(lastWave.waveNumber, trend.direction)
-    : 'Ch?a x�c ??nh s�ng Elliott';
+    : 'Chưa xác định sóng Elliott';
 
   return {
     phaseId: best.id,
@@ -124,10 +124,10 @@ export function buildPsychologyTimeline() {
  */
 function buildDescription(phase, cycle, trend, lastWave) {
   const parts = [
-    `Th? tr??ng ?ang ? giai ?o?n "${phase.labelVi}" (${phase.label}).`,
-    `Chu k? 4 n?m: ${cycle.phaseLabel}, c�n ~${cycle.daysToNextHalving} ng�y ??n halving ti?p theo.`,
+    `Thị trường đang ở giai đoạn "${phase.labelVi}" (${phase.label}).`,
+    `Chu kỳ 4 năm: ${cycle.phaseLabel}, còn ~${cycle.daysToNextHalving} ngày đến halving tiếp theo.`,
   ];
-  if (lastWave) parts.push(`S�ng hi?n t?i: ${lastWave.label} � ${wavePsychologyHint(lastWave.waveNumber, trend.direction)}`);
+  if (lastWave) parts.push(`Sóng hiện tại: ${lastWave.label} — ${wavePsychologyHint(lastWave.waveNumber, trend.direction)}`);
   return parts.join(' ');
 }
 

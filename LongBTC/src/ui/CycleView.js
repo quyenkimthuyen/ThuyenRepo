@@ -21,16 +21,13 @@ class CycleViewImpl {
   /** @type {Function|null} */
   #unsub = null;
 
-  /**
-   * @param {HTMLElement} container
-   */
   mount(container) {
     container.innerHTML = '';
     container.classList.add('analysis-view');
 
     container.appendChild(renderAnalysisHeader(
       'Chu k? 4 n?m BTC',
-      'Xác ??nh v? trí trong chu k? halving và các giai ?o?n tích l?y / t?ng / phân ph?i / gi?m',
+      'Xï¿½c ??nh v? trï¿½ trong chu k? halving vï¿½ cï¿½c giai ?o?n tï¿½ch l?y / t?ng / phï¿½n ph?i / gi?m',
       'cycle'
     ));
 
@@ -40,9 +37,6 @@ class CycleViewImpl {
     this.#unsub = bus.on(Events.ANALYSIS_COMPLETE, () => this.#render(body));
   }
 
-  /**
-   * @param {HTMLElement} body
-   */
   #render(body) {
     const analysis = getLastAnalysis();
     body.innerHTML = '';
@@ -57,12 +51,9 @@ class CycleViewImpl {
       { label: 'Halving hi?n t?i', value: c.halvingLabel, hint: formatAnalysisDate(c.halvingTime) },
       { label: 'Ti?n ?? chu k?', value: `${c.progressPct.toFixed(1)}%`, color: c.phaseColor },
       { label: 'Giai ?o?n', value: c.phaseLabel, color: c.phaseColor },
-      { label: 'Ngày t? halving', value: String(c.daysSinceHalving) },
-      { label: '??n halving ti?p', value: `~${c.daysToNextHalving} ngày` },
-      {
-        label: 'Halving ti?p theo (??c tính)',
-        value: formatAnalysisDate(c.nextHalvingEstimate),
-      },
+      { label: 'Ngï¿½y t? halving', value: String(c.daysSinceHalving) },
+      { label: '??n halving ti?p', value: `~${c.daysToNextHalving} ngï¿½y` },
+      { label: 'Halving ti?p theo (??c tï¿½nh)', value: formatAnalysisDate(c.nextHalvingEstimate) },
     ]));
 
     body.appendChild(el('div', { class: 'cycle-progress-bar' }, [
@@ -78,7 +69,7 @@ class CycleViewImpl {
       h.blockReward,
     ]);
     body.appendChild(el('h3', { class: 'analysis-section-title' }, ['L?ch s? Halving']));
-    body.appendChild(renderTable(['S? ki?n', 'Ngày', 'Ph?n th??ng kh?i'], halvingRows));
+    body.appendChild(renderTable(['S? ki?n', 'Ngï¿½y', 'Ph?n th??ng kh?i'], halvingRows));
 
     if (analysis.historicalCycles.length > 0) {
       const cycleRows = analysis.historicalCycles.map((hc) => [
@@ -91,7 +82,7 @@ class CycleViewImpl {
       ]);
       body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Hi?u su?t theo chu k?']));
       body.appendChild(renderTable(
-        ['Chu k?', 'B?t ??u', 'Giá m?', '??nh', '?áy', 'Thay ??i'],
+        ['Chu k?', 'B?t ??u', 'Giï¿½ m?', '??nh', '?ï¿½y', 'Thay ??i'],
         cycleRows
       ));
     }
@@ -99,10 +90,10 @@ class CycleViewImpl {
     body.appendChild(el('div', { class: 'cycle-phase-legend' }, [
       el('h3', { class: 'analysis-section-title' }, ['4 giai ?o?n chu k?']),
       el('div', { class: 'cycle-phase-chips' }, [
-        ['accumulation', 'Tích l?y'],
+        ['accumulation', 'Tï¿½ch l?y'],
         ['markup', 'T?ng tr??ng'],
-        ['distribution', 'Phân ph?i'],
-        ['markdown', 'Gi?m giá'],
+        ['distribution', 'Phï¿½n ph?i'],
+        ['markdown', 'Gi?m giï¿½'],
       ].map(([phase, label]) =>
         el('span', {
           class: 'cycle-phase-chip',

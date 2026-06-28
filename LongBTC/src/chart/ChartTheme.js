@@ -14,7 +14,7 @@ export function getChartOptions() {
     layout: {
       background: { color: '#0f1419' },
       textColor: '#8b9cb3',
-      fontFamily: "'Inter', 'Noto Sans', sans-serif",
+      fontFamily: "'Noto Sans', 'Inter', sans-serif",
       fontSize: 11,
     },
     grid: {

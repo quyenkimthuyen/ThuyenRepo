@@ -20,16 +20,13 @@ class ElliottViewImpl {
   /** @type {Function|null} */
   #unsub = null;
 
-  /**
-   * @param {HTMLElement} container
-   */
   mount(container) {
     container.innerHTML = '';
     container.classList.add('analysis-view');
 
     container.appendChild(renderAnalysisHeader(
-      'Sóng Elliott',
-      '??m sóng xung (1-5) và ?i?u ch?nh (ABC) d?a trên c?u trúc swing',
+      'Sï¿½ng Elliott',
+      '??m sï¿½ng xung (1-5) vï¿½ ?i?u ch?nh (ABC) d?a trï¿½n c?u trï¿½c swing',
       'elliott'
     ));
 
@@ -39,9 +36,6 @@ class ElliottViewImpl {
     this.#unsub = bus.on(Events.ANALYSIS_COMPLETE, () => this.#render(body));
   }
 
-  /**
-   * @param {HTMLElement} body
-   */
   #render(body) {
     const analysis = getLastAnalysis();
     body.innerHTML = '';
@@ -53,12 +47,12 @@ class ElliottViewImpl {
 
     const e = analysis.elliott;
     const structureLabel = e.structure === 'impulse' ? 'Xung (Impulse)'
-      : e.structure === 'correction' ? '?i?u ch?nh (Correction)' : 'Ch?a xác ??nh';
+      : e.structure === 'correction' ? '?i?u ch?nh (Correction)' : 'Ch?a xï¿½c ??nh';
 
     body.appendChild(renderMetricGrid([
-      { label: 'C?u trúc', value: structureLabel },
-      { label: 'S? sóng nh?n di?n', value: String(e.waves.length) },
-      { label: 'Tóm t?t', value: e.waves.length > 0 ? `Sóng ${e.waves[e.waves.length - 1].waveNumber}` : '—', hint: e.summary },
+      { label: 'C?u trï¿½c', value: structureLabel },
+      { label: 'S? sï¿½ng nh?n di?n', value: String(e.waves.length) },
+      { label: 'Tï¿½m t?t', value: e.waves.length > 0 ? `Sï¿½ng ${e.waves[e.waves.length - 1].waveNumber}` : 'ï¿½', hint: e.summary },
     ]));
 
     body.appendChild(el('p', { class: 'analysis-note' }, [e.summary]));
@@ -73,9 +67,9 @@ class ElliottViewImpl {
         formatPct(((w.endPrice - w.startPrice) / w.startPrice) * 100),
         wavePsychologyHint(w.waveNumber, analysis.overallTrend.direction),
       ]);
-      body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Chi ti?t sóng']));
+      body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Chi ti?t sï¿½ng']));
       body.appendChild(renderTable(
-        ['Sóng', 'B?t ??u', 'K?t thúc', 'Giá ??u', 'Giá cu?i', '%', 'Tâm lý'],
+        ['Sï¿½ng', 'B?t ??u', 'K?t thï¿½c', 'Giï¿½ ??u', 'Giï¿½ cu?i', '%', 'Tï¿½m lï¿½'],
         waveRows
       ));
     }
@@ -83,10 +77,10 @@ class ElliottViewImpl {
     body.appendChild(el('div', { class: 'analysis-info-box' }, [
       el('h4', {}, ['Quy t?c Elliott c? b?n']),
       el('ul', {}, [
-        el('li', {}, ['Sóng 3 th??ng m?nh nh?t, không ng?n nh?t']),
-        el('li', {}, ['Sóng 2 không v??t ?áy sóng 1; sóng 4 không ch?ng sóng 1']),
-        el('li', {}, ['?i?u ch?nh ABC: A và C cùng h??ng, B ng??c h??ng']),
-        el('li', {}, ['?ây là heuristic nghiên c?u — nên xác nh?n th? công trên bi?u ??']),
+        el('li', {}, ['Sï¿½ng 3 th??ng m?nh nh?t, khï¿½ng ng?n nh?t']),
+        el('li', {}, ['Sï¿½ng 2 khï¿½ng v??t ?ï¿½y sï¿½ng 1; sï¿½ng 4 khï¿½ng ch?ng sï¿½ng 1']),
+        el('li', {}, ['?i?u ch?nh ABC: A vï¿½ C cï¿½ng h??ng, B ng??c h??ng']),
+        el('li', {}, ['?ï¿½y lï¿½ heuristic nghiï¿½n c?u ï¿½ nï¿½n xï¿½c nh?n th? cï¿½ng trï¿½n bi?u ??']),
       ]),
     ]));
   }

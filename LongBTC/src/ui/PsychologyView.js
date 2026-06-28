@@ -1,5 +1,5 @@
 /**
- * Market psychology cycle view — maps cycle + trend + Elliott to psychology phases.
+ * Market psychology cycle view ï¿½ maps cycle + trend + Elliott to psychology phases.
  * @module ui/PsychologyView
  */
 
@@ -17,16 +17,13 @@ class PsychologyViewImpl {
   /** @type {Function|null} */
   #unsub = null;
 
-  /**
-   * @param {HTMLElement} container
-   */
   mount(container) {
     container.innerHTML = '';
     container.classList.add('analysis-view');
 
     container.appendChild(renderAnalysisHeader(
-      'Chu k? tâm lý th? tr??ng',
-      'Xác ??nh giai ?o?n tâm lý d?a trên chu k? 4 n?m, xu h??ng và sóng Elliott',
+      'Chu k? tï¿½m lï¿½ th? tr??ng',
+      'Xï¿½c ??nh giai ?o?n tï¿½m lï¿½ d?a trï¿½n chu k? 4 n?m, xu h??ng vï¿½ sï¿½ng Elliott',
       'psychology'
     ));
 
@@ -36,9 +33,6 @@ class PsychologyViewImpl {
     this.#unsub = bus.on(Events.ANALYSIS_COMPLETE, () => this.#render(body));
   }
 
-  /**
-   * @param {HTMLElement} body
-   */
   #render(body) {
     const analysis = getLastAnalysis();
     body.innerHTML = '';
@@ -63,22 +57,18 @@ class PsychologyViewImpl {
     body.appendChild(el('p', { class: 'psychology-description' }, [p.description]));
 
     body.appendChild(renderMetricGrid([
-      { label: '?óng góp t? chu k?', value: analysis.currentCycle.phaseLabel, hint: p.cycleContribution },
-      { label: '?óng góp t? xu h??ng', value: analysis.overallTrend.direction, hint: p.trendContribution },
-      { label: '?óng góp t? Elliott', value: p.waveContribution },
+      { label: '?ï¿½ng gï¿½p t? chu k?', value: analysis.currentCycle.phaseLabel, hint: p.cycleContribution },
+      { label: '?ï¿½ng gï¿½p t? xu h??ng', value: analysis.overallTrend.direction, hint: p.trendContribution },
+      { label: '?ï¿½ng gï¿½p tâ‘¢ Elliott', value: p.waveContribution },
     ]));
 
-    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Vòng tâm lý th? tr??ng']));
+    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Vï¿½ng tï¿½m lï¿½ th? tr??ng']));
     body.appendChild(this.#renderWheel(p.phaseId));
 
-    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Timeline chu k? tâm lý']));
+    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Timeline chu k? tï¿½m lï¿½']));
     body.appendChild(this.#renderTimeline(analysis));
   }
 
-  /**
-   * @param {string} activePhaseId
-   * @returns {HTMLElement}
-   */
   #renderWheel(activePhaseId) {
     const wheel = el('div', { class: 'psychology-wheel' });
     for (const phase of PSYCHOLOGY_PHASES) {
@@ -94,10 +84,6 @@ class PsychologyViewImpl {
     return wheel;
   }
 
-  /**
-   * @param {import('../analysis/LongTermAnalysisEngine.js').LongTermAnalysisResult} analysis
-   * @returns {HTMLElement}
-   */
   #renderTimeline(analysis) {
     const track = el('div', { class: 'psychology-timeline' });
     const progress = analysis.currentCycle.progressPct;
@@ -106,7 +92,7 @@ class PsychologyViewImpl {
       track.appendChild(el('div', {
         class: 'psychology-timeline-segment',
         style: `flex:${item.endPct - item.startPct};background:${item.phase.color}33`,
-        title: `${item.phase.labelVi} (${item.startPct.toFixed(0)}–${item.endPct.toFixed(0)}%)`,
+        title: `${item.phase.labelVi} (${item.startPct.toFixed(0)}ï¿½${item.endPct.toFixed(0)}%)`,
       }, [
         el('span', { class: 'psychology-timeline-label' }, [item.phase.labelVi]),
       ]));
@@ -117,7 +103,7 @@ class PsychologyViewImpl {
       el('div', {
         class: 'psychology-timeline-marker',
         style: `left:${Math.min(99, progress)}%`,
-        title: `V? trí hi?n t?i: ${progress.toFixed(1)}%`,
+        title: `V? trï¿½ hi?n t?i: ${progress.toFixed(1)}%`,
       }),
     ]);
   }

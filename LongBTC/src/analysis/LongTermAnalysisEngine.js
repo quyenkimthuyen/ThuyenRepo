@@ -1,5 +1,5 @@
 /**
- * Orchestrates long-term BTC analysis: cycle ? trend ? Elliott ? psychology.
+ * Orchestrates long-term BTC analysis: cycle → trend → Elliott → psychology.
  * @module analysis/LongTermAnalysisEngine
  */
 
@@ -63,10 +63,10 @@ export function analyzeLongTerm(candles, options = {}) {
 
   const summary = [
     `BTC ${timeframe}: ${overallTrend.reason}`,
-    `Chu k?: ${currentCycle.phaseLabel} (${currentCycle.progressPct.toFixed(1)}% chu k? halving)`,
+    `Chu kỳ: ${currentCycle.phaseLabel} (${currentCycle.progressPct.toFixed(1)}% chu kỳ halving)`,
     elliott.summary,
-    `T�m l�: ${psychology.labelVi} (${psychology.confidence}% tin c?y)`,
-  ].join(' � ');
+    `Tâm lý: ${psychology.labelVi} (${psychology.confidence}% tin cậy)`,
+  ].join(' · ');
 
   const result = {
     symbol,

@@ -29,6 +29,7 @@ class App {
   async boot() {
     log.info(`Starting ${Config.APP_NAME} v${Config.APP_VERSION}`);
     this.#settings = this.#loadSettings();
+    this.#migrateBtcSettings();
     this.#applyTheme();
 
     this.#loader = new ModuleLoader();
@@ -63,7 +64,35 @@ class App {
   }
 
   #loadSettings() {
-    return loadFromStorage(Config.STORAGE_KEYS.SETTINGS, getDefaultSettings());
+    const defaults = getDefaultSettings();
+    let settings = loadFromStorage(Config.STORAGE_KEYS.SETTINGS, null);
+    if (!settings) {
+      const legacy = loadFromStorage('parl_settings', null);
+      settings = legacy && typeof legacy === 'object'
+        ? { ...defaults, ...legacy }
+        : defaults;
+      saveToStorage(Config.STORAGE_KEYS.SETTINGS, settings);
+    }
+    return settings;
+  }
+
+  /** Force BTC-only symbol/timeframe from legacy forex settings. */
+  #migrateBtcSettings() {
+    const sym = this.#settings.symbol;
+    const tf = this.#settings.timeframe;
+    const allowedTf = Config.TIMEFRAMES;
+    let changed = false;
+    if (sym !== 'BTCUSD') {
+      this.#settings.symbol = 'BTCUSD';
+      changed = true;
+    }
+    if (!allowedTf.includes(tf)) {
+      this.#settings.timeframe = Config.DEFAULT_TIMEFRAME;
+      changed = true;
+    }
+    if (changed) {
+      saveToStorage(Config.STORAGE_KEYS.SETTINGS, this.#settings);
+    }
   }
 
   #applyTheme() {

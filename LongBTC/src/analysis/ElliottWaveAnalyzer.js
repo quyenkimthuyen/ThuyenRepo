@@ -1,6 +1,6 @@
 /**
  * Simplified Elliott Wave labeling on swing pivots.
- * Research heuristic � not a substitute for manual wave count.
+ * Research heuristic � not a substitute for manual wave count.
  * @module analysis/ElliottWaveAnalyzer
  */
 
@@ -36,7 +36,7 @@ export function labelElliottWaves(pivots, segments) {
     return {
       waves: [],
       structure: 'unknown',
-      summary: 'C?n th�m swing ?? ??m s�ng Elliott',
+      summary: 'Cần thêm swing để đếm sóng Elliott',
     };
   }
 
@@ -50,7 +50,7 @@ export function labelElliottWaves(pivots, segments) {
   for (let i = 0; i < Math.min(recent.length, labels.length); i++) {
     const seg = recent[i];
     waves.push({
-      label: `S�ng ${labels[i]}`,
+      label: `S�ng ${labels[i]}`,
       waveNumber: labels[i],
       startIndex: seg.startIndex,
       endIndex: seg.endIndex,
@@ -64,10 +64,10 @@ export function labelElliottWaves(pivots, segments) {
   }
 
   const summary = structure === 'impulse'
-    ? `C?u tr�c xung ${waves.length} s�ng � ${describeImpulse(waves)}`
+    ? `Cấu trúc xung ${waves.length} sóng — ${describeImpulse(waves)}`
     : structure === 'correction'
-      ? `C?u tr�c ?i?u ch?nh ABC � ${describeCorrection(waves)}`
-      : 'C?u tr�c ch?a r� � c?n th�m d? li?u';
+      ? `Cấu trúc điều chỉnh ABC — ${describeCorrection(waves)}`
+      : 'Cấu trúc chưa rõ — cần thêm dữ liệu';
 
   return { waves, structure, summary };
 }
@@ -101,13 +101,13 @@ function detectStructure(segments) {
  * @returns {string}
  */
 function describeImpulse(waves) {
-  if (waves.length < 3) return '?ang h�nh th�nh';
+  if (waves.length < 3) return 'đang hình thành';
   const w3 = waves.find((w) => w.waveNumber === '3');
   const w1 = waves.find((w) => w.waveNumber === '1');
   if (w3 && w1 && Math.abs(w3.endPrice - w3.startPrice) > Math.abs(w1.endPrice - w1.startPrice)) {
-    return 'S�ng 3 m?nh nh?t (?�ng quy t?c Elliott)';
+    return 'Sóng 3 mạnh nhất (đúng quy tắc Elliott)';
   }
-  return '?ang trong xung � theo d�i s�ng 3/5';
+  return 'đang trong xung — theo dõi sóng 3/5';
 }
 
 /**
@@ -115,17 +115,17 @@ function describeImpulse(waves) {
  * @returns {string}
  */
 function describeCorrection(waves) {
-  if (waves.length < 2) return '?i?u ch?nh s?m';
+  if (waves.length < 2) return 'điều chỉnh sớm';
   const waveA = waves.find((w) => w.waveNumber === 'A');
   const waveC = waves.find((w) => w.waveNumber === 'C');
   if (waveA && waveC) {
     const aLen = Math.abs(waveA.endPrice - waveA.startPrice);
     const cLen = Math.abs(waveC.endPrice - waveC.startPrice);
     if (Math.abs(aLen - cLen) / Math.max(aLen, cLen) < 0.3) {
-      return 'A ? C � m� h�nh ?i?u ch?nh zigzag';
+      return 'A ≈ C — mô hình điều chỉnh zigzag';
     }
   }
-  return '?i?u ch?nh ?ang di?n ra';
+  return 'điều chỉnh đang diễn ra';
 }
 
 /**
@@ -136,15 +136,15 @@ function describeCorrection(waves) {
  */
 export function wavePsychologyHint(waveNumber, trend) {
   const hints = {
-    '1': 'Hy v?ng / Relief � kh?i ??u xu h??ng m?i',
-    '2': 'Denial � ?i?u ch?nh nh? sau s�ng 1',
-    '3': 'Optimism ? Thrill � s�ng m?nh nh?t',
-    '4': 'Anxiety � t�ch l?y tr??c s�ng cu?i',
-    '5': 'Euphoria � ??nh xung, c?nh gi�c ph�n ph?i',
-    A: 'Anxiety / Fear � b?t ??u ?i?u ch?nh',
-    B: 'Denial / Hope � h?i ph?c gi?',
-    C: 'Capitulation / Depression � k?t th�c ?i?u ch?nh',
+    '1': 'Hy vọng / Relief — khởi đầu xu hướng mới',
+    '2': 'Denial — điều chỉnh nhẹ sau sóng 1',
+    '3': 'Optimism → Thrill — sóng mạnh nhất',
+    '4': 'Anxiety — tích lũy trước sóng cuối',
+    '5': 'Euphoria — đỉnh xung, cảnh giác phân phối',
+    A: 'Anxiety / Fear — bắt đầu điều chỉnh',
+    B: 'Denial / Hope — hồi phục giả',
+    C: 'Capitulation / Depression — kết thúc điều chỉnh',
   };
-  const base = hints[waveNumber] ?? 'Theo d�i c?u tr�c';
-  return trend === 'downtrend' ? `${base} (trong xu h??ng gi?m)` : base;
+  const base = hints[waveNumber] ?? 'Theo dõi cấu trúc';
+  return trend === 'downtrend' ? `${base} (trong xu hướng giảm)` : base;
 }

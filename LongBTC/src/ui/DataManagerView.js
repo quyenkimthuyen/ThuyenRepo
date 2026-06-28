@@ -72,7 +72,7 @@ class DataManagerViewImpl {
       return;
     }
 
-    for (const ds of datasets.sort((a, b) => a.symbol.localeCompare(b.symbol))) {
+    for (const ds of datasets.sort((a, b) => a.timeframe.localeCompare(b.timeframe))) {
       tbody.appendChild(this.#renderRow(ds));
     }
     await this.#refreshHealth();
@@ -89,7 +89,7 @@ class DataManagerViewImpl {
       const ok = runnable.length > 0;
       box.className = `data-health${ok ? ' data-health-ok' : ' data-health-warn'}`;
       if (ok) {
-        box.textContent = `Data OK — ${runnable.length} dataset(s), ${totalCandles.toLocaleString()} candles · ${h.indexedDbDatasets} in IndexedDB`;
+        box.textContent = `Dữ liệu OK — ${runnable.length} bộ BTC (${totalCandles.toLocaleString()} nến)`;
       } else if (h.protocol === 'file:') {
         box.textContent = 'Không load được qua file:// — chạy: cd LongBTC && python3 -m http.server 8080 rồi mở http://localhost:8080';
       } else {

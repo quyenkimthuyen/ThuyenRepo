@@ -66,7 +66,7 @@ export function classifyOverallTrend(pivots) {
   const lows = pivots.filter((p) => p.type === 'low');
 
   if (highs.length < 2 || lows.length < 2) {
-    return { direction: 'sideways', confidence: 30, reason: 'Ch?a ?? swing ?? x�c ??nh xu h??ng' };
+    return { direction: 'sideways', confidence: 30, reason: 'Chưa đủ swing để xác định xu hướng' };
   }
 
   const lastTwoHighs = highs.slice(-2);
@@ -77,19 +77,19 @@ export function classifyOverallTrend(pivots) {
   const ll = lastTwoLows[1].price < lastTwoLows[0].price;
 
   if (hh && hl) {
-    return { direction: 'uptrend', confidence: 85, reason: 'Higher High + Higher Low � xu h??ng t?ng' };
+    return { direction: 'uptrend', confidence: 85, reason: 'Higher High + Higher Low — xu hướng tăng' };
   }
   if (lh && ll) {
-    return { direction: 'downtrend', confidence: 85, reason: 'Lower High + Lower Low � xu h??ng gi?m' };
+    return { direction: 'downtrend', confidence: 85, reason: 'Lower High + Lower Low — xu hướng giảm' };
   }
   if (hh && ll) {
-    return { direction: 'sideways', confidence: 60, reason: 'Ph�n k? HH/LL � ?i ngang / chuy?n pha' };
+    return { direction: 'sideways', confidence: 60, reason: 'Phân kỳ HH/LL — đi ngang / chuyển pha' };
   }
   if (lh && hl) {
-    return { direction: 'sideways', confidence: 60, reason: 'Ph�n k? LH/HL � ?i ngang / t�ch l?y' };
+    return { direction: 'sideways', confidence: 60, reason: 'Phân kỳ LH/HL — đi ngang / tích lũy' };
   }
 
-  return { direction: 'sideways', confidence: 45, reason: 'C?u tr�c swing h?n h?p' };
+  return { direction: 'sideways', confidence: 45, reason: 'Cấu trúc swing hỗn hợp' };
 }
 
 /**
@@ -97,6 +97,6 @@ export function classifyOverallTrend(pivots) {
  * @returns {string}
  */
 export function trendLabelVi(direction) {
-  const labels = { uptrend: 'T?ng', downtrend: 'Gi?m', sideways: '?i ngang' };
+  const labels = { uptrend: 'Tăng', downtrend: 'Giảm', sideways: 'Đi ngang' };
   return labels[direction] ?? direction;
 }

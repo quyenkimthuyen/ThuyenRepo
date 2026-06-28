@@ -4,7 +4,7 @@
  * @module core/Config
  */
 
-/** @typedef {'EURUSD'|'GBPUSD'|'BTCUSD'} Symbol */
+/** @typedef {'BTCUSD'} Symbol */
 /** @typedef {'H1'|'H4'|'D1'|'W'} Timeframe */
 
 /**
