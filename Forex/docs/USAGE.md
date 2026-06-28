@@ -71,7 +71,7 @@ timestamp,datetime,open,high,low,close,volume
 
 ### Strategies (Ctrl+3)
 
-Seven built-in Price Action setups (see `docs/STRATEGY_SPECIFICATION.md`):
+Eight built-in Price Action setups (see `docs/STRATEGY_SPECIFICATION.md` and in-app **Ctrl+0 → Strategies**):
 
 | ID | Name |
 |----|------|
@@ -88,6 +88,23 @@ Seven built-in Price Action setups (see `docs/STRATEGY_SPECIFICATION.md`):
 - **Run Selected** — scan one strategy
 - **Run All Enabled** — scan all active plugins
 - Signals export as JSON
+
+#### Session Liquidity Sweep (`session-liquidity-sweep`)
+
+Session-boundary liquidity fades for **EURUSD H1** (works on other pairs/timeframes):
+
+1. **Sweep phase** — price grabs beyond Asian/London/swing level, closes back inside, wick rejection.
+2. **Confirm phase** — within `confirmMaxBars`, confirmation candle without breaking sweep extreme → entry.
+3. **Filters** — UTC session window (default 06–20), volatility floor (`minVolatilityRatio` 0.95), optional previous Asian range.
+
+| Key param | Default |
+|-----------|---------|
+| grabPips | 5 |
+| wickRatio | 0.65 |
+| confirmMaxBars | 2 |
+| rr | 1.5 |
+
+Unlike **Liquidity Grab**: two-phase entry, multiple level sources, session/vol filters. Full spec: `STRATEGY_SPECIFICATION.md` §10.
 
 ### Compare (Ctrl+4)
 

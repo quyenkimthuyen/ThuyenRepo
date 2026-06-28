@@ -79,7 +79,7 @@ timestamp,datetime,open,high,low,close,volume
 
 ### Strategies (Ctrl+3)
 
-Bảy setup Price Action (chi tiết trong `docs/STRATEGY_SPECIFICATION.md`):
+Tám setup Price Action (chi tiết trong `docs/STRATEGY_SPECIFICATION.md` và **Ctrl+0 → Strategies**):
 
 | ID | Tên |
 |----|-----|
@@ -94,6 +94,24 @@ Bảy setup Price Action (chi tiết trong `docs/STRATEGY_SPECIFICATION.md`):
 
 - Chỉnh tham số từng strategy → **Save Parameters**
 - **Run Selected** / **Run All Enabled**
+
+#### Session Liquidity Sweep (`session-liquidity-sweep`) — tóm tắt
+
+Chiến lược session cho **EURUSD H1** (chạy được symbol/TF khác):
+
+1. **Pha sweep** — quét Asian high/low, London morning, hoặc swing; close quay lại trong vùng; râu rejection.
+2. **Pha confirm** — 1–2 nến sau: nến xác nhận fade, không phá đỉnh/đáy sweep → entry.
+3. **Lọc** — chỉ 06–20 UTC; `minVolatilityRatio` (mặc định 0.95); tùy chọn prev Asian range.
+
+| Param chính | Mặc định |
+|-------------|----------|
+| grabPips | 5 |
+| wickRatio | 0.65 |
+| confirmMaxBars | 2 |
+| rr | 1.5 |
+| session | 06–20 UTC |
+
+Khác **Liquidity Grab**: entry 2 pha, nhiều nguồn level, lọc phiên/vol. Chi tiết đầy đủ: `STRATEGY_SPECIFICATION.md` §10.
 
 ### Compare (Ctrl+4)
 

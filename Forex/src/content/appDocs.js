@@ -94,7 +94,7 @@ export const DOC_SECTIONS = [
         items: [
           `Symbols: ${Config.SYMBOLS.join(', ')} (extensible in Config.js)`,
           `Timeframes: ${Config.TIMEFRAMES.join(', ')}`,
-          'Built-in strategies: Break & Retest, EMA Pullback, Liquidity Grab',
+          'Built-in strategies: Break & Retest, EMA Pullback, Liquidity Grab, Session Liquidity Sweep',
         ],
       },
       {
@@ -329,7 +329,7 @@ python3 -m http.server 8080
     blocks: [
       {
         type: 'p',
-        text: 'All strategy logic is defined in docs/STRATEGY_SPECIFICATION.md. Five built-in Price Action setups:',
+        text: 'All strategy logic is defined in docs/STRATEGY_SPECIFICATION.md. Eight built-in Price Action setups:',
       },
       {
         type: 'h3',
@@ -353,7 +353,15 @@ python3 -m http.server 8080
       },
       {
         type: 'p',
-        text: 'Fade false breakouts beyond swing highs/lows (stop hunt). Requires wick rejection and close back inside range.',
+        text: 'Fade false breakouts beyond swing highs/lows (stop hunt). Single-bar entry with wick rejection.',
+      },
+      {
+        type: 'h3',
+        text: 'Session Liquidity Sweep (session-liquidity-sweep)',
+      },
+      {
+        type: 'p',
+        text: 'Fade session-boundary sweeps (Asian/London/swing levels) during active UTC hours. Two-phase: sweep bar arms pending setup, confirmation bar triggers entry. Params: asianEndHour, londonEndHour, sessionStartHour, sessionEndHour, grabPips, wickRatio, confirmMaxBars, minVolatilityRatio, usePrevAsian, swingLookback, rr. Best researched on EURUSD H1.',
       },
       {
         type: 'h3',

@@ -684,7 +684,137 @@ closeInsideRatio >= minInsideRatio
 
 ---
 
-## 10. Thứ tự thực thi trong Engine
+## 10. Strategy 8 — Session Liquidity Sweep
+
+**Plugin ID:** `session-liquidity-sweep`  
+**Version:** 1.1.0  
+**Category:** Price Action — session structure (EURUSD H1–oriented, works on any symbol/TF)  
+**Ý tưởng:** Quét thanh khoản tại biên phiên (Asian / London / swing) trong khung giờ active, **chờ nến xác nhận** (2-phase) rồi fade false breakout. Khác Liquidity Grab: nhiều nguồn level + pending confirmation + lọc phiên/volatility.
+
+### 10.1 Parameters
+
+| Key | Default | Mô tả |
+|-----|---------|-------|
+| `asianEndHour` | 7 | Asian range kết thúc trước giờ UTC này (H1: nến 00–06) |
+| `londonEndHour` | 12 | London morning range kết thúc trước giờ UTC này |
+| `sessionStartHour` | 6 | Chỉ xét sweep/entry từ giờ UTC này |
+| `sessionEndHour` | 20 | Không xét sau giờ UTC này |
+| `grabPips` | 5 | Pip tối thiểu vượt level để coi là sweep |
+| `wickRatio` | 0.65 | Tỷ lệ wick tối thiểu trên **nến sweep** |
+| `confirmMaxBars` | 2 | Số nến tối đa chờ xác nhận sau sweep |
+| `rr` | 1.5 | Risk-reward |
+| `swingLookback` | 10 | Swing high/low fallback |
+| `minVolatilityRatio` | 0.95 | Avg range 14 nến ≥ ratio × median 50 cửa sổ |
+| `volatilityLookback` | 14 | Lookback tính biến động |
+| `usePrevAsian` | true | Dùng Asian range **ngày hôm trước** trong London sớm |
+
+### 10.2 Session ranges (UTC)
+
+```text
+Asian session:   hour < asianEndHour (mặc định 00–06)
+                 → cập nhật asianHigh / asianLow theo ngày UTC
+                 → khi hour >= asianEndHour: asianComplete = true
+
+London session:  asianEndHour <= hour < londonEndHour (mặc định 07–11)
+                 → cập nhật londonHigh / londonLow
+                 → khi hour >= londonEndHour: londonComplete = true
+
+Prev Asian:      khi usePrevAsian và hour ∈ [asianEndHour, londonEndHour+2)
+                 → thêm level từ prevAsianHigh / prevAsianLow (đã lưu khi sang ngày mới)
+```
+
+### 10.3 Nguồn liquidity (đồng thời)
+
+Tại mỗi bar trong session, strategy kiểm tra **từng bộ level**:
+
+| Nguồn | high | low | Khi dùng |
+|-------|------|-----|----------|
+| Asian (hôm nay) | asianHigh | asianLow | Sau asianComplete cùng ngày |
+| Prev Asian | prevAsianHigh | prevAsianLow | London sớm (nếu bật) |
+| London | londonHigh | londonLow | Sau londonComplete cùng ngày |
+| Swing | swingHigh(i) | swingLow(i) | Luôn (fallback) |
+
+### 10.4 Volatility filter
+
+```text
+avg14 = mean(range pip) của 14 nến gần nhất
+median50 = median của 50 cửa sổ avg14 lùi dần
+volOk = avg14 >= minVolatilityRatio × median50
+```
+
+Nếu `volOk === false` → không sweep, không confirm.
+
+### 10.5 Phase 1 — Detect sweep (bar `s`)
+
+**Bearish sweep (arm SHORT pending)** — với mỗi `level_high`:
+
+```text
+1. high[s] >= level_high + grabPips × pipSize
+2. close[s] < level_high
+3. upperWick[s] / range[s] >= wickRatio
+4. Không duplicate level/direction trong swingLookback × 2
+```
+
+**Bullish sweep (arm LONG pending)** — đối xứng với `level_low`.
+
+→ Tạo `PendingSweep` với `expiresAtBar = s + confirmMaxBars`. **Không** vào lệnh tại bar sweep.
+
+### 10.6 Phase 2 — Confirm entry (bar `c`, s < c ≤ expiresAtBar)
+
+**SHORT confirm:**
+
+```text
+1. high[c] <= sweepHigh          // không phá đỉnh sweep
+2. close[c] < level              // đóng cửa đúng phía level
+3. bearishConfirmation(candles[c])
+```
+
+**LONG confirm** — đối xứng (`low[c] >= sweepLow`, `close[c] > level`, bullish).
+
+**Signal:**
+
+```text
+entry = close[c]
+sl    = sweepHigh + slBuffer (short) | sweepLow - slBuffer (long)
+tp    = entry ± rr × |entry - sl|
+reason = "Session sweep {dir}: {source} {level}, confirm bar {c}"
+```
+
+### 10.7 Khác Liquidity Grab
+
+| | Session Liquidity Sweep | Liquidity Grab |
+|--|-------------------------|----------------|
+| Entry | Nến confirm (1–2 bar sau sweep) | Ngay nến sweep |
+| Level | Asian + London + swing | Chỉ swing |
+| Session | 06–20 UTC (mặc định) | Mọi giờ |
+| Volatility | Bắt buộc volOk | Không |
+| RR mặc định | 1.5 | 2 |
+
+### 10.8 Confidence adjustments
+
+| Điều kiện | Điểm thêm |
+|-----------|-----------|
+| Level source asian / prev-asian | +15 |
+| Level source london | +8 |
+| Level source swing | +10 |
+| Close gần level (≤ 3 pip) | +10 |
+
+### 10.9 Ví dụ (SHORT)
+
+```text
+Asian high = 1.08600 (nến 00–06 UTC)
+Bar 8 (sweep): high = 1.08655, close = 1.08570, upperWick/range = 0.68 → pending SHORT
+Bar 9 (confirm): high = 1.08580, close = 1.08520, bearish → SHORT entry 1.08520
+  sl = 1.08655 + 1 pip, tp = entry - 1.5 × risk
+```
+
+### 10.10 Gợi ý tối ưu (EURUSD H1)
+
+Grid search gợi ý (in-sample Dukascopy 2023–2026): `grabPips=5`, `wickRatio=0.65`, `confirmMaxBars=2`, `minVolatilityRatio=0.95`, `rr=1.5`, `swingLookback=10` → ~64 lệnh, WR ~52%, PF ~1.24. **Phải walk-forward trước khi tin.**
+
+---
+
+## 11. Thứ tự thực thi trong Engine
 
 Tại mỗi bar `i` (warmup đủ):
 
@@ -698,11 +828,11 @@ Tại mỗi bar `i` (warmup đủ):
 
 ---
 
-## 11. Test cases bắt buộc (Phase 5)
+## 12. Test cases bắt buộc (Phase 5)
 
 Mỗi strategy cần pass các case sau trước khi merge:
 
-### 11.1 Break & Retest
+### 12.1 Break & Retest
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -712,7 +842,7 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | BR-04 | Breakout long, close phá invalidation | Không signal |
 | BR-05 | 2 breakout cùng level | Chỉ 1 signal (cái đầu hoặc expiry) |
 
-### 11.2 EMA Pullback
+### 12.2 EMA Pullback
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -722,7 +852,7 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | EP-04 | emaSpread < 3 pips | Không signal |
 | EP-05 | 2 signal liên tiếp trong cooldown | Chỉ 1 |
 
-### 11.3 Liquidity Grab
+### 12.3 Liquidity Grab
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -732,7 +862,7 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | LG-04 | Bullish grab đáy đối xứng | 1 LONG |
 | LG-05 | Duplicate level trong window | Chỉ 1 |
 
-### 11.4 Inside Bar Breakout
+### 12.4 Inside Bar Breakout
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -741,7 +871,7 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | IB-03 | Inside + break down + dưới EMA | 1 SHORT |
 | IB-04 | Quá maxWaitBars không break | Không signal |
 
-### 11.5 Pin Bar Rejection
+### 12.5 Pin Bar Rejection
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -751,7 +881,7 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | PB-04 | Wick quá nhỏ | Không signal |
 | PB-05 | Duplicate level | Chỉ 1 |
 
-### 11.6 Wyckoff Spring / UTAD
+### 12.6 Wyckoff Spring / UTAD
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -760,7 +890,7 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | WS-03 | UTAD hợp lệ trong range | 1 SHORT |
 | WS-04 | Thị trường trend (không consolidation) | Không signal |
 
-### 11.7 Wyckoff Range Test
+### 12.7 Wyckoff Range Test
 
 | # | Input | Kỳ vọng |
 |---|-------|---------|
@@ -768,22 +898,33 @@ Mỗi strategy cần pass các case sau trước khi merge:
 | WT-02 | Spring + rally + higher-low test | 1 LONG |
 | WT-03 | Chưa rally đủ trước test | Không signal |
 
+### 12.8 Session Liquidity Sweep
+
+| # | Input | Kỳ vọng |
+|---|-------|---------|
+| SLS-01 | Asian sweep + confirm bar | 1 SHORT |
+| SLS-02 | Sweep ngoài session window | Không signal |
+| SLS-03 | Grab quá nông | Không signal |
+| SLS-04 | Sweep OK nhưng confirm phá sweepHigh | Không short |
+| SLS-05 | Duplicate level trong window | Chỉ 1 |
+
 ---
 
-## 12. Ghi chú triển khai
+## 13. Ghi chú triển khai
 
 1. **Pip helper:** tạo `src/utils/pip.js` — `getPipSize(symbol)`, `pipsToPrice(pips, symbol)`
 2. **Shared helpers:** `CandlePatterns.js`, `WyckoffRange.js` (trading range, spring, UTAD, test)
-3. **State persistence:** Break & Retest + Wyckoff Range Test dùng pending state; Liquidity Grab / Wyckoff Spring-UTAD single-bar entry
+3. **State persistence:** Break & Retest + Wyckoff Range Test + **Session Liquidity Sweep** dùng pending state; Liquidity Grab / Wyckoff Spring-UTAD single-bar entry
 4. **Reason string:** luôn có level giá (5 decimals), bar index, hướng
 5. **Không** dùng dữ liệu `candles[i+1]` trong bất kỳ điều kiện nào
 
 ---
 
-## 13. Changelog
+## 14. Changelog
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.3.0 | 2026-06-28 | Added Session Liquidity Sweep v1.1 (2-phase, multi-level session) |
 | 1.2.0 | 2026-06-22 | Added Wyckoff Spring/UTAD + Wyckoff Range Test |
 | 1.1.0 | 2026-06-23 | Added Inside Bar Breakout + Pin Bar Rejection |
 | 1.0.0 | 2026-06-22 | Initial specification for 3 PA setups |

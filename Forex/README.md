@@ -21,7 +21,7 @@ On first launch: **Data Manager** → reload default data or import CSV.
 |--------|----------|-------------|
 | Chart | Ctrl+1 | Candlestick chart + bar-by-bar replay (UTC jump) |
 | Data Manager | Ctrl+2 | Import/export OHLCV via IndexedDB |
-| Strategies | Ctrl+3 | 8 Price Action setups (Break & Retest, Session Sweep, EMA, Wyckoff, …) |
+| Strategies | Ctrl+3 | 8 PA setups — see `STRATEGY_SPECIFICATION.md` §10 for Session Liquidity Sweep |
 | Compare | Ctrl+4 | Rank strategies on same symbol/TF by expectancy |
 | Simulation | Ctrl+5 | Backtest + optional AI score filter & compare |
 | Statistics | Ctrl+6 | Expectancy, PF, drawdown, equity curve |
