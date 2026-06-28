@@ -246,13 +246,23 @@ python3 -m http.server 8080
         ],
       },
       {
+        type: 'callout',
+        variant: 'info',
+        text: 'Updated 28 Jun 2025: separate Sensitivity tab; Suggest from data / Restore defaults / Apply best to Strategy; parallel grid (≥4 combos); form persists across tabs; WR/Exp/Net chart for gridded params.',
+      },
+      {
         type: 'h3',
         text: '8. Optimizer (Ctrl+8)',
       },
       {
         type: 'ul',
         items: [
-          'Grid Search — test parameter combinations (max 500 combos)',
+          'Grid Search — test parameter combinations (max 500 combos); parallel workers when ≥4 combos',
+          'Suggest from data — volatility-based grid hints from current candles',
+          'Restore defaults — reset parameter grids per strategy',
+          'Apply best to Strategy — save rank #1 combo to Strategies',
+          'Sensitivity tab — WR / Expectancy / Net Profit chart per gridded parameter',
+          'Grid form persists when switching Optimizer tabs (per strategy, current session)',
           'Auto walk-forward on best combo after grid (default on)',
           'Walk Forward — rolling in-sample / out-of-sample validation',
           'Monte Carlo — shuffle trade order for risk distribution (uses last simulation)',
@@ -434,7 +444,23 @@ python3 -m http.server 8080
       },
       {
         type: 'p',
-        text: `Reduce parameter combinations (max ${Config.OPTIMIZER.MAX_COMBINATIONS}). Web Workers activate automatically for large datasets (≥${Config.PERFORMANCE.WORKER_THRESHOLD.toLocaleString()} candles).`,
+        text: `Reduce combinations (max ${Config.OPTIMIZER.MAX_COMBINATIONS}). ≥4 combos run in parallel on Web Workers (4 threads) when available.`,
+      },
+      {
+        type: 'h3',
+        text: 'Sensitivity tab empty?',
+      },
+      {
+        type: 'p',
+        text: 'Run Grid Search first. The chart only shows parameters included in that grid run, with at least two distinct values.',
+      },
+      {
+        type: 'h3',
+        text: 'Lost Grid Search inputs when switching tabs?',
+      },
+      {
+        type: 'p',
+        text: 'Current builds keep the grid form per strategy while the app stays open. Reloading the page clears it — use Restore defaults to reset grids.',
       },
     ],
   },

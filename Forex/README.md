@@ -26,7 +26,7 @@ On first launch: **Data Manager** → reload default data or import CSV.
 | Simulation | Ctrl+5 | Backtest + optional AI score filter & compare |
 | Statistics | Ctrl+6 | Expectancy, PF, drawdown, equity curve |
 | Reports | Ctrl+7 | Dashboard, heatmaps, CSV/JSON/PNG/PDF export |
-| Optimizer | Ctrl+8 | Grid search (+ auto walk-forward), WF, Monte Carlo |
+| Optimizer | Ctrl+8 | Grid search (parallel), Sensitivity chart, WF, Monte Carlo |
 | AI Signals | Ctrl+9 | 0–100 signal scores with factor breakdown |
 | Documentation | Ctrl+0 / F1 | In-app usage guide |
 
@@ -62,7 +62,7 @@ Forex/
 │   ├── statistics/ # Performance metrics
 │   ├── analytics/  # Heatmaps
 │   ├── report/     # Export
-│   ├── optimizer/  # Grid search, walk-forward, MC
+│   ├── optimizer/  # Grid search (parallel), sensitivity, walk-forward, MC
 │   ├── scoring/    # AI signal scores
 │   ├── performance/# Web Workers
 │   └── ui/         # Views

@@ -209,7 +209,7 @@ class Layout {
       simulation: 'Backtest setups across pairs, timeframes, and parameter combinations.',
       statistics: 'Expectancy, profit factor, drawdown, and performance analytics.',
       reports: 'Export results as CSV, JSON, PNG, or PDF reports.',
-      optimizer: 'Grid search, walk-forward validation, and Monte Carlo risk analysis.',
+      optimizer: 'Grid search (parallel), Sensitivity chart, walk-forward, Monte Carlo.',
       signals: 'AI signal scores with trend, momentum, session, and PA quality factors.',
       docs: 'Installation, usage guide, keyboard shortcuts, and FAQ.',
     };

@@ -135,11 +135,25 @@ Includes equity curve and drawdown charts. Export JSON.
 
 ### Optimizer (Ctrl+8)
 
+Four tabs: **Grid Search**, **Sensitivity**, **Walk Forward**, **Monte Carlo**.
+
 **Grid Search**
 - Select parameters and value lists (`1,2,3` or `10:50:10`)
 - Max 500 combinations
+- **Suggest from data** — fill value grids from candle volatility (avg 14-bar range + timeframe)
+- **Restore defaults** — reset to default ±1-step grids per strategy
+- Form state (ticks, values, rank, auto WF) **persists when switching tabs** (per strategy, current session only)
 - Rank by expectancy, net profit, PF, Sharpe, or win rate
-- **Auto walk-forward on best combo** (default on) — after grid finishes, validates the top-ranked parameter set with rolling IS/OOS folds; summary shown below Top Results
+- **Auto walk-forward on best combo** (default on)
+- **Apply best to Strategy** — save rank #1 combo to Strategies (Ctrl+3)
+- **Parallel execution** — ≥4 combos use Web Worker pool (4 threads) when available; results header shows `(parallel)`
+
+**Sensitivity** (new tab)
+- Uses data from the **last Grid Search run** (`optimizedParamKeys` + `paramGrid` stored in results)
+- Line chart: Win Rate (left axis) and Expectancy / Net Profit (right axis, $)
+- Toggle metrics: **WR / Exp / Net**
+- Parameter dropdown lists only params included in that grid run
+- Hides buckets with &lt;5 avg trades per combo
 
 **Walk Forward**
 - Rolling in-sample / out-of-sample windows
@@ -149,6 +163,17 @@ Includes equity curve and drawdown charts. Export JSON.
 - Requires prior simulation
 - Shuffles trade order (default 1000 iterations)
 - Shows P5 / P50 / P95 balance distribution
+
+**Recommended workflow:** Grid Search → Sensitivity chart → Apply best to Strategy → Walk Forward → Simulation → Monte Carlo
+
+#### Optimizer updates (28 Jun 2025)
+
+- **Sensitivity** tab split from Top Results  
+- **Suggest from data**, **Restore defaults**, **Apply best to Strategy**  
+- **Parallel** grid search via Web Worker pool (≥4 combos)  
+- Grid form **persists across tabs** (per strategy, current session)  
+- Sensitivity uses **gridded params only** (`optimizedParamKeys`) + **Net Profit** metric  
+- Chart toolbar: param dropdown + **WR / Exp / Net** toggles  
 
 ### AI Signals (Ctrl+9)
 
@@ -200,7 +225,9 @@ Clear browser site data (or **Reset app** in Data Manager) to wipe everything. E
 | Empty chart | Import or generate data in Data Manager |
 | No statistics | Run Simulation first |
 | Monte Carlo error | Run Simulation to generate trades |
-| Grid search slow | Reduce parameter combinations; workers activate at 10k+ candles |
+| Grid search slow | Reduce combinations (max 500). ≥4 combos run in parallel on Web Workers (4 threads) when available |
+| Sensitivity tab empty | Run Grid Search first; need ≥2 distinct values for at least one gridded parameter |
+| Optimizer form reset | Grid form persists across tabs in-session; full page reload clears it — use **Restore defaults** to reset grids |
 | Grid search storage error | Reload app — results now use IndexedDB; old quota errors should not recur |
 | Jump date wrong timezone | Jump field is UTC — match timestamps shown in replay bar |
 | Boot error: private field `#log` | Update to latest PARL. Use modern Chrome/Edge/Firefox and serve via `http://` |
