@@ -1,6 +1,5 @@
 /**
- * Session Liquidity Sweep — Asian range sweeps during London/overlap with volatility filter.
- * Designed for EURUSD H1-style session structure; works on any symbol/timeframe.
+ * Session Liquidity Sweep v1.1 — multi-level session sweeps with 2-phase confirmation.
  * @module strategies/SessionLiquiditySweepStrategy
  */
 
@@ -30,6 +29,17 @@ import { computeConfidence } from '../strategy/helpers/ConfidenceScore.js';
  */
 
 /**
+ * @typedef {Object} PendingSweep
+ * @property {'long'|'short'} direction
+ * @property {number} level
+ * @property {string} levelSource
+ * @property {number} sweepBar
+ * @property {number} sweepHigh
+ * @property {number} sweepLow
+ * @property {number} expiresAtBar
+ */
+
+/**
  * @param {number} timestamp
  * @returns {number}
  */
@@ -46,14 +56,14 @@ function utcDayKey(timestamp) {
 }
 
 /**
- * Trades liquidity sweeps of the Asian session range during active UTC hours.
+ * Session liquidity sweeps with pending confirmation and multiple level sources.
  */
 export class SessionLiquiditySweepStrategy extends BaseStrategy {
   static id = 'session-liquidity-sweep';
   static name = 'Session Liquidity Sweep';
   static description =
-    'Fade sweeps of the Asian session range during London/overlap when volatility is active.';
-  static version = '1.0.0';
+    'Fade liquidity sweeps at Asian/London/swing levels during active sessions (2-bar confirmation).';
+  static version = '1.1.0';
   static category = 'Price Action';
 
   getParameterSchema() {
@@ -65,13 +75,21 @@ export class SessionLiquiditySweepStrategy extends BaseStrategy {
         default: 7,
         min: 5,
         max: 9,
-        description: 'Asian range ends before this UTC hour (H1: bars 00–06 when set to 7)',
+      },
+      {
+        key: 'londonEndHour',
+        label: 'London End Hour (UTC)',
+        type: 'integer',
+        default: 12,
+        min: 8,
+        max: 16,
+        description: 'London morning range ends before this hour — used for overlap/NY sweeps',
       },
       {
         key: 'sessionStartHour',
         label: 'Session Start (UTC)',
         type: 'integer',
-        default: 7,
+        default: 6,
         min: 0,
         max: 23,
       },
@@ -79,7 +97,7 @@ export class SessionLiquiditySweepStrategy extends BaseStrategy {
         key: 'sessionEndHour',
         label: 'Session End (UTC)',
         type: 'integer',
-        default: 17,
+        default: 20,
         min: 1,
         max: 24,
       },
@@ -87,25 +105,35 @@ export class SessionLiquiditySweepStrategy extends BaseStrategy {
         key: 'grabPips',
         label: 'Grab Distance (pips)',
         type: 'number',
-        default: 6,
+        default: 5,
         min: 2,
         max: 20,
         step: 0.5,
       },
       {
         key: 'wickRatio',
-        label: 'Min Wick Ratio',
+        label: 'Min Sweep Wick Ratio',
         type: 'number',
         default: 0.65,
-        min: 0.4,
+        min: 0.35,
         max: 0.9,
         step: 0.05,
+        description: 'Wick on the sweep candle',
+      },
+      {
+        key: 'confirmMaxBars',
+        label: 'Confirm Max Bars',
+        type: 'integer',
+        default: 2,
+        min: 1,
+        max: 8,
+        description: 'Bars after sweep to wait for confirmation entry',
       },
       {
         key: 'rr',
         label: 'Risk Reward',
         type: 'number',
-        default: 2,
+        default: 1.5,
         min: 1,
         max: 5,
         step: 0.5,
@@ -117,17 +145,15 @@ export class SessionLiquiditySweepStrategy extends BaseStrategy {
         default: 10,
         min: 5,
         max: 25,
-        description: 'Fallback liquidity level when Asian range is not ready',
       },
       {
         key: 'minVolatilityRatio',
         label: 'Min Volatility Ratio',
         type: 'number',
-        default: 0.85,
+        default: 0.95,
         min: 0.5,
         max: 2,
         step: 0.1,
-        description: '14-bar avg range must be >= ratio × median of recent windows',
       },
       {
         key: 'volatilityLookback',
@@ -137,11 +163,18 @@ export class SessionLiquiditySweepStrategy extends BaseStrategy {
         min: 5,
         max: 30,
       },
+      {
+        key: 'usePrevAsian',
+        label: 'Use Previous Asian Range',
+        type: 'boolean',
+        default: true,
+        description: 'Also sweep prior day Asian high/low during early London',
+      },
     ];
   }
 
   getWarmupBars() {
-    const swing = Number(this._getParam('swingLookback') ?? 10);
+    const swing = Number(this._getParam('swingLookback') ?? 8);
     const volLb = Number(this._getParam('volatilityLookback') ?? 14);
     return swing + volLb + 60;
   }
@@ -152,6 +185,13 @@ export class SessionLiquiditySweepStrategy extends BaseStrategy {
     this._setState('asianHigh', null);
     this._setState('asianLow', null);
     this._setState('asianComplete', false);
+    this._setState('prevAsianHigh', null);
+    this._setState('prevAsianLow', null);
+    this._setState('londonDay', null);
+    this._setState('londonHigh', null);
+    this._setState('londonLow', null);
+    this._setState('londonComplete', false);
+    this._setState('pendingSweeps', /** @type {PendingSweep[]} */ ([]));
     this._setState('volOk', false);
   }
 
@@ -163,13 +203,16 @@ export class SessionLiquiditySweepStrategy extends BaseStrategy {
     const candle = candles[index];
     const symbol = /** @type {string} */ (this._getState('symbol') ?? 'EURUSD');
     const asianEndHour = Number(this._getParam('asianEndHour'));
+    const londonEndHour = Number(this._getParam('londonEndHour'));
     const swingLookback = Number(this._getParam('swingLookback'));
     const hour = utcHour(candle.timestamp);
     const day = utcDayKey(candle.timestamp);
 
     this.#updateAsianRange(candle, hour, day, asianEndHour);
+    this.#updateLondonRange(candle, hour, day, asianEndHour, londonEndHour);
     this.#updateVolatility(candles, index, symbol);
     this.#pruneRecentLevels(index, swingLookback);
+    this.#prunePending(index);
 
     this._setState('levelHigh', swingHigh(candles, index, swingLookback));
     this._setState('levelLow', swingLow(candles, index, swingLookback));
@@ -188,53 +231,47 @@ export class SessionLiquiditySweepStrategy extends BaseStrategy {
     if (hour < sessionStart || hour >= sessionEnd) return null;
     if (!this._getState('volOk')) return null;
 
-    const levels = this.#resolveLiquidityLevels(candles[index].timestamp, hour);
-    if (!levels) return null;
-
+    const candle = candles[index];
     const grabPips = Number(this._getParam('grabPips'));
     const minWickRatio = Number(this._getParam('wickRatio'));
     const rr = Number(this._getParam('rr'));
     const pip = pipsToPrice(1, symbol);
-    const candle = candles[index];
-    const avgVolume = this.#avgVolume(candles, index, Number(this._getParam('swingLookback')));
-    const volumeOk = candle.volume === 0 || candle.volume >= 0.8 * avgVolume;
+    const confirmMaxBars = Number(this._getParam('confirmMaxBars'));
 
-    const shortSignal = this.#checkShort(
-      candle,
-      levels.high,
-      levels.highSource,
-      grabPips,
-      pip,
-      minWickRatio,
-      volumeOk,
-      avgVolume,
-      symbol,
-      rr,
-      index,
-      timeframe
-    );
-    if (shortSignal) {
-      this.#recordLevel(levels.high, 'short', index);
-      return shortSignal;
-    }
+    const confirmSignal = this.#tryConfirmPending(candle, symbol, rr, index, timeframe);
+    if (confirmSignal) return confirmSignal;
 
-    const longSignal = this.#checkLong(
-      candle,
-      levels.low,
-      levels.lowSource,
-      grabPips,
-      pip,
-      minWickRatio,
-      volumeOk,
-      avgVolume,
-      symbol,
-      rr,
-      index,
-      timeframe
-    );
-    if (longSignal) {
-      this.#recordLevel(levels.low, 'long', index);
-      return longSignal;
+    const levelSets = this.#collectLiquidityLevels(candles[index].timestamp, hour);
+    for (const levels of levelSets) {
+      const sweptShort = this.#detectSweepShort(
+        candle, levels.high, levels.highSource, grabPips, pip, minWickRatio, symbol, index
+      );
+      if (sweptShort) {
+        this.#addPending({
+          direction: 'short',
+          level: levels.high,
+          levelSource: levels.highSource,
+          sweepBar: index,
+          sweepHigh: candle.high,
+          sweepLow: candle.low,
+          expiresAtBar: index + confirmMaxBars,
+        });
+      }
+
+      const sweptLong = this.#detectSweepLong(
+        candle, levels.low, levels.lowSource, grabPips, pip, minWickRatio, symbol, index
+      );
+      if (sweptLong) {
+        this.#addPending({
+          direction: 'long',
+          level: levels.low,
+          levelSource: levels.lowSource,
+          sweepBar: index,
+          sweepHigh: candle.high,
+          sweepLow: candle.low,
+          expiresAtBar: index + confirmMaxBars,
+        });
+      }
     }
 
     return null;
@@ -251,6 +288,10 @@ export class SessionLiquiditySweepStrategy extends BaseStrategy {
 
     if (hour < asianEndHour) {
       if (prevDay !== day) {
+        if (prevDay != null && this._getState('asianComplete')) {
+          this._setState('prevAsianHigh', this._getState('asianHigh'));
+          this._setState('prevAsianLow', this._getState('asianLow'));
+        }
         this._setState('asianDay', day);
         this._setState('asianHigh', candle.high);
         this._setState('asianLow', candle.low);
@@ -269,6 +310,41 @@ export class SessionLiquiditySweepStrategy extends BaseStrategy {
       const low = this._getState('asianLow');
       if (typeof high === 'number' && typeof low === 'number') {
         this._setState('asianComplete', true);
+      }
+    }
+  }
+
+  /**
+   * @param {import('../data/Candle.js').Candle} candle
+   * @param {number} hour
+   * @param {string} day
+   * @param {number} asianEndHour
+   * @param {number} londonEndHour
+   */
+  #updateLondonRange(candle, hour, day, asianEndHour, londonEndHour) {
+    const inLondon = hour >= asianEndHour && hour < londonEndHour;
+    const prevDay = this._getState('londonDay');
+
+    if (inLondon) {
+      if (prevDay !== day) {
+        this._setState('londonDay', day);
+        this._setState('londonHigh', candle.high);
+        this._setState('londonLow', candle.low);
+        this._setState('londonComplete', false);
+      } else {
+        const high = /** @type {number} */ (this._getState('londonHigh'));
+        const low = /** @type {number} */ (this._getState('londonLow'));
+        this._setState('londonHigh', Math.max(high, candle.high));
+        this._setState('londonLow', Math.min(low, candle.low));
+      }
+      return;
+    }
+
+    if (hour >= londonEndHour && prevDay === day && !this._getState('londonComplete')) {
+      const high = this._getState('londonHigh');
+      const low = this._getState('londonLow');
+      if (typeof high === 'number' && typeof low === 'number') {
+        this._setState('londonComplete', true);
       }
     }
   }
@@ -319,33 +395,251 @@ export class SessionLiquiditySweepStrategy extends BaseStrategy {
   /**
    * @param {number} timestamp
    * @param {number} hour
-   * @returns {{ high: number, low: number, highSource: string, lowSource: string }|null}
+   * @returns {{ high: number, low: number, highSource: string, lowSource: string }[]}
    */
-  #resolveLiquidityLevels(timestamp, hour) {
+  #collectLiquidityLevels(timestamp, hour) {
     const asianEndHour = Number(this._getParam('asianEndHour'));
+    const londonEndHour = Number(this._getParam('londonEndHour'));
+    const usePrevAsian = Boolean(this._getParam('usePrevAsian'));
     const day = utcDayKey(timestamp);
     const swingHighLevel = /** @type {number|null} */ (this._getState('levelHigh'));
     const swingLowLevel = /** @type {number|null} */ (this._getState('levelLow'));
+
+    /** @type {{ high: number, low: number, highSource: string, lowSource: string }[]} */
+    const sets = [];
 
     const asianReady =
       hour >= asianEndHour &&
       this._getState('asianDay') === day &&
       this._getState('asianComplete') === true;
-
     const asianHigh = /** @type {number|null} */ (this._getState('asianHigh'));
     const asianLow = /** @type {number|null} */ (this._getState('asianLow'));
 
-    const high = asianReady && asianHigh != null ? asianHigh : swingHighLevel;
-    const low = asianReady && asianLow != null ? asianLow : swingLowLevel;
+    if (asianReady && asianHigh != null && asianLow != null) {
+      sets.push({ high: asianHigh, low: asianLow, highSource: 'asian', lowSource: 'asian' });
+    }
 
-    if (high == null || low == null) return null;
+    if (usePrevAsian && hour >= asianEndHour && hour < londonEndHour + 2) {
+      const prevHigh = /** @type {number|null} */ (this._getState('prevAsianHigh'));
+      const prevLow = /** @type {number|null} */ (this._getState('prevAsianLow'));
+      if (prevHigh != null && prevLow != null) {
+        sets.push({ high: prevHigh, low: prevLow, highSource: 'prev-asian', lowSource: 'prev-asian' });
+      }
+    }
 
-    return {
-      high,
-      low,
-      highSource: asianReady && asianHigh != null ? 'asian' : 'swing',
-      lowSource: asianReady && asianLow != null ? 'asian' : 'swing',
-    };
+    const londonReady =
+      hour >= londonEndHour &&
+      this._getState('londonDay') === day &&
+      this._getState('londonComplete') === true;
+    const londonHigh = /** @type {number|null} */ (this._getState('londonHigh'));
+    const londonLow = /** @type {number|null} */ (this._getState('londonLow'));
+
+    if (londonReady && londonHigh != null && londonLow != null) {
+      sets.push({ high: londonHigh, low: londonLow, highSource: 'london', lowSource: 'london' });
+    }
+
+    if (swingHighLevel != null && swingLowLevel != null) {
+      sets.push({
+        high: swingHighLevel,
+        low: swingLowLevel,
+        highSource: 'swing',
+        lowSource: 'swing',
+      });
+    }
+
+    return sets;
+  }
+
+  /**
+   * @param {import('../data/Candle.js').Candle} candle
+   * @param {number} levelHigh
+   * @param {string} levelSource
+   * @param {number} grabPips
+   * @param {number} pip
+   * @param {number} minWickRatio
+   * @param {string} symbol
+   * @param {number} index
+   * @returns {boolean}
+   */
+  #detectSweepShort(candle, levelHigh, levelSource, grabPips, pip, minWickRatio, symbol, index) {
+    if (this.#isDuplicateLevel(levelHigh, 'short', symbol, index)) return false;
+    if (candle.high < levelHigh + grabPips * pip) return false;
+    if (candle.close >= levelHigh) return false;
+
+    const wicks = getWicks(candle);
+    if (wicks.range <= 0 || wicks.upper / wicks.range < minWickRatio) return false;
+
+    return true;
+  }
+
+  /**
+   * @param {import('../data/Candle.js').Candle} candle
+   * @param {number} levelLow
+   * @param {string} levelSource
+   * @param {number} grabPips
+   * @param {number} pip
+   * @param {number} minWickRatio
+   * @param {string} symbol
+   * @param {number} index
+   * @returns {boolean}
+   */
+  #detectSweepLong(candle, levelLow, levelSource, grabPips, pip, minWickRatio, symbol, index) {
+    if (this.#isDuplicateLevel(levelLow, 'long', symbol, index)) return false;
+    if (candle.low > levelLow - grabPips * pip) return false;
+    if (candle.close <= levelLow) return false;
+
+    const wicks = getWicks(candle);
+    if (wicks.range <= 0 || wicks.lower / wicks.range < minWickRatio) return false;
+
+    return true;
+  }
+
+  /**
+   * @param {import('../data/Candle.js').Candle} candle
+   * @param {string} symbol
+   * @param {number} rr
+   * @param {number} index
+   * @param {string} timeframe
+   * @returns {import('../strategy/Signal.js').Signal|null}
+   */
+  #tryConfirmPending(candle, symbol, rr, index, timeframe) {
+    /** @type {PendingSweep[]} */
+    const pending = this._getState('pendingSweeps') ?? [];
+
+    for (const setup of pending) {
+      if (index <= setup.sweepBar || index > setup.expiresAtBar) continue;
+      if (this.#isDuplicateLevel(setup.level, setup.direction, symbol, index)) continue;
+
+      if (setup.direction === 'short') {
+        if (candle.high > setup.sweepHigh) continue;
+        if (candle.close >= setup.level) continue;
+        if (!isBearishConfirmation(candle, symbol)) continue;
+
+        const levels = buildShortLevels(candle.close, slBufferAbove(setup.sweepHigh, symbol), rr);
+        this.#recordLevel(setup.level, 'short', index);
+        this._setState('pendingSweeps', pending.filter((p) => p !== setup));
+
+        return createSignal({
+          time: candle.timestamp,
+          pair: symbol,
+          timeframe,
+          direction: 'short',
+          entry: levels.entry,
+          sl: levels.sl,
+          tp: levels.tp,
+          rr,
+          confidence: this.#buildConfidence(candle.timestamp, rr, setup, symbol),
+          reason: `Session sweep short: ${setup.levelSource} ${formatPrice(setup.level, symbol)}, confirm bar ${index}`,
+          screenshotPosition: { candleIndex: index, timestamp: candle.timestamp },
+          strategyId: SessionLiquiditySweepStrategy.id,
+          setup: {
+            levels: [{ kind: 'liquidity', label: `${setup.levelSource} high`, price: setup.level }],
+            markers: [
+              { label: 'Sweep', time: candle.timestamp, role: 'sweep' },
+              { label: 'Confirm', time: candle.timestamp, role: 'confirm' },
+            ],
+            steps: [
+              '1. Liquidity sweep beyond session/swing level',
+              '2. Wait for bearish confirmation (1–3 bars)',
+              '3. Short with SL above sweep high',
+            ],
+          },
+        });
+      }
+
+      if (setup.direction === 'long') {
+        if (candle.low < setup.sweepLow) continue;
+        if (candle.close <= setup.level) continue;
+        if (!isBullishConfirmation(candle, symbol)) continue;
+
+        const levels = buildLongLevels(candle.close, slBufferBelow(setup.sweepLow, symbol), rr);
+        this.#recordLevel(setup.level, 'long', index);
+        this._setState('pendingSweeps', pending.filter((p) => p !== setup));
+
+        return createSignal({
+          time: candle.timestamp,
+          pair: symbol,
+          timeframe,
+          direction: 'long',
+          entry: levels.entry,
+          sl: levels.sl,
+          tp: levels.tp,
+          rr,
+          confidence: this.#buildConfidence(candle.timestamp, rr, setup, symbol),
+          reason: `Session sweep long: ${setup.levelSource} ${formatPrice(setup.level, symbol)}, confirm bar ${index}`,
+          screenshotPosition: { candleIndex: index, timestamp: candle.timestamp },
+          strategyId: SessionLiquiditySweepStrategy.id,
+          setup: {
+            levels: [{ kind: 'liquidity', label: `${setup.levelSource} low`, price: setup.level }],
+            markers: [
+              { label: 'Sweep', time: candle.timestamp, role: 'sweep' },
+              { label: 'Confirm', time: candle.timestamp, role: 'confirm' },
+            ],
+            steps: [
+              '1. Liquidity sweep beyond session/swing level',
+              '2. Wait for bullish confirmation (1–3 bars)',
+              '3. Long with SL below sweep low',
+            ],
+          },
+        });
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * @param {number} timestamp
+   * @param {number} rr
+   * @param {PendingSweep} setup
+   * @param {string} symbol
+   * @returns {number}
+   */
+  #buildConfidence(timestamp, rr, setup, symbol) {
+    const closeDistPips =
+      setup.direction === 'short'
+        ? priceToPips(setup.level - setup.sweepLow, symbol)
+        : priceToPips(setup.sweepHigh - setup.level, symbol);
+
+    return computeConfidence(timestamp, rr, {
+      qualityWick: true,
+      preciseLocation: closeDistPips <= 3,
+      extraPoints:
+        (setup.levelSource === 'asian' || setup.levelSource === 'prev-asian' ? 15 : 10) +
+        (setup.levelSource === 'london' ? 8 : 0) +
+        (closeDistPips <= 3 ? 10 : 0),
+    });
+  }
+
+  /**
+   * @param {PendingSweep} setup
+   */
+  #addPending(setup) {
+    /** @type {PendingSweep[]} */
+    const pending = this._getState('pendingSweeps') ?? [];
+    const tol = pipsToPrice(1, 'EURUSD');
+    const exists = pending.some(
+      (p) =>
+        p.direction === setup.direction &&
+        Math.abs(p.level - setup.level) < tol &&
+        setup.sweepBar - p.sweepBar <= 3
+    );
+    if (exists) return;
+
+    pending.push(setup);
+    this._setState('pendingSweeps', pending);
+  }
+
+  /**
+   * @param {number} index
+   */
+  #prunePending(index) {
+    /** @type {PendingSweep[]} */
+    const pending = this._getState('pendingSweeps') ?? [];
+    this._setState(
+      'pendingSweeps',
+      pending.filter((p) => index <= p.expiresAtBar)
+    );
   }
 
   /**
@@ -363,174 +657,6 @@ export class SessionLiquiditySweepStrategy extends BaseStrategy {
   }
 
   /**
-   * @param {import('../data/Candle.js').Candle} candle
-   * @param {number} levelHigh
-   * @param {string} levelSource
-   * @param {number} grabPips
-   * @param {number} pip
-   * @param {number} minWickRatio
-   * @param {boolean} volumeOk
-   * @param {number} avgVolume
-   * @param {string} symbol
-   * @param {number} rr
-   * @param {number} index
-   * @param {string} timeframe
-   * @returns {import('../strategy/Signal.js').Signal|null}
-   */
-  #checkShort(
-    candle,
-    levelHigh,
-    levelSource,
-    grabPips,
-    pip,
-    minWickRatio,
-    volumeOk,
-    avgVolume,
-    symbol,
-    rr,
-    index,
-    timeframe
-  ) {
-    if (this.#isDuplicateLevel(levelHigh, 'short', index, symbol)) return null;
-    if (!volumeOk) return null;
-    if (candle.high < levelHigh + grabPips * pip) return null;
-    if (candle.close >= levelHigh) return null;
-
-    const wicks = getWicks(candle);
-    if (wicks.range <= 0 || wicks.upper / wicks.range < minWickRatio) return null;
-    if (!isBearishConfirmation(candle, symbol)) return null;
-
-    const levels = buildShortLevels(candle.close, slBufferAbove(candle.high, symbol), rr);
-    const closeDistPips = priceToPips(levelHigh - candle.close, symbol);
-    const confidence = computeConfidence(candle.timestamp, rr, {
-      qualityWick: wicks.upper / wicks.range >= 0.7,
-      preciseLocation: closeDistPips <= 2,
-      extraPoints:
-        (levelSource === 'asian' ? 15 : 0) +
-        (wicks.upper / wicks.range >= 0.7 ? 10 : 0) +
-        (grabPips >= 5 ? 10 : 0) +
-        (closeDistPips <= 2 ? 10 : 0),
-    });
-
-    return createSignal({
-      time: candle.timestamp,
-      pair: symbol,
-      timeframe,
-      direction: 'short',
-      entry: levels.entry,
-      sl: levels.sl,
-      tp: levels.tp,
-      rr,
-      confidence,
-      reason: `Session sweep short: ${levelSource} high ${formatPrice(levelHigh, symbol)}, bar ${index}`,
-      screenshotPosition: { candleIndex: index, timestamp: candle.timestamp },
-      strategyId: SessionLiquiditySweepStrategy.id,
-      setup: {
-        levels: [{ kind: 'liquidity', label: `${levelSource} high`, price: levelHigh }],
-        markers: [{ label: 'Sweep + reject', time: candle.timestamp, role: 'sweep' }],
-        steps: [
-          '1. Asian range high (or swing) defines liquidity',
-          '2. London/overlap sweeps above with rejection wick',
-          '3. Short on bearish confirmation',
-        ],
-      },
-    });
-  }
-
-  /**
-   * @param {import('../data/Candle.js').Candle} candle
-   * @param {number} levelLow
-   * @param {string} levelSource
-   * @param {number} grabPips
-   * @param {number} pip
-   * @param {number} minWickRatio
-   * @param {boolean} volumeOk
-   * @param {number} avgVolume
-   * @param {string} symbol
-   * @param {number} rr
-   * @param {number} index
-   * @param {string} timeframe
-   * @returns {import('../strategy/Signal.js').Signal|null}
-   */
-  #checkLong(
-    candle,
-    levelLow,
-    levelSource,
-    grabPips,
-    pip,
-    minWickRatio,
-    volumeOk,
-    avgVolume,
-    symbol,
-    rr,
-    index,
-    timeframe
-  ) {
-    if (this.#isDuplicateLevel(levelLow, 'long', index, symbol)) return null;
-    if (!volumeOk) return null;
-    if (candle.low > levelLow - grabPips * pip) return null;
-    if (candle.close <= levelLow) return null;
-
-    const wicks = getWicks(candle);
-    if (wicks.range <= 0 || wicks.lower / wicks.range < minWickRatio) return null;
-    if (!isBullishConfirmation(candle, symbol)) return null;
-
-    const levels = buildLongLevels(candle.close, slBufferBelow(candle.low, symbol), rr);
-    const closeDistPips = priceToPips(candle.close - levelLow, symbol);
-    const confidence = computeConfidence(candle.timestamp, rr, {
-      qualityWick: wicks.lower / wicks.range >= 0.7,
-      preciseLocation: closeDistPips <= 2,
-      extraPoints:
-        (levelSource === 'asian' ? 15 : 0) +
-        (wicks.lower / wicks.range >= 0.7 ? 10 : 0) +
-        (grabPips >= 5 ? 10 : 0) +
-        (closeDistPips <= 2 ? 10 : 0),
-    });
-
-    return createSignal({
-      time: candle.timestamp,
-      pair: symbol,
-      timeframe,
-      direction: 'long',
-      entry: levels.entry,
-      sl: levels.sl,
-      tp: levels.tp,
-      rr,
-      confidence,
-      reason: `Session sweep long: ${levelSource} low ${formatPrice(levelLow, symbol)}, bar ${index}`,
-      screenshotPosition: { candleIndex: index, timestamp: candle.timestamp },
-      strategyId: SessionLiquiditySweepStrategy.id,
-      setup: {
-        levels: [{ kind: 'liquidity', label: `${levelSource} low`, price: levelLow }],
-        markers: [{ label: 'Sweep + reject', time: candle.timestamp, role: 'sweep' }],
-        steps: [
-          '1. Asian range low (or swing) defines liquidity',
-          '2. London/overlap sweeps below with rejection wick',
-          '3. Long on bullish confirmation',
-        ],
-      },
-    });
-  }
-
-  /**
-   * @param {import('../data/Candle.js').Candle[]} candles
-   * @param {number} index
-   * @param {number} lookback
-   * @returns {number}
-   */
-  #avgVolume(candles, index, lookback) {
-    let sum = 0;
-    let count = 0;
-    for (let j = index - lookback; j < index; j++) {
-      if (j >= 0) {
-        sum += candles[j].volume;
-        count++;
-      }
-    }
-    return count > 0 ? sum / count : 0;
-  }
-
-  /**
    * @param {number} level
    * @param {'long'|'short'} direction
    * @param {number} barIndex
@@ -544,11 +670,11 @@ export class SessionLiquiditySweepStrategy extends BaseStrategy {
   /**
    * @param {number} level
    * @param {'long'|'short'} direction
-   * @param {number} index
    * @param {string} symbol
+   * @param {number} index
    * @returns {boolean}
    */
-  #isDuplicateLevel(level, direction, index, symbol) {
+  #isDuplicateLevel(level, direction, symbol, index) {
     const lookback = Number(this._getParam('swingLookback'));
     const window = lookback * 2;
     /** @type {LevelSignalRecord[]} */

@@ -464,14 +464,17 @@ function buildVolatilityWarmup(count, startDay = 1) {
 
 const SLS_PARAMS = {
   asianEndHour: 7,
-  sessionStartHour: 7,
-  sessionEndHour: 17,
+  londonEndHour: 12,
+  sessionStartHour: 6,
+  sessionEndHour: 20,
   grabPips: 5,
-  wickRatio: 0.65,
+  wickRatio: 0.55,
+  confirmMaxBars: 3,
   rr: 1.5,
-  swingLookback: 10,
+  swingLookback: 8,
   minVolatilityRatio: 0.8,
   volatilityLookback: 14,
+  usePrevAsian: true,
 };
 
 {
@@ -480,8 +483,9 @@ const SLS_PARAMS = {
     candles.push(cUtc(2024, 5, 10, h, 1.0850, 1.0860, 1.0833, 1.0855, 900));
   }
   candles.push(cUtc(2024, 5, 10, 8, 1.0858, 1.08658, 1.0854, 1.08555, 1200));
+  candles.push(cUtc(2024, 5, 10, 9, 1.08555, 1.08565, 1.08495, 1.08505, 1100));
   const signals = runScan(new SessionLiquiditySweepStrategy(), candles, 'EURUSD', SLS_PARAMS);
-  assert('SLS-01: Asian high sweep in London → 1 SHORT', signals.length === 1 && signals[0].direction === 'short');
+  assert('SLS-01: Asian sweep + confirm → 1 SHORT', signals.length === 1 && signals[0].direction === 'short');
 }
 
 {
@@ -489,7 +493,7 @@ const SLS_PARAMS = {
   for (let h = 0; h < 7; h++) {
     candles.push(cUtc(2024, 5, 10, h, 1.0850, 1.0860, 1.0833, 1.0855, 900));
   }
-  candles.push(cUtc(2024, 5, 10, 20, 1.0858, 1.08658, 1.0854, 1.08555, 1200));
+  candles.push(cUtc(2024, 5, 10, 21, 1.0858, 1.08658, 1.0854, 1.08555, 1200));
   const signals = runScan(new SessionLiquiditySweepStrategy(), candles, 'EURUSD', SLS_PARAMS);
   assert('SLS-02: Outside session window → no signal', signals.length === 0);
 }

@@ -50,7 +50,7 @@ const STRATEGY_CHECK_KEYS = Object.freeze({
   'pin-bar-rejection': ['swingLookback', 'retestTolerancePips', 'rr'],
   'inside-bar-breakout': ['motherMinRangePips', 'breakoutBufferPips', 'rr'],
   'liquidity-grab': ['swingLookback', 'grabPips', 'rr'],
-  'session-liquidity-sweep': ['grabPips', 'minVolatilityRatio', 'rr'],
+  'session-liquidity-sweep': ['grabPips', 'wickRatio', 'minVolatilityRatio', 'rr'],
   'wyckoff-range-test': ['minRangePips', 'rangeLookback', 'rr'],
   'wyckoff-spring-utad': ['minRangePips', 'sweepPips', 'rr'],
 });
