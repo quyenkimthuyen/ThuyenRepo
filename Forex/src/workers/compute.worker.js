@@ -48,17 +48,20 @@ self.onmessage = (event) => {
         break;
 
       case 'gridChunk': {
-        /** @type {unknown[]} */
+        /** @type {import('../optimizer/GridSearchEngine.js').GridChunkItem[]} */
         const chunkResults = [];
         for (const combo of payload.combos) {
+          const params = payload.baseParams
+            ? { ...payload.baseParams, ...combo }
+            : combo;
           chunkResults.push({
-            params: combo,
+            params,
             result: runBacktest(
               payload.strategyId,
               payload.symbol,
               payload.timeframe,
               payload.candles,
-              combo,
+              params,
               payload.tradeConfig
             ),
           });

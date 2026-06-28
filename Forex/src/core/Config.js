@@ -172,6 +172,8 @@ export const Config = Object.freeze({
     MAX_CHART_RENDER_BARS: 50000,
     WORKER_THRESHOLD: 10000,
     WORKER_POOL_SIZE: 4,
+    /** Min grid combos before dispatching parallel worker chunks. */
+    GRID_PARALLEL_MIN_COMBOS: 4,
   }),
 });
 

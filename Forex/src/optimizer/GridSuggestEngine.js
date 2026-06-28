@@ -272,8 +272,8 @@ export function suggestParamGridFromData(strategyId, schema, candles, symbol, ti
   }
 
   const message = stats.candleCount === 0
-    ? 'Không có n?n — dùng grid m?c ??nh.'
-    : `G?i ý t? ${stats.candleCount.toLocaleString()} n?n · avg range ${stats.avgRangePips.toFixed(1)} pips (${stats.scale})`;
+    ? 'Kh\u00f4ng c\u00f3 n\u1ebfn \u2014 d\u00f9ng grid m\u1eb7c \u0111\u1ecbnh.'
+    : `G\u1ee3i \u00fd t\u1eeb ${stats.candleCount} n\u1ebfn \u2014 avg range ${stats.avgRangePips.toFixed(1)} pips (${stats.scale})`;
 
   return { values, checks, stats, message };
 }

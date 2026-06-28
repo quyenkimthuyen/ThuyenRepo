@@ -111,6 +111,40 @@ class PerformanceEngine {
     }
     return scoreSignalsBatch(signals, candles, spreadPips);
   }
+
+  /**
+   * Run a chunk of grid-search combos on workers (or main thread fallback).
+   * @param {import('../optimizer/GridSearchEngine.js').GridChunkPayload} payload
+   * @returns {Promise<import('../optimizer/GridSearchEngine.js').GridChunkItem[]>}
+   */
+  async runGridChunk(payload) {
+    const runLocal = () => payload.combos.map((combo) => {
+      const params = { ...payload.baseParams, ...combo };
+      return {
+        params,
+        result: runBacktest(
+          payload.strategyId,
+          payload.symbol,
+          payload.timeframe,
+          payload.candles,
+          params,
+          payload.tradeConfig
+        ),
+      };
+    });
+
+    if (this.#workersEnabled && this.#pool) {
+      try {
+        return /** @type {import('../optimizer/GridSearchEngine.js').GridChunkItem[]} */ (
+          await this.#pool.run('gridChunk', payload)
+        );
+      } catch (err) {
+        log.warn('Grid chunk worker failed, falling back to main thread:', err);
+      }
+    }
+
+    return runLocal();
+  }
 }
 
 export default new PerformanceEngine();

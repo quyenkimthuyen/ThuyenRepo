@@ -81,6 +81,9 @@ class ResearchEngine {
       tradeConfig,
       maxCombinations: max,
       backtestFn: PerformanceEngine.runBacktest.bind(PerformanceEngine),
+      gridChunkFn: PerformanceEngine.workersEnabled()
+        ? PerformanceEngine.runGridChunk.bind(PerformanceEngine)
+        : undefined,
     });
 
     if (autoWf && result.best?.params) {
@@ -117,13 +120,45 @@ class ResearchEngine {
       ? ` · WF OOS avg $${result.walkForward.avgOosNetProfit.toFixed(2)}`
       : '';
     bus.emit(Events.LOG_MESSAGE, {
-      message: `Grid search: ${result.totalCombinations} combos, best ${options.rankMetric ?? 'expectancy'} = ${result.best?.rank.toFixed(2) ?? 'N/A'}${wfNote}`,
+      message: `Grid search: ${result.totalCombinations} combos${result.parallel ? ' (parallel)' : ''}, best ${options.rankMetric ?? 'expectancy'} = ${result.best?.rank.toFixed(2) ?? 'N/A'}${wfNote}`,
       level: 'info',
       time: new Date(),
     });
 
     log.info(`Grid search done: ${result.totalCombinations} combinations`);
     return result;
+  }
+
+  /**
+   * Apply the best grid-search combo to the strategy's saved parameters.
+   * @param {string} [strategyId] - Defaults to last grid result strategy.
+   * @returns {Record<string, unknown>}
+   */
+  applyGridBestToStrategy(strategyId) {
+    const grid = this.#lastGrid;
+    if (!grid?.best?.params) {
+      throw new Error('No grid search result with a best combo — run Grid Search first.');
+    }
+
+    const targetId = strategyId ?? grid.strategyId;
+    if (targetId !== grid.strategyId) {
+      throw new Error(`Last grid result is for ${grid.strategyId}, not ${targetId}.`);
+    }
+
+    StrategyEngine.setConfig(targetId, { params: { ...grid.best.params } });
+
+    const summary = Object.entries(grid.best.params)
+      .map(([k, v]) => `${k}=${v}`)
+      .join(', ');
+
+    bus.emit(Events.LOG_MESSAGE, {
+      message: `Applied best grid params to ${targetId}: ${summary}`,
+      level: 'info',
+      time: new Date(),
+    });
+
+    log.info(`Applied grid best params to ${targetId}`);
+    return { ...grid.best.params };
   }
 
   /**

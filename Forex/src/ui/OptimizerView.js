@@ -28,7 +28,7 @@ import {
 
 const log = createLogger('OptimizerView');
 
-/** @type {'grid'|'walkforward'|'montecarlo'} */
+/** @type {'grid'|'sensitivity'|'walkforward'|'montecarlo'} */
 let activeTab = 'grid';
 
 /**
@@ -79,6 +79,7 @@ class OptimizerViewImpl {
       ]),
       el('div', { class: 'opt-tabs', id: 'opt-tabs' }, [
         el('button', { class: 'opt-tab active', dataset: { tab: 'grid' } }, ['Grid Search']),
+        el('button', { class: 'opt-tab', dataset: { tab: 'sensitivity' } }, ['Sensitivity']),
         el('button', { class: 'opt-tab', dataset: { tab: 'walkforward' } }, ['Walk Forward']),
         el('button', { class: 'opt-tab', dataset: { tab: 'montecarlo' } }, ['Monte Carlo']),
       ]),
@@ -169,7 +170,7 @@ class OptimizerViewImpl {
     this.#container?.querySelector('#opt-tabs')?.addEventListener('click', (e) => {
       const btn = /** @type {HTMLElement} */ (e.target).closest('.opt-tab');
       if (!btn?.dataset.tab) return;
-      activeTab = /** @type {'grid'|'walkforward'|'montecarlo'} */ (btn.dataset.tab);
+      activeTab = /** @type {'grid'|'sensitivity'|'walkforward'|'montecarlo'} */ (btn.dataset.tab);
       this.#container?.querySelectorAll('.opt-tab').forEach((t) => {
         t.classList.toggle('active', t.dataset.tab === activeTab);
       });
@@ -177,7 +178,11 @@ class OptimizerViewImpl {
     });
 
     const unsubs = [
-      bus.on(Events.OPTIMIZATION_COMPLETE, (r) => this.#renderGridResults(r)),
+      bus.on(Events.OPTIMIZATION_COMPLETE, (r) => {
+        this.#gridResult = r;
+        if (activeTab === 'grid') this.#renderGridResults(r);
+        else if (activeTab === 'sensitivity') this.#renderSensitivityResults(r);
+      }),
       bus.on(Events.WALK_FORWARD_COMPLETE, (r) => this.#renderWalkForwardResults(r)),
       bus.on(Events.MONTE_CARLO_COMPLETE, (r) => this.#renderMonteCarloResults(r)),
       bus.on(Events.DATA_UPDATED, () => this.#refreshSelectors()),
@@ -225,6 +230,11 @@ class OptimizerViewImpl {
     const root = this.#container?.querySelector('#optimizer-root');
     if (!content || !results) return;
 
+    if (this.#sensitivityResizeHandler) {
+      window.removeEventListener('resize', this.#sensitivityResizeHandler);
+      this.#sensitivityResizeHandler = null;
+    }
+
     root?.classList.toggle('opt-mode-grid', activeTab === 'grid');
     root?.classList.toggle('opt-mode-stack', activeTab !== 'grid');
 
@@ -233,9 +243,18 @@ class OptimizerViewImpl {
 
     if (activeTab === 'grid') {
       this.#renderGridPanel(content);
-      const last = ResearchEngine.getLastGridResult();
+      const last = this.#gridResult ?? ResearchEngine.getLastGridResult();
       if (last) this.#renderGridResults(last);
       else this.#renderGridResultsPlaceholder(results);
+    } else if (activeTab === 'sensitivity') {
+      this.#renderSensitivityConfigPanel(content);
+      const last = this.#gridResult ?? ResearchEngine.getLastGridResult();
+      if (last) this.#renderSensitivityResults(last);
+      else this.#renderResultsPlaceholder(
+        results,
+        'Param Sensitivity',
+        'Chạy Grid Search trước — biểu đồ WR và expectancy theo từng tham số sẽ hiển thị ở đây.'
+      );
     } else if (activeTab === 'walkforward') {
       this.#renderWalkForwardPanel(content);
       const last = ResearchEngine.getLastWalkForwardResult();
@@ -302,8 +321,8 @@ class OptimizerViewImpl {
             title: 'Điền lưới tham số từ biến động nến hiện tại',
           }, ['Suggest from data']),
         ]),
-        el('p', { class: 'opt-suggest-hint', id: 'opt-suggest-hint' }, ['']),
         el('div', { class: 'opt-param-grid' }, paramRows),
+        el('div', { class: 'opt-suggest-status', id: 'opt-suggest-hint', 'aria-live': 'polite' }, []),
       ]),
       el('label', { class: 'opt-field' }, [
         'Rank by',
@@ -339,11 +358,10 @@ class OptimizerViewImpl {
    */
   async #suggestGridFromData(strategyId, schema) {
     const { symbol, timeframe } = this.#readSelectors();
-    const hint = this.#container?.querySelector('#opt-suggest-hint');
     const btn = this.#container?.querySelector('#opt-suggest-grid');
 
     if (btn) /** @type {HTMLButtonElement} */ (btn).disabled = true;
-    if (hint) hint.textContent = 'Đang đọc dữ liệu nến…';
+    this.#setSuggestStatus('Đang đọc dữ liệu nến…');
 
     try {
       const candles = await DataManager.getCandles(symbol, timeframe);
@@ -361,9 +379,7 @@ class OptimizerViewImpl {
       }
 
       const total = countCombinations(augmentParamGrid(strategyId, this.#readParamGrid()));
-      if (hint) {
-        hint.textContent = `${suggestion.message} · ${total} combo nếu chạy ngay`;
-      }
+      this.#setSuggestStatus(`${suggestion.message} — ${total} combo nếu chạy ngay`);
       bus.emit(Events.LOG_MESSAGE, {
         message: `Grid suggest: ${suggestion.message}`,
         level: 'info',
@@ -371,11 +387,23 @@ class OptimizerViewImpl {
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (hint) hint.textContent = '';
+      this.#setSuggestStatus(msg, true);
       bus.emit(Events.LOG_MESSAGE, { message: msg, level: 'error', time: new Date() });
     } finally {
       if (btn) /** @type {HTMLButtonElement} */ (btn).disabled = false;
     }
+  }
+
+  /**
+   * @param {string} message
+   * @param {boolean} [isError]
+   */
+  #setSuggestStatus(message, isError = false) {
+    const hint = this.#container?.querySelector('#opt-suggest-hint');
+    if (!hint) return;
+    hint.textContent = message;
+    hint.classList.toggle('opt-suggest-status-error', isError);
+    hint.classList.toggle('opt-suggest-status-visible', Boolean(message));
   }
 
   /**
@@ -555,15 +583,26 @@ class OptimizerViewImpl {
     if (!wrap || activeTab !== 'grid') return;
 
     this.#gridResult = result;
-    if (this.#sensitivityResizeHandler) {
-      window.removeEventListener('resize', this.#sensitivityResizeHandler);
-      this.#sensitivityResizeHandler = null;
-    }
 
     wrap.innerHTML = '';
-    wrap.appendChild(el('div', { class: 'opt-results-header' }, [
-      el('h4', {}, [`Top Results (${result.totalCombinations} combos, ${result.durationMs}ms)`]),
+    const headerActions = [
       el('button', { class: 'btn btn-sm', id: 'opt-export-grid' }, ['Export JSON']),
+    ];
+    if (result.best?.params) {
+      headerActions.unshift(
+        el('button', {
+          class: 'btn btn-sm btn-primary',
+          id: 'opt-apply-best',
+          title: 'Lưu tham số combo #1 vào Strategies',
+        }, ['Apply best to Strategy'])
+      );
+    }
+
+    wrap.appendChild(el('div', { class: 'opt-results-header' }, [
+      el('h4', {}, [
+        `Top Results (${result.totalCombinations} combos, ${result.durationMs}ms${result.parallel ? ', parallel' : ''})`,
+      ]),
+      el('div', { class: 'opt-results-actions' }, headerActions),
     ]));
 
     const top = result.entries.slice(0, 20);
@@ -588,8 +627,6 @@ class OptimizerViewImpl {
       ]),
     ]));
 
-    this.#renderSensitivityPanel(wrap, result);
-
     if (result.walkForward) {
       const wf = result.walkForward;
       wrap.appendChild(el('div', { class: 'opt-wf-inline' }, [
@@ -607,33 +644,102 @@ class OptimizerViewImpl {
     wrap.querySelector('#opt-export-grid')?.addEventListener('click', () => {
       downloadFile(JSON.stringify(result, null, 2), 'grid_search.json', 'application/json');
     });
+
+    wrap.querySelector('#opt-apply-best')?.addEventListener('click', () => {
+      try {
+        ResearchEngine.applyGridBestToStrategy(result.strategyId);
+        bus.emit(Events.LOG_MESSAGE, {
+          message: 'Đã lưu combo tốt nhất — mở Strategies (Ctrl+3) để xem hoặc chạy lại scan.',
+          level: 'info',
+          time: new Date(),
+        });
+      } catch (err) {
+        bus.emit(Events.LOG_MESSAGE, {
+          message: err instanceof Error ? err.message : String(err),
+          level: 'error',
+          time: new Date(),
+        });
+      }
+    });
   }
 
   /**
-   * @param {HTMLElement} wrap
-   * @param {import('../optimizer/GridSearchEngine.js').GridSearchResult} result
+   * @param {HTMLElement} content
    */
-  #renderSensitivityPanel(wrap, result) {
-    const varying = getVaryingParamKeys(result.entries);
-    if (!varying.length) return;
+  #renderSensitivityConfigPanel(content) {
+    const last = this.#gridResult ?? ResearchEngine.getLastGridResult();
+    const varying = last ? getVaryingParamKeys(last.entries) : [];
 
-    const panel = el('div', { class: 'opt-sensitivity' }, [
-      el('div', { class: 'opt-sensitivity-head' }, [
-        el('h4', { class: 'opt-sensitivity-title' }, ['Param Sensitivity']),
-        el('label', { class: 'opt-sensitivity-field' }, [
+    content.appendChild(el('div', { class: 'opt-panel' }, [
+      el('p', { class: 'opt-desc' }, [
+        'Win Rate và Expectancy trung bình theo từng giá trị tham số (in-sample). Chọn param bên phải để xem biểu đồ.',
+      ]),
+      varying.length > 0
+        ? el('label', { class: 'opt-field' }, [
           'Parameter',
           el('select', { class: 'data-select', id: 'opt-sensitivity-param' },
             varying.map((key) => el('option', { value: key }, [key]))),
-        ]),
+        ])
+        : el('p', { class: 'opt-desc' }, ['Chưa có kết quả grid hoặc chỉ có 1 giá trị mỗi param.']),
+    ]));
+
+    content.querySelector('#opt-sensitivity-param')?.addEventListener('change', () => {
+      this.#updateSensitivityChart();
+    });
+  }
+
+  /**
+   * @param {import('../optimizer/GridSearchEngine.js').GridSearchResult} result
+   */
+  #renderSensitivityResults(result) {
+    const wrap = this.#container?.querySelector('#opt-results');
+    if (!wrap || activeTab !== 'sensitivity') return;
+
+    this.#gridResult = result;
+    const varying = getVaryingParamKeys(result.entries);
+
+    wrap.innerHTML = '';
+
+    if (!varying.length) {
+      this.#renderResultsPlaceholder(
+        wrap,
+        'Param Sensitivity',
+        'Cần grid search với ít nhất 2 giá trị khác nhau cho một tham số.'
+      );
+      return;
+    }
+
+    wrap.appendChild(el('div', { class: 'opt-results-header' }, [
+      el('h4', {}, [
+        `Sensitivity (${result.totalCombinations} combos, ${result.strategyId})`,
       ]),
-      el('canvas', { class: 'opt-sensitivity-canvas', id: 'opt-sensitivity-canvas', width: '800', height: '200' }),
+    ]));
+
+    wrap.appendChild(el('div', { class: 'opt-sensitivity' }, [
+      el('canvas', { class: 'opt-sensitivity-canvas', id: 'opt-sensitivity-canvas', width: '800', height: '280' }),
       el('p', { class: 'opt-sensitivity-hint', id: 'opt-sensitivity-hint' }, ['']),
-    ]);
+    ]));
 
-    wrap.appendChild(panel);
+    const configSelect = /** @type {HTMLSelectElement|null} */ (
+      this.#container?.querySelector('#opt-sensitivity-param')
+    );
+    const resultsSelect = el('select', { class: 'data-select opt-sensitivity-param-inline', id: 'opt-sensitivity-param-results' },
+      varying.map((key) => el('option', { value: key }, [key])));
+    const header = wrap.querySelector('.opt-results-header');
+    if (header) {
+      header.appendChild(el('label', { class: 'opt-sensitivity-field' }, ['Parameter', resultsSelect]));
+    }
 
-    const select = /** @type {HTMLSelectElement} */ (panel.querySelector('#opt-sensitivity-param'));
-    select.addEventListener('change', () => this.#updateSensitivityChart());
+    resultsSelect.addEventListener('change', () => {
+      if (configSelect) configSelect.value = resultsSelect.value;
+      this.#updateSensitivityChart();
+    });
+    if (configSelect) {
+      configSelect.addEventListener('change', () => {
+        resultsSelect.value = configSelect.value;
+        this.#updateSensitivityChart();
+      });
+    }
 
     this.#sensitivityResizeHandler = () => this.#updateSensitivityChart();
     window.addEventListener('resize', this.#sensitivityResizeHandler);
@@ -645,7 +751,8 @@ class OptimizerViewImpl {
     if (!this.#gridResult) return;
 
     const select = /** @type {HTMLSelectElement|null} */ (
-      this.#container?.querySelector('#opt-sensitivity-param')
+      this.#container?.querySelector('#opt-sensitivity-param-results')
+      ?? this.#container?.querySelector('#opt-sensitivity-param')
     );
     const canvas = /** @type {HTMLCanvasElement|null} */ (
       this.#container?.querySelector('#opt-sensitivity-canvas')
@@ -668,7 +775,7 @@ class OptimizerViewImpl {
 
     const buckets = series.length;
     const combos = series.reduce((sum, p) => sum + p.sampleCount, 0);
-    hint.textContent = `Trung bình WR & expectancy theo ${paramKey} · ${buckets} giá trị · ${combos} combo · ẩn điểm < ${MIN_TRADES_PER_SENSITIVITY_POINT} lệnh TB`;
+    hint.textContent = `Trung bình WR & expectancy theo ${paramKey} — ${buckets} giá trị — ${combos} combo — ẩn điểm < ${MIN_TRADES_PER_SENSITIVITY_POINT} lệnh TB`;
   }
 
   /**

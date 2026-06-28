@@ -5,7 +5,7 @@
 
 import { parseValueList, buildCombinations, countCombinations, defaultGridForParam, augmentParamGrid } from '../../src/optimizer/ParameterGrid.js';
 import { runMonteCarlo } from '../../src/optimizer/MonteCarloEngine.js';
-import { getRankValue } from '../../src/optimizer/GridSearchEngine.js';
+import { getRankValue, runGridSearch, splitIntoChunks, gridChunkSize } from '../../src/optimizer/GridSearchEngine.js';
 import { stripBacktestResult, stripGridSearchForStorage } from '../../src/optimizer/researchPersistence.js';
 import {
   computeMarketStats,
@@ -176,6 +176,46 @@ console.log('\n=== Optimizer Tests ===\n');
     { params: { rr: 2 }, result: { stats: { winRate: 0, expectancy: -5, totalTrades: 2 } }, rank: 0 },
   ], 'rr', 5);
   assert('OP-24: Low-trade buckets hidden', lowTrade.length === 0);
+}
+
+{
+  const chunks = splitIntoChunks([1, 2, 3, 4, 5], 2);
+  assert('OP-25: Split chunks', chunks.length === 3 && chunks[1].length === 2);
+  assert('OP-26: Grid chunk size', gridChunkSize(40, 4) >= 1);
+
+  const candles = Array.from({ length: 80 }, (_, i) => ({
+    time: i * 3600000,
+    open: 1.08,
+    high: 1.081,
+    low: 1.079,
+    close: 1.080,
+    volume: 100,
+  }));
+  const { runBacktest } = await import('../../src/optimizer/BacktestRunner.js');
+  const { getDefaultTradeConfig } = await import('../../src/simulation/TradeConfig.js');
+  const tradeConfig = getDefaultTradeConfig();
+
+  let chunkCalls = 0;
+  const grid = await runGridSearch({
+    strategyId: 'break-retest',
+    symbol: 'EURUSD',
+    timeframe: 'H1',
+    candles,
+    tradeConfig,
+    paramGrid: { breakoutPips: [5, 8, 10], rr: [1.5, 2] },
+    maxCombinations: 20,
+    gridChunkFn: async ({ combos, baseParams, strategyId, symbol, timeframe, tradeConfig: tc }) => {
+      chunkCalls++;
+      return combos.map((combo) => {
+        const params = { ...baseParams, ...combo };
+        return { params, result: runBacktest(strategyId, symbol, timeframe, candles, params, tc) };
+      });
+    },
+  });
+
+  assert('OP-27: Parallel grid entries', grid.entries.length === 6);
+  assert('OP-28: Parallel flag', grid.parallel === true);
+  assert('OP-29: Parallel chunk calls', chunkCalls >= 2);
 }
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);
