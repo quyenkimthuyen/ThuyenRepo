@@ -158,10 +158,10 @@ console.log('\n=== Optimizer Tests ===\n');
 {
   /** @type {import('../../src/optimizer/GridSearchEngine.js').GridSearchEntry[]} */
   const entries = [
-    { params: { rr: 1.5, swing: 5 }, result: { stats: { winRate: 40, expectancy: 5, totalTrades: 20 } }, rank: 1 },
-    { params: { rr: 2, swing: 5 }, result: { stats: { winRate: 50, expectancy: 10, totalTrades: 22 } }, rank: 2 },
-    { params: { rr: 2.5, swing: 7 }, result: { stats: { winRate: 60, expectancy: 15, totalTrades: 18 } }, rank: 3 },
-    { params: { rr: 3, swing: 7 }, result: { stats: { winRate: 45, expectancy: 8, totalTrades: 25 } }, rank: 4 },
+    { params: { rr: 1.5, swing: 5 }, result: { stats: { winRate: 40, expectancy: 5, netProfit: 80, totalTrades: 20 } }, rank: 1 },
+    { params: { rr: 2, swing: 5 }, result: { stats: { winRate: 50, expectancy: 10, netProfit: 120, totalTrades: 22 } }, rank: 2 },
+    { params: { rr: 2.5, swing: 7 }, result: { stats: { winRate: 60, expectancy: 15, netProfit: 90, totalTrades: 18 } }, rank: 3 },
+    { params: { rr: 3, swing: 7 }, result: { stats: { winRate: 45, expectancy: 8, netProfit: 150, totalTrades: 25 } }, rank: 4 },
   ];
 
   const varying = getVaryingParamKeys(entries);
@@ -170,6 +170,7 @@ console.log('\n=== Optimizer Tests ===\n');
   const rrSeries = buildSensitivitySeries(entries, 'rr', 5);
   assert('OP-22: RR sensitivity buckets', rrSeries.length === 4);
   assert('OP-23: RR=2 averaged WR', rrSeries.find((p) => p.paramValue === 2)?.winRate === 50);
+  assert('OP-23b: RR=2 averaged Net', rrSeries.find((p) => p.paramValue === 2)?.netProfit === 120);
 
   const lowTrade = buildSensitivitySeries([
     { params: { rr: 1 }, result: { stats: { winRate: 100, expectancy: 99, totalTrades: 2 } }, rank: 1 },

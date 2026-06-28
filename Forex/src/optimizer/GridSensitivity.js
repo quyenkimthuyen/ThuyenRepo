@@ -13,6 +13,7 @@ export const MIN_TRADES_PER_SENSITIVITY_POINT = 5;
  * @property {number|string} paramValue
  * @property {number} winRate
  * @property {number} expectancy
+ * @property {number} netProfit
  * @property {number} avgTrades
  * @property {number} sampleCount
  */
@@ -67,7 +68,7 @@ function parseParamValue(raw) {
  * @returns {SensitivityPoint[]}
  */
 export function buildSensitivitySeries(entries, paramKey, minTrades = MIN_TRADES_PER_SENSITIVITY_POINT) {
-  /** @type {Map<string, { winRate: number[], expectancy: number[], trades: number[] }>} */
+  /** @type {Map<string, { winRate: number[], expectancy: number[], netProfit: number[], trades: number[] }>} */
   const groups = new Map();
 
   for (const entry of entries) {
@@ -76,13 +77,14 @@ export function buildSensitivitySeries(entries, paramKey, minTrades = MIN_TRADES
 
     const key = String(value);
     if (!groups.has(key)) {
-      groups.set(key, { winRate: [], expectancy: [], trades: [] });
+      groups.set(key, { winRate: [], expectancy: [], netProfit: [], trades: [] });
     }
 
     const bucket = groups.get(key);
     const { stats } = entry.result;
     bucket.winRate.push(stats.winRate);
     bucket.expectancy.push(stats.expectancy);
+    bucket.netProfit.push(stats.netProfit);
     bucket.trades.push(stats.totalTrades);
   }
 
@@ -99,6 +101,7 @@ export function buildSensitivitySeries(entries, paramKey, minTrades = MIN_TRADES
       paramValue: parseParamValue(key),
       winRate: average(bucket.winRate),
       expectancy: average(bucket.expectancy),
+      netProfit: average(bucket.netProfit),
       avgTrades: Math.round(avgTrades),
       sampleCount: bucket.winRate.length,
     });

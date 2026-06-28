@@ -667,25 +667,14 @@ class OptimizerViewImpl {
    * @param {HTMLElement} content
    */
   #renderSensitivityConfigPanel(content) {
-    const last = this.#gridResult ?? ResearchEngine.getLastGridResult();
-    const varying = last ? getVaryingParamKeys(last.entries) : [];
-
     content.appendChild(el('div', { class: 'opt-panel' }, [
       el('p', { class: 'opt-desc' }, [
-        'Win Rate và Expectancy trung bình theo từng giá trị tham số (in-sample). Chọn param bên phải để xem biểu đồ.',
+        'Trung binh theo tung gia tri tham so (in-sample). Chon param va metric ben phai.',
       ]),
-      varying.length > 0
-        ? el('label', { class: 'opt-field' }, [
-          'Parameter',
-          el('select', { class: 'data-select', id: 'opt-sensitivity-param' },
-            varying.map((key) => el('option', { value: key }, [key]))),
-        ])
-        : el('p', { class: 'opt-desc' }, ['Chưa có kết quả grid hoặc chỉ có 1 giá trị mỗi param.']),
+      el('p', { class: 'opt-desc opt-desc-note' }, [
+        'Net Profit phu thuoc so lenh — so sanh kem Exp khi trade count chenh nhau nhieu.',
+      ]),
     ]));
-
-    content.querySelector('#opt-sensitivity-param')?.addEventListener('change', () => {
-      this.#updateSensitivityChart();
-    });
   }
 
   /**
@@ -709,9 +698,30 @@ class OptimizerViewImpl {
       return;
     }
 
-    wrap.appendChild(el('div', { class: 'opt-results-header' }, [
+    wrap.appendChild(el('div', { class: 'opt-results-header opt-sensitivity-toolbar' }, [
       el('h4', {}, [
         `Sensitivity (${result.totalCombinations} combos, ${result.strategyId})`,
+      ]),
+      el('div', { class: 'opt-sensitivity-controls' }, [
+        el('label', { class: 'opt-sensitivity-field' }, [
+          'Parameter',
+          el('select', { class: 'data-select', id: 'opt-sensitivity-param' },
+            varying.map((key) => el('option', { value: key }, [key]))),
+        ]),
+        el('div', { class: 'opt-sensitivity-metrics' }, [
+          el('label', { class: 'opt-sensitivity-metric' }, [
+            el('input', { type: 'checkbox', id: 'opt-sens-wr', checked: true }),
+            'WR',
+          ]),
+          el('label', { class: 'opt-sensitivity-metric' }, [
+            el('input', { type: 'checkbox', id: 'opt-sens-exp', checked: true }),
+            'Exp',
+          ]),
+          el('label', { class: 'opt-sensitivity-metric' }, [
+            el('input', { type: 'checkbox', id: 'opt-sens-net', checked: true }),
+            'Net',
+          ]),
+        ]),
       ]),
     ]));
 
@@ -720,25 +730,8 @@ class OptimizerViewImpl {
       el('p', { class: 'opt-sensitivity-hint', id: 'opt-sensitivity-hint' }, ['']),
     ]));
 
-    const configSelect = /** @type {HTMLSelectElement|null} */ (
-      this.#container?.querySelector('#opt-sensitivity-param')
-    );
-    const resultsSelect = el('select', { class: 'data-select opt-sensitivity-param-inline', id: 'opt-sensitivity-param-results' },
-      varying.map((key) => el('option', { value: key }, [key])));
-    const header = wrap.querySelector('.opt-results-header');
-    if (header) {
-      header.appendChild(el('label', { class: 'opt-sensitivity-field' }, ['Parameter', resultsSelect]));
-    }
-
-    resultsSelect.addEventListener('change', () => {
-      if (configSelect) configSelect.value = resultsSelect.value;
-      this.#updateSensitivityChart();
-    });
-    if (configSelect) {
-      configSelect.addEventListener('change', () => {
-        resultsSelect.value = configSelect.value;
-        this.#updateSensitivityChart();
-      });
+    for (const id of ['#opt-sensitivity-param', '#opt-sens-wr', '#opt-sens-exp', '#opt-sens-net']) {
+      wrap.querySelector(id)?.addEventListener('change', () => this.#updateSensitivityChart());
     }
 
     this.#sensitivityResizeHandler = () => this.#updateSensitivityChart();
@@ -751,9 +744,18 @@ class OptimizerViewImpl {
     if (!this.#gridResult) return;
 
     const select = /** @type {HTMLSelectElement|null} */ (
-      this.#container?.querySelector('#opt-sensitivity-param-results')
-      ?? this.#container?.querySelector('#opt-sensitivity-param')
+      this.#container?.querySelector('#opt-sensitivity-param')
     );
+    const showWinRate = /** @type {HTMLInputElement} */ (
+      this.#container?.querySelector('#opt-sens-wr')
+    )?.checked ?? true;
+    const showExpectancy = /** @type {HTMLInputElement} */ (
+      this.#container?.querySelector('#opt-sens-exp')
+    )?.checked ?? true;
+    const showNetProfit = /** @type {HTMLInputElement} */ (
+      this.#container?.querySelector('#opt-sens-net')
+    )?.checked ?? true;
+
     const canvas = /** @type {HTMLCanvasElement|null} */ (
       this.#container?.querySelector('#opt-sensitivity-canvas')
     );
@@ -762,12 +764,18 @@ class OptimizerViewImpl {
 
     const paramKey = select.value;
     const series = buildSensitivitySeries(this.#gridResult.entries, paramKey);
-    const drawn = drawGridSensitivityChart(canvas, series, paramKey);
+    const drawn = drawGridSensitivityChart(canvas, series, paramKey, {
+      showWinRate,
+      showExpectancy,
+      showNetProfit,
+    });
 
     if (!drawn) {
-      hint.textContent = series.length === 0
-        ? `Không đủ điểm — cần trung bình ≥ ${MIN_TRADES_PER_SENSITIVITY_POINT} lệnh/combo cho mỗi giá trị ${paramKey}.`
-        : `Cần ít nhất 2 giá trị ${paramKey} để vẽ biểu đồ.`;
+      hint.textContent = !showWinRate && !showExpectancy && !showNetProfit
+        ? 'Bat it nhat mot metric (WR, Exp hoac Net).'
+        : series.length === 0
+          ? `Khong du diem — can TB >= ${MIN_TRADES_PER_SENSITIVITY_POINT} lenh/combo cho moi gia tri ${paramKey}.`
+          : `Can it nhat 2 gia tri ${paramKey} de ve bieu do.`;
       const ctx = canvas.getContext('2d');
       if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
       return;
@@ -775,7 +783,7 @@ class OptimizerViewImpl {
 
     const buckets = series.length;
     const combos = series.reduce((sum, p) => sum + p.sampleCount, 0);
-    hint.textContent = `Trung bình WR & expectancy theo ${paramKey} — ${buckets} giá trị — ${combos} combo — ẩn điểm < ${MIN_TRADES_PER_SENSITIVITY_POINT} lệnh TB`;
+    hint.textContent = `TB theo ${paramKey} — ${buckets} gia tri — ${combos} combo — an diem < ${MIN_TRADES_PER_SENSITIVITY_POINT} lenh TB`;
   }
 
   /**
