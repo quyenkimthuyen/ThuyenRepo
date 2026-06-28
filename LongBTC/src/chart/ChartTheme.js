@@ -14,7 +14,7 @@ export function getChartOptions() {
     layout: {
       background: { color: '#0f1419' },
       textColor: '#8b9cb3',
-      fontFamily: "'JetBrains Mono', monospace",
+      fontFamily: "'Inter', 'Noto Sans', sans-serif",
       fontSize: 11,
     },
     grid: {

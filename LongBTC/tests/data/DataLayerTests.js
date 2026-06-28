@@ -24,18 +24,18 @@ header('Data Layer');
 {
   const csv = `timestamp,datetime,open,high,low,close,volume
 1000,2024-01-01 00:00,1.0845,1.0850,1.0840,1.0848,400`;
-  const r = importCSV(csv, 'EURUSD', 'H1');
-  s.assert('DL-04: CSV import', r.candles.length === 1 && r.symbol === 'EURUSD');
+  const r = importCSV(csv, 'BTCUSD', 'D1');
+  s.assert('DL-04: CSV import', r.candles.length === 1 && r.symbol === 'BTCUSD');
 }
 
 {
   const json = JSON.stringify({
-    symbol: 'GBPUSD',
-    timeframe: 'H4',
-    candles: [{ timestamp: 2000, open: 1.26, high: 1.27, low: 1.25, close: 1.265, volume: 50 }],
+    symbol: 'BTCUSD',
+    timeframe: 'D1',
+    candles: [{ timestamp: 2000, open: 42000, high: 43000, low: 41000, close: 42500, volume: 50 }],
   });
   const r = importJSON(json);
-  s.assert('DL-05: JSON import', r.candles.length === 1 && r.timeframe === 'H4');
+  s.assert('DL-05: JSON import', r.candles.length === 1 && r.timeframe === 'D1');
 }
 
 {
@@ -61,7 +61,7 @@ header('Data Layer');
 }
 
 {
-  const sample = generateSample('EURUSD', 'H1', 100);
+  const sample = generateSample('BTCUSD', 'W', 100);
   const stats = computeStats(sample);
   s.assert('DL-10: Sample generation', sample.length === 100 && stats.count === 100);
   s.assert('DL-11: Sample sorted', sample[0].timestamp < sample[99].timestamp);
@@ -70,7 +70,7 @@ header('Data Layer');
 {
   const candles = [candle(0, 1.0845, 1.085, 1.084, 1.0848)];
   const csvOut = exportCSV(candles);
-  const jsonOut = exportJSON('EURUSD', 'H1', candles);
+  const jsonOut = exportJSON('BTCUSD', 'W', candles);
   s.assert('DL-12: Export CSV header', csvOut.startsWith('timestamp,datetime'));
   s.assert('DL-13: Export JSON parse', JSON.parse(jsonOut).candles.length === 1);
 }

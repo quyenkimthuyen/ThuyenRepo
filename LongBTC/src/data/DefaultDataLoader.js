@@ -1,5 +1,5 @@
 /**
- * Load bundled default forex datasets on first launch.
+ * Load bundled default BTC datasets on first launch.
  * Files live in data/defaults/ (gzipped or plain JSON from Dukascopy).
  * @module data/DefaultDataLoader
  */

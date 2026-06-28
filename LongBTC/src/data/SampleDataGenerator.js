@@ -9,12 +9,11 @@ import { sortCandles } from './Candle.js';
 
 /** Base prices per symbol for realistic generation. */
 const BASE_PRICES = {
-  EURUSD: 1.0850,
-  GBPUSD: 1.2650,
+  BTCUSD: 45000,
 };
 
-/** Typical H1 volatility (fraction of price). */
-const VOLATILITY = 0.0008;
+/** Typical weekly BTC volatility (fraction of price). */
+const VOLATILITY = 0.02;
 
 /**
  * Generate synthetic candle data using a random walk model.

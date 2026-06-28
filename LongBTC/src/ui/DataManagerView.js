@@ -169,7 +169,7 @@ class DataManagerViewImpl {
           el('strong', {}, ['Reset toàn bộ app']),
           el('p', {}, [
             'Xóa mọi nến (IndexedDB), cài đặt, tham số strategy, kết quả simulation/statistics/reports, điểm AI Signals. ',
-            'App tải lại như lúc mới cài (sẽ tự tải EURUSD H1 nếu trống). Không hoàn tác được — export trước nếu cần.',
+            'App tải lại như lúc mới cài (sẽ tự tải BTCUSD W nếu trống). Không hoàn tác được — export trước nếu cần.',
           ]),
         ]),
         el('button', {
