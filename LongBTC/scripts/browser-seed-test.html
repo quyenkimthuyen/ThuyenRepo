@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>PARL seed test</title></head>
+<body>
+<pre id="out">Running seed test…</pre>
+<script type="module">
+import DataManager from '../src/data/DataManager.js';
+
+const out = document.getElementById('out');
+const t0 = performance.now();
+
+try {
+  await DataManager.initialize({});
+  const h = await DataManager.getDataHealth();
+  const ms = Math.round(performance.now() - t0);
+  out.textContent = JSON.stringify({ ...h, bootMs: ms }, null, 2);
+  document.title = h.eurusdH1Count > 0 ? 'PASS' : 'FAIL';
+} catch (e) {
+  out.textContent = 'ERROR: ' + (e.stack || e.message);
+  document.title = 'ERROR';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 720" role="img" aria-label="Liquidity Grab Short - doc">
+  <defs>
+    <style>
+      .bg { fill: #0f1419; }
+      .panel { fill: #151c26; stroke: #2a3548; stroke-width: 1; }
+      .level { stroke: #f59e0b; stroke-width: 2; stroke-dasharray: 5 4; }
+      .wick { stroke: #8b9cb3; stroke-width: 2; }
+      .bear { fill: #ef4444; stroke: #ef4444; }
+      .bull { fill: #22c55e; stroke: #22c55e; }
+      .title { fill: #e2e8f0; font: 700 14px Inter, sans-serif; }
+      .step { fill: #3b82f6; font: 700 11px Inter, sans-serif; }
+      .note { fill: #94a3b8; font: 11px Inter, sans-serif; }
+      .grab { fill: rgba(239,68,68,0.12); }
+    </style>
+  </defs>
+  <rect class="bg" width="380" height="720" rx="8"/>
+  <text class="title" x="190" y="28" text-anchor="middle">Liquidity Grab — SHORT</text>
+
+  <rect class="panel" x="16" y="44" width="348" height="140" rx="6"/>
+  <text class="step" x="28" y="64">? Swing High (liquidity)</text>
+  <line class="level" x1="40" y1="110" x2="340" y2="110"/>
+  <text class="note" x="40" y="102">Vùng stop buy phía trên ??nh</text>
+  <line class="wick" x1="120" y1="130" x2="120" y2="100"/><rect class="bull" x="112" y="108" width="14" height="18"/>
+  <line class="wick" x1="200" y1="128" x2="200" y2="102"/><rect class="bear" x="192" y="108" width="14" height="16"/>
+
+  <rect class="panel" x="16" y="200" width="348" height="220" rx="6"/>
+  <text class="step" x="28" y="220">? N?n grab (cùng 1 n?n)</text>
+  <rect class="grab" x="40" y="235" width="300" height="55" rx="4"/>
+  <line class="level" x1="40" y1="268" x2="340" y2="268"/>
+  <line class="wick" x1="190" y1="235" x2="190" y2="310"/><rect class="bear" x="182" y="278" width="14" height="24"/>
+  <text class="note" x="28" y="300">High ? level + grabPips</text>
+  <text class="note" x="28" y="316">Close &lt; level (false breakout)</text>
+  <text class="note" x="28" y="332">Râu trên ? wickRatio × range</text>
+  <text class="note" x="28" y="348">N?n gi?m xác nh?n</text>
+
+  <rect class="panel" x="16" y="436" width="348" height="180" rx="6"/>
+  <text class="step" x="28" y="456">? Entry SHORT ngay</text>
+  <text class="note" x="28" y="480" fill="#ef4444">Entry = close n?n grab</text>
+  <text class="note" x="28" y="500" fill="#f87171">SL = trên high n?n grab</text>
+  <text class="note" x="28" y="520" fill="#22c55e">TP theo RR</text>
+  <line class="wick" x1="190" y1="540" x2="190" y2="575"/><rect class="bear" x="182" y="548" width="14" height="20"/>
+  <text class="note" x="28" y="598">Không ch? retest — single-bar pattern</text>
+
+  <text class="note" x="190" y="670" text-anchor="middle">Sweep nh?ng close ngoài level = breakout th?t</text>
+  <text class="note" x="190" y="690" text-anchor="middle">Không SHORT</text>
+</svg>

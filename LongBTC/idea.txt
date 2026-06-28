@@ -1,0 +1,866 @@
+Cảm ơn bạn. Với dự án này, tôi **không khuyên dùng prompt ngắn**. Đây là một dự án khá lớn (khoảng 20.000–40.000 dòng code nếu làm đầy đủ), nên Cursor sẽ cho kết quả tốt hơn nếu được hướng dẫn như một **Software Architect** với yêu cầu rõ ràng.
+
+Tôi đề xuất chia dự án thành nhiều giai đoạn (Phase). Mỗi Phase hoàn thành và chạy được trước khi chuyển sang Phase tiếp theo. Điều này giúp AI không bị "quá tải" và giảm lỗi.
+
+---
+
+# MASTER PROMPT
+
+```text
+You are a Senior Software Architect, Senior Quant Developer, and Senior Frontend Engineer.
+
+Your mission is to build a professional Price Action Research Lab.
+
+This is NOT a trading bot.
+
+This is NOT an auto trading application.
+
+This is a research platform used to discover which Price Action setup performs best.
+
+The application must be completely frontend.
+
+No backend.
+
+No NodeJS server.
+
+No database server.
+
+Everything must run locally inside the browser.
+
+Use only:
+
+- HTML5
+- CSS3
+- Vanilla JavaScript ES2023
+- IndexedDB
+- Web Workers
+- LocalStorage
+
+No React.
+
+No Vue.
+
+No Angular.
+
+No Bootstrap.
+
+No JQuery.
+
+No Tailwind.
+
+Only lightweight open-source libraries are allowed for chart rendering.
+
+Preferred libraries:
+
+- Lightweight Charts
+or
+- Apache ECharts
+
+The application must be modular.
+
+Every feature must be isolated.
+
+No duplicated code.
+
+Use clean architecture.
+
+Use SOLID principles.
+
+Use ES Modules.
+
+Every module must have a single responsibility.
+
+Never create a file larger than 400 lines.
+
+Split code into modules whenever necessary.
+
+Every function must include documentation.
+
+Every class must include documentation.
+
+Code must be readable.
+
+No magic numbers.
+
+Everything configurable.
+
+The application must support future plugins.
+
+```
+
+---
+
+# PROJECT GOAL
+
+```text
+The purpose of this software is to research Price Action strategies.
+
+Not to predict price.
+
+Not to generate signals.
+
+The software should answer questions like:
+
+Which setup performs best?
+
+Which currency pair performs best?
+
+Which timeframe performs best?
+
+Which market session performs best?
+
+Which RR performs best?
+
+Which stoploss performs best?
+
+Which parameters maximize expectancy?
+
+```
+
+---
+
+# SUPPORTED SYMBOLS
+
+```
+EURUSD
+GBPUSD
+```
+
+Future
+
+```
+USDJPY
+
+XAUUSD
+
+BTCUSD
+
+...
+```
+
+Must be extensible.
+
+---
+
+# TIMEFRAME
+
+Initially
+
+```
+H1
+```
+
+Future
+
+```
+M15
+
+M30
+
+H4
+
+D1
+```
+
+---
+
+# ARCHITECTURE
+
+```
+App
+
+│
+
+├── Core
+
+├── Engine
+
+├── Chart
+
+├── Strategy
+
+├── Data
+
+├── Simulation
+
+├── Statistics
+
+├── Replay
+
+├── Report
+
+├── UI
+
+├── Storage
+
+├── Plugin
+
+└── Utils
+```
+
+Every folder independent.
+
+---
+
+# DATA MODULE
+
+Must support
+
+```
+Download historical data
+
+Store locally
+
+Incremental update
+
+Detect missing candles
+
+Merge new candles
+
+Export
+
+Import
+
+Compression
+```
+
+Use
+
+```
+IndexedDB
+```
+
+Structure
+
+```
+Symbol
+
+↓
+
+Timeframe
+
+↓
+
+Candles
+```
+
+Every candle
+
+```
+Timestamp
+
+Open
+
+High
+
+Low
+
+Close
+
+Volume
+```
+
+---
+
+# CHART MODULE
+
+Professional chart.
+
+Features
+
+```
+Candlestick
+
+Crosshair
+
+Zoom
+
+Pan
+
+Replay
+
+Drawing
+
+Support Resistance
+
+EMA
+
+Swing
+
+Trade markers
+
+Buy marker
+
+Sell marker
+
+Entry
+
+SL
+
+TP
+
+Exit
+
+Hover tooltip
+
+Session highlight
+
+```
+
+---
+
+# STRATEGY ENGINE
+
+Plugin architecture.
+
+Every strategy independent.
+
+```
+BreakRetestStrategy
+
+EMAPullbackStrategy
+
+LiquidityGrabStrategy
+
+```
+
+Future
+
+```
+PinBar
+
+Engulfing
+
+InsideBar
+
+Fakey
+
+OrderBlock
+
+SupplyDemand
+
+```
+
+Every strategy exposes
+
+```
+initialize()
+
+calculate()
+
+generateSignal()
+
+validate()
+
+```
+
+---
+
+# SIGNAL
+
+Every signal includes
+
+```
+Time
+
+Pair
+
+Timeframe
+
+Direction
+
+Entry
+
+SL
+
+TP
+
+RR
+
+Confidence
+
+Reason
+
+Screenshot Position
+```
+
+---
+
+# TRADE ENGINE
+
+Must simulate
+
+```
+Pending
+
+Market
+
+SL
+
+TP
+
+Trailing
+
+Break Even
+
+Partial Close
+
+Spread
+
+Commission
+
+Slippage
+
+```
+
+---
+
+# REPLAY MODE
+
+Replay candle by candle.
+
+Buttons
+
+```
+Play
+
+Pause
+
+Next Candle
+
+Previous Candle
+
+Fast
+
+Ultra Fast
+
+Jump To Date
+```
+
+Never reveal future candles.
+
+---
+
+# SIMULATION MODES
+
+Mode 1
+
+```
+One setup
+
+One pair
+```
+
+Mode 2
+
+```
+One setup
+
+Multiple pairs
+```
+
+Mode 3
+
+```
+Multiple setups
+
+One pair
+```
+
+Mode 4
+
+```
+Multiple setups
+
+Multiple pairs
+```
+
+Mode 5
+
+```
+One setup
+
+Multiple timeframes
+```
+
+Mode 6
+
+```
+Parameter Optimization
+```
+
+Mode 7
+
+```
+Walk Forward Test
+```
+
+Mode 8
+
+```
+Monte Carlo Simulation
+```
+
+---
+
+# PARAMETER OPTIMIZATION
+
+Every parameter configurable.
+
+Example
+
+EMA
+
+```
+10
+
+20
+
+30
+
+40
+
+50
+
+60
+```
+
+Risk Reward
+
+```
+1
+
+1.5
+
+2
+
+2.5
+
+3
+
+4
+
+5
+```
+
+Swing
+
+```
+3
+
+5
+
+7
+
+10
+```
+
+The engine must automatically test every combination.
+
+---
+
+# STATISTICS
+
+Generate
+
+```
+Total Trades
+
+Wins
+
+Losses
+
+Win Rate
+
+Average Win
+
+Average Loss
+
+Expectancy
+
+Profit Factor
+
+Net Profit
+
+Gross Profit
+
+Gross Loss
+
+Max Drawdown
+
+Recovery Factor
+
+Sharpe Ratio
+
+Longest Win Streak
+
+Longest Lose Streak
+
+Average Trade Duration
+
+Average RR
+
+Average SL
+
+Average TP
+
+```
+
+---
+
+# ANALYTICS
+
+Heatmaps
+
+```
+By Month
+
+By Day
+
+By Hour
+
+By Session
+
+By Strategy
+
+By Pair
+
+By Timeframe
+
+```
+
+Charts
+
+```
+Equity Curve
+
+Drawdown Curve
+
+Monthly Profit
+
+Rolling Winrate
+
+Rolling Expectancy
+
+```
+
+---
+
+# TRADE EXPLORER
+
+Click any trade.
+
+Show
+
+```
+Chart
+
+Entry
+
+Exit
+
+SL
+
+TP
+
+Reason
+
+Setup
+
+Profit
+
+Screenshot
+
+```
+
+---
+
+# AI SCORING
+
+Every signal has a score
+
+```
+0-100
+```
+
+Factors
+
+```
+Trend
+
+Momentum
+
+Location
+
+Volatility
+
+Price Action Quality
+
+RR
+
+Session
+
+Spread
+
+```
+
+---
+
+# UI
+
+Dark Theme
+
+Resizable Panels
+
+Dockable Windows
+
+Professional Trading Layout
+
+Keyboard Shortcuts
+
+Responsive
+
+High Performance
+
+60 FPS
+
+---
+
+# PERFORMANCE
+
+Must support
+
+```
+1 million candles
+```
+
+No freezing.
+
+Use
+
+```
+Web Workers
+```
+
+for all calculations.
+
+---
+
+# SAVE SYSTEM
+
+Workspace
+
+Settings
+
+Strategies
+
+Results
+
+Optimization
+
+Reports
+
+Everything saved locally.
+
+---
+
+# EXPORT
+
+CSV
+
+JSON
+
+PNG
+
+PDF
+
+Strategy Preset
+
+Workspace
+
+---
+
+# CODE QUALITY
+
+Never hardcode values.
+
+Never duplicate logic.
+
+Every module unit-test friendly.
+
+Every module documented.
+
+Every algorithm explained.
+
+Follow Clean Code.
+
+Follow SOLID.
+
+Follow DRY.
+
+---
+
+# DEVELOPMENT PROCESS
+
+Do NOT generate the whole project at once.
+
+Instead, implement one phase at a time.
+
+Before writing code:
+
+1. Explain architecture.
+
+2. Explain design decisions.
+
+3. Generate folder tree.
+
+4. Generate file list.
+
+5. Wait until current phase is completed.
+
+Only then continue to next phase.
+
+Every phase must be fully functional before moving to the next one.
+
+Always keep the application runnable.
+
+Never break existing functionality.
+
+```
+
+---
+
+# Sau đó hãy chia thành các Phase
+
+Tôi **không khuyên Cursor tạo toàn bộ dự án trong một lần**.
+
+Hãy chia thành:
+
+| Phase | Nội dung |
+|---------|----------|
+| Phase 1 | Khởi tạo project + UI + Layout + Theme + Module loader |
+| Phase 2 | Data Manager + IndexedDB + Import/Export |
+| Phase 3 | Candlestick Chart + Replay Engine |
+| Phase 4 | Strategy Engine + Plugin System |
+| Phase 5 | 3 Price Action Setup (Break & Retest, EMA Pullback, Liquidity Grab) |
+| Phase 6 | Trade Engine + Position Simulation |
+| Phase 7 | Statistics Engine |
+| Phase 8 | Dashboard + Heatmap + Reports |
+| Phase 9 | Parameter Optimizer + Walk Forward + Monte Carlo |
+| Phase 10 | AI Signal Score + Performance Optimization |
+
+## Khuyến nghị quan trọng
+
+Theo kinh nghiệm của tôi với Cursor, **đừng để AI tự quyết định cách nhận diện 3 setup Price Action**. Phần đó cần **đặc tả bằng tài liệu (Specification)** trước khi viết code.
+
+Ví dụ, hãy định nghĩa chính xác:
+
+- Break & Retest là gì? Điều kiện breakout bao nhiêu pip? Retest trong tối đa bao nhiêu nến? Khi nào tín hiệu hết hiệu lực?
+- EMA Pullback cần xu hướng được xác nhận như thế nào? Khoảng cách giữa EMA20 và EMA50 ra sao? Điều kiện nến xác nhận?
+- Liquidity Grab cần vượt swing bao nhiêu pip? Nến đóng cửa phải quay lại vùng như thế nào? Có yêu cầu về khối lượng hay độ dài râu nến không?
+
+Nếu không có tài liệu đặc tả này, Cursor sẽ phải "đoán" quy tắc, dẫn đến kết quả backtest không nhất quán và khó kiểm chứng.
+
+**Tôi khuyên nên tạo thêm một tài liệu "Strategy Specification"** trước khi bắt đầu Phase 5. Tài liệu này sẽ là "nguồn chân lý" để mọi thuật toán được triển khai và kiểm thử chính xác. Điều này cũng giúp sau này bạn dễ dàng bổ sung thêm các setup mới mà không làm thay đổi kiến trúc của hệ thống.
+```
+

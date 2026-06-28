@@ -1,0 +1,287 @@
+/**
+ * Analysis view styles for BTC long-term research.
+ * @module css/analysis
+ */
+
+.analysis-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 20px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.analysis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.analysis-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.analysis-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.analysis-metric-card {
+  background: var(--surface-elevated, #151b24);
+  border: 1px solid var(--border, #2a3548);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.analysis-metric-label {
+  font-size: 11px;
+  color: var(--text-muted, #8b9cb3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.analysis-metric-value {
+  font-size: 18px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.analysis-metric-hint {
+  font-size: 11px;
+  color: var(--text-muted, #8b9cb3);
+  line-height: 1.4;
+}
+
+.analysis-empty {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-muted, #8b9cb3);
+}
+
+.analysis-empty-hint {
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.analysis-summary-box,
+.analysis-info-box {
+  background: var(--surface-elevated, #151b24);
+  border: 1px solid var(--border, #2a3548);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.analysis-summary-box h3,
+.analysis-info-box h4 {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.analysis-pipeline-steps {
+  padding-left: 20px;
+  line-height: 1.8;
+  color: var(--text-secondary, #b8c5d6);
+}
+
+.analysis-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+.analysis-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border, #2a3548);
+  border-radius: 8px;
+}
+
+.analysis-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.analysis-table th,
+.analysis-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border, #2a3548);
+}
+
+.analysis-table th {
+  background: var(--surface-elevated, #151b24);
+  color: var(--text-muted, #8b9cb3);
+  font-weight: 500;
+}
+
+.analysis-note {
+  font-size: 13px;
+  color: var(--text-secondary, #b8c5d6);
+  padding: 12px;
+  background: var(--surface-elevated, #151b24);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent, #3b82f6);
+}
+
+.cycle-progress-bar {
+  height: 8px;
+  background: var(--border, #2a3548);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.cycle-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.cycle-phase-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cycle-phase-chip {
+  padding: 6px 12px;
+  border: 1px solid;
+  border-radius: 16px;
+  font-size: 12px;
+}
+
+.psychology-hero {
+  text-align: center;
+  padding: 24px;
+  border: 2px solid;
+  border-radius: 12px;
+  background: var(--surface-elevated, #151b24);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.psychology-hero-label {
+  font-size: 12px;
+  color: var(--text-muted, #8b9cb3);
+  text-transform: uppercase;
+}
+
+.psychology-hero-value {
+  font-size: 32px;
+  font-weight: 700;
+}
+
+.psychology-hero-en {
+  font-size: 14px;
+  color: var(--text-muted, #8b9cb3);
+}
+
+.psychology-hero-confidence {
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.psychology-description {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary, #b8c5d6);
+}
+
+.psychology-wheel {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.psychology-wheel-item {
+  padding: 10px;
+  border: 1px solid var(--border, #2a3548);
+  border-radius: 8px;
+  text-align: center;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.psychology-wheel-item.active {
+  font-weight: 600;
+}
+
+.psychology-wheel-vi {
+  display: block;
+}
+
+.psychology-wheel-en {
+  display: block;
+  font-size: 10px;
+  color: var(--text-muted, #8b9cb3);
+}
+
+.psychology-timeline-wrap {
+  position: relative;
+  padding-top: 8px;
+}
+
+.psychology-timeline {
+  display: flex;
+  height: 36px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.psychology-timeline-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.psychology-timeline-label {
+  font-size: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 2px;
+}
+
+.psychology-timeline-marker {
+  position: absolute;
+  top: 0;
+  width: 3px;
+  height: 44px;
+  background: #fff;
+  border-radius: 2px;
+  transform: translateX(-50%);
+}
+
+.chart-analysis-toggles {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.chart-analysis-toggles label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted, #8b9cb3);
+  cursor: pointer;
+}
+
+.chart-analysis-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--accent-dim, #1e3a5f);
+  color: var(--accent, #3b82f6);
+}
