@@ -160,7 +160,6 @@ const els = {
   settingApiUrl: $('setting-api-url'),
   settingPassScore: $('setting-pass-score'),
   settingTextPassScore: $('setting-text-pass-score'),
-  settingFailSampleReplay: $('setting-fail-sample-replay'),
   settingFailSampleReplayAfter: $('setting-fail-sample-replay-after'),
   settingReadingPassScore: $('setting-reading-pass-score'),
   settingReadingAutoplay: $('setting-reading-autoplay'),
@@ -829,11 +828,11 @@ function loadSettings() {
   els.settingApiUrl.value = saved.apiBaseUrl ?? config.apiBaseUrl ?? 'http://127.0.0.1:8000';
   els.settingPassScore.value = saved.passScore ?? config.thresholds?.overallPass ?? 80;
   els.settingTextPassScore.value = saved.textPassScore ?? config.thresholds?.textPass ?? 100;
-  if (els.settingFailSampleReplay) {
-    els.settingFailSampleReplay.checked = Boolean(saved.failSampleReplay);
-  }
   if (els.settingFailSampleReplayAfter) {
-    els.settingFailSampleReplayAfter.value = saved.failSampleReplayAfter ?? 3;
+    let failAfter = saved.failSampleReplayAfter;
+    if (failAfter == null && saved.failSampleReplay === true) failAfter = 3;
+    if (failAfter == null) failAfter = 0;
+    els.settingFailSampleReplayAfter.value = failAfter;
   }
   if (els.settingReadingPassScore) {
     els.settingReadingPassScore.value = saved.readingPassScore ?? config.thresholds?.readingPass ?? 100;
@@ -852,7 +851,6 @@ function loadSettings() {
   if (els.settingTtsVoice && saved.ttsVoiceUri) {
     els.settingTtsVoice.dataset.savedUri = saved.ttsVoiceUri;
   }
-  syncFailSampleReplayInputsUi();
 }
 
 function saveSettings() {
@@ -865,8 +863,7 @@ function saveSettings() {
     apiBaseUrl: els.settingApiUrl.value,
     passScore: parseInt(els.settingPassScore.value, 10),
     textPassScore: parseInt(els.settingTextPassScore.value, 10),
-    failSampleReplay: Boolean(els.settingFailSampleReplay?.checked),
-    failSampleReplayAfter: parseInt(els.settingFailSampleReplayAfter?.value, 10) || 3,
+    failSampleReplayAfter: parseInt(els.settingFailSampleReplayAfter?.value, 10) || 0,
     readingPassScore: parseInt(els.settingReadingPassScore?.value, 10),
     readingAutoPlaySample: els.settingReadingAutoplay?.checked,
     readingIdleSampleSec: parseInt(els.settingReadingIdleSampleSec?.value, 10) || 0,
@@ -1296,7 +1293,6 @@ function openSettingsPanel() {
   els.settingsPanel?.classList.remove('hidden');
   refreshSilenceHints();
   populateTtsVoiceSelect();
-  syncFailSampleReplayInputsUi();
 }
 
 function applyPracticeModeUI() {
@@ -1426,16 +1422,10 @@ function resetWordFailStreak() {
   wordFailStreak = 0;
 }
 
-function syncFailSampleReplayInputsUi() {
-  if (els.settingFailSampleReplayAfter) {
-    els.settingFailSampleReplayAfter.disabled = !els.settingFailSampleReplay?.checked;
-  }
-}
-
 function getFailSampleReplayAfter() {
-  if (!els.settingFailSampleReplay?.checked) return 0;
   const n = parseInt(els.settingFailSampleReplayAfter?.value, 10);
-  return Number.isFinite(n) && n >= 2 ? Math.min(10, n) : 3;
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.min(10, n);
 }
 
 /** Sau N lần đọc/chấm chưa đạt → tự phát mẫu (nếu bật trong cài đặt) */
@@ -1550,7 +1540,7 @@ function noteUserInput() {
 function scheduleIdleSample() {
   clearIdleSampleTimer();
   const sec = getIdleSampleSec();
-  if (!sec || !hasPracticeTarget() || !idleSampleArmed || !shouldAutoplaySample()) return;
+  if (!sec || !hasPracticeTarget() || !idleSampleArmed) return;
 
   idleSampleTimer = setTimeout(() => {
     idleSampleTimer = null;
@@ -1569,10 +1559,6 @@ function scheduleIdleSample() {
 }
 
 function armIdleSampleTimer() {
-  if (!shouldAutoplaySample()) {
-    disarmIdleSampleTimer();
-    return;
-  }
   const sec = getIdleSampleSec();
   if (!sec) {
     disarmIdleSampleTimer();
@@ -3420,24 +3406,18 @@ function bindEvents() {
   });
 
   els.settingIdleSampleSec?.addEventListener('input', () => {
-    if (idleSampleArmed) armIdleSampleTimer();
-  });
-
-  els.settingAutoplay?.addEventListener('change', () => {
-    if (shouldAutoplaySample()) armIdleSampleTimer();
-    else disarmIdleSampleTimer();
-  });
-
-  els.settingReadingAutoplay?.addEventListener('change', () => {
-    if (shouldAutoplaySample()) armIdleSampleTimer();
+    if (getIdleSampleSec()) armIdleSampleTimer();
     else disarmIdleSampleTimer();
   });
 
   els.settingReadingIdleSampleSec?.addEventListener('input', () => {
-    if (idleSampleArmed) armIdleSampleTimer();
+    if (getIdleSampleSec()) armIdleSampleTimer();
+    else disarmIdleSampleTimer();
   });
 
-  els.settingFailSampleReplay?.addEventListener('change', syncFailSampleReplayInputsUi);
+  els.settingFailSampleReplayAfter?.addEventListener('input', () => {
+    if (!getFailSampleReplayAfter()) resetWordFailStreak();
+  });
 
   window.addEventListener('beforeunload', () => stopLiveMode());
 }

@@ -226,37 +226,36 @@
       </fieldset>
       <fieldset class="settings-group">
         <legend>Luyện tập</legend>
-        <label class="setting-row mode-not-reading">
-          <input type="checkbox" id="setting-autoplay" checked>
-          Tự phát mẫu khi mở từ
-        </label>
-        <label class="setting-row mode-reading-only">
-          <input type="checkbox" id="setting-reading-autoplay" checked>
-          Tự phát mẫu khi mở câu
-        </label>
+        <fieldset class="settings-subgroup">
+          <legend>Tự phát mẫu</legend>
+          <label class="setting-row mode-not-reading">
+            <input type="checkbox" id="setting-autoplay" checked>
+            Khi mở từ mới
+          </label>
+          <label class="setting-row mode-reading-only">
+            <input type="checkbox" id="setting-reading-autoplay" checked>
+            Khi mở câu mới
+          </label>
+          <label class="setting-row mode-not-reading">
+            Sau im lặng (giây)
+            <input type="number" id="setting-idle-sample-sec" value="10" min="0" max="120" step="1">
+            <span class="setting-hint">0 = tắt</span>
+          </label>
+          <label class="setting-row mode-reading-only">
+            Sau im lặng (giây)
+            <input type="number" id="setting-reading-idle-sample-sec" value="10" min="0" max="120" step="1">
+            <span class="setting-hint">0 = tắt</span>
+          </label>
+          <label class="setting-row">
+            Sau số lần sai
+            <input type="number" id="setting-fail-sample-replay-after" value="0" min="0" max="10" step="1">
+            <span class="setting-hint">0 = tắt · ví dụ 3 = phát lại sau 3 lần sai liên tiếp</span>
+          </label>
+        </fieldset>
         <label class="setting-row">
           Giọng đọc mẫu (TTS)
           <select id="setting-tts-voice" class="setting-select" aria-label="Giọng đọc mẫu"></select>
           <span class="setting-hint">Khi không có file audio mẫu · giọng tiếng Anh của trình duyệt</span>
-        </label>
-        <label class="setting-row mode-not-reading">
-          Tự phát mẫu nếu im lặng (giây)
-          <input type="number" id="setting-idle-sample-sec" value="10" min="0" max="120" step="1">
-          <span class="setting-hint">0 = tắt · không nghe thấy bạn đọc</span>
-        </label>
-        <label class="setting-row mode-reading-only">
-          Tự phát mẫu nếu im lặng (giây)
-          <input type="number" id="setting-reading-idle-sample-sec" value="10" min="0" max="120" step="1">
-          <span class="setting-hint">0 = tắt · không nghe thấy bạn đọc</span>
-        </label>
-        <label class="setting-row">
-          <input type="checkbox" id="setting-fail-sample-replay">
-          Phát lại mẫu khi sai nhiều lần
-        </label>
-        <label class="setting-row">
-          Số lần sai trước khi phát lại
-          <input type="number" id="setting-fail-sample-replay-after" value="3" min="2" max="10" step="1" disabled>
-          <span class="setting-hint">Mặc định tắt · bật checkbox phía trên</span>
         </label>
         <label class="setting-row">
           <input type="checkbox" id="setting-live-auto" checked>

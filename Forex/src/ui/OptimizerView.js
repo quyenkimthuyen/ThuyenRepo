@@ -10,6 +10,12 @@ import StrategyEngine from '../strategy/StrategyEngine.js';
 import ResearchEngine from '../optimizer/ResearchEngine.js';
 import { parseValueList, countCombinations, defaultGridForParam, augmentParamGrid } from '../optimizer/ParameterGrid.js';
 import { suggestParamGridFromData } from '../optimizer/GridSuggestEngine.js';
+import {
+  buildSensitivitySeries,
+  getVaryingParamKeys,
+  MIN_TRADES_PER_SENSITIVITY_POINT,
+} from '../optimizer/GridSensitivity.js';
+import { drawGridSensitivityChart } from '../optimizer/GridSensitivityChart.js';
 import { downloadFile } from '../data/DataExporter.js';
 import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
@@ -43,6 +49,12 @@ class OptimizerViewImpl {
 
   /** @type {(() => void)|null} */
   #unsub = null;
+
+  /** @type {import('../optimizer/GridSearchEngine.js').GridSearchResult|null} */
+  #gridResult = null;
+
+  /** @type {(() => void)|null} */
+  #sensitivityResizeHandler = null;
 
   /**
    * @param {HTMLElement} container
@@ -84,6 +96,10 @@ class OptimizerViewImpl {
   unmount() {
     this.#unsub?.();
     this.#unsub = null;
+    if (this.#sensitivityResizeHandler) {
+      window.removeEventListener('resize', this.#sensitivityResizeHandler);
+      this.#sensitivityResizeHandler = null;
+    }
     if (this.#container) {
       this.#container.classList.remove('panel-body-optimizer');
       this.#container.innerHTML = '';
@@ -538,6 +554,12 @@ class OptimizerViewImpl {
     const wrap = this.#container?.querySelector('#opt-results');
     if (!wrap || activeTab !== 'grid') return;
 
+    this.#gridResult = result;
+    if (this.#sensitivityResizeHandler) {
+      window.removeEventListener('resize', this.#sensitivityResizeHandler);
+      this.#sensitivityResizeHandler = null;
+    }
+
     wrap.innerHTML = '';
     wrap.appendChild(el('div', { class: 'opt-results-header' }, [
       el('h4', {}, [`Top Results (${result.totalCombinations} combos, ${result.durationMs}ms)`]),
@@ -566,6 +588,8 @@ class OptimizerViewImpl {
       ]),
     ]));
 
+    this.#renderSensitivityPanel(wrap, result);
+
     if (result.walkForward) {
       const wf = result.walkForward;
       wrap.appendChild(el('div', { class: 'opt-wf-inline' }, [
@@ -583,6 +607,68 @@ class OptimizerViewImpl {
     wrap.querySelector('#opt-export-grid')?.addEventListener('click', () => {
       downloadFile(JSON.stringify(result, null, 2), 'grid_search.json', 'application/json');
     });
+  }
+
+  /**
+   * @param {HTMLElement} wrap
+   * @param {import('../optimizer/GridSearchEngine.js').GridSearchResult} result
+   */
+  #renderSensitivityPanel(wrap, result) {
+    const varying = getVaryingParamKeys(result.entries);
+    if (!varying.length) return;
+
+    const panel = el('div', { class: 'opt-sensitivity' }, [
+      el('div', { class: 'opt-sensitivity-head' }, [
+        el('h4', { class: 'opt-sensitivity-title' }, ['Param Sensitivity']),
+        el('label', { class: 'opt-sensitivity-field' }, [
+          'Parameter',
+          el('select', { class: 'data-select', id: 'opt-sensitivity-param' },
+            varying.map((key) => el('option', { value: key }, [key]))),
+        ]),
+      ]),
+      el('canvas', { class: 'opt-sensitivity-canvas', id: 'opt-sensitivity-canvas', width: '800', height: '200' }),
+      el('p', { class: 'opt-sensitivity-hint', id: 'opt-sensitivity-hint' }, ['']),
+    ]);
+
+    wrap.appendChild(panel);
+
+    const select = /** @type {HTMLSelectElement} */ (panel.querySelector('#opt-sensitivity-param'));
+    select.addEventListener('change', () => this.#updateSensitivityChart());
+
+    this.#sensitivityResizeHandler = () => this.#updateSensitivityChart();
+    window.addEventListener('resize', this.#sensitivityResizeHandler);
+
+    this.#updateSensitivityChart();
+  }
+
+  #updateSensitivityChart() {
+    if (!this.#gridResult) return;
+
+    const select = /** @type {HTMLSelectElement|null} */ (
+      this.#container?.querySelector('#opt-sensitivity-param')
+    );
+    const canvas = /** @type {HTMLCanvasElement|null} */ (
+      this.#container?.querySelector('#opt-sensitivity-canvas')
+    );
+    const hint = this.#container?.querySelector('#opt-sensitivity-hint');
+    if (!select || !canvas || !hint) return;
+
+    const paramKey = select.value;
+    const series = buildSensitivitySeries(this.#gridResult.entries, paramKey);
+    const drawn = drawGridSensitivityChart(canvas, series, paramKey);
+
+    if (!drawn) {
+      hint.textContent = series.length === 0
+        ? `Không đủ điểm — cần trung bình ≥ ${MIN_TRADES_PER_SENSITIVITY_POINT} lệnh/combo cho mỗi giá trị ${paramKey}.`
+        : `Cần ít nhất 2 giá trị ${paramKey} để vẽ biểu đồ.`;
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      return;
+    }
+
+    const buckets = series.length;
+    const combos = series.reduce((sum, p) => sum + p.sampleCount, 0);
+    hint.textContent = `Trung bình WR & expectancy theo ${paramKey} · ${buckets} giá trị · ${combos} combo · ẩn điểm < ${MIN_TRADES_PER_SENSITIVITY_POINT} lệnh TB`;
   }
 
   /**
