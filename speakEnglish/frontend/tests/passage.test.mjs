@@ -12,6 +12,7 @@ import {
   markCurrentSentenceComplete,
   advancePassageIndex,
   isPassageComplete,
+  isSentenceWordsComplete,
 } from '../js/passage.js';
 
 describe('splitIntoSentences', () => {
@@ -61,6 +62,26 @@ describe('passage session', () => {
     const html = renderPassageDisplay(session);
     assert.match(html, /passage-word--matched/);
     assert.match(html, /passage-sentence--active/);
+  });
+
+  it('accumulates word progress across reading attempts', () => {
+    const sentence = {
+      text: 'The quick brown fox jumps.',
+      tokens: tokenizeSentenceDisplay('The quick brown fox jumps.'),
+      completed: false,
+      matchedWordCount: 0,
+    };
+    let session = createPassageSession('The quick brown fox jumps.');
+    session.sentences[0] = sentence;
+
+    session = updateSessionWordProgress(session, 'the quick');
+    assert.equal(session.sentences[0].matchedWordCount, 2);
+
+    session = updateSessionWordProgress(session, 'brown fox');
+    assert.equal(session.sentences[0].matchedWordCount, 4);
+
+    session = updateSessionWordProgress(session, 'jumps');
+    assert.equal(isSentenceWordsComplete(session.sentences[0]), true);
   });
 
   it('marks passage complete after all sentences', () => {

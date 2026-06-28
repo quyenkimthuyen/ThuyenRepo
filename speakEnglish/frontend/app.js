@@ -35,6 +35,8 @@ import {
   renderPassageDisplay,
   serializePassageSession,
   deserializePassageSession,
+  getSentenceRemainderText,
+  isSentenceWordsComplete,
 } from './js/passage.js';
 import {
   loadPassageLibrary,
@@ -162,6 +164,7 @@ const els = {
   settingReadingPassScore: $('setting-reading-pass-score'),
   settingReadingAutoplay: $('setting-reading-autoplay'),
   settingReadingIdleSampleSec: $('setting-reading-idle-sample-sec'),
+  settingReadingSilenceSec: $('setting-reading-silence-sec'),
   serviceStatus: $('service-status'),
   btnLiveToggle: $('btn-live-toggle'),
   micStatusLabel: $('mic-status-label'),
@@ -399,7 +402,10 @@ function getQuizRowsForMode(mode = practiceMode) {
 }
 
 function getSilenceSecSetting() {
-  const sec = parseFloat(els.settingSilenceSec?.value);
+  const input = isReadingMode()
+    ? els.settingReadingSilenceSec
+    : els.settingSilenceSec;
+  const sec = parseFloat(input?.value);
   if (!Number.isFinite(sec)) return 0.35;
   return Math.round(Math.min(1.2, Math.max(0.2, sec)) * 100) / 100;
 }
@@ -412,7 +418,9 @@ function formatSilenceSecLabel(sec) {
 
 function getLiveSilenceHintText() {
   const hangSec = formatSilenceSecLabel(getSilenceSecSetting());
-  if (isReadingMode()) return `Đọc đúng câu → tự chuyển câu tiếp`;
+  if (isReadingMode()) {
+    return `Đọc đúng câu → tự chuyển · im lặng ~${hangSec}s (VAD dự phòng)`;
+  }
   const action = isTextMode() ? 'chuyển từ' : 'chấm điểm';
   return `Nói xong → im lặng ~${hangSec}s → ${action}`;
 }
@@ -829,6 +837,9 @@ function loadSettings() {
   if (els.settingReadingIdleSampleSec) {
     els.settingReadingIdleSampleSec.value = saved.readingIdleSampleSec ?? config.readingIdleSampleSec ?? 10;
   }
+  if (els.settingReadingSilenceSec) {
+    els.settingReadingSilenceSec.value = saved.readingSilenceSec ?? config.readingSilenceSec ?? saved.silenceSec ?? config.silenceSec ?? 0.35;
+  }
   els.settingQuizSize.value = saved.quizSize ?? config.defaultQuizSize ?? vocabularyManifest?.defaultQuizSize ?? 30;
   practiceMode = saved.practiceMode ?? config.practiceMode ?? PRACTICE_MODE.TEXT;
   if (els.settingTtsVoice && saved.ttsVoiceUri) {
@@ -849,6 +860,7 @@ function saveSettings() {
     readingPassScore: parseInt(els.settingReadingPassScore?.value, 10),
     readingAutoPlaySample: els.settingReadingAutoplay?.checked,
     readingIdleSampleSec: parseInt(els.settingReadingIdleSampleSec?.value, 10) || 0,
+    readingSilenceSec: parseFloat(els.settingReadingSilenceSec?.value) || 0.35,
     topicId: els.settingTopic?.value || vocabularyManifest?.defaultTopicId || '',
     quizSize: getQuizSize(),
     practiceMode,
@@ -1140,9 +1152,30 @@ function scrollPassageToActiveSentence(options = {}) {
 }
 
 function refreshPassageFromSpoken(spoken) {
-  if (!isReadingMode() || !passageSession) return;
+  if (!isReadingMode() || !passageSession) return 0;
+  const sentence = getCurrentPassageSentence();
+  if (!sentence) return 0;
+  const prior = sentence.matchedWordCount || 0;
   updateSessionWordProgress(passageSession, spoken || '');
   updatePassageUI({ skipScroll: true });
+  if (sentence.matchedWordCount > prior) {
+    persistPassageSession();
+  }
+  return sentence.matchedWordCount - prior;
+}
+
+function readingSentenceReady(spoken) {
+  const sentence = getCurrentPassageSentence();
+  if (!sentence || !spoken) return false;
+  refreshPassageFromSpoken(spoken);
+  return spokenMatchesTarget(spoken, sentence.text) || isSentenceWordsComplete(sentence);
+}
+
+function readingPracticeSnippet(spoken, sentence) {
+  if (!sentence) return spoken || '';
+  const remainder = getSentenceRemainderText(sentence);
+  if (!remainder) return extractPracticeMatchSnippet(spoken, sentence.text) || spoken;
+  return extractPracticeMatchSnippet(spoken, remainder) || spoken;
 }
 
 function startPassageSession(rawText, options = {}) {
@@ -1303,7 +1336,7 @@ function applyPracticeModeUI() {
 }
 
 function getHangoverMsSetting() {
-  return getHangoverMs(parseFloat(els.settingSilenceSec?.value) || 0.35, isTextLikeMode());
+  return getHangoverMs(getSilenceSecSetting(), isTextLikeMode());
 }
 
 function micPhaseToState(phase) {
@@ -2050,7 +2083,10 @@ function syncTranscriptFromEngine() {
   let displayFinal = rawFinal;
   let displayInterim = rawInterim;
   if (isTextLikeMode() && targetText && combined) {
-    const snippet = extractPracticeMatchSnippet(combined, targetText);
+    const matchTarget = isReadingMode() && getCurrentPassageSentence()
+      ? (getSentenceRemainderText(getCurrentPassageSentence()) || targetText)
+      : targetText;
+    const snippet = extractPracticeMatchSnippet(combined, matchTarget);
     if (snippet) {
       displayFinal = snippet;
       displayInterim = '';
@@ -2144,7 +2180,17 @@ function tryScheduleTextAdvance() {
 
   const target = getPracticeTargetText();
   const spoken = getSpokenWord();
-  if (!target || !spoken || !spokenMatchesTarget(spoken, target)) {
+  if (!target || !spoken) {
+    clearTextMatchTimer();
+    return;
+  }
+
+  if (isReadingMode()) {
+    if (!readingSentenceReady(spoken)) {
+      clearTextMatchTimer();
+      return;
+    }
+  } else if (!spokenMatchesTarget(spoken, target)) {
     clearTextMatchTimer();
     return;
   }
@@ -2152,14 +2198,19 @@ function tryScheduleTextAdvance() {
   if (textMatchTimer) return;
 
   const advanceLabel = isReadingMode() ? 'chuyển câu' : 'chuyển từ';
-  showLiveHint(`✓ "${extractPracticeMatchSnippet(spoken, target) || spoken}" khớp — ${advanceLabel}...`, 'ok');
+  const snippet = isReadingMode()
+    ? readingPracticeSnippet(spoken, getCurrentPassageSentence())
+    : (extractPracticeMatchSnippet(spoken, target) || spoken);
+  showLiveHint(`✓ "${snippet}" khớp — ${advanceLabel}...`, 'ok');
   textMatchTimer = setTimeout(async () => {
     textMatchTimer = null;
     if (!liveModeActive || isAdvancing || !isTextLikeMode()) return;
     const latest = getSpokenWord();
-    if (latest && spokenMatchesTarget(latest, target)) {
-      if (isReadingMode()) await processReadingUtterance(latest);
-      else await processTextUtterance(latest);
+    if (!latest) return;
+    if (isReadingMode()) {
+      if (readingSentenceReady(latest)) await processReadingUtterance(latest);
+    } else if (spokenMatchesTarget(latest, target)) {
+      await processTextUtterance(latest);
     }
   }, TEXT_MATCH_DELAY_MS);
 }
@@ -2518,7 +2569,7 @@ async function processScoreUtterance() {
   await evaluateRecording(blob, { fromLive: true });
 }
 
-/** Đọc đoạn: khớp cả câu → chuyển câu tiếp theo */
+/** Đọc đoạn: khớp cả câu hoặc tích lũy đủ từ → chuyển câu tiếp theo */
 async function processReadingUtterance(spoken) {
   if (isAdvancing) return;
   clearTextMatchTimer();
@@ -2536,38 +2587,51 @@ async function processReadingUtterance(spoken) {
     return;
   }
 
-  refreshPassageFromSpoken(word);
+  const priorMatched = sentence.matchedWordCount || 0;
+  const gained = refreshPassageFromSpoken(word);
+  const total = getSentenceWordCount(sentence);
+  const matched = sentence.matchedWordCount;
+  const display = readingPracticeSnippet(word, sentence);
 
-  if (!spokenMatchesTarget(word, sentence.text)) {
+  if (spokenMatchesTarget(word, sentence.text) || isSentenceWordsComplete(sentence)) {
+    isAdvancing = true;
+    refreshMicAvailabilityUi();
+    resetWordFailStreak();
     const score = textSimilarityPercent(word, sentence.text);
     const need = getReadingPassThreshold();
-    const matched = countMatchedPrefixTokens(word, sentence.text);
-    const total = getSentenceWordCount(sentence);
-    const display = extractPracticeMatchSnippet(word, sentence.text) || word;
-    showLiveHint(
-      `✗ "${display}" — ${matched}/${total} từ · ${score}% (cần ≥${need}%)`,
-      'mis',
-    );
-    registerWordFailure();
+    const msg = matched >= total
+      ? (score >= 100 ? '✓ Đủ câu!' : `✓ Đủ ${matched}/${total} từ (~${score}%)`)
+      : (score >= 100 ? '✓ Đúng câu!' : `✓ Câu ~${score}% (≥${need}%)`);
+    showLiveHint(msg, 'ok');
+    await new Promise((r) => setTimeout(r, 100));
+    hideLiveHint();
+    micEngine?.clearTranscript();
+    syncTranscriptFromEngine();
+    advancePassageSentence();
+    isAdvancing = false;
+    refreshMicAvailabilityUi();
     return;
   }
 
-  isAdvancing = true;
-  refreshMicAvailabilityUi();
-  resetWordFailStreak();
-  const score = textSimilarityPercent(word, sentence.text);
+  if (gained > 0) {
+    resetWordFailStreak();
+    const remainder = getSentenceRemainderText(sentence);
+    showLiveHint(
+      `✓ +${gained} từ · ${matched}/${total} — tiếp: "${remainder.slice(0, 48)}${remainder.length > 48 ? '…' : ''}"`,
+      'ok',
+    );
+    micEngine?.clearTranscript();
+    syncTranscriptFromEngine();
+    return;
+  }
+
+  const score = textSimilarityPercent(word, getSentenceRemainderText(sentence, priorMatched) || sentence.text);
   const need = getReadingPassThreshold();
   showLiveHint(
-    score >= 100 ? `✓ Đúng câu!` : `✓ Câu ~${score}% (≥${need}%)`,
-    'ok',
+    `✗ "${display}" — ${matched}/${total} từ · ${score}% (cần ≥${need}%)`,
+    'mis',
   );
-  await new Promise((r) => setTimeout(r, 100));
-  hideLiveHint();
-  micEngine?.clearTranscript();
-  syncTranscriptFromEngine();
-  advancePassageSentence();
-  isAdvancing = false;
-  refreshMicAvailabilityUi();
+  registerWordFailure();
 }
 
 /** Text mode: khớp → chuyển từ tiếp theo */
@@ -2631,22 +2695,26 @@ function updateRealtimeHint() {
     }
 
     refreshPassageFromSpoken(spoken);
-    const matched = countMatchedPrefixTokens(spoken, sentence.text);
+    const matched = sentence.matchedWordCount;
     const total = getSentenceWordCount(sentence);
+    const display = readingPracticeSnippet(spoken, sentence);
+    const remainder = getSentenceRemainderText(sentence);
 
-    if (spokenMatchesTarget(spoken, sentence.text)) {
+    if (spokenMatchesTarget(spoken, sentence.text) || isSentenceWordsComplete(sentence)) {
       const score = textSimilarityPercent(spoken, sentence.text);
       const need = getReadingPassThreshold();
-      const msg = score >= 100
-        ? `✓ "${display}" — khớp cả câu!`
-        : `✓ "${display}" ~${score}% (≥${need}%)`;
+      const msg = matched >= total
+        ? `✓ ${matched}/${total} từ — đủ câu!`
+        : (score >= 100
+          ? `✓ "${display}" — khớp cả câu!`
+          : `✓ "${display}" ~${score}% (≥${need}%)`);
       showLiveHint(msg, 'ok');
-    } else if (matched > 0) {
-      showLiveHint(`✓ ${matched}/${total} từ đúng — tiếp tục đọc`, 'ok');
+    } else if (matched > 0 && remainder) {
+      showLiveHint(`✓ ${matched}/${total} từ — tiếp: "${remainder.slice(0, 40)}${remainder.length > 40 ? '…' : ''}"`, 'ok');
     } else {
-      const score = textSimilarityPercent(spoken, sentence.text);
+      const score = textSimilarityPercent(spoken, remainder || sentence.text);
       const need = getReadingPassThreshold();
-      showLiveHint(`✗ "${display}" — ${score}% (cần ≥${need}%)`, 'mis');
+      showLiveHint(`✗ "${display}" — ${matched}/${total} từ · ${score}% (cần ≥${need}%)`, 'mis');
     }
     return;
   }
@@ -3320,6 +3388,11 @@ function bindEvents() {
   });
 
   els.settingSilenceSec?.addEventListener('input', () => {
+    micEngine?.setHangoverMs(getHangoverMsSetting());
+    refreshSilenceHints();
+  });
+
+  els.settingReadingSilenceSec?.addEventListener('input', () => {
     micEngine?.setHangoverMs(getHangoverMsSetting());
     refreshSilenceHints();
   });

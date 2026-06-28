@@ -47,12 +47,40 @@ export function getCurrentSentence(session) {
   return session.sentences[session.currentIndex] ?? null;
 }
 
+/** Phần câu còn lại (từ chưa khớp) — dùng làm mục tiêu cho lần đọc tiếp theo */
+export function getSentenceRemainderText(sentence, offset = sentence?.matchedWordCount ?? 0) {
+  if (!sentence?.tokens?.length) return '';
+  const wordTokens = sentence.tokens.filter((t) => t.isWord);
+  const safeOffset = Math.max(0, Math.min(offset, wordTokens.length));
+  return wordTokens.slice(safeOffset).map((t) => t.display).join(' ');
+}
+
+/** Khớp thêm bao nhiêu từ khi bắt đầu từ offset (đã tích lũy trước đó) */
+export function countMatchedTokensFromOffset(spoken, targetSentence, offset = 0) {
+  const remainder = getSentenceRemainderText(
+    { tokens: tokenizeSentenceDisplay(targetSentence) },
+    offset,
+  );
+  if (!remainder) return 0;
+  return countMatchedPrefixTokens(spoken, remainder);
+}
+
+export function isSentenceWordsComplete(sentence) {
+  if (!sentence) return false;
+  if (sentence.completed) return true;
+  return sentence.matchedWordCount >= getSentenceWordCount(sentence);
+}
+
 export function updateSessionWordProgress(session, spoken) {
   const sentence = getCurrentSentence(session);
   if (!sentence || sentence.completed) return session;
 
-  const matched = countMatchedPrefixTokens(spoken, sentence.text);
-  sentence.matchedWordCount = Math.min(matched, getSentenceWordCount(sentence));
+  const total = getSentenceWordCount(sentence);
+  const prior = sentence.matchedWordCount || 0;
+  const newly = countMatchedTokensFromOffset(spoken, sentence.text, prior);
+  if (newly > 0) {
+    sentence.matchedWordCount = Math.min(prior + newly, total);
+  }
   return session;
 }
 
