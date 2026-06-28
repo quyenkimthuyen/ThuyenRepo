@@ -1,6 +1,6 @@
+
 /**
  * Simplified Elliott Wave labeling on swing pivots.
- * Research heuristic � not a substitute for manual wave count.
  * @module analysis/ElliottWaveAnalyzer
  */
 
@@ -25,12 +25,6 @@
 const IMPULSE_LABELS = ['1', '2', '3', '4', '5'];
 const CORRECTION_LABELS = ['A', 'B', 'C'];
 
-/**
- * Label Elliott waves from pivot sequence and trend segments.
- * @param {SwingPivot[]} pivots
- * @param {TrendSegment[]} segments
- * @returns {{ waves: ElliottWave[], structure: WaveStructure, summary: string }}
- */
 export function labelElliottWaves(pivots, segments) {
   if (segments.length < 3) {
     return {
@@ -50,7 +44,7 @@ export function labelElliottWaves(pivots, segments) {
   for (let i = 0; i < Math.min(recent.length, labels.length); i++) {
     const seg = recent[i];
     waves.push({
-      label: `S�ng ${labels[i]}`,
+      label: `Sóng ${labels[i]}`,
       waveNumber: labels[i],
       startIndex: seg.startIndex,
       endIndex: seg.endIndex,
@@ -72,10 +66,6 @@ export function labelElliottWaves(pivots, segments) {
   return { waves, structure, summary };
 }
 
-/**
- * @param {TrendSegment[]} segments
- * @returns {WaveStructure}
- */
 function detectStructure(segments) {
   const ups = segments.filter((s) => s.direction === 'uptrend').length;
   const downs = segments.filter((s) => s.direction === 'downtrend').length;
@@ -96,10 +86,6 @@ function detectStructure(segments) {
   return ups > downs ? 'impulse' : downs > ups ? 'correction' : 'unknown';
 }
 
-/**
- * @param {ElliottWave[]} waves
- * @returns {string}
- */
 function describeImpulse(waves) {
   if (waves.length < 3) return 'đang hình thành';
   const w3 = waves.find((w) => w.waveNumber === '3');
@@ -110,10 +96,6 @@ function describeImpulse(waves) {
   return 'đang trong xung — theo dõi sóng 3/5';
 }
 
-/**
- * @param {ElliottWave[]} waves
- * @returns {string}
- */
 function describeCorrection(waves) {
   if (waves.length < 2) return 'điều chỉnh sớm';
   const waveA = waves.find((w) => w.waveNumber === 'A');
@@ -128,12 +110,6 @@ function describeCorrection(waves) {
   return 'điều chỉnh đang diễn ra';
 }
 
-/**
- * Map wave number to typical market psychology sub-phase.
- * @param {string} waveNumber
- * @param {import('./TrendAnalyzer.js').TrendDirection} trend
- * @returns {string}
- */
 export function wavePsychologyHint(waveNumber, trend) {
   const hints = {
     '1': 'Hy vọng / Relief — khởi đầu xu hướng mới',

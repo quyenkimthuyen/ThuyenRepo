@@ -5,8 +5,8 @@
 
 import { bus, Events } from '../core/EventBus.js';
 import { createLogger } from '../utils/logger.js';
-import { detectSwingPivots, defaultReversalPct } from './SwingPivotDetector.js';
-import { buildTrendSegments, classifyOverallTrend } from './TrendAnalyzer.js';
+import { detectSwingPivots, defaultSwingOptions } from './SwingPivotDetector.js';
+import { buildTrendSegments, classifyOverallTrend, sidewaysThresholdPct } from './TrendAnalyzer.js';
 import {
   analyzeCurrentCycle,
   buildHistoricalCycles,
@@ -49,10 +49,9 @@ let lastResult = null;
 export function analyzeLongTerm(candles, options = {}) {
   const symbol = options.symbol ?? 'BTCUSD';
   const timeframe = options.timeframe ?? 'W';
-  const reversalPct = options.reversalPct ?? defaultReversalPct(timeframe);
-
-  const pivots = detectSwingPivots(candles, { reversalPct });
-  const segments = buildTrendSegments(pivots);
+  const swingOpts = defaultSwingOptions(timeframe);
+  const pivots = detectSwingPivots(candles, swingOpts);
+  const segments = buildTrendSegments(pivots, sidewaysThresholdPct(timeframe));
   const overallTrend = classifyOverallTrend(pivots);
   const currentCycle = analyzeCurrentCycle();
   const historicalCycles = buildHistoricalCycles(candles);

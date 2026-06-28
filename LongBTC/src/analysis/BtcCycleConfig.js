@@ -1,3 +1,4 @@
+
 /**
  * BTC halving cycle constants and phase definitions.
  * @module analysis/BtcCycleConfig

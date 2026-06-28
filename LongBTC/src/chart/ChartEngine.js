@@ -16,7 +16,10 @@ import {
 import {
   buildAnalysisMarkers,
   buildCyclePriceLines,
+  buildElliottLineSeries,
+  buildHalvingMarkers,
   buildTrendLineSeries,
+  clipAnalysisToCandles,
 } from './AnalysisOverlay.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -37,6 +40,12 @@ export class ChartEngine {
 
   /** @type {import('../../vendor/lightweight-charts.mjs').ISeriesApi<'Line'>[]} */
   #trendSeries = [];
+
+  /** @type {import('../../vendor/lightweight-charts.mjs').ISeriesApi<'Line'>[]} */
+  #elliottSeries = [];
+
+  /** @type {import('../../vendor/lightweight-charts.mjs').IPriceLine[]} */
+  #analysisPriceLines = [];
 
   /** @type {import('../analysis/LongTermAnalysisEngine.js').LongTermAnalysisResult|null} */
   #analysisOverlay = null;
@@ -216,28 +225,53 @@ export class ChartEngine {
   }
 
   /**
-   * Apply long-term BTC analysis overlays (swings, trends, cycle levels).
+   * Apply long-term BTC analysis overlays (swings, trends, cycle, Elliott, halving).
    * @param {import('../analysis/LongTermAnalysisEngine.js').LongTermAnalysisResult|null} analysis
-   * @param {{ showSwings?: boolean, showTrends?: boolean, showCycle?: boolean }} [options]
+   * @param {{
+   *   candles?: import('../data/Candle.js').Candle[],
+   *   showSwings?: boolean,
+   *   showTrends?: boolean,
+   *   showCycle?: boolean,
+   *   showElliott?: boolean,
+   *   showHalving?: boolean,
+   * }} [options]
    */
   setAnalysisOverlay(analysis, options = {}) {
     this.clearAnalysisOverlay();
     if (!analysis || !this.#candleSeries || !this.#chart) return;
 
-    this.#analysisOverlay = analysis;
+    const candles = options.candles ?? [];
+    const clipped = candles.length > 0 ? clipAnalysisToCandles(analysis, candles) : analysis;
+    this.#analysisOverlay = clipped;
+
     const showSwings = options.showSwings !== false;
     const showTrends = options.showTrends !== false;
     const showCycle = options.showCycle !== false;
+    const showElliott = options.showElliott !== false;
+    const showHalving = options.showHalving !== false;
 
-    if (showSwings && !this.#activeHighlight) {
-      this.#candleSeries.setMarkers(buildAnalysisMarkers(analysis));
+    if (!this.#activeHighlight) {
+      /** @type {Array<Record<string, unknown>>} */
+      const markers = [];
+      if (showSwings || showElliott) {
+        markers.push(...buildAnalysisMarkers(clipped, candles, {
+          maxSwingMarkers: showSwings ? 24 : 0,
+        }).filter((m) => showSwings || !['\u0110\u1ec9nh', '\u0110\u00e1y'].includes(String(m.text))));
+      }
+      if (showHalving && candles.length > 0) {
+        markers.push(...buildHalvingMarkers(candles));
+      }
+      if (markers.length > 0) {
+        markers.sort((a, b) => a.time - b.time);
+        this.#candleSeries.setMarkers(markers);
+      }
     }
 
-    if (showTrends) {
-      for (const series of buildTrendLineSeries(analysis)) {
+    if (showTrends && candles.length > 0) {
+      for (const series of buildTrendLineSeries(clipped, candles)) {
         const line = this.#chart.addLineSeries({
           color: series.color,
-          lineWidth: 2,
+          lineWidth: series.lineWidth,
           priceLineVisible: false,
           lastValueVisible: false,
           crosshairMarkerVisible: false,
@@ -247,13 +281,28 @@ export class ChartEngine {
       }
     }
 
+    if (showElliott && candles.length > 0) {
+      for (const series of buildElliottLineSeries(clipped, candles)) {
+        const line = this.#chart.addLineSeries({
+          color: series.color,
+          lineWidth: series.lineWidth,
+          lineStyle: 0,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false,
+        });
+        line.setData(series.data);
+        this.#elliottSeries.push(line);
+      }
+    }
+
     if (showCycle) {
-      for (const spec of buildCyclePriceLines(analysis)) {
-        this.#priceLines.push(this.#candleSeries.createPriceLine({
+      for (const spec of buildCyclePriceLines(clipped)) {
+        this.#analysisPriceLines.push(this.#candleSeries.createPriceLine({
           price: spec.price,
           color: spec.color,
           lineWidth: 1,
-          lineStyle: 2,
+          lineStyle: spec.lineStyle ?? 2,
           axisLabelVisible: true,
           title: spec.title,
         }));
@@ -267,14 +316,21 @@ export class ChartEngine {
       this.#chart?.removeSeries(series);
     }
     this.#trendSeries = [];
+
+    for (const series of this.#elliottSeries) {
+      this.#chart?.removeSeries(series);
+    }
+    this.#elliottSeries = [];
+
+    for (const line of this.#analysisPriceLines) {
+      this.#candleSeries?.removePriceLine(line);
+    }
+    this.#analysisPriceLines = [];
+
     this.#analysisOverlay = null;
 
     if (!this.#activeHighlight) {
       this.#candleSeries?.setMarkers([]);
-      for (const line of this.#priceLines) {
-        this.#candleSeries?.removePriceLine(line);
-      }
-      this.#priceLines = [];
     }
   }
 

@@ -3,6 +3,8 @@
  * @module analysis/TrendAnalyzer
  */
 
+import { sidewaysThresholdPct as thresholdForTimeframe } from './SwingPivotDetector.js';
+
 /**
  * @typedef {import('./SwingPivotDetector.js').SwingPivot} SwingPivot
  * @typedef {'uptrend'|'downtrend'|'sideways'} TrendDirection
@@ -20,12 +22,20 @@
  */
 
 /**
+ * @param {string} timeframe
+ * @returns {number}
+ */
+export function sidewaysThresholdPct(timeframe) {
+  return thresholdForTimeframe(timeframe);
+}
+
+/**
  * Build trend segments between consecutive pivots.
  * @param {SwingPivot[]} pivots
- * @param {number} [sidewaysThresholdPct=3]
+ * @param {number} [thresholdPct=3]
  * @returns {TrendSegment[]}
  */
-export function buildTrendSegments(pivots, sidewaysThresholdPct = 3) {
+export function buildTrendSegments(pivots, thresholdPct = 3) {
   if (pivots.length < 2) return [];
 
   /** @type {TrendSegment[]} */
@@ -37,8 +47,8 @@ export function buildTrendSegments(pivots, sidewaysThresholdPct = 3) {
     const changePct = ((to.price - from.price) / from.price) * 100;
     let direction = /** @type {TrendDirection} */ ('sideways');
 
-    if (changePct > sidewaysThresholdPct) direction = 'uptrend';
-    else if (changePct < -sidewaysThresholdPct) direction = 'downtrend';
+    if (changePct > thresholdPct) direction = 'uptrend';
+    else if (changePct < -thresholdPct) direction = 'downtrend';
 
     segments.push({
       startIndex: from.index,
@@ -66,7 +76,7 @@ export function classifyOverallTrend(pivots) {
   const lows = pivots.filter((p) => p.type === 'low');
 
   if (highs.length < 2 || lows.length < 2) {
-    return { direction: 'sideways', confidence: 30, reason: 'Chưa đủ swing để xác định xu hướng' };
+    return { direction: 'sideways', confidence: 30, reason: 'Ch\u01b0a \u0111\u1ee7 swing \u0111\u1ec3 x\u00e1c \u0111\u1ecbnh xu h\u01b0\u1edbng' };
   }
 
   const lastTwoHighs = highs.slice(-2);
@@ -77,19 +87,19 @@ export function classifyOverallTrend(pivots) {
   const ll = lastTwoLows[1].price < lastTwoLows[0].price;
 
   if (hh && hl) {
-    return { direction: 'uptrend', confidence: 85, reason: 'Higher High + Higher Low — xu hướng tăng' };
+    return { direction: 'uptrend', confidence: 85, reason: 'Higher High + Higher Low \u2014 xu h\u01b0\u1edbng t\u0103ng' };
   }
   if (lh && ll) {
-    return { direction: 'downtrend', confidence: 85, reason: 'Lower High + Lower Low — xu hướng giảm' };
+    return { direction: 'downtrend', confidence: 85, reason: 'Lower High + Lower Low \u2014 xu h\u01b0\u1edbng gi\u1ea3m' };
   }
   if (hh && ll) {
-    return { direction: 'sideways', confidence: 60, reason: 'Phân kỳ HH/LL — đi ngang / chuyển pha' };
+    return { direction: 'sideways', confidence: 60, reason: 'Ph\u00e2n k\u1ef3 HH/LL \u2014 \u0111i ngang / chuy\u1ec3n pha' };
   }
   if (lh && hl) {
-    return { direction: 'sideways', confidence: 60, reason: 'Phân kỳ LH/HL — đi ngang / tích lũy' };
+    return { direction: 'sideways', confidence: 60, reason: 'Ph\u00e2n k\u1ef3 LH/HL \u2014 \u0111i ngang / t\u00edch l\u0169y' };
   }
 
-  return { direction: 'sideways', confidence: 45, reason: 'Cấu trúc swing hỗn hợp' };
+  return { direction: 'sideways', confidence: 45, reason: 'C\u1ea5u tr\u00fac swing h\u1ed7n h\u1ee3p' };
 }
 
 /**
@@ -97,6 +107,6 @@ export function classifyOverallTrend(pivots) {
  * @returns {string}
  */
 export function trendLabelVi(direction) {
-  const labels = { uptrend: 'Tăng', downtrend: 'Giảm', sideways: 'Đi ngang' };
+  const labels = { uptrend: 'T\u0103ng', downtrend: 'Gi\u1ea3m', sideways: '\u0110i ngang' };
   return labels[direction] ?? direction;
 }

@@ -1,3 +1,4 @@
+
 /**
  * Map cycle position, trend, and Elliott waves to market psychology phases.
  * @module analysis/PsychologyCycleMapper
@@ -23,10 +24,6 @@ import { wavePsychologyHint } from './ElliottWaveAnalyzer.js';
  * }} PsychologyAssessment
  */
 
-/**
- * Phase index ranges within a halving cycle (0�10 mapped to progress 0�1).
- * @type {Record<string, [number, number]>}
- */
 const CYCLE_PHASE_MAP = {
   optimism: [0.20, 0.30],
   excitement: [0.30, 0.38],
@@ -41,13 +38,6 @@ const CYCLE_PHASE_MAP = {
   relief: [0.97, 1.0],
 };
 
-/**
- * Score each psychology phase and return best match.
- * @param {CurrentCycleState} cycle
- * @param {{ direction: TrendDirection, confidence: number }} trend
- * @param {ElliottWave[]} waves
- * @returns {PsychologyAssessment}
- */
 export function assessPsychology(cycle, trend, waves) {
   const progress = cycle.progressPct / 100;
   const lastWave = waves.length > 0 ? waves[waves.length - 1] : null;
@@ -100,10 +90,6 @@ export function assessPsychology(cycle, trend, waves) {
   };
 }
 
-/**
- * Build timeline of psychology phases across full cycle.
- * @returns {Array<{ phase: typeof PSYCHOLOGY_PHASES[number], startPct: number, endPct: number }>}
- */
 export function buildPsychologyTimeline() {
   return PSYCHOLOGY_PHASES.map((phase) => {
     const range = CYCLE_PHASE_MAP[phase.id] ?? [0, 0];
@@ -115,13 +101,6 @@ export function buildPsychologyTimeline() {
   });
 }
 
-/**
- * @param {typeof PSYCHOLOGY_PHASES[number]} phase
- * @param {CurrentCycleState} cycle
- * @param {{ direction: TrendDirection }} trend
- * @param {ElliottWave|null} lastWave
- * @returns {string}
- */
 function buildDescription(phase, cycle, trend, lastWave) {
   const parts = [
     `Thị trường đang ở giai đoạn "${phase.labelVi}" (${phase.label}).`,
@@ -131,11 +110,6 @@ function buildDescription(phase, cycle, trend, lastWave) {
   return parts.join(' ');
 }
 
-/**
- * @param {string} phaseId
- * @param {TrendDirection} direction
- * @returns {number}
- */
 function trendPsychologyScore(phaseId, direction) {
   const bullish = ['optimism', 'excitement', 'thrill', 'euphoria', 'hope', 'relief'];
   const bearish = ['anxiety', 'denial', 'fear', 'capitulation', 'depression'];
@@ -145,11 +119,6 @@ function trendPsychologyScore(phaseId, direction) {
   return 20;
 }
 
-/**
- * @param {string} phaseId
- * @param {string} waveNumber
- * @returns {number}
- */
 function wavePsychologyScore(phaseId, waveNumber) {
   const map = {
     '1': ['hope', 'relief', 'optimism'],
@@ -164,11 +133,6 @@ function wavePsychologyScore(phaseId, waveNumber) {
   return (map[waveNumber] ?? []).includes(phaseId) ? 90 : 15;
 }
 
-/**
- * @param {string} phaseId
- * @param {string} cyclePhase
- * @returns {number}
- */
 function cyclePhaseBonus(phaseId, cyclePhase) {
   const bonuses = {
     accumulation: ['hope', 'relief', 'optimism', 'depression', 'capitulation'],

@@ -20,7 +20,7 @@ import {
 } from '../utils/runnableDatasets.js';
 import { takePendingChartFocus } from '../utils/chartNavigation.js';
 import { alignToTimeframe, formatTimestamp } from '../data/TimeframeUtils.js';
-import { getLastAnalysis } from '../analysis/LongTermAnalysisEngine.js';
+import { getLastAnalysis, analyzeLongTerm } from '../analysis/LongTermAnalysisEngine.js';
 import {
   SETUP_LEVEL_STYLES,
   TRADE_LEVEL_STYLES,
@@ -66,8 +66,8 @@ class ChartViewImpl {
   /** @type {boolean|null} */
   #emaRestore = null;
 
-  /** @type {{ swings: boolean, trends: boolean, cycle: boolean }} */
-  #overlayToggles = { swings: true, trends: true, cycle: true };
+  /** @type {{ swings: boolean, trends: boolean, cycle: boolean, elliott: boolean, halving: boolean }} */
+  #overlayToggles = { swings: true, trends: true, cycle: true, elliott: true, halving: true };
 
   /**
    * Mount the chart view.
@@ -110,6 +110,7 @@ class ChartViewImpl {
       el('div', { class: 'chart-body', id: 'chart-body' }, [
         el('div', { class: 'chart-main' }, [
           el('div', { class: 'chart-setup-legend', id: 'chart-setup-legend', hidden: true }),
+          el('div', { class: 'chart-analysis-hud', id: 'chart-analysis-hud', hidden: true }),
           chartContainer,
           ReplayControls.render((action, payload) => this.#handleReplayAction(action, payload)),
         ]),
@@ -188,6 +189,14 @@ class ChartViewImpl {
           el('input', { type: 'checkbox', id: 'chart-overlay-cycle', checked: true }),
           ' Chu kỳ',
         ]),
+        el('label', {}, [
+          el('input', { type: 'checkbox', id: 'chart-overlay-elliott', checked: true }),
+          ' Elliott',
+        ]),
+        el('label', {}, [
+          el('input', { type: 'checkbox', id: 'chart-overlay-halving', checked: true }),
+          ' Halving',
+        ]),
       ]),
       el('div', { class: 'chart-toolbar-group chart-status', id: 'chart-status' }, [
         'Loading…',
@@ -216,6 +225,10 @@ class ChartViewImpl {
 
       ReplayControls.update(this.#replay.getState(), candle);
       bus.emit(Events.REPLAY_TICK, { index, total, candle });
+
+      if (this.#symbol === 'BTCUSD' && visible.length >= 20 && (fullRefresh || index % 3 === 0)) {
+        this.#runChartAnalysis(visible);
+      }
     });
 
     this.#replay.onStateChange((state) => {
@@ -279,6 +292,8 @@ class ChartViewImpl {
       ['chart-overlay-swings', 'swings'],
       ['chart-overlay-trends', 'trends'],
       ['chart-overlay-cycle', 'cycle'],
+      ['chart-overlay-elliott', 'elliott'],
+      ['chart-overlay-halving', 'halving'],
     ]) {
       this.#container?.querySelector(`#${id}`)?.addEventListener('change', (e) => {
         this.#overlayToggles[/** @type {keyof typeof this.#overlayToggles} */ (key)] =
@@ -292,17 +307,75 @@ class ChartViewImpl {
     this.#unsubs = () => unsubs.forEach((fn) => fn());
   }
 
-  /** Apply BTC analysis overlays when available. */
+  /** Run analysis on visible candles and refresh chart overlay + HUD. */
+  #runChartAnalysis(visible) {
+    if (!this.#chart || this.#symbol !== 'BTCUSD' || visible.length < 20) return;
+
+    const analysis = analyzeLongTerm(visible, {
+      symbol: this.#symbol,
+      timeframe: this.#timeframe,
+    });
+    bus.emit(Events.ANALYSIS_COMPLETE, analysis);
+    this.#applyAnalysisOverlay();
+  }
+
+  /** Paint analysis overlay from last result (no re-run). */
   #applyAnalysisOverlay() {
     if (!this.#chart || this.#symbol !== 'BTCUSD') return;
+
+    const visible = this.#replay?.getVisibleCandles() ?? [];
     const analysis = getLastAnalysis();
     if (!analysis) return;
 
     this.#chart.setAnalysisOverlay(analysis, {
+      candles: visible,
       showSwings: this.#overlayToggles.swings,
       showTrends: this.#overlayToggles.trends,
       showCycle: this.#overlayToggles.cycle,
+      showElliott: this.#overlayToggles.elliott,
+      showHalving: this.#overlayToggles.halving,
     });
+    this.#renderAnalysisHud(analysis);
+  }
+
+  /**
+   * @param {import('../analysis/LongTermAnalysisEngine.js').LongTermAnalysisResult} analysis
+   */
+  #renderAnalysisHud(analysis) {
+    const hud = this.#container?.querySelector('#chart-analysis-hud');
+    if (!hud) return;
+
+    if (this.#symbol !== 'BTCUSD' || this.#activeSignal) {
+      hud.hidden = true;
+      return;
+    }
+
+    hud.hidden = false;
+    hud.innerHTML = '';
+
+    const chips = [
+      { label: 'Chu kỳ', value: analysis.currentCycle.phaseLabel, color: analysis.currentCycle.phaseColor },
+      { label: 'Xu hướng', value: analysis.overallTrend.reason.split(' — ')[0], color: analysis.overallTrend.direction === 'uptrend' ? '#22c55e' : analysis.overallTrend.direction === 'downtrend' ? '#ef4444' : '#94a3b8' },
+      { label: 'Elliott', value: analysis.elliott.waves.length > 0 ? `Sóng ${analysis.elliott.waves[analysis.elliott.waves.length - 1].waveNumber}` : '—', color: '#8b5cf6' },
+      { label: 'Tâm lý', value: analysis.psychology.labelVi, color: analysis.psychology.color },
+    ];
+
+    for (const chip of chips) {
+      hud.appendChild(el('span', {
+        class: 'chart-hud-chip',
+        style: `border-color:${chip.color};color:${chip.color}`,
+        title: chip.value,
+      }, [
+        el('span', { class: 'chart-hud-label' }, [`${chip.label}: `]),
+        chip.value,
+      ]));
+    }
+
+    if (this.#timeframe === 'H4') {
+      hud.appendChild(el('span', { class: 'chart-hud-hint' }, [
+        'Khuyến nghị W/D1 cho phân tích dài hạn',
+      ]));
+    }
   }
 
   async #loadChart() {
@@ -360,7 +433,12 @@ class ChartViewImpl {
       });
 
       if (this.#symbol === 'BTCUSD') {
-        this.#applyAnalysisOverlay();
+        const visible = this.#replay?.getVisibleCandles() ?? [];
+        if (visible.length >= 20) {
+          this.#runChartAnalysis(visible);
+        } else {
+          this.#applyAnalysisOverlay();
+        }
       }
 
       bus.emit(Events.LOG_MESSAGE, {

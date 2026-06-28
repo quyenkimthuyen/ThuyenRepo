@@ -10,7 +10,7 @@
  */
 
 /**
- * Detect swing pivots using percentage reversal threshold.
+ * Detect swing pivots using percentage reversal threshold (classic zigzag).
  * @param {Candle[]} candles
  * @param {{ reversalPct?: number, minBars?: number }} [options]
  * @returns {SwingPivot[]}
@@ -24,12 +24,10 @@ export function detectSwingPivots(candles, options = {}) {
   /** @type {SwingPivot[]} */
   const pivots = [];
 
-  const startPrice = candles[0].close;
-  /** @type {'high'|'low'} */
-  let seeking = candles[candles.length - 1].close >= startPrice ? 'high' : 'low';
-
   let extremeIdx = 0;
-  let extremePrice = seeking === 'high' ? candles[0].high : candles[0].low;
+  let extremePrice = candles[0].high;
+  /** @type {'high'|'low'} */
+  let seeking = 'high';
 
   for (let i = 1; i < candles.length; i++) {
     const c = candles[i];
@@ -85,11 +83,43 @@ export function detectSwingPivots(candles, options = {}) {
 }
 
 /**
- * Adaptive reversal threshold based on timeframe bar count.
+ * Adaptive reversal threshold based on timeframe.
  * @param {string} timeframe
  * @returns {number}
  */
 export function defaultReversalPct(timeframe) {
-  const map = { W: 0.12, D1: 0.08, H4: 0.05, H1: 0.03 };
+  const map = { W: 0.18, D1: 0.12, H4: 0.08, H1: 0.05 };
   return map[timeframe] ?? 0.10;
+}
+
+/**
+ * Minimum bars between pivots per timeframe.
+ * @param {string} timeframe
+ * @returns {number}
+ */
+export function defaultMinBars(timeframe) {
+  const map = { W: 1, D1: 2, H4: 4, H1: 6 };
+  return map[timeframe] ?? 2;
+}
+
+/**
+ * Combined swing detection options for a timeframe.
+ * @param {string} timeframe
+ * @returns {{ reversalPct: number, minBars: number }}
+ */
+export function defaultSwingOptions(timeframe) {
+  return {
+    reversalPct: defaultReversalPct(timeframe),
+    minBars: defaultMinBars(timeframe),
+  };
+}
+
+/**
+ * Sideways segment threshold (%) by timeframe.
+ * @param {string} timeframe
+ * @returns {number}
+ */
+export function sidewaysThresholdPct(timeframe) {
+  const map = { W: 10, D1: 6, H4: 3, H1: 1.5 };
+  return map[timeframe] ?? 3;
 }
