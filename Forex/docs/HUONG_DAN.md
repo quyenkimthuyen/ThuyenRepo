@@ -101,13 +101,15 @@ Chiến lược session cho **EURUSD H1** (chạy được symbol/TF khác):
 
 1. **Pha sweep** — quét Asian high/low, London morning, hoặc swing; close quay lại trong vùng; râu rejection.
 2. **Pha confirm** — 1–2 nến sau: nến xác nhận fade, không phá đỉnh/đáy sweep → entry.
-3. **Lọc** — chỉ 06–20 UTC; `minVolatilityRatio` (mặc định 0.95); tùy chọn prev Asian range.
+3. **Lọc** — chỉ 06–20 UTC; `minVolatilityRatio` 1.1; `useSwingLevels` false (mặc định).
 
 | Param chính | Mặc định |
 |-------------|----------|
 | grabPips | 5 |
-| wickRatio | 0.65 |
-| confirmMaxBars | 2 |
+| wickRatio | 0.6 |
+| confirmMaxBars | 1 |
+| minVolatilityRatio | 1.1 |
+| useSwingLevels | false |
 | rr | 1.5 |
 | session | 06–20 UTC |
 

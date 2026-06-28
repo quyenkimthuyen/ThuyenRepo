@@ -6,7 +6,7 @@
 import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
 import { registry } from '../plugin/PluginRegistry.js';
-import { createContext } from './StrategyContext.js';
+import { applyDefaults } from './ParameterSchema.js';
 import { loadFromStorage, saveToStorage } from '../utils/dom.js';
 import { loadPersistedResult, savePersistedResult } from '../utils/resultsPersistence.js';
 import DataManager from '../data/DataManager.js';
@@ -19,6 +19,7 @@ const log = createLogger('StrategyEngine');
  * @typedef {Object} StrategyConfig
  * @property {boolean} enabled
  * @property {Record<string, unknown>} params
+ * @property {string} [paramsVersion] - Schema version last applied to params
  */
 
 /**
@@ -214,14 +215,30 @@ class StrategyEngine {
 
   #ensureDefaults() {
     for (const plugin of registry.getAll()) {
-      if (!this.#configs[plugin.id]) {
-        const instance = registry.createInstance(plugin.id);
-        const schema = instance.getParameterSchema();
-        const params = {};
-        for (const def of schema) {
-          params[def.key] = def.default;
-        }
-        this.#configs[plugin.id] = { enabled: true, params };
+      const instance = registry.createInstance(plugin.id);
+      const schema = instance.getParameterSchema();
+      const schemaDefaults = applyDefaults(schema);
+      const existing = this.#configs[plugin.id];
+
+      const versionRecorded = existing?.paramsVersion;
+      const versionChanged =
+        versionRecorded !== undefined && versionRecorded !== plugin.version;
+      const slsNeedsUpgrade =
+        plugin.id === 'session-liquidity-sweep' && versionRecorded !== plugin.version;
+      const needsFullReset = !existing || versionChanged || slsNeedsUpgrade;
+
+      if (needsFullReset) {
+        this.#configs[plugin.id] = {
+          enabled: existing?.enabled ?? true,
+          params: { ...schemaDefaults },
+          paramsVersion: plugin.version,
+        };
+      } else {
+        this.#configs[plugin.id] = {
+          enabled: existing.enabled,
+          params: { ...schemaDefaults, ...existing.params },
+          paramsVersion: plugin.version,
+        };
       }
     }
     this.#persistConfigs();

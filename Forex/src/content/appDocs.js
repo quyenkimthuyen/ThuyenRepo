@@ -361,7 +361,7 @@ python3 -m http.server 8080
       },
       {
         type: 'p',
-        text: 'Fade session-boundary sweeps (Asian/London/swing levels) during active UTC hours. Two-phase: sweep bar arms pending setup, confirmation bar triggers entry. Params: asianEndHour, londonEndHour, sessionStartHour, sessionEndHour, grabPips, wickRatio, confirmMaxBars, minVolatilityRatio, usePrevAsian, swingLookback, rr. Best researched on EURUSD H1.',
+        text: 'Fade session-boundary sweeps (Asian/London levels) during active UTC hours. Two-phase: sweep bar arms pending setup, confirmation bar triggers entry. Defaults (v1.2, EURUSD H1 grid): grabPips 5, wickRatio 0.6, confirmMaxBars 1, minVolatilityRatio 1.1, rr 1.5, useSwingLevels false, session 06–20 UTC.',
       },
       {
         type: 'h3',

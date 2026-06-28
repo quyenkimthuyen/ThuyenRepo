@@ -95,13 +95,15 @@ Session-boundary liquidity fades for **EURUSD H1** (works on other pairs/timefra
 
 1. **Sweep phase** — price grabs beyond Asian/London/swing level, closes back inside, wick rejection.
 2. **Confirm phase** — within `confirmMaxBars`, confirmation candle without breaking sweep extreme → entry.
-3. **Filters** — UTC session window (default 06–20), volatility floor (`minVolatilityRatio` 0.95), optional previous Asian range.
+3. **Filters** — UTC session window (default 06–20), volatility floor (`minVolatilityRatio` 1.1), swing levels off by default (`useSwingLevels` false).
 
 | Key param | Default |
 |-----------|---------|
 | grabPips | 5 |
-| wickRatio | 0.65 |
-| confirmMaxBars | 2 |
+| wickRatio | 0.6 |
+| confirmMaxBars | 1 |
+| minVolatilityRatio | 1.1 |
+| useSwingLevels | false |
 | rr | 1.5 |
 
 Unlike **Liquidity Grab**: two-phase entry, multiple level sources, session/vol filters. Full spec: `STRATEGY_SPECIFICATION.md` §10.
