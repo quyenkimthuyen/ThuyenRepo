@@ -50,6 +50,9 @@ export class ChartEngine {
   /** @type {import('../analysis/LongTermAnalysisEngine.js').LongTermAnalysisResult|null} */
   #analysisOverlay = null;
 
+  /** @type {(() => void)|null} */
+  #timeScaleHandler = null;
+
   /** @type {HTMLElement|null} */
   #container = null;
 
@@ -234,6 +237,7 @@ export class ChartEngine {
    *   showCycle?: boolean,
    *   showElliott?: boolean,
    *   showHalving?: boolean,
+   *   showPsychology?: boolean,
    * }} [options]
    */
   setAnalysisOverlay(analysis, options = {}) {
@@ -249,6 +253,7 @@ export class ChartEngine {
     const showCycle = options.showCycle !== false;
     const showElliott = options.showElliott !== false;
     const showHalving = options.showHalving !== false;
+    const showPsychology = options.showPsychology !== false;
 
     if (!this.#activeHighlight) {
       /** @type {Array<Record<string, unknown>>} */
@@ -260,6 +265,16 @@ export class ChartEngine {
       }
       if (showHalving && candles.length > 0) {
         markers.push(...buildHalvingMarkers(candles));
+      }
+      if (showPsychology && candles.length > 0) {
+        const last = candles[candles.length - 1];
+        markers.push({
+          time: Math.floor(last.timestamp / 1000),
+          position: 'aboveBar',
+          color: analysis.psychology.color,
+          shape: 'square',
+          text: analysis.psychology.labelVi.slice(0, 12),
+        });
       }
       if (markers.length > 0) {
         markers.sort((a, b) => a.time - b.time);
@@ -473,11 +488,43 @@ export class ChartEngine {
   }
 
   /**
+   * @returns {import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null}
+   */
+  getTimeScale() {
+    return this.#chart?.timeScale() ?? null;
+  }
+
+  /**
+   * @returns {number}
+   */
+  getChartWidth() {
+    return this.#container?.clientWidth ?? 0;
+  }
+
+  /**
+   * @param {() => void} callback
+   */
+  onVisibleRangeChange(callback) {
+    this.offVisibleRangeChange();
+    if (!this.#chart) return;
+    this.#timeScaleHandler = callback;
+    this.#chart.timeScale().subscribeVisibleLogicalRangeChange(this.#timeScaleHandler);
+  }
+
+  offVisibleRangeChange() {
+    if (this.#chart && this.#timeScaleHandler) {
+      this.#chart.timeScale().unsubscribeVisibleLogicalRangeChange(this.#timeScaleHandler);
+    }
+    this.#timeScaleHandler = null;
+  }
+
+  /**
    * Destroy chart and release resources.
    */
   destroy() {
     this.#resizeObserver?.disconnect();
     this.#resizeObserver = null;
+    this.offVisibleRangeChange();
     this.clearAnalysisOverlay();
     this.#chart?.remove();
     this.#chart = null;

@@ -8,6 +8,7 @@ import { bus, Events } from '../core/EventBus.js';
 import { el, loadFromStorage } from '../utils/dom.js';
 import DataManager from '../data/DataManager.js';
 import { ChartEngine } from '../chart/ChartEngine.js';
+import { mountPsychologyLayers, updatePsychologyLayers } from '../chart/PsychologyChartStrip.js';
 import { ReplayEngine } from '../replay/ReplayEngine.js';
 import { ReplayControls } from './ReplayControls.js';
 import { createHelpButton } from '../utils/contextHelp.js';
@@ -66,8 +67,11 @@ class ChartViewImpl {
   /** @type {boolean|null} */
   #emaRestore = null;
 
-  /** @type {{ swings: boolean, trends: boolean, cycle: boolean, elliott: boolean, halving: boolean }} */
-  #overlayToggles = { swings: true, trends: true, cycle: true, elliott: true, halving: true };
+  /** @type {{ swings: boolean, trends: boolean, cycle: boolean, elliott: boolean, halving: boolean, psychology: boolean }} */
+  #overlayToggles = { swings: true, trends: true, cycle: true, elliott: true, halving: true, psychology: true };
+
+  /** @type {{ bg: HTMLElement, strip: HTMLElement }|null} */
+  #psychologyLayers = null;
 
   /**
    * Mount the chart view.
@@ -119,6 +123,8 @@ class ChartViewImpl {
     ]));
 
     this.#chart.mount(chartContainer);
+    this.#psychologyLayers = mountPsychologyLayers(chartContainer);
+    this.#chart.onVisibleRangeChange(() => this.#updatePsychologyStrip());
     this.#wireReplay();
     this.#bindEvents();
     await this.#loadChart();
@@ -134,6 +140,7 @@ class ChartViewImpl {
     this.#unsubs = null;
     this.#replay?.destroy();
     this.#chart?.destroy();
+    this.#psychologyLayers = null;
     this.#replay = null;
     this.#chart = null;
 
@@ -197,6 +204,10 @@ class ChartViewImpl {
           el('input', { type: 'checkbox', id: 'chart-overlay-halving', checked: true }),
           ' Halving',
         ]),
+        el('label', {}, [
+          el('input', { type: 'checkbox', id: 'chart-overlay-psychology', checked: true }),
+          ' Tâm lý',
+        ]),
       ]),
       el('div', { class: 'chart-toolbar-group chart-status', id: 'chart-status' }, [
         'Loading…',
@@ -228,6 +239,8 @@ class ChartViewImpl {
 
       if (this.#symbol === 'BTCUSD' && visible.length >= 20 && (fullRefresh || index % 3 === 0)) {
         this.#runChartAnalysis(visible);
+      } else if (fullRefresh) {
+        this.#updatePsychologyStrip();
       }
     });
 
@@ -254,7 +267,7 @@ class ChartViewImpl {
     }));
 
     unsubs.push(bus.on(Events.PANEL_RESIZE, () => {
-      /* ResizeObserver in ChartEngine handles this */
+      this.#updatePsychologyStrip();
     }));
 
     unsubs.push(bus.on(Events.DATA_UPDATED, async () => {
@@ -294,6 +307,7 @@ class ChartViewImpl {
       ['chart-overlay-cycle', 'cycle'],
       ['chart-overlay-elliott', 'elliott'],
       ['chart-overlay-halving', 'halving'],
+      ['chart-overlay-psychology', 'psychology'],
     ]) {
       this.#container?.querySelector(`#${id}`)?.addEventListener('change', (e) => {
         this.#overlayToggles[/** @type {keyof typeof this.#overlayToggles} */ (key)] =
@@ -334,8 +348,32 @@ class ChartViewImpl {
       showCycle: this.#overlayToggles.cycle,
       showElliott: this.#overlayToggles.elliott,
       showHalving: this.#overlayToggles.halving,
+      showPsychology: this.#overlayToggles.psychology,
     });
     this.#renderAnalysisHud(analysis);
+    this.#updatePsychologyStrip();
+  }
+
+  /** Sync psychology phase bands with chart time scale. */
+  #updatePsychologyStrip() {
+    if (!this.#psychologyLayers || !this.#chart) return;
+
+    const analysis = getLastAnalysis();
+    const visible = this.#replay?.getVisibleCandles() ?? [];
+    const lastTs = visible.length > 0 ? visible[visible.length - 1].timestamp : Date.now();
+
+    updatePsychologyLayers({
+      bg: this.#psychologyLayers.bg,
+      strip: this.#psychologyLayers.strip,
+      timeScale: this.#chart.getTimeScale(),
+      chartWidth: this.#chart.getChartWidth(),
+      analysis,
+      lastCandleTs: lastTs,
+      visible: this.#overlayToggles.psychology
+        && this.#symbol === 'BTCUSD'
+        && !this.#activeSignal
+        && analysis != null,
+    });
   }
 
   /**
