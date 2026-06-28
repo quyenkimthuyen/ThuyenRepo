@@ -57,7 +57,7 @@ export function analyzeLongTerm(candles, options = {}) {
   const historicalCycles = buildHistoricalCycles(candles);
   const extremes = cycleExtremes(candles, currentCycle);
   const elliott = labelElliottWaves(pivots, segments);
-  const psychology = assessPsychology(currentCycle, overallTrend, elliott.waves);
+  const psychology = assessPsychology(currentCycle, overallTrend, elliott.waves, extremes);
   const psychologyTimeline = buildPsychologyTimeline();
 
   const summary = [
