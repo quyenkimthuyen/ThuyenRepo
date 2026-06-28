@@ -1,5 +1,6 @@
+
 /**
- * Market psychology cycle view � maps cycle + trend + Elliott to psychology phases.
+ * Market psychology cycle view.
  * @module ui/PsychologyView
  */
 
@@ -14,7 +15,6 @@ import {
 } from './AnalysisViewHelpers.js';
 
 class PsychologyViewImpl {
-  /** @type {Function|null} */
   #unsub = null;
 
   mount(container) {
@@ -22,8 +22,8 @@ class PsychologyViewImpl {
     container.classList.add('analysis-view');
 
     container.appendChild(renderAnalysisHeader(
-      'Chu k? t�m l� th? tr??ng',
-      'X�c ??nh giai ?o?n t�m l� d?a tr�n chu k? 4 n?m, xu h??ng v� s�ng Elliott',
+      'Chu kỳ tâm lý thị trường',
+      'Xác định giai đoạn tâm lý dựa trên chu kỳ 4 năm, xu hướng và sóng Elliott',
       'psychology'
     ));
 
@@ -48,24 +48,24 @@ class PsychologyViewImpl {
       class: 'psychology-hero',
       style: `border-color:${p.color}`,
     }, [
-      el('span', { class: 'psychology-hero-label' }, ['Giai ?o?n hi?n t?i']),
+      el('span', { class: 'psychology-hero-label' }, ['Giai đoạn hiện tại']),
       el('span', { class: 'psychology-hero-value', style: `color:${p.color}` }, [p.labelVi]),
       el('span', { class: 'psychology-hero-en' }, [p.label]),
-      el('span', { class: 'psychology-hero-confidence' }, [`${p.confidence}% tin c?y`]),
+      el('span', { class: 'psychology-hero-confidence' }, [`${p.confidence}% tin cậy`]),
     ]));
 
     body.appendChild(el('p', { class: 'psychology-description' }, [p.description]));
 
     body.appendChild(renderMetricGrid([
-      { label: '?�ng g�p t? chu k?', value: analysis.currentCycle.phaseLabel, hint: p.cycleContribution },
-      { label: '?�ng g�p t? xu h??ng', value: analysis.overallTrend.direction, hint: p.trendContribution },
-      { label: '?�ng g�p t③ Elliott', value: p.waveContribution },
+      { label: 'Đóng góp từ chu kỳ', value: analysis.currentCycle.phaseLabel, hint: p.cycleContribution },
+      { label: 'Đóng góp từ xu hướng', value: analysis.overallTrend.direction, hint: p.trendContribution },
+      { label: 'Đóng góp từ Elliott', value: p.waveContribution },
     ]));
 
-    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['V�ng t�m l� th? tr??ng']));
+    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Vòng tâm lý thị trường']));
     body.appendChild(this.#renderWheel(p.phaseId));
 
-    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Timeline chu k? t�m l�']));
+    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Timeline chu kỳ tâm lý']));
     body.appendChild(this.#renderTimeline(analysis));
   }
 
@@ -92,7 +92,7 @@ class PsychologyViewImpl {
       track.appendChild(el('div', {
         class: 'psychology-timeline-segment',
         style: `flex:${item.endPct - item.startPct};background:${item.phase.color}33`,
-        title: `${item.phase.labelVi} (${item.startPct.toFixed(0)}�${item.endPct.toFixed(0)}%)`,
+        title: `${item.phase.labelVi} (${item.startPct.toFixed(0)}–${item.endPct.toFixed(0)}%)`,
       }, [
         el('span', { class: 'psychology-timeline-label' }, [item.phase.labelVi]),
       ]));
@@ -103,7 +103,7 @@ class PsychologyViewImpl {
       el('div', {
         class: 'psychology-timeline-marker',
         style: `left:${Math.min(99, progress)}%`,
-        title: `V? tr� hi?n t?i: ${progress.toFixed(1)}%`,
+        title: `Vị trí hiện tại: ${progress.toFixed(1)}%`,
       }),
     ]);
   }

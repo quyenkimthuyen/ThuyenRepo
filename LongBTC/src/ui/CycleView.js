@@ -1,3 +1,4 @@
+
 /**
  * BTC 4-year halving cycle analysis view.
  * @module ui/CycleView
@@ -18,7 +19,6 @@ import {
 import { cyclePhaseColor } from '../chart/AnalysisOverlay.js';
 
 class CycleViewImpl {
-  /** @type {Function|null} */
   #unsub = null;
 
   mount(container) {
@@ -26,8 +26,8 @@ class CycleViewImpl {
     container.classList.add('analysis-view');
 
     container.appendChild(renderAnalysisHeader(
-      'Chu k? 4 n?m BTC',
-      'X�c ??nh v? tr� trong chu k? halving v� c�c giai ?o?n t�ch l?y / t?ng / ph�n ph?i / gi?m',
+      'Chu kỳ 4 năm BTC',
+      'Xác định vị trí trong chu kỳ halving và các giai đoạn tích lũy / tăng / phân phối / giảm',
       'cycle'
     ));
 
@@ -48,12 +48,12 @@ class CycleViewImpl {
 
     const c = analysis.currentCycle;
     body.appendChild(renderMetricGrid([
-      { label: 'Halving hi?n t?i', value: c.halvingLabel, hint: formatAnalysisDate(c.halvingTime) },
-      { label: 'Ti?n ?? chu k?', value: `${c.progressPct.toFixed(1)}%`, color: c.phaseColor },
-      { label: 'Giai ?o?n', value: c.phaseLabel, color: c.phaseColor },
-      { label: 'Ng�y t? halving', value: String(c.daysSinceHalving) },
-      { label: '??n halving ti?p', value: `~${c.daysToNextHalving} ng�y` },
-      { label: 'Halving ti?p theo (??c t�nh)', value: formatAnalysisDate(c.nextHalvingEstimate) },
+      { label: 'Halving hiện tại', value: c.halvingLabel, hint: formatAnalysisDate(c.halvingTime) },
+      { label: 'Tiến độ chu kỳ', value: `${c.progressPct.toFixed(1)}%`, color: c.phaseColor },
+      { label: 'Giai đoạn', value: c.phaseLabel, color: c.phaseColor },
+      { label: 'Ngày từ halving', value: String(c.daysSinceHalving) },
+      { label: 'Đến halving tiếp', value: `~${c.daysToNextHalving} ngày` },
+      { label: 'Halving tiếp theo (ước tính)', value: formatAnalysisDate(c.nextHalvingEstimate) },
     ]));
 
     body.appendChild(el('div', { class: 'cycle-progress-bar' }, [
@@ -68,8 +68,8 @@ class CycleViewImpl {
       formatAnalysisDate(h.timestamp),
       h.blockReward,
     ]);
-    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['L?ch s? Halving']));
-    body.appendChild(renderTable(['S? ki?n', 'Ng�y', 'Ph?n th??ng kh?i'], halvingRows));
+    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Lịch sử Halving']));
+    body.appendChild(renderTable(['Sự kiện', 'Ngày', 'Phần thưởng khối'], halvingRows));
 
     if (analysis.historicalCycles.length > 0) {
       const cycleRows = analysis.historicalCycles.map((hc) => [
@@ -80,20 +80,20 @@ class CycleViewImpl {
         `$${hc.lowPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
         formatPct(hc.changePct),
       ]);
-      body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Hi?u su?t theo chu k?']));
+      body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Hiệu suất theo chu kỳ']));
       body.appendChild(renderTable(
-        ['Chu k?', 'B?t ??u', 'Gi� m?', '??nh', '?�y', 'Thay ??i'],
+        ['Chu kỳ', 'Bắt đầu', 'Giá mở', 'Đỉnh', 'Đáy', 'Thay đổi'],
         cycleRows
       ));
     }
 
     body.appendChild(el('div', { class: 'cycle-phase-legend' }, [
-      el('h3', { class: 'analysis-section-title' }, ['4 giai ?o?n chu k?']),
+      el('h3', { class: 'analysis-section-title' }, ['4 giai đoạn chu kỳ']),
       el('div', { class: 'cycle-phase-chips' }, [
-        ['accumulation', 'T�ch l?y'],
-        ['markup', 'T?ng tr??ng'],
-        ['distribution', 'Ph�n ph?i'],
-        ['markdown', 'Gi?m gi�'],
+        ['accumulation', 'Tích lũy'],
+        ['markup', 'Tăng trưởng'],
+        ['distribution', 'Phân phối'],
+        ['markdown', 'Giảm giá'],
       ].map(([phase, label]) =>
         el('span', {
           class: 'cycle-phase-chip',

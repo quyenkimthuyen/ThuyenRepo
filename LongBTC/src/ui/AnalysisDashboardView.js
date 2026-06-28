@@ -1,5 +1,6 @@
+
 /**
- * BTC long-term analysis dashboard � overview of cycle, trend, Elliott, psychology.
+ * BTC long-term analysis dashboard.
  * @module ui/AnalysisDashboardView
  */
 
@@ -14,10 +15,7 @@ import {
 } from './AnalysisViewHelpers.js';
 
 class AnalysisDashboardViewImpl {
-  /** @type {HTMLElement|null} */
   #container = null;
-
-  /** @type {Function|null} */
   #unsub = null;
 
   mount(container) {
@@ -26,8 +24,8 @@ class AnalysisDashboardViewImpl {
     container.classList.add('analysis-view');
 
     container.appendChild(renderAnalysisHeader(
-      'T?ng quan nghi�n c?u BTC',
-      'Chu k? 4 n?m ② Xu h??ng ? S�ng Elliott ① Chu k? t�m l� th? tr??ng',
+      'Tổng quan nghiên cứu BTC',
+      'Chu kỳ 4 năm → Xu hướng → Sóng Elliott → Chu kỳ tâm lý thị trường',
       'dashboard'
     ));
 
@@ -50,17 +48,17 @@ class AnalysisDashboardViewImpl {
     body.appendChild(renderMetricGrid(buildDashboardMetrics(analysis)));
 
     body.appendChild(el('div', { class: 'analysis-summary-box' }, [
-      el('h3', {}, ['T�m t?t ph�n t�ch']),
+      el('h3', {}, ['Tóm tắt phân tích']),
       el('p', {}, [analysis.summary]),
     ]));
 
     body.appendChild(el('div', { class: 'analysis-pipeline' }, [
-      el('h3', {}, ['Quy tr�nh ph�n t�ch']),
+      el('h3', {}, ['Quy trình phân tích']),
       el('ol', { class: 'analysis-pipeline-steps' }, [
-        el('li', {}, [`① Chu k? halving: ${analysis.currentCycle.phaseLabel} (${analysis.currentCycle.progressPct.toFixed(1)}%)`]),
-        el('li', {}, [`② Xu h??ng: ${analysis.overallTrend.reason}`]),
+        el('li', {}, [`① Chu kỳ halving: ${analysis.currentCycle.phaseLabel} (${analysis.currentCycle.progressPct.toFixed(1)}%)`]),
+        el('li', {}, [`② Xu hướng: ${analysis.overallTrend.reason}`]),
         el('li', {}, [`③ Elliott: ${analysis.elliott.summary}`]),
-        el('li', {}, [`? T�m l�: ${analysis.psychology.description}`]),
+        el('li', {}, [`④ Tâm lý: ${analysis.psychology.description}`]),
       ]),
     ]));
   }

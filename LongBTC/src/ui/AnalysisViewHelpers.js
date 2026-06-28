@@ -1,3 +1,4 @@
+
 /**
  * Shared helpers for BTC analysis views.
  * @module ui/AnalysisViewHelpers
@@ -12,11 +13,6 @@ import { createHelpButton } from '../utils/contextHelp.js';
  * @typedef {import('../analysis/LongTermAnalysisEngine.js').LongTermAnalysisResult} AnalysisResult
  */
 
-/**
- * Render metric card grid.
- * @param {Array<{ label: string, value: string, hint?: string, color?: string }>} metrics
- * @returns {HTMLElement}
- */
 export function renderMetricGrid(metrics) {
   return el('div', { class: 'analysis-metrics' }, metrics.map((m) =>
     el('div', { class: 'analysis-metric-card' }, [
@@ -30,13 +26,6 @@ export function renderMetricGrid(metrics) {
   ));
 }
 
-/**
- * Render analysis summary header.
- * @param {string} title
- * @param {string} subtitle
- * @param {string} [helpSection]
- * @returns {HTMLElement}
- */
 export function renderAnalysisHeader(title, subtitle, helpSection) {
   return el('div', { class: 'analysis-header' }, [
     el('div', { class: 'analysis-header-text' }, [
@@ -47,29 +36,20 @@ export function renderAnalysisHeader(title, subtitle, helpSection) {
   ].filter(Boolean));
 }
 
-/**
- * Render empty state when no analysis available.
- * @returns {HTMLElement}
- */
 export function renderNoAnalysis() {
   return el('div', { class: 'analysis-empty' }, [
-    el('p', {}, ['Ch?a c� d? li?u ph�n t�ch.']),
+    el('p', {}, ['Chưa có dữ liệu phân tích.']),
     el('p', { class: 'analysis-empty-hint' }, [
       'Mở biểu đồ BTC (W hoặc D1) để tự động chạy phân tích, hoặc vào Data Manager tải dữ liệu BTCUSD.',
     ]),
   ]);
 }
 
-/**
- * Build dashboard metrics from analysis result.
- * @param {AnalysisResult} analysis
- * @returns {Array<{ label: string, value: string, hint?: string, color?: string }>}
- */
 export function buildDashboardMetrics(analysis) {
   const { overallTrend, currentCycle, psychology, cycleExtremes: ext } = analysis;
   return [
     {
-      label: 'Xu h??ng ch�nh',
+      label: 'Xu hướng chính',
       value: trendLabelVi(overallTrend.direction),
       hint: overallTrend.reason,
       color: overallTrend.direction === 'uptrend' ? '#22c55e'
@@ -78,41 +58,35 @@ export function buildDashboardMetrics(analysis) {
     {
       label: 'Chu kỳ 4 năm',
       value: currentCycle.phaseLabel,
-      hint: `${currentCycle.progressPct.toFixed(1)}% � ${currentCycle.halvingLabel}`,
+      hint: `${currentCycle.progressPct.toFixed(1)}% · ${currentCycle.halvingLabel}`,
       color: currentCycle.phaseColor,
     },
     {
-      label: 'S�ng Elliott',
+      label: 'Sóng Elliott',
       value: analysis.elliott.waves.length > 0
-        ? `S�ng ${analysis.elliott.waves[analysis.elliott.waves.length - 1].waveNumber}`
-        : '�',
+        ? `Sóng ${analysis.elliott.waves[analysis.elliott.waves.length - 1].waveNumber}`
+        : '—',
       hint: analysis.elliott.summary,
     },
     {
-      label: 'T�m l� th? tr??ng',
+      label: 'Tâm lý thị trường',
       value: psychology.labelVi,
       hint: `${psychology.confidence}% tin cậy`,
       color: psychology.color,
     },
     {
       label: 'Đỉnh chu kỳ hiện tại',
-      value: ext.cycleHigh != null ? `$${ext.cycleHigh.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '�',
+      value: ext.cycleHigh != null ? `$${ext.cycleHigh.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—',
       hint: ext.drawdownFromHighPct != null ? `Drawdown: ${formatPct(ext.drawdownFromHighPct)}` : undefined,
     },
     {
       label: 'Đáy chu kỳ hiện tại',
-      value: ext.cycleLow != null ? `$${ext.cycleLow.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '�',
+      value: ext.cycleLow != null ? `$${ext.cycleLow.toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—',
       hint: `Còn ~${currentCycle.daysToNextHalving} ngày đến halving`,
     },
   ];
 }
 
-/**
- * Render data table.
- * @param {string[]} headers
- * @param {string[][]} rows
- * @returns {HTMLElement}
- */
 export function renderTable(headers, rows) {
   const thead = el('thead', {}, [
     el('tr', {}, headers.map((h) => el('th', {}, [h]))),

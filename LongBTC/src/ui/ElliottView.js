@@ -1,3 +1,4 @@
+
 /**
  * Elliott Wave analysis view.
  * @module ui/ElliottView
@@ -17,7 +18,6 @@ import {
 } from './AnalysisViewHelpers.js';
 
 class ElliottViewImpl {
-  /** @type {Function|null} */
   #unsub = null;
 
   mount(container) {
@@ -25,8 +25,8 @@ class ElliottViewImpl {
     container.classList.add('analysis-view');
 
     container.appendChild(renderAnalysisHeader(
-      'S�ng Elliott',
-      '??m s�ng xung (1-5) v� ?i?u ch?nh (ABC) d?a tr�n c?u tr�c swing',
+      'Sóng Elliott',
+      'Đếm sóng xung (1-5) và điều chỉnh (ABC) dựa trên cấu trúc swing',
       'elliott'
     ));
 
@@ -47,12 +47,12 @@ class ElliottViewImpl {
 
     const e = analysis.elliott;
     const structureLabel = e.structure === 'impulse' ? 'Xung (Impulse)'
-      : e.structure === 'correction' ? '?i?u ch?nh (Correction)' : 'Ch?a x�c ??nh';
+      : e.structure === 'correction' ? 'Điều chỉnh (Correction)' : 'Chưa xác định';
 
     body.appendChild(renderMetricGrid([
-      { label: 'C?u tr�c', value: structureLabel },
-      { label: 'S? s�ng nh?n di?n', value: String(e.waves.length) },
-      { label: 'T�m t?t', value: e.waves.length > 0 ? `S�ng ${e.waves[e.waves.length - 1].waveNumber}` : '�', hint: e.summary },
+      { label: 'Cấu trúc', value: structureLabel },
+      { label: 'Số sóng nhận diện', value: String(e.waves.length) },
+      { label: 'Tóm tắt', value: e.waves.length > 0 ? `Sóng ${e.waves[e.waves.length - 1].waveNumber}` : '—', hint: e.summary },
     ]));
 
     body.appendChild(el('p', { class: 'analysis-note' }, [e.summary]));
@@ -67,20 +67,20 @@ class ElliottViewImpl {
         formatPct(((w.endPrice - w.startPrice) / w.startPrice) * 100),
         wavePsychologyHint(w.waveNumber, analysis.overallTrend.direction),
       ]);
-      body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Chi ti?t s�ng']));
+      body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Chi tiết sóng']));
       body.appendChild(renderTable(
-        ['S�ng', 'B?t ??u', 'K?t th�c', 'Gi� ??u', 'Gi� cu?i', '%', 'T�m l�'],
+        ['Sóng', 'Bắt đầu', 'Kết thúc', 'Giá đầu', 'Giá cuối', '%', 'Tâm lý'],
         waveRows
       ));
     }
 
     body.appendChild(el('div', { class: 'analysis-info-box' }, [
-      el('h4', {}, ['Quy t?c Elliott c? b?n']),
+      el('h4', {}, ['Quy tắc Elliott cơ bản']),
       el('ul', {}, [
-        el('li', {}, ['S�ng 3 th??ng m?nh nh?t, kh�ng ng?n nh?t']),
-        el('li', {}, ['S�ng 2 kh�ng v??t ?�y s�ng 1; s�ng 4 kh�ng ch?ng s�ng 1']),
-        el('li', {}, ['?i?u ch?nh ABC: A v� C c�ng h??ng, B ng??c h??ng']),
-        el('li', {}, ['?�y l� heuristic nghi�n c?u � n�n x�c nh?n th? c�ng tr�n bi?u ??']),
+        el('li', {}, ['Sóng 3 thường mạnh nhất, không ngắn nhất']),
+        el('li', {}, ['Sóng 2 không vượt đáy sóng 1; sóng 4 không chồng sóng 1']),
+        el('li', {}, ['Điều chỉnh ABC: A và C cùng hướng, B ngược hướng']),
+        el('li', {}, ['Đây là heuristic nghiên cứu — nên xác nhận thủ công trên biểu đồ']),
       ]),
     ]));
   }

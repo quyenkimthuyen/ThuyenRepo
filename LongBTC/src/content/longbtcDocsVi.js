@@ -1,3 +1,4 @@
+
 /**
  * LongBTC in-app documentation (Vietnamese).
  * @module content/longbtcDocsVi
@@ -27,64 +28,64 @@ import { Config } from '../core/Config.js';
 export const LONG_BTC_DOC_SECTIONS = [
   {
     id: 'overview',
-    title: 'T?ng quan LongBTC',
-    subtitle: 'N?n t?ng nghi�n c?u ??u t? BTC d�i h?n',
-    icon: '??',
+    title: 'Tổng quan LongBTC',
+    subtitle: 'Nền tảng nghiên cứu đầu tư BTC dài hạn',
+    icon: '₿',
     viewIds: ['dashboard'],
     blocks: [
       {
         type: 'p',
-        text: `${Config.APP_NAME} gi�p nghi�n c?u chu k? Bitcoin theo pipeline: Chu k? halving 4 n?m ② Xu h??ng t?ng/gi?m/?i ngang ? S�ng Elliott ① Chu k? t�m l� th? tr??ng.`,
+        text: `${Config.APP_NAME} giúp nghiên cứu chu kỳ Bitcoin theo pipeline: Chu kỳ halving 4 năm → Xu hướng tăng/giảm/đi ngang → Sóng Elliott → Chu kỳ tâm lý thị trường.`,
       },
       {
         type: 'callout',
         variant: 'warn',
-        text: '?�y l� c�ng c? nghi�n c?u, KH�NG ph?i l?i khuy�n ??u t?. Qu� kh? kh�ng ??m b?o t??ng lai.',
+        text: 'Đây là công cụ nghiên cứu, KHÔNG phải lời khuyên đầu tư. Quá khứ không đảm bảo tương lai.',
       },
       {
         type: 'h3',
-        text: 'Quy tr�nh ph�n t�ch',
+        text: 'Quy trình phân tích',
       },
       {
         type: 'ol',
         items: [
-          'X�c ??nh v? tr� trong chu k? halving 4 n?m',
-          'Ph�n t�ch xu h??ng qua c?u tr�c swing (HH/HL, LH/LL)',
-          '??m s�ng Elliott tr�n c�c ?o?n xu h??ng',
-          '�nh x? sang giai ?o?n t�m l� th? tr??ng',
+          'Xác định vị trí trong chu kỳ halving 4 năm',
+          'Phân tích xu hướng qua cấu trúc swing (HH/HL, LH/LL)',
+          'Đếm sóng Elliott trên các đoạn xu hướng',
+          'Ánh xạ sang giai đoạn tâm lý thị trường',
         ],
       },
     ],
   },
   {
     id: 'chart',
-    title: 'Bi?u ?? BTC',
-    icon: '??',
+    title: 'Biểu đồ BTC',
+    icon: '📈',
     viewIds: ['chart'],
     blocks: [
       {
         type: 'p',
-        text: 'Bi?u ?? n?n BTC v?i overlay ph�n t�ch: swing pivot, ?o?n xu h??ng, ??nh/?�y chu k?. Khuy?n ngh? d�ng khung W (tu?n) ho?c D1 (ng�y) cho ph�n t�ch d�i h?n.',
+        text: 'Biểu đồ nến BTC với overlay phân tích: swing pivot, đoạn xu hướng, đỉnh/đáy chu kỳ. Khuyến nghị dùng khung W (tuần) hoặc D1 (ngày) cho phân tích dài hạn.',
       },
       {
         type: 'ul',
         items: [
-          'B?t/t?t overlay Swing, Xu h??ng, Chu k? tr�n toolbar',
-          'EMA 200 h? tr? x�c nh?n xu h??ng d�i h?n',
-          'Replay: ph�n t�ch t?ng giai ?o?n l?ch s?',
+          'Bật/tắt overlay Swing, Xu hướng, Chu kỳ trên toolbar',
+          'EMA 200 hỗ trợ xác nhận xu hướng dài hạn',
+          'Replay: phân tích từng giai đoạn lịch sử',
         ],
       },
     ],
   },
   {
     id: 'cycle',
-    title: 'Chu k? 4 n?m',
-    icon: '??',
+    title: 'Chu kỳ 4 năm',
+    icon: '⏱',
     viewIds: ['cycle'],
     blocks: [
       {
         type: 'p',
-        text: 'Bitcoin halving x?y ra kho?ng 4 n?m/l?n, gi?m m?t n?a ph?n th??ng kh?i. Chu k? th??ng c� 4 giai ?o?n: T�ch l?y ? T?ng tr??ng ? Ph�n ph?i ? Gi?m gi�.',
+        text: 'Bitcoin halving xảy ra khoảng 4 năm/lần, giảm một nửa phần thưởng khối. Chu kỳ thường có 4 giai đoạn: Tích lũy → Tăng trưởng → Phân phối → Giảm giá.',
       },
       {
         type: 'ul',
@@ -99,73 +100,73 @@ export const LONG_BTC_DOC_SECTIONS = [
   },
   {
     id: 'trend',
-    title: 'Xu h??ng',
-    icon: '??',
+    title: 'Xu hướng',
+    icon: '📊',
     viewIds: ['trend'],
     blocks: [
       {
         type: 'p',
-        text: 'Xu h??ng ???c x�c ??nh qua swing pivot (zigzag) v� quy t?c HH/HL (t?ng) ho?c LH/LL (gi?m).',
+        text: 'Xu hướng được xác định qua swing pivot (zigzag) và quy tắc HH/HL (tăng) hoặc LH/LL (giảm).',
       },
     ],
   },
   {
     id: 'elliott',
-    title: 'S�ng Elliott',
-    icon: '??',
+    title: 'Sóng Elliott',
+    icon: '🌊',
     viewIds: ['elliott'],
     blocks: [
       {
         type: 'p',
-        text: 'Thu?t to�n heuristic g�n nh�n s�ng xung (1-5) ho?c ?i?u ch?nh (ABC) d?a tr�n c�c ?o?n xu h??ng. N�n x�c nh?n th? c�ng tr�n bi?u ??.',
+        text: 'Thuật toán heuristic gán nhãn sóng xung (1-5) hoặc điều chỉnh (ABC) dựa trên các đoạn xu hướng. Nên xác nhận thủ công trên biểu đồ.',
       },
     ],
   },
   {
     id: 'psychology',
-    title: 'Chu k? t�m l�',
-    icon: '??',
+    title: 'Chu kỳ tâm lý',
+    icon: '🧠',
     viewIds: ['psychology'],
     blocks: [
       {
         type: 'p',
-        text: 'K?t h?p v? tr� chu k? halving, xu h??ng hi?n t?i v� s�ng Elliott ?? ??c l??ng giai ?o?n t�m l�: L?c quan, S? h�i, H?ng ph?n c?c ??, Hy v?ng, v.v.',
+        text: 'Kết hợp vị trí chu kỳ halving, xu hướng hiện tại và sóng Elliott để ước lượng giai đoạn tâm lý: Lạc quan, Sợ hãi, Hưng phấn cực độ, Hy vọng, v.v.',
       },
     ],
   },
   {
     id: 'data',
     title: 'Data Manager',
-    icon: '??',
+    icon: '💾',
     viewIds: ['data'],
     blocks: [
       {
         type: 'p',
-        text: 'Ch? h? tr? BTCUSD (W, D1, H4). T?i d? li?u t? data/defaults ho?c import CSV/JSON. D? li?u EUR/GBP c? s? t? x�a khi kh?i ??ng app.',
+        text: 'Chỉ hỗ trợ BTCUSD (W, D1, H4). Tải dữ liệu từ data/defaults hoặc import CSV/JSON. Dữ liệu EUR/GBP cũ sẽ tự xóa khi khởi động app.',
       },
       {
         type: 'callout',
         variant: 'info',
-        text: 'Ch?y qua HTTP server: cd LongBTC && python3 -m http.server 8080',
+        text: 'Chạy qua HTTP server: cd LongBTC && python3 -m http.server 8080',
       },
     ],
   },
   {
     id: 'shortcuts',
-    title: 'Ph�m t?t',
-    icon: '??',
+    title: 'Phím tắt',
+    icon: '⌨',
     blocks: [
       {
         type: 'ul',
         items: [
-          'Ctrl+1: Bi?u ?? BTC',
-          'Ctrl+2: T?ng quan',
-          'Ctrl+3: Chu k? 4 n?m',
-          'Ctrl+4: Xu h??ng',
-          'Ctrl+5: S�ng Elliott',
-          'Ctrl+6: T�m l� th? tr??ng',
+          'Ctrl+1: Biểu đồ BTC',
+          'Ctrl+2: Tổng quan',
+          'Ctrl+3: Chu kỳ 4 năm',
+          'Ctrl+4: Xu hướng',
+          'Ctrl+5: Sóng Elliott',
+          'Ctrl+6: Tâm lý thị trường',
           'Ctrl+7: Data Manager',
-          'Ctrl+0 / F1: T�i li?u',
+          'Ctrl+0 / F1: Tài liệu',
         ],
       },
     ],
