@@ -2686,9 +2686,6 @@ function updateRealtimeHint() {
     if (!sentence || isAdvancing) return;
 
     const spoken = getSpokenWord();
-    const display = spoken
-      ? (extractPracticeMatchSnippet(spoken, sentence.text) || spoken)
-      : '';
     if (!spoken) {
       hideLiveHint();
       return;
