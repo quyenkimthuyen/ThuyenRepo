@@ -250,6 +250,15 @@
           <span class="setting-hint">0 = tắt · không nghe thấy bạn đọc</span>
         </label>
         <label class="setting-row">
+          <input type="checkbox" id="setting-fail-sample-replay">
+          Phát lại mẫu khi sai nhiều lần
+        </label>
+        <label class="setting-row">
+          Số lần sai trước khi phát lại
+          <input type="number" id="setting-fail-sample-replay-after" value="3" min="2" max="10" step="1" disabled>
+          <span class="setting-hint">Mặc định tắt · bật checkbox phía trên</span>
+        </label>
+        <label class="setting-row">
           <input type="checkbox" id="setting-live-auto" checked>
           Tự bật micro khi chạm màn hình
         </label>
@@ -271,28 +280,10 @@
           <input type="number" id="setting-text-pass-score" value="100" min="50" max="100" step="1">
           <span class="setting-hint">100% = đúng chính tả; hạ xuống cho từ trùng âm / SR gần đúng</span>
         </label>
-        <label class="setting-row mode-text-only">
-          <input type="checkbox" id="setting-text-auto-skip">
-          Tự bỏ qua từ khi sai nhiều lần
-        </label>
-        <label class="setting-row mode-text-only">
-          Số lần sai trước khi bỏ qua
-          <input type="number" id="setting-text-auto-skip-after" value="5" min="2" max="20" step="1" disabled>
-          <span class="setting-hint">Mặc định tắt · bật checkbox phía trên</span>
-        </label>
         <label class="setting-row mode-reading-only">
           Ngưỡng khớp câu (%)
           <input type="number" id="setting-reading-pass-score" value="100" min="50" max="100" step="1">
           <span class="setting-hint">100% = đúng chính tả; hạ xuống cho SR gần đúng / từ trùng âm</span>
-        </label>
-        <label class="setting-row mode-reading-only">
-          <input type="checkbox" id="setting-reading-auto-skip">
-          Tự bỏ qua câu khi sai nhiều lần
-        </label>
-        <label class="setting-row mode-reading-only">
-          Số lần sai trước khi bỏ qua
-          <input type="number" id="setting-reading-auto-skip-after" value="5" min="2" max="20" step="1" disabled>
-          <span class="setting-hint">Mặc định tắt · bật checkbox phía trên</span>
         </label>
         <label class="setting-row mode-score-only">
           Ngưỡng đạt chấm IPA (%)

@@ -113,7 +113,6 @@ let suppressWordSelectChange = false;
 /** @type {Array<{word:string, text:object, score:object}>} */
 let quizSessionResults = [];
 let lastScoredAtIndex = -1;
-const SAMPLE_REPLAY_AFTER_FAILS = 3;
 const PASS_ADVANCE_DELAY_MS = 1500;
 let wordFailStreak = 0;
 let passAdvancePending = false;
@@ -161,14 +160,12 @@ const els = {
   settingApiUrl: $('setting-api-url'),
   settingPassScore: $('setting-pass-score'),
   settingTextPassScore: $('setting-text-pass-score'),
-  settingTextAutoSkip: $('setting-text-auto-skip'),
-  settingTextAutoSkipAfter: $('setting-text-auto-skip-after'),
+  settingFailSampleReplay: $('setting-fail-sample-replay'),
+  settingFailSampleReplayAfter: $('setting-fail-sample-replay-after'),
   settingReadingPassScore: $('setting-reading-pass-score'),
   settingReadingAutoplay: $('setting-reading-autoplay'),
   settingReadingIdleSampleSec: $('setting-reading-idle-sample-sec'),
   settingReadingSilenceSec: $('setting-reading-silence-sec'),
-  settingReadingAutoSkip: $('setting-reading-auto-skip'),
-  settingReadingAutoSkipAfter: $('setting-reading-auto-skip-after'),
   serviceStatus: $('service-status'),
   btnLiveToggle: $('btn-live-toggle'),
   micStatusLabel: $('mic-status-label'),
@@ -832,11 +829,11 @@ function loadSettings() {
   els.settingApiUrl.value = saved.apiBaseUrl ?? config.apiBaseUrl ?? 'http://127.0.0.1:8000';
   els.settingPassScore.value = saved.passScore ?? config.thresholds?.overallPass ?? 80;
   els.settingTextPassScore.value = saved.textPassScore ?? config.thresholds?.textPass ?? 100;
-  if (els.settingTextAutoSkip) {
-    els.settingTextAutoSkip.checked = Boolean(saved.textAutoSkip);
+  if (els.settingFailSampleReplay) {
+    els.settingFailSampleReplay.checked = Boolean(saved.failSampleReplay);
   }
-  if (els.settingTextAutoSkipAfter) {
-    els.settingTextAutoSkipAfter.value = saved.textAutoSkipAfter ?? 5;
+  if (els.settingFailSampleReplayAfter) {
+    els.settingFailSampleReplayAfter.value = saved.failSampleReplayAfter ?? 3;
   }
   if (els.settingReadingPassScore) {
     els.settingReadingPassScore.value = saved.readingPassScore ?? config.thresholds?.readingPass ?? 100;
@@ -850,18 +847,12 @@ function loadSettings() {
   if (els.settingReadingSilenceSec) {
     els.settingReadingSilenceSec.value = saved.readingSilenceSec ?? config.readingSilenceSec ?? saved.silenceSec ?? config.silenceSec ?? 0.35;
   }
-  if (els.settingReadingAutoSkip) {
-    els.settingReadingAutoSkip.checked = Boolean(saved.readingAutoSkip);
-  }
-  if (els.settingReadingAutoSkipAfter) {
-    els.settingReadingAutoSkipAfter.value = saved.readingAutoSkipAfter ?? 5;
-  }
   els.settingQuizSize.value = saved.quizSize ?? config.defaultQuizSize ?? vocabularyManifest?.defaultQuizSize ?? 30;
   practiceMode = saved.practiceMode ?? config.practiceMode ?? PRACTICE_MODE.TEXT;
   if (els.settingTtsVoice && saved.ttsVoiceUri) {
     els.settingTtsVoice.dataset.savedUri = saved.ttsVoiceUri;
   }
-  syncAutoSkipInputsUi();
+  syncFailSampleReplayInputsUi();
 }
 
 function saveSettings() {
@@ -874,14 +865,12 @@ function saveSettings() {
     apiBaseUrl: els.settingApiUrl.value,
     passScore: parseInt(els.settingPassScore.value, 10),
     textPassScore: parseInt(els.settingTextPassScore.value, 10),
-    textAutoSkip: Boolean(els.settingTextAutoSkip?.checked),
-    textAutoSkipAfter: parseInt(els.settingTextAutoSkipAfter?.value, 10) || 5,
+    failSampleReplay: Boolean(els.settingFailSampleReplay?.checked),
+    failSampleReplayAfter: parseInt(els.settingFailSampleReplayAfter?.value, 10) || 3,
     readingPassScore: parseInt(els.settingReadingPassScore?.value, 10),
     readingAutoPlaySample: els.settingReadingAutoplay?.checked,
     readingIdleSampleSec: parseInt(els.settingReadingIdleSampleSec?.value, 10) || 0,
     readingSilenceSec: parseFloat(els.settingReadingSilenceSec?.value) || 0.35,
-    readingAutoSkip: Boolean(els.settingReadingAutoSkip?.checked),
-    readingAutoSkipAfter: parseInt(els.settingReadingAutoSkipAfter?.value, 10) || 5,
     topicId: els.settingTopic?.value || vocabularyManifest?.defaultTopicId || '',
     quizSize: getQuizSize(),
     practiceMode,
@@ -1307,7 +1296,7 @@ function openSettingsPanel() {
   els.settingsPanel?.classList.remove('hidden');
   refreshSilenceHints();
   populateTtsVoiceSelect();
-  syncAutoSkipInputsUi();
+  syncFailSampleReplayInputsUi();
 }
 
 function applyPracticeModeUI() {
@@ -1437,83 +1426,33 @@ function resetWordFailStreak() {
   wordFailStreak = 0;
 }
 
-function syncAutoSkipInputsUi() {
-  if (els.settingTextAutoSkipAfter) {
-    els.settingTextAutoSkipAfter.disabled = !els.settingTextAutoSkip?.checked;
-  }
-  if (els.settingReadingAutoSkipAfter) {
-    els.settingReadingAutoSkipAfter.disabled = !els.settingReadingAutoSkip?.checked;
+function syncFailSampleReplayInputsUi() {
+  if (els.settingFailSampleReplayAfter) {
+    els.settingFailSampleReplayAfter.disabled = !els.settingFailSampleReplay?.checked;
   }
 }
 
-function getTextAutoSkipAfter() {
-  if (!els.settingTextAutoSkip?.checked) return 0;
-  const n = parseInt(els.settingTextAutoSkipAfter?.value, 10);
-  return Number.isFinite(n) && n >= 2 ? Math.min(20, n) : 5;
+function getFailSampleReplayAfter() {
+  if (!els.settingFailSampleReplay?.checked) return 0;
+  const n = parseInt(els.settingFailSampleReplayAfter?.value, 10);
+  return Number.isFinite(n) && n >= 2 ? Math.min(10, n) : 3;
 }
 
-function getReadingAutoSkipAfter() {
-  if (!els.settingReadingAutoSkip?.checked) return 0;
-  const n = parseInt(els.settingReadingAutoSkipAfter?.value, 10);
-  return Number.isFinite(n) && n >= 2 ? Math.min(20, n) : 5;
-}
-
-function getAutoSkipAfter() {
-  if (isReadingMode()) return getReadingAutoSkipAfter();
-  if (isTextMode()) return getTextAutoSkipAfter();
-  return 0;
-}
-
-async function performAutoSkip() {
-  const skipAfter = getAutoSkipAfter();
-  wordFailStreak = 0;
-  clearTextMatchTimer();
-  micEngine?.clearTranscript();
-  syncTranscriptFromEngine();
-
-  if (isReadingMode()) {
-    showLiveHint(`⏭ Bỏ qua câu sau ${skipAfter} lần sai`, 'warn');
-    await new Promise((r) => setTimeout(r, 600));
-    hideLiveHint();
-    advancePassageSentence();
-    return;
-  }
-
-  if (isTextMode()) {
-    const w = words[currentIndex];
-    showLiveHint(`⏭ Bỏ qua "${w?.word || 'từ'}" sau ${skipAfter} lần sai`, 'warn');
-    if (w?.word) recordAttempt(w.word, false, 0);
-    await new Promise((r) => setTimeout(r, 600));
-    hideLiveHint();
-    nextWord();
-  }
-}
-
-/** Sau N lần đọc/chấm chưa đạt → tự phát mẫu (hoặc bỏ qua nếu bật auto-skip) */
+/** Sau N lần đọc/chấm chưa đạt → tự phát mẫu (nếu bật trong cài đặt) */
 function registerWordFailure() {
   if (isSamplePlaying) return;
   wordFailStreak += 1;
 
-  const skipAfter = getAutoSkipAfter();
-  if (skipAfter > 0 && wordFailStreak >= skipAfter && !isAdvancing) {
-    isAdvancing = true;
-    refreshMicAvailabilityUi();
-    void performAutoSkip().finally(() => {
-      isAdvancing = false;
-      refreshMicAvailabilityUi();
-    });
-    return;
-  }
-
-  if (wordFailStreak < SAMPLE_REPLAY_AFTER_FAILS) return;
+  const replayAfter = getFailSampleReplayAfter();
+  if (!replayAfter || wordFailStreak < replayAfter) return;
 
   wordFailStreak = 0;
   if (isScoreMode()) {
     setScoreState('done', 'Nghe lại mẫu...');
   } else {
-    showLiveHint(`Nghe lại mẫu (sai ${SAMPLE_REPLAY_AFTER_FAILS} lần)`, 'warn');
+    showLiveHint(`Nghe lại mẫu (sai ${replayAfter} lần)`, 'warn');
   }
-  if (shouldAutoplaySample()) playSample();
+  playSample();
 }
 
 // ─── Word navigation ────────────────────────────────────────────────────────
@@ -3498,8 +3437,7 @@ function bindEvents() {
     if (idleSampleArmed) armIdleSampleTimer();
   });
 
-  els.settingTextAutoSkip?.addEventListener('change', syncAutoSkipInputsUi);
-  els.settingReadingAutoSkip?.addEventListener('change', syncAutoSkipInputsUi);
+  els.settingFailSampleReplay?.addEventListener('change', syncFailSampleReplayInputsUi);
 
   window.addEventListener('beforeunload', () => stopLiveMode());
 }
