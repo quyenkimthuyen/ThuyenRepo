@@ -7,6 +7,7 @@ import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
 import { registry } from '../plugin/PluginRegistry.js';
 import { applyDefaults } from './ParameterSchema.js';
+import { createContext } from './StrategyContext.js';
 import { loadFromStorage, saveToStorage } from '../utils/dom.js';
 import { loadPersistedResult, savePersistedResult } from '../utils/resultsPersistence.js';
 import DataManager from '../data/DataManager.js';
