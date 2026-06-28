@@ -12,8 +12,6 @@ import { PinBarRejectionStrategy } from './PinBarRejectionStrategy.js';
 import { WyckoffSpringUtadStrategy } from './WyckoffSpringUtadStrategy.js';
 import { WyckoffRangeTestStrategy } from './WyckoffRangeTestStrategy.js';
 import { SessionLiquiditySweepStrategy } from './SessionLiquiditySweepStrategy.js';
-import { BtcDailySweepStrategy } from './BtcDailySweepStrategy.js';
-import { BtcCycleDcaStrategy } from './BtcCycleDcaStrategy.js';
 
 /** All built-in strategy classes. */
 export const BUILTIN_STRATEGIES = [
@@ -25,8 +23,6 @@ export const BUILTIN_STRATEGIES = [
   WyckoffSpringUtadStrategy,
   WyckoffRangeTestStrategy,
   SessionLiquiditySweepStrategy,
-  BtcDailySweepStrategy,
-  BtcCycleDcaStrategy,
 ];
 
 /** @type {boolean} */

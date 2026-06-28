@@ -51,8 +51,6 @@ const STRATEGY_CHECK_KEYS = Object.freeze({
   'inside-bar-breakout': ['motherMinRangePips', 'breakoutBufferPips', 'rr'],
   'liquidity-grab': ['swingLookback', 'grabPips', 'rr'],
   'session-liquidity-sweep': ['grabPips', 'wickRatio', 'minVolatilityRatio', 'rr', 'sessionEndHour'],
-  'btc-daily-sweep': ['grabPips', 'wickRatio', 'minDayRangePips', 'rr'],
-  'btc-cycle-dca': ['lookback', 'dipPct', 'addDipPct', 'exitGainPct'],
   'wyckoff-range-test': ['minRangePips', 'rangeLookback', 'rr'],
   'wyckoff-spring-utad': ['minRangePips', 'sweepPips', 'rr'],
 });

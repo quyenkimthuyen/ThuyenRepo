@@ -225,8 +225,7 @@ class StrategyEngine {
       const versionChanged =
         versionRecorded !== undefined && versionRecorded !== plugin.version;
       const slsNeedsUpgrade =
-        (plugin.id === 'session-liquidity-sweep' || plugin.id === 'btc-cycle-dca') &&
-        versionRecorded !== plugin.version;
+        plugin.id === 'session-liquidity-sweep' && versionRecorded !== plugin.version;
       const needsFullReset = !existing || versionChanged || slsNeedsUpgrade;
 
       if (needsFullReset) {

@@ -97,7 +97,7 @@ export const CONTEXT_DOC_SECTIONS = [
         items: [
           `Cặp: ${Config.SYMBOLS.join(', ')}`,
           `Khung: ${Config.TIMEFRAMES.join(', ')}`,
-          'Chiến lược: Break & Retest, EMA Pullback, Liquidity Grab, Session Liquidity Sweep, BTC Daily Sweep, Inside Bar, Pin Bar, Wyckoff Spring/UTAD, Wyckoff Range Test',
+          'Chiến lược: Break & Retest, EMA Pullback, Liquidity Grab, Session Liquidity Sweep, Inside Bar, Pin Bar, Wyckoff Spring/UTAD, Wyckoff Range Test',
         ],
       },
     ],
@@ -738,49 +738,6 @@ export const CONTEXT_DOC_SECTIONS = [
         text: 'Chiến lược selective — kỳ vọng vài chục lệnh/năm trên H1, không phải scalping. Luôn kiểm tra OOS trước khi áp param vào live.',
       },
 
-      { type: 'h2', text: '9. BTC Daily Sweep (btc-daily-sweep)' },
-      {
-        type: 'p',
-        text: 'Chiến lược tối giản cho **BTCUSD D1**: fade quét **đỉnh/đáy ngày UTC hôm trước** — 1 nến sweep + rejection, không phiên Á/London, không swing, không indicator. Chỉ **4 param**.',
-      },
-      {
-        type: 'table',
-        headers: ['Tham số', 'Mặc định', 'Tác dụng'],
-        rows: [
-          ['grabPips', '100', 'Quét vượt prev-day level ($100 trên BTC)'],
-          ['wickRatio', '0.6', 'Râu rejection trên nến sweep'],
-          ['rr', '2', 'Risk-reward'],
-          ['minDayRangePips', '700', 'Bỏ ngày hôm qua range quá hẹp (sideway)'],
-        ],
-      },
-      {
-        type: 'callout',
-        variant: 'tip',
-        text: 'Grid EURUSD H1 (Session Sweep) và BTC D1 (Daily Sweep / Cycle DCA): Suggest from data → Grid → Walk Forward. Cycle DCA: tăng Max bars in trade lên 400+ trong Simulation.',
-      },
-
-      { type: 'h2', text: '10. BTC Cycle DCA (btc-cycle-dca)' },
-      {
-        type: 'p',
-        text: 'Chiến lược **tích lũy dài hạn** cho BTCUSD D1 — chỉ **LONG**, không SL thực tế (SL 1% chỉ cho simulator). Mua khi giá rớt % so với **đỉnh chu kỳ** (lookback), DCA thêm ở dip sâu hơn, chốt lời khi +exitGainPct%. Phù hợp tư duy trung bình giá / hold chu kỳ.',
-      },
-      {
-        type: 'table',
-        headers: ['Tham số', 'Mặc định', 'Tác dụng'],
-        rows: [
-          ['lookback', '60', 'Cửa sổ tìm đỉnh chu kỳ (ngày)'],
-          ['dipPct', '15', 'Mua lần 1 khi rớt 15% từ đỉnh'],
-          ['addDipPct', '45', 'DCA lần 2 khi rớt 45% (0 = tắt)'],
-          ['exitGainPct', '70', 'Chốt lời +70% từ giá entry'],
-          ['slFloorPct', '1', 'SL giả lập 1% — không dùng stop thật'],
-        ],
-      },
-      {
-        type: 'callout',
-        variant: 'warn',
-        text: 'Simulation: đặt Max bars in trade ≥ 400, spread BTC ~5 pip. Backtest mặc định ~$91k net / 15 lệnh (2017–2026) — vài chu kỳ/năm, không phải lời khuyên đầu tư.',
-      },
-
       { type: 'h3', text: 'Nến xác nhận (dùng chung các strategy)' },
       {
         type: 'table',
@@ -1137,7 +1094,7 @@ export const CONTEXT_DOC_SECTIONS = [
         type: 'table',
         headers: ['Thành phần', 'Ý nghĩa'],
         rows: [
-          ['Strategy', 'Chiến lược cần thử — 9 setup (gồm BTC Daily Sweep cho BTC D1)'],
+          ['Strategy', 'Chiến lược cần thử — 8 setup'],
           ['Symbol / TF', 'Chỉ hiện cặp đã có nến — phải khớp data bạn đang nghiên cứu'],
         ],
       },
@@ -1397,7 +1354,7 @@ export const CONTEXT_DOC_SECTIONS = [
           ['Compare vs all signals', 'So sánh backtest: toàn bộ vs đã lọc AI'],
         ],
       },
-      { type: 'h3', text: '4. Chín chiến lược (Strategies)' },
+      { type: 'h3', text: '4. Tám chiến lược (Strategies)' },
       {
         type: 'table',
         headers: ['ID / Tên', 'Hiểu đơn giản'],
@@ -1406,8 +1363,6 @@ export const CONTEXT_DOC_SECTIONS = [
           ['ema-pullback — EMA Pullback', 'Trend EMA20/50 → hồi chạm EMA → entry cùng nến'],
           ['liquidity-grab — Liquidity Grab', 'Quét swing high/low + rejection — entry ngay 1 nến'],
           ['session-liquidity-sweep — Session Liquidity Sweep', 'Quét biên phiên Á/London — chờ nến confirm (2 pha)'],
-          ['btc-daily-sweep — BTC Daily Sweep', 'Quét đỉnh/đáy ngày UTC hôm trước — 1 nến (BTC D1)'],
-          ['btc-cycle-dca — BTC Cycle DCA', 'Long DCA theo % dip từ đỉnh chu kỳ — chốt +% (BTC D1)'],
           ['inside-bar-breakout — Inside Bar Breakout', 'Nến mẹ + inside bar → break theo trend EMA'],
           ['pin-bar-rejection — Pin Bar Rejection', 'Pin bar chạm swing — không cần quét vượt level'],
           ['wyckoff-spring-utad — Wyckoff Spring/UTAD', 'Quét biên range tích lũy → đóng lại trong range'],
