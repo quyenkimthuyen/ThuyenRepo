@@ -9,6 +9,7 @@ import { el, loadFromStorage } from '../utils/dom.js';
 import StrategyEngine from '../strategy/StrategyEngine.js';
 import ResearchEngine from '../optimizer/ResearchEngine.js';
 import { parseValueList, countCombinations, defaultGridForParam, augmentParamGrid } from '../optimizer/ParameterGrid.js';
+import { suggestParamGridFromData } from '../optimizer/GridSuggestEngine.js';
 import { downloadFile } from '../data/DataExporter.js';
 import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
@@ -278,7 +279,14 @@ class OptimizerViewImpl {
         el('div', { class: 'opt-param-section-head' }, [
           el('span', { class: 'opt-param-section-title' }, ['Parameters']),
           el('span', { class: 'opt-param-section-hint' }, ['Tick để đưa vào grid']),
+          el('button', {
+            type: 'button',
+            class: 'btn btn-secondary opt-suggest-btn',
+            id: 'opt-suggest-grid',
+            title: 'Điền lưới tham số từ biến động nến hiện tại',
+          }, ['Suggest from data']),
         ]),
+        el('p', { class: 'opt-suggest-hint', id: 'opt-suggest-hint' }, ['']),
         el('div', { class: 'opt-param-grid' }, paramRows),
       ]),
       el('label', { class: 'opt-field' }, [
@@ -306,6 +314,52 @@ class OptimizerViewImpl {
     ]));
 
     content.querySelector('#opt-run-grid')?.addEventListener('click', () => this.#runGrid());
+    content.querySelector('#opt-suggest-grid')?.addEventListener('click', () => this.#suggestGridFromData(strategyId, schema));
+  }
+
+  /**
+   * @param {string} strategyId
+   * @param {import('../strategy/ParameterSchema.js').ParamDefinition[]} schema
+   */
+  async #suggestGridFromData(strategyId, schema) {
+    const { symbol, timeframe } = this.#readSelectors();
+    const hint = this.#container?.querySelector('#opt-suggest-hint');
+    const btn = this.#container?.querySelector('#opt-suggest-grid');
+
+    if (btn) /** @type {HTMLButtonElement} */ (btn).disabled = true;
+    if (hint) hint.textContent = 'Đang đọc dữ liệu nến…';
+
+    try {
+      const candles = await DataManager.getCandles(symbol, timeframe);
+      const suggestion = suggestParamGridFromData(strategyId, schema, candles, symbol, timeframe);
+
+      for (const def of schema.filter((d) => d.type === 'number' || d.type === 'integer')) {
+        const input = this.#container?.querySelector(`.opt-param-values[data-key="${def.key}"]`);
+        if (input && suggestion.values[def.key]) {
+          /** @type {HTMLInputElement} */ (input).value = suggestion.values[def.key];
+        }
+        const check = this.#container?.querySelector(`.opt-param-check[data-key="${def.key}"]`);
+        if (check) {
+          /** @type {HTMLInputElement} */ (check).checked = suggestion.checks[def.key] ?? false;
+        }
+      }
+
+      const total = countCombinations(augmentParamGrid(strategyId, this.#readParamGrid()));
+      if (hint) {
+        hint.textContent = `${suggestion.message} · ${total} combo nếu chạy ngay`;
+      }
+      bus.emit(Events.LOG_MESSAGE, {
+        message: `Grid suggest: ${suggestion.message}`,
+        level: 'info',
+        time: new Date(),
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (hint) hint.textContent = '';
+      bus.emit(Events.LOG_MESSAGE, { message: msg, level: 'error', time: new Date() });
+    } finally {
+      if (btn) /** @type {HTMLButtonElement} */ (btn).disabled = false;
+    }
   }
 
   /**

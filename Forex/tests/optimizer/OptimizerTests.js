@@ -7,6 +7,12 @@ import { parseValueList, buildCombinations, countCombinations, defaultGridForPar
 import { runMonteCarlo } from '../../src/optimizer/MonteCarloEngine.js';
 import { getRankValue } from '../../src/optimizer/GridSearchEngine.js';
 import { stripBacktestResult, stripGridSearchForStorage } from '../../src/optimizer/researchPersistence.js';
+import {
+  computeMarketStats,
+  suggestGridString,
+  suggestParamGridFromData,
+  timeframeScale,
+} from '../../src/optimizer/GridSuggestEngine.js';
 import { computeStatistics } from '../../src/statistics/StatisticsCalculator.js';
 
 let passed = 0;
@@ -104,6 +110,45 @@ console.log('\n=== Optimizer Tests ===\n');
   const persisted = stripGridSearchForStorage(grid, 50);
   assert('OP-13: Grid persist caps rows', persisted.entries.length === 50);
   assert('OP-14: Grid persist strips trades', !('trades' in persisted.entries[0].result));
+}
+
+{
+  /** @type {import('../../src/data/Candle.js').Candle[]} */
+  const candles = Array.from({ length: 30 }, (_, i) => ({
+    time: i * 3600000,
+    open: 1.08,
+    high: 1.0812,
+    low: 1.0790,
+    close: 1.0805,
+    volume: 100,
+  }));
+  const stats = computeMarketStats(candles, 'EURUSD');
+  assert('OP-15: Market stats avg range', stats.avgRangePips > 0 && stats.candleCount === 30);
+  assert('OP-16: H1 timeframe scale', timeframeScale('H1') === 'intraday');
+  assert('OP-17: M15 timeframe scale', timeframeScale('M15') === 'scalp');
+
+  const breakoutDef = {
+    key: 'breakoutPips',
+    label: 'Breakout',
+    type: 'number',
+    default: 5,
+    min: 1,
+    max: 50,
+    step: 1,
+  };
+  const gridStr = suggestGridString(breakoutDef, { ...stats, scale: 'intraday' });
+  const parsed = parseValueList(gridStr ?? '');
+  assert('OP-18: Breakout grid from volatility', parsed.length >= 2);
+
+  const suggestion = suggestParamGridFromData(
+    'break-retest',
+    [breakoutDef, { key: 'rr', label: 'RR', type: 'number', default: 2, min: 1, max: 10, step: 0.5 }],
+    candles,
+    'EURUSD',
+    'H1'
+  );
+  assert('OP-19: Suggest checks breakout + rr', suggestion.checks.breakoutPips && suggestion.checks.rr);
+  assert('OP-20: Suggest message has candle count', suggestion.message.includes('30'));
 }
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);
