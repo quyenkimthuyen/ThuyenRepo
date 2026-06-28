@@ -1,31 +1,96 @@
 /**
- * Psychology phase strip synced to chart time scale (halving cycle bands + price assessment).
+ * Psychology phase strip synced to chart time scale (all halving cycles + price assessment).
  * @module chart/PsychologyChartStrip
  */
 
 import { el } from '../utils/dom.js';
+import { BTC_HALVING_EVENTS, CYCLE_LENGTH_DAYS } from '../analysis/BtcCycleConfig.js';
 import { buildPsychologyTimeline } from '../analysis/PsychologyCycleMapper.js';
 
 /**
  * @typedef {import('../analysis/LongTermAnalysisEngine.js').LongTermAnalysisResult} AnalysisResult
+ * @typedef {{
+ *   phase: { id: string, labelVi: string, label: string, color: string },
+ *   startTime: number,
+ *   endTime: number,
+ *   halvingLabel: string,
+ *   cycleIndex: number,
+ * }} PsychologyBand
  */
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 /**
- * @param {AnalysisResult['currentCycle']} cycle
- * @returns {Array<{ phase: { id: string, labelVi: string, label: string, color: string }, startTime: number, endTime: number }>}
+ * Psychology bands for one halving-to-halving window.
+ * @param {number} halvingStartMs
+ * @param {number} halvingEndMs
+ * @param {string} halvingLabel
+ * @param {number} cycleIndex
+ * @returns {PsychologyBand[]}
  */
-export function buildPsychologyBandsForCycle(cycle) {
-  const start = cycle.halvingTime;
-  const span = cycle.nextHalvingEstimate - start;
+export function buildPsychologyBandsForHalvingWindow(
+  halvingStartMs,
+  halvingEndMs,
+  halvingLabel,
+  cycleIndex
+) {
+  const span = halvingEndMs - halvingStartMs;
   if (span <= 0) return [];
 
   return buildPsychologyTimeline()
     .filter((item) => item.endPct > item.startPct)
     .map((item) => ({
       phase: item.phase,
-      startTime: start + (item.startPct / 100) * span,
-      endTime: start + (item.endPct / 100) * span,
+      startTime: halvingStartMs + (item.startPct / 100) * span,
+      endTime: halvingStartMs + (item.endPct / 100) * span,
+      halvingLabel,
+      cycleIndex,
     }));
+}
+
+/**
+ * All psychology bands for every halving cycle overlapping a time range.
+ * @param {number} fromTs
+ * @param {number} toTs
+ * @param {number} [currentCycleEnd] - end of active cycle (next halving estimate)
+ * @returns {PsychologyBand[]}
+ */
+export function buildPsychologyBandsForRange(fromTs, toTs, currentCycleEnd) {
+  if (!Number.isFinite(fromTs) || !Number.isFinite(toTs) || toTs <= fromTs) return [];
+
+  /** @type {PsychologyBand[]} */
+  const bands = [];
+
+  for (let i = 0; i < BTC_HALVING_EVENTS.length; i++) {
+    const halving = BTC_HALVING_EVENTS[i];
+    const next = BTC_HALVING_EVENTS[i + 1];
+    const end = next
+      ? next.timestamp
+      : (currentCycleEnd ?? halving.timestamp + CYCLE_LENGTH_DAYS * MS_PER_DAY);
+
+    if (end < fromTs || halving.timestamp > toTs) continue;
+
+    bands.push(...buildPsychologyBandsForHalvingWindow(
+      halving.timestamp,
+      end,
+      halving.label,
+      i + 1
+    ));
+  }
+
+  return bands;
+}
+
+/**
+ * @param {AnalysisResult['currentCycle']} cycle
+ * @returns {PsychologyBand[]}
+ */
+export function buildPsychologyBandsForCycle(cycle) {
+  return buildPsychologyBandsForRange(
+    cycle.halvingTime,
+    cycle.nextHalvingEstimate,
+    cycle.nextHalvingEstimate
+  );
 }
 
 /**
@@ -45,7 +110,7 @@ export function mountPsychologyLayers(chartContainer) {
   }, [
     el('span', { class: 'chart-psychology-strip-title' }, ['T\u00e2m l\u00fd TT']),
     el('div', { class: 'chart-psychology-segments', id: 'chart-psychology-segments' }),
-    el('div', { class: 'chart-psychology-now', id: 'chart-psychology-now', title: 'V\u1ecb tr\u00ed n\u1ebfn hi\u1ec7n t\u1ea1i' }),
+    el('div', { class: 'chart-psychology-now', id: 'chart-psychology-now', title: 'V\u1ecb tr\u00ed \u0111ang xem' }),
     el('div', { class: 'chart-psychology-pin', id: 'chart-psychology-pin', hidden: true }),
   ]);
 
@@ -85,6 +150,15 @@ function segmentPx(x1, x2, chartWidth) {
 }
 
 /**
+ * @param {PsychologyBand[]} bands
+ * @param {number} ts
+ * @returns {PsychologyBand|undefined}
+ */
+function bandAtTime(bands, ts) {
+  return bands.find((b) => ts >= b.startTime && ts < b.endTime);
+}
+
+/**
  * Paint psychology bands on chart background + bottom strip.
  * @param {{
  *   bg: HTMLElement,
@@ -92,12 +166,18 @@ function segmentPx(x1, x2, chartWidth) {
  *   timeScale: import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null,
  *   chartWidth: number,
  *   analysis: AnalysisResult,
- *   lastCandleTs: number,
+ *   rangeFromTs: number,
+ *   rangeToTs: number,
+ *   cursorTs: number,
  *   visible: boolean,
  * }} opts
  */
 export function updatePsychologyLayers(opts) {
-  const { bg, strip, timeScale, chartWidth, analysis, lastCandleTs, visible } = opts;
+  const {
+    bg, strip, timeScale, chartWidth, analysis,
+    rangeFromTs, rangeToTs, cursorTs, visible,
+  } = opts;
+
   if (!visible || !analysis) {
     bg.hidden = true;
     strip.hidden = true;
@@ -107,8 +187,14 @@ export function updatePsychologyLayers(opts) {
   bg.hidden = false;
   strip.hidden = false;
 
-  const bands = buildPsychologyBandsForCycle(analysis.currentCycle);
+  const bands = buildPsychologyBandsForRange(
+    rangeFromTs,
+    rangeToTs,
+    analysis.currentCycle.nextHalvingEstimate
+  );
   const assessedId = analysis.psychology.phaseId;
+  const calendarBand = bandAtTime(bands, cursorTs);
+
   const segmentsEl = strip.querySelector('#chart-psychology-segments');
   const nowEl = strip.querySelector('#chart-psychology-now');
   const pinEl = strip.querySelector('#chart-psychology-pin');
@@ -126,25 +212,35 @@ export function updatePsychologyLayers(opts) {
     );
     if (!px) continue;
 
-    const isAssessed = band.phase.id === assessedId;
+    const isAtCursor = cursorTs >= band.startTime && cursorTs < band.endTime;
+    const isAssessed = isAtCursor && band.phase.id === assessedId;
     const color = band.phase.color;
+    const title = `${band.halvingLabel} \u00b7 ${band.phase.labelVi} (${band.phase.label})`;
+
+    const classes = [
+      'chart-psychology-seg',
+      isAtCursor ? ' is-at-cursor' : '',
+      isAssessed ? ' is-assessed' : '',
+    ].join('');
 
     segmentsEl.appendChild(el('div', {
-      class: `chart-psychology-seg${isAssessed ? ' is-assessed' : ''}`,
+      class: classes,
       style: `left:${px.left}px;width:${px.width}px;--phase-color:${color}`,
-      title: `${band.phase.labelVi} (${band.phase.label})`,
+      title,
     }, [
-      el('span', { class: 'chart-psychology-seg-label' }, [band.phase.labelVi]),
-    ]));
+      px.width > 36
+        ? el('span', { class: 'chart-psychology-seg-label' }, [band.phase.labelVi])
+        : null,
+    ].filter(Boolean)));
 
     bg.appendChild(el('div', {
-      class: `chart-psychology-bg-seg${isAssessed ? ' is-assessed' : ''}`,
+      class: `chart-psychology-bg-seg${isAtCursor ? ' is-at-cursor' : ''}${isAssessed ? ' is-assessed' : ''}`,
       style: `left:${px.left}px;width:${px.width}px;--phase-color:${color}`,
-      title: band.phase.labelVi,
+      title,
     }));
   }
 
-  const nowX = timeToPx(timeScale, lastCandleTs, chartWidth);
+  const nowX = timeToPx(timeScale, cursorTs, chartWidth);
   if (nowX !== null) {
     nowEl.style.left = `${nowX}px`;
     nowEl.hidden = false;
@@ -154,7 +250,16 @@ export function updatePsychologyLayers(opts) {
     pinEl.style.borderColor = analysis.psychology.color;
     pinEl.style.color = analysis.psychology.color;
     pinEl.textContent = analysis.psychology.labelVi;
-    pinEl.title = analysis.psychology.priceContribution ?? analysis.psychology.description;
+
+    const calLabel = calendarBand?.phase.labelVi ?? '?';
+    const calHint = calendarBand
+      ? `L\u1ecbch halving: ${calendarBand.halvingLabel} \u2192 ${calLabel}`
+      : '';
+    pinEl.title = [
+      `Theo gi\u00e1: ${analysis.psychology.labelVi}`,
+      calHint,
+      analysis.psychology.priceContribution ?? '',
+    ].filter(Boolean).join(' \u00b7 ');
   } else {
     nowEl.hidden = true;
     pinEl.hidden = true;

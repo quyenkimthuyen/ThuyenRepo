@@ -239,7 +239,7 @@ class ChartViewImpl {
 
       if (this.#symbol === 'BTCUSD' && visible.length >= 20 && (fullRefresh || index % 3 === 0)) {
         this.#runChartAnalysis(visible);
-      } else if (fullRefresh) {
+      } else {
         this.#updatePsychologyStrip();
       }
     });
@@ -360,7 +360,24 @@ class ChartViewImpl {
 
     const analysis = getLastAnalysis();
     const visible = this.#replay?.getVisibleCandles() ?? [];
-    const lastTs = visible.length > 0 ? visible[visible.length - 1].timestamp : Date.now();
+    if (visible.length === 0) {
+      updatePsychologyLayers({
+        bg: this.#psychologyLayers.bg,
+        strip: this.#psychologyLayers.strip,
+        timeScale: this.#chart.getTimeScale(),
+        chartWidth: this.#chart.getChartWidth(),
+        analysis,
+        rangeFromTs: 0,
+        rangeToTs: 0,
+        cursorTs: Date.now(),
+        visible: false,
+      });
+      return;
+    }
+
+    const rangeFromTs = visible[0].timestamp;
+    const rangeToTs = visible[visible.length - 1].timestamp;
+    const cursorTs = visible[visible.length - 1].timestamp;
 
     updatePsychologyLayers({
       bg: this.#psychologyLayers.bg,
@@ -368,7 +385,9 @@ class ChartViewImpl {
       timeScale: this.#chart.getTimeScale(),
       chartWidth: this.#chart.getChartWidth(),
       analysis,
-      lastCandleTs: lastTs,
+      rangeFromTs,
+      rangeToTs,
+      cursorTs,
       visible: this.#overlayToggles.psychology
         && this.#symbol === 'BTCUSD'
         && !this.#activeSignal
