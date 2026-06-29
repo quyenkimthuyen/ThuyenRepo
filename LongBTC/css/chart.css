@@ -359,180 +359,181 @@
   min-height: 0;
   position: relative;
   background: var(--color-bg-base);
-  padding-bottom: var(--psychology-strip-height, 58px);
 }
 
-/* ── Psychology strip (below price chart only) ── */
-.chart-psychology-strip {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: var(--psychology-strip-height, 58px);
-  z-index: 3;
-  display: flex;
-  align-items: stretch;
+/* ── Psychology insight card (below replay, not on price chart) ── */
+#chart-psychology-insight-mount {
+  flex-shrink: 0;
+}
+
+.chart-psychology-insight {
   border-top: 1px solid var(--color-border);
   background: var(--color-bg-raised);
-  pointer-events: none;
+  padding: var(--space-sm) var(--space-md);
 }
 
-.chart-psychology-strip[hidden] {
+.chart-psychology-insight[hidden] {
   display: none !important;
 }
 
-.chart-psychology-aside {
-  flex: 0 0 136px;
+.chart-psychology-insight-head {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border-right: 1px solid var(--color-border);
-  background: color-mix(in srgb, var(--color-bg-base) 35%, var(--color-bg-raised));
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
 }
 
-.chart-psychology-strip-title {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-}
-
-.chart-psychology-detail {
+.chart-psychology-insight-title-wrap {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
-.chart-psychology-detail-kicker {
-  font-size: 8px;
+.chart-psychology-insight-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.chart-psychology-insight-title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.chart-psychology-insight-link {
+  flex-shrink: 0;
+}
+
+.chart-psychology-insight-body {
+  display: grid;
+  grid-template-columns: minmax(160px, 220px) 1fr;
+  gap: var(--space-md);
+  align-items: start;
+}
+
+.chart-psychology-insight-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-base);
+}
+
+.chart-psychology-insight-kicker {
+  font-size: 9px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: var(--color-text-muted);
 }
 
-.chart-psychology-detail-price {
-  font-size: 12px;
+.chart-psychology-insight-phase {
+  font-size: 15px;
   font-weight: 700;
   line-height: 1.2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.chart-psychology-detail-calendar {
+.chart-psychology-insight-confidence {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+}
+
+.chart-psychology-insight-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+
+.chart-psychology-insight-calendar-label {
   font-size: 9px;
-  line-height: 1.3;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+.chart-psychology-insight-calendar-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.chart-psychology-insight-desc {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.chart-psychology-insight-timeline-wrap {
+  position: relative;
+  padding-top: 14px;
+}
+
+.chart-psychology-insight-timeline-caption {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: 9px;
+  color: var(--color-text-muted);
+}
+
+.chart-psychology-insight-timeline-track {
+  position: relative;
+  height: 28px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-base);
+}
+
+.chart-psychology-insight-timeline {
+  display: flex;
+  height: 100%;
+}
+
+.chart-psychology-insight-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  background: color-mix(in srgb, var(--phase-color) 28%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--phase-color) 20%, transparent);
+  overflow: hidden;
+}
+
+.chart-psychology-insight-seg.is-active {
+  background: color-mix(in srgb, var(--phase-color) 48%, transparent);
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--phase-color) 70%, #fff);
+}
+
+.chart-psychology-insight-seg-label {
+  font-size: 8px;
+  padding: 0 2px;
   color: var(--color-text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.chart-psychology-track {
-  position: relative;
-  flex: 1;
-  min-width: 0;
-  margin-right: var(--chart-price-gutter, 72px);
-}
-
-.chart-psychology-segments {
+.chart-psychology-insight-marker {
   position: absolute;
-  inset: 6px 0;
-}
-
-.chart-psychology-seg {
-  position: absolute;
-  top: 0;
+  top: 14px;
   bottom: 0;
-  border: 1px solid color-mix(in srgb, var(--phase-color) 55%, transparent);
-  background: color-mix(in srgb, var(--phase-color) 38%, transparent);
-  border-radius: 3px;
-  overflow: hidden;
-  pointer-events: auto;
-  cursor: default;
-}
-
-.chart-psychology-seg:hover {
-  filter: brightness(1.12);
-  z-index: 2;
-}
-
-.chart-psychology-seg.is-at-cursor {
-  border-color: color-mix(in srgb, var(--phase-color) 80%, #fff);
-  z-index: 3;
-}
-
-.chart-psychology-seg.is-assessed {
-  border-width: 2px;
-  box-shadow: 0 0 8px color-mix(in srgb, var(--phase-color) 40%, transparent);
-}
-
-.chart-psychology-seg-label {
-  display: block;
-  font-size: 9px;
-  font-weight: 600;
-  line-height: 1.2;
-  padding: 3px 4px 0;
-  color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
-}
-
-.chart-psychology-seg-halving {
-  position: absolute;
-  right: 3px;
-  bottom: 2px;
-  font-size: 8px;
-  font-weight: 700;
-  color: color-mix(in srgb, var(--phase-color) 70%, #fff);
-  opacity: 0.85;
-}
-
-.chart-psychology-halvings {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 4;
-}
-
-.chart-psychology-halving {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  width: 0;
-  border-left: 1px dashed color-mix(in srgb, #a855f7 65%, transparent);
-}
-
-.chart-psychology-halving-tag {
-  position: absolute;
-  top: 0;
-  left: 3px;
-  font-size: 8px;
-  font-weight: 700;
-  color: #c084fc;
-  white-space: nowrap;
-}
-
-.chart-psychology-now {
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
   width: 2px;
   margin-left: -1px;
   background: #f8fafc;
-  box-shadow: 0 0 6px rgba(248, 250, 252, 0.5);
-  z-index: 5;
+  box-shadow: 0 0 4px rgba(248, 250, 252, 0.45);
   pointer-events: none;
 }
 
-.chart-psychology-now[hidden] {
-  display: none !important;
+@media (max-width: 900px) {
+  .chart-psychology-insight-body {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Replay Bar ── */
