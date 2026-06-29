@@ -1,25 +1,23 @@
 /**
- * Time-synced cycle + psychology background zones on the price chart.
+ * Time-synced psychology background zones on the price chart.
  * @module chart/PsychologyChartOverlay
  */
 
 import { el } from '../utils/dom.js';
-import { buildChartPhaseBandsForRange } from '../analysis/PsychologyBands.js';
+import { buildPsychologyBandsForRange } from '../analysis/PsychologyBands.js';
 
 /**
  * @param {HTMLElement} chartContainer
  * @returns {HTMLElement}
  */
 export function mountPsychologyChartBg(chartContainer) {
-  const wrap = el('div', {
-    class: 'chart-phase-bg',
+  const bg = el('div', {
+    class: 'chart-phase-bg chart-phase-bg--psych-only',
     id: 'chart-psychology-bg',
     hidden: true,
   });
-  wrap.appendChild(el('div', { class: 'chart-phase-bg-cycle', id: 'chart-phase-bg-cycle' }));
-  wrap.appendChild(el('div', { class: 'chart-phase-bg-psych', id: 'chart-phase-bg-psych' }));
-  chartContainer.appendChild(wrap);
-  return wrap;
+  chartContainer.appendChild(bg);
+  return bg;
 }
 
 /**
@@ -53,60 +51,6 @@ function segmentPx(x1, x2, plotWidth) {
 }
 
 /**
- * @param {HTMLElement} layer
- * @param {import('../analysis/PsychologyBands.js').PsychologyBand[]} bands
- * @param {'cycle'|'psychology'} kind
- * @param {import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null} timeScale
- * @param {number} plotWidth
- * @param {number} cursorTs
- * @returns {number}
- */
-function renderBandLayer(layer, bands, kind, timeScale, plotWidth, cursorTs) {
-  layer.innerHTML = '';
-  let rendered = 0;
-
-  for (const band of bands) {
-    if (band.kind !== kind) continue;
-
-    const px = segmentPx(
-      timeToPx(timeScale, band.startTime, plotWidth),
-      timeToPx(timeScale, band.endTime, plotWidth),
-      plotWidth
-    );
-    if (!px) continue;
-
-    rendered++;
-    const isAtCursor = cursorTs >= band.startTime && cursorTs < band.endTime;
-    const isCycle = kind === 'cycle';
-    const layerLabel = isCycle ? 'Giai \u0111o\u1ea1n chu k\u1ef3 BTC' : 'T\u00e2m l\u00fd th\u1ecb tr\u01b0\u1eddng';
-    const title = [
-      band.halvingLabel,
-      layerLabel,
-      band.phase.labelVi,
-      `(${band.phase.label})`,
-    ].join(' \u00b7 ');
-
-    const showLabel = isCycle ? px.width >= 56 : px.width >= 40;
-
-    layer.appendChild(el('div', {
-      class: [
-        'chart-phase-bg-seg',
-        isCycle ? 'chart-phase-bg-seg--cycle' : 'chart-phase-bg-seg--psych',
-        isAtCursor ? 'is-at-cursor' : '',
-      ].filter(Boolean).join(' '),
-      style: `left:${px.left}px;width:${px.width}px;--phase-color:${band.phase.color}`,
-      title,
-    }, showLabel ? [
-      el('span', {
-        class: `chart-phase-bg-label${isCycle ? ' chart-phase-bg-label--cycle' : ' chart-phase-bg-label--psych'}`,
-      }, [band.phase.labelVi]),
-    ] : []));
-  }
-
-  return rendered;
-}
-
-/**
  * @param {HTMLElement} bg
  * @param {{
  *   timeScale: import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null,
@@ -132,36 +76,47 @@ export function updatePsychologyChartBg(bg, opts) {
     return 0;
   }
 
-  const cycleLayer = bg.querySelector('.chart-phase-bg-cycle');
-  const psychLayer = bg.querySelector('.chart-phase-bg-psych');
-  if (!cycleLayer || !psychLayer) return 0;
-
   bg.hidden = false;
   const gutter = chartWidth != null && chartWidth > plotWidth ? chartWidth - plotWidth : 0;
   bg.style.marginRight = gutter > 0 ? `${gutter}px` : '';
 
-  const bands = buildChartPhaseBandsForRange(
+  const bands = buildPsychologyBandsForRange(
     rangeFromTs,
     rangeToTs,
-    currentCycleEnd
+    currentCycleEnd,
+    { sequential: true }
   );
 
-  const cycleRendered = renderBandLayer(
-    /** @type {HTMLElement} */ (cycleLayer),
-    bands,
-    'cycle',
-    timeScale,
-    plotWidth,
-    cursorTs
-  );
-  const psychRendered = renderBandLayer(
-    /** @type {HTMLElement} */ (psychLayer),
-    bands,
-    'psychology',
-    timeScale,
-    plotWidth,
-    cursorTs
-  );
+  bg.innerHTML = '';
+  let rendered = 0;
 
-  return cycleRendered + psychRendered;
+  for (const band of bands) {
+    const px = segmentPx(
+      timeToPx(timeScale, band.startTime, plotWidth),
+      timeToPx(timeScale, band.endTime, plotWidth),
+      plotWidth
+    );
+    if (!px) continue;
+
+    rendered++;
+    const isAtCursor = cursorTs >= band.startTime && cursorTs < band.endTime;
+    const title = [
+      band.halvingLabel,
+      'T\u00e2m l\u00fd th\u1ecb tr\u01b0\u1eddng',
+      band.phase.labelVi,
+      `(${band.phase.label})`,
+    ].join(' \u00b7 ');
+
+    const showLabel = px.width >= 40;
+
+    bg.appendChild(el('div', {
+      class: `chart-phase-bg-seg chart-phase-bg-seg--psych${isAtCursor ? ' is-at-cursor' : ''}`,
+      style: `left:${px.left}px;width:${px.width}px;--phase-color:${band.phase.color}`,
+      title,
+    }, showLabel ? [
+      el('span', { class: 'chart-phase-bg-label chart-phase-bg-label--psych' }, [band.phase.labelVi]),
+    ] : []));
+  }
+
+  return rendered;
 }
