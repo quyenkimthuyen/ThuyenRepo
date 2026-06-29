@@ -19,6 +19,7 @@ import { buildPsychologyTimeline } from '../analysis/PsychologyCycleMapper.js';
  */
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const STRIP_HEIGHT_PX = 58;
 
 /**
  * Psychology bands for one halving-to-halving window.
@@ -102,10 +103,21 @@ export function mountPsychologyStrip(chartContainer) {
     class: 'chart-psychology-strip',
     id: 'chart-psychology-strip',
     hidden: true,
+    style: `--psychology-strip-height:${STRIP_HEIGHT_PX}px`,
   }, [
-    el('span', { class: 'chart-psychology-strip-title' }, ['T\u00e2m l\u00fd TT']),
-    el('div', { class: 'chart-psychology-segments', id: 'chart-psychology-segments' }),
-    el('div', { class: 'chart-psychology-now', id: 'chart-psychology-now', title: 'V\u1ecb tr\u00ed \u0111ang xem' }),
+    el('aside', { class: 'chart-psychology-aside' }, [
+      el('span', { class: 'chart-psychology-strip-title' }, ['T\u00e2m l\u00fd TT']),
+      el('div', { class: 'chart-psychology-detail', id: 'psy-detail' }, [
+        el('span', { class: 'chart-psychology-detail-kicker' }, ['Theo gi\u00e1']),
+        el('span', { class: 'chart-psychology-detail-price', id: 'psy-price' }, ['\u2014']),
+        el('span', { class: 'chart-psychology-detail-calendar', id: 'psy-calendar' }, ['']),
+      ]),
+    ]),
+    el('div', { class: 'chart-psychology-track' }, [
+      el('div', { class: 'chart-psychology-segments', id: 'chart-psychology-segments' }),
+      el('div', { class: 'chart-psychology-halvings', id: 'psy-halvings' }),
+      el('div', { class: 'chart-psychology-now', id: 'chart-psychology-now', hidden: true }),
+    ]),
   ]);
 
   chartContainer.appendChild(strip);
@@ -148,6 +160,61 @@ function segmentPx(x1, x2, chartWidth) {
 }
 
 /**
+ * @param {PsychologyBand[]} bands
+ * @param {number} ts
+ * @returns {PsychologyBand|undefined}
+ */
+function bandAtTime(bands, ts) {
+  return bands.find((b) => ts >= b.startTime && ts < b.endTime);
+}
+
+/**
+ * @param {string} labelVi
+ * @param {number} widthPx
+ * @returns {string|null}
+ */
+function segmentLabel(labelVi, widthPx) {
+  if (widthPx >= 64) return labelVi;
+  if (widthPx >= 40) {
+    const short = {
+      'H\u01b0ng ph\u1ea5n c\u1ef1c \u0111\u1ed9': 'H\u01b0ng ph\u1ea5n',
+      'Ch\u00e1n n\u1ea3n': 'Ch\u00e1n',
+      'Ph\u1ee7 nh\u1eadn': 'Ph\u1ee7 nh\u1eadn',
+      'Nh\u1eb9 nh\u00f5m': 'Nh\u1eb9',
+      '\u0110\u1ea7u h\u00e0ng': '\u0110\u1ea7u h\u00e0ng',
+    };
+    return short[labelVi] ?? labelVi.split(' ')[0];
+  }
+  return null;
+}
+
+/**
+ * @param {HTMLElement} priceEl
+ * @param {HTMLElement} calendarEl
+ * @param {AnalysisResult} analysis
+ * @param {PsychologyBand|undefined} calendarBand
+ */
+function updateDetailPanel(priceEl, calendarEl, analysis, calendarBand) {
+  const p = analysis.psychology;
+  priceEl.textContent = `${p.labelVi} \u00b7 ${p.confidence}%`;
+  priceEl.style.color = p.color;
+
+  if (calendarBand) {
+    const halvingShort = calendarBand.halvingLabel.replace('Halving ', 'H');
+    calendarEl.textContent = `L\u1ecbch ${halvingShort}: ${calendarBand.phase.labelVi}`;
+    calendarEl.title = [
+      calendarBand.halvingLabel,
+      calendarBand.phase.labelVi,
+      calendarBand.phase.label,
+      p.priceContribution ?? '',
+    ].filter(Boolean).join(' \u00b7 ');
+  } else {
+    calendarEl.textContent = 'Ngo\u00e0i v\u00f9ng chu k\u1ef3 halving';
+    calendarEl.title = p.priceContribution ?? '';
+  }
+}
+
+/**
  * Paint psychology bands on the bottom strip only (not on the price chart).
  * @param {{
  *   strip: HTMLElement,
@@ -181,13 +248,20 @@ export function updatePsychologyStrip(opts) {
     analysis.currentCycle.nextHalvingEstimate
   );
   const assessedId = analysis.psychology.phaseId;
+  const calendarBand = bandAtTime(bands, cursorTs);
 
   const segmentsEl = strip.querySelector('#chart-psychology-segments');
+  const halvingsEl = strip.querySelector('#psy-halvings');
   const nowEl = strip.querySelector('#chart-psychology-now');
+  const priceEl = strip.querySelector('#psy-price');
+  const calendarEl = strip.querySelector('#psy-calendar');
 
-  if (!segmentsEl || !nowEl) return;
+  if (!segmentsEl || !halvingsEl || !nowEl || !priceEl || !calendarEl) return;
+
+  updateDetailPanel(priceEl, calendarEl, analysis, calendarBand);
 
   segmentsEl.innerHTML = '';
+  halvingsEl.innerHTML = '';
 
   for (const band of bands) {
     const px = segmentPx(
@@ -200,7 +274,15 @@ export function updatePsychologyStrip(opts) {
     const isAtCursor = cursorTs >= band.startTime && cursorTs < band.endTime;
     const isAssessed = isAtCursor && band.phase.id === assessedId;
     const color = band.phase.color;
-    const title = `${band.halvingLabel} \u00b7 ${band.phase.labelVi} (${band.phase.label})`;
+    const halvingShort = band.halvingLabel.replace('Halving ', 'H');
+    const title = [
+      band.halvingLabel,
+      band.phase.labelVi,
+      `(${band.phase.label})`,
+      isAssessed ? `\u00b7 Kh\u1edbp \u0111\u00e1nh gi\u00e1 theo gi\u00e1` : '',
+    ].filter(Boolean).join(' \u00b7 ');
+
+    const label = segmentLabel(band.phase.labelVi, px.width);
 
     const classes = [
       'chart-psychology-seg',
@@ -213,10 +295,27 @@ export function updatePsychologyStrip(opts) {
       style: `left:${px.left}px;width:${px.width}px;--phase-color:${color}`,
       title,
     }, [
-      px.width > 36
-        ? el('span', { class: 'chart-psychology-seg-label' }, [band.phase.labelVi])
+      label ? el('span', { class: 'chart-psychology-seg-label' }, [label]) : null,
+      px.width >= 28
+        ? el('span', { class: 'chart-psychology-seg-halving' }, [halvingShort])
         : null,
     ].filter(Boolean)));
+  }
+
+  for (const h of BTC_HALVING_EVENTS) {
+    if (h.timestamp < rangeFromTs || h.timestamp > rangeToTs) continue;
+    const x = timeToPx(timeScale, h.timestamp, chartWidth);
+    if (x === null) continue;
+
+    halvingsEl.appendChild(el('div', {
+      class: 'chart-psychology-halving',
+      style: `left:${x}px`,
+      title: h.label,
+    }, [
+      el('span', { class: 'chart-psychology-halving-tag' }, [
+        h.label.replace('Halving ', 'H'),
+      ]),
+    ]));
   }
 
   const nowX = timeToPx(timeScale, cursorTs, chartWidth);
