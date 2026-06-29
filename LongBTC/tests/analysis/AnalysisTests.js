@@ -15,6 +15,12 @@ import {
   psychologyBandAtTime,
 } from '../../src/analysis/PsychologyBands.js';
 import { buildChartPsychologyTimeline, detectCyclePeakPct } from '../../src/analysis/PsychologyCycleMapper.js';
+import {
+  getPhaseInvestGuide,
+  getBestDcaPhases,
+  getAllPhaseInvestGuides,
+  investTierLabel,
+} from '../../src/analysis/PsychologyInvestGuide.js';
 
 const s = createSuite('Analysis Engine');
 header('Analysis Engine');
@@ -156,6 +162,13 @@ function buildSyntheticCandles(count) {
   const postPeakBand = psychologyBandAtTime(lastMock.timestamp, h4End, h4Mock);
   s.assert('AC-18b: post-correction not bull phase', !['excitement', 'thrill', 'euphoria', 'optimism'].includes(postPeakBand?.phase.id ?? ''));
   s.assert('AC-18c: post-correction bear phase', ['anxiety', 'denial', 'fear', 'capitulation', 'depression'].includes(postPeakBand?.phase.id ?? ''));
+
+  const capGuide = getPhaseInvestGuide('capitulation');
+  s.assert('AC-19: capitulation guide exists', capGuide != null && capGuide.tier === 'excellent');
+  s.assert('AC-19b: euphoria tier avoid', getPhaseInvestGuide('euphoria')?.tier === 'avoid');
+  s.assert('AC-19c: best DCA phases', getBestDcaPhases(3).every((g) => g.historical.forward26wMedianPct > 0));
+  s.assert('AC-19d: all 11 guides', getAllPhaseInvestGuides().length === 11);
+  s.assert('AC-19e: tier label', investTierLabel('excellent') === 'R\u1ea5t t\u1ed1t');
 }
 
 process.exit(footer(s.finish()));

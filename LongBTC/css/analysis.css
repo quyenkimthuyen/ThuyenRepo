@@ -382,3 +382,211 @@
   box-shadow: 0 0 4px rgba(248, 250, 252, 0.45);
   pointer-events: none;
 }
+
+/* Psychology invest guide */
+.psych-invest-guide {
+  margin-bottom: var(--space-lg);
+}
+
+.psych-invest-intro {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--space-md);
+}
+
+.psych-invest-subtitle {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  margin: var(--space-md) 0 var(--space-sm);
+  color: var(--color-text-secondary);
+}
+
+.psych-invest-current {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  background: var(--color-bg-elevated);
+}
+
+.psych-invest-current-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.psych-invest-current-label {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.psych-invest-current-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin: 0 0 var(--space-xs);
+}
+
+.psych-invest-current-en {
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  color: var(--color-text-secondary);
+}
+
+.psych-invest-summary,
+.psych-invest-stance {
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+  margin: 0 0 var(--space-sm);
+  color: var(--color-text-secondary);
+}
+
+.psych-invest-stance {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.psych-invest-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.psych-invest-metric {
+  display: flex;
+  flex-direction: column;
+  min-width: 4.5rem;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-base);
+  border: 1px solid var(--color-border);
+}
+
+.psych-invest-metric-val {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+.psych-invest-metric-lbl {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.psych-invest-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  font-size: var(--font-size-sm);
+}
+
+@media (max-width: 640px) {
+  .psych-invest-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.psych-invest-list {
+  margin: var(--space-xs) 0 0;
+  padding-left: 1.1rem;
+  color: var(--color-text-secondary);
+}
+
+.psych-invest-tier-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-bg-base);
+}
+
+.psych-invest-tier-excellent .psych-invest-tier-badge { color: #22c55e; }
+.psych-invest-tier-good .psych-invest-tier-badge { color: #4ade80; }
+.psych-invest-tier-moderate .psych-invest-tier-badge { color: #fbbf24; }
+.psych-invest-tier-cautious .psych-invest-tier-badge { color: #f97316; }
+.psych-invest-tier-avoid .psych-invest-tier-badge { color: #ef4444; }
+
+.psych-invest-table-wrap {
+  overflow-x: auto;
+  margin-bottom: var(--space-md);
+}
+
+.psych-invest-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.psych-invest-table th,
+.psych-invest-table td {
+  padding: var(--space-xs) var(--space-sm);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.psych-invest-table th {
+  color: var(--color-text-muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.psych-invest-row.is-active {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.psych-invest-phase-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.psych-invest-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-sm);
+}
+
+.psych-invest-card {
+  border: 1px solid var(--color-border);
+  border-left-width: 3px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm);
+  background: var(--color-bg-elevated);
+  font-size: var(--font-size-sm);
+}
+
+.psych-invest-card.is-active {
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+.psych-invest-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-xs);
+  margin-bottom: 4px;
+}
+
+.psych-invest-card-title {
+  font-weight: 600;
+}
+
+.psych-invest-card-stance {
+  color: var(--color-text-secondary);
+  margin: 0 0 4px;
+  line-height: 1.35;
+}
+
+.psych-invest-card-stat {
+  margin: 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}

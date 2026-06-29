@@ -229,6 +229,28 @@ export const LONG_BTC_DOC_SECTIONS = [
         text: 'Kh\u00f4ng ph\u1ea3i l\u1eddi khuy\u00ean mua b\u00e1n. Ch\u1ec9 khung suy ngh\u0129 cho hodl/DCA c\u00f3 k\u1ef7 lu\u1eadt.',
       },
       {
+        type: 'h3',
+        text: 'X\u1ebfp h\u1ea1ng theo l\u1ecbch s\u1eed (median 26 tu\u1ea7n)',
+      },
+      {
+        type: 'table',
+        headers: ['Giai \u0111o\u1ea1n', 'Med. 26w', '% th\u1eafng', '\u0110\u00e1nh gi\u00e1'],
+        rows: [
+          ['\u0110\u1ea7u h\u00e0ng', '+61%', '86%', 'R\u1ea5t t\u1ed1t'],
+          ['Nh\u1eb9 nh\u00f5m', '+55%', '87%', 'R\u1ea5t t\u1ed1t'],
+          ['Hy v\u1ecdng', '+51%', '80%', 'T\u1ed1t'],
+          ['Ch\u00e1n n\u1ea3n', '+38%', '60%', 'T\u1ed1t'],
+          ['L\u1ea1c quan', '+37%', '91%', 'T\u1ed1t'],
+          ['Hoan h\u1ef7', '-40%', '25%', 'Tr\u00e1nh'],
+          ['Lo l\u1eafng', '-32%', '0%', 'Tr\u00e1nh'],
+        ],
+      },
+      {
+        type: 'callout',
+        variant: 'tip',
+        text: 'B\u1ea3ng \u0111\u1ea7y \u0111\u1ee7 v\u00e0 khuy\u1ebfn ngh\u1ecb t\u1eebng giai \u0111o\u1ea1n: m\u00e0n T\u00e2m l\u00fd (Ctrl+6) ho\u1eb7c docs/PSYCHOLOGY_CYCLE.md m\u1ee5c 7.',
+      },
+      {
         type: 'table',
         headers: ['Giai \u0111o\u1ea1n', 'DCA', 'V\u1ecb th\u1ebf', 'Tr\u00e1nh'],
         rows: [

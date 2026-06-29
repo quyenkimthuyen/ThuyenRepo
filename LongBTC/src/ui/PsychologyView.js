@@ -15,6 +15,7 @@ import {
   renderNoAnalysis,
 } from './AnalysisViewHelpers.js';
 import { renderPsychologyHistory } from './PsychologyHistoryTimeline.js';
+import { renderPsychologyInvestGuide } from './PsychologyInvestGuideUi.js';
 
 class PsychologyViewImpl {
   #unsub = null;
@@ -24,8 +25,8 @@ class PsychologyViewImpl {
     container.classList.add('analysis-view');
 
     container.appendChild(renderAnalysisHeader(
-      'Chu kỳ tâm lý thị trường',
-      'Xác định giai đoạn tâm lý dựa trên chu kỳ 4 năm, xu hướng và sóng Elliott',
+      'Chu k\u1ef3 t\u00e2m l\u00fd th\u1ecb tr\u01b0\u1eddng',
+      'Giai \u0111o\u1ea1n t\u00e2m l\u00fd, l\u1ecbch s\u1eed gi\u00e1 v\u00e0 khuy\u1ebfn ngh\u1ecb DCA d\u00e0i h\u1ea1n',
       'psychology'
     ));
 
@@ -50,21 +51,26 @@ class PsychologyViewImpl {
       class: 'psychology-hero',
       style: `border-color:${p.color}`,
     }, [
-      el('span', { class: 'psychology-hero-label' }, ['Giai đoạn hiện tại']),
+      el('span', { class: 'psychology-hero-label' }, ['Giai \u0111o\u1ea1n hi\u1ec7n t\u1ea1i']),
       el('span', { class: 'psychology-hero-value', style: `color:${p.color}` }, [p.labelVi]),
       el('span', { class: 'psychology-hero-en' }, [p.label]),
-      el('span', { class: 'psychology-hero-confidence' }, [`${p.confidence}% tin cậy`]),
+      el('span', { class: 'psychology-hero-confidence' }, [`${p.confidence}% tin c\u1eady`]),
     ]));
 
     body.appendChild(el('p', { class: 'psychology-description' }, [p.description]));
 
     body.appendChild(renderMetricGrid([
-      { label: 'ĝóng góp từ chu kỳ', value: analysis.currentCycle.phaseLabel, hint: p.cycleContribution },
-      { label: 'ĝóng góp từ xu hướng', value: analysis.overallTrend.direction, hint: p.trendContribution },
-      { label: 'ĝóng góp từ Elliott', value: p.waveContribution },
+      { label: 'Chu k\u1ef3 halving', value: analysis.currentCycle.phaseLabel, hint: p.cycleContribution },
+      { label: 'Xu h\u01b0\u1edbng', value: analysis.overallTrend.direction, hint: p.trendContribution },
+      { label: 'Elliott', value: p.waveContribution },
     ]));
 
-    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Vòng tâm lý thị trường']));
+    body.appendChild(el('h3', { class: 'analysis-section-title' }, [
+      'Khuy\u1ebfn ngh\u1ecb DCA theo l\u1ecbch s\u1eed gi\u00e1',
+    ]));
+    body.appendChild(renderPsychologyInvestGuide(p.phaseId));
+
+    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['V\u00f2ng t\u00e2m l\u00fd']));
     body.appendChild(this.#renderWheel(p.phaseId));
 
     body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Timeline chu k\u1ef3 hi\u1ec7n t\u1ea1i']));
@@ -77,7 +83,7 @@ class PsychologyViewImpl {
         analysis.analyzedAt
       ),
       cursorTs: analysis.analyzedAt,
-      title: 'C\u00e1c giai \u0111o\u1ea1n t\u00e2m l\u00fd theo l\u1ecbch halving (2012\u2013nay). Hover t\u1eebng \u00f4 \u0111\u1ec3 xem chi ti\u1ebft; v\u1ea1ch tr\u1eafng = th\u1eddi \u0111i\u1ec3m \u0111ang ph\u00e2n t\u00edch.',
+      title: 'C\u00e1c giai \u0111o\u1ea1n theo l\u1ecbch halving (2012\u2013nay).',
     }));
   }
 
@@ -104,7 +110,7 @@ class PsychologyViewImpl {
       track.appendChild(el('div', {
         class: 'psychology-timeline-segment',
         style: `flex:${item.endPct - item.startPct};background:${item.phase.color}33`,
-        title: `${item.phase.labelVi} (${item.startPct.toFixed(0)}–${item.endPct.toFixed(0)}%)`,
+        title: `${item.phase.labelVi} (${item.startPct.toFixed(0)}\u2013${item.endPct.toFixed(0)}%)`,
       }, [
         el('span', { class: 'psychology-timeline-label' }, [item.phase.labelVi]),
       ]));
@@ -115,7 +121,7 @@ class PsychologyViewImpl {
       el('div', {
         class: 'psychology-timeline-marker',
         style: `left:${Math.min(99, progress)}%`,
-        title: `Vị trí hiện tại: ${progress.toFixed(1)}%`,
+        title: `V\u1ecb tr\u00ed: ${progress.toFixed(1)}%`,
       }),
     ]);
   }

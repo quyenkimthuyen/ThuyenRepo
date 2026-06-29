@@ -36,24 +36,70 @@ function nearestCandleIndex(candles, tsMs) {
 }
 
 /**
+ * @param {import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null} timeScale
+ * @param {import('../data/Candle.js').Candle[]} candles
+ * @param {number} paneWidth
+ * @returns {number}
+ */
+function estimateBarWidthPx(timeScale, candles, paneWidth) {
+  const logical = timeScale?.getVisibleLogicalRange?.();
+  if (logical && logical.to > logical.from && paneWidth > 0) {
+    const logicalSpan = logical.to - logical.from;
+    if (logicalSpan >= 2) {
+      return paneWidth / logicalSpan;
+    }
+    if (candles.length >= 2 && timeScale) {
+      const s0 = Math.floor(candles[0].timestamp / 1000);
+      const s1 = Math.floor(candles[1].timestamp / 1000);
+      const x0 = timeScale.timeToCoordinate(s0);
+      const x1 = timeScale.timeToCoordinate(s1);
+      if (x0 != null && x1 != null && Math.abs(x1 - x0) > 0.5) {
+        return Math.abs(x1 - x0);
+      }
+    }
+    return Math.min(24, paneWidth * 0.12);
+  }
+  if (candles.length >= 2 && timeScale) {
+    const s0 = Math.floor(candles[0].timestamp / 1000);
+    const s1 = Math.floor(candles[1].timestamp / 1000);
+    const x0 = timeScale.timeToCoordinate(s0);
+    const x1 = timeScale.timeToCoordinate(s1);
+    if (x0 != null && x1 != null && x1 > x0) return x1 - x0;
+  }
+  return 8;
+}
+
+/**
  * Map timestamp to x in the chart pane (same coordinate system as candles).
  * @param {import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null} timeScale
  * @param {number} tsMs
  * @param {import('../data/Candle.js').Candle[]} candles
+ * @param {number} [paneWidth]
  * @returns {number|null}
  */
-function timeToPx(timeScale, tsMs, candles) {
+function timeToPx(timeScale, tsMs, candles, paneWidth = 0) {
   if (!timeScale) return null;
 
   const sec = Math.floor(tsMs / 1000);
   let x = timeScale.timeToCoordinate(sec);
   if (x !== null && Number.isFinite(x)) return x;
 
-  if (candles.length === 0) return null;
+  if (candles.length > 0) {
+    const barSec = Math.floor(candles[nearestCandleIndex(candles, tsMs)].timestamp / 1000);
+    x = timeScale.timeToCoordinate(barSec);
+    if (x !== null && Number.isFinite(x)) return x;
+  }
 
-  const barSec = Math.floor(candles[nearestCandleIndex(candles, tsMs)].timestamp / 1000);
-  x = timeScale.timeToCoordinate(barSec);
-  if (x !== null && Number.isFinite(x)) return x;
+  const visible = timeScale.getVisibleRange?.();
+  const logical = timeScale.getVisibleLogicalRange?.();
+  if (visible && logical && visible.to > visible.from) {
+    const t = (tsMs / 1000 - visible.from) / (visible.to - visible.from);
+    if (t >= -0.02 && t <= 1.02) {
+      const logicalIdx = logical.from + t * (logical.to - logical.from);
+      x = timeScale.logicalToCoordinate?.(logicalIdx) ?? null;
+      if (x !== null && Number.isFinite(x)) return x;
+    }
+  }
 
   return null;
 }
@@ -65,13 +111,11 @@ function timeToPx(timeScale, tsMs, candles) {
  * @returns {{ left: number, width: number }|null}
  */
 function segmentPx(x1, x2, plotWidth) {
-  if (x1 === null && x2 === null) return null;
-  const a = x1 ?? 0;
-  const b = x2 ?? plotWidth;
-  const left = Math.max(0, Math.min(a, b));
-  const right = Math.min(plotWidth, Math.max(a, b));
+  if (x1 === null || x2 === null) return null;
+  const left = Math.max(0, Math.min(x1, x2));
+  const right = Math.min(plotWidth, Math.max(x1, x2));
   const width = right - left;
-  if (width < 1) return null;
+  if (width < 0.5) return null;
   return { left, width };
 }
 
@@ -117,21 +161,19 @@ function bandSegmentPx(timeScale, band, candles, paneWidth, viewFromMs, viewToMs
 
   const clipStart = Math.max(band.startTime, viewFromMs);
   const clipEnd = Math.min(band.endTime, viewToMs);
-  const lastTs = candles.length > 0 ? candles[candles.length - 1].timestamp : 0;
+  const atLeftEdge = clipStart <= viewFromMs + 1;
+  const atRightEdge = clipEnd >= viewToMs - 1;
 
-  let x1 = timeToPx(timeScale, clipStart, candles);
-  let x2 = timeToPx(timeScale, clipEnd, candles);
+  let x1 = timeToPx(timeScale, clipStart, candles, paneWidth);
+  let x2 = timeToPx(timeScale, clipEnd, candles, paneWidth);
 
-  if (x1 === null && clipStart <= viewFromMs) x1 = 0;
-  if (x2 === null && clipEnd >= viewToMs) x2 = paneWidth;
-  if (x1 === null && clipStart > lastTs) {
-    x1 = timeToPx(timeScale, lastTs, candles);
-  }
-  if (x2 === null && clipEnd > lastTs) {
-    x2 = paneWidth;
-  }
-  if (x1 !== null && x2 !== null && x2 <= x1) {
-    x2 = paneWidth;
+  if (x1 === null && atLeftEdge) x1 = 0;
+  if (x2 === null && atRightEdge) x2 = paneWidth;
+  if (x1 === null || x2 === null) return null;
+
+  if (x2 <= x1) {
+    const barW = estimateBarWidthPx(timeScale, candles, paneWidth);
+    x2 = Math.min(paneWidth, x1 + Math.max(barW, 2));
   }
 
   return segmentPx(x1, x2, paneWidth);
@@ -278,3 +320,10 @@ export function highlightPsychologyChartBgAtCursor(bg, cursorTs) {
     seg.classList.toggle('is-at-cursor', cursorTs >= start && cursorTs < end);
   }
 }
+
+/** @internal Test hooks */
+export const __psychologyOverlayTest = {
+  bandSegmentPx,
+  segmentPx,
+  estimateBarWidthPx,
+};

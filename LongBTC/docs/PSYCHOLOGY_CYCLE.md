@@ -208,6 +208,28 @@ Chip hi?n th? **label ti?ng Vi?t** + **% tin c?y** (?i?m chu?n hóa, t?i ?a 95%).
 
 > Các khuy?n ngh? d??i ?ây là **khung suy ngh? cho nhà nghiên c?u BTC dài h?n** (hodl / DCA có k? lu?t), không ph?i timing ng?n h?n. ?i?u ch?nh theo kh?u v? r?i ro, horizon, và tình hình tài chính cá nhân.
 
+### 7.0 X?p h?ng theo l?ch s? giá (BTCUSD W)
+
+Phân tích offline trên n?n tu?n BTCUSD (2012–2026), giai ?o?n tâm lý theo chu k? halving + neo ATH khi drawdown ?10%. V?i m?i tu?n thu?c m?t giai ?o?n, ?o **l?i nhu?n median** n?u mua DCA t?i tu?n ?ó và gi? thêm 12/26 tu?n.
+
+| Giai ?o?n | M?u (tu?n) | Median 12w | Median 26w | % th?ng 26w | ?ánh giá DCA |
+|-----------|------------|------------|------------|-------------|--------------|
+| ??u hàng (Capitulation) | 35 | +22.5% | **+61.1%** | 86% | R?t t?t — an toàn & hi?u qu? nh?t |
+| Nh? nhõm (Relief) | 52 | +18.3% | **+55.4%** | 87% | R?t t?t |
+| Hy v?ng (Hope) | 56 | +15.3% | **+50.6%** | 80% | T?t |
+| Chán n?n (Depression) | 35 | -1.9% | +37.9% | 60% | T?t (kiên nh?n) |
+| L?c quan (Optimism) | 32 | +68.6% | +37.1% | 91% | T?t (bi?n ??ng cao) |
+| S? hãi (Fear) | 33 | -2.0% | +32.6% | 58% | Trung bình |
+| Ph?n khích (Thrill) | 51 | +31.0% | +22.2% | 63% | Th?n tr?ng |
+| H?ng ph?n (Excitement) | 32 | -16.2% | +15.9% | 81% | Th?n tr?ng |
+| Ph? nh?n (Denial) | 32 | -13.1% | -17.9% | 38% | Tránh mua thêm |
+| Hoan h? (Euphoria) | 53 | -9.0% | **-39.6%** | 25% | Tránh — x?u nh?t l?ch s? |
+| Lo l?ng (Anxiety) | 40 | -25.1% | **-31.7%** | 0% | Tránh |
+
+**K?t lu?n nghiên c?u:** Vùng **bear sâu (??u hàng, nh? nhõm, hy v?ng)** và **chán n?n tr??c halving** có risk/reward t?t nh?t cho DCA dài h?n. Vùng **??nh c?m xúc (hoan h?, lo l?ng)** có median âm m?nh — ?u tiên b?o toàn thay vì tích l?y thêm.
+
+Trong app: màn **Tâm lý (Ctrl+6)** hi?n th? khuy?n ngh? chi ti?t theo giai ?o?n hi?n t?i (`PsychologyInvestGuide.js`).
+
 ### 7.1 Hy v?ng (Hope)
 
 **??c ?i?m:** Sau ?áy ho?c sau halving; giá còn th?p so v?i ??nh c?; ít ng??i quan tâm tr? l?i.
