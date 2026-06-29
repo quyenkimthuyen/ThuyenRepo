@@ -9,10 +9,6 @@ import { el, loadFromStorage } from '../utils/dom.js';
 import DataManager from '../data/DataManager.js';
 import { ChartEngine } from '../chart/ChartEngine.js';
 import {
-  mountChartPsychologyInsight,
-  updateChartPsychologyInsight,
-} from './ChartPsychologyInsight.js';
-import {
   mountPsychologyChartBg,
   updatePsychologyChartBg,
 } from '../chart/PsychologyChartOverlay.js';
@@ -20,11 +16,9 @@ import {
   CHART_OVERLAY_PRESETS,
   clearPresetActiveState,
   mountChartContextBar,
-  mountChartLegendBar,
   mountOverlayPresets,
   syncOverlayCheckboxes,
   updateChartContextBar,
-  updateChartLegendBar,
 } from './ChartResearchUi.js';
 import { ReplayEngine } from '../replay/ReplayEngine.js';
 import { ReplayControls } from './ReplayControls.js';
@@ -85,16 +79,10 @@ class ChartViewImpl {
   #emaRestore = null;
 
   /** @type {{ swings: boolean, trends: boolean, cycle: boolean, elliott: boolean, halving: boolean, psychology: boolean }} */
-  #overlayToggles = { ...CHART_OVERLAY_PRESETS.minimal };
+  #overlayToggles = { ...CHART_OVERLAY_PRESETS.clean };
 
   /** @type {HTMLElement|null} */
   #contextBar = null;
-
-  /** @type {HTMLElement|null} */
-  #legendBar = null;
-
-  /** @type {HTMLElement|null} */
-  #psychologyInsight = null;
 
   /** @type {HTMLElement|null} */
   #psychologyChartBg = null;
@@ -139,7 +127,6 @@ class ChartViewImpl {
       el('div', { class: 'chart-setup-legend', id: 'chart-setup-legend', hidden: true }),
       chartContainer,
       ReplayControls.render((action, payload) => this.#handleReplayAction(action, payload)),
-      el('div', { id: 'chart-psychology-insight-mount' }),
     ]);
 
     container.appendChild(el('div', { class: 'chart-view', id: 'chart-view-root' }, [
@@ -151,17 +138,11 @@ class ChartViewImpl {
     ]));
 
     this.#contextBar = mountChartContextBar(chartMain);
-    this.#legendBar = mountChartLegendBar(chartMain);
+    this.#psychologyChartBg = mountPsychologyChartBg(chartContainer);
+    this.#chart.mount(chartContainer);
     const toolbar = container.querySelector('.chart-toolbar');
     if (toolbar) {
       mountOverlayPresets(toolbar, (preset) => this.#applyOverlayPreset(preset));
-    }
-
-    this.#psychologyChartBg = mountPsychologyChartBg(chartContainer);
-    this.#chart.mount(chartContainer);
-    const insightMount = container.querySelector('#chart-psychology-insight-mount');
-    if (insightMount) {
-      this.#psychologyInsight = mountChartPsychologyInsight(insightMount);
     }
     this.#chart.onVisibleRangeChange(() => this.#updateResearchUi());
     this.#wireReplay();
@@ -179,7 +160,6 @@ class ChartViewImpl {
     this.#unsubs = null;
     this.#replay?.destroy();
     this.#chart?.destroy();
-    this.#psychologyInsight = null;
     this.#psychologyChartBg = null;
     this.#replay = null;
     this.#chart = null;
@@ -214,7 +194,6 @@ class ChartViewImpl {
           id: 'chart-timeframe',
           disabled: this.#runnableDatasets.length === 0,
         }, tfOptions),
-        el('button', { class: 'btn btn-sm', id: 'chart-reload' }, ['Reload']),
       ]),
       el('div', { class: 'chart-toolbar-group' }, [
         el('label', { class: 'chart-toggle' }, [
@@ -222,31 +201,33 @@ class ChartViewImpl {
           ' EMA 200',
         ]),
       ]),
-      el('div', { class: 'chart-toolbar-group chart-analysis-toggles' }, [
-        el('span', { class: 'chart-analysis-badge' }, ['T\u00f9y ch\u1ec9nh']),
-        el('label', {}, [
-          el('input', { type: 'checkbox', id: 'chart-overlay-swings' }),
-          ' Swing',
-        ]),
-        el('label', {}, [
-          el('input', { type: 'checkbox', id: 'chart-overlay-trends', checked: true }),
-          ' Xu h\u01b0\u1edbng',
-        ]),
-        el('label', {}, [
-          el('input', { type: 'checkbox', id: 'chart-overlay-cycle', checked: true }),
-          ' Chu k\u1ef3',
-        ]),
-        el('label', {}, [
-          el('input', { type: 'checkbox', id: 'chart-overlay-elliott' }),
-          ' Elliott',
-        ]),
-        el('label', {}, [
-          el('input', { type: 'checkbox', id: 'chart-overlay-halving', checked: true }),
-          ' Halving',
-        ]),
-        el('label', {}, [
-          el('input', { type: 'checkbox', id: 'chart-overlay-psychology', checked: true }),
-          ' T\u00e2m l\u00fd',
+      el('details', { class: 'chart-overlay-details' }, [
+        el('summary', {}, ['L\u1edbp ph\u1ee7']),
+        el('div', { class: 'chart-analysis-toggles' }, [
+          el('label', {}, [
+            el('input', { type: 'checkbox', id: 'chart-overlay-swings' }),
+            ' Swing',
+          ]),
+          el('label', {}, [
+            el('input', { type: 'checkbox', id: 'chart-overlay-trends' }),
+            ' Xu h\u01b0\u1edbng',
+          ]),
+          el('label', {}, [
+            el('input', { type: 'checkbox', id: 'chart-overlay-cycle', checked: true }),
+            ' Chu k\u1ef3',
+          ]),
+          el('label', {}, [
+            el('input', { type: 'checkbox', id: 'chart-overlay-elliott' }),
+            ' Elliott',
+          ]),
+          el('label', {}, [
+            el('input', { type: 'checkbox', id: 'chart-overlay-halving', checked: true }),
+            ' Halving',
+          ]),
+          el('label', {}, [
+            el('input', { type: 'checkbox', id: 'chart-overlay-psychology', checked: true }),
+            ' T\u00e2m l\u00fd',
+          ]),
         ]),
       ]),
       el('div', { class: 'chart-toolbar-group chart-status', id: 'chart-status' }, [
@@ -326,11 +307,6 @@ class ChartViewImpl {
 
     this.#container?.querySelector('#chart-timeframe')?.addEventListener('change', (e) => {
       this.#timeframe = /** @type {HTMLSelectElement} */ (e.target).value;
-      this.#clearSignalContext();
-      this.#loadChart();
-    });
-
-    this.#container?.querySelector('#chart-reload')?.addEventListener('click', () => {
       this.#clearSignalContext();
       this.#loadChart();
     });
@@ -431,15 +407,8 @@ class ChartViewImpl {
       });
     }
 
-    updateChartPsychologyInsight(this.#psychologyInsight, {
-      analysis,
-      cursorTs,
-      rangeFromTs: visible.length > 0 ? visible[0].timestamp : undefined,
-      rangeToTs: visible.length > 0 ? visible[visible.length - 1].timestamp : undefined,
-      visible: showResearch && this.#overlayToggles.psychology,
-    });
-
     const replayState = this.#replay?.getState();
+
     updateChartContextBar(this.#contextBar, {
       candle: visible.length > 0 ? visible[visible.length - 1] : null,
       analysis,
@@ -449,12 +418,6 @@ class ChartViewImpl {
       replayTotal: replayState?.total ?? visible.length,
       visible: showResearch,
     });
-
-    updateChartLegendBar(
-      this.#legendBar,
-      this.#overlayToggles,
-      showResearch ? analysis : null
-    );
   }
 
   async #loadChart() {

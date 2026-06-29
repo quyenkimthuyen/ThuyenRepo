@@ -30,157 +30,106 @@
   position: relative;
 }
 
-/* ── Research context bar (what am I looking at?) ── */
+/* ── Research context bar (compact, above chart) ── */
 .chart-context-bar {
   flex-shrink: 0;
-  padding: var(--space-sm) var(--space-md);
-  background: color-mix(in srgb, var(--color-bg-raised) 92%, var(--color-accent) 8%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: 4px var(--space-md);
+  background: var(--color-bg-raised);
   border-bottom: 1px solid var(--color-border);
+  min-height: 32px;
 }
 
 .chart-context-bar[hidden] {
   display: none !important;
 }
 
-.chart-context-head {
+.chart-context-row {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-md);
-  margin-bottom: var(--space-sm);
-}
-
-.chart-context-datetime {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
-.chart-context-date {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  font-family: var(--font-mono);
-  color: var(--color-text-primary);
-}
-
-.chart-context-progress {
-  font-size: 10px;
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
-}
-
-.chart-context-price {
-  font-size: 1.35rem;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  color: var(--color-text-primary);
-  flex-shrink: 0;
-}
-
-.chart-context-metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-}
-
-.chart-context-metric {
-  flex: 1 1 140px;
-  min-width: 120px;
-  max-width: 220px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  border-left-width: 3px;
-  background: var(--color-bg-base);
-}
-
-.chart-context-metric-muted {
-  border-left-color: var(--color-text-muted);
-}
-
-.chart-context-metric-label {
-  display: block;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-text-muted);
-}
-
-.chart-context-metric-value {
-  display: block;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.25;
-  margin-top: 2px;
-}
-
-.chart-context-metric-hint {
-  display: block;
-  font-size: 10px;
-  color: var(--color-text-secondary);
-  margin-top: 1px;
-}
-
-.chart-context-note {
-  margin: var(--space-sm) 0 0;
+.chart-ctx-chip {
   font-size: 11px;
-  color: var(--color-text-muted);
-}
-
-/* ── Overlay legend ── */
-.chart-legend-bar {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-  padding: 4px var(--space-md);
+  line-height: 1.2;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
   background: var(--color-bg-base);
-  border-bottom: 1px solid var(--color-border);
-  font-size: var(--font-size-xs);
+  white-space: nowrap;
 }
 
-.chart-legend-bar[hidden] {
-  display: none !important;
-}
-
-.chart-legend-bar-title {
+.chart-ctx-chip-date {
+  font-family: var(--font-mono);
   font-weight: 600;
+}
+
+.chart-ctx-chip-price {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.chart-ctx-chip-muted {
   color: var(--color-text-muted);
+  border-color: var(--color-border);
+}
+
+.chart-context-meta {
   flex-shrink: 0;
-}
-
-.chart-legend-bar-items {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-sm);
-}
-
-.chart-legend-block {
-  display: inline-block;
-  width: 14px;
-  height: 10px;
-  border-radius: 2px;
-  border: 1px solid;
-}
-
-.chart-legend-tip {
   font-size: 10px;
+  font-family: var(--font-mono);
   color: var(--color-text-muted);
-  font-style: italic;
+}
+
+.chart-overlay-details {
+  position: relative;
+}
+
+.chart-overlay-details summary {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  list-style: none;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-base);
+}
+
+.chart-overlay-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.chart-overlay-details[open] summary {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.chart-overlay-details .chart-analysis-toggles {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  min-width: 140px;
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.35));
 }
 
 .chart-overlay-presets {
   gap: 4px;
-}
-
-.chart-overlay-presets-label {
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  margin-right: 2px;
 }
 
 .chart-preset-btn.active {
@@ -542,211 +491,20 @@
   bottom: 0;
   pointer-events: auto;
   cursor: default;
-  background: color-mix(in srgb, var(--phase-color) 11%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--phase-color) 16%, transparent);
+  background: color-mix(in srgb, var(--phase-color) 8%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--phase-color) 12%, transparent);
   transition: background 0.15s ease;
 }
 
 .chart-psychology-bg-seg:hover {
-  background: color-mix(in srgb, var(--phase-color) 18%, transparent);
+  background: color-mix(in srgb, var(--phase-color) 14%, transparent);
   z-index: 2;
 }
 
 .chart-psychology-bg-seg.is-at-cursor {
-  background: color-mix(in srgb, var(--phase-color) 17%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-color) 35%, transparent);
+  background: color-mix(in srgb, var(--phase-color) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-color) 28%, transparent);
   z-index: 3;
-}
-
-/* ── Psychology insight card (below replay, not on price chart) ── */
-#chart-psychology-insight-mount {
-  flex-shrink: 0;
-}
-
-.chart-psychology-insight {
-  border-top: 1px solid var(--color-border);
-  background: var(--color-bg-raised);
-  padding: var(--space-sm) var(--space-md);
-}
-
-.chart-psychology-insight[hidden] {
-  display: none !important;
-}
-
-.chart-psychology-insight-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-sm);
-}
-
-.chart-psychology-insight-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
-.chart-psychology-insight-icon {
-  font-size: 14px;
-  line-height: 1;
-}
-
-.chart-psychology-insight-title {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.chart-psychology-insight-link {
-  flex-shrink: 0;
-}
-
-.chart-psychology-insight-body {
-  display: grid;
-  grid-template-columns: minmax(160px, 220px) 1fr;
-  gap: var(--space-md);
-  align-items: start;
-}
-
-.chart-psychology-insight-hero {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-base);
-}
-
-.chart-psychology-insight-kicker {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-text-muted);
-}
-
-.chart-psychology-insight-phase {
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.2;
-}
-
-.chart-psychology-insight-confidence {
-  font-size: 11px;
-  color: var(--color-text-secondary);
-}
-
-.chart-psychology-insight-calendar {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 6px;
-}
-
-.chart-psychology-insight-calendar-label {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-text-muted);
-}
-
-.chart-psychology-insight-calendar-value {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.chart-psychology-insight-desc {
-  margin: 0 0 8px;
-  font-size: 11px;
-  line-height: 1.45;
-  color: var(--color-text-secondary);
-}
-
-.chart-psychology-insight-timeline-wrap {
-  position: relative;
-  padding-top: 14px;
-}
-
-.chart-psychology-insight-timeline-caption {
-  position: absolute;
-  top: 0;
-  left: 0;
-  font-size: 9px;
-  color: var(--color-text-muted);
-}
-
-.chart-psychology-insight-timeline-track {
-  position: relative;
-  height: 28px;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-base);
-}
-
-.chart-psychology-insight-timeline {
-  display: flex;
-  height: 100%;
-}
-
-.chart-psychology-insight-seg {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 0;
-  background: color-mix(in srgb, var(--phase-color) 28%, transparent);
-  border-right: 1px solid color-mix(in srgb, var(--phase-color) 20%, transparent);
-  overflow: hidden;
-}
-
-.chart-psychology-insight-seg.is-active {
-  background: color-mix(in srgb, var(--phase-color) 48%, transparent);
-  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--phase-color) 70%, #fff);
-}
-
-.chart-psychology-insight-seg-label {
-  font-size: 8px;
-  padding: 0 2px;
-  color: var(--color-text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.chart-psychology-insight-marker {
-  position: absolute;
-  top: 14px;
-  bottom: 0;
-  width: 2px;
-  margin-left: -1px;
-  background: #f8fafc;
-  box-shadow: 0 0 4px rgba(248, 250, 252, 0.45);
-  pointer-events: none;
-}
-
-.chart-psychology-insight-range {
-  grid-column: 1 / -1;
-  margin-top: 4px;
-}
-
-.chart-psychology-insight-range-caption {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 9px;
-  color: var(--color-text-muted);
-}
-
-.chart-psychology-insight-range .psychology-history-track-wrap {
-  margin-top: 0;
-}
-
-@media (max-width: 900px) {
-  .chart-psychology-insight-body {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ── Replay Bar ── */

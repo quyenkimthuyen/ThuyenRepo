@@ -1,6 +1,5 @@
 /**
  * Resizable panel manager for the main content area.
- * Supports horizontal and vertical split panels with drag handles.
  * @module ui/PanelManager
  */
 
@@ -8,21 +7,13 @@ import { Config } from '../core/Config.js';
 import { bus, Events } from '../core/EventBus.js';
 import { el, clamp, loadFromStorage, saveToStorage } from '../utils/dom.js';
 import { createLogger } from '../utils/logger.js';
-import DataManager from '../data/DataManager.js';
-import { requestChartFocus } from '../utils/chartNavigation.js';
 
 const log = createLogger('PanelManager');
-
-/** Views where the data watchlist sidebar is shown. */
-const WATCHLIST_VIEWS = new Set(['chart', 'data', 'dashboard', 'cycle', 'trend', 'elliott', 'psychology']);
 
 /**
  * Manages resizable split panels in the main workspace.
  */
 class PanelManagerImpl {
-  /** @type {number} */
-  leftPanelWidth = 280;
-
   /** @type {number} */
   bottomPanelHeight = 200;
 
@@ -32,28 +23,13 @@ class PanelManagerImpl {
    */
   render() {
     const saved = loadFromStorage(Config.STORAGE_KEYS.PANEL_SIZES, {
-      left: Config.LAYOUT.PANEL_MIN_WIDTH + 80,
       bottom: 200,
     });
 
-    this.leftPanelWidth = saved.left ?? 280;
     this.bottomPanelHeight = saved.bottom ?? 200;
 
-    return el('div', { class: 'panel-workspace watchlist-visible', id: 'panel-workspace' }, [
+    return el('div', { class: 'panel-workspace', id: 'panel-workspace' }, [
       el('div', { class: 'panel-row panel-row-top' }, [
-        el('div', {
-          class: 'panel panel-left',
-          id: 'panel-left',
-          style: `width: ${this.leftPanelWidth}px`,
-        }, [
-          el('div', { class: 'panel-header' }, [
-            el('span', { class: 'panel-title' }, ['Watchlist']),
-          ]),
-          el('div', { class: 'panel-body' }, [
-            el('div', { class: 'watchlist', id: 'watchlist' }, []),
-          ]),
-        ]),
-        el('div', { class: 'resize-handle resize-v', 'data-resize': 'left' }),
         el('div', { class: 'panel panel-center', id: 'panel-center' }, [
           el('div', { class: 'panel-header' }, [
             el('span', { class: 'panel-title' }, ['Workspace']),
@@ -75,7 +51,7 @@ class PanelManagerImpl {
             `[${new Date().toLocaleTimeString()}] ${Config.APP_NAME} initialized.`,
           ]),
           el('div', { class: 'log-entry' }, [
-            'Pipeline: Chu kỳ 4 năm → Xu hướng → Elliott → Tâm lý thị trường.',
+            'Pipeline: Chu k\u1ef3 4 n\u0103m \u2192 Xu h\u01b0\u1edbng \u2192 Elliott \u2192 T\u00e2m l\u00fd th\u1ecb tr\u01b0\u1eddng.',
           ]),
         ]),
       ]),
@@ -94,77 +70,22 @@ class PanelManagerImpl {
       handle.addEventListener('mousedown', (e) => this.#startResize(e, handle, workspace));
     });
 
-    this.#refreshWatchlist();
-    bus.on(Events.DATA_UPDATED, () => this.#refreshWatchlist());
-    bus.on(Events.VIEW_ACTIVE, ({ view }) => this.#setWatchlistVisible(view));
-    bus.on(Events.CHART_SIGNAL_REVIEW, ({ active }) => this.#setSignalReviewMode(active));
+    bus.on(Events.VIEW_ACTIVE, ({ view }) => this.#onViewActive(view));
     bus.on(Events.LOG_MESSAGE, ({ message, level, time }) => {
       this.#appendLog(message, level, time);
-    });
-
-    const watchlist = document.getElementById('watchlist');
-    watchlist?.addEventListener('click', (e) => {
-      const item = /** @type {HTMLElement} */ (e.target).closest('.watchlist-item');
-      if (!item?.dataset.symbol) return;
-      requestChartFocus({
-        symbol: item.dataset.symbol,
-        timeframe: item.dataset.timeframe,
-      });
     });
 
     log.info('Panel manager initialized');
   }
 
   /**
-   * Show watchlist only on views that use it (chart navigation, data overview).
+   * Chart view uses full workspace height (no log strip).
    * @param {string} viewId
    */
-  #setWatchlistVisible(viewId) {
+  #onViewActive(viewId) {
     const workspace = document.getElementById('panel-workspace');
     if (!workspace) return;
-    workspace.classList.toggle('watchlist-visible', WATCHLIST_VIEWS.has(viewId));
-  }
-
-  /**
-   * Hide watchlist while reviewing a signal on chart (more room for candles + guide).
-   * @param {boolean} active
-   */
-  #setSignalReviewMode(active) {
-    const workspace = document.getElementById('panel-workspace');
-    if (!workspace) return;
-    workspace.classList.toggle('watchlist-signal-mode', active);
-  }
-
-  /**
-   * Refresh watchlist from stored dataset metadata.
-   */
-  async #refreshWatchlist() {
-    const container = document.getElementById('watchlist');
-    if (!container) return;
-
-    const datasets = await DataManager.listRunnableDatasets();
-
-    container.innerHTML = '';
-
-    if (datasets.length === 0) {
-      container.appendChild(el('div', { class: 'watchlist-empty' }, [
-        'Chưa có dữ liệu — mở Data Manager.',
-      ]));
-      return;
-    }
-
-    for (const meta of datasets) {
-      container.appendChild(el('div', {
-        class: 'watchlist-item',
-        dataset: { symbol: meta.symbol, timeframe: meta.timeframe },
-      }, [
-        el('span', { class: 'watchlist-symbol' }, [meta.symbol]),
-        el('span', { class: 'watchlist-tf' }, [meta.timeframe]),
-        el('span', { class: 'watchlist-status watchlist-status-ok' }, [
-          `${meta.count.toLocaleString()} candles`,
-        ]),
-      ]));
-    }
+    workspace.classList.toggle('chart-fullbleed', viewId === 'chart');
   }
 
   /**
@@ -191,9 +112,7 @@ class PanelManagerImpl {
   #startResize(e, handle, workspace) {
     e.preventDefault();
     const direction = handle.dataset.resize;
-    const startX = e.clientX;
     const startY = e.clientY;
-    const startLeft = this.leftPanelWidth;
     const startBottom = this.bottomPanelHeight;
 
     document.body.classList.add('resizing');
@@ -202,17 +121,6 @@ class PanelManagerImpl {
      * @param {MouseEvent} moveEvent
      */
     const onMove = (moveEvent) => {
-      if (direction === 'left') {
-        const delta = moveEvent.clientX - startX;
-        this.leftPanelWidth = clamp(
-          startLeft + delta,
-          Config.LAYOUT.PANEL_MIN_WIDTH,
-          workspace.clientWidth * 0.5
-        );
-        const panel = workspace.querySelector('#panel-left');
-        if (panel) panel.style.width = `${this.leftPanelWidth}px`;
-      }
-
       if (direction === 'bottom') {
         const delta = startY - moveEvent.clientY;
         this.bottomPanelHeight = clamp(
@@ -225,7 +133,6 @@ class PanelManagerImpl {
       }
 
       bus.emit(Events.PANEL_RESIZE, {
-        left: this.leftPanelWidth,
         bottom: this.bottomPanelHeight,
       });
     };
@@ -235,7 +142,6 @@ class PanelManagerImpl {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       saveToStorage(Config.STORAGE_KEYS.PANEL_SIZES, {
-        left: this.leftPanelWidth,
         bottom: this.bottomPanelHeight,
       });
     };

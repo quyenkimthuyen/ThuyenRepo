@@ -1,12 +1,11 @@
 /**
- * Long-term BTC chart context bar, overlay presets, and legend.
+ * Long-term BTC chart context bar and overlay presets.
  * @module ui/ChartResearchUi
  */
 
 import { el } from '../utils/dom.js';
 import { formatTimestamp } from '../data/TimeframeUtils.js';
 import { psychologyBandAtTime } from '../analysis/PsychologyBands.js';
-import { PSYCHOLOGY_PHASES } from '../analysis/BtcCycleConfig.js';
 
 /**
  * @typedef {import('../analysis/LongTermAnalysisEngine.js').LongTermAnalysisResult} AnalysisResult
@@ -16,11 +15,11 @@ import { PSYCHOLOGY_PHASES } from '../analysis/BtcCycleConfig.js';
 
 /** @type {Record<string, OverlayToggles>} */
 export const CHART_OVERLAY_PRESETS = {
-  minimal: {
-    swings: false, trends: true, cycle: true, elliott: false, halving: true, psychology: true,
-  },
-  cycle: {
+  clean: {
     swings: false, trends: false, cycle: true, elliott: false, halving: true, psychology: true,
+  },
+  trend: {
+    swings: false, trends: true, cycle: true, elliott: false, halving: true, psychology: true,
   },
   full: {
     swings: true, trends: true, cycle: true, elliott: true, halving: true, psychology: true,
@@ -41,20 +40,6 @@ export function mountChartContextBar(parent) {
   const bar = el('div', {
     class: 'chart-context-bar',
     id: 'chart-context-bar',
-    hidden: true,
-  });
-  parent.insertBefore(bar, parent.firstChild);
-  return bar;
-}
-
-/**
- * @param {HTMLElement} parent
- * @returns {HTMLElement}
- */
-export function mountChartLegendBar(parent) {
-  const bar = el('div', {
-    class: 'chart-legend-bar',
-    id: 'chart-legend-bar',
     hidden: true,
   });
   const container = parent.querySelector('.chart-container');
@@ -105,151 +90,53 @@ export function updateChartContextBar(bar, opts) {
   const cycle = analysis.currentCycle;
   const trend = analysis.overallTrend;
   const psych = analysis.psychology;
-  const calendar = psychologyBandAtTime(
-    candle.timestamp,
-    cycle.nextHalvingEstimate
-  );
-  const ext = analysis.cycleExtremes;
-  const dd = ext?.drawdownFromHighPct;
+  const calendar = psychologyBandAtTime(candle.timestamp, cycle.nextHalvingEstimate);
+  const dd = analysis.cycleExtremes?.drawdownFromHighPct;
 
-  bar.appendChild(el('div', { class: 'chart-context-head' }, [
-    el('div', { class: 'chart-context-datetime' }, [
-      el('span', { class: 'chart-context-date' }, [formatTimestamp(candle.timestamp)]),
-      el('span', { class: 'chart-context-progress' }, [
-        `N\u1ebfn ${replayIndex.toLocaleString()} / ${replayTotal.toLocaleString()}`,
-      ]),
+  const chips = [
+    el('span', { class: 'chart-ctx-chip chart-ctx-chip-date', title: 'Th\u1eddi \u0111i\u1ec3m replay' }, [
+      formatTimestamp(candle.timestamp),
     ]),
-    el('div', { class: 'chart-context-price' }, [formatBtcPrice(candle.close)]),
-  ]));
-
-  const metrics = el('div', { class: 'chart-context-metrics' }, [
-    el('div', {
-      class: 'chart-context-metric',
-      style: `border-color:${cycle.phaseColor}`,
+    el('span', { class: 'chart-ctx-chip chart-ctx-chip-price' }, [formatBtcPrice(candle.close)]),
+    el('span', {
+      class: 'chart-ctx-chip',
+      style: `border-color:${cycle.phaseColor};color:${cycle.phaseColor}`,
+      title: cycle.phaseLabel,
     }, [
-      el('span', { class: 'chart-context-metric-label' }, ['Chu k\u1ef3 halving']),
-      el('span', { class: 'chart-context-metric-value' }, [
-        `${cycle.halvingLabel.replace('Halving ', 'H')} \u00b7 ${cycle.progressPct.toFixed(1)}%`,
-      ]),
-      el('span', { class: 'chart-context-metric-hint' }, [cycle.phaseLabel]),
+      `${cycle.halvingLabel.replace('Halving ', 'H')} \u00b7 ${cycle.progressPct.toFixed(0)}%`,
     ]),
-    el('div', {
-      class: 'chart-context-metric',
+    el('span', {
+      class: 'chart-ctx-chip',
       style: `border-color:${trend.direction === 'uptrend' ? '#22c55e' : trend.direction === 'downtrend' ? '#ef4444' : '#94a3b8'}`,
     }, [
-      el('span', { class: 'chart-context-metric-label' }, ['Xu h\u01b0\u1edbng']),
-      el('span', { class: 'chart-context-metric-value' }, [
-        TREND_VI[trend.direction] ?? trend.direction,
-      ]),
-      el('span', { class: 'chart-context-metric-hint' }, [
-        `${trend.confidence}% tin c\u1eady`,
-      ]),
+      `${TREND_VI[trend.direction] ?? trend.direction}`,
     ]),
-  ]);
+  ];
 
   if (toggles.psychology) {
-    metrics.appendChild(el('div', {
-      class: 'chart-context-metric',
-      style: `border-color:${psych.color}`,
+    chips.push(el('span', {
+      class: 'chart-ctx-chip',
+      style: `border-color:${psych.color};color:${psych.color}`,
+      title: calendar ? `L\u1ecbch: ${calendar.phase.labelVi}` : psych.description,
     }, [
-      el('span', { class: 'chart-context-metric-label' }, ['T\u00e2m l\u00fd theo gi\u00e1']),
-      el('span', { class: 'chart-context-metric-value', style: `color:${psych.color}` }, [
-        psych.labelVi,
-      ]),
-      el('span', { class: 'chart-context-metric-hint' }, [
-        calendar
-          ? `L\u1ecbch: ${calendar.phase.labelVi}`
-          : `${psych.confidence}% tin c\u1eady`,
-      ]),
+      psych.labelVi,
     ]));
   }
 
-  if (dd != null && Math.abs(dd) >= 5) {
-    metrics.appendChild(el('div', { class: 'chart-context-metric chart-context-metric-muted' }, [
-      el('span', { class: 'chart-context-metric-label' }, ['T\u1eeb \u0111\u1ec9nh chu k\u1ef3']),
-      el('span', { class: 'chart-context-metric-value' }, [
-        `${dd > 0 ? '+' : ''}${dd.toFixed(1)}%`,
-      ]),
-      el('span', { class: 'chart-context-metric-hint' }, [
-        ext.cycleHigh != null ? `\u0110\u1ec9nh ~${formatBtcPrice(ext.cycleHigh)}` : '',
-      ]),
+  if (dd != null && Math.abs(dd) >= 8) {
+    chips.push(el('span', {
+      class: 'chart-ctx-chip chart-ctx-chip-muted',
+      title: 'Drawdown t\u1eeb \u0111\u1ec9nh chu k\u1ef3',
+    }, [
+      `${dd.toFixed(0)}% \u0111\u1ec9nh CK`,
     ]));
   }
 
-  bar.appendChild(metrics);
-
-  if (timeframe === 'H4') {
-    bar.appendChild(el('p', { class: 'chart-context-note' }, [
-      'Khuy\u1ebfn ngh\u1ecb W ho\u1eb7c D1 \u0111\u1ec3 \u0111\u1ecdc chu k\u1ef3 v\u00e0 t\u00e2m l\u00fd d\u00e0i h\u1ea1n.',
-    ]));
-  }
-}
-
-/**
- * @param {HTMLElement} bar
- * @param {OverlayToggles} toggles
- * @param {AnalysisResult|null} analysis
- */
-export function updateChartLegendBar(bar, toggles, analysis) {
-  if (!bar) return;
-
-  const anyOn = Object.values(toggles).some(Boolean);
-  if (!anyOn || !analysis) {
-    bar.hidden = true;
-    return;
-  }
-
-  bar.hidden = false;
-  bar.innerHTML = '';
-
-  const items = [];
-
-  if (toggles.cycle) {
-    items.push(legendItem('#3b82f6', 'line', 'V\u00f9ng chu k\u1ef3 4 n\u0103m'));
-  }
-  if (toggles.trends) {
-    items.push(legendItem('#22c55e', 'line', 'Xu h\u01b0\u1edbng t\u0103ng'));
-    items.push(legendItem('#ef4444', 'line', 'Xu h\u01b0\u1edbng gi\u1ea3m'));
-  }
-  if (toggles.swings) {
-    items.push(legendItem('#f59e0b', 'dot', '\u0110\u1ec9nh swing'));
-    items.push(legendItem('#3b82f6', 'dot', '\u0110\u00e1y swing'));
-  }
-  if (toggles.elliott) {
-    items.push(legendItem('#8b5cf6', 'dot', 'S\u00f3ng Elliott'));
-  }
-  if (toggles.halving) {
-    items.push(legendItem('#a855f7', 'dot', 'M\u1ed1c Halving'));
-  }
-  if (toggles.psychology) {
-    const active = PSYCHOLOGY_PHASES.find((p) => p.id === analysis.psychology.phaseId);
-    items.push(legendItem(active?.color ?? '#86efac', 'block', 'V\u00f9ng t\u00e2m l\u00fd (l\u1ecbch halving)'));
-    items.push(el('span', { class: 'chart-legend-tip' }, [
-      'Di chu\u1ed9t v\u00f9ng m\u00e0u tr\u00ean chart \u0111\u1ec3 xem giai \u0111o\u1ea1n',
-    ]));
-  }
-
-  bar.appendChild(el('span', { class: 'chart-legend-bar-title' }, ['\u00dd ngh\u0129a l\u1edbp ph\u1ee7']));
-  bar.appendChild(el('div', { class: 'chart-legend-bar-items' }, items));
-}
-
-/**
- * @param {string} color
- * @param {'line'|'dot'|'block'} kind
- * @param {string} label
- * @returns {HTMLElement}
- */
-function legendItem(color, kind, label) {
-  const swatch = kind === 'line'
-    ? el('span', { class: 'chart-legend-swatch', style: `background:${color}` })
-    : kind === 'block'
-      ? el('span', {
-        class: 'chart-legend-block',
-        style: `background:color-mix(in srgb, ${color} 40%, transparent);border-color:${color}`,
-      })
-      : el('span', { class: 'chart-legend-dot', style: `background:${color}` });
-
-  return el('span', { class: 'chart-legend-item' }, [swatch, label]);
+  bar.appendChild(el('div', { class: 'chart-context-row' }, chips));
+  bar.appendChild(el('span', { class: 'chart-context-meta' }, [
+    `N\u1ebfn ${replayIndex.toLocaleString()}/${replayTotal.toLocaleString()}`,
+    timeframe === 'H4' ? '\u00b7 N\u00ean d\u00f9ng W/D1' : '',
+  ].filter(Boolean).join(' ')));
 }
 
 /**
@@ -258,37 +145,36 @@ function legendItem(color, kind, label) {
  */
 export function mountOverlayPresets(toolbar, onPreset) {
   const group = el('div', { class: 'chart-toolbar-group chart-overlay-presets' }, [
-    el('span', { class: 'chart-overlay-presets-label' }, ['L\u1edbp ph\u1ee7']),
     el('button', {
       type: 'button',
       class: 'btn btn-sm chart-preset-btn active',
-      id: 'chart-preset-minimal',
-      title: 'Chu k\u1ef3 + xu h\u01b0\u1edbng + halving + t\u00e2m l\u00fd',
-    }, ['G\u1ecdn']),
+      id: 'chart-preset-clean',
+      title: 'Chu k\u1ef3 + halving + t\u00e2m l\u00fd',
+    }, ['S\u1ea1ch']),
     el('button', {
       type: 'button',
       class: 'btn btn-sm chart-preset-btn',
-      id: 'chart-preset-cycle',
-      title: 'Ch\u1ec9 chu k\u1ef3, halving v\u00e0 t\u00e2m l\u00fd',
-    }, ['Chu k\u1ef3']),
+      id: 'chart-preset-trend',
+      title: 'Th\u00eam \u0111\u01b0\u1eddng xu h\u01b0\u1edbng',
+    }, ['+ Xu h\u01b0\u1edbng']),
     el('button', {
       type: 'button',
       class: 'btn btn-sm chart-preset-btn',
       id: 'chart-preset-full',
-      title: 'B\u1eadt m\u1ecdi l\u1edbp ph\u00e2n t\u00edch',
+      title: 'Swing + Elliott + t\u1ea5t c\u1ea3',
     }, ['\u0110\u1ea7y \u0111\u1ee7']),
   ]);
 
-  const toggles = toolbar.querySelector('.chart-analysis-toggles');
-  if (toggles) {
-    toolbar.insertBefore(group, toggles);
+  const emaGroup = toolbar.querySelector('.chart-toolbar-group:has(#chart-ema)');
+  if (emaGroup?.nextSibling) {
+    toolbar.insertBefore(group, emaGroup.nextSibling);
   } else {
     toolbar.appendChild(group);
   }
 
   for (const [id, key] of [
-    ['chart-preset-minimal', 'minimal'],
-    ['chart-preset-cycle', 'cycle'],
+    ['chart-preset-clean', 'clean'],
+    ['chart-preset-trend', 'trend'],
     ['chart-preset-full', 'full'],
   ]) {
     group.querySelector(`#${id}`)?.addEventListener('click', () => {
