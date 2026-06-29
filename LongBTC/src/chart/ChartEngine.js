@@ -490,6 +490,26 @@ export class ChartEngine {
   }
 
   /**
+   * Plot area width (excludes right price scale).
+   * @returns {number}
+   */
+  getPlotWidth() {
+    const total = this.getChartWidth();
+    if (!this.#chart || total <= 0) return total;
+    const scaleW = this.#chart.priceScale('right').width();
+    return Math.max(0, total - scaleW);
+  }
+
+  /**
+   * @returns {{ from: number, to: number }|null} milliseconds
+   */
+  getVisibleTimeRangeMs() {
+    const range = this.#chart?.timeScale().getVisibleRange();
+    if (!range) return null;
+    return { from: range.from * 1000, to: range.to * 1000 };
+  }
+
+  /**
    * @param {() => void} callback
    */
   onVisibleRangeChange(callback) {

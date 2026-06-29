@@ -12,6 +12,10 @@ import {
   mountChartPsychologyInsight,
   updateChartPsychologyInsight,
 } from './ChartPsychologyInsight.js';
+import {
+  mountPsychologyChartBg,
+  updatePsychologyChartBg,
+} from '../chart/PsychologyChartOverlay.js';
 import { ReplayEngine } from '../replay/ReplayEngine.js';
 import { ReplayControls } from './ReplayControls.js';
 import { createHelpButton } from '../utils/contextHelp.js';
@@ -76,6 +80,9 @@ class ChartViewImpl {
   /** @type {HTMLElement|null} */
   #psychologyInsight = null;
 
+  /** @type {HTMLElement|null} */
+  #psychologyChartBg = null;
+
   /**
    * Mount the chart view.
    * @param {HTMLElement} container
@@ -128,11 +135,13 @@ class ChartViewImpl {
       ]),
     ]));
 
+    this.#psychologyChartBg = mountPsychologyChartBg(chartContainer);
     this.#chart.mount(chartContainer);
     const insightMount = container.querySelector('#chart-psychology-insight-mount');
     if (insightMount) {
       this.#psychologyInsight = mountChartPsychologyInsight(insightMount);
     }
+    this.#chart.onVisibleRangeChange(() => this.#updatePsychologyUi());
     this.#wireReplay();
     this.#bindEvents();
     await this.#loadChart();
@@ -149,6 +158,7 @@ class ChartViewImpl {
     this.#replay?.destroy();
     this.#chart?.destroy();
     this.#psychologyInsight = null;
+    this.#psychologyChartBg = null;
     this.#replay = null;
     this.#chart = null;
 
@@ -248,7 +258,7 @@ class ChartViewImpl {
       if (this.#symbol === 'BTCUSD' && visible.length >= 20 && (fullRefresh || index % 3 === 0)) {
         this.#runChartAnalysis(visible);
       } else {
-        this.#updatePsychologyInsight();
+        this.#updatePsychologyUi();
       }
     });
 
@@ -275,7 +285,7 @@ class ChartViewImpl {
     }));
 
     unsubs.push(bus.on(Events.PANEL_RESIZE, () => {
-      this.#updatePsychologyInsight();
+      this.#updatePsychologyUi();
     }));
 
     unsubs.push(bus.on(Events.DATA_UPDATED, async () => {
@@ -358,28 +368,44 @@ class ChartViewImpl {
       showHalving: this.#overlayToggles.halving,
     });
     this.#renderAnalysisHud(analysis);
-    this.#updatePsychologyInsight();
+    this.#updatePsychologyUi();
   }
 
-  /** Update psychology insight card from last analysis. */
-  #updatePsychologyInsight() {
-    if (!this.#psychologyInsight) return;
-
+  /** Sync psychology chart zones + insight card. */
+  #updatePsychologyUi() {
     const analysis = getLastAnalysis();
     const visible = this.#replay?.getVisibleCandles() ?? [];
     const cursorTs = visible.length > 0
       ? visible[visible.length - 1].timestamp
       : Date.now();
 
+    const viewport = this.#chart?.getVisibleTimeRangeMs();
+    const rangeFromTs = viewport?.from ?? visible[0]?.timestamp ?? cursorTs;
+    const rangeToTs = viewport?.to ?? visible[visible.length - 1]?.timestamp ?? cursorTs;
+
+    const showPsychology = this.#overlayToggles.psychology
+      && this.#symbol === 'BTCUSD'
+      && !this.#activeSignal
+      && analysis != null;
+
+    if (this.#psychologyChartBg && this.#chart) {
+      updatePsychologyChartBg(this.#psychologyChartBg, {
+        timeScale: this.#chart.getTimeScale(),
+        plotWidth: this.#chart.getPlotWidth(),
+        analysis,
+        rangeFromTs,
+        rangeToTs,
+        cursorTs,
+        visible: showPsychology,
+      });
+    }
+
     updateChartPsychologyInsight(this.#psychologyInsight, {
       analysis,
       cursorTs,
       rangeFromTs: visible.length > 0 ? visible[0].timestamp : undefined,
       rangeToTs: visible.length > 0 ? visible[visible.length - 1].timestamp : undefined,
-      visible: this.#overlayToggles.psychology
-        && this.#symbol === 'BTCUSD'
-        && !this.#activeSignal
-        && analysis != null,
+      visible: showPsychology,
     });
   }
 
