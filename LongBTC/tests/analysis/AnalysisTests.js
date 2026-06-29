@@ -14,7 +14,7 @@ import {
   buildChartPhaseBandsForRange,
   psychologyBandAtTime,
 } from '../../src/analysis/PsychologyBands.js';
-import { buildChartPsychologyTimeline } from '../../src/analysis/PsychologyCycleMapper.js';
+import { buildChartPsychologyTimeline, detectCyclePeakPct } from '../../src/analysis/PsychologyCycleMapper.js';
 
 const s = createSuite('Analysis Engine');
 header('Analysis Engine');
@@ -114,6 +114,48 @@ function buildSyntheticCandles(count) {
   const parityA = buildChartPhaseBandsForRange(t1, t2, end);
   const parityB = buildChartPhaseBandsForRange(t1, t2, end);
   s.assert('AC-13: timeframe-independent bands', JSON.stringify(parityA) === JSON.stringify(parityB));
+
+  /** Synthetic H4: rally then >=10% correction — post-peak bear psychology on chart. */
+  function buildH4PostPeakCandles() {
+    const candles = [];
+    let ts = Date.parse('2024-04-20T00:00:00Z');
+    let price = 65000;
+    const week = 7 * 24 * 60 * 60 * 1000;
+    for (let i = 0; i < 44; i++) {
+      price = Math.min(108000, price * 1.028);
+      candles.push({
+        timestamp: ts,
+        open: price * 0.99,
+        high: price,
+        low: price * 0.97,
+        close: price * 0.995,
+      });
+      ts += week;
+    }
+    for (let i = 0; i < 16; i++) {
+      price = Math.max(78000, price * 0.965);
+      candles.push({
+        timestamp: ts,
+        open: price * 1.01,
+        high: price * 1.015,
+        low: price * 0.985,
+        close: price,
+      });
+      ts += week;
+    }
+    return candles;
+  }
+
+  const h4Mock = buildH4PostPeakCandles();
+  const h4End = Date.parse('2028-04-01T00:00:00Z');
+  const h4Start = Date.parse('2024-04-20T00:00:00Z');
+  const peakPct = detectCyclePeakPct(h4Start, h4End, h4Mock);
+  s.assert('AC-18: detects cycle peak after correction', peakPct != null && peakPct > 10 && peakPct < 45);
+
+  const lastMock = h4Mock[h4Mock.length - 1];
+  const postPeakBand = psychologyBandAtTime(lastMock.timestamp, h4End, h4Mock);
+  s.assert('AC-18b: post-correction not bull phase', !['excitement', 'thrill', 'euphoria', 'optimism'].includes(postPeakBand?.phase.id ?? ''));
+  s.assert('AC-18c: post-correction bear phase', ['anxiety', 'denial', 'fear', 'capitulation', 'depression'].includes(postPeakBand?.phase.id ?? ''));
 }
 
 process.exit(footer(s.finish()));

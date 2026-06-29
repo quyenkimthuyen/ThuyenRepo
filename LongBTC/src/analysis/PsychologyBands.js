@@ -4,7 +4,7 @@
  */
 
 import { BTC_HALVING_EVENTS, CYCLE_LENGTH_DAYS, CYCLE_PHASE_RANGES } from './BtcCycleConfig.js';
-import { buildChartPsychologyTimeline } from './PsychologyCycleMapper.js';
+import { buildChartPsychologyTimeline, resolveChartPsychologyTimeline } from './PsychologyCycleMapper.js';
 
 /**
  * @typedef {{
@@ -115,13 +115,14 @@ function cycleBandsForHalvingWindow(halvingStartMs, halvingEndMs, halvingLabel, 
  * @param {number} halvingEndMs
  * @param {string} halvingLabel
  * @param {number} cycleIndex
+ * @param {import('../data/Candle.js').Candle[]} [candles]
  * @returns {PsychologyBand[]}
  */
-function psychologyBandsForHalvingWindow(halvingStartMs, halvingEndMs, halvingLabel, cycleIndex) {
+function psychologyBandsForHalvingWindow(halvingStartMs, halvingEndMs, halvingLabel, cycleIndex, candles = []) {
   const span = cycleSpanMs(halvingStartMs, halvingEndMs);
   if (span <= 0) return [];
 
-  return buildChartPsychologyTimeline().map((item) => ({
+  return resolveChartPsychologyTimeline(halvingStartMs, halvingEndMs, candles).map((item) => ({
     kind: 'psychology',
     phase: item.phase,
     startTime: halvingStartMs + (item.startPct / 100) * span,
@@ -170,11 +171,13 @@ export function buildChartPhaseBandsForRange(fromTs, toTs, currentCycleEnd) {
  * @param {number} fromTs
  * @param {number} toTs
  * @param {number} [currentCycleEnd]
- * @param {{ sequential?: boolean }} [_options]
+ * @param {{ candles?: import('../data/Candle.js').Candle[] }} [options]
  * @returns {PsychologyBand[]}
  */
-export function buildPsychologyBandsForRange(fromTs, toTs, currentCycleEnd, _options = {}) {
+export function buildPsychologyBandsForRange(fromTs, toTs, currentCycleEnd, options = {}) {
   if (!Number.isFinite(fromTs) || !Number.isFinite(toTs) || toTs <= fromTs) return [];
+
+  const candles = options.candles ?? [];
 
   /** @type {PsychologyBand[]} */
   const bands = [];
@@ -183,23 +186,27 @@ export function buildPsychologyBandsForRange(fromTs, toTs, currentCycleEnd, _opt
     const halving = BTC_HALVING_EVENTS[i];
     const end = halvingWindowEndMs(i, currentCycleEnd);
     if (end <= fromTs || halving.timestamp >= toTs) continue;
-    bands.push(...psychologyBandsForHalvingWindow(halving.timestamp, end, halving.label, i + 1));
+    bands.push(
+      ...psychologyBandsForHalvingWindow(halving.timestamp, end, halving.label, i + 1, candles)
+    );
   }
 
   return bands;
 }
 
 /**
- * Calendar psychology phase at a timestamp (chart timeline).
+ * Psychology phase band at a timestamp (price-aware when candles provided).
  * @param {number} timestampMs
  * @param {number} currentCycleEnd
+ * @param {import('../data/Candle.js').Candle[]} [candles]
  * @returns {PsychologyBand|undefined}
  */
-export function psychologyBandAtTime(timestampMs, currentCycleEnd) {
+export function psychologyBandAtTime(timestampMs, currentCycleEnd, candles = []) {
   const bands = buildPsychologyBandsForRange(
     timestampMs - 1,
     timestampMs + 1,
-    currentCycleEnd
+    currentCycleEnd,
+    { candles }
   );
   return bands.find((b) => timestampMs >= b.startTime && timestampMs < b.endTime);
 }
@@ -208,6 +215,7 @@ export function psychologyBandAtTime(timestampMs, currentCycleEnd) {
  * Psychology calendar bands grouped by halving cycle (for history UI).
  * @param {number} [currentCycleEnd]
  * @param {number} [asOf=Date.now()]
+ * @param {import('../data/Candle.js').Candle[]} [candles]
  * @returns {Array<{
  *   halvingLabel: string,
  *   cycleIndex: number,
@@ -218,7 +226,7 @@ export function psychologyBandAtTime(timestampMs, currentCycleEnd) {
  *   progressPct: number,
  * }>}
  */
-export function buildPsychologyCycleHistory(currentCycleEnd, asOf = Date.now()) {
+export function buildPsychologyCycleHistory(currentCycleEnd, asOf = Date.now(), candles = []) {
   /** @type {ReturnType<typeof buildPsychologyCycleHistory>} */
   const cycles = [];
 
@@ -237,7 +245,7 @@ export function buildPsychologyCycleHistory(currentCycleEnd, asOf = Date.now()) 
       cycleIndex: i + 1,
       startTime: halving.timestamp,
       endTime: end,
-      bands: psychologyBandsForHalvingWindow(halving.timestamp, end, halving.label, i + 1),
+      bands: psychologyBandsForHalvingWindow(halving.timestamp, end, halving.label, i + 1, candles),
       isCurrent,
       progressPct: isCurrent ? progressPct : (asOf >= end ? 100 : 0),
     });

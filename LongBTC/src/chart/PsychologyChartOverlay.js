@@ -174,7 +174,8 @@ export function updatePsychologyChartBg(bg, opts) {
   const bands = buildPsychologyBandsForRange(
     bandFrom,
     bandTo,
-    currentCycleEnd
+    currentCycleEnd,
+    { candles }
   );
 
   bg.hidden = false;

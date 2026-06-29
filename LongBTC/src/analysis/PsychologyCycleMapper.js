@@ -219,6 +219,104 @@ export function buildChartPsychologyTimeline() {
 }
 
 /**
+ * Psychology windows anchored to the cycle ATH when price has corrected meaningfully.
+ * Bull phases run halving ? peak; bear/recovery phases run peak ? next halving.
+ * @param {number} peakPct progress (0–100) where cycle high occurred
+ * @returns {ReturnType<typeof buildChartPsychologyTimeline>}
+ */
+export function buildAdaptiveChartPsychologyTimeline(peakPct) {
+  const byId = Object.fromEntries(PSYCHOLOGY_PHASES.map((p) => [p.id, p]));
+  const peak = Math.max(14, Math.min(50, peakPct));
+  const tail = 100 - peak;
+
+  /** @type {Array<[string, number, number]>} */
+  const bullFracs = [
+    ['hope', 0, 0.12],
+    ['relief', 0.12, 0.22],
+    ['optimism', 0.22, 0.40],
+    ['excitement', 0.40, 0.58],
+    ['thrill', 0.58, 0.78],
+    ['euphoria', 0.78, 1.0],
+  ];
+  /** @type {Array<[string, number, number]>} */
+  const bearFracs = [
+    ['anxiety', 0, 0.12],
+    ['denial', 0.12, 0.26],
+    ['fear', 0.26, 0.40],
+    ['capitulation', 0.40, 0.55],
+    ['depression', 0.55, 0.70],
+    ['hope', 0.70, 0.85],
+    ['relief', 0.85, 1.0],
+  ];
+
+  /** @type {Array<[string, number, number]>} */
+  const windows = [];
+  for (const [id, a, b] of bullFracs) {
+    windows.push([id, peak * a, peak * b]);
+  }
+  for (const [id, a, b] of bearFracs) {
+    windows.push([id, peak + tail * a, peak + tail * b]);
+  }
+
+  return windows.map(([id, startPct, endPct]) => ({
+    phase: byId[id],
+    startPct,
+    endPct,
+  }));
+}
+
+/**
+ * Detect cycle ATH % when price has fallen enough to leave bull psychology.
+ * @param {number} halvingStartMs
+ * @param {number} halvingEndMs
+ * @param {import('../data/Candle.js').Candle[]} [candles]
+ * @returns {number|null}
+ */
+export function detectCyclePeakPct(halvingStartMs, halvingEndMs, candles = []) {
+  if (!candles.length) return null;
+
+  const slice = candles.filter(
+    (c) => c.timestamp >= halvingStartMs && c.timestamp < halvingEndMs
+  );
+  if (slice.length < 12) return null;
+
+  let peakHigh = -Infinity;
+  let peakTs = slice[0].timestamp;
+  for (const c of slice) {
+    if (c.high > peakHigh) {
+      peakHigh = c.high;
+      peakTs = c.timestamp;
+    }
+  }
+
+  const last = slice[slice.length - 1];
+  if (peakHigh <= 0) return null;
+
+  const drawdown = (last.close - peakHigh) / peakHigh;
+  if (drawdown > -0.10) return null;
+
+  const span = halvingEndMs - halvingStartMs;
+  if (span <= 0) return null;
+
+  const peakPct = ((peakTs - halvingStartMs) / span) * 100;
+  return Math.max(12, Math.min(48, peakPct));
+}
+
+/**
+ * Chart/history psychology windows for a halving cycle.
+ * @param {number} halvingStartMs
+ * @param {number} halvingEndMs
+ * @param {import('../data/Candle.js').Candle[]} [candles]
+ * @returns {ReturnType<typeof buildChartPsychologyTimeline>}
+ */
+export function resolveChartPsychologyTimeline(halvingStartMs, halvingEndMs, candles = []) {
+  const peakPct = detectCyclePeakPct(halvingStartMs, halvingEndMs, candles);
+  return peakPct != null
+    ? buildAdaptiveChartPsychologyTimeline(peakPct)
+    : buildChartPsychologyTimeline();
+}
+
+/**
  * Calendar psychology phase at progress through a halving cycle (0-1).
  * @param {number} progress
  * @returns {typeof PSYCHOLOGY_PHASES[number]|undefined}

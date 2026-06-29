@@ -77,11 +77,13 @@ function formatBtcPrice(price) {
  *   replayTotal: number,
  *   visible: boolean,
  *   inspecting?: boolean,
+ *   candles?: Candle[],
  * }} opts
  */
 export function updateChartContextBar(bar, opts) {
   const {
     candle, analysis, toggles, timeframe, replayIndex, replayTotal, visible, inspecting,
+    candles = [],
   } = opts;
   if (!bar) return;
 
@@ -98,7 +100,7 @@ export function updateChartContextBar(bar, opts) {
   const cycle = analysis.currentCycle;
   const trend = analysis.overallTrend;
   const psych = analysis.psychology;
-  const calendar = psychologyBandAtTime(candle.timestamp, cycle.nextHalvingEstimate);
+  const calendar = psychologyBandAtTime(candle.timestamp, cycle.nextHalvingEstimate, candles);
   const dd = analysis.cycleExtremes?.drawdownFromHighPct;
 
   const chips = [

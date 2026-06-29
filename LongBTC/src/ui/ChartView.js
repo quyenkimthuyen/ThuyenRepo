@@ -463,6 +463,7 @@ class ChartViewImpl {
         logical?.from ?? '',
         logical?.to ?? '',
         plotWidth,
+        visible.length,
       ].join('|');
 
       const rebuildGeometry = !psychologyHighlightOnly
@@ -524,6 +525,7 @@ class ChartViewImpl {
       replayTotal: replayState?.total ?? visible.length,
       visible: showResearch,
       inspecting: focus != null,
+      candles: visible,
     });
   }
 
