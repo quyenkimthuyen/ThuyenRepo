@@ -76,7 +76,34 @@ function segmentPx(x1, x2, plotWidth) {
 }
 
 /**
- * Band segment in pane pixels; extends to edges when times exceed loaded bars.
+ * Visible time bounds in ms (prefers chart time scale; falls back to candle indices).
+ * @param {import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null} timeScale
+ * @param {import('../data/Candle.js').Candle[]} candles
+ * @param {number} fallbackFrom
+ * @param {number} fallbackTo
+ * @returns {{ from: number, to: number }}
+ */
+function viewBoundsMs(timeScale, candles, fallbackFrom, fallbackTo) {
+  const visibleRange = timeScale?.getVisibleRange?.();
+  if (visibleRange) {
+    return { from: visibleRange.from * 1000, to: visibleRange.to * 1000 };
+  }
+
+  const logical = timeScale?.getVisibleLogicalRange?.();
+  if (logical && candles.length > 0) {
+    const fromIdx = Math.max(0, Math.min(candles.length - 1, Math.floor(logical.from)));
+    const toIdx = Math.max(0, Math.min(candles.length - 1, Math.ceil(logical.to)));
+    return {
+      from: candles[fromIdx].timestamp,
+      to: candles[toIdx].timestamp,
+    };
+  }
+
+  return { from: fallbackFrom, to: fallbackTo };
+}
+
+/**
+ * Band segment in pane pixels; clip to visible window using time intersection.
  * @param {import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null} timeScale
  * @param {{ startTime: number, endTime: number }} band
  * @param {import('../data/Candle.js').Candle[]} candles
@@ -86,24 +113,24 @@ function segmentPx(x1, x2, plotWidth) {
  * @returns {{ left: number, width: number }|null}
  */
 function bandSegmentPx(timeScale, band, candles, paneWidth, viewFromMs, viewToMs) {
+  if (band.endTime <= viewFromMs || band.startTime >= viewToMs) return null;
+
+  const clipStart = Math.max(band.startTime, viewFromMs);
+  const clipEnd = Math.min(band.endTime, viewToMs);
   const lastTs = candles.length > 0 ? candles[candles.length - 1].timestamp : 0;
 
-  let x1 = timeToPx(timeScale, band.startTime, candles);
-  let x2 = timeToPx(timeScale, band.endTime, candles);
+  let x1 = timeToPx(timeScale, clipStart, candles);
+  let x2 = timeToPx(timeScale, clipEnd, candles);
 
-  if (band.startTime <= viewFromMs) {
-    x1 = 0;
-  } else if (x1 === null && band.startTime > lastTs) {
+  if (x1 === null && clipStart <= viewFromMs) x1 = 0;
+  if (x2 === null && clipEnd >= viewToMs) x2 = paneWidth;
+  if (x1 === null && clipStart > lastTs) {
     x1 = timeToPx(timeScale, lastTs, candles);
   }
-
-  if (band.endTime >= viewToMs) {
-    x2 = paneWidth;
-  } else if (x2 === null && band.endTime > lastTs) {
+  if (x2 === null && clipEnd > lastTs) {
     x2 = paneWidth;
   }
-
-  if (x1 !== null && x2 !== null && x2 <= x1 && band.endTime > band.startTime) {
+  if (x1 !== null && x2 !== null && x2 <= x1) {
     x2 = paneWidth;
   }
 
@@ -137,9 +164,9 @@ export function updatePsychologyChartBg(bg, opts) {
     return 0;
   }
 
-  const visibleRange = timeScale?.getVisibleRange?.();
-  const viewFromMs = visibleRange ? visibleRange.from * 1000 : rangeFromTs;
-  const viewToMs = visibleRange ? visibleRange.to * 1000 : rangeToTs;
+  const view = viewBoundsMs(timeScale, candles, rangeFromTs, rangeToTs);
+  const viewFromMs = view.from;
+  const viewToMs = view.to;
 
   const bandFrom = Math.min(rangeFromTs, viewFromMs) - 7 * 24 * 60 * 60 * 1000;
   const bandTo = Math.max(rangeToTs, viewToMs) + 7 * 24 * 60 * 60 * 1000;
@@ -160,8 +187,6 @@ export function updatePsychologyChartBg(bg, opts) {
   let rendered = 0;
 
   for (const band of bands) {
-    if (band.endTime <= viewFromMs || band.startTime >= viewToMs) continue;
-
     const px = bandSegmentPx(
       timeScale,
       band,

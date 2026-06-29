@@ -99,6 +99,8 @@ class ChartViewImpl {
   #psychologyBgRetries = 0;
   /** @type {string|null} */
   #psychologyBgGeomKey = null;
+  /** @type {boolean} */
+  #psychologyBgNeedsGeometry = true;
 
   /**
    * Mount the chart view.
@@ -157,7 +159,14 @@ class ChartViewImpl {
     if (toolbar) {
       mountOverlayPresets(toolbar, (preset) => this.#applyOverlayPreset(preset));
     }
-    this.#chart.onVisibleRangeChange(() => this.#updateResearchUi());
+    this.#chart.onVisibleRangeChange(() => {
+      this.#psychologyBgNeedsGeometry = true;
+      this.#schedulePsychologyBgRefresh();
+    });
+    this.#chart.onChartResize(() => {
+      this.#psychologyBgNeedsGeometry = true;
+      this.#schedulePsychologyBgRefresh();
+    });
     this.#wireCrosshair();
     this.#wireReplay();
     this.#bindEvents();
@@ -310,13 +319,15 @@ class ChartViewImpl {
     }));
 
     unsubs.push(bus.on(Events.PANEL_RESIZE, () => {
+      this.#psychologyBgNeedsGeometry = true;
       this.#updateResearchUi();
     }));
 
     unsubs.push(bus.on(Events.CHART_LOADED, () => {
       this.#psychologyBgRetries = 0;
       this.#psychologyBgGeomKey = null;
-      this.#scheduleResearchUiRefresh();
+      this.#psychologyBgNeedsGeometry = true;
+      this.#schedulePsychologyBgRefresh();
       setTimeout(() => this.#updateResearchUi(), 200);
       setTimeout(() => this.#updateResearchUi(), 600);
     }));
@@ -414,7 +425,8 @@ class ChartViewImpl {
   }
 
   /** Context bar, legend, psychology zones, insight card. */
-  #updateResearchUi() {
+  #updateResearchUi(options = {}) {
+    const { psychologyHighlightOnly = false } = options;
     const visible = this.#replay?.getVisibleCandles() ?? [];
     const focus = this.#hoverFocus;
     const activeCandle = focus?.candle ?? (visible.length > 0 ? visible[visible.length - 1] : null);
@@ -441,20 +453,25 @@ class ChartViewImpl {
     if (this.#psychologyChartBg && this.#chart) {
       const timeScale = this.#chart.getTimeScale();
       const plotWidth = this.#chart.getPlotWidth();
+      const logical = this.#chart.getVisibleLogicalRange();
       const geomKey = [
         showPsychBg ? '1' : '0',
         bandAnchorTs,
         currentCycleEnd,
         viewport?.from ?? '',
         viewport?.to ?? '',
+        logical?.from ?? '',
+        logical?.to ?? '',
         plotWidth,
-        rangeFromTs,
-        rangeToTs,
       ].join('|');
+
+      const rebuildGeometry = !psychologyHighlightOnly
+        && (this.#psychologyBgNeedsGeometry || geomKey !== this.#psychologyBgGeomKey);
 
       let rendered = 0;
       if (!showPsychBg) {
         this.#psychologyBgGeomKey = null;
+        this.#psychologyBgNeedsGeometry = false;
         rendered = updatePsychologyChartBg(this.#psychologyChartBg, {
           timeScale,
           plotWidth,
@@ -465,8 +482,9 @@ class ChartViewImpl {
           cursorTs,
           visible: false,
         });
-      } else if (geomKey !== this.#psychologyBgGeomKey) {
+      } else if (rebuildGeometry) {
         this.#psychologyBgGeomKey = geomKey;
+        this.#psychologyBgNeedsGeometry = false;
         rendered = updatePsychologyChartBg(this.#psychologyChartBg, {
           timeScale,
           plotWidth,
@@ -535,7 +553,7 @@ class ChartViewImpl {
         index,
         analysis: getLastAnalysis(),
       };
-      this.#updateResearchUi();
+      this.#updateResearchUi({ psychologyHighlightOnly: true });
       this.#scheduleHoverAnalysis(index, candle);
     });
   }
@@ -589,6 +607,12 @@ class ChartViewImpl {
   }
 
   #scheduleResearchUiRefresh() {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => this.#updateResearchUi());
+    });
+  }
+
+  #schedulePsychologyBgRefresh() {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => this.#updateResearchUi());
     });

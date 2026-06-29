@@ -526,6 +526,13 @@ export class ChartEngine {
   }
 
   /**
+   * @returns {{ from: number, to: number }|null} bar indices (can be fractional)
+   */
+  getVisibleLogicalRange() {
+    return this.#chart?.timeScale().getVisibleLogicalRange() ?? null;
+  }
+
+  /**
    * @returns {{ from: number, to: number }|null} milliseconds
    */
   getVisibleTimeRangeMs() {
@@ -617,6 +624,16 @@ export class ChartEngine {
     this.#crosshairHandler = null;
   }
 
+  /** @type {(() => void)|null} */
+  #resizeHandler = null;
+
+  /**
+   * @param {() => void} callback
+   */
+  onChartResize(callback) {
+    this.#resizeHandler = callback;
+  }
+
   /**
    * Destroy chart and release resources.
    */
@@ -672,6 +689,7 @@ export class ChartEngine {
         width: this.#container.clientWidth,
         height: this.#container.clientHeight,
       });
+      this.#resizeHandler?.();
     });
 
     this.#resizeObserver.observe(this.#container);
