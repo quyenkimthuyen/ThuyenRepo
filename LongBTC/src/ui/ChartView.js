@@ -11,6 +11,7 @@ import { ChartEngine } from '../chart/ChartEngine.js';
 import {
   mountPsychologyChartBg,
   updatePsychologyChartBg,
+  highlightPsychologyChartBgAtCursor,
 } from '../chart/PsychologyChartOverlay.js';
 import {
   CHART_OVERLAY_PRESETS,
@@ -96,6 +97,8 @@ class ChartViewImpl {
 
   /** @type {number} */
   #psychologyBgRetries = 0;
+  /** @type {string|null} */
+  #psychologyBgGeomKey = null;
 
   /**
    * Mount the chart view.
@@ -312,6 +315,7 @@ class ChartViewImpl {
 
     unsubs.push(bus.on(Events.CHART_LOADED, () => {
       this.#psychologyBgRetries = 0;
+      this.#psychologyBgGeomKey = null;
       this.#scheduleResearchUiRefresh();
       setTimeout(() => this.#updateResearchUi(), 200);
       setTimeout(() => this.#updateResearchUi(), 600);
@@ -431,19 +435,52 @@ class ChartViewImpl {
 
     const showResearch = this.#symbol === 'BTCUSD' && !this.#activeSignal && analysis != null;
     const showPsychBg = this.#symbol === 'BTCUSD' && !this.#activeSignal && this.#overlayToggles.psychologyBg;
-    const currentCycleEnd = analyzeCurrentCycle(cursorTs).nextHalvingEstimate;
+    const bandAnchorTs = dataTo ?? Date.now();
+    const currentCycleEnd = analyzeCurrentCycle(bandAnchorTs).nextHalvingEstimate;
 
     if (this.#psychologyChartBg && this.#chart) {
-      const rendered = updatePsychologyChartBg(this.#psychologyChartBg, {
-        timeScale: this.#chart.getTimeScale(),
-        plotWidth: this.#chart.getPlotWidth(),
-        candles: visible,
+      const timeScale = this.#chart.getTimeScale();
+      const plotWidth = this.#chart.getPlotWidth();
+      const geomKey = [
+        showPsychBg ? '1' : '0',
+        bandAnchorTs,
         currentCycleEnd,
+        viewport?.from ?? '',
+        viewport?.to ?? '',
+        plotWidth,
         rangeFromTs,
         rangeToTs,
-        cursorTs,
-        visible: showPsychBg,
-      });
+      ].join('|');
+
+      let rendered = 0;
+      if (!showPsychBg) {
+        this.#psychologyBgGeomKey = null;
+        rendered = updatePsychologyChartBg(this.#psychologyChartBg, {
+          timeScale,
+          plotWidth,
+          candles: visible,
+          currentCycleEnd,
+          rangeFromTs,
+          rangeToTs,
+          cursorTs,
+          visible: false,
+        });
+      } else if (geomKey !== this.#psychologyBgGeomKey) {
+        this.#psychologyBgGeomKey = geomKey;
+        rendered = updatePsychologyChartBg(this.#psychologyChartBg, {
+          timeScale,
+          plotWidth,
+          candles: visible,
+          currentCycleEnd,
+          rangeFromTs,
+          rangeToTs,
+          cursorTs,
+          visible: true,
+        });
+      } else {
+        highlightPsychologyChartBgAtCursor(this.#psychologyChartBg, cursorTs);
+        rendered = this.#psychologyChartBg.querySelectorAll('.chart-phase-bg-seg--psych').length;
+      }
 
       if (
         showPsychBg

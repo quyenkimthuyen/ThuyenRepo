@@ -76,6 +76,41 @@ function segmentPx(x1, x2, plotWidth) {
 }
 
 /**
+ * Band segment in pane pixels; extends to edges when times exceed loaded bars.
+ * @param {import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null} timeScale
+ * @param {{ startTime: number, endTime: number }} band
+ * @param {import('../data/Candle.js').Candle[]} candles
+ * @param {number} paneWidth
+ * @param {number} viewFromMs
+ * @param {number} viewToMs
+ * @returns {{ left: number, width: number }|null}
+ */
+function bandSegmentPx(timeScale, band, candles, paneWidth, viewFromMs, viewToMs) {
+  const lastTs = candles.length > 0 ? candles[candles.length - 1].timestamp : 0;
+
+  let x1 = timeToPx(timeScale, band.startTime, candles);
+  let x2 = timeToPx(timeScale, band.endTime, candles);
+
+  if (band.startTime <= viewFromMs) {
+    x1 = 0;
+  } else if (x1 === null && band.startTime > lastTs) {
+    x1 = timeToPx(timeScale, lastTs, candles);
+  }
+
+  if (band.endTime >= viewToMs) {
+    x2 = paneWidth;
+  } else if (x2 === null && band.endTime > lastTs) {
+    x2 = paneWidth;
+  }
+
+  if (x1 !== null && x2 !== null && x2 <= x1 && band.endTime > band.startTime) {
+    x2 = paneWidth;
+  }
+
+  return segmentPx(x1, x2, paneWidth);
+}
+
+/**
  * @param {HTMLElement} bg
  * @param {{
  *   timeScale: import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null,
@@ -127,10 +162,13 @@ export function updatePsychologyChartBg(bg, opts) {
   for (const band of bands) {
     if (band.endTime <= viewFromMs || band.startTime >= viewToMs) continue;
 
-    const px = segmentPx(
-      timeToPx(timeScale, band.startTime, candles),
-      timeToPx(timeScale, band.endTime, candles),
-      paneWidth
+    const px = bandSegmentPx(
+      timeScale,
+      band,
+      candles,
+      paneWidth,
+      viewFromMs,
+      viewToMs
     );
     if (!px) continue;
 
@@ -149,6 +187,10 @@ export function updatePsychologyChartBg(bg, opts) {
       class: `chart-phase-bg-seg chart-phase-bg-seg--psych${isAtCursor ? ' is-at-cursor' : ''}`,
       style: `left:${px.left}px;width:${px.width}px;--phase-color:${band.phase.color}`,
       title,
+      dataset: {
+        startTime: String(band.startTime),
+        endTime: String(band.endTime),
+      },
     }, showLabel ? [
       el('span', { class: 'chart-phase-bg-label chart-phase-bg-label--psych' }, [band.phase.labelVi]),
     ] : []));
@@ -159,4 +201,19 @@ export function updatePsychologyChartBg(bg, opts) {
   }
 
   return rendered;
+}
+
+/**
+ * Update only cursor highlight without rebuilding band geometry.
+ * @param {HTMLElement} bg
+ * @param {number} cursorTs
+ */
+export function highlightPsychologyChartBgAtCursor(bg, cursorTs) {
+  if (!bg || bg.hidden) return;
+  for (const seg of bg.querySelectorAll('.chart-phase-bg-seg--psych')) {
+    const start = Number(seg.dataset.startTime);
+    const end = Number(seg.dataset.endTime);
+    if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+    seg.classList.toggle('is-at-cursor', cursorTs >= start && cursorTs < end);
+  }
 }
