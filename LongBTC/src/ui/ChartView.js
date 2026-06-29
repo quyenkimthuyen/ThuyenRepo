@@ -12,6 +12,7 @@ import {
   mountPsychologyChartBg,
   updatePsychologyChartBg,
   highlightPsychologyChartBgAtCursor,
+  isPsychologyTimeScaleReady,
 } from '../chart/PsychologyChartOverlay.js';
 import {
   CHART_OVERLAY_PRESETS,
@@ -328,8 +329,16 @@ class ChartViewImpl {
       this.#psychologyBgGeomKey = null;
       this.#psychologyBgNeedsGeometry = true;
       this.#schedulePsychologyBgRefresh();
-      setTimeout(() => this.#updateResearchUi(), 200);
-      setTimeout(() => this.#updateResearchUi(), 600);
+      setTimeout(() => {
+        this.#psychologyBgGeomKey = null;
+        this.#psychologyBgNeedsGeometry = true;
+        this.#schedulePsychologyBgRefresh();
+      }, 200);
+      setTimeout(() => {
+        this.#psychologyBgGeomKey = null;
+        this.#psychologyBgNeedsGeometry = true;
+        this.#schedulePsychologyBgRefresh();
+      }, 600);
     }));
 
     unsubs.push(bus.on(Events.DATA_UPDATED, async () => {
@@ -484,8 +493,6 @@ class ChartViewImpl {
           visible: false,
         });
       } else if (rebuildGeometry) {
-        this.#psychologyBgGeomKey = geomKey;
-        this.#psychologyBgNeedsGeometry = false;
         rendered = updatePsychologyChartBg(this.#psychologyChartBg, {
           timeScale,
           plotWidth,
@@ -496,18 +503,30 @@ class ChartViewImpl {
           cursorTs,
           visible: true,
         });
+
+        const scaleReady = isPsychologyTimeScaleReady(timeScale, visible);
+        if (scaleReady && rendered > 0) {
+          this.#psychologyBgGeomKey = geomKey;
+          this.#psychologyBgNeedsGeometry = false;
+          this.#psychologyBgRetries = 0;
+        } else {
+          this.#psychologyBgNeedsGeometry = true;
+        }
       } else {
         highlightPsychologyChartBgAtCursor(this.#psychologyChartBg, cursorTs);
         rendered = this.#psychologyChartBg.querySelectorAll('.chart-phase-bg-seg--psych').length;
+        if (rendered === 0 && showPsychBg) {
+          this.#psychologyBgNeedsGeometry = true;
+        }
       }
 
       if (
         showPsychBg
-        && rendered === 0
-        && this.#psychologyBgRetries < 10
+        && (rendered <= 0)
+        && this.#psychologyBgRetries < 15
       ) {
         this.#psychologyBgRetries += 1;
-        this.#scheduleResearchUiRefresh();
+        this.#schedulePsychologyBgRefresh();
       } else if (rendered > 0) {
         this.#psychologyBgRetries = 0;
       }
@@ -681,7 +700,8 @@ class ChartViewImpl {
         } else {
           this.#applyAnalysisOverlay();
         }
-        this.#scheduleResearchUiRefresh();
+        this.#psychologyBgNeedsGeometry = true;
+        this.#schedulePsychologyBgRefresh();
       }
 
       bus.emit(Events.LOG_MESSAGE, {

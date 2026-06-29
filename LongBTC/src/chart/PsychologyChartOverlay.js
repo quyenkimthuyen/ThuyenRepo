@@ -138,6 +138,36 @@ function bandSegmentPx(timeScale, band, candles, paneWidth, viewFromMs, viewToMs
 }
 
 /**
+ * True when the chart time scale can map candle times to x coordinates.
+ * @param {import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null} timeScale
+ * @param {import('../data/Candle.js').Candle[]} candles
+ * @returns {boolean}
+ */
+export function isPsychologyTimeScaleReady(timeScale, candles) {
+  if (!timeScale || candles.length === 0) return false;
+
+  const paneWidth = timeScale.width?.();
+  if (!paneWidth || paneWidth < 10) return false;
+
+  const range = timeScale.getVisibleRange?.();
+  const logical = timeScale.getVisibleLogicalRange?.();
+  if (!range && !logical) return false;
+
+  const firstSec = Math.floor(candles[0].timestamp / 1000);
+  const lastSec = Math.floor(candles[candles.length - 1].timestamp / 1000);
+  const x0 = timeScale.timeToCoordinate(firstSec);
+  const x1 = timeScale.timeToCoordinate(lastSec);
+
+  return (
+    x0 !== null
+    && x1 !== null
+    && Number.isFinite(x0)
+    && Number.isFinite(x1)
+    && x1 > x0
+  );
+}
+
+/**
  * @param {HTMLElement} bg
  * @param {{
  *   timeScale: import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null,
@@ -149,6 +179,7 @@ function bandSegmentPx(timeScale, band, candles, paneWidth, viewFromMs, viewToMs
  *   cursorTs: number,
  *   visible: boolean,
  * }} opts
+ * @returns {number} segments rendered, or -1 if time scale not ready yet
  */
 export function updatePsychologyChartBg(bg, opts) {
   const {
@@ -162,6 +193,10 @@ export function updatePsychologyChartBg(bg, opts) {
   if (!visible || paneWidth < 10 || !Number.isFinite(currentCycleEnd)) {
     bg.hidden = true;
     return 0;
+  }
+
+  if (!isPsychologyTimeScaleReady(timeScale, candles)) {
+    return -1;
   }
 
   const view = viewBoundsMs(timeScale, candles, rangeFromTs, rangeToTs);
