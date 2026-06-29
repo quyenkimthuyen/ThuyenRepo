@@ -5,7 +5,8 @@
 
 import { bus, Events } from '../core/EventBus.js';
 import { el } from '../utils/dom.js';
-import { psychologyBandAtTime } from '../analysis/PsychologyBands.js';
+import { psychologyBandAtTime, buildPsychologyBandsForRange } from '../analysis/PsychologyBands.js';
+import { renderPsychologyRangeHistory } from './PsychologyHistoryTimeline.js';
 
 /**
  * @typedef {import('../analysis/LongTermAnalysisEngine.js').LongTermAnalysisResult} AnalysisResult
@@ -30,11 +31,13 @@ export function mountChartPsychologyInsight(parent) {
  * @param {{
  *   analysis: AnalysisResult|null,
  *   cursorTs: number,
+ *   rangeFromTs?: number,
+ *   rangeToTs?: number,
  *   visible: boolean,
  * }} opts
  */
 export function updateChartPsychologyInsight(card, opts) {
-  const { analysis, cursorTs, visible } = opts;
+  const { analysis, cursorTs, rangeFromTs, rangeToTs, visible } = opts;
   if (!card) return;
 
   if (!visible || !analysis) {
@@ -82,7 +85,37 @@ export function updateChartPsychologyInsight(card, opts) {
     ]),
     el('p', { class: 'chart-psychology-insight-desc' }, [p.description]),
     renderCycleTimeline(analysis, progress),
+    renderVisibleRangeHistory(analysis, rangeFromTs, rangeToTs, cursorTs),
   ]));
+}
+
+/**
+ * @param {AnalysisResult} analysis
+ * @param {number|undefined} fromTs
+ * @param {number|undefined} toTs
+ * @param {number} cursorTs
+ * @returns {HTMLElement|null}
+ */
+function renderVisibleRangeHistory(analysis, fromTs, toTs, cursorTs) {
+  if (fromTs == null || toTs == null || toTs <= fromTs) return null;
+
+  const bands = buildPsychologyBandsForRange(
+    fromTs,
+    toTs,
+    analysis.currentCycle.nextHalvingEstimate
+  );
+  const track = renderPsychologyRangeHistory(bands, fromTs, toTs, cursorTs);
+  if (!track) return null;
+
+  const fromY = new Date(fromTs).getUTCFullYear();
+  const toY = new Date(toTs).getUTCFullYear();
+
+  return el('div', { class: 'chart-psychology-insight-range' }, [
+    el('span', { class: 'chart-psychology-insight-range-caption' }, [
+      `Giai \u0111o\u1ea1n trong v\u00f9ng chart \u00b7 ${fromY}\u2013${toY}`,
+    ]),
+    track,
+  ]);
 }
 
 /**

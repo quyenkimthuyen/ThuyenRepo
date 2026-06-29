@@ -374,6 +374,8 @@ class ChartViewImpl {
     updateChartPsychologyInsight(this.#psychologyInsight, {
       analysis,
       cursorTs,
+      rangeFromTs: visible.length > 0 ? visible[0].timestamp : undefined,
+      rangeToTs: visible.length > 0 ? visible[visible.length - 1].timestamp : undefined,
       visible: this.#overlayToggles.psychology
         && this.#symbol === 'BTCUSD'
         && !this.#activeSignal

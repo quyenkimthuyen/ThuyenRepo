@@ -7,12 +7,14 @@
 import { bus, Events } from '../core/EventBus.js';
 import { el } from '../utils/dom.js';
 import { getLastAnalysis } from '../analysis/LongTermAnalysisEngine.js';
+import { buildPsychologyCycleHistory } from '../analysis/PsychologyBands.js';
 import { PSYCHOLOGY_PHASES } from '../analysis/BtcCycleConfig.js';
 import {
   renderAnalysisHeader,
   renderMetricGrid,
   renderNoAnalysis,
 } from './AnalysisViewHelpers.js';
+import { renderPsychologyHistory } from './PsychologyHistoryTimeline.js';
 
 class PsychologyViewImpl {
   #unsub = null;
@@ -57,16 +59,26 @@ class PsychologyViewImpl {
     body.appendChild(el('p', { class: 'psychology-description' }, [p.description]));
 
     body.appendChild(renderMetricGrid([
-      { label: 'Đóng góp từ chu kỳ', value: analysis.currentCycle.phaseLabel, hint: p.cycleContribution },
-      { label: 'Đóng góp từ xu hướng', value: analysis.overallTrend.direction, hint: p.trendContribution },
-      { label: 'Đóng góp từ Elliott', value: p.waveContribution },
+      { label: 'ĝóng góp từ chu kỳ', value: analysis.currentCycle.phaseLabel, hint: p.cycleContribution },
+      { label: 'ĝóng góp từ xu hướng', value: analysis.overallTrend.direction, hint: p.trendContribution },
+      { label: 'ĝóng góp từ Elliott', value: p.waveContribution },
     ]));
 
     body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Vòng tâm lý thị trường']));
     body.appendChild(this.#renderWheel(p.phaseId));
 
-    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Timeline chu kỳ tâm lý']));
+    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Timeline chu k\u1ef3 hi\u1ec7n t\u1ea1i']));
     body.appendChild(this.#renderTimeline(analysis));
+
+    body.appendChild(el('h3', { class: 'analysis-section-title' }, ['L\u1ecbch s\u1eed chu k\u1ef3 t\u00e2m l\u00fd']));
+    body.appendChild(renderPsychologyHistory({
+      cycles: buildPsychologyCycleHistory(
+        analysis.currentCycle.nextHalvingEstimate,
+        analysis.analyzedAt
+      ),
+      cursorTs: analysis.analyzedAt,
+      title: 'C\u00e1c giai \u0111o\u1ea1n t\u00e2m l\u00fd theo l\u1ecbch halving (2012\u2013nay). Hover t\u1eebng \u00f4 \u0111\u1ec3 xem chi ti\u1ebft; v\u1ea1ch tr\u1eafng = th\u1eddi \u0111i\u1ec3m \u0111ang ph\u00e2n t\u00edch.',
+    }));
   }
 
   #renderWheel(activePhaseId) {

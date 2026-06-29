@@ -286,3 +286,99 @@
   background: var(--accent-dim, #1e3a5f);
   color: var(--accent, #3b82f6);
 }
+
+/* ?? Psychology history (multi halving cycle) ?? */
+.psychology-history-intro {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary, #b8c5d6);
+}
+
+.psychology-history-cycles {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.psychology-history-cycle {
+  padding: 10px 12px;
+  border: 1px solid var(--border, #2a3548);
+  border-radius: 10px;
+  background: var(--surface-elevated, #151b24);
+}
+
+.psychology-history-cycle.is-current {
+  border-color: color-mix(in srgb, var(--color-accent, #3b82f6) 45%, var(--border, #2a3548));
+}
+
+.psychology-history-cycle-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.psychology-history-cycle-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.psychology-history-cycle-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-accent, #3b82f6) 18%, transparent);
+  color: var(--color-accent, #60a5fa);
+}
+
+.psychology-history-track-wrap {
+  position: relative;
+}
+
+.psychology-history-track {
+  display: flex;
+  height: 32px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border, #2a3548);
+}
+
+.psychology-history-track-range {
+  height: 26px;
+}
+
+.psychology-history-seg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  background: color-mix(in srgb, var(--phase-color) 32%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--phase-color) 22%, transparent);
+  overflow: hidden;
+}
+
+.psychology-history-seg.is-at-cursor {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--phase-color) 75%, #fff);
+}
+
+.psychology-history-seg-label {
+  font-size: 9px;
+  padding: 0 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.psychology-history-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: #f8fafc;
+  box-shadow: 0 0 4px rgba(248, 250, 252, 0.45);
+  pointer-events: none;
+}

@@ -81,3 +81,65 @@ export function psychologyBandAtTime(timestampMs, currentCycleEnd) {
   );
   return bands.find((b) => timestampMs >= b.startTime && timestampMs < b.endTime);
 }
+
+/**
+ * Psychology calendar bands grouped by halving cycle (for history UI).
+ * @param {number} [currentCycleEnd]
+ * @param {number} [asOf=Date.now()]
+ * @returns {Array<{
+ *   halvingLabel: string,
+ *   cycleIndex: number,
+ *   startTime: number,
+ *   endTime: number,
+ *   bands: PsychologyBand[],
+ *   isCurrent: boolean,
+ *   progressPct: number,
+ * }>}
+ */
+export function buildPsychologyCycleHistory(currentCycleEnd, asOf = Date.now()) {
+  /** @type {ReturnType<typeof buildPsychologyCycleHistory>} */
+  const cycles = [];
+
+  for (let i = 0; i < BTC_HALVING_EVENTS.length; i++) {
+    const halving = BTC_HALVING_EVENTS[i];
+    const next = BTC_HALVING_EVENTS[i + 1];
+    const end = next
+      ? next.timestamp
+      : (currentCycleEnd ?? halving.timestamp + CYCLE_LENGTH_DAYS * MS_PER_DAY);
+
+    if (end <= halving.timestamp) continue;
+
+    const span = end - halving.timestamp;
+    const elapsed = Math.max(0, Math.min(span, asOf - halving.timestamp));
+    const progressPct = span > 0 ? (elapsed / span) * 100 : 0;
+    const isCurrent = asOf >= halving.timestamp && asOf < end;
+
+    cycles.push({
+      halvingLabel: halving.label,
+      cycleIndex: i + 1,
+      startTime: halving.timestamp,
+      endTime: end,
+      bands: bandsForHalvingWindow(halving.timestamp, end, halving.label, i + 1),
+      isCurrent,
+      progressPct: isCurrent ? progressPct : (asOf >= end ? 100 : 0),
+    });
+  }
+
+  return cycles;
+}
+
+/**
+ * @param {number} year
+ * @returns {string}
+ */
+export function formatHistoryYear(year) {
+  return String(year);
+}
+
+/**
+ * @param {number} ts
+ * @returns {number}
+ */
+export function historyYear(ts) {
+  return new Date(ts).getUTCFullYear();
+}
