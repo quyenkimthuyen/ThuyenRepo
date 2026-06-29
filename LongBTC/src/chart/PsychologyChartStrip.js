@@ -1,5 +1,5 @@
 /**
- * Psychology timeline lane below the price chart (no overlay on candles).
+ * Psychology phase strip synced to chart time scale (all halving cycles + price assessment).
  * @module chart/PsychologyChartStrip
  */
 
@@ -21,6 +21,7 @@ import { buildPsychologyTimeline } from '../analysis/PsychologyCycleMapper.js';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
+ * Psychology bands for one halving-to-halving window.
  * @param {number} halvingStartMs
  * @param {number} halvingEndMs
  * @param {string} halvingLabel
@@ -48,9 +49,10 @@ export function buildPsychologyBandsForHalvingWindow(
 }
 
 /**
+ * All psychology bands for every halving cycle overlapping a time range.
  * @param {number} fromTs
  * @param {number} toTs
- * @param {number} [currentCycleEnd]
+ * @param {number} [currentCycleEnd] - end of active cycle (next halving estimate)
  * @returns {PsychologyBand[]}
  */
 export function buildPsychologyBandsForRange(fromTs, toTs, currentCycleEnd) {
@@ -76,7 +78,7 @@ export function buildPsychologyBandsForRange(fromTs, toTs, currentCycleEnd) {
     ));
   }
 
-  return bands.sort((a, b) => a.startTime - b.startTime);
+  return bands;
 }
 
 /**
@@ -92,37 +94,29 @@ export function buildPsychologyBandsForCycle(cycle) {
 }
 
 /**
- * @param {HTMLElement} parent - chart-main column (lane sits below canvas)
- * @returns {HTMLElement}
+ * @param {HTMLElement} chartContainer
+ * @returns {{ bg: HTMLElement, strip: HTMLElement }}
  */
-export function mountPsychologyLane(parent) {
-  const lane = el('div', {
-    class: 'psychology-lane',
-    id: 'chart-psychology-lane',
+export function mountPsychologyLayers(chartContainer) {
+  const bg = el('div', {
+    class: 'chart-psychology-bg',
+    id: 'chart-psychology-bg',
+    hidden: true,
+  });
+  const strip = el('div', {
+    class: 'chart-psychology-strip',
+    id: 'chart-psychology-strip',
     hidden: true,
   }, [
-    el('aside', { class: 'psychology-lane-aside' }, [
-      el('span', { class: 'psychology-lane-title' }, ['T\u00e2m l\u00fd th\u1ecb tr\u01b0\u1eddng']),
-      el('div', { class: 'psychology-lane-current', id: 'psy-current-badge' }, [
-        el('span', { class: 'psychology-lane-current-kicker' }, ['Theo gi\u00e1']),
-        el('span', { class: 'psychology-lane-current-value', id: 'psy-price-value' }, ['\u2014']),
-      ]),
-      el('p', { class: 'psychology-lane-calendar', id: 'psy-calendar-hint' }, ['']),
-    ]),
-    el('div', { class: 'psychology-lane-track-wrap' }, [
-      el('div', { class: 'psychology-lane-track', id: 'psy-track' }, [
-        el('div', { class: 'psychology-lane-phases', id: 'psy-phases' }),
-        el('div', { class: 'psychology-lane-halvings', id: 'psy-halvings' }),
-        el('div', { class: 'psychology-lane-playhead', id: 'psy-playhead', hidden: true }),
-      ]),
-      el('p', { class: 'psychology-lane-hint' }, [
-        'Di chu\u1ed9t v\u00f9ng m\u00e0u \u0111\u1ec3 xem giai \u0111o\u1ea1n \u00b7 V\u1ea1ch \u0111\u1ee9ng = Halving',
-      ]),
-    ]),
+    el('span', { class: 'chart-psychology-strip-title' }, ['T\u00e2m l\u00fd TT']),
+    el('div', { class: 'chart-psychology-segments', id: 'chart-psychology-segments' }),
+    el('div', { class: 'chart-psychology-now', id: 'chart-psychology-now', title: 'V\u1ecb tr\u00ed \u0111ang xem' }),
+    el('div', { class: 'chart-psychology-pin', id: 'chart-psychology-pin', hidden: true }),
   ]);
 
-  parent.insertBefore(lane, parent.querySelector('.replay-bar'));
-  return lane;
+  chartContainer.prepend(bg);
+  chartContainer.appendChild(strip);
+  return { bg, strip };
 }
 
 /**
@@ -151,7 +145,7 @@ function segmentPx(x1, x2, chartWidth) {
   const left = Math.max(0, Math.min(a, b));
   const right = Math.min(chartWidth, Math.max(a, b));
   const width = right - left;
-  if (width < 1) return null;
+  if (width < 2) return null;
   return { left, width };
 }
 
@@ -165,8 +159,10 @@ function bandAtTime(bands, ts) {
 }
 
 /**
- * @param {HTMLElement} lane
+ * Paint psychology bands on chart background + bottom strip.
  * @param {{
+ *   bg: HTMLElement,
+ *   strip: HTMLElement,
  *   timeScale: import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null,
  *   chartWidth: number,
  *   analysis: AnalysisResult,
@@ -176,48 +172,37 @@ function bandAtTime(bands, ts) {
  *   visible: boolean,
  * }} opts
  */
-export function updatePsychologyLane(lane, opts) {
+export function updatePsychologyLayers(opts) {
   const {
-    timeScale, chartWidth, analysis, rangeFromTs, rangeToTs, cursorTs, visible,
+    bg, strip, timeScale, chartWidth, analysis,
+    rangeFromTs, rangeToTs, cursorTs, visible,
   } = opts;
 
-  if (!lane) return;
-
   if (!visible || !analysis) {
-    lane.hidden = true;
+    bg.hidden = true;
+    strip.hidden = true;
     return;
   }
 
-  lane.hidden = false;
+  bg.hidden = false;
+  strip.hidden = false;
 
   const bands = buildPsychologyBandsForRange(
     rangeFromTs,
     rangeToTs,
     analysis.currentCycle.nextHalvingEstimate
   );
+  const assessedId = analysis.psychology.phaseId;
   const calendarBand = bandAtTime(bands, cursorTs);
-  const p = analysis.psychology;
 
-  const priceValue = lane.querySelector('#psy-price-value');
-  const calendarHint = lane.querySelector('#psy-calendar-hint');
-  const phasesEl = lane.querySelector('#psy-phases');
-  const halvingsEl = lane.querySelector('#psy-halvings');
-  const playheadEl = lane.querySelector('#psy-playhead');
-  const badgeEl = lane.querySelector('#psy-current-badge');
+  const segmentsEl = strip.querySelector('#chart-psychology-segments');
+  const nowEl = strip.querySelector('#chart-psychology-now');
+  const pinEl = strip.querySelector('#chart-psychology-pin');
 
-  if (!priceValue || !calendarHint || !phasesEl || !halvingsEl || !playheadEl) return;
+  if (!segmentsEl || !nowEl || !pinEl) return;
 
-  priceValue.textContent = p.labelVi;
-  priceValue.style.color = p.color;
-  if (badgeEl) badgeEl.style.borderColor = p.color;
-
-  const calText = calendarBand
-    ? `L\u1ecbch ${calendarBand.halvingLabel.replace('Halving ', 'H')}: ${calendarBand.phase.labelVi}`
-    : 'Ngo\u00e0i v\u00f9ng chu k\u1ef3 halving';
-  calendarHint.textContent = calText;
-
-  phasesEl.innerHTML = '';
-  halvingsEl.innerHTML = '';
+  segmentsEl.innerHTML = '';
+  bg.innerHTML = '';
 
   for (const band of bands) {
     const px = segmentPx(
@@ -228,55 +213,55 @@ export function updatePsychologyLane(lane, opts) {
     if (!px) continue;
 
     const isAtCursor = cursorTs >= band.startTime && cursorTs < band.endTime;
+    const isAssessed = isAtCursor && band.phase.id === assessedId;
+    const color = band.phase.color;
+    const title = `${band.halvingLabel} \u00b7 ${band.phase.labelVi} (${band.phase.label})`;
 
-    phasesEl.appendChild(el('div', {
-      class: `psychology-lane-phase${isAtCursor ? ' is-active' : ''}`,
-      style: `left:${px.left}px;width:${px.width}px;--phase-color:${band.phase.color}`,
-      title: `${band.halvingLabel.replace('Halving ', 'Halving #')}\n${band.phase.labelVi} (${band.phase.label})`,
+    const classes = [
+      'chart-psychology-seg',
+      isAtCursor ? ' is-at-cursor' : '',
+      isAssessed ? ' is-assessed' : '',
+    ].join('');
+
+    segmentsEl.appendChild(el('div', {
+      class: classes,
+      style: `left:${px.left}px;width:${px.width}px;--phase-color:${color}`,
+      title,
+    }, [
+      px.width > 36
+        ? el('span', { class: 'chart-psychology-seg-label' }, [band.phase.labelVi])
+        : null,
+    ].filter(Boolean)));
+
+    bg.appendChild(el('div', {
+      class: `chart-psychology-bg-seg${isAtCursor ? ' is-at-cursor' : ''}${isAssessed ? ' is-assessed' : ''}`,
+      style: `left:${px.left}px;width:${px.width}px;--phase-color:${color}`,
+      title,
     }));
   }
 
-  for (const h of BTC_HALVING_EVENTS) {
-    if (h.timestamp < rangeFromTs || h.timestamp > rangeToTs) continue;
-    const x = timeToPx(timeScale, h.timestamp, chartWidth);
-    if (x === null) continue;
+  const nowX = timeToPx(timeScale, cursorTs, chartWidth);
+  if (nowX !== null) {
+    nowEl.style.left = `${nowX}px`;
+    nowEl.hidden = false;
 
-    halvingsEl.appendChild(el('div', {
-      class: 'psychology-lane-halving',
-      style: `left:${x}px`,
-      title: h.label,
-    }, [
-      el('span', { class: 'psychology-lane-halving-tag' }, [
-        h.label.replace('Halving ', 'H'),
-      ]),
-    ]));
-  }
+    pinEl.hidden = false;
+    pinEl.style.left = `${Math.min(chartWidth - 8, Math.max(8, nowX))}px`;
+    pinEl.style.borderColor = analysis.psychology.color;
+    pinEl.style.color = analysis.psychology.color;
+    pinEl.textContent = analysis.psychology.labelVi;
 
-  const playheadX = timeToPx(timeScale, cursorTs, chartWidth);
-  if (playheadX !== null) {
-    playheadEl.style.left = `${playheadX}px`;
-    playheadEl.hidden = false;
+    const calLabel = calendarBand?.phase.labelVi ?? '?';
+    const calHint = calendarBand
+      ? `L\u1ecbch halving: ${calendarBand.halvingLabel} \u2192 ${calLabel}`
+      : '';
+    pinEl.title = [
+      `Theo gi\u00e1: ${analysis.psychology.labelVi}`,
+      calHint,
+      analysis.psychology.priceContribution ?? '',
+    ].filter(Boolean).join(' \u00b7 ');
   } else {
-    playheadEl.hidden = true;
+    nowEl.hidden = true;
+    pinEl.hidden = true;
   }
-}
-
-/** @deprecated use mountPsychologyLane */
-export function mountPsychologyLayers(parent) {
-  return { lane: mountPsychologyLane(parent) };
-}
-
-/** @deprecated use updatePsychologyLane */
-export function updatePsychologyLayers(opts) {
-  const lane = opts.strip?.closest?.('.psychology-lane') ?? opts.lane;
-  if (!lane) return;
-  updatePsychologyLane(lane, {
-    timeScale: opts.timeScale,
-    chartWidth: opts.chartWidth,
-    analysis: opts.analysis,
-    rangeFromTs: opts.rangeFromTs,
-    rangeToTs: opts.rangeToTs,
-    cursorTs: opts.cursorTs,
-    visible: opts.visible,
-  });
 }
