@@ -93,16 +93,35 @@ export const LONG_BTC_DOC_SECTIONS = [
     blocks: [
       {
         type: 'p',
-        text: 'Bitcoin halving ~4 n\u0103m/l\u1ea7n. 4 giai \u0111o\u1ea1n macro: T\u00edch l\u0169y \u2192 T\u0103ng tr\u01b0\u1edfng \u2192 Ph\u00e2n ph\u1ed1i \u2192 Gi\u1ea3m gi\u00e1.',
+        text: 'Module HalvingCycleAnalyzer. Ti\u1ebfn \u0111\u1ed9 = ng\u00e0y t\u1eeb halving g\u1ea7n nh\u1ea5t / 1460. Halving k\u1ebf ti\u1ebfp \u01b0\u1edbc t\u00ednh = halving hi\u1ec7n t\u1ea1i + 1460 ng\u00e0y (cho \u0111\u1ebfn khi c\u00f3 ng\u00e0y ch\u00ednh th\u1ee9c).',
+      },
+      {
+        type: 'table',
+        headers: ['Pha macro', '% chu k\u1ef3', 'ID'],
+        rows: [
+          ['T\u00edch l\u0169y', '0\u201325%', 'accumulation'],
+          ['T\u0103ng tr\u01b0\u1edfng', '25\u201355%', 'markup'],
+          ['Ph\u00e2n ph\u1ed1i', '55\u201375%', 'distribution'],
+          ['Gi\u1ea3m gi\u00e1', '75\u2013100%', 'markdown'],
+        ],
+      },
+      {
+        type: 'h3',
+        text: 'M\u1ed1c halving (UTC)',
       },
       {
         type: 'ul',
         items: [
-          'Halving #1: 28/11/2012',
-          'Halving #2: 09/07/2016',
-          'Halving #3: 11/05/2020',
-          'Halving #4: 20/04/2024',
+          '#1: 2012-11-28 \u2192 25 BTC',
+          '#2: 2016-07-09 \u2192 12.5 BTC',
+          '#3: 2020-05-11 \u2192 6.25 BTC',
+          '#4: 2024-04-20 \u2192 3.125 BTC',
         ],
+      },
+      {
+        type: 'callout',
+        variant: 'info',
+        text: 'Pha macro d\u00f9ng 1460 ng\u00e0y c\u1ed1 \u0111\u1ecbnh. N\u1ec1n t\u00e2m l\u00fd chart d\u00f9ng kho\u1ea3ng halving N \u2192 N+1 theo ng\u00e0y th\u1ef1c.',
       },
     ],
   },
@@ -114,7 +133,25 @@ export const LONG_BTC_DOC_SECTIONS = [
     blocks: [
       {
         type: 'p',
-        text: 'Xu h\u01b0\u1edbng qua swing pivot v\u00e0 quy t\u1eafc HH/HL (t\u0103ng) ho\u1eb7c LH/LL (gi\u1ea3m).',
+        text: 'Swing pivot zigzag (SwingPivotDetector) \u2192 \u0111o\u1ea1n trend (TrendAnalyzer) \u2192 HH/HL ho\u1eb7c LH/LL.',
+      },
+      {
+        type: 'table',
+        headers: ['TF', 'reversalPct', 'minBars', 'sideways %'],
+        rows: [
+          ['W', '18%', '1', '10%'],
+          ['D1', '12%', '2', '6%'],
+          ['H4', '8%', '4', '3%'],
+        ],
+      },
+      {
+        type: 'ul',
+        items: [
+          'HH + HL \u2192 uptrend (85% tin c\u1eady)',
+          'LH + LL \u2192 downtrend (85%)',
+          'Ph\u00e2n k\u1ef3 HH/LL ho\u1eb7c LH/HL \u2192 sideways (60%)',
+          'Thi\u1ebfu pivot \u2192 sideways (30%)',
+        ],
       },
     ],
   },
@@ -126,7 +163,21 @@ export const LONG_BTC_DOC_SECTIONS = [
     blocks: [
       {
         type: 'p',
-        text: 'Heuristic g\u00e1n nh\u00e3n s\u00f3ng 1-5 ho\u1eb7c ABC. N\u00ean x\u00e1c nh\u1eadn th\u1ee7 c\u00f4ng tr\u00ean bi\u1ec3u \u0111\u1ed3.',
+        text: 'Heuristic tr\u00ean 8 \u0111o\u1ea1n trend g\u1ea7n nh\u1ea5t: impulse 1\u20135 ho\u1eb7c correction ABC. Kh\u00f4ng thay th\u1ebf \u0111\u1ebfm s\u00f3ng th\u1ee7 c\u00f4ng.',
+      },
+      {
+        type: 'table',
+        headers: ['S\u00f3ng', 'G\u1ee3i \u00fd t\u00e2m l\u00fd (chip)'],
+        rows: [
+          ['1', 'hope, relief, optimism'],
+          ['2', 'denial, anxiety'],
+          ['3', 'optimism, excitement, thrill'],
+          ['4', 'anxiety, denial'],
+          ['5', 'euphoria, thrill'],
+          ['A', 'anxiety, fear'],
+          ['B', 'denial, hope'],
+          ['C', 'capitulation, depression, fear'],
+        ],
       },
     ],
   },
@@ -170,8 +221,9 @@ export const LONG_BTC_DOC_SECTIONS = [
       {
         type: 'ul',
         items: [
-          'N\u1ec1n chart: L\u1edbp ph\u1ee7 \u2192 N\u1ec1n giai \u0111o\u1ea1n t\u00e2m l\u00fd',
-          'Chip context bar: giai \u0111o\u1ea1n t\u1ea1i n\u1ebfn \u0111ang xem',
+          'N\u1ec1n chart: toggle N\u1ec1n giai \u0111o\u1ea1n t\u00e2m l\u00fd \u2014 Mode A/B, \u0111\u1ed3ng b\u1ed9 pan/zoom',
+          'Chip context bar: assessPsychology() t\u1ea1i n\u1ebfn \u0111ang xem',
+          'M\u00e0n T\u00e2m l\u00fd Ctrl+6: khuy\u1ebfn ngh\u1ecb DCA + timeline CYCLE_PHASE_MAP',
         ],
       },
     ],
@@ -179,39 +231,87 @@ export const LONG_BTC_DOC_SECTIONS = [
   {
     id: 'psychology-rules',
     title: 'Quy t\u1eafc x\u00e1c \u0111\u1ecbnh',
-    subtitle: 'L\u1ecbch halving + neo ATH',
+    subtitle: 'Ba l\u1edbp logic \u2014 chi ti\u1ebft trong PSYCHOLOGY_CYCLE.md',
     icon: '\u{1F4D0}',
     viewIds: ['psychology', 'chart'],
     blocks: [
       {
-        type: 'p',
-        text: 'Chu k\u1ef3 = Halving N \u2192 N+1 (ng\u00e0y th\u1ef1c). H4\u2192H5: \u01b0\u1edbc t\u00ednh +1460 ng\u00e0y cho \u0111\u1ebfn halving #5.',
+        type: 'callout',
+        variant: 'info',
+        text: 'App d\u00f9ng 3 b\u1ed9 quy t\u1eafc: (A) n\u1ec1n chart Mode A/B, (B) chip assessPsychology, (C) timeline m\u00e0n T\u00e2m l\u00fd (CYCLE_PHASE_MAP). Ch\u00fang kh\u00f4ng gi\u1ed1ng h\u1ec7t nhau.',
       },
       {
         type: 'h3',
-        text: 'Ch\u1ebf \u0111\u1ed9 A \u2014 L\u1ecbch c\u1ed1 \u0111\u1ecbnh',
+        text: 'N\u1ec1n chart \u2014 khung halving N \u2192 N+1',
       },
       {
         type: 'p',
-        text: '13 c\u1eeda s\u1ed5 % chu k\u1ef3 (Hy v\u1ecdng 0\u201310%, H\u01b0ng ph\u1ea5n 26\u201334%, Hoan h\u1ef7 42\u201352%, \u2026). Khi <12 n\u1ebfn ho\u1eb7c gi\u00e1 trong 10% ATH.',
-      },
-      {
-        type: 'h3',
-        text: 'Ch\u1ebf \u0111\u1ed9 B \u2014 Neo ATH',
-      },
-      {
-        type: 'p',
-        text: 'Khi \u0111\u00f3ng c\u1eeda h\u1ed3i \u226510% t\u1eeb high max chu k\u1ef3: bull tr\u01b0\u1edbc ATH, bear sau ATH.',
-      },
-      {
-        type: 'h3',
-        text: 'Chip context bar',
+        text: 'Chu k\u1ef3 \u0111\u00e3 k\u1ebft th\u00fac: ng\u00e0y halving th\u1ef1c. H4\u2192H5: halving #4 + 1460 ng\u00e0y. Ch\u1ecdn Mode:',
       },
       {
         type: 'ul',
         items: [
-          'Ch\u1ea5m \u0111i\u1ec3m: l\u1ecbch + drawdown + xu h\u01b0\u1edbng + Elliott + pha macro',
-          'Drawdown \u226525%: \u01b0u ti\u00ean giai \u0111o\u1ea1n bear',
+          'Mode A: <12 n\u1ebfn trong CK ho\u1eb7c close ch\u01b0a h\u1ed3i \u226510% t\u1eeb ATH (high max)',
+          'Mode B: \u226512 n\u1ebfn v\u00e0 drawdown \u226510% \u2192 neo \u0111\u1ec9nh chu k\u1ef3 (peakPct 12\u201348%)',
+        ],
+      },
+      {
+        type: 'h3',
+        text: 'Mode A \u2014 13 c\u1eeda s\u1ed5 % (n\u1ec1n chart)',
+      },
+      {
+        type: 'table',
+        headers: ['%', 'Phase'],
+        rows: [
+          ['0\u201310', 'Hy v\u1ecdng'],
+          ['10\u201318', 'Nh\u1eb9 nh\u00f5m'],
+          ['18\u201326', 'L\u1ea1c quan'],
+          ['26\u201334', 'H\u01b0ng ph\u1ea5n'],
+          ['34\u201342', 'Ph\u1ea5n kh\u00edch'],
+          ['42\u201352', 'Hoan h\u1ef7'],
+          ['52\u201358', 'Lo l\u1eafng'],
+          ['58\u201365', 'Ph\u1ee7 nh\u1eadn'],
+          ['65\u201372', 'S\u1ee3 h\u00e3i'],
+          ['72\u201380', '\u0110\u1ea7u h\u00e0ng'],
+          ['80\u201388', 'Ch\u00e1n n\u1ea3n'],
+          ['88\u201394', 'Hy v\u1ecdng'],
+          ['94\u2013100', 'Nh\u1eb9 nh\u00f5m'],
+        ],
+      },
+      {
+        type: 'h3',
+        text: 'Mode B \u2014 bull tr\u01b0\u1edbc ATH, bear sau ATH',
+      },
+      {
+        type: 'p',
+        text: 'Tr\u01b0\u1edbc \u0111\u1ec9nh: hope\u2192relief\u2192optimism\u2192excitement\u2192thrill\u2192euphoria. Sau \u0111\u1ec9nh: anxiety\u2192denial\u2192fear\u2192capitulation\u2192depression\u2192hope\u2192relief. T\u1ef7 l\u1ec7 co gi\u00e3n theo peakPct (xem docs m\u1ee5c 5.4).',
+      },
+      {
+        type: 'h3',
+        text: 'Chip assessPsychology()',
+      },
+      {
+        type: 'p',
+        text: 'Ch\u1ea5m \u0111i\u1ec3m t\u1ed5ng 5 y\u1ebfu t\u1ed1; ch\u1ecdn phase cao nh\u1ea5t. confidence = min(95, \u0111i\u1ec3m).',
+      },
+      {
+        type: 'table',
+        headers: ['Y\u1ebfu t\u1ed1', 'Tr\u1ecdng s\u01a1 (drawdown \u226525%)'],
+        rows: [
+          ['L\u1ecbch halving (CYCLE_PHASE_MAP)', '~12%'],
+          ['Drawdown t\u1eeb \u0111\u1ec9nh CK', '~38%'],
+          ['Xu h\u01b0\u1edbng HH/HL', '~32%'],
+          ['S\u00f3ng Elliott', '~12%'],
+          ['Bonus pha macro', '~6%'],
+        ],
+      },
+      {
+        type: 'ul',
+        items: [
+          'Drawdown \u226545%: \u01b0u ti\u00ean capitulation, depression, fear; tr\u1eeb bull',
+          'Drawdown \u226530%: tr\u1eeb euphoria/thrill; c\u1ed9ng fear/anxiety',
+          'Uptrend + phase bull \u2192 +85; downtrend + phase bear \u2192 +85',
+          'Drawdown = (close - cycleHigh) / cycleHigh t\u1eeb halving hi\u1ec7n t\u1ea1i',
         ],
       },
     ],
@@ -233,16 +333,24 @@ export const LONG_BTC_DOC_SECTIONS = [
         text: 'X\u1ebfp h\u1ea1ng theo l\u1ecbch s\u1eed (median 26 tu\u1ea7n)',
       },
       {
+        type: 'p',
+        text: 'Ngu\u1ed3n: PsychologyInvestGuide.js \u2014 BTCUSD W, phase theo Mode A/B, \u0111o forward return 12w/26w.',
+      },
+      {
         type: 'table',
-        headers: ['Giai \u0111o\u1ea1n', 'Med. 26w', '% th\u1eafng', '\u0110\u00e1nh gi\u00e1'],
+        headers: ['Giai \u0111o\u1ea1n', 'Med. 26w', '% th\u1eafng', 'Tier'],
         rows: [
-          ['\u0110\u1ea7u h\u00e0ng', '+61%', '86%', 'R\u1ea5t t\u1ed1t'],
-          ['Nh\u1eb9 nh\u00f5m', '+55%', '87%', 'R\u1ea5t t\u1ed1t'],
-          ['Hy v\u1ecdng', '+51%', '80%', 'T\u1ed1t'],
-          ['Ch\u00e1n n\u1ea3n', '+38%', '60%', 'T\u1ed1t'],
-          ['L\u1ea1c quan', '+37%', '91%', 'T\u1ed1t'],
-          ['Hoan h\u1ef7', '-40%', '25%', 'Tr\u00e1nh'],
-          ['Lo l\u1eafng', '-32%', '0%', 'Tr\u00e1nh'],
+          ['\u0110\u1ea7u h\u00e0ng', '+61.1%', '86%', 'R\u1ea5t t\u1ed1t'],
+          ['Nh\u1eb9 nh\u00f5m', '+55.4%', '87%', 'R\u1ea5t t\u1ed1t'],
+          ['Hy v\u1ecdng', '+50.6%', '80%', 'T\u1ed1t'],
+          ['Ch\u00e1n n\u1ea3n', '+37.9%', '60%', 'T\u1ed1t'],
+          ['L\u1ea1c quan', '+37.1%', '91%', 'T\u1ed1t'],
+          ['S\u1ee3 h\u00e3i', '+32.6%', '58%', 'Trung b\u00ecnh'],
+          ['Ph\u1ea5n kh\u00edch', '+22.2%', '63%', 'Th\u1eadn tr\u1ecdng'],
+          ['H\u01b0ng ph\u1ea5n', '+15.9%', '81%', 'Th\u1eadn tr\u1ecdng'],
+          ['Ph\u1ee7 nh\u1eadn', '-17.9%', '38%', 'Tr\u00e1nh'],
+          ['Hoan h\u1ef7', '-39.6%', '25%', 'Tr\u00e1nh'],
+          ['Lo l\u1eafng', '-31.7%', '0%', 'Tr\u00e1nh'],
         ],
       },
       {
@@ -280,9 +388,9 @@ export const LONG_BTC_DOC_SECTIONS = [
       {
         type: 'ul',
         items: [
-          'ATH chu k\u1ef3, drawdown, n\u1ebfn m\u1edbi',
-          'V\u00f9ng m\u00e0u chart khi pan/zoom',
-          'Chip t\u00e2m l\u00fd theo gi\u00e1',
+          'ATH, drawdown, Mode A/B \u2014 m\u1ed7i l\u1ea7n ph\u00e2n t\u00edch / n\u1ebfn m\u1edbi',
+          'N\u1ec1n chart \u2014 rebuild khi pan, zoom, resize (PsychologyChartOverlay)',
+          'Chip \u2014 theo n\u1ebfn hover/replay + cycleExtremes',
         ],
       },
       {
@@ -292,9 +400,11 @@ export const LONG_BTC_DOC_SECTIONS = [
       {
         type: 'ul',
         items: [
-          'Halving m\u1edbi (~4 n\u0103m): th\u00eam ng\u00e0y v\u00e0o BTC_HALVING_EVENTS',
-          'H\u00e0ng n\u0103m: so\u00e1t m\u1ed1c 2020/2021/2022 tr\u00ean W',
-          'C\u1eadp nh\u1eadt d\u1eef li\u1ec7u BTCUSD trong Data Manager',
+          'Halving m\u1edbi: BTC_HALVING_EVENTS trong BtcCycleConfig.js',
+          '% n\u1ec1n chart: buildChartPsychologyTimeline / buildAdaptiveChartPsychologyTimeline',
+          'Tr\u1ecdng s\u1ed1 chip: assessPsychology trong PsychologyCycleMapper.js',
+          'Stats DCA: HISTORICAL_STATS trong PsychologyInvestGuide.js',
+          'D\u1eef li\u1ec7u BTCUSD W/D1 trong Data Manager',
         ],
       },
     ],

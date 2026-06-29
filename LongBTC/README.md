@@ -24,9 +24,9 @@ Lần đầu: **Data Manager** → Reload Default Data (hoặc tự động tả
 | 3 | Sóng Elliott | Đếm sóng xung (1-5) và điều chỉnh (ABC) |
 | 4 | Tâm lý TT | 11 giai đoạn + nền chart theo halving & ATH |
 
-**Tài liệu tâm lý (cấp 1):** [`docs/PSYCHOLOGY_CYCLE.md`](docs/PSYCHOLOGY_CYCLE.md) — quy tắc xác định, khuyến nghị nghiên cứu đầu tư, bảo trì mô hình.
+**Tài liệu tâm lý (cấp 1):** [`docs/PSYCHOLOGY_CYCLE.md`](docs/PSYCHOLOGY_CYCLE.md) — quy tắc chính xác theo mã nguồn (Mode A/B, chip, swing, DCA).
 
-Trong app: **Ctrl+0** → mục *Chu kỳ tâm lý*, *Quy tắc xác định*, *Khuyến nghị nghiên cứu*.
+Trong app: **Ctrl+0** → *Chu kỳ tâm lý*, *Quy tắc xác định*, *Khuyến nghị nghiên cứu*, *Bảo trì mô hình*.
 
 ## Các màn hình
 
