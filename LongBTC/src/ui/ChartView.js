@@ -16,6 +16,16 @@ import {
   mountPsychologyChartBg,
   updatePsychologyChartBg,
 } from '../chart/PsychologyChartOverlay.js';
+import {
+  CHART_OVERLAY_PRESETS,
+  clearPresetActiveState,
+  mountChartContextBar,
+  mountChartLegendBar,
+  mountOverlayPresets,
+  syncOverlayCheckboxes,
+  updateChartContextBar,
+  updateChartLegendBar,
+} from './ChartResearchUi.js';
 import { ReplayEngine } from '../replay/ReplayEngine.js';
 import { ReplayControls } from './ReplayControls.js';
 import { createHelpButton } from '../utils/contextHelp.js';
@@ -75,7 +85,13 @@ class ChartViewImpl {
   #emaRestore = null;
 
   /** @type {{ swings: boolean, trends: boolean, cycle: boolean, elliott: boolean, halving: boolean, psychology: boolean }} */
-  #overlayToggles = { swings: true, trends: true, cycle: true, elliott: true, halving: true, psychology: true };
+  #overlayToggles = { ...CHART_OVERLAY_PRESETS.minimal };
+
+  /** @type {HTMLElement|null} */
+  #contextBar = null;
+
+  /** @type {HTMLElement|null} */
+  #legendBar = null;
 
   /** @type {HTMLElement|null} */
   #psychologyInsight = null;
@@ -121,7 +137,6 @@ class ChartViewImpl {
 
     const chartMain = el('div', { class: 'chart-main' }, [
       el('div', { class: 'chart-setup-legend', id: 'chart-setup-legend', hidden: true }),
-      el('div', { class: 'chart-analysis-hud', id: 'chart-analysis-hud', hidden: true }),
       chartContainer,
       ReplayControls.render((action, payload) => this.#handleReplayAction(action, payload)),
       el('div', { id: 'chart-psychology-insight-mount' }),
@@ -135,13 +150,20 @@ class ChartViewImpl {
       ]),
     ]));
 
+    this.#contextBar = mountChartContextBar(chartMain);
+    this.#legendBar = mountChartLegendBar(chartMain);
+    const toolbar = container.querySelector('.chart-toolbar');
+    if (toolbar) {
+      mountOverlayPresets(toolbar, (preset) => this.#applyOverlayPreset(preset));
+    }
+
     this.#psychologyChartBg = mountPsychologyChartBg(chartContainer);
     this.#chart.mount(chartContainer);
     const insightMount = container.querySelector('#chart-psychology-insight-mount');
     if (insightMount) {
       this.#psychologyInsight = mountChartPsychologyInsight(insightMount);
     }
-    this.#chart.onVisibleRangeChange(() => this.#updatePsychologyUi());
+    this.#chart.onVisibleRangeChange(() => this.#updateResearchUi());
     this.#wireReplay();
     this.#bindEvents();
     await this.#loadChart();
@@ -201,21 +223,21 @@ class ChartViewImpl {
         ]),
       ]),
       el('div', { class: 'chart-toolbar-group chart-analysis-toggles' }, [
-        el('span', { class: 'chart-analysis-badge' }, ['Phân tích']),
+        el('span', { class: 'chart-analysis-badge' }, ['T\u00f9y ch\u1ec9nh']),
         el('label', {}, [
-          el('input', { type: 'checkbox', id: 'chart-overlay-swings', checked: true }),
+          el('input', { type: 'checkbox', id: 'chart-overlay-swings' }),
           ' Swing',
         ]),
         el('label', {}, [
           el('input', { type: 'checkbox', id: 'chart-overlay-trends', checked: true }),
-          ' Xu hướng',
+          ' Xu h\u01b0\u1edbng',
         ]),
         el('label', {}, [
           el('input', { type: 'checkbox', id: 'chart-overlay-cycle', checked: true }),
-          ' Chu kỳ',
+          ' Chu k\u1ef3',
         ]),
         el('label', {}, [
-          el('input', { type: 'checkbox', id: 'chart-overlay-elliott', checked: true }),
+          el('input', { type: 'checkbox', id: 'chart-overlay-elliott' }),
           ' Elliott',
         ]),
         el('label', {}, [
@@ -224,7 +246,7 @@ class ChartViewImpl {
         ]),
         el('label', {}, [
           el('input', { type: 'checkbox', id: 'chart-overlay-psychology', checked: true }),
-          ' Tâm lý',
+          ' T\u00e2m l\u00fd',
         ]),
       ]),
       el('div', { class: 'chart-toolbar-group chart-status', id: 'chart-status' }, [
@@ -258,7 +280,7 @@ class ChartViewImpl {
       if (this.#symbol === 'BTCUSD' && visible.length >= 20 && (fullRefresh || index % 3 === 0)) {
         this.#runChartAnalysis(visible);
       } else {
-        this.#updatePsychologyUi();
+        this.#updateResearchUi();
       }
     });
 
@@ -285,7 +307,7 @@ class ChartViewImpl {
     }));
 
     unsubs.push(bus.on(Events.PANEL_RESIZE, () => {
-      this.#updatePsychologyUi();
+      this.#updateResearchUi();
     }));
 
     unsubs.push(bus.on(Events.DATA_UPDATED, async () => {
@@ -330,6 +352,8 @@ class ChartViewImpl {
       this.#container?.querySelector(`#${id}`)?.addEventListener('change', (e) => {
         this.#overlayToggles[/** @type {keyof typeof this.#overlayToggles} */ (key)] =
           /** @type {HTMLInputElement} */ (e.target).checked;
+        const toolbar = this.#container?.querySelector('.chart-toolbar');
+        if (toolbar) clearPresetActiveState(toolbar);
         this.#applyAnalysisOverlay();
       });
     }
@@ -367,12 +391,21 @@ class ChartViewImpl {
       showElliott: this.#overlayToggles.elliott,
       showHalving: this.#overlayToggles.halving,
     });
-    this.#renderAnalysisHud(analysis);
-    this.#updatePsychologyUi();
+    this.#updateResearchUi();
   }
 
-  /** Sync psychology chart zones + insight card. */
-  #updatePsychologyUi() {
+  /**
+   * @param {keyof typeof CHART_OVERLAY_PRESETS} preset
+   */
+  #applyOverlayPreset(preset) {
+    this.#overlayToggles = { ...CHART_OVERLAY_PRESETS[preset] };
+    const toolbar = this.#container?.querySelector('.chart-toolbar');
+    if (toolbar) syncOverlayCheckboxes(toolbar, this.#overlayToggles);
+    this.#applyAnalysisOverlay();
+  }
+
+  /** Context bar, legend, psychology zones, insight card. */
+  #updateResearchUi() {
     const analysis = getLastAnalysis();
     const visible = this.#replay?.getVisibleCandles() ?? [];
     const cursorTs = visible.length > 0
@@ -383,20 +416,18 @@ class ChartViewImpl {
     const rangeFromTs = viewport?.from ?? visible[0]?.timestamp ?? cursorTs;
     const rangeToTs = viewport?.to ?? visible[visible.length - 1]?.timestamp ?? cursorTs;
 
-    const showPsychology = this.#overlayToggles.psychology
-      && this.#symbol === 'BTCUSD'
-      && !this.#activeSignal
-      && analysis != null;
+    const showResearch = this.#symbol === 'BTCUSD' && !this.#activeSignal && analysis != null;
 
     if (this.#psychologyChartBg && this.#chart) {
       updatePsychologyChartBg(this.#psychologyChartBg, {
         timeScale: this.#chart.getTimeScale(),
         plotWidth: this.#chart.getPlotWidth(),
+        chartWidth: this.#chart.getChartWidth(),
         analysis,
         rangeFromTs,
         rangeToTs,
         cursorTs,
-        visible: showPsychology,
+        visible: showResearch && this.#overlayToggles.psychology,
       });
     }
 
@@ -405,47 +436,25 @@ class ChartViewImpl {
       cursorTs,
       rangeFromTs: visible.length > 0 ? visible[0].timestamp : undefined,
       rangeToTs: visible.length > 0 ? visible[visible.length - 1].timestamp : undefined,
-      visible: showPsychology,
+      visible: showResearch && this.#overlayToggles.psychology,
     });
-  }
 
-  /**
-   * @param {import('../analysis/LongTermAnalysisEngine.js').LongTermAnalysisResult} analysis
-   */
-  #renderAnalysisHud(analysis) {
-    const hud = this.#container?.querySelector('#chart-analysis-hud');
-    if (!hud) return;
+    const replayState = this.#replay?.getState();
+    updateChartContextBar(this.#contextBar, {
+      candle: visible.length > 0 ? visible[visible.length - 1] : null,
+      analysis,
+      toggles: this.#overlayToggles,
+      timeframe: this.#timeframe,
+      replayIndex: visible.length,
+      replayTotal: replayState?.total ?? visible.length,
+      visible: showResearch,
+    });
 
-    if (this.#symbol !== 'BTCUSD' || this.#activeSignal) {
-      hud.hidden = true;
-      return;
-    }
-
-    hud.hidden = false;
-    hud.innerHTML = '';
-
-    const chips = [
-      { label: 'Chu kỳ', value: analysis.currentCycle.phaseLabel, color: analysis.currentCycle.phaseColor },
-      { label: 'Xu hướng', value: analysis.overallTrend.reason.split(' — ')[0], color: analysis.overallTrend.direction === 'uptrend' ? '#22c55e' : analysis.overallTrend.direction === 'downtrend' ? '#ef4444' : '#94a3b8' },
-      { label: 'Elliott', value: analysis.elliott.waves.length > 0 ? `Sóng ${analysis.elliott.waves[analysis.elliott.waves.length - 1].waveNumber}` : '—', color: '#8b5cf6' },
-    ];
-
-    for (const chip of chips) {
-      hud.appendChild(el('span', {
-        class: 'chart-hud-chip',
-        style: `border-color:${chip.color};color:${chip.color}`,
-        title: chip.value,
-      }, [
-        el('span', { class: 'chart-hud-label' }, [`${chip.label}: `]),
-        chip.value,
-      ]));
-    }
-
-    if (this.#timeframe === 'H4') {
-      hud.appendChild(el('span', { class: 'chart-hud-hint' }, [
-        'Khuyến nghị W/D1 cho phân tích dài hạn',
-      ]));
-    }
+    updateChartLegendBar(
+      this.#legendBar,
+      this.#overlayToggles,
+      showResearch ? analysis : null
+    );
   }
 
   async #loadChart() {

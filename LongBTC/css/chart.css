@@ -30,6 +30,165 @@
   position: relative;
 }
 
+/* ── Research context bar (what am I looking at?) ── */
+.chart-context-bar {
+  flex-shrink: 0;
+  padding: var(--space-sm) var(--space-md);
+  background: color-mix(in srgb, var(--color-bg-raised) 92%, var(--color-accent) 8%);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.chart-context-bar[hidden] {
+  display: none !important;
+}
+
+.chart-context-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.chart-context-datetime {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.chart-context-date {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--color-text-primary);
+}
+
+.chart-context-progress {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+}
+
+.chart-context-price {
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--color-text-primary);
+  flex-shrink: 0;
+}
+
+.chart-context-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.chart-context-metric {
+  flex: 1 1 140px;
+  min-width: 120px;
+  max-width: 220px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  border-left-width: 3px;
+  background: var(--color-bg-base);
+}
+
+.chart-context-metric-muted {
+  border-left-color: var(--color-text-muted);
+}
+
+.chart-context-metric-label {
+  display: block;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+.chart-context-metric-value {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-top: 2px;
+}
+
+.chart-context-metric-hint {
+  display: block;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  margin-top: 1px;
+}
+
+.chart-context-note {
+  margin: var(--space-sm) 0 0;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+/* ── Overlay legend ── */
+.chart-legend-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  padding: 4px var(--space-md);
+  background: var(--color-bg-base);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-size-xs);
+}
+
+.chart-legend-bar[hidden] {
+  display: none !important;
+}
+
+.chart-legend-bar-title {
+  font-weight: 600;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.chart-legend-bar-items {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.chart-legend-block {
+  display: inline-block;
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid;
+}
+
+.chart-legend-tip {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.chart-overlay-presets {
+  gap: 4px;
+}
+
+.chart-overlay-presets-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin-right: 2px;
+}
+
+.chart-preset-btn.active {
+  background: var(--color-accent-muted);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
 .chart-analysis-hud {
   position: absolute;
   top: 8px;

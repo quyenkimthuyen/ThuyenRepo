@@ -55,6 +55,7 @@ function segmentPx(x1, x2, plotWidth) {
  * @param {{
  *   timeScale: import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null,
  *   plotWidth: number,
+ *   chartWidth?: number,
  *   analysis: import('../analysis/LongTermAnalysisEngine.js').LongTermAnalysisResult,
  *   rangeFromTs: number,
  *   rangeToTs: number,
@@ -64,7 +65,7 @@ function segmentPx(x1, x2, plotWidth) {
  */
 export function updatePsychologyChartBg(bg, opts) {
   const {
-    timeScale, plotWidth, analysis, rangeFromTs, rangeToTs, cursorTs, visible,
+    timeScale, plotWidth, chartWidth, analysis, rangeFromTs, rangeToTs, cursorTs, visible,
   } = opts;
 
   if (!bg) return;
@@ -75,6 +76,8 @@ export function updatePsychologyChartBg(bg, opts) {
   }
 
   bg.hidden = false;
+  const gutter = chartWidth != null && chartWidth > plotWidth ? chartWidth - plotWidth : 0;
+  bg.style.marginRight = gutter > 0 ? `${gutter}px` : '';
 
   const bands = buildPsychologyBandsForRange(
     rangeFromTs,
