@@ -516,6 +516,44 @@
   z-index: 3;
 }
 
+.chart-psychology-bg--layered .chart-psychology-bg-seg--cycle {
+  z-index: 1;
+  background: color-mix(in srgb, var(--phase-color) 16%, transparent);
+  border-left: 2px solid color-mix(in srgb, var(--phase-color) 45%, transparent);
+}
+
+.chart-psychology-bg--layered .chart-psychology-bg-seg--cycle.is-at-cursor {
+  background: color-mix(in srgb, var(--phase-color) 22%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-color) 50%, transparent);
+}
+
+.chart-psychology-bg--layered .chart-psychology-bg-seg--psych {
+  z-index: 2;
+  background: color-mix(in srgb, var(--phase-color) 20%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--phase-color) 30%, transparent);
+}
+
+.chart-psychology-bg--layered .chart-psychology-bg-seg--psych.is-at-cursor {
+  background: color-mix(in srgb, var(--phase-color) 28%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-color) 45%, transparent);
+}
+
+.chart-psychology-bg-label--cycle {
+  top: 5px;
+  bottom: auto;
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.92;
+}
+
+.chart-psychology-bg-label--psych {
+  bottom: 5px;
+  top: auto;
+  font-size: 9px;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
 .chart-psychology-bg--sequential .chart-psychology-bg-seg {
   background: color-mix(in srgb, var(--phase-color) 24%, transparent);
   border-left: 1px solid color-mix(in srgb, var(--phase-color) 35%, transparent);

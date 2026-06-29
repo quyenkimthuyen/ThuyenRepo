@@ -4,7 +4,7 @@
  */
 
 import { el } from '../utils/dom.js';
-import { buildPsychologyBandsForRange } from '../analysis/PsychologyBands.js';
+import { buildChartPhaseBandsForRange } from '../analysis/PsychologyBands.js';
 
 /**
  * @param {HTMLElement} chartContainer
@@ -79,14 +79,13 @@ export function updatePsychologyChartBg(bg, opts) {
   const gutter = chartWidth != null && chartWidth > plotWidth ? chartWidth - plotWidth : 0;
   bg.style.marginRight = gutter > 0 ? `${gutter}px` : '';
 
-  const bands = buildPsychologyBandsForRange(
+  const bands = buildChartPhaseBandsForRange(
     rangeFromTs,
     rangeToTs,
-    analysis.currentCycle.nextHalvingEstimate,
-    { sequential: true }
+    analysis.currentCycle.nextHalvingEstimate
   );
 
-  bg.classList.add('chart-psychology-bg--sequential');
+  bg.classList.add('chart-psychology-bg--layered');
   bg.innerHTML = '';
 
   let rendered = 0;
@@ -100,21 +99,29 @@ export function updatePsychologyChartBg(bg, opts) {
 
     rendered++;
     const isAtCursor = cursorTs >= band.startTime && cursorTs < band.endTime;
+    const isCycle = band.kind === 'cycle';
+    const layerLabel = isCycle ? 'Giai \u0111o\u1ea1n chu k\u1ef3 BTC' : 'T\u00e2m l\u00fd th\u1ecb tr\u01b0\u1eddng';
     const title = [
       band.halvingLabel,
+      layerLabel,
       band.phase.labelVi,
       `(${band.phase.label})`,
-      'Chu k\u1ef3 halving',
     ].join(' \u00b7 ');
 
-    const showLabel = px.width >= 52;
+    const showLabel = isCycle ? px.width >= 72 : px.width >= 48;
 
     bg.appendChild(el('div', {
-      class: `chart-psychology-bg-seg${isAtCursor ? ' is-at-cursor' : ''}`,
+      class: [
+        'chart-psychology-bg-seg',
+        isCycle ? 'chart-psychology-bg-seg--cycle' : 'chart-psychology-bg-seg--psych',
+        isAtCursor ? 'is-at-cursor' : '',
+      ].filter(Boolean).join(' '),
       style: `left:${px.left}px;width:${px.width}px;--phase-color:${band.phase.color}`,
       title,
     }, showLabel ? [
-      el('span', { class: 'chart-psychology-bg-label' }, [band.phase.labelVi]),
+      el('span', {
+        class: `chart-psychology-bg-label${isCycle ? ' chart-psychology-bg-label--cycle' : ' chart-psychology-bg-label--psych'}`,
+      }, [band.phase.labelVi]),
     ] : []));
   }
 

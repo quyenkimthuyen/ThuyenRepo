@@ -10,6 +10,8 @@ import { analyzeCurrentCycle } from '../../src/analysis/HalvingCycleAnalyzer.js'
 import {
   buildPsychologyBandsForRange,
   buildSequentialPsychologyTimeline,
+  buildCycleBandsForRange,
+  buildChartPhaseBandsForRange,
 } from '../../src/analysis/PsychologyBands.js';
 
 const s = createSuite('Analysis Engine');
@@ -64,13 +66,32 @@ function buildSyntheticCandles(count) {
     s.assert(`AC-09: no overlap at ${i}`, seq[i].startPct >= seq[i - 1].endPct - 0.001);
   }
 
+  const seqNoPre = buildSequentialPsychologyTimeline({ includePreCycle: false });
+  s.assert('AC-08b: psych without pre-cycle', seqNoPre[0]?.phase.id === 'optimism');
+
+  const cycleBands = buildCycleBandsForRange(
+    Date.parse('2021-01-01T00:00:00Z'),
+    Date.parse('2023-01-01T00:00:00Z'),
+    Date.parse('2028-04-01T00:00:00Z')
+  );
+  s.assert('AC-10: cycle bands per halving', cycleBands.length === 4);
+  s.assert('AC-10b: cycle band kinds', cycleBands.every((b) => b.kind === 'cycle'));
+
+  const layered = buildChartPhaseBandsForRange(
+    Date.parse('2020-05-11T00:00:00Z'),
+    Date.parse('2024-04-20T00:00:00Z'),
+    Date.parse('2028-04-01T00:00:00Z')
+  );
+  s.assert('AC-11: layered chart bands', layered.length >= 12);
+  s.assert('AC-11b: has both layers', layered.some((b) => b.kind === 'cycle') && layered.some((b) => b.kind === 'psychology'));
+
   const bands = buildPsychologyBandsForRange(
     Date.parse('2020-05-11T00:00:00Z'),
     Date.parse('2024-04-20T00:00:00Z'),
     Date.parse('2028-04-01T00:00:00Z'),
     { sequential: true }
   );
-  s.assert('AC-10: halving cycle psychology bands', bands.length >= 8);
+  s.assert('AC-12: halving cycle psychology bands', bands.length >= 8);
 }
 
 process.exit(footer(s.finish()));
