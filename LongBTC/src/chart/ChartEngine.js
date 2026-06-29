@@ -253,7 +253,6 @@ export class ChartEngine {
     const showCycle = options.showCycle !== false;
     const showElliott = options.showElliott !== false;
     const showHalving = options.showHalving !== false;
-    const showPsychology = options.showPsychology !== false;
 
     if (!this.#activeHighlight) {
       /** @type {Array<Record<string, unknown>>} */
@@ -265,16 +264,6 @@ export class ChartEngine {
       }
       if (showHalving && candles.length > 0) {
         markers.push(...buildHalvingMarkers(candles));
-      }
-      if (showPsychology && candles.length > 0) {
-        const last = candles[candles.length - 1];
-        markers.push({
-          time: Math.floor(last.timestamp / 1000),
-          position: 'aboveBar',
-          color: analysis.psychology.color,
-          shape: 'square',
-          text: analysis.psychology.labelVi.slice(0, 12),
-        });
       }
       if (markers.length > 0) {
         markers.sort((a, b) => a.time - b.time);

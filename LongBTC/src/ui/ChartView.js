@@ -8,7 +8,7 @@ import { bus, Events } from '../core/EventBus.js';
 import { el, loadFromStorage } from '../utils/dom.js';
 import DataManager from '../data/DataManager.js';
 import { ChartEngine } from '../chart/ChartEngine.js';
-import { mountPsychologyLayers, updatePsychologyLayers } from '../chart/PsychologyChartStrip.js';
+import { mountPsychologyLane, updatePsychologyLane } from '../chart/PsychologyChartStrip.js';
 import { ReplayEngine } from '../replay/ReplayEngine.js';
 import { ReplayControls } from './ReplayControls.js';
 import { createHelpButton } from '../utils/contextHelp.js';
@@ -70,8 +70,8 @@ class ChartViewImpl {
   /** @type {{ swings: boolean, trends: boolean, cycle: boolean, elliott: boolean, halving: boolean, psychology: boolean }} */
   #overlayToggles = { swings: true, trends: true, cycle: true, elliott: true, halving: true, psychology: true };
 
-  /** @type {{ bg: HTMLElement, strip: HTMLElement }|null} */
-  #psychologyLayers = null;
+  /** @type {HTMLElement|null} */
+  #psychologyLane = null;
 
   /**
    * Mount the chart view.
@@ -123,7 +123,10 @@ class ChartViewImpl {
     ]));
 
     this.#chart.mount(chartContainer);
-    this.#psychologyLayers = mountPsychologyLayers(chartContainer);
+    const chartMain = container.querySelector('.chart-main');
+    if (chartMain) {
+      this.#psychologyLane = mountPsychologyLane(chartMain);
+    }
     this.#chart.onVisibleRangeChange(() => this.#updatePsychologyStrip());
     this.#wireReplay();
     this.#bindEvents();
@@ -140,7 +143,7 @@ class ChartViewImpl {
     this.#unsubs = null;
     this.#replay?.destroy();
     this.#chart?.destroy();
-    this.#psychologyLayers = null;
+    this.#psychologyLane = null;
     this.#replay = null;
     this.#chart = null;
 
@@ -356,42 +359,26 @@ class ChartViewImpl {
 
   /** Sync psychology phase bands with chart time scale. */
   #updatePsychologyStrip() {
-    if (!this.#psychologyLayers || !this.#chart) return;
+    if (!this.#psychologyLane || !this.#chart) return;
 
     const analysis = getLastAnalysis();
     const visible = this.#replay?.getVisibleCandles() ?? [];
-    if (visible.length === 0) {
-      updatePsychologyLayers({
-        bg: this.#psychologyLayers.bg,
-        strip: this.#psychologyLayers.strip,
-        timeScale: this.#chart.getTimeScale(),
-        chartWidth: this.#chart.getChartWidth(),
-        analysis,
-        rangeFromTs: 0,
-        rangeToTs: 0,
-        cursorTs: Date.now(),
-        visible: false,
-      });
+
+    if (visible.length === 0 || !analysis) {
+      this.#psychologyLane.hidden = true;
       return;
     }
 
-    const rangeFromTs = visible[0].timestamp;
-    const rangeToTs = visible[visible.length - 1].timestamp;
-    const cursorTs = visible[visible.length - 1].timestamp;
-
-    updatePsychologyLayers({
-      bg: this.#psychologyLayers.bg,
-      strip: this.#psychologyLayers.strip,
+    updatePsychologyLane(this.#psychologyLane, {
       timeScale: this.#chart.getTimeScale(),
       chartWidth: this.#chart.getChartWidth(),
       analysis,
-      rangeFromTs,
-      rangeToTs,
-      cursorTs,
+      rangeFromTs: visible[0].timestamp,
+      rangeToTs: visible[visible.length - 1].timestamp,
+      cursorTs: visible[visible.length - 1].timestamp,
       visible: this.#overlayToggles.psychology
         && this.#symbol === 'BTCUSD'
-        && !this.#activeSignal
-        && analysis != null,
+        && !this.#activeSignal,
     });
   }
 
@@ -414,7 +401,6 @@ class ChartViewImpl {
       { label: 'Chu kỳ', value: analysis.currentCycle.phaseLabel, color: analysis.currentCycle.phaseColor },
       { label: 'Xu hướng', value: analysis.overallTrend.reason.split(' — ')[0], color: analysis.overallTrend.direction === 'uptrend' ? '#22c55e' : analysis.overallTrend.direction === 'downtrend' ? '#ef4444' : '#94a3b8' },
       { label: 'Elliott', value: analysis.elliott.waves.length > 0 ? `Sóng ${analysis.elliott.waves[analysis.elliott.waves.length - 1].waveNumber}` : '—', color: '#8b5cf6' },
-      { label: 'Tâm lý', value: analysis.psychology.labelVi, color: analysis.psychology.color },
     ];
 
     for (const chip of chips) {
