@@ -1,5 +1,6 @@
 /**
  * Time-synced psychology background zones on the price chart.
+ * Uses Lightweight Charts time scale coordinates (stays aligned on pan/zoom).
  * @module chart/PsychologyChartOverlay
  */
 
@@ -16,32 +17,45 @@ export function mountPsychologyChartBg(chartContainer) {
     id: 'chart-psychology-bg',
     hidden: true,
   });
-  chartContainer.appendChild(bg);
+  chartContainer.insertBefore(bg, chartContainer.firstChild);
   return bg;
 }
 
 /**
+ * @param {import('../data/Candle.js').Candle[]} candles
+ * @param {number} tsMs
+ * @returns {number}
+ */
+function nearestCandleIndex(candles, tsMs) {
+  let index = 0;
+  for (let i = 0; i < candles.length; i++) {
+    if (candles[i].timestamp <= tsMs) index = i;
+    else break;
+  }
+  return index;
+}
+
+/**
+ * Map timestamp to x in the chart pane (same coordinate system as candles).
  * @param {import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null} timeScale
  * @param {number} tsMs
- * @param {number} plotWidth
- * @param {{ fromMs: number, toMs: number }} scale
+ * @param {import('../data/Candle.js').Candle[]} candles
  * @returns {number|null}
  */
-function timeToPx(timeScale, tsMs, plotWidth, scale) {
-  if (!timeScale || plotWidth < 1) return null;
+function timeToPx(timeScale, tsMs, candles) {
+  if (!timeScale) return null;
 
-  const x = timeScale.timeToCoordinate(Math.floor(tsMs / 1000));
-  if (x !== null && Number.isFinite(x)) {
-    return Math.max(0, Math.min(plotWidth, x));
-  }
+  const sec = Math.floor(tsMs / 1000);
+  let x = timeScale.timeToCoordinate(sec);
+  if (x !== null && Number.isFinite(x)) return x;
 
-  const { fromMs, toMs } = scale;
-  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || toMs <= fromMs) return null;
+  if (candles.length === 0) return null;
 
-  const ratio = (tsMs - fromMs) / (toMs - fromMs);
-  if (ratio < -0.02 || ratio > 1.02) return null;
+  const barSec = Math.floor(candles[nearestCandleIndex(candles, tsMs)].timestamp / 1000);
+  x = timeScale.timeToCoordinate(barSec);
+  if (x !== null && Number.isFinite(x)) return x;
 
-  return Math.max(0, Math.min(plotWidth, ratio * plotWidth));
+  return null;
 }
 
 /**
@@ -62,25 +76,11 @@ function segmentPx(x1, x2, plotWidth) {
 }
 
 /**
- * @param {import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null} timeScale
- * @param {number} rangeFromTs
- * @param {number} rangeToTs
- * @returns {{ fromMs: number, toMs: number }}
- */
-function resolveScaleRange(timeScale, rangeFromTs, rangeToTs) {
-  const visible = timeScale?.getVisibleRange?.();
-  if (visible) {
-    return { fromMs: visible.from * 1000, toMs: visible.to * 1000 };
-  }
-  return { fromMs: rangeFromTs, toMs: rangeToTs };
-}
-
-/**
  * @param {HTMLElement} bg
  * @param {{
  *   timeScale: import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null,
  *   plotWidth: number,
- *   chartWidth?: number,
+ *   candles: import('../data/Candle.js').Candle[],
  *   currentCycleEnd: number,
  *   rangeFromTs: number,
  *   rangeToTs: number,
@@ -90,20 +90,24 @@ function resolveScaleRange(timeScale, rangeFromTs, rangeToTs) {
  */
 export function updatePsychologyChartBg(bg, opts) {
   const {
-    timeScale, plotWidth, chartWidth, currentCycleEnd,
+    timeScale, plotWidth, candles, currentCycleEnd,
     rangeFromTs, rangeToTs, cursorTs, visible,
   } = opts;
 
   if (!bg) return 0;
 
-  if (!visible || plotWidth < 10 || !Number.isFinite(currentCycleEnd)) {
+  const paneWidth = timeScale?.width?.() ?? plotWidth;
+  if (!visible || paneWidth < 10 || !Number.isFinite(currentCycleEnd)) {
     bg.hidden = true;
     return 0;
   }
 
-  const scale = resolveScaleRange(timeScale, rangeFromTs, rangeToTs);
-  const bandFrom = Math.min(rangeFromTs, scale.fromMs) - 7 * 24 * 60 * 60 * 1000;
-  const bandTo = Math.max(rangeToTs, scale.toMs) + 7 * 24 * 60 * 60 * 1000;
+  const visibleRange = timeScale?.getVisibleRange?.();
+  const viewFromMs = visibleRange ? visibleRange.from * 1000 : rangeFromTs;
+  const viewToMs = visibleRange ? visibleRange.to * 1000 : rangeToTs;
+
+  const bandFrom = Math.min(rangeFromTs, viewFromMs) - 7 * 24 * 60 * 60 * 1000;
+  const bandTo = Math.max(rangeToTs, viewToMs) + 7 * 24 * 60 * 60 * 1000;
 
   const bands = buildPsychologyBandsForRange(
     bandFrom,
@@ -113,19 +117,21 @@ export function updatePsychologyChartBg(bg, opts) {
   );
 
   bg.hidden = false;
-  const gutter = chartWidth != null && chartWidth > plotWidth ? chartWidth - plotWidth : 0;
-  bg.style.marginRight = gutter > 0 ? `${gutter}px` : '';
+  bg.style.width = `${paneWidth}px`;
+  bg.style.left = '0';
+  bg.style.right = 'auto';
+  bg.style.marginRight = '';
 
   bg.innerHTML = '';
   let rendered = 0;
 
   for (const band of bands) {
-    if (band.endTime <= scale.fromMs || band.startTime >= scale.toMs) continue;
+    if (band.endTime <= viewFromMs || band.startTime >= viewToMs) continue;
 
     const px = segmentPx(
-      timeToPx(timeScale, band.startTime, plotWidth, scale),
-      timeToPx(timeScale, band.endTime, plotWidth, scale),
-      plotWidth
+      timeToPx(timeScale, band.startTime, candles),
+      timeToPx(timeScale, band.endTime, candles),
+      paneWidth
     );
     if (!px) continue;
 

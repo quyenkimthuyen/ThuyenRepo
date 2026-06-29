@@ -437,7 +437,7 @@ class ChartViewImpl {
       const rendered = updatePsychologyChartBg(this.#psychologyChartBg, {
         timeScale: this.#chart.getTimeScale(),
         plotWidth: this.#chart.getPlotWidth(),
-        chartWidth: this.#chart.getChartWidth(),
+        candles: visible,
         currentCycleEnd,
         rangeFromTs,
         rangeToTs,

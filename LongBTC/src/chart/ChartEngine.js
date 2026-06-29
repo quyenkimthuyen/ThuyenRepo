@@ -63,6 +63,12 @@ export class ChartEngine {
   /** @type {(() => void)|null} */
   #timeScaleHandler = null;
 
+  /** @type {(() => void)|null} */
+  #timeRangeHandler = null;
+
+  /** @type {number|null} */
+  #rangeRaf = null;
+
   /** @type {((hit: CrosshairHit|null) => void)|null} */
   #crosshairHandler = null;
 
@@ -510,12 +516,13 @@ export class ChartEngine {
    * @returns {number}
    */
   getPlotWidth() {
+    const tsWidth = this.#chart?.timeScale().width();
+    if (tsWidth != null && tsWidth > 0) return tsWidth;
+
     const total = this.getChartWidth();
     if (!this.#chart || total <= 0) return total;
     const scaleW = this.#chart.priceScale('right').width();
-    const plot = Math.max(0, total - scaleW);
-    if (plot >= 10) return plot;
-    return Math.max(0, Math.floor(total * 0.88));
+    return Math.max(0, total - scaleW);
   }
 
   /**
@@ -533,15 +540,36 @@ export class ChartEngine {
   onVisibleRangeChange(callback) {
     this.offVisibleRangeChange();
     if (!this.#chart) return;
-    this.#timeScaleHandler = callback;
-    this.#chart.timeScale().subscribeVisibleLogicalRangeChange(this.#timeScaleHandler);
+
+    const dispatch = () => {
+      if (this.#rangeRaf != null) cancelAnimationFrame(this.#rangeRaf);
+      this.#rangeRaf = requestAnimationFrame(() => {
+        this.#rangeRaf = null;
+        callback();
+      });
+    };
+
+    this.#timeScaleHandler = dispatch;
+    this.#timeRangeHandler = dispatch;
+    const ts = this.#chart.timeScale();
+    ts.subscribeVisibleLogicalRangeChange(this.#timeScaleHandler);
+    ts.subscribeVisibleTimeRangeChange(this.#timeRangeHandler);
   }
 
   offVisibleRangeChange() {
-    if (this.#chart && this.#timeScaleHandler) {
-      this.#chart.timeScale().unsubscribeVisibleLogicalRangeChange(this.#timeScaleHandler);
+    if (this.#chart) {
+      const ts = this.#chart.timeScale();
+      if (this.#timeScaleHandler) {
+        ts.unsubscribeVisibleLogicalRangeChange(this.#timeScaleHandler);
+      }
+      if (this.#timeRangeHandler) {
+        ts.unsubscribeVisibleTimeRangeChange(this.#timeRangeHandler);
+      }
     }
+    if (this.#rangeRaf != null) cancelAnimationFrame(this.#rangeRaf);
+    this.#rangeRaf = null;
     this.#timeScaleHandler = null;
+    this.#timeRangeHandler = null;
   }
 
   /**
