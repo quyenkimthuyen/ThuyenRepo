@@ -7,6 +7,10 @@ import { createSuite, header, footer } from '../harness.js';
 import { analyzeLongTerm } from '../../src/analysis/LongTermAnalysisEngine.js';
 import { detectSwingPivots } from '../../src/analysis/SwingPivotDetector.js';
 import { analyzeCurrentCycle } from '../../src/analysis/HalvingCycleAnalyzer.js';
+import {
+  buildPsychologyBandsForRange,
+  buildSequentialPsychologyTimeline,
+} from '../../src/analysis/PsychologyBands.js';
 
 const s = createSuite('Analysis Engine');
 header('Analysis Engine');
@@ -53,6 +57,20 @@ function buildSyntheticCandles(count) {
   s.assert('AC-05: has psychology', result.psychology.labelVi.length > 0);
   s.assert('AC-06: has segments', result.segments.length > 0);
   s.assert('AC-07: historical cycles', result.historicalCycles.length >= 1);
+
+  const seq = buildSequentialPsychologyTimeline();
+  s.assert('AC-08: sequential psychology windows', seq.length >= 10);
+  for (let i = 1; i < seq.length; i++) {
+    s.assert(`AC-09: no overlap at ${i}`, seq[i].startPct >= seq[i - 1].endPct - 0.001);
+  }
+
+  const bands = buildPsychologyBandsForRange(
+    Date.parse('2020-05-11T00:00:00Z'),
+    Date.parse('2024-04-20T00:00:00Z'),
+    Date.parse('2028-04-01T00:00:00Z'),
+    { sequential: true }
+  );
+  s.assert('AC-10: halving cycle psychology bands', bands.length >= 8);
 }
 
 process.exit(footer(s.finish()));

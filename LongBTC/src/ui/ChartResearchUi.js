@@ -10,19 +10,22 @@ import { psychologyBandAtTime } from '../analysis/PsychologyBands.js';
 /**
  * @typedef {import('../analysis/LongTermAnalysisEngine.js').LongTermAnalysisResult} AnalysisResult
  * @typedef {import('../data/Candle.js').Candle} Candle
- * @typedef {{ swings: boolean, trends: boolean, cycle: boolean, elliott: boolean, halving: boolean, psychology: boolean }} OverlayToggles
+ * @typedef {{ swings: boolean, trends: boolean, cycle: boolean, elliott: boolean, halving: boolean, psychology: boolean, psychologyBg: boolean }} OverlayToggles
  */
 
 /** @type {Record<string, OverlayToggles>} */
 export const CHART_OVERLAY_PRESETS = {
   clean: {
-    swings: false, trends: false, cycle: true, elliott: false, halving: true, psychology: true,
+    swings: false, trends: false, cycle: true, elliott: false, halving: true,
+    psychology: true, psychologyBg: true,
   },
   trend: {
-    swings: false, trends: true, cycle: true, elliott: false, halving: true, psychology: true,
+    swings: false, trends: true, cycle: true, elliott: false, halving: true,
+    psychology: true, psychologyBg: true,
   },
   full: {
-    swings: true, trends: true, cycle: true, elliott: true, halving: true, psychology: true,
+    swings: true, trends: true, cycle: true, elliott: true, halving: true,
+    psychology: true, psychologyBg: true,
   },
 };
 
@@ -208,6 +211,7 @@ export function syncOverlayCheckboxes(toolbar, toggles) {
     ['chart-overlay-elliott', 'elliott'],
     ['chart-overlay-halving', 'halving'],
     ['chart-overlay-psychology', 'psychology'],
+    ['chart-overlay-psychology-bg', 'psychologyBg'],
   ]) {
     const input = toolbar.querySelector(`#${id}`);
     if (input) /** @type {HTMLInputElement} */ (input).checked = toggles[key];

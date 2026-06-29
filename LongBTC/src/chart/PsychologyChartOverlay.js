@@ -82,9 +82,11 @@ export function updatePsychologyChartBg(bg, opts) {
   const bands = buildPsychologyBandsForRange(
     rangeFromTs,
     rangeToTs,
-    analysis.currentCycle.nextHalvingEstimate
+    analysis.currentCycle.nextHalvingEstimate,
+    { sequential: true }
   );
 
+  bg.classList.toggle('chart-psychology-bg--sequential', true);
   bg.innerHTML = '';
 
   for (const band of bands) {
@@ -100,12 +102,17 @@ export function updatePsychologyChartBg(bg, opts) {
       band.halvingLabel,
       band.phase.labelVi,
       `(${band.phase.label})`,
+      'Chu k\u1ef3 halving',
     ].join(' \u00b7 ');
+
+    const showLabel = px.width >= 52;
 
     bg.appendChild(el('div', {
       class: `chart-psychology-bg-seg${isAtCursor ? ' is-at-cursor' : ''}`,
       style: `left:${px.left}px;width:${px.width}px;--phase-color:${band.phase.color}`,
       title,
-    }));
+    }, showLabel ? [
+      el('span', { class: 'chart-psychology-bg-label' }, [band.phase.labelVi]),
+    ] : []));
   }
 }

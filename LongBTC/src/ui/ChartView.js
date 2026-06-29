@@ -78,7 +78,7 @@ class ChartViewImpl {
   /** @type {boolean|null} */
   #emaRestore = null;
 
-  /** @type {{ swings: boolean, trends: boolean, cycle: boolean, elliott: boolean, halving: boolean, psychology: boolean }} */
+  /** @type {{ swings: boolean, trends: boolean, cycle: boolean, elliott: boolean, halving: boolean, psychology: boolean, psychologyBg: boolean }} */
   #overlayToggles = { ...CHART_OVERLAY_PRESETS.clean };
 
   /** @type {HTMLElement|null} */
@@ -236,6 +236,10 @@ class ChartViewImpl {
             el('input', { type: 'checkbox', id: 'chart-overlay-psychology', checked: true }),
             ' T\u00e2m l\u00fd',
           ]),
+          el('label', {}, [
+            el('input', { type: 'checkbox', id: 'chart-overlay-psychology-bg', checked: true }),
+            ' N\u1ec1n giai \u0111o\u1ea1n t\u00e2m l\u00fd',
+          ]),
         ]),
       ]),
       el('div', { class: 'chart-toolbar-group chart-status', id: 'chart-status' }, [
@@ -334,6 +338,7 @@ class ChartViewImpl {
       ['chart-overlay-elliott', 'elliott'],
       ['chart-overlay-halving', 'halving'],
       ['chart-overlay-psychology', 'psychology'],
+      ['chart-overlay-psychology-bg', 'psychologyBg'],
     ]) {
       this.#container?.querySelector(`#${id}`)?.addEventListener('change', (e) => {
         this.#overlayToggles[/** @type {keyof typeof this.#overlayToggles} */ (key)] =
@@ -341,6 +346,7 @@ class ChartViewImpl {
         const toolbar = this.#container?.querySelector('.chart-toolbar');
         if (toolbar) clearPresetActiveState(toolbar);
         this.#applyAnalysisOverlay();
+        this.#updateResearchUi();
       });
     }
 
@@ -413,7 +419,7 @@ class ChartViewImpl {
         rangeFromTs,
         rangeToTs,
         cursorTs,
-        visible: showResearch && this.#overlayToggles.psychology,
+        visible: showResearch && this.#overlayToggles.psychologyBg,
       });
     }
 
