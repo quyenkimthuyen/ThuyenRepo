@@ -188,6 +188,49 @@ export function buildPsychologyTimeline() {
 }
 
 /**
+ * Non-overlapping psychology windows (0-100%) for chart/history display.
+ * Calibrated to BTC halving-to-halving span (actual dates, not fixed 1460d).
+ * @returns {Array<{ phase: typeof PSYCHOLOGY_PHASES[number], startPct: number, endPct: number }>}
+ */
+export function buildChartPsychologyTimeline() {
+  const byId = Object.fromEntries(PSYCHOLOGY_PHASES.map((p) => [p.id, p]));
+  /** @type {Array<[string, number, number]>} */
+  const windows = [
+    ['hope', 0, 10],
+    ['relief', 10, 18],
+    ['optimism', 18, 26],
+    ['excitement', 26, 34],
+    ['thrill', 34, 42],
+    ['euphoria', 42, 52],
+    ['anxiety', 52, 58],
+    ['denial', 58, 65],
+    ['fear', 65, 72],
+    ['capitulation', 72, 80],
+    ['depression', 80, 88],
+    ['hope', 88, 94],
+    ['relief', 94, 100],
+  ];
+
+  return windows.map(([id, startPct, endPct]) => ({
+    phase: byId[id],
+    startPct,
+    endPct,
+  }));
+}
+
+/**
+ * Calendar psychology phase at progress through a halving cycle (0-1).
+ * @param {number} progress
+ * @returns {typeof PSYCHOLOGY_PHASES[number]|undefined}
+ */
+export function psychologyPhaseAtCycleProgress(progress) {
+  const pct = Math.max(0, Math.min(100, progress * 100));
+  const timeline = buildChartPsychologyTimeline();
+  const hit = timeline.find((w) => pct >= w.startPct && pct < w.endPct);
+  return hit?.phase ?? timeline[timeline.length - 1]?.phase;
+}
+
+/**
  * @param {typeof PSYCHOLOGY_PHASES[number]} phase
  * @param {CurrentCycleState} cycle
  * @param {{ direction: TrendDirection }} trend

@@ -12,7 +12,9 @@ import {
   buildSequentialPsychologyTimeline,
   buildCycleBandsForRange,
   buildChartPhaseBandsForRange,
+  psychologyBandAtTime,
 } from '../../src/analysis/PsychologyBands.js';
+import { buildChartPsychologyTimeline } from '../../src/analysis/PsychologyCycleMapper.js';
 
 const s = createSuite('Analysis Engine');
 header('Analysis Engine');
@@ -60,14 +62,28 @@ function buildSyntheticCandles(count) {
   s.assert('AC-06: has segments', result.segments.length > 0);
   s.assert('AC-07: historical cycles', result.historicalCycles.length >= 1);
 
-  const seq = buildSequentialPsychologyTimeline();
-  s.assert('AC-08: sequential psychology windows', seq.length >= 10);
+  const seq = buildChartPsychologyTimeline();
+  s.assert('AC-08: chart psychology windows', seq.length === 13);
+  s.assert('AC-08a: starts at 0%', seq[0].startPct === 0);
+  s.assert('AC-08b: ends at 100%', seq[seq.length - 1].endPct === 100);
   for (let i = 1; i < seq.length; i++) {
     s.assert(`AC-09: no overlap at ${i}`, seq[i].startPct >= seq[i - 1].endPct - 0.001);
   }
 
-  const seqNoPre = buildSequentialPsychologyTimeline({ includePreCycle: false });
-  s.assert('AC-08b: psych without pre-cycle', seqNoPre[0]?.phase.id === 'optimism');
+  const legacy = buildSequentialPsychologyTimeline();
+  s.assert('AC-09b: legacy alias', legacy.length === seq.length);
+
+  const h3End = Date.parse('2024-04-20T00:00:00Z');
+  const peak2021 = psychologyBandAtTime(Date.parse('2021-11-10T00:00:00Z'), h3End);
+  s.assert('AC-14: 2021 bull peak phase', ['thrill', 'euphoria', 'excitement'].includes(peak2021?.phase.id ?? ''));
+
+  const bear2022 = psychologyBandAtTime(Date.parse('2022-11-21T00:00:00Z'), h3End);
+  s.assert('AC-15: 2022 bear phase', ['denial', 'fear', 'capitulation', 'depression'].includes(bear2022?.phase.id ?? ''));
+
+  const postHalving2020 = psychologyBandAtTime(Date.parse('2020-08-01T00:00:00Z'), h3End);
+  s.assert('AC-16: post-halving 2020', ['hope', 'relief', 'optimism'].includes(postHalving2020?.phase.id ?? ''));
+
+  s.assert('AC-17: chart timeline export', buildChartPsychologyTimeline().length === 13);
 
   const cycleBands = buildCycleBandsForRange(
     Date.parse('2021-01-01T00:00:00Z'),
@@ -88,10 +104,9 @@ function buildSyntheticCandles(count) {
   const bands = buildPsychologyBandsForRange(
     Date.parse('2020-05-11T00:00:00Z'),
     Date.parse('2024-04-20T00:00:00Z'),
-    Date.parse('2028-04-01T00:00:00Z'),
-    { sequential: true }
+    Date.parse('2028-04-01T00:00:00Z')
   );
-  s.assert('AC-12: halving cycle psychology bands', bands.length >= 8);
+  s.assert('AC-12: halving cycle psychology bands', bands.length === 13);
 
   const t1 = Date.parse('2021-06-01T00:00:00Z');
   const t2 = Date.parse('2022-06-01T00:00:00Z');

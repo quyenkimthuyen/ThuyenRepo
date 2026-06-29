@@ -112,8 +112,7 @@ export function updatePsychologyChartBg(bg, opts) {
   const bands = buildPsychologyBandsForRange(
     bandFrom,
     bandTo,
-    currentCycleEnd,
-    { sequential: true }
+    currentCycleEnd
   );
 
   bg.hidden = false;

@@ -4,7 +4,7 @@
  */
 
 import { BTC_HALVING_EVENTS, CYCLE_LENGTH_DAYS, CYCLE_PHASE_RANGES } from './BtcCycleConfig.js';
-import { buildPsychologyTimeline } from './PsychologyCycleMapper.js';
+import { buildChartPsychologyTimeline } from './PsychologyCycleMapper.js';
 
 /**
  * @typedef {{
@@ -18,7 +18,6 @@ import { buildPsychologyTimeline } from './PsychologyCycleMapper.js';
  */
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-const NOMINAL_CYCLE_MS = CYCLE_LENGTH_DAYS * MS_PER_DAY;
 
 /** @type {Record<string, { id: string, label: string, labelVi: string, color: string }>} */
 const CYCLE_PHASE_META = {
@@ -48,54 +47,35 @@ const CYCLE_PHASE_META = {
   },
 };
 
-const ACCUMULATION_PHASE = CYCLE_PHASE_META.accumulation;
-
 /**
- * Non-overlapping psychology windows across one halving cycle (sequential display).
- * @param {{ includePreCycle?: boolean }} [options]
- * @returns {Array<{ phase: { id: string, labelVi: string, label: string, color: string }, startPct: number, endPct: number }>}
+ * @deprecated Use buildChartPsychologyTimeline — kept for tests/compat.
+ * @param {{ includePreCycle?: boolean }} [_options]
  */
-export function buildSequentialPsychologyTimeline(options = {}) {
-  const includePreCycle = options.includePreCycle !== false;
-  const sorted = [...buildPsychologyTimeline()]
-    .filter((item) => item.endPct > item.startPct)
-    .sort((a, b) => a.startPct - b.startPct || a.endPct - b.endPct);
-
-  /** @type {ReturnType<typeof buildSequentialPsychologyTimeline>} */
-  const windows = [];
-
-  const firstStart = sorted[0]?.startPct ?? 20;
-  if (includePreCycle && firstStart > 0) {
-    windows.push({
-      phase: ACCUMULATION_PHASE,
-      startPct: 0,
-      endPct: firstStart,
-    });
-  }
-
-  for (let i = 0; i < sorted.length; i++) {
-    const item = sorted[i];
-    const startPct = item.startPct;
-    const endPct = i < sorted.length - 1 ? sorted[i + 1].startPct : 100;
-    if (endPct <= startPct) continue;
-    windows.push({
-      phase: item.phase,
-      startPct,
-      endPct,
-    });
-  }
-
-  return windows;
+export function buildSequentialPsychologyTimeline(_options = {}) {
+  return buildChartPsychologyTimeline();
 }
 
 /**
- * Nominal halving-to-halving span (fixed 1460d) — same on W, D1, H4.
+ * @param {number} halvingIndex
+ * @param {number} [currentCycleEnd]
+ * @returns {number}
+ */
+function halvingWindowEndMs(halvingIndex, currentCycleEnd) {
+  const halving = BTC_HALVING_EVENTS[halvingIndex];
+  const next = BTC_HALVING_EVENTS[halvingIndex + 1];
+  return next
+    ? next.timestamp
+    : (currentCycleEnd ?? halving.timestamp + CYCLE_LENGTH_DAYS * MS_PER_DAY);
+}
+
+/**
+ * Actual halving-to-halving span (used for % phase mapping on chart).
  * @param {number} halvingStartMs
  * @param {number} halvingEndMs
  * @returns {number}
  */
-function nominalCycleSpanMs(halvingStartMs, halvingEndMs) {
-  return Math.min(NOMINAL_CYCLE_MS, Math.max(0, halvingEndMs - halvingStartMs));
+function cycleSpanMs(halvingStartMs, halvingEndMs) {
+  return Math.max(0, halvingEndMs - halvingStartMs);
 }
 
 /**
@@ -106,10 +86,8 @@ function nominalCycleSpanMs(halvingStartMs, halvingEndMs) {
  * @returns {PsychologyBand[]}
  */
 function cycleBandsForHalvingWindow(halvingStartMs, halvingEndMs, halvingLabel, cycleIndex) {
-  const span = nominalCycleSpanMs(halvingStartMs, halvingEndMs);
+  const span = cycleSpanMs(halvingStartMs, halvingEndMs);
   if (span <= 0) return [];
-
-  const cycleEnd = halvingStartMs + span;
 
   /** @type {PsychologyBand[]} */
   const bands = [];
@@ -118,17 +96,11 @@ function cycleBandsForHalvingWindow(halvingStartMs, halvingEndMs, halvingLabel, 
     const meta = CYCLE_PHASE_META[phaseId];
     if (!meta || range.end <= range.start) continue;
 
-    const startTime = halvingStartMs + range.start * NOMINAL_CYCLE_MS;
-    const endTime = halvingStartMs + range.end * NOMINAL_CYCLE_MS;
-    const clippedStart = Math.max(halvingStartMs, startTime);
-    const clippedEnd = Math.min(cycleEnd, endTime);
-    if (clippedEnd <= clippedStart) continue;
-
     bands.push({
       kind: 'cycle',
       phase: meta,
-      startTime: clippedStart,
-      endTime: clippedEnd,
+      startTime: halvingStartMs + range.start * span,
+      endTime: halvingStartMs + range.end * span,
       halvingLabel,
       cycleIndex,
     });
@@ -138,35 +110,25 @@ function cycleBandsForHalvingWindow(halvingStartMs, halvingEndMs, halvingLabel, 
 }
 
 /**
+ * Psychology bands mapped to % of actual halving-to-halving window.
  * @param {number} halvingStartMs
  * @param {number} halvingEndMs
  * @param {string} halvingLabel
  * @param {number} cycleIndex
- * @param {boolean} [sequential=false]
  * @returns {PsychologyBand[]}
  */
-function bandsForHalvingWindow(halvingStartMs, halvingEndMs, halvingLabel, cycleIndex, sequential = false) {
-  const span = nominalCycleSpanMs(halvingStartMs, halvingEndMs);
+function psychologyBandsForHalvingWindow(halvingStartMs, halvingEndMs, halvingLabel, cycleIndex) {
+  const span = cycleSpanMs(halvingStartMs, halvingEndMs);
   if (span <= 0) return [];
 
-  const cycleEnd = halvingStartMs + span;
-
-  const timeline = sequential
-    ? buildSequentialPsychologyTimeline({ includePreCycle: false })
-    : buildPsychologyTimeline().filter((item) => item.endPct > item.startPct);
-
-  return timeline.map((item) => {
-    const startTime = halvingStartMs + (item.startPct / 100) * NOMINAL_CYCLE_MS;
-    const endTime = halvingStartMs + (item.endPct / 100) * NOMINAL_CYCLE_MS;
-    return {
-      kind: 'psychology',
-      phase: item.phase,
-      startTime: Math.max(halvingStartMs, startTime),
-      endTime: Math.min(cycleEnd, endTime),
-      halvingLabel,
-      cycleIndex,
-    };
-  }).filter((b) => b.endTime > b.startTime);
+  return buildChartPsychologyTimeline().map((item) => ({
+    kind: 'psychology',
+    phase: item.phase,
+    startTime: halvingStartMs + (item.startPct / 100) * span,
+    endTime: halvingStartMs + (item.endPct / 100) * span,
+    halvingLabel,
+    cycleIndex,
+  }));
 }
 
 /**
@@ -183,13 +145,8 @@ export function buildCycleBandsForRange(fromTs, toTs, currentCycleEnd) {
 
   for (let i = 0; i < BTC_HALVING_EVENTS.length; i++) {
     const halving = BTC_HALVING_EVENTS[i];
-    const next = BTC_HALVING_EVENTS[i + 1];
-    const end = next
-      ? next.timestamp
-      : (currentCycleEnd ?? halving.timestamp + CYCLE_LENGTH_DAYS * MS_PER_DAY);
-
-    if (end < fromTs || halving.timestamp > toTs) continue;
-
+    const end = halvingWindowEndMs(i, currentCycleEnd);
+    if (end <= fromTs || halving.timestamp >= toTs) continue;
     bands.push(...cycleBandsForHalvingWindow(halving.timestamp, end, halving.label, i + 1));
   }
 
@@ -197,7 +154,6 @@ export function buildCycleBandsForRange(fromTs, toTs, currentCycleEnd) {
 }
 
 /**
- * Cycle + psychology bands for chart background (cycle first, then psychology).
  * @param {number} fromTs
  * @param {number} toTs
  * @param {number} [currentCycleEnd]
@@ -206,7 +162,7 @@ export function buildCycleBandsForRange(fromTs, toTs, currentCycleEnd) {
 export function buildChartPhaseBandsForRange(fromTs, toTs, currentCycleEnd) {
   return [
     ...buildCycleBandsForRange(fromTs, toTs, currentCycleEnd),
-    ...buildPsychologyBandsForRange(fromTs, toTs, currentCycleEnd, { sequential: true }),
+    ...buildPsychologyBandsForRange(fromTs, toTs, currentCycleEnd),
   ];
 }
 
@@ -214,34 +170,27 @@ export function buildChartPhaseBandsForRange(fromTs, toTs, currentCycleEnd) {
  * @param {number} fromTs
  * @param {number} toTs
  * @param {number} [currentCycleEnd]
- * @param {{ sequential?: boolean }} [options]
+ * @param {{ sequential?: boolean }} [_options]
  * @returns {PsychologyBand[]}
  */
-export function buildPsychologyBandsForRange(fromTs, toTs, currentCycleEnd, options = {}) {
+export function buildPsychologyBandsForRange(fromTs, toTs, currentCycleEnd, _options = {}) {
   if (!Number.isFinite(fromTs) || !Number.isFinite(toTs) || toTs <= fromTs) return [];
-
-  const sequential = options.sequential === true;
 
   /** @type {PsychologyBand[]} */
   const bands = [];
 
   for (let i = 0; i < BTC_HALVING_EVENTS.length; i++) {
     const halving = BTC_HALVING_EVENTS[i];
-    const next = BTC_HALVING_EVENTS[i + 1];
-    const end = next
-      ? next.timestamp
-      : (currentCycleEnd ?? halving.timestamp + CYCLE_LENGTH_DAYS * MS_PER_DAY);
-
-    if (end < fromTs || halving.timestamp > toTs) continue;
-
-    bands.push(...bandsForHalvingWindow(halving.timestamp, end, halving.label, i + 1, sequential));
+    const end = halvingWindowEndMs(i, currentCycleEnd);
+    if (end <= fromTs || halving.timestamp >= toTs) continue;
+    bands.push(...psychologyBandsForHalvingWindow(halving.timestamp, end, halving.label, i + 1));
   }
 
   return bands;
 }
 
 /**
- * Calendar psychology phase at a timestamp.
+ * Calendar psychology phase at a timestamp (chart timeline).
  * @param {number} timestampMs
  * @param {number} currentCycleEnd
  * @returns {PsychologyBand|undefined}
@@ -275,11 +224,7 @@ export function buildPsychologyCycleHistory(currentCycleEnd, asOf = Date.now()) 
 
   for (let i = 0; i < BTC_HALVING_EVENTS.length; i++) {
     const halving = BTC_HALVING_EVENTS[i];
-    const next = BTC_HALVING_EVENTS[i + 1];
-    const end = next
-      ? next.timestamp
-      : (currentCycleEnd ?? halving.timestamp + CYCLE_LENGTH_DAYS * MS_PER_DAY);
-
+    const end = halvingWindowEndMs(i, currentCycleEnd);
     if (end <= halving.timestamp) continue;
 
     const span = end - halving.timestamp;
@@ -292,7 +237,7 @@ export function buildPsychologyCycleHistory(currentCycleEnd, asOf = Date.now()) 
       cycleIndex: i + 1,
       startTime: halving.timestamp,
       endTime: end,
-      bands: bandsForHalvingWindow(halving.timestamp, end, halving.label, i + 1),
+      bands: psychologyBandsForHalvingWindow(halving.timestamp, end, halving.label, i + 1),
       isCurrent,
       progressPct: isCurrent ? progressPct : (asOf >= end ? 100 : 0),
     });
