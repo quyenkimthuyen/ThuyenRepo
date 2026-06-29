@@ -22,7 +22,11 @@ Lần đầu: **Data Manager** → Reload Default Data (hoặc tự động tả
 | 1 | Chu kỳ 4 năm | Vị trí trong chu kỳ halving, 4 giai đoạn |
 | 2 | Xu hướng | Swing pivot, HH/HL, LH/LL, đoạn tăng/giảm/đi ngang |
 | 3 | Sóng Elliott | Đếm sóng xung (1-5) và điều chỉnh (ABC) |
-| 4 | Tâm lý TT | Ánh xạ sang giai đoạn tâm lý thị trường |
+| 4 | Tâm lý TT | 11 giai đoạn + nền chart theo halving & ATH |
+
+**Tài liệu tâm lý (cấp 1):** [`docs/PSYCHOLOGY_CYCLE.md`](docs/PSYCHOLOGY_CYCLE.md) — quy tắc xác định, khuyến nghị nghiên cứu đầu tư, bảo trì mô hình.
+
+Trong app: **Ctrl+0** → mục *Chu kỳ tâm lý*, *Quy tắc xác định*, *Khuyến nghị nghiên cứu*.
 
 ## Các màn hình
 
@@ -63,6 +67,13 @@ LongBTC/
 ```bash
 node tests/run-all.mjs
 ```
+
+## Tài liệu
+
+| File | Nội dung |
+|------|----------|
+| [`docs/PSYCHOLOGY_CYCLE.md`](docs/PSYCHOLOGY_CYCLE.md) | Chu kỳ tâm lý — quy tắc, khuyến nghị DCA, bảo trì |
+| In-app **Ctrl+0** | Tài liệu tương tác (tiếng Việt) |
 
 ## Lưu ý
 
