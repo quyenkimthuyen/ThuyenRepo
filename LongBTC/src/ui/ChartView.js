@@ -87,6 +87,12 @@ class ChartViewImpl {
   /** @type {HTMLElement|null} */
   #psychologyChartBg = null;
 
+  /** @type {{ candle: import('../data/Candle.js').Candle, index: number, analysis: import('../analysis/LongTermAnalysisEngine.js').LongTermAnalysisResult }|null} */
+  #hoverFocus = null;
+
+  /** @type {ReturnType<typeof setTimeout>|null} */
+  #hoverAnalysisTimer = null;
+
   /**
    * Mount the chart view.
    * @param {HTMLElement} container
@@ -145,6 +151,7 @@ class ChartViewImpl {
       mountOverlayPresets(toolbar, (preset) => this.#applyOverlayPreset(preset));
     }
     this.#chart.onVisibleRangeChange(() => this.#updateResearchUi());
+    this.#wireCrosshair();
     this.#wireReplay();
     this.#bindEvents();
     await this.#loadChart();
@@ -156,6 +163,7 @@ class ChartViewImpl {
    * Tear down the view.
    */
   unmount() {
+    this.#clearHoverFocus();
     this.#unsubs?.();
     this.#unsubs = null;
     this.#replay?.destroy();
@@ -242,6 +250,8 @@ class ChartViewImpl {
 
     this.#replay.onTick(({ visible, candle, index, total, fullRefresh }) => {
       if (!this.#chart) return;
+
+      this.#clearHoverFocus();
 
       if (fullRefresh || index < 2) {
         const replayMode = this.#replay?.getState().mode === 'replay';
@@ -382,11 +392,11 @@ class ChartViewImpl {
 
   /** Context bar, legend, psychology zones, insight card. */
   #updateResearchUi() {
-    const analysis = getLastAnalysis();
     const visible = this.#replay?.getVisibleCandles() ?? [];
-    const cursorTs = visible.length > 0
-      ? visible[visible.length - 1].timestamp
-      : Date.now();
+    const focus = this.#hoverFocus;
+    const activeCandle = focus?.candle ?? (visible.length > 0 ? visible[visible.length - 1] : null);
+    const analysis = focus?.analysis ?? getLastAnalysis();
+    const cursorTs = activeCandle?.timestamp ?? Date.now();
 
     const viewport = this.#chart?.getVisibleTimeRangeMs();
     const rangeFromTs = viewport?.from ?? visible[0]?.timestamp ?? cursorTs;
@@ -408,16 +418,97 @@ class ChartViewImpl {
     }
 
     const replayState = this.#replay?.getState();
+    const replayIndex = focus != null ? focus.index + 1 : visible.length;
 
     updateChartContextBar(this.#contextBar, {
-      candle: visible.length > 0 ? visible[visible.length - 1] : null,
+      candle: activeCandle,
       analysis,
       toggles: this.#overlayToggles,
       timeframe: this.#timeframe,
-      replayIndex: visible.length,
+      replayIndex,
       replayTotal: replayState?.total ?? visible.length,
       visible: showResearch,
+      inspecting: focus != null,
     });
+  }
+
+  #wireCrosshair() {
+    this.#chart?.onCrosshairMove((hit) => {
+      if (!hit || this.#activeSignal) {
+        if (this.#hoverFocus) {
+          this.#clearHoverFocus();
+          this.#updateResearchUi();
+        }
+        return;
+      }
+
+      const visible = this.#replay?.getVisibleCandles() ?? [];
+      if (visible.length === 0) return;
+
+      const index = this.#candleIndexAtOrBefore(visible, hit.timeMs);
+      const candle = visible[index];
+      if (!candle) return;
+
+      if (this.#hoverFocus?.candle.timestamp === candle.timestamp) {
+        return;
+      }
+
+      this.#hoverFocus = {
+        candle,
+        index,
+        analysis: getLastAnalysis(),
+      };
+      this.#updateResearchUi();
+      this.#scheduleHoverAnalysis(index, candle);
+    });
+  }
+
+  /**
+   * @param {import('../data/Candle.js').Candle[]} candles
+   * @param {number} timeMs
+   * @returns {number}
+   */
+  #candleIndexAtOrBefore(candles, timeMs) {
+    let index = 0;
+    for (let i = 0; i < candles.length; i++) {
+      if (candles[i].timestamp <= timeMs) index = i;
+      else break;
+    }
+    return index;
+  }
+
+  /**
+   * @param {number} index
+   * @param {import('../data/Candle.js').Candle} candle
+   */
+  #scheduleHoverAnalysis(index, candle) {
+    const targetTs = candle.timestamp;
+    clearTimeout(this.#hoverAnalysisTimer ?? undefined);
+    this.#hoverAnalysisTimer = setTimeout(() => {
+      this.#hoverAnalysisTimer = null;
+      if (this.#hoverFocus?.candle.timestamp !== targetTs) return;
+
+      const current = this.#replay?.getVisibleCandles() ?? [];
+      const idx = this.#candleIndexAtOrBefore(current, targetTs);
+      const active = current[idx];
+      if (!active || active.timestamp !== targetTs) return;
+
+      if (this.#symbol !== 'BTCUSD' || current.length < 20 || idx < 19) return;
+
+      const analysis = analyzeLongTerm(current.slice(0, idx + 1), {
+        symbol: this.#symbol,
+        timeframe: this.#timeframe,
+        persist: false,
+      });
+      this.#hoverFocus = { candle: active, index: idx, analysis };
+      this.#updateResearchUi();
+    }, 100);
+  }
+
+  #clearHoverFocus() {
+    clearTimeout(this.#hoverAnalysisTimer ?? undefined);
+    this.#hoverAnalysisTimer = null;
+    this.#hoverFocus = null;
   }
 
   async #loadChart() {

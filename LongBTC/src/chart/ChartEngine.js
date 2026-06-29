@@ -26,6 +26,16 @@ import { createLogger } from '../utils/logger.js';
 const log = createLogger('ChartEngine');
 
 /**
+ * @typedef {{
+ *   timeMs: number,
+ *   open: number,
+ *   high: number,
+ *   low: number,
+ *   close: number,
+ * }} CrosshairHit
+ */
+
+/**
  * Professional candlestick chart powered by Lightweight Charts.
  */
 export class ChartEngine {
@@ -52,6 +62,12 @@ export class ChartEngine {
 
   /** @type {(() => void)|null} */
   #timeScaleHandler = null;
+
+  /** @type {((hit: CrosshairHit|null) => void)|null} */
+  #crosshairHandler = null;
+
+  /** @type {((param: import('../../vendor/lightweight-charts.mjs').MouseEventParams) => void)|null} */
+  #crosshairListener = null;
 
   /** @type {HTMLElement|null} */
   #container = null;
@@ -527,12 +543,58 @@ export class ChartEngine {
   }
 
   /**
+   * @param {(hit: CrosshairHit|null) => void} callback
+   */
+  onCrosshairMove(callback) {
+    this.offCrosshairMove();
+    if (!this.#chart || !this.#candleSeries) return;
+
+    this.#crosshairHandler = callback;
+    this.#crosshairListener = (param) => {
+      if (
+        !param.time
+        || param.point === undefined
+        || param.point.x < 0
+        || param.point.y < 0
+      ) {
+        callback(null);
+        return;
+      }
+
+      const bar = param.seriesData.get(this.#candleSeries);
+      if (!bar) {
+        callback(null);
+        return;
+      }
+
+      callback({
+        timeMs: Number(param.time) * 1000,
+        open: bar.open,
+        high: bar.high,
+        low: bar.low,
+        close: bar.close,
+      });
+    };
+
+    this.#chart.subscribeCrosshairMove(this.#crosshairListener);
+  }
+
+  offCrosshairMove() {
+    if (this.#chart && this.#crosshairListener) {
+      this.#chart.unsubscribeCrosshairMove(this.#crosshairListener);
+    }
+    this.#crosshairListener = null;
+    this.#crosshairHandler = null;
+  }
+
+  /**
    * Destroy chart and release resources.
    */
   destroy() {
     this.#resizeObserver?.disconnect();
     this.#resizeObserver = null;
     this.offVisibleRangeChange();
+    this.offCrosshairMove();
     this.clearAnalysisOverlay();
     this.#chart?.remove();
     this.#chart = null;

@@ -43,7 +43,7 @@ let lastResult = null;
 /**
  * Run full long-term analysis pipeline on candle data.
  * @param {Candle[]} candles
- * @param {{ symbol?: string, timeframe?: string, reversalPct?: number }} [options]
+ * @param {{ symbol?: string, timeframe?: string, reversalPct?: number, persist?: boolean }} [options]
  * @returns {LongTermAnalysisResult}
  */
 export function analyzeLongTerm(candles, options = {}) {
@@ -85,8 +85,10 @@ export function analyzeLongTerm(candles, options = {}) {
     summary,
   };
 
-  lastResult = result;
-  log.info('Analysis complete:', summary);
+  if (options.persist !== false) {
+    lastResult = result;
+    log.info('Analysis complete:', summary);
+  }
   return result;
 }
 

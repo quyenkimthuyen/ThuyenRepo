@@ -73,18 +73,23 @@ function formatBtcPrice(price) {
  *   replayIndex: number,
  *   replayTotal: number,
  *   visible: boolean,
+ *   inspecting?: boolean,
  * }} opts
  */
 export function updateChartContextBar(bar, opts) {
-  const { candle, analysis, toggles, timeframe, replayIndex, replayTotal, visible } = opts;
+  const {
+    candle, analysis, toggles, timeframe, replayIndex, replayTotal, visible, inspecting,
+  } = opts;
   if (!bar) return;
 
   if (!visible || !analysis || !candle) {
     bar.hidden = true;
+    bar.classList.remove('chart-ctx-bar-inspecting');
     return;
   }
 
   bar.hidden = false;
+  bar.classList.toggle('chart-ctx-bar-inspecting', Boolean(inspecting));
   bar.innerHTML = '';
 
   const cycle = analysis.currentCycle;
@@ -94,7 +99,10 @@ export function updateChartContextBar(bar, opts) {
   const dd = analysis.cycleExtremes?.drawdownFromHighPct;
 
   const chips = [
-    el('span', { class: 'chart-ctx-chip chart-ctx-chip-date', title: 'Th\u1eddi \u0111i\u1ec3m replay' }, [
+    el('span', {
+      class: 'chart-ctx-chip chart-ctx-chip-date',
+      title: inspecting ? 'Th\u1eddi \u0111i\u1ec3m \u0111ang xem' : 'Th\u1eddi \u0111i\u1ec3m replay',
+    }, [
       formatTimestamp(candle.timestamp),
     ]),
     el('span', { class: 'chart-ctx-chip chart-ctx-chip-price' }, [formatBtcPrice(candle.close)]),
@@ -133,10 +141,12 @@ export function updateChartContextBar(bar, opts) {
   }
 
   bar.appendChild(el('div', { class: 'chart-context-row' }, chips));
-  bar.appendChild(el('span', { class: 'chart-context-meta' }, [
+  const metaParts = [
+    inspecting ? '\u0110ang xem' : null,
     `N\u1ebfn ${replayIndex.toLocaleString()}/${replayTotal.toLocaleString()}`,
-    timeframe === 'H4' ? '\u00b7 N\u00ean d\u00f9ng W/D1' : '',
-  ].filter(Boolean).join(' ')));
+    timeframe === 'H4' ? 'N\u00ean d\u00f9ng W/D1' : null,
+  ].filter(Boolean);
+  bar.appendChild(el('span', { class: 'chart-context-meta' }, [metaParts.join(' \u00b7 ')]));
 }
 
 /**
