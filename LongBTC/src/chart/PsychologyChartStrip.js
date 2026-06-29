@@ -95,14 +95,9 @@ export function buildPsychologyBandsForCycle(cycle) {
 
 /**
  * @param {HTMLElement} chartContainer
- * @returns {{ bg: HTMLElement, strip: HTMLElement }}
+ * @returns {HTMLElement}
  */
-export function mountPsychologyLayers(chartContainer) {
-  const bg = el('div', {
-    class: 'chart-psychology-bg',
-    id: 'chart-psychology-bg',
-    hidden: true,
-  });
+export function mountPsychologyStrip(chartContainer) {
   const strip = el('div', {
     class: 'chart-psychology-strip',
     id: 'chart-psychology-strip',
@@ -111,12 +106,15 @@ export function mountPsychologyLayers(chartContainer) {
     el('span', { class: 'chart-psychology-strip-title' }, ['T\u00e2m l\u00fd TT']),
     el('div', { class: 'chart-psychology-segments', id: 'chart-psychology-segments' }),
     el('div', { class: 'chart-psychology-now', id: 'chart-psychology-now', title: 'V\u1ecb tr\u00ed \u0111ang xem' }),
-    el('div', { class: 'chart-psychology-pin', id: 'chart-psychology-pin', hidden: true }),
   ]);
 
-  chartContainer.prepend(bg);
   chartContainer.appendChild(strip);
-  return { bg, strip };
+  return strip;
+}
+
+/** @deprecated use mountPsychologyStrip */
+export function mountPsychologyLayers(chartContainer) {
+  return { strip: mountPsychologyStrip(chartContainer) };
 }
 
 /**
@@ -150,18 +148,8 @@ function segmentPx(x1, x2, chartWidth) {
 }
 
 /**
- * @param {PsychologyBand[]} bands
- * @param {number} ts
- * @returns {PsychologyBand|undefined}
- */
-function bandAtTime(bands, ts) {
-  return bands.find((b) => ts >= b.startTime && ts < b.endTime);
-}
-
-/**
- * Paint psychology bands on chart background + bottom strip.
+ * Paint psychology bands on the bottom strip only (not on the price chart).
  * @param {{
- *   bg: HTMLElement,
  *   strip: HTMLElement,
  *   timeScale: import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null,
  *   chartWidth: number,
@@ -172,19 +160,19 @@ function bandAtTime(bands, ts) {
  *   visible: boolean,
  * }} opts
  */
-export function updatePsychologyLayers(opts) {
+export function updatePsychologyStrip(opts) {
   const {
-    bg, strip, timeScale, chartWidth, analysis,
+    strip, timeScale, chartWidth, analysis,
     rangeFromTs, rangeToTs, cursorTs, visible,
   } = opts;
 
+  if (!strip) return;
+
   if (!visible || !analysis) {
-    bg.hidden = true;
     strip.hidden = true;
     return;
   }
 
-  bg.hidden = false;
   strip.hidden = false;
 
   const bands = buildPsychologyBandsForRange(
@@ -193,16 +181,13 @@ export function updatePsychologyLayers(opts) {
     analysis.currentCycle.nextHalvingEstimate
   );
   const assessedId = analysis.psychology.phaseId;
-  const calendarBand = bandAtTime(bands, cursorTs);
 
   const segmentsEl = strip.querySelector('#chart-psychology-segments');
   const nowEl = strip.querySelector('#chart-psychology-now');
-  const pinEl = strip.querySelector('#chart-psychology-pin');
 
-  if (!segmentsEl || !nowEl || !pinEl) return;
+  if (!segmentsEl || !nowEl) return;
 
   segmentsEl.innerHTML = '';
-  bg.innerHTML = '';
 
   for (const band of bands) {
     const px = segmentPx(
@@ -232,36 +217,27 @@ export function updatePsychologyLayers(opts) {
         ? el('span', { class: 'chart-psychology-seg-label' }, [band.phase.labelVi])
         : null,
     ].filter(Boolean)));
-
-    bg.appendChild(el('div', {
-      class: `chart-psychology-bg-seg${isAtCursor ? ' is-at-cursor' : ''}${isAssessed ? ' is-assessed' : ''}`,
-      style: `left:${px.left}px;width:${px.width}px;--phase-color:${color}`,
-      title,
-    }));
   }
 
   const nowX = timeToPx(timeScale, cursorTs, chartWidth);
   if (nowX !== null) {
     nowEl.style.left = `${nowX}px`;
     nowEl.hidden = false;
-
-    pinEl.hidden = false;
-    pinEl.style.left = `${Math.min(chartWidth - 8, Math.max(8, nowX))}px`;
-    pinEl.style.borderColor = analysis.psychology.color;
-    pinEl.style.color = analysis.psychology.color;
-    pinEl.textContent = analysis.psychology.labelVi;
-
-    const calLabel = calendarBand?.phase.labelVi ?? '?';
-    const calHint = calendarBand
-      ? `L\u1ecbch halving: ${calendarBand.halvingLabel} \u2192 ${calLabel}`
-      : '';
-    pinEl.title = [
-      `Theo gi\u00e1: ${analysis.psychology.labelVi}`,
-      calHint,
-      analysis.psychology.priceContribution ?? '',
-    ].filter(Boolean).join(' \u00b7 ');
   } else {
     nowEl.hidden = true;
-    pinEl.hidden = true;
   }
+}
+
+/** @deprecated use updatePsychologyStrip */
+export function updatePsychologyLayers(opts) {
+  updatePsychologyStrip({
+    strip: opts.strip,
+    timeScale: opts.timeScale,
+    chartWidth: opts.chartWidth,
+    analysis: opts.analysis,
+    rangeFromTs: opts.rangeFromTs,
+    rangeToTs: opts.rangeToTs,
+    cursorTs: opts.cursorTs,
+    visible: opts.visible,
+  });
 }
