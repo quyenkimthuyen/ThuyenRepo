@@ -92,6 +92,13 @@ function buildSyntheticCandles(count) {
     { sequential: true }
   );
   s.assert('AC-12: halving cycle psychology bands', bands.length >= 8);
+
+  const t1 = Date.parse('2021-06-01T00:00:00Z');
+  const t2 = Date.parse('2022-06-01T00:00:00Z');
+  const end = Date.parse('2028-04-01T00:00:00Z');
+  const parityA = buildChartPhaseBandsForRange(t1, t2, end);
+  const parityB = buildChartPhaseBandsForRange(t1, t2, end);
+  s.assert('AC-13: timeframe-independent bands', JSON.stringify(parityA) === JSON.stringify(parityB));
 }
 
 process.exit(footer(s.finish()));

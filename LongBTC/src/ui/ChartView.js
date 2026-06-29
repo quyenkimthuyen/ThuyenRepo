@@ -33,6 +33,7 @@ import {
 import { takePendingChartFocus } from '../utils/chartNavigation.js';
 import { alignToTimeframe, formatTimestamp } from '../data/TimeframeUtils.js';
 import { getLastAnalysis, analyzeLongTerm } from '../analysis/LongTermAnalysisEngine.js';
+import { analyzeCurrentCycle } from '../analysis/HalvingCycleAnalyzer.js';
 import {
   SETUP_LEVEL_STYLES,
   TRADE_LEVEL_STYLES,
@@ -409,26 +410,35 @@ class ChartViewImpl {
     const cursorTs = activeCandle?.timestamp ?? Date.now();
 
     const viewport = this.#chart?.getVisibleTimeRangeMs();
-    const rangeFromTs = viewport?.from ?? visible[0]?.timestamp ?? cursorTs;
-    const rangeToTs = viewport?.to ?? visible[visible.length - 1]?.timestamp ?? cursorTs;
+    const dataFrom = visible[0]?.timestamp;
+    const dataTo = visible[visible.length - 1]?.timestamp;
+    const rangeFromTs = Math.min(
+      viewport?.from ?? dataFrom ?? cursorTs,
+      dataFrom ?? viewport?.from ?? cursorTs
+    );
+    const rangeToTs = Math.max(
+      viewport?.to ?? dataTo ?? cursorTs,
+      dataTo ?? viewport?.to ?? cursorTs
+    );
 
     const showResearch = this.#symbol === 'BTCUSD' && !this.#activeSignal && analysis != null;
+    const showPsychBg = this.#symbol === 'BTCUSD' && !this.#activeSignal && this.#overlayToggles.psychologyBg;
+    const currentCycleEnd = analyzeCurrentCycle(cursorTs).nextHalvingEstimate;
 
     if (this.#psychologyChartBg && this.#chart) {
       const rendered = updatePsychologyChartBg(this.#psychologyChartBg, {
         timeScale: this.#chart.getTimeScale(),
         plotWidth: this.#chart.getPlotWidth(),
         chartWidth: this.#chart.getChartWidth(),
-        analysis,
+        currentCycleEnd,
         rangeFromTs,
         rangeToTs,
         cursorTs,
-        visible: showResearch && this.#overlayToggles.psychologyBg,
+        visible: showPsychBg,
       });
 
       if (
-        showResearch
-        && this.#overlayToggles.psychologyBg
+        showPsychBg
         && rendered === 0
         && this.#psychologyBgRetries < 4
       ) {

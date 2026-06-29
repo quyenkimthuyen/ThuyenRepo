@@ -1,5 +1,5 @@
 /**
- * Time-synced psychology background zones on the price chart.
+ * Time-synced cycle + psychology background zones on the price chart.
  * @module chart/PsychologyChartOverlay
  */
 
@@ -11,13 +11,15 @@ import { buildChartPhaseBandsForRange } from '../analysis/PsychologyBands.js';
  * @returns {HTMLElement}
  */
 export function mountPsychologyChartBg(chartContainer) {
-  const bg = el('div', {
-    class: 'chart-psychology-bg',
+  const wrap = el('div', {
+    class: 'chart-phase-bg',
     id: 'chart-psychology-bg',
     hidden: true,
   });
-  chartContainer.appendChild(bg);
-  return bg;
+  wrap.appendChild(el('div', { class: 'chart-phase-bg-cycle', id: 'chart-phase-bg-cycle' }));
+  wrap.appendChild(el('div', { class: 'chart-phase-bg-psych', id: 'chart-phase-bg-psych' }));
+  chartContainer.appendChild(wrap);
+  return wrap;
 }
 
 /**
@@ -51,45 +53,21 @@ function segmentPx(x1, x2, plotWidth) {
 }
 
 /**
- * @param {HTMLElement} bg
- * @param {{
- *   timeScale: import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null,
- *   plotWidth: number,
- *   chartWidth?: number,
- *   analysis: import('../analysis/LongTermAnalysisEngine.js').LongTermAnalysisResult,
- *   rangeFromTs: number,
- *   rangeToTs: number,
- *   cursorTs: number,
- *   visible: boolean,
- * }} opts
+ * @param {HTMLElement} layer
+ * @param {import('../analysis/PsychologyBands.js').PsychologyBand[]} bands
+ * @param {'cycle'|'psychology'} kind
+ * @param {import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null} timeScale
+ * @param {number} plotWidth
+ * @param {number} cursorTs
+ * @returns {number}
  */
-export function updatePsychologyChartBg(bg, opts) {
-  const {
-    timeScale, plotWidth, chartWidth, analysis, rangeFromTs, rangeToTs, cursorTs, visible,
-  } = opts;
-
-  if (!bg) return 0;
-
-  if (!visible || !analysis || plotWidth < 10) {
-    bg.hidden = true;
-    return 0;
-  }
-
-  bg.hidden = false;
-  const gutter = chartWidth != null && chartWidth > plotWidth ? chartWidth - plotWidth : 0;
-  bg.style.marginRight = gutter > 0 ? `${gutter}px` : '';
-
-  const bands = buildChartPhaseBandsForRange(
-    rangeFromTs,
-    rangeToTs,
-    analysis.currentCycle.nextHalvingEstimate
-  );
-
-  bg.classList.add('chart-psychology-bg--layered');
-  bg.innerHTML = '';
-
+function renderBandLayer(layer, bands, kind, timeScale, plotWidth, cursorTs) {
+  layer.innerHTML = '';
   let rendered = 0;
+
   for (const band of bands) {
+    if (band.kind !== kind) continue;
+
     const px = segmentPx(
       timeToPx(timeScale, band.startTime, plotWidth),
       timeToPx(timeScale, band.endTime, plotWidth),
@@ -99,7 +77,7 @@ export function updatePsychologyChartBg(bg, opts) {
 
     rendered++;
     const isAtCursor = cursorTs >= band.startTime && cursorTs < band.endTime;
-    const isCycle = band.kind === 'cycle';
+    const isCycle = kind === 'cycle';
     const layerLabel = isCycle ? 'Giai \u0111o\u1ea1n chu k\u1ef3 BTC' : 'T\u00e2m l\u00fd th\u1ecb tr\u01b0\u1eddng';
     const title = [
       band.halvingLabel,
@@ -108,22 +86,82 @@ export function updatePsychologyChartBg(bg, opts) {
       `(${band.phase.label})`,
     ].join(' \u00b7 ');
 
-    const showLabel = isCycle ? px.width >= 72 : px.width >= 48;
+    const showLabel = isCycle ? px.width >= 56 : px.width >= 40;
 
-    bg.appendChild(el('div', {
+    layer.appendChild(el('div', {
       class: [
-        'chart-psychology-bg-seg',
-        isCycle ? 'chart-psychology-bg-seg--cycle' : 'chart-psychology-bg-seg--psych',
+        'chart-phase-bg-seg',
+        isCycle ? 'chart-phase-bg-seg--cycle' : 'chart-phase-bg-seg--psych',
         isAtCursor ? 'is-at-cursor' : '',
       ].filter(Boolean).join(' '),
       style: `left:${px.left}px;width:${px.width}px;--phase-color:${band.phase.color}`,
       title,
     }, showLabel ? [
       el('span', {
-        class: `chart-psychology-bg-label${isCycle ? ' chart-psychology-bg-label--cycle' : ' chart-psychology-bg-label--psych'}`,
+        class: `chart-phase-bg-label${isCycle ? ' chart-phase-bg-label--cycle' : ' chart-phase-bg-label--psych'}`,
       }, [band.phase.labelVi]),
     ] : []));
   }
 
   return rendered;
+}
+
+/**
+ * @param {HTMLElement} bg
+ * @param {{
+ *   timeScale: import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null,
+ *   plotWidth: number,
+ *   chartWidth?: number,
+ *   currentCycleEnd: number,
+ *   rangeFromTs: number,
+ *   rangeToTs: number,
+ *   cursorTs: number,
+ *   visible: boolean,
+ * }} opts
+ */
+export function updatePsychologyChartBg(bg, opts) {
+  const {
+    timeScale, plotWidth, chartWidth, currentCycleEnd,
+    rangeFromTs, rangeToTs, cursorTs, visible,
+  } = opts;
+
+  if (!bg) return 0;
+
+  if (!visible || plotWidth < 10 || !Number.isFinite(currentCycleEnd)) {
+    bg.hidden = true;
+    return 0;
+  }
+
+  const cycleLayer = bg.querySelector('.chart-phase-bg-cycle');
+  const psychLayer = bg.querySelector('.chart-phase-bg-psych');
+  if (!cycleLayer || !psychLayer) return 0;
+
+  bg.hidden = false;
+  const gutter = chartWidth != null && chartWidth > plotWidth ? chartWidth - plotWidth : 0;
+  bg.style.marginRight = gutter > 0 ? `${gutter}px` : '';
+
+  const bands = buildChartPhaseBandsForRange(
+    rangeFromTs,
+    rangeToTs,
+    currentCycleEnd
+  );
+
+  const cycleRendered = renderBandLayer(
+    /** @type {HTMLElement} */ (cycleLayer),
+    bands,
+    'cycle',
+    timeScale,
+    plotWidth,
+    cursorTs
+  );
+  const psychRendered = renderBandLayer(
+    /** @type {HTMLElement} */ (psychLayer),
+    bands,
+    'psychology',
+    timeScale,
+    plotWidth,
+    cursorTs
+  );
+
+  return cycleRendered + psychRendered;
 }

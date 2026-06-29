@@ -478,8 +478,8 @@
   background: var(--color-bg-base);
 }
 
-/* Psychology zones on price chart (time-synced halving calendar) */
-.chart-psychology-bg {
+/* Cycle + psychology zones on price chart (calendar-based, W/D1 identical) */
+.chart-phase-bg {
   position: absolute;
   top: 0;
   left: 0;
@@ -490,99 +490,88 @@
   pointer-events: none;
 }
 
-.chart-psychology-bg[hidden] {
+.chart-phase-bg[hidden] {
   display: none !important;
 }
 
-.chart-psychology-bg-seg {
+.chart-phase-bg-cycle,
+.chart-phase-bg-psych {
+  position: absolute;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.chart-phase-bg-cycle {
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+}
+
+.chart-phase-bg-psych {
+  bottom: 0;
+  height: 34%;
+  z-index: 2;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  background: color-mix(in srgb, var(--color-bg-base) 35%, transparent);
+}
+
+.chart-phase-bg-seg {
   position: absolute;
   top: 0;
   bottom: 0;
   pointer-events: none;
-  cursor: default;
-  background: color-mix(in srgb, var(--phase-color) 8%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--phase-color) 12%, transparent);
-  transition: background 0.15s ease;
 }
 
-.chart-psychology-bg-seg:hover {
-  background: color-mix(in srgb, var(--phase-color) 14%, transparent);
-  z-index: 2;
-}
-
-.chart-psychology-bg-seg.is-at-cursor {
-  background: color-mix(in srgb, var(--phase-color) 12%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-color) 28%, transparent);
-  z-index: 3;
-}
-
-.chart-psychology-bg--layered .chart-psychology-bg-seg--cycle {
-  z-index: 1;
-  background: color-mix(in srgb, var(--phase-color) 16%, transparent);
-  border-left: 2px solid color-mix(in srgb, var(--phase-color) 45%, transparent);
-}
-
-.chart-psychology-bg--layered .chart-psychology-bg-seg--cycle.is-at-cursor {
+.chart-phase-bg-seg--cycle {
   background: color-mix(in srgb, var(--phase-color) 22%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-color) 50%, transparent);
+  border-left: 3px solid var(--phase-color);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-color) 12%, transparent);
 }
 
-.chart-psychology-bg--layered .chart-psychology-bg-seg--psych {
-  z-index: 2;
-  background: color-mix(in srgb, var(--phase-color) 20%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--phase-color) 30%, transparent);
-}
-
-.chart-psychology-bg--layered .chart-psychology-bg-seg--psych.is-at-cursor {
-  background: color-mix(in srgb, var(--phase-color) 28%, transparent);
+.chart-phase-bg-seg--cycle.is-at-cursor {
+  background: color-mix(in srgb, var(--phase-color) 30%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-color) 45%, transparent);
 }
 
-.chart-psychology-bg-label--cycle {
-  top: 5px;
-  bottom: auto;
-  font-size: 10px;
-  font-weight: 700;
-  opacity: 0.92;
+.chart-phase-bg-seg--psych {
+  background: color-mix(in srgb, var(--phase-color) 42%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--phase-color) 60%, transparent);
 }
 
-.chart-psychology-bg-label--psych {
-  bottom: 5px;
-  top: auto;
-  font-size: 9px;
-  font-weight: 600;
-  opacity: 0.8;
+.chart-phase-bg-seg--psych.is-at-cursor {
+  background: color-mix(in srgb, var(--phase-color) 52%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-color) 65%, transparent);
 }
 
-.chart-psychology-bg--sequential .chart-psychology-bg-seg {
-  background: color-mix(in srgb, var(--phase-color) 24%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--phase-color) 35%, transparent);
-}
-
-.chart-psychology-bg--sequential .chart-psychology-bg-seg:hover {
-  background: color-mix(in srgb, var(--phase-color) 30%, transparent);
-}
-
-.chart-psychology-bg--sequential .chart-psychology-bg-seg.is-at-cursor {
-  background: color-mix(in srgb, var(--phase-color) 32%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-color) 55%, transparent);
-}
-
-.chart-psychology-bg-label {
+.chart-phase-bg-label {
   position: absolute;
-  bottom: 6px;
   left: 4px;
   right: 4px;
-  font-size: 9px;
-  line-height: 1.15;
-  font-weight: 600;
-  color: color-mix(in srgb, var(--phase-color) 88%, var(--color-text));
-  opacity: 0.85;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   pointer-events: none;
   text-shadow: 0 1px 2px var(--color-bg-base);
+}
+
+.chart-phase-bg-label--cycle {
+  top: 6px;
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--phase-color) 92%, var(--color-text));
+}
+
+.chart-phase-bg-label--psych {
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 9px;
+  line-height: 1.15;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--phase-color) 90%, var(--color-text));
+  opacity: 0.95;
 }
 
 /* ── Replay Bar ── */
