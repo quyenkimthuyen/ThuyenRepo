@@ -24,13 +24,24 @@ export function mountPsychologyChartBg(chartContainer) {
  * @param {import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null} timeScale
  * @param {number} tsMs
  * @param {number} plotWidth
+ * @param {{ fromMs: number, toMs: number }} scale
  * @returns {number|null}
  */
-function timeToPx(timeScale, tsMs, plotWidth) {
-  if (!timeScale) return null;
+function timeToPx(timeScale, tsMs, plotWidth, scale) {
+  if (!timeScale || plotWidth < 1) return null;
+
   const x = timeScale.timeToCoordinate(Math.floor(tsMs / 1000));
-  if (x === null || !Number.isFinite(x)) return null;
-  return Math.max(0, Math.min(plotWidth, x));
+  if (x !== null && Number.isFinite(x)) {
+    return Math.max(0, Math.min(plotWidth, x));
+  }
+
+  const { fromMs, toMs } = scale;
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || toMs <= fromMs) return null;
+
+  const ratio = (tsMs - fromMs) / (toMs - fromMs);
+  if (ratio < -0.02 || ratio > 1.02) return null;
+
+  return Math.max(0, Math.min(plotWidth, ratio * plotWidth));
 }
 
 /**
@@ -48,6 +59,20 @@ function segmentPx(x1, x2, plotWidth) {
   const width = right - left;
   if (width < 1) return null;
   return { left, width };
+}
+
+/**
+ * @param {import('../../vendor/lightweight-charts.mjs').ITimeScaleApi|null} timeScale
+ * @param {number} rangeFromTs
+ * @param {number} rangeToTs
+ * @returns {{ fromMs: number, toMs: number }}
+ */
+function resolveScaleRange(timeScale, rangeFromTs, rangeToTs) {
+  const visible = timeScale?.getVisibleRange?.();
+  if (visible) {
+    return { fromMs: visible.from * 1000, toMs: visible.to * 1000 };
+  }
+  return { fromMs: rangeFromTs, toMs: rangeToTs };
 }
 
 /**
@@ -76,24 +101,30 @@ export function updatePsychologyChartBg(bg, opts) {
     return 0;
   }
 
-  bg.hidden = false;
-  const gutter = chartWidth != null && chartWidth > plotWidth ? chartWidth - plotWidth : 0;
-  bg.style.marginRight = gutter > 0 ? `${gutter}px` : '';
+  const scale = resolveScaleRange(timeScale, rangeFromTs, rangeToTs);
+  const bandFrom = Math.min(rangeFromTs, scale.fromMs) - 7 * 24 * 60 * 60 * 1000;
+  const bandTo = Math.max(rangeToTs, scale.toMs) + 7 * 24 * 60 * 60 * 1000;
 
   const bands = buildPsychologyBandsForRange(
-    rangeFromTs,
-    rangeToTs,
+    bandFrom,
+    bandTo,
     currentCycleEnd,
     { sequential: true }
   );
+
+  bg.hidden = false;
+  const gutter = chartWidth != null && chartWidth > plotWidth ? chartWidth - plotWidth : 0;
+  bg.style.marginRight = gutter > 0 ? `${gutter}px` : '';
 
   bg.innerHTML = '';
   let rendered = 0;
 
   for (const band of bands) {
+    if (band.endTime <= scale.fromMs || band.startTime >= scale.toMs) continue;
+
     const px = segmentPx(
-      timeToPx(timeScale, band.startTime, plotWidth),
-      timeToPx(timeScale, band.endTime, plotWidth),
+      timeToPx(timeScale, band.startTime, plotWidth, scale),
+      timeToPx(timeScale, band.endTime, plotWidth, scale),
       plotWidth
     );
     if (!px) continue;
@@ -116,6 +147,10 @@ export function updatePsychologyChartBg(bg, opts) {
     }, showLabel ? [
       el('span', { class: 'chart-phase-bg-label chart-phase-bg-label--psych' }, [band.phase.labelVi]),
     ] : []));
+  }
+
+  if (rendered === 0 && bands.length > 0) {
+    bg.hidden = true;
   }
 
   return rendered;

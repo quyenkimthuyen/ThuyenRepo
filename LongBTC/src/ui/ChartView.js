@@ -269,6 +269,7 @@ class ChartViewImpl {
         } else if (replayMode && visible.length > 0) {
           this.#chart.focusOnCandleIndex(visible.length - 1);
         }
+        this.#scheduleResearchUiRefresh();
       } else {
         this.#chart.updateCandle(candle, visible);
       }
@@ -307,6 +308,13 @@ class ChartViewImpl {
 
     unsubs.push(bus.on(Events.PANEL_RESIZE, () => {
       this.#updateResearchUi();
+    }));
+
+    unsubs.push(bus.on(Events.CHART_LOADED, () => {
+      this.#psychologyBgRetries = 0;
+      this.#scheduleResearchUiRefresh();
+      setTimeout(() => this.#updateResearchUi(), 200);
+      setTimeout(() => this.#updateResearchUi(), 600);
     }));
 
     unsubs.push(bus.on(Events.DATA_UPDATED, async () => {
@@ -440,7 +448,7 @@ class ChartViewImpl {
       if (
         showPsychBg
         && rendered === 0
-        && this.#psychologyBgRetries < 4
+        && this.#psychologyBgRetries < 10
       ) {
         this.#psychologyBgRetries += 1;
         this.#scheduleResearchUiRefresh();

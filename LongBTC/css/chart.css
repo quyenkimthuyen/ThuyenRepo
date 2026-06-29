@@ -476,6 +476,7 @@
   min-height: 0;
   position: relative;
   background: var(--color-bg-base);
+  isolation: isolate;
 }
 
 /* Psychology phase zones on price chart (halving calendar, W/D1 identical) */
@@ -485,7 +486,7 @@
   left: 0;
   bottom: 28px;
   right: 0;
-  z-index: 5;
+  z-index: 10;
   overflow: hidden;
   pointer-events: none;
 }
@@ -502,13 +503,13 @@
 }
 
 .chart-phase-bg-seg--psych {
-  background: color-mix(in srgb, var(--phase-color) 28%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--phase-color) 45%, transparent);
+  background: color-mix(in srgb, var(--phase-color) 32%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--phase-color) 50%, transparent);
 }
 
 .chart-phase-bg-seg--psych.is-at-cursor {
-  background: color-mix(in srgb, var(--phase-color) 36%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-color) 55%, transparent);
+  background: color-mix(in srgb, var(--phase-color) 40%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-color) 60%, transparent);
 }
 
 .chart-phase-bg-label {

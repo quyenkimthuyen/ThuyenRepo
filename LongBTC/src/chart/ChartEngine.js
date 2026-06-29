@@ -513,7 +513,9 @@ export class ChartEngine {
     const total = this.getChartWidth();
     if (!this.#chart || total <= 0) return total;
     const scaleW = this.#chart.priceScale('right').width();
-    return Math.max(0, total - scaleW);
+    const plot = Math.max(0, total - scaleW);
+    if (plot >= 10) return plot;
+    return Math.max(0, Math.floor(total * 0.88));
   }
 
   /**
