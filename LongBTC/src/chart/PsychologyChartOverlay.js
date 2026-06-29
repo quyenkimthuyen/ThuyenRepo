@@ -16,7 +16,7 @@ export function mountPsychologyChartBg(chartContainer) {
     id: 'chart-psychology-bg',
     hidden: true,
   });
-  chartContainer.prepend(bg);
+  chartContainer.appendChild(bg);
   return bg;
 }
 
@@ -68,11 +68,11 @@ export function updatePsychologyChartBg(bg, opts) {
     timeScale, plotWidth, chartWidth, analysis, rangeFromTs, rangeToTs, cursorTs, visible,
   } = opts;
 
-  if (!bg) return;
+  if (!bg) return 0;
 
   if (!visible || !analysis || plotWidth < 10) {
     bg.hidden = true;
-    return;
+    return 0;
   }
 
   bg.hidden = false;
@@ -86,9 +86,10 @@ export function updatePsychologyChartBg(bg, opts) {
     { sequential: true }
   );
 
-  bg.classList.toggle('chart-psychology-bg--sequential', true);
+  bg.classList.add('chart-psychology-bg--sequential');
   bg.innerHTML = '';
 
+  let rendered = 0;
   for (const band of bands) {
     const px = segmentPx(
       timeToPx(timeScale, band.startTime, plotWidth),
@@ -97,6 +98,7 @@ export function updatePsychologyChartBg(bg, opts) {
     );
     if (!px) continue;
 
+    rendered++;
     const isAtCursor = cursorTs >= band.startTime && cursorTs < band.endTime;
     const title = [
       band.halvingLabel,
@@ -115,4 +117,6 @@ export function updatePsychologyChartBg(bg, opts) {
       el('span', { class: 'chart-psychology-bg-label' }, [band.phase.labelVi]),
     ] : []));
   }
+
+  return rendered;
 }

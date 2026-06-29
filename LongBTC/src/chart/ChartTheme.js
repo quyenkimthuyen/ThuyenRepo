@@ -12,7 +12,7 @@ import { Config } from '../core/Config.js';
 export function getChartOptions() {
   return {
     layout: {
-      background: { color: '#0f1419' },
+      background: { color: 'transparent' },
       textColor: '#8b9cb3',
       fontFamily: "'Noto Sans', 'Inter', sans-serif",
       fontSize: 11,

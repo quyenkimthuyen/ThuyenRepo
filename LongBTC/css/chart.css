@@ -478,14 +478,14 @@
   background: var(--color-bg-base);
 }
 
-/* Psychology zones behind candles (time-synced, no labels on price) */
+/* Psychology zones on price chart (time-synced halving calendar) */
 .chart-psychology-bg {
   position: absolute;
   top: 0;
   left: 0;
-  bottom: 0;
+  bottom: 28px;
   right: 0;
-  z-index: 1;
+  z-index: 5;
   overflow: hidden;
   pointer-events: none;
 }
@@ -498,7 +498,7 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  pointer-events: auto;
+  pointer-events: none;
   cursor: default;
   background: color-mix(in srgb, var(--phase-color) 8%, transparent);
   border-left: 1px solid color-mix(in srgb, var(--phase-color) 12%, transparent);
@@ -517,17 +517,17 @@
 }
 
 .chart-psychology-bg--sequential .chart-psychology-bg-seg {
-  background: color-mix(in srgb, var(--phase-color) 14%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--phase-color) 22%, transparent);
+  background: color-mix(in srgb, var(--phase-color) 24%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--phase-color) 35%, transparent);
 }
 
 .chart-psychology-bg--sequential .chart-psychology-bg-seg:hover {
-  background: color-mix(in srgb, var(--phase-color) 22%, transparent);
+  background: color-mix(in srgb, var(--phase-color) 30%, transparent);
 }
 
 .chart-psychology-bg--sequential .chart-psychology-bg-seg.is-at-cursor {
-  background: color-mix(in srgb, var(--phase-color) 20%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-color) 40%, transparent);
+  background: color-mix(in srgb, var(--phase-color) 32%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--phase-color) 55%, transparent);
 }
 
 .chart-psychology-bg-label {

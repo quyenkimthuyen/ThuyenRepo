@@ -93,6 +93,9 @@ class ChartViewImpl {
   /** @type {ReturnType<typeof setTimeout>|null} */
   #hoverAnalysisTimer = null;
 
+  /** @type {number} */
+  #psychologyBgRetries = 0;
+
   /**
    * Mount the chart view.
    * @param {HTMLElement} container
@@ -144,8 +147,8 @@ class ChartViewImpl {
     ]));
 
     this.#contextBar = mountChartContextBar(chartMain);
-    this.#psychologyChartBg = mountPsychologyChartBg(chartContainer);
     this.#chart.mount(chartContainer);
+    this.#psychologyChartBg = mountPsychologyChartBg(chartContainer);
     const toolbar = container.querySelector('.chart-toolbar');
     if (toolbar) {
       mountOverlayPresets(toolbar, (preset) => this.#applyOverlayPreset(preset));
@@ -394,6 +397,7 @@ class ChartViewImpl {
     const toolbar = this.#container?.querySelector('.chart-toolbar');
     if (toolbar) syncOverlayCheckboxes(toolbar, this.#overlayToggles);
     this.#applyAnalysisOverlay();
+    this.#updateResearchUi();
   }
 
   /** Context bar, legend, psychology zones, insight card. */
@@ -411,7 +415,7 @@ class ChartViewImpl {
     const showResearch = this.#symbol === 'BTCUSD' && !this.#activeSignal && analysis != null;
 
     if (this.#psychologyChartBg && this.#chart) {
-      updatePsychologyChartBg(this.#psychologyChartBg, {
+      const rendered = updatePsychologyChartBg(this.#psychologyChartBg, {
         timeScale: this.#chart.getTimeScale(),
         plotWidth: this.#chart.getPlotWidth(),
         chartWidth: this.#chart.getChartWidth(),
@@ -421,6 +425,18 @@ class ChartViewImpl {
         cursorTs,
         visible: showResearch && this.#overlayToggles.psychologyBg,
       });
+
+      if (
+        showResearch
+        && this.#overlayToggles.psychologyBg
+        && rendered === 0
+        && this.#psychologyBgRetries < 4
+      ) {
+        this.#psychologyBgRetries += 1;
+        this.#scheduleResearchUiRefresh();
+      } else if (rendered > 0) {
+        this.#psychologyBgRetries = 0;
+      }
     }
 
     const replayState = this.#replay?.getState();
@@ -517,6 +533,12 @@ class ChartViewImpl {
     this.#hoverFocus = null;
   }
 
+  #scheduleResearchUiRefresh() {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => this.#updateResearchUi());
+    });
+  }
+
   async #loadChart() {
     const status = document.getElementById('chart-status');
     if (status) status.textContent = `Loading ${this.#symbol} ${this.#timeframe}…`;
@@ -578,6 +600,7 @@ class ChartViewImpl {
         } else {
           this.#applyAnalysisOverlay();
         }
+        this.#scheduleResearchUiRefresh();
       }
 
       bus.emit(Events.LOG_MESSAGE, {
