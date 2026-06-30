@@ -10,6 +10,13 @@ import { mergeCandles, detectGaps, computeStats } from '../../src/data/CandleMer
 import { normalizeCandle, isValidCandle } from '../../src/data/Candle.js';
 import { generateSample } from '../../src/data/SampleDataGenerator.js';
 import { Config } from '../../src/core/Config.js';
+import {
+  parseBinanceKline,
+  parseBinanceKlines,
+  binanceIntervalFor,
+  fetchStartAfter,
+} from '../../src/data/BtcLivePriceFetcher.js';
+import { alignToTimeframe } from '../../src/data/TimeframeUtils.js';
 
 const s = createSuite('Data Layer');
 header('Data Layer');
@@ -78,6 +85,19 @@ header('Data Layer');
 {
   s.assert('DL-14: Config timeframes', Config.TIMEFRAMES.includes('H4') && Config.TIMEFRAMES.includes('W'));
   s.assert('DL-15: Config symbols', Config.SYMBOLS.includes('BTCUSD'));
+}
+
+{
+  const row = [1781481600000, '65000', '67000', '64000', '65500', '123.45'];
+  const c = parseBinanceKline(row, 'W');
+  s.assert('DL-16: Binance kline parse', c != null && c.close === 65500);
+  s.assert('DL-17: Binance kline align W', c?.timestamp === alignToTimeframe(1781481600000, 'W'));
+  s.assert('DL-18: Binance interval W', binanceIntervalFor('W') === '1w');
+  const day = 24 * 60 * 60 * 1000;
+  s.assert('DL-19: fetch overlap', fetchStartAfter(Date.UTC(2024, 5, 1), 'D1') === Date.UTC(2024, 5, 1) - day);
+
+  const multi = parseBinanceKlines([row, [1781568000000, '65500', '66000', '65000', '65800', '50']], 'D1');
+  s.assert('DL-20: Binance klines batch', multi.length === 2);
 }
 
 process.exit(footer(s.finish()));

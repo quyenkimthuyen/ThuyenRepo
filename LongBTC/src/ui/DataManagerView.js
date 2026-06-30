@@ -8,10 +8,20 @@ import { bus, Events } from '../core/EventBus.js';
 import { el } from '../utils/dom.js';
 import { formatTimestamp } from '../data/TimeframeUtils.js';
 import DataManager from '../data/DataManager.js';
+import { dataFreshnessChipText } from './DataFreshnessUi.js';
+import { freshnessLevel, dataAgeMs } from '../analysis/DataFreshness.js';
 import { createHelpButton } from '../utils/contextHelp.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('DataManagerView');
+
+/**
+ * @param {import('../data/Candle.js').DatasetMetadata} ds
+ * @returns {string}
+ */
+function describeAgeLevel(ds) {
+  return freshnessLevel(dataAgeMs(ds.lastTimestamp, ds.timeframe), ds.timeframe);
+}
 
 /**
  * Data Manager view controller.
@@ -64,7 +74,7 @@ class DataManagerViewImpl {
 
     if (datasets.length === 0) {
       tbody.appendChild(el('tr', {}, [
-        el('td', { colspan: '7', class: 'data-empty' }, [
+        el('td', { colspan: '8', class: 'data-empty' }, [
           'No data stored. Click "Reload Default Data" or import a CSV/JSON file.',
         ]),
       ]));
@@ -131,14 +141,17 @@ class DataManagerViewImpl {
           ]),
         ]),
         el('div', { class: 'data-toolbar-group' }, [
+          el('button', { class: 'btn btn-primary', id: 'btn-fetch-live-all' }, [
+            'C\u1eadp nh\u1eadt gi\u00e1 m\u1edbi (BTC)',
+          ]),
           el('button', { class: 'btn btn-secondary', id: 'btn-load-defaults' }, [
             'Reload Default Data',
           ]),
           el('button', { class: 'btn btn-secondary', id: 'btn-update-dataset' }, [
-            'Cập nhật',
+            'T\u1ea3i l\u1ea1i defaults',
           ]),
           el('button', { class: 'btn btn-danger btn-sm', id: 'btn-delete-dataset' }, [
-            'Xóa',
+            'X\u00f3a',
           ]),
         ]),
         createHelpButton('data'),
@@ -152,6 +165,7 @@ class DataManagerViewImpl {
               el('th', {}, ['Candles']),
               el('th', {}, ['From']),
               el('th', {}, ['To']),
+              el('th', {}, ['Tu\u1ed5i data']),
               el('th', {}, ['Gaps']),
               el('th', {}, ['Actions']),
             ]),
@@ -160,9 +174,10 @@ class DataManagerViewImpl {
         ]),
       ]),
       el('div', { class: 'data-hint' }, [
-        'Chọn Symbol + TF rồi Import, Cập nhật (tải lại từ data/defaults), hoặc Xóa dataset đó. ',
-        'Dữ liệu Dukascopy: khoảng trống cuối tuần là bình thường. ',
-        'Cột Gaps chỉ báo thiếu nến bất thường (không tính T7/CN).',
+        'C\u1eadp nh\u1eadt gi\u00e1 m\u1edbi: t\u1ea3i n\u1ebfn BTC t\u1eeb Binance (BTCUSDT) v\u00e0 merge v\u00e0o IndexedDB. ',
+        'T\u1ea3i l\u1ea1i defaults: thay b\u1eb1ng file trong data/defaults/. ',
+        'Import CSV/JSON: th\u00eam ho\u1eb7c ghi \u0111\u00e8 theo timestamp. ',
+        'C\u1ea7n k\u1ebft n\u1ed1i internet v\u00e0 ch\u1ea1y qua http:// (kh\u00f4ng file://).',
       ]),
       el('div', { class: 'data-reset-zone' }, [
         el('div', { class: 'data-reset-copy' }, [
@@ -196,8 +211,16 @@ class DataManagerViewImpl {
       el('td', {}, [ds.count.toLocaleString()]),
       el('td', { class: 'data-date' }, [formatTimestamp(ds.firstTimestamp)]),
       el('td', { class: 'data-date' }, [formatTimestamp(ds.lastTimestamp)]),
+      el('td', { class: `data-age data-age--${describeAgeLevel(ds)}` }, [
+        dataFreshnessChipText(ds.lastTimestamp, ds.timeframe),
+      ]),
       gapCell,
       el('td', { class: 'data-actions' }, [
+        el('button', {
+          class: 'btn btn-sm btn-primary',
+          title: 'C\u1eadp nh\u1eadt gi\u00e1 m\u1edbi t\u1eeb Binance',
+          dataset: { action: 'fetch-live', symbol: ds.symbol, tf: ds.timeframe },
+        }, ['Live']),
         el('button', {
           class: 'btn btn-sm',
           title: 'Export CSV',
@@ -324,6 +347,29 @@ class DataManagerViewImpl {
       fileInput.value = '';
     });
 
+    this.#container?.querySelector('#btn-fetch-live-all')?.addEventListener('click', async () => {
+      await this.#runReload(
+        'btn-fetch-live-all',
+        '\u0110ang t\u1ea3i gi\u00e1\u2026',
+        'C\u1eadp nh\u1eadt gi\u00e1 m\u1edbi (BTC)',
+        async () => {
+          const result = await DataManager.updateLatestBtcPrices();
+          if (result.updated.length === 0 && result.errors.length > 0) {
+            throw new Error(result.errors.map((e) => `${e.timeframe}: ${e.error}`).join(' · '));
+          }
+          const totalNew = result.updated.reduce((s, u) => s + u.fetched, 0);
+          bus.emit(Events.LOG_MESSAGE, {
+            message: totalNew > 0
+              ? `Đã cập nhật ${result.updated.length} bộ dữ liệu (${totalNew} nến từ Binance)`
+              : 'Dữ liệu BTC đã mới nhất — không có nến thêm',
+            level: result.errors.length ? 'warn' : 'info',
+            time: new Date(),
+          });
+          return result;
+        }
+      );
+    });
+
     this.#container?.querySelector('#btn-load-defaults')?.addEventListener('click', async () => {
       await this.#runReload('btn-load-defaults', 'Loading…', 'Reload Default Data', () =>
         DataManager.seedDefaults({ force: true })
@@ -332,7 +378,7 @@ class DataManagerViewImpl {
 
     this.#container?.querySelector('#btn-update-dataset')?.addEventListener('click', async () => {
       const { symbol, timeframe } = this.#getImportPair();
-      await this.#runReload('btn-update-dataset', 'Đang tải…', 'Cập nhật', () =>
+      await this.#runReload('btn-update-dataset', '\u0110ang t\u1ea3i\u2026', 'T\u1ea3i l\u1ea1i defaults', () =>
         DataManager.reloadBundledDataset(symbol, timeframe)
       );
     });
@@ -401,6 +447,13 @@ class DataManagerViewImpl {
         if (action === 'export-csv') await DataManager.exportDataset(symbol, tf, 'csv');
         if (action === 'export-json') await DataManager.exportDataset(symbol, tf, 'json');
         if (action === 'export-gz') await DataManager.exportDataset(symbol, tf, 'json', true);
+        if (action === 'fetch-live') {
+          const result = await DataManager.updateLatestBtcPrices({ timeframes: [tf] });
+          await this.refresh();
+          if (result.errors.length) {
+            throw new Error(result.errors[0].error);
+          }
+        }
         if (action === 'delete') {
           if (confirm(`Delete all ${symbol} ${tf} data?`)) {
             await DataManager.deleteDataset(symbol, tf);

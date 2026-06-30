@@ -78,6 +78,12 @@ export const Config = Object.freeze({
     W: 7 * 24 * 60 * 60 * 1000,
   }),
 
+  /** Live BTC price source (Binance public API, BTCUSDT as BTCUSD proxy). */
+  BTC_LIVE: Object.freeze({
+    BINANCE_API: 'https://api.binance.com/api/v3',
+    SYMBOL: 'BTCUSDT',
+  }),
+
   /** Default sample data size for demo generation. */
   SAMPLE_CANDLE_COUNT: 2000,
 

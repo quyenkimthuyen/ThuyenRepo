@@ -14,6 +14,7 @@ import { importFromText } from './DataImporter.js';
 import { exportCSV, exportJSON, downloadFile, downloadBinary } from './DataExporter.js';
 import { compress, decompress } from './Compression.js';
 import { loadDefaultDatasets, probeDefaultData } from './DefaultDataLoader.js';
+import { fetchIncrementalBtcCandles } from './BtcLivePriceFetcher.js';
 import { createLogger } from '../utils/logger.js';
 
 const log = createLogger('DataManager');
@@ -180,6 +181,77 @@ const DataManager = {
       force: true,
       only: [{ symbol, timeframe }],
     });
+  },
+
+  /**
+   * Fetch latest BTC candles from Binance and merge into IndexedDB.
+   * @param {{ timeframes?: string[], symbol?: string }} [options]
+   * @returns {Promise<{
+   *   updated: Array<{
+   *     symbol: string,
+   *     timeframe: string,
+   *     fetched: number,
+   *     newBars: number,
+   *     lastClose: number,
+   *     metadata: import('./Candle.js').DatasetMetadata,
+   *   }>,
+   *   errors: Array<{ timeframe: string, error: string }>,
+   * }>}
+   */
+  async updateLatestBtcPrices(options = {}) {
+    const symbol = options.symbol ?? 'BTCUSD';
+    if (symbol !== 'BTCUSD') {
+      throw new Error('Chỉ hỗ trợ cập nhật giá live cho BTCUSD');
+    }
+
+    const timeframes = options.timeframes ?? Config.TIMEFRAMES;
+    /** @type {Awaited<ReturnType<typeof DataManager.updateLatestBtcPrices>>['updated']} */
+    const updated = [];
+    /** @type {Awaited<ReturnType<typeof DataManager.updateLatestBtcPrices>>['errors']} */
+    const errors = [];
+
+    for (const timeframe of timeframes) {
+      try {
+        const existing = await this.getCandles(symbol, timeframe);
+        const before = existing.length;
+        const { candles: incoming } = await fetchIncrementalBtcCandles(timeframe, existing);
+
+        if (incoming.length === 0) {
+          if (existing.length > 0) {
+            emitDataLog(`BTC live ${timeframe}: \u0111\u00e3 m\u1edbi nh\u1ea5t`);
+          }
+          continue;
+        }
+
+        const metadata = await this.saveCandles(symbol, timeframe, incoming);
+        const after = metadata.count;
+        const lastCandle = await this.getCandles(symbol, timeframe);
+        const lastClose = lastCandle[lastCandle.length - 1]?.close ?? 0;
+
+        updated.push({
+          symbol,
+          timeframe,
+          fetched: incoming.length,
+          newBars: Math.max(0, after - before),
+          lastClose,
+          metadata,
+        });
+
+        emitDataLog(
+          `BTC live ${timeframe}: +${incoming.length} nến (mới ${Math.max(0, after - before)}) · close ${lastClose.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        errors.push({ timeframe, error: message });
+        emitDataLog(`BTC live ${timeframe} thất bại: ${message}`, 'error');
+      }
+    }
+
+    if (updated.length > 0) {
+      bus.emit(Events.DATA_UPDATED, { liveUpdate: updated });
+    }
+
+    return { updated, errors };
   },
 
   /**

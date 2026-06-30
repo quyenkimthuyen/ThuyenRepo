@@ -17,6 +17,7 @@ import {
   formatPct,
 } from './AnalysisViewHelpers.js';
 import { cyclePhaseColor } from '../chart/AnalysisOverlay.js';
+import { renderCycleCompareTimeline } from './CycleCompareTimelineUi.js';
 
 class CycleViewImpl {
   #unsub = null;
@@ -52,7 +53,7 @@ class CycleViewImpl {
       { label: 'Tiến độ chu kỳ', value: `${c.progressPct.toFixed(1)}%`, color: c.phaseColor },
       { label: 'Giai đoạn', value: c.phaseLabel, color: c.phaseColor },
       { label: 'Ngày từ halving', value: String(c.daysSinceHalving) },
-      { label: 'Đến halving tiếp', value: `~${c.daysToNextHalving} ngày` },
+      { label: 'ĝến halving tiếp', value: `~${c.daysToNextHalving} ngày` },
       { label: 'Halving tiếp theo (ước tính)', value: formatAnalysisDate(c.nextHalvingEstimate) },
     ]));
 
@@ -62,6 +63,8 @@ class CycleViewImpl {
         style: `width:${c.progressPct}%;background:${c.phaseColor}`,
       }),
     ]));
+
+    body.appendChild(renderCycleCompareTimeline());
 
     const halvingRows = BTC_HALVING_EVENTS.map((h) => [
       h.label,
@@ -82,7 +85,7 @@ class CycleViewImpl {
       ]);
       body.appendChild(el('h3', { class: 'analysis-section-title' }, ['Hiệu suất theo chu kỳ']));
       body.appendChild(renderTable(
-        ['Chu kỳ', 'Bắt đầu', 'Giá mở', 'Đỉnh', 'Đáy', 'Thay đổi'],
+        ['Chu kỳ', 'Bắt đầu', 'Giá mở', 'ĝỉnh', 'ĝáy', 'Thay đổi'],
         cycleRows
       ));
     }

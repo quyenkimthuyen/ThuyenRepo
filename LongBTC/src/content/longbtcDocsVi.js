@@ -417,7 +417,7 @@ export const LONG_BTC_DOC_SECTIONS = [
     blocks: [
       {
         type: 'p',
-        text: 'Ch\u1ec9 BTCUSD (W, D1, H4). T\u1ea3i data/defaults ho\u1eb7c import CSV/JSON.',
+        text: 'Ch\u1ec9 BTCUSD (W, D1, H4). T\u1ea3i data/defaults ho\u1eb7c import CSV/JSON. N\u00fat C\u1eadp nh\u1eadt gi\u00e1 m\u1edbi l\u1ea5y n\u1ebfn t\u1eeb Binance (BTCUSDT) v\u00e0 merge v\u00e0o IndexedDB.',
       },
       {
         type: 'callout',

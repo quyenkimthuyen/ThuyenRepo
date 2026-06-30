@@ -34,6 +34,7 @@ import {
 } from '../utils/runnableDatasets.js';
 import { takePendingChartFocus } from '../utils/chartNavigation.js';
 import { alignToTimeframe, formatTimestamp } from '../data/TimeframeUtils.js';
+import { dataFreshnessChipText, renderDataFreshnessBanner } from './DataFreshnessUi.js';
 import { getLastAnalysis, analyzeLongTerm } from '../analysis/LongTermAnalysisEngine.js';
 import { analyzeCurrentCycle } from '../analysis/HalvingCycleAnalyzer.js';
 import {
@@ -147,6 +148,7 @@ class ChartViewImpl {
 
     container.appendChild(el('div', { class: 'chart-view', id: 'chart-view-root' }, [
       this.#renderToolbar(),
+      el('div', { class: 'chart-freshness-slot', id: 'chart-freshness-slot' }),
       el('div', { class: 'chart-body', id: 'chart-body' }, [
         chartMain,
         el('aside', { class: 'chart-signal-panel', id: 'chart-signal-panel', hidden: true }),
@@ -259,6 +261,14 @@ class ChartViewImpl {
           ]),
         ]),
       ]),
+      el('div', { class: 'chart-toolbar-group' }, [
+        el('button', {
+          class: 'btn btn-secondary btn-sm',
+          id: 'chart-live-update',
+          type: 'button',
+          title: 'C\u1eadp nh\u1eadt gi\u00e1 BTC m\u1edbi nh\u1ea5t t\u1eeb Binance',
+        }, ['\u21bb Gi\u00e1 m\u1edbi']),
+      ]),
       el('div', { class: 'chart-toolbar-group chart-status', id: 'chart-status' }, [
         'Loading…',
       ]),
@@ -359,6 +369,10 @@ class ChartViewImpl {
       this.#timeframe = /** @type {HTMLSelectElement} */ (e.target).value;
       this.#clearSignalContext();
       this.#loadChart();
+    });
+
+    this.#container?.querySelector('#chart-live-update')?.addEventListener('click', async () => {
+      await this.#fetchLiveBtcPrices();
     });
 
     this.#container?.querySelector('#chart-ema')?.addEventListener('change', (e) => {
@@ -639,6 +653,57 @@ class ChartViewImpl {
     });
   }
 
+  async #fetchLiveBtcPrices() {
+    const btn = /** @type {HTMLButtonElement|null} */ (
+      this.#container?.querySelector('#chart-live-update')
+    );
+    const status = this.#container?.querySelector('#chart-status');
+    if (!btn) return;
+
+    const prevLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '\u0110ang t\u1ea3i\u2026';
+    if (status) status.textContent = 'Đang cập nhật giá BTC từ Binance…';
+
+    try {
+      const result = await DataManager.updateLatestBtcPrices({
+        timeframes: [this.#timeframe],
+      });
+      if (result.errors.length > 0) {
+        throw new Error(result.errors[0].error);
+      }
+      const row = result.updated[0];
+      bus.emit(Events.LOG_MESSAGE, {
+        message: row
+          ? `Giá BTC ${this.#timeframe} cập nhật — close ${row.lastClose.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
+          : 'Dữ liệu đã mới nhất',
+        level: 'info',
+        time: new Date(),
+      });
+      await this.#loadChart();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      bus.emit(Events.LOG_MESSAGE, {
+        message: `Cập nhật giá thất bại: ${msg}`,
+        level: 'error',
+        time: new Date(),
+      });
+      if (status) status.textContent = `Lỗi cập nhật giá: ${msg}`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = prevLabel ?? '\u21bb Gi\u00e1 m\u1edbi';
+    }
+  }
+
+  #updateChartFreshnessBanner(lastTimestamp) {
+    const slot = this.#container?.querySelector('#chart-freshness-slot');
+    if (!slot || this.#symbol !== 'BTCUSD') return;
+    slot.innerHTML = '';
+    if (lastTimestamp) {
+      slot.appendChild(renderDataFreshnessBanner(lastTimestamp, this.#timeframe, this.#symbol));
+    }
+  }
+
   async #loadChart() {
     const status = document.getElementById('chart-status');
     if (status) status.textContent = `Loading ${this.#symbol} ${this.#timeframe}…`;
@@ -650,6 +715,7 @@ class ChartViewImpl {
         if (status) {
           status.textContent = 'No data — import or reload defaults in Data Manager';
         }
+        this.#updateChartFreshnessBanner(0);
         this.#replay?.load([]);
         this.#chart?.setCandles([]);
         return;
@@ -682,9 +748,13 @@ class ChartViewImpl {
           status.textContent = `${this.#activeSignal.symbol} ${this.#activeSignal.timeframe} · ${this.#activeSignal.strategyName} · ${this.#activeSignal.direction.toUpperCase()} @ ${formatTimestamp(this.#activeSignal.time)}`;
         } else {
           const visibleCount = this.#replay?.getVisibleCandles().length ?? candles.length;
-          status.textContent = `${visibleCount.toLocaleString()} / ${candles.length.toLocaleString()} candles`;
+          const lastTs = candles[candles.length - 1].timestamp;
+          const age = dataFreshnessChipText(lastTs, this.#timeframe);
+          status.textContent = `${visibleCount.toLocaleString()} / ${candles.length.toLocaleString()} n\u1ebfn \u00b7 ${age}`;
         }
       }
+
+      this.#updateChartFreshnessBanner(candles[candles.length - 1].timestamp);
 
       bus.emit(Events.CHART_LOADED, {
         symbol: this.#symbol,
