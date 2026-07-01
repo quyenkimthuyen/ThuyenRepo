@@ -14,6 +14,7 @@ import {
   isSentenceComplete,
 } from './matcher.js';
 import { speakText, stopSpeaking } from './tts.js';
+import { ICONS, iconFragment } from './icons.js';
 
 const STORAGE_KEY = 'reading-aloud-progress';
 const SETTINGS_KEY = 'reading-aloud-settings';
@@ -39,15 +40,14 @@ const els = {
   levelFilter: document.getElementById('level-filter'),
   lessonSelect: document.getElementById('lesson-select'),
   autoReadSample: document.getElementById('auto-read-sample'),
-  btnStart: document.getElementById('btn-start'),
-  btnStop: document.getElementById('btn-stop'),
+  btnMicToggle: document.getElementById('btn-mic-toggle'),
+  btnAutoRead: document.getElementById('btn-auto-read'),
   btnReadSample: document.getElementById('btn-read-sample'),
   btnPrevSentence: document.getElementById('btn-prev-sentence'),
   btnNextSentence: document.getElementById('btn-next-sentence'),
   btnResetSentence: document.getElementById('btn-reset-sentence'),
   btnResetLesson: document.getElementById('btn-reset-lesson'),
   btnRestart: document.getElementById('btn-restart'),
-  micDot: document.getElementById('mic-dot'),
   micStatus: document.getElementById('mic-status'),
   progressText: document.getElementById('progress-text'),
   liveTranscript: document.getElementById('live-transcript'),
@@ -67,6 +67,9 @@ const els = {
   customLessonsList: document.getElementById('custom-lessons-list'),
   customLessonsUl: document.getElementById('custom-lessons-ul'),
   btnDeleteCustom: document.getElementById('btn-delete-custom'),
+  btnImportToggle: document.getElementById('btn-import-toggle'),
+  btnImportClose: document.getElementById('btn-import-close'),
+  importPanel: document.getElementById('import-panel'),
 };
 
 /** @type {SpeechRecognition | null} */
@@ -121,6 +124,7 @@ function init() {
   renderCustomLessonsList();
   bindEvents();
   loadSavedLesson();
+  updateMicToggleUi();
 }
 
 function populateImportForm() {
@@ -160,6 +164,42 @@ function loadSettings() {
     autoReadSample = false;
   }
   els.autoReadSample.checked = autoReadSample;
+  updateAutoReadUi();
+}
+
+function updateAutoReadUi() {
+  els.btnAutoRead.classList.toggle('is-on', autoReadSample);
+  els.btnAutoRead.setAttribute('aria-pressed', String(autoReadSample));
+  if (els.autoReadSample) els.autoReadSample.checked = autoReadSample;
+}
+
+function updateMicToggleUi() {
+  const on = listening;
+  els.btnMicToggle.classList.toggle('is-on', on);
+  els.btnMicToggle.setAttribute('aria-pressed', String(on));
+  els.btnMicToggle.disabled = lessonComplete;
+  els.btnMicToggle.title = on ? 'Tắt mic' : 'Bật mic';
+  els.btnMicToggle.setAttribute('aria-label', on ? 'Tắt mic' : 'Bật mic');
+  els.btnMicToggle.querySelector('.mic-icon-on')?.classList.toggle('hidden', on);
+  els.btnMicToggle.querySelector('.mic-icon-off')?.classList.toggle('hidden', !on);
+  els.micStatus.textContent = on ? 'Mic đang nghe…' : 'Mic tắt';
+  els.micStatus.classList.toggle('is-live', on);
+}
+
+function toggleMic() {
+  if (lessonComplete) return;
+  if (listening) stopMic();
+  else startMic();
+}
+
+function toggleImportPanel(forceOpen) {
+  const open =
+    typeof forceOpen === 'boolean'
+      ? forceOpen
+      : els.importPanel.classList.contains('hidden');
+  els.importPanel.classList.toggle('hidden', !open);
+  els.btnImportToggle.classList.toggle('is-on', open);
+  els.btnImportToggle.setAttribute('aria-expanded', String(open));
 }
 
 function saveSettings() {
@@ -251,11 +291,17 @@ function bindEvents() {
 
   els.autoReadSample.addEventListener('change', () => {
     autoReadSample = els.autoReadSample.checked;
+    updateAutoReadUi();
     saveSettings();
   });
 
-  els.btnStart.addEventListener('click', startMic);
-  els.btnStop.addEventListener('click', stopMic);
+  els.btnAutoRead.addEventListener('click', () => {
+    autoReadSample = !autoReadSample;
+    updateAutoReadUi();
+    saveSettings();
+  });
+
+  els.btnMicToggle.addEventListener('click', toggleMic);
   els.btnReadSample.addEventListener('click', readCurrentSample);
   els.btnPrevSentence.addEventListener('click', goPrevSentence);
   els.btnNextSentence.addEventListener('click', goNextSentence);
@@ -270,6 +316,8 @@ function bindEvents() {
   els.importFile.addEventListener('change', handleImportFile);
   els.importFormat.addEventListener('change', updateImportFormatUi);
   els.btnDeleteCustom.addEventListener('click', deleteCurrentCustomLesson);
+  els.btnImportToggle.addEventListener('click', () => toggleImportPanel());
+  els.btnImportClose.addEventListener('click', () => toggleImportPanel(false));
 
   updateImportFormatUi();
 }
@@ -424,18 +472,23 @@ function renderCustomLessonsList() {
 
     const btnOpen = document.createElement('button');
     btnOpen.type = 'button';
-    btnOpen.className = 'btn-secondary';
-    btnOpen.textContent = 'Mở';
+    btnOpen.className = 'icon-btn icon-btn-ghost';
+    btnOpen.title = 'Mở';
+    btnOpen.setAttribute('aria-label', `Mở ${item.title}`);
+    btnOpen.appendChild(iconFragment(ICONS.play));
+
+    const btnDel = document.createElement('button');
+    btnDel.type = 'button';
+    btnDel.className = 'icon-btn icon-btn-danger';
+    btnDel.title = 'Xóa';
+    btnDel.setAttribute('aria-label', `Xóa ${item.title}`);
+    btnDel.appendChild(iconFragment(ICONS.trash));
+
     btnOpen.addEventListener('click', () => {
       els.lessonSelect.value = item.id;
       stopMic();
       loadLesson(item.id);
     });
-
-    const btnDel = document.createElement('button');
-    btnDel.type = 'button';
-    btnDel.className = 'btn-danger';
-    btnDel.textContent = 'Xóa';
     btnDel.addEventListener('click', () => deleteCustomLessonById(item.id));
 
     li.append(name, meta, btnOpen, btnDel);
@@ -725,6 +778,7 @@ function render() {
   els.btnReadSample.disabled = lessonComplete;
   els.btnResetSentence.disabled = lessonComplete;
   els.btnDeleteCustom.classList.toggle('hidden', !lesson.custom);
+  updateMicToggleUi();
 
   const activeEl = els.sentencesRoot.querySelector('.sentence.active');
   if (activeEl) {
@@ -812,19 +866,13 @@ function startMic() {
 
   recognition.onstart = () => {
     listening = true;
-    els.micDot.classList.add('listening');
-    els.micStatus.textContent = 'Đang nghe…';
-    els.btnStart.disabled = true;
-    els.btnStop.disabled = false;
+    updateMicToggleUi();
     hideError();
   };
 
   recognition.onend = () => {
     listening = false;
-    els.micDot.classList.remove('listening');
-    els.micStatus.textContent = 'Mic đã dừng';
-    els.btnStart.disabled = lessonComplete;
-    els.btnStop.disabled = true;
+    updateMicToggleUi();
 
     if (!lessonComplete && recognition?._wantRestart) {
       try {
@@ -890,10 +938,7 @@ function startMic() {
 function stopMic() {
   if (!recognition) {
     listening = false;
-    els.micDot.classList.remove('listening');
-    els.micStatus.textContent = 'Mic chưa bật';
-    els.btnStart.disabled = lessonComplete;
-    els.btnStop.disabled = true;
+    updateMicToggleUi();
     return;
   }
 
@@ -905,10 +950,7 @@ function stopMic() {
   }
   recognition = null;
   listening = false;
-  els.micDot.classList.remove('listening');
-  els.micStatus.textContent = 'Mic đã dừng';
-  els.btnStart.disabled = lessonComplete;
-  els.btnStop.disabled = true;
+  updateMicToggleUi();
 }
 
 /**
