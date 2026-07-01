@@ -5,6 +5,7 @@ import {
   matchAccumulating,
   isSentenceComplete,
 } from '../js/matcher.js';
+import { wordsMatch } from '../js/numberWords.js';
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -41,5 +42,13 @@ const t3 = tokenizeSentence('I I wake');
 const m3 = new Set();
 matchAccumulating(wordsFromTranscript('I I I wake'), t3, m3);
 assert(m3.size === 3, 'two I slots + wake');
+
+// number words: ASR often returns digits
+assert(wordsMatch('20', 'twenty'), 'twenty matches 20');
+assert(wordsMatch('6', 'six'), 'six matches 6');
+const t4 = tokenizeSentence('I am twenty years old.');
+const m4 = new Set();
+matchAccumulating(wordsFromTranscript('I am 20 years old'), t4, m4);
+assert(m4.size === 5, 'digit 20 matches word twenty');
 
 console.log('matcher tests: ok');

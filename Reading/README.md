@@ -30,9 +30,71 @@ Hết bài → thông báo hoàn thành
 | Linh hoạt với ASR | Từ thừa/sai bỏ qua; lặp từ không ảnh hưởng nếu ô đó đã khớp |
 | Chuẩn hóa | lower case, bỏ dấu câu đầu/cuối trước khi so |
 
+## Chủ đề bài luyện
+
+| Chủ đề | Nội dung |
+|--------|----------|
+| **Đời sống** | Thói quen, gia đình, mua sắm… |
+| **Du lịch** | Khách sạn, sân bay, văn hóa, du lịch bền vững… |
+| **Công việc** | Văn phòng, phỏng vấn, làm việc từ xa, lãnh đạo… |
+| **Học tập** | Học tiếng Anh, giáo dục… |
+| **IELTS Speaking** | Part 1/2/3 — giới thiệu, quê hương, công nghệ… |
+| **Sức khỏe** | Thói quen lành mạnh, thần kinh học… |
+| **Công nghệ** | AI, không gian… |
+| **Xã hội** | Môi trường, mạng xã hội, đô thị hóa… |
+
+Lọc theo **Chủ đề** và **Cấp độ** trên màn hình chính.
+
+## Import bài của bạn
+
+Mở **Import bài của tôi** trên màn hình chính.
+
+### Văn bản (mỗi dòng một câu)
+
+1. Nhập tiêu đề, chọn cấp độ / chủ đề
+2. Dán các câu tiếng Anh (mỗi dòng một câu)
+3. Bấm **Lưu bài**
+
+### File `.txt` hoặc `.json`
+
+- **`.txt`** — mỗi dòng một câu; tiêu đề lấy từ tên file
+- **`.json`** — một bài hoặc nhiều bài:
+
+```json
+{
+  "title": "My practice",
+  "level": "b1",
+  "topic": "ielts",
+  "sentences": [
+    "I would like to talk about my hometown.",
+    "It is a small city in the north of the country."
+  ]
+}
+```
+
+Nhiều bài:
+
+```json
+{
+  "lessons": [
+    { "title": "Lesson A", "sentences": ["..."] },
+    { "title": "Lesson B", "sentences": ["..."] }
+  ]
+}
+```
+
+Bài import nằm trong nhóm **Bài của tôi**, lưu tại `localStorage` trên trình duyệt. Có thể **Mở** / **Xóa** trong danh sách hoặc nút **Xóa bài này** khi đang luyện.
+
+## Tính năng bổ sung
+
+- **Đọc mẫu (TTS):** nút *Đọc mẫu* hoặc tự đọc khi bật *Tự đọc mẫu khi sang câu mới*
+- **Khớp số:** mic nghe `20` vẫn khớp từ `twenty` (và ngược lại)
+- **Qua câu:** nút *Câu trước* / *Câu sau* để chuyển giữa các câu mà không cần đọc xong
+
 ## Công nghệ
 
 - **Web Speech API** (`SpeechRecognition`) — nhận giọng real-time, `continuous` + `interimResults`
+- **Web Speech API** (`speechSynthesis`) — đọc mẫu
 - **Vanilla HTML/CSS/JS** — không framework, không backend
 - **localStorage** — lưu tiến độ bài đang làm
 
@@ -71,6 +133,8 @@ Reading/
 ```json
 {
   "id": "lesson-01",
+  "level": "a2",
+  "topic": "ielts",
   "title": "Morning routine",
   "sentences": [
     "I wake up at six o'clock.",
@@ -78,3 +142,6 @@ Reading/
   ]
 }
 ```
+
+Cấp độ: `a1` | `a2` | `b1` | `b2` | `c1`  
+Chủ đề: `daily` | `travel` | `work` | `study` | `ielts` | `health` | `tech` | `society`

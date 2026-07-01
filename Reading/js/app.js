@@ -1,19 +1,49 @@
-import { LESSONS } from './lessons.js';
+import { LESSONS, LEVELS, TOPICS, filterLessons, getTopicLabel } from './lessons.js';
+import {
+  loadCustomLessons,
+  saveCustomLessons,
+  buildCustomLesson,
+  parseImportJson,
+  addCustomLesson,
+  removeCustomLesson,
+} from './customLessons.js';
 import {
   tokenizeSentence,
   wordsFromTranscript,
   matchAccumulating,
   isSentenceComplete,
 } from './matcher.js';
+import { speakText, stopSpeaking } from './tts.js';
 
 const STORAGE_KEY = 'reading-aloud-progress';
+const SETTINGS_KEY = 'reading-aloud-settings';
+
+/** Old lesson ids before level-based naming */
+const LEGACY_LESSON_IDS = {
+  'self-intro': 'a2-self-intro',
+  weekend: 'a2-weekend',
+};
+
+/**
+ * @param {string} id
+ * @returns {string}
+ */
+function resolveLessonId(id) {
+  return LEGACY_LESSON_IDS[id] ?? id;
+}
 
 /** @typedef {{ tokens: { display: string, normalized: string }[], matched: Set<number> }[]} LessonState */
 
 const els = {
+  topicSelect: document.getElementById('topic-select'),
+  levelFilter: document.getElementById('level-filter'),
   lessonSelect: document.getElementById('lesson-select'),
+  autoReadSample: document.getElementById('auto-read-sample'),
   btnStart: document.getElementById('btn-start'),
   btnStop: document.getElementById('btn-stop'),
+  btnReadSample: document.getElementById('btn-read-sample'),
+  btnPrevSentence: document.getElementById('btn-prev-sentence'),
+  btnNextSentence: document.getElementById('btn-next-sentence'),
   btnResetSentence: document.getElementById('btn-reset-sentence'),
   btnResetLesson: document.getElementById('btn-reset-lesson'),
   btnRestart: document.getElementById('btn-restart'),
@@ -25,6 +55,18 @@ const els = {
   sentencesRoot: document.getElementById('sentences-root'),
   completionBanner: document.getElementById('completion-banner'),
   errorBanner: document.getElementById('error-banner'),
+  importLevel: document.getElementById('import-level'),
+  importTopic: document.getElementById('import-topic'),
+  importTitle: document.getElementById('import-title'),
+  importFormat: document.getElementById('import-format'),
+  importContent: document.getElementById('import-content'),
+  importContentLabel: document.getElementById('import-content-label'),
+  importFile: document.getElementById('import-file'),
+  btnImportSave: document.getElementById('btn-import-save'),
+  importFeedback: document.getElementById('import-feedback'),
+  customLessonsList: document.getElementById('custom-lessons-list'),
+  customLessonsUl: document.getElementById('custom-lessons-ul'),
+  btnDeleteCustom: document.getElementById('btn-delete-custom'),
 };
 
 /** @type {SpeechRecognition | null} */
@@ -39,6 +81,9 @@ let sentenceStates = [];
 
 let currentSentenceIndex = 0;
 let lessonComplete = false;
+let autoReadSample = false;
+let topicFilter = 'all';
+let levelFilter = 'all';
 
 /** Track processed final result index to avoid double-processing */
 let lastFinalResultIndex = -1;
@@ -46,18 +91,153 @@ let lastFinalResultIndex = -1;
 /** Last interim text for display only */
 let lastInterimText = '';
 
+/** Skip auto-read when restoring saved lesson on first paint */
+let suppressAutoReadOnce = false;
+
+/** @type {import('./lessons.js').Lesson[]} */
+let customLessons = [];
+
+function getAllLessons() {
+  return [...LESSONS, ...customLessons];
+}
+
+/**
+ * @param {string} id
+ * @returns {import('./lessons.js').Lesson | undefined}
+ */
+function findLessonById(id) {
+  const resolved = resolveLessonId(id);
+  return getAllLessons().find((l) => l.id === resolved);
+}
+
 init();
 
 function init() {
+  customLessons = loadCustomLessons();
+  loadSettings();
+  populateFilters();
+  populateImportForm();
   populateLessonSelect();
+  renderCustomLessonsList();
   bindEvents();
   loadSavedLesson();
 }
 
-function populateLessonSelect() {
-  els.lessonSelect.innerHTML = LESSONS.map(
-    (l) => `<option value="${l.id}">${l.title}</option>`,
+function populateImportForm() {
+  els.importLevel.innerHTML = LEVELS.map(
+    (l) => `<option value="${l.id}">${l.label}</option>`,
   ).join('');
+  els.importTopic.innerHTML = TOPICS.map(
+    (t) => `<option value="${t.id}">${t.label}</option>`,
+  ).join('');
+  els.importLevel.value = 'b1';
+  els.importTopic.value = 'custom';
+}
+
+function populateFilters() {
+  els.topicSelect.innerHTML =
+    '<option value="all">Tất cả chủ đề</option>' +
+    TOPICS.map((t) => `<option value="${t.id}">${t.label}</option>`).join('');
+
+  els.levelFilter.innerHTML =
+    '<option value="all">Tất cả cấp độ</option>' +
+    LEVELS.map((l) => `<option value="${l.id}">${l.label}</option>`).join('');
+
+  els.topicSelect.value = topicFilter;
+  els.levelFilter.value = levelFilter;
+}
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) {
+      const settings = JSON.parse(raw);
+      autoReadSample = Boolean(settings.autoReadSample);
+      if (settings.topicFilter) topicFilter = settings.topicFilter;
+      if (settings.levelFilter) levelFilter = settings.levelFilter;
+    }
+  } catch {
+    autoReadSample = false;
+  }
+  els.autoReadSample.checked = autoReadSample;
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem(
+      SETTINGS_KEY,
+      JSON.stringify({ autoReadSample, topicFilter, levelFilter }),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+function populateLessonSelect() {
+  const filtered = filterLessons({ topic: topicFilter, level: levelFilter }, getAllLessons());
+  const previousId = els.lessonSelect.value;
+  els.lessonSelect.innerHTML = '';
+
+  if (!filtered.length) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'Không có bài phù hợp';
+    opt.disabled = true;
+    els.lessonSelect.appendChild(opt);
+    return;
+  }
+
+  const customFiltered = filtered.filter((l) => l.custom);
+  const builtInFiltered = filtered.filter((l) => !l.custom);
+
+  if (customFiltered.length) {
+    const customGroup = document.createElement('optgroup');
+    customGroup.label = 'Bài của tôi';
+
+    for (const item of customFiltered) {
+      const opt = document.createElement('option');
+      opt.value = item.id;
+      const topicName = getTopicLabel(item.topic);
+      opt.textContent = `${item.title} · ${topicName}`;
+      customGroup.appendChild(opt);
+    }
+
+    els.lessonSelect.appendChild(customGroup);
+  }
+
+  for (const lvl of LEVELS) {
+    const lessonsAtLevel = builtInFiltered.filter((l) => l.level === lvl.id);
+    if (!lessonsAtLevel.length) continue;
+
+    const group = document.createElement('optgroup');
+    group.label = lvl.label;
+
+    for (const item of lessonsAtLevel) {
+      const opt = document.createElement('option');
+      opt.value = item.id;
+      const topicName = getTopicLabel(item.topic);
+      opt.textContent = `${item.title} · ${topicName}`;
+      group.appendChild(opt);
+    }
+
+    els.lessonSelect.appendChild(group);
+  }
+
+  const stillVisible = filtered.some((l) => l.id === resolveLessonId(previousId));
+  if (stillVisible && previousId) {
+    els.lessonSelect.value = resolveLessonId(previousId);
+  }
+}
+
+function onFiltersChanged() {
+  topicFilter = els.topicSelect.value;
+  levelFilter = els.levelFilter.value;
+  saveSettings();
+  stopMic();
+  populateLessonSelect();
+  if (els.lessonSelect.value) {
+    loadLesson(els.lessonSelect.value);
+  }
 }
 
 function bindEvents() {
@@ -66,36 +246,286 @@ function bindEvents() {
     loadLesson(els.lessonSelect.value);
   });
 
+  els.topicSelect.addEventListener('change', onFiltersChanged);
+  els.levelFilter.addEventListener('change', onFiltersChanged);
+
+  els.autoReadSample.addEventListener('change', () => {
+    autoReadSample = els.autoReadSample.checked;
+    saveSettings();
+  });
+
   els.btnStart.addEventListener('click', startMic);
   els.btnStop.addEventListener('click', stopMic);
+  els.btnReadSample.addEventListener('click', readCurrentSample);
+  els.btnPrevSentence.addEventListener('click', goPrevSentence);
+  els.btnNextSentence.addEventListener('click', goNextSentence);
   els.btnResetSentence.addEventListener('click', resetCurrentSentence);
   els.btnResetLesson.addEventListener('click', resetLesson);
   els.btnRestart.addEventListener('click', () => {
     resetLesson();
     startMic();
   });
+
+  els.btnImportSave.addEventListener('click', handleImportSave);
+  els.importFile.addEventListener('change', handleImportFile);
+  els.importFormat.addEventListener('change', updateImportFormatUi);
+  els.btnDeleteCustom.addEventListener('click', deleteCurrentCustomLesson);
+
+  updateImportFormatUi();
 }
 
-function loadSavedLesson() {
+function updateImportFormatUi() {
+  const isJson = els.importFormat.value === 'json';
+  els.importContentLabel.textContent = isJson
+    ? 'Nội dung JSON'
+    : 'Nội dung các câu';
+  els.importContent.placeholder = isJson
+    ? '{\n  "title": "My lesson",\n  "level": "b1",\n  "sentences": ["Line one.", "Line two."]\n}'
+    : "Hello, my name is Linh.\nI am studying for the IELTS exam.";
+  els.importTitle.closest('.import-field')?.classList.toggle('hidden', isJson);
+  els.importLevel.closest('.import-field')?.classList.toggle('hidden', isJson);
+  els.importTopic.closest('.import-field')?.classList.toggle('hidden', isJson);
+}
+
+/**
+ * @param {string} message
+ * @param {boolean} isError
+ */
+function showImportFeedback(message, isError = false) {
+  els.importFeedback.textContent = message;
+  els.importFeedback.classList.remove('hidden', 'ok', 'err');
+  els.importFeedback.classList.add(isError ? 'err' : 'ok');
+}
+
+function hideImportFeedback() {
+  els.importFeedback.classList.add('hidden');
+}
+
+function handleImportSave() {
+  hideError();
+  const format = els.importFormat.value;
+  const content = els.importContent.value.trim();
+
+  if (!content) {
+    showImportFeedback('Hãy nhập nội dung hoặc chọn file.', true);
+    return;
+  }
+
+  if (format === 'json') {
+    const { lessons, errors } = parseImportJson(content);
+    if (!lessons.length) {
+      showImportFeedback(errors.join(' ') || 'JSON không hợp lệ.', true);
+      return;
+    }
+    customLessons = [...customLessons, ...lessons];
+    saveCustomLessons(customLessons);
+    const last = lessons[lessons.length - 1];
+    afterCustomLessonsChanged(last.id, `Đã lưu ${lessons.length} bài từ JSON.`);
+    return;
+  }
+
+  const { lesson: newLesson, errors } = buildCustomLesson({
+    title: els.importTitle.value,
+    sentences: content,
+    level: els.importLevel.value,
+    topic: els.importTopic.value,
+  });
+
+  if (!newLesson) {
+    showImportFeedback(errors.join(' '), true);
+    return;
+  }
+
+  customLessons = addCustomLesson(customLessons, newLesson);
+  saveCustomLessons(customLessons);
+  els.importContent.value = '';
+  els.importTitle.value = '';
+  afterCustomLessonsChanged(newLesson.id, `Đã lưu bài "${newLesson.title}".`);
+}
+
+/**
+ * @param {Event} event
+ */
+function handleImportFile(event) {
+  const input = /** @type {HTMLInputElement} */ (event.target);
+  const file = input.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = String(reader.result ?? '');
+    els.importContent.value = text;
+
+    if (file.name.toLowerCase().endsWith('.json')) {
+      els.importFormat.value = 'json';
+      updateImportFormatUi();
+      try {
+        const data = JSON.parse(text);
+        const item = Array.isArray(data) ? data[0] : data.lessons?.[0] ?? data;
+        if (item?.title) els.importTitle.value = String(item.title);
+      } catch {
+        /* ignore */
+      }
+    } else {
+      els.importFormat.value = 'text';
+      updateImportFormatUi();
+      if (!els.importTitle.value.trim()) {
+        const baseName = file.name.replace(/\.[^.]+$/, '');
+        els.importTitle.value = baseName;
+      }
+    }
+
+    showImportFeedback(`Đã tải file "${file.name}". Bấm Lưu bài để hoàn tất.`);
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+/**
+ * @param {string} lessonId
+ * @param {string} message
+ */
+function afterCustomLessonsChanged(lessonId, message) {
+  topicFilter = 'all';
+  levelFilter = 'all';
+  els.topicSelect.value = topicFilter;
+  els.levelFilter.value = levelFilter;
+  populateLessonSelect();
+  renderCustomLessonsList();
+  els.lessonSelect.value = lessonId;
+  stopMic();
+  loadLesson(lessonId);
+  showImportFeedback(message);
+}
+
+function renderCustomLessonsList() {
+  if (!customLessons.length) {
+    els.customLessonsList.classList.add('hidden');
+    els.customLessonsUl.innerHTML = '';
+    return;
+  }
+
+  els.customLessonsList.classList.remove('hidden');
+  els.customLessonsUl.innerHTML = '';
+
+  const sorted = [...customLessons].sort(
+    (a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0),
+  );
+
+  for (const item of sorted) {
+    const li = document.createElement('li');
+
+    const name = document.createElement('span');
+    name.textContent = item.title;
+
+    const meta = document.createElement('span');
+    meta.className = 'custom-meta';
+    meta.textContent = `${item.level.toUpperCase()} · ${getTopicLabel(item.topic)} · ${item.sentences.length} câu`;
+
+    const btnOpen = document.createElement('button');
+    btnOpen.type = 'button';
+    btnOpen.className = 'btn-secondary';
+    btnOpen.textContent = 'Mở';
+    btnOpen.addEventListener('click', () => {
+      els.lessonSelect.value = item.id;
+      stopMic();
+      loadLesson(item.id);
+    });
+
+    const btnDel = document.createElement('button');
+    btnDel.type = 'button';
+    btnDel.className = 'btn-danger';
+    btnDel.textContent = 'Xóa';
+    btnDel.addEventListener('click', () => deleteCustomLessonById(item.id));
+
+    li.append(name, meta, btnOpen, btnDel);
+    els.customLessonsUl.appendChild(li);
+  }
+}
+
+/**
+ * @param {string} lessonId
+ */
+function deleteCustomLessonById(lessonId) {
+  const target = customLessons.find((l) => l.id === lessonId);
+  if (!target) return;
+  if (!confirm(`Xóa bài "${target.title}"?`)) return;
+
+  customLessons = removeCustomLesson(customLessons, lessonId);
+  saveCustomLessons(customLessons);
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const saved = JSON.parse(raw);
-      if (saved.lessonId && LESSONS.some((l) => l.id === saved.lessonId)) {
-        els.lessonSelect.value = saved.lessonId;
+      if (saved.lessonId === lessonId) {
+        localStorage.removeItem(STORAGE_KEY);
       }
     }
   } catch {
     /* ignore */
   }
-  loadLesson(els.lessonSelect.value);
+
+  renderCustomLessonsList();
+  populateLessonSelect();
+
+  if (lesson?.id === lessonId) {
+    stopMic();
+    if (els.lessonSelect.value) {
+      loadLesson(els.lessonSelect.value);
+    }
+  }
+
+  showImportFeedback(`Đã xóa bài "${target.title}".`);
+}
+
+function deleteCurrentCustomLesson() {
+  if (!lesson?.custom) return;
+  deleteCustomLessonById(lesson.id);
+}
+
+function loadSavedLesson() {
+  let savedId = '';
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved.lessonId) {
+        savedId = resolveLessonId(saved.lessonId);
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+
+  const savedLesson = savedId ? findLessonById(savedId) : null;
+  if (savedLesson) {
+    const visible = filterLessons(
+      { topic: topicFilter, level: levelFilter },
+      getAllLessons(),
+    ).some((l) => l.id === savedLesson.id);
+    if (!visible) {
+      topicFilter = 'all';
+      levelFilter = 'all';
+      els.topicSelect.value = topicFilter;
+      els.levelFilter.value = levelFilter;
+      populateLessonSelect();
+    }
+    els.lessonSelect.value = savedLesson.id;
+  }
+
+  suppressAutoReadOnce = true;
+  if (els.lessonSelect.value) {
+    loadLesson(els.lessonSelect.value);
+  }
 }
 
 /**
  * @param {string} lessonId
  */
 function loadLesson(lessonId) {
-  const found = LESSONS.find((l) => l.id === lessonId);
+  const found = findLessonById(lessonId);
   if (!found) return;
 
   lesson = found;
@@ -104,11 +534,13 @@ function loadLesson(lessonId) {
     matched: new Set(),
   }));
 
+  currentSentenceIndex = 0;
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const saved = JSON.parse(raw);
-      if (saved.lessonId === lessonId && Array.isArray(saved.matchedBySentence)) {
+      if (saved.lessonId === resolveLessonId(lessonId) && Array.isArray(saved.matchedBySentence)) {
         saved.matchedBySentence.forEach((indices, i) => {
           if (!sentenceStates[i]) return;
           indices.forEach((idx) => sentenceStates[i].matched.add(idx));
@@ -122,7 +554,7 @@ function loadLesson(lessonId) {
     currentSentenceIndex = 0;
   }
 
-  if (!savedProgressValid()) {
+  if (!allPriorSentencesComplete(currentSentenceIndex)) {
     currentSentenceIndex = findFirstIncompleteSentence();
   }
 
@@ -132,10 +564,15 @@ function loadLesson(lessonId) {
   hideError();
   render();
   saveProgress();
+
+  if (!suppressAutoReadOnce) {
+    maybeAutoReadSample();
+  }
+  suppressAutoReadOnce = false;
 }
 
-function savedProgressValid() {
-  for (let i = 0; i < currentSentenceIndex; i++) {
+function allPriorSentencesComplete(upToIndex) {
+  for (let i = 0; i < upToIndex; i++) {
     const st = sentenceStates[i];
     if (!isSentenceComplete(st.matched, st.tokens.length)) return false;
   }
@@ -156,6 +593,7 @@ function clampSentenceIndex(idx) {
 
 function resetLesson() {
   stopMic();
+  stopSpeaking();
   sentenceStates.forEach((st) => st.matched.clear());
   currentSentenceIndex = 0;
   lessonComplete = false;
@@ -163,6 +601,7 @@ function resetLesson() {
   lastInterimText = '';
   render();
   saveProgress();
+  maybeAutoReadSample();
 }
 
 function resetCurrentSentence() {
@@ -174,10 +613,67 @@ function resetCurrentSentence() {
   saveProgress();
 }
 
+function goPrevSentence() {
+  if (lessonComplete || currentSentenceIndex <= 0) return;
+  goToSentence(currentSentenceIndex - 1);
+}
+
+function goNextSentence() {
+  if (lessonComplete) return;
+  if (currentSentenceIndex < sentenceStates.length - 1) {
+    goToSentence(currentSentenceIndex + 1);
+  }
+}
+
+/**
+ * @param {number} index
+ */
+function goToSentence(index) {
+  if (!sentenceStates[index] || lessonComplete) return;
+
+  currentSentenceIndex = index;
+  lessonComplete = false;
+  lastFinalResultIndex = -1;
+  lastInterimText = '';
+  render();
+  saveProgress();
+  maybeAutoReadSample();
+}
+
+function readCurrentSample() {
+  if (!lesson || lessonComplete) return;
+  const text = lesson.sentences[currentSentenceIndex];
+  if (!text) return;
+  if (!speakText(text)) {
+    showError('Trình duyệt không hỗ trợ đọc mẫu (Text-to-Speech).');
+  }
+}
+
+function maybeAutoReadSample() {
+  if (!autoReadSample || lessonComplete || !lesson) return;
+  readCurrentSample();
+}
+
 function render() {
   if (!lesson) return;
 
-  els.lessonTitle.textContent = lesson.title;
+  els.lessonTitle.replaceChildren();
+
+  const topicTag = document.createElement('span');
+  topicTag.className = 'topic-tag';
+  topicTag.dataset.topic = lesson.topic;
+  topicTag.textContent = getTopicLabel(lesson.topic);
+
+  const levelTag = document.createElement('span');
+  levelTag.className = 'level-tag';
+  levelTag.dataset.level = lesson.level;
+  levelTag.textContent = lesson.level.toUpperCase();
+
+  const titleText = document.createElement('span');
+  titleText.className = 'title-text';
+  titleText.textContent = ` ${lesson.title}`;
+
+  els.lessonTitle.append(topicTag, levelTag, titleText);
   els.sentencesRoot.innerHTML = '';
 
   sentenceStates.forEach((st, i) => {
@@ -185,7 +681,9 @@ function render() {
     p.className = 'sentence';
     p.dataset.index = String(i);
 
-    if (lessonComplete || i < currentSentenceIndex) {
+    const complete = isSentenceComplete(st.matched, st.tokens.length);
+
+    if (complete) {
       p.classList.add('done');
     } else if (i === currentSentenceIndex) {
       p.classList.add('active');
@@ -197,7 +695,7 @@ function render() {
       const span = document.createElement('span');
       span.className = 'word';
       span.textContent = tok.display;
-      if (st.matched.has(ti) || i < currentSentenceIndex || lessonComplete) {
+      if (st.matched.has(ti) || complete) {
         span.classList.add('matched');
       }
       p.appendChild(span);
@@ -210,18 +708,23 @@ function render() {
   });
 
   const total = sentenceStates.length;
-  const doneCount = lessonComplete
-    ? total
-    : sentenceStates.filter((st, i) =>
-        i < currentSentenceIndex || isSentenceComplete(st.matched, st.tokens.length),
-      ).length;
+  const doneCount = sentenceStates.filter((st) =>
+    isSentenceComplete(st.matched, st.tokens.length),
+  ).length;
 
   els.progressText.textContent = lessonComplete
     ? `Hoàn thành ${total} / ${total} câu`
-    : `Câu ${Math.min(currentSentenceIndex + 1, total)} / ${total} · Đã xong ${doneCount} câu`;
+    : `Câu ${currentSentenceIndex + 1} / ${total} · Đã xong ${doneCount} câu`;
 
   els.completionBanner.classList.toggle('hidden', !lessonComplete);
   els.sentencesRoot.classList.toggle('hidden', lessonComplete);
+
+  els.btnPrevSentence.disabled = lessonComplete || currentSentenceIndex <= 0;
+  els.btnNextSentence.disabled =
+    lessonComplete || currentSentenceIndex >= sentenceStates.length - 1;
+  els.btnReadSample.disabled = lessonComplete;
+  els.btnResetSentence.disabled = lessonComplete;
+  els.btnDeleteCustom.classList.toggle('hidden', !lesson.custom);
 
   const activeEl = els.sentencesRoot.querySelector('.sentence.active');
   if (activeEl) {
@@ -243,7 +746,7 @@ function saveProgress() {
   }
 }
 
-function processTranscript(transcript, isFinal) {
+function processTranscript(transcript) {
   if (lessonComplete || !sentenceStates[currentSentenceIndex]) return;
 
   const spokenWords = wordsFromTranscript(transcript);
@@ -263,17 +766,22 @@ function processTranscript(transcript, isFinal) {
 }
 
 function advanceSentence() {
+  if (currentSentenceIndex >= sentenceStates.length - 1) {
+    currentSentenceIndex = sentenceStates.length;
+    lessonComplete = true;
+    stopMic();
+    stopSpeaking();
+    render();
+    saveProgress();
+    return;
+  }
+
   currentSentenceIndex += 1;
   lastFinalResultIndex = -1;
   lastInterimText = '';
-
-  if (currentSentenceIndex >= sentenceStates.length) {
-    lessonComplete = true;
-    stopMic();
-  }
-
   render();
   saveProgress();
+  maybeAutoReadSample();
 }
 
 function getSpeechRecognitionCtor() {
@@ -351,7 +859,7 @@ function startMic() {
 
       if (result.isFinal) {
         if (i > lastFinalResultIndex) {
-          processTranscript(text, true);
+          processTranscript(text);
           lastFinalResultIndex = i;
         }
         interim = '';
@@ -363,7 +871,7 @@ function startMic() {
     if (interim) {
       lastInterimText = interim.trim();
       els.liveTranscript.textContent = lastInterimText || '—';
-      processTranscript(interim, false);
+      processTranscript(interim);
     } else if (event.results[event.results.length - 1]?.isFinal) {
       const finalText = event.results[event.results.length - 1][0].transcript.trim();
       els.liveTranscript.textContent = finalText || '—';
@@ -374,7 +882,7 @@ function startMic() {
 
   try {
     recognition.start();
-  } catch (err) {
+  } catch {
     showError('Không thể bật mic. Hãy mở app qua http://localhost (không dùng file://).');
   }
 }

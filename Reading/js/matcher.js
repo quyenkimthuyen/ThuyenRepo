@@ -1,3 +1,5 @@
+import { wordsMatch } from './numberWords.js';
+
 /**
  * Tokenize a sentence into display tokens (word + trailing punctuation).
  * @param {string} sentence
@@ -57,7 +59,7 @@ export function matchAccumulating(spokenWords, sentenceTokens, matchedIndices) {
 
     for (let i = 0; i < sentenceTokens.length; i++) {
       if (matchedIndices.has(i)) continue;
-      if (sentenceTokens[i].normalized === spoken) {
+      if (wordsMatch(spoken, sentenceTokens[i].normalized)) {
         matchedIndices.add(i);
         newlyMatched.push(i);
         break;

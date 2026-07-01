@@ -16,15 +16,33 @@
       <div id="error-banner" class="error-banner hidden" role="alert"></div>
 
       <section class="panel" aria-label="Điều khiển">
-        <div class="controls-row">
+        <div class="controls-row filter-row">
+          <label for="topic-select">Chủ đề</label>
+          <select id="topic-select" aria-label="Lọc theo chủ đề"></select>
+          <label for="level-filter">Cấp độ</label>
+          <select id="level-filter" aria-label="Lọc theo cấp độ"></select>
+        </div>
+        <div class="controls-row" style="margin-top: 0.6rem">
           <label for="lesson-select">Bài luyện</label>
           <select id="lesson-select" aria-label="Chọn bài luyện"></select>
+        </div>
+        <div class="controls-row options-row" style="margin-top: 0.75rem">
+          <label class="checkbox-label">
+            <input type="checkbox" id="auto-read-sample" />
+            Tự đọc mẫu khi sang câu mới
+          </label>
         </div>
         <div class="controls-row" style="margin-top: 0.75rem">
           <button type="button" id="btn-start" class="btn-primary">Bắt đầu mic</button>
           <button type="button" id="btn-stop" class="btn-secondary" disabled>Dừng mic</button>
+          <button type="button" id="btn-read-sample" class="btn-secondary">Đọc mẫu</button>
+        </div>
+        <div class="controls-row" style="margin-top: 0.6rem">
+          <button type="button" id="btn-prev-sentence" class="btn-secondary">← Câu trước</button>
+          <button type="button" id="btn-next-sentence" class="btn-secondary">Câu sau →</button>
           <button type="button" id="btn-reset-sentence" class="btn-secondary">Làm lại câu</button>
           <button type="button" id="btn-reset-lesson" class="btn-danger">Làm lại bài</button>
+          <button type="button" id="btn-delete-custom" class="btn-danger hidden">Xóa bài này</button>
         </div>
         <div class="status-bar" style="margin-top: 0.85rem">
           <span class="mic-indicator">
@@ -37,6 +55,57 @@
           Nghe: <strong id="live-transcript">—</strong>
         </div>
       </section>
+
+      <details class="panel import-panel" id="import-panel">
+        <summary class="import-summary">Import bài của tôi</summary>
+        <div class="import-body">
+          <p class="import-hint">
+            Nhập bài tiếng Anh — mỗi dòng một câu — hoặc dán JSON / chọn file
+            <code>.txt</code> / <code>.json</code>. Bài được lưu trên trình duyệt để dùng lại sau.
+          </p>
+          <div class="import-grid">
+            <label class="import-field">
+              <span>Tiêu đề</span>
+              <input type="text" id="import-title" placeholder="VD: My IELTS practice" />
+            </label>
+            <label class="import-field">
+              <span>Cấp độ</span>
+              <select id="import-level"></select>
+            </label>
+            <label class="import-field">
+              <span>Chủ đề</span>
+              <select id="import-topic"></select>
+            </label>
+            <label class="import-field">
+              <span>Định dạng</span>
+              <select id="import-format">
+                <option value="text">Văn bản (mỗi dòng một câu)</option>
+                <option value="json">JSON</option>
+              </select>
+            </label>
+          </div>
+          <label class="import-field import-field-full">
+            <span id="import-content-label">Nội dung các câu</span>
+            <textarea
+              id="import-content"
+              rows="7"
+              placeholder="Hello, my name is Linh.&#10;I am studying for the IELTS exam.&#10;..."
+            ></textarea>
+          </label>
+          <div class="controls-row" style="margin-top: 0.5rem">
+            <label class="btn-secondary file-btn">
+              Chọn file
+              <input type="file" id="import-file" accept=".txt,.json,application/json,text/plain" hidden />
+            </label>
+            <button type="button" id="btn-import-save" class="btn-primary">Lưu bài</button>
+          </div>
+          <p id="import-feedback" class="import-feedback hidden" role="status"></p>
+          <div id="custom-lessons-list" class="custom-lessons-list hidden">
+            <h3 class="custom-list-title">Bài đã import</h3>
+            <ul id="custom-lessons-ul"></ul>
+          </div>
+        </div>
+      </details>
 
       <section class="panel reading-panel" aria-label="Nội dung bài đọc">
         <h2 id="lesson-title" class="lesson-title"></h2>
