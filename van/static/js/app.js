@@ -30,9 +30,10 @@ let secondsLeft = 7200;
 let examStartedAt = null;
 let readingQCount = 0;
 let provinces = [];
+let hcmExams = [];
 
 function getProvince() {
-  return localStorage.getItem("province_id") || "generic";
+  return "hcm";
 }
 
 function setProvince(id) {
@@ -76,7 +77,13 @@ function hideError() { $("#errorBox").style.display = "none"; }
 
 async function api(path, opts = {}) {
   const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
-  const data = await res.json();
+  const text = await res.text();
+  let data = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { detail: text || res.statusText };
+  }
   if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Lỗi API");
   return data;
 }
@@ -216,14 +223,42 @@ async function initProvinces() {
   const data = await api("/api/provinces");
   provinces = data.provinces || [];
   const sel = $("#provinceSelect");
-  const cur = getProvince();
+  const cur = "hcm";
+  setProvince(cur);
   sel.innerHTML = provinces.map((p) =>
     `<option value="${p.id}" ${p.id === cur ? "selected" : ""}>${escapeHtml(p.name)}</option>`
   ).join("");
+  sel.disabled = true;
   sel.addEventListener("change", () => {
-    setProvince(sel.value);
+    setProvince("hcm");
+    sel.value = "hcm";
     loadExamList();
   });
+}
+
+function populateExamSelect(selectId, exams) {
+  const sel = $(selectId);
+  if (!sel) return;
+  if (!exams.length) {
+    sel.innerHTML = '<option value="hcm_01">Đề TP.HCM</option>';
+    return;
+  }
+  const prev = sel.value;
+  sel.innerHTML = exams.map((e) => `<option value="${e.id}">${escapeHtml(e.title)}</option>`).join("");
+  if (prev && exams.some((e) => e.id === prev)) sel.value = prev;
+}
+
+async function loadHcmExamOptions() {
+  const data = await api("/api/exams?province=hcm");
+  hcmExams = data.exams || [];
+  ["#p-exam-select", "#r-exam-select", "#e-exam-select", "#exam-select"].forEach((id) =>
+    populateExamSelect(id, hcmExams)
+  );
+  return hcmExams;
+}
+
+function selectedExamId(selectId) {
+  return $(selectId)?.value || hcmExams[0]?.id || "hcm_01";
 }
 
 /* ── Roadmap & weaknesses ── */
@@ -293,14 +328,13 @@ $("#p-answer").addEventListener("input", () =>
   updateWordMeter($("#p-answer").value, "#p-wordMeta", "#p-wordBar"));
 
 async function loadSampleParagraph() {
-  const exams = await api(`/api/exams?province=${getProvince()}`);
-  const id = exams.exams[0]?.id || "sample_01";
-  const exam = await api(`/api/exams/${id}`);
+  const exam = await api(`/api/exams/${selectedExamId("#p-exam-select")}`);
   $("#p-passage").value = exam.part1.literary_passage;
   $("#p-question").value = exam.part1.paragraph.prompt;
 }
 
 $("#p-loadSample").addEventListener("click", () => loadSampleParagraph().catch(showError));
+$("#p-exam-select").addEventListener("change", () => loadSampleParagraph().catch(showError));
 $("#p-clear").addEventListener("click", () => {
   $("#p-answer").value = "";
   updateWordMeter("", "#p-wordMeta", "#p-wordBar");
@@ -350,14 +384,18 @@ function addReadingQuestion(data = {}) {
 
 $("#r-addQ").addEventListener("click", () => addReadingQuestion());
 
-$("#r-loadSample").addEventListener("click", async () => {
-  const exams = await api(`/api/exams?province=${getProvince()}`);
-  const exam = await api(`/api/exams/${exams.exams[0]?.id || "sample_01"}`);
-  $("#r-passage").value = exam.part1.literary_passage;
+async function loadSampleReading() {
+  const exam = await api(`/api/exams/${selectedExamId("#r-exam-select")}`);
+  const part = $("#r-part-select").value === "part2" ? exam.part2 : exam.part1;
+  $("#r-passage").value = part.info_passage || part.literary_passage || "";
   $("#r-questions").innerHTML = "";
   readingQCount = 0;
-  exam.part1.reading_questions.forEach((q) => addReadingQuestion(q));
-});
+  part.reading_questions.forEach((q) => addReadingQuestion(q));
+}
+
+$("#r-exam-select").addEventListener("change", () => loadSampleReading().catch(showError));
+$("#r-part-select").addEventListener("change", () => loadSampleReading().catch(showError));
+$("#r-loadSample").addEventListener("click", () => loadSampleReading().catch(showError));
 
 $("#r-gradeBtn").addEventListener("click", async () => {
   const questions = [...$$("#r-questions .reading-q")].map((el) => ({
@@ -383,12 +421,14 @@ $("#r-gradeBtn").addEventListener("click", async () => {
 $("#e-answer").addEventListener("input", () =>
   updateWordMeter($("#e-answer").value, "#e-wordMeta", "#e-wordBar", 450, 350, 600));
 
-$("#e-loadSample").addEventListener("click", async () => {
-  const exams = await api(`/api/exams?province=${getProvince()}`);
-  const exam = await api(`/api/exams/${exams.exams[0]?.id || "sample_01"}`);
+async function loadSampleEssay() {
+  const exam = await api(`/api/exams/${selectedExamId("#e-exam-select")}`);
   $("#e-passage").value = exam.part2.info_passage;
   $("#e-question").value = exam.part2.essay.prompt;
-});
+}
+
+$("#e-loadSample").addEventListener("click", () => loadSampleEssay().catch(showError));
+$("#e-exam-select").addEventListener("change", () => loadSampleEssay().catch(showError));
 
 $("#e-clear").addEventListener("click", () => {
   $("#e-answer").value = "";
@@ -420,13 +460,8 @@ function formatTime(s) {
 }
 
 async function loadExamList() {
-  const { exams } = await api(`/api/exams?province=${getProvince()}`);
-  const sel = $("#exam-select");
-  if (!exams.length) {
-    sel.innerHTML = '<option value="sample_01">Đề chung</option>';
-    return;
-  }
-  sel.innerHTML = exams.map((e) => `<option value="${e.id}">${escapeHtml(e.title)}</option>`).join("");
+  const exams = hcmExams.length ? hcmExams : await loadHcmExamOptions();
+  populateExamSelect("#exam-select", exams);
 }
 
 function renderExamForm(exam) {
@@ -588,7 +623,15 @@ async function loadHistory() {
 
 addReadingQuestion({ id: "1a", max_score: 0.5, prompt: "Nêu ý chính của văn bản." });
 checkHealth();
-initProvinces().then(loadExamList).then(async () => {
-  const exams = await api(`/api/exams?province=${getProvince()}`);
-  if (exams.exams[0]) renderExamForm(await api(`/api/exams/${exams.exams[0].id}`));
-});
+initProvinces()
+  .then(loadHcmExamOptions)
+  .then(async (exams) => {
+    if (!exams[0]) return;
+    await Promise.all([
+      loadSampleParagraph(),
+      loadSampleReading(),
+      loadSampleEssay(),
+    ]);
+    renderExamForm(await api(`/api/exams/${exams[0].id}`));
+  })
+  .catch(showError);

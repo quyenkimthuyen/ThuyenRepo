@@ -11,10 +11,10 @@
     <div class="header-inner">
       <div>
         <h1>Ôn Văn vào 10</h1>
-        <p class="tagline">Luyện đề · Chấm AI qua Cursor · Ôn cá nhân</p>
+        <p class="tagline">Ôn Văn vào 10 TP.HCM · Chấm AI qua Cursor · Luyện theo đề từng năm</p>
       </div>
       <div class="header-actions">
-        <label class="province-label" for="provinceSelect">Tỉnh/TP thi:</label>
+        <label class="province-label" for="provinceSelect">Khu vực:</label>
         <select id="provinceSelect" class="province-select"></select>
         <div class="status-badge" id="apiBadge">
           <span class="status-dot"></span>
@@ -55,7 +55,12 @@
     <!-- ĐOẠN VĂN -->
     <section class="panel active" id="panel-paragraph">
       <div class="panel-intro">
-        Viết <strong>một đoạn ~200 chữ</strong>, không xuống dòng. AI chấm theo 5 tiêu chí (2 điểm).
+        Chọn đề TP.HCM theo năm, viết <strong>một đoạn ~200 chữ</strong>, không xuống dòng. AI chấm theo thang 2 điểm.
+      </div>
+      <div class="practice-toolbar card">
+        <label for="p-exam-select">Chọn đề HCM</label>
+        <select id="p-exam-select" aria-label="Chọn đề HCM cho đoạn 200 chữ"></select>
+        <button class="secondary" type="button" id="p-loadSample">Tải phần đoạn 200 chữ</button>
       </div>
       <div class="grid-2">
         <div class="card">
@@ -74,7 +79,6 @@
       </div>
       <div class="actions">
         <button id="p-gradeBtn">Chấm điểm</button>
-        <button class="secondary" type="button" id="p-loadSample">Nạp đề mẫu</button>
         <button class="secondary" type="button" id="p-clear">Xóa bài</button>
       </div>
     </section>
@@ -82,14 +86,20 @@
     <!-- ĐỌC HIỂU -->
     <section class="panel" id="panel-reading">
       <div class="panel-intro">
-        Trả lời từng câu bám văn bản. Câu vận dụng cần lập luận có dẫn chứng.
+        Chọn đề TP.HCM theo năm, luyện phần đọc hiểu và trả lời từng câu bám văn bản.
+      </div>
+      <div class="practice-toolbar card">
+        <label for="r-exam-select">Chọn đề HCM</label>
+        <select id="r-exam-select" aria-label="Chọn đề HCM cho đọc hiểu"></select>
+        <select id="r-part-select" aria-label="Chọn phần đọc hiểu">
+          <option value="part1">Phần I - Văn học</option>
+          <option value="part2">Phần II - Nghị luận/thông tin</option>
+        </select>
+        <button class="secondary" type="button" id="r-loadSample">Tải phần đọc hiểu</button>
       </div>
       <div class="card">
         <h3 class="card-title">Văn bản</h3>
         <textarea id="r-passage" rows="8" placeholder="Dán văn bản đọc hiểu..."></textarea>
-        <div class="actions" style="margin-top:0.5rem">
-          <button class="secondary" type="button" id="r-loadSample">Nạp đề mẫu (Phần I)</button>
-        </div>
         <h3 class="card-title" style="margin-top:1rem">Câu hỏi</h3>
         <div id="r-questions"></div>
         <div class="actions">
@@ -102,7 +112,12 @@
     <!-- NL XÃ HỘI -->
     <section class="panel" id="panel-essay">
       <div class="panel-intro">
-        Bài văn nghị luận xã hội <strong>4 điểm</strong>: mở – thân – kết, có luận điểm và dẫn chứng.
+        Chọn đề TP.HCM theo năm, luyện bài văn nghị luận xã hội <strong>4 điểm</strong>: mở - thân - kết, có luận điểm và dẫn chứng.
+      </div>
+      <div class="practice-toolbar card">
+        <label for="e-exam-select">Chọn đề HCM</label>
+        <select id="e-exam-select" aria-label="Chọn đề HCM cho nghị luận xã hội"></select>
+        <button class="secondary" type="button" id="e-loadSample">Tải đề NL xã hội</button>
       </div>
       <div class="grid-2">
         <div class="card">
@@ -121,7 +136,6 @@
       </div>
       <div class="actions">
         <button id="e-gradeBtn">Chấm bài văn</button>
-        <button class="secondary" type="button" id="e-loadSample">Nạp đề mẫu</button>
         <button class="secondary" type="button" id="e-clear">Xóa bài</button>
       </div>
     </section>
@@ -133,7 +147,7 @@
       </div>
       <div class="card exam-card">
         <div class="exam-toolbar">
-          <select id="exam-select" aria-label="Chọn đề"></select>
+          <select id="exam-select" aria-label="Chọn đề HCM"></select>
           <button class="secondary" type="button" id="exam-load">Tải đề</button>
           <span class="timer" id="exam-timer">120:00</span>
           <button type="button" id="exam-enter">Vào phòng thi</button>
@@ -145,7 +159,7 @@
           <div class="progress-steps" id="progressSteps"></div>
         </div>
         <div id="exam-content">
-          <p class="meta">Chọn tỉnh, tải đề phù hợp và bắt đầu.</p>
+          <p class="meta">Chọn đề TP.HCM theo năm, tải đề và bắt đầu.</p>
         </div>
         <div class="actions">
           <button id="exam-gradeBtn">Nộp bài & chấm điểm</button>

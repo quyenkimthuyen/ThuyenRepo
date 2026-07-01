@@ -9,10 +9,24 @@ from typing import Any
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
+DEFAULT_PROVINCES: dict[str, Any] = {
+    "provinces": [
+        {
+            "id": "hcm",
+            "name": "TP.HCM",
+            "exam_style": "De tuyen sinh lop 10 theo cau truc TP.HCM.",
+            "grading_notes": "Uu tien kha nang hieu van ban, lap luan ro va tra loi dung yeu cau cau hoi.",
+        }
+    ]
+}
+
 
 @lru_cache
 def load_provinces() -> dict[str, Any]:
-    return json.loads((DATA_DIR / "provinces.json").read_text(encoding="utf-8"))
+    path = DATA_DIR / "provinces.json"
+    if not path.exists():
+        return DEFAULT_PROVINCES
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def get_province(province_id: str) -> dict[str, Any]:
@@ -20,7 +34,7 @@ def get_province(province_id: str) -> dict[str, Any]:
     for p in provinces:
         if p["id"] == province_id:
             return p
-    return provinces[-1]  # generic fallback
+    return provinces[0]  # HCM-only fallback
 
 
 def province_prompt_block(province_id: str) -> str:

@@ -169,6 +169,21 @@ main {
   color: var(--accent);
 }
 
+.practice-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) minmax(180px, auto) auto;
+  align-items: center;
+  gap: 0.65rem;
+}
+.practice-toolbar label {
+  margin-bottom: 0;
+}
+@media (max-width: 760px) {
+  .practice-toolbar {
+    grid-template-columns: 1fr;
+  }
+}
+
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;

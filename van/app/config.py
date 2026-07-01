@@ -29,5 +29,5 @@ def _load_api_key() -> str | None:
 
 
 CURSOR_API_KEY: str | None = _load_api_key()
-CURSOR_MODEL: str = os.environ.get("CURSOR_MODEL", "composer-2.5")
+CURSOR_MODEL: str = os.environ.get("CURSOR_MODEL", "default")
 DB_PATH = DATA_DIR / "van_on_luyen.db"
