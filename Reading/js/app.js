@@ -25,6 +25,7 @@ import {
   isTtsSupported,
 } from './tts.js';
 import { ICONS, iconFragment } from './icons.js';
+import { getLessonTranslations } from './lessonTranslations.js';
 
 const STORAGE_KEY = 'reading-aloud-progress';
 const SETTINGS_KEY = 'reading-aloud-settings';
@@ -53,6 +54,7 @@ const els = {
   autoReadSample: document.getElementById('auto-read-sample'),
   btnMicToggle: document.getElementById('btn-mic-toggle'),
   btnAutoRead: document.getElementById('btn-auto-read'),
+  btnShowVietnamese: document.getElementById('btn-show-vietnamese'),
   btnReadSample: document.getElementById('btn-read-sample'),
   btnPrevSentence: document.getElementById('btn-prev-sentence'),
   btnNextSentence: document.getElementById('btn-next-sentence'),
@@ -104,6 +106,9 @@ let topicFilter = 'all';
 let levelFilter = 'all';
 let ttsVoiceUri = '';
 let pendingAutoStartMic = false;
+let micAwaitingGesture = false;
+let gestureMicListenerAttached = false;
+let showVietnamese = false;
 
 /** Track processed final result index to avoid double-processing */
 let lastFinalResultIndex = -1;
@@ -218,9 +223,29 @@ function resolveDefaultVoiceUri(voices) {
 function tryAutoStartMic() {
   if (lessonComplete || !pendingAutoStartMic) return;
   pendingAutoStartMic = false;
+  armMicByDefault();
+}
+
+function armMicByDefault() {
+  if (lessonComplete) return;
   micUserEnabled = true;
-  if (!isSpeaking()) startMic();
-  else updateMicToggleUi();
+  micAwaitingGesture = !listening;
+  updateMicToggleUi();
+  attachMicGestureListener();
+}
+
+function attachMicGestureListener() {
+  if (gestureMicListenerAttached) return;
+  gestureMicListenerAttached = true;
+
+  const tryStartFromGesture = () => {
+    if (!micUserEnabled || listening || lessonComplete || isSpeaking() || samplePlaying) return;
+    micAwaitingGesture = false;
+    startMic();
+  };
+
+  document.addEventListener('pointerdown', tryStartFromGesture, { passive: true });
+  document.addEventListener('keydown', tryStartFromGesture);
 }
 
 function populateImportForm() {
@@ -257,12 +282,21 @@ function loadSettings() {
       if (settings.levelFilter) levelFilter = settings.levelFilter;
       if (settings.ttsVoiceUri) ttsVoiceUri = settings.ttsVoiceUri;
       if (ttsVoiceUri) setSelectedVoiceUri(ttsVoiceUri);
+      showVietnamese = Boolean(settings.showVietnamese);
     }
   } catch {
     autoReadSample = false;
   }
   els.autoReadSample.checked = autoReadSample;
   updateAutoReadUi();
+  updateVietnameseUi();
+}
+
+function updateVietnameseUi() {
+  if (!els.btnShowVietnamese) return;
+  els.btnShowVietnamese.classList.toggle('is-on', showVietnamese);
+  els.btnShowVietnamese.setAttribute('aria-pressed', String(showVietnamese));
+  document.body.classList.toggle('show-vietnamese', showVietnamese);
 }
 
 function updateAutoReadUi() {
@@ -290,6 +324,9 @@ function updateMicToggleUi() {
   } else if (live) {
     els.micStatus.textContent = 'Mic đang nghe…';
     els.micStatus.classList.add('is-live');
+  } else if (on && micAwaitingGesture) {
+    els.micStatus.textContent = 'Chạm màn hình để bật mic';
+    els.micStatus.classList.remove('is-live');
   } else {
     els.micStatus.textContent = on ? 'Mic bật' : 'Mic tắt';
     els.micStatus.classList.remove('is-live');
@@ -353,6 +390,7 @@ function toggleMic() {
     stopMic();
   } else {
     micUserEnabled = true;
+    micAwaitingGesture = false;
     if (!isSpeaking() && !samplePlaying) startMic();
     else updateMicToggleUi();
   }
@@ -380,7 +418,7 @@ function saveSettings() {
   try {
     localStorage.setItem(
       SETTINGS_KEY,
-      JSON.stringify({ autoReadSample, topicFilter, levelFilter, ttsVoiceUri }),
+      JSON.stringify({ autoReadSample, topicFilter, levelFilter, ttsVoiceUri, showVietnamese }),
     );
   } catch {
     /* ignore */
@@ -483,6 +521,13 @@ function bindEvents() {
     autoReadSample = !autoReadSample;
     updateAutoReadUi();
     saveSettings();
+  });
+
+  els.btnShowVietnamese?.addEventListener('click', () => {
+    showVietnamese = !showVietnamese;
+    updateVietnameseUi();
+    saveSettings();
+    render();
   });
 
   els.btnMicToggle.addEventListener('click', toggleMic);
@@ -768,7 +813,7 @@ function loadLesson(lessonId) {
   const found = findLessonById(lessonId);
   if (!found) return;
 
-  lesson = found;
+  lesson = enrichLesson(found);
   sentenceStates = lesson.sentences.map((s) => ({
     tokens: tokenizeSentence(s),
     matched: new Set(),
