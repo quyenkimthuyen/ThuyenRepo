@@ -13,7 +13,7 @@ import {
   matchAccumulating,
   isSentenceComplete,
 } from './matcher.js';
-import { speakText, stopSpeaking } from './tts.js';
+import { speakText, stopSpeaking, isSpeaking } from './tts.js';
 import { ICONS, iconFragment } from './icons.js';
 
 const STORAGE_KEY = 'reading-aloud-progress';
@@ -75,6 +75,8 @@ const els = {
 /** @type {SpeechRecognition | null} */
 let recognition = null;
 let listening = false;
+let micUserEnabled = false;
+let resumeMicAfterTts = false;
 
 /** @type {typeof LESSONS[0] | null} */
 let lesson = null;
@@ -174,7 +176,10 @@ function updateAutoReadUi() {
 }
 
 function updateMicToggleUi() {
-  const on = listening;
+  const on = micUserEnabled;
+  const live = listening;
+  const sample = isSpeaking();
+
   els.btnMicToggle.classList.toggle('is-on', on);
   els.btnMicToggle.setAttribute('aria-pressed', String(on));
   els.btnMicToggle.disabled = lessonComplete;
@@ -182,14 +187,45 @@ function updateMicToggleUi() {
   els.btnMicToggle.setAttribute('aria-label', on ? 'Tắt mic' : 'Bật mic');
   els.btnMicToggle.querySelector('.mic-icon-on')?.classList.toggle('hidden', on);
   els.btnMicToggle.querySelector('.mic-icon-off')?.classList.toggle('hidden', !on);
-  els.micStatus.textContent = on ? 'Mic đang nghe…' : 'Mic tắt';
-  els.micStatus.classList.toggle('is-live', on);
+
+  if (sample) {
+    els.micStatus.textContent = 'Đang phát mẫu…';
+    els.micStatus.classList.remove('is-live');
+  } else if (live) {
+    els.micStatus.textContent = 'Mic đang nghe…';
+    els.micStatus.classList.add('is-live');
+  } else {
+    els.micStatus.textContent = on ? 'Mic bật' : 'Mic tắt';
+    els.micStatus.classList.remove('is-live');
+  }
+}
+
+function pauseMicForTts() {
+  if (!listening) return;
+  resumeMicAfterTts = true;
+  stopMic({ keepEnabled: true });
+}
+
+async function resumeMicAfterSample() {
+  if (!resumeMicAfterTts || !micUserEnabled || lessonComplete || isSpeaking()) {
+    resumeMicAfterTts = false;
+    updateMicToggleUi();
+    return;
+  }
+  resumeMicAfterTts = false;
+  startMic();
 }
 
 function toggleMic() {
   if (lessonComplete) return;
-  if (listening) stopMic();
-  else startMic();
+  if (micUserEnabled) {
+    resumeMicAfterTts = false;
+    stopMic();
+  } else {
+    micUserEnabled = true;
+    if (!isSpeaking()) startMic();
+    else updateMicToggleUi();
+  }
 }
 
 function toggleImportPanel(forceOpen) {
@@ -693,18 +729,28 @@ function goToSentence(index) {
   maybeAutoReadSample();
 }
 
-function readCurrentSample() {
-  if (!lesson || lessonComplete) return;
+async function readCurrentSample() {
+  if (!lesson || lessonComplete || isSpeaking()) return;
   const text = lesson.sentences[currentSentenceIndex];
   if (!text) return;
-  if (!speakText(text)) {
-    showError('Trình duyệt không hỗ trợ đọc mẫu (Text-to-Speech).');
+
+  pauseMicForTts();
+  updateMicToggleUi();
+
+  try {
+    const ok = await speakText(text);
+    if (!ok) {
+      showError('Trình duyệt không hỗ trợ đọc mẫu (Text-to-Speech).');
+    }
+  } finally {
+    await resumeMicAfterSample();
+    updateMicToggleUi();
   }
 }
 
 function maybeAutoReadSample() {
-  if (!autoReadSample || lessonComplete || !lesson) return;
-  readCurrentSample();
+  if (!autoReadSample || lessonComplete || !lesson || isSpeaking()) return;
+  void readCurrentSample();
 }
 
 function render() {
@@ -801,7 +847,7 @@ function saveProgress() {
 }
 
 function processTranscript(transcript) {
-  if (lessonComplete || !sentenceStates[currentSentenceIndex]) return;
+  if (isSpeaking() || lessonComplete || !sentenceStates[currentSentenceIndex]) return;
 
   const spokenWords = wordsFromTranscript(transcript);
   if (!spokenWords.length) return;
@@ -843,7 +889,9 @@ function getSpeechRecognitionCtor() {
 }
 
 function startMic() {
-  if (lessonComplete) return;
+  if (lessonComplete || isSpeaking()) return;
+
+  if (!micUserEnabled) micUserEnabled = true;
 
   const Ctor = getSpeechRecognitionCtor();
   if (!Ctor) {
@@ -874,7 +922,7 @@ function startMic() {
     listening = false;
     updateMicToggleUi();
 
-    if (!lessonComplete && recognition?._wantRestart) {
+    if (!lessonComplete && recognition?._wantRestart && micUserEnabled && !isSpeaking()) {
       try {
         recognition.start();
       } catch {
@@ -899,6 +947,8 @@ function startMic() {
   };
 
   recognition.onresult = (event) => {
+    if (isSpeaking()) return;
+
     let interim = '';
 
     for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -935,7 +985,12 @@ function startMic() {
   }
 }
 
-function stopMic() {
+function stopMic({ keepEnabled = false } = {}) {
+  if (!keepEnabled) {
+    micUserEnabled = false;
+    resumeMicAfterTts = false;
+  }
+
   if (!recognition) {
     listening = false;
     updateMicToggleUi();
