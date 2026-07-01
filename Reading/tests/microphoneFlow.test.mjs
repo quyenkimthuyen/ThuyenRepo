@@ -171,7 +171,18 @@ class FakeTextNode {
 
 class FakeDocument {
   constructor(ids) {
-    this.nodes = new Map(ids.map((id) => [id, new FakeElement('div', id)]));
+    const selectIds = new Set([
+      'topic-select',
+      'level-filter',
+      'lesson-select',
+      'voice-select',
+      'import-level',
+      'import-topic',
+      'import-format',
+    ]);
+    this.nodes = new Map(
+      ids.map((id) => [id, new FakeElement(selectIds.has(id) ? 'select' : 'div', id)]),
+    );
     this.listeners = new Map();
     this.body = new FakeElement('body', 'body');
   }
@@ -374,6 +385,7 @@ await import(`../js/app.js?microphone-flow=${Date.now()}`);
 await tick();
 
 const micStatus = document.getElementById('mic-status');
+const topicSelect = document.getElementById('topic-select');
 const lessonSelect = document.getElementById('lesson-select');
 const btnMic = document.getElementById('btn-mic-toggle');
 const btnReadSample = document.getElementById('btn-read-sample');
@@ -382,12 +394,8 @@ const btnNext = document.getElementById('btn-next-sentence');
 const btnPrev = document.getElementById('btn-prev-sentence');
 
 assert(lessonSelect.value === 'a1-greetings', 'first lesson loads by default');
-assert(micStatus.textContent === 'Chạm màn hình để bật mic', 'mic waits for user gesture on load');
-
-document.dispatchEvent({ type: 'pointerdown' });
-await tick();
-assert(micStatus.textContent === 'Mic đang nghe…', 'gesture starts mic');
-assert(activeRecognitionCount() === 1, 'one recognition is active after gesture');
+assert(micStatus.textContent === 'Mic đang nghe…', 'mic starts by default on load');
+assert(activeRecognitionCount() === 1, 'one recognition is active after load');
 
 btnReadSample.click();
 await tick();
@@ -434,5 +442,27 @@ for (const lessonId of ['a1-at-home', 'morning-routine', 'a1-food']) {
   assert(micStatus.textContent === 'Mic đang nghe…', `${lessonId}: mic status is stable after sample`);
   assert(activeRecognitionCount() === 1, `${lessonId}: only one recognition is active`);
 }
+
+btnMic.click();
+await tick();
+assert(micStatus.textContent === 'Mic tắt', 'mic is off before topic auto-read test');
+
+topicSelect.value = 'travel';
+topicSelect.dispatchEvent({ type: 'change' });
+await tick();
+assert(spoken.at(-1) === 'Last summer we visited Da Nang.', 'topic change auto-plays the first filtered lesson');
+assert(activeRecognitionCount() === 0, 'topic change keeps mic paused while sample plays');
+await finishSampleAndAssertMicResumes('topic change with auto sample');
+
+btnAutoRead.click();
+btnMic.click();
+await tick();
+assert(micStatus.textContent === 'Mic tắt', 'mic is off before topic no-sample test');
+
+topicSelect.value = 'study';
+topicSelect.dispatchEvent({ type: 'change' });
+await tick(180);
+assert(micStatus.textContent === 'Mic đang nghe…', 'topic change starts mic when no sample plays');
+assert(activeRecognitionCount() === 1, 'topic change starts exactly one recognition when no sample plays');
 
 console.log('microphoneFlow tests: ok');

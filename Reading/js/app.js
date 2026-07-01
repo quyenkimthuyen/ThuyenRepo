@@ -231,8 +231,8 @@ function tryAutoStartMic() {
 function armMicByDefault() {
   if (lessonComplete) return;
   micUserEnabled = true;
-  micAwaitingGesture = !listening;
-  updateMicToggleUi();
+  micAwaitingGesture = false;
+  startMic();
   attachMicGestureListener();
 }
 
@@ -330,9 +330,6 @@ function updateMicToggleUi() {
   } else if (live) {
     els.micStatus.textContent = 'Mic đang nghe…';
     els.micStatus.classList.add('is-live');
-  } else if (on && micAwaitingGesture) {
-    els.micStatus.textContent = 'Chạm màn hình để bật mic';
-    els.micStatus.classList.remove('is-live');
   } else {
     els.micStatus.textContent = on ? 'Mic bật' : 'Mic tắt';
     els.micStatus.classList.remove('is-live');
@@ -397,7 +394,15 @@ function restartMic() {
   }
 }
 
-function pauseMicForContextChange() {
+/**
+ * @param {{ autoEnableMic?: boolean }=} options
+ */
+function pauseMicForContextChange(options = {}) {
+  if (options.autoEnableMic) {
+    micUserEnabled = true;
+    micAwaitingGesture = false;
+  }
+
   if (!micUserEnabled || micAwaitingGesture) {
     invalidateMicSession();
     return false;
@@ -422,9 +427,10 @@ function resumeMicAfterContextChange(shouldResume) {
 
 /**
  * @param {string} lessonId
+ * @param {{ autoEnableMic?: boolean }=} options
  */
-function switchLesson(lessonId) {
-  const shouldResumeMic = pauseMicForContextChange();
+function switchLesson(lessonId, options = {}) {
+  const shouldResumeMic = pauseMicForContextChange(options);
   loadLesson(lessonId);
   resumeMicAfterContextChange(shouldResumeMic);
 }
@@ -564,13 +570,16 @@ function populateLessonSelect() {
   }
 }
 
-function onFiltersChanged() {
+/**
+ * @param {{ autoEnableMic?: boolean }=} options
+ */
+function onFiltersChanged(options = {}) {
   topicFilter = els.topicSelect.value;
   levelFilter = els.levelFilter.value;
   saveSettings();
   populateLessonSelect();
   if (els.lessonSelect.value) {
-    switchLesson(els.lessonSelect.value);
+    switchLesson(els.lessonSelect.value, options);
   }
 }
 
@@ -585,8 +594,8 @@ function bindEvents() {
     saveSettings();
   });
 
-  els.topicSelect.addEventListener('change', onFiltersChanged);
-  els.levelFilter.addEventListener('change', onFiltersChanged);
+  els.topicSelect.addEventListener('change', () => onFiltersChanged({ autoEnableMic: true }));
+  els.levelFilter.addEventListener('change', () => onFiltersChanged({ autoEnableMic: true }));
 
   els.autoReadSample.addEventListener('change', () => {
     autoReadSample = els.autoReadSample.checked;
@@ -1230,7 +1239,7 @@ function startMic() {
   currentRecognition.onerror = (event) => {
     if (sessionGeneration !== micSessionGeneration) return;
     if (event.error === 'not-allowed') {
-      showError('Cần quyền microphone. Hãy chạm màn hình hoặc bấm nút mic và cho phép quyền.');
+      showError('Cần quyền microphone. Hãy cho phép quyền mic trong trình duyệt.');
       stopMic({ keepEnabled: true });
       micAwaitingGesture = true;
       updateMicToggleUi();
@@ -1288,7 +1297,7 @@ function startMic() {
       recognition = null;
     }
     micAwaitingGesture = micUserEnabled;
-    showError('Không thể bật mic. Hãy chạm màn hình hoặc bấm nút mic để thử lại.');
+    showError('Không thể bật mic. Hãy bấm nút mic để thử lại.');
     updateMicToggleUi();
   }
 }
