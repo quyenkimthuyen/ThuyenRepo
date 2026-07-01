@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ôn Văn vào 10</title>
+  <link rel="stylesheet" href="/static/css/app.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div>
+        <h1>Ôn Văn vào 10</h1>
+        <p class="tagline">Luyện đề · Chấm AI qua Cursor · Ôn cá nhân</p>
+      </div>
+      <div class="header-actions">
+        <label class="province-label" for="provinceSelect">Tỉnh/TP thi:</label>
+        <select id="provinceSelect" class="province-select"></select>
+        <div class="status-badge" id="apiBadge">
+          <span class="status-dot"></span>
+          <span id="apiStatus">Đang kiểm tra...</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <div id="loadingMessage">Đang chấm bài...</div>
+      <div id="loadingSub">AI đang đối chiếu rubric thi vào 10</div>
+    </div>
+  </div>
+
+  <main>
+    <nav class="tabs" id="tabs">
+      <button class="tab" data-tab="roadmap">Lộ trình ôn</button>
+      <button class="tab active" data-tab="paragraph">Đoạn 200 chữ</button>
+      <button class="tab" data-tab="reading">Đọc hiểu</button>
+      <button class="tab" data-tab="essay">NL xã hội</button>
+      <button class="tab" data-tab="exam">Thi thử</button>
+      <button class="tab" data-tab="history">Tiến độ</button>
+    </nav>
+
+    <!-- LỘ TRÌNH ÔN -->
+    <section class="panel" id="panel-roadmap">
+      <div class="panel-intro">Lộ trình 8 tuần + luyện theo lỗi hay mắc của bạn.</div>
+      <div class="card" id="weaknessCard">
+        <h3 class="card-title">Lỗi hay mắc của bạn</h3>
+        <div id="weaknessBox" class="meta">Đang phân tích...</div>
+      </div>
+      <div id="roadmapWeeks"></div>
+    </section>
+
+    <!-- ĐOẠN VĂN -->
+    <section class="panel active" id="panel-paragraph">
+      <div class="panel-intro">
+        Viết <strong>một đoạn ~200 chữ</strong>, không xuống dòng. AI chấm theo 5 tiêu chí (2 điểm).
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3 class="card-title">Đề bài</h3>
+          <label for="p-passage">Ngữ liệu</label>
+          <textarea id="p-passage" rows="9" placeholder="Dán đoạn thơ, trích truyện..."></textarea>
+          <label for="p-question" style="margin-top:0.75rem">Yêu cầu</label>
+          <textarea id="p-question" rows="3" placeholder="Viết đoạn văn khoảng 200 chữ..."></textarea>
+        </div>
+        <div class="card">
+          <h3 class="card-title">Bài làm</h3>
+          <textarea id="p-answer" rows="13" placeholder="Một đoạn liền mạch, không Enter xuống dòng..."></textarea>
+          <div class="meta" id="p-wordMeta">0 / ~200 từ</div>
+          <div class="word-bar"><div class="word-bar-fill" id="p-wordBar" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="p-gradeBtn">Chấm điểm</button>
+        <button class="secondary" type="button" id="p-loadSample">Nạp đề mẫu</button>
+        <button class="secondary" type="button" id="p-clear">Xóa bài</button>
+      </div>
+    </section>
+
+    <!-- ĐỌC HIỂU -->
+    <section class="panel" id="panel-reading">
+      <div class="panel-intro">
+        Trả lời từng câu bám văn bản. Câu vận dụng cần lập luận có dẫn chứng.
+      </div>
+      <div class="card">
+        <h3 class="card-title">Văn bản</h3>
+        <textarea id="r-passage" rows="8" placeholder="Dán văn bản đọc hiểu..."></textarea>
+        <div class="actions" style="margin-top:0.5rem">
+          <button class="secondary" type="button" id="r-loadSample">Nạp đề mẫu (Phần I)</button>
+        </div>
+        <h3 class="card-title" style="margin-top:1rem">Câu hỏi</h3>
+        <div id="r-questions"></div>
+        <div class="actions">
+          <button class="secondary" type="button" id="r-addQ">+ Thêm câu</button>
+          <button id="r-gradeBtn">Chấm đọc hiểu</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- NL XÃ HỘI -->
+    <section class="panel" id="panel-essay">
+      <div class="panel-intro">
+        Bài văn nghị luận xã hội <strong>4 điểm</strong>: mở – thân – kết, có luận điểm và dẫn chứng.
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3 class="card-title">Đề bài</h3>
+          <label for="e-passage">Ngữ liệu (tuỳ chọn)</label>
+          <textarea id="e-passage" rows="6"></textarea>
+          <label for="e-question" style="margin-top:0.75rem">Câu nghị luận</label>
+          <textarea id="e-question" rows="4"></textarea>
+        </div>
+        <div class="card">
+          <h3 class="card-title">Bài văn của bạn</h3>
+          <textarea id="e-answer" rows="15" placeholder="Khoảng 400–500 từ, có thể xuống dòng từng đoạn..."></textarea>
+          <div class="meta" id="e-wordMeta">0 từ (gợi ý 400–500)</div>
+          <div class="word-bar"><div class="word-bar-fill" id="e-wordBar" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="e-gradeBtn">Chấm bài văn</button>
+        <button class="secondary" type="button" id="e-loadSample">Nạp đề mẫu</button>
+        <button class="secondary" type="button" id="e-clear">Xóa bài</button>
+      </div>
+    </section>
+
+    <!-- THI THỬ -->
+    <section class="panel" id="panel-exam">
+      <div class="panel-intro exam-intro-normal">
+        Thi thử <strong>120 phút · 10 điểm</strong> — bấm «Vào phòng thi» để tập trung như thi thật.
+      </div>
+      <div class="card exam-card">
+        <div class="exam-toolbar">
+          <select id="exam-select" aria-label="Chọn đề"></select>
+          <button class="secondary" type="button" id="exam-load">Tải đề</button>
+          <span class="timer" id="exam-timer">120:00</span>
+          <button type="button" id="exam-enter">Vào phòng thi</button>
+          <button class="secondary" type="button" id="exam-start">Bắt đầu</button>
+          <button class="secondary" type="button" id="exam-stop">Dừng</button>
+          <button class="secondary" type="button" id="exam-exit" style="display:none">Thoát phòng thi</button>
+        </div>
+        <div class="exam-progress" id="examProgress">
+          <div class="progress-steps" id="progressSteps"></div>
+        </div>
+        <div id="exam-content">
+          <p class="meta">Chọn tỉnh, tải đề phù hợp và bắt đầu.</p>
+        </div>
+        <div class="actions">
+          <button id="exam-gradeBtn">Nộp bài & chấm điểm</button>
+        </div>
+      </div>
+      <div class="card" id="scoreSheet" style="display:none">
+        <h3 class="card-title">Phiếu điểm thi thử</h3>
+        <table class="score-table" id="scoreTable"></table>
+      </div>
+    </section>
+
+    <!-- LỊCH SỬ / TIẾN ĐỘ -->
+    <section class="panel" id="panel-history">
+      <div class="panel-intro">Theo dõi điểm các lần ôn — giúp biết dạng bài nào cần luyện thêm.</div>
+      <div class="card">
+        <h3 class="card-title">Tổng quan</h3>
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="chart-bars" id="chartBars"></div>
+        <h3 class="card-title">Lịch sử chấm gần đây</h3>
+        <div id="historyList"></div>
+      </div>
+    </section>
+
+    <div id="errorBox" class="error" style="display:none" role="alert"></div>
+
+    <div class="card" id="resultBox">
+      <div class="result-header">
+        <div class="score-ring" id="scoreRing" style="--pct: 0">
+          <div class="score-ring-inner">
+            <span class="num" id="resultNum">0</span>
+            <span class="den" id="resultDen">/ 10</span>
+          </div>
+        </div>
+        <div class="result-summary">
+          <h2 id="resultTitle">Kết quả chấm</h2>
+          <div class="result-tags" id="resultTags"></div>
+          <ul class="warn-list" id="resultWarnings" style="display:none"></ul>
+        </div>
+      </div>
+
+      <h3 class="card-title">Chi tiết điểm</h3>
+      <div id="resultCriteria"></div>
+
+      <div id="frameworkBox" class="card inner-card" style="display:none">
+        <h3 class="card-title">Đáp án khung (đối chiếu)</h3>
+        <div id="frameworkContent"></div>
+      </div>
+
+      <div id="revisionBox" class="card inner-card" style="display:none">
+        <h3 class="card-title">Hướng sửa cụ thể</h3>
+        <div id="revisionContent"></div>
+        <div id="sampleContent" class="sample-box"></div>
+      </div>
+
+      <div class="feedback-grid">
+        <div class="feedback-box strengths">
+          <h4>Điểm mạnh</h4>
+          <ul id="resultStrengths"></ul>
+        </div>
+        <div class="feedback-box weaknesses">
+          <h4>Cần cải thiện</h4>
+          <ul id="resultWeaknesses"></ul>
+        </div>
+        <div class="feedback-box next">
+          <h4>Nên sửa ngay</h4>
+          <ul id="resultNext"></ul>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
