@@ -20,7 +20,7 @@ export const TOPICS = [
   { id: 'custom', label: 'Của tôi' },
 ];
 
-/** @typedef {{ id: string, level: string, topic: string, title: string, sentences: string[], custom?: boolean }} Lesson */
+/** @typedef {{ id: string, level: string, topic: string, title: string, sentences: string[], translations?: string[], custom?: boolean }} Lesson */
 
 /** @type {Lesson[]} */
 export const LESSONS = [

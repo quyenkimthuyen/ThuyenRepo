@@ -806,6 +806,24 @@ function loadSavedLesson() {
 }
 
 /**
+ * @param {import('./lessons.js').Lesson} found
+ */
+function enrichLesson(found) {
+  const translations =
+    found.translations?.length ? found.translations : getLessonTranslations(found.id);
+  return { ...found, translations };
+}
+
+/**
+ * @param {number} index
+ * @returns {string | null}
+ */
+function getSentenceTranslation(index) {
+  const text = lesson?.translations?.[index];
+  return text ? String(text) : null;
+}
+
+/**
  * @param {string} lessonId
  */
 function loadLesson(lessonId) {
@@ -948,6 +966,9 @@ function render() {
   els.sentencesRoot.innerHTML = '';
 
   sentenceStates.forEach((st, i) => {
+    const block = document.createElement('div');
+    block.className = 'sentence-block';
+
     const p = document.createElement('p');
     p.className = 'sentence';
     p.dataset.index = String(i);
@@ -975,7 +996,17 @@ function render() {
       }
     });
 
-    els.sentencesRoot.appendChild(p);
+    block.appendChild(p);
+
+    const viText = getSentenceTranslation(i);
+    if (viText) {
+      const vi = document.createElement('p');
+      vi.className = 'sentence-vi';
+      vi.textContent = viText;
+      block.appendChild(vi);
+    }
+
+    els.sentencesRoot.appendChild(block);
   });
 
   const total = sentenceStates.length;
@@ -1095,27 +1126,25 @@ function startMic() {
   recognition.onend = () => {
     listening = false;
     micStarting = false;
-    updateMicToggleUi();
-
-    if (
-      !lessonComplete &&
+    const shouldRestart =
       recognition?._wantRestart &&
       micUserEnabled &&
+      !lessonComplete &&
       !isSpeaking() &&
-      !samplePlaying
-    ) {
-      try {
-        recognition.start();
-      } catch {
-        /* ignore */
-      }
+      !samplePlaying;
+    recognition = null;
+    updateMicToggleUi();
+    if (shouldRestart) {
+      startMic();
     }
   };
 
   recognition.onerror = (event) => {
     if (event.error === 'not-allowed') {
-      showError('Cần quyền microphone. Hãy cho phép truy cập mic và thử lại.');
-      stopMic();
+      showError('Cần quyền microphone. Hãy chạm màn hình hoặc bấm nút mic và cho phép quyền.');
+      stopMic({ keepEnabled: true });
+      micAwaitingGesture = true;
+      updateMicToggleUi();
       return;
     }
     if (event.error === 'no-speech') {
@@ -1163,13 +1192,16 @@ function startMic() {
     recognition.start();
   } catch {
     micStarting = false;
-    showError('Không thể bật mic. Hãy mở app qua http://localhost (không dùng file://).');
+    micAwaitingGesture = micUserEnabled;
+    showError('Không thể bật mic. Hãy chạm màn hình hoặc bấm nút mic để thử lại.');
+    updateMicToggleUi();
   }
 }
 
 function stopMic({ keepEnabled = false } = {}) {
   if (!keepEnabled) {
     micUserEnabled = false;
+    micAwaitingGesture = false;
   }
 
   if (!recognition) {

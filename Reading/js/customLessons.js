@@ -32,6 +32,7 @@ export function saveCustomLessons(lessons) {
     level: lesson.level,
     topic: lesson.topic,
     sentences: lesson.sentences,
+    ...(lesson.translations?.length ? { translations: lesson.translations } : {}),
     custom: true,
     createdAt: lesson.createdAt ?? Date.now(),
   }));
@@ -48,6 +49,7 @@ export function normalizeLesson(raw) {
   const data = /** @type {Record<string, unknown>} */ (raw);
   const title = String(data.title ?? '').trim();
   const sentences = normalizeSentences(data.sentences ?? data.text ?? data.content);
+  const translations = normalizeSentences(data.translations);
 
   if (!title || !sentences.length) return null;
 
@@ -65,6 +67,7 @@ export function normalizeLesson(raw) {
     level,
     topic,
     sentences,
+    ...(translations.length ? { translations } : {}),
     custom: true,
     createdAt: typeof data.createdAt === 'number' ? data.createdAt : Date.now(),
   };
