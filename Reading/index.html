@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reading Aloud — Luyện đọc tiếng Anh</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <h1>Reading Aloud</h1>
+        <p class="subtitle">Đọc to từng câu — mic khớp từ tích lũy dần</p>
+      </header>
+
+      <div id="error-banner" class="error-banner hidden" role="alert"></div>
+
+      <section class="panel" aria-label="Điều khiển">
+        <div class="controls-row">
+          <label for="lesson-select">Bài luyện</label>
+          <select id="lesson-select" aria-label="Chọn bài luyện"></select>
+        </div>
+        <div class="controls-row" style="margin-top: 0.75rem">
+          <button type="button" id="btn-start" class="btn-primary">Bắt đầu mic</button>
+          <button type="button" id="btn-stop" class="btn-secondary" disabled>Dừng mic</button>
+          <button type="button" id="btn-reset-sentence" class="btn-secondary">Làm lại câu</button>
+          <button type="button" id="btn-reset-lesson" class="btn-danger">Làm lại bài</button>
+        </div>
+        <div class="status-bar" style="margin-top: 0.85rem">
+          <span class="mic-indicator">
+            <span id="mic-dot" class="mic-dot" aria-hidden="true"></span>
+            <span id="mic-status">Mic chưa bật</span>
+          </span>
+          <span id="progress-text" class="progress-text">Câu 0 / 0</span>
+        </div>
+        <div class="live-transcript" aria-live="polite">
+          Nghe: <strong id="live-transcript">—</strong>
+        </div>
+      </section>
+
+      <section class="panel reading-panel" aria-label="Nội dung bài đọc">
+        <h2 id="lesson-title" class="lesson-title"></h2>
+        <div id="sentences-root"></div>
+        <div id="completion-banner" class="completion-banner hidden">
+          <h2>Hoàn thành bài!</h2>
+          <p>Bạn đã đọc đúng tất cả các câu.</p>
+          <button type="button" id="btn-restart" class="btn-primary">Luyện lại</button>
+        </div>
+      </section>
+    </div>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

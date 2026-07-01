@@ -15,8 +15,10 @@ import {
   buildDashboardMetrics,
 } from './AnalysisViewHelpers.js';
 import { renderDcaPlanPanel } from './DcaPlanPanel.js';
+import { loadDcaPlan } from '../analysis/DcaPlanEngine.js';
 import { renderDataFreshnessBanner } from './DataFreshnessUi.js';
 import { renderCycleCompareTimeline } from './CycleCompareTimelineUi.js';
+import { renderDcaBacktestPanel } from './DcaBacktestPanel.js';
 
 class AnalysisDashboardViewImpl {
   #container = null;
@@ -56,8 +58,13 @@ class AnalysisDashboardViewImpl {
     }
 
     body.appendChild(renderMetricGrid(buildDashboardMetrics(analysis)));
-    body.appendChild(renderCycleCompareTimeline());
-    body.appendChild(renderDcaPlanPanel(analysis));
+
+    const candles = await DataManager.getCandles('BTCUSD', analysis.timeframe ?? 'W');
+    body.appendChild(renderCycleCompareTimeline(candles));
+    body.appendChild(renderDcaPlanPanel(analysis, {
+      onChange: () => this.#render(body),
+    }));
+    body.appendChild(renderDcaBacktestPanel(candles, loadDcaPlan().monthlyBudgetUsd));
 
     body.appendChild(el('div', { class: 'analysis-summary-box' }, [
       el('h3', {}, ['T\u00f3m t\u1eaft ph\u00e2n t\u00edch']),

@@ -6,6 +6,7 @@
 
 import { bus, Events } from '../core/EventBus.js';
 import { el } from '../utils/dom.js';
+import DataManager from '../data/DataManager.js';
 import { BTC_HALVING_EVENTS } from '../analysis/BtcCycleConfig.js';
 import { getLastAnalysis } from '../analysis/LongTermAnalysisEngine.js';
 import {
@@ -21,14 +22,15 @@ import { renderCycleCompareTimeline } from './CycleCompareTimelineUi.js';
 
 class CycleViewImpl {
   #unsub = null;
+  #dataUnsub = null;
 
   mount(container) {
     container.innerHTML = '';
     container.classList.add('analysis-view');
 
     container.appendChild(renderAnalysisHeader(
-      'Chu kỳ 4 năm BTC',
-      'Xác định vị trí trong chu kỳ halving và các giai đoạn tích lũy / tăng / phân phối / giảm',
+      'Chu k\u1ef3 4 n\u0103m BTC',
+      'X\u00e1c \u0111\u1ecbnh v\u1ecb tr\u00ed trong chu k\u1ef3 halving v\u00e0 c\u00e1c giai \u0111o\u1ea1n t\u00edch l\u0169y / t\u0103ng / ph\u00e2n ph\u1ed1i / gi\u1ea3m',
       'cycle'
     ));
 
@@ -36,9 +38,10 @@ class CycleViewImpl {
     container.appendChild(body);
     this.#render(body);
     this.#unsub = bus.on(Events.ANALYSIS_COMPLETE, () => this.#render(body));
+    this.#dataUnsub = bus.on(Events.DATA_UPDATED, () => this.#render(body));
   }
 
-  #render(body) {
+  async #render(body) {
     const analysis = getLastAnalysis();
     body.innerHTML = '';
 
@@ -64,7 +67,8 @@ class CycleViewImpl {
       }),
     ]));
 
-    body.appendChild(renderCycleCompareTimeline());
+    const candles = await DataManager.getCandles('BTCUSD', analysis.timeframe ?? 'W');
+    body.appendChild(renderCycleCompareTimeline(candles));
 
     const halvingRows = BTC_HALVING_EVENTS.map((h) => [
       h.label,
@@ -108,7 +112,9 @@ class CycleViewImpl {
 
   unmount() {
     this.#unsub?.();
+    this.#dataUnsub?.();
     this.#unsub = null;
+    this.#dataUnsub = null;
   }
 }
 

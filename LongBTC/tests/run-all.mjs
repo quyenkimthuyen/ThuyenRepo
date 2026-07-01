@@ -13,6 +13,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 /** @type {Array<{ file: string, label: string }>} */
 const SUITES = [
   { file: 'analysis/AnalysisTests.js', label: 'BTC Analysis Engine' },
+  { file: 'analysis/CycleCompareTests.js', label: 'Cycle Compare' },
+  { file: 'analysis/DcaBacktestTests.js', label: 'DCA Backtest' },
+  { file: 'analysis/DcaFreshnessTests.js', label: 'DCA & Freshness' },
   { file: 'data/TimeframeTests.js', label: 'Timeframe Utils' },
   { file: 'data/DataLayerTests.js', label: 'Data Layer' },
   { file: 'data/DefaultDataTests.js', label: 'Default Bundled Data' },

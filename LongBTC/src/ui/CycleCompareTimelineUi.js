@@ -1,18 +1,20 @@
 /**
- * Halving cycle comparison timeline UI (4 progress tracks).
+ * Halving cycle comparison timeline UI (4 progress tracks + price compare).
  * @module ui/CycleCompareTimelineUi
  */
 
 import { el } from '../utils/dom.js';
 import { buildHalvingCycleCompare } from '../analysis/CycleCompareTimeline.js';
 import { CYCLE_PHASE_RANGES } from '../analysis/BtcCycleConfig.js';
+import { formatAnalysisDate } from './AnalysisViewHelpers.js';
 
 /**
+ * @param {import('../data/Candle.js').Candle[]} [candles]
  * @param {number} [now]
  * @returns {HTMLElement}
  */
-export function renderCycleCompareTimeline(now = Date.now()) {
-  const data = buildHalvingCycleCompare(now);
+export function renderCycleCompareTimeline(candles = [], now = Date.now()) {
+  const data = buildHalvingCycleCompare(candles, now);
   const marker = data.currentProgressPct;
 
   const root = el('div', { class: 'cycle-compare-timeline' });
@@ -93,6 +95,11 @@ export function renderCycleCompareTimeline(now = Date.now()) {
 
   root.appendChild(tracks);
 
+  const hasPrices = data.rows.some((r) => r.markerPrice != null);
+  if (hasPrices) {
+    root.appendChild(renderPriceCompareTable(data.rows, marker));
+  }
+
   root.appendChild(el('div', { class: 'cycle-compare-legend' }, [
     el('span', { class: 'cycle-compare-legend-item' }, [
       el('span', { class: 'cycle-compare-swatch cycle-compare-swatch--done' }),
@@ -114,4 +121,51 @@ export function renderCycleCompareTimeline(now = Date.now()) {
   ]));
 
   return root;
+}
+
+/**
+ * @param {import('../analysis/CycleCompareTimeline.js').CycleCompareRow[]} rows
+ * @param {number} markerPct
+ */
+function renderPriceCompareTable(rows, markerPct) {
+  const box = el('div', { class: 'cycle-compare-prices' });
+  box.appendChild(el('h4', { class: 'cycle-compare-prices-title' }, [
+    `Gi\u00e1 BTC t\u1ea1i ~${markerPct.toFixed(0)}% ti\u1ebfn \u0111\u1ed9 chu k\u1ef3 (so s\u00e1nh l\u1ecbch s\u1eed)`,
+  ]));
+
+  const table = el('table', { class: 'cycle-compare-price-table' });
+  table.appendChild(el('thead', {}, [
+    el('tr', {}, [
+      el('th', {}, ['Chu k\u1ef3']),
+      el('th', {}, ['Ng\u00e0y']),
+      el('th', {}, ['Gi\u00e1 BTC']),
+      el('th', {}, ['T\u1eeb \u0111\u00e1y CK']),
+      el('th', {}, ['T\u1eeb \u0111\u1ec9nh CK']),
+    ]),
+  ]));
+
+  const tbody = el('tbody');
+  for (const row of rows) {
+    const mp = row.markerPrice;
+    if (!mp) continue;
+    tbody.appendChild(el('tr', { class: row.isCurrent ? 'is-current' : '' }, [
+      el('td', {}, [`${row.startYear}${row.isCurrent ? ' (nay)' : ''}`]),
+      el('td', {}, [formatAnalysisDate(mp.markerTime)]),
+      el('td', { class: 'cycle-compare-price-num' }, [
+        `$${mp.price.toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
+      ]),
+      el('td', { class: 'cycle-compare-price-num' }, [fmtPct(mp.pctFromCycleLow)]),
+      el('td', { class: 'cycle-compare-price-num' }, [fmtPct(mp.pctFromCycleHigh)]),
+    ]));
+  }
+  table.appendChild(tbody);
+  box.appendChild(table);
+  return box;
+}
+
+/**
+ * @param {number} n
+ */
+function fmtPct(n) {
+  return `${n >= 0 ? '+' : ''}${n.toFixed(0)}%`;
 }

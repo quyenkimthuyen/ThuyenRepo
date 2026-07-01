@@ -4,7 +4,7 @@
  */
 
 import { createSuite, header, footer } from '../harness.js';
-import { buildHalvingCycleCompare } from '../../src/analysis/CycleCompareTimeline.js';
+import { buildHalvingCycleCompare, snapshotAtCycleProgress } from '../../src/analysis/CycleCompareTimeline.js';
 import { BTC_HALVING_EVENTS } from '../../src/analysis/BtcCycleConfig.js';
 
 const s = createSuite('Cycle Compare');
@@ -25,6 +25,26 @@ const mid2025 = h4 + 400 * 24 * 60 * 60 * 1000;
   s.assert('CC-08: current partial < 100', data.rows.find((r) => r.isCurrent).progressPct < 100);
   s.assert('CC-09: shared marker', data.rows.every((r) => r.compareMarkerPct === data.currentProgressPct));
   s.assert('CC-10: phase ruler', data.phaseRuler.markerPct === data.currentProgressPct);
+}
+
+{
+  const candles = [];
+  let price = 5000;
+  const h2 = BTC_HALVING_EVENTS[1].timestamp;
+  for (let i = 0; i < 200; i++) {
+    price *= 1.005;
+    candles.push({
+      timestamp: h2 + i * 7 * 24 * 60 * 60 * 1000,
+      open: price,
+      high: price * 1.02,
+      low: price * 0.98,
+      close: price,
+      volume: 1,
+    });
+  }
+  const withPrices = buildHalvingCycleCompare(candles, h2 + 100 * 7 * 24 * 60 * 60 * 1000);
+  s.assert('CC-11: marker prices when candles', withPrices.rows[0].markerPrice != null);
+  s.assert('CC-12: snapshot fn', snapshotAtCycleProgress(candles, 1, 25)?.price > 0);
 }
 
 footer(s.finish());
