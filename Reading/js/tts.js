@@ -1,6 +1,9 @@
 /** @type {SpeechSynthesisUtterance | null} */
 let currentUtterance = null;
 let speaking = false;
+let speakGeneration = 0;
+/** @type {{ gen: number, resolve: (ok: boolean) => void } | null} */
+let activeSpeak = null;
 /** @type {string | null} */
 let selectedVoiceUri = null;
 /** @type {Set<() => void>} */
@@ -97,11 +100,25 @@ export function formatVoiceLabel(voice) {
   return `${voice.name} (${lang})`;
 }
 
-export function stopSpeaking() {
-  if (!isTtsSupported()) return;
-  window.speechSynthesis.cancel();
-  currentUtterance = null;
+function settleActiveSpeak(ok) {
+  if (!activeSpeak) return;
+  const { resolve } = activeSpeak;
+  activeSpeak = null;
   speaking = false;
+  currentUtterance = null;
+  resolve(ok);
+}
+
+function abortSpeaking() {
+  speakGeneration += 1;
+  if (isTtsSupported()) {
+    window.speechSynthesis.cancel();
+  }
+  settleActiveSpeak(false);
+}
+
+export function stopSpeaking() {
+  abortSpeaking();
 }
 
 /**
@@ -116,7 +133,10 @@ export function speakText(text, options = {}) {
       return;
     }
 
-    stopSpeaking();
+    abortSpeaking();
+
+    const gen = speakGeneration;
+    activeSpeak = { gen, resolve };
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'en-US';
@@ -129,9 +149,8 @@ export function speakText(text, options = {}) {
     }
 
     const finish = (ok) => {
-      speaking = false;
-      currentUtterance = null;
-      resolve(ok);
+      if (!activeSpeak || activeSpeak.gen !== gen) return;
+      settleActiveSpeak(ok);
     };
 
     utterance.onend = () => finish(true);

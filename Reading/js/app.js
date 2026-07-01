@@ -87,7 +87,9 @@ const els = {
 let recognition = null;
 let listening = false;
 let micUserEnabled = false;
-let resumeMicAfterTts = false;
+let micStarting = false;
+let samplePlaying = false;
+let samplePlayGeneration = 0;
 
 /** @type {typeof LESSONS[0] | null} */
 let lesson = null;
@@ -294,31 +296,73 @@ function updateMicToggleUi() {
   }
 }
 
-function pauseMicForTts() {
+function setSampleControlsBusy(busy) {
+  samplePlaying = busy;
+  const disabled = lessonComplete || busy;
+  els.btnReadSample.disabled = disabled;
+  els.btnReadSample.classList.toggle('is-busy', busy);
+  els.btnAutoRead.disabled = busy;
+}
+
+function pauseMicForSample() {
   if (!listening) return;
-  resumeMicAfterTts = true;
   stopMic({ keepEnabled: true });
 }
 
-async function resumeMicAfterSample() {
-  if (!resumeMicAfterTts || !micUserEnabled || lessonComplete || isSpeaking()) {
-    resumeMicAfterTts = false;
-    updateMicToggleUi();
-    return;
+async function readCurrentSample() {
+  if (!lesson || lessonComplete || samplePlaying) return;
+  const text = lesson.sentences[currentSentenceIndex];
+  if (!text) return;
+
+  const playGen = ++samplePlayGeneration;
+  const micShouldResume = listening;
+
+  setSampleControlsBusy(true);
+  pauseMicForSample();
+  updateMicToggleUi();
+
+  let ok = false;
+  try {
+    ok = await speakText(text);
+  } catch {
+    ok = false;
   }
-  resumeMicAfterTts = false;
-  startMic();
+
+  if (playGen !== samplePlayGeneration) return;
+
+  setSampleControlsBusy(false);
+
+  if (!ok) {
+    showError('Trình duyệt không hỗ trợ đọc mẫu (Text-to-Speech).');
+  }
+
+  if (micShouldResume && micUserEnabled && !lessonComplete && !listening) {
+    startMic();
+  }
+  updateMicToggleUi();
+}
+
+function maybeAutoReadSample() {
+  if (!autoReadSample || lessonComplete || !lesson || samplePlaying || isSpeaking()) return;
+  void readCurrentSample();
 }
 
 function toggleMic() {
-  if (lessonComplete) return;
+  if (lessonComplete || micStarting || samplePlaying) return;
   if (micUserEnabled) {
-    resumeMicAfterTts = false;
     stopMic();
   } else {
     micUserEnabled = true;
-    if (!isSpeaking()) startMic();
+    if (!isSpeaking() && !samplePlaying) startMic();
     else updateMicToggleUi();
+  }
+}
+
+function invalidateSamplePlayback() {
+  samplePlayGeneration += 1;
+  if (samplePlaying) {
+    stopSpeaking();
+    setSampleControlsBusy(false);
   }
 }
 
@@ -720,6 +764,7 @@ function loadSavedLesson() {
  * @param {string} lessonId
  */
 function loadLesson(lessonId) {
+  invalidateSamplePlayback();
   const found = findLessonById(lessonId);
   if (!found) return;
 
@@ -833,30 +878,6 @@ function goToSentence(index) {
   render();
   saveProgress();
   maybeAutoReadSample();
-}
-
-async function readCurrentSample() {
-  if (!lesson || lessonComplete || isSpeaking()) return;
-  const text = lesson.sentences[currentSentenceIndex];
-  if (!text) return;
-
-  pauseMicForTts();
-  updateMicToggleUi();
-
-  try {
-    const ok = await speakText(text);
-    if (!ok) {
-      showError('Trình duyệt không hỗ trợ đọc mẫu (Text-to-Speech).');
-    }
-  } finally {
-    await resumeMicAfterSample();
-    updateMicToggleUi();
-  }
-}
-
-function maybeAutoReadSample() {
-  if (!autoReadSample || lessonComplete || !lesson || isSpeaking()) return;
-  void readCurrentSample();
 }
 
 function render() {
@@ -995,7 +1016,7 @@ function getSpeechRecognitionCtor() {
 }
 
 function startMic() {
-  if (lessonComplete || isSpeaking()) return;
+  if (lessonComplete || isSpeaking() || samplePlaying || micStarting) return;
 
   if (!micUserEnabled) micUserEnabled = true;
 
@@ -1007,8 +1028,9 @@ function startMic() {
     return;
   }
 
-  if (listening) return;
+  if (listening || recognition) return;
 
+  micStarting = true;
   recognition = new Ctor();
   recognition.lang = 'en-US';
   recognition.continuous = true;
@@ -1019,6 +1041,7 @@ function startMic() {
   lastInterimText = '';
 
   recognition.onstart = () => {
+    micStarting = false;
     listening = true;
     updateMicToggleUi();
     hideError();
@@ -1026,9 +1049,16 @@ function startMic() {
 
   recognition.onend = () => {
     listening = false;
+    micStarting = false;
     updateMicToggleUi();
 
-    if (!lessonComplete && recognition?._wantRestart && micUserEnabled && !isSpeaking()) {
+    if (
+      !lessonComplete &&
+      recognition?._wantRestart &&
+      micUserEnabled &&
+      !isSpeaking() &&
+      !samplePlaying
+    ) {
       try {
         recognition.start();
       } catch {
@@ -1087,6 +1117,7 @@ function startMic() {
   try {
     recognition.start();
   } catch {
+    micStarting = false;
     showError('Không thể bật mic. Hãy mở app qua http://localhost (không dùng file://).');
   }
 }
@@ -1094,11 +1125,11 @@ function startMic() {
 function stopMic({ keepEnabled = false } = {}) {
   if (!keepEnabled) {
     micUserEnabled = false;
-    resumeMicAfterTts = false;
   }
 
   if (!recognition) {
     listening = false;
+    micStarting = false;
     updateMicToggleUi();
     return;
   }
@@ -1111,6 +1142,7 @@ function stopMic({ keepEnabled = false } = {}) {
   }
   recognition = null;
   listening = false;
+  micStarting = false;
   updateMicToggleUi();
 }
 
