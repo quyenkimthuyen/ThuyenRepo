@@ -346,6 +346,25 @@ function pauseMicForSample() {
   stopMic({ keepEnabled: true });
 }
 
+/** Dừng recognition hiện tại và bật lại nếu mic vẫn đang bật (không tắt hẳn). */
+function restartMic() {
+  if (!micUserEnabled || lessonComplete || isSpeaking() || samplePlaying) return;
+
+  if (listening || recognition) {
+    stopMic({ keepEnabled: true });
+    window.setTimeout(() => {
+      if (micUserEnabled && !lessonComplete && !isSpeaking() && !samplePlaying) {
+        startMic();
+      }
+    }, 60);
+    return;
+  }
+
+  if (!micAwaitingGesture) {
+    startMic();
+  }
+}
+
 async function readCurrentSample() {
   if (!lesson || lessonComplete || samplePlaying) return;
   const text = lesson.sentences[currentSentenceIndex];
@@ -482,24 +501,20 @@ function populateLessonSelect() {
 }
 
 function onFiltersChanged() {
-  const keepMic = micUserEnabled;
   topicFilter = els.topicSelect.value;
   levelFilter = els.levelFilter.value;
   saveSettings();
-  stopMic({ keepEnabled: keepMic });
   populateLessonSelect();
   if (els.lessonSelect.value) {
     loadLesson(els.lessonSelect.value);
-    if (keepMic && !lessonComplete) startMic();
+    restartMic();
   }
 }
 
 function bindEvents() {
   els.lessonSelect.addEventListener('change', () => {
-    const keepMic = micUserEnabled;
-    stopMic({ keepEnabled: keepMic });
     loadLesson(els.lessonSelect.value);
-    if (keepMic && !lessonComplete) startMic();
+    restartMic();
   });
 
   els.voiceSelect.addEventListener('change', () => {
@@ -538,7 +553,11 @@ function bindEvents() {
   els.btnResetLesson.addEventListener('click', resetLesson);
   els.btnRestart.addEventListener('click', () => {
     resetLesson();
-    startMic();
+    if (!micUserEnabled) {
+      micUserEnabled = true;
+      micAwaitingGesture = false;
+      startMic();
+    }
   });
 
   els.btnImportSave.addEventListener('click', handleImportSave);
@@ -670,8 +689,8 @@ function afterCustomLessonsChanged(lessonId, message) {
   populateLessonSelect();
   renderCustomLessonsList();
   els.lessonSelect.value = lessonId;
-  stopMic();
   loadLesson(lessonId);
+  restartMic();
   showImportFeedback(message);
 }
 
@@ -715,8 +734,8 @@ function renderCustomLessonsList() {
 
     btnOpen.addEventListener('click', () => {
       els.lessonSelect.value = item.id;
-      stopMic();
       loadLesson(item.id);
+      restartMic();
     });
     btnDel.addEventListener('click', () => deleteCustomLessonById(item.id));
 
@@ -752,9 +771,9 @@ function deleteCustomLessonById(lessonId) {
   populateLessonSelect();
 
   if (lesson?.id === lessonId) {
-    stopMic();
     if (els.lessonSelect.value) {
       loadLesson(els.lessonSelect.value);
+      restartMic();
     }
   }
 
@@ -895,7 +914,7 @@ function clampSentenceIndex(idx) {
 }
 
 function resetLesson() {
-  stopMic();
+  invalidateSamplePlayback();
   stopSpeaking();
   sentenceStates.forEach((st) => st.matched.clear());
   currentSentenceIndex = 0;
@@ -904,6 +923,7 @@ function resetLesson() {
   lastInterimText = '';
   render();
   saveProgress();
+  restartMic();
   maybeAutoReadSample();
 }
 
