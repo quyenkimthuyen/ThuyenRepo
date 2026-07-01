@@ -1,6 +1,10 @@
 /** @type {SpeechSynthesisUtterance | null} */
 let currentUtterance = null;
 let speaking = false;
+/** @type {string | null} */
+let selectedVoiceUri = null;
+/** @type {Set<() => void>} */
+const voiceListeners = new Set();
 
 /**
  * @returns {boolean}
@@ -14,6 +18,83 @@ export function isTtsSupported() {
  */
 export function isSpeaking() {
   return speaking;
+}
+
+/**
+ * @returns {SpeechSynthesisVoice[]}
+ */
+export function getEnglishVoices() {
+  if (!isTtsSupported()) return [];
+  return window.speechSynthesis
+    .getVoices()
+    .filter((v) => /^en(-|$)/i.test(v.lang))
+    .sort((a, b) => {
+      const rank = (/** @type {SpeechSynthesisVoice} */ v) => {
+        if (v.lang.toLowerCase().startsWith('en-us')) return 0;
+        if (v.lang.toLowerCase().startsWith('en-gb')) return 1;
+        if (v.lang.toLowerCase().startsWith('en')) return 2;
+        return 3;
+      };
+      const dr = rank(a) - rank(b);
+      if (dr !== 0) return dr;
+      return a.name.localeCompare(b.name);
+    });
+}
+
+/**
+ * @param {() => void} callback
+ */
+export function onVoicesReady(callback) {
+  if (getEnglishVoices().length) callback();
+  voiceListeners.add(callback);
+}
+
+function notifyVoiceListeners() {
+  if (!getEnglishVoices().length) return;
+  voiceListeners.forEach((cb) => cb());
+}
+
+/**
+ * @param {string | null} uri
+ */
+export function setSelectedVoiceUri(uri) {
+  selectedVoiceUri = uri || null;
+}
+
+/**
+ * @returns {string | null}
+ */
+export function getSelectedVoiceUri() {
+  return selectedVoiceUri;
+}
+
+/**
+ * @param {SpeechSynthesisVoice[]} voices
+ * @returns {SpeechSynthesisVoice | undefined}
+ */
+function resolveVoice(voices) {
+  if (!voices.length) return undefined;
+
+  if (selectedVoiceUri) {
+    const saved = voices.find((v) => v.voiceURI === selectedVoiceUri);
+    if (saved) return saved;
+  }
+
+  return (
+    voices.find((v) => v.lang.toLowerCase().startsWith('en-us') && v.localService) ||
+    voices.find((v) => v.lang.toLowerCase().startsWith('en-us')) ||
+    voices.find((v) => v.lang.toLowerCase().startsWith('en-gb')) ||
+    voices[0]
+  );
+}
+
+/**
+ * @param {SpeechSynthesisVoice} voice
+ * @returns {string}
+ */
+export function formatVoiceLabel(voice) {
+  const lang = voice.lang.replace('_', '-');
+  return `${voice.name} (${lang})`;
 }
 
 export function stopSpeaking() {
@@ -41,12 +122,11 @@ export function speakText(text, options = {}) {
     utterance.lang = 'en-US';
     utterance.rate = options.rate ?? 0.92;
 
-    const voices = window.speechSynthesis.getVoices();
-    const enVoice =
-      voices.find((v) => v.lang.startsWith('en-US') && v.localService) ||
-      voices.find((v) => v.lang.startsWith('en-US')) ||
-      voices.find((v) => v.lang.startsWith('en'));
-    if (enVoice) utterance.voice = enVoice;
+    const voice = resolveVoice(getEnglishVoices());
+    if (voice) {
+      utterance.voice = voice;
+      utterance.lang = voice.lang;
+    }
 
     const finish = (ok) => {
       speaking = false;
@@ -63,8 +143,8 @@ export function speakText(text, options = {}) {
   });
 }
 
-if (isTtsSupported() && window.speechSynthesis.onvoiceschanged !== undefined) {
-  window.speechSynthesis.onvoiceschanged = () => {
-    /* preload voices */
-  };
+if (isTtsSupported()) {
+  window.speechSynthesis.onvoiceschanged = notifyVoiceListeners;
+  notifyVoiceListeners();
+  setTimeout(notifyVoiceListeners, 250);
 }

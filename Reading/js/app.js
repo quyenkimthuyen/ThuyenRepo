@@ -13,7 +13,17 @@ import {
   matchAccumulating,
   isSentenceComplete,
 } from './matcher.js';
-import { speakText, stopSpeaking, isSpeaking } from './tts.js';
+import {
+  speakText,
+  stopSpeaking,
+  isSpeaking,
+  getEnglishVoices,
+  onVoicesReady,
+  setSelectedVoiceUri,
+  getSelectedVoiceUri,
+  formatVoiceLabel,
+  isTtsSupported,
+} from './tts.js';
 import { ICONS, iconFragment } from './icons.js';
 
 const STORAGE_KEY = 'reading-aloud-progress';
@@ -39,6 +49,7 @@ const els = {
   topicSelect: document.getElementById('topic-select'),
   levelFilter: document.getElementById('level-filter'),
   lessonSelect: document.getElementById('lesson-select'),
+  voiceSelect: document.getElementById('voice-select'),
   autoReadSample: document.getElementById('auto-read-sample'),
   btnMicToggle: document.getElementById('btn-mic-toggle'),
   btnAutoRead: document.getElementById('btn-auto-read'),
@@ -89,6 +100,8 @@ let lessonComplete = false;
 let autoReadSample = false;
 let topicFilter = 'all';
 let levelFilter = 'all';
+let ttsVoiceUri = '';
+let pendingAutoStartMic = false;
 
 /** Track processed final result index to avoid double-processing */
 let lastFinalResultIndex = -1;
@@ -125,8 +138,87 @@ function init() {
   populateLessonSelect();
   renderCustomLessonsList();
   bindEvents();
+  onVoicesReady(populateVoiceSelect);
   loadSavedLesson();
   updateMicToggleUi();
+}
+
+function populateVoiceSelect() {
+  const voices = getEnglishVoices();
+  const previous = els.voiceSelect.value || ttsVoiceUri || getSelectedVoiceUri() || '';
+
+  els.voiceSelect.innerHTML = '';
+
+  if (!voices.length) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = isTtsSupported() ? 'Không có giọng tiếng Anh' : 'TTS không hỗ trợ';
+    els.voiceSelect.appendChild(opt);
+    els.voiceSelect.disabled = true;
+    return;
+  }
+
+  els.voiceSelect.disabled = false;
+
+  const groups = [
+    { id: 'us', label: 'US English', match: (/** @type {SpeechSynthesisVoice} */ v) => v.lang.toLowerCase().startsWith('en-us') },
+    { id: 'gb', label: 'UK English', match: (/** @type {SpeechSynthesisVoice} */ v) => v.lang.toLowerCase().startsWith('en-gb') },
+    { id: 'other', label: 'Khác', match: () => true },
+  ];
+
+  const used = new Set();
+
+  for (const group of groups) {
+    const inGroup = voices.filter((v) => {
+      if (used.has(v.voiceURI)) return false;
+      if (group.id === 'other') {
+        return !v.lang.toLowerCase().startsWith('en-us') && !v.lang.toLowerCase().startsWith('en-gb');
+      }
+      return group.match(v);
+    });
+    inGroup.forEach((v) => used.add(v.voiceURI));
+    if (!inGroup.length) continue;
+
+    const optgroup = document.createElement('optgroup');
+    optgroup.label = group.label;
+    for (const voice of inGroup) {
+      const opt = document.createElement('option');
+      opt.value = voice.voiceURI;
+      opt.textContent = formatVoiceLabel(voice);
+      optgroup.appendChild(opt);
+    }
+    els.voiceSelect.appendChild(optgroup);
+  }
+
+  const hasPrevious = voices.some((v) => v.voiceURI === previous);
+  const fallback = resolveDefaultVoiceUri(voices);
+  const chosen = hasPrevious ? previous : fallback;
+
+  els.voiceSelect.value = chosen;
+  ttsVoiceUri = chosen;
+  setSelectedVoiceUri(chosen);
+  saveSettings();
+}
+
+/**
+ * @param {SpeechSynthesisVoice[]} voices
+ * @returns {string}
+ */
+function resolveDefaultVoiceUri(voices) {
+  const pick =
+    voices.find((v) => v.lang.toLowerCase().startsWith('en-us') && v.localService) ||
+    voices.find((v) => v.lang.toLowerCase().startsWith('en-us')) ||
+    voices.find((v) => v.lang.toLowerCase().startsWith('en-gb')) ||
+    voices[0];
+  return pick?.voiceURI ?? '';
+}
+
+function tryAutoStartMic() {
+  if (lessonComplete || !pendingAutoStartMic) return;
+  pendingAutoStartMic = false;
+  micUserEnabled = true;
+  if (!isSpeaking()) startMic();
+  else updateMicToggleUi();
 }
 
 function populateImportForm() {
@@ -161,6 +253,8 @@ function loadSettings() {
       autoReadSample = Boolean(settings.autoReadSample);
       if (settings.topicFilter) topicFilter = settings.topicFilter;
       if (settings.levelFilter) levelFilter = settings.levelFilter;
+      if (settings.ttsVoiceUri) ttsVoiceUri = settings.ttsVoiceUri;
+      if (ttsVoiceUri) setSelectedVoiceUri(ttsVoiceUri);
     }
   } catch {
     autoReadSample = false;
@@ -242,7 +336,7 @@ function saveSettings() {
   try {
     localStorage.setItem(
       SETTINGS_KEY,
-      JSON.stringify({ autoReadSample, topicFilter, levelFilter }),
+      JSON.stringify({ autoReadSample, topicFilter, levelFilter, ttsVoiceUri }),
     );
   } catch {
     /* ignore */
@@ -306,20 +400,30 @@ function populateLessonSelect() {
 }
 
 function onFiltersChanged() {
+  const keepMic = micUserEnabled;
   topicFilter = els.topicSelect.value;
   levelFilter = els.levelFilter.value;
   saveSettings();
-  stopMic();
+  stopMic({ keepEnabled: keepMic });
   populateLessonSelect();
   if (els.lessonSelect.value) {
     loadLesson(els.lessonSelect.value);
+    if (keepMic && !lessonComplete) startMic();
   }
 }
 
 function bindEvents() {
   els.lessonSelect.addEventListener('change', () => {
-    stopMic();
+    const keepMic = micUserEnabled;
+    stopMic({ keepEnabled: keepMic });
     loadLesson(els.lessonSelect.value);
+    if (keepMic && !lessonComplete) startMic();
+  });
+
+  els.voiceSelect.addEventListener('change', () => {
+    ttsVoiceUri = els.voiceSelect.value;
+    setSelectedVoiceUri(ttsVoiceUri);
+    saveSettings();
   });
 
   els.topicSelect.addEventListener('change', onFiltersChanged);
@@ -605,9 +709,11 @@ function loadSavedLesson() {
   }
 
   suppressAutoReadOnce = true;
+  pendingAutoStartMic = true;
   if (els.lessonSelect.value) {
     loadLesson(els.lessonSelect.value);
   }
+  tryAutoStartMic();
 }
 
 /**
