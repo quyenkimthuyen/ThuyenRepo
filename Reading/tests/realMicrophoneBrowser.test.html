@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Real Microphone Browser Test</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.5;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #f6f7fb;
+        color: #172033;
+      }
+
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+      }
+
+      .card {
+        background: #fff;
+        border: 1px solid #dfe5f2;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(31, 41, 55, 0.08);
+        margin: 16px 0;
+        padding: 18px;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+
+      button,
+      select,
+      input {
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        font: inherit;
+        padding: 10px 12px;
+      }
+
+      button {
+        background: #2563eb;
+        color: white;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      button.secondary {
+        background: #475569;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .status {
+        border-radius: 12px;
+        font-weight: 700;
+        padding: 12px 14px;
+      }
+
+      .idle {
+        background: #e2e8f0;
+      }
+
+      .running {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+
+      .pass {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .fail {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      .warn {
+        background: #fef3c7;
+        color: #92400e;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: #475569;
+        font-size: 0.9rem;
+      }
+
+      code {
+        background: #eef2ff;
+        border-radius: 6px;
+        padding: 2px 5px;
+      }
+
+      .log {
+        background: #0f172a;
+        border-radius: 12px;
+        color: #dbeafe;
+        max-height: 240px;
+        overflow: auto;
+        padding: 12px;
+        white-space: pre-wrap;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #0f172a;
+          color: #e5e7eb;
+        }
+
+        .card {
+          background: #111827;
+          border-color: #334155;
+        }
+
+        button,
+        select,
+        input {
+          background: #0b1220;
+          border-color: #475569;
+          color: #e5e7eb;
+        }
+
+        code {
+          background: #1e293b;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Real Microphone Browser Test</h1>
+      <p>
+        Test này chạy trên trình duyệt thật: bật micro, phát giọng mẫu bằng
+        <code>SpeechSynthesis</code>, rồi dùng <code>SpeechRecognition</code> để kiểm tra mic có nghe
+        được âm thanh phát ra loa hay không.
+      </p>
+
+      <section class="card">
+        <h2>Điều kiện test</h2>
+        <ul>
+          <li>Dùng Chrome hoặc Edge, mở bằng <code>http://127.0.0.1</code> hoặc <code>localhost</code>.</li>
+          <li>Cho phép quyền microphone khi browser hỏi.</li>
+          <li>Bật loa đủ nghe, không dùng tai nghe nếu muốn mic bắt âm thanh từ loa.</li>
+          <li>Nếu máy bật echo cancellation/noise suppression mạnh, test có thể fail dù mic vẫn hoạt động.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>Chạy test</h2>
+        <div class="controls">
+          <button id="btn-run" type="button">Chạy test tự động</button>
+          <button id="btn-stop" class="secondary" type="button" disabled>Dừng</button>
+          <button id="btn-play" class="secondary" type="button">Chỉ phát mẫu</button>
+          <label>
+            Giọng:
+            <select id="voice-select"></select>
+          </label>
+          <label>
+            Âm lượng:
+            <input id="volume" type="range" min="0.1" max="1" step="0.1" value="1" />
+          </label>
+          <label>
+            Ngưỡng pass:
+            <input id="threshold" type="number" min="0.3" max="1" step="0.05" value="0.6" />
+          </label>
+        </div>
+        <p id="status" class="status idle">Sẵn sàng.</p>
+      </section>
+
+      <section class="card">
+        <h2>Kết quả</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Bước</th>
+              <th>Câu mẫu phát ra loa</th>
+              <th>Transcript mic nhận được</th>
+              <th>Tỉ lệ khớp</th>
+              <th>Kết quả</th>
+            </tr>
+          </thead>
+          <tbody id="results"></tbody>
+        </table>
+      </section>
+
+      <section class="card">
+        <h2>Log</h2>
+        <div id="log" class="log"></div>
+      </section>
+    </main>
+
+    <script type="module">
+      const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+      const samples = [
+        {
+          step: 'Bài 1 - câu 1',
+          text: 'Hello, how are you today?',
+        },
+        {
+          step: 'Chuyển câu',
+          text: 'I am practicing English reading.',
+        },
+        {
+          step: 'Chuyển bài',
+          text: 'The microphone should hear this sample clearly.',
+        },
+        {
+          step: 'Tắt mở mic',
+          text: 'This is the final microphone response check.',
+        },
+      ];
+
+      const els = {
+        run: document.getElementById('btn-run'),
+        stop: document.getElementById('btn-stop'),
+        play: document.getElementById('btn-play'),
+        voice: document.getElementById('voice-select'),
+        volume: document.getElementById('volume'),
+        threshold: document.getElementById('threshold'),
+        status: document.getElementById('status'),
+        results: document.getElementById('results'),
+        log: document.getElementById('log'),
+      };
+
+      let recognition = null;
+      let cancelled = false;
+
+      function log(message) {
+        const time = new Date().toLocaleTimeString();
+        els.log.textContent += `[${time}] ${message}\n`;
+        els.log.scrollTop = els.log.scrollHeight;
+      }
+
+      function setStatus(message, type = 'idle') {
+        els.status.textContent = message;
+        els.status.className = `status ${type}`;
+      }
+
+      function normalizeWords(text) {
+        return String(text)
+          .toLowerCase()
+          .replace(/[^a-z0-9'\s]/g, ' ')
+          .split(/\s+/)
+          .filter(Boolean);
+      }
+
+      function scoreTranscript(expected, actual) {
+        const expectedWords = normalizeWords(expected);
+        const actualWords = new Set(normalizeWords(actual));
+        if (!expectedWords.length) return 0;
+        const matched = expectedWords.filter((word) => actualWords.has(word)).length;
+        return matched / expectedWords.length;
+      }
+
+      function populateVoices() {
+        const voices = speechSynthesis
+          .getVoices()
+          .filter((voice) => /^en(-|$)/i.test(voice.lang))
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        els.voice.innerHTML = '';
+
+        if (!voices.length) {
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = 'Không tìm thấy giọng tiếng Anh';
+          els.voice.appendChild(opt);
+          return;
+        }
+
+        for (const voice of voices) {
+          const opt = document.createElement('option');
+          opt.value = voice.voiceURI;
+          opt.textContent = `${voice.name} (${voice.lang})`;
+          els.voice.appendChild(opt);
+        }
+
+        const preferred =
+          voices.find((voice) => voice.lang.toLowerCase().startsWith('en-us')) || voices[0];
+        els.voice.value = preferred.voiceURI;
+      }
+
+      function speak(text) {
+        return new Promise((resolve) => {
+          speechSynthesis.cancel();
+
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'en-US';
+          utterance.rate = 0.9;
+          utterance.volume = Number(els.volume.value);
+
+          const voice = speechSynthesis
+            .getVoices()
+            .find((item) => item.voiceURI === els.voice.value);
+          if (voice) {
+            utterance.voice = voice;
+            utterance.lang = voice.lang;
+          }
+
+          utterance.onend = () => resolve(true);
+          utterance.onerror = () => resolve(false);
+          speechSynthesis.speak(utterance);
+        });
+      }
+
+      function stopRecognition() {
+        if (!recognition) return;
+        recognition.onend = null;
+        recognition.onerror = null;
+        recognition.onresult = null;
+        try {
+          recognition.stop();
+        } catch {
+          // Browser may throw if recognition is already stopped.
+        }
+        recognition = null;
+      }
+
+      function listenWhileSpeaking(sample, timeoutMs = 7000) {
+        return new Promise((resolve, reject) => {
+          if (!SpeechRecognitionCtor) {
+            reject(new Error('Browser không hỗ trợ SpeechRecognition.'));
+            return;
+          }
+
+          let transcript = '';
+          let started = false;
+          const done = () => {
+            clearTimeout(timer);
+            stopRecognition();
+            resolve(transcript.trim());
+          };
+
+          const timer = setTimeout(done, timeoutMs);
+          recognition = new SpeechRecognitionCtor();
+          recognition.lang = 'en-US';
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.maxAlternatives = 1;
+
+          recognition.onstart = async () => {
+            started = true;
+            log(`Mic đang nghe, bắt đầu phát mẫu: "${sample.text}"`);
+            setStatus(`Đang phát mẫu và nghe mic: ${sample.step}`, 'running');
+            await speak(sample.text);
+            log('Phát mẫu xong, tiếp tục chờ transcript thêm một chút.');
+            setTimeout(done, 1200);
+          };
+
+          recognition.onresult = (event) => {
+            let text = '';
+            for (let i = event.resultIndex; i < event.results.length; i += 1) {
+              text += event.results[i][0].transcript + ' ';
+            }
+            transcript = `${transcript} ${text}`.trim();
+            log(`Transcript: ${transcript || '(trống)'}`);
+          };
+
+          recognition.onerror = (event) => {
+            clearTimeout(timer);
+            stopRecognition();
+            reject(new Error(`Lỗi mic: ${event.error}`));
+          };
+
+          recognition.onend = () => {
+            if (!started) {
+              clearTimeout(timer);
+              reject(new Error('Mic dừng trước khi bắt đầu nghe.'));
+            }
+          };
+
+          try {
+            recognition.start();
+          } catch (error) {
+            clearTimeout(timer);
+            stopRecognition();
+            reject(error);
+          }
+        });
+      }
+
+      function addResult(sample, transcript, score, passed) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${sample.step}</td>
+          <td>${sample.text}</td>
+          <td>${transcript || '<em>Không nhận được transcript</em>'}</td>
+          <td>${Math.round(score * 100)}%</td>
+          <td><strong class="${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</strong></td>
+        `;
+        els.results.appendChild(row);
+      }
+
+      async function runTest() {
+        cancelled = false;
+        els.results.innerHTML = '';
+        els.log.textContent = '';
+        els.run.disabled = true;
+        els.stop.disabled = false;
+        setStatus('Đang chuẩn bị test...', 'running');
+
+        const threshold = Number(els.threshold.value);
+        let passCount = 0;
+
+        try {
+          if (!SpeechRecognitionCtor) {
+            throw new Error('Browser không hỗ trợ SpeechRecognition. Hãy dùng Chrome hoặc Edge.');
+          }
+
+          for (const sample of samples) {
+            if (cancelled) break;
+
+            log(`Bật mic cho bước: ${sample.step}`);
+            const transcript = await listenWhileSpeaking(sample);
+            const score = scoreTranscript(sample.text, transcript);
+            const passed = score >= threshold;
+            if (passed) passCount += 1;
+            addResult(sample, transcript, score, passed);
+
+            log(`Tắt mic sau bước: ${sample.step}`);
+            stopRecognition();
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+
+          if (cancelled) {
+            setStatus('Đã dừng test.', 'warn');
+          } else if (passCount === samples.length) {
+            setStatus(`PASS: mic nhận tốt ${passCount}/${samples.length} mẫu.`, 'pass');
+          } else {
+            setStatus(`FAIL: mic chỉ nhận đạt ${passCount}/${samples.length} mẫu.`, 'fail');
+          }
+        } catch (error) {
+          setStatus(error.message || String(error), 'fail');
+          log(error.stack || error.message || String(error));
+        } finally {
+          speechSynthesis.cancel();
+          stopRecognition();
+          els.run.disabled = false;
+          els.stop.disabled = true;
+        }
+      }
+
+      els.run.addEventListener('click', runTest);
+      els.stop.addEventListener('click', () => {
+        cancelled = true;
+        speechSynthesis.cancel();
+        stopRecognition();
+      });
+      els.play.addEventListener('click', async () => {
+        setStatus('Đang phát thử câu mẫu...', 'running');
+        await speak(samples[0].text);
+        setStatus('Đã phát thử xong.', 'idle');
+      });
+
+      if (!('speechSynthesis' in window)) {
+        setStatus('Browser không hỗ trợ SpeechSynthesis.', 'fail');
+        els.run.disabled = true;
+        els.play.disabled = true;
+      } else if (!SpeechRecognitionCtor) {
+        setStatus('Browser không hỗ trợ SpeechRecognition. Hãy dùng Chrome hoặc Edge.', 'fail');
+        els.run.disabled = true;
+      } else {
+        setStatus('Sẵn sàng. Bấm "Chạy test tự động" rồi cho phép microphone.', 'idle');
+      }
+
+      populateVoices();
+      speechSynthesis.onvoiceschanged = populateVoices;
+      setTimeout(populateVoices, 300);
+    </script>
+  </body>
+</html>

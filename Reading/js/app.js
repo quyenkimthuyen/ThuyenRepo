@@ -92,6 +92,8 @@ let micUserEnabled = false;
 let micStarting = false;
 let samplePlaying = false;
 let samplePlayGeneration = 0;
+let micSessionGeneration = 0;
+let micRestartTimer = 0;
 
 /** @type {typeof LESSONS[0] | null} */
 let lesson = null;
@@ -308,7 +310,8 @@ function updateAutoReadUi() {
 function updateMicToggleUi() {
   const on = micUserEnabled;
   const live = listening;
-  const sample = isSpeaking();
+  const sample = samplePlaying || isSpeaking();
+  const starting = micStarting || micRestartTimer > 0;
 
   els.btnMicToggle.classList.toggle('is-on', on);
   els.btnMicToggle.setAttribute('aria-pressed', String(on));
@@ -320,6 +323,9 @@ function updateMicToggleUi() {
 
   if (sample) {
     els.micStatus.textContent = 'Đang phát mẫu…';
+    els.micStatus.classList.remove('is-live');
+  } else if (starting) {
+    els.micStatus.textContent = 'Đang bật mic…';
     els.micStatus.classList.remove('is-live');
   } else if (live) {
     els.micStatus.textContent = 'Mic đang nghe…';
@@ -346,23 +352,81 @@ function pauseMicForSample() {
   stopMic({ keepEnabled: true });
 }
 
+function clearMicRestartTimer() {
+  if (!micRestartTimer) return;
+  window.clearTimeout(micRestartTimer);
+  micRestartTimer = 0;
+}
+
+function invalidateMicSession() {
+  micSessionGeneration += 1;
+  lastFinalResultIndex = -1;
+  lastInterimText = '';
+}
+
+function scheduleMicRestart(delay = 120) {
+  clearMicRestartTimer();
+  if (!micUserEnabled || micAwaitingGesture || lessonComplete || isSpeaking() || samplePlaying) {
+    updateMicToggleUi();
+    return;
+  }
+
+  micRestartTimer = window.setTimeout(() => {
+    micRestartTimer = 0;
+    if (micUserEnabled && !micAwaitingGesture && !lessonComplete && !isSpeaking() && !samplePlaying) {
+      startMic();
+    } else {
+      updateMicToggleUi();
+    }
+  }, delay);
+  updateMicToggleUi();
+}
+
 /** Dừng recognition hiện tại và bật lại nếu mic vẫn đang bật (không tắt hẳn). */
 function restartMic() {
   if (!micUserEnabled || lessonComplete || isSpeaking() || samplePlaying) return;
 
   if (listening || recognition) {
     stopMic({ keepEnabled: true });
-    window.setTimeout(() => {
-      if (micUserEnabled && !lessonComplete && !isSpeaking() && !samplePlaying) {
-        startMic();
-      }
-    }, 60);
+    scheduleMicRestart();
     return;
   }
 
   if (!micAwaitingGesture) {
-    startMic();
+    scheduleMicRestart(40);
   }
+}
+
+function pauseMicForContextChange() {
+  if (!micUserEnabled || micAwaitingGesture) {
+    invalidateMicSession();
+    return false;
+  }
+
+  invalidateMicSession();
+
+  if (listening || recognition || micStarting || micRestartTimer) {
+    stopMic({ keepEnabled: true });
+  }
+
+  return true;
+}
+
+function resumeMicAfterContextChange(shouldResume) {
+  if (!shouldResume) {
+    updateMicToggleUi();
+    return;
+  }
+  restartMic();
+}
+
+/**
+ * @param {string} lessonId
+ */
+function switchLesson(lessonId) {
+  const shouldResumeMic = pauseMicForContextChange();
+  loadLesson(lessonId);
+  resumeMicAfterContextChange(shouldResumeMic);
 }
 
 async function readCurrentSample() {
@@ -371,7 +435,7 @@ async function readCurrentSample() {
   if (!text) return;
 
   const playGen = ++samplePlayGeneration;
-  const micShouldResume = listening;
+  const micShouldResume = micUserEnabled && !micAwaitingGesture;
 
   setSampleControlsBusy(true);
   pauseMicForSample();
@@ -506,15 +570,13 @@ function onFiltersChanged() {
   saveSettings();
   populateLessonSelect();
   if (els.lessonSelect.value) {
-    loadLesson(els.lessonSelect.value);
-    restartMic();
+    switchLesson(els.lessonSelect.value);
   }
 }
 
 function bindEvents() {
   els.lessonSelect.addEventListener('change', () => {
-    loadLesson(els.lessonSelect.value);
-    restartMic();
+    switchLesson(els.lessonSelect.value);
   });
 
   els.voiceSelect.addEventListener('change', () => {
@@ -689,8 +751,7 @@ function afterCustomLessonsChanged(lessonId, message) {
   populateLessonSelect();
   renderCustomLessonsList();
   els.lessonSelect.value = lessonId;
-  loadLesson(lessonId);
-  restartMic();
+  switchLesson(lessonId);
   showImportFeedback(message);
 }
 
@@ -734,8 +795,7 @@ function renderCustomLessonsList() {
 
     btnOpen.addEventListener('click', () => {
       els.lessonSelect.value = item.id;
-      loadLesson(item.id);
-      restartMic();
+      switchLesson(item.id);
     });
     btnDel.addEventListener('click', () => deleteCustomLessonById(item.id));
 
@@ -772,8 +832,7 @@ function deleteCustomLessonById(lessonId) {
 
   if (lesson?.id === lessonId) {
     if (els.lessonSelect.value) {
-      loadLesson(els.lessonSelect.value);
-      restartMic();
+      switchLesson(els.lessonSelect.value);
     }
   }
 
@@ -914,6 +973,7 @@ function clampSentenceIndex(idx) {
 }
 
 function resetLesson() {
+  const shouldResumeMic = pauseMicForContextChange();
   invalidateSamplePlayback();
   stopSpeaking();
   sentenceStates.forEach((st) => st.matched.clear());
@@ -923,7 +983,7 @@ function resetLesson() {
   lastInterimText = '';
   render();
   saveProgress();
-  restartMic();
+  resumeMicAfterContextChange(shouldResumeMic);
   maybeAutoReadSample();
 }
 
@@ -954,12 +1014,14 @@ function goNextSentence() {
 function goToSentence(index) {
   if (!sentenceStates[index] || lessonComplete) return;
 
+  const shouldResumeMic = pauseMicForContextChange();
   currentSentenceIndex = index;
   lessonComplete = false;
   lastFinalResultIndex = -1;
   lastInterimText = '';
   render();
   saveProgress();
+  resumeMicAfterContextChange(shouldResumeMic);
   maybeAutoReadSample();
 }
 
@@ -1113,6 +1175,7 @@ function getSpeechRecognitionCtor() {
 
 function startMic() {
   if (lessonComplete || isSpeaking() || samplePlaying || micStarting) return;
+  clearMicRestartTimer();
 
   if (!micUserEnabled) micUserEnabled = true;
 
@@ -1127,39 +1190,45 @@ function startMic() {
   if (listening || recognition) return;
 
   micStarting = true;
-  recognition = new Ctor();
-  recognition.lang = 'en-US';
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.maxAlternatives = 1;
+  const sessionGeneration = ++micSessionGeneration;
+  const currentRecognition = new Ctor();
+  recognition = currentRecognition;
+  currentRecognition.lang = 'en-US';
+  currentRecognition.continuous = true;
+  currentRecognition.interimResults = true;
+  currentRecognition.maxAlternatives = 1;
 
   lastFinalResultIndex = -1;
   lastInterimText = '';
 
-  recognition.onstart = () => {
+  currentRecognition.onstart = () => {
+    if (sessionGeneration !== micSessionGeneration) return;
     micStarting = false;
     listening = true;
     updateMicToggleUi();
     hideError();
   };
 
-  recognition.onend = () => {
+  currentRecognition.onend = () => {
+    if (sessionGeneration !== micSessionGeneration) return;
     listening = false;
     micStarting = false;
     const shouldRestart =
-      recognition?._wantRestart &&
+      currentRecognition._wantRestart &&
       micUserEnabled &&
       !lessonComplete &&
       !isSpeaking() &&
       !samplePlaying;
     recognition = null;
-    updateMicToggleUi();
     if (shouldRestart) {
-      startMic();
+      scheduleMicRestart();
+    } else {
+      updateMicToggleUi();
     }
   };
 
-  recognition.onerror = (event) => {
+  currentRecognition.onerror = (event) => {
+    if (sessionGeneration !== micSessionGeneration) return;
     if (event.error === 'not-allowed') {
       showError('Cần quyền microphone. Hãy chạm màn hình hoặc bấm nút mic và cho phép quyền.');
       stopMic({ keepEnabled: true });
@@ -1176,8 +1245,8 @@ function startMic() {
     showError(`Lỗi mic: ${event.error}`);
   };
 
-  recognition.onresult = (event) => {
-    if (isSpeaking()) return;
+  currentRecognition.onresult = (event) => {
+    if (sessionGeneration !== micSessionGeneration || isSpeaking() || samplePlaying) return;
 
     let interim = '';
 
@@ -1206,12 +1275,18 @@ function startMic() {
     }
   };
 
-  recognition._wantRestart = true;
+  currentRecognition._wantRestart = true;
 
   try {
-    recognition.start();
+    currentRecognition.start();
   } catch {
+    if (sessionGeneration === micSessionGeneration) {
+      invalidateMicSession();
+    }
     micStarting = false;
+    if (recognition === currentRecognition) {
+      recognition = null;
+    }
     micAwaitingGesture = micUserEnabled;
     showError('Không thể bật mic. Hãy chạm màn hình hoặc bấm nút mic để thử lại.');
     updateMicToggleUi();
@@ -1219,10 +1294,14 @@ function startMic() {
 }
 
 function stopMic({ keepEnabled = false } = {}) {
+  clearMicRestartTimer();
+
   if (!keepEnabled) {
     micUserEnabled = false;
     micAwaitingGesture = false;
   }
+
+  invalidateMicSession();
 
   if (!recognition) {
     listening = false;
@@ -1231,9 +1310,10 @@ function stopMic({ keepEnabled = false } = {}) {
     return;
   }
 
-  recognition._wantRestart = false;
+  const currentRecognition = recognition;
+  currentRecognition._wantRestart = false;
   try {
-    recognition.stop();
+    currentRecognition.stop();
   } catch {
     /* ignore */
   }
