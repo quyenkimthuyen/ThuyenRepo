@@ -51,4 +51,27 @@ const m4 = new Set();
 matchAccumulating(wordsFromTranscript('I am 20 years old'), t4, m4);
 assert(m4.size === 5, 'digit 20 matches word twenty');
 
+// hyphenated words: tokenization and matching
+const t5 = tokenizeSentence('I learn food-related words.');
+assert(t5.length === 5, 'splits food-related into food- and related (5 tokens total)');
+assert(t5[2].display === 'food-', 'hyphenated first part display');
+assert(t5[2].normalized === 'food', 'hyphenated first part normalized');
+assert(t5[2].hasSpaceAfter === false, 'hyphenated first part hasSpaceAfter false');
+assert(t5[3].display === 'related', 'hyphenated second part display');
+assert(t5[3].normalized === 'related', 'hyphenated second part normalized');
+assert(t5[3].hasSpaceAfter === true, 'hyphenated second part hasSpaceAfter true');
+
+const m5 = new Set();
+matchAccumulating(wordsFromTranscript('I learn food related words'), t5, m5);
+assert(isSentenceComplete(m5, t5.length), 'matches split words');
+
+const m6 = new Set();
+matchAccumulating(wordsFromTranscript('I learn food-related words'), t5, m6);
+assert(isSentenceComplete(m6, t5.length), 'matches hyphenated spoken words');
+
+const t6 = tokenizeSentence('I learn food related words.');
+const m7 = new Set();
+matchAccumulating(wordsFromTranscript('I learn food-related words'), t6, m7);
+assert(isSentenceComplete(m7, t6.length), 'matches hyphenated spoken words to split sentence tokens');
+
 console.log('matcher tests: ok');

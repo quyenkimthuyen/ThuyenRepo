@@ -1082,7 +1082,7 @@ function render() {
         span.classList.add('matched');
       }
       p.appendChild(span);
-      if (ti < st.tokens.length - 1) {
+      if (tok.hasSpaceAfter !== false && ti < st.tokens.length - 1) {
         p.appendChild(document.createTextNode(' '));
       }
     });

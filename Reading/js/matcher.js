@@ -11,10 +11,24 @@ export function tokenizeSentence(sentence) {
   let m;
   while ((m = re.exec(sentence)) !== null) {
     const display = m[0];
-    tokens.push({
-      display,
-      normalized: normalizeWord(display),
-    });
+    if (/[a-z0-9]+-[a-z0-9]+/i.test(display)) {
+      const parts = display.split('-');
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        const isLast = i === parts.length - 1;
+        tokens.push({
+          display: isLast ? part : part + '-',
+          normalized: normalizeWord(isLast ? part : part + '-'),
+          hasSpaceAfter: isLast,
+        });
+      }
+    } else {
+      tokens.push({
+        display,
+        normalized: normalizeWord(display),
+        hasSpaceAfter: true,
+      });
+    }
   }
   return tokens;
 }
@@ -37,7 +51,7 @@ export function normalizeWord(raw) {
  */
 export function wordsFromTranscript(transcript) {
   return transcript
-    .split(/\s+/)
+    .split(/[\s-]+/)
     .map(normalizeWord)
     .filter(Boolean);
 }
