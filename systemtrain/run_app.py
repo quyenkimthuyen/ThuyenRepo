@@ -11,6 +11,7 @@ import yaml
 
 from systemtrain.orchestrator.rolling_production import current_trade_year, history_path, train_year_for
 from systemtrain.ui.charts import (
+    _inject_chart_resize_css,
     make_strategy_detail_chart,
     metrics_all_html,
     metrics_cards_html,
@@ -198,6 +199,7 @@ with tab_chart:
     )
 
     if chart_ok:
+        _inject_chart_resize_css()
 
         def _render_strategy_chart(sname: str, trades: list, metrics: dict | None = None) -> None:
             info = STRATEGIES[sname]
@@ -238,8 +240,8 @@ with tab_chart:
             _render_strategy_chart(lc["strategy"], lc.get("trades", []), lc.get("metrics"))
 
         st.caption(
-            "Kéo **góc phải-dưới** chart để đổi cao/rộng (TradingView) · "
-            "Đỏ đứt = SL · Xanh chấm = TP · Zoom: kéo khung · Reset: double-click"
+            "Kéo **góc phải-dưới** khung chart để đổi cao/rộng · "
+            "Đỏ đứt = SL · Xanh chấm = TP · Zoom: kéo khung trên chart · Reset: double-click"
         )
 
         rows = []

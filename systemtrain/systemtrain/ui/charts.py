@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from typing import Any
 
 import pandas as pd
 import plotly.graph_objects as go
-import streamlit.components.v1 as components
+import streamlit as st
 from plotly.subplots import make_subplots
 
 from systemtrain.indicators.library import ema, rsi
@@ -396,75 +395,58 @@ def render_resizable_plotly(
     fig: go.Figure,
     *,
     chart_id: str,
-    default_height: int = 520,
-    iframe_height: int = 920,
+    default_height: int = 560,
 ) -> None:
-    """Chart kéo chuột resize (góc phải-dưới) — giống panel TradingView."""
-    safe_id = "p" + hashlib.md5(chart_id.encode()).hexdigest()[:10]
-    plot_id = f"{safe_id}-plot"
-    wrap_id = f"{safe_id}-wrap"
-    fig_dict = json.loads(fig.to_json())
-    fig_dict.setdefault("layout", {})
-    fig_dict["layout"].pop("height", None)
-    fig_dict["layout"]["autosize"] = True
-    fig_json = json.dumps(fig_dict, default=str)
-    fig_json = fig_json.replace("</", "<\\/")
+    """Chart TradingView — hiển thị ổn định + kéo góc phải-dưới để resize."""
+    fig.update_layout(height=default_height, autosize=True)
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        config=PLOTLY_CHART_CONFIG,
+        key=f"plotly-{chart_id}",
+    )
 
-    html = f"""<!DOCTYPE html>
-<html><head>
-<meta charset="utf-8"/>
-<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+def _inject_chart_resize_css() -> None:
+    """CSS resize panel chart (native Streamlit plotly)."""
+    if st.session_state.get("_chart_resize_css"):
+        return
+    st.session_state._chart_resize_css = True
+    st.markdown(
+        """
 <style>
-  html, body {{ margin: 0; padding: 0; background: {TV["bg"]}; overflow: hidden; }}
-  #{wrap_id} {{
-    position: relative;
+/* Panel chart — kéo góc phải-dưới để đổi cao/rộng */
+[data-testid="stPlotlyChart"] {
     resize: both;
     overflow: hidden;
-    width: 100%;
-    height: {default_height}px;
-    min-height: 260px;
+    min-height: 320px;
     min-width: 280px;
-    max-width: 100%;
-    max-height: {iframe_height - 16}px;
-    border: 1px solid {TV["border"]};
+    max-height: 92vh;
+    height: 560px;
+    border: 1px solid #434651;
     border-radius: 4px;
-    box-sizing: border-box;
-  }}
-  #{wrap_id}::after {{
+    position: relative;
+}
+[data-testid="stPlotlyChart"]::after {
     content: "";
     position: absolute;
-    right: 2px;
-    bottom: 2px;
-    width: 16px;
-    height: 16px;
-    cursor: nwse-resize;
-    border-right: 2px solid {TV["text_muted"]};
-    border-bottom: 2px solid {TV["text_muted"]};
-    opacity: 0.85;
+    right: 3px;
+    bottom: 3px;
+    width: 14px;
+    height: 14px;
+    border-right: 2px solid #787b86;
+    border-bottom: 2px solid #787b86;
     pointer-events: none;
-  }}
-  #{plot_id} {{ width: 100%; height: 100%; }}
+    z-index: 10;
+}
+[data-testid="stPlotlyChart"] iframe {
+    width: 100% !important;
+    height: 100% !important;
+}
 </style>
-</head><body>
-<div id="{wrap_id}"><div id="{plot_id}"></div></div>
-<script>
-(function() {{
-  const fig = {fig_json};
-  const cfg = {json.dumps(PLOTLY_CHART_CONFIG)};
-  const plot = document.getElementById("{plot_id}");
-  const wrap = document.getElementById("{wrap_id}");
-  Plotly.newPlot(plot, fig.data, fig.layout, cfg);
-  function relayout() {{
-    Plotly.relayout(plot, {{ width: plot.clientWidth, height: plot.clientHeight }});
-    Plotly.Plots.resize(plot);
-  }}
-  new ResizeObserver(relayout).observe(wrap);
-  window.addEventListener("load", relayout);
-  setTimeout(relayout, 120);
-}})();
-</script>
-</body></html>"""
-    components.html(html, height=iframe_height, scrolling=False)
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def make_strategy_detail_chart(
@@ -518,7 +500,7 @@ def make_strategy_detail_chart(
 
     _add_strategy_trades(fig, trades, strategy, color, df_index, row=1)
     _add_equity(fig, trades, equity, row=equity_row)
-    _apply_tv_layout(fig, strategy, rows, equity_row, height=height)
+    _apply_tv_layout(fig, strategy, rows, equity_row, height=height or 560)
     return fig
 
 
