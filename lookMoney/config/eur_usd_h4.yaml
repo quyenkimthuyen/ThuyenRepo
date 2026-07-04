@@ -1,0 +1,60 @@
+pair: EURUSD
+timeframe: H4
+
+sessions:
+  london:
+    start_utc: 7
+    end_utc: 16
+  new_york:
+    start_utc: 13
+    end_utc: 21
+
+strategy:
+  name: h4_native
+  ema_entry: 20
+  ema_slow: 50
+  ema_trend: 100
+  d1_ema: 50
+  adx_period: 14
+  adx_min: 20
+  adx_max: 42
+  rsi_period: 14
+  rsi_long_min: 45
+  rsi_long_max: 65
+  rsi_short_min: 35
+  rsi_short_max: 55
+  stoch_max_long: 0.75
+  stoch_min_short: 0.25
+  require_stoch_cross: false
+  atr_period: 14
+  atr_sl_multiplier: 3.0
+  max_sl_atr: 5.0
+  min_risk_reward: 2.0
+  swing_lookback: 8
+  cooldown_days: 0
+  max_extension_atr: 0
+  min_di_spread: 0
+  min_body_atr: 0
+  require_adx_rising: false
+  require_ema_slope: false
+
+risk:
+  initial_balance: 1000
+  risk_per_trade: 0.05
+  max_daily_loss: 0.15
+  max_drawdown: 0.15
+  max_open_positions: 1
+  max_consecutive_losses: 6
+  halt_cooldown_days: 10
+  min_risk_reward: 2.0
+
+backtest:
+  spread_pips: 1.2
+  slippage_pips: 0.5
+  commission_per_lot: 7.0
+  pip_value_per_lot: 10.0
+  lot_size: 0.1
+
+validation:
+  develop_years: 1
+  oos_years: 2

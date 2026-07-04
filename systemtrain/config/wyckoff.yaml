@@ -1,0 +1,26 @@
+# Chiến lược production — EURUSD 1H + filter 4H (Wyckoff)
+wyckoff:
+  preset: quality
+  consolidation_days: 2
+  min_wick_range_ratio: 0.25
+  min_wick_candle_ratio: 0.45
+  max_range_atr_mult: 12.0
+  max_range_pct: 0.016
+  max_adx: 35
+  min_range_touches: 2
+  min_sweep_atr: 0.1
+  max_sweep_range_ratio: 0.45
+  rr: 2.0
+  session_start: 7
+  session_end: 18
+  cooldown_bars: 6
+  max_trades_per_day: 2
+  close_reclaim_buffer: 0.15
+  entry_delay_bars: 1
+  use_htf_filter: true
+  htf_mode: stack
+  min_htf_adx: 22.0
+  require_range_compression: false
+  require_hammer_shape: true
+  sl_buffer_pips: 1.0
+  pip_size: 0.0001

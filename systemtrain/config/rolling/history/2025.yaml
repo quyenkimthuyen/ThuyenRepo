@@ -1,0 +1,42 @@
+trade_year: 2025
+train_year: 2024
+optimized_at: '2026-07-04T13:13:30.315257+00:00'
+equity: 1000.0
+strategies:
+  Wyckoff:
+    params:
+      min_htf_adx: 22.0
+      max_adx: 40.0
+      consolidation_days: 2
+      htf_mode: stack
+    train:
+      trade_count: 6
+      win_rate: 0.6666666666666666
+      profit_factor: 3.858656227444361
+      realized_rr: 1.9293281137221805
+      total_return: 0.12492581863519513
+  RSI Divergence:
+    params:
+      max_adx_1h: 30.0
+      min_rsi_diff: 2.5
+      rsi_oversold: 40.0
+      rsi_overbought: 55.0
+      min_swing_gap: 10
+    train:
+      trade_count: 3
+      win_rate: 0.6666666666666666
+      profit_factor: 3.928593361883524
+      realized_rr: 1.964296680941762
+      total_return: 0.059352138488355424
+  EMA 50/200:
+    params:
+      min_htf_adx: 28.0
+      max_adx_1h: 25.0
+      pullback_atr: 0.38
+      max_ema_spread_atr: 2.2
+    train:
+      trade_count: 6
+      win_rate: 0.6666666666666666
+      profit_factor: 3.8250622675500643
+      realized_rr: 1.9125311337750321
+      total_return: 0.12203509891061594

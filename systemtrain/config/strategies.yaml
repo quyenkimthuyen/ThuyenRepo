@@ -1,0 +1,40 @@
+# Chiến lược production — EURUSD rolling yearly optimize
+mode: rolling
+min_oos_wr: 0.60
+remine_schedule: "Đầu mỗi năm — python3 run_rolling_remine.py"
+
+rolling:
+  active_config: config/rolling/active.yaml
+  history_dir: config/rolling/history
+  train_rule: "optimize calendar year Y-1 → trade year Y"
+  scripts:
+    remine: run_rolling_remine.py
+    production: run_production.py
+    walkforward_report: run_rolling_walkforward.py
+
+strategies:
+  - id: wyckoff
+    name: Wyckoff Failed Break
+    entry_tf: 1h
+    htf_filter: 4h
+    base_config: config/wyckoff.yaml
+    rolling_params: [min_htf_adx, max_adx, consolidation_days, htf_mode]
+
+  - id: rsi_divergence
+    name: RSI Divergence
+    entry_tf: 1h
+    htf_filter: none
+    base_config: config/rsi_divergence.yaml
+    rolling_params: [max_adx_1h, min_rsi_diff, rsi_oversold, rsi_overbought, min_swing_gap]
+
+  - id: ema_trend
+    name: EMA 50/200
+    entry_tf: 1h
+    htf_filter: 4h
+    base_config: config/ema_trend.yaml
+    rolling_params: [min_htf_adx, max_adx_1h, pullback_atr, max_ema_spread_atr]
+
+inactive:
+  - id: pin_bar
+    name: Pin Bar Elite
+    reason: "Không robust trên 2021–22"
