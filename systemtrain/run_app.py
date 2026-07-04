@@ -10,7 +10,7 @@ import streamlit as st
 import yaml
 
 from systemtrain.orchestrator.rolling_production import current_trade_year, train_year_for
-from systemtrain.ui.charts import make_tradingview_chart, metrics_all_html, metrics_cards_html
+from systemtrain.ui.charts import make_tradingview_chart, metrics_all_html, metrics_cards_html, strategy_legend_html
 from systemtrain.ui.meta import STRATEGIES, STRATEGY_ORDER
 from systemtrain.ui.services import (
     get_rolling_state,
@@ -131,15 +131,17 @@ with tab_overview:
 with tab_chart:
     st.subheader("Biểu đồ giá & lệnh")
     chart_options = ["All (tất cả)"] + STRATEGY_ORDER
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1.5])
     with c1:
         chart_strategy = st.selectbox("Chiến lược", chart_options)
     with c2:
         chart_year = st.selectbox("Năm hiển thị", list(range(2021, current_trade_year() + 1)), index=max(0, ty - 2021))
     with c3:
-        show_ema = st.checkbox("EMA 50/200", value=True)
+        show_ema = st.checkbox("EMA", value=True)
     with c4:
         show_volume = st.checkbox("Volume", value=True)
+    with c5:
+        chart_height = st.slider("Chiều cao (px)", min_value=400, max_value=1100, value=650, step=50)
 
     hist_state = load_history_year(chart_year)
     if hist_state is None:
@@ -186,6 +188,9 @@ with tab_chart:
     )
 
     if chart_ok:
+        legend_names = STRATEGY_ORDER if lc["mode"] == "all" else [lc["strategy"]]
+        st.markdown(strategy_legend_html(legend_names), unsafe_allow_html=True)
+
         if lc["mode"] == "all":
             st.markdown(metrics_all_html(lc["results"]), unsafe_allow_html=True)
             strategy_trades = {s: lc["results"][s]["trades"] for s in STRATEGY_ORDER if s in lc["results"]}
@@ -196,6 +201,7 @@ with tab_chart:
                 show_ema=show_ema,
                 show_volume=show_volume,
                 equity=st.session_state.equity,
+                height=chart_height,
             )
         else:
             st.markdown(metrics_cards_html(lc["metrics"]))
@@ -206,8 +212,24 @@ with tab_chart:
                 show_ema=show_ema,
                 show_volume=show_volume,
                 equity=st.session_state.equity,
+                height=chart_height,
             )
-        st.plotly_chart(fig, use_container_width=True, config={"scrollZoom": True, "displayModeBar": True})
+        st.plotly_chart(
+            fig,
+            use_container_width=True,
+            config={
+                "scrollZoom": True,
+                "displayModeBar": True,
+                "responsive": True,
+                "modeBarButtonsToRemove": ["lasso2d", "select2d"],
+            },
+        )
+        st.caption(
+            "Chiều cao: slider **Chiều cao (px)** · "
+            "Zoom dọc: kéo khung chọn vùng trên chart · "
+            "Zoom ngang: slider dưới cùng · "
+            "Reset: double-click chart"
+        )
 
         rows = []
         if lc["mode"] == "all":

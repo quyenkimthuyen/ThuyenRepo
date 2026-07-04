@@ -91,6 +91,7 @@ def _add_emas(fig: go.Figure, df: pd.DataFrame, row: int = 1) -> None:
             x=df.index, y=ema(c, 50), name="EMA 50",
             line=dict(width=1.2, color=TV["ema50"]),
             hovertemplate="EMA50: %{y:.5f}<extra></extra>",
+            showlegend=False,
         ),
         row=row, col=1,
     )
@@ -99,6 +100,7 @@ def _add_emas(fig: go.Figure, df: pd.DataFrame, row: int = 1) -> None:
             x=df.index, y=ema(c, 200), name="EMA 200",
             line=dict(width=1.2, color=TV["ema200"]),
             hovertemplate="EMA200: %{y:.5f}<extra></extra>",
+            showlegend=False,
         ),
         row=row, col=1,
     )
@@ -113,9 +115,9 @@ def _add_strategy_trades(
     row: int = 1,
     show_lines: bool = True,
 ) -> None:
-    """Marker entry/exit + đường position (TradingView style)."""
+    """Marker entry/exit — chỉ marker màu, tên chiến lược qua hover."""
     long_x, long_y, short_x, short_y = [], [], [], []
-    exit_x, exit_y, exit_colors, exit_text = [], [], [], []
+    exit_x, exit_y, exit_text = [], [], []
 
     for t in trades:
         if t.entry_time not in df_index:
@@ -130,13 +132,13 @@ def _add_strategy_trades(
 
         if show_lines and t.is_closed and t.exit_time is not None:
             win = t.pnl > 0
-            line_color = "rgba(8,153,129,0.55)" if win else "rgba(242,54,69,0.55)"
+            line_color = "rgba(8,153,129,0.45)" if win else "rgba(242,54,69,0.45)"
             fig.add_trace(
                 go.Scatter(
                     x=[t.entry_time, t.exit_time],
                     y=[t.entry_price, t.exit_price],
                     mode="lines",
-                    line=dict(color=line_color, width=1.5, dash="dot"),
+                    line=dict(color=line_color, width=1, dash="dot"),
                     showlegend=False,
                     hoverinfo="skip",
                 ),
@@ -144,51 +146,54 @@ def _add_strategy_trades(
             )
             exit_x.append(t.exit_time)
             exit_y.append(t.exit_price)
-            exit_colors.append("#089981" if win else "#f23645")
-            exit_text.append(f"{strategy} exit {t.pnl:+.0f}$")
+            exit_text.append(f"{strategy} · {t.pnl:+.0f}$")
 
-    label = strategy
+    entry_hover = f"<b>{strategy}</b><br>%{{customdata}}<br>%{{x}}<br>%{{y:.5f}}<extra></extra>"
+
     if long_x:
         fig.add_trace(
             go.Scatter(
                 x=long_x, y=long_y,
-                mode="markers+text" if len(long_x) <= 12 else "markers",
-                name=f"{label} Long",
-                text=["▲"] * len(long_x) if len(long_x) <= 12 else None,
-                textposition="bottom center",
-                textfont=dict(size=11, color=color),
+                mode="markers",
+                name=strategy,
+                legendgroup=strategy,
+                showlegend=False,
+                customdata=["LONG"] * len(long_x),
                 marker=dict(
-                    symbol="triangle-up", size=13, color=color,
-                    line=dict(width=1, color=TV["bg"]),
+                    symbol="triangle-up", size=10, color=color,
+                    line=dict(width=0.5, color=TV["bg"]),
                 ),
-                hovertemplate=f"<b>{label}</b> LONG<br>%{{x}}<br>%{{y:.5f}}<extra></extra>",
+                hovertemplate=entry_hover,
             ),
             row=row, col=1,
         )
+
     if short_x:
         fig.add_trace(
             go.Scatter(
                 x=short_x, y=short_y,
-                mode="markers+text" if len(short_x) <= 12 else "markers",
-                name=f"{label} Short",
-                text=["▼"] * len(short_x) if len(short_x) <= 12 else None,
-                textposition="top center",
-                textfont=dict(size=11, color=color),
+                mode="markers",
+                name=strategy,
+                legendgroup=strategy,
+                showlegend=False,
+                customdata=["SHORT"] * len(short_x),
                 marker=dict(
-                    symbol="triangle-down", size=13, color=color,
-                    line=dict(width=1, color=TV["bg"]),
+                    symbol="triangle-down", size=10, color=color,
+                    line=dict(width=0.5, color=TV["bg"]),
                 ),
-                hovertemplate=f"<b>{label}</b> SHORT<br>%{{x}}<br>%{{y:.5f}}<extra></extra>",
+                hovertemplate=entry_hover,
             ),
             row=row, col=1,
         )
+
     if exit_x:
         fig.add_trace(
             go.Scatter(
                 x=exit_x, y=exit_y,
                 mode="markers",
-                name=f"{label} Exit",
-                marker=dict(symbol="circle-open", size=9, color=exit_colors, line=dict(width=2)),
+                legendgroup=strategy,
+                showlegend=False,
+                marker=dict(symbol="circle-open", size=7, color=color, line=dict(width=1.5)),
                 text=exit_text,
                 hovertemplate="%{text}<br>%{x}<br>%{y:.5f}<extra></extra>",
             ),
@@ -214,52 +219,62 @@ def _add_equity(fig: go.Figure, all_trades: list, equity: float, row: int) -> No
             fill="tozeroy",
             fillcolor="rgba(126,87,194,0.12)",
             hovertemplate="Equity: $%{y:.2f}<extra></extra>",
+            showlegend=False,
         ),
         row=row, col=1,
     )
 
 
-def _apply_tv_layout(fig: go.Figure, title: str, rows: int, equity_row: int) -> None:
+def _apply_tv_layout(
+    fig: go.Figure,
+    title: str,
+    rows: int,
+    equity_row: int,
+    height: int = 650,
+) -> None:
     fig.update_layout(
-        title=dict(text=title, font=dict(size=14, color=TV["text"]), x=0.01, xanchor="left"),
-        height=780 if rows >= 3 else 720,
+        title=None,
+        height=height,
+        autosize=True,
+        showlegend=False,
         template=None,
         paper_bgcolor=TV["bg"],
         plot_bgcolor=TV["panel"],
         font=dict(family="Trebuchet MS, Roboto, sans-serif", color=TV["text"], size=11),
-        margin=dict(l=8, r=60, t=48, b=8),
+        margin=dict(l=4, r=52, t=12, b=4),
         hovermode="x unified",
-        legend=dict(
-            orientation="h", yanchor="bottom", y=1.01, x=0,
-            bgcolor="rgba(30,34,45,0.8)", bordercolor=TV["border"], borderwidth=1,
-            font=dict(size=10),
-        ),
-        dragmode="pan",
+        dragmode="zoom",
+        uirevision="tv-chart",
     )
     fig.update_xaxes(
         showgrid=True, gridwidth=1, gridcolor=TV["grid"],
         showline=True, linewidth=1, linecolor=TV["border"],
-        tickfont=dict(color=TV["text_muted"]),
+        tickfont=dict(color=TV["text_muted"], size=10),
         spikemode="across", spikesnap="cursor", spikethickness=1, spikecolor=TV["text_muted"],
-        rangeslider=dict(visible=True, bgcolor=TV["panel"], thickness=0.04),
+        rangeslider=dict(visible=True, bgcolor=TV["panel"], thickness=0.035),
+        fixedrange=False,
         row=1, col=1,
     )
     fig.update_yaxes(
         showgrid=True, gridwidth=1, gridcolor=TV["grid"],
         showline=True, linewidth=1, linecolor=TV["border"],
-        tickfont=dict(color=TV["text_muted"]),
+        tickfont=dict(color=TV["text_muted"], size=10),
         side="right",
         spikemode="across", spikesnap="cursor", spikethickness=1, spikecolor=TV["text_muted"],
+        fixedrange=False,
+        autorange=True,
         row=1, col=1,
     )
     if rows >= 3:
-        fig.update_xaxes(showgrid=False, showticklabels=False, row=2, col=1)
-        fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=TV["grid"], side="right", row=2, col=1)
-    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor=TV["grid"], row=equity_row, col=1)
-    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=TV["grid"], side="right", row=equity_row, col=1)
-    # Hide rangeslider on sub-rows
+        fig.update_xaxes(showgrid=False, showticklabels=False, fixedrange=False, row=2, col=1)
+        fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=TV["grid"], side="right", fixedrange=False, row=2, col=1)
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor=TV["grid"], fixedrange=False, row=equity_row, col=1)
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor=TV["grid"], side="right", fixedrange=False, row=equity_row, col=1)
     for r in range(2, rows + 1):
         fig.update_xaxes(rangeslider_visible=False, row=r, col=1)
+    # Ẩn tiêu đề subplot (gây chồng chéo)
+    for ann in fig.layout.annotations or []:
+        ann.text = ""
 
 
 def make_tradingview_chart(
@@ -273,6 +288,7 @@ def make_tradingview_chart(
     show_volume: bool = True,
     equity: float = 1000.0,
     max_bars: int = 2000,
+    height: int = 650,
 ) -> go.Figure:
     """Candlestick TradingView-style + multi-strategy markers."""
     df = _slice_df(df, max_bars)
@@ -282,16 +298,14 @@ def make_tradingview_chart(
         strategy_trades = {strategy_name or "Strategy": trades or []}
 
     use_vol = show_volume and _has_volume(df)
-    row_heights = [0.62, 0.14, 0.24] if use_vol else [0.72, 0.28]
+    row_heights = [0.68, 0.12, 0.20] if use_vol else [0.76, 0.24]
     rows = 3 if use_vol else 2
     equity_row = 3 if use_vol else 2
-    subtitles = [title or "EURUSD 1H", "Volume", "Equity"] if use_vol else [title or "EURUSD 1H", "Equity"]
 
     fig = make_subplots(
         rows=rows, cols=1, shared_xaxes=True,
-        vertical_spacing=0.02,
+        vertical_spacing=0.03,
         row_heights=row_heights,
-        subplot_titles=subtitles,
     )
 
     _add_candles(fig, df, row=1)
@@ -307,8 +321,22 @@ def make_tradingview_chart(
 
     all_trades = [t for ts in strategy_trades.values() for t in ts]
     _add_equity(fig, all_trades, equity, row=equity_row)
-    _apply_tv_layout(fig, title, rows, equity_row)
+    _apply_tv_layout(fig, title, rows, equity_row, height=height)
     return fig
+
+
+def strategy_legend_html(active: list[str] | None = None) -> str:
+    """Legend HTML ngoài chart — tránh che nến."""
+    names = active or STRATEGY_ORDER
+    parts = []
+    for sname in names:
+        c = strategy_color(sname)
+        parts.append(
+            f"<span style='color:{c};font-size:14px'>●</span> "
+            f"<span style='color:{TV['text']};font-size:12px'>{sname}</span>"
+        )
+    parts.append("<span style='color:#787b86;font-size:11px'>▲ Long · ▼ Short · ○ Exit</span>")
+    return "&nbsp;&nbsp;".join(parts)
 
 
 def make_strategy_chart(
