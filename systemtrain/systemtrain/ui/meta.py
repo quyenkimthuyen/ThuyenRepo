@@ -8,6 +8,7 @@ STRATEGIES: dict[str, dict[str, Any]] = {
     "Wyckoff": {
         "id": "wyckoff",
         "icon": "📊",
+        "chart_color": "#2962FF",
         "title": "Wyckoff Failed Break",
         "summary": "Spring / Upthrust — giá phá vỡ range rồi quay lại (failed break).",
         "description": """
@@ -29,6 +30,7 @@ nến đóng lại trong range → tín hiệu đảo chiều.
     "RSI Divergence": {
         "id": "rsi_divergence",
         "icon": "📉",
+        "chart_color": "#FF9800",
         "title": "RSI Divergence",
         "summary": "Phân kỳ RSI + phá neckline — mean reversion.",
         "description": """
@@ -51,6 +53,7 @@ Vào lệnh khi phá neckline của cấu trúc phân kỳ.
     "EMA 50/200": {
         "id": "ema_trend",
         "icon": "〰️",
+        "chart_color": "#AB47BC",
         "title": "EMA 50/200 Pullback",
         "summary": "Trend follow — pullback về EMA50 trong trend EMA50/200.",
         "description": """
@@ -69,6 +72,32 @@ nến bounce → vào theo trend.
             "max_ema_spread_atr": {"label": "Spread EMA max (× ATR)", "type": "float", "min": 1.0, "max": 3.0, "step": 0.1},
         },
     },
+    "Pin Bar Elite": {
+        "id": "pin_bar",
+        "icon": "📌",
+        "chart_color": "#FFD54F",
+        "title": "Pin Bar Elite",
+        "summary": "Pin bar tại swing — wick dài, thân nhỏ, filter 4H + session London.",
+        "description": """
+**Logic:** Nến pin (wick ≥ 4× body, wick chiếm ≥58% range) tại swing high/low.
+Long: pin bull ở đáy swing | Short: pin bear ở đỉnh swing.
+
+**Entry:** 1H | **Filter:** 4H strict, ADX 1H thấp (sideway), session 9–16h UTC.
+
+**SL:** Dưới/trên đuôi pin + buffer ATR | **TP:** RR 2.0.
+
+**Lưu ý:** Ít lệnh hơn Wyckoff/EMA — ưu tiên chất lượng setup.
+        """,
+        "base_config": "config/pin_bar.yaml",
+        "rolling_params": {
+            "min_htf_adx": {"label": "4H ADX tối thiểu", "type": "float", "min": 20, "max": 28, "step": 1},
+            "max_adx_1h": {"label": "1H ADX tối đa", "type": "float", "min": 22, "max": 35, "step": 1},
+            "min_wick_body_ratio": {"label": "Wick / body tối thiểu", "type": "float", "min": 3.0, "max": 5.0, "step": 0.5},
+            "min_wick_range_ratio": {"label": "Wick / range tối thiểu", "type": "float", "min": 0.50, "max": 0.65, "step": 0.02},
+            "swing_lookback": {"label": "Swing lookback (bar)", "type": "int", "min": 8, "max": 20, "step": 1},
+            "htf_mode": {"label": "Chế độ filter 4H", "type": "select", "options": ["strict", "stack", "soft"]},
+        },
+    },
 }
 
-STRATEGY_ORDER = ["Wyckoff", "RSI Divergence", "EMA 50/200"]
+STRATEGY_ORDER = ["Wyckoff", "RSI Divergence", "EMA 50/200", "Pin Bar Elite"]

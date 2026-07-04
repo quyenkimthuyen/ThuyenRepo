@@ -18,6 +18,7 @@ from systemtrain.orchestrator.rolling_production import (
     build_engines_from_state,
     current_trade_year,
     ensure_active_state,
+    fill_missing_strategies,
     load_active_state,
     optimize_for_trade_year,
     save_active_state,
@@ -36,7 +37,7 @@ def get_rolling_state(trade_year: int | None = None) -> dict[str, Any]:
     trade_year = trade_year or current_trade_year()
     state = load_active_state()
     if state and state.get("trade_year") == trade_year:
-        return state
+        return fill_missing_strategies(state)
     return ensure_active_state(trade_year)
 
 
@@ -80,6 +81,25 @@ def run_all_backtest(state: dict[str, Any], year: int, equity: float = 1000.0) -
     return out
 
 
+def run_all_strategies_backtest(
+    state: dict[str, Any],
+    year: int,
+    equity: float = 1000.0,
+) -> tuple[dict[str, dict[str, Any]], pd.DataFrame]:
+    """Backtest tất cả chiến lược — trả về metrics + trades từng CL."""
+    config = Config.load()
+    df_1h = load_price_data()
+    fake = {**state, "trade_year": year}
+    period_df, ts, te = slice_year(df_1h, year)
+    out: dict[str, dict[str, Any]] = {}
+    for sname, engine in build_engines_from_state(fake, config, equity):
+        result = engine.run(period_df)
+        closed = [t for t in result.trades if t.is_closed and ts <= t.entry_time <= te]
+        metrics = metrics_in_window(result, ts, te, equity)
+        out[sname] = {"metrics": metrics, "trades": closed}
+    return out, period_df
+
+
 def optimize_trade_year(trade_year: int, equity: float = 1000.0) -> dict[str, Any]:
     state = optimize_for_trade_year(trade_year, equity=equity)
     save_active_state(state)
@@ -110,7 +130,8 @@ def load_history_year(year: int) -> dict[str, Any] | None:
     p = Path(f"config/rolling/history/{year}.yaml")
     if not p.exists():
         return None
-    return yaml.safe_load(p.read_text())
+    state = yaml.safe_load(p.read_text())
+    return fill_missing_strategies(state) if state else None
 
 
 def save_params_to_active(state: dict[str, Any]) -> None:

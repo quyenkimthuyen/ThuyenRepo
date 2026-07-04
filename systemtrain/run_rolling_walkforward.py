@@ -14,11 +14,13 @@ from systemtrain.data.timeframes import to_entry_timeframe
 from systemtrain.optimize.rolling_year import (
     ROLLING_FOLDS,
     build_ema_engine,
+    build_pin_engine,
     build_rsi_engine,
     build_wyckoff_engine,
     fixed_params,
     metrics_in_window,
     optimize_ema_year,
+    optimize_pin_year,
     optimize_rsi_year,
     optimize_wyckoff_year,
     slice_year,
@@ -30,6 +32,7 @@ STRATEGIES = [
     ("Wyckoff", optimize_wyckoff_year, build_wyckoff_engine),
     ("RSI Divergence", optimize_rsi_year, build_rsi_engine),
     ("EMA 50/200", optimize_ema_year, build_ema_engine),
+    ("Pin Bar Elite", optimize_pin_year, build_pin_engine),
 ]
 
 
@@ -54,7 +57,7 @@ def main() -> int:
     print("  ROLLING WALK-FORWARD — Tối ưu 1 năm → Trade năm sau")
     print("=" * 82)
     print(f"  Data: {df_1h.index.min().date()} → {df_1h.index.max().date()}")
-    print(f"  Vốn: ${args.equity:,.0f} | SL 2%/lệnh | Chiến lược: Wyckoff + RSI + EMA")
+    print(f"  Vốn: ${args.equity:,.0f} | SL 2%/lệnh | Chiến lược: Wyckoff + RSI + EMA + Pin Bar")
     print(f"  Mode: {'config cố định' if args.fixed else 'grid-search trên năm train'}")
     print("=" * 82)
 
@@ -100,14 +103,14 @@ def main() -> int:
         fold["combined_trade_return"] = fold_ret
         report["folds"].append(fold)
         yearly_trade[trade_y] = {"return": fold_ret, "fold": fold}
-        print(f"    {'Tổng 3 CL':<16} {fold_ret:+6.1%}")
+        print(f"    {'Tổng 4 CL':<16} {fold_ret:+6.1%}")
 
     # Bảng tổng hợp theo năm trade
-    print("\n" + "=" * 82)
+    print("\n" + "=" * 96)
     print("  BÁO CÁO THEO NĂM TRADE (sau rolling optimize)")
-    print("=" * 82)
-    print(f"  {'Năm':<6} {'Wyckoff':>10} {'RSI':>10} {'EMA':>10} {'Tổng':>10} {'Lệnh':>6}")
-    print("  " + "-" * 56)
+    print("=" * 96)
+    print(f"  {'Năm':<6} {'Wyckoff':>10} {'RSI':>10} {'EMA':>10} {'Pin':>10} {'Tổng':>10} {'Lệnh':>6}")
+    print("  " + "-" * 70)
 
     cum_ret = 0.0
     for train_y, trade_y in ROLLING_FOLDS:
@@ -115,15 +118,16 @@ def main() -> int:
         ws = fold["strategies"]["Wyckoff"]["trade"]
         rs = fold["strategies"]["RSI Divergence"]["trade"]
         es = fold["strategies"]["EMA 50/200"]["trade"]
+        ps = fold["strategies"]["Pin Bar Elite"]["trade"]
         total = fold["combined_trade_return"]
         cum_ret += total
-        n = ws.get("trade_count", 0) + rs.get("trade_count", 0) + es.get("trade_count", 0)
+        n = sum(m.get("trade_count", 0) for m in (ws, rs, es, ps))
         print(
             f"  {trade_y:<6} {ws.get('total_return',0):+9.1%} {rs.get('total_return',0):+9.1%} "
-            f"{es.get('total_return',0):+9.1%} {total:+9.1%} {n:6}"
+            f"{es.get('total_return',0):+9.1%} {ps.get('total_return',0):+9.1%} {total:+9.1%} {n:6}"
         )
 
-    print("  " + "-" * 56)
+    print("  " + "-" * 70)
     print(f"  Cộng dồn (độc lập) : {cum_ret:+.1%} → ${args.equity * (1 + cum_ret):.2f}")
     print("=" * 82)
 

@@ -34,7 +34,9 @@ strategies:
     base_config: config/ema_trend.yaml
     rolling_params: [min_htf_adx, max_adx_1h, pullback_atr, max_ema_spread_atr]
 
-inactive:
   - id: pin_bar
     name: Pin Bar Elite
-    reason: "Không robust trên 2021–22"
+    entry_tf: 1h
+    htf_filter: 4h
+    base_config: config/pin_bar.yaml
+    rolling_params: [min_htf_adx, max_adx_1h, min_wick_body_ratio, min_wick_range_ratio, swing_lookback, htf_mode]

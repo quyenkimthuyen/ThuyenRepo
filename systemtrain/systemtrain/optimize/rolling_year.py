@@ -1,4 +1,4 @@
-"""Tối ưu rolling 1 năm → trade năm sau cho Wyckoff / RSI / EMA."""
+"""Tối ưu rolling 1 năm → trade năm sau cho Wyckoff / RSI / EMA / Pin Bar."""
 
 from __future__ import annotations
 
@@ -16,8 +16,14 @@ from systemtrain.backtest.wyckoff_engine import WyckoffEngine
 from systemtrain.config import Config
 from systemtrain.data.prepared import prepare_dataframe
 from systemtrain.strategy.ema_trend import EmaTrendConfig, detect_ema_trend
+from systemtrain.strategy.famous import FamousConfig, detect_pin_bar
 from systemtrain.strategy.rsi_divergence import RsiDivConfig
 from systemtrain.strategy.wyckoff import WyckoffConfig
+
+PIN_ROLLING_KEYS = (
+    "min_htf_adx", "max_adx_1h", "min_wick_body_ratio",
+    "min_wick_range_ratio", "swing_lookback", "htf_mode",
+)
 
 ROLLING_FOLDS = [(2021, 2022), (2022, 2023), (2023, 2024), (2024, 2025), (2025, 2026)]
 YEAR_END = {2026: "2026-07-02"}
@@ -119,6 +125,11 @@ def _base_ema() -> EmaTrendConfig:
     return EmaTrendConfig(**{k: v for k, v in raw.items() if k in EmaTrendConfig.__dataclass_fields__})
 
 
+def _base_pin() -> FamousConfig:
+    raw = _load_yaml("config/pin_bar.yaml", "pin_bar")
+    return FamousConfig(**{k: v for k, v in raw.items() if k in FamousConfig.__dataclass_fields__})
+
+
 def optimize_wyckoff_year(
     train_df: pd.DataFrame, train_s: pd.Timestamp, train_e: pd.Timestamp, config: Config, equity: float,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -190,6 +201,32 @@ def optimize_ema_year(
     return _grid_search("ema", build, grid, train_df, train_s, train_e, equity)
 
 
+def optimize_pin_year(
+    train_df: pd.DataFrame, train_s: pd.Timestamp, train_e: pd.Timestamp, config: Config, equity: float,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    bt = config.backtest
+    pip = config.pip_size
+    base = _base_pin().to_dict()
+
+    def build(params: dict) -> SignalEngine:
+        fields = {**base, **params}
+        pcfg = FamousConfig(**{k: v for k, v in fields.items() if k in FamousConfig.__dataclass_fields__})
+        return SignalEngine(
+            RiskConfig(0.02, pcfg.rr, 0.30, 10), detect_pin_bar, pcfg, equity,
+            bt.get("spread_pips", 0.5), bt.get("slippage_pips", 0.3), pip,
+        )
+
+    grid = {
+        "min_htf_adx": [22.0, 24.0, 26.0],
+        "max_adx_1h": [25.0, 28.0, 30.0],
+        "min_wick_body_ratio": [3.5, 4.0],
+        "min_wick_range_ratio": [0.55, 0.58],
+        "swing_lookback": [10, 12, 14],
+        "htf_mode": ["strict", "stack"],
+    }
+    return _grid_search("pin", build, grid, train_df, train_s, train_e, equity)
+
+
 def build_wyckoff_engine(params: dict, config: Config, equity: float) -> WyckoffEngine:
     bt = config.backtest
     base = _base_wyckoff().to_dict()
@@ -221,6 +258,17 @@ def build_ema_engine(params: dict, config: Config, equity: float) -> SignalEngin
     )
 
 
+def build_pin_engine(params: dict, config: Config, equity: float) -> SignalEngine:
+    bt = config.backtest
+    base = _base_pin().to_dict()
+    fields = {**base, **params}
+    pcfg = FamousConfig(**{k: v for k, v in fields.items() if k in FamousConfig.__dataclass_fields__})
+    return SignalEngine(
+        RiskConfig(0.02, pcfg.rr, 0.30, 10), detect_pin_bar, pcfg, equity,
+        bt.get("spread_pips", 0.5), bt.get("slippage_pips", 0.3), config.pip_size,
+    )
+
+
 def fixed_params() -> dict[str, dict[str, Any]]:
     """Config production cố định (không rolling optimize)."""
     w = _base_wyckoff().to_dict()
@@ -228,4 +276,5 @@ def fixed_params() -> dict[str, dict[str, Any]]:
         "Wyckoff": {k: w[k] for k in ("min_htf_adx", "max_adx", "consolidation_days", "htf_mode") if k in w},
         "RSI Divergence": {k: getattr(_base_rsi(), k) for k in ("max_adx_1h", "min_rsi_diff", "rsi_oversold", "rsi_overbought", "min_swing_gap")},
         "EMA 50/200": {k: getattr(_base_ema(), k) for k in ("min_htf_adx", "max_adx_1h", "pullback_atr", "max_ema_spread_atr")},
+        "Pin Bar Elite": {k: getattr(_base_pin(), k) for k in PIN_ROLLING_KEYS},
     }

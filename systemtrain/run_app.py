@@ -10,7 +10,7 @@ import streamlit as st
 import yaml
 
 from systemtrain.orchestrator.rolling_production import current_trade_year, train_year_for
-from systemtrain.ui.charts import make_strategy_chart, metrics_cards_html
+from systemtrain.ui.charts import make_tradingview_chart, metrics_all_html, metrics_cards_html
 from systemtrain.ui.meta import STRATEGIES, STRATEGY_ORDER
 from systemtrain.ui.services import (
     get_rolling_state,
@@ -21,6 +21,7 @@ from systemtrain.ui.services import (
     merge_params,
     optimize_trade_year,
     run_all_backtest,
+    run_all_strategies_backtest,
     run_strategy_backtest,
     save_params_to_active,
 )
@@ -121,7 +122,7 @@ with tab_overview:
 
     st.info(
         "**Rolling walk-forward:** Đầu mỗi năm optimize trên năm trước → trade năm hiện tại. "
-        "Pin Bar đã loại (không robust 2021–22)."
+        "4 chiến lược: Wyckoff, RSI, EMA, Pin Bar Elite."
     )
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -129,51 +130,108 @@ with tab_overview:
 # ══════════════════════════════════════════════════════════════════════════
 with tab_chart:
     st.subheader("Biểu đồ giá & lệnh")
-    c1, c2, c3 = st.columns(3)
+    chart_options = ["All (tất cả)"] + STRATEGY_ORDER
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
-        chart_strategy = st.selectbox("Chiến lược", STRATEGY_ORDER)
+        chart_strategy = st.selectbox("Chiến lược", chart_options)
     with c2:
         chart_year = st.selectbox("Năm hiển thị", list(range(2021, current_trade_year() + 1)), index=max(0, ty - 2021))
     with c3:
-        show_ema = st.checkbox("EMA 50/200", value=chart_strategy == "EMA 50/200")
+        show_ema = st.checkbox("EMA 50/200", value=True)
+    with c4:
+        show_volume = st.checkbox("Volume", value=True)
 
     hist_state = load_history_year(chart_year)
     if hist_state is None:
         hist_state = get_rolling_state(chart_year if chart_year == ty else ty)
     overrides = st.session_state.param_overrides
     state = merge_params(hist_state, overrides)
+    is_all = chart_strategy.startswith("All")
 
     if st.button("🔄 Chạy backtest & vẽ biểu đồ", type="primary"):
         with st.spinner("Đang backtest..."):
             try:
-                metrics, trades, period_df = run_strategy_backtest(
-                    chart_strategy, state, chart_year, st.session_state.equity,
-                )
-                st.session_state.last_chart = {
-                    "metrics": metrics, "trades": trades, "df": period_df,
-                    "strategy": chart_strategy, "year": chart_year,
-                }
+                if is_all:
+                    results, period_df = run_all_strategies_backtest(
+                        state, chart_year, st.session_state.equity,
+                    )
+                    st.session_state.last_chart = {
+                        "mode": "all",
+                        "results": results,
+                        "df": period_df,
+                        "year": chart_year,
+                        "strategy": "All",
+                    }
+                else:
+                    metrics, trades, period_df = run_strategy_backtest(
+                        chart_strategy, state, chart_year, st.session_state.equity,
+                    )
+                    st.session_state.last_chart = {
+                        "mode": "single",
+                        "metrics": metrics,
+                        "trades": trades,
+                        "df": period_df,
+                        "strategy": chart_strategy,
+                        "year": chart_year,
+                    }
             except Exception as e:
                 st.error(str(e))
 
-    if "last_chart" in st.session_state and st.session_state.last_chart.get("year") == chart_year:
-        lc = st.session_state.last_chart
-        st.markdown(metrics_cards_html(lc["metrics"]))
-        fig = make_strategy_chart(
-            lc["df"], lc["trades"],
-            title=f"{lc['strategy']} — {chart_year}",
-            show_ema=show_ema or lc["strategy"] == "EMA 50/200",
-        )
-        st.plotly_chart(fig, use_container_width=True)
+    lc = st.session_state.get("last_chart")
+    chart_ok = (
+        lc
+        and lc.get("year") == chart_year
+        and (lc.get("mode") == "all") == is_all
+        and (is_all or lc.get("strategy") == chart_strategy)
+    )
 
-        if lc["trades"]:
-            rows = [{
-                "entry": str(t.entry_time)[:16],
-                "exit": str(t.exit_time)[:16] if t.exit_time else "",
-                "dir": "LONG" if t.direction == 1 else "SHORT",
-                "pnl": round(t.pnl, 2),
-                "result": t.result,
-            } for t in lc["trades"]]
+    if chart_ok:
+        if lc["mode"] == "all":
+            st.markdown(metrics_all_html(lc["results"]), unsafe_allow_html=True)
+            strategy_trades = {s: lc["results"][s]["trades"] for s in STRATEGY_ORDER if s in lc["results"]}
+            fig = make_tradingview_chart(
+                lc["df"],
+                strategy_trades=strategy_trades,
+                title=f"Tất cả chiến lược — {chart_year}",
+                show_ema=show_ema,
+                show_volume=show_volume,
+                equity=st.session_state.equity,
+            )
+        else:
+            st.markdown(metrics_cards_html(lc["metrics"]))
+            fig = make_tradingview_chart(
+                lc["df"],
+                strategy_trades={lc["strategy"]: lc["trades"]},
+                title=f"{lc['strategy']} — {chart_year}",
+                show_ema=show_ema,
+                show_volume=show_volume,
+                equity=st.session_state.equity,
+            )
+        st.plotly_chart(fig, use_container_width=True, config={"scrollZoom": True, "displayModeBar": True})
+
+        rows = []
+        if lc["mode"] == "all":
+            for sname in STRATEGY_ORDER:
+                for t in lc["results"].get(sname, {}).get("trades", []):
+                    rows.append({
+                        "Chiến lược": sname,
+                        "entry": str(t.entry_time)[:16],
+                        "exit": str(t.exit_time)[:16] if t.exit_time else "",
+                        "dir": "LONG" if t.direction == 1 else "SHORT",
+                        "pnl": round(t.pnl, 2),
+                        "result": t.result,
+                    })
+        elif lc.get("trades"):
+            for t in lc["trades"]:
+                rows.append({
+                    "Chiến lược": lc["strategy"],
+                    "entry": str(t.entry_time)[:16],
+                    "exit": str(t.exit_time)[:16] if t.exit_time else "",
+                    "dir": "LONG" if t.direction == 1 else "SHORT",
+                    "pnl": round(t.pnl, 2),
+                    "result": t.result,
+                })
+        if rows:
             st.dataframe(rows, use_container_width=True)
     else:
         st.caption("Chọn chiến lược + năm, bấm **Chạy backtest & vẽ biểu đồ**.")

@@ -14,11 +14,13 @@ from systemtrain.config import Config
 from systemtrain.data.timeframes import to_entry_timeframe
 from systemtrain.optimize.rolling_year import (
     build_ema_engine,
+    build_pin_engine,
     build_rsi_engine,
     build_wyckoff_engine,
     fixed_params,
     metrics_in_window,
     optimize_ema_year,
+    optimize_pin_year,
     optimize_rsi_year,
     optimize_wyckoff_year,
     slice_year,
@@ -34,7 +36,18 @@ STRATEGY_OPTIMIZERS = [
     ("Wyckoff", optimize_wyckoff_year, build_wyckoff_engine),
     ("RSI Divergence", optimize_rsi_year, build_rsi_engine),
     ("EMA 50/200", optimize_ema_year, build_ema_engine),
+    ("Pin Bar Elite", optimize_pin_year, build_pin_engine),
 ]
+
+
+def fill_missing_strategies(state: dict[str, Any]) -> dict[str, Any]:
+    """Bổ sung chiến lược mới vào state cũ (vd. Pin Bar thêm sau)."""
+    fp = fixed_params()
+    strategies = state.setdefault("strategies", {})
+    for name, params in fp.items():
+        if name not in strategies:
+            strategies[name] = {"params": params, "train": {}}
+    return state
 
 
 def current_trade_year(as_of: datetime | None = None) -> int:
@@ -50,7 +63,8 @@ def train_year_for(trade_year: int) -> int:
 def load_active_state() -> dict[str, Any] | None:
     if not ACTIVE_PATH.exists():
         return None
-    return yaml.safe_load(ACTIVE_PATH.read_text()) or None
+    state = yaml.safe_load(ACTIVE_PATH.read_text()) or None
+    return fill_missing_strategies(state) if state else None
 
 
 def _native(obj: Any) -> Any:
@@ -124,10 +138,12 @@ def state_from_fixed(trade_year: int, equity: float = 1000.0) -> dict[str, Any]:
 
 
 def build_engines_from_state(state: dict[str, Any], config: Config, equity: float) -> list[tuple[str, Any]]:
+    state = fill_missing_strategies(state)
     builders = {
         "Wyckoff": build_wyckoff_engine,
         "RSI Divergence": build_rsi_engine,
         "EMA 50/200": build_ema_engine,
+        "Pin Bar Elite": build_pin_engine,
     }
     engines = []
     for sname, builder in builders.items():
