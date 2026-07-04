@@ -79,17 +79,50 @@ def _native(obj: Any) -> Any:
 
 
 def save_active_state(state: dict[str, Any]) -> Path:
+    """Lưu active + history theo trade_year trong state."""
+    return save_state_for_year(state, state["trade_year"], set_active=True)
+
+
+def history_path(trade_year: int) -> Path:
+    return HISTORY_DIR / f"{trade_year}.yaml"
+
+
+def load_state_for_year(trade_year: int) -> dict[str, Any] | None:
+    """Đọc config đã lưu cho năm trade (history trước, rồi active)."""
+    hist = history_path(trade_year)
+    if hist.exists():
+        raw = yaml.safe_load(hist.read_text())
+        return fill_missing_strategies(raw) if raw else None
+    active = load_active_state()
+    if active and active.get("trade_year") == trade_year:
+        return active
+    return None
+
+
+def save_state_for_year(
+    state: dict[str, Any],
+    trade_year: int,
+    *,
+    set_active: bool = False,
+) -> Path:
+    """Lưu config rolling cho năm trade — history/{year}.yaml (+ active nếu chọn)."""
     ROLLING_DIR.mkdir(parents=True, exist_ok=True)
     HISTORY_DIR.mkdir(parents=True, exist_ok=True)
-    clean = _native(state)
-    trade_year = clean["trade_year"]
-    ACTIVE_PATH.write_text(yaml.dump(clean, default_flow_style=False, allow_unicode=True, sort_keys=False))
-    hist = HISTORY_DIR / f"{trade_year}.yaml"
+    clean = _native({
+        **state,
+        "trade_year": trade_year,
+        "train_year": train_year_for(trade_year),
+    })
+    hist = history_path(trade_year)
     hist.write_text(yaml.dump(clean, default_flow_style=False, allow_unicode=True, sort_keys=False))
-    json_path = Path("output/rolling_active.json")
-    json_path.parent.mkdir(exist_ok=True)
-    json_path.write_text(json.dumps(clean, indent=2, default=str))
-    return ACTIVE_PATH
+
+    if set_active:
+        ACTIVE_PATH.write_text(yaml.dump(clean, default_flow_style=False, allow_unicode=True, sort_keys=False))
+        json_path = Path("output/rolling_active.json")
+        json_path.parent.mkdir(exist_ok=True)
+        json_path.write_text(json.dumps(clean, indent=2, default=str))
+        return ACTIVE_PATH
+    return hist
 
 
 def optimize_for_trade_year(

@@ -9,10 +9,19 @@ from pathlib import Path
 import streamlit as st
 import yaml
 
-from systemtrain.orchestrator.rolling_production import current_trade_year, train_year_for
-from systemtrain.ui.charts import make_tradingview_chart, metrics_all_html, metrics_cards_html, strategy_legend_html
+from systemtrain.orchestrator.rolling_production import current_trade_year, history_path, train_year_for
+from systemtrain.ui.charts import (
+    make_strategy_detail_chart,
+    metrics_all_html,
+    metrics_cards_html,
+    render_resizable_plotly,
+    strategy_color,
+    strategy_legend_html,
+)
 from systemtrain.ui.meta import STRATEGIES, STRATEGY_ORDER
 from systemtrain.ui.services import (
+    config_year_saved,
+    get_config_state,
     get_rolling_state,
     load_base_yaml,
     load_history_year,
@@ -23,6 +32,7 @@ from systemtrain.ui.services import (
     run_all_backtest,
     run_all_strategies_backtest,
     run_strategy_backtest,
+    save_params_for_year,
     save_params_to_active,
 )
 
@@ -131,7 +141,7 @@ with tab_overview:
 with tab_chart:
     st.subheader("Biểu đồ giá & lệnh")
     chart_options = ["All (tất cả)"] + STRATEGY_ORDER
-    c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1.5])
+    c1, c2, c3, c4, c5 = st.columns([2, 1, 1, 1, 1])
     with c1:
         chart_strategy = st.selectbox("Chiến lược", chart_options)
     with c2:
@@ -139,9 +149,9 @@ with tab_chart:
     with c3:
         show_ema = st.checkbox("EMA", value=True)
     with c4:
-        show_volume = st.checkbox("Volume", value=True)
+        show_volume = st.checkbox("Volume", value=False)
     with c5:
-        chart_height = st.slider("Chiều cao (px)", min_value=400, max_value=1100, value=650, step=50)
+        focus_trades = st.checkbox("Focus lệnh", value=True, help="Zoom vùng quanh các lệnh")
 
     hist_state = load_history_year(chart_year)
     if hist_state is None:
@@ -188,47 +198,48 @@ with tab_chart:
     )
 
     if chart_ok:
-        legend_names = STRATEGY_ORDER if lc["mode"] == "all" else [lc["strategy"]]
-        st.markdown(strategy_legend_html(legend_names), unsafe_allow_html=True)
+
+        def _render_strategy_chart(sname: str, trades: list, metrics: dict | None = None) -> None:
+            info = STRATEGIES[sname]
+            hint = info.get("chart_hint", "")
+            if metrics:
+                st.markdown(
+                    f"<span style='color:{strategy_color(sname)};font-size:16px'>●</span> "
+                    f"**{info['icon']} {sname}** — {metrics_cards_html(metrics)}",
+                    unsafe_allow_html=True,
+                )
+            if hint:
+                st.caption(hint)
+            ema_override = show_ema if sname != "EMA 50/200" else True
+            fig = make_strategy_detail_chart(
+                lc["df"],
+                sname,
+                trades,
+                show_ema=ema_override,
+                show_volume=show_volume,
+                equity=st.session_state.equity,
+                focus_trades=focus_trades,
+            )
+            render_resizable_plotly(
+                fig,
+                chart_id=f"{sname}-{chart_year}-{lc['mode']}",
+            )
 
         if lc["mode"] == "all":
             st.markdown(metrics_all_html(lc["results"]), unsafe_allow_html=True)
-            strategy_trades = {s: lc["results"][s]["trades"] for s in STRATEGY_ORDER if s in lc["results"]}
-            fig = make_tradingview_chart(
-                lc["df"],
-                strategy_trades=strategy_trades,
-                title=f"Tất cả chiến lược — {chart_year}",
-                show_ema=show_ema,
-                show_volume=show_volume,
-                equity=st.session_state.equity,
-                height=chart_height,
-            )
+            st.markdown(strategy_legend_html(), unsafe_allow_html=True)
+            st.caption("Mỗi chiến lược có biểu đồ riêng — overlay SL/TP, RSI hoặc EMA theo logic từng CL.")
+            tabs = st.tabs([f"{STRATEGIES[s]['icon']} {s}" for s in STRATEGY_ORDER])
+            for tab, sname in zip(tabs, STRATEGY_ORDER):
+                with tab:
+                    res = lc["results"].get(sname, {})
+                    _render_strategy_chart(sname, res.get("trades", []), res.get("metrics"))
         else:
-            st.markdown(metrics_cards_html(lc["metrics"]))
-            fig = make_tradingview_chart(
-                lc["df"],
-                strategy_trades={lc["strategy"]: lc["trades"]},
-                title=f"{lc['strategy']} — {chart_year}",
-                show_ema=show_ema,
-                show_volume=show_volume,
-                equity=st.session_state.equity,
-                height=chart_height,
-            )
-        st.plotly_chart(
-            fig,
-            use_container_width=True,
-            config={
-                "scrollZoom": True,
-                "displayModeBar": True,
-                "responsive": True,
-                "modeBarButtonsToRemove": ["lasso2d", "select2d"],
-            },
-        )
+            _render_strategy_chart(lc["strategy"], lc.get("trades", []), lc.get("metrics"))
+
         st.caption(
-            "Chiều cao: slider **Chiều cao (px)** · "
-            "Zoom dọc: kéo khung chọn vùng trên chart · "
-            "Zoom ngang: slider dưới cùng · "
-            "Reset: double-click chart"
+            "Kéo **góc phải-dưới** chart để đổi cao/rộng (TradingView) · "
+            "Đỏ đứt = SL · Xanh chấm = TP · Zoom: kéo khung · Reset: double-click"
         )
 
         rows = []
@@ -262,11 +273,32 @@ with tab_chart:
 # TAB 3 — Cấu hình
 # ══════════════════════════════════════════════════════════════════════════
 with tab_config:
-    st.subheader("Cấu hình rolling")
-    state = get_rolling_state(ty)
+    st.subheader("Cấu hình rolling theo năm trade")
 
-    st.markdown(f"**Active:** `config/rolling/active.yaml` · Trade year **{state.get('trade_year')}**")
-    st.caption(f"Optimized: {str(state.get('optimized_at', ''))[:19]}")
+    saved_years = load_history_years()
+    year_options = sorted(set(saved_years + list(range(2022, current_trade_year() + 1))))
+
+    c_y1, c_y2, c_y3 = st.columns([1, 1, 2])
+    with c_y1:
+        default_idx = year_options.index(ty) if ty in year_options else len(year_options) - 1
+        config_year = st.selectbox(
+            "Năm trade (lưu config)",
+            year_options,
+            index=default_idx,
+            help="Train trên năm trước → trade năm này. Mỗi năm một file history.",
+        )
+    with c_y2:
+        st.metric("Năm train", train_year_for(config_year))
+    with c_y3:
+        hp = history_path(config_year)
+        if config_year_saved(config_year):
+            st.success(f"Đã có config: `{hp}`")
+        else:
+            st.warning(f"Chưa lưu — sẽ dùng base/fixed. File: `{hp}`")
+
+    state = get_config_state(config_year, st.session_state.equity)
+    if state.get("optimized_at"):
+        st.caption(f"Cập nhật: {str(state['optimized_at'])[:19]} · Vốn ref: ${state.get('equity', 1000):,.0f}")
 
     edited: dict[str, dict] = {}
     for sname in STRATEGY_ORDER:
@@ -274,21 +306,51 @@ with tab_config:
         current = state["strategies"][sname]["params"]
         edited[sname] = _render_param_editor(sname, current)
 
-    c1, c2 = st.columns(2)
+    set_active = config_year == current_trade_year()
+    c1, c2, c3 = st.columns(3)
     with c1:
-        if st.button("💾 Lưu làm config active", type="primary"):
-            new_state = merge_params(state, edited)
-            save_params_to_active(new_state)
-            st.session_state.param_overrides = edited
-            st.success("Đã lưu config/rolling/active.yaml")
+        also_active = st.checkbox(
+            "Đặt làm active (production)",
+            value=set_active,
+            help="Cập nhật config/rolling/active.yaml — dùng khi trade năm này",
+        )
     with c2:
+        if st.button(f"💾 Lưu cho năm {config_year}", type="primary"):
+            new_state = merge_params(state, edited)
+            new_state["equity"] = st.session_state.equity
+            path = save_params_for_year(new_state, config_year, set_active=also_active)
+            if config_year == ty:
+                st.session_state.param_overrides = edited
+            st.success(f"Đã lưu `{path}`")
+            if also_active:
+                st.info("Đã cập nhật active.yaml cho production")
+            st.rerun()
+    with c3:
         if st.button("🧪 Thử nhanh (không lưu)"):
             st.session_state.param_overrides = edited
-            res = run_all_backtest(merge_params(state, edited), ty, st.session_state.equity)
+            res = run_all_backtest(merge_params(state, edited), config_year, st.session_state.equity)
             st.json(res)
 
-    with st.expander("Raw active.yaml"):
-        st.code(Path("config/rolling/active.yaml").read_text() if Path("config/rolling/active.yaml").exists() else "", language="yaml")
+    with st.expander("Các năm đã lưu"):
+        rows = []
+        for y in year_options:
+            hs = load_history_year(y)
+            rows.append({
+                "Năm trade": y,
+                "Train": train_year_for(y),
+                "Đã lưu": "✓" if config_year_saved(y) else "—",
+                "Optimized": str((hs or {}).get("optimized_at", ""))[:19] if hs else "",
+            })
+        st.dataframe(rows, use_container_width=True, hide_index=True)
+
+    with st.expander(f"Raw — {history_path(config_year).name}"):
+        p = history_path(config_year)
+        if p.exists():
+            st.code(p.read_text(), language="yaml")
+        elif Path("config/rolling/active.yaml").exists() and config_year == ty:
+            st.code(Path("config/rolling/active.yaml").read_text(), language="yaml")
+        else:
+            st.caption("Chưa có file — lưu hoặc chạy Tối ưu tab ⚡")
 
 # ══════════════════════════════════════════════════════════════════════════
 # TAB 4 — Tối ưu

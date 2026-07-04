@@ -20,6 +20,8 @@ nến đóng lại trong range → tín hiệu đảo chiều.
 **SL:** Dưới/trên sweep wick + buffer | **TP:** RR 2.0 mặc định.
         """,
         "base_config": "config/wyckoff.yaml",
+        "chart_hint": "Vùng SL/TP · sweep qua high/low range · failed break",
+        "chart": {"show_sl_tp": True, "show_ema": False, "show_rsi": False, "highlight_entry_bar": True},
         "rolling_params": {
             "min_htf_adx": {"label": "4H ADX tối thiểu", "type": "float", "min": 20, "max": 32, "step": 1},
             "max_adx": {"label": "1H ADX tối đa", "type": "float", "min": 30, "max": 50, "step": 1},
@@ -42,6 +44,8 @@ Vào lệnh khi phá neckline của cấu trúc phân kỳ.
 **Lọc:** ADX 1H thấp (sideway) thường hiệu quả hơn trend mạnh.
         """,
         "base_config": "config/rsi_divergence.yaml",
+        "chart_hint": "Panel RSI(14) · entry khi phá neckline · SL/TP theo lệnh",
+        "chart": {"show_sl_tp": True, "show_ema": False, "show_rsi": True, "highlight_entry_bar": False},
         "rolling_params": {
             "max_adx_1h": {"label": "1H ADX tối đa", "type": "float", "min": 25, "max": 40, "step": 1},
             "min_rsi_diff": {"label": "Δ RSI tối thiểu", "type": "float", "min": 2.0, "max": 6.0, "step": 0.5},
@@ -65,6 +69,8 @@ nến bounce → vào theo trend.
 **SL:** Dưới EMA200 / swing low | **TP:** RR 2.0.
         """,
         "base_config": "config/ema_trend.yaml",
+        "chart_hint": "EMA 50/200 + vùng trend · pullback về EMA50 · SL/TP",
+        "chart": {"show_sl_tp": True, "show_ema": True, "show_rsi": False, "highlight_entry_bar": True},
         "rolling_params": {
             "min_htf_adx": {"label": "4H ADX tối thiểu", "type": "float", "min": 24, "max": 36, "step": 1},
             "max_adx_1h": {"label": "1H ADX tối đa", "type": "float", "min": 22, "max": 32, "step": 1},
@@ -89,6 +95,8 @@ Long: pin bull ở đáy swing | Short: pin bear ở đỉnh swing.
 **Lưu ý:** Ít lệnh hơn Wyckoff/EMA — ưu tiên chất lượng setup.
         """,
         "base_config": "config/pin_bar.yaml",
+        "chart_hint": "Highlight nến pin · SL dưới/trên đuôi wick · TP theo RR",
+        "chart": {"show_sl_tp": True, "show_ema": False, "show_rsi": False, "highlight_entry_bar": True},
         "rolling_params": {
             "min_htf_adx": {"label": "4H ADX tối thiểu", "type": "float", "min": 20, "max": 28, "step": 1},
             "max_adx_1h": {"label": "1H ADX tối đa", "type": "float", "min": 22, "max": 35, "step": 1},
