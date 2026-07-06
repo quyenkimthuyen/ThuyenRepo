@@ -9,6 +9,11 @@ import pandas as pd
 import yaml
 
 from systemtrain.config import Config
+from systemtrain.backtest.engine import Trade
+from systemtrain.live.data_feed import load_live_buffer
+from systemtrain.live.paper_account import PaperTrade
+from systemtrain.live.signal_runner import run_paper_once
+from systemtrain.live.store import load_journal, load_session, reset_session
 from systemtrain.data.timeframes import to_entry_timeframe
 from systemtrain.optimize.rolling_year import metrics_in_window, slice_year
 from systemtrain.orchestrator.pipeline import TrainingPipeline
@@ -176,3 +181,51 @@ def save_params_for_year(
         out["optimized_at"] = datetime.now(timezone.utc).isoformat()
     out["saved_manually"] = True
     return save_state_for_year(out, trade_year, set_active=set_active)
+
+
+def load_live_paper_state(limit: int = 200) -> dict[str, Any]:
+    return {
+        "session": load_session().to_dict(),
+        "journal": load_journal(limit=limit),
+    }
+
+
+def refresh_live_paper(
+    trade_year: int,
+    strategies: list[str],
+    equity: float = 1000.0,
+    *,
+    refresh_data: bool = False,
+    warmup_days: int = 90,
+) -> dict[str, Any]:
+    return run_paper_once(
+        trade_year=trade_year,
+        strategies=strategies,
+        equity=equity,
+        refresh_data=refresh_data,
+        warmup_days=warmup_days,
+    )
+
+
+def reset_live_paper(strategy: str | None = None) -> dict[str, Any]:
+    return reset_session(strategy=strategy).to_dict()
+
+
+def load_live_chart_data(warmup_days: int = 30, max_bars: int = 1000) -> pd.DataFrame:
+    return load_live_buffer(refresh=False, warmup_days=warmup_days, max_bars=max_bars)
+
+
+def paper_trade_to_chart_trade(trade: dict[str, Any] | PaperTrade) -> Trade:
+    data = trade.to_dict() if isinstance(trade, PaperTrade) else trade
+    return Trade(
+        direction=int(data["direction"]),
+        entry_time=pd.Timestamp(data["entry_time"]),
+        entry_price=float(data["entry_price"]),
+        sl_price=float(data["sl_price"]),
+        tp_price=float(data["tp_price"]),
+        size=float(data["size"]),
+        exit_time=pd.Timestamp(data["exit_time"]) if data.get("exit_time") else None,
+        exit_price=float(data["exit_price"]) if data.get("exit_price") is not None else None,
+        pnl=float(data.get("pnl", 0.0)),
+        result=data.get("result", ""),
+    )

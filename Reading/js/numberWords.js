@@ -31,19 +31,37 @@ const WORD_TO_NUM = {
 };
 
 /**
+ * Normalize US vs UK spelling differences to a single canonical spelling.
+ * @param {string} word
+ * @returns {string}
+ */
+export function canonicalizeSpelling(word) {
+  return word
+    .toLowerCase()
+    .replace(/([a-z]{2,})our/g, (m, p1) => p1 + 'or')
+    .replace(/ll/g, 'l')
+    .replace(/([ctfmg])re$/g, (m, p1) => p1 + 'er')
+    .replace(/is(e|ing|ed|a|o)/g, (m, p1) => 'iz' + p1)
+    .replace(/ys(e|ing|ed)/g, (m, p1) => 'yz' + p1)
+    .replace(/ogue$/g, 'og')
+    .replace(/ence$/g, 'ense');
+}
+
+/**
  * Canonical key for matching: "twenty" and "20" both become "n:20".
  * @param {string} word - normalized word
  * @returns {string}
  */
 export function matchKey(word) {
-  if (/^\d+$/.test(word)) {
-    return `n:${parseInt(word, 10)}`;
+  const canonical = canonicalizeSpelling(word);
+  if (/^\d+$/.test(canonical)) {
+    return `n:${parseInt(canonical, 10)}`;
   }
-  const n = WORD_TO_NUM[word];
+  const n = WORD_TO_NUM[canonical];
   if (n !== undefined) {
     return `n:${n}`;
   }
-  return word;
+  return canonical;
 }
 
 /**

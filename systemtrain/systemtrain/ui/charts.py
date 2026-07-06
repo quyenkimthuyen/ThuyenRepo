@@ -11,6 +11,7 @@ import streamlit as st
 from plotly.subplots import make_subplots
 
 from systemtrain.indicators.library import ema, rsi
+from systemtrain.ui.chart_component import render_lightweight_chart
 from systemtrain.ui.meta import STRATEGIES, STRATEGY_ORDER
 
 # TradingView dark theme palette
@@ -68,6 +69,211 @@ def _slice_df(df: pd.DataFrame, max_bars: int) -> pd.DataFrame:
 
 def _has_volume(df: pd.DataFrame) -> bool:
     return "volume" in df.columns and df["volume"].sum() > 0
+
+
+def _chart_time(value: Any) -> int:
+    ts = pd.Timestamp(value)
+    if ts.tzinfo is None:
+        ts = ts.tz_localize("UTC")
+    else:
+        ts = ts.tz_convert("UTC")
+    return int(ts.timestamp())
+
+
+def _line_points(start: Any, end: Any, value: float) -> list[dict[str, float | int]]:
+    return [
+        {"time": _chart_time(start), "value": float(value)},
+        {"time": _chart_time(end), "value": float(value)},
+    ]
+
+
+def _series_points(series: pd.Series) -> list[dict[str, float | int]]:
+    clean = series.dropna()
+    return [
+        {"time": _chart_time(idx), "value": float(value)}
+        for idx, value in clean.items()
+    ]
+
+
+def _equity_points(trades: list, equity: float) -> list[dict[str, float | int]]:
+    closed = [t for t in trades if t.is_closed]
+    if not closed:
+        return []
+    balance = float(equity)
+    points = [{"time": _chart_time(closed[0].entry_time), "value": balance}]
+    for trade in sorted(closed, key=lambda x: x.exit_time or x.entry_time):
+        balance += float(trade.pnl)
+        points.append({"time": _chart_time(trade.exit_time), "value": balance})
+    return points
+
+
+def build_chart_payload(
+    df: pd.DataFrame,
+    strategy: str,
+    trades: list,
+    *,
+    show_ema: bool | None = None,
+    show_volume: bool = False,
+    equity: float = 1000.0,
+    max_bars: int = 2000,
+    focus_trades: bool = False,
+) -> dict[str, Any]:
+    """Serialize OHLCV and trade overlays for the Lightweight Charts renderer."""
+    profile = _chart_profile(strategy)
+    work = _slice_df(df, max_bars)
+    if focus_trades and trades:
+        work = _focus_df_around_trades(work, trades)
+
+    df_index = set(work.index)
+    color = strategy_color(strategy)
+    candles = [
+        {
+            "time": _chart_time(idx),
+            "open": float(row["open"]),
+            "high": float(row["high"]),
+            "low": float(row["low"]),
+            "close": float(row["close"]),
+        }
+        for idx, row in work[["open", "high", "low", "close"]].iterrows()
+    ]
+
+    volume: list[dict[str, float | int | str]] = []
+    if show_volume and _has_volume(work):
+        volume = [
+            {
+                "time": _chart_time(idx),
+                "value": float(row["volume"]),
+                "color": TV["volume_up"] if row["close"] >= row["open"] else TV["volume_down"],
+            }
+            for idx, row in work[["open", "close", "volume"]].iterrows()
+        ]
+
+    overlays: list[dict[str, Any]] = []
+    use_ema = profile.get("show_ema", False) if show_ema is None else show_ema
+    if use_ema and len(work) > 200:
+        overlays.extend(
+            [
+                {"name": "EMA 50", "color": TV["ema50"], "width": 1, "data": _series_points(ema(work["close"], 50))},
+                {"name": "EMA 200", "color": TV["ema200"], "width": 1, "data": _series_points(ema(work["close"], 200))},
+            ]
+        )
+
+    indicator: dict[str, Any] | None = None
+    if profile.get("show_rsi", False):
+        indicator = {
+            "name": "RSI 14",
+            "color": TV["ema50"],
+            "data": _series_points(rsi(work["close"], 14)),
+        }
+
+    markers: list[dict[str, Any]] = []
+    trade_lines: list[dict[str, Any]] = []
+    last_x = work.index[-1] if len(work) else None
+    for trade in trades:
+        if trade.entry_time not in df_index:
+            continue
+
+        is_long = trade.direction == 1
+        markers.append(
+            {
+                "time": _chart_time(trade.entry_time),
+                "position": "belowBar" if is_long else "aboveBar",
+                "color": color,
+                "shape": "arrowUp" if is_long else "arrowDown",
+                "text": "LONG" if is_long else "SHORT",
+            }
+        )
+
+        if trade.is_closed and trade.exit_time is not None:
+            win = trade.pnl > 0
+            markers.append(
+                {
+                    "time": _chart_time(trade.exit_time),
+                    "position": "aboveBar" if is_long else "belowBar",
+                    "color": TV["bull"] if win else TV["bear"],
+                    "shape": "circle",
+                    "text": f"{trade.pnl:+.0f}$",
+                }
+            )
+            trade_lines.append(
+                {
+                    "name": "Trade path",
+                    "color": "rgba(8,153,129,0.65)" if win else "rgba(242,54,69,0.65)",
+                    "style": "dashed",
+                    "width": 1,
+                    "data": [
+                        {"time": _chart_time(trade.entry_time), "value": float(trade.entry_price)},
+                        {"time": _chart_time(trade.exit_time), "value": float(trade.exit_price)},
+                    ],
+                }
+            )
+
+        if profile.get("show_sl_tp", True) and last_x is not None:
+            end_x = trade.exit_time if trade.exit_time is not None else last_x
+            trade_lines.extend(
+                [
+                    {
+                        "name": "SL",
+                        "color": "rgba(242,54,69,0.85)",
+                        "style": "dashed",
+                        "width": 1,
+                        "data": _line_points(trade.entry_time, end_x, trade.sl_price),
+                    },
+                    {
+                        "name": "TP",
+                        "color": "rgba(8,153,129,0.85)",
+                        "style": "dotted",
+                        "width": 1,
+                        "data": _line_points(trade.entry_time, end_x, trade.tp_price),
+                    },
+                ]
+            )
+
+    closed = [t for t in trades if t.is_closed]
+    pnl = sum(float(t.pnl) for t in closed)
+    return {
+        "symbol": "EURUSD",
+        "strategy": strategy,
+        "title": STRATEGIES.get(strategy, {}).get("title", strategy),
+        "candles": candles,
+        "volume": volume,
+        "overlays": overlays,
+        "indicator": indicator,
+        "equity": _equity_points(closed, equity),
+        "markers": markers,
+        "trade_lines": trade_lines,
+        "summary": {
+            "bars": len(candles),
+            "trades": len(closed),
+            "pnl": pnl,
+        },
+    }
+
+
+def render_professional_chart(
+    df: pd.DataFrame,
+    strategy: str,
+    trades: list,
+    *,
+    chart_id: str,
+    show_ema: bool | None = None,
+    show_volume: bool = False,
+    equity: float = 1000.0,
+    max_bars: int = 2000,
+    height: int = 640,
+    focus_trades: bool = False,
+) -> None:
+    payload = build_chart_payload(
+        df,
+        strategy,
+        trades,
+        show_ema=show_ema,
+        show_volume=show_volume,
+        equity=equity,
+        max_bars=max_bars,
+        focus_trades=focus_trades,
+    )
+    render_lightweight_chart(payload, height=height, key=f"lw-{chart_id}")
 
 
 def _add_candles(fig: go.Figure, df: pd.DataFrame, row: int = 1) -> None:
@@ -335,6 +541,7 @@ def _apply_tv_layout(
     rows: int,
     equity_row: int,
     height: int | None = None,
+    dragmode: str = "pan",
 ) -> None:
     layout_kw: dict[str, Any] = dict(
         title=None,
@@ -346,8 +553,9 @@ def _apply_tv_layout(
         font=dict(family="Trebuchet MS, Roboto, sans-serif", color=TV["text"], size=11),
         margin=dict(l=4, r=52, t=12, b=4),
         hovermode="x unified",
-        dragmode="zoom",
+        dragmode=dragmode,
         uirevision="tv-chart",
+        hoverlabel=dict(bgcolor=TV["panel"], bordercolor=TV["border"], font_size=11),
     )
     if height is not None:
         layout_kw["height"] = height
@@ -357,7 +565,20 @@ def _apply_tv_layout(
         showline=True, linewidth=1, linecolor=TV["border"],
         tickfont=dict(color=TV["text_muted"], size=10),
         spikemode="across", spikesnap="cursor", spikethickness=1, spikecolor=TV["text_muted"],
-        rangeslider=dict(visible=True, bgcolor=TV["panel"], thickness=0.035),
+        rangeselector=dict(
+            bgcolor=TV["panel"],
+            activecolor=TV["border"],
+            bordercolor=TV["border"],
+            font=dict(color=TV["text"], size=10),
+            buttons=[
+                dict(count=1, label="1D", step="day", stepmode="backward"),
+                dict(count=5, label="5D", step="day", stepmode="backward"),
+                dict(count=1, label="1M", step="month", stepmode="backward"),
+                dict(count=3, label="3M", step="month", stepmode="backward"),
+                dict(step="all", label="All"),
+            ],
+        ),
+        rangeslider=dict(visible=True, bgcolor=TV["panel"], thickness=0.055),
         fixedrange=False,
         row=1, col=1,
     )
@@ -386,7 +607,17 @@ def _apply_tv_layout(
 PLOTLY_CHART_CONFIG = {
     "scrollZoom": True,
     "displayModeBar": True,
+    "displaylogo": False,
     "responsive": True,
+    "doubleClick": "reset+autosize",
+    "modeBarButtonsToAdd": [
+        "pan2d",
+        "zoom2d",
+        "zoomIn2d",
+        "zoomOut2d",
+        "autoScale2d",
+        "resetScale2d",
+    ],
     "modeBarButtonsToRemove": ["lasso2d", "select2d"],
 }
 
@@ -405,6 +636,141 @@ def render_resizable_plotly(
         config=PLOTLY_CHART_CONFIG,
         key=f"plotly-{chart_id}",
     )
+
+
+def make_strategy_illustration_chart(strategy: str) -> go.Figure:
+    """Small overview chart that explains each strategy visually."""
+    color = strategy_color(strategy)
+    idx = pd.date_range("2024-01-01", periods=18, freq="h")
+
+    if strategy == "Wyckoff":
+        close = [1.1000, 1.1010, 1.1004, 1.1012, 1.1006, 1.1014, 1.1008, 1.1011, 1.1002, 1.0984, 1.1007, 1.1018, 1.1028, 1.1035, 1.1042, 1.1048, 1.1054, 1.1060]
+        note = "Sweep liquidity -> reclaim range"
+        marker_i = 10
+    elif strategy == "RSI Divergence":
+        close = [1.1060, 1.1048, 1.1036, 1.1022, 1.1015, 1.1026, 1.1010, 1.0998, 1.1009, 1.1020, 1.1032, 1.1044, 1.1050, 1.1058, 1.1064, 1.1070, 1.1075, 1.1080]
+        note = "Price lower low, RSI higher low"
+        marker_i = 8
+    elif strategy == "EMA 50/200":
+        close = [1.1000, 1.1010, 1.1022, 1.1030, 1.1042, 1.1055, 1.1066, 1.1059, 1.1052, 1.1048, 1.1058, 1.1070, 1.1082, 1.1090, 1.1100, 1.1110, 1.1118, 1.1124]
+        note = "Pullback to EMA50 inside trend"
+        marker_i = 10
+    else:
+        close = [1.1030, 1.1026, 1.1020, 1.1012, 1.1008, 1.1002, 1.0994, 1.0988, 1.1004, 1.1014, 1.1022, 1.1032, 1.1040, 1.1048, 1.1054, 1.1060, 1.1064, 1.1068]
+        note = "Long wick rejection at swing"
+        marker_i = 8
+
+    opens = [close[0]] + close[:-1]
+    highs = [max(o, c) + 0.00045 for o, c in zip(opens, close)]
+    lows = [min(o, c) - 0.00045 for o, c in zip(opens, close)]
+    if strategy == "Pin Bar Elite":
+        lows[marker_i] = min(lows[marker_i], close[marker_i] - 0.0026)
+    if strategy == "Wyckoff":
+        lows[marker_i - 1] = min(lows[marker_i - 1], close[marker_i - 1] - 0.0016)
+
+    df = pd.DataFrame({"open": opens, "high": highs, "low": lows, "close": close}, index=idx)
+    is_rsi_divergence = strategy == "RSI Divergence"
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.04,
+        row_heights=[0.68, 0.32],
+    ) if is_rsi_divergence else go.Figure()
+    fig.add_trace(
+        go.Candlestick(
+            x=df.index,
+            open=df["open"],
+            high=df["high"],
+            low=df["low"],
+            close=df["close"],
+            name="Setup",
+            increasing_line_color=TV["bull"],
+            increasing_fillcolor=TV["bull"],
+            decreasing_line_color=TV["bear"],
+            decreasing_fillcolor=TV["bear"],
+            whiskerwidth=0.5,
+            showlegend=False,
+        ),
+        row=1 if is_rsi_divergence else None,
+        col=1 if is_rsi_divergence else None,
+    )
+
+    if strategy == "EMA 50/200":
+        fast = pd.Series(close, index=idx).rolling(4, min_periods=1).mean()
+        slow = pd.Series(close, index=idx).rolling(9, min_periods=1).mean() - 0.0009
+        fig.add_trace(go.Scatter(x=idx, y=fast, mode="lines", line=dict(color=TV["ema50"], width=1.5), hoverinfo="skip", showlegend=False))
+        fig.add_trace(go.Scatter(x=idx, y=slow, mode="lines", line=dict(color=TV["ema200"], width=1.5), hoverinfo="skip", showlegend=False))
+    elif strategy == "RSI Divergence":
+        rsi_demo = [42, 36, 30, 25, 22, 33, 29, 34, 41, 48, 54, 58, 61, 64, 66, 67, 68, 69]
+        fig.add_trace(
+            go.Scatter(x=[idx[4], idx[7]], y=[lows[4], lows[7]], mode="lines+markers", line=dict(color=TV["bear"], width=1.8, dash="dot"), marker=dict(size=6), hoverinfo="skip", showlegend=False),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(x=idx, y=rsi_demo, mode="lines", line=dict(color=TV["ema50"], width=1.5), hovertemplate="RSI: %{y:.0f}<extra></extra>", showlegend=False),
+            row=2,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(x=[idx[4], idx[7]], y=[rsi_demo[4], rsi_demo[7]], mode="lines+markers", line=dict(color=TV["bull"], width=1.8, dash="dot"), marker=dict(size=6), hoverinfo="skip", showlegend=False),
+            row=2,
+            col=1,
+        )
+        for level in (30, 50, 70):
+            fig.add_hline(y=level, line=dict(color=TV["grid"], width=0.8, dash="dot"), row=2, col=1)
+    else:
+        fig.add_hrect(
+            y0=min(close[2:8]) - 0.0002,
+            y1=max(close[2:8]) + 0.0002,
+            fillcolor=color,
+            opacity=0.08,
+            line_width=0,
+        )
+
+    fig.add_trace(
+        go.Scatter(
+            x=[idx[marker_i]],
+            y=[close[marker_i]],
+            mode="markers+text",
+            marker=dict(symbol="triangle-up", color=color, size=12, line=dict(color=TV["bg"], width=1)),
+            text=["Entry"],
+            textposition="top center",
+            textfont=dict(color=TV["text"], size=10),
+            hovertemplate=f"{strategy}<br>{note}<extra></extra>",
+            showlegend=False,
+        ),
+        row=1 if is_rsi_divergence else None,
+        col=1 if is_rsi_divergence else None,
+    )
+    fig.add_annotation(
+        x=idx[1],
+        y=max(highs),
+        xanchor="left",
+        yanchor="top",
+        text=note,
+        showarrow=False,
+        font=dict(color=TV["text_muted"], size=10),
+        bgcolor="rgba(19,23,34,0.75)",
+        bordercolor=TV["border"],
+        borderwidth=1,
+    )
+    fig.update_layout(
+        height=210,
+        margin=dict(l=4, r=20, t=8, b=4),
+        paper_bgcolor=TV["bg"],
+        plot_bgcolor=TV["panel"],
+        font=dict(color=TV["text"], size=10),
+        showlegend=False,
+        hovermode="x",
+        xaxis_rangeslider_visible=False,
+    )
+    fig.update_xaxes(showgrid=True, gridcolor=TV["grid"], showticklabels=False, fixedrange=True)
+    fig.update_yaxes(showgrid=True, gridcolor=TV["grid"], side="right", fixedrange=True, tickfont=dict(color=TV["text_muted"], size=9))
+    if is_rsi_divergence:
+        fig.update_yaxes(range=[15, 75], row=2, col=1)
+    return fig
 
 
 def _inject_chart_resize_css() -> None:
@@ -460,6 +826,7 @@ def make_strategy_detail_chart(
     max_bars: int = 2000,
     height: int | None = None,
     focus_trades: bool = True,
+    dragmode: str = "pan",
 ) -> go.Figure:
     """Biểu đồ riêng từng chiến lược — overlay minh họa theo logic CL."""
     profile = _chart_profile(strategy)
@@ -500,7 +867,7 @@ def make_strategy_detail_chart(
 
     _add_strategy_trades(fig, trades, strategy, color, df_index, row=1)
     _add_equity(fig, trades, equity, row=equity_row)
-    _apply_tv_layout(fig, strategy, rows, equity_row, height=height or 560)
+    _apply_tv_layout(fig, strategy, rows, equity_row, height=height or 560, dragmode=dragmode)
     return fig
 
 
@@ -516,6 +883,7 @@ def make_tradingview_chart(
     equity: float = 1000.0,
     max_bars: int = 2000,
     height: int = 650,
+    dragmode: str = "pan",
 ) -> go.Figure:
     """Candlestick TradingView-style + multi-strategy markers."""
     df = _slice_df(df, max_bars)
@@ -548,7 +916,7 @@ def make_tradingview_chart(
 
     all_trades = [t for ts in strategy_trades.values() for t in ts]
     _add_equity(fig, all_trades, equity, row=equity_row)
-    _apply_tv_layout(fig, title, rows, equity_row, height=height)
+    _apply_tv_layout(fig, title, rows, equity_row, height=height, dragmode=dragmode)
     return fig
 
 

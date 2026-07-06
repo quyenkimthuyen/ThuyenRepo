@@ -1,7 +1,7 @@
 trade_year: 2025
 train_year: 2024
-optimized_at: '2026-07-04T13:13:30.315257+00:00'
-equity: 1000
+optimized_at: '2026-07-04T15:13:41.523250+00:00'
+equity: 1000.0
 strategies:
   Wyckoff:
     params:
@@ -42,11 +42,15 @@ strategies:
       total_return: 0.12203509891061594
   Pin Bar Elite:
     params:
-      min_htf_adx: 24.0
-      max_adx_1h: 25.0
-      min_wick_body_ratio: 4.0
+      min_htf_adx: 22.0
+      max_adx_1h: 30.0
+      min_wick_body_ratio: 3.5
       min_wick_range_ratio: 0.58
-      swing_lookback: 12
+      swing_lookback: 10
       htf_mode: strict
-    train: {}
-saved_manually: true
+    train:
+      trade_count: 12
+      win_rate: 0.5833333333333334
+      profit_factor: 2.714739571953788
+      realized_rr: 1.9390996942527057
+      total_return: 0.1922439299854534

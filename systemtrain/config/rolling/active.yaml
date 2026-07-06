@@ -1,42 +1,56 @@
-trade_year: 2026
-train_year: 2025
-optimized_at: '2026-07-04T13:13:47.395055+00:00'
+trade_year: 2023
+train_year: 2022
+optimized_at: '2026-07-04T15:15:17.465605+00:00'
 equity: 1000.0
 strategies:
   Wyckoff:
     params:
       min_htf_adx: 22.0
       max_adx: 35.0
-      consolidation_days: 2
-      htf_mode: stack
+      consolidation_days: 3
+      htf_mode: strict
     train:
-      trade_count: 5
-      win_rate: 0.6
-      profit_factor: 2.8342225982843003
-      realized_rr: 1.8894817321895336
-      total_return: 0.07915998100732372
+      trade_count: 3
+      win_rate: 0.6666666666666666
+      profit_factor: 3.7637569889997313
+      realized_rr: 1.8818784944998657
+      total_return: 0.05771580575029771
   RSI Divergence:
     params:
       max_adx_1h: 30.0
       min_rsi_diff: 2.5
-      rsi_oversold: 45.0
+      rsi_oversold: 40.0
       rsi_overbought: 55.0
       min_swing_gap: 10
     train:
-      trade_count: 4
+      trade_count: 2
       win_rate: 0.5
-      profit_factor: 1.9078151547009523
-      realized_rr: 1.9078151547009523
-      total_return: 0.039864708988142414
+      profit_factor: 1.9127580952511885
+      realized_rr: 1.9127580952511885
+      total_return: 0.019026427518039214
   EMA 50/200:
     params:
-      min_htf_adx: 28.0
-      max_adx_1h: 28.0
+      min_htf_adx: 30.0
+      max_adx_1h: 25.0
       pullback_atr: 0.38
       max_ema_spread_atr: 2.0
     train:
-      trade_count: 7
-      win_rate: 0.8571428571428571
-      profit_factor: 11.027150158854184
-      realized_rr: 1.8378583598090306
-      total_return: 0.23806465813767114
+      trade_count: 2
+      win_rate: 0.5
+      profit_factor: 1.8968986294948695
+      realized_rr: 1.8968986294948695
+      total_return: 0.018806006284814544
+  Pin Bar Elite:
+    params:
+      min_htf_adx: 22.0
+      max_adx_1h: 28.0
+      min_wick_body_ratio: 3.5
+      min_wick_range_ratio: 0.55
+      swing_lookback: 12
+      htf_mode: strict
+    train:
+      trade_count: 11
+      win_rate: 0.5454545454545454
+      profit_factor: 2.3252665655851743
+      realized_rr: 1.937722137987645
+      total_return: 0.13841553692121214

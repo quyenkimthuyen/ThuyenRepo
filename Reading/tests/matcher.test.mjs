@@ -74,4 +74,24 @@ const m7 = new Set();
 matchAccumulating(wordsFromTranscript('I learn food-related words'), t6, m7);
 assert(isSentenceComplete(m7, t6.length), 'matches hyphenated spoken words to split sentence tokens');
 
+// spelling variations (US vs UK English)
+assert(wordsMatch('travelling', 'traveling'), 'travelling matches traveling');
+assert(wordsMatch('cancelled', 'canceled'), 'cancelled matches canceled');
+assert(wordsMatch('colour', 'color'), 'colour matches color');
+assert(wordsMatch('centre', 'center'), 'centre matches center');
+assert(wordsMatch('realise', 'realize'), 'realise matches realize');
+assert(wordsMatch('organisation', 'organization'), 'organisation matches organization');
+assert(wordsMatch('analyse', 'analyze'), 'analyse matches analyze');
+assert(wordsMatch('defence', 'defense'), 'defence matches defense');
+assert(wordsMatch('dialogue', 'dialog'), 'dialogue matches dialog');
+
+// spelling variations edge cases / preservation of numbers and short words
+assert(wordsMatch('four', 'four'), 'four matches four');
+assert(!wordsMatch('four', 'for'), 'four does not match for');
+assert(wordsMatch('four', '4'), 'four matches 4');
+assert(wordsMatch('hour', 'hour'), 'hour matches hour');
+assert(!wordsMatch('hour', 'hor'), 'hour does not match hor');
+assert(wordsMatch('sour', 'sour'), 'sour matches sour');
+assert(!wordsMatch('sour', 'sor'), 'sour does not match sor');
+
 console.log('matcher tests: ok');
