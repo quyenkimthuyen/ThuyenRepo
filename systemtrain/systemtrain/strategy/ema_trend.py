@@ -64,6 +64,27 @@ class EmaTrendConfig:
         )
 
 
+def ema_50200_flow_cfg() -> EmaTrendConfig:
+    """EMA 50/200 flow — cân bằng lệnh vs WR (tối ưu walk-forward)."""
+    return EmaTrendConfig(
+        ema_fast=50,
+        ema_slow=200,
+        mode="flow",
+        pullback_atr=0.36,
+        require_bounce=True,
+        htf_mode="soft",
+        min_htf_adx=22.0,
+        max_adx_1h=28.0,
+        min_ema_spread_atr=0.10,
+        max_ema_spread_atr=2.2,
+        session_start=8,
+        session_end=17,
+        cooldown_bars=12,
+        max_trades_per_day=3,
+        sl_ema_slow=True,
+    )
+
+
 def ema_50200_best_cfg() -> EmaTrendConfig:
     """EMA 50/200 pullback elite — filter spread EMA + pullback chặt hơn."""
     return EmaTrendConfig(
@@ -161,6 +182,16 @@ def detect_ema_trend(df: pd.DataFrame, cfg: EmaTrendConfig | None = None) -> lis
             elif bear_stack and closes.iloc[i] < opens[i]:
                 short_sig = True
                 tag = "ema_stack_short"
+
+        elif cfg.mode == "flow":
+            touch_long = bull_stack and lows[i] <= ema_fast[i] + cfg.pullback_atr * a
+            touch_short = bear_stack and highs[i] >= ema_fast[i] - cfg.pullback_atr * a
+            if touch_long and closes.iloc[i] >= ema_fast[i]:
+                long_sig = True
+                tag = "ema_flow_long"
+            if touch_short and closes.iloc[i] <= ema_fast[i]:
+                short_sig = True
+                tag = "ema_flow_short"
 
         if cfg.require_bounce:
             if long_sig and closes.iloc[i] <= opens[i]:

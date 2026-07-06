@@ -12,6 +12,17 @@ from systemtrain.config import Config
 from systemtrain.backtest.engine import Trade
 from systemtrain.live.data_feed import load_live_buffer
 from systemtrain.live.paper_account import PaperTrade
+from systemtrain.live.replay_runner import (
+    ReplaySession,
+    build_replay_engines,
+    cursor_bar_time,
+    init_replay_session,
+    load_replay_dataframe,
+    replay_to_end,
+    seek_replay,
+    step_replay,
+    visible_replay_df,
+)
 from systemtrain.live.signal_runner import run_paper_once
 from systemtrain.live.store import load_journal, load_session, reset_session
 from systemtrain.data.timeframes import to_entry_timeframe
@@ -213,6 +224,94 @@ def reset_live_paper(strategy: str | None = None) -> dict[str, Any]:
 
 def load_live_chart_data(warmup_days: int = 30, max_bars: int = 1000) -> pd.DataFrame:
     return load_live_buffer(refresh=False, warmup_days=warmup_days, max_bars=max_bars)
+
+
+def replay_session_from_dict(data: dict[str, Any]) -> ReplaySession:
+    return ReplaySession.from_dict(data)
+
+
+def start_replay_session(
+    *,
+    trade_year: int,
+    config_year: int,
+    strategies: list[str],
+    equity: float,
+    start_ts: pd.Timestamp,
+    end_ts: pd.Timestamp | None = None,
+    warmup_days: int = 60,
+) -> tuple[dict[str, Any], pd.DataFrame]:
+    session, df = init_replay_session(
+        trade_year=trade_year,
+        config_year=config_year,
+        strategies=strategies,
+        equity=equity,
+        start_ts=start_ts,
+        end_ts=end_ts,
+        warmup_days=warmup_days,
+    )
+    return session.to_dict(), df
+
+
+def load_replay_chart_df(session_dict: dict[str, Any], start_ts: pd.Timestamp) -> pd.DataFrame:
+    session = ReplaySession.from_dict(session_dict)
+    return load_replay_dataframe(
+        session.trade_year,
+        start_ts,
+        warmup_days=session.warmup_days,
+        end_ts=pd.Timestamp(session.end_bar),
+    )
+
+
+def advance_replay(
+    session_dict: dict[str, Any],
+    df: pd.DataFrame,
+    *,
+    steps: int = 1,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    session = ReplaySession.from_dict(session_dict)
+    engines = build_replay_engines(session)
+    events = step_replay(session, engines, df, steps=steps)
+    return session.to_dict(), events
+
+
+def finish_replay(
+    session_dict: dict[str, Any],
+    df: pd.DataFrame,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    session = ReplaySession.from_dict(session_dict)
+    engines = build_replay_engines(session)
+    events = replay_to_end(session, engines, df)
+    return session.to_dict(), events
+
+
+def scrub_replay(
+    session_dict: dict[str, Any],
+    df: pd.DataFrame,
+    target_idx: int,
+    *,
+    strategies: list[str],
+    equity: float,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    session = ReplaySession.from_dict(session_dict)
+    engines = build_replay_engines(session, equity)
+    fresh, events = seek_replay(
+        session,
+        session.config_year,
+        strategies,
+        equity,
+        df,
+        target_idx,
+        engines=engines,
+    )
+    return fresh.to_dict(), events
+
+
+def replay_visible_df(session_dict: dict[str, Any], df: pd.DataFrame) -> pd.DataFrame:
+    return visible_replay_df(ReplaySession.from_dict(session_dict), df)
+
+
+def replay_current_bar(session_dict: dict[str, Any], df: pd.DataFrame) -> str | None:
+    return cursor_bar_time(ReplaySession.from_dict(session_dict), df)
 
 
 def paper_trade_to_chart_trade(trade: dict[str, Any] | PaperTrade) -> Trade:

@@ -78,6 +78,36 @@ nến bounce → vào theo trend.
             "max_ema_spread_atr": {"label": "Spread EMA max (× ATR)", "type": "float", "min": 1.0, "max": 3.0, "step": 0.1},
         },
     },
+    "EMA Flow": {
+        "id": "ema_flow",
+        "icon": "🌊",
+        "chart_color": "#26C6DA",
+        "title": "EMA 50/200 Flow",
+        "summary": "Trend follow nới hơn — nhiều lệnh hơn Elite, target WR > 50%.",
+        "description": """
+**Logic:** Giống EMA pullback nhưng **mode flow** — chạm/reject EMA50 trong trend,
+filter nới hơn (soft 4H, pullback rộng hơn, cooldown ngắn hơn).
+
+**Khác Elite:** Nhiều lệnh hơn (~20–30/năm) · vẫn giữ RR 2.0.
+
+**SL:** Dưới swing / EMA200 | **TP:** RR 2.0.
+        """,
+        "base_config": "config/ema_flow.yaml",
+        "chart_hint": "EMA 50/200 flow · reject EMA50 · SL/TP",
+        "chart": {"show_sl_tp": True, "show_ema": True, "show_rsi": False, "highlight_entry_bar": True},
+        "rolling_params": {
+            "pullback_atr": {"label": "Pullback (× ATR)", "type": "float", "min": 0.34, "max": 0.55, "step": 0.02},
+            "min_htf_adx": {"label": "4H ADX tối thiểu", "type": "float", "min": 18, "max": 30, "step": 1},
+            "max_adx_1h": {"label": "1H ADX tối đa", "type": "float", "min": 24, "max": 36, "step": 1},
+            "min_ema_spread_atr": {"label": "Spread EMA min (× ATR)", "type": "float", "min": 0.0, "max": 0.30, "step": 0.05},
+            "max_ema_spread_atr": {"label": "Spread EMA max (× ATR)", "type": "float", "min": 2.0, "max": 5.0, "step": 0.2},
+            "cooldown_bars": {"label": "Cooldown (bar)", "type": "int", "min": 4, "max": 14, "step": 1},
+            "max_trades_per_day": {"label": "Max lệnh/ngày", "type": "int", "min": 2, "max": 4, "step": 1},
+            "htf_mode": {"label": "Chế độ filter 4H", "type": "select", "options": ["soft", "strict", "stack"]},
+            "sl_ema_slow": {"label": "SL theo EMA200", "type": "select", "options": [True, False]},
+            "require_bounce": {"label": "Yêu cầu bounce", "type": "select", "options": [True, False]},
+        },
+    },
     "Pin Bar Elite": {
         "id": "pin_bar",
         "icon": "📌",
@@ -108,4 +138,4 @@ Long: pin bull ở đáy swing | Short: pin bear ở đỉnh swing.
     },
 }
 
-STRATEGY_ORDER = ["Wyckoff", "RSI Divergence", "EMA 50/200", "Pin Bar Elite"]
+STRATEGY_ORDER = ["Wyckoff", "RSI Divergence", "EMA 50/200", "EMA Flow", "Pin Bar Elite"]

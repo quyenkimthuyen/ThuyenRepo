@@ -651,7 +651,7 @@ def make_strategy_illustration_chart(strategy: str) -> go.Figure:
         close = [1.1060, 1.1048, 1.1036, 1.1022, 1.1015, 1.1026, 1.1010, 1.0998, 1.1009, 1.1020, 1.1032, 1.1044, 1.1050, 1.1058, 1.1064, 1.1070, 1.1075, 1.1080]
         note = "Price lower low, RSI higher low"
         marker_i = 8
-    elif strategy == "EMA 50/200":
+    elif strategy in ("EMA 50/200", "EMA Flow"):
         close = [1.1000, 1.1010, 1.1022, 1.1030, 1.1042, 1.1055, 1.1066, 1.1059, 1.1052, 1.1048, 1.1058, 1.1070, 1.1082, 1.1090, 1.1100, 1.1110, 1.1118, 1.1124]
         note = "Pullback to EMA50 inside trend"
         marker_i = 10
@@ -696,7 +696,7 @@ def make_strategy_illustration_chart(strategy: str) -> go.Figure:
         col=1 if is_rsi_divergence else None,
     )
 
-    if strategy == "EMA 50/200":
+    if strategy in ("EMA 50/200", "EMA Flow"):
         fast = pd.Series(close, index=idx).rolling(4, min_periods=1).mean()
         slow = pd.Series(close, index=idx).rolling(9, min_periods=1).mean() - 0.0009
         fig.add_trace(go.Scatter(x=idx, y=fast, mode="lines", line=dict(color=TV["ema50"], width=1.5), hoverinfo="skip", showlegend=False))

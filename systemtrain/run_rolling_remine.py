@@ -17,8 +17,10 @@ from systemtrain.orchestrator.rolling_production import (
     ensure_active_state,
     optimize_for_trade_year,
     save_active_state,
+    save_state_for_year,
     train_year_for,
 )
+from systemtrain.optimize.rolling_year import MIN_TRADES_PER_YEAR, MIN_WIN_RATE
 
 
 def main() -> int:
@@ -39,11 +41,16 @@ def main() -> int:
         print("=" * 72)
         for train_y, trade_y in ROLLING_FOLDS:
             state = optimize_for_trade_year(trade_y, config, args.equity, df_1h)
-            save_active_state(state)
+            save_state_for_year(state, trade_y, set_active=(trade_y == current_trade_year()))
             bt = backtest_trade_year(state, config, args.equity, df_1h)
             print(f"\n  Train {train_y} → Trade {trade_y} | Tổng {bt['combined_return']:+.1%}")
             for sname, m in bt["strategies"].items():
-                print(f"    {sname:<16} {m['trade_count']:2}t WR{m['win_rate']:.0%} {m['total_return']:+.1%}")
+                tr = state["strategies"][sname]["train"]
+                ok = "✓" if tr.get("constraints_met") else "✗"
+                print(
+                    f"    {sname:<16} train {tr.get('trade_count', 0):2}t WR{tr.get('win_rate', 0):.0%} {ok} | "
+                    f"trade {m['trade_count']:2}t WR{m['win_rate']:.0%} {m['total_return']:+.1%}"
+                )
         print(f"\n  Active: {ACTIVE_PATH}")
         return 0
 
@@ -55,11 +62,13 @@ def main() -> int:
     print("=" * 72)
 
     state = optimize_for_trade_year(trade_year, config, args.equity, df_1h)
-    save_active_state(state)
+    save_state_for_year(state, trade_year, set_active=True)
 
+    print(f"  Ràng buộc: >{MIN_TRADES_PER_YEAR - 1} lệnh/năm, WR >{MIN_WIN_RATE:.0%} (trên năm train)")
     for sname, data in state["strategies"].items():
         tr = data["train"]
-        print(f"\n  {sname}")
+        ok = "ĐẠT" if tr.get("constraints_met") else "CHƯA ĐẠT (best-effort)"
+        print(f"\n  {sname} — {ok}")
         print(f"    Train {train_y}: {tr.get('trade_count', 0)}t WR{tr.get('win_rate', 0):.0%} {tr.get('total_return', 0):+.1%}")
         print(f"    Params: {data['params']}")
 

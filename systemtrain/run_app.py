@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import json
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 import yaml
@@ -25,7 +27,9 @@ from systemtrain.ui.charts import (
 )
 from systemtrain.ui.meta import STRATEGIES, STRATEGY_ORDER
 from systemtrain.ui.services import (
+    advance_replay,
     config_year_saved,
+    finish_replay,
     get_config_state,
     get_rolling_state,
     load_base_yaml,
@@ -34,16 +38,21 @@ from systemtrain.ui.services import (
     load_live_chart_data,
     load_live_paper_state,
     load_price_data,
+    load_replay_chart_df,
     merge_params,
     optimize_trade_year,
     paper_trade_to_chart_trade,
     refresh_live_paper,
+    replay_current_bar,
+    replay_visible_df,
     reset_live_paper,
     run_all_backtest,
     run_all_strategies_backtest,
     run_strategy_backtest,
     save_params_for_year,
     save_params_to_active,
+    scrub_replay,
+    start_replay_session,
 )
 
 st.set_page_config(
@@ -113,8 +122,8 @@ st.title("📈 SystemTrain Dashboard")
 ty = st.session_state.trade_year
 st.markdown(f"**Năm trade {ty}** · Train trên **{train_year_for(ty)}** · Vốn **${st.session_state.equity:,.0f}**")
 
-tab_overview, tab_chart, tab_live, tab_config, tab_opt, tab_results = st.tabs(
-    ["📋 Tổng quan", "📊 Biểu đồ", "🟢 Live Paper", "🔧 Cấu hình", "⚡ Tối ưu", "📑 Kết quả"]
+tab_overview, tab_chart, tab_live, tab_replay, tab_config, tab_opt, tab_results = st.tabs(
+    ["📋 Tổng quan", "📊 Biểu đồ", "🟢 Live Paper", "⏪ Replay", "🔧 Cấu hình", "⚡ Tối ưu", "📑 Kết quả"]
 )
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -151,7 +160,7 @@ with tab_overview:
 
     st.info(
         "**Rolling walk-forward:** Đầu mỗi năm optimize trên năm trước → trade năm hiện tại. "
-        "4 chiến lược: Wyckoff, RSI, EMA, Pin Bar Elite."
+        "5 chiến lược: Wyckoff, RSI, EMA Elite, EMA Flow, Pin Bar."
     )
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -260,7 +269,7 @@ with tab_chart:
                 )
             if hint:
                 st.caption(hint)
-            ema_override = show_ema if sname != "EMA 50/200" else True
+            ema_override = show_ema if sname not in ("EMA 50/200", "EMA Flow") else True
 
             def _render_plotly_fallback() -> None:
                 fig = make_strategy_detail_chart(
@@ -558,7 +567,325 @@ with tab_live:
             st.dataframe(journal_rows, use_container_width=True)
 
 # ══════════════════════════════════════════════════════════════════════════
-# TAB 4 — Cấu hình
+# TAB 4 — Replay Backtest
+# ══════════════════════════════════════════════════════════════════════════
+with tab_replay:
+    st.subheader("Replay Backtest")
+    st.caption(
+        "Chọn thời điểm trong quá khứ, chạy từng nến 1H và xem chiến lược vào/ra lệnh "
+        "cùng P&L paper account — giống Live Paper nhưng trên dữ liệu lịch sử."
+    )
+
+    saved_years = load_history_years()
+    replay_year_options = sorted(set(saved_years + list(range(2022, current_trade_year() + 1))))
+    replay_config_labels = {
+        year: f"Trade {year} (optimize {train_year_for(year)})"
+        for year in replay_year_options
+    }
+    default_replay_year = st.session_state.get("replay_trade_year", ty)
+    replay_year_index = (
+        replay_year_options.index(default_replay_year)
+        if default_replay_year in replay_year_options
+        else len(replay_year_options) - 1
+    )
+
+    with st.container(border=True):
+        r1, r2, r3, r4 = st.columns([1, 2, 1, 1])
+        with r1:
+            replay_config_year = st.selectbox(
+                "Bộ config optimize",
+                replay_year_options,
+                index=replay_year_index,
+                format_func=lambda y: replay_config_labels[y],
+                key="replay_config_year",
+            )
+        with r2:
+            replay_strategies = st.multiselect(
+                "Chiến lược replay",
+                STRATEGY_ORDER,
+                default=st.session_state.get("replay_strategies", STRATEGY_ORDER[:2]),
+                key="replay_strategies",
+            )
+        with r3:
+            replay_equity = st.number_input(
+                "Vốn/account ($)",
+                min_value=100.0,
+                value=float(st.session_state.get("replay_equity", st.session_state.equity)),
+                step=100.0,
+                key="replay_equity",
+            )
+        with r4:
+            replay_warmup = st.number_input(
+                "Warmup ngày",
+                min_value=30,
+                max_value=180,
+                value=int(st.session_state.get("replay_warmup", 60)),
+                step=15,
+                key="replay_warmup",
+            )
+
+        d1, d2, d3 = st.columns([1, 1, 2])
+        with d1:
+            default_start = datetime(replay_config_year, 3, 1, tzinfo=timezone.utc)
+            replay_start_date = st.date_input(
+                "Ngày bắt đầu replay",
+                value=st.session_state.get("replay_start_date", default_start.date()),
+                key="replay_start_date",
+            )
+        with d2:
+            replay_start_hour = st.selectbox(
+                "Giờ UTC",
+                list(range(24)),
+                index=int(st.session_state.get("replay_start_hour", 8)),
+                format_func=lambda h: f"{h:02d}:00",
+                key="replay_start_hour",
+            )
+        with d3:
+            replay_end_date = st.date_input(
+                "Ngày kết thúc (tùy chọn)",
+                value=st.session_state.get("replay_end_date", datetime(replay_config_year, 12, 31).date()),
+                key="replay_end_date",
+                help="Mặc định cuối năm trade. Replay không vượt quá năm đã chọn.",
+            )
+
+        start_ts = pd.Timestamp(
+            datetime.combine(replay_start_date, datetime.min.time().replace(hour=replay_start_hour)),
+            tz="UTC",
+        )
+        end_ts = pd.Timestamp(
+            datetime.combine(replay_end_date, datetime.max.time().replace(hour=23, minute=0, second=0, microsecond=0)),
+            tz="UTC",
+        )
+
+        b1, b2, b3, b4, b5 = st.columns(5)
+        with b1:
+            if st.button("▶ Khởi tạo replay", type="primary", disabled=not replay_strategies):
+                try:
+                    session_dict, _df = start_replay_session(
+                        trade_year=replay_config_year,
+                        config_year=replay_config_year,
+                        strategies=replay_strategies,
+                        equity=replay_equity,
+                        start_ts=start_ts,
+                        end_ts=end_ts,
+                        warmup_days=int(replay_warmup),
+                    )
+                    st.session_state.replay_session = session_dict
+                    st.session_state.replay_params = {
+                        "start_ts": start_ts.isoformat(),
+                        "trade_year": replay_config_year,
+                    }
+                    st.session_state.replay_auto_play = False
+                    st.success(
+                        f"Replay từ `{session_dict['start_bar'][:16]}` → `{session_dict['end_bar'][:16]}`"
+                    )
+                    st.rerun()
+                except Exception as e:
+                    st.error(str(e))
+        with b2:
+            step_n = st.number_input("+N nến", min_value=1, max_value=200, value=1, step=1, key="replay_step_n")
+        with b3:
+            if st.button(f"+{step_n} nến", disabled=not st.session_state.get("replay_session")):
+                try:
+                    df = load_replay_chart_df(
+                        st.session_state.replay_session,
+                        pd.Timestamp(st.session_state.replay_params["start_ts"]),
+                    )
+                    session_dict, events = advance_replay(
+                        st.session_state.replay_session, df, steps=int(step_n),
+                    )
+                    st.session_state.replay_session = session_dict
+                    bar = replay_current_bar(session_dict, df)
+                    st.toast(f"→ `{bar[:16] if bar else '?'}` · {len(events)} events")
+                    st.rerun()
+                except Exception as e:
+                    st.error(str(e))
+        with b4:
+            if st.button("⏩ Chạy đến hết", disabled=not st.session_state.get("replay_session")):
+                try:
+                    df = load_replay_chart_df(
+                        st.session_state.replay_session,
+                        pd.Timestamp(st.session_state.replay_params["start_ts"]),
+                    )
+                    session_dict, events = finish_replay(st.session_state.replay_session, df)
+                    st.session_state.replay_session = session_dict
+                    st.success(f"Hoàn tất replay · {len(events)} events")
+                    st.rerun()
+                except Exception as e:
+                    st.error(str(e))
+        with b5:
+            if st.button("↺ Reset", disabled=not st.session_state.get("replay_session")):
+                st.session_state.pop("replay_session", None)
+                st.session_state.pop("replay_params", None)
+                st.session_state.replay_auto_play = False
+                st.rerun()
+
+        ap1, ap2, ap3 = st.columns([1, 1, 2])
+        with ap1:
+            replay_auto = st.toggle(
+                "Tự chạy",
+                value=st.session_state.get("replay_auto_play", False),
+                help="Tự advance nến theo chu kỳ — giữ tab mở.",
+            )
+            st.session_state.replay_auto_play = replay_auto
+        with ap2:
+            replay_bars_per_tick = st.number_input(
+                "Nến/tick",
+                min_value=1,
+                max_value=50,
+                value=int(st.session_state.get("replay_bars_per_tick", 1)),
+                step=1,
+            )
+            st.session_state.replay_bars_per_tick = replay_bars_per_tick
+        with ap3:
+            replay_tick_seconds = st.slider(
+                "Tốc độ (giây/tick)",
+                min_value=0.2,
+                max_value=5.0,
+                value=float(st.session_state.get("replay_tick_seconds", 1.0)),
+                step=0.2,
+            )
+            st.session_state.replay_tick_seconds = replay_tick_seconds
+
+    replay_session = st.session_state.get("replay_session")
+    if not replay_session:
+        st.info("Chọn thời điểm bắt đầu và bấm **Khởi tạo replay** để bắt đầu.")
+    else:
+        try:
+            replay_df = load_replay_chart_df(
+                replay_session,
+                pd.Timestamp(st.session_state.replay_params["start_ts"]),
+            )
+        except Exception as e:
+            st.error(f"Không load được dữ liệu: {e}")
+            replay_df = None
+
+        if replay_df is not None and not replay_df.empty:
+            cursor_idx = int(replay_session["cursor_idx"])
+            start_idx = int(replay_session["start_idx"])
+            end_idx = int(replay_session["end_idx"])
+            current_bar = replay_current_bar(replay_session, replay_df)
+            total_bars = end_idx - start_idx + 1
+            done_bars = max(0, cursor_idx - start_idx + 1)
+            progress = done_bars / total_bars if total_bars > 0 else 0.0
+
+            st.markdown(
+                f"**Nến hiện tại:** `{current_bar[:19] if current_bar else 'chưa bắt đầu'}` · "
+                f"**Tiến độ:** {done_bars}/{total_bars} nến ({progress:.0%}) · "
+                f"**Khoảng:** `{replay_session['start_bar'][:16]}` → `{replay_session['end_bar'][:16]}`"
+            )
+            st.progress(min(1.0, progress))
+
+            scrub_idx = st.slider(
+                "Tua nến (scrub)",
+                min_value=start_idx,
+                max_value=end_idx,
+                value=min(max(cursor_idx, start_idx), end_idx),
+                format="%d",
+                help="Kéo để nhảy tới nến — hệ thống tính lại từ đầu (deterministic).",
+            )
+            if scrub_idx != cursor_idx and st.button("Áp dụng vị trí scrub"):
+                try:
+                    session_dict, _events = scrub_replay(
+                        replay_session,
+                        replay_df,
+                        scrub_idx,
+                        strategies=replay_strategies,
+                        equity=replay_equity,
+                    )
+                    st.session_state.replay_session = session_dict
+                    st.rerun()
+                except Exception as e:
+                    st.error(str(e))
+
+            strategy_states = replay_session.get("strategies", {})
+            cols = st.columns(min(5, max(1, len(STRATEGY_ORDER))))
+            for idx, sname in enumerate(STRATEGY_ORDER):
+                s = strategy_states.get(sname)
+                with cols[idx % len(cols)]:
+                    if not s:
+                        st.metric(sname, "—")
+                        continue
+                    closed = s.get("closed_trades", [])
+                    open_trade = s.get("open_trade")
+                    st.metric(
+                        sname,
+                        f"${s.get('equity', 0):,.0f}",
+                        f"{s.get('equity', 0) - s.get('initial_equity', 0):+.0f}",
+                    )
+                    st.caption(
+                        f"{s.get('status', 'idle')} · {len(closed)} closed"
+                        + (" · OPEN" if open_trade else "")
+                    )
+
+            replay_view_strategy = st.selectbox(
+                "Xem chart replay",
+                [s for s in STRATEGY_ORDER if s in strategy_states] or STRATEGY_ORDER,
+                key="replay_view_strategy",
+            )
+            selected_state = strategy_states.get(replay_view_strategy, {})
+            replay_chart_trades = []
+            for trade in selected_state.get("closed_trades", []):
+                replay_chart_trades.append(paper_trade_to_chart_trade(trade))
+            if selected_state.get("open_trade"):
+                replay_chart_trades.append(paper_trade_to_chart_trade(selected_state["open_trade"]))
+
+            visible_df = replay_visible_df(replay_session, replay_df)
+            render_professional_chart(
+                visible_df,
+                replay_view_strategy,
+                replay_chart_trades,
+                chart_id=f"replay-{replay_view_strategy}",
+                show_ema=True,
+                show_volume=True,
+                equity=float(selected_state.get("initial_equity", replay_equity)),
+                max_bars=2000,
+                height=620,
+                focus_trades=True,
+            )
+
+            journal_rows = []
+            for event in reversed(replay_session.get("journal", [])[-80:]):
+                trade = event.get("trade", {})
+                journal_rows.append({
+                    "event": event.get("event"),
+                    "at_bar": str(event.get("at_bar", ""))[:16],
+                    "strategy": event.get("strategy"),
+                    "entry": str(trade.get("entry_time", ""))[:16],
+                    "exit": str(trade.get("exit_time", ""))[:16] if trade.get("exit_time") else "",
+                    "dir": "LONG" if trade.get("direction") == 1 else "SHORT",
+                    "pnl": round(float(trade.get("pnl", 0.0)), 2),
+                    "result": trade.get("result", ""),
+                })
+            if journal_rows:
+                with st.expander(f"Replay journal ({len(journal_rows)} events)", expanded=False):
+                    st.dataframe(journal_rows, use_container_width=True)
+
+            if replay_auto and cursor_idx < end_idx:
+                df = replay_df
+                session_dict, events = advance_replay(
+                    replay_session,
+                    df,
+                    steps=int(replay_bars_per_tick),
+                )
+                st.session_state.replay_session = session_dict
+                delay_ms = int(replay_tick_seconds * 1000)
+                components.html(
+                    f"""
+                    <script>
+                      setTimeout(function() {{
+                        window.parent.location.reload();
+                      }}, {delay_ms});
+                    </script>
+                    """,
+                    height=0,
+                )
+            elif replay_auto and cursor_idx >= end_idx:
+                st.session_state.replay_auto_play = False
+                st.success("Replay đã tới cuối khoảng.")
+
+# ══════════════════════════════════════════════════════════════════════════
+# TAB 5 — Cấu hình
 # ══════════════════════════════════════════════════════════════════════════
 with tab_config:
     st.subheader("Cấu hình rolling theo năm trade")

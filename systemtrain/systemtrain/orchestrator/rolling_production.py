@@ -14,11 +14,13 @@ from systemtrain.config import Config
 from systemtrain.data.timeframes import to_entry_timeframe
 from systemtrain.optimize.rolling_year import (
     build_ema_engine,
+    build_ema_flow_engine,
     build_pin_engine,
     build_rsi_engine,
     build_wyckoff_engine,
     fixed_params,
     metrics_in_window,
+    optimize_ema_flow_year,
     optimize_ema_year,
     optimize_pin_year,
     optimize_rsi_year,
@@ -36,6 +38,7 @@ STRATEGY_OPTIMIZERS = [
     ("Wyckoff", optimize_wyckoff_year, build_wyckoff_engine),
     ("RSI Divergence", optimize_rsi_year, build_rsi_engine),
     ("EMA 50/200", optimize_ema_year, build_ema_engine),
+    ("EMA Flow", optimize_ema_flow_year, build_ema_flow_engine),
     ("Pin Bar Elite", optimize_pin_year, build_pin_engine),
 ]
 
@@ -176,6 +179,7 @@ def build_engines_from_state(state: dict[str, Any], config: Config, equity: floa
         "Wyckoff": build_wyckoff_engine,
         "RSI Divergence": build_rsi_engine,
         "EMA 50/200": build_ema_engine,
+        "EMA Flow": build_ema_flow_engine,
         "Pin Bar Elite": build_pin_engine,
     }
     engines = []

@@ -14,11 +14,13 @@ from systemtrain.data.timeframes import to_entry_timeframe
 from systemtrain.optimize.rolling_year import (
     ROLLING_FOLDS,
     build_ema_engine,
+    build_ema_flow_engine,
     build_pin_engine,
     build_rsi_engine,
     build_wyckoff_engine,
     fixed_params,
     metrics_in_window,
+    optimize_ema_flow_year,
     optimize_ema_year,
     optimize_pin_year,
     optimize_rsi_year,
@@ -32,6 +34,7 @@ STRATEGIES = [
     ("Wyckoff", optimize_wyckoff_year, build_wyckoff_engine),
     ("RSI Divergence", optimize_rsi_year, build_rsi_engine),
     ("EMA 50/200", optimize_ema_year, build_ema_engine),
+    ("EMA Flow", optimize_ema_flow_year, build_ema_flow_engine),
     ("Pin Bar Elite", optimize_pin_year, build_pin_engine),
 ]
 
@@ -57,7 +60,7 @@ def main() -> int:
     print("  ROLLING WALK-FORWARD — Tối ưu 1 năm → Trade năm sau")
     print("=" * 82)
     print(f"  Data: {df_1h.index.min().date()} → {df_1h.index.max().date()}")
-    print(f"  Vốn: ${args.equity:,.0f} | SL 2%/lệnh | Chiến lược: Wyckoff + RSI + EMA + Pin Bar")
+    print(f"  Vốn: ${args.equity:,.0f} | SL 2%/lệnh | Chiến lược: Wyckoff + RSI + EMA + Flow + Pin Bar")
     print(f"  Mode: {'config cố định' if args.fixed else 'grid-search trên năm train'}")
     print("=" * 82)
 

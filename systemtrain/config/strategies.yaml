@@ -34,6 +34,13 @@ strategies:
     base_config: config/ema_trend.yaml
     rolling_params: [min_htf_adx, max_adx_1h, pullback_atr, max_ema_spread_atr]
 
+  - id: ema_flow
+    name: EMA Flow
+    entry_tf: 1h
+    htf_filter: 4h
+    base_config: config/ema_flow.yaml
+    rolling_params: [pullback_atr, min_htf_adx, max_adx_1h, min_ema_spread_atr, max_ema_spread_atr, cooldown_bars, max_trades_per_day, htf_mode, sl_ema_slow, require_bounce]
+
   - id: pin_bar
     name: Pin Bar Elite
     entry_tf: 1h

@@ -61,7 +61,7 @@ def main() -> int:
     from systemtrain.orchestrator.rolling_production import build_engines_from_state
 
     print("=" * 78)
-    print("  PRODUCTION — Wyckoff + RSI + EMA + Pin Bar | EURUSD 1H")
+    print("  PRODUCTION — Wyckoff + RSI + EMA + Flow + Pin Bar | EURUSD 1H")
     print("=" * 78)
     print(f"  Mode       : {mode}")
     print(f"  Train year : {train_y} (optimize)")
