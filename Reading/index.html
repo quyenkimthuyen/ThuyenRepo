@@ -36,6 +36,22 @@
               <line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
           </button>
+          <button
+            type="button"
+            id="btn-history-toggle"
+            class="icon-btn"
+            title="Lịch sử học"
+            aria-label="Lịch sử học"
+            aria-expanded="false"
+            aria-controls="history-panel"
+          >
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 3v18h18"/>
+              <path d="M7 14l3-3 3 2 5-6"/>
+              <path d="M18 7h-4"/>
+              <path d="M18 7v4"/>
+            </svg>
+          </button>
         </div>
 
         <div id="import-panel" class="import-drawer hidden" aria-label="Import bài">
@@ -94,6 +110,34 @@
           </div>
         </div>
 
+        <div id="history-panel" class="history-drawer hidden" aria-label="Lịch sử học">
+          <div class="history-drawer-head">
+            <h3>Lịch sử học</h3>
+            <div class="history-actions">
+              <button type="button" id="btn-history-clear" class="icon-btn icon-btn-danger" title="Xóa lịch sử" aria-label="Xóa lịch sử">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+              <button type="button" id="btn-history-close" class="icon-btn icon-btn-ghost" title="Đóng" aria-label="Đóng lịch sử">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          </div>
+          <p class="history-hint">
+            Review tiến độ từng lần học: bài đạt bao nhiêu %, câu/từ nào chưa đọc được và có bấm qua câu hay không.
+          </p>
+          <div id="history-summary" class="history-summary"></div>
+          <div class="history-review-grid">
+            <div>
+              <h4 class="history-section-title">Các lần học gần đây</h4>
+              <ul id="history-list" class="history-list"></ul>
+            </div>
+            <div>
+              <h4 class="history-section-title">Chi tiết review</h4>
+              <div id="history-detail" class="history-detail"></div>
+            </div>
+          </div>
+        </div>
+
         <div class="controls-row lesson-row">
           <label for="lesson-select">Bài luyện</label>
           <select id="lesson-select" aria-label="Chọn bài luyện"></select>
@@ -126,6 +170,11 @@
           <button type="button" id="btn-read-sample" class="icon-btn" title="Đọc mẫu" aria-label="Đọc mẫu">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
           </button>
+
+          <button type="button" id="btn-read-remaining" class="icon-btn" title="Đọc từ còn lại" aria-label="Đọc từ còn lại">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="16" y1="9" x2="22" y2="9"/><line x1="16" y1="13" x2="20" y2="13"/><line x1="16" y1="17" x2="21" y2="17"/></svg>
+          </button>
+
 
           <button
             type="button"
@@ -188,9 +237,14 @@
         <div id="completion-banner" class="completion-banner hidden">
           <h2>Hoàn thành bài!</h2>
           <p>Bạn đã đọc đúng tất cả các câu.</p>
-          <button type="button" id="btn-restart" class="icon-btn icon-btn-primary icon-btn-lg" title="Luyện lại" aria-label="Luyện lại">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          </button>
+          <div class="completion-actions">
+            <button type="button" id="btn-restart" class="icon-btn icon-btn-ghost icon-btn-lg" title="Luyện lại" aria-label="Luyện lại">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            </button>
+            <button type="button" id="btn-next-lesson" class="icon-btn icon-btn-primary icon-btn-lg" title="Bài tiếp theo" aria-label="Bài tiếp theo">
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+            </button>
+          </div>
         </div>
       </section>
     </div>

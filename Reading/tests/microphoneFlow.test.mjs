@@ -308,6 +308,13 @@ const ids = [
   'btn-import-toggle',
   'btn-import-close',
   'import-panel',
+  'btn-history-toggle',
+  'btn-history-close',
+  'btn-history-clear',
+  'history-panel',
+  'history-summary',
+  'history-list',
+  'history-detail',
 ];
 
 const document = new FakeDocument(ids);
@@ -359,15 +366,22 @@ function activeRecognitionCount() {
   return FakeRecognition.instances.filter((instance) => instance.active).length;
 }
 
+let fakeResultIndex = 0;
+
 function emitFinalTranscript(recognition, transcript) {
+  const resultIndex = fakeResultIndex;
+  fakeResultIndex += 1;
+  const results = Array.from({ length: resultIndex + 1 }, () => ({
+    0: { transcript: '' },
+    isFinal: true,
+  }));
+  results[resultIndex] = {
+    0: { transcript },
+    isFinal: true,
+  };
   recognition.onresult?.({
-    resultIndex: 0,
-    results: [
-      {
-        0: { transcript },
-        isFinal: true,
-      },
-    ],
+    resultIndex,
+    results,
   });
 }
 
@@ -450,7 +464,7 @@ assert(micStatus.textContent === 'Mic tắt', 'mic is off before topic auto-read
 topicSelect.value = 'travel';
 topicSelect.dispatchEvent({ type: 'change' });
 await tick();
-assert(spoken.at(-1) === 'Last summer we visited Da Nang.', 'topic change auto-plays the first filtered lesson');
+assert(spoken.at(-1) === 'I am at the park.', 'topic change auto-plays the first filtered lesson');
 assert(activeRecognitionCount() === 0, 'topic change keeps mic paused while sample plays');
 await finishSampleAndAssertMicResumes('topic change with auto sample');
 
@@ -464,5 +478,46 @@ topicSelect.dispatchEvent({ type: 'change' });
 await tick(180);
 assert(micStatus.textContent === 'Mic đang nghe…', 'topic change starts mic when no sample plays');
 assert(activeRecognitionCount() === 1, 'topic change starts exactly one recognition when no sample plays');
+
+for (const transcript of [
+  'The sky is blue',
+  'The sun is yellow',
+  'I have three red apples',
+  'There are ten students in the class',
+  'My favourite color is green',
+]) {
+  const active = FakeRecognition.instances.find((instance) => instance.active);
+  emitFinalTranscript(active, transcript);
+  await tick();
+}
+
+assert(document.getElementById('progress-text').textContent === 'Hoàn thành 5 / 5 câu', 'lesson can complete');
+assert(micStatus.textContent === 'Mic bật', 'mic remains enabled after lesson completion');
+assert(activeRecognitionCount() === 0, 'recognition stops while completion banner is shown');
+
+btnAutoRead.click();
+lessonSelect.value = 'a1-greetings';
+lessonSelect.dispatchEvent({ type: 'change' });
+await tick();
+assert(spoken.at(-1) === 'Hello.', 'next lesson still auto-plays after completing previous lesson');
+await finishSampleAndAssertMicResumes('new lesson after completion');
+
+const history = JSON.parse(localStorage.getItem('reading-aloud-history'));
+assert(Array.isArray(history), 'history is stored as an array');
+assert(history.length > 0, 'history has study sessions');
+
+const skippedSession = history.find((session) => session.manualSkipCount > 0);
+assert(skippedSession, 'history records manual sentence skips');
+assert(skippedSession.manualSkippedSentences.length > 0, 'history stores skipped sentence details');
+assert(skippedSession.manualSkippedSentences[0].matchedWordCount < skippedSession.manualSkippedSentences[0].totalWordCount, 'skip detail captures incomplete progress');
+
+const completedStudySession = history.find((session) => session.lessonId === 'a1-colors-numbers');
+assert(completedStudySession?.percentComplete === 100, 'history records completed lesson percent');
+assert(completedStudySession.completedSentenceCount === completedStudySession.totalSentenceCount, 'history records completed sentence count');
+
+const incompleteSession = history.find((session) =>
+  session.sentences?.some((sentence) => sentence.missingWords?.length),
+);
+assert(incompleteSession, 'history keeps missing words for review');
 
 console.log('microphoneFlow tests: ok');

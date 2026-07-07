@@ -29,6 +29,8 @@ import { getLessonTranslations } from './lessonTranslations.js';
 
 const STORAGE_KEY = 'reading-aloud-progress';
 const SETTINGS_KEY = 'reading-aloud-settings';
+const HISTORY_KEY = 'reading-aloud-history';
+const HISTORY_LIMIT = 100;
 
 /** Old lesson ids before level-based naming */
 const LEGACY_LESSON_IDS = {
@@ -56,11 +58,13 @@ const els = {
   btnAutoRead: document.getElementById('btn-auto-read'),
   btnShowVietnamese: document.getElementById('btn-show-vietnamese'),
   btnReadSample: document.getElementById('btn-read-sample'),
+  btnReadRemaining: document.getElementById('btn-read-remaining'),
   btnPrevSentence: document.getElementById('btn-prev-sentence'),
   btnNextSentence: document.getElementById('btn-next-sentence'),
   btnResetSentence: document.getElementById('btn-reset-sentence'),
   btnResetLesson: document.getElementById('btn-reset-lesson'),
   btnRestart: document.getElementById('btn-restart'),
+  btnNextLesson: document.getElementById('btn-next-lesson'),
   micStatus: document.getElementById('mic-status'),
   progressText: document.getElementById('progress-text'),
   liveTranscript: document.getElementById('live-transcript'),
@@ -83,6 +87,13 @@ const els = {
   btnImportToggle: document.getElementById('btn-import-toggle'),
   btnImportClose: document.getElementById('btn-import-close'),
   importPanel: document.getElementById('import-panel'),
+  btnHistoryToggle: document.getElementById('btn-history-toggle'),
+  btnHistoryClose: document.getElementById('btn-history-close'),
+  btnHistoryClear: document.getElementById('btn-history-clear'),
+  historyPanel: document.getElementById('history-panel'),
+  historySummary: document.getElementById('history-summary'),
+  historyList: document.getElementById('history-list'),
+  historyDetail: document.getElementById('history-detail'),
 };
 
 /** @type {SpeechRecognition | null} */
@@ -123,6 +134,9 @@ let suppressAutoReadOnce = false;
 
 /** @type {import('./lessons.js').Lesson[]} */
 let customLessons = [];
+let studyHistory = [];
+let currentHistorySessionId = '';
+let selectedHistorySessionId = '';
 
 function getAllLessons() {
   return [...LESSONS, ...customLessons];
@@ -141,15 +155,181 @@ init();
 
 function init() {
   customLessons = loadCustomLessons();
+  studyHistory = loadStudyHistory();
   loadSettings();
   populateFilters();
   populateImportForm();
   populateLessonSelect();
   renderCustomLessonsList();
+  renderStudyHistory();
   bindEvents();
   onVoicesReady(populateVoiceSelect);
   loadSavedLesson();
   updateMicToggleUi();
+}
+
+function loadStudyHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveStudyHistory() {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(studyHistory.slice(0, HISTORY_LIMIT)));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function createHistorySessionId() {
+  return `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function countLessonWords() {
+  return sentenceStates.reduce((sum, st) => sum + st.tokens.length, 0);
+}
+
+function countMatchedWords() {
+  return sentenceStates.reduce((sum, st) => {
+    if (isSentenceComplete(st.matched, st.tokens.length)) return sum + st.tokens.length;
+    return sum + st.matched.size;
+  }, 0);
+}
+
+function getHistoryPercent() {
+  const total = countLessonWords();
+  if (!total) return 0;
+  return Math.round((countMatchedWords() / total) * 100);
+}
+
+function buildHistorySentencesSnapshot() {
+  return sentenceStates.map((st, index) => {
+    const complete = isSentenceComplete(st.matched, st.tokens.length);
+    const matchedWords = st.tokens
+      .filter((_, tokenIndex) => complete || st.matched.has(tokenIndex))
+      .map((tok) => tok.display);
+    const missingWords = st.tokens
+      .filter((_, tokenIndex) => !complete && !st.matched.has(tokenIndex))
+      .map((tok) => tok.display);
+
+    return {
+      index,
+      text: lesson?.sentences[index] ?? '',
+      completed: complete,
+      matchedWordCount: complete ? st.tokens.length : st.matched.size,
+      totalWordCount: st.tokens.length,
+      matchedWords,
+      missingWords,
+    };
+  });
+}
+
+function findCurrentHistorySession() {
+  if (!currentHistorySessionId) return null;
+  return studyHistory.find((item) => item.sessionId === currentHistorySessionId) ?? null;
+}
+
+function startHistorySession() {
+  if (!lesson) return;
+
+  const now = Date.now();
+  const session = {
+    sessionId: createHistorySessionId(),
+    lessonId: lesson.id,
+    lessonTitle: lesson.title,
+    level: lesson.level,
+    topic: lesson.topic,
+    startedAt: now,
+    updatedAt: now,
+    completedAt: null,
+    percentComplete: 0,
+    completedSentenceCount: 0,
+    totalSentenceCount: sentenceStates.length,
+    matchedWordCount: 0,
+    totalWordCount: countLessonWords(),
+    manualSkipCount: 0,
+    manualSkippedSentences: [],
+    resetCount: 0,
+    sentences: [],
+  };
+
+  studyHistory = [session, ...studyHistory.filter((item) => item.sessionId !== session.sessionId)].slice(0, HISTORY_LIMIT);
+  currentHistorySessionId = session.sessionId;
+  selectedHistorySessionId = selectedHistorySessionId || session.sessionId;
+  updateCurrentHistorySession();
+}
+
+function updateCurrentHistorySession() {
+  const session = findCurrentHistorySession();
+  if (!session || !lesson) return;
+
+  const now = Date.now();
+  const completedSentenceCount = sentenceStates.filter((st) =>
+    isSentenceComplete(st.matched, st.tokens.length),
+  ).length;
+
+  session.updatedAt = now;
+  session.percentComplete = getHistoryPercent();
+  session.completedSentenceCount = completedSentenceCount;
+  session.totalSentenceCount = sentenceStates.length;
+  session.matchedWordCount = countMatchedWords();
+  session.totalWordCount = countLessonWords();
+  session.sentences = buildHistorySentencesSnapshot();
+
+  if (lessonComplete) {
+    session.completedAt = session.completedAt || now;
+    session.percentComplete = 100;
+  } else {
+    session.completedAt = null;
+  }
+
+  studyHistory = [
+    session,
+    ...studyHistory.filter((item) => item.sessionId !== session.sessionId),
+  ].slice(0, HISTORY_LIMIT);
+  saveStudyHistory();
+  renderStudyHistory();
+}
+
+function recordManualSkip(sentenceIndex) {
+  const session = findCurrentHistorySession();
+  const st = sentenceStates[sentenceIndex];
+  if (!session || !lesson || !st || isSentenceComplete(st.matched, st.tokens.length)) return;
+
+  const existing = session.manualSkippedSentences.find((item) => item.index === sentenceIndex);
+  if (existing) {
+    existing.count += 1;
+    existing.at = Date.now();
+    existing.matchedWordCount = st.matched.size;
+  } else {
+    session.manualSkippedSentences.push({
+      index: sentenceIndex,
+      text: lesson.sentences[sentenceIndex] ?? '',
+      at: Date.now(),
+      count: 1,
+      matchedWordCount: st.matched.size,
+      totalWordCount: st.tokens.length,
+    });
+  }
+
+  session.manualSkipCount += 1;
+  session.updatedAt = Date.now();
+  saveStudyHistory();
+  renderStudyHistory();
+}
+
+function recordLessonReset() {
+  const session = findCurrentHistorySession();
+  if (!session) return;
+  session.resetCount = (session.resetCount ?? 0) + 1;
+  session.updatedAt = Date.now();
+  saveStudyHistory();
+  renderStudyHistory();
 }
 
 function populateVoiceSelect() {
@@ -341,6 +521,10 @@ function setSampleControlsBusy(busy) {
   const disabled = lessonComplete || busy;
   els.btnReadSample.disabled = disabled;
   els.btnReadSample.classList.toggle('is-busy', busy);
+  if (els.btnReadRemaining) {
+    els.btnReadRemaining.disabled = disabled;
+    els.btnReadRemaining.classList.toggle('is-busy', busy);
+  }
   els.btnAutoRead.disabled = busy;
 }
 
@@ -468,6 +652,44 @@ async function readCurrentSample() {
   updateMicToggleUi();
 }
 
+async function readRemainingWords() {
+  if (!lesson || lessonComplete || samplePlaying) return;
+  const st = sentenceStates[currentSentenceIndex];
+  if (!st) return;
+
+  const unmatchedTokens = st.tokens.filter((_, idx) => !st.matched.has(idx));
+  if (!unmatchedTokens.length) return;
+
+  const text = unmatchedTokens.map((tok) => tok.display).join(' ');
+
+  const playGen = ++samplePlayGeneration;
+  const micShouldResume = micUserEnabled && !micAwaitingGesture;
+
+  setSampleControlsBusy(true);
+  pauseMicForSample();
+  updateMicToggleUi();
+
+  let ok = false;
+  try {
+    ok = await speakText(text);
+  } catch {
+    ok = false;
+  }
+
+  if (playGen !== samplePlayGeneration) return;
+
+  setSampleControlsBusy(false);
+
+  if (!ok) {
+    showError('Trình duyệt không hỗ trợ đọc (Text-to-Speech).');
+  }
+
+  if (micShouldResume && micUserEnabled && !lessonComplete && !listening) {
+    startMic();
+  }
+  updateMicToggleUi();
+}
+
 function maybeAutoReadSample() {
   if (!autoReadSample || lessonComplete || !lesson || samplePlaying || isSpeaking()) return;
   void readCurrentSample();
@@ -501,6 +723,181 @@ function toggleImportPanel(forceOpen) {
   els.importPanel.classList.toggle('hidden', !open);
   els.btnImportToggle.classList.toggle('is-on', open);
   els.btnImportToggle.setAttribute('aria-expanded', String(open));
+}
+
+function toggleHistoryPanel(forceOpen) {
+  const open =
+    typeof forceOpen === 'boolean'
+      ? forceOpen
+      : els.historyPanel.classList.contains('hidden');
+  els.historyPanel.classList.toggle('hidden', !open);
+  els.btnHistoryToggle.classList.toggle('is-on', open);
+  els.btnHistoryToggle.setAttribute('aria-expanded', String(open));
+  if (open) renderStudyHistory();
+}
+
+function formatHistoryDate(timestamp) {
+  if (!timestamp) return '—';
+  return new Intl.DateTimeFormat('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(timestamp));
+}
+
+function formatHistoryDuration(startedAt, updatedAt) {
+  if (!startedAt || !updatedAt || updatedAt <= startedAt) return 'Dưới 1 phút';
+  const minutes = Math.max(1, Math.round((updatedAt - startedAt) / 60000));
+  return `${minutes} phút`;
+}
+
+function createHistoryStat(label, value) {
+  const card = document.createElement('div');
+  card.className = 'history-stat';
+
+  const valueEl = document.createElement('strong');
+  valueEl.textContent = value;
+
+  const labelEl = document.createElement('span');
+  labelEl.textContent = label;
+
+  card.append(valueEl, labelEl);
+  return card;
+}
+
+function renderStudyHistory() {
+  if (!els.historySummary || !els.historyList || !els.historyDetail) return;
+
+  const totalSessions = studyHistory.length;
+  const completedSessions = studyHistory.filter((item) => item.completedAt).length;
+  const averagePercent = totalSessions
+    ? Math.round(studyHistory.reduce((sum, item) => sum + (item.percentComplete || 0), 0) / totalSessions)
+    : 0;
+  const totalSkips = studyHistory.reduce((sum, item) => sum + (item.manualSkipCount || 0), 0);
+
+  els.historySummary.replaceChildren(
+    createHistoryStat('Lần học', String(totalSessions)),
+    createHistoryStat('Hoàn thành', String(completedSessions)),
+    createHistoryStat('Trung bình', `${averagePercent}%`),
+    createHistoryStat('Bấm qua câu', String(totalSkips)),
+  );
+
+  els.historyList.innerHTML = '';
+
+  if (!studyHistory.length) {
+    const empty = document.createElement('li');
+    empty.className = 'history-empty';
+    empty.textContent = 'Chưa có lịch sử học.';
+    els.historyList.appendChild(empty);
+    els.historyDetail.innerHTML = '<p class="history-empty">Hoàn thành hoặc luyện một bài để xem review.</p>';
+    return;
+  }
+
+  if (!selectedHistorySessionId || !studyHistory.some((item) => item.sessionId === selectedHistorySessionId)) {
+    selectedHistorySessionId = studyHistory[0].sessionId;
+  }
+
+  for (const session of studyHistory.slice(0, HISTORY_LIMIT)) {
+    const li = document.createElement('li');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'history-item';
+    btn.classList.toggle('is-selected', session.sessionId === selectedHistorySessionId);
+    btn.addEventListener('click', () => {
+      selectedHistorySessionId = session.sessionId;
+      renderStudyHistory();
+    });
+
+    const title = document.createElement('span');
+    title.className = 'history-item-title';
+    title.textContent = session.lessonTitle;
+
+    const meta = document.createElement('span');
+    meta.className = 'history-item-meta';
+    meta.textContent = `${formatHistoryDate(session.updatedAt)} · ${session.percentComplete || 0}% · ${session.completedSentenceCount || 0}/${session.totalSentenceCount || 0} câu`;
+
+    const flags = document.createElement('span');
+    flags.className = 'history-item-flags';
+    flags.textContent = session.manualSkipCount
+      ? `Bấm qua ${session.manualSkipCount} lần`
+      : session.completedAt
+        ? 'Hoàn thành'
+        : 'Đang học';
+
+    btn.append(title, meta, flags);
+    li.appendChild(btn);
+    els.historyList.appendChild(li);
+  }
+
+  const selected = studyHistory.find((item) => item.sessionId === selectedHistorySessionId) ?? studyHistory[0];
+  renderHistoryDetail(selected);
+}
+
+function renderHistoryDetail(session) {
+  els.historyDetail.replaceChildren();
+
+  const header = document.createElement('div');
+  header.className = 'history-detail-head';
+
+  const title = document.createElement('h5');
+  title.textContent = session.lessonTitle;
+
+  const meta = document.createElement('p');
+  meta.textContent = `${session.level?.toUpperCase() || ''} · ${getTopicLabel(session.topic)} · ${formatHistoryDate(session.startedAt)} · ${formatHistoryDuration(session.startedAt, session.updatedAt)}`;
+
+  const percent = document.createElement('strong');
+  percent.className = 'history-percent';
+  percent.textContent = `${session.percentComplete || 0}%`;
+
+  header.append(title, meta, percent);
+  els.historyDetail.appendChild(header);
+
+  const warning = document.createElement('p');
+  warning.className = session.manualSkipCount ? 'history-warning' : 'history-ok';
+  warning.textContent = session.manualSkipCount
+    ? `Có ${session.manualSkipCount} lần bấm qua câu khi câu chưa hoàn thành.`
+    : 'Không phát hiện bấm qua câu chưa hoàn thành.';
+  els.historyDetail.appendChild(warning);
+
+  const list = document.createElement('ol');
+  list.className = 'history-sentence-list';
+
+  for (const item of session.sentences || []) {
+    const li = document.createElement('li');
+    li.className = item.completed ? 'is-complete' : 'is-incomplete';
+
+    const sentence = document.createElement('p');
+    sentence.className = 'history-sentence-text';
+    sentence.textContent = item.text;
+
+    const status = document.createElement('p');
+    status.className = 'history-sentence-status';
+    status.textContent = item.completed
+      ? 'Đã đọc được toàn bộ câu.'
+      : `Đọc được ${item.matchedWordCount}/${item.totalWordCount} từ.`;
+
+    li.append(sentence, status);
+
+    if (!item.completed && item.missingWords?.length) {
+      const missing = document.createElement('p');
+      missing.className = 'history-missing-words';
+      missing.textContent = `Từ chưa đọc được: ${item.missingWords.join(', ')}`;
+      li.appendChild(missing);
+    }
+
+    const skipped = session.manualSkippedSentences?.find((skip) => skip.index === item.index);
+    if (skipped) {
+      const skipBadge = document.createElement('p');
+      skipBadge.className = 'history-skip-badge';
+      skipBadge.textContent = `Đã bấm qua câu này ${skipped.count} lần`;
+      li.appendChild(skipBadge);
+    }
+
+    list.appendChild(li);
+  }
+
+  els.historyDetail.appendChild(list);
 }
 
 function saveSettings() {
@@ -618,6 +1015,7 @@ function bindEvents() {
 
   els.btnMicToggle.addEventListener('click', toggleMic);
   els.btnReadSample.addEventListener('click', readCurrentSample);
+  els.btnReadRemaining.addEventListener('click', readRemainingWords);
   els.btnPrevSentence.addEventListener('click', goPrevSentence);
   els.btnNextSentence.addEventListener('click', goNextSentence);
   els.btnResetSentence.addEventListener('click', resetCurrentSentence);
@@ -630,6 +1028,7 @@ function bindEvents() {
       startMic();
     }
   });
+  els.btnNextLesson?.addEventListener('click', loadNextLessonOfSameLevel);
 
   els.btnImportSave.addEventListener('click', handleImportSave);
   els.importFile.addEventListener('change', handleImportFile);
@@ -637,6 +1036,16 @@ function bindEvents() {
   els.btnDeleteCustom.addEventListener('click', deleteCurrentCustomLesson);
   els.btnImportToggle.addEventListener('click', () => toggleImportPanel());
   els.btnImportClose.addEventListener('click', () => toggleImportPanel(false));
+  els.btnHistoryToggle.addEventListener('click', () => toggleHistoryPanel());
+  els.btnHistoryClose.addEventListener('click', () => toggleHistoryPanel(false));
+  els.btnHistoryClear.addEventListener('click', () => {
+    if (!confirm('Xóa toàn bộ lịch sử học?')) return;
+    studyHistory = [];
+    currentHistorySessionId = '';
+    selectedHistorySessionId = '';
+    saveStudyHistory();
+    renderStudyHistory();
+  });
 
   updateImportFormatUi();
 }
@@ -952,6 +1361,7 @@ function loadLesson(lessonId) {
   lastFinalResultIndex = -1;
   lastInterimText = '';
   hideError();
+  startHistorySession();
   render();
   saveProgress();
 
@@ -985,6 +1395,7 @@ function resetLesson() {
   const shouldResumeMic = pauseMicForContextChange();
   invalidateSamplePlayback();
   stopSpeaking();
+  recordLessonReset();
   sentenceStates.forEach((st) => st.matched.clear());
   currentSentenceIndex = 0;
   lessonComplete = false;
@@ -994,6 +1405,26 @@ function resetLesson() {
   saveProgress();
   resumeMicAfterContextChange(shouldResumeMic);
   maybeAutoReadSample();
+}
+
+function loadNextLessonOfSameLevel() {
+  if (!lesson) return;
+  const levelLessons = getAllLessons().filter((l) => l.level === lesson.level);
+  if (!levelLessons.length) return;
+
+  const currentIndex = levelLessons.findIndex((l) => l.id === lesson.id);
+  let nextLesson = null;
+
+  if (currentIndex !== -1 && currentIndex < levelLessons.length - 1) {
+    nextLesson = levelLessons[currentIndex + 1];
+  } else {
+    nextLesson = levelLessons[0];
+  }
+
+  if (nextLesson) {
+    els.lessonSelect.value = nextLesson.id;
+    switchLesson(nextLesson.id, { autoEnableMic: true });
+  }
 }
 
 function resetCurrentSentence() {
@@ -1013,6 +1444,10 @@ function goPrevSentence() {
 function goNextSentence() {
   if (lessonComplete) return;
   if (currentSentenceIndex < sentenceStates.length - 1) {
+    const st = sentenceStates[currentSentenceIndex];
+    if (st && !isSentenceComplete(st.matched, st.tokens.length)) {
+      recordManualSkip(currentSentenceIndex);
+    }
     goToSentence(currentSentenceIndex + 1);
   }
 }
@@ -1116,6 +1551,9 @@ function render() {
   els.btnNextSentence.disabled =
     lessonComplete || currentSentenceIndex >= sentenceStates.length - 1;
   els.btnReadSample.disabled = lessonComplete;
+  if (els.btnReadRemaining) {
+    els.btnReadRemaining.disabled = lessonComplete;
+  }
   els.btnResetSentence.disabled = lessonComplete;
   els.btnDeleteCustom.classList.toggle('hidden', !lesson.custom);
   updateMicToggleUi();
@@ -1138,6 +1576,7 @@ function saveProgress() {
   } catch {
     /* ignore quota */
   }
+  updateCurrentHistorySession();
 }
 
 function processTranscript(transcript) {
@@ -1163,7 +1602,7 @@ function advanceSentence() {
   if (currentSentenceIndex >= sentenceStates.length - 1) {
     currentSentenceIndex = sentenceStates.length;
     lessonComplete = true;
-    stopMic();
+    stopMic({ keepEnabled: true });
     stopSpeaking();
     render();
     saveProgress();

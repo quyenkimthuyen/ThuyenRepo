@@ -8,6 +8,8 @@ let activeSpeak = null;
 let selectedVoiceUri = null;
 /** @type {Set<() => void>} */
 const voiceListeners = new Set();
+/** @type {Set<string>} */
+const brokenVoiceUris = new Set();
 
 /**
  * @returns {boolean}
@@ -30,7 +32,11 @@ export function getEnglishVoices() {
   if (!isTtsSupported()) return [];
   return window.speechSynthesis
     .getVoices()
-    .filter((v) => /^en(-|$)/i.test(v.lang))
+    .filter((v) => {
+      if (brokenVoiceUris.has(v.voiceURI)) return false;
+      if (/mobile|cortana/i.test(v.name)) return false;
+      return /^en(-|$)/i.test(v.lang);
+    })
     .sort((a, b) => {
       const rank = (/** @type {SpeechSynthesisVoice} */ v) => {
         if (v.lang.toLowerCase().startsWith('en-us')) return 0;
@@ -154,7 +160,15 @@ export function speakText(text, options = {}) {
     };
 
     utterance.onend = () => finish(true);
-    utterance.onerror = () => finish(false);
+    utterance.onerror = (event) => {
+      const isUserAbort = event && (event.error === 'interrupted' || event.error === 'aborted');
+      if (!isUserAbort && voice) {
+        console.warn(`Voice failed: ${voice.name} (${voice.voiceURI}). Error: ${event?.error}`);
+        brokenVoiceUris.add(voice.voiceURI);
+        notifyVoiceListeners();
+      }
+      finish(false);
+    };
 
     currentUtterance = utterance;
     speaking = true;

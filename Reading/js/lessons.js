@@ -104,6 +104,202 @@ export const LESSONS = [
       'My favourite color is green.',
     ],
   },
+  {
+    id: 'a1-school-things',
+    level: 'a1',
+    topic: 'study',
+    title: 'School things',
+    sentences: [
+      'This is my pen.',
+      'That is your book.',
+      'My bag is on the desk.',
+      'The teacher is in the classroom.',
+      'I write in my notebook.',
+    ],
+  },
+  {
+    id: 'a1-days-and-time',
+    level: 'a1',
+    topic: 'study',
+    title: 'Days and time',
+    sentences: [
+      'Today is Monday.',
+      'Tomorrow is Tuesday.',
+      'I go to class in the morning.',
+      'The lesson starts at eight.',
+      'We study English every day.',
+    ],
+  },
+
+  // ── A1 · Du lịch ────────────────────────────────────
+  {
+    id: 'a1-at-the-park',
+    level: 'a1',
+    topic: 'travel',
+    title: 'At the park',
+    sentences: [
+      'I am at the park.',
+      'The trees are tall.',
+      'The flowers are red and yellow.',
+      'Children play near the lake.',
+      'I walk with my friend.',
+    ],
+  },
+  {
+    id: 'a1-on-the-bus',
+    level: 'a1',
+    topic: 'travel',
+    title: 'On the bus',
+    sentences: [
+      'I wait for the bus.',
+      'The bus is blue.',
+      'I sit by the window.',
+      'The driver is very kind.',
+      'I get off near my school.',
+    ],
+  },
+
+  // ── A1 · Sức khỏe ───────────────────────────────────
+  {
+    id: 'a1-my-body',
+    level: 'a1',
+    topic: 'health',
+    title: 'My body',
+    sentences: [
+      'I have two eyes.',
+      'I have two hands.',
+      'My head hurts today.',
+      'I wash my hands with soap.',
+      'I drink water to stay healthy.',
+    ],
+  },
+
+  // ── A1 · IELTS ──────────────────────────────────────
+  {
+    id: 'a1-ielts-simple-answers',
+    level: 'a1',
+    topic: 'ielts',
+    title: 'IELTS Part 1 — Simple answers',
+    sentences: [
+      'My name is Minh.',
+      'I am from Vietnam.',
+      'I live with my family.',
+      'I like English very much.',
+      'My hobby is drawing pictures.',
+    ],
+  },
+
+  // ── A1 · Công việc ──────────────────────────────────
+  {
+    id: 'a1-jobs',
+    level: 'a1',
+    topic: 'work',
+    title: 'Jobs',
+    sentences: [
+      'My father is a doctor.',
+      'My mother is a teacher.',
+      'The nurse works in a hospital.',
+      'The farmer has many animals.',
+      'I want to be a singer.',
+    ],
+  },
+  {
+    id: 'a1-in-the-office',
+    level: 'a1',
+    topic: 'work',
+    title: 'In the office',
+    sentences: [
+      'This is my desk.',
+      'The computer is new.',
+      'I open my email.',
+      'My boss is very friendly.',
+      'We have a meeting today.',
+    ],
+  },
+
+  // ── A1 · Công nghệ ──────────────────────────────────
+  {
+    id: 'a1-my-phone',
+    level: 'a1',
+    topic: 'tech',
+    title: 'My phone',
+    sentences: [
+      'I have a phone.',
+      'My phone is small.',
+      'I call my mother.',
+      'I take a photo.',
+      'The battery is low.',
+    ],
+  },
+  {
+    id: 'a1-computer-class',
+    level: 'a1',
+    topic: 'tech',
+    title: 'Computer class',
+    sentences: [
+      'I use a computer.',
+      'The keyboard is black.',
+      'I click the mouse.',
+      'The screen is bright.',
+      'We learn online today.',
+    ],
+  },
+
+  // ── A1 · Xã hội ─────────────────────────────────────
+  {
+    id: 'a1-good-friends',
+    level: 'a1',
+    topic: 'society',
+    title: 'Good friends',
+    sentences: [
+      'I have a good friend.',
+      'We help each other.',
+      'She shares her toys.',
+      'He says sorry.',
+      'Friends are kind.',
+    ],
+  },
+  {
+    id: 'a1-keep-the-city-clean',
+    level: 'a1',
+    topic: 'society',
+    title: 'Keep the city clean',
+    sentences: [
+      'I see trash on the street.',
+      'I put paper in the bin.',
+      'We keep the park clean.',
+      'Clean water is important.',
+      'I love my city.',
+    ],
+  },
+
+  // ── A1 · Đời sống bổ sung ───────────────────────────
+  {
+    id: 'a1-my-clothes',
+    level: 'a1',
+    topic: 'daily',
+    title: 'My clothes',
+    sentences: [
+      'I wear a blue shirt.',
+      'My shoes are white.',
+      'This hat is too big.',
+      'I put on my jacket.',
+      'My socks are clean.',
+    ],
+  },
+  {
+    id: 'a1-feelings',
+    level: 'a1',
+    topic: 'health',
+    title: 'Feelings',
+    sentences: [
+      'I am happy today.',
+      'She is sad now.',
+      'He is tired after school.',
+      'We are hungry.',
+      'They are excited.',
+    ],
+  },
 
   // ── A2 · Đời sống ───────────────────────────────────
   {

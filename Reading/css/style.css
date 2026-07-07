@@ -498,6 +498,13 @@ body.show-vietnamese .sentence.done + .sentence-vi {
   color: var(--text-muted);
 }
 
+.completion-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
 .error-banner {
   background: rgba(248, 113, 113, 0.12);
   border: 1px solid rgba(248, 113, 113, 0.35);
@@ -665,8 +672,222 @@ body.show-vietnamese .sentence.done + .sentence-vi {
   color: #c084fc;
 }
 
+.history-drawer {
+  margin-top: 0.75rem;
+  padding: 0.85rem;
+  background: var(--bg);
+  border: 1px solid var(--surface-2);
+  border-radius: 10px;
+}
+
+.history-drawer-head,
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.history-drawer-head {
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.history-drawer-head h3,
+.history-section-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.history-hint {
+  margin: 0 0 0.85rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.history-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.history-stat {
+  padding: 0.65rem;
+  border: 1px solid var(--surface-2);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.history-stat strong {
+  display: block;
+  color: var(--text);
+  font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.history-stat span {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.history-review-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.9fr) minmax(0, 1.35fr);
+  gap: 0.85rem;
+}
+
+.history-list {
+  list-style: none;
+  margin: 0.55rem 0 0;
+  padding: 0;
+}
+
+.history-list li {
+  margin-bottom: 0.4rem;
+}
+
+.history-item {
+  width: 100%;
+  height: auto;
+  padding: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  border: 1px solid var(--surface-2);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+
+.history-item.is-selected {
+  border-color: rgba(59, 130, 246, 0.55);
+  background: var(--accent-soft);
+}
+
+.history-item-title {
+  font-weight: 700;
+}
+
+.history-item-meta,
+.history-item-flags,
+.history-empty,
+.history-detail-head p,
+.history-sentence-status,
+.history-missing-words,
+.history-skip-badge {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.history-item-flags {
+  color: #fbbf24;
+}
+
+.history-detail {
+  margin-top: 0.55rem;
+  padding: 0.75rem;
+  border: 1px solid var(--surface-2);
+  border-radius: 10px;
+  background: var(--surface);
+  min-height: 180px;
+}
+
+.history-detail-head {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem 0.75rem;
+  align-items: start;
+  margin-bottom: 0.65rem;
+}
+
+.history-detail-head h5,
+.history-detail-head p {
+  margin: 0;
+}
+
+.history-detail-head p {
+  grid-column: 1 / -1;
+}
+
+.history-percent {
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: #93c5fd;
+}
+
+.history-warning,
+.history-ok {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.history-warning {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+}
+
+.history-ok {
+  background: var(--sentence-done);
+  color: var(--word-matched);
+}
+
+.history-sentence-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.history-sentence-list li {
+  margin-bottom: 0.75rem;
+  padding: 0.6rem;
+  border: 1px solid var(--surface-2);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.history-sentence-list li.is-complete {
+  border-color: rgba(52, 211, 153, 0.25);
+}
+
+.history-sentence-list li.is-incomplete {
+  border-color: rgba(248, 113, 113, 0.28);
+}
+
+.history-sentence-text {
+  margin: 0 0 0.35rem;
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.history-sentence-status,
+.history-missing-words,
+.history-skip-badge {
+  margin: 0.25rem 0 0;
+}
+
+.history-missing-words {
+  color: #fecaca;
+}
+
+.history-skip-badge {
+  color: #fbbf24;
+}
+
 @media (max-width: 480px) {
   .import-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .history-summary,
+  .history-review-grid {
     grid-template-columns: 1fr;
   }
 
