@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TradeSetup",
+  "type": "object",
+  "required": ["id", "direction", "entry_time", "entry_price", "stop_loss", "take_profit"],
+  "properties": {
+    "id": { "type": "string" },
+    "symbol": { "type": "string", "default": "EURUSD" },
+    "timeframe": { "type": "string", "default": "1H" },
+    "direction": { "type": "string", "enum": ["long", "short"] },
+    "entry_time": { "type": "string", "format": "date-time" },
+    "entry_price": { "type": "number" },
+    "stop_loss": { "type": "number" },
+    "take_profit": { "type": "number" },
+    "planned_rr": { "type": "number" },
+    "result": { "type": "string", "enum": ["win", "loss", "open", "pending"] },
+    "tags": { "type": "array", "items": { "type": "string" } },
+    "note": { "type": "string" },
+    "created_at": { "type": "string" }
+  }
+}

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Trade Lab — EURUSD 1H</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>AI Trade Lab</h1>
+        <span class="subtitle">EURUSD · 1H · Label → Analyze → Backtest</span>
+      </div>
+      <div class="period-tabs" id="periodTabs"></div>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="panel">
+          <h2>Công cụ đánh dấu</h2>
+          <p class="hint" id="labelHint">Chỉ label trong năm Train (2022).</p>
+          <div class="btn-row">
+            <button class="btn active" data-direction="long" id="btnLong">Long</button>
+            <button class="btn" data-direction="short" id="btnShort">Short</button>
+          </div>
+          <div class="step-row">
+            <button class="btn step active" data-step="entry">1. Entry</button>
+            <button class="btn step" data-step="sl">2. SL</button>
+            <button class="btn step" data-step="tp">3. TP</button>
+          </div>
+          <div class="fields">
+            <label>Entry <input id="fieldEntry" readonly></label>
+            <label>Stop Loss <input id="fieldSL" type="number" step="0.00001"></label>
+            <label>Take Profit <input id="fieldTP" type="number" step="0.00001"></label>
+            <label>Thời gian <input id="fieldTime" readonly></label>
+            <label>Ghi chú <input id="fieldNote" placeholder="pullback EMA50..."></label>
+          </div>
+          <div class="btn-row">
+            <button class="btn primary" id="btnSave" disabled>Lưu setup</button>
+            <button class="btn" id="btnReset">Reset</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Setup đã lưu <span id="setupCount">0</span></h2>
+          <ul id="setupList" class="setup-list"></ul>
+        </section>
+
+        <section class="panel">
+          <h2>Chiến lược & Backtest</h2>
+          <div class="btn-row">
+            <button class="btn primary" id="btnAnalyze">Analyze pattern</button>
+          </div>
+          <div class="btn-row">
+            <button class="btn" id="btnBacktestVal">Backtest 2023</button>
+            <button class="btn" id="btnBacktestTest">Backtest 2024–26</button>
+          </div>
+          <pre id="analysisOut" class="output"></pre>
+          <pre id="backtestOut" class="output"></pre>
+        </section>
+      </aside>
+
+      <section class="chart-area">
+        <div class="chart-toolbar">
+          <label><input type="checkbox" id="toggleEma50" checked> EMA 50</label>
+          <label><input type="checkbox" id="toggleEma200" checked> EMA 200</label>
+          <label><input type="checkbox" id="toggleRsi" checked> RSI 14</label>
+          <span class="badge" id="periodBadge">Train 2022</span>
+        </div>
+        <div id="chartMain" class="chart-main"></div>
+        <div id="chartRsi" class="chart-rsi"></div>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

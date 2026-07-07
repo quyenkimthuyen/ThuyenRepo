@@ -1,0 +1,21 @@
+{
+  "symbol": "EURUSD",
+  "timeframe": "1H",
+  "timezone": "UTC",
+  "periods": {
+    "train": { "from": "2022-01-01", "to": "2022-12-31", "label": "Train — đánh dấu setup tại đây" },
+    "validation": { "from": "2023-01-01", "to": "2023-12-31", "label": "Validation — tinh chỉnh chiến lược" },
+    "test": { "from": "2024-01-01", "to": "2026-12-31", "label": "Test — out-of-sample, không optimize" }
+  },
+  "backtest": {
+    "spread_pips": 1.0,
+    "slippage_pips": 0.2,
+    "default_rr": 2.0,
+    "pass_criteria": {
+      "min_profit_factor": 1.3,
+      "max_drawdown_pct": 20.0,
+      "max_drawdown_pips": 250,
+      "min_trades": 30
+    }
+  }
+}

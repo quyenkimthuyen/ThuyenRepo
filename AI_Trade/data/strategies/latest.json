@@ -1,0 +1,26 @@
+{
+  "name": "learned_from_labels",
+  "source_setups": 6,
+  "win_rate_train": 0.5,
+  "avg_rr_train": 2.0,
+  "rules": {
+    "long": {
+      "trend_up": false,
+      "rsi_min": 37.0,
+      "rsi_max": 56.2,
+      "close_above_ema50": true
+    },
+    "short": {
+      "trend_up": true,
+      "rsi_min": 37.0,
+      "rsi_max": 56.2,
+      "close_above_ema50": true
+    }
+  },
+  "risk": {
+    "sl_atr_mult": 1.0,
+    "tp_atr_mult": 2.0,
+    "use_atr_levels": true
+  },
+  "tree_summary": "|--- close_above_ema200 <= 0.50\n|   |--- direction_long <= 0.50\n|   |   |--- class: 1\n|   |--- direction_long >  0.50\n|   |   |--- class: 0\n|--- close_above_ema200 >  0.50\n|   |--- class: 0\n"
+}
