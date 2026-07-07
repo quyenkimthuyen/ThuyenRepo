@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { LESSONS } from '../js/lessons.js';
+import { LESSON_INDEX } from '../js/lessonIndex.js';
 import { LESSON_BANK } from './lessonBankData.mjs';
 import { A2_BANK } from './banks/a2.mjs';
 import { B1_BANK } from './banks/b1.mjs';
@@ -27,11 +27,11 @@ function slugify(title) {
 }
 
 function existingCount(level, topic) {
-  return LESSONS.filter((l) => l.level === level && l.topic === topic).length;
+  return LESSON_INDEX.filter((l) => l.level === level && l.topic === topic).length;
 }
 
 function existingIds() {
-  return new Set(LESSONS.map((l) => l.id));
+  return new Set(LESSON_INDEX.map((l) => l.id));
 }
 
 const supplement = [];

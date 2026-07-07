@@ -1,0 +1,423 @@
+/** Auto-generated — ielts translations */
+export const TOPIC_TRANSLATIONS = {
+  "a1-ielts-simple-answers": [
+    "Tên tôi là Minh.",
+    "Tôi đến từ Việt Nam.",
+    "Tôi sống cùng gia đình.",
+    "Tôi rất thích tiếng Anh.",
+    "Sở thích của tôi là vẽ tranh."
+  ],
+  "a2-self-intro": [
+    "Xin chào, tôi tên là Anna.",
+    "Tôi hai mươi tuổi.",
+    "Tôi sống ở Hà Nội cùng bố mẹ.",
+    "Tôi thích đọc sách và nghe nhạc.",
+    "Tôi muốn học tiếng Anh thật tốt."
+  ],
+  "a2-ielts-daily-habits": [
+    "Tôi thường thức dậy lúc bảy giờ.",
+    "Tôi uống cà phê và ăn bánh mì nướng cho bữa sáng.",
+    "Tôi kiểm tra điện thoại trước khi ra khỏi nhà.",
+    "Buổi tối tôi thích thư giãn và xem TV.",
+    "Tôi cố gắng đi ngủ trước nửa đêm."
+  ],
+  "b1-ielts-hometown": [
+    "Tôi đến từ một thành phố cỡ trung bình ở miền Bắc Việt Nam.",
+    "Nơi đó nổi tiếng với phố cổ và ẩm thực đường phố ngon.",
+    "Nhịp sống ở đó khá thong dong so với thủ đô.",
+    "Người trẻ thường chuyển đến các thành phố lớn hơn để có cơ hội việc làm tốt hơn.",
+    "Tôi vẫn về quê vài lần mỗi năm để thăm người thân."
+  ],
+  "b1-ielts-free-time": [
+    "Trong thời gian rảnh, tôi thích nấu ăn và thử các công thức mới.",
+    "Tôi thường làm điều này vào cuối tuần khi bớt bận rộn.",
+    "Tôi bắt đầu nấu ăn nghiêm túc khoảng ba năm trước.",
+    "Nó giúp tôi thư giãn sau một tuần làm việc căng thẳng.",
+    "Một ngày nào đó tôi muốn tham gia khóa học nấu ăn chuyên nghiệp."
+  ],
+  "b1-ielts-work-study": [
+    "Hiện tôi đang làm trợ lý marketing cho một công ty công nghệ.",
+    "Tôi đã ở vị trí này gần hai năm rồi.",
+    "Phần khó nhất là quản lý các deadline gấp gáp.",
+    "Tôi chọn lĩnh vực này vì tôi thích giải quyết vấn đề một cách sáng tạo.",
+    "Trong tương lai tôi hy vọng sẽ lãnh đạo đội marketing của riêng mình."
+  ],
+  "b2-ielts-describe-place": [
+    "Tôi muốn mô tả một địa điểm đáng nhớ đã để lại ấn tượng sâu sắc trong tôi.",
+    "Đó là một thị trấn ven biển nhỏ ở miền Trung Việt Nam mà tôi đã đến tháng Mười năm ngoái.",
+    "Tôi đi cùng hai người bạn thân trong kỳ nghỉ ngắn mùa thu giữa kỳ đại học.",
+    "Chúng tôi đã kiệt sức vì thi cử, nên muốn tìm một nơi yên tĩnh bên biển.",
+    "Thị trấn nổi tiếng với những vách đá hùng vĩ, cát trắng mịn và nước biển trong vắt.",
+    "Mỗi sáng chúng tôi đi bộ dọc bờ biển và chụp ảnh bình minh.",
+    "Buổi chiều chúng tôi bơi biển và thử hải sản tươi ở những quán nhỏ của gia đình địa phương.",
+    "Điều làm nơi đó thực sự đặc biệt là mọi thứ đều yên bình và còn nguyên vẹn.",
+    "Không có xe du lịch đông đúc, và người dân địa phương rất thân thiện, hiếu khách.",
+    "Tôi cảm thấy hoàn toàn thư thái lần đầu sau nhiều tháng, như thể đầu óc cuối cùng cũng chậm lại.",
+    "Tôi chắc chắn sẽ giới thiệu nơi này cho bất kỳ ai cần thoát khỏi cuộc sống thành phố bận rộn vài ngày.",
+    "Thậm chí tôi đang lên kế hoạch quay lại đó cùng gia đình vào mùa hè tới."
+  ],
+  "b2-ielts-describe-gift": [
+    "Tôi muốn nói về một món quà đặc biệt mà tôi đã nhận được vài năm trước.",
+    "Đó là một cuốn sổ da chất lượng cao mà chị gái tôi tặng nhân dịp sinh nhật.",
+    "Lúc đó tôi vừa bắt đầu công việc toàn thời gian đầu tiên và cảm thấy khá choáng ngợp.",
+    "Chị nói muốn tặng tôi thứ gì đó thực tế mà vẫn mang tính cá nhân.",
+    "Cuốn sổ có bìa nâu đậm đơn giản và những trang giấy kem dày bên trong.",
+    "Điều tôi thích nhất là chị đã viết một lời động viên ngắn ở trang đầu.",
+    "Từ đó đến nay tôi dùng nó để lên kế hoạch mục tiêu và ghi từ vựng tiếng Anh mới.",
+    "Mỗi lần mở ra, tôi nhớ lại sự ủng hộ của chị trong giai đoạn chuyển tiếp khó khăn.",
+    "Đó không phải món quà đắt nhất tôi từng nhận, nhưng rất ý nghĩa với tôi.",
+    "Tôi vẫn mang theo trong túi khi đi họp hoặc học ở quán cà phê.",
+    "Thực ra tôi sắp dùng hết vài trang cuối, nên hy vọng chị sẽ tặng tôi cuốn mới.",
+    "Tôi chắc chắn khuyên nên tặng những món quà chu đáo như vậy cho người mình quý mến."
+  ],
+  "b2-ielts-describe-skill": [
+    "Tôi muốn mô tả một kỹ năng hữu ích mà tôi đã học khi mới hai mươi tuổi.",
+    "Đó là kỹ năng nói trước công chúng, mà tôi bắt đầu rèn qua câu lạc bộ tranh biện ở đại học.",
+    "Trước khi tham gia, tôi cực kỳ lo lắng khi phải nói trước đám đông đông người.",
+    "Huấn luyện viên dạy chúng tôi cách lập luận, kiểm soát giọng nói và giữ giao tiếp bằng mắt.",
+    "Chúng tôi luyện tập mỗi tuần bằng cách chuẩn bị bài nói ngắn về các chủ đề xã hội và môi trường.",
+    "Lần đầu thi đấu, tay tôi run và tôi nói quá nhanh.",
+    "Tuy nhiên tôi dần tiến bộ và thậm chí đạt giải nhỏ ở cuộc thi khu vực.",
+    "Kỹ năng này giúp tôi rất nhiều trong phỏng vấn xin việc và thuyết trình tại công ty.",
+    "Nó cũng tăng sự tự tin khi giao tiếp với người từ nhiều nền văn hóa khác nhau.",
+    "Nhìn lại, tôi nhận ra tiến bộ đến từ luyện tập đều đặn chứ không phải tài năng bẩm sinh.",
+    "Tôi vẫn xem các bài nói trực tuyến để học hỏi từ diễn giả có kinh nghiệm trên thế giới.",
+    "Tôi khuyến khích bất kỳ ai nhút nhát nên tham gia câu lạc bộ và luyện trong môi trường hỗ trợ."
+  ],
+  "c1-ielts-globalisation": [
+    "Toàn cầu hóa đã thúc đẩy trao đổi ý tưởng, hàng hóa và vốn qua biên giới.",
+    "Những người ủng hộ cho rằng nó đã đưa hàng triệu người thoát nghèo nhờ mở rộng thương mại.",
+    "Những người phê phán cho rằng nó làm trầm trọng thêm bất bình đẳng và xói mòn bản sắc văn hóa địa phương.",
+    "Các tập đoàn đa quốc gia có ảnh hưởng to lớn đến tiêu chuẩn lao động và chính sách môi trường.",
+    "Điều hướng căng thẳng này đòi hỏi chính sách tinh tế hơn là chủ nghĩa bảo hộ đơn giản."
+  ],
+  "a1-ielts-pets": [
+    "Bạn có thích động vật không?",
+    "Có, tôi rất thích động vật.",
+    "Ở nhà tôi có một con mèo nhỏ.",
+    "Nó có bộ lông trắng mềm mại.",
+    "Buổi tối chúng tôi chơi cùng nhau."
+  ],
+  "a1-ielts-colors": [
+    "Màu yêu thích của bạn là gì?",
+    "Màu yêu thích của tôi là màu xanh dương.",
+    "Đó là màu của bầu trời.",
+    "Tôi có một chiếc ba lô màu xanh.",
+    "Nó khiến tôi cảm thấy vui vẻ."
+  ],
+  "a1-ielts-fruits": [
+    "Bạn có ăn nhiều trái cây không?",
+    "Có, tôi ăn trái cây mỗi ngày.",
+    "Tôi thích táo và chuối nhất.",
+    "Chúng ngọt và tốt cho sức khỏe.",
+    "Mẹ tôi mua chúng ở chợ."
+  ],
+  "a1-ielts-weather": [
+    "Hôm nay thời tiết thế nào?",
+    "Hôm nay trời nắng và nóng.",
+    "Tôi rất thích thời tiết nắng.",
+    "Tôi có thể đi công viên.",
+    "Tôi không thích những ngày mưa."
+  ],
+  "a1-ielts-music": [
+    "Bạn có thích nghe nhạc không?",
+    "Có, tôi nghe nhạc mỗi ngày.",
+    "Tôi thích nhạc pop nhất.",
+    "Nó rất sôi động.",
+    "Tôi nghe trên điện thoại."
+  ],
+  "a1-ielts-toys": [
+    "Khi còn nhỏ, đồ chơi yêu thích của bạn là gì?",
+    "Tôi rất thích chiếc xe đồ chơi màu đỏ.",
+    "Ông tôi tặng nó cho tôi.",
+    "Tôi chơi với nó cả ngày.",
+    "Tôi vẫn cất nó trong phòng."
+  ],
+  "a1-ielts-drinks": [
+    "Bạn thích uống gì?",
+    "Tôi thích uống nước lọc.",
+    "Tôi cũng uống nước cam.",
+    "Nó có vị ngọt.",
+    "Tôi không thích nước ngọt có ga."
+  ],
+  "a1-ielts-flowers": [
+    "Bạn có thích hoa không?",
+    "Có, tôi thấy hoa rất đẹp.",
+    "Tôi thích hồng đỏ nhất.",
+    "Chúng có mùi thơm dễ chịu.",
+    "Nhà chúng tôi có vài cây hoa trong vườn."
+  ],
+  "a1-ielts-weekends": [
+    "Cuối tuần bạn làm gì?",
+    "Thứ Bảy tôi ngủ nướng.",
+    "Sau đó tôi đến thăm ông nội.",
+    "Chúng tôi ăn tối cùng nhau.",
+    "Tôi nghỉ ngơi trước thứ Hai."
+  ],
+  "a2-ielts-accommodation": [
+    "Bạn sống ở nhà riêng hay chung cư?",
+    "Tôi sống trong một căn hộ thoải mái.",
+    "Nó nằm gần trung tâm thành phố.",
+    "Phòng yêu thích của tôi là phòng ngủ.",
+    "Tôi trang trí nó bằng những poster đẹp."
+  ],
+  "a2-ielts-movies": [
+    "Bạn xem phim thường xuyên như thế nào?",
+    "Tôi xem phim một hoặc hai lần mỗi tuần.",
+    "Tôi thích phim hành động và hài hước.",
+    "Chúng giúp tôi thư giãn sau khi học.",
+    "Đôi khi tôi đi rạp chiếu phim với bạn bè."
+  ],
+  "a2-ielts-sports": [
+    "Bạn có chơi môn thể thao nào không?",
+    "Cuối tuần tôi chơi cầu lông.",
+    "Đó là cách tuyệt vời để giữ dáng.",
+    "Tôi cũng thích xem bóng đá trên TV.",
+    "Đội bóng yêu thích của tôi rất nổi tiếng."
+  ],
+  "a2-ielts-birthdays": [
+    "Bạn thường ăn mừng sinh nhật như thế nào?",
+    "Tôi tổ chức một bữa tiệc nhỏ ở nhà.",
+    "Tôi mời bạn thân và gia đình.",
+    "Chúng tôi ăn bánh và thổi nến.",
+    "Tôi thích nhận thiệp chúc mừng sinh nhật."
+  ],
+  "a2-ielts-reading": [
+    "Bạn có thích đọc sách không?",
+    "Có, đọc sách là một trong những sở thích của tôi.",
+    "Tôi đọc truyện tranh và tiểu thuyết.",
+    "Tôi thường đọc trước khi đi ngủ.",
+    "Nó giúp tôi học từ mới."
+  ],
+  "a2-ielts-clothes": [
+    "Bạn thích mặc loại quần áo nào?",
+    "Tôi thích đồ thoải mái như quần jean và áo phông.",
+    "Chúng rất thoải mái khi mặc hàng ngày.",
+    "Tôi mặc đồ trang trọng cho các dịp đặc biệt.",
+    "Màu yêu thích của tôi khi chọn quần áo là đen và trắng."
+  ],
+  "a2-ielts-photos": [
+    "Bạn có thích chụp ảnh không?",
+    "Có, tôi chụp rất nhiều ảnh bằng điện thoại.",
+    "Tôi thích chụp cảnh thiên nhiên và đồ ăn.",
+    "Tôi chia sẻ chúng với bạn bè trên mạng.",
+    "Ảnh giúp tôi lưu giữ những kỷ niệm đẹp."
+  ],
+  "a2-ielts-holidays": [
+    "Kỳ nghỉ bạn thường đi đâu?",
+    "Tôi thường về quê.",
+    "Ở đó rất yên bình và tĩnh lặng.",
+    "Tôi có thể hít thở không khí trong lành và thư giãn.",
+    "Đôi khi mùa hè chúng tôi đi biển."
+  ],
+  "b1-ielts-internet": [
+    "Mỗi ngày bạn dành bao nhiêu thời gian trực tuyến?",
+    "Tôi nghĩ mình dùng internet khoảng ba giờ mỗi ngày.",
+    "Tôi chủ yếu dùng để học và lướt mạng xã hội.",
+    "Đó là công cụ tiện lợi để tìm kiếm thông tin.",
+    "Tuy nhiên, ở trực tuyến quá lâu có thể lãng phí thời gian."
+  ],
+  "b1-ielts-festivals": [
+    "Lễ hội quan trọng nhất ở nước bạn là gì?",
+    "Tết chắc chắn là lễ hội quan trọng nhất ở Việt Nam.",
+    "Đó là dịp sum họp gia đình và đón năm mới.",
+    "Chúng tôi dọn dẹp nhà cửa và chuẩn bị món ăn truyền thống.",
+    "Trẻ em nhận tiền lì xì trong phong bì đỏ."
+  ],
+  "b1-ielts-neighbors": [
+    "Bạn có hòa thuận với hàng xóm không?",
+    "Có, hàng xóm của tôi rất thân thiện và hay giúp đỡ.",
+    "Chúng tôi luôn chào nhau và đôi khi trò chuyện buổi tối.",
+    "Họ giúp chúng tôi tưới cây khi chúng tôi đi vắng.",
+    "Tôi nghĩ có hàng xóm tốt khiến cuộc sống dễ dàng hơn nhiều."
+  ],
+  "b1-ielts-shopping": [
+    "Bạn thích mua sắm trực tuyến hay ở cửa hàng địa phương?",
+    "Thật ra, tôi thích mua sắm trực tuyến vì tiết kiệm thời gian.",
+    "Tôi có thể so sánh giá dễ dàng mà không cần đi lại.",
+    "Mặt khác, mua quần áo online có thể rủi ro.",
+    "Đôi khi kích cỡ thực tế không vừa với tôi."
+  ],
+  "b1-ielts-gardens": [
+    "Gần nơi bạn sống có nhiều công viên không?",
+    "Có, có một công viên lớn cách nhà tôi chỉ mười phút đi bộ.",
+    "Tôi thường đến đó đi dạo vào buổi chiều muộn.",
+    "Nơi đó có nhiều cây xanh và một hồ nhỏ.",
+    "Công viên công cộng rất cần thiết cho người dân ở thành phố đông đúc."
+  ],
+  "b1-ielts-museums": [
+    "Bạn có thích tham quan bảo tàng không?",
+    "Có, tôi thỉnh thoảng thích đến bảo tàng lịch sử.",
+    "Đó là cách thú vị để tìm hiểu về quá khứ.",
+    "Tháng trước tôi đã đến bảo tàng quốc gia.",
+    "Vé miễn phí cho học sinh."
+  ],
+  "b1-ielts-handcrafts": [
+    "Khi còn nhỏ bạn có làm đồ thủ công không?",
+    "Có, chúng tôi học gấp sao giấy ở tiểu học.",
+    "Đó là hoạt động vui cho trẻ em.",
+    "Tôi cũng từng thử làm đồ gốm một lần.",
+    "Quà tặng thủ công rất có ý nghĩa khi nhận được."
+  ],
+  "b2-ielts-describe-book": [
+    "Tôi muốn nói về một cuốn sách đã ảnh hưởng đến tôi theo cách rất ý nghĩa.",
+    "Cuốn sách tên là Atomic Habits, tập trung vào việc xây dựng những thói quen nhỏ tích cực.",
+    "Một người bạn thân giới thiệu cuốn sách cho tôi năm ngoái khi tôi đang chật vật giữ động lực.",
+    "Tôi mua một bản ở hiệu sách địa phương trong một giai đoạn làm việc đặc biệt căng thẳng.",
+    "Tác giả giải thích cách những hành động nhỏ hàng ngày có thể dẫn đến kết quả lớn về lâu dài.",
+    "Một ý tưởng khiến tôi ấn tượng là bạn không vươn tới mức mục tiêu, mà rơi xuống mức hệ thống của mình.",
+    "Sau khi đọc xong, tôi bắt đầu dậy sớm hơn ba mươi phút mỗi ngày để học tiếng Anh.",
+    "Tôi cũng bắt đầu theo dõi thói quen trong một cuốn sổ đơn giản, giúp tôi tự giác hơn.",
+    "Trong vòng ba tháng tôi nhận thấy mình tập trung hơn, ngăn nắp hơn và bớt lo âu.",
+    "Cuốn sách được viết bằng ngôn ngữ rõ ràng, thực tế, nên dễ áp dụng lời khuyên ngay.",
+    "Tôi đã cho hai đồng nghiệp mượn, và họ nói cuốn sách cũng giúp ích cho họ.",
+    "Tôi thành tâm giới thiệu cuốn sách cho bất kỳ ai muốn cải thiện kỷ luật hàng ngày."
+  ],
+  "b2-ielts-describe-event": [
+    "Tôi muốn mô tả một sự kiện lịch sử vô cùng quan trọng đối với đất nước tôi.",
+    "Sự kiện tôi nghĩ đến là Tuyên ngôn Độc lập vào ngày hai tháng Chín năm một nghìn chín trăm bốn mươi lăm.",
+    "Tôi lần đầu tìm hiểu kỹ về sự kiện này trong một tiết Lịch sử ở trường trung học.",
+    "Giáo viên cho chúng tôi xem ảnh cũ và phát bản ghi âm bài phát biểu lịch sử.",
+    "Ngày hôm đó, hàng trăm nghìn người tập trung tại Quảng trường Ba Đình ở Hà Nội.",
+    "Họ kiên nhẫn chờ đợi dưới cái nóng để nghe chủ tịch tuyên bố sự ra đời của một quốc gia mới.",
+    "Bài phát biểu đánh dấu sự kết thúc của hàng thập kỷ đô hộ và xâm lược nước ngoài.",
+    "Với nhiều gia đình, kể cả ông bà tôi, đó là khoảnh khắc cảm động nhất trong đời họ.",
+    "Mỗi năm chúng tôi kỷ niệm ngày này bằng lễ nghi, cờ và các chương trình truyền hình.",
+    "Khi xem lại đoạn phim ngày nay, tôi vẫn cảm thấy niềm tự hào và lòng biết ơn sâu sắc.",
+    "Sự kiện nhắc tôi rằng tự do và độc lập không bao giờ được coi là điều hiển nhiên.",
+    "Tôi tin mọi người trẻ Việt Nam nên hiểu ý nghĩa của cột mốc lịch sử này."
+  ],
+  "b2-ielts-describe-person": [
+    "Tôi muốn nói về một người thành công mà tôi thực sự ngưỡng mộ.",
+    "Cô ấy là một doanh nhân địa phương ở quê tôi, khởi nghiệp kinh doanh bao bì xanh.",
+    "Tôi lần đầu nghe về cô qua một phim tài liệu phát trên truyền hình quốc gia.",
+    "Lúc đó cô làm việc một mình trong một kho nhỏ thuê ở rìa thành phố.",
+    "Công ty của cô sản xuất vật liệu bao bì phân hủy sinh học cho nhà hàng và shop online.",
+    "Cô kể với phóng viên rằng cô lấy cảm hứng từ lượng rác nhựa ở khu phố mình.",
+    "Những năm đầu cô gặp khó khăn tài chính và nhiều người nghi ngờ ý tưởng của cô.",
+    "Tuy nhiên cô kiên trì, cải tiến sản phẩm và dần giành được niềm tin của khách hàng lớn hơn.",
+    "Ngày nay doanh nghiệp của cô thuê hàng chục lao động và xuất khẩu sang nhiều nước.",
+    "Điều tôi ngưỡng mộ nhất là quyết tâm và cam kết thực sự của cô với việc bảo vệ môi trường.",
+    "Cô cũng cố vấn cho các founder trẻ và đến trường nói về khởi nghiệp bền vững.",
+    "Câu chuyện của cô đã tiếp thêm cho tôi niềm tin rằng thành công có ý nghĩa là có thể đạt được nhờ kiên nhẫn và giá trị rõ ràng."
+  ],
+  "b2-ielts-describe-journey": [
+    "Tôi muốn mô tả một chuyến đi đáng nhớ mà tôi đã thực hiện bằng tàu hỏa qua đêm.",
+    "Chuyện xảy ra hai mùa hè trước khi tôi đi từ Hà Nội đến Đà Nẵng cùng ba bạn đại học.",
+    "Chúng tôi đã đặt vé giường nằm mềm vì muốn tiết kiệm tiền và ngắm cảnh đẹp.",
+    "Tàu rời ga lúc chín giờ tối, đúng lúc ánh đèn thành phố bắt đầu mờ dần.",
+    "Ban đầu chúng tôi trò chuyện và chơi bài, sau đó mở cửa sổ để hứng không khí đêm mát.",
+    "Sáng hôm sau chúng tôi thức dậy với cảnh núi non, sông nước và cánh đồng lúa xanh bát ngát.",
+    "Phần còn lại của ngày chúng tôi bơi biển và thử các món đặc sản địa phương.",
+    "Điều làm chuyến đi đặc biệt là nhịp độ thong dong và thời gian trò chuyện không bị xao nhãng.",
+    "Có vài lần tàu trễ, nhưng không ai phàn nàn vì trải nghiệm giống như một cuộc phiêu lưu.",
+    "Tôi chụp hàng trăm bức ảnh, và đến giờ chúng tôi vẫn cười khi xem lại cùng nhau.",
+    "Đó là một trong những chuyến đi rẻ nhất chúng tôi từng có, nhưng cũng là một trong những chuyến vui nhất.",
+    "Tôi rất muốn đi lại tuyến đường đó một ngày nào đó, có lẽ cùng em trai."
+  ],
+  "b2-ielts-describe-teacher": [
+    "Tôi muốn nói về một giáo viên đã có ảnh hưởng lớn đến đời học của tôi.",
+    "Cô tên là cô Lan, và cô dạy tôi tiếng Anh suốt các năm trung học phổ thông.",
+    "Khi mới vào lớp cô, tôi nhút nhát và sợ mắc lỗi phát âm.",
+    "Thay vì chỉ trích gay gắt, cô tạo bầu không khí thân thiện nơi sai sót là một phần của việc học.",
+    "Cô thường dùng video ngắn, đóng vai và thảo luận nhóm để bài học sinh động hơn.",
+    "Một hoạt động tôi nhớ rõ là vòng tròn nói hàng tuần, mỗi người phải chia sẻ ý kiến.",
+    "Cô còn ghi phản hồi cá nhân trong cuốn sổ nhỏ dành cho từng học sinh.",
+    "Nhờ sự khích lệ của cô, tôi tham gia cuộc thi nói tiếng Anh và vào chung kết cấp trường.",
+    "Quan trọng hơn, cô dạy tôi rằng sự tự tin lớn lên khi chuẩn bị kỹ và chấp nhận rủi ro nhỏ.",
+    "Chúng tôi vẫn trao đổi tin nhắn trên mạng xã hội, và cô luôn hỏi thăm việc học của tôi.",
+    "Tôi thật sự tin rằng mình sẽ không theo đuổi cơ hội quốc tế nếu không có sự hướng dẫn của cô.",
+    "Nếu gặp lại cô, tôi sẽ cảm ơn vì cô đã thay đổi cách tôi nhìn nhận việc học ngôn ngữ."
+  ],
+  "b2-ielts-describe-hobby": [
+    "Tôi muốn mô tả một sở thích giúp tôi thư giãn sau một tuần bận rộn.",
+    "Đó là nhiếp ảnh, đặc biệt là chụp đời sống đường phố và kiến trúc cổ trong thành phố.",
+    "Tôi bắt đầu quan tâm khoảng ba năm trước khi một người bạn cho mượn máy mirrorless cũ.",
+    "Ban đầu tôi chỉ chụp bừa, nhưng sớm học về ánh sáng, bố cục và góc nhìn.",
+    "Tôi thường ra ngoài sớm sáng Chủ nhật khi phố vắng và ánh sáng dịu.",
+    "Đôi khi tôi đi bộ hàng giờ không để ý thời gian vì tìm góc chụp thú vị.",
+    "Tôi có album trực tuyến chia sẻ ảnh chọn lọc với bạn bè và những người cùng đam mê.",
+    "Thỉnh thoảng có người nhắn hỏi bức ảnh chụp ở đâu, điều đó khiến tôi vui.",
+    "Sở thích này dạy tôi quan sát những chi tiết nhỏ mà trước đây tôi bỏ qua.",
+    "Đó cũng là kênh sáng tạo không cần thiết bị đắt tiền để bắt đầu.",
+    "Ngày mưa tôi chỉnh ảnh ở nhà và đọc bài của nhiếp ảnh gia chuyên nghiệp.",
+    "Tôi khuyên nhiếp ảnh cho ai muốn chậm lại và trân trọng môi trường xung quanh."
+  ],
+  "b2-ielts-describe-city": [
+    "Tôi muốn nói về một thành phố tôi đã đến và để lại ấn tượng lâu dài.",
+    "Đó là Hội An, một phố cổ ở miền Trung Việt Nam mà tôi khám phá trong kỳ nghỉ ngắn.",
+    "Tôi đi cùng bố mẹ trong dịp lễ hội đèn lồng, diễn ra vào đêm trăng rằm.",
+    "Vừa đến nơi, chúng tôi thấy đèn lồng đủ màu treo dọc từng con phố hẹp.",
+    "Những ngôi nhà gỗ cũ, tường vàng và quán cà phê bên sông tạo không khí thật yên bình.",
+    "Ban ngày chúng tôi thăm làng nghề truyền thống và thử tự làm đèn lồng nhỏ.",
+    "Buổi tối chúng tôi đi thuyền trên sông trong khi hàng ngàn ánh đèn phản chiếu trên mặt nước.",
+    "Ẩm thực địa phương cũng là điểm nhấn, đặc biệt là cao lầu và món tráng miệng xoài tươi.",
+    "Điều ấn tượng nhất là thành phố bảo tồn di sản nhưng vẫn đón khách du lịch một cách tôn trọng.",
+    "Tôi cảm giác như bước ngược thời gian, nhưng người dân hiện đại và hiếu khách.",
+    "Tôi mua quà lưu niệm thủ công cho em họ và chụp ảnh vẫn treo trong phòng.",
+    "Tôi rất khuyên nên đến Hội An nếu bạn muốn trải nghiệm văn hóa, lịch sử và ẩm thực trong một chuyến đi."
+  ],
+  "c1-ielts-ai-ethics": [
+    "Sự phát triển nhanh chóng của trí tuệ nhân tạo đặt ra những câu hỏi đạo đức sâu sắc.",
+    "Một mối lo ngại lớn là khả năng thay thế lao động ở nhiều ngành công nghiệp.",
+    "Ngoài ra, thiên kiến được nhúng trong thuật toán có thể duy trì bất bình đẳng xã hội.",
+    "Cần thiết lập khung pháp lý để đảm bảo tính minh bạch và trách nhiệm giải trình của AI.",
+    "Chúng ta phải ưu tiên phúc lợi con người hơn lợi nhuận doanh nghiệp trong tiến bộ công nghệ."
+  ],
+  "c1-ielts-higher-ed-value": [
+    "Giá trị của bằng đại học ngày càng bị đặt dưới kính lúp trên thị trường lao động hiện đại.",
+    "Những người phê bình cho rằng chương trình học thường tách rời khỏi nhu cầu thực tiễn của ngành.",
+    "Ngược lại, giáo dục đại học nuôi dưỡng tư duy phản biện và sự phát triển trí tuệ.",
+    "Các trường đại học nên tích hợp đào tạo nghề để nâng cao khả năng tìm việc của sinh viên.",
+    "Một cách tiếp cận cân bằng chuẩn bị cho sinh viên cả thành công nghề nghiệp lẫn trách nhiệm công dân."
+  ],
+  "c1-ielts-work-life-balance": [
+    "Đạt được cân bằng công việc–cuộc sống là thách thức trong xã hội siêu kết nối.",
+    "Công cụ giao tiếp số đã làm mờ ranh giới giữa đời sống cá nhân và công việc.",
+    "Căng thẳng mãn tính và kiệt sức có thể dẫn đến các vấn đề thể chất và tâm lý nghiêm trọng.",
+    "Nhà tuyển dụng nên xây dựng môi trường hỗ trợ, tôn trọng thời gian cá nhân.",
+    "Cuối cùng, ưu tiên sức khỏe nâng cao cả hạnh phúc cá nhân lẫn năng suất lâu dài."
+  ],
+  "c1-ielts-climate-policies": [
+    "Giải quyết biến đổi khí hậu đòi hỏi hợp tác quốc tế mạnh mẽ và hành động quyết đoán.",
+    "Chuyển đổi sang năng lượng tái tạo là điều bắt buộc để giảm phát thải carbon.",
+    "Chính phủ nên áp dụng cơ chế định giá carbon để khuyến khích chuyển đổi xanh.",
+    "Tuy nhiên, các nước đang phát triển cần hỗ trợ tài chính để áp dụng công nghệ bền vững.",
+    "Thất bại trong hành động chung sẽ dẫn đến hậu quả sinh thái thảm khốc."
+  ],
+  "c1-ielts-cultural-preservation": [
+    "Toàn cầu hóa đặt ra mối đe dọa lớn đối với ngôn ngữ bản địa và di sản văn hóa.",
+    "Khi các nền văn hóa thống trị mở rộng, những truyền thống độc đáo có nguy cơ bị lề hẹp hoặc mất hẳn.",
+    "Bảo tồn đa dạng văn hóa là điều cần thiết để duy trì bản sắc lịch sử.",
+    "Chương trình giáo dục nên tích hợp lịch sử địa phương và ngôn ngữ bản địa.",
+    "Các sáng kiến do cộng đồng dẫn dắt đóng vai trò quan trọng trong việc giữ truyền thống cho thế hệ tương lai."
+  ],
+  "c1-ielts-economic-disparity": [
+    "Bất bình đẳng tài sản ngày càng gia tăng đe dọa nghiêm trọng đến ổn định xã hội toàn cầu.",
+    "Các yếu tố hệ thống như chính sách thuế thường ưu tiên tích lũy vốn hơn lao động.",
+    "Phân phối tài sản chênh lệch hạn chế quyền tiếp cận giáo dục và y tế chất lượng.",
+    "Thuế tiến bộ và mạng lưới an sinh xã hội là cần thiết để thu hẹp khoảng cách này.",
+    "Thúc đẩy tăng trưởng kinh tế bao trùm mang lại lợi ích cho toàn xã hội."
+  ],
+  "c1-ielts-urbanization-challenges": [
+    "Dòng dân cư liên tục đổ vào các đô thị lớn gây áp lực lên tài nguyên thành phố.",
+    "Nhà ở không đủ dẫn đến sự lan rộng của các khu ở tạm bợ.",
+    "Hơn nữa, tắc nghẽn giao thông và quản lý chất thải đặt áp lực to lớn lên hệ thống đô thị.",
+    "Các nhà quy hoạch đô thị phải thiết kế thành phố thông minh với hạ tầng bền vững và không gian xanh.",
+    "Phân tán cơ hội kinh tế có thể giúp giảm áp lực lên các thủ đô lớn."
+  ],
+  "c1-ielts-scientific-research": [
+    "Kinh phí công cho nghiên cứu khoa học là không thể thiếu cho tiến bộ xã hội lâu dài.",
+    "Các tập đoàn tư nhân thường ưu tiên nghiên cứu có khả năng thương mại hóa ngay.",
+    "Ngược lại, những đột phá khoa học cơ bản thường cần nhiều năm đầu tư mang tính đầu cơ.",
+    "Chính phủ nên phân bổ ngân sách đáng kể cho các viện nghiên cứu học thuật.",
+    "Đầu tư vào khoa học cơ bản mở rộng tri thức nhân loại và thúc đẩy đổi mới trong tương lai."
+  ],
+  "c1-ielts-leadership-qualities": [
+    "Lãnh đạo hiệu quả trong thế kỷ hai mươi mốt đòi hỏi sự đồng cảm và khả năng thích ứng.",
+    "Quyền uy theo mô hình trên–dưới truyền thống ngày càng kém hiệu quả ở nơi làm việc đa dạng.",
+    "Một nhà lãnh đạo giỏi truyền cảm hứng hợp tác và trao quyền cho thành viên chủ động hành động.",
+    "Hơn nữa, sự chính trực và minh bạch là điều cần thiết để xây dựng niềm tin và uy tín.",
+    "Cuối cùng, lãnh đạo là phục vụ mục tiêu chung chứ không phải khẳng định quyền lực."
+  ]
+};

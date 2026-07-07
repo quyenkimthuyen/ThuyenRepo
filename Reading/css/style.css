@@ -896,6 +896,20 @@ body.show-vietnamese .sentence.done + .sentence-vi {
   color: #fbbf24;
 }
 
+#sentences-root.is-loading {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+#sentences-root.is-loading::after {
+  content: 'Đang tải bài…';
+  display: block;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 1.5rem 0;
+  font-size: 0.95rem;
+}
+
 @media (max-width: 480px) {
   .import-grid {
     grid-template-columns: 1fr;

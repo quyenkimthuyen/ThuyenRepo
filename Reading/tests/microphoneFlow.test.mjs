@@ -395,7 +395,8 @@ async function finishSampleAndAssertMicResumes(stepName) {
   assert(!document.getElementById('btn-read-sample').disabled, `${stepName}: sample button is not stuck busy`);
 }
 
-await import(`../js/app.js?microphone-flow=${Date.now()}`);
+const { appReady } = await import(`../js/app.js?microphone-flow=${Date.now()}`);
+await appReady;
 await tick();
 
 const micStatus = document.getElementById('mic-status');

@@ -1,4 +1,15 @@
-import { LESSONS, LEVELS, TOPICS, filterLessons, getTopicLabel } from './lessons.js';
+import {
+  LESSON_INDEX,
+  LEVELS,
+  TOPICS,
+  filterLessons,
+  getTopicLabel,
+  getLessonById,
+  preloadForFilters,
+  preloadDefaultTopic,
+  loadTopicLessons,
+  topicsToPreload,
+} from './lessons.js';
 import {
   loadCustomLessons,
   saveCustomLessons,
@@ -25,7 +36,7 @@ import {
   isTtsSupported,
 } from './tts.js';
 import { ICONS, iconFragment } from './icons.js';
-import { getLessonTranslations } from './lessonTranslations.js';
+import { getLessonTranslations, preloadTranslationTopics, loadTranslationChunk } from './lessonTranslations.js';
 
 const STORAGE_KEY = 'reading-aloud-progress';
 const SETTINGS_KEY = 'reading-aloud-settings';
@@ -112,7 +123,7 @@ let samplePlayGeneration = 0;
 let micSessionGeneration = 0;
 let micRestartTimer = 0;
 
-/** @type {typeof LESSONS[0] | null} */
+/** @type {typeof LESSON_INDEX[0] | null} */
 let lesson = null;
 
 /** @type {LessonState} */
@@ -145,32 +156,69 @@ let currentHistorySessionId = '';
 let selectedHistorySessionId = '';
 
 function getAllLessons() {
-  return [...LESSONS, ...customLessons];
+  return [...LESSON_INDEX, ...customLessons];
 }
 
 /**
  * @param {string} id
  * @returns {import('./lessons.js').Lesson | undefined}
  */
-function findLessonById(id) {
+function findLessonMetaById(id) {
   const resolved = resolveLessonId(id);
   return getAllLessons().find((l) => l.id === resolved);
 }
 
-init();
+/**
+ * @param {string} topicFilter
+ * @param {string} levelFilter
+ */
+async function preloadLessonData(topicFilter, levelFilter) {
+  const topics = topicsToPreload(topicFilter, levelFilter);
+  if (topics) {
+    await preloadForFilters(topicFilter, levelFilter);
+    await preloadTranslationTopics(topics);
+  }
+}
 
-function init() {
+/**
+ * @param {string} lessonId
+ * @returns {Promise<import('./lessons.js').Lesson | undefined>}
+ */
+async function findLessonById(lessonId) {
+  const resolved = resolveLessonId(lessonId);
+  const custom = customLessons.find((l) => l.id === resolved);
+  if (custom) return custom;
+  return getLessonById(resolved);
+}
+
+function setLessonLoading(loading) {
+  els.sentencesRoot?.classList.toggle('is-loading', loading);
+  if (loading && !lesson) {
+    els.lessonTitle.textContent = 'Đang tải bài…';
+  }
+}
+
+export const appReady = init();
+
+async function init() {
   customLessons = loadCustomLessons();
   studyHistory = loadStudyHistory();
   loadSettings();
   populateFilters();
   populateImportForm();
-  populateLessonSelect();
-  renderCustomLessonsList();
-  renderStudyHistory();
-  bindEvents();
-  onVoicesReady(populateVoiceSelect);
-  loadSavedLesson();
+  setLessonLoading(true);
+  try {
+    await preloadDefaultTopic();
+    await loadTranslationChunk('daily');
+    populateLessonSelect();
+    renderCustomLessonsList();
+    renderStudyHistory();
+    bindEvents();
+    onVoicesReady(populateVoiceSelect);
+    await loadSavedLesson();
+  } finally {
+    setLessonLoading(false);
+  }
   updateMicToggleUi();
 }
 
@@ -619,9 +667,9 @@ function resumeMicAfterContextChange(shouldResume) {
  * @param {string} lessonId
  * @param {{ autoEnableMic?: boolean }=} options
  */
-function switchLesson(lessonId, options = {}) {
+async function switchLesson(lessonId, options = {}) {
   const shouldResumeMic = pauseMicForContextChange(options);
-  loadLesson(lessonId);
+  await loadLesson(lessonId);
   resumeMicAfterContextChange(shouldResumeMic);
 }
 
@@ -986,25 +1034,33 @@ function populateLessonSelect() {
   const stillVisible = filtered.some((l) => l.id === resolveLessonId(previousId));
   if (stillVisible && previousId) {
     els.lessonSelect.value = resolveLessonId(previousId);
+  } else if (filtered.length) {
+    els.lessonSelect.value = filtered[0].id;
   }
 }
 
 /**
  * @param {{ autoEnableMic?: boolean }=} options
  */
-function onFiltersChanged(options = {}) {
+async function onFiltersChanged(options = {}) {
   topicFilter = els.topicSelect.value;
   levelFilter = els.levelFilter.value;
   saveSettings();
-  populateLessonSelect();
-  if (els.lessonSelect.value) {
-    switchLesson(els.lessonSelect.value, options);
+  setLessonLoading(true);
+  try {
+    await preloadLessonData(topicFilter, levelFilter);
+    populateLessonSelect();
+    if (els.lessonSelect.value) {
+      await switchLesson(els.lessonSelect.value, options);
+    }
+  } finally {
+    setLessonLoading(false);
   }
 }
 
 function bindEvents() {
   els.lessonSelect.addEventListener('change', () => {
-    switchLesson(els.lessonSelect.value);
+    void switchLesson(els.lessonSelect.value);
   });
 
   els.voiceSelect.addEventListener('change', () => {
@@ -1013,8 +1069,12 @@ function bindEvents() {
     saveSettings();
   });
 
-  els.topicSelect.addEventListener('change', () => onFiltersChanged({ autoEnableMic: true }));
-  els.levelFilter.addEventListener('change', () => onFiltersChanged({ autoEnableMic: true }));
+  els.topicSelect.addEventListener('change', () => {
+    void onFiltersChanged({ autoEnableMic: true });
+  });
+  els.levelFilter.addEventListener('change', () => {
+    void onFiltersChanged({ autoEnableMic: true });
+  });
 
   els.autoReadSample.addEventListener('change', () => {
     autoReadSample = els.autoReadSample.checked;
@@ -1191,7 +1251,7 @@ function afterCustomLessonsChanged(lessonId, message) {
   populateLessonSelect();
   renderCustomLessonsList();
   els.lessonSelect.value = lessonId;
-  switchLesson(lessonId);
+  void switchLesson(lessonId);
   showImportFeedback(message);
 }
 
@@ -1235,7 +1295,7 @@ function renderCustomLessonsList() {
 
     btnOpen.addEventListener('click', () => {
       els.lessonSelect.value = item.id;
-      switchLesson(item.id);
+      void switchLesson(item.id);
     });
     btnDel.addEventListener('click', () => deleteCustomLessonById(item.id));
 
@@ -1272,7 +1332,7 @@ function deleteCustomLessonById(lessonId) {
 
   if (lesson?.id === lessonId) {
     if (els.lessonSelect.value) {
-      switchLesson(els.lessonSelect.value);
+      void switchLesson(els.lessonSelect.value);
     }
   }
 
@@ -1284,7 +1344,7 @@ function deleteCurrentCustomLesson() {
   deleteCustomLessonById(lesson.id);
 }
 
-function loadSavedLesson() {
+async function loadSavedLesson() {
   let savedId = '';
 
   try {
@@ -1299,7 +1359,7 @@ function loadSavedLesson() {
     /* ignore */
   }
 
-  const savedLesson = savedId ? findLessonById(savedId) : null;
+  const savedLesson = savedId ? findLessonMetaById(savedId) : null;
   if (savedLesson) {
     const visible = filterLessons(
       { topic: topicFilter, level: levelFilter },
@@ -1310,6 +1370,7 @@ function loadSavedLesson() {
       levelFilter = 'all';
       els.topicSelect.value = topicFilter;
       els.levelFilter.value = levelFilter;
+      await preloadLessonData(topicFilter, levelFilter);
       populateLessonSelect();
     }
     els.lessonSelect.value = savedLesson.id;
@@ -1318,7 +1379,7 @@ function loadSavedLesson() {
   suppressAutoReadOnce = true;
   pendingAutoStartMic = true;
   if (els.lessonSelect.value) {
-    loadLesson(els.lessonSelect.value);
+    await loadLesson(els.lessonSelect.value);
   }
   tryAutoStartMic();
 }
@@ -1326,30 +1387,30 @@ function loadSavedLesson() {
 /**
  * @param {import('./lessons.js').Lesson} found
  */
-function enrichLesson(found) {
+async function enrichLesson(found) {
   const translations =
-    found.translations?.length ? found.translations : getLessonTranslations(found.id);
+    found.translations?.length
+      ? found.translations
+      : await getLessonTranslations(found.id);
   return { ...found, translations };
-}
-
-/**
- * @param {number} index
- * @returns {string | null}
- */
-function getSentenceTranslation(index) {
-  const text = lesson?.translations?.[index];
-  return text ? String(text) : null;
 }
 
 /**
  * @param {string} lessonId
  */
-function loadLesson(lessonId) {
+async function loadLesson(lessonId) {
   invalidateSamplePlayback();
-  const found = findLessonById(lessonId);
-  if (!found) return;
+  setLessonLoading(true);
+  try {
+    const meta = findLessonMetaById(lessonId);
+    if (meta && !meta.custom) {
+      await loadTopicLessons(meta.topic);
+      await loadTranslationChunk(meta.topic);
+    }
+    const found = await findLessonById(lessonId);
+    if (!found || !found.sentences?.length) return;
 
-  lesson = enrichLesson(found);
+    lesson = await enrichLesson(found);
   sentenceStates = lesson.sentences.map((s) => ({
     tokens: tokenizeSentence(s),
     matched: new Set(),
@@ -1391,6 +1452,18 @@ function loadLesson(lessonId) {
     maybeAutoReadSample();
   }
   suppressAutoReadOnce = false;
+  } finally {
+    setLessonLoading(false);
+  }
+}
+
+/**
+ * @param {number} index
+ * @returns {string | null}
+ */
+function getSentenceTranslation(index) {
+  const text = lesson?.translations?.[index];
+  return text ? String(text) : null;
 }
 
 function allPriorSentencesComplete(upToIndex) {
@@ -1454,7 +1527,7 @@ function loadNextLessonOfSameLevel() {
 
   if (nextLesson) {
     els.lessonSelect.value = nextLesson.id;
-    switchLesson(nextLesson.id, { autoEnableMic: true });
+    void switchLesson(nextLesson.id, { autoEnableMic: true });
   }
 }
 
