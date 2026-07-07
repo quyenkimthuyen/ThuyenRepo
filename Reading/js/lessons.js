@@ -853,6 +853,566 @@ export const LESSONS = [
       'The challenge lies not in eliminating choice altogether but in developing the discernment to choose wisely.',
     ],
   },
+
+  {
+    "id": "a1-ielts-pets",
+    "level": "a1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Pets",
+    "sentences": [
+      "Do you like animals?",
+      "Yes, I really like animals.",
+      "I have a small cat at home.",
+      "She has soft white fur.",
+      "We play together in the evening."
+    ]
+  },
+
+  {
+    "id": "a1-ielts-colors",
+    "level": "a1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Colors",
+    "sentences": [
+      "What is your favourite color?",
+      "My favourite color is blue.",
+      "It is the color of the sky.",
+      "I have a blue backpack.",
+      "It makes me feel happy."
+    ]
+  },
+
+  {
+    "id": "a1-ielts-fruits",
+    "level": "a1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Fruits",
+    "sentences": [
+      "Do you eat a lot of fruit?",
+      "Yes, I eat fruit every day.",
+      "I like apples and bananas best.",
+      "They are sweet and healthy.",
+      "My mother buys them at the market."
+    ]
+  },
+
+  {
+    "id": "a1-ielts-weather",
+    "level": "a1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Weather",
+    "sentences": [
+      "What is the weather like today?",
+      "It is sunny and hot today.",
+      "I like sunny weather very much.",
+      "I can go to the park.",
+      "I do not like rainy days."
+    ]
+  },
+
+  {
+    "id": "a1-ielts-music",
+    "level": "a1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Music",
+    "sentences": [
+      "Do you like listening to music?",
+      "Yes, I listen to music every day.",
+      "I like pop music best.",
+      "It is very exciting.",
+      "I listen on my phone."
+    ]
+  },
+
+  {
+    "id": "a1-ielts-toys",
+    "level": "a1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Toys",
+    "sentences": [
+      "What was your favourite toy as a child?",
+      "I loved my red toy car.",
+      "My grandfather gave it to me.",
+      "I played with it all day.",
+      "I still keep it in my room."
+    ]
+  },
+
+  {
+    "id": "a1-ielts-drinks",
+    "level": "a1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Drinks",
+    "sentences": [
+      "What do you like to drink?",
+      "I like to drink fresh water.",
+      "I also drink orange juice.",
+      "It has a sweet taste.",
+      "I do not like soda."
+    ]
+  },
+
+  {
+    "id": "a1-ielts-flowers",
+    "level": "a1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Flowers",
+    "sentences": [
+      "Do you like flowers?",
+      "Yes, I think flowers are beautiful.",
+      "I like red roses best.",
+      "They have a lovely smell.",
+      "We have some flowers in our garden."
+    ]
+  },
+
+  {
+    "id": "a1-ielts-weekends",
+    "level": "a1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Weekends",
+    "sentences": [
+      "What do you do on weekends?",
+      "I sleep late on Saturday.",
+      "Then I visit my grandfather.",
+      "We eat dinner together.",
+      "I relax before Monday."
+    ]
+  },
+
+  {
+    "id": "a2-ielts-accommodation",
+    "level": "a2",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Accommodation",
+    "sentences": [
+      "Do you live in a house or an apartment?",
+      "I live in a comfortable apartment.",
+      "It is located near the city centre.",
+      "My favorite room is my bedroom.",
+      "I decorated it with nice posters."
+    ]
+  },
+
+  {
+    "id": "a2-ielts-movies",
+    "level": "a2",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Movies",
+    "sentences": [
+      "How often do you watch movies?",
+      "I watch movies once or twice a week.",
+      "I prefer action and comedy films.",
+      "They help me relax after study.",
+      "Sometimes I go to the cinema with friends."
+    ]
+  },
+
+  {
+    "id": "a2-ielts-sports",
+    "level": "a2",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Sports",
+    "sentences": [
+      "Do you play any sports?",
+      "I play badminton on weekends.",
+      "It is a great way to stay fit.",
+      "I also enjoy watching football on TV.",
+      "My favorite team is very famous."
+    ]
+  },
+
+  {
+    "id": "a2-ielts-birthdays",
+    "level": "a2",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Birthdays",
+    "sentences": [
+      "How do you usually celebrate your birthday?",
+      "I have a small party at home.",
+      "I invite my close friends and family.",
+      "We eat cake and blow out candles.",
+      "I love receiving birthday cards."
+    ]
+  },
+
+  {
+    "id": "a2-ielts-reading",
+    "level": "a2",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Reading",
+    "sentences": [
+      "Do you like reading books?",
+      "Yes, reading is one of my hobbies.",
+      "I read comic books and novels.",
+      "I usually read before going to sleep.",
+      "It helps me learn new words."
+    ]
+  },
+
+  {
+    "id": "a2-ielts-clothes",
+    "level": "a2",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Clothes",
+    "sentences": [
+      "What kind of clothes do you like to wear?",
+      "I prefer casual clothes like jeans and T-shirts.",
+      "They are very comfortable for daily wear.",
+      "I wear formal clothes for special events.",
+      "My favorite colors for clothes are black and white."
+    ]
+  },
+
+  {
+    "id": "a2-ielts-photos",
+    "level": "a2",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Photos",
+    "sentences": [
+      "Do you like taking photos?",
+      "Yes, I take a lot of photos with my phone.",
+      "I enjoy taking pictures of nature and food.",
+      "I share them with my friends online.",
+      "Photos help me save good memories."
+    ]
+  },
+
+  {
+    "id": "a2-ielts-holidays",
+    "level": "a2",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Holidays",
+    "sentences": [
+      "Where do you go on holidays?",
+      "I usually go to the countryside.",
+      "It is very peaceful and quiet there.",
+      "I can breathe fresh air and relax.",
+      "Sometimes we go to the beach in summer."
+    ]
+  },
+
+  {
+    "id": "b1-ielts-internet",
+    "level": "b1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Internet",
+    "sentences": [
+      "How much time do you spend online every day?",
+      "I think I spend about three hours on the internet daily.",
+      "I mostly use it for studying and checking social media.",
+      "It is a convenient tool to search for information.",
+      "However, staying online too long can be a waste of time."
+    ]
+  },
+
+  {
+    "id": "b1-ielts-festivals",
+    "level": "b1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Festivals",
+    "sentences": [
+      "What is the most important festival in your country?",
+      "Tet is definitely the most significant festival in Vietnam.",
+      "It is a time for family reunions and celebrating the new year.",
+      "We clean our houses and prepare traditional food.",
+      "Children receive lucky money in red envelopes."
+    ]
+  },
+
+  {
+    "id": "b1-ielts-neighbors",
+    "level": "b1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Neighbors",
+    "sentences": [
+      "Do you get along well with your neighbors?",
+      "Yes, my neighbors are very friendly and helpful.",
+      "We always say hello and sometimes chat in the evening.",
+      "They helped us water the plants when we went away.",
+      "I think having good neighbors makes life much easier."
+    ]
+  },
+
+  {
+    "id": "b1-ielts-shopping",
+    "level": "b1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Online shopping",
+    "sentences": [
+      "Do you prefer shopping online or in local stores?",
+      "Honestly, I prefer shopping online because it saves time.",
+      "I can compare prices easily without walking around.",
+      "On the other hand, buying clothes online can be risky.",
+      "Sometimes the actual size does not fit me well."
+    ]
+  },
+
+  {
+    "id": "b1-ielts-gardens",
+    "level": "b1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Gardens and Parks",
+    "sentences": [
+      "Are there many parks near where you live?",
+      "Yes, there is a large park just ten minutes away from my house.",
+      "I often go there for a walk in the late afternoon.",
+      "It has many green trees and a small lake.",
+      "Public parks are essential for residents in crowded cities."
+    ]
+  },
+
+  {
+    "id": "b1-ielts-museums",
+    "level": "b1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Museums",
+    "sentences": [
+      "Do you like visiting museums?",
+      "Yes, I enjoy visiting history museums occasionally.",
+      "It is an interesting way to learn about the past.",
+      "I went to the national museum last month.",
+      "The tickets were free for students."
+    ]
+  },
+
+  {
+    "id": "b1-ielts-handcrafts",
+    "level": "b1",
+    "topic": "ielts",
+    "title": "IELTS Part 1 — Handcrafts",
+    "sentences": [
+      "Did you make any handcrafts when you were young?",
+      "Yes, we learned to make paper stars in primary school.",
+      "It was a fun activity for children.",
+      "I also tried making clay pots once.",
+      "Handmade gifts are very meaningful to receive."
+    ]
+  },
+
+  {
+    "id": "b2-ielts-describe-book",
+    "level": "b2",
+    "topic": "ielts",
+    "title": "IELTS Part 2 — Describe a book",
+    "sentences": [
+      "I would like to describe a book that influenced me deeply.",
+      "It is a motivational book about personal growth.",
+      "I bought it at a local bookstore last year during a difficult time.",
+      "The book outlines practical steps to build positive habits.",
+      "Reading it helped me stay focused and manage my time better."
+    ]
+  },
+
+  {
+    "id": "b2-ielts-describe-event",
+    "level": "b2",
+    "topic": "ielts",
+    "title": "IELTS Part 2 — Describe a historic event",
+    "sentences": [
+      "I want to talk about a significant event in my country's history.",
+      "It was the declaration of independence in nineteen forty-five.",
+      "This milestone marked the beginning of a new era of freedom.",
+      "People gathered in the main square to hear the speech.",
+      "It is remembered as a symbol of unity and national pride."
+    ]
+  },
+
+  {
+    "id": "b2-ielts-describe-person",
+    "level": "b2",
+    "topic": "ielts",
+    "title": "IELTS Part 2 — Describe a successful person",
+    "sentences": [
+      "I would like to talk about a successful person I admire.",
+      "She is a local entrepreneur who started a green business.",
+      "Her company produces biodegradable packaging materials.",
+      "She faced many obstacles but never gave up on her vision.",
+      "I admire her determination and commitment to the environment."
+    ]
+  },
+
+  {
+    "id": "b2-ielts-media",
+    "level": "b2",
+    "topic": "ielts",
+    "title": "IELTS Part 3 — Media and News",
+    "sentences": [
+      "How has the way people get news changed in recent years?",
+      "In the past, people relied heavily on printed newspapers and television broadcasts.",
+      "Nowadays, social media platforms have become the primary source of news.",
+      "While this allows fast updates, it also increases the spread of fake news.",
+      "Therefore, readers must develop critical thinking to verify information."
+    ]
+  },
+
+  {
+    "id": "b2-ielts-advertising",
+    "level": "b2",
+    "topic": "ielts",
+    "title": "IELTS Part 3 — Advertising",
+    "sentences": [
+      "Do you think advertising has a negative effect on children?",
+      "In my opinion, excessive advertising can lead to unhealthy desires.",
+      "Children are easily persuaded by colorful commercials for fast food.",
+      "This can contribute to obesity and poor dietary habits.",
+      "Parents should monitor what their children watch and educate them."
+    ]
+  },
+
+  {
+    "id": "b2-ielts-transport-challenges",
+    "level": "b2",
+    "topic": "ielts",
+    "title": "IELTS Part 3 — Public transport challenges",
+    "sentences": [
+      "What are the main problems with public transport in big cities?",
+      "Traffic congestion often leads to delays in bus schedules.",
+      "Moreover, some train systems are overcrowded during peak hours.",
+      "Governments should invest in upgrading infrastructure and expanding routes.",
+      "Encouraging public transport usage is vital to reduce air pollution."
+    ]
+  },
+
+  {
+    "id": "b2-ielts-environmental-issues",
+    "level": "b2",
+    "topic": "ielts",
+    "title": "IELTS Part 3 — Environmental issues",
+    "sentences": [
+      "Who should take responsibility for protecting the environment?",
+      "I believe it requires a joint effort from both governments and individuals.",
+      "Governments should enforce strict regulations on industrial waste.",
+      "At the same time, citizens should practice recycling and reduce plastic usage.",
+      "Even small daily actions can lead to significant positive changes."
+    ]
+  },
+
+  {
+    "id": "c1-ielts-ai-ethics",
+    "level": "c1",
+    "topic": "ielts",
+    "title": "IELTS Part 3 — Artificial Intelligence ethics",
+    "sentences": [
+      "The rapid development of artificial intelligence raises profound ethical questions.",
+      "One major concern is the potential displacement of workers across various industries.",
+      "Additionally, biases embedded in algorithms can perpetuate social inequality.",
+      "Regulatory frameworks must be established to ensure AI transparency and accountability.",
+      "We must prioritize human well-being over corporate profit in technological advancement."
+    ]
+  },
+
+  {
+    "id": "c1-ielts-higher-ed-value",
+    "level": "c1",
+    "topic": "ielts",
+    "title": "IELTS Part 3 — Higher education value",
+    "sentences": [
+      "The utility of a university degree is increasingly scrutinized in the modern job market.",
+      "Critics argue that academic curricula are often disconnected from practical industry demands.",
+      "Conversely, higher education fosters critical thinking and intellectual growth.",
+      "Universities should integrate vocational training to enhance graduate employability.",
+      "A balanced approach prepares students for both professional success and civic responsibility."
+    ]
+  },
+
+  {
+    "id": "c1-ielts-work-life-balance",
+    "level": "c1",
+    "topic": "ielts",
+    "title": "IELTS Part 3 — Work-life balance",
+    "sentences": [
+      "Achieving a healthy work-life balance is challenging in a hyper-connected society.",
+      "Digital communication tools have blurred the boundaries between professional and personal life.",
+      "Chronic stress and burnout can lead to severe physical and psychological issues.",
+      "Employers should cultivate a supportive environment that respects personal time.",
+      "Ultimately, prioritizing well-being enhances both individual happiness and long-term productivity."
+    ]
+  },
+
+  {
+    "id": "c1-ielts-climate-policies",
+    "level": "c1",
+    "topic": "ielts",
+    "title": "IELTS Part 3 — Climate change policies",
+    "sentences": [
+      "Addressing climate change demands robust international cooperation and decisive action.",
+      "Transitioning to renewable energy sources is imperative to reduce carbon emissions.",
+      "Governments should implement carbon pricing mechanisms to incentivize green transition.",
+      "However, developing nations require financial support to adopt sustainable technologies.",
+      "Failure to act collectively will lead to catastrophic ecological consequences."
+    ]
+  },
+
+  {
+    "id": "c1-ielts-cultural-preservation",
+    "level": "c1",
+    "topic": "ielts",
+    "title": "IELTS Part 3 — Cultural preservation",
+    "sentences": [
+      "Globalisation presents a formidable threat to indigenous languages and cultural heritage.",
+      "As dominant cultures expand, unique traditions risk being marginalized or lost entirely.",
+      "Preserving cultural diversity is essential for maintaining historical identity.",
+      "Educational curricula should integrate local history and indigenous languages.",
+      "Community-led initiatives play a vital role in keeping traditions alive for future generations."
+    ]
+  },
+
+  {
+    "id": "c1-ielts-economic-disparity",
+    "level": "c1",
+    "topic": "ielts",
+    "title": "IELTS Part 3 — Economic disparity",
+    "sentences": [
+      "Growing wealth inequality poses a significant threat to global social stability.",
+      "Systemic factors such as tax policies often favor capital accumulation over labor.",
+      "Disproportionate wealth distribution limits access to quality education and healthcare.",
+      "Progressive taxation and social safety nets are necessary to bridge this divide.",
+      "Fostering inclusive economic growth benefits society as a whole."
+    ]
+  },
+
+  {
+    "id": "c1-ielts-urbanization-challenges",
+    "level": "c1",
+    "topic": "ielts",
+    "title": "IELTS Part 3 — Urbanization challenges",
+    "sentences": [
+      "The relentless influx of population into metropolitan areas strains city resources.",
+      "Inadequate housing leads to the proliferation of informal settlements.",
+      "Moreover, traffic congestion and waste management place immense pressure on municipal systems.",
+      "Urban planners must design smart cities with sustainable infrastructure and green spaces.",
+      "Decentralizing economic opportunities can help alleviate the pressure on major capitals."
+    ]
+  },
+
+  {
+    "id": "c1-ielts-scientific-research",
+    "level": "c1",
+    "topic": "ielts",
+    "title": "IELTS Part 3 — Scientific research funding",
+    "sentences": [
+      "Public funding for scientific research is indispensable for long-term societal progress.",
+      "Private corporations tend to prioritize research with immediate commercial viability.",
+      "In contrast, fundamental scientific breakthroughs often require years of speculative investment.",
+      "Governments should allocate substantial budgets to academic research institutions.",
+      "Investing in basic science expands human knowledge and drives future innovation."
+    ]
+  },
+
+  {
+    "id": "c1-ielts-leadership-qualities",
+    "level": "c1",
+    "topic": "ielts",
+    "title": "IELTS Part 3 — Leadership qualities",
+    "sentences": [
+      "Effective leadership in the twenty-first century demands empathy and adaptability.",
+      "Traditional top-down authority is increasingly ineffective in diverse workplaces.",
+      "A great leader inspires collaboration and empowers team members to take initiative.",
+      "Furthermore, integrity and transparency are essential to build trust and credibility.",
+      "Ultimately, leadership is about serving the collective purpose rather than asserting power."
+    ]
+  },
 ];
 
 /**

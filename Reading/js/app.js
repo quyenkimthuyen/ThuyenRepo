@@ -943,8 +943,24 @@ function populateLessonSelect() {
     els.lessonSelect.appendChild(customGroup);
   }
 
+  const ieltsFiltered = builtInFiltered.filter((l) => l.topic === 'ielts');
+  if (ieltsFiltered.length) {
+    const ieltsGroup = document.createElement('optgroup');
+    ieltsGroup.label = 'IELTS Speaking';
+
+    for (const item of ieltsFiltered) {
+      const opt = document.createElement('option');
+      opt.value = item.id;
+      opt.textContent = `${item.title} · ${item.level.toUpperCase()}`;
+      ieltsGroup.appendChild(opt);
+    }
+
+    els.lessonSelect.appendChild(ieltsGroup);
+  }
+
+  const generalFiltered = builtInFiltered.filter((l) => l.topic !== 'ielts');
   for (const lvl of LEVELS) {
-    const lessonsAtLevel = builtInFiltered.filter((l) => l.level === lvl.id);
+    const lessonsAtLevel = generalFiltered.filter((l) => l.level === lvl.id);
     if (!lessonsAtLevel.length) continue;
 
     const group = document.createElement('optgroup');
@@ -1409,16 +1425,25 @@ function resetLesson() {
 
 function loadNextLessonOfSameLevel() {
   if (!lesson) return;
-  const levelLessons = getAllLessons().filter((l) => l.level === lesson.level);
-  if (!levelLessons.length) return;
 
-  const currentIndex = levelLessons.findIndex((l) => l.id === lesson.id);
+  let nextLessons = [];
+  if (lesson.custom) {
+    nextLessons = getAllLessons().filter((l) => l.custom);
+  } else if (lesson.topic === 'ielts') {
+    nextLessons = getAllLessons().filter((l) => !l.custom && l.topic === 'ielts');
+  } else {
+    nextLessons = getAllLessons().filter((l) => !l.custom && l.topic !== 'ielts' && l.level === lesson.level);
+  }
+
+  if (!nextLessons.length) return;
+
+  const currentIndex = nextLessons.findIndex((l) => l.id === lesson.id);
   let nextLesson = null;
 
-  if (currentIndex !== -1 && currentIndex < levelLessons.length - 1) {
-    nextLesson = levelLessons[currentIndex + 1];
+  if (currentIndex !== -1 && currentIndex < nextLessons.length - 1) {
+    nextLesson = nextLessons[currentIndex + 1];
   } else {
-    nextLesson = levelLessons[0];
+    nextLesson = nextLessons[0];
   }
 
   if (nextLesson) {
