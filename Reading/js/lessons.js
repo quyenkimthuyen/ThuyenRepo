@@ -1,3 +1,6 @@
+import { SUPPLEMENT_LESSONS } from './supplementLessons.js';
+import { EXTRA_TOPIC_LESSONS } from './extraTopicLessons.js';
+
 /** @type {{ id: string, label: string }[]} */
 export const LEVELS = [
   { id: 'a1', label: 'A1 — Sơ cấp' },
@@ -17,6 +20,9 @@ export const TOPICS = [
   { id: 'health', label: 'Sức khỏe' },
   { id: 'tech', label: 'Công nghệ' },
   { id: 'society', label: 'Xã hội' },
+  { id: 'food', label: 'Ẩm thực' },
+  { id: 'sports', label: 'Thể thao' },
+  { id: 'communication', label: 'Giao tiếp thực tế' },
   { id: 'custom', label: 'Của tôi' },
 ];
 
@@ -1413,6 +1419,10 @@ export const LESSONS = [
       "Ultimately, leadership is about serving the collective purpose rather than asserting power."
     ]
   },
+
+  ...SUPPLEMENT_LESSONS,
+
+  ...EXTRA_TOPIC_LESSONS,
 ];
 
 /**

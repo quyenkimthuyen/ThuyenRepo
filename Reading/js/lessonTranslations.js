@@ -1,3 +1,6 @@
+import { SUPPLEMENT_TRANSLATIONS } from './supplementTranslations.js';
+import { EXTRA_TOPIC_TRANSLATIONS } from './extraTopicTranslations.js';
+
 export const TRANSLATIONS = {
   'a1-greetings': [
     'Xin chào.',
@@ -415,6 +418,10 @@ export const TRANSLATIONS = {
     'Lựa chọn một tập hợp nhỏ hơn các phương án có ý nghĩa có thể nghịch lý là tăng cảm giác tự chủ và mãn nguyện.',
     'Thách thức không nằm ở việc loại bỏ hoàn toàn lựa chọn mà ở việc phát triển khả năng phân biệt để chọn lựa khôn ngoan.',
   ],
+
+  ...SUPPLEMENT_TRANSLATIONS,
+
+  ...EXTRA_TOPIC_TRANSLATIONS,
 };
 
 export function getLessonTranslations(lessonId) {
