@@ -36,6 +36,12 @@ const HISTORY_LIMIT = 100;
 const LEGACY_LESSON_IDS = {
   'self-intro': 'a2-self-intro',
   weekend: 'a2-weekend',
+  'b2-ielts-technology': 'b2-ielts-describe-gift',
+  'b2-ielts-environment': 'b2-ielts-describe-skill',
+  'b2-ielts-media': 'b2-ielts-describe-journey',
+  'b2-ielts-advertising': 'b2-ielts-describe-teacher',
+  'b2-ielts-transport-challenges': 'b2-ielts-describe-hobby',
+  'b2-ielts-environmental-issues': 'b2-ielts-describe-city',
 };
 
 /**

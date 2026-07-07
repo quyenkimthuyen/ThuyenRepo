@@ -169,53 +169,102 @@ export const SUPPLEMENT_TRANSLATIONS = {
     "Quà tặng thủ công rất có ý nghĩa khi nhận được."
   ],
   "b2-ielts-describe-book": [
-    "Tôi muốn mô tả một cuốn sách đã ảnh hưởng sâu sắc đến tôi.",
-    "Đó là cuốn sách truyền cảm hứng về phát triển bản thân.",
-    "Tôi mua nó ở hiệu sách địa phương năm ngoái trong một giai đoạn khó khăn.",
-    "Cuốn sách nêu các bước thực tế để xây dựng thói quen tích cực.",
-    "Đọc nó giúp tôi tập trung và quản lý thời gian tốt hơn."
+    "Tôi muốn nói về một cuốn sách đã ảnh hưởng đến tôi theo cách rất ý nghĩa.",
+    "Cuốn sách tên là Atomic Habits, tập trung vào việc xây dựng những thói quen nhỏ tích cực.",
+    "Một người bạn thân giới thiệu cuốn sách cho tôi năm ngoái khi tôi đang chật vật giữ động lực.",
+    "Tôi mua một bản ở hiệu sách địa phương trong một giai đoạn làm việc đặc biệt căng thẳng.",
+    "Tác giả giải thích cách những hành động nhỏ hàng ngày có thể dẫn đến kết quả lớn về lâu dài.",
+    "Một ý tưởng khiến tôi ấn tượng là bạn không vươn tới mức mục tiêu, mà rơi xuống mức hệ thống của mình.",
+    "Sau khi đọc xong, tôi bắt đầu dậy sớm hơn ba mươi phút mỗi ngày để học tiếng Anh.",
+    "Tôi cũng bắt đầu theo dõi thói quen trong một cuốn sổ đơn giản, giúp tôi tự giác hơn.",
+    "Trong vòng ba tháng tôi nhận thấy mình tập trung hơn, ngăn nắp hơn và bớt lo âu.",
+    "Cuốn sách được viết bằng ngôn ngữ rõ ràng, thực tế, nên dễ áp dụng lời khuyên ngay.",
+    "Tôi đã cho hai đồng nghiệp mượn, và họ nói cuốn sách cũng giúp ích cho họ.",
+    "Tôi thành tâm giới thiệu cuốn sách cho bất kỳ ai muốn cải thiện kỷ luật hàng ngày."
   ],
   "b2-ielts-describe-event": [
-    "Tôi muốn nói về một sự kiện quan trọng trong lịch sử đất nước.",
-    "Đó là Tuyên ngôn Độc lập năm một nghìn chín trăm bốn mươi lăm.",
-    "Cột mốc này đánh dấu khởi đầu của một kỷ nguyên tự do mới.",
-    "Người dân tập trung ở quảng trường chính để nghe bài phát biểu.",
-    "Sự kiện này được nhớ đến như biểu tượng của sự đoàn kết và niềm tự hào dân tộc."
+    "Tôi muốn mô tả một sự kiện lịch sử vô cùng quan trọng đối với đất nước tôi.",
+    "Sự kiện tôi nghĩ đến là Tuyên ngôn Độc lập vào ngày hai tháng Chín năm một nghìn chín trăm bốn mươi lăm.",
+    "Tôi lần đầu tìm hiểu kỹ về sự kiện này trong một tiết Lịch sử ở trường trung học.",
+    "Giáo viên cho chúng tôi xem ảnh cũ và phát bản ghi âm bài phát biểu lịch sử.",
+    "Ngày hôm đó, hàng trăm nghìn người tập trung tại Quảng trường Ba Đình ở Hà Nội.",
+    "Họ kiên nhẫn chờ đợi dưới cái nóng để nghe chủ tịch tuyên bố sự ra đời của một quốc gia mới.",
+    "Bài phát biểu đánh dấu sự kết thúc của hàng thập kỷ đô hộ và xâm lược nước ngoài.",
+    "Với nhiều gia đình, kể cả ông bà tôi, đó là khoảnh khắc cảm động nhất trong đời họ.",
+    "Mỗi năm chúng tôi kỷ niệm ngày này bằng lễ nghi, cờ và các chương trình truyền hình.",
+    "Khi xem lại đoạn phim ngày nay, tôi vẫn cảm thấy niềm tự hào và lòng biết ơn sâu sắc.",
+    "Sự kiện nhắc tôi rằng tự do và độc lập không bao giờ được coi là điều hiển nhiên.",
+    "Tôi tin mọi người trẻ Việt Nam nên hiểu ý nghĩa của cột mốc lịch sử này."
   ],
   "b2-ielts-describe-person": [
-    "Tôi muốn nói về một người thành công mà tôi ngưỡng mộ.",
-    "Cô ấy là một doanh nhân địa phương khởi nghiệp kinh doanh xanh.",
-    "Công ty của cô sản xuất vật liệu bao bì phân hủy sinh học.",
-    "Cô đã đối mặt với nhiều trở ngại nhưng không bao giờ từ bỏ tầm nhìn của mình.",
-    "Tôi ngưỡng mộ quyết tâm và cam kết bảo vệ môi trường của cô."
+    "Tôi muốn nói về một người thành công mà tôi thực sự ngưỡng mộ.",
+    "Cô ấy là một doanh nhân địa phương ở quê tôi, khởi nghiệp kinh doanh bao bì xanh.",
+    "Tôi lần đầu nghe về cô qua một phim tài liệu phát trên truyền hình quốc gia.",
+    "Lúc đó cô làm việc một mình trong một kho nhỏ thuê ở rìa thành phố.",
+    "Công ty của cô sản xuất vật liệu bao bì phân hủy sinh học cho nhà hàng và shop online.",
+    "Cô kể với phóng viên rằng cô lấy cảm hứng từ lượng rác nhựa ở khu phố mình.",
+    "Những năm đầu cô gặp khó khăn tài chính và nhiều người nghi ngờ ý tưởng của cô.",
+    "Tuy nhiên cô kiên trì, cải tiến sản phẩm và dần giành được niềm tin của khách hàng lớn hơn.",
+    "Ngày nay doanh nghiệp của cô thuê hàng chục lao động và xuất khẩu sang nhiều nước.",
+    "Điều tôi ngưỡng mộ nhất là quyết tâm và cam kết thực sự của cô với việc bảo vệ môi trường.",
+    "Cô cũng cố vấn cho các founder trẻ và đến trường nói về khởi nghiệp bền vững.",
+    "Câu chuyện của cô đã tiếp thêm cho tôi niềm tin rằng thành công có ý nghĩa là có thể đạt được nhờ kiên nhẫn và giá trị rõ ràng."
   ],
-  "b2-ielts-media": [
-    "Trong những năm gần đây cách mọi người tiếp nhận tin tức đã thay đổi như thế nào?",
-    "Trước đây, mọi người phụ thuộc nhiều vào báo in và truyền hình.",
-    "Ngày nay, mạng xã hội đã trở thành nguồn tin chính.",
-    "Điều này cho phép cập nhật nhanh, nhưng cũng làm tin giả lan truyền nhiều hơn.",
-    "Vì vậy, người đọc cần phát triển tư duy phản biện để xác minh thông tin."
+  "b2-ielts-describe-journey": [
+    "Tôi muốn mô tả một chuyến đi đáng nhớ mà tôi đã thực hiện bằng tàu hỏa qua đêm.",
+    "Chuyện xảy ra hai mùa hè trước khi tôi đi từ Hà Nội đến Đà Nẵng cùng ba bạn đại học.",
+    "Chúng tôi đã đặt vé giường nằm mềm vì muốn tiết kiệm tiền và ngắm cảnh đẹp.",
+    "Tàu rời ga lúc chín giờ tối, đúng lúc ánh đèn thành phố bắt đầu mờ dần.",
+    "Ban đầu chúng tôi trò chuyện và chơi bài, sau đó mở cửa sổ để hứng không khí đêm mát.",
+    "Sáng hôm sau chúng tôi thức dậy với cảnh núi non, sông nước và cánh đồng lúa xanh bát ngát.",
+    "Phần còn lại của ngày chúng tôi bơi biển và thử các món đặc sản địa phương.",
+    "Điều làm chuyến đi đặc biệt là nhịp độ thong dong và thời gian trò chuyện không bị xao nhãng.",
+    "Có vài lần tàu trễ, nhưng không ai phàn nàn vì trải nghiệm giống như một cuộc phiêu lưu.",
+    "Tôi chụp hàng trăm bức ảnh, và đến giờ chúng tôi vẫn cười khi xem lại cùng nhau.",
+    "Đó là một trong những chuyến đi rẻ nhất chúng tôi từng có, nhưng cũng là một trong những chuyến vui nhất.",
+    "Tôi rất muốn đi lại tuyến đường đó một ngày nào đó, có lẽ cùng em trai."
   ],
-  "b2-ielts-advertising": [
-    "Bạn có nghĩ quảng cáo có ảnh hưởng tiêu cực đến trẻ em không?",
-    "Theo tôi, quảng cáo quá mức có thể dẫn đến những ham muốn không lành mạnh.",
-    "Trẻ em dễ bị thuyết phục bởi quảng cáo đồ ăn nhanh đầy màu sắc.",
-    "Điều này có thể góp phần gây béo phì và thói quen ăn uống không tốt.",
-    "Cha mẹ nên theo dõi nội dung con xem và giáo dục chúng."
+  "b2-ielts-describe-teacher": [
+    "Tôi muốn nói về một giáo viên đã có ảnh hưởng lớn đến đời học của tôi.",
+    "Cô tên là cô Lan, và cô dạy tôi tiếng Anh suốt các năm trung học phổ thông.",
+    "Khi mới vào lớp cô, tôi nhút nhát và sợ mắc lỗi phát âm.",
+    "Thay vì chỉ trích gay gắt, cô tạo bầu không khí thân thiện nơi sai sót là một phần của việc học.",
+    "Cô thường dùng video ngắn, đóng vai và thảo luận nhóm để bài học sinh động hơn.",
+    "Một hoạt động tôi nhớ rõ là vòng tròn nói hàng tuần, mỗi người phải chia sẻ ý kiến.",
+    "Cô còn ghi phản hồi cá nhân trong cuốn sổ nhỏ dành cho từng học sinh.",
+    "Nhờ sự khích lệ của cô, tôi tham gia cuộc thi nói tiếng Anh và vào chung kết cấp trường.",
+    "Quan trọng hơn, cô dạy tôi rằng sự tự tin lớn lên khi chuẩn bị kỹ và chấp nhận rủi ro nhỏ.",
+    "Chúng tôi vẫn trao đổi tin nhắn trên mạng xã hội, và cô luôn hỏi thăm việc học của tôi.",
+    "Tôi thật sự tin rằng mình sẽ không theo đuổi cơ hội quốc tế nếu không có sự hướng dẫn của cô.",
+    "Nếu gặp lại cô, tôi sẽ cảm ơn vì cô đã thay đổi cách tôi nhìn nhận việc học ngôn ngữ."
   ],
-  "b2-ielts-transport-challenges": [
-    "Những vấn đề chính của giao thông công cộng ở thành phố lớn là gì?",
-    "Tắc đường thường khiến lịch trình xe buýt bị trễ.",
-    "Hơn nữa, một số hệ thống tàu điện quá đông đúc trong giờ cao điểm.",
-    "Chính phủ nên đầu tư nâng cấp hạ tầng và mở rộng tuyến đường.",
-    "Khuyến khích sử dụng giao thông công cộng rất quan trọng để giảm ô nhiễm không khí."
+  "b2-ielts-describe-hobby": [
+    "Tôi muốn mô tả một sở thích giúp tôi thư giãn sau một tuần bận rộn.",
+    "Đó là nhiếp ảnh, đặc biệt là chụp đời sống đường phố và kiến trúc cổ trong thành phố.",
+    "Tôi bắt đầu quan tâm khoảng ba năm trước khi một người bạn cho mượn máy mirrorless cũ.",
+    "Ban đầu tôi chỉ chụp bừa, nhưng sớm học về ánh sáng, bố cục và góc nhìn.",
+    "Tôi thường ra ngoài sớm sáng Chủ nhật khi phố vắng và ánh sáng dịu.",
+    "Đôi khi tôi đi bộ hàng giờ không để ý thời gian vì tìm góc chụp thú vị.",
+    "Tôi có album trực tuyến chia sẻ ảnh chọn lọc với bạn bè và những người cùng đam mê.",
+    "Thỉnh thoảng có người nhắn hỏi bức ảnh chụp ở đâu, điều đó khiến tôi vui.",
+    "Sở thích này dạy tôi quan sát những chi tiết nhỏ mà trước đây tôi bỏ qua.",
+    "Đó cũng là kênh sáng tạo không cần thiết bị đắt tiền để bắt đầu.",
+    "Ngày mưa tôi chỉnh ảnh ở nhà và đọc bài của nhiếp ảnh gia chuyên nghiệp.",
+    "Tôi khuyên nhiếp ảnh cho ai muốn chậm lại và trân trọng môi trường xung quanh."
   ],
-  "b2-ielts-environmental-issues": [
-    "Ai nên chịu trách nhiệm bảo vệ môi trường?",
-    "Tôi tin rằng cần sự nỗ lực chung của cả chính phủ và cá nhân.",
-    "Chính phủ nên thực thi quy định nghiêm ngặt về chất thải công nghiệp.",
-    "Đồng thời, người dân nên tái chế và giảm sử dụng nhựa.",
-    "Ngay cả những hành động nhỏ hàng ngày cũng có thể tạo ra thay đổi tích cực đáng kể."
+  "b2-ielts-describe-city": [
+    "Tôi muốn nói về một thành phố tôi đã đến và để lại ấn tượng lâu dài.",
+    "Đó là Hội An, một phố cổ ở miền Trung Việt Nam mà tôi khám phá trong kỳ nghỉ ngắn.",
+    "Tôi đi cùng bố mẹ trong dịp lễ hội đèn lồng, diễn ra vào đêm trăng rằm.",
+    "Vừa đến nơi, chúng tôi thấy đèn lồng đủ màu treo dọc từng con phố hẹp.",
+    "Những ngôi nhà gỗ cũ, tường vàng và quán cà phê bên sông tạo không khí thật yên bình.",
+    "Ban ngày chúng tôi thăm làng nghề truyền thống và thử tự làm đèn lồng nhỏ.",
+    "Buổi tối chúng tôi đi thuyền trên sông trong khi hàng ngàn ánh đèn phản chiếu trên mặt nước.",
+    "Ẩm thực địa phương cũng là điểm nhấn, đặc biệt là cao lầu và món tráng miệng xoài tươi.",
+    "Điều ấn tượng nhất là thành phố bảo tồn di sản nhưng vẫn đón khách du lịch một cách tôn trọng.",
+    "Tôi cảm giác như bước ngược thời gian, nhưng người dân hiện đại và hiếu khách.",
+    "Tôi mua quà lưu niệm thủ công cho em họ và chụp ảnh vẫn treo trong phòng.",
+    "Tôi rất khuyên nên đến Hội An nếu bạn muốn trải nghiệm văn hóa, lịch sử và ẩm thực trong một chuyến đi."
   ],
   "c1-ielts-ai-ethics": [
     "Sự phát triển nhanh chóng của trí tuệ nhân tạo đặt ra những câu hỏi đạo đức sâu sắc.",
