@@ -239,16 +239,15 @@ async function ensureTrainPeriod() {
 
 function focusAndDraw() {
   if (state.draft.entry == null || state.draft.time == null) return;
-  chart.focusSetup({
+  const payload = {
     time: state.draft.time,
     entry: state.draft.entry,
     sl: Number(els.fieldSL.value) || state.draft.sl,
     tp: Number(els.fieldTP.value) || state.draft.tp,
-  });
+  };
+  chart.focusSetup(payload);
   chart.setOverlay({
-    entry: state.draft.entry,
-    sl: Number(els.fieldSL.value) || state.draft.sl,
-    tp: Number(els.fieldTP.value) || state.draft.tp,
+    ...payload,
     direction: state.direction,
   });
 }
@@ -259,7 +258,7 @@ function syncFields() {
   els.fieldTP.value = state.draft.tp ?? '';
   els.fieldTime.value = state.draft.time ? isoFromUnix(state.draft.time) : '';
   if (state.mode !== 'idle') {
-    requestAnimationFrame(() => focusAndDraw());
+    focusAndDraw();
   }
   validateSave();
   updateRR();
@@ -388,7 +387,7 @@ async function startEditSetup(setup) {
   syncTagChips();
   updateModeUI();
   syncFields();
-  requestAnimationFrame(() => focusAndDraw());
+  renderSetups();
 }
 
 function cancelEditor() {
@@ -418,8 +417,8 @@ async function switchPeriod(period) {
 async function loadChart() {
   const data = await getCandles(state.period);
   chart.setData(data);
-  if (state.mode !== 'idle') {
-    requestAnimationFrame(() => focusAndDraw());
+  if (state.mode !== 'idle' && state.draft.time) {
+    focusAndDraw();
   }
 }
 

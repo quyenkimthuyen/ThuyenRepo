@@ -36,6 +36,7 @@ export class TradeChart {
   #dragState = null;
   #suppressClick = false;
   #priceFocus = null;
+  #pendingFocus = null;
   #boundPointerMove;
   #boundPointerUp;
   #resizeObserver = null;
@@ -237,6 +238,17 @@ export class TradeChart {
     return best;
   }
 
+  #candleIndex(time) {
+    if (!this.#candles?.length || time == null) return -1;
+    const anchor = this.#nearestCandle(time)?.time ?? time;
+    let idx = this.#candles.findIndex((c) => c.time === anchor);
+    if (idx >= 0) return idx;
+    for (let i = 0; i < this.#candles.length; i++) {
+      if (this.#candles[i].time >= anchor) return i;
+    }
+    return this.#candles.length - 1;
+  }
+
   setData({ candles, indicators }) {
     this.#candles = candles;
     this.#candleSeries.setData(candles);
@@ -244,7 +256,12 @@ export class TradeChart {
     this.#ema200Series.setData(this.#showEma200 ? indicators?.ema200 ?? [] : []);
     this.#rsiSeries.setData(this.#showRsi ? indicators?.rsi14 ?? [] : []);
     this.#resize();
-    if (!this.#priceFocus) {
+
+    if (this.#pendingFocus) {
+      const pending = this.#pendingFocus;
+      this.#pendingFocus = null;
+      this.focusSetup(pending);
+    } else if (!this.#priceFocus) {
       this.#mainChart.timeScale().fitContent();
       this.#rsiChart.timeScale().fitContent();
     }
@@ -267,30 +284,41 @@ export class TradeChart {
   }
 
   focusSetup({ time, entry, sl, tp }) {
+    if (!this.#candles?.length) {
+      this.#pendingFocus = { time, entry, sl, tp };
+      return;
+    }
+
     const prices = [entry, sl, tp].filter((p) => p != null && !Number.isNaN(Number(p))).map(Number);
     if (prices.length) {
       const minP = Math.min(...prices);
       const maxP = Math.max(...prices);
-      const pad = Math.max((maxP - minP) * 0.45, 0.002);
+      const pad = Math.max((maxP - minP) * 0.5, 0.0025);
       this.#priceFocus = { min: minP - pad, max: maxP + pad };
       this.#applyPriceFocus();
     }
 
-    if (time != null && this.#candles?.length) {
-      const anchor = this.#nearestCandle(time)?.time ?? time;
-      const halfWindow = 3600 * 24 * 7;
-      const from = anchor - halfWindow;
-      const to = anchor + halfWindow;
-      this.#mainChart.timeScale().setVisibleRange({ from, to });
-      this.#rsiChart.timeScale().setVisibleRange({ from, to });
-      this.#mainChart.timeScale().scrollToPosition(0, false);
+    if (time != null) {
+      const idx = this.#candleIndex(time);
+      const visibleBars = 100;
+      const half = Math.floor(visibleBars / 2);
+      const from = Math.max(0, idx - half);
+      const to = Math.min(this.#candles.length - 1, idx + half);
+      const range = { from, to };
+      this.#mainChart.timeScale().setVisibleLogicalRange(range);
+      this.#rsiChart.timeScale().setVisibleLogicalRange(range);
     }
 
-    requestAnimationFrame(() => this.#updateHandlePositions());
+    const apply = () => {
+      this.#mainChart.priceScale('right').applyOptions({ autoScale: true });
+      this.#updateHandlePositions();
+    };
+    requestAnimationFrame(() => requestAnimationFrame(apply));
   }
 
   clearPriceFocus() {
     this.#priceFocus = null;
+    this.#pendingFocus = null;
     this.#applyPriceFocus();
   }
 
