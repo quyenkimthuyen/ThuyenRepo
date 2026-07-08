@@ -11,6 +11,7 @@ import pandas as pd
 from .config import LABELS_PATH, PIP
 from .data_service import load_candles, period_for_timestamp
 from .indicators import add_indicators
+from .tags import infer_tags, normalize_tags
 
 
 def _ensure_file() -> None:
@@ -93,6 +94,7 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
         "result": result,
         "exit_time": exit_time.isoformat() if exit_time is not None else None,
         "period": period_for_timestamp(bar_time),
+        "tags": infer_tags(setup),
         "features": {
             "rsi14": round(float(row.get("rsi14", 0)), 2),
             "ema50": round(float(row.get("ema50", 0)), 5),
@@ -123,7 +125,7 @@ def create_setup(payload: dict[str, Any]) -> dict[str, Any]:
         "entry_price": float(payload["entry_price"]),
         "stop_loss": float(payload["stop_loss"]),
         "take_profit": float(payload["take_profit"]),
-        "tags": payload.get("tags", []),
+        "tags": normalize_tags(payload.get("tags")),
         "note": payload.get("note", ""),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }

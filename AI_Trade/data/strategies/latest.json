@@ -5,22 +5,94 @@
   "avg_rr_train": 2.0,
   "rules": {
     "long": {
-      "trend_up": false,
-      "rsi_min": 37.0,
-      "rsi_max": 56.2,
-      "close_above_ema50": true
+      "enabled": true,
+      "rsi_min": 52.1,
+      "rsi_max": 62.1,
+      "exclude": [
+        {
+          "feature": "dist_ema50_abs",
+          "op": ">",
+          "value": 90.4,
+          "reason": "loss th\u01b0\u1eddng xa EMA50 h\u01a1n win"
+        },
+        {
+          "feature": "rsi14",
+          "op": "<",
+          "value": 57.1,
+          "reason": "RSI qu\u00e1 th\u1ea5p g\u1eafn v\u1edbi loss"
+        }
+      ],
+      "max_dist_ema50_pips": 25.7
     },
     "short": {
+      "enabled": true,
+      "rsi_min": 35.4,
+      "rsi_max": 48.6,
+      "exclude": [],
       "trend_up": true,
-      "rsi_min": 37.0,
-      "rsi_max": 56.2,
-      "close_above_ema50": true
+      "close_above_ema50": true,
+      "close_above_ema200": false,
+      "max_dist_ema50_pips": 84.8
     }
   },
   "risk": {
-    "sl_atr_mult": 1.0,
-    "tp_atr_mult": 2.0,
-    "use_atr_levels": true
+    "mode": "from_labels",
+    "default": {
+      "sl_atr_mult": 1.528,
+      "target_rr": 2.0,
+      "tp_atr_mult": 3.057
+    },
+    "long": {
+      "sl_atr_mult": 1.294,
+      "target_rr": 2.0,
+      "tp_atr_mult": 2.589
+    },
+    "short": {
+      "sl_atr_mult": 1.583,
+      "target_rr": 2.0,
+      "tp_atr_mult": 3.166
+    }
   },
-  "tree_summary": "|--- close_above_ema200 <= 0.50\n|   |--- direction_long <= 0.50\n|   |   |--- class: 1\n|   |--- direction_long >  0.50\n|   |   |--- class: 0\n|--- close_above_ema200 >  0.50\n|   |--- class: 0\n"
+  "tags": {
+    "tags": [
+      {
+        "tag": "pullback",
+        "win": 1,
+        "loss": 1,
+        "total": 2,
+        "win_rate": 0.5
+      },
+      {
+        "tag": "trend",
+        "win": 0,
+        "loss": 1,
+        "total": 1,
+        "win_rate": 0.0
+      },
+      {
+        "tag": "rejection",
+        "win": 1,
+        "loss": 0,
+        "total": 1,
+        "win_rate": 1.0
+      },
+      {
+        "tag": "breakout",
+        "win": 0,
+        "loss": 1,
+        "total": 1,
+        "win_rate": 0.0
+      },
+      {
+        "tag": "retest",
+        "win": 0,
+        "loss": 1,
+        "total": 1,
+        "win_rate": 0.0
+      }
+    ],
+    "preferred_tags": [],
+    "avoid_tags": []
+  },
+  "tree_summary": "|--- close_above_ema200 <= 0.50\n|   |--- dist_ema50_pips <= 2.15\n|   |   |--- class: 0\n|   |--- dist_ema50_pips >  2.15\n|   |   |--- class: 1\n|--- close_above_ema200 >  0.50\n|   |--- class: 0\n"
 }

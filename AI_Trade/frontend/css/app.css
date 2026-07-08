@@ -87,7 +87,9 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .badge {
   margin-left: auto; background: #1e3a5f; color: #93c5fd; padding: 4px 10px; border-radius: 999px; font-size: 11px;
 }
-.chart-main { flex: 1; min-height: 0; }
+.chart-main { flex: 1; min-height: 0; position: relative; }
+.chart-main.can-drag-level { cursor: ns-resize; }
+.chart-main.dragging-level { cursor: grabbing; user-select: none; }
 .chart-rsi { height: 140px; border-top: 1px solid var(--border); }
 
 @media (max-width: 960px) {

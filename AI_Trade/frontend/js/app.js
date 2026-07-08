@@ -30,6 +30,7 @@ const els = {
   fieldTP: document.getElementById('fieldTP'),
   fieldTime: document.getElementById('fieldTime'),
   fieldNote: document.getElementById('fieldNote'),
+  fieldTags: document.getElementById('fieldTags'),
   btnSave: document.getElementById('btnSave'),
   analysisOut: document.getElementById('analysisOut'),
   backtestOut: document.getElementById('backtestOut'),
@@ -38,7 +39,7 @@ const els = {
 const chart = new TradeChart(
   document.getElementById('chartMain'),
   document.getElementById('chartRsi'),
-  { onClick: handleChartClick },
+  { onClick: handleChartClick, onLevelDrag: handleLevelDrag },
 );
 
 function isoFromUnix(sec) {
@@ -92,6 +93,21 @@ function validateSave() {
   } else {
     els.btnSave.disabled = true;
   }
+}
+
+function handleLevelDrag({ role, price }) {
+  if (!state.labelAllowed) return;
+  if (role === 'entry') {
+    state.draft.entry = price;
+    els.fieldEntry.value = price;
+  } else if (role === 'sl') {
+    state.draft.sl = price;
+    els.fieldSL.value = price;
+  } else if (role === 'tp') {
+    state.draft.tp = price;
+    els.fieldTP.value = price;
+  }
+  validateSave();
 }
 
 function handleChartClick({ time, candle, price }) {
@@ -149,7 +165,7 @@ async function switchPeriod(period) {
   state.period = period;
   state.labelAllowed = period === 'train';
   els.labelHint.textContent = state.labelAllowed
-    ? 'Click chart: Entry → SL → TP. Chỉ label trong Train (2022).'
+    ? 'Click: Entry → SL → TP. Sau đó kéo các đường lên/xuống để chỉnh giá.'
     : 'Chế độ xem — không thể thêm setup. Chuyển về Train để label.';
   els.periodBadge.textContent = state.config.periods[period].label;
   renderPeriodTabs();
@@ -171,7 +187,7 @@ function renderSetups() {
     li.className = `setup-item ${s.direction}`;
     li.innerHTML = `
       <div><strong>${s.direction.toUpperCase()}</strong> · RR ${s.planned_rr ?? '-'} · <span>${s.result ?? '?'}</span></div>
-      <div class="setup-meta">${s.entry_time?.slice(0, 16)}</div>
+      <div class="setup-meta">${s.entry_time?.slice(0, 16)}${(s.tags || []).length ? ' · ' + (s.tags || []).join(', ') : ''}</div>
     `;
     li.onclick = () => {
       const t = Math.floor(new Date(s.entry_time).getTime() / 1000);
@@ -198,6 +214,10 @@ async function refreshSetups() {
 }
 
 async function onSave() {
+  const tags = els.fieldTags.value
+    .split(/[,;]+/)
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
   const body = {
     direction: state.direction,
     entry_time: isoFromUnix(state.draft.time),
@@ -205,7 +225,7 @@ async function onSave() {
     stop_loss: Number(els.fieldSL.value),
     take_profit: Number(els.fieldTP.value),
     note: els.fieldNote.value,
-    tags: [],
+    tags,
   };
   await saveSetup(body);
   await refreshSetups();

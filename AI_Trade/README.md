@@ -50,7 +50,14 @@ AI_Trade/
 | Validation | 2023 | Tinh chỉnh |
 | Test | 2024–2026 | Out-of-sample |
 
-## Pass criteria (backtest)
+## Analyze (v0.2)
+
+- **Win + loss**: rule học từ setup thắng, **loại vùng** gắn với loss (RSI ngoài biên win, xa EMA50...)
+- **Tags**: nhập tag hoặc ghi chú (`pullback`, `breakout`...) → thống kê winrate theo tag, siết rule theo tag thắng
+- **Risk từ label**: backtest dùng **SL/TP theo median ATR×RR** từ setup bạn đánh dấu (không còn cố định 1×/2× ATR)
+
+Sau khi label, bấm **Analyze** rồi **Backtest**. Gọi `POST /api/setups/refresh` nếu cần cập nhật tags từ ghi chú cũ.
+
 
 - Profit factor ≥ 1.3
 - Max drawdown ≤ 20% (ước lượng pip)
