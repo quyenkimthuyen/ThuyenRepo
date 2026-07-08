@@ -8,7 +8,12 @@ import {
   saveSetup,
   updateSetup,
 } from './api.js';
-import { TradeChart } from './chart.js';
+import {
+  renderAnalyzeView,
+  renderBacktestView,
+  renderError,
+  renderLoading,
+} from './strategy-ui.js';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -44,8 +49,15 @@ const els = {
   btnSave: document.getElementById('btnSave'),
   btnDelete: document.getElementById('btnDelete'),
   chartOverlayHint: document.getElementById('chartOverlayHint'),
-  analysisOut: document.getElementById('analysisOut'),
-  backtestOut: document.getElementById('backtestOut'),
+  analyzeResults: document.getElementById('analyzeResults'),
+  btValResults: document.getElementById('btValResults'),
+  btTestResults: document.getElementById('btTestResults'),
+  strategyTabs: document.querySelectorAll('.strategy-tab'),
+  strategyPanels: {
+    analyze: document.getElementById('panelAnalyze'),
+    validation: document.getElementById('panelValidation'),
+    test: document.getElementById('panelTest'),
+  },
 };
 
 const chart = new TradeChart(
@@ -484,6 +496,46 @@ async function onDelete() {
   setMode('idle');
 }
 
+function switchStrategyTab(tabId) {
+  els.strategyTabs.forEach((btn) => {
+    const active = btn.dataset.tab === tabId;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  for (const [key, panel] of Object.entries(els.strategyPanels)) {
+    panel.classList.toggle('hidden', key !== tabId);
+    panel.classList.toggle('active', key === tabId);
+  }
+}
+
+async function runAnalyze() {
+  els.analyzeResults.innerHTML = renderLoading('Đang phân tích setup train...');
+  try {
+    const data = await analyze();
+    els.analyzeResults.innerHTML = renderAnalyzeView(data);
+  } catch (e) {
+    els.analyzeResults.innerHTML = renderError(e.message);
+  }
+}
+
+async function runBt(period) {
+  const isVal = period === 'validation';
+  const outEl = isVal ? els.btValResults : els.btTestResults;
+  const label = isVal ? 'Validation 2023' : 'Test 2024–2026';
+  outEl.innerHTML = renderLoading(`Đang chạy backtest ${label}...`);
+  try {
+    const data = await backtest(period);
+    outEl.innerHTML = renderBacktestView(data, {
+      title: isVal ? 'Backtest 2023' : 'Backtest 2024–26',
+      subtitle: isVal
+        ? 'Dùng để tinh chỉnh chiến lược trước khi test out-of-sample.'
+        : 'Kết quả out-of-sample — không nên optimize thêm sau bước này.',
+    });
+  } catch (e) {
+    outEl.innerHTML = renderError(e.message);
+  }
+}
+
 function bindUI() {
   document.getElementById('btnNewSetup').onclick = () => startNewSetup();
   document.getElementById('btnCancel').onclick = () => cancelEditor();
@@ -533,25 +585,19 @@ function bindUI() {
   document.getElementById('toggleEma200').onchange = (e) => chart.toggleEma200(e.target.checked);
   document.getElementById('toggleRsi').onchange = (e) => chart.toggleRsi(e.target.checked);
 
-  document.getElementById('btnAnalyze').onclick = async () => {
-    els.analysisOut.textContent = 'Đang phân tích...';
-    try {
-      els.analysisOut.textContent = JSON.stringify(await analyze(), null, 2);
-    } catch (e) {
-      els.analysisOut.textContent = e.message;
-    }
-  };
-  document.getElementById('btnBacktestVal').onclick = () => runBt('validation');
-  document.getElementById('btnBacktestTest').onclick = () => runBt('test');
-}
+  els.strategyTabs.forEach((btn) => {
+    btn.onclick = () => switchStrategyTab(btn.dataset.tab);
+  });
 
-async function runBt(period) {
-  els.backtestOut.textContent = `Backtest ${period}...`;
-  try {
-    els.backtestOut.textContent = JSON.stringify(await backtest(period), null, 2);
-  } catch (e) {
-    els.backtestOut.textContent = e.message;
-  }
+  document.getElementById('btnAnalyze').onclick = () => runAnalyze();
+  document.getElementById('btnBacktestVal').onclick = () => {
+    switchStrategyTab('validation');
+    runBt('validation');
+  };
+  document.getElementById('btnBacktestTest').onclick = () => {
+    switchStrategyTab('test');
+    runBt('test');
+  };
 }
 
 async function boot() {

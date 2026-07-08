@@ -92,14 +92,33 @@
         </section>
 
         <section class="panel panel-analyze">
-          <h2>Chiến lược & Backtest</h2>
-          <div class="btn-row">
-            <button type="button" class="btn primary" id="btnAnalyze">Analyze</button>
-            <button type="button" class="btn" id="btnBacktestVal">BT 2023</button>
-            <button type="button" class="btn" id="btnBacktestTest">BT 2024–26</button>
+          <h2>Chiến lược &amp; Backtest</h2>
+
+          <div class="strategy-tabs" role="tablist">
+            <button type="button" class="strategy-tab active" data-tab="analyze" role="tab" aria-selected="true">Analyze</button>
+            <button type="button" class="strategy-tab" data-tab="validation" role="tab">BT 2023</button>
+            <button type="button" class="strategy-tab" data-tab="test" role="tab">BT 2024–26</button>
           </div>
-          <pre id="analysisOut" class="output"></pre>
-          <pre id="backtestOut" class="output"></pre>
+
+          <div class="strategy-panels">
+            <div id="panelAnalyze" class="strategy-panel active" role="tabpanel">
+              <p class="strategy-intro">Phân tích setup Train 2022 để sinh quy tắc vào lệnh + SL/TP theo ATR.</p>
+              <button type="button" class="btn primary block" id="btnAnalyze">Chạy phân tích</button>
+              <div id="analyzeResults" class="strategy-results"></div>
+            </div>
+
+            <div id="panelValidation" class="strategy-panel hidden" role="tabpanel">
+              <p class="strategy-intro">Kiểm tra chiến lược trên năm 2023 — dùng để tinh chỉnh trước khi test.</p>
+              <button type="button" class="btn primary block" id="btnBacktestVal">Chạy backtest 2023</button>
+              <div id="btValResults" class="strategy-results"></div>
+            </div>
+
+            <div id="panelTest" class="strategy-panel hidden" role="tabpanel">
+              <p class="strategy-intro">Test out-of-sample 2024–2026 — không optimize thêm sau bước này.</p>
+              <button type="button" class="btn primary block" id="btnBacktestTest">Chạy backtest 2024–26</button>
+              <div id="btTestResults" class="strategy-results"></div>
+            </div>
+          </div>
         </section>
       </aside>
 
