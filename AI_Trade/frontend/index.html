@@ -27,21 +27,13 @@
           </div>
           <button type="button" class="btn primary block" id="btnNewSetup">＋ Setup mới</button>
 
-          <div class="setup-editor" id="editorPanel">
+          <div class="setup-editor hidden" id="editorPanel">
             <div class="mode-bar">
               <span class="mode-pill" id="modePill" data-mode="idle">Xem chart</span>
               <span class="rr-pill" id="rrPill">RR —</span>
             </div>
-            <p class="hint" id="labelHint">Chọn setup bên dưới để sửa, hoặc bấm 「Setup mới」.</p>
 
-            <div id="idleBlock" class="editor-block">
-              <div class="idle-card">
-                <p>Đánh dấu setup trên năm <strong>Train 2022</strong> để AI học pattern.</p>
-                <button type="button" class="btn" id="btnNewFromIdle">Bắt đầu setup mới</button>
-              </div>
-            </div>
-
-            <div id="activeBlock" class="editor-block hidden">
+            <div id="activeBlock" class="editor-block">
               <div class="direction-row">
                 <button type="button" class="btn dir-btn active" data-direction="long" id="btnLong">Long</button>
                 <button type="button" class="btn dir-btn" data-direction="short" id="btnShort">Short</button>

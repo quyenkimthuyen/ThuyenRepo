@@ -394,6 +394,22 @@ export class TradeChart {
     this.#applyPriceFocus();
   }
 
+  updateLevelPrices({ entry, sl, tp }) {
+    if (entry != null && !Number.isNaN(Number(entry))) {
+      this.#setLinePrice('entry', Number(entry), false);
+    }
+    if (sl != null && !Number.isNaN(Number(sl))) {
+      this.#setLinePrice('sl', Number(sl), false);
+    }
+    if (tp != null && !Number.isNaN(Number(tp))) {
+      this.#setLinePrice('tp', Number(tp), false);
+    }
+  }
+
+  hasOverlay() {
+    return this.#overlayLines.length > 0;
+  }
+
   setOverlay({ time, entry, sl, tp, direction }) {
     this.clearOverlay();
 

@@ -29,8 +29,6 @@ const els = {
   editorPanel: document.getElementById('editorPanel'),
   modePill: document.getElementById('modePill'),
   rrPill: document.getElementById('rrPill'),
-  labelHint: document.getElementById('labelHint'),
-  idleBlock: document.getElementById('idleBlock'),
   activeBlock: document.getElementById('activeBlock'),
   newSteps: document.getElementById('newSteps'),
   setupList: document.getElementById('setupList'),
@@ -182,30 +180,61 @@ function updateChartHint() {
 function updateModeUI() {
   const { mode } = state;
   els.editorPanel.dataset.mode = mode;
+  els.editorPanel.classList.toggle('hidden', mode === 'idle');
   els.modePill.dataset.mode = mode;
   els.modePill.textContent = MODE_LABELS[mode];
 
-  const editing = mode !== 'idle';
-  els.idleBlock.classList.toggle('hidden', editing);
-  els.activeBlock.classList.toggle('hidden', !editing);
   els.newSteps.classList.toggle('hidden', mode !== 'new');
   els.btnDelete.classList.toggle('hidden', mode !== 'edit');
 
   els.btnSave.textContent = mode === 'edit' ? 'Cập nhật setup' : 'Lưu setup';
 
-  if (mode === 'idle') {
-    els.labelHint.textContent = isTrainPeriod()
-      ? 'Chọn setup bên dưới để sửa, hoặc bấm 「Setup mới」.'
-      : 'Tab này chỉ xem dữ liệu. Chuyển về Train 2022 để đánh dấu setup.';
-  } else if (mode === 'new') {
-    els.labelHint.textContent = 'Đặt Entry → SL → TP trên chart. Có thể kéo đường để tinh chỉnh.';
-  } else {
-    els.labelHint.textContent = 'Setup đang mở — chart đã focus. Kéo đường hoặc sửa số bên dưới.';
-  }
-
   updateStepTrack();
   updateChartHint();
   updateRR();
+}
+
+function overlayPayload() {
+  if (state.draft.entry == null || state.draft.time == null) return null;
+  return {
+    time: state.draft.time,
+    entry: state.draft.entry,
+    sl: Number(els.fieldSL.value) || state.draft.sl,
+    tp: Number(els.fieldTP.value) || state.draft.tp,
+    direction: state.direction,
+  };
+}
+
+function drawOverlayOnly() {
+  const payload = overlayPayload();
+  if (!payload) return;
+  if (chart.hasOverlay()) {
+    chart.updateLevelPrices(payload);
+  } else {
+    chart.setOverlay(payload);
+  }
+}
+
+function focusChartOnSetup() {
+  const payload = overlayPayload();
+  if (!payload) return;
+  chart.focusSetup(payload);
+  chart.setOverlay(payload);
+}
+
+function syncFields({ focus = false } = {}) {
+  els.fieldEntry.value = state.draft.entry ?? '';
+  els.fieldSL.value = state.draft.sl ?? '';
+  els.fieldTP.value = state.draft.tp ?? '';
+  els.fieldTime.value = state.draft.time ? isoFromUnix(state.draft.time) : '';
+  if (state.mode !== 'idle') {
+    if (focus) focusChartOnSetup();
+    else drawOverlayOnly();
+  }
+  validateSave();
+  updateRR();
+  updateStepTrack();
+  updateChartHint();
 }
 
 function clearDraft() {
@@ -237,31 +266,20 @@ async function ensureTrainPeriod() {
   await loadChart();
 }
 
-function focusAndDraw() {
-  if (state.draft.entry == null || state.draft.time == null) return;
-  const payload = {
-    time: state.draft.time,
-    entry: state.draft.entry,
-    sl: Number(els.fieldSL.value) || state.draft.sl,
-    tp: Number(els.fieldTP.value) || state.draft.tp,
-    direction: state.direction,
-  };
-  chart.focusSetup(payload);
-  chart.setOverlay(payload);
-}
-
-function syncFields() {
-  els.fieldEntry.value = state.draft.entry ?? '';
-  els.fieldSL.value = state.draft.sl ?? '';
-  els.fieldTP.value = state.draft.tp ?? '';
-  els.fieldTime.value = state.draft.time ? isoFromUnix(state.draft.time) : '';
-  if (state.mode !== 'idle') {
-    focusAndDraw();
+function handleLevelDrag({ role, price }) {
+  if (state.mode === 'idle' || !isTrainPeriod()) return;
+  if (role === 'entry') {
+    state.draft.entry = price;
+    els.fieldEntry.value = price;
+  } else if (role === 'sl') {
+    state.draft.sl = price;
+    els.fieldSL.value = price;
+  } else if (role === 'tp') {
+    state.draft.tp = price;
+    els.fieldTP.value = price;
   }
   validateSave();
   updateRR();
-  updateStepTrack();
-  updateChartHint();
 }
 
 function validateSave() {
@@ -288,26 +306,6 @@ function validateSave() {
   els.btnSave.disabled = !valid;
 }
 
-function handleLevelDrag({ role, price }) {
-  if (state.mode === 'idle' || !isTrainPeriod()) return;
-  if (role === 'entry') {
-    state.draft.entry = price;
-    els.fieldEntry.value = price;
-  } else if (role === 'sl') {
-    state.draft.sl = price;
-    els.fieldSL.value = price;
-  } else if (role === 'tp') {
-    state.draft.tp = price;
-    els.fieldTP.value = price;
-  }
-  if (state.mode === 'new' && state.step === 'entry' && role !== 'entry') {
-    /* allow drag after placed */
-  }
-  focusAndDraw();
-  validateSave();
-  updateRR();
-}
-
 function handleChartClick({ time, candle, price }) {
   if (state.mode !== 'new' || !isTrainPeriod()) return;
 
@@ -328,7 +326,7 @@ function handleChartClick({ time, candle, price }) {
     );
     els.fieldTP.value = state.draft.tp;
     state.step = 'tp';
-    syncFields();
+    syncFields({ focus: true });
     return;
   }
 
@@ -384,7 +382,7 @@ async function startEditSetup(setup) {
   els.fieldNote.value = setup.note || '';
   syncTagChips();
   updateModeUI();
-  syncFields();
+  syncFields({ focus: true });
   renderSetups();
 }
 
@@ -416,7 +414,7 @@ async function loadChart() {
   const data = await getCandles(state.period);
   chart.setData(data);
   if (state.mode !== 'idle' && state.draft.time) {
-    focusAndDraw();
+    drawOverlayOnly();
   }
 }
 
@@ -488,7 +486,6 @@ async function onDelete() {
 
 function bindUI() {
   document.getElementById('btnNewSetup').onclick = () => startNewSetup();
-  document.getElementById('btnNewFromIdle').onclick = () => startNewSetup();
   document.getElementById('btnCancel').onclick = () => cancelEditor();
   document.getElementById('btnDelete').onclick = () => onDelete();
   document.getElementById('btnSave').onclick = () => onSave();
@@ -500,7 +497,10 @@ function bindUI() {
       state.mode = 'new';
       state.step = 'entry';
       syncFields();
-    } else if (state.mode === 'edit') syncFields();
+    } else if (state.mode === 'edit') {
+      const payload = overlayPayload();
+      if (payload) chart.setOverlay(payload);
+    }
   };
   document.getElementById('btnShort').onclick = () => {
     setDirection('short');
@@ -509,16 +509,23 @@ function bindUI() {
       state.mode = 'new';
       state.step = 'entry';
       syncFields();
-    } else if (state.mode === 'edit') syncFields();
+    } else if (state.mode === 'edit') {
+      const payload = overlayPayload();
+      if (payload) chart.setOverlay(payload);
+    }
   };
 
   els.fieldSL.oninput = () => {
     state.draft.sl = Number(els.fieldSL.value);
-    syncFields();
+    drawOverlayOnly();
+    validateSave();
+    updateRR();
   };
   els.fieldTP.oninput = () => {
     state.draft.tp = Number(els.fieldTP.value);
-    syncFields();
+    drawOverlayOnly();
+    validateSave();
+    updateRR();
   };
   els.fieldTags.oninput = () => syncTagChips();
 
