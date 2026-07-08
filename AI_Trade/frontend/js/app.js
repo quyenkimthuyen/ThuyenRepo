@@ -186,11 +186,18 @@ async function loadTagPresets() {
     : DEFAULT_TAGS;
 }
 
+function escapeAttr(value) {
+  if (typeof CSS !== 'undefined' && typeof CSS.escape === 'function') {
+    return CSS.escape(String(value));
+  }
+  return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
 function syncTagField() {
   const select = document.getElementById('fieldTag');
   if (!select) return;
   const primary = state.meta.tags?.[0] || '';
-  if (select.querySelector(`option[value="${CSS.escape(primary)}"]`)) {
+  if (select.querySelector(`option[value="${escapeAttr(primary)}"]`)) {
     select.value = primary;
   } else {
     select.value = '';
@@ -369,7 +376,9 @@ function setMode(mode) {
 async function ensureTrainPeriod() {
   if (state.period === 'train') return;
   state.period = 'train';
-  els.periodBadge.textContent = state.config.periods.train.label;
+  if (state.config?.periods?.train) {
+    els.periodBadge.textContent = state.config.periods.train.label;
+  }
   renderPeriodTabs();
   await loadChart();
 }
@@ -504,6 +513,7 @@ function cancelEditor() {
 }
 
 function renderPeriodTabs() {
+  if (!state.config?.periods) return;
   els.periodTabs.innerHTML = '';
   for (const [key, cfg] of Object.entries(state.config.periods)) {
     const btn = document.createElement('button');
@@ -796,6 +806,35 @@ function bindUI() {
   document.getElementById('btnBacktestTest').onclick = () => runBt('test');
 }
 
+function showBootError(message) {
+  const safe = String(message ?? 'Lỗi không xác định')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  let banner = document.getElementById('bootError');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'bootError';
+    banner.className = 'boot-error-banner';
+    document.getElementById('app')?.prepend(banner);
+  }
+  banner.innerHTML = `
+    <div class="boot-error-inner">
+      <strong>Không tải được dữ liệu</strong>
+      <p>${safe}. Dữ liệu setup vẫn lưu trên server — chạy <code>./run.sh</code> rồi bấm Thử lại.</p>
+      <button type="button" class="btn primary" id="btnBootRetry">Thử lại</button>
+    </div>
+  `;
+  banner.querySelector('#btnBootRetry').onclick = () => {
+    banner.remove();
+    boot();
+  };
+}
+
+function hideBootError() {
+  document.getElementById('bootError')?.remove();
+}
+
 async function boot() {
   bindUI();
   chart.mount();
@@ -805,6 +844,7 @@ async function boot() {
     resizerEl: document.getElementById('sidebarResizer'),
     onResize: () => chart.resize?.(),
   });
+
   state.config = await getConfig();
   await loadTagPresets();
   renderTagSelect();
@@ -813,8 +853,11 @@ async function boot() {
   await loadChart();
   await refreshSetups();
   refreshChartAnnotations();
+  requestAnimationFrame(() => chart.resize?.());
+  hideBootError();
 }
 
 boot().catch((err) => {
-  document.body.innerHTML = `<pre style="color:#f87171;padding:20px">Boot failed: ${err.message}</pre>`;
+  console.error('Boot failed:', err);
+  showBootError(err.message || 'Lỗi không xác định');
 });

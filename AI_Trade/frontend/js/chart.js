@@ -76,6 +76,7 @@ export class TradeChart {
       crosshair: { mode: CrosshairMode.Normal },
       rightPriceScale: { borderColor: COLORS.grid },
       timeScale: { borderColor: COLORS.grid, timeVisible: true, secondsVisible: false },
+      localization: { locale: 'en-US' },
     };
 
     this.#mainChart = createChart(this.#mainEl, { ...common, width, height });
