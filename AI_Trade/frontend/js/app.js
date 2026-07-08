@@ -49,6 +49,7 @@ const els = {
   fieldSL: document.getElementById('fieldSL'),
   fieldTP: document.getElementById('fieldTP'),
   fieldTime: document.getElementById('fieldTime'),
+  fieldTag: document.getElementById('fieldTag'),
   btnSave: document.getElementById('btnSave'),
   btnDelete: document.getElementById('btnDelete'),
   chartOverlayHint: document.getElementById('chartOverlayHint'),
@@ -133,6 +134,40 @@ function clearChartFocus() {
   chart.clearOverlay();
   chart.clearFocus();
   refreshChartAnnotations();
+}
+
+function renderTagSelect() {
+  const presets = state.config?.presets?.tags || [];
+  els.fieldTag.innerHTML = '<option value="">— Không chọn —</option>';
+  for (const tag of presets) {
+    const opt = document.createElement('option');
+    opt.value = tag.id;
+    opt.textContent = tag.label;
+    if (tag.hint) opt.title = tag.hint;
+    els.fieldTag.appendChild(opt);
+  }
+  syncTagField();
+}
+
+function syncTagField() {
+  const primary = state.meta.tags?.[0] || '';
+  if (els.fieldTag.querySelector(`option[value="${primary}"]`)) {
+    els.fieldTag.value = primary;
+  } else {
+    els.fieldTag.value = '';
+  }
+}
+
+function onTagChange() {
+  const tagId = els.fieldTag.value;
+  if (!tagId) {
+    state.meta.tags = [];
+    state.meta.note = '';
+    return;
+  }
+  const preset = state.config?.presets?.tags?.find((t) => t.id === tagId);
+  state.meta.tags = [tagId];
+  state.meta.note = preset?.label || tagId;
 }
 
 function calcRR() {
@@ -252,6 +287,7 @@ function syncFields({ focus = false } = {}) {
   els.fieldSL.value = state.draft.sl ?? '';
   els.fieldTP.value = state.draft.tp ?? '';
   els.fieldTime.value = state.draft.time ? isoFromUnix(state.draft.time) : '';
+  syncTagField();
   if (state.mode !== 'idle') {
     if (focus) focusChartOnSetup();
     else drawOverlayOnly();
@@ -700,6 +736,7 @@ function bindUI() {
     validateSave();
     updateRR();
   };
+  els.fieldTag.onchange = () => onTagChange();
 
   document.getElementById('toggleEma50').onchange = (e) => chart.toggleEma50(e.target.checked);
   document.getElementById('toggleEma200').onchange = (e) => chart.toggleEma200(e.target.checked);
@@ -724,6 +761,7 @@ async function boot() {
     onResize: () => chart.resize?.(),
   });
   state.config = await getConfig();
+  renderTagSelect();
   renderPeriodTabs();
   setMode('idle');
   await loadChart();
