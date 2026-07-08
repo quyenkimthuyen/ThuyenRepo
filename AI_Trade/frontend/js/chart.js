@@ -14,11 +14,11 @@ const COLORS = {
   tp: '#22c55e',
 };
 
-const HIT_PX = 12;
-
 export class TradeChart {
+  #wrapEl;
   #mainEl;
   #rsiEl;
+  #dragLayer;
   #mainChart;
   #rsiChart;
   #candles;
@@ -26,7 +26,7 @@ export class TradeChart {
   #ema50Series;
   #ema200Series;
   #rsiSeries;
-  /** @type {{ role: string, line: object, price: number }[]} */
+  /** @type {{ role: string, line: object, price: number, handle?: HTMLElement }[]} */
   #overlayLines = [];
   #onClick;
   #onLevelDrag;
@@ -36,21 +36,24 @@ export class TradeChart {
   #dragState = null;
   #suppressClick = false;
   #priceFocus = null;
-  #boundPointerDown;
   #boundPointerMove;
   #boundPointerUp;
 
   constructor(mainEl, rsiEl, { onClick, onLevelDrag } = {}) {
+    this.#wrapEl = mainEl.parentElement;
     this.#mainEl = mainEl;
     this.#rsiEl = rsiEl;
     this.#onClick = onClick;
     this.#onLevelDrag = onLevelDrag;
-    this.#boundPointerDown = (e) => this.#onPointerDown(e);
     this.#boundPointerMove = (e) => this.#onPointerMove(e);
     this.#boundPointerUp = (e) => this.#onPointerUp(e);
   }
 
   mount() {
+    this.#dragLayer = document.createElement('div');
+    this.#dragLayer.className = 'price-drag-layer';
+    this.#wrapEl.appendChild(this.#dragLayer);
+
     const common = {
       layout: { background: { color: COLORS.bg }, textColor: COLORS.text },
       grid: { vertLines: { color: COLORS.grid }, horzLines: { color: COLORS.grid } },
@@ -84,42 +87,27 @@ export class TradeChart {
 
     const sync = (range) => {
       if (range) this.#rsiChart.timeScale().setVisibleLogicalRange(range);
+      this.#updateHandlePositions();
     };
     this.#mainChart.timeScale().subscribeVisibleLogicalRangeChange(sync);
 
     this.#mainChart.subscribeClick((param) => this.#handleClick(param));
 
-    this.#mainEl.addEventListener('pointerdown', this.#boundPointerDown);
-    this.#mainEl.addEventListener('pointermove', this.#boundPointerMove);
-    this.#mainEl.addEventListener('pointerup', this.#boundPointerUp);
-    this.#mainEl.addEventListener('pointercancel', this.#boundPointerUp);
-
+    window.addEventListener('pointermove', this.#boundPointerMove);
+    window.addEventListener('pointerup', this.#boundPointerUp);
+    window.addEventListener('pointercancel', this.#boundPointerUp);
     window.addEventListener('resize', () => this.#resize());
   }
 
   #resize() {
     this.#mainChart.applyOptions({ width: this.#mainEl.clientWidth, height: this.#mainEl.clientHeight });
     this.#rsiChart.applyOptions({ width: this.#rsiEl.clientWidth, height: this.#rsiEl.clientHeight });
+    this.#updateHandlePositions();
   }
 
-  #localY(event) {
+  #chartY(event) {
     const rect = this.#mainEl.getBoundingClientRect();
     return event.clientY - rect.top;
-  }
-
-  #hitTestLine(y) {
-    let best = null;
-    let bestDist = HIT_PX + 1;
-    for (const item of this.#overlayLines) {
-      const lineY = this.#candleSeries.priceToCoordinate(item.price);
-      if (lineY == null) continue;
-      const dist = Math.abs(lineY - y);
-      if (dist <= HIT_PX && dist < bestDist) {
-        best = item.role;
-        bestDist = dist;
-      }
-    }
-    return best;
   }
 
   #setChartInteraction(enabled) {
@@ -129,27 +117,19 @@ export class TradeChart {
     });
   }
 
-  #onPointerDown(event) {
+  #onHandlePointerDown(role, event) {
     if (!this.#overlayLines.length) return;
-    const role = this.#hitTestLine(this.#localY(event));
-    if (!role) return;
-
-    this.#dragState = { role, moved: false };
-    this.#mainEl.setPointerCapture(event.pointerId);
+    this.#dragState = { role, moved: false, pointerId: event.pointerId };
     this.#setChartInteraction(false);
-    this.#mainEl.classList.add('dragging-level');
+    this.#wrapEl.classList.add('dragging-level');
     event.preventDefault();
     event.stopPropagation();
   }
 
   #onPointerMove(event) {
-    if (!this.#dragState) {
-      const role = this.#hitTestLine(this.#localY(event));
-      this.#mainEl.classList.toggle('can-drag-level', Boolean(role));
-      return;
-    }
+    if (!this.#dragState || event.pointerId !== this.#dragState.pointerId) return;
 
-    const y = this.#localY(event);
+    const y = this.#chartY(event);
     const price = this.#candleSeries.coordinateToPrice(y);
     if (price == null) return;
 
@@ -159,7 +139,7 @@ export class TradeChart {
   }
 
   #onPointerUp(event) {
-    if (!this.#dragState) return;
+    if (!this.#dragState || event.pointerId !== this.#dragState.pointerId) return;
 
     if (this.#dragState.moved) {
       this.#suppressClick = true;
@@ -167,10 +147,7 @@ export class TradeChart {
 
     this.#dragState = null;
     this.#setChartInteraction(true);
-    this.#mainEl.classList.remove('dragging-level');
-    if (this.#mainEl.hasPointerCapture(event.pointerId)) {
-      this.#mainEl.releasePointerCapture(event.pointerId);
-    }
+    this.#wrapEl.classList.remove('dragging-level');
   }
 
   #setLinePrice(role, price, notify) {
@@ -178,8 +155,31 @@ export class TradeChart {
     if (!item || price == null || Number.isNaN(price)) return;
     item.price = price;
     item.line.applyOptions({ price });
+    this.#updateHandlePositions();
     if (notify) {
       this.#onLevelDrag?.({ role, price });
+    }
+  }
+
+  #createHandle(role, label) {
+    const handle = document.createElement('div');
+    handle.className = `price-drag-handle ${role}`;
+    handle.dataset.label = label;
+    handle.addEventListener('pointerdown', (e) => this.#onHandlePointerDown(role, e));
+    this.#dragLayer.appendChild(handle);
+    return handle;
+  }
+
+  #updateHandlePositions() {
+    for (const item of this.#overlayLines) {
+      if (!item.handle) continue;
+      const y = this.#candleSeries.priceToCoordinate(item.price);
+      if (y == null || Number.isNaN(y)) {
+        item.handle.style.display = 'none';
+        continue;
+      }
+      item.handle.style.display = 'block';
+      item.handle.style.top = `${y}px`;
     }
   }
 
@@ -196,6 +196,7 @@ export class TradeChart {
   }
 
   #nearestCandle(time) {
+    if (!this.#candles?.length) return null;
     let best = this.#candles[0];
     let bestDiff = Math.abs(best.time - time);
     for (const c of this.#candles) {
@@ -218,6 +219,7 @@ export class TradeChart {
       this.#mainChart.timeScale().fitContent();
       this.#rsiChart.timeScale().fitContent();
     }
+    this.#updateHandlePositions();
   }
 
   #applyPriceFocus() {
@@ -240,21 +242,20 @@ export class TradeChart {
     if (prices.length) {
       const minP = Math.min(...prices);
       const maxP = Math.max(...prices);
-      const pad = Math.max((maxP - minP) * 0.35, 0.0012);
+      const pad = Math.max((maxP - minP) * 0.4, 0.0015);
       this.#priceFocus = { min: minP - pad, max: maxP + pad };
       this.#applyPriceFocus();
     }
 
-    if (time != null) {
-      this.#mainChart.timeScale().setVisibleRange({
-        from: time - 3600 * 24 * 4,
-        to: time + 3600 * 24 * 14,
-      });
-      this.#rsiChart.timeScale().setVisibleRange({
-        from: time - 3600 * 24 * 4,
-        to: time + 3600 * 24 * 14,
-      });
+    if (time != null && this.#candles?.length) {
+      const anchor = this.#nearestCandle(time)?.time ?? time;
+      const from = anchor - 3600 * 24 * 5;
+      const to = anchor + 3600 * 24 * 12;
+      this.#mainChart.timeScale().setVisibleRange({ from, to });
+      this.#rsiChart.timeScale().setVisibleRange({ from, to });
     }
+
+    requestAnimationFrame(() => this.#updateHandlePositions());
   }
 
   clearPriceFocus() {
@@ -271,7 +272,7 @@ export class TradeChart {
     ];
 
     for (const lv of levels) {
-      if (lv.price == null || Number.isNaN(Number(lv.price))) continue;
+      if (lv.price == null || lv.price === '' || Number.isNaN(Number(lv.price))) continue;
       const price = Number(lv.price);
       const line = this.#candleSeries.createPriceLine({
         price,
@@ -281,16 +282,20 @@ export class TradeChart {
         axisLabelVisible: true,
         title: lv.title,
       });
-      this.#overlayLines.push({ role: lv.role, line, price });
+      const handle = this.#createHandle(lv.role, lv.title);
+      this.#overlayLines.push({ role: lv.role, line, price, handle });
     }
+
+    requestAnimationFrame(() => this.#updateHandlePositions());
   }
 
   clearOverlay() {
     for (const item of this.#overlayLines) {
       this.#candleSeries.removePriceLine(item.line);
+      item.handle?.remove();
     }
     this.#overlayLines = [];
-    this.#mainEl.classList.remove('can-drag-level', 'dragging-level');
+    this.#wrapEl?.classList.remove('dragging-level');
   }
 
   clearFocus() {
