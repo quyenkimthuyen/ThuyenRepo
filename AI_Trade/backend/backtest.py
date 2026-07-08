@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from typing import Any
 
 import numpy as np
@@ -17,8 +16,35 @@ def _cost_price() -> float:
     return (cfg["spread_pips"] + cfg["slippage_pips"]) * PIP
 
 
+def _row_feature(row: pd.Series, feature: str) -> float:
+    if feature == "dist_ema50_abs":
+        return abs(float(row.get("dist_ema50_pips", 0)))
+    if feature == "dist_ema50_pips":
+        return float(row.get("dist_ema50_pips", 0))
+    return float(row.get(feature, 0))
+
+
+def _passes_exclusions(row: pd.Series, exclusions: list[dict[str, Any]]) -> bool:
+    for ex in exclusions:
+        val = _row_feature(row, ex["feature"])
+        op = ex.get("op", ">")
+        limit = float(ex["value"])
+        if op == ">" and val > limit:
+            return False
+        if op == ">=" and val >= limit:
+            return False
+        if op == "<" and val < limit:
+            return False
+        if op == "<=" and val <= limit:
+            return False
+    return True
+
+
 def _match_rule(row: pd.Series, direction: str, rules: dict[str, Any]) -> bool:
     r = rules.get(direction, {})
+    if not r.get("enabled", True):
+        return False
+
     rsi = float(row["rsi14"])
     if not (r.get("rsi_min", 0) <= rsi <= r.get("rsi_max", 100)):
         return False
@@ -27,7 +53,30 @@ def _match_rule(row: pd.Series, direction: str, rules: dict[str, Any]) -> bool:
     if r.get("close_above_ema50") is not None:
         if bool(row["close_above_ema50"]) != bool(r["close_above_ema50"]):
             return False
+    if r.get("close_above_ema200") is not None:
+        if bool(row["close_above_ema200"]) != bool(r["close_above_ema200"]):
+            return False
+
+    max_dist = r.get("max_dist_ema50_pips")
+    if max_dist is not None:
+        if abs(float(row.get("dist_ema50_pips", 0))) > float(max_dist):
+            return False
+
+    if not _passes_exclusions(row, r.get("exclude", [])):
+        return False
     return True
+
+
+def _risk_for_direction(strategy: dict[str, Any], direction: str) -> tuple[float, float]:
+    risk = strategy.get("risk", {})
+    block = risk.get(direction) or risk.get("default") or {}
+    sl_mult = float(block.get("sl_atr_mult", 1.0))
+    target_rr = float(block.get("target_rr", block.get("tp_atr_mult", 2.0) / max(sl_mult, 1e-9)))
+    if "tp_atr_mult" in block and "target_rr" not in block:
+        tp_mult = float(block["tp_atr_mult"])
+    else:
+        tp_mult = sl_mult * target_rr
+    return sl_mult, tp_mult
 
 
 def _simulate_trade(
@@ -92,6 +141,8 @@ def _simulate_trade(
         "direction": direction,
         "entry": round(entry, 5),
         "exit": round(exit_price, 5),
+        "sl": round(sl, 5),
+        "tp": round(tp, 5),
         "result": result,
         "pnl_pips": round(pnl / PIP, 1),
         "rr": round(rr, 2),
@@ -147,10 +198,10 @@ def run_backtest(period: str = "validation") -> dict[str, Any]:
         return {"status": "no_strategy", "message": "Chạy Analyze trước để sinh chiến lược."}
 
     df = add_indicators(slice_period(load_candles(), period))
+    # dist_ema50 for rule matching
+    df["dist_ema50_pips"] = (df["close"] - df["ema50"]) / PIP
+
     rules = strategy["rules"]
-    risk = strategy.get("risk", {})
-    sl_mult = float(risk.get("sl_atr_mult", 1.0))
-    tp_mult = float(risk.get("tp_atr_mult", 2.0))
     cost = _cost_price()
 
     trades: list[dict[str, Any]] = []
@@ -170,6 +221,7 @@ def run_backtest(period: str = "validation") -> dict[str, Any]:
         if not direction:
             continue
 
+        sl_mult, tp_mult = _risk_for_direction(strategy, direction)
         trade = _simulate_trade(df, i, direction, sl_mult, tp_mult, cost)
         if trade:
             trades.append(trade)
@@ -180,7 +232,8 @@ def run_backtest(period: str = "validation") -> dict[str, Any]:
         "status": "ok",
         "period": period,
         "strategy": strategy.get("name"),
+        "risk": strategy.get("risk"),
         "metrics": metrics,
-        "trades": trades[-50:],  # last 50 for UI
+        "trades": trades[-50:],
         "trade_count_total": len(trades),
     }

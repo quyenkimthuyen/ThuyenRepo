@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 import numpy as np
@@ -9,6 +10,7 @@ from sklearn.tree import DecisionTreeClassifier, export_text
 
 from .config import STRATEGY_PATH
 from .labels import load_setups
+from .tags import infer_tags
 
 
 def _feature_frame(setups: list[dict[str, Any]]) -> pd.DataFrame:
@@ -17,48 +19,289 @@ def _feature_frame(setups: list[dict[str, Any]]) -> pd.DataFrame:
         if s.get("result") not in ("win", "loss"):
             continue
         f = s.get("features") or {}
+        tags = infer_tags(s)
         rows.append(
             {
                 "win": 1 if s["result"] == "win" else 0,
                 "direction_long": 1 if s["direction"] == "long" else 0,
-                "rsi14": f.get("rsi14", 50),
-                "dist_ema50_pips": f.get("dist_ema50_pips", 0),
+                "rsi14": float(f.get("rsi14", 50)),
+                "dist_ema50_pips": float(f.get("dist_ema50_pips", 0)),
+                "dist_ema50_abs": abs(float(f.get("dist_ema50_pips", 0))),
                 "trend_up": 1 if f.get("trend_up") else 0,
                 "close_above_ema50": 1 if f.get("close_above_ema50") else 0,
                 "close_above_ema200": 1 if f.get("close_above_ema200") else 0,
-                "planned_rr": s.get("planned_rr", 2),
+                "planned_rr": float(s.get("planned_rr", 2)),
+                "tags": ",".join(sorted(tags)),
             }
         )
     return pd.DataFrame(rows)
 
 
-def _rule_from_winners(df: pd.DataFrame) -> dict[str, Any]:
-  wins = df[df["win"] == 1]
-  if wins.empty:
-      return {
-          "long": {"trend_up": True, "rsi_min": 35, "rsi_max": 65, "close_above_ema50": True},
-          "short": {"trend_up": False, "rsi_min": 35, "rsi_max": 65, "close_above_ema50": False},
-      }
+def _slice_direction(df: pd.DataFrame, direction: str) -> pd.DataFrame:
+    mask = 1 if direction == "long" else 0
+    return df[df["direction_long"] == mask]
 
-  def band(series: pd.Series, lo_q=0.25, hi_q=0.75):
-      return float(series.quantile(lo_q)), float(series.quantile(hi_q))
 
-  rsi_lo, rsi_hi = band(wins["rsi14"])
-  rules: dict[str, Any] = {}
-  for direction, mask_val in (("long", 1), ("short", 0)):
-      subset = wins[wins["direction_long"] == mask_val]
-      if subset.empty:
-          subset = wins
-      trend = bool(subset["trend_up"].median() >= 0.5)
-      above50 = bool(subset["close_above_ema50"].median() >= 0.5)
-      rlo, rhi = band(subset["rsi14"]) if len(subset) > 2 else (rsi_lo, rsi_hi)
-      rules[direction] = {
-          "trend_up": trend if direction == "long" else not trend,
-          "rsi_min": round(max(20, rlo - 5), 1),
-          "rsi_max": round(min(80, rhi + 5), 1),
-          "close_above_ema50": above50 if direction == "long" else not above50,
-      }
-  return rules
+def _best_bool_threshold(wins: pd.DataFrame, losses: pd.DataFrame, col: str) -> bool | None:
+    if wins.empty and losses.empty:
+        return None
+    best_val = None
+    best_score = -1.0
+    for val in (0, 1):
+        w = int((wins[col] == val).sum()) if not wins.empty else 0
+        l = int((losses[col] == val).sum()) if not losses.empty else 0
+        total = w + l
+        if total < 2:
+            continue
+        score = w / total
+        if score > best_score:
+            best_score = score
+            best_val = bool(val)
+    if best_score < 0.52:
+        return None
+    return best_val
+
+
+def _rsi_band_win_loss(wins: pd.DataFrame, losses: pd.DataFrame) -> tuple[float, float]:
+    if wins.empty:
+        return 35.0, 65.0
+
+    lo = float(wins["rsi14"].quantile(0.25)) - 5
+    hi = float(wins["rsi14"].quantile(0.75)) + 5
+    lo = max(20.0, lo)
+    hi = min(80.0, hi)
+
+    for _ in range(4):
+        if losses.empty:
+            break
+        in_w = wins[(wins["rsi14"] >= lo) & (wins["rsi14"] <= hi)]
+        in_l = losses[(losses["rsi14"] >= lo) & (losses["rsi14"] <= hi)]
+        if len(in_l) >= 2 and len(in_l) > len(in_w) * 1.1:
+            med = float(wins["rsi14"].median())
+            if float(in_l["rsi14"].mean()) > med:
+                hi -= 2.5
+            else:
+                lo += 2.5
+            if lo >= hi:
+                break
+        else:
+            break
+
+    return round(lo, 1), round(hi, 1)
+
+
+def _loss_exclusions(wins: pd.DataFrame, losses: pd.DataFrame) -> list[dict[str, Any]]:
+    exclusions: list[dict[str, Any]] = []
+    if losses.empty:
+        return exclusions
+
+    if not wins.empty:
+        w_dist = float(wins["dist_ema50_abs"].mean())
+        l_dist = float(losses["dist_ema50_abs"].mean())
+        if l_dist > w_dist * 1.25 and len(losses) >= 2:
+            threshold = round((w_dist + l_dist) / 2, 1)
+            exclusions.append(
+                {
+                    "feature": "dist_ema50_abs",
+                    "op": ">",
+                    "value": threshold,
+                    "reason": "loss thường xa EMA50 hơn win",
+                }
+            )
+
+    if len(losses) >= 2 and not wins.empty:
+        win_lo = float(wins["rsi14"].quantile(0.15))
+        win_hi = float(wins["rsi14"].quantile(0.85))
+        loss_below = losses[losses["rsi14"] < win_lo]
+        loss_above = losses[losses["rsi14"] > win_hi]
+
+        if len(loss_below) >= 2 and len(loss_below) >= len(wins[wins["rsi14"] < win_lo]):
+            exclusions.append(
+                {
+                    "feature": "rsi14",
+                    "op": "<",
+                    "value": round(win_lo, 1),
+                    "reason": "RSI quá thấp gắn với loss",
+                }
+            )
+        if len(loss_above) >= 2 and len(loss_above) >= len(wins[wins["rsi14"] > win_hi]):
+            exclusions.append(
+                {
+                    "feature": "rsi14",
+                    "op": ">",
+                    "value": round(win_hi, 1),
+                    "reason": "RSI quá cao gắn với loss",
+                }
+            )
+
+    return exclusions
+
+
+def _rules_for_direction(subset: pd.DataFrame, direction: str) -> dict[str, Any]:
+    wins = subset[subset["win"] == 1]
+    losses = subset[subset["win"] == 0]
+
+    if wins.empty:
+        return {"enabled": False, "reason": f"Không có setup {direction} thắng trong train"}
+
+    rsi_min, rsi_max = _rsi_band_win_loss(wins, losses)
+    trend_up = _best_bool_threshold(wins, losses, "trend_up")
+    above50 = _best_bool_threshold(wins, losses, "close_above_ema50")
+    above200 = _best_bool_threshold(wins, losses, "close_above_ema200")
+
+    rule: dict[str, Any] = {
+        "enabled": True,
+        "rsi_min": rsi_min,
+        "rsi_max": rsi_max,
+        "exclude": _loss_exclusions(wins, losses),
+    }
+    if trend_up is not None:
+        rule["trend_up"] = trend_up if direction == "long" else (not trend_up)
+    if above50 is not None:
+        rule["close_above_ema50"] = above50 if direction == "long" else (not above50)
+    if above200 is not None:
+        rule["close_above_ema200"] = above200
+
+    if not wins.empty:
+        dist_cap = float(wins["dist_ema50_abs"].quantile(0.75)) + 8
+        if losses.empty or dist_cap < float(losses["dist_ema50_abs"].quantile(0.25)):
+            rule["max_dist_ema50_pips"] = round(dist_cap, 1)
+
+    return rule
+
+
+def _rules_from_win_loss(df: pd.DataFrame) -> dict[str, Any]:
+    rules: dict[str, Any] = {}
+    for direction in ("long", "short"):
+        subset = _slice_direction(df, direction)
+        if subset.empty:
+            rules[direction] = {"enabled": False, "reason": "Không có setup"}
+            continue
+        rules[direction] = _rules_for_direction(subset, direction)
+    return rules
+
+
+def _tag_insights(setups: list[dict[str, Any]]) -> dict[str, Any]:
+    stats: dict[str, dict[str, int]] = {}
+    for s in setups:
+        if s.get("result") not in ("win", "loss"):
+            continue
+        for tag in infer_tags(s):
+            bucket = stats.setdefault(tag, {"win": 0, "loss": 0, "total": 0})
+            bucket["total"] += 1
+            bucket[s["result"]] += 1
+
+    rows = []
+    for tag, c in sorted(stats.items(), key=lambda x: -x[1]["total"]):
+        wr = c["win"] / c["total"] if c["total"] else 0
+        rows.append(
+            {
+                "tag": tag,
+                "win": c["win"],
+                "loss": c["loss"],
+                "total": c["total"],
+                "win_rate": round(wr, 3),
+            }
+        )
+
+    preferred = [r["tag"] for r in rows if r["total"] >= 2 and r["win_rate"] >= 0.55]
+    avoid = [r["tag"] for r in rows if r["total"] >= 2 and r["win_rate"] <= 0.35]
+    return {"tags": rows, "preferred_tags": preferred, "avoid_tags": avoid}
+
+
+def _apply_tag_constraints(
+    rules: dict[str, Any], setups: list[dict[str, Any]], tag_info: dict[str, Any]
+) -> dict[str, Any]:
+    preferred = tag_info.get("preferred_tags", [])
+    if not preferred:
+        return rules
+
+    for direction in ("long", "short"):
+        dr = rules.get(direction, {})
+        if not dr.get("enabled"):
+            continue
+        tagged_wins = [
+            s
+            for s in setups
+            if s.get("direction") == direction
+            and s.get("result") == "win"
+            and any(t in infer_tags(s) for t in preferred)
+        ]
+        if len(tagged_wins) < 2:
+            continue
+
+        dists = [
+            abs(float(s["features"]["dist_ema50_pips"]))
+            for s in tagged_wins
+            if s.get("features")
+        ]
+        if dists:
+            cap = round(float(np.percentile(dists, 75)) + 5, 1)
+            dr["max_dist_ema50_pips"] = min(dr.get("max_dist_ema50_pips", cap), cap)
+            dr["preferred_tags"] = preferred
+
+        rsi_vals = [
+            float(s["features"]["rsi14"]) for s in tagged_wins if s.get("features")
+        ]
+        if len(rsi_vals) >= 2:
+            dr["rsi_min"] = max(dr.get("rsi_min", 20), round(float(np.percentile(rsi_vals, 15)) - 3, 1))
+            dr["rsi_max"] = min(dr.get("rsi_max", 80), round(float(np.percentile(rsi_vals, 85)) + 3, 1))
+
+    return rules
+
+
+def compute_risk_from_labels(setups: list[dict[str, Any]]) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    for s in setups:
+        if s.get("result") not in ("win", "loss"):
+            continue
+        f = s.get("features") or {}
+        atr = float(f.get("atr14") or 0)
+        if atr <= 0:
+            continue
+        entry = float(s["entry_price"])
+        sl = float(s["stop_loss"])
+        sl_dist = abs(entry - sl)
+        rows.append(
+            {
+                "direction": s["direction"],
+                "sl_atr_mult": sl_dist / atr,
+                "planned_rr": float(s.get("planned_rr") or 2),
+            }
+        )
+
+    if not rows:
+        return {
+            "mode": "from_labels",
+            "default": {"sl_atr_mult": 1.0, "target_rr": 2.0, "tp_atr_mult": 2.0},
+        }
+
+    frame = pd.DataFrame(rows)
+    default_sl = float(frame["sl_atr_mult"].median())
+    default_rr = float(frame["planned_rr"].median())
+
+    risk: dict[str, Any] = {
+        "mode": "from_labels",
+        "default": {
+            "sl_atr_mult": round(default_sl, 3),
+            "target_rr": round(default_rr, 2),
+            "tp_atr_mult": round(default_sl * default_rr, 3),
+        },
+    }
+
+    for direction in ("long", "short"):
+        sub = frame[frame["direction"] == direction]
+        if len(sub) < 2:
+            continue
+        sl_m = float(sub["sl_atr_mult"].median())
+        rr_m = float(sub["planned_rr"].median())
+        risk[direction] = {
+            "sl_atr_mult": round(sl_m, 3),
+            "target_rr": round(rr_m, 2),
+            "tp_atr_mult": round(sl_m * rr_m, 3),
+        }
+
+    return risk
 
 
 def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
@@ -76,7 +319,10 @@ def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
 
     win_rate = float(df["win"].mean())
     avg_rr = float(train_df_rr(train))
-    rules = _rule_from_winners(df)
+    tag_info = _tag_insights(train)
+    rules = _rules_from_win_loss(df)
+    rules = _apply_tag_constraints(rules, train, tag_info)
+    risk = compute_risk_from_labels(train)
 
     feature_cols = [
         "direction_long",
@@ -96,11 +342,8 @@ def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
         "win_rate_train": round(win_rate, 3),
         "avg_rr_train": round(avg_rr, 2),
         "rules": rules,
-        "risk": {
-            "sl_atr_mult": 1.0,
-            "tp_atr_mult": 2.0,
-            "use_atr_levels": True,
-        },
+        "risk": risk,
+        "tags": tag_info,
         "tree_summary": tree_rules,
     }
 
@@ -124,6 +367,8 @@ def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
         "win_rate_train": round(win_rate, 3),
         "avg_rr_train": round(avg_rr, 2),
         "rules": rules,
+        "risk": risk,
+        "tag_insights": tag_info,
         "feature_insights": feature_insights,
         "tree_summary": tree_rules,
         "strategy_path": str(STRATEGY_PATH),
