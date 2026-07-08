@@ -10,21 +10,29 @@ import {
 } from './api.js';
 import { TradeChart } from './chart.js';
 
+/** @typedef {'idle' | 'new' | 'edit'} EditorMode */
+
 const state = {
   period: 'train',
+  mode: /** @type {EditorMode} */ ('idle'),
   direction: 'long',
   step: 'entry',
   draft: { entry: null, sl: null, tp: null, time: null },
   editingId: null,
   setups: [],
   config: null,
-  labelAllowed: true,
 };
 
 const els = {
   periodTabs: document.getElementById('periodTabs'),
   periodBadge: document.getElementById('periodBadge'),
+  editorPanel: document.getElementById('editorPanel'),
+  modePill: document.getElementById('modePill'),
+  rrPill: document.getElementById('rrPill'),
   labelHint: document.getElementById('labelHint'),
+  idleBlock: document.getElementById('idleBlock'),
+  activeBlock: document.getElementById('activeBlock'),
+  newSteps: document.getElementById('newSteps'),
   setupList: document.getElementById('setupList'),
   setupCount: document.getElementById('setupCount'),
   fieldEntry: document.getElementById('fieldEntry'),
@@ -36,6 +44,8 @@ const els = {
   tagPresets: document.getElementById('tagPresets'),
   notePresets: document.getElementById('notePresets'),
   btnSave: document.getElementById('btnSave'),
+  btnDelete: document.getElementById('btnDelete'),
+  chartOverlayHint: document.getElementById('chartOverlayHint'),
   analysisOut: document.getElementById('analysisOut'),
   backtestOut: document.getElementById('backtestOut'),
 };
@@ -46,6 +56,22 @@ const chart = new TradeChart(
   { onClick: handleChartClick, onLevelDrag: handleLevelDrag },
 );
 
+const MODE_LABELS = { idle: 'Xem chart', new: 'Tạo mới', edit: 'Chỉnh sửa' };
+
+const STEP_HINTS = {
+  entry: 'Bước 1 — Click trên chart để đặt điểm Entry',
+  sl: 'Bước 2 — Click hoặc kéo đường đỏ để đặt Stop Loss',
+  tp: 'Bước 3 — Click hoặc kéo đường xanh lá để đặt Take Profit',
+};
+
+function isoFromUnix(sec) {
+  return new Date(sec * 1000).toISOString();
+}
+
+function isTrainPeriod() {
+  return state.period === 'train';
+}
+
 function parseTagsFromField() {
   return els.fieldTags.value
     .split(/[,;]+/)
@@ -54,16 +80,8 @@ function parseTagsFromField() {
 }
 
 function setTagsToField(tags) {
-  const unique = [...new Set(tags.map((t) => t.trim().toLowerCase()).filter(Boolean))];
-  els.fieldTags.value = unique.join(', ');
+  els.fieldTags.value = [...new Set(tags.map((t) => t.trim().toLowerCase()).filter(Boolean))].join(', ');
   syncTagChips();
-}
-
-function toggleTag(tagId) {
-  const tags = new Set(parseTagsFromField());
-  if (tags.has(tagId)) tags.delete(tagId);
-  else tags.add(tagId);
-  setTagsToField([...tags]);
 }
 
 function syncTagChips() {
@@ -73,18 +91,22 @@ function syncTagChips() {
   });
 }
 
+function toggleTag(tagId) {
+  const tags = new Set(parseTagsFromField());
+  tags.has(tagId) ? tags.delete(tagId) : tags.add(tagId);
+  setTagsToField([...tags]);
+}
+
 function applyNotePreset(note) {
   els.fieldNote.value = note.text;
   if (note.tags?.length) {
-    const merged = new Set([...parseTagsFromField(), ...note.tags]);
-    setTagsToField([...merged]);
+    setTagsToField([...new Set([...parseTagsFromField(), ...note.tags])]);
   }
 }
 
 function renderPresets() {
   const presets = state.config?.presets;
   if (!presets) return;
-
   els.tagPresets.innerHTML = '';
   for (const tag of presets.tags || []) {
     const btn = document.createElement('button');
@@ -96,7 +118,6 @@ function renderPresets() {
     btn.onclick = () => toggleTag(tag.id);
     els.tagPresets.appendChild(btn);
   }
-
   els.notePresets.innerHTML = '';
   for (const note of presets.notes || []) {
     const btn = document.createElement('button');
@@ -106,61 +127,129 @@ function renderPresets() {
     btn.onclick = () => applyNotePreset(note);
     els.notePresets.appendChild(btn);
   }
-
   syncTagChips();
 }
 
-function isoFromUnix(sec) {
-  return new Date(sec * 1000).toISOString();
+function calcRR() {
+  const entry = state.draft.entry;
+  const sl = Number(els.fieldSL.value);
+  const tp = Number(els.fieldTP.value);
+  if (!entry || !sl || !tp) return null;
+  const risk = Math.abs(entry - sl);
+  const reward = Math.abs(tp - entry);
+  return risk > 0 ? (reward / risk).toFixed(2) : null;
 }
 
-function setDirectionUi(direction) {
-  document.getElementById('btnLong').classList.toggle('active', direction === 'long');
-  document.getElementById('btnShort').classList.toggle('active', direction === 'short');
+function updateRR() {
+  const rr = calcRR();
+  els.rrPill.textContent = rr ? `RR ${rr}` : 'RR —';
+}
+
+function setDirection(direction) {
   state.direction = direction;
+  document.querySelectorAll('.dir-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.direction === direction);
+  });
 }
 
-function setLabelHint() {
-  if (state.editingId) {
-    els.labelHint.textContent =
-      'Đang sửa setup — kéo đường Entry/SL/TP hoặc chỉnh input, rồi bấm Cập nhật.';
+function updateStepTrack() {
+  const order = ['entry', 'sl', 'tp'];
+  const currentIdx = order.indexOf(state.step);
+  els.newSteps.querySelectorAll('.step-item').forEach((el) => {
+    const step = el.dataset.step;
+    const idx = order.indexOf(step);
+    el.classList.remove('active', 'done');
+    if (state.mode !== 'new') return;
+    if (idx < currentIdx) el.classList.add('done');
+    else if (idx === currentIdx) el.classList.add('active');
+  });
+}
+
+function updateChartHint() {
+  if (state.mode === 'new' && isTrainPeriod()) {
+    els.chartOverlayHint.textContent = STEP_HINTS[state.step] || '';
+    els.chartOverlayHint.classList.remove('hidden');
     return;
   }
-  els.labelHint.textContent = state.labelAllowed
-    ? 'Click: Entry → SL → TP. Kéo đường để chỉnh giá. Click setup đã lưu để sửa.'
-    : 'Chế độ xem — chuyển về Train để label hoặc sửa setup.';
+  if (state.mode === 'edit') {
+    els.chartOverlayHint.textContent = 'Kéo đường Entry / SL / TP để chỉnh — bấm Cập nhật khi xong';
+    els.chartOverlayHint.classList.remove('hidden');
+    return;
+  }
+  els.chartOverlayHint.classList.add('hidden');
 }
 
-function resetDraft() {
+function updateModeUI() {
+  const { mode } = state;
+  els.editorPanel.dataset.mode = mode;
+  els.modePill.dataset.mode = mode;
+  els.modePill.textContent = MODE_LABELS[mode];
+
+  const editing = mode !== 'idle';
+  els.idleBlock.classList.toggle('hidden', editing);
+  els.activeBlock.classList.toggle('hidden', !editing);
+  els.newSteps.classList.toggle('hidden', mode !== 'new');
+  els.btnDelete.classList.toggle('hidden', mode !== 'edit');
+
+  els.btnSave.textContent = mode === 'edit' ? 'Cập nhật setup' : 'Lưu setup';
+
+  if (mode === 'idle') {
+    els.labelHint.textContent = isTrainPeriod()
+      ? 'Chọn setup trong thư viện để sửa, hoặc bấm 「Setup mới」.'
+      : 'Tab này chỉ xem dữ liệu. Chuyển về Train 2022 để đánh dấu setup.';
+  } else if (mode === 'new') {
+    els.labelHint.textContent = 'Đặt Entry → SL → TP trên chart. Có thể kéo đường để tinh chỉnh.';
+  } else {
+    els.labelHint.textContent = 'Setup đang mở — chart đã focus. Kéo đường hoặc sửa số bên dưới.';
+  }
+
+  updateStepTrack();
+  updateChartHint();
+  updateRR();
+}
+
+function clearDraft() {
   state.draft = { entry: null, sl: null, tp: null, time: null };
   state.editingId = null;
   state.step = 'entry';
   els.fieldTags.value = '';
   els.fieldNote.value = '';
   syncTagChips();
-  els.btnSave.textContent = 'Lưu setup';
-  updateStepUI();
-  syncFields();
   chart.clearOverlay();
   chart.clearFocus();
-  els.btnSave.disabled = true;
-  setLabelHint();
+}
+
+function setMode(mode) {
+  state.mode = mode;
+  if (mode === 'idle') {
+    clearDraft();
+    els.btnSave.disabled = true;
+  }
+  updateModeUI();
   renderSetups();
 }
 
-function updateStepUI() {
-  document.querySelectorAll('.step').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.step === state.step);
-  });
+async function ensureTrainPeriod() {
+  if (state.period === 'train') return;
+  state.period = 'train';
+  els.periodBadge.textContent = state.config.periods.train.label;
+  renderPeriodTabs();
+  await loadChart();
 }
 
-function focusDraftOnChart() {
-  if (state.draft.time == null) return;
+function focusAndDraw() {
+  if (state.draft.entry == null || state.draft.time == null) return;
   chart.focusSetup({
     time: state.draft.time,
     entry: state.draft.entry,
     sl: Number(els.fieldSL.value) || state.draft.sl,
     tp: Number(els.fieldTP.value) || state.draft.tp,
+  });
+  chart.setOverlay({
+    entry: state.draft.entry,
+    sl: Number(els.fieldSL.value) || state.draft.sl,
+    tp: Number(els.fieldTP.value) || state.draft.tp,
+    direction: state.direction,
   });
 }
 
@@ -169,42 +258,23 @@ function syncFields() {
   els.fieldSL.value = state.draft.sl ?? '';
   els.fieldTP.value = state.draft.tp ?? '';
   els.fieldTime.value = state.draft.time ? isoFromUnix(state.draft.time) : '';
-
-  if (state.draft.entry != null) {
-    focusDraftOnChart();
+  if (state.mode !== 'idle') {
+    requestAnimationFrame(() => focusAndDraw());
   }
-
-  chart.setOverlay({
-    entry: state.draft.entry,
-    sl: Number(els.fieldSL.value) || state.draft.sl,
-    tp: Number(els.fieldTP.value) || state.draft.tp,
-    direction: state.direction,
-  });
   validateSave();
-}
-
-function refreshChartView() {
-  if (state.draft.entry == null || state.draft.time == null) return;
-  requestAnimationFrame(() => {
-    focusDraftOnChart();
-    chart.setOverlay({
-      entry: state.draft.entry,
-      sl: Number(els.fieldSL.value) || state.draft.sl,
-      tp: Number(els.fieldTP.value) || state.draft.tp,
-      direction: state.direction,
-    });
-  });
-}
-
-function canEditLevels() {
-  return state.labelAllowed || state.editingId;
+  updateRR();
+  updateStepTrack();
+  updateChartHint();
 }
 
 function validateSave() {
+  if (state.mode === 'idle' || !isTrainPeriod()) {
+    els.btnSave.disabled = true;
+    return;
+  }
   const sl = Number(els.fieldSL.value);
   const tp = Number(els.fieldTP.value);
   const ok =
-    canEditLevels() &&
     state.draft.entry != null &&
     state.draft.time != null &&
     !Number.isNaN(sl) &&
@@ -218,12 +288,11 @@ function validateSave() {
   } else if (ok && state.direction === 'short') {
     valid = sl > state.draft.entry && tp < state.draft.entry;
   }
-
   els.btnSave.disabled = !valid;
 }
 
 function handleLevelDrag({ role, price }) {
-  if (!canEditLevels()) return;
+  if (state.mode === 'idle' || !isTrainPeriod()) return;
   if (role === 'entry') {
     state.draft.entry = price;
     els.fieldEntry.value = price;
@@ -234,12 +303,16 @@ function handleLevelDrag({ role, price }) {
     state.draft.tp = price;
     els.fieldTP.value = price;
   }
-  focusDraftOnChart();
+  if (state.mode === 'new' && state.step === 'entry' && role !== 'entry') {
+    /* allow drag after placed */
+  }
+  focusAndDraw();
   validateSave();
+  updateRR();
 }
 
 function handleChartClick({ time, candle, price }) {
-  if (!state.labelAllowed || state.editingId) return;
+  if (state.mode !== 'new' || !isTrainPeriod()) return;
 
   if (state.step === 'entry') {
     state.draft.time = time;
@@ -249,7 +322,15 @@ function handleChartClick({ time, candle, price }) {
       state.direction === 'long' ? candle.close - 0.003 : candle.close + 0.003;
     state.draft.sl = Number(defaultSl.toFixed(5));
     els.fieldSL.value = state.draft.sl;
-    updateStepUI();
+    const risk = Math.abs(state.draft.entry - state.draft.sl);
+    state.draft.tp = Number(
+      (state.direction === 'long'
+        ? state.draft.entry + risk * 2
+        : state.draft.entry - risk * 2
+      ).toFixed(5),
+    );
+    els.fieldTP.value = state.draft.tp;
+    state.step = 'tp';
     syncFields();
     return;
   }
@@ -257,15 +338,15 @@ function handleChartClick({ time, candle, price }) {
   if (state.step === 'sl') {
     state.draft.sl = Number(price.toFixed(5));
     els.fieldSL.value = state.draft.sl;
-    state.step = 'tp';
     const risk = Math.abs(state.draft.entry - state.draft.sl);
-    const defaultTp =
-      state.direction === 'long'
+    state.draft.tp = Number(
+      (state.direction === 'long'
         ? state.draft.entry + risk * 2
-        : state.draft.entry - risk * 2;
-    state.draft.tp = Number(defaultTp.toFixed(5));
+        : state.draft.entry - risk * 2
+      ).toFixed(5),
+    );
     els.fieldTP.value = state.draft.tp;
-    updateStepUI();
+    state.step = 'tp';
     syncFields();
     return;
   }
@@ -277,45 +358,20 @@ function handleChartClick({ time, candle, price }) {
   }
 }
 
-function renderPeriodTabs() {
-  els.periodTabs.innerHTML = '';
-  const periods = state.config.periods;
-  for (const [key, cfg] of Object.entries(periods)) {
-    const btn = document.createElement('button');
-    btn.className = `period-tab${key === state.period ? ' active' : ''}${key === 'test' ? ' test' : ''}`;
-    btn.textContent = `${cfg.label}`;
-    btn.onclick = () => switchPeriod(key);
-    els.periodTabs.appendChild(btn);
-  }
+async function startNewSetup() {
+  await ensureTrainPeriod();
+  clearDraft();
+  state.mode = 'new';
+  state.step = 'entry';
+  setDirection('long');
+  updateModeUI();
+  syncFields();
 }
 
-async function switchPeriod(period) {
-  state.period = period;
-  state.labelAllowed = period === 'train';
-  els.periodBadge.textContent = state.config.periods[period].label;
-  renderPeriodTabs();
-  resetDraft();
-  await loadChart();
-  setLabelHint();
-}
+async function startEditSetup(setup) {
+  await ensureTrainPeriod();
 
-async function loadChart() {
-  const data = await getCandles(state.period);
-  chart.setData(data);
-  refreshChartView();
-}
-
-async function selectSetup(setup) {
-  const targetPeriod = setup.period || 'train';
-
-  if (state.period !== targetPeriod) {
-    state.period = targetPeriod;
-    state.labelAllowed = targetPeriod === 'train';
-    els.periodBadge.textContent = state.config.periods[targetPeriod].label;
-    renderPeriodTabs();
-    await loadChart();
-  }
-
+  state.mode = 'edit';
   state.editingId = setup.id;
   state.direction = setup.direction;
   state.step = 'tp';
@@ -326,46 +382,72 @@ async function selectSetup(setup) {
     tp: Number(setup.take_profit),
   };
 
-  setDirectionUi(setup.direction);
+  setDirection(setup.direction);
   els.fieldTags.value = (setup.tags || []).join(', ');
   els.fieldNote.value = setup.note || '';
   syncTagChips();
-  els.btnSave.textContent = 'Cập nhật setup';
-  updateStepUI();
+  updateModeUI();
   syncFields();
-  refreshChartView();
-  setLabelHint();
-  renderSetups();
+  requestAnimationFrame(() => focusAndDraw());
+}
+
+function cancelEditor() {
+  setMode('idle');
+}
+
+function renderPeriodTabs() {
+  els.periodTabs.innerHTML = '';
+  for (const [key, cfg] of Object.entries(state.config.periods)) {
+    const btn = document.createElement('button');
+    btn.className = `period-tab${key === state.period ? ' active' : ''}${key === 'test' ? ' test' : ''}`;
+    btn.textContent = cfg.label;
+    btn.onclick = () => switchPeriod(key);
+    els.periodTabs.appendChild(btn);
+  }
+}
+
+async function switchPeriod(period) {
+  if (state.mode !== 'idle') cancelEditor();
+  state.period = period;
+  els.periodBadge.textContent = state.config.periods[period].label;
+  renderPeriodTabs();
+  updateModeUI();
+  await loadChart();
+}
+
+async function loadChart() {
+  const data = await getCandles(state.period);
+  chart.setData(data);
+  if (state.mode !== 'idle') {
+    requestAnimationFrame(() => focusAndDraw());
+  }
 }
 
 function renderSetups() {
   const trainSetups = state.setups.filter((s) => (s.period || 'train') === 'train');
   els.setupCount.textContent = String(trainSetups.length);
   els.setupList.innerHTML = '';
-  const sorted = [...trainSetups].sort((a, b) => a.entry_time.localeCompare(b.entry_time));
-  if (!sorted.length) {
-    els.setupList.innerHTML = '<li class="hint">Chưa có setup — label trên tab Train 2022.</li>';
+
+  if (!trainSetups.length) {
+    els.setupList.innerHTML =
+      '<li class="hint" style="padding:8px">Chưa có setup. Bấm 「Setup mới」 để bắt đầu.</li>';
     return;
   }
+
+  const sorted = [...trainSetups].sort((a, b) => a.entry_time.localeCompare(b.entry_time));
   for (const s of sorted) {
     const li = document.createElement('li');
     li.className = `setup-item ${s.direction}${s.id === state.editingId ? ' selected' : ''}`;
+    const resClass = s.result === 'win' ? 'win' : s.result === 'loss' ? 'loss' : '';
     li.innerHTML = `
-      <div><strong>${s.direction.toUpperCase()}</strong> · RR ${s.planned_rr ?? '-'} · <span>${s.result ?? '?'}</span></div>
-      <div class="setup-meta">${s.entry_time?.slice(0, 16)}${(s.tags || []).length ? ' · ' + (s.tags || []).join(', ') : ''}</div>
+      <div class="setup-top">
+        <span class="setup-dir">${s.direction.toUpperCase()}</span>
+        <span class="setup-result ${resClass}">${(s.result || '?').toUpperCase()}</span>
+        <span style="margin-left:auto;font-size:11px;color:#fbbf24">RR ${s.planned_rr ?? '—'}</span>
+      </div>
+      <div class="setup-meta">${s.entry_time?.slice(0, 16).replace('T', ' ')}${(s.tags || []).length ? '<br>' + s.tags.join(' · ') : ''}</div>
     `;
-    li.onclick = () => selectSetup(s);
-    const del = document.createElement('button');
-    del.className = 'btn danger';
-    del.textContent = 'Xóa';
-    del.style.marginTop = '6px';
-    del.onclick = async (e) => {
-      e.stopPropagation();
-      if (state.editingId === s.id) resetDraft();
-      await deleteSetup(s.id);
-      await refreshSetups();
-    };
-    li.appendChild(del);
+    li.onclick = () => startEditSetup(s);
     els.setupList.appendChild(li);
   }
 }
@@ -377,7 +459,6 @@ async function refreshSetups() {
 }
 
 function buildSetupBody() {
-  const tags = parseTagsFromField();
   return {
     direction: state.direction,
     entry_time: isoFromUnix(state.draft.time),
@@ -385,40 +466,54 @@ function buildSetupBody() {
     stop_loss: Number(els.fieldSL.value),
     take_profit: Number(els.fieldTP.value),
     note: els.fieldNote.value,
-    tags,
+    tags: parseTagsFromField(),
   };
 }
 
 async function onSave() {
   const body = buildSetupBody();
-  if (state.editingId) {
+  if (state.mode === 'edit' && state.editingId) {
     await updateSetup(state.editingId, body);
   } else {
     await saveSetup(body);
   }
   await refreshSetups();
-  resetDraft();
+  setMode('idle');
+}
+
+async function onDelete() {
+  if (!state.editingId) return;
+  if (!confirm('Xóa setup này?')) return;
+  await deleteSetup(state.editingId);
+  await refreshSetups();
+  setMode('idle');
 }
 
 function bindUI() {
+  document.getElementById('btnNewSetup').onclick = () => startNewSetup();
+  document.getElementById('btnNewFromIdle').onclick = () => startNewSetup();
+  document.getElementById('btnCancel').onclick = () => cancelEditor();
+  document.getElementById('btnDelete').onclick = () => onDelete();
+  document.getElementById('btnSave').onclick = () => onSave();
+
   document.getElementById('btnLong').onclick = () => {
-    setDirectionUi('long');
-    if (!state.editingId) resetDraft();
-    else syncFields();
+    setDirection('long');
+    if (state.mode === 'new') {
+      clearDraft();
+      state.mode = 'new';
+      state.step = 'entry';
+      syncFields();
+    } else if (state.mode === 'edit') syncFields();
   };
   document.getElementById('btnShort').onclick = () => {
-    setDirectionUi('short');
-    if (!state.editingId) resetDraft();
-    else syncFields();
+    setDirection('short');
+    if (state.mode === 'new') {
+      clearDraft();
+      state.mode = 'new';
+      state.step = 'entry';
+      syncFields();
+    } else if (state.mode === 'edit') syncFields();
   };
-
-  document.querySelectorAll('.step').forEach((btn) => {
-    btn.onclick = () => {
-      if (state.editingId) return;
-      state.step = btn.dataset.step;
-      updateStepUI();
-    };
-  });
 
   els.fieldSL.oninput = () => {
     state.draft.sl = Number(els.fieldSL.value);
@@ -430,9 +525,6 @@ function bindUI() {
   };
   els.fieldTags.oninput = () => syncTagChips();
 
-  document.getElementById('btnSave').onclick = onSave;
-  document.getElementById('btnReset').onclick = resetDraft;
-
   document.getElementById('toggleEma50').onchange = (e) => chart.toggleEma50(e.target.checked);
   document.getElementById('toggleEma200').onchange = (e) => chart.toggleEma200(e.target.checked);
   document.getElementById('toggleRsi').onchange = (e) => chart.toggleRsi(e.target.checked);
@@ -440,13 +532,11 @@ function bindUI() {
   document.getElementById('btnAnalyze').onclick = async () => {
     els.analysisOut.textContent = 'Đang phân tích...';
     try {
-      const res = await analyze();
-      els.analysisOut.textContent = JSON.stringify(res, null, 2);
+      els.analysisOut.textContent = JSON.stringify(await analyze(), null, 2);
     } catch (e) {
       els.analysisOut.textContent = e.message;
     }
   };
-
   document.getElementById('btnBacktestVal').onclick = () => runBt('validation');
   document.getElementById('btnBacktestTest').onclick = () => runBt('test');
 }
@@ -454,8 +544,7 @@ function bindUI() {
 async function runBt(period) {
   els.backtestOut.textContent = `Backtest ${period}...`;
   try {
-    const res = await backtest(period);
-    els.backtestOut.textContent = JSON.stringify(res, null, 2);
+    els.backtestOut.textContent = JSON.stringify(await backtest(period), null, 2);
   } catch (e) {
     els.backtestOut.textContent = e.message;
   }
@@ -467,11 +556,11 @@ async function boot() {
   state.config = await getConfig();
   renderPeriodTabs();
   renderPresets();
-  setLabelHint();
+  setMode('idle');
   await loadChart();
   await refreshSetups();
 }
 
 boot().catch((err) => {
-  document.body.innerHTML = `<pre style="color:#f87171;padding:20px">Boot failed: ${err.message}\n\nChạy: python scripts/fetch_data.py</pre>`;
+  document.body.innerHTML = `<pre style="color:#f87171;padding:20px">Boot failed: ${err.message}</pre>`;
 });
