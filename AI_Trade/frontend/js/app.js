@@ -4,6 +4,7 @@ import {
   deleteSetup,
   getCandles,
   getConfig,
+  getPresets,
   getSetups,
   saveSetup,
   updateSetup,
@@ -29,6 +30,7 @@ const state = {
   editingId: null,
   setups: [],
   config: null,
+  tagPresets: [],
   sidebarTab: 'label',
   btCache: { validation: null, test: null },
   focusedTradeKey: null,
@@ -76,6 +78,17 @@ const chart = new TradeChart(
 );
 
 const MODE_LABELS = { idle: 'Xem chart', new: 'Tạo mới', edit: 'Chỉnh sửa' };
+
+const DEFAULT_TAGS = [
+  { id: 'pullback', label: 'Pullback', hint: 'Hồi về EMA / support' },
+  { id: 'breakout', label: 'Breakout', hint: 'Phá vỡ vùng sideway' },
+  { id: 'retest', label: 'Retest', hint: 'Retest vùng phá vỡ' },
+  { id: 'rejection', label: 'Rejection', hint: 'Pin bar / từ chối giá' },
+  { id: 'reversal', label: 'Reversal', hint: 'Đảo chiều cấu trúc' },
+  { id: 'trend', label: 'Trend', hint: 'Theo xu hướng chính' },
+  { id: 'range', label: 'Range', hint: 'Giao dịch trong vùng đi ngang' },
+  { id: 'liquidity', label: 'Liquidity', hint: 'Quét thanh khoản / sweep' },
+];
 
 const STEP_HINTS = {
   entry: 'Bước 1 — Click trên chart để đặt điểm Entry',
@@ -136,36 +149,64 @@ function clearChartFocus() {
   refreshChartAnnotations();
 }
 
+function tagPresetList() {
+  if (state.tagPresets?.length) return state.tagPresets;
+  if (state.config?.presets?.tags?.length) return state.config.presets.tags;
+  return DEFAULT_TAGS;
+}
+
 function renderTagSelect() {
-  const presets = state.config?.presets?.tags || [];
-  els.fieldTag.innerHTML = '<option value="">— Không chọn —</option>';
+  const select = document.getElementById('fieldTag');
+  if (!select) return;
+
+  const presets = tagPresetList();
+  select.innerHTML = '<option value="">— Không chọn —</option>';
   for (const tag of presets) {
     const opt = document.createElement('option');
     opt.value = tag.id;
     opt.textContent = tag.label;
     if (tag.hint) opt.title = tag.hint;
-    els.fieldTag.appendChild(opt);
+    select.appendChild(opt);
   }
   syncTagField();
 }
 
+async function loadTagPresets() {
+  try {
+    const data = await getPresets();
+    if (data?.tags?.length) {
+      state.tagPresets = data.tags;
+      return;
+    }
+  } catch {
+    /* fallback below */
+  }
+  state.tagPresets = state.config?.presets?.tags?.length
+    ? state.config.presets.tags
+    : DEFAULT_TAGS;
+}
+
 function syncTagField() {
+  const select = document.getElementById('fieldTag');
+  if (!select) return;
   const primary = state.meta.tags?.[0] || '';
-  if (els.fieldTag.querySelector(`option[value="${primary}"]`)) {
-    els.fieldTag.value = primary;
+  if (select.querySelector(`option[value="${CSS.escape(primary)}"]`)) {
+    select.value = primary;
   } else {
-    els.fieldTag.value = '';
+    select.value = '';
   }
 }
 
 function onTagChange() {
-  const tagId = els.fieldTag.value;
+  const select = document.getElementById('fieldTag');
+  if (!select) return;
+  const tagId = select.value;
   if (!tagId) {
     state.meta.tags = [];
     state.meta.note = '';
     return;
   }
-  const preset = state.config?.presets?.tags?.find((t) => t.id === tagId);
+  const preset = tagPresetList().find((t) => t.id === tagId);
   state.meta.tags = [tagId];
   state.meta.note = preset?.label || tagId;
 }
@@ -248,6 +289,10 @@ function updateModeUI() {
   els.btnDelete.classList.toggle('hidden', mode !== 'edit');
 
   els.btnSave.textContent = mode === 'edit' ? 'Cập nhật setup' : 'Lưu setup';
+
+  if (mode !== 'idle') {
+    renderTagSelect();
+  }
 
   updateStepTrack();
   updateChartHint();
@@ -761,6 +806,7 @@ async function boot() {
     onResize: () => chart.resize?.(),
   });
   state.config = await getConfig();
+  await loadTagPresets();
   renderTagSelect();
   renderPeriodTabs();
   setMode('idle');

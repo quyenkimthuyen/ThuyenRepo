@@ -13,6 +13,7 @@ export async function api(path, options = {}) {
 }
 
 export const getConfig = () => api('/api/config');
+export const getPresets = () => api('/api/presets');
 export const getCandles = (period) => api(`/api/candles?period=${period}&with_indicators=true`);
 export const getSetups = () => api('/api/setups');
 export const saveSetup = (body) => api('/api/setups', { method: 'POST', body: JSON.stringify(body) });
