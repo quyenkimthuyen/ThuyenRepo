@@ -106,9 +106,31 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .badge {
   margin-left: auto; background: #1e3a5f; color: #93c5fd; padding: 4px 10px; border-radius: 999px; font-size: 11px;
 }
-.chart-main { flex: 1; min-height: 0; position: relative; }
-.chart-main.can-drag-level { cursor: ns-resize; }
-.chart-main.dragging-level { cursor: grabbing; user-select: none; }
+.chart-wrap { flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column; }
+.chart-main { flex: 1; min-height: 0; width: 100%; }
+.chart-wrap.dragging-level { cursor: grabbing; user-select: none; }
+
+.price-drag-layer {
+  position: absolute; inset: 0; pointer-events: none; z-index: 20;
+}
+.price-drag-handle {
+  position: absolute; left: 0; right: 56px; height: 14px;
+  pointer-events: auto; cursor: ns-resize; transform: translateY(-50%);
+}
+.price-drag-handle.entry { color: #3b82f6; }
+.price-drag-handle.sl { color: #ef4444; }
+.price-drag-handle.tp { color: #22c55e; }
+.price-drag-handle::before {
+  content: attr(data-label);
+  position: absolute; left: 8px; top: 50%; transform: translateY(-50%);
+  font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px;
+  background: rgba(11, 15, 20, 0.85); border: 1px solid currentColor;
+  color: inherit; pointer-events: none;
+}
+.price-drag-handle::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%;
+  height: 2px; background: currentColor; opacity: 0.85;
+}
 .chart-rsi { height: 140px; border-top: 1px solid var(--border); }
 
 @media (max-width: 960px) {

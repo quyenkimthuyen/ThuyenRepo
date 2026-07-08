@@ -169,16 +169,31 @@ function syncFields() {
   els.fieldSL.value = state.draft.sl ?? '';
   els.fieldTP.value = state.draft.tp ?? '';
   els.fieldTime.value = state.draft.time ? isoFromUnix(state.draft.time) : '';
+
+  if (state.draft.entry != null) {
+    focusDraftOnChart();
+  }
+
   chart.setOverlay({
     entry: state.draft.entry,
     sl: Number(els.fieldSL.value) || state.draft.sl,
     tp: Number(els.fieldTP.value) || state.draft.tp,
     direction: state.direction,
   });
-  if (state.draft.entry != null) {
-    focusDraftOnChart();
-  }
   validateSave();
+}
+
+function refreshChartView() {
+  if (state.draft.entry == null || state.draft.time == null) return;
+  requestAnimationFrame(() => {
+    focusDraftOnChart();
+    chart.setOverlay({
+      entry: state.draft.entry,
+      sl: Number(els.fieldSL.value) || state.draft.sl,
+      tp: Number(els.fieldTP.value) || state.draft.tp,
+      direction: state.direction,
+    });
+  });
 }
 
 function canEditLevels() {
@@ -287,22 +302,15 @@ async function switchPeriod(period) {
 async function loadChart() {
   const data = await getCandles(state.period);
   chart.setData(data);
-  if (state.editingId && state.draft.time) {
-    focusDraftOnChart();
-    syncFields();
-  }
+  refreshChartView();
 }
 
 async function selectSetup(setup) {
   const targetPeriod = setup.period || 'train';
-  if (targetPeriod !== 'train') {
-    alert('Chỉ có thể sửa setup trong năm Train (2022).');
-    return;
-  }
 
   if (state.period !== targetPeriod) {
     state.period = targetPeriod;
-    state.labelAllowed = true;
+    state.labelAllowed = targetPeriod === 'train';
     els.periodBadge.textContent = state.config.periods[targetPeriod].label;
     renderPeriodTabs();
     await loadChart();
@@ -313,9 +321,9 @@ async function selectSetup(setup) {
   state.step = 'tp';
   state.draft = {
     time: Math.floor(new Date(setup.entry_time).getTime() / 1000),
-    entry: setup.entry_price,
-    sl: setup.stop_loss,
-    tp: setup.take_profit,
+    entry: Number(setup.entry_price),
+    sl: Number(setup.stop_loss),
+    tp: Number(setup.take_profit),
   };
 
   setDirectionUi(setup.direction);
@@ -325,14 +333,20 @@ async function selectSetup(setup) {
   els.btnSave.textContent = 'Cập nhật setup';
   updateStepUI();
   syncFields();
+  refreshChartView();
   setLabelHint();
   renderSetups();
 }
 
 function renderSetups() {
-  els.setupCount.textContent = String(state.setups.length);
+  const trainSetups = state.setups.filter((s) => (s.period || 'train') === 'train');
+  els.setupCount.textContent = String(trainSetups.length);
   els.setupList.innerHTML = '';
-  const sorted = [...state.setups].sort((a, b) => a.entry_time.localeCompare(b.entry_time));
+  const sorted = [...trainSetups].sort((a, b) => a.entry_time.localeCompare(b.entry_time));
+  if (!sorted.length) {
+    els.setupList.innerHTML = '<li class="hint">Chưa có setup — label trên tab Train 2022.</li>';
+    return;
+  }
   for (const s of sorted) {
     const li = document.createElement('li');
     li.className = `setup-item ${s.direction}${s.id === state.editingId ? ' selected' : ''}`;
