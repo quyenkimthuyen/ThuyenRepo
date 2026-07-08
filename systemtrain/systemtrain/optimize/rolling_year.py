@@ -41,7 +41,7 @@ RANDOM_REFINE_SAMPLES = 120
 
 
 def _load_yaml(path: str, key: str) -> dict:
-    return yaml.safe_load(Path(path).read_text()).get(key, {})
+    return yaml.safe_load(Path(path).read_text(encoding="utf-8")).get(key, {})
 
 
 def year_bounds(year: int) -> tuple[str, str]:
@@ -242,17 +242,28 @@ def _base_pin() -> FamousConfig:
     return FamousConfig(**{k: v for k, v in raw.items() if k in FamousConfig.__dataclass_fields__})
 
 
+def _risk_sl_pct(config: Config) -> float:
+    return float(config.risk.get("sl_pct", 0.02))
+
+
+def _risk_min_rr(config: Config) -> float:
+    return float(config.risk.get("min_rr", 2.0))
+
+
 def optimize_wyckoff_year(
     train_df: pd.DataFrame, train_s: pd.Timestamp, train_e: pd.Timestamp, config: Config, equity: float,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     bt = config.backtest
     pip = config.pip_size
+    sl_pct = _risk_sl_pct(config)
+    min_rr = _risk_min_rr(config)
     base = _base_wyckoff().to_dict()
 
     def build(params: dict) -> WyckoffEngine:
         wcfg = WyckoffConfig.from_dict({**base, **params})
+        wcfg.rr = min_rr
         return WyckoffEngine(
-            RiskConfig(0.02, wcfg.rr, 0.30, 10), wcfg, equity,
+            RiskConfig(sl_pct, wcfg.rr, 0.30, 10), wcfg, equity,
             bt.get("spread_pips", 0.5), bt.get("slippage_pips", 0.3), pip,
         )
 
@@ -282,13 +293,16 @@ def optimize_rsi_year(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     bt = config.backtest
     pip = config.pip_size
+    sl_pct = _risk_sl_pct(config)
+    min_rr = _risk_min_rr(config)
     base = _base_rsi().to_dict()
 
     def build(params: dict) -> RsiDivEngine:
         fields = {**base, **params}
         rcfg = RsiDivConfig(**{k: v for k, v in fields.items() if k in RsiDivConfig.__dataclass_fields__})
+        rcfg.rr = min_rr
         return RsiDivEngine(
-            RiskConfig(0.02, rcfg.rr, 0.30, 10), rcfg, equity,
+            RiskConfig(sl_pct, rcfg.rr, 0.30, 10), rcfg, equity,
             bt.get("spread_pips", 0.5), bt.get("slippage_pips", 0.3), pip,
         )
 
@@ -318,12 +332,14 @@ def optimize_ema_year(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     bt = config.backtest
     pip = config.pip_size
+    sl_pct = _risk_sl_pct(config)
+    min_rr = _risk_min_rr(config)
     base = _base_ema().to_dict()
 
     def build(params: dict) -> SignalEngine:
         ecfg = EmaTrendConfig(**{**base, **params})
         return SignalEngine(
-            RiskConfig(0.02, 2.0, 0.30, 10), detect_ema_trend, ecfg, equity,
+            RiskConfig(sl_pct, min_rr, 0.30, 10), detect_ema_trend, ecfg, equity,
             bt.get("spread_pips", 0.5), bt.get("slippage_pips", 0.3), pip,
         )
 
@@ -532,12 +548,14 @@ def optimize_ema_flow_year(
     """Tối ưu EMA flow — dùng profile validated + refine quanh vùng đó."""
     bt = config.backtest
     pip = config.pip_size
+    sl_pct = _risk_sl_pct(config)
+    min_rr = _risk_min_rr(config)
     base = _base_ema_flow().to_dict()
 
     def build(params: dict) -> SignalEngine:
         ecfg = EmaTrendConfig(**{**base, **params})
         return SignalEngine(
-            RiskConfig(0.02, 2.0, 0.30, 10), detect_ema_trend, ecfg, equity,
+            RiskConfig(sl_pct, min_rr, 0.30, 10), detect_ema_trend, ecfg, equity,
             bt.get("spread_pips", 0.5), bt.get("slippage_pips", 0.3), pip,
         )
 
@@ -574,10 +592,12 @@ def optimize_ema_flow_year(
 
 def build_ema_flow_engine(params: dict, config: Config, equity: float) -> SignalEngine:
     bt = config.backtest
+    sl_pct = _risk_sl_pct(config)
+    min_rr = _risk_min_rr(config)
     base = _base_ema_flow().to_dict()
     ecfg = EmaTrendConfig(**{**base, **params})
     return SignalEngine(
-        RiskConfig(0.02, 2.0, 0.30, 10), detect_ema_trend, ecfg, equity,
+        RiskConfig(sl_pct, min_rr, 0.30, 10), detect_ema_trend, ecfg, equity,
         bt.get("spread_pips", 0.5), bt.get("slippage_pips", 0.3), config.pip_size,
     )
 
@@ -587,13 +607,16 @@ def optimize_pin_year(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     bt = config.backtest
     pip = config.pip_size
+    sl_pct = _risk_sl_pct(config)
+    min_rr = _risk_min_rr(config)
     base = _base_pin().to_dict()
 
     def build(params: dict) -> SignalEngine:
         fields = {**base, **params}
         pcfg = FamousConfig(**{k: v for k, v in fields.items() if k in FamousConfig.__dataclass_fields__})
+        pcfg.rr = min_rr
         return SignalEngine(
-            RiskConfig(0.02, pcfg.rr, 0.30, 10), detect_pin_bar, pcfg, equity,
+            RiskConfig(sl_pct, pcfg.rr, 0.30, 10), detect_pin_bar, pcfg, equity,
             bt.get("spread_pips", 0.5), bt.get("slippage_pips", 0.3), pip,
         )
 
@@ -622,42 +645,53 @@ def optimize_pin_year(
 
 def build_wyckoff_engine(params: dict, config: Config, equity: float) -> WyckoffEngine:
     bt = config.backtest
+    sl_pct = _risk_sl_pct(config)
+    min_rr = _risk_min_rr(config)
     base = _base_wyckoff().to_dict()
     wcfg = WyckoffConfig.from_dict({**base, **params})
+    wcfg.rr = min_rr
     return WyckoffEngine(
-        RiskConfig(0.02, wcfg.rr, 0.30, 10), wcfg, equity,
+        RiskConfig(sl_pct, wcfg.rr, 0.30, 10), wcfg, equity,
         bt.get("spread_pips", 0.5), bt.get("slippage_pips", 0.3), config.pip_size,
     )
 
 
 def build_rsi_engine(params: dict, config: Config, equity: float) -> RsiDivEngine:
     bt = config.backtest
+    sl_pct = _risk_sl_pct(config)
+    min_rr = _risk_min_rr(config)
     base = _base_rsi().to_dict()
     fields = {**base, **params}
     rcfg = RsiDivConfig(**{k: v for k, v in fields.items() if k in RsiDivConfig.__dataclass_fields__})
+    rcfg.rr = min_rr
     return RsiDivEngine(
-        RiskConfig(0.02, rcfg.rr, 0.30, 10), rcfg, equity,
+        RiskConfig(sl_pct, rcfg.rr, 0.30, 10), rcfg, equity,
         bt.get("spread_pips", 0.5), bt.get("slippage_pips", 0.3), config.pip_size,
     )
 
 
 def build_ema_engine(params: dict, config: Config, equity: float) -> SignalEngine:
     bt = config.backtest
+    sl_pct = _risk_sl_pct(config)
+    min_rr = _risk_min_rr(config)
     base = _base_ema().to_dict()
     ecfg = EmaTrendConfig(**{**base, **params})
     return SignalEngine(
-        RiskConfig(0.02, 2.0, 0.30, 10), detect_ema_trend, ecfg, equity,
+        RiskConfig(sl_pct, min_rr, 0.30, 10), detect_ema_trend, ecfg, equity,
         bt.get("spread_pips", 0.5), bt.get("slippage_pips", 0.3), config.pip_size,
     )
 
 
 def build_pin_engine(params: dict, config: Config, equity: float) -> SignalEngine:
     bt = config.backtest
+    sl_pct = _risk_sl_pct(config)
+    min_rr = _risk_min_rr(config)
     base = _base_pin().to_dict()
     fields = {**base, **params}
     pcfg = FamousConfig(**{k: v for k, v in fields.items() if k in FamousConfig.__dataclass_fields__})
+    pcfg.rr = min_rr
     return SignalEngine(
-        RiskConfig(0.02, pcfg.rr, 0.30, 10), detect_pin_bar, pcfg, equity,
+        RiskConfig(sl_pct, pcfg.rr, 0.30, 10), detect_pin_bar, pcfg, equity,
         bt.get("spread_pips", 0.5), bt.get("slippage_pips", 0.3), config.pip_size,
     )
 

@@ -1,56 +1,120 @@
-trade_year: 2023
-train_year: 2022
-optimized_at: '2026-07-04T15:15:17.465605+00:00'
+train_year: 2023
+default_trade_year: 2024
+optimized_at: '2026-07-07T09:27:34.407712+00:00'
 equity: 1000.0
+config_key: train_year
 strategies:
   Wyckoff:
     params:
-      min_htf_adx: 22.0
-      max_adx: 35.0
-      consolidation_days: 3
-      htf_mode: strict
+      min_htf_adx: 18.0
+      max_adx: 50.0
+      consolidation_days: 1
+      htf_mode: soft
+      cooldown_bars: 3
+      max_trades_per_day: 2
+      require_hammer_shape: true
     train:
-      trade_count: 3
-      win_rate: 0.6666666666666666
-      profit_factor: 3.7637569889997313
-      realized_rr: 1.8818784944998657
-      total_return: 0.05771580575029771
+      trade_count: 23
+      win_rate: 0.43478260869565216
+      profit_factor: 1.421873892458803
+      realized_rr: 1.848436060196444
+      total_return: 0.14414881096418095
+      constraints_met: false
+      fallback_score: 64.205454083951
   RSI Divergence:
     params:
-      max_adx_1h: 30.0
+      max_adx_1h: 45.0
       min_rsi_diff: 2.5
-      rsi_oversold: 40.0
-      rsi_overbought: 55.0
-      min_swing_gap: 10
+      rsi_oversold: 42.0
+      rsi_overbought: 52.0
+      min_swing_gap: 4
+      cooldown_bars: 4
+      require_neckline_break: false
     train:
-      trade_count: 2
-      win_rate: 0.5
-      profit_factor: 1.9127580952511885
-      realized_rr: 1.9127580952511885
-      total_return: 0.019026427518039214
+      trade_count: 27
+      win_rate: 0.48148148148148145
+      profit_factor: 1.7552684454729106
+      realized_rr: 1.890289095124673
+      total_return: 0.24159457885259097
+      constraints_met: false
+      fallback_score: 75.06065987643352
   EMA 50/200:
     params:
-      min_htf_adx: 30.0
-      max_adx_1h: 25.0
-      pullback_atr: 0.38
-      max_ema_spread_atr: 2.0
+      min_htf_adx: 22.0
+      max_adx_1h: 32.0
+      pullback_atr: 0.46
+      max_ema_spread_atr: 3.5
+      cooldown_bars: 10
+      require_bounce: false
+      htf_mode: stack
     train:
-      trade_count: 2
-      win_rate: 0.5
-      profit_factor: 1.8968986294948695
-      realized_rr: 1.8968986294948695
-      total_return: 0.018806006284814544
-  Pin Bar Elite:
+      trade_count: 21
+      win_rate: 0.42857142857142855
+      profit_factor: 1.427543952776313
+      realized_rr: 1.9033919370350838
+      total_return: 0.11238057161864753
+      constraints_met: false
+      fallback_score: 59.26101252147112
+  EMA Flow:
     params:
+      pullback_atr: 0.36
       min_htf_adx: 22.0
       max_adx_1h: 28.0
-      min_wick_body_ratio: 3.5
-      min_wick_range_ratio: 0.55
-      swing_lookback: 12
-      htf_mode: strict
+      min_ema_spread_atr: 0.1
+      max_ema_spread_atr: 2.2
+      cooldown_bars: 12
+      max_trades_per_day: 3
+      htf_mode: soft
+      sl_ema_slow: true
+      require_bounce: true
     train:
-      trade_count: 11
-      win_rate: 0.5454545454545454
-      profit_factor: 2.3252665655851743
-      realized_rr: 1.937722137987645
-      total_return: 0.13841553692121214
+      trade_count: 19
+      win_rate: 0.47368421052631576
+      profit_factor: 1.7044121256480869
+      realized_rr: 1.8937912507200965
+      total_return: 0.17160940372267214
+      mode: flow
+      constraints_met: false
+      holdout:
+        trade_count: 10
+        win_rate: 0.4
+        profit_factor: 1.2680652352797146
+        realized_rr: 1.902097852919572
+        total_return: 0.04148474920579656
+      validated_profile: true
+      refine_candidate:
+        trade_count: 31
+        win_rate: 0.5161290322580645
+        profit_factor: 2.0418915646739166
+        realized_rr: 1.914273341881797
+        total_return: 0.3907195235051636
+        mode: flow
+        constraints_met: true
+        holdout:
+          trade_count: 11
+          win_rate: 0.5454545454545454
+          profit_factor: 2.228866406830542
+          realized_rr: 1.8573886723587851
+          total_return: 0.1773266386207622
+        holdout_wr_ok: true
+  Pin Bar Elite:
+    params:
+      min_htf_adx: 18.0
+      max_adx_1h: 32.0
+      min_wick_body_ratio: 3.5
+      min_wick_range_ratio: 0.58
+      swing_lookback: 8
+      htf_mode: strict
+      require_at_swing: false
+      cooldown_bars: 4
+    train:
+      trade_count: 30
+      win_rate: 0.5
+      profit_factor: 1.960986617203799
+      realized_rr: 1.960986617203799
+      total_return: 0.2878028946534432
+      constraints_met: false
+      fallback_score: 80.48517159083411
+risk_sl_pct: 0.02
+risk_min_rr: 2.0
+saved_manually: true

@@ -66,7 +66,7 @@ def train_year_for(trade_year: int) -> int:
 def load_active_state() -> dict[str, Any] | None:
     if not ACTIVE_PATH.exists():
         return None
-    state = yaml.safe_load(ACTIVE_PATH.read_text()) or None
+    state = yaml.safe_load(ACTIVE_PATH.read_text(encoding="utf-8")) or None
     return fill_missing_strategies(state) if state else None
 
 
@@ -90,14 +90,38 @@ def history_path(trade_year: int) -> Path:
     return HISTORY_DIR / f"{trade_year}.yaml"
 
 
+def history_path_for_train_year(train_year: int) -> Path:
+    return HISTORY_DIR / f"{train_year}.yaml"
+
+
 def load_state_for_year(trade_year: int) -> dict[str, Any] | None:
     """Đọc config đã lưu cho năm trade (history trước, rồi active)."""
     hist = history_path(trade_year)
     if hist.exists():
-        raw = yaml.safe_load(hist.read_text())
+        raw = yaml.safe_load(hist.read_text(encoding="utf-8"))
         return fill_missing_strategies(raw) if raw else None
     active = load_active_state()
     if active and active.get("trade_year") == trade_year:
+        return active
+    return None
+
+
+def load_state_for_train_year(train_year: int) -> dict[str, Any] | None:
+    """Đọc config theo năm train/optimize, fallback scan legacy files if needed."""
+    direct = history_path_for_train_year(train_year)
+    if direct.exists():
+        raw = yaml.safe_load(direct.read_text(encoding="utf-8"))
+        if raw and int(raw.get("train_year", train_year)) == train_year:
+            return fill_missing_strategies(raw)
+
+    if HISTORY_DIR.exists():
+        for path in HISTORY_DIR.glob("*.yaml"):
+            raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+            if int(raw.get("train_year", -1)) == train_year:
+                return fill_missing_strategies(raw)
+
+    active = load_active_state()
+    if active and int(active.get("train_year", -1)) == train_year:
         return active
     return None
 
@@ -117,13 +141,42 @@ def save_state_for_year(
         "train_year": train_year_for(trade_year),
     })
     hist = history_path(trade_year)
-    hist.write_text(yaml.dump(clean, default_flow_style=False, allow_unicode=True, sort_keys=False))
+    hist.write_text(yaml.dump(clean, default_flow_style=False, allow_unicode=True, sort_keys=False), encoding="utf-8")
 
     if set_active:
-        ACTIVE_PATH.write_text(yaml.dump(clean, default_flow_style=False, allow_unicode=True, sort_keys=False))
+        active_clean = {**clean, "trade_year": int(clean.get("default_trade_year", train_year + 1))}
+        ACTIVE_PATH.write_text(yaml.dump(active_clean, default_flow_style=False, allow_unicode=True, sort_keys=False), encoding="utf-8")
         json_path = Path("output/rolling_active.json")
         json_path.parent.mkdir(exist_ok=True)
-        json_path.write_text(json.dumps(clean, indent=2, default=str))
+        json_path.write_text(json.dumps(active_clean, indent=2, default=str), encoding="utf-8")
+        return ACTIVE_PATH
+    return hist
+
+
+def save_state_for_train_year(
+    state: dict[str, Any],
+    train_year: int,
+    *,
+    set_active: bool = False,
+) -> Path:
+    """Lưu config rolling theo năm train/optimize — history/{train_year}.yaml."""
+    ROLLING_DIR.mkdir(parents=True, exist_ok=True)
+    HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+    clean = _native({
+        **state,
+        "train_year": train_year,
+        "config_key": "train_year",
+        "default_trade_year": int(state.get("default_trade_year", train_year + 1)),
+    })
+    clean.pop("trade_year", None)
+    hist = history_path_for_train_year(train_year)
+    hist.write_text(yaml.dump(clean, default_flow_style=False, allow_unicode=True, sort_keys=False), encoding="utf-8")
+
+    if set_active:
+        ACTIVE_PATH.write_text(yaml.dump(clean, default_flow_style=False, allow_unicode=True, sort_keys=False), encoding="utf-8")
+        json_path = Path("output/rolling_active.json")
+        json_path.parent.mkdir(exist_ok=True)
+        json_path.write_text(json.dumps(clean, indent=2, default=str), encoding="utf-8")
         return ACTIVE_PATH
     return hist
 
@@ -160,15 +213,61 @@ def optimize_for_trade_year(
     return state
 
 
+def optimize_for_train_year(
+    train_year: int,
+    config: Config | None = None,
+    equity: float = 1000.0,
+    df_1h: pd.DataFrame | None = None,
+) -> dict[str, Any]:
+    """Grid-search trên năm train_year và trả về config có thể test nhiều năm trade."""
+    config = config or Config.load()
+    if df_1h is None:
+        df_1h = to_entry_timeframe(TrainingPipeline(config).load_data(), "1h")
+
+    train_df, train_s, train_e = slice_year(df_1h, train_year)
+    state: dict[str, Any] = {
+        "train_year": train_year,
+        "default_trade_year": train_year + 1,
+        "optimized_at": datetime.now(timezone.utc).isoformat(),
+        "equity": equity,
+        "config_key": "train_year",
+        "strategies": {},
+    }
+
+    for sname, opt_fn, _ in STRATEGY_OPTIMIZERS:
+        params, train_m = opt_fn(train_df, train_s, train_e, config, equity)
+        state["strategies"][sname] = {
+            "params": params,
+            "train": train_m,
+        }
+
+    return state
+
+
 def state_from_fixed(trade_year: int, equity: float = 1000.0) -> dict[str, Any]:
     """Fallback: config yaml cố định (không optimize)."""
     fp = fixed_params()
+    train_year = train_year_for(trade_year)
     return {
         "trade_year": trade_year,
-        "train_year": train_year - 1,
+        "train_year": train_year,
         "optimized_at": datetime.now(timezone.utc).isoformat(),
         "equity": equity,
         "mode": "fixed",
+        "strategies": {name: {"params": p, "train": {}} for name, p in fp.items()},
+    }
+
+
+def state_from_fixed_train_year(train_year: int, equity: float = 1000.0) -> dict[str, Any]:
+    """Fallback config cố định keyed by train year."""
+    fp = fixed_params()
+    return {
+        "train_year": train_year,
+        "default_trade_year": train_year + 1,
+        "optimized_at": datetime.now(timezone.utc).isoformat(),
+        "equity": equity,
+        "mode": "fixed",
+        "config_key": "train_year",
         "strategies": {name: {"params": p, "train": {}} for name, p in fp.items()},
     }
 
@@ -217,6 +316,35 @@ def backtest_trade_year(
     return results
 
 
+def backtest_state_on_year(
+    state: dict[str, Any],
+    trade_year: int,
+    config: Config,
+    equity: float,
+    df_1h: pd.DataFrame | None = None,
+) -> dict[str, Any]:
+    """Backtest một state config bất kỳ trên một năm trade explicit."""
+    if df_1h is None:
+        df_1h = to_entry_timeframe(TrainingPipeline(config).load_data(), "1h")
+
+    trade_df, trade_s, trade_e = slice_year(df_1h, trade_year)
+    results: dict[str, Any] = {
+        "train_year": state.get("train_year"),
+        "trade_year": trade_year,
+        "period": year_bounds(trade_year),
+        "strategies": {},
+    }
+    total_ret = 0.0
+
+    for sname, engine in build_engines_from_state(state, config, equity):
+        m = metrics_in_window(engine.run(trade_df), trade_s, trade_e, equity)
+        results["strategies"][sname] = m
+        total_ret += m.get("total_return", 0)
+
+    results["combined_return"] = total_ret
+    return results
+
+
 def ensure_active_state(
     trade_year: int | None = None,
     force_remine: bool = False,
@@ -228,6 +356,8 @@ def ensure_active_state(
 
     if not force_remine and existing and existing.get("trade_year") == trade_year:
         return existing
+    if not force_remine and existing and existing.get("train_year") == train_year_for(trade_year):
+        return {**existing, "trade_year": trade_year}
 
     state = optimize_for_trade_year(trade_year, equity=equity)
     save_active_state(state)

@@ -246,6 +246,46 @@ def _try_open_on_bar(
     return None
 
 
+def _record_setup_signals(
+    strategy: str,
+    strategy_state: StrategyPaperState,
+    engine: Any,
+    df: pd.DataFrame,
+    bar_idx: int,
+) -> list[dict[str, Any]]:
+    signals = _detect_signals(engine, df.iloc[: bar_idx + 1])
+    recorded: list[dict[str, Any]] = []
+    seen = {sig.get("key") for sig in strategy_state.setup_signals}
+    for sig in signals:
+        if sig.entry_bar != bar_idx:
+            continue
+        entry_time = df.index[sig.entry_bar]
+        key = _signal_key(strategy, entry_time, sig.direction)
+        if key in seen:
+            continue
+        raw_entry = float(df.iloc[sig.entry_bar]["close"])
+        item = {
+            "key": key,
+            "strategy": strategy,
+            "time": _timestamp_iso(entry_time),
+            "direction": int(sig.direction),
+            "price": raw_entry,
+            "sl": float(sig.sl_price),
+            "tag": getattr(sig, "tag", ""),
+        }
+        strategy_state.setup_signals.append(item)
+        strategy_state.latest_signal = {
+            "time": item["time"],
+            "direction": "LONG" if item["direction"] == 1 else "SHORT",
+            "entry": item["price"],
+            "sl": item["sl"],
+            "tag": item["tag"],
+        }
+        recorded.append(item)
+        seen.add(key)
+    return recorded
+
+
 def _try_close_on_bar(
     strategy_state: StrategyPaperState,
     engine: Any,
@@ -289,6 +329,17 @@ def process_replay_bar(
 
     for strategy, strategy_state in session.strategies.items():
         engine = engines[strategy]
+        setups = _record_setup_signals(strategy, strategy_state, engine, df, bar_idx)
+        for setup in setups:
+            ev = {
+                "event": "setup",
+                "strategy": strategy,
+                "signal": setup,
+                "at_bar": _timestamp_iso(ts),
+                "updated_at": utc_now_iso(),
+            }
+            events.append(ev)
+            session.journal.append(ev)
         close_ev = _try_close_on_bar(strategy_state, engine, df, bar_idx)
         if close_ev:
             events.append(close_ev)

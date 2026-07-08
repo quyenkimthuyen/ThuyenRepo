@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+import copy
 
 import pandas as pd
 import yaml
@@ -31,18 +32,24 @@ from systemtrain.orchestrator.pipeline import TrainingPipeline
 from systemtrain.orchestrator.rolling_production import (
     ACTIVE_PATH,
     HISTORY_DIR,
+    backtest_state_on_year,
     backtest_trade_year,
     build_engines_from_state,
     current_trade_year,
     ensure_active_state,
     fill_missing_strategies,
     history_path,
+    history_path_for_train_year,
     load_active_state,
     load_state_for_year,
+    load_state_for_train_year,
+    optimize_for_train_year,
     optimize_for_trade_year,
     save_active_state,
     save_state_for_year,
+    save_state_for_train_year,
     state_from_fixed,
+    state_from_fixed_train_year,
     train_year_for,
 )
 from systemtrain.ui.meta import STRATEGIES
@@ -53,6 +60,17 @@ def load_price_data() -> pd.DataFrame:
     return to_entry_timeframe(TrainingPipeline(config).load_data(), "1h")
 
 
+def config_with_risk(sl_pct: float | None = None, min_rr: float | None = None) -> Config:
+    config = Config.load()
+    if sl_pct is not None or min_rr is not None:
+        config = copy.deepcopy(config)
+    if sl_pct is not None:
+        config.risk["sl_pct"] = float(sl_pct)
+    if min_rr is not None:
+        config.risk["min_rr"] = float(min_rr)
+    return config
+
+
 def get_rolling_state(trade_year: int | None = None) -> dict[str, Any]:
     trade_year = trade_year or current_trade_year()
     state = load_state_for_year(trade_year)
@@ -61,6 +79,8 @@ def get_rolling_state(trade_year: int | None = None) -> dict[str, Any]:
     active = load_active_state()
     if active and active.get("trade_year") == trade_year:
         return fill_missing_strategies(active)
+    if active and active.get("train_year") == train_year_for(trade_year):
+        return fill_missing_strategies({**active, "trade_year": trade_year})
     return ensure_active_state(trade_year)
 
 
@@ -72,11 +92,24 @@ def get_config_state(trade_year: int, equity: float = 1000.0) -> dict[str, Any]:
     return state_from_fixed(trade_year, equity)
 
 
+def get_train_config_state(train_year: int, equity: float = 1000.0) -> dict[str, Any]:
+    """Load config keyed by train year — không tự optimize."""
+    state = load_state_for_train_year(train_year)
+    if state:
+        return state
+    return state_from_fixed_train_year(train_year, equity)
+
+
 def config_year_saved(trade_year: int) -> bool:
     if history_path(trade_year).exists():
         return True
     active = load_active_state()
     return active is not None and active.get("trade_year") == trade_year
+
+
+def config_train_year_saved(train_year: int) -> bool:
+    state = load_state_for_train_year(train_year)
+    return state is not None and state.get("mode") != "fixed"
 
 
 def merge_params(state: dict[str, Any], overrides: dict[str, dict[str, Any]]) -> dict[str, Any]:
@@ -94,8 +127,10 @@ def run_strategy_backtest(
     state: dict[str, Any],
     year: int,
     equity: float = 1000.0,
+    sl_pct: float | None = None,
+    min_rr: float | None = None,
 ) -> tuple[dict[str, Any], list, pd.DataFrame]:
-    config = Config.load()
+    config = config_with_risk(sl_pct, min_rr)
     df_1h = load_price_data()
     period_df, ts, te = slice_year(df_1h, year)
     engines = dict(build_engines_from_state(state, config, equity))
@@ -106,8 +141,14 @@ def run_strategy_backtest(
     return metrics, closed, period_df
 
 
-def run_all_backtest(state: dict[str, Any], year: int, equity: float = 1000.0) -> dict[str, Any]:
-    config = Config.load()
+def run_all_backtest(
+    state: dict[str, Any],
+    year: int,
+    equity: float = 1000.0,
+    sl_pct: float | None = None,
+    min_rr: float | None = None,
+) -> dict[str, Any]:
+    config = config_with_risk(sl_pct, min_rr)
     df_1h = load_price_data()
     fake = {**state, "trade_year": year}
     period_df, ts, te = slice_year(df_1h, year)
@@ -123,9 +164,11 @@ def run_all_strategies_backtest(
     state: dict[str, Any],
     year: int,
     equity: float = 1000.0,
+    sl_pct: float | None = None,
+    min_rr: float | None = None,
 ) -> tuple[dict[str, dict[str, Any]], pd.DataFrame]:
     """Backtest tất cả chiến lược — trả về metrics + trades từng CL."""
-    config = Config.load()
+    config = config_with_risk(sl_pct, min_rr)
     df_1h = load_price_data()
     fake = {**state, "trade_year": year}
     period_df, ts, te = slice_year(df_1h, year)
@@ -138,15 +181,61 @@ def run_all_strategies_backtest(
     return out, period_df
 
 
-def optimize_trade_year(trade_year: int, equity: float = 1000.0) -> dict[str, Any]:
-    state = optimize_for_trade_year(trade_year, equity=equity)
+def run_train_config_backtest(
+    state: dict[str, Any],
+    trade_year: int,
+    equity: float = 1000.0,
+    sl_pct: float | None = None,
+    min_rr: float | None = None,
+) -> dict[str, Any]:
+    config = config_with_risk(sl_pct, min_rr)
+    return backtest_state_on_year(state, trade_year, config, equity)
+
+
+def run_train_config_backtests(
+    state: dict[str, Any],
+    trade_years: list[int],
+    equity: float = 1000.0,
+    sl_pct: float | None = None,
+    min_rr: float | None = None,
+) -> dict[int, dict[str, Any]]:
+    config = config_with_risk(sl_pct, min_rr)
+    df_1h = load_price_data()
+    return {
+        year: backtest_state_on_year(state, year, config, equity, df_1h=df_1h)
+        for year in trade_years
+    }
+
+
+def optimize_trade_year(trade_year: int, equity: float = 1000.0, sl_pct: float | None = None, min_rr: float | None = None) -> dict[str, Any]:
+    state = optimize_for_trade_year(trade_year, config=config_with_risk(sl_pct, min_rr), equity=equity)
+    if sl_pct is not None:
+        state["risk_sl_pct"] = float(sl_pct)
+    if min_rr is not None:
+        state["risk_min_rr"] = float(min_rr)
     save_active_state(state)
+    return state
+
+
+def optimize_train_year(train_year: int, equity: float = 1000.0, sl_pct: float | None = None, min_rr: float | None = None) -> dict[str, Any]:
+    state = optimize_train_year_candidate(train_year, equity=equity, sl_pct=sl_pct, min_rr=min_rr)
+    save_state_for_train_year(state, train_year)
+    return state
+
+
+def optimize_train_year_candidate(train_year: int, equity: float = 1000.0, sl_pct: float | None = None, min_rr: float | None = None) -> dict[str, Any]:
+    """Tạo candidate config nhưng chưa lưu, dùng cho multi-run search."""
+    state = optimize_for_train_year(train_year, config=config_with_risk(sl_pct, min_rr), equity=equity)
+    if sl_pct is not None:
+        state["risk_sl_pct"] = float(sl_pct)
+    if min_rr is not None:
+        state["risk_min_rr"] = float(min_rr)
     return state
 
 
 def load_base_yaml(strategy: str) -> dict[str, Any]:
     path = STRATEGIES[strategy]["base_config"]
-    raw = yaml.safe_load(Path(path).read_text()) or {}
+    raw = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
     key = list(raw.keys())[0] if len(raw) == 1 else strategy
     return raw.get(key, raw)
 
@@ -164,12 +253,33 @@ def load_history_years() -> list[int]:
     return sorted(years)
 
 
+def load_history_train_years() -> list[int]:
+    hist = Path("config/rolling/history")
+    if not hist.exists():
+        return []
+    years: set[int] = set()
+    for p in hist.glob("*.yaml"):
+        try:
+            raw = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
+            if "train_year" in raw:
+                years.add(int(raw["train_year"]))
+            else:
+                years.add(int(p.stem))
+        except (ValueError, TypeError):
+            pass
+    return sorted(years)
+
+
 def load_history_year(year: int) -> dict[str, Any] | None:
     p = Path(f"config/rolling/history/{year}.yaml")
     if not p.exists():
         return None
-    state = yaml.safe_load(p.read_text())
+    state = yaml.safe_load(p.read_text(encoding="utf-8"))
     return fill_missing_strategies(state) if state else None
+
+
+def load_history_train_year(train_year: int) -> dict[str, Any] | None:
+    return load_state_for_train_year(train_year)
 
 
 def save_params_to_active(state: dict[str, Any]) -> None:
@@ -192,6 +302,26 @@ def save_params_for_year(
         out["optimized_at"] = datetime.now(timezone.utc).isoformat()
     out["saved_manually"] = True
     return save_state_for_year(out, trade_year, set_active=set_active)
+
+
+def save_params_for_train_year(
+    state: dict[str, Any],
+    train_year: int,
+    *,
+    set_active: bool = False,
+) -> Path:
+    """Lưu param chỉnh sửa vào history/{train_year}.yaml."""
+    from datetime import datetime, timezone
+    import copy
+    out = copy.deepcopy(state)
+    out["train_year"] = train_year
+    out["default_trade_year"] = train_year + 1
+    out["config_key"] = "train_year"
+    out.pop("trade_year", None)
+    if not out.get("optimized_at"):
+        out["optimized_at"] = datetime.now(timezone.utc).isoformat()
+    out["saved_manually"] = True
+    return save_state_for_train_year(out, train_year, set_active=set_active)
 
 
 def load_live_paper_state(limit: int = 200) -> dict[str, Any]:

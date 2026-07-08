@@ -18,4 +18,4 @@ def render_lightweight_chart(
 ) -> None:
     """Render a TradingView-like chart inside Streamlit."""
     html = build_chart_html(json.dumps(payload, ensure_ascii=False), height=height)
-    components.html(html, height=height + 70, scrolling=False)
+    components.html(html, height=height + 104, scrolling=False)

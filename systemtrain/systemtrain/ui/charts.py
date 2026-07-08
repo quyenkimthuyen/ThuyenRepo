@@ -117,11 +117,15 @@ def build_chart_payload(
     equity: float = 1000.0,
     max_bars: int = 2000,
     focus_trades: bool = False,
+    focus_trade: Any | None = None,
+    setup_signals: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Serialize OHLCV and trade overlays for the Lightweight Charts renderer."""
     profile = _chart_profile(strategy)
     work = _slice_df(df, max_bars)
-    if focus_trades and trades:
+    if focus_trade is not None:
+        work = _focus_df_around_trades(work, [focus_trade], pad=120)
+    elif focus_trades and trades:
         work = _focus_df_around_trades(work, trades)
 
     df_index = set(work.index)
@@ -169,6 +173,21 @@ def build_chart_payload(
     markers: list[dict[str, Any]] = []
     trade_lines: list[dict[str, Any]] = []
     last_x = work.index[-1] if len(work) else None
+    for signal in setup_signals or []:
+        ts = pd.Timestamp(signal.get("time"))
+        if ts not in df_index:
+            continue
+        direction = int(signal.get("direction", 0))
+        is_long = direction == 1
+        markers.append(
+            {
+                "time": _chart_time(ts),
+                "position": "belowBar" if is_long else "aboveBar",
+                "color": color,
+                "shape": "arrowUp" if is_long else "arrowDown",
+                "text": f"SETUP {strategy}",
+            }
+        )
     for trade in trades:
         if trade.entry_time not in df_index:
             continue
@@ -250,6 +269,160 @@ def build_chart_payload(
     }
 
 
+def build_multi_strategy_payload(
+    df: pd.DataFrame,
+    strategy_trades: dict[str, list],
+    *,
+    show_ema: bool = True,
+    show_volume: bool = False,
+    equity: float = 1000.0,
+    max_bars: int = 2000,
+    focus_trades: bool = False,
+    focus_trade: Any | None = None,
+    setup_signals: dict[str, list[dict[str, Any]]] | None = None,
+) -> dict[str, Any]:
+    """Serialize one price chart with setup markers from many strategies."""
+    all_trades = [trade for trades in strategy_trades.values() for trade in trades]
+    work = _slice_df(df, max_bars)
+    if focus_trade is not None:
+        work = _focus_df_around_trades(work, [focus_trade], pad=120)
+    elif focus_trades and all_trades:
+        work = _focus_df_around_trades(work, all_trades)
+
+    df_index = set(work.index)
+    candles = [
+        {
+            "time": _chart_time(idx),
+            "open": float(row["open"]),
+            "high": float(row["high"]),
+            "low": float(row["low"]),
+            "close": float(row["close"]),
+        }
+        for idx, row in work[["open", "high", "low", "close"]].iterrows()
+    ]
+
+    volume: list[dict[str, float | int | str]] = []
+    if show_volume and _has_volume(work):
+        volume = [
+            {
+                "time": _chart_time(idx),
+                "value": float(row["volume"]),
+                "color": TV["volume_up"] if row["close"] >= row["open"] else TV["volume_down"],
+            }
+            for idx, row in work[["open", "close", "volume"]].iterrows()
+        ]
+
+    overlays: list[dict[str, Any]] = []
+    if show_ema and len(work) > 200:
+        overlays.extend(
+            [
+                {"name": "EMA 50", "color": TV["ema50"], "width": 1, "data": _series_points(ema(work["close"], 50))},
+                {"name": "EMA 200", "color": TV["ema200"], "width": 1, "data": _series_points(ema(work["close"], 200))},
+            ]
+        )
+
+    markers: list[dict[str, Any]] = []
+    trade_lines: list[dict[str, Any]] = []
+    last_x = work.index[-1] if len(work) else None
+    for strategy, signals in (setup_signals or {}).items():
+        color = strategy_color(strategy)
+        for signal in signals:
+            ts = pd.Timestamp(signal.get("time"))
+            if ts not in df_index:
+                continue
+            direction = int(signal.get("direction", 0))
+            is_long = direction == 1
+            markers.append(
+                {
+                    "time": _chart_time(ts),
+                    "position": "belowBar" if is_long else "aboveBar",
+                    "color": color,
+                    "shape": "arrowUp" if is_long else "arrowDown",
+                    "text": f"SETUP {strategy}",
+                }
+            )
+    for strategy, trades in strategy_trades.items():
+        color = strategy_color(strategy)
+        short_name = STRATEGIES.get(strategy, {}).get("id", strategy)[:10]
+        profile = _chart_profile(strategy)
+        for trade in trades:
+            if trade.entry_time not in df_index:
+                continue
+            is_long = trade.direction == 1
+            markers.append(
+                {
+                    "time": _chart_time(trade.entry_time),
+                    "position": "belowBar" if is_long else "aboveBar",
+                    "color": color,
+                    "shape": "arrowUp" if is_long else "arrowDown",
+                    "text": f"{strategy} {'LONG' if is_long else 'SHORT'}",
+                }
+            )
+            if trade.is_closed and trade.exit_time is not None:
+                win = trade.pnl > 0
+                markers.append(
+                    {
+                        "time": _chart_time(trade.exit_time),
+                        "position": "aboveBar" if is_long else "belowBar",
+                        "color": color,
+                        "shape": "circle",
+                        "text": f"{short_name} {trade.pnl:+.0f}$",
+                    }
+                )
+                trade_lines.append(
+                    {
+                        "name": f"{strategy} path",
+                        "color": "rgba(8,153,129,0.45)" if win else "rgba(242,54,69,0.45)",
+                        "style": "dashed",
+                        "width": 1,
+                        "data": [
+                            {"time": _chart_time(trade.entry_time), "value": float(trade.entry_price)},
+                            {"time": _chart_time(trade.exit_time), "value": float(trade.exit_price)},
+                        ],
+                    }
+                )
+
+            if profile.get("show_sl_tp", True) and last_x is not None:
+                end_x = trade.exit_time if trade.exit_time is not None else last_x
+                trade_lines.extend(
+                    [
+                        {
+                            "name": f"{strategy} SL",
+                            "color": "rgba(242,54,69,0.45)",
+                            "style": "dashed",
+                            "width": 1,
+                            "data": _line_points(trade.entry_time, end_x, trade.sl_price),
+                        },
+                        {
+                            "name": f"{strategy} TP",
+                            "color": "rgba(8,153,129,0.45)",
+                            "style": "dotted",
+                            "width": 1,
+                            "data": _line_points(trade.entry_time, end_x, trade.tp_price),
+                        },
+                    ]
+                )
+
+    closed = [trade for trade in all_trades if trade.is_closed]
+    return {
+        "symbol": "EURUSD",
+        "strategy": "All",
+        "title": "All Strategies Replay",
+        "candles": candles,
+        "volume": volume,
+        "overlays": overlays,
+        "indicator": None,
+        "equity": _equity_points(closed, equity),
+        "markers": sorted(markers, key=lambda item: item["time"]),
+        "trade_lines": trade_lines,
+        "summary": {
+            "bars": len(candles),
+            "trades": len(closed),
+            "pnl": sum(float(trade.pnl) for trade in closed),
+        },
+    }
+
+
 def render_professional_chart(
     df: pd.DataFrame,
     strategy: str,
@@ -262,6 +435,8 @@ def render_professional_chart(
     max_bars: int = 2000,
     height: int = 640,
     focus_trades: bool = False,
+    focus_trade: Any | None = None,
+    setup_signals: list[dict[str, Any]] | None = None,
 ) -> None:
     payload = build_chart_payload(
         df,
@@ -272,6 +447,36 @@ def render_professional_chart(
         equity=equity,
         max_bars=max_bars,
         focus_trades=focus_trades,
+        focus_trade=focus_trade,
+        setup_signals=setup_signals,
+    )
+    render_lightweight_chart(payload, height=height, key=f"lw-{chart_id}")
+
+
+def render_professional_multi_strategy_chart(
+    df: pd.DataFrame,
+    strategy_trades: dict[str, list],
+    *,
+    chart_id: str,
+    show_ema: bool = True,
+    show_volume: bool = False,
+    equity: float = 1000.0,
+    max_bars: int = 2000,
+    height: int = 640,
+    focus_trades: bool = False,
+    focus_trade: Any | None = None,
+    setup_signals: dict[str, list[dict[str, Any]]] | None = None,
+) -> None:
+    payload = build_multi_strategy_payload(
+        df,
+        strategy_trades,
+        show_ema=show_ema,
+        show_volume=show_volume,
+        equity=equity,
+        max_bars=max_bars,
+        focus_trades=focus_trades,
+        focus_trade=focus_trade,
+        setup_signals=setup_signals,
     )
     render_lightweight_chart(payload, height=height, key=f"lw-{chart_id}")
 
@@ -826,6 +1031,7 @@ def make_strategy_detail_chart(
     max_bars: int = 2000,
     height: int | None = None,
     focus_trades: bool = True,
+    focus_trade: Any | None = None,
     dragmode: str = "pan",
 ) -> go.Figure:
     """Biểu đồ riêng từng chiến lược — overlay minh họa theo logic CL."""
@@ -833,7 +1039,9 @@ def make_strategy_detail_chart(
     color = strategy_color(strategy)
 
     work = _slice_df(df, max_bars)
-    if focus_trades and trades:
+    if focus_trade is not None:
+        work = _focus_df_around_trades(work, [focus_trade], pad=120)
+    elif focus_trades and trades:
         work = _focus_df_around_trades(work, trades)
 
     df_index = set(work.index)
@@ -884,9 +1092,12 @@ def make_tradingview_chart(
     max_bars: int = 2000,
     height: int = 650,
     dragmode: str = "pan",
+    focus_trade: Any | None = None,
 ) -> go.Figure:
     """Candlestick TradingView-style + multi-strategy markers."""
     df = _slice_df(df, max_bars)
+    if focus_trade is not None:
+        df = _focus_df_around_trades(df, [focus_trade], pad=120)
     df_index = set(df.index)
 
     if strategy_trades is None:

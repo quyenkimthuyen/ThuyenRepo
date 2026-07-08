@@ -45,6 +45,7 @@ class StrategyPaperState:
     last_signal_key: str | None = None
     open_trade: PaperTrade | None = None
     closed_trades: list[PaperTrade] = field(default_factory=list)
+    setup_signals: list[dict[str, Any]] = field(default_factory=list)
     latest_signal: dict[str, Any] | None = None
     status: str = "idle"
 
@@ -57,6 +58,7 @@ class StrategyPaperState:
             "last_signal_key": self.last_signal_key,
             "open_trade": self.open_trade.to_dict() if self.open_trade else None,
             "closed_trades": [trade.to_dict() for trade in self.closed_trades],
+            "setup_signals": self.setup_signals,
             "latest_signal": self.latest_signal,
             "status": self.status,
         }
@@ -73,6 +75,7 @@ class StrategyPaperState:
             last_signal_key=data.get("last_signal_key"),
             open_trade=PaperTrade.from_dict(open_trade) if open_trade else None,
             closed_trades=[PaperTrade.from_dict(trade) for trade in closed],
+            setup_signals=list(data.get("setup_signals", [])),
             latest_signal=data.get("latest_signal"),
             status=data.get("status", "idle"),
         )
