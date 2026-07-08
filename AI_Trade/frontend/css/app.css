@@ -57,6 +57,20 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .btn.danger { border-color: var(--red); color: #fca5a5; }
 
 .fields label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+.preset-block { margin-bottom: 10px; }
+.preset-label {
+  display: block; font-size: 10px; color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.04em; margin-bottom: 6px;
+}
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  background: #1a2330; border: 1px solid var(--border); color: var(--muted);
+  padding: 5px 10px; border-radius: 999px; font-size: 11px; cursor: pointer;
+  line-height: 1.2; text-align: left;
+}
+.chip:hover { border-color: #475569; color: var(--text); }
+.chip.active { border-color: var(--accent); color: #93c5fd; background: #1a2e4a; }
+.note-chips .chip { border-radius: 8px; max-width: 100%; }
 .fields input {
   width: 100%; margin-top: 4px; background: #0b0f14; border: 1px solid var(--border);
   color: var(--text); padding: 8px; border-radius: 6px; font-family: "JetBrains Mono", monospace; font-size: 12px;
@@ -68,6 +82,11 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   font-size: 12px; cursor: pointer;
 }
 .setup-item:hover { border-color: #475569; }
+.setup-item.selected {
+  border-color: var(--accent);
+  background: #152238;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35);
+}
 .setup-item.long { border-left: 3px solid var(--green); }
 .setup-item.short { border-left: 3px solid var(--red); }
 .setup-meta { color: var(--muted); font-size: 11px; }

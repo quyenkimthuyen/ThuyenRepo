@@ -16,6 +16,7 @@ export const getConfig = () => api('/api/config');
 export const getCandles = (period) => api(`/api/candles?period=${period}&with_indicators=true`);
 export const getSetups = () => api('/api/setups');
 export const saveSetup = (body) => api('/api/setups', { method: 'POST', body: JSON.stringify(body) });
+export const updateSetup = (id, body) => api(`/api/setups/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
 export const deleteSetup = (id) => api(`/api/setups/${id}`, { method: 'DELETE' });
 export const analyze = () => api('/api/analyze', { method: 'POST' });
 export const backtest = (period) => api(`/api/backtest?period=${period}`, { method: 'POST' });

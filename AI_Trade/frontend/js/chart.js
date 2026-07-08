@@ -35,6 +35,7 @@ export class TradeChart {
   #showRsi = true;
   #dragState = null;
   #suppressClick = false;
+  #priceFocus = null;
   #boundPointerDown;
   #boundPointerMove;
   #boundPointerUp;
@@ -213,8 +214,52 @@ export class TradeChart {
     this.#ema50Series.setData(this.#showEma50 ? indicators?.ema50 ?? [] : []);
     this.#ema200Series.setData(this.#showEma200 ? indicators?.ema200 ?? [] : []);
     this.#rsiSeries.setData(this.#showRsi ? indicators?.rsi14 ?? [] : []);
-    this.#mainChart.timeScale().fitContent();
-    this.#rsiChart.timeScale().fitContent();
+    if (!this.#priceFocus) {
+      this.#mainChart.timeScale().fitContent();
+      this.#rsiChart.timeScale().fitContent();
+    }
+  }
+
+  #applyPriceFocus() {
+    if (!this.#priceFocus) {
+      this.#candleSeries.applyOptions({ autoscaleInfoProvider: undefined });
+      this.#mainChart.priceScale('right').applyOptions({ autoScale: true });
+      return;
+    }
+    const { min, max } = this.#priceFocus;
+    this.#candleSeries.applyOptions({
+      autoscaleInfoProvider: () => ({
+        priceRange: { minValue: min, maxValue: max },
+      }),
+    });
+    this.#mainChart.priceScale('right').applyOptions({ autoScale: true });
+  }
+
+  focusSetup({ time, entry, sl, tp }) {
+    const prices = [entry, sl, tp].filter((p) => p != null && !Number.isNaN(Number(p))).map(Number);
+    if (prices.length) {
+      const minP = Math.min(...prices);
+      const maxP = Math.max(...prices);
+      const pad = Math.max((maxP - minP) * 0.35, 0.0012);
+      this.#priceFocus = { min: minP - pad, max: maxP + pad };
+      this.#applyPriceFocus();
+    }
+
+    if (time != null) {
+      this.#mainChart.timeScale().setVisibleRange({
+        from: time - 3600 * 24 * 4,
+        to: time + 3600 * 24 * 14,
+      });
+      this.#rsiChart.timeScale().setVisibleRange({
+        from: time - 3600 * 24 * 4,
+        to: time + 3600 * 24 * 14,
+      });
+    }
+  }
+
+  clearPriceFocus() {
+    this.#priceFocus = null;
+    this.#applyPriceFocus();
   }
 
   setOverlay({ entry, sl, tp, direction }) {
@@ -248,6 +293,10 @@ export class TradeChart {
     this.#mainEl.classList.remove('can-drag-level', 'dragging-level');
   }
 
+  clearFocus() {
+    this.clearPriceFocus();
+  }
+
   toggleEma50(on) {
     this.#showEma50 = on;
     this.#ema50Series.applyOptions({ visible: on });
@@ -265,10 +314,6 @@ export class TradeChart {
   }
 
   scrollToTime(unixSec) {
-    this.#mainChart.timeScale().scrollToPosition(-20, false);
-    this.#mainChart.timeScale().setVisibleRange({
-      from: unixSec - 3600 * 24 * 14,
-      to: unixSec + 3600 * 24 * 7,
-    });
+    this.focusSetup({ time: unixSec, entry: null, sl: null, tp: null });
   }
 }
