@@ -8,4 +8,4 @@ if [[ ! -f data/eurusd_h1.csv ]]; then
 fi
 
 echo "Starting AI Trade Lab at http://127.0.0.1:8766"
-exec python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8766 --reload
+exec python3 -m uvicorn backend.main:app --host 0.0.0.0 --port 8766 --reload

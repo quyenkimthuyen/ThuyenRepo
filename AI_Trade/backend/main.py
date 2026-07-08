@@ -28,6 +28,15 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def disable_js_cache(request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/static/") and path.endswith((".js", ".css", ".mjs")):
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+    return response
+
+
 class SetupIn(BaseModel):
     direction: str
     entry_time: str

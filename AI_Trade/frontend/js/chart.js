@@ -49,6 +49,7 @@ export class TradeChart {
   #boundPointerMove;
   #boundPointerUp;
   #resizeObserver = null;
+  #mounted = false;
 
   constructor(mainEl, rsiEl, { onClick, onLevelDrag } = {}) {
     this.#wrapEl = mainEl.parentElement;
@@ -61,6 +62,10 @@ export class TradeChart {
   }
 
   mount() {
+    if (this.#mounted) return;
+    if (!this.#mainEl || !this.#rsiEl) {
+      throw new Error('Chart container not found (#chartMain / #chartRsi)');
+    }
     if (!this.#wrapEl) this.#wrapEl = this.#mainEl;
 
     this.#dragLayer = document.createElement('div');
@@ -113,7 +118,12 @@ export class TradeChart {
     const observeEl = this.#wrapEl?.classList?.contains('chart-wrap') ? this.#wrapEl : this.#mainEl;
     this.#resizeObserver = new ResizeObserver(() => this.#resize());
     this.#resizeObserver.observe(observeEl);
+    this.#mounted = true;
     requestAnimationFrame(() => this.#resize());
+  }
+
+  isMounted() {
+    return this.#mounted;
   }
 
   #mainSize() {

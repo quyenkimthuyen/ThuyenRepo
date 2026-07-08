@@ -6,15 +6,30 @@
   <title>AI Trade Lab — EURUSD 1H</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/app.css?v=3">
 </head>
 <body>
+  <noscript>
+    <div style="padding:20px;color:#fecaca;background:#3f1212">Cần bật JavaScript để dùng AI Trade Lab.</div>
+  </noscript>
+  <div id="fileProtocolWarn" class="hidden" style="padding:16px;background:#3f1212;color:#fecaca;font-size:14px;line-height:1.5">
+    <strong>Không mở file HTML trực tiếp.</strong>
+    Chạy <code style="font-family:monospace">cd AI_Trade && ./run.sh</code> rồi mở
+    <a href="http://127.0.0.1:8766" style="color:#93c5fd">http://127.0.0.1:8766</a>
+  </div>
+  <script>
+    if (location.protocol === 'file:') {
+      document.getElementById('fileProtocolWarn')?.classList.remove('hidden');
+      document.getElementById('app')?.classList.add('hidden');
+    }
+  </script>
   <div id="app">
     <header class="topbar">
       <div class="brand">
         <h1>AI Trade Lab</h1>
         <span class="subtitle">EURUSD · 1H · Label → Analyze → Backtest</span>
       </div>
+      <span id="appLoading" class="app-loading hidden">Đang tải dữ liệu…</span>
     </header>
 
     <main class="layout" id="layout">
@@ -180,6 +195,14 @@
     </main>
   </div>
 
-  <script type="module" src="/static/js/app.js"></script>
+  <script type="module">
+    import('/static/js/app.js?v=3').catch((err) => {
+      console.error('Module load failed:', err);
+      const box = document.createElement('div');
+      box.style.cssText = 'padding:20px;color:#fecaca;background:#3f1212;font-size:14px;line-height:1.5';
+      box.innerHTML = '<strong>Không tải được app.</strong> Chạy <code>cd AI_Trade && ./run.sh</code> rồi mở <a href="http://127.0.0.1:8766" style="color:#93c5fd">http://127.0.0.1:8766</a> và Ctrl+Shift+R.<br><small>' + String(err.message || err) + '</small>';
+      document.body.prepend(box);
+    });
+  </script>
 </body>
 </html>

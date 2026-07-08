@@ -532,7 +532,9 @@ async function switchPeriod(period, { syncSidebar = true } = {}) {
   state.period = period;
   state.focusedTradeKey = null;
   state.focusedSetupId = null;
-  els.periodBadge.textContent = state.config.periods[period].label;
+  if (state.config?.periods?.[period]) {
+    els.periodBadge.textContent = state.config.periods[period].label;
+  }
   renderPeriodTabs();
   if (syncSidebar && state.sidebarTab !== 'analyze') {
     const tab = PERIOD_SIDEBAR[period];
@@ -827,7 +829,7 @@ function showBootError(message) {
   `;
   banner.querySelector('#btnBootRetry').onclick = () => {
     banner.remove();
-    boot();
+    loadAppData();
   };
 }
 
@@ -835,29 +837,79 @@ function hideBootError() {
   document.getElementById('bootError')?.remove();
 }
 
-async function boot() {
-  bindUI();
-  chart.mount();
-  initSidebarResize({
-    layoutEl: document.getElementById('layout'),
-    sidebarEl: document.getElementById('sidebar'),
-    resizerEl: document.getElementById('sidebarResizer'),
-    onResize: () => chart.resize?.(),
-  });
-
-  state.config = await getConfig();
-  await loadTagPresets();
-  renderTagSelect();
-  renderPeriodTabs();
-  setMode('idle');
-  await loadChart();
-  await refreshSetups();
-  refreshChartAnnotations();
-  requestAnimationFrame(() => chart.resize?.());
-  hideBootError();
+function setLoading(on) {
+  const el = document.getElementById('appLoading');
+  if (el) el.classList.toggle('hidden', !on);
 }
 
-boot().catch((err) => {
-  console.error('Boot failed:', err);
-  showBootError(err.message || 'Lỗi không xác định');
+async function fetchWithRetry(fn, { retries = 3, delayMs = 800 } = {}) {
+  let lastErr;
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (i < retries - 1) await new Promise((r) => setTimeout(r, delayMs * (i + 1)));
+    }
+  }
+  throw lastErr;
+}
+
+let uiReady = false;
+let layoutReady = false;
+
+function initShell() {
+  if (uiReady) return;
+  bindUI();
+  if (!chart.isMounted()) {
+    chart.mount();
+  }
+  if (!layoutReady) {
+    initSidebarResize({
+      layoutEl: document.getElementById('layout'),
+      sidebarEl: document.getElementById('sidebar'),
+      resizerEl: document.getElementById('sidebarResizer'),
+      onResize: () => chart.resize?.(),
+    });
+    layoutReady = true;
+  }
+  uiReady = true;
+}
+
+async function loadAppData() {
+  setLoading(true);
+  try {
+    state.config = await fetchWithRetry(() => getConfig());
+    await loadTagPresets();
+    renderTagSelect();
+    renderPeriodTabs();
+    if (state.config?.periods?.[state.period]) {
+      els.periodBadge.textContent = state.config.periods[state.period].label;
+    }
+    setMode('idle');
+    await fetchWithRetry(() => loadChart());
+    await fetchWithRetry(() => refreshSetups());
+    refreshChartAnnotations();
+    requestAnimationFrame(() => chart.resize?.());
+    hideBootError();
+  } catch (err) {
+    console.error('Load failed:', err);
+    showBootError(err.message || 'Không kết nối được server');
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function boot() {
+  initShell();
+  await loadAppData();
+}
+
+window.addEventListener('error', (event) => {
+  console.error('Uncaught error:', event.error || event.message);
 });
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled rejection:', event.reason);
+});
+
+boot();
