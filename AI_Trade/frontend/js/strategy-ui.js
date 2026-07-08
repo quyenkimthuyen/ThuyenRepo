@@ -303,7 +303,8 @@ export function renderBacktestView(data, { title, subtitle }) {
   const m = data.metrics || {};
   const passed = m.pass === true;
   const total = data.trade_count_total ?? m.trades ?? 0;
-  const shown = data.trades?.length ?? 0;
+  const previewTrades = (data.trades || []).slice(-50);
+  const shown = previewTrades.length;
 
   return `
     ${banner(
@@ -344,7 +345,7 @@ export function renderBacktestView(data, { title, subtitle }) {
               <th>PnL</th>
             </tr>
           </thead>
-          <tbody>${renderTradeRows(data.trades)}</tbody>
+          <tbody>${renderTradeRows(previewTrades)}</tbody>
         </table>
       </div>
     </section>

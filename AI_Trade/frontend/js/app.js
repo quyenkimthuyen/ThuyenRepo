@@ -27,6 +27,10 @@ const state = {
   editingId: null,
   setups: [],
   config: null,
+  sidebarTab: 'label',
+  btCache: { validation: null, test: null },
+  focusedTradeKey: null,
+  focusedSetupId: null,
 };
 
 const els = {
@@ -53,6 +57,10 @@ const els = {
   analyzeResults: document.getElementById('analyzeResults'),
   btValResults: document.getElementById('btValResults'),
   btTestResults: document.getElementById('btTestResults'),
+  btValTradeList: document.getElementById('btValTradeList'),
+  btTestTradeList: document.getElementById('btTestTradeList'),
+  btValCount: document.getElementById('btValCount'),
+  btTestCount: document.getElementById('btTestCount'),
   sidebarTabs: document.querySelectorAll('.sidebar-tab'),
   sidebarViews: {
     label: document.getElementById('viewLabel'),
@@ -80,8 +88,53 @@ function isoFromUnix(sec) {
   return new Date(sec * 1000).toISOString();
 }
 
+const SIDEBAR_PERIOD = {
+  label: 'train',
+  analyze: 'train',
+  validation: 'validation',
+  test: 'test',
+};
+
+const PERIOD_SIDEBAR = {
+  train: 'label',
+  validation: 'validation',
+  test: 'test',
+};
+
+function trainSetups() {
+  return state.setups.filter((s) => (s.period || 'train') === 'train');
+}
+
+function tradeKey(trade) {
+  return `${trade.entry_time}|${trade.direction}|${trade.entry}`;
+}
+
+function refreshChartAnnotations() {
+  if (state.mode !== 'idle') return;
+
+  if (state.period === 'train') {
+    if (state.focusedSetupId) return;
+    chart.showSetupMarkers(trainSetups());
+    return;
+  }
+
+  if (state.period === 'validation' || state.period === 'test') {
+    if (state.focusedTradeKey) return;
+    const trades = state.btCache[state.period]?.trades || [];
+    chart.showTradeMarkers(trades);
+  }
+}
+
 function isTrainPeriod() {
   return state.period === 'train';
+}
+
+function clearChartFocus() {
+  state.focusedTradeKey = null;
+  state.focusedSetupId = null;
+  chart.clearOverlay();
+  chart.clearFocus();
+  refreshChartAnnotations();
 }
 
 function parseTagsFromField() {
@@ -188,6 +241,24 @@ function updateChartHint() {
     els.chartOverlayHint.classList.remove('hidden');
     return;
   }
+  if (state.focusedSetupId || state.focusedTradeKey) {
+    els.chartOverlayHint.textContent = 'Click setup/lệnh khác trong danh sách — hoặc scroll chart để xem tất cả marker';
+    els.chartOverlayHint.classList.remove('hidden');
+    return;
+  }
+  if (state.period === 'validation' || state.period === 'test') {
+    const n = state.btCache[state.period]?.trades?.length || 0;
+    if (n > 0) {
+      els.chartOverlayHint.textContent = `${n} lệnh backtest trên chart — chọn lệnh trong danh sách bên trái`;
+      els.chartOverlayHint.classList.remove('hidden');
+      return;
+    }
+  }
+  if (state.period === 'train' && trainSetups().length > 0 && state.mode === 'idle') {
+    els.chartOverlayHint.textContent = `${trainSetups().length} setup trên chart — click xem · double-click sửa`;
+    els.chartOverlayHint.classList.remove('hidden');
+    return;
+  }
   els.chartOverlayHint.classList.add('hidden');
 }
 
@@ -225,7 +296,7 @@ function drawOverlayOnly() {
   if (chart.hasOverlay()) {
     chart.updateLevelPrices(payload);
   } else {
-    chart.setOverlay(payload);
+    chart.setOverlay({ ...payload, interactive: true });
   }
 }
 
@@ -233,7 +304,7 @@ function focusChartOnSetup() {
   const payload = overlayPayload();
   if (!payload) return;
   chart.focusSetup(payload);
-  chart.setOverlay(payload);
+  chart.setOverlay({ ...payload, interactive: true });
 }
 
 function syncFields({ focus = false } = {}) {
@@ -255,6 +326,8 @@ function clearDraft() {
   state.draft = { entry: null, sl: null, tp: null, time: null };
   state.editingId = null;
   state.step = 'entry';
+  state.focusedSetupId = null;
+  state.focusedTradeKey = null;
   els.fieldTags.value = '';
   els.fieldNote.value = '';
   syncTagChips();
@@ -267,9 +340,11 @@ function setMode(mode) {
   if (mode === 'idle') {
     clearDraft();
     els.btnSave.disabled = true;
+    refreshChartAnnotations();
   }
   updateModeUI();
   renderSetups();
+  renderBtTradeLists();
 }
 
 async function ensureTrainPeriod() {
@@ -369,6 +444,7 @@ function handleChartClick({ time, candle, price }) {
 
 async function startNewSetup() {
   await ensureTrainPeriod();
+  switchSidebarTab('label', { syncPeriod: false });
   clearDraft();
   state.mode = 'new';
   state.step = 'entry';
@@ -379,7 +455,10 @@ async function startNewSetup() {
 
 async function startEditSetup(setup) {
   await ensureTrainPeriod();
+  switchSidebarTab('label', { syncPeriod: false });
 
+  state.focusedTradeKey = null;
+  state.focusedSetupId = setup.id;
   state.mode = 'edit';
   state.editingId = setup.id;
   state.direction = setup.direction;
@@ -415,11 +494,17 @@ function renderPeriodTabs() {
   }
 }
 
-async function switchPeriod(period) {
+async function switchPeriod(period, { syncSidebar = true } = {}) {
   if (state.mode !== 'idle') cancelEditor();
   state.period = period;
+  state.focusedTradeKey = null;
+  state.focusedSetupId = null;
   els.periodBadge.textContent = state.config.periods[period].label;
   renderPeriodTabs();
+  if (syncSidebar && state.sidebarTab !== 'analyze') {
+    const tab = PERIOD_SIDEBAR[period];
+    if (tab) setSidebarTabUI(tab);
+  }
   updateModeUI();
   await loadChart();
 }
@@ -429,24 +514,27 @@ async function loadChart() {
   chart.setData(data);
   if (state.mode !== 'idle' && state.draft.time) {
     drawOverlayOnly();
+  } else {
+    refreshChartAnnotations();
   }
 }
 
 function renderSetups() {
-  const trainSetups = state.setups.filter((s) => (s.period || 'train') === 'train');
-  els.setupCount.textContent = String(trainSetups.length);
+  const items = trainSetups();
+  els.setupCount.textContent = String(items.length);
   els.setupList.innerHTML = '';
 
-  if (!trainSetups.length) {
+  if (!items.length) {
     els.setupList.innerHTML =
       '<li class="hint" style="padding:8px">Chưa có setup. Bấm 「Setup mới」 để bắt đầu.</li>';
     return;
   }
 
-  const sorted = [...trainSetups].sort((a, b) => a.entry_time.localeCompare(b.entry_time));
+  const sorted = [...items].sort((a, b) => a.entry_time.localeCompare(b.entry_time));
   for (const s of sorted) {
     const li = document.createElement('li');
-    li.className = `setup-item ${s.direction}${s.id === state.editingId ? ' selected' : ''}`;
+    const selected = s.id === state.editingId || s.id === state.focusedSetupId;
+    li.className = `setup-item ${s.direction}${selected ? ' selected' : ''}`;
     const resClass = s.result === 'win' ? 'win' : s.result === 'loss' ? 'loss' : '';
     li.innerHTML = `
       <div class="setup-top">
@@ -456,15 +544,80 @@ function renderSetups() {
       </div>
       <div class="setup-meta">${s.entry_time?.slice(0, 16).replace('T', ' ')}${(s.tags || []).length ? '<br>' + s.tags.join(' · ') : ''}</div>
     `;
-    li.onclick = () => startEditSetup(s);
+    li.onclick = () => viewSetupOnChart(s);
+    li.ondblclick = (e) => {
+      e.preventDefault();
+      startEditSetup(s);
+    };
     els.setupList.appendChild(li);
   }
+}
+
+function viewSetupOnChart(setup) {
+  state.focusedSetupId = setup.id;
+  state.focusedTradeKey = null;
+  chart.viewSetup(setup, { interactive: false });
+  renderSetups();
+  updateChartHint();
+}
+
+function viewTradeOnChart(period, trade) {
+  if (state.period !== period) return;
+  state.focusedTradeKey = tradeKey(trade);
+  state.focusedSetupId = null;
+  chart.viewTrade(trade);
+  renderBtTradeLists();
+  els.chartOverlayHint.textContent = `Lệnh ${trade.direction.toUpperCase()} — ${trade.result.toUpperCase()} · ${trade.pnl_pips} pips`;
+  els.chartOverlayHint.classList.remove('hidden');
+}
+
+function renderBtTradeList(period) {
+  const isVal = period === 'validation';
+  const listEl = isVal ? els.btValTradeList : els.btTestTradeList;
+  const countEl = isVal ? els.btValCount : els.btTestCount;
+  const data = state.btCache[period];
+  const trades = data?.trades || [];
+
+  countEl.textContent = String(trades.length);
+  listEl.innerHTML = '';
+
+  if (!trades.length) {
+    listEl.innerHTML =
+      '<li class="hint" style="padding:8px">Chưa có lệnh. Chạy backtest để xem lệnh trên chart.</li>';
+    return;
+  }
+
+  const sorted = [...trades].sort((a, b) => a.entry_time.localeCompare(b.entry_time));
+  for (const t of sorted) {
+    const li = document.createElement('li');
+    const key = tradeKey(t);
+    const win = t.result === 'win';
+    li.className = `setup-item ${t.direction}${state.focusedTradeKey === key ? ' selected' : ''}`;
+    li.innerHTML = `
+      <div class="setup-top">
+        <span class="setup-dir">${t.direction.toUpperCase()}</span>
+        <span class="setup-result ${win ? 'win' : 'loss'}">${t.result.toUpperCase()}</span>
+        <span style="margin-left:auto;font-size:11px;color:${win ? '#86efac' : '#fca5a5'}">${t.pnl_pips} pips</span>
+      </div>
+      <div class="setup-meta">${t.entry_time?.slice(0, 16).replace('T', ' ')} · Entry ${t.entry}</div>
+    `;
+    li.onclick = () => viewTradeOnChart(period, t);
+    listEl.appendChild(li);
+  }
+}
+
+function renderBtTradeLists() {
+  renderBtTradeList('validation');
+  renderBtTradeList('test');
 }
 
 async function refreshSetups() {
   const { setups } = await getSetups();
   state.setups = setups;
   renderSetups();
+  if (state.mode === 'idle' && state.period === 'train' && !state.focusedSetupId) {
+    refreshChartAnnotations();
+  }
 }
 
 function buildSetupBody() {
@@ -498,7 +651,8 @@ async function onDelete() {
   setMode('idle');
 }
 
-function switchSidebarTab(tabId) {
+function setSidebarTabUI(tabId) {
+  state.sidebarTab = tabId;
   els.sidebarTabs.forEach((btn) => {
     const active = btn.dataset.sidebar === tabId;
     btn.classList.toggle('active', active);
@@ -507,6 +661,23 @@ function switchSidebarTab(tabId) {
   for (const [key, view] of Object.entries(els.sidebarViews)) {
     view.classList.toggle('hidden', key !== tabId);
     view.classList.toggle('active', key === tabId);
+  }
+}
+
+function switchSidebarTab(tabId, { syncPeriod = true } = {}) {
+  if (state.mode !== 'idle' && tabId !== 'label') {
+    cancelEditor();
+  }
+  setSidebarTabUI(tabId);
+  if (!syncPeriod) {
+    refreshChartAnnotations();
+    return;
+  }
+  const period = SIDEBAR_PERIOD[tabId];
+  if (period && state.period !== period) {
+    switchPeriod(period, { syncSidebar: false });
+  } else {
+    refreshChartAnnotations();
   }
 }
 
@@ -527,12 +698,18 @@ async function runBt(period) {
   outEl.innerHTML = renderLoading(`Đang chạy backtest ${label}...`);
   try {
     const data = await backtest(period);
+    state.btCache[period] = data;
     outEl.innerHTML = renderBacktestView(data, {
       title: isVal ? 'Backtest 2023' : 'Backtest 2024–26',
       subtitle: isVal
         ? 'Dùng để tinh chỉnh chiến lược trước khi test out-of-sample.'
         : 'Kết quả out-of-sample — không nên optimize thêm sau bước này.',
     });
+    state.focusedTradeKey = null;
+    renderBtTradeLists();
+    if (state.period === period) {
+      refreshChartAnnotations();
+    }
   } catch (e) {
     outEl.innerHTML = renderError(e.message);
   }
@@ -553,7 +730,7 @@ function bindUI() {
       syncFields();
     } else if (state.mode === 'edit') {
       const payload = overlayPayload();
-      if (payload) chart.setOverlay(payload);
+      if (payload) chart.setOverlay({ ...payload, interactive: true });
     }
   };
   document.getElementById('btnShort').onclick = () => {
@@ -565,7 +742,7 @@ function bindUI() {
       syncFields();
     } else if (state.mode === 'edit') {
       const payload = overlayPayload();
-      if (payload) chart.setOverlay(payload);
+      if (payload) chart.setOverlay({ ...payload, interactive: true });
     }
   };
 
@@ -605,6 +782,7 @@ async function boot() {
   setMode('idle');
   await loadChart();
   await refreshSetups();
+  refreshChartAnnotations();
 }
 
 boot().catch((err) => {

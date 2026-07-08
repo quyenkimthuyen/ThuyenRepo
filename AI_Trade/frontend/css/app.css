@@ -100,8 +100,30 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .panel-strategy h2 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+
+.trade-list-section {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.trade-list-section .setup-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.trade-list {
+  flex: 1;
+  min-height: 100px;
+  max-height: 220px;
+}
 
 .strategy-intro {
   margin: 0 0 10px;

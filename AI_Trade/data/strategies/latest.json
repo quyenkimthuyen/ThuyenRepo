@@ -1,29 +1,33 @@
 {
   "name": "learned_from_labels",
-  "source_setups": 7,
-  "win_rate_train": 0.571,
-  "avg_rr_train": 2.06,
+  "source_setups": 8,
+  "win_rate_train": 0.625,
+  "avg_rr_train": 2.05,
   "rules": {
     "long": {
       "enabled": true,
-      "rsi_min": 45.2,
-      "rsi_max": 59.8,
+      "rsi_min": 45.4,
+      "rsi_max": 57.5,
       "exclude": [
         {
           "feature": "dist_ema50_abs",
           "op": ">",
-          "value": 94.8,
+          "value": 99.6,
           "reason": "loss th\u01b0\u1eddng xa EMA50 h\u01a1n win"
         },
         {
           "feature": "rsi14",
           "op": "<",
-          "value": 49.2,
+          "value": 47.2,
           "reason": "RSI qu\u00e1 th\u1ea5p g\u1eafn v\u1edbi loss"
         }
       ],
+      "trend_up": false,
       "close_above_ema200": false,
-      "max_dist_ema50_pips": 38.8
+      "max_dist_ema50_pips": 50.8,
+      "preferred_tags": [
+        "pullback"
+      ]
     },
     "short": {
       "enabled": true,
@@ -39,14 +43,14 @@
   "risk": {
     "mode": "from_labels",
     "default": {
-      "sl_atr_mult": 1.587,
+      "sl_atr_mult": 1.656,
       "target_rr": 2.0,
-      "tp_atr_mult": 3.175
+      "tp_atr_mult": 3.311
     },
     "long": {
-      "sl_atr_mult": 1.724,
+      "sl_atr_mult": 1.788,
       "target_rr": 2.0,
-      "tp_atr_mult": 3.448
+      "tp_atr_mult": 3.576
     },
     "short": {
       "sl_atr_mult": 1.583,
@@ -58,10 +62,10 @@
     "tags": [
       {
         "tag": "pullback",
-        "win": 1,
+        "win": 2,
         "loss": 1,
-        "total": 2,
-        "win_rate": 0.5
+        "total": 3,
+        "win_rate": 0.667
       },
       {
         "tag": "trend",
@@ -92,8 +96,10 @@
         "win_rate": 0.0
       }
     ],
-    "preferred_tags": [],
+    "preferred_tags": [
+      "pullback"
+    ],
     "avoid_tags": []
   },
-  "tree_summary": "|--- close_above_ema200 <= 0.50\n|   |--- dist_ema50_pips <= -26.40\n|   |   |--- class: 0\n|   |--- dist_ema50_pips >  -26.40\n|   |   |--- class: 1\n|--- close_above_ema200 >  0.50\n|   |--- class: 0\n"
+  "tree_summary": "|--- close_above_ema200 <= 0.50\n|   |--- rsi14 <= 41.99\n|   |   |--- class: 0\n|   |--- rsi14 >  41.99\n|   |   |--- class: 1\n|--- close_above_ema200 >  0.50\n|   |--- class: 0\n"
 }

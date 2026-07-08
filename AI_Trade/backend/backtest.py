@@ -234,6 +234,6 @@ def run_backtest(period: str = "validation") -> dict[str, Any]:
         "strategy": strategy.get("name"),
         "risk": strategy.get("risk"),
         "metrics": metrics,
-        "trades": trades[-50:],
+        "trades": trades,
         "trade_count_total": len(trades),
     }

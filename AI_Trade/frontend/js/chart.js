@@ -36,6 +36,7 @@ export class TradeChart {
   #overlayLines = [];
   #overlayStartTime = null;
   #overlayDirection = 'long';
+  #overlayInteractive = true;
   #onClick;
   #onLevelDrag;
   #showEma50 = true;
@@ -248,6 +249,7 @@ export class TradeChart {
 
   #refreshOverlayGeometry() {
     if (!this.#overlayStartTime || !this.#overlayLines.length) return;
+    if (!this.#overlayInteractive) return;
     const startX = this.#mainChart.timeScale().timeToCoordinate(this.#overlayStartTime);
     const endX = this.#mainEl.clientWidth - 8;
     if (startX == null || Number.isNaN(startX)) return;
@@ -410,12 +412,13 @@ export class TradeChart {
     return this.#overlayLines.length > 0;
   }
 
-  setOverlay({ time, entry, sl, tp, direction }) {
+  setOverlay({ time, entry, sl, tp, direction, interactive = true }) {
     this.clearOverlay();
 
     const startTime = time != null ? this.#nearestCandle(time)?.time ?? time : null;
     this.#overlayStartTime = startTime;
     this.#overlayDirection = direction || 'long';
+    this.#overlayInteractive = interactive;
 
     const levels = [
       { role: 'entry', price: entry },
@@ -429,12 +432,79 @@ export class TradeChart {
       const color = LEVEL_STYLE[lv.role].color;
       const series = this.#createLevelSeries(color);
       this.#setLevelLineData(series, startTime, price);
-      const row = this.#createLevelRow(lv.role, price);
+      const row = interactive ? this.#createLevelRow(lv.role, price) : null;
       this.#overlayLines.push({ role: lv.role, series, price, row });
     }
 
     this.#setEntryMarker();
     requestAnimationFrame(() => this.#refreshOverlayGeometry());
+  }
+
+  showSetupMarkers(setups) {
+    if (!setups?.length) {
+      this.#candleSeries.setMarkers([]);
+      return;
+    }
+    const markers = setups.map((s) => {
+      const time = Math.floor(new Date(s.entry_time).getTime() / 1000);
+      const isLong = s.direction === 'long';
+      const win = s.result === 'win';
+      const loss = s.result === 'loss';
+      return {
+        time: this.#nearestCandle(time)?.time ?? time,
+        position: isLong ? 'belowBar' : 'aboveBar',
+        color: win ? COLORS.up : loss ? COLORS.down : COLORS.entry,
+        shape: isLong ? 'arrowUp' : 'arrowDown',
+        text: (s.result || 'setup').slice(0, 3).toUpperCase(),
+      };
+    });
+    this.#candleSeries.setMarkers(markers);
+  }
+
+  showTradeMarkers(trades) {
+    if (!trades?.length) {
+      this.#candleSeries.setMarkers([]);
+      return;
+    }
+    const markers = trades.map((t) => {
+      const time = Math.floor(new Date(t.entry_time).getTime() / 1000);
+      const isLong = t.direction === 'long';
+      const win = t.result === 'win';
+      return {
+        time: this.#nearestCandle(time)?.time ?? time,
+        position: isLong ? 'belowBar' : 'aboveBar',
+        color: win ? COLORS.up : COLORS.down,
+        shape: isLong ? 'arrowUp' : 'arrowDown',
+        text: win ? 'W' : 'L',
+      };
+    });
+    this.#candleSeries.setMarkers(markers);
+  }
+
+  viewTrade(trade) {
+    const time = Math.floor(new Date(trade.entry_time).getTime() / 1000);
+    const payload = {
+      time,
+      entry: trade.entry,
+      sl: trade.sl,
+      tp: trade.tp,
+      direction: trade.direction,
+    };
+    this.focusSetup(payload);
+    this.setOverlay({ ...payload, interactive: false });
+  }
+
+  viewSetup(setup, { interactive = false } = {}) {
+    const time = Math.floor(new Date(setup.entry_time).getTime() / 1000);
+    const payload = {
+      time,
+      entry: Number(setup.entry_price),
+      sl: Number(setup.stop_loss),
+      tp: Number(setup.take_profit),
+      direction: setup.direction,
+    };
+    this.focusSetup(payload);
+    this.setOverlay({ ...payload, interactive });
   }
 
   clearOverlay() {
