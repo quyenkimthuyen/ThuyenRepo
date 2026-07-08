@@ -20,84 +20,85 @@
 
     <main class="layout">
       <aside class="sidebar">
-        <!-- 1. Thư viện setup -->
-        <section class="panel panel-library">
+        <section class="panel panel-setups">
           <div class="panel-head">
-            <h2>Thư viện setup</h2>
+            <h2>Setups</h2>
             <span class="count-badge" id="setupCount">0</span>
           </div>
           <button type="button" class="btn primary block" id="btnNewSetup">＋ Setup mới</button>
-          <ul id="setupList" class="setup-list"></ul>
+
+          <div class="setup-editor" id="editorPanel">
+            <div class="mode-bar">
+              <span class="mode-pill" id="modePill" data-mode="idle">Xem chart</span>
+              <span class="rr-pill" id="rrPill">RR —</span>
+            </div>
+            <p class="hint" id="labelHint">Chọn setup bên dưới để sửa, hoặc bấm 「Setup mới」.</p>
+
+            <div id="idleBlock" class="editor-block">
+              <div class="idle-card">
+                <p>Đánh dấu setup trên năm <strong>Train 2022</strong> để AI học pattern.</p>
+                <button type="button" class="btn" id="btnNewFromIdle">Bắt đầu setup mới</button>
+              </div>
+            </div>
+
+            <div id="activeBlock" class="editor-block hidden">
+              <div class="direction-row">
+                <button type="button" class="btn dir-btn active" data-direction="long" id="btnLong">Long</button>
+                <button type="button" class="btn dir-btn" data-direction="short" id="btnShort">Short</button>
+              </div>
+
+              <div id="newSteps" class="step-track hidden">
+                <div class="step-item" data-step="entry"><span>1</span> Entry</div>
+                <div class="step-line"></div>
+                <div class="step-item" data-step="sl"><span>2</span> SL</div>
+                <div class="step-line"></div>
+                <div class="step-item" data-step="tp"><span>3</span> TP</div>
+              </div>
+
+              <div class="price-grid">
+                <label class="price-field entry-field">
+                  <span>Entry</span>
+                  <input id="fieldEntry" readonly>
+                </label>
+                <label class="price-field sl-field">
+                  <span>Stop Loss</span>
+                  <input id="fieldSL" type="number" step="0.00001">
+                </label>
+                <label class="price-field tp-field">
+                  <span>Take Profit</span>
+                  <input id="fieldTP" type="number" step="0.00001">
+                </label>
+              </div>
+              <label class="field-compact">Thời gian <input id="fieldTime" readonly></label>
+
+              <details class="meta-details" open>
+                <summary>Tags & ghi chú</summary>
+                <label>Tags <input id="fieldTags" placeholder="pullback, retest"></label>
+                <div class="preset-block">
+                  <span class="preset-label">Tags nhanh</span>
+                  <div id="tagPresets" class="chip-row"></div>
+                </div>
+                <label>Ghi chú <input id="fieldNote" placeholder="Mô tả setup..."></label>
+                <div class="preset-block">
+                  <span class="preset-label">Ghi chú mẫu</span>
+                  <div id="notePresets" class="chip-row note-chips"></div>
+                </div>
+              </details>
+
+              <div class="action-bar">
+                <button type="button" class="btn primary" id="btnSave" disabled>Lưu setup</button>
+                <button type="button" class="btn" id="btnCancel">Hủy</button>
+                <button type="button" class="btn danger hidden" id="btnDelete">Xóa</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="setup-list-section">
+            <div class="setup-list-head">Đã lưu</div>
+            <ul id="setupList" class="setup-list"></ul>
+          </div>
         </section>
 
-        <!-- 2. Trình chỉnh sửa -->
-        <section class="panel panel-editor" id="editorPanel">
-          <div class="mode-bar">
-            <span class="mode-pill" id="modePill" data-mode="idle">Xem chart</span>
-            <span class="rr-pill" id="rrPill">RR —</span>
-          </div>
-          <p class="hint" id="labelHint">Chọn setup trong thư viện hoặc tạo setup mới.</p>
-
-          <div id="idleBlock" class="editor-block">
-            <div class="idle-card">
-              <p>Đánh dấu setup trên năm <strong>Train 2022</strong> để AI học pattern.</p>
-              <button type="button" class="btn" id="btnNewFromIdle">Bắt đầu setup mới</button>
-            </div>
-          </div>
-
-          <div id="activeBlock" class="editor-block hidden">
-            <div class="direction-row">
-              <button type="button" class="btn dir-btn active" data-direction="long" id="btnLong">Long</button>
-              <button type="button" class="btn dir-btn" data-direction="short" id="btnShort">Short</button>
-            </div>
-
-            <div id="newSteps" class="step-track hidden">
-              <div class="step-item" data-step="entry"><span>1</span> Entry</div>
-              <div class="step-line"></div>
-              <div class="step-item" data-step="sl"><span>2</span> SL</div>
-              <div class="step-line"></div>
-              <div class="step-item" data-step="tp"><span>3</span> TP</div>
-            </div>
-
-            <div class="price-grid">
-              <label class="price-field entry-field">
-                <span>Entry</span>
-                <input id="fieldEntry" readonly>
-              </label>
-              <label class="price-field sl-field">
-                <span>Stop Loss</span>
-                <input id="fieldSL" type="number" step="0.00001">
-              </label>
-              <label class="price-field tp-field">
-                <span>Take Profit</span>
-                <input id="fieldTP" type="number" step="0.00001">
-              </label>
-            </div>
-            <label class="field-compact">Thời gian <input id="fieldTime" readonly></label>
-
-            <details class="meta-details" open>
-              <summary>Tags & ghi chú</summary>
-              <label>Tags <input id="fieldTags" placeholder="pullback, retest"></label>
-              <div class="preset-block">
-                <span class="preset-label">Tags nhanh</span>
-                <div id="tagPresets" class="chip-row"></div>
-              </div>
-              <label>Ghi chú <input id="fieldNote" placeholder="Mô tả setup..."></label>
-              <div class="preset-block">
-                <span class="preset-label">Ghi chú mẫu</span>
-                <div id="notePresets" class="chip-row note-chips"></div>
-              </div>
-            </details>
-
-            <div class="action-bar">
-              <button type="button" class="btn primary" id="btnSave" disabled>Lưu setup</button>
-              <button type="button" class="btn" id="btnCancel">Hủy</button>
-              <button type="button" class="btn danger hidden" id="btnDelete">Xóa</button>
-            </div>
-          </div>
-        </section>
-
-        <!-- 3. Analyze -->
         <section class="panel panel-analyze">
           <h2>Chiến lược & Backtest</h2>
           <div class="btn-row">

@@ -195,7 +195,7 @@ function updateModeUI() {
 
   if (mode === 'idle') {
     els.labelHint.textContent = isTrainPeriod()
-      ? 'Chọn setup trong thư viện để sửa, hoặc bấm 「Setup mới」.'
+      ? 'Chọn setup bên dưới để sửa, hoặc bấm 「Setup mới」.'
       : 'Tab này chỉ xem dữ liệu. Chuyển về Train 2022 để đánh dấu setup.';
   } else if (mode === 'new') {
     els.labelHint.textContent = 'Đặt Entry → SL → TP trên chart. Có thể kéo đường để tinh chỉnh.';
