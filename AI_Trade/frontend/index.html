@@ -15,18 +15,30 @@
         <h1>AI Trade Lab</h1>
         <span class="subtitle">EURUSD · 1H · Label → Analyze → Backtest</span>
       </div>
-      <div class="period-tabs" id="periodTabs"></div>
     </header>
 
-    <main class="layout">
-      <aside class="sidebar">
-        <nav class="sidebar-tabs" role="tablist">
-          <button type="button" class="sidebar-tab active" data-sidebar="label" role="tab" aria-selected="true">Label</button>
-          <button type="button" class="sidebar-tab" data-sidebar="analyze" role="tab">Analyze</button>
-          <button type="button" class="sidebar-tab" data-sidebar="validation" role="tab">BT 2023</button>
-          <button type="button" class="sidebar-tab" data-sidebar="test" role="tab">BT 2024–26</button>
+    <main class="layout" id="layout">
+      <aside class="sidebar" id="sidebar">
+        <nav class="sidebar-tabs" role="tablist" aria-label="Workflow">
+          <button type="button" class="sidebar-tab active" data-sidebar="label" role="tab" aria-selected="true">
+            <span class="tab-step">1</span>
+            <span class="tab-label">Label</span>
+          </button>
+          <button type="button" class="sidebar-tab" data-sidebar="analyze" role="tab">
+            <span class="tab-step">2</span>
+            <span class="tab-label">Analyze</span>
+          </button>
+          <button type="button" class="sidebar-tab" data-sidebar="validation" role="tab">
+            <span class="tab-step">3</span>
+            <span class="tab-label">BT 2023</span>
+          </button>
+          <button type="button" class="sidebar-tab" data-sidebar="test" role="tab">
+            <span class="tab-step">4</span>
+            <span class="tab-label">BT 2024–26</span>
+          </button>
         </nav>
 
+        <div class="sidebar-body">
         <div id="viewLabel" class="sidebar-view active" role="tabpanel">
           <section class="panel panel-setups">
             <div class="panel-head">
@@ -94,8 +106,11 @@
             </div>
 
             <div class="setup-list-section">
-              <div class="setup-list-head">Đã lưu</div>
-              <ul id="setupList" class="setup-list"></ul>
+              <div class="setup-list-head">
+                <span>Đã lưu</span>
+                <span class="list-hint">Click xem · double-click sửa</span>
+              </div>
+              <ul id="setupList" class="setup-list scroll-panel"></ul>
             </div>
           </section>
         </div>
@@ -105,7 +120,7 @@
             <h2>Phân tích chiến lược</h2>
             <p class="strategy-intro">Phân tích setup Train 2022 để sinh quy tắc vào lệnh + SL/TP theo ATR.</p>
             <button type="button" class="btn primary block" id="btnAnalyze">Chạy phân tích</button>
-            <div id="analyzeResults" class="strategy-results"></div>
+            <div id="analyzeResults" class="strategy-results scroll-panel"></div>
           </section>
         </div>
 
@@ -114,10 +129,13 @@
             <h2>Backtest 2023</h2>
             <p class="strategy-intro">Kiểm tra chiến lược trên năm 2023 — dùng để tinh chỉnh trước khi test.</p>
             <button type="button" class="btn primary block" id="btnBacktestVal">Chạy backtest 2023</button>
-            <div id="btValResults" class="strategy-results"></div>
+            <div id="btValResults" class="strategy-results scroll-panel strategy-results-compact"></div>
             <div class="trade-list-section">
-              <div class="setup-list-head">Lệnh trên chart <span class="count-badge" id="btValCount">0</span></div>
-              <ul id="btValTradeList" class="setup-list trade-list"></ul>
+              <div class="setup-list-head">
+                <span>Lệnh trên chart</span>
+                <span class="count-badge" id="btValCount">0</span>
+              </div>
+              <ul id="btValTradeList" class="setup-list trade-list scroll-panel"></ul>
             </div>
           </section>
         </div>
@@ -127,19 +145,29 @@
             <h2>Backtest 2024–26</h2>
             <p class="strategy-intro">Test out-of-sample 2024–2026 — không optimize thêm sau bước này.</p>
             <button type="button" class="btn primary block" id="btnBacktestTest">Chạy backtest 2024–26</button>
-            <div id="btTestResults" class="strategy-results"></div>
+            <div id="btTestResults" class="strategy-results scroll-panel strategy-results-compact"></div>
             <div class="trade-list-section">
-              <div class="setup-list-head">Lệnh trên chart <span class="count-badge" id="btTestCount">0</span></div>
-              <ul id="btTestTradeList" class="setup-list trade-list"></ul>
+              <div class="setup-list-head">
+                <span>Lệnh trên chart</span>
+                <span class="count-badge" id="btTestCount">0</span>
+              </div>
+              <ul id="btTestTradeList" class="setup-list trade-list scroll-panel"></ul>
             </div>
+          </section>
+        </div>
         </div>
       </aside>
 
+      <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-orientation="vertical" aria-label="Điều chỉnh độ rộng sidebar" tabindex="0"></div>
+
       <section class="chart-area">
         <div class="chart-toolbar">
-          <label><input type="checkbox" id="toggleEma50" checked> EMA 50</label>
-          <label><input type="checkbox" id="toggleEma200" checked> EMA 200</label>
-          <label><input type="checkbox" id="toggleRsi" checked> RSI 14</label>
+          <div class="chart-periods" id="periodTabs"></div>
+          <div class="chart-indicators">
+            <label><input type="checkbox" id="toggleEma50" checked> EMA 50</label>
+            <label><input type="checkbox" id="toggleEma200" checked> EMA 200</label>
+            <label><input type="checkbox" id="toggleRsi" checked> RSI 14</label>
+          </div>
           <span class="badge" id="periodBadge">Train 2022</span>
         </div>
         <div class="chart-wrap">

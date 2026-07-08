@@ -14,6 +14,7 @@ import {
   renderError,
   renderLoading,
 } from './strategy-ui.js';
+import { initSidebarResize } from './layout.js';
 import { TradeChart } from './chart.js';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
@@ -487,8 +488,11 @@ function renderPeriodTabs() {
   els.periodTabs.innerHTML = '';
   for (const [key, cfg] of Object.entries(state.config.periods)) {
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = `period-tab${key === state.period ? ' active' : ''}${key === 'test' ? ' test' : ''}`;
-    btn.textContent = cfg.label;
+    btn.title = cfg.label;
+    const short = { train: '2022', validation: '2023', test: '2024–26' }[key] || key;
+    btn.innerHTML = `<span class="period-year">${short}</span><span class="period-name">${key === 'train' ? 'Train' : key === 'validation' ? 'Val' : 'Test'}</span>`;
     btn.onclick = () => switchPeriod(key);
     els.periodTabs.appendChild(btn);
   }
@@ -776,6 +780,12 @@ function bindUI() {
 async function boot() {
   bindUI();
   chart.mount();
+  initSidebarResize({
+    layoutEl: document.getElementById('layout'),
+    sidebarEl: document.getElementById('sidebar'),
+    resizerEl: document.getElementById('sidebarResizer'),
+    onResize: () => chart.resize?.(),
+  });
   state.config = await getConfig();
   renderPeriodTabs();
   renderPresets();

@@ -545,4 +545,8 @@ export class TradeChart {
   scrollToTime(unixSec) {
     this.focusSetup({ time: unixSec, entry: null, sl: null, tp: null });
   }
+
+  resize() {
+    this.#resize();
+  }
 }
