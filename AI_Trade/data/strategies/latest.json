@@ -1,28 +1,29 @@
 {
   "name": "learned_from_labels",
-  "source_setups": 6,
-  "win_rate_train": 0.5,
-  "avg_rr_train": 2.0,
+  "source_setups": 7,
+  "win_rate_train": 0.571,
+  "avg_rr_train": 2.06,
   "rules": {
     "long": {
       "enabled": true,
-      "rsi_min": 52.1,
-      "rsi_max": 62.1,
+      "rsi_min": 45.2,
+      "rsi_max": 59.8,
       "exclude": [
         {
           "feature": "dist_ema50_abs",
           "op": ">",
-          "value": 90.4,
+          "value": 94.8,
           "reason": "loss th\u01b0\u1eddng xa EMA50 h\u01a1n win"
         },
         {
           "feature": "rsi14",
           "op": "<",
-          "value": 57.1,
+          "value": 49.2,
           "reason": "RSI qu\u00e1 th\u1ea5p g\u1eafn v\u1edbi loss"
         }
       ],
-      "max_dist_ema50_pips": 25.7
+      "close_above_ema200": false,
+      "max_dist_ema50_pips": 38.8
     },
     "short": {
       "enabled": true,
@@ -38,14 +39,14 @@
   "risk": {
     "mode": "from_labels",
     "default": {
-      "sl_atr_mult": 1.528,
+      "sl_atr_mult": 1.587,
       "target_rr": 2.0,
-      "tp_atr_mult": 3.057
+      "tp_atr_mult": 3.175
     },
     "long": {
-      "sl_atr_mult": 1.294,
+      "sl_atr_mult": 1.724,
       "target_rr": 2.0,
-      "tp_atr_mult": 2.589
+      "tp_atr_mult": 3.448
     },
     "short": {
       "sl_atr_mult": 1.583,
@@ -94,5 +95,5 @@
     "preferred_tags": [],
     "avoid_tags": []
   },
-  "tree_summary": "|--- close_above_ema200 <= 0.50\n|   |--- dist_ema50_pips <= 2.15\n|   |   |--- class: 0\n|   |--- dist_ema50_pips >  2.15\n|   |   |--- class: 1\n|--- close_above_ema200 >  0.50\n|   |--- class: 0\n"
+  "tree_summary": "|--- close_above_ema200 <= 0.50\n|   |--- dist_ema50_pips <= -26.40\n|   |   |--- class: 0\n|   |--- dist_ema50_pips >  -26.40\n|   |   |--- class: 1\n|--- close_above_ema200 >  0.50\n|   |--- class: 0\n"
 }
