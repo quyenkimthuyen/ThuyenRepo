@@ -14,6 +14,7 @@ import {
   renderError,
   renderLoading,
 } from './strategy-ui.js';
+import { TradeChart } from './chart.js';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -52,11 +53,12 @@ const els = {
   analyzeResults: document.getElementById('analyzeResults'),
   btValResults: document.getElementById('btValResults'),
   btTestResults: document.getElementById('btTestResults'),
-  strategyTabs: document.querySelectorAll('.strategy-tab'),
-  strategyPanels: {
-    analyze: document.getElementById('panelAnalyze'),
-    validation: document.getElementById('panelValidation'),
-    test: document.getElementById('panelTest'),
+  sidebarTabs: document.querySelectorAll('.sidebar-tab'),
+  sidebarViews: {
+    label: document.getElementById('viewLabel'),
+    analyze: document.getElementById('viewAnalyze'),
+    validation: document.getElementById('viewValidation'),
+    test: document.getElementById('viewTest'),
   },
 };
 
@@ -496,15 +498,15 @@ async function onDelete() {
   setMode('idle');
 }
 
-function switchStrategyTab(tabId) {
-  els.strategyTabs.forEach((btn) => {
-    const active = btn.dataset.tab === tabId;
+function switchSidebarTab(tabId) {
+  els.sidebarTabs.forEach((btn) => {
+    const active = btn.dataset.sidebar === tabId;
     btn.classList.toggle('active', active);
     btn.setAttribute('aria-selected', active ? 'true' : 'false');
   });
-  for (const [key, panel] of Object.entries(els.strategyPanels)) {
-    panel.classList.toggle('hidden', key !== tabId);
-    panel.classList.toggle('active', key === tabId);
+  for (const [key, view] of Object.entries(els.sidebarViews)) {
+    view.classList.toggle('hidden', key !== tabId);
+    view.classList.toggle('active', key === tabId);
   }
 }
 
@@ -585,19 +587,13 @@ function bindUI() {
   document.getElementById('toggleEma200').onchange = (e) => chart.toggleEma200(e.target.checked);
   document.getElementById('toggleRsi').onchange = (e) => chart.toggleRsi(e.target.checked);
 
-  els.strategyTabs.forEach((btn) => {
-    btn.onclick = () => switchStrategyTab(btn.dataset.tab);
+  els.sidebarTabs.forEach((btn) => {
+    btn.onclick = () => switchSidebarTab(btn.dataset.sidebar);
   });
 
   document.getElementById('btnAnalyze').onclick = () => runAnalyze();
-  document.getElementById('btnBacktestVal').onclick = () => {
-    switchStrategyTab('validation');
-    runBt('validation');
-  };
-  document.getElementById('btnBacktestTest').onclick = () => {
-    switchStrategyTab('test');
-    runBt('test');
-  };
+  document.getElementById('btnBacktestVal').onclick = () => runBt('validation');
+  document.getElementById('btnBacktestTest').onclick = () => runBt('test');
 }
 
 async function boot() {

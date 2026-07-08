@@ -20,106 +20,112 @@
 
     <main class="layout">
       <aside class="sidebar">
-        <section class="panel panel-setups">
-          <div class="panel-head">
-            <h2>Setups</h2>
-            <span class="count-badge" id="setupCount">0</span>
-          </div>
-          <button type="button" class="btn primary block" id="btnNewSetup">＋ Setup mới</button>
+        <nav class="sidebar-tabs" role="tablist">
+          <button type="button" class="sidebar-tab active" data-sidebar="label" role="tab" aria-selected="true">Label</button>
+          <button type="button" class="sidebar-tab" data-sidebar="analyze" role="tab">Analyze</button>
+          <button type="button" class="sidebar-tab" data-sidebar="validation" role="tab">BT 2023</button>
+          <button type="button" class="sidebar-tab" data-sidebar="test" role="tab">BT 2024–26</button>
+        </nav>
 
-          <div class="setup-editor hidden" id="editorPanel">
-            <div class="mode-bar">
-              <span class="mode-pill" id="modePill" data-mode="idle">Xem chart</span>
-              <span class="rr-pill" id="rrPill">RR —</span>
+        <div id="viewLabel" class="sidebar-view active" role="tabpanel">
+          <section class="panel panel-setups">
+            <div class="panel-head">
+              <h2>Setups</h2>
+              <span class="count-badge" id="setupCount">0</span>
             </div>
+            <button type="button" class="btn primary block" id="btnNewSetup">＋ Setup mới</button>
 
-            <div id="activeBlock" class="editor-block">
-              <div class="direction-row">
-                <button type="button" class="btn dir-btn active" data-direction="long" id="btnLong">Long</button>
-                <button type="button" class="btn dir-btn" data-direction="short" id="btnShort">Short</button>
+            <div class="setup-editor hidden" id="editorPanel">
+              <div class="mode-bar">
+                <span class="mode-pill" id="modePill" data-mode="idle">Xem chart</span>
+                <span class="rr-pill" id="rrPill">RR —</span>
               </div>
 
-              <div id="newSteps" class="step-track hidden">
-                <div class="step-item" data-step="entry"><span>1</span> Entry</div>
-                <div class="step-line"></div>
-                <div class="step-item" data-step="sl"><span>2</span> SL</div>
-                <div class="step-line"></div>
-                <div class="step-item" data-step="tp"><span>3</span> TP</div>
-              </div>
-
-              <div class="price-grid">
-                <label class="price-field entry-field">
-                  <span>Entry</span>
-                  <input id="fieldEntry" readonly>
-                </label>
-                <label class="price-field sl-field">
-                  <span>Stop Loss</span>
-                  <input id="fieldSL" type="number" step="0.00001">
-                </label>
-                <label class="price-field tp-field">
-                  <span>Take Profit</span>
-                  <input id="fieldTP" type="number" step="0.00001">
-                </label>
-              </div>
-              <label class="field-compact">Thời gian <input id="fieldTime" readonly></label>
-
-              <details class="meta-details" open>
-                <summary>Tags & ghi chú</summary>
-                <label>Tags <input id="fieldTags" placeholder="pullback, retest"></label>
-                <div class="preset-block">
-                  <span class="preset-label">Tags nhanh</span>
-                  <div id="tagPresets" class="chip-row"></div>
+              <div id="activeBlock" class="editor-block">
+                <div class="direction-row">
+                  <button type="button" class="btn dir-btn active" data-direction="long" id="btnLong">Long</button>
+                  <button type="button" class="btn dir-btn" data-direction="short" id="btnShort">Short</button>
                 </div>
-                <label>Ghi chú <input id="fieldNote" placeholder="Mô tả setup..."></label>
-                <div class="preset-block">
-                  <span class="preset-label">Ghi chú mẫu</span>
-                  <div id="notePresets" class="chip-row note-chips"></div>
-                </div>
-              </details>
 
-              <div class="action-bar">
-                <button type="button" class="btn primary" id="btnSave" disabled>Lưu setup</button>
-                <button type="button" class="btn" id="btnCancel">Hủy</button>
-                <button type="button" class="btn danger hidden" id="btnDelete">Xóa</button>
+                <div id="newSteps" class="step-track hidden">
+                  <div class="step-item" data-step="entry"><span>1</span> Entry</div>
+                  <div class="step-line"></div>
+                  <div class="step-item" data-step="sl"><span>2</span> SL</div>
+                  <div class="step-line"></div>
+                  <div class="step-item" data-step="tp"><span>3</span> TP</div>
+                </div>
+
+                <div class="price-grid">
+                  <label class="price-field entry-field">
+                    <span>Entry</span>
+                    <input id="fieldEntry" readonly>
+                  </label>
+                  <label class="price-field sl-field">
+                    <span>Stop Loss</span>
+                    <input id="fieldSL" type="number" step="0.00001">
+                  </label>
+                  <label class="price-field tp-field">
+                    <span>Take Profit</span>
+                    <input id="fieldTP" type="number" step="0.00001">
+                  </label>
+                </div>
+                <label class="field-compact">Thời gian <input id="fieldTime" readonly></label>
+
+                <details class="meta-details" open>
+                  <summary>Tags & ghi chú</summary>
+                  <label>Tags <input id="fieldTags" placeholder="pullback, retest"></label>
+                  <div class="preset-block">
+                    <span class="preset-label">Tags nhanh</span>
+                    <div id="tagPresets" class="chip-row"></div>
+                  </div>
+                  <label>Ghi chú <input id="fieldNote" placeholder="Mô tả setup..."></label>
+                  <div class="preset-block">
+                    <span class="preset-label">Ghi chú mẫu</span>
+                    <div id="notePresets" class="chip-row note-chips"></div>
+                  </div>
+                </details>
+
+                <div class="action-bar">
+                  <button type="button" class="btn primary" id="btnSave" disabled>Lưu setup</button>
+                  <button type="button" class="btn" id="btnCancel">Hủy</button>
+                  <button type="button" class="btn danger hidden" id="btnDelete">Xóa</button>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div class="setup-list-section">
-            <div class="setup-list-head">Đã lưu</div>
-            <ul id="setupList" class="setup-list"></ul>
-          </div>
-        </section>
-
-        <section class="panel panel-analyze">
-          <h2>Chiến lược &amp; Backtest</h2>
-
-          <div class="strategy-tabs" role="tablist">
-            <button type="button" class="strategy-tab active" data-tab="analyze" role="tab" aria-selected="true">Analyze</button>
-            <button type="button" class="strategy-tab" data-tab="validation" role="tab">BT 2023</button>
-            <button type="button" class="strategy-tab" data-tab="test" role="tab">BT 2024–26</button>
-          </div>
-
-          <div class="strategy-panels">
-            <div id="panelAnalyze" class="strategy-panel active" role="tabpanel">
-              <p class="strategy-intro">Phân tích setup Train 2022 để sinh quy tắc vào lệnh + SL/TP theo ATR.</p>
-              <button type="button" class="btn primary block" id="btnAnalyze">Chạy phân tích</button>
-              <div id="analyzeResults" class="strategy-results"></div>
+            <div class="setup-list-section">
+              <div class="setup-list-head">Đã lưu</div>
+              <ul id="setupList" class="setup-list"></ul>
             </div>
+          </section>
+        </div>
 
-            <div id="panelValidation" class="strategy-panel hidden" role="tabpanel">
-              <p class="strategy-intro">Kiểm tra chiến lược trên năm 2023 — dùng để tinh chỉnh trước khi test.</p>
-              <button type="button" class="btn primary block" id="btnBacktestVal">Chạy backtest 2023</button>
-              <div id="btValResults" class="strategy-results"></div>
-            </div>
+        <div id="viewAnalyze" class="sidebar-view hidden" role="tabpanel">
+          <section class="panel panel-strategy">
+            <h2>Phân tích chiến lược</h2>
+            <p class="strategy-intro">Phân tích setup Train 2022 để sinh quy tắc vào lệnh + SL/TP theo ATR.</p>
+            <button type="button" class="btn primary block" id="btnAnalyze">Chạy phân tích</button>
+            <div id="analyzeResults" class="strategy-results"></div>
+          </section>
+        </div>
 
-            <div id="panelTest" class="strategy-panel hidden" role="tabpanel">
-              <p class="strategy-intro">Test out-of-sample 2024–2026 — không optimize thêm sau bước này.</p>
-              <button type="button" class="btn primary block" id="btnBacktestTest">Chạy backtest 2024–26</button>
-              <div id="btTestResults" class="strategy-results"></div>
-            </div>
-          </div>
-        </section>
+        <div id="viewValidation" class="sidebar-view hidden" role="tabpanel">
+          <section class="panel panel-strategy">
+            <h2>Backtest 2023</h2>
+            <p class="strategy-intro">Kiểm tra chiến lược trên năm 2023 — dùng để tinh chỉnh trước khi test.</p>
+            <button type="button" class="btn primary block" id="btnBacktestVal">Chạy backtest 2023</button>
+            <div id="btValResults" class="strategy-results"></div>
+          </section>
+        </div>
+
+        <div id="viewTest" class="sidebar-view hidden" role="tabpanel">
+          <section class="panel panel-strategy">
+            <h2>Backtest 2024–26</h2>
+            <p class="strategy-intro">Test out-of-sample 2024–2026 — không optimize thêm sau bước này.</p>
+            <button type="button" class="btn primary block" id="btnBacktestTest">Chạy backtest 2024–26</button>
+            <div id="btTestResults" class="strategy-results"></div>
+          </section>
+        </div>
       </aside>
 
       <section class="chart-area">
