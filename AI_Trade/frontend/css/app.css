@@ -211,23 +211,53 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 
 .setup-editor.hidden { display: none; }
 .setup-editor {
-  margin-top: 10px;
-  padding-top: 10px;
+  margin-top: 8px;
+  padding-top: 8px;
   border-top: 1px solid var(--border);
   flex-shrink: 0;
-  max-height: 48%;
-  overflow-y: auto;
+  overflow: visible;
 }
 .setup-editor[data-mode="new"],
 .setup-editor[data-mode="edit"] {
   background: var(--panel-elevated);
   border: 1px solid var(--border);
   border-radius: 12px;
-  padding: 12px;
-  margin-top: 10px;
+  padding: 10px;
+  margin-top: 8px;
 }
 .setup-editor[data-mode="new"] { border-color: #2563eb55; }
 .setup-editor[data-mode="edit"] { border-color: #7c3aed55; }
+
+.setup-editor[data-mode="new"] .mode-pill,
+.setup-editor[data-mode="edit"] .mode-pill {
+  display: none;
+}
+.setup-editor .mode-bar {
+  margin-bottom: 6px;
+  min-height: 0;
+}
+.setup-editor[data-mode="new"] .mode-bar,
+.setup-editor[data-mode="edit"] .mode-bar {
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+.setup-editor .direction-row { margin-bottom: 8px; }
+.setup-editor .dir-btn { padding: 8px; }
+.setup-editor .step-track { margin-bottom: 8px; }
+.setup-editor .step-item { padding: 4px 6px; font-size: 10px; }
+.setup-editor .step-item span { width: 16px; height: 16px; font-size: 9px; }
+.setup-editor .price-grid { margin-bottom: 6px; gap: 6px; }
+.setup-editor .price-field input { padding: 7px 6px; }
+.setup-editor .field-time {
+  margin-bottom: 8px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.setup-editor .field-time input { margin-top: 0; }
+.setup-editor .action-bar { gap: 6px; }
+.setup-editor .action-bar .btn { padding: 8px 10px; }
 
 .setup-list-section,
 .trade-list-section {

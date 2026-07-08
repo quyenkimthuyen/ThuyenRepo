@@ -25,6 +25,7 @@ const state = {
   direction: 'long',
   step: 'entry',
   draft: { entry: null, sl: null, tp: null, time: null },
+  meta: { tags: [], note: '' },
   editingId: null,
   setups: [],
   config: null,
@@ -48,10 +49,6 @@ const els = {
   fieldSL: document.getElementById('fieldSL'),
   fieldTP: document.getElementById('fieldTP'),
   fieldTime: document.getElementById('fieldTime'),
-  fieldNote: document.getElementById('fieldNote'),
-  fieldTags: document.getElementById('fieldTags'),
-  tagPresets: document.getElementById('tagPresets'),
-  notePresets: document.getElementById('notePresets'),
   btnSave: document.getElementById('btnSave'),
   btnDelete: document.getElementById('btnDelete'),
   chartOverlayHint: document.getElementById('chartOverlayHint'),
@@ -136,64 +133,6 @@ function clearChartFocus() {
   chart.clearOverlay();
   chart.clearFocus();
   refreshChartAnnotations();
-}
-
-function parseTagsFromField() {
-  return els.fieldTags.value
-    .split(/[,;]+/)
-    .map((t) => t.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function setTagsToField(tags) {
-  els.fieldTags.value = [...new Set(tags.map((t) => t.trim().toLowerCase()).filter(Boolean))].join(', ');
-  syncTagChips();
-}
-
-function syncTagChips() {
-  const active = new Set(parseTagsFromField());
-  els.tagPresets?.querySelectorAll('.chip[data-tag]').forEach((chip) => {
-    chip.classList.toggle('active', active.has(chip.dataset.tag));
-  });
-}
-
-function toggleTag(tagId) {
-  const tags = new Set(parseTagsFromField());
-  tags.has(tagId) ? tags.delete(tagId) : tags.add(tagId);
-  setTagsToField([...tags]);
-}
-
-function applyNotePreset(note) {
-  els.fieldNote.value = note.text;
-  if (note.tags?.length) {
-    setTagsToField([...new Set([...parseTagsFromField(), ...note.tags])]);
-  }
-}
-
-function renderPresets() {
-  const presets = state.config?.presets;
-  if (!presets) return;
-  els.tagPresets.innerHTML = '';
-  for (const tag of presets.tags || []) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'chip';
-    btn.dataset.tag = tag.id;
-    btn.title = tag.hint || tag.label;
-    btn.textContent = tag.label;
-    btn.onclick = () => toggleTag(tag.id);
-    els.tagPresets.appendChild(btn);
-  }
-  els.notePresets.innerHTML = '';
-  for (const note of presets.notes || []) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'chip';
-    btn.textContent = note.text;
-    btn.onclick = () => applyNotePreset(note);
-    els.notePresets.appendChild(btn);
-  }
-  syncTagChips();
 }
 
 function calcRR() {
@@ -325,13 +264,11 @@ function syncFields({ focus = false } = {}) {
 
 function clearDraft() {
   state.draft = { entry: null, sl: null, tp: null, time: null };
+  state.meta = { tags: [], note: '' };
   state.editingId = null;
   state.step = 'entry';
   state.focusedSetupId = null;
   state.focusedTradeKey = null;
-  els.fieldTags.value = '';
-  els.fieldNote.value = '';
-  syncTagChips();
   chart.clearOverlay();
   chart.clearFocus();
 }
@@ -472,9 +409,10 @@ async function startEditSetup(setup) {
   };
 
   setDirection(setup.direction);
-  els.fieldTags.value = (setup.tags || []).join(', ');
-  els.fieldNote.value = setup.note || '';
-  syncTagChips();
+  state.meta = {
+    tags: setup.tags || [],
+    note: setup.note || '',
+  };
   updateModeUI();
   syncFields({ focus: true });
   renderSetups();
@@ -631,8 +569,8 @@ function buildSetupBody() {
     entry_price: state.draft.entry,
     stop_loss: Number(els.fieldSL.value),
     take_profit: Number(els.fieldTP.value),
-    note: els.fieldNote.value,
-    tags: parseTagsFromField(),
+    note: state.meta.note || '',
+    tags: state.meta.tags || [],
   };
 }
 
@@ -762,7 +700,6 @@ function bindUI() {
     validateSave();
     updateRR();
   };
-  els.fieldTags.oninput = () => syncTagChips();
 
   document.getElementById('toggleEma50').onchange = (e) => chart.toggleEma50(e.target.checked);
   document.getElementById('toggleEma200').onchange = (e) => chart.toggleEma200(e.target.checked);
@@ -788,7 +725,6 @@ async function boot() {
   });
   state.config = await getConfig();
   renderPeriodTabs();
-  renderPresets();
   setMode('idle');
   await loadChart();
   await refreshSetups();
