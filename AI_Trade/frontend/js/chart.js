@@ -14,6 +14,12 @@ const COLORS = {
   tp: '#22c55e',
 };
 
+const LEVEL_STYLE = {
+  entry: { color: COLORS.entry, tag: 'ENTRY' },
+  sl: { color: COLORS.sl, tag: 'STOP LOSS' },
+  tp: { color: COLORS.tp, tag: 'TAKE PROFIT' },
+};
+
 export class TradeChart {
   #wrapEl;
   #mainEl;
@@ -26,8 +32,10 @@ export class TradeChart {
   #ema50Series;
   #ema200Series;
   #rsiSeries;
-  /** @type {{ role: string, line: object, price: number, handle?: HTMLElement }[]} */
+  /** @type {{ role: string, series: object, price: number, row?: HTMLElement }[]} */
   #overlayLines = [];
+  #overlayStartTime = null;
+  #overlayDirection = 'long';
   #onClick;
   #onLevelDrag;
   #showEma50 = true;
@@ -52,9 +60,7 @@ export class TradeChart {
   }
 
   mount() {
-    if (!this.#wrapEl) {
-      this.#wrapEl = this.#mainEl;
-    }
+    if (!this.#wrapEl) this.#wrapEl = this.#mainEl;
 
     this.#dragLayer = document.createElement('div');
     this.#dragLayer.className = 'price-drag-layer';
@@ -63,7 +69,6 @@ export class TradeChart {
     );
 
     const { width, height } = this.#mainSize();
-
     const common = {
       layout: { background: { color: COLORS.bg }, textColor: COLORS.text },
       grid: { vertLines: { color: COLORS.grid }, horzLines: { color: COLORS.grid } },
@@ -72,11 +77,7 @@ export class TradeChart {
       timeScale: { borderColor: COLORS.grid, timeVisible: true, secondsVisible: false },
     };
 
-    this.#mainChart = createChart(this.#mainEl, {
-      ...common,
-      width,
-      height,
-    });
+    this.#mainChart = createChart(this.#mainEl, { ...common, width, height });
     this.#candleSeries = this.#mainChart.addCandlestickSeries({
       upColor: COLORS.up,
       downColor: COLORS.down,
@@ -95,14 +96,14 @@ export class TradeChart {
     this.#rsiSeries = this.#rsiChart.addLineSeries({ color: COLORS.rsi, lineWidth: 2, title: 'RSI' });
     this.#rsiChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
 
-    const sync = (range) => {
+    const onRange = (range) => {
       if (range) this.#rsiChart.timeScale().setVisibleLogicalRange(range);
-      this.#updateHandlePositions();
+      this.#refreshOverlayLines();
+      this.#refreshOverlayGeometry();
     };
-    this.#mainChart.timeScale().subscribeVisibleLogicalRangeChange(sync);
+    this.#mainChart.timeScale().subscribeVisibleLogicalRangeChange(onRange);
 
     this.#mainChart.subscribeClick((param) => this.#handleClick(param));
-
     window.addEventListener('pointermove', this.#boundPointerMove);
     window.addEventListener('pointerup', this.#boundPointerUp);
     window.addEventListener('pointercancel', this.#boundPointerUp);
@@ -116,11 +117,9 @@ export class TradeChart {
   #mainSize() {
     const wrapH = this.#wrapEl?.clientHeight ?? 0;
     const wrapW = this.#wrapEl?.clientWidth ?? 0;
-    const elH = this.#mainEl.clientHeight;
-    const elW = this.#mainEl.clientWidth;
     return {
-      width: Math.max(elW, wrapW, 320),
-      height: Math.max(elH, wrapH, 280),
+      width: Math.max(this.#mainEl.clientWidth, wrapW, 320),
+      height: Math.max(this.#mainEl.clientHeight, wrapH, 280),
     };
   }
 
@@ -128,22 +127,79 @@ export class TradeChart {
     const { width, height } = this.#mainSize();
     if (width <= 0 || height <= 0) return;
     this.#mainChart?.applyOptions({ width, height });
-    const rsiH = this.#rsiEl.clientHeight || 140;
-    const rsiW = this.#rsiEl.clientWidth || width;
-    this.#rsiChart?.applyOptions({ width: rsiW, height: rsiH });
-    this.#updateHandlePositions();
+    this.#rsiChart?.applyOptions({
+      width: this.#rsiEl.clientWidth || width,
+      height: this.#rsiEl.clientHeight || 140,
+    });
+    this.#refreshOverlayGeometry();
   }
 
   #chartY(event) {
-    const rect = this.#mainEl.getBoundingClientRect();
-    return event.clientY - rect.top;
+    return event.clientY - this.#mainEl.getBoundingClientRect().top;
   }
 
   #setChartInteraction(enabled) {
-    this.#mainChart.applyOptions({
-      handleScroll: enabled,
-      handleScale: enabled,
+    this.#mainChart.applyOptions({ handleScroll: enabled, handleScale: enabled });
+  }
+
+  #lineEndTime(startTime) {
+    const idx = this.#candleIndex(startTime);
+    if (idx < 0) return startTime;
+    let endIdx = Math.min(this.#candles.length - 1, idx + 56);
+    const vis = this.#mainChart.timeScale().getVisibleLogicalRange();
+    if (vis) endIdx = Math.max(endIdx, Math.min(this.#candles.length - 1, Math.floor(vis.to)));
+    return this.#candles[endIdx].time;
+  }
+
+  #createLevelSeries(color) {
+    return this.#mainChart.addLineSeries({
+      color,
+      lineWidth: 2,
+      lineStyle: LineStyle.Dashed,
+      lineType: 0,
+      lastValueVisible: false,
+      priceLineVisible: false,
+      crosshairMarkerVisible: false,
+      pointMarkersVisible: false,
     });
+  }
+
+  #setLevelLineData(series, startTime, price) {
+    if (!series || startTime == null || price == null) return;
+    const end = this.#lineEndTime(startTime);
+    series.setData([
+      { time: startTime, value: price },
+      { time: end, value: price },
+    ]);
+  }
+
+  #formatPrice(price) {
+    return Number(price).toFixed(5);
+  }
+
+  #entryTag() {
+    return this.#overlayDirection === 'short' ? 'SELL' : 'BUY';
+  }
+
+  #levelLabel(role, price) {
+    if (role === 'entry') return `${this.#entryTag()}  ${this.#formatPrice(price)}`;
+    const tag = LEVEL_STYLE[role]?.tag ?? role.toUpperCase();
+    return `${tag}  ${this.#formatPrice(price)}`;
+  }
+
+  #createLevelRow(role, price) {
+    const style = LEVEL_STYLE[role];
+    const row = document.createElement('div');
+    row.className = `level-row ${role}`;
+    row.innerHTML = `
+      <div class="level-label">${this.#levelLabel(role, price)}</div>
+      <div class="level-drag-zone" title="Kéo để chỉnh giá"></div>
+    `;
+    row.querySelector('.level-drag-zone').addEventListener('pointerdown', (e) => {
+      this.#onHandlePointerDown(role, e);
+    });
+    this.#dragLayer.appendChild(row);
+    return row;
   }
 
   #onHandlePointerDown(role, event) {
@@ -157,11 +213,8 @@ export class TradeChart {
 
   #onPointerMove(event) {
     if (!this.#dragState || event.pointerId !== this.#dragState.pointerId) return;
-
-    const y = this.#chartY(event);
-    const price = this.#candleSeries.coordinateToPrice(y);
+    const price = this.#candleSeries.coordinateToPrice(this.#chartY(event));
     if (price == null) return;
-
     this.#dragState.moved = true;
     this.#setLinePrice(this.#dragState.role, Number(price.toFixed(5)), true);
     event.preventDefault();
@@ -169,11 +222,7 @@ export class TradeChart {
 
   #onPointerUp(event) {
     if (!this.#dragState || event.pointerId !== this.#dragState.pointerId) return;
-
-    if (this.#dragState.moved) {
-      this.#suppressClick = true;
-    }
-
+    if (this.#dragState.moved) this.#suppressClick = true;
     this.#dragState = null;
     this.#setChartInteraction(true);
     this.#wrapEl.classList.remove('dragging-level');
@@ -183,33 +232,56 @@ export class TradeChart {
     const item = this.#overlayLines.find((o) => o.role === role);
     if (!item || price == null || Number.isNaN(price)) return;
     item.price = price;
-    item.line.applyOptions({ price });
-    this.#updateHandlePositions();
-    if (notify) {
-      this.#onLevelDrag?.({ role, price });
+    this.#setLevelLineData(item.series, this.#overlayStartTime, price);
+    const label = item.row?.querySelector('.level-label');
+    if (label) label.textContent = this.#levelLabel(role, price);
+    this.#refreshOverlayGeometry();
+    if (notify) this.#onLevelDrag?.({ role, price });
+  }
+
+  #refreshOverlayLines() {
+    if (!this.#overlayStartTime) return;
+    for (const item of this.#overlayLines) {
+      this.#setLevelLineData(item.series, this.#overlayStartTime, item.price);
     }
   }
 
-  #createHandle(role, label) {
-    const handle = document.createElement('div');
-    handle.className = `price-drag-handle ${role}`;
-    handle.dataset.label = label;
-    handle.addEventListener('pointerdown', (e) => this.#onHandlePointerDown(role, e));
-    this.#dragLayer.appendChild(handle);
-    return handle;
-  }
+  #refreshOverlayGeometry() {
+    if (!this.#overlayStartTime || !this.#overlayLines.length) return;
+    const startX = this.#mainChart.timeScale().timeToCoordinate(this.#overlayStartTime);
+    const endX = this.#mainEl.clientWidth - 8;
+    if (startX == null || Number.isNaN(startX)) return;
 
-  #updateHandlePositions() {
     for (const item of this.#overlayLines) {
-      if (!item.handle) continue;
       const y = this.#candleSeries.priceToCoordinate(item.price);
-      if (y == null || Number.isNaN(y)) {
-        item.handle.style.display = 'none';
+      if (!item.row || y == null || Number.isNaN(y)) {
+        item.row?.classList.add('hidden');
         continue;
       }
-      item.handle.style.display = 'block';
-      item.handle.style.top = `${y}px`;
+      item.row.classList.remove('hidden');
+      const left = Math.max(0, Math.min(startX, endX - 80));
+      const width = Math.max(40, endX - left);
+      item.row.style.top = `${y}px`;
+      item.row.style.left = `${left}px`;
+      item.row.style.width = `${width}px`;
     }
+  }
+
+  #setEntryMarker() {
+    if (!this.#overlayStartTime) {
+      this.#candleSeries.setMarkers([]);
+      return;
+    }
+    const isLong = this.#overlayDirection === 'long';
+    this.#candleSeries.setMarkers([
+      {
+        time: this.#overlayStartTime,
+        position: isLong ? 'belowBar' : 'aboveBar',
+        color: COLORS.entry,
+        shape: isLong ? 'arrowUp' : 'arrowDown',
+        text: this.#entryTag(),
+      },
+    ]);
   }
 
   #handleClick(param) {
@@ -265,7 +337,8 @@ export class TradeChart {
       this.#mainChart.timeScale().fitContent();
       this.#rsiChart.timeScale().fitContent();
     }
-    this.#updateHandlePositions();
+    this.#refreshOverlayLines();
+    this.#refreshOverlayGeometry();
   }
 
   #applyPriceFocus() {
@@ -276,9 +349,7 @@ export class TradeChart {
     }
     const { min, max } = this.#priceFocus;
     this.#candleSeries.applyOptions({
-      autoscaleInfoProvider: () => ({
-        priceRange: { minValue: min, maxValue: max },
-      }),
+      autoscaleInfoProvider: () => ({ priceRange: { minValue: min, maxValue: max } }),
     });
     this.#mainChart.priceScale('right').applyOptions({ autoScale: true });
   }
@@ -299,21 +370,22 @@ export class TradeChart {
     }
 
     if (time != null) {
-      const idx = this.#candleIndex(time);
-      const visibleBars = 100;
-      const half = Math.floor(visibleBars / 2);
-      const from = Math.max(0, idx - half);
-      const to = Math.min(this.#candles.length - 1, idx + half);
-      const range = { from, to };
+      const anchor = this.#nearestCandle(time)?.time ?? time;
+      const idx = this.#candleIndex(anchor);
+      const half = 50;
+      const range = {
+        from: Math.max(0, idx - half),
+        to: Math.min(this.#candles.length - 1, idx + half),
+      };
       this.#mainChart.timeScale().setVisibleLogicalRange(range);
       this.#rsiChart.timeScale().setVisibleLogicalRange(range);
     }
 
-    const apply = () => {
+    requestAnimationFrame(() => {
+      this.#refreshOverlayLines();
+      this.#refreshOverlayGeometry();
       this.#mainChart.priceScale('right').applyOptions({ autoScale: true });
-      this.#updateHandlePositions();
-    };
-    requestAnimationFrame(() => requestAnimationFrame(apply));
+    });
   }
 
   clearPriceFocus() {
@@ -322,38 +394,45 @@ export class TradeChart {
     this.#applyPriceFocus();
   }
 
-  setOverlay({ entry, sl, tp, direction }) {
+  setOverlay({ time, entry, sl, tp, direction }) {
     this.clearOverlay();
+
+    const startTime = time != null ? this.#nearestCandle(time)?.time ?? time : null;
+    this.#overlayStartTime = startTime;
+    this.#overlayDirection = direction || 'long';
+
     const levels = [
-      { role: 'entry', price: entry, color: COLORS.entry, title: direction === 'short' ? 'SELL' : 'BUY' },
-      { role: 'sl', price: sl, color: COLORS.sl, title: 'SL' },
-      { role: 'tp', price: tp, color: COLORS.tp, title: 'TP' },
+      { role: 'entry', price: entry },
+      { role: 'sl', price: sl },
+      { role: 'tp', price: tp },
     ];
 
     for (const lv of levels) {
-      if (lv.price == null || lv.price === '' || Number.isNaN(Number(lv.price))) continue;
+      if (lv.price == null || lv.price === '' || Number.isNaN(Number(lv.price)) || !startTime) continue;
       const price = Number(lv.price);
-      const line = this.#candleSeries.createPriceLine({
-        price,
-        color: lv.color,
-        lineWidth: 2,
-        lineStyle: LineStyle.Dashed,
-        axisLabelVisible: true,
-        title: lv.title,
-      });
-      const handle = this.#createHandle(lv.role, lv.title);
-      this.#overlayLines.push({ role: lv.role, line, price, handle });
+      const color = LEVEL_STYLE[lv.role].color;
+      const series = this.#createLevelSeries(color);
+      this.#setLevelLineData(series, startTime, price);
+      const row = this.#createLevelRow(lv.role, price);
+      this.#overlayLines.push({ role: lv.role, series, price, row });
     }
 
-    requestAnimationFrame(() => this.#updateHandlePositions());
+    this.#setEntryMarker();
+    requestAnimationFrame(() => this.#refreshOverlayGeometry());
   }
 
   clearOverlay() {
     for (const item of this.#overlayLines) {
-      this.#candleSeries.removePriceLine(item.line);
-      item.handle?.remove();
+      try {
+        this.#mainChart.removeSeries(item.series);
+      } catch {
+        item.series.setData([]);
+      }
+      item.row?.remove();
     }
     this.#overlayLines = [];
+    this.#overlayStartTime = null;
+    this.#candleSeries.setMarkers([]);
     this.#wrapEl?.classList.remove('dragging-level');
   }
 

@@ -244,12 +244,10 @@ function focusAndDraw() {
     entry: state.draft.entry,
     sl: Number(els.fieldSL.value) || state.draft.sl,
     tp: Number(els.fieldTP.value) || state.draft.tp,
+    direction: state.direction,
   };
   chart.focusSetup(payload);
-  chart.setOverlay({
-    ...payload,
-    direction: state.direction,
-  });
+  chart.setOverlay(payload);
 }
 
 function syncFields() {

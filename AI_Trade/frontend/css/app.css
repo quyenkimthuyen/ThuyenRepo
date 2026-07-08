@@ -205,25 +205,49 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
   box-shadow: 0 4px 24px rgba(0,0,0,0.4);
 }
 
-.price-drag-layer { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
-.price-drag-handle {
-  position: absolute; left: 0; right: 56px; height: 18px;
-  pointer-events: auto; cursor: ns-resize; transform: translateY(-50%);
-  transition: opacity 0.15s;
+.price-drag-layer {
+  position: absolute; inset: 0; pointer-events: none; z-index: 20; overflow: hidden;
 }
-.price-drag-handle.entry { color: #3b82f6; }
-.price-drag-handle.sl { color: #ef4444; }
-.price-drag-handle.tp { color: #22c55e; }
-.price-drag-handle::before {
-  content: attr(data-label);
-  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
-  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
-  background: rgba(11, 15, 20, 0.9); border: 1px solid currentColor;
+
+.level-row {
+  position: absolute;
+  height: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
 }
-.price-drag-handle::after {
-  content: ''; position: absolute; left: 0; right: 0; top: 50%;
-  height: 2px; background: currentColor; box-shadow: 0 0 8px currentColor;
+.level-row.hidden { display: none; }
+
+.level-label {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translate(-4px, calc(-50% - 14px));
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  background: rgba(11, 15, 20, 0.94);
+  border: 1px solid currentColor;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
 }
+.level-row.entry .level-label { color: #93c5fd; border-color: #3b82f6; }
+.level-row.sl .level-label { color: #fca5a5; border-color: #ef4444; }
+.level-row.tp .level-label { color: #86efac; border-color: #22c55e; }
+
+.level-drag-zone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 16px;
+  transform: translateY(-50%);
+  cursor: ns-resize;
+  pointer-events: auto;
+}
+.chart-wrap.dragging-level .level-drag-zone { cursor: grabbing; }
 
 .chart-rsi { height: 130px; border-top: 1px solid var(--border); flex-shrink: 0; }
 
