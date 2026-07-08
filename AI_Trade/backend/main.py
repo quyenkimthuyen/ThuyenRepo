@@ -14,6 +14,7 @@ from .backtest import run_backtest
 from .data_service import candles_to_records, load_candles, load_splits, slice_period
 from .indicators import add_indicators
 from .labels import create_setup, delete_setup, enrich_setup, load_setups, update_setup
+from .tags import load_presets
 
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND = ROOT / "frontend"
@@ -38,6 +39,11 @@ class SetupIn(BaseModel):
 
 
 class SetupPatch(BaseModel):
+    direction: str | None = None
+    entry_time: str | None = None
+    entry_price: float | None = None
+    stop_loss: float | None = None
+    take_profit: float | None = None
     tags: list[str] | None = None
     note: str | None = None
 
@@ -49,7 +55,14 @@ def health():
 
 @app.get("/api/config")
 def get_config():
-    return load_splits()
+    cfg = load_splits()
+    cfg["presets"] = load_presets()
+    return cfg
+
+
+@app.get("/api/presets")
+def get_presets():
+    return load_presets()
 
 
 @app.get("/api/candles")
@@ -103,6 +116,8 @@ def patch_setup(setup_id: str, body: SetupPatch):
         return update_setup(setup_id, body.model_dump(exclude_none=True))
     except KeyError:
         raise HTTPException(404, "Setup not found")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @app.delete("/api/setups/{setup_id}")

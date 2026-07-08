@@ -38,8 +38,15 @@
             <label>Take Profit <input id="fieldTP" type="number" step="0.00001"></label>
             <label>Thời gian <input id="fieldTime" readonly></label>
             <label>Tags <input id="fieldTags" placeholder="pullback, retest (phẩy)"></label>
+            <div class="preset-block">
+              <span class="preset-label">Tags nhanh — click để chọn</span>
+              <div id="tagPresets" class="chip-row"></div>
+            </div>
             <label>Ghi chú <input id="fieldNote" placeholder="pullback EMA50..."></label>
-            <p class="hint">Tags tự gợi ý từ ghi chú (pullback, breakout, rejection...)</p>
+            <div class="preset-block">
+              <span class="preset-label">Ghi chú mẫu</span>
+              <div id="notePresets" class="chip-row note-chips"></div>
+            </div>
           </div>
           <div class="btn-row">
             <button class="btn primary" id="btnSave" disabled>Lưu setup</button>
