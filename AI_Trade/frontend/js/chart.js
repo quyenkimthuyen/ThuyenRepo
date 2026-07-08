@@ -38,6 +38,7 @@ export class TradeChart {
   #priceFocus = null;
   #boundPointerMove;
   #boundPointerUp;
+  #resizeObserver = null;
 
   constructor(mainEl, rsiEl, { onClick, onLevelDrag } = {}) {
     this.#wrapEl = mainEl.parentElement;
@@ -50,9 +51,17 @@ export class TradeChart {
   }
 
   mount() {
+    if (!this.#wrapEl) {
+      this.#wrapEl = this.#mainEl;
+    }
+
     this.#dragLayer = document.createElement('div');
     this.#dragLayer.className = 'price-drag-layer';
-    this.#wrapEl.appendChild(this.#dragLayer);
+    (this.#wrapEl.classList?.contains('chart-wrap') ? this.#wrapEl : this.#mainEl).appendChild(
+      this.#dragLayer,
+    );
+
+    const { width, height } = this.#mainSize();
 
     const common = {
       layout: { background: { color: COLORS.bg }, textColor: COLORS.text },
@@ -64,8 +73,8 @@ export class TradeChart {
 
     this.#mainChart = createChart(this.#mainEl, {
       ...common,
-      width: this.#mainEl.clientWidth,
-      height: this.#mainEl.clientHeight,
+      width,
+      height,
     });
     this.#candleSeries = this.#mainChart.addCandlestickSeries({
       upColor: COLORS.up,
@@ -79,8 +88,8 @@ export class TradeChart {
 
     this.#rsiChart = createChart(this.#rsiEl, {
       ...common,
-      width: this.#rsiEl.clientWidth,
-      height: this.#rsiEl.clientHeight,
+      width: this.#rsiEl.clientWidth || width,
+      height: this.#rsiEl.clientHeight || 140,
     });
     this.#rsiSeries = this.#rsiChart.addLineSeries({ color: COLORS.rsi, lineWidth: 2, title: 'RSI' });
     this.#rsiChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
@@ -96,12 +105,31 @@ export class TradeChart {
     window.addEventListener('pointermove', this.#boundPointerMove);
     window.addEventListener('pointerup', this.#boundPointerUp);
     window.addEventListener('pointercancel', this.#boundPointerUp);
-    window.addEventListener('resize', () => this.#resize());
+
+    const observeEl = this.#wrapEl?.classList?.contains('chart-wrap') ? this.#wrapEl : this.#mainEl;
+    this.#resizeObserver = new ResizeObserver(() => this.#resize());
+    this.#resizeObserver.observe(observeEl);
+    requestAnimationFrame(() => this.#resize());
+  }
+
+  #mainSize() {
+    const wrapH = this.#wrapEl?.clientHeight ?? 0;
+    const wrapW = this.#wrapEl?.clientWidth ?? 0;
+    const elH = this.#mainEl.clientHeight;
+    const elW = this.#mainEl.clientWidth;
+    return {
+      width: Math.max(elW, wrapW, 320),
+      height: Math.max(elH, wrapH, 280),
+    };
   }
 
   #resize() {
-    this.#mainChart.applyOptions({ width: this.#mainEl.clientWidth, height: this.#mainEl.clientHeight });
-    this.#rsiChart.applyOptions({ width: this.#rsiEl.clientWidth, height: this.#rsiEl.clientHeight });
+    const { width, height } = this.#mainSize();
+    if (width <= 0 || height <= 0) return;
+    this.#mainChart?.applyOptions({ width, height });
+    const rsiH = this.#rsiEl.clientHeight || 140;
+    const rsiW = this.#rsiEl.clientWidth || width;
+    this.#rsiChart?.applyOptions({ width: rsiW, height: rsiH });
     this.#updateHandlePositions();
   }
 
@@ -215,6 +243,7 @@ export class TradeChart {
     this.#ema50Series.setData(this.#showEma50 ? indicators?.ema50 ?? [] : []);
     this.#ema200Series.setData(this.#showEma200 ? indicators?.ema200 ?? [] : []);
     this.#rsiSeries.setData(this.#showRsi ? indicators?.rsi14 ?? [] : []);
+    this.#resize();
     if (!this.#priceFocus) {
       this.#mainChart.timeScale().fitContent();
       this.#rsiChart.timeScale().fitContent();
@@ -242,17 +271,19 @@ export class TradeChart {
     if (prices.length) {
       const minP = Math.min(...prices);
       const maxP = Math.max(...prices);
-      const pad = Math.max((maxP - minP) * 0.4, 0.0015);
+      const pad = Math.max((maxP - minP) * 0.45, 0.002);
       this.#priceFocus = { min: minP - pad, max: maxP + pad };
       this.#applyPriceFocus();
     }
 
     if (time != null && this.#candles?.length) {
       const anchor = this.#nearestCandle(time)?.time ?? time;
-      const from = anchor - 3600 * 24 * 5;
-      const to = anchor + 3600 * 24 * 12;
+      const halfWindow = 3600 * 24 * 7;
+      const from = anchor - halfWindow;
+      const to = anchor + halfWindow;
       this.#mainChart.timeScale().setVisibleRange({ from, to });
       this.#rsiChart.timeScale().setVisibleRange({ from, to });
+      this.#mainChart.timeScale().scrollToPosition(0, false);
     }
 
     requestAnimationFrame(() => this.#updateHandlePositions());
