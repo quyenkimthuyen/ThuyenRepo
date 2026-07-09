@@ -144,12 +144,14 @@ def update_setup(setup_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         raise KeyError(setup_id)
 
     merged = {**setups[idx], **payload, "id": setup_id}
-    if any(k in payload for k in ("entry_time", "entry_price", "stop_loss", "take_profit", "direction")):
-        entry_time = pd.Timestamp(merged["entry_time"])
-        if period_for_timestamp(entry_time) != "train":
-            raise ValueError("Chỉ được sửa setup trong năm Train (2022).")
-        merged["tags"] = normalize_tags(merged.get("tags"))
-        merged["updated_at"] = datetime.now(timezone.utc).isoformat()
+    entry_time = pd.Timestamp(merged["entry_time"])
+    if period_for_timestamp(entry_time) != "train":
+        raise ValueError("Chỉ được sửa setup trong năm Train (2022).")
+    merged["entry_price"] = float(merged["entry_price"])
+    merged["stop_loss"] = float(merged["stop_loss"])
+    merged["take_profit"] = float(merged["take_profit"])
+    merged["tags"] = normalize_tags(merged.get("tags"))
+    merged["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     enriched = enrich_setup(merged)
     setups[idx] = enriched

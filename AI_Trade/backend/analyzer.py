@@ -13,6 +13,17 @@ from .labels import load_setups
 from .tags import infer_tags
 
 
+def _json_float(value: Any, digits: int = 3) -> float | None:
+    """Return a JSON-safe rounded float; pandas can produce NaN for empty groups."""
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not np.isfinite(num):
+        return None
+    return round(num, digits)
+
+
 def _feature_frame(setups: list[dict[str, Any]]) -> pd.DataFrame:
     rows = []
     for s in setups:
@@ -357,7 +368,7 @@ def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
         w = df[df["win"] == 1][col].mean()
         l = df[df["win"] == 0][col].mean()
         feature_insights.append(
-            {"feature": col, "win_avg": round(float(w), 3), "loss_avg": round(float(l), 3)}
+            {"feature": col, "win_avg": _json_float(w), "loss_avg": _json_float(l)}
         )
 
     return {

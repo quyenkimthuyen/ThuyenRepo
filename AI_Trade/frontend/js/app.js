@@ -8,15 +8,15 @@ import {
   getSetups,
   saveSetup,
   updateSetup,
-} from './api.js';
+} from './api.js?v=7';
 import {
   renderAnalyzeView,
   renderBacktestView,
   renderError,
   renderLoading,
-} from './strategy-ui.js';
-import { initSidebarResize } from './layout.js';
-import { TradeChart } from './chart.js';
+} from './strategy-ui.js?v=7';
+import { initSidebarResize } from './layout.js?v=7';
+import { TradeChart } from './chart.js?v=7';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -98,6 +98,17 @@ const STEP_HINTS = {
 
 function isoFromUnix(sec) {
   return new Date(sec * 1000).toISOString();
+}
+
+function datetimeLocalFromUnix(sec) {
+  return new Date(sec * 1000).toISOString().slice(0, 16);
+}
+
+function unixFromDatetimeLocal(value) {
+  if (!value) return null;
+  const normalized = value.length === 16 ? `${value}:00Z` : `${value}Z`;
+  const ms = Date.parse(normalized);
+  return Number.isNaN(ms) ? null : Math.floor(ms / 1000);
 }
 
 const SIDEBAR_PERIOD = {
@@ -219,10 +230,10 @@ function onTagChange() {
 }
 
 function calcRR() {
-  const entry = state.draft.entry;
+  const entry = Number(state.draft.entry);
   const sl = Number(els.fieldSL.value);
   const tp = Number(els.fieldTP.value);
-  if (!entry || !sl || !tp) return null;
+  if (!Number.isFinite(entry) || !Number.isFinite(sl) || !Number.isFinite(tp)) return null;
   const risk = Math.abs(entry - sl);
   const reward = Math.abs(tp - entry);
   return risk > 0 ? (reward / risk).toFixed(2) : null;
@@ -260,7 +271,7 @@ function updateChartHint() {
     return;
   }
   if (state.mode === 'edit') {
-    els.chartOverlayHint.textContent = 'Kéo đường Entry / SL / TP để chỉnh — bấm Cập nhật khi xong';
+    els.chartOverlayHint.textContent = 'Click chart để đổi Entry/time, hoặc kéo Entry / SL / TP — bấm Cập nhật khi xong';
     els.chartOverlayHint.classList.remove('hidden');
     return;
   }
@@ -338,7 +349,7 @@ function syncFields({ focus = false } = {}) {
   els.fieldEntry.value = state.draft.entry ?? '';
   els.fieldSL.value = state.draft.sl ?? '';
   els.fieldTP.value = state.draft.tp ?? '';
-  els.fieldTime.value = state.draft.time ? isoFromUnix(state.draft.time) : '';
+  els.fieldTime.value = state.draft.time ? datetimeLocalFromUnix(state.draft.time) : '';
   syncTagField();
   if (state.mode !== 'idle') {
     if (focus) focusChartOnSetup();
@@ -406,25 +417,42 @@ function validateSave() {
   }
   const sl = Number(els.fieldSL.value);
   const tp = Number(els.fieldTP.value);
+  const entry = Number(state.draft.entry);
   const ok =
-    state.draft.entry != null &&
+    Number.isFinite(entry) &&
     state.draft.time != null &&
-    !Number.isNaN(sl) &&
-    !Number.isNaN(tp) &&
+    Number.isFinite(sl) &&
+    Number.isFinite(tp) &&
+    entry > 0 &&
     sl > 0 &&
     tp > 0;
 
   let valid = false;
   if (ok && state.direction === 'long') {
-    valid = sl < state.draft.entry && tp > state.draft.entry;
+    valid = sl < entry && tp > entry;
   } else if (ok && state.direction === 'short') {
-    valid = sl > state.draft.entry && tp < state.draft.entry;
+    valid = sl > entry && tp < entry;
   }
   els.btnSave.disabled = !valid;
 }
 
+function moveDraftEntryToCandle({ time, candle }) {
+  const nextEntry = Number(candle.close);
+
+  state.draft.time = time;
+  state.draft.entry = nextEntry;
+  syncFields({ focus: true });
+}
+
 function handleChartClick({ time, candle, price }) {
-  if (state.mode !== 'new' || !isTrainPeriod()) return;
+  if (!isTrainPeriod()) return;
+
+  if (state.mode === 'edit') {
+    moveDraftEntryToCandle({ time, candle });
+    return;
+  }
+
+  if (state.mode !== 'new') return;
 
   if (state.step === 'entry') {
     state.draft.time = time;
@@ -659,7 +687,7 @@ function buildSetupBody() {
   return {
     direction: state.direction,
     entry_time: isoFromUnix(state.draft.time),
-    entry_price: state.draft.entry,
+    entry_price: Number(state.draft.entry),
     stop_loss: Number(els.fieldSL.value),
     take_profit: Number(els.fieldTP.value),
     note: state.meta.note || '',
@@ -668,14 +696,27 @@ function buildSetupBody() {
 }
 
 async function onSave() {
-  const body = buildSetupBody();
-  if (state.mode === 'edit' && state.editingId) {
-    await updateSetup(state.editingId, body);
-  } else {
-    await saveSetup(body);
+  if (els.btnSave.disabled) return;
+
+  els.btnSave.disabled = true;
+  const originalText = els.btnSave.textContent;
+  els.btnSave.textContent = state.mode === 'edit' ? 'Đang cập nhật...' : 'Đang lưu...';
+
+  try {
+    const body = buildSetupBody();
+    if (state.mode === 'edit' && state.editingId) {
+      await updateSetup(state.editingId, body);
+    } else {
+      await saveSetup(body);
+    }
+    await refreshSetups();
+    setMode('idle');
+  } catch (e) {
+    alert(`Không lưu được setup: ${e.message || e}`);
+    validateSave();
+  } finally {
+    els.btnSave.textContent = originalText;
   }
-  await refreshSetups();
-  setMode('idle');
 }
 
 async function onDelete() {
@@ -766,6 +807,8 @@ function bindUI() {
     } else if (state.mode === 'edit') {
       const payload = overlayPayload();
       if (payload) chart.setOverlay({ ...payload, interactive: true });
+      validateSave();
+      updateRR();
     }
   };
   document.getElementById('btnShort').onclick = () => {
@@ -778,9 +821,23 @@ function bindUI() {
     } else if (state.mode === 'edit') {
       const payload = overlayPayload();
       if (payload) chart.setOverlay({ ...payload, interactive: true });
+      validateSave();
+      updateRR();
     }
   };
 
+  els.fieldEntry.oninput = () => {
+    const entry = Number(els.fieldEntry.value);
+    state.draft.entry = Number.isFinite(entry) ? entry : null;
+    drawOverlayOnly();
+    validateSave();
+    updateRR();
+  };
+  els.fieldTime.oninput = () => {
+    state.draft.time = unixFromDatetimeLocal(els.fieldTime.value);
+    drawOverlayOnly();
+    validateSave();
+  };
   els.fieldSL.oninput = () => {
     state.draft.sl = Number(els.fieldSL.value);
     drawOverlayOnly();

@@ -1,78 +1,59 @@
 {
   "name": "learned_from_labels",
-  "source_setups": 8,
-  "win_rate_train": 0.625,
-  "avg_rr_train": 2.05,
+  "source_setups": 6,
+  "win_rate_train": 1.0,
+  "avg_rr_train": 7.24,
   "rules": {
     "long": {
       "enabled": true,
-      "rsi_min": 45.4,
-      "rsi_max": 57.5,
-      "exclude": [
-        {
-          "feature": "dist_ema50_abs",
-          "op": ">",
-          "value": 99.6,
-          "reason": "loss th\u01b0\u1eddng xa EMA50 h\u01a1n win"
-        },
-        {
-          "feature": "rsi14",
-          "op": "<",
-          "value": 47.2,
-          "reason": "RSI qu\u00e1 th\u1ea5p g\u1eafn v\u1edbi loss"
-        }
-      ],
-      "trend_up": false,
-      "close_above_ema200": false,
-      "max_dist_ema50_pips": 50.8,
-      "preferred_tags": [
-        "pullback"
-      ]
+      "rsi_min": 40.8,
+      "rsi_max": 50.8,
+      "exclude": [],
+      "max_dist_ema50_pips": 33.7
     },
     "short": {
       "enabled": true,
-      "rsi_min": 35.4,
-      "rsi_max": 48.6,
+      "rsi_min": 46.4,
+      "rsi_max": 62.8,
       "exclude": [],
       "trend_up": true,
       "close_above_ema50": true,
       "close_above_ema200": false,
-      "max_dist_ema50_pips": 84.8
+      "max_dist_ema50_pips": 30.3,
+      "preferred_tags": [
+        "retest",
+        "pullback"
+      ]
     }
   },
   "risk": {
     "mode": "from_labels",
     "default": {
-      "sl_atr_mult": 1.656,
-      "target_rr": 2.0,
-      "tp_atr_mult": 3.311
-    },
-    "long": {
-      "sl_atr_mult": 1.788,
-      "target_rr": 2.0,
-      "tp_atr_mult": 3.576
+      "sl_atr_mult": 2.474,
+      "target_rr": 6.73,
+      "tp_atr_mult": 16.66
     },
     "short": {
-      "sl_atr_mult": 1.583,
-      "target_rr": 2.0,
-      "tp_atr_mult": 3.166
+      "sl_atr_mult": 2.364,
+      "target_rr": 7.17,
+      "tp_atr_mult": 16.95
     }
   },
   "tags": {
     "tags": [
       {
-        "tag": "pullback",
-        "win": 2,
-        "loss": 1,
+        "tag": "retest",
+        "win": 3,
+        "loss": 0,
         "total": 3,
-        "win_rate": 0.667
+        "win_rate": 1.0
       },
       {
-        "tag": "trend",
-        "win": 0,
-        "loss": 1,
-        "total": 1,
-        "win_rate": 0.0
+        "tag": "pullback",
+        "win": 2,
+        "loss": 0,
+        "total": 2,
+        "win_rate": 1.0
       },
       {
         "tag": "rejection",
@@ -80,26 +61,13 @@
         "loss": 0,
         "total": 1,
         "win_rate": 1.0
-      },
-      {
-        "tag": "breakout",
-        "win": 0,
-        "loss": 1,
-        "total": 1,
-        "win_rate": 0.0
-      },
-      {
-        "tag": "retest",
-        "win": 0,
-        "loss": 1,
-        "total": 1,
-        "win_rate": 0.0
       }
     ],
     "preferred_tags": [
+      "retest",
       "pullback"
     ],
     "avoid_tags": []
   },
-  "tree_summary": "|--- close_above_ema200 <= 0.50\n|   |--- dist_ema50_pips <= -45.10\n|   |   |--- class: 0\n|   |--- dist_ema50_pips >  -45.10\n|   |   |--- class: 1\n|--- close_above_ema200 >  0.50\n|   |--- class: 0\n"
+  "tree_summary": "|--- class: 0\n"
 }
