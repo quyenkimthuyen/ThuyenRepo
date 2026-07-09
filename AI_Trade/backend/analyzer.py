@@ -17,6 +17,10 @@ from .tag_matcher import (
     build_setup_index,
     build_tag_signatures,
 )
+from .pipeline import PIPELINE_FLOW, pipeline_status
+from .bar_annotations import annotations_as_learning_samples, load_bar_annotations
+from .detection_config import load_bar_detection_config
+from .sequence_tags import build_sequence_signatures
 
 MIN_TAGGED_RATIO = 0.5
 MIN_TAG_SAMPLES = 2
@@ -454,9 +458,16 @@ def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
     win_rate = float(df["win"].mean())
     avg_rr = float(train_df_rr(train))
     tag_info = _tag_insights(train)
+    extra = annotations_as_learning_samples()
     coverage = _tag_coverage(train)
-    tag_signatures = build_tag_signatures(train)
+    tag_signatures = build_tag_signatures(train, extra_samples=extra)
     feature_stats = build_feature_stats(train)
+    det_cfg = load_bar_detection_config()
+    sequence_signatures = build_sequence_signatures(
+        train,
+        window=int(det_cfg.get("sequence_window", 5)),
+        extra_samples=extra,
+    )
     setup_index = build_setup_index(train)
     tag_profiles = _build_tag_profiles(train, tag_info)
     rule_mode = _resolve_rule_mode(coverage, tag_profiles, tag_signatures)
@@ -479,14 +490,22 @@ def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
 
     strategy = {
         "name": "learned_from_labels",
+        "pipeline_flow": PIPELINE_FLOW,
         "source_setups": len(train),
+        "bar_annotation_count": len(load_bar_annotations()),
+        "bar_learning_samples": len(extra),
         "win_rate_train": round(win_rate, 3),
         "avg_rr_train": round(avg_rr, 2),
         "rule_mode": rule_mode,
         "min_similarity": DEFAULT_MIN_SIMILARITY,
         "min_cluster_win_rate": 0.45,
+        "backtest_min_score": int(det_cfg.get("backtest_min_score", 35)),
+        "bar_tag_threshold": float(det_cfg.get("bar_tag_threshold", 0.45)),
+        "require_detected_tag": True,
+        "require_sequence_tag": bool(det_cfg.get("require_sequence_tag", False)),
         "tag_coverage": coverage,
         "tag_signatures": tag_signatures,
+        "sequence_signatures": sequence_signatures,
         "feature_stats": feature_stats,
         "setup_index": setup_index,
         "rules": rules,
@@ -520,6 +539,8 @@ def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
 
     return {
         "status": "ok",
+        "pipeline_flow": PIPELINE_FLOW,
+        "pipeline": pipeline_status(),
         "setup_count": len(train),
         "labeled_outcomes": len(df),
         "win_rate_train": round(win_rate, 3),
@@ -528,8 +549,11 @@ def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
         "tag_coverage": coverage,
         "tag_profiles": tag_profiles,
         "tag_signatures": tag_signatures,
+        "sequence_signatures": sequence_signatures,
         "feature_stats": feature_stats,
         "tag_warning": tag_warning,
+        "bar_annotation_count": len(load_bar_annotations()),
+        "bar_learning_samples": len(extra),
         "rules": rules,
         "risk": risk,
         "tag_insights": tag_info,

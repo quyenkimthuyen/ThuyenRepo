@@ -3,8 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -12,17 +10,16 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .analyzer import analyze_patterns, load_strategy
+from .optimizer import analyze_and_optimize
 from .backtest import run_backtest
 from .data_service import candles_to_records, load_candles, load_splits, slice_period
 from .indicators import add_indicators
 from .labels import create_setup, delete_setup, enrich_setup, load_setups, update_setup
-from .tag_matcher import (
-    build_feature_stats,
-    build_tag_signatures,
-    extract_features,
-    suggest_context,
-    tag_definitions,
-)
+from .bar_annotations import delete_annotation, load_bar_annotations, upsert_annotation
+from .bar_importance import inspect_bar_at_time, scan_important_bars
+from .pipeline import pipeline_status
+from .detection_config import load_bar_detection_config, save_bar_detection_config
+from .tag_matcher import tag_definitions
 from .tags import load_presets
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -53,6 +50,9 @@ class SetupIn(BaseModel):
     stop_loss: float
     take_profit: float
     tags: list[str] = Field(default_factory=list)
+    bar_tags: list[str] = Field(default_factory=list)
+    sequence_tags: list[str] = Field(default_factory=list)
+    annotation_id: str | None = None
     note: str = ""
 
 
@@ -63,12 +63,39 @@ class SetupPatch(BaseModel):
     stop_loss: float | None = None
     take_profit: float | None = None
     tags: list[str] | None = None
+    bar_tags: list[str] | None = None
+    sequence_tags: list[str] | None = None
+    annotation_id: str | None = None
     note: str | None = None
 
 
 class TagSuggestIn(BaseModel):
     entry_time: str
     entry_price: float
+
+
+class BarDetectionPatch(BaseModel):
+    min_score: float | None = None
+    backtest_min_score: float | None = None
+    require_sequence_tag: bool | None = None
+    max_bars: int | None = None
+    sequence_window: int | None = None
+    sequence_min_score: float | None = None
+    bar_tag_threshold: float | None = None
+    score_weights: dict[str, float | int] | None = None
+    thresholds: dict[str, float] | None = None
+    feature_weights: dict[str, float] | None = None
+
+
+class BarAnnotationIn(BaseModel):
+    bar_time: str
+    close: float
+    tags: list[str] = Field(default_factory=list)
+    note: str = ""
+    confirmed: bool = True
+    auto_detected_tags: list[str] = Field(default_factory=list)
+    score: float | None = None
+    id: str | None = None
 
 
 @app.get("/api/health")
@@ -80,7 +107,22 @@ def health():
 def get_config():
     cfg = load_splits()
     cfg["presets"] = load_presets()
+    cfg["bar_detection"] = load_bar_detection_config()
+    cfg["pipeline"] = pipeline_status()
     return cfg
+
+
+@app.get("/api/bar-detection/config")
+def get_bar_detection():
+    return load_bar_detection_config()
+
+
+@app.patch("/api/bar-detection/config")
+def patch_bar_detection(body: BarDetectionPatch):
+    patch = body.model_dump(exclude_none=True)
+    if not patch:
+        raise HTTPException(400, "Không có thay đổi")
+    return save_bar_detection_config(patch)
 
 
 @app.get("/api/presets")
@@ -154,28 +196,78 @@ def get_tag_definitions():
     return {"tags": tag_definitions()}
 
 
+@app.get("/api/bar-annotations")
+def list_bar_annotations():
+    return {"annotations": load_bar_annotations()}
+
+
+@app.post("/api/bar-annotations")
+def save_bar_annotation(body: BarAnnotationIn):
+    try:
+        return upsert_annotation(body.model_dump())
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/bar-annotations/{annotation_id}")
+def remove_bar_annotation(annotation_id: str):
+    delete_annotation(annotation_id)
+    return {"deleted": annotation_id}
+
+
+@app.get("/api/bars/important")
+def get_important_bars(
+    period: str = "train",
+    min_score: float | None = None,
+    with_tags: bool = True,
+    max_bars: int | None = None,
+):
+    if period not in load_splits()["periods"]:
+        raise HTTPException(400, f"Unknown period: {period}")
+    try:
+        return scan_important_bars(
+            period,
+            min_score=min_score,
+            with_tags=with_tags,
+            max_bars=max_bars,
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+
+
+@app.get("/api/bars/inspect")
+def inspect_bar(entry_time: str, entry_price: float | None = None):
+    try:
+        return inspect_bar_at_time(entry_time, entry_price=entry_price)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+
+
 @app.post("/api/tags/suggest")
 def suggest_tags(body: TagSuggestIn):
-    df = add_indicators(load_candles())
-    entry_time = pd.Timestamp(body.entry_time)
-    if entry_time.tz is None:
-        entry_time = entry_time.tz_localize("UTC")
-    else:
-        entry_time = entry_time.tz_convert("UTC")
+    try:
+        detail = inspect_bar_at_time(body.entry_time, entry_price=body.entry_price)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
 
-    idx = df.index.get_indexer([entry_time], method="nearest")[0]
-    if idx < 0:
-        raise HTTPException(400, "Invalid entry time")
-    row = df.iloc[idx]
-    if np.isnan(row.get("rsi14")) or np.isnan(row.get("atr14")):
-        raise HTTPException(400, "Indicators chưa sẵn sàng tại thời điểm này")
-
-    train = [s for s in load_setups() if s.get("period") == "train"]
-    strategy = load_strategy()
-    signatures = (strategy or {}).get("tag_signatures") or build_tag_signatures(train)
-    stats = (strategy or {}).get("feature_stats") or build_feature_stats(train)
-    features = extract_features(row, body.entry_price)
-    return suggest_context(features, train, signatures, stats)
+    return {
+        "features": detail.get("features"),
+        "detected_tags": detail.get("detected_tags"),
+        "suggested_tags": detail.get("suggested_tags"),
+        "similar_setups": detail.get("similar_setups"),
+        "suggested_direction": detail.get("suggested_direction"),
+        "confidence": detail.get("confidence"),
+        "cluster_win_rate": detail.get("cluster_win_rate"),
+        "importance_score": (detail.get("importance") or {}).get("score"),
+        "sequence_tags": detail.get("sequence_tags"),
+        "context_bars": detail.get("sequence"),
+        "bar_tags": detail.get("bar_tags"),
+        "annotation": detail.get("annotation"),
+    }
 
 
 @app.post("/api/setups/refresh")
@@ -189,8 +281,17 @@ def refresh_setups():
 
 
 @app.post("/api/analyze")
-def analyze():
+def analyze(optimize: bool = False):
+    if optimize:
+        return analyze_and_optimize()
     return analyze_patterns()
+
+
+@app.post("/api/optimize")
+def optimize():
+    from .optimizer import optimize_on_validation
+
+    return optimize_on_validation()
 
 
 @app.get("/api/strategy")

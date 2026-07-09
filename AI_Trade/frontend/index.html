@@ -6,7 +6,7 @@
   <title>AI Trade Lab — EURUSD 1H</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/app.css?v=9">
+  <link rel="stylesheet" href="/static/css/app.css?v=14">
 </head>
 <body>
   <noscript>
@@ -27,7 +27,7 @@
     <header class="topbar">
       <div class="brand">
         <h1>AI Trade Lab</h1>
-        <span class="subtitle">EURUSD · 1H · Label → Analyze → Backtest</span>
+        <span class="subtitle">EURUSD · 1H · Nến → Tag → Setup → Chiến lược → Backtest</span>
       </div>
       <span id="appLoading" class="app-loading hidden">Đang tải dữ liệu…</span>
     </header>
@@ -55,12 +55,27 @@
 
         <div class="sidebar-body">
         <div id="viewLabel" class="sidebar-view active" role="tabpanel">
+          <div class="pipeline-banner" id="pipelineBanner">
+            <div class="pipeline-steps">
+              <span class="pipe-step" data-step="bar">① Nến</span>
+              <span class="pipe-arrow">→</span>
+              <span class="pipe-step" data-step="tag">② Tag</span>
+              <span class="pipe-arrow">→</span>
+              <span class="pipe-step" data-step="setup">③ Setup</span>
+              <span class="pipe-arrow">→</span>
+              <span class="pipe-step" data-step="strategy">④ Chiến lược</span>
+              <span class="pipe-arrow">→</span>
+              <span class="pipe-step" data-step="backtest">⑤ Backtest</span>
+            </div>
+            <p class="pipeline-hint" id="pipelineHint">Bật 「Nến quan trọng」 → click nến → lưu tag → tạo setup (SL/TP).</p>
+          </div>
+
           <section class="panel panel-setups">
             <div class="panel-head">
               <h2>Setups</h2>
               <span class="count-badge" id="setupCount">0</span>
             </div>
-            <button type="button" class="btn primary block" id="btnNewSetup">＋ Setup mới</button>
+            <button type="button" class="btn primary block" id="btnNewSetup">＋ Setup từ nến đã tag</button>
 
             <div class="setup-editor hidden" id="editorPanel">
               <div class="mode-bar">
@@ -124,6 +139,45 @@
               </div>
               <ul id="setupList" class="setup-list scroll-panel"></ul>
             </div>
+
+            <div id="barInspectPanel" class="bar-inspect-panel hidden">
+              <div class="bar-inspect-head">
+                <strong>Nến quan trọng</strong>
+                <button type="button" class="btn tiny" id="btnCloseBarInspect">✕</button>
+              </div>
+              <div id="barInspectScore" class="bar-inspect-score"></div>
+              <div id="barInspectReasons" class="bar-inspect-reasons"></div>
+              <div id="barInspectTags" class="bar-inspect-tags"></div>
+              <div id="barInspectSeq" class="bar-inspect-seq muted"></div>
+              <ul id="barInspectSimilar" class="bar-inspect-similar"></ul>
+
+              <div class="bar-annotate-section">
+                <span class="bar-annotate-label">Tag của bạn <small class="muted">(chỉnh & lưu)</small></span>
+                <div id="barAnnotTags" class="tag-checkbox-group"></div>
+                <div class="bar-annotate-actions">
+                  <button type="button" class="btn primary" id="btnSaveBarAnnot">Lưu tag nến</button>
+                  <button type="button" class="btn danger hidden" id="btnDeleteBarAnnot">Xóa</button>
+                </div>
+              </div>
+
+              <button type="button" class="btn block" id="btnSetupFromBar">＋ Tạo setup tại nến này</button>
+            </div>
+
+            <div id="barAnnotationListSection" class="bar-annotation-list-section">
+              <div class="setup-list-head">
+                <span>Tag nến đã lưu</span>
+                <span class="count-badge" id="barAnnotationCount">0</span>
+              </div>
+              <ul id="barAnnotationList" class="setup-list scroll-panel bar-annotation-list"></ul>
+            </div>
+
+            <div id="importantBarListSection" class="important-bar-list-section hidden">
+              <div class="setup-list-head">
+                <span>Nến quan trọng</span>
+                <span class="count-badge" id="importantBarListCount">0</span>
+              </div>
+              <ul id="importantBarList" class="setup-list scroll-panel important-bar-list"></ul>
+            </div>
           </section>
         </div>
 
@@ -179,9 +233,48 @@
             <label><input type="checkbox" id="toggleEma50" checked> EMA 50</label>
             <label><input type="checkbox" id="toggleEma200" checked> EMA 200</label>
             <label><input type="checkbox" id="toggleRsi" checked> RSI 14</label>
+            <label><input type="checkbox" id="toggleImportantBars"> Nến quan trọng</label>
           </div>
           <span class="badge" id="periodBadge">Train 2022</span>
         </div>
+        <details class="detection-settings" id="detectionSettings">
+          <summary>Cài đặt nhận diện nến</summary>
+          <div class="detection-settings-body">
+            <label class="det-field">Ngưỡng quan trọng (score)
+              <input type="range" id="cfgMinScore" min="20" max="80" step="1">
+              <span id="cfgMinScoreVal">35</span>
+            </label>
+            <label class="det-field">Cửa sổ chuỗi nến
+              <input type="range" id="cfgSeqWindow" min="3" max="8" step="1">
+              <span id="cfgSeqWindowVal">5</span>
+            </label>
+            <label class="det-field">Ngưỡng tag chuỗi
+              <input type="range" id="cfgSeqMin" min="30" max="80" step="1">
+              <span id="cfgSeqMinVal">45%</span>
+            </label>
+            <label class="det-field">Trọng số EMA50
+              <input type="range" id="cfgWEma50" min="5" max="40" step="1">
+              <span id="cfgWEma50Val">22</span>
+            </label>
+            <label class="det-field">Trọng số chuỗi nến
+              <input type="range" id="cfgWSeq" min="5" max="50" step="1">
+              <span id="cfgWSeqVal">30</span>
+            </label>
+            <label class="det-field">Trọng số setup label
+              <input type="range" id="cfgWLabel" min="10" max="60" step="1">
+              <span id="cfgWLabelVal">40</span>
+            </label>
+            <label class="det-field">Ngưỡng backtest (score)
+              <input type="range" id="cfgBtMinScore" min="20" max="80" step="1">
+              <span id="cfgBtMinScoreVal">35</span>
+            </label>
+            <label class="det-field det-check">
+              <input type="checkbox" id="cfgRequireSeqTag"> Bắt buộc tag chuỗi nến
+            </label>
+            <button type="button" class="btn primary block" id="btnSaveDetection">Áp dụng & quét lại</button>
+          </div>
+        </details>
+        <div id="chartHoverHint" class="chart-hover-hint hidden"></div>
         <div class="chart-wrap">
           <div id="chartMain" class="chart-main"></div>
           <div id="chartOverlayHint" class="chart-overlay-hint hidden"></div>
@@ -192,7 +285,7 @@
   </div>
 
   <script type="module">
-    import('/static/js/app.js?v=9').catch((err) => {
+    import('/static/js/app.js?v=14').catch((err) => {
       console.error('Module load failed:', err);
       const box = document.createElement('div');
       box.style.cssText = 'padding:20px;color:#fecaca;background:#3f1212;font-size:14px;line-height:1.5';

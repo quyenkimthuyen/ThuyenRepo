@@ -2,22 +2,28 @@ import {
   analyze,
   backtest,
   deleteSetup,
+  deleteBarAnnotation,
+  getBarAnnotations,
   getCandles,
   getConfig,
+  getImportantBars,
   getPresets,
   getSetups,
+  inspectBar,
+  saveBarAnnotation,
+  saveBarDetectionConfig,
   saveSetup,
   suggestTags,
   updateSetup,
-} from './api.js?v=9';
+} from './api.js?v=14';
 import {
   renderAnalyzeView,
   renderBacktestView,
   renderError,
   renderLoading,
-} from './strategy-ui.js?v=9';
-import { initSidebarResize } from './layout.js?v=9';
-import { TradeChart } from './chart.js?v=9';
+} from './strategy-ui.js?v=14';
+import { initSidebarResize } from './layout.js?v=14';
+import { TradeChart } from './chart.js?v=14';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -36,6 +42,12 @@ const state = {
   btCache: { validation: null, test: null },
   focusedTradeKey: null,
   focusedSetupId: null,
+  showImportantBars: false,
+  importantBars: [],
+  inspectedBar: null,
+  detectionConfig: null,
+  barAnnotations: [],
+  barContext: null,
 };
 
 const els = {
@@ -56,6 +68,19 @@ const els = {
   tagSuggestPanel: document.getElementById('tagSuggestPanel'),
   tagSuggestTags: document.getElementById('tagSuggestTags'),
   tagSuggestSimilar: document.getElementById('tagSuggestSimilar'),
+  barInspectPanel: document.getElementById('barInspectPanel'),
+  barInspectScore: document.getElementById('barInspectScore'),
+  barInspectReasons: document.getElementById('barInspectReasons'),
+  barInspectTags: document.getElementById('barInspectTags'),
+  barInspectSeq: document.getElementById('barInspectSeq'),
+  barInspectSimilar: document.getElementById('barInspectSimilar'),
+  barAnnotTags: document.getElementById('barAnnotTags'),
+  importantBarListSection: document.getElementById('importantBarListSection'),
+  importantBarList: document.getElementById('importantBarList'),
+  importantBarListCount: document.getElementById('importantBarListCount'),
+  barAnnotationList: document.getElementById('barAnnotationList'),
+  barAnnotationCount: document.getElementById('barAnnotationCount'),
+  chartHoverHint: document.getElementById('chartHoverHint'),
   btnSave: document.getElementById('btnSave'),
   btnDelete: document.getElementById('btnDelete'),
   chartOverlayHint: document.getElementById('chartOverlayHint'),
@@ -66,6 +91,8 @@ const els = {
   btTestTradeList: document.getElementById('btTestTradeList'),
   btValCount: document.getElementById('btValCount'),
   btTestCount: document.getElementById('btTestCount'),
+  pipelineHint: document.getElementById('pipelineHint'),
+  pipelineBanner: document.getElementById('pipelineBanner'),
   sidebarTabs: document.querySelectorAll('.sidebar-tab'),
   sidebarViews: {
     label: document.getElementById('viewLabel'),
@@ -78,7 +105,11 @@ const els = {
 const chart = new TradeChart(
   document.getElementById('chartMain'),
   document.getElementById('chartRsi'),
-  { onClick: handleChartClick, onLevelDrag: handleLevelDrag },
+  {
+    onClick: handleChartClick,
+    onLevelDrag: handleLevelDrag,
+    onImportantBarHover: handleImportantBarHover,
+  },
 );
 
 const MODE_LABELS = { idle: 'Xem chart', new: 'Tạo mới', edit: 'Chỉnh sửa' };
@@ -115,6 +146,45 @@ function unixFromDatetimeLocal(value) {
   return Number.isNaN(ms) ? null : Math.floor(ms / 1000);
 }
 
+function entryHasBarAnnotation() {
+  if (state.draft.time == null) return false;
+  const iso = isoFromUnix(state.draft.time);
+  return state.barAnnotations.some(
+    (a) =>
+      a.confirmed !== false &&
+      (a.tags || []).length &&
+      (a.bar_time || '').slice(0, 16) === iso.slice(0, 16),
+  );
+}
+
+function updatePipelineUI() {
+  const banner = els.pipelineBanner;
+  const hint = els.pipelineHint;
+  if (!banner) return;
+
+  let step = 'bar';
+  if (state.sidebarTab === 'analyze') step = 'strategy';
+  else if (state.sidebarTab === 'validation' || state.sidebarTab === 'test') step = 'backtest';
+  else if (state.mode === 'new' || state.mode === 'edit') step = 'setup';
+  else if (state.inspectedBar?.annotation?.tags?.length) step = 'tag';
+  else if (state.inspectedBar || state.showImportantBars) step = 'bar';
+
+  banner.querySelectorAll('.pipe-step').forEach((el) => {
+    el.classList.toggle('active', el.dataset.step === step);
+  });
+
+  if (hint) {
+    const hints = {
+      bar: 'Bật 「Nến quan trọng」 và click một nến trên chart.',
+      tag: 'Chọn tag và bấm 「Lưu tag nến」 — bước bắt buộc trước setup.',
+      setup: 'Đặt SL/TP — tag setup phải khớp ít nhất 1 tag nến đã lưu.',
+      strategy: 'Tab Analyze → học pattern từ tất cả setup train.',
+      backtest: 'Vào lệnh khi nến đạt score + tag + giống setup train.',
+    };
+    hint.textContent = hints[step] || hints.bar;
+  }
+}
+
 const SIDEBAR_PERIOD = {
   label: 'train',
   analyze: 'train',
@@ -142,6 +212,9 @@ function refreshChartAnnotations() {
   if (state.period === 'train') {
     if (state.focusedSetupId) return;
     chart.showSetupMarkers(trainSetups());
+    if (state.showImportantBars) {
+      chart.showImportantBars(state.importantBars);
+    }
     return;
   }
 
@@ -149,6 +222,9 @@ function refreshChartAnnotations() {
     if (state.focusedTradeKey) return;
     const trades = state.btCache[state.period]?.trades || [];
     chart.showTradeMarkers(trades);
+    if (state.showImportantBars) {
+      chart.showImportantBars(state.importantBars);
+    }
   }
 }
 
@@ -299,6 +375,431 @@ async function refreshTagSuggest({ applyTags = true } = {}) {
     console.warn('Tag suggest failed:', err);
     renderTagSuggest(null);
   }
+}
+
+function hideBarInspect() {
+  state.inspectedBar = null;
+  chart.setSelectedImportantBar(null);
+  chart.clearSequenceWindow();
+  els.barInspectPanel?.classList.add('hidden');
+  renderImportantBarList();
+}
+
+function renderBarAnnotCheckboxes(selectedTags = []) {
+  const group = els.barAnnotTags;
+  if (!group) return;
+  const wanted = new Set(selectedTags);
+  const presets = tagPresetList();
+  group.innerHTML = '';
+  for (const tag of presets) {
+    const label = document.createElement('label');
+    label.className = 'tag-check';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = tag.id;
+    input.checked = wanted.has(tag.id);
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(tag.label));
+    group.appendChild(label);
+  }
+  const ann = state.inspectedBar?.annotation;
+  document.getElementById('btnDeleteBarAnnot')?.classList.toggle('hidden', !ann?.id);
+}
+
+function barAnnotSelectedTags() {
+  if (!els.barAnnotTags) return [];
+  return [...els.barAnnotTags.querySelectorAll('input:checked')].map((el) => el.value);
+}
+
+async function saveBarAnnotationFromInspect() {
+  const bar = state.inspectedBar;
+  if (!bar) return;
+  const tags = barAnnotSelectedTags();
+  if (!tags.length) {
+    alert('Chọn ít nhất 1 tag trước khi lưu.');
+    return;
+  }
+  const btn = document.getElementById('btnSaveBarAnnot');
+  const original = btn?.textContent;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Đang lưu...';
+  }
+  try {
+    const saved = await saveBarAnnotation({
+      id: bar.annotation?.id,
+      bar_time: bar.entry_time,
+      close: bar.close,
+      tags,
+      note: tags.map((id) => tagPresetList().find((t) => t.id === id)?.label || id).join(' + '),
+      confirmed: true,
+      auto_detected_tags: (bar.detected_tags || []).map((t) => t.tag),
+      score: bar.importance?.score,
+    });
+    await refreshBarAnnotations();
+    await loadImportantBars();
+    renderImportantBarList();
+    const refreshed = await inspectBar(bar.entry_time, bar.close);
+    renderBarInspect(refreshed);
+  } catch (err) {
+    alert(`Không lưu được tag nến: ${err.message || err}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }
+}
+
+async function deleteBarAnnotationFromInspect() {
+  const id = state.inspectedBar?.annotation?.id;
+  if (!id || !confirm('Xóa tag đã lưu cho nến này?')) return;
+  await deleteBarAnnotation(id);
+  await refreshBarAnnotations();
+  await loadImportantBars();
+  renderImportantBarList();
+  if (state.inspectedBar) {
+    const refreshed = await inspectBar(state.inspectedBar.entry_time, state.inspectedBar.close);
+    renderBarInspect(refreshed);
+  }
+}
+
+async function refreshBarAnnotations() {
+  const { annotations } = await getBarAnnotations();
+  state.barAnnotations = annotations || [];
+  renderBarAnnotationList();
+}
+
+function renderBarAnnotationList() {
+  const list = els.barAnnotationList;
+  const countEl = els.barAnnotationCount;
+  if (!list) return;
+
+  const items = state.barAnnotations || [];
+  if (countEl) countEl.textContent = String(items.length);
+  list.innerHTML = '';
+
+  if (!items.length) {
+    list.innerHTML =
+      '<li class="hint" style="padding:8px">Chưa lưu tag nến. Bật 「Nến quan trọng」 và lưu tag trên chart.</li>';
+    return;
+  }
+
+  const sorted = [...items].sort((a, b) =>
+    (b.bar_time || '').localeCompare(a.bar_time || ''),
+  );
+  for (const ann of sorted.slice(0, 60)) {
+    const li = document.createElement('li');
+    const selected =
+      state.inspectedBar?.annotation?.id === ann.id ||
+      state.inspectedBar?.entry_time === ann.bar_time;
+    const tags = (ann.tags || []).join(' · ') || '—';
+    const time = (ann.bar_time || '').slice(0, 16).replace('T', ' ');
+    li.className = `setup-item bar-item confirmed${selected ? ' selected' : ''}`;
+    li.innerHTML = `
+      <div class="setup-top">
+        <span class="setup-dir">${ann.score ?? '—'}</span>
+        <span class="pill good">${tags}</span>
+      </div>
+      <div class="setup-meta">${time}${ann.note ? ` · ${ann.note}` : ''}</div>
+    `;
+    li.onclick = async () => {
+      const data = await inspectBar(ann.bar_time, ann.close ?? null);
+      renderBarInspect(data);
+      chart.scrollToTime(data.time);
+    };
+    list.appendChild(li);
+  }
+}
+
+function renderImportantBarList() {
+  const section = els.importantBarListSection;
+  const list = els.importantBarList;
+  const countEl = els.importantBarListCount;
+  if (!section || !list) return;
+
+  const show = state.showImportantBars;
+  section.classList.toggle('hidden', !show);
+  if (!show) return;
+
+  const bars = state.importantBars || [];
+  countEl.textContent = String(bars.length);
+  list.innerHTML = '';
+
+  if (!bars.length) {
+    list.innerHTML = '<li class="hint" style="padding:8px">Không có nến đạt ngưỡng score.</li>';
+    return;
+  }
+
+  const sorted = [...bars].sort((a, b) => b.score - a.score).slice(0, 80);
+  for (const bar of sorted) {
+    const li = document.createElement('li');
+    const selected = state.inspectedBar?.time === bar.time;
+    const tag =
+      bar.confirmed_tags?.[0] || bar.primary_tag || (bar.suggested_tags?.[0] ?? '—');
+    li.className = `setup-item bar-item${selected ? ' selected' : ''}${bar.user_confirmed ? ' confirmed' : ''}`;
+    const time = new Date(bar.time * 1000).toISOString().slice(0, 16).replace('T', ' ');
+    li.innerHTML = `
+      <div class="setup-top">
+        <span class="setup-dir">${bar.score}</span>
+        <span class="pill">${tag}</span>
+        ${bar.user_confirmed ? '<span class="pill good">✓</span>' : ''}
+      </div>
+      <div class="setup-meta">${time}</div>
+    `;
+    li.onclick = async () => {
+      const data = await inspectBar(new Date(bar.time * 1000).toISOString(), null);
+      renderBarInspect(data);
+      chart.setSelectedImportantBar(bar.time);
+      chart.scrollToTime(bar.time);
+    };
+    list.appendChild(li);
+  }
+}
+
+function handleImportantBarHover(bar) {
+  const hint = els.chartHoverHint;
+  if (!hint || !state.showImportantBars) return;
+  if (!bar) {
+    hint.classList.add('hidden');
+    return;
+  }
+  const tag =
+    bar.confirmed_tags?.[0] || bar.primary_tag || (bar.suggested_tags?.[0] ?? '—');
+  const time = new Date(bar.time * 1000).toISOString().slice(0, 16).replace('T', ' ');
+  hint.textContent = `${time} · score ${bar.score} · ${tag}${bar.user_confirmed ? ' · đã lưu' : ''}`;
+  hint.classList.remove('hidden');
+}
+
+function renderBarInspect(data) {
+  if (!els.barInspectPanel || !data) {
+    hideBarInspect();
+    return;
+  }
+
+  state.inspectedBar = data;
+  els.barInspectPanel.classList.remove('hidden');
+  chart.setSelectedImportantBar(data.time);
+  const seqWindow = data.sequence?.window ?? state.detectionConfig?.sequence_window ?? 5;
+  chart.showSequenceWindow(data.time, seqWindow);
+  renderImportantBarList();
+  renderBarAnnotationList();
+
+  const tagsForEdit =
+    data.annotation?.tags?.length ? data.annotation.tags : data.suggested_tags || [];
+  renderBarAnnotCheckboxes(tagsForEdit);
+
+  const imp = data.importance || {};
+  const score = imp.score ?? 0;
+  const minScore = state.detectionConfig?.min_score ?? 35;
+  const important = data.important !== false && score >= minScore;
+  els.barInspectScore.innerHTML = `
+    <span class="score-pill ${important ? 'hot' : 'warm'}">${score}/100</span>
+    <span class="muted">${(data.entry_time || '').slice(0, 16).replace('T', ' ')} · Close ${data.close}</span>
+  `;
+
+  const reasons = imp.reason_labels || [];
+  els.barInspectReasons.innerHTML = reasons.length
+    ? reasons.map((r) => `<span class="reason-chip">${r}</span>`).join('')
+    : '<span class="muted">Chưa đủ điểm vị trí quan trọng</span>';
+
+  const detected = data.detected_tags || [];
+  els.barInspectTags.innerHTML = detected.length
+    ? detected
+        .map((item) => {
+          const src = (item.sources || [item.source || 'bar']).join('+');
+          return `<span class="pill suggest" title="${src}">${item.tag} ${Math.round(item.score * 100)}%</span>`;
+        })
+        .join(' ')
+    : '<span class="muted">Chưa nhận diện tag — gắn thủ công khi tạo setup</span>';
+
+  const seqTags = data.sequence_tags || [];
+  const seq = data.sequence;
+  if (els.barInspectSeq) {
+    const seqLabel = seqTags.length
+      ? seqTags.map((t) => `${t.tag} (${t.label || t.source})`).join(' · ')
+      : '—';
+    const momentum = seq?.momentum_pips != null ? `${seq.momentum_pips} pips` : '—';
+    els.barInspectSeq.innerHTML = `<strong>Chuỗi ${seq?.window ?? 5} nến:</strong> momentum ${momentum} · ${seqLabel}`;
+  }
+
+  const similar = data.similar_setups || [];
+  els.barInspectSimilar.innerHTML = similar.length
+    ? similar
+        .map((item) => {
+          const time = (item.entry_time || '').slice(0, 10);
+          const tags = (item.tags || []).join(', ');
+          return `<li>${Math.round(item.similarity * 100)}% · ${item.direction?.toUpperCase()} · ${item.result?.toUpperCase()} · ${time}${tags ? ` · ${tags}` : ''}</li>`;
+        })
+        .join('')
+    : '<li class="muted">Chưa có setup train tương tự</li>';
+  updatePipelineUI();
+}
+
+async function inspectBarAt(time, candle) {
+  try {
+    const data = await inspectBar(isoFromUnix(time), Number(candle.close));
+    renderBarInspect(data);
+    chart.scrollToTime(time);
+    els.chartOverlayHint.textContent = `Nến score ${data.importance?.score ?? '—'} — ${(data.suggested_tags || []).join(', ') || 'chưa có tag'}`;
+    els.chartOverlayHint.classList.remove('hidden');
+  } catch (err) {
+    console.warn('Inspect bar failed:', err);
+  }
+}
+
+async function loadImportantBars() {
+  if (!state.showImportantBars) {
+    chart.clearImportantBars();
+    return;
+  }
+  try {
+    const data = await getImportantBars(state.period);
+    state.importantBars = data.bars || [];
+    if (data.config) state.detectionConfig = data.config;
+    if (state.mode === 'idle' && !state.focusedSetupId && !state.focusedTradeKey) {
+      chart.showImportantBars(state.importantBars);
+    }
+    renderImportantBarList();
+    if (state.importantBars.length && state.mode === 'idle') {
+      const minScore = state.detectionConfig?.min_score ?? 35;
+      els.chartOverlayHint.textContent = `${state.importantBars.length} nến ≥ score ${minScore} — click để xem tag + chuỗi nến`;
+      els.chartOverlayHint.classList.remove('hidden');
+    }
+  } catch (err) {
+    console.warn('Important bars failed:', err);
+    chart.clearImportantBars();
+  }
+}
+
+function bindDetectionRange(inputId, valId, { format = (v) => v } = {}) {
+  const input = document.getElementById(inputId);
+  const valEl = document.getElementById(valId);
+  if (!input || !valEl) return;
+  input.oninput = () => {
+    valEl.textContent = format(input.value);
+  };
+}
+
+function initDetectionSettings(config) {
+  state.detectionConfig = config;
+  if (!config) return;
+
+  const sw = config.score_weights || {};
+  const set = (id, valId, value, format) => {
+    const el = document.getElementById(id);
+    const valEl = document.getElementById(valId);
+    if (!el) return;
+    el.value = String(value);
+    if (valEl) valEl.textContent = format ? format(value) : String(value);
+  };
+
+  set('cfgMinScore', 'cfgMinScoreVal', config.min_score ?? 35);
+  set('cfgSeqWindow', 'cfgSeqWindowVal', config.sequence_window ?? 5);
+  set(
+    'cfgSeqMin',
+    'cfgSeqMinVal',
+    Math.round((config.sequence_min_score ?? 0.45) * 100),
+    (v) => `${v}%`,
+  );
+  set('cfgWEma50', 'cfgWEma50Val', sw.near_ema50_strong ?? 22);
+  set('cfgWSeq', 'cfgWSeqVal', sw.sequence_match_mult ?? 30);
+  set('cfgWLabel', 'cfgWLabelVal', sw.labeled_setup ?? 40);
+  set('cfgBtMinScore', 'cfgBtMinScoreVal', config.backtest_min_score ?? 35);
+  const reqSeq = document.getElementById('cfgRequireSeqTag');
+  if (reqSeq) reqSeq.checked = Boolean(config.require_sequence_tag);
+
+  bindDetectionRange('cfgMinScore', 'cfgMinScoreVal');
+  bindDetectionRange('cfgBtMinScore', 'cfgBtMinScoreVal');
+  bindDetectionRange('cfgSeqWindow', 'cfgSeqWindowVal');
+  bindDetectionRange('cfgSeqMin', 'cfgSeqMinVal', { format: (v) => `${v}%` });
+  bindDetectionRange('cfgWEma50', 'cfgWEma50Val');
+  bindDetectionRange('cfgWSeq', 'cfgWSeqVal');
+  bindDetectionRange('cfgWLabel', 'cfgWLabelVal');
+}
+
+function collectDetectionPatch() {
+  const seqPct = Number(document.getElementById('cfgSeqMin')?.value || 45);
+  return {
+    min_score: Number(document.getElementById('cfgMinScore')?.value || 35),
+    backtest_min_score: Number(document.getElementById('cfgBtMinScore')?.value || 35),
+    require_sequence_tag: Boolean(document.getElementById('cfgRequireSeqTag')?.checked),
+    sequence_window: Number(document.getElementById('cfgSeqWindow')?.value || 5),
+    sequence_min_score: Math.round(seqPct) / 100,
+    score_weights: {
+      near_ema50_strong: Number(document.getElementById('cfgWEma50')?.value || 22),
+      sequence_match_mult: Number(document.getElementById('cfgWSeq')?.value || 30),
+      labeled_setup: Number(document.getElementById('cfgWLabel')?.value || 40),
+    },
+  };
+}
+
+async function saveDetectionSettings() {
+  const btn = document.getElementById('btnSaveDetection');
+  const original = btn?.textContent;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Đang lưu...';
+  }
+  try {
+    const patch = collectDetectionPatch();
+    state.detectionConfig = await saveBarDetectionConfig(patch);
+    initDetectionSettings(state.detectionConfig);
+    if (state.showImportantBars) await loadImportantBars();
+  } catch (err) {
+    alert(`Không lưu được cài đặt: ${err.message || err}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }
+}
+
+async function startSetupFromInspectedBar() {
+  const bar = state.inspectedBar;
+  if (!bar) return;
+  if (!(bar.annotation?.tags || []).length) {
+    alert('Luồng bắt buộc: lưu tag nến (bước ②) trước khi tạo setup.');
+    return;
+  }
+  await ensureTrainPeriod();
+  switchSidebarTab('label', { syncPeriod: false });
+  clearDraft();
+  state.mode = 'new';
+  state.step = 'sl';
+  state.barContext = {
+    entry_time: bar.entry_time,
+    annotation_id: bar.annotation?.id || null,
+    bar_tags: bar.annotation?.tags || bar.suggested_tags || [],
+    sequence_tags: (bar.sequence_tags || []).map((t) => t.tag || t),
+  };
+  state.draft = {
+    time: bar.time,
+    entry: Number(bar.close),
+    sl: null,
+    tp: null,
+  };
+  const dir = bar.suggested_direction || 'long';
+  setDirection(dir);
+  const defaultSl = dir === 'long' ? bar.close - 0.003 : bar.close + 0.003;
+  state.draft.sl = Number(defaultSl.toFixed(5));
+  els.fieldSL.value = state.draft.sl;
+  const risk = Math.abs(state.draft.entry - state.draft.sl);
+  state.draft.tp = Number(
+    (dir === 'long' ? state.draft.entry + risk * 2 : state.draft.entry - risk * 2).toFixed(5),
+  );
+  els.fieldTP.value = state.draft.tp;
+  state.step = 'tp';
+  if (bar.suggested_tags?.length || bar.annotation?.tags?.length) {
+    setSelectedTags(bar.annotation?.tags?.length ? bar.annotation.tags : bar.suggested_tags, {
+      userEdited: false,
+    });
+  }
+  updateModeUI();
+  syncFields({ focus: true });
+  refreshTagSuggest({ applyTags: false });
+  hideBarInspect();
 }
 
 function hideTagSuggest() {
@@ -468,6 +969,7 @@ function clearDraft() {
   state.step = 'entry';
   state.focusedSetupId = null;
   state.focusedTradeKey = null;
+  state.barContext = null;
   chart.clearOverlay();
   chart.clearFocus();
   hideTagSuggest();
@@ -530,12 +1032,19 @@ function validateSave() {
 
   let valid = false;
   const hasTag = (state.meta.tags?.length ?? 0) > 0;
+  const barTagged = state.mode === 'edit' || entryHasBarAnnotation();
   if (ok && state.direction === 'long') {
-    valid = sl < entry && tp > entry && hasTag;
+    valid = sl < entry && tp > entry && hasTag && barTagged;
   } else if (ok && state.direction === 'short') {
-    valid = sl > entry && tp < entry && hasTag;
+    valid = sl > entry && tp < entry && hasTag && barTagged;
   }
   els.btnSave.disabled = !valid;
+  if (state.mode === 'new' && ok && hasTag && !barTagged) {
+    els.pipelineHint.textContent =
+      'Chưa có tag nến tại entry — quay lại bước ② (lưu tag nến) trước khi lưu setup.';
+  } else {
+    updatePipelineUI();
+  }
 }
 
 function moveDraftEntryToCandle({ time, candle }) {
@@ -548,7 +1057,17 @@ function moveDraftEntryToCandle({ time, candle }) {
 }
 
 function handleChartClick({ time, candle, price }) {
-  if (!isTrainPeriod()) return;
+  if (!isTrainPeriod()) {
+    if (state.mode === 'idle' && state.showImportantBars) {
+      inspectBarAt(time, candle);
+    }
+    return;
+  }
+
+  if (state.mode === 'idle' && state.showImportantBars) {
+    inspectBarAt(time, candle);
+    return;
+  }
 
   if (state.mode === 'edit') {
     moveDraftEntryToCandle({ time, candle });
@@ -604,13 +1123,21 @@ function handleChartClick({ time, candle, price }) {
 
 async function startNewSetup() {
   await ensureTrainPeriod();
+  state.showImportantBars = true;
+  const toggle = document.getElementById('toggleImportantBars');
+  if (toggle) toggle.checked = true;
+  await loadImportantBars();
+
+  if (state.inspectedBar?.annotation?.tags?.length) {
+    await startSetupFromInspectedBar();
+    return;
+  }
+
   switchSidebarTab('label', { syncPeriod: false });
-  clearDraft();
-  state.mode = 'new';
-  state.step = 'entry';
-  setDirection('long');
-  updateModeUI();
-  syncFields();
+  els.chartOverlayHint.textContent =
+    'Luồng: click nến → lưu tag → bấm lại 「Setup từ nến đã tag」 hoặc 「Tạo setup tại nến này」';
+  els.chartOverlayHint.classList.remove('hidden');
+  updatePipelineUI();
 }
 
 async function startEditSetup(setup) {
@@ -685,6 +1212,7 @@ async function loadChart() {
   } else {
     refreshChartAnnotations();
   }
+  await loadImportantBars();
 }
 
 function renderSetups() {
@@ -710,7 +1238,7 @@ function renderSetups() {
         <span class="setup-result ${resClass}">${(s.result || '?').toUpperCase()}</span>
         <span style="margin-left:auto;font-size:11px;color:#fbbf24">RR ${s.planned_rr ?? '—'}</span>
       </div>
-      <div class="setup-meta">${s.entry_time?.slice(0, 16).replace('T', ' ')}${(s.tags || []).length ? '<br>' + s.tags.join(' · ') : ''}</div>
+      <div class="setup-meta">${s.entry_time?.slice(0, 16).replace('T', ' ')}${(s.tags || []).length ? '<br>' + s.tags.join(' · ') : ''}${s.context_bars?.length ? `<br><span class="muted">${s.context_bars.length} nến</span>` : ''}${(s.bar_tags || []).length ? ` · tag nến: ${s.bar_tags.join(', ')}` : ''}</div>
     `;
     li.onclick = () => viewSetupOnChart(s);
     li.ondblclick = (e) => {
@@ -767,7 +1295,7 @@ function renderBtTradeList(period) {
         <span class="setup-result ${win ? 'win' : 'loss'}">${t.result.toUpperCase()}</span>
         <span style="margin-left:auto;font-size:11px;color:${win ? '#86efac' : '#fca5a5'}">${t.pnl_pips} pips</span>
       </div>
-      <div class="setup-meta">${t.entry_time?.slice(0, 16).replace('T', ' ')}${t.tag ? ' · ' + t.tag : ''}${(t.tags || []).length && !t.tag ? ' · ' + t.tags.join(' · ') : ''} · Entry ${t.entry}</div>
+      <div class="setup-meta">${t.entry_time?.slice(0, 16).replace('T', ' ')}${t.tag ? ' · ' + t.tag : ''}${(t.sequence_tags || []).length ? ' · seq: ' + t.sequence_tags.join(', ') : ''}${t.importance_score != null ? ' · score ' + t.importance_score : ''}${t.similarity != null ? ' · sim ' + Math.round(t.similarity * 100) + '%' : ''} · Entry ${t.entry}</div>
     `;
     li.onclick = () => viewTradeOnChart(period, t);
     listEl.appendChild(li);
@@ -789,6 +1317,8 @@ async function refreshSetups() {
 }
 
 function buildSetupBody() {
+  const bar = state.inspectedBar;
+  const ctx = state.barContext;
   return {
     direction: state.direction,
     entry_time: isoFromUnix(state.draft.time),
@@ -797,6 +1327,10 @@ function buildSetupBody() {
     take_profit: Number(els.fieldTP.value),
     note: state.meta.note || '',
     tags: state.meta.tags || [],
+    bar_tags: ctx?.bar_tags || bar?.annotation?.tags || [],
+    sequence_tags:
+      ctx?.sequence_tags || (bar?.sequence_tags || []).map((t) => t.tag || t),
+    annotation_id: ctx?.annotation_id || bar?.annotation?.id || null,
   };
 }
 
@@ -843,6 +1377,7 @@ function setSidebarTabUI(tabId) {
     view.classList.toggle('hidden', key !== tabId);
     view.classList.toggle('active', key === tabId);
   }
+  updatePipelineUI();
 }
 
 function switchSidebarTab(tabId, { syncPeriod = true } = {}) {
@@ -960,6 +1495,23 @@ function bindUI() {
   document.getElementById('toggleEma200').onchange = (e) => chart.toggleEma200(e.target.checked);
   document.getElementById('toggleRsi').onchange = (e) => chart.toggleRsi(e.target.checked);
 
+  document.getElementById('toggleImportantBars').onchange = async (e) => {
+    state.showImportantBars = e.target.checked;
+    if (!e.target.checked) {
+      hideBarInspect();
+      els.chartHoverHint?.classList.add('hidden');
+    }
+    await loadImportantBars();
+    renderImportantBarList();
+    if (!state.showImportantBars) updateChartHint();
+  };
+
+  document.getElementById('btnCloseBarInspect')?.addEventListener('click', hideBarInspect);
+  document.getElementById('btnSetupFromBar')?.addEventListener('click', () => startSetupFromInspectedBar());
+  document.getElementById('btnSaveBarAnnot')?.addEventListener('click', () => saveBarAnnotationFromInspect());
+  document.getElementById('btnDeleteBarAnnot')?.addEventListener('click', () => deleteBarAnnotationFromInspect());
+  document.getElementById('btnSaveDetection')?.addEventListener('click', () => saveDetectionSettings());
+
   els.sidebarTabs.forEach((btn) => {
     btn.onclick = () => switchSidebarTab(btn.dataset.sidebar);
   });
@@ -1041,6 +1593,7 @@ async function loadAppData() {
   setLoading(true);
   try {
     state.config = await fetchWithRetry(() => getConfig());
+    initDetectionSettings(state.config?.bar_detection);
     await loadTagPresets();
     renderTagCheckboxes();
     renderPeriodTabs();
@@ -1050,6 +1603,8 @@ async function loadAppData() {
     setMode('idle');
     await fetchWithRetry(() => loadChart());
     await fetchWithRetry(() => refreshSetups());
+    await fetchWithRetry(() => refreshBarAnnotations());
+    updatePipelineUI();
     refreshChartAnnotations();
     requestAnimationFrame(() => chart.resize?.());
     hideBootError();

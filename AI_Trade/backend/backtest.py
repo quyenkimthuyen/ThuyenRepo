@@ -9,8 +9,8 @@ from .analyzer import load_strategy
 from .config import PIP
 from .data_service import load_candles, load_splits, slice_period
 from .indicators import add_indicators
+from .bar_importance import clear_detection_cache, match_entry_from_inspection
 from .labels import load_setups
-from .tag_matcher import match_entry_from_similarity
 
 
 def _cost_price() -> float:
@@ -85,24 +85,26 @@ def _risk_from_reference_setup(setup: dict[str, Any]) -> tuple[float, float] | N
     return sl_mult, tp_mult
 
 
+def _uses_pipeline(strategy: dict[str, Any]) -> bool:
+    if strategy.get("rule_mode") == "similarity":
+        return True
+    return bool(strategy.get("tag_signatures")) or bool(strategy.get("setup_index"))
+
+
 def _find_entry(
-    row: pd.Series, strategy: dict[str, Any]
+    df: pd.DataFrame,
+    i: int,
+    row: pd.Series,
+    strategy: dict[str, Any],
 ) -> tuple[str | None, str | None, dict[str, Any] | None]:
     """Return (direction, primary_tag, match_meta) if entry signal found."""
-    rule_mode = strategy.get("rule_mode", "global")
-
-    if rule_mode == "similarity":
-        train_setups = [s for s in load_setups() if s.get("period") == "train"]
-        direction, ref_setup, ctx = match_entry_from_similarity(row, strategy, train_setups)
-        if not direction or not ref_setup:
+    if _uses_pipeline(strategy):
+        direction, primary_tag, match_meta = match_entry_from_inspection(df, i, strategy)
+        if not direction or not match_meta:
             return None, None, None
-        detected = ctx.get("detected_tags") or []
-        primary_tag = detected[0]["tag"] if detected else None
-        if not primary_tag:
-            similar = ctx.get("similar_setups") or []
-            tags = (similar[0].get("tags") if similar else None) or []
-            primary_tag = tags[0] if tags else None
-        return direction, primary_tag, {"ref_setup": ref_setup, "context": ctx}
+        return direction, primary_tag, match_meta
+
+    rule_mode = strategy.get("rule_mode", "global")
 
     if rule_mode == "tag_driven":
         candidates: list[tuple[str, str, dict[str, Any], dict[str, Any]]] = []
@@ -277,10 +279,12 @@ def _equity_metrics(trades: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def run_backtest(period: str = "validation") -> dict[str, Any]:
-    strategy = load_strategy()
+def run_backtest(period: str = "validation", *, strategy: dict[str, Any] | None = None) -> dict[str, Any]:
+    strategy = strategy or load_strategy()
     if not strategy:
         return {"status": "no_strategy", "message": "Chạy Analyze trước để sinh chiến lược."}
+
+    clear_detection_cache()
 
     df = add_indicators(slice_period(load_candles(), period))
     # dist_ema50 for rule matching
@@ -300,7 +304,7 @@ def run_backtest(period: str = "validation") -> dict[str, Any]:
         direction = None
         matched_tag = None
         match_meta = None
-        direction, matched_tag, match_meta = _find_entry(row, strategy)
+        direction, matched_tag, match_meta = _find_entry(df, i, row, strategy)
         if not direction:
             continue
 
@@ -310,8 +314,14 @@ def run_backtest(period: str = "validation") -> dict[str, Any]:
             if matched_tag:
                 trade["tag"] = matched_tag
             ctx = (match_meta or {}).get("context") or {}
+            imp = (match_meta or {}).get("importance") or {}
+            if imp.get("score") is not None:
+                trade["importance_score"] = imp["score"]
             if ctx.get("detected_tags"):
                 trade["detected_tags"] = [item["tag"] for item in ctx["detected_tags"]]
+            seq_tags = (match_meta or {}).get("sequence_tags") or ctx.get("sequence_tags") or []
+            if seq_tags:
+                trade["sequence_tags"] = [item["tag"] for item in seq_tags]
             if ctx.get("similar_setups"):
                 best = ctx["similar_setups"][0]
                 trade["similarity"] = best.get("similarity")

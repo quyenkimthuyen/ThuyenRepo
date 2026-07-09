@@ -3,14 +3,16 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
+from .bar_annotations import annotation_at_time, link_setup_to_annotation
 from .config import LABELS_PATH, PIP
 from .data_service import load_candles, period_for_timestamp
+from .detection_config import load_bar_detection_config
 from .indicators import add_indicators
+from .pipeline import context_bars_for_index, validate_setup_from_bar
 from .tags import infer_tags, normalize_tags
 
 
@@ -59,7 +61,6 @@ def resolve_outcome(
             hit_tp = low <= tp
 
         if hit_sl and hit_tp:
-            # conservative: SL first on same bar
             return "loss", ts
         if hit_sl:
             return "loss", ts
@@ -79,6 +80,9 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
     nearest_idx = df.index.get_indexer([entry_time], method="nearest")[0]
     bar_time = df.index[nearest_idx]
     row = df.iloc[nearest_idx]
+    cfg = load_bar_detection_config()
+    window = int(cfg.get("sequence_window", 5))
+    ann = annotation_at_time(setup.get("entry_time") or bar_time.isoformat())
 
     direction = setup["direction"]
     entry = float(setup["entry_price"])
@@ -95,6 +99,11 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
         "exit_time": exit_time.isoformat() if exit_time is not None else None,
         "period": period_for_timestamp(bar_time),
         "tags": infer_tags(setup),
+        "context_bars": setup.get("context_bars")
+        or context_bars_for_index(df, nearest_idx, window),
+        "bar_tags": setup.get("bar_tags") or (ann.get("tags") if ann else []),
+        "sequence_tags": setup.get("sequence_tags") or [],
+        "annotation_id": setup.get("annotation_id") or (ann.get("id") if ann else None),
         "features": {
             "rsi14": round(float(row.get("rsi14", 0)), 2),
             "ema50": round(float(row.get("ema50", 0)), 5),
@@ -116,6 +125,8 @@ def create_setup(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Chỉ được đánh dấu setup trong năm Train (2022).")
 
     df = add_indicators(load_candles())
+    tags = validate_setup_from_bar(payload, is_create=True)
+    ann = annotation_at_time(payload["entry_time"])
     setup = {
         "id": payload.get("id") or str(uuid.uuid4())[:8],
         "symbol": payload.get("symbol", "EURUSD"),
@@ -125,7 +136,10 @@ def create_setup(payload: dict[str, Any]) -> dict[str, Any]:
         "entry_price": float(payload["entry_price"]),
         "stop_loss": float(payload["stop_loss"]),
         "take_profit": float(payload["take_profit"]),
-        "tags": normalize_tags(payload.get("tags")),
+        "tags": tags,
+        "bar_tags": payload.get("bar_tags") or (ann.get("tags") if ann else []),
+        "sequence_tags": payload.get("sequence_tags") or [],
+        "annotation_id": payload.get("annotation_id") or (ann.get("id") if ann else None),
         "note": payload.get("note", ""),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -134,6 +148,8 @@ def create_setup(payload: dict[str, Any]) -> dict[str, Any]:
     setups = [s for s in setups if s["id"] != enriched["id"]]
     setups.append(enriched)
     save_setups(setups)
+    if enriched.get("annotation_id"):
+        link_setup_to_annotation(enriched["annotation_id"], enriched["id"])
     return enriched
 
 
@@ -150,7 +166,13 @@ def update_setup(setup_id: str, payload: dict[str, Any]) -> dict[str, Any]:
     merged["entry_price"] = float(merged["entry_price"])
     merged["stop_loss"] = float(merged["stop_loss"])
     merged["take_profit"] = float(merged["take_profit"])
-    merged["tags"] = normalize_tags(merged.get("tags"))
+    merged["tags"] = validate_setup_from_bar(merged, is_create=False)
+    if payload.get("bar_tags") is not None:
+        merged["bar_tags"] = normalize_tags(payload.get("bar_tags"))
+    if payload.get("sequence_tags") is not None:
+        merged["sequence_tags"] = payload.get("sequence_tags") or []
+    if payload.get("annotation_id") is not None:
+        merged["annotation_id"] = payload.get("annotation_id")
     merged["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     enriched = enrich_setup(merged)
@@ -160,5 +182,8 @@ def update_setup(setup_id: str, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def delete_setup(setup_id: str) -> None:
+    from .bar_annotations import clear_setup_link
+
+    clear_setup_link(setup_id)
     setups = [s for s in load_setups() if s["id"] != setup_id]
     save_setups(setups)

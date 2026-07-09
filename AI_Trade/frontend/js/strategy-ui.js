@@ -293,6 +293,23 @@ function renderFeatureInsights(rows) {
   `;
 }
 
+function renderPipelineBlock(data) {
+  const pipe = data?.pipeline || {};
+  const flow = data?.pipeline_flow || 'nến → tag → setup → chiến lược → backtest';
+  return `
+    <section class="result-section pipeline-section">
+      <h3>Luồng dữ liệu</h3>
+      <p class="section-note"><strong>${esc(flow)}</strong></p>
+      ${statGrid([
+        { label: 'Tag nến', value: String(pipe.bar_annotations ?? data?.bar_annotation_count ?? 0) },
+        { label: 'Setup train', value: String(pipe.setups ?? data?.setup_count ?? 0) },
+        { label: 'Setup có tag', value: String(pipe.tagged_setups ?? '—') },
+        { label: 'Setup + nến', value: String(pipe.setups_with_bar_context ?? '—') },
+      ])}
+    </section>
+  `;
+}
+
 export function renderAnalyzeView(data) {
   if (!data) return '<p class="muted">Chưa có kết quả.</p>';
 
@@ -319,21 +336,27 @@ export function renderAnalyzeView(data) {
     global: 'Global',
   };
   return `
-    ${banner('ok', 'Phân tích hoàn tất', 'Chiến lược đã lưu — có thể chạy backtest ở các tab bên cạnh.')}
+    ${banner('ok', 'Phân tích hoàn tất', 'Chiến lược học từ các setup train (mỗi setup = nến entry + tag + SL/TP).')}
+    ${renderPipelineBlock(data)}
     ${statGrid([
       { label: 'Setup train', value: String(data.setup_count ?? 0) },
       { label: 'Win rate train', value: pct(data.win_rate_train), cls: 'good' },
       { label: 'RR trung bình', value: `${num(data.avg_rr_train, 2)}R` },
       { label: 'Chế độ', value: modeLabels[mode] || mode, cls: mode === 'similarity' ? 'good' : '' },
+      { label: 'Tag nến', value: String(data.bar_annotation_count ?? 0), cls: 'good' },
     ])}
 
     ${mode === 'similarity'
       ? banner(
           'ok',
-          'Nhận diện theo độ tương đồng',
-          'Backtest: nhận diện tag tại nến → lọc setup lịch sử cùng tag → vào lệnh theo setup gần nhất (SL/TP từ setup đó).',
+          'Backtest theo pipeline',
+          'Mỗi lệnh: nến đạt score → nhận diện tag → khớp setup train cùng tag → vào lệnh theo hướng/SL/TP setup đó.',
         )
-      : ''}
+      : banner(
+          'warn',
+          'Chế độ fallback',
+          'Chưa đủ tag trên setup — backtest dùng rule global. Gắn tag đủ trên setup train để bật pipeline đầy đủ.',
+        )}
 
     ${renderTagSignatures(data)}
     ${renderTagProfiles(data)}
@@ -366,7 +389,7 @@ export function renderAnalyzeView(data) {
 
 function renderTradeRows(trades) {
   if (!trades?.length) {
-    return '<tr><td colspan="7" class="muted">Không có lệnh nào.</td></tr>';
+    return '<tr><td colspan="8" class="muted">Không có lệnh nào.</td></tr>';
   }
   return trades
     .slice()
@@ -374,7 +397,14 @@ function renderTradeRows(trades) {
     .map((t) => {
       const win = t.result === 'win';
       const time = (t.entry_time || '').slice(0, 16).replace('T', ' ');
-      const tagCell = t.tag ? `<span class="pill">${esc(t.tag)}</span>` : '—';
+      const tagParts = [];
+      if (t.tag) tagParts.push(`<span class="pill">${esc(t.tag)}</span>`);
+      if (t.importance_score != null) tagParts.push(`<span class="pill" title="Importance score">S${t.importance_score}</span>`);
+      if (t.similarity != null) tagParts.push(`<span class="pill" title="Setup similarity">${Math.round(t.similarity * 100)}%</span>`);
+      if ((t.sequence_tags || []).length) {
+        tagParts.push(`<span class="pill" title="Sequence tags">${esc(t.sequence_tags.join('+'))}</span>`);
+      }
+      const tagCell = tagParts.length ? tagParts.join(' ') : '—';
       return `
         <tr class="${win ? 'row-win' : 'row-loss'}">
           <td>${esc(time)}</td>
@@ -384,6 +414,7 @@ function renderTradeRows(trades) {
           <td>${num(t.exit, 5)}</td>
           <td class="${win ? 'good' : 'bad'}">${esc((t.result || '').toUpperCase())}</td>
           <td class="${Number(t.pnl_pips) >= 0 ? 'good' : 'bad'}">${num(t.pnl_pips, 1)}</td>
+          <td>${num(t.rr, 2)}R</td>
         </tr>
       `;
     })
@@ -414,7 +445,7 @@ export function renderBacktestView(data, { title, subtitle }) {
     ${banner(
       passed ? 'ok' : 'warn',
       passed ? `${title} — ĐẠT` : `${title} — CHƯA ĐẠT`,
-      subtitle,
+      `${subtitle} · Pipeline: nến → tag → setup train → vào lệnh.`,
     )}
 
     ${statGrid([
@@ -443,11 +474,12 @@ export function renderBacktestView(data, { title, subtitle }) {
             <tr>
               <th>Thời gian</th>
               <th>Hướng</th>
-              <th>Tag</th>
+              <th>Tag / Score</th>
               <th>Entry</th>
               <th>Exit</th>
               <th>KQ</th>
               <th>PnL</th>
+              <th>RR</th>
             </tr>
           </thead>
           <tbody>${renderTradeRows(previewTrades)}</tbody>

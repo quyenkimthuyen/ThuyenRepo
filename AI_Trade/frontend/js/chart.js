@@ -42,6 +42,16 @@ export class TradeChart {
   #showEma50 = true;
   #showEma200 = true;
   #showRsi = true;
+  /** @type {object[]} */
+  #baseMarkers = [];
+  /** @type {object[]} */
+  #importantBarsData = [];
+  /** @type {object[]} */
+  #importantMarkers = [];
+  /** @type {object[]} */
+  #sequenceMarkers = [];
+  #selectedBarTime = null;
+  #onImportantBarHover;
   #dragState = null;
   #suppressClick = false;
   #priceFocus = null;
@@ -51,12 +61,13 @@ export class TradeChart {
   #resizeObserver = null;
   #mounted = false;
 
-  constructor(mainEl, rsiEl, { onClick, onLevelDrag } = {}) {
+  constructor(mainEl, rsiEl, { onClick, onLevelDrag, onImportantBarHover } = {}) {
     this.#wrapEl = mainEl.parentElement;
     this.#mainEl = mainEl;
     this.#rsiEl = rsiEl;
     this.#onClick = onClick;
     this.#onLevelDrag = onLevelDrag;
+    this.#onImportantBarHover = onImportantBarHover;
     this.#boundPointerMove = (e) => this.#onPointerMove(e);
     this.#boundPointerUp = (e) => this.#onPointerUp(e);
   }
@@ -111,6 +122,7 @@ export class TradeChart {
     this.#mainChart.timeScale().subscribeVisibleLogicalRangeChange(onRange);
 
     this.#mainChart.subscribeClick((param) => this.#handleClick(param));
+    this.#mainChart.subscribeCrosshairMove((param) => this.#handleCrosshair(param));
     window.addEventListener('pointermove', this.#boundPointerMove);
     window.addEventListener('pointerup', this.#boundPointerUp);
     window.addEventListener('pointercancel', this.#boundPointerUp);
@@ -297,6 +309,31 @@ export class TradeChart {
     ]);
   }
 
+  #handleCrosshair(param) {
+    if (!param?.time || !this.#importantBarsData?.length) {
+      this.#onImportantBarHover?.(null);
+      return;
+    }
+    const bar = this.#findImportantBar(param.time);
+    this.#onImportantBarHover?.(bar);
+  }
+
+  #findImportantBar(time) {
+    const candle = this.#nearestCandle(time);
+    if (!candle) return null;
+    return this.#importantBarsData.find((b) => b.time === candle.time) || null;
+  }
+
+  setSelectedImportantBar(time) {
+    this.#selectedBarTime = time ?? null;
+    this.#refreshImportantMarkers();
+  }
+
+  #refreshImportantMarkers() {
+    if (!this.#importantBarsData?.length) return;
+    this.showImportantBars(this.#importantBarsData);
+  }
+
   #handleClick(param) {
     if (this.#suppressClick) {
       this.#suppressClick = false;
@@ -451,12 +488,85 @@ export class TradeChart {
     requestAnimationFrame(() => this.#refreshOverlayGeometry());
   }
 
-  showSetupMarkers(setups) {
-    if (!setups?.length) {
-      this.#candleSeries.setMarkers([]);
+  #applyMarkers() {
+    const merged = [...this.#baseMarkers, ...this.#importantMarkers, ...this.#sequenceMarkers].sort(
+      (a, b) => a.time - b.time,
+    );
+    this.#candleSeries.setMarkers(merged);
+  }
+
+  showSequenceWindow(centerTime, windowSize = 5) {
+    this.#sequenceMarkers = [];
+    if (!centerTime || !this.#candles?.length || !windowSize) {
+      this.#applyMarkers();
       return;
     }
-    const markers = setups.map((s) => {
+    const idx = this.#candleIndex(centerTime);
+    if (idx < 0) return;
+    const start = Math.max(0, idx - windowSize + 1);
+    for (let j = start; j <= idx; j++) {
+      const c = this.#candles[j];
+      if (!c) continue;
+      this.#sequenceMarkers.push({
+        time: c.time,
+        position: 'belowBar',
+        color: j === idx ? '#a855f7' : '#6366f1',
+        shape: 'circle',
+        text: j === idx ? '●' : '',
+      });
+    }
+    this.#applyMarkers();
+  }
+
+  clearSequenceWindow() {
+    this.#sequenceMarkers = [];
+    this.#applyMarkers();
+  }
+
+  showImportantBars(bars) {
+    this.#importantBarsData = bars || [];
+    if (!bars?.length) {
+      this.#importantMarkers = [];
+      this.#applyMarkers();
+      return;
+    }
+    this.#importantMarkers = bars.map((bar) => {
+      const tag =
+        bar.confirmed_tags?.[0] ||
+        bar.primary_tag ||
+        (bar.suggested_tags?.[0] ?? '');
+      const label = tag ? tag.slice(0, 4) : String(bar.score);
+      const score = Number(bar.score) || 0;
+      const confirmed = bar.user_confirmed;
+      const selected = this.#selectedBarTime === bar.time;
+      let color = score >= 70 ? '#fbbf24' : score >= 50 ? '#38bdf8' : '#64748b';
+      if (confirmed) color = '#22c55e';
+      if (selected) color = '#a855f7';
+      return {
+        time: bar.time,
+        position: 'aboveBar',
+        color,
+        shape: selected ? 'square' : 'circle',
+        text: confirmed ? `✓${label.slice(0, 3)}` : label,
+      };
+    });
+    this.#applyMarkers();
+  }
+
+  clearImportantBars() {
+    this.#importantBarsData = [];
+    this.#selectedBarTime = null;
+    this.#importantMarkers = [];
+    this.clearSequenceWindow();
+  }
+
+  showSetupMarkers(setups) {
+    if (!setups?.length) {
+      this.#baseMarkers = [];
+      this.#applyMarkers();
+      return;
+    }
+    this.#baseMarkers = setups.map((s) => {
       const time = Math.floor(new Date(s.entry_time).getTime() / 1000);
       const isLong = s.direction === 'long';
       const win = s.result === 'win';
@@ -469,15 +579,16 @@ export class TradeChart {
         text: (s.result || 'setup').slice(0, 3).toUpperCase(),
       };
     });
-    this.#candleSeries.setMarkers(markers);
+    this.#applyMarkers();
   }
 
   showTradeMarkers(trades) {
     if (!trades?.length) {
-      this.#candleSeries.setMarkers([]);
+      this.#baseMarkers = [];
+      this.#applyMarkers();
       return;
     }
-    const markers = trades.map((t) => {
+    this.#baseMarkers = trades.map((t) => {
       const time = Math.floor(new Date(t.entry_time).getTime() / 1000);
       const isLong = t.direction === 'long';
       const win = t.result === 'win';
@@ -489,7 +600,7 @@ export class TradeChart {
         text: win ? 'W' : 'L',
       };
     });
-    this.#candleSeries.setMarkers(markers);
+    this.#applyMarkers();
   }
 
   viewTrade(trade) {
@@ -529,7 +640,8 @@ export class TradeChart {
     }
     this.#overlayLines = [];
     this.#overlayStartTime = null;
-    this.#candleSeries.setMarkers([]);
+    this.#baseMarkers = [];
+    this.#applyMarkers();
     this.#wrapEl?.classList.remove('dragging-level');
   }
 

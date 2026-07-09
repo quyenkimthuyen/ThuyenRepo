@@ -119,16 +119,29 @@ def _gaussian_similarity(z: float) -> float:
     return math.exp(-0.5 * z * z)
 
 
-def build_tag_signatures(setups: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+def build_tag_signatures(
+    setups: list[dict[str, Any]],
+    extra_samples: list[dict[str, Any]] | None = None,
+) -> dict[str, dict[str, Any]]:
     by_tag: dict[str, list[dict[str, Any]]] = {}
+
+    def _consume(item: dict[str, Any]) -> None:
+        feats = _features_from_setup(item) or item.get("features")
+        if not feats:
+            return
+        tags = infer_tags(item)
+        if not tags:
+            return
+        for tag in tags:
+            by_tag.setdefault(tag, []).append(feats)
+
     for setup in setups:
         if setup.get("result") not in ("win", "loss"):
             continue
-        feats = _features_from_setup(setup)
-        if not feats:
-            continue
-        for tag in infer_tags(setup):
-            by_tag.setdefault(tag, []).append(feats)
+        _consume(setup)
+
+    for item in extra_samples or []:
+        _consume(item)
 
     signatures: dict[str, dict[str, Any]] = {}
     for tag, rows in by_tag.items():
