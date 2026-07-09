@@ -780,6 +780,15 @@ const resultBox = document.querySelector("#resultBox");
 const submitBtn = document.querySelector("#submitBtn");
 const resetBtn = document.querySelector("#resetBtn");
 
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function q(id, prompt, answer, options, topic, figure = "") {
   return { id, prompt, answer, options, topic, figure };
 }
@@ -819,7 +828,7 @@ function tin2026Image(name) {
 }
 
 function tin2025QuestionImage(name) {
-  return `<img class="pdf-crop" src="data/tin/2025/crops/${name}.png?v=20260709-1215" alt="Đề Tin học 2025 ${name} cắt từ PDF" loading="lazy" />`;
+  return `<img class="pdf-crop" src="data/tin/2025/crops/${name}.png?v=20260709-1245" alt="Đề Tin học 2025 ${name} cắt từ PDF" loading="lazy" />`;
 }
 
 function math2024QuestionImage(name) {
@@ -2192,7 +2201,7 @@ function renderQuestion(section, question, index) {
             .map((letter, optionIndex) => `
               <label class="option">
                 <input type="radio" name="${question.id}" value="${letter}" ${value === letter ? "checked" : ""} />
-                <strong>${letter}.</strong> ${question.options[optionIndex]}
+                <strong>${letter}.</strong> ${escapeHtml(question.options[optionIndex])}
               </label>
             `)
             .join("")}
@@ -2225,7 +2234,7 @@ function renderQuestion(section, question, index) {
             const current = value[statementIndex] || "";
             return `
               <div class="tf-row">
-                <span>${String.fromCharCode(97 + statementIndex)}) ${statement}</span>
+                <span>${String.fromCharCode(97 + statementIndex)}) ${escapeHtml(statement)}</span>
                 <div class="tf-controls">
                   <label><input type="radio" name="${question.id}-${statementIndex}" value="D" ${current === "D" ? "checked" : ""} /> Đúng</label>
                   <label><input type="radio" name="${question.id}-${statementIndex}" value="S" ${current === "S" ? "checked" : ""} /> Sai</label>
@@ -2247,8 +2256,9 @@ function renderFigure(question) {
 
 function renderPrompt(question) {
   if (question.figure.includes("data/toan/2026/crops/")) return "";
+  if (question.figure.includes("data/tin/2025/crops/")) return "";
   if (/^Xem nội dung\b/i.test(question.prompt)) return "";
-  return `<p class="prompt">${question.prompt}</p>`;
+  return `<p class="prompt">${escapeHtml(question.prompt)}</p>`;
 }
 
 function renderAnswerGuide(type, question) {
@@ -2260,7 +2270,7 @@ function renderAnswerGuide(type, question) {
     <details class="answer-hint">
       <summary>Xem đáp án / lời giải chi tiết</summary>
       <p><strong>Đáp án:</strong> ${formatCorrectAnswer(type, question)}</p>
-      ${question.solution ? `<p>${question.solution}</p>` : ""}
+      ${question.solution ? `<p>${escapeHtml(question.solution)}</p>` : ""}
       ${solutionFigure ? `<div class="solution-figure">${solutionFigure}</div>` : ""}
     </details>
   `;
@@ -2358,7 +2368,7 @@ function showFeedback(details) {
         `<div class="feedback">
           <strong>Đáp án:</strong> ${formatCorrectAnswer(section.type, question)}
           <br />
-          <strong>Bạn chọn:</strong> ${userAnswer}
+          <strong>Bạn chọn:</strong> ${escapeHtml(userAnswer)}
           <br />
           <strong>Điểm câu này:</strong> ${detail.earned} / ${detail.max}
         </div>`
@@ -2379,7 +2389,14 @@ function formatCorrectAnswer(type, question) {
       .map((value, index) => `${String.fromCharCode(97 + index)}) ${value === "D" ? "Đúng" : "Sai"}`)
       .join("; ");
   }
-  return question.answer;
+  if (type === "single" && question.options) {
+    const index = question.answer.charCodeAt(0) - 65;
+    const optionText = question.options[index];
+    if (optionText !== undefined) {
+      return `${question.answer}. ${escapeHtml(optionText)}`;
+    }
+  }
+  return escapeHtml(question.answer);
 }
 
 function selectSubject(subjectId) {
