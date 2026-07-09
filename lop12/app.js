@@ -769,6 +769,14 @@ const STUDY_GUIDES = {
   }
 };
 
+const SUBJECT_CATALOG = {
+  math: { title: "Toán" },
+  physics: { title: "Vật lí" },
+  informatics: { title: "Tin học" }
+};
+
+const INFORMATICS_EXAM_YEARS = new Set(["2025", "2026"]);
+
 const state = {
   year: "2026",
   subjectId: "math",
@@ -1661,49 +1669,6 @@ function createExams2024() {
           ])
         }
       ]
-    },
-    informatics: {
-      title: "Tin học",
-      code: "ON24",
-      duration: 50,
-      source:
-        "https://xaydungchinhsach.chinhphu.vn/cau-truc-de-thi-tot-nghiep-thpt-tu-nam-2025-119240308200554932.htm",
-      note:
-        "Năm 2024 chưa có môn Tin học độc lập trong kỳ thi tốt nghiệp THPT như chương trình mới. Bộ này là đề mô phỏng ôn nền tảng Tin học để chuẩn bị cho cấu trúc từ 2025.",
-      sections: [
-        {
-          title: "Đề 2024 - Mô phỏng ôn tập Tin học",
-          type: "single",
-          points: 0.4,
-          questions: buildChoiceSet("y24i", [
-            ["Trong Python, kiểu dữ liệu nào lưu dãy có thứ tự?", "B", ["dict", "list", "set", "bool"], "Python"],
-            ["Kết quả của 9 // 2 là", "C", ["4.5", "5", "4", "2"], "Python"],
-            ["Câu lệnh rẽ nhánh trong Python là", "A", ["if", "for", "while", "def"], "Python"],
-            ["Vòng lặp for i in range(3) chạy với i lần lượt là", "D", ["1,2,3", "0,1,2,3", "1,2", "0,1,2"], "Python"],
-            ["Cấu trúc dict dùng để lưu", "B", ["dãy số không khóa", "cặp khóa-giá trị", "chỉ số nguyên", "ảnh"], "Dữ liệu"],
-            ["Thuật toán tìm kiếm nhị phân yêu cầu dữ liệu", "C", ["ngẫu nhiên", "rỗng", "đã sắp xếp", "không có số"], "Thuật toán"],
-            ["Độ phức tạp O(n) thường là", "A", ["tuyến tính", "hằng số", "bậc hai", "mũ"], "Thuật toán"],
-            ["HTML dùng để", "D", ["tính toán", "truy vấn dữ liệu", "mã hóa", "tạo cấu trúc trang web"], "Web"],
-            ["CSS chủ yếu dùng để", "B", ["lưu dữ liệu", "trình bày giao diện", "định tuyến mạng", "xóa bảng"], "Web"],
-            ["Giao thức HTTPS giúp", "A", ["mã hóa dữ liệu truyền", "tắt server", "tăng độ sáng màn hình", "xóa cookie"], "Web"],
-            ["Trong CSDL, khóa chính có vai trò", "C", ["trang trí bảng", "mã hóa ảnh", "định danh duy nhất bản ghi", "sắp xếp màu"], "Cơ sở dữ liệu"],
-            ["SQL SELECT dùng để", "B", ["xóa dữ liệu", "truy vấn dữ liệu", "tạo virus", "đổi mật khẩu"], "SQL"],
-            ["Mệnh đề WHERE trong SQL dùng để", "D", ["chọn cột", "đổi tên bảng", "tạo giao diện", "lọc bản ghi"], "SQL"],
-            ["Mạng LAN là mạng", "A", ["cục bộ", "toàn cầu", "vệ tinh", "không dây bắt buộc"], "Mạng"],
-            ["Địa chỉ IP dùng để", "C", ["lưu mật khẩu", "nén ảnh", "định danh thiết bị mạng", "soạn văn bản"], "Mạng"],
-            ["Mật khẩu mạnh nên", "B", ["dễ đoán", "đủ dài và khó đoán", "trùng ngày sinh", "công khai"], "An toàn thông tin"],
-            ["Sao lưu dữ liệu giúp", "D", ["tăng virus", "giảm bảo mật", "xóa quyền", "khôi phục khi có sự cố"], "An toàn dữ liệu"],
-            ["AI học máy cần dữ liệu để", "A", ["huấn luyện mô hình", "tắt máy", "xóa ổ cứng", "đổi màn hình"], "AI"],
-            ["Dữ liệu huấn luyện bị sai lệch có thể làm mô hình AI", "C", ["luôn đúng", "không cần kiểm thử", "dự đoán sai lệch", "biến mất"], "AI"],
-            ["Trong bảng tính, hàm SUM dùng để", "B", ["tính trung bình", "tính tổng", "đếm chữ", "sắp xếp"], "Tin học ứng dụng"],
-            ["Logic AND đúng khi", "D", ["một mệnh đề đúng", "mọi mệnh đề sai", "không có mệnh đề", "tất cả mệnh đề đúng"], "Logic"],
-            ["Cookie thường dùng để lưu", "A", ["trạng thái phiên", "nguồn điện", "mã máy", "độ phân giải"], "Web"],
-            ["Phân quyền người dùng giúp", "C", ["xóa dữ liệu", "tăng lỗi", "hạn chế truy cập trái phép", "công khai mật khẩu"], "Bảo mật"],
-            ["Hàm len([1,2,3]) trả về", "B", ["2", "3", "4", "6"], "Python"],
-            ["Biến trong lập trình dùng để", "D", ["vẽ màn hình", "tắt mạng", "nén file", "lưu giá trị"], "Lập trình"]
-          ])
-        }
-      ]
     }
   };
 }
@@ -1774,55 +1739,17 @@ function createExams2023() {
           ])
         }
       ]
-    },
-    informatics: {
-      title: "Tin học",
-      code: "ON23",
-      duration: 50,
-      source:
-        "https://xaydungchinhsach.chinhphu.vn/cau-truc-de-thi-tot-nghiep-thpt-tu-nam-2025-119240308200554932.htm",
-      note:
-        "Năm 2023 chưa có môn Tin học độc lập trong kỳ thi tốt nghiệp THPT. Bộ này là đề mô phỏng ôn nền tảng Tin học để chuẩn bị cho cấu trúc từ 2025.",
-      sections: [
-        {
-          title: "Đề 2023 - Mô phỏng ôn tập Tin học",
-          type: "single",
-          points: 0.4,
-          questions: buildChoiceSet("y23i", [
-            ["Biểu diễn thuật toán có thể dùng", "A", ["sơ đồ khối", "âm thanh", "màu nền", "mật khẩu"], "Thuật toán"],
-            ["Trong Python, biến dùng để", "C", ["tắt máy", "nối mạng", "lưu giá trị", "vẽ ảnh"], "Lập trình"],
-            ["Kiểu bool có các giá trị", "B", ["0 đến 9", "True và False", "mọi chuỗi", "mọi số thực"], "Python"],
-            ["Kết quả của 10 % 3 là", "D", ["3", "3.33", "0", "1"], "Python"],
-            ["Câu lệnh lặp khi biết số lần lặp thường dùng", "A", ["for", "if", "def", "return"], "Python"],
-            ["Danh sách trong Python có thể truy cập bằng", "C", ["màu", "mật khẩu", "chỉ số", "địa chỉ IP"], "Python"],
-            ["Thuật toán sắp xếp dùng để", "B", ["mã hóa", "đưa dữ liệu theo thứ tự", "xóa file", "tạo ảnh"], "Thuật toán"],
-            ["Dữ liệu đã sắp xếp là điều kiện thuận lợi cho", "D", ["vẽ web", "tính tổng", "sao lưu", "tìm kiếm nhị phân"], "Thuật toán"],
-            ["Cơ sở dữ liệu giúp", "A", ["lưu trữ và khai thác dữ liệu có tổ chức", "tăng virus", "giảm bảo mật", "xóa hệ điều hành"], "CSDL"],
-            ["Bản ghi trong bảng dữ liệu tương ứng với", "C", ["một cột", "một màu", "một hàng", "một biểu tượng"], "CSDL"],
-            ["Khóa chính trong bảng phải", "B", ["trùng nhau", "duy nhất", "rỗng", "là ảnh"], "CSDL"],
-            ["SQL WHERE dùng để", "A", ["lọc bản ghi", "chọn màu", "tạo trang web", "nén dữ liệu"], "SQL"],
-            ["HTML tạo", "C", ["cơ sở dữ liệu", "mã độc", "cấu trúc trang web", "địa chỉ IP"], "Web"],
-            ["CSS điều khiển", "D", ["dữ liệu server", "mật khẩu", "thuật toán", "trình bày giao diện"], "Web"],
-            ["Client trong mô hình client-server thường là", "A", ["máy khách/trình duyệt", "ổ cứng", "mật khẩu", "dây mạng"], "Mạng"],
-            ["DNS dùng để", "B", ["tạo ảnh", "phân giải tên miền", "xóa dữ liệu", "chạy vòng lặp"], "Mạng"],
-            ["Mã độc là", "C", ["phần mềm có ích luôn", "mật khẩu mạnh", "phần mềm gây hại", "cáp mạng"], "An toàn thông tin"],
-            ["Xác thực hai yếu tố giúp", "D", ["giảm bảo mật", "xóa tài khoản", "tắt server", "tăng an toàn đăng nhập"], "An toàn thông tin"],
-            ["Dữ liệu cá nhân nên được", "A", ["bảo vệ", "công khai tự do", "gửi cho mọi người", "xóa ngẫu nhiên"], "An toàn dữ liệu"],
-            ["AI phân loại ảnh cần", "C", ["màu nền", "cáp mạng", "dữ liệu huấn luyện", "mật khẩu admin"], "AI"],
-            ["Mô hình AI cần được đánh giá bằng", "B", ["dữ liệu kiểm thử", "màu giao diện", "ổ cứng", "độ sáng"], "AI"],
-            ["Hàm AVERAGE trong bảng tính dùng để", "D", ["đếm", "lọc", "tính tổng", "tính trung bình"], "Tin học ứng dụng"],
-            ["Sao lưu định kỳ giúp giảm rủi ro", "C", ["tăng lỗi", "mất điện", "mất dữ liệu", "màn hình tối"], "An toàn dữ liệu"],
-            ["Logic OR đúng khi", "A", ["ít nhất một mệnh đề đúng", "mọi mệnh đề sai", "không có mệnh đề", "chỉ khi cả hai sai"], "Logic"],
-            ["Phân quyền trong hệ thống nhằm", "B", ["tăng màu sắc", "giới hạn quyền theo vai trò", "xóa dữ liệu", "giảm an toàn"], "Bảo mật"]
-          ])
-        }
-      ]
     }
   };
 }
 
 function getExam() {
-  return EXAMS_BY_YEAR[state.year][state.subjectId];
+  return EXAMS_BY_YEAR[state.year]?.[state.subjectId];
+}
+
+function hasExamData(subjectId = state.subjectId, year = state.year) {
+  const exam = EXAMS_BY_YEAR[year]?.[subjectId];
+  return Boolean(exam && Array.isArray(exam.sections) && exam.sections.length > 0);
 }
 
 function getExamsForYear() {
@@ -1941,9 +1868,27 @@ function updateTimer() {
 }
 
 function renderSubjects() {
-  subjectList.innerHTML = Object.entries(getExamsForYear())
-    .map(([id, exam]) => {
+  const yearExams = getExamsForYear();
+
+  subjectList.innerHTML = Object.entries(SUBJECT_CATALOG)
+    .map(([id, subject]) => {
+      const exam = yearExams[id];
       const active = id === state.subjectId ? " active" : "";
+      const unavailable = !exam;
+
+      if (unavailable) {
+        const unavailableText =
+          id === "informatics"
+            ? `Không có đề thi năm ${state.year}`
+            : `Chưa có dữ liệu năm ${state.year}`;
+        return `
+          <button class="subject-card subject-card-unavailable${active}" type="button" data-subject="${id}">
+            <strong>${subject.title}</strong>
+            <span>${unavailableText}</span>
+          </button>
+        `;
+      }
+
       const actionText = state.mode === "practice" ? "Bấm để bắt đầu thi" : "Xem nội dung ôn tập";
       return `
         <button class="subject-card${active}" type="button" data-subject="${id}">
@@ -1978,19 +1923,56 @@ function renderModeButtons() {
   studyModeBtn.classList.toggle("active", state.mode === "study");
 }
 
+function renderMissingExam() {
+  clearInterval(state.intervalId);
+  const subject = SUBJECT_CATALOG[state.subjectId]?.title || "Môn thi";
+  const informaticsUnavailable =
+    state.subjectId === "informatics" && !INFORMATICS_EXAM_YEARS.has(state.year);
+
+  examCode.textContent = `${state.year} - ${subject}`;
+  sourceTitle.textContent = `Nguồn tham khảo ${state.year}`;
+  sourceText.textContent = informaticsUnavailable
+    ? "Môn Tin học chỉ có đề thi tốt nghiệp THPT cho năm 2025 và 2026."
+    : "Chưa có bộ đề cho môn và năm đã chọn.";
+  sourceLink.href = "#";
+  subjectMeta.textContent = `Năm ${state.year} - ${subject}`;
+  subjectTitle.textContent = informaticsUnavailable
+    ? `Không có đề thi Tin học năm ${state.year}`
+    : `Không có đề thi ${subject} năm ${state.year}`;
+  subjectPanel.classList.remove("hidden");
+  questionNav.classList.add("hidden");
+  questionNav.innerHTML = "";
+  studyGuide.classList.add("hidden");
+  examForm.classList.remove("hidden");
+  submitBtn.classList.add("hidden");
+  resetBtn.classList.add("hidden");
+  timer.textContent = "--:--";
+  timerNote.textContent = "Không có đề";
+  resultBox.classList.add("hidden");
+
+  examForm.innerHTML = `
+    <div class="result-box">
+      <h3>Không có đề thi ${subject} năm ${state.year}</h3>
+      <p>${
+        informaticsUnavailable
+          ? "Môn Tin học hiện chỉ có đề thi cho năm 2025 và 2026. Hãy chọn một trong hai năm đó để làm bài."
+          : "Hãy chọn năm hoặc môn khác, hoặc chuyển sang chế độ ôn tập nếu có nội dung hướng dẫn."
+      }</p>
+    </div>
+  `;
+}
+
 function renderExam() {
+  renderModeButtons();
+
+  if (state.mode === "study" && STUDY_GUIDES[state.subjectId]) {
+    renderStudyGuide();
+    return;
+  }
+
   const exam = getExam();
   if (!exam || !Array.isArray(exam.sections)) {
-    clearInterval(state.intervalId);
-    examCode.textContent = `${state.year} - Chưa có dữ liệu`;
-    subjectMeta.textContent = "Không tìm thấy bộ đề";
-    subjectTitle.textContent = "Không tải được dữ liệu";
-    subjectPanel.classList.remove("hidden");
-    questionNav.classList.add("hidden");
-    questionNav.innerHTML = "";
-    examForm.innerHTML =
-      '<div class="result-box"><h3>Không tải được dữ liệu đề.</h3><p>Hãy chọn lại năm hoặc môn khác, hoặc refresh trang.</p></div>';
-    studyGuide.classList.add("hidden");
+    renderMissingExam();
     return;
   }
 
@@ -2006,13 +1988,6 @@ function renderExam() {
       ? `Ôn kiến thức môn ${exam.title}`
       : `Đề luyện thi môn ${exam.title}`;
   resultBox.classList.add("hidden");
-
-  renderModeButtons();
-
-  if (state.mode === "study") {
-    renderStudyGuide();
-    return;
-  }
 
   if (!state.examStarted) {
     clearInterval(state.intervalId);
@@ -2426,7 +2401,7 @@ function formatCorrectAnswer(type, question) {
 function selectSubject(subjectId) {
   state.subjectId = subjectId;
   state.submitted = false;
-  state.examStarted = state.mode === "practice";
+  state.examStarted = state.mode === "practice" && hasExamData(subjectId);
   if (state.examStarted) {
     clearCurrentAnswers();
   } else {
@@ -2445,8 +2420,11 @@ function selectYear(year) {
   state.examStarted = false;
   state.answers = {};
 
-  if (!getExamsForYear()[state.subjectId]) {
-    state.subjectId = Object.keys(getExamsForYear())[0];
+  if (!hasExamData(state.subjectId, year) && state.subjectId !== "informatics") {
+    const fallback = Object.keys(getExamsForYear())[0];
+    if (fallback) {
+      state.subjectId = fallback;
+    }
   }
 
   renderYears();
