@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Luyện thi tốt nghiệp THPT - Toán, Lý, Tin</title>
+    <link rel="stylesheet" href="styles.css?v=20260709-1020" />
+  </head>
+  <body>
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Mô phỏng thi tốt nghiệp THPT lớp 12</p>
+        <h1>Luyện thi 3 môn Toán, Vật lí, Tin học</h1>
+        <p class="hero-text">
+          Chọn môn, làm bài theo cấu trúc đề mới, nộp bài để chấm điểm tự động
+          và xem lại đáp án.
+        </p>
+      </div>
+      <div class="hero-card">
+        <span id="examCode">Mã đề --</span>
+        <strong id="timer">--:--</strong>
+        <small id="timerNote">Chưa bắt đầu</small>
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <aside id="subjectPanel" class="panel subject-panel">
+        <h2 class="step-title"><span>1</span> Chọn chế độ</h2>
+        <div class="mode-list">
+          <button id="practiceModeBtn" class="mode-card active" type="button">
+            Làm đề
+          </button>
+          <button id="studyModeBtn" class="mode-card" type="button">
+            Ôn kiến thức
+          </button>
+        </div>
+        <h2 class="step-title"><span>2</span> Chọn năm</h2>
+        <div id="yearList" class="year-list"></div>
+        <h2 class="step-title"><span>3</span> Chọn môn thi</h2>
+        <div id="subjectList" class="subject-list"></div>
+        <div class="source-box">
+          <strong id="sourceTitle">Nguồn tham khảo</strong>
+          <p id="sourceText">
+            Dữ liệu mô phỏng dựa trên cấu trúc và đáp án công bố trong kỳ thi
+            tốt nghiệp THPT năm 2026.
+          </p>
+          <a id="sourceLink" href="#" target="_blank" rel="noreferrer">
+            Xem nguồn đề/đáp án
+          </a>
+        </div>
+      </aside>
+
+      <aside id="questionNav" class="panel question-nav hidden"></aside>
+
+      <section class="panel exam-panel">
+        <div class="exam-toolbar">
+          <div>
+            <p class="eyebrow" id="subjectMeta">Sẵn sàng</p>
+            <h2 id="subjectTitle">Chọn một môn để bắt đầu</h2>
+          </div>
+          <div class="toolbar-actions">
+            <button id="resetBtn" class="ghost" type="button">Làm lại</button>
+            <button id="submitBtn" type="button">Nộp bài</button>
+          </div>
+        </div>
+
+        <div id="resultBox" class="result-box hidden"></div>
+        <div class="exam-workspace">
+          <form id="examForm" class="exam-form"></form>
+        </div>
+        <div id="studyGuide" class="study-guide hidden"></div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Ghi chú: phần câu hỏi trong app dùng dữ liệu đề gốc khi có nguồn PDF/văn bản
+        và dữ liệu mô phỏng bám ma trận cho các phần chưa có đề gốc đầy đủ.
+      </p>
+    </footer>
+
+    <script src="app.js?v=20260709-1045"></script>
+  </body>
+</html>
