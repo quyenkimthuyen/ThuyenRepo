@@ -856,7 +856,7 @@ function tin2026Image(name) {
 }
 
 function tin2025CodeImage(name) {
-  return `<img class="pdf-crop" src="data/tin/2025/images/${name}.png?v=20260709-1315" alt="Đoạn chương trình đề Tin học 2025 ${name}" loading="lazy" />`;
+  return `<img class="pdf-crop" src="data/tin/2025/images/${name}.png?v=20260709-1350" alt="Đoạn chương trình đề Tin học 2025 ${name}" loading="lazy" />`;
 }
 
 function tin2025QuestionImage(name) {
