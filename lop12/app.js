@@ -469,48 +469,68 @@ const EXAMS_BY_YEAR = {
       duration: 50,
       source: "https://thpthoaiduca.hanoi.edu.vn/mon-tin-hoc/de-thi-tham-khao-ky-thi-tot-nghiep-thpt-tu-nam-2025-mon-tin-hoc/ctmb/23796/23430",
       note:
-        "Cập nhật theo đề tham khảo kỳ thi tốt nghiệp THPT từ năm 2025 môn Tin học. Nội dung câu hỏi hiển thị bằng ảnh cắt trực tiếp từ PDF gốc; phần đúng/sai dùng 2 câu chung và nhánh Tin học ứng dụng.",
+        "Cập nhật theo đề tham khảo kỳ thi tốt nghiệp THPT từ năm 2025 môn Tin học. Câu hỏi nhập dạng text; chỉ giữ ảnh cho câu có bảng mã Python/C++.",
       sections: [
         {
           title: "Phần I - Trắc nghiệm nhiều phương án lựa chọn",
           type: "single",
           points: 0.25,
-          questions: buildImageChoiceSet(
-            "y25i",
-            ["D", "B", "C", "A", "D", "A", "B", "B", "C", "A", "A", "A", "A", "B", "B", "B", "C", "C", "B", "A", "B", "B", "A", "A"],
-            "đề Tin học 2025 từ PDF",
-            tin2025QuestionImage
-          )
+          questions: buildChoiceSet("y25i", [
+            ["Khả năng nào sau đây không là đặc trưng của AI?", "D", ["Học.", "Hiểu ngôn ngữ.", "Suy luận.", "Luyện thể hình."], "AI"],
+            ["Thiết bị nào sau đây thường được tích hợp trợ lý ảo?", "B", ["Máy rút tiền tự động ATM.", "Điện thoại thông minh.", "Chuông báo cháy.", "Máy quét mã vạch."], "AI"],
+            ["Trường hợp nào sau đây không thể hiện rõ ứng dụng của AI trong giáo dục?", "C", ["Mô phỏng các thí nghiệm vật lí trên máy tính bằng đa phương tiện.", "Lập kế hoạch học tập cho từng học sinh dựa trên dữ liệu về người học.", "Sao lưu dữ liệu của máy tính cá nhân ra thiết bị nhớ ngoài.", "Sử dụng chat GPT để tìm kiếm lời giải cho một bài toán."], "AI"],
+            ["Sự phát triển của AI không dẫn đến nguy cơ nào sau đây?", "A", ["Tất cả các lập trình viên sẽ bị mất việc do AI có khả năng lập trình.", "Người dùng bị lừa đảo qua mạng do kẻ xấu lợi dụng nội dung giả mạo của AI.", "Quyền riêng tư bị xâm phạm do AI có khả năng thu thập dữ liệu cá nhân.", "Các hệ thống mạng bị đe dọa do AI có khả năng khai thác các lỗ hổng bảo mật."], "AI"],
+            ["Thiết bị nào sau đây có chức năng chính là để kết nối không dây trong một mạng cục bộ?", "D", ["Router.", "Switch.", "Hub.", "Access Point."], "Mạng"],
+            ["LAN là loại mạng nào sau đây?", "A", ["Mạng cục bộ.", "Mạng diện rộng.", "Mạng toàn cầu.", "Mạng thành phố."], "Mạng"],
+            ["Một phòng máy tính của nhà trường được kết nối mạng LAN giữa 01 máy giáo viên (GV) và các máy học sinh (HS). Phòng máy được cấp thêm một máy in có cổng giao tiếp với máy tính qua cổng USB. Các công việc cần làm: (1) Kết nối và cài đặt máy in trên máy GV; (2) Tìm và cài đặt máy in trên mạng cho các máy HS; (3) Chia sẻ quyền truy cập máy in qua mạng từ máy GV. Phương án nào nêu đúng thứ tự thực hiện?", "B", ["1 → 2 → 3.", "1 → 3 → 2.", "3 → 1 → 2.", "3 → 2 → 1."], "Mạng"],
+            ["Phương án nào sau đây nêu đúng chức năng chính của Modem?", "B", ["Kết nối có dây hoặc không dây các thiết bị trong mạng diện rộng.", "Chuyển đổi tín hiệu hai chiều giữa các thiết bị truy cập Internet và ISP.", "Truy cập vào tài nguyên mạng mà không cần sử dụng dây cáp.", "Chuyển tiếp dữ liệu giữa các thiết bị trong cùng một mạng LAN."], "Mạng"],
+            ["Thuộc tính nào sau đây của thẻ <img> trong HTML xác định văn bản thay thế cho hình ảnh nếu hình ảnh không thể hiển thị khi duyệt web?", "C", ["alter", "text", "alt", "error"], "Web"],
+            ["Trong CSS, thuộc tính nào sau đây được sử dụng để thiết lập màu nền cho một phần tử HTML?", "A", ["background-color", "color-background", "background", "background-clr"], "Web"],
+            ["Phương án nào sau đây nêu đúng cú pháp khai báo CSS ngoài (ngoại tuyến) trong một đoạn mã HTML?", "A", ['<link href="tentep.css" rel="stylesheet">', '<style link="tentep.css" rel="stylesheet">', '<css link="tentep.css" rel="stylesheet">', '<link src="tentep.css" rel="stylesheet">'], "Web"],
+            ["Đoạn mã HTML nào sau đây tạo liên kết đến Cổng thông tin điện tử của Chính phủ có địa chỉ https://www.chinhphu.vn?", "A", ['<a href="https://www.chinhphu.vn">Chính phủ</a>', '<a name="https://www.chinhphu.vn">Chính phủ</a>', '<a url="https://www.chinhphu.vn">Chính phủ</a>', '<a "https://www.chinhphu.vn">Chính phủ</a>'], "Web"],
+            ["Xét dòng lệnh sau trong một đoạn mã HTML để tạo bảng: <tr> <td> Họ tên </td> <td> Tuổi </td> </tr>. Phương án nào nêu đúng ý nghĩa của dòng lệnh trên?", "A", ["Tạo 1 hàng có 2 cột trong bảng.", "Tạo 1 cột có 2 hàng trong bảng.", "Tạo 2 hàng, mỗi hàng có 1 cột.", "Tạo tiêu đề cho 2 cột của bảng."], "Web"],
+            ["Cho bộ chọn được khai báo trong thẻ <style> thuộc phần <head> của một trang web như sau: .mark{color: red; font-weight: bold; font-size: 13px;}. Phương án nào nêu đúng phạm vi áp dụng của bộ chọn trên?", "B", ["Tất cả các phần tử trong trang web.", 'Các phần tử có giá trị thuộc tính class là "mark".', 'Chỉ các phần tử có định danh (id) là "mark".', 'Chỉ các phần tử có tên là "mark".'], "Web"],
+            ["Phương án nào sau đây chỉ ra đúng cặp thẻ HTML để hiển thị một danh sách học sinh trong lớp được đánh số thứ tự từ 10?", "B", ['<ul type="10">...</ul>', '<ol start="10">...</ol>', '<ol type="10">...</ol>', '<ul start="10">...</ul>'], "Web"],
+            ["Đoạn mã HTML nào sau đây phù hợp để tạo một phần tử cho phép nhập mật khẩu trong một biểu mẫu đăng nhập?", "B", ['<input type="text" name="password">', '<input type="password" name="password">', '<textarea name="password"></textarea>', '<textarea type="password"></textarea>'], "Web"],
+            ["Khi thực hiện đoạn mã HTML sau, văn bản \"Hôm nay có bão\" hiển thị theo định dạng nào?\n<head><style>\nh1{color: blue; font-size: 13px}\nh1{color: green; font-size: 14px}\n</style></head>\n<body><h1>Hôm nay có bão</h1></body>", "C", ["Chữ màu xanh dương, kích thước 14px.", "Chữ màu xanh dương, kích thước 13px.", "Chữ màu xanh lá, kích thước 14px.", "Chữ màu xanh lá, kích thước 13px."], "Web"],
+            ["Chọn một trong hai ngôn ngữ Python hoặc C++ để xem xét đoạn chương trình sau. Phương án nào dưới đây nêu đúng giá trị của S sau khi thực hiện đoạn chương trình trên?", "C", ["30.", "29.", "14.", "13."], "Lập trình", tin2025CodeImage("q18")],
+            ["Hành vi nào sau đây thể hiện tính nhân văn trong giao tiếp trên không gian mạng?", "B", ["Sử dụng ngôn từ một cách tùy thích khi tham gia bình luận trực tuyến.", "Tôn trọng quyền riêng tư của người khác khi chia sẻ thông tin cá nhân.", "Chia sẻ thông tin chưa được kiểm chứng để nhằm thu hút lượt tương tác.", "Sử dụng không gian mạng để chỉ trích người khác một cách gay gắt."], "Văn hóa số"],
+            ["Hành vi nào sau đây bị xem là vi phạm pháp luật trên không gian mạng?", "A", ["Làm tắc nghẽn hệ thống mạng của nhà trường.", "Không trả lời tin nhắn ngay lập tức.", "Tải phần mềm nguồn mở để sử dụng.", "Gửi email cho bạn bè mà không ghi tiêu đề."], "An toàn thông tin"],
+            ["Việc tự ý đăng tải hình ảnh của người khác lên mạng xã hội vi phạm quyền về vấn đề nào dưới đây?", "B", ["Tự do ngôn luận.", "Bảo mật thông tin cá nhân.", "Sử dụng hình ảnh công khai.", "Phản hồi của người tiêu dùng."], "An toàn thông tin"],
+            ["Công việc nào dưới đây thuộc nhóm nghề sửa chữa và bảo trì máy tính?", "B", ["Thiết kế và xây dựng hệ điều hành.", "Cài đặt hoặc gỡ bỏ hệ điều hành.", "Phát triển phần mềm di động.", "Xây dựng các ứng dụng mạng."], "Nghề nghiệp"],
+            ["Công việc nào dưới đây thuộc nghề quản trị mạng?", "A", ["Bảo đảm hệ thống mạng hoạt động an toàn.", "Thiết kế và xây dựng các ứng dụng di động.", "Thiết kế cơ sở dữ liệu phân tán trên mạng.", "Phát triển phần mềm trò chơi trực tuyến."], "Nghề nghiệp"],
+            ["Lí do nào sau đây là lí do chủ yếu nhất của sự gia tăng nhu cầu tuyển dụng vị trí sửa chữa và bảo trì máy tính?", "A", ["Máy tính ngày càng được sử dụng rộng rãi trong xã hội hiện đại.", "Nhu cầu trang bị máy tính có cấu hình cao để chạy các ứng dụng AI.", "Nhiều trường đại học đào tạo về lĩnh vực kĩ thuật máy tính và mạng.", "Phần mềm độc hại ngày càng dễ phát tán trên không gian mạng."], "Nghề nghiệp"]
+          ])
         },
         {
           title: "Phần II - Trắc nghiệm đúng/sai",
           type: "truefalse",
           points: "tiered",
           questions: [
-            tf("y25i25", "Xem nội dung Phần II - Câu 1 trong ảnh cắt từ đề Tin học 2025.", "DDSS", [
-              "Mệnh đề a trong ảnh.",
-              "Mệnh đề b trong ảnh.",
-              "Mệnh đề c trong ảnh.",
-              "Mệnh đề d trong ảnh."
-            ], "Mạng", tin2025QuestionImage("y25i25")),
-            tf("y25i26", "Xem nội dung Phần II - Câu 2 trong ảnh cắt từ đề Tin học 2025.", "DDSD", [
-              "Mệnh đề a trong ảnh.",
-              "Mệnh đề b trong ảnh.",
-              "Mệnh đề c trong ảnh.",
-              "Mệnh đề d trong ảnh."
-            ], "Cơ sở dữ liệu", tin2025QuestionImage("y25i26")),
-            tf("y25i27", "Xem nội dung Phần II - Câu 5, định hướng Tin học ứng dụng, trong ảnh cắt từ đề Tin học 2025.", "DSDS", [
-              "Mệnh đề a trong ảnh.",
-              "Mệnh đề b trong ảnh.",
-              "Mệnh đề c trong ảnh.",
-              "Mệnh đề d trong ảnh."
-            ], "Tin học ứng dụng", tin2025QuestionImage("y25i27")),
-            tf("y25i28", "Xem nội dung Phần II - Câu 6, định hướng Tin học ứng dụng, trong ảnh cắt từ đề Tin học 2025.", "DDSD", [
-              "Mệnh đề a trong ảnh.",
-              "Mệnh đề b trong ảnh.",
-              "Mệnh đề c trong ảnh.",
-              "Mệnh đề d trong ảnh."
-            ], "Tin học ứng dụng", tin2025QuestionImage("y25i28"))
+            tf("y25i25", "Một trường học có 3 phòng máy tính cần được lắp đặt mạng LAN cho từng phòng. Nhà trường đã đăng ký sử dụng Internet với nhà cung cấp dịch vụ (ISP) và được họ lắp đặt một Modem có tích hợp cả chức năng của Router và Access Point. Một số bạn học sinh đưa ra các ý kiến sau:", "DDSS", [
+              "Để thiết lập mạng LAN cho mỗi phòng máy nên sử dụng thiết bị Switch.",
+              "Chức năng Router được tích hợp trong Modem để đảm bảo việc định tuyến tối ưu giữa các mạng LAN của các phòng máy.",
+              "Để chia sẻ một thư mục Bài thực hành trên một máy tính với quyền được sửa cho các máy tính khác trong phòng máy, cần phải cấp duy nhất quyền read.",
+              "Nếu Modem không tích hợp chức năng của Router thì cần bổ sung thiết bị Router và thứ tự kết nối các thiết bị như sau: Máy tính → Switch → Modem → Router."
+            ], "Mạng"),
+            tf("y25i26", "Để hỗ trợ việc quản lí thông tin nhân sự tại một công ty, một cơ sở dữ liệu quan hệ được xây dựng với 3 bảng: NHANVIEN (MaNV, HoTen, GioiTinh, NgaySinh); DUAN (MaDA, TenDA, BatDau, KetThuc); THAMGIA (MaDA, MaNV, ViTri). Một nhân viên có thể tham gia nhiều dự án và một dự án có thể có nhiều nhân viên. Khi tìm hiểu về cơ sở dữ liệu trên, một số bạn học sinh đưa ra các nhận xét sau:", "DDSD", [
+              "HoTen là một trường tương ứng với một cột của bảng NHANVIEN.",
+              "Bộ hai thuộc tính MaDA và MaNV là khóa chính của bảng THAMGIA.",
+              "Công ty sử dụng một máy chủ để lưu dữ liệu, do vậy phải chọn hệ cơ sở dữ liệu phân tán để quản lí cơ sở dữ liệu.",
+              "Câu lệnh SQL sau liệt kê họ tên các nhân viên và vị trí của họ trong dự án có mã dự án là 1: SELECT NHANVIEN.HoTen, THAMGIA.ViTri FROM NHANVIEN INNER JOIN THAMGIA ON NHANVIEN.MaNV = THAMGIA.MaNV WHERE MaDA = 1"
+            ], "Cơ sở dữ liệu"),
+            tf("y25i27", "Một học sinh thực hiện tạo website cho một tổ chức từ thiện gồm 3 trang web: Giới thiệu về tổ chức, Thông tin dự án, Sự kiện. Bạn học sinh đó có một số nhận xét sau đây:", "DSDS", [
+              "Có thể tạo 3 trang web đã nêu từ các mẫu (theme) có sẵn của phần mềm tạo trang web.",
+              "Tổ chức chia sẻ website bằng cách duy nhất là: gửi các tệp *.html của trang web qua email.",
+              "Trong trang Sự kiện, để hiển thị nhiều hình ảnh trong cùng một khối, có thể sử dụng chức năng Bộ sưu tập (hoặc thanh trượt/băng chuyền hình ảnh) của phần mềm tạo trang web.",
+              "Khi cần đăng lại một video về hoạt động từ thiện trên YouTube, cách làm tốt nhất là tải video đó về máy tính, sau đó chèn video vào trang web bằng chức năng Thêm hình ảnh/video của phần mềm."
+            ], "Tin học ứng dụng"),
+            tf("y25i28", "Cho cơ sở dữ liệu của một hiệu thuốc với 3 bảng: BENHNHAN (MaBN, TenBN, DiaChi); HOADON (MaHD, MaBN, NgayBan); THUOCBAN (MaHD, TenThuoc, SoLuong, DonGia, ThanhTien). Một số bạn học sinh có ý kiến về việc sử dụng các phần mềm khai thác cơ sở dữ liệu trên như sau:", "DDSD", [
+              "Phần mềm bảng tính Excel giúp biểu thị được số lượng từng tên thuốc đã bán ở dạng biểu đồ một cách thuận lợi.",
+              "Nếu bảng THUOCBAN được lưu trên một bảng tính Excel thì sử dụng hàm SUM để biết được tổng số tiền đã bán của tất cả các hóa đơn.",
+              "Phần mềm quản trị cơ sở dữ liệu có thể tính được tổng số tiền bán hàng theo từng ngày dựa trên chỉ một bảng THUOCBAN.",
+              "Trong phần mềm quản trị cơ sở dữ liệu, để trích xuất được các tên thuốc mua bởi bệnh nhân có MaBN xác định thì phải thực hiện thao tác truy vấn có liên kết cả 3 bảng trên thông qua các trường khóa."
+            ], "Tin học ứng dụng")
           ]
         }
       ]
@@ -825,6 +845,10 @@ function math2025SolutionImage(name) {
 
 function tin2026Image(name) {
   return `<img class="pdf-crop" src="data/tin/2026/images/${name}.png?v=20260709-1125" alt="Đoạn chương trình đề Tin học 2026 mã 0525 ${name}" loading="lazy" />`;
+}
+
+function tin2025CodeImage(name) {
+  return `<img class="pdf-crop" src="data/tin/2025/images/${name}.png?v=20260709-1315" alt="Đoạn chương trình đề Tin học 2025 ${name}" loading="lazy" />`;
 }
 
 function tin2025QuestionImage(name) {
@@ -2258,7 +2282,7 @@ function renderPrompt(question) {
   if (question.figure.includes("data/toan/2026/crops/")) return "";
   if (question.figure.includes("data/tin/2025/crops/")) return "";
   if (/^Xem nội dung\b/i.test(question.prompt)) return "";
-  return `<p class="prompt">${escapeHtml(question.prompt)}</p>`;
+  return `<p class="prompt">${escapeHtml(question.prompt).replace(/\n/g, "<br />")}</p>`;
 }
 
 function renderAnswerGuide(type, question) {
