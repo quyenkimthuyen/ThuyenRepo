@@ -21,3 +21,5 @@ export const updateSetup = (id, body) => api(`/api/setups/${id}`, { method: 'PAT
 export const deleteSetup = (id) => api(`/api/setups/${id}`, { method: 'DELETE' });
 export const analyze = () => api('/api/analyze', { method: 'POST' });
 export const backtest = (period) => api(`/api/backtest?period=${period}`, { method: 'POST' });
+export const suggestTags = (body) => api('/api/tags/suggest', { method: 'POST', body: JSON.stringify(body) });
+export const getTagDefinitions = () => api('/api/tags/definitions');

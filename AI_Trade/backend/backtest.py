@@ -9,6 +9,8 @@ from .analyzer import load_strategy
 from .config import PIP
 from .data_service import load_candles, load_splits, slice_period
 from .indicators import add_indicators
+from .labels import load_setups
+from .tag_matcher import match_entry_from_similarity
 
 
 def _cost_price() -> float:
@@ -40,34 +42,117 @@ def _passes_exclusions(row: pd.Series, exclusions: list[dict[str, Any]]) -> bool
     return True
 
 
-def _match_rule(row: pd.Series, direction: str, rules: dict[str, Any]) -> bool:
-    r = rules.get(direction, {})
-    if not r.get("enabled", True):
+def _match_single_rule(row: pd.Series, rule: dict[str, Any]) -> bool:
+    if not rule.get("enabled", True):
         return False
 
     rsi = float(row["rsi14"])
-    if not (r.get("rsi_min", 0) <= rsi <= r.get("rsi_max", 100)):
+    if not (rule.get("rsi_min", 0) <= rsi <= rule.get("rsi_max", 100)):
         return False
-    if r.get("trend_up") is not None and bool(row["trend_up"]) != bool(r["trend_up"]):
+    if rule.get("trend_up") is not None and bool(row["trend_up"]) != bool(rule["trend_up"]):
         return False
-    if r.get("close_above_ema50") is not None:
-        if bool(row["close_above_ema50"]) != bool(r["close_above_ema50"]):
+    if rule.get("close_above_ema50") is not None:
+        if bool(row["close_above_ema50"]) != bool(rule["close_above_ema50"]):
             return False
-    if r.get("close_above_ema200") is not None:
-        if bool(row["close_above_ema200"]) != bool(r["close_above_ema200"]):
+    if rule.get("close_above_ema200") is not None:
+        if bool(row["close_above_ema200"]) != bool(rule["close_above_ema200"]):
             return False
 
-    max_dist = r.get("max_dist_ema50_pips")
+    max_dist = rule.get("max_dist_ema50_pips")
     if max_dist is not None:
         if abs(float(row.get("dist_ema50_pips", 0))) > float(max_dist):
             return False
 
-    if not _passes_exclusions(row, r.get("exclude", [])):
+    if not _passes_exclusions(row, rule.get("exclude", [])):
         return False
     return True
 
 
-def _risk_for_direction(strategy: dict[str, Any], direction: str) -> tuple[float, float]:
+def _match_rule(row: pd.Series, direction: str, rules: dict[str, Any]) -> bool:
+    return _match_single_rule(row, rules.get(direction, {}))
+
+
+def _risk_from_reference_setup(setup: dict[str, Any]) -> tuple[float, float] | None:
+    features = setup.get("features") or {}
+    atr = float(features.get("atr14") or 0)
+    if atr <= 0:
+        return None
+    entry = float(setup["entry_price"])
+    sl = float(setup["stop_loss"])
+    tp = float(setup["take_profit"])
+    sl_mult = abs(entry - sl) / atr
+    tp_mult = abs(tp - entry) / atr
+    return sl_mult, tp_mult
+
+
+def _find_entry(
+    row: pd.Series, strategy: dict[str, Any]
+) -> tuple[str | None, str | None, dict[str, Any] | None]:
+    """Return (direction, primary_tag, match_meta) if entry signal found."""
+    rule_mode = strategy.get("rule_mode", "global")
+
+    if rule_mode == "similarity":
+        train_setups = [s for s in load_setups() if s.get("period") == "train"]
+        direction, ref_setup, ctx = match_entry_from_similarity(row, strategy, train_setups)
+        if not direction or not ref_setup:
+            return None, None, None
+        detected = ctx.get("detected_tags") or []
+        primary_tag = detected[0]["tag"] if detected else None
+        if not primary_tag:
+            similar = ctx.get("similar_setups") or []
+            tags = (similar[0].get("tags") if similar else None) or []
+            primary_tag = tags[0] if tags else None
+        return direction, primary_tag, {"ref_setup": ref_setup, "context": ctx}
+
+    if rule_mode == "tag_driven":
+        candidates: list[tuple[str, str, dict[str, Any], dict[str, Any]]] = []
+        for tag, profile in strategy.get("tag_profiles", {}).items():
+            if not profile.get("enabled"):
+                continue
+            for direction in ("long", "short"):
+                dir_rule = profile.get("rules", {}).get(direction, {})
+                if _match_single_rule(row, dir_rule):
+                    candidates.append((direction, tag, profile, dir_rule))
+
+        if not candidates:
+            return None, None, None
+
+        direction, tag, profile, _ = max(
+            candidates, key=lambda item: item[2].get("win_rate", 0)
+        )
+        return direction, tag, profile
+
+    rules = strategy.get("rules", {})
+    if _match_single_rule(row, rules.get("long", {})):
+        return "long", None, None
+    if _match_single_rule(row, rules.get("short", {})):
+        return "short", None, None
+    return None, None, None
+
+
+def _risk_for_direction(
+    strategy: dict[str, Any],
+    direction: str,
+    tag: str | None = None,
+    match_meta: dict[str, Any] | None = None,
+) -> tuple[float, float]:
+    if match_meta and match_meta.get("ref_setup"):
+        computed = _risk_from_reference_setup(match_meta["ref_setup"])
+        if computed:
+            return computed
+
+    if match_meta and match_meta.get("risk"):
+        risk = match_meta.get("risk", {})
+        block = risk.get(direction) or risk.get("default")
+        if block:
+            sl_mult = float(block.get("sl_atr_mult", 1.0))
+            target_rr = float(block.get("target_rr", block.get("tp_atr_mult", 2.0) / max(sl_mult, 1e-9)))
+            if "tp_atr_mult" in block and "target_rr" not in block:
+                tp_mult = float(block["tp_atr_mult"])
+            else:
+                tp_mult = sl_mult * target_rr
+            return sl_mult, tp_mult
+
     risk = strategy.get("risk", {})
     block = risk.get(direction) or risk.get("default") or {}
     sl_mult = float(block.get("sl_atr_mult", 1.0))
@@ -201,7 +286,6 @@ def run_backtest(period: str = "validation") -> dict[str, Any]:
     # dist_ema50 for rule matching
     df["dist_ema50_pips"] = (df["close"] - df["ema50"]) / PIP
 
-    rules = strategy["rules"]
     cost = _cost_price()
 
     trades: list[dict[str, Any]] = []
@@ -214,16 +298,24 @@ def run_backtest(period: str = "validation") -> dict[str, Any]:
             continue
 
         direction = None
-        if _match_rule(row, "long", rules):
-            direction = "long"
-        elif _match_rule(row, "short", rules):
-            direction = "short"
+        matched_tag = None
+        match_meta = None
+        direction, matched_tag, match_meta = _find_entry(row, strategy)
         if not direction:
             continue
 
-        sl_mult, tp_mult = _risk_for_direction(strategy, direction)
+        sl_mult, tp_mult = _risk_for_direction(strategy, direction, matched_tag, match_meta)
         trade = _simulate_trade(df, i, direction, sl_mult, tp_mult, cost)
         if trade:
+            if matched_tag:
+                trade["tag"] = matched_tag
+            ctx = (match_meta or {}).get("context") or {}
+            if ctx.get("detected_tags"):
+                trade["detected_tags"] = [item["tag"] for item in ctx["detected_tags"]]
+            if ctx.get("similar_setups"):
+                best = ctx["similar_setups"][0]
+                trade["similarity"] = best.get("similarity")
+                trade["ref_setup_id"] = best.get("setup_id")
             trades.append(trade)
             cooldown = i + 5
 
@@ -232,6 +324,7 @@ def run_backtest(period: str = "validation") -> dict[str, Any]:
         "status": "ok",
         "period": period,
         "strategy": strategy.get("name"),
+        "rule_mode": strategy.get("rule_mode", "global"),
         "risk": strategy.get("risk"),
         "metrics": metrics,
         "trades": trades,

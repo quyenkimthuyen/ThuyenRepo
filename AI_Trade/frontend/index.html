@@ -6,7 +6,7 @@
   <title>AI Trade Lab — EURUSD 1H</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/app.css?v=7">
+  <link rel="stylesheet" href="/static/css/app.css?v=9">
 </head>
 <body>
   <noscript>
@@ -98,20 +98,16 @@
                 </div>
                 <label class="field-compact field-time">Thời gian <input id="fieldTime" type="datetime-local" step="3600"></label>
 
-                <label class="field-compact field-tag">
-                  <span>Tag setup</span>
-                  <select id="fieldTag">
-                    <option value="">— Không chọn —</option>
-                    <option value="pullback" title="Hồi về EMA / support">Pullback</option>
-                    <option value="breakout" title="Phá vỡ vùng sideway">Breakout</option>
-                    <option value="retest" title="Retest vùng phá vỡ">Retest</option>
-                    <option value="rejection" title="Pin bar / từ chối giá">Rejection</option>
-                    <option value="reversal" title="Đảo chiều cấu trúc">Reversal</option>
-                    <option value="trend" title="Theo xu hướng chính">Trend</option>
-                    <option value="range" title="Giao dịch trong vùng đi ngang">Range</option>
-                    <option value="liquidity" title="Quét thanh khoản / sweep">Liquidity</option>
-                  </select>
-                </label>
+                <div class="field-compact field-tags">
+                  <span>Tag setup <em class="req">*</em> <small class="muted">(có thể chọn nhiều)</small></span>
+                  <div id="tagCheckboxGroup" class="tag-checkbox-group"></div>
+                </div>
+
+                <div id="tagSuggestPanel" class="tag-suggest-panel hidden">
+                  <div class="tag-suggest-head">Gợi ý từ dữ liệu</div>
+                  <div id="tagSuggestTags" class="tag-suggest-tags"></div>
+                  <ul id="tagSuggestSimilar" class="tag-suggest-similar"></ul>
+                </div>
 
                 <div class="action-bar">
                   <button type="button" class="btn primary" id="btnSave" disabled>Lưu setup</button>
@@ -134,7 +130,7 @@
         <div id="viewAnalyze" class="sidebar-view hidden" role="tabpanel">
           <section class="panel panel-strategy">
             <h2>Phân tích chiến lược</h2>
-            <p class="strategy-intro">Phân tích setup Train 2022 để sinh quy tắc vào lệnh + SL/TP theo ATR.</p>
+            <p class="strategy-intro">Học <strong>signature</strong> từng tag, nhận diện tình huống giá qua độ tương đồng với setup đã label.</p>
             <button type="button" class="btn primary block" id="btnAnalyze">Chạy phân tích</button>
             <div id="analyzeResults" class="strategy-results scroll-panel"></div>
           </section>
@@ -196,7 +192,7 @@
   </div>
 
   <script type="module">
-    import('/static/js/app.js?v=7').catch((err) => {
+    import('/static/js/app.js?v=9').catch((err) => {
       console.error('Module load failed:', err);
       const box = document.createElement('div');
       box.style.cssText = 'padding:20px;color:#fecaca;background:#3f1212;font-size:14px;line-height:1.5';

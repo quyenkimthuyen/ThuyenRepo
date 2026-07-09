@@ -11,6 +11,17 @@ from sklearn.tree import DecisionTreeClassifier, export_text
 from .config import STRATEGY_PATH
 from .labels import load_setups
 from .tags import infer_tags
+from .tag_matcher import (
+    DEFAULT_MIN_SIMILARITY,
+    build_feature_stats,
+    build_setup_index,
+    build_tag_signatures,
+)
+
+MIN_TAGGED_RATIO = 0.5
+MIN_TAG_SAMPLES = 2
+MIN_TAG_DIRECTION_SAMPLES = 2
+MIN_TAG_WIN_RATE = 0.45
 
 
 def _json_float(value: Any, digits: int = 3) -> float | None:
@@ -192,6 +203,118 @@ def _rules_from_win_loss(df: pd.DataFrame) -> dict[str, Any]:
     return rules
 
 
+def _tag_coverage(setups: list[dict[str, Any]]) -> dict[str, Any]:
+    labeled = [s for s in setups if s.get("result") in ("win", "loss")]
+    tagged = [s for s in labeled if infer_tags(s)]
+    total = len(labeled)
+    tagged_count = len(tagged)
+    return {
+        "total": total,
+        "tagged": tagged_count,
+        "untagged": total - tagged_count,
+        "ratio": round(tagged_count / total, 3) if total else 0.0,
+    }
+
+
+def _setups_for_tag(setups: list[dict[str, Any]], tag: str) -> list[dict[str, Any]]:
+    return [
+        s
+        for s in setups
+        if tag in infer_tags(s) and s.get("result") in ("win", "loss")
+    ]
+
+
+def _build_tag_profiles(
+    train: list[dict[str, Any]], tag_info: dict[str, Any]
+) -> dict[str, dict[str, Any]]:
+    profiles: dict[str, dict[str, Any]] = {}
+    avoid = set(tag_info.get("avoid_tags", []))
+
+    for row in tag_info.get("tags", []):
+        tag = row["tag"]
+        base = {
+            "tag": tag,
+            "win_rate": row["win_rate"],
+            "total": row["total"],
+            "win": row["win"],
+            "loss": row["loss"],
+        }
+
+        if tag in avoid:
+            profiles[tag] = {
+                **base,
+                "enabled": False,
+                "reason": "Win rate quá thấp — không dùng profile này",
+            }
+            continue
+
+        if row["total"] < MIN_TAG_SAMPLES:
+            profiles[tag] = {
+                **base,
+                "enabled": False,
+                "reason": f"Cần ≥{MIN_TAG_SAMPLES} setup cho tag '{tag}'",
+            }
+            continue
+
+        if row["win_rate"] < MIN_TAG_WIN_RATE and row["total"] >= MIN_TAG_SAMPLES:
+            profiles[tag] = {
+                **base,
+                "enabled": False,
+                "reason": f"Win rate tag '{tag}' dưới {int(MIN_TAG_WIN_RATE * 100)}%",
+            }
+            continue
+
+        tag_setups = _setups_for_tag(train, tag)
+        tag_df = _feature_frame(tag_setups)
+        direction_rules: dict[str, Any] = {}
+        for direction in ("long", "short"):
+            subset = _slice_direction(tag_df, direction)
+            if len(subset) < MIN_TAG_DIRECTION_SAMPLES:
+                direction_rules[direction] = {
+                    "enabled": False,
+                    "reason": f"Cần ≥{MIN_TAG_DIRECTION_SAMPLES} setup {direction}",
+                }
+                continue
+            if subset[subset["win"] == 1].empty:
+                direction_rules[direction] = {
+                    "enabled": False,
+                    "reason": f"Không có win {direction} cho tag '{tag}'",
+                }
+                continue
+            rule = _rules_for_direction(subset, direction)
+            rule["tag"] = tag
+            direction_rules[direction] = rule
+
+        enabled = any(r.get("enabled") for r in direction_rules.values())
+        profiles[tag] = {
+            **base,
+            "enabled": enabled,
+            "reason": None if enabled else f"Chưa đủ setup theo hướng cho tag '{tag}'",
+            "rules": direction_rules,
+            "risk": compute_risk_from_labels(tag_setups),
+        }
+
+    return profiles
+
+
+def _enabled_tag_profiles(profiles: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    return [p for p in profiles.values() if p.get("enabled")]
+
+
+def _resolve_rule_mode(
+    coverage: dict[str, Any],
+    profiles: dict[str, dict[str, Any]],
+    signatures: dict[str, dict[str, Any]],
+) -> str:
+    if coverage["ratio"] >= MIN_TAGGED_RATIO and len(signatures) >= 1:
+        return "similarity"
+    if coverage["ratio"] < MIN_TAGGED_RATIO:
+        return "global"
+    if not _enabled_tag_profiles(profiles):
+        return "global"
+    return "tag_driven"
+
+
 def _tag_insights(setups: list[dict[str, Any]]) -> dict[str, Any]:
     stats: dict[str, dict[str, int]] = {}
     for s in setups:
@@ -331,8 +454,15 @@ def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
     win_rate = float(df["win"].mean())
     avg_rr = float(train_df_rr(train))
     tag_info = _tag_insights(train)
+    coverage = _tag_coverage(train)
+    tag_signatures = build_tag_signatures(train)
+    feature_stats = build_feature_stats(train)
+    setup_index = build_setup_index(train)
+    tag_profiles = _build_tag_profiles(train, tag_info)
+    rule_mode = _resolve_rule_mode(coverage, tag_profiles, tag_signatures)
     rules = _rules_from_win_loss(df)
-    rules = _apply_tag_constraints(rules, train, tag_info)
+    if rule_mode == "global":
+        rules = _apply_tag_constraints(rules, train, tag_info)
     risk = compute_risk_from_labels(train)
 
     feature_cols = [
@@ -352,7 +482,15 @@ def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
         "source_setups": len(train),
         "win_rate_train": round(win_rate, 3),
         "avg_rr_train": round(avg_rr, 2),
+        "rule_mode": rule_mode,
+        "min_similarity": DEFAULT_MIN_SIMILARITY,
+        "min_cluster_win_rate": 0.45,
+        "tag_coverage": coverage,
+        "tag_signatures": tag_signatures,
+        "feature_stats": feature_stats,
+        "setup_index": setup_index,
         "rules": rules,
+        "tag_profiles": tag_profiles,
         "risk": risk,
         "tags": tag_info,
         "tree_summary": tree_rules,
@@ -371,12 +509,27 @@ def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
             {"feature": col, "win_avg": _json_float(w), "loss_avg": _json_float(l)}
         )
 
+    tag_warning = None
+    if rule_mode == "global" and coverage["untagged"] > 0:
+        need = int(MIN_TAGGED_RATIO * 100)
+        tag_warning = (
+            f"Chế độ global — cần gắn tag cho ≥{need}% setup train "
+            f"(hiện {int(coverage['ratio'] * 100)}%, {coverage['untagged']} setup chưa tag) "
+            "để học theo từng loại setup."
+        )
+
     return {
         "status": "ok",
         "setup_count": len(train),
         "labeled_outcomes": len(df),
         "win_rate_train": round(win_rate, 3),
         "avg_rr_train": round(avg_rr, 2),
+        "rule_mode": rule_mode,
+        "tag_coverage": coverage,
+        "tag_profiles": tag_profiles,
+        "tag_signatures": tag_signatures,
+        "feature_stats": feature_stats,
+        "tag_warning": tag_warning,
         "rules": rules,
         "risk": risk,
         "tag_insights": tag_info,

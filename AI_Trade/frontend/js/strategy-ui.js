@@ -47,7 +47,92 @@ function formatBoolRule(value, label) {
   return `${label}: ${value ? 'Có' : 'Không'}`;
 }
 
-function renderRuleCard(direction, rule) {
+function renderTagSignatures(data) {
+  const signatures = data?.tag_signatures || {};
+  const entries = Object.entries(signatures);
+  if (!entries.length) return '';
+
+  return `
+    <section class="result-section">
+      <h3>Signature tag (mẫu học từ label)</h3>
+      <p class="section-note">Mỗi tag có vùng feature đặc trưng — app dùng để nhận diện tình huống giá tương tự.</p>
+      <div class="mini-table-wrap">
+        <table class="mini-table">
+          <thead>
+            <tr><th>Tag</th><th>Mẫu</th><th>RSI trung bình</th><th>Dist EMA50</th></tr>
+          </thead>
+          <tbody>
+            ${entries
+              .map(([tag, sig]) => {
+                const rsi = sig.features?.rsi14?.mean;
+                const dist = sig.features?.dist_ema50_pips?.mean;
+                return `<tr>
+                  <td>${esc(tag)}</td>
+                  <td>${sig.count ?? 0}</td>
+                  <td>${num(rsi, 1)}</td>
+                  <td>${num(dist, 1)} pips</td>
+                </tr>`;
+              })
+              .join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function renderTagProfileCard(tag, profile) {
+  if (!profile?.enabled) {
+    return `
+      <div class="rule-card disabled tag-profile">
+        <div class="rule-head">${esc(tag)}</div>
+        <p class="muted">${esc(profile?.reason || 'Chưa kích hoạt')}</p>
+      </div>
+    `;
+  }
+
+  const rules = profile.rules || {};
+  return `
+    <div class="rule-card tag-profile">
+      <div class="rule-head">${esc(tag)} <span class="pill">${pct(profile.win_rate)} · ${profile.total} setup</span></div>
+      <div class="rule-grid nested">
+        ${renderRuleCard('long', rules.long, { hideTagLine: true })}
+        ${renderRuleCard('short', rules.short, { hideTagLine: true })}
+      </div>
+    </div>
+  `;
+}
+
+function renderTagProfiles(data) {
+  const profiles = data?.tag_profiles || {};
+  const entries = Object.entries(profiles);
+  if (!entries.length) return '';
+
+  const mode = data.rule_mode || 'global';
+  const coverage = data.tag_coverage;
+  const coverageText = coverage
+    ? `${coverage.tagged}/${coverage.total} setup có tag (${pct(coverage.ratio, 0)})`
+    : '';
+
+  return `
+    <section class="result-section">
+      <h3>Pattern theo tag ${mode === 'tag_driven' ? '(đang dùng cho backtest)' : ''}</h3>
+      <p class="section-note">
+        Mỗi tag học rule riêng từ setup bạn đánh dấu.
+        ${mode === 'tag_driven'
+          ? 'Backtest vào lệnh khi khớp <strong>bất kỳ profile tag</strong> nào bên dưới.'
+          : 'Chưa đủ tag — backtest vẫn dùng rule global.'}
+        ${coverageText ? ` · ${esc(coverageText)}` : ''}
+      </p>
+      ${data.tag_warning ? `<p class="tag-note bad">${esc(data.tag_warning)}</p>` : ''}
+      <div class="tag-profile-grid">
+        ${entries.map(([tag, prof]) => renderTagProfileCard(tag, prof)).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderRuleCard(direction, rule, { hideTagLine = false } = {}) {
   const title = direction === 'long' ? 'Long' : 'Short';
   if (!rule?.enabled) {
     return `
@@ -66,7 +151,7 @@ function renderRuleCard(direction, rule) {
     rule.max_dist_ema50_pips != null
       ? `Entry cách EMA50 tối đa ${rule.max_dist_ema50_pips} pips`
       : null,
-    rule.preferred_tags?.length
+    !hideTagLine && rule.preferred_tags?.length
       ? `Ưu tiên tag: ${rule.preferred_tags.join(', ')}`
       : null,
   ].filter(Boolean);
@@ -227,18 +312,35 @@ export function renderAnalyzeView(data) {
   }
 
   const rules = data.rules || {};
+  const mode = data.rule_mode || 'global';
+  const modeLabels = {
+    similarity: 'Similarity (tag + setup gần nhất)',
+    tag_driven: 'Tag profile',
+    global: 'Global',
+  };
   return `
     ${banner('ok', 'Phân tích hoàn tất', 'Chiến lược đã lưu — có thể chạy backtest ở các tab bên cạnh.')}
     ${statGrid([
       { label: 'Setup train', value: String(data.setup_count ?? 0) },
       { label: 'Win rate train', value: pct(data.win_rate_train), cls: 'good' },
       { label: 'RR trung bình', value: `${num(data.avg_rr_train, 2)}R` },
-      { label: 'Có kết quả', value: String(data.labeled_outcomes ?? 0) },
+      { label: 'Chế độ', value: modeLabels[mode] || mode, cls: mode === 'similarity' ? 'good' : '' },
     ])}
 
+    ${mode === 'similarity'
+      ? banner(
+          'ok',
+          'Nhận diện theo độ tương đồng',
+          'Backtest: nhận diện tag tại nến → lọc setup lịch sử cùng tag → vào lệnh theo setup gần nhất (SL/TP từ setup đó).',
+        )
+      : ''}
+
+    ${renderTagSignatures(data)}
+    ${renderTagProfiles(data)}
+
     <section class="result-section">
-      <h3>Quy tắc vào lệnh</h3>
-      <p class="section-note">Học từ setup thắng; loại trừ vùng gắn với setup thua.</p>
+      <h3>Quy tắc global (tham khảo)</h3>
+      <p class="section-note">Học từ toàn bộ setup train — dùng khi chưa đủ tag hoặc để so sánh.</p>
       <div class="rule-grid">
         ${renderRuleCard('long', rules.long)}
         ${renderRuleCard('short', rules.short)}
@@ -264,7 +366,7 @@ export function renderAnalyzeView(data) {
 
 function renderTradeRows(trades) {
   if (!trades?.length) {
-    return '<tr><td colspan="6" class="muted">Không có lệnh nào.</td></tr>';
+    return '<tr><td colspan="7" class="muted">Không có lệnh nào.</td></tr>';
   }
   return trades
     .slice()
@@ -272,10 +374,12 @@ function renderTradeRows(trades) {
     .map((t) => {
       const win = t.result === 'win';
       const time = (t.entry_time || '').slice(0, 16).replace('T', ' ');
+      const tagCell = t.tag ? `<span class="pill">${esc(t.tag)}</span>` : '—';
       return `
         <tr class="${win ? 'row-win' : 'row-loss'}">
           <td>${esc(time)}</td>
           <td>${esc((t.direction || '').toUpperCase())}</td>
+          <td>${tagCell}</td>
           <td>${num(t.entry, 5)}</td>
           <td>${num(t.exit, 5)}</td>
           <td class="${win ? 'good' : 'bad'}">${esc((t.result || '').toUpperCase())}</td>
@@ -339,6 +443,7 @@ export function renderBacktestView(data, { title, subtitle }) {
             <tr>
               <th>Thời gian</th>
               <th>Hướng</th>
+              <th>Tag</th>
               <th>Entry</th>
               <th>Exit</th>
               <th>KQ</th>

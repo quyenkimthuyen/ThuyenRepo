@@ -7,16 +7,17 @@ import {
   getPresets,
   getSetups,
   saveSetup,
+  suggestTags,
   updateSetup,
-} from './api.js?v=7';
+} from './api.js?v=9';
 import {
   renderAnalyzeView,
   renderBacktestView,
   renderError,
   renderLoading,
-} from './strategy-ui.js?v=7';
-import { initSidebarResize } from './layout.js?v=7';
-import { TradeChart } from './chart.js?v=7';
+} from './strategy-ui.js?v=9';
+import { initSidebarResize } from './layout.js?v=9';
+import { TradeChart } from './chart.js?v=9';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -51,7 +52,10 @@ const els = {
   fieldSL: document.getElementById('fieldSL'),
   fieldTP: document.getElementById('fieldTP'),
   fieldTime: document.getElementById('fieldTime'),
-  fieldTag: document.getElementById('fieldTag'),
+  tagCheckboxGroup: document.getElementById('tagCheckboxGroup'),
+  tagSuggestPanel: document.getElementById('tagSuggestPanel'),
+  tagSuggestTags: document.getElementById('tagSuggestTags'),
+  tagSuggestSimilar: document.getElementById('tagSuggestSimilar'),
   btnSave: document.getElementById('btnSave'),
   btnDelete: document.getElementById('btnDelete'),
   chartOverlayHint: document.getElementById('chartOverlayHint'),
@@ -166,20 +170,139 @@ function tagPresetList() {
   return DEFAULT_TAGS;
 }
 
-function renderTagSelect() {
-  const select = document.getElementById('fieldTag');
-  if (!select) return;
+function renderTagCheckboxes() {
+  const group = els.tagCheckboxGroup;
+  if (!group) return;
 
   const presets = tagPresetList();
-  select.innerHTML = '<option value="">— Không chọn —</option>';
+  group.innerHTML = '';
   for (const tag of presets) {
-    const opt = document.createElement('option');
-    opt.value = tag.id;
-    opt.textContent = tag.label;
-    if (tag.hint) opt.title = tag.hint;
-    select.appendChild(opt);
+    const label = document.createElement('label');
+    label.className = 'tag-check';
+    label.title = tag.hint || '';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = tag.id;
+    input.dataset.tagId = tag.id;
+    input.onchange = () => onTagChange();
+    label.appendChild(input);
+    label.appendChild(document.createTextNode(tag.label));
+    group.appendChild(label);
   }
   syncTagField();
+}
+
+function selectedTags() {
+  if (!els.tagCheckboxGroup) return [];
+  return [...els.tagCheckboxGroup.querySelectorAll('input[type="checkbox"]:checked')].map(
+    (el) => el.value,
+  );
+}
+
+function setSelectedTags(tags, { userEdited = false } = {}) {
+  const wanted = new Set(tags || []);
+  els.tagCheckboxGroup?.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+    el.checked = wanted.has(el.value);
+    el.dataset.auto = userEdited ? '0' : el.checked ? '1' : '0';
+  });
+  state.meta.tags = [...wanted];
+  if (wanted.size) {
+    const labels = tagPresetList()
+      .filter((t) => wanted.has(t.id))
+      .map((t) => t.label);
+    state.meta.note = labels.join(' + ');
+  } else {
+    state.meta.note = '';
+  }
+  validateSave();
+}
+
+function syncTagField() {
+  const wanted = new Set(state.meta.tags || []);
+  els.tagCheckboxGroup?.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+    el.checked = wanted.has(el.value);
+  });
+}
+
+function onTagChange() {
+  const tags = selectedTags();
+  state.meta.tags = tags;
+  if (tags.length) {
+    const labels = tagPresetList()
+      .filter((t) => tags.includes(t.id))
+      .map((t) => t.label);
+    state.meta.note = labels.join(' + ');
+  } else {
+    state.meta.note = '';
+  }
+  els.tagCheckboxGroup?.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+    if (el.checked) el.dataset.auto = '0';
+  });
+  validateSave();
+}
+
+function renderTagSuggest(data) {
+  if (!els.tagSuggestPanel) return;
+  if (!data) {
+    els.tagSuggestPanel.classList.add('hidden');
+    return;
+  }
+
+  els.tagSuggestPanel.classList.remove('hidden');
+  const detected = data.detected_tags || [];
+  els.tagSuggestTags.innerHTML = detected.length
+    ? detected
+        .map(
+          (item) =>
+            `<span class="pill suggest">${item.tag} ${Math.round(item.score * 100)}%</span>`,
+        )
+        .join(' ')
+    : '<span class="muted">Chưa nhận diện tag rõ — chọn thủ công</span>';
+
+  const similar = data.similar_setups || [];
+  els.tagSuggestSimilar.innerHTML = similar.length
+    ? similar
+        .map((item) => {
+          const time = (item.entry_time || '').slice(0, 10);
+          const tags = (item.tags || []).join(', ');
+          return `<li>${Math.round(item.similarity * 100)}% · ${item.direction?.toUpperCase()} · ${item.result?.toUpperCase()} · ${time}${tags ? ` · ${tags}` : ''}</li>`;
+        })
+        .join('')
+    : '<li class="muted">Chưa có setup tương tự trong train</li>';
+}
+
+async function refreshTagSuggest({ applyTags = true } = {}) {
+  if (state.draft.time == null || state.draft.entry == null) return;
+  try {
+    const data = await suggestTags({
+      entry_time: isoFromUnix(state.draft.time),
+      entry_price: Number(state.draft.entry),
+    });
+    renderTagSuggest(data);
+    if (applyTags && data?.suggested_tags?.length) {
+      const manual = selectedTags().filter((tag) => {
+        const el = els.tagCheckboxGroup?.querySelector(`input[value="${tag}"]`);
+        return el && el.dataset.auto !== '1';
+      });
+      const merged = [...new Set([...(data.suggested_tags || []), ...manual])];
+      setSelectedTags(merged, { userEdited: false });
+      els.tagCheckboxGroup?.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+        if (el.checked && (data.suggested_tags || []).includes(el.value)) {
+          el.dataset.auto = '1';
+        }
+      });
+    }
+    if (data?.suggested_direction && state.mode === 'new' && state.step !== 'entry') {
+      setDirection(data.suggested_direction);
+    }
+  } catch (err) {
+    console.warn('Tag suggest failed:', err);
+    renderTagSuggest(null);
+  }
+}
+
+function hideTagSuggest() {
+  renderTagSuggest(null);
 }
 
 async function loadTagPresets() {
@@ -187,6 +310,7 @@ async function loadTagPresets() {
     const data = await getPresets();
     if (data?.tags?.length) {
       state.tagPresets = data.tags;
+      renderTagCheckboxes();
       return;
     }
   } catch {
@@ -195,6 +319,7 @@ async function loadTagPresets() {
   state.tagPresets = state.config?.presets?.tags?.length
     ? state.config.presets.tags
     : DEFAULT_TAGS;
+  renderTagCheckboxes();
 }
 
 function escapeAttr(value) {
@@ -202,31 +327,6 @@ function escapeAttr(value) {
     return CSS.escape(String(value));
   }
   return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
-
-function syncTagField() {
-  const select = document.getElementById('fieldTag');
-  if (!select) return;
-  const primary = state.meta.tags?.[0] || '';
-  if (select.querySelector(`option[value="${escapeAttr(primary)}"]`)) {
-    select.value = primary;
-  } else {
-    select.value = '';
-  }
-}
-
-function onTagChange() {
-  const select = document.getElementById('fieldTag');
-  if (!select) return;
-  const tagId = select.value;
-  if (!tagId) {
-    state.meta.tags = [];
-    state.meta.note = '';
-    return;
-  }
-  const preset = tagPresetList().find((t) => t.id === tagId);
-  state.meta.tags = [tagId];
-  state.meta.note = preset?.label || tagId;
 }
 
 function calcRR() {
@@ -309,7 +409,7 @@ function updateModeUI() {
   els.btnSave.textContent = mode === 'edit' ? 'Cập nhật setup' : 'Lưu setup';
 
   if (mode !== 'idle') {
-    renderTagSelect();
+    renderTagCheckboxes();
   }
 
   updateStepTrack();
@@ -370,6 +470,7 @@ function clearDraft() {
   state.focusedTradeKey = null;
   chart.clearOverlay();
   chart.clearFocus();
+  hideTagSuggest();
 }
 
 function setMode(mode) {
@@ -428,10 +529,11 @@ function validateSave() {
     tp > 0;
 
   let valid = false;
+  const hasTag = (state.meta.tags?.length ?? 0) > 0;
   if (ok && state.direction === 'long') {
-    valid = sl < entry && tp > entry;
+    valid = sl < entry && tp > entry && hasTag;
   } else if (ok && state.direction === 'short') {
-    valid = sl > entry && tp < entry;
+    valid = sl > entry && tp < entry && hasTag;
   }
   els.btnSave.disabled = !valid;
 }
@@ -442,6 +544,7 @@ function moveDraftEntryToCandle({ time, candle }) {
   state.draft.time = time;
   state.draft.entry = nextEntry;
   syncFields({ focus: true });
+  refreshTagSuggest({ applyTags: state.mode === 'new' });
 }
 
 function handleChartClick({ time, candle, price }) {
@@ -472,6 +575,7 @@ function handleChartClick({ time, candle, price }) {
     els.fieldTP.value = state.draft.tp;
     state.step = 'tp';
     syncFields({ focus: true });
+    refreshTagSuggest();
     return;
   }
 
@@ -533,6 +637,7 @@ async function startEditSetup(setup) {
   };
   updateModeUI();
   syncFields({ focus: true });
+  refreshTagSuggest({ applyTags: false });
   renderSetups();
 }
 
@@ -662,7 +767,7 @@ function renderBtTradeList(period) {
         <span class="setup-result ${win ? 'win' : 'loss'}">${t.result.toUpperCase()}</span>
         <span style="margin-left:auto;font-size:11px;color:${win ? '#86efac' : '#fca5a5'}">${t.pnl_pips} pips</span>
       </div>
-      <div class="setup-meta">${t.entry_time?.slice(0, 16).replace('T', ' ')} · Entry ${t.entry}</div>
+      <div class="setup-meta">${t.entry_time?.slice(0, 16).replace('T', ' ')}${t.tag ? ' · ' + t.tag : ''}${(t.tags || []).length && !t.tag ? ' · ' + t.tags.join(' · ') : ''} · Entry ${t.entry}</div>
     `;
     li.onclick = () => viewTradeOnChart(period, t);
     listEl.appendChild(li);
@@ -850,7 +955,6 @@ function bindUI() {
     validateSave();
     updateRR();
   };
-  els.fieldTag.onchange = () => onTagChange();
 
   document.getElementById('toggleEma50').onchange = (e) => chart.toggleEma50(e.target.checked);
   document.getElementById('toggleEma200').onchange = (e) => chart.toggleEma200(e.target.checked);
@@ -938,7 +1042,7 @@ async function loadAppData() {
   try {
     state.config = await fetchWithRetry(() => getConfig());
     await loadTagPresets();
-    renderTagSelect();
+    renderTagCheckboxes();
     renderPeriodTabs();
     if (state.config?.periods?.[state.period]) {
       els.periodBadge.textContent = state.config.periods[state.period].label;
