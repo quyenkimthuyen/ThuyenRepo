@@ -235,42 +235,42 @@ const EXAMS = {
   },
   informatics: {
     title: "Tin học",
-    code: "0524",
+    code: "0525",
     duration: 50,
     source:
-      "https://xaydungchinhsach.chinhphu.vn/thi-tot-nghiep-thpt-2026-de-thi-mon-tin-hoc-goi-y-dap-an-119260612145639712.htm",
+      "https://dolthpt.vn/tot-nghiep-thpt/pdf-de-chinh-thuc-tot-nghiep-thpt-mon-tin-hoc-nam-2026-ma-de-0525-co-dap-an",
     note:
-      "Mô phỏng theo cấu trúc Tin học 2026: 24 câu chọn đáp án và 4 câu đúng/sai được chọn để chấm.",
+      "Cập nhật theo đề chính thức tốt nghiệp THPT môn Tin học năm 2026 mã đề 0525 từ DOL. Phần đúng/sai dùng 2 câu chung và nhánh Tin học ứng dụng để giữ cấu trúc 10 điểm trong app.",
     sections: [
       {
         title: "Phần I - Trắc nghiệm nhiều phương án lựa chọn",
         type: "single",
         points: 0.25,
         questions: buildChoiceSet("i", [
-          ["Trong Python, cấu trúc dữ liệu nào lưu cặp khóa - giá trị?", "C", ["list", "tuple", "dict", "set"], "Lập trình"],
-          ["Câu lệnh SQL dùng để lấy dữ liệu từ bảng là", "C", ["INSERT", "UPDATE", "SELECT", "DELETE"], "Cơ sở dữ liệu"],
-          ["HTML dùng để", "C", ["tính toán đồ họa", "quản trị mạng", "mô tả cấu trúc trang web", "mã hóa dữ liệu"], "Web"],
-          ["Thuật toán tìm kiếm nhị phân yêu cầu dữ liệu đầu vào", "D", ["ngẫu nhiên", "rỗng", "không trùng", "đã sắp xếp"], "Thuật toán"],
-          ["Địa chỉ IP dùng để", "B", ["định dạng ảnh", "định danh thiết bị trên mạng", "nén âm thanh", "soạn văn bản"], "Mạng máy tính"],
-          ["AI trong hệ thống sàng lọc bệnh thường cần dữ liệu để", "A", ["huấn luyện mô hình", "tăng dung lượng RAM", "thay nguồn điện", "đổi giao diện"], "AI"],
-          ["Trong bảng tính, hàm SUM dùng để", "D", ["đếm chữ", "tìm nhỏ nhất", "sắp xếp", "tính tổng"], "Tin học ứng dụng"],
-          ["Khóa chính trong cơ sở dữ liệu quan hệ có vai trò", "D", ["lưu mật khẩu", "tăng màu nền", "xóa bảng", "định danh duy nhất bản ghi"], "Cơ sở dữ liệu"],
-          ["Kiểu dữ liệu Boolean có các giá trị cơ bản là", "C", ["0 đến 9", "chuỗi", "đúng và sai", "ngày tháng"], "Dữ liệu"],
-          ["Biểu thức 7 // 2 trong Python cho kết quả", "A", ["3", "3.5", "4", "2"], "Python"],
-          ["CSS trong phát triển web chủ yếu dùng để", "B", ["lưu dữ liệu", "trình bày giao diện", "truy vấn SQL", "nén file"], "Web"],
-          ["Mã độc lây lan qua tệp đính kèm email là rủi ro thuộc nhóm", "D", ["thiết kế đồ họa", "soạn thảo", "vật lí máy tính", "an toàn thông tin"], "An toàn thông tin"],
-          ["Độ phức tạp O(n) thường mô tả thuật toán có thời gian tăng", "C", ["không đổi", "bậc hai", "tuyến tính", "logarit"], "Thuật toán"],
-          ["Trong mô hình client-server, trình duyệt web thường là", "B", ["server", "client", "router", "database"], "Mạng"],
-          ["Lệnh SQL WHERE dùng để", "A", ["lọc bản ghi theo điều kiện", "tạo ảnh", "xóa toàn bộ hệ quản trị", "đổi ngôn ngữ"], "Cơ sở dữ liệu"],
-          ["Trong Python, vòng lặp for thường dùng để", "D", ["định dạng CSS", "khởi động hệ điều hành", "nối mạng", "duyệt qua dãy phần tử"], "Lập trình"],
-          ["Sao lưu dữ liệu giúp", "C", ["làm máy nóng hơn", "giảm bảo mật", "khôi phục khi có sự cố", "tăng virus"], "An toàn dữ liệu"],
-          ["Trong hệ quản trị CSDL, quan hệ một-nhiều thường được biểu diễn bằng", "A", ["khóa ngoại", "màu chữ", "ảnh nền", "âm thanh"], "Cơ sở dữ liệu"],
-          ["Phép AND trong logic trả về đúng khi", "D", ["ít nhất một mệnh đề đúng", "cả hai mệnh đề sai", "không xét mệnh đề", "tất cả mệnh đề đều đúng"], "Logic"],
-          ["Cookie trình duyệt thường dùng để", "B", ["tăng tốc CPU", "lưu trạng thái phiên", "vẽ vector", "dịch mã máy"], "Web"],
-          ["Sơ đồ luồng dữ liệu giúp mô tả", "D", ["màu giao diện", "âm lượng", "kích thước màn hình", "dòng thông tin trong hệ thống"], "Phân tích hệ thống"],
-          ["Trong Python, len([1,2,3]) trả về", "B", ["2", "3", "4", "6"], "Python"],
-          ["Mạng LAN là mạng", "B", ["toàn cầu", "cục bộ", "vệ tinh", "không có thiết bị"], "Mạng"],
-          ["Nguyên tắc phân quyền người dùng giúp", "C", ["xóa dữ liệu nhanh hơn", "tăng kích thước file", "giảm truy cập trái phép", "tắt máy chủ"], "An toàn thông tin"]
+          ["Cho đoạn mã HTML và CSS có hai quy tắc .tieude: quy tắc đầu đặt màu vàng, in đậm; quy tắc sau đặt màu đỏ, in nghiêng. Khi thực hiện, dòng chữ 'Tin học' hiển thị theo định dạng nào?", "C", ["Màu vàng, in đậm và nghiêng.", "Màu vàng, in đậm và không nghiêng.", "Màu đỏ, in đậm và nghiêng.", "Màu đỏ, in nghiêng và không đậm."], "Web"],
+          ["Hệ thống camera thông minh của bãi gửi xe có khả năng nhận dạng biển số xe. Chức năng xử lí dữ liệu hình ảnh này thuộc lĩnh vực nào của AI?", "C", ["Xử lí tiếng nói.", "Điều khiển rô-bốt.", "Thị giác máy tính.", "Xử lí ngôn ngữ tự nhiên."], "AI"],
+          ["Phương án nào liệt kê đơn vị đo dung lượng bộ nhớ theo thứ tự giảm dần?", "A", ["Terabyte, Megabyte, Kilobyte.", "Terabyte, Kilobyte, Megabyte.", "Megabyte, Terabyte, Kilobyte.", "Megabyte, Kilobyte, Terabyte."], "Dữ liệu"],
+          ["Phát biểu nào nêu đúng chức năng chính của Switch?", "D", ["Định danh các máy tính có trong mạng thông qua địa chỉ IPv4.", "Định tuyến cho gói dữ liệu khi truyền đi giữa các mạng.", "Phân giải tên miền thành địa chỉ IP dưới dạng nhị phân.", "Chuyển dữ liệu đến đúng thiết bị nhận thông qua địa chỉ MAC."], "Mạng"],
+          ["Cho CSS: p {font-size: 25px; padding: 30px; margin: 20px;}. Các giá trị font-size, margin, padding lần lượt là", "D", ["30px, 20px, 25px.", "25px, 30px, 20px.", "20px, 30px, 25px.", "25px, 20px, 30px."], "Web"],
+          ["Nhiệm vụ nào thể hiện đặc trưng tạo nội dung mới của trí tuệ nhân tạo tạo sinh?", "A", ["Tạo ra đoạn mã chương trình từ mô tả yêu cầu bằng ngôn ngữ tự nhiên.", "Chẩn đoán bệnh dựa trên việc phân loại hình ảnh chụp X-quang.", "Nhận diện và đếm số lượng phương tiện giao thông trong một bức ảnh.", "Dự báo lượng mưa dựa trên dữ liệu khí tượng của mười năm trước đó."], "AI"],
+          ["Phương án nào chỉ ra ưu điểm của giao tiếp trên không gian mạng?", "C", ["Luôn quan sát được thái độ của người nói.", "Không phụ thuộc vào thiết bị công nghệ.", "Tạo cơ hội mở rộng các mối quan hệ xã hội.", "Đảm bảo tin cậy và bảo mật thông tin tuyệt đối."], "Văn hóa số"],
+          ["Lựa chọn ngôn ngữ lập trình Python hoặc C++ để tìm hiểu đoạn chương trình sau. Sau khi thực hiện, giá trị nào được hiển thị trên màn hình?", "B", ["4.", "21.", "20.", "3."], "Lập trình", tin2026Image("q8")],
+          ["Cách ứng xử nào thể hiện tính nhân văn khi thấy một người bạn thường xuyên chia sẻ thông tin chưa được kiểm chứng lên mạng xã hội?", "D", ["Công khai phê phán về hành động của bạn.", "Lập nhóm riêng với các bạn khác để bàn luận.", "Hủy kết bạn để tránh nhìn thấy thông tin đó.", "Nhắn tin riêng phân tích và khuyên nhủ bạn."], "Văn hóa số"],
+          ["Bảng dữ liệu phim có các cột Mã phim, Tên phim, Loại phim, Thời lượng, Ngày khởi chiếu, Giá vé. Cần khai thác dữ liệu trong trường hợp nào?", "B", ["Điều chỉnh lại giá vé của các bộ phim khoa học viễn tưởng.", "Đưa ra tên các bộ phim được chiếu từ ngày 20/11/2025.", "Xóa khỏi bảng các bộ phim có thời lượng ít hơn 60 phút.", "Bổ sung thêm các bộ phim được phát hành mới nhất."], "Cơ sở dữ liệu"],
+          ["Cặp thẻ HTML nào được dùng để tạo các mục của danh sách?", "D", ["<td> </td>", "<ol> </ol>", "<ul> </ul>", "<li> </li>"], "Web"],
+          ["Lựa chọn ngôn ngữ lập trình Python hoặc C++ để tìm hiểu đoạn chương trình sau. Sau khi thực hiện, biến T có giá trị nào?", "C", ["-5.", "-11.", "6.", "2."], "Lập trình", tin2026Image("q12")],
+          ["Ứng dụng nào là một Chatbot có sử dụng trí tuệ nhân tạo?", "D", ["WinRAR.", "Notepad.", "Geogebra.", "Copilot."], "AI"],
+          ["Đoạn mã CSS nào định dạng đoạn văn bản cỡ chữ 20 pixel với đường viền bao quanh là các dấu chấm liền nhau màu đen?", "C", ["p{font-size: 20px; border-style: solid;}", "p{font-size: 20pt; border-style: dotted;}", "p{font-size: 20px; border-style: dotted;}", "p{font-size: 20pt; border-style: solid;}"], "Web"],
+          ["Việc chia sẻ thư mục trong mạng LAN cần các thao tác: (1) chọn thư mục, (2) thiết lập quyền sửa, (3) chọn người dùng được chia sẻ, (4) mở ứng dụng quản lí tệp. Thứ tự đúng là", "A", ["(4), (1), (3), (2).", "(4), (3), (1), (2).", "(1), (4), (2), (3).", "(1), (3), (2), (4)."], "Mạng"],
+          ["Lựa chọn ngôn ngữ lập trình Python hoặc C++ để tìm hiểu đoạn chương trình sau. Với a và b là hai số nguyên dương khác nhau, n thỏa mãn tính chất nào?", "B", ["Nhỏ nhất và chia hết cho cả a và b.", "Nhỏ nhất và chia hết cho a hoặc b.", "Lớn nhất và là ước số của a hoặc b.", "Lớn nhất và là ước số của cả a và b."], "Lập trình", tin2026Image("q16")],
+          ["Thành phần nào thuộc hệ cơ sở dữ liệu?", "A", ["Hệ quản trị cơ sở dữ liệu.", "Tập hợp các trang tính.", "Máy chủ dữ liệu của tổ chức.", "Không gian lưu trữ đám mây."], "Cơ sở dữ liệu"],
+          ["Một siêu liên kết <a href=\"#binhluan\">Bình luận</a>. Đoạn HTML nào để điều hướng đến vùng nhập dữ liệu 10 dòng 8 cột trong cùng trang?", "C", ["<textarea name=\"binhluan\" rows=\"10\" cols=\"8\"></textarea>", "<textarea id=\"binhluan\" rows=\"8\" cols=\"10\"></textarea>", "<textarea id=\"binhluan\" rows=\"10\" cols=\"8\"></textarea>", "<textarea name=\"binhluan\" rows=\"8\" cols=\"10\"></textarea>"], "Web"],
+          ["Trong buổi học trực tuyến, một bạn liên tục ngắt lời cô giáo để đặt câu hỏi. Lớp trưởng nên xử lí thế nào để mọi người đều được tôn trọng?", "C", ["Nhắn tin kêu gọi các thành viên khác phê phán hành động đó.", "Bật micro và phê bình bạn đó vì đã liên tục ngắt lời cô giáo.", "Nhắn tin riêng giải thích và khuyên bạn không nên ngắt lời cô giáo.", "Khuyến khích bạn đó tiếp tục phát biểu để thể hiện tư duy phản biện."], "Văn hóa số"],
+          ["Nhận định nào phản ánh đúng một rủi ro về an toàn thông tin do ảnh hưởng của trí tuệ nhân tạo?", "D", ["Trí tuệ nhân tạo khiến tốc độ truyền dữ liệu qua Internet bị chậm lại.", "Chi phí đầu tư hạ tầng mạng Internet tăng cao do yêu cầu xử lí dữ liệu lớn.", "Dung lượng bộ nhớ trên các thiết bị lưu trữ của người dùng giảm đáng kể.", "Trí tuệ nhân tạo có thể bị lợi dụng để tạo ra các nội dung giả mạo."], "An toàn thông tin"],
+          ["Người quản trị cơ sở dữ liệu cần thực hiện được công việc nào?", "C", ["Phát triển phần mềm ứng dụng cơ sở dữ liệu.", "Đảm bảo an toàn và bảo mật mạng máy tính.", "Cài đặt, cập nhật hệ quản trị cơ sở dữ liệu.", "Kiểm thử và đảm bảo chất lượng phần mềm."], "Cơ sở dữ liệu"],
+          ["Kiến thức và chủ đề nào không nằm trong yêu cầu đối với người làm nghề lập trình?", "C", ["Cấu trúc dữ liệu và giải thuật.", "Ngôn ngữ lập trình bậc cao.", "Phần mềm thiết kế đồ họa.", "Ngôn ngữ truy vấn SQL."], "Nghề nghiệp"],
+          ["Nghề nào thuộc nhóm nghề dịch vụ trong ngành Công nghệ thông tin?", "D", ["Quản trị và bảo trì hệ thống.", "Quản trị mạng máy tính.", "Bảo mật hệ thống thông tin.", "Sửa chữa và bảo trì máy tính."], "Nghề nghiệp"],
+          ["Phương án nào nêu đúng một công việc chính của người làm nghề quản trị mạng máy tính?", "D", ["Kiểm tra và tháo lắp linh kiện phần cứng.", "Quản lí và duy trì hệ thống thông tin.", "Khắc phục lỗi và sửa chữa máy tính.", "Cài đặt và điều chỉnh hiệu năng mạng."], "Nghề nghiệp"]
         ])
       },
       {
@@ -278,30 +278,30 @@ const EXAMS = {
         type: "truefalse",
         points: "tiered",
         questions: [
-          tf("i25", "Một website bệnh viện có phần đăng nhập cho bệnh nhân.", "DSDS", [
-            "Mật khẩu nên được lưu dưới dạng băm an toàn.",
-            "Có thể công khai toàn bộ hồ sơ bệnh án cho mọi người.",
-            "HTTPS giúp bảo vệ dữ liệu khi truyền qua mạng.",
-            "Không cần kiểm tra quyền truy cập sau khi đăng nhập."
-          ], "An toàn thông tin"),
-          tf("i26", "Xét bảng HOCSINH(MaHS, HoTen, Lop) trong cơ sở dữ liệu.", "SDDS", [
-            "MaHS không thể dùng làm khóa chính.",
-            "SELECT HoTen FROM HOCSINH lấy danh sách họ tên.",
-            "WHERE Lop='12A1' dùng để lọc học sinh lớp 12A1.",
-            "Một bảng dữ liệu không thể có bản ghi."
+          tf("i25", "Người quản trị trang web Đoàn thanh niên tạo biểu mẫu HTML để học sinh đăng kí hoạt động văn nghệ, thể thao.", "DSDS", [
+            "Biểu mẫu này có hai ô nhập dữ liệu và một nút gửi dữ liệu.",
+            "Giá trị của thuộc tính value của hai ô nhập dữ liệu không được để trống.",
+            "Nếu nhập dữ liệu và nhấn nút Đăng kí thì dữ liệu được gửi đến trang dangki.php.",
+            "Để chỉ được chọn một trong hai hoạt động Văn nghệ hoặc Thể thao, hai nút radio có thể dùng hai giá trị name khác nhau."
+          ], "Web"),
+          tf("i26", "Một nhóm giảng viên tập huấn năng lực số, hằng ngày gửi báo cáo qua email và đăng bài lên website https://dha.edu.vn.", "SDDS", [
+            "https trong địa chỉ website là giao thức truyền tải thư điện tử.",
+            "Tên miền website đóng vai trò là địa chỉ thay thế cho địa chỉ IP của máy chủ web.",
+            "Nếu máy chủ thư điện tử thay đổi địa chỉ IP, trưởng nhóm vẫn có thể gửi báo cáo đến email đã được cung cấp.",
+            "Học viên cần dùng điện thoại thông minh kết nối trực tiếp vào Switch để xem tài liệu trên website."
+          ], "Mạng"),
+          tf("i27", "Một chủ nông trại dùng phần mềm quản lí dữ liệu vườn cây với các bảng VUON_CAY, LOAI_CAY và THONG_KE.", "DSDS", [
+            "Để tạo cấu trúc bảng LOAI_CAY, cần tạo bảng mới, đặt tên bảng, tạo trường/kiểu dữ liệu và thiết lập khóa chính.",
+            "Trong bảng LOAI_CAY, không thể thiết lập trường maLC có kiểu số nguyên và tự động tăng.",
+            "Để đảm bảo nhất quán, khi nhập maVC của bảng THONG_KE cần nhập giá trị đã có trong VUON_CAY.",
+            "Truy vấn tên loại cây, tên vườn và sản lượng năm 2025 lớn hơn 3000 kg có thể liên kết VUON_CAY và LOAI_CAY trực tiếp qua maLC."
           ], "Cơ sở dữ liệu"),
-          tf("i27", "Về thuật toán tìm kiếm nhị phân.", "DDSS", [
-            "Mỗi bước có thể loại bỏ khoảng một nửa phạm vi tìm kiếm.",
-            "Dữ liệu đầu vào nên được sắp xếp.",
-            "Luôn nhanh hơn mọi thuật toán khác trong mọi trường hợp.",
-            "Không thể cài đặt bằng vòng lặp."
-          ], "Thuật toán"),
-          tf("i28", "Về trí tuệ nhân tạo trong phân loại dữ liệu.", "DSDS", [
-            "Mô hình cần dữ liệu huấn luyện đại diện.",
-            "AI luôn đúng tuyệt đối với mọi dữ liệu mới.",
-            "Dữ liệu sai lệch có thể làm kết quả dự đoán sai lệch.",
-            "Không cần đánh giá mô hình sau huấn luyện."
-          ], "AI")
+          tf("i28", "Một trường đại học phát động cuộc thi thiết kế website bằng phần mềm tạo trang web với các trang Trang chủ, Giới thiệu, Tuyển dụng.", "DSDS", [
+            "Nếu đưa logo từng khoa vào trang Giới thiệu thì có thể liên kết từng logo đến trang chi tiết của khoa tương ứng.",
+            "Thanh điều hướng chỉ có ở Trang chủ để người dùng dễ di chuyển giữa các trang trong website.",
+            "Có thể thiết kế biểu mẫu bằng công cụ trực tuyến phù hợp rồi chèn liên kết biểu mẫu vào trang Tuyển dụng.",
+            "Để xem nội dung website sau khi xuất bản, máy tính người dùng cần sử dụng phần mềm tạo trang web."
+          ], "Tin học ứng dụng")
         ]
       }
     ]
@@ -465,72 +465,52 @@ const EXAMS_BY_YEAR = {
     },
     informatics: {
       title: "Tin học",
-      code: "0526",
+      code: "THAM-KHAO-2025",
       duration: 50,
-      source: "https://vnexpress.net/de-va-goi-y-dap-an-mon-tin-hoc-thi-tot-nghiep-thpt-2025-4906275.html",
+      source: "https://thpthoaiduca.hanoi.edu.vn/mon-tin-hoc/de-thi-tham-khao-ky-thi-tot-nghiep-thpt-tu-nam-2025-mon-tin-hoc/ctmb/23796/23430",
       note:
-        "Mô phỏng theo đề Tin học 2025 mã 0526: 24 câu chọn đáp án và 4 câu đúng/sai được chọn để luyện.",
+        "Cập nhật theo đề tham khảo kỳ thi tốt nghiệp THPT từ năm 2025 môn Tin học. Nội dung câu hỏi hiển thị bằng ảnh cắt trực tiếp từ PDF gốc; phần đúng/sai dùng 2 câu chung và nhánh Tin học ứng dụng.",
       sections: [
         {
           title: "Phần I - Trắc nghiệm nhiều phương án lựa chọn",
           type: "single",
           points: 0.25,
-          questions: buildChoiceSet("y25i", [
-            ["Trong Python, kiểu dữ liệu lưu dãy có thứ tự là", "D", ["dict", "set", "bool", "list"], "Python"],
-            ["Câu lệnh dùng để rẽ nhánh trong Python là", "D", ["for", "while", "def", "if"], "Python"],
-            ["SQL SELECT dùng để", "C", ["xóa bảng", "thêm bản ghi", "truy vấn dữ liệu", "đổi mật khẩu"], "Cơ sở dữ liệu"],
-            ["Khóa ngoại dùng để", "B", ["định dạng chữ", "liên kết bảng", "nén ảnh", "vẽ biểu đồ"], "Cơ sở dữ liệu"],
-            ["HTML là ngôn ngữ mô tả", "B", ["thuật toán", "cấu trúc trang web", "cơ sở dữ liệu", "hệ điều hành"], "Web"],
-            ["CSS dùng để", "A", ["trình bày giao diện", "tạo truy vấn", "huấn luyện AI", "mã hóa ổ đĩa"], "Web"],
-            ["Thuật toán tìm kiếm tuần tự có thể dùng cho", "A", ["dữ liệu chưa sắp xếp", "chỉ cây nhị phân", "chỉ đồ thị", "chỉ ảnh"], "Thuật toán"],
-            ["Địa chỉ IP dùng để", "B", ["lưu ảnh", "định danh thiết bị mạng", "soạn thảo", "nén video"], "Mạng"],
-            ["Mật khẩu mạnh nên", "C", ["rất ngắn", "trùng ngày sinh", "khó đoán", "công khai"], "An toàn thông tin"],
-            ["Trong bảng tính, AVERAGE dùng để", "A", ["tính trung bình", "tính tổng", "đếm ô trống", "sắp xếp"], "Tin học ứng dụng"],
-            ["AI học máy cần dữ liệu để", "A", ["huấn luyện", "tắt máy", "đổi màn hình", "xóa ổ đĩa"], "AI"],
-            ["Biến trong lập trình dùng để", "B", ["vẽ giao diện", "lưu giá trị", "nén mạng", "xóa chương trình"], "Lập trình"],
-            ["Sơ đồ khối dùng để mô tả", "C", ["màu nền", "âm thanh", "thuật toán", "ảnh động"], "Thuật toán"],
-            ["Cookie thường lưu", "A", ["thông tin phiên", "mã máy", "nguồn điện", "địa chỉ nhà"], "Web"],
-            ["Backup dữ liệu giúp", "A", ["khôi phục khi mất dữ liệu", "giảm bảo mật", "tăng lỗi", "xóa quyền"], "An toàn dữ liệu"],
-            ["Logic AND đúng khi", "A", ["mọi mệnh đề đúng", "một mệnh đề đúng", "mọi mệnh đề sai", "không có dữ liệu"], "Logic"],
-            ["Mạng LAN là mạng", "A", ["cục bộ", "toàn cầu", "vệ tinh", "không dây bắt buộc"], "Mạng"],
-            ["Trong Python, vòng lặp while chạy khi điều kiện", "C", ["sai", "rỗng", "đúng", "không tồn tại"], "Python"],
-            ["CSDL quan hệ tổ chức dữ liệu thành", "A", ["bảng", "ảnh", "video", "âm thanh"], "Cơ sở dữ liệu"],
-            ["Phân quyền người dùng giúp", "A", ["hạn chế truy cập trái phép", "tăng virus", "xóa nhật ký", "tắt bảo mật"], "An toàn thông tin"],
-            ["Độ phức tạp O(n) là", "A", ["tuyến tính", "hằng số", "bậc hai", "mũ"], "Thuật toán"],
-            ["Mô hình client-server gồm", "C", ["chỉ máy in", "chỉ màn hình", "máy khách và máy chủ", "chỉ ổ cứng"], "Mạng"],
-            ["Hàm len trong Python trả về", "A", ["độ dài", "kiểu dữ liệu", "địa chỉ IP", "mật khẩu"], "Python"],
-            ["Dữ liệu cá nhân cần được", "A", ["bảo vệ", "công khai toàn bộ", "xóa ngẫu nhiên", "chia sẻ tự do"], "An toàn thông tin"]
-          ])
+          questions: buildImageChoiceSet(
+            "y25i",
+            ["D", "B", "C", "A", "D", "A", "B", "B", "C", "A", "A", "A", "A", "B", "B", "B", "C", "C", "B", "A", "B", "B", "A", "A"],
+            "đề Tin học 2025 từ PDF",
+            tin2025QuestionImage
+          )
         },
         {
           title: "Phần II - Trắc nghiệm đúng/sai",
           type: "truefalse",
           points: "tiered",
           questions: [
-            tf("y25i25", "Về bảo mật tài khoản học sinh.", "DDDS", [
-              "Nên bật xác thực nhiều yếu tố.",
-              "Không nên chia sẻ mật khẩu.",
-              "Nên dùng mật khẩu khó đoán.",
-              "Có thể gửi mật khẩu trong nhóm chat công khai."
-            ], "An toàn thông tin"),
-            tf("y25i26", "Về cơ sở dữ liệu quan hệ.", "DSDS", [
-              "Bảng gồm các bản ghi và trường.",
-              "Khóa chính có thể trùng tự do trong cùng bảng.",
-              "WHERE dùng để lọc dữ liệu theo điều kiện.",
-              "SELECT luôn dùng để xóa dữ liệu."
-            ], "Cơ sở dữ liệu"),
-            tf("y25i27", "Về thuật toán và lập trình.", "DSSD", [
-              "Thuật toán là dãy hữu hạn các bước.",
-              "Vòng lặp không bao giờ có điều kiện dừng.",
-              "Biến không thể thay đổi giá trị.",
-              "Có thể biểu diễn thuật toán bằng sơ đồ khối."
-            ], "Thuật toán"),
-            tf("y25i28", "Về web và mạng máy tính.", "SDSD", [
-              "HTML chủ yếu dùng để tạo kiểu màu sắc.",
-              "CSS chủ yếu dùng để trình bày giao diện.",
-              "HTTP không liên quan truyền tải web.",
-              "Tên miền giúp người dùng truy cập website dễ nhớ hơn."
-            ], "Web")
+            tf("y25i25", "Xem nội dung Phần II - Câu 1 trong ảnh cắt từ đề Tin học 2025.", "DDSS", [
+              "Mệnh đề a trong ảnh.",
+              "Mệnh đề b trong ảnh.",
+              "Mệnh đề c trong ảnh.",
+              "Mệnh đề d trong ảnh."
+            ], "Mạng", tin2025QuestionImage("y25i25")),
+            tf("y25i26", "Xem nội dung Phần II - Câu 2 trong ảnh cắt từ đề Tin học 2025.", "DDSD", [
+              "Mệnh đề a trong ảnh.",
+              "Mệnh đề b trong ảnh.",
+              "Mệnh đề c trong ảnh.",
+              "Mệnh đề d trong ảnh."
+            ], "Cơ sở dữ liệu", tin2025QuestionImage("y25i26")),
+            tf("y25i27", "Xem nội dung Phần II - Câu 5, định hướng Tin học ứng dụng, trong ảnh cắt từ đề Tin học 2025.", "DSDS", [
+              "Mệnh đề a trong ảnh.",
+              "Mệnh đề b trong ảnh.",
+              "Mệnh đề c trong ảnh.",
+              "Mệnh đề d trong ảnh."
+            ], "Tin học ứng dụng", tin2025QuestionImage("y25i27")),
+            tf("y25i28", "Xem nội dung Phần II - Câu 6, định hướng Tin học ứng dụng, trong ảnh cắt từ đề Tin học 2025.", "DDSD", [
+              "Mệnh đề a trong ảnh.",
+              "Mệnh đề b trong ảnh.",
+              "Mệnh đề c trong ảnh.",
+              "Mệnh đề d trong ảnh."
+            ], "Tin học ứng dụng", tin2025QuestionImage("y25i28"))
           ]
         }
       ]
@@ -832,6 +812,14 @@ function math2025QuestionImage(name) {
 
 function math2025SolutionImage(name) {
   return `<img class="pdf-crop solution-crop" src="data/toan/2025/solutions/${name}.jpg" alt="Lời giải Toán 2025 mã 0124 ${name} cắt từ MathVN" loading="lazy" />`;
+}
+
+function tin2026Image(name) {
+  return `<img class="pdf-crop" src="data/tin/2026/images/${name}.png?v=20260709-1125" alt="Đoạn chương trình đề Tin học 2026 mã 0525 ${name}" loading="lazy" />`;
+}
+
+function tin2025QuestionImage(name) {
+  return `<img class="pdf-crop" src="data/tin/2025/crops/${name}.png?v=20260709-1215" alt="Đề Tin học 2025 ${name} cắt từ PDF" loading="lazy" />`;
 }
 
 function math2024QuestionImage(name) {
@@ -2267,7 +2255,6 @@ function renderAnswerGuide(type, question) {
   if (!state.submitted) return "";
 
   const solutionFigure = getPdfSolutionFigure(question.id);
-  if (!question.solution && !solutionFigure && type !== "short") return "";
 
   return `
     <details class="answer-hint">
