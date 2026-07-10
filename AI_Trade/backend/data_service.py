@@ -71,3 +71,51 @@ def period_for_timestamp(ts: pd.Timestamp) -> str | None:
         if start <= ts <= end:
             return name
     return None
+
+
+def month_bounds(month: str) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """month format YYYY-MM → inclusive UTC range for that calendar month."""
+    start = pd.Timestamp(f"{month}-01", tz="UTC")
+    if start.day != 1:
+        raise ValueError(f"Invalid month: {month}")
+    end = start + pd.offsets.MonthEnd(0) + pd.Timedelta(hours=23, minutes=59, seconds=59)
+    return start, end
+
+
+def slice_month(df: pd.DataFrame, month: str) -> pd.DataFrame:
+    start, end = month_bounds(month)
+    return df.loc[start:end]
+
+
+def months_for_period(period: str) -> list[str]:
+    df = slice_period(load_candles(), period)
+    if df.empty:
+        return []
+    cursor = pd.Timestamp(df.index[0].year, df.index[0].month, 1, tz="UTC")
+    end_month = pd.Timestamp(df.index[-1].year, df.index[-1].month, 1, tz="UTC")
+    months: list[str] = []
+    while cursor <= end_month:
+        months.append(cursor.strftime("%Y-%m"))
+        if cursor.month == 12:
+            cursor = pd.Timestamp(cursor.year + 1, 1, 1, tz="UTC")
+        else:
+            cursor = pd.Timestamp(cursor.year, cursor.month + 1, 1, tz="UTC")
+    return months
+
+
+def filter_records_by_month(
+    records: list[dict],
+    month: str,
+    time_key: str,
+) -> list[dict]:
+    start, end = month_bounds(month)
+    out: list[dict] = []
+    for rec in records:
+        ts = pd.Timestamp(rec[time_key])
+        if ts.tz is None:
+            ts = ts.tz_localize("UTC")
+        else:
+            ts = ts.tz_convert("UTC")
+        if start <= ts <= end:
+            out.append(rec)
+    return out

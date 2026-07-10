@@ -6,7 +6,7 @@
   <title>AI Trade Lab — EURUSD 1H</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/app.css?v=14">
+  <link rel="stylesheet" href="/static/css/app.css?v=15">
 </head>
 <body>
   <noscript>
@@ -71,13 +71,67 @@
           </div>
 
           <section class="panel panel-setups">
-            <div class="panel-head">
-              <h2>Setups</h2>
-              <span class="count-badge" id="setupCount">0</span>
-            </div>
-            <button type="button" class="btn primary block" id="btnNewSetup">＋ Setup từ nến đã tag</button>
+            <nav class="label-subtabs" role="tablist" aria-label="Label workflow">
+              <button type="button" class="label-subtab active" data-label-tab="bars" role="tab" aria-selected="true">
+                <span class="subtab-icon">②</span>
+                <span>Nến quan trọng</span>
+                <span class="count-badge subtab-badge" id="barTabCount">0</span>
+              </button>
+              <button type="button" class="label-subtab" data-label-tab="setups" role="tab">
+                <span class="subtab-icon">③</span>
+                <span>Setups</span>
+                <span class="count-badge subtab-badge" id="setupTabCount">0</span>
+              </button>
+            </nav>
 
-            <div class="setup-editor hidden" id="editorPanel">
+            <div id="labelBarsView" class="label-subview active" role="tabpanel">
+              <p class="label-subhint">Tag nến trong tháng đang chọn — chỉ tải dữ liệu tháng hiện tại.</p>
+
+              <div id="barInspectPanel" class="bar-inspect-panel hidden">
+                <div class="bar-inspect-head">
+                  <strong id="barInspectTitle">Nến quan trọng</strong>
+                  <button type="button" class="btn tiny" id="btnCloseBarInspect">✕</button>
+                </div>
+                <div id="barInspectScore" class="bar-inspect-score"></div>
+                <div id="barInspectReasons" class="bar-inspect-reasons"></div>
+                <div id="barInspectTags" class="bar-inspect-tags"></div>
+                <div id="barInspectSeq" class="bar-inspect-seq muted"></div>
+                <ul id="barInspectSimilar" class="bar-inspect-similar"></ul>
+
+                <div class="bar-annotate-section">
+                  <span class="bar-annotate-label">Tag của bạn <small class="muted">(chỉnh & lưu)</small></span>
+                  <div id="barAnnotTags" class="tag-checkbox-group"></div>
+                  <div class="bar-annotate-actions">
+                    <button type="button" class="btn primary" id="btnSaveBarAnnot">Lưu tag nến</button>
+                    <button type="button" class="btn danger hidden" id="btnDeleteBarAnnot">Xóa</button>
+                  </div>
+                </div>
+
+                <button type="button" class="btn block" id="btnSetupFromBar">＋ Tạo setup tại nến này</button>
+              </div>
+
+              <div id="barAnnotationListSection" class="bar-annotation-list-section">
+                <div class="setup-list-head">
+                  <span>Tag nến đã lưu</span>
+                  <span class="count-badge" id="barAnnotationCount">0</span>
+                </div>
+                <ul id="barAnnotationList" class="setup-list scroll-panel bar-annotation-list"></ul>
+              </div>
+
+              <div id="importantBarListSection" class="important-bar-list-section hidden">
+                <div class="setup-list-head">
+                  <span>Nến đạt ngưỡng score</span>
+                  <span class="count-badge" id="importantBarListCount">0</span>
+                </div>
+                <ul id="importantBarList" class="setup-list scroll-panel important-bar-list"></ul>
+              </div>
+            </div>
+
+            <div id="labelSetupsView" class="label-subview hidden" role="tabpanel">
+              <p class="label-subhint">Setup gắn với nến đã tag — mỗi setup hiển thị mã nến liên kết.</p>
+              <button type="button" class="btn primary block" id="btnNewSetup">＋ Setup từ nến đã tag</button>
+
+              <div class="setup-editor hidden" id="editorPanel">
               <div class="mode-bar">
                 <span class="mode-pill" id="modePill" data-mode="idle">Xem chart</span>
                 <span class="rr-pill" id="rrPill">RR —</span>
@@ -132,51 +186,14 @@
               </div>
             </div>
 
-            <div class="setup-list-section">
-              <div class="setup-list-head">
-                <span>Đã lưu</span>
-                <span class="list-hint">Click xem · double-click sửa</span>
-              </div>
-              <ul id="setupList" class="setup-list scroll-panel"></ul>
-            </div>
-
-            <div id="barInspectPanel" class="bar-inspect-panel hidden">
-              <div class="bar-inspect-head">
-                <strong>Nến quan trọng</strong>
-                <button type="button" class="btn tiny" id="btnCloseBarInspect">✕</button>
-              </div>
-              <div id="barInspectScore" class="bar-inspect-score"></div>
-              <div id="barInspectReasons" class="bar-inspect-reasons"></div>
-              <div id="barInspectTags" class="bar-inspect-tags"></div>
-              <div id="barInspectSeq" class="bar-inspect-seq muted"></div>
-              <ul id="barInspectSimilar" class="bar-inspect-similar"></ul>
-
-              <div class="bar-annotate-section">
-                <span class="bar-annotate-label">Tag của bạn <small class="muted">(chỉnh & lưu)</small></span>
-                <div id="barAnnotTags" class="tag-checkbox-group"></div>
-                <div class="bar-annotate-actions">
-                  <button type="button" class="btn primary" id="btnSaveBarAnnot">Lưu tag nến</button>
-                  <button type="button" class="btn danger hidden" id="btnDeleteBarAnnot">Xóa</button>
+              <div class="setup-list-section">
+                <div class="setup-list-head">
+                  <span>Setup đã lưu</span>
+                  <span class="count-badge" id="setupCount">0</span>
+                  <span class="list-hint">Click xem · double-click sửa</span>
                 </div>
+                <ul id="setupList" class="setup-list scroll-panel"></ul>
               </div>
-
-              <button type="button" class="btn block" id="btnSetupFromBar">＋ Tạo setup tại nến này</button>
-            </div>
-
-            <div id="barAnnotationListSection" class="bar-annotation-list-section">
-              <div class="setup-list-head">
-                <span>Tag nến đã lưu</span>
-                <span class="count-badge" id="barAnnotationCount">0</span>
-              </div>
-              <ul id="barAnnotationList" class="setup-list scroll-panel bar-annotation-list"></ul>
-            </div>
-
-            <div id="importantBarListSection" class="important-bar-list-section hidden">
-              <div class="setup-list-head">
-                <span>Nến quan trọng</span>
-                <span class="count-badge" id="importantBarListCount">0</span>
-              </div>
-              <ul id="importantBarList" class="setup-list scroll-panel important-bar-list"></ul>
             </div>
           </section>
         </div>
@@ -229,6 +246,7 @@
       <section class="chart-area">
         <div class="chart-toolbar">
           <div class="chart-periods" id="periodTabs"></div>
+          <div class="chart-months hidden" id="monthTabs" role="tablist" aria-label="Tháng train"></div>
           <div class="chart-indicators">
             <label><input type="checkbox" id="toggleEma50" checked> EMA 50</label>
             <label><input type="checkbox" id="toggleEma200" checked> EMA 200</label>
@@ -285,7 +303,7 @@
   </div>
 
   <script type="module">
-    import('/static/js/app.js?v=14').catch((err) => {
+    import('/static/js/app.js?v=15').catch((err) => {
       console.error('Module load failed:', err);
       const box = document.createElement('div');
       box.style.cssText = 'padding:20px;color:#fecaca;background:#3f1212;font-size:14px;line-height:1.5';

@@ -603,8 +603,105 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   color: #94a3b8;
   line-height: 1.4;
 }
-.bar-annotation-list-section { margin-top: 12px; }
-.bar-annotation-list { max-height: 140px; }
+.bar-annotation-list-section { margin-top: 12px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.bar-annotation-list { max-height: none; flex: 1; }
+.important-bar-list-section { margin-top: 12px; flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.important-bar-list { flex: 1; }
+
+.label-subtabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+.label-subtab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #0b0f14;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.label-subtab:hover { border-color: #475569; color: var(--text); }
+.label-subtab.active {
+  border-color: var(--accent);
+  background: #152238;
+  color: var(--text);
+}
+.label-subtab .subtab-icon {
+  font-size: 10px;
+  opacity: 0.7;
+}
+.label-subtab .subtab-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+.label-subview {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.label-subview.hidden { display: none; }
+.label-subhint {
+  margin: 0 0 10px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.45;
+  flex-shrink: 0;
+}
+.entity-code {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  color: #93c5fd;
+  letter-spacing: -0.02em;
+}
+.setup-linked-bar {
+  font-size: 10px;
+  color: #a5b4fc;
+}
+
+.chart-months {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  max-width: 100%;
+  padding: 2px 0;
+}
+.month-tab {
+  background: #0b0f14;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: "JetBrains Mono", monospace;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.month-tab:hover { border-color: #475569; color: var(--text); }
+.month-tab.active {
+  border-color: #22c55e;
+  background: #0f2318;
+  color: #86efac;
+}
+.month-tab .month-count {
+  font-size: 9px;
+  opacity: 0.75;
+  margin-left: 4px;
+  font-weight: 500;
+}
 .setup-item.bar-item.confirmed { border-left: 3px solid #22c55e; }
 .pill.good { background: rgba(34, 197, 94, 0.15); color: #86efac; }
 

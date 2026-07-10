@@ -11,6 +11,7 @@ from .bar_annotations import annotation_at_time, link_setup_to_annotation
 from .config import LABELS_PATH, PIP
 from .data_service import load_candles, period_for_timestamp
 from .detection_config import load_bar_detection_config
+from .entity_codes import assign_setup_code, display_setup_code
 from .indicators import add_indicators
 from .pipeline import context_bars_for_index, validate_setup_from_bar
 from .tags import infer_tags, normalize_tags
@@ -93,6 +94,7 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
 
     enriched = {
         **setup,
+        "code": setup.get("code") or display_setup_code(setup),
         "entry_time": bar_time.isoformat(),
         "planned_rr": planned_rr(direction, entry, sl, tp),
         "result": result,
@@ -118,6 +120,30 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
     return enriched
 
 
+def setup_summary(setup: dict[str, Any], *, bar_lookup: dict[str, dict] | None = None) -> dict[str, Any]:
+    ann_id = setup.get("annotation_id")
+    bar = bar_lookup.get(ann_id) if bar_lookup and ann_id else None
+    return {
+        "id": setup.get("id"),
+        "code": display_setup_code(setup),
+        "direction": setup.get("direction"),
+        "entry_time": setup.get("entry_time"),
+        "entry_price": setup.get("entry_price"),
+        "stop_loss": setup.get("stop_loss"),
+        "take_profit": setup.get("take_profit"),
+        "planned_rr": setup.get("planned_rr"),
+        "result": setup.get("result"),
+        "tags": setup.get("tags") or [],
+        "bar_tags": setup.get("bar_tags") or [],
+        "sequence_tags": setup.get("sequence_tags") or [],
+        "annotation_id": ann_id,
+        "bar_code": display_bar_code(bar) if bar else None,
+        "context_bar_count": len(setup.get("context_bars") or []),
+        "note": setup.get("note", ""),
+        "period": setup.get("period", "train"),
+    }
+
+
 def create_setup(payload: dict[str, Any]) -> dict[str, Any]:
     entry_time = pd.Timestamp(payload["entry_time"])
     period = period_for_timestamp(entry_time)
@@ -127,8 +153,15 @@ def create_setup(payload: dict[str, Any]) -> dict[str, Any]:
     df = add_indicators(load_candles())
     tags = validate_setup_from_bar(payload, is_create=True)
     ann = annotation_at_time(payload["entry_time"])
+    setups_existing = load_setups()
+    setup_id = payload.get("id")
+    setup_code_val = payload.get("code")
+    if not setup_id and not setup_code_val:
+        setup_code_val = assign_setup_code(payload, setups_existing)
+        setup_id = setup_code_val
     setup = {
-        "id": payload.get("id") or str(uuid.uuid4())[:8],
+        "id": setup_id or str(uuid.uuid4())[:8],
+        "code": setup_code_val or display_setup_code({"direction": payload["direction"], "entry_time": payload["entry_time"]}),
         "symbol": payload.get("symbol", "EURUSD"),
         "timeframe": payload.get("timeframe", "1H"),
         "direction": payload["direction"],
@@ -144,12 +177,15 @@ def create_setup(payload: dict[str, Any]) -> dict[str, Any]:
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     enriched = enrich_setup(setup, df)
-    setups = load_setups()
-    setups = [s for s in setups if s["id"] != enriched["id"]]
+    setups = [s for s in setups_existing if s["id"] != enriched["id"]]
     setups.append(enriched)
     save_setups(setups)
     if enriched.get("annotation_id"):
-        link_setup_to_annotation(enriched["annotation_id"], enriched["id"])
+        link_setup_to_annotation(
+            enriched["annotation_id"],
+            enriched["id"],
+            display_setup_code(enriched),
+        )
     return enriched
 
 

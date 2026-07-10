@@ -174,8 +174,20 @@ def score_bar(
 _CTX_CACHE: dict[str, dict[str, Any]] = {}
 
 
+_ANN_INDEX_CACHE: dict[int, dict[str, Any]] | None = None
+
+
 def clear_detection_cache() -> None:
+    global _ANN_INDEX_CACHE
+    _ANN_INDEX_CACHE = None
     _CTX_CACHE.clear()
+
+
+def annotation_index_by_time_cached() -> dict[int, dict[str, Any]]:
+    global _ANN_INDEX_CACHE
+    if _ANN_INDEX_CACHE is None:
+        _ANN_INDEX_CACHE = annotation_index_by_time()
+    return _ANN_INDEX_CACHE
 
 
 def _load_detection_context(
@@ -290,6 +302,7 @@ def inspect_bar(
 def scan_important_bars(
     period: str = "train",
     *,
+    month: str | None = None,
     min_score: float | None = None,
     with_tags: bool = True,
     max_bars: int | None = None,
@@ -301,7 +314,20 @@ def scan_important_bars(
     if max_bars is None:
         max_bars = int(cfg.get("max_bars", 500))
 
+    from .data_service import slice_month
+
     df = add_indicators(slice_period(load_candles(), period))
+    if month:
+        df = slice_month(df, month)
+        if df.empty:
+            return {
+                "period": period,
+                "month": month,
+                "min_score": min_score,
+                "count": 0,
+                "bars": [],
+                "config": cfg,
+            }
     train_setups = [s for s in load_setups() if s.get("period") == "train"]
     det_ctx = _load_detection_context(train_setups, cfg)
     ann_index = annotation_index_by_time()
@@ -380,13 +406,16 @@ def scan_important_bars(
     if len(bars) > max_bars:
         bars = bars[:max_bars]
     bars.sort(key=lambda b: b["time"])
-    return {
+    result = {
         "period": period,
         "min_score": min_score,
         "count": len(bars),
         "bars": bars,
         "config": cfg,
     }
+    if month:
+        result["month"] = month
+    return result
 
 
 def inspect_bar_at_time(
@@ -449,7 +478,7 @@ def match_entry_from_inspection(
         return None, None, None
 
     det_ctx = _load_detection_context(train_setups, cfg)
-    ann_index = annotation_index_by_time()
+    ann_index = annotation_index_by_time_cached()
     ann = ann_index.get(int(ts.timestamp()))
 
     seq = extract_sequence(df, i, window=int(cfg.get("sequence_window", 5)))

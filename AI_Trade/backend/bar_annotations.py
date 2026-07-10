@@ -9,6 +9,7 @@ import pandas as pd
 
 from .config import BAR_ANNOTATIONS_PATH, PIP
 from .data_service import load_candles, period_for_timestamp
+from .entity_codes import assign_bar_code, display_bar_code
 from .indicators import add_indicators
 from .tags import infer_tags, normalize_tags
 
@@ -20,6 +21,21 @@ def _ensure_file() -> None:
             json.dumps({"annotations": []}, indent=2), encoding="utf-8"
         )
 
+
+def annotation_summary(ann: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": ann.get("id"),
+        "code": display_bar_code(ann),
+        "bar_time": ann.get("bar_time"),
+        "close": ann.get("close"),
+        "tags": ann.get("tags") or [],
+        "note": ann.get("note", ""),
+        "score": ann.get("score"),
+        "confirmed": ann.get("confirmed", True),
+        "setup_id": ann.get("setup_id"),
+        "setup_code": ann.get("setup_code"),
+        "period": ann.get("period", "train"),
+    }
 
 def load_bar_annotations() -> list[dict[str, Any]]:
     _ensure_file()
@@ -73,6 +89,7 @@ def enrich_annotation(
     enriched = {
         **payload,
         "id": payload.get("id") or str(uuid.uuid4())[:8],
+        "code": payload.get("code"),
         "bar_time": bar_ts.isoformat(),
         "close": round(close, 5),
         "period": "train",
@@ -103,8 +120,12 @@ def enrich_annotation(
 
 def upsert_annotation(payload: dict[str, Any]) -> dict[str, Any]:
     df = add_indicators(load_candles())
-    enriched = enrich_annotation(payload, df)
     annotations = load_bar_annotations()
+    if not payload.get("id"):
+        payload = {**payload, "code": assign_bar_code(payload, annotations)}
+    enriched = enrich_annotation(payload, df)
+    if not enriched.get("code"):
+        enriched["code"] = assign_bar_code(enriched, annotations)
     idx = next((i for i, a in enumerate(annotations) if a["id"] == enriched["id"]), None)
     if idx is None:
         bar_ts = pd.Timestamp(enriched["bar_time"])
@@ -131,15 +152,18 @@ def delete_annotation(annotation_id: str) -> None:
     save_bar_annotations(annotations)
 
 
-def link_setup_to_annotation(annotation_id: str, setup_id: str) -> None:
+def link_setup_to_annotation(annotation_id: str, setup_id: str, setup_code: str | None = None) -> None:
     annotations = load_bar_annotations()
     changed = False
     for ann in annotations:
         if ann["id"] == annotation_id:
             ann["setup_id"] = setup_id
+            if setup_code:
+                ann["setup_code"] = setup_code
             changed = True
         elif ann.get("setup_id") == setup_id and ann["id"] != annotation_id:
             ann.pop("setup_id", None)
+            ann.pop("setup_code", None)
             changed = True
     if changed:
         save_bar_annotations(annotations)
@@ -151,6 +175,7 @@ def clear_setup_link(setup_id: str) -> None:
     for ann in annotations:
         if ann.get("setup_id") == setup_id:
             ann.pop("setup_id", None)
+            ann.pop("setup_code", None)
             changed = True
     if changed:
         save_bar_annotations(annotations)

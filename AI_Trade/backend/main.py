@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -12,10 +13,10 @@ from pydantic import BaseModel, Field
 from .analyzer import analyze_patterns, load_strategy
 from .optimizer import analyze_and_optimize
 from .backtest import run_backtest
-from .data_service import candles_to_records, load_candles, load_splits, slice_period
+from .data_service import candles_to_records, load_candles, load_splits, slice_period, slice_month, months_for_period, filter_records_by_month, month_bounds
 from .indicators import add_indicators
-from .labels import create_setup, delete_setup, enrich_setup, load_setups, update_setup
-from .bar_annotations import delete_annotation, load_bar_annotations, upsert_annotation
+from .labels import create_setup, delete_setup, enrich_setup, load_setups, setup_summary, update_setup
+from .bar_annotations import delete_annotation, load_bar_annotations, upsert_annotation, annotation_summary
 from .bar_importance import inspect_bar_at_time, scan_important_bars
 from .pipeline import pipeline_status
 from .detection_config import load_bar_detection_config, save_bar_detection_config
@@ -131,13 +132,20 @@ def get_presets():
 
 
 @app.get("/api/candles")
-def get_candles(period: str = "train", with_indicators: bool = True):
+def get_candles(period: str = "train", month: str | None = None, with_indicators: bool = True):
     try:
         df = slice_period(load_candles(), period)
+        if month:
+            df = slice_month(df, month)
     except KeyError:
         raise HTTPException(400, f"Unknown period: {period}")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))
+
+    if df.empty:
+        return {"period": period, "month": month, "count": 0, "candles": [], "indicators": None}
 
     if with_indicators:
         df = add_indicators(df)
@@ -159,12 +167,58 @@ def get_candles(period: str = "train", with_indicators: bool = True):
                 for ts, v in df["rsi14"].dropna().items()
             ],
         }
-    return {"period": period, "count": len(records), "candles": records, "indicators": indicators}
+    return {"period": period, "month": month, "count": len(records), "candles": records, "indicators": indicators}
+
+
+@app.get("/api/months")
+def list_months(period: str = "train"):
+    if period not in load_splits()["periods"]:
+        raise HTTPException(400, f"Unknown period: {period}")
+    try:
+        months = months_for_period(period)
+    except FileNotFoundError as e:
+        raise HTTPException(404, str(e))
+
+    setups = load_setups()
+    annotations = load_bar_annotations()
+    bar_by_id = {a["id"]: a for a in annotations}
+    payload = []
+    for month in months:
+        start, end = month_bounds(month)
+        month_setups = [
+            s for s in setups
+            if s.get("period") == period
+            and start <= pd.Timestamp(s["entry_time"]).tz_convert("UTC") <= end
+        ]
+        month_ann = filter_records_by_month(
+            [a for a in annotations if a.get("confirmed")],
+            month,
+            "bar_time",
+        )
+        payload.append({
+            "month": month,
+            "label": pd.Timestamp(f"{month}-01").strftime("%b %Y"),
+            "setup_count": len(month_setups),
+            "bar_tag_count": len(month_ann),
+        })
+    return {"period": period, "months": payload}
 
 
 @app.get("/api/setups")
-def list_setups():
-    return {"setups": load_setups()}
+def list_setups(month: str | None = None, summary: bool = False, period: str | None = None):
+    setups = load_setups()
+    if period:
+        setups = [s for s in setups if s.get("period") == period]
+    if month:
+        setups = filter_records_by_month(setups, month, "entry_time")
+    if summary:
+        bar_lookup = {a["id"]: a for a in load_bar_annotations()}
+        return {
+            "setups": [setup_summary(s, bar_lookup=bar_lookup) for s in setups],
+            "month": month,
+            "count": len(setups),
+        }
+    return {"setups": setups, "month": month, "count": len(setups)}
 
 
 @app.post("/api/setups")
@@ -197,8 +251,17 @@ def get_tag_definitions():
 
 
 @app.get("/api/bar-annotations")
-def list_bar_annotations():
-    return {"annotations": load_bar_annotations()}
+def list_bar_annotations(month: str | None = None, summary: bool = True):
+    annotations = load_bar_annotations()
+    if month:
+        annotations = filter_records_by_month(annotations, month, "bar_time")
+    if summary:
+        return {
+            "annotations": [annotation_summary(a) for a in annotations],
+            "month": month,
+            "count": len(annotations),
+        }
+    return {"annotations": annotations, "month": month, "count": len(annotations)}
 
 
 @app.post("/api/bar-annotations")
@@ -218,6 +281,7 @@ def remove_bar_annotation(annotation_id: str):
 @app.get("/api/bars/important")
 def get_important_bars(
     period: str = "train",
+    month: str | None = None,
     min_score: float | None = None,
     with_tags: bool = True,
     max_bars: int | None = None,
@@ -227,6 +291,7 @@ def get_important_bars(
     try:
         return scan_important_bars(
             period,
+            month=month,
             min_score=min_score,
             with_tags=with_tags,
             max_bars=max_bars,

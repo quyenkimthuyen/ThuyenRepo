@@ -7,6 +7,7 @@ import {
   getCandles,
   getConfig,
   getImportantBars,
+  getMonths,
   getPresets,
   getSetups,
   inspectBar,
@@ -15,20 +16,23 @@ import {
   saveSetup,
   suggestTags,
   updateSetup,
-} from './api.js?v=14';
+} from './api.js?v=15';
 import {
   renderAnalyzeView,
   renderBacktestView,
   renderError,
   renderLoading,
-} from './strategy-ui.js?v=14';
-import { initSidebarResize } from './layout.js?v=14';
-import { TradeChart } from './chart.js?v=14';
+} from './strategy-ui.js?v=15';
+import { initSidebarResize } from './layout.js?v=15';
+import { TradeChart } from './chart.js?v=15';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
 const state = {
   period: 'train',
+  trainMonth: '2022-01',
+  monthMeta: [],
+  labelSubTab: 'bars',
   mode: /** @type {EditorMode} */ ('idle'),
   direction: 'long',
   step: 'entry',
@@ -52,6 +56,7 @@ const state = {
 
 const els = {
   periodTabs: document.getElementById('periodTabs'),
+  monthTabs: document.getElementById('monthTabs'),
   periodBadge: document.getElementById('periodBadge'),
   editorPanel: document.getElementById('editorPanel'),
   modePill: document.getElementById('modePill'),
@@ -60,6 +65,14 @@ const els = {
   newSteps: document.getElementById('newSteps'),
   setupList: document.getElementById('setupList'),
   setupCount: document.getElementById('setupCount'),
+  setupTabCount: document.getElementById('setupTabCount'),
+  barTabCount: document.getElementById('barTabCount'),
+  labelSubtabs: document.querySelectorAll('.label-subtab'),
+  labelSubviews: {
+    bars: document.getElementById('labelBarsView'),
+    setups: document.getElementById('labelSetupsView'),
+  },
+  barInspectTitle: document.getElementById('barInspectTitle'),
   fieldEntry: document.getElementById('fieldEntry'),
   fieldSL: document.getElementById('fieldSL'),
   fieldTP: document.getElementById('fieldTP'),
@@ -165,7 +178,8 @@ function updatePipelineUI() {
   let step = 'bar';
   if (state.sidebarTab === 'analyze') step = 'strategy';
   else if (state.sidebarTab === 'validation' || state.sidebarTab === 'test') step = 'backtest';
-  else if (state.mode === 'new' || state.mode === 'edit') step = 'setup';
+  else if (state.labelSubTab === 'setups' && (state.mode === 'new' || state.mode === 'edit')) step = 'setup';
+  else if (state.labelSubTab === 'setups') step = 'setup';
   else if (state.inspectedBar?.annotation?.tags?.length) step = 'tag';
   else if (state.inspectedBar || state.showImportantBars) step = 'bar';
 
@@ -197,6 +211,108 @@ const PERIOD_SIDEBAR = {
   validation: 'validation',
   test: 'test',
 };
+
+function activeMonth() {
+  return state.period === 'train' ? state.trainMonth : null;
+}
+
+function barDisplayCode(item) {
+  return item?.code || item?.id || '—';
+}
+
+function setupDisplayCode(item) {
+  return item?.code || item?.id || '—';
+}
+
+function updateLabelTabCounts() {
+  if (els.barTabCount) {
+    els.barTabCount.textContent = String(state.barAnnotations?.length || 0);
+  }
+  if (els.setupTabCount) {
+    els.setupTabCount.textContent = String(trainSetups().length);
+  }
+}
+
+function setLabelSubTabUI(tabId) {
+  state.labelSubTab = tabId;
+  els.labelSubtabs?.forEach((btn) => {
+    const active = btn.dataset.labelTab === tabId;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  for (const [key, view] of Object.entries(els.labelSubviews)) {
+    view?.classList.toggle('hidden', key !== tabId);
+    view?.classList.toggle('active', key === tabId);
+  }
+  updatePipelineUI();
+}
+
+function switchLabelSubTab(tabId) {
+  setLabelSubTabUI(tabId);
+}
+
+function renderMonthTabs() {
+  const container = els.monthTabs;
+  if (!container) return;
+
+  const show = state.period === 'train' && state.monthMeta.length > 0;
+  container.classList.toggle('hidden', !show);
+  if (!show) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = '';
+  for (const meta of state.monthMeta) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `month-tab${meta.month === state.trainMonth ? ' active' : ''}`;
+    btn.title = `${meta.label} · ${meta.bar_tag_count} nến · ${meta.setup_count} setup`;
+    const short = meta.month.slice(5);
+    btn.innerHTML = `${short}<span class="month-count">${meta.bar_tag_count}/${meta.setup_count}</span>`;
+    btn.onclick = () => switchTrainMonth(meta.month);
+    container.appendChild(btn);
+  }
+}
+
+async function switchTrainMonth(month) {
+  if (state.mode !== 'idle') cancelEditor();
+  hideBarInspect();
+  state.trainMonth = month;
+  renderMonthTabs();
+  await loadMonthData();
+}
+
+async function loadMonthMeta() {
+  if (state.period !== 'train') {
+    state.monthMeta = [];
+    renderMonthTabs();
+    return;
+  }
+  try {
+    const data = await getMonths('train');
+    state.monthMeta = data.months || [];
+    if (state.monthMeta.length && !state.monthMeta.some((m) => m.month === state.trainMonth)) {
+      state.trainMonth = state.monthMeta[0].month;
+    }
+    renderMonthTabs();
+  } catch (err) {
+    console.warn('Month meta failed:', err);
+    state.monthMeta = [];
+    renderMonthTabs();
+  }
+}
+
+async function loadMonthData() {
+  setLoading(true);
+  try {
+    await Promise.all([loadChart(), refreshSetups(), refreshBarAnnotations(), loadImportantBars()]);
+    updateLabelTabCounts();
+    refreshChartAnnotations();
+  } finally {
+    setLoading(false);
+  }
+}
 
 function trainSetups() {
   return state.setups.filter((s) => (s.period || 'train') === 'train');
@@ -438,6 +554,7 @@ async function saveBarAnnotationFromInspect() {
     });
     await refreshBarAnnotations();
     await loadImportantBars();
+    await loadMonthMeta();
     renderImportantBarList();
     const refreshed = await inspectBar(bar.entry_time, bar.close);
     renderBarInspect(refreshed);
@@ -457,6 +574,7 @@ async function deleteBarAnnotationFromInspect() {
   await deleteBarAnnotation(id);
   await refreshBarAnnotations();
   await loadImportantBars();
+  await loadMonthMeta();
   renderImportantBarList();
   if (state.inspectedBar) {
     const refreshed = await inspectBar(state.inspectedBar.entry_time, state.inspectedBar.close);
@@ -465,9 +583,10 @@ async function deleteBarAnnotationFromInspect() {
 }
 
 async function refreshBarAnnotations() {
-  const { annotations } = await getBarAnnotations();
+  const { annotations } = await getBarAnnotations(activeMonth());
   state.barAnnotations = annotations || [];
   renderBarAnnotationList();
+  updateLabelTabCounts();
 }
 
 function renderBarAnnotationList() {
@@ -488,20 +607,22 @@ function renderBarAnnotationList() {
   const sorted = [...items].sort((a, b) =>
     (b.bar_time || '').localeCompare(a.bar_time || ''),
   );
-  for (const ann of sorted.slice(0, 60)) {
+  for (const ann of sorted) {
     const li = document.createElement('li');
     const selected =
       state.inspectedBar?.annotation?.id === ann.id ||
       state.inspectedBar?.entry_time === ann.bar_time;
     const tags = (ann.tags || []).join(' · ') || '—';
     const time = (ann.bar_time || '').slice(0, 16).replace('T', ' ');
+    const code = barDisplayCode(ann);
     li.className = `setup-item bar-item confirmed${selected ? ' selected' : ''}`;
     li.innerHTML = `
       <div class="setup-top">
+        <span class="entity-code">${code}</span>
         <span class="setup-dir">${ann.score ?? '—'}</span>
         <span class="pill good">${tags}</span>
       </div>
-      <div class="setup-meta">${time}${ann.note ? ` · ${ann.note}` : ''}</div>
+      <div class="setup-meta">${time}${ann.setup_code ? ` · → <span class="setup-linked-bar">${ann.setup_code}</span>` : ''}</div>
     `;
     li.onclick = async () => {
       const data = await inspectBar(ann.bar_time, ann.close ?? null);
@@ -531,16 +652,20 @@ function renderImportantBarList() {
     return;
   }
 
-  const sorted = [...bars].sort((a, b) => b.score - a.score).slice(0, 80);
+  const sorted = [...bars].sort((a, b) => b.score - a.score);
   for (const bar of sorted) {
     const li = document.createElement('li');
     const selected = state.inspectedBar?.time === bar.time;
     const tag =
       bar.confirmed_tags?.[0] || bar.primary_tag || (bar.suggested_tags?.[0] ?? '—');
+    const barCode = bar.annotation_id
+      ? state.barAnnotations.find((a) => a.id === bar.annotation_id)?.code
+      : null;
     li.className = `setup-item bar-item${selected ? ' selected' : ''}${bar.user_confirmed ? ' confirmed' : ''}`;
     const time = new Date(bar.time * 1000).toISOString().slice(0, 16).replace('T', ' ');
     li.innerHTML = `
       <div class="setup-top">
+        ${barCode ? `<span class="entity-code">${barCode}</span>` : ''}
         <span class="setup-dir">${bar.score}</span>
         <span class="pill">${tag}</span>
         ${bar.user_confirmed ? '<span class="pill good">✓</span>' : ''}
@@ -579,6 +704,10 @@ function renderBarInspect(data) {
 
   state.inspectedBar = data;
   els.barInspectPanel.classList.remove('hidden');
+  if (els.barInspectTitle) {
+    const code = data.annotation?.code || barDisplayCode(data.annotation || {});
+    els.barInspectTitle.textContent = code !== '—' ? `Nến ${code}` : 'Nến quan trọng';
+  }
   chart.setSelectedImportantBar(data.time);
   const seqWindow = data.sequence?.window ?? state.detectionConfig?.sequence_window ?? 5;
   chart.showSequenceWindow(data.time, seqWindow);
@@ -654,7 +783,7 @@ async function loadImportantBars() {
     return;
   }
   try {
-    const data = await getImportantBars(state.period);
+    const data = await getImportantBars(state.period, activeMonth());
     state.importantBars = data.bars || [];
     if (data.config) state.detectionConfig = data.config;
     if (state.mode === 'idle' && !state.focusedSetupId && !state.focusedTradeKey) {
@@ -764,6 +893,7 @@ async function startSetupFromInspectedBar() {
     return;
   }
   await ensureTrainPeriod();
+  switchLabelSubTab('setups');
   switchSidebarTab('label', { syncPeriod: false });
   clearDraft();
   state.mode = 'new';
@@ -994,7 +1124,8 @@ async function ensureTrainPeriod() {
     els.periodBadge.textContent = state.config.periods.train.label;
   }
   renderPeriodTabs();
-  await loadChart();
+  await loadMonthMeta();
+  await loadMonthData();
 }
 
 function handleLevelDrag({ role, price }) {
@@ -1123,6 +1254,7 @@ function handleChartClick({ time, candle, price }) {
 
 async function startNewSetup() {
   await ensureTrainPeriod();
+  switchLabelSubTab('setups');
   state.showImportantBars = true;
   const toggle = document.getElementById('toggleImportantBars');
   if (toggle) toggle.checked = true;
@@ -1134,6 +1266,7 @@ async function startNewSetup() {
   }
 
   switchSidebarTab('label', { syncPeriod: false });
+  switchLabelSubTab('bars');
   els.chartOverlayHint.textContent =
     'Luồng: click nến → lưu tag → bấm lại 「Setup từ nến đã tag」 hoặc 「Tạo setup tại nến này」';
   els.chartOverlayHint.classList.remove('hidden');
@@ -1196,33 +1329,44 @@ async function switchPeriod(period, { syncSidebar = true } = {}) {
     els.periodBadge.textContent = state.config.periods[period].label;
   }
   renderPeriodTabs();
+  await loadMonthMeta();
   if (syncSidebar && state.sidebarTab !== 'analyze') {
     const tab = PERIOD_SIDEBAR[period];
     if (tab) setSidebarTabUI(tab);
   }
   updateModeUI();
-  await loadChart();
+  if (period === 'train') {
+    await loadMonthData();
+  } else {
+    await loadChart();
+    await loadImportantBars();
+    state.setups = [];
+    state.barAnnotations = [];
+    renderSetups();
+    renderBarAnnotationList();
+    updateLabelTabCounts();
+  }
 }
 
 async function loadChart() {
-  const data = await getCandles(state.period);
+  const data = await getCandles(state.period, activeMonth());
   chart.setData(data);
   if (state.mode !== 'idle' && state.draft.time) {
     drawOverlayOnly();
   } else {
     refreshChartAnnotations();
   }
-  await loadImportantBars();
 }
 
 function renderSetups() {
   const items = trainSetups();
   els.setupCount.textContent = String(items.length);
+  updateLabelTabCounts();
   els.setupList.innerHTML = '';
 
   if (!items.length) {
     els.setupList.innerHTML =
-      '<li class="hint" style="padding:8px">Chưa có setup. Bấm 「Setup mới」 để bắt đầu.</li>';
+      '<li class="hint" style="padding:8px">Chưa có setup trong tháng này. Tag nến ở tab 「Nến quan trọng」 trước.</li>';
     return;
   }
 
@@ -1232,13 +1376,17 @@ function renderSetups() {
     const selected = s.id === state.editingId || s.id === state.focusedSetupId;
     li.className = `setup-item ${s.direction}${selected ? ' selected' : ''}`;
     const resClass = s.result === 'win' ? 'win' : s.result === 'loss' ? 'loss' : '';
+    const code = setupDisplayCode(s);
+    const barCode = s.bar_code ? `<span class="setup-linked-bar">← ${s.bar_code}</span>` : '';
+    const ctxCount = s.context_bar_count ?? s.context_bars?.length ?? 0;
     li.innerHTML = `
       <div class="setup-top">
+        <span class="entity-code">${code}</span>
         <span class="setup-dir">${s.direction.toUpperCase()}</span>
         <span class="setup-result ${resClass}">${(s.result || '?').toUpperCase()}</span>
         <span style="margin-left:auto;font-size:11px;color:#fbbf24">RR ${s.planned_rr ?? '—'}</span>
       </div>
-      <div class="setup-meta">${s.entry_time?.slice(0, 16).replace('T', ' ')}${(s.tags || []).length ? '<br>' + s.tags.join(' · ') : ''}${s.context_bars?.length ? `<br><span class="muted">${s.context_bars.length} nến</span>` : ''}${(s.bar_tags || []).length ? ` · tag nến: ${s.bar_tags.join(', ')}` : ''}</div>
+      <div class="setup-meta">${s.entry_time?.slice(0, 16).replace('T', ' ')}${barCode ? '<br>' + barCode : ''}${(s.tags || []).length ? '<br>' + s.tags.join(' · ') : ''}${ctxCount ? `<br><span class="muted">${ctxCount} nến ngữ cảnh</span>` : ''}${(s.bar_tags || []).length ? ` · tag nến: ${s.bar_tags.join(', ')}` : ''}</div>
     `;
     li.onclick = () => viewSetupOnChart(s);
     li.ondblclick = (e) => {
@@ -1308,8 +1456,16 @@ function renderBtTradeLists() {
 }
 
 async function refreshSetups() {
-  const { setups } = await getSetups();
-  state.setups = setups;
+  const { setups } = await getSetups({
+    month: activeMonth(),
+    summary: true,
+    period: state.period === 'train' ? 'train' : null,
+  });
+  if (state.period === 'train') {
+    state.setups = setups || [];
+  } else {
+    state.setups = (setups || []).filter((s) => (s.period || 'train') === 'train');
+  }
   renderSetups();
   if (state.mode === 'idle' && state.period === 'train' && !state.focusedSetupId) {
     refreshChartAnnotations();
@@ -1349,6 +1505,7 @@ async function onSave() {
       await saveSetup(body);
     }
     await refreshSetups();
+    await loadMonthMeta();
     setMode('idle');
   } catch (e) {
     alert(`Không lưu được setup: ${e.message || e}`);
@@ -1516,6 +1673,10 @@ function bindUI() {
     btn.onclick = () => switchSidebarTab(btn.dataset.sidebar);
   });
 
+  els.labelSubtabs?.forEach((btn) => {
+    btn.onclick = () => switchLabelSubTab(btn.dataset.labelTab);
+  });
+
   document.getElementById('btnAnalyze').onclick = () => runAnalyze();
   document.getElementById('btnBacktestVal').onclick = () => runBt('validation');
   document.getElementById('btnBacktestTest').onclick = () => runBt('test');
@@ -1601,11 +1762,10 @@ async function loadAppData() {
       els.periodBadge.textContent = state.config.periods[state.period].label;
     }
     setMode('idle');
-    await fetchWithRetry(() => loadChart());
-    await fetchWithRetry(() => refreshSetups());
-    await fetchWithRetry(() => refreshBarAnnotations());
+    setLabelSubTabUI(state.labelSubTab);
+    await loadMonthMeta();
+    await fetchWithRetry(() => loadMonthData());
     updatePipelineUI();
-    refreshChartAnnotations();
     requestAnimationFrame(() => chart.resize?.());
     hideBootError();
   } catch (err) {
