@@ -6,7 +6,7 @@
   <title>AI Trade Lab — EURUSD 1H</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/app.css?v=16">
+  <link rel="stylesheet" href="/static/css/app.css?v=18">
 </head>
 <body>
   <noscript>
@@ -131,7 +131,7 @@
             </div>
 
             <div id="labelSetupsView" class="label-subview hidden" role="tabpanel">
-              <p class="label-subhint">Setup gắn với nến đã tag — danh sách hiển thị <strong>tất cả</strong> setup, chart theo tháng.</p>
+              <p class="label-subhint">~50 setup chất lượng/năm · RR mặc định 2.5 · điểm Q từ tiêu chí chuyên gia.</p>
               <button type="button" class="btn primary block" id="btnNewSetup">＋ Setup từ nến đã tag</button>
 
               <div class="setup-editor hidden" id="editorPanel">
@@ -170,8 +170,8 @@
                 </div>
                 <label class="field-compact field-time">Thời gian <input id="fieldTime" type="datetime-local" step="3600"></label>
 
-                <div class="field-compact field-tags">
-                  <span>Tag setup <em class="req">*</em> <small class="muted">(có thể chọn nhiều)</small></span>
+                <div class="bar-annotate-section setup-tag-section">
+                  <span class="bar-annotate-label">Tag setup <em class="req">*</em> <small class="muted">(có thể chọn nhiều)</small></span>
                   <div id="tagCheckboxGroup" class="tag-checkbox-group"></div>
                 </div>
 
@@ -309,7 +309,7 @@
   </div>
 
   <script type="module">
-    import('/static/js/app.js?v=16').catch((err) => {
+    import('/static/js/app.js?v=18').catch((err) => {
       console.error('Module load failed:', err);
       const box = document.createElement('div');
       box.style.cssText = 'padding:20px;color:#fecaca;background:#3f1212;font-size:14px;line-height:1.5';

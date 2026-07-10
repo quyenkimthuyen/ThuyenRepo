@@ -16,6 +16,7 @@ from .backtest import run_backtest
 from .data_service import candles_to_records, load_candles, load_splits, slice_period, slice_month, months_for_period, filter_records_by_month, month_bounds
 from .indicators import add_indicators
 from .labels import create_setup, delete_setup, enrich_setup, load_setups, setup_summary, update_setup
+from .setup_quality import apply_curation, curate_train_setups, enrich_setup_quality, load_quality_config
 from .bar_annotations import delete_annotation, load_bar_annotations, upsert_annotation, annotation_summary
 from .bar_importance import inspect_bar_at_time, scan_important_bars
 from .pipeline import pipeline_status
@@ -109,6 +110,7 @@ def get_config():
     cfg = load_splits()
     cfg["presets"] = load_presets()
     cfg["bar_detection"] = load_bar_detection_config()
+    cfg["quality"] = load_quality_config()
     cfg["pipeline"] = pipeline_status()
     return cfg
 
@@ -214,7 +216,10 @@ def list_setups(month: str | None = None, summary: bool = False, period: str | N
     if summary:
         bar_lookup = {a["id"]: a for a in load_bar_annotations()}
         return {
-            "setups": [setup_summary(s, bar_lookup=bar_lookup) for s in setups],
+            "setups": [
+                setup_summary(enrich_setup_quality(s, bar_lookup), bar_lookup=bar_lookup)
+                for s in setups
+            ],
             "month": month,
             "count": len(setups),
         }
@@ -333,6 +338,19 @@ def suggest_tags(body: TagSuggestIn):
         "bar_tags": detail.get("bar_tags"),
         "annotation": detail.get("annotation"),
     }
+
+
+@app.post("/api/setups/curate")
+def curate_setups(dry_run: bool = False):
+    try:
+        return apply_curation(dry_run=dry_run)
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
+@app.get("/api/setups/curate/preview")
+def preview_curation():
+    return curate_train_setups()
 
 
 @app.post("/api/setups/refresh")

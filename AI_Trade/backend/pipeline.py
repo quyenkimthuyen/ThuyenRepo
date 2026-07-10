@@ -85,8 +85,12 @@ def filter_train_setups(
     strategy: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """Reduce noise + speed similarity matching during backtest."""
+    from .bar_annotations import load_bar_annotations
+    from .setup_quality import enrich_setup_quality, load_quality_config
+
     strategy = strategy or {}
     filt = strategy.get("similarity_train_filter") or {}
+    cfg = load_quality_config()
     exclude = set(filt.get("exclude_tags") or [])
     tag_info = strategy.get("tags") or {}
     exclude.update(tag_info.get("avoid_tags") or [])
@@ -100,10 +104,23 @@ def filter_train_setups(
             continue
         kept.append(setup)
 
-    max_n = int(filt.get("max_setups") or 180)
+    max_n = int(filt.get("max_setups") or cfg.get("target_setups_per_year", 50))
+    min_q = float(filt.get("min_quality_score") or cfg.get("min_setup_quality_score", 0))
+
+    ann_by_id = {a["id"]: a for a in load_bar_annotations()}
+
+    scored: list[dict[str, Any]] = []
+    for setup in kept:
+        enriched = enrich_setup_quality(setup, ann_by_id)
+        if enriched.get("quality_score", 0) < min_q:
+            continue
+        scored.append(enriched)
+
+    kept = scored
     if len(kept) > max_n:
         kept.sort(
             key=lambda s: (
+                -(s.get("quality_score") or 0),
                 0 if s.get("result") == "win" else 1,
                 -(s.get("planned_rr") or 0),
                 s.get("entry_time") or "",

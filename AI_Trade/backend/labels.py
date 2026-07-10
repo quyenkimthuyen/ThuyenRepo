@@ -141,6 +141,8 @@ def setup_summary(setup: dict[str, Any], *, bar_lookup: dict[str, dict] | None =
         "context_bar_count": len(setup.get("context_bars") or []),
         "note": setup.get("note", ""),
         "period": setup.get("period", "train"),
+        "quality_score": setup.get("quality_score"),
+        "quality_reasons": setup.get("quality_reasons") or [],
     }
 
 
@@ -177,6 +179,16 @@ def create_setup(payload: dict[str, Any]) -> dict[str, Any]:
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     enriched = enrich_setup(setup, df)
+    from .setup_quality import enrich_setup_quality, passes_quality_gate
+
+    ann_for_gate = annotation_at_time(payload["entry_time"])
+    ok, msg = passes_quality_gate(enriched, annotation=ann_for_gate)
+    if not ok:
+        raise ValueError(
+            f"Setup chưa đủ chất lượng: {msg}. "
+            "Chọn nến score cao hơn, tag rõ (rejection/pullback+retest), RR ≥ 2.5, theo trend."
+        )
+    enriched = enrich_setup_quality(enriched, {ann_for_gate["id"]: ann_for_gate} if ann_for_gate else None)
     setups = [s for s in setups_existing if s["id"] != enriched["id"]]
     setups.append(enriched)
     save_setups(setups)

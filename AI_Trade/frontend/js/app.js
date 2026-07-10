@@ -16,15 +16,15 @@ import {
   saveSetup,
   suggestTags,
   updateSetup,
-} from './api.js?v=16';
+} from './api.js?v=18';
 import {
   renderAnalyzeView,
   renderBacktestView,
   renderError,
   renderLoading,
-} from './strategy-ui.js?v=16';
-import { initSidebarResize } from './layout.js?v=16';
-import { TradeChart } from './chart.js?v=16';
+} from './strategy-ui.js?v=18';
+import { initSidebarResize } from './layout.js?v=18';
+import { TradeChart } from './chart.js?v=18';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -144,6 +144,17 @@ const STEP_HINTS = {
   sl: 'Bước 2 — Click hoặc kéo đường đỏ để đặt Stop Loss',
   tp: 'Bước 3 — Click hoặc kéo đường xanh lá để đặt Take Profit',
 };
+
+function defaultPlannedRR() {
+  return Number(state.config?.quality?.default_planned_rr ?? 2.5);
+}
+
+function tpFromRisk(entry, sl, direction, rr = defaultPlannedRR()) {
+  const risk = Math.abs(entry - sl);
+  return Number(
+    (direction === 'long' ? entry + risk * rr : entry - risk * rr).toFixed(5),
+  );
+}
 
 function isoFromUnix(sec) {
   return new Date(sec * 1000).toISOString();
@@ -972,9 +983,7 @@ async function startSetupFromInspectedBar() {
   state.draft.sl = Number(defaultSl.toFixed(5));
   els.fieldSL.value = state.draft.sl;
   const risk = Math.abs(state.draft.entry - state.draft.sl);
-  state.draft.tp = Number(
-    (dir === 'long' ? state.draft.entry + risk * 2 : state.draft.entry - risk * 2).toFixed(5),
-  );
+  state.draft.tp = tpFromRisk(state.draft.entry, state.draft.sl, dir);
   els.fieldTP.value = state.draft.tp;
   state.step = 'tp';
   if (bar.suggested_tags?.length || bar.annotation?.tags?.length) {
@@ -1277,12 +1286,7 @@ function handleChartClick({ time, candle, price }) {
     state.draft.sl = Number(defaultSl.toFixed(5));
     els.fieldSL.value = state.draft.sl;
     const risk = Math.abs(state.draft.entry - state.draft.sl);
-    state.draft.tp = Number(
-      (state.direction === 'long'
-        ? state.draft.entry + risk * 2
-        : state.draft.entry - risk * 2
-      ).toFixed(5),
-    );
+    state.draft.tp = tpFromRisk(state.draft.entry, state.draft.sl, state.direction);
     els.fieldTP.value = state.draft.tp;
     state.step = 'tp';
     syncFields({ focus: true });
@@ -1294,12 +1298,7 @@ function handleChartClick({ time, candle, price }) {
     state.draft.sl = Number(price.toFixed(5));
     els.fieldSL.value = state.draft.sl;
     const risk = Math.abs(state.draft.entry - state.draft.sl);
-    state.draft.tp = Number(
-      (state.direction === 'long'
-        ? state.draft.entry + risk * 2
-        : state.draft.entry - risk * 2
-      ).toFixed(5),
-    );
+    state.draft.tp = tpFromRisk(state.draft.entry, state.draft.sl, state.direction);
     els.fieldTP.value = state.draft.tp;
     state.step = 'tp';
     syncFields();
@@ -1453,9 +1452,11 @@ function renderSetups() {
     const code = setupDisplayCode(s);
     const barCode = s.bar_code ? `<span class="setup-linked-bar">← ${s.bar_code}</span>` : '';
     const ctxCount = s.context_bar_count ?? s.context_bars?.length ?? 0;
+    const qScore = s.quality_score != null ? `<span class="pill suggest">Q${s.quality_score}</span>` : '';
     li.innerHTML = `
       <div class="setup-top">
         <span class="entity-code">${code}</span>
+        ${qScore}
         <span class="setup-dir">${s.direction.toUpperCase()}</span>
         <span class="setup-result ${resClass}">${(s.result || '?').toUpperCase()}</span>
         <span style="margin-left:auto;font-size:11px;color:#fbbf24">RR ${s.planned_rr ?? '—'}</span>
