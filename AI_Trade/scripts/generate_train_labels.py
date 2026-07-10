@@ -30,16 +30,25 @@ PREFERRED_TAGS = ("rejection", "pullback", "retest", "trend")
 
 
 def _pick_tags(item: dict) -> list[str]:
-    detected = [d["tag"] for d in (item.get("detected_tags") or []) if d.get("tag")]
-    suggested = item.get("suggested_tags") or []
-    pool = list(dict.fromkeys([*detected, *suggested, item.get("primary_tag")]))
-    chosen: list[str] = []
-    for tag in PREFERRED_TAGS:
-        if tag in pool:
-            chosen.append(tag)
-    if not chosen and pool:
-        chosen = pool[:3]
-    return normalize_tags(chosen)[:4]
+    """Pick 1 primary + optional 1 secondary tag — avoid tagging everything."""
+    detected = sorted(
+        (d for d in (item.get("detected_tags") or []) if d.get("tag")),
+        key=lambda d: (-float(d.get("score", 0)), d["tag"]),
+    )
+    if detected:
+        tags = [detected[0]["tag"]]
+        for d in detected[1:]:
+            if float(d.get("score", 0)) < 0.58:
+                continue
+            if d["tag"] in tags:
+                continue
+            if d["tag"] in PREFERRED_TAGS:
+                tags.append(d["tag"])
+                break
+        return normalize_tags(tags)[:2]
+
+    pool = list(dict.fromkeys([*(item.get("suggested_tags") or []), item.get("primary_tag")]))
+    return normalize_tags([t for t in pool if t in PREFERRED_TAGS][:2] or pool[:2])
 
 
 def _pick_direction(item: dict, row: pd.Series) -> str | None:

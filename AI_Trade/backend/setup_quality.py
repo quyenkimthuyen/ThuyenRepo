@@ -67,6 +67,9 @@ def score_setup(
     if len(tags) >= 4:
         pts -= int(weights.get("over_tag_penalty", 10))
         reasons.append("over_tagged")
+    elif len(tags) >= 3 and {"pullback", "rejection", "retest"}.issubset(tags):
+        pts -= int(weights.get("triple_combo_penalty", 20))
+        reasons.append("generic_triple_tag")
 
     features = setup.get("features") or {}
     dist50 = abs(float(features.get("dist_ema50_pips", 99)))

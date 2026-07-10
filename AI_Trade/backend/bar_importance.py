@@ -613,17 +613,32 @@ def match_entry_from_inspection(
     if primary_tag and primary_tag in avoid:
         return None, None, None
 
-    preferred = strategy.get("preferred_entry_tags") or []
-    if preferred and primary_tag and primary_tag not in preferred:
-        return None, None, None
-
-    max_sim = strategy.get("max_similarity")
-    if max_sim is not None and best.get("similarity", 0) > float(max_sim):
-        return None, None, None
+    preferred = set(strategy.get("preferred_entry_tags") or [])
+    if preferred:
+        eligible = set(entry_tags)
+        if primary_tag:
+            eligible.add(primary_tag)
+        if not preferred.intersection(eligible):
+            return None, None, None
+        if primary_tag not in preferred:
+            primary_tag = next((t for t in preferred if t in eligible), primary_tag)
 
     ref_setup = next((s for s in train_setups if s.get("id") == best.get("setup_id")), None)
     if not ref_setup:
         return None, None, None
+
+    sim = float(best.get("similarity", 0))
+    max_sim = strategy.get("max_similarity")
+    if max_sim is not None and sim > float(max_sim):
+        ref_ts = pd.Timestamp(ref_setup.get("entry_time"))
+        if ref_ts.tz is None:
+            ref_ts = ref_ts.tz_localize("UTC")
+        else:
+            ref_ts = ref_ts.tz_convert("UTC")
+        bar_ts = ts if ts.tzinfo else ts.tz_localize("UTC")
+        same_bar = abs((ref_ts - bar_ts).total_seconds()) < 3600
+        if not (same_bar and sim >= 0.99):
+            return None, None, None
 
     setup_tags = set(infer_tags(ref_setup))
     if entry_tags and not setup_tags.intersection(entry_tags):
