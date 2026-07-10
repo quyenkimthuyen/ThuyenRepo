@@ -11,7 +11,7 @@ from .bar_annotations import annotation_at_time, link_setup_to_annotation
 from .config import LABELS_PATH, PIP
 from .data_service import load_candles, period_for_timestamp
 from .detection_config import load_bar_detection_config
-from .entity_codes import assign_setup_code, display_setup_code
+from .entity_codes import assign_setup_code, display_bar_code, display_setup_code
 from .indicators import add_indicators
 from .pipeline import context_bars_for_index, validate_setup_from_bar
 from .tags import infer_tags, normalize_tags

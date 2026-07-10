@@ -6,7 +6,7 @@
   <title>AI Trade Lab — EURUSD 1H</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/app.css?v=15">
+  <link rel="stylesheet" href="/static/css/app.css?v=16">
 </head>
 <body>
   <noscript>
@@ -85,7 +85,7 @@
             </nav>
 
             <div id="labelBarsView" class="label-subview active" role="tabpanel">
-              <p class="label-subhint">Tag nến trong tháng đang chọn — chỉ tải dữ liệu tháng hiện tại.</p>
+              <p class="label-subhint">Tag nến — danh sách hiển thị <strong>tất cả</strong> tag đã lưu. Chart chỉ tải tháng đang chọn.</p>
 
               <div id="barInspectPanel" class="bar-inspect-panel hidden">
                 <div class="bar-inspect-head">
@@ -114,6 +114,9 @@
                 <div class="setup-list-head">
                   <span>Tag nến đã lưu</span>
                   <span class="count-badge" id="barAnnotationCount">0</span>
+                  <label class="list-filter-check" title="Chỉ hiện tag nến trong tháng đang xem trên chart">
+                    <input type="checkbox" id="toggleListMonthFilterBars"> Lọc tháng
+                  </label>
                 </div>
                 <ul id="barAnnotationList" class="setup-list scroll-panel bar-annotation-list"></ul>
               </div>
@@ -128,7 +131,7 @@
             </div>
 
             <div id="labelSetupsView" class="label-subview hidden" role="tabpanel">
-              <p class="label-subhint">Setup gắn với nến đã tag — mỗi setup hiển thị mã nến liên kết.</p>
+              <p class="label-subhint">Setup gắn với nến đã tag — danh sách hiển thị <strong>tất cả</strong> setup, chart theo tháng.</p>
               <button type="button" class="btn primary block" id="btnNewSetup">＋ Setup từ nến đã tag</button>
 
               <div class="setup-editor hidden" id="editorPanel">
@@ -190,6 +193,9 @@
                 <div class="setup-list-head">
                   <span>Setup đã lưu</span>
                   <span class="count-badge" id="setupCount">0</span>
+                  <label class="list-filter-check" title="Chỉ hiện setup trong tháng đang xem trên chart">
+                    <input type="checkbox" id="toggleListMonthFilter"> Lọc tháng
+                  </label>
                   <span class="list-hint">Click xem · double-click sửa</span>
                 </div>
                 <ul id="setupList" class="setup-list scroll-panel"></ul>
@@ -303,7 +309,7 @@
   </div>
 
   <script type="module">
-    import('/static/js/app.js?v=15').catch((err) => {
+    import('/static/js/app.js?v=16').catch((err) => {
       console.error('Module load failed:', err);
       const box = document.createElement('div');
       box.style.cssText = 'padding:20px;color:#fecaca;background:#3f1212;font-size:14px;line-height:1.5';

@@ -16,15 +16,15 @@ import {
   saveSetup,
   suggestTags,
   updateSetup,
-} from './api.js?v=15';
+} from './api.js?v=16';
 import {
   renderAnalyzeView,
   renderBacktestView,
   renderError,
   renderLoading,
-} from './strategy-ui.js?v=15';
-import { initSidebarResize } from './layout.js?v=15';
-import { TradeChart } from './chart.js?v=15';
+} from './strategy-ui.js?v=16';
+import { initSidebarResize } from './layout.js?v=16';
+import { TradeChart } from './chart.js?v=16';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -33,6 +33,7 @@ const state = {
   trainMonth: '2022-01',
   monthMeta: [],
   labelSubTab: 'bars',
+  listFilterByMonth: false,
   mode: /** @type {EditorMode} */ ('idle'),
   direction: 'long',
   step: 'entry',
@@ -224,12 +225,50 @@ function setupDisplayCode(item) {
   return item?.code || item?.id || '—';
 }
 
+function monthKeyFromTime(iso) {
+  return (iso || '').slice(0, 7);
+}
+
+function trainSetups() {
+  return state.setups.filter((s) => (s.period || 'train') === 'train');
+}
+
+function monthChartSetups() {
+  const month = activeMonth();
+  if (!month) return trainSetups();
+  return trainSetups().filter((s) => monthKeyFromTime(s.entry_time) === month);
+}
+
+function setupsForList() {
+  const all = trainSetups();
+  if (!state.listFilterByMonth || state.period !== 'train') return all;
+  const month = activeMonth();
+  if (!month) return all;
+  return all.filter((s) => monthKeyFromTime(s.entry_time) === month);
+}
+
+function annotationsForList() {
+  const all = state.barAnnotations || [];
+  if (!state.listFilterByMonth || state.period !== 'train') return all;
+  const month = activeMonth();
+  if (!month) return all;
+  return all.filter((a) => monthKeyFromTime(a.bar_time) === month);
+}
+
 function updateLabelTabCounts() {
+  const setupTotal = trainSetups().length;
+  const setupMonth = monthChartSetups().length;
+  const barTotal = state.barAnnotations?.length || 0;
+  const barMonth = activeMonth()
+    ? (state.barAnnotations || []).filter((a) => monthKeyFromTime(a.bar_time) === activeMonth()).length
+    : barTotal;
   if (els.barTabCount) {
-    els.barTabCount.textContent = String(state.barAnnotations?.length || 0);
+    els.barTabCount.textContent =
+      state.period === 'train' && state.listFilterByMonth ? `${barMonth}/${barTotal}` : String(barTotal);
   }
   if (els.setupTabCount) {
-    els.setupTabCount.textContent = String(trainSetups().length);
+    els.setupTabCount.textContent =
+      state.period === 'train' && state.listFilterByMonth ? `${setupMonth}/${setupTotal}` : String(setupTotal);
   }
 }
 
@@ -280,7 +319,16 @@ async function switchTrainMonth(month) {
   hideBarInspect();
   state.trainMonth = month;
   renderMonthTabs();
-  await loadMonthData();
+  setLoading(true);
+  try {
+    await Promise.all([loadChart(), loadImportantBars()]);
+    renderSetups();
+    renderBarAnnotationList();
+    updateLabelTabCounts();
+    refreshChartAnnotations();
+  } finally {
+    setLoading(false);
+  }
 }
 
 async function loadMonthMeta() {
@@ -306,16 +354,13 @@ async function loadMonthMeta() {
 async function loadMonthData() {
   setLoading(true);
   try {
-    await Promise.all([loadChart(), refreshSetups(), refreshBarAnnotations(), loadImportantBars()]);
+    await Promise.all([refreshSetups(), refreshBarAnnotations()]);
+    await Promise.all([loadChart(), loadImportantBars()]);
     updateLabelTabCounts();
     refreshChartAnnotations();
   } finally {
     setLoading(false);
   }
-}
-
-function trainSetups() {
-  return state.setups.filter((s) => (s.period || 'train') === 'train');
 }
 
 function tradeKey(trade) {
@@ -327,7 +372,7 @@ function refreshChartAnnotations() {
 
   if (state.period === 'train') {
     if (state.focusedSetupId) return;
-    chart.showSetupMarkers(trainSetups());
+    chart.showSetupMarkers(monthChartSetups());
     if (state.showImportantBars) {
       chart.showImportantBars(state.importantBars);
     }
@@ -583,7 +628,7 @@ async function deleteBarAnnotationFromInspect() {
 }
 
 async function refreshBarAnnotations() {
-  const { annotations } = await getBarAnnotations(activeMonth());
+  const { annotations } = await getBarAnnotations();
   state.barAnnotations = annotations || [];
   renderBarAnnotationList();
   updateLabelTabCounts();
@@ -594,13 +639,24 @@ function renderBarAnnotationList() {
   const countEl = els.barAnnotationCount;
   if (!list) return;
 
-  const items = state.barAnnotations || [];
-  if (countEl) countEl.textContent = String(items.length);
+  const items = annotationsForList();
+  const total = (state.barAnnotations || []).length;
+  if (countEl) {
+    countEl.textContent =
+      state.listFilterByMonth && state.period === 'train' && total > items.length
+        ? `${items.length}/${total}`
+        : String(items.length);
+  }
   list.innerHTML = '';
 
-  if (!items.length) {
+  if (!total) {
     list.innerHTML =
       '<li class="hint" style="padding:8px">Chưa lưu tag nến. Bật 「Nến quan trọng」 và lưu tag trên chart.</li>';
+    return;
+  }
+
+  if (!items.length) {
+    list.innerHTML = `<li class="hint" style="padding:8px">Không có tag nến trong tháng ${state.trainMonth?.slice(5) || '—'}. Bỏ 「Lọc tháng」 để xem tất cả ${total} tag.</li>`;
     return;
   }
 
@@ -1019,8 +1075,13 @@ function updateChartHint() {
       return;
     }
   }
-  if (state.period === 'train' && trainSetups().length > 0 && state.mode === 'idle') {
-    els.chartOverlayHint.textContent = `${trainSetups().length} setup trên chart — click xem · double-click sửa`;
+  if (state.period === 'train' && monthChartSetups().length > 0 && state.mode === 'idle') {
+    const total = trainSetups().length;
+    const monthN = monthChartSetups().length;
+    els.chartOverlayHint.textContent =
+      total > monthN
+        ? `${monthN} setup tháng ${state.trainMonth.slice(5)} trên chart · ${total} setup tổng — click xem · double-click sửa`
+        : `${total} setup trên chart — click xem · double-click sửa`;
     els.chartOverlayHint.classList.remove('hidden');
     return;
   }
@@ -1275,6 +1336,11 @@ async function startNewSetup() {
 
 async function startEditSetup(setup) {
   await ensureTrainPeriod();
+  const month = monthKeyFromTime(setup.entry_time);
+  if (month && month !== state.trainMonth) {
+    await switchTrainMonth(month);
+  }
+  switchLabelSubTab('setups');
   switchSidebarTab('label', { syncPeriod: false });
 
   state.focusedTradeKey = null;
@@ -1339,11 +1405,9 @@ async function switchPeriod(period, { syncSidebar = true } = {}) {
     await loadMonthData();
   } else {
     await loadChart();
+    await refreshSetups();
+    await refreshBarAnnotations();
     await loadImportantBars();
-    state.setups = [];
-    state.barAnnotations = [];
-    renderSetups();
-    renderBarAnnotationList();
     updateLabelTabCounts();
   }
 }
@@ -1359,14 +1423,24 @@ async function loadChart() {
 }
 
 function renderSetups() {
-  const items = trainSetups();
-  els.setupCount.textContent = String(items.length);
+  const items = setupsForList();
+  const total = trainSetups().length;
+  const monthN = monthChartSetups().length;
+  els.setupCount.textContent =
+    state.listFilterByMonth && state.period === 'train' && total > items.length
+      ? `${items.length}/${total}`
+      : String(items.length);
   updateLabelTabCounts();
   els.setupList.innerHTML = '';
 
-  if (!items.length) {
+  if (!total) {
     els.setupList.innerHTML =
-      '<li class="hint" style="padding:8px">Chưa có setup trong tháng này. Tag nến ở tab 「Nến quan trọng」 trước.</li>';
+      '<li class="hint" style="padding:8px">Chưa có setup. Tag nến ở tab 「Nến quan trọng」 trước.</li>';
+    return;
+  }
+
+  if (!items.length) {
+    els.setupList.innerHTML = `<li class="hint" style="padding:8px">Không có setup trong tháng ${state.trainMonth?.slice(5) || '—'}. Bỏ lọc tháng để xem tất cả ${total} setup.</li>`;
     return;
   }
 
@@ -1398,6 +1472,17 @@ function renderSetups() {
 }
 
 function viewSetupOnChart(setup) {
+  const month = monthKeyFromTime(setup.entry_time);
+  if (state.period === 'train' && month && month !== state.trainMonth) {
+    switchTrainMonth(month).then(() => {
+      state.focusedSetupId = setup.id;
+      state.focusedTradeKey = null;
+      chart.viewSetup(setup, { interactive: false });
+      renderSetups();
+      updateChartHint();
+    });
+    return;
+  }
   state.focusedSetupId = setup.id;
   state.focusedTradeKey = null;
   chart.viewSetup(setup, { interactive: false });
@@ -1457,15 +1542,10 @@ function renderBtTradeLists() {
 
 async function refreshSetups() {
   const { setups } = await getSetups({
-    month: activeMonth(),
     summary: true,
-    period: state.period === 'train' ? 'train' : null,
+    period: 'train',
   });
-  if (state.period === 'train') {
-    state.setups = setups || [];
-  } else {
-    state.setups = (setups || []).filter((s) => (s.period || 'train') === 'train');
-  }
+  state.setups = setups || [];
   renderSetups();
   if (state.mode === 'idle' && state.period === 'train' && !state.focusedSetupId) {
     refreshChartAnnotations();
@@ -1675,6 +1755,24 @@ function bindUI() {
 
   els.labelSubtabs?.forEach((btn) => {
     btn.onclick = () => switchLabelSubTab(btn.dataset.labelTab);
+  });
+
+  document.getElementById('toggleListMonthFilter')?.addEventListener('change', (e) => {
+    state.listFilterByMonth = e.target.checked;
+    const barsToggle = document.getElementById('toggleListMonthFilterBars');
+    if (barsToggle) barsToggle.checked = e.target.checked;
+    renderSetups();
+    renderBarAnnotationList();
+    updateLabelTabCounts();
+  });
+
+  document.getElementById('toggleListMonthFilterBars')?.addEventListener('change', (e) => {
+    state.listFilterByMonth = e.target.checked;
+    const setupToggle = document.getElementById('toggleListMonthFilter');
+    if (setupToggle) setupToggle.checked = e.target.checked;
+    renderSetups();
+    renderBarAnnotationList();
+    updateLabelTabCounts();
   });
 
   document.getElementById('btnAnalyze').onclick = () => runAnalyze();
