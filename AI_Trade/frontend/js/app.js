@@ -21,22 +21,24 @@ import {
   saveSetup,
   suggestTags,
   updateSetup,
-} from './api.js?v=21';
+} from './api.js?v=23';
 import {
   renderAnalyzeView,
   renderBacktestView,
   renderBacktestCompare,
+  renderBacktestSidebarSummary,
+  renderBacktestTradesPanel,
   renderError,
   renderLoading,
-} from './strategy-ui.js?v=21';
-import { initSidebarResize } from './layout.js?v=21';
-import { TradeChart } from './chart.js?v=21';
+} from './strategy-ui.js?v=23';
+import { initSidebarResize } from './layout.js?v=23';
+import { TradeChart } from './chart.js?v=23';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
 const state = {
   period: 'train_2022',
-  trainPeriod: 'train_2022',
+  trainPeriod: 'train_2024',
   trainMonth: '2022-01',
   monthMeta: [],
   labelSubTab: 'bars',
@@ -51,8 +53,10 @@ const state = {
   config: null,
   tagPresets: [],
   sidebarTab: 'label',
-  btSelectedPeriods: ['bt_2023'],
+  btSelectedPeriods: ['bt_2024'],
   btStrategyPeriod: 'train_2024',
+  btWorkspaceTab: 'results',
+  btWorkspaceCollapsed: false,
   btCache: null,
   btRuns: [],
   activeBtRunId: null,
@@ -114,12 +118,15 @@ const els = {
   analyzeTrainPeriod: document.getElementById('analyzeTrainPeriod'),
   btYearPicker: document.getElementById('btYearPicker'),
   btStrategyPeriod: document.getElementById('btStrategyPeriod'),
-  btResults: document.getElementById('btResults'),
-  btTradeList: document.getElementById('btTradeList'),
+  btSidebarSummary: document.getElementById('btSidebarSummary'),
+  btWorkspace: document.getElementById('btWorkspace'),
+  btPanelResults: document.getElementById('btPanelResults'),
+  btPanelTrades: document.getElementById('btPanelTrades'),
+  btPanelCompare: document.getElementById('btPanelCompare'),
+  chartArea: document.querySelector('.chart-area'),
   btCount: document.getElementById('btCount'),
   btSavedList: document.getElementById('btSavedList'),
   btSavedCount: document.getElementById('btSavedCount'),
-  btCompare: document.getElementById('btCompare'),
   btSaveName: document.getElementById('btSaveName'),
   pipelineHint: document.getElementById('pipelineHint'),
   pipelineBanner: document.getElementById('pipelineBanner'),
@@ -220,7 +227,7 @@ function updatePipelineUI() {
       tag: 'Chọn tag và bấm 「Lưu tag nến」 — bước bắt buộc trước setup.',
       setup: 'Đặt SL/TP — tag setup phải khớp ít nhất 1 tag nến đã lưu.',
       strategy: `Tab Analyze → học pattern từ setup train ${periodShortLabel(state.trainPeriod)}.`,
-      backtest: 'Vào lệnh khi nến đạt score + tag + giống setup train.',
+      backtest: 'Vào lệnh khi nến đạt score + tag + giống setup train. Xem kết quả ở panel dưới chart.',
     };
     hint.textContent = hints[step] || hints.bar;
   }
@@ -253,6 +260,8 @@ function defaultBtPeriods() {
 }
 
 function suggestedBtPeriodForTrain(trainPeriod) {
+  const mapped = state.config?.period_groups?.train_validation?.[trainPeriod];
+  if (mapped) return mapped;
   const year = periodCfg(trainPeriod)?.year;
   if (!year) return defaultBtPeriods()[0];
   const next = `bt_${year + 1}`;
@@ -1173,7 +1182,7 @@ function updateChartHint() {
   if (isBacktestChartPeriod() && chartShowsActiveBacktest()) {
     const n = activeBtTrades().length;
     if (n > 0) {
-      els.chartOverlayHint.textContent = `${n} lệnh backtest trên chart — chọn lệnh trong danh sách bên trái`;
+      els.chartOverlayHint.textContent = `${n} lệnh backtest — chọn lệnh ở tab 「Lệnh」 dưới chart`;
       els.chartOverlayHint.classList.remove('hidden');
       return;
     }
@@ -1600,37 +1609,7 @@ function viewTradeOnChart(trade) {
 }
 
 function renderBtTradeList() {
-  const listEl = els.btTradeList;
-  const countEl = els.btCount;
-  const trades = activeBtTrades();
-
-  if (countEl) countEl.textContent = String(trades.length);
-  if (!listEl) return;
-  listEl.innerHTML = '';
-
-  if (!trades.length) {
-    listEl.innerHTML =
-      '<li class="hint" style="padding:8px">Chưa có lệnh. Chạy backtest để xem lệnh trên chart.</li>';
-    return;
-  }
-
-  const sorted = [...trades].sort((a, b) => a.entry_time.localeCompare(b.entry_time));
-  for (const t of sorted) {
-    const li = document.createElement('li');
-    const key = tradeKey(t);
-    const win = t.result === 'win';
-    li.className = `setup-item ${t.direction}${state.focusedTradeKey === key ? ' selected' : ''}`;
-    li.innerHTML = `
-      <div class="setup-top">
-        <span class="setup-dir">${t.direction.toUpperCase()}</span>
-        <span class="setup-result ${win ? 'win' : 'loss'}">${t.result.toUpperCase()}</span>
-        <span style="margin-left:auto;font-size:11px;color:${win ? '#86efac' : '#fca5a5'}">${t.pnl_pips} pips</span>
-      </div>
-      <div class="setup-meta">${t.entry_time?.slice(0, 16).replace('T', ' ')}${t.tag ? ' · ' + t.tag : ''}${(t.sequence_tags || []).length ? ' · seq: ' + t.sequence_tags.join(', ') : ''}${t.importance_score != null ? ' · score ' + t.importance_score : ''}${t.similarity != null ? ' · sim ' + Math.round(t.similarity * 100) + '%' : ''} · Entry ${t.entry}</div>
-    `;
-    li.onclick = () => viewTradeOnChart(t);
-    listEl.appendChild(li);
-  }
+  renderBtTradesPanel();
 }
 
 async function refreshSetups() {
@@ -1708,6 +1687,7 @@ function setSidebarTabUI(tabId) {
     view.classList.toggle('hidden', key !== tabId);
     view.classList.toggle('active', key === tabId);
   }
+  updateBtWorkspaceVisibility();
   updatePipelineUI();
 }
 
@@ -1771,16 +1751,87 @@ async function restoreActiveBacktests() {
   renderBtTradeList();
 }
 
+function updateBtWorkspaceVisibility() {
+  const open = state.sidebarTab === 'backtest';
+  els.btWorkspace?.classList.toggle('hidden', !open);
+  els.chartArea?.classList.toggle('bt-workspace-open', open && !state.btWorkspaceCollapsed);
+  els.chartArea?.classList.toggle('bt-workspace-collapsed', open && state.btWorkspaceCollapsed);
+  if (open) {
+    requestAnimationFrame(() => chart.resize?.());
+  }
+}
+
+function setBtWorkspaceTab(tabId) {
+  state.btWorkspaceTab = tabId;
+  document.querySelectorAll('.bt-ws-tab').forEach((btn) => {
+    const active = btn.dataset.btPanel === tabId;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  const panels = {
+    results: els.btPanelResults,
+    trades: els.btPanelTrades,
+    library: document.getElementById('btPanelLibrary'),
+    compare: els.btPanelCompare,
+  };
+  for (const [id, panel] of Object.entries(panels)) {
+    panel?.classList.toggle('hidden', id !== tabId);
+    panel?.classList.toggle('active', id === tabId);
+  }
+  if (tabId === 'trades') renderBtTradesPanel();
+  if (tabId === 'compare') renderBtComparePanel();
+}
+
+function toggleBtWorkspaceCollapsed() {
+  state.btWorkspaceCollapsed = !state.btWorkspaceCollapsed;
+  updateBtWorkspaceVisibility();
+}
+
+function updateBtSidebarSummary(data) {
+  if (!els.btSidebarSummary) return;
+  const text = renderBacktestSidebarSummary(data);
+  els.btSidebarSummary.textContent = text;
+  els.btSidebarSummary.classList.remove('pass', 'fail', 'muted');
+  if (!data || data.status !== 'ok') {
+    els.btSidebarSummary.classList.add('muted');
+    return;
+  }
+  els.btSidebarSummary.classList.add(data.metrics?.pass ? 'pass' : 'fail');
+}
+
+function renderBtTradesPanel() {
+  const trades = activeBtTrades();
+  if (els.btCount) els.btCount.textContent = String(trades.length);
+  if (!els.btPanelTrades) return;
+
+  els.btPanelTrades.innerHTML = renderBacktestTradesPanel(trades, {
+    focusedKey: state.focusedTradeKey,
+  });
+
+  els.btPanelTrades.querySelectorAll('[data-trade-key]').forEach((row) => {
+    row.addEventListener('click', () => {
+      const key = row.dataset.tradeKey;
+      const trade = trades.find((t) => tradeKey(t) === key);
+      if (trade) viewTradeOnChart(trade);
+    });
+  });
+}
+
 function displayBacktestResults(data) {
-  if (!els.btResults || !data) return;
+  if (!data) return;
   const label = data.period_label || data.period || 'Backtest';
   const stratYear = data.train_year || periodShortLabel(data.train_period || state.btStrategyPeriod);
-  els.btResults.innerHTML = renderBacktestView(data, {
-    title: `Backtest ${label}`,
-    subtitle: data.name
-      ? `「${data.name}」 · Chiến lược train ${stratYear}`
-      : `Chiến lược train ${stratYear}`,
-  });
+  const title = `Backtest ${label}`;
+  const subtitle = data.name
+    ? `「${data.name}」 · Chiến lược train ${stratYear}`
+    : `Chiến lược train ${stratYear}`;
+
+  if (els.btPanelResults) {
+    els.btPanelResults.innerHTML = renderBacktestView(data, { title, subtitle, includeTrades: false });
+  }
+  updateBtSidebarSummary(data);
+  renderBtTradesPanel();
+  updateBtWorkspaceVisibility();
 }
 
 function renderBtSavedList() {
@@ -1822,7 +1873,10 @@ function renderBtSavedList() {
       e.stopPropagation();
       removeBacktestRun(run.id);
     });
-    li.onclick = () => activateBacktestRun(run.id);
+    li.onclick = () => {
+      activateBacktestRun(run.id);
+      setBtWorkspaceTab('results');
+    };
     listEl.appendChild(li);
   }
 }
@@ -1834,6 +1888,7 @@ function toggleCompareRun(runId, checked) {
   state.compareBtIds = [...set];
   renderBtSavedList();
   renderBtComparePanel();
+  if (checked) setBtWorkspaceTab('compare');
 }
 
 async function removeBacktestRun(runId) {
@@ -1856,7 +1911,7 @@ async function activateBacktestRun(runId) {
     state.activeBtRunId = runId;
     displayBacktestResults(run);
     renderBtSavedList();
-    renderBtTradeList();
+    setBtWorkspaceTab('results');
     const periods = run.periods || (run.period ? run.period.split(',') : []);
     const chartPeriod = periods[0] || backtestPeriodIds()[0];
     if (state.period !== chartPeriod) {
@@ -1874,7 +1929,7 @@ async function activateBacktestRun(runId) {
 function renderBtComparePanel() {
   const selected = state.btRuns.filter((r) => state.compareBtIds.includes(r.id));
   const html = renderBacktestCompare(selected);
-  if (els.btCompare) els.btCompare.innerHTML = html;
+  if (els.btPanelCompare) els.btPanelCompare.innerHTML = html;
 }
 
 async function runAnalyze() {
@@ -1900,7 +1955,10 @@ async function runBt() {
   const saveName = els.btSaveName?.value?.trim() || null;
   const label = periods.map(periodShortLabel).join(' + ');
   const stratLabel = periodShortLabel(trainPeriod);
-  els.btResults.innerHTML = renderLoading(`Backtest ${label} · chiến lược train ${stratLabel}...`);
+  els.btPanelResults.innerHTML = renderLoading(`Backtest ${label} · chiến lược train ${stratLabel}...`);
+  setBtWorkspaceTab('results');
+  state.btWorkspaceCollapsed = false;
+  updateBtWorkspaceVisibility();
   try {
     const data = await backtest(periods, { name: saveName, save: true, trainPeriod });
     state.btCache = data;
@@ -1910,8 +1968,8 @@ async function runBt() {
     }
     await loadBacktestRuns();
     displayBacktestResults(data);
+    setBtWorkspaceTab('results');
     state.focusedTradeKey = null;
-    renderBtTradeList();
     const chartPeriod = periods[0];
     if (state.period !== chartPeriod) {
       await switchPeriod(chartPeriod, { syncSidebar: false });
@@ -1919,7 +1977,8 @@ async function runBt() {
       refreshChartAnnotations();
     }
   } catch (e) {
-    els.btResults.innerHTML = renderError(e.message);
+    if (els.btPanelResults) els.btPanelResults.innerHTML = renderError(e.message);
+    updateBtSidebarSummary(null);
   }
 }
 
@@ -2114,6 +2173,11 @@ function bindUI() {
 
   document.getElementById('btnAnalyze').onclick = () => runAnalyze();
   document.getElementById('btnBacktest').onclick = () => runBt();
+
+  document.querySelectorAll('.bt-ws-tab').forEach((btn) => {
+    btn.addEventListener('click', () => setBtWorkspaceTab(btn.dataset.btPanel));
+  });
+  document.getElementById('btnBtWorkspaceCollapse')?.addEventListener('click', toggleBtWorkspaceCollapsed);
 }
 
 function showBootError(message) {
@@ -2204,6 +2268,9 @@ async function loadAppData() {
     }
     setMode('idle');
     setLabelSubTabUI(state.labelSubTab);
+    setSidebarTabUI(state.sidebarTab || 'label');
+    setBtWorkspaceTab(state.btWorkspaceTab || 'results');
+    updateBtWorkspaceVisibility();
     await loadMonthMeta();
     await fetchWithRetry(() => loadMonthData());
     await fetchWithRetry(() => loadBacktestRuns());

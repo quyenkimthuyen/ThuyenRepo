@@ -25,9 +25,10 @@ function banner(kind, title, text) {
   `;
 }
 
-function statGrid(items) {
+function statGrid(items, gridClass = '') {
+  const cls = gridClass ? `stat-grid ${gridClass}` : 'stat-grid';
   return `
-    <div class="stat-grid">
+    <div class="${cls}">
       ${items
         .map(
           (it) => `
@@ -319,6 +320,7 @@ function renderOptimizationBlock(data) {
   const valPeriod = data.validation_period || opt?.validation_period;
   const pass = data.optimization_pass ?? opt?.pass;
   const params = data.best_params || opt?.best_params;
+  const skipped = opt?.skipped || opt?.skip_reason;
 
   const row = (label, m) => {
     if (!m) return '';
@@ -331,6 +333,10 @@ function renderOptimizationBlock(data) {
     ]);
   };
 
+  const skipNote = skipped
+    ? `<p class="section-note">Chiến lược đã đạt tiêu chí validation — giữ nguyên tham số, không ghi đè.</p>`
+    : '';
+
   return `
     <section class="result-section">
       <h3>Tối ưu tham số (validation)</h3>
@@ -338,15 +344,16 @@ function renderOptimizationBlock(data) {
         pass ? 'ok' : 'warn',
         pass ? 'Đạt tiêu chí validation' : 'Chưa đạt tiêu chí validation',
         valPeriod
-          ? `Tự động tinh chỉnh trên ${esc(valPeriod)} — PF ≥ 1.3, DD ≤ 250 pips, ≥ 30 lệnh.`
-          : 'Tự động tinh chỉnh tham số entry.',
+          ? `Tinh chỉnh trên ${esc(valPeriod)} — PF ≥ 1.3, DD ≤ 250 pips, ≥ 30 lệnh.`
+          : 'Tinh chỉnh tham số entry.',
       )}
+      ${skipNote}
       <p class="section-note"><strong>Trước tối ưu</strong></p>
       ${row('baseline', base)}
       <p class="section-note"><strong>Sau tối ưu</strong></p>
       ${row('optimized', tuned)}
       ${
-        params
+        params && Object.keys(params).length
           ? `<details class="tree-details"><summary>Tham số đã chọn</summary><pre class="tree-pre">${esc(JSON.stringify(params, null, 2))}</pre></details>`
           : ''
       }
@@ -467,13 +474,13 @@ function renderTradeRows(trades) {
     .join('');
 }
 
-export function renderBacktestView(data, { title, subtitle }) {
+export function renderBacktestView(data, { title, subtitle, includeTrades = false } = {}) {
   if (!data) return '<p class="muted">Chưa có kết quả.</p>';
 
   if (data.status === 'no_strategy') {
     return `
       ${banner('warn', 'Chưa có chiến lược', data.message || 'Chạy Analyze trước.')}
-      <p class="section-note">Vào tab <strong>Analyze</strong> và bấm 「Chạy phân tích」 sau khi đã label đủ setup train.</p>
+      <p class="section-note">Vào tab <strong>Analyze</strong> và bấm 「Phân tích + tối ưu」 sau khi đã label đủ setup train.</p>
     `;
   }
 
@@ -484,34 +491,45 @@ export function renderBacktestView(data, { title, subtitle }) {
   const m = data.metrics || {};
   const passed = m.pass === true;
   const total = data.trade_count_total ?? m.trades ?? 0;
-  const previewTrades = (data.trades || []).slice(-50);
-  const shown = previewTrades.length;
 
-  return `
+  const metricsBlock = `
     ${banner(
       passed ? 'ok' : 'warn',
       passed ? `${title} — ĐẠT` : `${title} — CHƯA ĐẠT`,
       `${subtitle} · Pipeline: nến → tag → setup train → vào lệnh.`,
     )}
 
-    ${statGrid([
-      { label: 'Tổng lệnh', value: String(total) },
-      { label: 'Win rate', value: pct(m.win_rate), cls: Number(m.win_rate) >= 0.5 ? 'good' : '' },
-      { label: 'Profit factor', value: num(m.profit_factor, 2), cls: Number(m.profit_factor) >= 1.3 ? 'good' : '' },
-      { label: 'Expectancy', value: `${num(m.expectancy_pips, 1)} pips` },
-      { label: 'Max drawdown', value: `${num(m.max_drawdown_pips, 1)} pips`, cls: Number(m.max_drawdown_pips) <= 250 ? '' : 'bad' },
-      { label: 'RR trung bình', value: `${num(m.avg_rr, 2)}R` },
-    ])}
+    ${statGrid(
+      [
+        { label: 'Tổng lệnh', value: String(total) },
+        { label: 'Win rate', value: pct(m.win_rate), cls: Number(m.win_rate) >= 0.5 ? 'good' : '' },
+        { label: 'Profit factor', value: num(m.profit_factor, 2), cls: Number(m.profit_factor) >= 1.3 ? 'good' : '' },
+        { label: 'Expectancy', value: `${num(m.expectancy_pips, 1)} pips` },
+        { label: 'Max drawdown', value: `${num(m.max_drawdown_pips, 1)} pips`, cls: Number(m.max_drawdown_pips) <= 250 ? '' : 'bad' },
+        { label: 'RR trung bình', value: `${num(m.avg_rr, 2)}R` },
+      ],
+      'stat-grid-6',
+    )}
 
     <section class="result-section">
       <h3>Tiêu chí đánh giá</h3>
-      <ul class="criteria-list">
+      <ul class="criteria-list criteria-list-inline">
         <li class="${total >= 30 ? 'met' : ''}">≥ 30 lệnh ${total >= 30 ? '✓' : `(hiện ${total})`}</li>
         <li class="${Number(m.profit_factor) >= 1.3 ? 'met' : ''}">Profit factor ≥ 1.3 ${Number(m.profit_factor) >= 1.3 ? '✓' : ''}</li>
         <li class="${Number(m.max_drawdown_pips) <= 250 ? 'met' : ''}">Max DD ≤ 250 pips ${Number(m.max_drawdown_pips) <= 250 ? '✓' : ''}</li>
       </ul>
     </section>
+  `;
 
+  if (!includeTrades) {
+    return metricsBlock;
+  }
+
+  const previewTrades = (data.trades || []).slice(-50);
+  const shown = previewTrades.length;
+
+  return `
+    ${metricsBlock}
     <section class="result-section">
       <h3>Lệnh gần đây ${shown < total ? `(hiển thị ${shown}/${total})` : ''}</h3>
       <div class="mini-table-wrap trades-wrap">
@@ -533,6 +551,79 @@ export function renderBacktestView(data, { title, subtitle }) {
       </div>
     </section>
   `;
+}
+
+export function renderBacktestTradesPanel(trades, { focusedKey = null, onRowClick = null } = {}) {
+  const sorted = [...(trades || [])].sort((a, b) => (a.entry_time || '').localeCompare(b.entry_time || ''));
+  const total = sorted.length;
+
+  if (!total) {
+    return `
+      <div class="trades-table-toolbar">
+        <h3>Danh sách lệnh</h3>
+      </div>
+      <p class="muted section-note">Chưa có lệnh. Chạy backtest hoặc mở kết quả đã lưu.</p>
+    `;
+  }
+
+  const rows = sorted
+    .map((t) => {
+      const win = t.result === 'win';
+      const time = (t.entry_time || '').slice(0, 16).replace('T', ' ');
+      const key = `${t.entry_time}|${t.direction}|${t.entry}`;
+      const selected = focusedKey && focusedKey === key;
+      const tagParts = [];
+      if (t.tag) tagParts.push(`<span class="pill">${esc(t.tag)}</span>`);
+      if (t.importance_score != null) tagParts.push(`<span class="pill">S${t.importance_score}</span>`);
+      if (t.similarity != null) tagParts.push(`<span class="pill">${Math.round(t.similarity * 100)}%</span>`);
+      return `
+        <tr class="${win ? 'row-win' : 'row-loss'}${selected ? ' selected' : ''}" data-trade-key="${esc(key)}">
+          <td>${esc(time)}</td>
+          <td>${esc((t.direction || '').toUpperCase())}</td>
+          <td>${tagParts.join(' ') || '—'}</td>
+          <td>${num(t.entry, 5)}</td>
+          <td>${num(t.exit, 5)}</td>
+          <td class="${win ? 'good' : 'bad'}">${esc((t.result || '').toUpperCase())}</td>
+          <td class="${Number(t.pnl_pips) >= 0 ? 'good' : 'bad'}">${num(t.pnl_pips, 1)}</td>
+          <td>${num(t.rr, 2)}R</td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  return `
+    <div class="trades-table-toolbar">
+      <h3>Danh sách lệnh · ${total}</h3>
+      <span class="muted" style="font-size:11px">Click hàng để xem trên chart</span>
+    </div>
+    <div class="trades-table-wrap">
+      <table class="mini-table trades-table">
+        <thead>
+          <tr>
+            <th>Thời gian</th>
+            <th>Hướng</th>
+            <th>Tag / Score</th>
+            <th>Entry</th>
+            <th>Exit</th>
+            <th>KQ</th>
+            <th>PnL</th>
+            <th>RR</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+export function renderBacktestSidebarSummary(data) {
+  if (!data || data.status !== 'ok') {
+    return 'Chưa có kết quả — bấm Chạy backtest.';
+  }
+  const m = data.metrics || {};
+  const pass = m.pass === true;
+  const label = data.period_label || data.period || 'BT';
+  return `${pass ? '✓ ĐẠT' : '✗ Chưa đạt'} · ${label} · ${m.trades ?? 0} lệnh · WR ${pct(m.win_rate)} · PF ${num(m.profit_factor, 2)} · DD ${num(m.max_drawdown_pips, 1)} pips`;
 }
 
 export function renderBacktestCompare(runs) {

@@ -115,6 +115,7 @@ def periods_grouped_for_api() -> dict[str, Any]:
             "train": default_train_period(),
             "backtest": default_backtest_periods(),
         },
+        "train_validation": splits.get("train_validation", {}),
         "legacy_map": splits.get("legacy_map", {}),
     }
 
@@ -160,8 +161,13 @@ def period_exists(period: str) -> bool:
 
 
 def suggested_backtest_period(train_period: str) -> str:
-    """Walk-forward: train year N → backtest year N+1 when available."""
+    """Validation BT for a train period — walk-forward mapping from config."""
     train_period = resolve_period(train_period)
+    splits = load_splits()
+    mapped = (splits.get("train_validation") or {}).get(train_period)
+    if mapped and period_exists(mapped):
+        return resolve_period(mapped)
+
     year = period_config(train_period).get("year")
     if year is None:
         return default_backtest_periods()[0]

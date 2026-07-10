@@ -579,6 +579,12 @@ def match_entry_from_inspection(
         wins = sum(1 for item in similar if item.get("result") == "win")
         cluster_wr = round(wins / len(similar), 3)
 
+    ranked_similar = similar
+    if strategy.get("prefer_winning_similar"):
+        win_matches = [item for item in similar if item.get("result") == "win"]
+        if win_matches:
+            ranked_similar = win_matches
+
     primary_tag = detected[0]["tag"] if detected else None
     if ann and ann.get("tags"):
         primary_tag = ann["tags"][0]
@@ -590,20 +596,26 @@ def match_entry_from_inspection(
         "features": features,
         "detected_tags": detected,
         "sequence_tags": seq_tags,
-        "similar_setups": similar,
+        "similar_setups": ranked_similar,
         "cluster_win_rate": cluster_wr,
         "primary_tag": primary_tag,
-        "suggested_direction": similar[0].get("direction") if similar else None,
+        "suggested_direction": ranked_similar[0].get("direction") if ranked_similar else None,
         "importance": importance,
     }
 
-    best = similar[0]
+    best = ranked_similar[0]
     if best.get("similarity", 0) < min_sim:
         return None, None, None
 
     min_cluster_wr = float(strategy.get("min_cluster_win_rate", 0.45))
     if cluster_wr is not None and cluster_wr < min_cluster_wr:
         return None, None, None
+
+    min_win_ratio = float(strategy.get("min_similar_win_ratio", 0))
+    if min_win_ratio > 0 and similar:
+        wins = sum(1 for item in similar if item.get("result") == "win")
+        if wins / len(similar) < min_win_ratio:
+            return None, None, None
 
     direction = best.get("direction") or detail.get("suggested_direction")
     if direction not in ("long", "short"):
@@ -625,6 +637,9 @@ def match_entry_from_inspection(
 
     ref_setup = next((s for s in train_setups if s.get("id") == best.get("setup_id")), None)
     if not ref_setup:
+        return None, None, None
+
+    if strategy.get("require_winning_reference") and best.get("result") != "win":
         return None, None, None
 
     sim = float(best.get("similarity", 0))

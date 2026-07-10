@@ -603,6 +603,42 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   min-height: 0;
   overflow: hidden;
 }
+.panel-bt-controls .strategy-intro { margin-bottom: 12px; }
+.bt-sidebar-summary {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #0b0f14;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.bt-sidebar-summary.pass {
+  border-color: #166534;
+  background: #0f1f14;
+  color: #86efac;
+}
+.bt-sidebar-summary.fail {
+  border-color: #854d0e;
+  background: #1f1a0d;
+  color: #fde68a;
+}
+.bt-saved-list-wide {
+  max-height: none;
+  flex: 1;
+  min-height: 120px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
+  align-content: start;
+}
+.bt-saved-list-wide .setup-item { margin-bottom: 0; }
+.bt-panel-hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
 .bt-saved-list { max-height: 120px; flex: 1; min-height: 60px; }
 .bt-save-name {
   display: block;
@@ -805,7 +841,6 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   background: rgba(11, 15, 20, 0.88); border: 1px solid var(--border);
   color: #cbd5e1; pointer-events: none;
 }
-.chart-wrap { position: relative; }
 
 .detection-settings {
   margin: 0 12px 8px; border: 1px solid var(--border); border-radius: 8px; background: #0b0f14;
@@ -844,6 +879,13 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .trades-wrap { max-height: 200px; overflow-y: auto; }
 
 .criteria-list { margin: 0; padding-left: 18px; font-size: 11px; color: var(--muted); line-height: 1.6; }
+.criteria-list-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  list-style: none;
+  padding-left: 0;
+}
 .criteria-list .met { color: #86efac; }
 
 .tree-details { margin-top: 8px; }
@@ -870,6 +912,26 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+.chart-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.chart-area.bt-workspace-open .chart-body {
+  flex: 1 1 52%;
+  min-height: 200px;
+}
+.chart-area.bt-workspace-collapsed .chart-body {
+  flex: 1;
+}
+.chart-area.bt-workspace-collapsed .bt-workspace-body {
+  display: none;
+}
+.chart-area.bt-workspace-collapsed .bt-ws-collapse {
+  transform: rotate(-90deg);
 }
 .chart-toolbar {
   display: flex;
@@ -950,7 +1012,7 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 
 .chart-wrap {
   flex: 1;
-  min-height: 280px;
+  min-height: 180px;
   position: relative;
   overflow: hidden;
 }
@@ -989,7 +1051,143 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 }
 .chart-wrap.dragging-level .level-drag-zone { cursor: grabbing; }
 
-.chart-rsi { height: 120px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.chart-rsi { height: 110px; border-top: 1px solid var(--border); flex-shrink: 0; }
+
+/* Backtest workspace — panel dưới chart */
+.bt-workspace {
+  flex: 0 0 42%;
+  min-height: 220px;
+  max-height: 55vh;
+  display: flex;
+  flex-direction: column;
+  border-top: 2px solid var(--border-strong);
+  background: var(--panel-elevated);
+  min-width: 0;
+}
+.bt-workspace-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 0;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.bt-workspace-tabs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+}
+.bt-ws-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+.bt-ws-tab:hover { color: var(--text); }
+.bt-ws-tab.active {
+  color: #93c5fd;
+  border-bottom-color: var(--accent);
+}
+.bt-ws-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  vertical-align: middle;
+}
+.bt-ws-collapse {
+  flex-shrink: 0;
+  margin-bottom: 4px;
+}
+.bt-workspace-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.bt-workspace-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 14px;
+  display: none;
+}
+.bt-workspace-panel.active { display: flex; flex-direction: column; }
+#btPanelResults.active,
+#btPanelCompare.active { display: block; }
+#btPanelLibrary.active { display: flex; }
+.bt-workspace-panel .stat-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.bt-workspace-panel .stat-grid-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.trades-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #0b0f14;
+}
+.trades-table-wrap .mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.trades-table-wrap .mini-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #121820;
+}
+.trades-table-wrap .mini-table th,
+.trades-table-wrap .mini-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.trades-table-wrap .mini-table tbody tr {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.trades-table-wrap .mini-table tbody tr:hover { background: #0f141c; }
+.trades-table-wrap .mini-table tbody tr.selected {
+  background: #1a1530;
+  box-shadow: inset 3px 0 0 var(--edit);
+}
+.trades-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+.trades-table-toolbar h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+@media (max-width: 1100px) {
+  .bt-workspace-panel .stat-grid,
+  .bt-workspace-panel .stat-grid-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .bt-workspace { flex-basis: 45%; max-height: 50vh; }
+}
 
 @media (max-width: 960px) {
   .layout { flex-direction: column; }

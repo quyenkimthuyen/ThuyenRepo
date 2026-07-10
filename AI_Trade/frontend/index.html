@@ -6,7 +6,7 @@
   <title>AI Trade Lab — EURUSD 1H</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/app.css?v=21">
+  <link rel="stylesheet" href="/static/css/app.css?v=23">
 </head>
 <body>
   <noscript>
@@ -213,32 +213,16 @@
         </div>
 
         <div id="viewBacktest" class="sidebar-view hidden" role="tabpanel">
-          <section class="panel panel-strategy">
+          <section class="panel panel-strategy panel-bt-controls">
             <h2>Backtest</h2>
-            <p class="strategy-intro">Chọn <strong>chiến lược train</strong> — app tự gợi ý năm BT walk-forward (train 2022 → BT 2023, train 2024 → BT 2024).</p>
+            <p class="strategy-intro">Chọn chiến lược và năm — kết quả chi tiết hiển thị ở <strong>panel dưới chart</strong>.</p>
             <label class="bt-save-name">Chiến lược từ
               <select id="btStrategyPeriod" class="train-period-select"></select>
             </label>
             <div class="bt-year-picker" id="btYearPicker" role="group" aria-label="Chọn năm backtest"></div>
-            <label class="bt-save-name">Tên lưu <input id="btSaveName" type="text" placeholder="VD: 2023+2024 rejection only"></label>
+            <label class="bt-save-name">Tên lưu <input id="btSaveName" type="text" placeholder="VD: 2024 walk-forward"></label>
             <button type="button" class="btn primary block" id="btnBacktest">Chạy backtest</button>
-            <div id="btResults" class="strategy-results scroll-panel strategy-results-compact"></div>
-            <div class="bt-library-section">
-              <div class="setup-list-head">
-                <span>Đã lưu</span>
-                <span class="count-badge" id="btSavedCount">0</span>
-                <span class="list-hint">☑ so sánh · click xem chart</span>
-              </div>
-              <ul id="btSavedList" class="setup-list bt-saved-list scroll-panel"></ul>
-            </div>
-            <div id="btCompare" class="bt-compare-panel scroll-panel"></div>
-            <div class="trade-list-section">
-              <div class="setup-list-head">
-                <span>Lệnh trên chart</span>
-                <span class="count-badge" id="btCount">0</span>
-              </div>
-              <ul id="btTradeList" class="setup-list trade-list scroll-panel"></ul>
-            </div>
+            <div id="btSidebarSummary" class="bt-sidebar-summary muted">Chưa có kết quả — bấm Chạy backtest.</div>
           </section>
         </div>
         </div>
@@ -296,17 +280,48 @@
           </div>
         </details>
         <div id="chartHoverHint" class="chart-hover-hint hidden"></div>
-        <div class="chart-wrap">
-          <div id="chartMain" class="chart-main"></div>
-          <div id="chartOverlayHint" class="chart-overlay-hint hidden"></div>
+        <div class="chart-body">
+          <div class="chart-wrap">
+            <div id="chartMain" class="chart-main"></div>
+            <div id="chartOverlayHint" class="chart-overlay-hint hidden"></div>
+          </div>
+          <div id="chartRsi" class="chart-rsi"></div>
         </div>
-        <div id="chartRsi" class="chart-rsi"></div>
+
+        <div id="btWorkspace" class="bt-workspace hidden" aria-label="Backtest workspace">
+          <div class="bt-workspace-head">
+            <nav class="bt-workspace-tabs" role="tablist" aria-label="Backtest panels">
+              <button type="button" class="bt-ws-tab active" data-bt-panel="results" role="tab" aria-selected="true">
+                Kết quả
+              </button>
+              <button type="button" class="bt-ws-tab" data-bt-panel="trades" role="tab">
+                Lệnh <span class="count-badge bt-ws-badge" id="btCount">0</span>
+              </button>
+              <button type="button" class="bt-ws-tab" data-bt-panel="library" role="tab">
+                Đã lưu <span class="count-badge bt-ws-badge" id="btSavedCount">0</span>
+              </button>
+              <button type="button" class="bt-ws-tab" data-bt-panel="compare" role="tab">
+                So sánh
+              </button>
+            </nav>
+            <button type="button" class="btn tiny bt-ws-collapse" id="btnBtWorkspaceCollapse" title="Thu gọn panel">▼</button>
+          </div>
+          <div class="bt-workspace-body">
+            <div id="btPanelResults" class="bt-workspace-panel active" role="tabpanel"></div>
+            <div id="btPanelTrades" class="bt-workspace-panel hidden" role="tabpanel"></div>
+            <div id="btPanelLibrary" class="bt-workspace-panel hidden" role="tabpanel">
+              <p class="bt-panel-hint">☑ chọn để so sánh · click để xem trên chart</p>
+              <ul id="btSavedList" class="setup-list bt-saved-list bt-saved-list-wide"></ul>
+            </div>
+            <div id="btPanelCompare" class="bt-workspace-panel hidden" role="tabpanel"></div>
+          </div>
+        </div>
       </section>
     </main>
   </div>
 
   <script type="module">
-    import('/static/js/app.js?v=22').catch((err) => {
+    import('/static/js/app.js?v=23').catch((err) => {
       console.error('Module load failed:', err);
       const box = document.createElement('div');
       box.style.cssText = 'padding:20px;color:#fecaca;background:#3f1212;font-size:14px;line-height:1.5';
