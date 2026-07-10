@@ -154,6 +154,11 @@ def filter_setups_for_train(
     return [s for s in setups if normalize_setup_period(s.get("period")) == target]
 
 
+def period_exists(period: str) -> bool:
+    period = resolve_period(period)
+    return period in load_splits()["periods"]
+
+
 def backtest_label(period_ids: list[str]) -> str:
     years = []
     for pid in period_ids:
