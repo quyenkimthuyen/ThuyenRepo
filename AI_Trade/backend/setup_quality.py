@@ -149,16 +149,18 @@ def _too_close(
 def curate_train_setups(
     setups: list[dict[str, Any]] | None = None,
     *,
+    train_period: str | None = None,
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Pick top-quality setups spread across the year."""
     from .labels import load_setups
+    from .periods import default_train_period, filter_setups_for_train, resolve_period
 
     cfg = config or _cfg()
-    from .periods import filter_setups_for_train
-
+    period = resolve_period(train_period or default_train_period())
     train = filter_setups_for_train(
         setups if setups is not None else load_setups(),
+        period,
     )
     annotations = load_bar_annotations()
     ann_by_id = {a["id"]: a for a in annotations}
@@ -200,6 +202,7 @@ def curate_train_setups(
         "selected": selected,
         "rejected": rejected,
         "selected_ids": list(selected_ids),
+        "train_period": period,
         "stats": {
             "before": len(train),
             "after": len(selected),
@@ -234,29 +237,41 @@ def curate_bar_annotations(
     return kept, rejected
 
 
-def apply_curation(*, dry_run: bool = False) -> dict[str, Any]:
-    """Archive rejected labels and persist curated train set."""
+def apply_curation(*, dry_run: bool = False, train_period: str | None = None) -> dict[str, Any]:
+    """Archive rejected labels and persist curated train set for one train year."""
     from .labels import load_setups, save_setups
+    from .periods import default_train_period, normalize_setup_period, resolve_period
 
-    result = curate_train_setups()
+    period = resolve_period(train_period or default_train_period())
+    result = curate_train_setups(train_period=period)
     selected = result["selected"]
     rejected = result["rejected"]
 
     selected_ids = {s["id"] for s in selected}
     selected_ann_ids = {s.get("annotation_id") for s in selected if s.get("annotation_id")}
 
-    from .periods import is_train_period, normalize_setup_period
-
     all_setups = load_setups()
-    non_train = [s for s in all_setups if not is_train_period(normalize_setup_period(s.get("period")))]
-    new_setups = non_train + selected
+    other_setups = [
+        s for s in all_setups if normalize_setup_period(s.get("period")) != period
+    ]
+    new_setups = other_setups + selected
 
     all_ann = load_bar_annotations()
-    kept_ann, rejected_ann = curate_bar_annotations(selected_ids, selected_ann_ids, all_ann)
+    other_ann = [
+        a for a in all_ann if normalize_setup_period(a.get("period")) != period
+    ]
+    period_ann = [
+        a for a in all_ann if normalize_setup_period(a.get("period")) == period
+    ]
+    kept_ann, rejected_ann = curate_bar_annotations(
+        selected_ids, selected_ann_ids, period_ann
+    )
+    new_ann = other_ann + kept_ann
 
     report = {
         **result["stats"],
-        "annotations_before": len(all_ann),
+        "train_period": period,
+        "annotations_before": len(period_ann),
         "annotations_after": len(kept_ann),
         "dry_run": dry_run,
     }
@@ -264,14 +279,18 @@ def apply_curation(*, dry_run: bool = False) -> dict[str, Any]:
     if dry_run:
         return report
 
+    archive_suffix = period.replace("train_", "")
+    setups_archive = SETUPS_ARCHIVE_PATH.parent / f"setups_archive_{archive_suffix}.json"
+    bar_archive = BAR_ARCHIVE_PATH.parent / f"bar_annotations_archive_{archive_suffix}.json"
+
     SETUPS_ARCHIVE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    SETUPS_ARCHIVE_PATH.write_text(
-        json.dumps({"setups": rejected, "archived_at": pd.Timestamp.utcnow().isoformat()}, indent=2),
+    setups_archive.write_text(
+        json.dumps({"setups": rejected, "archived_at": pd.Timestamp.utcnow().isoformat(), "period": period}, indent=2),
         encoding="utf-8",
     )
-    BAR_ARCHIVE_PATH.write_text(
+    bar_archive.write_text(
         json.dumps(
-            {"annotations": rejected_ann, "archived_at": pd.Timestamp.utcnow().isoformat()},
+            {"annotations": rejected_ann, "archived_at": pd.Timestamp.utcnow().isoformat(), "period": period},
             indent=2,
         ),
         encoding="utf-8",

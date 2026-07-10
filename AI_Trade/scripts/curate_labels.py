@@ -12,23 +12,28 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from backend.setup_quality import apply_curation, curate_train_setups
+from backend.periods import default_train_period, resolve_period
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Curate EURUSD train labels")
+    parser.add_argument("--period", default=None, help="Train period id (default: train_2022)")
     parser.add_argument("--dry-run", action="store_true", help="Preview only, do not write files")
     parser.add_argument("--preview", action="store_true", help="Show selection stats")
     args = parser.parse_args()
 
+    train_period = resolve_period(args.period or default_train_period())
+
     if args.preview or args.dry_run:
-        preview = curate_train_setups()
+        preview = curate_train_setups(train_period=train_period)
         stats = preview["stats"]
+        stats["train_period"] = train_period
         print(json.dumps(stats, indent=2))
         if args.dry_run:
             print("\n[dry-run] Không ghi file.")
             return
 
-    report = apply_curation(dry_run=args.dry_run)
+    report = apply_curation(dry_run=args.dry_run, train_period=train_period)
     print("Curation complete:")
     print(json.dumps(report, indent=2))
 
