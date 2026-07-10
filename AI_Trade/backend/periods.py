@@ -159,6 +159,21 @@ def period_exists(period: str) -> bool:
     return period in load_splits()["periods"]
 
 
+def suggested_backtest_period(train_period: str) -> str:
+    """Walk-forward: train year N → backtest year N+1 when available."""
+    train_period = resolve_period(train_period)
+    year = period_config(train_period).get("year")
+    if year is None:
+        return default_backtest_periods()[0]
+    next_year = f"bt_{int(year) + 1}"
+    if period_exists(next_year):
+        return next_year
+    same_year = f"bt_{int(year)}"
+    if period_exists(same_year):
+        return same_year
+    return default_backtest_periods()[0]
+
+
 def backtest_label(period_ids: list[str]) -> str:
     years = []
     for pid in period_ids:

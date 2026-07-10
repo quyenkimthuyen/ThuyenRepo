@@ -14,22 +14,23 @@ import {
   getMonths,
   getPresets,
   getSetups,
+  getStrategies,
   inspectBar,
   saveBarAnnotation,
   saveBarDetectionConfig,
   saveSetup,
   suggestTags,
   updateSetup,
-} from './api.js?v=20';
+} from './api.js?v=21';
 import {
   renderAnalyzeView,
   renderBacktestView,
   renderBacktestCompare,
   renderError,
   renderLoading,
-} from './strategy-ui.js?v=20';
-import { initSidebarResize } from './layout.js?v=20';
-import { TradeChart } from './chart.js?v=20';
+} from './strategy-ui.js?v=21';
+import { initSidebarResize } from './layout.js?v=21';
+import { TradeChart } from './chart.js?v=21';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -51,6 +52,7 @@ const state = {
   tagPresets: [],
   sidebarTab: 'label',
   btSelectedPeriods: ['bt_2023'],
+  btStrategyPeriod: 'train_2024',
   btCache: null,
   btRuns: [],
   activeBtRunId: null,
@@ -111,6 +113,7 @@ const els = {
   analyzeResults: document.getElementById('analyzeResults'),
   analyzeTrainPeriod: document.getElementById('analyzeTrainPeriod'),
   btYearPicker: document.getElementById('btYearPicker'),
+  btStrategyPeriod: document.getElementById('btStrategyPeriod'),
   btResults: document.getElementById('btResults'),
   btTradeList: document.getElementById('btTradeList'),
   btCount: document.getElementById('btCount'),
@@ -247,6 +250,24 @@ function defaultTrainPeriod() {
 
 function defaultBtPeriods() {
   return state.config?.period_groups?.defaults?.backtest || ['bt_2023'];
+}
+
+function suggestedBtPeriodForTrain(trainPeriod) {
+  const year = periodCfg(trainPeriod)?.year;
+  if (!year) return defaultBtPeriods()[0];
+  const next = `bt_${year + 1}`;
+  const ids = backtestPeriodIds();
+  if (ids.includes(next)) return next;
+  const same = `bt_${year}`;
+  if (ids.includes(same)) return same;
+  return defaultBtPeriods()[0];
+}
+
+function applySuggestedBtPeriod(trainPeriod) {
+  const suggested = suggestedBtPeriodForTrain(trainPeriod);
+  if (!suggested) return;
+  state.btSelectedPeriods = [suggested];
+  renderBtYearPicker();
 }
 
 function trainPeriodIds() {
@@ -1753,9 +1774,12 @@ async function restoreActiveBacktests() {
 function displayBacktestResults(data) {
   if (!els.btResults || !data) return;
   const label = data.period_label || data.period || 'Backtest';
+  const stratYear = data.train_year || periodShortLabel(data.train_period || state.btStrategyPeriod);
   els.btResults.innerHTML = renderBacktestView(data, {
     title: `Backtest ${label}`,
-    subtitle: data.name ? `「${data.name}」` : label,
+    subtitle: data.name
+      ? `「${data.name}」 · Chiến lược train ${stratYear}`
+      : `Chiến lược train ${stratYear}`,
   });
 }
 
@@ -1855,10 +1879,12 @@ function renderBtComparePanel() {
 
 async function runAnalyze() {
   const trainPeriod = els.analyzeTrainPeriod?.value || state.trainPeriod;
-  els.analyzeResults.innerHTML = renderLoading(`Đang phân tích setup train ${periodShortLabel(trainPeriod)}...`);
+  els.analyzeResults.innerHTML = renderLoading(`Phân tích + tối ưu train ${periodShortLabel(trainPeriod)}...`);
   try {
-    const data = await analyze(trainPeriod);
+    const data = await analyze(trainPeriod, { optimize: true });
     els.analyzeResults.innerHTML = renderAnalyzeView(data);
+    await loadStrategies();
+    renderBtStrategySelect();
   } catch (e) {
     els.analyzeResults.innerHTML = renderError(e.message);
   }
@@ -1866,15 +1892,17 @@ async function runAnalyze() {
 
 async function runBt() {
   const periods = state.btSelectedPeriods.length ? state.btSelectedPeriods : defaultBtPeriods();
+  const trainPeriod = els.btStrategyPeriod?.value || state.btStrategyPeriod;
   if (!periods.length) {
     alert('Chọn ít nhất một năm backtest.');
     return;
   }
   const saveName = els.btSaveName?.value?.trim() || null;
   const label = periods.map(periodShortLabel).join(' + ');
-  els.btResults.innerHTML = renderLoading(`Đang chạy backtest ${label}...`);
+  const stratLabel = periodShortLabel(trainPeriod);
+  els.btResults.innerHTML = renderLoading(`Backtest ${label} · chiến lược train ${stratLabel}...`);
   try {
-    const data = await backtest(periods, { name: saveName, save: true });
+    const data = await backtest(periods, { name: saveName, save: true, trainPeriod });
     state.btCache = data;
     if (data.saved_run?.id) {
       state.activeBtRunId = data.saved_run.id;
@@ -1892,6 +1920,51 @@ async function runBt() {
     }
   } catch (e) {
     els.btResults.innerHTML = renderError(e.message);
+  }
+}
+
+function renderBtStrategySelect() {
+  if (!els.btStrategyPeriod) return;
+  const strategies = state.strategies || [];
+  els.btStrategyPeriod.innerHTML = '';
+
+  if (!strategies.length) {
+    for (const id of trainPeriodIds()) {
+      const opt = document.createElement('option');
+      opt.value = id;
+      opt.textContent = `Train ${periodShortLabel(id)} (chưa analyze)`;
+      if (id === state.btStrategyPeriod) opt.selected = true;
+      els.btStrategyPeriod.appendChild(opt);
+    }
+  } else {
+    for (const s of strategies) {
+      const opt = document.createElement('option');
+      opt.value = s.train_period;
+      const wr = s.win_rate_train != null ? ` · WR ${Math.round(s.win_rate_train * 100)}%` : '';
+      opt.textContent = `Train ${s.train_year || periodShortLabel(s.train_period)}${wr}`;
+      if (s.train_period === state.btStrategyPeriod) opt.selected = true;
+      els.btStrategyPeriod.appendChild(opt);
+    }
+  }
+
+  els.btStrategyPeriod.onchange = () => {
+    state.btStrategyPeriod = els.btStrategyPeriod.value;
+    applySuggestedBtPeriod(state.btStrategyPeriod);
+  };
+}
+
+async function loadStrategies() {
+  try {
+    const data = await getStrategies();
+    state.strategies = data.strategies || [];
+    if (state.strategies.length && !state.strategies.some((s) => s.train_period === state.btStrategyPeriod)) {
+      state.btStrategyPeriod = state.strategies[state.strategies.length - 1].train_period;
+    }
+    renderBtStrategySelect();
+    applySuggestedBtPeriod(state.btStrategyPeriod);
+  } catch (err) {
+    console.warn('Load strategies failed:', err);
+    renderBtStrategySelect();
   }
 }
 
@@ -2123,6 +2196,8 @@ async function loadAppData() {
     renderTagCheckboxes();
     renderPeriodTabs();
     renderBtYearPicker();
+    renderBtStrategySelect();
+    await loadStrategies();
     renderAnalyzeTrainSelect();
     if (state.config?.periods?.[state.period]) {
       els.periodBadge.textContent = state.config.periods[state.period].label;

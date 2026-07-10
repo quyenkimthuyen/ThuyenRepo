@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .analyzer import analyze_patterns, load_strategy
+from .analyzer import analyze_patterns, list_strategies, load_strategy
 from .optimizer import analyze_and_optimize
 from .backtest import run_backtest
 from .bt_store import compare_runs, delete_run, get_run, list_runs, rename_run, save_run
@@ -401,15 +401,25 @@ def analyze(optimize: bool = False, train_period: str | None = None):
 
 
 @app.post("/api/optimize")
-def optimize():
+def optimize(train_period: str | None = None, period: str | None = None):
     from .optimizer import optimize_on_validation
 
-    return optimize_on_validation()
+    train_period = resolve_period(train_period) if train_period else None
+    if period:
+        period = resolve_period(period)
+    return optimize_on_validation(train_period=train_period, period=period)
+
+
+@app.get("/api/strategies")
+def list_saved_strategies():
+    items = list_strategies()
+    return {"strategies": items, "count": len(items)}
 
 
 @app.get("/api/strategy")
-def strategy():
-    s = load_strategy()
+def strategy(train_period: str | None = None):
+    train_period = resolve_period(train_period) if train_period else None
+    s = load_strategy(train_period)
     if not s:
         raise HTTPException(404, "No strategy yet")
     return s
@@ -464,6 +474,7 @@ def remove_backtest_run(run_id: str):
 def backtest(
     period: str | None = None,
     periods: str | None = None,
+    train_period: str | None = None,
     name: str | None = None,
     save: bool = True,
 ):
@@ -471,7 +482,16 @@ def backtest(
     for pid in period_list:
         if not period_exists(pid):
             raise HTTPException(400, f"Unknown period: {pid}")
-    result = run_backtest(periods=period_list)
+    strategy = None
+    if train_period:
+        train_period = resolve_period(train_period)
+        strategy = load_strategy(train_period)
+        if not strategy:
+            raise HTTPException(
+                400,
+                f"Chưa có chiến lược cho {train_period}. Chạy Analyze với năm train đó trước.",
+            )
+    result = run_backtest(periods=period_list, strategy=strategy)
     period_key = result.get("period") or ",".join(period_list)
     if save and result.get("status") == "ok":
         saved = save_run(result, name=name, period=period_key)

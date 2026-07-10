@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -461,6 +462,7 @@ def analyze_patterns(min_setups: int = 5, train_period: str | None = None) -> di
     win_rate = float(df["win"].mean())
     avg_rr = float(train_df_rr(train))
     tag_info = _tag_insights(train)
+    preferred_tags = tag_info.get("preferred_tags") or []
     extra = annotations_as_learning_samples()
     coverage = _tag_coverage(train)
     tag_signatures = build_tag_signatures(train, extra_samples=extra)
@@ -508,9 +510,9 @@ def analyze_patterns(min_setups: int = 5, train_period: str | None = None) -> di
         "backtest_min_score": 78 if win_rate >= 0.55 else int(det_cfg.get("backtest_min_score", 35)),
         "bar_tag_threshold": 0.58 if win_rate >= 0.55 else float(det_cfg.get("bar_tag_threshold", 0.45)),
         "entry_cooldown_bars": 36 if win_rate >= 0.55 else 12,
-        "preferred_entry_tags": ["rejection"] if win_rate >= 0.55 else [],
+        "preferred_entry_tags": preferred_tags[:2] if win_rate >= 0.55 else [],
         "require_detected_tag": True,
-        "require_sequence_tag": True if win_rate >= 0.55 else bool(det_cfg.get("require_sequence_tag", False)),
+        "require_sequence_tag": False,
         "tag_coverage": coverage,
         "tag_signatures": tag_signatures,
         "sequence_signatures": sequence_signatures,
@@ -524,7 +526,7 @@ def analyze_patterns(min_setups: int = 5, train_period: str | None = None) -> di
     }
 
     STRATEGY_PATH.parent.mkdir(parents=True, exist_ok=True)
-    STRATEGY_PATH.write_text(json.dumps(strategy, indent=2), encoding="utf-8")
+    save_strategy(strategy, train_period=train_period)
 
     feature_insights = []
     for col in feature_cols:
@@ -578,7 +580,73 @@ def train_df_rr(setups: list[dict[str, Any]]) -> float:
     return float(np.mean(vals)) if vals else 2.0
 
 
-def load_strategy() -> dict[str, Any] | None:
-    if not STRATEGY_PATH.exists():
-        return None
-    return json.loads(STRATEGY_PATH.read_text(encoding="utf-8"))
+def strategy_path_for(train_period: str | None = None) -> Path:
+    from .periods import default_train_period, resolve_period
+
+    period = resolve_period(train_period or default_train_period())
+    return STRATEGY_PATH.parent / f"{period}.json"
+
+
+def save_strategy(strategy: dict[str, Any], *, train_period: str | None = None) -> Path:
+    period = strategy.get("train_period") or train_period
+    path = strategy_path_for(period) if period else STRATEGY_PATH
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(strategy, indent=2), encoding="utf-8")
+    STRATEGY_PATH.write_text(json.dumps(strategy, indent=2), encoding="utf-8")
+    return path
+
+
+def list_strategies() -> list[dict[str, Any]]:
+    from .periods import default_train_period, period_config, resolve_period
+
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for path in sorted(STRATEGY_PATH.parent.glob("*.json")):
+        if path.name == "latest.json":
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            continue
+        period = data.get("train_period") or path.stem
+        period = resolve_period(period)
+        if period in seen:
+            continue
+        seen.add(period)
+        out.append(
+            {
+                "train_period": period,
+                "train_year": data.get("train_year") or period_config(period).get("year"),
+                "path": str(path),
+                "win_rate_train": data.get("win_rate_train"),
+                "source_setups": data.get("source_setups"),
+                "updated_at": path.stat().st_mtime,
+            }
+        )
+    out.sort(key=lambda s: s.get("train_year") or 0)
+    if not out and STRATEGY_PATH.exists():
+        data = json.loads(STRATEGY_PATH.read_text(encoding="utf-8"))
+        period = resolve_period(data.get("train_period") or default_train_period())
+        out.append(
+            {
+                "train_period": period,
+                "train_year": data.get("train_year"),
+                "path": str(STRATEGY_PATH),
+                "win_rate_train": data.get("win_rate_train"),
+                "source_setups": data.get("source_setups"),
+                "updated_at": STRATEGY_PATH.stat().st_mtime,
+            }
+        )
+    return out
+
+
+def load_strategy(train_period: str | None = None) -> dict[str, Any] | None:
+    from .periods import default_train_period, resolve_period
+
+    if train_period:
+        path = strategy_path_for(train_period)
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8"))
+    if STRATEGY_PATH.exists():
+        return json.loads(STRATEGY_PATH.read_text(encoding="utf-8"))
+    return None

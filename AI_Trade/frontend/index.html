@@ -6,7 +6,7 @@
   <title>AI Trade Lab — EURUSD 1H</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/app.css?v=20">
+  <link rel="stylesheet" href="/static/css/app.css?v=21">
 </head>
 <body>
   <noscript>
@@ -203,11 +203,11 @@
         <div id="viewAnalyze" class="sidebar-view hidden" role="tabpanel">
           <section class="panel panel-strategy">
             <h2>Phân tích chiến lược</h2>
-            <p class="strategy-intro">Học <strong>signature</strong> từ setup train của năm đã chọn — mỗi năm train có thể có chiến lược riêng.</p>
+            <p class="strategy-intro">Học <strong>signature</strong> từ setup train và <strong>tự tối ưu</strong> tham số trên năm validation (walk-forward).</p>
             <label class="bt-save-name">Năm train
               <select id="analyzeTrainPeriod" class="train-period-select"></select>
             </label>
-            <button type="button" class="btn primary block" id="btnAnalyze">Chạy phân tích</button>
+            <button type="button" class="btn primary block" id="btnAnalyze">Phân tích + tối ưu</button>
             <div id="analyzeResults" class="strategy-results scroll-panel"></div>
           </section>
         </div>
@@ -215,7 +215,10 @@
         <div id="viewBacktest" class="sidebar-view hidden" role="tabpanel">
           <section class="panel panel-strategy">
             <h2>Backtest</h2>
-            <p class="strategy-intro">Chọn một hoặc nhiều năm để chạy backtest. Kết quả tự lưu — đặt tên và so sánh giữa các lần chạy.</p>
+            <p class="strategy-intro">Chọn <strong>chiến lược train</strong> — app tự gợi ý năm BT walk-forward (train 2022 → BT 2023, train 2024 → BT 2024).</p>
+            <label class="bt-save-name">Chiến lược từ
+              <select id="btStrategyPeriod" class="train-period-select"></select>
+            </label>
             <div class="bt-year-picker" id="btYearPicker" role="group" aria-label="Chọn năm backtest"></div>
             <label class="bt-save-name">Tên lưu <input id="btSaveName" type="text" placeholder="VD: 2023+2024 rejection only"></label>
             <button type="button" class="btn primary block" id="btnBacktest">Chạy backtest</button>
@@ -303,7 +306,7 @@
   </div>
 
   <script type="module">
-    import('/static/js/app.js?v=20').catch((err) => {
+    import('/static/js/app.js?v=22').catch((err) => {
       console.error('Module load failed:', err);
       const box = document.createElement('div');
       box.style.cssText = 'padding:20px;color:#fecaca;background:#3f1212;font-size:14px;line-height:1.5';

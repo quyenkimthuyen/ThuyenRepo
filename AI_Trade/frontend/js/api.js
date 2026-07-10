@@ -36,10 +36,11 @@ export const getSetups = ({ month = null, summary = true, period = null } = {}) 
 export const saveSetup = (body) => api('/api/setups', { method: 'POST', body: JSON.stringify(body) });
 export const updateSetup = (id, body) => api(`/api/setups/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
 export const deleteSetup = (id) => api(`/api/setups/${id}`, { method: 'DELETE' });
-export const analyze = (trainPeriod = null) =>
-  api(`/api/analyze${qs({ train_period: trainPeriod })}`, { method: 'POST' });
-export const backtest = (periods, { name = null, save = true } = {}) =>
-  api(`/api/backtest${qs({ periods, name, save })}`, { method: 'POST' });
+export const analyze = (trainPeriod = null, { optimize = true } = {}) =>
+  api(`/api/analyze${qs({ train_period: trainPeriod, optimize })}`, { method: 'POST' });
+export const getStrategies = () => api('/api/strategies');
+export const backtest = (periods, { name = null, save = true, trainPeriod = null } = {}) =>
+  api(`/api/backtest${qs({ periods, name, save, train_period: trainPeriod })}`, { method: 'POST' });
 export const getBacktests = (period = null) => api(`/api/backtests${qs({ period })}`);
 export const getBacktest = (id) => api(`/api/backtests/${encodeURIComponent(id)}`);
 export const compareBacktests = (ids) =>

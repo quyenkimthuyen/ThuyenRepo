@@ -285,6 +285,7 @@ def run_backtest(
     *,
     period: str | None = None,
     strategy: dict[str, Any] | None = None,
+    bar_stride: int = 1,
 ) -> dict[str, Any]:
     strategy = strategy or load_strategy()
     if not strategy:
@@ -302,7 +303,8 @@ def run_backtest(
     trades: list[dict[str, Any]] = []
     cooldown_until = 0
     entry_cooldown = int(strategy.get("entry_cooldown_bars", 24))
-    for i in range(200, len(df) - 1):
+    stride = max(1, int(bar_stride or 1))
+    for i in range(200, len(df) - 1, stride):
         if i < cooldown_until:
             continue
         row = df.iloc[i]
@@ -345,6 +347,8 @@ def run_backtest(
         "periods": period_list,
         "period_label": backtest_label(period_list),
         "strategy": strategy.get("name"),
+        "train_period": strategy.get("train_period"),
+        "train_year": strategy.get("train_year"),
         "rule_mode": strategy.get("rule_mode", "global"),
         "risk": strategy.get("risk"),
         "metrics": metrics,

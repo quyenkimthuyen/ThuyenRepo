@@ -310,6 +310,50 @@ function renderPipelineBlock(data) {
   `;
 }
 
+function renderOptimizationBlock(data) {
+  const opt = data.optimization;
+  const base = data.baseline_metrics || opt?.baseline;
+  const tuned = data.optimized_metrics || opt?.optimized_metrics;
+  if (!base && !tuned) return '';
+
+  const valPeriod = data.validation_period || opt?.validation_period;
+  const pass = data.optimization_pass ?? opt?.pass;
+  const params = data.best_params || opt?.best_params;
+
+  const row = (label, m) => {
+    if (!m) return '';
+    return statGrid([
+      { label: 'Lệnh', value: String(m.trades ?? 0) },
+      { label: 'Win rate', value: pct(m.win_rate), cls: (m.win_rate || 0) >= 0.35 ? 'good' : '' },
+      { label: 'PF', value: num(m.profit_factor, 2), cls: (m.profit_factor || 0) >= 1.3 ? 'good' : 'bad' },
+      { label: 'DD', value: `${num(m.max_drawdown_pips, 1)} pips`, cls: (m.max_drawdown_pips || 0) <= 250 ? 'good' : 'bad' },
+      { label: 'Pass', value: m.pass ? '✓' : '✗', cls: m.pass ? 'good' : 'bad' },
+    ]);
+  };
+
+  return `
+    <section class="result-section">
+      <h3>Tối ưu tham số (validation)</h3>
+      ${banner(
+        pass ? 'ok' : 'warn',
+        pass ? 'Đạt tiêu chí validation' : 'Chưa đạt tiêu chí validation',
+        valPeriod
+          ? `Tự động tinh chỉnh trên ${esc(valPeriod)} — PF ≥ 1.3, DD ≤ 250 pips, ≥ 30 lệnh.`
+          : 'Tự động tinh chỉnh tham số entry.',
+      )}
+      <p class="section-note"><strong>Trước tối ưu</strong></p>
+      ${row('baseline', base)}
+      <p class="section-note"><strong>Sau tối ưu</strong></p>
+      ${row('optimized', tuned)}
+      ${
+        params
+          ? `<details class="tree-details"><summary>Tham số đã chọn</summary><pre class="tree-pre">${esc(JSON.stringify(params, null, 2))}</pre></details>`
+          : ''
+      }
+    </section>
+  `;
+}
+
 export function renderAnalyzeView(data) {
   if (!data) return '<p class="muted">Chưa có kết quả.</p>';
 
@@ -373,6 +417,8 @@ export function renderAnalyzeView(data) {
     ${renderRiskBlock(data.risk)}
     ${renderTagTable(data.tag_insights)}
     ${renderFeatureInsights(data.feature_insights)}
+
+    ${renderOptimizationBlock(data)}
 
     ${
       data.tree_summary
