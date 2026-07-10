@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from .analyzer import analyze_patterns, load_strategy
 from .optimizer import analyze_and_optimize
 from .backtest import run_backtest
+from .bt_store import compare_runs, delete_run, get_run, list_runs, rename_run, save_run
 from .data_service import candles_to_records, load_candles, load_splits, slice_period, slice_month, months_for_period, filter_records_by_month, month_bounds
 from .indicators import add_indicators
 from .labels import create_setup, delete_setup, enrich_setup, load_setups, setup_summary, update_setup
@@ -98,6 +99,16 @@ class BarAnnotationIn(BaseModel):
     auto_detected_tags: list[str] = Field(default_factory=list)
     score: float | None = None
     id: str | None = None
+
+
+class BacktestSaveIn(BaseModel):
+    name: str | None = None
+    period: str = "validation"
+    result: dict[str, Any]
+
+
+class BacktestRenameIn(BaseModel):
+    name: str
 
 
 @app.get("/api/health")
@@ -385,11 +396,60 @@ def strategy():
     return s
 
 
+@app.get("/api/backtests")
+def get_backtests(period: str | None = None):
+    return {"runs": list_runs(period=period)}
+
+
+@app.get("/api/backtests/compare")
+def get_backtest_compare(ids: str):
+    run_ids = [x.strip() for x in ids.split(",") if x.strip()]
+    if not run_ids:
+        raise HTTPException(400, "Cần ít nhất 1 id")
+    return compare_runs(run_ids)
+
+
+@app.get("/api/backtests/{run_id}")
+def get_backtest_run(run_id: str):
+    run = get_run(run_id)
+    if not run:
+        raise HTTPException(404, "Không tìm thấy backtest")
+    return run
+
+
+@app.post("/api/backtests")
+def store_backtest(body: BacktestSaveIn):
+    try:
+        return save_run(body.result, name=body.name, period=body.period)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.patch("/api/backtests/{run_id}")
+def patch_backtest_run(run_id: str, body: BacktestRenameIn):
+    try:
+        return rename_run(run_id, body.name)
+    except KeyError:
+        raise HTTPException(404, "Không tìm thấy backtest")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/backtests/{run_id}")
+def remove_backtest_run(run_id: str):
+    delete_run(run_id)
+    return {"deleted": run_id}
+
+
 @app.post("/api/backtest")
-def backtest(period: str = "validation"):
+def backtest(period: str = "validation", name: str | None = None, save: bool = True):
     if period not in load_splits()["periods"]:
         raise HTTPException(400, f"Unknown period: {period}")
-    return run_backtest(period)
+    result = run_backtest(period)
+    if save and result.get("status") == "ok":
+        saved = save_run(result, name=name, period=period)
+        return {**result, "saved_run": {"id": saved["id"], "name": saved["name"]}}
+    return result
 
 
 @app.get("/")

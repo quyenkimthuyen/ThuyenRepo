@@ -489,6 +489,54 @@ export function renderBacktestView(data, { title, subtitle }) {
   `;
 }
 
+export function renderBacktestCompare(runs) {
+  if (!runs?.length) {
+    return '<p class="muted section-note">Chọn ít nhất 1 kết quả đã lưu để so sánh.</p>';
+  }
+  return `
+    <section class="result-section bt-compare-section">
+      <h3>So sánh ${runs.length} backtest</h3>
+      <div class="mini-table-wrap">
+        <table class="mini-table bt-compare-table">
+          <thead>
+            <tr>
+              <th>Tên</th>
+              <th>Giai đoạn</th>
+              <th>Lệnh</th>
+              <th>Win%</th>
+              <th>PF</th>
+              <th>Expect.</th>
+              <th>Max DD</th>
+              <th>RR</th>
+              <th>Đạt</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${runs
+              .map((r) => {
+                const m = r.metrics || {};
+                const pass = m.pass === true;
+                const periodShort = r.period === 'validation' ? '2023' : r.period === 'test' ? '2024–26' : r.period;
+                return `<tr class="${pass ? 'row-win' : 'row-loss'}">
+                  <td><strong>${esc(r.name)}</strong></td>
+                  <td>${esc(periodShort)}</td>
+                  <td>${esc(r.trade_count ?? m.trades ?? '—')}</td>
+                  <td>${pct(m.win_rate)}</td>
+                  <td class="${Number(m.profit_factor) >= 1.3 ? 'good' : ''}">${num(m.profit_factor, 2)}</td>
+                  <td>${num(m.expectancy_pips, 1)}</td>
+                  <td class="${Number(m.max_drawdown_pips) <= 250 ? '' : 'bad'}">${num(m.max_drawdown_pips, 1)}</td>
+                  <td>${num(m.avg_rr, 2)}R</td>
+                  <td>${pass ? '✓' : '—'}</td>
+                </tr>`;
+              })
+              .join('')}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
 export function renderLoading(message = 'Đang xử lý...') {
   return `<div class="result-loading"><span class="spinner"></span> ${esc(message)}</div>`;
 }

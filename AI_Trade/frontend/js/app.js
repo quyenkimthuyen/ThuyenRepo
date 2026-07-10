@@ -1,8 +1,12 @@
 import {
   analyze,
   backtest,
+  compareBacktests,
+  deleteBacktestRun,
   deleteSetup,
   deleteBarAnnotation,
+  getBacktest,
+  getBacktests,
   getBarAnnotations,
   getCandles,
   getConfig,
@@ -16,15 +20,16 @@ import {
   saveSetup,
   suggestTags,
   updateSetup,
-} from './api.js?v=18';
+} from './api.js?v=19';
 import {
   renderAnalyzeView,
   renderBacktestView,
+  renderBacktestCompare,
   renderError,
   renderLoading,
-} from './strategy-ui.js?v=18';
-import { initSidebarResize } from './layout.js?v=18';
-import { TradeChart } from './chart.js?v=18';
+} from './strategy-ui.js?v=19';
+import { initSidebarResize } from './layout.js?v=19';
+import { TradeChart } from './chart.js?v=19';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -45,6 +50,9 @@ const state = {
   tagPresets: [],
   sidebarTab: 'label',
   btCache: { validation: null, test: null },
+  btRuns: [],
+  activeBtRunId: { validation: null, test: null },
+  compareBtIds: [],
   focusedTradeKey: null,
   focusedSetupId: null,
   showImportantBars: false,
@@ -105,6 +113,14 @@ const els = {
   btTestTradeList: document.getElementById('btTestTradeList'),
   btValCount: document.getElementById('btValCount'),
   btTestCount: document.getElementById('btTestCount'),
+  btValSavedList: document.getElementById('btValSavedList'),
+  btTestSavedList: document.getElementById('btTestSavedList'),
+  btValSavedCount: document.getElementById('btValSavedCount'),
+  btTestSavedCount: document.getElementById('btTestSavedCount'),
+  btValCompare: document.getElementById('btValCompare'),
+  btTestCompare: document.getElementById('btTestCompare'),
+  btValSaveName: document.getElementById('btValSaveName'),
+  btTestSaveName: document.getElementById('btTestSaveName'),
   pipelineHint: document.getElementById('pipelineHint'),
   pipelineBanner: document.getElementById('pipelineBanner'),
   sidebarTabs: document.querySelectorAll('.sidebar-tab'),
@@ -1635,6 +1651,161 @@ function switchSidebarTab(tabId, { syncPeriod = true } = {}) {
   }
 }
 
+async function loadBacktestRuns() {
+  try {
+    const data = await getBacktests();
+    state.btRuns = data.runs || [];
+    for (const period of ['validation', 'test']) {
+      if (!state.activeBtRunId[period]) {
+        const latest = state.btRuns.find((r) => r.period === period);
+        if (latest) state.activeBtRunId[period] = latest.id;
+      }
+    }
+    await restoreActiveBacktests();
+    renderBtSavedLists();
+    renderBtComparePanels();
+  } catch (err) {
+    console.warn('Load backtests failed:', err);
+  }
+}
+
+async function restoreActiveBacktests() {
+  for (const period of ['validation', 'test']) {
+    const id = state.activeBtRunId[period];
+    if (!id) continue;
+    if (state.btCache[period]?.id === id) continue;
+    try {
+      const run = await getBacktest(id);
+      if (run?.status === 'ok') {
+        state.btCache[period] = run;
+        displayBacktestResults(period, run);
+      }
+    } catch {
+      state.activeBtRunId[period] = null;
+    }
+  }
+  renderBtTradeLists();
+}
+
+function displayBacktestResults(period, data) {
+  const isVal = period === 'validation';
+  const outEl = isVal ? els.btValResults : els.btTestResults;
+  if (!outEl || !data) return;
+  outEl.innerHTML = renderBacktestView(data, {
+    title: isVal ? 'Backtest 2023' : 'Backtest 2024–26',
+    subtitle: data.name
+      ? `「${data.name}」`
+      : isVal
+        ? 'Validation 2023'
+        : 'Test out-of-sample',
+  });
+}
+
+function runsForPeriod(period) {
+  return (state.btRuns || []).filter((r) => r.period === period);
+}
+
+function renderBtSavedLists() {
+  renderBtSavedList('validation');
+  renderBtSavedList('test');
+}
+
+function renderBtSavedList(period) {
+  const isVal = period === 'validation';
+  const listEl = isVal ? els.btValSavedList : els.btTestSavedList;
+  const countEl = isVal ? els.btValSavedCount : els.btTestSavedCount;
+  if (!listEl) return;
+
+  const items = runsForPeriod(period);
+  if (countEl) countEl.textContent = String(items.length);
+  listEl.innerHTML = '';
+
+  if (!items.length) {
+    listEl.innerHTML =
+      '<li class="hint" style="padding:8px">Chưa lưu backtest. Chạy và đặt tên để lưu lại.</li>';
+    return;
+  }
+
+  for (const run of items) {
+    const li = document.createElement('li');
+    const m = run.metrics || {};
+    const active = state.activeBtRunId[period] === run.id;
+    const checked = state.compareBtIds.includes(run.id);
+    const pass = m.pass ? '✓' : '—';
+    li.className = `setup-item bt-saved-item${active ? ' selected' : ''}`;
+    li.innerHTML = `
+      <div class="bt-saved-top">
+        <input type="checkbox" class="bt-check" ${checked ? 'checked' : ''} title="Chọn so sánh">
+        <span class="bt-saved-name">${run.name || run.id}</span>
+        <button type="button" class="bt-saved-del" title="Xóa">✕</button>
+      </div>
+      <div class="setup-meta">${(run.created_at || '').slice(0, 16).replace('T', ' ')} · WR ${Math.round((m.win_rate || 0) * 100)}% · PF ${m.profit_factor ?? '—'} · ${pass}</div>
+    `;
+    li.querySelector('.bt-check')?.addEventListener('change', (e) => {
+      e.stopPropagation();
+      toggleCompareRun(run.id, e.target.checked);
+    });
+    li.querySelector('.bt-saved-del')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeBacktestRun(run.id);
+    });
+    li.onclick = () => activateBacktestRun(run.id);
+    listEl.appendChild(li);
+  }
+}
+
+function toggleCompareRun(runId, checked) {
+  const set = new Set(state.compareBtIds);
+  if (checked) set.add(runId);
+  else set.delete(runId);
+  state.compareBtIds = [...set];
+  renderBtSavedLists();
+  renderBtComparePanels();
+}
+
+async function removeBacktestRun(runId) {
+  if (!confirm('Xóa backtest đã lưu này?')) return;
+  await deleteBacktestRun(runId);
+  state.compareBtIds = state.compareBtIds.filter((id) => id !== runId);
+  for (const period of ['validation', 'test']) {
+    if (state.activeBtRunId[period] === runId) {
+      state.activeBtRunId[period] = null;
+      state.btCache[period] = null;
+    }
+  }
+  await loadBacktestRuns();
+}
+
+async function activateBacktestRun(runId) {
+  const summary = state.btRuns.find((r) => r.id === runId);
+  if (!summary) return;
+  const period = summary.period;
+  try {
+    const run = await getBacktest(runId);
+    state.btCache[period] = run;
+    state.activeBtRunId[period] = runId;
+    displayBacktestResults(period, run);
+    renderBtSavedLists();
+    renderBtTradeLists();
+    if (state.period === period) {
+      state.focusedTradeKey = null;
+      refreshChartAnnotations();
+    } else {
+      switchPeriod(period, { syncSidebar: false });
+      setSidebarTabUI(period === 'validation' ? 'validation' : 'test');
+    }
+  } catch (err) {
+    alert(`Không tải được backtest: ${err.message || err}`);
+  }
+}
+
+function renderBtComparePanels() {
+  const selected = state.btRuns.filter((r) => state.compareBtIds.includes(r.id));
+  const html = renderBacktestCompare(selected);
+  if (els.btValCompare) els.btValCompare.innerHTML = html;
+  if (els.btTestCompare) els.btTestCompare.innerHTML = html;
+}
+
 async function runAnalyze() {
   els.analyzeResults.innerHTML = renderLoading('Đang phân tích setup train...');
   try {
@@ -1648,17 +1819,19 @@ async function runAnalyze() {
 async function runBt(period) {
   const isVal = period === 'validation';
   const outEl = isVal ? els.btValResults : els.btTestResults;
+  const nameInput = isVal ? els.btValSaveName : els.btTestSaveName;
   const label = isVal ? 'Validation 2023' : 'Test 2024–2026';
+  const saveName = nameInput?.value?.trim() || null;
   outEl.innerHTML = renderLoading(`Đang chạy backtest ${label}...`);
   try {
-    const data = await backtest(period);
+    const data = await backtest(period, { name: saveName, save: true });
     state.btCache[period] = data;
-    outEl.innerHTML = renderBacktestView(data, {
-      title: isVal ? 'Backtest 2023' : 'Backtest 2024–26',
-      subtitle: isVal
-        ? 'Dùng để tinh chỉnh chiến lược trước khi test out-of-sample.'
-        : 'Kết quả out-of-sample — không nên optimize thêm sau bước này.',
-    });
+    if (data.saved_run?.id) {
+      state.activeBtRunId[period] = data.saved_run.id;
+      if (nameInput && saveName) nameInput.value = '';
+    }
+    await loadBacktestRuns();
+    displayBacktestResults(period, data);
     state.focusedTradeKey = null;
     renderBtTradeLists();
     if (state.period === period) {
@@ -1864,6 +2037,7 @@ async function loadAppData() {
     setLabelSubTabUI(state.labelSubTab);
     await loadMonthMeta();
     await fetchWithRetry(() => loadMonthData());
+    await fetchWithRetry(() => loadBacktestRuns());
     updatePipelineUI();
     requestAnimationFrame(() => chart.resize?.());
     hideBootError();

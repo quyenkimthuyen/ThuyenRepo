@@ -32,7 +32,21 @@ export const saveSetup = (body) => api('/api/setups', { method: 'POST', body: JS
 export const updateSetup = (id, body) => api(`/api/setups/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
 export const deleteSetup = (id) => api(`/api/setups/${id}`, { method: 'DELETE' });
 export const analyze = () => api('/api/analyze', { method: 'POST' });
-export const backtest = (period) => api(`/api/backtest?period=${period}`, { method: 'POST' });
+export const backtest = (period, { name = null, save = true } = {}) =>
+  api(`/api/backtest${qs({ period, name, save })}`, { method: 'POST' });
+export const getBacktests = (period = null) => api(`/api/backtests${qs({ period })}`);
+export const getBacktest = (id) => api(`/api/backtests/${encodeURIComponent(id)}`);
+export const compareBacktests = (ids) =>
+  api(`/api/backtests/compare${qs({ ids: ids.join(',') })}`);
+export const saveBacktestRun = (body) =>
+  api('/api/backtests', { method: 'POST', body: JSON.stringify(body) });
+export const renameBacktestRun = (id, name) =>
+  api(`/api/backtests/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+export const deleteBacktestRun = (id) =>
+  api(`/api/backtests/${encodeURIComponent(id)}`, { method: 'DELETE' });
 export const suggestTags = (body) => api('/api/tags/suggest', { method: 'POST', body: JSON.stringify(body) });
 export const getTagDefinitions = () => api('/api/tags/definitions');
 export const getImportantBars = (period, month = null) =>

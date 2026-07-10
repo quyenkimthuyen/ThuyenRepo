@@ -594,7 +594,52 @@ body.resizing-sidebar * { cursor: col-resize !important; }
 .bar-annotate-actions { display: flex; gap: 6px; margin-top: 8px; }
 .bar-annotate-actions .btn { flex: 1; font-size: 11px; padding: 6px 8px; }
 
-.important-bar-list-section { margin-top: 12px; }
+.bt-library-section {
+  margin-top: 10px;
+  flex: 0 1 auto;
+  max-height: 28%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.bt-saved-list { max-height: 120px; flex: 1; min-height: 60px; }
+.bt-save-name {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.bt-save-name input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  background: #0b0f14;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+.bt-compare-panel {
+  margin-top: 8px;
+  flex: 0 1 auto;
+  max-height: 32%;
+  overflow-y: auto;
+}
+.bt-saved-item .bt-saved-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.bt-saved-item .bt-check { flex-shrink: 0; accent-color: var(--accent); }
+.bt-saved-item .bt-saved-name { flex: 1; font-weight: 600; font-size: 11px; }
+.bt-saved-item .bt-saved-del {
+  background: none; border: none; color: #64748b; cursor: pointer; font-size: 12px; padding: 0 4px;
+}
+.bt-saved-item .bt-saved-del:hover { color: #fca5a5; }
+.bt-compare-table td, .bt-compare-table th { font-size: 10px; padding: 4px 6px; }
+
 .important-bar-list { max-height: 160px; }
 .pipeline-banner {
   margin-bottom: 12px;
