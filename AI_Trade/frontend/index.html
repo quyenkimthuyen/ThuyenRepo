@@ -6,7 +6,7 @@
   <title>AI Trade Lab — EURUSD 1H</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/app.css?v=19">
+  <link rel="stylesheet" href="/static/css/app.css?v=20">
 </head>
 <body>
   <noscript>
@@ -43,13 +43,9 @@
             <span class="tab-step">2</span>
             <span class="tab-label">Analyze</span>
           </button>
-          <button type="button" class="sidebar-tab" data-sidebar="validation" role="tab">
+          <button type="button" class="sidebar-tab" data-sidebar="backtest" role="tab">
             <span class="tab-step">3</span>
-            <span class="tab-label">BT 2023</span>
-          </button>
-          <button type="button" class="sidebar-tab" data-sidebar="test" role="tab">
-            <span class="tab-step">4</span>
-            <span class="tab-label">BT 2024–26</span>
+            <span class="tab-label">Backtest</span>
           </button>
         </nav>
 
@@ -207,60 +203,38 @@
         <div id="viewAnalyze" class="sidebar-view hidden" role="tabpanel">
           <section class="panel panel-strategy">
             <h2>Phân tích chiến lược</h2>
-            <p class="strategy-intro">Học <strong>signature</strong> từng tag, nhận diện tình huống giá qua độ tương đồng với setup đã label.</p>
+            <p class="strategy-intro">Học <strong>signature</strong> từ setup train của năm đã chọn — mỗi năm train có thể có chiến lược riêng.</p>
+            <label class="bt-save-name">Năm train
+              <select id="analyzeTrainPeriod" class="train-period-select"></select>
+            </label>
             <button type="button" class="btn primary block" id="btnAnalyze">Chạy phân tích</button>
             <div id="analyzeResults" class="strategy-results scroll-panel"></div>
           </section>
         </div>
 
-        <div id="viewValidation" class="sidebar-view hidden" role="tabpanel">
+        <div id="viewBacktest" class="sidebar-view hidden" role="tabpanel">
           <section class="panel panel-strategy">
-            <h2>Backtest 2023</h2>
-            <p class="strategy-intro">Validation 2023 — kết quả tự lưu, có thể đặt tên và so sánh giữa các lần chạy.</p>
-            <label class="bt-save-name">Tên lưu <input id="btValSaveName" type="text" placeholder="VD: Baseline score 65"></label>
-            <button type="button" class="btn primary block" id="btnBacktestVal">Chạy backtest 2023</button>
-            <div id="btValResults" class="strategy-results scroll-panel strategy-results-compact"></div>
+            <h2>Backtest</h2>
+            <p class="strategy-intro">Chọn một hoặc nhiều năm để chạy backtest. Kết quả tự lưu — đặt tên và so sánh giữa các lần chạy.</p>
+            <div class="bt-year-picker" id="btYearPicker" role="group" aria-label="Chọn năm backtest"></div>
+            <label class="bt-save-name">Tên lưu <input id="btSaveName" type="text" placeholder="VD: 2023+2024 rejection only"></label>
+            <button type="button" class="btn primary block" id="btnBacktest">Chạy backtest</button>
+            <div id="btResults" class="strategy-results scroll-panel strategy-results-compact"></div>
             <div class="bt-library-section">
               <div class="setup-list-head">
                 <span>Đã lưu</span>
-                <span class="count-badge" id="btValSavedCount">0</span>
+                <span class="count-badge" id="btSavedCount">0</span>
                 <span class="list-hint">☑ so sánh · click xem chart</span>
               </div>
-              <ul id="btValSavedList" class="setup-list bt-saved-list scroll-panel"></ul>
+              <ul id="btSavedList" class="setup-list bt-saved-list scroll-panel"></ul>
             </div>
-            <div id="btValCompare" class="bt-compare-panel scroll-panel"></div>
+            <div id="btCompare" class="bt-compare-panel scroll-panel"></div>
             <div class="trade-list-section">
               <div class="setup-list-head">
                 <span>Lệnh trên chart</span>
-                <span class="count-badge" id="btValCount">0</span>
+                <span class="count-badge" id="btCount">0</span>
               </div>
-              <ul id="btValTradeList" class="setup-list trade-list scroll-panel"></ul>
-            </div>
-          </section>
-        </div>
-
-        <div id="viewTest" class="sidebar-view hidden" role="tabpanel">
-          <section class="panel panel-strategy">
-            <h2>Backtest 2024–26</h2>
-            <p class="strategy-intro">Test out-of-sample — lưu từng lần chạy để so sánh với 2023.</p>
-            <label class="bt-save-name">Tên lưu <input id="btTestSaveName" type="text" placeholder="VD: OOS final"></label>
-            <button type="button" class="btn primary block" id="btnBacktestTest">Chạy backtest 2024–26</button>
-            <div id="btTestResults" class="strategy-results scroll-panel strategy-results-compact"></div>
-            <div class="bt-library-section">
-              <div class="setup-list-head">
-                <span>Đã lưu</span>
-                <span class="count-badge" id="btTestSavedCount">0</span>
-                <span class="list-hint">☑ so sánh · click xem chart</span>
-              </div>
-              <ul id="btTestSavedList" class="setup-list bt-saved-list scroll-panel"></ul>
-            </div>
-            <div id="btTestCompare" class="bt-compare-panel scroll-panel"></div>
-            <div class="trade-list-section">
-              <div class="setup-list-head">
-                <span>Lệnh trên chart</span>
-                <span class="count-badge" id="btTestCount">0</span>
-              </div>
-              <ul id="btTestTradeList" class="setup-list trade-list scroll-panel"></ul>
+              <ul id="btTradeList" class="setup-list trade-list scroll-panel"></ul>
             </div>
           </section>
         </div>
@@ -329,7 +303,7 @@
   </div>
 
   <script type="module">
-    import('/static/js/app.js?v=19').catch((err) => {
+    import('/static/js/app.js?v=20').catch((err) => {
       console.error('Module load failed:', err);
       const box = document.createElement('div');
       box.style.cssText = 'padding:20px;color:#fecaca;background:#3f1212;font-size:14px;line-height:1.5';

@@ -328,7 +328,15 @@ def scan_important_bars(
                 "bars": [],
                 "config": cfg,
             }
-    train_setups = [s for s in load_setups() if s.get("period") == "train"]
+    from .periods import filter_setups_for_train, is_train_period, resolve_period
+    from .analyzer import load_strategy
+
+    period_id = resolve_period(period)
+    if is_train_period(period_id):
+        train_setups = filter_setups_for_train(load_setups(), period_id)
+    else:
+        strategy = load_strategy() or {}
+        train_setups = filter_setups_for_train(load_setups(), strategy.get("train_period"))
     det_ctx = _load_detection_context(train_setups, cfg)
     ann_index = annotation_index_by_time()
 
@@ -438,7 +446,12 @@ def inspect_bar_at_time(
 
     row = df.iloc[idx]
     bar_ts = df.index[idx]
-    train_setups = [s for s in load_setups() if s.get("period") == "train"]
+    from .periods import default_train_period, filter_setups_for_train, is_train_period
+    from .data_service import period_for_timestamp
+
+    detected = period_for_timestamp(ts)
+    train_period = detected if detected and is_train_period(detected) else default_train_period()
+    train_setups = filter_setups_for_train(load_setups(), train_period)
     ann_index = annotation_index_by_time()
     ann = ann_index.get(int(bar_ts.timestamp()))
 
@@ -467,7 +480,9 @@ def match_entry_from_inspection(
 ) -> tuple[str | None, str | None, dict[str, Any] | None]:
     """Unified entry matcher: importance gate + tag/sequence + setup similarity."""
     cfg = _cfg()
-    raw_setups = train_setups or [s for s in load_setups() if s.get("period") == "train"]
+    from .periods import filter_setups_for_train
+
+    raw_setups = train_setups or filter_setups_for_train(load_setups(), strategy.get("train_period"))
     train_setups = filter_train_setups(raw_setups, strategy)
     if not train_setups:
         return None, None, None
@@ -594,26 +609,31 @@ def match_entry_from_inspection(
     if direction not in ("long", "short"):
         return None, None, None
 
+    avoid = set((strategy.get("tags") or {}).get("avoid_tags") or [])
+    if primary_tag and primary_tag in avoid:
+        return None, None, None
+
+    preferred = strategy.get("preferred_entry_tags") or []
+    if preferred and primary_tag and primary_tag not in preferred:
+        return None, None, None
+
+    max_sim = strategy.get("max_similarity")
+    if max_sim is not None and best.get("similarity", 0) > float(max_sim):
+        return None, None, None
+
     ref_setup = next((s for s in train_setups if s.get("id") == best.get("setup_id")), None)
     if not ref_setup:
         return None, None, None
 
-    avoid = set((strategy.get("tags") or {}).get("avoid_tags") or [])
     setup_tags = set(infer_tags(ref_setup))
-    if avoid.intersection(setup_tags):
-        return None, None, None
-
     if entry_tags and not setup_tags.intersection(entry_tags):
         return None, None, None
 
-    primary_tag = detail.get("primary_tag")
     if not primary_tag and detected:
         primary_tag = detected[0].get("tag")
     if not primary_tag and entry_tags:
         primary_tag = next(iter(entry_tags))
     if require_tag and not primary_tag:
-        return None, None, None
-    if primary_tag and primary_tag in avoid:
         return None, None, None
 
     detail = {**detail, "similar_setups": similar}

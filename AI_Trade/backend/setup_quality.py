@@ -155,9 +155,11 @@ def curate_train_setups(
     from .labels import load_setups
 
     cfg = config or _cfg()
-    train = [
-        s for s in (setups if setups is not None else load_setups()) if s.get("period") == "train"
-    ]
+    from .periods import filter_setups_for_train
+
+    train = filter_setups_for_train(
+        setups if setups is not None else load_setups(),
+    )
     annotations = load_bar_annotations()
     ann_by_id = {a["id"]: a for a in annotations}
 
@@ -243,8 +245,10 @@ def apply_curation(*, dry_run: bool = False) -> dict[str, Any]:
     selected_ids = {s["id"] for s in selected}
     selected_ann_ids = {s.get("annotation_id") for s in selected if s.get("annotation_id")}
 
+    from .periods import is_train_period, normalize_setup_period
+
     all_setups = load_setups()
-    non_train = [s for s in all_setups if s.get("period") != "train"]
+    non_train = [s for s in all_setups if not is_train_period(normalize_setup_period(s.get("period")))]
     new_setups = non_train + selected
 
     all_ann = load_bar_annotations()

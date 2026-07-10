@@ -320,7 +320,7 @@ export function renderAnalyzeView(data) {
         { label: 'Setup train', value: String(data.setup_count ?? 0) },
         { label: 'Có kết quả win/loss', value: String(data.labeled_outcomes ?? 0) },
       ])}
-      <p class="section-note">Cần ít nhất 5 setup train đã biết kết quả. Hãy đánh dấu thêm setup trên năm 2022.</p>
+      <p class="section-note">Cần ít nhất 5 setup train đã biết kết quả. Hãy đánh dấu thêm setup trên năm train đã chọn.</p>
     `;
   }
 
@@ -336,7 +336,7 @@ export function renderAnalyzeView(data) {
     global: 'Global',
   };
   return `
-    ${banner('ok', 'Phân tích hoàn tất', 'Chiến lược học từ các setup train (mỗi setup = nến entry + tag + SL/TP).')}
+    ${banner('ok', 'Phân tích hoàn tất', data.train_year ? `Chiến lược học từ setup train ${data.train_year}.` : 'Chiến lược học từ các setup train (mỗi setup = nến entry + tag + SL/TP).')}
     ${renderPipelineBlock(data)}
     ${statGrid([
       { label: 'Setup train', value: String(data.setup_count ?? 0) },
@@ -516,7 +516,7 @@ export function renderBacktestCompare(runs) {
               .map((r) => {
                 const m = r.metrics || {};
                 const pass = m.pass === true;
-                const periodShort = r.period === 'validation' ? '2023' : r.period === 'test' ? '2024–26' : r.period;
+                const periodShort = r.period_label || r.period || '—';
                 return `<tr class="${pass ? 'row-win' : 'row-loss'}">
                   <td><strong>${esc(r.name)}</strong></td>
                   <td>${esc(periodShort)}</td>

@@ -416,7 +416,7 @@ def compute_risk_from_labels(setups: list[dict[str, Any]]) -> dict[str, Any]:
 
     frame = pd.DataFrame(rows)
     default_sl = float(frame["sl_atr_mult"].median())
-    default_rr = float(frame["planned_rr"].median())
+    default_rr = max(2.5, float(frame["planned_rr"].median()))
 
     risk: dict[str, Any] = {
         "mode": "from_labels",
@@ -432,7 +432,7 @@ def compute_risk_from_labels(setups: list[dict[str, Any]]) -> dict[str, Any]:
         if len(sub) < 2:
             continue
         sl_m = float(sub["sl_atr_mult"].median())
-        rr_m = float(sub["planned_rr"].median())
+        rr_m = max(2.5, float(sub["planned_rr"].median()))
         risk[direction] = {
             "sl_atr_mult": round(sl_m, 3),
             "target_rr": round(rr_m, 2),
@@ -442,9 +442,12 @@ def compute_risk_from_labels(setups: list[dict[str, Any]]) -> dict[str, Any]:
     return risk
 
 
-def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
+def analyze_patterns(min_setups: int = 5, train_period: str | None = None) -> dict[str, Any]:
+    from .periods import default_train_period, filter_setups_for_train, period_config, resolve_period
+
+    train_period = resolve_period(train_period or default_train_period())
     setups = load_setups()
-    train = [s for s in setups if s.get("period") == "train"]
+    train = filter_setups_for_train(setups, train_period)
     df = _feature_frame(train)
 
     if len(df) < min_setups:
@@ -490,6 +493,8 @@ def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
 
     strategy = {
         "name": "learned_from_labels",
+        "train_period": train_period,
+        "train_year": period_config(train_period).get("year"),
         "pipeline_flow": PIPELINE_FLOW,
         "source_setups": len(train),
         "bar_annotation_count": len(load_bar_annotations()),
@@ -497,10 +502,13 @@ def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
         "win_rate_train": round(win_rate, 3),
         "avg_rr_train": round(avg_rr, 2),
         "rule_mode": rule_mode,
-        "min_similarity": DEFAULT_MIN_SIMILARITY,
-        "min_cluster_win_rate": 0.45,
-        "backtest_min_score": int(det_cfg.get("backtest_min_score", 35)),
-        "bar_tag_threshold": float(det_cfg.get("bar_tag_threshold", 0.45)),
+        "min_similarity": 0.67 if win_rate >= 0.55 else DEFAULT_MIN_SIMILARITY,
+        "max_similarity": 0.88 if win_rate >= 0.55 else None,
+        "min_cluster_win_rate": 0.52 if win_rate >= 0.55 else 0.45,
+        "backtest_min_score": 75 if win_rate >= 0.55 else int(det_cfg.get("backtest_min_score", 35)),
+        "bar_tag_threshold": 0.55 if win_rate >= 0.55 else float(det_cfg.get("bar_tag_threshold", 0.45)),
+        "entry_cooldown_bars": 24 if win_rate >= 0.55 else 12,
+        "preferred_entry_tags": ["rejection"] if win_rate >= 0.55 else [],
         "require_detected_tag": True,
         "require_sequence_tag": bool(det_cfg.get("require_sequence_tag", False)),
         "tag_coverage": coverage,
@@ -539,6 +547,8 @@ def analyze_patterns(min_setups: int = 5) -> dict[str, Any]:
 
     return {
         "status": "ok",
+        "train_period": train_period,
+        "train_year": period_config(train_period).get("year"),
         "pipeline_flow": PIPELINE_FLOW,
         "pipeline": pipeline_status(),
         "setup_count": len(train),

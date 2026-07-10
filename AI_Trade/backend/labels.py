@@ -10,6 +10,14 @@ import pandas as pd
 from .bar_annotations import annotation_at_time, link_setup_to_annotation
 from .config import LABELS_PATH, PIP
 from .data_service import load_candles, period_for_timestamp
+from .periods import (
+    default_train_period,
+    is_train_period,
+    normalize_setup_period,
+    period_config,
+    resolve_period,
+    timestamp_in_period,
+)
 from .detection_config import load_bar_detection_config
 from .entity_codes import assign_setup_code, display_bar_code, display_setup_code
 from .indicators import add_indicators
@@ -99,7 +107,7 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
         "planned_rr": planned_rr(direction, entry, sl, tp),
         "result": result,
         "exit_time": exit_time.isoformat() if exit_time is not None else None,
-        "period": period_for_timestamp(bar_time),
+        "period": normalize_setup_period(setup.get("period")) or period_for_timestamp(bar_time),
         "tags": infer_tags(setup),
         "context_bars": setup.get("context_bars")
         or context_bars_for_index(df, nearest_idx, window),
@@ -140,7 +148,7 @@ def setup_summary(setup: dict[str, Any], *, bar_lookup: dict[str, dict] | None =
         "bar_code": display_bar_code(bar) if bar else None,
         "context_bar_count": len(setup.get("context_bars") or []),
         "note": setup.get("note", ""),
-        "period": setup.get("period", "train"),
+        "period": normalize_setup_period(setup.get("period", "train")),
         "quality_score": setup.get("quality_score"),
         "quality_reasons": setup.get("quality_reasons") or [],
     }
@@ -148,9 +156,12 @@ def setup_summary(setup: dict[str, Any], *, bar_lookup: dict[str, dict] | None =
 
 def create_setup(payload: dict[str, Any]) -> dict[str, Any]:
     entry_time = pd.Timestamp(payload["entry_time"])
-    period = period_for_timestamp(entry_time)
-    if period != "train":
-        raise ValueError("Chỉ được đánh dấu setup trong năm Train (2022).")
+    train_period = resolve_period(payload.get("train_period") or default_train_period())
+    if not is_train_period(train_period):
+        raise ValueError("train_period phải là năm train (vd. train_2022).")
+    if not timestamp_in_period(entry_time, train_period):
+        year = period_config(train_period).get("year", train_period)
+        raise ValueError(f"Chỉ được đánh dấu setup trong năm Train {year}.")
 
     df = add_indicators(load_candles())
     tags = validate_setup_from_bar(payload, is_create=True)
@@ -176,6 +187,7 @@ def create_setup(payload: dict[str, Any]) -> dict[str, Any]:
         "sequence_tags": payload.get("sequence_tags") or [],
         "annotation_id": payload.get("annotation_id") or (ann.get("id") if ann else None),
         "note": payload.get("note", ""),
+        "period": train_period,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     enriched = enrich_setup(setup, df)
@@ -209,8 +221,12 @@ def update_setup(setup_id: str, payload: dict[str, Any]) -> dict[str, Any]:
 
     merged = {**setups[idx], **payload, "id": setup_id}
     entry_time = pd.Timestamp(merged["entry_time"])
-    if period_for_timestamp(entry_time) != "train":
-        raise ValueError("Chỉ được sửa setup trong năm Train (2022).")
+    train_period = normalize_setup_period(merged.get("period"))
+    if not is_train_period(train_period):
+        raise ValueError("Chỉ được sửa setup trong năm train.")
+    if not timestamp_in_period(entry_time, train_period):
+        year = period_config(train_period).get("year", train_period)
+        raise ValueError(f"Setup phải nằm trong năm Train {year}.")
     merged["entry_price"] = float(merged["entry_price"])
     merged["stop_loss"] = float(merged["stop_loss"])
     merged["take_profit"] = float(merged["take_profit"])

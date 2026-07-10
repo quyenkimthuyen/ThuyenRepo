@@ -8,7 +8,15 @@ from typing import Any
 import pandas as pd
 
 from .config import BAR_ANNOTATIONS_PATH, PIP
-from .data_service import load_candles, period_for_timestamp
+from .data_service import load_candles
+from .periods import (
+    default_train_period,
+    is_train_period,
+    normalize_setup_period,
+    period_config,
+    resolve_period,
+    timestamp_in_period,
+)
 from .entity_codes import assign_bar_code, display_bar_code
 from .indicators import add_indicators
 from .tags import infer_tags, normalize_tags
@@ -34,7 +42,7 @@ def annotation_summary(ann: dict[str, Any]) -> dict[str, Any]:
         "confirmed": ann.get("confirmed", True),
         "setup_id": ann.get("setup_id"),
         "setup_code": ann.get("setup_code"),
-        "period": ann.get("period", "train"),
+        "period": normalize_setup_period(ann.get("period", "train")),
     }
 
 def load_bar_annotations() -> list[dict[str, Any]]:
@@ -78,8 +86,12 @@ def enrich_annotation(
     else:
         bar_time = bar_time.tz_convert("UTC")
 
-    if period_for_timestamp(bar_time) != "train":
-        raise ValueError("Chỉ gắn tag nến trong năm Train (2022).")
+    train_period = resolve_period(payload.get("train_period") or default_train_period())
+    if not is_train_period(train_period):
+        raise ValueError("train_period phải là năm train (vd. train_2022).")
+    if not timestamp_in_period(bar_time, train_period):
+        year = period_config(train_period).get("year", train_period)
+        raise ValueError(f"Chỉ gắn tag nến trong năm Train {year}.")
 
     idx = df.index.get_indexer([bar_time], method="nearest")[0]
     row = df.iloc[idx]
@@ -92,7 +104,7 @@ def enrich_annotation(
         "code": payload.get("code"),
         "bar_time": bar_ts.isoformat(),
         "close": round(close, 5),
-        "period": "train",
+        "period": train_period,
         "tags": normalize_tags(payload.get("tags")),
         "note": payload.get("note", ""),
         "confirmed": bool(payload.get("confirmed", True)),

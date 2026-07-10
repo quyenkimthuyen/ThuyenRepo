@@ -65,7 +65,12 @@ def validate_setup_from_bar(payload: dict[str, Any], *, is_create: bool) -> list
 def pipeline_status() -> dict[str, Any]:
     from .labels import load_setups
 
-    setups = [s for s in load_setups() if s.get("period") == "train"]
+    from .periods import is_train_period, normalize_setup_period
+
+    setups = [
+        s for s in load_setups()
+        if is_train_period(normalize_setup_period(s.get("period")))
+    ]
     annotations = [a for a in load_bar_annotations() if a.get("confirmed") and a.get("tags")]
     tagged_setups = [s for s in setups if infer_tags(s)]
     linked = [s for s in setups if s.get("annotation_id") or s.get("bar_tags")]

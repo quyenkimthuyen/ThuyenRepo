@@ -15,6 +15,14 @@ from .optimizer import analyze_and_optimize
 from .backtest import run_backtest
 from .bt_store import compare_runs, delete_run, get_run, list_runs, rename_run, save_run
 from .data_service import candles_to_records, load_candles, load_splits, slice_period, slice_month, months_for_period, filter_records_by_month, month_bounds
+from .periods import (
+    default_train_period,
+    normalize_backtest_periods,
+    normalize_setup_period,
+    period_exists,
+    periods_grouped_for_api,
+    resolve_period,
+)
 from .indicators import add_indicators
 from .labels import create_setup, delete_setup, enrich_setup, load_setups, setup_summary, update_setup
 from .setup_quality import apply_curation, curate_train_setups, enrich_setup_quality, load_quality_config
@@ -57,6 +65,7 @@ class SetupIn(BaseModel):
     sequence_tags: list[str] = Field(default_factory=list)
     annotation_id: str | None = None
     note: str = ""
+    train_period: str | None = None
 
 
 class SetupPatch(BaseModel):
@@ -99,6 +108,7 @@ class BarAnnotationIn(BaseModel):
     auto_detected_tags: list[str] = Field(default_factory=list)
     score: float | None = None
     id: str | None = None
+    train_period: str | None = None
 
 
 class BacktestSaveIn(BaseModel):
@@ -123,6 +133,7 @@ def get_config():
     cfg["bar_detection"] = load_bar_detection_config()
     cfg["quality"] = load_quality_config()
     cfg["pipeline"] = pipeline_status()
+    cfg["period_groups"] = periods_grouped_for_api()
     return cfg
 
 
@@ -145,7 +156,8 @@ def get_presets():
 
 
 @app.get("/api/candles")
-def get_candles(period: str = "train", month: str | None = None, with_indicators: bool = True):
+def get_candles(period: str = "train_2022", month: str | None = None, with_indicators: bool = True):
+    period = resolve_period(period)
     try:
         df = slice_period(load_candles(), period)
         if month:
@@ -184,8 +196,9 @@ def get_candles(period: str = "train", month: str | None = None, with_indicators
 
 
 @app.get("/api/months")
-def list_months(period: str = "train"):
-    if period not in load_splits()["periods"]:
+def list_months(period: str = "train_2022"):
+    period = resolve_period(period)
+    if not period_exists(period):
         raise HTTPException(400, f"Unknown period: {period}")
     try:
         months = months_for_period(period)
@@ -200,11 +213,11 @@ def list_months(period: str = "train"):
         start, end = month_bounds(month)
         month_setups = [
             s for s in setups
-            if s.get("period") == period
+            if normalize_setup_period(s.get("period")) == period
             and start <= pd.Timestamp(s["entry_time"]).tz_convert("UTC") <= end
         ]
         month_ann = filter_records_by_month(
-            [a for a in annotations if a.get("confirmed")],
+            [a for a in annotations if normalize_setup_period(a.get("period")) == period and a.get("confirmed")],
             month,
             "bar_time",
         )
@@ -221,7 +234,8 @@ def list_months(period: str = "train"):
 def list_setups(month: str | None = None, summary: bool = False, period: str | None = None):
     setups = load_setups()
     if period:
-        setups = [s for s in setups if s.get("period") == period]
+        period = resolve_period(period)
+        setups = [s for s in setups if normalize_setup_period(s.get("period")) == period]
     if month:
         setups = filter_records_by_month(setups, month, "entry_time")
     if summary:
@@ -267,8 +281,11 @@ def get_tag_definitions():
 
 
 @app.get("/api/bar-annotations")
-def list_bar_annotations(month: str | None = None, summary: bool = True):
+def list_bar_annotations(month: str | None = None, period: str | None = None, summary: bool = True):
     annotations = load_bar_annotations()
+    if period:
+        period = resolve_period(period)
+        annotations = [a for a in annotations if normalize_setup_period(a.get("period")) == period]
     if month:
         annotations = filter_records_by_month(annotations, month, "bar_time")
     if summary:
@@ -296,13 +313,14 @@ def remove_bar_annotation(annotation_id: str):
 
 @app.get("/api/bars/important")
 def get_important_bars(
-    period: str = "train",
+    period: str = "train_2022",
     month: str | None = None,
     min_score: float | None = None,
     with_tags: bool = True,
     max_bars: int | None = None,
 ):
-    if period not in load_splits()["periods"]:
+    period = resolve_period(period)
+    if not period_exists(period):
         raise HTTPException(400, f"Unknown period: {period}")
     try:
         return scan_important_bars(
@@ -375,10 +393,11 @@ def refresh_setups():
 
 
 @app.post("/api/analyze")
-def analyze(optimize: bool = False):
+def analyze(optimize: bool = False, train_period: str | None = None):
+    train_period = resolve_period(train_period or default_train_period())
     if optimize:
-        return analyze_and_optimize()
-    return analyze_patterns()
+        return analyze_and_optimize(train_period=train_period)
+    return analyze_patterns(train_period=train_period)
 
 
 @app.post("/api/optimize")
@@ -442,12 +461,20 @@ def remove_backtest_run(run_id: str):
 
 
 @app.post("/api/backtest")
-def backtest(period: str = "validation", name: str | None = None, save: bool = True):
-    if period not in load_splits()["periods"]:
-        raise HTTPException(400, f"Unknown period: {period}")
-    result = run_backtest(period)
+def backtest(
+    period: str | None = None,
+    periods: str | None = None,
+    name: str | None = None,
+    save: bool = True,
+):
+    period_list = normalize_backtest_periods(periods or period)
+    for pid in period_list:
+        if not period_exists(pid):
+            raise HTTPException(400, f"Unknown period: {pid}")
+    result = run_backtest(periods=period_list)
+    period_key = result.get("period") or ",".join(period_list)
     if save and result.get("status") == "ok":
-        saved = save_run(result, name=name, period=period)
+        saved = save_run(result, name=name, period=period_key)
         return {**result, "saved_run": {"id": saved["id"], "name": saved["name"]}}
     return result
 

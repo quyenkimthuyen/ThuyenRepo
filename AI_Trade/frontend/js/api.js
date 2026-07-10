@@ -15,7 +15,12 @@ export async function api(path, options = {}) {
 function qs(params) {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
-    if (value != null && value !== '') search.set(key, String(value));
+    if (value == null || value === '') continue;
+    if (Array.isArray(value)) {
+      search.set(key, value.join(','));
+    } else {
+      search.set(key, String(value));
+    }
   }
   const s = search.toString();
   return s ? `?${s}` : '';
@@ -23,7 +28,7 @@ function qs(params) {
 
 export const getConfig = () => api('/api/config');
 export const getPresets = () => api('/api/presets');
-export const getMonths = (period = 'train') => api(`/api/months${qs({ period })}`);
+export const getMonths = (period = 'train_2022') => api(`/api/months${qs({ period })}`);
 export const getCandles = (period, month = null) =>
   api(`/api/candles${qs({ period, month, with_indicators: true })}`);
 export const getSetups = ({ month = null, summary = true, period = null } = {}) =>
@@ -31,9 +36,10 @@ export const getSetups = ({ month = null, summary = true, period = null } = {}) 
 export const saveSetup = (body) => api('/api/setups', { method: 'POST', body: JSON.stringify(body) });
 export const updateSetup = (id, body) => api(`/api/setups/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
 export const deleteSetup = (id) => api(`/api/setups/${id}`, { method: 'DELETE' });
-export const analyze = () => api('/api/analyze', { method: 'POST' });
-export const backtest = (period, { name = null, save = true } = {}) =>
-  api(`/api/backtest${qs({ period, name, save })}`, { method: 'POST' });
+export const analyze = (trainPeriod = null) =>
+  api(`/api/analyze${qs({ train_period: trainPeriod })}`, { method: 'POST' });
+export const backtest = (periods, { name = null, save = true } = {}) =>
+  api(`/api/backtest${qs({ periods, name, save })}`, { method: 'POST' });
 export const getBacktests = (period = null) => api(`/api/backtests${qs({ period })}`);
 export const getBacktest = (id) => api(`/api/backtests/${encodeURIComponent(id)}`);
 export const compareBacktests = (ids) =>
@@ -56,8 +62,8 @@ export const inspectBar = (entryTime, entryPrice) => {
   if (entryPrice != null) params.set('entry_price', String(entryPrice));
   return api(`/api/bars/inspect?${params}`);
 };
-export const getBarAnnotations = (month = null) =>
-  api(`/api/bar-annotations${qs({ month, summary: true })}`);
+export const getBarAnnotations = ({ month = null, period = null } = {}) =>
+  api(`/api/bar-annotations${qs({ month, period, summary: true })}`);
 export const saveBarAnnotation = (body) =>
   api('/api/bar-annotations', { method: 'POST', body: JSON.stringify(body) });
 export const deleteBarAnnotation = (id) =>

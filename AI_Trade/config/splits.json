@@ -2,10 +2,58 @@
   "symbol": "EURUSD",
   "timeframe": "1H",
   "timezone": "UTC",
+  "defaults": {
+    "train": "train_2022",
+    "backtest": ["bt_2023"]
+  },
+  "legacy_map": {
+    "train": "train_2022",
+    "validation": "bt_2023",
+    "test": "bt_2024"
+  },
   "periods": {
-    "train": { "from": "2022-01-01", "to": "2022-12-31", "label": "Train — đánh dấu setup tại đây" },
-    "validation": { "from": "2023-01-01", "to": "2023-12-31", "label": "Validation — tinh chỉnh chiến lược" },
-    "test": { "from": "2024-01-01", "to": "2026-12-31", "label": "Test — out-of-sample, không optimize" }
+    "train_2022": {
+      "from": "2022-01-01",
+      "to": "2022-12-31",
+      "kind": "train",
+      "year": 2022,
+      "label": "Train 2022 — label setup"
+    },
+    "train_2024": {
+      "from": "2024-01-01",
+      "to": "2024-12-31",
+      "kind": "train",
+      "year": 2024,
+      "label": "Train 2024 — label setup"
+    },
+    "bt_2023": {
+      "from": "2023-01-01",
+      "to": "2023-12-31",
+      "kind": "backtest",
+      "year": 2023,
+      "label": "Backtest 2023"
+    },
+    "bt_2024": {
+      "from": "2024-01-01",
+      "to": "2024-12-31",
+      "kind": "backtest",
+      "year": 2024,
+      "label": "Backtest 2024"
+    },
+    "bt_2025": {
+      "from": "2025-01-01",
+      "to": "2025-12-31",
+      "kind": "backtest",
+      "year": 2025,
+      "label": "Backtest 2025"
+    },
+    "bt_2026": {
+      "from": "2026-01-01",
+      "to": "2026-12-31",
+      "kind": "backtest",
+      "year": 2026,
+      "label": "Backtest 2026"
+    }
   },
   "backtest": {
     "spread_pips": 1.0,

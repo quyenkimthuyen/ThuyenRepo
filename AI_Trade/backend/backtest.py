@@ -7,7 +7,8 @@ import pandas as pd
 
 from .analyzer import load_strategy
 from .config import PIP
-from .data_service import load_candles, load_splits, slice_period
+from .data_service import load_candles, load_splits, slice_periods
+from .periods import backtest_label, normalize_backtest_periods
 from .indicators import add_indicators
 from .bar_importance import clear_detection_cache, match_entry_from_inspection
 from .labels import load_setups
@@ -279,23 +280,30 @@ def _equity_metrics(trades: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def run_backtest(period: str = "validation", *, strategy: dict[str, Any] | None = None) -> dict[str, Any]:
+def run_backtest(
+    periods: str | list[str] | None = None,
+    *,
+    period: str | None = None,
+    strategy: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     strategy = strategy or load_strategy()
     if not strategy:
         return {"status": "no_strategy", "message": "Chạy Analyze trước để sinh chiến lược."}
 
     clear_detection_cache()
 
-    df = add_indicators(slice_period(load_candles(), period))
+    period_list = normalize_backtest_periods(periods or period)
+    df = add_indicators(slice_periods(load_candles(), period_list))
     # dist_ema50 for rule matching
     df["dist_ema50_pips"] = (df["close"] - df["ema50"]) / PIP
 
     cost = _cost_price()
 
     trades: list[dict[str, Any]] = []
-    cooldown = 0
+    cooldown_until = 0
+    entry_cooldown = int(strategy.get("entry_cooldown_bars", 24))
     for i in range(200, len(df) - 1):
-        if i < cooldown:
+        if i < cooldown_until:
             continue
         row = df.iloc[i]
         if np.isnan(row["rsi14"]) or np.isnan(row["atr14"]):
@@ -327,12 +335,15 @@ def run_backtest(period: str = "validation", *, strategy: dict[str, Any] | None 
                 trade["similarity"] = best.get("similarity")
                 trade["ref_setup_id"] = best.get("setup_id")
             trades.append(trade)
-            cooldown = i + 5
+            cooldown_until = i + entry_cooldown
 
     metrics = _equity_metrics(trades)
+    period_key = ",".join(period_list) if len(period_list) > 1 else period_list[0]
     return {
         "status": "ok",
-        "period": period,
+        "period": period_key,
+        "periods": period_list,
+        "period_label": backtest_label(period_list),
         "strategy": strategy.get("name"),
         "rule_mode": strategy.get("rule_mode", "global"),
         "risk": strategy.get("risk"),

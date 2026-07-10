@@ -13,13 +13,16 @@ from .detection_config import save_bar_detection_config
 from .labels import load_setups
 from .pipeline import filter_train_setups
 
-# Ngưỡng mặc định sau phân tích train (win rate ~38% → lọc chặt hơn)
+# Sau lọc 50 setup chất lượng — lọc entry chặt hơn, ít lệnh hơn
 HEURISTIC_PARAMS: dict[str, Any] = {
-    "min_similarity": 0.62,
-    "backtest_min_score": 60,
-    "min_cluster_win_rate": 0.50,
-    "bar_tag_threshold": 0.52,
+    "min_similarity": 0.68,
+    "max_similarity": 0.88,
+    "backtest_min_score": 80,
+    "min_cluster_win_rate": 0.55,
+    "bar_tag_threshold": 0.55,
     "require_sequence_tag": False,
+    "entry_cooldown_bars": 24,
+    "preferred_entry_tags": ["rejection"],
 }
 
 
@@ -27,10 +30,13 @@ def _apply_params(strategy: dict[str, Any], params: dict[str, Any]) -> dict[str,
     out = copy.deepcopy(strategy)
     for key in (
         "min_similarity",
+        "max_similarity",
         "backtest_min_score",
         "min_cluster_win_rate",
         "bar_tag_threshold",
         "require_sequence_tag",
+        "entry_cooldown_bars",
+        "preferred_entry_tags",
     ):
         if key in params:
             out[key] = params[key]
@@ -49,23 +55,20 @@ def _derive_params_from_analysis(strategy: dict[str, Any]) -> dict[str, Any]:
         params["min_similarity"] = 0.64
         params["backtest_min_score"] = 62
         params["min_cluster_win_rate"] = 0.52
-    best_tag = max(tag_rows, key=lambda r: r.get("win_rate", 0))
-    if best_tag.get("win_rate", 0) >= 0.40:
-        params["preferred_entry_tags"] = [best_tag["tag"]]
     return params
 
 
 def optimize_on_validation(
     strategy: dict[str, Any] | None = None,
     *,
-    period: str = "validation",
+    period: str = "bt_2023",
 ) -> dict[str, Any]:
     strategy = copy.deepcopy(strategy or load_strategy())
     if not strategy:
         raise ValueError("Chưa có chiến lược — chạy Analyze trước.")
 
     tag_info = strategy.get("tags") or {}
-    avoid = list(set(tag_info.get("avoid_tags") or []) | {"reversal"})
+    avoid = list(set(tag_info.get("avoid_tags") or []) | {"reversal", "breakout"})
     low_wr = [
         r["tag"]
         for r in tag_info.get("tags") or []
@@ -116,8 +119,8 @@ def optimize_on_validation(
     }
 
 
-def analyze_and_optimize() -> dict[str, Any]:
-    analysis = analyze_patterns()
+def analyze_and_optimize(train_period: str | None = None) -> dict[str, Any]:
+    analysis = analyze_patterns(train_period=train_period)
     if analysis.get("status") != "ok":
         return {"status": "analyze_failed", "analysis": analysis}
 

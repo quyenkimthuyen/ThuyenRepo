@@ -10,6 +10,7 @@ from typing import Any
 
 from .config import DATA_DIR
 from .data_service import load_splits
+from .periods import backtest_label, normalize_backtest_periods, period_config, resolve_period
 
 BT_RUNS_PATH = DATA_DIR / "backtests" / "runs.json"
 
@@ -31,10 +32,12 @@ def _save_payload(payload: dict[str, Any]) -> None:
 
 
 def period_label(period: str) -> str:
-    splits = load_splits()["periods"]
-    cfg = splits.get(period) or {}
-    short = {"train": "2022", "validation": "2023", "test": "2024–26"}.get(period, period)
-    return cfg.get("label") or short
+    if "," in period:
+        return backtest_label(normalize_backtest_periods(period))
+    try:
+        return period_config(resolve_period(period)).get("label") or period
+    except KeyError:
+        return period
 
 
 def _slug(name: str) -> str:
@@ -79,10 +82,11 @@ def save_run(
     name: str | None = None,
     period: str | None = None,
 ) -> dict[str, Any]:
-    period = period or result.get("period") or "validation"
-    splits = load_splits()["periods"]
-    if period not in splits:
-        raise ValueError(f"Unknown period: {period}")
+    period = period or result.get("period") or "bt_2023"
+    period_list = result.get("periods") or normalize_backtest_periods(period)
+    for pid in period_list:
+        if pid not in load_splits()["periods"]:
+            raise ValueError(f"Unknown period: {pid}")
 
     now = datetime.now(timezone.utc)
     default_name = f"{period_label(period)} · {now.strftime('%d/%m/%Y %H:%M')}"

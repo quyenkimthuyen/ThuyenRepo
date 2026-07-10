@@ -610,7 +610,9 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   color: var(--muted);
   margin-bottom: 8px;
 }
-.bt-save-name input {
+.bt-save-name input,
+.bt-save-name select,
+.train-period-select {
   display: block;
   width: 100%;
   margin-top: 4px;
@@ -621,6 +623,29 @@ body.resizing-sidebar * { cursor: col-resize !important; }
   border-radius: 8px;
   font-size: 11px;
 }
+.bt-year-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.bt-year-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+.bt-year-option input {
+  accent-color: var(--accent);
+}
+.period-tab.train .period-name { color: #86efac; }
+.period-tab.backtest .period-name { color: #93c5fd; }
 .bt-compare-panel {
   margin-top: 8px;
   flex: 0 1 auto;

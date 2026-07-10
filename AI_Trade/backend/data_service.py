@@ -40,11 +40,33 @@ def load_candles(path: Path | None = None) -> pd.DataFrame:
     return df
 
 
+def _resolve_period(period: str) -> str:
+    legacy = load_splits().get("legacy_map") or {}
+    return legacy.get(period, period)
+
+
+def _period_bounds(period: str) -> tuple[pd.Timestamp, pd.Timestamp]:
+    period = _resolve_period(period)
+    cfg = load_splits()["periods"][period]
+    start = pd.Timestamp(cfg["from"], tz="UTC")
+    end = pd.Timestamp(cfg["to"], tz="UTC") + pd.Timedelta(hours=23, minutes=59)
+    return start, end
+
+
 def slice_period(df: pd.DataFrame, period: str) -> pd.DataFrame:
-    splits = load_splits()["periods"][period]
-    start = pd.Timestamp(splits["from"], tz="UTC")
-    end = pd.Timestamp(splits["to"], tz="UTC") + pd.Timedelta(hours=23, minutes=59)
+    start, end = _period_bounds(period)
     return df.loc[start:end]
+
+
+def slice_periods(df: pd.DataFrame, periods: list[str]) -> pd.DataFrame:
+    """Concatenate multiple period slices (e.g. multi-year backtest)."""
+    if not periods:
+        return df.iloc[0:0]
+    if len(periods) == 1:
+        return slice_period(df, periods[0])
+    parts = [slice_period(df, p) for p in periods]
+    out = pd.concat(parts)
+    return out[~out.index.duplicated(keep="last")].sort_index()
 
 
 def candles_to_records(df: pd.DataFrame) -> list[dict[str, Any]]:
@@ -64,13 +86,9 @@ def candles_to_records(df: pd.DataFrame) -> list[dict[str, Any]]:
 
 
 def period_for_timestamp(ts: pd.Timestamp) -> str | None:
-    splits = load_splits()["periods"]
-    for name, cfg in splits.items():
-        start = pd.Timestamp(cfg["from"], tz="UTC")
-        end = pd.Timestamp(cfg["to"], tz="UTC") + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
-        if start <= ts <= end:
-            return name
-    return None
+    from .periods import period_for_timestamp as _pft
+
+    return _pft(ts)
 
 
 def month_bounds(month: str) -> tuple[pd.Timestamp, pd.Timestamp]:
