@@ -285,6 +285,87 @@ def detect_entry_at_bar(
     return signal["direction"], signal["tag"], meta
 
 
+def infer_setup_tags_for_label(
+    df: pd.DataFrame,
+    i: int,
+    direction: str,
+    strategy: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Gắn tag setup cho label lịch sử — strict trước, suy luận RSI path nếu không khớp."""
+    strict = classify_bar_for_direction(df, i, direction, strategy)
+    if strict.get("setup"):
+        return strict
+
+    cfg = load_rsi_h4_config(strategy)
+    rsi_arr = df["rsi14_h4"].to_numpy(dtype=float)
+    if np.isnan(rsi_arr[i]):
+        return {"tags": [], "setup": None, "tag": None}
+
+    lookback = int(cfg.get("lookback_bars", 120))
+    start = max(0, i - lookback)
+    mid = _band(cfg, "mid")
+    high = _band(cfg, "high")
+    low = _band(cfg, "low")
+    rsi = float(rsi_arr[i])
+    row = df.iloc[i]
+    tol = float(cfg.get("ema_tolerance_atr", 0.35))
+    ema_ok = (
+        ema_h1_supports_long(row, tol_atr=tol)
+        if direction == "long"
+        else ema_h1_resists_short(row, tol_atr=tol)
+    )
+    tags: list[str] = [TAG_EMA_CONFIRM] if ema_ok else []
+
+    def touched_band(band: tuple[float, float], a: int, b: int) -> bool:
+        return any(
+            not np.isnan(rsi_arr[j]) and in_band(float(rsi_arr[j]), band)
+            for j in range(a, b + 1)
+        )
+
+    setup = None
+    if direction == "long":
+        touched_high = touched_band(high, start, i)
+        touched_mid = touched_band(mid, start, i)
+        was_above = any(
+            not np.isnan(rsi_arr[j]) and float(rsi_arr[j]) > mid[1] for j in range(start, i + 1)
+        )
+        if touched_high and (in_band(rsi, mid) or rsi <= mid[1] + 6):
+            setup = "extreme_bounce"
+        elif touched_mid and was_above:
+            setup = "break_retest"
+        elif rsi > mid[1]:
+            setup = "break_retest"
+        elif touched_high:
+            setup = "extreme_bounce"
+    else:
+        touched_low = touched_band(low, start, i)
+        touched_mid = touched_band(mid, start, i)
+        was_below = any(
+            not np.isnan(rsi_arr[j]) and float(rsi_arr[j]) < mid[0] for j in range(start, i + 1)
+        )
+        if touched_low and (in_band(rsi, mid) or rsi >= mid[0] - 6):
+            setup = "extreme_bounce"
+        elif touched_mid and was_below:
+            setup = "break_retest"
+        elif rsi < mid[0]:
+            setup = "break_retest"
+        elif touched_low:
+            setup = "extreme_bounce"
+
+    if setup == "extreme_bounce":
+        tags = sorted(set(tags) | {TAG_EXTREME_BOUNCE})
+    elif setup == "break_retest":
+        tags = sorted(set(tags) | {TAG_BREAK_RETEST})
+
+    tag = None
+    if setup == "extreme_bounce":
+        tag = TAG_EXTREME_BOUNCE
+    elif setup == "break_retest":
+        tag = TAG_BREAK_RETEST
+
+    return {"tags": sorted(set(tags)), "setup": setup, "tag": tag}
+
+
 def classify_bar_for_direction(
     df: pd.DataFrame,
     i: int,

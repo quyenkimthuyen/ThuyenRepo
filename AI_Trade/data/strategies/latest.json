@@ -1,6 +1,6 @@
 {
   "name": "rsi_h4_band",
-  "train_period": "train_2022",
+  "train_period": "train_2024",
   "pipeline_flow": "RSI H4 band \u2192 EMA H1 \u2192 entry \u2192 TP theo v\u00f9ng RSI",
   "rule_mode": "rsi_h4",
   "bands": {
@@ -31,7 +31,7 @@
     }
   },
   "ema_tolerance_atr": 0.35,
-  "lookback_bars": 120,
+  "lookback_bars": 80,
   "entry_cooldown_bars": 24,
   "rsi_rise_min": 0.3,
   "risk": {
@@ -61,35 +61,52 @@
     }
   },
   "train_stats": {
-    "win_rate": 0.66,
+    "win_rate": 0.6,
     "avg_rr": 2.5,
     "by_setup": {
+      "extreme_bounce": {
+        "win": 13,
+        "loss": 10,
+        "total": 23
+      },
+      "break_retest": {
+        "win": 13,
+        "loss": 10,
+        "total": 23
+      },
       "unclassified": {
-        "win": 33,
-        "loss": 17,
-        "total": 50
+        "win": 4,
+        "loss": 0,
+        "total": 4
       }
     },
     "by_tag": [
       {
         "tag": "ema_h1_confirm",
-        "win_rate": 0.644,
-        "win": 29,
-        "loss": 16,
-        "total": 45
+        "win_rate": 0.574,
+        "win": 27,
+        "loss": 20,
+        "total": 47
       },
       {
         "tag": "rsi_break_retest",
-        "win_rate": 1.0,
-        "win": 1,
-        "loss": 0,
-        "total": 1
+        "win_rate": 0.565,
+        "win": 13,
+        "loss": 10,
+        "total": 23
+      },
+      {
+        "tag": "rsi_extreme_bounce",
+        "win_rate": 0.565,
+        "win": 13,
+        "loss": 10,
+        "total": 23
       }
     ]
   },
-  "train_year": 2022,
+  "train_year": 2024,
   "source_setups": 50,
-  "win_rate_train": 0.66,
+  "win_rate_train": 0.6,
   "avg_rr_train": 2.5,
   "bar_annotation_count": 50,
   "setups_description": [

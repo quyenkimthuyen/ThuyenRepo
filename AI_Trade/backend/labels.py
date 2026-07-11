@@ -26,6 +26,7 @@ from .rsi_h4_strategy import (
     TAG_EMA_CONFIRM,
     TAG_EXTREME_BOUNCE,
     classify_bar_for_direction,
+    infer_setup_tags_for_label,
     dist_ema_pips,
     load_rsi_h4_config,
 )
@@ -108,7 +109,7 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
 
     result, exit_time = resolve_outcome(df, bar_time, direction, sl, tp)
 
-    classification = classify_bar_for_direction(df, nearest_idx, direction)
+    classification = infer_setup_tags_for_label(df, nearest_idx, direction)
     auto_tags = classification.get("tags") or []
     manual_tags = normalize_tags(setup.get("tags"))
     merged_tags = sorted(set(auto_tags) | set(manual_tags))
@@ -166,16 +167,40 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
 
 def retag_all_setups() -> int:
     """Gắn lại tag theo chiến lược RSI H4 cho mọi setup."""
+    from .bar_annotations import load_bar_annotations, save_bar_annotations
+
     df = add_indicators(load_candles())
     setups = load_setups()
     changed = 0
+    setup_by_ann: dict[str, dict[str, Any]] = {}
     for i, setup in enumerate(setups):
         enriched = enrich_setup(setup, df)
         if enriched.get("tags") != setup.get("tags") or enriched.get("strategy_setup") != setup.get("strategy_setup"):
             changed += 1
         setups[i] = enriched
+        ann_id = enriched.get("annotation_id")
+        if ann_id:
+            setup_by_ann[ann_id] = enriched
     save_setups(setups)
-    return changed
+
+    annotations = load_bar_annotations()
+    ann_changed = 0
+    for ann in annotations:
+        setup = setup_by_ann.get(ann.get("id"))
+        if not setup:
+            continue
+        period = normalize_setup_period(setup.get("period"))
+        if period != "train_2024" and period != "train_2022":
+            continue
+        new_tags = [t for t in (setup.get("tags") or []) if t in ("rsi_break_retest", "rsi_extreme_bounce", "ema_h1_confirm")]
+        if not new_tags:
+            continue
+        if set(ann.get("tags") or []) != set(new_tags):
+            ann["tags"] = new_tags
+            ann_changed += 1
+    if ann_changed:
+        save_bar_annotations(annotations)
+    return changed + ann_changed
 
 
 def setup_summary(setup: dict[str, Any], *, bar_lookup: dict[str, dict] | None = None) -> dict[str, Any]:

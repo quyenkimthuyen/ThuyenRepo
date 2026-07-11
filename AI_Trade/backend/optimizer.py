@@ -12,10 +12,10 @@ from .periods import suggested_backtest_period
 from .rsi_h4_strategy import load_rsi_h4_config
 
 PARAM_GRID: dict[str, list[Any]] = {
-    "entry_cooldown_bars": [12, 24, 36, 48],
-    "ema_tolerance_atr": [0.25, 0.35, 0.45],
-    "lookback_bars": [80, 120, 160],
-    "rsi_rise_min": [0.2, 0.3, 0.5],
+    "entry_cooldown_bars": [12, 24, 36, 48, 72],
+    "ema_tolerance_atr": [0.25, 0.35, 0.45, 0.55],
+    "lookback_bars": [60, 80, 120, 160],
+    "rsi_rise_min": [0.1, 0.2, 0.3, 0.5],
 }
 
 SEARCH_ORDER = [
