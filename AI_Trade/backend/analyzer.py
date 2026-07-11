@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -385,12 +386,185 @@ def compute_risk_from_labels(setups: list[dict[str, Any]]) -> dict[str, Any]:
     return risk
 
 
+MIN_SETUP_SAMPLES_FOR_DISABLE = 5
+MIN_SETUP_WIN_RATE = 0.38
+
+
+def _compute_alignment_report(
+    labeled: list[dict[str, Any]],
+    strategy: dict[str, Any],
+    df: pd.DataFrame,
+) -> dict[str, Any]:
+    from .strategy_registry import infer_setup_tags
+
+    aligned = 0
+    unclassified = 0
+    mismatched: list[dict[str, Any]] = []
+
+    for s in labeled:
+        entry_time = pd.Timestamp(s["entry_time"])
+        if entry_time.tz is None:
+            entry_time = entry_time.tz_localize("UTC")
+        idx = df.index.get_indexer([entry_time], method="nearest")[0]
+        inferred = infer_setup_tags(df, idx, s["direction"], strategy)
+        inferred_setup = inferred.get("setup")
+        recorded = s.get("strategy_setup")
+
+        if inferred_setup and inferred_setup not in ("unclassified", None):
+            if recorded == inferred_setup or not recorded:
+                aligned += 1
+            else:
+                mismatched.append(
+                    {
+                        "entry_time": s["entry_time"],
+                        "direction": s["direction"],
+                        "recorded": recorded,
+                        "inferred": inferred_setup,
+                    }
+                )
+        else:
+            unclassified += 1
+            if recorded and recorded != "unclassified":
+                mismatched.append(
+                    {
+                        "entry_time": s["entry_time"],
+                        "direction": s["direction"],
+                        "recorded": recorded,
+                        "inferred": None,
+                    }
+                )
+
+    total = len(labeled) or 1
+    return {
+        "total": len(labeled),
+        "aligned": aligned,
+        "unclassified": unclassified,
+        "mismatched_count": len(mismatched),
+        "ratio": round(aligned / total, 3),
+        "mismatched_samples": mismatched[:8],
+    }
+
+
+def _generate_recommendations(
+    train_stats: dict[str, Any],
+    alignment: dict[str, Any],
+    strategy: dict[str, Any],
+) -> list[dict[str, str]]:
+    recs: list[dict[str, str]] = []
+    by_setup = train_stats.get("by_setup") or {}
+
+    for setup_id, counts in sorted(by_setup.items()):
+        if setup_id in ("unclassified", None):
+            continue
+        total = int(counts.get("total", 0))
+        if total < MIN_SETUP_SAMPLES_FOR_DISABLE:
+            if total > 0:
+                recs.append(
+                    {
+                        "level": "info",
+                        "action": "collect_more",
+                        "target": setup_id,
+                        "message": f"Setup「{setup_id}」chỉ có {total} mẫu — label thêm để đánh giá.",
+                    }
+                )
+            continue
+        wr = counts.get("win", 0) / total
+        if wr < MIN_SETUP_WIN_RATE:
+            recs.append(
+                {
+                    "level": "warn",
+                    "action": "disable_setup",
+                    "target": setup_id,
+                    "message": f"Tắt setup「{setup_id}」— win rate label {wr:.0%} ({counts.get('win')}/{total}).",
+                }
+            )
+        elif wr >= 0.55:
+            recs.append(
+                {
+                    "level": "ok",
+                    "action": "keep_setup",
+                    "target": setup_id,
+                    "message": f"Giữ setup「{setup_id}」— win rate label tốt {wr:.0%}.",
+                }
+            )
+
+    ratio = float(alignment.get("ratio") or 0)
+    if ratio < 0.55 and alignment.get("total", 0) >= 5:
+        recs.insert(
+            0,
+            {
+                "level": "warn",
+                "action": "improve_labels",
+                "target": "label",
+                "message": (
+                    f"Chỉ {ratio:.0%} setup khớp rule chiến lược — "
+                    "label lại các nến không đúng setup đã chọn."
+                ),
+            },
+        )
+    elif ratio >= 0.75:
+        recs.insert(
+            0,
+            {
+                "level": "ok",
+                "action": "labels_good",
+                "target": "label",
+                "message": f"{ratio:.0%} setup khớp rule — dữ liệu label nhất quán.",
+            },
+        )
+
+    win_rate = float(train_stats.get("win_rate") or 0)
+    if win_rate < 0.45:
+        recs.append(
+            {
+                "level": "warn",
+                "action": "review_sl_tp",
+                "target": "risk",
+                "message": "Win rate label train thấp — xem lại SL/TP hoặc tiêu chí chọn nến.",
+            }
+        )
+
+    setups_cfg = strategy.get("setups") or {}
+    disabled = [k for k, v in setups_cfg.items() if v.get("enabled") is False]
+    if disabled:
+        recs.append(
+            {
+                "level": "info",
+                "action": "disabled_applied",
+                "target": ",".join(disabled),
+                "message": f"Đã tắt setup yếu: {', '.join(disabled)}.",
+            }
+        )
+
+    return recs
+
+
+def _apply_setup_recommendations(strategy: dict[str, Any], train_stats: dict[str, Any]) -> list[str]:
+    """Tắt setup có win rate label quá thấp."""
+    applied: list[str] = []
+    by_setup = train_stats.get("by_setup") or {}
+    setups = strategy.setdefault("setups", {})
+    for setup_id, counts in by_setup.items():
+        if setup_id in ("unclassified", None):
+            continue
+        total = int(counts.get("total", 0))
+        if total < MIN_SETUP_SAMPLES_FOR_DISABLE:
+            continue
+        wr = counts.get("win", 0) / total
+        if wr < MIN_SETUP_WIN_RATE and setup_id in setups:
+            setups[setup_id]["enabled"] = False
+            applied.append(setup_id)
+    return applied
+
+
 def analyze_patterns(
     min_setups: int = 5,
     train_period: str | None = None,
     strategy_id: str | None = None,
 ) -> dict[str, Any]:
     from .periods import default_train_period, filter_setups_for_train, period_config, resolve_period
+    from .data_service import load_candles
+    from .indicators import add_indicators
     from .labels import retag_all_setups
     from .strategy_registry import (
         build_strategy,
@@ -444,6 +618,11 @@ def analyze_patterns(
     }
 
     strategy = build_strategy(strategy_id, train_period, train_stats=train_stats)
+    disabled = _apply_setup_recommendations(strategy, train_stats)
+    df = add_indicators(load_candles())
+    alignment = _compute_alignment_report(labeled, strategy, df)
+    recommendations = _generate_recommendations(train_stats, alignment, strategy)
+
     strategy.update(
         {
             "strategy_id": strategy_id,
@@ -453,6 +632,10 @@ def analyze_patterns(
             "avg_rr_train": round(avg_rr, 2),
             "bar_annotation_count": len(load_bar_annotations()),
             "setups_description": strategy_description(strategy_id),
+            "alignment": alignment,
+            "recommendations": recommendations,
+            "disabled_setups": disabled,
+            "analyzed_at": datetime.now(timezone.utc).isoformat(),
         }
     )
 
@@ -474,6 +657,9 @@ def analyze_patterns(
         "train_stats": train_stats,
         "setups_description": strategy_description(strategy_id),
         "tag_insights": {"tags": tag_rows},
+        "alignment": alignment,
+        "recommendations": recommendations,
+        "disabled_setups": disabled,
         "strategy_path": str(strategy_path_for(strategy_id, train_period)),
     }
 

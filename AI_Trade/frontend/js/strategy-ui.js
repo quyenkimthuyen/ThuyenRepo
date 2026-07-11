@@ -748,6 +748,82 @@ function renderEmaCrossStrategy(data) {
   `;
 }
 
+function renderRecommendations(recs) {
+  if (!recs?.length) return '';
+  const items = recs
+    .map((r) => `<li class="${esc(r.level || 'info')}">${esc(r.message)}</li>`)
+    .join('');
+  return `
+    <section class="result-section">
+      <h3>Gợi ý cải thiện</h3>
+      <p class="section-note">Analyze đánh giá label + tự tắt setup win rate thấp.</p>
+      <ul class="rec-list">${items}</ul>
+    </section>`;
+}
+
+function renderAlignmentReport(alignment) {
+  if (!alignment?.total) return '';
+  const ratio = alignment.ratio ?? 0;
+  const cls = ratio >= 0.7 ? 'good' : ratio >= 0.5 ? '' : 'bad';
+  const mismatched = (alignment.mismatched_samples || [])
+    .map(
+      (m) =>
+        `<tr><td>${esc((m.entry_time || '').slice(0, 16))}</td><td>${esc(m.direction)}</td><td>${esc(m.recorded || '—')}</td><td>${esc(m.inferred || '—')}</td></tr>`,
+    )
+    .join('');
+  return `
+    <section class="result-section">
+      <h3>Độ khớp label ↔ chiến lược</h3>
+      ${statGrid([
+        { label: 'Setup khớp rule', value: pct(ratio), cls },
+        { label: 'Đã phân loại', value: String(alignment.aligned ?? 0) },
+        { label: 'Không khớp', value: String(alignment.mismatched_count ?? 0), cls: alignment.mismatched_count ? 'bad' : 'good' },
+        { label: 'Chưa nhận diện', value: String(alignment.unclassified ?? 0) },
+      ])}
+      ${
+        mismatched
+          ? `<details class="tree-details"><summary>Mẫu lệch (${alignment.mismatched_count})</summary>
+        <div class="mini-table-wrap"><table class="mini-table">
+          <thead><tr><th>Thời gian</th><th>Hướng</th><th>Label</th><th>Rule suy ra</th></tr></thead>
+          <tbody>${mismatched}</tbody>
+        </table></div></details>`
+          : ''
+      }
+    </section>`;
+}
+
+function renderBacktestBreakdown(data) {
+  const bd = data?.breakdown;
+  if (!bd) return '';
+  const setupRows = (bd.by_setup_type || [])
+    .map(
+      (r) =>
+        `<tr><td>${esc(r.setup_type)}</td><td>${r.trades}</td><td class="${r.win_rate >= 0.4 ? 'good' : 'bad'}">${pct(r.win_rate)}</td><td class="${r.pnl_pips >= 0 ? 'good' : 'bad'}">${num(r.pnl_pips, 1)}</td></tr>`,
+    )
+    .join('');
+  const monthRows = (bd.monthly_pnl || [])
+    .map((r) => `<tr><td>${esc(r.month)}</td><td class="${r.pnl_pips >= 0 ? 'good' : 'bad'}">${num(r.pnl_pips, 1)} pips</td></tr>`)
+    .join('');
+  return `
+    <section class="result-section">
+      <h3>Phân tích theo setup</h3>
+      <div class="mini-table-wrap">
+        <table class="mini-table">
+          <thead><tr><th>Setup</th><th>Lệnh</th><th>Win%</th><th>PnL pips</th></tr></thead>
+          <tbody>${setupRows || '<tr><td colspan="4" class="muted">—</td></tr>'}</tbody>
+        </table>
+      </div>
+      ${
+        monthRows
+          ? `<details class="tree-details"><summary>PnL theo tháng</summary>
+        <div class="mini-table-wrap"><table class="mini-table">
+          <thead><tr><th>Tháng</th><th>PnL</th></tr></thead><tbody>${monthRows}</tbody>
+        </table></div></details>`
+          : ''
+      }
+    </section>`;
+}
+
 function renderStrategyModeView(data) {
   const mode = data.rule_mode || 'global';
   const opt = data.optimization;
@@ -784,6 +860,8 @@ function renderStrategyModeView(data) {
         hint: data.validation_period || opt?.validation_period || '',
       },
     ])}
+    ${renderAlignmentReport(data.alignment)}
+    ${renderRecommendations(data.recommendations)}
     ${body}
     ${renderOptimizationBlock(data)}
     ${renderPipelineBlock(data)}
@@ -918,7 +996,7 @@ export function renderBacktestView(data, { title, subtitle, includeTrades = fals
   if (data.status === 'no_strategy') {
     return `
       ${banner('warn', 'Chưa có chiến lược', data.message || 'Chạy Analyze trước.')}
-      <p class="section-note">Vào tab <strong>Analyze</strong> và bấm 「Phân tích + tối ưu」 sau khi đã label đủ setup train.</p>
+      <p class="section-note">Vào tab <strong>Chiến lược</strong> → label setup → 「Phân tích + tối ưu」.</p>
     `;
   }
 
@@ -929,8 +1007,15 @@ export function renderBacktestView(data, { title, subtitle, includeTrades = fals
   const m = data.metrics || {};
   const passed = m.pass === true;
   const total = data.trade_count_total ?? m.trades ?? 0;
-  const isRsi = data.rule_mode === 'rsi_h4';
+  const isRsi = data.rule_mode === 'rsi_h4' || data.rule_mode === 'rsi_h4_zone';
+  const isRule = isRsi || data.rule_mode === 'ema_cross';
   const risk = data.risk || {};
+
+  const ruleHint = isRsi
+    ? 'Entry/TP theo vùng RSI H4'
+    : data.rule_mode === 'ema_cross'
+      ? 'Entry EMA50/200 · SL/TP ATR'
+      : 'Pipeline rule-based';
 
   const rsiConfigBlock =
     isRsi && risk
@@ -950,9 +1035,9 @@ export function renderBacktestView(data, { title, subtitle, includeTrades = fals
     ${banner(
       passed ? 'ok' : 'warn',
       passed ? `${title} — ĐẠT` : `${title} — CHƯA ĐẠT`,
-      isRsi
-        ? `${subtitle} · Entry RSI H4 + EMA H1 · TP/SL theo vùng RSI.`
-        : `${subtitle} · Pipeline: nến → tag → setup train → vào lệnh.`,
+      isRule
+        ? `${subtitle} · ${ruleHint}.`
+        : `${subtitle} · Pipeline similarity.`,
     )}
 
     ${statGrid(
@@ -976,6 +1061,7 @@ export function renderBacktestView(data, { title, subtitle, includeTrades = fals
       </ul>
     </section>
     ${rsiConfigBlock}
+    ${renderBacktestBreakdown(data)}
   `;
 
   if (!includeTrades) {

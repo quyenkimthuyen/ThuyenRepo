@@ -17,6 +17,7 @@ import {
   getStrategies,
   getStrategy,
   getStrategyTypes,
+  getWorkflow,
   patchStrategy,
   inspectBar,
   saveBarAnnotation,
@@ -24,7 +25,7 @@ import {
   saveSetup,
   suggestTags,
   updateSetup,
-} from './api.js?v=31';
+} from './api.js?v=32';
 import {
   renderAnalyzeView,
   renderBacktestView,
@@ -36,9 +37,9 @@ import {
   renderRsiBandLegend,
   renderStrategySettingsForm,
   collectStrategySettingsFromForm,
-} from './strategy-ui.js?v=31';
-import { initSidebarResize, initChartSplit } from './layout.js?v=31';
-import { TradeChart } from './chart.js?v=31';
+} from './strategy-ui.js?v=32';
+import { initSidebarResize, initChartSplit } from './layout.js?v=32';
+import { TradeChart } from './chart.js?v=32';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -61,7 +62,8 @@ const state = {
   strategyId: 'rsi_h4_zone',
   analyzeValidationPeriod: null,
   tagPresets: [],
-  sidebarTab: 'label',
+  sidebarTab: 'analyze',
+  workflow: null,
   btSelectedPeriods: ['bt_2024'],
   btStrategyId: 'rsi_h4_zone',
   btStrategyPeriod: 'train_2024',
@@ -143,8 +145,10 @@ const els = {
   btSavedList: document.getElementById('btSavedList'),
   btSavedCount: document.getElementById('btSavedCount'),
   btSaveName: document.getElementById('btSaveName'),
-  pipelineHint: document.getElementById('pipelineHint'),
   pipelineBanner: document.getElementById('pipelineBanner'),
+  pipelineHint: document.getElementById('pipelineHint'),
+  workflowStrip: document.getElementById('workflowStrip'),
+  strategyContextBar: document.getElementById('strategyContextBar'),
   sidebarTabs: document.querySelectorAll('.sidebar-tab'),
   sidebarViews: {
     label: document.getElementById('viewLabel'),
@@ -210,37 +214,86 @@ function entryHasBarAnnotation() {
   return state.barAnnotations.some(
     (a) =>
       a.confirmed !== false &&
-      (a.tags || []).length &&
       (a.bar_time || '').slice(0, 16) === iso.slice(0, 16),
   );
 }
 
 function updatePipelineUI() {
-  const banner = els.pipelineBanner;
   const hint = els.pipelineHint;
-  if (!banner) return;
+  if (!hint || state.sidebarTab !== 'label') return;
 
-  let step = 'bar';
-  if (state.sidebarTab === 'analyze') step = 'strategy';
-  else if (state.sidebarTab === 'backtest') step = 'backtest';
-  else if (state.labelSubTab === 'setups' && (state.mode === 'new' || state.mode === 'edit')) step = 'setup';
-  else if (state.labelSubTab === 'setups') step = 'setup';
-  else if (state.inspectedBar?.annotation?.tags?.length) step = 'tag';
-  else if (state.inspectedBar || state.showImportantBars) step = 'bar';
+  const wf = state.workflow;
+  const labeled = wf?.labeled_count ?? 0;
+  const target = wf?.target_setups ?? 50;
+  const hints = {
+    bars: 'Bật 「Nến quan trọng」 → click nến → Lưu nến.',
+    setups:
+      state.mode === 'new' || state.mode === 'edit'
+        ? 'Đặt Entry / SL / TP — setup phải khớp chiến lược tab ①.'
+        : `Tiến độ label: ${labeled}/${target} setup · mục tiêu trước khi Analyze.`,
+  };
+  const key = state.labelSubTab === 'setups' ? 'setups' : 'bars';
+  hint.textContent = hints[key];
+}
 
-  banner.querySelectorAll('.pipe-step').forEach((el) => {
-    el.classList.toggle('active', el.dataset.step === step);
-  });
+function renderWorkflowStrip(wf) {
+  const el = els.workflowStrip;
+  if (!el || !wf?.steps?.length) return;
+  const tabToStep = { analyze: 'strategy', label: 'label', backtest: 'backtest' };
+  const activeId = tabToStep[state.sidebarTab] || 'strategy';
+  el.innerHTML = wf.steps
+    .map((step, i) => {
+      const done = step.done ? ' done' : '';
+      const active = step.id === activeId ? ' active' : '';
+      const prog =
+        step.progress != null && step.target
+          ? ` <small>(${step.progress}/${step.target})</small>`
+          : '';
+      const arrow = i < wf.steps.length - 1 ? '<span class="wf-arrow">→</span>' : '';
+      return `<span class="wf-step${done}${active}" title="${esc(step.detail || '')}">${esc(step.label)}${prog}</span>${arrow}`;
+    })
+    .join('');
+}
 
-  if (hint) {
-    const hints = {
-      bar: 'Bật 「Nến quan trọng」 và click một nến trên chart.',
-      tag: 'Lưu nến tại entry (tag ngữ cảnh tùy chọn) — bước trước setup.',
-      setup: 'Đặt SL/TP — loại setup tự nhận theo cấu hình chiến lược (tab Analyze).',
-      strategy: `Tab Analyze → học pattern từ setup train ${periodShortLabel(state.trainPeriod)}.`,
-      backtest: 'Vào lệnh khi nến đạt score + tag + giống setup train. Xem kết quả ở panel dưới chart.',
-    };
-    hint.textContent = hints[step] || hints.bar;
+function escHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function esc(s) {
+  return escHtml(s);
+}
+
+function renderStrategyContext(wf) {
+  const el = els.strategyContextBar;
+  if (!el) return;
+  if (!wf) {
+    el.innerHTML = '<span class="muted">Đang tải chiến lược...</span>';
+    return;
+  }
+  const setups = (wf.enabled_setups || []).slice(0, 4).join(' · ') || '—';
+  const align =
+    wf.alignment_ratio != null
+      ? ` · Khớp rule ${Math.round(wf.alignment_ratio * 100)}%`
+      : '';
+  el.innerHTML = `
+    <div><strong>${escHtml(wf.strategy_label)}</strong> · Train ${wf.train_year || ''}</div>
+    <div>Setup đang bật: ${escHtml(setups)}</div>
+    <div>Label: <strong>${wf.labeled_count || 0}/${wf.target_setups || 50}</strong> setup${align}</div>
+  `;
+}
+
+async function refreshWorkflow() {
+  try {
+    const wf = await getWorkflow(state.trainPeriod, state.strategyId);
+    state.workflow = wf;
+    renderWorkflowStrip(wf);
+    renderStrategyContext(wf);
+    updatePipelineUI();
+  } catch (err) {
+    console.warn('Workflow status failed:', err);
   }
 }
 
@@ -1756,6 +1809,13 @@ function setSidebarTabUI(tabId) {
   }
   updateBtWorkspaceVisibility();
   updatePipelineUI();
+  renderWorkflowStrip(state.workflow);
+  if (tabId === 'label') renderStrategyContext(state.workflow);
+}
+
+async function setSidebarTabUIAsync(tabId) {
+  setSidebarTabUI(tabId);
+  await refreshWorkflow();
 }
 
 function switchSidebarTab(tabId, { syncPeriod = true } = {}) {
@@ -2027,6 +2087,7 @@ async function runAnalyze() {
     await loadStrategies();
     await loadStrategySettings();
     await syncChartStrategyBands();
+    await refreshWorkflow();
     renderBtStrategySelect();
   } catch (e) {
     els.analyzeResults.innerHTML = renderError(e.message);
@@ -2065,6 +2126,7 @@ async function runBt() {
     }
     await loadBacktestRuns();
     displayBacktestResults(data);
+    await refreshWorkflow();
     setBtWorkspaceTab('results');
     state.focusedTradeKey = null;
     const chartPeriod = periods[0];
@@ -2474,14 +2536,14 @@ async function loadAppData() {
     }
     setMode('idle');
     setLabelSubTabUI(state.labelSubTab);
-    setSidebarTabUI(state.sidebarTab || 'label');
+    setSidebarTabUI(state.sidebarTab || 'analyze');
     setBtWorkspaceTab(state.btWorkspaceTab || 'results');
     updateBtWorkspaceVisibility();
     await loadMonthMeta();
     await fetchWithRetry(() => loadMonthData());
     await fetchWithRetry(() => loadBacktestRuns());
     await syncChartStrategyBands();
-    updatePipelineUI();
+    await refreshWorkflow();
     requestAnimationFrame(() => chart.resize?.());
     hideBootError();
   } catch (err) {

@@ -1,65 +1,57 @@
 {
-  "strategy_id": "ema_cross",
-  "name": "ema_cross",
+  "strategy_id": "rsi_h4_zone",
+  "name": "rsi_h4_zone",
   "train_period": "train_2024",
-  "pipeline_flow": "EMA50/200 H1 \u2192 setup \u2192 entry \u2192 SL/TP ATR",
-  "rule_mode": "ema_cross",
+  "pipeline_flow": "RSI H4 r\u1eddi v\u00f9ng 70/30 \u2192 entry \u2192 TP v\u00f9ng \u0111\u1ed1i di\u1ec7n",
+  "rule_mode": "rsi_h4_zone",
+  "bands": {
+    "low": [
+      28,
+      32
+    ],
+    "mid": [
+      48,
+      52
+    ],
+    "high": [
+      68,
+      72
+    ]
+  },
   "setups": {
-    "pullback_long": {
+    "exit_high_short": {
       "enabled": true,
-      "tag": "ema_pullback_long",
-      "label": "Pullback LONG \u2014 trend t\u0103ng, h\u1ed3i EMA50"
+      "tag": "rsi_exit_high_short",
+      "label": "R\u1eddi v\u00f9ng 70 \u2192 SHORT \u00b7 TP RSI 30"
     },
-    "pullback_short": {
+    "exit_low_long": {
       "enabled": true,
-      "tag": "ema_pullback_short",
-      "label": "Pullback SHORT \u2014 trend gi\u1ea3m, h\u1ed3i EMA50"
-    },
-    "cross_long": {
-      "enabled": true,
-      "tag": "ema_cross_long",
-      "label": "Golden cross \u2014 EMA50 c\u1eaft l\u00ean EMA200"
-    },
-    "cross_short": {
-      "enabled": true,
-      "tag": "ema_cross_short",
-      "label": "Death cross \u2014 EMA50 c\u1eaft xu\u1ed1ng EMA200"
+      "tag": "rsi_exit_low_long",
+      "label": "R\u1eddi v\u00f9ng 30 \u2192 LONG \u00b7 TP RSI 70"
     }
   },
-  "ema_tolerance_atr": 0.4,
   "lookback_bars": 80,
-  "cross_lookback_bars": 24,
   "entry_cooldown_bars": 24,
-  "min_trend_sep_atr": 0.12,
   "risk": {
-    "mode": "atr_rr",
+    "mode": "rsi_band",
     "sl_atr_mult": 1.2,
-    "target_rr": 2.0,
-    "sl_on_ema_break": true
+    "sl_on_mid_break": true,
+    "sl_on_ema_break": false,
+    "tp_mode": "rsi_band"
   },
   "tags": {
     "primary": [
-      "pullback_long",
-      "pullback_short",
-      "cross_long",
-      "cross_short"
+      "rsi_exit_low_long",
+      "rsi_exit_high_short"
     ],
     "setup_labels": {
-      "pullback_long": {
-        "tag": "ema_pullback_long",
-        "label": "Pullback LONG \u2014 h\u1ed3i EMA50 trong uptrend"
+      "exit_high_short": {
+        "tag": "rsi_exit_high_short",
+        "label": "R\u1eddi v\u00f9ng 70 \u2192 SHORT \u00b7 TP RSI 30"
       },
-      "pullback_short": {
-        "tag": "ema_pullback_short",
-        "label": "Pullback SHORT \u2014 h\u1ed3i EMA50 trong downtrend"
-      },
-      "cross_long": {
-        "tag": "ema_cross_long",
-        "label": "Golden cross + h\u1ed3i EMA50"
-      },
-      "cross_short": {
-        "tag": "ema_cross_short",
-        "label": "Death cross + h\u1ed3i EMA50"
+      "exit_low_long": {
+        "tag": "rsi_exit_low_long",
+        "label": "R\u1eddi v\u00f9ng 30 \u2192 LONG \u00b7 TP RSI 70"
       }
     }
   },
@@ -67,20 +59,20 @@
     "win_rate": 0.6,
     "avg_rr": 2.5,
     "by_setup": {
-      "break_retest": {
-        "win": 16,
-        "loss": 15,
-        "total": 31
-      },
-      "extreme_bounce": {
-        "win": 10,
-        "loss": 5,
-        "total": 15
-      },
       "unclassified": {
-        "win": 4,
-        "loss": 0,
+        "win": 26,
+        "loss": 18,
+        "total": 44
+      },
+      "exit_low_long": {
+        "win": 2,
+        "loss": 2,
         "total": 4
+      },
+      "exit_high_short": {
+        "win": 2,
+        "loss": 0,
+        "total": 2
       }
     },
     "by_tag": [
@@ -99,6 +91,20 @@
         "total": 31
       },
       {
+        "tag": "rsi_exit_high_short",
+        "win_rate": 1.0,
+        "win": 2,
+        "loss": 0,
+        "total": 2
+      },
+      {
+        "tag": "rsi_exit_low_long",
+        "win_rate": 0.5,
+        "win": 2,
+        "loss": 2,
+        "total": 4
+      },
+      {
         "tag": "rsi_extreme_bounce",
         "win_rate": 0.565,
         "win": 13,
@@ -114,32 +120,48 @@
   "bar_annotation_count": 100,
   "setups_description": [
     {
-      "id": "pullback_long",
-      "tag": "ema_pullback_long",
-      "title": "Pullback LONG",
-      "long": "EMA50 > EMA200, gi\u00e1 h\u1ed3i v\u1ec1 EMA50, n\u1ebfn xanh \u2192 LONG",
+      "id": "exit_low_long",
+      "tag": "rsi_exit_low_long",
+      "title": "R\u1eddi v\u00f9ng 30 \u2192 LONG",
+      "long": "RSI H4 trong v\u00f9ng 28\u201332 r\u1ed3i tho\u00e1t l\u00ean tr\u00ean 32 \u2192 LONG \u2192 TP v\u00f9ng 68\u201372",
       "short": "\u2014"
     },
     {
-      "id": "pullback_short",
-      "tag": "ema_pullback_short",
-      "title": "Pullback SHORT",
+      "id": "exit_high_short",
+      "tag": "rsi_exit_high_short",
+      "title": "R\u1eddi v\u00f9ng 70 \u2192 SHORT",
       "long": "\u2014",
-      "short": "EMA50 < EMA200, gi\u00e1 h\u1ed3i v\u1ec1 EMA50, n\u1ebfn \u0111\u1ecf \u2192 SHORT"
-    },
-    {
-      "id": "cross_long",
-      "tag": "ema_cross_long",
-      "title": "Golden cross",
-      "long": "EMA50 v\u1eeba c\u1eaft l\u00ean EMA200 + pullback EMA50 \u2192 LONG",
-      "short": "\u2014"
-    },
-    {
-      "id": "cross_short",
-      "tag": "ema_cross_short",
-      "title": "Death cross",
-      "long": "\u2014",
-      "short": "EMA50 v\u1eeba c\u1eaft xu\u1ed1ng EMA200 + pullback EMA50 \u2192 SHORT"
+      "short": "RSI H4 trong v\u00f9ng 68\u201372 r\u1ed3i tho\u00e1t xu\u1ed1ng d\u01b0\u1edbi 68 \u2192 SHORT \u2192 TP v\u00f9ng 28\u201332"
     }
-  ]
+  ],
+  "alignment": {
+    "total": 50,
+    "aligned": 6,
+    "unclassified": 44,
+    "mismatched_count": 0,
+    "ratio": 0.12,
+    "mismatched_samples": []
+  },
+  "recommendations": [
+    {
+      "level": "warn",
+      "action": "improve_labels",
+      "target": "label",
+      "message": "Ch\u1ec9 12% setup kh\u1edbp rule chi\u1ebfn l\u01b0\u1ee3c \u2014 label l\u1ea1i c\u00e1c n\u1ebfn kh\u00f4ng \u0111\u00fang setup \u0111\u00e3 ch\u1ecdn."
+    },
+    {
+      "level": "info",
+      "action": "collect_more",
+      "target": "exit_high_short",
+      "message": "Setup\u300cexit_high_short\u300dch\u1ec9 c\u00f3 2 m\u1eabu \u2014 label th\u00eam \u0111\u1ec3 \u0111\u00e1nh gi\u00e1."
+    },
+    {
+      "level": "info",
+      "action": "collect_more",
+      "target": "exit_low_long",
+      "message": "Setup\u300cexit_low_long\u300dch\u1ec9 c\u00f3 4 m\u1eabu \u2014 label th\u00eam \u0111\u1ec3 \u0111\u00e1nh gi\u00e1."
+    }
+  ],
+  "disabled_setups": [],
+  "analyzed_at": "2026-07-11T11:54:23.024010+00:00"
 }

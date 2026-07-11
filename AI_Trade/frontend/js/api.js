@@ -50,7 +50,8 @@ export const analyze = (
     { method: 'POST' },
   );
 export const getStrategies = () => api('/api/strategies');
-export const getStrategyTypes = () => api('/api/strategy-types');
+export const getWorkflow = (trainPeriod = null, strategyId = null) =>
+  api(`/api/workflow${qs({ train_period: trainPeriod, strategy_id: strategyId })}`);
 export const getStrategy = (trainPeriod = null, strategyId = null) =>
   api(`/api/strategy${qs({ train_period: trainPeriod, strategy_id: strategyId })}`);
 export const patchStrategy = (body) =>

@@ -32,7 +32,7 @@ from .bar_importance import inspect_bar_at_time, scan_important_bars
 from .pipeline import pipeline_status
 from .detection_config import load_bar_detection_config, save_bar_detection_config
 from .tag_matcher import tag_definitions
-from .tags import load_presets
+from .workflow import workflow_status
 
 ROOT = Path(__file__).resolve().parents[1]
 FRONTEND = ROOT / "frontend"
@@ -411,6 +411,12 @@ def refresh_setups():
     return {"setups": setups}
 
 
+@app.get("/api/workflow")
+def get_workflow(train_period: str | None = None, strategy_id: str | None = None):
+    train_period = resolve_period(train_period) if train_period else None
+    return workflow_status(train_period=train_period, strategy_id=strategy_id)
+
+
 @app.get("/api/strategy-types")
 def get_strategy_types():
     return {"strategies": list_strategy_types()}
@@ -565,6 +571,16 @@ def backtest(
                 f"Chưa có chiến lược {sid_label} cho {train_period}. Chạy Analyze với năm train đó trước.",
             )
     result = run_backtest(periods=period_list, strategy=strategy)
+    if strategy and result.get("status") == "ok" and result.get("metrics"):
+        from datetime import datetime, timezone
+
+        strategy["last_backtest"] = {
+            **result["metrics"],
+            "period": result.get("period"),
+            "period_label": result.get("period_label"),
+            "at": datetime.now(timezone.utc).isoformat(),
+        }
+        save_strategy(strategy, train_period=strategy.get("train_period"), strategy_id=strategy.get("strategy_id"))
     period_key = result.get("period") or ",".join(period_list)
     if save and result.get("status") == "ok":
         saved = save_run(result, name=name, period=period_key)

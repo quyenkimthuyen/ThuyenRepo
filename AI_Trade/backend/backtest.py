@@ -378,6 +378,46 @@ def _simulate_trade(
     }
 
 
+def _trade_breakdown(trades: list[dict[str, Any]]) -> dict[str, Any]:
+    by_setup: dict[str, dict[str, Any]] = {}
+    by_direction: dict[str, dict[str, int]] = {"long": {"win": 0, "loss": 0}, "short": {"win": 0, "loss": 0}}
+    monthly: dict[str, float] = {}
+
+    for t in trades:
+        st = t.get("setup_type") or t.get("tag") or "unknown"
+        bucket = by_setup.setdefault(st, {"trades": 0, "wins": 0, "pnl_pips": 0.0})
+        bucket["trades"] += 1
+        if t.get("result") == "win":
+            bucket["wins"] += 1
+        bucket["pnl_pips"] = round(bucket["pnl_pips"] + float(t.get("pnl_pips", 0)), 1)
+
+        d = t.get("direction", "long")
+        if d in by_direction:
+            by_direction[d][t.get("result", "loss")] = by_direction[d].get(t.get("result", "loss"), 0) + 1
+
+        month = (t.get("entry_time") or "")[:7]
+        if month:
+            monthly[month] = round(monthly.get(month, 0) + float(t.get("pnl_pips", 0)), 1)
+
+    setup_rows = []
+    for name, b in sorted(by_setup.items()):
+        wr = b["wins"] / b["trades"] if b["trades"] else 0
+        setup_rows.append(
+            {
+                "setup_type": name,
+                "trades": b["trades"],
+                "win_rate": round(wr, 3),
+                "pnl_pips": b["pnl_pips"],
+            }
+        )
+
+    return {
+        "by_setup_type": setup_rows,
+        "by_direction": by_direction,
+        "monthly_pnl": [{"month": m, "pnl_pips": p} for m, p in sorted(monthly.items())],
+    }
+
+
 def _equity_metrics(trades: list[dict[str, Any]]) -> dict[str, Any]:
     if not trades:
         return {
@@ -493,6 +533,7 @@ def run_backtest(
             cooldown_until = i + entry_cooldown
 
     metrics = _equity_metrics(trades)
+    breakdown = _trade_breakdown(trades)
     period_key = ",".join(period_list) if len(period_list) > 1 else period_list[0]
     return {
         "status": "ok",
@@ -500,11 +541,13 @@ def run_backtest(
         "periods": period_list,
         "period_label": backtest_label(period_list),
         "strategy": strategy.get("name"),
+        "strategy_id": strategy.get("strategy_id"),
         "train_period": strategy.get("train_period"),
         "train_year": strategy.get("train_year"),
         "rule_mode": strategy.get("rule_mode", "global"),
         "risk": strategy.get("risk"),
         "metrics": metrics,
+        "breakdown": breakdown,
         "trades": trades,
         "trade_count_total": len(trades),
     }

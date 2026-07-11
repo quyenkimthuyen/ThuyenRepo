@@ -6,7 +6,7 @@
   <title>AI Trade Lab — EURUSD 1H</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/app.css?v=24">
+  <link rel="stylesheet" href="/static/css/app.css?v=25">
 </head>
 <body>
   <noscript>
@@ -27,21 +27,22 @@
     <header class="topbar">
       <div class="brand">
         <h1>AI Trade Lab</h1>
-        <span class="subtitle">EURUSD · 1H · Nến → Tag → Setup → Chiến lược → Backtest</span>
+        <span class="subtitle">Chiến lược → Label → Analyze → Backtest</span>
       </div>
+      <nav id="workflowStrip" class="workflow-strip" aria-label="Tiến trình"></nav>
       <span id="appLoading" class="app-loading hidden">Đang tải dữ liệu…</span>
     </header>
 
     <main class="layout" id="layout">
       <aside class="sidebar" id="sidebar">
         <nav class="sidebar-tabs" role="tablist" aria-label="Workflow">
-          <button type="button" class="sidebar-tab active" data-sidebar="label" role="tab" aria-selected="true">
+          <button type="button" class="sidebar-tab active" data-sidebar="analyze" role="tab" aria-selected="true">
             <span class="tab-step">1</span>
-            <span class="tab-label">Label</span>
+            <span class="tab-label">Chiến lược</span>
           </button>
-          <button type="button" class="sidebar-tab" data-sidebar="analyze" role="tab">
+          <button type="button" class="sidebar-tab" data-sidebar="label" role="tab">
             <span class="tab-step">2</span>
-            <span class="tab-label">Analyze</span>
+            <span class="tab-label">Label</span>
           </button>
           <button type="button" class="sidebar-tab" data-sidebar="backtest" role="tab">
             <span class="tab-step">3</span>
@@ -50,38 +51,48 @@
         </nav>
 
         <div class="sidebar-body">
-        <div id="viewLabel" class="sidebar-view active" role="tabpanel">
-          <div class="pipeline-banner" id="pipelineBanner">
-            <div class="pipeline-steps">
-              <span class="pipe-step" data-step="bar">① Nến</span>
-              <span class="pipe-arrow">→</span>
-              <span class="pipe-step" data-step="tag">② Tag</span>
-              <span class="pipe-arrow">→</span>
-              <span class="pipe-step" data-step="setup">③ Setup</span>
-              <span class="pipe-arrow">→</span>
-              <span class="pipe-step" data-step="strategy">④ Chiến lược</span>
-              <span class="pipe-arrow">→</span>
-              <span class="pipe-step" data-step="backtest">⑤ Backtest</span>
-            </div>
-            <p class="pipeline-hint" id="pipelineHint">Bật 「Nến quan trọng」 → click nến → lưu tag → tạo setup (SL/TP).</p>
+        <div id="viewAnalyze" class="sidebar-view active" role="tabpanel">
+          <section class="panel panel-strategy">
+            <h2>① Chiến lược</h2>
+            <p class="strategy-intro">Định nghĩa rule trước — chỉnh setup &amp; tham số, rồi Analyze để tối ưu từ label.</p>
+            <label class="bt-save-name">Loại chiến lược
+              <select id="analyzeStrategyType" class="train-period-select"></select>
+            </label>
+            <label class="bt-save-name">Năm train
+              <select id="analyzeTrainPeriod" class="train-period-select"></select>
+            </label>
+            <label class="bt-save-name">Năm validation (tối ưu)
+              <select id="analyzeValidationPeriod" class="train-period-select"></select>
+            </label>
+            <div id="strategySettingsPanel" class="strategy-settings-panel"></div>
+            <button type="button" class="btn block" id="btnSaveStrategySettings">Lưu cấu hình</button>
+            <button type="button" class="btn primary block" id="btnAnalyze">② Phân tích + tối ưu</button>
+            <div id="analyzeResults" class="strategy-results scroll-panel"></div>
+          </section>
+        </div>
+
+        <div id="viewLabel" class="sidebar-view hidden" role="tabpanel">
+          <div id="strategyContextBar" class="strategy-context-bar"></div>
+          <div class="pipeline-banner compact-pipeline" id="pipelineBanner">
+            <p class="pipeline-hint" id="pipelineHint">Lưu nến → tạo setup Long/Short + SL/TP khớp chiến lược tab ①.</p>
           </div>
 
           <section class="panel panel-setups">
             <nav class="label-subtabs" role="tablist" aria-label="Label workflow">
               <button type="button" class="label-subtab active" data-label-tab="bars" role="tab" aria-selected="true">
-                <span class="subtab-icon">②</span>
-                <span>Nến quan trọng</span>
+                <span class="subtab-icon">A</span>
+                <span>Nến</span>
                 <span class="count-badge subtab-badge" id="barTabCount">0</span>
               </button>
               <button type="button" class="label-subtab" data-label-tab="setups" role="tab">
-                <span class="subtab-icon">③</span>
+                <span class="subtab-icon">B</span>
                 <span>Setups</span>
                 <span class="count-badge subtab-badge" id="setupTabCount">0</span>
               </button>
             </nav>
 
             <div id="labelBarsView" class="label-subview active" role="tabpanel">
-              <p class="label-subhint">Tag nến — danh sách hiển thị <strong>tất cả</strong> tag đã lưu. Chart chỉ tải tháng đang chọn.</p>
+              <p class="label-subhint">Bật 「Nến quan trọng」 trên chart → click nến → lưu → tạo setup.</p>
 
               <div id="barInspectPanel" class="bar-inspect-panel hidden">
                 <div class="bar-inspect-head">
@@ -95,10 +106,10 @@
                 <ul id="barInspectSimilar" class="bar-inspect-similar"></ul>
 
                 <div class="bar-annotate-section">
-                  <span class="bar-annotate-label">Tag ngữ cảnh <small class="muted">(tùy chọn — không phải cấu hình chiến lược)</small></span>
+                  <span class="bar-annotate-label">Ghi chú nến <small class="muted">(tùy chọn)</small></span>
                   <div id="barAnnotTags" class="tag-checkbox-group"></div>
                   <div class="bar-annotate-actions">
-                    <button type="button" class="btn primary" id="btnSaveBarAnnot">Lưu tag nến</button>
+                    <button type="button" class="btn primary" id="btnSaveBarAnnot">Lưu nến</button>
                     <button type="button" class="btn danger hidden" id="btnDeleteBarAnnot">Xóa</button>
                   </div>
                 </div>
@@ -108,9 +119,9 @@
 
               <div id="barAnnotationListSection" class="bar-annotation-list-section">
                 <div class="setup-list-head">
-                  <span>Tag nến đã lưu</span>
+                  <span>Nến đã lưu</span>
                   <span class="count-badge" id="barAnnotationCount">0</span>
-                  <label class="list-filter-check" title="Lọc danh sách tag nến theo tháng (chart vẫn hiện cả năm)">
+                  <label class="list-filter-check" title="Lọc danh sách theo tháng">
                     <input type="checkbox" id="toggleListMonthFilterBars"> Lọc tháng
                   </label>
                 </div>
@@ -127,8 +138,8 @@
             </div>
 
             <div id="labelSetupsView" class="label-subview hidden" role="tabpanel">
-              <p class="label-subhint">~50 setup chất lượng/năm · RR mặc định 2.5 · điểm Q từ tiêu chí chuyên gia.</p>
-              <button type="button" class="btn primary block" id="btnNewSetup">＋ Setup từ nến đã tag</button>
+              <p class="label-subhint">Mục tiêu ~50 setup/năm · RR ≥ 2.5 · chỉ label setup khớp rule chiến lược.</p>
+              <button type="button" class="btn primary block" id="btnNewSetup">＋ Setup từ nến đã lưu</button>
 
               <div class="setup-editor hidden" id="editorPanel">
               <div class="mode-bar">
@@ -166,7 +177,7 @@
                 </div>
                 <label class="field-compact field-time">Thời gian <input id="fieldTime" type="datetime-local" step="3600"></label>
 
-                <p class="section-note setup-flow-note">Setup gắn với nến đã lưu · loại setup tự nhận theo <strong>cấu hình chiến lược</strong> (tab Analyze).</p>
+                <p class="section-note setup-flow-note">Loại setup tự nhận theo chiến lược tab ①.</p>
 
                 <div class="action-bar">
                   <button type="button" class="btn primary" id="btnSave" disabled>Lưu setup</button>
@@ -180,7 +191,7 @@
                 <div class="setup-list-head">
                   <span>Setup đã lưu</span>
                   <span class="count-badge" id="setupCount">0</span>
-                  <label class="list-filter-check" title="Lọc danh sách setup theo tháng (chart vẫn hiện cả năm)">
+                  <label class="list-filter-check" title="Lọc danh sách setup theo tháng">
                     <input type="checkbox" id="toggleListMonthFilter"> Lọc tháng
                   </label>
                   <span class="list-hint">Click xem · double-click sửa</span>
@@ -191,38 +202,18 @@
           </section>
         </div>
 
-        <div id="viewAnalyze" class="sidebar-view hidden" role="tabpanel">
-          <section class="panel panel-strategy">
-            <h2>Phân tích chiến lược</h2>
-            <p class="strategy-intro">Chọn <strong>loại chiến lược</strong>, năm train và validation — app học setup rồi tối ưu tham số walk-forward.</p>
-            <label class="bt-save-name">Loại chiến lược
-              <select id="analyzeStrategyType" class="train-period-select"></select>
-            </label>
-            <label class="bt-save-name">Năm train
-              <select id="analyzeTrainPeriod" class="train-period-select"></select>
-            </label>
-            <label class="bt-save-name">Năm validation (tối ưu)
-              <select id="analyzeValidationPeriod" class="train-period-select"></select>
-            </label>
-            <div id="strategySettingsPanel" class="strategy-settings-panel"></div>
-            <button type="button" class="btn block" id="btnSaveStrategySettings">Lưu cấu hình chiến lược</button>
-            <button type="button" class="btn primary block" id="btnAnalyze">Phân tích + tối ưu</button>
-            <div id="analyzeResults" class="strategy-results scroll-panel"></div>
-          </section>
-        </div>
-
         <div id="viewBacktest" class="sidebar-view hidden" role="tabpanel">
           <section class="panel panel-strategy panel-bt-controls">
-            <h2>Backtest</h2>
-            <p class="strategy-intro">Chọn <strong>loại chiến lược</strong>, năm train và năm backtest — kết quả chi tiết ở panel dưới chart.</p>
+            <h2>③ Backtest</h2>
+            <p class="strategy-intro">Kiểm tra chiến lược trên năm out-of-sample — báo cáo chi tiết ở panel dưới chart.</p>
             <label class="bt-save-name">Loại chiến lược
               <select id="btStrategyType" class="train-period-select"></select>
             </label>
-            <label class="bt-save-name">Chiến lược từ (năm train)
+            <label class="bt-save-name">Train từ năm
               <select id="btStrategyPeriod" class="train-period-select"></select>
             </label>
             <div class="bt-year-picker" id="btYearPicker" role="group" aria-label="Chọn năm backtest"></div>
-            <label class="bt-save-name">Tên lưu <input id="btSaveName" type="text" placeholder="VD: 2024 walk-forward"></label>
+            <label class="bt-save-name">Tên lưu <input id="btSaveName" type="text" placeholder="VD: RSI zone bt 2024"></label>
             <button type="button" class="btn primary block" id="btnBacktest">Chạy backtest</button>
             <div id="btSidebarSummary" class="bt-sidebar-summary muted">Chưa có kết quả — bấm Chạy backtest.</div>
           </section>
@@ -337,7 +328,7 @@
   </div>
 
   <script type="module">
-    import('/static/js/app.js?v=31').catch((err) => {
+    import('/static/js/app.js?v=32').catch((err) => {
       console.error('Module load failed:', err);
       const box = document.createElement('div');
       box.style.cssText = 'padding:20px;color:#fecaca;background:#3f1212;font-size:14px;line-height:1.5';

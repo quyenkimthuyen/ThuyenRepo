@@ -33,10 +33,34 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
 .boot-error-inner code { font-family: JetBrains Mono, monospace; font-size: 12px; }
 
 .topbar {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
   padding: 10px 18px; border-bottom: 1px solid var(--border); background: var(--panel);
   flex-shrink: 0;
 }
+.workflow-strip {
+  display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center; flex-wrap: wrap;
+  font-size: 11px; min-width: 200px;
+}
+.wf-step {
+  display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px;
+  border: 1px solid var(--border); color: var(--muted); background: rgba(15, 23, 42, 0.6);
+}
+.wf-step.done { border-color: rgba(34, 197, 94, 0.4); color: #86efac; }
+.wf-step.active { border-color: rgba(56, 189, 248, 0.5); color: #7dd3fc; background: rgba(56, 189, 248, 0.08); }
+.wf-arrow { color: var(--muted); opacity: 0.5; }
+.strategy-context-bar {
+  margin: 0 0 10px; padding: 10px; border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.25); background: rgba(56, 189, 248, 0.06);
+  font-size: 11px; line-height: 1.5;
+}
+.strategy-context-bar strong { color: #7dd3fc; }
+.compact-pipeline { padding: 8px 10px; margin-bottom: 8px; }
+.compact-pipeline .pipeline-hint { margin: 0; font-size: 11px; }
+.rec-list { list-style: none; padding: 0; margin: 8px 0; }
+.rec-list li { padding: 6px 8px; margin-bottom: 4px; border-radius: 6px; font-size: 11px; }
+.rec-list li.warn { background: rgba(251, 191, 36, 0.12); border-left: 3px solid #fbbf24; }
+.rec-list li.ok { background: rgba(34, 197, 94, 0.1); border-left: 3px solid #22c55e; }
+.rec-list li.info { background: rgba(148, 163, 184, 0.1); border-left: 3px solid #94a3b8; }
 .brand h1 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.02em; }
 .subtitle { color: var(--muted); font-size: 12px; }
 .app-loading { color: var(--yellow); font-size: 12px; margin-left: auto; }

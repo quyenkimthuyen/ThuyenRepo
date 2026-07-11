@@ -59,20 +59,20 @@
     "win_rate": 0.6,
     "avg_rr": 2.5,
     "by_setup": {
-      "break_retest": {
-        "win": 16,
-        "loss": 15,
-        "total": 31
-      },
-      "extreme_bounce": {
-        "win": 10,
-        "loss": 5,
-        "total": 15
-      },
       "unclassified": {
-        "win": 4,
-        "loss": 0,
+        "win": 26,
+        "loss": 18,
+        "total": 44
+      },
+      "exit_low_long": {
+        "win": 2,
+        "loss": 2,
         "total": 4
+      },
+      "exit_high_short": {
+        "win": 2,
+        "loss": 0,
+        "total": 2
       }
     },
     "by_tag": [
@@ -89,6 +89,20 @@
         "win": 16,
         "loss": 15,
         "total": 31
+      },
+      {
+        "tag": "rsi_exit_high_short",
+        "win_rate": 1.0,
+        "win": 2,
+        "loss": 0,
+        "total": 2
+      },
+      {
+        "tag": "rsi_exit_low_long",
+        "win_rate": 0.5,
+        "win": 2,
+        "loss": 2,
+        "total": 4
       },
       {
         "tag": "rsi_extreme_bounce",
@@ -119,5 +133,35 @@
       "long": "\u2014",
       "short": "RSI H4 trong v\u00f9ng 68\u201372 r\u1ed3i tho\u00e1t xu\u1ed1ng d\u01b0\u1edbi 68 \u2192 SHORT \u2192 TP v\u00f9ng 28\u201332"
     }
-  ]
+  ],
+  "alignment": {
+    "total": 50,
+    "aligned": 6,
+    "unclassified": 44,
+    "mismatched_count": 0,
+    "ratio": 0.12,
+    "mismatched_samples": []
+  },
+  "recommendations": [
+    {
+      "level": "warn",
+      "action": "improve_labels",
+      "target": "label",
+      "message": "Ch\u1ec9 12% setup kh\u1edbp rule chi\u1ebfn l\u01b0\u1ee3c \u2014 label l\u1ea1i c\u00e1c n\u1ebfn kh\u00f4ng \u0111\u00fang setup \u0111\u00e3 ch\u1ecdn."
+    },
+    {
+      "level": "info",
+      "action": "collect_more",
+      "target": "exit_high_short",
+      "message": "Setup\u300cexit_high_short\u300dch\u1ec9 c\u00f3 2 m\u1eabu \u2014 label th\u00eam \u0111\u1ec3 \u0111\u00e1nh gi\u00e1."
+    },
+    {
+      "level": "info",
+      "action": "collect_more",
+      "target": "exit_low_long",
+      "message": "Setup\u300cexit_low_long\u300dch\u1ec9 c\u00f3 4 m\u1eabu \u2014 label th\u00eam \u0111\u1ec3 \u0111\u00e1nh gi\u00e1."
+    }
+  ],
+  "disabled_setups": [],
+  "analyzed_at": "2026-07-11T11:54:23.024010+00:00"
 }
