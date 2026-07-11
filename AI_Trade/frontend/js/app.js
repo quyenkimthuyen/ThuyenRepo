@@ -22,7 +22,7 @@ import {
   saveSetup,
   suggestTags,
   updateSetup,
-} from './api.js?v=27';
+} from './api.js?v=28';
 import {
   renderAnalyzeView,
   renderBacktestView,
@@ -32,9 +32,9 @@ import {
   renderError,
   renderLoading,
   renderRsiBandLegend,
-} from './strategy-ui.js?v=27';
-import { initSidebarResize } from './layout.js?v=27';
-import { TradeChart } from './chart.js?v=27';
+} from './strategy-ui.js?v=28';
+import { initSidebarResize, initChartSplit } from './layout.js?v=28';
+import { TradeChart } from './chart.js?v=28';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -472,17 +472,21 @@ function refreshChartAnnotations() {
     chart.showSetupMarkers(trainSetups());
     if (state.showImportantBars) {
       chart.showImportantBars(state.importantBars);
+    } else {
+      chart.clearImportantBars();
     }
     return;
   }
 
+  chart.showSetupMarkers([]);
   if (isBacktestChartPeriod() && chartShowsActiveBacktest()) {
     if (state.focusedTradeKey) return;
     chart.showTradeMarkers(activeBtTrades());
-    if (state.showImportantBars) {
-      chart.showImportantBars(state.importantBars);
-    }
+  } else {
+    chart.showTradeMarkers([]);
   }
+  chart.clearImportantBars();
+  els.chartOverlayHint?.classList.add('hidden');
 }
 
 function isTrainPeriod() {
@@ -931,8 +935,11 @@ async function inspectBarAt(time, candle) {
 }
 
 async function loadImportantBars() {
-  if (!state.showImportantBars) {
+  if (!isTrainChartPeriod() || !state.showImportantBars) {
     chart.clearImportantBars();
+    if (!isTrainChartPeriod()) {
+      els.chartOverlayHint?.classList.add('hidden');
+    }
     return;
   }
   try {
@@ -1486,12 +1493,14 @@ async function switchPeriod(period, { syncSidebar = true } = {}) {
   if (isTrainChartPeriod(period)) {
     await loadMonthData();
   } else {
+    chart.clearOverlay();
+    chart.clearFocus();
     await loadChart();
-    if (isTrainChartPeriod(state.trainPeriod)) {
-      await refreshSetups();
-      await refreshBarAnnotations();
-    }
-    await loadImportantBars();
+    await refreshSetups();
+    await refreshBarAnnotations();
+    state.importantBars = [];
+    chart.clearImportantBars();
+    els.chartOverlayHint?.classList.add('hidden');
     updateLabelTabCounts();
   }
 }
@@ -1518,12 +1527,14 @@ async function syncChartStrategyBands() {
 async function loadChart() {
   const data = await getCandles(state.period, activeMonth());
   chart.setData(data);
+  chart.resetViewport();
   await syncChartStrategyBands();
   if (state.mode !== 'idle' && state.draft.time) {
     drawOverlayOnly();
   } else {
     refreshChartAnnotations();
   }
+  requestAnimationFrame(() => chart.resize?.());
 }
 
 function renderSetups() {
@@ -1910,7 +1921,9 @@ async function activateBacktestRun(runId) {
       setSidebarTabUI('backtest');
     } else {
       state.focusedTradeKey = null;
+      chart.resetViewport();
       refreshChartAnnotations();
+      requestAnimationFrame(() => chart.resize?.());
     }
   } catch (err) {
     alert(`Không tải được backtest: ${err.message || err}`);
@@ -1973,7 +1986,9 @@ async function runBt() {
     if (state.period !== chartPeriod) {
       await switchPeriod(chartPeriod, { syncSidebar: false });
     } else {
+      chart.resetViewport();
       refreshChartAnnotations();
+      requestAnimationFrame(() => chart.resize?.());
     }
   } catch (e) {
     if (els.btPanelResults) els.btPanelResults.innerHTML = renderError(e.message);
@@ -2231,6 +2246,8 @@ async function fetchWithRetry(fn, { retries = 3, delayMs = 800 } = {}) {
 let uiReady = false;
 let layoutReady = false;
 
+let chartSplitReady = false;
+
 function initShell() {
   if (uiReady) return;
   bindUI();
@@ -2245,6 +2262,15 @@ function initShell() {
       onResize: () => chart.resize?.(),
     });
     layoutReady = true;
+  }
+  if (!chartSplitReady) {
+    initChartSplit({
+      chartBody: document.getElementById('chartBody'),
+      rsiPanel: document.getElementById('rsiPanel'),
+      splitterEl: document.getElementById('chartSplitter'),
+      onResize: () => chart.resize?.(),
+    });
+    chartSplitReady = true;
   }
   uiReady = true;
 }

@@ -280,12 +280,20 @@
           </div>
         </details>
         <div id="chartHoverHint" class="chart-hover-hint hidden"></div>
-        <div class="chart-body">
-          <div class="chart-wrap">
+        <div class="chart-body" id="chartBody">
+          <div class="chart-wrap" id="chartWrap">
             <div id="chartMain" class="chart-main"></div>
             <div id="chartOverlayHint" class="chart-overlay-hint hidden"></div>
           </div>
-          <div class="rsi-panel">
+          <div
+            class="chart-splitter"
+            id="chartSplitter"
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="Kéo để chỉnh chiều cao RSI"
+            tabindex="0"
+          ></div>
+          <div class="rsi-panel" id="rsiPanel">
             <div class="rsi-panel-head">
               <span class="rsi-panel-title">RSI H4 (14)</span>
               <div class="rsi-band-legend" id="rsiBandLegend" aria-label="Vùng RSI chiến lược"></div>
@@ -327,7 +335,7 @@
   </div>
 
   <script type="module">
-    import('/static/js/app.js?v=27').catch((err) => {
+    import('/static/js/app.js?v=28').catch((err) => {
       console.error('Module load failed:', err);
       const box = document.createElement('div');
       box.style.cssText = 'padding:20px;color:#fecaca;background:#3f1212;font-size:14px;line-height:1.5';

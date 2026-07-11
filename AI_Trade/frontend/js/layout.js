@@ -71,3 +71,80 @@ export function initSidebarResize({ layoutEl, sidebarEl, resizerEl, onResize }) 
     onResize?.();
   });
 }
+
+const CHART_RSI_HEIGHT_KEY = 'aitrade-chart-rsi-height';
+const DEFAULT_RSI_PANEL_HEIGHT = 246;
+const MIN_RSI_PANEL_HEIGHT = 120;
+const MAX_RSI_PANEL_RATIO = 0.58;
+
+export function initChartSplit({ chartBody, rsiPanel, splitterEl, onResize }) {
+  if (!chartBody || !rsiPanel || !splitterEl) return;
+
+  const maxPanelHeight = () =>
+    Math.max(MIN_RSI_PANEL_HEIGHT, Math.floor(chartBody.clientHeight * MAX_RSI_PANEL_RATIO));
+
+  const applyRsiHeight = (height) => {
+    const clamped = Math.max(MIN_RSI_PANEL_HEIGHT, Math.min(maxPanelHeight(), height));
+    chartBody.style.setProperty('--rsi-panel-height', `${clamped}px`);
+    rsiPanel.style.height = `${clamped}px`;
+    localStorage.setItem(CHART_RSI_HEIGHT_KEY, String(clamped));
+    onResize?.();
+    return clamped;
+  };
+
+  const saved = Number(localStorage.getItem(CHART_RSI_HEIGHT_KEY));
+  applyRsiHeight(saved >= MIN_RSI_PANEL_HEIGHT ? saved : DEFAULT_RSI_PANEL_HEIGHT);
+
+  let dragging = false;
+
+  const heightFromPointer = (clientY) => {
+    const bodyRect = chartBody.getBoundingClientRect();
+    return bodyRect.bottom - clientY;
+  };
+
+  const onPointerMove = (event) => {
+    if (!dragging) return;
+    applyRsiHeight(heightFromPointer(event.clientY));
+  };
+
+  const stopDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    document.body.classList.remove('resizing-chart-split');
+    splitterEl.classList.remove('active');
+    window.removeEventListener('pointermove', onPointerMove);
+    window.removeEventListener('pointerup', stopDrag);
+    window.removeEventListener('pointercancel', stopDrag);
+  };
+
+  const startDrag = (event) => {
+    if (event.button !== 0) return;
+    dragging = true;
+    document.body.classList.add('resizing-chart-split');
+    splitterEl.classList.add('active');
+    applyRsiHeight(heightFromPointer(event.clientY));
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', stopDrag);
+    window.addEventListener('pointercancel', stopDrag);
+    event.preventDefault();
+  };
+
+  splitterEl.addEventListener('pointerdown', startDrag);
+
+  splitterEl.addEventListener('keydown', (event) => {
+    const step = event.shiftKey ? 24 : 8;
+    const current = rsiPanel.getBoundingClientRect().height;
+    if (event.key === 'ArrowUp') applyRsiHeight(current + step);
+    if (event.key === 'ArrowDown') applyRsiHeight(current - step);
+    if (event.key === 'Home') applyRsiHeight(MIN_RSI_PANEL_HEIGHT);
+    if (event.key === 'End') applyRsiHeight(maxPanelHeight());
+  });
+
+  window.addEventListener('resize', () => {
+    const current = rsiPanel.getBoundingClientRect().height;
+    if (current > maxPanelHeight()) applyRsiHeight(maxPanelHeight());
+    else onResize?.();
+  });
+
+  return { applyRsiHeight };
+}

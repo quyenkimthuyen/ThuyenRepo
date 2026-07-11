@@ -124,7 +124,7 @@ export class TradeChart {
     this.#rsiChart = createChart(this.#rsiEl, {
       ...common,
       width: this.#rsiEl.clientWidth || width,
-      height: this.#rsiEl.clientHeight || 140,
+      height: this.#rsiEl.clientHeight || 220,
       timeScale: { ...timeScaleOpts },
       handleScroll: {
         mouseWheel: false,
@@ -193,7 +193,7 @@ export class TradeChart {
     this.#mainChart?.applyOptions({ width, height });
     this.#rsiChart?.applyOptions({
       width: this.#rsiEl.clientWidth || width,
-      height: this.#rsiEl.clientHeight || 140,
+      height: Math.max(this.#rsiEl.clientHeight || 0, 80),
     });
     if (this.#showRsi) this.#syncRsiTimeScale();
     this.#refreshOverlayGeometry();
@@ -780,6 +780,17 @@ export class TradeChart {
     this.clearPriceFocus();
   }
 
+  resetViewport() {
+    this.clearPriceFocus();
+    if (!this.#candles?.length || !this.#mainChart) return;
+    this.#mainChart.timeScale().fitContent();
+    if (this.#showRsi) this.#syncRsiTimeScale();
+    requestAnimationFrame(() => {
+      this.#refreshOverlayLines();
+      this.#refreshOverlayGeometry();
+    });
+  }
+
   toggleEma50(on) {
     this.#showEma50 = on;
     this.#ema50Series.applyOptions({ visible: on });
@@ -793,8 +804,10 @@ export class TradeChart {
   toggleRsi(on) {
     this.#showRsi = on;
     const panel = this.#rsiEl?.closest('.rsi-panel');
+    const splitter = document.getElementById('chartSplitter');
     if (panel) panel.style.display = on ? '' : 'none';
     else this.#rsiEl.style.display = on ? 'block' : 'none';
+    if (splitter) splitter.style.display = on ? '' : 'none';
     this.#refreshRsiBandLines();
     this.#resize();
     if (on) this.#syncRsiTimeScale();
