@@ -155,6 +155,20 @@ def get_presets():
     return load_presets()
 
 
+def _indicator_series_aligned(df: pd.DataFrame) -> dict[str, list[dict[str, float | int]]]:
+    """Indicator points dùng cùng timestamp với nến — đồng bộ chart RSI."""
+    digits = {"ema50": 5, "ema200": 5, "rsi14": 2, "rsi14_h4": 2}
+    out: dict[str, list[dict[str, float | int]]] = {k: [] for k in digits}
+    for ts, row in df.iterrows():
+        t = int(ts.timestamp())
+        for col, d in digits.items():
+            val = row.get(col)
+            if val is None or pd.isna(val):
+                continue
+            out[col].append({"time": t, "value": round(float(val), d)})
+    return out
+
+
 @app.get("/api/candles")
 def get_candles(period: str = "train_2022", month: str | None = None, with_indicators: bool = True):
     period = resolve_period(period)
@@ -178,24 +192,7 @@ def get_candles(period: str = "train_2022", month: str | None = None, with_indic
     records = candles_to_records(df)
     indicators = None
     if with_indicators:
-        indicators = {
-            "ema50": [
-                {"time": int(ts.timestamp()), "value": round(float(v), 5)}
-                for ts, v in df["ema50"].dropna().items()
-            ],
-            "ema200": [
-                {"time": int(ts.timestamp()), "value": round(float(v), 5)}
-                for ts, v in df["ema200"].dropna().items()
-            ],
-            "rsi14": [
-                {"time": int(ts.timestamp()), "value": round(float(v), 2)}
-                for ts, v in df["rsi14"].dropna().items()
-            ],
-            "rsi14_h4": [
-                {"time": int(ts.timestamp()), "value": round(float(v), 2)}
-                for ts, v in df["rsi14_h4"].dropna().items()
-            ],
-        }
+        indicators = _indicator_series_aligned(df)
     return {"period": period, "month": month, "count": len(records), "candles": records, "indicators": indicators}
 
 

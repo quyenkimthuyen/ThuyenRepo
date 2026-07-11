@@ -295,7 +295,7 @@ def apply_curation(*, dry_run: bool = False, train_period: str | None = None) ->
         encoding="utf-8",
     )
     save_setups(new_setups)
-    save_bar_annotations(kept_ann)
+    save_bar_annotations(new_ann)
     return report
 
 

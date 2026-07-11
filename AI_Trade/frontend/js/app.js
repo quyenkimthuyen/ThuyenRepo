@@ -32,7 +32,7 @@ import {
   renderLoading,
 } from './strategy-ui.js?v=23';
 import { initSidebarResize } from './layout.js?v=23';
-import { TradeChart } from './chart.js?v=24';
+import { TradeChart } from './chart.js?v=26';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -323,7 +323,12 @@ function chartShowsActiveBacktest() {
 }
 
 function activeMonth() {
-  return isTrainChartPeriod() ? state.trainMonth : null;
+  return null;
+}
+
+function listFilterMonth() {
+  if (!state.listFilterByMonth || !isTrainChartPeriod()) return null;
+  return state.trainMonth;
 }
 
 function barDisplayCode(item) {
@@ -343,7 +348,7 @@ function trainSetups() {
 }
 
 function monthChartSetups() {
-  const month = activeMonth();
+  const month = listFilterMonth();
   if (!month) return trainSetups();
   return trainSetups().filter((s) => monthKeyFromTime(s.entry_time) === month);
 }
@@ -351,7 +356,7 @@ function monthChartSetups() {
 function setupsForList() {
   const all = trainSetups();
   if (!state.listFilterByMonth || !isTrainChartPeriod()) return all;
-  const month = activeMonth();
+  const month = listFilterMonth();
   if (!month) return all;
   return all.filter((s) => monthKeyFromTime(s.entry_time) === month);
 }
@@ -359,7 +364,7 @@ function setupsForList() {
 function annotationsForList() {
   const all = state.barAnnotations || [];
   if (!state.listFilterByMonth || !isTrainChartPeriod()) return all;
-  const month = activeMonth();
+  const month = listFilterMonth();
   if (!month) return all;
   return all.filter((a) => monthKeyFromTime(a.bar_time) === month);
 }
@@ -368,8 +373,8 @@ function updateLabelTabCounts() {
   const setupTotal = trainSetups().length;
   const setupMonth = monthChartSetups().length;
   const barTotal = state.barAnnotations?.length || 0;
-  const barMonth = activeMonth()
-    ? (state.barAnnotations || []).filter((a) => monthKeyFromTime(a.bar_time) === activeMonth()).length
+  const barMonth = listFilterMonth()
+    ? (state.barAnnotations || []).filter((a) => monthKeyFromTime(a.bar_time) === listFilterMonth()).length
     : barTotal;
   if (els.barTabCount) {
     els.barTabCount.textContent =
@@ -402,42 +407,22 @@ function switchLabelSubTab(tabId) {
 function renderMonthTabs() {
   const container = els.monthTabs;
   if (!container) return;
-
-  const show = isTrainChartPeriod() && state.monthMeta.length > 0;
-  container.classList.toggle('hidden', !show);
-  if (!show) {
-    container.innerHTML = '';
-    return;
-  }
-
+  container.classList.add('hidden');
   container.innerHTML = '';
-  for (const meta of state.monthMeta) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `month-tab${meta.month === state.trainMonth ? ' active' : ''}`;
-    btn.title = `${meta.label} · ${meta.bar_tag_count} nến · ${meta.setup_count} setup`;
-    const short = meta.month.slice(5);
-    btn.innerHTML = `${short}<span class="month-count">${meta.bar_tag_count}/${meta.setup_count}</span>`;
-    btn.onclick = () => switchTrainMonth(meta.month);
-    container.appendChild(btn);
-  }
+}
+
+function updateListMonthFilters() {
+  const show = isTrainChartPeriod();
+  document.querySelectorAll('.list-filter-check').forEach((el) => {
+    el.classList.toggle('hidden', !show);
+  });
 }
 
 async function switchTrainMonth(month) {
-  if (state.mode !== 'idle') cancelEditor();
-  hideBarInspect();
   state.trainMonth = month;
-  renderMonthTabs();
-  setLoading(true);
-  try {
-    await Promise.all([loadChart(), loadImportantBars()]);
-    renderSetups();
-    renderBarAnnotationList();
-    updateLabelTabCounts();
-    refreshChartAnnotations();
-  } finally {
-    setLoading(false);
-  }
+  renderSetups();
+  renderBarAnnotationList();
+  updateLabelTabCounts();
 }
 
 async function loadMonthMeta() {
@@ -453,6 +438,7 @@ async function loadMonthMeta() {
       state.trainMonth = state.monthMeta[0].month;
     }
     renderMonthTabs();
+    updateListMonthFilters();
   } catch (err) {
     console.warn('Month meta failed:', err);
     state.monthMeta = [];
@@ -481,7 +467,7 @@ function refreshChartAnnotations() {
 
   if (isTrainChartPeriod()) {
     if (state.focusedSetupId) return;
-    chart.showSetupMarkers(monthChartSetups());
+    chart.showSetupMarkers(trainSetups());
     if (state.showImportantBars) {
       chart.showImportantBars(state.importantBars);
     }
@@ -1182,13 +1168,9 @@ function updateChartHint() {
       return;
     }
   }
-  if (isTrainChartPeriod() && monthChartSetups().length > 0 && state.mode === 'idle') {
+  if (isTrainChartPeriod() && trainSetups().length > 0 && state.mode === 'idle') {
     const total = trainSetups().length;
-    const monthN = monthChartSetups().length;
-    els.chartOverlayHint.textContent =
-      total > monthN
-        ? `${monthN} setup tháng ${state.trainMonth.slice(5)} trên chart · ${total} setup tổng — click xem · double-click sửa`
-        : `${total} setup trên chart — click xem · double-click sửa`;
+    els.chartOverlayHint.textContent = `${total} setup trên chart — click xem · double-click sửa · cuộn/zoom để xem cả năm`;
     els.chartOverlayHint.classList.remove('hidden');
     return;
   }
@@ -1427,10 +1409,6 @@ async function startNewSetup() {
 
 async function startEditSetup(setup) {
   await ensureTrainPeriod();
-  const month = monthKeyFromTime(setup.entry_time);
-  if (month && month !== state.trainMonth) {
-    await switchTrainMonth(month);
-  }
   switchLabelSubTab('setups');
   switchSidebarTab('label', { syncPeriod: false });
 
@@ -1454,6 +1432,7 @@ async function startEditSetup(setup) {
   };
   updateModeUI();
   syncFields({ focus: true });
+  chart.viewSetup(setup, { interactive: true });
   refreshTagSuggest({ applyTags: false });
   renderSetups();
 }
@@ -1501,6 +1480,7 @@ async function switchPeriod(period, { syncSidebar = true } = {}) {
     }
   }
   updateModeUI();
+  updateListMonthFilters();
   if (isTrainChartPeriod(period)) {
     await loadMonthData();
   } else {
@@ -1541,8 +1521,13 @@ function renderSetups() {
     return;
   }
 
+  if (!items.length && state.listFilterByMonth && isTrainChartPeriod()) {
+    els.setupList.innerHTML = `<li class="hint" style="padding:8px">Không có setup trong tháng ${state.trainMonth?.slice(5) || '—'}. Bỏ 「Lọc tháng」 để xem tất cả ${total} setup.</li>`;
+    return;
+  }
+
   if (!items.length) {
-    els.setupList.innerHTML = `<li class="hint" style="padding:8px">Không có setup trong tháng ${state.trainMonth?.slice(5) || '—'}. Bỏ lọc tháng để xem tất cả ${total} setup.</li>`;
+    els.setupList.innerHTML = '<li class="hint" style="padding:8px">Không có setup.</li>';
     return;
   }
 
@@ -1576,17 +1561,6 @@ function renderSetups() {
 }
 
 function viewSetupOnChart(setup) {
-  const month = monthKeyFromTime(setup.entry_time);
-  if (isTrainChartPeriod() && month && month !== state.trainMonth) {
-    switchTrainMonth(month).then(() => {
-      state.focusedSetupId = setup.id;
-      state.focusedTradeKey = null;
-      chart.viewSetup(setup, { interactive: false });
-      renderSetups();
-      updateChartHint();
-    });
-    return;
-  }
   state.focusedSetupId = setup.id;
   state.focusedTradeKey = null;
   chart.viewSetup(setup, { interactive: false });

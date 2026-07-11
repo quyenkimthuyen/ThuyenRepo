@@ -60,6 +60,7 @@ export class TradeChart {
   #boundPointerUp;
   #resizeObserver = null;
   #mounted = false;
+  #syncingTimeScale = false;
 
   constructor(mainEl, rsiEl, { onClick, onLevelDrag, onImportantBarHover } = {}) {
     this.#wrapEl = mainEl.parentElement;
@@ -95,7 +96,17 @@ export class TradeChart {
       localization: { locale: 'en-US' },
     };
 
-    this.#mainChart = createChart(this.#mainEl, { ...common, width, height });
+    const timeScaleOpts = {
+      borderColor: COLORS.grid,
+      timeVisible: true,
+      secondsVisible: false,
+      rightOffset: 6,
+      barSpacing: 6,
+      fixLeftEdge: false,
+      fixRightEdge: false,
+    };
+
+    this.#mainChart = createChart(this.#mainEl, { ...common, width, height, timeScale: timeScaleOpts });
     this.#candleSeries = this.#mainChart.addCandlestickSeries({
       upColor: COLORS.up,
       downColor: COLORS.down,
@@ -110,16 +121,40 @@ export class TradeChart {
       ...common,
       width: this.#rsiEl.clientWidth || width,
       height: this.#rsiEl.clientHeight || 140,
+      timeScale: { ...timeScaleOpts },
+      handleScroll: {
+        mouseWheel: false,
+        pressedMouseMove: false,
+        horzTouchDrag: false,
+      },
+      handleScale: {
+        mouseWheel: false,
+        pinch: false,
+        axisPressedMouseMove: { time: false, price: true },
+      },
     });
     this.#rsiSeries = this.#rsiChart.addLineSeries({ color: COLORS.rsi, lineWidth: 2, title: 'RSI H4' });
     this.#rsiChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
 
-    const onRange = (range) => {
-      if (range) this.#rsiChart.timeScale().setVisibleLogicalRange(range);
+    const onLogicalRange = (range) => {
+      if (this.#syncingTimeScale || !range) return;
+      this.#syncingTimeScale = true;
+      this.#rsiChart.timeScale().setVisibleLogicalRange(range);
+      this.#syncingTimeScale = false;
       this.#refreshOverlayLines();
       this.#refreshOverlayGeometry();
     };
-    this.#mainChart.timeScale().subscribeVisibleLogicalRangeChange(onRange);
+    this.#mainChart.timeScale().subscribeVisibleLogicalRangeChange(onLogicalRange);
+
+    const onTimeRange = (range) => {
+      if (this.#syncingTimeScale || !range) return;
+      this.#syncingTimeScale = true;
+      this.#rsiChart.timeScale().setVisibleRange(range);
+      this.#syncingTimeScale = false;
+      this.#refreshOverlayLines();
+      this.#refreshOverlayGeometry();
+    };
+    this.#mainChart.timeScale().subscribeVisibleTimeRangeChange(onTimeRange);
 
     this.#mainChart.subscribeClick((param) => this.#handleClick(param));
     this.#mainChart.subscribeCrosshairMove((param) => this.#handleCrosshair(param));
@@ -155,6 +190,7 @@ export class TradeChart {
       width: this.#rsiEl.clientWidth || width,
       height: this.#rsiEl.clientHeight || 140,
     });
+    if (this.#showRsi) this.#syncRsiTimeScale();
     this.#refreshOverlayGeometry();
   }
 
@@ -371,14 +407,40 @@ export class TradeChart {
     return this.#candles.length - 1;
   }
 
+  #alignSeriesToCandles(candles, points) {
+    if (!candles?.length) return [];
+    const byTime = new Map((points ?? []).map((p) => [p.time, p.value]));
+    return candles
+      .map((c) => {
+        const value = byTime.get(c.time);
+        if (value == null || Number.isNaN(value)) return null;
+        return { time: c.time, value };
+      })
+      .filter(Boolean);
+  }
+
+  #syncRsiTimeScale() {
+    const logical = this.#mainChart.timeScale().getVisibleLogicalRange();
+    const timeRange = this.#mainChart.timeScale().getVisibleRange();
+    this.#syncingTimeScale = true;
+    if (logical) {
+      this.#rsiChart.timeScale().setVisibleLogicalRange(logical);
+    }
+    if (timeRange) {
+      this.#rsiChart.timeScale().setVisibleRange(timeRange);
+    }
+    this.#syncingTimeScale = false;
+  }
+
   setData({ candles, indicators }) {
     this.#candles = candles;
     this.#candleSeries.setData(candles);
-    this.#ema50Series.setData(this.#showEma50 ? indicators?.ema50 ?? [] : []);
-    this.#ema200Series.setData(this.#showEma200 ? indicators?.ema200 ?? [] : []);
-    const rsiData = indicators?.rsi14_h4?.length
-      ? indicators.rsi14_h4
-      : indicators?.rsi14 ?? [];
+    const ema50 = this.#alignSeriesToCandles(candles, indicators?.ema50);
+    const ema200 = this.#alignSeriesToCandles(candles, indicators?.ema200);
+    const rsiRaw = indicators?.rsi14_h4?.length ? indicators.rsi14_h4 : indicators?.rsi14;
+    const rsiData = this.#alignSeriesToCandles(candles, rsiRaw);
+    this.#ema50Series.setData(this.#showEma50 ? ema50 : []);
+    this.#ema200Series.setData(this.#showEma200 ? ema200 : []);
     this.#rsiSeries.setData(this.#showRsi ? rsiData : []);
     this.#resize();
 
@@ -388,7 +450,7 @@ export class TradeChart {
       this.focusSetup(pending);
     } else if (!this.#priceFocus) {
       this.#mainChart.timeScale().fitContent();
-      this.#rsiChart.timeScale().fitContent();
+      this.#syncRsiTimeScale();
     }
     this.#refreshOverlayLines();
     this.#refreshOverlayGeometry();
@@ -431,7 +493,7 @@ export class TradeChart {
         to: Math.min(this.#candles.length - 1, idx + half),
       };
       this.#mainChart.timeScale().setVisibleLogicalRange(range);
-      this.#rsiChart.timeScale().setVisibleLogicalRange(range);
+      this.#syncRsiTimeScale();
     }
 
     requestAnimationFrame(() => {
@@ -666,6 +728,7 @@ export class TradeChart {
     this.#showRsi = on;
     this.#rsiEl.style.display = on ? 'block' : 'none';
     this.#resize();
+    if (on) this.#syncRsiTimeScale();
   }
 
   scrollToTime(unixSec) {

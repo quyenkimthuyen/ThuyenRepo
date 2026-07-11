@@ -203,6 +203,53 @@ def retag_all_setups() -> int:
     return changed + ann_changed
 
 
+def restore_missing_bar_annotations(train_period: str | None = None) -> dict[str, Any]:
+    """Tạo lại bar annotation cho setup thiếu link (vd. sau curation ghi đè file)."""
+    from .bar_annotations import enrich_annotation, load_bar_annotations, save_bar_annotations
+    from .entity_codes import assign_bar_code
+
+    period = resolve_period(train_period or default_train_period())
+    df = add_indicators(load_candles())
+    setups = load_setups()
+    annotations = load_bar_annotations()
+    ann_by_id = {a["id"]: a for a in annotations}
+    restored = 0
+
+    for i, setup in enumerate(setups):
+        if normalize_setup_period(setup.get("period")) != period:
+            continue
+        ann_id = setup.get("annotation_id")
+        if ann_id and ann_id in ann_by_id:
+            continue
+
+        payload: dict[str, Any] = {
+            "bar_time": setup["entry_time"],
+            "close": setup["entry_price"],
+            "tags": setup.get("tags") or [],
+            "note": setup.get("note", ""),
+            "train_period": period,
+            "confirmed": True,
+        }
+        enriched = enrich_annotation(payload, df)
+        enriched["tags"] = [t for t in (setup.get("tags") or []) if t]
+        enriched["auto_detected_tags"] = setup.get("bar_tags") or []
+        enriched["setup_id"] = setup["id"]
+        enriched["setup_code"] = setup.get("code")
+        if not enriched.get("code"):
+            enriched["code"] = assign_bar_code(enriched, annotations)
+
+        annotations.append(enriched)
+        ann_by_id[enriched["id"]] = enriched
+        setup["annotation_id"] = enriched["id"]
+        setups[i] = setup
+        restored += 1
+
+    if restored:
+        save_bar_annotations(annotations)
+        save_setups(setups)
+    return {"train_period": period, "restored": restored, "annotations_total": len(annotations)}
+
+
 def setup_summary(setup: dict[str, Any], *, bar_lookup: dict[str, dict] | None = None) -> dict[str, Any]:
     ann_id = setup.get("annotation_id")
     bar = bar_lookup.get(ann_id) if bar_lookup and ann_id else None
