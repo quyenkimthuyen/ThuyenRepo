@@ -92,3 +92,31 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     out["close_above_ema200"] = out["close"] > out["ema200"]
     out["h4_trend_up"] = add_h4_trend(out)
     return out
+
+
+def h4_rsi_allows_direction(
+    direction: str,
+    row: pd.Series,
+    *,
+    threshold: float = 50.0,
+) -> bool:
+    """RSI H4 > threshold → long; RSI H4 < threshold → short."""
+    rsi = row.get("rsi14_h4")
+    if rsi is None or pd.isna(rsi):
+        return False
+    value = float(rsi)
+    if direction == "long":
+        return value > threshold
+    if direction == "short":
+        return value < threshold
+    return False
+
+
+def h4_trend_allows_direction(direction: str, row: pd.Series) -> bool:
+    """Legacy: EMA50 > EMA200 trên H4."""
+    h4_up = bool(row.get("h4_trend_up", row.get("trend_up", False)))
+    if direction == "long":
+        return h4_up
+    if direction == "short":
+        return not h4_up
+    return False

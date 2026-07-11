@@ -9,7 +9,14 @@ from .analyzer import load_strategy
 from .config import PIP
 from .data_service import load_candles, slice_period
 from .detection_config import load_bar_detection_config
-from .indicators import add_indicators
+from .indicators import h4_rsi_allows_direction, h4_trend_allows_direction
+from .rsi_h4_strategy import (
+    build_strategy,
+    classify_bar_for_direction,
+    detect_entry_at_bar,
+    load_rsi_h4_config,
+    strategy_description,
+)
 from .labels import load_setups
 from .pipeline import filter_train_setups
 from .bar_annotations import annotation_index_by_time, load_bar_annotations
@@ -278,6 +285,25 @@ def inspect_bar(
     elif not suggested_tags:
         suggested_tags = bar_ctx.get("suggested_tags") or []
 
+    rsi_cfg = load_rsi_h4_config()
+    rsi_val = float(row.get("rsi14_h4", 50)) if not np.isnan(row.get("rsi14_h4", np.nan)) else None
+    strat_stub = build_strategy("train_2024")
+    entry_dir, entry_tag, entry_meta = detect_entry_at_bar(df, idx, strat_stub)
+    rsi_signals = {
+        "rsi14_h4": round(rsi_val, 1) if rsi_val is not None else None,
+        "bands": rsi_cfg.get("bands"),
+        "entry_signal": (
+            {"direction": entry_dir, "tag": entry_tag, **(entry_meta or {})}
+            if entry_dir
+            else None
+        ),
+        "long": classify_bar_for_direction(df, idx, "long", strat_stub),
+        "short": classify_bar_for_direction(df, idx, "short", strat_stub),
+        "setups": strategy_description(),
+    }
+    if entry_dir and entry_tag and entry_tag not in suggested_tags:
+        suggested_tags = sorted(set(suggested_tags) | {entry_tag, "ema_h1_confirm"})
+
     return {
         "time": int(ts.timestamp()),
         "entry_time": ts.isoformat(),
@@ -289,13 +315,14 @@ def inspect_bar(
         "sequence_tags": seq_tags,
         "detected_tags": detected,
         "suggested_tags": suggested_tags,
-        "primary_tag": primary_tag,
+        "primary_tag": primary_tag or entry_tag,
         "similar_setups": bar_ctx.get("similar_setups") or [],
-        "suggested_direction": bar_ctx.get("suggested_direction"),
+        "suggested_direction": bar_ctx.get("suggested_direction") or entry_dir,
         "confidence": bar_ctx.get("confidence"),
         "cluster_win_rate": bar_ctx.get("cluster_win_rate"),
         "annotation": annotation,
         "user_confirmed": bool(annotation and annotation.get("confirmed")),
+        "rsi_h4": rsi_signals,
     }
 
 
@@ -623,11 +650,14 @@ def match_entry_from_inspection(
 
     require_h4 = strategy.get("require_h4_trend", True)
     if require_h4:
-        h4_up = bool(row.get("h4_trend_up", row.get("trend_up", False)))
-        if direction == "long" and not h4_up:
-            return None, None, None
-        if direction == "short" and h4_up:
-            return None, None, None
+        mode = str(strategy.get("trend_filter", "h4_rsi"))
+        if mode in ("h4_ema", "ema_h4"):
+            if not h4_trend_allows_direction(direction, row):
+                return None, None, None
+        else:
+            threshold = float(strategy.get("h4_rsi_threshold", 50))
+            if not h4_rsi_allows_direction(direction, row, threshold=threshold):
+                return None, None, None
 
     avoid = set((strategy.get("tags") or {}).get("avoid_tags") or [])
     if primary_tag and primary_tag in avoid:

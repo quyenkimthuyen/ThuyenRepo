@@ -8,6 +8,8 @@ from typing import Any
 
 import pandas as pd
 
+from .rsi_h4_strategy import TAG_BREAK_RETEST, TAG_EMA_CONFIRM, TAG_EXTREME_BOUNCE
+
 from .bar_annotations import load_bar_annotations, save_bar_annotations
 from .config import LABELS_PATH, ROOT
 
@@ -58,18 +60,12 @@ def score_setup(
             reasons.append("bar_score_low")
 
     tags = set(setup.get("tags") or [])
-    if "rejection" in tags:
-        pts += int(weights.get("rejection_tag", 15))
-        reasons.append("rejection")
-    if "pullback" in tags and "retest" in tags:
-        pts += int(weights.get("pullback_retest", 10))
-        reasons.append("pullback_retest")
-    if len(tags) >= 4:
-        pts -= int(weights.get("over_tag_penalty", 10))
-        reasons.append("over_tagged")
-    elif len(tags) >= 3 and {"pullback", "rejection", "retest"}.issubset(tags):
-        pts -= int(weights.get("triple_combo_penalty", 20))
-        reasons.append("generic_triple_tag")
+    if TAG_BREAK_RETEST in tags or TAG_EXTREME_BOUNCE in tags:
+        pts += int(weights.get("strategy_setup_tag", 20))
+        reasons.append("rsi_h4_setup")
+    if TAG_EMA_CONFIRM in tags:
+        pts += int(weights.get("ema_confirm_tag", 10))
+        reasons.append("ema_h1_confirm")
 
     features = setup.get("features") or {}
     dist50 = abs(float(features.get("dist_ema50_pips", 99)))

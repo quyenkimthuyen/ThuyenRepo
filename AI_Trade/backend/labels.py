@@ -21,8 +21,16 @@ from .periods import (
 from .detection_config import load_bar_detection_config
 from .entity_codes import assign_setup_code, display_bar_code, display_setup_code
 from .indicators import add_indicators
+from .rsi_h4_strategy import (
+    TAG_BREAK_RETEST,
+    TAG_EMA_CONFIRM,
+    TAG_EXTREME_BOUNCE,
+    classify_bar_for_direction,
+    dist_ema_pips,
+    load_rsi_h4_config,
+)
 from .pipeline import context_bars_for_index, validate_setup_from_bar
-from .tags import infer_tags, normalize_tags
+from .tags import normalize_tags
 
 
 def _ensure_file() -> None:
@@ -100,6 +108,23 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
 
     result, exit_time = resolve_outcome(df, bar_time, direction, sl, tp)
 
+    classification = classify_bar_for_direction(df, nearest_idx, direction)
+    auto_tags = classification.get("tags") or []
+    manual_tags = normalize_tags(setup.get("tags"))
+    merged_tags = sorted(set(auto_tags) | set(manual_tags))
+    if not merged_tags and classification.get("tag"):
+        merged_tags = [classification["tag"]]
+    if TAG_EMA_CONFIRM not in merged_tags and (
+        (direction == "long" and float(row.get("close", 0)) >= float(row.get("ema50", 0)) - float(row.get("atr14", 0)) * 0.35)
+        or (direction == "short" and float(row.get("close", 0)) <= float(row.get("ema50", 0)) + float(row.get("atr14", 0)) * 0.35)
+    ):
+        merged_tags.append(TAG_EMA_CONFIRM)
+        merged_tags = sorted(set(merged_tags))
+
+    rsi_h4 = float(row.get("rsi14_h4", 50)) if pd.notna(row.get("rsi14_h4")) else None
+    bands = load_rsi_h4_config().get("bands", {})
+    mid = bands.get("mid", [48, 52])
+
     enriched = {
         **setup,
         "code": setup.get("code") or display_setup_code(setup),
@@ -108,7 +133,8 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
         "result": result,
         "exit_time": exit_time.isoformat() if exit_time is not None else None,
         "period": normalize_setup_period(setup.get("period")) or period_for_timestamp(bar_time),
-        "tags": infer_tags(setup),
+        "tags": merged_tags,
+        "strategy_setup": classification.get("setup"),
         "context_bars": setup.get("context_bars")
         or context_bars_for_index(df, nearest_idx, window),
         "bar_tags": setup.get("bar_tags") or (ann.get("tags") if ann else []),
@@ -118,14 +144,38 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
             "ema50": round(float(row.get("ema50", 0)), 5),
             "ema200": round(float(row.get("ema200", 0)), 5),
             "atr14": round(float(row.get("atr14", 0)), 5),
-            "h4_trend_up": bool(row.get("h4_trend_up", row.get("trend_up", False))),
+            "rsi14_h4": round(rsi_h4, 1) if rsi_h4 is not None else None,
+            "rsi_h4_zone": (
+                "high"
+                if rsi_h4 is not None and rsi_h4 >= bands.get("high", [68, 72])[0]
+                else "low"
+                if rsi_h4 is not None and rsi_h4 <= bands.get("low", [28, 32])[1]
+                else "mid"
+                if rsi_h4 is not None and mid[0] <= rsi_h4 <= mid[1]
+                else "neutral"
+            ),
+            "strategy_setup": classification.get("setup"),
             "trend_up": bool(row.get("trend_up", False)),
             "close_above_ema50": bool(row.get("close_above_ema50", False)),
             "close_above_ema200": bool(row.get("close_above_ema200", False)),
-            "dist_ema50_pips": round((entry - float(row.get("ema50", entry))) / PIP, 1),
+            **dist_ema_pips(row),
         },
     }
     return enriched
+
+
+def retag_all_setups() -> int:
+    """Gắn lại tag theo chiến lược RSI H4 cho mọi setup."""
+    df = add_indicators(load_candles())
+    setups = load_setups()
+    changed = 0
+    for i, setup in enumerate(setups):
+        enriched = enrich_setup(setup, df)
+        if enriched.get("tags") != setup.get("tags") or enriched.get("strategy_setup") != setup.get("strategy_setup"):
+            changed += 1
+        setups[i] = enriched
+    save_setups(setups)
+    return changed
 
 
 def setup_summary(setup: dict[str, Any], *, bar_lookup: dict[str, dict] | None = None) -> dict[str, Any]:
@@ -198,7 +248,7 @@ def create_setup(payload: dict[str, Any]) -> dict[str, Any]:
     if not ok:
         raise ValueError(
             f"Setup chưa đủ chất lượng: {msg}. "
-            "Chọn nến score cao hơn, tag rõ (rejection/pullback+retest), RR ≥ 2.5, theo trend."
+            "Chọn nến RSI H4 đúng setup (break+retest hoặc extreme bounce), EMA H1 xác nhận, RR ≥ 2.5."
         )
     enriched = enrich_setup_quality(enriched, {ann_for_gate["id"]: ann_for_gate} if ann_for_gate else None)
     setups = [s for s in setups_existing if s["id"] != enriched["id"]]

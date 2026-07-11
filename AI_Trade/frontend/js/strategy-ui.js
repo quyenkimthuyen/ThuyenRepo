@@ -145,9 +145,13 @@ function renderRuleCard(direction, rule, { hideTagLine = false } = {}) {
   }
 
   const lines = [
-    rule.h4_trend_up != null
-      ? `Xu hướng H4: ${rule.h4_trend_up ? 'tăng (EMA50 > EMA200)' : 'giảm'}`
-      : 'Xu hướng H4: theo hướng lệnh',
+    rule.h4_rsi_above != null
+      ? `RSI H4 > ${rule.h4_rsi_above} (ưu tiên long)`
+      : rule.h4_rsi_below != null
+        ? `RSI H4 < ${rule.h4_rsi_below} (ưu tiên short)`
+        : rule.h4_trend_up != null
+          ? `Xu hướng H4: ${rule.h4_trend_up ? 'tăng (EMA50 > EMA200)' : 'giảm'}`
+          : 'Xu hướng H4: RSI > 50 long / < 50 short',
     rule.rsi_min != null && rule.rsi_max != null
       ? `RSI từ ${rule.rsi_min} đến ${rule.rsi_max} (legacy)`
       : null,
@@ -366,6 +370,58 @@ function renderOptimizationBlock(data) {
   `;
 }
 
+function renderRsiH4Strategy(data) {
+  const strat = data.strategy || {};
+  const bands = strat.bands || { low: [28, 32], mid: [48, 52], high: [68, 72] };
+  const setups = data.setups_description || strat.setups_description || [];
+  const stats = data.train_stats || strat.train_stats || {};
+
+  const setupRows = setups
+    .map(
+      (s) => `
+      <div class="rule-card">
+        <div class="rule-head">${esc(s.title || s.id)} <span class="pill">${esc(s.tag)}</span></div>
+        <p><strong>LONG:</strong> ${esc(s.long)}</p>
+        <p><strong>SHORT:</strong> ${esc(s.short)}</p>
+      </div>`,
+    )
+    .join('');
+
+  const tagStats = (stats.by_tag || [])
+    .map(
+      (r) =>
+        `<tr><td>${esc(r.tag)}</td><td>${r.total}</td><td>${pct(r.win_rate)}</td></tr>`,
+    )
+    .join('');
+
+  return `
+    <section class="result-section">
+      <h3>Chiến lược RSI H4 + EMA H1</h3>
+      <p class="section-note">
+        Vùng RSI H4: thấp ${bands.low?.[0]}–${bands.low?.[1]},
+        giữa ${bands.mid?.[0]}–${bands.mid?.[1]},
+        cao ${bands.high?.[0]}–${bands.high?.[1]}.
+        TP khi RSI H4 chạm vùng 70 (long) / 30 (short). SL khi thủng vùng 50 hoặc mất EMA H1.
+      </p>
+      <div class="rule-grid">${setupRows}</div>
+    </section>
+    ${
+      tagStats
+        ? `
+    <section class="result-section">
+      <h3>Thống kê tag trên setup train</h3>
+      <div class="mini-table-wrap">
+        <table class="mini-table">
+          <thead><tr><th>Tag</th><th>Số setup</th><th>Win rate</th></tr></thead>
+          <tbody>${tagStats}</tbody>
+        </table>
+      </div>
+    </section>`
+        : ''
+    }
+  `;
+}
+
 export function renderAnalyzeView(data) {
   if (!data) return '<p class="muted">Chưa có kết quả.</p>';
 
@@ -384,13 +440,32 @@ export function renderAnalyzeView(data) {
     return banner('error', 'Lỗi phân tích', data.message || 'Không rõ nguyên nhân');
   }
 
-  const rules = data.rules || {};
   const mode = data.rule_mode || 'global';
   const modeLabels = {
-    similarity: 'Similarity (tag + setup gần nhất)',
-    tag_driven: 'Tag profile',
-    global: 'Global',
+    rsi_h4: 'RSI H4 band + EMA H1',
+    similarity: 'Similarity (legacy)',
+    tag_driven: 'Tag profile (legacy)',
+    global: 'Global (legacy)',
   };
+
+  if (mode === 'rsi_h4') {
+    return `
+      ${banner('ok', 'Chiến lược RSI H4', data.train_year ? `Train ${data.train_year} — thay thế hoàn toàn chiến lược cũ.` : '')}
+      ${renderPipelineBlock(data)}
+      ${statGrid([
+        { label: 'Setup train', value: String(data.setup_count ?? 0) },
+        { label: 'Win rate train', value: pct(data.win_rate_train), cls: 'good' },
+        { label: 'RR trung bình', value: `${num(data.avg_rr_train, 2)}R` },
+        { label: 'Chế độ', value: modeLabels.rsi_h4, cls: 'good' },
+      ])}
+      ${banner('ok', 'Backtest', 'Vào lệnh khi Setup 1 (break+retest 50) hoặc Setup 2 (chạm 70/30 → hồi 50) + EMA H1 xác nhận.')}
+      ${renderRsiH4Strategy(data)}
+      ${renderTagTable(data.tag_insights)}
+      ${renderOptimizationBlock(data)}
+    `;
+  }
+
+  const rules = data.rules || {};
   return `
     ${banner('ok', 'Phân tích hoàn tất', data.train_year ? `Chiến lược học từ setup train ${data.train_year}.` : 'Chiến lược học từ các setup train (mỗi setup = nến entry + tag + SL/TP).')}
     ${renderPipelineBlock(data)}
@@ -457,6 +532,7 @@ function renderTradeRows(trades) {
       const time = (t.entry_time || '').slice(0, 16).replace('T', ' ');
       const tagParts = [];
       if (t.tag) tagParts.push(`<span class="pill">${esc(t.tag)}</span>`);
+      if (t.setup_type) tagParts.push(`<span class="pill" title="Loại setup">${esc(t.setup_type)}</span>`);
       if (t.importance_score != null) tagParts.push(`<span class="pill" title="Importance score">S${t.importance_score}</span>`);
       if (t.similarity != null) tagParts.push(`<span class="pill" title="Setup similarity">${Math.round(t.similarity * 100)}%</span>`);
       if ((t.sequence_tags || []).length) {
@@ -579,6 +655,7 @@ export function renderBacktestTradesPanel(trades, { focusedKey = null, onRowClic
       const selected = focusedKey && focusedKey === key;
       const tagParts = [];
       if (t.tag) tagParts.push(`<span class="pill">${esc(t.tag)}</span>`);
+      if (t.setup_type) tagParts.push(`<span class="pill" title="Loại setup">${esc(t.setup_type)}</span>`);
       if (t.importance_score != null) tagParts.push(`<span class="pill">S${t.importance_score}</span>`);
       if (t.similarity != null) tagParts.push(`<span class="pill">${Math.round(t.similarity * 100)}%</span>`);
       return `

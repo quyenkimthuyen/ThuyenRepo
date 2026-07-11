@@ -10,7 +10,7 @@ from .bar_annotations import load_bar_annotations, annotation_at_time
 from .detection_config import load_bar_detection_config
 from .tags import infer_tags, normalize_tags
 
-PIPELINE_FLOW = "bar → tag → setup → strategy → backtest"
+PIPELINE_FLOW = "RSI H4 band → EMA H1 → setup → backtest"
 
 
 def context_bars_for_index(

@@ -1,0 +1,31 @@
+{
+  "bands": {
+    "low": [28, 32],
+    "mid": [48, 52],
+    "high": [68, 72]
+  },
+  "setups": {
+    "break_retest": {
+      "enabled": true,
+      "tag": "rsi_break_retest",
+      "label": "RSI H4 break + retest vùng 50"
+    },
+    "extreme_bounce": {
+      "enabled": true,
+      "tag": "rsi_extreme_bounce",
+      "label": "RSI H4 chạm 70/30, hồi 50, bật lại",
+      "max_mid_touches": 2
+    }
+  },
+  "ema_tolerance_atr": 0.35,
+  "lookback_bars": 120,
+  "entry_cooldown_bars": 24,
+  "rsi_rise_min": 0.3,
+  "risk": {
+    "mode": "rsi_band",
+    "sl_atr_mult": 1.0,
+    "sl_on_mid_break": true,
+    "sl_on_ema_break": false,
+    "tp_mode": "rsi_band"
+  }
+}

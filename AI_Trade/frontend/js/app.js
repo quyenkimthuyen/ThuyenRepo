@@ -151,14 +151,9 @@ const chart = new TradeChart(
 const MODE_LABELS = { idle: 'Xem chart', new: 'Tạo mới', edit: 'Chỉnh sửa' };
 
 const DEFAULT_TAGS = [
-  { id: 'pullback', label: 'Pullback', hint: 'Hồi về EMA / support' },
-  { id: 'breakout', label: 'Breakout', hint: 'Phá vỡ vùng sideway' },
-  { id: 'retest', label: 'Retest', hint: 'Retest vùng phá vỡ' },
-  { id: 'rejection', label: 'Rejection', hint: 'Pin bar / từ chối giá' },
-  { id: 'reversal', label: 'Reversal', hint: 'Đảo chiều cấu trúc' },
-  { id: 'trend', label: 'Trend', hint: 'Theo xu hướng chính' },
-  { id: 'range', label: 'Range', hint: 'Giao dịch trong vùng đi ngang' },
-  { id: 'liquidity', label: 'Liquidity', hint: 'Quét thanh khoản / sweep' },
+  { id: 'rsi_break_retest', label: 'RSI break + retest 50', hint: 'Setup 1: break vùng 48–52 rồi test lại' },
+  { id: 'rsi_extreme_bounce', label: 'RSI extreme bounce', hint: 'Setup 2: chạm 70/30, hồi 50, bật lại' },
+  { id: 'ema_h1_confirm', label: 'EMA H1 xác nhận', hint: 'Giá giữ hỗ trợ/kháng cự EMA 50/200 H1' },
 ];
 
 const STEP_HINTS = {

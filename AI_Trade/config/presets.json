@@ -1,26 +1,37 @@
 {
   "tags": [
-    { "id": "pullback", "label": "Pullback", "hint": "Hồi về EMA / support" },
-    { "id": "breakout", "label": "Breakout", "hint": "Phá vỡ vùng sideway" },
-    { "id": "retest", "label": "Retest", "hint": "Retest vùng phá vỡ" },
-    { "id": "rejection", "label": "Rejection", "hint": "Pin bar / từ chối giá" },
-    { "id": "reversal", "label": "Reversal", "hint": "Đảo chiều cấu trúc" },
-    { "id": "trend", "label": "Trend", "hint": "Theo xu hướng chính" },
-    { "id": "range", "label": "Range", "hint": "Giao dịch trong vùng đi ngang" },
-    { "id": "liquidity", "label": "Liquidity", "hint": "Quét thanh khoản / sweep" }
+    {
+      "id": "rsi_break_retest",
+      "label": "RSI break + retest 50",
+      "hint": "Setup 1: RSI H4 vượt/thủng vùng 48–52 rồi test lại"
+    },
+    {
+      "id": "rsi_extreme_bounce",
+      "label": "RSI extreme bounce",
+      "hint": "Setup 2: chạm 68–72 / 28–32, hồi 48–52, bật lại (lần 1–2)"
+    },
+    {
+      "id": "ema_h1_confirm",
+      "label": "EMA H1 xác nhận",
+      "hint": "Giá giữ hỗ trợ/kháng cự EMA 50/200 H1"
+    }
   ],
   "notes": [
-    { "tags": ["pullback"], "text": "Pullback về EMA50 trong uptrend" },
-    { "tags": ["pullback"], "text": "Pullback EMA200 sau breakout" },
-    { "tags": ["breakout", "retest"], "text": "Breakout + retest vùng kháng cự" },
-    { "tags": ["breakout"], "text": "Breakout khỏi range H1" },
-    { "tags": ["retest"], "text": "Retest mức phá vỡ thành support" },
-    { "tags": ["rejection"], "text": "Pin bar rejection tại kháng cự" },
-    { "tags": ["rejection"], "text": "Sweep liquidity + rejection wick dài" },
-    { "tags": ["reversal"], "text": "Đảo chiều sau higher high giả" },
-    { "tags": ["trend"], "text": "Trend continuation sau pullback nhẹ" },
-    { "tags": ["trend"], "text": "Vào lệnh theo trend EMA50/200" },
-    { "tags": ["range"], "text": "Buy đáy range / sell đỉnh range" },
-    { "tags": ["liquidity"], "text": "Liquidity sweep rồi đảo chiều" }
+    {
+      "tags": ["rsi_break_retest", "ema_h1_confirm"],
+      "text": "Setup 1 LONG: RSI H4 break trên 52, retest 48–52, EMA H1 hỗ trợ"
+    },
+    {
+      "tags": ["rsi_break_retest", "ema_h1_confirm"],
+      "text": "Setup 1 SHORT: RSI H4 break dưới 48, retest 48–52, EMA H1 kháng cự"
+    },
+    {
+      "tags": ["rsi_extreme_bounce", "ema_h1_confirm"],
+      "text": "Setup 2 LONG: chạm RSI 68–72, hồi 48–52 lần 1–2, bật tăng"
+    },
+    {
+      "tags": ["rsi_extreme_bounce", "ema_h1_confirm"],
+      "text": "Setup 2 SHORT: chạm RSI 28–32, hồi 48–52 lần 1–2, bật giảm"
+    }
   ]
 }

@@ -12,6 +12,7 @@ from sklearn.tree import DecisionTreeClassifier, export_text
 from .config import STRATEGY_PATH
 from .labels import load_setups
 from .tags import infer_tags
+from .rsi_h4_strategy import TAG_BREAK_RETEST, TAG_EXTREME_BOUNCE
 from .tag_matcher import (
     DEFAULT_MIN_SIMILARITY,
     build_feature_stats,
@@ -124,9 +125,12 @@ def _rules_for_direction(subset: pd.DataFrame, direction: str) -> dict[str, Any]
 
     rule: dict[str, Any] = {
         "enabled": True,
-        "h4_trend_up": True if direction == "long" else False,
         "exclude": _loss_exclusions(wins, losses),
     }
+    if direction == "long":
+        rule["h4_rsi_above"] = 50
+    else:
+        rule["h4_rsi_below"] = 50
     if trend_up is not None:
         rule["trend_up"] = trend_up if direction == "long" else (not trend_up)
     if above50 is not None:
@@ -383,137 +387,81 @@ def compute_risk_from_labels(setups: list[dict[str, Any]]) -> dict[str, Any]:
 
 def analyze_patterns(min_setups: int = 5, train_period: str | None = None) -> dict[str, Any]:
     from .periods import default_train_period, filter_setups_for_train, period_config, resolve_period
+    from .labels import retag_all_setups
+    from .rsi_h4_strategy import build_strategy, strategy_description
+    from .indicators import add_indicators
+    from .data_service import load_candles
 
     train_period = resolve_period(train_period or default_train_period())
+    retag_all_setups()
     setups = load_setups()
     train = filter_setups_for_train(setups, train_period)
-    df = _feature_frame(train)
+    labeled = [s for s in train if s.get("result") in ("win", "loss")]
 
-    if len(df) < min_setups:
+    if len(labeled) < min_setups:
         return {
             "status": "insufficient_data",
-            "message": f"Cần ít nhất {min_setups} setup train (win/loss). Hiện có {len(df)}.",
+            "message": f"Cần ít nhất {min_setups} setup train (win/loss). Hiện có {len(labeled)}.",
             "setup_count": len(train),
-            "labeled_outcomes": len(df),
+            "labeled_outcomes": len(labeled),
         }
 
-    win_rate = float(df["win"].mean())
+    win_rate = float(sum(1 for s in labeled if s["result"] == "win") / len(labeled))
     avg_rr = float(train_df_rr(train))
-    tag_info = _tag_insights(train)
-    preferred_tags = tag_info.get("preferred_tags") or []
-    extra = annotations_as_learning_samples()
-    coverage = _tag_coverage(train)
-    tag_signatures = build_tag_signatures(train, extra_samples=extra)
-    feature_stats = build_feature_stats(train)
-    det_cfg = load_bar_detection_config()
-    sequence_signatures = build_sequence_signatures(
-        train,
-        window=int(det_cfg.get("sequence_window", 5)),
-        extra_samples=extra,
-    )
-    setup_index = build_setup_index(train)
-    tag_profiles = _build_tag_profiles(train, tag_info)
-    rule_mode = _resolve_rule_mode(coverage, tag_profiles, tag_signatures)
-    rules = _rules_from_win_loss(df)
-    if rule_mode == "global":
-        rules = _apply_tag_constraints(rules, train, tag_info)
-    risk = compute_risk_from_labels(train)
 
-    feature_cols = [
-        "direction_long",
-        "dist_ema50_pips",
-        "h4_trend_up",
-        "trend_up",
-        "close_above_ema50",
-        "close_above_ema200",
-    ]
-    tree = DecisionTreeClassifier(max_depth=3, min_samples_leaf=max(2, len(df) // 10))
-    tree.fit(df[feature_cols], df["win"])
-    tree_rules = export_text(tree, feature_names=feature_cols)
+    by_setup: dict[str, dict[str, int]] = {}
+    by_tag: dict[str, dict[str, int]] = {}
+    for s in labeled:
+        st = s.get("strategy_setup") or "unclassified"
+        by_setup.setdefault(st, {"win": 0, "loss": 0, "total": 0})
+        by_setup[st]["total"] += 1
+        by_setup[st][s["result"]] += 1
+        for tag in s.get("tags") or []:
+            by_tag.setdefault(tag, {"win": 0, "loss": 0, "total": 0})
+            by_tag[tag]["total"] += 1
+            by_tag[tag][s["result"]] += 1
 
-    strategy = {
-        "name": "learned_from_labels",
-        "train_period": train_period,
-        "train_year": period_config(train_period).get("year"),
-        "pipeline_flow": PIPELINE_FLOW,
-        "source_setups": len(train),
-        "bar_annotation_count": len(load_bar_annotations()),
-        "bar_learning_samples": len(extra),
-        "win_rate_train": round(win_rate, 3),
-        "avg_rr_train": round(avg_rr, 2),
-        "rule_mode": rule_mode,
-        "min_similarity": 0.70 if win_rate >= 0.55 else DEFAULT_MIN_SIMILARITY,
-        "max_similarity": 0.92 if win_rate >= 0.55 else None,
-        "min_cluster_win_rate": 0.55 if win_rate >= 0.55 else 0.45,
-        "backtest_min_score": 78 if win_rate >= 0.55 else int(det_cfg.get("backtest_min_score", 35)),
-        "bar_tag_threshold": 0.58 if win_rate >= 0.55 else float(det_cfg.get("bar_tag_threshold", 0.45)),
-        "entry_cooldown_bars": 36 if win_rate >= 0.55 else 12,
-        "preferred_entry_tags": preferred_tags[:2] if win_rate >= 0.55 else [],
-        "require_detected_tag": True,
-        "require_h4_trend": True,
-        "trend_filter": "h4",
-        "require_sequence_tag": False,
-        "require_winning_reference": False,
-        "prefer_winning_similar": True,
-        "min_similar_win_ratio": 0.0,
-        "tag_coverage": coverage,
-        "tag_signatures": tag_signatures,
-        "sequence_signatures": sequence_signatures,
-        "feature_stats": feature_stats,
-        "setup_index": setup_index,
-        "rules": rules,
-        "tag_profiles": tag_profiles,
-        "risk": risk,
-        "tags": tag_info,
-        "tree_summary": tree_rules,
+    tag_rows = []
+    for tag, counts in sorted(by_tag.items()):
+        wr = counts["win"] / counts["total"] if counts["total"] else 0
+        tag_rows.append({"tag": tag, "win_rate": round(wr, 3), **counts})
+
+    train_stats = {
+        "win_rate": round(win_rate, 3),
+        "avg_rr": round(avg_rr, 2),
+        "by_setup": by_setup,
+        "by_tag": tag_rows,
     }
 
-    STRATEGY_PATH.parent.mkdir(parents=True, exist_ok=True)
+    strategy = build_strategy(train_period, train_stats=train_stats)
+    strategy.update(
+        {
+            "train_year": period_config(train_period).get("year"),
+            "source_setups": len(train),
+            "win_rate_train": round(win_rate, 3),
+            "avg_rr_train": round(avg_rr, 2),
+            "bar_annotation_count": len(load_bar_annotations()),
+            "setups_description": strategy_description(),
+        }
+    )
+
     save_strategy(strategy, train_period=train_period)
-
-    feature_insights = []
-    for col in feature_cols:
-        if col == "direction_long":
-            continue
-        w = df[df["win"] == 1][col].mean()
-        l = df[df["win"] == 0][col].mean()
-        feature_insights.append(
-            {"feature": col, "win_avg": _json_float(w), "loss_avg": _json_float(l)}
-        )
-
-    tag_warning = None
-    if rule_mode == "global" and coverage["untagged"] > 0:
-        need = int(MIN_TAGGED_RATIO * 100)
-        tag_warning = (
-            f"Chế độ global — cần gắn tag cho ≥{need}% setup train "
-            f"(hiện {int(coverage['ratio'] * 100)}%, {coverage['untagged']} setup chưa tag) "
-            "để học theo từng loại setup."
-        )
 
     return {
         "status": "ok",
         "train_period": train_period,
         "train_year": period_config(train_period).get("year"),
-        "pipeline_flow": PIPELINE_FLOW,
+        "pipeline_flow": strategy["pipeline_flow"],
         "pipeline": pipeline_status(),
         "setup_count": len(train),
-        "labeled_outcomes": len(df),
+        "labeled_outcomes": len(labeled),
         "win_rate_train": round(win_rate, 3),
         "avg_rr_train": round(avg_rr, 2),
-        "rule_mode": rule_mode,
-        "tag_coverage": coverage,
-        "tag_profiles": tag_profiles,
-        "tag_signatures": tag_signatures,
-        "sequence_signatures": sequence_signatures,
-        "feature_stats": feature_stats,
-        "tag_warning": tag_warning,
-        "bar_annotation_count": len(load_bar_annotations()),
-        "bar_learning_samples": len(extra),
-        "rules": rules,
-        "risk": risk,
-        "tag_insights": tag_info,
-        "feature_insights": feature_insights,
-        "tree_summary": tree_rules,
+        "rule_mode": "rsi_h4",
+        "strategy": strategy,
+        "train_stats": train_stats,
+        "setups_description": strategy_description(),
+        "tag_insights": {"tags": tag_rows, "preferred_tags": [TAG_BREAK_RETEST, TAG_EXTREME_BOUNCE]},
         "strategy_path": str(STRATEGY_PATH),
     }
 

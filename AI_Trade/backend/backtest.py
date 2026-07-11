@@ -9,7 +9,8 @@ from .analyzer import load_strategy
 from .config import PIP
 from .data_service import load_candles, load_splits, slice_periods
 from .periods import backtest_label, normalize_backtest_periods
-from .indicators import add_indicators
+from .indicators import add_indicators, h4_rsi_allows_direction
+from .rsi_h4_strategy import detect_entry_at_bar, load_rsi_h4_config
 from .bar_importance import clear_detection_cache, match_entry_from_inspection
 from .labels import load_setups
 
@@ -59,6 +60,15 @@ def _match_single_rule(row: pd.Series, rule: dict[str, Any]) -> bool:
         h4_up = bool(row.get("h4_trend_up", row.get("trend_up", False)))
         if h4_up != bool(h4_req):
             return False
+
+    h4_rsi_above = rule.get("h4_rsi_above")
+    if h4_rsi_above is not None:
+        if not h4_rsi_allows_direction("long", row, threshold=float(h4_rsi_above)):
+            return False
+    h4_rsi_below = rule.get("h4_rsi_below")
+    if h4_rsi_below is not None:
+        if not h4_rsi_allows_direction("short", row, threshold=float(h4_rsi_below)):
+            return False
     if rule.get("trend_up") is not None and bool(row["trend_up"]) != bool(rule["trend_up"]):
         return False
     if rule.get("close_above_ema50") is not None:
@@ -96,7 +106,10 @@ def _risk_from_reference_setup(setup: dict[str, Any]) -> tuple[float, float] | N
 
 
 def _uses_pipeline(strategy: dict[str, Any]) -> bool:
-    if strategy.get("rule_mode") == "similarity":
+    mode = strategy.get("rule_mode")
+    if mode == "rsi_h4":
+        return False
+    if mode == "similarity":
         return True
     return bool(strategy.get("tag_signatures")) or bool(strategy.get("setup_index"))
 
@@ -108,6 +121,12 @@ def _find_entry(
     strategy: dict[str, Any],
 ) -> tuple[str | None, str | None, dict[str, Any] | None]:
     """Return (direction, primary_tag, match_meta) if entry signal found."""
+    if strategy.get("rule_mode") == "rsi_h4":
+        direction, primary_tag, match_meta = detect_entry_at_bar(df, i, strategy)
+        if not direction:
+            return None, None, None
+        return direction, primary_tag, match_meta
+
     if _uses_pipeline(strategy):
         direction, primary_tag, match_meta = match_entry_from_inspection(df, i, strategy)
         if not direction or not match_meta:
@@ -174,6 +193,117 @@ def _risk_for_direction(
     else:
         tp_mult = sl_mult * target_rr
     return sl_mult, tp_mult
+
+
+def _simulate_trade_rsi_h4(
+    df: pd.DataFrame,
+    i: int,
+    direction: str,
+    strategy: dict[str, Any],
+    cost: float,
+    *,
+    setup_type: str | None = None,
+    tag: str | None = None,
+) -> dict[str, Any] | None:
+    cfg = load_rsi_h4_config(strategy)
+    bands = cfg["bands"]
+    mid = (float(bands["mid"][0]), float(bands["mid"][1]))
+    tp_band = (
+        (float(bands["high"][0]), float(bands["high"][1]))
+        if direction == "long"
+        else (float(bands["low"][0]), float(bands["low"][1]))
+    )
+    risk_cfg = cfg.get("risk") or {}
+    sl_atr = float(risk_cfg.get("sl_atr_mult", 1.0))
+    sl_mid = bool(risk_cfg.get("sl_on_mid_break", True))
+    sl_ema = bool(risk_cfg.get("sl_on_ema_break", True))
+
+    row = df.iloc[i]
+    atr = float(row["atr14"])
+    if np.isnan(atr) or atr <= 0:
+        return None
+
+    entry = float(row["close"])
+    if direction == "long":
+        entry += cost / 2
+        price_sl = entry - sl_atr * atr
+    else:
+        entry -= cost / 2
+        price_sl = entry + sl_atr * atr
+
+    future = df.iloc[i + 1 :]
+    exit_price = None
+    exit_ts = None
+    exit_reason = None
+
+    for ts, bar in future.iterrows():
+        rsi_h4 = float(bar["rsi14_h4"])
+        high, low = float(bar["high"]), float(bar["low"])
+        close = float(bar["close"])
+
+        if direction == "long":
+            if rsi_h4 >= tp_band[0]:
+                exit_price, exit_ts, exit_reason = close, ts, "rsi_tp"
+                break
+            if low <= price_sl:
+                exit_price, exit_ts, exit_reason = price_sl, ts, "price_sl"
+                break
+            if sl_mid and rsi_h4 < mid[0]:
+                exit_price, exit_ts, exit_reason = close, ts, "rsi_mid_break"
+                break
+            if sl_ema:
+                ema50 = float(bar["ema50"])
+                if close < ema50 - 0.5 * atr:
+                    exit_price, exit_ts, exit_reason = close, ts, "ema_break"
+                    break
+        else:
+            if rsi_h4 <= tp_band[1]:
+                exit_price, exit_ts, exit_reason = close, ts, "rsi_tp"
+                break
+            if high >= price_sl:
+                exit_price, exit_ts, exit_reason = price_sl, ts, "price_sl"
+                break
+            if sl_mid and rsi_h4 > mid[1]:
+                exit_price, exit_ts, exit_reason = close, ts, "rsi_mid_break"
+                break
+            if sl_ema:
+                ema50 = float(bar["ema50"])
+                if close > ema50 + 0.5 * atr:
+                    exit_price, exit_ts, exit_reason = close, ts, "ema_break"
+                    break
+    else:
+        return None
+
+    if exit_price is None or exit_ts is None:
+        return None
+
+    if direction == "long":
+        pnl = (exit_price - entry) - cost
+        risk = entry - price_sl
+    else:
+        pnl = (entry - exit_price) - cost
+        risk = price_sl - entry
+
+    result = "win" if pnl > 0 else "loss"
+    rr = abs((exit_price - entry) / risk) if risk else 0
+    trade = {
+        "entry_time": df.index[i].isoformat(),
+        "exit_time": exit_ts.isoformat(),
+        "direction": direction,
+        "entry": round(entry, 5),
+        "exit": round(exit_price, 5),
+        "sl": round(price_sl, 5),
+        "tp_band": list(tp_band),
+        "result": result,
+        "pnl_pips": round(pnl / PIP, 1),
+        "rr": round(rr, 2),
+        "exit_reason": exit_reason or ("rsi_tp" if result == "win" else "sl"),
+    }
+    if tag:
+        trade["tag"] = tag
+    if setup_type:
+        trade["setup_type"] = setup_type
+    return trade
 
 
 def _simulate_trade(
@@ -327,11 +457,24 @@ def run_backtest(
         if not direction:
             continue
 
-        sl_mult, tp_mult = _risk_for_direction(strategy, direction, matched_tag, match_meta)
-        trade = _simulate_trade(df, i, direction, sl_mult, tp_mult, cost)
+        if strategy.get("rule_mode") == "rsi_h4":
+            trade = _simulate_trade_rsi_h4(
+                df,
+                i,
+                direction,
+                strategy,
+                cost,
+                setup_type=(match_meta or {}).get("setup_type"),
+                tag=matched_tag,
+            )
+        else:
+            sl_mult, tp_mult = _risk_for_direction(strategy, direction, matched_tag, match_meta)
+            trade = _simulate_trade(df, i, direction, sl_mult, tp_mult, cost)
         if trade:
-            if matched_tag:
+            if matched_tag and "tag" not in trade:
                 trade["tag"] = matched_tag
+            if (match_meta or {}).get("setup_type"):
+                trade["setup_type"] = match_meta["setup_type"]
             ctx = (match_meta or {}).get("context") or {}
             imp = (match_meta or {}).get("importance") or {}
             if imp.get("score") is not None:

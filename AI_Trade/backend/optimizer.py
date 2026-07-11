@@ -1,4 +1,4 @@
-"""Optimize strategy params on walk-forward validation — không chạm test OOS."""
+"""Optimize RSI H4 band strategy on walk-forward validation."""
 
 from __future__ import annotations
 
@@ -7,66 +7,44 @@ from typing import Any
 
 from .analyzer import analyze_patterns, load_strategy, save_strategy
 from .backtest import run_backtest
-from .detection_config import save_bar_detection_config
 from .labels import load_setups
 from .periods import suggested_backtest_period
-from .pipeline import filter_train_setups
+from .rsi_h4_strategy import load_rsi_h4_config
 
-# Lưới từng tham số — greedy search (nhanh hơn full grid)
 PARAM_GRID: dict[str, list[Any]] = {
-    "backtest_min_score": [68, 76, 84, 92],
-    "min_similarity": [0.64, 0.70, 0.76],
-    "min_cluster_win_rate": [0.48, 0.54, 0.58],
-    "bar_tag_threshold": [0.52, 0.58, 0.62],
-    "entry_cooldown_bars": [24, 36, 48],
-    "require_sequence_tag": [False, True],
-    "preferred_entry_tags": [[], ["rejection"], ["pullback", "rejection"]],
-    "require_winning_reference": [False, True],
-    "min_similar_win_ratio": [0.0, 0.6],
+    "entry_cooldown_bars": [12, 24, 36, 48],
+    "ema_tolerance_atr": [0.25, 0.35, 0.45],
+    "lookback_bars": [80, 120, 160],
+    "rsi_rise_min": [0.2, 0.3, 0.5],
 }
 
 SEARCH_ORDER = [
-    "backtest_min_score",
-    "min_similarity",
-    "bar_tag_threshold",
-    "min_cluster_win_rate",
-    "preferred_entry_tags",
-    "require_sequence_tag",
-    "require_winning_reference",
-    "min_similar_win_ratio",
+    "lookback_bars",
+    "ema_tolerance_atr",
+    "rsi_rise_min",
     "entry_cooldown_bars",
 ]
 
-FAST_STRIDE = 4
+FAST_STRIDE = 2
 GREEDY_ROUNDS = 1
 
 
 def _apply_params(strategy: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
     out = copy.deepcopy(strategy)
-    for key in PARAM_GRID:
-        if key in params:
-            out[key] = copy.deepcopy(params[key])
-    out.setdefault("max_similarity", 0.92)
+    for key, value in params.items():
+        if key in PARAM_GRID:
+            out[key] = copy.deepcopy(value)
     return out
 
 
 def _initial_params(strategy: dict[str, Any]) -> dict[str, Any]:
+    cfg = load_rsi_h4_config(strategy)
     return {
-        key: copy.deepcopy(strategy[key])
-        for key in PARAM_GRID
-        if key in strategy
+        "entry_cooldown_bars": int(strategy.get("entry_cooldown_bars", cfg.get("entry_cooldown_bars", 24))),
+        "ema_tolerance_atr": float(strategy.get("ema_tolerance_atr", cfg.get("ema_tolerance_atr", 0.35))),
+        "lookback_bars": int(strategy.get("lookback_bars", cfg.get("lookback_bars", 120))),
+        "rsi_rise_min": float(strategy.get("rsi_rise_min", cfg.get("rsi_rise_min", 0.3))),
     }
-
-
-def _derive_avoid_tags(strategy: dict[str, Any]) -> list[str]:
-    tag_info = strategy.get("tags") or {}
-    avoid = set(tag_info.get("avoid_tags") or []) | {"reversal"}
-    for r in tag_info.get("tags") or []:
-        if r.get("total", 0) >= 8 and r.get("win_rate", 1) <= 0.38:
-            avoid.add(r["tag"])
-        if r.get("tag") == "breakout" and r.get("win_rate", 1) <= 0.45:
-            avoid.add("breakout")
-    return sorted(avoid)
 
 
 def _objective(metrics: dict[str, Any]) -> float:
@@ -100,18 +78,6 @@ def _objective(metrics: dict[str, Any]) -> float:
     return score
 
 
-def _prepare_strategy(strategy: dict[str, Any]) -> dict[str, Any]:
-    out = copy.deepcopy(strategy)
-    avoid = _derive_avoid_tags(out)
-    tag_info = out.get("tags") or {}
-    out["tags"] = {**tag_info, "avoid_tags": avoid}
-    out["similarity_train_filter"] = {
-        "exclude_tags": avoid,
-        "max_setups": 150,
-    }
-    return out
-
-
 def _eval_params(
     strategy: dict[str, Any],
     params: dict[str, Any],
@@ -120,197 +86,107 @@ def _eval_params(
     bar_stride: int,
 ) -> dict[str, Any]:
     trial = _apply_params(strategy, params)
-    return run_backtest(
-        validation_period,
-        strategy=trial,
-        bar_stride=bar_stride,
-    ).get("metrics", {})
+    result = run_backtest(periods=[validation_period], strategy=trial, bar_stride=bar_stride)
+    return result.get("metrics") or {}
 
 
 def _greedy_search(
     strategy: dict[str, Any],
     validation_period: str,
     *,
-    start_params: dict[str, Any],
     bar_stride: int = FAST_STRIDE,
-) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
-    params = dict(start_params)
-    history: list[dict[str, Any]] = []
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    best_params = _initial_params(strategy)
+    best_metrics = _eval_params(strategy, best_params, validation_period, bar_stride=bar_stride)
+    best_score = _objective(best_metrics)
 
-    metrics = _eval_params(strategy, params, validation_period, bar_stride=bar_stride)
-    best_score = _objective(metrics)
-
-    for _round in range(GREEDY_ROUNDS):
+    for _ in range(GREEDY_ROUNDS):
         for key in SEARCH_ORDER:
-            local_best = params.get(key)
+            options = PARAM_GRID.get(key, [])
+            if not options:
+                continue
+            local_best = best_params[key]
+            local_metrics = best_metrics
             local_score = best_score
-            local_metrics = metrics
-            for val in PARAM_GRID[key]:
-                trial = {**params, key: copy.deepcopy(val)}
-                m = _eval_params(strategy, trial, validation_period, bar_stride=bar_stride)
-                sc = _objective(m)
-                if sc > local_score:
-                    local_score = sc
-                    local_best = copy.deepcopy(val)
-                    local_metrics = m
-            if local_best is not None:
-                params[key] = local_best
-                best_score = local_score
-                metrics = local_metrics
-                history.append(
-                    {
-                        "round": _round + 1,
-                        "param": key,
-                        "value": local_best,
-                        "score": round(best_score, 1),
-                        "metrics": metrics,
-                    }
-                )
+            for value in options:
+                trial = {**best_params, key: value}
+                metrics = _eval_params(strategy, trial, validation_period, bar_stride=bar_stride)
+                score = _objective(metrics)
+                if score > local_score:
+                    local_best = value
+                    local_metrics = metrics
+                    local_score = score
+            best_params[key] = local_best
+            best_metrics = local_metrics
+            best_score = local_score
 
-    return params, metrics, history
-
-
-def optimize_on_validation(
-    strategy: dict[str, Any] | None = None,
-    *,
-    train_period: str | None = None,
-    period: str | None = None,
-) -> dict[str, Any]:
-    strategy = _prepare_strategy(strategy or load_strategy(train_period))
-    if not strategy:
-        raise ValueError("Chưa có chiến lược — chạy Analyze trước.")
-
-    train_period = train_period or strategy.get("train_period")
-    validation_period = period or (
-        suggested_backtest_period(train_period) if train_period else "bt_2023"
-    )
-
-    baseline = run_backtest(validation_period, strategy=strategy)
-    baseline_metrics = baseline.get("metrics", {})
-
-    # Đã pass — không cần tối ưu thêm (tránh overfit / làm xấu)
-    if baseline_metrics.get("pass"):
-        return {
-            "status": "ok",
-            "train_period": train_period,
-            "validation_period": validation_period,
-            "best_params": _initial_params(strategy) or {},
-            "baseline": baseline_metrics,
-            "optimized_metrics": baseline_metrics,
-            "skipped": True,
-            "skip_reason": "baseline_already_passes",
-            "train_setups_used": len(filter_train_setups(load_setups(), strategy)),
-            "avoid_tags": strategy.get("tags", {}).get("avoid_tags"),
-            "pass": True,
-        }
-
-    start_params = _initial_params(strategy)
-    for key, values in PARAM_GRID.items():
-        if key not in start_params:
-            start_params[key] = copy.deepcopy(values[len(values) // 2])
-
-    best_params, fast_metrics, history = _greedy_search(
-        strategy,
-        validation_period,
-        start_params=start_params,
-        bar_stride=FAST_STRIDE,
-    )
-
-    optimized = _apply_params(strategy, best_params)
-    result = run_backtest(validation_period, strategy=optimized)
-    opt_metrics = result.get("metrics", {})
-
-    baseline_score = _objective(baseline_metrics)
-    opt_score = _objective(opt_metrics)
-    reverted = False
-    if opt_score < baseline_score:
-        optimized = copy.deepcopy(strategy)
-        best_params = start_params
-        opt_metrics = baseline_metrics
-        reverted = True
-        history.append(
-            {
-                "round": "revert",
-                "param": "all",
-                "value": "baseline",
-                "score": round(baseline_score, 1),
-                "metrics": baseline_metrics,
-            }
-        )
-
-    optimized["optimized"] = True
-    optimized["optimization"] = {
-        "train_period": train_period,
-        "validation_period": validation_period,
-        "method": "greedy_pass_criteria",
-        "fast_stride": FAST_STRIDE,
-        "best_params": best_params,
-        "baseline_metrics": baseline_metrics,
-        "fast_search_metrics": fast_metrics,
-        "search_history": history[-12:],
-        "avoid_tags": optimized.get("tags", {}).get("avoid_tags"),
-        "validation_metrics": opt_metrics,
-        "reverted_to_baseline": reverted,
-    }
-
-    save_strategy(optimized, train_period=optimized.get("train_period"))
-
-    save_bar_detection_config(
-        {
-            "backtest_min_score": int(best_params["backtest_min_score"]),
-            "bar_tag_threshold": float(best_params["bar_tag_threshold"]),
-        }
-    )
-
-    return {
-        "status": "ok",
-        "train_period": train_period,
-        "validation_period": validation_period,
-        "best_params": best_params,
-        "baseline": baseline_metrics,
-        "optimized_metrics": opt_metrics,
-        "fast_search_metrics": fast_metrics,
-        "search_history": history[-12:],
-        "train_setups_used": len(filter_train_setups(load_setups(), optimized)),
-        "avoid_tags": optimized.get("tags", {}).get("avoid_tags"),
-        "pass": bool(opt_metrics.get("pass")),
-        "skipped": False,
-    }
+    return best_params, best_metrics
 
 
 def analyze_and_optimize(train_period: str | None = None) -> dict[str, Any]:
     analysis = analyze_patterns(train_period=train_period)
     if analysis.get("status") != "ok":
-        return {"status": "analyze_failed", "analysis": analysis}
+        return {"status": analysis.get("status"), "analysis": analysis}
 
-    try:
-        optimization = optimize_on_validation(train_period=train_period)
-    except Exception as exc:
-        return {"status": "optimize_failed", "analysis": analysis, "error": str(exc)}
+    train_period = analysis["train_period"]
+    strategy = load_strategy(train_period)
+    if not strategy:
+        return {"status": "no_strategy", "analysis": analysis}
+
+    validation_period = suggested_backtest_period(train_period)
+    baseline = run_backtest(periods=[validation_period], strategy=strategy, bar_stride=1)
+    baseline_metrics = baseline.get("metrics") or {}
+
+    if baseline_metrics.get("pass"):
+        return {
+            "status": "ok",
+            "train_period": train_period,
+            "validation_period": validation_period,
+            "analysis": analysis,
+            "optimization": {
+                "status": "ok",
+                "train_period": train_period,
+                "validation_period": validation_period,
+                "best_params": _initial_params(strategy),
+                "baseline": baseline_metrics,
+                "optimized_metrics": baseline_metrics,
+                "skipped": True,
+                "skip_reason": "baseline_already_passes",
+                "pass": True,
+            },
+        }
+
+    best_params, opt_metrics_fast = _greedy_search(strategy, validation_period, bar_stride=FAST_STRIDE)
+    optimized = _apply_params(strategy, best_params)
+    opt_metrics = _eval_params(strategy, best_params, validation_period, bar_stride=1)
+    save_strategy(optimized, train_period=train_period)
+
+    baseline_score = _objective(baseline_metrics)
+    opt_score = _objective(opt_metrics)
+    if opt_score <= baseline_score:
+        save_strategy(strategy, train_period=train_period)
+        opt_metrics = baseline_metrics
+        best_params = _initial_params(strategy)
+        skipped = True
+        skip_reason = "optimized_not_better"
+    else:
+        skipped = False
+        skip_reason = None
 
     return {
         "status": "ok",
+        "train_period": train_period,
+        "validation_period": validation_period,
         "analysis": analysis,
-        "optimization": optimization,
-        "train_period": analysis.get("train_period"),
-        "train_year": analysis.get("train_year"),
-        "setup_count": analysis.get("setup_count"),
-        "win_rate_train": analysis.get("win_rate_train"),
-        "rule_mode": analysis.get("rule_mode"),
-        "tag_insights": analysis.get("tag_insights"),
-        "tag_coverage": analysis.get("tag_coverage"),
-        "bar_annotation_count": analysis.get("bar_annotation_count"),
-        "pipeline": analysis.get("pipeline"),
-        "pipeline_flow": analysis.get("pipeline_flow"),
-        "rules": analysis.get("rules"),
-        "risk": analysis.get("risk"),
-        "tag_profiles": analysis.get("tag_profiles"),
-        "tag_signatures": analysis.get("tag_signatures"),
-        "feature_insights": analysis.get("feature_insights"),
-        "tree_summary": analysis.get("tree_summary"),
-        "optimization_pass": optimization.get("pass"),
-        "validation_period": optimization.get("validation_period"),
-        "optimized_metrics": optimization.get("optimized_metrics"),
-        "baseline_metrics": optimization.get("baseline"),
-        "best_params": optimization.get("best_params"),
+        "optimization": {
+            "status": "ok",
+            "train_period": train_period,
+            "validation_period": validation_period,
+            "best_params": best_params,
+            "baseline": baseline_metrics,
+            "optimized_metrics": opt_metrics,
+            "skipped": skipped,
+            "skip_reason": skip_reason,
+            "pass": bool(opt_metrics.get("pass")),
+        },
     }
