@@ -621,6 +621,14 @@ def match_entry_from_inspection(
     if direction not in ("long", "short"):
         return None, None, None
 
+    require_h4 = strategy.get("require_h4_trend", True)
+    if require_h4:
+        h4_up = bool(row.get("h4_trend_up", row.get("trend_up", False)))
+        if direction == "long" and not h4_up:
+            return None, None, None
+        if direction == "short" and h4_up:
+            return None, None, None
+
     avoid = set((strategy.get("tags") or {}).get("avoid_tags") or [])
     if primary_tag and primary_tag in avoid:
         return None, None, None

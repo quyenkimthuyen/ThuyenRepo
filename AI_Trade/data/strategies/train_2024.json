@@ -20,6 +20,8 @@
     "retest"
   ],
   "require_detected_tag": true,
+  "require_h4_trend": true,
+  "trend_filter": "h4",
   "require_sequence_tag": false,
   "require_winning_reference": false,
   "prefer_winning_similar": true,
@@ -35,10 +37,6 @@
       "tag": "pullback",
       "count": 98,
       "features": {
-        "rsi14": {
-          "mean": 49.731,
-          "std": 4.568
-        },
         "dist_ema50_pips": {
           "mean": -0.228,
           "std": 3.739
@@ -53,6 +51,7 @@
         }
       },
       "bool_rates": {
+        "h4_trend_up": 0.561,
         "trend_up": 0.561,
         "close_above_ema50": 0.48,
         "close_above_ema200": 0.571
@@ -62,10 +61,6 @@
       "tag": "rejection",
       "count": 81,
       "features": {
-        "rsi14": {
-          "mean": 48.845,
-          "std": 4.323
-        },
         "dist_ema50_pips": {
           "mean": 0.105,
           "std": 5.552
@@ -80,6 +75,7 @@
         }
       },
       "bool_rates": {
+        "h4_trend_up": 0.679,
         "trend_up": 0.679,
         "close_above_ema50": 0.444,
         "close_above_ema200": 0.691
@@ -89,10 +85,6 @@
       "tag": "retest",
       "count": 22,
       "features": {
-        "rsi14": {
-          "mean": 53.882,
-          "std": 3.646
-        },
         "dist_ema50_pips": {
           "mean": 3.559,
           "std": 8.225
@@ -107,6 +99,7 @@
         }
       },
       "bool_rates": {
+        "h4_trend_up": 0.045,
         "trend_up": 0.045,
         "close_above_ema50": 0.727,
         "close_above_ema200": 0.091
@@ -116,10 +109,6 @@
       "tag": "breakout",
       "count": 7,
       "features": {
-        "rsi14": {
-          "mean": 55.469,
-          "std": 2.956
-        },
         "dist_ema50_pips": {
           "mean": 1.214,
           "std": 3.208
@@ -134,6 +123,7 @@
         }
       },
       "bool_rates": {
+        "h4_trend_up": 0.0,
         "trend_up": 0.0,
         "close_above_ema50": 0.714,
         "close_above_ema200": 0.0
@@ -279,10 +269,6 @@
     }
   },
   "feature_stats": {
-    "rsi14": {
-      "mean": 49.6552,
-      "std": 4.9538
-    },
     "dist_ema50_pips": {
       "mean": 1.118,
       "std": 5.479
@@ -308,10 +294,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-01-30T21:00:00+00:00",
       "features": {
-        "rsi14": 55.52,
         "dist_ema50_pips": 7.2,
         "dist_ema200_pips": -18.5,
         "atr14_pips": 11.6,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -328,10 +314,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-02-19T14:00:00+00:00",
       "features": {
-        "rsi14": 43.46,
         "dist_ema50_pips": -1.2,
         "dist_ema200_pips": 0.9,
         "atr14_pips": 9.0,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -348,10 +334,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-03-12T21:00:00+00:00",
       "features": {
-        "rsi14": 49.01,
         "dist_ema50_pips": -2.0,
         "dist_ema200_pips": 29.3,
         "atr14_pips": 8.4,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -368,10 +354,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-04-07T23:00:00+00:00",
       "features": {
-        "rsi14": 48.07,
         "dist_ema50_pips": 0.7,
         "dist_ema200_pips": 13.8,
         "atr14_pips": 10.8,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": true,
         "close_above_ema200": true
@@ -388,10 +374,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-04-24T09:00:00+00:00",
       "features": {
-        "rsi14": 44.52,
         "dist_ema50_pips": 3.0,
         "dist_ema200_pips": 3.1,
         "atr14_pips": 9.4,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": true,
         "close_above_ema200": true
@@ -408,10 +394,10 @@
       "planned_rr": 2.52,
       "entry_time": "2024-05-07T09:00:00+00:00",
       "features": {
-        "rsi14": 43.64,
         "dist_ema50_pips": -0.3,
         "dist_ema200_pips": 32.6,
         "atr14_pips": 8.1,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -428,10 +414,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-06-25T09:00:00+00:00",
       "features": {
-        "rsi14": 47.23,
         "dist_ema50_pips": 2.1,
         "dist_ema200_pips": -9.7,
         "atr14_pips": 7.5,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -448,10 +434,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-08-07T09:00:00+00:00",
       "features": {
-        "rsi14": 42.51,
         "dist_ema50_pips": -7.2,
         "dist_ema200_pips": 32.0,
         "atr14_pips": 10.5,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -468,10 +454,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-08-12T05:00:00+00:00",
       "features": {
-        "rsi14": 50.27,
         "dist_ema50_pips": -0.6,
         "dist_ema200_pips": 17.9,
         "atr14_pips": 6.7,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -488,10 +474,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-09-17T20:00:00+00:00",
       "features": {
-        "rsi14": 44.48,
         "dist_ema50_pips": -0.2,
         "dist_ema200_pips": 30.3,
         "atr14_pips": 10.1,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -508,10 +494,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-09-27T20:00:00+00:00",
       "features": {
-        "rsi14": 48.97,
         "dist_ema50_pips": -0.1,
         "dist_ema200_pips": 18.4,
         "atr14_pips": 15.4,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -528,10 +514,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-09-30T02:00:00+00:00",
       "features": {
-        "rsi14": 47.76,
         "dist_ema50_pips": -2.4,
         "dist_ema200_pips": 15.6,
         "atr14_pips": 12.8,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -548,10 +534,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-11-01T10:00:00+00:00",
       "features": {
-        "rsi14": 43.9,
         "dist_ema50_pips": 1.4,
         "dist_ema200_pips": 20.0,
         "atr14_pips": 9.0,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": true,
         "close_above_ema200": true
@@ -568,10 +554,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-11-05T00:00:00+00:00",
       "features": {
-        "rsi14": 44.58,
         "dist_ema50_pips": -2.0,
         "dist_ema200_pips": 22.7,
         "atr14_pips": 10.1,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -588,10 +574,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-01-12T16:00:00+00:00",
       "features": {
-        "rsi14": 46.94,
         "dist_ema50_pips": -5.3,
         "dist_ema200_pips": -7.4,
         "atr14_pips": 16.7,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": false,
         "close_above_ema200": false
@@ -608,10 +594,10 @@
       "planned_rr": 2.49,
       "entry_time": "2024-02-29T06:00:00+00:00",
       "features": {
-        "rsi14": 48.68,
         "dist_ema50_pips": -2.2,
         "dist_ema200_pips": 12.6,
         "atr14_pips": 7.7,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -628,10 +614,10 @@
       "planned_rr": 2.49,
       "entry_time": "2024-05-10T14:00:00+00:00",
       "features": {
-        "rsi14": 44.28,
         "dist_ema50_pips": -2.7,
         "dist_ema200_pips": 18.9,
         "atr14_pips": 9.9,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -648,10 +634,10 @@
       "planned_rr": 2.49,
       "entry_time": "2024-07-10T07:00:00+00:00",
       "features": {
-        "rsi14": 47.34,
         "dist_ema50_pips": -2.8,
         "dist_ema200_pips": 26.4,
         "atr14_pips": 6.5,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -668,10 +654,10 @@
       "planned_rr": 2.49,
       "entry_time": "2024-08-16T06:00:00+00:00",
       "features": {
-        "rsi14": 47.13,
         "dist_ema50_pips": -4.5,
         "dist_ema200_pips": 31.3,
         "atr14_pips": 7.7,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -688,10 +674,10 @@
       "planned_rr": 2.49,
       "entry_time": "2024-09-24T10:00:00+00:00",
       "features": {
-        "rsi14": 52.44,
         "dist_ema50_pips": -2.1,
         "dist_ema200_pips": 9.4,
         "atr14_pips": 11.6,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -709,10 +695,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-11-13T13:00:00+00:00",
       "features": {
-        "rsi14": 55.8,
         "dist_ema50_pips": -3.7,
         "dist_ema200_pips": -94.0,
         "atr14_pips": 15.0,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": false,
         "close_above_ema200": false
@@ -729,10 +715,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-11-20T05:00:00+00:00",
       "features": {
-        "rsi14": 50.27,
         "dist_ema50_pips": 6.7,
         "dist_ema200_pips": -33.2,
         "atr14_pips": 13.2,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -749,10 +735,10 @@
       "planned_rr": 2.52,
       "entry_time": "2024-02-07T06:00:00+00:00",
       "features": {
-        "rsi14": 57.16,
         "dist_ema50_pips": 0.7,
         "dist_ema200_pips": -45.9,
         "atr14_pips": 8.1,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -769,10 +755,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-02-15T06:00:00+00:00",
       "features": {
-        "rsi14": 55.97,
         "dist_ema50_pips": 0.3,
         "dist_ema200_pips": -32.2,
         "atr14_pips": 7.3,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -789,10 +775,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-02-22T14:00:00+00:00",
       "features": {
-        "rsi14": 43.68,
         "dist_ema50_pips": -1.3,
         "dist_ema200_pips": 29.0,
         "atr14_pips": 13.7,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -809,10 +795,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-03-25T15:00:00+00:00",
       "features": {
-        "rsi14": 60.43,
         "dist_ema50_pips": 3.0,
         "dist_ema200_pips": -30.0,
         "atr14_pips": 8.8,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -829,10 +815,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-04-05T03:00:00+00:00",
       "features": {
-        "rsi14": 40.77,
         "dist_ema50_pips": -0.4,
         "dist_ema200_pips": 14.0,
         "atr14_pips": 8.7,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -849,10 +835,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-04-19T11:00:00+00:00",
       "features": {
-        "rsi14": 52.17,
         "dist_ema50_pips": 2.7,
         "dist_ema200_pips": -36.9,
         "atr14_pips": 12.6,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -869,10 +855,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-04-23T10:00:00+00:00",
       "features": {
-        "rsi14": 49.33,
         "dist_ema50_pips": 0.2,
         "dist_ema200_pips": -21.4,
         "atr14_pips": 11.3,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -889,10 +875,10 @@
       "planned_rr": 2.52,
       "entry_time": "2024-05-22T02:00:00+00:00",
       "features": {
-        "rsi14": 50.64,
         "dist_ema50_pips": -0.9,
         "dist_ema200_pips": 25.0,
         "atr14_pips": 6.6,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -909,10 +895,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-06-03T08:00:00+00:00",
       "features": {
-        "rsi14": 45.31,
         "dist_ema50_pips": -1.8,
         "dist_ema200_pips": 1.1,
         "atr14_pips": 9.4,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -929,10 +915,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-07-01T18:00:00+00:00",
       "features": {
-        "rsi14": 45.97,
         "dist_ema50_pips": 1.9,
         "dist_ema200_pips": 8.5,
         "atr14_pips": 12.7,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": true,
         "close_above_ema200": true
@@ -949,10 +935,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-07-22T18:00:00+00:00",
       "features": {
-        "rsi14": 51.78,
         "dist_ema50_pips": -2.3,
         "dist_ema200_pips": 7.8,
         "atr14_pips": 8.0,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -969,10 +955,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-07-31T09:00:00+00:00",
       "features": {
-        "rsi14": 55.06,
         "dist_ema50_pips": 1.2,
         "dist_ema200_pips": -20.7,
         "atr14_pips": 8.7,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -989,10 +975,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-08-27T11:00:00+00:00",
       "features": {
-        "rsi14": 44.3,
         "dist_ema50_pips": -1.3,
         "dist_ema200_pips": 57.9,
         "atr14_pips": 9.0,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -1009,10 +995,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-09-11T08:00:00+00:00",
       "features": {
-        "rsi14": 57.84,
         "dist_ema50_pips": 2.1,
         "dist_ema200_pips": -22.5,
         "atr14_pips": 9.2,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -1029,10 +1015,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-11-28T13:00:00+00:00",
       "features": {
-        "rsi14": 45.12,
         "dist_ema50_pips": 3.5,
         "dist_ema200_pips": 1.6,
         "atr14_pips": 15.6,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": true
@@ -1049,10 +1035,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-12-09T23:00:00+00:00",
       "features": {
-        "rsi14": 45.26,
         "dist_ema50_pips": -5.9,
         "dist_ema200_pips": 10.8,
         "atr14_pips": 12.6,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -1069,10 +1055,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-12-26T14:00:00+00:00",
       "features": {
-        "rsi14": 54.47,
         "dist_ema50_pips": 2.1,
         "dist_ema200_pips": -27.2,
         "atr14_pips": 7.2,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -1089,10 +1075,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-12-30T02:00:00+00:00",
       "features": {
-        "rsi14": 53.02,
         "dist_ema50_pips": 8.0,
         "dist_ema200_pips": -1.6,
         "atr14_pips": 8.6,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -1109,10 +1095,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-01-19T14:00:00+00:00",
       "features": {
-        "rsi14": 50.36,
         "dist_ema50_pips": -1.2,
         "dist_ema200_pips": -34.2,
         "atr14_pips": 11.5,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": false,
         "close_above_ema200": false
@@ -1129,10 +1115,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-01-25T10:00:00+00:00",
       "features": {
-        "rsi14": 55.93,
         "dist_ema50_pips": 10.5,
         "dist_ema200_pips": -2.1,
         "atr14_pips": 10.2,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -1149,10 +1135,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-03-14T11:00:00+00:00",
       "features": {
-        "rsi14": 51.46,
         "dist_ema50_pips": 3.9,
         "dist_ema200_pips": 31.5,
         "atr14_pips": 7.0,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": true,
         "close_above_ema200": true
@@ -1169,10 +1155,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-05-17T06:00:00+00:00",
       "features": {
-        "rsi14": 47.98,
         "dist_ema50_pips": 5.0,
         "dist_ema200_pips": 55.9,
         "atr14_pips": 6.9,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": true,
         "close_above_ema200": true
@@ -1189,10 +1175,10 @@
       "planned_rr": 2.51,
       "entry_time": "2024-07-09T02:00:00+00:00",
       "features": {
-        "rsi14": 48.3,
         "dist_ema50_pips": 3.3,
         "dist_ema200_pips": 46.1,
         "atr14_pips": 7.5,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": true,
         "close_above_ema200": true
@@ -1209,10 +1195,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-01-15T04:00:00+00:00",
       "features": {
-        "rsi14": 51.91,
         "dist_ema50_pips": 2.3,
         "dist_ema200_pips": -1.7,
         "atr14_pips": 11.3,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -1229,10 +1215,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-06-12T20:00:00+00:00",
       "features": {
-        "rsi14": 60.19,
         "dist_ema50_pips": 30.3,
         "dist_ema200_pips": -2.8,
         "atr14_pips": 14.0,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -1249,10 +1235,10 @@
       "planned_rr": 2.49,
       "entry_time": "2024-06-27T19:00:00+00:00",
       "features": {
-        "rsi14": 52.77,
         "dist_ema50_pips": 2.8,
         "dist_ema200_pips": -15.3,
         "atr14_pips": 9.5,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -1269,10 +1255,10 @@
       "planned_rr": 2.49,
       "entry_time": "2024-08-09T19:00:00+00:00",
       "features": {
-        "rsi14": 49.01,
         "dist_ema50_pips": -1.4,
         "dist_ema200_pips": 19.9,
         "atr14_pips": 8.0,
+        "h4_trend_up": true,
         "trend_up": true,
         "close_above_ema50": false,
         "close_above_ema200": true
@@ -1289,10 +1275,10 @@
       "planned_rr": 2.5,
       "entry_time": "2024-10-11T08:00:00+00:00",
       "features": {
-        "rsi14": 59.77,
         "dist_ema50_pips": 6.8,
         "dist_ema200_pips": -47.7,
         "atr14_pips": 10.3,
+        "h4_trend_up": false,
         "trend_up": false,
         "close_above_ema50": true,
         "close_above_ema200": false
@@ -1302,8 +1288,7 @@
   "rules": {
     "long": {
       "enabled": true,
-      "rsi_min": 39.3,
-      "rsi_max": 53.9,
+      "h4_trend_up": true,
       "exclude": [],
       "trend_up": true,
       "close_above_ema50": true,
@@ -1311,16 +1296,8 @@
     },
     "short": {
       "enabled": true,
-      "rsi_min": 43.2,
-      "rsi_max": 60.8,
-      "exclude": [
-        {
-          "feature": "rsi14",
-          "op": ">",
-          "value": 57.3,
-          "reason": "RSI qu\u00e1 cao g\u1eafn v\u1edbi loss"
-        }
-      ],
+      "h4_trend_up": false,
+      "exclude": [],
       "trend_up": false,
       "close_above_ema50": true,
       "close_above_ema200": true
@@ -1338,8 +1315,7 @@
       "rules": {
         "long": {
           "enabled": true,
-          "rsi_min": 39.3,
-          "rsi_max": 53.9,
+          "h4_trend_up": true,
           "exclude": [],
           "trend_up": true,
           "close_above_ema50": true,
@@ -1348,16 +1324,8 @@
         },
         "short": {
           "enabled": true,
-          "rsi_min": 43.1,
-          "rsi_max": 60.7,
-          "exclude": [
-            {
-              "feature": "rsi14",
-              "op": ">",
-              "value": 55.9,
-              "reason": "RSI qu\u00e1 cao g\u1eafn v\u1edbi loss"
-            }
-          ],
+          "h4_trend_up": false,
+          "exclude": [],
           "trend_up": false,
           "close_above_ema50": true,
           "close_above_ema200": true,
@@ -1394,8 +1362,7 @@
       "rules": {
         "long": {
           "enabled": true,
-          "rsi_min": 39.3,
-          "rsi_max": 53.9,
+          "h4_trend_up": true,
           "exclude": [],
           "trend_up": true,
           "close_above_ema50": true,
@@ -1404,16 +1371,8 @@
         },
         "short": {
           "enabled": true,
-          "rsi_min": 43.1,
-          "rsi_max": 52.0,
-          "exclude": [
-            {
-              "feature": "rsi14",
-              "op": ">",
-              "value": 56.7,
-              "reason": "RSI qu\u00e1 cao g\u1eafn v\u1edbi loss"
-            }
-          ],
+          "h4_trend_up": false,
+          "exclude": [],
           "trend_up": false,
           "close_above_ema200": true,
           "tag": "rejection"
@@ -1453,8 +1412,7 @@
         },
         "short": {
           "enabled": true,
-          "rsi_min": 45.3,
-          "rsi_max": 60.9,
+          "h4_trend_up": false,
           "exclude": [],
           "trend_up": true,
           "close_above_ema50": true,
@@ -1492,8 +1450,7 @@
         },
         "short": {
           "enabled": true,
-          "rsi_min": 48.9,
-          "rsi_max": 62.8,
+          "h4_trend_up": false,
           "exclude": [],
           "trend_up": true,
           "close_above_ema50": false,
@@ -1573,5 +1530,5 @@
     ],
     "avoid_tags": []
   },
-  "tree_summary": "|--- dist_ema50_pips <= -1.90\n|   |--- dist_ema50_pips <= -3.25\n|   |   |--- class: 1\n|   |--- dist_ema50_pips >  -3.25\n|   |   |--- class: 1\n|--- dist_ema50_pips >  -1.90\n|   |--- dist_ema50_pips <= 3.70\n|   |   |--- rsi14 <= 52.04\n|   |   |   |--- class: 1\n|   |   |--- rsi14 >  52.04\n|   |   |   |--- class: 0\n|   |--- dist_ema50_pips >  3.70\n|   |   |--- class: 1\n"
+  "tree_summary": "|--- dist_ema50_pips <= -1.90\n|   |--- dist_ema50_pips <= -3.25\n|   |   |--- class: 1\n|   |--- dist_ema50_pips >  -3.25\n|   |   |--- class: 1\n|--- dist_ema50_pips >  -1.90\n|   |--- dist_ema50_pips <= 3.70\n|   |   |--- h4_trend_up <= 0.50\n|   |   |   |--- class: 0\n|   |   |--- h4_trend_up >  0.50\n|   |   |   |--- class: 1\n|   |--- dist_ema50_pips >  3.70\n|   |   |--- class: 1\n"
 }

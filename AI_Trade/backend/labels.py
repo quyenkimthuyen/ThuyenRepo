@@ -115,10 +115,10 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
         "sequence_tags": setup.get("sequence_tags") or [],
         "annotation_id": setup.get("annotation_id") or (ann.get("id") if ann else None),
         "features": {
-            "rsi14": round(float(row.get("rsi14", 0)), 2),
             "ema50": round(float(row.get("ema50", 0)), 5),
             "ema200": round(float(row.get("ema200", 0)), 5),
             "atr14": round(float(row.get("atr14", 0)), 5),
+            "h4_trend_up": bool(row.get("h4_trend_up", row.get("trend_up", False))),
             "trend_up": bool(row.get("trend_up", False)),
             "close_above_ema50": bool(row.get("close_above_ema50", False)),
             "close_above_ema200": bool(row.get("close_above_ema200", False)),

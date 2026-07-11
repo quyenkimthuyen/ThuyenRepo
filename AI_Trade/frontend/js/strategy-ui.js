@@ -60,17 +60,17 @@ function renderTagSignatures(data) {
       <div class="mini-table-wrap">
         <table class="mini-table">
           <thead>
-            <tr><th>Tag</th><th>Mẫu</th><th>RSI trung bình</th><th>Dist EMA50</th></tr>
+            <tr><th>Tag</th><th>Mẫu</th><th>H4 tăng %</th><th>Dist EMA50</th></tr>
           </thead>
           <tbody>
             ${entries
               .map(([tag, sig]) => {
-                const rsi = sig.features?.rsi14?.mean;
+                const h4 = sig.bool_rates?.h4_trend_up;
                 const dist = sig.features?.dist_ema50_pips?.mean;
                 return `<tr>
                   <td>${esc(tag)}</td>
                   <td>${sig.count ?? 0}</td>
-                  <td>${num(rsi, 1)}</td>
+                  <td>${h4 != null ? pct(h4) : '—'}</td>
                   <td>${num(dist, 1)} pips</td>
                 </tr>`;
               })
@@ -145,8 +145,13 @@ function renderRuleCard(direction, rule, { hideTagLine = false } = {}) {
   }
 
   const lines = [
-    `RSI từ ${rule.rsi_min} đến ${rule.rsi_max}`,
-    formatBoolRule(rule.trend_up, 'Xu hướng tăng (EMA50 > EMA200)'),
+    rule.h4_trend_up != null
+      ? `Xu hướng H4: ${rule.h4_trend_up ? 'tăng (EMA50 > EMA200)' : 'giảm'}`
+      : 'Xu hướng H4: theo hướng lệnh',
+    rule.rsi_min != null && rule.rsi_max != null
+      ? `RSI từ ${rule.rsi_min} đến ${rule.rsi_max} (legacy)`
+      : null,
+    formatBoolRule(rule.trend_up, 'Xu hướng 1H tăng'),
     formatBoolRule(rule.close_above_ema50, 'Giá trên EMA50'),
     formatBoolRule(rule.close_above_ema200, 'Giá trên EMA200'),
     rule.max_dist_ema50_pips != null

@@ -47,9 +47,18 @@ def _match_single_rule(row: pd.Series, rule: dict[str, Any]) -> bool:
     if not rule.get("enabled", True):
         return False
 
-    rsi = float(row["rsi14"])
-    if not (rule.get("rsi_min", 0) <= rsi <= rule.get("rsi_max", 100)):
-        return False
+    rsi = float(row.get("rsi14", 50))
+    rsi_min = rule.get("rsi_min")
+    rsi_max = rule.get("rsi_max")
+    if rsi_min is not None and rsi_max is not None:
+        if not (float(rsi_min) <= rsi <= float(rsi_max)):
+            return False
+
+    h4_req = rule.get("h4_trend_up")
+    if h4_req is not None:
+        h4_up = bool(row.get("h4_trend_up", row.get("trend_up", False)))
+        if h4_up != bool(h4_req):
+            return False
     if rule.get("trend_up") is not None and bool(row["trend_up"]) != bool(rule["trend_up"]):
         return False
     if rule.get("close_above_ema50") is not None:

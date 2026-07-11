@@ -51,9 +51,9 @@ def _feature_frame(setups: list[dict[str, Any]]) -> pd.DataFrame:
             {
                 "win": 1 if s["result"] == "win" else 0,
                 "direction_long": 1 if s["direction"] == "long" else 0,
-                "rsi14": float(f.get("rsi14", 50)),
                 "dist_ema50_pips": float(f.get("dist_ema50_pips", 0)),
                 "dist_ema50_abs": abs(float(f.get("dist_ema50_pips", 0))),
+                "h4_trend_up": 1 if f.get("h4_trend_up", f.get("trend_up")) else 0,
                 "trend_up": 1 if f.get("trend_up") else 0,
                 "close_above_ema50": 1 if f.get("close_above_ema50") else 0,
                 "close_above_ema200": 1 if f.get("close_above_ema200") else 0,
@@ -89,34 +89,6 @@ def _best_bool_threshold(wins: pd.DataFrame, losses: pd.DataFrame, col: str) -> 
     return best_val
 
 
-def _rsi_band_win_loss(wins: pd.DataFrame, losses: pd.DataFrame) -> tuple[float, float]:
-    if wins.empty:
-        return 35.0, 65.0
-
-    lo = float(wins["rsi14"].quantile(0.25)) - 5
-    hi = float(wins["rsi14"].quantile(0.75)) + 5
-    lo = max(20.0, lo)
-    hi = min(80.0, hi)
-
-    for _ in range(4):
-        if losses.empty:
-            break
-        in_w = wins[(wins["rsi14"] >= lo) & (wins["rsi14"] <= hi)]
-        in_l = losses[(losses["rsi14"] >= lo) & (losses["rsi14"] <= hi)]
-        if len(in_l) >= 2 and len(in_l) > len(in_w) * 1.1:
-            med = float(wins["rsi14"].median())
-            if float(in_l["rsi14"].mean()) > med:
-                hi -= 2.5
-            else:
-                lo += 2.5
-            if lo >= hi:
-                break
-        else:
-            break
-
-    return round(lo, 1), round(hi, 1)
-
-
 def _loss_exclusions(wins: pd.DataFrame, losses: pd.DataFrame) -> list[dict[str, Any]]:
     exclusions: list[dict[str, Any]] = []
     if losses.empty:
@@ -136,31 +108,6 @@ def _loss_exclusions(wins: pd.DataFrame, losses: pd.DataFrame) -> list[dict[str,
                 }
             )
 
-    if len(losses) >= 2 and not wins.empty:
-        win_lo = float(wins["rsi14"].quantile(0.15))
-        win_hi = float(wins["rsi14"].quantile(0.85))
-        loss_below = losses[losses["rsi14"] < win_lo]
-        loss_above = losses[losses["rsi14"] > win_hi]
-
-        if len(loss_below) >= 2 and len(loss_below) >= len(wins[wins["rsi14"] < win_lo]):
-            exclusions.append(
-                {
-                    "feature": "rsi14",
-                    "op": "<",
-                    "value": round(win_lo, 1),
-                    "reason": "RSI quá thấp gắn với loss",
-                }
-            )
-        if len(loss_above) >= 2 and len(loss_above) >= len(wins[wins["rsi14"] > win_hi]):
-            exclusions.append(
-                {
-                    "feature": "rsi14",
-                    "op": ">",
-                    "value": round(win_hi, 1),
-                    "reason": "RSI quá cao gắn với loss",
-                }
-            )
-
     return exclusions
 
 
@@ -171,15 +118,13 @@ def _rules_for_direction(subset: pd.DataFrame, direction: str) -> dict[str, Any]
     if wins.empty:
         return {"enabled": False, "reason": f"Không có setup {direction} thắng trong train"}
 
-    rsi_min, rsi_max = _rsi_band_win_loss(wins, losses)
     trend_up = _best_bool_threshold(wins, losses, "trend_up")
     above50 = _best_bool_threshold(wins, losses, "close_above_ema50")
     above200 = _best_bool_threshold(wins, losses, "close_above_ema200")
 
     rule: dict[str, Any] = {
         "enabled": True,
-        "rsi_min": rsi_min,
-        "rsi_max": rsi_max,
+        "h4_trend_up": True if direction == "long" else False,
         "exclude": _loss_exclusions(wins, losses),
     }
     if trend_up is not None:
@@ -379,13 +324,6 @@ def _apply_tag_constraints(
             dr["max_dist_ema50_pips"] = min(dr.get("max_dist_ema50_pips", cap), cap)
             dr["preferred_tags"] = preferred
 
-        rsi_vals = [
-            float(s["features"]["rsi14"]) for s in tagged_wins if s.get("features")
-        ]
-        if len(rsi_vals) >= 2:
-            dr["rsi_min"] = max(dr.get("rsi_min", 20), round(float(np.percentile(rsi_vals, 15)) - 3, 1))
-            dr["rsi_max"] = min(dr.get("rsi_max", 80), round(float(np.percentile(rsi_vals, 85)) + 3, 1))
-
     return rules
 
 
@@ -483,8 +421,8 @@ def analyze_patterns(min_setups: int = 5, train_period: str | None = None) -> di
 
     feature_cols = [
         "direction_long",
-        "rsi14",
         "dist_ema50_pips",
+        "h4_trend_up",
         "trend_up",
         "close_above_ema50",
         "close_above_ema200",
@@ -512,6 +450,8 @@ def analyze_patterns(min_setups: int = 5, train_period: str | None = None) -> di
         "entry_cooldown_bars": 36 if win_rate >= 0.55 else 12,
         "preferred_entry_tags": preferred_tags[:2] if win_rate >= 0.55 else [],
         "require_detected_tag": True,
+        "require_h4_trend": True,
+        "trend_filter": "h4",
         "require_sequence_tag": False,
         "require_winning_reference": False,
         "prefer_winning_similar": True,

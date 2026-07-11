@@ -10,23 +10,23 @@ from .config import PIP
 from .tags import infer_tags, load_presets
 
 FEATURE_KEYS = (
-    "rsi14",
     "dist_ema50_pips",
     "dist_ema200_pips",
     "atr14_pips",
+    "h4_trend_up",
     "trend_up",
     "close_above_ema50",
     "close_above_ema200",
 )
 
-BOOL_KEYS = ("trend_up", "close_above_ema50", "close_above_ema200")
+BOOL_KEYS = ("h4_trend_up", "trend_up", "close_above_ema50", "close_above_ema200")
 
 FEATURE_WEIGHTS: dict[str, float] = {
-    "rsi14": 1.0,
     "dist_ema50_pips": 1.4,
     "dist_ema200_pips": 1.0,
     "atr14_pips": 0.6,
-    "trend_up": 0.9,
+    "h4_trend_up": 1.5,
+    "trend_up": 0.7,
     "close_above_ema50": 1.0,
     "close_above_ema200": 0.8,
 }
@@ -47,10 +47,10 @@ def extract_features(row: pd.Series, entry_price: float | None = None) -> dict[s
     ema200 = float(row.get("ema200", entry))
     atr = float(row.get("atr14", 0))
     return {
-        "rsi14": round(float(row.get("rsi14", 50)), 2),
         "dist_ema50_pips": round((entry - ema50) / PIP, 1),
         "dist_ema200_pips": round((entry - ema200) / PIP, 1),
         "atr14_pips": round(atr / PIP, 1),
+        "h4_trend_up": bool(row.get("h4_trend_up", row.get("trend_up", False))),
         "trend_up": bool(row.get("trend_up", False)),
         "close_above_ema50": bool(row.get("close_above_ema50", False)),
         "close_above_ema200": bool(row.get("close_above_ema200", False)),
@@ -65,11 +65,14 @@ def _features_from_setup(setup: dict[str, Any]) -> dict[str, Any] | None:
     ema50 = float(raw.get("ema50", entry))
     ema200 = float(raw.get("ema200", entry))
     atr = float(raw.get("atr14", 0))
+    h4_trend = raw.get("h4_trend_up")
+    if h4_trend is None:
+        h4_trend = raw.get("trend_up", False)
     return {
-        "rsi14": float(raw.get("rsi14", 50)),
         "dist_ema50_pips": float(raw.get("dist_ema50_pips", (entry - ema50) / PIP)),
         "dist_ema200_pips": round((entry - ema200) / PIP, 1),
         "atr14_pips": round(atr / PIP, 1),
+        "h4_trend_up": bool(h4_trend),
         "trend_up": bool(raw.get("trend_up", False)),
         "close_above_ema50": bool(raw.get("close_above_ema50", False)),
         "close_above_ema200": bool(raw.get("close_above_ema200", False)),
@@ -85,7 +88,7 @@ def build_feature_stats(setups: list[dict[str, Any]]) -> dict[str, dict[str, flo
 
     if not rows:
         return {
-            key: {"mean": 50.0 if key == "rsi14" else 0.0, "std": 1.0}
+            key: {"mean": 0.0, "std": 1.0}
             for key in FEATURE_KEYS
             if key not in BOOL_KEYS
         }
