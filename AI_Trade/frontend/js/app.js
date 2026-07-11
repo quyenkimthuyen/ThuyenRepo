@@ -34,7 +34,7 @@ import {
   renderRsiBandLegend,
 } from './strategy-ui.js?v=28';
 import { initSidebarResize, initChartSplit } from './layout.js?v=28';
-import { TradeChart } from './chart.js?v=28';
+import { TradeChart } from './chart.js?v=29';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 

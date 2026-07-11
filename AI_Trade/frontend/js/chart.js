@@ -20,6 +20,9 @@ const LEVEL_STYLE = {
   tp: { color: COLORS.tp, tag: 'TAKE PROFIT' },
 };
 
+/** Đồng bộ độ rộng price scale phải — tránh lệch cột nến giữa chart giá và RSI */
+const RIGHT_SCALE_MIN_WIDTH = 78;
+
 export class TradeChart {
   #wrapEl;
   #mainEl;
@@ -65,6 +68,9 @@ export class TradeChart {
   #resizeObserver = null;
   #mounted = false;
   #syncingTimeScale = false;
+  /** @type {{ time: number, value: number }[]} */
+  #rsiData = [];
+  #bodyEl = null;
 
   constructor(mainEl, rsiEl, { onClick, onLevelDrag, onImportantBarHover } = {}) {
     this.#wrapEl = mainEl.parentElement;
@@ -91,11 +97,16 @@ export class TradeChart {
     );
 
     const { width, height } = this.#mainSize();
+    const priceScaleOpts = {
+      borderColor: COLORS.grid,
+      minimumWidth: RIGHT_SCALE_MIN_WIDTH,
+    };
     const common = {
       layout: { background: { color: COLORS.bg }, textColor: COLORS.text },
       grid: { vertLines: { color: COLORS.grid }, horzLines: { color: COLORS.grid } },
       crosshair: { mode: CrosshairMode.Normal },
-      rightPriceScale: { borderColor: COLORS.grid },
+      rightPriceScale: priceScaleOpts,
+      leftPriceScale: { visible: false },
       timeScale: { borderColor: COLORS.grid, timeVisible: true, secondsVisible: false },
       localization: { locale: 'en-US' },
     };
@@ -109,6 +120,8 @@ export class TradeChart {
       fixLeftEdge: false,
       fixRightEdge: false,
     };
+
+    this.#bodyEl = this.#mainEl.closest('#chartBody');
 
     this.#mainChart = createChart(this.#mainEl, { ...common, width, height, timeScale: timeScaleOpts });
     this.#candleSeries = this.#mainChart.addCandlestickSeries({
@@ -125,7 +138,11 @@ export class TradeChart {
       ...common,
       width: this.#rsiEl.clientWidth || width,
       height: this.#rsiEl.clientHeight || 220,
-      timeScale: { ...timeScaleOpts },
+      timeScale: {
+        ...timeScaleOpts,
+        timeVisible: false,
+        borderVisible: false,
+      },
       handleScroll: {
         mouseWheel: false,
         pressedMouseMove: false,
@@ -146,30 +163,27 @@ export class TradeChart {
       this.#syncingTimeScale = true;
       this.#rsiChart.timeScale().setVisibleLogicalRange(range);
       this.#syncingTimeScale = false;
+      this.#syncPriceScaleWidth();
       this.#refreshOverlayLines();
       this.#refreshOverlayGeometry();
     };
     this.#mainChart.timeScale().subscribeVisibleLogicalRangeChange(onLogicalRange);
 
-    const onTimeRange = (range) => {
-      if (this.#syncingTimeScale || !range) return;
-      this.#syncingTimeScale = true;
-      this.#rsiChart.timeScale().setVisibleRange(range);
-      this.#syncingTimeScale = false;
-      this.#refreshOverlayLines();
-      this.#refreshOverlayGeometry();
-    };
-    this.#mainChart.timeScale().subscribeVisibleTimeRangeChange(onTimeRange);
-
     this.#mainChart.subscribeClick((param) => this.#handleClick(param));
-    this.#mainChart.subscribeCrosshairMove((param) => this.#handleCrosshair(param));
+    this.#mainChart.subscribeCrosshairMove((param) => {
+      this.#handleCrosshair(param);
+      this.#syncCrosshairToRsi(param);
+    });
     window.addEventListener('pointermove', this.#boundPointerMove);
     window.addEventListener('pointerup', this.#boundPointerUp);
     window.addEventListener('pointercancel', this.#boundPointerUp);
 
-    const observeEl = this.#wrapEl?.classList?.contains('chart-wrap') ? this.#wrapEl : this.#mainEl;
+    const observeEl = this.#bodyEl || (this.#wrapEl?.classList?.contains('chart-wrap') ? this.#wrapEl : this.#mainEl);
     this.#resizeObserver = new ResizeObserver(() => this.#resize());
     this.#resizeObserver.observe(observeEl);
+    if (this.#bodyEl && observeEl !== this.#bodyEl) {
+      this.#resizeObserver.observe(this.#wrapEl);
+    }
     this.#mounted = true;
     requestAnimationFrame(() => this.#resize());
   }
@@ -178,25 +192,67 @@ export class TradeChart {
     return this.#mounted;
   }
 
+  #chartWidth() {
+    const bodyW = this.#bodyEl?.clientWidth ?? 0;
+    const mainW = this.#mainEl?.clientWidth ?? 0;
+    const rsiW = this.#rsiEl?.clientWidth ?? 0;
+    return Math.max(bodyW, mainW, rsiW, 320);
+  }
+
   #mainSize() {
     const wrapH = this.#wrapEl?.clientHeight ?? 0;
-    const wrapW = this.#wrapEl?.clientWidth ?? 0;
+    const wrapW = this.#chartWidth();
     return {
-      width: Math.max(this.#mainEl.clientWidth, wrapW, 320),
+      width: wrapW,
       height: Math.max(this.#mainEl.clientHeight, wrapH, 280),
     };
   }
 
   #resize() {
-    const { width, height } = this.#mainSize();
-    if (width <= 0 || height <= 0) return;
-    this.#mainChart?.applyOptions({ width, height });
-    this.#rsiChart?.applyOptions({
-      width: this.#rsiEl.clientWidth || width,
-      height: Math.max(this.#rsiEl.clientHeight || 0, 80),
-    });
+    const width = this.#chartWidth();
+    const mainHeight = Math.max(this.#mainEl.clientHeight, this.#wrapEl?.clientHeight ?? 0, 280);
+    const rsiHeight = Math.max(this.#rsiEl.clientHeight || 0, 80);
+    if (width <= 0 || mainHeight <= 0) return;
+    this.#mainChart?.applyOptions({ width, height: mainHeight });
+    this.#rsiChart?.applyOptions({ width, height: rsiHeight });
+    this.#syncPriceScaleWidth();
     if (this.#showRsi) this.#syncRsiTimeScale();
     this.#refreshOverlayGeometry();
+  }
+
+  #syncPriceScaleWidth() {
+    if (!this.#mainChart || !this.#rsiChart) return;
+    const mainScale = this.#mainChart.priceScale('right');
+    const rsiScale = this.#rsiChart.priceScale('right');
+    const width = Math.max(
+      mainScale.width(),
+      rsiScale.width(),
+      RIGHT_SCALE_MIN_WIDTH,
+    );
+    mainScale.applyOptions({ minimumWidth: width });
+    rsiScale.applyOptions({ minimumWidth: width });
+  }
+
+  #syncCrosshairToRsi(param) {
+    if (!this.#showRsi || !this.#rsiChart) return;
+    if (!param?.time) {
+      this.#rsiChart.clearCrosshairPosition();
+      return;
+    }
+    const candle = this.#nearestCandle(param.time);
+    const time = candle?.time ?? param.time;
+    let value = param.seriesData?.get(this.#rsiSeries)?.value;
+    if (value == null) value = this.#rsiValueAtTime(time);
+    if (value == null) {
+      this.#rsiChart.clearCrosshairPosition();
+      return;
+    }
+    this.#rsiChart.setCrosshairPosition(value, time, this.#rsiSeries);
+  }
+
+  #rsiValueAtTime(time) {
+    const point = this.#rsiData.find((p) => p.time === time);
+    return point?.value ?? null;
   }
 
   #chartY(event) {
@@ -412,16 +468,23 @@ export class TradeChart {
     return this.#candles.length - 1;
   }
 
-  #alignSeriesToCandles(candles, points) {
+  #alignSeriesToCandles(candles, points, { forwardFill = false } = {}) {
     if (!candles?.length) return [];
     const byTime = new Map((points ?? []).map((p) => [p.time, p.value]));
-    return candles
-      .map((c) => {
-        const value = byTime.get(c.time);
-        if (value == null || Number.isNaN(value)) return null;
-        return { time: c.time, value };
-      })
-      .filter(Boolean);
+    let last = null;
+    const out = [];
+    for (const c of candles) {
+      let value = byTime.get(c.time);
+      if (value != null && !Number.isNaN(value)) {
+        last = value;
+        out.push({ time: c.time, value });
+      } else if (forwardFill && last != null) {
+        out.push({ time: c.time, value: last });
+      } else {
+        out.push({ time: c.time });
+      }
+    }
+    return out;
   }
 
   #applyRsiScale() {
@@ -486,16 +549,13 @@ export class TradeChart {
   }
 
   #syncRsiTimeScale() {
+    if (!this.#mainChart || !this.#rsiChart) return;
     const logical = this.#mainChart.timeScale().getVisibleLogicalRange();
-    const timeRange = this.#mainChart.timeScale().getVisibleRange();
+    if (!logical) return;
     this.#syncingTimeScale = true;
-    if (logical) {
-      this.#rsiChart.timeScale().setVisibleLogicalRange(logical);
-    }
-    if (timeRange) {
-      this.#rsiChart.timeScale().setVisibleRange(timeRange);
-    }
+    this.#rsiChart.timeScale().setVisibleLogicalRange(logical);
     this.#syncingTimeScale = false;
+    this.#syncPriceScaleWidth();
   }
 
   setData({ candles, indicators }) {
@@ -504,7 +564,8 @@ export class TradeChart {
     const ema50 = this.#alignSeriesToCandles(candles, indicators?.ema50);
     const ema200 = this.#alignSeriesToCandles(candles, indicators?.ema200);
     const rsiRaw = indicators?.rsi14_h4?.length ? indicators.rsi14_h4 : indicators?.rsi14;
-    const rsiData = this.#alignSeriesToCandles(candles, rsiRaw);
+    const rsiData = this.#alignSeriesToCandles(candles, rsiRaw, { forwardFill: true });
+    this.#rsiData = rsiData.filter((p) => p.value != null && !Number.isNaN(p.value));
     this.#ema50Series.setData(this.#showEma50 ? ema50 : []);
     this.#ema200Series.setData(this.#showEma200 ? ema200 : []);
     this.#rsiSeries.setData(this.#showRsi ? rsiData : []);
