@@ -60,7 +60,11 @@ def score_setup(
             reasons.append("bar_score_low")
 
     tags = set(setup.get("tags") or [])
-    if TAG_BREAK_RETEST in tags or TAG_EXTREME_BOUNCE in tags:
+    strategy_setup = setup.get("strategy_setup")
+    if strategy_setup and strategy_setup != "unclassified":
+        pts += int(weights.get("strategy_setup_tag", 20))
+        reasons.append(f"setup:{strategy_setup}")
+    elif TAG_BREAK_RETEST in tags or TAG_EXTREME_BOUNCE in tags:
         pts += int(weights.get("strategy_setup_tag", 20))
         reasons.append("rsi_h4_setup")
     if TAG_EMA_CONFIRM in tags:

@@ -438,7 +438,6 @@ function renderSetupCards(strat, setupsDesc, setupIds = null) {
           <span class="setup-card-title">${esc(meta.title || setupCfg.label || id)}</span>
           <span class="pill ${enabled ? 'good' : ''}">${enabled ? 'Đang bật' : 'Tắt'}</span>
         </header>
-        <p class="setup-card-tag"><code>${esc(setupCfg.tag || meta.tag || id)}</code></p>
         <div class="setup-card-dir">
           <p><span class="dir-long">LONG</span> ${esc(meta.long || '—')}</p>
           <p><span class="dir-short">SHORT</span> ${esc(meta.short || '—')}</p>
@@ -1131,6 +1130,126 @@ export function renderBacktestCompare(runs) {
       </div>
     </section>
   `;
+}
+
+export function renderStrategySettingsForm(strategy) {
+  if (!strategy) {
+    return '<p class="muted section-note">Chưa có file chiến lược — chạy Analyze hoặc tải từ năm train đã phân tích.</p>';
+  }
+
+  const mode = strategy.rule_mode || strategy.strategy_id || '';
+  const setups = strategy.setups || {};
+  const risk = strategy.risk || {};
+  const bands = strategy.bands || { low: [28, 32], mid: [48, 52], high: [68, 72] };
+
+  const setupToggles = Object.entries(setups)
+    .map(([id, cfg]) => {
+      const checked = cfg?.enabled !== false ? 'checked' : '';
+      return `
+        <label class="strategy-setup-toggle">
+          <input type="checkbox" data-setup-id="${esc(id)}" ${checked}>
+          <span>${esc(cfg?.label || id)}</span>
+        </label>`;
+    })
+    .join('');
+
+  const numField = (key, val, step = '1', label = key) => `
+    <label class="strat-field">
+      <span>${esc(label)}</span>
+      <input type="number" data-strat-key="${esc(key)}" value="${val ?? ''}" step="${step}">
+    </label>`;
+
+  const boolField = (key, val, label) => `
+    <label class="strat-check">
+      <input type="checkbox" data-strat-bool="${esc(key)}" ${val ? 'checked' : ''}>
+      <span>${esc(label)}</span>
+    </label>`;
+
+  let body = `
+    <h3 class="strat-settings-title">Cấu hình chiến lược</h3>
+    <p class="section-note">Chỉnh tham số tại đây — <strong>không dùng tag</strong> để cấu hình. Setup backtest theo settings bên dưới.</p>
+    <div class="strat-setup-toggles">${setupToggles || '<span class="muted">—</span>'}</div>
+  `;
+
+  if (mode === 'rsi_h4_zone' || mode === 'rsi_h4') {
+    body += `
+      <div class="strat-field-grid">
+        <label class="strat-field"><span>RSI thấp (min)</span><input type="number" data-band="low0" value="${bands.low?.[0] ?? 28}" step="1"></label>
+        <label class="strat-field"><span>RSI thấp (max)</span><input type="number" data-band="low1" value="${bands.low?.[1] ?? 32}" step="1"></label>
+        <label class="strat-field"><span>RSI giữa (min)</span><input type="number" data-band="mid0" value="${bands.mid?.[0] ?? 48}" step="1"></label>
+        <label class="strat-field"><span>RSI giữa (max)</span><input type="number" data-band="mid1" value="${bands.mid?.[1] ?? 52}" step="1"></label>
+        <label class="strat-field"><span>RSI cao (min)</span><input type="number" data-band="high0" value="${bands.high?.[0] ?? 68}" step="1"></label>
+        <label class="strat-field"><span>RSI cao (max)</span><input type="number" data-band="high1" value="${bands.high?.[1] ?? 72}" step="1"></label>
+        ${numField('lookback_bars', strategy.lookback_bars, '1', 'Lookback')}
+        ${numField('entry_cooldown_bars', strategy.entry_cooldown_bars, '1', 'Cooldown entry')}
+        ${numField('sl_atr_mult', risk.sl_atr_mult, '0.1', 'SL × ATR')}
+      </div>
+      <div class="strat-bool-grid">
+        ${boolField('sl_on_mid_break', risk.sl_on_mid_break, 'SL khi RSI thủng vùng 50')}
+        ${boolField('sl_on_ema_break', risk.sl_on_ema_break, 'SL khi mất EMA H1')}
+      </div>`;
+  } else if (mode === 'ema_cross') {
+    body += `
+      <div class="strat-field-grid">
+        ${numField('lookback_bars', strategy.lookback_bars, '1', 'Lookback')}
+        ${numField('cross_lookback_bars', strategy.cross_lookback_bars, '1', 'Cross lookback')}
+        ${numField('entry_cooldown_bars', strategy.entry_cooldown_bars, '1', 'Cooldown entry')}
+        ${numField('ema_tolerance_atr', strategy.ema_tolerance_atr, '0.05', 'Dung sai EMA50 (×ATR)')}
+        ${numField('min_trend_sep_atr', strategy.min_trend_sep_atr, '0.01', 'Tách trend min (×ATR)')}
+        ${numField('sl_atr_mult', risk.sl_atr_mult, '0.1', 'SL × ATR')}
+        ${numField('target_rr', risk.target_rr, '0.1', 'Target RR')}
+      </div>
+      <div class="strat-bool-grid">
+        ${boolField('sl_on_ema_break', risk.sl_on_ema_break, 'SL khi phá EMA50')}
+      </div>`;
+  } else {
+    body += `<p class="muted">Chưa hỗ trợ form cho rule_mode: ${esc(mode)}</p>`;
+  }
+
+  return `<section class="strategy-settings-form">${body}</section>`;
+}
+
+export function collectStrategySettingsFromForm(root, strategy) {
+  if (!root || !strategy) return null;
+  const mode = strategy.rule_mode || strategy.strategy_id || '';
+  const patch = {
+    train_period: strategy.train_period,
+    strategy_id: strategy.strategy_id,
+    setups: {},
+    risk: { ...(strategy.risk || {}) },
+  };
+
+  root.querySelectorAll('[data-setup-id]').forEach((el) => {
+    const id = el.dataset.setupId;
+    patch.setups[id] = { enabled: el.checked };
+  });
+
+  root.querySelectorAll('[data-strat-key]').forEach((el) => {
+    patch[el.dataset.stratKey] = Number(el.value);
+  });
+
+  root.querySelectorAll('[data-strat-bool]').forEach((el) => {
+    const key = el.dataset.stratBool;
+    if (key === 'sl_on_mid_break' || key === 'sl_on_ema_break') {
+      patch.risk[key] = el.checked;
+    }
+  });
+
+  const slAtr = root.querySelector('[data-strat-key="sl_atr_mult"]');
+  if (slAtr) patch.risk.sl_atr_mult = Number(slAtr.value);
+  const targetRr = root.querySelector('[data-strat-key="target_rr"]');
+  if (targetRr) patch.risk.target_rr = Number(targetRr.value);
+
+  if (mode === 'rsi_h4_zone' || mode === 'rsi_h4') {
+    const g = (sel) => Number(root.querySelector(sel)?.value);
+    patch.bands = {
+      low: [g('[data-band="low0"]'), g('[data-band="low1"]')],
+      mid: [g('[data-band="mid0"]'), g('[data-band="mid1"]')],
+      high: [g('[data-band="high0"]'), g('[data-band="high1"]')],
+    };
+  }
+
+  return patch;
 }
 
 export function renderLoading(message = 'Đang xử lý...') {

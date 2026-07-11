@@ -6,7 +6,7 @@
   <title>AI Trade Lab — EURUSD 1H</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/app.css?v=23">
+  <link rel="stylesheet" href="/static/css/app.css?v=24">
 </head>
 <body>
   <noscript>
@@ -95,7 +95,7 @@
                 <ul id="barInspectSimilar" class="bar-inspect-similar"></ul>
 
                 <div class="bar-annotate-section">
-                  <span class="bar-annotate-label">Tag của bạn <small class="muted">(chỉnh & lưu)</small></span>
+                  <span class="bar-annotate-label">Tag ngữ cảnh <small class="muted">(tùy chọn — không phải cấu hình chiến lược)</small></span>
                   <div id="barAnnotTags" class="tag-checkbox-group"></div>
                   <div class="bar-annotate-actions">
                     <button type="button" class="btn primary" id="btnSaveBarAnnot">Lưu tag nến</button>
@@ -166,16 +166,7 @@
                 </div>
                 <label class="field-compact field-time">Thời gian <input id="fieldTime" type="datetime-local" step="3600"></label>
 
-                <div class="bar-annotate-section setup-tag-section">
-                  <span class="bar-annotate-label">Tag setup <em class="req">*</em> <small class="muted">(có thể chọn nhiều)</small></span>
-                  <div id="tagCheckboxGroup" class="tag-checkbox-group"></div>
-                </div>
-
-                <div id="tagSuggestPanel" class="tag-suggest-panel hidden">
-                  <div class="tag-suggest-head">Gợi ý từ dữ liệu</div>
-                  <div id="tagSuggestTags" class="tag-suggest-tags"></div>
-                  <ul id="tagSuggestSimilar" class="tag-suggest-similar"></ul>
-                </div>
+                <p class="section-note setup-flow-note">Setup gắn với nến đã lưu · loại setup tự nhận theo <strong>cấu hình chiến lược</strong> (tab Analyze).</p>
 
                 <div class="action-bar">
                   <button type="button" class="btn primary" id="btnSave" disabled>Lưu setup</button>
@@ -213,6 +204,8 @@
             <label class="bt-save-name">Năm validation (tối ưu)
               <select id="analyzeValidationPeriod" class="train-period-select"></select>
             </label>
+            <div id="strategySettingsPanel" class="strategy-settings-panel"></div>
+            <button type="button" class="btn block" id="btnSaveStrategySettings">Lưu cấu hình chiến lược</button>
             <button type="button" class="btn primary block" id="btnAnalyze">Phân tích + tối ưu</button>
             <div id="analyzeResults" class="strategy-results scroll-panel"></div>
           </section>
@@ -344,7 +337,7 @@
   </div>
 
   <script type="module">
-    import('/static/js/app.js?v=30').catch((err) => {
+    import('/static/js/app.js?v=31').catch((err) => {
       console.error('Module load failed:', err);
       const box = document.createElement('div');
       box.style.cssText = 'padding:20px;color:#fecaca;background:#3f1212;font-size:14px;line-height:1.5';

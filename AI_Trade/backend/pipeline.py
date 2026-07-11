@@ -37,27 +37,17 @@ def context_bars_for_index(
 
 
 def validate_setup_from_bar(payload: dict[str, Any], *, is_create: bool) -> list[str]:
-    """Ensure setup tags align with saved bar tags on create."""
+    """Setup gắn với nến đã lưu; tag nến là ngữ cảnh, không phải tag chiến lược."""
     tags = normalize_tags(payload.get("tags"))
-    if not tags:
-        raise ValueError(
-            "Setup phải có ít nhất 1 tag. Luồng: nến → gắn tag → tạo setup."
-        )
 
     if not is_create:
         return tags
 
     ann = annotation_at_time(payload["entry_time"])
-    if not ann or not ann.get("tags"):
+    if not ann:
         raise ValueError(
-            "Luồng bắt buộc: nến → tag → setup. "
-            "Hãy lưu tag nến tại thời điểm entry trước khi tạo setup."
-        )
-
-    bar_tags = set(normalize_tags(ann.get("tags")))
-    if not bar_tags.intersection(tags):
-        raise ValueError(
-            "Tag setup phải khớp ít nhất 1 tag đã lưu trên nến entry."
+            "Luồng bắt buộc: nến → lưu annotation → setup. "
+            "Hãy lưu nến tại thời điểm entry trước khi tạo setup."
         )
     return tags
 

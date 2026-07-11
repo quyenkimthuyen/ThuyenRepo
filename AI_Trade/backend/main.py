@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from .analyzer import analyze_patterns, list_strategies, load_strategy
+from .analyzer import analyze_patterns, list_strategies, load_strategy, save_strategy
 from .optimizer import analyze_and_optimize
 from .strategy_registry import default_strategy_id, list_strategy_types
 from .backtest import run_backtest
@@ -67,6 +67,21 @@ class SetupIn(BaseModel):
     annotation_id: str | None = None
     note: str = ""
     train_period: str | None = None
+    strategy_id: str | None = None
+
+
+class StrategyPatch(BaseModel):
+    train_period: str
+    strategy_id: str | None = None
+    bands: dict[str, list[float]] | None = None
+    lookback_bars: int | None = None
+    entry_cooldown_bars: int | None = None
+    exit_confirm_bars: int | None = None
+    ema_tolerance_atr: float | None = None
+    cross_lookback_bars: int | None = None
+    min_trend_sep_atr: float | None = None
+    setups: dict[str, Any] | None = None
+    risk: dict[str, Any] | None = None
 
 
 class SetupPatch(BaseModel):
@@ -448,6 +463,37 @@ def strategy(train_period: str | None = None, strategy_id: str | None = None):
     if not s:
         raise HTTPException(404, "No strategy yet")
     return s
+
+
+@app.patch("/api/strategy")
+def patch_strategy(body: StrategyPatch):
+    from .strategy_registry import resolve_strategy_id
+
+    train_period = resolve_period(body.train_period)
+    sid = resolve_strategy_id(body.strategy_id)
+    current = load_strategy(train_period, sid)
+    if not current:
+        raise HTTPException(404, f"Chưa có chiến lược {sid} cho {train_period}. Chạy Analyze trước.")
+
+    patch = body.model_dump(exclude_none=True, exclude={"train_period", "strategy_id"})
+    for key, value in patch.items():
+        if key == "bands" and isinstance(value, dict) and isinstance(current.get("bands"), dict):
+            current["bands"] = {**current["bands"], **value}
+        elif key == "risk" and isinstance(value, dict) and isinstance(current.get("risk"), dict):
+            current["risk"] = {**current["risk"], **value}
+        elif key == "setups" and isinstance(value, dict) and isinstance(current.get("setups"), dict):
+            merged = dict(current["setups"])
+            for setup_id, setup_patch in value.items():
+                if isinstance(setup_patch, dict) and isinstance(merged.get(setup_id), dict):
+                    merged[setup_id] = {**merged[setup_id], **setup_patch}
+                else:
+                    merged[setup_id] = setup_patch
+            current["setups"] = merged
+        else:
+            current[key] = value
+
+    path = save_strategy(current, train_period=train_period, strategy_id=sid)
+    return {"status": "ok", "strategy": current, "path": str(path)}
 
 
 @app.get("/api/backtests")

@@ -314,9 +314,15 @@ def create_setup(payload: dict[str, Any]) -> dict[str, Any]:
         "annotation_id": payload.get("annotation_id") or (ann.get("id") if ann else None),
         "note": payload.get("note", ""),
         "period": train_period,
+        "strategy_id": payload.get("strategy_id"),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    enriched = enrich_setup(setup, df)
+    from .analyzer import load_strategy
+    from .strategy_registry import default_strategy_id, resolve_strategy_id
+
+    sid = resolve_strategy_id(payload.get("strategy_id") or default_strategy_id())
+    strat = load_strategy(train_period, sid) or {"strategy_id": sid}
+    enriched = enrich_setup(setup, df, strategy=strat)
     from .setup_quality import enrich_setup_quality, passes_quality_gate
 
     ann_for_gate = annotation_at_time(payload["entry_time"])

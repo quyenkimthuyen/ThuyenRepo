@@ -17,13 +17,14 @@ import {
   getStrategies,
   getStrategy,
   getStrategyTypes,
+  patchStrategy,
   inspectBar,
   saveBarAnnotation,
   saveBarDetectionConfig,
   saveSetup,
   suggestTags,
   updateSetup,
-} from './api.js?v=30';
+} from './api.js?v=31';
 import {
   renderAnalyzeView,
   renderBacktestView,
@@ -33,9 +34,11 @@ import {
   renderError,
   renderLoading,
   renderRsiBandLegend,
-} from './strategy-ui.js?v=30';
-import { initSidebarResize, initChartSplit } from './layout.js?v=30';
-import { TradeChart } from './chart.js?v=30';
+  renderStrategySettingsForm,
+  collectStrategySettingsFromForm,
+} from './strategy-ui.js?v=31';
+import { initSidebarResize, initChartSplit } from './layout.js?v=31';
+import { TradeChart } from './chart.js?v=31';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -125,6 +128,8 @@ const els = {
   analyzeStrategyType: document.getElementById('analyzeStrategyType'),
   analyzeTrainPeriod: document.getElementById('analyzeTrainPeriod'),
   analyzeValidationPeriod: document.getElementById('analyzeValidationPeriod'),
+  strategySettingsPanel: document.getElementById('strategySettingsPanel'),
+  btnSaveStrategySettings: document.getElementById('btnSaveStrategySettings'),
   btYearPicker: document.getElementById('btYearPicker'),
   btStrategyType: document.getElementById('btStrategyType'),
   btStrategyPeriod: document.getElementById('btStrategyPeriod'),
@@ -161,9 +166,10 @@ const chart = new TradeChart(
 const MODE_LABELS = { idle: 'Xem chart', new: 'Tạo mới', edit: 'Chỉnh sửa' };
 
 const DEFAULT_TAGS = [
-  { id: 'rsi_break_retest', label: 'RSI break + retest 50', hint: 'Setup 1: break vùng 48–52 rồi test lại' },
-  { id: 'rsi_extreme_bounce', label: 'RSI extreme bounce', hint: 'Setup 2: chạm 70/30, hồi 50, bật lại' },
-  { id: 'ema_h1_confirm', label: 'EMA H1 xác nhận', hint: 'Giá giữ hỗ trợ/kháng cự EMA 50/200 H1' },
+  { id: 'entry_signal', label: 'Tín hiệu entry', hint: 'Nến có tiềm năng làm điểm vào lệnh' },
+  { id: 'key_reversal', label: 'Đảo chiều', hint: 'Vùng đảo chiều / swing quan trọng' },
+  { id: 'breakout', label: 'Breakout', hint: 'Phá vỡ cấu trúc hoặc vùng giá' },
+  { id: 'pullback', label: 'Pullback', hint: 'Hồi về hỗ trợ/kháng cự sau impulse' },
 ];
 
 const STEP_HINTS = {
@@ -229,8 +235,8 @@ function updatePipelineUI() {
   if (hint) {
     const hints = {
       bar: 'Bật 「Nến quan trọng」 và click một nến trên chart.',
-      tag: 'Chọn tag và bấm 「Lưu tag nến」 — bước bắt buộc trước setup.',
-      setup: 'Đặt SL/TP — tag setup phải khớp ít nhất 1 tag nến đã lưu.',
+      tag: 'Lưu nến tại entry (tag ngữ cảnh tùy chọn) — bước trước setup.',
+      setup: 'Đặt SL/TP — loại setup tự nhận theo cấu hình chiến lược (tab Analyze).',
       strategy: `Tab Analyze → học pattern từ setup train ${periodShortLabel(state.trainPeriod)}.`,
       backtest: 'Vào lệnh khi nến đạt score + tag + giống setup train. Xem kết quả ở panel dưới chart.',
     };
@@ -684,10 +690,6 @@ async function saveBarAnnotationFromInspect() {
   const bar = state.inspectedBar;
   if (!bar) return;
   const tags = barAnnotSelectedTags();
-  if (!tags.length) {
-    alert('Chọn ít nhất 1 tag trước khi lưu.');
-    return;
-  }
   const btn = document.getElementById('btnSaveBarAnnot');
   const original = btn?.textContent;
   if (btn) {
@@ -1323,17 +1325,16 @@ function validateSave() {
     tp > 0;
 
   let valid = false;
-  const hasTag = (state.meta.tags?.length ?? 0) > 0;
   const barTagged = state.mode === 'edit' || entryHasBarAnnotation();
   if (ok && state.direction === 'long') {
-    valid = sl < entry && tp > entry && hasTag && barTagged;
+    valid = sl < entry && tp > entry && barTagged;
   } else if (ok && state.direction === 'short') {
-    valid = sl > entry && tp < entry && hasTag && barTagged;
+    valid = sl > entry && tp < entry && barTagged;
   }
   els.btnSave.disabled = !valid;
-  if (state.mode === 'new' && ok && hasTag && !barTagged) {
+  if (state.mode === 'new' && ok && !barTagged) {
     els.pipelineHint.textContent =
-      'Chưa có tag nến tại entry — quay lại bước ② (lưu tag nến) trước khi lưu setup.';
+      'Chưa lưu nến tại entry — quay lại bước ② (lưu nến) trước khi lưu setup.';
   } else {
     updatePipelineUI();
   }
@@ -1513,6 +1514,59 @@ async function switchPeriod(period, { syncSidebar = true } = {}) {
   }
 }
 
+async function loadStrategySettings() {
+  const panel = els.strategySettingsPanel;
+  if (!panel) return;
+  const trainPeriod = els.analyzeTrainPeriod?.value || state.trainPeriod;
+  const strategyId = els.analyzeStrategyType?.value || state.strategyId;
+  panel.innerHTML = '<p class="muted section-note">Đang tải cấu hình...</p>';
+  try {
+    const strategy = await getStrategy(trainPeriod, strategyId);
+    state.editingStrategy = strategy;
+    panel.innerHTML = renderStrategySettingsForm(strategy);
+    if (els.btnSaveStrategySettings) els.btnSaveStrategySettings.disabled = false;
+  } catch {
+    state.editingStrategy = null;
+    panel.innerHTML = renderStrategySettingsForm(null);
+    if (els.btnSaveStrategySettings) els.btnSaveStrategySettings.disabled = true;
+  }
+}
+
+async function saveStrategySettings() {
+  const panel = els.strategySettingsPanel;
+  const strategy = state.editingStrategy;
+  if (!panel || !strategy) {
+    alert('Chưa có chiến lược để lưu — chạy Analyze trước hoặc chọn năm train đã phân tích.');
+    return;
+  }
+  const patch = collectStrategySettingsFromForm(panel, {
+    ...strategy,
+    train_period: els.analyzeTrainPeriod?.value || state.trainPeriod,
+    strategy_id: els.analyzeStrategyType?.value || state.strategyId,
+  });
+  if (!patch) return;
+  const btn = els.btnSaveStrategySettings;
+  const original = btn?.textContent;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Đang lưu...';
+  }
+  try {
+    const res = await patchStrategy(patch);
+    state.editingStrategy = res.strategy;
+    panel.innerHTML = renderStrategySettingsForm(res.strategy);
+    await syncChartStrategyBands();
+    alert('Đã lưu cấu hình chiến lược.');
+  } catch (err) {
+    alert(`Không lưu được: ${err.message || err}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  }
+}
+
 async function syncChartStrategyBands() {
   const legendEl = document.getElementById('rsiBandLegend');
   const trainPeriod = isTrainChartPeriod(state.period) ? state.period : state.btStrategyPeriod;
@@ -1646,12 +1700,13 @@ function buildSetupBody() {
     stop_loss: Number(els.fieldSL.value),
     take_profit: Number(els.fieldTP.value),
     note: state.meta.note || '',
-    tags: state.meta.tags || [],
+    tags: [],
     bar_tags: ctx?.bar_tags || bar?.annotation?.tags || [],
     sequence_tags:
       ctx?.sequence_tags || (bar?.sequence_tags || []).map((t) => t.tag || t),
     annotation_id: ctx?.annotation_id || bar?.annotation?.id || null,
     train_period: state.trainPeriod,
+    strategy_id: state.strategyId,
   };
 }
 
@@ -1970,6 +2025,7 @@ async function runAnalyze() {
       : raw;
     els.analyzeResults.innerHTML = renderAnalyzeView(data);
     await loadStrategies();
+    await loadStrategySettings();
     await syncChartStrategyBands();
     renderBtStrategySelect();
   } catch (e) {
@@ -2141,9 +2197,10 @@ function renderAnalyzeTrainSelect() {
     if (id === state.trainPeriod) opt.selected = true;
     els.analyzeTrainPeriod.appendChild(opt);
   }
-  els.analyzeTrainPeriod.onchange = () => {
+  els.analyzeTrainPeriod.onchange = async () => {
     state.trainPeriod = els.analyzeTrainPeriod.value;
     syncAnalyzeValidationDefault();
+    await loadStrategySettings();
   };
 }
 
@@ -2173,8 +2230,10 @@ function syncAnalyzeValidationDefault() {
 }
 
 function renderAnalyzeStrategySelect() {
-  renderStrategyTypeSelect(els.analyzeStrategyType, state.strategyId, (id) => {
+  renderStrategyTypeSelect(els.analyzeStrategyType, state.strategyId, async (id) => {
     state.strategyId = id;
+    await loadStrategySettings();
+    await syncChartStrategyBands();
   });
 }
 
@@ -2299,6 +2358,7 @@ function bindUI() {
   });
 
   document.getElementById('btnAnalyze').onclick = () => runAnalyze();
+  els.btnSaveStrategySettings?.addEventListener('click', () => saveStrategySettings());
   document.getElementById('btnBacktest').onclick = () => runBt();
 
   document.querySelectorAll('.bt-ws-tab').forEach((btn) => {
@@ -2408,6 +2468,7 @@ async function loadAppData() {
     await loadStrategies();
     renderAnalyzeTrainSelect();
     renderAnalyzeValidationSelect();
+    await loadStrategySettings();
     if (state.config?.periods?.[state.period]) {
       els.periodBadge.textContent = state.config.periods[state.period].label;
     }
