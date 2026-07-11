@@ -32,6 +32,7 @@ from .bar_importance import inspect_bar_at_time, scan_important_bars
 from .pipeline import pipeline_status
 from .detection_config import load_bar_detection_config, save_bar_detection_config
 from .tag_matcher import tag_definitions
+from .tags import load_presets
 from .workflow import workflow_status
 
 ROOT = Path(__file__).resolve().parents[1]

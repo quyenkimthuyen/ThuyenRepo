@@ -16,7 +16,6 @@ import {
   getSetups,
   getStrategies,
   getStrategy,
-  getStrategyTypes,
   getWorkflow,
   patchStrategy,
   inspectBar,
@@ -25,7 +24,7 @@ import {
   saveSetup,
   suggestTags,
   updateSetup,
-} from './api.js?v=32';
+} from './api.js?v=33';
 import {
   renderAnalyzeView,
   renderBacktestView,
@@ -37,9 +36,9 @@ import {
   renderRsiBandLegend,
   renderStrategySettingsForm,
   collectStrategySettingsFromForm,
-} from './strategy-ui.js?v=32';
-import { initSidebarResize, initChartSplit } from './layout.js?v=32';
-import { TradeChart } from './chart.js?v=32';
+} from './strategy-ui.js?v=33';
+import { initSidebarResize, initChartSplit } from './layout.js?v=33';
+import { TradeChart } from './chart.js?v=33';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
