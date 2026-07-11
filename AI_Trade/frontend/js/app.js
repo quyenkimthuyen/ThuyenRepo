@@ -32,7 +32,7 @@ import {
   renderLoading,
 } from './strategy-ui.js?v=23';
 import { initSidebarResize } from './layout.js?v=23';
-import { TradeChart } from './chart.js?v=23';
+import { TradeChart } from './chart.js?v=24';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 

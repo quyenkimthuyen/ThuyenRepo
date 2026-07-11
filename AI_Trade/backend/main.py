@@ -191,6 +191,10 @@ def get_candles(period: str = "train_2022", month: str | None = None, with_indic
                 {"time": int(ts.timestamp()), "value": round(float(v), 2)}
                 for ts, v in df["rsi14"].dropna().items()
             ],
+            "rsi14_h4": [
+                {"time": int(ts.timestamp()), "value": round(float(v), 2)}
+                for ts, v in df["rsi14_h4"].dropna().items()
+            ],
         }
     return {"period": period, "month": month, "count": len(records), "candles": records, "indicators": indicators}
 

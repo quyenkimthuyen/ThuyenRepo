@@ -30,16 +30,11 @@ def atr(df: pd.DataFrame, period: int = 14) -> pd.Series:
     return tr.ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
 
 
-def add_h4_trend(df: pd.DataFrame) -> pd.Series:
-    """Xu hướng lớn H4: EMA50 > EMA200 trên khung 4H, map về từng nến 1H."""
-    if df.empty:
-        return pd.Series(dtype=bool)
-
+def _h4_ohlc(df: pd.DataFrame) -> pd.DataFrame:
     work = df[["open", "high", "low", "close"]].copy()
     if work.index.tz is None:
         work.index = work.index.tz_localize("UTC")
-
-    h4 = work.resample("4h", label="right", closed="right").agg(
+    return work.resample("4h", label="right", closed="right").agg(
         {
             "open": "first",
             "high": "max",
@@ -48,16 +43,41 @@ def add_h4_trend(df: pd.DataFrame) -> pd.Series:
         }
     ).dropna(subset=["close"])
 
+
+def _map_h4_to_1h(h4_series: pd.Series, df: pd.DataFrame) -> pd.Series:
+    work = df[["close"]].copy()
+    if work.index.tz is None:
+        work.index = work.index.tz_localize("UTC")
+    mapped = h4_series.reindex(work.index, method="ffill")
+    return mapped.reindex(df.index, method="ffill")
+
+
+def add_h4_trend(df: pd.DataFrame) -> pd.Series:
+    """Xu hướng lớn H4: EMA50 > EMA200 trên khung 4H, map về từng nến 1H."""
+    if df.empty:
+        return pd.Series(dtype=bool)
+
+    h4 = _h4_ohlc(df)
     if len(h4) < 3:
         return pd.Series(False, index=df.index)
 
     h4["ema50"] = ema(h4["close"], 50)
     h4["ema200"] = ema(h4["close"], 200)
     h4_trend = (h4["ema50"] > h4["ema200"]).astype(bool)
+    return _map_h4_to_1h(h4_trend, df).fillna(False).astype(bool)
 
-    mapped = h4_trend.reindex(work.index, method="ffill")
-    mapped = mapped.reindex(df.index, method="ffill")
-    return mapped.fillna(False).astype(bool)
+
+def add_h4_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
+    """RSI(14) trên khung 4H, forward-fill về từng nến 1H."""
+    if df.empty:
+        return pd.Series(dtype=float)
+
+    h4 = _h4_ohlc(df)
+    if len(h4) < period + 1:
+        return pd.Series(float("nan"), index=df.index)
+
+    h4_rsi = rsi(h4["close"], period)
+    return _map_h4_to_1h(h4_rsi, df)
 
 
 def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
@@ -65,6 +85,7 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     out["ema50"] = ema(out["close"], 50)
     out["ema200"] = ema(out["close"], 200)
     out["rsi14"] = rsi(out["close"], 14)
+    out["rsi14_h4"] = add_h4_rsi(out, 14)
     out["atr14"] = atr(out, 14)
     out["trend_up"] = out["ema50"] > out["ema200"]
     out["close_above_ema50"] = out["close"] > out["ema50"]

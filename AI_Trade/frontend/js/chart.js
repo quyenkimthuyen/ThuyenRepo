@@ -111,7 +111,7 @@ export class TradeChart {
       width: this.#rsiEl.clientWidth || width,
       height: this.#rsiEl.clientHeight || 140,
     });
-    this.#rsiSeries = this.#rsiChart.addLineSeries({ color: COLORS.rsi, lineWidth: 2, title: 'RSI' });
+    this.#rsiSeries = this.#rsiChart.addLineSeries({ color: COLORS.rsi, lineWidth: 2, title: 'RSI H4' });
     this.#rsiChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
 
     const onRange = (range) => {
@@ -376,7 +376,10 @@ export class TradeChart {
     this.#candleSeries.setData(candles);
     this.#ema50Series.setData(this.#showEma50 ? indicators?.ema50 ?? [] : []);
     this.#ema200Series.setData(this.#showEma200 ? indicators?.ema200 ?? [] : []);
-    this.#rsiSeries.setData(this.#showRsi ? indicators?.rsi14 ?? [] : []);
+    const rsiData = indicators?.rsi14_h4?.length
+      ? indicators.rsi14_h4
+      : indicators?.rsi14 ?? [];
+    this.#rsiSeries.setData(this.#showRsi ? rsiData : []);
     this.#resize();
 
     if (this.#pendingFocus) {
