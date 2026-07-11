@@ -1,0 +1,23 @@
+{
+  "strategies": [
+    {
+      "id": "ema_cross",
+      "name": "EMA 50/200 H1",
+      "rule_mode": "ema_cross",
+      "label": "EMA 50/200 — pullback & cross",
+      "description": "Vào lệnh theo cấu trúc EMA50/200 H1: pullback về EMA50 hoặc cross mới.",
+      "default_train": "train_2024",
+      "default_validation": "bt_2024"
+    },
+    {
+      "id": "rsi_h4_zone",
+      "name": "RSI H4 zone exit",
+      "rule_mode": "rsi_h4_zone",
+      "label": "RSI H4 — rời vùng 70/30",
+      "description": "Rời vùng 70 → SHORT (TP RSI 30). Rời vùng 30 → LONG (TP RSI 70).",
+      "default_train": "train_2024",
+      "default_validation": "bt_2024"
+    }
+  ],
+  "default_strategy_id": "rsi_h4_zone"
+}

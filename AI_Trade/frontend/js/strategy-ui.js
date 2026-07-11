@@ -311,7 +311,8 @@ function boolLabel(value) {
 const PARAM_LABELS = {
   entry_cooldown_bars: { label: 'Cooldown entry', hint: 'Số nến H1 tối thiểu giữa 2 lệnh' },
   ema_tolerance_atr: { label: 'Dung sai EMA50', hint: 'Khoảng cách giá–EMA50 tối đa (× ATR14)' },
-  lookback_bars: { label: 'Lookback RSI', hint: 'Số nến H1 nhìn lại để nhận pattern' },
+  lookback_bars: { label: 'Lookback', hint: 'Số nến H1 nhìn lại để nhận pattern' },
+  cross_lookback_bars: { label: 'Cross lookback', hint: 'Cửa sổ tìm golden/death cross gần nhất' },
   rsi_rise_min: { label: 'RSI bounce min', hint: 'Mức RSI phải bật tối thiểu sau retest' },
 };
 
@@ -355,13 +356,15 @@ export function renderRsiBandLegend(bands) {
     .join('');
 }
 
-function renderEntryConfig(strat) {
-  const rows = [
-    ['lookback_bars', strat.lookback_bars],
-    ['ema_tolerance_atr', strat.ema_tolerance_atr],
-    ['rsi_rise_min', strat.rsi_rise_min],
-    ['entry_cooldown_bars', strat.entry_cooldown_bars],
-  ];
+function renderEntryConfig(strat, extraKeys = []) {
+  const keys = [
+    'lookback_bars',
+    'ema_tolerance_atr',
+    'cross_lookback_bars',
+    'rsi_rise_min',
+    'entry_cooldown_bars',
+  ].filter((k) => strat[k] != null || extraKeys.includes(k));
+  const rows = keys.map((key) => [key, strat[key]]);
   return `
     <div class="config-card">
       <h4>Entry &amp; lọc tín hiệu</h4>
@@ -374,7 +377,6 @@ function renderEntryConfig(strat) {
           })
           .join('')}
       </ul>
-      <p class="section-note">EMA H1: long cần giá gần EMA50 hỗ trợ · short cần kháng cự EMA50.</p>
     </div>
   `;
 }
@@ -420,12 +422,13 @@ function renderRiskConfig(strat) {
   `;
 }
 
-function renderSetupCards(strat, setupsDesc) {
+function renderSetupCards(strat, setupsDesc, setupIds = null) {
   const cfg = strat.setups || {};
   const desc = setupsDesc || strat.setups_description || [];
   const byId = Object.fromEntries(desc.map((s) => [s.id, s]));
+  const ids = setupIds || Object.keys(cfg);
 
-  const cards = ['break_retest', 'extreme_bounce'].map((id) => {
+  const cards = ids.map((id) => {
     const setupCfg = cfg[id] || {};
     const meta = byId[id] || {};
     const enabled = setupCfg.enabled !== false;
@@ -449,6 +452,70 @@ function renderSetupCards(strat, setupsDesc) {
   });
 
   return `<div class="setup-card-grid">${cards.join('')}</div>`;
+}
+
+function renderZoneRiskConfig(strat) {
+  const risk = strat.risk || {};
+  const bands = strat.bands || {};
+  const mid = bands.mid || [48, 52];
+  const low = bands.low || [28, 32];
+  const high = bands.high || [68, 72];
+
+  return `
+    <div class="config-card">
+      <h4>SL / TP (backtest)</h4>
+      <ul class="config-list">
+        <li>
+          <span class="config-key">LONG — TP</span>
+          <span class="config-val good">RSI chạm vùng 70 (${high[0]}–${high[1]})</span>
+          <span class="config-hint">Vào khi rời vùng 30</span>
+        </li>
+        <li>
+          <span class="config-key">SHORT — TP</span>
+          <span class="config-val good">RSI chạm vùng 30 (${low[0]}–${low[1]})</span>
+          <span class="config-hint">Vào khi rời vùng 70</span>
+        </li>
+        <li>
+          <span class="config-key">SL thủng vùng 50</span>
+          <span class="config-val ${risk.sl_on_mid_break ? 'good' : 'muted'}">${boolLabel(risk.sl_on_mid_break)}</span>
+          <span class="config-hint">Long SL nếu RSI &lt; ${mid[0]} · Short SL nếu RSI &gt; ${mid[1]}</span>
+        </li>
+        <li>
+          <span class="config-key">SL dự phòng ATR</span>
+          <span class="config-val">${num(risk.sl_atr_mult, 2)} × ATR14</span>
+          <span class="config-hint">Stop tại entry ± ATR</span>
+        </li>
+      </ul>
+    </div>
+  `;
+}
+
+function renderEmaRiskConfig(strat) {
+  const risk = strat.risk || {};
+  const sl = risk.sl_atr_mult ?? 1.2;
+  const rr = risk.target_rr ?? 2.0;
+  return `
+    <div class="config-card">
+      <h4>SL / TP (backtest)</h4>
+      <ul class="config-list">
+        <li>
+          <span class="config-key">Stop loss</span>
+          <span class="config-val">${num(sl, 2)} × ATR14</span>
+          <span class="config-hint">Stop cố định theo ATR tại entry</span>
+        </li>
+        <li>
+          <span class="config-key">Take profit</span>
+          <span class="config-val good">${num(rr, 2)}R</span>
+          <span class="config-hint">TP = entry ± SL × ${num(rr, 2)}</span>
+        </li>
+        <li>
+          <span class="config-key">SL phá EMA50</span>
+          <span class="config-val ${risk.sl_on_ema_break ? 'good' : 'muted'}">${boolLabel(risk.sl_on_ema_break)}</span>
+          <span class="config-hint">Đóng sớm nếu giá phá EMA50 ngược hướng</span>
+        </li>
+      </ul>
+    </div>
+  `;
 }
 
 function renderTrainSetupStats(stats) {
@@ -599,7 +666,7 @@ function renderRsiH4Strategy(data) {
     <section class="result-section">
       <h3>Hai setup entry</h3>
       <p class="section-note">Vào lệnh khi <strong>một setup đang bật</strong> khớp + EMA H1 xác nhận.</p>
-      ${renderSetupCards(strat, data.setups_description)}
+      ${renderSetupCards(strat, data.setups_description, ['break_retest', 'extreme_bounce'])}
     </section>
 
     ${renderTrainSetupStats(stats)}
@@ -618,6 +685,109 @@ function renderRsiH4Strategy(data) {
     </section>`
         : ''
     }
+  `;
+}
+
+function renderRsiH4ZoneStrategy(data) {
+  const strat = data.strategy || {};
+  const bands = strat.bands || { low: [28, 32], mid: [48, 52], high: [68, 72] };
+  const stats = data.train_stats || strat.train_stats || {};
+
+  return `
+    <section class="result-section strategy-hero">
+      <h3>RSI H4 — rời vùng 70/30</h3>
+      <p class="section-note"><strong>Rời vùng 70 → SHORT</strong> (TP RSI 30) · <strong>Rời vùng 30 → LONG</strong> (TP RSI 70).</p>
+      ${renderRsiBandVisual(bands)}
+    </section>
+
+    <section class="result-section">
+      <h3>Cấu hình chiến lược</h3>
+      <div class="config-grid">
+        ${renderEntryConfig(strat)}
+        ${renderZoneRiskConfig(strat)}
+      </div>
+    </section>
+
+    <section class="result-section">
+      <h3>Hai setup</h3>
+      ${renderSetupCards(strat, data.setups_description, ['exit_low_long', 'exit_high_short'])}
+    </section>
+
+    ${renderTrainSetupStats(stats)}
+  `;
+}
+
+function renderEmaCrossStrategy(data) {
+  const strat = data.strategy || {};
+  const stats = data.train_stats || strat.train_stats || {};
+
+  return `
+    <section class="result-section strategy-hero">
+      <h3>EMA 50/200 H1</h3>
+      <p class="section-note">Pullback về EMA50 trong trend hoặc golden/death cross mới + hồi EMA50.</p>
+    </section>
+
+    <section class="result-section">
+      <h3>Cấu hình chiến lược</h3>
+      <div class="config-grid">
+        ${renderEntryConfig(strat)}
+        ${renderEmaRiskConfig(strat)}
+      </div>
+    </section>
+
+    <section class="result-section">
+      <h3>Bốn setup</h3>
+      ${renderSetupCards(strat, data.setups_description, [
+        'pullback_long',
+        'pullback_short',
+        'cross_long',
+        'cross_short',
+      ])}
+    </section>
+
+    ${renderTrainSetupStats(stats)}
+  `;
+}
+
+function renderStrategyModeView(data) {
+  const mode = data.rule_mode || 'global';
+  const opt = data.optimization;
+  const valPass = opt?.pass;
+  const modeLabels = {
+    rsi_h4_zone: 'RSI H4 zone exit',
+    ema_cross: 'EMA 50/200 H1',
+    rsi_h4: 'RSI H4 band + EMA H1',
+  };
+  const stratName = modeLabels[mode] || mode;
+  const sid = data.strategy_id ? ` · ${data.strategy_id}` : '';
+
+  let body = '';
+  if (mode === 'rsi_h4_zone') body = renderRsiH4ZoneStrategy(data);
+  else if (mode === 'ema_cross') body = renderEmaCrossStrategy(data);
+  else if (mode === 'rsi_h4') body = renderRsiH4Strategy(data);
+
+  if (!body) return '';
+
+  return `
+    ${banner(
+      'ok',
+      `${stratName}${sid} · Train ${data.train_year || ''}`,
+      data.pipeline_flow || 'setup → chiến lược → backtest',
+    )}
+    ${statGrid([
+      { label: 'Setup train', value: String(data.setup_count ?? 0) },
+      { label: 'Win rate train', value: pct(data.win_rate_train), cls: 'good' },
+      { label: 'RR label TB', value: `${num(data.avg_rr_train, 2)}R`, hint: 'Từ setup gốc' },
+      {
+        label: 'Validation',
+        value: valPass ? 'PASS ✓' : 'Chưa pass',
+        cls: valPass ? 'good' : 'bad',
+        hint: data.validation_period || opt?.validation_period || '',
+      },
+    ])}
+    ${body}
+    ${renderOptimizationBlock(data)}
+    ${renderPipelineBlock(data)}
   `;
 }
 
@@ -641,36 +811,16 @@ export function renderAnalyzeView(data) {
 
   const mode = data.rule_mode || 'global';
   const modeLabels = {
+    rsi_h4_zone: 'RSI H4 zone exit',
+    ema_cross: 'EMA 50/200 H1',
     rsi_h4: 'RSI H4 band + EMA H1',
     similarity: 'Similarity (legacy)',
     tag_driven: 'Tag profile (legacy)',
     global: 'Global (legacy)',
   };
 
-  if (mode === 'rsi_h4') {
-    const opt = data.optimization;
-    const valPass = opt?.pass;
-    return `
-      ${banner(
-        'ok',
-        `RSI H4 + EMA H1 · Train ${data.train_year || ''}`,
-        data.pipeline_flow || 'RSI H4 band → EMA H1 → entry → TP theo vùng RSI',
-      )}
-      ${statGrid([
-        { label: 'Setup train', value: String(data.setup_count ?? 0) },
-        { label: 'Win rate train', value: pct(data.win_rate_train), cls: 'good' },
-        { label: 'RR label TB', value: `${num(data.avg_rr_train, 2)}R`, hint: 'Từ setup gốc' },
-        {
-          label: 'Validation',
-          value: valPass ? 'PASS ✓' : 'Chưa pass',
-          cls: valPass ? 'good' : 'bad',
-          hint: data.validation_period || opt?.validation_period || '',
-        },
-      ])}
-      ${renderRsiH4Strategy(data)}
-      ${renderOptimizationBlock(data)}
-      ${renderPipelineBlock(data)}
-    `;
+  if (mode === 'rsi_h4_zone' || mode === 'ema_cross' || mode === 'rsi_h4') {
+    return renderStrategyModeView(data);
   }
 
   const rules = data.rules || {};

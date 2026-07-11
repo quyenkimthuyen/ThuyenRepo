@@ -1,0 +1,123 @@
+{
+  "strategy_id": "rsi_h4_zone",
+  "name": "rsi_h4_zone",
+  "train_period": "train_2024",
+  "pipeline_flow": "RSI H4 r\u1eddi v\u00f9ng 70/30 \u2192 entry \u2192 TP v\u00f9ng \u0111\u1ed1i di\u1ec7n",
+  "rule_mode": "rsi_h4_zone",
+  "bands": {
+    "low": [
+      28,
+      32
+    ],
+    "mid": [
+      48,
+      52
+    ],
+    "high": [
+      68,
+      72
+    ]
+  },
+  "setups": {
+    "exit_high_short": {
+      "enabled": true,
+      "tag": "rsi_exit_high_short",
+      "label": "R\u1eddi v\u00f9ng 70 \u2192 SHORT \u00b7 TP RSI 30"
+    },
+    "exit_low_long": {
+      "enabled": true,
+      "tag": "rsi_exit_low_long",
+      "label": "R\u1eddi v\u00f9ng 30 \u2192 LONG \u00b7 TP RSI 70"
+    }
+  },
+  "lookback_bars": 80,
+  "entry_cooldown_bars": 24,
+  "risk": {
+    "mode": "rsi_band",
+    "sl_atr_mult": 1.2,
+    "sl_on_mid_break": true,
+    "sl_on_ema_break": false,
+    "tp_mode": "rsi_band"
+  },
+  "tags": {
+    "primary": [
+      "rsi_exit_low_long",
+      "rsi_exit_high_short"
+    ],
+    "setup_labels": {
+      "exit_high_short": {
+        "tag": "rsi_exit_high_short",
+        "label": "R\u1eddi v\u00f9ng 70 \u2192 SHORT \u00b7 TP RSI 30"
+      },
+      "exit_low_long": {
+        "tag": "rsi_exit_low_long",
+        "label": "R\u1eddi v\u00f9ng 30 \u2192 LONG \u00b7 TP RSI 70"
+      }
+    }
+  },
+  "train_stats": {
+    "win_rate": 0.6,
+    "avg_rr": 2.5,
+    "by_setup": {
+      "break_retest": {
+        "win": 16,
+        "loss": 15,
+        "total": 31
+      },
+      "extreme_bounce": {
+        "win": 10,
+        "loss": 5,
+        "total": 15
+      },
+      "unclassified": {
+        "win": 4,
+        "loss": 0,
+        "total": 4
+      }
+    },
+    "by_tag": [
+      {
+        "tag": "ema_h1_confirm",
+        "win_rate": 0.574,
+        "win": 27,
+        "loss": 20,
+        "total": 47
+      },
+      {
+        "tag": "rsi_break_retest",
+        "win_rate": 0.516,
+        "win": 16,
+        "loss": 15,
+        "total": 31
+      },
+      {
+        "tag": "rsi_extreme_bounce",
+        "win_rate": 0.565,
+        "win": 13,
+        "loss": 10,
+        "total": 23
+      }
+    ]
+  },
+  "train_year": 2024,
+  "source_setups": 50,
+  "win_rate_train": 0.6,
+  "avg_rr_train": 2.5,
+  "bar_annotation_count": 100,
+  "setups_description": [
+    {
+      "id": "exit_low_long",
+      "tag": "rsi_exit_low_long",
+      "title": "R\u1eddi v\u00f9ng 30 \u2192 LONG",
+      "long": "RSI H4 trong v\u00f9ng 28\u201332 r\u1ed3i tho\u00e1t l\u00ean tr\u00ean 32 \u2192 LONG \u2192 TP v\u00f9ng 68\u201372",
+      "short": "\u2014"
+    },
+    {
+      "id": "exit_high_short",
+      "tag": "rsi_exit_high_short",
+      "title": "R\u1eddi v\u00f9ng 70 \u2192 SHORT",
+      "long": "\u2014",
+      "short": "RSI H4 trong v\u00f9ng 68\u201372 r\u1ed3i tho\u00e1t xu\u1ed1ng d\u01b0\u1edbi 68 \u2192 SHORT \u2192 TP v\u00f9ng 28\u201332"
+    }
+  ]
+}

@@ -21,15 +21,7 @@ from .periods import (
 from .detection_config import load_bar_detection_config
 from .entity_codes import assign_setup_code, display_bar_code, display_setup_code
 from .indicators import add_indicators
-from .rsi_h4_strategy import (
-    TAG_BREAK_RETEST,
-    TAG_EMA_CONFIRM,
-    TAG_EXTREME_BOUNCE,
-    classify_bar_for_direction,
-    infer_setup_tags_for_label,
-    dist_ema_pips,
-    load_rsi_h4_config,
-)
+from .strategy_registry import dist_ema_pips, infer_setup_tags
 from .pipeline import context_bars_for_index, validate_setup_from_bar
 from .tags import normalize_tags
 
@@ -87,7 +79,12 @@ def resolve_outcome(
     return "open", None
 
 
-def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[str, Any]:
+def enrich_setup(
+    setup: dict[str, Any],
+    df: pd.DataFrame | None = None,
+    *,
+    strategy: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     df = df if df is not None else add_indicators(load_candles())
     entry_time = pd.Timestamp(setup["entry_time"])
     if entry_time.tz is None:
@@ -109,21 +106,22 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
 
     result, exit_time = resolve_outcome(df, bar_time, direction, sl, tp)
 
-    classification = infer_setup_tags_for_label(df, nearest_idx, direction)
+    period = normalize_setup_period(setup.get("period")) or period_for_timestamp(bar_time)
+    if strategy is None:
+        from .analyzer import load_strategy
+
+        strat = load_strategy(period, setup.get("strategy_id"))
+    else:
+        strat = strategy
+    classification = infer_setup_tags(df, nearest_idx, direction, strat)
     auto_tags = classification.get("tags") or []
     manual_tags = normalize_tags(setup.get("tags"))
     merged_tags = sorted(set(auto_tags) | set(manual_tags))
     if not merged_tags and classification.get("tag"):
         merged_tags = [classification["tag"]]
-    if TAG_EMA_CONFIRM not in merged_tags and (
-        (direction == "long" and float(row.get("close", 0)) >= float(row.get("ema50", 0)) - float(row.get("atr14", 0)) * 0.35)
-        or (direction == "short" and float(row.get("close", 0)) <= float(row.get("ema50", 0)) + float(row.get("atr14", 0)) * 0.35)
-    ):
-        merged_tags.append(TAG_EMA_CONFIRM)
-        merged_tags = sorted(set(merged_tags))
 
     rsi_h4 = float(row.get("rsi14_h4", 50)) if pd.notna(row.get("rsi14_h4")) else None
-    bands = load_rsi_h4_config().get("bands", {})
+    bands = (strat or {}).get("bands") or {"low": [28, 32], "mid": [48, 52], "high": [68, 72]}
     mid = bands.get("mid", [48, 52])
 
     enriched = {
@@ -133,7 +131,8 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
         "planned_rr": planned_rr(direction, entry, sl, tp),
         "result": result,
         "exit_time": exit_time.isoformat() if exit_time is not None else None,
-        "period": normalize_setup_period(setup.get("period")) or period_for_timestamp(bar_time),
+        "period": period,
+        "strategy_id": (strat or {}).get("strategy_id") or setup.get("strategy_id"),
         "tags": merged_tags,
         "strategy_setup": classification.get("setup"),
         "context_bars": setup.get("context_bars")
@@ -159,23 +158,33 @@ def enrich_setup(setup: dict[str, Any], df: pd.DataFrame | None = None) -> dict[
             "trend_up": bool(row.get("trend_up", False)),
             "close_above_ema50": bool(row.get("close_above_ema50", False)),
             "close_above_ema200": bool(row.get("close_above_ema200", False)),
-            **dist_ema_pips(row),
+            **dist_ema_pips(row, strat),
         },
     }
     return enriched
 
 
-def retag_all_setups() -> int:
-    """Gắn lại tag theo chiến lược RSI H4 cho mọi setup."""
+def retag_all_setups(strategy_id: str | None = None) -> int:
+    """Gắn lại tag theo chiến lược đang chọn."""
     from .bar_annotations import load_bar_annotations, save_bar_annotations
+    from .strategy_registry import default_strategy_id, resolve_strategy_id
 
+    sid = resolve_strategy_id(strategy_id or default_strategy_id())
     df = add_indicators(load_candles())
     setups = load_setups()
     changed = 0
     setup_by_ann: dict[str, dict[str, Any]] = {}
     for i, setup in enumerate(setups):
-        enriched = enrich_setup(setup, df)
-        if enriched.get("tags") != setup.get("tags") or enriched.get("strategy_setup") != setup.get("strategy_setup"):
+        period = normalize_setup_period(setup.get("period"))
+        from .analyzer import load_strategy
+
+        strat = load_strategy(period, sid) or {"strategy_id": sid}
+        enriched = enrich_setup(setup, df, strategy=strat)
+        if (
+            enriched.get("tags") != setup.get("tags")
+            or enriched.get("strategy_setup") != setup.get("strategy_setup")
+            or enriched.get("strategy_id") != setup.get("strategy_id")
+        ):
             changed += 1
         setups[i] = enriched
         ann_id = enriched.get("annotation_id")
@@ -189,13 +198,8 @@ def retag_all_setups() -> int:
         setup = setup_by_ann.get(ann.get("id"))
         if not setup:
             continue
-        period = normalize_setup_period(setup.get("period"))
-        if period != "train_2024" and period != "train_2022":
-            continue
-        new_tags = [t for t in (setup.get("tags") or []) if t in ("rsi_break_retest", "rsi_extreme_bounce", "ema_h1_confirm")]
-        if not new_tags:
-            continue
-        if set(ann.get("tags") or []) != set(new_tags):
+        new_tags = setup.get("tags") or []
+        if new_tags and set(ann.get("tags") or []) != set(new_tags):
             ann["tags"] = new_tags
             ann_changed += 1
     if ann_changed:

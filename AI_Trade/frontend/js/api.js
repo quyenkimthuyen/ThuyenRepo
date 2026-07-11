@@ -36,13 +36,31 @@ export const getSetups = ({ month = null, summary = true, period = null } = {}) 
 export const saveSetup = (body) => api('/api/setups', { method: 'POST', body: JSON.stringify(body) });
 export const updateSetup = (id, body) => api(`/api/setups/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
 export const deleteSetup = (id) => api(`/api/setups/${id}`, { method: 'DELETE' });
-export const analyze = (trainPeriod = null, { optimize = true } = {}) =>
-  api(`/api/analyze${qs({ train_period: trainPeriod, optimize })}`, { method: 'POST' });
+export const analyze = (
+  trainPeriod = null,
+  { optimize = true, strategyId = null, validationPeriod = null } = {},
+) =>
+  api(
+    `/api/analyze${qs({
+      train_period: trainPeriod,
+      strategy_id: strategyId,
+      validation_period: validationPeriod,
+      optimize,
+    })}`,
+    { method: 'POST' },
+  );
 export const getStrategies = () => api('/api/strategies');
-export const getStrategy = (trainPeriod = null) =>
-  api(`/api/strategy${qs({ train_period: trainPeriod })}`);
-export const backtest = (periods, { name = null, save = true, trainPeriod = null } = {}) =>
-  api(`/api/backtest${qs({ periods, name, save, train_period: trainPeriod })}`, { method: 'POST' });
+export const getStrategyTypes = () => api('/api/strategy-types');
+export const getStrategy = (trainPeriod = null, strategyId = null) =>
+  api(`/api/strategy${qs({ train_period: trainPeriod, strategy_id: strategyId })}`);
+export const backtest = (
+  periods,
+  { name = null, save = true, trainPeriod = null, strategyId = null } = {},
+) =>
+  api(
+    `/api/backtest${qs({ periods, name, save, train_period: trainPeriod, strategy_id: strategyId })}`,
+    { method: 'POST' },
+  );
 export const getBacktests = (period = null) => api(`/api/backtests${qs({ period })}`);
 export const getBacktest = (id) => api(`/api/backtests/${encodeURIComponent(id)}`);
 export const compareBacktests = (ids) =>

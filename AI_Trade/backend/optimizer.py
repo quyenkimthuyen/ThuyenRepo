@@ -1,4 +1,4 @@
-"""Optimize RSI H4 band strategy on walk-forward validation."""
+"""Optimize strategy params on walk-forward validation."""
 
 from __future__ import annotations
 
@@ -7,44 +7,53 @@ from typing import Any
 
 from .analyzer import analyze_patterns, load_strategy, save_strategy
 from .backtest import run_backtest
-from .labels import load_setups
-from .periods import suggested_backtest_period
-from .rsi_h4_strategy import load_rsi_h4_config
+from .periods import resolve_period, suggested_backtest_period
+from .strategy_registry import resolve_strategy_id
 
-PARAM_GRID: dict[str, list[Any]] = {
-    "entry_cooldown_bars": [12, 24, 36, 48, 72],
-    "ema_tolerance_atr": [0.25, 0.35, 0.45, 0.55],
+RSI_PARAM_GRID: dict[str, list[Any]] = {
+    "entry_cooldown_bars": [12, 24, 36, 48],
     "lookback_bars": [60, 80, 120, 160],
-    "rsi_rise_min": [0.1, 0.2, 0.3, 0.5],
 }
 
-SEARCH_ORDER = [
-    "lookback_bars",
-    "ema_tolerance_atr",
-    "rsi_rise_min",
-    "entry_cooldown_bars",
-]
+EMA_PARAM_GRID: dict[str, list[Any]] = {
+    "entry_cooldown_bars": [12, 24, 36, 48],
+    "lookback_bars": [60, 80, 120],
+    "ema_tolerance_atr": [0.25, 0.35, 0.45, 0.55],
+    "cross_lookback_bars": [12, 24, 36],
+}
+
+SEARCH_ORDER: dict[str, list[str]] = {
+    "rsi_h4_zone": ["lookback_bars", "entry_cooldown_bars"],
+    "ema_cross": ["lookback_bars", "ema_tolerance_atr", "cross_lookback_bars", "entry_cooldown_bars"],
+    "rsi_h4": ["lookback_bars", "ema_tolerance_atr", "rsi_rise_min", "entry_cooldown_bars"],
+}
 
 FAST_STRIDE = 2
 GREEDY_ROUNDS = 1
 
 
+def _param_grid(strategy: dict[str, Any]) -> dict[str, list[Any]]:
+    sid = resolve_strategy_id(strategy)
+    if sid == "ema_cross":
+        return EMA_PARAM_GRID
+    return RSI_PARAM_GRID
+
+
 def _apply_params(strategy: dict[str, Any], params: dict[str, Any]) -> dict[str, Any]:
     out = copy.deepcopy(strategy)
+    grid = _param_grid(strategy)
     for key, value in params.items():
-        if key in PARAM_GRID:
+        if key in grid:
             out[key] = copy.deepcopy(value)
     return out
 
 
 def _initial_params(strategy: dict[str, Any]) -> dict[str, Any]:
-    cfg = load_rsi_h4_config(strategy)
-    return {
-        "entry_cooldown_bars": int(strategy.get("entry_cooldown_bars", cfg.get("entry_cooldown_bars", 24))),
-        "ema_tolerance_atr": float(strategy.get("ema_tolerance_atr", cfg.get("ema_tolerance_atr", 0.35))),
-        "lookback_bars": int(strategy.get("lookback_bars", cfg.get("lookback_bars", 120))),
-        "rsi_rise_min": float(strategy.get("rsi_rise_min", cfg.get("rsi_rise_min", 0.3))),
-    }
+    grid = _param_grid(strategy)
+    out: dict[str, Any] = {}
+    for key in grid:
+        out[key] = strategy.get(key, grid[key][len(grid[key]) // 2])
+    return out
 
 
 def _objective(metrics: dict[str, Any]) -> float:
@@ -99,10 +108,12 @@ def _greedy_search(
     best_params = _initial_params(strategy)
     best_metrics = _eval_params(strategy, best_params, validation_period, bar_stride=bar_stride)
     best_score = _objective(best_metrics)
+    order = SEARCH_ORDER.get(resolve_strategy_id(strategy), list(_param_grid(strategy).keys()))
+    grid = _param_grid(strategy)
 
     for _ in range(GREEDY_ROUNDS):
-        for key in SEARCH_ORDER:
-            options = PARAM_GRID.get(key, [])
+        for key in order:
+            options = grid.get(key, [])
             if not options:
                 continue
             local_best = best_params[key]
@@ -123,30 +134,40 @@ def _greedy_search(
     return best_params, best_metrics
 
 
-def analyze_and_optimize(train_period: str | None = None) -> dict[str, Any]:
-    analysis = analyze_patterns(train_period=train_period)
+def analyze_and_optimize(
+    train_period: str | None = None,
+    strategy_id: str | None = None,
+    validation_period: str | None = None,
+) -> dict[str, Any]:
+    analysis = analyze_patterns(train_period=train_period, strategy_id=strategy_id)
     if analysis.get("status") != "ok":
         return {"status": analysis.get("status"), "analysis": analysis}
 
     train_period = analysis["train_period"]
-    strategy = load_strategy(train_period)
+    sid = analysis.get("strategy_id") or resolve_strategy_id(strategy_id)
+    strategy = load_strategy(train_period, sid)
     if not strategy:
         return {"status": "no_strategy", "analysis": analysis}
 
-    validation_period = suggested_backtest_period(train_period)
-    baseline = run_backtest(periods=[validation_period], strategy=strategy, bar_stride=1)
+    val_period = (
+        resolve_period(validation_period)
+        if validation_period
+        else suggested_backtest_period(train_period)
+    )
+    baseline = run_backtest(periods=[val_period], strategy=strategy, bar_stride=1)
     baseline_metrics = baseline.get("metrics") or {}
 
     if baseline_metrics.get("pass"):
         return {
             "status": "ok",
+            "strategy_id": sid,
             "train_period": train_period,
-            "validation_period": validation_period,
+            "validation_period": val_period,
             "analysis": analysis,
             "optimization": {
                 "status": "ok",
                 "train_period": train_period,
-                "validation_period": validation_period,
+                "validation_period": val_period,
                 "best_params": _initial_params(strategy),
                 "baseline": baseline_metrics,
                 "optimized_metrics": baseline_metrics,
@@ -156,15 +177,15 @@ def analyze_and_optimize(train_period: str | None = None) -> dict[str, Any]:
             },
         }
 
-    best_params, opt_metrics_fast = _greedy_search(strategy, validation_period, bar_stride=FAST_STRIDE)
+    best_params, opt_metrics_fast = _greedy_search(strategy, val_period, bar_stride=FAST_STRIDE)
     optimized = _apply_params(strategy, best_params)
-    opt_metrics = _eval_params(strategy, best_params, validation_period, bar_stride=1)
-    save_strategy(optimized, train_period=train_period)
+    opt_metrics = _eval_params(strategy, best_params, val_period, bar_stride=1)
+    save_strategy(optimized, train_period=train_period, strategy_id=sid)
 
     baseline_score = _objective(baseline_metrics)
     opt_score = _objective(opt_metrics)
     if opt_score <= baseline_score:
-        save_strategy(strategy, train_period=train_period)
+        save_strategy(strategy, train_period=train_period, strategy_id=sid)
         opt_metrics = baseline_metrics
         best_params = _initial_params(strategy)
         skipped = True
@@ -175,13 +196,14 @@ def analyze_and_optimize(train_period: str | None = None) -> dict[str, Any]:
 
     return {
         "status": "ok",
+        "strategy_id": sid,
         "train_period": train_period,
-        "validation_period": validation_period,
+        "validation_period": val_period,
         "analysis": analysis,
         "optimization": {
             "status": "ok",
             "train_period": train_period,
-            "validation_period": validation_period,
+            "validation_period": val_period,
             "best_params": best_params,
             "baseline": baseline_metrics,
             "optimized_metrics": opt_metrics,

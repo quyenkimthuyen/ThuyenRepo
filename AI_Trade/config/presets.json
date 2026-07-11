@@ -1,14 +1,44 @@
 {
   "tags": [
     {
+      "id": "rsi_exit_high_short",
+      "label": "Rời vùng 70 → SHORT",
+      "hint": "RSI H4 trong vùng 68–72 rồi thoát xuống → SHORT, TP vùng 30"
+    },
+    {
+      "id": "rsi_exit_low_long",
+      "label": "Rời vùng 30 → LONG",
+      "hint": "RSI H4 trong vùng 28–32 rồi thoát lên → LONG, TP vùng 70"
+    },
+    {
+      "id": "ema_pullback_long",
+      "label": "EMA pullback LONG",
+      "hint": "EMA50 > EMA200, giá hồi về EMA50 → LONG"
+    },
+    {
+      "id": "ema_pullback_short",
+      "label": "EMA pullback SHORT",
+      "hint": "EMA50 < EMA200, giá hồi về EMA50 → SHORT"
+    },
+    {
+      "id": "ema_cross_long",
+      "label": "Golden cross LONG",
+      "hint": "EMA50 vừa cắt lên EMA200 + pullback EMA50"
+    },
+    {
+      "id": "ema_cross_short",
+      "label": "Death cross SHORT",
+      "hint": "EMA50 vừa cắt xuống EMA200 + pullback EMA50"
+    },
+    {
       "id": "rsi_break_retest",
       "label": "RSI break + retest 50",
-      "hint": "Setup 1: RSI H4 vượt/thủng vùng 48–52 rồi test lại"
+      "hint": "Setup legacy: RSI H4 vượt/thủng vùng 48–52 rồi test lại"
     },
     {
       "id": "rsi_extreme_bounce",
       "label": "RSI extreme bounce",
-      "hint": "Setup 2: chạm 68–72 / 28–32, hồi 48–52, bật lại (lần 1–2)"
+      "hint": "Setup legacy: chạm 68–72 / 28–32, hồi 48–52, bật lại"
     },
     {
       "id": "ema_h1_confirm",
@@ -18,20 +48,28 @@
   ],
   "notes": [
     {
-      "tags": ["rsi_break_retest", "ema_h1_confirm"],
-      "text": "Setup 1 LONG: RSI H4 break trên 52, retest 48–52, EMA H1 hỗ trợ"
+      "tags": ["rsi_exit_low_long"],
+      "text": "RSI H4 rời vùng 30 → LONG · TP khi RSI chạm vùng 70"
     },
     {
-      "tags": ["rsi_break_retest", "ema_h1_confirm"],
-      "text": "Setup 1 SHORT: RSI H4 break dưới 48, retest 48–52, EMA H1 kháng cự"
+      "tags": ["rsi_exit_high_short"],
+      "text": "RSI H4 rời vùng 70 → SHORT · TP khi RSI chạm vùng 30"
     },
     {
-      "tags": ["rsi_extreme_bounce", "ema_h1_confirm"],
-      "text": "Setup 2 LONG: chạm RSI 68–72, hồi 48–52 lần 1–2, bật tăng"
+      "tags": ["ema_pullback_long"],
+      "text": "Uptrend EMA50/200, pullback EMA50, nến xanh → LONG"
     },
     {
-      "tags": ["rsi_extreme_bounce", "ema_h1_confirm"],
-      "text": "Setup 2 SHORT: chạm RSI 28–32, hồi 48–52 lần 1–2, bật giảm"
+      "tags": ["ema_pullback_short"],
+      "text": "Downtrend EMA50/200, pullback EMA50, nến đỏ → SHORT"
+    },
+    {
+      "tags": ["ema_cross_long"],
+      "text": "Golden cross mới + hồi EMA50 → LONG"
+    },
+    {
+      "tags": ["ema_cross_short"],
+      "text": "Death cross mới + hồi EMA50 → SHORT"
     }
   ]
 }

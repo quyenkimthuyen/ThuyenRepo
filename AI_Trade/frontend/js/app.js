@@ -16,13 +16,14 @@ import {
   getSetups,
   getStrategies,
   getStrategy,
+  getStrategyTypes,
   inspectBar,
   saveBarAnnotation,
   saveBarDetectionConfig,
   saveSetup,
   suggestTags,
   updateSetup,
-} from './api.js?v=28';
+} from './api.js?v=30';
 import {
   renderAnalyzeView,
   renderBacktestView,
@@ -32,9 +33,9 @@ import {
   renderError,
   renderLoading,
   renderRsiBandLegend,
-} from './strategy-ui.js?v=28';
-import { initSidebarResize, initChartSplit } from './layout.js?v=28';
-import { TradeChart } from './chart.js?v=29';
+} from './strategy-ui.js?v=30';
+import { initSidebarResize, initChartSplit } from './layout.js?v=30';
+import { TradeChart } from './chart.js?v=30';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -53,9 +54,13 @@ const state = {
   editingId: null,
   setups: [],
   config: null,
+  strategyTypes: [],
+  strategyId: 'rsi_h4_zone',
+  analyzeValidationPeriod: null,
   tagPresets: [],
   sidebarTab: 'label',
   btSelectedPeriods: ['bt_2024'],
+  btStrategyId: 'rsi_h4_zone',
   btStrategyPeriod: 'train_2024',
   btWorkspaceTab: 'results',
   btWorkspaceCollapsed: false,
@@ -117,8 +122,11 @@ const els = {
   btnDelete: document.getElementById('btnDelete'),
   chartOverlayHint: document.getElementById('chartOverlayHint'),
   analyzeResults: document.getElementById('analyzeResults'),
+  analyzeStrategyType: document.getElementById('analyzeStrategyType'),
   analyzeTrainPeriod: document.getElementById('analyzeTrainPeriod'),
+  analyzeValidationPeriod: document.getElementById('analyzeValidationPeriod'),
   btYearPicker: document.getElementById('btYearPicker'),
+  btStrategyType: document.getElementById('btStrategyType'),
   btStrategyPeriod: document.getElementById('btStrategyPeriod'),
   btSidebarSummary: document.getElementById('btSidebarSummary'),
   btWorkspace: document.getElementById('btWorkspace'),
@@ -1508,10 +1516,12 @@ async function switchPeriod(period, { syncSidebar = true } = {}) {
 async function syncChartStrategyBands() {
   const legendEl = document.getElementById('rsiBandLegend');
   const trainPeriod = isTrainChartPeriod(state.period) ? state.period : state.btStrategyPeriod;
+  const strategyId = isTrainChartPeriod(state.period) ? state.strategyId : state.btStrategyId;
   try {
-    const strategy = await getStrategy(trainPeriod);
+    const strategy = await getStrategy(trainPeriod, strategyId);
     state.activeStrategy = strategy;
-    if (strategy?.rule_mode === 'rsi_h4' && strategy.bands) {
+    const mode = strategy?.rule_mode;
+    if ((mode === 'rsi_h4' || mode === 'rsi_h4_zone') && strategy.bands) {
       chart.setRsiBands(strategy.bands);
       if (legendEl) legendEl.innerHTML = renderRsiBandLegend(strategy.bands);
     } else {
@@ -1938,9 +1948,19 @@ function renderBtComparePanel() {
 
 async function runAnalyze() {
   const trainPeriod = els.analyzeTrainPeriod?.value || state.trainPeriod;
-  els.analyzeResults.innerHTML = renderLoading(`Phân tích + tối ưu train ${periodShortLabel(trainPeriod)}...`);
+  const strategyId = els.analyzeStrategyType?.value || state.strategyId;
+  const validationPeriod = els.analyzeValidationPeriod?.value || null;
+  const stratMeta = strategyTypeMeta(strategyId);
+  const stratLabel = stratMeta?.label || strategyId;
+  els.analyzeResults.innerHTML = renderLoading(
+    `Phân tích ${stratLabel} · train ${periodShortLabel(trainPeriod)}...`,
+  );
   try {
-    const raw = await analyze(trainPeriod, { optimize: true });
+    const raw = await analyze(trainPeriod, {
+      optimize: true,
+      strategyId,
+      validationPeriod,
+    });
     const data = raw.analysis
       ? {
           ...raw.analysis,
@@ -1960,19 +1980,28 @@ async function runAnalyze() {
 async function runBt() {
   const periods = state.btSelectedPeriods.length ? state.btSelectedPeriods : defaultBtPeriods();
   const trainPeriod = els.btStrategyPeriod?.value || state.btStrategyPeriod;
+  const strategyId = els.btStrategyType?.value || state.btStrategyId;
   if (!periods.length) {
     alert('Chọn ít nhất một năm backtest.');
     return;
   }
   const saveName = els.btSaveName?.value?.trim() || null;
   const label = periods.map(periodShortLabel).join(' + ');
-  const stratLabel = periodShortLabel(trainPeriod);
-  els.btPanelResults.innerHTML = renderLoading(`Backtest ${label} · chiến lược train ${stratLabel}...`);
+  const stratMeta = strategyTypeMeta(strategyId);
+  const stratLabel = stratMeta?.label || strategyId;
+  els.btPanelResults.innerHTML = renderLoading(
+    `Backtest ${label} · ${stratLabel} train ${periodShortLabel(trainPeriod)}...`,
+  );
   setBtWorkspaceTab('results');
   state.btWorkspaceCollapsed = false;
   updateBtWorkspaceVisibility();
   try {
-    const data = await backtest(periods, { name: saveName, save: true, trainPeriod });
+    const data = await backtest(periods, {
+      name: saveName,
+      save: true,
+      trainPeriod,
+      strategyId,
+    });
     state.btCache = data;
     if (data.saved_run?.id) {
       state.activeBtRunId = data.saved_run.id;
@@ -1996,12 +2025,45 @@ async function runBt() {
   }
 }
 
+function strategyTypeMeta(id) {
+  return (state.strategyTypes || []).find((s) => s.id === id);
+}
+
+function defaultStrategyId() {
+  return state.config?.default_strategy_id
+    || state.strategyTypes?.[0]?.id
+    || 'rsi_h4_zone';
+}
+
+function strategiesForType(strategyId) {
+  return (state.strategies || []).filter(
+    (s) => !s.catalog_only && (!s.strategy_id || s.strategy_id === strategyId),
+  );
+}
+
+function renderStrategyTypeSelect(selectEl, selectedId, onChange) {
+  if (!selectEl) return;
+  const types = state.strategyTypes.length ? state.strategyTypes : state.config?.strategy_types || [];
+  selectEl.innerHTML = '';
+  for (const st of types) {
+    const opt = document.createElement('option');
+    opt.value = st.id;
+    opt.textContent = st.label || st.name || st.id;
+    if (st.id === selectedId) opt.selected = true;
+    selectEl.appendChild(opt);
+  }
+  selectEl.onchange = () => {
+    onChange(selectEl.value);
+  };
+}
+
 function renderBtStrategySelect() {
   if (!els.btStrategyPeriod) return;
-  const strategies = state.strategies || [];
+  const strategyId = els.btStrategyType?.value || state.btStrategyId;
+  const matches = strategiesForType(strategyId);
   els.btStrategyPeriod.innerHTML = '';
 
-  if (!strategies.length) {
+  if (!matches.length) {
     for (const id of trainPeriodIds()) {
       const opt = document.createElement('option');
       opt.value = id;
@@ -2010,7 +2072,7 @@ function renderBtStrategySelect() {
       els.btStrategyPeriod.appendChild(opt);
     }
   } else {
-    for (const s of strategies) {
+    for (const s of matches) {
       const opt = document.createElement('option');
       opt.value = s.train_period;
       const wr = s.win_rate_train != null ? ` · WR ${Math.round(s.win_rate_train * 100)}%` : '';
@@ -2031,8 +2093,12 @@ async function loadStrategies() {
   try {
     const data = await getStrategies();
     state.strategies = data.strategies || [];
-    if (state.strategies.length && !state.strategies.some((s) => s.train_period === state.btStrategyPeriod)) {
-      state.btStrategyPeriod = state.strategies[state.strategies.length - 1].train_period;
+    const matches = strategiesForType(state.btStrategyId);
+    if (
+      matches.length
+      && !matches.some((s) => s.train_period === state.btStrategyPeriod)
+    ) {
+      state.btStrategyPeriod = matches[matches.length - 1].train_period;
     }
     renderBtStrategySelect();
     applySuggestedBtPeriod(state.btStrategyPeriod);
@@ -2077,7 +2143,52 @@ function renderAnalyzeTrainSelect() {
   }
   els.analyzeTrainPeriod.onchange = () => {
     state.trainPeriod = els.analyzeTrainPeriod.value;
+    syncAnalyzeValidationDefault();
   };
+}
+
+function renderAnalyzeValidationSelect() {
+  if (!els.analyzeValidationPeriod) return;
+  const suggested = suggestedBtPeriodForTrain(state.trainPeriod);
+  els.analyzeValidationPeriod.innerHTML = '';
+  for (const id of backtestPeriodIds()) {
+    const cfg = periodCfg(id);
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = cfg?.label || `BT ${cfg?.year || id}`;
+    if (id === (state.analyzeValidationPeriod || suggested)) opt.selected = true;
+    els.analyzeValidationPeriod.appendChild(opt);
+  }
+  els.analyzeValidationPeriod.onchange = () => {
+    state.analyzeValidationPeriod = els.analyzeValidationPeriod.value;
+  };
+}
+
+function syncAnalyzeValidationDefault() {
+  const suggested = suggestedBtPeriodForTrain(state.trainPeriod);
+  if (!state.analyzeValidationPeriod && suggested) {
+    state.analyzeValidationPeriod = suggested;
+  }
+  renderAnalyzeValidationSelect();
+}
+
+function renderAnalyzeStrategySelect() {
+  renderStrategyTypeSelect(els.analyzeStrategyType, state.strategyId, (id) => {
+    state.strategyId = id;
+  });
+}
+
+function renderBtStrategyTypeSelect() {
+  renderStrategyTypeSelect(els.btStrategyType, state.btStrategyId, async (id) => {
+    state.btStrategyId = id;
+    const matches = strategiesForType(id);
+    if (matches.length) {
+      state.btStrategyPeriod = matches[matches.length - 1].train_period;
+    }
+    renderBtStrategySelect();
+    applySuggestedBtPeriod(state.btStrategyPeriod);
+    await syncChartStrategyBands();
+  });
 }
 
 function bindUI() {
@@ -2279,17 +2390,24 @@ async function loadAppData() {
   setLoading(true);
   try {
     state.config = await fetchWithRetry(() => getConfig());
+    state.strategyTypes = state.config?.strategy_types || [];
+    state.strategyId = defaultStrategyId();
+    state.btStrategyId = state.strategyId;
     state.trainPeriod = defaultTrainPeriod();
     state.period = state.trainPeriod;
     state.btSelectedPeriods = [...defaultBtPeriods()];
+    state.analyzeValidationPeriod = suggestedBtPeriodForTrain(state.trainPeriod);
     initDetectionSettings(state.config?.bar_detection);
     await loadTagPresets();
     renderTagCheckboxes();
     renderPeriodTabs();
     renderBtYearPicker();
+    renderAnalyzeStrategySelect();
+    renderBtStrategyTypeSelect();
     renderBtStrategySelect();
     await loadStrategies();
     renderAnalyzeTrainSelect();
+    renderAnalyzeValidationSelect();
     if (state.config?.periods?.[state.period]) {
       els.periodBadge.textContent = state.config.periods[state.period].label;
     }

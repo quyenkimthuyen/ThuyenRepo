@@ -203,9 +203,15 @@
         <div id="viewAnalyze" class="sidebar-view hidden" role="tabpanel">
           <section class="panel panel-strategy">
             <h2>Phân tích chiến lược</h2>
-            <p class="strategy-intro">Học <strong>signature</strong> từ setup train và <strong>tự tối ưu</strong> tham số trên năm validation (walk-forward).</p>
+            <p class="strategy-intro">Chọn <strong>loại chiến lược</strong>, năm train và validation — app học setup rồi tối ưu tham số walk-forward.</p>
+            <label class="bt-save-name">Loại chiến lược
+              <select id="analyzeStrategyType" class="train-period-select"></select>
+            </label>
             <label class="bt-save-name">Năm train
               <select id="analyzeTrainPeriod" class="train-period-select"></select>
+            </label>
+            <label class="bt-save-name">Năm validation (tối ưu)
+              <select id="analyzeValidationPeriod" class="train-period-select"></select>
             </label>
             <button type="button" class="btn primary block" id="btnAnalyze">Phân tích + tối ưu</button>
             <div id="analyzeResults" class="strategy-results scroll-panel"></div>
@@ -215,8 +221,11 @@
         <div id="viewBacktest" class="sidebar-view hidden" role="tabpanel">
           <section class="panel panel-strategy panel-bt-controls">
             <h2>Backtest</h2>
-            <p class="strategy-intro">Chọn chiến lược và năm — kết quả chi tiết hiển thị ở <strong>panel dưới chart</strong>.</p>
-            <label class="bt-save-name">Chiến lược từ
+            <p class="strategy-intro">Chọn <strong>loại chiến lược</strong>, năm train và năm backtest — kết quả chi tiết ở panel dưới chart.</p>
+            <label class="bt-save-name">Loại chiến lược
+              <select id="btStrategyType" class="train-period-select"></select>
+            </label>
+            <label class="bt-save-name">Chiến lược từ (năm train)
               <select id="btStrategyPeriod" class="train-period-select"></select>
             </label>
             <div class="bt-year-picker" id="btYearPicker" role="group" aria-label="Chọn năm backtest"></div>
@@ -335,7 +344,7 @@
   </div>
 
   <script type="module">
-    import('/static/js/app.js?v=29').catch((err) => {
+    import('/static/js/app.js?v=30').catch((err) => {
       console.error('Module load failed:', err);
       const box = document.createElement('div');
       box.style.cssText = 'padding:20px;color:#fecaca;background:#3f1212;font-size:14px;line-height:1.5';

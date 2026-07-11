@@ -1,0 +1,29 @@
+{
+  "bands": {
+    "low": [28, 32],
+    "mid": [48, 52],
+    "high": [68, 72]
+  },
+  "lookback_bars": 80,
+  "entry_cooldown_bars": 24,
+  "exit_confirm_bars": 1,
+  "setups": {
+    "exit_high_short": {
+      "enabled": true,
+      "tag": "rsi_exit_high_short",
+      "label": "Rời vùng 70 → SHORT · TP RSI 30"
+    },
+    "exit_low_long": {
+      "enabled": true,
+      "tag": "rsi_exit_low_long",
+      "label": "Rời vùng 30 → LONG · TP RSI 70"
+    }
+  },
+  "risk": {
+    "mode": "rsi_band",
+    "sl_atr_mult": 1.2,
+    "sl_on_mid_break": true,
+    "sl_on_ema_break": false,
+    "tp_mode": "rsi_band"
+  }
+}

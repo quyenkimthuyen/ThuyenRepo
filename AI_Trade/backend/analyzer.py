@@ -385,15 +385,24 @@ def compute_risk_from_labels(setups: list[dict[str, Any]]) -> dict[str, Any]:
     return risk
 
 
-def analyze_patterns(min_setups: int = 5, train_period: str | None = None) -> dict[str, Any]:
+def analyze_patterns(
+    min_setups: int = 5,
+    train_period: str | None = None,
+    strategy_id: str | None = None,
+) -> dict[str, Any]:
     from .periods import default_train_period, filter_setups_for_train, period_config, resolve_period
     from .labels import retag_all_setups
-    from .rsi_h4_strategy import build_strategy, strategy_description
-    from .indicators import add_indicators
-    from .data_service import load_candles
+    from .strategy_registry import (
+        build_strategy,
+        default_strategy_id,
+        resolve_strategy_id,
+        rule_mode_for,
+        strategy_description,
+    )
 
     train_period = resolve_period(train_period or default_train_period())
-    retag_all_setups()
+    strategy_id = resolve_strategy_id(strategy_id or default_strategy_id())
+    retag_all_setups(strategy_id=strategy_id)
     setups = load_setups()
     train = filter_setups_for_train(setups, train_period)
     labeled = [s for s in train if s.get("result") in ("win", "loss")]
@@ -404,6 +413,7 @@ def analyze_patterns(min_setups: int = 5, train_period: str | None = None) -> di
             "message": f"Cần ít nhất {min_setups} setup train (win/loss). Hiện có {len(labeled)}.",
             "setup_count": len(train),
             "labeled_outcomes": len(labeled),
+            "strategy_id": strategy_id,
         }
 
     win_rate = float(sum(1 for s in labeled if s["result"] == "win") / len(labeled))
@@ -433,22 +443,24 @@ def analyze_patterns(min_setups: int = 5, train_period: str | None = None) -> di
         "by_tag": tag_rows,
     }
 
-    strategy = build_strategy(train_period, train_stats=train_stats)
+    strategy = build_strategy(strategy_id, train_period, train_stats=train_stats)
     strategy.update(
         {
+            "strategy_id": strategy_id,
             "train_year": period_config(train_period).get("year"),
             "source_setups": len(train),
             "win_rate_train": round(win_rate, 3),
             "avg_rr_train": round(avg_rr, 2),
             "bar_annotation_count": len(load_bar_annotations()),
-            "setups_description": strategy_description(),
+            "setups_description": strategy_description(strategy_id),
         }
     )
 
-    save_strategy(strategy, train_period=train_period)
+    save_strategy(strategy, train_period=train_period, strategy_id=strategy_id)
 
     return {
         "status": "ok",
+        "strategy_id": strategy_id,
         "train_period": train_period,
         "train_year": period_config(train_period).get("year"),
         "pipeline_flow": strategy["pipeline_flow"],
@@ -457,12 +469,12 @@ def analyze_patterns(min_setups: int = 5, train_period: str | None = None) -> di
         "labeled_outcomes": len(labeled),
         "win_rate_train": round(win_rate, 3),
         "avg_rr_train": round(avg_rr, 2),
-        "rule_mode": "rsi_h4",
+        "rule_mode": rule_mode_for(strategy_id),
         "strategy": strategy,
         "train_stats": train_stats,
-        "setups_description": strategy_description(),
-        "tag_insights": {"tags": tag_rows, "preferred_tags": [TAG_BREAK_RETEST, TAG_EXTREME_BOUNCE]},
-        "strategy_path": str(STRATEGY_PATH),
+        "setups_description": strategy_description(strategy_id),
+        "tag_insights": {"tags": tag_rows},
+        "strategy_path": str(strategy_path_for(strategy_id, train_period)),
     }
 
 
@@ -471,73 +483,143 @@ def train_df_rr(setups: list[dict[str, Any]]) -> float:
     return float(np.mean(vals)) if vals else 2.0
 
 
-def strategy_path_for(train_period: str | None = None) -> Path:
+def strategy_path_for(
+    strategy_id: str | None = None,
+    train_period: str | None = None,
+) -> Path:
     from .periods import default_train_period, resolve_period
+    from .strategy_registry import default_strategy_id, resolve_strategy_id
 
     period = resolve_period(train_period or default_train_period())
-    return STRATEGY_PATH.parent / f"{period}.json"
+    sid = resolve_strategy_id(strategy_id or default_strategy_id())
+    return STRATEGY_PATH.parent / sid / f"{period}.json"
 
 
-def save_strategy(strategy: dict[str, Any], *, train_period: str | None = None) -> Path:
+def _legacy_strategy_path(train_period: str) -> Path:
+    return STRATEGY_PATH.parent / f"{train_period}.json"
+
+
+def save_strategy(
+    strategy: dict[str, Any],
+    *,
+    train_period: str | None = None,
+    strategy_id: str | None = None,
+) -> Path:
+    from .strategy_registry import resolve_strategy_id
+
     period = strategy.get("train_period") or train_period
-    path = strategy_path_for(period) if period else STRATEGY_PATH
+    sid = resolve_strategy_id(strategy_id or strategy)
+    path = strategy_path_for(sid, period) if period else STRATEGY_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
+    strategy["strategy_id"] = sid
     path.write_text(json.dumps(strategy, indent=2), encoding="utf-8")
     STRATEGY_PATH.write_text(json.dumps(strategy, indent=2), encoding="utf-8")
     return path
 
 
 def list_strategies() -> list[dict[str, Any]]:
-    from .periods import default_train_period, period_config, resolve_period
+    from .periods import period_config, resolve_period
+    from .strategy_registry import list_strategy_types, resolve_strategy_id
 
     out: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for path in sorted(STRATEGY_PATH.parent.glob("*.json")):
-        if path.name == "latest.json":
-            continue
+
+    if STRATEGY_PATH.parent.exists():
+        for path in sorted(STRATEGY_PATH.parent.rglob("*.json")):
+            if path.name == "latest.json":
+                continue
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                continue
+            period = resolve_period(data.get("train_period") or path.stem)
+            sid = resolve_strategy_id(data)
+            key = f"{sid}:{period}"
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(
+                {
+                    "strategy_id": sid,
+                    "train_period": period,
+                    "train_year": data.get("train_year") or period_config(period).get("year"),
+                    "rule_mode": data.get("rule_mode"),
+                    "path": str(path),
+                    "win_rate_train": data.get("win_rate_train"),
+                    "source_setups": data.get("source_setups"),
+                    "updated_at": path.stat().st_mtime,
+                }
+            )
+
+    for path in sorted(STRATEGY_PATH.parent.glob("train_*.json")):
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, OSError):
             continue
-        period = data.get("train_period") or path.stem
-        period = resolve_period(period)
-        if period in seen:
+        period = resolve_period(data.get("train_period") or path.stem)
+        sid = resolve_strategy_id(data.get("strategy_id") or "rsi_h4")
+        key = f"{sid}:{period}"
+        if key in seen:
             continue
-        seen.add(period)
+        seen.add(key)
         out.append(
             {
+                "strategy_id": sid,
                 "train_period": period,
                 "train_year": data.get("train_year") or period_config(period).get("year"),
+                "rule_mode": data.get("rule_mode"),
                 "path": str(path),
                 "win_rate_train": data.get("win_rate_train"),
                 "source_setups": data.get("source_setups"),
                 "updated_at": path.stat().st_mtime,
             }
         )
-    out.sort(key=lambda s: s.get("train_year") or 0)
-    if not out and STRATEGY_PATH.exists():
-        data = json.loads(STRATEGY_PATH.read_text(encoding="utf-8"))
-        period = resolve_period(data.get("train_period") or default_train_period())
-        out.append(
-            {
-                "train_period": period,
-                "train_year": data.get("train_year"),
-                "path": str(STRATEGY_PATH),
-                "win_rate_train": data.get("win_rate_train"),
-                "source_setups": data.get("source_setups"),
-                "updated_at": STRATEGY_PATH.stat().st_mtime,
-            }
-        )
+
+    for meta in list_strategy_types():
+        sid = meta["id"]
+        if not any(s["strategy_id"] == sid for s in out):
+            out.append(
+                {
+                    "strategy_id": sid,
+                    "train_period": None,
+                    "train_year": None,
+                    "rule_mode": meta.get("rule_mode"),
+                    "path": None,
+                    "win_rate_train": None,
+                    "source_setups": None,
+                    "updated_at": None,
+                    "catalog_only": True,
+                }
+            )
+
+    out.sort(key=lambda s: (s.get("strategy_id") or "", s.get("train_year") or 0))
     return out
 
 
-def load_strategy(train_period: str | None = None) -> dict[str, Any] | None:
+def load_strategy(
+    train_period: str | None = None,
+    strategy_id: str | None = None,
+) -> dict[str, Any] | None:
     from .periods import default_train_period, resolve_period
+    from .strategy_registry import default_strategy_id, resolve_strategy_id
 
+    sid = resolve_strategy_id(strategy_id or default_strategy_id())
     if train_period:
-        path = strategy_path_for(train_period)
+        period = resolve_period(train_period)
+        path = strategy_path_for(sid, period)
         if path.exists():
             return json.loads(path.read_text(encoding="utf-8"))
+        legacy = _legacy_strategy_path(period)
+        if legacy.exists():
+            data = json.loads(legacy.read_text(encoding="utf-8"))
+            if resolve_strategy_id(data) == sid or not data.get("strategy_id"):
+                return data
     if STRATEGY_PATH.exists():
-        return json.loads(STRATEGY_PATH.read_text(encoding="utf-8"))
+        data = json.loads(STRATEGY_PATH.read_text(encoding="utf-8"))
+        if train_period:
+            period = resolve_period(train_period)
+            if resolve_strategy_id(data) == sid and resolve_period(data.get("train_period", "")) == period:
+                return data
+        elif resolve_strategy_id(data) == sid:
+            return data
     return None

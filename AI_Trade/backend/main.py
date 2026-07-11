@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from .analyzer import analyze_patterns, list_strategies, load_strategy
 from .optimizer import analyze_and_optimize
+from .strategy_registry import default_strategy_id, list_strategy_types
 from .backtest import run_backtest
 from .bt_store import compare_runs, delete_run, get_run, list_runs, rename_run, save_run
 from .data_service import candles_to_records, load_candles, load_splits, slice_period, slice_month, months_for_period, filter_records_by_month, month_bounds
@@ -134,6 +135,8 @@ def get_config():
     cfg["quality"] = load_quality_config()
     cfg["pipeline"] = pipeline_status()
     cfg["period_groups"] = periods_grouped_for_api()
+    cfg["strategy_types"] = list_strategy_types()
+    cfg["default_strategy_id"] = default_strategy_id()
     return cfg
 
 
@@ -393,22 +396,43 @@ def refresh_setups():
     return {"setups": setups}
 
 
+@app.get("/api/strategy-types")
+def get_strategy_types():
+    return {"strategies": list_strategy_types()}
+
+
 @app.post("/api/analyze")
-def analyze(optimize: bool = False, train_period: str | None = None):
+def analyze(
+    optimize: bool = False,
+    train_period: str | None = None,
+    strategy_id: str | None = None,
+    validation_period: str | None = None,
+):
     train_period = resolve_period(train_period or default_train_period())
+    if validation_period:
+        validation_period = resolve_period(validation_period)
     if optimize:
-        return analyze_and_optimize(train_period=train_period)
-    return analyze_patterns(train_period=train_period)
+        return analyze_and_optimize(
+            train_period=train_period,
+            strategy_id=strategy_id,
+            validation_period=validation_period,
+        )
+    return analyze_patterns(train_period=train_period, strategy_id=strategy_id)
 
 
 @app.post("/api/optimize")
-def optimize(train_period: str | None = None, period: str | None = None):
-    from .optimizer import optimize_on_validation
-
+def optimize(
+    train_period: str | None = None,
+    period: str | None = None,
+    strategy_id: str | None = None,
+):
     train_period = resolve_period(train_period) if train_period else None
-    if period:
-        period = resolve_period(period)
-    return optimize_on_validation(train_period=train_period, period=period)
+    validation_period = resolve_period(period) if period else None
+    return analyze_and_optimize(
+        train_period=train_period,
+        strategy_id=strategy_id,
+        validation_period=validation_period,
+    )
 
 
 @app.get("/api/strategies")
@@ -418,9 +442,9 @@ def list_saved_strategies():
 
 
 @app.get("/api/strategy")
-def strategy(train_period: str | None = None):
+def strategy(train_period: str | None = None, strategy_id: str | None = None):
     train_period = resolve_period(train_period) if train_period else None
-    s = load_strategy(train_period)
+    s = load_strategy(train_period, strategy_id)
     if not s:
         raise HTTPException(404, "No strategy yet")
     return s
@@ -476,6 +500,7 @@ def backtest(
     period: str | None = None,
     periods: str | None = None,
     train_period: str | None = None,
+    strategy_id: str | None = None,
     name: str | None = None,
     save: bool = True,
 ):
@@ -486,11 +511,12 @@ def backtest(
     strategy = None
     if train_period:
         train_period = resolve_period(train_period)
-        strategy = load_strategy(train_period)
+        strategy = load_strategy(train_period, strategy_id)
         if not strategy:
+            sid_label = strategy_id or "mặc định"
             raise HTTPException(
                 400,
-                f"Chưa có chiến lược cho {train_period}. Chạy Analyze với năm train đó trước.",
+                f"Chưa có chiến lược {sid_label} cho {train_period}. Chạy Analyze với năm train đó trước.",
             )
     result = run_backtest(periods=period_list, strategy=strategy)
     period_key = result.get("period") or ",".join(period_list)

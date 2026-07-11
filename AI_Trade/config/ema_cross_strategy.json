@@ -1,0 +1,35 @@
+{
+  "ema_tolerance_atr": 0.4,
+  "lookback_bars": 80,
+  "cross_lookback_bars": 24,
+  "entry_cooldown_bars": 24,
+  "min_trend_sep_atr": 0.12,
+  "setups": {
+    "pullback_long": {
+      "enabled": true,
+      "tag": "ema_pullback_long",
+      "label": "Pullback LONG — trend tăng, hồi EMA50"
+    },
+    "pullback_short": {
+      "enabled": true,
+      "tag": "ema_pullback_short",
+      "label": "Pullback SHORT — trend giảm, hồi EMA50"
+    },
+    "cross_long": {
+      "enabled": true,
+      "tag": "ema_cross_long",
+      "label": "Golden cross — EMA50 cắt lên EMA200"
+    },
+    "cross_short": {
+      "enabled": true,
+      "tag": "ema_cross_short",
+      "label": "Death cross — EMA50 cắt xuống EMA200"
+    }
+  },
+  "risk": {
+    "mode": "atr_rr",
+    "sl_atr_mult": 1.2,
+    "target_rr": 2.0,
+    "sl_on_ema_break": true
+  }
+}

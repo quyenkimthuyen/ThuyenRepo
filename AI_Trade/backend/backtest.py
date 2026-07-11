@@ -11,6 +11,7 @@ from .data_service import load_candles, load_splits, slice_periods
 from .periods import backtest_label, normalize_backtest_periods
 from .indicators import add_indicators, h4_rsi_allows_direction
 from .rsi_h4_strategy import detect_entry_at_bar, load_rsi_h4_config
+from .strategy_registry import detect_entry as registry_detect_entry, simulate_trade as registry_simulate_trade
 from .bar_importance import clear_detection_cache, match_entry_from_inspection
 from .labels import load_setups
 
@@ -107,7 +108,7 @@ def _risk_from_reference_setup(setup: dict[str, Any]) -> tuple[float, float] | N
 
 def _uses_pipeline(strategy: dict[str, Any]) -> bool:
     mode = strategy.get("rule_mode")
-    if mode == "rsi_h4":
+    if mode in ("rsi_h4", "rsi_h4_zone", "ema_cross"):
         return False
     if mode == "similarity":
         return True
@@ -121,8 +122,9 @@ def _find_entry(
     strategy: dict[str, Any],
 ) -> tuple[str | None, str | None, dict[str, Any] | None]:
     """Return (direction, primary_tag, match_meta) if entry signal found."""
-    if strategy.get("rule_mode") == "rsi_h4":
-        direction, primary_tag, match_meta = detect_entry_at_bar(df, i, strategy)
+    mode = strategy.get("rule_mode")
+    if mode in ("rsi_h4", "rsi_h4_zone", "ema_cross"):
+        direction, primary_tag, match_meta = registry_detect_entry(df, i, strategy)
         if not direction:
             return None, None, None
         return direction, primary_tag, match_meta
@@ -457,15 +459,14 @@ def run_backtest(
         if not direction:
             continue
 
-        if strategy.get("rule_mode") == "rsi_h4":
-            trade = _simulate_trade_rsi_h4(
+        if strategy.get("rule_mode") in ("rsi_h4", "rsi_h4_zone", "ema_cross"):
+            trade = registry_simulate_trade(
                 df,
                 i,
                 direction,
                 strategy,
                 cost,
-                setup_type=(match_meta or {}).get("setup_type"),
-                tag=matched_tag,
+                match_meta=match_meta,
             )
         else:
             sl_mult, tp_mult = _risk_for_direction(strategy, direction, matched_tag, match_meta)
