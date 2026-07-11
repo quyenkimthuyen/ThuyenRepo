@@ -285,7 +285,13 @@
             <div id="chartMain" class="chart-main"></div>
             <div id="chartOverlayHint" class="chart-overlay-hint hidden"></div>
           </div>
-          <div id="chartRsi" class="chart-rsi"></div>
+          <div class="rsi-panel">
+            <div class="rsi-panel-head">
+              <span class="rsi-panel-title">RSI H4 (14)</span>
+              <div class="rsi-band-legend" id="rsiBandLegend" aria-label="Vùng RSI chiến lược"></div>
+            </div>
+            <div id="chartRsi" class="chart-rsi"></div>
+          </div>
         </div>
 
         <div id="btWorkspace" class="bt-workspace hidden" aria-label="Backtest workspace">
@@ -321,7 +327,7 @@
   </div>
 
   <script type="module">
-    import('/static/js/app.js?v=26').catch((err) => {
+    import('/static/js/app.js?v=27').catch((err) => {
       console.error('Module load failed:', err);
       const box = document.createElement('div');
       box.style.cssText = 'padding:20px;color:#fecaca;background:#3f1212;font-size:14px;line-height:1.5';

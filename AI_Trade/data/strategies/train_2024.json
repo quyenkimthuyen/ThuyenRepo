@@ -9,8 +9,8 @@
       32
     ],
     "mid": [
-      46,
-      54
+      48,
+      52
     ],
     "high": [
       68,
@@ -19,7 +19,7 @@
   },
   "setups": {
     "break_retest": {
-      "enabled": false,
+      "enabled": true,
       "tag": "rsi_break_retest",
       "label": "RSI H4 break + retest v\u00f9ng 50"
     },
@@ -30,14 +30,14 @@
       "max_mid_touches": 2
     }
   },
-  "ema_tolerance_atr": 0.55,
-  "lookback_bars": 100,
-  "entry_cooldown_bars": 6,
+  "ema_tolerance_atr": 0.35,
+  "lookback_bars": 80,
+  "entry_cooldown_bars": 24,
   "rsi_rise_min": 0.3,
   "risk": {
     "mode": "rsi_band",
-    "sl_atr_mult": 1.2,
-    "sl_on_mid_break": false,
+    "sl_atr_mult": 1.0,
+    "sl_on_mid_break": true,
     "sl_on_ema_break": false,
     "tp_mode": "rsi_band"
   },
@@ -108,7 +108,7 @@
   "source_setups": 50,
   "win_rate_train": 0.6,
   "avg_rr_train": 2.5,
-  "bar_annotation_count": 50,
+  "bar_annotation_count": 100,
   "setups_description": [
     {
       "id": "break_retest",

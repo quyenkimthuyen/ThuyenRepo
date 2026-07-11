@@ -15,13 +15,14 @@ import {
   getPresets,
   getSetups,
   getStrategies,
+  getStrategy,
   inspectBar,
   saveBarAnnotation,
   saveBarDetectionConfig,
   saveSetup,
   suggestTags,
   updateSetup,
-} from './api.js?v=23';
+} from './api.js?v=27';
 import {
   renderAnalyzeView,
   renderBacktestView,
@@ -30,9 +31,10 @@ import {
   renderBacktestTradesPanel,
   renderError,
   renderLoading,
-} from './strategy-ui.js?v=23';
-import { initSidebarResize } from './layout.js?v=23';
-import { TradeChart } from './chart.js?v=26';
+  renderRsiBandLegend,
+} from './strategy-ui.js?v=27';
+import { initSidebarResize } from './layout.js?v=27';
+import { TradeChart } from './chart.js?v=27';
 
 /** @typedef {'idle' | 'new' | 'edit'} EditorMode */
 
@@ -1494,9 +1496,29 @@ async function switchPeriod(period, { syncSidebar = true } = {}) {
   }
 }
 
+async function syncChartStrategyBands() {
+  const legendEl = document.getElementById('rsiBandLegend');
+  const trainPeriod = isTrainChartPeriod(state.period) ? state.period : state.btStrategyPeriod;
+  try {
+    const strategy = await getStrategy(trainPeriod);
+    state.activeStrategy = strategy;
+    if (strategy?.rule_mode === 'rsi_h4' && strategy.bands) {
+      chart.setRsiBands(strategy.bands);
+      if (legendEl) legendEl.innerHTML = renderRsiBandLegend(strategy.bands);
+    } else {
+      chart.clearRsiBands();
+      if (legendEl) legendEl.innerHTML = '';
+    }
+  } catch {
+    chart.clearRsiBands();
+    if (legendEl) legendEl.innerHTML = '';
+  }
+}
+
 async function loadChart() {
   const data = await getCandles(state.period, activeMonth());
   chart.setData(data);
+  await syncChartStrategyBands();
   if (state.mode !== 'idle' && state.draft.time) {
     drawOverlayOnly();
   } else {
@@ -1905,9 +1927,17 @@ async function runAnalyze() {
   const trainPeriod = els.analyzeTrainPeriod?.value || state.trainPeriod;
   els.analyzeResults.innerHTML = renderLoading(`Phân tích + tối ưu train ${periodShortLabel(trainPeriod)}...`);
   try {
-    const data = await analyze(trainPeriod, { optimize: true });
+    const raw = await analyze(trainPeriod, { optimize: true });
+    const data = raw.analysis
+      ? {
+          ...raw.analysis,
+          optimization: raw.optimization,
+          validation_period: raw.validation_period,
+        }
+      : raw;
     els.analyzeResults.innerHTML = renderAnalyzeView(data);
     await loadStrategies();
+    await syncChartStrategyBands();
     renderBtStrategySelect();
   } catch (e) {
     els.analyzeResults.innerHTML = renderError(e.message);
@@ -1975,9 +2005,10 @@ function renderBtStrategySelect() {
     }
   }
 
-  els.btStrategyPeriod.onchange = () => {
+  els.btStrategyPeriod.onchange = async () => {
     state.btStrategyPeriod = els.btStrategyPeriod.value;
     applySuggestedBtPeriod(state.btStrategyPeriod);
+    await syncChartStrategyBands();
   };
 }
 
@@ -1990,6 +2021,7 @@ async function loadStrategies() {
     }
     renderBtStrategySelect();
     applySuggestedBtPeriod(state.btStrategyPeriod);
+    await syncChartStrategyBands();
   } catch (err) {
     console.warn('Load strategies failed:', err);
     renderBtStrategySelect();
@@ -2243,6 +2275,7 @@ async function loadAppData() {
     await loadMonthMeta();
     await fetchWithRetry(() => loadMonthData());
     await fetchWithRetry(() => loadBacktestRuns());
+    await syncChartStrategyBands();
     updatePipelineUI();
     requestAnimationFrame(() => chart.resize?.());
     hideBootError();

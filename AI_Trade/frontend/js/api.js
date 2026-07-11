@@ -39,6 +39,8 @@ export const deleteSetup = (id) => api(`/api/setups/${id}`, { method: 'DELETE' }
 export const analyze = (trainPeriod = null, { optimize = true } = {}) =>
   api(`/api/analyze${qs({ train_period: trainPeriod, optimize })}`, { method: 'POST' });
 export const getStrategies = () => api('/api/strategies');
+export const getStrategy = (trainPeriod = null) =>
+  api(`/api/strategy${qs({ train_period: trainPeriod })}`);
 export const backtest = (periods, { name = null, save = true, trainPeriod = null } = {}) =>
   api(`/api/backtest${qs({ periods, name, save, train_period: trainPeriod })}`, { method: 'POST' });
 export const getBacktests = (period = null) => api(`/api/backtests${qs({ period })}`);

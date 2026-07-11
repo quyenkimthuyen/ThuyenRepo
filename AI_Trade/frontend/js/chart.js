@@ -32,6 +32,10 @@ export class TradeChart {
   #ema50Series;
   #ema200Series;
   #rsiSeries;
+  /** @type {object[]} */
+  #rsiBandLines = [];
+  /** @type {{ low: number[], mid: number[], high: number[] } | null} */
+  #rsiBands = null;
   /** @type {{ role: string, series: object, price: number, row?: HTMLElement }[]} */
   #overlayLines = [];
   #overlayStartTime = null;
@@ -134,7 +138,8 @@ export class TradeChart {
       },
     });
     this.#rsiSeries = this.#rsiChart.addLineSeries({ color: COLORS.rsi, lineWidth: 2, title: 'RSI H4' });
-    this.#rsiChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.1, bottom: 0.1 } });
+    this.#rsiChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.08, bottom: 0.08 } });
+    this.#applyRsiScale();
 
     const onLogicalRange = (range) => {
       if (this.#syncingTimeScale || !range) return;
@@ -417,6 +422,67 @@ export class TradeChart {
         return { time: c.time, value };
       })
       .filter(Boolean);
+  }
+
+  #applyRsiScale() {
+    this.#rsiSeries.applyOptions({
+      autoscaleInfoProvider: () => ({
+        priceRange: { minValue: 0, maxValue: 100 },
+      }),
+    });
+    this.#rsiChart.priceScale('right').applyOptions({ autoScale: true });
+  }
+
+  #refreshRsiBandLines() {
+    if (!this.#rsiSeries) return;
+    for (const line of this.#rsiBandLines) {
+      try {
+        this.#rsiSeries.removePriceLine(line);
+      } catch {
+        /* ignore */
+      }
+    }
+    this.#rsiBandLines = [];
+    const bands = this.#rsiBands;
+    if (!bands || !this.#showRsi) return;
+
+    const specs = [
+      { range: bands.low, color: 'rgba(239, 68, 68, 0.85)', title: '30' },
+      { range: bands.mid, color: 'rgba(56, 189, 248, 0.9)', title: '50' },
+      { range: bands.high, color: 'rgba(34, 197, 94, 0.85)', title: '70' },
+    ];
+    for (const spec of specs) {
+      const [lo, hi] = spec.range || [];
+      for (const price of [lo, hi]) {
+        if (price == null || Number.isNaN(Number(price))) continue;
+        this.#rsiBandLines.push(
+          this.#rsiSeries.createPriceLine({
+            price: Number(price),
+            color: spec.color,
+            lineWidth: 1,
+            lineStyle: LineStyle.Dashed,
+            axisLabelVisible: true,
+            title: spec.title,
+          }),
+        );
+      }
+    }
+  }
+
+  setRsiBands(bands) {
+    this.#rsiBands = bands || null;
+    this.#refreshRsiBandLines();
+    this.#applyRsiScale();
+  }
+
+  clearRsiBands() {
+    this.#rsiBands = null;
+    this.#refreshRsiBandLines();
+    this.#applyRsiScale();
+  }
+
+  getRsiBands() {
+    return this.#rsiBands;
   }
 
   #syncRsiTimeScale() {
@@ -726,7 +792,10 @@ export class TradeChart {
 
   toggleRsi(on) {
     this.#showRsi = on;
-    this.#rsiEl.style.display = on ? 'block' : 'none';
+    const panel = this.#rsiEl?.closest('.rsi-panel');
+    if (panel) panel.style.display = on ? '' : 'none';
+    else this.#rsiEl.style.display = on ? 'block' : 'none';
+    this.#refreshRsiBandLines();
     this.#resize();
     if (on) this.#syncRsiTimeScale();
   }
