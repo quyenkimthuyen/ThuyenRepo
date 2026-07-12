@@ -8,12 +8,12 @@ export function initChartSplit({ chartBody, rsiPanel, splitterEl, onResize }) {
   const maxHeight = () =>
     Math.max(MIN_RSI_HEIGHT, Math.floor(chartBody.clientHeight * 0.55));
 
-  const applyHeight = (height) => {
+  const applyHeight = (height, { notify = true } = {}) => {
     const clamped = Math.max(MIN_RSI_HEIGHT, Math.min(maxHeight(), height));
     chartBody.style.setProperty('--rsi-panel-height', `${clamped}px`);
     rsiPanel.style.height = `${clamped}px`;
     localStorage.setItem(RSI_HEIGHT_KEY, String(clamped));
-    onResize?.();
+    if (notify) onResize?.();
     return clamped;
   };
 
@@ -21,6 +21,12 @@ export function initChartSplit({ chartBody, rsiPanel, splitterEl, onResize }) {
   applyHeight(saved >= MIN_RSI_HEIGHT ? saved : DEFAULT_RSI_HEIGHT);
 
   let dragging = false;
+  let resizeRaf = 0;
+
+  const scheduleResize = () => {
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(() => onResize?.());
+  };
 
   const heightFromPointer = (clientY) => {
     const rect = chartBody.getBoundingClientRect();
@@ -29,7 +35,8 @@ export function initChartSplit({ chartBody, rsiPanel, splitterEl, onResize }) {
 
   const onPointerMove = (event) => {
     if (!dragging) return;
-    applyHeight(heightFromPointer(event.clientY));
+    applyHeight(heightFromPointer(event.clientY), { notify: false });
+    scheduleResize();
   };
 
   const stopDrag = () => {
@@ -40,6 +47,7 @@ export function initChartSplit({ chartBody, rsiPanel, splitterEl, onResize }) {
     window.removeEventListener('pointermove', onPointerMove);
     window.removeEventListener('pointerup', stopDrag);
     window.removeEventListener('pointercancel', stopDrag);
+    scheduleResize();
   };
 
   const startDrag = (event) => {
