@@ -1,10 +1,13 @@
 import { RsiZoneChart } from './chart.js';
+import { initChartSplit } from './layout.js';
 
 const $ = (id) => document.getElementById(id);
 
 let chart;
 let lastIndicators = null;
+let lastStats = null;
 let lastEvents = [];
+let chartLoadedOnce = false;
 
 function fmtTime(unixSec) {
   const d = new Date(unixSec * 1000);
@@ -44,103 +47,174 @@ function buildMarkers(events, show) {
   return events.map((e) => {
     const isLow = e.zone === 'low';
     const isHigh = e.zone === 'high';
-    const reversed = e.reversed;
     return {
       time: e.time,
       position: isLow ? 'belowBar' : 'aboveBar',
-      color: reversed ? '#22c55e' : isLow ? '#ef4444' : '#f59e0b',
+      color: e.reversed ? '#22c55e' : isLow ? '#ef4444' : '#f59e0b',
       shape: isLow ? 'arrowUp' : 'arrowDown',
       text: isLow ? 'RSI↑' : isHigh ? 'RSI↓' : '50',
     };
   });
 }
 
-function renderZoneSummary(data) {
-  const el = $('zoneSummary');
-  const zones = data?.zones || {};
-  const cards = ['low', 'mid', 'high'].map((key) => {
+function renderReportSummary(stats) {
+  const zones = stats?.zones || {};
+  const low = zones.low || {};
+  const high = zones.high || {};
+  const cfg = stats?.config || {};
+  $('reportSummary').innerHTML = `
+    <div class="summary-card">
+      <div class="summary-label">Khoảng phân tích</div>
+      <div class="summary-value" id="reportRange">—</div>
+    </div>
+    <div class="summary-card accent-red">
+      <div class="summary-label">Vùng hỗ trợ RSI</div>
+      <div class="summary-value">${low.reversal_rate ?? 0}% đảo chiều</div>
+      <div class="summary-sub">${low.touches ?? 0} lần chạm · TB ${low.avg_move_pips ?? 0} pip</div>
+    </div>
+    <div class="summary-card accent-green">
+      <div class="summary-label">Vùng kháng cự RSI</div>
+      <div class="summary-value">${high.reversal_rate ?? 0}% đảo chiều</div>
+      <div class="summary-sub">${high.touches ?? 0} lần chạm · TB ${high.avg_move_pips ?? 0} pip</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Tiêu chí đo</div>
+      <div class="summary-value">${cfg.horizon_bars ?? 24} nến H1</div>
+      <div class="summary-sub">≥ ${cfg.min_reversal_pips ?? 20} pip · cooldown ${cfg.cooldown_bars ?? 12}</div>
+    </div>
+  `;
+}
+
+function renderZoneTable(stats) {
+  const tbody = $('zoneTable').querySelector('tbody');
+  const zones = stats?.zones || {};
+  const rows = ['low', 'mid', 'high'].map((key) => {
     const z = zones[key];
     if (!z) return '';
+    const band = `${z.band?.[0] ?? ''}–${z.band?.[1] ?? ''}`;
     return `
-      <div class="zone-card ${key}">
-        <h3>${z.label}</h3>
-        <div class="stat-row"><span>Lần chạm vùng</span><strong>${z.touches}</strong></div>
-        <div class="stat-row"><span>Đảo chiều giá</span><strong>${z.reversals} (${z.reversal_rate}%)</strong></div>
-        <div class="stat-row"><span>TB biên độ (pip)</span><strong>${z.avg_move_pips}</strong></div>
-        ${key !== 'mid' ? `
-        <div class="stat-row"><span>EMA cùng chiều</span><strong>${z.with_ema_alignment}</strong></div>
-        <div class="stat-row"><span>Đảo chiều khi EMA OK</span><strong>${z.aligned_reversal_rate}%</strong></div>
-        <div class="stat-row"><span>Tín hiệu rời vùng</span><strong>${z.exit_signals}</strong></div>
-        ` : ''}
-      </div>`;
+      <tr class="zone-row-${key}">
+        <td><strong>${z.label}</strong></td>
+        <td>${band}</td>
+        <td>${z.touches}</td>
+        <td>${z.reversals ?? '—'}</td>
+        <td class="rate">${key === 'mid' ? '—' : `${z.reversal_rate}%`}</td>
+        <td>${z.avg_move_pips ?? '—'}</td>
+        <td>${z.with_ema_alignment ?? '—'}</td>
+        <td class="rate">${key === 'mid' ? '—' : `${z.aligned_reversal_rate}%`}</td>
+        <td>${z.exit_signals ?? '—'}</td>
+      </tr>`;
   });
-  el.innerHTML = cards.join('');
+  tbody.innerHTML = rows.join('');
 }
 
-function renderConditions(rows) {
-  const el = $('conditionTable');
-  el.innerHTML = (rows || []).map((r) => `
-    <div class="cond-row">
-      <div class="cond-name">${r.condition}</div>
-      <div class="cond-meta">
-        <span>${r.samples} mẫu</span>
-        <span class="cond-rate">${r.reversal_rate}%</span>
-      </div>
-      <div class="cond-note">${r.note}</div>
-    </div>
+function renderConditionTable(rows) {
+  const tbody = $('conditionTable').querySelector('tbody');
+  tbody.innerHTML = (rows || []).map((r) => `
+    <tr>
+      <td>${r.condition}</td>
+      <td>${r.samples}</td>
+      <td class="rate">${r.reversal_rate}%</td>
+      <td class="note">${r.note}</td>
+    </tr>
   `).join('');
 }
 
-function renderEvents(events) {
-  const el = $('eventList');
+function renderEventTable(events) {
+  const tbody = $('eventTable').querySelector('tbody');
   lastEvents = events || [];
-  el.innerHTML = lastEvents.slice(0, 200).map((e, i) => `
-    <div class="event-item" data-idx="${i}">
-      <div class="time">${fmtTime(e.time)}</div>
-      <div>RSI H4: <strong>${e.rsi}</strong> · Close: ${e.close.toFixed(5)}</div>
-      <div class="tags">
-        <span class="tag zone-${e.zone}">${e.zone === 'low' ? 'Hỗ trợ' : e.zone === 'high' ? 'Kháng cự' : 'Vùng 50'}</span>
-        <span class="tag ${e.reversed ? 'ok' : 'no'}">${e.reversed ? `Đảo ${e.move_pips}pip` : 'Không đảo'}</span>
-        ${e.ema_aligned ? '<span class="tag ok">EMA OK</span>' : ''}
-        ${e.exit_signal ? '<span class="tag ok">Rời vùng</span>' : ''}
-      </div>
-    </div>
+  tbody.innerHTML = lastEvents.map((e, i) => `
+    <tr class="event-row" data-idx="${i}">
+      <td class="mono">${fmtTime(e.time)}</td>
+      <td><span class="tag zone-${e.zone}">${e.zone === 'low' ? 'Hỗ trợ' : e.zone === 'high' ? 'Kháng cự' : 'Vùng 50'}</span></td>
+      <td class="mono">${e.rsi}</td>
+      <td class="mono">${e.close.toFixed(5)}</td>
+      <td><span class="tag ${e.reversed ? 'ok' : 'no'}">${e.reversed ? 'Có' : 'Không'}</span></td>
+      <td class="mono">${e.move_pips ?? '—'}</td>
+      <td>${e.ema_aligned ? 'Cùng chiều' : '—'}</td>
+      <td>${e.h4_trend_up ? 'Tăng' : 'Giảm'}</td>
+      <td>${e.exit_signal ? '✓' : '—'}</td>
+    </tr>
   `).join('');
 
-  el.querySelectorAll('.event-item').forEach((node) => {
-    node.addEventListener('click', () => {
-      const ev = lastEvents[Number(node.dataset.idx)];
-      if (ev) chart.focusTime(ev.time);
+  tbody.querySelectorAll('.event-row').forEach((row) => {
+    row.addEventListener('click', () => {
+      const ev = lastEvents[Number(row.dataset.idx)];
+      if (!ev) return;
+      switchTab('chart');
+      chart.focusTime(ev.time);
     });
   });
 }
 
-async function loadAll() {
-  $('dataRange').textContent = 'Đang tải…';
-  const [chartData, stats] = await Promise.all([
-    fetchJson(`/api/chart?${queryParams()}`),
-    fetchJson(`/api/zone-stats?${statsParams()}`),
-  ]);
+function renderReport(stats, rangeText) {
+  lastStats = stats;
+  renderReportSummary(stats);
+  renderZoneTable(stats);
+  renderConditionTable(stats.conditions);
+  renderEventTable(stats.events);
+  const rangeEl = $('reportSummary').querySelector('#reportRange');
+  if (rangeEl) rangeEl.textContent = rangeText;
+}
 
+async function loadChart({ fit = false } = {}) {
+  const chartData = await fetchJson(`/api/chart?${queryParams()}`);
   lastIndicators = chartData.indicators;
-  chart.setData(chartData);
-  chart.setMarkers(buildMarkers(stats.events, $('toggleMarkers').checked));
+  chart.setData(chartData, { fit: fit || !chartLoadedOnce });
+  chartLoadedOnce = true;
+
+  if (lastStats) {
+    chart.setMarkers(buildMarkers(lastStats.events, $('toggleMarkers').checked));
+  }
+
   chart.applyEmaVisibility($('toggleEma50').checked, $('toggleEma200').checked, lastIndicators);
 
-  $('dataRange').textContent =
-    `${chartData.count.toLocaleString()} nến · ${fmtDate(chartData.range?.start)} → ${fmtDate(chartData.range?.end)}`;
+  return chartData;
+}
 
-  renderZoneSummary(stats);
-  renderConditions(stats.conditions);
-  renderEvents(stats.events);
+async function loadStats() {
+  const stats = await fetchJson(`/api/zone-stats?${statsParams()}`);
+  lastStats = stats;
+  chart?.setMarkers(buildMarkers(stats.events, $('toggleMarkers').checked));
+  return stats;
+}
+
+async function loadAll({ fitChart = false } = {}) {
+  $('dataRange').textContent = 'Đang tải…';
+  const [chartData, stats] = await Promise.all([
+    loadChart({ fit: fitChart }),
+    loadStats(),
+  ]);
+
+  const rangeText =
+    `${chartData.count.toLocaleString()} nến · ${fmtDate(chartData.range?.start)} → ${fmtDate(chartData.range?.end)}`;
+  $('dataRange').textContent = rangeText;
+  renderReport(stats, rangeText);
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.main-tab').forEach((btn) => {
+    const active = btn.dataset.tab === tab;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  $('viewChart').classList.toggle('hidden', tab !== 'chart');
+  $('viewChart').classList.toggle('active', tab === 'chart');
+  $('viewReport').classList.toggle('hidden', tab !== 'report');
+  $('viewReport').classList.toggle('active', tab === 'report');
+  if (tab === 'chart') {
+    requestAnimationFrame(() => chart?.resize());
+  }
 }
 
 async function init() {
   chart = new RsiZoneChart($('chartMain'), $('chartRsi'), {
+    wrapEl: $('chartWrap'),
+    bodyEl: $('chartBody'),
     onCrosshair: (info) => {
       const el = $('crosshairInfo');
       if (!info?.candle) {
-        el.textContent = '';
+        el.textContent = 'Kéo biểu đồ giá để pan · cuộn chuột để zoom';
         return;
       }
       const c = info.candle;
@@ -151,26 +225,45 @@ async function init() {
   });
   chart.mount();
 
+  initChartSplit({
+    chartBody: $('chartBody'),
+    rsiPanel: $('rsiPanel'),
+    splitterEl: $('chartSplitter'),
+    onResize: () => chart.resize(),
+  });
+
+  document.querySelectorAll('.main-tab').forEach((btn) => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
   const info = await fetchJson('/api/info');
   if (info.start) {
     $('dateStart').value = info.start.slice(0, 10);
     $('dateEnd').value = info.end.slice(0, 10);
   }
 
-  $('btnLoad').addEventListener('click', () => loadAll().catch(alert));
-  $('btnRefreshStats').addEventListener('click', () => loadAll().catch(alert));
+  $('btnLoad').addEventListener('click', () => loadAll({ fitChart: true }).catch(alert));
+  $('btnRefreshStats').addEventListener('click', () => loadStats().then((stats) => {
+    const rangeText = $('dataRange').textContent;
+    renderReport(stats, rangeText);
+  }).catch(alert));
+
+  $('btnZoomIn').addEventListener('click', () => chart.zoomIn());
+  $('btnZoomOut').addEventListener('click', () => chart.zoomOut());
+  $('btnFit').addEventListener('click', () => chart.fitContent());
+  $('btnLatest').addEventListener('click', () => chart.scrollToLatest());
+
   $('toggleEma50').addEventListener('change', () => {
     chart.applyEmaVisibility($('toggleEma50').checked, $('toggleEma200').checked, lastIndicators);
   });
   $('toggleEma200').addEventListener('change', () => {
     chart.applyEmaVisibility($('toggleEma50').checked, $('toggleEma200').checked, lastIndicators);
   });
-  $('toggleMarkers').addEventListener('change', async () => {
-    const stats = await fetchJson(`/api/zone-stats?${statsParams()}`);
-    chart.setMarkers(buildMarkers(stats.events, $('toggleMarkers').checked));
+  $('toggleMarkers').addEventListener('change', () => {
+    chart.setMarkers(buildMarkers(lastStats?.events, $('toggleMarkers').checked));
   });
 
-  await loadAll();
+  await loadAll({ fitChart: true });
 }
 
 init().catch((err) => {

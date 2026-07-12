@@ -11,7 +11,8 @@ const COLORS = {
   rsi: '#f59e0b',
 };
 
-const RIGHT_SCALE_MIN_WIDTH = 78;
+/** Cố định độ rộng price scale — tránh lệch trục thời gian giữa chart giá và RSI */
+const RIGHT_SCALE_WIDTH = 84;
 
 const RSI_BANDS = {
   low: [28, 32],
@@ -20,6 +21,8 @@ const RSI_BANDS = {
 };
 
 export class RsiZoneChart {
+  #wrapEl;
+  #bodyEl;
   #mainEl;
   #rsiEl;
   #mainChart;
@@ -35,20 +38,30 @@ export class RsiZoneChart {
   #showEma200 = true;
   #syncing = false;
   #resizeObserver;
+  #resizeTimer;
   #onCrosshair;
   #mounted = false;
+  #hasInitialFit = false;
+  #savedLogicalRange = null;
 
-  constructor(mainEl, rsiEl, { onCrosshair } = {}) {
+  constructor(mainEl, rsiEl, { wrapEl, bodyEl, onCrosshair } = {}) {
     this.#mainEl = mainEl;
     this.#rsiEl = rsiEl;
+    this.#wrapEl = wrapEl ?? mainEl.parentElement;
+    this.#bodyEl = bodyEl ?? this.#wrapEl?.parentElement;
     this.#onCrosshair = onCrosshair;
   }
 
   mount() {
     if (this.#mounted) return;
 
-    const width = this.#mainEl.clientWidth || 800;
-    const priceScale = { borderColor: COLORS.grid, minimumWidth: RIGHT_SCALE_MIN_WIDTH };
+    const width = this.#chartWidth();
+    const priceScale = {
+      borderColor: COLORS.grid,
+      minimumWidth: RIGHT_SCALE_WIDTH,
+      autoScale: true,
+    };
+
     const common = {
       layout: { background: { color: COLORS.bg }, textColor: COLORS.text },
       grid: { vertLines: { color: COLORS.grid }, horzLines: { color: COLORS.grid } },
@@ -64,12 +77,29 @@ export class RsiZoneChart {
       secondsVisible: false,
       rightOffset: 6,
       barSpacing: 6,
+      fixLeftEdge: false,
+      fixRightEdge: false,
+    };
+
+    const mainInteractions = {
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: false,
+      },
+      handleScale: {
+        mouseWheel: true,
+        pinch: true,
+        axisPressedMouseMove: { time: true, price: true },
+      },
     };
 
     this.#mainChart = createChart(this.#mainEl, {
       ...common,
+      ...mainInteractions,
       width,
-      height: this.#mainEl.clientHeight || 400,
+      height: this.#mainHeight(),
       timeScale,
     });
 
@@ -97,17 +127,23 @@ export class RsiZoneChart {
 
     this.#rsiChart = createChart(this.#rsiEl, {
       ...common,
-      width: this.#rsiEl.clientWidth || width,
+      width,
       height: this.#rsiEl.clientHeight || 220,
       timeScale: {
         ...timeScale,
-        timeVisible: true,
+        timeVisible: false,
+        borderVisible: false,
       },
-      handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false },
+      handleScroll: {
+        mouseWheel: false,
+        pressedMouseMove: false,
+        horzTouchDrag: false,
+        vertTouchDrag: false,
+      },
       handleScale: {
         mouseWheel: false,
         pinch: false,
-        axisPressedMouseMove: { time: false, price: true },
+        axisPressedMouseMove: { time: false, price: false },
       },
     });
 
@@ -116,39 +152,55 @@ export class RsiZoneChart {
       lineWidth: 2,
       title: 'RSI H4',
       priceLineVisible: false,
+      lastValueVisible: true,
     });
-    this.#rsiChart.priceScale('right').applyOptions({ scaleMargins: { top: 0.08, bottom: 0.08 } });
+    this.#rsiChart.priceScale('right').applyOptions({
+      scaleMargins: { top: 0.08, bottom: 0.08 },
+      minimumWidth: RIGHT_SCALE_WIDTH,
+    });
     this.#applyRsiScale();
     this.#drawRsiBands();
+    this.#lockPriceScaleWidths();
 
-    const syncRange = (range) => {
+    this.#mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       if (this.#syncing || !range) return;
+      this.#savedLogicalRange = range;
       this.#syncing = true;
       this.#rsiChart.timeScale().setVisibleLogicalRange(range);
       this.#syncing = false;
-      this.#syncPriceScaleWidth();
-    };
-
-    const syncFromRsi = (range) => {
-      if (this.#syncing || !range) return;
-      this.#syncing = true;
-      this.#mainChart.timeScale().setVisibleLogicalRange(range);
-      this.#syncing = false;
-      this.#syncPriceScaleWidth();
-    };
-
-    this.#mainChart.timeScale().subscribeVisibleLogicalRangeChange(syncRange);
-    this.#rsiChart.timeScale().subscribeVisibleLogicalRangeChange(syncFromRsi);
+    });
 
     this.#mainChart.subscribeCrosshairMove((param) => {
       this.#syncCrosshair(param);
       this.#emitCrosshair(param);
     });
 
-    this.#resizeObserver = new ResizeObserver(() => this.#resize());
-    this.#resizeObserver.observe(this.#mainEl.parentElement || this.#mainEl);
+    const observeEl = this.#bodyEl || this.#wrapEl || this.#mainEl;
+    this.#resizeObserver = new ResizeObserver(() => {
+      clearTimeout(this.#resizeTimer);
+      this.#resizeTimer = setTimeout(() => this.#resize(), 80);
+    });
+    this.#resizeObserver.observe(observeEl);
     this.#mounted = true;
     requestAnimationFrame(() => this.#resize());
+  }
+
+  #chartWidth() {
+    const bodyW = this.#bodyEl?.clientWidth ?? 0;
+    const wrapW = this.#wrapEl?.clientWidth ?? 0;
+    const mainW = this.#mainEl?.clientWidth ?? 0;
+    return Math.max(bodyW, wrapW, mainW, 320);
+  }
+
+  #mainHeight() {
+    const wrapH = this.#wrapEl?.clientHeight ?? 0;
+    return Math.max(wrapH, this.#mainEl.clientHeight, 280);
+  }
+
+  #lockPriceScaleWidths() {
+    const w = RIGHT_SCALE_WIDTH;
+    this.#mainChart.priceScale('right').applyOptions({ minimumWidth: w });
+    this.#rsiChart.priceScale('right').applyOptions({ minimumWidth: w });
   }
 
   #applyRsiScale() {
@@ -183,22 +235,13 @@ export class RsiZoneChart {
     }
   }
 
-  #syncPriceScaleWidth() {
-    const mainW = this.#mainChart.priceScale('right').width();
-    const rsiW = this.#rsiChart.priceScale('right').width();
-    const w = Math.max(mainW, rsiW, RIGHT_SCALE_MIN_WIDTH);
-    this.#mainChart.priceScale('right').applyOptions({ minimumWidth: w });
-    this.#rsiChart.priceScale('right').applyOptions({ minimumWidth: w });
-  }
-
   #syncCrosshair(param) {
     if (!param?.time) {
       this.#rsiChart.clearCrosshairPosition();
       return;
     }
     const time = this.#nearestCandle(param.time)?.time ?? param.time;
-    let value = param.seriesData?.get(this.#rsiSeries)?.value;
-    if (value == null) value = this.#rsiData.find((p) => p.time === time)?.value;
+    const value = this.#rsiData.find((p) => p.time === time)?.value;
     if (value == null) {
       this.#rsiChart.clearCrosshairPosition();
       return;
@@ -243,27 +286,36 @@ export class RsiZoneChart {
     return out;
   }
 
-  #resize() {
-    const wrap = this.#mainEl.parentElement;
-    const w = Math.max(wrap?.clientWidth ?? 0, this.#mainEl.clientWidth, 320);
-    const totalH = wrap?.clientHeight ?? 600;
-    const rsiH = Math.max(this.#rsiEl.clientHeight, 180);
-    const mainH = Math.max(totalH - rsiH - 40, 240);
-    this.#mainChart?.applyOptions({ width: w, height: mainH });
-    this.#rsiChart?.applyOptions({ width: w, height: rsiH });
-    this.#syncPriceScaleWidth();
-    this.#syncRsiTimeScale();
+  #captureRange() {
+    return this.#mainChart?.timeScale().getVisibleLogicalRange() ?? this.#savedLogicalRange;
   }
 
-  #syncRsiTimeScale() {
-    const range = this.#mainChart.timeScale().getVisibleLogicalRange();
-    if (!range) return;
+  #restoreRange(range) {
+    if (!range || !this.#mainChart) return;
     this.#syncing = true;
+    this.#mainChart.timeScale().setVisibleLogicalRange(range);
     this.#rsiChart.timeScale().setVisibleLogicalRange(range);
     this.#syncing = false;
+    this.#savedLogicalRange = range;
   }
 
-  setData({ candles, indicators }) {
+  #resize() {
+    const width = this.#chartWidth();
+    const mainHeight = this.#mainHeight();
+    const rsiHeight = Math.max(this.#rsiEl.clientHeight || 0, 120);
+    if (width <= 0 || mainHeight <= 0) return;
+
+    const range = this.#captureRange();
+    this.#mainChart?.applyOptions({ width, height: mainHeight });
+    this.#rsiChart?.applyOptions({ width, height: rsiHeight });
+    this.#lockPriceScaleWidths();
+    this.#restoreRange(range);
+  }
+
+  setData({ candles, indicators }, { fit = false } = {}) {
+    const range = this.#captureRange();
+    const shouldFit = fit || !this.#hasInitialFit;
+
     this.#candles = candles;
     this.#candleSeries.setData(candles);
     const ema50 = this.#alignSeries(candles, indicators?.ema50);
@@ -273,9 +325,27 @@ export class RsiZoneChart {
     this.#ema50Series.setData(this.#showEma50 ? ema50 : []);
     this.#ema200Series.setData(this.#showEma200 ? ema200 : []);
     this.#rsiSeries.setData(rsiData);
-    this.#resize();
-    this.#mainChart.timeScale().fitContent();
-    this.#syncRsiTimeScale();
+
+    requestAnimationFrame(() => {
+      this.#resize();
+      if (shouldFit) {
+        this.#mainChart.timeScale().fitContent();
+        this.#syncRsiFromMain();
+        this.#hasInitialFit = true;
+        this.#savedLogicalRange = this.#captureRange();
+      } else {
+        this.#restoreRange(range);
+      }
+      this.#lockPriceScaleWidths();
+    });
+  }
+
+  #syncRsiFromMain() {
+    const range = this.#mainChart.timeScale().getVisibleLogicalRange();
+    if (!range) return;
+    this.#syncing = true;
+    this.#rsiChart.timeScale().setVisibleLogicalRange(range);
+    this.#syncing = false;
   }
 
   setMarkers(markers) {
@@ -285,35 +355,55 @@ export class RsiZoneChart {
   focusTime(time) {
     const idx = this.#candles.findIndex((c) => c.time === time);
     if (idx < 0) return;
-    const range = { from: Math.max(0, idx - 60), to: Math.min(this.#candles.length - 1, idx + 60) };
-    this.#mainChart.timeScale().setVisibleLogicalRange(range);
-    this.#syncRsiTimeScale();
+    const range = { from: Math.max(0, idx - 80), to: Math.min(this.#candles.length - 1, idx + 80) };
+    this.#restoreRange(range);
   }
 
-  setShowEma50(v) {
-    this.#showEma50 = v;
-    if (this.#candles.length) {
-      const ema50 = this.#alignSeries(this.#candles, []);
-      this.#ema50Series.setData(v ? ema50 : []);
-    }
+  zoomIn() {
+    const range = this.#captureRange();
+    if (!range) return;
+    const center = (range.from + range.to) / 2;
+    const span = (range.to - range.from) * 0.75;
+    this.#restoreRange({ from: center - span / 2, to: center + span / 2 });
   }
 
-  setShowEma200(v) {
-    this.#showEma200 = v;
+  zoomOut() {
+    const range = this.#captureRange();
+    if (!range) return;
+    const center = (range.from + range.to) / 2;
+    const span = Math.min((range.to - range.from) * 1.35, this.#candles.length);
+    this.#restoreRange({
+      from: Math.max(0, center - span / 2),
+      to: Math.min(this.#candles.length - 1, center + span / 2),
+    });
   }
 
-  toggleEma(ema50, ema200) {
-    this.#showEma50 = ema50;
-    this.#showEma200 = ema200;
+  fitContent() {
+    this.#mainChart.timeScale().fitContent();
+    this.#syncRsiFromMain();
+    this.#savedLogicalRange = this.#captureRange();
+  }
+
+  scrollToLatest() {
     if (!this.#candles.length) return;
-    // Re-apply from last indicators stored in series - need to re-set from parent
+    const span = this.#savedLogicalRange
+      ? this.#savedLogicalRange.to - this.#savedLogicalRange.from
+      : 120;
+    const to = this.#candles.length - 1;
+    this.#restoreRange({ from: Math.max(0, to - span), to });
   }
 
   applyEmaVisibility(show50, show200, indicators) {
     this.#showEma50 = show50;
     this.#showEma200 = show200;
     if (!this.#candles.length) return;
+    const range = this.#captureRange();
     this.#ema50Series.setData(show50 ? this.#alignSeries(this.#candles, indicators?.ema50) : []);
     this.#ema200Series.setData(show200 ? this.#alignSeries(this.#candles, indicators?.ema200) : []);
+    this.#restoreRange(range);
+  }
+
+  resize() {
+    this.#resize();
   }
 }

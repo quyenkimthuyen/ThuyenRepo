@@ -23,35 +23,55 @@
       </div>
     </header>
 
-    <main class="layout">
-      <section class="chart-section">
+    <nav class="main-tabs" role="tablist" aria-label="Chế độ xem">
+      <button type="button" class="main-tab active" data-tab="chart" role="tab" aria-selected="true">Biểu đồ</button>
+      <button type="button" class="main-tab" data-tab="report" role="tab" aria-selected="false">Báo cáo thống kê</button>
+    </nav>
+
+    <main class="content">
+      <section id="viewChart" class="view active" role="tabpanel">
         <div class="chart-toolbar">
-          <span class="toolbar-title">Biểu đồ giá H1</span>
+          <div class="toolbar-left">
+            <span class="toolbar-title">EURUSD H1</span>
+            <div class="zoom-controls">
+              <button type="button" class="btn icon" id="btnZoomIn" title="Phóng to (cuộn chuột lên)">+</button>
+              <button type="button" class="btn icon" id="btnZoomOut" title="Thu nhỏ (cuộn chuột xuống)">−</button>
+              <button type="button" class="btn icon" id="btnFit" title="Xem toàn bộ">Fit</button>
+              <button type="button" class="btn icon" id="btnLatest" title="Cuộn tới nến mới nhất">Mới nhất</button>
+            </div>
+          </div>
           <div class="toolbar-toggles">
             <label><input type="checkbox" id="toggleEma50" checked> EMA 50</label>
             <label><input type="checkbox" id="toggleEma200" checked> EMA 200</label>
             <label><input type="checkbox" id="toggleMarkers" checked> Đánh dấu vùng RSI</label>
           </div>
-          <span id="crosshairInfo" class="crosshair-info"></span>
+          <span id="crosshairInfo" class="crosshair-info">Kéo biểu đồ giá để pan · cuộn chuột để zoom</span>
         </div>
-        <div class="chart-wrap" id="chartWrap">
-          <div id="chartMain" class="chart-main"></div>
-          <div class="rsi-header">
-            <span>RSI(14) — khung H4 (đồng bộ thời gian với giá H1)</span>
-            <div class="rsi-legend">
-              <span class="zone low">Hỗ trợ 28–32</span>
-              <span class="zone mid">Vùng 50</span>
-              <span class="zone high">Kháng cự 68–72</span>
-            </div>
+
+        <div class="chart-body" id="chartBody">
+          <div class="chart-wrap" id="chartWrap">
+            <div id="chartMain" class="chart-main"></div>
           </div>
-          <div id="chartRsi" class="chart-rsi"></div>
+          <div class="chart-splitter" id="chartSplitter" title="Kéo để đổi chiều cao RSI"></div>
+          <div class="rsi-panel" id="rsiPanel">
+            <div class="rsi-panel-head">
+              <span class="rsi-panel-title">RSI(14) H4 — đồng bộ thời gian với giá H1</span>
+              <div class="rsi-legend">
+                <span class="zone low">Hỗ trợ 28–32</span>
+                <span class="zone mid">Vùng 50</span>
+                <span class="zone high">Kháng cự 68–72</span>
+              </div>
+            </div>
+            <div id="chartRsi" class="chart-rsi"></div>
+          </div>
         </div>
       </section>
 
-      <aside class="sidebar">
-        <section class="panel">
-          <h2>Thống kê vùng RSI</h2>
-          <div class="param-grid">
+      <section id="viewReport" class="view hidden" role="tabpanel">
+        <div class="report-header">
+          <h2>Báo cáo thống kê vùng RSI H4</h2>
+          <p class="hint">Phân tích xác suất đảo chiều giá khi RSI H4 chạm các vùng hỗ trợ / kháng cự quan trọng.</p>
+          <div class="param-grid report-params">
             <label>Horizon (nến H1)
               <input type="number" id="paramHorizon" value="24" min="4" max="168">
             </label>
@@ -62,21 +82,74 @@
               <input type="number" id="paramCooldown" value="12" min="1" max="72">
             </label>
           </div>
-          <button type="button" class="btn block" id="btnRefreshStats">Cập nhật thống kê</button>
-          <div id="zoneSummary" class="zone-summary"></div>
-        </section>
+          <button type="button" class="btn primary" id="btnRefreshStats">Cập nhật báo cáo</button>
+        </div>
 
-        <section class="panel">
-          <h2>Điều kiện đảo chiều</h2>
-          <p class="hint">Xác suất giá đảo chiều khi RSI H4 chạm vùng — kèm bộ lọc xu hướng EMA.</p>
-          <div id="conditionTable" class="condition-table"></div>
-        </section>
+        <div id="reportSummary" class="report-summary"></div>
 
-        <section class="panel panel-scroll">
-          <h2>Sự kiện chạm vùng</h2>
-          <div id="eventList" class="event-list"></div>
+        <div class="report-grid">
+          <section class="report-panel">
+            <h3>Bảng vùng RSI</h3>
+            <div class="table-wrap">
+              <table class="report-table" id="zoneTable">
+                <thead>
+                  <tr>
+                    <th>Vùng</th>
+                    <th>RSI</th>
+                    <th>Chạm</th>
+                    <th>Đảo chiều</th>
+                    <th>% Đảo</th>
+                    <th>TB pip</th>
+                    <th>EMA OK</th>
+                    <th>% Đảo (EMA)</th>
+                    <th>Rời vùng</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="report-panel">
+            <h3>Điều kiện tăng xác suất đảo chiều</h3>
+            <div class="table-wrap">
+              <table class="report-table" id="conditionTable">
+                <thead>
+                  <tr>
+                    <th>Điều kiện</th>
+                    <th>Mẫu</th>
+                    <th>% Đảo chiều</th>
+                    <th>Ghi chú</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <section class="report-panel full">
+          <h3>Danh sách sự kiện chạm vùng</h3>
+          <div class="table-wrap tall">
+            <table class="report-table" id="eventTable">
+              <thead>
+                <tr>
+                  <th>Thời gian</th>
+                  <th>Vùng</th>
+                  <th>RSI H4</th>
+                  <th>Close</th>
+                  <th>Đảo chiều</th>
+                  <th>Pip</th>
+                  <th>EMA H1</th>
+                  <th>H4 trend</th>
+                  <th>Rời vùng</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </section>
-      </aside>
+      </section>
     </main>
   </div>
   <script type="module" src="/static/js/app.js"></script>
