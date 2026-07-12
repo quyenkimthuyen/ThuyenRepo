@@ -32,4 +32,12 @@ validation:
     total_return: 0.330
     max_drawdown: 0.040
     expectancy: 18.32
-  description: "swing+wick58+4H ADX24+1H ADX≤30"
+forward_test:
+  min_months: 3
+  recommended_months: 6
+  note: "Khóa params validated, chạy paper định kỳ, so sánh với backtest cùng kỳ"
+
+kill_switch:
+  max_drawdown_pct: 10.0
+  max_consecutive_losses: 5
+  note: "Dừng paper/forward nếu vượt ngưỡng — cần can thiệp thủ công"
