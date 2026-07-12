@@ -263,7 +263,7 @@ async function init() {
     chart.setMarkers(buildMarkers(lastStats?.events, $('toggleMarkers').checked));
   });
 
-  await loadAll({ fitChart: true });
+  await loadAll({ fitChart: false });
 }
 
 init().catch((err) => {

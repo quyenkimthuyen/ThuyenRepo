@@ -19,6 +19,12 @@ const RSI_BANDS = {
   high: [68, 72],
 };
 
+const DEFAULT_VISIBLE_BARS = 320;
+
+function isFiniteNumber(value) {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
 export class RsiZoneChart {
   #wrapEl;
   #bodyEl;
@@ -206,11 +212,13 @@ export class RsiZoneChart {
   }
 
   #scheduleRsiSync(range) {
+    const safeRange = this.#normalizeRange(range);
+    if (!safeRange) return;
     cancelAnimationFrame(this.#syncRaf);
     this.#syncRaf = requestAnimationFrame(() => {
-      if (this.#syncing || !range) return;
+      if (this.#syncing) return;
       this.#syncing = true;
-      this.#rsiChart.timeScale().setVisibleLogicalRange(range);
+      this.#rsiChart.timeScale().setVisibleLogicalRange(safeRange);
       this.#syncing = false;
     });
   }
@@ -295,7 +303,11 @@ export class RsiZoneChart {
   }
 
   #alignSeries(candles, points, forwardFill = false) {
-    const byTime = new Map((points || []).map((p) => [p.time, p.value]));
+    const byTime = new Map(
+      (points || [])
+        .filter((p) => isFiniteNumber(p?.time) && isFiniteNumber(p?.value))
+        .map((p) => [p.time, p.value]),
+    );
     let last = null;
     const out = [];
     for (const c of candles) {
@@ -310,17 +322,40 @@ export class RsiZoneChart {
     return out;
   }
 
+  #sanitizeCandles(candles) {
+    return (candles || []).filter((c) => (
+      isFiniteNumber(c?.time)
+      && isFiniteNumber(c?.open)
+      && isFiniteNumber(c?.high)
+      && isFiniteNumber(c?.low)
+      && isFiniteNumber(c?.close)
+    ));
+  }
+
+  #normalizeRange(range) {
+    if (!range || !isFiniteNumber(range.from) || !isFiniteNumber(range.to)) return null;
+    if (range.to <= range.from) return null;
+    if (!this.#candles.length) return range;
+    const from = Math.max(0, Math.min(this.#candles.length - 1, range.from));
+    const to = Math.max(0, Math.min(this.#candles.length - 1, range.to));
+    if (to <= from) return null;
+    return { from, to };
+  }
+
   #captureRange() {
-    return this.#mainChart?.timeScale().getVisibleLogicalRange() ?? this.#savedLogicalRange;
+    return this.#normalizeRange(
+      this.#mainChart?.timeScale().getVisibleLogicalRange() ?? this.#savedLogicalRange,
+    );
   }
 
   #setMainRange(range) {
-    if (!range || !this.#mainChart) return;
+    const safeRange = this.#normalizeRange(range);
+    if (!safeRange || !this.#mainChart) return;
     this.#syncing = true;
-    this.#mainChart.timeScale().setVisibleLogicalRange(range);
+    this.#mainChart.timeScale().setVisibleLogicalRange(safeRange);
     this.#syncing = false;
-    this.#savedLogicalRange = range;
-    this.#scheduleRsiSync(range);
+    this.#savedLogicalRange = safeRange;
+    this.#scheduleRsiSync(safeRange);
   }
 
   #syncRsiFromMain() {
@@ -355,13 +390,13 @@ export class RsiZoneChart {
 
   setData({ candles, indicators }, { fit = false } = {}) {
     const range = this.#captureRange();
-    const shouldFit = fit || !this.#hasInitialFit;
+    const shouldShowLatest = !fit && !this.#hasInitialFit;
 
-    this.#candles = candles;
-    this.#candleSeries.setData(candles);
-    const ema50 = this.#alignSeries(candles, indicators?.ema50);
-    const ema200 = this.#alignSeries(candles, indicators?.ema200);
-    const rsiData = this.#alignSeries(candles, indicators?.rsi14_h4, true);
+    this.#candles = this.#sanitizeCandles(candles);
+    this.#candleSeries.setData(this.#candles);
+    const ema50 = this.#alignSeries(this.#candles, indicators?.ema50);
+    const ema200 = this.#alignSeries(this.#candles, indicators?.ema200);
+    const rsiData = this.#alignSeries(this.#candles, indicators?.rsi14_h4, true);
     this.#rsiData = rsiData;
     this.#ema50Series.setData(this.#showEma50 ? ema50 : []);
     this.#ema200Series.setData(this.#showEma200 ? ema200 : []);
@@ -369,11 +404,14 @@ export class RsiZoneChart {
 
     requestAnimationFrame(() => {
       this.#resize(true);
-      if (shouldFit) {
+      if (fit) {
         this.#mainChart.timeScale().fitContent();
         this.#hasInitialFit = true;
         this.#savedLogicalRange = this.#captureRange();
         this.#syncRsiFromMain();
+      } else if (shouldShowLatest) {
+        this.scrollToLatest(DEFAULT_VISIBLE_BARS);
+        this.#hasInitialFit = true;
       } else if (range) {
         this.#setMainRange(range);
       }
@@ -381,7 +419,7 @@ export class RsiZoneChart {
   }
 
   setMarkers(markers) {
-    this.#candleSeries.setMarkers(markers || []);
+    this.#candleSeries.setMarkers((markers || []).filter((marker) => isFiniteNumber(marker?.time)));
   }
 
   focusTime(time) {
@@ -418,11 +456,13 @@ export class RsiZoneChart {
     this.#syncRsiFromMain();
   }
 
-  scrollToLatest() {
+  scrollToLatest(targetBars) {
     if (!this.#candles.length) return;
-    const span = this.#savedLogicalRange
-      ? this.#savedLogicalRange.to - this.#savedLogicalRange.from
-      : 120;
+    const span = isFiniteNumber(targetBars)
+      ? targetBars
+      : this.#savedLogicalRange
+        ? this.#savedLogicalRange.to - this.#savedLogicalRange.from
+        : 120;
     const to = this.#candles.length - 1;
     this.#setMainRange({ from: Math.max(0, to - span), to });
   }
