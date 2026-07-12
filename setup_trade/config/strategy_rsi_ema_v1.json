@@ -1,0 +1,47 @@
+{
+  "strategy_id": "rsi_ema_v1",
+  "name": "RSI H4 + EMA H1 v1",
+  "bands": {
+    "low": [
+      28,
+      32
+    ],
+    "mid": [
+      48,
+      52
+    ],
+    "high": [
+      68,
+      72
+    ]
+  },
+  "setups": {
+    "s1_break_retest": {
+      "enabled": true,
+      "label": "Break vùng 50 → retest → tiếp tục"
+    },
+    "s2_extreme_bounce": {
+      "enabled": false,
+      "label": "Chạm 70/30 → hồi 50 → bật (lần 1–2)",
+      "max_mid_touches": 2,
+      "mid_reset_bars": 6,
+      "disabled_reason": "WR 16.0% < 38% trên 25 mẫu",
+      "disabled_at_samples": 25
+    }
+  },
+  "ema_tolerance_atr": 0.35,
+  "lookback_bars": 120,
+  "entry_cooldown_bars": 48,
+  "rsi_bounce_min": 0.1,
+  "risk": {
+    "sl_atr_mult": 1.0,
+    "sl_on_mid_break": true,
+    "sl_on_ema_break": false,
+    "tp_mode": "rsi_band"
+  },
+  "conventions": {
+    "touch_mode": "close_h4",
+    "break_mode": "close_outside_band",
+    "entry_bar": "h1_close_after_signal"
+  }
+}

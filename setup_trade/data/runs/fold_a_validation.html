@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="UTF-8"/><title>Validation fold_a</title>
+<style>
+  body { font-family: system-ui; margin: 2rem; background: #0f1419; color: #e7ecf3; }
+  .verdict { font-size: 1.3rem; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+  .pass { background: #1a3d2e; color: #3ecf8e; }
+  .fail { background: #3d1a1a; color: #ff6b6b; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #2a3548; padding: 0.5rem; text-align: left; }
+  th { background: #1a2332; }
+</style></head><body>
+  <h1>Walk-forward — fold_a</h1>
+  <p>Label 2022 → Optimize 2023 → Final 2024</p>
+  <div class="verdict fail">CHƯA CÓ EDGE ĐÁNG TIN (OOS FAIL)</div>
+  <h2>In-sample vs OOS</h2>
+  <table>
+    <tr><th>Phase</th><th>Period</th><th>Trades</th><th>WR</th><th>PF</th><th>Exp</th><th>Total</th><th>MaxDD</th><th>Verdict</th><th>Checks</th></tr>
+    <tr>
+          <td>In-sample (optimize year)</td>
+          <td>bt_2023</td>
+          <td>12</td>
+          <td>33.3%</td>
+          <td>2.53</td>
+          <td>12.04</td>
+          <td>144.5</td>
+          <td>61.7</td>
+          <td>FAIL</td>
+          <td><small>min_trades: X, profit_factor: OK, max_drawdown: OK, expectancy: OK, monte_carlo_pf_p5: X</small></td>
+        </tr>
+    <tr>
+          <td>Out-of-sample (final year — chưa optimize)</td>
+          <td>bt_2024</td>
+          <td>10</td>
+          <td>10.0%</td>
+          <td>1.1</td>
+          <td>0.7</td>
+          <td>7.0</td>
+          <td>42.7</td>
+          <td>FAIL</td>
+          <td><small>min_trades: X, profit_factor: X, max_drawdown: OK, expectancy: OK, monte_carlo_pf_p5: X</small></td>
+        </tr>
+  </table>
+  <h2>Labels</h2>
+  <p>29 / 50 · alignment 13.8%</p>
+  <h2>Cảnh báo</h2>
+  <ul><li>In-sample (năm optimize) chưa đạt PASS</li><li>In-sample chỉ 12 lệnh — mẫu nhỏ, dễ overfit</li><li>OOS FAIL — chưa chứng minh edge trên dữ liệu chưa thấy</li><li>OOS chỉ 10 lệnh — chưa đủ ý nghĩa thống kê</li></ul>
+</body></html>

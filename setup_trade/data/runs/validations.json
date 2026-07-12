@@ -1,0 +1,100 @@
+{
+  "validations": [
+    {
+      "fold_id": "fold_a",
+      "run_at": "2026-07-12T14:02:04.306198+00:00",
+      "fold": {
+        "id": "fold_a",
+        "label_period": "train_2022",
+        "optimize_period": "bt_2023",
+        "final_test_period": "bt_2024",
+        "label_year": 2022,
+        "optimize_year": 2023,
+        "final_test_year": 2024
+      },
+      "analyze_summary": {
+        "label_count": 29,
+        "alignment_ratio": 0.138,
+        "target_met": false
+      },
+      "optimize_meta": {
+        "skipped": true
+      },
+      "best_params": null,
+      "in_sample": {
+        "label": "In-sample (optimize year)",
+        "period": "bt_2023",
+        "trades": 12,
+        "win_rate": 0.333,
+        "profit_factor": 2.53,
+        "expectancy_pips": 12.04,
+        "total_pips": 144.5,
+        "max_drawdown_pips": 61.7,
+        "monte_carlo": {
+          "pf_p5": 0.59,
+          "pf_p50": 2.36,
+          "pf_p95": 6.79,
+          "dd_p95": 108.4
+        },
+        "pass": false,
+        "checks": {
+          "min_trades": false,
+          "profit_factor": true,
+          "max_drawdown": true,
+          "expectancy": true,
+          "monte_carlo_pf_p5": false
+        },
+        "by_setup": {
+          "s1_break_retest": {
+            "trades": 12,
+            "win_rate": 0.333,
+            "total_pips": 144.5,
+            "expectancy_pips": 12.04
+          }
+        }
+      },
+      "out_of_sample": {
+        "label": "Out-of-sample (final year — chưa optimize)",
+        "period": "bt_2024",
+        "trades": 10,
+        "win_rate": 0.1,
+        "profit_factor": 1.1,
+        "expectancy_pips": 0.7,
+        "total_pips": 7.0,
+        "max_drawdown_pips": 42.7,
+        "monte_carlo": {
+          "pf_p5": 0.0,
+          "pf_p50": 1.06,
+          "pf_p95": 4.14,
+          "dd_p95": 84.4
+        },
+        "pass": false,
+        "checks": {
+          "min_trades": false,
+          "profit_factor": false,
+          "max_drawdown": true,
+          "expectancy": true,
+          "monte_carlo_pf_p5": false
+        },
+        "by_setup": {
+          "s1_break_retest": {
+            "trades": 10,
+            "win_rate": 0.1,
+            "total_pips": 7.0,
+            "expectancy_pips": 0.7
+          }
+        }
+      },
+      "verdict": "CHƯA CÓ EDGE ĐÁNG TIN (OOS FAIL)",
+      "effective": false,
+      "warnings": [
+        "In-sample (năm optimize) chưa đạt PASS",
+        "In-sample chỉ 12 lệnh — mẫu nhỏ, dễ overfit",
+        "OOS FAIL — chưa chứng minh edge trên dữ liệu chưa thấy",
+        "OOS chỉ 10 lệnh — chưa đủ ý nghĩa thống kê"
+      ],
+      "report_path": "/home/toc/thuyen/repo/setup_trade/data/runs/fold_a_validation.html",
+      "final_report_path": "/home/toc/thuyen/repo/setup_trade/data/runs/fold_a_final_bt_2024.html"
+    }
+  ]
+}

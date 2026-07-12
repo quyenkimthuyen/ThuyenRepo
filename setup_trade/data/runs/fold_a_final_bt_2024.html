@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>OOS Final — fold_a — bt_2024</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; background: #0f1419; color: #e7ecf3; }
+    h1 { font-size: 1.4rem; }
+    .banner { padding: 0.6rem 1rem; border-radius: 6px; margin: 0.5rem 0; }
+    .ok { background: #1a3d2e; color: #3ecf8e; }
+    .warn { background: #3d2a1a; color: #f0b429; }
+    .info { background: #1a2a3d; color: #8b9bb4; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #2a3548; padding: 0.5rem; text-align: left; }
+    th { background: #1a2332; }
+    pre { background: #1a2332; padding: 1rem; border-radius: 6px; overflow: auto; }
+    svg { background: #121a24; border-radius: 6px; margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <h1>OOS Final — fold_a — bt_2024</h1>
+  <p>Period: <strong>bt_2024</strong></p>
+  <div class="banner warn">Chưa đạt PASS — xem metrics</div><div class="banner info">Dưới 50 lệnh — ý nghĩa thống kê hạn chế</div>
+  <h2>Metrics</h2>
+  <table>
+    <tr><th>Trades</th><td>10</td></tr>
+    <tr><th>Win rate</th><td>10.0%</td></tr>
+    <tr><th>Profit factor</th><td>1.1</td></tr>
+    <tr><th>Expectancy</th><td>0.7 pips</td></tr>
+    <tr><th>Max DD</th><td>42.7 pips</td></tr>
+    <tr><th>Total</th><td>7.0 pips</td></tr>
+  </table>
+  <h2>Monte Carlo</h2>
+  <table>
+    <tr><th>PF p5</th><td>0.0</td></tr>
+    <tr><th>PF p50</th><td>1.06</td></tr>
+    <tr><th>PF p95</th><td>4.14</td></tr>
+    <tr><th>DD p95</th><td>84.4 pips</td></tr>
+  </table>
+  <h2>Equity curve (pips)</h2>
+  <svg width="800" height="200" viewBox="0 0 800 200">
+    <polyline fill="none" stroke="#3d8bfd" stroke-width="2"
+      points="10.0,89.4 96.7,104.2 183.3,124.3 270.0,142.2 356.7,167.9 443.3,185.1 530.0,190.0 616.7,10.0 703.3,29.1 790.0,68.2" />
+  </svg>
+  <h2>Drawdown (pips)</h2>
+  <svg width="800" height="120" viewBox="0 0 800 120">
+    <polyline fill="none" stroke="#ff6b6b" stroke-width="2"
+      points="10.0,10.0 96.7,24.8 183.3,44.7 270.0,62.5 356.7,88.0 443.3,105.1 530.0,110.0 616.7,10.0 703.3,29.0 790.0,67.8" />
+  </svg>
+  <h2>By setup</h2>
+  <pre>{
+  &quot;s1_break_retest&quot;: {
+    &quot;trades&quot;: 10,
+    &quot;win_rate&quot;: 0.1,
+    &quot;total_pips&quot;: 7.0,
+    &quot;expectancy_pips&quot;: 0.7
+  }
+}</pre>
+  <h2>By month</h2>
+  <pre>{
+  &quot;2024-01&quot;: {
+    &quot;trades&quot;: 2,
+    &quot;pnl&quot;: -8.3
+  },
+  &quot;2024-02&quot;: {
+    &quot;trades&quot;: 2,
+    &quot;pnl&quot;: -16.1
+  },
+  &quot;2024-03&quot;: {
+    &quot;trades&quot;: 1,
+    &quot;pnl&quot;: -10.9
+  },
+  &quot;2024-04&quot;: {
+    &quot;trades&quot;: 1,
+    &quot;pnl&quot;: -7.3
+  },
+  &quot;2024-05&quot;: {
+    &quot;trades&quot;: 1,
+    &quot;pnl&quot;: -2.1
+  },
+  &quot;2024-07&quot;: {
+    &quot;trades&quot;: 2,
+    &quot;pnl&quot;: 68.3
+  },
+  &quot;2024-11&quot;: {
+    &quot;trades&quot;: 1,
+    &quot;pnl&quot;: -16.6
+  }
+}</pre>
+  <h2>R-multiples (sample)</h2>
+  <pre>[
+  -0.15,
+  -0.59,
+  -0.97,
+  -1.09,
+  -1.06,
+  -1.09,
+  -0.27,
+  8.61,
+  -1.08,
+  -1.04
+]</pre>
+</body>
+</html>
