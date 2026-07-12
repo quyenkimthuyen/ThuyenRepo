@@ -1,0 +1,35 @@
+# Pin Bar Elite — validated production profile (from SystemTrain OOS)
+strategy:
+  id: pin_bar_elite
+  name: Pin Bar Elite
+  symbol: EURUSD
+  timeframe: 1h
+  htf: 4h
+  rr: 2.0
+
+params:
+  min_htf_adx: 24.0
+  max_adx_1h: 30.0
+  min_wick_body_ratio: 4.0
+  min_wick_range_ratio: 0.52
+  swing_lookback: 10
+  htf_mode: stack
+  require_at_swing: true
+  cooldown_bars: 6
+
+risk:
+  sl_pct: 0.02
+  min_rr: 2.0
+
+validation:
+  source: systemtrain/output/strategies_rr_summary.json
+  oos_period: "2 years blind OOS"
+  train_period: "1 year"
+  metrics:
+    trade_count: 18
+    win_rate: 0.611
+    profit_factor: 2.904
+    total_return: 0.330
+    max_drawdown: 0.040
+    expectancy: 18.32
+  description: "swing+wick58+4H ADX24+1H ADX≤30"
