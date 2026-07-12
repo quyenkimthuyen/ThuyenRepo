@@ -54,11 +54,27 @@ function Stop-AppOnPort {
     Start-Sleep -Seconds 1
 }
 
+function Test-JsonFile {
+    param([string]$Path)
+
+    if (-not (Test-Path $Path)) {
+        return $false
+    }
+
+    try {
+        Get-Content -Path $Path -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop | Out-Null
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
 function Ensure-DataFile {
     $dataFile = Join-Path $PSScriptRoot "data\EURUSD_H1.json"
     $forexData = Join-Path $PSScriptRoot "..\Forex\data\defaults\EURUSD_H1.json"
 
-    if (Test-Path $dataFile) {
+    if (Test-JsonFile -Path $dataFile) {
         return
     }
 
@@ -71,7 +87,12 @@ function Ensure-DataFile {
         New-Item -ItemType Directory -Path $dataDir | Out-Null
     }
 
-    Write-Host "Copying EURUSD H1 data from Forex..."
+    if (Test-Path $dataFile) {
+        Write-Host "Restoring invalid EURUSD H1 data from Forex..."
+    }
+    else {
+        Write-Host "Copying EURUSD H1 data from Forex..."
+    }
     Copy-Item -Path $forexData -Destination $dataFile -Force
 }
 
