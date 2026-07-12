@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RSI Zone Analyzer — EURUSD H1</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>RSI Zone Analyzer</h1>
+        <span class="subtitle">EURUSD H1 · EMA 50/200 · RSI(14) khung H4</span>
+      </div>
+      <div class="topbar-controls">
+        <label>Từ <input type="date" id="dateStart" value="2023-06-25"></label>
+        <label>Đến <input type="date" id="dateEnd" value="2026-06-22"></label>
+        <button type="button" class="btn primary" id="btnLoad">Tải dữ liệu</button>
+        <span id="dataRange" class="data-range"></span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="chart-section">
+        <div class="chart-toolbar">
+          <span class="toolbar-title">Biểu đồ giá H1</span>
+          <div class="toolbar-toggles">
+            <label><input type="checkbox" id="toggleEma50" checked> EMA 50</label>
+            <label><input type="checkbox" id="toggleEma200" checked> EMA 200</label>
+            <label><input type="checkbox" id="toggleMarkers" checked> Đánh dấu vùng RSI</label>
+          </div>
+          <span id="crosshairInfo" class="crosshair-info"></span>
+        </div>
+        <div class="chart-wrap" id="chartWrap">
+          <div id="chartMain" class="chart-main"></div>
+          <div class="rsi-header">
+            <span>RSI(14) — khung H4 (đồng bộ thời gian với giá H1)</span>
+            <div class="rsi-legend">
+              <span class="zone low">Hỗ trợ 28–32</span>
+              <span class="zone mid">Vùng 50</span>
+              <span class="zone high">Kháng cự 68–72</span>
+            </div>
+          </div>
+          <div id="chartRsi" class="chart-rsi"></div>
+        </div>
+      </section>
+
+      <aside class="sidebar">
+        <section class="panel">
+          <h2>Thống kê vùng RSI</h2>
+          <div class="param-grid">
+            <label>Horizon (nến H1)
+              <input type="number" id="paramHorizon" value="24" min="4" max="168">
+            </label>
+            <label>Min đảo chiều (pip)
+              <input type="number" id="paramMinPips" value="20" min="5" max="100">
+            </label>
+            <label>Cooldown (nến)
+              <input type="number" id="paramCooldown" value="12" min="1" max="72">
+            </label>
+          </div>
+          <button type="button" class="btn block" id="btnRefreshStats">Cập nhật thống kê</button>
+          <div id="zoneSummary" class="zone-summary"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Điều kiện đảo chiều</h2>
+          <p class="hint">Xác suất giá đảo chiều khi RSI H4 chạm vùng — kèm bộ lọc xu hướng EMA.</p>
+          <div id="conditionTable" class="condition-table"></div>
+        </section>
+
+        <section class="panel panel-scroll">
+          <h2>Sự kiện chạm vùng</h2>
+          <div id="eventList" class="event-list"></div>
+        </section>
+      </aside>
+    </main>
+  </div>
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
