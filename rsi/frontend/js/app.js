@@ -6,6 +6,7 @@ const $ = (id) => document.getElementById(id);
 let chart;
 let lastIndicators = null;
 let lastStats = null;
+let lastRecommended = null;
 let lastEvents = [];
 let chartLoadedOnce = false;
 
@@ -34,106 +35,139 @@ function queryParams() {
   return p;
 }
 
-function statsParams() {
-  const p = queryParams();
-  p.set('horizon_bars', $('paramHorizon').value);
-  p.set('min_reversal_pips', $('paramMinPips').value);
-  p.set('cooldown_bars', $('paramCooldown').value);
-  return p;
+function lowSupportEvents(events) {
+  return (events || []).filter((e) => e.zone === 'low');
 }
 
 function buildMarkers(events, show) {
   if (!show || !events?.length) return [];
-  return events.map((e) => {
-    const isLow = e.zone === 'low';
-    const isHigh = e.zone === 'high';
-    return {
-      time: e.time,
-      position: isLow ? 'belowBar' : 'aboveBar',
-      color: e.reversed ? '#22c55e' : isLow ? '#ef4444' : '#f59e0b',
-      shape: isLow ? 'arrowUp' : 'arrowDown',
-      text: isLow ? 'RSI↑' : isHigh ? 'RSI↓' : '50',
-    };
-  });
+  return lowSupportEvents(events).map((e) => ({
+    time: e.time,
+    position: 'belowBar',
+    color: e.reversed ? '#22c55e' : '#3b82f6',
+    shape: 'arrowUp',
+    text: 'Long',
+  }));
 }
 
-function renderReportSummary(stats) {
-  const zones = stats?.zones || {};
-  const low = zones.low || {};
-  const high = zones.high || {};
-  const cfg = stats?.config || {};
-  $('reportSummary').innerHTML = `
+function renderRecommended(rec) {
+  const el = $('recommendedContent');
+  if (!el || !rec) return;
+  const setup = rec.setup || {};
+  const perf = rec.performance || {};
+  const notes = (setup.notes || []).map((n) => `<li>${n}</li>`).join('');
+  el.innerHTML = `
+    <div class="recommended-hero">
+      <div class="recommended-title">${setup.label || '—'}</div>
+      <div class="recommended-metrics">
+        <div class="metric"><span class="metric-val">${perf.expectancy_r ?? 0}R</span><span class="metric-lbl">Expectancy</span></div>
+        <div class="metric"><span class="metric-val">${perf.profit_factor ?? 0}</span><span class="metric-lbl">Profit factor</span></div>
+        <div class="metric"><span class="metric-val">${perf.win_rate ?? 0}%</span><span class="metric-lbl">Win rate</span></div>
+        <div class="metric"><span class="metric-val">${perf.trades ?? 0}</span><span class="metric-lbl">Lệnh</span></div>
+        <div class="metric"><span class="metric-val">+${perf.total_pips ?? 0}</span><span class="metric-lbl">Tổng pip</span></div>
+      </div>
+      <ul class="recommended-rules">${notes}</ul>
+      <div class="recommended-params mono">
+        SL ${setup.stop_loss_pips} pip · TP ${setup.take_profit_r}R · Horizon ${setup.max_bars} nến H1 · Spread ${setup.spread_pips} pip
+      </div>
+    </div>`;
+}
+
+function renderRejectedTable(rec) {
+  const tbody = $('rejectedTable')?.querySelector('tbody');
+  if (!tbody || !rec) return;
+  const skipped = (rec.skipped || []).map((s) => `
+    <tr class="rejected-row">
+      <td>${s.id}</td>
+      <td>—</td>
+      <td>—</td>
+      <td>—</td>
+      <td class="note">${s.reason}</td>
+    </tr>`);
+  const alts = (rec.rejected_alternatives || []).map(({ label, result: r }) => `
+    <tr class="rejected-row">
+      <td>${label}</td>
+      <td>${r?.trades ?? 0}</td>
+      <td>${r?.expectancy_r ?? 0}R</td>
+      <td>${r?.profit_factor ?? '—'}</td>
+      <td class="note">Expectancy ${(r?.expectancy_r ?? 0) <= 0 ? '≤ 0' : 'thấp'} — không dùng</td>
+    </tr>`);
+  tbody.innerHTML = [...alts, ...skipped].join('');
+}
+
+function renderWalkForwardTable(wf) {
+  const tbody = $('walkForwardTable')?.querySelector('tbody');
+  const verdict = $('walkForwardVerdict');
+  if (!tbody || !wf) return;
+  tbody.innerHTML = ['train', 'test'].map((key) => {
+    const p = wf[key];
+    if (!p?.valid) {
+      return `<tr><td>${key === 'train' ? 'Train' : 'Test'}</td><td colspan="5">Không đủ dữ liệu</td></tr>`;
+    }
+    return `
+      <tr>
+        <td><strong>${key === 'train' ? 'Train' : 'Test'}</strong></td>
+        <td>${p.trades ?? 0}</td>
+        <td class="rate">${p.win_rate ?? 0}%</td>
+        <td class="rate">${p.expectancy_r ?? 0}R</td>
+        <td>${p.profit_factor ?? '—'}</td>
+        <td class="mono">${p.total_pips >= 0 ? '+' : ''}${p.total_pips ?? 0}</td>
+      </tr>`;
+  }).join('');
+  if (verdict && wf.comparison) {
+    const c = wf.comparison;
+    const ok = c.stable ? 'Edge giữ được ở giai đoạn test' : 'Cần theo dõi thêm';
+    verdict.textContent =
+      `Δ Expectancy ${c.expectancy_r_delta >= 0 ? '+' : ''}${c.expectancy_r_delta}R · Δ Win% ${c.win_rate_delta >= 0 ? '+' : ''}${c.win_rate_delta}% — ${ok}`;
+  }
+}
+
+function renderReportSummary(stats, rangeText) {
+  const low = stats?.zones?.low || {};
+  const el = $('reportSummary');
+  if (!el) return;
+  el.innerHTML = `
     <div class="summary-card">
       <div class="summary-label">Khoảng phân tích</div>
-      <div class="summary-value" id="reportRange">—</div>
+      <div class="summary-value">${rangeText || '—'}</div>
     </div>
     <div class="summary-card accent-red">
-      <div class="summary-label">Vùng hỗ trợ RSI</div>
+      <div class="summary-label">Vùng hỗ trợ — chạm vùng</div>
       <div class="summary-value">${low.reversal_rate ?? 0}% đảo chiều</div>
-      <div class="summary-sub">${low.touches ?? 0} lần chạm · TB ${low.avg_move_pips ?? 0} pip</div>
-    </div>
-    <div class="summary-card accent-green">
-      <div class="summary-label">Vùng kháng cự RSI</div>
-      <div class="summary-value">${high.reversal_rate ?? 0}% đảo chiều</div>
-      <div class="summary-sub">${high.touches ?? 0} lần chạm · TB ${high.avg_move_pips ?? 0} pip</div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-label">Tiêu chí đo</div>
-      <div class="summary-value">${cfg.horizon_bars ?? 24} nến H1</div>
-      <div class="summary-sub">≥ ${cfg.min_reversal_pips ?? 20} pip · cooldown ${cfg.cooldown_bars ?? 12}</div>
-    </div>
-  `;
+      <div class="summary-sub">${low.touches ?? 0} lần chạm · TB MAE ${low.avg_mae_pips ?? 0} · MFE ${low.avg_mfe_pips ?? 0}</div>
+    </div>`;
 }
 
-function renderZoneTable(stats) {
-  const tbody = $('zoneTable').querySelector('tbody');
-  const zones = stats?.zones || {};
-  const rows = ['low', 'mid', 'high'].map((key) => {
-    const z = zones[key];
-    if (!z) return '';
-    const band = `${z.band?.[0] ?? ''}–${z.band?.[1] ?? ''}`;
-    return `
-      <tr class="zone-row-${key}">
-        <td><strong>${z.label}</strong></td>
-        <td>${band}</td>
-        <td>${z.touches}</td>
-        <td>${z.reversals ?? '—'}</td>
-        <td class="rate">${key === 'mid' ? '—' : `${z.reversal_rate}%`}</td>
-        <td>${z.avg_move_pips ?? '—'}</td>
-        <td>${z.with_ema_alignment ?? '—'}</td>
-        <td class="rate">${key === 'mid' ? '—' : `${z.aligned_reversal_rate}%`}</td>
-        <td>${z.exit_signals ?? '—'}</td>
-      </tr>`;
-  });
-  tbody.innerHTML = rows.join('');
-}
-
-function renderConditionTable(rows) {
-  const tbody = $('conditionTable').querySelector('tbody');
-  tbody.innerHTML = (rows || []).map((r) => `
+function renderMaeMfeTable(maeMfe) {
+  const tbody = $('maeMfeTable')?.querySelector('tbody');
+  if (!tbody || !maeMfe) return;
+  const m = maeMfe.touch || {};
+  const surv = m.sl_survival || {};
+  tbody.innerHTML = `
     <tr>
-      <td>${r.condition}</td>
-      <td>${r.samples}</td>
-      <td class="rate">${r.reversal_rate}%</td>
-      <td class="note">${r.note}</td>
-    </tr>
-  `).join('');
+      <td><strong>Chạm vùng (long)</strong></td>
+      <td>${m.samples ?? 0}</td>
+      <td class="mono">${m.avg_mae ?? 0}</td>
+      <td class="mono">${m.avg_mfe ?? 0}</td>
+      <td class="rate">${surv['20'] ?? 0}%</td>
+      <td class="rate">${surv['25'] ?? 0}%</td>
+      <td class="rate">${surv['30'] ?? 0}%</td>
+    </tr>`;
 }
 
 function renderEventTable(events) {
-  const tbody = $('eventTable').querySelector('tbody');
-  lastEvents = events || [];
+  const tbody = $('eventTable')?.querySelector('tbody');
+  if (!tbody) return;
+  lastEvents = lowSupportEvents(events);
   tbody.innerHTML = lastEvents.map((e, i) => `
     <tr class="event-row" data-idx="${i}">
       <td class="mono">${fmtTime(e.time)}</td>
-      <td><span class="tag zone-${e.zone}">${e.zone === 'low' ? 'Hỗ trợ' : e.zone === 'high' ? 'Kháng cự' : 'Vùng 50'}</span></td>
       <td class="mono">${e.rsi}</td>
       <td class="mono">${e.close.toFixed(5)}</td>
       <td><span class="tag ${e.reversed ? 'ok' : 'no'}">${e.reversed ? 'Có' : 'Không'}</span></td>
-      <td class="mono">${e.move_pips ?? '—'}</td>
-      <td>${e.ema_aligned ? 'Cùng chiều' : '—'}</td>
+      <td class="mono">${e.mae_pips ?? '—'}</td>
+      <td class="mono">${e.mfe_pips ?? '—'}</td>
       <td>${e.h4_trend_up ? 'Tăng' : 'Giảm'}</td>
-      <td>${e.exit_signal ? '✓' : '—'}</td>
     </tr>
   `).join('');
 
@@ -147,14 +181,15 @@ function renderEventTable(events) {
   });
 }
 
-function renderReport(stats, rangeText) {
+function renderReport(stats, recommended, rangeText) {
   lastStats = stats;
-  renderReportSummary(stats);
-  renderZoneTable(stats);
-  renderConditionTable(stats.conditions);
-  renderEventTable(stats.events);
-  const rangeEl = $('reportSummary').querySelector('#reportRange');
-  if (rangeEl) rangeEl.textContent = rangeText;
+  lastRecommended = recommended;
+  renderRecommended(recommended);
+  renderWalkForwardTable(recommended?.walk_forward);
+  renderRejectedTable(recommended);
+  renderReportSummary(stats, rangeText);
+  renderMaeMfeTable(stats?.mae_mfe);
+  renderEventTable(stats?.events);
 }
 
 async function loadChart({ fit = false } = {}) {
@@ -162,34 +197,34 @@ async function loadChart({ fit = false } = {}) {
   lastIndicators = chartData.indicators;
   chart.setData(chartData, { fit: fit || !chartLoadedOnce });
   chartLoadedOnce = true;
-
-  if (lastStats) {
-    chart.setMarkers(buildMarkers(lastStats.events, $('toggleMarkers').checked));
-  }
-
+  chart.setMarkers(buildMarkers(lastStats?.events, $('toggleMarkers').checked));
   chart.applyEmaVisibility($('toggleEma50').checked, $('toggleEma200').checked, lastIndicators);
-
   return chartData;
 }
 
 async function loadStats() {
-  const stats = await fetchJson(`/api/zone-stats?${statsParams()}`);
+  const p = queryParams();
+  p.set('split_date', $('paramSplitDate').value);
+  const [stats, recommended] = await Promise.all([
+    fetchJson(`/api/zone-stats?${p}`),
+    fetchJson(`/api/recommended-setup?${p}`),
+  ]);
   lastStats = stats;
+  lastRecommended = recommended;
   chart?.setMarkers(buildMarkers(stats.events, $('toggleMarkers').checked));
-  return stats;
+  return { stats, recommended };
 }
 
 async function loadAll({ fitChart = false } = {}) {
   $('dataRange').textContent = 'Đang tải…';
-  const [chartData, stats] = await Promise.all([
+  const [chartData, { stats, recommended }] = await Promise.all([
     loadChart({ fit: fitChart }),
     loadStats(),
   ]);
-
   const rangeText =
     `${chartData.count.toLocaleString()} nến · ${fmtDate(chartData.range?.start)} → ${fmtDate(chartData.range?.end)}`;
   $('dataRange').textContent = rangeText;
-  renderReport(stats, rangeText);
+  renderReport(stats, recommended, rangeText);
 }
 
 function switchTab(tab) {
@@ -202,9 +237,7 @@ function switchTab(tab) {
   $('viewChart').classList.toggle('active', tab === 'chart');
   $('viewReport').classList.toggle('hidden', tab !== 'report');
   $('viewReport').classList.toggle('active', tab === 'report');
-  if (tab === 'chart') {
-    requestAnimationFrame(() => chart?.resize());
-  }
+  if (tab === 'chart') requestAnimationFrame(() => chart?.resize());
 }
 
 async function init() {
@@ -243,10 +276,16 @@ async function init() {
   }
 
   $('btnLoad').addEventListener('click', () => loadAll({ fitChart: true }).catch(alert));
-  $('btnRefreshStats').addEventListener('click', () => loadStats().then((stats) => {
-    const rangeText = $('dataRange').textContent;
-    renderReport(stats, rangeText);
+  $('btnRefreshStats').addEventListener('click', () => loadStats().then(({ stats, recommended }) => {
+    renderReport(stats, recommended, $('dataRange').textContent);
   }).catch(alert));
+
+  $('paramSplitDate')?.addEventListener('change', () => {
+    if ($('viewReport').classList.contains('active')) {
+      loadStats().then(({ stats, recommended }) =>
+        renderReport(stats, recommended, $('dataRange').textContent)).catch(alert);
+    }
+  });
 
   $('btnZoomIn').addEventListener('click', () => chart.zoomIn());
   $('btnZoomOut').addEventListener('click', () => chart.zoomOut());

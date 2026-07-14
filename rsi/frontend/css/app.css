@@ -308,6 +308,32 @@ body.resizing-chart-split { cursor: row-resize; user-select: none; }
 .tag.zone-low { background: rgba(239,68,68,.15); color: #fca5a5; }
 .tag.zone-high { background: rgba(34,197,94,.15); color: #86efac; }
 
+.recommended-panel { border-color: rgba(34,197,94,.4); }
+.recommended-hero { display: flex; flex-direction: column; gap: 12px; }
+.recommended-title { font-size: 1.1rem; font-weight: 700; color: #86efac; }
+.recommended-metrics {
+  display: flex; flex-wrap: wrap; gap: 16px;
+}
+.recommended-metrics .metric { min-width: 80px; }
+.recommended-metrics .metric-val {
+  display: block; font-size: 1.3rem; font-weight: 700;
+  font-family: "JetBrains Mono", monospace;
+}
+.recommended-metrics .metric-lbl { font-size: 0.72rem; color: var(--muted); }
+.recommended-rules { margin: 0; padding-left: 1.2rem; color: var(--muted); font-size: 0.85rem; }
+.recommended-rules li { margin-bottom: 4px; }
+.recommended-params { font-size: 0.78rem; color: var(--muted); }
+.report-details {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+}
+.report-details summary { cursor: pointer; font-weight: 600; font-size: 0.88rem; }
+.rejected-row td { color: var(--muted); }
+.verdict { margin-top: 8px; }
+
 @media (max-width: 1000px) {
   .report-grid { grid-template-columns: 1fr; }
   .param-grid { grid-template-columns: 1fr 1fr; }

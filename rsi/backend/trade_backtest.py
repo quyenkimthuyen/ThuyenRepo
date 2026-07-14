@@ -1,0 +1,192 @@
+"""Simulate SL/TP trades from RSI zone entries."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Literal
+
+import numpy as np
+import pandas as pd
+
+
+@dataclass
+class TradeConfig:
+    sl_mode: Literal["fixed", "atr"] = "fixed"
+    stop_loss_pips: float = 20.0
+    stop_loss_atr_mult: float = 1.0
+    take_profit_r: float = 2.0
+    max_bars: int = 48
+    spread_pips: float = 1.0
+
+
+def _sl_pips(df: pd.DataFrame, entry_i: int, cfg: TradeConfig) -> float:
+    if cfg.sl_mode == "atr":
+        atr = float(df.iloc[entry_i].get("atr14", np.nan))
+        if np.isnan(atr) or atr <= 0:
+            return cfg.stop_loss_pips
+        return atr * 10_000 * cfg.stop_loss_atr_mult
+    return cfg.stop_loss_pips
+
+
+def simulate_trade(
+    df: pd.DataFrame,
+    entry_i: int,
+    direction: Literal["long", "short"],
+    cfg: TradeConfig,
+) -> dict[str, Any]:
+    """Bar-by-bar SL/TP simulation from entry close."""
+    if entry_i >= len(df) - 1:
+        return {"result": "skip", "r_multiple": 0.0, "pnl_pips": 0.0, "bars_held": 0, "sl_pips": 0.0}
+
+    entry = float(df.iloc[entry_i]["close"])
+    sl_pips = _sl_pips(df, entry_i, cfg)
+    sl_dist = sl_pips / 10_000
+    tp_dist = sl_dist * cfg.take_profit_r
+    spread = cfg.spread_pips / 10_000
+
+    if direction == "long":
+        sl = entry - sl_dist
+        tp = entry + tp_dist
+    else:
+        sl = entry + sl_dist
+        tp = entry - tp_dist
+
+    end = min(len(df), entry_i + 1 + cfg.max_bars)
+    for j in range(entry_i + 1, end):
+        row = df.iloc[j]
+        high, low = float(row["high"]), float(row["low"])
+        if direction == "long":
+            hit_sl = low <= sl
+            hit_tp = high >= tp
+        else:
+            hit_sl = high >= sl
+            hit_tp = low <= tp
+
+        if hit_sl and hit_tp:
+            return _trade_result("loss", -1.0, -sl_pips, sl_pips, j - entry_i, "both_same_bar")
+        if hit_sl:
+            return _trade_result("loss", -1.0, -sl_pips, sl_pips, j - entry_i, "sl")
+        if hit_tp:
+            win_pips = sl_pips * cfg.take_profit_r
+            return _trade_result("win", cfg.take_profit_r, win_pips, sl_pips, j - entry_i, "tp")
+
+    exit_close = float(df.iloc[end - 1]["close"])
+    if direction == "long":
+        pnl = (exit_close - entry - spread) * 10_000
+    else:
+        pnl = (entry - exit_close - spread) * 10_000
+    r_mult = pnl / sl_pips if sl_pips else 0.0
+    outcome = "win" if pnl > 0 else "loss" if pnl < 0 else "breakeven"
+    return _trade_result(outcome, round(r_mult, 2), round(pnl, 1), sl_pips, end - 1 - entry_i, "timeout")
+
+
+def _trade_result(
+    outcome: str,
+    r_mult: float,
+    pnl_pips: float,
+    sl_pips: float,
+    bars: int,
+    exit_reason: str,
+) -> dict[str, Any]:
+    return {
+        "result": outcome,
+        "r_multiple": round(r_mult, 2),
+        "pnl_pips": round(pnl_pips, 1),
+        "bars_held": bars,
+        "exit_reason": exit_reason,
+        "sl_pips": round(sl_pips, 1),
+    }
+
+
+def backtest_entries(
+    df: pd.DataFrame,
+    events: list[dict[str, Any]],
+    cfg: TradeConfig,
+    entry_mode: Literal["touch", "exit"] = "exit",
+) -> dict[str, Any]:
+    """Run SL/TP backtest on zone events."""
+    trades: list[dict[str, Any]] = []
+
+    for ev in events:
+        if ev["zone"] not in ("low", "high"):
+            continue
+        if entry_mode == "exit" and not ev.get("exit_signal"):
+            continue
+
+        if entry_mode == "exit":
+            entry_i = _find_bar_index(df, ev.get("exit_time"))
+        else:
+            entry_i = _find_bar_index(df, ev.get("time"))
+        if entry_i is None:
+            continue
+
+        direction = "long" if ev["zone"] == "low" else "short"
+        sim = simulate_trade(df, entry_i, direction, cfg)
+        sim["zone"] = ev["zone"]
+        sim["entry_mode"] = entry_mode
+        sim["time"] = ev.get("exit_time") if entry_mode == "exit" else ev.get("time")
+        trades.append(sim)
+
+    return _summarize_trades(trades, cfg)
+
+
+def _find_bar_index(df: pd.DataFrame, unix_sec: int | None) -> int | None:
+    if unix_sec is None:
+        return None
+    ts = pd.Timestamp(unix_sec, unit="s", tz="UTC")
+    loc = df.index.get_indexer([ts], method="nearest")[0]
+    if loc < 0:
+        return None
+    return int(loc)
+
+
+def _summarize_trades(trades: list[dict[str, Any]], cfg: TradeConfig) -> dict[str, Any]:
+    if not trades:
+        return {
+            "trades": 0,
+            "wins": 0,
+            "losses": 0,
+            "win_rate": 0.0,
+            "avg_r": 0.0,
+            "expectancy_r": 0.0,
+            "total_pips": 0.0,
+            "avg_pips": 0.0,
+            "config": {
+                "sl_mode": cfg.sl_mode,
+                "stop_loss_pips": cfg.stop_loss_pips,
+                "stop_loss_atr_mult": cfg.stop_loss_atr_mult,
+                "take_profit_r": cfg.take_profit_r,
+                "max_bars": cfg.max_bars,
+                "spread_pips": cfg.spread_pips,
+            },
+        }
+
+    wins = [t for t in trades if t["result"] == "win"]
+    losses = [t for t in trades if t["result"] == "loss"]
+    r_vals = [t["r_multiple"] for t in trades]
+    pnl_vals = [t["pnl_pips"] for t in trades]
+
+    return {
+        "trades": len(trades),
+        "wins": len(wins),
+        "losses": len(losses),
+        "win_rate": round(len(wins) / len(trades) * 100, 1),
+        "avg_r": round(float(np.mean(r_vals)), 2),
+        "expectancy_r": round(float(np.mean(r_vals)), 2),
+        "total_pips": round(float(np.sum(pnl_vals)), 1),
+        "avg_pips": round(float(np.mean(pnl_vals)), 1),
+        "profit_factor": round(
+            abs(sum(t["pnl_pips"] for t in wins)) / abs(sum(t["pnl_pips"] for t in losses))
+            if losses and sum(t["pnl_pips"] for t in losses) != 0
+            else 0.0,
+            2,
+        ),
+        "config": {
+            "sl_mode": cfg.sl_mode,
+            "stop_loss_pips": cfg.stop_loss_pips,
+            "stop_loss_atr_mult": cfg.stop_loss_atr_mult,
+            "take_profit_r": cfg.take_profit_r,
+            "max_bars": cfg.max_bars,
+            "spread_pips": cfg.spread_pips,
+        },
+    }

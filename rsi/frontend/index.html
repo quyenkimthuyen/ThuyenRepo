@@ -25,7 +25,7 @@
 
     <nav class="main-tabs" role="tablist" aria-label="Chế độ xem">
       <button type="button" class="main-tab active" data-tab="chart" role="tab" aria-selected="true">Biểu đồ</button>
-      <button type="button" class="main-tab" data-tab="report" role="tab" aria-selected="false">Báo cáo thống kê</button>
+      <button type="button" class="main-tab" data-tab="report" role="tab" aria-selected="false">Setup trade</button>
     </nav>
 
     <main class="content">
@@ -43,7 +43,7 @@
           <div class="toolbar-toggles">
             <label><input type="checkbox" id="toggleEma50" checked> EMA 50</label>
             <label><input type="checkbox" id="toggleEma200" checked> EMA 200</label>
-            <label><input type="checkbox" id="toggleMarkers" checked> Đánh dấu vùng RSI</label>
+            <label><input type="checkbox" id="toggleMarkers" checked> Đánh dấu long hỗ trợ</label>
           </div>
           <span id="crosshairInfo" class="crosshair-info">Kéo biểu đồ giá để pan · cuộn chuột để zoom</span>
         </div>
@@ -69,86 +69,99 @@
 
       <section id="viewReport" class="view hidden" role="tabpanel">
         <div class="report-header">
-          <h2>Báo cáo thống kê vùng RSI H4</h2>
-          <p class="hint">Phân tích xác suất đảo chiều giá khi RSI H4 chạm các vùng hỗ trợ / kháng cự quan trọng.</p>
-          <div class="param-grid report-params">
-            <label>Horizon (nến H1)
-              <input type="number" id="paramHorizon" value="24" min="4" max="168">
-            </label>
-            <label>Min đảo chiều (pip)
-              <input type="number" id="paramMinPips" value="20" min="5" max="100">
-            </label>
-            <label>Cooldown (nến)
-              <input type="number" id="paramCooldown" value="12" min="1" max="72">
+          <h2>Setup trade — kết quả tối ưu</h2>
+          <p class="hint">Đã thử toàn bộ phương án (entry chạm/thoát, long/short, SL/TP, filter H4/EMA, vùng 50). Chỉ giữ setup có edge ổn định.</p>
+          <div class="param-grid report-params compact">
+            <label>Split walk-forward
+              <input type="date" id="paramSplitDate" value="2025-01-01">
             </label>
           </div>
           <button type="button" class="btn primary" id="btnRefreshStats">Cập nhật báo cáo</button>
         </div>
 
-        <div id="reportSummary" class="report-summary"></div>
-
-        <div class="report-grid">
-          <section class="report-panel">
-            <h3>Bảng vùng RSI</h3>
-            <div class="table-wrap">
-              <table class="report-table" id="zoneTable">
-                <thead>
-                  <tr>
-                    <th>Vùng</th>
-                    <th>RSI</th>
-                    <th>Chạm</th>
-                    <th>Đảo chiều</th>
-                    <th>% Đảo</th>
-                    <th>TB pip</th>
-                    <th>EMA OK</th>
-                    <th>% Đảo (EMA)</th>
-                    <th>Rời vùng</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </section>
-
-          <section class="report-panel">
-            <h3>Điều kiện tăng xác suất đảo chiều</h3>
-            <div class="table-wrap">
-              <table class="report-table" id="conditionTable">
-                <thead>
-                  <tr>
-                    <th>Điều kiện</th>
-                    <th>Mẫu</th>
-                    <th>% Đảo chiều</th>
-                    <th>Ghi chú</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
-            </div>
-          </section>
-        </div>
+        <section id="recommendedPanel" class="report-panel full recommended-panel">
+          <h3>Setup khuyến nghị</h3>
+          <div id="recommendedContent"></div>
+        </section>
 
         <section class="report-panel full">
-          <h3>Danh sách sự kiện chạm vùng</h3>
-          <div class="table-wrap tall">
-            <table class="report-table" id="eventTable">
+          <h3>Walk-forward — Setup khuyến nghị</h3>
+          <div class="table-wrap">
+            <table class="report-table" id="walkForwardTable">
               <thead>
                 <tr>
-                  <th>Thời gian</th>
-                  <th>Vùng</th>
-                  <th>RSI H4</th>
-                  <th>Close</th>
-                  <th>Đảo chiều</th>
-                  <th>Pip</th>
-                  <th>EMA H1</th>
-                  <th>H4 trend</th>
-                  <th>Rời vùng</th>
+                  <th>Giai đoạn</th>
+                  <th>Lệnh</th>
+                  <th>Win %</th>
+                  <th>Expectancy</th>
+                  <th>PF</th>
+                  <th>Tổng pip</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p id="walkForwardVerdict" class="hint verdict"></p>
+        </section>
+
+        <section class="report-panel full">
+          <h3>Phương án loại bỏ</h3>
+          <div class="table-wrap">
+            <table class="report-table" id="rejectedTable">
+              <thead>
+                <tr>
+                  <th>Phương án</th>
+                  <th>Lệnh</th>
+                  <th>Expectancy</th>
+                  <th>PF</th>
+                  <th>Lý do</th>
                 </tr>
               </thead>
               <tbody></tbody>
             </table>
           </div>
         </section>
+
+        <details class="report-details">
+          <summary>Chi tiết thống kê vùng hỗ trợ (long)</summary>
+          <div id="reportSummary" class="report-summary"></div>
+          <div class="table-wrap">
+            <table class="report-table" id="maeMfeTable">
+              <thead>
+                <tr>
+                  <th>Entry</th>
+                  <th>Mẫu</th>
+                  <th>TB MAE</th>
+                  <th>TB MFE</th>
+                  <th>SL 20</th>
+                  <th>SL 25</th>
+                  <th>SL 30</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </details>
+
+        <details class="report-details">
+          <summary>Sự kiện long hỗ trợ RSI</summary>
+          <div class="table-wrap tall">
+            <table class="report-table" id="eventTable">
+              <thead>
+                <tr>
+                  <th>Thời gian</th>
+                  <th>RSI H4</th>
+                  <th>Close</th>
+                  <th>Đảo chiều</th>
+                  <th>MAE</th>
+                  <th>MFE</th>
+                  <th>H4 trend</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </details>
       </section>
     </main>
   </div>

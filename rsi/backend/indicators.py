@@ -63,4 +63,14 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     out["rsi14_h4"] = add_h4_rsi(out, 14)
     out["h4_trend_up"] = add_h4_trend(out)
     out["trend_up"] = out["ema50"] > out["ema200"]
+    prev_close = out["close"].shift(1)
+    tr = pd.concat(
+        [
+            out["high"] - out["low"],
+            (out["high"] - prev_close).abs(),
+            (out["low"] - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    out["atr14"] = tr.ewm(alpha=1 / 14, min_periods=14, adjust=False).mean()
     return out
