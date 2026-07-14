@@ -6,7 +6,7 @@ from typing import Any, Literal
 
 import pandas as pd
 
-from .trade_backtest import TradeConfig, simulate_trade
+from .trade_backtest import TradeConfig, build_trade_history, simulate_trade
 from .zone_stats import ZoneConfig, _bar_timestamp, analyze_zone_touches
 
 
@@ -219,11 +219,21 @@ def build_recommended_report(df: pd.DataFrame, cfg: ZoneConfig | None = None, sp
                        stop_loss_pips=20, take_profit_r=2.0, max_bars=24),
     ]
 
+    trade_cfg = TradeConfig(
+        sl_mode="fixed",
+        stop_loss_pips=rec["stop_loss_pips"],
+        take_profit_r=rec["take_profit_r"],
+        max_bars=rec["max_bars"],
+        spread_pips=rec["spread_pips"],
+    )
+    trade_history = build_trade_history(df, events, trade_cfg, zone="low", entry_mode="touch")
+
     return {
         "setup": rec,
         "skipped": SKIP_SETUPS,
         "performance": full,
         "walk_forward": wf,
+        "trade_history": trade_history,
         "rejected_alternatives": [
             {"label": "Short kháng cự (touch)", "result": alternatives[0]},
             {"label": "Long thoát vùng", "result": alternatives[1]},

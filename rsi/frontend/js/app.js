@@ -7,7 +7,8 @@ let chart;
 let lastIndicators = null;
 let lastStats = null;
 let lastRecommended = null;
-let lastEvents = [];
+let lastTrades = [];
+let selectedTradeId = null;
 let chartLoadedOnce = false;
 
 function fmtTime(unixSec) {
@@ -35,19 +36,109 @@ function queryParams() {
   return p;
 }
 
-function lowSupportEvents(events) {
-  return (events || []).filter((e) => e.zone === 'low');
+function resultLabel(t) {
+  if (t.result === 'win') return 'Thắng';
+  if (t.result === 'loss') return 'Thua';
+  return t.exit_reason || t.result;
 }
 
-function buildMarkers(events, show) {
-  if (!show || !events?.length) return [];
-  return lowSupportEvents(events).map((e) => ({
-    time: e.time,
-    position: 'belowBar',
-    color: e.reversed ? '#22c55e' : '#3b82f6',
-    shape: 'arrowUp',
-    text: 'Long',
-  }));
+function resultTagClass(t) {
+  if (t.result === 'win') return 'ok';
+  if (t.result === 'loss') return 'no';
+  return '';
+}
+
+function tradeRowHtml(t, compact = false) {
+  const pip = t.pnl_pips >= 0 ? `+${t.pnl_pips}` : `${t.pnl_pips}`;
+  const selected = t.id === selectedTradeId ? ' selected' : '';
+  if (compact) {
+    return `
+      <tr class="trade-row${selected}" data-trade-id="${t.id}">
+        <td class="mono">${t.id}</td>
+        <td class="mono">${fmtTime(t.entry_time).slice(0, 10)}</td>
+        <td><span class="tag ${resultTagClass(t)}">${resultLabel(t)}</span></td>
+        <td class="mono">${pip}</td>
+        <td class="mono">${t.r_multiple}R</td>
+      </tr>`;
+  }
+  return `
+    <tr class="trade-row${selected}" data-trade-id="${t.id}">
+      <td class="mono">${t.id}</td>
+      <td class="mono">${fmtTime(t.entry_time)}</td>
+      <td class="mono">${fmtTime(t.exit_time)}</td>
+      <td class="mono">${t.entry_price}</td>
+      <td class="mono">${t.exit_price}</td>
+      <td class="mono">${t.sl_price}</td>
+      <td class="mono">${t.tp_price}</td>
+      <td><span class="tag ${resultTagClass(t)}">${resultLabel(t)} (${t.exit_reason})</span></td>
+      <td class="mono">${pip}</td>
+      <td class="mono">${t.r_multiple}R</td>
+      <td class="mono">${t.bars_held}</td>
+    </tr>`;
+}
+
+function bindTradeRows(root) {
+  root.querySelectorAll('.trade-row').forEach((row) => {
+    row.addEventListener('click', () => {
+      const id = Number(row.dataset.tradeId);
+      focusTrade(id);
+    });
+  });
+}
+
+function focusTrade(id) {
+  const trade = lastTrades.find((t) => t.id === id);
+  if (!trade) return;
+  selectedTradeId = id;
+  switchTab('chart');
+  if ($('toggleTrades')?.checked) {
+    chart.setTradeMarkers(lastTrades, { show: true });
+  }
+  if ($('toggleSlTp')?.checked) {
+    chart.highlightTrade(trade);
+  } else {
+    chart.focusTradeRange(trade.entry_time, trade.exit_time);
+  }
+  renderTradeTables();
+  const el = $('crosshairInfo');
+  if (el) {
+    el.textContent =
+      `Lệnh #${trade.id} · ${resultLabel(trade)} ${trade.pnl_pips >= 0 ? '+' : ''}${trade.pnl_pips} pip · ` +
+      `Entry ${trade.entry_price} → ${trade.exit_price} · SL ${trade.sl_price} TP ${trade.tp_price}`;
+  }
+}
+
+function renderTradeTables() {
+  const compactBody = $('tradeHistoryTable')?.querySelector('tbody');
+  const reportBody = $('tradeReportTable')?.querySelector('tbody');
+  const countEl = $('tradesCount');
+
+  if (countEl) {
+    const wins = lastTrades.filter((t) => t.result === 'win').length;
+    countEl.textContent = `${lastTrades.length} lệnh · ${wins} thắng`;
+  }
+  if (compactBody) {
+    compactBody.innerHTML = lastTrades.map((t) => tradeRowHtml(t, true)).join('');
+    bindTradeRows(compactBody.parentElement);
+  }
+  if (reportBody) {
+    reportBody.innerHTML = lastTrades.map((t) => tradeRowHtml(t, false)).join('');
+    bindTradeRows(reportBody.parentElement);
+  }
+}
+
+function applyTradeOverlay() {
+  if ($('toggleTrades')?.checked) {
+    chart.setTradeMarkers(lastTrades, { show: true });
+  } else {
+    chart.setTradeMarkers([], { show: false });
+  }
+  if ($('toggleSlTp')?.checked && selectedTradeId) {
+    const trade = lastTrades.find((t) => t.id === selectedTradeId);
+    chart.highlightTrade(trade || null);
+  } else {
+    chart.highlightTrade(null);
+  }
 }
 
 function renderRecommended(rec) {
@@ -155,41 +246,17 @@ function renderMaeMfeTable(maeMfe) {
     </tr>`;
 }
 
-function renderEventTable(events) {
-  const tbody = $('eventTable')?.querySelector('tbody');
-  if (!tbody) return;
-  lastEvents = lowSupportEvents(events);
-  tbody.innerHTML = lastEvents.map((e, i) => `
-    <tr class="event-row" data-idx="${i}">
-      <td class="mono">${fmtTime(e.time)}</td>
-      <td class="mono">${e.rsi}</td>
-      <td class="mono">${e.close.toFixed(5)}</td>
-      <td><span class="tag ${e.reversed ? 'ok' : 'no'}">${e.reversed ? 'Có' : 'Không'}</span></td>
-      <td class="mono">${e.mae_pips ?? '—'}</td>
-      <td class="mono">${e.mfe_pips ?? '—'}</td>
-      <td>${e.h4_trend_up ? 'Tăng' : 'Giảm'}</td>
-    </tr>
-  `).join('');
-
-  tbody.querySelectorAll('.event-row').forEach((row) => {
-    row.addEventListener('click', () => {
-      const ev = lastEvents[Number(row.dataset.idx)];
-      if (!ev) return;
-      switchTab('chart');
-      chart.focusTime(ev.time);
-    });
-  });
-}
-
 function renderReport(stats, recommended, rangeText) {
   lastStats = stats;
   lastRecommended = recommended;
+  lastTrades = recommended?.trade_history || [];
   renderRecommended(recommended);
   renderWalkForwardTable(recommended?.walk_forward);
   renderRejectedTable(recommended);
   renderReportSummary(stats, rangeText);
   renderMaeMfeTable(stats?.mae_mfe);
-  renderEventTable(stats?.events);
+  renderTradeTables();
+  applyTradeOverlay();
 }
 
 async function loadChart({ fit = false } = {}) {
@@ -197,7 +264,7 @@ async function loadChart({ fit = false } = {}) {
   lastIndicators = chartData.indicators;
   chart.setData(chartData, { fit: fit || !chartLoadedOnce });
   chartLoadedOnce = true;
-  chart.setMarkers(buildMarkers(lastStats?.events, $('toggleMarkers').checked));
+  applyTradeOverlay();
   chart.applyEmaVisibility($('toggleEma50').checked, $('toggleEma200').checked, lastIndicators);
   return chartData;
 }
@@ -211,7 +278,8 @@ async function loadStats() {
   ]);
   lastStats = stats;
   lastRecommended = recommended;
-  chart?.setMarkers(buildMarkers(stats.events, $('toggleMarkers').checked));
+  lastTrades = recommended?.trade_history || [];
+  applyTradeOverlay();
   return { stats, recommended };
 }
 
@@ -298,9 +366,8 @@ async function init() {
   $('toggleEma200').addEventListener('change', () => {
     chart.applyEmaVisibility($('toggleEma50').checked, $('toggleEma200').checked, lastIndicators);
   });
-  $('toggleMarkers').addEventListener('change', () => {
-    chart.setMarkers(buildMarkers(lastStats?.events, $('toggleMarkers').checked));
-  });
+  $('toggleTrades')?.addEventListener('change', () => applyTradeOverlay());
+  $('toggleSlTp')?.addEventListener('change', () => applyTradeOverlay());
 
   await loadAll({ fitChart: false });
 }

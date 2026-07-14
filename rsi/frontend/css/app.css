@@ -134,10 +134,54 @@ body {
 .chart-body {
   flex: 1;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   padding: 0 8px 8px;
 }
+
+.chart-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 0;
+}
+
+.chart-layout .chart-body {
+  flex: 1;
+  padding: 0 8px 8px 8px;
+}
+
+.trades-panel {
+  width: 280px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.trades-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.trades-panel-head h3 { font-size: 0.85rem; margin: 0; }
+.trades-count { font-size: 0.75rem; color: var(--muted); font-family: "JetBrains Mono", monospace; }
+.trades-hint { padding: 6px 12px; margin: 0; font-size: 0.72rem; }
+.trades-scroll { flex: 1; overflow-y: auto; max-height: none; }
+
+.report-table.compact { font-size: 0.72rem; }
+.report-table.compact th,
+.report-table.compact td { padding: 4px 6px; }
+
+.trade-row { cursor: pointer; }
+.trade-row:hover { background: rgba(56, 189, 248, 0.08); }
+.trade-row.selected { background: rgba(56, 189, 248, 0.15); }
 
 .chart-wrap {
   flex: 1;
@@ -335,6 +379,8 @@ body.resizing-chart-split { cursor: row-resize; user-select: none; }
 .verdict { margin-top: 8px; }
 
 @media (max-width: 1000px) {
+  .chart-layout { flex-direction: column; }
+  .trades-panel { width: 100%; max-height: 220px; border-left: none; border-top: 1px solid var(--border); }
   .report-grid { grid-template-columns: 1fr; }
   .param-grid { grid-template-columns: 1fr 1fr; }
 }

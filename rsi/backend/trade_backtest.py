@@ -28,6 +28,13 @@ def _sl_pips(df: pd.DataFrame, entry_i: int, cfg: TradeConfig) -> float:
     return cfg.stop_loss_pips
 
 
+def _bar_unix(df: pd.DataFrame, i: int) -> int:
+    row = df.iloc[i]
+    if hasattr(row.name, "timestamp"):
+        return int(row.name.timestamp())
+    return int(row["timestamp"] // 1000)
+
+
 def simulate_trade(
     df: pd.DataFrame,
     entry_i: int,
@@ -36,7 +43,12 @@ def simulate_trade(
 ) -> dict[str, Any]:
     """Bar-by-bar SL/TP simulation from entry close."""
     if entry_i >= len(df) - 1:
-        return {"result": "skip", "r_multiple": 0.0, "pnl_pips": 0.0, "bars_held": 0, "sl_pips": 0.0}
+        return {
+            "result": "skip", "r_multiple": 0.0, "pnl_pips": 0.0, "bars_held": 0,
+            "exit_reason": "skip", "sl_pips": 0.0, "direction": direction,
+            "entry_time": _bar_unix(df, entry_i), "exit_time": _bar_unix(df, entry_i),
+            "entry_price": 0.0, "exit_price": 0.0, "sl_price": 0.0, "tp_price": 0.0,
+        }
 
     entry = float(df.iloc[entry_i]["close"])
     sl_pips = _sl_pips(df, entry_i, cfg)
@@ -63,21 +75,34 @@ def simulate_trade(
             hit_tp = low <= tp
 
         if hit_sl and hit_tp:
-            return _trade_result("loss", -1.0, -sl_pips, sl_pips, j - entry_i, "both_same_bar")
+            return _trade_result(
+                "loss", -1.0, -sl_pips, sl_pips, j - entry_i, "both_same_bar",
+                df, entry_i, j, entry, sl, tp, direction,
+            )
         if hit_sl:
-            return _trade_result("loss", -1.0, -sl_pips, sl_pips, j - entry_i, "sl")
+            return _trade_result(
+                "loss", -1.0, -sl_pips, sl_pips, j - entry_i, "sl",
+                df, entry_i, j, entry, sl, tp, direction, exit_price=sl,
+            )
         if hit_tp:
             win_pips = sl_pips * cfg.take_profit_r
-            return _trade_result("win", cfg.take_profit_r, win_pips, sl_pips, j - entry_i, "tp")
+            return _trade_result(
+                "win", cfg.take_profit_r, win_pips, sl_pips, j - entry_i, "tp",
+                df, entry_i, j, entry, sl, tp, direction, exit_price=tp,
+            )
 
-    exit_close = float(df.iloc[end - 1]["close"])
+    exit_i = end - 1
+    exit_close = float(df.iloc[exit_i]["close"])
     if direction == "long":
         pnl = (exit_close - entry - spread) * 10_000
     else:
         pnl = (entry - exit_close - spread) * 10_000
     r_mult = pnl / sl_pips if sl_pips else 0.0
     outcome = "win" if pnl > 0 else "loss" if pnl < 0 else "breakeven"
-    return _trade_result(outcome, round(r_mult, 2), round(pnl, 1), sl_pips, end - 1 - entry_i, "timeout")
+    return _trade_result(
+        outcome, round(r_mult, 2), round(pnl, 1), sl_pips, exit_i - entry_i, "timeout",
+        df, entry_i, exit_i, entry, sl, tp, direction, exit_price=exit_close,
+    )
 
 
 def _trade_result(
@@ -87,7 +112,16 @@ def _trade_result(
     sl_pips: float,
     bars: int,
     exit_reason: str,
+    df: pd.DataFrame,
+    entry_i: int,
+    exit_i: int,
+    entry: float,
+    sl: float,
+    tp: float,
+    direction: str,
+    exit_price: float | None = None,
 ) -> dict[str, Any]:
+    ep = exit_price if exit_price is not None else float(df.iloc[exit_i]["close"])
     return {
         "result": outcome,
         "r_multiple": round(r_mult, 2),
@@ -95,7 +129,55 @@ def _trade_result(
         "bars_held": bars,
         "exit_reason": exit_reason,
         "sl_pips": round(sl_pips, 1),
+        "direction": direction,
+        "entry_time": _bar_unix(df, entry_i),
+        "exit_time": _bar_unix(df, exit_i),
+        "entry_price": round(entry, 5),
+        "exit_price": round(ep, 5),
+        "sl_price": round(sl, 5),
+        "tp_price": round(tp, 5),
     }
+
+
+def build_trade_history(
+    df: pd.DataFrame,
+    events: list[dict[str, Any]],
+    cfg: TradeConfig,
+    *,
+    zone: Literal["low", "high", "both"] = "low",
+    entry_mode: Literal["touch", "exit"] = "touch",
+) -> list[dict[str, Any]]:
+    """Detailed trade list for chart overlay."""
+    trades: list[dict[str, Any]] = []
+    trade_id = 0
+
+    for ev in events:
+        if zone != "both" and ev["zone"] != zone:
+            continue
+        if entry_mode == "exit" and not ev.get("exit_signal"):
+            continue
+
+        if entry_mode == "exit":
+            entry_i = _find_bar_index(df, ev.get("exit_time"))
+        else:
+            entry_i = _find_bar_index(df, ev.get("time"))
+        if entry_i is None:
+            continue
+
+        direction = "long" if ev["zone"] == "low" else "short"
+        sim = simulate_trade(df, entry_i, direction, cfg)
+        if sim["result"] == "skip":
+            continue
+        trade_id += 1
+        sim["id"] = trade_id
+        sim["rsi"] = ev.get("rsi")
+        sim["zone"] = ev["zone"]
+        trades.append(sim)
+
+    trades.sort(key=lambda t: t["entry_time"])
+    for i, t in enumerate(trades, start=1):
+        t["id"] = i
+    return trades
 
 
 def backtest_entries(

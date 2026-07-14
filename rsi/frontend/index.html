@@ -43,12 +43,14 @@
           <div class="toolbar-toggles">
             <label><input type="checkbox" id="toggleEma50" checked> EMA 50</label>
             <label><input type="checkbox" id="toggleEma200" checked> EMA 200</label>
-            <label><input type="checkbox" id="toggleMarkers" checked> Đánh dấu long hỗ trợ</label>
+            <label><input type="checkbox" id="toggleTrades" checked> Lịch sử lệnh</label>
+            <label><input type="checkbox" id="toggleSlTp" checked> SL/TP khi chọn</label>
           </div>
           <span id="crosshairInfo" class="crosshair-info">Kéo biểu đồ giá để pan · cuộn chuột để zoom</span>
         </div>
 
-        <div class="chart-body" id="chartBody">
+        <div class="chart-layout">
+          <div class="chart-body" id="chartBody">
           <div class="chart-wrap" id="chartWrap">
             <div id="chartMain" class="chart-main"></div>
           </div>
@@ -64,6 +66,29 @@
             </div>
             <div id="chartRsi" class="chart-rsi"></div>
           </div>
+          </div>
+
+          <aside class="trades-panel" id="tradesPanel">
+            <div class="trades-panel-head">
+              <h3>Lịch sử lệnh</h3>
+              <span id="tradesCount" class="trades-count">—</span>
+            </div>
+            <p class="hint trades-hint">Click lệnh để xem entry / SL / TP trên biểu đồ</p>
+            <div class="table-wrap trades-scroll">
+              <table class="report-table compact" id="tradeHistoryTable">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Entry</th>
+                    <th>Kết quả</th>
+                    <th>Pip</th>
+                    <th>R</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </aside>
         </div>
       </section>
 
@@ -122,6 +147,31 @@
           </div>
         </section>
 
+        <section class="report-panel full">
+          <h3>Lịch sử lệnh backtest</h3>
+          <p class="hint">Click một dòng để mở biểu đồ tại entry/exit và hiển thị SL/TP.</p>
+          <div class="table-wrap tall">
+            <table class="report-table" id="tradeReportTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Entry</th>
+                  <th>Exit</th>
+                  <th>Entry px</th>
+                  <th>Exit px</th>
+                  <th>SL</th>
+                  <th>TP</th>
+                  <th>Kết quả</th>
+                  <th>Pip</th>
+                  <th>R</th>
+                  <th>Nến</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </section>
+
         <details class="report-details">
           <summary>Chi tiết thống kê vùng hỗ trợ (long)</summary>
           <div id="reportSummary" class="report-summary"></div>
@@ -136,26 +186,6 @@
                   <th>SL 20</th>
                   <th>SL 25</th>
                   <th>SL 30</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-          </div>
-        </details>
-
-        <details class="report-details">
-          <summary>Sự kiện long hỗ trợ RSI</summary>
-          <div class="table-wrap tall">
-            <table class="report-table" id="eventTable">
-              <thead>
-                <tr>
-                  <th>Thời gian</th>
-                  <th>RSI H4</th>
-                  <th>Close</th>
-                  <th>Đảo chiều</th>
-                  <th>MAE</th>
-                  <th>MFE</th>
-                  <th>H4 trend</th>
                 </tr>
               </thead>
               <tbody></tbody>

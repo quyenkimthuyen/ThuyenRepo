@@ -54,6 +54,8 @@ export class RsiZoneChart {
   #lastW = 0;
   #lastMainH = 0;
   #lastRsiH = 0;
+  #tradePriceLines = [];
+  #selectedTradeId = null;
 
   constructor(mainEl, rsiEl, { wrapEl, bodyEl, onCrosshair } = {}) {
     this.#mainEl = mainEl;
@@ -420,6 +422,102 @@ export class RsiZoneChart {
 
   setMarkers(markers) {
     this.#candleSeries.setMarkers((markers || []).filter((marker) => isFiniteNumber(marker?.time)));
+  }
+
+  setTradeMarkers(trades, { show = true } = {}) {
+    if (!show || !trades?.length) {
+      this.setMarkers([]);
+      return;
+    }
+    const markers = [];
+    for (const t of trades) {
+      const win = t.result === 'win';
+      markers.push({
+        time: t.entry_time,
+        position: 'belowBar',
+        color: win ? '#22c55e' : '#ef4444',
+        shape: 'arrowUp',
+        text: `#${t.id}`,
+      });
+      markers.push({
+        time: t.exit_time,
+        position: win ? 'aboveBar' : 'belowBar',
+        color: win ? '#4ade80' : '#f87171',
+        shape: 'circle',
+        text: t.exit_reason === 'tp' ? 'TP' : t.exit_reason === 'sl' ? 'SL' : 'X',
+      });
+    }
+    this.setMarkers(markers);
+  }
+
+  #clearTradePriceLines() {
+    for (const line of this.#tradePriceLines) {
+      try { this.#candleSeries.removePriceLine(line); } catch { /* */ }
+    }
+    this.#tradePriceLines = [];
+  }
+
+  highlightTrade(trade) {
+    this.#clearTradePriceLines();
+    if (!trade) {
+      this.#selectedTradeId = null;
+      return;
+    }
+    this.#selectedTradeId = trade.id;
+    const specs = [
+      { price: trade.entry_price, color: '#38bdf8', title: 'Entry' },
+      { price: trade.sl_price, color: '#ef4444', title: 'SL' },
+      { price: trade.tp_price, color: '#22c55e', title: 'TP' },
+    ];
+    for (const spec of specs) {
+      if (!isFiniteNumber(spec.price)) continue;
+      this.#tradePriceLines.push(
+        this.#candleSeries.createPriceLine({
+          price: spec.price,
+          color: spec.color,
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: spec.title,
+        }),
+      );
+    }
+    this.focusTradeRange(trade.entry_time, trade.exit_time, { center: 'entry' });
+  }
+
+  focusTradeRange(entryTime, exitTime, { center = 'entry' } = {}) {
+    if (!this.#candles.length) return;
+    const entryIdx = this.#candles.findIndex((c) => c.time === entryTime);
+    const exitIdx = this.#candles.findIndex((c) => c.time === exitTime);
+    const fromIdx = entryIdx >= 0 ? entryIdx : this.#indexNearest(entryTime);
+    const toIdx = exitIdx >= 0 ? exitIdx : this.#indexNearest(exitTime);
+    if (fromIdx < 0) return;
+
+    if (center === 'entry') {
+      // Entry nằm gần 1/4 khung nhìn — đủ context trước/sau entry và thấy exit nếu gần
+      const span = Math.max(80, toIdx - fromIdx + 40);
+      this.#setMainRange({
+        from: Math.max(0, fromIdx - Math.round(span * 0.2)),
+        to: Math.min(this.#candles.length - 1, fromIdx + span),
+      });
+      return;
+    }
+
+    this.#setMainRange({
+      from: Math.max(0, fromIdx - 30),
+      to: Math.min(this.#candles.length - 1, Math.max(toIdx, fromIdx) + 30),
+    });
+  }
+
+  #indexNearest(time) {
+    if (!this.#candles.length) return -1;
+    let best = 0;
+    let diff = Math.abs(this.#candles[0].time - time);
+    for (let i = 1; i < this.#candles.length; i += 1) {
+      const d = Math.abs(this.#candles[i].time - time);
+      if (d < diff) { best = i; diff = d; }
+    }
+    return best;
   }
 
   focusTime(time) {
