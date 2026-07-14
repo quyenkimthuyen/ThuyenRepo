@@ -8,7 +8,10 @@ const COLORS = {
   down: '#ef4444',
   ema50: '#38bdf8',
   ema200: '#a78bfa',
+  ema800: '#f97316',
   rsi: '#f59e0b',
+  divergenceBull: '#22c55e',
+  divergenceBear: '#ef4444',
 };
 
 const RIGHT_SCALE_WIDTH = 84;
@@ -36,11 +39,16 @@ export class RsiZoneChart {
   #candleSeries;
   #ema50Series;
   #ema200Series;
+  #ema800Series;
   #rsiSeries;
   #rsiBandLines = [];
+  #priceDivergenceSeries = [];
+  #rsiDivergenceSeries = [];
   #rsiData = [];
   #showEma50 = true;
   #showEma200 = true;
+  #showEma800 = true;
+  #showDivergences = true;
   #syncing = false;
   #resizeObserver;
   #resizeTimer;
@@ -131,6 +139,13 @@ export class RsiZoneChart {
       color: COLORS.ema200,
       lineWidth: 2,
       title: 'EMA200',
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+    this.#ema800Series = this.#mainChart.addLineSeries({
+      color: COLORS.ema800,
+      lineWidth: 2,
+      title: 'EMA800',
       priceLineVisible: false,
       lastValueVisible: false,
     });
@@ -304,7 +319,7 @@ export class RsiZoneChart {
     return best;
   }
 
-  #alignSeries(candles, points, forwardFill = false) {
+  #alignSeries(candles, points, forwardFill = false, includeWhitespace = false) {
     const byTime = new Map(
       (points || [])
         .filter((p) => isFiniteNumber(p?.time) && isFiniteNumber(p?.value))
@@ -319,6 +334,8 @@ export class RsiZoneChart {
         out.push({ time: c.time, value: v });
       } else if (forwardFill && last != null) {
         out.push({ time: c.time, value: last });
+      } else if (includeWhitespace) {
+        out.push({ time: c.time });
       }
     }
     return out;
@@ -390,7 +407,7 @@ export class RsiZoneChart {
     this.#syncRsiFromMain();
   }
 
-  setData({ candles, indicators }, { fit = false } = {}) {
+  setData({ candles, indicators, divergences }, { fit = false } = {}) {
     const range = this.#captureRange();
     const shouldShowLatest = !fit && !this.#hasInitialFit;
 
@@ -398,11 +415,14 @@ export class RsiZoneChart {
     this.#candleSeries.setData(this.#candles);
     const ema50 = this.#alignSeries(this.#candles, indicators?.ema50);
     const ema200 = this.#alignSeries(this.#candles, indicators?.ema200);
-    const rsiData = this.#alignSeries(this.#candles, indicators?.rsi14_h4, true);
-    this.#rsiData = rsiData;
+    const ema800 = this.#alignSeries(this.#candles, indicators?.ema800);
+    const rsiData = this.#alignSeries(this.#candles, indicators?.rsi14_h4, true, true);
+    this.#rsiData = rsiData.filter((p) => isFiniteNumber(p.value));
     this.#ema50Series.setData(this.#showEma50 ? ema50 : []);
     this.#ema200Series.setData(this.#showEma200 ? ema200 : []);
+    this.#ema800Series.setData(this.#showEma800 ? ema800 : []);
     this.#rsiSeries.setData(rsiData);
+    this.setDivergences(divergences, { show: this.#showDivergences });
 
     requestAnimationFrame(() => {
       this.#resize(true);
@@ -421,7 +441,62 @@ export class RsiZoneChart {
   }
 
   setMarkers(markers) {
-    this.#candleSeries.setMarkers((markers || []).filter((marker) => isFiniteNumber(marker?.time)));
+    const cleanMarkers = (markers || [])
+      .filter((marker) => isFiniteNumber(marker?.time))
+      .sort((a, b) => a.time - b.time);
+    this.#candleSeries.setMarkers(cleanMarkers);
+  }
+
+  setDivergences(divergences, { show = true } = {}) {
+    for (const series of this.#priceDivergenceSeries) {
+      try { this.#mainChart.removeSeries(series); } catch { /* */ }
+    }
+    for (const series of this.#rsiDivergenceSeries) {
+      try { this.#rsiChart.removeSeries(series); } catch { /* */ }
+    }
+    this.#priceDivergenceSeries = [];
+    this.#rsiDivergenceSeries = [];
+    this.#showDivergences = show;
+    if (!show || !divergences?.length) return;
+
+    for (const d of divergences) {
+      if (
+        !isFiniteNumber(d?.start_time)
+        || !isFiniteNumber(d?.end_time)
+        || !isFiniteNumber(d?.rsi_start)
+        || !isFiniteNumber(d?.rsi_end)
+        || !isFiniteNumber(d?.price_start)
+        || !isFiniteNumber(d?.price_end)
+      ) {
+        continue;
+      }
+      const color = d.type === 'bullish' ? COLORS.divergenceBull : COLORS.divergenceBear;
+      const priceSeries = this.#mainChart.addLineSeries({
+        color,
+        lineWidth: 2,
+        lineStyle: LineStyle.Dashed,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      });
+      priceSeries.setData([
+        { time: d.start_time, value: d.price_start },
+        { time: d.end_time, value: d.price_end },
+      ]);
+      this.#priceDivergenceSeries.push(priceSeries);
+
+      const rsiSeries = this.#rsiChart.addLineSeries({
+        color: d.type === 'bullish' ? COLORS.divergenceBull : COLORS.divergenceBear,
+        lineWidth: 2,
+        lineStyle: LineStyle.Dashed,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      });
+      rsiSeries.setData([
+        { time: d.start_time, value: d.rsi_start },
+        { time: d.end_time, value: d.rsi_end },
+      ]);
+      this.#rsiDivergenceSeries.push(rsiSeries);
+    }
   }
 
   setTradeMarkers(trades, { show = true } = {}) {
@@ -432,19 +507,20 @@ export class RsiZoneChart {
     const markers = [];
     for (const t of trades) {
       const win = t.result === 'win';
+      const isLong = t.direction !== 'short';
       markers.push({
         time: t.entry_time,
-        position: 'belowBar',
+        position: isLong ? 'belowBar' : 'aboveBar',
         color: win ? '#22c55e' : '#ef4444',
-        shape: 'arrowUp',
-        text: `#${t.id}`,
+        shape: isLong ? 'arrowUp' : 'arrowDown',
+        text: `#${t.id} ${isLong ? 'L' : 'S'}`,
       });
       markers.push({
         time: t.exit_time,
-        position: win ? 'aboveBar' : 'belowBar',
+        position: isLong ? 'aboveBar' : 'belowBar',
         color: win ? '#4ade80' : '#f87171',
         shape: 'circle',
-        text: t.exit_reason === 'tp' ? 'TP' : t.exit_reason === 'sl' ? 'SL' : 'X',
+        text: ['tp', 'rsi_tp'].includes(t.exit_reason) ? 'TP' : t.exit_reason === 'sl' ? 'SL' : 'X',
       });
     }
     this.setMarkers(markers);
@@ -487,10 +563,13 @@ export class RsiZoneChart {
 
   focusTradeRange(entryTime, exitTime, { center = 'entry' } = {}) {
     if (!this.#candles.length) return;
+    if (!isFiniteNumber(entryTime)) return;
     const entryIdx = this.#candles.findIndex((c) => c.time === entryTime);
-    const exitIdx = this.#candles.findIndex((c) => c.time === exitTime);
+    const exitIdx = isFiniteNumber(exitTime)
+      ? this.#candles.findIndex((c) => c.time === exitTime)
+      : -1;
     const fromIdx = entryIdx >= 0 ? entryIdx : this.#indexNearest(entryTime);
-    const toIdx = exitIdx >= 0 ? exitIdx : this.#indexNearest(exitTime);
+    const toIdx = exitIdx >= 0 ? exitIdx : fromIdx;
     if (fromIdx < 0) return;
 
     if (center === 'entry') {
@@ -565,12 +644,14 @@ export class RsiZoneChart {
     this.#setMainRange({ from: Math.max(0, to - span), to });
   }
 
-  applyEmaVisibility(show50, show200, indicators) {
+  applyEmaVisibility(show50, show200, show800, indicators) {
     this.#showEma50 = show50;
     this.#showEma200 = show200;
+    this.#showEma800 = show800;
     if (!this.#candles.length) return;
     this.#ema50Series.setData(show50 ? this.#alignSeries(this.#candles, indicators?.ema50) : []);
     this.#ema200Series.setData(show200 ? this.#alignSeries(this.#candles, indicators?.ema200) : []);
+    this.#ema800Series.setData(show800 ? this.#alignSeries(this.#candles, indicators?.ema800) : []);
   }
 
   resize() {

@@ -8,6 +8,7 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 
+from .divergence import find_rsi_divergences, summarize_divergences
 from .trade_backtest import TradeConfig, backtest_entries
 
 
@@ -295,6 +296,11 @@ def analyze_zone_touches(df: pd.DataFrame, cfg: ZoneConfig | None = None) -> dic
         "exit": backtest_entries(df, all_events, trade_cfg, entry_mode="exit"),
     }
     mae_mfe = _build_mae_mfe_report(all_events, cfg)
+    divergences = find_rsi_divergences(
+        df,
+        horizon_bars=cfg.horizon_bars,
+        min_reversal_pips=cfg.min_reversal_pips,
+    )
 
     return {
         "zones": summary,
@@ -302,6 +308,7 @@ def analyze_zone_touches(df: pd.DataFrame, cfg: ZoneConfig | None = None) -> dic
         "conditions": conditions,
         "backtest": backtest,
         "mae_mfe": mae_mfe,
+        "divergence_stats": summarize_divergences(divergences),
         "config": {
             "horizon_bars": cfg.horizon_bars,
             "min_reversal_pips": cfg.min_reversal_pips,

@@ -14,6 +14,7 @@ class TradeConfig:
     sl_mode: Literal["fixed", "atr"] = "fixed"
     stop_loss_pips: float = 20.0
     stop_loss_atr_mult: float = 1.0
+    take_profit_mode: Literal["r", "rsi_zone"] = "rsi_zone"
     take_profit_r: float = 2.0
     max_bars: int = 48
     spread_pips: float = 1.0
@@ -33,6 +34,21 @@ def _bar_unix(df: pd.DataFrame, i: int) -> int:
     if hasattr(row.name, "timestamp"):
         return int(row.name.timestamp())
     return int(row["timestamp"] // 1000)
+
+
+def _rsi_zone_tp_hit(row: pd.Series, direction: Literal["long", "short"]) -> bool:
+    rsi_value = float(row.get("rsi14_h4", np.nan))
+    if np.isnan(rsi_value):
+        return False
+    if direction == "long":
+        return rsi_value >= 68.0
+    return rsi_value <= 32.0
+
+
+def _pnl_pips(entry: float, exit_price: float, direction: Literal["long", "short"], spread: float) -> float:
+    if direction == "long":
+        return (exit_price - entry - spread) * 10_000
+    return (entry - exit_price - spread) * 10_000
 
 
 def simulate_trade(
@@ -69,10 +85,12 @@ def simulate_trade(
         high, low = float(row["high"]), float(row["low"])
         if direction == "long":
             hit_sl = low <= sl
-            hit_tp = high >= tp
+            hit_price_tp = high >= tp
         else:
             hit_sl = high >= sl
-            hit_tp = low <= tp
+            hit_price_tp = low <= tp
+
+        hit_tp = _rsi_zone_tp_hit(row, direction) if cfg.take_profit_mode == "rsi_zone" else hit_price_tp
 
         if hit_sl and hit_tp:
             return _trade_result(
@@ -85,18 +103,19 @@ def simulate_trade(
                 df, entry_i, j, entry, sl, tp, direction, exit_price=sl,
             )
         if hit_tp:
-            win_pips = sl_pips * cfg.take_profit_r
+            exit_price = float(row["close"]) if cfg.take_profit_mode == "rsi_zone" else tp
+            win_pips = _pnl_pips(entry, exit_price, direction, spread)
+            r_mult = win_pips / sl_pips if sl_pips else 0.0
+            outcome = "win" if win_pips > 0 else "loss" if win_pips < 0 else "breakeven"
             return _trade_result(
-                "win", cfg.take_profit_r, win_pips, sl_pips, j - entry_i, "tp",
-                df, entry_i, j, entry, sl, tp, direction, exit_price=tp,
+                outcome, round(r_mult, 2), round(win_pips, 1), sl_pips, j - entry_i,
+                "rsi_tp" if cfg.take_profit_mode == "rsi_zone" else "tp",
+                df, entry_i, j, entry, sl, exit_price, direction, exit_price=exit_price,
             )
 
     exit_i = end - 1
     exit_close = float(df.iloc[exit_i]["close"])
-    if direction == "long":
-        pnl = (exit_close - entry - spread) * 10_000
-    else:
-        pnl = (entry - exit_close - spread) * 10_000
+    pnl = _pnl_pips(entry, exit_close, direction, spread)
     r_mult = pnl / sl_pips if sl_pips else 0.0
     outcome = "win" if pnl > 0 else "loss" if pnl < 0 else "breakeven"
     return _trade_result(
@@ -237,6 +256,7 @@ def _summarize_trades(trades: list[dict[str, Any]], cfg: TradeConfig) -> dict[st
                 "sl_mode": cfg.sl_mode,
                 "stop_loss_pips": cfg.stop_loss_pips,
                 "stop_loss_atr_mult": cfg.stop_loss_atr_mult,
+                "take_profit_mode": cfg.take_profit_mode,
                 "take_profit_r": cfg.take_profit_r,
                 "max_bars": cfg.max_bars,
                 "spread_pips": cfg.spread_pips,
@@ -267,6 +287,7 @@ def _summarize_trades(trades: list[dict[str, Any]], cfg: TradeConfig) -> dict[st
             "sl_mode": cfg.sl_mode,
             "stop_loss_pips": cfg.stop_loss_pips,
             "stop_loss_atr_mult": cfg.stop_loss_atr_mult,
+            "take_profit_mode": cfg.take_profit_mode,
             "take_profit_r": cfg.take_profit_r,
             "max_bars": cfg.max_bars,
             "spread_pips": cfg.spread_pips,

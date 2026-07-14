@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from .divergence import find_rsi_divergences
 from .indicators import add_indicators
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -52,6 +53,7 @@ def build_chart_payload(df: pd.DataFrame) -> dict:
     candles = []
     ema50 = []
     ema200 = []
+    ema800 = []
     rsi_h4 = []
 
     for ts, row in df.iterrows():
@@ -67,6 +69,8 @@ def build_chart_payload(df: pd.DataFrame) -> dict:
             ema50.append({"time": t, "value": round(float(row["ema50"]), 5)})
         if pd.notna(row["ema200"]):
             ema200.append({"time": t, "value": round(float(row["ema200"]), 5)})
+        if pd.notna(row["ema800"]):
+            ema800.append({"time": t, "value": round(float(row["ema800"]), 5)})
         if pd.notna(row["rsi14_h4"]):
             rsi_h4.append({"time": t, "value": round(float(row["rsi14_h4"]), 2)})
 
@@ -80,9 +84,11 @@ def build_chart_payload(df: pd.DataFrame) -> dict:
         "count": len(df),
         "range": {"start": first, "end": last},
         "candles": candles,
+        "divergences": find_rsi_divergences(df),
         "indicators": {
             "ema50": ema50,
             "ema200": ema200,
+            "ema800": ema800,
             "rsi14_h4": rsi_h4,
         },
     }

@@ -60,6 +60,7 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     out["ema50"] = ema(out["close"], 50)
     out["ema200"] = ema(out["close"], 200)
+    out["ema800"] = ema(out["close"], 800)
     out["rsi14_h4"] = add_h4_rsi(out, 14)
     out["h4_trend_up"] = add_h4_trend(out)
     out["trend_up"] = out["ema50"] > out["ema200"]

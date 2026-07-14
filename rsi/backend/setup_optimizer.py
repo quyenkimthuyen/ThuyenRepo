@@ -12,27 +12,27 @@ from .zone_stats import ZoneConfig, _bar_timestamp, analyze_zone_touches
 
 # Winning setup from full-data sweep (EURUSD H1, RSI H4, 2023–2026)
 RECOMMENDED = {
-    "id": "long_support_touch",
-    "label": "Long RSI hỗ trợ — chạm vùng",
-    "direction": "long",
-    "zone": "low",
+    "id": "rsi_zone_touch",
+    "label": "RSI chạm vùng — Long hỗ trợ / Short kháng cự",
+    "direction": "zone_based",
+    "zone": "both",
     "entry_mode": "touch",
     "sl_mode": "fixed",
     "stop_loss_pips": 25.0,
     "take_profit_r": 2.5,
     "max_bars": 48,
     "spread_pips": 1.0,
-    "filters": ["zone_low"],
+    "filters": [],
     "notes": [
-        "Chỉ long tại vùng RSI 28–32 (H4)",
+        "Long khi RSI H4 chạm vùng hỗ trợ 28–32",
+        "Short khi RSI H4 chạm vùng kháng cự 68–72",
         "Vào lệnh ngay khi chạm vùng — không chờ thoát vùng",
-        "SL 25 pip · TP 2.5R (62.5 pip) · giữ tối đa 48 nến H1",
-        "Short kháng cự và vùng 50 không có edge — bỏ qua",
+        "SL 25 pip · TP khi RSI chạm vùng đối diện · giữ tối đa 48 nến H1",
+        "Vùng 50 không có edge — bỏ qua",
     ],
 }
 
 SKIP_SETUPS = [
-    {"id": "short_resistance", "reason": "Expectancy âm trên toàn bộ mẫu (SL25 TP2.5)"},
     {"id": "mid_zone_50", "reason": "Tiếp diễn vs đảo chiều ~50/50 — không dùng"},
     {"id": "exit_entry", "reason": "Entry thoát vùng kém hơn chạm vùng cho long"},
     {"id": "h1_ema_filter", "reason": "Mẫu quá nhỏ, không cải thiện ổn định so với H4"},
@@ -111,6 +111,7 @@ def backtest_setup(
         "entry_mode": entry_mode,
         "sl_mode": sl_mode,
         "stop_loss_pips": stop_loss_pips,
+        "take_profit_mode": tc.take_profit_mode,
         "take_profit_r": take_profit_r,
         "max_bars": max_bars,
         "spread_pips": spread_pips,
@@ -186,27 +187,27 @@ def build_recommended_report(df: pd.DataFrame, cfg: ZoneConfig | None = None, sp
     full = backtest_setup(
         df,
         events,
-        zone="low",
+        zone="both",
         entry_mode="touch",
         sl_mode="fixed",
         stop_loss_pips=rec["stop_loss_pips"],
         take_profit_r=rec["take_profit_r"],
         max_bars=rec["max_bars"],
         spread_pips=rec["spread_pips"],
-        filters=["zone_low"],
+        filters=[],
     )
     wf = walk_forward_setup(
         df,
         events,
         split_date=split_date,
-        zone="low",
+        zone="both",
         entry_mode="touch",
         sl_mode="fixed",
         stop_loss_pips=rec["stop_loss_pips"],
         take_profit_r=rec["take_profit_r"],
         max_bars=rec["max_bars"],
         spread_pips=rec["spread_pips"],
-        filters=["zone_low"],
+        filters=[],
     )
 
     # Compare rejected alternatives (for transparency)
@@ -226,7 +227,7 @@ def build_recommended_report(df: pd.DataFrame, cfg: ZoneConfig | None = None, sp
         max_bars=rec["max_bars"],
         spread_pips=rec["spread_pips"],
     )
-    trade_history = build_trade_history(df, events, trade_cfg, zone="low", entry_mode="touch")
+    trade_history = build_trade_history(df, events, trade_cfg, zone="both", entry_mode="touch")
 
     return {
         "setup": rec,
@@ -237,6 +238,6 @@ def build_recommended_report(df: pd.DataFrame, cfg: ZoneConfig | None = None, sp
         "rejected_alternatives": [
             {"label": "Short kháng cự (touch)", "result": alternatives[0]},
             {"label": "Long thoát vùng", "result": alternatives[1]},
-            {"label": "Cả hai vùng SL20 TP2R", "result": alternatives[2]},
+            {"label": "Cả hai vùng SL20 · TP vùng RSI đối diện", "result": alternatives[2]},
         ],
     }

@@ -8,8 +8,19 @@ let lastIndicators = null;
 let lastStats = null;
 let lastRecommended = null;
 let lastTrades = [];
+let lastEvents = [];
+let lastDivergences = [];
 let selectedTradeId = null;
 let chartLoadedOnce = false;
+
+function applyEmaToggles() {
+  chart.applyEmaVisibility(
+    $('toggleEma50').checked,
+    $('toggleEma200').checked,
+    $('toggleEma800')?.checked ?? true,
+    lastIndicators,
+  );
+}
 
 function fmtTime(unixSec) {
   const d = new Date(unixSec * 1000);
@@ -48,6 +59,18 @@ function resultTagClass(t) {
   return '';
 }
 
+function exitReasonLabel(reason) {
+  if (reason === 'tp' || reason === 'rsi_tp') return 'TP';
+  if (reason === 'sl') return 'SL';
+  if (reason === 'timeout') return 'Hết hạn';
+  if (reason === 'both_same_bar') return 'SL/TP cùng nến';
+  return reason || '—';
+}
+
+function directionLabel(t) {
+  return t.direction === 'short' ? 'Short' : 'Long';
+}
+
 function tradeRowHtml(t, compact = false) {
   const pip = t.pnl_pips >= 0 ? `+${t.pnl_pips}` : `${t.pnl_pips}`;
   const selected = t.id === selectedTradeId ? ' selected' : '';
@@ -55,7 +78,7 @@ function tradeRowHtml(t, compact = false) {
     return `
       <tr class="trade-row${selected}" data-trade-id="${t.id}">
         <td class="mono">${t.id}</td>
-        <td class="mono">${fmtTime(t.entry_time).slice(0, 10)}</td>
+        <td class="mono">${directionLabel(t)} · ${fmtTime(t.entry_time).slice(0, 10)}</td>
         <td><span class="tag ${resultTagClass(t)}">${resultLabel(t)}</span></td>
         <td class="mono">${pip}</td>
         <td class="mono">${t.r_multiple}R</td>
@@ -64,13 +87,13 @@ function tradeRowHtml(t, compact = false) {
   return `
     <tr class="trade-row${selected}" data-trade-id="${t.id}">
       <td class="mono">${t.id}</td>
-      <td class="mono">${fmtTime(t.entry_time)}</td>
+      <td class="mono">${directionLabel(t)} · ${fmtTime(t.entry_time)}</td>
       <td class="mono">${fmtTime(t.exit_time)}</td>
       <td class="mono">${t.entry_price}</td>
       <td class="mono">${t.exit_price}</td>
       <td class="mono">${t.sl_price}</td>
       <td class="mono">${t.tp_price}</td>
-      <td><span class="tag ${resultTagClass(t)}">${resultLabel(t)} (${t.exit_reason})</span></td>
+      <td><span class="tag ${resultTagClass(t)}">${resultLabel(t)} (${exitReasonLabel(t.exit_reason)})</span></td>
       <td class="mono">${pip}</td>
       <td class="mono">${t.r_multiple}R</td>
       <td class="mono">${t.bars_held}</td>
@@ -103,7 +126,7 @@ function focusTrade(id) {
   const el = $('crosshairInfo');
   if (el) {
     el.textContent =
-      `Lệnh #${trade.id} · ${resultLabel(trade)} ${trade.pnl_pips >= 0 ? '+' : ''}${trade.pnl_pips} pip · ` +
+      `Lệnh #${trade.id} ${directionLabel(trade)} · ${resultLabel(trade)} ${trade.pnl_pips >= 0 ? '+' : ''}${trade.pnl_pips} pip · ` +
       `Entry ${trade.entry_price} → ${trade.exit_price} · SL ${trade.sl_price} TP ${trade.tp_price}`;
   }
 }
@@ -146,6 +169,9 @@ function renderRecommended(rec) {
   if (!el || !rec) return;
   const setup = rec.setup || {};
   const perf = rec.performance || {};
+  const tpText = perf.params?.take_profit_mode === 'rsi_zone' || perf.config?.take_profit_mode === 'rsi_zone'
+    ? 'TP vùng RSI đối diện'
+    : `TP ${setup.take_profit_r}R`;
   const notes = (setup.notes || []).map((n) => `<li>${n}</li>`).join('');
   el.innerHTML = `
     <div class="recommended-hero">
@@ -159,7 +185,7 @@ function renderRecommended(rec) {
       </div>
       <ul class="recommended-rules">${notes}</ul>
       <div class="recommended-params mono">
-        SL ${setup.stop_loss_pips} pip · TP ${setup.take_profit_r}R · Horizon ${setup.max_bars} nến H1 · Spread ${setup.spread_pips} pip
+        SL ${setup.stop_loss_pips} pip · ${tpText} · Horizon ${setup.max_bars} nến H1 · Spread ${setup.spread_pips} pip
       </div>
     </div>`;
 }
@@ -214,19 +240,117 @@ function renderWalkForwardTable(wf) {
 }
 
 function renderReportSummary(stats, rangeText) {
-  const low = stats?.zones?.low || {};
+  const zones = stats?.zones || {};
+  const low = zones.low || {};
+  const high = zones.high || {};
+  const cfg = stats?.config || {};
   const el = $('reportSummary');
   if (!el) return;
   el.innerHTML = `
     <div class="summary-card">
       <div class="summary-label">Khoảng phân tích</div>
-      <div class="summary-value">${rangeText || '—'}</div>
+      <div class="summary-value" id="reportRange">${rangeText || '—'}</div>
     </div>
     <div class="summary-card accent-red">
-      <div class="summary-label">Vùng hỗ trợ — chạm vùng</div>
+      <div class="summary-label">Vùng hỗ trợ RSI</div>
       <div class="summary-value">${low.reversal_rate ?? 0}% đảo chiều</div>
-      <div class="summary-sub">${low.touches ?? 0} lần chạm · TB MAE ${low.avg_mae_pips ?? 0} · MFE ${low.avg_mfe_pips ?? 0}</div>
+      <div class="summary-sub">${low.touches ?? 0} lần chạm · TB ${low.avg_move_pips ?? 0} pip</div>
+    </div>
+    <div class="summary-card accent-green">
+      <div class="summary-label">Vùng kháng cự RSI</div>
+      <div class="summary-value">${high.reversal_rate ?? 0}% đảo chiều</div>
+      <div class="summary-sub">${high.touches ?? 0} lần chạm · TB ${high.avg_move_pips ?? 0} pip</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Tiêu chí đo</div>
+      <div class="summary-value">${cfg.horizon_bars ?? 48} nến H1</div>
+      <div class="summary-sub">≥ ${cfg.min_reversal_pips ?? 20} pip · cooldown ${cfg.cooldown_bars ?? 12}</div>
     </div>`;
+}
+
+function renderZoneTable(stats) {
+  const tbody = $('zoneTable')?.querySelector('tbody');
+  if (!tbody) return;
+  const zones = stats?.zones || {};
+  tbody.innerHTML = ['low', 'mid', 'high'].map((key) => {
+    const z = zones[key];
+    if (!z) return '';
+    const band = `${z.band?.[0] ?? ''}–${z.band?.[1] ?? ''}`;
+    return `
+      <tr class="zone-row-${key}">
+        <td><strong>${z.label}</strong></td>
+        <td>${band}</td>
+        <td>${z.touches}</td>
+        <td>${z.reversals ?? '—'}</td>
+        <td class="rate">${key === 'mid' ? '—' : `${z.reversal_rate}%`}</td>
+        <td>${z.avg_move_pips ?? '—'}</td>
+        <td>${z.with_ema_alignment ?? '—'}</td>
+        <td class="rate">${key === 'mid' ? '—' : `${z.aligned_reversal_rate}%`}</td>
+        <td>${z.exit_signals ?? '—'}</td>
+      </tr>`;
+  }).join('');
+}
+
+function renderConditionTable(rows) {
+  const tbody = $('conditionTable')?.querySelector('tbody');
+  if (!tbody) return;
+  tbody.innerHTML = (rows || []).map((r) => `
+    <tr>
+      <td>${r.condition}</td>
+      <td>${r.samples}</td>
+      <td class="rate">${r.reversal_rate}%</td>
+      <td class="note">${r.note}</td>
+    </tr>
+  `).join('');
+}
+
+function renderEventTable(events) {
+  const tbody = $('eventTable')?.querySelector('tbody');
+  if (!tbody) return;
+  lastEvents = events || [];
+  tbody.innerHTML = lastEvents.map((e, i) => `
+    <tr class="event-row" data-idx="${i}">
+      <td class="mono">${fmtTime(e.time)}</td>
+      <td><span class="tag zone-${e.zone}">${e.zone === 'low' ? 'Hỗ trợ' : e.zone === 'high' ? 'Kháng cự' : 'Vùng 50'}</span></td>
+      <td class="mono">${e.rsi}</td>
+      <td class="mono">${Number(e.close).toFixed(5)}</td>
+      <td><span class="tag ${e.reversed ? 'ok' : 'no'}">${e.reversed ? 'Có' : 'Không'}</span></td>
+      <td class="mono">${e.move_pips ?? '—'}</td>
+      <td>${e.ema_aligned ? 'Cùng chiều' : '—'}</td>
+      <td>${e.h4_trend_up ? 'Tăng' : 'Giảm'}</td>
+      <td>${e.exit_signal ? '✓' : '—'}</td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('.event-row').forEach((row) => {
+    row.addEventListener('click', () => {
+      const ev = lastEvents[Number(row.dataset.idx)];
+      if (!ev) return;
+      switchTab('chart');
+      chart.focusTime(ev.time);
+    });
+  });
+}
+
+function renderDivergenceTable(stats) {
+  const tbody = $('divergenceTable')?.querySelector('tbody');
+  if (!tbody) return;
+  const rows = [
+    ['Tổng', stats?.overall],
+    ['Bullish', stats?.bullish],
+    ['Bearish', stats?.bearish],
+  ];
+  tbody.innerHTML = rows.map(([label, r]) => `
+    <tr>
+      <td><strong>${label}</strong></td>
+      <td>${r?.count ?? 0}</td>
+      <td>${r?.reversals ?? 0}</td>
+      <td class="rate">${r?.reversal_rate ?? 0}%</td>
+      <td class="mono">${r?.avg_move_pips ?? '—'}</td>
+      <td class="mono">${r?.avg_adverse_pips ?? '—'}</td>
+      <td class="mono">${r?.avg_bars_to_extreme ?? '—'}</td>
+    </tr>
+  `).join('');
 }
 
 function renderMaeMfeTable(maeMfe) {
@@ -254,6 +378,10 @@ function renderReport(stats, recommended, rangeText) {
   renderWalkForwardTable(recommended?.walk_forward);
   renderRejectedTable(recommended);
   renderReportSummary(stats, rangeText);
+  renderZoneTable(stats);
+  renderConditionTable(stats?.conditions);
+  renderDivergenceTable(stats?.divergence_stats);
+  renderEventTable(stats?.events);
   renderMaeMfeTable(stats?.mae_mfe);
   renderTradeTables();
   applyTradeOverlay();
@@ -262,10 +390,12 @@ function renderReport(stats, recommended, rangeText) {
 async function loadChart({ fit = false } = {}) {
   const chartData = await fetchJson(`/api/chart?${queryParams()}`);
   lastIndicators = chartData.indicators;
+  lastDivergences = chartData.divergences || [];
   chart.setData(chartData, { fit: fit || !chartLoadedOnce });
   chartLoadedOnce = true;
   applyTradeOverlay();
-  chart.applyEmaVisibility($('toggleEma50').checked, $('toggleEma200').checked, lastIndicators);
+  chart.setDivergences(lastDivergences, { show: $('toggleDivergence')?.checked ?? true });
+  applyEmaToggles();
   return chartData;
 }
 
@@ -361,10 +491,14 @@ async function init() {
   $('btnLatest').addEventListener('click', () => chart.scrollToLatest());
 
   $('toggleEma50').addEventListener('change', () => {
-    chart.applyEmaVisibility($('toggleEma50').checked, $('toggleEma200').checked, lastIndicators);
+    applyEmaToggles();
   });
   $('toggleEma200').addEventListener('change', () => {
-    chart.applyEmaVisibility($('toggleEma50').checked, $('toggleEma200').checked, lastIndicators);
+    applyEmaToggles();
+  });
+  $('toggleEma800')?.addEventListener('change', () => applyEmaToggles());
+  $('toggleDivergence')?.addEventListener('change', () => {
+    chart.setDivergences(lastDivergences, { show: $('toggleDivergence').checked });
   });
   $('toggleTrades')?.addEventListener('change', () => applyTradeOverlay());
   $('toggleSlTp')?.addEventListener('change', () => applyTradeOverlay());
