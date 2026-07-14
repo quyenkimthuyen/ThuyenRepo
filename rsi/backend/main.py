@@ -73,6 +73,11 @@ def api_recommended_setup(
     return report
 
 
+@app.get("/docs")
+def docs():
+    return FileResponse(FRONTEND / "docs.html")
+
+
 @app.get("/")
 def index():
     return FileResponse(FRONTEND / "index.html")
