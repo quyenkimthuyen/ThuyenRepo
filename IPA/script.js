@@ -28,7 +28,7 @@ const ipaData = {
               type: "pronunciation",
               ipa: "/æ/",
               desc: "Âm A bẹt (ngắn, miệng mở rộng sang 2 bên)",
-              rule: "Phát âm là /æ/ trong từ một âm tiết kết thúc bằng một hoặc nhiều phụ âm.",
+              rule: "Chữ A thường phát âm là /æ/ khi nằm trong âm tiết khép kín, không có e câm phía sau, hoặc ở âm tiết được nhấn trong nhiều từ quen thuộc.",
               examples: [],
               children: [
                 {
@@ -36,16 +36,62 @@ const ipaData = {
                   label: "Âm tiết khép",
                   type: "pattern",
                   ipa: "/æ/",
-                  desc: "Kết thúc bằng phụ âm",
-                  rule: "Phát âm là /æ/ trong từ một âm tiết kết thúc bằng một hoặc nhiều phụ âm (âm tiết khép kín).",
+                  desc: "A + phụ âm",
+                  rule: "Phát âm là /æ/ khi chữ A nằm trong âm tiết khép kín: sau A có phụ âm chặn lại, không có e câm phía sau.",
+                  guide: "Cách đọc /æ/: mở miệng rộng hơn âm /e/, môi kéo nhẹ sang hai bên, lưỡi hạ thấp và đặt gần răng dưới. Không đọc thành /a/ tiếng Việt.\n\nMẹo luyện: đọc chậm cat /kæt/ - man /mæn/ - bag /bæɡ/.",
                   examples: [
                     { word: "cat", ipa: "kæt", meaning: "con mèo" },
                     { word: "map", ipa: "mæp", meaning: "bản đồ" },
+                    { word: "bag", ipa: "bæɡ", meaning: "cái túi" },
+                    { word: "hat", ipa: "hæt", meaning: "cái mũ" },
+                    { word: "sad", ipa: "sæd", meaning: "buồn" },
+                    { word: "bad", ipa: "bæd", meaning: "xấu/tệ" }
+                  ]
+                },
+                {
+                  id: "r-a-1-cluster",
+                  label: "Cụm phụ âm",
+                  type: "pattern",
+                  ipa: "/æ/",
+                  desc: "A trước phụ âm đôi/cụm phụ âm",
+                  rule: "Phát âm là /æ/ khi chữ A đứng trước phụ âm đôi hoặc cụm phụ âm trong cùng âm tiết.",
+                  guide: "Cách đọc /æ/: âm ngắn, bẹt và sáng. Mở miệng rộng, kéo khóe miệng nhẹ sang hai bên, không làm tròn môi.\n\nLuyện theo cụm: hand /hænd/, flag /flæɡ/, black /blæk/.",
+                  examples: [
                     { word: "hand", ipa: "hænd", meaning: "bàn tay" },
                     { word: "flag", ipa: "flæg", meaning: "lá cờ" },
-                    { word: "bag", ipa: "bæg", meaning: "cái túi" },
                     { word: "back", ipa: "bæk", meaning: "phía sau" },
-                    { word: "dad", ipa: "dæd", meaning: "bố/cha" }
+                    { word: "black", ipa: "blæk", meaning: "màu đen" },
+                    { word: "stand", ipa: "stænd", meaning: "đứng" }
+                  ]
+                },
+                {
+                  id: "r-a-1-no-magic-e",
+                  label: "Không có e câm",
+                  type: "pattern",
+                  ipa: "/æ/",
+                  desc: "Từ một âm tiết, không theo mẫu a_e",
+                  rule: "Trong nhiều từ một âm tiết, nếu sau A là phụ âm và không có e câm ở cuối từ, A thường đọc /æ/. Nếu có e câm như name, cake thì thường chuyển sang /eɪ/.",
+                  guide: "Phân biệt nhanh: man /mæn/ dùng /æ/, còn mane/name dùng /eɪ/. Với /æ/, miệng mở rộng và âm dừng ngắn, không kéo dài.",
+                  examples: [
+                    { word: "man", ipa: "mæn", meaning: "người đàn ông" },
+                    { word: "dad", ipa: "dæd", meaning: "bố/cha" },
+                    { word: "can", ipa: "kæn", meaning: "có thể/cái lon" },
+                    { word: "mad", ipa: "mæd", meaning: "tức giận" }
+                  ]
+                },
+                {
+                  id: "r-a-1-stressed",
+                  label: "Âm tiết nhấn",
+                  type: "pattern",
+                  ipa: "/æ/",
+                  desc: "A ở âm tiết được nhấn trong từ dài",
+                  rule: "Trong một số từ nhiều âm tiết quen thuộc, chữ A ở âm tiết được nhấn vẫn đọc là /æ/.",
+                  guide: "Trong từ dài, chỉ âm tiết chứa /æ/ được nhấn rõ hơn: APP-le /ˈæpl/, FAM-i-ly /ˈfæməli/. Đọc /æ/ ngắn, miệng mở rộng, không đọc thành /eɪ/.",
+                  examples: [
+                    { word: "apple", ipa: "ˈæpl", meaning: "quả táo" },
+                    { word: "happy", ipa: "ˈhæpi", meaning: "vui vẻ" },
+                    { word: "family", ipa: "ˈfæməli", meaning: "gia đình" },
+                    { word: "animal", ipa: "ˈænɪməl", meaning: "động vật" }
                   ]
                 },
                 {
@@ -157,23 +203,25 @@ const ipaData = {
             },
             {
               id: "p-a-oo",
-              label: "/ɔː/",
+              label: "/ɔː/ /ɔ/",
               type: "pronunciation",
-              ipa: "/ɔː/",
-              desc: "Âm O dài tròn môi — nhiều cách nhận diện",
-              rule: "Chữ A phát âm /ɔː/ khi đi với L, W, U hoặc đi sau W.",
+              ipa: "/ɔː/ /ɔ/",
+              desc: "Âm O tròn môi — dài trong Anh-Anh, ngắn hơn trong Anh-Mỹ",
+              rule: "Chữ A phát âm /ɔː/ hoặc /ɔ/ khi đi với L, W, U hoặc đi sau W.",
               examples: [],
               children: [
                 {
                   id: "r-a-4-l",
                   label: "al / alk",
                   type: "pattern",
-                  ipa: "/ɔː/",
+                  ipa: "/ɔː/ /ɔ/",
                   desc: "Đi với L (AL)",
-                  rule: "Phát âm là /ɔː/ khi chữ A đi với L như all, alk, alt.",
+                  rule: "Phát âm là /ɔː/ (Anh-Anh) hoặc /ɔ/ (Anh-Mỹ) khi chữ A đi với L như all, alk, alt.",
                   examples: [
                     { word: "all", ipa: "ɔːl", meaning: "tất cả" },
                     { word: "ball", ipa: "bɔːl", meaning: "quả bóng" },
+                    { word: "call", ipa: "kɔːl", meaning: "gọi/cuộc gọi" },
+                    { word: "small", ipa: "smɔːl", meaning: "nhỏ" },
                     { word: "talk", ipa: "tɔːk", meaning: "nói chuyện" },
                     { word: "walk", ipa: "wɔːk", meaning: "đi bộ" }
                   ]
@@ -280,6 +328,20 @@ const ipaData = {
                 { word: "watch", ipa: "wɒtʃ", meaning: "đồng hồ/xem" },
                 { word: "want", ipa: "wɒnt", meaning: "muốn" },
                 { word: "quality", ipa: "ˈkwɒləti", meaning: "chất lượng" }
+              ]
+            },
+            {
+              id: "r-a-9",
+              label: "/e/",
+              type: "rule",
+              ipa: "/e/",
+              desc: "Âm E ngắn trong một số từ đặc biệt",
+              rule: "Chữ A có thể phát âm là /e/ trong một số từ ngoại lệ quen thuộc như any, many. Một số hệ ký âm dùng /ɛ/ cho âm này.",
+              examples: [
+                { word: "any", ipa: "ˈeni", meaning: "bất kỳ/một vài" },
+                { word: "many", ipa: "ˈmeni", meaning: "nhiều" },
+                { word: "anyone", ipa: "ˈeniwʌn", meaning: "bất kỳ ai" },
+                { word: "anything", ipa: "ˈeniθɪŋ", meaning: "bất cứ điều gì" }
               ]
             }
           ]
@@ -3189,9 +3251,9 @@ function showRuleDetail(ruleNode) {
     }
   }
 
-  // Nút nghe phát âm của chính ký tự âm đó
+  // Nút nghe phát âm: TTS không đọc ký hiệu IPA chính xác, nên phát từ mẫu đại diện.
   const speakIpaBtn = document.getElementById("speak-ipa-btn");
-  speakIpaBtn.onclick = () => speakText(ruleNode.ipa || ruleNode.label);
+  speakIpaBtn.onclick = () => speakIpaSound(ruleNode);
 
   // Hiển thị các từ vựng ví dụ
   detailExamplesList.innerHTML = "";
@@ -3263,17 +3325,46 @@ if ('speechSynthesis' in window) {
   loadVoices();
 }
 
+function normalizeIpaKey(value) {
+  return String(value || "")
+    .replace(/\//g, "")
+    .trim()
+    .split(/\s+/)[0];
+}
+
+function getIpaSampleWord(ruleNode) {
+  if (ruleNode.examples?.[0]?.word) return ruleNode.examples[0].word;
+
+  const ipaSampleWords = {
+    "æ": "cat",
+    "e": "any",
+    "eɪ": "cake",
+    "ɑː": "car",
+    "ɑ": "car",
+    "ɔː": "call",
+    "ɔ": "call",
+    "ə": "about",
+    "eə": "care",
+    "ɪ": "village",
+    "ɒ": "wash",
+  };
+
+  return ipaSampleWords[normalizeIpaKey(ruleNode.ipa || ruleNode.label)] || ruleNode.label;
+}
+
+function speakIpaSound(ruleNode) {
+  speakText(getIpaSampleWord(ruleNode));
+}
+
 function speakText(text) {
   if (!('speechSynthesis' in window)) {
     alert("Trình duyệt của bạn không hỗ trợ tính năng phát thanh.");
     return;
   }
 
-  // Tạm dừng phát thanh hiện tại nếu có
-  window.speechSynthesis.cancel();
-
   // Loại bỏ các dấu ngoặc / khi đọc âm đơn lẻ
   let cleanText = text.replace(/\//g, "").trim();
+  if (!cleanText) return;
 
   // Ánh xạ các ký tự phiên âm IPA sang chuỗi/từ tiếng Anh dễ đọc chuẩn xác cho công cụ TTS
   const ipaToSpeechMap = {
@@ -3321,11 +3412,33 @@ function speakText(text) {
     cleanText = ipaToSpeechMap[cleanText];
   }
 
-  const utterance = new SpeechSynthesisUtterance(cleanText);
-  utterance.voice = englishVoice;
-  utterance.lang = "en-GB";
-  utterance.rate = 0.85; // Đọc chậm một chút để dễ nghe vần
-  window.speechSynthesis.speak(utterance);
+  // Tạm dừng phát thanh hiện tại nếu có. Chrome đôi khi bị im nếu speak ngay sau cancel,
+  // nên phát sau một nhịp nhỏ để hàng đợi TTS kịp reset.
+  window.speechSynthesis.cancel();
+  loadVoices();
+
+  window.setTimeout(() => {
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    if (englishVoice) {
+      utterance.voice = englishVoice;
+      utterance.lang = englishVoice.lang || "en-GB";
+    } else {
+      utterance.lang = "en-US";
+    }
+    utterance.rate = 0.85; // Đọc chậm một chút để dễ nghe vần
+    utterance.volume = 1;
+
+    utterance.onerror = () => {
+      // Thử lại không gán voice cụ thể, vì một số voice hệ thống có thể lỗi im lặng.
+      const fallback = new SpeechSynthesisUtterance(cleanText);
+      fallback.lang = "en-US";
+      fallback.rate = 0.85;
+      fallback.volume = 1;
+      window.speechSynthesis.speak(fallback);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  }, 60);
 }
 
 // Logic Ghi âm Mic so sánh (MediaRecorder)

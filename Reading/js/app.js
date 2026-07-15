@@ -40,6 +40,8 @@ import { getLessonTranslations, preloadTranslationTopics, loadTranslationChunk }
 
 const STORAGE_KEY = 'reading-aloud-progress';
 const SETTINGS_KEY = 'reading-aloud-settings';
+const AUTO_READ_DEFAULT_VERSION = 1;
+const SHOW_VIETNAMESE_DEFAULT_VERSION = 1;
 const HISTORY_KEY = 'reading-aloud-history';
 const HISTORY_LIMIT = 100;
 
@@ -131,14 +133,14 @@ let sentenceStates = [];
 
 let currentSentenceIndex = 0;
 let lessonComplete = false;
-let autoReadSample = false;
+let autoReadSample = true;
 let topicFilter = 'all';
 let levelFilter = 'all';
 let ttsVoiceUri = '';
 let pendingAutoStartMic = false;
 let micAwaitingGesture = false;
 let gestureMicListenerAttached = false;
-let showVietnamese = false;
+let showVietnamese = true;
 
 /** Track processed final result index to avoid double-processing */
 let lastFinalResultIndex = -1;
@@ -509,23 +511,36 @@ function populateFilters() {
 }
 
 function loadSettings() {
+  let shouldSaveUpdatedDefaults = false;
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (raw) {
       const settings = JSON.parse(raw);
-      autoReadSample = Boolean(settings.autoReadSample);
+      if (settings.autoReadDefaultVersion === AUTO_READ_DEFAULT_VERSION) {
+        autoReadSample = Boolean(settings.autoReadSample);
+      } else {
+        autoReadSample = true;
+        shouldSaveUpdatedDefaults = true;
+      }
       if (settings.topicFilter) topicFilter = settings.topicFilter;
       if (settings.levelFilter) levelFilter = settings.levelFilter;
       if (settings.ttsVoiceUri) ttsVoiceUri = settings.ttsVoiceUri;
       if (ttsVoiceUri) setSelectedVoiceUri(ttsVoiceUri);
-      showVietnamese = Boolean(settings.showVietnamese);
+      if (settings.showVietnameseDefaultVersion === SHOW_VIETNAMESE_DEFAULT_VERSION) {
+        showVietnamese = Boolean(settings.showVietnamese);
+      } else {
+        showVietnamese = true;
+        shouldSaveUpdatedDefaults = true;
+      }
     }
   } catch {
-    autoReadSample = false;
+    autoReadSample = true;
+    showVietnamese = true;
   }
   els.autoReadSample.checked = autoReadSample;
   updateAutoReadUi();
   updateVietnameseUi();
+  if (shouldSaveUpdatedDefaults) saveSettings();
 }
 
 function updateVietnameseUi() {
@@ -744,21 +759,23 @@ async function readRemainingWords() {
   updateMicToggleUi();
 }
 
-function maybeAutoReadSample() {
-  if (!autoReadSample || lessonComplete || !lesson || samplePlaying || isSpeaking()) return;
+function maybeAutoReadSample({ force = false } = {}) {
+  if ((!force && !autoReadSample) || lessonComplete || !lesson || samplePlaying || isSpeaking()) return;
   void readCurrentSample();
 }
 
 function toggleMic() {
   if (lessonComplete || micStarting || samplePlaying) return;
-  if (micUserEnabled) {
+
+  if (micUserEnabled && !micAwaitingGesture && (listening || recognition || micRestartTimer)) {
     stopMic();
-  } else {
-    micUserEnabled = true;
-    micAwaitingGesture = false;
-    if (!isSpeaking() && !samplePlaying) startMic();
-    else updateMicToggleUi();
+    return;
   }
+
+  micUserEnabled = true;
+  micAwaitingGesture = false;
+  if (!isSpeaking() && !samplePlaying) startMic();
+  else updateMicToggleUi();
 }
 
 function invalidateSamplePlayback() {
@@ -958,7 +975,15 @@ function saveSettings() {
   try {
     localStorage.setItem(
       SETTINGS_KEY,
-      JSON.stringify({ autoReadSample, topicFilter, levelFilter, ttsVoiceUri, showVietnamese }),
+      JSON.stringify({
+        autoReadSample,
+        autoReadDefaultVersion: AUTO_READ_DEFAULT_VERSION,
+        showVietnameseDefaultVersion: SHOW_VIETNAMESE_DEFAULT_VERSION,
+        topicFilter,
+        levelFilter,
+        ttsVoiceUri,
+        showVietnamese,
+      }),
     );
   } catch {
     /* ignore */
@@ -1377,7 +1402,7 @@ async function loadSavedLesson() {
   }
 
   suppressAutoReadOnce = true;
-  pendingAutoStartMic = true;
+  pendingAutoStartMic = false;
   if (els.lessonSelect.value) {
     await loadLesson(els.lessonSelect.value);
   }
@@ -1718,14 +1743,53 @@ function advanceSentence() {
   lastInterimText = '';
   render();
   saveProgress();
-  maybeAutoReadSample();
+  maybeAutoReadSample({ force: true });
 }
 
 function getSpeechRecognitionCtor() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
-function startMic() {
+function isTrustedMicOrigin() {
+  const host = window.location?.hostname;
+  if (!host) return true;
+  return window.isSecureContext || host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+}
+
+function explainMicError(error) {
+  const name = error?.name ?? '';
+  if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+    return 'Trình duyệt đang chặn microphone. Hãy bấm biểu tượng ổ khóa trên thanh địa chỉ và chọn Allow/Cho phép microphone.';
+  }
+  if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+    return 'Không tìm thấy microphone. Hãy kiểm tra thiết bị mic trong Windows và trình duyệt.';
+  }
+  if (name === 'NotReadableError' || name === 'TrackStartError') {
+    return 'Microphone đang được ứng dụng khác sử dụng hoặc Windows đang chặn quyền mic.';
+  }
+  return 'Không thể truy cập microphone. Hãy kiểm tra quyền mic của trình duyệt rồi thử lại.';
+}
+
+async function requestMicrophonePermission() {
+  if (!isTrustedMicOrigin()) {
+    showError('Microphone cần HTTPS hoặc localhost. Hãy mở app qua http://127.0.0.1:8080.');
+    return false;
+  }
+
+  const getUserMedia = window.navigator?.mediaDevices?.getUserMedia;
+  if (!getUserMedia) return true;
+
+  try {
+    const stream = await getUserMedia.call(window.navigator.mediaDevices, { audio: true });
+    stream.getTracks().forEach((track) => track.stop());
+    return true;
+  } catch (error) {
+    showError(explainMicError(error));
+    return false;
+  }
+}
+
+async function startMic() {
   if (lessonComplete || isSpeaking() || samplePlaying || micStarting) return;
   clearMicRestartTimer();
 
@@ -1742,6 +1806,22 @@ function startMic() {
   if (listening || recognition) return;
 
   micStarting = true;
+  updateMicToggleUi();
+
+  const hasMicPermission = await requestMicrophonePermission();
+  if (!hasMicPermission) {
+    micStarting = false;
+    micAwaitingGesture = true;
+    updateMicToggleUi();
+    return;
+  }
+
+  if (!micUserEnabled || lessonComplete || isSpeaking() || samplePlaying) {
+    micStarting = false;
+    updateMicToggleUi();
+    return;
+  }
+
   const sessionGeneration = ++micSessionGeneration;
   const currentRecognition = new Ctor();
   recognition = currentRecognition;
@@ -1782,10 +1862,18 @@ function startMic() {
   currentRecognition.onerror = (event) => {
     if (sessionGeneration !== micSessionGeneration) return;
     if (event.error === 'not-allowed') {
-      showError('Cần quyền microphone. Hãy cho phép quyền mic trong trình duyệt.');
+      showError('Cần quyền microphone. Hãy bấm biểu tượng ổ khóa trên thanh địa chỉ và cho phép quyền mic.');
       stopMic({ keepEnabled: true });
       micAwaitingGesture = true;
       updateMicToggleUi();
+      return;
+    }
+    if (event.error === 'audio-capture') {
+      showError('Không lấy được âm thanh từ microphone. Hãy kiểm tra mic trong Windows và trình duyệt.');
+      return;
+    }
+    if (event.error === 'network' || event.error === 'service-not-allowed') {
+      showError('Dịch vụ nhận dạng giọng nói của trình duyệt chưa hoạt động. Hãy dùng Chrome/Edge và kiểm tra kết nối internet.');
       return;
     }
     if (event.error === 'no-speech') {

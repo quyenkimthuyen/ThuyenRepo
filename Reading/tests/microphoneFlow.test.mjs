@@ -409,15 +409,20 @@ const btnNext = document.getElementById('btn-next-sentence');
 const btnPrev = document.getElementById('btn-prev-sentence');
 
 assert(lessonSelect.value === 'a1-greetings', 'first lesson loads by default');
-assert(micStatus.textContent === 'Mic đang nghe…', 'mic starts by default on load');
-assert(activeRecognitionCount() === 1, 'one recognition is active after load');
+assert(btnAutoRead.classList.contains('is-on'), 'auto-read sample is enabled by default');
+assert(micStatus.textContent === 'Mic tắt', 'mic waits for user action on load');
+assert(activeRecognitionCount() === 0, 'no recognition starts before user action');
+
+btnMic.click();
+await tick();
+assert(micStatus.textContent === 'Mic đang nghe…', 'mic starts after user clicks the mic button');
+assert(activeRecognitionCount() === 1, 'one recognition is active after mic click');
 
 btnReadSample.click();
 await tick();
 assert(spoken.at(-1) === 'Hello.', 'manual sample reads current sentence');
 await finishSampleAndAssertMicResumes('manual sample');
 
-btnAutoRead.click();
 const staleRecognition = FakeRecognition.instances.find((instance) => instance.active);
 lessonSelect.value = 'a1-my-family';
 lessonSelect.dispatchEvent({ type: 'change' });
@@ -480,16 +485,24 @@ await tick(180);
 assert(micStatus.textContent === 'Mic đang nghe…', 'topic change starts mic when no sample plays');
 assert(activeRecognitionCount() === 1, 'topic change starts exactly one recognition when no sample plays');
 
-for (const transcript of [
+const studyTranscripts = [
   'The sky is blue',
   'The sun is yellow',
   'I have three red apples',
   'There are ten students in the class',
   'My favourite color is green',
-]) {
+];
+
+for (const [index, transcript] of studyTranscripts.entries()) {
   const active = FakeRecognition.instances.find((instance) => instance.active);
   emitFinalTranscript(active, transcript);
   await tick();
+  if (index < studyTranscripts.length - 1) {
+    assert(activeRecognitionCount() === 0, 'mic pauses while next sentence sample plays after a completed sentence');
+    speechSynthesis.finish();
+    await tick();
+    assert(micStatus.textContent === 'Mic đang nghe…', 'mic resumes after next sentence sample');
+  }
 }
 
 assert(document.getElementById('progress-text').textContent === 'Hoàn thành 5 / 5 câu', 'lesson can complete');

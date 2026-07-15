@@ -429,7 +429,7 @@ button:disabled {
 }
 
 .sentence-vi {
-  display: none;
+  display: block;
   margin: 0.35rem 0 0;
   padding: 0 0.85rem;
   font-size: 0.92rem;
@@ -438,15 +438,11 @@ button:disabled {
   font-style: italic;
 }
 
-body.show-vietnamese .sentence-vi {
-  display: block;
-}
-
-body.show-vietnamese .sentence.active + .sentence-vi {
+.sentence.active + .sentence-vi {
   color: #93c5fd;
 }
 
-body.show-vietnamese .sentence.done + .sentence-vi {
+.sentence.done + .sentence-vi {
   color: var(--word-matched);
   opacity: 0.85;
 }
