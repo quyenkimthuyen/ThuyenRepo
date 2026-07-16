@@ -121,6 +121,14 @@ def execute_learning(
 
 def get_paper_monitor(use_learning: bool = False, spread_pips: float = DEFAULT_SPREAD_PIPS,
                       slippage_pips: float = DEFAULT_SLIPPAGE_PIPS) -> dict:
-  df = load_eurusd_h1(DEFAULT_START_DATE)
-  return get_monitor_state(df, use_learning=use_learning,
-                           spread_pips=spread_pips, slippage_pips=slippage_pips)
+  try:
+    df = load_eurusd_h1(DEFAULT_START_DATE)
+    return get_monitor_state(df, use_learning=use_learning,
+                             spread_pips=spread_pips, slippage_pips=slippage_pips)
+  except Exception as exc:
+    return {
+      "error": (
+        "Không cập nhật được dữ liệu EUR/USD H1. "
+        f"Chi tiết: {exc}"
+      )
+    }

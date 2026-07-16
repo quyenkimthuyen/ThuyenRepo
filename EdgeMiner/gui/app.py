@@ -6,6 +6,10 @@ from pathlib import Path
 
 import streamlit as st
 
+for stream in (sys.stdout, sys.stderr):
+  if hasattr(stream, "reconfigure"):
+    stream.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
   sys.path.insert(0, str(ROOT))

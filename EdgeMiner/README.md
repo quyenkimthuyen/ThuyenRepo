@@ -2,6 +2,17 @@
 
 ## Hai chế độ chạy
 
+### Windows GUI app
+```powershell
+.\app.ps1 start             # start Streamlit GUI
+.\app.ps1 restart           # restart Streamlit GUI
+.\app.ps1 stop              # stop Streamlit GUI
+.\app.ps1 status            # check app status
+.\app.ps1 start -Install    # create .venv and install dependencies first
+```
+
+Mở app tại `http://localhost:8501`.
+
 ### 1. Backtest một lần (v3)
 ```bash
 python run_backtest.py

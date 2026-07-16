@@ -96,7 +96,22 @@ def download_eurusd_h1(
       return cached[(cached.index >= start) & (cached.index < end)].copy()
 
   print(f"  Tải Dukascopy EUR/USD H1: {start.date()} -> {end.date()} ...")
-  df = _fetch_dukascopy_h1(start, end)
+  try:
+    df = _fetch_dukascopy_h1(start, end)
+  except Exception as exc:
+    if use_cache and not force_refresh:
+      cached = _load_cache()
+      if cached is not None and cached.index[0] <= start:
+        fallback = cached[(cached.index >= start) & (cached.index < end)].copy()
+        if not fallback.empty:
+          print(f"  Dukascopy lỗi, dùng cache đến {fallback.index[-1].date()}: {exc}")
+          return fallback
+
+    raise RuntimeError(
+      "Không tải được EUR/USD H1 từ Dukascopy và chưa có cache local phù hợp. "
+      "Kiểm tra mạng/VPN/firewall rồi thử lại, hoặc chạy lại khi Dukascopy ổn định."
+    ) from exc
+
   _save_cache(df)
   print(f"  Đã cache {len(df)} bars -> {CACHE_PATH}")
   return df

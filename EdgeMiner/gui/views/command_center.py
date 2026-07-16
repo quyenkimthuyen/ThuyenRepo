@@ -5,7 +5,10 @@ import streamlit as st
 
 from analytics import direction_bias, trades_json_to_df, yearly_breakdown
 from gui.components import constraint_checklist, kpi_row, status_banner, warn_long_bias, warn_no_costs
-from gui.services import execute_backtest, load_backtest_report, load_data_meta, load_kb, load_learning_report, refresh_market_data
+from gui.services import (
+  execute_backtest, execute_learning, load_backtest_report, load_data_meta,
+  load_kb, load_learning_report, refresh_market_data,
+)
 
 
 def render():
