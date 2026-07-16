@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Reading Aloud — Luyện đọc tiếng Anh</title>
-    <link rel="stylesheet" href="css/style.css?v=20260715-vi-lines" />
+    <link rel="stylesheet" href="css/style.css?v=20260715-backup-lessons" />
   </head>
   <body>
     <div class="app">
@@ -102,6 +102,15 @@
             <button type="button" id="btn-import-save" class="icon-btn icon-btn-primary" title="Lưu bài" aria-label="Lưu bài">
               <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
             </button>
+          </div>
+          <div class="backup-actions" aria-label="Sao lưu bài đã import">
+            <button type="button" id="btn-custom-export" class="backup-btn" title="Xuất tất cả bài đã import ra file JSON">
+              Xuất bài của tôi
+            </button>
+            <label class="backup-btn file-btn" title="Nhập file JSON đã xuất">
+              Nhập bài đã xuất
+              <input type="file" id="backup-import-file" accept=".json,application/json" hidden />
+            </label>
           </div>
           <p id="import-feedback" class="import-feedback hidden" role="status"></p>
           <div id="custom-lessons-list" class="custom-lessons-list hidden">
@@ -251,6 +260,6 @@
 
     <input type="checkbox" id="auto-read-sample" class="hidden" hidden aria-hidden="true" tabindex="-1" />
 
-    <script type="module" src="js/app.js?v=20260715-vi-lines"></script>
+    <script type="module" src="js/app.js?v=20260715-backup-lessons"></script>
   </body>
 </html>

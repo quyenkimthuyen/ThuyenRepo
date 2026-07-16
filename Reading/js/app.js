@@ -99,6 +99,8 @@ const els = {
   importContentLabel: document.getElementById('import-content-label'),
   importFile: document.getElementById('import-file'),
   btnImportSave: document.getElementById('btn-import-save'),
+  btnCustomExport: document.getElementById('btn-custom-export'),
+  backupImportFile: document.getElementById('backup-import-file'),
   importFeedback: document.getElementById('import-feedback'),
   customLessonsList: document.getElementById('custom-lessons-list'),
   customLessonsUl: document.getElementById('custom-lessons-ul'),
@@ -1139,6 +1141,8 @@ function bindEvents() {
 
   els.btnImportSave.addEventListener('click', handleImportSave);
   els.importFile.addEventListener('change', handleImportFile);
+  els.btnCustomExport.addEventListener('click', exportCustomLessons);
+  els.backupImportFile.addEventListener('change', handleBackupImportFile);
   els.importFormat.addEventListener('change', updateImportFormatUi);
   els.btnDeleteCustom.addEventListener('click', deleteCurrentCustomLesson);
   els.btnImportToggle.addEventListener('click', () => toggleImportPanel());
@@ -1262,6 +1266,93 @@ function handleImportFile(event) {
   };
   reader.readAsText(file);
   input.value = '';
+}
+
+function customLessonBackupPayload() {
+  return {
+    app: 'Reading Aloud',
+    type: 'reading-aloud-custom-lessons',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    lessons: customLessons.map((lesson) => ({
+      id: lesson.id,
+      title: lesson.title,
+      level: lesson.level,
+      topic: lesson.topic,
+      sentences: lesson.sentences,
+      ...(lesson.translations?.length ? { translations: lesson.translations } : {}),
+      custom: true,
+      createdAt: lesson.createdAt ?? Date.now(),
+    })),
+  };
+}
+
+function exportCustomLessons() {
+  if (!customLessons.length) {
+    showImportFeedback('Chưa có bài nào để xuất.', true);
+    return;
+  }
+
+  const payload = customLessonBackupPayload();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: 'application/json;charset=utf-8',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const date = new Date().toISOString().slice(0, 10);
+  link.href = url;
+  link.download = `reading-my-lessons-${date}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  showImportFeedback(`Đã xuất ${customLessons.length} bài ra file JSON.`);
+}
+
+/**
+ * @param {import('./lessons.js').Lesson[]} current
+ * @param {import('./lessons.js').Lesson[]} incoming
+ */
+function mergeCustomLessons(current, incoming) {
+  const byId = new Map(current.map((lesson) => [lesson.id, lesson]));
+  incoming.forEach((lesson) => {
+    byId.set(lesson.id, { ...lesson, custom: true });
+  });
+  return [...byId.values()];
+}
+
+/**
+ * @param {Event} event
+ */
+function handleBackupImportFile(event) {
+  const input = /** @type {HTMLInputElement} */ (event.target);
+  const file = input.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const text = String(reader.result ?? '');
+    const { lessons, errors } = parseImportJson(text);
+
+    if (!lessons.length) {
+      showImportFeedback(errors.join(' ') || 'File JSON không có bài hợp lệ.', true);
+      input.value = '';
+      return;
+    }
+
+    customLessons = mergeCustomLessons(customLessons, lessons);
+    saveCustomLessons(customLessons);
+    const last = lessons[lessons.length - 1];
+    afterCustomLessonsChanged(last.id, `Đã nhập ${lessons.length} bài từ file "${file.name}".`);
+    input.value = '';
+  };
+
+  reader.onerror = () => {
+    showImportFeedback(`Không đọc được file "${file.name}".`, true);
+    input.value = '';
+  };
+
+  reader.readAsText(file);
 }
 
 /**
