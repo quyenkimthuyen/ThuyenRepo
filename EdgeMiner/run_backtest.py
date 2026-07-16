@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
-"""Walk-Forward Backtest v2 — Adaptive Strategy Mining."""
+"""Walk-Forward Backtest — Adaptive Strategy Mining."""
+import argparse
 import json
 import sys
 from pathlib import Path
+from typing import Callable, Optional
 
-import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from config import (
+  DEFAULT_HOLDOUT_MONTHS, DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS,
+  MIN_TRAIN_BARS, TRAIN_MONTHS,
+)
 from data_loader import load_eurusd_h1, get_train_window_indices, get_week_indices
 from feature_engine import FeatureMatrix
 from optimizer import optimize_on_window, TARGET_TRADES_PER_WEEK
@@ -17,12 +22,12 @@ from strategy_miner import (
 )
 
 REPORT_DIR = Path(__file__).parent / "results"
-TRAIN_MONTHS = 3
-MIN_TRAIN_BARS = 500
+ProgressCallback = Callable[[int, int, object], None]
 
 
-def generate_weekly_schedule(df, first_trade_date):
-  weeks, current, end = [], first_trade_date, df.index[-1]
+def generate_weekly_schedule(df, first_trade_date, end_date=None):
+  weeks, current = [], first_trade_date
+  end = end_date if end_date is not None else df.index[-1]
   while current < end:
     weeks.append((current, current + pd.Timedelta(days=7)))
     current += pd.Timedelta(days=7)
@@ -44,57 +49,122 @@ def strategy_to_dict(s: MinedStrategy) -> dict:
   }
 
 
-def run_walk_forward(df: pd.DataFrame) -> dict:
+def _trades_to_json(trades) -> list[dict]:
+  return [
+    {
+      "entry": str(t.entry_time), "exit": str(t.exit_time),
+      "dir": "LONG" if t.direction == 1 else "SHORT",
+      "entry_px": round(t.entry_price, 5), "exit_px": round(t.exit_price, 5),
+      "sl": round(t.sl, 5), "tp": round(t.tp, 5),
+      "pnl_pips": round(t.pnl_pips, 1), "r": round(t.r_multiple, 2),
+      "reason": t.exit_reason,
+    }
+    for t in trades
+  ]
+
+
+def _run_holdout_forward(
+  df: pd.DataFrame, fm: FeatureMatrix, holdout_cutoff: pd.Timestamp,
+  use_learning: bool, train_months: int,
+  spread_pips: float, slippage_pips: float,
+) -> tuple[list, dict | None]:
+  """Mine 1 lần tại holdout, trade holdout không re-optimize (strict forward)."""
+  train_start_idx, train_end_idx = get_train_window_indices(df, holdout_cutoff, train_months)
+  if train_start_idx is None:
+    return [], None
+  strat = optimize_on_window(
+    fm, train_start_idx, train_end_idx,
+    use_learning=use_learning, as_of=holdout_cutoff,
+  )
+  if strat is None:
+    return [], None
+  holdout_mask = df.index >= holdout_cutoff
+  if not holdout_mask.any():
+    return [], strategy_to_dict(strat)
+  start_i = df.index.get_loc(df.index[holdout_mask][0])
+  sig = generate_signals_mined(fm, strat, start_i, fm.n)
+  trades = backtest_mined(
+    fm, strat, sig, start_i, fm.n,
+    spread_pips=spread_pips, slippage_pips=slippage_pips,
+  )
+  return trades, strategy_to_dict(strat)
+
+
+def run_walk_forward(
+  df: pd.DataFrame,
+  use_learning: bool = True,
+  train_months: int = TRAIN_MONTHS,
+  on_progress: Optional[ProgressCallback] = None,
+  verbose: bool = True,
+  spread_pips: float = DEFAULT_SPREAD_PIPS,
+  slippage_pips: float = DEFAULT_SLIPPAGE_PIPS,
+  holdout_months: int = DEFAULT_HOLDOUT_MONTHS,
+  risk_pct_per_trade: float = 1.0,
+) -> dict:
+  holdout_cutoff = None
+  if holdout_months > 0:
+    holdout_cutoff = df.index[-1] - pd.DateOffset(months=holdout_months)
+
+  df_wf = df[df.index < holdout_cutoff] if holdout_cutoff is not None else df
   fm = FeatureMatrix(df)
-  train_end_date = df.index[0] + pd.DateOffset(months=TRAIN_MONTHS)
-  oos_mask = df.index >= train_end_date
-  first_trade_date = df.index[oos_mask][0]
+
+  train_end_date = df_wf.index[0] + pd.DateOffset(months=train_months)
+  oos_mask = df_wf.index >= train_end_date
+  first_trade_date = df_wf.index[oos_mask][0]
   first_trade_date -= pd.Timedelta(days=first_trade_date.weekday())
   if first_trade_date < train_end_date:
     first_trade_date += pd.Timedelta(days=7)
 
-  weeks = generate_weekly_schedule(df, first_trade_date)
+  wf_end = holdout_cutoff if holdout_cutoff is not None else df_wf.index[-1]
+  weeks = generate_weekly_schedule(df_wf, first_trade_date, wf_end)
   all_oos_trades = []
   weekly_log = []
   last_strat: MinedStrategy | None = None
-  prev_strat: MinedStrategy | None = None  # fallback if mining fails
+  prev_strat: MinedStrategy | None = None
 
-  print(f"\n{'='*60}")
-  print("WALK-FORWARD v3 — RULES + ML + SMART EXITS")
-  print(f"{'='*60}")
-  print(f"Dữ liệu: {df.index[0].date()} -> {df.index[-1].date()} ({len(df)} bars)")
-  print(f"Mục tiêu: ~{TARGET_TRADES_PER_WEEK} lệnh/tuần | Train: {TRAIN_MONTHS} tháng")
-  print(f"OOS từ: {first_trade_date.date()} | {len(weeks)} tuần")
-  print(f"{'='*60}\n")
+  if verbose:
+    print(f"Walk-forward | bars={len(df)} | KB={'ON' if use_learning else 'OFF'} | "
+          f"spread={spread_pips} slip={slippage_pips} | holdout={holdout_months}mo")
 
-  for week_start, week_end in tqdm(weeks, desc="Walk-forward"):
-    train_start_idx, train_end_idx = get_train_window_indices(df, week_start, TRAIN_MONTHS)
+  week_iter = tqdm(weeks, desc="Walk-forward", disable=not verbose or on_progress is not None)
+  for wi, (week_start, week_end) in enumerate(week_iter):
+    if on_progress:
+      on_progress(wi + 1, len(weeks), week_start)
+
+    train_start_idx, train_end_idx = get_train_window_indices(df, week_start, train_months)
     if train_start_idx is None or (train_end_idx - train_start_idx) < MIN_TRAIN_BARS:
       weekly_log.append({"week_start": str(week_start.date()), "status": "skip_train"})
       continue
 
-    strat = optimize_on_window(fm, train_start_idx, train_end_idx)
+    strat = optimize_on_window(
+      fm, train_start_idx, train_end_idx,
+      use_learning=use_learning, as_of=week_start,
+    )
     if strat is None:
-      strat = prev_strat  # dùng chiến lược tuần trước nếu mine thất bại
+      strat = prev_strat
     if strat is None:
       weekly_log.append({"week_start": str(week_start.date()), "status": "skip_no_strategy"})
       continue
 
-    last_strat = strat
-    prev_strat = strat
-
+    last_strat, prev_strat = strat, strat
     oos_start, oos_end = get_week_indices(df, week_start, week_end)
     if oos_start is None:
       continue
 
     signals = generate_signals_mined(fm, strat, oos_start, oos_end)
     train_signals = generate_signals_mined(fm, strat, train_start_idx, train_end_idx)
-    train_trades = backtest_mined(fm, strat, train_signals, train_start_idx, train_end_idx)
-    train_m = compute_metrics(train_trades)
+    train_trades = backtest_mined(
+      fm, strat, train_signals, train_start_idx, train_end_idx,
+      spread_pips=spread_pips, slippage_pips=slippage_pips,
+    )
+    train_m = compute_metrics(train_trades, risk_pct_per_trade)
 
-    week_trades = backtest_mined(fm, strat, signals, oos_start, oos_end)
+    week_trades = backtest_mined(
+      fm, strat, signals, oos_start, oos_end,
+      spread_pips=spread_pips, slippage_pips=slippage_pips,
+    )
     all_oos_trades.extend(week_trades)
-    week_m = compute_metrics(week_trades)
+    week_m = compute_metrics(week_trades, risk_pct_per_trade)
 
     weekly_log.append({
       "week_start": str(week_start.date()),
@@ -109,39 +179,52 @@ def run_walk_forward(df: pd.DataFrame) -> dict:
       "oos_r": round(week_m["total_r"], 2),
     })
 
-  overall = compute_metrics(all_oos_trades)
+  holdout_trades, holdout_strat = [], None
+  if holdout_cutoff is not None:
+    holdout_trades, holdout_strat = _run_holdout_forward(
+      df, fm, holdout_cutoff, use_learning, train_months, spread_pips, slippage_pips,
+    )
+
+  overall = compute_metrics(all_oos_trades, risk_pct_per_trade)
   one_year_ago = df.index[-1] - pd.DateOffset(years=1)
   year_trades = [t for t in all_oos_trades if t.entry_time >= one_year_ago]
-  year_m = compute_metrics(year_trades)
-  n_weeks = len([w for w in weekly_log if w.get("oos_trades") is not None])
-  traded_weeks = len([w for w in weekly_log if w.get("oos_trades", 0) > 0 or "oos_trades" in w])
-  avg_tpw = overall["n_trades"] / max(traded_weeks, 1)
+  year_m = compute_metrics(year_trades, risk_pct_per_trade)
+  traded_weeks = max(len([w for w in weekly_log if w.get("oos_trades", 0) > 0]), 1)
+  avg_tpw = overall["n_trades"] / traded_weeks
 
-  return {
+  holdout_m = compute_metrics(holdout_trades, risk_pct_per_trade) if holdout_trades else None
+
+  def _pack_metrics(m: dict) -> dict:
+    return {
+      "n_trades": m["n_trades"],
+      "trades_per_week": round(avg_tpw, 2) if m is overall else round(m["n_trades"] / max(holdout_months * 4.33, 1), 2),
+      "win_rate_pct": round(m["win_rate"] * 100, 2),
+      "avg_rr": round(m["avg_rr"], 3),
+      "profit_factor": round(m["profit_factor"], 3),
+      "total_pips": round(m["total_pips"], 2),
+      "total_r": round(m["total_r"], 3),
+      "max_drawdown_r": round(m["max_drawdown_r"], 2),
+      "max_win_streak": m.get("max_win_streak", 0),
+      "max_loss_streak": m.get("max_loss_streak", 0),
+      "risk_of_ruin_pct": m.get("risk_of_ruin_pct", 0),
+    }
+
+  result = {
     "data_range": {"start": str(df.index[0].date()), "end": str(df.index[-1].date()), "bars": len(df)},
+    "oos_start": str(first_trade_date.date()),
     "config": {
-      "version": "adaptive_miner_v3",
-      "train_months": TRAIN_MONTHS,
+      "version": "adaptive_miner_v4",
+      "train_months": train_months,
       "target_trades_per_week": TARGET_TRADES_PER_WEEK,
       "pair": "EUR/USD", "tf": "H1",
+      "use_learning_kb": use_learning,
+      "spread_pips": spread_pips,
+      "slippage_pips": slippage_pips,
+      "holdout_months": holdout_months,
+      "risk_pct_per_trade": risk_pct_per_trade,
     },
-    "overall_oos": {
-      "n_trades": overall["n_trades"],
-      "trades_per_week": round(avg_tpw, 2),
-      "win_rate_pct": round(overall["win_rate"] * 100, 2),
-      "avg_rr": round(overall["avg_rr"], 3),
-      "profit_factor": round(overall["profit_factor"], 3),
-      "total_pips": round(overall["total_pips"], 2),
-      "total_r": round(overall["total_r"], 3),
-    },
-    "last_1_year": {
-      "n_trades": year_m["n_trades"],
-      "win_rate_pct": round(year_m["win_rate"] * 100, 2),
-      "avg_rr": round(year_m["avg_rr"], 3),
-      "profit_factor": round(year_m["profit_factor"], 3),
-      "total_pips": round(year_m["total_pips"], 2),
-      "total_r": round(year_m["total_r"], 3),
-    },
+    "overall_oos": _pack_metrics(overall),
+    "last_1_year": _pack_metrics(year_m),
     "constraints_met": {
       "win_rate_above_60": year_m["win_rate"] >= 0.60,
       "rr_above_2": year_m["avg_rr"] >= 2.0,
@@ -150,47 +233,63 @@ def run_walk_forward(df: pd.DataFrame) -> dict:
     },
     "last_strategy": strategy_to_dict(last_strat) if last_strat else None,
     "weekly_log": weekly_log,
-    "trades": [
-      {
-        "entry": str(t.entry_time), "exit": str(t.exit_time),
-        "dir": "LONG" if t.direction == 1 else "SHORT",
-        "entry_px": round(t.entry_price, 5), "exit_px": round(t.exit_price, 5),
-        "pnl_pips": round(t.pnl_pips, 1), "r": round(t.r_multiple, 2),
-        "reason": t.exit_reason,
-      }
-      for t in all_oos_trades
-    ],
+    "trades": _trades_to_json(all_oos_trades),
   }
+
+  if holdout_m:
+    result["holdout_forward"] = {
+      "cutoff": str(holdout_cutoff.date()),
+      "months": holdout_months,
+      "metrics": _pack_metrics(holdout_m),
+      "strategy": holdout_strat,
+      "trades": _trades_to_json(holdout_trades),
+    }
+
+  return result
+
+
+def save_backtest_report(result: dict, report_dir: Path = REPORT_DIR) -> Path:
+  report_dir.mkdir(exist_ok=True)
+  path = report_dir / "backtest_report.json"
+  with open(path, "w", encoding="utf-8") as f:
+    json.dump(result, f, indent=2, ensure_ascii=False)
+  if result.get("trades"):
+    pd.DataFrame(result["trades"]).to_csv(report_dir / "oos_trades.csv", index=False)
+  return path
 
 
 def print_report(r: dict):
   o, y, c = r["overall_oos"], r["last_1_year"], r["constraints_met"]
-  print(f"\n{'='*60}\nKẾT QUẢ BACKTEST OOS — ADAPTIVE MINER v3\n{'='*60}")
-  print(f"\n[TOÀN BỘ OOS - {o['n_trades']} lệnh | {o['trades_per_week']} lệnh/tuần]")
-  print(f"  Win Rate: {o['win_rate_pct']}% | RR: {o['avg_rr']} | PF: {o['profit_factor']}")
-  print(f"  Tổng: {o['total_pips']} pips | {o['total_r']}R")
-  print(f"\n[1 NĂM GẦN NHẤT - {y['n_trades']} lệnh]")
-  print(f"  Win Rate: {y['win_rate_pct']}% {'✓' if c['win_rate_above_60'] else '✗'} (>60%)")
-  print(f"  RR:       {y['avg_rr']} {'✓' if c['rr_above_2'] else '✗'} (>2)")
-  print(f"  Lợi nhuận: {y['total_r']}R {'✓' if c['profitable'] else '✗'}")
-  print(f"  Tần suất:  {o['trades_per_week']} lệnh/tuần {'✓' if c['trades_per_week_near_2'] else '✗'} (mục tiêu ~2)")
+  print(f"\n{'='*60}\nKẾT QUẢ BACKTEST OOS\n{'='*60}")
+  print(f"\n[WF OOS - {o['n_trades']} lệnh | {o['trades_per_week']}/tuần]")
+  print(f"  WR: {o['win_rate_pct']}% | RR: {o['avg_rr']} | R: {o['total_r']} | DD: {o['max_drawdown_r']}R")
+  if "holdout_forward" in r:
+    h = r["holdout_forward"]["metrics"]
+    print(f"\n[HOLD-OUT FORWARD - {h['n_trades']} lệnh từ {r['holdout_forward']['cutoff']}]")
+    print(f"  WR: {h['win_rate_pct']}% | R: {h['total_r']}R")
+  print(f"\n[1 NĂM] WR: {y['win_rate_pct']}% | R: {y['total_r']}R")
   ok = all(c.values())
-  print(f"\n{'✓ ĐẠT YÊU CẦU' if ok else '✗ CHƯA ĐẠT ĐỦ YÊU CẦU'}\n{'='*60}\n")
+  print(f"\n{'✓ ĐẠT YÊU CẦU' if ok else '✗ CHƯA ĐẠT'}\n{'='*60}\n")
 
 
 def main():
-  print("Tải dữ liệu EUR/USD H1 (2022+)...")
+  parser = argparse.ArgumentParser(description="Walk-forward EUR/USD backtest")
+  parser.add_argument("--no-kb", action="store_true", help="Tắt knowledge base")
+  parser.add_argument("--spread", type=float, default=DEFAULT_SPREAD_PIPS)
+  parser.add_argument("--slippage", type=float, default=DEFAULT_SLIPPAGE_PIPS)
+  parser.add_argument("--holdout-months", type=int, default=DEFAULT_HOLDOUT_MONTHS)
+  args = parser.parse_args()
+
   df = load_eurusd_h1("2022-01-01")
   print(f"{len(df)} bars: {df.index[0].date()} -> {df.index[-1].date()}")
-  result = run_walk_forward(df)
-  REPORT_DIR.mkdir(exist_ok=True)
-  path = REPORT_DIR / "backtest_report.json"
-  with open(path, "w", encoding="utf-8") as f:
-    json.dump(result, f, indent=2, ensure_ascii=False)
+  result = run_walk_forward(
+    df, use_learning=not args.no_kb,
+    spread_pips=args.spread, slippage_pips=args.slippage,
+    holdout_months=args.holdout_months,
+  )
+  path = save_backtest_report(result)
   print_report(result)
   print(f"Báo cáo: {path}")
-  if result["trades"]:
-    pd.DataFrame(result["trades"]).to_csv(REPORT_DIR / "oos_trades.csv", index=False)
   return 0 if all(result["constraints_met"].values()) else 1
 
 

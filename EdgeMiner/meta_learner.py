@@ -33,18 +33,22 @@ def get_matched_rule_keys(fm, strat: MinedStrategy, bar_idx: int, direction: int
   return keys
 
 
-def _fit_ml_with_experience(fm, train_start, train_end, long_wins, short_wins, kb: KnowledgeBase) -> MLScorer:
-  """Train ML trên train window + kinh nghiệm tích lũy từ các epoch trước."""
+def _fit_ml_with_experience(
+  fm, train_start, train_end, long_wins, short_wins, kb: KnowledgeBase, as_of=None,
+) -> MLScorer:
+  """Train ML trên train window + kinh nghiệm KB chỉ trước as_of (chống leakage)."""
   ml = MLScorer()
   ml.fit(fm, train_start, train_end, long_wins, short_wins)
 
-  if len(kb.ml_experience) < 50:
+  cutoff = as_of if as_of is not None else fm.index[train_start]
+  extra_samples = kb.ml_samples_before(cutoff)
+  if len(extra_samples) < 30:
     return ml
 
   # Bổ sung mẫu từ KB vào training (meta-learning across epochs)
   try:
     X_extra, yl_extra, ys_extra = [], [], []
-    for sample in kb.ml_experience[-2000:]:
+    for sample in extra_samples:
       row = [sample["features"].get(f, 0.0) for f in ML_FEATURES]
       X_extra.append(row)
       yl_extra.append(sample["long_win"])
@@ -93,6 +97,7 @@ def _evaluate_genome(fm, strat: MinedStrategy, train_start, train_end, weeks, ta
 
 def mine_strategy_learning(
   fm, train_start, train_end, kb: KnowledgeBase, target_tpw: float = 2.0,
+  as_of=None,
 ) -> Optional[MinedStrategy]:
   """
   Optimize có nhớ:
@@ -111,7 +116,7 @@ def mine_strategy_learning(
     rr, atr_m = top.get("rr_ratio", 2.5), top.get("atr_mult_sl", 0.95)
 
   long_wins, short_wins = _label_outcomes(fm, train_start, train_end, rr, atr_m)
-  ml = _fit_ml_with_experience(fm, train_start, train_end, long_wins, short_wins, kb)
+  ml = _fit_ml_with_experience(fm, train_start, train_end, long_wins, short_wins, kb, as_of=as_of)
 
   # --- Phase 1: Đánh giá genomes từ KB (evolution) ---
   candidates: list[dict] = []
@@ -122,7 +127,7 @@ def mine_strategy_learning(
   for g in candidates:
     strat = kb.dict_to_strategy(g)
     strat.ml_scorer = ml
-    strat = apply_kb_rule_weights(strat, kb)
+    strat = apply_kb_rule_weights(strat, kb, as_of=as_of)
     s, comb = _evaluate_genome(fm, strat, train_start, train_end, weeks, target_tpw)
     if comb["n_trades"] >= 2 and s > best_score:
       best_score, best = s, strat
@@ -132,7 +137,7 @@ def mine_strategy_learning(
     fresh = mine_strategy(fm, train_start, train_end, target_tpw)
     if fresh:
       fresh.ml_scorer = ml
-      fresh = apply_kb_rule_weights(fresh, kb)
+      fresh = apply_kb_rule_weights(fresh, kb, as_of=as_of)
       s, comb = _evaluate_genome(fm, fresh, train_start, train_end, weeks, target_tpw)
       if s > best_score:
         best_score, best = s, fresh
@@ -144,7 +149,7 @@ def mine_strategy_learning(
       mutant_g = mutate_genome(g, rate=0.15)
       mutant = kb.dict_to_strategy(mutant_g)
       mutant.ml_scorer = ml
-      mutant = apply_kb_rule_weights(mutant, kb)
+      mutant = apply_kb_rule_weights(mutant, kb, as_of=as_of)
       s, comb = _evaluate_genome(fm, mutant, train_start, train_end, weeks, target_tpw)
       if comb["n_trades"] >= 2 and s > best_score:
         best_score, best = s, mutant
@@ -161,9 +166,10 @@ def record_trade_learning(
 ):
   """Ghi nhận kết quả lệnh → cập nhật rule stats + ML experience."""
   keys = get_matched_rule_keys(fm, strat, entry_bar_idx, direction)
-  kb.record_rule_outcomes(keys, r_multiple)
+  entry_time = fm.index[entry_bar_idx]
+  kb.record_rule_outcomes(keys, r_multiple, entry_time=entry_time)
 
   feat_row = {f: float(fm.get(f)[entry_bar_idx]) for f in ML_FEATURES if not np.isnan(fm.get(f)[entry_bar_idx])}
   long_w = 1 if direction == 1 and r_multiple > 0 else 0
   short_w = 1 if direction == -1 and r_multiple > 0 else 0
-  kb.add_ml_sample(feat_row, long_w, short_w)
+  kb.add_ml_sample(feat_row, long_w, short_w, entry_time=entry_time)

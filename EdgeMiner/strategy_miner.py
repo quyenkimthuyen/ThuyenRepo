@@ -200,7 +200,12 @@ def generate_signals_mined(fm, strat, start_idx=0, end_idx=None):
   return signals
 
 
-def backtest_mined(fm, strat, signals, start_idx=0, end_idx=None):
+def backtest_mined(
+  fm, strat, signals, start_idx=0, end_idx=None,
+  spread_pips: float = 0.0, slippage_pips: float = 0.0,
+):
+  from execution import adjust_entry_price, adjust_exit_price
+
   if end_idx is None:
     end_idx = fm.n
   o, h, l, c, atr_v = fm.open, fm.high, fm.low, fm.close, fm.atr
@@ -250,6 +255,8 @@ def backtest_mined(fm, strat, signals, start_idx=0, end_idx=None):
         if not hit_sl and not hit_tp:
           exit_price, reason = c[i], "timeout"
 
+        exit_price = adjust_exit_price(exit_price, int(direction), spread_pips, slippage_pips)
+
         if strat.exit_mode == "partial" and partial_done:
           pnl_r = strat.partial_pct * strat.partial_at_r
           rem = (exit_price - entry_price) * direction / risk if risk > 0 else 0
@@ -277,7 +284,7 @@ def backtest_mined(fm, strat, signals, start_idx=0, end_idx=None):
       entry_idx = i + 1
       if entry_idx >= end_idx:
         break
-      entry_price = o[entry_idx]
+      entry_price = adjust_entry_price(o[entry_idx], int(sig), spread_pips, slippage_pips)
       sl_d = strat.atr_mult_sl * av
       direction = float(sig)
       risk = sl_d

@@ -22,7 +22,10 @@ def optimize_on_window(
   train_start_idx: int,
   train_end_idx: int,
   use_learning: bool = True,
+  as_of=None,
 ) -> Optional[MinedStrategy]:
   if use_learning:
-    return mine_strategy_learning(fm, train_start_idx, train_end_idx, get_knowledge_base())
+    return mine_strategy_learning(
+      fm, train_start_idx, train_end_idx, get_knowledge_base(), as_of=as_of,
+    )
   return mine_strategy(fm, train_start_idx, train_end_idx, TARGET_TRADES_PER_WEEK)

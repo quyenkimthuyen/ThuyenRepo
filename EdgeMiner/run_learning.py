@@ -25,14 +25,13 @@ from tqdm import tqdm
 from data_loader import load_eurusd_h1, get_train_window_indices, get_week_indices
 from feature_engine import FeatureMatrix
 from knowledge_base import KnowledgeBase, KNOWLEDGE_PATH
+from config import TRAIN_MONTHS, MIN_TRAIN_BARS, DEFAULT_SPREAD_PIPS, DEFAULT_SLIPPAGE_PIPS
 from meta_learner import mine_strategy_learning, record_trade_learning
 from optimizer import TARGET_TRADES_PER_WEEK
 from strategy import compute_metrics
 from strategy_miner import generate_signals_mined, backtest_mined, MinedStrategy
 
 REPORT_DIR = Path(__file__).parent / "results"
-TRAIN_MONTHS = 3
-MIN_TRAIN_BARS = 500
 
 
 def generate_weekly_schedule(df, first_trade_date):
@@ -62,7 +61,7 @@ def run_epoch(df, fm: FeatureMatrix, kb: KnowledgeBase, epoch: int) -> dict:
     if train_start_idx is None or (train_end_idx - train_start_idx) < MIN_TRAIN_BARS:
       continue
 
-    strat = mine_strategy_learning(fm, train_start_idx, train_end_idx, kb)
+    strat = mine_strategy_learning(fm, train_start_idx, train_end_idx, kb, as_of=week_start)
     if strat is None:
       strat = prev_strat
     if strat is None:
@@ -74,7 +73,10 @@ def run_epoch(df, fm: FeatureMatrix, kb: KnowledgeBase, epoch: int) -> dict:
       continue
 
     signals = generate_signals_mined(fm, strat, oos_start, oos_end)
-    week_trades = backtest_mined(fm, strat, signals, oos_start, oos_end)
+    week_trades = backtest_mined(
+      fm, strat, signals, oos_start, oos_end,
+      spread_pips=DEFAULT_SPREAD_PIPS, slippage_pips=DEFAULT_SLIPPAGE_PIPS,
+    )
 
     for t in week_trades:
       try:

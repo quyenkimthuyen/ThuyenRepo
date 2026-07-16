@@ -84,15 +84,15 @@ def evolve_population(kb: KnowledgeBase, n_offspring: int = 12) -> list[dict]:
   return offspring[:n_offspring]
 
 
-def apply_kb_rule_weights(strat, kb: KnowledgeBase):
-  """Điều chỉnh weight rules theo kinh nghiệm tích lũy."""
+def apply_kb_rule_weights(strat, kb: KnowledgeBase, as_of=None):
+  """Điều chỉnh weight rules theo kinh nghiệm tích lũy (causal nếu as_of set)."""
   from strategy_miner import Rule
   new_long, new_short = [], []
   for r in strat.long_rules:
-    w = r.weight * kb.rule_weight_multiplier(r)
+    w = r.weight * kb.rule_weight_multiplier(r, as_of=as_of)
     new_long.append(Rule(r.feature, r.direction, r.op, r.threshold, w))
   for r in strat.short_rules:
-    w = r.weight * kb.rule_weight_multiplier(r)
+    w = r.weight * kb.rule_weight_multiplier(r, as_of=as_of)
     new_short.append(Rule(r.feature, r.direction, r.op, r.threshold, w))
   strat.long_rules = new_long
   strat.short_rules = new_short
