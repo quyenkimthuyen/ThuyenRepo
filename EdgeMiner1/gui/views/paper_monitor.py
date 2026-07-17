@@ -1,12 +1,14 @@
 """7. Paper / Live Monitor — tín hiệu tuần hiện tại + chart TradingView."""
 from __future__ import annotations
 
+import json
 from datetime import timedelta
 
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
+import streamlit.components.v1 as components
 
 from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 from kb_profiles import DEFAULT_PROFILE_ID
@@ -407,42 +409,74 @@ def _render_chart_panel(state: dict):
   )
 
 
-def _format_countdown(seconds: int | None) -> tuple[str, str]:
-  """Returns (emoji_label, text) e.g. ('⏱️', '4:32')."""
-  if seconds is None:
-    return "⏱️", "—"
-  if seconds <= 5:
-    return "🔄", "Đang cập nhật..."
-  m, s = divmod(seconds, 60)
-  if m >= 60:
-    h, m = divmod(m, 60)
-    return "⏱️", f"{h}h {m:02d}m"
-  return "⏱️", f"{m}:{s:02d}"
+def _render_js_countdown(next_run_at: str | None, interval_min: int, running: bool):
+  """Đồng hồ đếm ngược chạy trên browser — tick mỗi giây, không cần reload server."""
+  if not next_run_at:
+    st.caption("⏱️ Chưa có lịch reload tiếp theo.")
+    return
+
+  icon = "🟢" if running else "🟡"
+  total_ms = max(interval_min, 1) * 60 * 1000
+  target_js = json.dumps(next_run_at)
+
+  components.html(
+    f"""
+<div style="font-family: system-ui, -apple-system, sans-serif; padding: 2px 0 6px 0;">
+  <div style="display: flex; align-items: center; gap: 18px; flex-wrap: wrap;">
+    <div id="pm-cd" style="
+      font-size: 2.75rem; font-weight: 700; font-variant-numeric: tabular-nums;
+      color: #2ecc71; min-width: 5.5rem; letter-spacing: 0.04em;
+    ">--:--</div>
+    <div>
+      <div style="font-size: 1rem; color: #d1d4dc;">{icon} Reload data tiếp theo</div>
+      <div style="font-size: 0.82rem; color: #888;">Chu kỳ {interval_min} phút · cập nhật mỗi giây</div>
+    </div>
+  </div>
+  <div style="height: 8px; background: #363a45; border-radius: 4px; margin-top: 12px; overflow: hidden;">
+    <div id="pm-bar" style="height: 100%; background: linear-gradient(90deg, #2ecc71, #27ae60); width: 0%;"></div>
+  </div>
+</div>
+<script>
+(function() {{
+  const target = new Date({target_js}).getTime();
+  const total = {total_ms};
+  const cdEl = document.getElementById("pm-cd");
+  const barEl = document.getElementById("pm-bar");
+  function pad(n) {{ return String(n).padStart(2, "0"); }}
+  function tick() {{
+    const rem = Math.max(0, target - Date.now());
+    const sec = Math.floor(rem / 1000);
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    if (rem <= 5000) {{
+      cdEl.textContent = "🔄";
+      cdEl.style.color = "#f39c12";
+    }} else {{
+      cdEl.textContent = m + ":" + pad(s);
+      cdEl.style.color = "#2ecc71";
+    }}
+    const pct = Math.min(100, Math.max(0, (1 - rem / total) * 100));
+    barEl.style.width = pct + "%";
+  }}
+  tick();
+  setInterval(tick, 1000);
+}})();
+</script>
+""",
+    height=100,
+  )
 
 
 def _background_countdown_widget():
-  """Chỉ đồng hồ đếm ngược + progress — refresh mỗi giây."""
+  """Wrapper — dùng JS countdown thay vì server fragment."""
   status = get_background_status()
   if not status["enabled"]:
     return
-
-  interval_min = status["interval_minutes"]
-  remaining = status.get("seconds_until_next")
-  icon = "🟢" if status["running"] else "🟡"
-  cd_icon, cd_text = _format_countdown(remaining)
-
-  col_cd, col_bar = st.columns([1, 2])
-  with col_cd:
-    st.metric(
-      f"{icon} Reload tiếp",
-      cd_text,
-      help=f"Tự động tải data mỗi {interval_min} phút",
-    )
-  with col_bar:
-    if remaining is not None and interval_min > 0:
-      total = interval_min * 60
-      pct = min(1.0, max(0.0, (total - remaining) / total))
-      st.progress(pct, text=f"Chu kỳ {interval_min} phút · còn {cd_text}")
+  _render_js_countdown(
+    status.get("next_run_at"),
+    status.get("interval_minutes", 5),
+    status.get("running", False),
+  )
 
 
 def _background_status_bar():
@@ -458,13 +492,6 @@ def _background_status_bar():
   )
   if status.get("last_error"):
     st.error(f"Background lỗi: {status['last_error']}")
-
-
-@st.fragment(run_every=timedelta(seconds=1))
-def _countdown_fragment():
-  """Tick mỗi giây — chỉ cập nhật đồng hồ, không reload chart."""
-  if is_background_enabled():
-    _background_countdown_widget()
 
 
 @st.fragment(run_every=timedelta(seconds=30))
@@ -612,8 +639,12 @@ def render():
   state = _resolve_monitor_state(monitor_params, manual_refresh=manual_refresh)
 
   if is_background_enabled():
-    _countdown_fragment()
     status = get_background_status()
+    _render_js_countdown(
+      status.get("next_run_at"),
+      status.get("interval_minutes", 5),
+      status.get("running", False),
+    )
     st.caption(
       f"Lần cuối: `{status.get('last_run_at', '—')}` · "
       f"Data mới: `{status.get('updated_at', '—')}`"
