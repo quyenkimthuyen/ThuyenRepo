@@ -69,6 +69,11 @@ def _save_cache(df: pd.DataFrame):
       "end": str(df.index[-1]),
       "fetched_at": datetime.now(timezone.utc).isoformat(),
     }, f, indent=2)
+  try:
+    from strategy_miner import notify_data_updated
+    notify_data_updated(len(df))
+  except Exception:
+    pass
 
 
 def _load_cache() -> pd.DataFrame | None:

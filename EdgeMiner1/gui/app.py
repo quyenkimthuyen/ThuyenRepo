@@ -56,6 +56,12 @@ def main():
     initial_sidebar_state="expanded",
   )
 
+  try:
+    from paper_background import ensure_background_running
+    ensure_background_running()
+  except Exception:
+    pass
+
   st.sidebar.title("ForexForge")
   st.sidebar.caption("EUR/USD H1 · Walk-forward · Self-learning v4")
   page = st.sidebar.radio("Điều hướng", list(PAGES.keys()))

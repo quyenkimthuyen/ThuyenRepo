@@ -1,38 +1,484 @@
-"""7. Paper / Live Monitor — tín hiệu tuần hiện tại."""
+"""7. Paper / Live Monitor — tín hiệu tuần hiện tại + chart TradingView."""
 from __future__ import annotations
 
+from datetime import timedelta
+
+import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import streamlit as st
 
 from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 from kb_profiles import DEFAULT_PROFILE_ID
 from gui.components import kb_profile_and_epoch_picker
-from gui.services import get_paper_monitor
+from gui.services import get_ohlc_window_cached, get_paper_monitor
+from gui.paper_settings import load_pm_config, save_ui_settings
+from paper_background import (
+  get_background_status,
+  is_background_enabled,
+  load_config,
+  load_saved_state,
+  run_cycle_now,
+  sync_background_config,
+)
+
+INTERVAL_OPTS = {"Tắt": 0, "5 phút": 5, "15 phút": 15, "30 phút": 30}
+LABEL_BY_INTERVAL = {v: k for k, v in INTERVAL_OPTS.items()}
+
+TV_BG = "#131722"
+TV_GRID = "#363a45"
+TV_TEXT = "#d1d4dc"
+TV_UP = "#26a69a"
+TV_DOWN = "#ef5350"
+TV_ENTRY = "#2962ff"
+TV_SL = "#f23645"
+TV_TP = "#089981"
 
 
-def render():
-  st.header("Paper / Live Monitor")
-  st.caption("Tín hiệu tuần hiện tại — chọn KB profile + epoch snapshot")
+def _tv_layout(fig: go.Figure, title: str = "", height: int = 580):
+  fig.update_layout(
+    title=dict(text=title, font=dict(size=14, color=TV_TEXT)),
+    template="plotly_dark",
+    paper_bgcolor=TV_BG,
+    plot_bgcolor=TV_BG,
+    font=dict(color=TV_TEXT, size=11),
+    height=height,
+    margin=dict(l=8, r=72, t=48, b=32),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+    hovermode="x unified",
+    xaxis_rangeslider_visible=False,
+  )
+  fig.update_xaxes(gridcolor=TV_GRID, showgrid=True, zeroline=False)
+  fig.update_yaxes(gridcolor=TV_GRID, showgrid=True, zeroline=False, side="right")
 
-  use_kb = st.toggle("Dùng KB", value=False, key="pm_kb")
-  kb_profile = DEFAULT_PROFILE_ID
-  kb_snapshot = None
-  if use_kb:
-    kb_profile, kb_snapshot = kb_profile_and_epoch_picker("pm", show_meta=True)
-    kb_profile = kb_profile or DEFAULT_PROFILE_ID
-  spread = st.slider("Spread (pips)", 0.0, 3.0, DEFAULT_SPREAD_PIPS, 0.1, key="pm_spread")
-  slip = st.slider("Slippage (pips)", 0.0, 2.0, DEFAULT_SLIPPAGE_PIPS, 0.1, key="pm_slip")
 
-  if st.button("Refresh monitor", type="primary"):
+def _add_order_overlays(fig: go.Figure, order: dict, row: int = 1):
+  """Vẽ entry / SL / TP / exit trên chart."""
+  entry_t = pd.Timestamp(order.get("entry") or order.get("entry_time"))
+  entry_px = order.get("entry_px")
+  sl = order.get("sl")
+  tp = order.get("tp")
+  direction = order.get("dir") or order.get("direction", "")
+  status = order.get("status", "CLOSED")
+  is_long = direction == "LONG"
+
+  exit_t = order.get("exit")
+  if exit_t:
+    exit_t = pd.Timestamp(exit_t)
+  else:
+    exit_t = entry_t + pd.Timedelta(hours=48)
+
+  x0, x1 = entry_t, exit_t
+
+  # Vùng risk (entry → SL) và reward (entry → TP)
+  if entry_px and sl and tp:
+    risk_y0, risk_y1 = (sl, entry_px) if is_long else (entry_px, sl)
+    rew_y0, rew_y1 = (entry_px, tp) if is_long else (tp, entry_px)
+    fig.add_shape(
+      type="rect", xref="x", yref="y", row=row, col=1,
+      x0=x0, x1=x1, y0=risk_y0, y1=risk_y1,
+      fillcolor="rgba(242,54,69,0.12)", line=dict(width=0),
+    )
+    fig.add_shape(
+      type="rect", xref="x", yref="y", row=row, col=1,
+      x0=x0, x1=x1, y0=rew_y0, y1=rew_y1,
+      fillcolor="rgba(8,153,129,0.10)", line=dict(width=0),
+    )
+    for y, color, label in [(sl, TV_SL, "SL"), (tp, TV_TP, "TP")]:
+      fig.add_trace(go.Scatter(
+        x=[x0, x1], y=[y, y],
+        mode="lines",
+        line=dict(color=color, width=1.5, dash="dot"),
+        name=label,
+        showlegend=False,
+        hovertemplate=f"{label}: %{{y:.5f}}<extra></extra>",
+      ), row=row, col=1)
+      fig.add_annotation(
+        x=x1, y=y, xref="x", yref="y",
+        text=f"{label} {y:.5f}",
+        showarrow=False, font=dict(size=9, color=color),
+        xanchor="left", xshift=4,
+      )
+
+  # Entry marker
+  marker_symbol = "triangle-up" if is_long else "triangle-down"
+  marker_color = TV_UP if is_long else TV_DOWN
+  fig.add_trace(go.Scatter(
+    x=[entry_t], y=[entry_px],
+    mode="markers+text",
+    marker=dict(symbol=marker_symbol, size=14, color=marker_color, line=dict(width=1, color="white")),
+    text=[f"ENTRY {entry_px:.5f}"],
+    textposition="top center" if is_long else "bottom center",
+    textfont=dict(size=9, color=TV_ENTRY),
+    name="Entry",
+    showlegend=False,
+    hovertemplate=(
+      f"Entry<br>%{{x}}<br>{direction} @ %{{y:.5f}}<br>"
+      f"SL: {sl}<br>TP: {tp}<extra></extra>"
+    ),
+  ), row=row, col=1)
+
+  if status == "CLOSED" and order.get("exit_px"):
+    exit_px = order["exit_px"]
+    reason = order.get("reason", "")
+    r_val = order.get("r", 0)
+    exit_color = TV_TP if (r_val or 0) > 0 else TV_SL
+    fig.add_trace(go.Scatter(
+      x=[pd.Timestamp(exit_t)], y=[exit_px],
+      mode="markers+text",
+      marker=dict(symbol="x", size=10, color=exit_color, line=dict(width=2)),
+      text=[f"EXIT {exit_px:.5f} ({reason})"],
+      textposition="bottom center",
+      textfont=dict(size=9, color=exit_color),
+      showlegend=False,
+      hovertemplate=f"Exit: %{{y:.5f}}<br>R={r_val}<extra></extra>",
+    ), row=row, col=1)
+  elif status == "OPEN":
+    fig.add_annotation(
+      x=entry_t, y=entry_px, xref="x", yref="y",
+      text="● OPEN", showarrow=True, arrowhead=2,
+      font=dict(size=10, color="#ffeb3b"),
+      bgcolor="rgba(0,0,0,0.6)", bordercolor="#ffeb3b",
+    )
+
+
+def _tradingview_chart(
+  ohlc_window: pd.DataFrame,
+  orders: list[dict],
+  chart_from: str,
+  chart_to: str,
+  title: str = "EUR/USD H1",
+) -> go.Figure | None:
+  window = ohlc_window
+  if window.empty:
+    return None
+
+  has_vol = "Volume" in window.columns and window["Volume"].sum() > 0
+  if has_vol:
+    fig = make_subplots(
+      rows=2, cols=1, shared_xaxes=True,
+      row_heights=[0.78, 0.22], vertical_spacing=0.03,
+    )
+    price_row, vol_row = 1, 2
+  else:
+    fig = make_subplots(rows=1, cols=1)
+    price_row, vol_row = 1, None
+
+  fig.add_trace(go.Candlestick(
+    x=window.index,
+    open=window["Open"], high=window["High"],
+    low=window["Low"], close=window["Close"],
+    increasing_line_color=TV_UP, decreasing_line_color=TV_DOWN,
+    increasing_fillcolor=TV_UP, decreasing_fillcolor=TV_DOWN,
+    name="EUR/USD",
+    showlegend=False,
+  ), row=price_row, col=1)
+
+  if vol_row:
+    colors = [
+      TV_UP if c >= o else TV_DOWN
+      for o, c in zip(window["Open"], window["Close"])
+    ]
+    fig.add_trace(go.Bar(
+      x=window.index, y=window["Volume"],
+      marker_color=colors, opacity=0.5, name="Volume", showlegend=False,
+    ), row=vol_row, col=1)
+    fig.update_yaxes(title_text="Vol", row=vol_row, col=1)
+
+  for order in orders:
+    _add_order_overlays(fig, order, row=price_row)
+
+  _tv_layout(fig, title=title, height=620 if has_vol else 560)
+  fig.update_yaxes(title_text="Price", row=price_row, col=1)
+  return fig
+
+
+def _order_card(order: dict, idx: int):
+  """Hiển thị chi tiết một lệnh."""
+  status = order.get("status", "CLOSED")
+  direction = order.get("dir") or order.get("direction", "?")
+  is_long = direction == "LONG"
+  status_icon = {"CLOSED": "✅", "OPEN": "🟡", "SIGNAL": "🔔"}.get(status, "•")
+  r_val = order.get("r")
+  r_str = f"{r_val:+.2f}R" if r_val is not None else "—"
+  r_color = "green" if (r_val or 0) > 0 else ("red" if (r_val or 0) < 0 else "gray")
+
+  with st.expander(
+    f"{status_icon} #{idx + 1} · {direction} · {status} · "
+    f"Entry {order.get('entry_px', '?')} · {r_str}",
+    expanded=(status == "OPEN"),
+  ):
+    c1, c2, c3 = st.columns(3)
+    with c1:
+      st.markdown("**Entry**")
+      st.write(f"Thời gian: `{order.get('entry') or order.get('entry_time', '—')}`")
+      st.write(f"Giá: **{order.get('entry_px', '—')}**")
+      st.write(f"Hướng: **{direction}** {'📈' if is_long else '📉'}")
+    with c2:
+      st.markdown("**Stop Loss / Take Profit**")
+      st.write(f"SL: :red[**{order.get('sl', '—')}**]")
+      st.write(f"TP: :green[**{order.get('tp', '—')}**]")
+      risk = order.get("risk_pips")
+      if risk:
+        st.write(f"Risk: **{risk}** pips")
+      rr = order.get("rr")
+      if rr:
+        st.write(f"RR mục tiêu: **1:{rr}**")
+    with c3:
+      st.markdown("**Kết quả**")
+      if status == "CLOSED":
+        st.write(f"Exit: `{order.get('exit', '—')}`")
+        st.write(f"Giá thoát: **{order.get('exit_px', '—')}**")
+        st.markdown(f"R: :{r_color}[**{r_str}**]")
+        st.write(f"Lý do: **{order.get('reason', '—')}**")
+        pnl = order.get("pnl_pips")
+        if pnl is not None:
+          st.write(f"P/L: **{pnl:+.1f}** pips")
+      elif status == "OPEN":
+        st.warning("Lệnh đang mở — chưa chạm SL/TP/timeout")
+        st.write(f"Bars giữ: **{order.get('bars_held', 0)}** / {order.get('max_hold_bars', '?')}")
+      else:
+        st.info("Tín hiệu — chờ khớp entry bar tiếp theo")
+        st.write(f"Tín hiệu: `{order.get('signal_time', '—')}`")
+
+
+def _chart_cache_key(state: dict) -> str:
+  return "|".join([
+    str(state.get("updated_at", "")),
+    str(state.get("chart_from", "")),
+    str(state.get("chart_to", "")),
+    str(len(state.get("orders") or [])),
+  ])
+
+
+def _settings_signature(use_kb, kb_profile, kb_snapshot, spread, slip) -> str:
+  return f"{use_kb}|{kb_profile}|{kb_snapshot}|{spread}|{slip}"
+
+
+def _on_settings_changed(new_sig: str):
+  prev = st.session_state.get("pm_settings_sig")
+  if prev is not None and prev != new_sig:
+    st.session_state.pop("monitor_state", None)
+    _invalidate_chart_cache()
+  st.session_state["pm_settings_sig"] = new_sig
+
+
+def _init_pm_widget_state():
+  """Khôi phục widget từ file config khi chưa có trong session."""
+  from gui.components import _profile_label
+  from kb_profiles import list_profiles, list_snapshots
+
+  cfg = load_pm_config()
+  st.session_state.setdefault("pm_kb", bool(cfg.get("use_learning", False)))
+  st.session_state.setdefault("pm_spread", float(cfg.get("spread_pips", DEFAULT_SPREAD_PIPS)))
+  st.session_state.setdefault("pm_slip", float(cfg.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)))
+  iv = int(cfg.get("interval_minutes") or 0)
+  st.session_state.setdefault("pm_interval_sel", LABEL_BY_INTERVAL.get(iv, "Tắt"))
+
+  pid = cfg.get("kb_profile") or DEFAULT_PROFILE_ID
+  st.session_state.setdefault("pm_kb_profile_id", pid)
+  st.session_state.setdefault("pm_kb_snapshot_epoch", cfg.get("kb_snapshot"))
+
+  if "pm_profile" not in st.session_state:
+    for p in list_profiles():
+      if p.get("id") == pid and p.get("exists"):
+        st.session_state["pm_profile"] = _profile_label(p)
+        break
+
+  if "pm_kb_epoch" not in st.session_state:
+    target = cfg.get("kb_snapshot")
+    for s in list_snapshots(pid):
+      if s.get("cumulative") == target or (target is None and s.get("cumulative") is None):
+        st.session_state["pm_kb_epoch"] = s["label"]
+        break
+
+
+def _invalidate_chart_cache():
+  st.session_state.pop("pm_fig", None)
+  st.session_state.pop("pm_fig_key", None)
+
+
+def _get_chart_figure(state: dict) -> go.Figure | None:
+  """Dùng lại figure đã build — chart hiện ngay khi quay lại tab."""
+  key = _chart_cache_key(state)
+  if st.session_state.get("pm_fig_key") == key and st.session_state.get("pm_fig") is not None:
+    return st.session_state["pm_fig"]
+
+  orders = state.get("orders") or []
+  chart_from = state.get("chart_from", state.get("week_start", ""))
+  chart_to = state.get("chart_to", state.get("last_bar", ""))
+  try:
+    window = get_ohlc_window_cached(chart_from, chart_to)
+    fig = _tradingview_chart(
+      window, orders, chart_from, chart_to,
+      title=f"EUR/USD H1 · Tuần {state.get('week_start', '')}",
+    )
+  except Exception:
+    return None
+
+  if fig is not None:
+    st.session_state["pm_fig_key"] = key
+    st.session_state["pm_fig"] = fig
+  return fig
+
+
+def _resolve_monitor_state(monitor_params: dict, *, manual_refresh: bool) -> dict:
+  """Ưu tiên session cache — tránh tính lại khi chỉ chuyển tab."""
+  if manual_refresh:
+    _invalidate_chart_cache()
     st.session_state.pop("monitor_state", None)
 
-  with st.spinner("Cập nhật..."):
-    state = st.session_state.get("monitor_state") or get_paper_monitor(
-      use_learning=use_kb, spread_pips=spread, slippage_pips=slip,
-      kb_profile=kb_profile if use_kb else DEFAULT_PROFILE_ID,
-      kb_snapshot=kb_snapshot if use_kb else None,
-    )
+  if manual_refresh:
+    with st.spinner("Đang tải giá & tính lại..."):
+      if is_background_enabled():
+        state = run_cycle_now(load_config())
+      else:
+        state = get_paper_monitor(**monitor_params)
     st.session_state["monitor_state"] = state
+    st.session_state["pm_shown_at"] = state.get("updated_at")
+    return state
 
+  cached = st.session_state.get("monitor_state")
+
+  if is_background_enabled():
+    saved = load_saved_state()
+    if cached and saved and saved.get("updated_at") == cached.get("updated_at"):
+      return cached
+    if saved and (not cached or saved.get("updated_at") != cached.get("updated_at")):
+      _invalidate_chart_cache()
+      st.session_state["monitor_state"] = saved
+      st.session_state["pm_shown_at"] = saved.get("updated_at")
+      return saved
+    if cached:
+      return cached
+    with st.spinner("Đang khởi tạo background..."):
+      try:
+        state = run_cycle_now(load_config())
+      except Exception as e:
+        state = {"error": str(e)}
+    st.session_state["monitor_state"] = state
+    return state
+
+  if cached:
+    return cached
+
+  with st.spinner("Cập nhật..."):
+    state = get_paper_monitor(**monitor_params)
+  st.session_state["monitor_state"] = state
+  return state
+
+
+def _poll_check_update() -> bool:
+  """Kiểm tra data background mới; cập nhật session nếu có."""
+  if not is_background_enabled():
+    return False
+  saved = load_saved_state()
+  shown = st.session_state.get("pm_shown_at")
+  if saved and saved.get("updated_at") and saved.get("updated_at") != shown:
+    st.session_state["pm_shown_at"] = saved["updated_at"]
+    st.session_state["monitor_state"] = saved
+    _invalidate_chart_cache()
+    return True
+  return False
+
+
+def _render_chart_panel(state: dict):
+  """Chart với spinner khi vẽ mới; dùng cache thì hiện ngay (không làm mờ)."""
+  st.subheader("Biểu đồ tuần (TradingView style)")
+  key = _chart_cache_key(state)
+  cached_fig = (
+    st.session_state.get("pm_fig")
+    if st.session_state.get("pm_fig_key") == key else None
+  )
+
+  if cached_fig is not None:
+    st.plotly_chart(cached_fig, use_container_width=True, key="pm_tv_chart")
+  else:
+    with st.spinner("🔄 Đang vẽ biểu đồ..."):
+      fig = _get_chart_figure(state)
+    if fig:
+      st.plotly_chart(fig, use_container_width=True, key="pm_tv_chart")
+    else:
+      st.caption("Không đủ dữ liệu OHLC cho chart.")
+
+  st.caption(
+    "🟢 Vùng xanh = reward (entry→TP) · 🔴 Vùng đỏ = risk (entry→SL) · "
+    "▲ LONG / ▼ SHORT entry · ✕ exit"
+  )
+
+
+def _format_countdown(seconds: int | None) -> tuple[str, str]:
+  """Returns (emoji_label, text) e.g. ('⏱️', '4:32')."""
+  if seconds is None:
+    return "⏱️", "—"
+  if seconds <= 5:
+    return "🔄", "Đang cập nhật..."
+  m, s = divmod(seconds, 60)
+  if m >= 60:
+    h, m = divmod(m, 60)
+    return "⏱️", f"{h}h {m:02d}m"
+  return "⏱️", f"{m}:{s:02d}"
+
+
+def _background_countdown_widget():
+  """Chỉ đồng hồ đếm ngược + progress — refresh mỗi giây."""
+  status = get_background_status()
+  if not status["enabled"]:
+    return
+
+  interval_min = status["interval_minutes"]
+  remaining = status.get("seconds_until_next")
+  icon = "🟢" if status["running"] else "🟡"
+  cd_icon, cd_text = _format_countdown(remaining)
+
+  col_cd, col_bar = st.columns([1, 2])
+  with col_cd:
+    st.metric(
+      f"{icon} Reload tiếp",
+      cd_text,
+      help=f"Tự động tải data mỗi {interval_min} phút",
+    )
+  with col_bar:
+    if remaining is not None and interval_min > 0:
+      total = interval_min * 60
+      pct = min(1.0, max(0.0, (total - remaining) / total))
+      st.progress(pct, text=f"Chu kỳ {interval_min} phút · còn {cd_text}")
+
+
+def _background_status_bar():
+  status = get_background_status()
+  if not status["enabled"]:
+    st.caption("⏸ Background **tắt** — bật chu kỳ bên dưới hoặc nhấn **Refresh ngay**.")
+    return
+
+  _background_countdown_widget()
+  st.caption(
+    f"Lần cuối: `{status.get('last_run_at', '—')}` · "
+    f"Data mới: `{status.get('updated_at', '—')}`"
+  )
+  if status.get("last_error"):
+    st.error(f"Background lỗi: {status['last_error']}")
+
+
+@st.fragment(run_every=timedelta(seconds=1))
+def _countdown_fragment():
+  """Tick mỗi giây — chỉ cập nhật đồng hồ, không reload chart."""
+  if is_background_enabled():
+    _background_countdown_widget()
+
+
+@st.fragment(run_every=timedelta(seconds=30))
+def _background_live_panel():
+  """Poll data nền + render nội dung — không tick mỗi giây."""
+  if not is_background_enabled():
+    return
+  _poll_check_update()
+  state = st.session_state.get("monitor_state")
+  if state:
+    _render_monitor_body(state)
+
+
+def _render_monitor_body(state: dict):
   if state.get("error"):
     st.error(state["error"])
     return
@@ -44,29 +490,137 @@ def render():
   c4.metric("Session", "ACTIVE" if state["in_session"] else "OFF")
 
   ep = state.get("kb_snapshot", "latest")
-  st.caption(
+  updated = state.get("updated_at", "")
+  cap = (
     f"Bar cuối: {state['last_bar']} | WR tuần: {state['week_wr']}% | R: {state['week_total_r']} · "
     f"KB: {state.get('kb_profile', '-')} · epoch **{ep}**"
   )
+  if updated:
+    cap += f" · Cập nhật: `{updated}`"
+  st.caption(cap)
 
-  st.subheader("Strategy đang dùng")
-  st.json(state["strategy"])
+  if state.get("open_position"):
+    op = state["open_position"]
+    st.info(
+      f"🟡 **Lệnh đang mở:** {op['dir']} @ **{op['entry_px']}** · "
+      f"SL **{op['sl']}** · TP **{op['tp']}** · "
+      f"Giữ {op.get('bars_held', 0)}/{op.get('max_hold_bars', '?')} bars"
+    )
 
+  _render_chart_panel(state)
+
+  st.subheader("Chi tiết lệnh")
+  orders = state.get("orders") or []
+  if orders:
+    for i, order in enumerate(orders):
+      _order_card(order, i)
+  else:
+    st.caption("Chưa có lệnh tuần này.")
+
+  st.subheader("Bảng lệnh & tín hiệu")
   col_a, col_b = st.columns(2)
   with col_a:
-    st.subheader("Tín hiệu tuần này")
-    if state["signals_this_week"]:
-      st.dataframe(state["signals_this_week"], hide_index=True, use_container_width=True)
+    st.markdown("**Lệnh đã khớp**")
+    if state.get("recent_trades"):
+      df = pd.DataFrame(state["recent_trades"])
+      show_cols = [c for c in [
+        "entry", "exit", "dir", "entry_px", "sl", "tp", "exit_px", "r", "reason", "pnl_pips",
+      ] if c in df.columns]
+      st.dataframe(df[show_cols], hide_index=True, use_container_width=True)
+    else:
+      st.caption("Chưa có lệnh.")
+  with col_b:
+    st.markdown("**Tín hiệu tuần này**")
+    if state.get("signals_this_week"):
+      sig_df = pd.DataFrame(state["signals_this_week"])
+      show_cols = [c for c in [
+        "status", "signal_time", "entry_time", "direction", "entry_px", "sl", "tp", "risk_pips", "rr",
+      ] if c in sig_df.columns]
+      st.dataframe(sig_df[show_cols], hide_index=True, use_container_width=True)
     else:
       st.caption("Chưa có tín hiệu.")
-  with col_b:
-    st.subheader("Lệnh đã khớp (backtest tuần)")
-    if state["recent_trades"]:
-      st.dataframe(state["recent_trades"], hide_index=True, use_container_width=True)
-    else:
-      st.caption("Chưa có lệnh tuần này.")
+
+  with st.expander("Strategy đang dùng"):
+    st.json(state["strategy"])
 
   st.warning(
-    "⚠️ Đây là **paper monitor** trên data lịch sử/bar gần nhất — "
-    "chưa kết nối broker. So sánh fill thật trước khi live."
+    "⚠️ **Paper monitor** trên data H1 Dukascopy (không phải tick real-time). "
+    "Background tải bar mới định kỳ — chưa kết nối broker."
   )
+
+
+def render():
+  st.header("Paper / Live Monitor")
+  st.caption("Tín hiệu tuần hiện tại — chart TradingView + chi tiết Entry / SL / TP")
+
+  _init_pm_widget_state()
+
+  use_kb = st.toggle("Dùng KB", key="pm_kb")
+
+  kb_profile = st.session_state.get("pm_kb_profile_id", DEFAULT_PROFILE_ID)
+  kb_snapshot = st.session_state.get("pm_kb_snapshot_epoch")
+
+  if use_kb:
+    kb_profile, kb_snapshot = kb_profile_and_epoch_picker("pm", show_meta=True)
+    kb_profile = kb_profile or DEFAULT_PROFILE_ID
+    st.session_state["pm_kb_profile_id"] = kb_profile
+    st.session_state["pm_kb_snapshot_epoch"] = kb_snapshot
+
+  spread = st.slider("Spread (pips)", min_value=0.0, max_value=3.0, step=0.1, key="pm_spread")
+  slip = st.slider("Slippage (pips)", min_value=0.0, max_value=2.0, step=0.1, key="pm_slip")
+
+  interval_labels = list(INTERVAL_OPTS.keys())
+  c_int, c_btn = st.columns([2, 1])
+  with c_int:
+    interval_label = st.selectbox(
+      "Tự động cập nhật (background)",
+      interval_labels,
+      key="pm_interval_sel",
+      help="Tải giá Dukascopy + tính lại monitor — chạy nền kể cả khi bạn ở tab khác hoặc refresh trang",
+    )
+  interval_min = INTERVAL_OPTS[interval_label]
+
+  save_ui_settings(
+    use_learning=use_kb,
+    kb_profile=kb_profile,
+    kb_snapshot=kb_snapshot,
+    spread_pips=spread,
+    slippage_pips=slip,
+    interval_minutes=interval_min,
+  )
+  _on_settings_changed(_settings_signature(use_kb, kb_profile, kb_snapshot, spread, slip))
+
+  sync_background_config(
+    interval_min,
+    use_learning=use_kb,
+    kb_profile=kb_profile,
+    kb_snapshot=kb_snapshot,
+    spread_pips=spread,
+    slippage_pips=slip,
+  )
+
+  with c_btn:
+    st.write("")
+    st.write("")
+    manual_refresh = st.button("Refresh ngay", type="primary", use_container_width=True)
+
+  monitor_params = dict(
+    use_learning=use_kb, spread_pips=spread, slippage_pips=slip,
+    kb_profile=kb_profile,
+    kb_snapshot=kb_snapshot,
+  )
+  state = _resolve_monitor_state(monitor_params, manual_refresh=manual_refresh)
+
+  if is_background_enabled():
+    _countdown_fragment()
+    status = get_background_status()
+    st.caption(
+      f"Lần cuối: `{status.get('last_run_at', '—')}` · "
+      f"Data mới: `{status.get('updated_at', '—')}`"
+    )
+    if status.get("last_error"):
+      st.error(f"Background lỗi: {status['last_error']}")
+    _background_live_panel()
+  else:
+    _background_status_bar()
+    _render_monitor_body(state)

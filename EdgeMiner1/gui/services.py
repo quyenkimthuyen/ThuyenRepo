@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import streamlit as st
 
 from config import (
   DEFAULT_HOLDOUT_MONTHS, DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS,
@@ -54,8 +55,33 @@ def get_ohlc_df(start: str = DEFAULT_START_DATE) -> pd.DataFrame:
   return load_eurusd_h1(start)
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def get_ohlc_df_cached(start: str = DEFAULT_START_DATE) -> pd.DataFrame:
+  """Cached OHLC — tránh đọc parquet lại mỗi lần chuyển tab."""
+  return load_eurusd_h1(start)
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def get_ohlc_window_cached(chart_from: str, chart_to: str, start: str = DEFAULT_START_DATE) -> pd.DataFrame:
+  """Chỉ load slice OHLC cho chart (tuần hiện tại + padding)."""
+  ohlc = get_ohlc_df_cached(start)
+  window = ohlc.loc[pd.Timestamp(chart_from):pd.Timestamp(chart_to)]
+  if window.empty:
+    window = ohlc.tail(168)
+  return window.copy()
+
+
 def refresh_market_data(start: str = DEFAULT_START_DATE) -> pd.DataFrame:
+  _clear_ohlc_streamlit_cache()
   return download_eurusd_h1(start, force_refresh=True)
+
+
+def _clear_ohlc_streamlit_cache() -> None:
+  try:
+    get_ohlc_df_cached.clear()
+    get_ohlc_window_cached.clear()
+  except Exception:
+    pass
 
 
 def execute_backtest(

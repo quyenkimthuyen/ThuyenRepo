@@ -55,7 +55,14 @@ def _fit_ml_with_experience(
       ys_extra.append(sample["short_win"])
     if len(X_extra) >= 30:
       from sklearn.linear_model import LogisticRegression
+      from strategy_miner import _align_array
+      if len(long_wins) != fm.n:
+        long_wins = _align_array(long_wins, fm.n)
+      if len(short_wins) != fm.n:
+        short_wins = _align_array(short_wins, fm.n)
       X_all = ml.get_X(fm)
+      if X_all.shape[0] != fm.n:
+        return ml
       mask = np.zeros(fm.n, dtype=bool)
       mask[train_start:train_end] = True
       mask[:fm.warmup] = False

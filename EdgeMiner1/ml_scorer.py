@@ -27,24 +27,49 @@ class MLScorer:
     self._X_cache: np.ndarray | None = None
     self._prob_long: np.ndarray | None = None
     self._prob_short: np.ndarray | None = None
+    self._fm_n: int | None = None
+
+  def _reset_cache(self):
+    self._X_cache = None
+    self._prob_long = None
+    self._prob_short = None
+    self._fm_n = None
 
   def _build_X(self, fm: FeatureMatrix) -> np.ndarray:
     cols = []
     for name in self.feat_names:
       v = fm.get(name)
+      if len(v) != fm.n:
+        raise ValueError(f"Feature {name} length {len(v)} != fm.n {fm.n}")
       cols.append(np.nan_to_num(v, nan=0.0))
     return np.column_stack(cols)
 
   def get_X(self, fm: FeatureMatrix) -> np.ndarray:
+    if self._X_cache is not None and self._fm_n != fm.n:
+      self._reset_cache()
     if self._X_cache is None:
       self._X_cache = self._build_X(fm)
+      self._fm_n = fm.n
     return self._X_cache
 
   def fit(
     self, fm: FeatureMatrix, start: int, end: int,
     long_wins: np.ndarray, short_wins: np.ndarray,
   ) -> bool:
+    from strategy_miner import _align_array
+
+    if len(long_wins) != fm.n:
+      long_wins = _align_array(long_wins, fm.n)
+    if len(short_wins) != fm.n:
+      short_wins = _align_array(short_wins, fm.n)
+
     X_all = self.get_X(fm)
+    if X_all.shape[0] != fm.n:
+      self._reset_cache()
+      X_all = self.get_X(fm)
+    if X_all.shape[0] != fm.n:
+      return False
+
     mask = np.zeros(fm.n, dtype=bool)
     mask[start:end] = True
     mask[:fm.warmup] = False
