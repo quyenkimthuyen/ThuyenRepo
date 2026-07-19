@@ -15,7 +15,7 @@ from .zone_stats import ZoneConfig, analyze_zone_touches
 ROOT = Path(__file__).resolve().parent.parent
 FRONTEND = ROOT / "frontend"
 
-app = FastAPI(title="RSI Zone Analyzer", version="1.0.0")
+app = FastAPI(title="RSI Zone Analyzer", version="1.0.0", docs_url="/api/swagger", redoc_url=None)
 
 
 @app.get("/api/info")
@@ -73,8 +73,8 @@ def api_recommended_setup(
     return report
 
 
-@app.get("/docs")
-def docs():
+@app.get("/huong-dan")
+def huong_dan():
     return FileResponse(FRONTEND / "docs.html")
 
 

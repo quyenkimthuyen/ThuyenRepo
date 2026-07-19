@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Harker TOEIC — Listening</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Home Screen -->
+    <section id="screen-home" class="screen active">
+      <header class="hero">
+        <div class="hero-badge">Hacker TOEIC 1000 Vol.2</div>
+        <h1>Listening Practice</h1>
+        <p class="hero-sub">Luyện nghe TOEIC với 10 đề thi — chế độ thi &amp; học</p>
+      </header>
+
+      <div class="mode-picker">
+        <h2>Chọn chế độ</h2>
+        <div class="mode-cards">
+          <button class="mode-card" data-mode="exam">
+            <span class="mode-icon">⏱</span>
+            <span class="mode-title">Chế độ Thi</span>
+            <span class="mode-desc">Làm bài như thi thật, có bộ đếm giờ, không xem đáp án</span>
+          </button>
+          <button class="mode-card mode-card--study" data-mode="study">
+            <span class="mode-icon">📖</span>
+            <span class="mode-title">Chế độ Học</span>
+            <span class="mode-desc">Xem transcript, đáp án, giải thích accent &amp; phân tích</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="test-picker">
+        <h2>Chọn đề thi</h2>
+        <div id="test-grid" class="test-grid"></div>
+      </div>
+    </section>
+
+    <!-- Practice Screen -->
+    <section id="screen-practice" class="screen">
+      <header class="practice-header">
+        <button id="btn-back" class="btn-icon" title="Quay lại">←</button>
+        <div class="practice-title">
+          <span id="practice-test-name">Test 01</span>
+          <span id="practice-mode-badge" class="badge">Học</span>
+        </div>
+        <div id="exam-timer" class="exam-timer hidden">
+          <span class="timer-label">Thời gian</span>
+          <span id="timer-display" class="timer-display">45:00</span>
+        </div>
+      </header>
+
+      <div class="practice-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+          <div class="audio-panel">
+            <audio id="audio-player" controls preload="metadata"></audio>
+            <div class="audio-hint">Phát audio toàn bộ đề thi</div>
+          </div>
+
+          <nav class="part-nav">
+            <button class="part-tab active" data-part="1">Part 1 <small>6 câu</small></button>
+            <button class="part-tab" data-part="2">Part 2 <small>25 câu</small></button>
+            <button class="part-tab" data-part="3">Part 3 <small>39 câu</small></button>
+            <button class="part-tab" data-part="4">Part 4 <small>30 câu</small></button>
+          </nav>
+
+          <div id="question-nav" class="question-nav"></div>
+
+          <div id="exam-submit-panel" class="exam-submit-panel hidden">
+            <button id="btn-submit-exam" class="btn-primary btn-block">Nộp bài &amp; xem điểm</button>
+          </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+          <div id="question-area"></div>
+        </main>
+
+        <!-- Study Panel -->
+        <aside id="study-panel" class="study-panel">
+          <div class="study-panel-header">
+            <h3>Chi tiết học tập</h3>
+            <div class="study-toggles">
+              <label class="toggle-chip"><input type="checkbox" id="toggle-transcript" checked> Transcript</label>
+              <label class="toggle-chip"><input type="checkbox" id="toggle-answer" checked> Đáp án</label>
+              <label class="toggle-chip"><input type="checkbox" id="toggle-accent" checked> Giải thích</label>
+            </div>
+          </div>
+          <div id="study-content" class="study-content"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Results Modal -->
+    <div id="modal-results" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-card">
+        <h2>Kết quả bài thi</h2>
+        <div class="score-circle">
+          <span id="score-value">0</span>
+          <span class="score-total">/ 100</span>
+        </div>
+        <div id="score-breakdown" class="score-breakdown"></div>
+        <div class="modal-actions">
+          <button id="btn-review" class="btn-secondary">Xem lại đáp án</button>
+          <button id="btn-close-results" class="btn-primary">Đóng</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js" type="module"></script>
+</body>
+</html>

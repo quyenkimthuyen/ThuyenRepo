@@ -19,7 +19,7 @@
         <label>Từ <input type="date" id="dateStart" value="2023-06-25"></label>
         <label>Đến <input type="date" id="dateEnd" value="2026-06-22"></label>
         <button type="button" class="btn primary" id="btnLoad">Tải dữ liệu</button>
-        <a href="/docs" class="btn" title="Hướng dẫn sử dụng">Hướng dẫn</a>
+        <button type="button" class="btn" id="btnGuide">Hướng dẫn</button>
         <span id="dataRange" class="data-range"></span>
       </div>
     </header>
@@ -27,6 +27,7 @@
     <nav class="main-tabs" role="tablist" aria-label="Chế độ xem">
       <button type="button" class="main-tab active" data-tab="chart" role="tab" aria-selected="true">Biểu đồ</button>
       <button type="button" class="main-tab" data-tab="report" role="tab" aria-selected="false">Báo cáo RSI</button>
+      <button type="button" class="main-tab" data-tab="guide" role="tab" aria-selected="false">Hướng dẫn</button>
     </nav>
 
     <main class="content">
@@ -54,20 +55,20 @@
 
         <div class="chart-layout">
           <div class="chart-body" id="chartBody">
-          <div class="chart-wrap" id="chartWrap">
-            <div id="chartMain" class="chart-main"></div>
-          </div>
+          <div id="chartHost" class="chart-host" aria-label="Biểu đồ giá và RSI"></div>
+          <div class="chart-stack">
+          <div class="chart-wrap" id="chartWrap" aria-hidden="true"></div>
           <div class="chart-splitter" id="chartSplitter" title="Kéo để đổi chiều cao RSI"></div>
           <div class="rsi-panel" id="rsiPanel">
             <div class="rsi-panel-head">
-              <span class="rsi-panel-title">RSI(14) H4 — đồng bộ thời gian với giá H1</span>
+              <span class="rsi-panel-title">RSI(14) H4 — cùng trục thời gian với giá H1</span>
               <div class="rsi-legend">
                 <span class="zone low">Hỗ trợ 28–32</span>
                 <span class="zone mid">Vùng 50</span>
                 <span class="zone high">Kháng cự 68–72</span>
               </div>
             </div>
-            <div id="chartRsi" class="chart-rsi"></div>
+          </div>
           </div>
           </div>
 
@@ -194,11 +195,77 @@
 
         <section id="recommendedPanel" class="report-panel full recommended-panel">
           <h3>Setup khuyến nghị</h3>
-          <div id="recommendedContent"></div>
+          <div class="setup-grid">
+            <div id="recommendedContentLong" class="setup-card setup-long"></div>
+            <div id="recommendedContentShort" class="setup-card setup-short"></div>
+          </div>
         </section>
 
         <section class="report-panel full">
-          <h3>Walk-forward — Setup khuyến nghị</h3>
+          <h3>Hiệu quả theo regime thị trường</h3>
+          <p class="hint">Phân loại tại thời điểm entry: sideways (EMA50/200 H1 sát nhau) vs H4 trend rõ.</p>
+          <div class="table-wrap">
+            <table class="report-table" id="regimeTable">
+              <thead>
+                <tr>
+                  <th>Regime</th>
+                  <th>Lệnh</th>
+                  <th>Win %</th>
+                  <th>% SL</th>
+                  <th>Expectancy</th>
+                  <th>PF</th>
+                  <th>Tổng pip</th>
+                  <th>% đóng góp pip</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="table-wrap" style="margin-top:0.75rem">
+            <table class="report-table" id="regimeH4Table">
+              <thead>
+                <tr>
+                  <th>H4 trend tại entry</th>
+                  <th>Lệnh</th>
+                  <th>Win %</th>
+                  <th>% SL</th>
+                  <th>Expectancy</th>
+                  <th>PF</th>
+                  <th>Tổng pip</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <ul id="regimeHints" class="recommended-rules" style="margin-top:0.75rem"></ul>
+          <p id="regimeVerdict" class="hint verdict"></p>
+        </section>
+
+        <section class="report-panel full">
+          <h3>So sánh cải tiến chiến lược</h3>
+          <p class="hint">Đã thử 26 phương án — bảng dưới tóm tắt setup hiện tại và các lựa chọn gần nhất.</p>
+          <div class="table-wrap">
+            <table class="report-table" id="optimizationTable">
+              <thead>
+                <tr>
+                  <th>Phương án</th>
+                  <th>Trạng thái</th>
+                  <th>Lệnh</th>
+                  <th>Win %</th>
+                  <th>Expectancy</th>
+                  <th>PF</th>
+                  <th>Tổng pip</th>
+                  <th>Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p id="optimizationVerdict" class="hint verdict"></p>
+        </section>
+
+        <section class="report-panel full">
+          <h3>Walk-forward — Long</h3>
           <div class="table-wrap">
             <table class="report-table" id="walkForwardTable">
               <thead>
@@ -215,6 +282,26 @@
             </table>
           </div>
           <p id="walkForwardVerdict" class="hint verdict"></p>
+        </section>
+
+        <section class="report-panel full setup-short-panel">
+          <h3>Walk-forward — Short</h3>
+          <div class="table-wrap">
+            <table class="report-table" id="walkForwardTableShort">
+              <thead>
+                <tr>
+                  <th>Giai đoạn</th>
+                  <th>Lệnh</th>
+                  <th>Win %</th>
+                  <th>Expectancy</th>
+                  <th>PF</th>
+                  <th>Tổng pip</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <p id="walkForwardVerdictShort" class="hint verdict"></p>
         </section>
 
         <section class="report-panel full">
@@ -236,8 +323,8 @@
         </section>
 
         <section class="report-panel full">
-          <h3>Lịch sử lệnh backtest</h3>
-          <p class="hint">Click một dòng để mở biểu đồ tại entry/exit và hiển thị SL/TP.</p>
+          <h3>Lịch sử lệnh backtest (long + short)</h3>
+      <p class="hint">Click một dòng để mở biểu đồ. Long = RSI vùng 28–32 · Short = RSI vùng 68–72.</p>
           <div class="table-wrap tall">
             <table class="report-table" id="tradeReportTable">
               <thead>
@@ -279,6 +366,10 @@
             </table>
           </div>
         </details>
+      </section>
+
+      <section id="viewGuide" class="view hidden guide-view" role="tabpanel">
+        <iframe src="/huong-dan?embed=1" title="Hướng dẫn sử dụng" class="guide-iframe"></iframe>
       </section>
     </main>
   </div>

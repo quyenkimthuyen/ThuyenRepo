@@ -10,325 +10,213 @@
   <link rel="stylesheet" href="/static/css/docs.css">
 </head>
 <body class="docs-page">
-  <header class="docs-topbar">
+  <header class="docs-topbar" id="docsTopbar">
     <div class="brand">
       <h1>Hướng dẫn sử dụng</h1>
-      <span class="subtitle">RSI Zone Analyzer · EURUSD H1</span>
+      <span class="subtitle">RSI Zone Analyzer</span>
     </div>
-    <a href="/" class="btn primary">← Về ứng dụng</a>
+    <a href="/" class="btn primary" id="btnBackApp">← Về ứng dụng</a>
   </header>
 
-  <div class="docs-layout">
-    <nav class="docs-nav" aria-label="Mục lục">
-      <a href="#gioi-thieu">Giới thiệu</a>
-      <a href="#thuat-ngu">Thuật ngữ</a>
-      <a href="#cach-dung">Cách sử dụng</a>
-      <a href="#tab-bieu-do">Tab Biểu đồ</a>
-      <a href="#tab-setup">Tab Setup trade</a>
-      <a href="#setup-khuyen-nghi">Setup khuyến nghị</a>
-      <a href="#doc-backtest">Đọc báo cáo backtest</a>
-      <a href="#lich-su-lenh">Lịch sử lệnh</a>
-      <a href="#luu-y">Lưu ý quan trọng</a>
-    </nav>
+  <main class="docs-single">
+    <!-- ===== PHẦN 1: BẮT ĐẦU NHANH ===== -->
+    <section class="docs-hero">
+      <h2>App này dùng để làm gì?</h2>
+      <p class="lead">
+        Giúp bạn <strong>kiểm tra chiến lược trade EURUSD</strong> trên dữ liệu quá khứ:
+        khi nào nên mua (long), đặt stop loss / take profit bao nhiêu, và lịch sử đó có lãi không.
+      </p>
+      <p class="lead-muted">
+        Đây <strong>không phải</strong> phần mềm tự động đặt lệnh. Bạn dùng để <strong>nghiên cứu</strong> trước khi trade thật.
+      </p>
+    </section>
 
-    <main class="docs-content">
-      <section id="gioi-thieu">
-        <h2>App làm gì?</h2>
-        <p>
-          <strong>RSI Zone Analyzer</strong> là công cụ phân tích và backtest chiến lược forex trên cặp
-          <strong>EURUSD</strong>, khung giá <strong>H1</strong>, dùng chỉ báo <strong>RSI(14) tính trên khung H4</strong>.
-        </p>
-        <p>App giúp bạn:</p>
-        <ul>
-          <li>Xem biểu đồ giá kèm EMA 50/200 và RSI H4 đồng bộ thời gian.</li>
-          <li>Phát hiện khi RSI H4 chạm các <strong>vùng quan trọng</strong> (hỗ trợ 28–32, vùng 50, kháng cự 68–72).</li>
-          <li>Chạy <strong>backtest tự động</strong> với quy tắc SL/TP cố định trên lịch sử.</li>
-          <li>Đề xuất <strong>setup trade tối ưu</strong> sau khi thử nhiều phương án (long/short, entry chạm/thoát vùng, filter…).</li>
-          <li>Xem <strong>lịch sử từng lệnh</strong> và click để hiển thị entry / SL / TP trên biểu đồ.</li>
+    <section class="docs-card highlight">
+      <h3>Chiến lược app đang khuyến nghị</h3>
+      <div class="rule-box">
+        <div class="rule-step"><span class="num">1</span> Chờ RSI khung <strong>H4</strong> xuống vùng <strong>28–32</strong> (vùng hỗ trợ)</div>
+        <div class="rule-step"><span class="num">2</span> <strong>Mua (long)</strong> ở nến H1 <strong>tiếp theo</strong> sau khi RSI chạm vùng (delay 1 nến)</div>
+        <div class="rule-step"><span class="num">3</span> Chỉ vào khi <strong>EMA50 và EMA200 H1 cách nhau ≥ 15 pip</strong> (tránh sideways)</div>
+        <div class="rule-step"><span class="num">4</span> Đặt <strong>Stop Loss −25 pip</strong> · <strong>Take Profit +62.5 pip</strong> (2.5R)</div>
+        <div class="rule-step"><span class="num">5</span> Giữ tối đa <strong>72 nến H1</strong> (~3 ngày), không chạm SL/TP thì đóng lệnh</div>
+      </div>
+      <h4 style="margin-top:1rem">Short (tham khảo)</h4>
+      <div class="rule-box">
+        <div class="rule-step"><span class="num">1</span> Chờ RSI H4 lên vùng <strong>68–72</strong> (kháng cự)</div>
+        <div class="rule-step"><span class="num">2</span> <strong>Bán (short)</strong> delay 1 nến · EMA sep ≥ 15 pip · SL/TP/horizon giống long</div>
+      </div>
+      <p class="note">Ưu tiên <strong>long</strong> (backtest dương). <strong>Short</strong> dùng cùng rule — xem panel Short; expectancy âm trên EURUSD.</p>
+    </section>
+
+    <section class="docs-card">
+      <h3>Bắt đầu trong 4 bước</h3>
+      <ol class="big-steps">
+        <li>
+          <strong>Mở app</strong> — chạy <code>./run.sh</code>, vào <code>http://localhost:8000</code>
+        </li>
+        <li>
+          <strong>Chọn ngày</strong> — góc trên: <em>Từ / Đến</em> → bấm <em>Tải dữ liệu</em>
+        </li>
+        <li>
+          <strong>Xem tab Biểu đồ</strong> — giá + RSI, danh sách lệnh bên phải
+        </li>
+        <li>
+          <strong>Xem tab Setup trade</strong> — kết quả backtest: lãi/lỗ, tỷ lệ thắng, walk-forward
+        </li>
+      </ol>
+    </section>
+
+    <!-- ===== PHẦN 2: GIAO DIỆN ===== -->
+    <section class="docs-card" id="giao-dien">
+      <h2>Màn hình gồm những gì?</h2>
+
+      <div class="screen-block">
+        <h4>Tab <span class="pill">Biểu đồ</span></h4>
+        <ul class="plain-list">
+          <li><strong>Trên:</strong> Giá EURUSD (nến H1) + đường EMA 50, EMA 200</li>
+          <li><strong>Dưới:</strong> RSI — vùng đỏ 28–32 là nơi tìm lệnh long</li>
+          <li><strong>Bên phải:</strong> Danh sách lệnh backtest — <em>click một dòng</em> để zoom tới lệnh đó</li>
         </ul>
-        <div class="docs-callout">
-          <strong>Mục tiêu:</strong> Không phải bot trade tự động, mà công cụ <em>nghiên cứu &amp; kiểm chứng</em>
-          ý tưởng trước khi trade thật.
+        <table class="docs-table simple">
+          <tr><td>☑ Lịch sử lệnh</td><td>Hiện mũi tên entry và điểm thoát trên chart</td></tr>
+          <tr><td>☑ SL/TP khi chọn</td><td>Vẽ 3 đường giá: Entry, Stop Loss, Take Profit</td></tr>
+        </table>
+        <div class="legend-box">
+          <div><span class="dot green"></span> Mũi tên xanh = lệnh <strong>thắng</strong></div>
+          <div><span class="dot red"></span> Mũi tên đỏ = lệnh <strong>thua</strong></div>
+          <div><span class="dot circle"></span> Vòng tròn = điểm đóng lệnh (TP / SL)</div>
         </div>
-      </section>
+      </div>
 
-      <section id="thuat-ngu">
-        <h2>Thuật ngữ</h2>
-        <dl class="glossary">
-          <dt>RSI (Relative Strength Index)</dt>
-          <dd>Chỉ báo dao động 0–100 đo sức mạnh giá. App dùng RSI(14) trên <strong>khung H4</strong>, hiển thị đồng bộ với nến H1.</dd>
-
-          <dt>RSI H4 trên chart H1</dt>
-          <dd>Mỗi nến H1 hiển thị giá trị RSI của nến H4 tương ứng (forward-fill). Giúp nhìn xu hướng lớn khi phân tích trên H1.</dd>
-
-          <dt>Vùng hỗ trợ RSI (28–32)</dt>
-          <dd>RSI H4 vào vùng quá bán nhẹ. Setup khuyến nghị: <strong>long</strong> khi chạm vùng này.</dd>
-
-          <dt>Vùng kháng cự RSI (68–72)</dt>
-          <dd>RSI H4 vào vùng quá mua nhẹ. Đã thử short — <strong>không có edge</strong>, app không khuyến nghị.</dd>
-
-          <dt>Vùng 50 (48–52)</dt>
-          <dd>RSI quanh ngưỡng trung tính. Thống kê cho thấy ~50/50 đảo/tiếp diễn — <strong>không dùng</strong> làm setup độc lập.</dd>
-
-          <dt>Chạm vùng (touch)</dt>
-          <dd>RSI H4 <strong>lần đầu vào</strong> vùng (ví dụ từ trên xuống vào 28–32). Đây là thời điểm entry trong setup khuyến nghị.</dd>
-
-          <dt>Thoát vùng (exit zone)</dt>
-          <dd>RSI rời khỏi vùng (ví dụ tăng trên 32 sau khi đã ở vùng 28–32). Đã thử làm trigger entry — kém hơn entry chạm vùng.</dd>
-
-          <dt>EMA 50 / EMA 200</dt>
-          <dd>Đường trung bình động trên giá H1. EMA50 &gt; EMA200 = xu hướng H1 tăng; ngược lại = giảm.</dd>
-
-          <dt>H4 trend</dt>
-          <dd>EMA50 H4 &gt; EMA200 H4 = uptrend khung lớn. App đã thử lọc theo H4 — không cải thiện đủ so với setup đơn giản.</dd>
-
-          <dt>SL (Stop Loss)</dt>
-          <dd>Mức cắt lỗ. Setup khuyến nghị: <strong>25 pip</strong> cố định dưới giá entry (long).</dd>
-
-          <dt>TP (Take Profit)</dt>
-          <dd>Mức chốt lời. Setup khuyến nghị: <strong>2.5R</strong> = 2.5 × SL = <strong>62.5 pip</strong> (với SL 25 pip).</dd>
-
-          <dt>R (R-multiple)</dt>
-          <dd>Lợi nhuận/thua lỗ tính theo đơn vị rủi ro (1R = 1 lần SL). Thắng full TP ≈ +2.5R; thua SL = −1R.</dd>
-
-          <dt>Expectancy (Kỳ vọng)</dt>
-          <dd>Trung bình R mỗi lệnh. Ví dụ +0.33R nghĩa là trung bình mỗi lệnh lãi 0.33 lần SL. <strong>&gt; 0 = có edge.</strong></dd>
-
-          <dt>Profit Factor (PF)</dt>
-          <dd>Tổng pip thắng ÷ tổng pip thua. PF &gt; 1 = lãi; PF &gt; 1.5 được coi là tốt trên backtest dài.</dd>
-
-          <dt>Win rate</dt>
-          <dd>Tỷ lệ lệnh thắng. Với R:R 1:2.5, chỉ cần ~29% win rate để hòa vốn; setup hiện tại ~42%.</dd>
-
-          <dt>Walk-forward</dt>
-          <dd>Chia dữ liệu thành <strong>Train</strong> (giai đoạn đầu) và <strong>Test</strong> (giai đoạn sau) để kiểm tra edge có giữ được ngoài mẫu huấn luyện hay không.</dd>
-
-          <dt>MAE / MFE</dt>
-          <dd>
-            <strong>MAE</strong> (Max Adverse Excursion): drawdown tối đa ngược hướng lệnh trong horizon.<br>
-            <strong>MFE</strong> (Max Favorable Excursion): lợi nhuận tối đa có thể trong horizon.
-          </dd>
-
-          <dt>Horizon</dt>
-          <dd>Số nến H1 tối đa giữ lệnh nếu chưa chạm SL/TP. Setup khuyến nghị: <strong>48 nến</strong>.</dd>
-
-          <dt>Spread</dt>
-          <dd>Chi phí giao dịch mô phỏng (mặc định 1 pip) trừ vào P&amp;L khi đóng lệnh timeout.</dd>
-
-          <dt>Cooldown</dt>
-          <dd>Khoảng cách tối thiểu giữa hai lần đếm “chạm vùng” liên tiếp (tránh đếm trùng).</dd>
-        </dl>
-      </section>
-
-      <section id="cach-dung">
-        <h2>Cách sử dụng — quy trình nhanh</h2>
-        <ol class="steps">
-          <li>
-            <strong>Khởi động app</strong> — chạy <code>./run.sh</code> (Linux) hoặc <code>run_windows.bat</code>, mở trình duyệt tại <code>http://localhost:8000</code>.
-          </li>
-          <li>
-            <strong>Chọn khoảng ngày</strong> — ô <em>Từ / Đến</em> trên thanh trên cùng, bấm <em>Tải dữ liệu</em>.
-          </li>
-          <li>
-            <strong>Tab Biểu đồ</strong> — xem giá, RSI, marker lệnh; click lệnh ở panel phải để zoom entry.
-          </li>
-          <li>
-            <strong>Tab Setup trade</strong> — đọc setup khuyến nghị, walk-forward, lịch sử lệnh chi tiết.
-          </li>
-          <li>
-            <strong>Điều chỉnh walk-forward</strong> — đổi ngày <em>Split</em> nếu muốn kiểm tra giai đoạn khác, bấm <em>Cập nhật báo cáo</em>.
-          </li>
-        </ol>
-      </section>
-
-      <section id="tab-bieu-do">
-        <h2>Tab Biểu đồ</h2>
-
-        <h3>Biểu đồ giá (trên)</h3>
-        <ul>
-          <li>Nến H1 EURUSD, zoom bằng cuộn chuột hoặc nút +/−.</li>
-          <li><strong>EMA 50</strong> (xanh dương) và <strong>EMA 200</strong> (tím) — bật/tắt bằng checkbox.</li>
-          <li>Kéo ngang để pan; nút <em>Fit</em> xem toàn bộ; <em>Mới nhất</em> cuộn tới nến gần nhất.</li>
+      <div class="screen-block">
+        <h4>Tab <span class="pill">Setup trade</span></h4>
+        <ul class="plain-list">
+          <li><strong>Setup khuyến nghị</strong> — tóm tắt quy tắc + số liệu chính (horizon 72 nến)</li>
+          <li><strong>Hiệu quả theo regime</strong> — sideways vs H4 trend; cảnh báo khi nào dễ SL liên tục</li>
+          <li><strong>So sánh cải tiến</strong> — horizon 72 vs 48 và các phương án đã thử</li>
+          <li><strong>Walk-forward</strong> — kiểm tra chiến lược còn hiệu quả ở giai đoạn sau không</li>
+          <li><strong>Phương án loại bỏ</strong> — những cách đã thử nhưng không nên dùng</li>
+          <li><strong>Lịch sử lệnh</strong> — bảng chi tiết từng lệnh (click để xem trên biểu đồ)</li>
         </ul>
+      </div>
+    </section>
 
-        <h3>Biểu đồ RSI (dưới)</h3>
-        <ul>
-          <li>RSI(14) H4, có đường vùng 28–32 (đỏ), 48–52 (xanh), 68–72 (xanh lá).</li>
-          <li>Kéo thanh chia giữa giá và RSI để đổi chiều cao.</li>
-        </ul>
+    <!-- ===== PHẦN 3: ĐỌC SỐ LIỆU ===== -->
+    <section class="docs-card" id="doc-so-lieu">
+      <h2>Đọc báo cáo — giải thích đơn giản</h2>
 
-        <h3>Panel Lịch sử lệnh (bên phải)</h3>
-        <ul>
-          <li>Danh sách các lệnh backtest theo setup khuyến nghị.</li>
-          <li><strong>Click một dòng</strong> → app chuyển focus tới <strong>nến entry</strong>, hiện marker và (nếu bật) đường SL/TP.</li>
-        </ul>
+      <table class="docs-table simple">
+        <thead>
+          <tr><th>Bạn thấy</th><th>Nghĩa là gì?</th><th>Tốt hay xấu?</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Expectancy</strong> (vd: +0.48R)</td>
+            <td>Trung bình mỗi lệnh lãi/lỗ bao nhiêu lần mức SL. +0.48R = mỗi lệnh lãi trung bình 0.48 × 25 pip ≈ 12 pip.</td>
+            <td class="good">&gt; 0 là tốt</td>
+          </tr>
+          <tr>
+            <td><strong>Profit factor</strong> (vd: 1.88)</td>
+            <td>Tổng tiền thắng ÷ tổng tiền thua. 1.88 = thắng nhiều hơn thua 88%.</td>
+            <td class="good">&gt; 1.4 khá tốt</td>
+          </tr>
+          <tr>
+            <td><strong>Win %</strong> (vd: 42%)</td>
+            <td>Chỉ ~4/10 lệnh thắng. Bình thường với TP gấp 2.5 lần SL.</td>
+            <td class="ok">Thấp vẫn OK nếu TP lớn</td>
+          </tr>
+          <tr>
+            <td><strong>Tổng pip</strong> (vd: +1054)</td>
+            <td>Cộng tất cả lệnh trong khoảng ngày bạn chọn.</td>
+            <td class="good">Dương = lãi trên backtest</td>
+          </tr>
+        </tbody>
+      </table>
 
-        <h3>Toggle trên toolbar</h3>
-        <table class="docs-table">
-          <thead><tr><th>Toggle</th><th>Chức năng</th></tr></thead>
-          <tbody>
-            <tr><td>Lịch sử lệnh</td><td>Hiện marker entry (mũi tên) và exit (vòng tròn) trên chart</td></tr>
-            <tr><td>SL/TP khi chọn</td><td>Vẽ đường giá Entry, SL, TP cho lệnh đang chọn</td></tr>
-          </tbody>
-        </table>
+      <h4>Walk-forward là gì?</h4>
+      <p>
+        App chia lịch sử làm 2 đoạn tại ngày <strong>Split</strong> (mặc định 01/01/2025):
+      </p>
+      <ul class="plain-list">
+        <li><strong>Train</strong> — đoạn đầu (dùng để tìm chiến lược)</li>
+        <li><strong>Test</strong> — đoạn sau (giả lập “tương lai”)</li>
+      </ul>
+      <p>
+        Nếu <strong>Test vẫn dương</strong> và gần Train → chiến lược đáng tin hơn, không phải “bịa” số liệu.
+        Hiện tại (horizon 72 + tránh sideways): Train +0.29R, Test +0.80R → <strong>ổn định</strong>.
+      </p>
+    </section>
 
-        <h3>Ý nghĩa marker trên chart</h3>
-        <table class="docs-table">
-          <thead><tr><th>Marker</th><th>Ý nghĩa</th></tr></thead>
-          <tbody>
-            <tr><td>Mũi tên lên xanh + #id</td><td>Entry long — lệnh <strong>thắng</strong></td></tr>
-            <tr><td>Mũi tên lên đỏ + #id</td><td>Entry long — lệnh <strong>thua</strong></td></tr>
-            <tr><td>Vòng tròn TP / SL / X</td><td>Điểm thoát lệnh (chạm TP, chạm SL, hoặc timeout)</td></tr>
-            <tr><td>Đường xanh dương Entry</td><td>Giá vào lệnh</td></tr>
-            <tr><td>Đường đỏ SL</td><td>Stop loss 25 pip</td></tr>
-            <tr><td>Đường xanh lá TP</td><td>Take profit 62.5 pip</td></tr>
-          </tbody>
-        </table>
-      </section>
+    <!-- ===== PHẦN 4: LỊCH SỬ LỆNH ===== -->
+    <section class="docs-card" id="lich-su">
+      <h2>Bảng lịch sử lệnh — từng cột</h2>
+      <table class="docs-table simple">
+        <tr><td><strong>Entry</strong></td><td>Thời điểm mở lệnh (mua)</td></tr>
+        <tr><td><strong>Exit</strong></td><td>Thời điểm đóng lệnh (chạm TP, SL, hoặc hết 72 nến)</td></tr>
+        <tr><td><strong>Entry px / Exit px</strong></td><td>Giá mua và giá bán</td></tr>
+        <tr><td><strong>SL / TP</strong></td><td>Mức cắt lỗ và chốt lời đã đặt</td></tr>
+        <tr><td><strong>Pip</strong></td><td>Lãi hoặc lỗ tính bằng pip (+ là lãi, − là lỗ)</td></tr>
+        <tr><td><strong>R</strong></td><td>Lãi/lỗ theo đơn vị rủi ro. +2.5R = chạm TP đủ · −1R = chạm SL</td></tr>
+        <tr><td><strong>Nến</strong></td><td>Giữ lệnh bao nhiêu nến H1</td></tr>
+      </table>
+      <p class="tip">💡 <strong>Click bất kỳ dòng nào</strong> → app nhảy sang biểu đồ, zoom tới nến entry và vẽ SL/TP.</p>
+    </section>
 
-      <section id="tab-setup">
-        <h2>Tab Setup trade</h2>
-        <p>Báo cáo tổng hợp sau khi app thử hàng chục phương án và <strong>chỉ giữ setup có edge ổn định</strong>.</p>
-
-        <h3>Các phần chính</h3>
-        <ol>
-          <li><strong>Setup khuyến nghị</strong> — quy tắc trade + chỉ số tổng (Expectancy, PF, Win%, tổng pip).</li>
-          <li><strong>Walk-forward</strong> — so sánh Train vs Test.</li>
-          <li><strong>Phương án loại bỏ</strong> — những cách đã thử nhưng không hiệu quả.</li>
-          <li><strong>Lịch sử lệnh backtest</strong> — bảng chi tiết từng lệnh (click để xem trên chart).</li>
-          <li><strong>Chi tiết thống kê</strong> (mở rộng) — MAE/MFE, % sống sót SL.</li>
-        </ol>
-      </section>
-
-      <section id="setup-khuyen-nghi">
-        <h2>Setup khuyến nghị (hiện tại)</h2>
-        <div class="docs-setup-box">
-          <p><strong>Long RSI H4 hỗ trợ — entry chạm vùng</strong></p>
-          <ul>
-            <li><strong>Cặp / khung:</strong> EURUSD H1, RSI(14) H4</li>
-            <li><strong>Điều kiện:</strong> RSI H4 chạm vùng <strong>28–32</strong></li>
-            <li><strong>Entry:</strong> Long ngay tại nến chạm vùng (close H1)</li>
-            <li><strong>SL:</strong> 25 pip dưới entry</li>
-            <li><strong>TP:</strong> 2.5R = 62.5 pip trên entry</li>
-            <li><strong>Giữ lệnh:</strong> Tối đa 48 nến H1, sau đó đóng theo giá</li>
-            <li><strong>Spread:</strong> 1 pip (trừ khi timeout)</li>
-          </ul>
+    <!-- ===== PHẦN 5: THUẬT NGỮ NGẮN ===== -->
+    <section class="docs-card" id="thuat-ngu">
+      <h2>Từ khóa thường gặp</h2>
+      <div class="term-grid">
+        <div class="term-card">
+          <div class="term-name">RSI H4</div>
+          <div class="term-desc">Chỉ báo sức mạnh giá, tính trên khung 4 giờ. App hiển thị trên chart H1 để bạn nhìn xu hướng lớn.</div>
         </div>
-
-        <h3>Không nên (đã loại bỏ có căn cứ)</h3>
-        <ul>
-          <li>Short tại vùng kháng cự 68–72</li>
-          <li>Trade vùng 50</li>
-          <li>Chờ RSI thoát vùng mới vào (kém hơn entry chạm vùng)</li>
-          <li>Lọc thêm EMA H1 / H4 (không cải thiện ổn định)</li>
-        </ul>
-      </section>
-
-      <section id="doc-backtest">
-        <h2>Cách đọc báo cáo backtest</h2>
-
-        <h3>Setup khuyến nghị — các chỉ số</h3>
-        <table class="docs-table">
-          <thead><tr><th>Chỉ số</th><th>Đọc thế nào</th><th>Tham chiếu (full data)</th></tr></thead>
-          <tbody>
-            <tr>
-              <td>Expectancy</td>
-              <td>Trung bình R/lệnh. Càng cao càng tốt. &lt; 0 = không trade.</td>
-              <td>~+0.33R</td>
-            </tr>
-            <tr>
-              <td>Profit factor</td>
-              <td>Tổng thắng ÷ tổng thua. &gt; 1.4 = khá tốt.</td>
-              <td>~1.58</td>
-            </tr>
-            <tr>
-              <td>Win %</td>
-              <td>Tỷ lệ chạm TP (hoặc lãi khi timeout). Thấp vẫn OK nếu R:R cao.</td>
-              <td>~42%</td>
-            </tr>
-            <tr>
-              <td>Tổng pip</td>
-              <td>Cộng dồn toàn bộ lệnh trong khoảng ngày chọn.</td>
-              <td>~+842 pip / 101 lệnh</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3>Walk-forward</h3>
-        <p>Chia dữ liệu tại ngày <strong>Split</strong> (mặc định 2025-01-01):</p>
-        <ul>
-          <li><strong>Train</strong> — giai đoạn trước split, dùng để “huấn luyện” / tìm setup.</li>
-          <li><strong>Test</strong> — giai đoạn sau split, mô phỏng trade thật trên dữ liệu chưa dùng.</li>
-        </ul>
-        <p><strong>Đánh giá tốt</strong> khi Test vẫn có Expectancy &gt; 0 và PF &gt; 1, gần với Train. Ví dụ hiện tại: Train +0.34R, Test +0.33R → edge ổn định.</p>
-        <p>Dòng <em>Δ Expectancy / Δ Win%</em> cho biết setup có suy giảm mạnh ở giai đoạn test hay không.</p>
-
-        <h3>Phương án loại bỏ</h3>
-        <p>Liệt kê các biến thể đã backtest với kết quả kém (Expectancy ≤ 0 hoặc PF &lt; 1). Giúp bạn tránh thêm filter/phương án không cần thiết.</p>
-
-        <h3>MAE / MFE (phần mở rộng)</h3>
-        <ul>
-          <li><strong>TB MAE ~43 pip</strong> — trung bình giá đi ngược tối đa 43 pip trước khi kết thúc horizon. SL 25 pip sẽ bị quét khá thường xuyên — đó là trade-off đã chọn.</li>
-          <li><strong>% sống sót SL 25</strong> — tỷ lệ lệnh có MAE ≤ 25 pip (chưa bị “quét” nếu đặt SL 25).</li>
-        </ul>
-      </section>
-
-      <section id="lich-su-lenh">
-        <h2>Lịch sử lệnh — từng cột</h2>
-        <table class="docs-table">
-          <thead>
-            <tr>
-              <th>Cột</th>
-              <th>Ý nghĩa</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>#</td><td>Số thứ tự lệnh (theo thời gian entry)</td></tr>
-            <tr><td>Entry / Exit</td><td>Thời gian UTC mở và đóng lệnh</td></tr>
-            <tr><td>Entry px / Exit px</td><td>Giá vào và giá ra (close nến entry; SL/TP/close nến exit)</td></tr>
-            <tr><td>SL / TP</td><td>Mức stop loss và take profit đã đặt</td></tr>
-            <tr><td>Kết quả</td><td>Thắng / Thua + lý do (tp, sl, timeout)</td></tr>
-            <tr><td>Pip</td><td>Lãi/lỗ tính bằng pip (đã trừ spread khi timeout)</td></tr>
-            <tr><td>R</td><td>Pip ÷ SL pip → bội số rủi ro (+2.5R = full TP, −1R = full SL)</td></tr>
-            <tr><td>Nến</td><td>Số nến H1 giữ lệnh</td></tr>
-          </tbody>
-        </table>
-
-        <h3>Cách xem lệnh trên biểu đồ</h3>
-        <ol>
-          <li>Click dòng lệnh (panel phải hoặc bảng Setup trade).</li>
-          <li>App chuyển sang tab Biểu đồ, zoom tới <strong>nến entry</strong> (entry nằm gần 1/4 khung nhìn bên trái).</li>
-          <li>Bật <em>SL/TP khi chọn</em> để thấy 3 đường giá Entry / SL / TP.</li>
-          <li>Thanh thông tin phía trên hiển thị tóm tắt lệnh đang chọn.</li>
-        </ol>
-      </section>
-
-      <section id="luu-y">
-        <h2>Lưu ý quan trọng</h2>
-        <div class="docs-callout warn">
-          <ul>
-            <li>Backtest trên <strong>lịch sử</strong> không đảm bảo lợi nhuận tương lai.</li>
-            <li>Mới test trên <strong>EURUSD</strong> — chưa xác nhận trên cặp khác.</li>
-            <li>Chuỗi thua dài (tới 12 lệnh) đã xảy ra — cần quản lý vốn (khuyến nghị risk 0.5–1%/lệnh).</li>
-            <li>Win rate ~42% nghĩa là thua nhiều hơn thắng — cần kỷ luật theo setup.</li>
-            <li>Dữ liệu mẫu trong file <code>data/EURUSD_H1.json</code> — cập nhật file này để phân tích giai đoạn mới.</li>
-          </ul>
+        <div class="term-card">
+          <div class="term-name">Vùng 28–32</div>
+          <div class="term-desc">RSI thấp — giá có thể “bật lên”. Đây là tín hiệu mua trong setup khuyến nghị.</div>
         </div>
+        <div class="term-card">
+          <div class="term-name">Backtest</div>
+          <div class="term-desc">Chạy thử chiến lược trên dữ liệu cũ, xem nếu trade theo quy tắc thì lãi hay lỗ.</div>
+        </div>
+        <div class="term-card">
+          <div class="term-name">SL / TP</div>
+          <div class="term-desc">Stop Loss = mức cắt lỗ. Take Profit = mức chốt lời. App dùng SL 25 pip, TP 62.5 pip.</div>
+        </div>
+        <div class="term-card">
+          <div class="term-name">Pip</div>
+          <div class="term-desc">Đơn vị đo biến động giá EURUSD. 1 pip ≈ 0.0001 (ví dụ từ 1.0850 lên 1.0851 = 1 pip).</div>
+        </div>
+        <div class="term-card">
+          <div class="term-name">EMA 50 / 200</div>
+          <div class="term-desc">Đường trung bình giá. Chỉ để tham khảo xu hướng — setup khuyến nghị không bắt buộc lọc theo EMA.</div>
+        </div>
+      </div>
+    </section>
 
-        <h3>Quản lý vốn gợi ý</h3>
-        <p>Với SL 25 pip và chuỗi thua tối đa 12 lệnh:</p>
-        <ul>
-          <li>Risk <strong>1%/lệnh</strong> → drawdown tài khoản có thể ~12% trong giai đoạn xấu.</li>
-          <li>Risk <strong>0.5%/lệnh</strong> → an toàn hơn (~6% DD).</li>
-          <li>Cân nhắc dừng trade sau 3–4 SL liên tiếp.</li>
-        </ul>
-      </section>
+    <!-- ===== PHẦN 6: LƯU Ý ===== -->
+    <section class="docs-card warn-card">
+      <h2>⚠️ Cần nhớ trước khi trade thật</h2>
+      <ul class="plain-list">
+        <li>Backtest quá khứ <strong>không đảm bảo</strong> tương lai sẽ lãi.</li>
+        <li>Mới test trên <strong>EURUSD</strong> — chưa kiểm tra cặp khác.</li>
+        <li>Tỷ lệ thắng ~42% → <strong>thua nhiều hơn thắng</strong> là bình thường với setup này.</li>
+        <li>Đã có chuỗi <strong>12 lệnh thua liên tiếp</strong> — chỉ risk 0.5–1% vốn mỗi lệnh.</li>
+        <li>Nên dừng sau 3–4 lệnh thua liên tiếp, chờ điều kiện mới.</li>
+      </ul>
+    </section>
 
-      <footer class="docs-footer">
-        <p>RSI Zone Analyzer · Tài liệu cập nhật theo phiên bản app hiện tại.</p>
-        <a href="/">← Quay lại ứng dụng</a>
-      </footer>
-    </main>
-  </div>
+    <footer class="docs-footer">
+      <p>Có thắc mắc? Mở tab <strong>Setup trade</strong> xem số thực tế, click từng lệnh trên <strong>Biểu đồ</strong> để hiểu rõ hơn.</p>
+      <a href="/" id="footerBackApp">← Quay lại ứng dụng</a>
+    </footer>
+  </main>
+
+  <script>
+    if (new URLSearchParams(location.search).get('embed') === '1') {
+      document.getElementById('docsTopbar')?.style.setProperty('display', 'none');
+      document.getElementById('footerBackApp')?.style.setProperty('display', 'none');
+      document.body.classList.add('docs-embed');
+    }
+  </script>
 </body>
 </html>

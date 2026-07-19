@@ -138,7 +138,9 @@ function renderTradeTables() {
 
   if (countEl) {
     const wins = lastTrades.filter((t) => t.result === 'win').length;
-    countEl.textContent = `${lastTrades.length} lệnh · ${wins} thắng`;
+    const longN = lastTrades.filter((t) => t.direction !== 'short').length;
+    const shortN = lastTrades.filter((t) => t.direction === 'short').length;
+    countEl.textContent = `${lastTrades.length} lệnh (${longN} long · ${shortN} short) · ${wins} thắng`;
   }
   if (compactBody) {
     compactBody.innerHTML = lastTrades.map((t) => tradeRowHtml(t, true)).join('');
@@ -164,18 +166,48 @@ function applyTradeOverlay() {
   }
 }
 
-function renderRecommended(rec) {
-  const el = $('recommendedContent');
-  if (!el || !rec) return;
-  const setup = rec.setup || {};
-  const perf = rec.performance || {};
-  const tpText = perf.params?.take_profit_mode === 'rsi_zone' || perf.config?.take_profit_mode === 'rsi_zone'
+function renderRecommended(rec, side = 'long') {
+  const elId = side === 'short' ? 'recommendedContentShort' : 'recommendedContentLong';
+  const el = $(elId);
+  if (!el) return;
+  const block = side === 'short' ? rec?.short : rec;
+  if (!block?.setup) {
+    el.innerHTML = '<p class="hint">—</p>';
+    return;
+  }
+  const setup = block.setup || {};
+  const perf = block.performance || {};
+  const entryLabels = {
+    touch: 'Vào ngay khi chạm vùng',
+    delay_1: 'Delay 1 nến sau chạm',
+    delay_3: 'Delay 3 nến',
+    delay_5: 'Delay 5 nến',
+    confirm_candle: 'Chờ nến xác nhận',
+    confirm_delay1: 'Delay 1 + nến xác nhận',
+    touch_div: 'Chạm vùng + phân kỳ H4',
+    ema_touch_2: 'Chạm EMA lần 2',
+    ema_touch_3: 'Chạm EMA lần 3',
+    ema_reject_2: 'Từ chối EMA lần 2',
+    ema_reject_3: 'Từ chối EMA lần 3',
+    ema_reject_3_pb10: 'EMA lần 3 + pullback 10 pip',
+  };
+  const entryText = entryLabels[setup.entry_strategy] || setup.entry_strategy || 'Chạm vùng';
+  const slText = setup.sl_mode === 'swing' ? 'SL swing' : setup.sl_mode === 'atr' ? 'SL ATR' : `SL ${setup.stop_loss_pips} pip`;
+  const tpText = perf.params?.take_profit_mode === 'rsi_zone' || perf.config?.take_profit_mode === 'rsi_zone' || setup.take_profit_mode === 'rsi_zone'
     ? 'TP vùng RSI đối diện'
     : `TP ${setup.take_profit_r}R`;
   const notes = (setup.notes || []).map((n) => `<li>${n}</li>`).join('');
+  const filterText = (setup.entry_filters || []).includes('min_ema_sep')
+    ? ' · EMA50/200 sep ≥ 15 pip'
+    : '';
+  const sl2Text = setup.sl_two_opposite ? ' · 2 SL → chờ RSI 68–72' : '';
+  const warnClass = block.warning ? ' warn' : '';
+  const badge = side === 'short'
+    ? '<span class="tag no" style="margin-left:8px">Tham khảo</span>'
+    : '<span class="tag ok" style="margin-left:8px">Khuyến nghị</span>';
   el.innerHTML = `
     <div class="recommended-hero">
-      <div class="recommended-title">${setup.label || '—'}</div>
+      <div class="recommended-title${warnClass}">${setup.label || '—'}${badge}</div>
       <div class="recommended-metrics">
         <div class="metric"><span class="metric-val">${perf.expectancy_r ?? 0}R</span><span class="metric-lbl">Expectancy</span></div>
         <div class="metric"><span class="metric-val">${perf.profit_factor ?? 0}</span><span class="metric-lbl">Profit factor</span></div>
@@ -185,9 +217,86 @@ function renderRecommended(rec) {
       </div>
       <ul class="recommended-rules">${notes}</ul>
       <div class="recommended-params mono">
-        SL ${setup.stop_loss_pips} pip · ${tpText} · Horizon ${setup.max_bars} nến H1 · Spread ${setup.spread_pips} pip
+        ${entryText} · ${slText} · ${tpText} · Horizon ${setup.max_bars} nến H1 · Spread ${setup.spread_pips} pip${filterText}${sl2Text}
       </div>
     </div>`;
+}
+
+function renderRegimeTable(rec) {
+  const ra = rec?.regime_analysis;
+  const tbody = $('regimeTable')?.querySelector('tbody');
+  const h4body = $('regimeH4Table')?.querySelector('tbody');
+  const hints = $('regimeHints');
+  const verdict = $('regimeVerdict');
+  if (!ra || !tbody) return;
+
+  const rowHtml = (row, withShare = false) => {
+    const expCls = (row.expectancy_r ?? 0) < 0 ? 'bad' : (row.expectancy_r ?? 0) > 0.35 ? 'good' : '';
+    const shareCol = withShare ? `<td>${row.pip_share_pct ?? 0}%</td>` : '';
+    return `
+      <tr class="${expCls}">
+        <td><strong>${row.label}</strong></td>
+        <td>${row.trades ?? 0}</td>
+        <td class="rate">${row.win_rate ?? 0}%</td>
+        <td class="rate">${row.sl_rate ?? 0}%</td>
+        <td class="rate">${row.expectancy_r ?? 0}R</td>
+        <td>${row.profit_factor ?? '—'}</td>
+        <td class="mono">${(row.total_pips ?? 0) >= 0 ? '+' : ''}${row.total_pips ?? 0}</td>
+        ${shareCol}
+      </tr>`;
+  };
+
+  tbody.innerHTML = (ra.by_regime || []).map((r) => rowHtml(r, true)).join('');
+  if (h4body) {
+    h4body.innerHTML = (ra.by_h4_trend || []).map((r) => rowHtml(r, false)).join('');
+  }
+  if (hints) {
+    hints.innerHTML = (ra.trading_hints || []).map((h) => `<li>${h}</li>`).join('');
+  }
+  if (verdict) {
+    const parts = [ra.conclusion, ra.filter_note].filter(Boolean);
+    verdict.textContent = parts.join(' · ');
+  }
+}
+
+function renderOptimizationTable(rec) {
+  const tbody = $('optimizationTable')?.querySelector('tbody');
+  const verdict = $('optimizationVerdict');
+  const review = rec?.optimization_review;
+  if (!tbody || !review) return;
+  const statusLabels = {
+    selected: 'Đang dùng',
+    replaced: 'Đã thay',
+    alternative: 'Thay thế',
+    rejected: 'Loại',
+  };
+  const statusClass = {
+    selected: 'good',
+    replaced: 'muted',
+    alternative: 'ok',
+    rejected: 'bad',
+  };
+  tbody.innerHTML = (review.comparisons || []).map((row) => {
+    const st = row.status || '';
+    const cls = statusClass[st] || '';
+    const fmt = (v, suffix = '') => (v == null ? '—' : `${v}${suffix}`);
+    return `
+      <tr class="${cls}">
+        <td><strong>${row.idea}</strong></td>
+        <td>${statusLabels[st] || st}</td>
+        <td>${fmt(row.trades)}</td>
+        <td class="rate">${fmt(row.win_rate, '%')}</td>
+        <td class="rate">${row.expectancy_r == null ? '—' : `${row.expectancy_r}R`}</td>
+        <td>${fmt(row.profit_factor)}</td>
+        <td class="mono">${row.total_pips == null ? '—' : (row.total_pips >= 0 ? '+' : '') + row.total_pips}</td>
+        <td class="note">${row.note || ''}</td>
+      </tr>`;
+  }).join('');
+  if (verdict) {
+    const hc = rec?.horizon_comparison;
+    const parts = [review.conclusion, hc?.conclusion].filter(Boolean);
+    verdict.textContent = parts.join(' · ');
+  }
 }
 
 function renderRejectedTable(rec) {
@@ -212,9 +321,11 @@ function renderRejectedTable(rec) {
   tbody.innerHTML = [...alts, ...skipped].join('');
 }
 
-function renderWalkForwardTable(wf) {
-  const tbody = $('walkForwardTable')?.querySelector('tbody');
-  const verdict = $('walkForwardVerdict');
+function renderWalkForwardTable(wf, side = 'long') {
+  const tableId = side === 'short' ? 'walkForwardTableShort' : 'walkForwardTable';
+  const verdictId = side === 'short' ? 'walkForwardVerdictShort' : 'walkForwardVerdict';
+  const tbody = $(tableId)?.querySelector('tbody');
+  const verdict = $(verdictId);
   if (!tbody || !wf) return;
   tbody.innerHTML = ['train', 'test'].map((key) => {
     const p = wf[key];
@@ -374,8 +485,12 @@ function renderReport(stats, recommended, rangeText) {
   lastStats = stats;
   lastRecommended = recommended;
   lastTrades = recommended?.trade_history || [];
-  renderRecommended(recommended);
-  renderWalkForwardTable(recommended?.walk_forward);
+  renderRecommended(recommended, 'long');
+  renderRecommended(recommended, 'short');
+  renderRegimeTable(recommended);
+  renderOptimizationTable(recommended);
+  renderWalkForwardTable(recommended?.walk_forward, 'long');
+  renderWalkForwardTable(recommended?.short?.walk_forward, 'short');
   renderRejectedTable(recommended);
   renderReportSummary(stats, rangeText);
   renderZoneTable(stats);
@@ -435,13 +550,16 @@ function switchTab(tab) {
   $('viewChart').classList.toggle('active', tab === 'chart');
   $('viewReport').classList.toggle('hidden', tab !== 'report');
   $('viewReport').classList.toggle('active', tab === 'report');
+  $('viewGuide').classList.toggle('hidden', tab !== 'guide');
+  $('viewGuide').classList.toggle('active', tab === 'guide');
   if (tab === 'chart') requestAnimationFrame(() => chart?.resize());
 }
 
 async function init() {
-  chart = new RsiZoneChart($('chartMain'), $('chartRsi'), {
+  chart = new RsiZoneChart($('chartHost'), {
     wrapEl: $('chartWrap'),
     bodyEl: $('chartBody'),
+    rsiPanel: $('rsiPanel'),
     onCrosshair: (info) => {
       const el = $('crosshairInfo');
       if (!info?.candle) {
@@ -474,6 +592,7 @@ async function init() {
   }
 
   $('btnLoad').addEventListener('click', () => loadAll({ fitChart: true }).catch(alert));
+  $('btnGuide')?.addEventListener('click', () => switchTab('guide'));
   $('btnRefreshStats').addEventListener('click', () => loadStats().then(({ stats, recommended }) => {
     renderReport(stats, recommended, $('dataRange').textContent);
   }).catch(alert));

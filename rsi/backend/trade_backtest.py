@@ -8,10 +8,12 @@ from typing import Any, Literal
 import numpy as np
 import pandas as pd
 
+from .entry_signals import swing_stop_pips
+
 
 @dataclass
 class TradeConfig:
-    sl_mode: Literal["fixed", "atr"] = "fixed"
+    sl_mode: Literal["fixed", "atr", "swing"] = "fixed"
     stop_loss_pips: float = 20.0
     stop_loss_atr_mult: float = 1.0
     take_profit_mode: Literal["r", "rsi_zone"] = "rsi_zone"
@@ -20,12 +22,14 @@ class TradeConfig:
     spread_pips: float = 1.0
 
 
-def _sl_pips(df: pd.DataFrame, entry_i: int, cfg: TradeConfig) -> float:
+def _sl_pips(df: pd.DataFrame, entry_i: int, cfg: TradeConfig, direction: Literal["long", "short"]) -> float:
     if cfg.sl_mode == "atr":
         atr = float(df.iloc[entry_i].get("atr14", np.nan))
         if np.isnan(atr) or atr <= 0:
             return cfg.stop_loss_pips
         return atr * 10_000 * cfg.stop_loss_atr_mult
+    if cfg.sl_mode == "swing":
+        return swing_stop_pips(df, entry_i, direction)
     return cfg.stop_loss_pips
 
 
@@ -67,7 +71,7 @@ def simulate_trade(
         }
 
     entry = float(df.iloc[entry_i]["close"])
-    sl_pips = _sl_pips(df, entry_i, cfg)
+    sl_pips = _sl_pips(df, entry_i, cfg, direction)
     sl_dist = sl_pips / 10_000
     tp_dist = sl_dist * cfg.take_profit_r
     spread = cfg.spread_pips / 10_000

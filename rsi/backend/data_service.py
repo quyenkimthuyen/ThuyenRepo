@@ -56,6 +56,8 @@ def build_chart_payload(df: pd.DataFrame) -> dict:
     ema800 = []
     rsi_h4 = []
 
+    rsi_ffill = df["rsi14_h4"].ffill()
+
     for ts, row in df.iterrows():
         t = _to_chart_time(ts)
         candles.append({
@@ -71,8 +73,8 @@ def build_chart_payload(df: pd.DataFrame) -> dict:
             ema200.append({"time": t, "value": round(float(row["ema200"]), 5)})
         if pd.notna(row["ema800"]):
             ema800.append({"time": t, "value": round(float(row["ema800"]), 5)})
-        if pd.notna(row["rsi14_h4"]):
-            rsi_h4.append({"time": t, "value": round(float(row["rsi14_h4"]), 2)})
+        if pd.notna(rsi_ffill.loc[ts]):
+            rsi_h4.append({"time": t, "value": round(float(rsi_ffill.loc[ts]), 2)})
 
     first = df.index[0].isoformat() if len(df) else None
     last = df.index[-1].isoformat() if len(df) else None
