@@ -87,7 +87,7 @@ function passageToSentences(transcript, translation = '') {
   return { en, vi };
 }
 
-/** @param {{ id: number, question?: string, translation?: string }} q */
+/** @param {{ id: number, question?: string, translation?: string, answer?: string, options?: Record<string, string> }} q */
 function isValidPart2Question(q) {
   const text = cleanText(q.question ?? '');
   if (!text || text.length < 10) return false;
@@ -97,18 +97,39 @@ function isValidPart2Question(q) {
   return true;
 }
 
-/** @param {string} translation */
-function extractPart2QuestionTranslation(translation) {
+/** @param {string} translation @param {string} answerKey */
+function extractPart2AnswerTranslation(translation, answerKey) {
   const text = cleanText(translation ?? '');
-  if (!text) return '';
+  if (!text || !answerKey) return '';
+
   const qIdx = text.indexOf('?');
-  if (qIdx !== -1) return text.slice(0, qIdx + 1).trim();
-  const parts = text.split(/(?<=[.!])\s+/).map((s) => s.trim()).filter(Boolean);
-  return parts[0] ?? text;
+  const rest = qIdx !== -1 ? text.slice(qIdx + 1).trim() : text.split(/(?<=[.!])\s+/).slice(1).join(' ');
+  const optionParts = rest
+    .split(/(?<=[.!])\s+/)
+    .map((s) => cleanText(s))
+    .filter(Boolean);
+  const answerIdx = answerKey.toUpperCase().charCodeAt(0) - 'A'.charCodeAt(0);
+  return optionParts[answerIdx] ?? '';
+}
+
+/** @param {{ question?: string, translation?: string, answer?: string, options?: Record<string, string> }} q */
+function part2Pair(q) {
+  const question = cleanText(q.question ?? '');
+  const answer = cleanText(q.options?.[q.answer ?? ''] ?? '');
+  const en = answer ? `${question} — ${answer}` : question;
+
+  const text = cleanText(q.translation ?? '');
+  const qIdx = text.indexOf('?');
+  const qVi = qIdx !== -1
+    ? text.slice(0, qIdx + 1).trim()
+    : text.split(/(?<=[.!])\s+/).map((s) => s.trim()).filter(Boolean)[0] ?? text;
+  const aVi = extractPart2AnswerTranslation(q.translation ?? '', q.answer ?? '');
+  const vi = aVi ? `${qVi} — ${aVi}` : qVi;
+  return { en, vi };
 }
 
 /**
- * @param {Array<{ id: number, question?: string, translation?: string }>} questions
+ * @param {Array<{ id: number, question?: string, translation?: string, answer?: string, options?: Record<string, string> }>} questions
  */
 function part2ToSentences(questions) {
   const seen = new Set();
@@ -122,8 +143,9 @@ function part2ToSentences(questions) {
     const question = cleanText(q.question ?? '');
     if (seen.has(question)) continue;
     seen.add(question);
-    en.push(question);
-    vi.push(extractPart2QuestionTranslation(q.translation ?? ''));
+    const pair = part2Pair(q);
+    en.push(pair.en);
+    vi.push(pair.vi);
   }
   return { en, vi };
 }
