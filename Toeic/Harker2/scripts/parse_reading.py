@@ -115,6 +115,103 @@ def parse_question_options_block(block: str, qnum: int, part: int = 6) -> dict:
         return parse_options("(A) " + m.group(1))
 
 
+def parse_orphan_option_groups(text: str) -> list[dict[str, str]]:
+    """Parse consecutive (A)(B)(C)(D) groups without a question number (2-column PDF layout)."""
+    groups = []
+    pattern = r"\(A\)\s*(.+?)\s*\(B\)\s*(.+?)\s*\(C\)\s*(.+?)\s*\(D\)\s*(.+?)(?=\s*\(A\)|$)"
+    for m in re.finditer(pattern, text, re.DOTALL):
+        opts = {k: clean(re.sub(r"\s+", " ", v)) for k, v in zip("ABCD", m.groups())}
+        if sum(1 for v in opts.values() if v) >= 2:
+            groups.append(opts)
+    return groups
+
+
+def parse_numbered_options(text: str, qnum: int) -> dict[str, str]:
+    m = re.search(
+        rf"(?<!\d){qnum}\.\s*\(A\)\s*(.+?)(?=(?<!\d)\d{{3}}\.\s*\(A\)|\Z)",
+        text,
+        re.DOTALL | re.I,
+    )
+    if not m:
+        return {}
+    return parse_options("(A) " + m.group(1))
+
+
+def find_part6_options_region(page: fitz.Page, q_from: int, q_to: int) -> tuple[float, float] | None:
+    min_y = 0.0
+    header = page.search_for(f"Questions {q_from}-{q_to} refer")
+    if header:
+        min_y = header[0].y1 + 20
+    else:
+        for h in page.search_for(f"{q_from}."):
+            if h.y0 > 50:
+                min_y = max(min_y, h.y0)
+        min_y = (min_y + 10) if min_y else 350
+
+    opt_y = [h.y0 for h in page.search_for("(A)") if h.y0 > min_y + 60]
+    if not opt_y:
+        return None
+    return min(opt_y) - 8, page.rect.height - FOOTER_MARGIN
+
+
+def extract_part6_group_options(
+    doc: fitz.Document,
+    test_num: int,
+    q_from: int,
+    q_to: int,
+) -> dict[int, dict[str, str]]:
+    page_start = TEST_START_PAGE + (test_num - 1) * PAGES_PER_TEST
+    page_end = min(page_start + PAGES_PER_TEST, len(doc))
+    q_ids = list(range(q_from, q_to + 1))
+    results: dict[int, dict[str, str]] = {}
+
+    for pi in range(page_start, page_end):
+        page = doc[pi]
+        has_group = bool(
+            page.search_for(f"Questions {q_from}-{q_to} refer")
+            or (page.search_for(f"{q_from}.") and page.search_for("(A)"))
+        )
+        if not has_group:
+            continue
+
+        region = find_part6_options_region(page, q_from, q_to)
+        if not region:
+            continue
+        top, bottom = region
+        mid = page.rect.width / 2
+        left = page.get_text("text", clip=fitz.Rect(0, top, mid, bottom))
+        right = page.get_text("text", clip=fitz.Rect(mid, top, page.rect.width, bottom))
+
+        remaining = [q for q in q_ids if q not in results]
+        for col_text in (left, right):
+            for qnum in list(remaining):
+                opts = parse_numbered_options(col_text, qnum)
+                if len(opts) >= 2:
+                    results[qnum] = opts
+                    remaining.remove(qnum)
+            for opts in parse_orphan_option_groups(col_text):
+                if remaining and len(opts) >= 2:
+                    results[remaining[0]] = opts
+                    remaining.pop(0)
+
+    return results
+
+
+def enrich_part6_passages(doc: fitz.Document, test_num: int, passages: list[dict]):
+    for passage in passages:
+        g_from, g_to = passage["questionIds"][0], passage["questionIds"][-1]
+        pdf_opts = extract_part6_group_options(doc, test_num, g_from, g_to)
+        qmap = {q["id"]: q for q in passage["questions"]}
+        for qnum in range(g_from, g_to + 1):
+            if qnum in pdf_opts and len(pdf_opts[qnum]) >= 2:
+                qmap[qnum] = {"id": qnum, "question": "", "options": pdf_opts[qnum]}
+            elif qnum not in qmap:
+                opts = pdf_opts.get(qnum, {})
+                if len(opts) >= 2:
+                    qmap[qnum] = {"id": qnum, "question": "", "options": opts}
+        passage["questions"] = sorted(qmap.values(), key=lambda q: q["id"])
+
+
 def parse_part6(text: str) -> list[dict]:
     """Parse Part 6 with header-based blocks + gap fill for headerless passages."""
     m = re.search(r"PART\s*6(.+?)PART\s*7", text, re.DOTALL | re.I)
@@ -435,6 +532,7 @@ def main():
 
         part5 = parse_part5(text)
         part6 = parse_part6_7(text, 6)
+        enrich_part6_passages(doc, test_num, part6)
         part7 = parse_part6_7(text, 7)
 
         test = {

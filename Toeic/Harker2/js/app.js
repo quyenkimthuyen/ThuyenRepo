@@ -407,7 +407,10 @@ function getQuestionData(qId) {
     }
     const partKey = qId <= 146 ? '6' : '7';
     const passage = findReadingPassage(d, qId, partKey);
-    const q = passage?.questions?.find(item => item.id === qId);
+    let q = passage?.questions?.find(item => item.id === qId);
+    if (!q && passage) {
+      q = getPassageQuestionsForDisplay(passage).find(item => item.id === qId);
+    }
     return { type: 'passage', passage, data: q, part: parseInt(partKey) };
   }
   if (qId <= 6) return { type: 'single', data: d.parts['1'].questions.find(q => q.id === qId), part: 1 };
@@ -505,11 +508,26 @@ function highlightBlank(sentence) {
   return esc(sentence).replace(/(\s{2,}|_{2,})/g, ' <span class="blank">______</span> ');
 }
 
+function getPassageQuestionsForDisplay(passage) {
+  const parsed = new Map((passage.questions || []).map(q => [q.id, q]));
+  return (passage.questionIds || []).map(id => {
+    const q = parsed.get(id);
+    if (q?.options && Object.keys(q.options).length >= 2) return q;
+    const letters = ['A', 'B', 'C', 'D'];
+    return {
+      id,
+      question: '',
+      options: Object.fromEntries(letters.map(l => [l, `(${l})`])),
+      incomplete: true,
+    };
+  });
+}
+
 function renderReadingPassageGroup(passage, part) {
   if (!passage) return '<div class="question-card"><p>Không tìm thấy đoạn văn.</p></div>';
 
   const qId = state.currentQ;
-  const questions = passage.questions || [];
+  const questions = getPassageQuestionsForDisplay(passage);
   const hasPdf = Boolean(passage.image);
   const usePdf = hasPdf && state.readingPassageView === 'pdf';
   const passageHtml = formatReadingPassage(passage.passage, passage.questionIds, part);
@@ -556,6 +574,9 @@ function renderReadingPassageGroup(passage, part) {
       html += `<p class="q-prompt">${esc(q.question)}</p>`;
     } else if (part === 6) {
       html += `<p class="q-prompt q-prompt--compact">Chọn đáp án cho vị trí <strong>${q.id}</strong> trong đoạn văn.</p>`;
+      if (q.incomplete) {
+        html += `<p class="exam-hint exam-hint--inline">Đáp án chi tiết xem trên ảnh PDF bên trái.</p>`;
+      }
     }
     html += renderOptions(q.options || {}, q.id);
     html += `</div>`;
