@@ -34,7 +34,19 @@ Harker2/
     └── parse_data.py   # Script parse PDF → JSON
 ```
 
-## Parse lại dữ liệu
+## Reading (RC)
+
+Dữ liệu từ `data/HACKER Vol 2 RC/`:
+- `HACKER 2 READING.pdf` — đề thi
+- `KEY RC HACKER 2/TEST *.png` — đáp án
+
+```bash
+python3 scripts/parse_reading.py
+```
+
+Output: `public/data/reading/test01.json` – `test10.json`
+
+## Parse lại dữ liệu Listening
 
 ```bash
 # Parse PDF + ảnh (không dịch)

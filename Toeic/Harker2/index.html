@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Harker TOEIC — Listening</title>
+  <title>Harker TOEIC — Listening &amp; Reading</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -15,9 +15,17 @@
     <section id="screen-home" class="screen active">
       <header class="hero">
         <div class="hero-badge">Hacker TOEIC 1000 Vol.2</div>
-        <h1>Listening Practice</h1>
-        <p class="hero-sub">Luyện nghe TOEIC với 10 đề thi — chế độ thi &amp; học</p>
+        <h1>TOEIC Practice</h1>
+        <p class="hero-sub">Luyện Listening &amp; Reading — 10 đề thi, chế độ thi &amp; học</p>
       </header>
+
+      <div class="section-picker">
+        <h2>Chọn kỹ năng</h2>
+        <div class="section-tabs">
+          <button class="section-tab active" data-section="listening">🎧 Listening</button>
+          <button class="section-tab" data-section="reading">📄 Reading</button>
+        </div>
+      </div>
 
       <div class="mode-picker">
         <h2>Chọn chế độ</h2>
@@ -58,17 +66,12 @@
       <div class="practice-layout">
         <!-- Sidebar -->
         <aside class="sidebar">
-          <div class="audio-panel">
+          <div class="audio-panel" id="audio-panel">
             <audio id="audio-player" controls preload="metadata"></audio>
             <div class="audio-hint">Phát audio toàn bộ đề thi</div>
           </div>
 
-          <nav class="part-nav">
-            <button class="part-tab active" data-part="1">Part 1 <small>6 câu</small></button>
-            <button class="part-tab" data-part="2">Part 2 <small>25 câu</small></button>
-            <button class="part-tab" data-part="3">Part 3 <small>39 câu</small></button>
-            <button class="part-tab" data-part="4">Part 4 <small>30 câu</small></button>
-          </nav>
+          <nav class="part-nav" id="part-nav"></nav>
 
           <div id="question-nav" class="question-nav"></div>
 
@@ -90,7 +93,7 @@
               <label class="toggle-chip"><input type="checkbox" id="toggle-transcript" checked> Transcript</label>
               <label class="toggle-chip"><input type="checkbox" id="toggle-translation" checked> Dịch</label>
               <label class="toggle-chip"><input type="checkbox" id="toggle-answer" checked> Đáp án</label>
-              <label class="toggle-chip"><input type="checkbox" id="toggle-accent" checked> Giải thích</label>
+              <label class="toggle-chip" id="toggle-accent-wrap"><input type="checkbox" id="toggle-accent" checked> Giải thích</label>
             </div>
           </div>
           <div id="study-content" class="study-content"></div>
