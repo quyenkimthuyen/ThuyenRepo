@@ -3301,6 +3301,12 @@ export const LESSON_INDEX = [
     "title": "Responding to misinformation"
   },
   {
+    "id": "c1-toeic-t01-p2",
+    "level": "c1",
+    "topic": "toeic",
+    "title": "Test 01 · Part 2 — Response Questions"
+  },
+  {
     "id": "c1-toeic-t01-p3-d01",
     "level": "c1",
     "topic": "toeic",
@@ -3437,6 +3443,12 @@ export const LESSON_INDEX = [
     "level": "c1",
     "topic": "toeic",
     "title": "Test 01 · Part 4 — Talk 10"
+  },
+  {
+    "id": "c1-toeic-t02-p2",
+    "level": "c1",
+    "topic": "toeic",
+    "title": "Test 02 · Part 2 — Response Questions"
   },
   {
     "id": "c1-toeic-t02-p3-d01",
@@ -3577,6 +3589,12 @@ export const LESSON_INDEX = [
     "title": "Test 02 · Part 4 — Talk 10"
   },
   {
+    "id": "c1-toeic-t03-p2",
+    "level": "c1",
+    "topic": "toeic",
+    "title": "Test 03 · Part 2 — Response Questions"
+  },
+  {
     "id": "c1-toeic-t03-p3-d01",
     "level": "c1",
     "topic": "toeic",
@@ -3713,6 +3731,12 @@ export const LESSON_INDEX = [
     "level": "c1",
     "topic": "toeic",
     "title": "Test 03 · Part 4 — Talk 10"
+  },
+  {
+    "id": "c1-toeic-t04-p2",
+    "level": "c1",
+    "topic": "toeic",
+    "title": "Test 04 · Part 2 — Response Questions"
   },
   {
     "id": "c1-toeic-t04-p3-d01",
@@ -3853,6 +3877,12 @@ export const LESSON_INDEX = [
     "title": "Test 04 · Part 4 — Talk 10"
   },
   {
+    "id": "c1-toeic-t05-p2",
+    "level": "c1",
+    "topic": "toeic",
+    "title": "Test 05 · Part 2 — Response Questions"
+  },
+  {
     "id": "c1-toeic-t05-p3-d01",
     "level": "c1",
     "topic": "toeic",
@@ -3985,6 +4015,12 @@ export const LESSON_INDEX = [
     "title": "Test 05 · Part 4 — Talk 9"
   },
   {
+    "id": "c1-toeic-t06-p2",
+    "level": "c1",
+    "topic": "toeic",
+    "title": "Test 06 · Part 2 — Response Questions"
+  },
+  {
     "id": "c1-toeic-t06-p3-d01",
     "level": "c1",
     "topic": "toeic",
@@ -4109,6 +4145,12 @@ export const LESSON_INDEX = [
     "level": "c1",
     "topic": "toeic",
     "title": "Test 06 · Part 4 — Talk 8"
+  },
+  {
+    "id": "c1-toeic-t07-p2",
+    "level": "c1",
+    "topic": "toeic",
+    "title": "Test 07 · Part 2 — Response Questions"
   },
   {
     "id": "c1-toeic-t07-p3-d01",
@@ -4249,6 +4291,12 @@ export const LESSON_INDEX = [
     "title": "Test 07 · Part 4 — Talk 10"
   },
   {
+    "id": "c1-toeic-t08-p2",
+    "level": "c1",
+    "topic": "toeic",
+    "title": "Test 08 · Part 2 — Response Questions"
+  },
+  {
     "id": "c1-toeic-t08-p3-d01",
     "level": "c1",
     "topic": "toeic",
@@ -4387,6 +4435,12 @@ export const LESSON_INDEX = [
     "title": "Test 08 · Part 4 — Talk 10"
   },
   {
+    "id": "c1-toeic-t09-p2",
+    "level": "c1",
+    "topic": "toeic",
+    "title": "Test 09 · Part 2 — Response Questions"
+  },
+  {
     "id": "c1-toeic-t09-p3-d01",
     "level": "c1",
     "topic": "toeic",
@@ -4523,6 +4577,12 @@ export const LESSON_INDEX = [
     "level": "c1",
     "topic": "toeic",
     "title": "Test 09 · Part 4 — Talk 10"
+  },
+  {
+    "id": "c1-toeic-t10-p2",
+    "level": "c1",
+    "topic": "toeic",
+    "title": "Test 10 · Part 2 — Response Questions"
   },
   {
     "id": "c1-toeic-t10-p3-d01",

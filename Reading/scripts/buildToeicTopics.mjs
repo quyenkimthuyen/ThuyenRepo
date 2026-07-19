@@ -87,6 +87,47 @@ function passageToSentences(transcript, translation = '') {
   return { en, vi };
 }
 
+/** @param {{ id: number, question?: string, translation?: string }} q */
+function isValidPart2Question(q) {
+  const text = cleanText(q.question ?? '');
+  if (!text || text.length < 10) return false;
+  if (/^1000\s*2/i.test(text)) return false;
+  if (/^TEST\b/i.test(text)) return false;
+  if (!/[a-zA-Z]{3,}/.test(text)) return false;
+  return true;
+}
+
+/** @param {string} translation */
+function extractPart2QuestionTranslation(translation) {
+  const text = cleanText(translation ?? '');
+  if (!text) return '';
+  const qIdx = text.indexOf('?');
+  if (qIdx !== -1) return text.slice(0, qIdx + 1).trim();
+  const parts = text.split(/(?<=[.!])\s+/).map((s) => s.trim()).filter(Boolean);
+  return parts[0] ?? text;
+}
+
+/**
+ * @param {Array<{ id: number, question?: string, translation?: string }>} questions
+ */
+function part2ToSentences(questions) {
+  const seen = new Set();
+  const en = [];
+  const vi = [];
+  const sorted = [...questions]
+    .filter(isValidPart2Question)
+    .sort((a, b) => a.id - b.id);
+
+  for (const q of sorted) {
+    const question = cleanText(q.question ?? '');
+    if (seen.has(question)) continue;
+    seen.add(question);
+    en.push(question);
+    vi.push(extractPart2QuestionTranslation(q.translation ?? ''));
+  }
+  return { en, vi };
+}
+
 /** @type {Array<{ id: string, level: string, topic: string, title: string, sentences: string[] }>} */
 const lessons = [];
 /** @type {Record<string, string[]>} */
@@ -96,6 +137,21 @@ for (let testNum = 1; testNum <= 10; testNum += 1) {
   const file = join(harkerDir, `test${String(testNum).padStart(2, '0')}.json`);
   const test = JSON.parse(readFileSync(file, 'utf8'));
   const testLabel = `Test ${String(testNum).padStart(2, '0')}`;
+  const testKey = String(testNum).padStart(2, '0');
+
+  const part2Questions = test.parts?.['2']?.questions ?? [];
+  const part2 = part2ToSentences(part2Questions);
+  if (part2.en.length) {
+    const id = `${LEVEL}-${TOPIC}-t${testKey}-p2`;
+    lessons.push({
+      id,
+      level: LEVEL,
+      topic: TOPIC,
+      title: `${testLabel} · Part 2 — Response Questions`,
+      sentences: part2.en,
+    });
+    translations[id] = part2.vi;
+  }
 
   for (const part of [3, 4]) {
     const partData = test.parts?.[String(part)];
@@ -135,9 +191,10 @@ writeFileSync(
 );
 
 console.log(`Generated ${lessons.length} TOEIC lessons (level ${LEVEL})`);
-const byPart = { 3: 0, 4: 0 };
+const byPart = { 2: 0, 3: 0, 4: 0 };
 for (const lesson of lessons) {
+  if (lesson.id.includes('-p2')) byPart[2] += 1;
   if (lesson.id.includes('-p3-')) byPart[3] += 1;
   if (lesson.id.includes('-p4-')) byPart[4] += 1;
 }
-console.log(`  Part 3: ${byPart[3]}, Part 4: ${byPart[4]}`);
+console.log(`  Part 2: ${byPart[2]}, Part 3: ${byPart[3]}, Part 4: ${byPart[4]}`);
