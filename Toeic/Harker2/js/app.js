@@ -45,6 +45,26 @@ const state = {
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
+function assetUrl(relativePath) {
+  const encoded = relativePath.split('/').map(encodeURIComponent).join('/');
+  return `public/${encoded}`;
+}
+
+function loadAudio(src) {
+  const player = $('#audio-player');
+  const errEl = $('#audio-error');
+  errEl.classList.add('hidden');
+  player.pause();
+  player.removeAttribute('src');
+  player.load();
+  player.src = assetUrl(src);
+  player.load();
+  player.onerror = () => {
+    errEl.textContent = 'Không tải được audio. Hãy chạy app qua http://localhost:8080 (python3 -m http.server 8080).';
+    errEl.classList.remove('hidden');
+  };
+}
+
 function cfg() { return SECTIONS[state.section]; }
 function partRanges() { return cfg().parts; }
 
@@ -129,9 +149,13 @@ async function startPractice(testId) {
   }
 
   const audioPanel = $('#audio-panel');
+  const mainContent = $('.main-content');
+  const practiceLayout = $('.practice-layout');
+  mainContent.classList.remove('reading-wide');
+  practiceLayout.classList.remove('reading-layout');
   if (c.hasAudio) {
     audioPanel.classList.remove('hidden');
-    $('#audio-player').src = `public/${state.testData.audio}`;
+    loadAudio(state.testData.audio);
   } else {
     audioPanel.classList.add('hidden');
   }
@@ -188,7 +212,11 @@ function bindPracticeEvents() {
   ['transcript', 'translation', 'answer', 'accent'].forEach(key => {
     $(`#toggle-${key}`).addEventListener('change', (e) => {
       state.studyToggles[key] = e.target.checked;
-      renderStudyPanel();
+      if (key === 'transcript' && state.section === 'reading') {
+        renderCurrentQuestion();
+      } else {
+        renderStudyPanel();
+      }
     });
   });
 
@@ -286,7 +314,13 @@ function renderCurrentQuestion() {
   const { type, data, passage, part } = getQuestionData(qId);
 
   if (!data && type === 'passage') {
-    area.innerHTML = renderReadingPassageGroup(passage, part) + renderNavButtons(qId, part);
+    const isReadingLong = state.section === 'reading' && (part === 6 || part === 7);
+    $('.main-content').classList.toggle('reading-wide', isReadingLong);
+    $('.practice-layout').classList.toggle('reading-layout', isReadingLong);
+    const html = state.section === 'reading'
+      ? renderReadingPassageGroup(passage, part)
+      : `<div class="question-card"><p>Câu ${qId} — dữ liệu chưa có.</p></div>`;
+    area.innerHTML = html + renderNavButtons(qId, part);
     bindOptionClicks(area);
     bindNavButtons(area);
     renderStudyPanel();
@@ -301,21 +335,30 @@ function renderCurrentQuestion() {
   }
 
   if (type === 'passage') {
+    const isReadingLong = state.section === 'reading' && (part === 6 || part === 7);
+    $('.main-content').classList.toggle('reading-wide', isReadingLong);
+    $('.practice-layout').classList.toggle('reading-layout', isReadingLong);
     const html = state.section === 'reading'
       ? renderReadingPassageGroup(passage, part)
       : renderListeningPassageGroup(passage, part);
-    area.innerHTML = html + renderNavButtons(qId, part);
+    area.innerHTML = (isReadingLong ? '' : '') + html + renderNavButtons(qId, part);
     bindOptionClicks(area);
     bindNavButtons(area);
+    if (isReadingLong) {
+      const activeBlock = document.getElementById(`reading-q-${qId}`);
+      activeBlock?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
     renderStudyPanel();
     return;
   }
+
+  $('.main-content').classList.remove('reading-wide');
 
   let html = `<div class="question-card">`;
   html += `<div class="q-header"><span class="q-number">Câu ${qId}</span><span class="q-part-label">Part ${part}</span></div>`;
 
   if (part === 1) {
-    const imgPath = `public/images/test${String(state.testId).padStart(2, '0')}/q${String(qId).padStart(2, '0')}.png`;
+    const imgPath = assetUrl(`images/test${String(state.testId).padStart(2, '0')}/q${String(qId).padStart(2, '0')}.png`);
     html += `<div class="q-image"><img src="${imgPath}" alt="Q${qId}" onerror="this.parentElement.innerHTML='<div class=\\'q-image-placeholder\\'>Ảnh câu ${qId}</div>'"></div>`;
     html += `<p class="q-prompt">Chọn câu mô tả đúng nhất bức tranh.</p>`;
     html += renderOptions(data.options, qId);
@@ -341,31 +384,60 @@ function highlightBlank(sentence) {
 
 function renderReadingPassageGroup(passage, part) {
   if (!passage) return '<div class="question-card"><p>Không tìm thấy đoạn văn.</p></div>';
+
   const qId = state.currentQ;
-  const currentQ = (passage.questions || []).find(q => q.id === qId);
-  const showPassage = state.mode === 'study' && state.studyToggles.transcript;
+  const questions = passage.questions || [];
+  const showPassage = state.mode === 'exam' || state.studyToggles.transcript;
+  const passageHtml = formatReadingPassage(passage.passage, passage.questionIds, part);
 
-  let html = `<div class="question-card">`;
-  html += `<div class="q-header"><span class="q-number">Câu ${qId}</span><span class="q-part-label">Part ${part} · ${passage.type || 'text'}</span></div>`;
+  let html = `<div class="reading-split">`;
 
+  html += `<aside class="reading-passage-panel">`;
+  html += `<div class="reading-passage-header">
+    <span>📄 Đoạn văn</span>
+    <span class="reading-passage-meta">Câu ${passage.questionIds.join(' – ')} · ${passage.type || 'text'}</span>
+  </div>`;
   if (showPassage && passage.passage) {
-    html += `<div class="passage-block passage-block--reading">${esc(passage.passage)}</div>`;
-  } else if (state.mode === 'exam') {
-    html += `<p class="exam-hint">Đọc đoạn văn và trả lời câu hỏi.</p>`;
+    html += `<div class="reading-passage-body">${passageHtml}</div>`;
+  } else {
+    html += `<div class="reading-passage-body reading-passage-body--hidden"><p class="exam-hint">Bật "Transcript" để xem đoạn văn.</p></div>`;
+  }
+  if (state.mode === 'study' && state.studyToggles.translation && passage.translation) {
+    html += `<div class="reading-passage-translation"><h4>Bản dịch</h4><p>${esc(passage.translation)}</p></div>`;
+  }
+  html += `</aside>`;
+
+  html += `<div class="reading-questions-panel">`;
+  html += `<div class="reading-questions-header">Câu hỏi (${passage.questionIds.length})</div>`;
+
+  for (const q of questions) {
+    const isActive = q.id === qId;
+    html += `<div class="reading-q-block${isActive ? ' reading-q-block--active' : ''}" id="reading-q-${q.id}">`;
+    html += `<div class="reading-q-label">Câu ${q.id}${isActive ? ' ← đang xem' : ''}</div>`;
+    if (part === 7 && q.question) {
+      html += `<p class="q-prompt">${esc(q.question)}</p>`;
+    } else if (part === 6) {
+      html += `<p class="q-prompt q-prompt--compact">Chọn đáp án cho vị trí <strong>${q.id}</strong> trong đoạn văn.</p>`;
+    }
+    html += renderOptions(q.options || {}, q.id);
+    html += `</div>`;
   }
 
-  if (currentQ) {
-    if (part === 7 && currentQ.question) {
-      html += `<p class="q-prompt">${esc(currentQ.question)}</p>`;
-    } else if (part === 6) {
-      html += `<p class="q-prompt">Chọn đáp án phù hợp cho vị trí <strong>${qId}</strong> trong đoạn văn.</p>`;
-    }
-    html += renderOptions(currentQ.options || {}, qId);
-  } else {
-    html += `<p class="q-prompt q-prompt--missing">Câu ${qId} — đang cập nhật.</p>`;
+  if (!questions.length) {
+    html += `<p class="q-prompt--missing">Dữ liệu câu hỏi đang cập nhật.</p>`;
   }
-  html += `</div>`;
+  html += `</div></div>`;
   return html;
+}
+
+function formatReadingPassage(text, questionIds) {
+  if (!text) return '';
+  let html = esc(text);
+  for (const qid of questionIds) {
+    const re = new RegExp(`\\b${qid}\\s*[•.]`, 'g');
+    html = html.replace(re, `<mark class="blank-marker">${qid}</mark>`);
+  }
+  return html.replace(/\n/g, '<br>');
 }
 
 function renderListeningPassageGroup(passage, part) {
@@ -447,8 +519,11 @@ function renderOptions(options, qId) {
 function bindOptionClicks(container) {
   container.querySelectorAll('.option-btn:not([disabled])').forEach(btn => {
     btn.addEventListener('click', () => {
-      state.answers[parseInt(btn.dataset.q)] = btn.dataset.letter;
-      state.currentQ = parseInt(btn.dataset.q);
+      const qId = parseInt(btn.dataset.q);
+      state.answers[qId] = btn.dataset.letter;
+      state.currentQ = qId;
+      const part = getPartForQ(qId);
+      if (part !== state.currentPart) { state.currentPart = part; renderPartNav(); renderPart(part); }
       renderQuestionNav();
       renderCurrentQuestion();
     });
