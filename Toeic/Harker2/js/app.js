@@ -40,6 +40,7 @@ const state = {
   timerInterval: null,
   timeLeft: 45 * 60,
   studyToggles: { transcript: true, translation: true, answer: true, accent: true },
+  readingPassageView: 'pdf',
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -117,6 +118,13 @@ function bindHomeEvents() {
   });
 }
 
+function configureStudyToggles() {
+  const isReading = state.section === 'reading';
+  $('#toggle-transcript-wrap').classList.toggle('hidden', isReading);
+  $('#toggle-accent-wrap').classList.toggle('hidden', !cfg().hasAccent);
+  if (isReading) state.studyToggles.transcript = true;
+}
+
 async function startPractice(testId) {
   const c = cfg();
   state.testId = testId;
@@ -161,6 +169,8 @@ async function startPractice(testId) {
   }
 
   accentWrap.classList.toggle('hidden', !c.hasAccent);
+  configureStudyToggles();
+  state.readingPassageView = 'pdf';
   renderPartNav();
   showScreen('practice');
   renderPart(state.currentPart);
@@ -212,7 +222,7 @@ function bindPracticeEvents() {
   ['transcript', 'translation', 'answer', 'accent'].forEach(key => {
     $(`#toggle-${key}`).addEventListener('change', (e) => {
       state.studyToggles[key] = e.target.checked;
-      if (key === 'transcript' && state.section === 'reading') {
+      if (key === 'transcript') {
         renderCurrentQuestion();
       } else {
         renderStudyPanel();
@@ -323,6 +333,7 @@ function renderCurrentQuestion() {
     area.innerHTML = html + renderNavButtons(qId, part);
     bindOptionClicks(area);
     bindNavButtons(area);
+    bindPassageViewToggle(area);
     renderStudyPanel();
     return;
   }
@@ -344,6 +355,7 @@ function renderCurrentQuestion() {
     area.innerHTML = (isReadingLong ? '' : '') + html + renderNavButtons(qId, part);
     bindOptionClicks(area);
     bindNavButtons(area);
+    bindPassageViewToggle(area);
     if (isReadingLong) {
       const activeBlock = document.getElementById(`reading-q-${qId}`);
       activeBlock?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -378,6 +390,15 @@ function renderCurrentQuestion() {
   renderStudyPanel();
 }
 
+function bindPassageViewToggle(container) {
+  container.querySelectorAll('[data-passage-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.readingPassageView = btn.dataset.passageView;
+      renderCurrentQuestion();
+    });
+  });
+}
+
 function highlightBlank(sentence) {
   return esc(sentence).replace(/(\s{2,}|_{2,})/g, ' <span class="blank">______</span> ');
 }
@@ -387,21 +408,36 @@ function renderReadingPassageGroup(passage, part) {
 
   const qId = state.currentQ;
   const questions = passage.questions || [];
-  const showPassage = state.mode === 'exam' || state.studyToggles.transcript;
+  const hasPdf = Boolean(passage.image);
+  const usePdf = hasPdf && state.readingPassageView === 'pdf';
   const passageHtml = formatReadingPassage(passage.passage, passage.questionIds, part);
 
   let html = `<div class="reading-split">`;
 
   html += `<aside class="reading-passage-panel">`;
   html += `<div class="reading-passage-header">
-    <span>📄 Đoạn văn</span>
+    <div class="reading-passage-header-top">
+      <span>📄 Đoạn văn</span>
+      ${hasPdf ? `<div class="passage-view-toggle">
+        <button type="button" class="passage-view-btn${usePdf ? ' active' : ''}" data-passage-view="pdf">PDF</button>
+        <button type="button" class="passage-view-btn${!usePdf ? ' active' : ''}" data-passage-view="text">Text</button>
+      </div>` : ''}
+    </div>
     <span class="reading-passage-meta">Câu ${passage.questionIds.join(' – ')} · ${passage.type || 'text'}</span>
   </div>`;
-  if (showPassage && passage.passage) {
+
+  if (usePdf) {
+    const imgPath = assetUrl(passage.image);
+    html += `<div class="reading-passage-body reading-passage-body--pdf">
+      <img src="${imgPath}" alt="Đoạn đọc câu ${passage.questionIds.join('-')}" class="passage-pdf-img"
+        onerror="this.closest('.reading-passage-body').innerHTML='<p class=\\'exam-hint\\'>Không tải được ảnh PDF. Chuyển sang chế độ Text.</p>'">
+    </div>`;
+  } else if (passage.passage) {
     html += `<div class="reading-passage-body">${passageHtml}</div>`;
   } else {
-    html += `<div class="reading-passage-body reading-passage-body--hidden"><p class="exam-hint">Bật "Transcript" để xem đoạn văn.</p></div>`;
+    html += `<div class="reading-passage-body"><p class="exam-hint">Nội dung đoạn văn đang cập nhật.</p></div>`;
   }
+
   if (state.mode === 'study' && state.studyToggles.translation && passage.translation) {
     html += `<div class="reading-passage-translation"><h4>Bản dịch</h4><p>${esc(passage.translation)}</p></div>`;
   }
@@ -544,8 +580,8 @@ function renderStudyPanel() {
     }
   }
 
-  if (state.studyToggles.transcript) {
-    html += `<div class="study-section"><h4>${state.section === 'reading' ? 'Đoạn văn' : 'Transcript'}</h4>`;
+  if (state.studyToggles.transcript && state.section !== 'reading') {
+    html += `<div class="study-section"><h4>Transcript</h4>`;
     if (part === 5 && data?.sentence) {
       html += `<pre>${esc(data.sentence)}</pre>`;
     } else if (part <= 2 && data) {

@@ -2,6 +2,7 @@
 """Parse Hacker TOEIC Reading PDF into JSON."""
 
 import fitz
+import io
 import json
 import re
 from pathlib import Path
@@ -10,9 +11,14 @@ ROOT = Path(__file__).resolve().parent.parent
 READING_PDF = ROOT / "data" / "HACKER Vol 2 RC" / "HACKER 2 READING.pdf"
 ANSWERS_FILE = ROOT / "data" / "HACKER Vol 2 RC" / "reading_answers.json"
 OUT_DIR = ROOT / "public" / "data" / "reading"
+IMG_ROOT = ROOT / "public" / "images" / "reading"
 
 PAGES_PER_TEST = 30
 TEST_START_PAGE = 1  # 0-indexed: page 2 in PDF
+RENDER_MATRIX = fitz.Matrix(2.5, 2.5)
+PAGE_MARGIN = 24
+FOOTER_MARGIN = 45
+MIN_CLIP_HEIGHT = 20
 
 NOISE_RE = re.compile(
     r"GO ON TO THE NEXT PAGE|Hackers\.co\.kr|TEST\s*\d+\s*PART|"
@@ -180,6 +186,128 @@ def attach_answers(test: dict, answers: dict[str, str]):
                 q["answer"] = answers.get(str(q["id"]), "")
 
 
+def find_questions_top(page: fitz.Page, q_from: int, min_y: float, part: int) -> float | None:
+    """Return y-coordinate where questions/options begin below min_y."""
+    tops: list[float] = []
+    if part == 6:
+        patterns = [f"{q_from}. (A)", f"{q_from}.("]
+    else:
+        patterns = [f"{q_from}. ", f"{q_from}."]
+    for pat in patterns:
+        for rect in page.search_for(pat):
+            if rect.y0 > min_y + 12:
+                tops.append(rect.y0)
+    return min(tops) - 8 if tops else None
+
+
+def clip_passage_page(page: fitz.Page, top: float, bottom: float) -> fitz.Rect | None:
+    rect = fitz.Rect(
+        PAGE_MARGIN,
+        top,
+        page.rect.width - PAGE_MARGIN,
+        bottom,
+    )
+    if rect.height < MIN_CLIP_HEIGHT:
+        return None
+    return rect
+
+
+def render_clip(page: fitz.Page, rect: fitz.Rect):
+    from PIL import Image
+
+    pix = page.get_pixmap(matrix=RENDER_MATRIX, clip=rect)
+    return Image.open(io.BytesIO(pix.tobytes("png")))
+
+
+def stitch_images(images: list) -> object | None:
+    from PIL import Image
+
+    if not images:
+        return None
+    width = max(im.width for im in images)
+    height = sum(im.height for im in images)
+    combined = Image.new("RGB", (width, height), (255, 255, 255))
+    y = 0
+    for im in images:
+        if im.width < width:
+            padded = Image.new("RGB", (width, im.height), (255, 255, 255))
+            padded.paste(im, (0, 0))
+            im = padded
+        combined.paste(im, (0, y))
+        y += im.height
+    return combined
+
+
+def extract_passage_image(
+    doc: fitz.Document,
+    test_num: int,
+    part: int,
+    passage: dict,
+) -> str | None:
+    q_from = passage["questionIds"][0]
+    q_to = passage["questionIds"][-1]
+    rel_path = f"images/reading/test{test_num:02d}/p{part}_{q_from}-{q_to}.png"
+    out_path = ROOT / "public" / rel_path
+
+    page_start = TEST_START_PAGE + (test_num - 1) * PAGES_PER_TEST
+    page_end = min(page_start + PAGES_PER_TEST, len(doc))
+
+    clips: list[tuple[fitz.Page, fitz.Rect]] = []
+    collecting = False
+
+    for pi in range(page_start, page_end):
+        page = doc[pi]
+        header = page.search_for(f"Questions {q_from}-{q_to} refer")
+
+        if header:
+            collecting = True
+            top = header[0].y1 + 6
+            q_top = find_questions_top(page, q_from, top, part)
+            if q_top:
+                rect = clip_passage_page(page, top, q_top)
+                if rect:
+                    clips.append((page, rect))
+                collecting = False
+            else:
+                rect = clip_passage_page(page, top, page.rect.height - FOOTER_MARGIN)
+                if rect:
+                    clips.append((page, rect))
+            continue
+
+        if collecting:
+            q_top = find_questions_top(page, q_from, 30, part)
+            if q_top:
+                rect = clip_passage_page(page, 36, q_top)
+                if rect:
+                    clips.append((page, rect))
+                collecting = False
+            else:
+                rect = clip_passage_page(page, 36, page.rect.height - FOOTER_MARGIN)
+                if rect:
+                    clips.append((page, rect))
+
+    if not clips:
+        return None
+
+    images = [render_clip(page, rect) for page, rect in clips]
+    combined = stitch_images(images)
+    if combined is None:
+        return None
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    combined.save(str(out_path), optimize=True)
+    return rel_path
+
+
+def attach_passage_images(doc: fitz.Document, test: dict, test_num: int):
+    for part_key in ("6", "7"):
+        part = int(part_key)
+        for passage in test["parts"][part_key]["passages"]:
+            rel = extract_passage_image(doc, test_num, part, passage)
+            if rel:
+                passage["image"] = rel
+
+
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     doc = fitz.open(str(READING_PDF))
@@ -206,6 +334,10 @@ def main():
             "answers": answers,
         }
         attach_answers(test, answers)
+        attach_passage_images(doc, test, test_num)
+
+        p6img = sum(1 for p in part6 if p.get("image"))
+        p7img = sum(1 for p in part7 if p.get("image"))
 
         out = OUT_DIR / f"test{test_num:02d}.json"
         with open(out, "w", encoding="utf-8") as f:
@@ -214,7 +346,10 @@ def main():
         p5 = len(part5)
         p6q = sum(len(p["questions"]) for p in part6)
         p7q = sum(len(p["questions"]) for p in part7)
-        print(f"Test {test_num:02d}: P5={p5}/30 P6={p6q}/16 P7={p7q}/54")
+        print(
+            f"Test {test_num:02d}: P5={p5}/30 P6={p6q}/16 P7={p7q}/54 "
+            f"images P6={p6img}/{len(part6)} P7={p7img}/{len(part7)}"
+        )
         index.append({
             "id": test_num,
             "title": test["title"],

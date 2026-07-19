@@ -175,6 +175,54 @@ body::before {
   font-size: .9rem;
 }
 
+.reading-passage-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+}
+
+.passage-view-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.passage-view-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: .7rem;
+  font-weight: 600;
+  padding: .25rem .5rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.passage-view-btn.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.reading-passage-body--pdf {
+  padding: .5rem;
+  display: flex;
+  justify-content: center;
+  background: #fff;
+}
+
+.passage-pdf-img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.toggle-chip.hidden { display: none; }
+
 .reading-passage-meta {
   font-size: .75rem;
   font-weight: 400;
