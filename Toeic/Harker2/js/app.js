@@ -198,15 +198,24 @@ async function startPractice(testId) {
   const layout = $('.practice-layout');
   const studyPanel = $('#study-panel');
   const accentWrap = $('#toggle-accent-wrap');
-  if (state.mode === 'study') {
+  const showStudyPanel = state.mode === 'study' && state.section !== 'reading';
+
+  if (showStudyPanel) {
     layout.classList.add('study-mode');
     studyPanel.classList.remove('hidden');
   } else {
     layout.classList.remove('study-mode');
     studyPanel.classList.add('hidden');
+  }
+
+  if (state.mode === 'exam') {
     startTimer();
     $('#exam-timer').classList.remove('hidden');
     $('#exam-submit-panel').classList.remove('hidden');
+  } else {
+    stopTimer();
+    $('#exam-timer').classList.add('hidden');
+    $('#exam-submit-panel').classList.add('hidden');
   }
 
   const audioPanel = $('#audio-panel');
@@ -491,7 +500,7 @@ function renderReadingPassageGroup(passage, part) {
     html += `<div class="reading-passage-body"><p class="exam-hint">Nội dung đoạn văn đang cập nhật.</p></div>`;
   }
 
-  if (state.mode === 'study' && state.studyToggles.translation && passage.translation) {
+  if (state.mode === 'study' && passage.translation) {
     html += `<div class="reading-passage-translation"><h4>Bản dịch</h4><p>${esc(passage.translation)}</p></div>`;
   }
   html += `</aside>`;
@@ -591,8 +600,9 @@ function renderOptions(options, qId) {
   const letters = Object.keys(options).sort();
   const selected = state.answers[qId];
   const correct = getCorrectAnswer(qId);
-  const showResult = state.submitted || (state.mode === 'study' && state.studyToggles.answer);
-  const disabled = state.submitted || (state.mode === 'study' && state.studyToggles.answer);
+  const studyReveal = state.mode === 'study' && (state.section === 'reading' || state.studyToggles.answer);
+  const showResult = state.submitted || studyReveal;
+  const disabled = state.submitted || studyReveal;
 
   return `<div class="options-list">${letters.map(letter => {
     let cls = 'option-btn';
@@ -620,7 +630,7 @@ function bindOptionClicks(container) {
 }
 
 function renderStudyPanel() {
-  if (state.mode !== 'study') return;
+  if (state.mode !== 'study' || state.section === 'reading') return;
   const panel = $('#study-content');
   const qId = state.currentQ;
   const { data, passage, part } = getQuestionData(qId);
