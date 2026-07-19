@@ -3,7 +3,10 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { BUNDLED_LESSONS } from '../js/lessonsBundled.js';
 import { BUNDLED_TRANSLATIONS } from '../js/lessonTranslationsBundled.js';
+import { TOEIC_TRANSLATIONS } from '../js/toeicTranslations.js';
 import { TOPICS } from '../js/lessonMeta.js';
+
+const ALL_TRANSLATIONS = { ...BUNDLED_TRANSLATIONS, ...TOEIC_TRANSLATIONS };
 
 const root = dirname(fileURLToPath(import.meta.url));
 const chunksDir = join(root, '../js/chunks');
@@ -42,7 +45,7 @@ for (const topicId of topicIds) {
   /** @type {Record<string, string[]>} */
   const topicTranslations = {};
   for (const lesson of lessons) {
-    const vi = BUNDLED_TRANSLATIONS[lesson.id];
+    const vi = ALL_TRANSLATIONS[lesson.id];
     if (vi?.length) topicTranslations[lesson.id] = vi;
   }
 

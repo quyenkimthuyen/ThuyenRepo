@@ -14,6 +14,7 @@ export const TOPICS = [
   { id: 'work', label: 'Công việc' },
   { id: 'study', label: 'Học tập' },
   { id: 'ielts', label: 'IELTS Speaking' },
+  { id: 'toeic', label: 'TOEIC Listening' },
   { id: 'health', label: 'Sức khỏe' },
   { id: 'tech', label: 'Công nghệ' },
   { id: 'society', label: 'Xã hội' },

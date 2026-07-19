@@ -1,5 +1,6 @@
 import { SUPPLEMENT_LESSONS } from './supplementLessons.js';
 import { EXTRA_TOPIC_LESSONS } from './extraTopicLessons.js';
+import { TOEIC_LESSONS } from './toeicLessons.js';
 
 /** @type {{ id: string, label: string }[]} */
 export const LEVELS = [
@@ -17,6 +18,7 @@ export const TOPICS = [
   { id: 'work', label: 'Công việc' },
   { id: 'study', label: 'Học tập' },
   { id: 'ielts', label: 'IELTS Speaking' },
+  { id: 'toeic', label: 'TOEIC Listening' },
   { id: 'health', label: 'Sức khỏe' },
   { id: 'tech', label: 'Công nghệ' },
   { id: 'society', label: 'Xã hội' },
@@ -1492,6 +1494,8 @@ export const BUNDLED_LESSONS = [
   ...SUPPLEMENT_LESSONS,
 
   ...EXTRA_TOPIC_LESSONS,
+
+  ...TOEIC_LESSONS,
 ];
 
 /**

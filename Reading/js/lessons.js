@@ -39,6 +39,8 @@ function importTopicChunk(topicId) {
       return import('./chunks/sports.js').then((m) => m.TOPIC_LESSONS);
     case 'communication':
       return import('./chunks/communication.js').then((m) => m.TOPIC_LESSONS);
+    case 'toeic':
+      return import('./chunks/toeic.js').then((m) => m.TOPIC_LESSONS);
     default:
       return Promise.resolve([]);
   }
