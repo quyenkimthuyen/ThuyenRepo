@@ -36,14 +36,17 @@ Harker2/
 
 ## Parse lại dữ liệu
 
-Khi cập nhật PDF:
-
 ```bash
-python3 scripts/parse_data.py
+# Parse PDF + ảnh (không dịch)
+python3 scripts/parse_data.py --skip-translate
+
+# Dịch tiếng Việt (có cache, chạy từng test)
+python3 scripts/translate.py 1   # test 01
+python3 scripts/translate.py     # tất cả tests
 ```
 
 ## Ghi chú
 
-- Bản dịch tiếng Việt sẽ được bổ sung trong phiên bản tiếp theo
-- Một số ảnh Part 1 có thể chưa đầy đủ (đang cập nhật từ PDF)
+- Bản dịch tiếng Việt được tạo tự động qua Google Translate (có cache tại `public/data/translation_cache.json`)
+- Part 1: mỗi trang PDF chứa 2 ảnh, được crop tự động loại bỏ sidebar tiếng Hàn
 - Reading section sẽ được thêm sau

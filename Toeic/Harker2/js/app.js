@@ -8,7 +8,7 @@ const state = {
   submitted: false,
   timerInterval: null,
   timeLeft: 45 * 60,
-  studyToggles: { transcript: true, answer: true, accent: true },
+  studyToggles: { transcript: true, translation: true, answer: true, accent: true },
 };
 
 const PART_RANGES = {
@@ -124,7 +124,7 @@ function bindPracticeEvents() {
     renderCurrentQuestion();
   });
 
-  ['transcript', 'answer', 'accent'].forEach(key => {
+  ['transcript', 'translation', 'answer', 'accent'].forEach(key => {
     $(`#toggle-${key}`).addEventListener('change', (e) => {
       state.studyToggles[key] = e.target.checked;
       renderStudyPanel();
@@ -276,33 +276,43 @@ function renderPassageGroup(passage, part) {
   if (!passage) return '<div class="question-card"><p>Không tìm thấy đoạn hội thoại.</p></div>';
 
   const showTranscript = state.mode === 'study' && state.studyToggles.transcript;
-  const firstQ = passage.questionIds[0];
+  const qId = state.currentQ;
+  const currentQ = (passage.questions || []).find(q => q.id === qId);
 
   let html = `<div class="question-card">`;
   html += `<div class="q-header">
-    <span class="q-number">Câu ${passage.questionIds.join(' – ')}</span>
-    <span class="q-part-label">Part ${part}</span>
+    <span class="q-number">Câu ${qId}</span>
+    <span class="q-part-label">Part ${part} · Nhóm ${passage.questionIds.join('–')}</span>
   </div>`;
 
   if (showTranscript) {
-    html += `<div class="passage-block">${esc(passage.transcript)}</div>`;
+    html += `<div class="passage-block">${formatTranscript(passage.transcript)}</div>`;
   } else if (state.mode === 'exam') {
-    html += `<p style="font-size:.85rem;color:var(--text-muted);margin-bottom:1rem">Nghe đoạn hội thoại / bài nói và trả lời các câu hỏi.</p>`;
+    html += `<p class="exam-hint">Nghe đoạn hội thoại / bài nói và trả lời câu hỏi.</p>`;
   }
 
-  html += `<div class="sub-questions">`;
-  for (const q of (passage.questions || [])) {
-    const isActive = q.id === state.currentQ;
-    html += `<div class="sub-question" id="subq-${q.id}" style="${isActive ? '' : 'opacity:.55'}">`;
-    html += `<div class="q-header" style="margin-bottom:.75rem">
-      <span class="q-number">Câu ${q.id}</span>
-    </div>`;
-    if (q.question) html += `<p class="q-prompt">${esc(q.question)}</p>`;
-    html += renderOptions(q.options, q.id);
-    html += `</div>`;
+  if (state.mode === 'study' && state.studyToggles.translation && passage.translation) {
+    html += `<div class="passage-block passage-block--vi">${esc(passage.translation)}</div>`;
   }
-  html += `</div></div>`;
+
+  if (currentQ) {
+    if (currentQ.question) {
+      html += `<p class="q-prompt">${esc(currentQ.question)}</p>`;
+    } else {
+      html += `<p class="q-prompt q-prompt--missing">Câu hỏi ${qId} — đang cập nhật dữ liệu.</p>`;
+    }
+    html += renderOptions(currentQ.options || {}, qId);
+  }
+
+  html += `</div>`;
   return html;
+}
+
+function formatTranscript(text) {
+  if (!text) return '';
+  return esc(text)
+    .replace(/^(W\d?):/gm, '<strong>$1:</strong>')
+    .replace(/^(M):/gm, '<strong>M:</strong>');
 }
 
 function renderOptions(options, qId) {
@@ -367,17 +377,20 @@ function renderStudyPanel() {
       html += `<pre><strong>Câu hỏi:</strong> ${esc(data.question)}
 ${formatOptionsTranscript(data.options)}</pre>`;
     } else if (passage) {
-      html += `<pre>${esc(passage.transcript)}</pre>`;
+      html += `<pre>${formatTranscript(passage.transcript)}</pre>`;
     }
     html += `</div>`;
+  }
 
-    html += `<div class="study-section">
-      <h4>Dịch tiếng Việt</h4>
-      <div class="translation-note">
-        Bản dịch tiếng Việt sẽ được bổ sung trong phiên bản tiếp theo.
-        Hiện tại hãy sử dụng transcript tiếng Anh kèm từ điển để tra nghĩa.
-      </div>
-    </div>`;
+  if (state.studyToggles.translation) {
+    const translation = part <= 2 ? data?.translation : passage?.translation;
+    html += `<div class="study-section"><h4>Dịch tiếng Việt</h4>`;
+    if (translation) {
+      html += `<pre class="translation-text">${esc(translation)}</pre>`;
+    } else {
+      html += `<div class="translation-note">Bản dịch đang được tải. Chạy lại script parse để cập nhật.</div>`;
+    }
+    html += `</div>`;
   }
 
   if (state.studyToggles.answer) {

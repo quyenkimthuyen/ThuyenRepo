@@ -5,16 +5,44 @@ import fitz
 import json
 import re
 import os
+import io
+import time
 from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+try:
+    from deep_translator import GoogleTranslator
+    HAS_TRANSLATOR = True
+except ImportError:
+    HAS_TRANSLATOR = False
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = ROOT / "data"
 OUT_DIR = ROOT / "public" / "data"
 IMG_DIR = ROOT / "public" / "images"
+CACHE_FILE = OUT_DIR / "translation_cache.json"
 
 TRANSCRIPT_PDF = DATA_DIR / "HACKER 2 LISTENING TRANSCRIPT.pdf"
 LISTENING_PDF = DATA_DIR / "HACKER 2 LISTENING.pdf"
 AUDIO_DIR = DATA_DIR / "AUDIO HACKER"
+
+# Part 1 picture pages (3 pages × 2 photos = 6 questions) detected from PDF layout
+PART1_PAGE_GROUPS = [
+    [3, 4, 5], [17, 18, 19], [31, 32, 33], [45, 46, 47], [59, 60, 61],
+    [73, 74, 75], [87, 88, 89], [101, 102, 103], [115, 116, 117], [129, 130, 131],
+]
+
+# Part 3/4 page ranges (1-indexed) per test
+PART3_STARTS = [7, 21, 35, 49, 63, 77, 91, 105, 119, 133]
+PART4_STARTS = [11, 25, 39, 53, 67, 81, 95, 109, 123, 137]
+
+# Crop regions for 2 photos per page (PDF coordinates)
+PHOTO_REGIONS = [
+    fitz.Rect(25, 45, 525, 395),
+    fitz.Rect(25, 405, 525, 735),
+]
 
 ACCENT_MAP = {
     "미국식": "Mỹ",
@@ -23,11 +51,34 @@ ACCENT_MAP = {
     "캐나다식": "Canada",
 }
 
+KOREAN_RE = re.compile(r"[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]+")
+COPYRIGHT_RE = re.compile(
+    r"저작권|스크립트|해커스|배포|복제|Listening\s*$", re.I
+)
+
 
 def clean_text(s: str) -> str:
+    if not s:
+        return ""
     s = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", s)
+    s = s.replace("\t", " ")
     s = re.sub(r"\s+", " ", s).strip()
+    s = re.sub(r"\s*\^\s*", " ", s)
     return s
+
+
+def strip_non_english(s: str) -> str:
+    """Remove Korean and copyright boilerplate."""
+    if not s:
+        return ""
+    lines = []
+    for line in s.split("\n"):
+        line = KOREAN_RE.sub("", line).strip()
+        if COPYRIGHT_RE.search(line):
+            continue
+        if line:
+            lines.append(line)
+    return "\n".join(lines)
 
 
 def parse_accent(line: str) -> str:
@@ -42,10 +93,10 @@ def parse_accent(line: str) -> str:
                         break
                 else:
                     p = re.sub(r"발음", "", p).strip()
-                if p:
+                if p and not KOREAN_RE.search(p):
                     parts.append(p)
-            return " → ".join(parts) if parts else line.strip()
-    return line.strip()
+            return " → ".join(parts) if parts else ""
+    return ""
 
 
 def parse_answers(block: str) -> dict[int, str]:
@@ -58,20 +109,205 @@ def parse_answers(block: str) -> dict[int, str]:
 def parse_options(text: str) -> dict[str, str]:
     opts = {}
     for m in re.finditer(r"\(([A-D])\)\s*(.+?)(?=\([A-D]\)|$)", text, re.DOTALL):
-        opts[m.group(1)] = clean_text(m.group(2))
+        val = clean_text(m.group(2))
+        if val and not KOREAN_RE.search(val):
+            opts[m.group(1)] = val
     return opts
 
 
+# ── Part 1 image extraction ──────────────────────────────────────────
+
+def auto_crop_pixmap(pix) -> Image.Image:
+    img = Image.open(io.BytesIO(pix.tobytes("png"))).convert("L")
+    arr = np.array(img)
+    mask = arr < 240
+    if not mask.any():
+        return Image.open(io.BytesIO(pix.tobytes("png")))
+    rows = np.any(mask, axis=1)
+    cols = np.any(mask, axis=0)
+    rmin, rmax = np.where(rows)[0][[0, -1]]
+    cmin, cmax = np.where(cols)[0][[0, -1]]
+    pad = 8
+    rmin, cmin = max(0, rmin - pad), max(0, cmin - pad)
+    rmax, cmax = min(arr.shape[0], rmax + pad), min(arr.shape[1], cmax + pad)
+    return img.crop((cmin, rmin, cmax, rmax))
+
+
+def extract_part1_images(doc: fitz.Document):
+    IMG_DIR.mkdir(parents=True, exist_ok=True)
+    mat = fitz.Matrix(3, 3)
+
+    for test_idx, pages in enumerate(PART1_PAGE_GROUPS):
+        test_num = test_idx + 1
+        test_dir = IMG_DIR / f"test{test_num:02d}"
+        test_dir.mkdir(parents=True, exist_ok=True)
+        q_num = 1
+        for page_num in pages:
+            page = doc[page_num - 1]
+            for region in PHOTO_REGIONS:
+                pix = page.get_pixmap(matrix=mat, clip=region)
+                img = auto_crop_pixmap(pix)
+                out = test_dir / f"q{q_num:02d}.png"
+                img.save(str(out), optimize=True)
+                print(f"  Test {test_num:02d} Q{q_num}: {out.name} ({img.size[0]}×{img.size[1]})")
+                q_num += 1
+
+
+# ── Listening PDF question parser ────────────────────────────────────
+
+def parse_questions_from_pages(doc, page_start, page_end, q_min, q_max) -> dict:
+    """Robust line-based parser for Part 3/4 questions."""
+    lines = []
+    for i in range(page_start - 1, page_end):
+        for line in doc[i].get_text("text").split("\n"):
+            lines.append(line.rstrip())
+
+    questions = {}
+    pending_nums = []
+    current_q = None
+    current_lines = []
+    in_options = False
+
+    def flush():
+        nonlocal current_q, current_lines, in_options
+        if current_q is None:
+            return
+        body = "\n".join(current_lines)
+        q = parse_single_question(body)
+        if q:
+            questions[current_q] = q
+        current_q = None
+        current_lines = []
+        in_options = False
+
+    def is_noise(stripped):
+        if not stripped:
+            return True
+        if stripped.startswith("GO ON TO THE NEXT PAGE"):
+            return True
+        if re.match(r"PART\s*[34]", stripped, re.I):
+            return True
+        if re.match(r"TEST\s*\d+\s*PART", stripped, re.I):
+            return True
+        if re.match(r"Hackers\.co\.kr", stripped, re.I):
+            return True
+        if re.match(r"^\d+\s*\?\S+", stripped):  # footer garbage
+            return True
+        # Graphic table headers (no question number prefix)
+        if re.match(r"^(Show Name|Channel|LEPA|FIRST-TIME|Locations?:|\*not participating)", stripped, re.I):
+            return True
+        if re.match(r"^(Wake-Up|Morning Buzz|Pennsylvania|Mornings with)", stripped, re.I):
+            return True
+        if re.match(r"^(Tulsa|Shelbyville|Reno|Carson City)\s*$", stripped, re.I):
+            return True
+        if re.match(r"^[\d\s\"%-]+$", stripped) and len(stripped) < 30:
+            return True
+        if re.match(r"^[mUHJi\s\\>;:'\^■°•\*]+$", stripped) and len(stripped) < 20:
+            return True
+        return False
+
+    def looks_like_question(stripped):
+        if re.match(r"^\([A-D]\)", stripped):
+            return False
+        if "?" in stripped:
+            return True
+        return bool(re.match(
+            r"^(Who|What|Where|When|Why|How|Which|Look at|According|Where most|What type|"
+            r"What does|What is|What are|What was|What will|Why does|Why was|Why is|"
+            r"Why will|Where does|How many|How much|How long|How often)",
+            stripped, re.I
+        ))
+
+    for line in lines:
+        stripped = line.strip()
+        if is_noise(stripped):
+            continue
+
+        # Question number only: "62." or "62. "
+        m_num_only = re.match(r"^(\d+)\.\s*$", stripped)
+        if m_num_only:
+            qnum = int(m_num_only.group(1))
+            if q_min <= qnum <= q_max:
+                pending_nums.append(qnum)
+            continue
+
+        # Question number with text: "32. Who is the woman?"
+        m_num_text = re.match(r"^(\d+)\.\s+(.+)", stripped)
+        if m_num_text:
+            qnum = int(m_num_text.group(1))
+            if q_min <= qnum <= q_max:
+                flush()
+                current_q = qnum
+                pending_nums = [n for n in pending_nums if n != qnum]
+                rest = m_num_text.group(2).strip()
+                current_lines = [rest] if rest else []
+                in_options = bool(re.match(r"^\([A-D]\)", rest))
+            elif qnum > q_max:
+                flush()
+                break
+            continue
+
+        # New question text while working on previous (Q62-64 layout)
+        if current_q is not None and in_options and looks_like_question(stripped):
+            flush()
+            if pending_nums:
+                current_q = pending_nums.pop(0)
+                current_lines = [stripped]
+                in_options = False
+            continue
+
+        # Assign text to pending question number if no current question
+        if pending_nums and current_q is None and looks_like_question(stripped):
+            current_q = pending_nums.pop(0)
+            current_lines = [stripped]
+            in_options = False
+            continue
+
+        if current_q is not None:
+            if re.match(r"^\([A-D]\)", stripped):
+                in_options = True
+            current_lines.append(stripped)
+
+    flush()
+    return questions
+
+
+def parse_single_question(body: str) -> dict | None:
+    body = strip_non_english(body)
+    if not body:
+        return None
+
+    opt_match = re.search(r"\(A\)", body)
+    if not opt_match:
+        return None
+
+    qtext = clean_text(body[: opt_match.start()])
+    opts = parse_options(body[opt_match.start() :])
+    if len(opts) < 2:
+        return None
+
+    # Clean OCR garbage from options (trailing junk after valid text)
+    for letter, val in list(opts.items()):
+        val = re.sub(r"\s+[mUHJi\s\\>;:'\^■°•\*]{3,}.*$", "", val)
+        val = re.sub(r"\s+GO ON.*$", "", val, flags=re.I)
+        opts[letter] = clean_text(val)
+
+    return {"question": qtext, "options": opts}
+
+
+# ── Transcript PDF parser ────────────────────────────────────────────
+
 def parse_part1_2(section: str, part: int) -> list[dict]:
     questions = []
-    # Split by question number at line start
     chunks = re.split(r"(?=\n\s*\d+\s*\n)", "\n" + section)
     for chunk in chunks:
         m = re.match(r"\s*(\d+)\s*\n(.+)", chunk, re.DOTALL)
         if not m:
             continue
         qnum = int(m.group(1))
-        body = m.group(2).strip()
+        body = strip_non_english(m.group(2).strip())
+        if not body:
+            continue
         lines = body.split("\n")
         accent_line = lines[0].strip() if lines else ""
         accent = parse_accent(accent_line)
@@ -79,14 +315,10 @@ def parse_part1_2(section: str, part: int) -> list[dict]:
 
         if part == 1:
             opts = parse_options(rest)
-            questions.append({
-                "id": qnum,
-                "accent": accent,
-                "options": opts,
-                "transcript": None,
-            })
-        else:  # part 2
-            # Question text before options
+            if not opts:
+                continue
+            questions.append({"id": qnum, "accent": accent, "options": opts})
+        else:
             opt_match = re.search(r"\([A-C]\)", rest)
             if opt_match:
                 qtext = clean_text(rest[: opt_match.start()])
@@ -94,7 +326,7 @@ def parse_part1_2(section: str, part: int) -> list[dict]:
             else:
                 qtext = clean_text(rest)
                 opts = {}
-            if "저작권" in qtext or "스크립트" in qtext and len(qtext) > 80:
+            if not qtext or len(qtext) < 5 or COPYRIGHT_RE.search(qtext):
                 continue
             questions.append({
                 "id": qnum,
@@ -105,58 +337,42 @@ def parse_part1_2(section: str, part: int) -> list[dict]:
     return questions
 
 
-def parse_part3_4(section: str, part: int) -> list[dict]:
+def parse_part3_4(section: str) -> list[dict]:
     passages = []
     pattern = r"Questions\s+(\d+)-(\d+)\s+refer to the following[^.]*\."
     splits = list(re.finditer(pattern, section, re.IGNORECASE))
     for i, m in enumerate(splits):
         start = m.end()
         end = splits[i + 1].start() if i + 1 < len(splits) else len(section)
-        block = section[start:end].strip()
+        block = strip_non_english(section[start:end].strip())
         q_from, q_to = int(m.group(1)), int(m.group(2))
         q_ids = list(range(q_from, q_to + 1))
 
-        lines = block.split("\n")
         accent = ""
         transcript_lines = []
-        accent_done = False
-        for line in lines:
+        for line in block.split("\n"):
             line = line.strip()
             if not line:
                 continue
-            if not accent_done and ("발음" in line or "→" in line):
-                accent = parse_accent(line)
-                accent_done = True
+            if "발음" in line or (re.search(r"[→]", line) and len(line) < 60):
+                a = parse_accent(line)
+                if a:
+                    accent = a
                 continue
-            if accent_done or not re.match(r"^[WM]\d*:", line) and not line.startswith("Good ") and not line.startswith("Hello"):
-                if "발음" in line and not accent:
-                    accent = parse_accent(line)
-                    accent_done = True
-                    continue
+            if KOREAN_RE.search(line):
+                continue
             transcript_lines.append(line)
 
-        transcript = clean_text(" ".join(transcript_lines))
-        # Better: preserve speaker lines
-        raw_lines = []
-        for line in lines:
-            line = line.strip()
-            if not line or ("발음" in line and len(line) < 40):
-                if "발음" in line:
-                    accent = parse_accent(line)
-                continue
-            raw_lines.append(line)
-
-        transcript_formatted = "\n".join(raw_lines)
+        transcript = strip_non_english("\n".join(transcript_lines))
         passages.append({
             "questionIds": q_ids,
             "accent": accent,
-            "transcript": transcript_formatted,
+            "transcript": transcript,
         })
     return passages
 
 
 def parse_test_block(block: str, test_num: int) -> dict:
-    # Answer keys
     ak_match = re.search(r"Answer Keys\s*(.+?)(?=PART 1|\Z)", block, re.DOTALL)
     answers = parse_answers(ak_match.group(1)) if ak_match else {}
 
@@ -167,10 +383,9 @@ def parse_test_block(block: str, test_num: int) -> dict:
 
     part1 = parse_part1_2(part1_match.group(1), 1) if part1_match else []
     part2 = parse_part1_2(part2_match.group(1), 2) if part2_match else []
-    part3 = parse_part3_4(part3_match.group(1), 3) if part3_match else []
-    part4 = parse_part3_4(part4_match.group(1), 4) if part4_match else []
+    part3 = parse_part3_4(part3_match.group(1)) if part3_match else []
+    part4 = parse_part3_4(part4_match.group(1)) if part4_match else []
 
-    # Attach answers
     for q in part1 + part2:
         q["answer"] = answers.get(q["id"], "")
 
@@ -204,89 +419,35 @@ def parse_transcript_pdf() -> list[dict]:
         test_num = int(m.group(1))
         start = m.start()
         end = markers[i + 1].start() if i + 1 < len(markers) else len(full_text)
-        block = full_text[start:end]
-        tests.append(parse_test_block(block, test_num))
+        tests.append(parse_test_block(full_text[start:end], test_num))
     return tests
 
 
-def parse_listening_questions() -> dict[int, dict]:
-    """Parse Part 3 & 4 questions from listening PDF."""
-    doc = fitz.open(str(LISTENING_PDF))
-    full_text = ""
-    for page in doc:
-        full_text += page.get_text("text") + "\n"
+def merge_listening_questions(tests: list[dict], doc: fitz.Document):
+    for test_idx, test in enumerate(tests):
+        p3_start = PART3_STARTS[test_idx]
+        p3_end = PART4_STARTS[test_idx] - 1
+        p4_start = PART4_STARTS[test_idx]
+        p4_end = PART3_STARTS[test_idx + 1] - 1 if test_idx + 1 < len(PART3_STARTS) else len(doc)
 
-    result = {}
-    test_markers = list(re.finditer(r"TEST\s*(\d+)\s*PART\s*3|PART 3", full_text))
+        p3_q = parse_questions_from_pages(doc, p3_start, p3_end, 32, 70)
+        p4_q = parse_questions_from_pages(doc, p4_start, p4_end, 71, 100)
 
-    # Split by test - find TEST N PART 3 sections
-    test_splits = list(re.finditer(r"(?:TEST\s*(\d+)\s*)?PART 3", full_text, re.IGNORECASE))
-
-    current_test = 1
-    for i, m in enumerate(test_splits):
-        if m.group(1):
-            current_test = int(m.group(1))
-        start = m.end()
-        end = test_splits[i + 1].start() if i + 1 < len(test_splits) else len(full_text)
-        section = full_text[start:end]
-
-        # Part 3 questions until Part 4
-        p3_end = re.search(r"PART\s*4", section, re.IGNORECASE)
-        p3_text = section[: p3_end.start()] if p3_end else section
-        p4_text = section[p3_end.end() :] if p3_end else ""
-
-        if current_test not in result:
-            result[current_test] = {"part3": {}, "part4": {}}
-
-        for qm in re.finditer(
-            r"(\d+)\.\s+(.+?)(?=\n\s*\d+\.\s+|\nGO ON|\nTEST|\Z)",
-            p3_text,
-            re.DOTALL,
-        ):
-            qnum = int(qm.group(1))
-            if qnum < 32 or qnum > 70:
-                continue
-            body = qm.group(2).strip()
-            qtext_match = re.match(r"(.+?)(?=\n\s*\(A\))", body, re.DOTALL)
-            qtext = clean_text(qtext_match.group(1)) if qtext_match else ""
-            opts = parse_options(body)
-            result[current_test]["part3"][qnum] = {"question": qtext, "options": opts}
-
-        for qm in re.finditer(
-            r"(\d+)\.\s+(.+?)(?=\n\s*\d+\.\s+|\nGO ON|\nTEST|\Z)",
-            p4_text,
-            re.DOTALL,
-        ):
-            qnum = int(qm.group(1))
-            if qnum < 71 or qnum > 100:
-                continue
-            body = qm.group(2).strip()
-            qtext_match = re.match(r"(.+?)(?=\n\s*\(A\))", body, re.DOTALL)
-            qtext = clean_text(qtext_match.group(1)) if qtext_match else ""
-            opts = parse_options(body)
-            result[current_test]["part4"][qnum] = {"question": qtext, "options": opts}
-
-    return result
-
-
-def merge_questions(tests: list[dict], listening_q: dict[int, dict]):
-    for test in tests:
-        tid = test["id"]
-        lq = listening_q.get(tid, {})
         for passage in test["parts"]["3"]["passages"]:
             passage["questions"] = []
             for qid in passage["questionIds"]:
-                qdata = lq.get("part3", {}).get(qid, {})
+                qdata = p3_q.get(qid, {})
                 passage["questions"].append({
                     "id": qid,
                     "question": qdata.get("question", ""),
                     "options": qdata.get("options", {}),
                     "answer": test["answers"].get(str(qid), ""),
                 })
+
         for passage in test["parts"]["4"]["passages"]:
             passage["questions"] = []
             for qid in passage["questionIds"]:
-                qdata = lq.get("part4", {}).get(qid, {})
+                qdata = p4_q.get(qid, {})
                 passage["questions"].append({
                     "id": qid,
                     "question": qdata.get("question", ""),
@@ -295,95 +456,142 @@ def merge_questions(tests: list[dict], listening_q: dict[int, dict]):
                 })
 
 
-def extract_part1_images():
-    """Extract Part 1 pictures from listening PDF."""
-    doc = fitz.open(str(LISTENING_PDF))
-    IMG_DIR.mkdir(parents=True, exist_ok=True)
-
-    # Map pages to tests - each test has 6 Part 1 image pages (questions 1-6)
-    # Test 1 starts around page 3 (0-indexed: 2)
-    test_page_ranges = {
-        1: (2, 8),   # approximate
-    }
-
-    # Find pages with single large image (Part 1 pictures)
-    image_pages = []
-    for i in range(len(doc)):
-        page = doc[i]
-        imgs = page.get_images(full=True)
-        text = page.get_text("text").strip()
-        # Part 1 pages: mostly image, little text, question number
-        if len(imgs) >= 1 and len(text) < 200:
-            q_match = re.search(r"^(\d+)\.", text) or re.search(r"'✓\s*(\d+)", text)
-            qnum = int(q_match.group(1)) if q_match else None
-            image_pages.append((i, qnum, len(imgs)))
-
-    # Group by test (6 images per test for q 1-6)
-    test_num = 1
-    q_in_test = 0
-    for page_idx, qnum, _ in image_pages:
-        q_in_test += 1
-        if q_in_test > 6:
-            test_num += 1
-            q_in_test = 1
-        actual_q = qnum if qnum and 1 <= qnum <= 6 else q_in_test
-
-        test_img_dir = IMG_DIR / f"test{test_num:02d}"
-        test_img_dir.mkdir(parents=True, exist_ok=True)
-
-        page = doc[page_idx]
-        imgs = page.get_images(full=True)
-        if imgs:
-            xref = imgs[0][0]
-            pix = fitz.Pixmap(doc, xref)
-            if pix.n > 4:
-                pix = fitz.Pixmap(fitz.csRGB, pix)
-            out_path = test_img_dir / f"q{actual_q:02d}.png"
-            pix.save(str(out_path))
-            print(f"  Saved {out_path}")
-
-
 def fix_audio_paths(tests: list[dict]):
-    """Map to actual audio filenames."""
-    audio_files = {f.stem.upper().replace("TEST ", ""): f.name for f in AUDIO_DIR.glob("*.mp3")}
+    audio_files = {}
+    for f in AUDIO_DIR.glob("*.mp3"):
+        key = re.sub(r"[^0-9]", "", f.stem)
+        audio_files[key] = f.name
     for test in tests:
         key = str(test["id"])
-        # Handle "Test 8" vs "TEST 8"
-        for k, v in audio_files.items():
-            if k == key or k == f"0{key}":
-                test["audio"] = f"audio/{v}"
-                break
+        if key in audio_files:
+            test["audio"] = f"audio/{audio_files[key]}"
+
+
+# ── Vietnamese translation ───────────────────────────────────────────
+
+_translation_cache: dict = {}
+_translator = None
+
+
+def load_translation_cache():
+    global _translation_cache
+    if CACHE_FILE.exists():
+        with open(CACHE_FILE, encoding="utf-8") as f:
+            _translation_cache = json.load(f)
+
+
+def save_translation_cache():
+    with open(CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(_translation_cache, f, ensure_ascii=False, indent=2)
+
+
+def translate_text(text: str) -> str:
+    if not text or not HAS_TRANSLATOR:
+        return ""
+    text = clean_text(text.replace("\n", " "))
+    if len(text) < 3:
+        return ""
+    if text in _translation_cache:
+        return _translation_cache[text]
+
+    global _translator
+    if _translator is None:
+        _translator = GoogleTranslator(source="en", target="vi")
+
+    try:
+        # Split long text into chunks (Google limit ~5000 chars)
+        if len(text) > 4500:
+            chunks = []
+            sentences = re.split(r"(?<=[.!?])\s+", text)
+            current = ""
+            for s in sentences:
+                if len(current) + len(s) > 4000:
+                    if current:
+                        chunks.append(current)
+                    current = s
+                else:
+                    current = (current + " " + s).strip()
+            if current:
+                chunks.append(current)
+            result = " ".join(translate_text(c) for c in chunks)
+        else:
+            result = _translator.translate(text)
+            time.sleep(0.15)
+        _translation_cache[text] = result
+        return result
+    except Exception as e:
+        print(f"    Translation error: {e}")
+        return ""
+
+
+def add_translations(tests: list[dict]):
+    if not HAS_TRANSLATOR:
+        print("  deep-translator not available, skipping translations")
+        return
+
+    load_translation_cache()
+    total = 0
+    for test in tests:
+        tid = test["id"]
+        print(f"  Translating Test {tid:02d}...")
+        for q in test["parts"]["1"]["questions"]:
+            opts_text = " ".join(q["options"].values())
+            q["translation"] = translate_text(opts_text)
+
+        for q in test["parts"]["2"]["questions"]:
+            full = q["question"] + " " + " ".join(q["options"].values())
+            q["translation"] = translate_text(full)
+
+        for part_key in ["3", "4"]:
+            for passage in test["parts"][part_key]["passages"]:
+                passage["translation"] = translate_text(passage["transcript"])
+                for q in passage.get("questions", []):
+                    if q.get("question"):
+                        q["translation"] = translate_text(q["question"])
+        total += 1
+        if total % 2 == 0:
+            save_translation_cache()
+
+    save_translation_cache()
 
 
 def main():
+    import sys
+    skip_translate = "--skip-translate" in sys.argv
+
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    print("Extracting Part 1 images...")
+    listening_doc = fitz.open(str(LISTENING_PDF))
+    extract_part1_images(listening_doc)
+
     print("Parsing transcript PDF...")
     tests = parse_transcript_pdf()
     print(f"  Found {len(tests)} tests")
 
-    print("Parsing listening questions...")
-    listening_q = parse_listening_questions()
+    print("Parsing listening questions (Part 3/4)...")
+    merge_listening_questions(tests, listening_doc)
 
-    print("Merging...")
-    merge_questions(tests, listening_q)
     fix_audio_paths(tests)
 
-    # Write individual test files + index
+    print("Adding Vietnamese translations..." if not skip_translate else "Skipping translations.")
+    if not skip_translate:
+        add_translations(tests)
+
     index = []
     for test in tests:
         out_path = OUT_DIR / f"test{test['id']:02d}.json"
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(test, f, ensure_ascii=False, indent=2)
+        p3q = sum(len(p.get("questions", [])) for p in test["parts"]["3"]["passages"])
+        p3ok = sum(1 for p in test["parts"]["3"]["passages"]
+                   for q in p.get("questions", []) if q.get("question"))
         index.append({"id": test["id"], "title": test["title"], "file": f"test{test['id']:02d}.json"})
-        print(f"  Wrote {out_path} - P1:{len(test['parts']['1']['questions'])} P2:{len(test['parts']['2']['questions'])} P3:{len(test['parts']['3']['passages'])} P4:{len(test['parts']['4']['passages'])}")
+        print(f"  test{test['id']:02d}: P3 questions {p3ok}/{p3q}")
 
     with open(OUT_DIR / "index.json", "w", encoding="utf-8") as f:
         json.dump(index, f, ensure_ascii=False, indent=2)
 
-    print("Extracting Part 1 images...")
-    extract_part1_images()
-
-    # Copy audio symlinks info
     print("Done!")
 
 
