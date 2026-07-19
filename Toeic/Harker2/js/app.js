@@ -46,24 +46,77 @@ const state = {
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
-function assetUrl(relativePath) {
-  const encoded = relativePath.split('/').map(encodeURIComponent).join('/');
-  return `public/${encoded}`;
+function resolveAssetUrl(relativePath) {
+  const encoded = relativePath.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+  return new URL(`public/${encoded}`, window.location.href).href;
 }
 
-function loadAudio(src) {
+function assetUrl(relativePath) {
+  return resolveAssetUrl(relativePath);
+}
+
+async function loadAudio(src) {
   const player = $('#audio-player');
+  const source = $('#audio-source');
   const errEl = $('#audio-error');
+  const hintEl = $('#audio-hint');
+
+  const url = resolveAssetUrl(src);
   errEl.classList.add('hidden');
+  errEl.textContent = '';
+  if (hintEl) hintEl.textContent = 'Đang tải audio...';
+
   player.pause();
-  player.removeAttribute('src');
-  player.load();
-  player.src = assetUrl(src);
-  player.load();
-  player.onerror = () => {
-    errEl.textContent = 'Không tải được audio. Hãy chạy app qua http://localhost:8080 (python3 -m http.server 8080).';
+  player.onerror = null;
+  player.oncanplay = null;
+
+  let reachable = false;
+  try {
+    const res = await fetch(url, { method: 'HEAD' });
+    reachable = res.ok;
+  } catch {
+    reachable = false;
+  }
+
+  if (!reachable) {
+    try {
+      const res = await fetch(url, { method: 'GET', headers: { Range: 'bytes=0-1' } });
+      reachable = res.ok || res.status === 206;
+    } catch {
+      reachable = false;
+    }
+  }
+
+  if (!reachable) {
+    errEl.innerHTML = `Không tải được audio.<br><small>${esc(url)}</small><br><small>Chạy: <code>python3 scripts/setup_audio.py</code></small>`;
     errEl.classList.remove('hidden');
+    if (hintEl) hintEl.textContent = 'Audio không khả dụng';
+    player.removeAttribute('src');
+    if (source) source.removeAttribute('src');
+    player.load();
+    return false;
+  }
+
+  if (source) {
+    source.src = url;
+    source.type = 'audio/mpeg';
+    player.removeAttribute('src');
+  } else {
+    player.src = url;
+  }
+
+  player.load();
+
+  player.oncanplay = () => {
+    if (hintEl) hintEl.textContent = 'Phát audio toàn bộ đề thi';
   };
+  player.onerror = () => {
+    errEl.innerHTML = `Lỗi phát audio.<br><small>${esc(url)}</small>`;
+    errEl.classList.remove('hidden');
+    if (hintEl) hintEl.textContent = 'Thử bấm play lại';
+  };
+
+  return true;
 }
 
 function cfg() { return SECTIONS[state.section]; }
@@ -163,7 +216,7 @@ async function startPractice(testId) {
   practiceLayout.classList.remove('reading-layout');
   if (c.hasAudio) {
     audioPanel.classList.remove('hidden');
-    loadAudio(state.testData.audio);
+    await loadAudio(state.testData.audio);
   } else {
     audioPanel.classList.add('hidden');
   }

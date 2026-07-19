@@ -396,7 +396,7 @@ def parse_test_block(block: str, test_num: int) -> dict:
     return {
         "id": test_num,
         "title": f"Test {test_num:02d}",
-        "audio": f"audio/TEST {test_num}.mp3",
+        "audio": f"audio/test{test_num:02d}.mp3",
         "parts": {
             "1": {"questions": part1},
             "2": {"questions": part2},
@@ -457,11 +457,16 @@ def merge_listening_questions(tests: list[dict], doc: fitz.Document):
 
 
 def fix_audio_paths(tests: list[dict]):
-    audio_files = {}
-    for f in AUDIO_DIR.glob("*.mp3"):
-        key = re.sub(r"[^0-9]", "", f.stem)
-        audio_files[key] = f.name
     for test in tests:
+        preferred = AUDIO_DIR / f"test{test['id']:02d}.mp3"
+        if preferred.exists():
+            test["audio"] = f"audio/test{test['id']:02d}.mp3"
+            continue
+        # Legacy fallback: match by test number in filename
+        audio_files = {}
+        for f in AUDIO_DIR.glob("*.mp3"):
+            key = re.sub(r"[^0-9]", "", f.stem)
+            audio_files[key] = f.name
         key = str(test["id"])
         if key in audio_files:
             test["audio"] = f"audio/{audio_files[key]}"

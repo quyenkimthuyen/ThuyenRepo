@@ -67,8 +67,10 @@
         <!-- Sidebar -->
         <aside class="sidebar">
           <div class="audio-panel" id="audio-panel">
-            <audio id="audio-player" controls preload="metadata"></audio>
-            <div class="audio-hint">Phát audio toàn bộ đề thi</div>
+            <audio id="audio-player" controls preload="auto" playsinline>
+              <source id="audio-source" type="audio/mpeg">
+            </audio>
+            <div class="audio-hint" id="audio-hint">Phát audio toàn bộ đề thi</div>
             <div id="audio-error" class="audio-error hidden"></div>
           </div>
 
