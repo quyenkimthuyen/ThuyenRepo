@@ -189,6 +189,7 @@ async function startPractice(testId) {
   state.currentQ = c.parts[firstPart].start;
 
   state.testData = await fetch(c.dataPath(testId)).then(r => r.json());
+  state.currentQ = firstQuestionInPart(state.currentPart);
 
   $('#practice-test-name').textContent = `${state.testData.title} · ${c.label}`;
   const badge = $('#practice-mode-badge');
@@ -266,7 +267,7 @@ function bindPracticeEvents() {
     if (!tab) return;
     const part = parseInt(tab.dataset.part);
     state.currentPart = part;
-    state.currentQ = partRanges()[part].start;
+    state.currentQ = firstQuestionInPart(part);
     renderPartNav();
     renderPart(part);
     renderQuestionNav();
@@ -330,11 +331,50 @@ function renderQuestionNav() {
   }
 }
 
+function getPart6GroupStart(qId) {
+  if (qId < 131 || qId > 146) return null;
+  return 131 + Math.floor((qId - 131) / 4) * 4;
+}
+
+function findReadingPassage(d, qId, partKey) {
+  const passages = d.parts[partKey].passages;
+  let passage = passages.find(p => p.questionIds.includes(qId));
+  if (passage) return passage;
+
+  if (partKey === '6') {
+    const gStart = getPart6GroupStart(qId);
+    if (gStart == null) return null;
+    const gEnd = Math.min(gStart + 3, 146);
+    passage = passages.find(p => p.questionIds[0] === gStart);
+    if (passage) return passage;
+    return {
+      questionIds: Array.from({ length: gEnd - gStart + 1 }, (_, i) => gStart + i),
+      type: 'text',
+      passage: '',
+      image: `images/reading/test${String(d.id).padStart(2, '0')}/p6_${gStart}-${gEnd}.png`,
+      questions: [],
+    };
+  }
+
+  return null;
+}
+
+function firstQuestionInPart(part) {
+  const range = partRanges()[part];
+  for (let q = range.start; q <= range.end; q++) {
+    if (questionExists(q)) return q;
+  }
+  return range.start;
+}
+
 function questionExists(qId) {
   const d = state.testData;
   if (state.section === 'reading') {
     if (qId <= 130) return d.parts['5'].questions.some(q => q.id === qId);
-    if (qId <= 146) return d.parts['6'].passages.some(p => p.questionIds.includes(qId));
+    if (qId <= 146) {
+      if (d.parts['6'].passages.some(p => p.questionIds.includes(qId))) return true;
+      return Boolean(d.answers?.[String(qId)]);
+    }
     return d.parts['7'].passages.some(p => p.questionIds.includes(qId));
   }
   if (qId <= 6) return d.parts['1'].questions.some(q => q.id === qId);
@@ -366,8 +406,8 @@ function getQuestionData(qId) {
       return { type: 'single', data: d.parts['5'].questions.find(q => q.id === qId), part: 5 };
     }
     const partKey = qId <= 146 ? '6' : '7';
-    const passage = d.parts[partKey].passages.find(p => p.questionIds.includes(qId));
-    const q = passage?.questions?.find(q => q.id === qId);
+    const passage = findReadingPassage(d, qId, partKey);
+    const q = passage?.questions?.find(item => item.id === qId);
     return { type: 'passage', passage, data: q, part: parseInt(partKey) };
   }
   if (qId <= 6) return { type: 'single', data: d.parts['1'].questions.find(q => q.id === qId), part: 1 };

@@ -115,12 +115,120 @@ def parse_question_options_block(block: str, qnum: int, part: int = 6) -> dict:
         return parse_options("(A) " + m.group(1))
 
 
+def parse_part6(text: str) -> list[dict]:
+    """Parse Part 6 with header-based blocks + gap fill for headerless passages."""
+    m = re.search(r"PART\s*6(.+?)PART\s*7", text, re.DOTALL | re.I)
+    if not m:
+        return []
+    section = m.group(1)
+
+    groups = [(131, 134), (135, 138), (139, 142), (143, 146)]
+    header_re = re.compile(
+        r"Questions\s+(\d+)\s*[-–=]\s*(\d+)\s+refer[^\n]*\.\s*",
+        re.I,
+    )
+
+    def extract_questions(q_from: int, q_to: int) -> list[dict]:
+        questions = []
+        for qnum in range(q_from, min(q_to, 146) + 1):
+            opts = parse_question_options_block(section, qnum, 6)
+            if len(opts) >= 2:
+                questions.append({"id": qnum, "question": "", "options": opts})
+        return questions
+
+    def passage_text_for(q_from: int, q_to: int, block: str) -> str:
+        first_opt = None
+        for qn in range(q_from, min(q_to, 146) + 1):
+            fm = re.search(rf"(?<!\d){qn}\.\s*\(A\)", block)
+            if fm and (first_opt is None or fm.start() < first_opt.start()):
+                first_opt = fm
+        return clean_passage(block[: first_opt.start()]) if first_opt else clean_passage(block)
+
+    raw: dict[int, dict] = {}
+
+    splits = list(header_re.finditer(section))
+    for i, sm in enumerate(splits):
+        q_from, q_to = int(sm.group(1)), int(sm.group(2))
+        if q_from > 146 or q_to < 131:
+            continue
+        q_to = min(q_to, 146)
+        start = sm.end()
+        end = splits[i + 1].start() if i + 1 < len(splits) else len(section)
+        block = section[start:end]
+        type_m = re.search(r"following\s+(\w+)", sm.group(0), re.I)
+        doc_type = (type_m.group(1) if type_m else "text").lower()
+        raw[q_from] = {
+            "questionIds": list(range(q_from, q_to + 1)),
+            "type": doc_type,
+            "passage": passage_text_for(q_from, q_to, block),
+            "questions": extract_questions(q_from, q_to),
+        }
+
+    for g_from, g_to in groups:
+        if g_from in raw and all(q in raw[g_from]["questionIds"] for q in range(g_from, g_to + 1)):
+            continue
+
+        fm = re.search(rf"(?<!\d){g_from}\.\s*\(A\)", section)
+        if not fm:
+            continue
+
+        prev_end = 0
+        if g_from > 131:
+            prev_q = g_from - 1
+            prev_m = re.search(rf"(?<!\d){prev_q}\.\s*\(A\)", section)
+            if prev_m:
+                tail = section[prev_m.start(): fm.start()]
+                pd = re.search(r"\(D\)", tail)
+                if pd:
+                    prev_end = prev_m.start() + pd.end()
+
+        block = section[prev_end:fm.start()]
+        candidate = {
+            "questionIds": list(range(g_from, g_to + 1)),
+            "type": "text",
+            "passage": passage_text_for(g_from, g_to, block),
+            "questions": extract_questions(g_from, g_to),
+        }
+        if g_from in raw:
+            existing = raw[g_from]
+            if len(candidate["passage"]) > len(existing["passage"]):
+                existing["passage"] = candidate["passage"]
+            qmap = {q["id"]: q for q in existing["questions"]}
+            for q in candidate["questions"]:
+                qmap[q["id"]] = q
+            existing["questions"] = sorted(qmap.values(), key=lambda q: q["id"])
+        else:
+            raw[g_from] = candidate
+
+    passages = []
+    for g_from, g_to in groups:
+        if g_from in raw:
+            p = raw[g_from]
+            p["questionIds"] = list(range(g_from, g_to + 1))
+            qmap = {q["id"]: q for q in p["questions"]}
+            for qnum in range(g_from, g_to + 1):
+                if qnum not in qmap:
+                    opts = parse_question_options_block(section, qnum, 6)
+                    if len(opts) >= 2:
+                        qmap[qnum] = {"id": qnum, "question": "", "options": opts}
+            p["questions"] = sorted(qmap.values(), key=lambda q: q["id"])
+            passages.append(p)
+        else:
+            passages.append({
+                "questionIds": list(range(g_from, g_to + 1)),
+                "type": "text",
+                "passage": "",
+                "questions": extract_questions(g_from, g_to),
+            })
+
+    return passages
+
+
 def parse_part6_7(text: str, part: int) -> list[dict]:
     if part == 6:
-        m = re.search(r"PART\s*6(.+?)PART\s*7", text, re.DOTALL | re.I)
-    else:
-        m = re.search(r"PART\s*7(.+)", text, re.DOTALL | re.I)
+        return parse_part6(text)
 
+    m = re.search(r"PART\s*7(.+)", text, re.DOTALL | re.I)
     if not m:
         return []
 
@@ -134,31 +242,22 @@ def parse_part6_7(text: str, part: int) -> list[dict]:
         end = splits[i + 1].start() if i + 1 < len(splits) else len(section)
         block = section[start:end]
         q_from, q_to = int(sm.group(1)), int(sm.group(2))
+        if q_from < 147:
+            continue
         doc_type = (sm.group(3) or "text").lower()
         q_ids = list(range(q_from, q_to + 1))
 
-        # Passage ends at first question line for Part 7, or first "NNN. (A)" for Part 6
         first_opt = None
-        if part == 6:
-            for qn in q_ids:
-                fm = re.search(rf"(?<!\d){qn}\.\s*\(A\)", block)
-                if fm and (first_opt is None or fm.start() < first_opt.start()):
-                    first_opt = fm
-        else:
-            fm = re.search(rf"(?<!\d){q_from}\.\s+", block)
-            if fm:
-                first_opt = fm
+        fm = re.search(rf"(?<!\d){q_from}\.\s+", block)
+        if fm:
+            first_opt = fm
         passage_text = clean_passage(block[: first_opt.start()]) if first_opt else clean_passage(block)
 
         questions = []
         for qnum in q_ids:
-            if part == 7:
-                qm = re.search(rf"(?<!\d){qnum}\.\s+(.+?)(?=\n\s*\(A\)|\(A\))", block, re.DOTALL)
-                qtext = clean(qm.group(1)) if qm else ""
-            else:
-                qtext = ""
-
-            opts = parse_question_options_block(block, qnum, part)
+            qm = re.search(rf"(?<!\d){qnum}\.\s+(.+?)(?=\n\s*\(A\)|\(A\))", block, re.DOTALL)
+            qtext = clean(qm.group(1)) if qm else ""
+            opts = parse_question_options_block(block, qnum, 7)
             if len(opts) >= 2:
                 questions.append({"id": qnum, "question": qtext, "options": opts})
 
@@ -285,6 +384,22 @@ def extract_passage_image(
                 rect = clip_passage_page(page, 36, page.rect.height - FOOTER_MARGIN)
                 if rect:
                     clips.append((page, rect))
+            continue
+
+        # Headerless Part 6 passage (e.g. continues on next page without "Questions X-Y refer")
+        if part == 6 and not clips:
+            opt_markers = page.search_for(f"{q_from}. (A)")
+            if not opt_markers:
+                continue
+            top = 40.0
+            for marker in ("To:", "From:", "NOTICE", "Dear ", "ATTENTION"):
+                for hit in page.search_for(marker):
+                    if 30 < hit.y0 < opt_markers[0].y0:
+                        top = min(top, hit.y0 - 4)
+            q_top = opt_markers[0].y0 - 8
+            rect = clip_passage_page(page, top, q_top)
+            if rect:
+                clips.append((page, rect))
 
     if not clips:
         return None
