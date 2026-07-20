@@ -131,6 +131,26 @@ def get_monitor_state(
     })
   if open_position:
     orders.append({**open_position, "exit": None, "exit_px": None, "r": None, "reason": None})
+  for sig in signal_bars:
+    if sig["status"] != "SIGNAL":
+      continue
+    orders.append({
+      "status": "SIGNAL",
+      "signal_time": sig["signal_time"],
+      "entry": sig["entry_time"],
+      "entry_time": sig["entry_time"],
+      "dir": sig["direction"],
+      "direction": sig["direction"],
+      "entry_px": sig["entry_px"],
+      "sl": sig["sl"],
+      "tp": sig["tp"],
+      "risk_pips": sig["risk_pips"],
+      "rr": sig["rr"],
+      "exit": None,
+      "exit_px": None,
+      "r": None,
+      "reason": None,
+    })
 
   return {
     "week_start": str(week_start.date()),

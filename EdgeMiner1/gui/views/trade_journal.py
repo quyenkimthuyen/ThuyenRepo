@@ -9,7 +9,10 @@ from analytics import (
   ohlc_around_trade, trades_json_to_df,
 )
 from gui.components import warn_long_bias, warn_no_costs
+from gui.navigation import ALL_ITEMS
+from gui.page_chrome import render_page_header
 from gui.services import get_ohlc_df, load_backtest_report
+from gui.workspace import report_matches_workspace
 
 
 def _trade_chart(window, trade_row) -> go.Figure | None:
@@ -38,8 +41,7 @@ def _trade_chart(window, trade_row) -> go.Figure | None:
 
 
 def render():
-  st.header("Trade Journal")
-  st.caption("Audit từng lệnh OOS — filter, thống kê exit, mini chart")
+  render_page_header(ALL_ITEMS["journal"])
 
   report = st.session_state.get("backtest_report") or load_backtest_report()
   warn_no_costs()
@@ -47,6 +49,9 @@ def render():
   if not report or not report.get("trades"):
     st.info("Chưa có lệnh. Chạy backtest trước.")
     return
+
+  if not report_matches_workspace(report):
+    st.warning("Journal đang hiển thị báo cáo **không khớp Trade Profile**.")
 
   trades_df = trades_json_to_df(report["trades"])
 

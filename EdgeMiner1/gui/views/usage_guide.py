@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import streamlit as st
 
+from gui.navigation import ALL_ITEMS
+from gui.page_chrome import render_page_header
+
 
 def render():
-  st.header("📖 Usage Guide — ForexForge")
-  st.caption("Hướng dẫn đầy đủ cách app hoạt động và quy trình sử dụng")
+  render_page_header(ALL_ITEMS["guide"], show_workspace=False)
 
   st.markdown("""
 ## 1. ForexForge là gì?
@@ -154,20 +156,20 @@ Mỗi tuần OOS: TRAIN 3 THÁNG → mine (+ KB) → trade 1 tuần
 
 ---
 
-## 6. Các trang GUI
+## 6. Các trang GUI (theo quy trình trader)
 
-| Trang | Mục đích |
-|-------|----------|
-| **Command Center** | KPI tổng quan, quick actions, danh sách KB profiles |
-| **KB & Giai đoạn** | Tạo/học KB theo era, backtest OOS theo profile, so sánh KB ON/OFF |
-| **Backtest Lab** | Chạy WF, biểu đồ equity/DD, log tuần, lưu Report Compare |
-| **Report Compare** | Lưu & so sánh nhiều báo cáo (KB ON/OFF, profile, OOS) |
-| **Trade Journal** | Xem từng lệnh, filter, mini chart |
-| **Strategy Inspector** | Rules, genomes, DNA strategy |
-| **Learning Center** | Học epoch nhanh, preset giai đoạn |
-| **Risk Dashboard** | DD, streaks, risk of ruin, weekly limit |
-| **Paper Monitor** | Tín hiệu & lệnh tuần hiện tại (chọn KB profile) |
-| **Usage Guide** | Tài liệu này |
+| Nhóm | Trang | Mục đích |
+|------|-------|----------|
+| **Hàng ngày** | **Tổng quan** | KPI, gợi ý bước tiếp, điều hướng nhanh |
+| | **Paper Monitor** | Tín hiệu & lệnh tuần hiện tại |
+| **Nghiên cứu** | **Nghiên cứu** (hub) | Backtest · Grid Search · So ERA/epoch/train · Lưu & so sánh |
+| **KB** | **KB & Học** | Tạo profile, học epoch, backtest OOS nhanh |
+| **Phân tích** | **Risk** | Drawdown, streaks, risk of ruin |
+| | **Trade Journal** | Audit từng lệnh OOS |
+| | **Strategy** | Rules, genomes, DNA |
+| **Khác** | **Hướng dẫn** | Tài liệu này |
+
+**Workspace** (sidebar): chọn KB profile + OOS một lần — mọi trang dùng chung.
 
 ---
 
@@ -291,14 +293,14 @@ Checklist hiển thị ở Command Center & Backtest Lab.
 
 ### Bước 1 — Chuẩn bị data
 
-**Trang:** Command Center → **Refresh Data**
+**Trang:** **Tổng quan** → **Refresh data**
 
 - Cập nhật Dukascopy EUR/USD H1 (2022+)
 - Chỉ refresh khi cần — không refresh liên tục (chậm)
 
 ### Bước 2 — Baseline (đường cơ sở)
 
-**Trang:** Backtest Lab
+**Trang:** **Nghiên cứu** → tab **Backtest**
 
 ```
 KB: OFF
@@ -311,7 +313,7 @@ OOS: 2024-01-01 → 2024-12-31
 
 ### Bước 3 — Học KB theo giai đoạn (trước OOS)
 
-**Trang:** KB & Giai đoạn → tab **Học KB**
+**Trang:** **KB & Học** → tab **Học KB**
 
 ```
 Profile: era_2022_2023

@@ -19,6 +19,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from genome_naming import describe_genome, display_name, is_legacy_name
+
 LEARNING_DIR = Path(__file__).parent / "learning"
 KNOWLEDGE_PATH = LEARNING_DIR / "knowledge.json"
 MAX_GENOMES = 40
@@ -168,6 +170,7 @@ class KnowledgeBase:
     from strategy_miner import MinedStrategy, Rule
     def des_rules(rules):
       return [Rule(r["feature"], r["direction"], r["op"], r["threshold"], r["weight"]) for r in rules]
+    name = display_name(g.get("name", "genome"), g)
     return MinedStrategy(
       long_rules=des_rules(g["long_rules"]),
       short_rules=des_rules(g["short_rules"]),
@@ -182,11 +185,14 @@ class KnowledgeBase:
       trail_activate_r=g.get("trail_activate_r", 1.8),
       trail_distance_r=g.get("trail_distance_r", 0.6),
       max_trades_per_week=g.get("max_trades_per_week", 2),
-      name=g.get("name", "genome"),
+      name=name,
     )
 
   def add_genome(self, strat, fitness: float):
     g = self.genome_to_dict(strat, fitness)
+    if is_legacy_name(g.get("name", "")):
+      g["name"] = describe_genome(g)
+      strat.name = g["name"]
     self.genomes.append(g)
     self.genomes.sort(key=lambda x: x["fitness"], reverse=True)
     self.genomes = self.genomes[:MAX_GENOMES]

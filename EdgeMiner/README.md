@@ -1,61 +1,169 @@
-# EUR/USD H1 — Self-Learning Trading System v4
+# ForexForge — EUR/USD H1 Self-Learning Trading System
 
-## Hai chế độ chạy
+Hệ thống backtest walk-forward + self-learning cho **EUR/USD khung H1** (Dukascopy 2022+).
 
-### Windows GUI app
-```powershell
-.\app.ps1 start             # start Streamlit GUI
-.\app.ps1 restart           # restart Streamlit GUI
-.\app.ps1 stop              # stop Streamlit GUI
-.\app.ps1 status            # check app status
-.\app.ps1 start -Install    # create .venv and install dependencies first
-```
+## Chạy app
 
-Mở app tại `http://localhost:8501`.
-
-### 1. Backtest một lần (v3)
 ```bash
-python run_backtest.py
+cd /thuyen
+pip install -r requirements.txt
+python run_gui.py          # Giao diện (khuyến nghị)
 ```
-Walk-forward thông thường, không tích lũy kinh nghiệm.
 
-### 2. Self-Learning — **khuyến nghị** (v4)
+CLI:
+
 ```bash
-python run_learning.py              # 5 epoch
-python run_learning.py --epochs 10  # 10 epoch
-python run_learning.py --reset      # bắt đầu lại từ đầu
+python run_backtest.py     # Walk-forward backtest
+python run_learning.py     # Self-learning multi-epoch
 ```
 
-## Cách hoạt động
+---
+
+## Quy trình tối ưu kết quả (tóm tắt)
+
+### Nguyên tắc vàng
+
+| Mục đích | Dùng gì |
+|----------|---------|
+| Đánh giá strategy | **KB OFF** + spread/slippage |
+| Cải thiện qua kinh nghiệm | **KB ON** + profile đúng giai đoạn |
+| Tránh leakage | Học giai đoạn **A** → test OOS giai đoạn **B** |
+
+### 6 bước trên GUI
+
+| Bước | Trang | Việc làm |
+|------|-------|----------|
+| 1 | Command Center | **Refresh Data** (Dukascopy) |
+| 2 | Backtest Lab | Backtest **KB OFF**, spread 1.0 / slip 0.3, lưu Report Compare |
+| 3 | KB & Giai đoạn → Học KB | Tạo profile (vd `era_2022_2023`), học 2022–2023, 3–5 epoch |
+| 4 | KB & Giai đoạn → Backtest OOS | Chọn profile + OOS 2024, so sánh KB ON/OFF |
+| 5 | Report Compare | So sánh metrics, equity overlay |
+| 6 | Backtest Lab, Journal, Risk, Paper | Hold-out 12 tháng, kiểm tra lệnh, paper 3–6 tháng |
+
+Chi tiết đầy đủ: mở GUI → **Usage Guide**.
+
+### CLI nhanh
+
+```bash
+# Baseline
+python run_backtest.py --no-kb --oos-from 2024-01-01 --oos-to 2024-12-31 --spread 1.0 --slippage 0.3
+
+# Học KB era
+python run_learning.py --kb-profile era_2022_2023 \
+  --from-date 2022-01-01 --until-date 2023-12-31 --epochs 3
+
+# Backtest OOS với KB + epoch cụ thể
+python run_backtest.py --kb-profile era_2022_2023 --kb-epoch 2 \
+  --oos-from 2024-01-01 --oos-to 2024-12-31 --spread 1.0 --slippage 0.3
+```
+
+---
+
+## Phân biệt Train 3 tháng · KB · Epoch
+
+| | **Train 3 tháng** | **KB** | **Epoch** |
+|---|---|---|---|
+| Là gì | Mine strategy **mỗi tuần** WF | Bộ nhớ kinh nghiệm dài hạn | Một **vòng học full** giai đoạn |
+| Tần suất | Mỗi tuần OOS | Dùng khi KB ON; cập nhật khi học | 3–5–8 lần (thủ công) |
+| Mục đích | Strategy theo data **gần** | Mine **thông minh hơn** từ quá khứ | **Cải thiện** KB qua nhiều vòng |
 
 ```
-Epoch 1: Mine chiến lược → Walk-forward OOS → Ghi nhận rule thắng/thua
-         ↓
-Epoch 2: Khởi đầu từ genomes tốt + đột biến → Rules có weight cao hơn
-         ML train thêm trên experience tích lũy
-         ↓
-Epoch N: Hệ thống ngày càng tinh chỉnh
+Train 3 tháng (mỗi tuần):  |-- 3 tháng --| mine → trade tuần OOS
+KB:                        genomes, rules, ML — profile theo era (era_2022_2023)
+Epoch:                     chạy full WF trên 2022–2023 → cập nhật KB → snapshot ep001, ep002...
 ```
 
-**3 lớp học:**
-| Lớp | Cơ chế | Lưu tại |
-|-----|--------|---------|
-| Rule Memory | Rule nào giúp thắng → weight tăng | `learning/knowledge.json` |
-| Genome Evolution | Chiến lược tốt → đột biến/lai ghép | `genomes[]` |
-| ML Experience | Feature → outcome tích lũy | `ml_experience[]` |
+**Quan hệ:** Epoch cập nhật KB → KB hỗ trợ mine trong mỗi tuần → mỗi tuần vẫn train 3 tháng.
 
-## Files
+- **Train 3 tháng** — luôn có, strategy ngắn hạn  
+- **KB** — bật/tắt, chọn profile + epoch snapshot  
+- **Epoch** — học offline để KB tốt hơn  
+
+Chi tiết + sơ đồ: GUI → **Usage Guide** mục **5**.
+
+---
+
+## Các trang GUI
+
+| Trang | Mục đích |
+|-------|----------|
+| Command Center | KPI, quick actions |
+| **KB & Giai đoạn** | Tạo/học KB theo era, backtest OOS theo profile |
+| Backtest Lab | Walk-forward, biểu đồ, weekly log |
+| **Report Compare** | Lưu & so sánh nhiều báo cáo backtest |
+| Trade Journal | Xem từng lệnh OOS |
+| Strategy Inspector | Rules, genomes |
+| Learning Center | Học epoch nhanh |
+| Risk Dashboard | DD, streaks, risk of ruin |
+| Paper Monitor | Tín hiệu tuần hiện tại |
+| Usage Guide | Tài liệu đầy đủ |
+
+---
+
+## KB Profiles (theo giai đoạn)
+
+Mỗi profile = file KB riêng trong `learning/kb_profiles/`:
 
 ```
-run_learning.py      # App chính — multi-epoch self-learning
-knowledge_base.py    # Bộ nhớ lâu dài
-evolution.py         # Đột biến / lai ghép genomes
-meta_learner.py      # Optimize có nhớ
-run_backtest.py      # Backtest đơn (v3)
+era_2022_2023.json   ← học 2022–2023, backtest OOS 2024
+era_2022_2024.json   ← học 2022–2024, backtest OOS 2025
 ```
 
-## Lưu ý
+Quy tắc: `trained_to ≤ oos_from` — app kiểm tra và cảnh báo trên GUI.
 
-- Mỗi epoch chạy full walk-forward (~2-7 phút/epoch)
-- Knowledge **persist** giữa các lần chạy — chạy lại `run_learning.py` sẽ tiếp tục học
-- Epoch sau thường tốt hơn epoch 1 vì có genomes + rule stats
+**Epoch snapshot:** Mỗi epoch học lưu file riêng (`snapshots/{profile}/epNNN.json`). Chọn **Latest** hoặc **Epoch N** khi backtest/paper. CLI: `--kb-epoch 2`.
+
+---
+
+## Self-learning (v4)
+
+```bash
+python run_learning.py              # 5 epoch (mặc định)
+python run_learning.py --epochs 10
+python run_learning.py --reset      # xóa KB profile
+python run_learning.py --kb-profile era_2022_2023 --from-date 2022-01-01 --until-date 2023-12-31
+```
+
+**3 lớp học:** Rule Memory · Genome Evolution · ML Experience
+
+**Cảnh báo:** Nhiều epoch trên cùng giai đoạn → overfit. Xác nhận bằng OOS giai đoạn khác.
+
+---
+
+## Cấu trúc project
+
+```
+run_gui.py / gui/app.py       # GUI Streamlit
+run_backtest.py              # Walk-forward backtest
+run_learning.py              # Self-learning
+kb_profiles.py               # Quản lý KB theo giai đoạn
+strategy_miner.py            # Mine + backtest
+knowledge_base.py            # Knowledge base
+data/eurusd_h1.parquet       # Cache giá Dukascopy
+learning/kb_profiles/        # KB từng era
+results/reports/             # Kho báo cáo so sánh
+```
+
+---
+
+## Mục tiêu hệ thống
+
+| Metric | Ngưỡng |
+|--------|--------|
+| Win rate (1Y) | > 60% |
+| RR | > 2 |
+| Tần suất | ~2 lệnh/tuần |
+| Profitable | Total R > 0 |
+
+Mặc định chi phí: spread **1.0 pip**, slippage **0.3 pip**.
+
+---
+
+## Trước khi live
+
+1. KB OFF profitable trên ≥2 giai đoạn OOS
+2. Hold-out 12 tháng
+3. Paper Monitor 3–6 tháng
+4. Micro lot đầu tiên
+
+*ForexForge v4 — Walk-forward strategy mining that learns from every trade.*

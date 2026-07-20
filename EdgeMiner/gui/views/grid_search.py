@@ -1,0 +1,289 @@
+"""Grid Search — tìm setting tối ưu theo Cài đặt."""
+from __future__ import annotations
+
+from datetime import timedelta
+
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import streamlit as st
+
+from gui.app_settings import (
+  format_settings_summary,
+  get_settings,
+  settings_changed_since_last_grid,
+  settings_grid_signature,
+)
+from gui.grid_search_background import (
+  get_grid_status, is_grid_running, load_job_state,
+  start_grid_search, stop_grid_search,
+)
+from gui.grid_search_engine import (
+  OBJECTIVES,
+  apply_best_as_new_trade_profile,
+  build_grid_from_settings,
+  estimate_grid_count,
+  filter_specs_for_incremental,
+  load_latest_grid_run,
+  merge_grid_results,
+)
+from gui.trade_model import create_trade_model
+
+
+@st.fragment(run_every=timedelta(seconds=5))
+def _grid_progress_fragment():
+  status = get_grid_status()
+  if status["running"]:
+    st.rerun()
+
+
+def _render_job_status():
+  status = get_grid_status()
+  job = load_job_state() or {}
+
+  if status["status"] == "idle" and not job.get("run_id"):
+    return status
+
+  if status["running"]:
+    st.info(
+      f"⏳ **Grid Search đang chạy nền** — {status['done']}/{status['total']} "
+      f"({status['pct']}%) · `{status['current_label'] or '…'}`"
+    )
+    st.progress(status["done"] / max(status["total"], 1))
+    if st.button("⏹ Hủy grid search", key="gs_cancel"):
+      stop_grid_search()
+      st.toast("Đã gửi tín hiệu hủy")
+      st.rerun()
+    _grid_progress_fragment()
+  elif status["status"] == "completed":
+    st.success(
+      f"✅ Hoàn thành `{status.get('run_id')}` — "
+      f"{status['n_rows']} combo · **{OBJECTIVES.get(status.get('objective', ''), status.get('objective'))}**"
+    )
+  elif status["status"] == "cancelled":
+    st.warning(f"Đã hủy — {status['done']}/{status['total']} combo.")
+  elif status["status"] == "interrupted":
+    st.warning(f"⚠️ Grid bị gián đoạn — {status['done']}/{status['total']}. Đang tự tiếp tục…")
+    _grid_progress_fragment()
+  elif status["status"] == "error":
+    st.error(f"Lỗi grid search: {status.get('error') or 'unknown'}")
+
+  return status
+
+
+def _rows_for_display(status: dict) -> tuple[list, str]:
+  job = load_job_state() or {}
+  data = load_latest_grid_run()
+  settings = get_settings()
+  objective = settings.get("grid_objective", "total_r")
+
+  if status.get("running") and job.get("rows"):
+    rows = job["rows"]
+  else:
+    rows = (data or {}).get("rows") or job.get("rows") or []
+    objective = (data or {}).get("objective") or job.get("objective") or objective
+
+  seed = (job.get("config") or {}).get("seed_rows") or []
+  if seed and rows:
+    rows = merge_grid_results(seed, rows, objective=objective)
+
+  return rows, objective
+
+
+def render(embedded: bool = False):
+  embedded = embedded or bool(st.session_state.get("_learning_hub"))
+  if not embedded:
+    st.header("Grid Search")
+
+  st.info(format_settings_summary())
+  if settings_changed_since_last_grid():
+    st.warning("Cài đặt đã đổi — chạy grid để bổ sung combo mới (combo cũ được giữ lại).")
+
+  job_status = _render_job_status()
+  running = bool(job_status.get("running"))
+
+  specs, grid_config = build_grid_from_settings()
+  grid_kw = {
+    k: v for k, v in grid_config.items()
+    if k not in ("settings_signature", "learning_era_keys", "learning_loops", "source", "seed_rows")
+  }
+  full_n, run_n = estimate_grid_count(**grid_kw)
+
+  latest = load_latest_grid_run()
+  existing_rows = (latest or {}).get("rows") or []
+  new_specs, kept_rows = filter_specs_for_incremental(specs, existing_rows)
+  skip_n = len(specs) - len(new_specs)
+
+  if not running:
+    st.caption(
+      f"Tổng **{len(specs)}** combo · đã có **{skip_n}** · cần chạy **{len(new_specs)}**"
+    )
+    if new_specs:
+      st.info(
+        f"Sẽ chạy **{len(new_specs)}** backtest mới (~{len(new_specs) * 2:.0f}–{len(new_specs) * 4:.0f} phút)."
+      )
+    else:
+      st.success("Grid đã đủ — không cần chạy lại (trừ khi muốn làm mới toàn bộ).")
+
+  c1, c2 = st.columns(2)
+  with c1:
+    run_btn = st.button(
+      "▶ Chạy Grid Search (chỉ combo mới)",
+      type="primary",
+      key="gs_run",
+      disabled=running or not new_specs,
+    )
+  with c2:
+    force_btn = st.button(
+      "↺ Chạy lại toàn bộ",
+      key="gs_force",
+      disabled=running,
+    )
+
+  if run_btn:
+    if is_grid_running():
+      st.warning("Grid search đang chạy.")
+      return
+    objective = get_settings().get("grid_objective", "total_r")
+    config = {**grid_config, "seed_rows": kept_rows}
+    try:
+      rid = start_grid_search(new_specs, objective=objective, config=config)
+      st.session_state["settings_grid_signature"] = settings_grid_signature()
+      st.toast(f"Grid `{rid}` — {len(new_specs)} combo mới")
+      st.rerun()
+    except RuntimeError as e:
+      st.error(str(e))
+
+  if force_btn:
+    if is_grid_running():
+      st.warning("Grid search đang chạy.")
+      return
+    objective = get_settings().get("grid_objective", "total_r")
+    try:
+      rid = start_grid_search(specs, objective=objective, config=grid_config)
+      st.session_state["settings_grid_signature"] = settings_grid_signature()
+      st.toast(f"Grid full `{rid}` — {len(specs)} combo")
+      st.rerun()
+    except RuntimeError as e:
+      st.error(str(e))
+
+  rows, objective = _rows_for_display(job_status)
+  data = load_latest_grid_run()
+
+  if not rows and not running:
+    st.info("Nhấn **Chạy Grid Search** sau khi đã cấu hình **Cài đặt** và huấn luyện bộ nhớ.")
+    return
+
+  if running and not rows:
+    st.caption("Đang chờ kết quả combo đầu tiên…")
+    return
+
+  if data and data.get("updated_at") and not running:
+    st.caption(
+      f"Lần chạy: `{data.get('run_id')}` · {data['updated_at']} · "
+      f"Mục tiêu: **{OBJECTIVES.get(objective, objective)}**"
+    )
+
+  best = rows[0] if rows else None
+  if best and not best.get("error"):
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("🏆 Total R", f"{best.get('total_r', 0):+.2f}")
+    c2.metric("WR%", f"{best.get('win_rate_pct', 0)}%")
+    c3.metric("Max DD", f"{best.get('max_drawdown_r', 0)}R")
+    c4.metric("Train", f"{best.get('train_months')}m")
+    st.success(
+      f"**Tốt nhất:** {best.get('label')} · PF {best.get('profit_factor')} · {best.get('n_trades')} lệnh"
+    )
+    if not running:
+      b1, b2 = st.columns(2)
+      with b1:
+        if st.button("✓ Tạo Trade Model (dùng ngay)", key="gs_apply_tm"):
+          create_trade_model(best, run_id=(data or {}).get("run_id"), set_active=True)
+          st.toast("Đã tạo & chọn trade model")
+          st.rerun()
+      with b2:
+        new_name = st.text_input(
+          "Tên model",
+          value=f"Best {best.get('train_months')}m",
+          key="gs_new_tm_name",
+          label_visibility="collapsed",
+        )
+        if st.button("＋ Tạo Trade Model mới", key="gs_new_tm"):
+          name = new_name.strip() or None
+          if not name:
+            st.error("Nhập tên model.")
+          else:
+            create_trade_model(
+              best, run_id=(data or {}).get("run_id"), label=name, set_active=True,
+            )
+            st.toast(f"Đã tạo «{name}»")
+            st.rerun()
+
+  st.subheader("Bảng kết quả")
+  df = pd.DataFrame([r for r in rows if not r.get("error")])
+  if df.empty:
+    if running:
+      st.caption("Chưa có combo hoàn thành.")
+    else:
+      st.warning("Không có kết quả hợp lệ.")
+    return
+
+  show_cols = [
+    "label", "train_months", "use_kb", "kb_profile", "kb_snapshot",
+    "n_trades", "win_rate_pct", "avg_rr", "total_r", "max_drawdown_r",
+    "profit_factor", "risk_adjusted",
+  ]
+  show_cols = [c for c in show_cols if c in df.columns]
+  st.dataframe(df[show_cols].head(50), use_container_width=True, hide_index=True, height=400)
+
+  err_rows = [r for r in rows if r.get("error")]
+  if err_rows:
+    with st.expander(f"Lỗi ({len(err_rows)})"):
+      st.dataframe(pd.DataFrame(err_rows), hide_index=True)
+
+  if running:
+    return
+
+  st.subheader("Biểu đồ")
+  tab1, tab2, tab3 = st.tabs(["Train × KB", "Heatmap R", "Top 15"])
+
+  with tab1:
+    plot_df = df.copy()
+    plot_df["kb_tag"] = plot_df.apply(
+      lambda r: "KB OFF" if not r.get("use_kb") else f"{r.get('kb_profile')} ep{r.get('kb_snapshot') or 'latest'}",
+      axis=1,
+    )
+    fig = px.bar(
+      plot_df, x="train_months", y="total_r", color="kb_tag",
+      barmode="group", title="Total R theo train window",
+    )
+    fig.update_layout(height=400)
+    st.plotly_chart(fig, use_container_width=True)
+
+  with tab2:
+    pivot_df = plot_df.groupby(["train_months", "kb_tag"], as_index=False)["total_r"].max()
+    if len(pivot_df) > 1:
+      piv = pivot_df.pivot(index="kb_tag", columns="train_months", values="total_r")
+      fig_h = go.Figure(data=go.Heatmap(
+        z=piv.values,
+        x=[str(c) for c in piv.columns],
+        y=list(piv.index),
+        colorscale="RdYlGn",
+        text=[[f"{v:+.1f}" for v in row] for row in piv.values],
+        texttemplate="%{text}",
+      ))
+      fig_h.update_layout(title="Total R heatmap", height=max(300, len(piv) * 40))
+      st.plotly_chart(fig_h, use_container_width=True)
+
+  with tab3:
+    top = df.head(15)
+    fig2 = go.Figure(go.Bar(
+      x=top["total_r"], y=top["label"], orientation="h",
+      marker_color=["#2ecc71" if r > 0 else "#e74c3c" for r in top["total_r"]],
+    ))
+    fig2.update_layout(
+      title="Top 15", height=500,
+      margin=dict(l=200, r=20, t=40, b=40),
+      yaxis=dict(autorange="reversed"),
+    )
+    st.plotly_chart(fig2, use_container_width=True)

@@ -12,7 +12,7 @@ import streamlit.components.v1 as components
 
 from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 from kb_profiles import DEFAULT_PROFILE_ID
-from gui.components import kb_profile_and_epoch_picker
+from gui.trade_profile import get_profile_run_params
 from gui.services import get_ohlc_window_cached, get_paper_monitor
 from gui.paper_settings import load_pm_config, save_ui_settings
 from paper_background import (
@@ -54,7 +54,7 @@ def _tv_layout(fig: go.Figure, title: str = "", height: int = 580):
   fig.update_yaxes(gridcolor=TV_GRID, showgrid=True, zeroline=False, side="right")
 
 
-def _add_order_overlays(fig: go.Figure, order: dict, row: int = 1):
+def _add_order_overlays(fig: go.Figure, order: dict, row: int = 1, chart_end=None):
   """Vẽ entry / SL / TP / exit trên chart."""
   entry_t = pd.Timestamp(order.get("entry") or order.get("entry_time"))
   entry_px = order.get("entry_px")
@@ -63,14 +63,20 @@ def _add_order_overlays(fig: go.Figure, order: dict, row: int = 1):
   direction = order.get("dir") or order.get("direction", "")
   status = order.get("status", "CLOSED")
   is_long = direction == "LONG"
+  is_signal = status == "SIGNAL"
 
   exit_t = order.get("exit")
   if exit_t:
     exit_t = pd.Timestamp(exit_t)
+  elif chart_end:
+    exit_t = pd.Timestamp(chart_end)
   else:
     exit_t = entry_t + pd.Timedelta(hours=48)
 
   x0, x1 = entry_t, exit_t
+  line_dash = "dash" if is_signal else "dot"
+  risk_fill = "rgba(255,193,7,0.08)" if is_signal else "rgba(242,54,69,0.12)"
+  rew_fill = "rgba(255,193,7,0.06)" if is_signal else "rgba(8,153,129,0.10)"
 
   # Vùng risk (entry → SL) và reward (entry → TP)
   if entry_px and sl and tp:
@@ -79,18 +85,20 @@ def _add_order_overlays(fig: go.Figure, order: dict, row: int = 1):
     fig.add_shape(
       type="rect", xref="x", yref="y", row=row, col=1,
       x0=x0, x1=x1, y0=risk_y0, y1=risk_y1,
-      fillcolor="rgba(242,54,69,0.12)", line=dict(width=0),
+      fillcolor=risk_fill, line=dict(width=0),
     )
     fig.add_shape(
       type="rect", xref="x", yref="y", row=row, col=1,
       x0=x0, x1=x1, y0=rew_y0, y1=rew_y1,
-      fillcolor="rgba(8,153,129,0.10)", line=dict(width=0),
+      fillcolor=rew_fill, line=dict(width=0),
     )
-    for y, color, label in [(sl, TV_SL, "SL"), (tp, TV_TP, "TP")]:
+    sl_color = "#ffc107" if is_signal else TV_SL
+    tp_color = "#ffc107" if is_signal else TV_TP
+    for y, color, label in [(sl, sl_color, "SL"), (tp, tp_color, "TP")]:
       fig.add_trace(go.Scatter(
         x=[x0, x1], y=[y, y],
         mode="lines",
-        line=dict(color=color, width=1.5, dash="dot"),
+        line=dict(color=color, width=1.5, dash=line_dash),
         name=label,
         showlegend=False,
         hovertemplate=f"{label}: %{{y:.5f}}<extra></extra>",
@@ -103,24 +111,50 @@ def _add_order_overlays(fig: go.Figure, order: dict, row: int = 1):
       )
 
   # Entry marker
-  marker_symbol = "triangle-up" if is_long else "triangle-down"
-  marker_color = TV_UP if is_long else TV_DOWN
-  fig.add_trace(go.Scatter(
-    x=[entry_t], y=[entry_px],
-    mode="markers+text",
-    marker=dict(symbol=marker_symbol, size=14, color=marker_color, line=dict(width=1, color="white")),
-    text=[f"ENTRY {entry_px:.5f}"],
-    textposition="top center" if is_long else "bottom center",
-    textfont=dict(size=9, color=TV_ENTRY),
-    name="Entry",
-    showlegend=False,
-    hovertemplate=(
-      f"Entry<br>%{{x}}<br>{direction} @ %{{y:.5f}}<br>"
-      f"SL: {sl}<br>TP: {tp}<extra></extra>"
-    ),
-  ), row=row, col=1)
+  if is_signal:
+    signal_t = pd.Timestamp(order.get("signal_time", entry_t))
+    fig.add_trace(go.Scatter(
+      x=[signal_t], y=[entry_px],
+      mode="markers+text",
+      marker=dict(symbol="diamond", size=16, color="#ffc107", line=dict(width=2, color="white")),
+      text=["🔔 SIGNAL"],
+      textposition="top center" if is_long else "bottom center",
+      textfont=dict(size=10, color="#ffc107"),
+      showlegend=False,
+      hovertemplate=(
+        f"Tín hiệu {direction}<br>%{{x}}<br>"
+        f"Entry dự kiến: {entry_px}<br>SL: {sl}<br>TP: {tp}<extra></extra>"
+      ),
+    ), row=row, col=1)
+    fig.add_trace(go.Scatter(
+      x=[entry_t], y=[entry_px],
+      mode="markers+text",
+      marker=dict(symbol="circle-open", size=12, color="#ffc107", line=dict(width=2)),
+      text=[f"ENTRY? {entry_px:.5f}"],
+      textposition="middle right",
+      textfont=dict(size=9, color="#ffc107"),
+      showlegend=False,
+      hovertemplate=f"Entry dự kiến<br>%{{x}} @ %{{y:.5f}}<extra></extra>",
+    ), row=row, col=1)
+  else:
+    marker_symbol = "triangle-up" if is_long else "triangle-down"
+    marker_color = TV_UP if is_long else TV_DOWN
+    fig.add_trace(go.Scatter(
+      x=[entry_t], y=[entry_px],
+      mode="markers+text",
+      marker=dict(symbol=marker_symbol, size=14, color=marker_color, line=dict(width=1, color="white")),
+      text=[f"ENTRY {entry_px:.5f}"],
+      textposition="top center" if is_long else "bottom center",
+      textfont=dict(size=9, color=TV_ENTRY),
+      name="Entry",
+      showlegend=False,
+      hovertemplate=(
+        f"Entry<br>%{{x}}<br>{direction} @ %{{y:.5f}}<br>"
+        f"SL: {sl}<br>TP: {tp}<extra></extra>"
+      ),
+    ), row=row, col=1)
 
-  if status == "CLOSED" and order.get("exit_px"):
+  if not is_signal and status == "CLOSED" and order.get("exit_px"):
     exit_px = order["exit_px"]
     reason = order.get("reason", "")
     r_val = order.get("r", 0)
@@ -188,7 +222,7 @@ def _tradingview_chart(
     fig.update_yaxes(title_text="Vol", row=vol_row, col=1)
 
   for order in orders:
-    _add_order_overlays(fig, order, row=price_row)
+    _add_order_overlays(fig, order, row=price_row, chart_end=chart_to)
 
   _tv_layout(fig, title=title, height=620 if has_vol else 560)
   fig.update_yaxes(title_text="Price", row=price_row, col=1)
@@ -208,7 +242,7 @@ def _order_card(order: dict, idx: int):
   with st.expander(
     f"{status_icon} #{idx + 1} · {direction} · {status} · "
     f"Entry {order.get('entry_px', '?')} · {r_str}",
-    expanded=(status == "OPEN"),
+    expanded=(status in ("OPEN", "SIGNAL")),
   ):
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -239,17 +273,56 @@ def _order_card(order: dict, idx: int):
       elif status == "OPEN":
         st.warning("Lệnh đang mở — chưa chạm SL/TP/timeout")
         st.write(f"Bars giữ: **{order.get('bars_held', 0)}** / {order.get('max_hold_bars', '?')}")
-      else:
-        st.info("Tín hiệu — chờ khớp entry bar tiếp theo")
+      elif status == "SIGNAL":
+        st.info("Tín hiệu — chưa khớp (hết slot tuần hoặc chưa tới entry)")
         st.write(f"Tín hiệu: `{order.get('signal_time', '—')}`")
+        st.write(f"Entry dự kiến: `{order.get('entry_time', '—')}`")
+
+
+def _orders_for_display(state: dict) -> list[dict]:
+  """Gộp orders + tín hiệu SIGNAL (fallback khi state file cũ chưa có trong orders)."""
+  orders = list(state.get("orders") or [])
+  signal_entries = {
+    o.get("entry") or o.get("entry_time")
+    for o in orders
+    if o.get("status") == "SIGNAL"
+  }
+  for sig in state.get("signals_this_week") or []:
+    if sig.get("status") != "SIGNAL":
+      continue
+    entry_time = sig.get("entry_time")
+    if entry_time in signal_entries:
+      continue
+    orders.append({
+      "status": "SIGNAL",
+      "signal_time": sig["signal_time"],
+      "entry": entry_time,
+      "entry_time": entry_time,
+      "dir": sig["direction"],
+      "direction": sig["direction"],
+      "entry_px": sig["entry_px"],
+      "sl": sig["sl"],
+      "tp": sig["tp"],
+      "risk_pips": sig.get("risk_pips"),
+      "rr": sig.get("rr"),
+      "exit": None,
+      "exit_px": None,
+      "r": None,
+      "reason": None,
+    })
+    signal_entries.add(entry_time)
+  return orders
 
 
 def _chart_cache_key(state: dict) -> str:
+  orders = _orders_for_display(state)
+  sig_n = sum(1 for o in orders if o.get("status") == "SIGNAL")
   return "|".join([
     str(state.get("updated_at", "")),
     str(state.get("chart_from", "")),
     str(state.get("chart_to", "")),
-    str(len(state.get("orders") or [])),
+    str(len(orders)),
+    str(sig_n),
   ])
 
 
@@ -266,33 +339,10 @@ def _on_settings_changed(new_sig: str):
 
 
 def _init_pm_widget_state():
-  """Khôi phục widget từ file config khi chưa có trong session."""
-  from gui.components import _profile_label
-  from kb_profiles import list_profiles, list_snapshots
-
+  """Khôi phục interval từ file — KB/spread lấy từ Trade Profile khi render."""
   cfg = load_pm_config()
-  st.session_state.setdefault("pm_kb", bool(cfg.get("use_learning", False)))
-  st.session_state.setdefault("pm_spread", float(cfg.get("spread_pips", DEFAULT_SPREAD_PIPS)))
-  st.session_state.setdefault("pm_slip", float(cfg.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)))
   iv = int(cfg.get("interval_minutes") or 0)
   st.session_state.setdefault("pm_interval_sel", LABEL_BY_INTERVAL.get(iv, "Tắt"))
-
-  pid = cfg.get("kb_profile") or DEFAULT_PROFILE_ID
-  st.session_state.setdefault("pm_kb_profile_id", pid)
-  st.session_state.setdefault("pm_kb_snapshot_epoch", cfg.get("kb_snapshot"))
-
-  if "pm_profile" not in st.session_state:
-    for p in list_profiles():
-      if p.get("id") == pid and p.get("exists"):
-        st.session_state["pm_profile"] = _profile_label(p)
-        break
-
-  if "pm_kb_epoch" not in st.session_state:
-    target = cfg.get("kb_snapshot")
-    for s in list_snapshots(pid):
-      if s.get("cumulative") == target or (target is None and s.get("cumulative") is None):
-        st.session_state["pm_kb_epoch"] = s["label"]
-        break
 
 
 def _invalidate_chart_cache():
@@ -306,7 +356,7 @@ def _get_chart_figure(state: dict) -> go.Figure | None:
   if st.session_state.get("pm_fig_key") == key and st.session_state.get("pm_fig") is not None:
     return st.session_state["pm_fig"]
 
-  orders = state.get("orders") or []
+  orders = _orders_for_display(state)
   chart_from = state.get("chart_from", state.get("week_start", ""))
   chart_to = state.get("chart_to", state.get("last_bar", ""))
   try:
@@ -404,8 +454,8 @@ def _render_chart_panel(state: dict):
       st.caption("Không đủ dữ liệu OHLC cho chart.")
 
   st.caption(
-    "🟢 Vùng xanh = reward (entry→TP) · 🔴 Vùng đỏ = risk (entry→SL) · "
-    "▲ LONG / ▼ SHORT entry · ✕ exit"
+    "🟢 Vùng xanh = reward · 🔴 Vùng đỏ = risk · "
+    "🔔 SIGNAL = tín hiệu chưa khớp · ▲▼ ENTRY · ✕ exit"
   )
 
 
@@ -537,7 +587,7 @@ def _render_monitor_body(state: dict):
   _render_chart_panel(state)
 
   st.subheader("Chi tiết lệnh")
-  orders = state.get("orders") or []
+  orders = _orders_for_display(state)
   if orders:
     for i, order in enumerate(orders):
       _order_card(order, i)
@@ -577,24 +627,45 @@ def _render_monitor_body(state: dict):
 
 
 def render():
-  st.header("Paper / Live Monitor")
-  st.caption("Tín hiệu tuần hiện tại — chart TradingView + chi tiết Entry / SL / TP")
+  from gui.navigation import ALL_ITEMS
+  from gui.page_chrome import render_page_header
 
+  render_page_header(ALL_ITEMS["paper"])
+
+  from gui.workflow_ui import render_workflow_banner
+  from gui.live_workflow import assess_workflow, load_workflow_state
+
+  wf = assess_workflow()
+  if wf["current_step"] >= 4 or wf["steps"][3]["done"]:
+    render_workflow_banner(page_step=4)
+    state = load_workflow_state()
+    if not state.get("paper_started_at"):
+      if st.button("📌 Ghi nhận bắt đầu paper", key="pm_wf_start"):
+        from gui.live_workflow import mark_paper_started
+        mark_paper_started()
+        st.toast("Đã ghi nhận — theo dõi ≥3 tuần trước khi live")
+        st.rerun()
+  elif wf["current_step"] < 4:
+    st.warning(
+      "**Quy trình:** Hoàn thành bước 1–3 (baseline → KB ON → chọn combo) trên **Tổng quan** "
+      "trước khi tin vào paper."
+    )
+
+  from gui.trade_profile import get_profile_run_params, render_profile_card
+  render_profile_card()
+  params = get_profile_run_params()
   _init_pm_widget_state()
 
-  use_kb = st.toggle("Dùng KB", key="pm_kb")
+  use_kb = params["use_kb"]
+  kb_profile = params["kb_profile"]
+  kb_snapshot = params["kb_snapshot"]
+  spread = params["spread_pips"]
+  slip = params["slippage_pips"]
 
-  kb_profile = st.session_state.get("pm_kb_profile_id", DEFAULT_PROFILE_ID)
-  kb_snapshot = st.session_state.get("pm_kb_snapshot_epoch")
-
-  if use_kb:
-    kb_profile, kb_snapshot = kb_profile_and_epoch_picker("pm", show_meta=True)
-    kb_profile = kb_profile or DEFAULT_PROFILE_ID
-    st.session_state["pm_kb_profile_id"] = kb_profile
-    st.session_state["pm_kb_snapshot_epoch"] = kb_snapshot
-
-  spread = st.slider("Spread (pips)", min_value=0.0, max_value=3.0, step=0.1, key="pm_spread")
-  slip = st.slider("Slippage (pips)", min_value=0.0, max_value=2.0, step=0.1, key="pm_slip")
+  st.caption(
+    f"Paper chạy theo profile · spread **{spread}** / slip **{slip}** pip · "
+    f"KB **{'ON' if use_kb else 'OFF'}**"
+  )
 
   interval_labels = list(INTERVAL_OPTS.keys())
   c_int, c_btn = st.columns([2, 1])

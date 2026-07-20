@@ -15,13 +15,8 @@ def kpi_row(items: list[tuple[str, str, str | None]]):
 
 
 def constraint_checklist(constraints: dict, labels: dict[str, str] | None = None):
-  default_labels = {
-    "profitable": "Profitable (1Y)",
-    "win_rate_above_60": "Win Rate > 60% (1Y)",
-    "rr_above_2": "RR > 2 (1Y)",
-    "trades_per_week_near_2": "~2 lệnh/tuần",
-  }
-  labels = labels or default_labels
+  from gui.glossary import CONSTRAINT_LABELS
+  labels = labels or CONSTRAINT_LABELS
   for key, label in labels.items():
     ok = constraints.get(key, False)
     icon = "✅" if ok else "❌"
@@ -40,7 +35,7 @@ def status_banner(report: dict | None, kb: dict, data_meta: dict):
       f"Backtest KB: **{'ON' if cfg.get('use_learning_kb') else 'OFF'}**"
     )
   else:
-    st.info("Chưa có báo cáo backtest. Chạy Backtest Lab hoặc Command Center.")
+    st.info("Chưa có báo cáo backtest. Chạy **Nghiên cứu → Backtest**.")
 
 
 def warn_long_bias(pct_long: float):
@@ -52,15 +47,17 @@ def warn_long_bias(pct_long: float):
 
 
 def _profile_label(p: dict) -> str:
+  from gui.glossary import format_memory_profile
   tf = p.get("trained_from") or "?"
   tt = p.get("trained_to") or "?"
   ep = p.get("epochs", 0)
-  return f"{p['name']} [{tf} → {tt}, {ep} ep]"
+  name = format_memory_profile(p.get("id")) if p.get("id") else p.get("name", "?")
+  return f"{name} [học {tf} → {tt}, {ep} vòng]"
 
 
-def list_kb_profiles_df():
-  from kb_profiles import list_profiles
-  profiles = list_profiles()
+def list_kb_profiles_df(*, include_legacy: bool = False):
+  from kb_profiles import list_era_profiles, list_profiles
+  profiles = list_era_profiles(include_legacy=include_legacy) if not include_legacy else list_profiles()
   if not profiles:
     return pd.DataFrame()
   return pd.DataFrame(profiles)
@@ -84,9 +81,9 @@ def kb_profile_picker(
   oos_hint: str | None = None,
 ) -> str | None:
   """Chọn KB profile; tùy chọn lọc theo mốc OOS."""
-  from kb_profiles import DEFAULT_PROFILE_ID, list_profiles, suggest_profiles_for_oos
+  from kb_profiles import DEFAULT_PROFILE_ID, list_era_profiles, suggest_profiles_for_oos
 
-  profiles = [p for p in list_profiles() if p.get("exists")]
+  profiles = list_era_profiles()
   if oos_hint:
     suggested = {p["id"] for p in suggest_profiles_for_oos(oos_hint)}
     fit = [p for p in profiles if p["id"] in suggested]
@@ -94,7 +91,7 @@ def kb_profile_picker(
       profiles = fit
 
   if not profiles:
-    st.caption("Chưa có KB profile — tạo ở **KB & Giai đoạn** hoặc Learning Center.")
+    st.caption("Chưa có profile bộ nhớ — tạo ở **Bộ nhớ & học**.")
     return DEFAULT_PROFILE_ID if not allow_none else None
 
   options = {
@@ -102,51 +99,50 @@ def kb_profile_picker(
     for p in profiles
   }
   labels = list(options.keys())
-  pick = st.selectbox("KB Profile (giai đoạn)", labels, key=f"{key_prefix}_profile")
+  pick = st.selectbox(
+    "Profile bộ nhớ (giai đoạn đã học)", labels, key=f"{key_prefix}_profile",
+    help="Mỗi profile = kinh nghiệm học trên một khoảng thời gian.",
+  )
   pid = options[pick]
 
   if show_meta:
     p = next(x for x in profiles if x["id"] == pid)
     st.caption(
       f"Học: **{p.get('trained_from', '?')} → {p.get('trained_to', '?')}** · "
-      f"{p.get('epochs', 0)} epoch · "
+      f"{p.get('epochs', 0)} vòng học · "
       f"{'✓ file OK' if p.get('exists') else '✗ thiếu file'}"
     )
   return pid
 
 
-def kb_epoch_picker(key_prefix: str, profile_id: str | None) -> int | str | None:
-  """
-  Chọn snapshot epoch của profile.
-  Returns: None/'latest' = file chính; int = cumulative epoch snapshot.
-  """
-  from kb_profiles import LATEST_SNAPSHOT, list_snapshots
-
-  if not profile_id:
-    return None
-  snaps = list_snapshots(profile_id)
-  if len(snaps) <= 1:
-    return None
-  options = {s["label"]: s.get("cumulative") for s in snaps}
-  labels = list(options.keys())
-  pick = st.selectbox(
-    "KB Epoch (snapshot)",
-    labels,
-    key=f"{key_prefix}_kb_epoch",
-    help="Latest = KB sau lần học gần nhất. Epoch N = trạng thái KB ngay sau epoch N.",
+def kb_epoch_picker(
+  key_prefix: str,
+  profile_id: str | None,
+  *,
+  default_snapshot: int | str | None = None,
+  show_table: bool = True,
+) -> int | str | None:
+  from gui.kb_epoch_ui import kb_epoch_picker as _picker
+  return _picker(
+    key_prefix, profile_id,
+    default_snapshot=default_snapshot,
+    show_table=show_table,
   )
-  val = options[pick]
-  return None if val is None else val
 
 
 def kb_profile_and_epoch_picker(
   key_prefix: str,
   show_meta: bool = True,
   oos_hint: str | None = None,
+  default_snapshot: int | str | None = None,
 ) -> tuple[str | None, int | str | None]:
   """Chọn profile + epoch snapshot. Returns (profile_id, snapshot_epoch)."""
   pid = kb_profile_picker(key_prefix, show_meta=show_meta, oos_hint=oos_hint)
-  snap = kb_epoch_picker(key_prefix, pid) if pid else None
+  snap = kb_epoch_picker(
+    key_prefix, pid,
+    default_snapshot=default_snapshot,
+    show_table=bool(pid),
+  ) if pid else None
   return pid, snap
 
 
@@ -156,56 +152,42 @@ def oos_period_inputs(
   default_from: str = "",
   default_to: str = "",
 ) -> tuple[str, str]:
-  """Nhập khoảng OOS; auto-fill từ profile nếu trống."""
+  """Nhập khoảng kiểm chứng; auto-fill từ profile nếu trống."""
+  from gui.glossary import HELP
   sug_from, sug_to = suggested_oos_range(profile_id) if profile_id else ("2024-01-01", "2024-12-31")
   c1, c2, c3 = st.columns([2, 2, 1])
   with c1:
     oos_from = st.text_input(
-      "OOS từ (YYYY-MM-DD)", default_from or sug_from, key=f"{key_prefix}_oos_from",
-      help="Chỉ test walk-forward từ mốc này",
+      "Kiểm chứng từ (YYYY-MM-DD)", default_from or sug_from, key=f"{key_prefix}_oos_from",
+      help=HELP["oos"],
     )
   with c2:
     oos_to = st.text_input(
-      "OOS đến (YYYY-MM-DD)", default_to or sug_to, key=f"{key_prefix}_oos_to",
+      "Kiểm chứng đến (YYYY-MM-DD)", default_to or sug_to, key=f"{key_prefix}_oos_to",
+      help=HELP["oos"],
     )
   with c3:
     st.write("")
-    if st.button("Gợi ý", key=f"{key_prefix}_oos_suggest", help="Điền OOS ngay sau giai đoạn KB"):
+    if st.button("Gợi ý", key=f"{key_prefix}_oos_suggest", help="Điền ngay sau giai đoạn đã học"):
       st.session_state[f"{key_prefix}_oos_from"] = sug_from
       st.session_state[f"{key_prefix}_oos_to"] = sug_to
       st.rerun()
   return oos_from.strip(), oos_to.strip()
 
 
-def era_workflow_panel(key_prefix: str, *, in_sidebar: bool = False) -> dict:
-  """
-  Panel chọn KB + epoch + mốc OOS cho backtest.
-  Returns: {use_kb, kb_profile, kb_snapshot, oos_from, oos_to}
-  """
-  container = st.sidebar if in_sidebar else st
-  with container:
-    use_kb = st.toggle("Dùng Knowledge Base", value=True, key=f"{key_prefix}_use_kb")
-    kb_profile, kb_snapshot, oos_from, oos_to = None, None, "", ""
-    if use_kb:
-      kb_profile, kb_snapshot = kb_profile_and_epoch_picker(key_prefix, show_meta=True)
-      st.markdown("**Giai đoạn backtest (OOS)**")
-      oos_from, oos_to = oos_period_inputs(key_prefix, kb_profile)
-      if kb_profile:
-        kb_validation_banner(kb_profile, oos_from or "2022-01-01")
-      warn_kb_leak(True)
-    return {
-      "use_kb": use_kb,
-      "kb_profile": kb_profile,
-      "kb_snapshot": kb_snapshot,
-      "oos_from": oos_from or None,
-      "oos_to": oos_to or None,
-    }
+def warn_no_costs():
+  from gui.glossary import HELP
+  st.caption(
+    f"ℹ️ Phí mặc định: chênh lệch **1.0** / trượt giá **0.3** pip — "
+    "chỉnh trong **Cấu hình giao dịch** (sidebar)."
+  )
 
 
 ERA_PRESETS = [
   ("2022–2023 → test 2024", "era_2022_2023", "2022-01-01", "2023-12-31", "2024-01-01", "2024-12-31"),
-  ("2022–2024 → test 2025", "era_2022_2024", "2022-01-01", "2024-12-31", "2025-01-01", "2025-12-31"),
-  ("2023–2024 → test 2025", "era_2023_2024", "2023-01-01", "2024-12-31", "2025-01-01", "2025-12-31"),
+  ("2022–2024 → test 2025–2026", "era_2022_2024", "2022-01-01", "2024-12-31", "2025-01-01", "2026-12-31"),
+  ("2023–2024 → test 2025–2026", "era_2023_2024", "2023-01-01", "2024-12-31", "2025-01-01", "2026-12-31"),
+  ("2024 (1 năm) → test 2025–2026", "era_2024", "2024-01-01", "2024-12-31", "2025-01-01", "2026-12-31"),
 ]
 
 
@@ -223,12 +205,6 @@ def kb_validation_banner(profile_id: str, oos_from: str | None):
 def warn_kb_leak(use_kb: bool):
   if use_kb:
     st.info(
-      "ℹ️ **KB ON** — chọn profile giai đoạn + mốc OOS. "
-      "Mỗi tuần chỉ dùng kinh nghiệm KB **trước** tuần đó (causal as_of)."
+      "ℹ️ **Bộ nhớ bật** — mỗi tuần chỉ dùng kinh nghiệm **trước** tuần đó "
+      "(không nhìn trước tương lai)."
     )
-
-
-def warn_no_costs():
-  st.caption(
-    "ℹ️ Chi phí giao dịch: chỉnh **Spread/Slippage** trong Backtest Lab (mặc định 1.0 / 0.3 pip)."
-  )

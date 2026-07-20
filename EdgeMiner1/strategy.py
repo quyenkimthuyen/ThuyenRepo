@@ -54,16 +54,20 @@ def risk_of_ruin_approx(
   win_rate: float, avg_win_r: float, avg_loss_r: float,
   risk_pct: float = 1.0, ruin_r: float = 20.0,
 ) -> float:
+  """
+  Ước lượng xác suất phá sản (0–1) với cố định % rủi ro mỗi lệnh.
+  Dùng expectancy / edge — không phạt nhầm chiến lược WR < 50% nhưng RR cao.
+  """
   if avg_loss_r <= 0 or win_rate <= 0 or win_rate >= 1:
-    return 0.5
+    return 0.0
   p, q = win_rate, 1.0 - win_rate
-  edge = p * avg_win_r - q * avg_loss_r
-  if edge <= 0:
+  expectancy = p * avg_win_r - q * avg_loss_r
+  if expectancy <= 0:
     return 0.95
-  units = ruin_r / max(risk_pct / 100.0, 0.01)
-  if edge < 0.05:
-    return float(np.clip(0.5 + (0.5 - edge * 5), 0.1, 0.9))
-  return float(np.clip(q / p, 0.0, 1.0) ** min(units, 50))
+  edge = min(expectancy / avg_loss_r, 0.99)
+  base = (1.0 - edge) / (1.0 + edge)
+  n = ruin_r / max(risk_pct / 100.0, 0.01)
+  return float(np.clip(base ** min(n, 500), 0.0, 1.0))
 
 
 def compute_metrics(trades: list[Trade], risk_pct_per_trade: float = 1.0) -> dict:
