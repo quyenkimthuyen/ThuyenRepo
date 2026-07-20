@@ -459,6 +459,30 @@ body::before {
 .timer-display { font-family: var(--mono); font-size: 1.25rem; font-weight: 500; color: var(--accent); }
 .timer-display.warning { color: var(--danger); }
 
+.btn-toggle-vi {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-family: inherit;
+  font-size: .8rem;
+  font-weight: 600;
+  padding: .45rem .85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.btn-toggle-vi:hover { border-color: var(--success); color: var(--text); }
+.btn-toggle-vi.active {
+  border-color: var(--success);
+  background: rgba(52,211,153,.12);
+  color: var(--success);
+}
+
+.btn-toggle-vi.hidden { display: none; }
+
 /* ── Layout ── */
 .practice-layout {
   display: grid;

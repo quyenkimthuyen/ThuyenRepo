@@ -40,6 +40,7 @@ const state = {
   timerInterval: null,
   timeLeft: 45 * 60,
   readingPassageView: 'pdf',
+  showTranslation: localStorage.getItem('harker-show-translation') !== '0',
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -211,6 +212,7 @@ async function startPractice(testId) {
   }
 
   state.readingPassageView = 'pdf';
+  updateTranslationToggleUI();
   renderPartNav();
   showScreen('practice');
   renderPart(state.currentPart);
@@ -260,6 +262,12 @@ function bindPracticeEvents() {
   });
 
   $('#btn-submit-exam').addEventListener('click', submitExam);
+  $('#btn-toggle-translation').addEventListener('click', () => {
+    state.showTranslation = !state.showTranslation;
+    localStorage.setItem('harker-show-translation', state.showTranslation ? '1' : '0');
+    updateTranslationToggleUI();
+    if (state.mode === 'study') renderCurrentQuestion();
+  });
   $('#btn-close-results').addEventListener('click', () => $('#modal-results').classList.add('hidden'));
   $('#btn-review').addEventListener('click', () => {
     $('#modal-results').classList.add('hidden');
@@ -267,6 +275,26 @@ function bindPracticeEvents() {
     renderCurrentQuestion();
     renderQuestionNav();
   });
+}
+
+function showTranslation() {
+  return state.mode === 'study' && state.showTranslation;
+}
+
+function updateTranslationToggleUI() {
+  const btn = $('#btn-toggle-translation');
+  if (!btn) return;
+  const visible = state.mode === 'study';
+  btn.classList.toggle('hidden', !visible);
+  btn.classList.toggle('active', state.showTranslation);
+  btn.setAttribute('aria-pressed', String(state.showTranslation));
+  btn.title = state.showTranslation ? 'Ẩn bản dịch tiếng Việt' : 'Hiện bản dịch tiếng Việt';
+  btn.querySelector('.btn-toggle-vi__label').textContent = state.showTranslation ? '🇻🇳 Dịch: Bật' : '🇻🇳 Dịch: Tắt';
+}
+
+function viLine(text, className = 'dialogue-vi') {
+  if (!showTranslation() || !text) return '';
+  return `<p class="${className}">${esc(text)}</p>`;
 }
 
 function renderPart(part) {
@@ -538,7 +566,7 @@ function renderReadingPassageGroup(passage, part) {
     html += `<div class="reading-passage-body"><p class="exam-hint">Nội dung đoạn văn đang cập nhật.</p></div>`;
   }
 
-  if (state.mode === 'study' && passage.translation) {
+  if (state.mode === 'study' && passage.translation && showTranslation()) {
     html += `<div class="reading-passage-translation"><h4>Bản dịch</h4><p>${esc(passage.translation)}</p></div>`;
   }
   html += `</aside>`;
@@ -603,7 +631,7 @@ function renderListeningPassageGroup(passage, part) {
     html += `<div class="listening-questions-header">Câu ${qId}</div>`;
     if (currentQ) {
       if (currentQ.question) html += `<p class="q-prompt">${esc(currentQ.question)}</p>`;
-      if (currentQ.translation) html += `<p class="q-prompt-vi">${esc(currentQ.translation)}</p>`;
+      if (currentQ.translation) html += viLine(currentQ.translation, 'q-prompt-vi');
       html += renderOptions(currentQ.options || {}, qId);
     }
     html += `</div></div>`;
@@ -716,7 +744,7 @@ function renderDialogueTurns(pairs) {
       <span class="dialogue-speaker" title="${turn.speaker === 'W' ? 'Woman' : turn.speaker === 'M' ? 'Man' : 'Speaker'}">${esc(speakerLabel(turn.speaker))}</span>
       <div class="dialogue-lines">
         <p class="dialogue-en">${esc(turn.en)}</p>
-        ${turn.vi ? `<p class="dialogue-vi">${esc(turn.vi)}</p>` : ''}
+        ${showTranslation() && turn.vi ? viLine(turn.vi) : ''}
       </div>
     </div>
   `).join('')}</div>`;
@@ -766,7 +794,7 @@ function renderPart1StudyDialogue(data, qId) {
       <span class="dialogue-speaker">${letter}</span>
       <div class="dialogue-lines">
         <p class="dialogue-en">${esc(data.options[letter])}</p>
-        ${optionsVi[letter] ? `<p class="dialogue-vi">${esc(optionsVi[letter])}</p>` : ''}
+        ${viLine(optionsVi[letter])}
       </div>
     </div>`;
   }
@@ -785,7 +813,7 @@ function renderPart2StudyDialogue(data, qId) {
     <span class="dialogue-speaker">?</span>
     <div class="dialogue-lines">
       <p class="dialogue-en">${esc(data.question)}</p>
-      ${questionVi ? `<p class="dialogue-vi">${esc(questionVi)}</p>` : ''}
+      ${viLine(questionVi)}
     </div>
   </div>`;
 
@@ -795,8 +823,8 @@ function renderPart2StudyDialogue(data, qId) {
       <span class="dialogue-speaker">${letter}</span>
       <div class="dialogue-lines">
         <p class="dialogue-en">${esc(data.options[letter])}</p>
-        ${optionsVi[letter] ? `<p class="dialogue-vi">${esc(optionsVi[letter])}</p>` : ''}
-        ${!optionsVi[letter] && sharedVi && letter === letters[0] ? `<p class="dialogue-vi">${esc(sharedVi)}</p>` : ''}
+        ${viLine(optionsVi[letter])}
+        ${!optionsVi[letter] && sharedVi && letter === letters[0] ? viLine(sharedVi) : ''}
       </div>
     </div>`;
   }
