@@ -2604,7 +2604,7 @@ class SVGMindmap {
       else if (node.level === 3) gap = 8;
       else if (node.level === 2) gap = 12;
       else if (node.level === 1) gap = 22;
-      
+
       const totalHeight = childrenHeight + (visibleCount - 1) * gap;
       return totalHeight;
     };
@@ -2629,14 +2629,14 @@ class SVGMindmap {
       else if (node.level === 3) gap = 8;
       else if (node.level === 2) gap = 12;
       else if (node.level === 1) gap = 22;
-      
+
       const totalHeight = childrenHeights.reduce((sum, h) => sum + h, 0) + (visibleChildren.length - 1) * gap;
       let yStart = yCenter - totalHeight / 2;
 
       visibleChildren.forEach((child, index) => {
         const childHeight = childrenHeights[index];
         const childYCenter = yStart + childHeight / 2;
-        
+
         // Điều chỉnh khoảng cách ngang (horizontal spacing) cho thoáng đãng
         let childHGap = this.hGap;
         if (node.level === 1) childHGap = this.hGap * 1.25;
@@ -3251,9 +3251,16 @@ function showRuleDetail(ruleNode) {
     }
   }
 
-  // Nút nghe phát âm: TTS không đọc ký hiệu IPA chính xác, nên phát từ mẫu đại diện.
+  // Nút nghe phát âm: phát ngay từ lúc nhấn để tránh cảm giác loa bị trễ.
   const speakIpaBtn = document.getElementById("speak-ipa-btn");
-  speakIpaBtn.onclick = () => speakIpaSound(ruleNode);
+  const playIpaSound = (event) => {
+    event?.preventDefault();
+    speakIpaSound(ruleNode);
+  };
+  speakIpaBtn.onpointerdown = playIpaSound;
+  speakIpaBtn.onclick = (event) => {
+    if (event.detail === 0) playIpaSound(event);
+  };
 
   // Hiển thị các từ vựng ví dụ
   detailExamplesList.innerHTML = "";
@@ -3307,6 +3314,96 @@ if (drawerBackdrop) drawerBackdrop.addEventListener("click", closeDrawer);
 
 // --- 4. TRÌNH PHÁT ÂM VÀ THU ÂM SO SÁNH (SPEECH ENGINE) ---
 
+let ipaAudioContext = null;
+function getIpaAudioContext() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+
+  if (!ipaAudioContext) {
+    ipaAudioContext = new AudioContextClass();
+  }
+
+  return ipaAudioContext;
+}
+
+function playAeVowelSound() {
+  const audioContext = getIpaAudioContext();
+  if (!audioContext) return false;
+
+  const startSound = () => {
+    try {
+      if ('speechSynthesis' in window && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+      }
+
+      const now = audioContext.currentTime;
+      const duration = 0.36;
+      const source = audioContext.createOscillator();
+      const outputGain = audioContext.createGain();
+      const formants = [
+        { frequency: 660, q: 9, gain: 1 },
+        { frequency: 1720, q: 10, gain: 0.55 },
+        { frequency: 2410, q: 12, gain: 0.22 }
+      ];
+
+      source.type = "sawtooth";
+      source.frequency.setValueAtTime(175, now);
+      source.frequency.exponentialRampToValueAtTime(150, now + duration);
+
+      outputGain.gain.setValueAtTime(0.0001, now);
+      outputGain.gain.exponentialRampToValueAtTime(0.18, now + 0.012);
+      outputGain.gain.setValueAtTime(0.18, now + duration - 0.08);
+      outputGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      outputGain.connect(audioContext.destination);
+
+      const nodesToDisconnect = [source, outputGain];
+      formants.forEach(({ frequency, q, gain }) => {
+        const filter = audioContext.createBiquadFilter();
+        const formantGain = audioContext.createGain();
+        filter.type = "bandpass";
+        filter.frequency.setValueAtTime(frequency, now);
+        filter.Q.setValueAtTime(q, now);
+        formantGain.gain.setValueAtTime(gain, now);
+
+        source.connect(filter);
+        filter.connect(formantGain);
+        formantGain.connect(outputGain);
+        nodesToDisconnect.push(filter, formantGain);
+      });
+
+      source.start(now);
+      source.stop(now + duration);
+      source.onended = () => {
+        nodesToDisconnect.forEach((node) => {
+          try {
+            node.disconnect();
+          } catch (error) {
+            // Ignore already-disconnected audio nodes.
+          }
+        });
+      };
+    } catch (error) {
+      speakText("cat");
+    }
+  };
+
+  try {
+    if (audioContext.state === "suspended") {
+      const resumeResult = audioContext.resume();
+      if (resumeResult && typeof resumeResult.then === "function") {
+        resumeResult.then(startSound).catch(() => speakText("cat"));
+      } else {
+        startSound();
+      }
+    } else {
+      startSound();
+    }
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 // Giọng đọc Text-to-Speech (TTS)
 let englishVoice = null;
 function loadVoices() {
@@ -3353,6 +3450,9 @@ function getIpaSampleWord(ruleNode) {
 }
 
 function speakIpaSound(ruleNode) {
+  const ipaKey = normalizeIpaKey(ruleNode.ipa || ruleNode.label);
+  if (ipaKey === "æ" && playAeVowelSound()) return;
+
   speakText(getIpaSampleWord(ruleNode));
 }
 
@@ -3378,7 +3478,7 @@ function speakText(text) {
     "eə": "air",     // /eə/ đọc như 'e-ơ'
     "ɪə": "ear",     // /ɪə/ đọc như 'i-ơ'
     "ʊə": "cure",    // /ʊə/ đọc như 'u-ơ'
-    
+
     // Nguyên âm đơn
     "æ": "ae",       // /æ/ đọc a bẹt
     "ɑː": "ah",      // /ɑː/ đọc a dài
@@ -3396,7 +3496,7 @@ function speakText(text) {
     "ʌ": "uh",       // /ʌ/ đọc á ngắn
     "uː": "oo",      // /uː/ đọc u dài
     "ʊ": "u",        // /ʊ/ đọc u ngắn (giống ư-u)
-    
+
     // Phụ âm đặc biệt
     "ʃ": "sh",       // /ʃ/
     "ʒ": "zh",       // /ʒ/
@@ -3412,12 +3512,16 @@ function speakText(text) {
     cleanText = ipaToSpeechMap[cleanText];
   }
 
-  // Tạm dừng phát thanh hiện tại nếu có. Chrome đôi khi bị im nếu speak ngay sau cancel,
-  // nên phát sau một nhịp nhỏ để hàng đợi TTS kịp reset.
-  window.speechSynthesis.cancel();
-  loadVoices();
+  if (!englishVoice) loadVoices();
 
-  window.setTimeout(() => {
+  // Tạm dừng phát thanh hiện tại nếu đang nói
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+  }
+
+  // Sử dụng setTimeout (khoảng 50ms) để tránh lỗi nghẽn hàng đợi (queue hang) của Chrome/Edge
+  // khi gọi speak() ngay sau cancel() trong cùng một tick.
+  setTimeout(() => {
     const utterance = new SpeechSynthesisUtterance(cleanText);
     if (englishVoice) {
       utterance.voice = englishVoice;
@@ -3425,7 +3529,7 @@ function speakText(text) {
     } else {
       utterance.lang = "en-US";
     }
-    utterance.rate = 0.85; // Đọc chậm một chút để dễ nghe vần
+    utterance.rate = 0.85; // Đọc chậm một chút để nghe rõ vần
     utterance.volume = 1;
 
     utterance.onerror = () => {
@@ -3438,7 +3542,7 @@ function speakText(text) {
     };
 
     window.speechSynthesis.speak(utterance);
-  }, 60);
+  }, 50);
 }
 
 // Logic Ghi âm Mic so sánh (MediaRecorder)
@@ -3799,17 +3903,24 @@ window.addEventListener("DOMContentLoaded", () => {
   // 6. Chuyển đổi giao diện Dark/Light mode
   const themeToggle = document.getElementById("theme-toggle");
 
-  // Tự động load theme lưu trước đó nếu có
-  if (localStorage.getItem("theme") === "dark") {
-    document.body.classList.add("dark-mode");
+  // Luôn mở bằng giao diện sáng để tránh màn hình nền đen khi trình duyệt còn lưu theme cũ.
+  document.body.classList.remove("dark-mode");
+  try {
+    localStorage.setItem("theme", "light");
+  } catch (error) {
+    // Một số chế độ mở file có thể chặn localStorage; app vẫn chạy bình thường.
   }
 
   themeToggle.addEventListener("click", () => {
     document.body.classList.toggle("dark-mode");
-    if (document.body.classList.contains("dark-mode")) {
-      localStorage.setItem("theme", "dark");
-    } else {
-      localStorage.setItem("theme", "light");
+    try {
+      if (document.body.classList.contains("dark-mode")) {
+        localStorage.setItem("theme", "dark");
+      } else {
+        localStorage.setItem("theme", "light");
+      }
+    } catch (error) {
+      // Bỏ qua nếu trình duyệt không cho lưu theme.
     }
     // Vẽ lại sơ đồ để cập nhật các màu stroke chữ
     mapInstance.render();
