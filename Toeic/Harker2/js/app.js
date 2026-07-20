@@ -39,7 +39,6 @@ const state = {
   submitted: false,
   timerInterval: null,
   timeLeft: 45 * 60,
-  studyToggles: { transcript: true, translation: true, answer: true, accent: true },
   readingPassageView: 'pdf',
 };
 
@@ -171,13 +170,6 @@ function bindHomeEvents() {
   });
 }
 
-function configureStudyToggles() {
-  const isReading = state.section === 'reading';
-  $('#toggle-transcript-wrap').classList.toggle('hidden', isReading);
-  $('#toggle-accent-wrap').classList.toggle('hidden', !cfg().hasAccent);
-  if (isReading) state.studyToggles.transcript = true;
-}
-
 async function startPractice(testId) {
   const c = cfg();
   state.testId = testId;
@@ -195,19 +187,6 @@ async function startPractice(testId) {
   const badge = $('#practice-mode-badge');
   badge.textContent = state.mode === 'exam' ? 'Thi' : 'Học';
   badge.className = 'badge' + (state.mode === 'exam' ? ' badge--exam' : '');
-
-  const layout = $('.practice-layout');
-  const studyPanel = $('#study-panel');
-  const accentWrap = $('#toggle-accent-wrap');
-  const showStudyPanel = state.mode === 'study' && state.section !== 'reading';
-
-  if (showStudyPanel) {
-    layout.classList.add('study-mode');
-    studyPanel.classList.remove('hidden');
-  } else {
-    layout.classList.remove('study-mode');
-    studyPanel.classList.add('hidden');
-  }
 
   if (state.mode === 'exam') {
     startTimer();
@@ -231,8 +210,6 @@ async function startPractice(testId) {
     audioPanel.classList.add('hidden');
   }
 
-  accentWrap.classList.toggle('hidden', !c.hasAccent);
-  configureStudyToggles();
   state.readingPassageView = 'pdf';
   renderPartNav();
   showScreen('practice');
@@ -280,17 +257,6 @@ function bindPracticeEvents() {
     state.currentQ = parseInt(btn.dataset.q);
     renderQuestionNav();
     renderCurrentQuestion();
-  });
-
-  ['transcript', 'translation', 'answer', 'accent'].forEach(key => {
-    $(`#toggle-${key}`).addEventListener('change', (e) => {
-      state.studyToggles[key] = e.target.checked;
-      if (key === 'transcript') {
-        renderCurrentQuestion();
-      } else {
-        renderStudyPanel();
-      }
-    });
   });
 
   $('#btn-submit-exam').addEventListener('click', submitExam);
@@ -439,14 +405,12 @@ function renderCurrentQuestion() {
     bindOptionClicks(area);
     bindNavButtons(area);
     bindPassageViewToggle(area);
-    renderStudyPanel();
     return;
   }
 
   if (!data) {
     area.innerHTML = `<div class="question-card"><p>Câu ${qId} — dữ liệu chưa có.</p>${renderNavButtons(qId, part)}</div>`;
     bindNavButtons(area);
-    renderStudyPanel();
     return;
   }
 
@@ -465,7 +429,6 @@ function renderCurrentQuestion() {
       const activeBlock = document.getElementById(`reading-q-${qId}`);
       activeBlock?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
-    renderStudyPanel();
     return;
   }
 
@@ -473,6 +436,7 @@ function renderCurrentQuestion() {
 
   let html = `<div class="question-card">`;
   html += `<div class="q-header"><span class="q-number">Câu ${qId}</span><span class="q-part-label">Part ${part}</span></div>`;
+  html += renderListeningStudyMeta(data, part);
 
   if (part === 1) {
     const imgPath = assetUrl(`images/test${String(state.testId).padStart(2, '0')}/q${String(qId).padStart(2, '0')}.png`);
@@ -492,7 +456,6 @@ function renderCurrentQuestion() {
   area.innerHTML = html;
   bindOptionClicks(area);
   bindNavButtons(area);
-  renderStudyPanel();
 }
 
 function bindPassageViewToggle(container) {
@@ -603,10 +566,14 @@ function renderListeningPassageGroup(passage, part) {
   if (!passage) return '<div class="question-card"><p>Không tìm thấy đoạn hội thoại.</p></div>';
   const qId = state.currentQ;
   const currentQ = (passage.questions || []).find(q => q.id === qId);
-  const showTranscript = state.mode === 'study' && state.studyToggles.transcript;
+  const showTranscript = state.mode === 'study';
 
   let html = `<div class="question-card">`;
   html += `<div class="q-header"><span class="q-number">Câu ${qId}</span><span class="q-part-label">Part ${part} · Nhóm ${passage.questionIds.join('–')}</span></div>`;
+
+  if (cfg().hasAccent && state.mode === 'study' && passage.accent) {
+    html += `<div class="study-meta"><span class="accent-tag">🎙 ${esc(passage.accent)}</span></div>`;
+  }
 
   if (showTranscript) {
     html += `<div class="passage-block">${formatTranscript(passage.transcript)}</div>`;
@@ -614,7 +581,7 @@ function renderListeningPassageGroup(passage, part) {
     html += `<p class="exam-hint">Nghe đoạn hội thoại / bài nói và trả lời câu hỏi.</p>`;
   }
 
-  if (state.mode === 'study' && state.studyToggles.translation && passage.translation) {
+  if (state.mode === 'study' && passage.translation) {
     html += `<div class="passage-block passage-block--vi">${esc(passage.translation)}</div>`;
   }
 
@@ -661,7 +628,7 @@ function renderOptions(options, qId) {
   const letters = Object.keys(options).sort();
   const selected = state.answers[qId];
   const correct = getCorrectAnswer(qId);
-  const studyReveal = state.mode === 'study' && (state.section === 'reading' || state.studyToggles.answer);
+  const studyReveal = state.mode === 'study';
   const showResult = state.submitted || studyReveal;
   const disabled = state.submitted || studyReveal;
 
@@ -690,48 +657,22 @@ function bindOptionClicks(container) {
   });
 }
 
-function renderStudyPanel() {
-  if (state.mode !== 'study' || state.section === 'reading') return;
-  const panel = $('#study-content');
-  const qId = state.currentQ;
-  const { data, passage, part } = getQuestionData(qId);
+function renderListeningStudyMeta(data, part) {
+  if (state.mode !== 'study' || state.section !== 'listening' || part > 2 || !data) return '';
+
   let html = '';
-
-  if (cfg().hasAccent && state.studyToggles.accent) {
-    const accent = part <= 2 ? data?.accent : passage?.accent;
-    if (accent) {
-      html += `<div class="study-section"><h4>Giải thích — Accent</h4><span class="accent-tag">🎙 ${esc(accent)}</span></div>`;
-    }
+  if (cfg().hasAccent && data.accent) {
+    html += `<div class="study-meta"><span class="accent-tag">🎙 ${esc(data.accent)}</span></div>`;
   }
-
-  if (state.studyToggles.transcript && state.section !== 'reading') {
-    html += `<div class="study-section"><h4>Transcript</h4>`;
-    if (part === 5 && data?.sentence) {
-      html += `<pre>${esc(data.sentence)}</pre>`;
-    } else if (part <= 2 && data) {
-      html += `<pre>${part === 1 ? formatPart1Transcript(data) : esc(data.question)}</pre>`;
-    } else if (passage) {
-      const text = passage.passage || passage.transcript || '';
-      html += `<pre>${esc(text)}</pre>`;
-    }
-    html += `</div>`;
+  if (part === 1) {
+    html += `<div class="passage-block">${esc(formatPart1Transcript(data))}</div>`;
+  } else if (part === 2) {
+    html += `<div class="passage-block">${esc(data.question)}</div>`;
   }
-
-  if (state.studyToggles.translation && passage?.translation) {
-    html += `<div class="study-section"><h4>Dịch tiếng Việt</h4><pre class="translation-text">${esc(passage.translation)}</pre></div>`;
-  } else if (state.studyToggles.translation && data?.translation) {
-    html += `<div class="study-section"><h4>Dịch tiếng Việt</h4><pre class="translation-text">${esc(data.translation)}</pre></div>`;
+  if (data.translation) {
+    html += `<div class="passage-block passage-block--vi">${esc(data.translation)}</div>`;
   }
-
-  if (state.studyToggles.answer) {
-    const answer = getCorrectAnswer(qId);
-    html += `<div class="study-section"><h4>Đáp án đúng</h4><div class="answer-reveal">✓ ${answer}</div></div>`;
-    if (data?.options?.[answer]) {
-      html += `<div class="study-section"><h4>Giải thích</h4><p>Đáp án <strong>${answer}</strong>: "${esc(data.options[answer])}"</p></div>`;
-    }
-  }
-
-  panel.innerHTML = html || '<p class="translation-note">Chọn câu hỏi để xem chi tiết.</p>';
+  return html;
 }
 
 function formatPart1Transcript(q) {
