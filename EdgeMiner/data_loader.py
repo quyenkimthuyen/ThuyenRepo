@@ -69,6 +69,11 @@ def _save_cache(df: pd.DataFrame):
       "end": str(df.index[-1]),
       "fetched_at": datetime.now(timezone.utc).isoformat(),
     }, f, indent=2)
+  try:
+    from strategy_miner import notify_data_updated
+    notify_data_updated(len(df))
+  except Exception:
+    pass
 
 
 def _load_cache() -> pd.DataFrame | None:
@@ -96,22 +101,7 @@ def download_eurusd_h1(
       return cached[(cached.index >= start) & (cached.index < end)].copy()
 
   print(f"  Tải Dukascopy EUR/USD H1: {start.date()} -> {end.date()} ...")
-  try:
-    df = _fetch_dukascopy_h1(start, end)
-  except Exception as exc:
-    if use_cache and not force_refresh:
-      cached = _load_cache()
-      if cached is not None and cached.index[0] <= start:
-        fallback = cached[(cached.index >= start) & (cached.index < end)].copy()
-        if not fallback.empty:
-          print(f"  Dukascopy lỗi, dùng cache đến {fallback.index[-1].date()}: {exc}")
-          return fallback
-
-    raise RuntimeError(
-      "Không tải được EUR/USD H1 từ Dukascopy và chưa có cache local phù hợp. "
-      "Kiểm tra mạng/VPN/firewall rồi thử lại, hoặc chạy lại khi Dukascopy ổn định."
-    ) from exc
-
+  df = _fetch_dukascopy_h1(start, end)
   _save_cache(df)
   print(f"  Đã cache {len(df)} bars -> {CACHE_PATH}")
   return df

@@ -1,4 +1,4 @@
-"""KB & Giai đoạn — tạo nhiều KB, backtest OOS theo từng profile."""
+"""KB & Học — tạo KB profile, học epoch."""
 from __future__ import annotations
 
 import plotly.graph_objects as go
@@ -6,11 +6,18 @@ import streamlit as st
 
 from kb_profiles import DEFAULT_PROFILE_ID, delete_profile, get_profile, list_profiles
 from gui.components import (
-  ERA_PRESETS, constraint_checklist, kpi_row,
-  kb_profile_and_epoch_picker, kb_profile_picker, kb_validation_banner,
-  list_kb_profiles_df, oos_period_inputs, suggested_oos_range,
+  ERA_PRESETS, list_kb_profiles_df, suggested_oos_range,
 )
-from gui.services import execute_backtest, execute_learning, load_backtest_report, load_learning_report
+from gui.services import load_learning_report
+from gui.long_task_background import start_job
+from gui.long_task_ui import render_task_status, task_blocks_ui
+from gui.trade_profile import format_trade_profile_label, get_active_trade_profile
+from gui.workspace import set_active_from_preset, set_active_workspace
+
+
+def _list_era_profiles():
+  from kb_profiles import list_era_profiles
+  return list_era_profiles()
 
 
 def _epoch_chart(history: list[dict]):
@@ -23,19 +30,20 @@ def _epoch_chart(history: list[dict]):
   fig.add_trace(go.Scatter(x=epochs, y=[h["total_r"] for h in history],
                            name="Total R", yaxis="y2", line=dict(color="#2ecc71")))
   fig.update_layout(
-    title="Tiến bộ Epoch (in-sample giai đoạn học)",
-    yaxis=dict(title="Win Rate %"),
-    yaxis2=dict(title="Total R", overlaying="y", side="right"),
+    title="Tiến bộ qua từng vòng học",
+    yaxis=dict(title="Tỷ lệ thắng %"),
+    yaxis2=dict(title="Tổng R", overlaying="y", side="right"),
     height=320, margin=dict(l=40, r=40, t=50, b=40),
   )
   return fig
 
 
 def _tab_profiles():
-  st.subheader("Danh sách KB Profiles")
+  st.subheader("Danh sách profile bộ nhớ")
+  st.caption("_Ẩn «Bộ nhớ chung» (profile cũ) — chỉ hiện giai đoạn era đã học._")
   pdf = list_kb_profiles_df()
   if pdf.empty:
-    st.info("Chưa có profile. Dùng tab **Học KB** để tạo profile đầu tiên.")
+    st.info("Chưa có profile. Dùng tab **Học bộ nhớ** để tạo profile đầu tiên.")
   else:
     show = [c for c in ["id", "name", "trained_from", "trained_to", "epochs", "exists"] if c in pdf.columns]
     st.dataframe(pdf[show], use_container_width=True, hide_index=True)
@@ -56,6 +64,14 @@ def _tab_profiles():
       st.caption("Chưa có snapshot từng epoch — chạy học mới để tạo ep001, ep002, …")
 
   st.markdown("#### Preset giai đoạn phổ biến")
+  if st.button("⚖️ Mở so sánh giai đoạn (Nghiên cứu)", key="hub_goto_compare"):
+    st.session_state["nav_page"] = "research"
+    st.session_state["research_tab"] = "era"
+    st.rerun()
+  if st.button("📈 So sánh vòng học (Nghiên cứu)", key="hub_goto_epoch"):
+    st.session_state["nav_page"] = "research"
+    st.session_state["research_tab"] = "epoch"
+    st.rerun()
   for label, pid, lf, lt, of, ot in ERA_PRESETS:
     exists = any(p["id"] == pid and p.get("exists") for p in list_profiles())
     icon = "✅" if exists else "○"
@@ -64,13 +80,8 @@ def _tab_profiles():
       st.caption(f"{icon} **{label}** — học `{lf}→{lt}`, backtest OOS `{of}→{ot}`")
     with c2:
       if st.button("Dùng preset", key=f"preset_{pid}"):
-        st.session_state["hub_learn_id"] = pid
+        set_active_from_preset(label, pid, lf, lt, of, ot)
         st.session_state["hub_learn_name"] = label.split("→")[0].strip()
-        st.session_state["hub_learn_from"] = lf
-        st.session_state["hub_learn_until"] = lt
-        st.session_state["hub_bt_profile"] = pid
-        st.session_state["hub_bt_oos_from"] = of
-        st.session_state["hub_bt_oos_to"] = ot
         st.session_state["hub_tab"] = 1
         st.rerun()
 
@@ -87,21 +98,84 @@ def _tab_profiles():
   with c2:
     pick = st.selectbox(
       "Chọn profile → backtest",
-      [p["id"] for p in list_profiles() if p.get("exists")],
+      [p["id"] for p in _list_era_profiles()],
       key="hub_goto_bt",
-    ) if list_profiles() else None
-    if pick and st.button("Mở tab Backtest", key="hub_goto_bt_btn"):
+    ) if _list_era_profiles() else None
+    if pick and st.button("Chạy Backtest →", key="hub_goto_bt_btn"):
       of, ot = suggested_oos_range(pick)
-      st.session_state["hub_bt_profile"] = pick
-      st.session_state["hub_bt_oos_from"] = of
-      st.session_state["hub_bt_oos_to"] = ot
-      st.session_state["hub_tab"] = 2
+      set_active_workspace(kb_profile=pick, oos_from=of, oos_to=ot)
+      st.session_state["nav_page"] = "research"
+      st.session_state["research_tab"] = "backtest"
       st.rerun()
 
 
+def _tab_merge():
+  from gui.components import _profile_label
+  from kb_profiles import DEFAULT_PROFILE_ID, merge_kb_profiles
+
+  st.subheader("Ghép nhiều giai đoạn thành một profile")
+  st.caption(
+    "Gộp kinh nghiệm (rules, genomes, ML) từ **2+ giai đoạn** đã học "
+    "thành profile mới — dùng khi muốn «tập» nhiều era."
+  )
+
+  candidates = _list_era_profiles()
+  if len(candidates) < 2:
+    st.info("Cần ít nhất 2 giai đoạn đã học — tạo/học ở tab **Huấn luyện** trước.")
+    return
+
+  label_to_id = {_profile_label(p): p["id"] for p in candidates}
+  picked_labels = st.multiselect(
+    "Chọn giai đoạn nguồn (2+)",
+    list(label_to_id.keys()),
+    key="hub_merge_sources",
+  )
+  source_ids = [label_to_id[l] for l in picked_labels]
+
+  c1, c2 = st.columns(2)
+  with c1:
+    new_id = st.text_input(
+      "ID profile mới",
+      value="era_merged",
+      key="hub_merge_id",
+      help="VD: era_2022_2024_merged",
+    )
+  with c2:
+    new_name = st.text_input(
+      "Tên hiển thị",
+      value="Giai đoạn ghép",
+      key="hub_merge_name",
+    )
+  overwrite = st.checkbox("Ghi đè nếu ID đã tồn tại", key="hub_merge_overwrite")
+
+  if picked_labels:
+    st.caption("**Sẽ ghép:** " + " · ".join(picked_labels))
+
+  if st.button("🔗 Ghép thành profile mới", type="primary", key="hub_merge_run"):
+    try:
+      entry = merge_kb_profiles(
+        source_ids,
+        new_id.strip(),
+        new_name.strip(),
+        overwrite=overwrite,
+      )
+      st.success(
+        f"Đã tạo **{entry.get('name')}** (`{entry.get('id')}`) · "
+        f"học {entry.get('trained_from') or '?'} → {entry.get('trained_to') or '?'}"
+      )
+      st.session_state["nav_page"] = "research"
+      st.session_state["research_tab"] = "era"
+      st.rerun()
+    except ValueError as e:
+      st.error(str(e))
+
+
 def _tab_learn():
-  st.subheader("Học KB theo giai đoạn")
-  st.caption("Mỗi profile = một file KB riêng, gắn khoảng `trained_from` → `trained_to`.")
+  st.subheader("Huấn luyện bộ nhớ kinh nghiệm")
+  st.caption("Mỗi profile = một file bộ nhớ riêng, gắn khoảng thời gian đã học.")
+
+  render_task_status(key_prefix="hub_learn")
+  running = task_blocks_ui("hub_learn")
 
   c1, c2 = st.columns(2)
   with c1:
@@ -110,30 +184,36 @@ def _tab_learn():
     learn_from = st.text_input("Học từ", st.session_state.get("hub_learn_from", "2022-01-01"), key="hub_learn_from")
   with c2:
     learn_until = st.text_input("Học đến", st.session_state.get("hub_learn_until", "2023-12-31"), key="hub_learn_until")
-    epochs = st.number_input("Số epoch", 1, 30, 3, key="hub_epochs")
+    epochs = st.number_input("Số vòng học", 1, 30, 3, key="hub_epochs", help="Mỗi vòng = chạy cả giai đoạn một lần để cập nhật bộ nhớ.")
     reset = st.checkbox("Reset profile trước khi học", key="hub_reset")
 
   existing = get_profile(new_id.strip())
   if existing and existing.get("exists"):
     st.info(f"Profile **{new_id}** đã tồn tại — học tiếp sẽ **cộng dồn** KB (trừ khi bật Reset).")
 
-  if st.button("▶ Học & lưu profile", type="primary", key="hub_learn_run"):
-    prog = st.progress(0)
-
-    def on_ep(ep, total, _):
-      prog.progress(ep / total, text=f"Epoch {ep}/{total}")
-
-    with st.spinner("Đang học..."):
-      report = execute_learning(
-        epochs=int(epochs), reset_kb=reset,
-        kb_profile=new_id.strip(), kb_name=new_name,
-        from_date=learn_from, until_date=learn_until or None,
-        on_epoch_done=on_ep,
+  if st.button(
+    "▶ Học & lưu profile",
+    type="primary",
+    key="hub_learn_run",
+    disabled=running,
+  ):
+    try:
+      start_job(
+        "learning",
+        {
+          "epochs": int(epochs),
+          "reset_kb": reset,
+          "kb_profile": new_id.strip(),
+          "kb_name": new_name,
+          "from_date": learn_from,
+          "until_date": learn_until or None,
+        },
+        label=f"Học KB · {new_id.strip()}",
       )
-    st.session_state["learning_report"] = report
-    prog.empty()
-    st.success(f"Đã lưu **{new_id}** ({learn_from} → {learn_until})")
-    st.rerun()
+      st.toast("Học KB đã bắt đầu chạy nền")
+      st.rerun()
+    except RuntimeError as e:
+      st.error(str(e))
 
   learning = st.session_state.get("learning_report") or load_learning_report()
   if learning:
@@ -151,113 +231,22 @@ def _tab_learn():
         st.plotly_chart(fig, use_container_width=True)
 
 
-def _tab_backtest():
-  st.subheader("Backtest OOS theo KB & giai đoạn")
-  st.caption("Chọn profile đã học **trước** giai đoạn OOS → không dùng thông tin tương lai.")
-
-  c1, c2, c3 = st.columns(3)
-  with c1:
-    spread = st.number_input("Spread (pip)", 0.0, 3.0, 1.0, 0.1, key="hub_spread")
-  with c2:
-    slip = st.number_input("Slippage (pip)", 0.0, 2.0, 0.3, 0.1, key="hub_slip")
-  with c3:
-    train_mo = st.selectbox("Train window (tháng)", [2, 3, 4, 6], index=1, key="hub_train")
-
-  kb_profile, kb_snapshot = kb_profile_and_epoch_picker("hub_bt", show_meta=True)
-  st.markdown("**Giai đoạn OOS cần test**")
-  oos_from, oos_to = oos_period_inputs(
-    "hub_bt", kb_profile,
-    default_from=st.session_state.get("hub_bt_oos_from", ""),
-    default_to=st.session_state.get("hub_bt_oos_to", ""),
-  )
-  if kb_profile:
-    kb_validation_banner(kb_profile, oos_from)
-
-  compare_kb_off = st.checkbox("Chạy thêm bản KB OFF để so sánh", key="hub_compare_off")
-
-  if st.button("▶ Chạy Backtest", type="primary", key="hub_bt_run"):
-    results = {}
-    prog = st.progress(0)
-
-    def on_prog(step, total, _):
-      prog.progress(step / total, text=f"WF {step}/{total}")
-
-    with st.spinner("Backtest KB ON..."):
-      results["kb_on"] = execute_backtest(
-        use_learning=True, train_months=train_mo,
-        spread_pips=spread, slippage_pips=slip,
-        kb_profile=kb_profile or DEFAULT_PROFILE_ID,
-        kb_snapshot=kb_snapshot,
-        oos_from=oos_from or None, oos_to=oos_to or None,
-        on_progress=on_prog, archive=True,
-        archive_label=f"KB ON ep{kb_snapshot or 'latest'} · {kb_profile} · OOS {oos_from}→{oos_to}",
-      )
-    if compare_kb_off:
-      with st.spinner("Backtest KB OFF..."):
-        results["kb_off"] = execute_backtest(
-          use_learning=False, train_months=train_mo,
-          spread_pips=spread, slippage_pips=slip,
-          oos_from=oos_from or None, oos_to=oos_to or None,
-          on_progress=on_prog, archive=True,
-          archive_label=f"KB OFF · OOS {oos_from}→{oos_to}",
-        )
-    st.session_state["hub_backtest_results"] = results
-    st.session_state["backtest_report"] = results["kb_on"]
-    prog.empty()
-    st.rerun()
-
-  results = st.session_state.get("hub_backtest_results", {})
-  report = results.get("kb_on") or load_backtest_report()
-  if not report:
-    st.info("Chọn profile + OOS rồi nhấn **Chạy Backtest**.")
-    return
-
-  if "kb_off" in results:
-    st.markdown("#### So sánh KB ON vs OFF")
-    st.caption("Đã lưu vào **Report Compare** — mở trang đó để xem lịch sử đầy đủ.")
-    on, off = results["kb_on"]["overall_oos"], results["kb_off"]["overall_oos"]
-    import pandas as pd
-    cmp_df = pd.DataFrame([
-      {"Mode": "KB ON", "Lệnh": on["n_trades"], "WR%": on["win_rate_pct"],
-       "RR": on["avg_rr"], "Total R": on["total_r"], "DD": on.get("max_drawdown_r")},
-      {"Mode": "KB OFF", "Lệnh": off["n_trades"], "WR%": off["win_rate_pct"],
-       "RR": off["avg_rr"], "Total R": off["total_r"], "DD": off.get("max_drawdown_r")},
-    ])
-    st.dataframe(cmp_df, use_container_width=True, hide_index=True)
-    delta_r = on["total_r"] - off["total_r"]
-    st.metric("KB ON − OFF (Total R)", f"{delta_r:+.2f}R")
-
-  cfg = report.get("config", {})
-  st.caption(
-    f"Profile: **{cfg.get('kb_profile', '-')}** · "
-    f"Epoch: **{cfg.get('kb_snapshot') or 'latest'}** · "
-    f"OOS: **{cfg.get('oos_from') or 'auto'} → {cfg.get('oos_to') or 'auto'}** · "
-    f"Spread {cfg.get('spread_pips')} / Slip {cfg.get('slippage_pips')}"
-  )
-  o = report["overall_oos"]
-  kpi_row([
-    ("OOS WR", f"{o['win_rate_pct']}%", None),
-    ("RR", f"{o['avg_rr']}", None),
-    ("Total R", f"{o['total_r']}", None),
-    ("Max DD", f"{o.get('max_drawdown_r', 0)}R", None),
-    ("Lệnh/tuần", f"{o['trades_per_week']}", f"{o['n_trades']} lệnh"),
-  ])
-  constraint_checklist(report.get("constraints_met", {}))
-
-
 def render():
-  st.header("KB & Giai đoạn")
-  st.caption("Tạo nhiều Knowledge Base theo thời gian · Backtest OOS đúng profile · không leakage")
+  from gui.page_chrome import render_page_header
+  from gui.navigation import ALL_ITEMS
+
+  render_page_header(ALL_ITEMS["kb"], show_profile=True)
 
   st.info(
-    "**Quy trình:** (1) Tab **Học KB** — tạo profile `era_2022_2023` trên 2022–2023 · "
-    "(2) Tab **Backtest** — chọn profile đó, OOS `2024-01-01 → 2024-12-31` · "
-    "Hệ thống kiểm tra `trained_to ≤ oos_from`."
+    "**Quy trình:** (1) **Huấn luyện bộ nhớ** — tạo profile theo giai đoạn · "
+    "(2) **Nghiên cứu** — kiểm chứng backtest / tìm tham số / so sánh."
   )
 
-  tab_names = ["📋 Profiles", "🧠 Học KB", "📊 Backtest OOS"]
+  tab_names = ["📋 Danh sách profile", "🧠 Huấn luyện", "🔗 Ghép giai đoạn"]
   tab_idx = st.session_state.get("hub_tab", 0)
-  selected = st.radio("Bước", tab_names, horizontal=True, index=min(tab_idx, 2), key="hub_tab_radio")
+  if tab_idx >= len(tab_names):
+    tab_idx = 0
+  selected = st.radio("Bước", tab_names, horizontal=True, index=tab_idx, key="hub_tab_radio")
   st.session_state["hub_tab"] = tab_names.index(selected)
 
   st.divider()
@@ -266,4 +255,4 @@ def render():
   elif selected == tab_names[1]:
     _tab_learn()
   else:
-    _tab_backtest()
+    _tab_merge()

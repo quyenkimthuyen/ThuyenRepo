@@ -25,6 +25,10 @@ from tqdm import tqdm
 from data_loader import load_eurusd_h1, get_train_window_indices, get_week_indices
 from feature_engine import FeatureMatrix
 from knowledge_base import KnowledgeBase, KNOWLEDGE_PATH
+from kb_profiles import (
+  create_profile, register_profile, slice_df_for_period,
+  profile_path, DEFAULT_PROFILE_ID,
+)
 from config import TRAIN_MONTHS, MIN_TRAIN_BARS, DEFAULT_SPREAD_PIPS, DEFAULT_SLIPPAGE_PIPS
 from meta_learner import mine_strategy_learning, record_trade_learning
 from optimizer import TARGET_TRADES_PER_WEEK
@@ -122,6 +126,9 @@ def run_epoch(df, fm: FeatureMatrix, kb: KnowledgeBase, epoch: int) -> dict:
   kb.record_epoch(epoch, epoch_metrics)
   kb.save()
 
+  from kb_profiles import save_epoch_snapshot, profile_id_from_kb
+  save_epoch_snapshot(kb, profile_id_from_kb(kb), epoch_metrics)
+
   return {
     "epoch_metrics": epoch_metrics,
     "weekly_log": weekly_log,
@@ -161,18 +168,33 @@ def print_final_comparison(history: list[dict]):
 def main():
   parser = argparse.ArgumentParser(description="Self-learning EUR/USD walk-forward")
   parser.add_argument("--epochs", type=int, default=5, help="Số epoch học (mặc định 5)")
-  parser.add_argument("--reset", action="store_true", help="Xóa knowledge base")
+  parser.add_argument("--reset", action="store_true", help="Xóa knowledge base của profile")
+  parser.add_argument("--kb-profile", default=DEFAULT_PROFILE_ID,
+                      help="ID profile KB (lưu tại learning/kb_profiles/)")
+  parser.add_argument("--kb-name", default=None, help="Tên hiển thị profile")
+  parser.add_argument("--from-date", default="2022-01-01", help="Data từ ngày")
+  parser.add_argument("--until-date", default=None, help="Data đến ngày (giai đoạn KB)")
   args = parser.parse_args()
 
-  if args.reset and KNOWLEDGE_PATH.exists():
-    KNOWLEDGE_PATH.unlink()
-    print("Đã xóa knowledge base.")
+  profile_id = args.kb_profile
+  if profile_id != DEFAULT_PROFILE_ID and not profile_path(profile_id).exists():
+    create_profile(profile_id, args.kb_name or profile_id)
 
-  kb = KnowledgeBase()
+  kb_path = profile_path(profile_id)
+  if args.reset and kb_path.exists():
+    kb_path.unlink()
+    print(f"Đã xóa KB profile: {profile_id}")
+
+  kb = KnowledgeBase(kb_path)
   print("Tải dữ liệu EUR/USD H1...")
-  df = load_eurusd_h1("2022-01-01")
+  df = load_eurusd_h1(args.from_date)
+  df = slice_df_for_period(df, args.from_date, args.until_date)
+  if len(df) < MIN_TRAIN_BARS + 100:
+    print("Không đủ dữ liệu cho giai đoạn đã chọn.")
+    return 1
   fm = FeatureMatrix(df)
-  print(f"{len(df)} bars | KB epoch trước: {kb.epoch_count} | genomes: {len(kb.genomes)}")
+  print(f"{len(df)} bars ({df.index[0].date()} -> {df.index[-1].date()})")
+  print(f"KB profile: {profile_id} | epochs trước: {kb.epoch_count} | genomes: {len(kb.genomes)}")
 
   print(f"\n{'='*60}")
   print("SELF-LEARNING SYSTEM v4")
@@ -190,9 +212,21 @@ def main():
   print_final_comparison(all_epoch_results)
   print(f"\n{kb.improvement_summary()}")
 
+  register_profile(
+    profile_id,
+    args.kb_name or profile_id,
+    str(df.index[0].date()),
+    str(df.index[-1].date()),
+    args.epochs,
+    note=f"learning {args.epochs} epoch(s)",
+  )
+
   REPORT_DIR.mkdir(exist_ok=True)
   report = {
     "epochs": args.epochs,
+    "kb_profile": profile_id,
+    "trained_from": str(df.index[0].date()),
+    "trained_to": str(df.index[-1].date()),
     "epoch_history": all_epoch_results,
     "kb_summary": {
       "genomes": len(kb.genomes),
@@ -206,7 +240,7 @@ def main():
   with open(path, "w", encoding="utf-8") as f:
     json.dump(report, f, indent=2, ensure_ascii=False)
 
-  print(f"\nKnowledge: {KNOWLEDGE_PATH}")
+  print(f"\nKnowledge profile: {kb_path}")
   print(f"Báo cáo: {path}")
   return 0
 

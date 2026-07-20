@@ -112,6 +112,15 @@ class FeatureMatrix:
     self.features["ny_session"] = ((self.hours >= 13) & (self.hours < 21)).astype(float)
     self.features["overlap_session"] = ((self.hours >= 13) & (self.hours < 16)).astype(float)
 
+    # --- Regime / session (v4 — đa dạng hoá mine, không tăng max rules) ---
+    self.features["asia_session"] = ((self.hours >= 0) & (self.hours < 8)).astype(float)
+    self.features["london_open"] = ((self.hours >= 8) & (self.hours < 11)).astype(float)
+    adx_v = self.features["adx"]
+    self.features["regime_trending"] = (adx_v >= 25).astype(float)
+    self.features["regime_ranging"] = (adx_v < 20).astype(float)
+    self.features["regime_high_vol"] = (self.features["atr_pct"] > 0.65).astype(float)
+    self.features["regime_low_vol"] = (self.features["atr_pct"] < 0.35).astype(float)
+
     # --- Pullback in trend ---
     self.features["pullback_long"] = (
       (self.features["htf_trend"] > 0) & (self.features["ema_stack_bull"] > 0) &

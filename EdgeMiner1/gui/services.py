@@ -35,7 +35,13 @@ def load_json(path: Path) -> dict | None:
     return json.load(f)
 
 
-def load_backtest_report() -> dict | None:
+def load_backtest_report(workspace_aware: bool = True) -> dict | None:
+  if workspace_aware:
+    try:
+      from gui.workspace import load_report_for_workspace
+      return load_report_for_workspace()
+    except Exception:
+      pass
   return load_json(BACKTEST_REPORT)
 
 
@@ -99,6 +105,7 @@ def execute_backtest(
   on_progress=None,
   archive: bool = False,
   archive_label: str | None = None,
+  sync_workspace: bool = True,
 ) -> dict:
   df = load_eurusd_h1(start_date)
   reset_kb_cache()
@@ -120,6 +127,17 @@ def execute_backtest(
     verbose=False,
   )
   save_backtest_report(result)
+  if sync_workspace:
+    try:
+      from gui.trade_profile import get_active_trade_profile
+      from gui.workspace import save_workspace_report, sync_workspace_from_backtest
+      tp_id = get_active_trade_profile().get("id")
+      if tp_id:
+        result.setdefault("config", {})["trade_profile_id"] = tp_id
+      sync_workspace_from_backtest(result)
+      save_workspace_report(result)
+    except Exception:
+      pass
   if archive:
     from gui.report_store import save_report
     save_report(result, label=archive_label)
@@ -181,6 +199,20 @@ def execute_learning(
   REPORT_DIR.mkdir(exist_ok=True)
   with open(LEARNING_REPORT, "w", encoding="utf-8") as f:
     json.dump(report, f, indent=2, ensure_ascii=False)
+  try:
+    from gui.components import suggested_oos_range
+    from gui.workspace import set_active_workspace, sync_workspace_from_learning
+    sync_workspace_from_learning(report)
+    oos_from, oos_to = suggested_oos_range(kb_profile)
+    set_active_workspace(
+      kb_profile=kb_profile,
+      learn_from=report["trained_from"],
+      learn_until=report["trained_to"],
+      oos_from=oos_from,
+      oos_to=oos_to,
+    )
+  except Exception:
+    pass
   return report
 
 

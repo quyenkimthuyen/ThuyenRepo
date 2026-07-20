@@ -15,7 +15,14 @@ from config import (
 )
 from data_loader import load_eurusd_h1, get_train_window_indices, get_week_indices
 from feature_engine import FeatureMatrix
-from optimizer import optimize_on_window, TARGET_TRADES_PER_WEEK
+from kb_profiles import (
+  DEFAULT_PROFILE_ID, kb_valid_for_backtest, load_kb, suggest_profiles_for_oos,
+)
+from optimizer import (
+  optimize_on_window, TARGET_TRADES_PER_WEEK,
+  set_kb_profile, get_knowledge_base, reset_kb_cache,
+)
+from knowledge_base import KnowledgeBase
 from strategy import compute_metrics
 from strategy_miner import (
   MinedStrategy, generate_signals_mined, backtest_mined, Rule,
@@ -67,6 +74,7 @@ def _run_holdout_forward(
   df: pd.DataFrame, fm: FeatureMatrix, holdout_cutoff: pd.Timestamp,
   use_learning: bool, train_months: int,
   spread_pips: float, slippage_pips: float,
+  kb: KnowledgeBase | None = None,
 ) -> tuple[list, dict | None]:
   """Mine 1 lần tại holdout, trade holdout không re-optimize (strict forward)."""
   train_start_idx, train_end_idx = get_train_window_indices(df, holdout_cutoff, train_months)
@@ -74,7 +82,7 @@ def _run_holdout_forward(
     return [], None
   strat = optimize_on_window(
     fm, train_start_idx, train_end_idx,
-    use_learning=use_learning, as_of=holdout_cutoff,
+    use_learning=use_learning, as_of=holdout_cutoff, kb=kb,
   )
   if strat is None:
     return [], None
@@ -100,7 +108,23 @@ def run_walk_forward(
   slippage_pips: float = DEFAULT_SLIPPAGE_PIPS,
   holdout_months: int = DEFAULT_HOLDOUT_MONTHS,
   risk_pct_per_trade: float = 1.0,
+  kb_profile: str | None = None,
+  kb_snapshot: int | str | None = None,
+  oos_from: str | None = None,
+  oos_to: str | None = None,
 ) -> dict:
+  reset_kb_cache()
+  kb_instance: KnowledgeBase | None = None
+  kb_validation = {"ok": True, "message": "KB OFF"}
+  profile_id = kb_profile or DEFAULT_PROFILE_ID
+
+  if use_learning:
+    set_kb_profile(profile_id, kb_snapshot)
+    kb_instance = get_knowledge_base(profile_id, kb_snapshot)
+    check_start = oos_from or str(df.index[0].date())
+    ok, msg = kb_valid_for_backtest(profile_id, check_start, oos_to)
+    kb_validation = {"ok": ok, "message": msg, "profile_id": profile_id}
+
   holdout_cutoff = None
   if holdout_months > 0:
     holdout_cutoff = df.index[-1] - pd.DateOffset(months=holdout_months)
@@ -115,16 +139,30 @@ def run_walk_forward(
   if first_trade_date < train_end_date:
     first_trade_date += pd.Timedelta(days=7)
 
+  if oos_from:
+    oos_from_ts = pd.Timestamp(oos_from)
+    if oos_from_ts > first_trade_date:
+      first_trade_date = oos_from_ts - pd.Timedelta(days=oos_from_ts.weekday())
+
   wf_end = holdout_cutoff if holdout_cutoff is not None else df_wf.index[-1]
+  if oos_to:
+    wf_end = min(wf_end, pd.Timestamp(oos_to))
+
   weeks = generate_weekly_schedule(df_wf, first_trade_date, wf_end)
+  if oos_from:
+    weeks = [w for w in weeks if w[0] >= pd.Timestamp(oos_from)]
+  if oos_to:
+    weeks = [w for w in weeks if w[0] <= pd.Timestamp(oos_to)]
   all_oos_trades = []
   weekly_log = []
   last_strat: MinedStrategy | None = None
   prev_strat: MinedStrategy | None = None
 
   if verbose:
-    print(f"Walk-forward | bars={len(df)} | KB={'ON' if use_learning else 'OFF'} | "
-          f"spread={spread_pips} slip={slippage_pips} | holdout={holdout_months}mo")
+    print(f"Walk-forward | bars={len(df)} | KB={'ON' if use_learning else 'OFF'} "
+          f"| profile={profile_id if use_learning else '-'} | weeks={len(weeks)}")
+    if use_learning:
+      print(f"  KB check: {kb_validation['message']}")
 
   week_iter = tqdm(weeks, desc="Walk-forward", disable=not verbose or on_progress is not None)
   for wi, (week_start, week_end) in enumerate(week_iter):
@@ -138,7 +176,7 @@ def run_walk_forward(
 
     strat = optimize_on_window(
       fm, train_start_idx, train_end_idx,
-      use_learning=use_learning, as_of=week_start,
+      use_learning=use_learning, as_of=week_start, kb=kb_instance,
     )
     if strat is None:
       strat = prev_strat
@@ -182,7 +220,7 @@ def run_walk_forward(
   holdout_trades, holdout_strat = [], None
   if holdout_cutoff is not None:
     holdout_trades, holdout_strat = _run_holdout_forward(
-      df, fm, holdout_cutoff, use_learning, train_months, spread_pips, slippage_pips,
+      df, fm, holdout_cutoff, use_learning, train_months, spread_pips, slippage_pips, kb_instance,
     )
 
   overall = compute_metrics(all_oos_trades, risk_pct_per_trade)
@@ -218,6 +256,11 @@ def run_walk_forward(
       "target_trades_per_week": TARGET_TRADES_PER_WEEK,
       "pair": "EUR/USD", "tf": "H1",
       "use_learning_kb": use_learning,
+      "kb_profile": profile_id if use_learning else None,
+      "kb_snapshot": (kb_snapshot if kb_snapshot not in (None, "latest") else "latest") if use_learning else None,
+      "kb_validation": kb_validation,
+      "oos_from": oos_from,
+      "oos_to": oos_to,
       "spread_pips": spread_pips,
       "slippage_pips": slippage_pips,
       "holdout_months": holdout_months,
@@ -278,14 +321,23 @@ def main():
   parser.add_argument("--spread", type=float, default=DEFAULT_SPREAD_PIPS)
   parser.add_argument("--slippage", type=float, default=DEFAULT_SLIPPAGE_PIPS)
   parser.add_argument("--holdout-months", type=int, default=DEFAULT_HOLDOUT_MONTHS)
+  parser.add_argument("--kb-profile", default=DEFAULT_PROFILE_ID, help="ID KB profile (giai đoạn)")
+  parser.add_argument("--kb-epoch", default=None,
+                      help="Snapshot epoch (cumulative, vd 2 hoặc 8). Mặc định: latest")
+  parser.add_argument("--oos-from", default=None, help="OOS bắt đầu YYYY-MM-DD")
+  parser.add_argument("--oos-to", default=None, help="OOS kết thúc YYYY-MM-DD")
   args = parser.parse_args()
 
   df = load_eurusd_h1("2022-01-01")
   print(f"{len(df)} bars: {df.index[0].date()} -> {df.index[-1].date()}")
+  kb_snap = int(args.kb_epoch) if args.kb_epoch and args.kb_epoch != "latest" else None
   result = run_walk_forward(
     df, use_learning=not args.no_kb,
     spread_pips=args.spread, slippage_pips=args.slippage,
     holdout_months=args.holdout_months,
+    kb_profile=args.kb_profile if not args.no_kb else None,
+    kb_snapshot=kb_snap,
+    oos_from=args.oos_from, oos_to=args.oos_to,
   )
   path = save_backtest_report(result)
   print_report(result)

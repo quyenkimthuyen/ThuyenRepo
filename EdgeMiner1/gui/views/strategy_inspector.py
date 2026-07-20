@@ -4,15 +4,18 @@ from __future__ import annotations
 import streamlit as st
 
 from analytics import genomes_table, rule_stats_table
+from gui.navigation import ALL_ITEMS
+from gui.page_chrome import render_page_header
 from gui.services import load_backtest_report, load_kb
+from gui.workspace import get_active_workspace
 
 
 def render():
-  st.header("Strategy Inspector")
-  st.caption("Minh bạch chiến lược — rules, genome DNA, ML samples")
+  render_page_header(ALL_ITEMS["strategy"])
 
+  ws = get_active_workspace()
   report = load_backtest_report()
-  kb = load_kb()
+  kb = load_kb(ws.get("kb_profile") or "default")
 
   tab_rules, tab_genome, tab_active, tab_ml = st.tabs(
     ["Rules (KB)", "Genomes", "Active Strategy", "ML"]
@@ -37,13 +40,20 @@ def render():
 
   with tab_genome:
     st.subheader("Top Genomes")
+    st.caption(
+      "Mine v4: tối đa **6 rule LONG + 6 SHORT** — loại rule trùng correlation; "
+      "feature regime/session (`regime_trending`, `london_open`, …); "
+      "KB chọn strategy khớp regime tuần."
+    )
     gdf = genomes_table(kb.genomes)
     if gdf.empty:
       st.info("Chưa có genomes.")
     else:
       st.dataframe(gdf, use_container_width=True, hide_index=True)
-      pick = st.selectbox("Xem DNA", gdf["name"].tolist(), key="si_genome")
-      genome = next((g for g in kb.genomes if g.get("name") == pick), None)
+      from genome_naming import display_name
+      options = {display_name(g.get("name", "?"), g): g for g in kb.genomes[:15]}
+      pick = st.selectbox("Xem DNA", list(options.keys()), key="si_genome")
+      genome = options.get(pick)
       if genome:
         st.json({
           k: genome[k] for k in [

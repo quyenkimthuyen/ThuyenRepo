@@ -6,6 +6,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 
+from genome_naming import display_name
 from strategy import Trade, max_drawdown_r
 
 
@@ -148,7 +149,7 @@ def genomes_table(genomes: list[dict]) -> pd.DataFrame:
   for i, g in enumerate(genomes[:15]):
     rows.append({
       "rank": i + 1,
-      "name": g.get("name", "?"),
+      "name": display_name(g.get("name", "?"), g),
       "fitness": round(g.get("fitness", 0), 1),
       "exit_mode": g.get("exit_mode"),
       "rr": g.get("rr_ratio"),

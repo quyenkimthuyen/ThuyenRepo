@@ -14,7 +14,8 @@ ML_FEATURES = [
   "lower_wick_ratio", "upper_wick_ratio", "ema_stack_bull", "ema_stack_bear",
   "sweep_low_fade", "sweep_high_fade", "pullback_long", "pullback_short",
   "squeeze_break_up", "squeeze_break_dn", "range_buy", "range_sell",
-  "overlap_session",
+  "overlap_session", "asia_session", "london_open",
+  "regime_trending", "regime_ranging", "regime_high_vol", "regime_low_vol",
 ]
 
 

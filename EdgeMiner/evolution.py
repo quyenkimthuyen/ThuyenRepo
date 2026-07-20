@@ -37,7 +37,6 @@ def mutate_genome(g: dict, rate: float = 0.25) -> dict:
         r["weight"] = float(np.clip(r["weight"] * random.uniform(0.7, 1.4), 0.1, 3.0))
       if random.random() < rate * 0.3 and r["op"] != "eq1":
         r["threshold"] *= random.uniform(0.9, 1.1)
-    # Thỉnh thoảng thêm/bỏ rule ngẫu nhiên
     if random.random() < rate * 0.2 and len(rules) > 2:
       rules.pop(random.randint(0, len(rules) - 1))
 
@@ -69,7 +68,7 @@ def evolve_population(kb: KnowledgeBase, n_offspring: int = 12) -> list[dict]:
   if not tops:
     return []
 
-  offspring = [copy.deepcopy(tops[0])]  # elitism: giữ best
+  offspring = [copy.deepcopy(tops[0])]
 
   while len(offspring) < n_offspring:
     r = random.random()

@@ -4,6 +4,8 @@ Adaptive strategy miner v3 — rules + ML filter + smart exits.
 from dataclasses import dataclass, field
 from typing import Optional
 
+import threading
+
 import numpy as np
 import pandas as pd
 
@@ -12,6 +14,41 @@ from ml_scorer import MLScorer
 from strategy import Trade, compute_metrics
 
 LABEL_CACHE: dict[tuple, tuple] = {}
+_LABEL_LOCK = threading.Lock()
+_LAST_BARS: int | None = None
+
+
+def clear_label_cache() -> None:
+  """Xóa cache label khi dataset thay đổi số bar (sau refresh Dukascopy)."""
+  with _LABEL_LOCK:
+    LABEL_CACHE.clear()
+
+
+def ensure_label_cache_for_df(bar_count: int) -> None:
+  """Invalidate label cache khi số bar thay đổi."""
+  global _LAST_BARS
+  with _LABEL_LOCK:
+    if _LAST_BARS is not None and _LAST_BARS != bar_count:
+      LABEL_CACHE.clear()
+    _LAST_BARS = bar_count
+
+
+def notify_data_updated(bar_count: int) -> None:
+  """Gọi sau mỗi lần ghi cache giá mới."""
+  global _LAST_BARS
+  with _LABEL_LOCK:
+    LABEL_CACHE.clear()
+    _LAST_BARS = bar_count
+
+
+def _align_array(arr: np.ndarray, n: int) -> np.ndarray:
+  if len(arr) == n:
+    return arr
+  if len(arr) > n:
+    return arr[:n].copy()
+  out = np.zeros(n, dtype=arr.dtype)
+  out[: len(arr)] = arr
+  return out
 
 
 @dataclass
@@ -57,9 +94,15 @@ BINARY_SHORT = ["sweep_high_fade", "squeeze_break_dn", "pullback_short", "range_
 
 
 def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9):
-  key = (start, end, rr, atr_mult)
-  if key in LABEL_CACHE:
-    return LABEL_CACHE[key]
+  ensure_label_cache_for_df(fm.n)
+  key = (fm.n, start, end, rr, atr_mult)
+  with _LABEL_LOCK:
+    cached = LABEL_CACHE.get(key)
+    if cached is not None:
+      long_win, short_win = cached
+      if len(long_win) == fm.n and len(short_win) == fm.n:
+        return long_win, short_win
+      LABEL_CACHE.pop(key, None)
 
   long_win = np.zeros(fm.n, dtype=np.int8)
   short_win = np.zeros(fm.n, dtype=np.int8)
@@ -90,11 +133,14 @@ def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9):
         short_win[i] = 1
         break
 
-  LABEL_CACHE[key] = (long_win, short_win)
+  with _LABEL_LOCK:
+    LABEL_CACHE[key] = (long_win, short_win)
   return long_win, short_win
 
 
 def _mine_threshold_rules(fm, feat_name, direction, wins, start, end, top_n=3):
+  if len(wins) != fm.n:
+    return []
   feat = fm.get(feat_name)
   rules = []
   valid = np.zeros(fm.n, dtype=bool)
@@ -120,6 +166,8 @@ def _mine_threshold_rules(fm, feat_name, direction, wins, start, end, top_n=3):
 
 
 def _mine_binary_rules(fm, feat_names, direction, wins, start, end):
+  if len(wins) != fm.n:
+    return []
   rules = []
   valid = np.zeros(fm.n, dtype=bool)
   valid[start:end] = True
@@ -203,6 +251,7 @@ def generate_signals_mined(fm, strat, start_idx=0, end_idx=None):
 def backtest_mined(
   fm, strat, signals, start_idx=0, end_idx=None,
   spread_pips: float = 0.0, slippage_pips: float = 0.0,
+  return_open: bool = False,
 ):
   from execution import adjust_entry_price, adjust_exit_price
 
@@ -297,6 +346,24 @@ def backtest_mined(
       i = entry_idx + 1
       continue
     i += 1
+
+  open_pos = None
+  if in_trade:
+    held = max(0, (end_idx - 1) - int(entry_idx))
+    open_pos = {
+      "status": "OPEN",
+      "entry": str(fm.index[int(entry_idx)]),
+      "dir": "LONG" if direction == 1 else "SHORT",
+      "entry_px": round(entry_price, 5),
+      "sl": round(sl, 5),
+      "tp": round(tp, 5),
+      "risk_pips": round(risk * 10000, 1),
+      "bars_held": held,
+      "max_hold_bars": strat.max_hold_bars,
+    }
+
+  if return_open:
+    return trades, open_pos
   return trades
 
 
@@ -334,9 +401,9 @@ def score_strategy_metrics(m, weeks, target_tpw=2.0):
 
 
 def mine_strategy(fm, train_start, train_end, target_tpw=2.0):
-  global LABEL_CACHE
-  if len(LABEL_CACHE) > 200:
-    LABEL_CACHE.clear()
+  with _LABEL_LOCK:
+    if len(LABEL_CACHE) > 200:
+      LABEL_CACHE.clear()
 
   span = train_end - train_start
   split = train_start + int(span * 0.65)

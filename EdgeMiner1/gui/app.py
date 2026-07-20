@@ -13,37 +13,98 @@ if str(ROOT) not in sys.path:
 from gui.views import (
   command_center, backtest_lab, trade_journal, strategy_inspector,
   learning_center, risk_dashboard, paper_monitor, usage_guide, kb_era_hub,
-  report_compare,
+  report_compare, grid_search, research_lab,
 )
+from gui.navigation import (
+  ALL_ITEMS, LEGACY_ALIASES, NAV_GROUPS, RESEARCH_TAB_BY_ALIAS, default_page_key,
+)
+from gui.workspace import ensure_profiles_loaded, render_sidebar_profiles
 
-PAGES = {
-  "Command Center": command_center,
-  "KB & Giai đoạn": kb_era_hub,
-  "Backtest Lab": backtest_lab,
-  "Report Compare": report_compare,
-  "Trade Journal": trade_journal,
-  "Strategy Inspector": strategy_inspector,
-  "Learning Center": learning_center,
-  "Risk Dashboard": risk_dashboard,
-  "Paper Monitor": paper_monitor,
-  "Usage Guide": usage_guide,
+VIEW_MODULES = {
+  "command_center": command_center,
+  "paper_monitor": paper_monitor,
+  "research_lab": research_lab,
+  "kb_era_hub": kb_era_hub,
+  "risk_dashboard": risk_dashboard,
+  "trade_journal": trade_journal,
+  "strategy_inspector": strategy_inspector,
+  "usage_guide": usage_guide,
+  # Legacy direct access (bookmark / deep link)
+  "backtest_lab": backtest_lab,
+  "grid_search": grid_search,
+  "report_compare": report_compare,
+  "learning_center": learning_center,
 }
 
 
-def _sidebar_kb_profiles():
+def _resolve_page_key() -> str:
+  legacy = st.session_state.get("nav_legacy_page")
+  if legacy:
+    key = LEGACY_ALIASES.get(legacy)
+    if key:
+      tab = RESEARCH_TAB_BY_ALIAS.get(legacy)
+      if tab:
+        st.session_state["research_tab"] = tab
+      st.session_state.pop("nav_legacy_page", None)
+      st.session_state["nav_page"] = key
+      return key
+
+  key = st.session_state.get("nav_page")
+  if key in ALL_ITEMS:
+    return key
+  return default_page_key()
+
+
+def _render_sidebar_nav() -> str:
+  st.sidebar.markdown("### Điều hướng")
+  current = _resolve_page_key()
+
+  for group in NAV_GROUPS:
+    st.sidebar.markdown(f"**{group.title}**")
+    for item in group.items:
+      active = item.key == current
+      label = f"› {item.label}" if active else item.label
+      if st.sidebar.button(
+        label,
+        key=f"nav_{item.key}",
+        use_container_width=True,
+        type="primary" if active else "secondary",
+      ):
+        st.session_state["nav_page"] = item.key
+        st.rerun()
+    st.sidebar.markdown("")
+
+  return current
+
+
+def _sidebar_status():
+  from gui.services import load_backtest_report
+
+  report = load_backtest_report()
+  if not report:
+    return
+
+  st.sidebar.divider()
+  o = report.get("overall_oos") or {}
+  st.sidebar.caption(f"Backtest (profile này): **{o.get('total_r', '—')}R**")
+
   try:
-    from kb_profiles import list_profiles
-    profiles = [p for p in list_profiles() if p.get("exists")]
-    if not profiles:
-      st.sidebar.caption("KB profiles: chưa có")
-      return
-    st.sidebar.markdown(f"**KB Profiles** ({len(profiles)})")
-    for p in profiles[:5]:
-      tf = p.get("trained_from") or "?"
-      tt = p.get("trained_to") or "?"
-      st.sidebar.caption(f"· `{p['id']}` {tf}→{tt}")
-    if len(profiles) > 5:
-      st.sidebar.caption(f"… +{len(profiles) - 5} profile")
+    from gui.grid_search_background import get_grid_status
+    gs = get_grid_status()
+    if gs.get("running"):
+      st.sidebar.caption(
+        f"🔎 Grid: **{gs['done']}/{gs['total']}** ({gs['pct']}%)"
+      )
+  except Exception:
+    pass
+
+  try:
+    from gui.long_task_background import get_task_status
+    ts = get_task_status()
+    if ts.get("running"):
+      st.sidebar.caption(
+        f"⏳ {ts['job_label']}: **{ts['done']}/{ts['total']}** ({ts['pct']}%)"
+      )
   except Exception:
     pass
 
@@ -62,17 +123,36 @@ def main():
   except Exception:
     pass
 
+  try:
+    from gui.grid_search_background import ensure_grid_worker_running
+    ensure_grid_worker_running()
+  except Exception:
+    pass
+
+  try:
+    from gui.long_task_background import ensure_task_worker_running
+    ensure_task_worker_running()
+  except Exception:
+    pass
+
+  ensure_profiles_loaded()
+
   st.sidebar.title("ForexForge")
-  st.sidebar.caption("EUR/USD H1 · Walk-forward · Self-learning v4")
-  page = st.sidebar.radio("Điều hướng", list(PAGES.keys()))
+  st.sidebar.caption("EUR/USD H1 · mô phỏng từng tuần")
+  render_sidebar_profiles()
+
+  from gui.glossary import render_glossary_expander
+  render_glossary_expander(location="sidebar")
+
+  page_key = _render_sidebar_nav()
+  _sidebar_status()
 
   st.sidebar.divider()
-  st.sidebar.markdown("**Pair** EUR/USD · **TF** H1")
-  st.sidebar.markdown("**Data** Dukascopy 2022+")
-  _sidebar_kb_profiles()
-  st.sidebar.caption("Xem **KB & Giai đoạn** hoặc **Usage Guide**.")
+  st.sidebar.caption("Mọi tham số → **Cấu hình giao dịch** (trên).")
 
-  PAGES[page].render()
+  item = ALL_ITEMS[page_key]
+  module = VIEW_MODULES[item.module]
+  module.render()
 
 
 if __name__ == "__main__":
