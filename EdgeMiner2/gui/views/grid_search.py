@@ -20,7 +20,6 @@ from gui.grid_search_background import (
 )
 from gui.grid_search_engine import (
   OBJECTIVES,
-  apply_best_as_new_trade_profile,
   build_grid_from_settings,
   estimate_grid_count,
   filter_specs_for_incremental,
@@ -41,8 +40,27 @@ def _grid_progress_fragment():
 def _render_job_status():
   status = get_grid_status()
   job = load_job_state() or {}
+  latest = load_latest_grid_run() or {}
 
-  if status["status"] == "idle" and not job.get("run_id"):
+  # Job state cũ (0 combo) nhưng đã có lần chạy thành công sau đó → dùng latest.
+  if (
+    status.get("status") == "completed"
+    and (status.get("n_rows") or 0) == 0
+    and (status.get("total") or 0) == 0
+    and (latest.get("rows") or [])
+  ):
+    n = len(latest.get("rows") or [])
+    status = {
+      **status,
+      "run_id": latest.get("run_id"),
+      "objective": latest.get("objective") or status.get("objective"),
+      "n_rows": n,
+      "total": n,
+      "done": n,
+      "finished_at": latest.get("updated_at"),
+    }
+
+  if status["status"] == "idle" and not job.get("run_id") and not latest.get("run_id"):
     return status
 
   if status["running"]:
@@ -60,10 +78,16 @@ def _render_job_status():
     n = status.get("n_rows") or 0
     total = status.get("total") or 0
     if n == 0 and total == 0:
-      st.error(
-        f"⚠️ Grid `{status.get('run_id')}` kết thúc với **0 combo** — "
-        "chưa huấn luyện bộ nhớ. Vào **Huấn luyện bộ nhớ** trước."
-      )
+      if grid_readiness().get("kb_complete"):
+        st.caption(
+          f"_Lần chạy `{status.get('run_id')}` trước đó trống (chưa đủ KB). "
+          "KB đã sẵn sàng — chạy Grid Search lại._"
+        )
+      else:
+        st.error(
+          f"⚠️ Grid `{status.get('run_id')}` kết thúc với **0 combo** — "
+          "chưa huấn luyện bộ nhớ. Vào **Huấn luyện bộ nhớ** trước."
+        )
     elif n == 0:
       st.warning(f"Hoàn thành `{status.get('run_id')}` — không có kết quả hợp lệ.")
     else:
@@ -106,7 +130,7 @@ def render(embedded: bool = False):
   if not embedded:
     st.header("Grid Search")
 
-  st.info(format_settings_summary())
+  st.caption(format_settings_summary())
   if settings_changed_since_last_grid():
     st.warning("Cài đặt đã đổi — chạy grid để bổ sung combo mới (combo cũ được giữ lại).")
 

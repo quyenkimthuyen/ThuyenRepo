@@ -156,20 +156,18 @@ Mỗi tuần OOS: TRAIN 3 THÁNG → mine (+ KB) → trade 1 tuần
 
 ---
 
-## 6. Các trang GUI (theo quy trình trader)
+## 6. Các trang GUI (theo quy trình)
 
 | Nhóm | Trang | Mục đích |
 |------|-------|----------|
-| **Hàng ngày** | **Tổng quan** | KPI, gợi ý bước tiếp, điều hướng nhanh |
-| | **Paper Monitor** | Tín hiệu & lệnh tuần hiện tại |
-| **Nghiên cứu** | **Nghiên cứu** (hub) | Backtest · Grid Search · So ERA/epoch/train · Lưu & so sánh |
-| **KB** | **KB & Học** | Tạo profile, học epoch, backtest OOS nhanh |
-| **Phân tích** | **Risk** | Drawdown, streaks, risk of ruin |
-| | **Trade Journal** | Audit từng lệnh OOS |
-| | **Strategy** | Rules, genomes, DNA |
+| **Hàng ngày** | **Tổng quan** | Tiến độ 5 bước, KPI, Refresh data |
+| | **Giám sát paper** | Tín hiệu & lệnh tuần (theo Trade Model) |
+| **Thiết lập & học** | **① Cài đặt** | Train window · giai đoạn học · OOS |
+| | **② Học & tối ưu** | ① Huấn luyện KB → ② Grid Search → ③ Trade Models |
+| **Phân tích** | **Phân tích** | Risk · Nhật ký · Chiến lược (chọn Trade Model) |
 | **Khác** | **Hướng dẫn** | Tài liệu này |
 
-**Workspace** (sidebar): chọn KB profile + OOS một lần — mọi trang dùng chung.
+**Trade Model** (sidebar + trang Phân tích): chọn một model — Paper & Phân tích dùng chung.
 
 ---
 
@@ -275,7 +273,7 @@ GUI: **KB & Giai đoạn** · **Backtest Lab** · **Paper Monitor** — đều c
 | Profitable | Total R > 0 |
 | Tần suất | ~2 lệnh/tuần |
 
-Checklist hiển thị ở Command Center & Backtest Lab.
+Checklist hiển thị ở **Tổng quan** và **Phân tích → Risk**.
 
 ---
 
@@ -285,107 +283,43 @@ Checklist hiển thị ở Command Center & Backtest Lab.
 
 | Mục đích | Dùng gì |
 |----------|---------|
-| **Đánh giá strategy có đáng tin không** | KB **OFF** + spread/slippage |
-| **Cải thiện miner qua kinh nghiệm** | KB **ON** + profile đúng giai đoạn |
-| **Chống tự lừa mình** | Học giai đoạn **A** → test OOS giai đoạn **B** (khác nhau) |
+| **Đánh giá strategy** | Grid Search + so sánh combo theo Cài đặt |
+| **Cải thiện qua kinh nghiệm** | Huấn luyện KB theo giai đoạn → rồi mới Grid |
+| **Chống leakage** | Học giai đoạn **A** → kiểm chứng OOS giai đoạn **B** |
 
-> KB ON trên cùng giai đoạn đã học thường **đẹp hơn thực tế**. Luôn xác nhận bằng KB OFF hoặc OOS giai đoạn mới.
+### 5 bước trên GUI
 
-### Bước 1 — Chuẩn bị data
-
-**Trang:** **Tổng quan** → **Refresh data**
-
-- Cập nhật Dukascopy EUR/USD H1 (2022+)
-- Chỉ refresh khi cần — không refresh liên tục (chậm)
-
-### Bước 2 — Baseline (đường cơ sở)
-
-**Trang:** **Nghiên cứu** → tab **Backtest**
-
-```
-KB: OFF
-Spread: 1.0 pip · Slippage: 0.3 pip
-OOS: 2024-01-01 → 2024-12-31
-☑ Lưu vào Report Compare
-```
-
-Đây là **chuẩn vàng** — mọi cải thiện sau phải so với con số này.
-
-### Bước 3 — Học KB theo giai đoạn (trước OOS)
-
-**Trang:** **KB & Học** → tab **Học KB**
-
-```
-Profile: era_2022_2023
-Học:     2022-01-01 → 2023-12-31
-Epochs:  3–5 (đủ; không cần quá nhiều)
-```
-
-**Quy tắc:** `trained_to` phải **≤** `oos_from` (vd học đến 2023-12, test từ 2024-01).
-
-Theo dõi epoch: epoch 2–3 thường tốt nhất; epoch 4–5 có thể giảm (overfit in-sample).
-
-### Bước 4 — Backtest OOS với KB
-
-**Trang:** KB & Giai đoạn → tab **Backtest OOS**
-
-```
-Profile: era_2022_2023
-OOS:     2024-01-01 → 2024-12-31  (nút "Gợi ý")
-☑ Chạy thêm KB OFF để so sánh
-```
-
-Banner **xanh** = KB hợp lệ, không leakage. Cả hai bản tự lưu vào **Report Compare**.
-
-### Bước 5 — So sánh & quyết định
-
-**Trang:** Report Compare
-
-- Chọn 2+ báo cáo (KB OFF, KB 3 ep, KB 8 ep…)
-- Xem bảng metrics + biểu đồ Total R / WR% + equity overlay
-- Chỉ chấp nhận khi **Total R và DD** tốt hơn baseline KB OFF
-
-### Bước 6 — Kiểm tra sâu trước khi tin
-
-| Trang | Xem gì |
-|-------|--------|
-| **Backtest Lab** | Equity, drawdown, weekly log |
-| **Trade Journal** | 20–30 lệnh mẫu, LONG bias |
-| **Risk Dashboard** | DD, streak, risk of ruin |
-| **Strategy Inspector** | Rules/genomes đang dùng |
-| **Hold-out 12 tháng** | Forward test nghiêm ngặt (Backtest Lab) |
-| **Paper Monitor** | 3–6 tháng — so sánh tín hiệu với backtest |
+| Bước | Trang | Việc làm |
+|------|-------|----------|
+| 1 | **① Cài đặt** | Train 3/6/9T · giai đoạn học · vòng học · OOS |
+| 2 | **Học & tối ưu → ① Huấn luyện bộ nhớ** | Học KB đủ theo Cài đặt |
+| 3 | **Học & tối ưu → ② Grid Search** | Chạy combo → xếp hạng |
+| 4 | **Học & tối ưu → ③ Trade Models** | Tạo & chọn Trade Model |
+| 5 | **Giám sát paper** + **Phân tích** | Paper ≥3 tuần · Risk / Nhật ký / Chiến lược |
 
 Chỉ live **micro lot** khi paper khớp backtest.
 
 ### Mẹo tối ưu
 
-1. **Luôn bật spread/slippage** — kết quả không chi phí thường quá lạc quan.
-2. **KB theo era** — `era_2022_2023` test 2024; sau đó học `era_2022_2024` test 2025.
-3. **3–5 epoch đủ** — nhiều epoch hơn không luôn tốt hơn trên OOS.
-4. **Đừng chase WR 60%** trên một giai đoạn — WR ~40–45% với RR ~2.4 vẫn có thể profitable.
-5. **Mỗi thay đổi = 1 báo cáo** trong Report Compare.
-6. **KB OFF phải vẫn dương** trên ≥2 giai đoạn OOS khác nhau trước khi cân nhắc live.
+1. **Luôn bật spread/slippage** trong Cài đặt.
+2. **Đủ KB trước Grid** — thiếu giai đoạn/vòng học → Grid ra 0 combo.
+3. **3–5 vòng học** thường đủ; nhiều hơn dễ overfit.
+4. **Một Trade Model = một combo** — đổi Cài đặt rồi Grid lại chỉ bổ sung combo mới.
+5. **So sánh nâng cao** (giai đoạn / vòng / cửa sổ) nằm trong expander ở Học & tối ưu.
 
-### CLI nhanh (tương đương GUI)
+### CLI nhanh
 
 ```bash
-# 1. Baseline
+# Baseline
 python run_backtest.py --no-kb --oos-from 2024-01-01 --oos-to 2024-12-31 --spread 1.0 --slippage 0.3
 
-# 2. Học KB
+# Học KB
 python run_learning.py --kb-profile era_2022_2023 --from-date 2022-01-01 --until-date 2023-12-31 --epochs 3
 
-# 3. Test OOS với KB
-python run_backtest.py --kb-profile era_2022_2023 --oos-from 2024-01-01 --oos-to 2024-12-31 --spread 1.0 --slippage 0.3
+# Test OOS với KB
+python run_backtest.py --kb-profile era_2022_2023 --kb-epoch 2 \
+  --oos-from 2024-01-01 --oos-to 2024-12-31 --spread 1.0 --slippage 0.3
 ```
-
-### Ví dụ kết quả thực tế (OOS 2024, spread 1.0 / slip 0.3)
-
-| Chế độ | WR | Total R | Ghi chú |
-|--------|-----|---------|---------|
-| KB OFF | ~35.5% | ~+9.6R | Baseline khách quan |
-| KB ON (era_2022_2023, 8 ep) | ~44.3% | ~+38.4R | Cải thiện OOS nhưng cần xác nhận thêm giai đoạn khác |
 
 ---
 

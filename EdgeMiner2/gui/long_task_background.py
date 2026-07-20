@@ -84,10 +84,18 @@ def get_task_status() -> dict:
   state = load_job_state() or {}
   alive = _thread is not None and _thread.is_alive()
   status = state.get("status", "idle")
-  if status == "running" and not alive:
-    status = "interrupted"
   total = int(state.get("total") or 0)
   done = int(state.get("done") or 0)
+  if status == "running" and not alive:
+    # Restart giữa chừng: nếu đã xong hết step thì coi như completed.
+    if total > 0 and done >= total:
+      status = "completed"
+      state["status"] = "completed"
+      state["finished_at"] = state.get("finished_at") or _now_iso()
+      state["error"] = None
+      _save_state(state)
+    else:
+      status = "interrupted"
   pct = (done / total * 100) if total else 0
   jt = state.get("job_type") or ""
   return {
@@ -360,10 +368,38 @@ def ensure_task_worker_running():
     return
   if _thread is not None and _thread.is_alive():
     return
-  state["status"] = "interrupted"
-  state["finished_at"] = _now_iso()
-  state["error"] = "Server restart — chạy lại task."
+  total = int(state.get("total") or 0)
+  done = int(state.get("done") or 0)
+  if total > 0 and done >= total:
+    state["status"] = "completed"
+    state["finished_at"] = _now_iso()
+    state["error"] = None
+  else:
+    state["status"] = "interrupted"
+    state["finished_at"] = _now_iso()
+    state["error"] = "Server restart — chạy lại task."
   _save_state(state)
+
+
+def dismiss_task():
+  """Xóa banner task đã xong / bị gián đoạn / lỗi."""
+  state = load_job_state() or {}
+  _write_json(JOB_STATE_PATH, {
+    "status": "idle",
+    "job_type": None,
+    "job_id": None,
+    "label": None,
+    "params": {},
+    "total": 0,
+    "done": 0,
+    "progress_text": "",
+    "result": None,
+    "started_at": None,
+    "updated_at": _now_iso(),
+    "finished_at": None,
+    "error": None,
+    "dismissed_from": state.get("job_id"),
+  })
 
 
 def sync_completed_job_to_session():

@@ -7,6 +7,7 @@ import streamlit as st
 
 from gui.long_task_background import (
   cancel_task,
+  dismiss_task,
   get_task_status,
   is_task_running,
   sync_completed_job_to_session,
@@ -16,6 +17,12 @@ from gui.long_task_background import (
 @st.fragment(run_every=timedelta(seconds=3))
 def _task_progress_fragment():
   if is_task_running():
+    st.rerun()
+
+
+def _dismiss_button(key_prefix: str):
+  if st.button("✕ Bỏ qua", key=f"{key_prefix}_dismiss"):
+    dismiss_task()
     st.rerun()
 
 
@@ -56,16 +63,32 @@ def render_task_status(
     extra = ""
     if status["job_type"] == "backtest" and res.get("total_r") is not None:
       extra = f" · **{res['total_r']}R**"
-    st.success(f"✅ Hoàn thành **{status['job_label']}**{extra}")
+    c1, c2 = st.columns([5, 1])
+    with c1:
+      st.success(f"✅ Hoàn thành **{status['job_label']}**{extra}")
+    with c2:
+      _dismiss_button(key_prefix)
   elif status["status"] == "cancelled":
-    st.warning(f"Đã hủy — {status['job_label']} ({status['done']}/{status['total']}).")
+    c1, c2 = st.columns([5, 1])
+    with c1:
+      st.warning(f"Đã hủy — {status['job_label']} ({status['done']}/{status['total']}).")
+    with c2:
+      _dismiss_button(key_prefix)
   elif status["status"] == "interrupted":
-    st.warning(
-      f"⚠️ Task bị gián đoạn (restart server?) — {status['job_label']}. "
-      "Chạy lại nếu cần."
-    )
+    c1, c2 = st.columns([5, 1])
+    with c1:
+      st.warning(
+        f"⚠️ Task bị gián đoạn (restart server) — **{status['job_label']}** "
+        f"({status['done']}/{status['total']}). Chạy lại nếu cần."
+      )
+    with c2:
+      _dismiss_button(key_prefix)
   elif status["status"] == "error":
-    st.error(f"Lỗi **{status['job_label']}**: {status.get('error') or 'unknown'}")
+    c1, c2 = st.columns([5, 1])
+    with c1:
+      st.error(f"Lỗi **{status['job_label']}**: {status.get('error') or 'unknown'}")
+    with c2:
+      _dismiss_button(key_prefix)
 
   return status
 

@@ -52,28 +52,5 @@ render_workspace_strip = render_profile_strip
 
 
 def render_workflow_cards():
-  """Thẻ điều hướng nhanh trên Tổng quan."""
-  from gui.services import load_backtest_report
-  from gui.trade_model import get_active_trade_model
-
-  m = get_active_trade_model()
-  report = load_backtest_report()
-  has_report = bool(report and report_matches_workspace(report))
-
-  cards = [
-    ("📡", "Giám sát paper", "paper", "Sau Trade Model"),
-    ("🧠", "Học & tối ưu", "learning", "① KB → ② Grid → ③ Model"),
-    ("⚙️", "Cài đặt", "settings", "Train · giai đoạn · OOS"),
-    ("📊", "Phân tích", "analysis", "Risk" if has_report else "Cần Trade Model"),
-  ]
-  cols = st.columns(len(cards))
-  for col, (icon, title, page_key, sub) in zip(cols, cards):
-    with col:
-      st.markdown(f"##### {icon} {title}")
-      st.caption(sub)
-      if st.button("Mở", key=f"wf_{page_key}", use_container_width=True):
-        st.session_state["nav_page"] = page_key
-        if page_key == "learning":
-          from gui.views.learning_hub import _default_learning_tab
-          st.session_state["learning_tab"] = _default_learning_tab()
-        st.rerun()
+  """Deprecated — Tổng quan dùng nút điều hướng riêng."""
+  return

@@ -7,58 +7,21 @@ import streamlit as st
 from analytics import equity_series, trades_json_to_df
 from config import DEFAULT_MAX_WEEKLY_LOSS_R, DEFAULT_RISK_PCT_PER_TRADE
 from strategy import risk_of_ruin_approx
+from gui.analysis_support import get_matching_analysis_report, render_report_required_panel
+from gui.glossary import HELP, METRIC_LABELS
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
-from gui.services import BACKTEST_REPORT, load_backtest_report, load_json
-from gui.glossary import HELP, METRIC_LABELS, format_epoch
-from gui.workspace import get_active_workspace, profile_mismatch_details, report_matches_profile
-
-
-def _load_risk_report() -> dict | None:
-  """Ưu tiên báo cáo khớp profile; không dùng backtest cũ nhầm profile."""
-  report = load_backtest_report()
-  if report and report_matches_profile(report):
-    return report
-  stale = st.session_state.get("backtest_report")
-  if stale and report_matches_profile(stale):
-    return stale
-  return None
-
-
-def _stale_report_hint() -> dict | None:
-  """Báo cáo có trong file/session nhưng không khớp profile — để giải thích."""
-  for src in (st.session_state.get("backtest_report"), load_json(BACKTEST_REPORT)):
-    if src and not report_matches_profile(src):
-      return src
-  return None
 
 
 def render(embedded: bool = False):
   if not embedded:
     render_page_header(ALL_ITEMS["analysis"])
 
-  report = _load_risk_report()
-  stale = _stale_report_hint() if not report else None
-
-  if not report:
-    ws = get_active_workspace()
-    if stale:
-      o = stale.get("overall_oos") or {}
-      st.warning(
-        f"Có backtest cũ **{o.get('total_r', '—')}R** nhưng **không khớp** trade model hiện tại."
-      )
-      diffs = profile_mismatch_details(stale, ws)
-      if diffs:
-        st.markdown("Khác biệt:")
-        for d in diffs:
-          st.markdown(f"- {d}")
-    else:
-      st.info("Chưa có backtest cho trade model này — tạo từ **Grid Search**.")
-    if not embedded and st.button("▶ Mở Grid Search", type="primary", key="risk_go_gs"):
-      st.session_state["nav_page"] = "learning"
-      st.session_state["learning_tab"] = "grid"
-      st.rerun()
+  if render_report_required_panel(key_prefix="risk_rep"):
     return
+
+  report = get_matching_analysis_report()
+  assert report is not None
 
   cfg = report.get("config", {})
   o = report["overall_oos"]

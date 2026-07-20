@@ -4,6 +4,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+# Windows consoles often use cp1252 — avoid UnicodeEncodeError on Vietnamese logs.
+for _stream in (sys.stdout, sys.stderr):
+  if hasattr(_stream, "reconfigure"):
+    try:
+      _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+      pass
+
 import streamlit as st
 
 ROOT = Path(__file__).resolve().parent.parent

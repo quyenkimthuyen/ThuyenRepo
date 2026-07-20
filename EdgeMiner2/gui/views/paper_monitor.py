@@ -383,7 +383,7 @@ def _resolve_monitor_state(monitor_params: dict, *, manual_refresh: bool) -> dic
   if manual_refresh:
     with st.spinner("Đang tải giá & tính lại..."):
       if is_background_enabled():
-        state = run_cycle_now(load_config())
+        state = run_cycle_now(load_config(), force_refresh=True)
       else:
         state = get_paper_monitor(**monitor_params)
     st.session_state["monitor_state"] = state
@@ -632,31 +632,25 @@ def render():
 
   render_page_header(ALL_ITEMS["paper"])
 
+  from gui.live_workflow import assess_workflow, load_workflow_state, mark_paper_started
+  from gui.trade_model import get_model_run_params, get_active_trade_model
   from gui.workflow_ui import render_workflow_banner
-  from gui.live_workflow import assess_workflow, load_workflow_state
 
   wf = assess_workflow()
-  if wf["current_step"] >= 4 or wf["steps"][3]["done"]:
+  if wf["current_step"] < 4 and not wf["steps"][3]["done"]:
+    st.warning("Hoàn thành ① KB → ② Grid → ③ Trade Model trước khi tin vào paper.")
+  else:
     render_workflow_banner(page_step=4)
     state = load_workflow_state()
     if not state.get("paper_started_at"):
       if st.button("📌 Ghi nhận bắt đầu paper", key="pm_wf_start"):
-        from gui.live_workflow import mark_paper_started
         mark_paper_started()
         st.toast("Đã ghi nhận — theo dõi ≥3 tuần trước khi live")
         st.rerun()
-  elif wf["current_step"] < 4:
-    st.warning(
-      "**Quy trình:** Hoàn thành bước 1–3 (Huấn luyện KB → Grid Search → Trade Model) trên **Tổng quan** "
-      "trước khi tin vào paper."
-    )
 
-  from gui.trade_model import get_model_run_params, format_model_oneline, get_active_trade_model
-  m = get_active_trade_model()
-  if m:
-    st.info(f"📦 Paper dùng trade model: **{format_model_oneline(m)}**")
-  else:
-    st.warning("Chưa chọn trade model — paper dùng cài đặt mặc định.")
+  if not get_active_trade_model():
+    st.warning("Chưa chọn Trade Model — paper dùng cài đặt mặc định.")
+
   params = get_model_run_params()
   _init_pm_widget_state()
 

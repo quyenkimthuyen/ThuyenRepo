@@ -29,8 +29,7 @@ def _render_subview(module):
 def render():
   render_page_header(ALL_ITEMS["analysis"], show_profile=False)
 
-  st.markdown("Chọn **Trade Model** — mọi phân tích dựa trên backtest của model đó.")
-  model = render_model_picker(key="analysis_tm_pick")
+  model = render_model_picker(key="analysis_tm_pick", label="Trade Model")
   if not model:
     return
 
@@ -40,11 +39,12 @@ def render():
   tab_idx = TAB_KEYS.index(default_tab)
 
   selected_label = st.radio(
-    "Tab",
+    "Phân tích",
     [TAB_LABELS[k] for k in TAB_KEYS],
     horizontal=True,
     index=tab_idx,
     key="analysis_tab_radio",
+    label_visibility="collapsed",
   )
   selected = TAB_KEYS[[TAB_LABELS[k] for k in TAB_KEYS].index(selected_label)]
   st.session_state["analysis_tab"] = selected

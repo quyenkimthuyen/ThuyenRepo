@@ -9,7 +9,6 @@ from gui.views import grid_search, kb_era_hub
 from gui.views.compare_sections import render_era_compare, render_epoch_sweep, render_train_window
 from gui.views import trade_models_view
 
-# Thứ tự bắt buộc — không đổi
 CORE_TAB_KEYS = ["train_kb", "grid", "models"]
 CORE_TAB_LABELS = {
   "train_kb": "① Huấn luyện bộ nhớ",
@@ -25,7 +24,6 @@ ADVANCED_TAB_LABELS = {
 }
 
 TAB_KEYS = CORE_TAB_KEYS + ADVANCED_TAB_KEYS
-TAB_LABELS = {**CORE_TAB_LABELS, **ADVANCED_TAB_LABELS}
 
 
 def _default_learning_tab() -> str:
@@ -54,13 +52,12 @@ def _render_workflow_strip():
   kb_done = r["kb_complete"]
 
   s1 = "✅" if kb_done else "▶️"
-  s2 = "✅" if has_grid else "▶️" if kb_done else "○"
-  s3 = "✅" if has_model else "▶️" if has_grid else "○"
+  s2 = "✅" if has_grid else ("▶️" if kb_done else "○")
+  s3 = "✅" if has_model else ("▶️" if has_grid else "○")
 
-  st.markdown(
-    f"{s1} **① Huấn luyện bộ nhớ** ({r['ready_combos']}/{r['expected_combos']} combo sẵn sàng)  \n"
-    f"{s2} **② Grid Search**  \n"
-    f"{s3} **③ Trade Model** → Paper & Phân tích"
+  st.caption(
+    f"{s1} ① KB ({r['ready_combos']}/{r['expected_combos']}) · "
+    f"{s2} ② Grid · {s3} ③ Model"
   )
 
 
@@ -86,16 +83,7 @@ def _tab_button(label: str, tab_key: str, *, active: bool, key: str):
 
 def render():
   render_page_header(ALL_ITEMS["learning"], show_profile=False)
-
-  from gui.app_settings import format_settings_summary, get_settings
-  st.caption(format_settings_summary(get_settings()))
-
   _render_workflow_strip()
-
-  st.markdown(
-    "**Làm lần lượt:** huấn luyện 3 giai đoạn KB → Grid Search → tạo Trade Model. "
-    "Không chạy Grid Search trước khi bước ① xong."
-  )
 
   from gui.long_task_ui import render_task_status
   render_task_status(key_prefix="learning_hub", compact=True)
@@ -105,7 +93,6 @@ def render():
     pick = _default_learning_tab()
   st.session_state["learning_tab"] = pick
 
-  st.markdown("**Quy trình chính**")
   c1, c2, c3 = st.columns(3)
   for col, tab_key in zip((c1, c2, c3), CORE_TAB_KEYS):
     with col:
@@ -116,16 +103,18 @@ def render():
         key=f"learning_tab_{tab_key}",
       )
 
-  st.markdown("**So sánh**")
-  c4, c5, c6 = st.columns(3)
-  for col, tab_key in zip((c4, c5, c6), ADVANCED_TAB_KEYS):
-    with col:
-      _tab_button(
-        ADVANCED_TAB_LABELS[tab_key],
-        tab_key,
-        active=(pick == tab_key),
-        key=f"learning_tab_{tab_key}",
-      )
+  with st.expander("So sánh nâng cao", expanded=pick in ADVANCED_TAB_KEYS):
+    adv = st.radio(
+      "Loại so sánh",
+      ADVANCED_TAB_KEYS,
+      format_func=lambda k: ADVANCED_TAB_LABELS[k],
+      horizontal=True,
+      index=ADVANCED_TAB_KEYS.index(pick) if pick in ADVANCED_TAB_KEYS else 0,
+      key="learning_adv_radio",
+    )
+    if st.button("Mở so sánh này", key="learning_open_adv"):
+      st.session_state["learning_tab"] = adv
+      st.rerun()
 
   selected = st.session_state.get("learning_tab", pick)
 

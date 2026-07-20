@@ -11,8 +11,7 @@ from analytics import (
 from gui.components import warn_long_bias, warn_no_costs
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
-from gui.services import get_ohlc_df, load_backtest_report
-from gui.workspace import report_matches_workspace
+from gui.services import get_ohlc_df
 
 
 def _trade_chart(window, trade_row) -> go.Figure | None:
@@ -44,15 +43,17 @@ def render(embedded: bool = False):
   if not embedded:
     render_page_header(ALL_ITEMS["analysis"])
 
-  report = st.session_state.get("backtest_report") or load_backtest_report()
+  from gui.analysis_support import get_matching_analysis_report, render_report_required_panel
+
+  if render_report_required_panel(key_prefix="tj_rep"):
+    return
+
+  report = get_matching_analysis_report()
   warn_no_costs()
 
   if not report or not report.get("trades"):
-    st.info("Chưa có lệnh — tạo trade model từ Grid Search.")
+    st.info("Báo cáo chưa có danh sách lệnh.")
     return
-
-  if not report_matches_workspace(report):
-    st.warning("Journal đang hiển thị báo cáo **không khớp** trade model.")
 
   trades_df = trades_json_to_df(report["trades"])
 

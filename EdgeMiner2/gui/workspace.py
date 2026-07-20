@@ -176,8 +176,12 @@ def report_matches_profile(report: dict, ws: dict | None = None) -> bool:
 
 
 def report_matches_workspace(report: dict, ws: dict | None = None) -> bool:
-  from gui.trade_model import report_matches_model
-  return report_matches_model(report)
+  """True nếu config báo cáo khớp workspace (không gọi report_matches_model — tránh vòng lặp)."""
+  ws = ws or get_active_workspace()
+  cfg = report.get("config") or {}
+  if cfg.get("trade_model_id") and ws.get("trade_model_id"):
+    return cfg["trade_model_id"] == ws["trade_model_id"]
+  return not profile_mismatch_details(report, ws)
 
 
 def load_report_for_workspace() -> dict | None:

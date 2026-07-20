@@ -199,6 +199,7 @@ def create_trade_model(
   label: str | None = None,
   report: dict | None = None,
   set_active: bool = True,
+  build_report: bool = True,
 ) -> dict:
   fields = model_from_grid_row(row, run_id=run_id, label=label)
   name = fields.pop("label")
@@ -215,6 +216,15 @@ def create_trade_model(
     save_model_report(model["id"], report)
   if set_active:
     set_active_trade_model(model["id"])
+  # Grid chỉ có KPI — tự xếp hàng tạo báo cáo đầy đủ cho Phân tích.
+  if build_report and not report:
+    try:
+      from gui.analysis_support import start_model_report_job
+      from gui.long_task_background import is_task_running
+      if not is_task_running():
+        start_model_report_job(model)
+    except Exception:
+      pass
   return model
 
 

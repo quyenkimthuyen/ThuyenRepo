@@ -124,12 +124,20 @@ def _update_config_meta(**fields):
     _write_json(CONFIG_PATH, cfg)
 
 
-def _run_cycle(cfg: dict) -> dict:
+def _run_cycle(cfg: dict, *, force_refresh: bool = False) -> dict:
   from config import DEFAULT_START_DATE
   from data_loader import download_eurusd_h1
   from gui.services import get_paper_monitor
 
-  download_eurusd_h1(DEFAULT_START_DATE, force_refresh=True)
+  # Background: chỉ tải lại khi cache cũ hơn ~1h. Manual: cố tải mới, lỗi thì dùng cache.
+  interval = max(1, int(cfg.get("interval_minutes") or 15))
+  max_age = max(1.0, interval / 60.0)
+  download_eurusd_h1(
+    DEFAULT_START_DATE,
+    force_refresh=force_refresh,
+    allow_stale_on_error=True,
+    max_cache_age_hours=None if force_refresh else max_age,
+  )
   state = get_paper_monitor(
     use_learning=bool(cfg.get("use_learning")),
     kb_profile=cfg.get("kb_profile") or "default",
@@ -143,13 +151,13 @@ def _run_cycle(cfg: dict) -> dict:
   return state
 
 
-def run_cycle_now(cfg: dict | None = None) -> dict:
+def run_cycle_now(cfg: dict | None = None, *, force_refresh: bool = False) -> dict:
   """Chạy một vòng cập nhật ngay (đồng bộ)."""
   from datetime import timedelta
 
   cfg = cfg or load_config()
   try:
-    state = _run_cycle(cfg)
+    state = _run_cycle(cfg, force_refresh=force_refresh)
     interval = int(cfg.get("interval_minutes") or 15)
     nxt = (datetime.now(timezone.utc) + timedelta(minutes=interval)).astimezone()
     _update_config_meta(

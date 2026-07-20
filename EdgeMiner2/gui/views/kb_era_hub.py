@@ -261,27 +261,8 @@ def render_training_only():
 
 
 def render():
-  from gui.page_chrome import render_page_header
-  from gui.navigation import ALL_ITEMS
-
-  render_page_header(ALL_ITEMS["kb"], show_profile=True)
-
-  st.info(
-    "**Quy trình:** (1) **Huấn luyện bộ nhớ** — tạo profile theo giai đoạn · "
-    "(2) **Nghiên cứu** — kiểm chứng backtest / tìm tham số / so sánh."
-  )
-
-  tab_names = ["📋 Danh sách profile", "🧠 Huấn luyện", "🔗 Ghép giai đoạn"]
-  tab_idx = st.session_state.get("hub_tab", 0)
-  if tab_idx >= len(tab_names):
-    tab_idx = 0
-  selected = st.radio("Bước", tab_names, horizontal=True, index=tab_idx, key="hub_tab_radio")
-  st.session_state["hub_tab"] = tab_names.index(selected)
-
-  st.divider()
-  if selected == tab_names[0]:
-    _tab_profiles()
-  elif selected == tab_names[1]:
-    _tab_learn()
-  else:
-    _tab_merge()
+  """Legacy full page — chuyển sang Learning hub."""
+  import streamlit as st
+  st.session_state["nav_page"] = "learning"
+  st.session_state["learning_tab"] = "train_kb"
+  st.rerun()
