@@ -416,8 +416,11 @@ function renderCurrentQuestion() {
 
   if (type === 'passage') {
     const isReadingLong = state.section === 'reading' && (part === 6 || part === 7);
+    const isListeningStudy = state.mode === 'study' && state.section === 'listening';
     $('.main-content').classList.toggle('reading-wide', isReadingLong);
+    $('.main-content').classList.toggle('listening-wide', isListeningStudy);
     $('.practice-layout').classList.toggle('reading-layout', isReadingLong);
+    $('.practice-layout').classList.toggle('listening-layout', isListeningStudy);
     const html = state.section === 'reading'
       ? renderReadingPassageGroup(passage, part)
       : renderListeningPassageGroup(passage, part);
@@ -432,20 +435,34 @@ function renderCurrentQuestion() {
     return;
   }
 
-  $('.main-content').classList.remove('reading-wide');
+  $('.main-content').classList.remove('reading-wide', 'listening-wide');
+  $('.practice-layout').classList.remove('listening-layout');
 
   let html = `<div class="question-card">`;
   html += `<div class="q-header"><span class="q-number">Câu ${qId}</span><span class="q-part-label">Part ${part}</span></div>`;
-  html += renderListeningStudyMeta(data, part);
 
   if (part === 1) {
     const imgPath = assetUrl(`images/test${String(state.testId).padStart(2, '0')}/q${String(qId).padStart(2, '0')}.png`);
     html += `<div class="q-image"><img src="${imgPath}" alt="Q${qId}" onerror="this.parentElement.innerHTML='<div class=\\'q-image-placeholder\\'>Ảnh câu ${qId}</div>'"></div>`;
     html += `<p class="q-prompt">Chọn câu mô tả đúng nhất bức tranh.</p>`;
-    html += renderOptions(data.options, qId);
+    if (state.mode === 'study') {
+      if (cfg().hasAccent && data.accent) {
+        html += `<div class="study-meta"><span class="accent-tag">🎙 ${esc(data.accent)}</span></div>`;
+      }
+      html += renderPart1StudyDialogue(data, qId);
+    } else {
+      html += renderOptions(data.options, qId);
+    }
   } else if (part === 2) {
-    html += `<p class="q-prompt">${esc(data.question)}</p>`;
-    html += renderOptions(data.options, qId);
+    if (state.mode === 'study') {
+      if (cfg().hasAccent && data.accent) {
+        html += `<div class="study-meta"><span class="accent-tag">🎙 ${esc(data.accent)}</span></div>`;
+      }
+      html += renderPart2StudyDialogue(data, qId);
+    } else {
+      html += `<p class="q-prompt">${esc(data.question)}</p>`;
+      html += renderOptions(data.options, qId);
+    }
   } else if (part === 5) {
     html += `<p class="q-prompt sentence-block">${highlightBlank(data.sentence)}</p>`;
     html += `<p class="exam-hint">Chọn từ/cụm từ phù hợp nhất điền vào chỗ trống.</p>`;
@@ -566,25 +583,36 @@ function renderListeningPassageGroup(passage, part) {
   if (!passage) return '<div class="question-card"><p>Không tìm thấy đoạn hội thoại.</p></div>';
   const qId = state.currentQ;
   const currentQ = (passage.questions || []).find(q => q.id === qId);
-  const showTranscript = state.mode === 'study';
+  const isStudy = state.mode === 'study';
+
+  if (isStudy) {
+    const pairs = parseDialoguePairs(passage.transcript, passage.translation);
+    let html = `<div class="listening-split">`;
+    html += `<aside class="listening-dialogue-panel">`;
+    html += `<div class="listening-dialogue-header">
+      <span>🎧 ${hasSpeakerMarkers(passage.transcript) ? 'Hội thoại' : 'Bài nói'}</span>
+      <span class="listening-dialogue-meta">Câu ${passage.questionIds.join(' – ')} · Part ${part}</span>
+    </div>`;
+    if (cfg().hasAccent && passage.accent) {
+      html += `<div class="listening-dialogue-accent"><span class="accent-tag">🎙 ${esc(passage.accent)}</span></div>`;
+    }
+    html += `<div class="listening-dialogue-body">${renderDialogueTurns(pairs)}</div>`;
+    html += `</aside>`;
+
+    html += `<div class="listening-questions-panel">`;
+    html += `<div class="listening-questions-header">Câu ${qId}</div>`;
+    if (currentQ) {
+      if (currentQ.question) html += `<p class="q-prompt">${esc(currentQ.question)}</p>`;
+      if (currentQ.translation) html += `<p class="q-prompt-vi">${esc(currentQ.translation)}</p>`;
+      html += renderOptions(currentQ.options || {}, qId);
+    }
+    html += `</div></div>`;
+    return html;
+  }
 
   let html = `<div class="question-card">`;
   html += `<div class="q-header"><span class="q-number">Câu ${qId}</span><span class="q-part-label">Part ${part} · Nhóm ${passage.questionIds.join('–')}</span></div>`;
-
-  if (cfg().hasAccent && state.mode === 'study' && passage.accent) {
-    html += `<div class="study-meta"><span class="accent-tag">🎙 ${esc(passage.accent)}</span></div>`;
-  }
-
-  if (showTranscript) {
-    html += `<div class="passage-block">${formatTranscript(passage.transcript)}</div>`;
-  } else if (state.mode === 'exam') {
-    html += `<p class="exam-hint">Nghe đoạn hội thoại / bài nói và trả lời câu hỏi.</p>`;
-  }
-
-  if (state.mode === 'study' && passage.translation) {
-    html += `<div class="passage-block passage-block--vi">${esc(passage.translation)}</div>`;
-  }
-
+  html += `<p class="exam-hint">Nghe đoạn hội thoại / bài nói và trả lời câu hỏi.</p>`;
   if (currentQ) {
     if (currentQ.question) html += `<p class="q-prompt">${esc(currentQ.question)}</p>`;
     html += renderOptions(currentQ.options || {}, qId);
@@ -619,9 +647,165 @@ function bindNavButtons(container) {
   });
 }
 
-function formatTranscript(text) {
-  if (!text) return '';
-  return esc(text).replace(/^(W\d?):/gm, '<strong>$1:</strong>').replace(/^(M):/gm, '<strong>M:</strong>');
+function normalizeDialogueText(text) {
+  return (text || '')
+    .replace(/\u0007/g, ' ')
+    .replace(/\t+/g, ' ')
+    .replace(/\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function hasSpeakerMarkers(text) {
+  return /(?:^|\s)(W\d*|M\d*|M|W)\s*:/i.test(text || '');
+}
+
+function parseSpeakerTurns(text) {
+  const cleaned = normalizeDialogueText(text);
+  if (!cleaned) return [];
+  if (!hasSpeakerMarkers(cleaned)) {
+    return [{ speaker: null, text: cleaned }];
+  }
+
+  const turns = [];
+  const re = /(W\d*|M\d*|M|W)\s*:\s*/gi;
+  const matches = [];
+  let match;
+  while ((match = re.exec(cleaned)) !== null) {
+    matches.push({
+      speaker: match[1].toUpperCase().replace(/\d+$/, ''),
+      end: match.index + match[0].length,
+      index: match.index,
+    });
+  }
+  for (let i = 0; i < matches.length; i++) {
+    const start = matches[i].end;
+    const end = i + 1 < matches.length ? matches[i + 1].index : cleaned.length;
+    turns.push({ speaker: matches[i].speaker, text: cleaned.slice(start, end).trim() });
+  }
+  return turns;
+}
+
+function parseDialoguePairs(transcript, translation) {
+  const enTurns = parseSpeakerTurns(transcript);
+  const viTurns = translation && hasSpeakerMarkers(translation)
+    ? parseSpeakerTurns(translation)
+    : (translation ? [{ speaker: null, text: normalizeDialogueText(translation) }] : []);
+
+  return enTurns.map((en, i) => ({
+    speaker: en.speaker,
+    en: en.text,
+    vi: viTurns[i]?.text || (viTurns.length === 1 && enTurns.length === 1 ? viTurns[0].text : ''),
+  }));
+}
+
+function speakerClass(speaker) {
+  if (!speaker) return 'dialogue-turn--narrator';
+  return speaker.startsWith('W') ? 'dialogue-turn--w' : 'dialogue-turn--m';
+}
+
+function speakerLabel(speaker) {
+  if (!speaker) return '•';
+  return speaker.charAt(0);
+}
+
+function renderDialogueTurns(pairs) {
+  if (!pairs.length) return '<p class="exam-hint">Transcript chưa có.</p>';
+  return `<div class="dialogue-list">${pairs.map(turn => `
+    <div class="dialogue-turn ${speakerClass(turn.speaker)}">
+      <span class="dialogue-speaker" title="${turn.speaker === 'W' ? 'Woman' : turn.speaker === 'M' ? 'Man' : 'Speaker'}">${esc(speakerLabel(turn.speaker))}</span>
+      <div class="dialogue-lines">
+        <p class="dialogue-en">${esc(turn.en)}</p>
+        ${turn.vi ? `<p class="dialogue-vi">${esc(turn.vi)}</p>` : ''}
+      </div>
+    </div>
+  `).join('')}</div>`;
+}
+
+function splitOptionsTranslation(options, translation) {
+  const letters = Object.keys(options || {}).sort();
+  const result = {};
+  if (!translation) return result;
+  const sentences = translation.split(/(?<=[.!?…])\s+/).map(s => s.trim()).filter(Boolean);
+  if (sentences.length === letters.length) {
+    letters.forEach((letter, i) => { result[letter] = sentences[i]; });
+  }
+  return result;
+}
+
+function splitPart2Translation(question, options, translation) {
+  const letters = Object.keys(options || {}).sort();
+  const result = { questionVi: '', optionsVi: {}, sharedVi: '' };
+  if (!translation) return result;
+
+  const qEnd = translation.search(/[?？]/);
+  if (qEnd >= 0) {
+    result.questionVi = translation.slice(0, qEnd + 1).trim();
+    const rest = translation.slice(qEnd + 1).trim();
+    const sentences = rest.split(/(?<=[.!?…])\s+/).map(s => s.trim()).filter(Boolean);
+    if (sentences.length === letters.length) {
+      letters.forEach((letter, i) => { result.optionsVi[letter] = sentences[i]; });
+    } else if (rest) {
+      result.sharedVi = rest;
+    }
+  } else {
+    result.questionVi = translation;
+  }
+  return result;
+}
+
+function renderPart1StudyDialogue(data, qId) {
+  const letters = Object.keys(data.options || {}).sort();
+  const optionsVi = splitOptionsTranslation(data.options, data.translation);
+  const correct = getCorrectAnswer(qId);
+
+  let html = '<div class="dialogue-list dialogue-list--part1">';
+  for (const letter of letters) {
+    const isCorrect = letter === correct;
+    html += `<div class="dialogue-turn dialogue-turn--opt${isCorrect ? ' dialogue-turn--correct' : ''}">
+      <span class="dialogue-speaker">${letter}</span>
+      <div class="dialogue-lines">
+        <p class="dialogue-en">${esc(data.options[letter])}</p>
+        ${optionsVi[letter] ? `<p class="dialogue-vi">${esc(optionsVi[letter])}</p>` : ''}
+      </div>
+    </div>`;
+  }
+  html += '</div>';
+  if (correct) html += `<p class="answer-badge">Đáp án đúng: <strong>${correct}</strong></p>`;
+  return html;
+}
+
+function renderPart2StudyDialogue(data, qId) {
+  const letters = Object.keys(data.options || {}).sort();
+  const { questionVi, optionsVi, sharedVi } = splitPart2Translation(data.question, data.options, data.translation);
+  const correct = getCorrectAnswer(qId);
+
+  let html = '<div class="dialogue-list dialogue-list--part2">';
+  html += `<div class="dialogue-turn dialogue-turn--q">
+    <span class="dialogue-speaker">?</span>
+    <div class="dialogue-lines">
+      <p class="dialogue-en">${esc(data.question)}</p>
+      ${questionVi ? `<p class="dialogue-vi">${esc(questionVi)}</p>` : ''}
+    </div>
+  </div>`;
+
+  for (const letter of letters) {
+    const isCorrect = letter === correct;
+    html += `<div class="dialogue-turn dialogue-turn--opt${isCorrect ? ' dialogue-turn--correct' : ''}">
+      <span class="dialogue-speaker">${letter}</span>
+      <div class="dialogue-lines">
+        <p class="dialogue-en">${esc(data.options[letter])}</p>
+        ${optionsVi[letter] ? `<p class="dialogue-vi">${esc(optionsVi[letter])}</p>` : ''}
+        ${!optionsVi[letter] && sharedVi && letter === letters[0] ? `<p class="dialogue-vi">${esc(sharedVi)}</p>` : ''}
+      </div>
+    </div>`;
+  }
+
+  html += '</div>';
+  if (correct) {
+    html += `<p class="answer-badge">Đáp án đúng: <strong>${correct}</strong></p>`;
+  }
+  return html;
 }
 
 function renderOptions(options, qId) {
@@ -655,28 +839,6 @@ function bindOptionClicks(container) {
       renderCurrentQuestion();
     });
   });
-}
-
-function renderListeningStudyMeta(data, part) {
-  if (state.mode !== 'study' || state.section !== 'listening' || part > 2 || !data) return '';
-
-  let html = '';
-  if (cfg().hasAccent && data.accent) {
-    html += `<div class="study-meta"><span class="accent-tag">🎙 ${esc(data.accent)}</span></div>`;
-  }
-  if (part === 1) {
-    html += `<div class="passage-block">${esc(formatPart1Transcript(data))}</div>`;
-  } else if (part === 2) {
-    html += `<div class="passage-block">${esc(data.question)}</div>`;
-  }
-  if (data.translation) {
-    html += `<div class="passage-block passage-block--vi">${esc(data.translation)}</div>`;
-  }
-  return html;
-}
-
-function formatPart1Transcript(q) {
-  return Object.entries(q.options || {}).map(([k, v]) => `(${k}) ${v}`).join('\n');
 }
 
 function esc(str) {
