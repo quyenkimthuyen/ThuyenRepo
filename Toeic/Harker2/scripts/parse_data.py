@@ -78,7 +78,46 @@ def strip_non_english(s: str) -> str:
             continue
         if line:
             lines.append(line)
-    return "\n".join(lines)
+    return strip_pdf_page_markers("\n".join(lines))
+
+
+_SEQ_1_10_NL = r"1\n2\n3\n4\n5\n6\n7\n8\n9\n10"
+_SEQ_1_10_SP = r"1\s+2\s+3\s+4\s+5\s+6\s+7\s+8\s+9\s+10"
+_TEST_WORD = r"(?:TEST|KIỂM TRA|BÀI KIỂM TRA|THỬ NGHIỆM|Năm THỬ|THỬ)"
+_1000 = r"1000\s*2"
+
+PDF_MARKER_PATTERNS = [
+    # multiline: page, 1000 2, ., 1-10, TEST
+    rf"\n\d{{1,2}}\n{_1000}\n\.\n{_SEQ_1_10_NL}\n{_TEST_WORD}\b",
+    rf"\n{_1000}\n\.\n{_SEQ_1_10_NL}\n{_TEST_WORD}\b",
+    # multiline: page, 1-10, TEST, 1000 2, .
+    rf"\n\d{{1,2}}\n{_SEQ_1_10_NL}\n{_TEST_WORD}\b\n{_1000}\n\.",
+    rf"\n{_SEQ_1_10_NL}\n{_TEST_WORD}\b\n{_1000}\n\.",
+    # multiline: page, 1000 2, ., TEST, 1-10
+    rf"\n\d{{1,2}}\n{_1000}\n\.\n{_TEST_WORD}\b\n{_SEQ_1_10_NL}",
+    rf"\n{_1000}\n\.\n{_TEST_WORD}\b\n{_SEQ_1_10_NL}",
+    # partial footer at end of passage
+    rf"\n\d{{1,2}}\n{_1000}\n\.",
+    rf"\n{_1000}\n\.",
+    # inline (translations): page 1000 2 . 1-10 TEST
+    rf"(?:\s\d{{1,2}})?\s+{_1000}\s*\.?\s+{_SEQ_1_10_SP}(?:\s+\w+)*\s+{_TEST_WORD}\b",
+    # inline: page 1-10 TEST 1000 2 .
+    rf"\s\d{{1,2}}\s+{_SEQ_1_10_SP}(?:\s+\w+)*\s+{_TEST_WORD}\b\s+{_1000}\s*\.?",
+    # inline: page 1000 2 . (partial, may sit inside a sentence)
+    rf"\s\d{{1,2}}\s+{_1000}\s*\.?",
+    # standalone at start
+    rf"^{_1000}\s*\.?\s*",
+]
+
+
+def strip_pdf_page_markers(s: str) -> str:
+    """Remove PDF footer circle markers (page num, 1000 2, 1-10, TEST)."""
+    if not s:
+        return ""
+    for pattern in PDF_MARKER_PATTERNS:
+        s = re.sub(pattern, "", s, flags=re.IGNORECASE)
+    s = re.sub(r"\n{3,}", "\n\n", s)
+    return s.strip()
 
 
 def parse_accent(line: str) -> str:
