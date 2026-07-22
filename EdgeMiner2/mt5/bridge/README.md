@@ -4,12 +4,20 @@
 
 ## GUI
 
-Trong app: **Hàng ngày → MT5 Bridge**
+Trong app: sidebar **MT5 Bridge**
 
-- Start/Stop service (worker trong process GUI)
+- Start/Stop service — mặc định **process riêng** (`scripts/mt5_bridge_service.py`)
+  - Đổi tab / refresh Streamlit **không** dừng service
+  - Tắt khi bấm Stop, hoặc kill PID trong `results/mt5_bridge_service.pid`
 - Chọn Trade Model (mặc định Best 3m)
 - Xem snapshot `bar.json` / `decision.json` / `fill.json`
 - **Nhật ký giao tiếp** `comm_log.jsonl` (EA→App bar/fill, App→EA decision)
+- **Thống kê lệnh** `trades.json` (thắng/thua, R)
+
+### Remine hàng tuần
+
+Khi **Start service**: mỗi tuần ISO mới App tự `optimize_on_window` theo Trade Model đang chọn (train months + KB).  
+**Không** cần chạy lại Grid Search mỗi tuần. Chỉ đổi Trade Model / học KB / Grid khi muốn cập nhật cấu hình model.
 
 ## Flow Live
 

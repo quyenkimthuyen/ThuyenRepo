@@ -57,22 +57,18 @@ def render():
     st.caption("_Có backtest cũ nhưng không khớp Trade Model đang chọn._")
 
   st.subheader("Đi tới")
-  c1, c2, c3, c4 = st.columns(4)
+  c1, c2, c3 = st.columns(3)
   with c1:
-    if st.button("① Cài đặt", use_container_width=True, key="cc_nav_settings"):
-      st.session_state["nav_page"] = "settings"
-      st.rerun()
-  with c2:
-    if st.button("② Học & tối ưu", use_container_width=True, key="cc_nav_learning"):
+    if st.button("Học & tối ưu", use_container_width=True, key="cc_nav_learning"):
       st.session_state["nav_page"] = "learning"
       from gui.views.learning_hub import _default_learning_tab
       st.session_state["learning_tab"] = _default_learning_tab()
       st.rerun()
-  with c3:
+  with c2:
     if st.button("📡 Paper", use_container_width=True, key="cc_nav_paper"):
       st.session_state["nav_page"] = "paper"
       st.rerun()
-  with c4:
+  with c3:
     if st.button("🔄 Refresh data", use_container_width=True, key="cc_refresh"):
       with st.spinner("Tải Dukascopy..."):
         refresh_market_data()

@@ -270,32 +270,19 @@ def render(embedded: bool = False):
       f"**Tốt nhất:** {best.get('label')} · PF {best.get('profit_factor')} · {best.get('n_trades')} lệnh"
     )
     if not running:
-      b1, b2 = st.columns(2)
-      with b1:
-        if st.button("✓ Tạo Trade Model (dùng ngay)", key="gs_apply_tm"):
-          create_trade_model(best, run_id=(data or {}).get("run_id"), set_active=True)
-          st.toast("Đã tạo & chọn trade model")
-          st.rerun()
-      with b2:
-        new_name = st.text_input(
-          "Tên model",
-          value=f"Best {best.get('train_months')}m",
-          key="gs_new_tm_name",
-          label_visibility="collapsed",
-        )
-        if st.button("＋ Tạo Trade Model mới", key="gs_new_tm"):
-          name = new_name.strip() or None
-          if not name:
-            st.error("Nhập tên model.")
-          else:
-            create_trade_model(
-              best, run_id=(data or {}).get("run_id"), label=name, set_active=True,
-            )
-            st.toast(f"Đã tạo «{name}»")
-            st.rerun()
+      if st.button("✓ Tạo Trade Model từ combo tốt nhất (dùng ngay)", key="gs_apply_tm"):
+        from gui.trade_model import find_model_by_grid_key
+        existed = find_model_by_grid_key(best.get("key"))
+        m = create_trade_model(best, run_id=(data or {}).get("run_id"), set_active=True)
+        if existed and existed.get("id") == m.get("id"):
+          st.toast("Combo này đã có Trade Model — đã chọn lại (không tạo trùng)")
+        else:
+          st.toast("Đã tạo & chọn trade model từ best combo")
+        st.rerun()
 
   st.subheader("Bảng kết quả")
-  df = pd.DataFrame([r for r in rows if not r.get("error")])
+  valid_rows = [r for r in rows if not r.get("error")]
+  df = pd.DataFrame(valid_rows)
   if df.empty:
     if running:
       st.caption("Chưa có combo hoàn thành.")
@@ -315,6 +302,37 @@ def render(embedded: bool = False):
     display_df["giai_doan"] = display_df["kb_profile"].map(kb_profile_label)
   show_cols = [c for c in show_cols if c in display_df.columns]
   st.dataframe(display_df[show_cols].head(50), use_container_width=True, hide_index=True, height=400)
+
+  if not running and valid_rows:
+    st.subheader("Tạo Trade Model từ combo bất kỳ")
+    st.caption("Chọn bất kỳ dòng trong bảng (không chỉ best) → đặt tên → tạo model.")
+    options = []
+    for i, r in enumerate(valid_rows[:50]):
+      options.append(
+        f"#{i+1} · {r.get('label')} · R={r.get('total_r', 0):+.2f} · "
+        f"WR={r.get('win_rate_pct', 0)}% · train={r.get('train_months')}m"
+      )
+    pick = st.selectbox("Combo", options, key="gs_pick_combo")
+    pick_idx = options.index(pick) if pick in options else 0
+    chosen = valid_rows[pick_idx]
+    default_name = chosen.get("label") or f"Grid #{pick_idx+1}"
+    name = st.text_input("Tên Trade Model", value=str(default_name)[:80], key="gs_any_tm_name")
+    set_active = st.checkbox("Đặt làm model đang dùng", value=True, key="gs_any_tm_active")
+    if st.button("＋ Tạo Trade Model từ combo đã chọn", type="primary", key="gs_create_any_tm"):
+      from gui.trade_model import find_model_by_grid_key
+      label = (name or "").strip() or None
+      existed = find_model_by_grid_key(chosen.get("key"))
+      m = create_trade_model(
+        chosen,
+        run_id=(data or {}).get("run_id"),
+        label=label,
+        set_active=set_active,
+      )
+      if existed and existed.get("id") == m.get("id"):
+        st.toast(f"Combo đã có model «{m.get('label')}» — không tạo trùng")
+      else:
+        st.toast(f"Đã tạo «{m.get('label')}»")
+      st.rerun()
 
   err_rows = [r for r in rows if r.get("error")]
   if err_rows:

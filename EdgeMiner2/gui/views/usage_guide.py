@@ -159,27 +159,44 @@ Mỗi tuần OOS: TRAIN 3 THÁNG → mine (+ KB) → trade 1 tuần
 
 ## 6. Các trang GUI (theo quy trình)
 
-| Nhóm | Trang | Mục đích |
-|------|-------|----------|
-| **Hàng ngày** | **Tổng quan** | Tiến độ 5 bước, KPI, Refresh data |
-| | **Giám sát paper** | Tín hiệu & lệnh tuần (Dukascopy, không broker) |
-| | **MT5 Bridge** | App quyết định Best 3m · EA `ForgeBridge` execute · log giao tiếp |
-| **Thiết lập & học** | **① Cài đặt** | Train window · giai đoạn học · OOS |
-| | **② Học & tối ưu** | ① Huấn luyện KB → ② Grid Search → ③ Trade Models |
-| **Phân tích** | **Phân tích** | Risk · Nhật ký · Chiến lược (chọn Trade Model) |
-| **Khác** | **Hướng dẫn** | Tài liệu này |
+| Trang | Mục đích |
+|-------|----------|
+| **Tổng quan** | Tiến độ, KPI, Refresh data |
+| **Học & tối ưu** | ① Cài đặt → ② Huấn luyện KB → ③ Grid Search → ④ Trade Models |
+| **Giám sát paper** | Tín hiệu & lệnh tuần (Dukascopy, không broker) |
+| **MT5 Bridge** | App quyết định Best 3m · EA `ForgeBridge` execute · log giao tiếp |
+| **Phân tích** | Risk · Nhật ký · Chiến lược (chọn Trade Model) |
+| **Hướng dẫn** | Tài liệu này |
 
-**Trade Model** (sidebar + trang Phân tích): chọn một model — Paper & Phân tích dùng chung.
+**Trade Model** (sidebar + trang Phân tích): chọn một model — Paper, Bridge & Phân tích dùng chung.
+
+### Remine hàng tuần tự động vs cập nhật Trade Model
+
+**Trade Model** = snapshot cấu hình đã lưu (`train_months`, KB profile/epoch, OOS, KPI từ Grid).  
+App **không** tự đổi model trong danh sách mỗi tuần.
+
+| Việc | Tự động? | Điều kiện |
+|------|----------|-----------|
+| **Remine strategy mỗi tuần** (mine lại trên cửa sổ train gần nhất → tín hiệu tuần mới) | Có | **Giám sát paper** bật chu kỳ *hoặc* **MT5 Bridge** Start service |
+| Cập nhật giá Dukascopy | Có (Refresh / cache hết hạn) | Tổng quan hoặc paper cycle |
+| **Huấn luyện KB** (epoch mới) | Không | Học & tối ưu → ② Huấn luyện |
+| **Grid Search** xếp hạng combo mới | Không | Khi đổi Cài đặt hoặc muốn model khác |
+| **Tạo / chọn Trade Model** | Không | Chỉ khi đổi combo active (vd Best 3m → model khác) |
+| Export Replay / Frozen EA (MT5 Tester) | Không | Chạy script export khi cần lịch/EA mới |
+
+**Vận hành hàng ngày / tuần:** chọn Trade Model một lần → bật Paper và/hoặc Bridge service → mỗi tuần app tự remine theo cấu hình đó.  
+**Chỉ** chạy lại KB → Grid → chọn model khi muốn đổi “bộ não” (KB mới, train window / OOS khác).
 
 ### MT5 Bridge — dùng thế nào?
 
 Đây là cầu nối **MetaTrader 5** (không phải MT4):
 
-1. Mở **Hàng ngày → MT5 Bridge** → chọn Trade Model (Best 3m) → **Start service**
-2. Trên MT5: compile/attach EA `ForgeBridge`, `InpMode = Live` (thư mục `MQL5/Files/bridge`)
-3. Mỗi H1 mới: EA ghi `bar.json` → App remine/decide → `decision.json` → EA BUY/SELL hoặc FLAT
-4. Xem **Nhật ký giao tiếp** trên GUI (`comm_log.jsonl`: `bar_received`, `decision_sent`, `fill_received`)
-5. Xem **Thống kê lệnh Bridge** (thắng/thua, R, profit) — EA ghi `fill.json` open/close → App lưu `trades.json`
+1. Mở **MT5 Bridge** → chọn Trade Model (Best 3m) → **Start service**
+2. Service chạy **process riêng** (không phụ thuộc tab GUI) — đổi tab / refresh page **không** dừng; bấm **Stop** mới tắt
+3. Trên MT5: compile/attach EA `ForgeBridge`, `InpMode = Live` (thư mục `MQL5/Files/bridge`)
+4. Mỗi H1 mới: EA ghi `bar.json` → App remine/decide → `decision.json` → EA BUY/SELL hoặc FLAT
+5. Xem **Nhật ký giao tiếp** trên GUI (`comm_log.jsonl`: `bar_received`, `decision_sent`, `fill_received`)
+6. Xem **Thống kê lệnh Bridge** (thắng/thua, R, profit) — EA ghi `fill.json` open/close → App lưu `trades.json`
 
 **So sánh backtest trong MT5 Strategy Tester** (cùng EURUSD H1 / khoảng ngày):
 
@@ -314,13 +331,16 @@ Checklist hiển thị ở **Tổng quan** và **Phân tích → Risk**.
 
 | Bước | Trang | Việc làm |
 |------|-------|----------|
-| 1 | **① Cài đặt** | Train 3/6/9T · giai đoạn học · vòng học · OOS |
-| 2 | **Học & tối ưu → ① Huấn luyện bộ nhớ** | Học KB đủ theo Cài đặt |
-| 3 | **Học & tối ưu → ② Grid Search** | Chạy combo → xếp hạng |
-| 4 | **Học & tối ưu → ③ Trade Models** | Tạo & chọn Trade Model |
-| 5 | **Giám sát paper** + **Phân tích** | Paper ≥3 tuần · Risk / Nhật ký / Chiến lược |
+| 1 | **Học & tối ưu → ① Cài đặt** | Train 3/6/9T · giai đoạn học · vòng học · OOS |
+| 2 | **Học & tối ưu → ② Huấn luyện bộ nhớ** | Học KB đủ theo Cài đặt |
+| 3 | **Học & tối ưu → ③ Grid Search** | Chạy combo → xếp hạng |
+| 4 | **Học & tối ưu → ④ Trade Models** | Tạo & chọn Trade Model |
+| 5 | **Giám sát paper** + **MT5 Bridge** | Bật chu kỳ / Start service → **tự remine mỗi tuần** |
+| 6 | **Phân tích** | Risk / Nhật ký / Chiến lược theo Trade Model |
 
-Chỉ live **micro lot** khi paper khớp backtest.
+Chỉ live **micro lot** khi paper/bridge khớp kỳ vọng backtest.
+
+**Không cần Grid lại mỗi tuần** — Paper/Bridge tự remine theo Trade Model đang chọn. Grid/KB chỉ khi muốn cập nhật model.
 
 ### Mẹo tối ưu
 
@@ -397,6 +417,9 @@ A: ~2 phút cho 4 năm / 224 tuần. Dùng cache data, tránh refresh liên tụ
 
 **Q: Quy trình nào nên làm trước?**  
 A: KB OFF baseline → học KB era → OOS với profile → Report Compare → hold-out → paper.
+
+**Q: App có tự optimize mỗi tuần không?**  
+A: **Có remine strategy mỗi tuần** khi Paper (chu kỳ) hoặc MT5 Bridge service đang chạy. **Không** tự chạy lại Grid / tạo Trade Model mới — phải làm tay khi muốn đổi model.
 
 **Q: MT5 Bridge khác Paper Monitor thế nào?**  
 A: Paper = tín hiệu trên data Dukascopy trong app. Bridge = giá từ **MT5 broker** qua EA, App quyết định, EA mở lệnh thật/demo trên MT5.

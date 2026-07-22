@@ -83,6 +83,21 @@ def render(embedded: bool = False):
         st.toast("Đã xóa trade model")
         st.rerun()
 
+  if st.button("🧹 Gộp model trùng combo / trùng tên", key="tm_dedupe"):
+    from gui.trade_model import dedupe_trade_models, load_active_model_id
+    keep = set()
+    aid = load_active_model_id()
+    if aid:
+      keep.add(aid)
+    # Prefer known Best 3m id if present
+    keep.add("tm_best_3m_64e3f742")
+    result = dedupe_trade_models(keep_ids=keep)
+    st.success(
+      f"Giữ {result['kept']} · xóa {len(result['removed'])} trùng combo · "
+      f"đổi tên {len(result['renamed'])}"
+    )
+    st.rerun()
+
   with st.expander("Chi tiết model"):
     st.json(m)
     st.caption(format_model_oneline(m))

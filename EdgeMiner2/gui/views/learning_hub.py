@@ -1,19 +1,20 @@
-"""Học & tối ưu — quy trình: Huấn luyện KB → Grid Search → Trade Models."""
+"""Học & tối ưu — Cài đặt → Huấn luyện KB → Grid Search → Trade Models."""
 from __future__ import annotations
 
 import streamlit as st
 
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
-from gui.views import grid_search, kb_era_hub
+from gui.views import grid_search, kb_era_hub, settings_page
 from gui.views.compare_sections import render_era_compare, render_epoch_sweep, render_train_window
 from gui.views import trade_models_view
 
-CORE_TAB_KEYS = ["train_kb", "grid", "models"]
+CORE_TAB_KEYS = ["settings", "train_kb", "grid", "models"]
 CORE_TAB_LABELS = {
-  "train_kb": "① Huấn luyện bộ nhớ",
-  "grid": "② Grid Search",
-  "models": "③ Trade Models",
+  "settings": "① Cài đặt",
+  "train_kb": "② Huấn luyện bộ nhớ",
+  "grid": "③ Grid Search",
+  "models": "④ Trade Models",
 }
 
 ADVANCED_TAB_KEYS = ["era", "epoch", "train_win"]
@@ -39,7 +40,8 @@ def _default_learning_tab() -> str:
   r = grid_readiness()
   if r["kb_complete"]:
     return "grid"
-  return "train_kb"
+  # Chưa học KB → bắt đầu từ Cài đặt nếu chưa từng mở hub
+  return "settings"
 
 
 def _render_workflow_strip():
@@ -51,13 +53,15 @@ def _render_workflow_strip():
   has_model = bool(get_active_trade_model())
   kb_done = r["kb_complete"]
 
-  s1 = "✅" if kb_done else "▶️"
-  s2 = "✅" if has_grid else ("▶️" if kb_done else "○")
-  s3 = "✅" if has_model else ("▶️" if has_grid else "○")
+  s1 = "✅"
+  s2 = "✅" if kb_done else "▶️"
+  s3 = "✅" if has_grid else ("▶️" if kb_done else "○")
+  s4 = "✅" if has_model else ("▶️" if has_grid else "○")
 
   st.caption(
-    f"{s1} ① KB ({r['ready_combos']}/{r['expected_combos']}) · "
-    f"{s2} ② Grid · {s3} ③ Model"
+    f"{s1} ① Cài đặt · "
+    f"{s2} ② KB ({r['ready_combos']}/{r['expected_combos']}) · "
+    f"{s3} ③ Grid · {s4} ④ Model"
   )
 
 
@@ -93,8 +97,8 @@ def render():
     pick = _default_learning_tab()
   st.session_state["learning_tab"] = pick
 
-  c1, c2, c3 = st.columns(3)
-  for col, tab_key in zip((c1, c2, c3), CORE_TAB_KEYS):
+  cols = st.columns(4)
+  for col, tab_key in zip(cols, CORE_TAB_KEYS):
     with col:
       _tab_button(
         CORE_TAB_LABELS[tab_key],
@@ -121,7 +125,9 @@ def render():
   st.divider()
   st.session_state["_learning_hub"] = True
   try:
-    if selected == "train_kb":
+    if selected == "settings":
+      _render_subview(settings_page)
+    elif selected == "train_kb":
       kb_era_hub.render_training_only()
     elif selected == "grid":
       _render_subview(grid_search)

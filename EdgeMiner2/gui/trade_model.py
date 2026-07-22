@@ -192,6 +192,41 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
   }
 
 
+def find_model_by_grid_key(grid_key: str | None) -> dict | None:
+  if not grid_key:
+    return None
+  for m in list_trade_models():
+    if m.get("grid_key") == grid_key:
+      return m
+  return None
+
+
+def find_model_by_label(label: str | None) -> dict | None:
+  if not label:
+    return None
+  key = label.strip().lower()
+  for m in list_trade_models():
+    if (m.get("label") or "").strip().lower() == key:
+      return m
+    # also match formatted display label for non-custom
+    if format_model_label(m).strip().lower() == key:
+      return m
+  return None
+
+
+def _unique_label(desired: str) -> str:
+  """Avoid identical display names: Best 3m, Best 3m (2), …"""
+  base = (desired or "Trade model").strip() or "Trade model"
+  existing = {(m.get("label") or "").strip().lower() for m in list_trade_models()}
+  existing |= {format_model_label(m).strip().lower() for m in list_trade_models()}
+  if base.lower() not in existing:
+    return base
+  n = 2
+  while f"{base} ({n})".lower() in existing:
+    n += 1
+  return f"{base} ({n})"
+
+
 def create_trade_model(
   row: dict,
   *,
@@ -200,9 +235,40 @@ def create_trade_model(
   report: dict | None = None,
   set_active: bool = True,
   build_report: bool = True,
+  allow_duplicate_combo: bool = False,
 ) -> dict:
+  """
+  Create a trade model from a grid row.
+  - Same grid_key (same combo) → reuse existing model unless allow_duplicate_combo.
+  - Same label → auto-suffix « (2) », « (3) », …
+  """
   fields = model_from_grid_row(row, run_id=run_id, label=label)
   name = fields.pop("label")
+  grid_key = fields.get("grid_key") or row.get("key")
+
+  if not allow_duplicate_combo and grid_key:
+    existing = find_model_by_grid_key(grid_key)
+    if existing:
+      if label and label.strip():
+        desired = label.strip()
+        other = find_model_by_label(desired)
+        store = load_models_store()
+        for m in store["models"]:
+          if m.get("id") != existing["id"]:
+            continue
+          if other and other.get("id") != existing["id"]:
+            m["label"] = _unique_label(desired)
+          else:
+            m["label"] = desired
+          m["label_custom"] = True
+          existing = m
+          break
+        save_models_store(store)
+      if set_active:
+        set_active_trade_model(existing["id"])
+      return existing
+
+  name = _unique_label(name)
   model = {
     **fields,
     "id": _new_id(name),
@@ -216,7 +282,6 @@ def create_trade_model(
     save_model_report(model["id"], report)
   if set_active:
     set_active_trade_model(model["id"])
-  # Grid chỉ có KPI — tự xếp hàng tạo báo cáo đầy đủ cho Phân tích.
   if build_report and not report:
     try:
       from gui.analysis_support import start_model_report_job
@@ -226,6 +291,81 @@ def create_trade_model(
     except Exception:
       pass
   return model
+
+
+def dedupe_trade_models(*, keep_ids: set[str] | None = None) -> dict:
+  """
+  Keep one model per grid_key.
+  Preference: keep_ids > custom label «Best*» > earliest created_at.
+  Then uniquify duplicate labels.
+  """
+  store = load_models_store()
+  models = list(store.get("models") or [])
+  keep_ids = keep_ids or set()
+  by_key: dict[str, dict] = {}
+  no_key: list[dict] = []
+  removed: list[str] = []
+
+  def _rank(m: dict) -> tuple:
+    mid = m.get("id") or ""
+    lab = (m.get("label") or "").lower()
+    return (
+      0 if mid in keep_ids else 1,
+      0 if lab.startswith("best") else 1,
+      str(m.get("created_at") or ""),
+    )
+
+  for m in models:
+    gk = m.get("grid_key")
+    if not gk:
+      no_key.append(m)
+      continue
+    prev = by_key.get(gk)
+    if not prev:
+      by_key[gk] = m
+      continue
+    # lower rank tuple wins
+    if _rank(m) < _rank(prev):
+      removed.append(prev["id"])
+      by_key[gk] = m
+    else:
+      removed.append(m["id"])
+
+  kept = list(by_key.values()) + no_key
+  renamed: list[dict] = []
+  seen_labels: set[str] = set()
+  for m in kept:
+    lab = (m.get("label") or m.get("id") or "?").strip()
+    low = lab.lower()
+    if low in seen_labels:
+      n = 2
+      while f"{lab} ({n})".lower() in seen_labels:
+        n += 1
+      new_lab = f"{lab} ({n})"
+      renamed.append({"id": m["id"], "from": lab, "to": new_lab})
+      m["label"] = new_lab
+      m["label_custom"] = True
+      seen_labels.add(new_lab.lower())
+    else:
+      seen_labels.add(low)
+
+  for mid in removed:
+    path = model_report_path(mid)
+    if path.exists():
+      try:
+        path.unlink()
+      except OSError:
+        pass
+
+  store["models"] = kept
+  save_models_store(store)
+
+  active = load_active_model_id()
+  if active in removed or (active and not get_model_by_id(active)):
+    prefer = next((m for m in kept if m.get("id") in keep_ids), None)
+    set_active_trade_model((prefer or (kept[0] if kept else {})).get("id"))
+
+  return {"removed": removed, "renamed": renamed, "kept": len(kept)}
 
 
 def delete_trade_model(model_id: str) -> bool:

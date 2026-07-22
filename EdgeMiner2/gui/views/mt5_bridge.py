@@ -1,6 +1,8 @@
 """MT5 Bridge — App quyết định (Best 3m), EA ForgeBridge execute + log giao tiếp."""
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 import pandas as pd
 import streamlit as st
 
@@ -18,7 +20,7 @@ from mt5_bridge.protocol import (
   read_json,
   status_path,
 )
-from mt5_bridge.trade_journal import clear_trades, compute_stats, load_trades
+from mt5_bridge.trade_journal import clear_trades, compute_stats, filter_trades, load_trades
 
 
 def _model_label(m: dict) -> str:
@@ -36,13 +38,22 @@ def render():
     "**MT5** (không phải MT4): EA `ForgeBridge` gửi bar → App remine Best 3m → "
     "trả `decision.json` → EA mở lệnh. Paper Dukascopy vẫn ở **Giám sát paper**."
   )
+  st.caption(
+    "Background mặc định = **process riêng** (`mt5_bridge_service.py`) — "
+    "đổi tab / refresh GUI **không** dừng service. Chỉ dừng khi bấm Stop hoặc kill process."
+  )
 
   models = list_trade_models()
   cfg = bridge_bg.load_config()
   status = bridge_bg.get_status()
 
   c1, c2, c3, c4 = st.columns(4)
-  c1.metric("Service", "ON" if status.get("running") else "OFF")
+  mode = status.get("runtime_mode") or "off"
+  pid = status.get("service_pid")
+  svc_label = "OFF"
+  if status.get("running"):
+    svc_label = f"ON · {mode}" + (f" · pid {pid}" if pid else "")
+  c1.metric("Service", svc_label)
   c2.metric("Last action", status.get("last_action") or "—")
   c3.metric("Last bar", str(status.get("last_bar") or "—")[:19])
   file_status = read_json(status_path()) or {}
@@ -67,7 +78,8 @@ def render():
       st.rerun()
     if b2.button("▶ Start service", type="primary", use_container_width=True):
       bridge_bg.save_config(model_id=model_id, risk_pct=risk, poll_sec=poll, enabled=True)
-      bridge_bg.start_worker()
+      bridge_bg.start_worker(detached=True)
+      st.success("Đã start process nền (sống khi refresh GUI).")
       st.rerun()
     if b3.button("⏹ Stop", use_container_width=True):
       bridge_bg.stop_worker()
@@ -78,14 +90,73 @@ def render():
         dec = bridge_bg.process_once_now()
       st.write(dec)
       st.rerun()
+    st.caption(f"Log process: `results/mt5_bridge_service.log` · PID file: `results/mt5_bridge_service.pid`")
 
   if status.get("last_error"):
     st.error(status["last_error"])
 
   st.subheader("Thống kê lệnh Bridge")
-  st.caption("Từ `mt5/bridge/trades.json` — EA báo open/close qua `fill.json`")
-  trades = load_trades()
+  st.caption("Từ `mt5/bridge/trades.json` — lọc theo giai đoạn (closed dùng exit_time)")
+
+  all_trades = load_trades()
+  today = date.today()
+  # Default range from data
+  default_from = today - timedelta(days=30)
+  default_to = today
+  for t in all_trades:
+    for key in ("entry_time", "exit_time"):
+      try:
+        ts = pd.Timestamp(t.get(key)).date()
+        if ts < default_from:
+          default_from = ts
+      except Exception:
+        pass
+
+  p1, p2, p3 = st.columns([2, 1, 1])
+  preset = p1.selectbox(
+    "Giai đoạn",
+    [
+      "Tất cả",
+      "Hôm nay",
+      "7 ngày",
+      "30 ngày",
+      "Tuần này (T2→nay)",
+      "Tháng này",
+      "Tùy chọn",
+    ],
+    index=0,
+    key="bridge_stats_preset",
+  )
+  date_from = None
+  date_to = None
+  if preset == "Hôm nay":
+    date_from = date_to = today
+  elif preset == "7 ngày":
+    date_from, date_to = today - timedelta(days=6), today
+  elif preset == "30 ngày":
+    date_from, date_to = today - timedelta(days=29), today
+  elif preset == "Tuần này (T2→nay)":
+    date_from = today - timedelta(days=today.weekday())
+    date_to = today
+  elif preset == "Tháng này":
+    date_from = today.replace(day=1)
+    date_to = today
+  elif preset == "Tùy chọn":
+    date_from = p2.date_input("Từ ngày", value=default_from, key="bridge_from")
+    date_to = p3.date_input("Đến ngày", value=default_to, key="bridge_to")
+  else:
+    p2.caption("—")
+    p3.caption("—")
+
+  if date_from and date_to and date_from > date_to:
+    st.warning("Từ ngày > Đến ngày — đã đảo lại.")
+    date_from, date_to = date_to, date_from
+
+  trades = filter_trades(all_trades, date_from=date_from, date_to=date_to)
   stats = compute_stats(trades)
+  if date_from or date_to:
+    st.caption(f"Lọc: **{date_from or '…'} → {date_to or '…'}** · {stats['n_filtered']} lệnh trong khoảng")
+
   s1, s2, s3, s4, s5, s6 = st.columns(6)
   s1.metric("Đã đóng", stats["n_trades"])
   s2.metric("Đang mở", stats["n_open"])
@@ -110,7 +181,7 @@ def render():
   view = trades if show_open else [t for t in trades if t.get("status") == "CLOSED"]
   view = list(reversed(view))
   if not view:
-    st.info("Chưa có lệnh Bridge. Khi EA mở/đóng lệnh, thống kê sẽ hiện ở đây.")
+    st.info("Không có lệnh trong giai đoạn đã chọn (hoặc chưa có lệnh Bridge).")
   else:
     table = []
     for t in view:

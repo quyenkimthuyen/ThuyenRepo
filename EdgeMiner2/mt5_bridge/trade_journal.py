@@ -239,20 +239,82 @@ def process_fill(
   return None
 
 
-def compute_stats(trades: list[dict] | None = None, bridge_dir: Path | None = None) -> dict[str, Any]:
+def _parse_trade_ts(val) -> Any:
+  if val is None or val == "":
+    return None
+  try:
+    import pandas as pd
+    ts = pd.Timestamp(val)
+    if getattr(ts, "tzinfo", None) is not None:
+      ts = ts.tz_convert(None)
+    return ts
+  except Exception:
+    return None
+
+
+def filter_trades(
+  trades: list[dict] | None = None,
+  *,
+  bridge_dir: Path | None = None,
+  date_from=None,
+  date_to=None,
+  use_exit_time: bool = True,
+) -> list[dict]:
+  """
+  Filter trades by time window.
+  Closed trades: prefer exit_time (else entry_time).
+  Open trades: entry_time.
+  date_from/date_to inclusive by calendar day [from, to].
+  """
   trades = trades if trades is not None else load_trades(bridge_dir)
-  closed = [t for t in trades if t.get("status") == "CLOSED"]
-  open_n = sum(1 for t in trades if t.get("status") == "OPEN")
+  if date_from is None and date_to is None:
+    return list(trades)
+
+  import pandas as pd
+  start = pd.Timestamp(date_from).normalize() if date_from is not None else None
+  end = (pd.Timestamp(date_to).normalize() + pd.Timedelta(days=1)) if date_to is not None else None
+
+  out: list[dict] = []
+  for t in trades:
+    if t.get("status") == "CLOSED" and use_exit_time and t.get("exit_time"):
+      ts = _parse_trade_ts(t.get("exit_time"))
+    else:
+      ts = _parse_trade_ts(t.get("entry_time") or t.get("exit_time") or t.get("updated_at"))
+    if ts is None:
+      continue
+    if start is not None and ts < start:
+      continue
+    if end is not None and ts >= end:
+      continue
+    out.append(t)
+  return out
+
+
+def compute_stats(
+  trades: list[dict] | None = None,
+  bridge_dir: Path | None = None,
+  *,
+  date_from=None,
+  date_to=None,
+) -> dict[str, Any]:
+  raw = trades if trades is not None else load_trades(bridge_dir)
+  filtered = filter_trades(raw, date_from=date_from, date_to=date_to)
+  closed = [t for t in filtered if t.get("status") == "CLOSED"]
+  open_n = sum(1 for t in filtered if t.get("status") == "OPEN")
   wins = [t for t in closed if t.get("result") == "WIN"]
   losses = [t for t in closed if t.get("result") == "LOSS"]
   bes = [t for t in closed if t.get("result") == "BE"]
-  rs = [float(t["r"]) for t in closed if t.get("r") is not None]
+  # equity curve in exit-time order
+  closed_sorted = sorted(
+    closed,
+    key=lambda t: str(t.get("exit_time") or t.get("entry_time") or ""),
+  )
+  rs = [float(t["r"]) for t in closed_sorted if t.get("r") is not None]
   profits = [float(t["profit"]) for t in closed if t.get("profit") is not None]
 
   total_r = round(sum(rs), 3) if rs else 0.0
   wr = round(100.0 * len(wins) / len(closed), 1) if closed else None
   avg_r = round(sum(rs) / len(rs), 3) if rs else None
-  # max DD on equity curve in R
   peak = 0.0
   eq = 0.0
   max_dd = 0.0
@@ -272,6 +334,9 @@ def compute_stats(trades: list[dict] | None = None, bridge_dir: Path | None = No
     "avg_r": avg_r,
     "max_drawdown_r": round(abs(max_dd), 3) if rs else 0.0,
     "total_profit": round(sum(profits), 2) if profits else None,
+    "date_from": str(date_from) if date_from is not None else None,
+    "date_to": str(date_to) if date_to is not None else None,
+    "n_filtered": len(filtered),
     "updated_at": _now(),
   }
 

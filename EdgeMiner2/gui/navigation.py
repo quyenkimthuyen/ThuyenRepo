@@ -1,4 +1,4 @@
-"""Trader-centric navigation — nhóm trang theo quy trình làm việc."""
+"""Trader-centric navigation — flat sidebar (no section groups)."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,6 +12,18 @@ class NavItem:
   hint: str = ""
 
 
+# Flat list — no "Hàng ngày" / "Thiết lập & học" groups.
+# Cài đặt is a tab inside Học & tối ưu (not a sidebar page).
+NAV_ITEMS: tuple[NavItem, ...] = (
+  NavItem("home", "Tổng quan", "command_center", "Data · KB → Grid → Model → Paper"),
+  NavItem("learning", "Học & tối ưu", "learning_hub", "Cài đặt → KB → Grid → Trade Model"),
+  NavItem("paper", "Giám sát paper", "paper_monitor", "Tín hiệu tuần · sau khi có Trade Model"),
+  NavItem("mt5_bridge", "MT5 Bridge", "mt5_bridge", "App quyết định · EA execute · log giao tiếp"),
+  NavItem("analysis", "Phân tích", "analysis_hub", "Risk · nhật ký · chiến lược (theo Trade Model)"),
+  NavItem("guide", "Hướng dẫn", "usage_guide", "Quy trình · khái niệm · FAQ"),
+)
+
+# Backward compat for code that still imports NAV_GROUPS
 @dataclass(frozen=True)
 class NavGroup:
   title: str
@@ -19,21 +31,7 @@ class NavGroup:
 
 
 NAV_GROUPS: tuple[NavGroup, ...] = (
-  NavGroup("Hàng ngày", (
-    NavItem("home", "Tổng quan", "command_center", "Data · KB → Grid → Model → Paper"),
-    NavItem("paper", "Giám sát paper", "paper_monitor", "Tín hiệu tuần · sau khi có Trade Model"),
-    NavItem("mt5_bridge", "MT5 Bridge", "mt5_bridge", "App quyết định · EA execute · log giao tiếp"),
-  )),
-  NavGroup("Thiết lập & học", (
-    NavItem("settings", "① Cài đặt", "settings_page", "Train · giai đoạn học · kiểm chứng OOS"),
-    NavItem("learning", "② Học & tối ưu", "learning_hub", "Huấn luyện KB → Grid Search → Trade Model"),
-  )),
-  NavGroup("Phân tích", (
-    NavItem("analysis", "Phân tích", "analysis_hub", "Risk · nhật ký · chiến lược (theo Trade Model)"),
-  )),
-  NavGroup("Khác", (
-    NavItem("guide", "Hướng dẫn", "usage_guide", "Quy trình · khái niệm · FAQ"),
-  )),
+  NavGroup("", NAV_ITEMS),
 )
 
 LEGACY_ALIASES: dict[str, str] = {
@@ -55,13 +53,17 @@ LEGACY_ALIASES: dict[str, str] = {
   "Strategy Inspector": "analysis",
   "Chiến lược": "analysis",
   "Usage Guide": "guide",
-  "Cài đặt": "settings",
-  "Settings": "settings",
+  "Cài đặt": "learning",
+  "Settings": "learning",
+  "settings": "learning",
   "MT5 Bridge": "mt5_bridge",
   "Bridge": "mt5_bridge",
 }
 
 LEARNING_TAB_BY_ALIAS: dict[str, str] = {
+  "Cài đặt": "settings",
+  "Settings": "settings",
+  "settings": "settings",
   "Backtest Lab": "grid",
   "Grid Search": "grid",
   "Report Compare": "era",
@@ -75,9 +77,7 @@ ANALYSIS_TAB_BY_ALIAS: dict[str, str] = {
   "Strategy Inspector": "strategy",
 }
 
-ALL_ITEMS: dict[str, NavItem] = {
-  item.key: item for group in NAV_GROUPS for item in group.items
-}
+ALL_ITEMS: dict[str, NavItem] = {item.key: item for item in NAV_ITEMS}
 
 
 def default_page_key() -> str:

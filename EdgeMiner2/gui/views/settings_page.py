@@ -13,23 +13,30 @@ from gui.app_settings import (
   update_settings,
 )
 from gui.glossary import HELP
-from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
 
 
-def render():
-  render_page_header(ALL_ITEMS["settings"], show_profile=False)
+def render(embedded: bool = False):
+  embedded = embedded or bool(st.session_state.get("_learning_hub"))
+  if not embedded:
+    from gui.navigation import ALL_ITEMS
+    # Fallback if opened outside hub (legacy links)
+    item = ALL_ITEMS.get("learning")
+    if item:
+      render_page_header(item, show_profile=False)
+    st.caption("Cài đặt nằm trong **Học & tối ưu → ① Cài đặt**.")
+
   s = get_settings()
 
   st.markdown(
     "Cấu hình **mặc định** cho Grid Search và huấn luyện. "
-    "Khi đổi cài đặt, chạy lại Grid Search ở **Học & tối ưu** — chỉ combo mới được tính."
+    "Khi đổi cài đặt, chạy lại **③ Grid Search** — chỉ combo mới được tính."
   )
 
   if settings_changed_since_last_grid():
     st.warning(
       "⚠️ Cài đặt đã thay đổi so với lần Grid Search gần nhất — "
-      "mở **Học & tối ưu → Grid Search** để cập nhật."
+      "mở tab **③ Grid Search** để cập nhật."
     )
 
   st.info(format_settings_summary(s))
