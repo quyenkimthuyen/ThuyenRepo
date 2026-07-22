@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import sys
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,6 +26,8 @@ DEFAULT_START = "2022-01-01"
 CACHE_MAX_AGE_HOURS = 6
 FETCH_ATTEMPTS = 4
 FETCH_BACKOFF_SEC = 2.0
+_refresh_lock = threading.Lock()
+_refresh_running = False
 
 
 def _normalize_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
@@ -59,12 +62,18 @@ def _is_transient_network_error(exc: BaseException) -> bool:
   return False
 
 
-def _fetch_dukascopy_h1(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+def _fetch_dukascopy_h1(
+  start: pd.Timestamp,
+  end: pd.Timestamp,
+  *,
+  attempts: int | None = None,
+) -> pd.DataFrame:
   import dukascopy_python as d
   from dukascopy_python import INTERVAL_HOUR_1, OFFER_SIDE_BID
 
+  max_attempts = max(1, attempts if attempts is not None else FETCH_ATTEMPTS)
   last_err: BaseException | None = None
-  for attempt in range(1, FETCH_ATTEMPTS + 1):
+  for attempt in range(1, max_attempts + 1):
     try:
       df = d.fetch(
         instrument="EUR/USD",
@@ -72,7 +81,7 @@ def _fetch_dukascopy_h1(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         offer_side=OFFER_SIDE_BID,
         start=start.to_pydatetime().replace(tzinfo=None),
         end=end.to_pydatetime().replace(tzinfo=None),
-        max_retries=5,
+        max_retries=2,
       )
       if df.empty:
         raise RuntimeError(
@@ -81,10 +90,10 @@ def _fetch_dukascopy_h1(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
       return _normalize_ohlcv(df)
     except Exception as e:
       last_err = e
-      if attempt >= FETCH_ATTEMPTS or not _is_transient_network_error(e):
+      if attempt >= max_attempts or not _is_transient_network_error(e):
         break
       wait = FETCH_BACKOFF_SEC * (2 ** (attempt - 1))
-      _safe_print(f"  Dukascopy lỗi mạng (lần {attempt}/{FETCH_ATTEMPTS}), chờ {wait:.0f}s...")
+      _safe_print(f"  Dukascopy lỗi mạng (lần {attempt}/{max_attempts}), chờ {wait:.0f}s...")
       time.sleep(wait)
   assert last_err is not None
   raise last_err
@@ -102,6 +111,37 @@ def _cache_stale(*, max_age_hours: float | None = None) -> bool:
     return age_h > limit
   except Exception:
     return True
+
+
+def _slice_cache(cached: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+  return cached[(cached.index >= start) & (cached.index < end)].copy()
+
+
+def _cache_covers(cached: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp) -> bool:
+  return cached.index[0] <= start and cached.index[-1] >= end - pd.Timedelta(days=2)
+
+
+def _refresh_cache_async(start: pd.Timestamp, end: pd.Timestamp) -> None:
+  """Tải Dukascopy nền — tối đa một thread, không chặn UI."""
+  global _refresh_running
+  with _refresh_lock:
+    if _refresh_running:
+      return
+    _refresh_running = True
+
+  def _job():
+    global _refresh_running
+    try:
+      df = _fetch_dukascopy_h1(start, end, attempts=2)
+      _save_cache(df)
+      _safe_print(f"  Background refresh OK — {len(df)} bars")
+    except Exception as e:
+      _safe_print(f"  Background refresh bỏ qua: {e}")
+    finally:
+      with _refresh_lock:
+        _refresh_running = False
+
+  threading.Thread(target=_job, name="dukascopy-refresh", daemon=True).start()
 
 
 def _save_cache(df: pd.DataFrame):
@@ -141,25 +181,30 @@ def download_eurusd_h1(
 ) -> pd.DataFrame:
   """
   Tải EUR/USD H1 từ Dukascopy (hỗ trợ 2022+).
-  Dữ liệu được cache tại data/eurusd_h1.parquet.
-  Khi mạng lỗi: dùng cache cũ nếu có (trừ khi allow_stale_on_error=False).
+  UI path: ưu tiên cache ngay (kể cả hơi cũ) — không treo chờ mạng.
+  force_refresh=True: cố tải mới; lỗi thì fallback cache.
   """
   start = pd.Timestamp(start_date)
   end = pd.Timestamp(end_date) if end_date else pd.Timestamp.now().normalize() + pd.Timedelta(days=1)
 
-  if use_cache and not force_refresh and not _cache_stale(max_age_hours=max_cache_age_hours):
-    cached = _load_cache()
-    if cached is not None and cached.index[0] <= start and cached.index[-1] >= end - pd.Timedelta(days=2):
-      return cached[(cached.index >= start) & (cached.index < end)].copy()
+  cached = _load_cache() if use_cache else None
+  cache_ok = bool(cached is not None and _cache_covers(cached, start, end))
+
+  # Đường UI thường xuyên: trả cache ngay, refresh nền nếu đã cũ.
+  if cache_ok and not force_refresh:
+    stale = _cache_stale(max_age_hours=max_cache_age_hours)
+    if stale:
+      _refresh_cache_async(start, end)
+    return _slice_cache(cached, start, end)
 
   _safe_print(f"  Tải Dukascopy EUR/USD H1: {start.date()} -> {end.date()} ...")
+  attempts = 2 if (force_refresh and cache_ok) else (1 if cache_ok else FETCH_ATTEMPTS)
   try:
-    df = _fetch_dukascopy_h1(start, end)
+    df = _fetch_dukascopy_h1(start, end, attempts=attempts)
   except Exception as e:
-    cached = _load_cache() if allow_stale_on_error else None
-    if cached is not None:
+    if allow_stale_on_error and cache_ok:
       _safe_print(f"  Dukascopy lỗi — dùng cache cũ ({len(cached)} bars): {e}")
-      return cached[(cached.index >= start) & (cached.index < end)].copy()
+      return _slice_cache(cached, start, end)
     raise
   _save_cache(df)
   _safe_print(f"  Đã cache {len(df)} bars -> {CACHE_PATH}")

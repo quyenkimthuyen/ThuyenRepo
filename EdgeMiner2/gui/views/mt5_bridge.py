@@ -6,6 +6,7 @@ from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 
+from gui.mt5_live_chart import build_ea_chart, connection_health, load_ea_chart_data
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
 from gui.trade_model import list_trade_models
@@ -15,6 +16,8 @@ from mt5_bridge.protocol import (
   BRIDGE_DIR,
   DEFAULT_MODEL_ID,
   bar_path,
+  bars_path,
+  connection_path,
   decision_path,
   fill_path,
   read_json,
@@ -29,6 +32,49 @@ def _model_label(m: dict) -> str:
     return format_model_label(m)
   except Exception:
     return m.get("label") or m.get("id") or "?"
+
+
+@st.fragment(run_every=timedelta(seconds=2))
+def _render_live_monitor(max_bars: int) -> None:
+  """Refresh EA heartbeat and current H1 candle without rerunning the page."""
+  frame, connection = load_ea_chart_data(max_bars=max_bars)
+  health = connection_health(connection)
+  trades = load_trades()
+
+  age = health.get("age_seconds")
+  age_label = f"{age:.1f}s" if age is not None else "—"
+  bid = connection.get("bid")
+  ask = connection.get("ask")
+  spread = connection.get("spread_points")
+  server_time = connection.get("server_time") or "—"
+
+  c1, c2, c3, c4, c5 = st.columns(5)
+  c1.metric("EA connection", "ONLINE" if health["online"] else "OFFLINE")
+  c2.metric("Bid / Ask", f"{bid} / {ask}" if bid is not None and ask is not None else "—")
+  c3.metric("Spread", f"{spread} points" if spread is not None else "—")
+  c4.metric("Lệnh đang mở", connection.get("positions", "—"))
+  c5.metric("Algo trading", "ON" if health["trade_allowed"] else "OFF")
+
+  if health["online"]:
+    st.caption(
+      f"🟢 Heartbeat **{age_label}** · MT5 server `{server_time}` · "
+      f"Account `{connection.get('account', '—')}` · dữ liệu trực tiếp từ ForgeBridge EA"
+    )
+  elif connection:
+    detail = "MT5 báo mất kết nối" if not health["terminal_connected"] else "heartbeat quá cũ"
+    st.warning(f"Không nhận được dữ liệu EA live: {detail} ({age_label}).")
+  else:
+    st.info("Chưa có heartbeat từ EA. Compile/deploy ForgeBridge mới và giữ XM MT5 đang mở.")
+
+  fig = build_ea_chart(frame, connection, trades)
+  if fig is None:
+    st.caption("Đang chờ EA xuất `bars.json` để vẽ chart.")
+  else:
+    st.plotly_chart(fig, use_container_width=True, key="mt5_ea_live_chart")
+    st.caption(
+      "Nến và đường LIVE lấy trực tiếp từ XM MT5 · "
+      "▲▼ entry · ✕ exit · đường chấm đỏ/xanh = SL/TP."
+    )
 
 
 def render():
@@ -94,6 +140,16 @@ def render():
 
   if status.get("last_error"):
     st.error(status["last_error"])
+
+  st.subheader("Giám sát MT5 trực tiếp")
+  range_label = st.selectbox(
+    "Khoảng chart",
+    ["48 giờ", "7 ngày", "14 ngày"],
+    index=1,
+    key="mt5_chart_range",
+  )
+  max_bars = {"48 giờ": 48, "7 ngày": 168, "14 ngày": 336}[range_label]
+  _render_live_monitor(max_bars)
 
   st.subheader("Thống kê lệnh Bridge")
   st.caption("Từ `mt5/bridge/trades.json` — lọc theo giai đoạn (closed dùng exit_time)")
@@ -207,12 +263,27 @@ def render():
       st.json(view[:30])
 
   st.subheader("Snapshot files (App ↔ EA)")
-  t1, t2, t3 = st.tabs(["bar.json (EA→App)", "decision.json (App→EA)", "fill.json (EA→App)"])
+  t1, t2, t3, t4, t5 = st.tabs([
+    "connection.json",
+    "bars.json",
+    "bar.json (EA→App)",
+    "decision.json (App→EA)",
+    "fill.json (EA→App)",
+  ])
   with t1:
-    st.json(read_json(bar_path()) or {"_": "chưa có — EA Live chưa ghi bar"})
+    st.json(read_json(connection_path()) or {"_": "chưa có heartbeat"})
   with t2:
-    st.json(read_json(decision_path()) or {"_": "chưa có decision"})
+    bars = read_json(bars_path()) or {}
+    if isinstance(bars, dict) and bars.get("bars"):
+      st.caption(f"{len(bars['bars'])} nến · cập nhật `{bars.get('updated_at', '—')}`")
+      st.json({**bars, "bars": bars["bars"][-5:]})
+    else:
+      st.json({"_": "chưa có lịch sử nến"})
   with t3:
+    st.json(read_json(bar_path()) or {"_": "chưa có — EA Live chưa ghi bar"})
+  with t4:
+    st.json(read_json(decision_path()) or {"_": "chưa có decision"})
+  with t5:
     st.json(read_json(fill_path()) or {"_": "chưa có fill"})
 
   st.subheader("Nhật ký giao tiếp")

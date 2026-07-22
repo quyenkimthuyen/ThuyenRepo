@@ -10,6 +10,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BRIDGE_DIR = ROOT / "mt5" / "bridge"
 
 BAR_NAME = "bar.json"
+BARS_NAME = "bars.json"
+CONNECTION_NAME = "connection.json"
 DECISION_NAME = "decision.json"
 FILL_NAME = "fill.json"
 STATUS_NAME = "status.json"
@@ -47,6 +49,14 @@ def read_json(path: Path) -> dict | list | None:
 
 def bar_path(bridge_dir: Path | None = None) -> Path:
   return ensure_bridge_dir(bridge_dir) / BAR_NAME
+
+
+def bars_path(bridge_dir: Path | None = None) -> Path:
+  return ensure_bridge_dir(bridge_dir) / BARS_NAME
+
+
+def connection_path(bridge_dir: Path | None = None) -> Path:
+  return ensure_bridge_dir(bridge_dir) / CONNECTION_NAME
 
 
 def decision_path(bridge_dir: Path | None = None) -> Path:

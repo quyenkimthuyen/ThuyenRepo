@@ -176,8 +176,19 @@ def mark_paper_started():
     save_workflow_state(state)
 
 
-def assess_workflow() -> dict:
-  """Trạng thái từng bước + gợi ý hành động."""
+_assess_cache: dict | None = None
+_assess_cache_at: float = 0.0
+
+
+def assess_workflow(*, force: bool = False) -> dict:
+  """Trạng thái từng bước + gợi ý hành động (cache ~3s để tránh treo khi đổi trang)."""
+  import time
+
+  global _assess_cache, _assess_cache_at
+  now = time.monotonic()
+  if not force and _assess_cache is not None and (now - _assess_cache_at) < 3.0:
+    return _assess_cache
+
   from gui.services import load_backtest_report
   from gui.trade_model import get_active_trade_model
   from gui.workspace import report_matches_workspace
@@ -270,7 +281,7 @@ def assess_workflow() -> dict:
   if all(steps[s["id"]]["done"] for s in WORKFLOW_STEPS):
     current_step = 5
 
-  return {
+  result = {
     "steps": steps,
     "current_step": current_step,
     "state": state,
@@ -279,3 +290,6 @@ def assess_workflow() -> dict:
     "grid_rows": len((grid_data or {}).get("rows") or []),
     "best_report": best,
   }
+  _assess_cache = result
+  _assess_cache_at = now
+  return result

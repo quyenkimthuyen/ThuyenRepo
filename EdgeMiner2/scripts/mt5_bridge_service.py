@@ -9,6 +9,8 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import atexit
+import os
 import sys
 import time
 import traceback
@@ -31,6 +33,44 @@ from mt5_bridge.protocol import (
   write_status,
 )
 from mt5_bridge.trade_journal import process_fill
+
+
+def _register_service_process(args) -> None:
+  """Persist PID/config and provide output handles for pythonw on Windows."""
+  from mt5_bridge.background import PID_PATH, SERVICE_LOG, load_config, save_config
+
+  if sys.stdout is None or sys.stderr is None:
+    SERVICE_LOG.parent.mkdir(parents=True, exist_ok=True)
+    log = open(SERVICE_LOG, "a", encoding="utf-8", buffering=1)
+    if sys.stdout is None:
+      sys.stdout = log
+    if sys.stderr is None:
+      sys.stderr = log
+
+  pid = os.getpid()
+  PID_PATH.write_text(str(pid), encoding="utf-8")
+  save_config(
+    enabled=True,
+    mode="process",
+    service_pid=pid,
+    bridge_dir=str(args.bridge_dir),
+    model_id=args.model_id,
+    risk_pct=args.risk_pct,
+    poll_sec=args.poll,
+    last_error=None,
+  )
+
+  def _cleanup() -> None:
+    try:
+      cfg = load_config()
+      if int(cfg.get("service_pid") or 0) == pid:
+        save_config(service_pid=None)
+      if PID_PATH.exists() and PID_PATH.read_text(encoding="utf-8").strip() == str(pid):
+        PID_PATH.unlink()
+    except Exception:
+      pass
+
+  atexit.register(_cleanup)
 
 
 
@@ -117,6 +157,16 @@ def process_once(engine: BridgeEngine, bridge_dir: Path, *, last_fp: str | None,
     strategy_name=decision.get("strategy_name"),
     error=None,
   )
+  try:
+    from mt5_bridge.background import save_config
+    save_config(
+      last_run_at=decision.get("updated_at"),
+      last_action=decision.get("action"),
+      last_bar=fp,
+      last_error=None,
+    )
+  except Exception:
+    pass
   print(
     f"[bridge] bar={decision.get('bar_time')} action={decision.get('action')} "
     f"reason={decision.get('reason')} strat={decision.get('strategy_name')}",
@@ -134,6 +184,8 @@ def main() -> int:
   ap.add_argument("--once", action="store_true", help="process one bar then exit")
   ap.add_argument("--seed", action="store_true", help="force re-seed MT5 cache from Dukascopy")
   args = ap.parse_args()
+  if not args.once:
+    _register_service_process(args)
 
   bridge_dir = ensure_bridge_dir(args.bridge_dir)
   engine = BridgeEngine(model_id=args.model_id, risk_pct=args.risk_pct)

@@ -7,7 +7,7 @@
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
 #property copyright "EdgeMiner2 bridge"
-#property version   "1.00"
+#property version   "1.01"
 
 #include <Trade/Trade.mqh>
 
@@ -22,6 +22,8 @@ input ENUM_BRIDGE_MODE InpMode = BRIDGE_LIVE;
 input string InpBridgeSubdir   = "bridge";          // under MQL5/Files/
 input int    InpDecisionWaitMs = 8000;              // Live: wait for decision
 input int    InpPollMs         = 500;
+input int    InpChartBars      = 336;               // H1 bars exported for App chart
+input int    InpHeartbeatMs    = 2000;              // Live connection/tick snapshot
 
 input group "=== Risk ==="
 input double InpRiskPct        = 1.0;
@@ -46,6 +48,7 @@ double   g_trail_act = 1.0;
 double   g_trail_dist = 0.5;
 int      g_max_hold = 36;
 bool     g_had_position = false;
+uint     g_last_heartbeat_ms = 0;
 
 // Replay table
 string   g_rep_time[];
@@ -85,12 +88,27 @@ int OnInit()
       Print("ForgeBridge Replay loaded signals=", g_rep_n);
    }
    else
+   {
+      WriteBarsJson();
+      WriteConnectionJson();
+      EventSetMillisecondTimer((int)MathMax(500, InpHeartbeatMs));
       Print("ForgeBridge Live | Files/", InpBridgeSubdir, " | magic=", InpMagic);
+   }
 
    return INIT_SUCCEEDED;
 }
 
-void OnDeinit(const int reason) {}
+void OnDeinit(const int reason)
+{
+   EventKillTimer();
+}
+
+//+------------------------------------------------------------------+
+void OnTimer()
+{
+   if(InpMode == BRIDGE_LIVE)
+      WriteConnectionJson();
+}
 
 //+------------------------------------------------------------------+
 int PositionsByMagic()
@@ -214,6 +232,95 @@ bool WriteBarJson(datetime t1)
       Print("ForgeBridge: cannot write bar.json err=", GetLastError());
       return false;
    }
+   FileWriteString(h, json);
+   FileClose(h);
+   return true;
+}
+
+//+------------------------------------------------------------------+
+bool WriteBarsJson()
+{
+   int requested = MathMax(48, InpChartBars);
+   MqlRates rates[];
+   ArraySetAsSeries(rates, false);
+   int copied = CopyRates(_Symbol, PERIOD_H1, 0, requested, rates);
+   if(copied < 1)
+      return false;
+
+   int h = FileOpen(BridgePath("bars.json"), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
+   if(h == INVALID_HANDLE)
+   {
+      Print("ForgeBridge: cannot write bars.json err=", GetLastError());
+      return false;
+   }
+
+   string prefix = "{\"symbol\":\"" + _Symbol + "\",";
+   prefix += "\"updated_at\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\",";
+   prefix += "\"period\":\"H1\",\"bars\":[";
+   FileWriteString(h, prefix);
+   for(int i = 0; i < copied; i++)
+   {
+      if(i > 0) FileWriteString(h, ",");
+      string row = "{";
+      row += "\"time\":\"" + TimeToString(rates[i].time, TIME_DATE | TIME_MINUTES) + "\",";
+      row += "\"time_msc\":" + IntegerToString((long)rates[i].time * 1000) + ",";
+      row += "\"open\":" + DoubleToString(rates[i].open, _Digits) + ",";
+      row += "\"high\":" + DoubleToString(rates[i].high, _Digits) + ",";
+      row += "\"low\":" + DoubleToString(rates[i].low, _Digits) + ",";
+      row += "\"close\":" + DoubleToString(rates[i].close, _Digits) + ",";
+      row += "\"tick_volume\":" + IntegerToString((long)rates[i].tick_volume) + ",";
+      row += "\"spread_points\":" + IntegerToString(rates[i].spread);
+      row += "}";
+      FileWriteString(h, row);
+   }
+   FileWriteString(h, "]}\n");
+   FileClose(h);
+   return true;
+}
+
+//+------------------------------------------------------------------+
+bool WriteConnectionJson()
+{
+   MqlRates current[];
+   ArraySetAsSeries(current, true);
+   if(CopyRates(_Symbol, PERIOD_H1, 0, 1, current) < 1)
+      return false;
+
+   MqlTick tick;
+   if(!SymbolInfoTick(_Symbol, tick))
+      return false;
+
+   bool connected = (bool)TerminalInfoInteger(TERMINAL_CONNECTED);
+   bool terminal_trade = (bool)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED);
+   bool account_trade = (bool)AccountInfoInteger(ACCOUNT_TRADE_ALLOWED);
+   long login = AccountInfoInteger(ACCOUNT_LOGIN);
+   int positions = PositionsByMagic();
+
+   string json = "{";
+   json += "\"symbol\":\"" + _Symbol + "\",";
+   json += "\"server_time\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\",";
+   json += "\"tick_time_msc\":" + IntegerToString((long)tick.time_msc) + ",";
+   json += "\"bid\":" + DoubleToString(tick.bid, _Digits) + ",";
+   json += "\"ask\":" + DoubleToString(tick.ask, _Digits) + ",";
+   json += "\"spread_points\":" + IntegerToString((int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD)) + ",";
+   json += "\"connected\":" + (connected ? "true" : "false") + ",";
+   json += "\"terminal_trade_allowed\":" + (terminal_trade ? "true" : "false") + ",";
+   json += "\"account_trade_allowed\":" + (account_trade ? "true" : "false") + ",";
+   json += "\"account\":" + IntegerToString(login) + ",";
+   json += "\"positions\":" + IntegerToString(positions) + ",";
+   json += "\"bar\":{";
+   json += "\"time\":\"" + TimeToString(current[0].time, TIME_DATE | TIME_MINUTES) + "\",";
+   json += "\"time_msc\":" + IntegerToString((long)current[0].time * 1000) + ",";
+   json += "\"open\":" + DoubleToString(current[0].open, _Digits) + ",";
+   json += "\"high\":" + DoubleToString(current[0].high, _Digits) + ",";
+   json += "\"low\":" + DoubleToString(current[0].low, _Digits) + ",";
+   json += "\"close\":" + DoubleToString(current[0].close, _Digits) + ",";
+   json += "\"tick_volume\":" + IntegerToString((long)current[0].tick_volume);
+   json += "}}\n";
+
+   int h = FileOpen(BridgePath("connection.json"), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
+   if(h == INVALID_HANDLE)
+      return false;
    FileWriteString(h, json);
    FileClose(h);
    return true;
@@ -610,10 +717,18 @@ void OnTick()
 {
    ManageOpen();
 
+   uint now_ms = GetTickCount();
+   if(g_last_heartbeat_ms == 0 || now_ms - g_last_heartbeat_ms >= (uint)MathMax(500, InpHeartbeatMs))
+   {
+      WriteConnectionJson();
+      g_last_heartbeat_ms = now_ms;
+   }
+
    datetime t0 = iTime(_Symbol, PERIOD_H1, 0);
    if(t0 == 0 || t0 == g_last_bar)
       return;
    g_last_bar = t0;
+   WriteBarsJson();
 
    if(PositionsByMagic() > 0)
       return;

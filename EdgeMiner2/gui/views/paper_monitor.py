@@ -375,7 +375,7 @@ def _get_chart_figure(state: dict) -> go.Figure | None:
 
 
 def _resolve_monitor_state(monitor_params: dict, *, manual_refresh: bool) -> dict:
-  """Ưu tiên session cache — tránh tính lại khi chỉ chuyển tab."""
+  """Ưu tiên session/file cache — không chặn UI bằng Dukascopy sync."""
   if manual_refresh:
     _invalidate_chart_cache()
     st.session_state.pop("monitor_state", None)
@@ -403,13 +403,12 @@ def _resolve_monitor_state(monitor_params: dict, *, manual_refresh: bool) -> dic
       return saved
     if cached:
       return cached
-    with st.spinner("Đang khởi tạo background..."):
-      try:
-        state = run_cycle_now(load_config())
-      except Exception as e:
-        state = {"error": str(e)}
-    st.session_state["monitor_state"] = state
-    return state
+    # Chưa có state — hiện placeholder, để background tự cập nhật (không sync download).
+    st.info("Đang chờ background cập nhật paper… (hoặc bấm **Refresh ngay**)")
+    return {"error": None, "pending": True, "week_start": "—", "week_trades_taken": 0,
+            "strategy": {"max_trades_per_week": 0}, "slots_remaining": 0, "in_session": False,
+            "signals_this_week": [], "recent_trades": [], "last_bar": "—", "week_wr": "—",
+            "week_total_r": "—"}
 
   if cached:
     return cached
@@ -556,6 +555,9 @@ def _background_live_panel():
 
 
 def _render_monitor_body(state: dict):
+  if state.get("pending"):
+    st.caption("Chưa có snapshot paper — đợi chu kỳ nền hoặc **Refresh ngay**.")
+    return
   if state.get("error"):
     st.error(state["error"])
     return

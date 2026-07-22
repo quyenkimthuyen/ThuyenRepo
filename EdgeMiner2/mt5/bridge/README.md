@@ -10,9 +10,33 @@ Trong app: sidebar **MT5 Bridge**
   - Đổi tab / refresh Streamlit **không** dừng service
   - Tắt khi bấm Stop, hoặc kill PID trong `results/mt5_bridge_service.pid`
 - Chọn Trade Model (mặc định Best 3m)
-- Xem snapshot `bar.json` / `decision.json` / `fill.json`
+- Chart H1 live, heartbeat, Bid/Ask, spread và lệnh từ chính ForgeBridge EA
+- Xem snapshot `connection.json` / `bars.json` / `bar.json` / `decision.json` / `fill.json`
 - **Nhật ký giao tiếp** `comm_log.jsonl` (EA→App bar/fill, App→EA decision)
 - **Thống kê lệnh** `trades.json` (thắng/thua, R)
+
+## Deploy / cập nhật XM Global MT5 (Windows)
+
+Script tự tìm XM Global MT5 và Data Folder, copy + compile EA, kiểm tra
+`MQL5/Files/bridge` junction, reload XM terminal và restart Bridge service:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/deploy_xm_forgebridge.ps1
+```
+
+Lần đầu cần tự gắn vào chart EURUSD H1:
+
+```powershell
+# Gắn để test, không cho đặt lệnh
+powershell -ExecutionPolicy Bypass -File scripts/deploy_xm_forgebridge.ps1 -Attach
+
+# Thay EA trên chart và bật giao dịch
+powershell -ExecutionPolicy Bypass -File scripts/deploy_xm_forgebridge.ps1 -Attach -EnableTrading
+```
+
+Sau này khi sửa `mt5/Experts/ForgeBridge.mq5`, chỉ chạy lệnh đầu tiên. Script
+idempotent và không thay chart nếu ForgeBridge đã được gắn.
+Chỉ dùng `-NoRestartTerminal` khi muốn compile mà chưa nạp EA mới vào chart.
 
 ### Remine hàng tuần
 
@@ -23,7 +47,8 @@ Khi **Start service**: mỗi tuần ISO mới App tự `optimize_on_window` theo
 
 ```
 MT5 ForgeBridge (Live)
-  → ghi MQL5/Files/bridge/bar.json
+  → ghi connection.json + bars.json cho chart live
+  → ghi bar.json khi có nến H1 mới
 App service
   → remine Best 3m / quyết định
   → ghi decision.json (+ comm_log)
@@ -62,6 +87,8 @@ python scripts/export_bridge_replay.py
 
 | File | Writer |
 |------|--------|
+| `connection.json` | EA (heartbeat, tick, nến hiện tại, trạng thái trading) |
+| `bars.json` | EA (336 nến H1 cho chart) |
 | `bar.json` | EA |
 | `decision.json` | App |
 | `fill.json` | EA (open/close + ticket/price/profit) |

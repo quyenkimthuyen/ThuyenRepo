@@ -16,8 +16,12 @@ from gui.long_task_background import (
 
 @st.fragment(run_every=timedelta(seconds=3))
 def _task_progress_fragment():
-  if is_task_running():
-    st.rerun()
+  status = get_task_status()
+  if status["running"]:
+    st.caption(
+      f"Đang chạy: {status['done']}/{status['total']} "
+      f"({status['pct']}%) · {status['progress_text'] or '…'}"
+    )
 
 
 def _dismiss_button(key_prefix: str):

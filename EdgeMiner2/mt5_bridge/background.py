@@ -68,12 +68,17 @@ def _write_json(path: Path, data: dict) -> None:
 
 def load_config() -> dict:
   data = _read_json(CONFIG_PATH) or {}
+  bridge_dir = data.get("bridge_dir") or str(BRIDGE_DIR)
+  # Config may come from the old Linux/Docker deployment. On native Windows
+  # that path is invalid and causes a failed service restart on every rerun.
+  if os.name == "nt" and str(bridge_dir).startswith("/"):
+    bridge_dir = str(BRIDGE_DIR)
   return {
     "enabled": bool(data.get("enabled", False)),
     "model_id": data.get("model_id") or DEFAULT_MODEL_ID,
     "risk_pct": float(data.get("risk_pct", 1.0)),
     "poll_sec": float(data.get("poll_sec", 2.0)),
-    "bridge_dir": data.get("bridge_dir") or str(BRIDGE_DIR),
+    "bridge_dir": bridge_dir,
     "mode": data.get("mode") or "process",
     "service_pid": data.get("service_pid"),
     "last_run_at": data.get("last_run_at"),
@@ -98,6 +103,28 @@ def save_config(**updates) -> dict:
 def _pid_alive(pid: int | None) -> bool:
   if not pid:
     return False
+  if os.name == "nt":
+    try:
+      import ctypes
+      from ctypes import wintypes
+
+      process_query_limited_information = 0x1000
+      still_active = 259
+      kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+      handle = kernel32.OpenProcess(
+        process_query_limited_information, False, int(pid),
+      )
+      if not handle:
+        return False
+      try:
+        exit_code = wintypes.DWORD()
+        if not kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+          return False
+        return exit_code.value == still_active
+      finally:
+        kernel32.CloseHandle(handle)
+    except (OSError, TypeError, ValueError):
+      return False
   try:
     os.kill(int(pid), 0)
     return True

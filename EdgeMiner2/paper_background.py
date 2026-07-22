@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import threading
 import time
 from datetime import datetime, timezone
@@ -9,6 +11,8 @@ from pathlib import Path
 
 from run_backtest import REPORT_DIR
 
+ROOT = Path(__file__).resolve().parent
+WORKER_SCRIPT = ROOT / "scripts" / "paper_monitor_once.py"
 CONFIG_PATH = REPORT_DIR / "paper_monitor_config.json"
 STATE_PATH = REPORT_DIR / "paper_monitor_state.json"
 
@@ -171,6 +175,20 @@ def run_cycle_now(cfg: dict | None = None, *, force_refresh: bool = False) -> di
     raise
 
 
+def _run_cycle_process(*, force_refresh: bool = False) -> None:
+  """Chạy optimize paper ở process riêng để không khóa GIL/Streamlit."""
+  cmd = [sys.executable, str(WORKER_SCRIPT)]
+  if force_refresh:
+    cmd.append("--force-refresh")
+  subprocess.run(
+    cmd,
+    cwd=str(ROOT),
+    stdout=subprocess.DEVNULL,
+    stderr=subprocess.DEVNULL,
+    check=False,
+  )
+
+
 def _worker_loop():
   while not _stop.is_set():
     cfg = load_config()
@@ -182,7 +200,7 @@ def _worker_loop():
     if _stop.is_set():
       break
     try:
-      run_cycle_now(load_config())
+      _run_cycle_process()
     except Exception:
       pass
 
@@ -231,10 +249,12 @@ def start_background(
   _write_json(CONFIG_PATH, cfg)
 
   if run_immediately:
-    try:
-      run_cycle_now(cfg)
-    except Exception:
-      pass
+    def _kick():
+      try:
+        _run_cycle_process()
+      except Exception:
+        pass
+    threading.Thread(target=_kick, name="paper-start-kick", daemon=True).start()
 
   _thread = threading.Thread(target=_worker_loop, name="paper-monitor-bg", daemon=True)
   _thread.start()
@@ -269,11 +289,14 @@ def sync_background_config(
   }
   _write_json(CONFIG_PATH, new_cfg)
   ensure_background_running()
+  # Không chạy run_cycle_now trên thread UI — sẽ treo trang khi Dukascopy chậm.
   if was_off:
-    try:
-      run_cycle_now(new_cfg)
-    except Exception:
-      pass
+    def _kick():
+      try:
+        _run_cycle_process()
+      except Exception:
+        pass
+    threading.Thread(target=_kick, name="paper-kickoff", daemon=True).start()
 
 
 def update_background_config(

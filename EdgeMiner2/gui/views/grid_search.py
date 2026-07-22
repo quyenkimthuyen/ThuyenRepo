@@ -34,7 +34,10 @@ from gui.trade_model import create_trade_model
 def _grid_progress_fragment():
   status = get_grid_status()
   if status["running"]:
-    st.rerun()
+    st.caption(
+      f"Đang chạy: {status['done']}/{status['total']} "
+      f"({status['pct']}%) · {status['current_label'] or '…'}"
+    )
 
 
 def _render_job_status():

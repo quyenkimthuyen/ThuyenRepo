@@ -83,7 +83,6 @@ def _render_sidebar_nav() -> str:
         key=f"nav_{item.key}",
         icon=item.icon or None,
         active=active,
-        help=item.hint or None,
       ):
         st.session_state["nav_page"] = item.key
         st.rerun()
@@ -148,12 +147,6 @@ def main():
   try:
     from gui.long_task_background import ensure_task_worker_running
     ensure_task_worker_running()
-  except Exception:
-    pass
-
-  try:
-    from mt5_bridge.background import ensure_worker_running
-    ensure_worker_running()
   except Exception:
     pass
 
