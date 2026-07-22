@@ -15,6 +15,10 @@ from kb_profiles import DEFAULT_PROFILE_ID
 from gui.trade_model import get_model_run_params
 from gui.services import get_ohlc_window_cached, get_paper_monitor
 from gui.paper_settings import load_pm_config, save_ui_settings
+from paper_live_monitor_server import (
+  DEFAULT_PAPER_MONITOR_PORT,
+  start_paper_live_monitor_server,
+)
 from paper_background import (
   get_background_status,
   is_background_enabled,
@@ -350,6 +354,14 @@ def _invalidate_chart_cache():
   st.session_state.pop("pm_fig_key", None)
 
 
+@st.cache_resource
+def _paper_live_chart_server():
+  try:
+    return start_paper_live_monitor_server()
+  except OSError:
+    return None
+
+
 def _get_chart_figure(state: dict) -> go.Figure | None:
   """Dùng lại figure đã build — chart hiện ngay khi quay lại tab."""
   key = _chart_cache_key(state)
@@ -434,8 +446,21 @@ def _poll_check_update() -> bool:
 
 
 def _render_chart_panel(state: dict):
-  """Chart với spinner khi vẽ mới; dùng cache thì hiện ngay (không làm mờ)."""
+  """Persistent browser chart; background updates data without replacing it."""
   st.subheader("Biểu đồ tuần (TradingView style)")
+  server = _paper_live_chart_server()
+  if server is not None:
+    components.iframe(
+      f"http://127.0.0.1:{DEFAULT_PAPER_MONITOR_PORT}/chart?bars=168",
+      height=700,
+      scrolling=False,
+    )
+    st.caption(
+      "Chart Paper cập nhật tại chỗ theo dữ liệu background, "
+      "không rerun Plotly nên không chớp."
+    )
+    return
+
   key = _chart_cache_key(state)
   cached_fig = (
     st.session_state.get("pm_fig")
@@ -545,16 +570,16 @@ def _background_status_bar():
 
 @st.fragment(run_every=timedelta(seconds=30))
 def _background_live_panel():
-  """Poll data nền + render nội dung — không tick mỗi giây."""
+  """Refresh Paper details while the persistent chart stays outside this fragment."""
   if not is_background_enabled():
     return
   _poll_check_update()
   state = st.session_state.get("monitor_state")
   if state:
-    _render_monitor_body(state)
+    _render_monitor_body(state, include_chart=False)
 
 
-def _render_monitor_body(state: dict):
+def _render_monitor_body(state: dict, *, include_chart: bool = True):
   if state.get("pending"):
     st.caption("Chưa có snapshot paper — đợi chu kỳ nền hoặc **Refresh ngay**.")
     return
@@ -586,7 +611,8 @@ def _render_monitor_body(state: dict):
       f"Giữ {op.get('bars_held', 0)}/{op.get('max_hold_bars', '?')} bars"
     )
 
-  _render_chart_panel(state)
+  if include_chart:
+    _render_chart_panel(state)
 
   st.subheader("Chi tiết lệnh")
   orders = _orders_for_display(state)
@@ -722,6 +748,7 @@ def render():
     )
     if status.get("last_error"):
       st.error(f"Background lỗi: {status['last_error']}")
+    _render_chart_panel(state)
     _background_live_panel()
   else:
     _background_status_bar()

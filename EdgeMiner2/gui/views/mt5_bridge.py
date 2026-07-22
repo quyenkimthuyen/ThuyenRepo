@@ -307,26 +307,5 @@ def render():
     with st.expander("Chi tiết JSON từng event"):
       st.json(events[:50])
 
-  st.subheader("So sánh backtest MT5")
-  st.markdown("""
-| EA | Vai trò |
-|----|---------|
-| `ForgeBest3m_Frozen` | Rules tĩnh trong MT5 |
-| `ForgeBest3m_WF` | Lịch WF nhúng |
-| `ForgeBridge` Replay | Lịch App export (`replay_signals.csv`) |
-
-```bash
-python scripts/export_bridge_replay.py
-./mt5/run_mt5.sh sync_bridge
-# Strategy Tester: ForgeBridge · InpMode=Replay
-```
-""")
-  replay = BRIDGE_DIR / "replay_signals.csv"
-  if replay.exists():
-    n = sum(1 for _ in open(replay, encoding="utf-8")) - 1
-    st.success(f"Có replay: `{replay}` ({n} signals)")
-  else:
-    st.caption("Chưa export replay — chạy lệnh trên khi cần so sánh Tester.")
-
   st.divider()
   st.markdown("Chi tiết: **Hướng dẫn** (mục MT5 Bridge) hoặc `mt5/bridge/README.md`.")
