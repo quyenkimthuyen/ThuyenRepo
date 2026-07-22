@@ -18,6 +18,7 @@ def render():
 - **Walk-forward backtest** — train 3 tháng, re-optimize hàng tuần, trade OOS (không look-ahead)
 - **Strategy miner** — khai phá rule từ features + lọc ML
 - **Self-learning (v4)** — tích lũy KB qua nhiều epoch (rules, genomes, ML samples)
+- **MT5 Bridge** — App (Best 3m) quyết định; EA `ForgeBridge` execute trên **MetaTrader 5** (không phải MT4)
 
 ---
 
@@ -161,13 +162,35 @@ Mỗi tuần OOS: TRAIN 3 THÁNG → mine (+ KB) → trade 1 tuần
 | Nhóm | Trang | Mục đích |
 |------|-------|----------|
 | **Hàng ngày** | **Tổng quan** | Tiến độ 5 bước, KPI, Refresh data |
-| | **Giám sát paper** | Tín hiệu & lệnh tuần (theo Trade Model) |
+| | **Giám sát paper** | Tín hiệu & lệnh tuần (Dukascopy, không broker) |
+| | **MT5 Bridge** | App quyết định Best 3m · EA `ForgeBridge` execute · log giao tiếp |
 | **Thiết lập & học** | **① Cài đặt** | Train window · giai đoạn học · OOS |
 | | **② Học & tối ưu** | ① Huấn luyện KB → ② Grid Search → ③ Trade Models |
 | **Phân tích** | **Phân tích** | Risk · Nhật ký · Chiến lược (chọn Trade Model) |
 | **Khác** | **Hướng dẫn** | Tài liệu này |
 
 **Trade Model** (sidebar + trang Phân tích): chọn một model — Paper & Phân tích dùng chung.
+
+### MT5 Bridge — dùng thế nào?
+
+Đây là cầu nối **MetaTrader 5** (không phải MT4):
+
+1. Mở **Hàng ngày → MT5 Bridge** → chọn Trade Model (Best 3m) → **Start service**
+2. Trên MT5: compile/attach EA `ForgeBridge`, `InpMode = Live` (thư mục `MQL5/Files/bridge`)
+3. Mỗi H1 mới: EA ghi `bar.json` → App remine/decide → `decision.json` → EA BUY/SELL hoặc FLAT
+4. Xem **Nhật ký giao tiếp** trên GUI (`comm_log.jsonl`: `bar_received`, `decision_sent`, `fill_received`)
+5. Xem **Thống kê lệnh Bridge** (thắng/thua, R, profit) — EA ghi `fill.json` open/close → App lưu `trades.json`
+
+**So sánh backtest trong MT5 Strategy Tester** (cùng EURUSD H1 / khoảng ngày):
+
+| EA | Nguồn quyết định |
+|----|------------------|
+| `ForgeBest3m_Frozen` | Rules tĩnh trong EA |
+| `ForgeBest3m_WF` | Lịch walk-forward nhúng |
+| `ForgeBridge` Replay | Lịch App (`python scripts/export_bridge_replay.py`) |
+
+CLI tương đương GUI service: `python scripts/mt5_bridge_service.py`  
+Chi tiết file: `mt5/bridge/README.md`
 
 ---
 
@@ -333,6 +356,11 @@ strategy_miner.py           # Mine + backtest
 feature_engine.py           # Features
 knowledge_base.py           # KB
 data/eurusd_h1.parquet      # Cache giá
+mt5_bridge/                 # Bridge App ↔ MT5 EA
+mt5/Experts/ForgeBridge.mq5 # EA execute (Live / Replay)
+mt5/bridge/                 # bar/decision/fill/comm_log/replay
+scripts/mt5_bridge_service.py
+scripts/export_bridge_replay.py
 results/backtest_report.json
 results/learning_report.json
 results/reports/              # Kho báo cáo Report Compare
@@ -345,7 +373,8 @@ learning/kb_profiles/       # KB từng giai đoạn
 ## 14. Hạn chế đã biết
 
 - Một pair / một timeframe (EUR/USD H1)
-- Chưa kết nối broker API
+- Paper Monitor dùng Dukascopy — **không** phải feed broker
+- MT5 Bridge cần EA + service App chạy đồng thời; Wine/SSL login broker vẫn có thể fail trên Linux Docker
 - Intrabar SL/TP — thứ tự chạm có thể khác live
 - RoR là ước lượng, không phải Monte Carlo đầy đủ
 - Yahoo không dùng cho H1 lịch sử — dùng Dukascopy
@@ -368,6 +397,15 @@ A: ~2 phút cho 4 năm / 224 tuần. Dùng cache data, tránh refresh liên tụ
 
 **Q: Quy trình nào nên làm trước?**  
 A: KB OFF baseline → học KB era → OOS với profile → Report Compare → hold-out → paper.
+
+**Q: MT5 Bridge khác Paper Monitor thế nào?**  
+A: Paper = tín hiệu trên data Dukascopy trong app. Bridge = giá từ **MT5 broker** qua EA, App quyết định, EA mở lệnh thật/demo trên MT5.
+
+**Q: Có hỗ trợ MT4 không?**  
+A: Không — chỉ **MT5** (`ForgeBridge.mq5`).
+
+**Q: Xem log giao tiếp App ↔ EA ở đâu?**  
+A: GUI **MT5 Bridge** → Nhật ký giao tiếp, hoặc file `mt5/bridge/comm_log.jsonl`.
 
 **Q: Khác nhau Train 3 tháng, KB và Epoch?**  
 A: **Train 3 tháng** = mine strategy mỗi tuần WF (luôn chạy). **KB** = bộ nhớ dài hạn (rules/genomes/ML). **Epoch** = một vòng học full giai đoạn để cải thiện KB. Xem mục **5** trong Usage Guide.

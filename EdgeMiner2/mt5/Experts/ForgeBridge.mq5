@@ -1,0 +1,654 @@
+//+------------------------------------------------------------------+
+//| ForgeBridge.mq5                                                  |
+//| Thin execution EA — App (Best 3m) decides via mt5/bridge files.  |
+//| Modes:                                                           |
+//|   Live   — write bar.json, read decision.json (App service)      |
+//|   Replay — read replay_signals.csv for Strategy Tester compare   |
+//| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
+//+------------------------------------------------------------------+
+#property copyright "EdgeMiner2 bridge"
+#property version   "1.00"
+
+#include <Trade/Trade.mqh>
+
+enum ENUM_BRIDGE_MODE
+{
+   BRIDGE_LIVE = 0,    // Live file bridge
+   BRIDGE_REPLAY = 1   // Replay CSV (tester)
+};
+
+input group "=== Bridge ==="
+input ENUM_BRIDGE_MODE InpMode = BRIDGE_LIVE;
+input string InpBridgeSubdir   = "bridge";          // under MQL5/Files/
+input int    InpDecisionWaitMs = 8000;              // Live: wait for decision
+input int    InpPollMs         = 500;
+
+input group "=== Risk ==="
+input double InpRiskPct        = 1.0;
+input ulong  InpMagic          = 20260724;
+input int    InpSlipPoints     = 30;
+input int    InpMaxHoldBars    = 36;                // fallback if decision omits
+
+CTrade   trade;
+datetime g_last_bar = 0;
+datetime g_last_fill_bar = 0;
+string   g_last_signal_id = "";
+ulong    g_open_ticket = 0;
+string   g_open_signal_id = "";
+string   g_open_action = "";
+double   g_open_entry = 0;
+double   g_open_sl = 0;
+double   g_open_tp = 0;
+double   g_open_lots = 0;
+double   g_risk = 0;
+int      g_exit_mode = 1;
+double   g_trail_act = 1.0;
+double   g_trail_dist = 0.5;
+int      g_max_hold = 36;
+bool     g_had_position = false;
+
+// Replay table
+string   g_rep_time[];
+int      g_rep_dir[];
+double   g_rep_atr[];
+double   g_rep_rr[];
+int      g_rep_exit[];
+double   g_rep_tact[];
+double   g_rep_tdist[];
+int      g_rep_hold[];
+int      g_rep_n = 0;
+int      g_rep_cursor = 0;
+
+//+------------------------------------------------------------------+
+string BridgePath(const string name)
+{
+   return InpBridgeSubdir + "\\" + name;
+}
+
+//+------------------------------------------------------------------+
+int OnInit()
+{
+   trade.SetExpertMagicNumber((int)InpMagic);
+   trade.SetDeviationInPoints(InpSlipPoints);
+   trade.SetTypeFillingBySymbol(_Symbol);
+   g_max_hold = InpMaxHoldBars;
+
+   FolderCreate(InpBridgeSubdir);
+
+   if(InpMode == BRIDGE_REPLAY)
+   {
+      if(!LoadReplayCsv())
+      {
+         Print("ForgeBridge Replay: failed to load ", BridgePath("replay_signals.csv"));
+         return INIT_FAILED;
+      }
+      Print("ForgeBridge Replay loaded signals=", g_rep_n);
+   }
+   else
+      Print("ForgeBridge Live | Files/", InpBridgeSubdir, " | magic=", InpMagic);
+
+   return INIT_SUCCEEDED;
+}
+
+void OnDeinit(const int reason) {}
+
+//+------------------------------------------------------------------+
+int PositionsByMagic()
+{
+   int n = 0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      if(!PositionSelectByTicket(PositionGetTicket(i))) continue;
+      if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
+      if((ulong)PositionGetInteger(POSITION_MAGIC) != InpMagic) continue;
+      n++;
+   }
+   return n;
+}
+
+//+------------------------------------------------------------------+
+double LotsForRisk(double sl_dist)
+{
+   if(sl_dist <= 0) return 0;
+   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+   double risk_money = balance * InpRiskPct / 100.0;
+   double tick_val = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+   double tick_size = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+   if(tick_val <= 0 || tick_size <= 0) return SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+   double loss_per_lot = (sl_dist / tick_size) * tick_val;
+   if(loss_per_lot <= 0) return SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+   double lots = risk_money / loss_per_lot;
+   double step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+   double vmin = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+   double vmax = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
+   lots = MathFloor(lots / step) * step;
+   return MathMax(vmin, MathMin(vmax, lots));
+}
+
+//+------------------------------------------------------------------+
+string JsonGetString(const string json, const string key)
+{
+   string pat = "\"" + key + "\"";
+   int p = StringFind(json, pat);
+   if(p < 0) return "";
+   int colon = StringFind(json, ":", p);
+   if(colon < 0) return "";
+   int q1 = StringFind(json, "\"", colon + 1);
+   if(q1 < 0) return "";
+   // null?
+   string after = StringSubstr(json, colon + 1);
+   StringTrimLeft(after);
+   if(StringFind(after, "null") == 0) return "";
+   int q2 = StringFind(json, "\"", q1 + 1);
+   if(q2 < 0) return "";
+   return StringSubstr(json, q1 + 1, q2 - q1 - 1);
+}
+
+double JsonGetDouble(const string json, const string key, const double def = 0)
+{
+   string pat = "\"" + key + "\"";
+   int p = StringFind(json, pat);
+   if(p < 0) return def;
+   int colon = StringFind(json, ":", p);
+   if(colon < 0) return def;
+   string rest = StringSubstr(json, colon + 1);
+   StringTrimLeft(rest);
+   if(StringFind(rest, "null") == 0) return def;
+   // strip quotes if any
+   if(StringGetCharacter(rest, 0) == '"')
+   {
+      int q2 = StringFind(rest, "\"", 1);
+      if(q2 > 0) rest = StringSubstr(rest, 1, q2 - 1);
+   }
+   else
+   {
+      int end = StringLen(rest);
+      for(int i = 0; i < StringLen(rest); i++)
+      {
+         ushort c = StringGetCharacter(rest, i);
+         if((c < '0' || c > '9') && c != '.' && c != '-' && c != 'e' && c != 'E' && c != '+')
+         {
+            end = i;
+            break;
+         }
+      }
+      rest = StringSubstr(rest, 0, end);
+   }
+   return StringToDouble(rest);
+}
+
+//+------------------------------------------------------------------+
+bool WriteBarJson(datetime t1)
+{
+   MqlRates r[];
+   ArraySetAsSeries(r, true);
+   if(CopyRates(_Symbol, PERIOD_H1, 1, 1, r) < 1)
+      return false;
+
+   long time_msc = (long)r[0].time * 1000;
+   string bar_time = TimeToString(r[0].time, TIME_DATE | TIME_MINUTES);
+   // MT5 TimeToString uses yyyy.mm.dd hh:mi — matches App
+   int spread = (int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+   long login = AccountInfoInteger(ACCOUNT_LOGIN);
+
+   string json = "{";
+   json += "\"symbol\":\"" + _Symbol + "\",";
+   json += "\"time\":\"" + bar_time + "\",";
+   json += "\"bar_time\":\"" + bar_time + "\",";
+   json += "\"time_msc\":" + IntegerToString(time_msc) + ",";
+   json += "\"open\":" + DoubleToString(r[0].open, _Digits) + ",";
+   json += "\"high\":" + DoubleToString(r[0].high, _Digits) + ",";
+   json += "\"low\":" + DoubleToString(r[0].low, _Digits) + ",";
+   json += "\"close\":" + DoubleToString(r[0].close, _Digits) + ",";
+   json += "\"volume\":" + DoubleToString((double)r[0].tick_volume, 0) + ",";
+   json += "\"tick_volume\":" + IntegerToString((int)r[0].tick_volume) + ",";
+   json += "\"spread_points\":" + IntegerToString(spread) + ",";
+   json += "\"digits\":" + IntegerToString(_Digits) + ",";
+   json += "\"point\":" + DoubleToString(_Point, _Digits) + ",";
+   json += "\"account\":" + IntegerToString((int)login);
+   json += "}\n";
+
+   int h = FileOpen(BridgePath("bar.json"), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
+   if(h == INVALID_HANDLE)
+   {
+      Print("ForgeBridge: cannot write bar.json err=", GetLastError());
+      return false;
+   }
+   FileWriteString(h, json);
+   FileClose(h);
+   return true;
+}
+
+//+------------------------------------------------------------------+
+bool ReadDecisionJson(string &json_out)
+{
+   int h = FileOpen(BridgePath("decision.json"), FILE_READ | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
+   if(h == INVALID_HANDLE)
+      return false;
+   json_out = "";
+   while(!FileIsEnding(h))
+      json_out += FileReadString(h) + "\n";
+   FileClose(h);
+   return (StringLen(json_out) > 5);
+}
+
+//+------------------------------------------------------------------+
+bool WaitDecisionForBar(const string want_bar_time, string &json_out)
+{
+   uint start = GetTickCount();
+   while(GetTickCount() - start < (uint)InpDecisionWaitMs)
+   {
+      if(ReadDecisionJson(json_out))
+      {
+         string bt = JsonGetString(json_out, "bar_time");
+         if(bt == "" ) bt = JsonGetString(json_out, "time");
+         if(bt == want_bar_time || StringFind(json_out, want_bar_time) >= 0)
+            return true;
+      }
+      Sleep(InpPollMs);
+   }
+   return ReadDecisionJson(json_out);
+}
+
+//+------------------------------------------------------------------+
+void WriteFillJsonEx(
+   const string event,
+   const string signal_id,
+   const string action,
+   const bool ok,
+   const string detail,
+   const ulong ticket,
+   const double price,
+   const double sl,
+   const double tp,
+   const double lots,
+   const double profit,
+   const string reason
+)
+{
+   string json = "{";
+   json += "\"event\":\"" + event + "\",";
+   json += "\"signal_id\":\"" + signal_id + "\",";
+   json += "\"action\":\"" + action + "\",";
+   json += "\"ok\":" + (ok ? "true" : "false") + ",";
+   json += "\"detail\":\"" + detail + "\",";
+   json += "\"ticket\":" + IntegerToString((long)ticket) + ",";
+   json += "\"symbol\":\"" + _Symbol + "\",";
+   json += "\"price\":" + DoubleToString(price, _Digits) + ",";
+   json += "\"sl\":" + DoubleToString(sl, _Digits) + ",";
+   json += "\"tp\":" + DoubleToString(tp, _Digits) + ",";
+   json += "\"lots\":" + DoubleToString(lots, 2) + ",";
+   json += "\"profit\":" + DoubleToString(profit, 2) + ",";
+   json += "\"reason\":\"" + reason + "\",";
+   json += "\"time\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\"";
+   json += "}\n";
+   int h = FileOpen(BridgePath("fill.json"), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
+   if(h == INVALID_HANDLE) return;
+   FileWriteString(h, json);
+   FileClose(h);
+}
+
+void WriteFillJson(const string signal_id, const string action, const bool ok, const string detail)
+{
+   WriteFillJsonEx("open", signal_id, action, ok, detail, 0, 0, 0, 0, 0, 0, detail);
+}
+
+//+------------------------------------------------------------------+
+bool OpenFromDecision(const string json)
+{
+   string action = JsonGetString(json, "action");
+   StringToUpper(action);
+   if(action != "BUY" && action != "SELL")
+      return false;
+
+   string sid = JsonGetString(json, "signal_id");
+   if(sid != "" && sid == g_last_signal_id)
+      return false;
+
+   double sl = JsonGetDouble(json, "sl", 0);
+   double tp = JsonGetDouble(json, "tp", 0);
+
+   string em = JsonGetString(json, "exit_mode");
+   StringToLower(em);
+   if(em == "full" || em == "0") g_exit_mode = 0;
+   else if(em == "hybrid" || em == "1") g_exit_mode = 1;
+   else if(em == "trail" || em == "2") g_exit_mode = 2;
+   else if(em == "partial" || em == "3") g_exit_mode = 3;
+   else g_exit_mode = 2;
+   g_trail_act = JsonGetDouble(json, "trail_activate_r", 1.0);
+   g_trail_dist = JsonGetDouble(json, "trail_distance_r", 0.5);
+   g_max_hold = (int)JsonGetDouble(json, "max_hold_bars", InpMaxHoldBars);
+
+   double price = (action == "BUY")
+      ? SymbolInfoDouble(_Symbol, SYMBOL_ASK)
+      : SymbolInfoDouble(_Symbol, SYMBOL_BID);
+
+   if(sl <= 0 || tp <= 0)
+   {
+      Print("ForgeBridge: decision missing sl/tp");
+      return false;
+   }
+   double sl_dist = MathAbs(price - sl);
+   if(sl_dist <= 0) return false;
+   g_risk = sl_dist;
+   double lots = LotsForRisk(sl_dist);
+   if(lots <= 0) return false;
+
+   bool ok = false;
+   if(action == "BUY")
+      ok = trade.Buy(lots, _Symbol, price, sl, tp, "Bridge BUY");
+   else
+      ok = trade.Sell(lots, _Symbol, price, sl, tp, "Bridge SELL");
+
+   ulong ticket = ok ? (ulong)trade.ResultOrder() : 0;
+   // Prefer position ticket if available
+   if(ok)
+   {
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         ulong t = PositionGetTicket(i);
+         if(!PositionSelectByTicket(t)) continue;
+         if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
+         if((ulong)PositionGetInteger(POSITION_MAGIC) != InpMagic) continue;
+         ticket = t;
+         price = PositionGetDouble(POSITION_PRICE_OPEN);
+         sl = PositionGetDouble(POSITION_SL);
+         tp = PositionGetDouble(POSITION_TP);
+         lots = PositionGetDouble(POSITION_VOLUME);
+         break;
+      }
+      g_open_ticket = ticket;
+      g_open_signal_id = sid;
+      g_open_action = action;
+      g_open_entry = price;
+      g_open_sl = sl;
+      g_open_tp = tp;
+      g_open_lots = lots;
+      g_had_position = true;
+      g_last_signal_id = sid;
+      Print("ForgeBridge entry ", action, " ticket=", ticket, " lots=", lots, " sl=", sl, " tp=", tp);
+   }
+
+   WriteFillJsonEx("open", sid, action, ok, ok ? "opened" : IntegerToString(trade.ResultRetcode()),
+                   ticket, price, sl, tp, lots, 0, ok ? "opened" : "reject");
+   return ok;
+}
+
+//+------------------------------------------------------------------+
+void ReportCloseIfNeeded(const string reason)
+{
+   if(g_open_ticket == 0 && g_open_signal_id == "")
+      return;
+   // Prefer deal profit from history for this position
+   double profit = 0;
+   double exit_px = (g_open_action == "BUY")
+      ? SymbolInfoDouble(_Symbol, SYMBOL_BID)
+      : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   datetime from = TimeCurrent() - 7 * 24 * 3600;
+   if(HistorySelect(from, TimeCurrent()))
+   {
+      for(int i = HistoryDealsTotal() - 1; i >= 0; i--)
+      {
+         ulong deal = HistoryDealGetTicket(i);
+         if(deal == 0) continue;
+         if((ulong)HistoryDealGetInteger(deal, DEAL_MAGIC) != InpMagic) continue;
+         if(HistoryDealGetString(deal, DEAL_SYMBOL) != _Symbol) continue;
+         long entry = HistoryDealGetInteger(deal, DEAL_ENTRY);
+         if(entry != DEAL_ENTRY_OUT && entry != DEAL_ENTRY_OUT_BY) continue;
+         profit = HistoryDealGetDouble(deal, DEAL_PROFIT)
+                + HistoryDealGetDouble(deal, DEAL_SWAP)
+                + HistoryDealGetDouble(deal, DEAL_COMMISSION);
+         exit_px = HistoryDealGetDouble(deal, DEAL_PRICE);
+         break;
+      }
+   }
+   WriteFillJsonEx("close", g_open_signal_id, g_open_action, true, "closed",
+                   g_open_ticket, exit_px, g_open_sl, g_open_tp, g_open_lots, profit, reason);
+   g_open_ticket = 0;
+   g_open_signal_id = "";
+   g_had_position = false;
+}
+
+//+------------------------------------------------------------------+
+void ManageOpen()
+{
+   int npos = PositionsByMagic();
+   if(g_had_position && npos == 0)
+   {
+      ReportCloseIfNeeded("closed");
+      return;
+   }
+   if(npos == 0) return;
+
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(!PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
+      if((ulong)PositionGetInteger(POSITION_MAGIC) != InpMagic) continue;
+
+      g_open_ticket = ticket;
+      g_open_entry = PositionGetDouble(POSITION_PRICE_OPEN);
+      g_open_sl = PositionGetDouble(POSITION_SL);
+      g_open_tp = PositionGetDouble(POSITION_TP);
+      g_open_lots = PositionGetDouble(POSITION_VOLUME);
+      g_open_action = (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) ? "BUY" : "SELL";
+      g_had_position = true;
+
+      datetime open_time = (datetime)PositionGetInteger(POSITION_TIME);
+      int held = (int)((TimeCurrent() - open_time) / PeriodSeconds(PERIOD_H1));
+      if(held >= g_max_hold)
+      {
+         if(trade.PositionClose(ticket))
+            ReportCloseIfNeeded("max_hold");
+         continue;
+      }
+
+      long type = PositionGetInteger(POSITION_TYPE);
+      double open_price = PositionGetDouble(POSITION_PRICE_OPEN);
+      double sl = PositionGetDouble(POSITION_SL);
+      double tp = PositionGetDouble(POSITION_TP);
+      double risk = g_risk;
+      if(risk <= 0) risk = MathAbs(open_price - sl);
+      double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+      double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+
+      if(g_exit_mode == 1 || g_exit_mode == 2)
+      {
+         if(type == POSITION_TYPE_BUY)
+         {
+            if(bid >= open_price + risk * g_trail_act)
+            {
+               double nsl = bid - risk * g_trail_dist;
+               if(nsl > sl) trade.PositionModify(ticket, nsl, tp);
+            }
+         }
+         else
+         {
+            if(ask <= open_price - risk * g_trail_act)
+            {
+               double nsl = ask + risk * g_trail_dist;
+               if(sl == 0 || nsl < sl) trade.PositionModify(ticket, nsl, tp);
+            }
+         }
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+bool LoadReplayCsv()
+{
+   int h = FileOpen(BridgePath("replay_signals.csv"), FILE_READ | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
+   if(h == INVALID_HANDLE)
+      return false;
+
+   ArrayResize(g_rep_time, 0);
+   ArrayResize(g_rep_dir, 0);
+   ArrayResize(g_rep_atr, 0);
+   ArrayResize(g_rep_rr, 0);
+   ArrayResize(g_rep_exit, 0);
+   ArrayResize(g_rep_tact, 0);
+   ArrayResize(g_rep_tdist, 0);
+   ArrayResize(g_rep_hold, 0);
+   g_rep_n = 0;
+
+   // header
+   if(!FileIsEnding(h))
+      FileReadString(h);
+
+   while(!FileIsEnding(h))
+   {
+      string line = FileReadString(h);
+      StringTrimLeft(line);
+      StringTrimRight(line);
+      if(StringLen(line) < 8) continue;
+      string parts[];
+      int n = StringSplit(line, ',', parts);
+      if(n < 8) continue;
+      int i = g_rep_n;
+      ArrayResize(g_rep_time, i + 1);
+      ArrayResize(g_rep_dir, i + 1);
+      ArrayResize(g_rep_atr, i + 1);
+      ArrayResize(g_rep_rr, i + 1);
+      ArrayResize(g_rep_exit, i + 1);
+      ArrayResize(g_rep_tact, i + 1);
+      ArrayResize(g_rep_tdist, i + 1);
+      ArrayResize(g_rep_hold, i + 1);
+      g_rep_time[i] = parts[0];
+      g_rep_dir[i] = (int)StringToInteger(parts[1]);
+      g_rep_atr[i] = StringToDouble(parts[2]);
+      g_rep_rr[i] = StringToDouble(parts[3]);
+      g_rep_exit[i] = (int)StringToInteger(parts[4]);
+      g_rep_tact[i] = StringToDouble(parts[5]);
+      g_rep_tdist[i] = StringToDouble(parts[6]);
+      g_rep_hold[i] = (int)StringToInteger(parts[7]);
+      g_rep_n++;
+   }
+   FileClose(h);
+   return (g_rep_n > 0);
+}
+
+//+------------------------------------------------------------------+
+double AtrAt(int shift)
+{
+   int bars = 120;
+   MqlRates rates[];
+   ArraySetAsSeries(rates, true);
+   if(CopyRates(_Symbol, PERIOD_H1, 0, bars, rates) < bars)
+      return 0;
+   double alpha = 1.0 / 14.0;
+   double series[];
+   ArrayResize(series, bars);
+   series[bars - 1] = rates[bars - 1].high - rates[bars - 1].low;
+   for(int i = bars - 2; i >= 0; i--)
+   {
+      double a = rates[i].high - rates[i].low;
+      double b = MathAbs(rates[i].high - rates[i + 1].close);
+      double c = MathAbs(rates[i].low - rates[i + 1].close);
+      double tr = MathMax(a, MathMax(b, c));
+      series[i] = alpha * tr + (1.0 - alpha) * series[i + 1];
+   }
+   return series[shift];
+}
+
+//+------------------------------------------------------------------+
+int FindReplayIndex(datetime t1)
+{
+   string key = TimeToString(t1, TIME_DATE | TIME_MINUTES);
+   for(int i = MathMax(0, g_rep_cursor - 2); i < g_rep_n; i++)
+   {
+      if(g_rep_time[i] == key)
+      {
+         g_rep_cursor = i;
+         return i;
+      }
+   }
+   // fuzzy: compare parsed times
+   for(int i = MathMax(0, g_rep_cursor - 2); i < g_rep_n; i++)
+   {
+      datetime st = StringToTime(g_rep_time[i]);
+      if(st == t1)
+      {
+         g_rep_cursor = i;
+         return i;
+      }
+      if(st > t1 + 7 * 24 * 3600)
+         break;
+   }
+   return -1;
+}
+
+//+------------------------------------------------------------------+
+void OpenFromReplay(int idx)
+{
+   int dir = g_rep_dir[idx];
+   double atr = AtrAt(1);
+   if(atr <= 0) return;
+   double sl_dist = g_rep_atr[idx] * atr;
+   double rr = g_rep_rr[idx];
+   double price = (dir > 0) ? SymbolInfoDouble(_Symbol, SYMBOL_ASK) : SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double sl = (dir > 0) ? price - sl_dist : price + sl_dist;
+   double tp = (dir > 0) ? price + sl_dist * rr : price - sl_dist * rr;
+   double lots = LotsForRisk(sl_dist);
+   if(lots <= 0) return;
+
+   g_risk = sl_dist;
+   g_exit_mode = g_rep_exit[idx];
+   g_trail_act = g_rep_tact[idx];
+   g_trail_dist = g_rep_tdist[idx];
+   g_max_hold = g_rep_hold[idx];
+
+   bool ok = false;
+   if(dir > 0) ok = trade.Buy(lots, _Symbol, price, sl, tp, "BridgeReplay LONG");
+   else ok = trade.Sell(lots, _Symbol, price, sl, tp, "BridgeReplay SHORT");
+   if(ok)
+      Print("ForgeBridge Replay entry ", (dir > 0 ? "LONG" : "SHORT"), " idx=", idx);
+}
+
+//+------------------------------------------------------------------+
+void OnTick()
+{
+   ManageOpen();
+
+   datetime t0 = iTime(_Symbol, PERIOD_H1, 0);
+   if(t0 == 0 || t0 == g_last_bar)
+      return;
+   g_last_bar = t0;
+
+   if(PositionsByMagic() > 0)
+      return;
+
+   datetime t1 = iTime(_Symbol, PERIOD_H1, 1);
+   if(t1 == 0 || t1 == g_last_fill_bar)
+      return;
+
+   if(InpMode == BRIDGE_REPLAY)
+   {
+      int idx = FindReplayIndex(t1);
+      if(idx < 0) return;
+      OpenFromReplay(idx);
+      g_last_fill_bar = t1;
+      return;
+   }
+
+   // Live: publish closed bar, wait for App decision
+   if(!WriteBarJson(t1))
+      return;
+
+   string want = TimeToString(t1, TIME_DATE | TIME_MINUTES);
+   string json;
+   if(!WaitDecisionForBar(want, json))
+   {
+      Print("ForgeBridge: no decision for ", want);
+      return;
+   }
+
+   string action = JsonGetString(json, "action");
+   StringToUpper(action);
+   if(action == "FLAT" || action == "HOLD" || action == "")
+      return;
+
+   if(OpenFromDecision(json))
+      g_last_fill_bar = t1;
+}
+//+------------------------------------------------------------------+

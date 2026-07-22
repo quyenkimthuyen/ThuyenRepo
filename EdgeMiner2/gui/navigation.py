@@ -22,6 +22,7 @@ NAV_GROUPS: tuple[NavGroup, ...] = (
   NavGroup("Hàng ngày", (
     NavItem("home", "Tổng quan", "command_center", "Data · KB → Grid → Model → Paper"),
     NavItem("paper", "Giám sát paper", "paper_monitor", "Tín hiệu tuần · sau khi có Trade Model"),
+    NavItem("mt5_bridge", "MT5 Bridge", "mt5_bridge", "App quyết định · EA execute · log giao tiếp"),
   )),
   NavGroup("Thiết lập & học", (
     NavItem("settings", "① Cài đặt", "settings_page", "Train · giai đoạn học · kiểm chứng OOS"),
@@ -56,6 +57,8 @@ LEGACY_ALIASES: dict[str, str] = {
   "Usage Guide": "guide",
   "Cài đặt": "settings",
   "Settings": "settings",
+  "MT5 Bridge": "mt5_bridge",
+  "Bridge": "mt5_bridge",
 }
 
 LEARNING_TAB_BY_ALIAS: dict[str, str] = {

@@ -20,7 +20,7 @@ if str(ROOT) not in sys.path:
 
 from gui.views import (
   command_center, paper_monitor, usage_guide,
-  learning_hub, analysis_hub, settings_page,
+  learning_hub, analysis_hub, settings_page, mt5_bridge,
 )
 from gui.navigation import (
   ALL_ITEMS, LEGACY_ALIASES, NAV_GROUPS,
@@ -31,6 +31,7 @@ from gui.workspace import ensure_profiles_loaded
 VIEW_MODULES = {
   "command_center": command_center,
   "paper_monitor": paper_monitor,
+  "mt5_bridge": mt5_bridge,
   "learning_hub": learning_hub,
   "analysis_hub": analysis_hub,
   "settings_page": settings_page,
@@ -138,6 +139,12 @@ def main():
   try:
     from gui.long_task_background import ensure_task_worker_running
     ensure_task_worker_running()
+  except Exception:
+    pass
+
+  try:
+    from mt5_bridge.background import ensure_worker_running
+    ensure_worker_running()
   except Exception:
     pass
 

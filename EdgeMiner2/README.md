@@ -100,11 +100,12 @@ Chi tiết + sơ đồ: GUI → **Usage Guide** mục **5**.
 | Trang | Mục đích |
 |-------|----------|
 | Tổng quan | KPI, quy trình live |
-| Giám sát paper | Tín hiệu tuần (theo Trade Model) |
+| Giám sát paper | Tín hiệu tuần (theo Trade Model, Dukascopy) |
+| **MT5 Bridge** | App quyết định Best 3m · EA ForgeBridge execute · log giao tiếp |
 | **Học & tối ưu** | Grid Search · Trade Models · so sánh · học KB |
 | **Cài đặt** | Train window · giai đoạn học · kiểm chứng |
 | **Phân tích** | Risk · Nhật ký lệnh · Chiến lược (theo Trade Model) |
-| Hướng dẫn | Tài liệu đầy đủ |
+| Hướng dẫn | Tài liệu đầy đủ (gồm mục MT5 Bridge) |
 
 ### Trang cũ (EdgeMiner1)
 
