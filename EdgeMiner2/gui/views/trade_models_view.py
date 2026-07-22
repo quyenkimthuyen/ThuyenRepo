@@ -1,4 +1,4 @@
-"""Trade Models — danh sách mô hình tạo từ Grid Search."""
+"""Trade Models — quản lý model + phân tích (Risk / Nhật ký / Chiến lược)."""
 from __future__ import annotations
 
 import pandas as pd
@@ -13,22 +13,38 @@ from gui.trade_model import (
   load_model_report,
   set_active_trade_model,
 )
+from gui.ui_theme import icon_btn
+from gui.views import risk_dashboard, trade_journal, strategy_inspector
+
+# Child of Trade Models: quản lý + phân tích theo model đang chọn
+SUB_KEYS = ["manage", "risk", "journal", "strategy"]
+SUB_LABELS = {
+  "manage": "Quản lý",
+  "risk": "Rủi ro",
+  "journal": "Nhật ký",
+  "strategy": "Chiến lược",
+}
+SUB_ICONS = {
+  "manage": ":material/inventory_2:",
+  "risk": ":material/shield:",
+  "journal": ":material/receipt_long:",
+  "strategy": ":material/candlestick_chart:",
+}
 
 
-def render(embedded: bool = False):
-  if not embedded:
-    st.header("Trade Models")
+def _resolve_subtab() -> str:
+  # Compat: old analysis_tab / analysis hub
+  legacy = st.session_state.get("analysis_tab")
+  if legacy in ("risk", "journal", "strategy") and "models_subtab" not in st.session_state:
+    st.session_state["models_subtab"] = legacy
+  pick = st.session_state.get("models_subtab", "manage")
+  if pick not in SUB_KEYS:
+    pick = "manage"
+  st.session_state["models_subtab"] = pick
+  return pick
 
-  models = list_trade_models()
-  active = get_active_trade_model()
 
-  if not models:
-    st.info(
-      "Chưa có trade model. Chạy **Grid Search** và nhấn **Tạo Trade Model** "
-      "trên combo tốt nhất."
-    )
-    return
-
+def _render_manage(models, active):
   st.caption(
     f"**{len(models)}** model · Active: **{format_model_label(active) if active else '—'}**"
   )
@@ -66,7 +82,12 @@ def render(embedded: bool = False):
 
   c1, c2, c3 = st.columns(3)
   with c1:
-    if st.button("✓ Dùng cho paper & phân tích", key="tm_activate", use_container_width=True):
+    if st.button(
+      "Dùng cho paper & phân tích",
+      icon=":material/check_circle:",
+      key="tm_activate",
+      use_container_width=True,
+    ):
       set_active_trade_model(mid)
       st.toast(f"Đã chọn «{pick}»")
       st.rerun()
@@ -78,18 +99,17 @@ def render(embedded: bool = False):
     else:
       st.caption("Chưa có báo cáo backtest lưu riêng")
   with c3:
-    if st.button("🗑 Xóa", key="tm_delete", use_container_width=True):
+    if st.button("Xóa", icon=":material/delete:", key="tm_delete", use_container_width=True):
       if delete_trade_model(mid):
         st.toast("Đã xóa trade model")
         st.rerun()
 
-  if st.button("🧹 Gộp model trùng combo / trùng tên", key="tm_dedupe"):
+  if st.button("Gộp model trùng", icon=":material/merge:", key="tm_dedupe"):
     from gui.trade_model import dedupe_trade_models, load_active_model_id
     keep = set()
     aid = load_active_model_id()
     if aid:
       keep.add(aid)
-    # Prefer known Best 3m id if present
     keep.add("tm_best_3m_64e3f742")
     result = dedupe_trade_models(keep_ids=keep)
     st.success(
@@ -101,3 +121,62 @@ def render(embedded: bool = False):
   with st.expander("Chi tiết model"):
     st.json(m)
     st.caption(format_model_oneline(m))
+
+
+def _render_analysis(sub: str):
+  active = get_active_trade_model()
+  if not active:
+    st.warning("Chưa chọn Trade Model — mở tab **Quản lý** và bấm dùng model.")
+    return
+
+  from gui.trade_model import format_model_label
+  st.caption(f"Phân tích theo: **{format_model_label(active)}**")
+
+  st.session_state["_analysis_hub"] = True
+  try:
+    if sub == "risk":
+      risk_dashboard.render(embedded=True)
+    elif sub == "journal":
+      trade_journal.render(embedded=True)
+    else:
+      strategy_inspector.render(embedded=True)
+  finally:
+    st.session_state.pop("_analysis_hub", None)
+
+
+def render(embedded: bool = False):
+  if not embedded:
+    st.header("Trade Models")
+
+  models = list_trade_models()
+  active = get_active_trade_model()
+
+  if not models:
+    st.info(
+      "Chưa có trade model. Chạy **Grid Search** và nhấn **Tạo Trade Model** "
+      "trên combo tốt nhất."
+    )
+    return
+
+  sub = _resolve_subtab()
+
+  cols = st.columns(4)
+  for col, key in zip(cols, SUB_KEYS):
+    with col:
+      if icon_btn(
+        SUB_LABELS[key],
+        key=f"tm_sub_{key}",
+        icon=SUB_ICONS[key],
+        active=(sub == key),
+      ):
+        st.session_state["models_subtab"] = key
+        if key in ("risk", "journal", "strategy"):
+          st.session_state["analysis_tab"] = key
+        st.rerun()
+
+  st.divider()
+
+  if sub == "manage":
+    _render_manage(models, active)
+  else:
+    _render_analysis(sub)

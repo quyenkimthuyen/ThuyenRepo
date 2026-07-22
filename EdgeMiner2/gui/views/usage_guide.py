@@ -162,13 +162,12 @@ Mỗi tuần OOS: TRAIN 3 THÁNG → mine (+ KB) → trade 1 tuần
 | Trang | Mục đích |
 |-------|----------|
 | **Tổng quan** | Tiến độ, KPI, Refresh data |
-| **Học & tối ưu** | ① Cài đặt → ② Huấn luyện KB → ③ Grid Search → ④ Trade Models |
+| **Học & tối ưu** | ① Cài đặt → ② Huấn luyện KB → ③ Grid Search → ④ Trade Models (Quản lý · Rủi ro · Nhật ký · Chiến lược) |
 | **Giám sát paper** | Tín hiệu & lệnh tuần (Dukascopy, không broker) |
 | **MT5 Bridge** | App quyết định Best 3m · EA `ForgeBridge` execute · log giao tiếp |
-| **Phân tích** | Risk · Nhật ký · Chiến lược (chọn Trade Model) |
 | **Hướng dẫn** | Tài liệu này |
 
-**Trade Model** (sidebar + trang Phân tích): chọn một model — Paper, Bridge & Phân tích dùng chung.
+**Trade Model**: chọn trong **Học & tối ưu → Trade Models → Quản lý** — Paper, Bridge & phân tích dùng chung.
 
 ### Remine hàng tuần tự động vs cập nhật Trade Model
 
@@ -313,7 +312,7 @@ GUI: **KB & Giai đoạn** · **Backtest Lab** · **Paper Monitor** — đều c
 | Profitable | Total R > 0 |
 | Tần suất | ~2 lệnh/tuần |
 
-Checklist hiển thị ở **Tổng quan** và **Phân tích → Risk**.
+Checklist hiển thị ở **Tổng quan** và **Trade Models → Rủi ro**.
 
 ---
 
@@ -334,9 +333,8 @@ Checklist hiển thị ở **Tổng quan** và **Phân tích → Risk**.
 | 1 | **Học & tối ưu → ① Cài đặt** | Train 3/6/9T · giai đoạn học · vòng học · OOS |
 | 2 | **Học & tối ưu → ② Huấn luyện bộ nhớ** | Học KB đủ theo Cài đặt |
 | 3 | **Học & tối ưu → ③ Grid Search** | Chạy combo → xếp hạng |
-| 4 | **Học & tối ưu → ④ Trade Models** | Tạo & chọn Trade Model |
+| 4 | **Học & tối ưu → ④ Trade Models** | Tạo & chọn model · xem Rủi ro / Nhật ký / Chiến lược |
 | 5 | **Giám sát paper** + **MT5 Bridge** | Bật chu kỳ / Start service → **tự remine mỗi tuần** |
-| 6 | **Phân tích** | Risk / Nhật ký / Chiến lược theo Trade Model |
 
 Chỉ live **micro lot** khi paper/bridge khớp kỳ vọng backtest.
 

@@ -20,7 +20,7 @@ if str(ROOT) not in sys.path:
 
 from gui.views import (
   command_center, paper_monitor, usage_guide,
-  learning_hub, analysis_hub, mt5_bridge,
+  learning_hub, mt5_bridge,
 )
 from gui.navigation import (
   ALL_ITEMS, LEGACY_ALIASES, NAV_ITEMS,
@@ -34,7 +34,6 @@ VIEW_MODULES = {
   "paper_monitor": paper_monitor,
   "mt5_bridge": mt5_bridge,
   "learning_hub": learning_hub,
-  "analysis_hub": analysis_hub,
   "usage_guide": usage_guide,
 }
 
@@ -50,15 +49,22 @@ def _resolve_page_key() -> str:
       atab = ANALYSIS_TAB_BY_ALIAS.get(legacy)
       if atab:
         st.session_state["analysis_tab"] = atab
+        st.session_state["models_subtab"] = atab
       st.session_state.pop("nav_legacy_page", None)
       st.session_state["nav_page"] = key
       return key
 
   key = st.session_state.get("nav_page")
-  # Old bookmarks / session: settings was a top-level page
+  # Old bookmarks: settings / analysis were top-level pages
   if key == "settings":
     st.session_state["nav_page"] = "learning"
     st.session_state["learning_tab"] = "settings"
+    return "learning"
+  if key == "analysis":
+    st.session_state["nav_page"] = "learning"
+    st.session_state["learning_tab"] = "models"
+    sub = st.session_state.get("models_subtab") or st.session_state.get("analysis_tab") or "risk"
+    st.session_state["models_subtab"] = sub
     return "learning"
   if key in ALL_ITEMS:
     return key

@@ -13,7 +13,7 @@ class NavItem:
   icon: str = ""  # Streamlit Material icon, e.g. ":material/home:"
 
 
-# Flat list — Cài đặt is a tab inside Học & tối ưu (not a sidebar page).
+# Flat list — Cài đặt & Phân tích nằm trong Học & tối ưu (Trade Models).
 NAV_ITEMS: tuple[NavItem, ...] = (
   NavItem(
     "home", "Tổng quan", "command_center",
@@ -22,7 +22,7 @@ NAV_ITEMS: tuple[NavItem, ...] = (
   ),
   NavItem(
     "learning", "Học & tối ưu", "learning_hub",
-    "Cài đặt → KB → Grid → Trade Model",
+    "Cài đặt → KB → Grid → Trade Model (Quản lý · Rủi ro · Nhật ký · Chiến lược)",
     ":material/school:",
   ),
   NavItem(
@@ -36,18 +36,20 @@ NAV_ITEMS: tuple[NavItem, ...] = (
     ":material/hub:",
   ),
   NavItem(
-    "analysis", "Phân tích", "analysis_hub",
-    "Risk · nhật ký · chiến lược (theo Trade Model)",
-    ":material/analytics:",
-  ),
-  NavItem(
     "guide", "Hướng dẫn", "usage_guide",
     "Quy trình · khái niệm · FAQ",
     ":material/menu_book:",
   ),
 )
 
-# Backward compat for code that still imports NAV_GROUPS
+# Kept for headers / legacy redirects (not in sidebar)
+ANALYSIS_NAV = NavItem(
+  "analysis", "Phân tích", "analysis_hub",
+  "Risk · nhật ký · chiến lược (theo Trade Model)",
+  ":material/analytics:",
+)
+
+
 @dataclass(frozen=True)
 class NavGroup:
   title: str
@@ -70,12 +72,13 @@ LEGACY_ALIASES: dict[str, str] = {
   "Bộ nhớ & học": "learning",
   "Learning Center": "learning",
   "Nghiên cứu": "learning",
-  "Risk Dashboard": "analysis",
-  "Quản trị rủi ro": "analysis",
-  "Trade Journal": "analysis",
-  "Nhật ký lệnh": "analysis",
-  "Strategy Inspector": "analysis",
-  "Chiến lược": "analysis",
+  "Risk Dashboard": "learning",
+  "Quản trị rủi ro": "learning",
+  "Trade Journal": "learning",
+  "Nhật ký lệnh": "learning",
+  "Strategy Inspector": "learning",
+  "Chiến lược": "learning",
+  "Phân tích": "learning",
   "Usage Guide": "guide",
   "Cài đặt": "learning",
   "Settings": "learning",
@@ -93,15 +96,28 @@ LEARNING_TAB_BY_ALIAS: dict[str, str] = {
   "Report Compare": "era",
   "KB & Học": "train_kb",
   "Learning Center": "train_kb",
+  "Risk Dashboard": "models",
+  "Quản trị rủi ro": "models",
+  "Trade Journal": "models",
+  "Nhật ký lệnh": "models",
+  "Strategy Inspector": "models",
+  "Chiến lược": "models",
+  "Phân tích": "models",
 }
 
+# Sets models_subtab (and analysis_tab) when opening from legacy names
 ANALYSIS_TAB_BY_ALIAS: dict[str, str] = {
   "Risk Dashboard": "risk",
+  "Quản trị rủi ro": "risk",
   "Trade Journal": "journal",
+  "Nhật ký lệnh": "journal",
   "Strategy Inspector": "strategy",
+  "Chiến lược": "strategy",
+  "Phân tích": "risk",
 }
 
 ALL_ITEMS: dict[str, NavItem] = {item.key: item for item in NAV_ITEMS}
+ALL_ITEMS["analysis"] = ANALYSIS_NAV  # for page chrome of analysis subviews
 
 
 def default_page_key() -> str:
