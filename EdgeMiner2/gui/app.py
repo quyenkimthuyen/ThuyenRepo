@@ -20,20 +20,20 @@ if str(ROOT) not in sys.path:
 
 from gui.views import (
   command_center, paper_monitor, usage_guide,
-  learning_hub, analysis_hub, settings_page,
+  learning_hub, mt5_bridge,
 )
 from gui.navigation import (
-  ALL_ITEMS, LEGACY_ALIASES, NAV_GROUPS,
+  ALL_ITEMS, LEGACY_ALIASES, NAV_ITEMS,
   LEARNING_TAB_BY_ALIAS, ANALYSIS_TAB_BY_ALIAS, default_page_key,
 )
+from gui.ui_theme import icon_btn, inject_theme
 from gui.workspace import ensure_profiles_loaded
 
 VIEW_MODULES = {
   "command_center": command_center,
   "paper_monitor": paper_monitor,
+  "mt5_bridge": mt5_bridge,
   "learning_hub": learning_hub,
-  "analysis_hub": analysis_hub,
-  "settings_page": settings_page,
   "usage_guide": usage_guide,
 }
 
@@ -49,34 +49,44 @@ def _resolve_page_key() -> str:
       atab = ANALYSIS_TAB_BY_ALIAS.get(legacy)
       if atab:
         st.session_state["analysis_tab"] = atab
+        st.session_state["models_subtab"] = atab
       st.session_state.pop("nav_legacy_page", None)
       st.session_state["nav_page"] = key
       return key
 
   key = st.session_state.get("nav_page")
+  # Old bookmarks: settings / analysis were top-level pages
+  if key == "settings":
+    st.session_state["nav_page"] = "learning"
+    st.session_state["learning_tab"] = "settings"
+    return "learning"
+  if key == "analysis":
+    st.session_state["nav_page"] = "learning"
+    st.session_state["learning_tab"] = "models"
+    sub = st.session_state.get("models_subtab") or st.session_state.get("analysis_tab") or "risk"
+    st.session_state["models_subtab"] = sub
+    return "learning"
   if key in ALL_ITEMS:
     return key
   return default_page_key()
 
 
 def _render_sidebar_nav() -> str:
-  st.sidebar.markdown("### Điều hướng")
+  st.sidebar.markdown("### Menu")
   current = _resolve_page_key()
 
-  for group in NAV_GROUPS:
-    st.sidebar.markdown(f"**{group.title}**")
-    for item in group.items:
-      active = item.key == current
-      label = f"› {item.label}" if active else item.label
-      if st.sidebar.button(
-        label,
+  for item in NAV_ITEMS:
+    active = item.key == current
+    with st.sidebar:
+      if icon_btn(
+        item.label,
         key=f"nav_{item.key}",
-        use_container_width=True,
-        type="primary" if active else "secondary",
+        icon=item.icon or None,
+        active=active,
+        help=item.hint or None,
       ):
         st.session_state["nav_page"] = item.key
         st.rerun()
-    st.sidebar.markdown("")
 
   return current
 
@@ -141,10 +151,17 @@ def main():
   except Exception:
     pass
 
-  ensure_profiles_loaded()
+  try:
+    from mt5_bridge.background import ensure_worker_running
+    ensure_worker_running()
+  except Exception:
+    pass
 
-  st.sidebar.title("ForexForge")
-  st.sidebar.caption("EUR/USD H1 · mô phỏng từng tuần")
+  ensure_profiles_loaded()
+  inject_theme()
+
+  st.sidebar.markdown("### ForexForge")
+  st.sidebar.caption("EUR/USD H1 · tuần")
 
   from gui.glossary import render_glossary_expander
   render_glossary_expander(location="sidebar")
@@ -153,7 +170,7 @@ def main():
   _sidebar_status()
 
   st.sidebar.divider()
-  st.sidebar.caption("① Cài đặt → ② Học KB → Grid → Model → Paper")
+  st.sidebar.caption("Cài đặt → KB → Grid → Model → Paper")
 
   item = ALL_ITEMS[page_key]
   module = VIEW_MODULES[item.module]

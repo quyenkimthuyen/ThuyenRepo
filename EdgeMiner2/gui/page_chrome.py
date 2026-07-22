@@ -18,7 +18,8 @@ def render_page_header(
   """Tiêu đề trang + trade model một dòng."""
   if show_workspace is not None:
     show_profile = show_workspace
-  st.header(item.label)
+  title = f"{item.icon} {item.label}" if getattr(item, "icon", None) else item.label
+  st.header(title)
   if item.hint:
     st.caption(item.hint)
   if show_profile:

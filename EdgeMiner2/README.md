@@ -37,9 +37,11 @@ python run_learning.py     # Self-learning multi-epoch
 | 2 | **Học & tối ưu → Huấn luyện bộ nhớ** | Tạo/học KB theo giai đoạn |
 | 3 | **Học & tối ưu → Grid Search** | Chạy theo Cài đặt → tạo **Trade Model** |
 | 4 | **Phân tích** | Chọn Trade Model → Risk / Nhật ký / Chiến lược |
-| 5 | **Giám sát paper** | Dùng Trade Model đang active |
+| 5 | **Giám sát paper** / **MT5 Bridge** | Bật service → **tự remine mỗi tuần** (không cần Grid lại) |
 
 Đổi Cài đặt → Grid Search chỉ chạy **combo mới** (giữ kết quả cũ).
+
+**Lưu ý:** Trade Model là cấu hình đã lưu. Paper/Bridge **dùng** cấu hình đó để remine hàng tuần — **không** tự ghi đè model trong danh sách. Chỉ chạy lại KB → Grid → chọn model khi muốn đổi “bộ não”.
 
 ### 6 bước trên GUI (legacy)
 
@@ -100,11 +102,12 @@ Chi tiết + sơ đồ: GUI → **Usage Guide** mục **5**.
 | Trang | Mục đích |
 |-------|----------|
 | Tổng quan | KPI, quy trình live |
-| Giám sát paper | Tín hiệu tuần (theo Trade Model) |
-| **Học & tối ưu** | Grid Search · Trade Models · so sánh · học KB |
+| Giám sát paper | Tín hiệu tuần (Dukascopy) · remine tự động nếu bật chu kỳ |
+| **MT5 Bridge** | App quyết định · EA execute · log + thống kê lệnh · remine mỗi tuần khi Start |
+| **Học & tối ưu** | Grid Search · Trade Models · so sánh · học KB (**thủ công** khi cập nhật model) |
 | **Cài đặt** | Train window · giai đoạn học · kiểm chứng |
 | **Phân tích** | Risk · Nhật ký lệnh · Chiến lược (theo Trade Model) |
-| Hướng dẫn | Tài liệu đầy đủ |
+| Hướng dẫn | Tài liệu đầy đủ (gồm mục MT5 Bridge) |
 
 ### Trang cũ (EdgeMiner1)
 

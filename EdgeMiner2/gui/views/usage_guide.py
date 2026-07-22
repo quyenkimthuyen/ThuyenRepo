@@ -18,6 +18,7 @@ def render():
 - **Walk-forward backtest** — train 3 tháng, re-optimize hàng tuần, trade OOS (không look-ahead)
 - **Strategy miner** — khai phá rule từ features + lọc ML
 - **Self-learning (v4)** — tích lũy KB qua nhiều epoch (rules, genomes, ML samples)
+- **MT5 Bridge** — App (Best 3m) quyết định; EA `ForgeBridge` execute trên **MetaTrader 5** (không phải MT4)
 
 ---
 
@@ -158,16 +159,54 @@ Mỗi tuần OOS: TRAIN 3 THÁNG → mine (+ KB) → trade 1 tuần
 
 ## 6. Các trang GUI (theo quy trình)
 
-| Nhóm | Trang | Mục đích |
-|------|-------|----------|
-| **Hàng ngày** | **Tổng quan** | Tiến độ 5 bước, KPI, Refresh data |
-| | **Giám sát paper** | Tín hiệu & lệnh tuần (theo Trade Model) |
-| **Thiết lập & học** | **① Cài đặt** | Train window · giai đoạn học · OOS |
-| | **② Học & tối ưu** | ① Huấn luyện KB → ② Grid Search → ③ Trade Models |
-| **Phân tích** | **Phân tích** | Risk · Nhật ký · Chiến lược (chọn Trade Model) |
-| **Khác** | **Hướng dẫn** | Tài liệu này |
+| Trang | Mục đích |
+|-------|----------|
+| **Tổng quan** | Tiến độ, KPI, Refresh data |
+| **Học & tối ưu** | ① Cài đặt → ② Huấn luyện KB → ③ Grid Search → ④ Trade Models (Quản lý · Rủi ro · Nhật ký · Chiến lược) |
+| **Giám sát paper** | Tín hiệu & lệnh tuần (Dukascopy, không broker) |
+| **MT5 Bridge** | App quyết định Best 3m · EA `ForgeBridge` execute · log giao tiếp |
+| **Hướng dẫn** | Tài liệu này |
 
-**Trade Model** (sidebar + trang Phân tích): chọn một model — Paper & Phân tích dùng chung.
+**Trade Model**: chọn trong **Học & tối ưu → Trade Models → Quản lý** — Paper, Bridge & phân tích dùng chung.
+
+### Remine hàng tuần tự động vs cập nhật Trade Model
+
+**Trade Model** = snapshot cấu hình đã lưu (`train_months`, KB profile/epoch, OOS, KPI từ Grid).  
+App **không** tự đổi model trong danh sách mỗi tuần.
+
+| Việc | Tự động? | Điều kiện |
+|------|----------|-----------|
+| **Remine strategy mỗi tuần** (mine lại trên cửa sổ train gần nhất → tín hiệu tuần mới) | Có | **Giám sát paper** bật chu kỳ *hoặc* **MT5 Bridge** Start service |
+| Cập nhật giá Dukascopy | Có (Refresh / cache hết hạn) | Tổng quan hoặc paper cycle |
+| **Huấn luyện KB** (epoch mới) | Không | Học & tối ưu → ② Huấn luyện |
+| **Grid Search** xếp hạng combo mới | Không | Khi đổi Cài đặt hoặc muốn model khác |
+| **Tạo / chọn Trade Model** | Không | Chỉ khi đổi combo active (vd Best 3m → model khác) |
+| Export Replay / Frozen EA (MT5 Tester) | Không | Chạy script export khi cần lịch/EA mới |
+
+**Vận hành hàng ngày / tuần:** chọn Trade Model một lần → bật Paper và/hoặc Bridge service → mỗi tuần app tự remine theo cấu hình đó.  
+**Chỉ** chạy lại KB → Grid → chọn model khi muốn đổi “bộ não” (KB mới, train window / OOS khác).
+
+### MT5 Bridge — dùng thế nào?
+
+Đây là cầu nối **MetaTrader 5** (không phải MT4):
+
+1. Mở **MT5 Bridge** → chọn Trade Model (Best 3m) → **Start service**
+2. Service chạy **process riêng** (không phụ thuộc tab GUI) — đổi tab / refresh page **không** dừng; bấm **Stop** mới tắt
+3. Trên MT5: compile/attach EA `ForgeBridge`, `InpMode = Live` (thư mục `MQL5/Files/bridge`)
+4. Mỗi H1 mới: EA ghi `bar.json` → App remine/decide → `decision.json` → EA BUY/SELL hoặc FLAT
+5. Xem **Nhật ký giao tiếp** trên GUI (`comm_log.jsonl`: `bar_received`, `decision_sent`, `fill_received`)
+6. Xem **Thống kê lệnh Bridge** (thắng/thua, R, profit) — EA ghi `fill.json` open/close → App lưu `trades.json`
+
+**So sánh backtest trong MT5 Strategy Tester** (cùng EURUSD H1 / khoảng ngày):
+
+| EA | Nguồn quyết định |
+|----|------------------|
+| `ForgeBest3m_Frozen` | Rules tĩnh trong EA |
+| `ForgeBest3m_WF` | Lịch walk-forward nhúng |
+| `ForgeBridge` Replay | Lịch App (`python scripts/export_bridge_replay.py`) |
+
+CLI tương đương GUI service: `python scripts/mt5_bridge_service.py`  
+Chi tiết file: `mt5/bridge/README.md`
 
 ---
 
@@ -273,7 +312,7 @@ GUI: **KB & Giai đoạn** · **Backtest Lab** · **Paper Monitor** — đều c
 | Profitable | Total R > 0 |
 | Tần suất | ~2 lệnh/tuần |
 
-Checklist hiển thị ở **Tổng quan** và **Phân tích → Risk**.
+Checklist hiển thị ở **Tổng quan** và **Trade Models → Rủi ro**.
 
 ---
 
@@ -291,13 +330,15 @@ Checklist hiển thị ở **Tổng quan** và **Phân tích → Risk**.
 
 | Bước | Trang | Việc làm |
 |------|-------|----------|
-| 1 | **① Cài đặt** | Train 3/6/9T · giai đoạn học · vòng học · OOS |
-| 2 | **Học & tối ưu → ① Huấn luyện bộ nhớ** | Học KB đủ theo Cài đặt |
-| 3 | **Học & tối ưu → ② Grid Search** | Chạy combo → xếp hạng |
-| 4 | **Học & tối ưu → ③ Trade Models** | Tạo & chọn Trade Model |
-| 5 | **Giám sát paper** + **Phân tích** | Paper ≥3 tuần · Risk / Nhật ký / Chiến lược |
+| 1 | **Học & tối ưu → ① Cài đặt** | Train 3/6/9T · giai đoạn học · vòng học · OOS |
+| 2 | **Học & tối ưu → ② Huấn luyện bộ nhớ** | Học KB đủ theo Cài đặt |
+| 3 | **Học & tối ưu → ③ Grid Search** | Chạy combo → xếp hạng |
+| 4 | **Học & tối ưu → ④ Trade Models** | Tạo & chọn model · xem Rủi ro / Nhật ký / Chiến lược |
+| 5 | **Giám sát paper** + **MT5 Bridge** | Bật chu kỳ / Start service → **tự remine mỗi tuần** |
 
-Chỉ live **micro lot** khi paper khớp backtest.
+Chỉ live **micro lot** khi paper/bridge khớp kỳ vọng backtest.
+
+**Không cần Grid lại mỗi tuần** — Paper/Bridge tự remine theo Trade Model đang chọn. Grid/KB chỉ khi muốn cập nhật model.
 
 ### Mẹo tối ưu
 
@@ -333,6 +374,11 @@ strategy_miner.py           # Mine + backtest
 feature_engine.py           # Features
 knowledge_base.py           # KB
 data/eurusd_h1.parquet      # Cache giá
+mt5_bridge/                 # Bridge App ↔ MT5 EA
+mt5/Experts/ForgeBridge.mq5 # EA execute (Live / Replay)
+mt5/bridge/                 # bar/decision/fill/comm_log/replay
+scripts/mt5_bridge_service.py
+scripts/export_bridge_replay.py
 results/backtest_report.json
 results/learning_report.json
 results/reports/              # Kho báo cáo Report Compare
@@ -345,7 +391,8 @@ learning/kb_profiles/       # KB từng giai đoạn
 ## 14. Hạn chế đã biết
 
 - Một pair / một timeframe (EUR/USD H1)
-- Chưa kết nối broker API
+- Paper Monitor dùng Dukascopy — **không** phải feed broker
+- MT5 Bridge cần EA + service App chạy đồng thời; Wine/SSL login broker vẫn có thể fail trên Linux Docker
 - Intrabar SL/TP — thứ tự chạm có thể khác live
 - RoR là ước lượng, không phải Monte Carlo đầy đủ
 - Yahoo không dùng cho H1 lịch sử — dùng Dukascopy
@@ -368,6 +415,18 @@ A: ~2 phút cho 4 năm / 224 tuần. Dùng cache data, tránh refresh liên tụ
 
 **Q: Quy trình nào nên làm trước?**  
 A: KB OFF baseline → học KB era → OOS với profile → Report Compare → hold-out → paper.
+
+**Q: App có tự optimize mỗi tuần không?**  
+A: **Có remine strategy mỗi tuần** khi Paper (chu kỳ) hoặc MT5 Bridge service đang chạy. **Không** tự chạy lại Grid / tạo Trade Model mới — phải làm tay khi muốn đổi model.
+
+**Q: MT5 Bridge khác Paper Monitor thế nào?**  
+A: Paper = tín hiệu trên data Dukascopy trong app. Bridge = giá từ **MT5 broker** qua EA, App quyết định, EA mở lệnh thật/demo trên MT5.
+
+**Q: Có hỗ trợ MT4 không?**  
+A: Không — chỉ **MT5** (`ForgeBridge.mq5`).
+
+**Q: Xem log giao tiếp App ↔ EA ở đâu?**  
+A: GUI **MT5 Bridge** → Nhật ký giao tiếp, hoặc file `mt5/bridge/comm_log.jsonl`.
 
 **Q: Khác nhau Train 3 tháng, KB và Epoch?**  
 A: **Train 3 tháng** = mine strategy mỗi tuần WF (luôn chạy). **KB** = bộ nhớ dài hạn (rules/genomes/ML). **Epoch** = một vòng học full giai đoạn để cải thiện KB. Xem mục **5** trong Usage Guide.
