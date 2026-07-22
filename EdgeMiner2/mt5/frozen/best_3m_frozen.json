@@ -1,0 +1,67 @@
+{
+  "source_trade_model_id": "tm_best_3m_64e3f742",
+  "source_label": "Best 3m",
+  "frozen_at": "2026-07-22",
+  "warning": "Static freeze of last_strategy only. Does NOT re-mine weekly or use ML/KB. MT5 results will differ from app walk-forward.",
+  "symbol": "EURUSD",
+  "timeframe": "H1",
+  "strategy": {
+    "name": "Forge RR3 hybrid 4L2S price+bb #0998",
+    "exit_mode": "hybrid",
+    "ml_prob_min": 0.30085900345728667,
+    "ml_enabled": false,
+    "score_threshold": 0.8291058051065867,
+    "rr": 3.0,
+    "atr_mult_sl": 0.7384794237626883,
+    "min_rules_match": 2,
+    "max_trades_per_week": 2,
+    "min_bars_between": 4,
+    "max_hold_bars": 36,
+    "session_filter": true,
+    "session_hour_from": 7,
+    "session_hour_to": 20,
+    "trail_activate_r": 1.8,
+    "trail_distance_r": 0.6,
+    "risk_pct": 1.0,
+    "long_rules": [
+      {
+        "feat": "bb_width_pct",
+        "op": "lt",
+        "thr": 0.1011,
+        "w": 2.111
+      },
+      {
+        "feat": "price_vs_ema50",
+        "op": "lt",
+        "thr": -1.5625,
+        "w": 183.119
+      },
+      {
+        "feat": "bb_width_pct",
+        "op": "lt",
+        "thr": 0.2544,
+        "w": 9.453
+      },
+      {
+        "feat": "atr_pct",
+        "op": "lt",
+        "thr": 0.157,
+        "w": 3.545
+      }
+    ],
+    "short_rules": [
+      {
+        "feat": "pullback_short",
+        "op": "eq1",
+        "thr": 0.5,
+        "w": 1.393
+      },
+      {
+        "feat": "adx",
+        "op": "gt",
+        "thr": 38.6395,
+        "w": 0.143
+      }
+    ]
+  }
+}
