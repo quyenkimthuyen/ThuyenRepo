@@ -2,16 +2,20 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from urllib.error import URLError
+from urllib.request import urlopen
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
-from gui.mt5_live_chart import build_ea_chart, connection_health, load_ea_chart_data
+from gui.mt5_live_chart import build_ea_chart, load_ea_chart_data
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
 from gui.trade_model import list_trade_models
 from mt5_bridge import background as bridge_bg
 from mt5_bridge.comm_log import clear_log, read_events
+from mt5_bridge.live_monitor_server import DEFAULT_MONITOR_PORT
 from mt5_bridge.protocol import (
   BRIDGE_DIR,
   DEFAULT_MODEL_ID,
@@ -34,38 +38,30 @@ def _model_label(m: dict) -> str:
     return m.get("label") or m.get("id") or "?"
 
 
-@st.fragment(run_every=timedelta(seconds=2))
-def _render_live_monitor(max_bars: int) -> None:
-  """Refresh EA heartbeat and current H1 candle without rerunning the page."""
-  frame, connection = load_ea_chart_data(max_bars=max_bars)
-  health = connection_health(connection)
-  trades = load_trades()
+def _render_live_chart(max_bars: int) -> None:
+  """Use a persistent browser chart; JavaScript updates data in place."""
+  monitor_url = f"http://127.0.0.1:{DEFAULT_MONITOR_PORT}"
+  try:
+    with urlopen(f"{monitor_url}/health", timeout=0.5) as response:
+      server_ready = response.read() == b"ok"
+  except (OSError, URLError):
+    server_ready = False
 
-  age = health.get("age_seconds")
-  age_label = f"{age:.1f}s" if age is not None else "—"
-  bid = connection.get("bid")
-  ask = connection.get("ask")
-  spread = connection.get("spread_points")
-  server_time = connection.get("server_time") or "—"
-
-  c1, c2, c3, c4, c5 = st.columns(5)
-  c1.metric("EA connection", "ONLINE" if health["online"] else "OFFLINE")
-  c2.metric("Bid / Ask", f"{bid} / {ask}" if bid is not None and ask is not None else "—")
-  c3.metric("Spread", f"{spread} points" if spread is not None else "—")
-  c4.metric("Lệnh đang mở", connection.get("positions", "—"))
-  c5.metric("Algo trading", "ON" if health["trade_allowed"] else "OFF")
-
-  if health["online"]:
-    st.caption(
-      f"🟢 Heartbeat **{age_label}** · MT5 server `{server_time}` · "
-      f"Account `{connection.get('account', '—')}` · dữ liệu trực tiếp từ ForgeBridge EA"
+  if server_ready:
+    components.iframe(
+      f"{monitor_url}/chart?bars={max_bars}",
+      height=700,
+      scrolling=False,
     )
-  elif connection:
-    detail = "MT5 báo mất kết nối" if not health["terminal_connected"] else "heartbeat quá cũ"
-    st.warning(f"Không nhận được dữ liệu EA live: {detail} ({age_label}).")
-  else:
-    st.info("Chưa có heartbeat từ EA. Compile/deploy ForgeBridge mới và giữ XM MT5 đang mở.")
+    st.caption(
+      "Chart cập nhật trực tiếp mỗi 2 giây trong trình duyệt, "
+      "không rerun Streamlit nên không chớp."
+    )
+    return
 
+  st.warning("Live chart server chưa chạy; đang dùng snapshot tĩnh.")
+  frame, connection = load_ea_chart_data(max_bars=max_bars)
+  trades = load_trades()
   fig = build_ea_chart(frame, connection, trades)
   if fig is None:
     st.caption("Đang chờ EA xuất `bars.json` để vẽ chart.")
@@ -149,7 +145,7 @@ def render():
     key="mt5_chart_range",
   )
   max_bars = {"48 giờ": 48, "7 ngày": 168, "14 ngày": 336}[range_label]
-  _render_live_monitor(max_bars)
+  _render_live_chart(max_bars)
 
   st.subheader("Thống kê lệnh Bridge")
   st.caption("Từ `mt5/bridge/trades.json` — lọc theo giai đoạn (closed dùng exit_time)")

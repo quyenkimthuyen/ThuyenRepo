@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT))
 
 from mt5_bridge.comm_log import append_event
 from mt5_bridge.engine import BridgeEngine
+from mt5_bridge.live_monitor_server import DEFAULT_MONITOR_PORT, start_live_monitor_server
 from mt5_bridge.protocol import (
   BRIDGE_DIR,
   DEFAULT_MODEL_ID,
@@ -181,6 +182,7 @@ def main() -> int:
   ap.add_argument("--model-id", default=DEFAULT_MODEL_ID)
   ap.add_argument("--risk-pct", type=float, default=1.0)
   ap.add_argument("--poll", type=float, default=2.0, help="seconds between polls")
+  ap.add_argument("--monitor-port", type=int, default=DEFAULT_MONITOR_PORT)
   ap.add_argument("--once", action="store_true", help="process one bar then exit")
   ap.add_argument("--seed", action="store_true", help="force re-seed MT5 cache from Dukascopy")
   args = ap.parse_args()
@@ -188,6 +190,14 @@ def main() -> int:
     _register_service_process(args)
 
   bridge_dir = ensure_bridge_dir(args.bridge_dir)
+  monitor_server = None
+  if not args.once:
+    try:
+      monitor_server = start_live_monitor_server(bridge_dir, args.monitor_port)
+      atexit.register(monitor_server.shutdown)
+      print(f"[bridge] live monitor=http://127.0.0.1:{args.monitor_port}", flush=True)
+    except OSError as e:
+      print(f"[bridge] live monitor unavailable: {e}", flush=True)
   engine = BridgeEngine(model_id=args.model_id, risk_pct=args.risk_pct)
   print(f"[bridge] dir={bridge_dir} model={engine.model_id}", flush=True)
   try:
