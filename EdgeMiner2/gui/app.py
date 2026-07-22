@@ -26,6 +26,7 @@ from gui.navigation import (
   ALL_ITEMS, LEGACY_ALIASES, NAV_ITEMS,
   LEARNING_TAB_BY_ALIAS, ANALYSIS_TAB_BY_ALIAS, default_page_key,
 )
+from gui.ui_theme import icon_btn, inject_theme
 from gui.workspace import ensure_profiles_loaded
 
 VIEW_MODULES = {
@@ -65,20 +66,21 @@ def _resolve_page_key() -> str:
 
 
 def _render_sidebar_nav() -> str:
-  st.sidebar.markdown("### Điều hướng")
+  st.sidebar.markdown("### Menu")
   current = _resolve_page_key()
 
   for item in NAV_ITEMS:
     active = item.key == current
-    label = f"› {item.label}" if active else item.label
-    if st.sidebar.button(
-      label,
-      key=f"nav_{item.key}",
-      use_container_width=True,
-      type="primary" if active else "secondary",
-    ):
-      st.session_state["nav_page"] = item.key
-      st.rerun()
+    with st.sidebar:
+      if icon_btn(
+        item.label,
+        key=f"nav_{item.key}",
+        icon=item.icon or None,
+        active=active,
+        help=item.hint or None,
+      ):
+        st.session_state["nav_page"] = item.key
+        st.rerun()
 
   return current
 
@@ -150,9 +152,10 @@ def main():
     pass
 
   ensure_profiles_loaded()
+  inject_theme()
 
-  st.sidebar.title("ForexForge")
-  st.sidebar.caption("EUR/USD H1 · mô phỏng từng tuần")
+  st.sidebar.markdown("### ForexForge")
+  st.sidebar.caption("EUR/USD H1 · tuần")
 
   from gui.glossary import render_glossary_expander
   render_glossary_expander(location="sidebar")
@@ -161,7 +164,7 @@ def main():
   _sidebar_status()
 
   st.sidebar.divider()
-  st.sidebar.caption("Học & tối ưu: Cài đặt → KB → Grid → Model → Paper")
+  st.sidebar.caption("Cài đặt → KB → Grid → Model → Paper")
 
   item = ALL_ITEMS[page_key]
   module = VIEW_MODULES[item.module]

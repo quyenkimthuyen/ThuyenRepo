@@ -5,16 +5,23 @@ import streamlit as st
 
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
+from gui.ui_theme import icon_btn
 from gui.views import grid_search, kb_era_hub, settings_page
 from gui.views.compare_sections import render_era_compare, render_epoch_sweep, render_train_window
 from gui.views import trade_models_view
 
 CORE_TAB_KEYS = ["settings", "train_kb", "grid", "models"]
 CORE_TAB_LABELS = {
-  "settings": "① Cài đặt",
-  "train_kb": "② Huấn luyện bộ nhớ",
-  "grid": "③ Grid Search",
-  "models": "④ Trade Models",
+  "settings": "Cài đặt",
+  "train_kb": "Huấn luyện",
+  "grid": "Grid Search",
+  "models": "Trade Models",
+}
+CORE_TAB_ICONS = {
+  "settings": ":material/settings:",
+  "train_kb": ":material/psychology:",
+  "grid": ":material/grid_view:",
+  "models": ":material/inventory_2:",
 }
 
 ADVANCED_TAB_KEYS = ["era", "epoch", "train_win"]
@@ -22,6 +29,11 @@ ADVANCED_TAB_LABELS = {
   "era": "So giai đoạn",
   "epoch": "So vòng học",
   "train_win": "So cửa sổ học",
+}
+ADVANCED_TAB_ICONS = {
+  "era": ":material/timeline:",
+  "epoch": ":material/loop:",
+  "train_win": ":material/date_range:",
 }
 
 TAB_KEYS = CORE_TAB_KEYS + ADVANCED_TAB_KEYS
@@ -40,7 +52,6 @@ def _default_learning_tab() -> str:
   r = grid_readiness()
   if r["kb_complete"]:
     return "grid"
-  # Chưa học KB → bắt đầu từ Cài đặt nếu chưa từng mở hub
   return "settings"
 
 
@@ -53,15 +64,15 @@ def _render_workflow_strip():
   has_model = bool(get_active_trade_model())
   kb_done = r["kb_complete"]
 
-  s1 = "✅"
-  s2 = "✅" if kb_done else "▶️"
-  s3 = "✅" if has_grid else ("▶️" if kb_done else "○")
-  s4 = "✅" if has_model else ("▶️" if has_grid else "○")
+  mark = {"done": "●", "current": "◉", "todo": "○"}
+  s_kb = "done" if kb_done else "current"
+  s_grid = "done" if has_grid else ("current" if kb_done else "todo")
+  s_model = "done" if has_model else ("current" if has_grid else "todo")
 
   st.caption(
-    f"{s1} ① Cài đặt · "
-    f"{s2} ② KB ({r['ready_combos']}/{r['expected_combos']}) · "
-    f"{s3} ③ Grid · {s4} ④ Model"
+    f"{mark['done']} Cài đặt · "
+    f"{mark[s_kb]} KB ({r['ready_combos']}/{r['expected_combos']}) · "
+    f"{mark[s_grid]} Grid · {mark[s_model]} Model"
   )
 
 
@@ -72,17 +83,6 @@ def _render_subview(module):
     module.render(embedded=True)
   else:
     module.render()
-
-
-def _tab_button(label: str, tab_key: str, *, active: bool, key: str):
-  if st.button(
-    label,
-    key=key,
-    type="primary" if active else "secondary",
-    use_container_width=True,
-  ):
-    st.session_state["learning_tab"] = tab_key
-    st.rerun()
 
 
 def render():
@@ -100,25 +100,27 @@ def render():
   cols = st.columns(4)
   for col, tab_key in zip(cols, CORE_TAB_KEYS):
     with col:
-      _tab_button(
+      if icon_btn(
         CORE_TAB_LABELS[tab_key],
-        tab_key,
-        active=(pick == tab_key),
         key=f"learning_tab_{tab_key}",
-      )
+        icon=CORE_TAB_ICONS[tab_key],
+        active=(pick == tab_key),
+      ):
+        st.session_state["learning_tab"] = tab_key
+        st.rerun()
 
   with st.expander("So sánh nâng cao", expanded=pick in ADVANCED_TAB_KEYS):
-    adv = st.radio(
-      "Loại so sánh",
-      ADVANCED_TAB_KEYS,
-      format_func=lambda k: ADVANCED_TAB_LABELS[k],
-      horizontal=True,
-      index=ADVANCED_TAB_KEYS.index(pick) if pick in ADVANCED_TAB_KEYS else 0,
-      key="learning_adv_radio",
-    )
-    if st.button("Mở so sánh này", key="learning_open_adv"):
-      st.session_state["learning_tab"] = adv
-      st.rerun()
+    adv_cols = st.columns(3)
+    for col, tab_key in zip(adv_cols, ADVANCED_TAB_KEYS):
+      with col:
+        if icon_btn(
+          ADVANCED_TAB_LABELS[tab_key],
+          key=f"learning_adv_{tab_key}",
+          icon=ADVANCED_TAB_ICONS[tab_key],
+          active=(pick == tab_key),
+        ):
+          st.session_state["learning_tab"] = tab_key
+          st.rerun()
 
   selected = st.session_state.get("learning_tab", pick)
 

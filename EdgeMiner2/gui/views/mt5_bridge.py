@@ -72,19 +72,19 @@ def render():
     st.caption(f"Thư mục bridge: `{BRIDGE_DIR}`")
 
     b1, b2, b3, b4 = st.columns(4)
-    if b1.button("Lưu cấu hình", use_container_width=True):
+    if b1.button("Lưu", icon=":material/save:", use_container_width=True):
       bridge_bg.save_config(model_id=model_id, risk_pct=risk, poll_sec=poll)
       st.success("Đã lưu.")
       st.rerun()
-    if b2.button("▶ Start service", type="primary", use_container_width=True):
+    if b2.button("Start", icon=":material/play_arrow:", type="primary", use_container_width=True):
       bridge_bg.save_config(model_id=model_id, risk_pct=risk, poll_sec=poll, enabled=True)
       bridge_bg.start_worker(detached=True)
       st.success("Đã start process nền (sống khi refresh GUI).")
       st.rerun()
-    if b3.button("⏹ Stop", use_container_width=True):
+    if b3.button("Stop", icon=":material/stop:", use_container_width=True):
       bridge_bg.stop_worker()
       st.rerun()
-    if b4.button("Xử lý 1 bar ngay", use_container_width=True):
+    if b4.button("1 bar", icon=":material/bolt:", use_container_width=True, help="Xử lý 1 bar ngay"):
       bridge_bg.save_config(model_id=model_id, risk_pct=risk, poll_sec=poll)
       with st.spinner("Decide…"):
         dec = bridge_bg.process_once_now()

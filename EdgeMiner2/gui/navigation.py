@@ -10,17 +10,41 @@ class NavItem:
   label: str
   module: str
   hint: str = ""
+  icon: str = ""  # Streamlit Material icon, e.g. ":material/home:"
 
 
-# Flat list — no "Hàng ngày" / "Thiết lập & học" groups.
-# Cài đặt is a tab inside Học & tối ưu (not a sidebar page).
+# Flat list — Cài đặt is a tab inside Học & tối ưu (not a sidebar page).
 NAV_ITEMS: tuple[NavItem, ...] = (
-  NavItem("home", "Tổng quan", "command_center", "Data · KB → Grid → Model → Paper"),
-  NavItem("learning", "Học & tối ưu", "learning_hub", "Cài đặt → KB → Grid → Trade Model"),
-  NavItem("paper", "Giám sát paper", "paper_monitor", "Tín hiệu tuần · sau khi có Trade Model"),
-  NavItem("mt5_bridge", "MT5 Bridge", "mt5_bridge", "App quyết định · EA execute · log giao tiếp"),
-  NavItem("analysis", "Phân tích", "analysis_hub", "Risk · nhật ký · chiến lược (theo Trade Model)"),
-  NavItem("guide", "Hướng dẫn", "usage_guide", "Quy trình · khái niệm · FAQ"),
+  NavItem(
+    "home", "Tổng quan", "command_center",
+    "Data · KB → Grid → Model → Paper",
+    ":material/dashboard:",
+  ),
+  NavItem(
+    "learning", "Học & tối ưu", "learning_hub",
+    "Cài đặt → KB → Grid → Trade Model",
+    ":material/school:",
+  ),
+  NavItem(
+    "paper", "Giám sát paper", "paper_monitor",
+    "Tín hiệu tuần · sau khi có Trade Model",
+    ":material/monitoring:",
+  ),
+  NavItem(
+    "mt5_bridge", "MT5 Bridge", "mt5_bridge",
+    "App quyết định · EA execute · log giao tiếp",
+    ":material/hub:",
+  ),
+  NavItem(
+    "analysis", "Phân tích", "analysis_hub",
+    "Risk · nhật ký · chiến lược (theo Trade Model)",
+    ":material/analytics:",
+  ),
+  NavItem(
+    "guide", "Hướng dẫn", "usage_guide",
+    "Quy trình · khái niệm · FAQ",
+    ":material/menu_book:",
+  ),
 )
 
 # Backward compat for code that still imports NAV_GROUPS

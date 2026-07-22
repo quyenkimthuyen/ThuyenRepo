@@ -6,14 +6,20 @@ import streamlit as st
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
 from gui.trade_model import render_model_picker
+from gui.ui_theme import icon_btn
 from gui.views import risk_dashboard, trade_journal, strategy_inspector
 
 
 TAB_KEYS = ["risk", "journal", "strategy"]
 TAB_LABELS = {
-  "risk": "🛡 Quản trị rủi ro",
-  "journal": "📒 Nhật ký lệnh",
-  "strategy": "🧬 Chiến lược",
+  "risk": "Rủi ro",
+  "journal": "Nhật ký",
+  "strategy": "Chiến lược",
+}
+TAB_ICONS = {
+  "risk": ":material/shield:",
+  "journal": ":material/receipt_long:",
+  "strategy": ":material/candlestick_chart:",
 }
 
 
@@ -33,21 +39,24 @@ def render():
   if not model:
     return
 
-  default_tab = st.session_state.get("analysis_tab", "risk")
-  if default_tab not in TAB_KEYS:
-    default_tab = "risk"
-  tab_idx = TAB_KEYS.index(default_tab)
+  pick = st.session_state.get("analysis_tab", "risk")
+  if pick not in TAB_KEYS:
+    pick = "risk"
+  st.session_state["analysis_tab"] = pick
 
-  selected_label = st.radio(
-    "Phân tích",
-    [TAB_LABELS[k] for k in TAB_KEYS],
-    horizontal=True,
-    index=tab_idx,
-    key="analysis_tab_radio",
-    label_visibility="collapsed",
-  )
-  selected = TAB_KEYS[[TAB_LABELS[k] for k in TAB_KEYS].index(selected_label)]
-  st.session_state["analysis_tab"] = selected
+  cols = st.columns(3)
+  for col, tab_key in zip(cols, TAB_KEYS):
+    with col:
+      if icon_btn(
+        TAB_LABELS[tab_key],
+        key=f"analysis_tab_{tab_key}",
+        icon=TAB_ICONS[tab_key],
+        active=(pick == tab_key),
+      ):
+        st.session_state["analysis_tab"] = tab_key
+        st.rerun()
+
+  selected = st.session_state.get("analysis_tab", pick)
 
   st.divider()
   st.session_state["_analysis_hub"] = True
