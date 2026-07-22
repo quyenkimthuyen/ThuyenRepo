@@ -149,6 +149,16 @@ def set_active_trade_model(model_id: str | None) -> dict | None:
     save_active_model_id(model_id)
     st.session_state["active_trade_model"] = m
     st.session_state.pop("backtest_report", None)
+    try:
+      from mt5_bridge.background import save_config as save_bridge_config
+      save_bridge_config(model_id=model_id)
+    except Exception:
+      pass
+    try:
+      from gui.workspace import save_workspace_file
+      save_workspace_file(trade_model_to_workspace(m))
+    except Exception:
+      pass
     return m
   save_active_model_id(None)
   st.session_state.pop("active_trade_model", None)

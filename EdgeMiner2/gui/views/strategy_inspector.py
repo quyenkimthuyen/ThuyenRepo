@@ -7,6 +7,7 @@ from analytics import genomes_table, rule_stats_table
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
 from gui.services import load_backtest_report, load_kb
+from gui.ui_preferences import preference_callback, restore_widget
 from gui.workspace import get_active_workspace
 
 
@@ -28,11 +29,22 @@ def render(embedded: bool = False):
     if rules_df.empty:
       st.info("Chưa có rule stats. Chạy Learning để tích lũy.")
     else:
+      restore_widget(
+        "si_dir", ["long", "short"],
+        preference_key="analysis.strategy_directions",
+        options=["long", "short"],
+        multiple=True,
+      )
       direction = st.multiselect(
         "Direction", ["long", "short"],
-        default=["long", "short"], key="si_dir",
+        key="si_dir",
+        on_change=preference_callback("si_dir", "analysis.strategy_directions"),
       )
-      min_uses = st.slider("Min uses", 1, 50, 3, key="si_min_uses")
+      restore_widget("si_min_uses", 3, preference_key="analysis.strategy_min_uses")
+      min_uses = st.slider(
+        "Min uses", 1, 50, key="si_min_uses",
+        on_change=preference_callback("si_min_uses", "analysis.strategy_min_uses"),
+      )
       show = rules_df[
         rules_df["direction"].isin(direction) & (rules_df["uses"] >= min_uses)
       ]
@@ -53,7 +65,16 @@ def render(embedded: bool = False):
       st.dataframe(gdf, use_container_width=True, hide_index=True)
       from genome_naming import display_name
       options = {display_name(g.get("name", "?"), g): g for g in kb.genomes[:15]}
-      pick = st.selectbox("Xem DNA", list(options.keys()), key="si_genome")
+      labels = list(options.keys())
+      restore_widget(
+        "si_genome", labels[0],
+        preference_key="analysis.strategy_genome",
+        options=labels,
+      )
+      pick = st.selectbox(
+        "Xem DNA", labels, key="si_genome",
+        on_change=preference_callback("si_genome", "analysis.strategy_genome"),
+      )
       genome = options.get(pick)
       if genome:
         st.json({

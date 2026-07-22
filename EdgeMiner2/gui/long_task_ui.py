@@ -18,9 +18,12 @@ from gui.long_task_background import (
 def _task_progress_fragment():
   status = get_task_status()
   if status["running"]:
-    st.caption(
-      f"Đang chạy: {status['done']}/{status['total']} "
-      f"({status['pct']}%) · {status['progress_text'] or '…'}"
+    st.progress(
+      status["done"] / max(status["total"], 1),
+      text=(
+        f"⏳ {status['job_label']} — {status['done']}/{status['total']} "
+        f"({status['pct']}%) · {status['progress_text'] or '…'}"
+      ),
     )
 
 
@@ -44,24 +47,15 @@ def render_task_status(
     return status
 
   if status["running"]:
-    if compact:
-      st.caption(
-        f"⏳ **{status['job_label']}** — {status['done']}/{status['total']} "
-        f"({status['pct']}%) · {status['progress_text'] or '…'}"
-      )
-    else:
+    if not compact:
       st.info(
-        f"⏳ **{status['job_label']}** đang chạy nền — "
-        f"{status['done']}/{status['total']} ({status['pct']}%) · "
-        f"`{status['progress_text'] or '…'}`\n\n"
-        "Bạn có thể **chuyển tab/trang** — task **không bị dừng**."
+        "Task đang chạy nền. Bạn có thể **chuyển tab/trang** mà không làm dừng task."
       )
-    st.progress(status["done"] / max(status["total"], 1))
+    _task_progress_fragment()
     if show_cancel and st.button("⏹ Hủy task", key=f"{key_prefix}_cancel"):
       cancel_task()
       st.toast("Đã gửi tín hiệu hủy")
       st.rerun()
-    _task_progress_fragment()
   elif status["status"] == "completed":
     res = status.get("result") or {}
     extra = ""

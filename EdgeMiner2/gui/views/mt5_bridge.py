@@ -12,7 +12,8 @@ import streamlit.components.v1 as components
 from gui.mt5_live_chart import build_ea_chart, load_ea_chart_data
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
-from gui.trade_model import list_trade_models
+from gui.trade_model import format_model_label, get_active_trade_model
+from gui.ui_preferences import preference_callback, restore_widget
 from mt5_bridge import background as bridge_bg
 from mt5_bridge.comm_log import clear_log, read_events
 from mt5_bridge.live_monitor_server import DEFAULT_MONITOR_PORT
@@ -36,6 +37,15 @@ def _model_label(m: dict) -> str:
     return format_model_label(m)
   except Exception:
     return m.get("label") or m.get("id") or "?"
+
+
+def _save_bridge_runtime_settings() -> None:
+  active = get_active_trade_model()
+  bridge_bg.save_config(
+    model_id=(active or {}).get("id") or DEFAULT_MODEL_ID,
+    risk_pct=float(st.session_state.get("mt5_risk_pct", 1.0)),
+    poll_sec=float(st.session_state.get("mt5_poll_sec", 2.0)),
+  )
 
 
 def _render_live_chart(max_bars: int) -> None:
@@ -85,7 +95,6 @@ def render():
     "đổi tab / refresh GUI **không** dừng service. Chỉ dừng khi bấm Stop hoặc kill process."
   )
 
-  models = list_trade_models()
   cfg = bridge_bg.load_config()
   status = bridge_bg.get_status()
 
@@ -102,31 +111,36 @@ def render():
   c4.metric("Bridge state", file_status.get("state") or "—")
 
   with st.expander("Cấu hình service", expanded=not status.get("running")):
-    labels = {_model_label(m): m["id"] for m in models} if models else {"Best 3m": DEFAULT_MODEL_ID}
-    label_list = list(labels.keys())
-    cur_id = cfg.get("model_id") or DEFAULT_MODEL_ID
-    cur_label = next((lb for lb, mid in labels.items() if mid == cur_id), label_list[0])
-    idx = label_list.index(cur_label) if cur_label in label_list else 0
-    pick = st.selectbox("Trade model", label_list, index=idx)
-    model_id = labels[pick]
-    risk = st.number_input("Risk % / lệnh", 0.1, 5.0, float(cfg.get("risk_pct", 1.0)), 0.1)
-    poll = st.number_input("Poll (giây)", 0.5, 30.0, float(cfg.get("poll_sec", 2.0)), 0.5)
+    active_model = get_active_trade_model()
+    model_id = (active_model or {}).get("id") or DEFAULT_MODEL_ID
+    if cfg.get("model_id") != model_id:
+      cfg = bridge_bg.save_config(model_id=model_id)
+    st.markdown(
+      f"Trade Model dùng chung với Paper: **"
+      f"{format_model_label(active_model) if active_model else model_id}**"
+    )
+    st.session_state.setdefault("mt5_risk_pct", float(cfg.get("risk_pct", 1.0)))
+    st.session_state.setdefault("mt5_poll_sec", float(cfg.get("poll_sec", 2.0)))
+    risk = st.number_input(
+      "Risk % / lệnh", 0.1, 5.0, step=0.1, key="mt5_risk_pct",
+      on_change=_save_bridge_runtime_settings,
+    )
+    poll = st.number_input(
+      "Poll (giây)", 0.5, 30.0, step=0.5, key="mt5_poll_sec",
+      on_change=_save_bridge_runtime_settings,
+    )
     st.caption(f"Thư mục bridge: `{BRIDGE_DIR}`")
 
-    b1, b2, b3, b4 = st.columns(4)
-    if b1.button("Lưu", icon=":material/save:", use_container_width=True):
-      bridge_bg.save_config(model_id=model_id, risk_pct=risk, poll_sec=poll)
-      st.success("Đã lưu.")
-      st.rerun()
-    if b2.button("Start", icon=":material/play_arrow:", type="primary", use_container_width=True):
+    b1, b2, b3 = st.columns(3)
+    if b1.button("Start", icon=":material/play_arrow:", type="primary", use_container_width=True):
       bridge_bg.save_config(model_id=model_id, risk_pct=risk, poll_sec=poll, enabled=True)
       bridge_bg.start_worker(detached=True)
       st.success("Đã start process nền (sống khi refresh GUI).")
       st.rerun()
-    if b3.button("Stop", icon=":material/stop:", use_container_width=True):
+    if b2.button("Stop", icon=":material/stop:", use_container_width=True):
       bridge_bg.stop_worker()
       st.rerun()
-    if b4.button("1 bar", icon=":material/bolt:", use_container_width=True, help="Xử lý 1 bar ngay"):
+    if b3.button("1 bar", icon=":material/bolt:", use_container_width=True, help="Xử lý 1 bar ngay"):
       bridge_bg.save_config(model_id=model_id, risk_pct=risk, poll_sec=poll)
       with st.spinner("Decide…"):
         dec = bridge_bg.process_once_now()
@@ -138,11 +152,17 @@ def render():
     st.error(status["last_error"])
 
   st.subheader("Giám sát MT5 trực tiếp")
+  chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]
+  restore_widget(
+    "mt5_chart_range", "7 ngày",
+    preference_key="mt5.chart_range",
+    options=chart_ranges,
+  )
   range_label = st.selectbox(
     "Khoảng chart",
-    ["48 giờ", "7 ngày", "14 ngày"],
-    index=1,
+    chart_ranges,
     key="mt5_chart_range",
+    on_change=preference_callback("mt5_chart_range", "mt5.chart_range"),
   )
   max_bars = {"48 giờ": 48, "7 ngày": 168, "14 ngày": 336}[range_label]
   _render_live_chart(max_bars)
@@ -165,19 +185,25 @@ def render():
         pass
 
   p1, p2, p3 = st.columns([2, 1, 1])
+  preset_options = [
+    "Tất cả",
+    "Hôm nay",
+    "7 ngày",
+    "30 ngày",
+    "Tuần này (T2→nay)",
+    "Tháng này",
+    "Tùy chọn",
+  ]
+  restore_widget(
+    "bridge_stats_preset", "Tất cả",
+    preference_key="mt5.stats_preset",
+    options=preset_options,
+  )
   preset = p1.selectbox(
     "Giai đoạn",
-    [
-      "Tất cả",
-      "Hôm nay",
-      "7 ngày",
-      "30 ngày",
-      "Tuần này (T2→nay)",
-      "Tháng này",
-      "Tùy chọn",
-    ],
-    index=0,
+    preset_options,
     key="bridge_stats_preset",
+    on_change=preference_callback("bridge_stats_preset", "mt5.stats_preset"),
   )
   date_from = None
   date_to = None
@@ -194,8 +220,24 @@ def render():
     date_from = today.replace(day=1)
     date_to = today
   elif preset == "Tùy chọn":
-    date_from = p2.date_input("Từ ngày", value=default_from, key="bridge_from")
-    date_to = p3.date_input("Đến ngày", value=default_to, key="bridge_to")
+    restore_widget(
+      "bridge_from", default_from,
+      preference_key="mt5.date_from",
+      decode=date.fromisoformat,
+    )
+    restore_widget(
+      "bridge_to", default_to,
+      preference_key="mt5.date_to",
+      decode=date.fromisoformat,
+    )
+    date_from = p2.date_input(
+      "Từ ngày", key="bridge_from",
+      on_change=preference_callback("bridge_from", "mt5.date_from"),
+    )
+    date_to = p3.date_input(
+      "Đến ngày", key="bridge_to",
+      on_change=preference_callback("bridge_to", "mt5.date_to"),
+    )
   else:
     p2.caption("—")
     p3.caption("—")
@@ -228,7 +270,11 @@ def render():
   if tc1.button("Xóa nhật ký lệnh"):
     clear_trades()
     st.rerun()
-  show_open = tc2.checkbox("Hiện cả lệnh đang mở", value=True)
+  restore_widget("bridge_show_open", True, preference_key="mt5.show_open")
+  show_open = tc2.checkbox(
+    "Hiện cả lệnh đang mở", key="bridge_show_open",
+    on_change=preference_callback("bridge_show_open", "mt5.show_open"),
+  )
 
   view = trades if show_open else [t for t in trades if t.get("status") == "CLOSED"]
   view = list(reversed(view))
@@ -285,7 +331,11 @@ def render():
   st.subheader("Nhật ký giao tiếp")
   st.caption("File: `mt5/bridge/comm_log.jsonl` — bar / decision / fill / system")
   lc1, lc2 = st.columns([1, 4])
-  limit = lc1.number_input("Số dòng", 20, 1000, 200, 20)
+  restore_widget("bridge_log_limit", 200, preference_key="mt5.log_limit")
+  limit = lc1.number_input(
+    "Số dòng", 20, 1000, step=20, key="bridge_log_limit",
+    on_change=preference_callback("bridge_log_limit", "mt5.log_limit"),
+  )
   if lc2.button("Xóa log"):
     clear_log()
     st.rerun()

@@ -14,7 +14,7 @@ from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 from kb_profiles import DEFAULT_PROFILE_ID
 from gui.trade_model import get_model_run_params
 from gui.services import get_ohlc_window_cached, get_paper_monitor
-from gui.paper_settings import load_pm_config, save_ui_settings
+from gui.paper_settings import load_pm_config
 from paper_live_monitor_server import (
   DEFAULT_PAPER_MONITOR_PORT,
   start_paper_live_monitor_server,
@@ -704,14 +704,6 @@ def render():
     )
   interval_min = INTERVAL_OPTS[interval_label]
 
-  save_ui_settings(
-    use_learning=use_kb,
-    kb_profile=kb_profile,
-    kb_snapshot=kb_snapshot,
-    spread_pips=spread,
-    slippage_pips=slip,
-    interval_minutes=interval_min,
-  )
   _on_settings_changed(_settings_signature(use_kb, kb_profile, kb_snapshot, spread, slip))
 
   sync_background_config(

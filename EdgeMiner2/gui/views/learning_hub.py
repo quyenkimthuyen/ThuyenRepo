@@ -6,8 +6,8 @@ import streamlit as st
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
 from gui.ui_theme import icon_btn
+from gui.ui_preferences import restore_widget, set_widget_preference
 from gui.views import grid_search, kb_era_hub, settings_page
-from gui.views.compare_sections import render_era_compare, render_epoch_sweep, render_train_window
 from gui.views import trade_models_view
 
 CORE_TAB_KEYS = ["settings", "train_kb", "grid", "models"]
@@ -24,19 +24,7 @@ CORE_TAB_ICONS = {
   "models": ":material/inventory_2:",
 }
 
-ADVANCED_TAB_KEYS = ["era", "epoch", "train_win"]
-ADVANCED_TAB_LABELS = {
-  "era": "So giai đoạn",
-  "epoch": "So vòng học",
-  "train_win": "So cửa sổ học",
-}
-ADVANCED_TAB_ICONS = {
-  "era": ":material/timeline:",
-  "epoch": ":material/loop:",
-  "train_win": ":material/date_range:",
-}
-
-TAB_KEYS = CORE_TAB_KEYS + ADVANCED_TAB_KEYS
+TAB_KEYS = CORE_TAB_KEYS
 
 
 def _default_learning_tab() -> str:
@@ -89,13 +77,11 @@ def render():
   render_page_header(ALL_ITEMS["learning"], show_profile=False)
   _render_workflow_strip()
 
-  from gui.long_task_ui import render_task_status
-  render_task_status(key_prefix="learning_hub", compact=True)
-
-  pick = st.session_state.get("learning_tab")
-  if pick not in TAB_KEYS:
-    pick = _default_learning_tab()
-  st.session_state["learning_tab"] = pick
+  pick = restore_widget(
+    "learning_tab", _default_learning_tab(),
+    preference_key="navigation.learning_tab",
+    options=TAB_KEYS,
+  )
 
   cols = st.columns(4)
   for col, tab_key in zip(cols, CORE_TAB_KEYS):
@@ -106,21 +92,8 @@ def render():
         icon=CORE_TAB_ICONS[tab_key],
         active=(pick == tab_key),
       ):
-        st.session_state["learning_tab"] = tab_key
+        set_widget_preference("learning_tab", tab_key, "navigation.learning_tab")
         st.rerun()
-
-  with st.expander("So sánh nâng cao", expanded=pick in ADVANCED_TAB_KEYS):
-    adv_cols = st.columns(3)
-    for col, tab_key in zip(adv_cols, ADVANCED_TAB_KEYS):
-      with col:
-        if icon_btn(
-          ADVANCED_TAB_LABELS[tab_key],
-          key=f"learning_adv_{tab_key}",
-          icon=ADVANCED_TAB_ICONS[tab_key],
-          active=(pick == tab_key),
-        ):
-          st.session_state["learning_tab"] = tab_key
-          st.rerun()
 
   selected = st.session_state.get("learning_tab", pick)
 
@@ -133,13 +106,7 @@ def render():
       kb_era_hub.render_training_only()
     elif selected == "grid":
       _render_subview(grid_search)
-    elif selected == "models":
-      trade_models_view.render(embedded=True)
-    elif selected == "era":
-      render_era_compare()
-    elif selected == "epoch":
-      render_epoch_sweep()
     else:
-      render_train_window()
+      trade_models_view.render(embedded=True)
   finally:
     st.session_state.pop("_learning_hub", None)

@@ -269,15 +269,16 @@ def sync_background_config(
   spread_pips: float = 1.0,
   slippage_pips: float = 0.3,
 ):
-  """Đồng bộ cấu hình background (idempotent — gọi mỗi lần render OK)."""
+  """Đồng bộ cấu hình background, chỉ ghi file khi giá trị thực sự đổi."""
   if interval_minutes <= 0:
-    stop_background()
+    cfg = load_config()
+    if cfg.get("enabled") or int(cfg.get("interval_minutes") or 0) != 0:
+      stop_background()
     return
 
   cfg = load_config()
   was_off = not cfg.get("enabled")
-  new_cfg = {
-    **cfg,
+  desired = {
     "enabled": True,
     "interval_minutes": interval_minutes,
     "use_learning": use_learning,
@@ -287,7 +288,9 @@ def sync_background_config(
     "slippage_pips": slippage_pips,
     "running": True,
   }
-  _write_json(CONFIG_PATH, new_cfg)
+  changed = any(cfg.get(key) != value for key, value in desired.items())
+  if changed:
+    _write_json(CONFIG_PATH, {**cfg, **desired})
   ensure_background_running()
   # Không chạy run_cycle_now trên thread UI — sẽ treo trang khi Dukascopy chậm.
   if was_off:

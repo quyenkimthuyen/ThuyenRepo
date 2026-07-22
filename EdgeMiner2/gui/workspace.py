@@ -86,7 +86,9 @@ def set_active_workspace(**fields) -> dict:
         break
     save_models_store(store)
     st.session_state["active_trade_model"] = updated
-  return get_active_workspace()
+  ws = get_active_workspace()
+  save_workspace_file(ws)
+  return ws
 
 
 def save_workspace_file(ws: dict):
@@ -206,7 +208,7 @@ def ensure_workspace_loaded():
   ensure_settings_loaded()
   ensure_trade_models_loaded()
   ws = get_active_workspace()
-  if not WORKSPACE_PATH.exists():
+  if load_workspace_file() != ws:
     save_workspace_file(ws)
   if not st.session_state.get("_workspace_pickers_synced"):
     sync_workspace_pickers(ws)

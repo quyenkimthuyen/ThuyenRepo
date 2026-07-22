@@ -1,6 +1,8 @@
 """Cài đặt — profile cấu hình mặc định cho grid search & học."""
 from __future__ import annotations
 
+from datetime import date
+
 import streamlit as st
 
 from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
@@ -14,6 +16,46 @@ from gui.app_settings import (
 )
 from gui.glossary import HELP
 from gui.page_chrome import render_page_header
+
+SETTING_WIDGET_KEYS = (
+  "settings_train_months",
+  "settings_era_labels",
+  "settings_learning_loops",
+  "settings_backtest_from",
+  "settings_backtest_to",
+  "settings_spread",
+  "settings_slip",
+  "settings_objective",
+)
+
+
+def _date_value(value: str, fallback: str) -> date:
+  try:
+    return date.fromisoformat(str(value)[:10])
+  except ValueError:
+    return date.fromisoformat(fallback)
+
+
+def _init_widget_state(settings: dict, era_labels: list[str]) -> None:
+  era_by_label = {e["label"]: e["key"] for e in LEARNING_ERA_OPTIONS}
+  defaults = {
+    "settings_train_months": [
+      t for t in settings.get("strategy_train_months", [3, 6, 9])
+      if t in (3, 6, 9)
+    ],
+    "settings_era_labels": [
+      label for label in era_labels
+      if era_by_label[label] in (settings.get("learning_era_keys") or [])
+    ],
+    "settings_learning_loops": int(settings.get("learning_loops") or 4),
+    "settings_backtest_from": _date_value(settings.get("backtest_from", ""), "2025-01-01"),
+    "settings_backtest_to": _date_value(settings.get("backtest_to", ""), "2026-12-31"),
+    "settings_spread": float(settings.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+    "settings_slip": float(settings.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
+    "settings_objective": settings.get("grid_objective", "total_r"),
+  }
+  for key, value in defaults.items():
+    st.session_state.setdefault(key, value)
 
 
 def render(embedded: bool = False):
@@ -41,94 +83,84 @@ def render(embedded: bool = False):
 
   st.info(format_settings_summary(s))
 
-  with st.form("settings_form"):
-    st.markdown("#### Chiến lược")
-    train_opts = [3, 6, 9]
-    train_months = st.multiselect(
-      "Cửa sổ học chiến lược (tháng)",
-      train_opts,
-      default=[t for t in s.get("strategy_train_months", [3, 6, 9]) if t in train_opts],
-      help=HELP["train_months"],
+  era_labels = [e["label"] for e in LEARNING_ERA_OPTIONS]
+  era_keys = {e["label"]: e["key"] for e in LEARNING_ERA_OPTIONS}
+  _init_widget_state(s, era_labels)
+
+  st.markdown("#### Chiến lược")
+  train_months = st.multiselect(
+    "Cửa sổ học chiến lược (tháng)",
+    [3, 6, 9],
+    key="settings_train_months",
+    help=HELP["train_months"],
+  )
+
+  st.markdown("#### Học bộ nhớ")
+  picked_eras = st.multiselect(
+    "Giai đoạn học",
+    era_labels,
+    key="settings_era_labels",
+    help="Mỗi giai đoạn = một profile bộ nhớ — grid sẽ thử mọi combo train × giai đoạn × vòng học.",
+  )
+  learning_loops = st.number_input(
+    "Số vòng học (epoch)",
+    min_value=1,
+    max_value=12,
+    key="settings_learning_loops",
+    help=HELP["epoch"],
+  )
+
+  st.markdown("#### Kiểm chứng")
+  c1, c2 = st.columns(2)
+  with c1:
+    backtest_from = st.date_input("Từ", key="settings_backtest_from", help=HELP["oos"])
+  with c2:
+    backtest_to = st.date_input("Đến", key="settings_backtest_to", help=HELP["oos"])
+
+  st.markdown("#### Phí mô phỏng")
+  c3, c4 = st.columns(2)
+  with c3:
+    spread = st.number_input(
+      "Chênh lệch (pip)", 0.0, 3.0, step=0.1, key="settings_spread",
+    )
+  with c4:
+    slip = st.number_input(
+      "Trượt giá (pip)", 0.0, 2.0, step=0.1, key="settings_slip",
     )
 
-    st.markdown("#### Học bộ nhớ")
-    era_labels = [e["label"] for e in LEARNING_ERA_OPTIONS]
-    era_keys = {e["label"]: e["key"] for e in LEARNING_ERA_OPTIONS}
-    default_eras = [
-      era_keys[k] for k in era_labels
-      if era_keys[k] in (s.get("learning_era_keys") or [])
-    ]
-    picked_eras = st.multiselect(
-      "Giai đoạn học",
-      era_labels,
-      default=[e["label"] for e in LEARNING_ERA_OPTIONS if e["key"] in default_eras]
-      or era_labels,
-      help="Mỗi giai đoạn = một profile bộ nhớ — grid sẽ thử mọi combo train × giai đoạn × vòng học.",
-    )
-    learning_loops = st.number_input(
-      "Số vòng học (epoch)",
-      min_value=1,
-      max_value=12,
-      value=int(s.get("learning_loops") or 4),
-      help=HELP["epoch"],
-    )
+  objective = st.selectbox(
+    "Mục tiêu Grid Search",
+    ["total_r", "win_rate_pct", "profit_factor", "risk_adjusted"],
+    key="settings_objective",
+  )
 
-    st.markdown("#### Kiểm chứng")
-    c1, c2 = st.columns(2)
-    with c1:
-      backtest_from = st.text_input("Từ", value=s.get("backtest_from", "2025-01-01"), help=HELP["oos"])
-    with c2:
-      backtest_to = st.text_input("Đến", value=s.get("backtest_to", "2026-12-31"), help=HELP["oos"])
+  valid = True
+  if not train_months:
+    st.warning("Chọn ít nhất một cửa sổ học chiến lược; thay đổi này chưa được lưu.")
+    valid = False
+  if not picked_eras:
+    st.warning("Chọn ít nhất một giai đoạn học; thay đổi này chưa được lưu.")
+    valid = False
+  if backtest_from > backtest_to:
+    st.warning("Ngày bắt đầu phải trước ngày kết thúc; thay đổi này chưa được lưu.")
+    valid = False
 
-    st.markdown("#### Phí mô phỏng")
-    c3, c4 = st.columns(2)
-    with c3:
-      spread = st.number_input("Chênh lệch (pip)", 0.0, 3.0, float(s.get("spread_pips", DEFAULT_SPREAD_PIPS)), 0.1)
-    with c4:
-      slip = st.number_input("Trượt giá (pip)", 0.0, 2.0, float(s.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)), 0.1)
-
-    objective = st.selectbox(
-      "Mục tiêu Grid Search",
-      ["total_r", "win_rate_pct", "profit_factor", "risk_adjusted"],
-      index=["total_r", "win_rate_pct", "profit_factor", "risk_adjusted"].index(
-        s.get("grid_objective", "total_r")
-      ),
-    )
-
-    submitted = st.form_submit_button("💾 Lưu cài đặt", type="primary", use_container_width=True)
-
-  if submitted:
-    if not train_months:
-      st.error("Chọn ít nhất một cửa sổ học chiến lược.")
-      return
-    if not picked_eras:
-      st.error("Chọn ít nhất một giai đoạn học.")
-      return
-    new_sig = settings_grid_signature({
-      **s,
-      "strategy_train_months": train_months,
-      "learning_era_keys": [era_keys[l] for l in picked_eras],
-      "learning_loops": int(learning_loops),
-      "backtest_from": backtest_from.strip(),
-      "backtest_to": backtest_to.strip(),
-    })
-    old_sig = settings_grid_signature(s)
+  current = {
+    "strategy_train_months": list(train_months),
+    "learning_era_keys": [era_keys[label] for label in picked_eras],
+    "learning_loops": int(learning_loops),
+    "backtest_from": backtest_from.isoformat(),
+    "backtest_to": backtest_to.isoformat(),
+    "spread_pips": float(spread),
+    "slippage_pips": float(slip),
+    "grid_objective": objective,
+  }
+  changed = any(s.get(key) != value for key, value in current.items())
+  if valid and changed:
     update_settings(
-      strategy_train_months=train_months,
-      learning_era_keys=[era_keys[l] for l in picked_eras],
-      learning_loops=int(learning_loops),
-      backtest_from=backtest_from.strip(),
-      backtest_to=backtest_to.strip(),
-      spread_pips=float(spread),
-      slippage_pips=float(slip),
-      grid_objective=objective,
+      **current,
     )
-    st.session_state["settings_grid_signature"] = new_sig
-    if new_sig != old_sig:
-      st.toast("Đã lưu — chạy Grid Search để cập nhật combo mới")
-    else:
-      st.toast("Đã lưu cài đặt")
-    st.rerun()
+    st.caption("Đã tự động lưu. Chạy Grid Search lại để áp dụng cấu hình mới.")
 
   st.divider()
   st.caption(
@@ -139,6 +171,7 @@ def render(embedded: bool = False):
   if st.button("↺ Khôi phục mặc định", key="settings_reset"):
     from gui.app_settings import DEFAULT_SETTINGS, save_settings
     save_settings(dict(DEFAULT_SETTINGS))
-    st.session_state.pop("app_settings", None)
+    for key in SETTING_WIDGET_KEYS:
+      st.session_state.pop(key, None)
     st.toast("Đã khôi phục cài đặt mặc định")
     st.rerun()

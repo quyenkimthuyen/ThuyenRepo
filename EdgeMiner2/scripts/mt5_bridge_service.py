@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 from mt5_bridge.comm_log import append_event
 from mt5_bridge.engine import BridgeEngine
 from mt5_bridge.live_monitor_server import DEFAULT_MONITOR_PORT, start_live_monitor_server
+from mt5_bridge.models import load_active_model_id
 from mt5_bridge.protocol import (
   BRIDGE_DIR,
   DEFAULT_MODEL_ID,
@@ -48,6 +49,9 @@ def _register_service_process(args) -> None:
     if sys.stderr is None:
       sys.stderr = log
 
+  active_model_id = load_active_model_id()
+  if active_model_id:
+    args.model_id = active_model_id
   pid = os.getpid()
   PID_PATH.write_text(str(pid), encoding="utf-8")
   save_config(
@@ -213,6 +217,24 @@ def main() -> int:
   last_fill_fp: str | None = None
   while True:
     try:
+      if not args.once:
+        from mt5_bridge.background import load_config
+        runtime_cfg = load_config()
+        desired_model = load_active_model_id() or runtime_cfg.get("model_id") or engine.model_id
+        desired_risk = float(runtime_cfg.get("risk_pct", engine.risk_pct))
+        args.poll = float(runtime_cfg.get("poll_sec", args.poll))
+        if desired_model != engine.model_id or abs(desired_risk - engine.risk_pct) > 1e-9:
+          engine = BridgeEngine(model_id=desired_model, risk_pct=desired_risk)
+          engine.seed_from_dukascopy()
+          last_fp = None
+          append_event(
+            "system", "engine_reload", bridge_dir=bridge_dir,
+            summary=f"model={desired_model} risk={desired_risk}",
+          )
+          write_status(
+            bridge_dir, state="running", model_id=desired_model,
+            error=None, reason="config_reload",
+          )
       last_fp, last_fill_fp = process_once(
         engine, bridge_dir, last_fp=last_fp, last_fill_fp=last_fill_fp,
       )

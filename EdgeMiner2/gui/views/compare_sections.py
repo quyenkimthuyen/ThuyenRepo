@@ -7,6 +7,7 @@ import streamlit as st
 from gui.components import constraint_checklist, kb_profile_picker, oos_period_inputs
 from gui.long_task_background import start_job
 from gui.long_task_ui import render_task_status, task_blocks_ui
+from gui.ui_preferences import preference_callback, restore_widget
 
 def render_era_compare():
   import pandas as pd
@@ -28,12 +29,18 @@ def render_era_compare():
   spec_by_key = {s["key"]: s for s in all_specs}
   default_keys = [s["key"] for s in all_specs]
 
+  restore_widget(
+    "era_cmp_pick", default_keys,
+    preference_key="compare.era_keys",
+    options=default_keys,
+    multiple=True,
+  )
   selected_keys = st.multiselect(
     "Chọn giai đoạn cần so sánh",
     options=[s["key"] for s in all_specs],
-    default=[k for k in default_keys if k in spec_by_key],
     format_func=lambda k: spec_by_key[k]["label"],
     key="era_cmp_pick",
+    on_change=preference_callback("era_cmp_pick", "compare.era_keys"),
     help="Chọn 1 hoặc nhiều giai đoạn — chỉ các mục được chọn mới backtest/so sánh.",
   )
   if not selected_keys:
@@ -75,14 +82,24 @@ def render_era_compare():
 
   c1, c2 = st.columns([1, 2])
   with c1:
-    learn_reset = st.checkbox("Reset trước khi học", key="era_cmp_reset")
+    restore_widget("era_cmp_reset", False, preference_key="compare.era_reset")
+    learn_reset = st.checkbox(
+      "Reset trước khi học", key="era_cmp_reset",
+      on_change=preference_callback("era_cmp_reset", "compare.era_reset"),
+    )
   with c2:
+    restore_widget(
+      "era_cmp_learn_pick", [],
+      preference_key="compare.era_learn_keys",
+      options=selected_keys,
+      multiple=True,
+    )
     learn_pick = st.multiselect(
       "Học nhanh (chọn giai đoạn)",
       options=selected_keys,
-      default=[],
       format_func=lambda k: spec_by_key[k]["label"],
       key="era_cmp_learn_pick",
+      on_change=preference_callback("era_cmp_learn_pick", "compare.era_learn_keys"),
       help="Chọn giai đoạn cần huấn luyện thêm trước khi backtest.",
     )
 
@@ -313,13 +330,20 @@ def render_epoch_sweep():
         st.toast(f"Workspace: {profile} · {best_key}")
         st.rerun()
     with b2:
+      manual_options = [snapshot_key(s) for s in cache_snaps]
+      restore_widget(
+        "ep_sw_manual", manual_options[0],
+        preference_key="compare.manual_epoch",
+        options=manual_options,
+      )
       sel_ep = st.selectbox(
         "Hoặc chọn vòng thủ công",
-        [snapshot_key(s) for s in cache_snaps],
+        manual_options,
         format_func=lambda k: next(
           (format_snapshot_label(s) for s in cache_snaps if snapshot_key(s) == k), k,
         ),
         key="ep_sw_manual",
+        on_change=preference_callback("ep_sw_manual", "compare.manual_epoch"),
       )
       if st.button("Áp dụng vòng đã chọn", key="ep_sw_set_manual"):
         set_active_workspace(
@@ -378,9 +402,16 @@ def render_train_window():
     )
 
   train_opts = train_month_options()
+  restore_widget(
+    "tw_months", train_opts,
+    preference_key="compare.train_months",
+    options=train_opts,
+    multiple=True,
+  )
   train_sel = st.multiselect(
     "Cửa sổ học (tháng)", train_opts,
-    default=train_opts, key="tw_months",
+    key="tw_months",
+    on_change=preference_callback("tw_months", "compare.train_months"),
   )
 
   if st.button("▶ Chạy so sánh (cửa sổ × bộ nhớ)", type="primary", key="tw_run", disabled=task_blocks_ui("tw")):

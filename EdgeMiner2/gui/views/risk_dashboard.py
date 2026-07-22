@@ -11,6 +11,7 @@ from gui.analysis_support import get_matching_analysis_report, render_report_req
 from gui.glossary import HELP, METRIC_LABELS
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
+from gui.ui_preferences import preference_callback, restore_widget
 
 
 def render(embedded: bool = False):
@@ -25,14 +26,24 @@ def render(embedded: bool = False):
 
   cfg = report.get("config", {})
   o = report["overall_oos"]
+  restore_widget(
+    "risk_pct_slider",
+    float(cfg.get("risk_pct_per_trade", DEFAULT_RISK_PCT_PER_TRADE)),
+    preference_key="analysis.risk_pct",
+  )
   risk_pct = st.sidebar.slider(
     "Rủi ro % mỗi lệnh (giả định)", 0.25, 3.0,
-    float(cfg.get("risk_pct_per_trade", DEFAULT_RISK_PCT_PER_TRADE)),
-    0.25, key="risk_pct_slider",
+    step=0.25, key="risk_pct_slider",
+    on_change=preference_callback("risk_pct_slider", "analysis.risk_pct"),
     help="Dùng để ước lượng xác suất phá sản — không phải khuyến nghị vốn thực tế.",
   )
+  restore_widget(
+    "max_week_r", DEFAULT_MAX_WEEKLY_LOSS_R,
+    preference_key="analysis.max_week_r",
+  )
   max_weekly_r = st.sidebar.number_input(
-    "Giới hạn lỗ tuần (R)", 1.0, 20.0, DEFAULT_MAX_WEEKLY_LOSS_R, key="max_week_r",
+    "Giới hạn lỗ tuần (R)", 1.0, 20.0, key="max_week_r",
+    on_change=preference_callback("max_week_r", "analysis.max_week_r"),
     help=HELP["r_unit"],
   )
 

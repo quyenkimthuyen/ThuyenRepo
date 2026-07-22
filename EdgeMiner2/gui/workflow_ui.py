@@ -9,6 +9,7 @@ from gui.live_workflow import (
   mark_paper_started,
   save_workflow_state,
 )
+from gui.ui_preferences import set_widget_preference
 
 
 def _status_icon(done: bool, active: bool) -> str:
@@ -20,9 +21,9 @@ def _status_icon(done: bool, active: bool) -> str:
 
 
 def _go(page: str, *, learning_tab: str | None = None):
-  st.session_state["nav_page"] = page
+  set_widget_preference("nav_page", page, "navigation.page")
   if learning_tab:
-    st.session_state["learning_tab"] = learning_tab
+    set_widget_preference("learning_tab", learning_tab, "navigation.learning_tab")
   st.rerun()
 
 
@@ -77,21 +78,6 @@ def render_workflow_panel():
     if st.button("📡 Bắt đầu theo dõi paper", use_container_width=True, key="wf_paper_start"):
       mark_paper_started()
       _go("paper")
-
-  if cur == 5:
-    notes = st.text_area(
-      "Ghi chú live (size, broker, ngày bắt đầu…)",
-      value=state.get("live_notes") or "",
-      key="wf_live_notes",
-    )
-    if st.button("Lưu ghi chú live", key="wf_save_live"):
-      state["live_notes"] = notes.strip()
-      manual = dict(state.get("manual") or {})
-      manual["5"] = True
-      state["manual"] = manual
-      save_workflow_state(state)
-      st.toast("Đã lưu")
-      st.rerun()
 
   with st.expander("Tất cả các bước", expanded=False):
     for step in WORKFLOW_STEPS:

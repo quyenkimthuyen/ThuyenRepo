@@ -8,6 +8,7 @@ from gui.components import constraint_checklist, kpi_row, status_banner, warn_lo
 from gui.glossary import METRIC_LABELS, backtest_kpi_items
 from gui.navigation import ALL_ITEMS
 from gui.services import load_backtest_report, load_data_meta, load_kb, load_learning_report, refresh_market_data
+from gui.ui_preferences import set_widget_preference
 from gui.workflow_ui import render_workflow_panel
 from gui.workspace import report_matches_workspace
 
@@ -61,13 +62,15 @@ def render():
   c1, c2, c3 = st.columns(3)
   with c1:
     if icon_btn("Học & tối ưu", key="cc_nav_learning", icon=":material/school:"):
-      st.session_state["nav_page"] = "learning"
+      set_widget_preference("nav_page", "learning", "navigation.page")
       from gui.views.learning_hub import _default_learning_tab
-      st.session_state["learning_tab"] = _default_learning_tab()
+      set_widget_preference(
+        "learning_tab", _default_learning_tab(), "navigation.learning_tab",
+      )
       st.rerun()
   with c2:
     if icon_btn("Paper", key="cc_nav_paper", icon=":material/monitoring:"):
-      st.session_state["nav_page"] = "paper"
+      set_widget_preference("nav_page", "paper", "navigation.page")
       st.rerun()
   with c3:
     if icon_btn("Refresh data", key="cc_refresh", icon=":material/sync:"):

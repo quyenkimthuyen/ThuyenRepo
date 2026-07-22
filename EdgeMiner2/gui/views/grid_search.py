@@ -9,7 +9,6 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from gui.app_settings import (
-  format_settings_summary,
   get_settings,
   settings_changed_since_last_grid,
   settings_grid_signature,
@@ -28,15 +27,34 @@ from gui.grid_search_engine import (
   merge_grid_results,
 )
 from gui.trade_model import create_trade_model
+from gui.ui_preferences import (
+  persist_widget,
+  preference_callback,
+  restore_widget,
+  set_widget_preference,
+)
+
+
+def _grid_combo_changed(default_names: dict[str, str]) -> None:
+  persist_widget("gs_pick_combo", "grid.selected_combo")
+  selected = st.session_state.get("gs_pick_combo")
+  set_widget_preference(
+    "gs_any_tm_name",
+    default_names.get(selected, "Grid model"),
+    "grid.model_name",
+  )
 
 
 @st.fragment(run_every=timedelta(seconds=5))
 def _grid_progress_fragment():
   status = get_grid_status()
   if status["running"]:
-    st.caption(
-      f"Đang chạy: {status['done']}/{status['total']} "
-      f"({status['pct']}%) · {status['current_label'] or '…'}"
+    st.progress(
+      status["done"] / max(status["total"], 1),
+      text=(
+        f"⏳ Grid Search — {status['done']}/{status['total']} "
+        f"({status['pct']}%) · {status['current_label'] or '…'}"
+      ),
     )
 
 
@@ -67,16 +85,12 @@ def _render_job_status():
     return status
 
   if status["running"]:
-    st.info(
-      f"⏳ **Grid Search đang chạy nền** — {status['done']}/{status['total']} "
-      f"({status['pct']}%) · `{status['current_label'] or '…'}`"
-    )
-    st.progress(status["done"] / max(status["total"], 1))
+    st.info("Grid Search đang chạy nền; có thể chuyển trang mà không làm dừng tác vụ.")
+    _grid_progress_fragment()
     if st.button("⏹ Hủy grid search", key="gs_cancel"):
       stop_grid_search()
       st.toast("Đã gửi tín hiệu hủy")
       st.rerun()
-    _grid_progress_fragment()
   elif status["status"] == "completed":
     n = status.get("n_rows") or 0
     total = status.get("total") or 0
@@ -93,11 +107,6 @@ def _render_job_status():
         )
     elif n == 0:
       st.warning(f"Hoàn thành `{status.get('run_id')}` — không có kết quả hợp lệ.")
-    else:
-      st.success(
-        f"✅ Hoàn thành `{status.get('run_id')}` — "
-        f"{n} combo · **{OBJECTIVES.get(status.get('objective', ''), status.get('objective'))}**"
-      )
   elif status["status"] == "cancelled":
     st.warning(f"Đã hủy — {status['done']}/{status['total']} combo.")
   elif status["status"] == "interrupted":
@@ -133,7 +142,6 @@ def render(embedded: bool = False):
   if not embedded:
     st.header("Grid Search")
 
-  st.caption(format_settings_summary())
   if settings_changed_since_last_grid():
     st.warning("Cài đặt đã đổi — chạy grid để bổ sung combo mới (combo cũ được giữ lại).")
 
@@ -165,9 +173,6 @@ def render(embedded: bool = False):
     if st.button("→ Mở Huấn luyện bộ nhớ", key="gs_goto_train", type="primary"):
       st.session_state["learning_tab"] = "train_kb"
       st.rerun()
-  else:
-    st.success(f"Sẵn sàng **{ready_n}** combo theo Cài đặt.")
-
   job_status = _render_job_status()
   running = bool(job_status.get("running"))
 
@@ -184,30 +189,36 @@ def render(embedded: bool = False):
   skip_n = len(specs) - len(new_specs)
 
   if not running:
-    st.caption(
-      f"Tổng **{expected}** combo (Settings) · sẵn sàng **{ready_n}** · "
-      f"đã có **{skip_n}** · cần chạy **{len(new_specs)}**"
-    )
     if new_specs:
       st.info(
-        f"Sẽ chạy **{len(new_specs)}** backtest mới (~{len(new_specs) * 2:.0f}–{len(new_specs) * 4:.0f} phút)."
+        f"**{len(new_specs)} combo mới** cần chạy · hiện có **{skip_n}/{expected}** kết quả "
+        f"· dự kiến {len(new_specs) * 2:.0f}–{len(new_specs) * 4:.0f} phút."
       )
     else:
-      st.success("Grid đã đủ — không cần chạy lại (trừ khi muốn làm mới toàn bộ).")
+      st.success(f"✅ Grid đã đủ **{skip_n}/{expected} combo** — không cần chạy lại.")
 
-  c1, c2 = st.columns(2)
-  with c1:
-    run_btn = st.button(
-      "▶ Chạy Grid Search (chỉ combo mới)",
-      type="primary",
-      key="gs_run",
-      disabled=running or not new_specs or not kb_done,
-    )
-  with c2:
+  run_btn = False
+  if new_specs:
+    c1, c2 = st.columns(2)
+    with c1:
+      run_btn = st.button(
+        "▶ Chạy Grid Search (chỉ combo mới)",
+        type="primary",
+        key="gs_run",
+        disabled=running or not kb_done,
+      )
+    with c2:
+      force_btn = st.button(
+        "↺ Chạy lại toàn bộ",
+        key="gs_force",
+        disabled=running or not kb_done,
+      )
+  else:
     force_btn = st.button(
       "↺ Chạy lại toàn bộ",
       key="gs_force",
       disabled=running or not kb_done,
+      help="Chỉ dùng khi muốn tính lại toàn bộ kết quả.",
     )
 
   if run_btn:
@@ -315,12 +326,36 @@ def render(embedded: bool = False):
         f"#{i+1} · {r.get('label')} · R={r.get('total_r', 0):+.2f} · "
         f"WR={r.get('win_rate_pct', 0)}% · train={r.get('train_months')}m"
       )
-    pick = st.selectbox("Combo", options, key="gs_pick_combo")
+    default_names = {
+      option: str((valid_rows[i].get("label") or f"Grid #{i + 1}"))[:80]
+      for i, option in enumerate(options)
+    }
+    restore_widget(
+      "gs_pick_combo", options[0],
+      preference_key="grid.selected_combo",
+      options=options,
+    )
+    pick = st.selectbox(
+      "Combo", options, key="gs_pick_combo",
+      on_change=_grid_combo_changed,
+      args=(default_names,),
+    )
     pick_idx = options.index(pick) if pick in options else 0
     chosen = valid_rows[pick_idx]
     default_name = chosen.get("label") or f"Grid #{pick_idx+1}"
-    name = st.text_input("Tên Trade Model", value=str(default_name)[:80], key="gs_any_tm_name")
-    set_active = st.checkbox("Đặt làm model đang dùng", value=True, key="gs_any_tm_active")
+    restore_widget(
+      "gs_any_tm_name", str(default_name)[:80],
+      preference_key="grid.model_name",
+    )
+    name = st.text_input(
+      "Tên Trade Model", key="gs_any_tm_name",
+      on_change=preference_callback("gs_any_tm_name", "grid.model_name"),
+    )
+    restore_widget("gs_any_tm_active", True, preference_key="grid.set_active")
+    set_active = st.checkbox(
+      "Đặt làm model đang dùng", key="gs_any_tm_active",
+      on_change=preference_callback("gs_any_tm_active", "grid.set_active"),
+    )
     if st.button("＋ Tạo Trade Model từ combo đã chọn", type="primary", key="gs_create_any_tm"):
       from gui.trade_model import find_model_by_grid_key
       label = (name or "").strip() or None

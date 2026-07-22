@@ -12,6 +12,11 @@ from gui.services import load_learning_report
 from gui.long_task_background import start_job
 from gui.long_task_ui import render_task_status, task_blocks_ui
 from gui.trade_profile import format_trade_profile_label, get_active_trade_profile
+from gui.ui_preferences import (
+  preference_callback,
+  restore_widget,
+  set_widget_preference,
+)
 from gui.workspace import set_active_from_preset, set_active_workspace
 
 
@@ -186,22 +191,54 @@ def _tab_learn():
   for i, (label, pid, lf, lt, _of, _ot) in enumerate(presets):
     with pcols[i % len(pcols)]:
       if st.button(label, key=f"hub_pick_{pid}", use_container_width=True):
-        st.session_state["hub_learn_id"] = pid
-        st.session_state["hub_learn_name"] = label.split("→")[0].strip()
-        st.session_state["hub_learn_from"] = lf
-        st.session_state["hub_learn_until"] = lt
-        st.session_state["hub_epochs"] = loops
+        set_widget_preference("hub_learn_id", pid, "training.profile_id")
+        set_widget_preference(
+          "hub_learn_name", label.split("→")[0].strip(), "training.profile_name",
+        )
+        set_widget_preference("hub_learn_from", lf, "training.learn_from")
+        set_widget_preference("hub_learn_until", lt, "training.learn_until")
+        set_widget_preference("hub_epochs", loops, "training.epochs")
         st.rerun()
+
+  field_defaults = {
+    "hub_learn_id": (era["kb_profile"], "training.profile_id"),
+    "hub_learn_name": (era["label"], "training.profile_name"),
+    "hub_learn_from": (era["learn_from"], "training.learn_from"),
+    "hub_learn_until": (era["learn_until"], "training.learn_until"),
+    "hub_epochs": (loops, "training.epochs"),
+    "hub_reset": (False, "training.reset"),
+  }
+  for widget_key, (default, pref_key) in field_defaults.items():
+    restore_widget(widget_key, default, preference_key=pref_key)
 
   c1, c2 = st.columns(2)
   with c1:
-    new_id = st.text_input("Profile ID", st.session_state.get("hub_learn_id", era["kb_profile"]), key="hub_learn_id")
-    new_name = st.text_input("Tên hiển thị", st.session_state.get("hub_learn_name", era["label"]), key="hub_learn_name")
-    learn_from = st.text_input("Học từ", st.session_state.get("hub_learn_from", era["learn_from"]), key="hub_learn_from")
+    new_id = st.text_input(
+      "Profile ID", key="hub_learn_id",
+      on_change=preference_callback("hub_learn_id", "training.profile_id"),
+    )
+    new_name = st.text_input(
+      "Tên hiển thị", key="hub_learn_name",
+      on_change=preference_callback("hub_learn_name", "training.profile_name"),
+    )
+    learn_from = st.text_input(
+      "Học từ", key="hub_learn_from",
+      on_change=preference_callback("hub_learn_from", "training.learn_from"),
+    )
   with c2:
-    learn_until = st.text_input("Học đến", st.session_state.get("hub_learn_until", era["learn_until"]), key="hub_learn_until")
-    epochs = st.number_input("Số vòng học", 1, 12, loops, key="hub_epochs", help="Theo Cài đặt — chỉnh tại **Cài đặt**.")
-    reset = st.checkbox("Reset profile trước khi học", key="hub_reset")
+    learn_until = st.text_input(
+      "Học đến", key="hub_learn_until",
+      on_change=preference_callback("hub_learn_until", "training.learn_until"),
+    )
+    epochs = st.number_input(
+      "Số vòng học", 1, 12, key="hub_epochs",
+      on_change=preference_callback("hub_epochs", "training.epochs"),
+      help="Theo Cài đặt — chỉnh tại **Cài đặt**.",
+    )
+    reset = st.checkbox(
+      "Reset profile trước khi học", key="hub_reset",
+      on_change=preference_callback("hub_reset", "training.reset"),
+    )
 
   existing = get_profile(new_id.strip())
   if existing and existing.get("exists"):
@@ -254,8 +291,6 @@ def render_training_only():
   s = get_settings()
   loops = int(s.get("learning_loops") or 4)
   st.caption(f"Mặc định **{loops} vòng học** theo Cài đặt — chỉnh tại **Cài đặt**.")
-  if "hub_epochs" not in st.session_state:
-    st.session_state["hub_epochs"] = loops
 
   _tab_learn()
 
@@ -263,6 +298,6 @@ def render_training_only():
 def render():
   """Legacy full page — chuyển sang Learning hub."""
   import streamlit as st
-  st.session_state["nav_page"] = "learning"
-  st.session_state["learning_tab"] = "train_kb"
+  set_widget_preference("nav_page", "learning", "navigation.page")
+  set_widget_preference("learning_tab", "train_kb", "navigation.learning_tab")
   st.rerun()

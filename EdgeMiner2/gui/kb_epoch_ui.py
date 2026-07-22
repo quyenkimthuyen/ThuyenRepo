@@ -5,6 +5,11 @@ import pandas as pd
 import streamlit as st
 
 from kb_profiles import list_snapshots
+from gui.ui_preferences import (
+  preference_callback,
+  restore_widget,
+  set_widget_preference,
+)
 
 
 def format_snapshot_label(s: dict, *, short: bool = False) -> str:
@@ -54,7 +59,10 @@ def cumulative_to_label(profile_id: str, cumulative: int | str | None) -> str | 
 def sync_epoch_picker_state(key_prefix: str, profile_id: str, snapshot: int | str | None):
   label = cumulative_to_label(profile_id, snapshot)
   if label:
-    st.session_state[f"{key_prefix}_kb_epoch"] = label
+    set_widget_preference(
+      f"{key_prefix}_kb_epoch", label,
+      f"picker.{key_prefix}.epoch",
+    )
 
 
 def kb_epoch_picker(
@@ -76,16 +84,22 @@ def kb_epoch_picker(
   options = {format_snapshot_label(s): s.get("cumulative") for s in snaps}
   labels = list(options.keys())
 
-  if default_snapshot is not None:
-    sync_epoch_picker_state(key_prefix, profile_id, default_snapshot)
-
-  if f"{key_prefix}_kb_epoch" not in st.session_state and labels:
-    st.session_state[f"{key_prefix}_kb_epoch"] = labels[-1]
+  widget_key = f"{key_prefix}_kb_epoch"
+  default_label = (
+    cumulative_to_label(profile_id, default_snapshot)
+    if default_snapshot is not None else None
+  ) or labels[-1]
+  restore_widget(
+    widget_key, default_label,
+    preference_key=f"picker.{key_prefix}.epoch",
+    options=labels,
+  )
 
   pick = st.selectbox(
     "Vòng học",
     labels,
-    key=f"{key_prefix}_kb_epoch",
+    key=widget_key,
+    on_change=preference_callback(widget_key, f"picker.{key_prefix}.epoch"),
     help="Mỗi vòng = bộ nhớ sau một lần huấn luyện. So sánh tại **Nghiên cứu → So vòng học**.",
   )
 

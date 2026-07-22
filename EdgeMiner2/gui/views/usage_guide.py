@@ -346,7 +346,6 @@ Chỉ live **micro lot** khi paper/bridge khớp kỳ vọng backtest.
 2. **Đủ KB trước Grid** — thiếu giai đoạn/vòng học → Grid ra 0 combo.
 3. **3–5 vòng học** thường đủ; nhiều hơn dễ overfit.
 4. **Một Trade Model = một combo** — đổi Cài đặt rồi Grid lại chỉ bổ sung combo mới.
-5. **So sánh nâng cao** (giai đoạn / vòng / cửa sổ) nằm trong expander ở Học & tối ưu.
 
 ### CLI nhanh
 

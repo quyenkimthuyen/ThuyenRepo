@@ -2,7 +2,7 @@
 param(
   [string]$TerminalDataPath = "",
   [string]$InstallPath = "",
-  [string]$ModelId = "tm_best_3m_64e3f742",
+  [string]$ModelId = "",
   [double]$RiskPct = 1.0,
   [double]$PollSeconds = 2.0,
   [switch]$Attach,
@@ -16,6 +16,15 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $SourceEa = Join-Path $RepoRoot "mt5\Experts\ForgeBridge.mq5"
 $ProjectBridge = Join-Path $RepoRoot "mt5\bridge"
+if (-not $ModelId) {
+  $activeModelPath = Join-Path $RepoRoot "results\active_trade_model.json"
+  if (Test-Path $activeModelPath) {
+    $ModelId = (Get-Content $activeModelPath -Raw | ConvertFrom-Json).id
+  }
+  if (-not $ModelId) {
+    $ModelId = "tm_best_3m_64e3f742"
+  }
+}
 
 function Write-Step([string]$Message) {
   Write-Host "==> $Message" -ForegroundColor Cyan
@@ -212,15 +221,14 @@ InpMaxHoldBars=36
 
 function Restart-BridgeService {
   $pidFile = Join-Path $RepoRoot "results\mt5_bridge_service.pid"
-  if (Test-Path $pidFile) {
-    $oldPid = 0
-    [void][int]::TryParse((Get-Content $pidFile -Raw).Trim(), [ref]$oldPid)
-    if ($oldPid -gt 0) {
-      $row = Get-CimInstance Win32_Process -Filter "ProcessId=$oldPid" -ErrorAction SilentlyContinue
-      if ($row -and $row.CommandLine -match "mt5_bridge_service\.py") {
-        Stop-Process -Id $oldPid -Force -ErrorAction SilentlyContinue
-      }
+  # A stale PID file can leave an older service writing to the same bridge.
+  Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object { $_.CommandLine -match "mt5_bridge_service\.py" } |
+    ForEach-Object {
+      Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
     }
+  Start-Sleep -Milliseconds 500
+  if (Test-Path $pidFile) {
     Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
   }
 

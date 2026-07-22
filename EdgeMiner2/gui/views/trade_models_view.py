@@ -14,6 +14,7 @@ from gui.trade_model import (
   set_active_trade_model,
 )
 from gui.ui_theme import icon_btn
+from gui.ui_preferences import preference_callback, restore_widget, set_widget_preference
 from gui.views import risk_dashboard, trade_journal, strategy_inspector
 
 # Child of Trade Models: quản lý + phân tích theo model đang chọn
@@ -36,12 +37,12 @@ def _resolve_subtab() -> str:
   # Compat: old analysis_tab / analysis hub
   legacy = st.session_state.get("analysis_tab")
   if legacy in ("risk", "journal", "strategy") and "models_subtab" not in st.session_state:
-    st.session_state["models_subtab"] = legacy
-  pick = st.session_state.get("models_subtab", "manage")
-  if pick not in SUB_KEYS:
-    pick = "manage"
-  st.session_state["models_subtab"] = pick
-  return pick
+    set_widget_preference("models_subtab", legacy, "navigation.models_subtab")
+  return restore_widget(
+    "models_subtab", "manage",
+    preference_key="navigation.models_subtab",
+    options=SUB_KEYS,
+  )
 
 
 def _render_manage(models, active):
@@ -72,10 +73,18 @@ def _render_manage(models, active):
 
   st.markdown("#### Thao tác")
   id_by_label = {format_model_label(m): m["id"] for m in models}
+  labels = list(id_by_label.keys())
+  default_pick = format_model_label(active) if active else labels[0]
+  restore_widget(
+    "tm_view_pick", default_pick,
+    preference_key="trade_models.selected",
+    options=labels,
+  )
   pick = st.selectbox(
     "Chọn model",
-    list(id_by_label.keys()),
+    labels,
     key="tm_view_pick",
+    on_change=preference_callback("tm_view_pick", "trade_models.selected"),
   )
   mid = id_by_label[pick]
   m = next(x for x in models if x["id"] == mid)
@@ -169,9 +178,9 @@ def render(embedded: bool = False):
         icon=SUB_ICONS[key],
         active=(sub == key),
       ):
-        st.session_state["models_subtab"] = key
+        set_widget_preference("models_subtab", key, "navigation.models_subtab")
         if key in ("risk", "journal", "strategy"):
-          st.session_state["analysis_tab"] = key
+          set_widget_preference("analysis_tab", key, "navigation.analysis_tab")
         st.rerun()
 
   st.divider()

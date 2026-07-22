@@ -12,6 +12,18 @@ from gui.components import warn_long_bias, warn_no_costs
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
 from gui.services import get_ohlc_df
+from gui.ui_preferences import (
+  delete_preference,
+  persist_widget,
+  preference_callback,
+  restore_widget,
+)
+
+
+def _journal_filter_changed(widget_key: str, preference_key: str) -> None:
+  persist_widget(widget_key, preference_key)
+  st.session_state.pop("tj_pick", None)
+  delete_preference("analysis.trade_pick")
 
 
 def _trade_chart(window, trade_row) -> go.Figure | None:
@@ -65,18 +77,39 @@ def render(embedded: bool = False):
 
   c1, c2, c3, c4 = st.columns(4)
   years = ["All"] + sorted(trades_df["entry"].dt.year.unique().astype(str).tolist())
+  directions = ["All", "LONG", "SHORT"]
+  reasons = ["All"] + sorted(trades_df["reason"].dropna().unique().tolist())
+  sorts = ["Mới nhất", "R cao", "R thấp"]
+  restore_widget("tj_year", "All", preference_key="analysis.journal_year", options=years)
+  restore_widget("tj_dir", "All", preference_key="analysis.journal_direction", options=directions)
+  restore_widget("tj_reason", "All", preference_key="analysis.journal_reason", options=reasons)
+  restore_widget("tj_sort", "Mới nhất", preference_key="analysis.journal_sort", options=sorts)
   with c1:
-    year_f = st.selectbox("Năm", years, key="tj_year")
+    year_f = st.selectbox(
+      "Năm", years, key="tj_year",
+      on_change=_journal_filter_changed,
+      args=("tj_year", "analysis.journal_year"),
+    )
   with c2:
-    dir_f = st.selectbox("Hướng", ["All", "LONG", "SHORT"], key="tj_dir")
+    dir_f = st.selectbox(
+      "Hướng", directions, key="tj_dir",
+      on_change=_journal_filter_changed,
+      args=("tj_dir", "analysis.journal_direction"),
+    )
   with c3:
     reason_f = st.selectbox(
       "Exit",
-      ["All"] + sorted(trades_df["reason"].dropna().unique().tolist()),
+      reasons,
       key="tj_reason",
+      on_change=_journal_filter_changed,
+      args=("tj_reason", "analysis.journal_reason"),
     )
   with c4:
-    sort_f = st.selectbox("Sắp xếp", ["Mới nhất", "R cao", "R thấp"], key="tj_sort")
+    sort_f = st.selectbox(
+      "Sắp xếp", sorts, key="tj_sort",
+      on_change=_journal_filter_changed,
+      args=("tj_sort", "analysis.journal_sort"),
+    )
 
   filtered = filter_trades_df(
     trades_df,
@@ -115,7 +148,16 @@ def render(embedded: bool = False):
     f"{row.entry.strftime('%Y-%m-%d %H:%M')} | {row.dir} | {row.r}R"
     for row in filtered.head(200).itertuples()
   ]
-  idx = st.selectbox("Chọn lệnh", range(len(labels)), format_func=lambda i: labels[i], key="tj_pick")
+  restore_widget(
+    "tj_pick", labels[0],
+    preference_key="analysis.trade_pick",
+    options=labels,
+  )
+  selected_trade = st.selectbox(
+    "Chọn lệnh", labels, key="tj_pick",
+    on_change=preference_callback("tj_pick", "analysis.trade_pick"),
+  )
+  idx = labels.index(selected_trade)
   trade_row = filtered.iloc[idx]
 
   try:

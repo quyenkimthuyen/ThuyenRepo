@@ -4,6 +4,12 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from gui.ui_preferences import (
+  preference_callback,
+  restore_widget,
+  set_widget_preference,
+)
+
 
 def kpi_row(items: list[tuple[str, str, str | None]]):
   """Render KPI metrics row. items: (label, value, delta_or_hint)."""
@@ -96,8 +102,15 @@ def kb_profile_picker(
     for p in profiles
   }
   labels = list(options.keys())
+  widget_key = f"{key_prefix}_profile"
+  restore_widget(
+    widget_key, labels[0],
+    preference_key=f"picker.{key_prefix}.profile",
+    options=labels,
+  )
   pick = st.selectbox(
-    "Profile bộ nhớ (giai đoạn đã học)", labels, key=f"{key_prefix}_profile",
+    "Profile bộ nhớ (giai đoạn đã học)", labels, key=widget_key,
+    on_change=preference_callback(widget_key, f"picker.{key_prefix}.profile"),
     help="Mỗi profile = kinh nghiệm học trên một khoảng thời gian.",
   )
   pid = options[pick]
@@ -153,22 +166,34 @@ def oos_period_inputs(
   from gui.app_settings import settings_backtest_period
   from gui.glossary import HELP
   sug_from, sug_to = settings_backtest_period()
+  from_key = f"{key_prefix}_oos_from"
+  to_key = f"{key_prefix}_oos_to"
+  restore_widget(
+    from_key, default_from or sug_from,
+    preference_key=f"picker.{key_prefix}.oos_from",
+  )
+  restore_widget(
+    to_key, default_to or sug_to,
+    preference_key=f"picker.{key_prefix}.oos_to",
+  )
   c1, c2, c3 = st.columns([2, 2, 1])
   with c1:
     oos_from = st.text_input(
-      "Kiểm chứng từ (YYYY-MM-DD)", default_from or sug_from, key=f"{key_prefix}_oos_from",
+      "Kiểm chứng từ (YYYY-MM-DD)", key=from_key,
+      on_change=preference_callback(from_key, f"picker.{key_prefix}.oos_from"),
       help=HELP["oos"],
     )
   with c2:
     oos_to = st.text_input(
-      "Kiểm chứng đến (YYYY-MM-DD)", default_to or sug_to, key=f"{key_prefix}_oos_to",
+      "Kiểm chứng đến (YYYY-MM-DD)", key=to_key,
+      on_change=preference_callback(to_key, f"picker.{key_prefix}.oos_to"),
       help=HELP["oos"],
     )
   with c3:
     st.write("")
     if st.button("Gợi ý", key=f"{key_prefix}_oos_suggest", help="Điền ngay sau giai đoạn đã học"):
-      st.session_state[f"{key_prefix}_oos_from"] = sug_from
-      st.session_state[f"{key_prefix}_oos_to"] = sug_to
+      set_widget_preference(from_key, sug_from, f"picker.{key_prefix}.oos_from")
+      set_widget_preference(to_key, sug_to, f"picker.{key_prefix}.oos_to")
       st.rerun()
   return oos_from.strip(), oos_to.strip()
 

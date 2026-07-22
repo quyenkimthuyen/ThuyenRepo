@@ -27,6 +27,7 @@ from gui.navigation import (
   LEARNING_TAB_BY_ALIAS, ANALYSIS_TAB_BY_ALIAS, default_page_key,
 )
 from gui.ui_theme import icon_btn, inject_theme
+from gui.ui_preferences import restore_widget, set_widget_preference
 from gui.workspace import ensure_profiles_loaded
 
 VIEW_MODULES = {
@@ -45,26 +46,26 @@ def _resolve_page_key() -> str:
     if key:
       ltab = LEARNING_TAB_BY_ALIAS.get(legacy)
       if ltab:
-        st.session_state["learning_tab"] = ltab
+        set_widget_preference("learning_tab", ltab, "navigation.learning_tab")
       atab = ANALYSIS_TAB_BY_ALIAS.get(legacy)
       if atab:
-        st.session_state["analysis_tab"] = atab
-        st.session_state["models_subtab"] = atab
+        set_widget_preference("analysis_tab", atab, "navigation.analysis_tab")
+        set_widget_preference("models_subtab", atab, "navigation.models_subtab")
       st.session_state.pop("nav_legacy_page", None)
-      st.session_state["nav_page"] = key
+      set_widget_preference("nav_page", key, "navigation.page")
       return key
 
   key = st.session_state.get("nav_page")
   # Old bookmarks: settings / analysis were top-level pages
   if key == "settings":
-    st.session_state["nav_page"] = "learning"
-    st.session_state["learning_tab"] = "settings"
+    set_widget_preference("nav_page", "learning", "navigation.page")
+    set_widget_preference("learning_tab", "settings", "navigation.learning_tab")
     return "learning"
   if key == "analysis":
-    st.session_state["nav_page"] = "learning"
-    st.session_state["learning_tab"] = "models"
+    set_widget_preference("nav_page", "learning", "navigation.page")
+    set_widget_preference("learning_tab", "models", "navigation.learning_tab")
     sub = st.session_state.get("models_subtab") or st.session_state.get("analysis_tab") or "risk"
-    st.session_state["models_subtab"] = sub
+    set_widget_preference("models_subtab", sub, "navigation.models_subtab")
     return "learning"
   if key in ALL_ITEMS:
     return key
@@ -84,7 +85,7 @@ def _render_sidebar_nav() -> str:
         icon=item.icon or None,
         active=active,
       ):
-        st.session_state["nav_page"] = item.key
+        set_widget_preference("nav_page", item.key, "navigation.page")
         st.rerun()
 
   return current
@@ -151,6 +152,11 @@ def main():
     pass
 
   ensure_profiles_loaded()
+  restore_widget(
+    "nav_page", default_page_key(),
+    preference_key="navigation.page",
+    options=list(ALL_ITEMS.keys()),
+  )
   inject_theme()
 
   st.sidebar.markdown("### ForexForge")
