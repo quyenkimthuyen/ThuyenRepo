@@ -1,0 +1,7982 @@
+{
+  "meta": {
+    "source": "Best 3m walk-forward export",
+    "train_months": 3,
+    "kb_profile": "era_2023_2025",
+    "kb_epoch": 1,
+    "oos_from": "2025-01-01",
+    "oos_to": "2026-12-31",
+    "spread_pips": 1.0,
+    "slippage_pips": 0.3,
+    "n_weeks": 82,
+    "n_signals": 215,
+    "overall": {
+      "n_trades": 215,
+      "win_rate_pct": 54.88,
+      "total_r": 137.066,
+      "profit_factor": 2.308,
+      "max_drawdown_r": 5.6,
+      "total_pips": 1349.79
+    }
+  },
+  "weekly": [
+    {
+      "week_start": "2025-01-01",
+      "week_end": "2025-01-08",
+      "strategy": {
+        "name": "Forge RR3 full 3L2S price+pullback #E739",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 3.0,
+        "atr_mult": 0.7999088885471343,
+        "long_rules": [
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 42.458
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 2.346
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 0.397
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.746
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9919987855986925,
+        "atr_mult_sl": 0.7999088885471343,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 0.835,
+      "oos_wr": 0.333
+    },
+    {
+      "week_start": "2025-01-08",
+      "week_end": "2025-01-15",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #A867",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.33684725872246474,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.292
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 266.418
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 31.072
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.1689,
+            "w": 5.295
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.542
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 3,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": 1.234,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-01-15",
+      "week_end": "2025-01-22",
+      "strategy": {
+        "name": "Forge RR2.5 full 4L2S price+pullback #A985",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 2.5,
+        "atr_mult": 0.747805857959389,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 0.565
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 63.499
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 3.229
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 0.619
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.373
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.113
+          }
+        ],
+        "score_threshold": 0.9919987855986925,
+        "atr_mult_sl": 0.747805857959389,
+        "rr_ratio": 2.5,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": -2.177,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-01-22",
+      "week_end": "2025-01-29",
+      "strategy": {
+        "name": "Forge RR2.5 full 4L2S price+bb #38CA",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 2.5,
+        "atr_mult": 0.7999088885471343,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.253
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6126,
+            "w": 41.803
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 22.118
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 5.357
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.055
+          }
+        ],
+        "score_threshold": 0.8422084070842657,
+        "atr_mult_sl": 0.7999088885471343,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 1,
+      "oos_r": -1.091,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-01-29",
+      "week_end": "2025-02-05",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #C7F9",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 3.0,
+        "atr_mult": 0.7071550508646071,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.159
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6126,
+            "w": 41.803
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2687,
+            "w": 16.572
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.854
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.055
+          }
+        ],
+        "score_threshold": 0.9919987855986925,
+        "atr_mult_sl": 0.7071550508646071,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": 3.721,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-02-05",
+      "week_end": "2025-02-12",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #4F25",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 3.0,
+        "atr_mult": 0.8229206415917759,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.071
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6126,
+            "w": 41.803
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 20.028
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.423
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.055
+          }
+        ],
+        "score_threshold": 0.9919987855986925,
+        "atr_mult_sl": 0.8229206415917759,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": 7.675,
+      "oos_wr": 0.75
+    },
+    {
+      "week_start": "2025-02-12",
+      "week_end": "2025-02-19",
+      "strategy": {
+        "name": "Forge RR2.5 full 4L2S price+bb #0D1A",
+        "exit_mode": "full",
+        "ml_prob_min": 0.33684725872246474,
+        "rr": 2.5,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.609
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 258.818
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 5.855
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 1.633
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.865
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 1.1311628076112645,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 2.5,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": -2.198,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-02-19",
+      "week_end": "2025-02-26",
+      "strategy": {
+        "name": "Forge RR2.5 full 4L2S price+atr #DF0B",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 2.5,
+        "atr_mult": 0.8127119128952546,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.081
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6126,
+            "w": 41.803
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 3.628
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.516
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 42.9492,
+            "w": 0.07
+          }
+        ],
+        "score_threshold": 0.7410771462465597,
+        "atr_mult_sl": 0.8127119128952546,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": 4.826,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-02-26",
+      "week_end": "2025-03-05",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #1BBD",
+        "exit_mode": "full",
+        "ml_prob_min": 0.443479330435783,
+        "rr": 3.0,
+        "atr_mult": 0.7535810582833938,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 0.509
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 4.439
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 2.556
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 0.459
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.77
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.113
+          }
+        ],
+        "score_threshold": 0.823604058705843,
+        "atr_mult_sl": 0.7535810582833938,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": 5.856,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-03-05",
+      "week_end": "2025-03-12",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #426F",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 3.0,
+        "atr_mult": 0.7999088885471343,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.558
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6126,
+            "w": 51.636
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 16.887
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 3.108
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.065
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.07
+          }
+        ],
+        "score_threshold": 0.9919987855986925,
+        "atr_mult_sl": 0.7999088885471343,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 0,
+      "oos_r": 0.0,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-03-12",
+      "week_end": "2025-03-19",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #426F",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 3.0,
+        "atr_mult": 0.7999088885471343,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.171
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6126,
+            "w": 41.803
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 20.942
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.411
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.359
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.055
+          }
+        ],
+        "score_threshold": 0.9919987855986925,
+        "atr_mult_sl": 0.7999088885471343,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 0.784,
+      "oos_wr": 0.333
+    },
+    {
+      "week_start": "2025-03-19",
+      "week_end": "2025-03-26",
+      "strategy": {
+        "name": "Forge RR2 full 4L2S price+bb #39E2",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 2.0,
+        "atr_mult": 0.8992795314948127,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.346
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6126,
+            "w": 55.185
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 23.163
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 5.121
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 43.6405,
+            "w": 0.089
+          }
+        ],
+        "score_threshold": 1.0001271616031464,
+        "atr_mult_sl": 0.8992795314948127,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": 1.75,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-03-26",
+      "week_end": "2025-04-02",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+pullback #C6C4",
+        "exit_mode": "full",
+        "ml_prob_min": 0.37691850359110124,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.077
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 125.595
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 2.206
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 0.359
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.746
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.4369,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9995299141553418,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": -2.162,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-04-02",
+      "week_end": "2025-04-09",
+      "strategy": {
+        "name": "Forge RR3 full 3L2S price+pullback #03C0",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 3.0,
+        "atr_mult": 0.7999088885471343,
+        "long_rules": [
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 42.167
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 2.142
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 0.346
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.746
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9919987855986925,
+        "atr_mult_sl": 0.7999088885471343,
+        "rr_ratio": 3.0,
+        "min_rules_match": 3,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 0,
+      "oos_r": 0.0,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-04-09",
+      "week_end": "2025-04-16",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #426F",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 3.0,
+        "atr_mult": 0.7999088885471343,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.626
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.5227,
+            "w": 59.328
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 19.334
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 5.362
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.055
+          }
+        ],
+        "score_threshold": 0.9919987855986925,
+        "atr_mult_sl": 0.7999088885471343,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 1,
+      "oos_r": 0.66,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-04-16",
+      "week_end": "2025-04-23",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #5153",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 3.0,
+        "atr_mult": 0.7602735625606336,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.518
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6126,
+            "w": 59.328
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 3.62
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.291
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.065
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.07
+          }
+        ],
+        "score_threshold": 0.9919987855986925,
+        "atr_mult_sl": 0.7602735625606336,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": -2.124,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-04-23",
+      "week_end": "2025-04-30",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+pullback #06AB",
+        "exit_mode": "full",
+        "ml_prob_min": 0.41745145521209814,
+        "rr": 3.0,
+        "atr_mult": 0.7361937843594593,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.0941,
+            "w": 0.257
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 61.585
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 3.15
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 0.49
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.373
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.113
+          }
+        ],
+        "score_threshold": 0.9919987855986925,
+        "atr_mult_sl": 0.7361937843594593,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": 1.918,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-04-30",
+      "week_end": "2025-05-07",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #6C36",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3075048938056951,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.887
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 263.66
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 3.517
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 2.476
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.628
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 1.007061042711991,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": 3.75,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-05-07",
+      "week_end": "2025-05-14",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #426F",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 3.0,
+        "atr_mult": 0.7999088885471343,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.496
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6126,
+            "w": 59.328
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 15.308
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.1673,
+            "w": 2.189
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.065
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.07
+          }
+        ],
+        "score_threshold": 0.9919987855986925,
+        "atr_mult_sl": 0.7999088885471343,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 0.849,
+      "oos_wr": 0.333
+    },
+    {
+      "week_start": "2025-05-14",
+      "week_end": "2025-05-21",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #426F",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 3.0,
+        "atr_mult": 0.7999088885471343,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.499
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6126,
+            "w": 59.328
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 15.418
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 3.117
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.065
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.07
+          }
+        ],
+        "score_threshold": 0.9919987855986925,
+        "atr_mult_sl": 0.7999088885471343,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 1,
+      "oos_r": -1.06,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-05-21",
+      "week_end": "2025-05-28",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #F13D",
+        "exit_mode": "full",
+        "ml_prob_min": 0.36146990745840524,
+        "rr": 3.0,
+        "atr_mult": 0.7380235503007132,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.011
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6126,
+            "w": 55.185
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 4.069
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.439
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.055
+          }
+        ],
+        "score_threshold": 0.9919987855986925,
+        "atr_mult_sl": 0.7380235503007132,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 0.807,
+      "oos_wr": 0.333
+    },
+    {
+      "week_start": "2025-05-28",
+      "week_end": "2025-06-04",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S bb+price #6547",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.896
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 4.158
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 7.495
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 3.366
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.393
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 1.007061042711991,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": -0.417,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-06-04",
+      "week_end": "2025-06-11",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S bb+atr #F658",
+        "exit_mode": "full",
+        "ml_prob_min": 0.37691850359110124,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.873
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 4.158
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 16.797
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.439
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.333
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.196
+          }
+        ],
+        "score_threshold": 0.9995299141553418,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 0.76,
+      "oos_wr": 0.333
+    },
+    {
+      "week_start": "2025-06-11",
+      "week_end": "2025-06-18",
+      "strategy": {
+        "name": "Forge RR2.5 hybrid 3L2S bb+price #BB13",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.31284535052420265,
+        "rr": 2.5,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.724
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 4.158
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 9.614
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.083
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 1.007061042711991,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.5,
+        "min_rules_match": 3,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 0,
+      "oos_r": 0.0,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-06-18",
+      "week_end": "2025-06-25",
+      "strategy": {
+        "name": "Forge RR2 full 4L2S price+pullback #8ED8",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 2.0,
+        "atr_mult": 0.8240459016320687,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1106,
+            "w": 0.393
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 55.46
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 2.09
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 0.462
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.373
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.101
+          }
+        ],
+        "score_threshold": 0.8072659148462005,
+        "atr_mult_sl": 0.8240459016320687,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": 0.871,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-06-25",
+      "week_end": "2025-07-02",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #C6C4",
+        "exit_mode": "full",
+        "ml_prob_min": 0.37691850359110124,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.063
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 120.409
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2659,
+            "w": 3.0
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 3.117
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.065
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.3437,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9995299141553418,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 4.812,
+      "oos_wr": 0.667
+    },
+    {
+      "week_start": "2025-07-02",
+      "week_end": "2025-07-09",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+atr #2D58",
+        "exit_mode": "full",
+        "ml_prob_min": 0.32099706737985145,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.904
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.757,
+            "w": 244.911
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 3.815
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 6.16
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.13
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.9581,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9885371790602001,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 4.76,
+      "oos_wr": 0.667
+    },
+    {
+      "week_start": "2025-07-09",
+      "week_end": "2025-07-16",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+pullback #426F",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 3.0,
+        "atr_mult": 0.7999088885471343,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 0.365
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 40.026
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 1.935
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 0.244
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.746
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.3955,
+            "w": 0.181
+          }
+        ],
+        "score_threshold": 0.8507731133278457,
+        "atr_mult_sl": 0.7999088885471343,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": 1.856,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-07-16",
+      "week_end": "2025-07-23",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #CAD5",
+        "exit_mode": "full",
+        "ml_prob_min": 0.32099706737985145,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.066
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 242.691
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 17.966
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.326
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9845576096204207,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 0.731,
+      "oos_wr": 0.333
+    },
+    {
+      "week_start": "2025-07-23",
+      "week_end": "2025-07-30",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L2S bb+atr #0247",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.32099706737985145,
+        "rr": 2.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.04
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 4.083
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 17.966
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.326
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9845576096204207,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 2.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": -0.341,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-07-30",
+      "week_end": "2025-08-06",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S bb+price #39D5",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.352697450065078,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.097,
+            "w": 0.757
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6887,
+            "w": 3.0
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 6.406
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 2.333
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.901
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 44.5056,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 1.007061042711991,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": -0.867,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-08-06",
+      "week_end": "2025-08-13",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #426F",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4011395571171244,
+        "rr": 3.0,
+        "atr_mult": 0.7999088885471343,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.592
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6126,
+            "w": 59.328
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 15.126
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 3.117
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.353
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 39.7742,
+            "w": 0.07
+          }
+        ],
+        "score_threshold": 0.8451780440511387,
+        "atr_mult_sl": 0.7999088885471343,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 4.774,
+      "oos_wr": 0.667
+    },
+    {
+      "week_start": "2025-08-13",
+      "week_end": "2025-08-20",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #1693",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3126805795871473,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.066
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 118.286
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 5.644
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 1.684
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.865
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 1.007061042711991,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 3,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 0,
+      "oos_r": 0.0,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-08-20",
+      "week_end": "2025-08-27",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #C109",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.32099706737985145,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.016
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 240.821
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 18.206
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.447
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9845576096204207,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 1,
+      "oos_r": 15.09,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-08-27",
+      "week_end": "2025-09-03",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #8BA6",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.352697450065078,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.053
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 121.011
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 5.781
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 1.684
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.865
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 1.007061042711991,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 3.446,
+      "oos_wr": 0.667
+    },
+    {
+      "week_start": "2025-09-03",
+      "week_end": "2025-09-10",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #A3E3",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.316921208952027,
+        "rr": 3.0,
+        "atr_mult": 0.7235416439532856,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.502
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 244.22
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 21.771
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 6.509
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.542
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7235416439532856,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": 2.782,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-09-10",
+      "week_end": "2025-09-17",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #9227",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.32099706737985145,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 3.578
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 344.99
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 21.916
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 6.509
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.542
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9006216731690023,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": -1.446,
+      "oos_wr": 0.333
+    },
+    {
+      "week_start": "2025-09-17",
+      "week_end": "2025-09-24",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #13F6",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.33684725872246474,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.773
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 341.927
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 6.914
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 2.337
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.611
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 1,
+      "oos_r": -1.078,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-09-24",
+      "week_end": "2025-10-01",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #5D3E",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.32688423383724585,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1002,
+            "w": 1.566
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 483.74
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 10.184
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.513
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.203
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.109
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": 2.515,
+      "oos_wr": 0.75
+    },
+    {
+      "week_start": "2025-10-01",
+      "week_end": "2025-10-08",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #A3E3",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.316921208952027,
+        "rr": 3.0,
+        "atr_mult": 0.7235416439532856,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.068
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 343.015
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 26.15
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 9.045
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.18
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7235416439532856,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 3.377,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-10-08",
+      "week_end": "2025-10-15",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #7AB9",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.31895913816593924,
+        "rr": 3.0,
+        "atr_mult": 0.7235416439532856,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.046
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 347.894
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 3.567
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.07
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.582
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9901834678933132,
+        "atr_mult_sl": 0.7235416439532856,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": 8.578,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-10-15",
+      "week_end": "2025-10-22",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L2S price+bb #F470",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.32688423383724585,
+        "rr": 2.0,
+        "atr_mult": 0.7235416439532856,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.078
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 351.727
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 8.378
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 3.171
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.393
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 1.0690327848692966,
+        "atr_mult_sl": 0.7235416439532856,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 1.115,
+      "oos_wr": 0.667
+    },
+    {
+      "week_start": "2025-10-22",
+      "week_end": "2025-10-29",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #9227",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.32099706737985145,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 5.0
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 496.856
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 26.886
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 9.03
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.333
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9006216731690023,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 5.626,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-10-29",
+      "week_end": "2025-11-05",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #4116",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3380243490221543,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 4.226
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.7682,
+            "w": 344.99
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 15.327
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 9.109
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.899
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9482154996676041,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": -0.175,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-11-05",
+      "week_end": "2025-11-12",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #A3E3",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.316921208952027,
+        "rr": 3.0,
+        "atr_mult": 0.7235416439532856,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.094
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 355.911
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 26.444
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 9.231
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.333
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7235416439532856,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 3.538,
+      "oos_wr": 0.667
+    },
+    {
+      "week_start": "2025-11-12",
+      "week_end": "2025-11-19",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #6001",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.32394065060854865,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1002,
+            "w": 1.566
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 699.487
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 18.603
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.218
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.109
+          }
+        ],
+        "score_threshold": 0.9171069068407613,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 1.853,
+      "oos_wr": 0.667
+    },
+    {
+      "week_start": "2025-11-19",
+      "week_end": "2025-11-26",
+      "strategy": {
+        "name": "Forge RR3 hybrid 3L2S price+bb #D0A3",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.316921208952027,
+        "rr": 3.0,
+        "atr_mult": 0.7235416439532856,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 3.001
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 517.053
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 31.036
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.152
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7235416439532856,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 5.241,
+      "oos_wr": 0.667
+    },
+    {
+      "week_start": "2025-11-26",
+      "week_end": "2025-12-03",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #5F41",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.34989651108699094,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.0997,
+            "w": 2.773
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 504.989
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 7.294
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 2.265
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.611
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 1.0014351844390985,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": -2.239,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-12-03",
+      "week_end": "2025-12-10",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #13F6",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.33684725872246474,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.0921,
+            "w": 3.866
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 754.206
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 10.46
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.692
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.203
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": -0.47,
+      "oos_wr": 0.333
+    },
+    {
+      "week_start": "2025-12-10",
+      "week_end": "2025-12-17",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #1995",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3688264236019336,
+        "rr": 3.0,
+        "atr_mult": 0.733658684829753,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 4.938
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 514.973
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 27.009
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 9.222
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.333
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9565130447873069,
+        "atr_mult_sl": 0.733658684829753,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": 2.529,
+      "oos_wr": 0.75
+    },
+    {
+      "week_start": "2025-12-17",
+      "week_end": "2025-12-24",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #5A91",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3556920249829909,
+        "rr": 3.0,
+        "atr_mult": 0.7073412767702748,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1051,
+            "w": 1.432
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 261.093
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 7.324
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 2.341
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.378
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7073412767702748,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": 5.962,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-12-24",
+      "week_end": "2025-12-31",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L2S price+bb #00C1",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.33684725872246474,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 3.895
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.8445,
+            "w": 341.927
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 8.768
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 3.546
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.393
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.141
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": -3.363,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-12-31",
+      "week_end": "2026-01-07",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+atr #7342",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3343933714622059,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.869
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 400.423
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2582,
+            "w": 3.0
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 6.736
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.542
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9845576096204207,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": -2.236,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2026-01-07",
+      "week_end": "2026-01-14",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+atr #1C99",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.32099706737985145,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.027
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 264.647
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 3.805
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.524
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9845576096204207,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": 2.304,
+      "oos_wr": 0.75
+    },
+    {
+      "week_start": "2026-01-14",
+      "week_end": "2026-01-21",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #A3E3",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.316921208952027,
+        "rr": 3.0,
+        "atr_mult": 0.7235416439532856,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.126
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 369.515
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 27.614
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 9.692
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.333
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7235416439532856,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": 1.252,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-01-21",
+      "week_end": "2026-01-28",
+      "strategy": {
+        "name": "Forge RR2.5 hybrid 4L2S price+atr #767E",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.30331457979435417,
+        "rr": 2.5,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 7.168
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.7807,
+            "w": 344.99
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 3.805
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 14.431
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.837
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9006216731690023,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 5.758,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-01-28",
+      "week_end": "2026-02-04",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+atr #615D",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3594320674669793,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 5.065
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 521.984
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 3.805
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 9.692
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.333
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9922822786499298,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 0.829,
+      "oos_wr": 0.333
+    },
+    {
+      "week_start": "2026-02-04",
+      "week_end": "2026-02-11",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #13F6",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.33684725872246474,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 3.925
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 517.349
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 8.77
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 3.881
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.393
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": -2.239,
+      "oos_wr": 0.25
+    },
+    {
+      "week_start": "2026-02-11",
+      "week_end": "2026-02-18",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+bb #C621",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3318657462798553,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1002,
+            "w": 1.566
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 1107.424
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2759,
+            "w": 6.914
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 5.182
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.962
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.109
+          }
+        ],
+        "score_threshold": 0.9900652021494951,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 0.685,
+      "oos_wr": 0.333
+    },
+    {
+      "week_start": "2026-02-18",
+      "week_end": "2026-02-25",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #BE86",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.34573084279428506,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 4.246
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.5564,
+            "w": 517.349
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 4.827
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 5.182
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.203
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 1.1384736965338569,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 1.071,
+      "oos_wr": 0.667
+    },
+    {
+      "week_start": "2026-02-25",
+      "week_end": "2026-03-04",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #7C77",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 3.925
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 517.349
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 7.453
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 2.381
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.611
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9258917123795622,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 1,
+      "oos_r": 2.144,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-03-04",
+      "week_end": "2026-03-11",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S bb+price #6662",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3392615319978526,
+        "rr": 3.0,
+        "atr_mult": 0.7235416439532856,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.126
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 4.539
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 27.614
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.467
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.333
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7235416439532856,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 0.463,
+      "oos_wr": 0.333
+    },
+    {
+      "week_start": "2026-03-11",
+      "week_end": "2026-03-18",
+      "strategy": {
+        "name": "Forge RR3 hybrid 3L2S price+bb #2230",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.37450469026281924,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 400.423
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.265,
+            "w": 6.914
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 5.182
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.203
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9901834678933132,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 2.731,
+      "oos_wr": 0.667
+    },
+    {
+      "week_start": "2026-03-18",
+      "week_end": "2026-03-25",
+      "strategy": {
+        "name": "Forge RR2.5 hybrid 4L2S price+atr #0EF8",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3,
+        "rr": 2.5,
+        "atr_mult": 0.7408789820940804,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.027
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 264.647
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 3.805
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.524
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9845576096204207,
+        "atr_mult_sl": 0.7408789820940804,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 8.846,
+      "oos_wr": 0.667
+    },
+    {
+      "week_start": "2026-03-25",
+      "week_end": "2026-04-01",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S bb+atr #DCEE",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.31895913816593924,
+        "rr": 3.0,
+        "atr_mult": 0.7116540593118041,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 7.168
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 6.868
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 35.026
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 14.431
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.01
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.13
+          }
+        ],
+        "score_threshold": 0.9482154996676041,
+        "atr_mult_sl": 0.7116540593118041,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": -3.266,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2026-04-01",
+      "week_end": "2026-04-08",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #9227",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.32099706737985145,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 5.065
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 521.984
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 27.798
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 9.692
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.333
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9006216731690023,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": 4.512,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-04-08",
+      "week_end": "2026-04-15",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S bb+price #917F",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.32099706737985145,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.869
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 6.868
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 25.127
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 6.736
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.542
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.138
+          }
+        ],
+        "score_threshold": 0.9294932226730899,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": 1.897,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-04-15",
+      "week_end": "2026-04-22",
+      "strategy": {
+        "name": "Forge RR2 full 4L2S price+bb #DA5F",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3,
+        "rr": 2.0,
+        "atr_mult": 0.7235416439532856,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.126
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 369.515
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2481,
+            "w": 21.771
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.467
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.333
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7235416439532856,
+        "rr_ratio": 2.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": -0.356,
+      "oos_wr": 0.333
+    },
+    {
+      "week_start": "2026-04-22",
+      "week_end": "2026-04-29",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S bb+atr #B1C1",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.31962677442957993,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.027
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 4.539
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 19.81
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.524
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.995
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9067953812974378,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 1.633,
+      "oos_wr": 0.667
+    },
+    {
+      "week_start": "2026-04-29",
+      "week_end": "2026-05-06",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L2S bb+atr #C928",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3198647921807243,
+        "rr": 2.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.111
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 4.539
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.265,
+            "w": 12.918
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 10.006
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.899
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 1.0014351844390985,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 2.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": 0.306,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2026-05-06",
+      "week_end": "2026-05-13",
+      "strategy": {
+        "name": "Forge RR3 full 4L2S price+atr #883E",
+        "exit_mode": "full",
+        "ml_prob_min": 0.32099706737985145,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 5.065
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 521.984
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.231,
+            "w": 3.0
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 9.692
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.333
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.192
+          }
+        ],
+        "score_threshold": 0.9339010839708642,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": -3.319,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2026-05-13",
+      "week_end": "2026-05-20",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #C559",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.32099706737985145,
+        "rr": 3.0,
+        "atr_mult": 0.8369475843248323,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.027
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 264.647
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 19.81
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.524
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 1.072191363011848,
+        "atr_mult_sl": 0.8369475843248323,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 2,
+      "oos_r": 1.81,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2026-05-20",
+      "week_end": "2026-05-27",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #13F6",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.33684725872246474,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 3.925
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 517.349
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 8.77
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 3.48
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.393
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 43.5675,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 4.542,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-05-27",
+      "week_end": "2026-06-03",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S bb+price #0D2F",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.32394065060854865,
+        "rr": 3.0,
+        "atr_mult": 0.715815083027627,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1002,
+            "w": 1.566
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 6.868
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 25.127
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.467
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.542
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.109
+          }
+        ],
+        "score_threshold": 0.9901834678933132,
+        "atr_mult_sl": 0.715815083027627,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": 0.991,
+      "oos_wr": 0.75
+    },
+    {
+      "week_start": "2026-06-03",
+      "week_end": "2026-06-10",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L2S bb+price #F0CE",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.31284535052420265,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.111
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 6.868
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 9.453
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 3.545
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.393
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 1.137273170857385,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": 3.961,
+      "oos_wr": 0.75
+    },
+    {
+      "week_start": "2026-06-10",
+      "week_end": "2026-06-17",
+      "strategy": {
+        "name": "Forge RR2.5 hybrid 3L2S price+bb #9E61",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.32099706737985145,
+        "rr": 2.5,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.853
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 364.373
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 23.093
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.542
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9845576096204207,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 2.5,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": -3.264,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2026-06-17",
+      "week_end": "2026-06-24",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #A3E3",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.316921208952027,
+        "rr": 3.0,
+        "atr_mult": 0.7235416439532856,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.126
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 369.515
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 27.614
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 9.692
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.333
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7235416439532856,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": 2.666,
+      "oos_wr": 0.75
+    },
+    {
+      "week_start": "2026-06-24",
+      "week_end": "2026-07-01",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #E4B4",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.316921208952027,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 3.009
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 559.093
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 35.026
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 14.431
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.152
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": 4.803,
+      "oos_wr": 0.75
+    },
+    {
+      "week_start": "2026-07-01",
+      "week_end": "2026-07-08",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #E4B4",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.316921208952027,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 3.009
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 559.093
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 35.026
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 14.431
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.152
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 3,
+      "oos_r": 1.468,
+      "oos_wr": 0.333
+    },
+    {
+      "week_start": "2026-07-08",
+      "week_end": "2026-07-15",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #9227",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.32099706737985145,
+        "rr": 3.0,
+        "atr_mult": 0.7384794237626883,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 5.065
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 521.984
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 27.798
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 9.692
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.333
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 41.6495,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9006216731690023,
+        "atr_mult_sl": 0.7384794237626883,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": 4.683,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-07-15",
+      "week_end": "2026-07-22",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L2S price+atr #516E",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 1.492
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 183.119
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 3.805
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 4.524
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.784
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.189
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 4,
+      "oos_r": -1.279,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2026-07-22",
+      "week_end": "2026-07-29",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L2S price+bb #A3E3",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.316921208952027,
+        "rr": 3.0,
+        "atr_mult": 0.7235416439532856,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.1011,
+            "w": 2.126
+          },
+          {
+            "feat": "price_vs_ema50",
+            "op": "lt",
+            "thr": -1.6835,
+            "w": 369.515
+          },
+          {
+            "feat": "bb_width_pct",
+            "op": "lt",
+            "thr": 0.2544,
+            "w": 27.614
+          },
+          {
+            "feat": "atr_pct",
+            "op": "lt",
+            "thr": 0.157,
+            "w": 9.692
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "pullback_short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.333
+          },
+          {
+            "feat": "adx",
+            "op": "gt",
+            "thr": 38.6395,
+            "w": 0.143
+          }
+        ],
+        "score_threshold": 0.9958093261662059,
+        "atr_mult_sl": 0.7235416439532856,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true
+      },
+      "oos_trades": 0,
+      "oos_r": 0.0,
+      "oos_wr": 0.0
+    }
+  ],
+  "signals": [
+    {
+      "t": "2025-01-02 15:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-01-02 19:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-01-07 15:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-01-08 10:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-01-09 07:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-01-16 10:00:00",
+      "d": 1,
+      "atr_m": 0.747805857959389,
+      "rr": 2.5,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-01-17 10:00:00",
+      "d": 1,
+      "atr_m": 0.747805857959389,
+      "rr": 2.5,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-01-23 07:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 2.5,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-01-29 07:00:00",
+      "d": 1,
+      "atr_m": 0.7071550508646071,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-01-30 10:00:00",
+      "d": 1,
+      "atr_m": 0.7071550508646071,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-02-03 07:00:00",
+      "d": 1,
+      "atr_m": 0.7071550508646071,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-02-04 07:00:00",
+      "d": 1,
+      "atr_m": 0.7071550508646071,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-02-06 09:00:00",
+      "d": 1,
+      "atr_m": 0.8229206415917759,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-02-07 20:00:00",
+      "d": 1,
+      "atr_m": 0.8229206415917759,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-02-11 07:00:00",
+      "d": 1,
+      "atr_m": 0.8229206415917759,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-02-11 13:00:00",
+      "d": 1,
+      "atr_m": 0.8229206415917759,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-02-12 10:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 2.5,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-02-17 08:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 2.5,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-02-20 12:00:00",
+      "d": 1,
+      "atr_m": 0.8127119128952546,
+      "rr": 2.5,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-02-21 10:00:00",
+      "d": 1,
+      "atr_m": 0.8127119128952546,
+      "rr": 2.5,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-02-28 19:00:00",
+      "d": 1,
+      "atr_m": 0.7535810582833938,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-03-04 07:00:00",
+      "d": 1,
+      "atr_m": 0.7535810582833938,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-03-13 13:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-03-17 07:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-03-18 07:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-03-21 09:00:00",
+      "d": 1,
+      "atr_m": 0.8992795314948127,
+      "rr": 2.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-03-21 14:00:00",
+      "d": 1,
+      "atr_m": 0.8992795314948127,
+      "rr": 2.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-03-24 14:00:00",
+      "d": 1,
+      "atr_m": 0.8992795314948127,
+      "rr": 2.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-03-25 07:00:00",
+      "d": 1,
+      "atr_m": 0.8992795314948127,
+      "rr": 2.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-03-26 17:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-03-28 07:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-04-11 20:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-04-18 14:00:00",
+      "d": 1,
+      "atr_m": 0.7602735625606336,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-04-22 19:00:00",
+      "d": 1,
+      "atr_m": 0.7602735625606336,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-04-23 18:00:00",
+      "d": 1,
+      "atr_m": 0.7361937843594593,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-04-24 16:00:00",
+      "d": 1,
+      "atr_m": 0.7361937843594593,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-05-01 07:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-05-01 17:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-05-05 20:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-05-06 12:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-05-08 14:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-05-08 19:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-05-13 11:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-05-16 14:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-05-21 20:00:00",
+      "d": 1,
+      "atr_m": 0.7380235503007132,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-05-22 07:00:00",
+      "d": 1,
+      "atr_m": 0.7380235503007132,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-05-27 07:00:00",
+      "d": 1,
+      "atr_m": 0.7380235503007132,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-05-30 20:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-06-03 09:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-06-05 11:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-06-06 09:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-06-09 19:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-06-19 16:00:00",
+      "d": 1,
+      "atr_m": 0.8240459016320687,
+      "rr": 2.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-06-20 18:00:00",
+      "d": 1,
+      "atr_m": 0.8240459016320687,
+      "rr": 2.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-06-25 16:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-06-27 20:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-06-30 12:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-07-03 12:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-07-04 19:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-07-07 16:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-07-09 11:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-07-10 17:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-07-16 11:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-07-18 18:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-07-22 11:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-07-25 20:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-07-29 11:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-07-30 07:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-07-31 20:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-08-05 07:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-08-05 11:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-08-06 10:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-08-08 20:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-08-12 11:00:00",
+      "d": 1,
+      "atr_m": 0.7999088885471343,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-08-22 13:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-08-27 07:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-08-27 14:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-09-02 09:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-09-03 07:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-09-04 09:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-09-11 09:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-09-12 07:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-09-15 11:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-09-19 19:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-09-24 09:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-09-24 19:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-09-30 07:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-09-30 13:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-10-02 15:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-10-03 13:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-10-07 11:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-10-10 13:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-10-14 11:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-10-16 13:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-10-16 19:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-10-21 12:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-10-22 13:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-10-23 11:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-10-27 09:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-10-31 10:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-10-31 17:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-11-03 13:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-11-04 11:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-11-05 08:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-11-05 15:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-11-11 10:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-11-12 15:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-11-17 14:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-11-17 20:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-11-20 12:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-11-21 11:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-11-25 09:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-11-27 14:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-12-02 13:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-12-04 07:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-12-05 13:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-12-09 14:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-12-12 12:00:00",
+      "d": 1,
+      "atr_m": 0.733658684829753,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-12-12 19:00:00",
+      "d": 1,
+      "atr_m": 0.733658684829753,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-12-15 11:00:00",
+      "d": 1,
+      "atr_m": 0.733658684829753,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-12-16 07:00:00",
+      "d": 1,
+      "atr_m": 0.733658684829753,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-12-18 12:00:00",
+      "d": 1,
+      "atr_m": 0.7073412767702748,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-12-19 07:00:00",
+      "d": 1,
+      "atr_m": 0.7073412767702748,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-12-24 12:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-12-24 18:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-12-30 14:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2025-12-31 07:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-01-06 10:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-01-08 13:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-01-09 11:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-01-13 11:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-01-13 15:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-01-16 08:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-01-16 15:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-01-23 10:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 2.5,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-01-23 14:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 2.5,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-01-27 08:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 2.5,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-01-30 15:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-01-30 20:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-02-03 14:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-02-05 09:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-02-05 20:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-02-10 15:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-02-10 19:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-02-13 15:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-02-13 20:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-02-17 13:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-02-20 07:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-02-20 12:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-02-24 13:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-02-27 13:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-03-04 13:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-03-05 07:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-03-10 16:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-03-12 08:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-03-12 14:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-03-16 09:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-03-18 19:00:00",
+      "d": 1,
+      "atr_m": 0.7408789820940804,
+      "rr": 2.5,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-03-19 08:00:00",
+      "d": 1,
+      "atr_m": 0.7408789820940804,
+      "rr": 2.5,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-03-23 09:00:00",
+      "d": 1,
+      "atr_m": 0.7408789820940804,
+      "rr": 2.5,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-03-26 08:00:00",
+      "d": 1,
+      "atr_m": 0.7116540593118041,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-03-27 08:00:00",
+      "d": 1,
+      "atr_m": 0.7116540593118041,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-03-31 08:00:00",
+      "d": 1,
+      "atr_m": 0.7116540593118041,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-04-03 16:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-04-07 07:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-04-10 09:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-04-10 13:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-04-15 09:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 2.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-04-17 10:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 2.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-04-21 09:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 2.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-04-23 09:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-04-23 13:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-04-27 20:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-04-29 07:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-04-29 13:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-05-05 10:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-05-05 17:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-05-07 08:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-05-11 15:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-05-11 19:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "full",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-05-14 10:00:00",
+      "d": 1,
+      "atr_m": 0.8369475843248323,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-05-18 10:00:00",
+      "d": 1,
+      "atr_m": 0.8369475843248323,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-05-20 07:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-05-20 12:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-05-26 08:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-05-29 10:00:00",
+      "d": 1,
+      "atr_m": 0.715815083027627,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-05-29 14:00:00",
+      "d": 1,
+      "atr_m": 0.715815083027627,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-02 09:00:00",
+      "d": 1,
+      "atr_m": 0.715815083027627,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-02 15:00:00",
+      "d": 1,
+      "atr_m": 0.715815083027627,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-03 10:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-04 07:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-08 10:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-08 18:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-11 14:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 2.5,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-12 17:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 2.5,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-15 17:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 2.5,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-19 07:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-19 11:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-22 13:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-23 08:00:00",
+      "d": 1,
+      "atr_m": 0.7235416439532856,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-25 10:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-26 07:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-29 10:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-06-29 16:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-07-01 12:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-07-03 20:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-07-07 20:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-07-08 12:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-07-09 12:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-07-13 20:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-07-14 09:00:00",
+      "d": 1,
+      "atr_m": 0.7384794237626883,
+      "rr": 3.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-07-17 10:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-07-17 19:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-07-20 16:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    },
+    {
+      "t": "2026-07-21 14:00:00",
+      "d": 1,
+      "atr_m": 0.7,
+      "rr": 2.0,
+      "exit": "hybrid",
+      "trail_act": 1.0,
+      "trail_dist": 0.5,
+      "partial_pct": 0.4,
+      "partial_at_r": 1.2,
+      "max_hold": 36
+    }
+  ]
+}
