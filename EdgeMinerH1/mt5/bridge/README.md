@@ -23,6 +23,7 @@ Trong app: sidebar **MT5 Bridge**
 - Chọn Trade Model (mặc định Best 3m)
 - Chart H1 live, heartbeat, Bid/Ask, spread và lệnh từ chính ForgeBridge EA
 - Xem snapshot `connection.json` / `bars.json` / `bar.json` / `decision.json` / `fill.json`
+- **Kiểm tra bridge (market ngay)** — nút BUY/SELL/CLOSE ghi `command.json` (EA v1.03+ xử lý ngay trên tick, không chờ nến đóng)
 - **Nhật ký giao tiếp** `comm_log.jsonl` (EA→App bar/fill, App→EA decision)
 - **Thống kê lệnh** `trades.json` (thắng/thua, R)
 

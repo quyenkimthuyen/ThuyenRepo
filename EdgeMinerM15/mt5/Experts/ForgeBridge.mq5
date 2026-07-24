@@ -7,7 +7,7 @@
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
 #property copyright "EdgeMiner2 bridge"
-#property version   "1.02"
+#property version   "1.03"
 
 #include <Trade/Trade.mqh>
 
@@ -118,6 +118,7 @@ void OnTimer()
    {
       WriteConnectionJson();
       ProcessHistoryRequest();
+      ProcessManualCommand();
    }
 }
 
@@ -466,6 +467,138 @@ bool ReadDecisionJson(string &json_out)
       json_out += FileReadString(h) + "\n";
    FileClose(h);
    return (StringLen(json_out) > 5);
+}
+
+//+------------------------------------------------------------------+
+bool ReadCommandJson(string &json_out)
+{
+   int h = FileOpen(BridgePath("command.json"), FILE_READ | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
+   if(h == INVALID_HANDLE)
+      return false;
+   json_out = "";
+   while(!FileIsEnding(h))
+      json_out += FileReadString(h) + "\n";
+   FileClose(h);
+   return (StringLen(json_out) > 5);
+}
+
+//+------------------------------------------------------------------+
+void ClearCommandFile()
+{
+   FileDelete(BridgePath("command.json"));
+}
+
+//+------------------------------------------------------------------+
+void WriteCommandAck(const string signal_id, const string status, const string detail)
+{
+   string json = "{";
+   json += "\"signal_id\":\"" + signal_id + "\",";
+   json += "\"status\":\"" + status + "\",";
+   json += "\"detail\":\"" + detail + "\",";
+   json += "\"updated_at\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\"";
+   json += "}\n";
+   int h = FileOpen(BridgePath("command_ack.json"), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
+   if(h == INVALID_HANDLE)
+      return;
+   FileWriteString(h, json);
+   FileClose(h);
+}
+
+//+------------------------------------------------------------------+
+bool CloseAllByMagic(const string reason)
+{
+   bool any = false;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(!PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
+      if((ulong)PositionGetInteger(POSITION_MAGIC) != InpMagic) continue;
+      string action = (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) ? "BUY" : "SELL";
+      double lots = PositionGetDouble(POSITION_VOLUME);
+      double entry = PositionGetDouble(POSITION_PRICE_OPEN);
+      double sl = PositionGetDouble(POSITION_SL);
+      double tp = PositionGetDouble(POSITION_TP);
+      bool ok = trade.PositionClose(ticket);
+      double exit_px = (action == "BUY")
+         ? SymbolInfoDouble(_Symbol, SYMBOL_BID)
+         : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+      WriteFillJsonEx(
+         "close",
+         g_open_signal_id != "" ? g_open_signal_id : ("manual_close_" + IntegerToString((int)ticket)),
+         action, ok, ok ? reason : IntegerToString(trade.ResultRetcode()),
+         ticket, exit_px, sl, tp, lots, 0, reason
+      );
+      any = true;
+   }
+   if(any)
+   {
+      g_open_ticket = 0;
+      g_open_signal_id = "";
+      g_open_action = "";
+      g_had_position = false;
+   }
+   return any;
+}
+
+//+------------------------------------------------------------------+
+void ProcessManualCommand()
+{
+   // Immediate market/close from App (GUI test) — does not wait for new bar.
+   string json;
+   if(!ReadCommandJson(json))
+      return;
+
+   string sid = JsonGetString(json, "signal_id");
+   if(sid != "" && sid == g_last_signal_id)
+   {
+      ClearCommandFile();
+      return;
+   }
+
+   string cmd = JsonGetString(json, "cmd");
+   StringToLower(cmd);
+   if(cmd == "" )
+   {
+      // allow action-only payload
+      string act0 = JsonGetString(json, "action");
+      StringToUpper(act0);
+      if(act0 == "BUY" || act0 == "SELL")
+         cmd = "market";
+      else if(act0 == "FLAT" || act0 == "CLOSE")
+         cmd = "close";
+   }
+
+   if(cmd == "close" || cmd == "flat")
+   {
+      bool closed = CloseAllByMagic("manual_test_close");
+      WriteCommandAck(sid, closed ? "closed" : "noop", closed ? "closed" : "no_position");
+      if(sid != "") g_last_signal_id = sid;
+      ClearCommandFile();
+      Print("ForgeBridge manual CLOSE ok=", closed);
+      return;
+   }
+
+   if(cmd != "market")
+   {
+      WriteCommandAck(sid, "ignored", "unknown_cmd");
+      ClearCommandFile();
+      return;
+   }
+
+   if(PositionsByMagic() > 0)
+   {
+      WriteFillJsonEx("open", sid, JsonGetString(json, "action"), false, "already_open",
+                      0, 0, 0, 0, 0, 0, "already_open");
+      WriteCommandAck(sid, "rejected", "already_open");
+      ClearCommandFile();
+      return;
+   }
+
+   bool ok = OpenFromDecision(json);
+   WriteCommandAck(sid, ok ? "opened" : "rejected", ok ? "opened" : "order_failed");
+   ClearCommandFile();
+   Print("ForgeBridge manual MARKET ok=", ok, " sid=", sid);
 }
 
 //+------------------------------------------------------------------+
@@ -859,6 +992,8 @@ void OnTick()
       WriteConnectionJson();
       g_last_heartbeat_ms = now_ms;
    }
+
+   ProcessManualCommand();
 
    datetime t0 = iTime(_Symbol, PERIOD_M15, 0);
    if(t0 == 0 || t0 == g_last_bar)

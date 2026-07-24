@@ -16,20 +16,35 @@ from gui.trade_model import format_model_label, get_active_trade_model
 from gui.ui_preferences import preference_callback, restore_widget
 from mt5_bridge.history_sync import get_history_status, start_history_sync
 from mt5_bridge import background as bridge_bg
-from mt5_bridge.comm_log import clear_log, read_events
+from mt5_bridge.comm_log import append_event, clear_log, read_events
 from mt5_bridge.live_monitor_server import DEFAULT_MONITOR_PORT
 from mt5_bridge.protocol import (
   BRIDGE_DIR,
   DEFAULT_MODEL_ID,
   bar_path,
   bars_path,
+  command_ack_path,
+  command_path,
   connection_path,
   decision_path,
   fill_path,
+  pip_size_from_quotes,
+  prices_from_pips,
   read_json,
   status_path,
+  write_manual_close_command,
+  write_manual_market_command,
 )
 from mt5_bridge.trade_journal import clear_trades, compute_stats, filter_trades, load_trades
+
+
+def _fmt_px(value) -> str:
+  if value is None:
+    return "—"
+  try:
+    return f"{float(value):.5f}"
+  except (TypeError, ValueError):
+    return str(value)
 
 
 def _model_label(m: dict) -> str:
@@ -160,6 +175,82 @@ def render():
       st.write(dec)
       st.rerun()
     st.caption(f"Log process: `results/mt5_bridge_service.log` · PID file: `results/mt5_bridge_service.pid`")
+
+  with st.expander("Kiểm tra bridge (market ngay)", expanded=False):
+    st.caption(
+      "Ghi `command.json` → EA xử lý ngay trên tick (không chờ nến đóng). "
+      "Cần **ForgeBridge v1.03+** đã biên dịch lại. Lệnh thật/demo trên tài khoản gắn EA."
+    )
+    connection = read_json(connection_path()) or {}
+    bar = read_json(bar_path()) or {}
+    bid, ask = connection.get("bid"), connection.get("ask")
+    digits = bar.get("digits") if isinstance(bar, dict) else None
+    point = bar.get("point") if isinstance(bar, dict) else None
+    pip = pip_size_from_quotes(
+      digits=int(digits) if digits is not None else None,
+      point=float(point) if point is not None else None,
+    )
+    tc1, tc2, tc3 = st.columns(3)
+    sl_pips = tc1.number_input("SL (pips)", 1.0, 200.0, 20.0, step=1.0, key="mt5_test_sl_pips")
+    tp_pips = tc2.number_input("TP (pips)", 1.0, 400.0, 40.0, step=1.0, key="mt5_test_tp_pips")
+    if bid is not None and ask is not None:
+      tc3.metric("Quote", f"{_fmt_px(bid)} / {_fmt_px(ask)}")
+      tc3.caption(f"pip≈{pip:g}")
+    else:
+      tc3.warning("Chưa có bid/ask — EA offline?")
+    confirm = st.checkbox(
+      "Tôi hiểu đây là lệnh market thật/demo trên MT5",
+      key="mt5_test_confirm",
+    )
+    tb1, tb2, tb3 = st.columns(3)
+
+    def _send_market(action: str) -> None:
+      if bid is None or ask is None:
+        st.error("Không có quote từ EA (`connection.json`).")
+        return
+      _entry, sl, tp = prices_from_pips(
+        action, bid=float(bid), ask=float(ask),
+        sl_pips=float(sl_pips), tp_pips=float(tp_pips), pip_size=pip,
+      )
+      payload = write_manual_market_command(action, sl=sl, tp=tp)
+      append_event(
+        "app_to_ea",
+        "manual_command",
+        payload=payload,
+        summary=f"test {action} sl={sl} tp={tp} sid={payload.get('signal_id')}",
+      )
+      st.success(f"Đã gửi {action} · chờ EA ack · id `{payload.get('signal_id')}`")
+      st.session_state["mt5_last_test_cmd"] = payload
+
+    if tb1.button("BUY market", type="primary", use_container_width=True, disabled=not confirm):
+      _send_market("BUY")
+    if tb2.button("SELL market", use_container_width=True, disabled=not confirm):
+      _send_market("SELL")
+    if tb3.button("CLOSE all", use_container_width=True, disabled=not confirm):
+      payload = write_manual_close_command()
+      append_event(
+        "app_to_ea",
+        "manual_command",
+        payload=payload,
+        summary=f"test CLOSE sid={payload.get('signal_id')}",
+      )
+      st.success(f"Đã gửi CLOSE · id `{payload.get('signal_id')}`")
+      st.session_state["mt5_last_test_cmd"] = payload
+
+    last = st.session_state.get("mt5_last_test_cmd")
+    pending = read_json(command_path())
+    ack = read_json(command_ack_path()) or {}
+    fill = read_json(fill_path()) or {}
+    a1, a2, a3 = st.columns(3)
+    with a1:
+      st.markdown("**command gửi**")
+      st.json(last or pending or {"_": "chưa gửi"})
+    with a2:
+      st.markdown("**command_ack**")
+      st.json(ack or {"_": "chưa có ack — kiểm tra EA v1.03 + AutoTrading"})
+    with a3:
+      st.markdown("**fill gần nhất**")
+      st.json(fill or {"_": "chưa có fill"})
 
   if status.get("last_error"):
     st.error(status["last_error"])
