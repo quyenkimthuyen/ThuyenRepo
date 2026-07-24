@@ -67,13 +67,26 @@ def _write_json(path: Path, data: dict) -> None:
   tmp.replace(path)
 
 
+def _normalize_bridge_dir(bridge_dir: str | Path | None) -> str:
+  """Keep bridge_dir host-local. Never use a foreign OS absolute path."""
+  raw = str(bridge_dir or BRIDGE_DIR)
+  # Windows config on Linux/macOS → Path("C:\\...") becomes a relative folder
+  # literally named "C:\Work\..." inside the repo (breaks git pull on Windows).
+  looks_windows_abs = bool(raw) and (
+    (len(raw) >= 3 and raw[0].isalpha() and raw[1] == ":" and raw[2] in ("\\", "/"))
+    or raw.startswith("\\\\")
+  )
+  looks_posix_abs = raw.startswith("/")
+  if os.name == "nt" and looks_posix_abs:
+    return str(BRIDGE_DIR)
+  if os.name != "nt" and looks_windows_abs:
+    return str(BRIDGE_DIR)
+  return raw
+
+
 def load_config() -> dict:
   data = _read_json(CONFIG_PATH) or {}
-  bridge_dir = data.get("bridge_dir") or str(BRIDGE_DIR)
-  # Config may come from the old Linux/Docker deployment. On native Windows
-  # that path is invalid and causes a failed service restart on every rerun.
-  if os.name == "nt" and str(bridge_dir).startswith("/"):
-    bridge_dir = str(BRIDGE_DIR)
+  bridge_dir = _normalize_bridge_dir(data.get("bridge_dir") or BRIDGE_DIR)
   return {
     "enabled": bool(data.get("enabled", False)),
     "model_id": data.get("model_id") or DEFAULT_MODEL_ID,
@@ -97,6 +110,7 @@ def save_config(**updates) -> dict:
     if v is None and k not in nullable:
       continue
     cfg[k] = v
+  cfg["bridge_dir"] = _normalize_bridge_dir(cfg.get("bridge_dir"))
   _write_json(CONFIG_PATH, cfg)
   return cfg
 
