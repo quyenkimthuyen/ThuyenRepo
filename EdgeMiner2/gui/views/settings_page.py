@@ -18,7 +18,7 @@ from gui.glossary import HELP
 from gui.page_chrome import render_page_header
 
 SETTING_WIDGET_KEYS = (
-  "settings_train_months",
+  "settings_train_weeks",
   "settings_era_labels",
   "settings_learning_loops",
   "settings_backtest_from",
@@ -39,8 +39,8 @@ def _date_value(value: str, fallback: str) -> date:
 def _init_widget_state(settings: dict, era_labels: list[str]) -> None:
   era_by_label = {e["label"]: e["key"] for e in LEARNING_ERA_OPTIONS}
   defaults = {
-    "settings_train_months": [
-      t for t in settings.get("strategy_train_months", [3, 6, 9])
+    "settings_train_weeks": [
+      t for t in settings.get("strategy_train_weeks", [3, 6, 9])
       if t in (3, 6, 9)
     ],
     "settings_era_labels": [
@@ -48,11 +48,11 @@ def _init_widget_state(settings: dict, era_labels: list[str]) -> None:
       if era_by_label[label] in (settings.get("learning_era_keys") or [])
     ],
     "settings_learning_loops": int(settings.get("learning_loops") or 4),
-    "settings_backtest_from": _date_value(settings.get("backtest_from", ""), "2025-01-01"),
+    "settings_backtest_from": _date_value(settings.get("backtest_from", ""), "2026-01-01"),
     "settings_backtest_to": _date_value(settings.get("backtest_to", ""), "2026-12-31"),
     "settings_spread": float(settings.get("spread_pips", DEFAULT_SPREAD_PIPS)),
     "settings_slip": float(settings.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
-    "settings_objective": settings.get("grid_objective", "total_r"),
+    "settings_objective": settings.get("grid_objective", "risk_adjusted"),
   }
   for key, value in defaults.items():
     st.session_state.setdefault(key, value)
@@ -88,11 +88,11 @@ def render(embedded: bool = False):
   _init_widget_state(s, era_labels)
 
   st.markdown("#### Chiến lược")
-  train_months = st.multiselect(
-    "Cửa sổ học chiến lược (tháng)",
+  train_weeks = st.multiselect(
+    "Cửa sổ học chiến lược (tuần)",
     [3, 6, 9],
-    key="settings_train_months",
-    help=HELP["train_months"],
+    key="settings_train_weeks",
+    help=HELP["train_weeks"],
   )
 
   st.markdown("#### Học bộ nhớ")
@@ -135,7 +135,7 @@ def render(embedded: bool = False):
   )
 
   valid = True
-  if not train_months:
+  if not train_weeks:
     st.warning("Chọn ít nhất một cửa sổ học chiến lược; thay đổi này chưa được lưu.")
     valid = False
   if not picked_eras:
@@ -146,7 +146,7 @@ def render(embedded: bool = False):
     valid = False
 
   current = {
-    "strategy_train_months": list(train_months),
+    "strategy_train_weeks": list(train_weeks),
     "learning_era_keys": [era_keys[label] for label in picked_eras],
     "learning_loops": int(learning_loops),
     "backtest_from": backtest_from.isoformat(),

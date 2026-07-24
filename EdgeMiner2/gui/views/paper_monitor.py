@@ -186,7 +186,7 @@ def _tradingview_chart(
   orders: list[dict],
   chart_from: str,
   chart_to: str,
-  title: str = "EUR/USD H1",
+  title: str = "EUR/USD M15",
 ) -> go.Figure | None:
   window = ohlc_window
   if window.empty:
@@ -367,7 +367,7 @@ def _get_chart_figure(state: dict) -> go.Figure | None:
     window = get_ohlc_window_cached(chart_from, chart_to)
     fig = _tradingview_chart(
       window, orders, chart_from, chart_to,
-      title=f"EUR/USD H1 · Tuần {state.get('week_start', '')}",
+      title=f"EUR/USD M15 · Tuần {state.get('week_start', '')}",
     )
   except Exception:
     return None
@@ -410,7 +410,7 @@ def _resolve_monitor_state(monitor_params: dict, *, manual_refresh: bool) -> dic
     # Chưa có state — hiện placeholder, để background tự cập nhật (không sync download).
     st.info("Đang chờ background cập nhật paper… (hoặc bấm **Refresh ngay**)")
     return {"error": None, "pending": True, "week_start": "—", "week_trades_taken": 0,
-            "strategy": {"max_trades_per_week": 0}, "slots_remaining": 0, "in_session": False,
+            "strategy": {"max_trades_per_day": 0}, "slots_remaining": 0, "in_session": False,
             "signals_this_week": [], "recent_trades": [], "last_bar": "—", "week_wr": "—",
             "week_total_r": "—"}
 
@@ -454,7 +454,7 @@ def _render_chart_panel(state: dict):
   if server_ready:
     poll_sec = max(0.5, float(load_config().get("poll_sec", 2.0)))
     components.iframe(
-      f"{monitor_url}/chart?bars=168&poll={poll_sec:g}",
+      f"{monitor_url}/chart?bars=672&poll={poll_sec:g}",
       height=700,
       scrolling=False,
     )
@@ -521,7 +521,10 @@ def _render_monitor_body(state: dict, *, include_chart: bool = True):
 
   c1, c2, c3, c4, c5 = st.columns(5)
   c1.metric("Tuần", state["week_start"])
-  c2.metric("Lệnh tuần", f"{state['week_trades_taken']}/{state['strategy']['max_trades_per_week']}")
+  c2.metric(
+    "Lệnh hôm nay",
+    f"{state.get('day_trades_taken', 0)}/{state['strategy']['max_trades_per_day']}",
+  )
   c3.metric("Slots còn", state["slots_remaining"])
   c4.metric("Session", "ACTIVE" if state["in_session"] else "OFF")
   c5.metric("Ước tính", f"{state.get('week_return_pct', 0):+.2f}%")
@@ -583,7 +586,7 @@ def _render_monitor_body(state: dict, *, include_chart: bool = True):
     st.json(state["strategy"])
 
   st.warning(
-    "**Paper monitor** dùng cùng dữ liệu H1 từ ForgeBridge/XM MT5 với Grid và Bridge. "
+    "**Paper monitor** dùng cùng dữ liệu M15 từ ForgeBridge/XM MT5 với Grid và Bridge. "
     "Tín hiệu được tính trên nến đóng, không phải từng tick."
   )
 
@@ -655,7 +658,7 @@ def render():
     st.caption(
       f"Spread **{spread}** / slip **{slip}** pip · "
       f"KB **{'ON' if use_kb else 'OFF'}** · "
-      "service chỉ tính lại khi có nến H1 mới hoặc cấu hình/model thay đổi."
+      "service chỉ tính lại khi có nến M15 mới hoặc cấu hình/model thay đổi."
     )
     st.session_state.setdefault("paper_risk_pct", float(cfg.get("risk_pct", 1.0)))
     st.session_state.setdefault("paper_poll_sec", float(cfg.get("poll_sec", 2.0)))
@@ -690,7 +693,7 @@ def render():
   _on_settings_changed(_settings_signature(use_kb, kb_profile, kb_snapshot, spread, slip))
 
   monitor_params = dict(
-    use_learning=use_kb, train_months=params["train_months"],
+    use_learning=use_kb, train_weeks=params["train_weeks"],
     spread_pips=spread, slippage_pips=slip,
     risk_pct=float(risk),
     kb_profile=kb_profile,

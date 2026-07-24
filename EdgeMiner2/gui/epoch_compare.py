@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 from config import DEFAULT_START_DATE, DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
-from data_loader import load_eurusd_h1
+from data_loader import load_eurusd_m15
 from kb_profiles import list_snapshots
 from optimizer import reset_kb_cache, set_kb_profile
 from run_backtest import REPORT_DIR, run_walk_forward
@@ -80,7 +80,7 @@ def run_single_epoch_backtest(
   oos_from: str,
   oos_to: str,
 ) -> dict:
-  df = load_eurusd_h1(DEFAULT_START_DATE)
+  df = load_eurusd_m15(DEFAULT_START_DATE)
   reset_kb_cache()
   set_kb_profile(kb_profile, kb_snapshot)
   return run_walk_forward(

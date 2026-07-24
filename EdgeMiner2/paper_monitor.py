@@ -6,7 +6,7 @@ import pandas as pd
 from analytics import trade_objects_to_rows
 from config import (
   DEFAULT_RISK_PCT_PER_TRADE, DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS,
-  MIN_TRAIN_BARS, TRAIN_MONTHS,
+  MIN_TRAIN_BARS, TRAIN_WEEKS,
 )
 from data_loader import get_train_window_indices, get_week_indices
 from execution import adjust_entry_price
@@ -61,7 +61,7 @@ def _project_signal_levels(
 def get_monitor_state(
   df: pd.DataFrame,
   use_learning: bool = False,
-  train_months: int = TRAIN_MONTHS,
+  train_weeks: int = TRAIN_WEEKS,
   spread_pips: float = DEFAULT_SPREAD_PIPS,
   slippage_pips: float = DEFAULT_SLIPPAGE_PIPS,
   risk_pct: float = DEFAULT_RISK_PCT_PER_TRADE,
@@ -82,7 +82,7 @@ def get_monitor_state(
       set_kb_profile(kb_profile, kb_snapshot)
     kb = get_knowledge_base(kb_profile, kb_snapshot)
 
-  train_start_idx, train_end_idx = get_train_window_indices(df, week_start, train_months)
+  train_start_idx, train_end_idx = get_train_window_indices(df, week_start, train_weeks)
   if train_start_idx is None or (train_end_idx - train_start_idx) < MIN_TRAIN_BARS:
     return {"error": "Không đủ dữ liệu train cho tuần hiện tại."}
 
@@ -126,7 +126,12 @@ def get_monitor_state(
   chart_to = min(df.index[-1], week_end + pad)
 
   last_bar = df.index[-1]
-  in_session = 7 <= utc_to_broker_time(last_bar).hour <= 20
+  broker_last_bar = utc_to_broker_time(last_bar)
+  in_session = 7 <= broker_last_bar.hour <= 20
+  day_trades = [
+    trade for trade in week_trades
+    if utc_to_broker_time(trade.entry_time).date() == broker_last_bar.date()
+  ]
 
   orders = []
   for t in trade_rows:
@@ -178,16 +183,17 @@ def get_monitor_state(
       "rr": strat.rr_ratio,
       "atr_mult_sl": strat.atr_mult_sl,
       "ml_prob_min": strat.ml_prob_min,
-      "max_trades_per_week": strat.max_trades_per_week,
+      "max_trades_per_day": strat.max_trades_per_day,
       "max_hold_bars": strat.max_hold_bars,
     },
     "week_trades_taken": week_m["n_trades"],
+    "day_trades_taken": len(day_trades),
     "week_total_r": round(week_m["total_r"], 2),
     "week_return_pct": round(week_m["total_r"] * risk_pct, 2),
     "risk_pct": risk_pct,
     "risk_of_ruin_pct": week_m.get("risk_of_ruin_pct", 0.0),
     "week_wr": round(week_m["win_rate"] * 100, 1),
-    "slots_remaining": max(strat.max_trades_per_week - week_m["n_trades"], 0),
+    "slots_remaining": max(strat.max_trades_per_day - len(day_trades), 0),
     "kb_profile": kb_profile,
     "kb_snapshot": kb_snapshot if kb_snapshot not in (None, "latest") else "latest",
     "signals_this_week": signal_bars,

@@ -9,6 +9,7 @@ import threading
 import numpy as np
 import pandas as pd
 
+from config import BARS_PER_WEEK, MAX_TRADES_PER_DAY, TARGET_TRADES_PER_WEEK
 from feature_engine import FeatureMatrix
 from ml_scorer import MLScorer
 from strategy import Trade, compute_metrics
@@ -70,7 +71,7 @@ class MinedStrategy:
   max_hold_bars: int = 36
   min_bars_between: int = 4
   min_rules_match: int = 2
-  max_trades_per_week: int = 2
+  max_trades_per_day: int = MAX_TRADES_PER_DAY
   ml_prob_min: float = 0.40
   exit_mode: str = "trail"       # full | partial | trail
   partial_pct: float = 0.4
@@ -229,22 +230,21 @@ def generate_signals_mined(fm, strat, start_idx=0, end_idx=None):
       if ml_s >= strat.ml_prob_min:
         candidates.append((combined_s + ml_s * 2, -1, i))
 
-  if candidates and strat.max_trades_per_week > 0:
-    week_buckets: dict[str, list] = {}
+  if candidates and strat.max_trades_per_day > 0:
+    from mt5_bridge.history_sync import utc_to_broker_time
+    day_buckets: dict[str, list] = {}
     for score, direction, i in candidates:
-      wk = fm.index[i].strftime("%Y-%W")
-      week_buckets.setdefault(wk, []).append((score, direction, i))
-    for items in week_buckets.values():
+      broker_day = utc_to_broker_time(fm.index[i]).strftime("%Y-%m-%d")
+      day_buckets.setdefault(broker_day, []).append((score, direction, i))
+    for items in day_buckets.values():
       items.sort(key=lambda x: x[0], reverse=True)
-      last_bar = -strat.min_bars_between - 1
-      taken = 0
+      selected: list[int] = []
       for score, direction, i in items:
-        if taken >= strat.max_trades_per_week:
+        if len(selected) >= strat.max_trades_per_day:
           break
-        if i - last_bar >= strat.min_bars_between:
+        if all(abs(i - other) >= strat.min_bars_between for other in selected):
           signals[i] = direction
-          last_bar = i
-          taken += 1
+          selected.append(i)
   return signals
 
 
@@ -254,6 +254,7 @@ def backtest_mined(
   return_open: bool = False,
 ):
   from execution import adjust_entry_price, adjust_exit_price
+  from mt5_bridge.history_sync import utc_to_broker_time
 
   if end_idx is None:
     end_idx = fm.n
@@ -263,6 +264,7 @@ def backtest_mined(
   in_trade = False
   direction = entry_price = sl = tp = risk = 0.0
   entry_idx = partial_done = trail_active = 0.0
+  entries_by_broker_day: dict[str, int] = {}
 
   while i < end_idx - 1:
     if in_trade:
@@ -333,6 +335,10 @@ def backtest_mined(
       entry_idx = i + 1
       if entry_idx >= end_idx:
         break
+      broker_day = utc_to_broker_time(fm.index[entry_idx]).strftime("%Y-%m-%d")
+      if entries_by_broker_day.get(broker_day, 0) >= strat.max_trades_per_day:
+        i += 1
+        continue
       entry_price = adjust_entry_price(o[entry_idx], int(sig), spread_pips, slippage_pips)
       sl_d = strat.atr_mult_sl * av
       direction = float(sig)
@@ -343,6 +349,7 @@ def backtest_mined(
       else:
         sl, tp = entry_price + sl_d, entry_price - sl_d * strat.rr_ratio
       in_trade = True
+      entries_by_broker_day[broker_day] = entries_by_broker_day.get(broker_day, 0) + 1
       i = entry_idx + 1
       continue
     i += 1
@@ -368,18 +375,18 @@ def backtest_mined(
 
 
 def _weeks_in_window(start, end):
-  return max((end - start) / 168.0, 1.0)
+  return max((end - start) / float(BARS_PER_WEEK), 1.0)
 
 
-def score_strategy_metrics(m, weeks, target_tpw=2.0):
+def score_strategy_metrics(m, weeks, target_tpw=TARGET_TRADES_PER_WEEK):
   if m["n_trades"] < 3:
     return -1e6
   tpw = m["n_trades"] / weeks
   wr, rr, tr, pf = m["win_rate"], m["avg_rr"], m["total_r"], m["profit_factor"]
   freq_score = 55 - abs(tpw - target_tpw) * 30
-  if tpw < 0.8:
+  if tpw < 7:
     freq_score -= 50
-  if tpw > 4:
+  if tpw > 10:
     freq_score -= 40
 
   s = wr * 150 + min(rr, 4) * 55 + min(pf, 4) * 12 + tr * 8 + freq_score
@@ -400,7 +407,7 @@ def score_strategy_metrics(m, weeks, target_tpw=2.0):
   return s
 
 
-def mine_strategy(fm, train_start, train_end, target_tpw=2.0):
+def mine_strategy(fm, train_start, train_end, target_tpw=TARGET_TRADES_PER_WEEK):
   with _LABEL_LOCK:
     if len(LABEL_CACHE) > 200:
       LABEL_CACHE.clear()
@@ -447,7 +454,7 @@ def mine_strategy(fm, train_start, train_end, target_tpw=2.0):
                 long_rules=long_rules, short_rules=short_rules,
                 score_threshold=thr, atr_mult_sl=atr_m, rr_ratio=rr,
                 min_bars_between=4, min_rules_match=min_match,
-                max_trades_per_week=2, ml_prob_min=ml_thr,
+                max_trades_per_day=MAX_TRADES_PER_DAY, ml_prob_min=ml_thr,
                 exit_mode=exit_mode, ml_scorer=ml,
                 name=f"v3_{exit_mode}_rr{rr}",
                 **exit_kw,

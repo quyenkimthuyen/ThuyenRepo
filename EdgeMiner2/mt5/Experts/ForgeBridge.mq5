@@ -22,7 +22,7 @@ input ENUM_BRIDGE_MODE InpMode = BRIDGE_LIVE;
 input string InpBridgeSubdir   = "bridge";          // under MQL5/Files/
 input int    InpDecisionWaitMs = 8000;              // Live: wait for decision
 input int    InpPollMs         = 500;
-input int    InpChartBars      = 336;               // H1 bars exported for App chart
+input int    InpChartBars      = 1344;              // M15 bars exported for App chart
 input int    InpHeartbeatMs    = 2000;              // Live connection/tick snapshot
 input int    InpHistoryChunk   = 750;               // Bars per history sync response
 
@@ -205,7 +205,7 @@ bool WriteBarJson(datetime t1)
 {
    MqlRates r[];
    ArraySetAsSeries(r, true);
-   if(CopyRates(_Symbol, PERIOD_H1, 1, 1, r) < 1)
+   if(CopyRates(_Symbol, PERIOD_M15, 1, 1, r) < 1)
       return false;
 
    long time_msc = (long)r[0].time * 1000;
@@ -248,7 +248,7 @@ bool WriteBarsJson()
    int requested = MathMax(48, InpChartBars);
    MqlRates rates[];
    ArraySetAsSeries(rates, false);
-   int copied = CopyRates(_Symbol, PERIOD_H1, 0, requested, rates);
+   int copied = CopyRates(_Symbol, PERIOD_M15, 0, requested, rates);
    if(copied < 1)
       return false;
 
@@ -261,7 +261,7 @@ bool WriteBarsJson()
 
    string prefix = "{\"symbol\":\"" + _Symbol + "\",";
    prefix += "\"updated_at\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\",";
-   prefix += "\"period\":\"H1\",\"bars\":[";
+   prefix += "\"period\":\"M15\",\"bars\":[";
    FileWriteString(h, prefix);
    for(int i = 0; i < copied; i++)
    {
@@ -332,15 +332,18 @@ bool ProcessHistoryRequest()
    int offset = (int)MathMax(0, JsonGetDouble(request, "offset", 0));
    int chunk_size = (int)MathMax(100, MathMin(2000,
       JsonGetDouble(request, "chunk_size", InpHistoryChunk)));
-   int total = Bars(_Symbol, PERIOD_H1);
-   int available = MathMax(0, total - 1); // exclude forming H1 bar
+   int total = Bars(_Symbol, PERIOD_M15);
+   string from_time_text = JsonGetString(request, "from_time");
+   datetime from_time = StringToTime(from_time_text == "" ? "2025.01.01 00:00" : from_time_text);
+   int oldest_shift = iBarShift(_Symbol, PERIOD_M15, from_time, false);
+   int available = MathMax(0, MathMin(total - 1, oldest_shift)); // exclude forming M15 bar
    int wanted = MathMin(chunk_size, MathMax(0, available - offset));
 
    MqlRates rates[];
    ArraySetAsSeries(rates, false);
    int copied = 0;
    if(wanted > 0)
-      copied = CopyRates(_Symbol, PERIOD_H1, offset + 1, wanted, rates);
+      copied = CopyRates(_Symbol, PERIOD_M15, offset + 1, wanted, rates);
    if(copied < 0)
       copied = 0;
 
@@ -354,7 +357,7 @@ bool ProcessHistoryRequest()
       return false;
 
    string prefix = "{\"request_id\":\"" + request_id + "\",";
-   prefix += "\"symbol\":\"" + _Symbol + "\",\"period\":\"H1\",";
+   prefix += "\"symbol\":\"" + _Symbol + "\",\"period\":\"M15\",";
    prefix += "\"server\":\"" + AccountInfoString(ACCOUNT_SERVER) + "\",";
    prefix += "\"account\":" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)) + ",";
    prefix += "\"server_utc_offset_seconds\":" + IntegerToString(server_offset) + ",";
@@ -394,7 +397,7 @@ bool WriteConnectionJson()
 {
    MqlRates current[];
    ArraySetAsSeries(current, true);
-   if(CopyRates(_Symbol, PERIOD_H1, 0, 1, current) < 1)
+   if(CopyRates(_Symbol, PERIOD_M15, 0, 1, current) < 1)
       return false;
 
    MqlTick tick;
@@ -658,7 +661,7 @@ void ManageOpen()
       g_had_position = true;
 
       datetime open_time = (datetime)PositionGetInteger(POSITION_TIME);
-      int held = (int)((TimeCurrent() - open_time) / PeriodSeconds(PERIOD_H1));
+      int held = (int)((TimeCurrent() - open_time) / PeriodSeconds(PERIOD_M15));
       if(held >= g_max_hold)
       {
          if(trade.PositionClose(ticket))
@@ -756,7 +759,7 @@ double AtrAt(int shift)
    int bars = 120;
    MqlRates rates[];
    ArraySetAsSeries(rates, true);
-   if(CopyRates(_Symbol, PERIOD_H1, 0, bars, rates) < bars)
+   if(CopyRates(_Symbol, PERIOD_M15, 0, bars, rates) < bars)
       return 0;
    double alpha = 1.0 / 14.0;
    double series[];
@@ -839,7 +842,7 @@ void OnTick()
       g_last_heartbeat_ms = now_ms;
    }
 
-   datetime t0 = iTime(_Symbol, PERIOD_H1, 0);
+   datetime t0 = iTime(_Symbol, PERIOD_M15, 0);
    if(t0 == 0 || t0 == g_last_bar)
       return;
    g_last_bar = t0;
@@ -848,7 +851,7 @@ void OnTick()
    if(PositionsByMagic() > 0)
       return;
 
-   datetime t1 = iTime(_Symbol, PERIOD_H1, 1);
+   datetime t1 = iTime(_Symbol, PERIOD_M15, 1);
    if(t1 == 0 || t1 == g_last_fill_bar)
       return;
 

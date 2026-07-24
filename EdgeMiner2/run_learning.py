@@ -23,7 +23,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from data_loader import (
-  get_train_window_indices, get_week_indices, load_eurusd_h1,
+  get_train_window_indices, get_week_indices, load_eurusd_m15,
   require_canonical_mt5_data,
 )
 from feature_engine import FeatureMatrix
@@ -32,7 +32,7 @@ from kb_profiles import (
   create_profile, register_profile, slice_df_for_period,
   profile_path, DEFAULT_PROFILE_ID,
 )
-from config import TRAIN_MONTHS, MIN_TRAIN_BARS, DEFAULT_SPREAD_PIPS, DEFAULT_SLIPPAGE_PIPS
+from config import TRAIN_WEEKS, MIN_TRAIN_BARS, DEFAULT_SPREAD_PIPS, DEFAULT_SLIPPAGE_PIPS
 from meta_learner import mine_strategy_learning, record_trade_learning
 from optimizer import TARGET_TRADES_PER_WEEK
 from strategy import compute_metrics
@@ -50,7 +50,7 @@ def generate_weekly_schedule(df, first_trade_date):
 
 
 def run_epoch(df, fm: FeatureMatrix, kb: KnowledgeBase, epoch: int) -> dict:
-  train_end_date = df.index[0] + pd.DateOffset(months=TRAIN_MONTHS)
+  train_end_date = df.index[0] + pd.Timedelta(weeks=TRAIN_WEEKS)
   oos_mask = df.index >= train_end_date
   first_trade_date = df.index[oos_mask][0]
   first_trade_date -= pd.Timedelta(days=first_trade_date.weekday())
@@ -64,7 +64,7 @@ def run_epoch(df, fm: FeatureMatrix, kb: KnowledgeBase, epoch: int) -> dict:
 
   desc = f"Epoch {epoch} (genomes={len(kb.genomes)}, rules={len(kb.rule_stats)})"
   for week_start, week_end in tqdm(weeks, desc=desc):
-    train_start_idx, train_end_idx = get_train_window_indices(df, week_start, TRAIN_MONTHS)
+    train_start_idx, train_end_idx = get_train_window_indices(df, week_start, TRAIN_WEEKS)
     if train_start_idx is None or (train_end_idx - train_start_idx) < MIN_TRAIN_BARS:
       continue
 
@@ -175,7 +175,7 @@ def main():
   parser.add_argument("--kb-profile", default=DEFAULT_PROFILE_ID,
                       help="ID profile KB (lưu tại learning/kb_profiles/)")
   parser.add_argument("--kb-name", default=None, help="Tên hiển thị profile")
-  parser.add_argument("--from-date", default="2022-01-01", help="Data từ ngày")
+  parser.add_argument("--from-date", default="2025-01-01", help="Data M15 từ ngày")
   parser.add_argument("--until-date", default=None, help="Data đến ngày (giai đoạn KB)")
   args = parser.parse_args()
 
@@ -190,8 +190,8 @@ def main():
 
   kb = KnowledgeBase(kb_path)
   data_meta = require_canonical_mt5_data()
-  print("Tải dữ liệu EUR/USD H1...")
-  df = load_eurusd_h1(args.from_date)
+  print("Tải dữ liệu EUR/USD M15...")
+  df = load_eurusd_m15(args.from_date)
   df = slice_df_for_period(df, args.from_date, args.until_date)
   if len(df) < MIN_TRAIN_BARS + 100:
     print("Không đủ dữ liệu cho giai đoạn đã chọn.")

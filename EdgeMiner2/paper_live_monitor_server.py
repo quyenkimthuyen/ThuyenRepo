@@ -58,7 +58,7 @@ def _paper_snapshot() -> dict:
     frame = pd.read_parquet(CACHE_PATH)
     frame.index = pd.to_datetime(frame.index, utc=True).tz_convert(None)
     chart_to = pd.Timestamp(state.get("chart_to") or state.get("last_bar") or frame.index[-1])
-    frame = frame.loc[:chart_to].tail(336)
+    frame = frame.loc[:chart_to].tail(1344)
     for timestamp, row in frame.iterrows():
       rows.append({
         "time": _broker_clock(timestamp),
@@ -78,7 +78,7 @@ def _paper_snapshot() -> dict:
   history = live_history or {
     "symbol": "EURUSD",
     "updated_at": state.get("updated_at"),
-    "period": "H1",
+    "period": "M15",
     "bars": rows,
   }
   connection = live_connection or {
@@ -144,9 +144,9 @@ def start_paper_live_monitor_server(
       if parsed.path in ("/", "/chart"):
         query = parse_qs(parsed.query)
         try:
-          max_bars = max(24, min(336, int((query.get("bars") or ["168"])[0])))
+          max_bars = max(96, min(1344, int((query.get("bars") or ["672"])[0])))
         except (TypeError, ValueError):
-          max_bars = 168
+          max_bars = 672
         try:
           from paper_service import load_config
           default_poll = float(load_config().get("poll_sec", 2.0))

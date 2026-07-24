@@ -16,7 +16,7 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from data_loader import load_eurusd_h1, get_train_window_indices, get_week_indices
+from data_loader import load_eurusd_m15, get_train_window_indices, get_week_indices
 from feature_engine import FeatureMatrix
 from kb_profiles import load_kb
 from optimizer import optimize_on_window, set_kb_profile, reset_kb_cache
@@ -36,7 +36,7 @@ def full_strategy_dict(s: MinedStrategy) -> dict:
     "atr_mult_sl": float(s.atr_mult_sl),
     "rr_ratio": float(s.rr_ratio),
     "min_rules_match": int(s.min_rules_match),
-    "max_trades_per_week": int(s.max_trades_per_week),
+    "max_trades_per_day": int(s.max_trades_per_day),
     "min_bars_between": int(s.min_bars_between),
     "max_hold_bars": int(s.max_hold_bars),
     "ml_prob_min": float(s.ml_prob_min),
@@ -52,8 +52,8 @@ def full_strategy_dict(s: MinedStrategy) -> dict:
 
 def main():
   ap = argparse.ArgumentParser()
-  ap.add_argument("--train-months", type=int, default=3)
-  ap.add_argument("--kb-profile", default="era_2023_2025")
+  ap.add_argument("--train-weeks", type=int, default=3)
+  ap.add_argument("--kb-profile", default="era_2025_full")
   ap.add_argument("--kb-epoch", type=int, default=1)
   ap.add_argument("--oos-from", default="2025-01-01")
   ap.add_argument("--oos-to", default="2026-12-31")
@@ -66,7 +66,7 @@ def main():
   set_kb_profile(args.kb_profile, args.kb_epoch)
   kb = load_kb(args.kb_profile, args.kb_epoch)
 
-  df = load_eurusd_h1()
+  df = load_eurusd_m15()
   fm = FeatureMatrix(df)
   oos_from = pd.Timestamp(args.oos_from)
   oos_to = pd.Timestamp(args.oos_to)
@@ -78,9 +78,9 @@ def main():
   all_trades = []
   prev: MinedStrategy | None = None
 
-  print(f"Export WF schedule | weeks={len(weeks)} | KB={args.kb_profile}@ep{args.kb_epoch} | train={args.train_months}m")
+  print(f"Export WF schedule | weeks={len(weeks)} | KB={args.kb_profile}@ep{args.kb_epoch} | train={args.train_weeks}w")
   for week_start, week_end in tqdm(weeks, desc="Export WF"):
-    ts, te = get_train_window_indices(df, week_start, args.train_months)
+    ts, te = get_train_window_indices(df, week_start, args.train_weeks)
     if ts is None or (te - ts) < 200:
       weekly.append({"week_start": str(week_start.date()), "status": "skip_train"})
       continue
@@ -138,7 +138,7 @@ def main():
   payload = {
     "meta": {
       "source": "Best 3m walk-forward export",
-      "train_months": args.train_months,
+      "train_weeks": args.train_weeks,
       "kb_profile": args.kb_profile,
       "kb_epoch": args.kb_epoch,
       "oos_from": args.oos_from,

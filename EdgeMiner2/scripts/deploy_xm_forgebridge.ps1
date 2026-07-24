@@ -9,7 +9,8 @@ param(
   [switch]$EnableTrading,
   [switch]$RestartTerminal,
   [switch]$NoRestartTerminal,
-  [bool]$StartBridgeService = $true
+  [bool]$StartBridgeService = $true,
+  [switch]$SkipBridgeService
 )
 
 $ErrorActionPreference = "Stop"
@@ -21,7 +22,7 @@ if (-not $ModelId) {
   if (Test-Path $activeModelPath) {
     $ModelId = (Get-Content $activeModelPath -Raw | ConvertFrom-Json).id
   }
-  if (-not $ModelId) {
+  if (-not $ModelId -and $StartBridgeService -and -not $SkipBridgeService) {
     throw "No active MT5 Trade Model. Build and select a model before deployment."
   }
 }
@@ -166,13 +167,20 @@ function Attach-ForgeBridge(
   Stop-XmTerminal $XmInstallPath
 
   $chartsRoot = Join-Path $DataPath "MQL5\Profiles\Charts"
-  $charts = Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
+  $allEurusdCharts = Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
     Where-Object {
       $text = Get-Content $_.FullName -Raw
-      $text -match "(?m)^symbol=EURUSD\s*$" -and
-      $text -match "(?m)^period_type=1\s*$" -and
-      $text -match "(?m)^period_size=1\s*$"
+      $text -match "(?m)^symbol=EURUSD\s*$"
     }
+  $charts = $allEurusdCharts |
+    Where-Object {
+      $text = Get-Content $_.FullName -Raw
+      $text -match "(?m)^period_type=0\s*$" -and
+      $text -match "(?m)^period_size=15\s*$"
+    }
+  if (-not $charts) {
+    $charts = $allEurusdCharts
+  }
   $target = $charts |
     Where-Object { (Get-Content $_.FullName -Raw) -match "name=(ForexForgeEA|ForgeBridge)" } |
     Select-Object -First 1
@@ -180,7 +188,7 @@ function Attach-ForgeBridge(
     $target = $charts | Select-Object -First 1
   }
   if (-not $target) {
-    throw "EURUSD H1 chart not found in the MT5 profile."
+    throw "EURUSD M15 chart not found in the MT5 profile."
   }
 
   $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
@@ -196,7 +204,7 @@ InpMode=0
 InpBridgeSubdir=bridge
 InpDecisionWaitMs=8000
 InpPollMs=500
-InpChartBars=336
+InpChartBars=1344
 InpHeartbeatMs=2000
 InpHistoryChunk=750
 InpRiskPct=$RiskPct
@@ -208,6 +216,8 @@ InpMaxHoldBars=36
 "@
 
   $text = Get-Content $target.FullName -Raw
+  $text = $text -replace "(?m)^period_type=\d+\s*$", "period_type=0"
+  $text = $text -replace "(?m)^period_size=\d+\s*$", "period_size=15"
   if ($text -match "(?s)<expert>.*?</expert>") {
     $text = [regex]::Replace($text, "(?s)<expert>.*?</expert>", $block, 1)
   } else {
@@ -291,7 +301,7 @@ Write-Host "EX5     : $($compiled.Binary)"
 
 $attached = Get-ForgeBridgeCharts $TerminalDataPath
 if ($Attach) {
-  Write-Step "Attach ForgeBridge to EURUSD H1"
+  Write-Step "Attach ForgeBridge to EURUSD M15"
   $chart = Attach-ForgeBridge $TerminalDataPath $InstallPath $EnableTrading.IsPresent
   Write-Host "Chart   : $chart"
   Write-Host "Trading : $($EnableTrading.IsPresent)"
@@ -308,7 +318,7 @@ if (-not $NoRestartTerminal -and -not $Attach) {
   Start-Sleep -Seconds 8
 }
 
-if ($StartBridgeService) {
+if ($StartBridgeService -and -not $SkipBridgeService) {
   Write-Step "Restart MT5 Bridge service"
   $servicePid = Restart-BridgeService
   Write-Host "Service : PID $servicePid"

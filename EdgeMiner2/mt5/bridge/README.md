@@ -10,7 +10,7 @@ Trong app: sidebar **MT5 Bridge**
   - Đổi tab / refresh Streamlit **không** dừng service
   - Tắt khi bấm Stop, hoặc kill PID trong `results/mt5_bridge_service.pid`
 - Chọn Trade Model (mặc định Best 3m)
-- Chart H1 live, heartbeat, Bid/Ask, spread và lệnh từ chính ForgeBridge EA
+- Chart M15 live, heartbeat, Bid/Ask, spread và lệnh từ chính ForgeBridge EA
 - Xem snapshot `connection.json` / `bars.json` / `bar.json` / `decision.json` / `fill.json`
 - **Nhật ký giao tiếp** `comm_log.jsonl` (EA→App bar/fill, App→EA decision)
 - **Thống kê lệnh** `trades.json` (thắng/thua, R)
@@ -24,7 +24,7 @@ Script tự tìm XM Global MT5 và Data Folder, copy + compile EA, kiểm tra
 powershell -ExecutionPolicy Bypass -File scripts/deploy_xm_forgebridge.ps1
 ```
 
-Lần đầu cần tự gắn vào chart EURUSD H1:
+Lần đầu cần tự gắn vào chart EURUSD M15:
 
 ```powershell
 # Gắn để test, không cho đặt lệnh
@@ -48,7 +48,7 @@ Khi **Start service**: mỗi tuần ISO mới App tự `optimize_on_window` theo
 ```
 MT5 ForgeBridge (Live)
   → ghi connection.json + bars.json cho chart live
-  → ghi bar.json khi có nến H1 mới
+  → ghi bar.json khi có nến M15 mới
 App service
   → remine Best 3m / quyết định
   → ghi decision.json (+ comm_log)
@@ -88,7 +88,7 @@ python scripts/export_bridge_replay.py
 | File | Writer |
 |------|--------|
 | `connection.json` | EA (heartbeat, tick, nến hiện tại, trạng thái trading) |
-| `bars.json` | EA (336 nến H1 cho chart) |
+| `bars.json` | EA (1344 nến M15 cho chart) |
 | `bar.json` | EA |
 | `decision.json` | App |
 | `fill.json` | EA (open/close + ticket/price/profit) |

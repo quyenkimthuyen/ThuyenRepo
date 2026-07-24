@@ -139,7 +139,7 @@ def _worker_backtest(state: dict):
 
   report = execute_backtest(
     use_learning=p["use_learning"],
-    train_months=p["train_months"],
+    train_weeks=p["train_weeks"],
     start_date=p.get("start_date", "2022-01-01"),
     spread_pips=p["spread_pips"],
     slippage_pips=p["slippage_pips"],
@@ -169,7 +169,7 @@ def _worker_backtest(state: dict):
 
     report_off = execute_backtest(
       use_learning=False,
-      train_months=p["train_months"],
+      train_weeks=p["train_weeks"],
       start_date=p.get("start_date", "2022-01-01"),
       spread_pips=p["spread_pips"],
       slippage_pips=p["slippage_pips"],

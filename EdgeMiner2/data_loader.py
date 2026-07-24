@@ -1,4 +1,4 @@
-"""Canonical EUR/USD H1 loader backed exclusively by ForgeBridge/MT5."""
+"""Canonical EUR/USD M15 loader backed exclusively by ForgeBridge/MT5."""
 from __future__ import annotations
 
 import pandas as pd
@@ -14,13 +14,17 @@ from mt5_bridge.protocol import read_json
 
 CACHE_PATH = MT5_CACHE_PATH
 META_PATH = MT5_META_PATH
-DEFAULT_START = "2023-01-01"
+DEFAULT_START = "2025-01-01"
 
 
 def require_canonical_mt5_data() -> dict:
   """Fail closed unless the active cache has complete MT5 provenance."""
   meta = read_json(META_PATH)
-  if not isinstance(meta, dict) or meta.get("source") != "mt5_ea":
+  if (
+    not isinstance(meta, dict)
+    or meta.get("source") != "mt5_ea"
+    or meta.get("timeframe") != "M15"
+  ):
     raise RuntimeError("Dữ liệu chưa được xác nhận từ ForgeBridge/XM MT5.")
   missing = [key for key in ("broker", "fingerprint", "bars", "start", "end") if not meta.get(key)]
   if missing:
@@ -47,7 +51,7 @@ def _slice_cache(cached: pd.DataFrame, start: pd.Timestamp, end: pd.Timestamp) -
   return cached[(cached.index >= start) & (cached.index < end)].copy()
 
 
-def download_eurusd_h1(
+def download_eurusd_m15(
   start_date: str = DEFAULT_START,
   end_date: str | None = None,
   use_cache: bool = True,
@@ -64,7 +68,7 @@ def download_eurusd_h1(
   if cached is None or cached.empty:
     start_history_sync()
     raise RuntimeError(
-      "Chưa có lịch sử H1 từ MT5. Hãy giữ ForgeBridge EA và MT5 Bridge service "
+      "Chưa có lịch sử M15 từ MT5. Hãy giữ ForgeBridge EA và MT5 Bridge service "
       "đang chạy để hoàn tất đồng bộ history."
     )
   require_canonical_mt5_data()
@@ -76,21 +80,21 @@ def download_eurusd_h1(
   return _slice_cache(_normalize_ohlcv(cached), start, end)
 
 
-def load_eurusd_h1(
+def load_eurusd_m15(
   start_date: str = DEFAULT_START,
   end_date: str | None = None,
   use_cache: bool = True,
   force_refresh: bool = False,
 ) -> pd.DataFrame:
-  """Load canonical MT5 EUR/USD H1 data."""
-  return download_eurusd_h1(
+  """Load canonical MT5 EUR/USD M15 data."""
+  return download_eurusd_m15(
     start_date, end_date, use_cache, force_refresh,
   ).dropna()
 
 
-def get_train_window_indices(df: pd.DataFrame, as_of: pd.Timestamp, months: int = 3):
+def get_train_window_indices(df: pd.DataFrame, as_of: pd.Timestamp, weeks: int = 3):
   """Return (start_idx, end_idx) for training window ending at as_of (exclusive)."""
-  train_start = as_of - pd.DateOffset(months=months)
+  train_start = as_of - pd.Timedelta(weeks=weeks)
   mask = (df.index >= train_start) & (df.index < as_of)
   indices = df.index[mask]
   if len(indices) < 100:
@@ -98,7 +102,6 @@ def get_train_window_indices(df: pd.DataFrame, as_of: pd.Timestamp, months: int 
   start_idx = df.index.get_loc(indices[0])
   end_idx = df.index.get_loc(indices[-1]) + 1
   return start_idx, end_idx
-
 
 def get_week_indices(df: pd.DataFrame, week_start: pd.Timestamp, week_end: pd.Timestamp):
   """Return (start_idx, end_idx) for a trading week [week_start, week_end)."""

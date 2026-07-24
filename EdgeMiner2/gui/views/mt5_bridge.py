@@ -162,11 +162,11 @@ def render():
     if history.get("state") in ("requesting", "receiving"):
       st.progress(
         received / max(available, 1),
-        text=f"Đồng bộ lịch sử MT5: {received}/{available or '?'} nến H1",
+        text=f"Đồng bộ lịch sử MT5: {received}/{available or '?'} nến M15",
       )
     elif history_data.get("bars"):
       st.caption(
-        f"Dữ liệu MT5: **{history_data.get('bars')} nến H1** · "
+        f"Dữ liệu MT5: **{history_data.get('bars')} nến M15** · "
         f"{str(history_data.get('start'))[:10]} → {str(history_data.get('end'))[:16]} · "
         f"{history_data.get('broker') or '?'}"
       )
@@ -190,7 +190,7 @@ def render():
     key="mt5_chart_range",
     on_change=preference_callback("mt5_chart_range", "mt5.chart_range"),
   )
-  max_bars = {"48 giờ": 48, "7 ngày": 168, "14 ngày": 336}[range_label]
+  max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
   _render_live_chart(max_bars)
 
   st.subheader("Thống kê lệnh Bridge")

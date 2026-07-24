@@ -24,11 +24,11 @@ def _temp_store(tmp_path, monkeypatch):
 
 
 def test_broker_time_is_normalized_with_dst():
-  winter = history_sync.parse_broker_time("2026.01.15 10:00")
-  summer = history_sync.parse_broker_time("2026.07.15 10:00")
-  assert winter == pd.Timestamp("2026-01-15 08:00:00")
-  assert summer == pd.Timestamp("2026-07-15 07:00:00")
-  assert _fmt_bar(summer) == "2026.07.15 10:00"
+  winter = history_sync.parse_broker_time("2026.01.15 10:15")
+  summer = history_sync.parse_broker_time("2026.07.15 10:45")
+  assert winter == pd.Timestamp("2026-01-15 08:15:00")
+  assert summer == pd.Timestamp("2026-07-15 07:45:00")
+  assert _fmt_bar(summer) == "2026.07.15 10:45"
 
 
 def test_merge_history_deduplicates_and_overwrites(tmp_path, monkeypatch):
@@ -37,7 +37,9 @@ def test_merge_history_deduplicates_and_overwrites(tmp_path, monkeypatch):
   frame = history_sync.merge_history_bars([_bar("2026.07.15 10:00", 1.2)])
   assert len(frame) == 1
   assert frame.iloc[0]["Close"] == 1.2
-  assert read_json(history_sync.MT5_META_PATH)["source"] == "mt5_ea"
+  meta = read_json(history_sync.MT5_META_PATH)
+  assert meta["source"] == "mt5_ea"
+  assert meta["timeframe"] == "M15"
 
 
 def test_chunk_protocol_resumes_until_done(tmp_path, monkeypatch):
@@ -45,6 +47,9 @@ def test_chunk_protocol_resumes_until_done(tmp_path, monkeypatch):
   bridge = tmp_path / "bridge"
   status = history_sync.start_history_sync(bridge, chunk_size=2)
   request = read_json(history_sync.history_request_path(bridge))
+  assert request["action"] == "export_m15_history"
+  assert request["period"] == "M15"
+  assert request["from_time"] == "2025.01.01 00:00"
   atomic_write_json(history_chunk_path(bridge), {
     "request_id": request["request_id"],
     "symbol": "EURUSD",
@@ -53,7 +58,7 @@ def test_chunk_protocol_resumes_until_done(tmp_path, monkeypatch):
     "next_offset": 2,
     "available_bars": 3,
     "done": False,
-    "bars": [_bar("2026.07.15 10:00"), _bar("2026.07.15 11:00")],
+    "bars": [_bar("2026.07.15 10:00"), _bar("2026.07.15 10:15")],
   })
   status = history_sync.process_history_sync(bridge, chunk_size=2)
   assert status["state"] == "receiving"
@@ -68,7 +73,7 @@ def test_chunk_protocol_resumes_until_done(tmp_path, monkeypatch):
     "next_offset": 3,
     "available_bars": 3,
     "done": True,
-    "bars": [_bar("2026.07.15 12:00")],
+    "bars": [_bar("2026.07.15 10:30")],
   })
   status = history_sync.process_history_sync(bridge, chunk_size=2)
   assert status["state"] == "completed"

@@ -7,9 +7,8 @@ from feature_engine import FeatureMatrix
 from kb_profiles import DEFAULT_PROFILE_ID, LATEST_SNAPSHOT, load_kb, resolve_kb_path
 from knowledge_base import KnowledgeBase
 from meta_learner import mine_strategy_learning
+from config import TARGET_TRADES_PER_WEEK
 from strategy_miner import mine_strategy, MinedStrategy
-
-TARGET_TRADES_PER_WEEK = 2.0
 
 _active_profile_id: str | None = None
 _active_snapshot: int | str | None = None

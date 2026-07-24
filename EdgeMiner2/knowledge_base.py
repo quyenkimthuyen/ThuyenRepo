@@ -163,7 +163,7 @@ class KnowledgeBase:
       "partial_at_r": strat.partial_at_r,
       "trail_activate_r": strat.trail_activate_r,
       "trail_distance_r": strat.trail_distance_r,
-      "max_trades_per_week": strat.max_trades_per_week,
+      "max_trades_per_day": strat.max_trades_per_day,
     }
 
   def dict_to_strategy(self, g: dict):
@@ -184,7 +184,7 @@ class KnowledgeBase:
       partial_at_r=g.get("partial_at_r", 1.5),
       trail_activate_r=g.get("trail_activate_r", 1.8),
       trail_distance_r=g.get("trail_distance_r", 0.6),
-      max_trades_per_week=g.get("max_trades_per_week", 2),
+      max_trades_per_day=g.get("max_trades_per_day", g.get("max_trades_per_week", 2)),
       name=name,
     )
 

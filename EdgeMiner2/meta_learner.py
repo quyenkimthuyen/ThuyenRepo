@@ -10,6 +10,7 @@ from typing import Optional
 
 import numpy as np
 
+from config import TARGET_TRADES_PER_WEEK
 from knowledge_base import KnowledgeBase, rule_key
 from evolution import evolve_population, apply_kb_rule_weights, mutate_genome
 from ml_scorer import MLScorer, ML_FEATURES
@@ -92,7 +93,10 @@ def _fit_ml_with_experience(
   return ml
 
 
-def _evaluate_genome(fm, strat: MinedStrategy, train_start, train_end, weeks, target_tpw=2.0) -> tuple[float, dict]:
+def _evaluate_genome(
+  fm, strat: MinedStrategy, train_start, train_end, weeks,
+  target_tpw=TARGET_TRADES_PER_WEEK,
+) -> tuple[float, dict]:
   span = train_end - train_start
   split = train_start + int(span * 0.65)
   sig = generate_signals_mined(fm, strat, train_start, train_end)
@@ -107,7 +111,8 @@ def _evaluate_genome(fm, strat: MinedStrategy, train_start, train_end, weeks, ta
 
 
 def mine_strategy_learning(
-  fm, train_start, train_end, kb: KnowledgeBase, target_tpw: float = 2.0,
+  fm, train_start, train_end, kb: KnowledgeBase,
+  target_tpw: float = TARGET_TRADES_PER_WEEK,
   as_of=None, *, update_kb: bool = True,
 ) -> Optional[MinedStrategy]:
   """Run evolution reproducibly for a given KB snapshot and train window."""
@@ -132,7 +137,8 @@ def mine_strategy_learning(
 
 
 def _mine_strategy_learning_impl(
-  fm, train_start, train_end, kb: KnowledgeBase, target_tpw: float = 2.0,
+  fm, train_start, train_end, kb: KnowledgeBase,
+  target_tpw: float = TARGET_TRADES_PER_WEEK,
   as_of=None, *, update_kb: bool = True,
 ) -> Optional[MinedStrategy]:
   """

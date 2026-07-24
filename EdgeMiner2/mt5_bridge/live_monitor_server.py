@@ -20,9 +20,9 @@ def _plotly_js_path() -> Path:
 
 def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str:
   paper_mode = mode == "paper"
-  chart_title = "EURUSD H1 · Paper Trade" if paper_mode else "EURUSD H1 · XM MT5 live"
+  chart_title = "EURUSD M15 · Paper Trade" if paper_mode else "EURUSD M15 · XM MT5 live"
   labels = (
-    ("PAPER ENGINE", "LAST PRICE", "WEEK TRADES", "SLOTS LEFT", "SESSION")
+    ("PAPER ENGINE", "LAST PRICE", "DAY TRADES", "SLOTS LEFT", "SESSION")
     if paper_mode else
     ("EA CONNECTION", "BID / ASK", "SPREAD", "OPEN POSITIONS", "ALGO TRADING")
   )
@@ -144,7 +144,7 @@ async function refresh() {{
       const last=rows[rows.length-1];
       setText("conn",online?"READY":"WAITING",online?"online":"offline");
       setText("price",Number(last.close).toFixed(5));
-      setText("spread",(state.week_trades_taken ?? "—")+"/"+(state.strategy?.max_trades_per_week ?? "—"));
+      setText("spread",(state.day_trades_taken ?? "—")+"/"+(state.strategy?.max_trades_per_day ?? "—"));
       setText("positions",state.slots_remaining ?? "—");
       allowed=Boolean(state.in_session);
       setText("trading",allowed?"ACTIVE":"OFF",allowed?"online":"offline");
@@ -274,9 +274,9 @@ def start_live_monitor_server(
       if parsed.path in ("/", "/chart"):
         query = parse_qs(parsed.query)
         try:
-          max_bars = max(24, min(336, int((query.get("bars") or ["168"])[0])))
+          max_bars = max(96, min(1344, int((query.get("bars") or ["672"])[0])))
         except (TypeError, ValueError):
-          max_bars = 168
+          max_bars = 672
         self._send(
           200,
           _chart_html(max_bars).encode("utf-8"),

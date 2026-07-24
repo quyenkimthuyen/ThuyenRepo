@@ -141,7 +141,7 @@ def _worker(run_id: str, specs_data: list[dict], objective: str, config: dict, s
         rows.append({
           "key": spec.key(),
           "label": spec.label(),
-          "train_months": spec.train_months,
+          "train_weeks": spec.train_weeks,
           "use_kb": spec.use_kb,
           "kb_profile": spec.kb_profile,
           "kb_snapshot": spec.kb_snapshot,

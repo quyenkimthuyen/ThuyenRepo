@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Persistent Paper Monitor service; recompute on new H1 bar/config changes."""
+"""Persistent Paper Monitor service; recompute on new M15 bar/config changes."""
 from __future__ import annotations
 
 import atexit

@@ -24,7 +24,7 @@ from tqdm import tqdm
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from data_loader import get_train_window_indices, get_week_indices, load_eurusd_h1
+from data_loader import get_train_window_indices, get_week_indices, load_eurusd_m15
 from feature_engine import FeatureMatrix
 from kb_profiles import load_kb
 from mt5_bridge.models import DEFAULT_MODEL_ID, get_model_run_params, resolve_model
@@ -61,7 +61,7 @@ def main() -> int:
 
   model = resolve_model(args.model_id)
   params = get_model_run_params(model, args.model_id)
-  train_months = int(params["train_months"])
+  train_weeks = int(params["train_weeks"])
   kb_profile = params["kb_profile"]
   kb_snapshot = params["kb_snapshot"]
   spread = float(args.spread if args.spread is not None else params["spread_pips"])
@@ -73,7 +73,7 @@ def main() -> int:
   set_kb_profile(kb_profile, kb_snapshot)
   kb = load_kb(kb_profile, kb_snapshot)
 
-  df = load_eurusd_h1()
+  df = load_eurusd_m15()
   fm = FeatureMatrix(df)
   weeks = generate_weekly_schedule(df, oos_from, min(oos_to, df.index[-1]))
   weeks = [w for w in weeks if w[0] >= oos_from and w[0] <= oos_to]
@@ -85,10 +85,10 @@ def main() -> int:
 
   print(
     f"Export bridge replay | model={params.get('trade_model_id')} "
-    f"weeks={len(weeks)} KB={kb_profile}@{kb_snapshot} train={train_months}m"
+    f"weeks={len(weeks)} KB={kb_profile}@{kb_snapshot} train={train_weeks}w"
   )
   for week_start, week_end in tqdm(weeks, desc="Bridge replay"):
-    ts, te = get_train_window_indices(df, week_start, train_months)
+    ts, te = get_train_window_indices(df, week_start, train_weeks)
     if ts is None or (te - ts) < 200:
       weekly.append({"week_start": str(week_start.date()), "status": "skip_train"})
       continue
@@ -143,7 +143,7 @@ def main() -> int:
       "source": "ForgeBridge replay export",
       "model_id": params.get("trade_model_id"),
       "label": params.get("label"),
-      "train_months": train_months,
+      "train_weeks": train_weeks,
       "kb_profile": kb_profile,
       "kb_snapshot": kb_snapshot,
       "oos_from": str(oos_from.date()),

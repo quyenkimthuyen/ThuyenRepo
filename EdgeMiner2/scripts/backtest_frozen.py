@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from data_loader import load_eurusd_h1
+from data_loader import load_eurusd_m15
 from feature_engine import FeatureMatrix
 from strategy import compute_metrics
 from strategy_miner import MinedStrategy, Rule, generate_signals_mined, backtest_mined
@@ -38,7 +38,7 @@ def main():
     max_hold_bars=int(s.get("max_hold_bars", 36)),
     min_bars_between=int(s.get("min_bars_between", 4)),
     min_rules_match=int(s.get("min_rules_match", 2)),
-    max_trades_per_week=int(s.get("max_trades_per_week", 2)),
+    max_trades_per_day=int(s.get("max_trades_per_day", 2)),
     ml_prob_min=float(s.get("ml_prob_min", 0.3)),
     exit_mode=str(s.get("exit_mode", "hybrid")),
     trail_activate_r=float(s.get("trail_activate_r", 1.8)),
@@ -48,7 +48,7 @@ def main():
     name=str(s.get("name", "frozen")),
   )
 
-  df = load_eurusd_h1()
+  df = load_eurusd_m15()
   fm = FeatureMatrix(df)
 
   windows = [

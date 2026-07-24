@@ -51,14 +51,14 @@ def run_grid():
     raise RuntimeError(f"KB chưa đủ: {r}")
 
   specs, config = build_grid_from_settings()
-  objective = get_settings().get("grid_objective", "total_r")
+  objective = get_settings().get("grid_objective", "risk_adjusted")
   log(f"=== Grid Search: {len(specs)} combo · mục tiêu {objective} ===")
 
   def on_prog(done, total, label):
     log(f"Grid {done}/{total}: {label}")
 
   rows = run_grid(specs, objective=objective, on_progress=on_prog)
-  rid = save_grid_run(rows, config=config, objective=objective)
+  rid = save_grid_run(rows, config={**config, "timeframe": "M15"}, objective=objective)
   ok = [x for x in rows if not x.get("error")]
   log(f"Grid xong: {rid} · {len(ok)}/{len(rows)} combo OK")
   if ok:

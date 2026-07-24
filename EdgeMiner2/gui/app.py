@@ -166,7 +166,7 @@ def main():
   inject_theme()
 
   st.sidebar.markdown("### ForexForge")
-  st.sidebar.caption("EUR/USD H1 · tuần")
+  st.sidebar.caption("EUR/USD M15 · retrain tuần")
 
   from gui.glossary import render_glossary_expander
   render_glossary_expander(location="sidebar")

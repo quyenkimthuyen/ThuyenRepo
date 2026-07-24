@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Simulate ForgeBest3m_WF EA on canonical ForgeBridge/XM MT5 H1 data."""
+"""Simulate the legacy WF schedule on canonical ForgeBridge/XM MT5 M15 data."""
 from __future__ import annotations
 
 import json
@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 import sys
 sys.path.insert(0, str(ROOT))
 
-from data_loader import load_eurusd_h1
+from data_loader import load_eurusd_m15
 from feature_engine import FeatureMatrix
 from strategy import Trade, compute_metrics
 from strategy_miner import MinedStrategy, backtest_mined
@@ -25,7 +25,7 @@ def main():
   meta = sched["meta"]
   signals = sched["signals"]
 
-  df = load_eurusd_h1()
+  df = load_eurusd_m15()
   fm = FeatureMatrix(df)
   # Build signal array
   import numpy as np
@@ -126,7 +126,7 @@ def main():
     i += 1
 
   m = compute_metrics(trades)
-  print("=== ForgeBest3m_WF simulation (ForgeBridge/XM MT5 H1) ===")
+  print("=== ForgeBest3m_WF simulation (ForgeBridge/XM MT5 M15) ===")
   print(f"Period: {meta['oos_from']} -> {meta['oos_to']}")
   print(f"Spread={spread} slip={slip}")
   print(f"Signals in calendar: {len(signals)}")

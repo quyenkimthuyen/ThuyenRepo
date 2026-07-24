@@ -63,7 +63,7 @@ def get_model_run_params(model: dict | None = None, model_id: str | None = None)
   m = model or resolve_model(model_id)
   if not m:
     return {
-      "train_months": 3,
+      "train_weeks": 3,
       "use_learning": True,
       "use_kb": True,
       "kb_profile": "era_2023_2025",
@@ -73,7 +73,7 @@ def get_model_run_params(model: dict | None = None, model_id: str | None = None)
       "trade_model_id": None,
     }
   return {
-    "train_months": int(m.get("train_months", 3)),
+    "train_weeks": int(m.get("train_weeks", 3)),
     "use_learning": bool(m.get("use_kb", True)),
     "use_kb": bool(m.get("use_kb", True)),
     "kb_profile": m.get("kb_profile") or "default",

@@ -50,7 +50,7 @@ class FeatureMatrix:
     self.features["ema_stack_bull"] = ((e8 > e21) & (e21 > e50)).astype(float)
     self.features["ema_stack_bear"] = ((e8 < e21) & (e21 < e50)).astype(float)
 
-    # H4 trend mapped to H1
+    # H4 trend mapped to native M15 bars
     h4 = self.df.resample("4h").agg({"Close": "last"}).dropna()
     h4_e50 = ema(h4["Close"], 50).values
     h4_e200 = ema(h4["Close"], 200).values

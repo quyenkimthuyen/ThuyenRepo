@@ -33,7 +33,7 @@ def _trade_chart(window, trade_row) -> go.Figure | None:
     x=window.index,
     open=window["Open"], high=window["High"],
     low=window["Low"], close=window["Close"],
-    name="EUR/USD H1",
+    name="EUR/USD M15",
   )])
   entry_t = trade_row["entry"]
   fig.add_vline(x=entry_t, line_dash="dot", line_color="yellow", annotation_text="Entry")

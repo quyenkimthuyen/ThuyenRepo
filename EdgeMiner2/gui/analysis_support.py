@@ -40,7 +40,7 @@ def start_model_report_job(model: dict | None = None) -> str:
     "backtest",
     {
       "use_learning": bool(p.get("use_kb", True)),
-      "train_months": int(p.get("train_months") or 6),
+      "train_weeks": int(p.get("train_weeks") or 6),
       "spread_pips": float(p.get("spread_pips", 1.0)),
       "slippage_pips": float(p.get("slippage_pips", 0.3)),
       "kb_profile": p.get("kb_profile"),

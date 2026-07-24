@@ -26,7 +26,7 @@ def render():
   else:
     st.caption(
       f"Nguồn dữ liệu: **MT5 EA · {data_meta.get('broker') or '?'}** · "
-      f"{data_meta.get('bars', 0)} nến H1 · "
+      f"{data_meta.get('bars', 0)} nến M15 · "
       f"{str(data_meta.get('start') or '?')[:10]} → {str(data_meta.get('end') or '?')[:16]} · "
       f"gap: {data_meta.get('gap_count', 0)}"
     )

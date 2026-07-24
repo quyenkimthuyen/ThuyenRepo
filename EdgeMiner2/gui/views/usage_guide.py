@@ -13,9 +13,9 @@ def render():
   st.markdown("""
 ## 1. ForexForge là gì?
 
-**ForexForge** là hệ thống backtest & self-learning cho **EUR/USD khung H1**, gồm:
+**ForexForge** là hệ thống backtest & self-learning cho **EUR/USD khung M15**, gồm:
 
-- **Walk-forward backtest** — train 3 tháng, re-optimize hàng tuần, trade OOS (không look-ahead)
+- **Walk-forward backtest** — train 3/6/9 tuần, re-optimize hàng tuần, trade OOS (không look-ahead)
 - **Strategy miner** — khai phá rule từ features + lọc ML
 - **Self-learning (v4)** — tích lũy KB qua nhiều epoch (rules, genomes, ML samples)
 - **MT5 Bridge** — App (Best 3m) quyết định; EA `ForgeBridge` execute trên **MetaTrader 5** (không phải MT4)
@@ -45,9 +45,9 @@ python run_backtest.py --holdout-months 12  # Tách 12 tháng cuối forward tes
 
 | Bước | Mô tả |
 |------|--------|
-| 1 | ForgeBridge đồng bộ **EUR/USD H1** từ XM MT5 → cache `data/mt5_eurusd_h1.parquet` |
+| 1 | ForgeBridge đồng bộ **EUR/USD M15** từ XM MT5 → cache `data/mt5_eurusd_m15.parquet` |
 | 2 | Tính **37+ features** causal (`feature_engine.py`) |
-| 3 | Mỗi tuần: train 3 tháng trước → mine/optimize strategy |
+| 3 | Mỗi tuần: train 3/6/9 tuần trước → mine/optimize strategy |
 | 4 | Trade **tuần OOS** (signal close bar *i*, entry open bar *i+1*) |
 | 5 | Ghi metrics, trades → `results/backtest_report.json` |
 
@@ -56,7 +56,7 @@ python run_backtest.py --holdout-months 12  # Tách 12 tháng cuối forward tes
 ## 4. Walk-forward (trái tim của app)
 
 ```
-Timeline:  |---- train 3 tháng ----|-- OOS tuần --|
+Timeline:  |---- train 3/6/9 tuần ----|-- OOS tuần --|
            ^                        ^
            không trade              chỉ trade ở đây
 
@@ -70,29 +70,29 @@ Tuần tiếp theo: train window trượt về phía trước, lặp lại.
 
 ---
 
-## 5. Phân biệt Train 3 tháng · KB · Epoch
+## 5. Phân biệt Train theo tuần · KB · Epoch
 
 Ba khái niệm này ở **các tầng khác nhau** — dễ nhầm vì đều liên quan “học”, nhưng mục đích và thời gian khác nhau.
 
 ### Tóm tắt
 
-| | **Train 3 tháng** | **KB (Knowledge Base)** | **Epoch** |
+| | **Train 3/6/9 tuần** | **KB (Knowledge Base)** | **Epoch** |
 |---|---|---|---|
 | **Là gì** | Cửa sổ data để **mine strategy mỗi tuần** | **Bộ nhớ kinh nghiệm** tích lũy | **Một vòng học full** trên cả giai đoạn |
 | **Tần suất** | Mỗi **tuần** OOS (walk-forward) | Dùng liên tục, cập nhật khi học | Chạy **thủ công** 3–5–8 lần |
 | **Lưu gì** | Rules, RR, ML cho **tuần đó** | Genomes, rule stats, ML samples | Snapshot KB sau mỗi epoch |
 | **Mục đích** | Strategy **phù hợp thị trường gần** | Mine **thông minh hơn** nhờ quá khứ | **Cải thiện dần** KB qua nhiều vòng |
 
-### 1) Train 3 tháng — Walk-forward (lõi backtest)
+### 1) Train 3/6/9 tuần — Walk-forward (lõi backtest)
 
 **Không phải KB** — đây là cơ chế walk-forward:
 
 ```
-Tuần 1 OOS:  |---- train 3 tháng trước ----| → mine strategy → trade tuần 1
-Tuần 2 OOS:       |---- train 3 tháng ----| → mine lại    → trade tuần 2
+Tuần 1 OOS:  |---- train N tuần trước ----| → mine strategy → trade tuần 1
+Tuần 2 OOS:       |---- train N tuần ----| → mine lại    → trade tuần 2
 ```
 
-- Mỗi tuần: lấy **3 tháng H1** ngay trước tuần OOS
+- Mỗi tuần: lấy **3/6/9 tuần M15** ngay trước tuần OOS
 - **Mine** rules + ML → strategy cho **đúng tuần đó**
 - Trade OOS 1 tuần, cửa sổ train trượt về phía trước
 
@@ -110,10 +110,10 @@ File JSON lưu kinh nghiệm qua nhiều tuần/tháng:
 
 **Profile** (`era_2022_2023`): KB học trên **2022–2023**, dùng khi backtest **2024+**.
 
-Khi **KB ON**: vẫn train 3 tháng mỗi tuần, nhưng mine **ưu tiên** genomes/rules/ML từ KB (lọc `as_of` = đầu tuần).
+Khi **KB ON**: vẫn train theo tuần, nhưng mine **ưu tiên** genomes/rules/ML từ KB (lọc `as_of` = đầu tuần).
 
 ```
-Train 3 tháng = "học từ data gần"
+Train 3/6/9 tuần = "học từ data gần"
 KB            = "học từ kinh nghiệm nhiều tuần/tháng trước"
 ```
 
@@ -127,7 +127,7 @@ Epoch 2: WF lại       → KB đã có kinh nghiệm epoch 1 → tốt hơn
 Epoch 3: ...
 ```
 
-- Epoch **không thay** train 3 tháng — train 3 tháng vẫn chạy **bên trong** mỗi tuần
+- Epoch **không thay** train theo tuần — cửa sổ 3/6/9 tuần vẫn chạy **bên trong** mỗi tuần
 - Epoch = **lặp lại** cả giai đoạn để KB cải thiện
 - Sau mỗi epoch: lưu **snapshot** (`ep001`, `ep002`, …) — chọn khi backtest/paper
 
@@ -151,7 +151,7 @@ Mỗi tuần OOS: TRAIN 3 THÁNG → mine (+ KB) → trade 1 tuần
 | Tinh chỉnh | Epoch snapshot 2 vs 5 | Chọn bản KB OOS tốt nhất |
 
 **Nhớ nhanh:**
-- **Train 3 tháng** — luôn có, mỗi tuần, strategy ngắn hạn
+- **Train 3/6/9 tuần** — luôn có, mỗi tuần, strategy ngắn hạn
 - **KB** — bộ nhớ dài hạn; bật/tắt + chọn profile giai đoạn
 - **Epoch** — học nhiều vòng để KB tốt hơn; snapshot = chọn phiên bản KB
 
@@ -171,7 +171,7 @@ Mỗi tuần OOS: TRAIN 3 THÁNG → mine (+ KB) → trade 1 tuần
 
 ### Remine hàng tuần tự động vs cập nhật Trade Model
 
-**Trade Model** = snapshot cấu hình đã lưu (`train_months`, KB profile/epoch, OOS, KPI từ Grid).  
+**Trade Model** = snapshot cấu hình đã lưu (`train_weeks`, KB profile/epoch, OOS, KPI từ Grid).
 App **không** tự đổi model trong danh sách mỗi tuần.
 
 | Việc | Tự động? | Điều kiện |
@@ -193,7 +193,7 @@ App **không** tự đổi model trong danh sách mỗi tuần.
 1. Mở **MT5 Bridge** → chọn Trade Model (Best 3m) → **Start service**
 2. Service chạy **process riêng** (không phụ thuộc tab GUI) — đổi tab / refresh page **không** dừng; bấm **Stop** mới tắt
 3. Trên MT5: compile/attach EA `ForgeBridge`, `InpMode = Live` (thư mục `MQL5/Files/bridge`)
-4. Mỗi H1 mới: EA ghi `bar.json` → App remine/decide → `decision.json` → EA BUY/SELL hoặc FLAT
+4. Mỗi M15 mới: EA ghi `bar.json` → App decide → `decision.json` → EA BUY/SELL hoặc FLAT
 5. Xem **Nhật ký giao tiếp** trên GUI (`comm_log.jsonl`: `bar_received`, `decision_sent`, `fill_received`)
 6. Xem **Thống kê lệnh Bridge** (thắng/thua, R, profit) — EA ghi `fill.json` open/close → App lưu `trades.json`
 
@@ -302,7 +302,7 @@ GUI: **KB & Giai đoạn** · **Backtest Lab** · **Paper Monitor** — đều c
 | Win rate | > 60% (1 năm gần nhất) |
 | RR | > 2 |
 | Profitable | Total R > 0 |
-| Tần suất | ~2 lệnh/tuần |
+| Tần suất | 7–10 lệnh/tuần, tối đa 2 lệnh/ngày broker |
 
 Checklist hiển thị ở **Tổng quan** và **Trade Models → Rủi ro**.
 
@@ -364,7 +364,7 @@ run_learning.py             # Self-learning
 strategy_miner.py           # Mine + backtest
 feature_engine.py           # Features
 knowledge_base.py           # KB
-data/mt5_eurusd_h1.parquet  # Cache H1 chuẩn từ ForgeBridge/XM MT5
+data/mt5_eurusd_m15.parquet # Cache M15 chuẩn từ ForgeBridge/XM MT5
 mt5_bridge/                 # Bridge App ↔ MT5 EA
 mt5/Experts/ForgeBridge.mq5 # EA execute (Live / Replay)
 mt5/bridge/                 # bar/decision/fill/comm_log/replay
@@ -381,8 +381,8 @@ learning/kb_profiles/       # KB từng giai đoạn
 
 ## 14. Hạn chế đã biết
 
-- Một pair / một timeframe (EUR/USD H1)
-- Paper Monitor dùng cùng dữ liệu nến H1 từ broker với Grid và MT5 Bridge
+- Một pair / một timeframe (EUR/USD M15)
+- Paper Monitor dùng cùng dữ liệu nến M15 từ broker với Grid và MT5 Bridge
 - MT5 Bridge cần EA + service App chạy đồng thời; Wine/SSL login broker vẫn có thể fail trên Linux Docker
 - Intrabar SL/TP — thứ tự chạm có thể khác live
 - RoR là ước lượng, không phải Monte Carlo đầy đủ
@@ -419,8 +419,8 @@ A: Không — chỉ **MT5** (`ForgeBridge.mq5`).
 **Q: Xem log giao tiếp App ↔ EA ở đâu?**  
 A: GUI **MT5 Bridge** → Nhật ký giao tiếp, hoặc file `mt5/bridge/comm_log.jsonl`.
 
-**Q: Khác nhau Train 3 tháng, KB và Epoch?**  
-A: **Train 3 tháng** = mine strategy mỗi tuần WF (luôn chạy). **KB** = bộ nhớ dài hạn (rules/genomes/ML). **Epoch** = một vòng học full giai đoạn để cải thiện KB. Xem mục **5** trong Usage Guide.
+**Q: Khác nhau Train theo tuần, KB và Epoch?**
+A: **Train 3/6/9 tuần** = mine strategy mỗi tuần WF (luôn chạy). **KB** = bộ nhớ dài hạn (rules/genomes/ML). **Epoch** = một vòng học full giai đoạn để cải thiện KB. Xem mục **5** trong Usage Guide.
 
 ---
 
@@ -435,12 +435,12 @@ Data → Features → Miner (+ML) → Walk-forward → Metrics
 *ForexForge v4 — Walk-forward strategy mining that learns from every trade.*
   """)
 
-  with st.expander("Sơ đồ Train 3 tháng · KB · Epoch (mermaid)"):
+  with st.expander("Sơ đồ Train theo tuần · KB · Epoch (mermaid)"):
     st.code("""
 graph TD
   E[Epoch: học offline full giai đoạn] --> KB[KB Profile]
   KB --> WF[Mỗi tuần OOS]
-  WF --> T[Train 3 tháng]
+  WF --> T[Train 3/6/9 tuần]
   T --> M[Mine strategy]
   KB -.->|KB ON| M
   M --> TR[Trade 1 tuần]
@@ -464,8 +464,8 @@ graph TD
   with st.expander("Sơ đồ walk-forward (mermaid)"):
     st.code("""
 graph LR
-  A[XM MT5 H1] --> B[Features]
-  B --> C[Train 3 tháng]
+  A[XM MT5 M15] --> B[Features]
+  B --> C[Train 3/6/9 tuần]
   C --> D[Mine Strategy]
   D --> E[Trade OOS tuần]
   E --> F[Metrics / KB]

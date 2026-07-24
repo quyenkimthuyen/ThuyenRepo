@@ -55,7 +55,7 @@ def _render_manage(models, active):
     from gui.app_settings import kb_profile_label
     rows.append({
       "Tên": format_model_label(m),
-      "Train": f"{m.get('train_months')}T",
+      "Train": f"{m.get('train_weeks')} tuần",
       "Giai đoạn học": kb_profile_label(m.get("kb_profile")),
       "Vòng": m.get("kb_snapshot") or "latest",
       "Total R": m.get("total_r"),

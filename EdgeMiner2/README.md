@@ -1,6 +1,9 @@
-# ForexForge — EUR/USD H1 Self-Learning Trading System
+# ForexForge — EUR/USD M15 Self-Learning Trading System
 
-Hệ thống backtest walk-forward + self-learning cho **EUR/USD khung H1**, dùng thống nhất dữ liệu broker từ ForgeBridge/XM MT5.
+Hệ thống backtest walk-forward + self-learning cho **EUR/USD khung M15**, dùng thống nhất dữ liệu broker từ ForgeBridge/XM MT5.
+
+> `ForgeBest3m_Frozen.mq5` và `ForgeBest3m_WF.mq5` là EA H1 legacy, không tương thích
+> với model M15 và không được dùng cho live. Live/Paper chỉ dùng `ForgeBridge.mq5`.
 
 ## Chạy app
 
@@ -90,23 +93,23 @@ python run_backtest.py --kb-profile era_2022_2023 --kb-epoch 2 \
 
 ---
 
-## Phân biệt Train 3 tháng · KB · Epoch
+## Phân biệt Train 3 tuần · KB · Epoch
 
-| | **Train 3 tháng** | **KB** | **Epoch** |
+| | **Train 3 tuần** | **KB** | **Epoch** |
 |---|---|---|---|
 | Là gì | Mine strategy **mỗi tuần** WF | Bộ nhớ kinh nghiệm dài hạn | Một **vòng học full** giai đoạn |
 | Tần suất | Mỗi tuần OOS | Dùng khi KB ON; cập nhật khi học | 3–5–8 lần (thủ công) |
 | Mục đích | Strategy theo data **gần** | Mine **thông minh hơn** từ quá khứ | **Cải thiện** KB qua nhiều vòng |
 
 ```
-Train 3 tháng (mỗi tuần):  |-- 3 tháng --| mine → trade tuần OOS
+Train 3 tuần (mỗi tuần):   |-- 3 tuần --| mine → trade tuần OOS
 KB:                        genomes, rules, ML — profile theo era (era_2022_2023)
 Epoch:                     chạy full WF trên 2022–2023 → cập nhật KB → snapshot ep001, ep002...
 ```
 
-**Quan hệ:** Epoch cập nhật KB → KB hỗ trợ mine trong mỗi tuần → mỗi tuần vẫn train 3 tháng.
+**Quan hệ:** Epoch cập nhật KB → KB hỗ trợ mine trong mỗi tuần → mỗi tuần train lại trên 3/6/9 tuần gần nhất.
 
-- **Train 3 tháng** — luôn có, strategy ngắn hạn  
+- **Train 3/6/9 tuần** — cửa sổ strategy ngắn hạn
 - **KB** — bật/tắt, chọn profile + epoch snapshot  
 - **Epoch** — học offline để KB tốt hơn  
 
@@ -169,7 +172,7 @@ run_learning.py              # Self-learning
 kb_profiles.py               # Quản lý KB theo giai đoạn
 strategy_miner.py            # Mine + backtest
 knowledge_base.py            # Knowledge base
-data/mt5_eurusd_h1.parquet   # Cache H1 chuẩn từ ForgeBridge/XM MT5
+data/mt5_eurusd_m15.parquet  # Cache M15 chuẩn từ ForgeBridge/XM MT5
 learning/kb_profiles/        # KB từng era
 results/reports/             # Kho báo cáo so sánh
 ```
@@ -182,7 +185,7 @@ results/reports/             # Kho báo cáo so sánh
 |--------|--------|
 | Win rate (1Y) | > 60% |
 | RR | > 2 |
-| Tần suất | ~2 lệnh/tuần |
+| Tần suất | mục tiêu 7–10 lệnh/tuần, tối đa 2 lệnh/ngày broker |
 | Profitable | Total R > 0 |
 
 Mặc định chi phí: spread **1.0 pip**, slippage **0.3 pip**.

@@ -36,7 +36,7 @@ def _parse_mt5_time(value) -> pd.Timestamp | None:
 
 
 def load_ea_chart_data(max_bars: int = 336) -> tuple[pd.DataFrame, dict]:
-  """Load EA H1 history and replace the latest candle with its live snapshot."""
+  """Load EA M15 history and replace the latest candle with its live snapshot."""
   history = read_json(bars_path()) or {}
   connection = read_json(connection_path()) or {}
   rows = list(history.get("bars") or []) if isinstance(history, dict) else []
@@ -166,7 +166,7 @@ def build_ea_chart(
   connection: dict,
   trades: list[dict],
   *,
-  title: str = "EURUSD H1 · XM MT5 live",
+  title: str = "EURUSD M15 · XM MT5 live",
 ) -> go.Figure | None:
   if frame.empty:
     return None
