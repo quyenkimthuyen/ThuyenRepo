@@ -24,7 +24,14 @@ HELP = {
   "holdout": "Giữ **vài tháng cuối** chỉ để test — không dùng khi tối ưu walk-forward chính.",
   "trade_profile": "Một **cấu hình giao dịch** gồm: cửa sổ học, bộ nhớ, giai đoạn test, phí.",
   "walk_forward": "Mỗi tuần: học trên data gần → trade tuần tiếp theo → lặp lại (tránh nhìn trước tương lai).",
-  "paper": "Theo dõi tín hiệu **không dùng tiền thật** — so với backtest trước khi live.",
+  "paper": (
+    "**Paper Trade** — mô phỏng lệnh trên nến MT5, không gửi EA. "
+    "Xem desk thống kê tuần trước khi bật Bridge live."
+  ),
+  "mt5_bridge": (
+    "**MT5 Bridge** — App quyết định → EA `ForgeBridge` mở/đóng lệnh trên tài khoản MT5. "
+    "Khác Paper: có fill thật trong `trades.json`."
+  ),
   "grid_search": "Thử nhiều combo tham số tự động để tìm setting tốt hơn.",
 }
 
@@ -193,6 +200,9 @@ def render_glossary_expander(*, location: str = "sidebar"):
     ("Bộ nhớ chung", "Profile mặc định, không gắn giai đoạn cụ thể (trước: default)."),
     ("Đơn vị R", "Lợi nhuận theo rủi ro mỗi lệnh (1R = ±1 lần risk)."),
     ("Walk-forward", "Học từng tuần → trade tuần sau → lặp (tránh nhìn trước)."),
+    ("Paper Trade", "Mô phỏng lệnh trên nến MT5 — không gửi EA; desk thống kê tuần."),
+    ("MT5 Bridge", "App quyết định + EA execute lệnh thật/demo trên MT5."),
+    ("SIGNAL", "Paper: có tín hiệu chưa khớp. Bridge: phải gửi BUY/SELL lúc bar đóng."),
   ]
   container = st.sidebar if location == "sidebar" else st
   with container.expander("📖 Thuật ngữ nhanh", expanded=False):

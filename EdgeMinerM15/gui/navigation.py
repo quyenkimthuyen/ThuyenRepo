@@ -27,12 +27,12 @@ NAV_ITEMS: tuple[NavItem, ...] = (
   ),
   NavItem(
     "paper", "Giám sát paper", "paper_monitor",
-    "Tín hiệu tuần · sau khi có Trade Model",
+    "Mô phỏng lệnh tuần · thống kê desk · không gửi EA",
     ":material/monitoring:",
   ),
   NavItem(
     "mt5_bridge", "MT5 Bridge", "mt5_bridge",
-    "App quyết định · EA execute · log giao tiếp",
+    "Lệnh thật/demo · EA execute · fill journal",
     ":material/hub:",
   ),
   NavItem(

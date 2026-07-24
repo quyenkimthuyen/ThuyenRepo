@@ -150,6 +150,21 @@ def get_monitor_state(
     if utc_to_broker_time(trade.entry_time).date() == broker_last_bar.date()
   ]
 
+  wins = [t for t in trade_rows if float(t.get("r") or 0) > 0]
+  losses = [t for t in trade_rows if float(t.get("r") or 0) < 0]
+  be = [t for t in trade_rows if float(t.get("r") or 0) == 0]
+  longs = [t for t in trade_rows if t.get("dir") == "LONG"]
+  shorts = [t for t in trade_rows if t.get("dir") == "SHORT"]
+  by_reason: dict[str, int] = {}
+  for t in trade_rows:
+    reason = str(t.get("reason") or "other")
+    by_reason[reason] = by_reason.get(reason, 0) + 1
+  avg_r = (
+    round(sum(float(t.get("r") or 0) for t in trade_rows) / len(trade_rows), 3)
+    if trade_rows else 0.0
+  )
+  expectancy_r = round(avg_r, 3) if trade_rows else 0.0
+
   orders = []
   for t in trade_rows:
     orders.append({
@@ -217,4 +232,28 @@ def get_monitor_state(
     "recent_trades": trade_rows,
     "orders": orders,
     "open_position": open_position,
+    # Desk stats — góc nhìn trader
+    "desk": {
+      "n_closed": len(trade_rows),
+      "n_open": 1 if open_position else 0,
+      "n_signal": sum(1 for s in signal_bars if s.get("status") == "SIGNAL"),
+      "n_wins": len(wins),
+      "n_losses": len(losses),
+      "n_be": len(be),
+      "n_long": len(longs),
+      "n_short": len(shorts),
+      "avg_r": avg_r,
+      "expectancy_r": expectancy_r,
+      "avg_win_r": round(float(week_m.get("avg_win_r") or 0), 3),
+      "avg_loss_r": round(float(week_m.get("avg_loss_r") or 0), 3),
+      "max_drawdown_r": round(float(week_m.get("max_drawdown_r") or 0), 3),
+      "profit_factor": (
+        None if week_m.get("profit_factor") == float("inf")
+        else round(float(week_m.get("profit_factor") or 0), 3)
+      ),
+      "max_win_streak": int(week_m.get("max_win_streak") or 0),
+      "max_loss_streak": int(week_m.get("max_loss_streak") or 0),
+      "by_reason": by_reason,
+      "total_pips": round(float(week_m.get("total_pips") or 0), 1),
+    },
   }

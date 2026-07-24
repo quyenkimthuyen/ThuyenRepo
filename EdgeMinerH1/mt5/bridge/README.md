@@ -2,6 +2,17 @@
 
 > **MT5** (MetaTrader 5), không phải MT4.
 
+## Paper Trade vs Bridge
+
+| | **Giám sát paper** | **MT5 Bridge** (trang này) |
+|---|---|---|
+| Lệnh | Mô phỏng trên nến | EA mở/đóng trên tài khoản |
+| File | `results/paper_monitor_state.json` | `decision.json` + `trades.json` |
+| Thống kê | Desk tuần (WR, R, DD, nhật ký) | Fill thật từ EA |
+| `SIGNAL` | Tín hiệu mô phỏng chưa khớp | Phải gửi `BUY`/`SELL` lúc bar đóng |
+
+Cùng Trade Model + cùng cache H1. Paper **không** thay thế Bridge.
+
 ## GUI
 
 Trong app: sidebar **MT5 Bridge**

@@ -163,11 +163,27 @@ Mỗi tuần OOS: TRAIN 3 THÁNG → mine (+ KB) → trade 1 tuần
 |-------|----------|
 | **Tổng quan** | Tiến độ, KPI, Refresh data |
 | **Học & tối ưu** | ① Cài đặt → ② Huấn luyện KB → ③ Grid Search → ④ Trade Models (Quản lý · Rủi ro · Nhật ký · Chiến lược) |
-| **Giám sát paper** | Tín hiệu & lệnh tuần trên cùng dữ liệu broker MT5 |
-| **MT5 Bridge** | App quyết định Best 3m · EA `ForgeBridge` execute · log giao tiếp |
+| **Giám sát paper** | **Mô phỏng** lệnh tuần trên nến MT5 — desk thống kê, **không** gửi EA |
+| **MT5 Bridge** | **Lệnh thật/demo**: App decide → EA `ForgeBridge` execute · fill journal |
 | **Hướng dẫn** | Tài liệu này |
 
 **Trade Model**: chọn trong **Học & tối ưu → Trade Models → Quản lý** — Paper, Bridge & phân tích dùng chung.
+
+### Paper Trade vs MT5 Bridge (hai chế độ)
+
+Cùng Trade Model + cùng nến broker — **khác cách vào lệnh**:
+
+| | **Paper Trade** | **MT5 Bridge** |
+|---|---|---|
+| **Là gì** | Remine + backtest lại **tuần hiện tại** mỗi nến mới | Quyết định **từng bar đóng** → EA mở/đóng |
+| **Tiền** | Không — chỉ mô phỏng | Có (demo/live) trên tài khoản MT5 |
+| **OUTPUT** | `paper_monitor_state.json` · desk WR/R/DD | `decision.json` + `trades.json` (fill) |
+| **`SIGNAL`** | Tín hiệu mô phỏng chưa khớp entry | Bridge phải gửi `BUY`/`SELL` lúc bar đóng |
+| **`FILLED` / CLOSED** | Kết quả backtest trên history tuần | Lệnh EA đã open/close |
+| **Khi lệch** | Paper có thể “vẽ lại” tín hiệu bar cũ sau khi remine | Không backfill — miss nếu service/EA tắt |
+| **Dùng khi** | Kiểm tra model trước live (≥3 tuần) | Chạy tiền thật/demo song song hoặc sau paper |
+
+**Quy tắc trader:** Paper `SIGNAL` trên bar vừa đóng + Bridge đang chạy → Bridge phải ra cùng hướng. Paper `FILLED` trên bar đã qua ≠ MT5 đã vào lệnh.
 
 ### Remine hàng tuần tự động vs cập nhật Trade Model
 
@@ -411,7 +427,10 @@ A: KB OFF baseline → học KB era → OOS với profile → Report Compare →
 A: **Có remine strategy mỗi tuần** khi Paper (chu kỳ) hoặc MT5 Bridge service đang chạy. **Không** tự chạy lại Grid / tạo Trade Model mới — phải làm tay khi muốn đổi model.
 
 **Q: MT5 Bridge khác Paper Monitor thế nào?**  
-A: Paper và Bridge dùng chung nến từ **MT5 broker**. Paper mô phỏng lệnh; Bridge gửi quyết định cho EA mở lệnh thật/demo.
+A: Cùng nến MT5 + cùng Trade Model. **Paper** mô phỏng tuần (desk thống kê, không gửi EA). **Bridge** gửi `BUY`/`SELL` cho EA mở lệnh thật/demo; thống kê từ fill trong `trades.json`. Xem bảng so sánh mục **6**.
+
+**Q: Paper có `SIGNAL` thì MT5 có vào lệnh không?**  
+A: Chỉ khi Bridge service + EA đang chạy **đúng lúc bar tín hiệu đóng**. Paper có thể hiện `SIGNAL`/`FILLED` khi remine lại tuần — Bridge **không** backfill bar đã qua.
 
 **Q: Có hỗ trợ MT4 không?**  
 A: Không — chỉ **MT5** (`ForgeBridge.mq5`).

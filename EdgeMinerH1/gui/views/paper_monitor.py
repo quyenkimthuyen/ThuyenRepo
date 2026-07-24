@@ -511,6 +511,76 @@ def _background_live_panel():
     _render_monitor_body(state, include_chart=False)
 
 
+def _desk_from_state(state: dict) -> dict:
+  """Desk stats — ưu tiên state.desk, fallback tính từ recent_trades."""
+  desk = state.get("desk")
+  if isinstance(desk, dict) and desk.get("n_closed") is not None:
+    return desk
+  trades = list(state.get("recent_trades") or [])
+  wins = [t for t in trades if float(t.get("r") or 0) > 0]
+  losses = [t for t in trades if float(t.get("r") or 0) < 0]
+  be = [t for t in trades if float(t.get("r") or 0) == 0]
+  rs = [float(t.get("r") or 0) for t in trades]
+  by_reason: dict[str, int] = {}
+  for t in trades:
+    reason = str(t.get("reason") or "other")
+    by_reason[reason] = by_reason.get(reason, 0) + 1
+  avg_r = round(sum(rs) / len(rs), 3) if rs else 0.0
+  peak = eq = max_dd = 0.0
+  for r in rs:
+    eq += r
+    peak = max(peak, eq)
+    max_dd = min(max_dd, eq - peak)
+  return {
+    "n_closed": len(trades),
+    "n_open": 1 if state.get("open_position") else 0,
+    "n_signal": sum(
+      1 for s in (state.get("signals_this_week") or [])
+      if s.get("status") == "SIGNAL"
+    ),
+    "n_wins": len(wins),
+    "n_losses": len(losses),
+    "n_be": len(be),
+    "n_long": sum(1 for t in trades if t.get("dir") == "LONG"),
+    "n_short": sum(1 for t in trades if t.get("dir") == "SHORT"),
+    "avg_r": avg_r,
+    "expectancy_r": avg_r,
+    "avg_win_r": round(sum(float(t["r"]) for t in wins) / len(wins), 3) if wins else 0.0,
+    "avg_loss_r": round(abs(sum(float(t["r"]) for t in losses) / len(losses)), 3) if losses else 0.0,
+    "max_drawdown_r": round(abs(max_dd), 3),
+    "profit_factor": None,
+    "max_win_streak": 0,
+    "max_loss_streak": 0,
+    "by_reason": by_reason,
+    "total_pips": round(sum(float(t.get("pnl_pips") or 0) for t in trades), 1),
+  }
+
+
+def _trade_journal_df(orders: list[dict]) -> pd.DataFrame:
+  rows = []
+  for i, o in enumerate(orders, start=1):
+    status = o.get("status", "CLOSED")
+    direction = o.get("dir") or o.get("direction") or "—"
+    r_val = o.get("r")
+    rows.append({
+      "#": i,
+      "Trạng thái": status,
+      "Hướng": direction,
+      "Tín hiệu": str(o.get("signal_time") or "—")[:16],
+      "Entry": str(o.get("entry") or o.get("entry_time") or "—")[:16],
+      "Giá": o.get("entry_px"),
+      "SL": o.get("sl"),
+      "TP": o.get("tp"),
+      "Exit": str(o.get("exit") or "—")[:16] if status == "CLOSED" else "—",
+      "Exit giá": o.get("exit_px") if status == "CLOSED" else None,
+      "R": None if r_val is None else round(float(r_val), 2),
+      "Pips": o.get("pnl_pips"),
+      "Lý do": o.get("reason") or ("chờ entry" if status == "SIGNAL" else "—"),
+      "Risk pips": o.get("risk_pips"),
+    })
+  return pd.DataFrame(rows)
+
+
 def _render_monitor_body(state: dict, *, include_chart: bool = True):
   if state.get("pending"):
     st.caption("Chưa có snapshot paper — đợi chu kỳ nền hoặc **Refresh ngay**.")
@@ -519,82 +589,137 @@ def _render_monitor_body(state: dict, *, include_chart: bool = True):
     st.error(state["error"])
     return
 
-  c1, c2, c3, c4, c5 = st.columns(5)
-  c1.metric("Tuần", state["week_start"])
-  c2.metric("Lệnh tuần", f"{state['week_trades_taken']}/{state['strategy']['max_trades_per_week']}")
-  c3.metric("Slots còn", state["slots_remaining"])
-  c4.metric("Session", "ACTIVE" if state["in_session"] else "OFF")
-  c5.metric("Ước tính", f"{state.get('week_return_pct', 0):+.2f}%")
+  st.info(
+    "**Paper Trade** = mô phỏng trên nến MT5 (cùng data với Bridge) — "
+    "**không** gửi lệnh sang EA. Muốn lệnh thật/demo → trang **MT5 Bridge**."
+  )
+
+  desk = _desk_from_state(state)
+  strategy = state.get("strategy") or {}
+
+  # --- Desk KPI (trader) ---
+  k1, k2, k3, k4, k5, k6 = st.columns(6)
+  k1.metric("Lệnh đóng", desk.get("n_closed", 0))
+  k2.metric(
+    "Thắng / Thua",
+    f"{desk.get('n_wins', 0)}/{desk.get('n_losses', 0)}",
+    delta=f"BE {desk.get('n_be', 0)}" if desk.get("n_be") else None,
+  )
+  k3.metric("Win rate", f"{state.get('week_wr', 0)}%")
+  total_r = state.get("week_total_r", 0)
+  k4.metric("Tổng R", f"{total_r:+.2f}R")
+  k5.metric("Avg R", f"{float(desk.get('avg_r') or 0):+.2f}R")
+  k6.metric("Max DD", f"{float(desk.get('max_drawdown_r') or 0):.2f}R")
+
+  s1, s2, s3, s4, s5 = st.columns(5)
+  s1.metric(
+    "Tuần này",
+    f"{state.get('week_trades_taken', 0)}/{strategy.get('max_trades_per_week') or strategy.get('max_trades_per_day') or '?'}",
+  )
+  s2.metric("Slots còn", state.get("slots_remaining", 0))
+  s3.metric("Session", "ACTIVE" if state.get("in_session") else "OFF")
+  s4.metric("SIGNAL chờ", desk.get("n_signal", 0))
+  s5.metric(
+    "Ước tính %",
+    f"{state.get('week_return_pct', 0):+.2f}%",
+    help=f"≈ Tổng R × risk {state.get('risk_pct', 1.0)}%/lệnh",
+  )
 
   ep = state.get("kb_snapshot", "latest")
-  updated = state.get("updated_at", "")
-  cap = (
-    f"Bar cuối: {state['last_bar']} | WR tuần: {state['week_wr']}% | "
-    f"R: {state['week_total_r']} · Risk: {state.get('risk_pct', 1.0)}%/lệnh · "
-    f"KB: {state.get('kb_profile', '-')} · epoch **{ep}**"
-  )
-  if updated:
-    cap += f" · Cập nhật: `{updated}`"
-  st.caption(cap)
-  strategy = state.get("strategy") or {}
-  st.markdown(
-    f"**Chiến lược tuần hiện tại:** `{strategy.get('name') or 'đang chờ mine'}`"
-  )
   st.caption(
-    f"Áp dụng từ tuần `{state.get('week_start', '—')}` · "
-    f"Trade Model `{state.get('model_id') or '—'}` · "
-    "tự mine lại khi bước sang tuần mới."
+    f"Tuần **{state.get('week_start')}** → **{state.get('week_end')}** · "
+    f"Bar cuối `{state.get('last_bar')}` · "
+    f"Risk **{state.get('risk_pct', 1.0)}%**/lệnh · "
+    f"KB `{state.get('kb_profile', '-')}@{ep}` · "
+    f"Model `{state.get('model_id') or '—'}`"
+    + (f" · Cập nhật `{state.get('updated_at')}`" if state.get("updated_at") else "")
   )
+  st.markdown(
+    f"**Strategy tuần này:** `{strategy.get('name') or 'đang chờ mine'}` · "
+    f"RR 1:{strategy.get('rr', '—')} · hold ≤{strategy.get('max_hold_bars', '—')} bars · "
+    f"exit `{strategy.get('exit_mode', '—')}`"
+  )
+
+  # Breakdown trader-friendly
+  b1, b2, b3 = st.columns(3)
+  with b1:
+    st.markdown("**Hướng**")
+    st.write(
+      f"LONG **{desk.get('n_long', 0)}** · SHORT **{desk.get('n_short', 0)}**"
+    )
+  with b2:
+    st.markdown("**Expectancy / PF**")
+    pf = desk.get("profit_factor")
+    st.write(
+      f"E[R] **{float(desk.get('expectancy_r') or 0):+.2f}** · "
+      f"PF **{pf if pf is not None else '—'}** · "
+      f"Pips **{desk.get('total_pips', 0):+.1f}**"
+    )
+  with b3:
+    st.markdown("**Thoát lệnh**")
+    reasons = desk.get("by_reason") or {}
+    if reasons:
+      st.write(" · ".join(f"{k} **{v}**" for k, v in sorted(reasons.items())))
+    else:
+      st.caption("Chưa có lệnh đóng.")
 
   if state.get("open_position"):
     op = state["open_position"]
-    st.info(
-      f"🟡 **Lệnh đang mở:** {op['dir']} @ **{op['entry_px']}** · "
-      f"SL **{op['sl']}** · TP **{op['tp']}** · "
+    st.warning(
+      f"Lệnh **OPEN:** {op.get('dir')} @ **{op.get('entry_px')}** · "
+      f"SL **{op.get('sl')}** · TP **{op.get('tp')}** · "
       f"Giữ {op.get('bars_held', 0)}/{op.get('max_hold_bars', '?')} bars"
     )
 
   if include_chart:
     _render_chart_panel(state)
 
-  st.subheader("Chi tiết lệnh")
+  st.subheader("Nhật ký lệnh tuần này")
+  st.caption(
+    "`CLOSED` = đã khớp & thoát · `OPEN` = đang giữ · "
+    "`SIGNAL` = có tín hiệu, chưa vào (chờ nến entry / hết slot) — "
+    "**không phải** lệnh MT5."
+  )
   orders = _orders_for_display(state)
   if orders:
-    for i, order in enumerate(orders):
-      _order_card(order, i)
+    journal = _trade_journal_df(orders)
+    st.dataframe(
+      journal,
+      hide_index=True,
+      use_container_width=True,
+      column_config={
+        "R": st.column_config.NumberColumn(format="%+.2f"),
+        "Pips": st.column_config.NumberColumn(format="%+.1f"),
+        "Giá": st.column_config.NumberColumn(format="%.5f"),
+        "SL": st.column_config.NumberColumn(format="%.5f"),
+        "TP": st.column_config.NumberColumn(format="%.5f"),
+        "Exit giá": st.column_config.NumberColumn(format="%.5f"),
+      },
+    )
+    with st.expander("Chi tiết từng lệnh", expanded=any(
+      o.get("status") in ("OPEN", "SIGNAL") for o in orders
+    )):
+      for i, order in enumerate(orders):
+        _order_card(order, i)
   else:
-    st.caption("Chưa có lệnh tuần này.")
+    st.caption("Chưa có lệnh / tín hiệu tuần này.")
 
-  st.subheader("Bảng lệnh & tín hiệu")
-  col_a, col_b = st.columns(2)
-  with col_a:
-    st.markdown("**Lệnh đã khớp**")
-    if state.get("recent_trades"):
-      df = pd.DataFrame(state["recent_trades"])
-      show_cols = [c for c in [
-        "entry", "exit", "dir", "entry_px", "sl", "tp", "exit_px", "r", "reason", "pnl_pips",
-      ] if c in df.columns]
-      st.dataframe(df[show_cols], hide_index=True, use_container_width=True)
-    else:
-      st.caption("Chưa có lệnh.")
-  with col_b:
-    st.markdown("**Tín hiệu tuần này**")
-    if state.get("signals_this_week"):
-      sig_df = pd.DataFrame(state["signals_this_week"])
-      show_cols = [c for c in [
-        "status", "signal_time", "entry_time", "direction", "entry_px", "sl", "tp", "risk_pips", "rr",
-      ] if c in sig_df.columns]
-      st.dataframe(sig_df[show_cols], hide_index=True, use_container_width=True)
-    else:
-      st.caption("Chưa có tín hiệu.")
+  with st.expander("Strategy JSON (tuần hiện tại)"):
+    st.json(strategy)
 
-  with st.expander("Strategy đang dùng"):
-    st.json(state["strategy"])
+  with st.expander("Paper vs MT5 Bridge — nhớ nhanh"):
+    st.markdown(
+      """
+| | **Paper** (trang này) | **MT5 Bridge** |
+|---|---|---|
+| Lệnh | Mô phỏng trên history/live bars | EA mở/đóng trên tài khoản MT5 |
+| Nguồn giá | Cùng `mt5_eurusd_h1` từ ForgeBridge | Cùng + `bar.json` từng nến |
+| `SIGNAL` | Tín hiệu mô phỏng chưa khớp | Bridge phải gửi `BUY`/`SELL` lúc bar đóng |
+| Thống kê | Desk tuần ở trên | `mt5/bridge/trades.json` (fill thật) |
+| Khi nào tin | So với backtest trước khi live | Chỉ khi service + EA đang chạy |
+"""
+    )
 
-  st.warning(
-    "**Paper monitor** dùng cùng dữ liệu H1 từ ForgeBridge/XM MT5 với Grid và Bridge. "
-    "Tín hiệu được tính trên nến đóng, không phải từng tick."
-  )
 
 
 def _save_paper_runtime_settings() -> None:

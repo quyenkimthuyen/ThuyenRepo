@@ -545,8 +545,12 @@ def render():
   render_page_header(ALL_ITEMS["mt5_bridge"], show_workspace=False)
 
   st.caption(
-    "MT5 ForgeBridge · App quyết định theo Trade Model · EA execute. "
-    "Service chạy process riêng — refresh GUI không dừng."
+    "MT5 ForgeBridge · **lệnh thật/demo** theo Trade Model · EA execute. "
+    "Khác **Paper** (chỉ mô phỏng). Service process riêng — refresh GUI không dừng."
+  )
+  st.info(
+    "Paper có `SIGNAL`/`FILLED` ≠ lệnh đã vào MT5. "
+    "Chỉ tin fill trong **Thống kê lệnh Bridge** / `trades.json`."
   )
 
   # Trader desk (auto-refresh) — chart stays outside fragment

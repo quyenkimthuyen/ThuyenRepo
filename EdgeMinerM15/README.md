@@ -132,12 +132,14 @@ Chi tiết + sơ đồ: GUI → **Usage Guide** mục **5**.
 | Trang | Mục đích |
 |-------|----------|
 | Tổng quan | KPI, quy trình live |
-| Giám sát paper | Tín hiệu tuần trên dữ liệu MT5 · remine tự động nếu bật chu kỳ |
-| **MT5 Bridge** | App quyết định · EA execute · log + thống kê lệnh · remine mỗi tuần khi Start |
+| Giám sát paper | **Mô phỏng** lệnh tuần trên nến MT5 · desk thống kê · **không** gửi EA |
+| **MT5 Bridge** | **Lệnh thật/demo** · App decide · EA execute · fill journal · remine khi Start |
 | **Học & tối ưu** | Grid Search · Trade Models · so sánh · học KB (**thủ công** khi cập nhật model) |
 | **Cài đặt** | Train window · giai đoạn học · kiểm chứng |
 | **Phân tích** | Risk · Nhật ký lệnh · Chiến lược (theo Trade Model) |
-| Hướng dẫn | Tài liệu đầy đủ (gồm mục MT5 Bridge) |
+| Hướng dẫn | Tài liệu đầy đủ — mục **Paper vs MT5 Bridge** |
+
+**Paper ≠ Bridge:** cùng model/nến; Paper vẽ lại tuần mô phỏng; Bridge chỉ vào lệnh khi service+EA chạy lúc bar đóng. Chi tiết: GUI **Hướng dẫn** mục 6.
 
 ### Trang cũ (EdgeMiner1)
 

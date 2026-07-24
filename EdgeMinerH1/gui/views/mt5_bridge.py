@@ -88,9 +88,9 @@ def render():
   render_page_header(ALL_ITEMS["mt5_bridge"], show_workspace=False)
 
   st.info(
-    "**MT5** (không phải MT4): EA `ForgeBridge` đồng bộ lịch sử + gửi bar live → "
-    "App remine theo Trade Model → trả `decision.json` → EA mở lệnh. "
-    "Paper, Grid và Bridge dùng cùng dữ liệu broker."
+    "**MT5 Bridge** = lệnh thật/demo: EA `ForgeBridge` → App decide → EA execute. "
+    "**Khác Paper** (chỉ mô phỏng). Paper `SIGNAL`/`FILLED` ≠ đã vào MT5 — "
+    "chỉ tin fill trong **Thống kê lệnh** / `trades.json`."
   )
   st.caption(
     "Background mặc định = **process riêng** (`mt5_bridge_service.py`) — "
