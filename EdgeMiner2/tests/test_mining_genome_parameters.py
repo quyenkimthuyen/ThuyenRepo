@@ -155,8 +155,9 @@ def test_crossover_backfills_legacy_execution_genes():
 
 def test_search_space_defaults_are_immutable_and_backward_compatible():
   space = MiningSearchSpace()
-  assert space.max_hold_bars == (36,)
-  assert space.min_bars_between == (4,)
+  # Researched M15 defaults (combo_spacing_12__hold_96)
+  assert space.max_hold_bars == (96,)
+  assert space.min_bars_between == (12,)
   assert space.session_ranges == ((7, 20),)
   with pytest.raises(FrozenInstanceError):
-    space.max_hold_bars = (96,)
+    space.max_hold_bars = (36,)

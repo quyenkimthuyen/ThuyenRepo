@@ -68,8 +68,9 @@ class MinedStrategy:
   score_threshold: float = 2.0
   atr_mult_sl: float = 0.9
   rr_ratio: float = 2.5
-  max_hold_bars: int = 36
-  min_bars_between: int = 4
+  # Researched M15 defaults: longer hold + wider spacing ↑ total R & WR
+  max_hold_bars: int = 96
+  min_bars_between: int = 12
   min_rules_match: int = 2
   max_trades_per_day: int = MAX_TRADES_PER_DAY
   ml_prob_min: float = 0.40
@@ -81,17 +82,20 @@ class MinedStrategy:
   session_filter: bool = True
   session_start_hour: int = 7
   session_end_hour: int = 20
+  # Soft HTF bias: boost aligned / dampen counter-trend entries
+  htf_align_boost: float = 1.12
+  htf_counter_dampen: float = 0.88
   ml_scorer: MLScorer | None = None
   name: str = "mined_v3"
 
 
 @dataclass(frozen=True)
 class MiningSearchSpace:
-  """Immutable mining grid; defaults reproduce the previous miner."""
+  """Immutable mining grid; defaults match researched M15 combo (spacing_12 + hold_96)."""
   rr_ratios: tuple[float, ...] = (2.5, 3.0)
   atr_multipliers: tuple[float, ...] = (0.9, 1.05)
-  max_hold_bars: tuple[int, ...] = (36,)
-  min_bars_between: tuple[int, ...] = (4,)
+  max_hold_bars: tuple[int, ...] = (96,)
+  min_bars_between: tuple[int, ...] = (12,)
   session_ranges: tuple[tuple[int, int], ...] = ((7, 20),)
   session_filters: tuple[bool, ...] = (True,)
   score_thresholds: tuple[float, ...] = (0.6, 1.0, 1.6, 2.2)
@@ -170,11 +174,18 @@ CONTINUOUS_FEATURES = [
   "rsi", "adx", "bb_pos", "bb_width_pct", "atr_pct", "zscore_20",
   "price_vs_ema21", "price_vs_ema50", "ema_slope_8", "ema_slope_21",
   "macd_hist", "roc_5", "body_ratio", "lower_wick_ratio", "upper_wick_ratio",
+  "session_vwap_dist", "swing_strength",
 ]
-BINARY_LONG = ["sweep_low_fade", "squeeze_break_up", "pullback_long", "range_buy",
-               "engulf_bull", "macd_cross_up", "ema_stack_bull"]
-BINARY_SHORT = ["sweep_high_fade", "squeeze_break_dn", "pullback_short", "range_sell",
-                "engulf_bear", "macd_cross_dn", "ema_stack_bear"]
+BINARY_LONG = [
+  "sweep_low_fade", "squeeze_break_up", "pullback_long", "range_buy",
+  "engulf_bull", "macd_cross_up", "ema_stack_bull",
+  "rejection_bull", "displacement_bull", "structure_break_up", "confluence_long",
+]
+BINARY_SHORT = [
+  "sweep_high_fade", "squeeze_break_dn", "pullback_short", "range_sell",
+  "engulf_bear", "macd_cross_dn", "ema_stack_bear",
+  "rejection_bear", "displacement_bear", "structure_break_dn", "confluence_short",
+]
 SESSION_REGIME_BINARY = [
   "london_session", "ny_session", "overlap_session", "asia_session", "london_open",
   "regime_trending", "regime_ranging", "regime_high_vol", "regime_low_vol",
@@ -295,6 +306,32 @@ def _count_matching_rules(fm, rules, i):
   return score, count
 
 
+def _htf_bias(fm, i: int, direction: int, strat) -> float:
+  """Soft higher-timeframe alignment multiplier (price-action confluence)."""
+  try:
+    htf = float(fm.get("htf_trend")[i])
+  except (KeyError, AttributeError, TypeError, ValueError):
+    return 1.0
+  if np.isnan(htf) or htf == 0.0:
+    return 1.0
+  boost = float(getattr(strat, "htf_align_boost", 1.12) or 1.12)
+  damp = float(getattr(strat, "htf_counter_dampen", 0.88) or 0.88)
+  aligned = (direction == 1 and htf > 0) or (direction == -1 and htf < 0)
+  return boost if aligned else damp
+
+
+def _pa_confluence_bonus(fm, i: int, direction: int) -> float:
+  """Extra score when multiple PA setups fire together."""
+  key = "confluence_long" if direction == 1 else "confluence_short"
+  try:
+    v = float(fm.get(key)[i])
+  except (KeyError, AttributeError, TypeError, ValueError):
+    return 0.0
+  if np.isnan(v):
+    return 0.0
+  return 0.35 * v
+
+
 def generate_signals_mined(fm, strat, start_idx=0, end_idx=None):
   if end_idx is None:
     end_idx = fm.n
@@ -317,9 +354,9 @@ def generate_signals_mined(fm, strat, start_idx=0, end_idx=None):
     ml_l = float(ml_l_arr[i]) if ml_l_arr is not None else 0.5
     ml_s = float(ml_s_arr[i]) if ml_s_arr is not None else 0.5
 
-    # Kết hợp rule score + ML probability
-    combined_l = ls * (0.5 + ml_l)
-    combined_s = ss * (0.5 + ml_s)
+    # Rule score + ML + soft HTF / PA confluence
+    combined_l = ls * (0.5 + ml_l) * _htf_bias(fm, i, 1, strat) + _pa_confluence_bonus(fm, i, 1)
+    combined_s = ss * (0.5 + ml_s) * _htf_bias(fm, i, -1, strat) + _pa_confluence_bonus(fm, i, -1)
 
     if lc >= strat.min_rules_match and combined_l >= strat.score_threshold and combined_l > combined_s:
       if ml_l >= strat.ml_prob_min:
@@ -480,33 +517,59 @@ def score_strategy_metrics(
   m, weeks, target_tpw=TARGET_TRADES_PER_WEEK,
   drawdown_penalty: float = 0.0, loss_streak_penalty: float = 0.0,
 ):
+  """Fitness tuned for realistic M15 edge (~45–55% WR × RR≥2) and total R / DD."""
   if m["n_trades"] < 3:
     return -1e6
   tpw = m["n_trades"] / weeks
   wr, rr, tr, pf = m["win_rate"], m["avg_rr"], m["total_r"], m["profit_factor"]
-  freq_score = 55 - abs(tpw - target_tpw) * 30
-  if tpw < 7:
-    freq_score -= 50
-  if tpw > 10:
-    freq_score -= 40
+  dd = float(m.get("max_drawdown_r") or 0)
+  # Soft frequency band: prefer ~7–10 tpw but allow quality over volume
+  freq_score = 45 - abs(tpw - target_tpw) * 22
+  if tpw < 5:
+    freq_score -= 45
+  elif tpw < 7:
+    freq_score -= 20
+  if tpw > 12:
+    freq_score -= 35
+  elif tpw > 10:
+    freq_score -= 15
 
-  s = wr * 150 + min(rr, 4) * 55 + min(pf, 4) * 12 + tr * 8 + freq_score
-  if wr >= 0.55 and rr >= 1.9:
-    s += 80
-  if wr >= 0.58 and rr >= 2.0:
-    s += 130
-  if wr >= 0.60 and rr >= 2.0:
-    s += 80
+  expectancy = wr * rr - (1.0 - wr)  # approx R per trade at fixed RR
+  s = (
+    wr * 130
+    + min(rr, 4) * 50
+    + min(pf, 4) * 18
+    + tr * 12
+    + max(expectancy, -0.5) * 90
+    + freq_score
+  )
+  # Achievable quality bonuses (previous 55/58/60 rarely fired)
+  if wr >= 0.45 and rr >= 2.0:
+    s += 45
+  if wr >= 0.48 and rr >= 2.2:
+    s += 70
+  if wr >= 0.52 and rr >= 2.0:
+    s += 90
+  if wr >= 0.55 and rr >= 2.0:
+    s += 60
   if rr >= 2.0:
     s += 40
   if rr < 1.7:
     s -= (1.7 - rr) * 100
   if wr < 0.40:
-    s -= (0.40 - wr) * 180
+    s -= (0.40 - wr) * 200
   if tr <= 0:
-    s -= 40
-  s -= float(m.get("max_drawdown_r") or 0) * drawdown_penalty
-  s -= float(m.get("max_loss_streak") or 0) * loss_streak_penalty
+    s -= 50
+  # Built-in mild risk-adjusted reward (research: lower DD with spacing/hold)
+  if dd > 0 and tr > 0:
+    s += min(tr / dd, 10.0) * 12
+  elif tr > 0 and dd <= 0:
+    s += 40
+  # Mild default DD / streak friction even when penalties are 0
+  s -= dd * (drawdown_penalty if drawdown_penalty > 0 else 0.8)
+  s -= float(m.get("max_loss_streak") or 0) * (
+    loss_streak_penalty if loss_streak_penalty > 0 else 1.5
+  )
   return s
 
 

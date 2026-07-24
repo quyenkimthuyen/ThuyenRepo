@@ -76,10 +76,10 @@ class FeatureMatrix:
     self.high = df["High"].values.astype(np.float64)
     self.low = df["Low"].values.astype(np.float64)
     self.utc_hours = df.index.hour.values
-    broker_index = pd.DatetimeIndex([
+    self.broker_index = pd.DatetimeIndex([
       history_sync.utc_to_broker_time(timestamp) for timestamp in df.index
     ])
-    self.broker_hours = broker_index.hour.values
+    self.broker_hours = self.broker_index.hour.values
     self.hours = (
       self.broker_hours if self.profile.broker_sessions else self.utc_hours
     )
@@ -220,6 +220,82 @@ class FeatureMatrix:
     ranging = self.features["adx"] < 22
     self.features["range_buy"] = (ranging & (self.features["bb_pos"] < 0.1) & (self.features["rsi"] < 35)).astype(float)
     self.features["range_sell"] = (ranging & (self.features["bb_pos"] > 0.9) & (self.features["rsi"] > 65)).astype(float)
+
+    # --- Price-action: rejection / pin bars ---
+    self.features["rejection_bull"] = (
+      (self.features["lower_wick_ratio"] > 0.55)
+      & (self.features["body_ratio"] < 0.35)
+      & (self.features["bull_candle"] > 0)
+    ).astype(float)
+    self.features["rejection_bear"] = (
+      (self.features["upper_wick_ratio"] > 0.55)
+      & (self.features["body_ratio"] < 0.35)
+      & (self.features["bear_candle"] > 0)
+    ).astype(float)
+
+    # --- Displacement (impulse candles) ---
+    atr_safe = self.atr + 1e-12
+    self.features["displacement_bull"] = (
+      (self.features["bull_candle"] > 0)
+      & ((c - o) > 1.2 * atr_safe)
+      & (self.features["body_ratio"] > 0.6)
+    ).astype(float)
+    self.features["displacement_bear"] = (
+      (self.features["bear_candle"] > 0)
+      & ((o - c) > 1.2 * atr_safe)
+      & (self.features["body_ratio"] > 0.6)
+    ).astype(float)
+
+    # --- Structure breaks (swing high/low taken) ---
+    swing_n = max(8, p.sweep_period // 2)
+    swing_hi = pd.Series(h).rolling(swing_n, min_periods=max(4, swing_n // 2)).max().shift(1).values
+    swing_lo = pd.Series(l).rolling(swing_n, min_periods=max(4, swing_n // 2)).min().shift(1).values
+    self.features["structure_break_up"] = (
+      (c > swing_hi) & (self.features["bull_candle"] > 0) & ~np.isnan(swing_hi)
+    ).astype(float)
+    self.features["structure_break_dn"] = (
+      (c < swing_lo) & (self.features["bear_candle"] > 0) & ~np.isnan(swing_lo)
+    ).astype(float)
+    # Normalized distance through recent swing range (0–1-ish)
+    swing_span = swing_hi - swing_lo + 1e-12
+    self.features["swing_strength"] = np.clip((c - swing_lo) / swing_span, 0.0, 1.0)
+
+    # --- Session VWAP distance (in ATR) ---
+    broker_dates = pd.Series(
+      [ts.strftime("%Y-%m-%d") for ts in self.broker_index], index=self.df.index
+    )
+    typical = (h + l + c) / 3.0
+    session_vwap = (
+      pd.Series(typical, index=self.df.index)
+      .groupby(broker_dates)
+      .expanding()
+      .mean()
+      .reset_index(level=0, drop=True)
+      .values
+    )
+    self.features["session_vwap_dist"] = (c - session_vwap) / atr_safe
+
+    # --- Confluence composites (0–1) for signal boost / mining ---
+    long_votes = (
+      self.features["pullback_long"]
+      + self.features["sweep_low_fade"]
+      + self.features["rejection_bull"]
+      + self.features["engulf_bull"]
+      + self.features["structure_break_up"]
+      + self.features["ema_stack_bull"]
+      + (self.features["htf_trend"] > 0).astype(float)
+    )
+    short_votes = (
+      self.features["pullback_short"]
+      + self.features["sweep_high_fade"]
+      + self.features["rejection_bear"]
+      + self.features["engulf_bear"]
+      + self.features["structure_break_dn"]
+      + self.features["ema_stack_bear"]
+      + (self.features["htf_trend"] < 0).astype(float)
+    )
+    self.features["confluence_long"] = np.clip(long_votes / 4.0, 0.0, 1.0)
+    self.features["confluence_short"] = np.clip(short_votes / 4.0, 0.0, 1.0)
 
     self.feature_names = list(self.features.keys())
     self.warmup = p.warmup

@@ -29,11 +29,12 @@ RESULT_PATH = OUT_DIR / "latest.json"
 SELECT_FROM = pd.Timestamp("2026-01-05")
 HOLDOUT_FROM = pd.Timestamp("2026-05-01")
 
+# Defaults = researched combo_spacing_12__hold_96 (↑ WR & total R vs legacy 4/36)
 BASE_SPACE = {
   "rr_ratios": [2.5, 3.0],
   "atr_multipliers": [0.9, 1.05],
-  "max_hold_bars": [36],
-  "min_bars_between": [4],
+  "max_hold_bars": [96],
+  "min_bars_between": [12],
   "session_ranges": [[7, 20]],
   "session_filters": [True],
   "score_thresholds": [0.6, 1.0, 1.6, 2.2],
@@ -60,11 +61,12 @@ class Variant:
 
 
 PHASE_ONE = [
-  Variant("causal_baseline", {}),
+  Variant("causal_baseline", {}),  # researched spacing_12 + hold_96
+  Variant("legacy_hold36_space4", {"max_hold_bars": [36], "min_bars_between": [4]}),
   Variant("hold_64", {"max_hold_bars": [64]}),
-  Variant("hold_96", {"max_hold_bars": [96]}),
+  Variant("hold_128", {"max_hold_bars": [128]}),
   Variant("spacing_8", {"min_bars_between": [8]}),
-  Variant("spacing_12", {"min_bars_between": [12]}),
+  Variant("spacing_16", {"min_bars_between": [16]}),
   Variant("atr_1_35", {"atr_multipliers": [1.35]}),
   Variant("atr_1_65", {"atr_multipliers": [1.65]}),
   Variant("rr_2_2", {"rr_ratios": [2.2]}),

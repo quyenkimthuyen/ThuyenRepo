@@ -16,6 +16,12 @@ ML_FEATURES = [
   "squeeze_break_up", "squeeze_break_dn", "range_buy", "range_sell",
   "overlap_session", "asia_session", "london_open",
   "regime_trending", "regime_ranging", "regime_high_vol", "regime_low_vol",
+  # Price-action / confluence upgrade
+  "rejection_bull", "rejection_bear",
+  "displacement_bull", "displacement_bear",
+  "structure_break_up", "structure_break_dn",
+  "session_vwap_dist", "swing_strength",
+  "confluence_long", "confluence_short",
 ]
 
 
@@ -39,11 +45,30 @@ class MLScorer:
   def _build_X(self, fm: FeatureMatrix) -> np.ndarray:
     cols = []
     for name in self.feat_names:
-      v = fm.get(name)
+      try:
+        v = fm.get(name)
+      except (KeyError, AttributeError):
+        v = np.zeros(fm.n)
       if len(v) != fm.n:
         raise ValueError(f"Feature {name} length {len(v)} != fm.n {fm.n}")
       cols.append(np.nan_to_num(v, nan=0.0))
-    return np.column_stack(cols)
+    base = np.column_stack(cols)
+    # Lightweight PA interactions (still linear-model friendly)
+    idx = {name: i for i, name in enumerate(self.feat_names)}
+
+    def col(name: str) -> np.ndarray:
+      return base[:, idx[name]]
+
+    extras = [
+      col("htf_trend") * col("rsi"),
+      col("htf_trend") * col("ema_slope_21"),
+      col("confluence_long") * col("adx"),
+      col("confluence_short") * col("adx"),
+      col("session_vwap_dist") * col("bb_pos"),
+      col("rejection_bull") * col("sweep_low_fade"),
+      col("rejection_bear") * col("sweep_high_fade"),
+    ]
+    return np.column_stack([base, *extras])
 
   def get_X(self, fm: FeatureMatrix) -> np.ndarray:
     if self._X_cache is not None and self._fm_n != fm.n:
@@ -52,6 +77,19 @@ class MLScorer:
       self._X_cache = self._build_X(fm)
       self._fm_n = fm.n
     return self._X_cache
+
+  def _fit_side(self, Xs: np.ndarray, y: np.ndarray) -> LogisticRegression | None:
+    wins = int(y.sum())
+    losses = int(len(y) - wins)
+    if wins < 15 or losses < 15:
+      return None
+    # Slightly stronger L2 when sample-rich to curb overfit on PA interactions
+    c = 0.35 if (wins >= 40 and losses >= 40 and Xs.shape[0] >= 200) else 0.5
+    model = LogisticRegression(
+      max_iter=400, class_weight="balanced", C=c, solver="lbfgs",
+    )
+    model.fit(Xs, y)
+    return model
 
   def fit(
     self, fm: FeatureMatrix, start: int, end: int,
@@ -85,18 +123,8 @@ class MLScorer:
     self.scaler.fit(X)
     Xs = self.scaler.transform(X)
 
-    # Long model — cần đủ mẫu thắng/thua
-    if yl.sum() >= 15 and (len(yl) - yl.sum()) >= 15:
-      self.long_model = LogisticRegression(
-        max_iter=300, class_weight="balanced", C=0.5, solver="lbfgs",
-      )
-      self.long_model.fit(Xs, yl)
-
-    if ys.sum() >= 15 and (len(ys) - ys.sum()) >= 15:
-      self.short_model = LogisticRegression(
-        max_iter=300, class_weight="balanced", C=0.5, solver="lbfgs",
-      )
-      self.short_model.fit(Xs, ys)
+    self.long_model = self._fit_side(Xs, yl)
+    self.short_model = self._fit_side(Xs, ys)
 
     # Precompute probabilities for entire series
     X_all_s = self.scaler.transform(X_all)
