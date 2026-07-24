@@ -159,6 +159,12 @@ class BridgeEngine:
         return self._remember(bar_key, decision)
       self._strat_cache[cache_key] = strat
 
+    # Cached weekly strat keeps ML probs sized to the fm at mine-time.
+    # Live bars append mid-week → refresh probs before scanning signals.
+    ml = getattr(strat, "ml_scorer", None)
+    if ml is not None and hasattr(ml, "refresh_for_fm"):
+      ml.refresh_for_fm(fm)
+
     oos_s, oos_e = get_week_indices(df, week_start, week_end)
     if oos_s is None:
       decision = self._flat(
@@ -166,7 +172,9 @@ class BridgeEngine:
       )
       return self._remember(bar_key, decision)
 
-    signals = generate_signals_mined(fm, strat, oos_s, oos_e)
+    signals = generate_signals_mined(
+      fm, strat, oos_s, oos_e, include_last_bar=True,
+    )
     week_trades, open_position = backtest_mined(
       fm, strat, signals, oos_s, oos_e,
       spread_pips=spread, slippage_pips=slip, return_open=True,

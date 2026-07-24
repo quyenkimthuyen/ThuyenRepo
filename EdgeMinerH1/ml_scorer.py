@@ -99,6 +99,17 @@ class MLScorer:
       self.short_model.fit(Xs, ys)
 
     # Precompute probabilities for entire series
+    self._apply_probs(fm, X_all)
+
+    return self.long_model is not None or self.short_model is not None
+
+  def _apply_probs(self, fm: FeatureMatrix, X_all: np.ndarray | None = None) -> None:
+    """Recompute full-series probabilities from fitted models."""
+    if X_all is None:
+      X_all = self.get_X(fm)
+    if X_all.shape[0] != fm.n:
+      self._reset_cache()
+      X_all = self.get_X(fm)
     X_all_s = self.scaler.transform(X_all)
     self._prob_long = np.full(fm.n, 0.5)
     self._prob_short = np.full(fm.n, 0.5)
@@ -106,15 +117,40 @@ class MLScorer:
       self._prob_long = self.long_model.predict_proba(X_all_s)[:, 1]
     if self.short_model is not None:
       self._prob_short = self.short_model.predict_proba(X_all_s)[:, 1]
+    self._fm_n = fm.n
 
-    return self.long_model is not None or self.short_model is not None
+  def refresh_for_fm(self, fm: FeatureMatrix) -> None:
+    """Keep cached models, but rebuild probs when the series grows/shrinks.
+
+    Bridge caches the weekly strategy; live bars append mid-week so fm.n
+    grows while `_prob_*` stays at the old length → IndexError without this.
+    """
+    need = (
+      self._prob_long is None
+      or self._prob_short is None
+      or len(self._prob_long) != fm.n
+      or len(self._prob_short) != fm.n
+      or self._fm_n != fm.n
+    )
+    if not need:
+      return
+    if self.long_model is None and self.short_model is None:
+      self._prob_long = np.full(fm.n, 0.5)
+      self._prob_short = np.full(fm.n, 0.5)
+      self._fm_n = fm.n
+      return
+    # Drop stale feature cache so get_X rebuilds for the new length.
+    self._X_cache = None
+    self._apply_probs(fm)
 
   def prob_long(self, fm: FeatureMatrix, i: int) -> float:
-    if self._prob_long is not None:
+    self.refresh_for_fm(fm)
+    if self._prob_long is not None and 0 <= i < len(self._prob_long):
       return float(self._prob_long[i])
     return 0.5
 
   def prob_short(self, fm: FeatureMatrix, i: int) -> float:
-    if self._prob_short is not None:
+    self.refresh_for_fm(fm)
+    if self._prob_short is not None and 0 <= i < len(self._prob_short):
       return float(self._prob_short[i])
     return 0.5

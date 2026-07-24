@@ -31,14 +31,22 @@ def _project_signal_levels(
   fm, strat, bar_idx: int, direction: int,
   spread_pips: float, slippage_pips: float,
 ) -> dict | None:
-  """Tính entry / SL / TP dự kiến cho tín hiệu tại bar_idx."""
+  """Tính entry / SL / TP dự kiến cho tín hiệu tại bar_idx.
+
+  Live bridge: bar tín hiệu có thể là bar cuối (chưa có bar kế). Khi đó ước
+  lượng entry ≈ close bar tín hiệu; EA vẫn khớp ở open nến tiếp theo.
+  """
   entry_idx = bar_idx + 1
-  if entry_idx >= fm.n:
-    return None
   av = fm.atr[bar_idx]
   if pd.isna(av) or av <= 0:
     return None
-  entry_price = adjust_entry_price(fm.open[entry_idx], direction, spread_pips, slippage_pips)
+  if entry_idx >= fm.n:
+    raw_entry = float(fm.close[bar_idx])
+    entry_time = str(fm.index[bar_idx] + pd.Timedelta(hours=1))
+  else:
+    raw_entry = float(fm.open[entry_idx])
+    entry_time = str(fm.index[entry_idx])
+  entry_price = adjust_entry_price(raw_entry, direction, spread_pips, slippage_pips)
   sl_d = strat.atr_mult_sl * av
   if direction == 1:
     sl, tp = entry_price - sl_d, entry_price + sl_d * strat.rr_ratio
@@ -47,7 +55,7 @@ def _project_signal_levels(
   risk_pips = sl_d * 10000
   return {
     "signal_time": str(fm.index[bar_idx]),
-    "entry_time": str(fm.index[entry_idx]),
+    "entry_time": entry_time,
     "direction": "LONG" if direction == 1 else "SHORT",
     "entry_px": round(entry_price, 5),
     "sl": round(sl, 5),
