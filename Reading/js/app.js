@@ -44,6 +44,9 @@ const AUTO_READ_DEFAULT_VERSION = 1;
 const SHOW_VIETNAMESE_DEFAULT_VERSION = 1;
 const HISTORY_KEY = 'reading-aloud-history';
 const HISTORY_LIMIT = 100;
+const IMPORT_DIR_DB = 'reading-aloud-fs';
+const IMPORT_DIR_STORE = 'handles';
+const IMPORT_DIR_KEY = 'import-folder';
 
 /** Old lesson ids before level-based naming */
 const LEGACY_LESSON_IDS = {
@@ -1141,7 +1144,9 @@ function bindEvents() {
 
   els.btnImportSave.addEventListener('click', handleImportSave);
   els.importFile.addEventListener('change', handleImportFile);
-  els.btnCustomExport.addEventListener('click', exportCustomLessons);
+  els.btnCustomExport.addEventListener('click', () => {
+    void exportCustomLessons();
+  });
   els.backupImportFile.addEventListener('change', handleBackupImportFile);
   els.importFormat.addEventListener('change', updateImportFormatUi);
   els.btnDeleteCustom.addEventListener('click', deleteCurrentCustomLesson);
@@ -1287,26 +1292,150 @@ function customLessonBackupPayload() {
   };
 }
 
-function exportCustomLessons() {
+/**
+ * @returns {Promise<IDBDatabase>}
+ */
+function openImportDirDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(IMPORT_DIR_DB, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(IMPORT_DIR_STORE)) {
+        db.createObjectStore(IMPORT_DIR_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error('Không mở được IndexedDB.'));
+  });
+}
+
+/**
+ * @returns {Promise<FileSystemDirectoryHandle | null>}
+ */
+async function loadImportDirHandle() {
+  try {
+    const db = await openImportDirDb();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(IMPORT_DIR_STORE, 'readonly');
+      const store = tx.objectStore(IMPORT_DIR_STORE);
+      const request = store.get(IMPORT_DIR_KEY);
+      request.onsuccess = () => resolve(request.result ?? null);
+      request.onerror = () => reject(request.error ?? new Error('Không đọc được thư mục Import.'));
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @param {FileSystemDirectoryHandle} handle
+ */
+async function saveImportDirHandle(handle) {
+  const db = await openImportDirDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(IMPORT_DIR_STORE, 'readwrite');
+    const store = tx.objectStore(IMPORT_DIR_STORE);
+    store.put(handle, IMPORT_DIR_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error('Không lưu được thư mục Import.'));
+  });
+}
+
+/**
+ * @param {FileSystemDirectoryHandle} handle
+ * @returns {Promise<boolean>}
+ */
+async function ensureImportDirPermission(handle) {
+  const options = { mode: 'readwrite' };
+  if ((await handle.queryPermission(options)) === 'granted') return true;
+  if ((await handle.requestPermission(options)) === 'granted') return true;
+  return false;
+}
+
+/**
+ * @returns {Promise<FileSystemDirectoryHandle | null>}
+ */
+async function resolveImportDirectory() {
+  if (!('showDirectoryPicker' in window)) return null;
+
+  const stored = await loadImportDirHandle();
+  if (stored && (await ensureImportDirPermission(stored))) {
+    return stored;
+  }
+
+  showImportFeedback(
+    'Chọn thư mục Import trong project Reading (Reading/Import). Lần sau sẽ lưu thẳng vào đây.',
+  );
+
+  const handle = await window.showDirectoryPicker({
+    id: 'reading-import-folder',
+    mode: 'readwrite',
+    startIn: 'documents',
+  });
+
+  await saveImportDirHandle(handle);
+  return handle;
+}
+
+/**
+ * @param {FileSystemDirectoryHandle} dir
+ * @param {string} fileName
+ * @param {string} contents
+ */
+async function writeTextFileToDirectory(dir, fileName, contents) {
+  const fileHandle = await dir.getFileHandle(fileName, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(contents);
+  await writable.close();
+}
+
+/**
+ * @param {string} fileName
+ * @param {string} contents
+ */
+function downloadTextFile(fileName, contents) {
+  const blob = new Blob([contents], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function exportCustomLessons() {
   if (!customLessons.length) {
     showImportFeedback('Chưa có bài nào để xuất.', true);
     return;
   }
 
   const payload = customLessonBackupPayload();
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-    type: 'application/json;charset=utf-8',
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
+  const contents = JSON.stringify(payload, null, 2);
   const date = new Date().toISOString().slice(0, 10);
-  link.href = url;
-  link.download = `reading-my-lessons-${date}.json`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-  showImportFeedback(`Đã xuất ${customLessons.length} bài ra file JSON.`);
+  const fileName = `reading-my-lessons-${date}.json`;
+
+  try {
+    const dir = await resolveImportDirectory();
+    if (dir) {
+      await writeTextFileToDirectory(dir, fileName, contents);
+      showImportFeedback(
+        `Đã xuất ${customLessons.length} bài vào Import/${fileName}.`,
+      );
+      return;
+    }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      showImportFeedback('Đã hủy xuất bài.', true);
+      return;
+    }
+  }
+
+  downloadTextFile(fileName, contents);
+  showImportFeedback(
+    `Đã tải ${customLessons.length} bài (${fileName}). Hãy chuyển file vào thư mục Reading/Import.`,
+  );
 }
 
 /**
