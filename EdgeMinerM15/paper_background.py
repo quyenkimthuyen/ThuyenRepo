@@ -86,6 +86,11 @@ def _run_cycle(cfg: dict, *, force_refresh: bool = False) -> dict:
   state["updated_at"] = _now_iso()
   state["background"] = True
   _write_json(STATE_PATH, state)
+  try:
+    from paper_journal import sync_from_state
+    sync_from_state(state)
+  except Exception:
+    pass
   return state
 
 

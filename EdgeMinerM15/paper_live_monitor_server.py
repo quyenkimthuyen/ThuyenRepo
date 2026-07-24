@@ -38,7 +38,7 @@ def _broker_trade_times(trade: dict) -> dict:
   return out
 
 
-def _paper_snapshot() -> dict:
+def _paper_snapshot(*, max_bars: int = 672, date_from=None, date_to=None) -> dict:
   global _snapshot_key, _snapshot_cache
   state = load_saved_state() or {}
   cache_mtime = CACHE_PATH.stat().st_mtime if CACHE_PATH.exists() else None
@@ -48,7 +48,27 @@ def _paper_snapshot() -> dict:
   connection_mtime = (
     live_connection_path.stat().st_mtime if live_connection_path.exists() else None
   )
-  key = (state.get("updated_at"), cache_mtime, bars_mtime, connection_mtime)
+  try:
+    from paper_journal import load_meta, load_trades, filter_trades
+    journal_meta = load_meta()
+    journal_trades = filter_trades(
+      load_trades(), date_from=date_from, date_to=date_to,
+    )
+  except Exception:
+    journal_meta = {}
+    journal_trades = list(state.get("orders") or [])
+
+  key = (
+    state.get("updated_at"),
+    cache_mtime,
+    bars_mtime,
+    connection_mtime,
+    journal_meta.get("updated_at"),
+    journal_meta.get("monitor_from"),
+    max_bars,
+    str(date_from),
+    str(date_to),
+  )
   with _snapshot_lock:
     if key == _snapshot_key and _snapshot_cache is not None:
       return _snapshot_cache
@@ -58,7 +78,12 @@ def _paper_snapshot() -> dict:
     frame = pd.read_parquet(CACHE_PATH)
     frame.index = pd.to_datetime(frame.index, utc=True).tz_convert(None)
     chart_to = pd.Timestamp(state.get("chart_to") or state.get("last_bar") or frame.index[-1])
-    frame = frame.loc[:chart_to].tail(1344)
+    if date_to is not None:
+      chart_to = min(chart_to, pd.Timestamp(date_to) + pd.Timedelta(days=1))
+    frame = frame.loc[:chart_to]
+    if date_from is not None:
+      frame = frame.loc[pd.Timestamp(date_from):]
+    frame = frame.tail(max(96, int(max_bars)))
     for timestamp, row in frame.iterrows():
       rows.append({
         "time": _broker_clock(timestamp),
@@ -73,6 +98,9 @@ def _paper_snapshot() -> dict:
   live_connection = read_json(live_connection_path) or {}
   if not isinstance(live_history.get("bars"), list):
     live_history = {}
+  # When filtering a historical window, prefer parquet slice over live bars dump.
+  if date_from is not None or date_to is not None:
+    live_history = {}
   last = rows[-1] if rows else {}
   last_close = last.get("close")
   history = live_history or {
@@ -81,6 +109,11 @@ def _paper_snapshot() -> dict:
     "period": "M15",
     "bars": rows,
   }
+  if live_history.get("bars") and not (date_from or date_to):
+    history = {
+      **live_history,
+      "bars": list(live_history["bars"])[-max(96, int(max_bars)):],
+    }
   connection = live_connection or {
     "connected": bool(state and rows),
     "server_time": _broker_clock(state.get("last_bar")),
@@ -88,14 +121,21 @@ def _paper_snapshot() -> dict:
     "ask": last_close,
     "bar": last or None,
   }
+  # Prefer journal trades for period view; keep open SIGNAL from current state.
+  trades = [_broker_trade_times(row) for row in journal_trades]
+  for row in state.get("orders") or []:
+    if str(row.get("status") or "").upper() != "SIGNAL":
+      continue
+    trades.append(_broker_trade_times(row))
   payload = {
     "history": history,
     "connection": connection,
     "connection_mtime": connection_mtime or (
       STATE_PATH.stat().st_mtime if STATE_PATH.exists() else None
     ),
-    "trades": [_broker_trade_times(row) for row in (state.get("orders") or [])],
+    "trades": trades,
     "state": state,
+    "journal": journal_meta,
     "online": bool(
       state and history.get("bars") and connection.get("connected", True)
       and not state.get("error")
@@ -135,7 +175,18 @@ def start_paper_live_monitor_server(
         return
       if parsed.path == "/snapshot":
         try:
-          body = json.dumps(_paper_snapshot(), ensure_ascii=False).encode("utf-8")
+          query = parse_qs(parsed.query)
+          try:
+            max_bars = max(96, min(5000, int((query.get("bars") or ["672"])[0])))
+          except (TypeError, ValueError):
+            max_bars = 672
+          date_from = (query.get("from") or [None])[0] or None
+          date_to = (query.get("to") or [None])[0] or None
+          body = json.dumps(
+            _paper_snapshot(max_bars=max_bars, date_from=date_from, date_to=date_to),
+            ensure_ascii=False,
+            default=str,
+          ).encode("utf-8")
           self._send(200, body, "application/json; charset=utf-8")
         except Exception as exc:
           body = json.dumps({"error": str(exc)}).encode("utf-8")
@@ -144,7 +195,7 @@ def start_paper_live_monitor_server(
       if parsed.path in ("/", "/chart"):
         query = parse_qs(parsed.query)
         try:
-          max_bars = max(96, min(1344, int((query.get("bars") or ["672"])[0])))
+          max_bars = max(96, min(5000, int((query.get("bars") or ["672"])[0])))
         except (TypeError, ValueError):
           max_bars = 672
         try:
@@ -155,9 +206,27 @@ def start_paper_live_monitor_server(
           )
         except (TypeError, ValueError):
           poll_sec = 2.0
+        date_from = (query.get("from") or [None])[0] or None
+        date_to = (query.get("to") or [None])[0] or None
+        # Bake period into chart title query for client fetch via same params on snapshot.
+        # Client uses MAX_BARS only; extend HTML to pass from/to on snapshot URL.
+        html = _chart_html(max_bars, mode="paper", poll_ms=int(poll_sec * 1000))
+        if date_from or date_to:
+          # Inject period query into snapshot fetch
+          q = []
+          if date_from:
+            q.append(f"from={date_from}")
+          if date_to:
+            q.append(f"to={date_to}")
+          q.append(f"bars={max_bars}")
+          snap_q = "&".join(q)
+          html = html.replace(
+            'fetch("/snapshot"',
+            f'fetch("/snapshot?{snap_q}"',
+          )
         self._send(
           200,
-          _chart_html(max_bars, mode="paper", poll_ms=int(poll_sec * 1000)).encode("utf-8"),
+          html.encode("utf-8"),
           "text/html; charset=utf-8",
         )
         return
