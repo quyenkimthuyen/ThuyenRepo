@@ -35,7 +35,13 @@ from mt5_bridge.protocol import (
   write_manual_close_command,
   write_manual_market_command,
 )
-from mt5_bridge.trade_journal import clear_trades, compute_stats, filter_trades, load_trades
+from mt5_bridge.trade_journal import (
+  clear_trades,
+  compute_stats,
+  filter_trades,
+  load_trades,
+  trade_mode,
+)
 
 
 def _save_bridge_runtime_settings() -> None:
@@ -86,9 +92,14 @@ def _open_trade(trades: list[dict]) -> dict | None:
 
 
 def _period_stats(trades: list[dict], *, today: date) -> tuple[dict, dict]:
+  """Desk PnL = Auto only (Trade Model). Manual-edited fills stay out."""
   week_from = today - timedelta(days=today.weekday())
-  today_stats = compute_stats(filter_trades(trades, date_from=today, date_to=today))
-  week_stats = compute_stats(filter_trades(trades, date_from=week_from, date_to=today))
+  today_stats = compute_stats(
+    filter_trades(trades, date_from=today, date_to=today, mode="auto"),
+  )
+  week_stats = compute_stats(
+    filter_trades(trades, date_from=week_from, date_to=today, mode="auto"),
+  )
   return today_stats, week_stats
 
 
@@ -205,23 +216,32 @@ def _render_trader_desk() -> None:
       f"id `{decision.get('signal_id') or '—'}`"
     )
 
-  # --- Today / Week compact PnL ---
+  # --- Today / Week compact PnL (Auto / Trade Model only) ---
   p1, p2, p3, p4 = st.columns(4)
   p1.metric(
-    "Today R",
+    "Today R (auto)",
     f"{today_stats['total_r']:+.2f}" if today_stats["n_trades"] else "0.00",
   )
   p2.metric(
-    "Week R",
+    "Week R (auto)",
     f"{week_stats['total_r']:+.2f}" if week_stats["n_trades"] else "0.00",
   )
-  open_n = sum(1 for t in trades if str(t.get("status") or "").upper() == "OPEN")
-  p3.metric("Open", open_n)
+  open_n = sum(
+    1 for t in trades
+    if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "auto"
+  )
+  open_manual = sum(
+    1 for t in trades
+    if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "manual"
+  )
+  p3.metric("Open auto", open_n)
   wr = today_stats.get("win_rate_pct")
   p4.metric(
-    "Today WR",
+    "Today WR (auto)",
     f"{wr}%" if wr is not None else "—",
   )
+  if open_manual:
+    st.caption(f"Có **{open_manual}** lệnh mở thuộc mode sửa — không tính vào R auto / Trade Model.")
 
 
 @st.fragment(run_every=timedelta(seconds=5))
@@ -438,7 +458,10 @@ def _render_history_sync() -> None:
 
 def _render_stats_section() -> None:
   st.subheader("Thống kê lệnh Bridge")
-  st.caption("Từ `mt5/bridge/trades.json` — lọc theo giai đoạn (closed dùng exit_time)")
+  st.caption(
+    "Từ `mt5/bridge/trades.json` — tách **Auto** (chiến lược thuần) vs **Lệnh sửa** "
+    "(test market / sửa SL·TP tay / đóng tay). R luôn theo SL kế hoạch lúc mở."
+  )
 
   all_trades = load_trades()
   today = date.today()
@@ -515,28 +538,49 @@ def _render_stats_section() -> None:
     st.warning("Từ ngày > Đến ngày — đã đảo lại.")
     date_from, date_to = date_to, date_from
 
-  trades = filter_trades(all_trades, date_from=date_from, date_to=date_to)
-  stats = compute_stats(trades)
+  period_trades = filter_trades(all_trades, date_from=date_from, date_to=date_to)
+  n_auto = sum(1 for t in period_trades if trade_mode(t) == "auto")
+  n_manual = sum(1 for t in period_trades if trade_mode(t) == "manual")
   if date_from or date_to:
     st.caption(
       f"Lọc: **{date_from or '…'} → {date_to or '…'}** · "
-      f"{stats['n_filtered']} lệnh trong khoảng"
+      f"{len(period_trades)} lệnh (auto {n_auto} · sửa {n_manual})"
     )
 
-  s1, s2, s3, s4, s5, s6 = st.columns(6)
-  s1.metric("Đã đóng", stats["n_trades"])
-  s2.metric("Đang mở", stats["n_open"])
-  s3.metric("Thắng", stats["n_wins"])
-  s4.metric("Thua", stats["n_losses"])
-  s5.metric("WR %", stats["win_rate_pct"] if stats["win_rate_pct"] is not None else "—")
-  s6.metric("Total R", f"{stats['total_r']:+.2f}" if stats["n_trades"] else "—")
-  m2 = st.columns(3)
-  m2[0].metric("Avg R", stats["avg_r"] if stats["avg_r"] is not None else "—")
-  m2[1].metric("Max DD (R)", stats["max_drawdown_r"])
-  m2[2].metric(
-    "Profit ($)",
-    stats["total_profit"] if stats["total_profit"] is not None else "—",
-  )
+  def _stats_block(label: str, mode: str | None) -> None:
+    trades = filter_trades(all_trades, date_from=date_from, date_to=date_to, mode=mode)
+    stats = compute_stats(trades)
+    st.markdown(f"**{label}** · {stats['n_filtered']} lệnh")
+    s1, s2, s3, s4, s5, s6 = st.columns(6)
+    s1.metric("Đã đóng", stats["n_trades"])
+    s2.metric("Đang mở", stats["n_open"])
+    s3.metric("Thắng", stats["n_wins"])
+    s4.metric("Thua", stats["n_losses"])
+    s5.metric("WR %", stats["win_rate_pct"] if stats["win_rate_pct"] is not None else "—")
+    s6.metric("Total R", f"{stats['total_r']:+.2f}" if stats["n_trades"] else "—")
+    m2 = st.columns(3)
+    m2[0].metric("Avg R", stats["avg_r"] if stats["avg_r"] is not None else "—")
+    m2[1].metric("Max DD (R)", stats["max_drawdown_r"])
+    m2[2].metric(
+      "Profit ($)",
+      stats["total_profit"] if stats["total_profit"] is not None else "—",
+    )
+
+  tab_auto, tab_manual, tab_all = st.tabs([
+    f"Auto (review chiến lược) · {n_auto}",
+    f"Lệnh sửa · {n_manual}",
+    f"Tất cả · {len(period_trades)}",
+  ])
+  with tab_auto:
+    st.caption(
+      "Review Trade Model: **không** gồm lệnh đã sửa SL/TP, đóng tay, hay test market."
+    )
+    _stats_block("Auto", "auto")
+  with tab_manual:
+    st.caption("Test market / user sửa SL·TP / đóng tay trên MT5 — đồng bộ App nhưng tách khỏi review auto.")
+    _stats_block("Lệnh sửa", "manual")
+  with tab_all:
+    _stats_block("Tất cả", None)
 
   tc1, tc2 = st.columns([1, 4])
   if tc1.button("Xóa nhật ký lệnh"):
@@ -548,14 +592,30 @@ def _render_stats_section() -> None:
     on_change=preference_callback("bridge_show_open", "mt5.show_open"),
   )
 
+  mode_options = ["Auto", "Lệnh sửa", "Tất cả"]
+  restore_widget(
+    "bridge_stats_table_mode", "Tất cả",
+    preference_key="mt5.stats_table_mode",
+    options=mode_options,
+  )
+  table_mode = st.radio(
+    "Bảng lệnh theo mode",
+    mode_options,
+    horizontal=True,
+    key="bridge_stats_table_mode",
+    on_change=preference_callback("bridge_stats_table_mode", "mt5.stats_table_mode"),
+  )
+  mode_filter = {"Auto": "auto", "Lệnh sửa": "manual", "Tất cả": None}[table_mode]
+  trades = filter_trades(all_trades, date_from=date_from, date_to=date_to, mode=mode_filter)
   view = trades if show_open else [t for t in trades if t.get("status") == "CLOSED"]
   view = list(reversed(view))
   if not view:
-    st.info("Không có lệnh trong giai đoạn đã chọn.")
+    st.info("Không có lệnh trong giai đoạn / mode đã chọn.")
   else:
     table = []
     for t in view:
       table.append({
+        "mode": trade_mode(t),
         "status": t.get("status"),
         "result": t.get("result") or ("OPEN" if t.get("status") == "OPEN" else "—"),
         "dir": t.get("direction"),
@@ -564,10 +624,12 @@ def _render_stats_section() -> None:
         "entry": t.get("entry_px"),
         "exit": t.get("exit_px"),
         "sl": t.get("sl"),
+        "sl₀": t.get("sl_initial"),
         "tp": t.get("tp"),
         "R": t.get("r"),
         "profit": t.get("profit"),
         "reason": t.get("reason"),
+        "intervened": ",".join(t.get("interventions") or []) or "—",
         "ticket": t.get("ticket"),
         "signal_id": t.get("signal_id"),
         "strategy": t.get("strategy_name"),

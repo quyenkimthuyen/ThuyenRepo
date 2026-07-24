@@ -6,8 +6,8 @@
 //|   Replay — read replay_signals.csv for Strategy Tester compare   |
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
-#property copyright "EdgeMiner2 bridge"
-#property version   "1.03"
+#property copyright "EdgeMinerH1 bridge"
+#property version   "1.04"
 
 #include <Trade/Trade.mqh>
 
@@ -19,16 +19,16 @@ enum ENUM_BRIDGE_MODE
 
 input group "=== Bridge ==="
 input ENUM_BRIDGE_MODE InpMode = BRIDGE_LIVE;
-input string InpBridgeSubdir   = "bridge_h1";       // under MQL5/Files/
+input string InpBridgeSubdir   = "bridge_h1";          // under MQL5/Files/
 input int    InpDecisionWaitMs = 8000;              // Live: wait for decision
 input int    InpPollMs         = 500;
-input int    InpChartBars      = 336;               // H1 bars exported for App chart
+input int    InpChartBars      = 720;              // H1 bars exported for App chart
 input int    InpHeartbeatMs    = 2000;              // Live connection/tick snapshot
 input int    InpHistoryChunk   = 750;               // Bars per history sync response
 
 input group "=== Risk ==="
 input double InpRiskPct        = 1.0;
-input ulong  InpMagic          = 20260725;
+input ulong InpMagic        = 20260725;
 input int    InpSlipPoints     = 30;
 input int    InpMaxHoldBars    = 36;                // fallback if decision omits
 
@@ -45,6 +45,11 @@ double   g_open_sl = 0;
 double   g_open_tp = 0;
 double   g_open_lots = 0;
 double   g_risk = 0;
+double   g_sync_sl = 0;          // last SL known to App (sync baseline)
+double   g_sync_tp = 0;
+bool     g_user_intervened = false; // user edited SL/TP or manual test open
+bool     g_ea_modifying = false;    // next SL/TP change is from EA trail
+string   g_open_source = "strategy"; // strategy | manual_test
 int      g_exit_mode = 1;
 double   g_trail_act = 1.0;
 double   g_trail_dist = 0.5;
@@ -94,7 +99,7 @@ int OnInit()
    {
       if(AccountInfoInteger(ACCOUNT_MARGIN_MODE) != ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)
       {
-         Print("ForgeBridgeH1 requires a hedging account.");
+         Print("ForgeBridge M15 requires a hedging account.");
          return INIT_FAILED;
       }
       WriteBarsJson();
@@ -223,7 +228,7 @@ bool WriteBarJson(datetime t1)
 
    string json = "{";
    json += "\"symbol\":\"" + _Symbol + "\",";
-   json += "\"period\":\"H1\",";
+   json += "\"period\":\"M15\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"time\":\"" + bar_time + "\",";
@@ -271,7 +276,7 @@ bool WriteBarsJson()
 
    string prefix = "{\"symbol\":\"" + _Symbol + "\",";
    prefix += "\"updated_at\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\",";
-   prefix += "\"period\":\"H1\",\"bars\":[";
+   prefix += "\"period\":\"M15\",\"bars\":[";
    FileWriteString(h, prefix);
    for(int i = 0; i < copied; i++)
    {
@@ -343,7 +348,10 @@ bool ProcessHistoryRequest()
    int chunk_size = (int)MathMax(100, MathMin(2000,
       JsonGetDouble(request, "chunk_size", InpHistoryChunk)));
    int total = Bars(_Symbol, PERIOD_H1);
-   int available = MathMax(0, total - 1); // exclude forming H1 bar
+   string from_time_text = JsonGetString(request, "from_time");
+   datetime from_time = StringToTime(from_time_text == "" ? "2025.01.01 00:00" : from_time_text);
+   int oldest_shift = iBarShift(_Symbol, PERIOD_H1, from_time, false);
+   int available = MathMax(0, MathMin(total - 1, oldest_shift)); // exclude forming M15 bar
    int wanted = MathMin(chunk_size, MathMax(0, available - offset));
 
    MqlRates rates[];
@@ -364,7 +372,7 @@ bool ProcessHistoryRequest()
       return false;
 
    string prefix = "{\"request_id\":\"" + request_id + "\",";
-   prefix += "\"symbol\":\"" + _Symbol + "\",\"period\":\"H1\",";
+   prefix += "\"symbol\":\"" + _Symbol + "\",\"period\":\"M15\",";
    prefix += "\"server\":\"" + AccountInfoString(ACCOUNT_SERVER) + "\",";
    prefix += "\"account\":" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)) + ",";
    prefix += "\"server_utc_offset_seconds\":" + IntegerToString(server_offset) + ",";
@@ -419,7 +427,7 @@ bool WriteConnectionJson()
 
    string json = "{";
    json += "\"symbol\":\"" + _Symbol + "\",";
-   json += "\"period\":\"H1\",";
+   json += "\"period\":\"M15\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
    json += "\"bridge_subdir\":\"" + InpBridgeSubdir + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
@@ -524,7 +532,8 @@ bool CloseAllByMagic(const string reason)
          "close",
          g_open_signal_id != "" ? g_open_signal_id : ("manual_close_" + IntegerToString((int)ticket)),
          action, ok, ok ? reason : IntegerToString(trade.ResultRetcode()),
-         ticket, exit_px, sl, tp, lots, 0, reason
+         ticket, exit_px, sl, tp, lots, 0, reason,
+         true, "manual_test"
       );
       any = true;
    }
@@ -533,6 +542,11 @@ bool CloseAllByMagic(const string reason)
       g_open_ticket = 0;
       g_open_signal_id = "";
       g_open_action = "";
+      g_open_source = "strategy";
+      g_user_intervened = false;
+      g_ea_modifying = false;
+      g_sync_sl = 0;
+      g_sync_tp = 0;
       g_had_position = false;
    }
    return any;
@@ -633,9 +647,14 @@ void WriteFillJsonEx(
    const double tp,
    const double lots,
    const double profit,
-   const string reason
+   const string reason,
+   const bool manual = false,
+   const string source = ""
 )
 {
+   string src = source;
+   if(src == "")
+      src = (manual || g_user_intervened) ? (g_open_source != "" ? g_open_source : "manual") : "strategy";
    string json = "{";
    json += "\"event\":\"" + event + "\",";
    json += "\"signal_id\":\"" + signal_id + "\",";
@@ -644,7 +663,7 @@ void WriteFillJsonEx(
    json += "\"detail\":\"" + detail + "\",";
    json += "\"ticket\":" + IntegerToString((long)ticket) + ",";
    json += "\"symbol\":\"" + _Symbol + "\",";
-   json += "\"period\":\"H1\",";
+   json += "\"period\":\"M15\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"price\":" + DoubleToString(price, _Digits) + ",";
@@ -653,6 +672,8 @@ void WriteFillJsonEx(
    json += "\"lots\":" + DoubleToString(lots, 2) + ",";
    json += "\"profit\":" + DoubleToString(profit, 2) + ",";
    json += "\"reason\":\"" + reason + "\",";
+   json += "\"manual\":" + (manual ? "true" : "false") + ",";
+   json += "\"source\":\"" + src + "\",";
    json += "\"time\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\"";
    json += "}\n";
    int h = FileOpen(BridgePath("fill.json"), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
@@ -667,6 +688,80 @@ void WriteFillJson(const string signal_id, const string action, const bool ok, c
 }
 
 //+------------------------------------------------------------------+
+string DetectCloseReasonFromHistory()
+{
+   datetime from = TimeCurrent() - 7 * 24 * 3600;
+   if(!HistorySelect(from, TimeCurrent()))
+      return "closed";
+   for(int i = HistoryDealsTotal() - 1; i >= 0; i--)
+   {
+      ulong deal = HistoryDealGetTicket(i);
+      if(deal == 0) continue;
+      if((ulong)HistoryDealGetInteger(deal, DEAL_MAGIC) != InpMagic) continue;
+      if(HistoryDealGetString(deal, DEAL_SYMBOL) != _Symbol) continue;
+      long entry = HistoryDealGetInteger(deal, DEAL_ENTRY);
+      if(entry != DEAL_ENTRY_OUT && entry != DEAL_ENTRY_OUT_BY) continue;
+      long reason = HistoryDealGetInteger(deal, DEAL_REASON);
+      if(reason == DEAL_REASON_SL) return "sl";
+      if(reason == DEAL_REASON_TP) return "tp";
+      if(reason == DEAL_REASON_SO) return "stop_out";
+      if(reason == DEAL_REASON_CLIENT || reason == DEAL_REASON_MOBILE || reason == DEAL_REASON_WEB)
+         return "manual_close";
+      if(reason == DEAL_REASON_EXPERT) return "ea_close";
+      break;
+   }
+   return "closed";
+}
+
+//+------------------------------------------------------------------+
+bool PriceChanged(const double a, const double b)
+{
+   return MathAbs(a - b) > (_Point * 0.5);
+}
+
+//+------------------------------------------------------------------+
+void SyncPositionLevels(const ulong ticket)
+{
+   // Detect user SL/TP edits vs EA trail; push modify fill to App.
+   double cur_sl = PositionGetDouble(POSITION_SL);
+   double cur_tp = PositionGetDouble(POSITION_TP);
+   if(!PriceChanged(cur_sl, g_sync_sl) && !PriceChanged(cur_tp, g_sync_tp))
+   {
+      g_open_sl = cur_sl;
+      g_open_tp = cur_tp;
+      return;
+   }
+
+   if(g_ea_modifying)
+   {
+      g_sync_sl = cur_sl;
+      g_sync_tp = cur_tp;
+      g_open_sl = cur_sl;
+      g_open_tp = cur_tp;
+      g_ea_modifying = false;
+      WriteFillJsonEx(
+         "modify", g_open_signal_id, g_open_action, true, "ea_trail",
+         ticket, g_open_entry, cur_sl, cur_tp, g_open_lots, 0, "ea_trail",
+         false, "ea_trail"
+      );
+      return;
+   }
+
+   // User (or terminal) changed SL/TP
+   g_user_intervened = true;
+   g_sync_sl = cur_sl;
+   g_sync_tp = cur_tp;
+   g_open_sl = cur_sl;
+   g_open_tp = cur_tp;
+   WriteFillJsonEx(
+      "modify", g_open_signal_id, g_open_action, true, "user_sl_tp",
+      ticket, g_open_entry, cur_sl, cur_tp, g_open_lots, 0, "user_sl_tp",
+      true, "user_edit"
+   );
+   Print("ForgeBridge user SL/TP edit sl=", cur_sl, " tp=", cur_tp);
+}
+
+//+------------------------------------------------------------------+
 bool OpenFromDecision(const string json)
 {
    string action = JsonGetString(json, "action");
@@ -677,6 +772,16 @@ bool OpenFromDecision(const string json)
    string sid = JsonGetString(json, "signal_id");
    if(sid != "" && sid == g_last_signal_id)
       return false;
+
+   string cmd0 = JsonGetString(json, "cmd");
+   StringToLower(cmd0);
+   string reason0 = JsonGetString(json, "reason");
+   StringToLower(reason0);
+   bool manual_open = (cmd0 == "market") || (StringFind(reason0, "manual") >= 0)
+                      || (StringFind(sid, "manual_test") == 0);
+   g_open_source = manual_open ? "manual_test" : "strategy";
+   g_user_intervened = manual_open;
+   g_ea_modifying = false;
 
    double sl = JsonGetDouble(json, "sl", 0);
    double tp = JsonGetDouble(json, "tp", 0);
@@ -737,13 +842,17 @@ bool OpenFromDecision(const string json)
       g_open_sl = sl;
       g_open_tp = tp;
       g_open_lots = lots;
+      g_sync_sl = sl;
+      g_sync_tp = tp;
       g_had_position = true;
       g_last_signal_id = sid;
-      Print("ForgeBridge entry ", action, " ticket=", ticket, " lots=", lots, " sl=", sl, " tp=", tp);
+      Print("ForgeBridge entry ", action, " ticket=", ticket, " lots=", lots, " sl=", sl, " tp=", tp,
+            " source=", g_open_source);
    }
 
    WriteFillJsonEx("open", sid, action, ok, ok ? "opened" : IntegerToString(trade.ResultRetcode()),
-                   ticket, price, sl, tp, lots, 0, ok ? "opened" : "reject");
+                   ticket, price, sl, tp, lots, 0, ok ? "opened" : "reject",
+                   manual_open, g_open_source);
    return ok;
 }
 
@@ -757,6 +866,7 @@ void ReportCloseIfNeeded(const string reason)
    double exit_px = (g_open_action == "BUY")
       ? SymbolInfoDouble(_Symbol, SYMBOL_BID)
       : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   string close_reason = reason;
    datetime from = TimeCurrent() - 7 * 24 * 3600;
    if(HistorySelect(from, TimeCurrent()))
    {
@@ -775,10 +885,22 @@ void ReportCloseIfNeeded(const string reason)
          break;
       }
    }
-   WriteFillJsonEx("close", g_open_signal_id, g_open_action, true, "closed",
-                   g_open_ticket, exit_px, g_open_sl, g_open_tp, g_open_lots, profit, reason);
+   if(close_reason == "" || close_reason == "closed")
+      close_reason = DetectCloseReasonFromHistory();
+   bool manual_close = g_user_intervened
+                       || close_reason == "manual_close"
+                       || close_reason == "manual_test_close"
+                       || g_open_source == "manual_test";
+   WriteFillJsonEx("close", g_open_signal_id, g_open_action, true, close_reason,
+                   g_open_ticket, exit_px, g_open_sl, g_open_tp, g_open_lots, profit, close_reason,
+                   manual_close, manual_close ? (g_open_source == "manual_test" ? "manual_test" : "user_edit") : "strategy");
    g_open_ticket = 0;
    g_open_signal_id = "";
+   g_open_source = "strategy";
+   g_user_intervened = false;
+   g_ea_modifying = false;
+   g_sync_sl = 0;
+   g_sync_tp = 0;
    g_had_position = false;
 }
 
@@ -802,11 +924,12 @@ void ManageOpen()
 
       g_open_ticket = ticket;
       g_open_entry = PositionGetDouble(POSITION_PRICE_OPEN);
-      g_open_sl = PositionGetDouble(POSITION_SL);
-      g_open_tp = PositionGetDouble(POSITION_TP);
       g_open_lots = PositionGetDouble(POSITION_VOLUME);
       g_open_action = (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) ? "BUY" : "SELL";
       g_had_position = true;
+
+      // Keep App SL/TP in sync (user edits → mode manual)
+      SyncPositionLevels(ticket);
 
       datetime open_time = (datetime)PositionGetInteger(POSITION_TIME);
       int held = (int)((TimeCurrent() - open_time) / PeriodSeconds(PERIOD_H1));
@@ -833,7 +956,12 @@ void ManageOpen()
             if(bid >= open_price + risk * g_trail_act)
             {
                double nsl = bid - risk * g_trail_dist;
-               if(nsl > sl) trade.PositionModify(ticket, nsl, tp);
+               if(nsl > sl)
+               {
+                  g_ea_modifying = true;
+                  if(!trade.PositionModify(ticket, nsl, tp))
+                     g_ea_modifying = false;
+               }
             }
          }
          else
@@ -841,7 +969,12 @@ void ManageOpen()
             if(ask <= open_price - risk * g_trail_act)
             {
                double nsl = ask + risk * g_trail_dist;
-               if(sl == 0 || nsl < sl) trade.PositionModify(ticket, nsl, tp);
+               if(sl == 0 || nsl < sl)
+               {
+                  g_ea_modifying = true;
+                  if(!trade.PositionModify(ticket, nsl, tp))
+                     g_ea_modifying = false;
+               }
             }
          }
       }

@@ -35,7 +35,13 @@ from mt5_bridge.protocol import (
   write_manual_close_command,
   write_manual_market_command,
 )
-from mt5_bridge.trade_journal import clear_trades, compute_stats, filter_trades, load_trades
+from mt5_bridge.trade_journal import (
+  clear_trades,
+  compute_stats,
+  filter_trades,
+  load_trades,
+  trade_mode,
+)
 
 
 def _fmt_px(value) -> str:
@@ -296,17 +302,19 @@ def render():
   _render_live_chart(max_bars)
 
   st.subheader("Thống kê lệnh Bridge")
-  st.caption("Từ `mt5/bridge/trades.json` — lọc theo giai đoạn (closed dùng exit_time)")
+  st.caption(
+    "Từ `mt5/bridge_h1/trades.json` — tách **Auto** (chiến lược thuần) vs **Lệnh sửa** "
+    "(test market / sửa SL·TP tay / đóng tay). R luôn theo SL kế hoạch lúc mở."
+  )
 
   all_trades = load_trades()
   today = date.today()
-  # Default range from data
   default_from = today - timedelta(days=30)
   default_to = today
-  for t in all_trades:
+  for trow in all_trades:
     for key in ("entry_time", "exit_time"):
       try:
-        ts = pd.Timestamp(t.get(key)).date()
+        ts = pd.Timestamp(trow.get(key)).date()
         if ts < default_from:
           default_from = ts
       except Exception:
@@ -374,25 +382,49 @@ def render():
     st.warning("Từ ngày > Đến ngày — đã đảo lại.")
     date_from, date_to = date_to, date_from
 
-  trades = filter_trades(all_trades, date_from=date_from, date_to=date_to)
-  stats = compute_stats(trades)
+  period_trades = filter_trades(all_trades, date_from=date_from, date_to=date_to)
+  n_auto = sum(1 for x in period_trades if trade_mode(x) == "auto")
+  n_manual = sum(1 for x in period_trades if trade_mode(x) == "manual")
   if date_from or date_to:
-    st.caption(f"Lọc: **{date_from or '…'} → {date_to or '…'}** · {stats['n_filtered']} lệnh trong khoảng")
+    st.caption(
+      f"Lọc: **{date_from or '…'} → {date_to or '…'}** · "
+      f"{len(period_trades)} lệnh (auto {n_auto} · sửa {n_manual})"
+    )
 
-  s1, s2, s3, s4, s5, s6 = st.columns(6)
-  s1.metric("Đã đóng", stats["n_trades"])
-  s2.metric("Đang mở", stats["n_open"])
-  s3.metric("Thắng", stats["n_wins"])
-  s4.metric("Thua", stats["n_losses"])
-  s5.metric("WR %", stats["win_rate_pct"] if stats["win_rate_pct"] is not None else "—")
-  s6.metric("Total R", f"{stats['total_r']:+.2f}" if stats["n_trades"] else "—")
-  m2 = st.columns(3)
-  m2[0].metric("Avg R", stats["avg_r"] if stats["avg_r"] is not None else "—")
-  m2[1].metric("Max DD (R)", stats["max_drawdown_r"])
-  m2[2].metric(
-    "Profit ($)",
-    stats["total_profit"] if stats["total_profit"] is not None else "—",
-  )
+  def _stats_block(label: str, mode: str | None):
+    trades_m = filter_trades(all_trades, date_from=date_from, date_to=date_to, mode=mode)
+    stats = compute_stats(trades_m)
+    st.markdown(f"**{label}** · {stats['n_filtered']} lệnh")
+    s1, s2, s3, s4, s5, s6 = st.columns(6)
+    s1.metric("Đã đóng", stats["n_trades"])
+    s2.metric("Đang mở", stats["n_open"])
+    s3.metric("Thắng", stats["n_wins"])
+    s4.metric("Thua", stats["n_losses"])
+    s5.metric("WR %", stats["win_rate_pct"] if stats["win_rate_pct"] is not None else "—")
+    s6.metric("Total R", f"{stats['total_r']:+.2f}" if stats["n_trades"] else "—")
+    m2 = st.columns(3)
+    m2[0].metric("Avg R", stats["avg_r"] if stats["avg_r"] is not None else "—")
+    m2[1].metric("Max DD (R)", stats["max_drawdown_r"])
+    m2[2].metric(
+      "Profit ($)",
+      stats["total_profit"] if stats["total_profit"] is not None else "—",
+    )
+
+  tab_auto, tab_manual, tab_all = st.tabs([
+    f"Auto (review chiến lược) · {n_auto}",
+    f"Lệnh sửa · {n_manual}",
+    f"Tất cả · {len(period_trades)}",
+  ])
+  with tab_auto:
+    st.caption(
+      "Review Trade Model: **không** gồm lệnh đã sửa SL/TP, đóng tay, hay test market."
+    )
+    _stats_block("Auto", "auto")
+  with tab_manual:
+    st.caption("Test market / user sửa SL·TP / đóng tay trên MT5 — đồng bộ App nhưng tách khỏi review auto.")
+    _stats_block("Lệnh sửa", "manual")
+  with tab_all:
+    _stats_block("Tất cả", None)
 
   tc1, tc2 = st.columns([1, 4])
   if tc1.button("Xóa nhật ký lệnh"):
@@ -404,29 +436,47 @@ def render():
     on_change=preference_callback("bridge_show_open", "mt5.show_open"),
   )
 
-  view = trades if show_open else [t for t in trades if t.get("status") == "CLOSED"]
+  mode_options = ["Auto", "Lệnh sửa", "Tất cả"]
+  restore_widget(
+    "bridge_stats_table_mode", "Tất cả",
+    preference_key="mt5.stats_table_mode",
+    options=mode_options,
+  )
+  table_mode = st.radio(
+    "Bảng lệnh theo mode",
+    mode_options,
+    horizontal=True,
+    key="bridge_stats_table_mode",
+    on_change=preference_callback("bridge_stats_table_mode", "mt5.stats_table_mode"),
+  )
+  mode_filter = {"Auto": "auto", "Lệnh sửa": "manual", "Tất cả": None}[table_mode]
+  trades = filter_trades(all_trades, date_from=date_from, date_to=date_to, mode=mode_filter)
+  view = trades if show_open else [x for x in trades if x.get("status") == "CLOSED"]
   view = list(reversed(view))
   if not view:
-    st.info("Không có lệnh trong giai đoạn đã chọn (hoặc chưa có lệnh Bridge).")
+    st.info("Không có lệnh trong giai đoạn / mode đã chọn.")
   else:
     table = []
-    for t in view:
+    for x in view:
       table.append({
-        "status": t.get("status"),
-        "result": t.get("result") or ("OPEN" if t.get("status") == "OPEN" else "—"),
-        "dir": t.get("direction"),
-        "entry_time": t.get("entry_time"),
-        "exit_time": t.get("exit_time"),
-        "entry": t.get("entry_px"),
-        "exit": t.get("exit_px"),
-        "sl": t.get("sl"),
-        "tp": t.get("tp"),
-        "R": t.get("r"),
-        "profit": t.get("profit"),
-        "reason": t.get("reason"),
-        "ticket": t.get("ticket"),
-        "signal_id": t.get("signal_id"),
-        "strategy": t.get("strategy_name"),
+        "mode": trade_mode(x),
+        "status": x.get("status"),
+        "result": x.get("result") or ("OPEN" if x.get("status") == "OPEN" else "—"),
+        "dir": x.get("direction"),
+        "entry_time": x.get("entry_time"),
+        "exit_time": x.get("exit_time"),
+        "entry": x.get("entry_px"),
+        "exit": x.get("exit_px"),
+        "sl": x.get("sl"),
+        "sl₀": x.get("sl_initial"),
+        "tp": x.get("tp"),
+        "R": x.get("r"),
+        "profit": x.get("profit"),
+        "reason": x.get("reason"),
+        "intervened": ",".join(x.get("interventions") or []) or "—",
+        "ticket": x.get("ticket"),
+        "signal_id": x.get("signal_id"),
+        "strategy": x.get("strategy_name"),
       })
     st.dataframe(pd.DataFrame(table), use_container_width=True, hide_index=True)
     with st.expander("JSON lệnh đầy đủ"):

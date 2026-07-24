@@ -207,6 +207,14 @@ def _fill_fp(fill: dict | None) -> str | None:
     + str(fill.get("event") or fill.get("detail") or "")
     + "|"
     + str(fill.get("ticket") or "")
+    + "|"
+    + str(fill.get("reason") or "")
+    + "|"
+    + str(fill.get("sl") or "")
+    + "|"
+    + str(fill.get("tp") or "")
+    + "|"
+    + str(fill.get("manual") or "")
   )
 
 
