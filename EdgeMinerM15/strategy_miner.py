@@ -332,27 +332,42 @@ def _pa_confluence_bonus(fm, i: int, direction: int) -> float:
   return 0.35 * v
 
 
-def generate_signals_mined(fm, strat, start_idx=0, end_idx=None):
+def generate_signals_mined(
+  fm, strat, start_idx=0, end_idx=None, *, include_last_bar: bool = False,
+):
   if end_idx is None:
     end_idx = fm.n
   signals = np.zeros(fm.n, dtype=np.int8)
   candidates = []
 
+  if strat.ml_scorer is not None and hasattr(strat.ml_scorer, "refresh_for_fm"):
+    strat.ml_scorer.refresh_for_fm(fm)
   ml_l_arr = strat.ml_scorer._prob_long if strat.ml_scorer and strat.ml_scorer._prob_long is not None else None
   ml_s_arr = strat.ml_scorer._prob_short if strat.ml_scorer and strat.ml_scorer._prob_short is not None else None
   hours = getattr(fm, "broker_hours", None)
   if hours is None:
     hours = fm.hours
 
-  for i in range(max(start_idx, fm.warmup), end_idx - 1):
+  # Backtest needs i+1 entry bar → stop at end_idx-1.
+  # Live bridge decides on the just-closed last bar → include it.
+  stop = min(end_idx, fm.n) if include_last_bar else end_idx - 1
+  for i in range(max(start_idx, fm.warmup), stop):
     if strat.session_filter and not (strat.session_start_hour <= hours[i] <= strat.session_end_hour):
       continue
 
     ls, lc = _count_matching_rules(fm, strat.long_rules, i)
     ss, sc = _count_matching_rules(fm, strat.short_rules, i)
 
-    ml_l = float(ml_l_arr[i]) if ml_l_arr is not None else 0.5
-    ml_s = float(ml_s_arr[i]) if ml_s_arr is not None else 0.5
+    ml_l = (
+      float(ml_l_arr[i])
+      if ml_l_arr is not None and 0 <= i < len(ml_l_arr)
+      else 0.5
+    )
+    ml_s = (
+      float(ml_s_arr[i])
+      if ml_s_arr is not None and 0 <= i < len(ml_s_arr)
+      else 0.5
+    )
 
     # Rule score + ML + soft HTF / PA confluence
     combined_l = ls * (0.5 + ml_l) * _htf_bias(fm, i, 1, strat) + _pa_confluence_bonus(fm, i, 1)
