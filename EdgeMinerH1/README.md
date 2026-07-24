@@ -1,5 +1,10 @@
 # ForexForge — EUR/USD H1 Self-Learning Trading System
 
+Runtime H1 này được tách khỏi app M15 tại `C:\Work\ThuyenRepo\EdgeMiner2`:
+app/Bridge/Paper `8502/8865/8866`, MT5 folder `bridge_h1`, EA `ForgeBridgeH1`,
+Magic `20260725`. Dùng script `EdgeMiner2\scripts\run_dual_edgeminer.ps1`
+để quản lý hai hệ thống cùng lúc.
+
 Hệ thống backtest walk-forward + self-learning cho **EUR/USD khung H1**, dùng thống nhất dữ liệu broker từ ForgeBridge/XM MT5.
 
 ## Chạy app

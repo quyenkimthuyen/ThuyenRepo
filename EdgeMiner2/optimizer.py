@@ -8,7 +8,7 @@ from kb_profiles import DEFAULT_PROFILE_ID, LATEST_SNAPSHOT, load_kb, resolve_kb
 from knowledge_base import KnowledgeBase
 from meta_learner import mine_strategy_learning
 from config import TARGET_TRADES_PER_WEEK
-from strategy_miner import mine_strategy, MinedStrategy
+from strategy_miner import mine_strategy, MinedStrategy, MiningSearchSpace
 
 _active_profile_id: str | None = None
 _active_snapshot: int | str | None = None
@@ -57,10 +57,14 @@ def optimize_on_window(
   use_learning: bool = True,
   as_of=None,
   kb: KnowledgeBase | None = None,
+  search_space: MiningSearchSpace | None = None,
 ) -> Optional[MinedStrategy]:
   if use_learning:
     kb = kb or get_knowledge_base()
     return mine_strategy_learning(
       fm, train_start_idx, train_end_idx, kb, as_of=as_of, update_kb=False,
+      search_space=search_space,
     )
-  return mine_strategy(fm, train_start_idx, train_end_idx)
+  return mine_strategy(
+    fm, train_start_idx, train_end_idx, search_space=search_space,
+  )

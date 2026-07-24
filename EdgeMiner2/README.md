@@ -5,6 +5,16 @@ Hệ thống backtest walk-forward + self-learning cho **EUR/USD khung M15**, d�
 > `ForgeBest3m_Frozen.mq5` và `ForgeBest3m_WF.mq5` là EA H1 legacy, không tương thích
 > với model M15 và không được dùng cho live. Live/Paper chỉ dùng `ForgeBridge.mq5`.
 
+Chạy song song với `C:\Work\ThuyenRepo\EdgeMinerH1`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\run_dual_edgeminer.ps1 -Action Status
+powershell -ExecutionPolicy Bypass -File .\scripts\run_dual_edgeminer.ps1 -Action Restart
+```
+
+M15 dùng app/Bridge/Paper `8501/8765/8766`, folder `bridge`, Magic `20260724`.
+H1 dùng `8502/8865/8866`, folder `bridge_h1`, Magic `20260725`.
+
 ## Chạy app
 
 Windows PowerShell:

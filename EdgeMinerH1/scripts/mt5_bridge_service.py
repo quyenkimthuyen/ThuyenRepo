@@ -30,7 +30,10 @@ from mt5_bridge.live_monitor_server import DEFAULT_MONITOR_PORT, start_live_moni
 from mt5_bridge.models import load_active_model_id
 from mt5_bridge.protocol import (
   BRIDGE_DIR,
+  DEFAULT_MAGIC,
   DEFAULT_MODEL_ID,
+  DEFAULT_TIMEFRAME,
+  INSTANCE_ID,
   atomic_write_json,
   bar_path,
   decision_path,
@@ -95,8 +98,24 @@ def _bar_fingerprint(bar: dict | None) -> str | None:
   )
 
 
+def _identity_matches(payload: dict | None) -> bool:
+  return bool(
+    isinstance(payload, dict)
+    and payload.get("period") == DEFAULT_TIMEFRAME
+    and payload.get("instance_id") == INSTANCE_ID
+    and int(payload.get("magic") or 0) == DEFAULT_MAGIC
+  )
+
+
 def process_once(engine: BridgeEngine, bridge_dir: Path, *, last_fp: str | None, last_fill_fp: str | None = None):
   fill = read_json(fill_path(bridge_dir))
+  if isinstance(fill, dict):
+    if not _identity_matches(fill):
+      write_status(
+        bridge_dir, state="identity_error", model_id=engine.model_id,
+        error=f"Rejected fill from {fill.get('instance_id')}/{fill.get('period')}/{fill.get('magic')}",
+      )
+      fill = None
   if isinstance(fill, dict):
     ffp = str(fill.get("signal_id") or "") + "|" + str(fill.get("time") or "") + "|" + str(fill.get("event") or fill.get("detail") or "")
     if ffp and ffp != last_fill_fp:
@@ -121,6 +140,12 @@ def process_once(engine: BridgeEngine, bridge_dir: Path, *, last_fp: str | None,
       model_id=engine.model_id,
       error=None,
       last_bar=None,
+    )
+    return last_fp, last_fill_fp
+  if not _identity_matches(bar):
+    write_status(
+      bridge_dir, state="identity_error", model_id=engine.model_id,
+      error=f"Rejected bar from {bar.get('instance_id')}/{bar.get('period')}/{bar.get('magic')}",
     )
     return last_fp, last_fill_fp
 

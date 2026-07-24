@@ -111,6 +111,17 @@ def render():
   c3.metric("Last bar", str(status.get("last_bar") or "—")[:19])
   file_status = read_json(status_path()) or {}
   c4.metric("Bridge state", file_status.get("state") or "—")
+  current_decision = read_json(decision_path()) or {}
+  st.markdown(
+    f"**Chiến lược tuần hiện tại:** "
+    f"`{current_decision.get('strategy_name') or 'đang chờ mine'}`"
+  )
+  st.caption(
+    f"Áp dụng từ tuần `{current_decision.get('week_start') or '—'}` · "
+    f"Trade Model `{current_decision.get('model_id') or status.get('model_id') or '—'}` · "
+    f"quyết định gần nhất `{current_decision.get('updated_at') or '—'}` · "
+    "tự mine lại khi bước sang tuần mới."
+  )
 
   with st.expander("Cấu hình service", expanded=not status.get("running")):
     active_model = get_active_trade_model()

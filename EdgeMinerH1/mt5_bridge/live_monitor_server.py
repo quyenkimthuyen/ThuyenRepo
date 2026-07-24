@@ -10,7 +10,7 @@ from urllib.parse import parse_qs, urlparse
 from mt5_bridge.protocol import bars_path, connection_path, decision_path, read_json
 from mt5_bridge.trade_journal import load_trades
 
-DEFAULT_MONITOR_PORT = 8765
+DEFAULT_MONITOR_PORT = 8865
 
 
 def _plotly_js_path() -> Path:

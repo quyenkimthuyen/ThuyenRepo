@@ -21,7 +21,10 @@ from mt5_bridge.models import get_model_run_params, resolve_model
 from mt5_bridge.protocol import DEFAULT_MAGIC, DEFAULT_MODEL_ID, utc_now_iso
 from optimizer import get_knowledge_base, optimize_on_window, set_kb_profile
 from paper_monitor import _current_week_bounds, _project_signal_levels
-from strategy_miner import backtest_mined, ensure_label_cache_for_df, generate_signals_mined
+from strategy_miner import (
+  backtest_mined, ensure_label_cache_for_df, generate_signals_mined,
+  mining_search_space_from_dict,
+)
 
 MT5_CACHE = MT5_CACHE_PATH
 
@@ -135,11 +138,17 @@ class BridgeEngine:
 
     df = self.load()
     ensure_label_cache_for_df(len(df))
-    fm = FeatureMatrix(df)
+    feature_profile = params.get("feature_profile") or "current"
+    search_payload = params.get("mining_search_space")
+    search_space = (
+      mining_search_space_from_dict(search_payload) if search_payload else None
+    )
+    fm = FeatureMatrix(df, profile=feature_profile)
     week_start, week_end = _current_week_bounds(df)
 
     cache_key = (
-      f"{week_start.date()}|{model_id}|{kb_profile}@{kb_snapshot}|{train_weeks}w"
+      f"{week_start.date()}|{model_id}|{kb_profile}@{kb_snapshot}|{train_weeks}w|"
+      f"{feature_profile}|{search_space!r}"
     )
     strat = self._strat_cache.get(cache_key)
     if strat is None:
@@ -156,6 +165,7 @@ class BridgeEngine:
         return self._remember(bar_key, decision)
       strat = optimize_on_window(
         fm, ts, te, use_learning=use_learning, as_of=week_start, kb=kb,
+        search_space=search_space,
       )
       if strat is None:
         decision = self._flat(

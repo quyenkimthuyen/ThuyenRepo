@@ -539,6 +539,15 @@ def _render_monitor_body(state: dict, *, include_chart: bool = True):
   if updated:
     cap += f" · Cập nhật: `{updated}`"
   st.caption(cap)
+  strategy = state.get("strategy") or {}
+  st.markdown(
+    f"**Chiến lược tuần hiện tại:** `{strategy.get('name') or 'đang chờ mine'}`"
+  )
+  st.caption(
+    f"Áp dụng từ tuần `{state.get('week_start', '—')}` · "
+    f"Trade Model `{state.get('model_id') or '—'}` · "
+    "tự mine lại khi bước sang tuần mới."
+  )
 
   if state.get("open_position"):
     op = state["open_position"]

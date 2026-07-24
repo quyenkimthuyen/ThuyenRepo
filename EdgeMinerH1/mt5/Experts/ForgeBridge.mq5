@@ -19,7 +19,7 @@ enum ENUM_BRIDGE_MODE
 
 input group "=== Bridge ==="
 input ENUM_BRIDGE_MODE InpMode = BRIDGE_LIVE;
-input string InpBridgeSubdir   = "bridge";          // under MQL5/Files/
+input string InpBridgeSubdir   = "bridge_h1";       // under MQL5/Files/
 input int    InpDecisionWaitMs = 8000;              // Live: wait for decision
 input int    InpPollMs         = 500;
 input int    InpChartBars      = 336;               // H1 bars exported for App chart
@@ -28,11 +28,12 @@ input int    InpHistoryChunk   = 750;               // Bars per history sync res
 
 input group "=== Risk ==="
 input double InpRiskPct        = 1.0;
-input ulong  InpMagic          = 20260724;
+input ulong  InpMagic          = 20260725;
 input int    InpSlipPoints     = 30;
 input int    InpMaxHoldBars    = 36;                // fallback if decision omits
 
 CTrade   trade;
+const string INSTANCE_ID = "H1";
 datetime g_last_bar = 0;
 datetime g_last_fill_bar = 0;
 string   g_last_signal_id = "";
@@ -91,6 +92,11 @@ int OnInit()
    }
    else
    {
+      if(AccountInfoInteger(ACCOUNT_MARGIN_MODE) != ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)
+      {
+         Print("ForgeBridgeH1 requires a hedging account.");
+         return INIT_FAILED;
+      }
       WriteBarsJson();
       WriteConnectionJson();
       EventSetMillisecondTimer((int)MathMax(500, InpHeartbeatMs));
@@ -216,6 +222,9 @@ bool WriteBarJson(datetime t1)
 
    string json = "{";
    json += "\"symbol\":\"" + _Symbol + "\",";
+   json += "\"period\":\"H1\",";
+   json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
+   json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"time\":\"" + bar_time + "\",";
    json += "\"bar_time\":\"" + bar_time + "\",";
    json += "\"time_msc\":" + IntegerToString(time_msc) + ",";
@@ -409,6 +418,12 @@ bool WriteConnectionJson()
 
    string json = "{";
    json += "\"symbol\":\"" + _Symbol + "\",";
+   json += "\"period\":\"H1\",";
+   json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
+   json += "\"bridge_subdir\":\"" + InpBridgeSubdir + "\",";
+   json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
+   json += "\"account_margin_mode\":" + IntegerToString(AccountInfoInteger(ACCOUNT_MARGIN_MODE)) + ",";
+   json += "\"hedging\":true,";
    json += "\"server_time\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\",";
    json += "\"tick_time_msc\":" + IntegerToString((long)tick.time_msc) + ",";
    json += "\"bid\":" + DoubleToString(tick.bid, _Digits) + ",";
@@ -496,6 +511,9 @@ void WriteFillJsonEx(
    json += "\"detail\":\"" + detail + "\",";
    json += "\"ticket\":" + IntegerToString((long)ticket) + ",";
    json += "\"symbol\":\"" + _Symbol + "\",";
+   json += "\"period\":\"H1\",";
+   json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
+   json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"price\":" + DoubleToString(price, _Digits) + ",";
    json += "\"sl\":" + DoubleToString(sl, _Digits) + ",";
    json += "\"tp\":" + DoubleToString(tp, _Digits) + ",";

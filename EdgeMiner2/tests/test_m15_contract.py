@@ -5,6 +5,7 @@ import pandas as pd
 
 from config import BARS_PER_WEEK, DEFAULT_TF, MAX_TRADES_PER_DAY, TRAIN_WEEKS
 from data_loader import get_train_window_indices
+from mt5_bridge.models import get_model_run_params
 from strategy_miner import MinedStrategy, Rule, backtest_mined, generate_signals_mined
 
 
@@ -65,3 +66,15 @@ def test_entry_cap_blocks_third_order_on_broker_day():
   )
   trades = backtest_mined(fm, strategy, signals, 0, 8)
   assert len(trades) == 2
+
+
+def test_feature_schema_two_models_keep_legacy_runtime():
+  legacy = get_model_run_params({
+    "id": "old", "feature_schema": 2, "train_weeks": 3,
+  })
+  current = get_model_run_params({
+    "id": "new", "feature_schema": 3, "train_weeks": 3,
+  })
+  assert legacy["feature_profile"] == "legacy"
+  assert legacy["mining_search_space"] is None
+  assert current["feature_profile"] == "current"

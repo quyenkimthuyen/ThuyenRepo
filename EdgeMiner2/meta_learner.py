@@ -19,7 +19,7 @@ from strategy_miner import (
   MinedStrategy, Rule, mine_strategy, generate_signals_mined, backtest_mined,
   score_strategy_metrics, _label_outcomes, _mine_threshold_rules, _mine_binary_rules,
   _count_matching_rules, CONTINUOUS_FEATURES, BINARY_LONG, BINARY_SHORT,
-  _weeks_in_window,
+  _weeks_in_window, MiningSearchSpace, constrain_strategy_to_space,
 )
 
 _DETERMINISM_LOCK = threading.RLock()
@@ -96,6 +96,7 @@ def _fit_ml_with_experience(
 def _evaluate_genome(
   fm, strat: MinedStrategy, train_start, train_end, weeks,
   target_tpw=TARGET_TRADES_PER_WEEK,
+  search_space: MiningSearchSpace | None = None,
 ) -> tuple[float, dict]:
   span = train_end - train_start
   split = train_start + int(span * 0.65)
@@ -103,7 +104,11 @@ def _evaluate_genome(
   fit_trades = backtest_mined(fm, strat, sig, train_start, split)
   val_trades = backtest_mined(fm, strat, sig, split, train_end)
   comb = compute_metrics(fit_trades + val_trades)
-  s = score_strategy_metrics(comb, weeks, target_tpw)
+  space = search_space or MiningSearchSpace(target_trades_per_week=target_tpw)
+  s = score_strategy_metrics(
+    comb, weeks, space.target_trades_per_week,
+    space.drawdown_penalty, space.loss_streak_penalty,
+  )
   val_m = compute_metrics(val_trades)
   if val_m["n_trades"] >= 2 and val_m["total_r"] < -4:
     s -= 80
@@ -114,11 +119,13 @@ def mine_strategy_learning(
   fm, train_start, train_end, kb: KnowledgeBase,
   target_tpw: float = TARGET_TRADES_PER_WEEK,
   as_of=None, *, update_kb: bool = True,
+  search_space: MiningSearchSpace | None = None,
 ) -> Optional[MinedStrategy]:
   """Run evolution reproducibly for a given KB snapshot and train window."""
   raw_seed = (
     f"{kb.path.resolve()}|{kb.epoch_count}|{train_start}|{train_end}|"
-    f"{as_of if as_of is not None else ''}"
+    f"{as_of if as_of is not None else ''}|{search_space!r}|"
+    f"{getattr(fm, 'profile_name', 'current')}"
   )
   seed = int(hashlib.sha256(raw_seed.encode("utf-8")).hexdigest()[:8], 16)
   with _DETERMINISM_LOCK:
@@ -129,7 +136,7 @@ def mine_strategy_learning(
     try:
       return _mine_strategy_learning_impl(
         fm, train_start, train_end, kb, target_tpw=target_tpw,
-        as_of=as_of, update_kb=update_kb,
+        as_of=as_of, update_kb=update_kb, search_space=search_space,
       )
     finally:
       random.setstate(py_state)
@@ -140,6 +147,7 @@ def _mine_strategy_learning_impl(
   fm, train_start, train_end, kb: KnowledgeBase,
   target_tpw: float = TARGET_TRADES_PER_WEEK,
   as_of=None, *, update_kb: bool = True,
+  search_space: MiningSearchSpace | None = None,
 ) -> Optional[MinedStrategy]:
   """
   Optimize có nhớ:
@@ -150,37 +158,59 @@ def _mine_strategy_learning_impl(
   weeks = _weeks_in_window(train_start, train_end)
   best: Optional[MinedStrategy] = None
   best_score = -1e9
+  space = search_space or MiningSearchSpace(target_trades_per_week=target_tpw)
+  controlled = search_space is not None
 
   # Chuẩn bị ML + rules cơ bản (dùng chung)
-  rr, atr_m = 2.5, 0.95
+  rr, atr_m, max_hold = (
+    space.rr_ratios[0], space.atr_multipliers[0], space.max_hold_bars[0],
+  )
   if kb.genomes:
     top = kb.top_genomes(1)[0]
-    rr, atr_m = top.get("rr_ratio", 2.5), top.get("atr_mult_sl", 0.95)
+    seed_strat = kb.dict_to_strategy(top)
+    if controlled:
+      seed_strat = constrain_strategy_to_space(seed_strat, space)
+    rr, atr_m, max_hold = (
+      seed_strat.rr_ratio, seed_strat.atr_mult_sl, seed_strat.max_hold_bars,
+    )
 
-  long_wins, short_wins = _label_outcomes(fm, train_start, train_end, rr, atr_m)
+  long_wins, short_wins = _label_outcomes(
+    fm, train_start, train_end, rr, atr_m, max_hold,
+  )
   ml = _fit_ml_with_experience(fm, train_start, train_end, long_wins, short_wins, kb, as_of=as_of)
 
   # --- Phase 1: Đánh giá genomes từ KB (evolution) ---
   candidates: list[dict] = []
   if kb.genomes:
-    candidates.extend(evolve_population(kb, n_offspring=10))
+    candidates.extend(evolve_population(
+      kb, n_offspring=10, search_space=space if controlled else None,
+    ))
     candidates.extend(kb.top_genomes(3))
 
   for g in candidates:
     strat = kb.dict_to_strategy(g)
+    if controlled:
+      strat = constrain_strategy_to_space(strat, space)
     strat.ml_scorer = ml
     strat = apply_kb_rule_weights(strat, kb, as_of=as_of)
-    s, comb = _evaluate_genome(fm, strat, train_start, train_end, weeks, target_tpw)
+    s, comb = _evaluate_genome(
+      fm, strat, train_start, train_end, weeks, target_tpw, space,
+    )
     if comb["n_trades"] >= 2 and s > best_score:
       best_score, best = s, strat
 
   # --- Phase 2: Nếu KB chưa có gì tốt, mine mới ---
   if best_score < 50 or best is None:
-    fresh = mine_strategy(fm, train_start, train_end, target_tpw)
+    fresh = mine_strategy(
+      fm, train_start, train_end, target_tpw,
+      search_space=space if controlled else None,
+    )
     if fresh:
       fresh.ml_scorer = ml
       fresh = apply_kb_rule_weights(fresh, kb, as_of=as_of)
-      s, comb = _evaluate_genome(fm, fresh, train_start, train_end, weeks, target_tpw)
+      s, comb = _evaluate_genome(
+        fm, fresh, train_start, train_end, weeks, target_tpw, space,
+      )
       if s > best_score:
         best_score, best = s, fresh
 
@@ -188,11 +218,17 @@ def _mine_strategy_learning_impl(
   if best is not None:
     g = kb.genome_to_dict(best, best_score)
     for _ in range(6):
-      mutant_g = mutate_genome(g, rate=0.15)
+      mutant_g = mutate_genome(
+        g, rate=0.15, search_space=space if controlled else None,
+      )
       mutant = kb.dict_to_strategy(mutant_g)
+      if controlled:
+        mutant = constrain_strategy_to_space(mutant, space)
       mutant.ml_scorer = ml
       mutant = apply_kb_rule_weights(mutant, kb, as_of=as_of)
-      s, comb = _evaluate_genome(fm, mutant, train_start, train_end, weeks, target_tpw)
+      s, comb = _evaluate_genome(
+        fm, mutant, train_start, train_end, weeks, target_tpw, space,
+      )
       if comb["n_trades"] >= 2 and s > best_score:
         best_score, best = s, mutant
 

@@ -14,7 +14,9 @@ from feature_engine import FeatureMatrix
 from mt5_bridge.history_sync import utc_to_broker_time
 from optimizer import optimize_on_window
 from strategy import compute_metrics
-from strategy_miner import generate_signals_mined, backtest_mined
+from strategy_miner import (
+  generate_signals_mined, backtest_mined, mining_search_space_from_dict,
+)
 
 
 def _current_week_bounds(df: pd.DataFrame) -> tuple[pd.Timestamp, pd.Timestamp]:
@@ -67,12 +69,18 @@ def get_monitor_state(
   risk_pct: float = DEFAULT_RISK_PCT_PER_TRADE,
   kb_profile: str | None = None,
   kb_snapshot: int | str | None = None,
+  feature_profile: str = "current",
+  mining_search_space: dict | None = None,
 ) -> dict:
   """Trạng thái paper monitor: strategy tuần này, tín hiệu, lệnh đã có."""
   from strategy_miner import ensure_label_cache_for_df
 
   ensure_label_cache_for_df(len(df))
-  fm = FeatureMatrix(df)
+  search_space = (
+    mining_search_space_from_dict(mining_search_space)
+    if mining_search_space else None
+  )
+  fm = FeatureMatrix(df, profile=feature_profile)
   week_start, week_end = _current_week_bounds(df)
 
   kb = None
@@ -89,6 +97,7 @@ def get_monitor_state(
   strat = optimize_on_window(
     fm, train_start_idx, train_end_idx,
     use_learning=use_learning, as_of=week_start, kb=kb,
+    search_space=search_space,
   )
   if strat is None:
     return {"error": "Không mine được strategy."}

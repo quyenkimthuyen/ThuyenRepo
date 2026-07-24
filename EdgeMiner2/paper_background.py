@@ -80,6 +80,7 @@ def _run_cycle(cfg: dict, *, force_refresh: bool = False) -> dict:
     spread_pips=float(cfg.get("spread_pips", 1.0)),
     slippage_pips=float(cfg.get("slippage_pips", 0.3)),
     risk_pct=float(cfg.get("risk_pct", 1.0)),
+    model_id=cfg.get("model_id"),
   )
   state["model_id"] = cfg.get("model_id")
   state["updated_at"] = _now_iso()

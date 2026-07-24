@@ -203,6 +203,8 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
     "max_drawdown_r": row.get("max_drawdown_r"),
     "profit_factor": row.get("profit_factor"),
     "n_trades": row.get("n_trades"),
+    "feature_profile": row.get("feature_profile") or "current",
+    "mining_search_space": row.get("mining_search_space"),
     "source": "grid_search",
     "data_source": data_meta.get("source"),
     "data_broker": data_meta.get("broker"),
@@ -213,7 +215,7 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
     "data_end": data_meta.get("end"),
     "data_bars": data_meta.get("bars"),
     "data_fingerprint": data_meta.get("fingerprint"),
-    "feature_schema": 2,
+    "feature_schema": 3,
     "grid_run_id": run_id,
     "grid_key": row.get("key"),
     "label": auto_label,
@@ -439,6 +441,8 @@ def get_model_run_params(model: dict | None = None) -> dict:
       "oos_to": s.get("backtest_to"),
       "spread_pips": float(s.get("spread_pips", DEFAULT_SPREAD_PIPS)),
       "slippage_pips": float(s.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
+      "feature_profile": "current",
+      "mining_search_space": None,
     }
   return {
     "train_weeks": int(m.get("train_weeks", 6)),
@@ -450,6 +454,11 @@ def get_model_run_params(model: dict | None = None) -> dict:
     "oos_to": m.get("oos_to"),
     "spread_pips": float(m.get("spread_pips", DEFAULT_SPREAD_PIPS)),
     "slippage_pips": float(m.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
+    "feature_profile": (
+      m.get("feature_profile")
+      or ("legacy" if int(m.get("feature_schema") or 0) < 3 else "current")
+    ),
+    "mining_search_space": m.get("mining_search_space"),
     "trade_model_id": m.get("id"),
   }
 
@@ -480,6 +489,11 @@ def trade_model_to_workspace(m: dict | None = None) -> dict:
     "train_weeks": m.get("train_weeks", 6),
     "spread_pips": m.get("spread_pips", DEFAULT_SPREAD_PIPS),
     "slippage_pips": m.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS),
+    "feature_profile": (
+      m.get("feature_profile")
+      or ("legacy" if int(m.get("feature_schema") or 0) < 3 else "current")
+    ),
+    "mining_search_space": m.get("mining_search_space"),
     "trade_model_id": m.get("id"),
   }
 

@@ -6565,3 +6565,75 @@ ConnectionAbortedError: [WinError 10053] An established connection was aborted b
 [bridge] ERROR: index 38651 is out of bounds for axis 0 with size 38651
 [bridge] ERROR: index 38651 is out of bounds for axis 0 with size 38651
 [bridge] ERROR: index 38651 is out of bounds for axis 0 with size 38651
+
+--- start 2026-07-24T06:43:44+07:00 ---
+[bridge] live monitor=http://127.0.0.1:8765
+[bridge] dir=C:\Work\ThuyenRepo\EdgeMiner2\mt5\bridge model=tm_m15_best_2_49216b56
+[bridge] history bars=38666
+[bridge] bar=2026.07.24 02:15 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 49670)
+Traceback (most recent call last):
+  File "C:\Python314\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Python314\Lib\http\server.py", line 496, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\http\server.py", line 484, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "C:\Work\ThuyenRepo\EdgeMiner2\mt5_bridge\live_monitor_server.py", line 268, in do_GET
+    self._send(
+    ~~~~~~~~~~^
+      200,
+      ^^^^
+      json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8"),
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      "application/json; charset=utf-8",
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Work\ThuyenRepo\EdgeMiner2\mt5_bridge\live_monitor_server.py", line 227, in _send
+    self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------
+[bridge] bar=2026.07.24 02:30 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 02:45 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 03:00 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 03:15 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 03:30 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 03:45 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 04:00 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 04:15 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 04:30 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 04:45 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 05:00 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 05:15 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+
+--- start 2026-07-24T09:35:23+07:00 ---
+[bridge] live monitor=http://127.0.0.1:8765
+[bridge] dir=C:\Work\ThuyenRepo\EdgeMiner2\mt5\bridge model=tm_m15_best_2_49216b56
+[bridge] history bars=38678
+[bridge] bar=2026.07.24 05:15 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+
+--- start 2026-07-24T09:38:53+07:00 ---
+[bridge] live monitor=http://127.0.0.1:8765
+[bridge] dir=C:\Work\ThuyenRepo\EdgeMiner2\mt5\bridge model=tm_m15_best_2_49216b56
+[bridge] history bars=38678
+[bridge] bar=2026.07.24 05:15 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 05:30 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 05:45 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 06:00 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 06:15 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E
+[bridge] bar=2026.07.24 06:30 action=FLAT reason=no_signal strat=Forge RR2.5 full 2L5S bb+zscore #065E

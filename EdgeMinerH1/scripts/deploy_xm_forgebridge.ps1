@@ -9,19 +9,20 @@ param(
   [switch]$EnableTrading,
   [switch]$RestartTerminal,
   [switch]$NoRestartTerminal,
-  [bool]$StartBridgeService = $true
+  [bool]$StartBridgeService = $true,
+  [switch]$SkipBridgeService
 )
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $SourceEa = Join-Path $RepoRoot "mt5\Experts\ForgeBridge.mq5"
-$ProjectBridge = Join-Path $RepoRoot "mt5\bridge"
+$ProjectBridge = Join-Path $RepoRoot "mt5\bridge_h1"
 if (-not $ModelId) {
   $activeModelPath = Join-Path $RepoRoot "results\active_trade_model.json"
   if (Test-Path $activeModelPath) {
     $ModelId = (Get-Content $activeModelPath -Raw | ConvertFrom-Json).id
   }
-  if (-not $ModelId) {
+  if (-not $ModelId -and $StartBridgeService -and -not $SkipBridgeService) {
     throw "No active MT5 Trade Model. Build and select a model before deployment."
   }
 }
@@ -73,7 +74,7 @@ function Find-TerminalDataPath([string]$XmInstallPath) {
 
 function Ensure-BridgeJunction([string]$DataPath) {
   $filesDir = Join-Path $DataPath "MQL5\Files"
-  $link = Join-Path $filesDir "bridge"
+  $link = Join-Path $filesDir "bridge_h1"
   New-Item -ItemType Directory -Path $filesDir -Force | Out-Null
   New-Item -ItemType Directory -Path $ProjectBridge -Force | Out-Null
 
@@ -98,11 +99,11 @@ function Compile-Ea([string]$DataPath, [string]$XmInstallPath) {
     throw "EA source not found: $SourceEa"
   }
 
-  $eaDir = Join-Path $DataPath "MQL5\Experts\EdgeMiner2"
+  $eaDir = Join-Path $DataPath "MQL5\Experts\EdgeMinerH1"
   New-Item -ItemType Directory -Path $eaDir -Force | Out-Null
-  $targetMq5 = Join-Path $eaDir "ForgeBridge.mq5"
-  $targetEx5 = Join-Path $eaDir "ForgeBridge.ex5"
-  $compileLog = Join-Path $eaDir "ForgeBridge_compile.log"
+  $targetMq5 = Join-Path $eaDir "ForgeBridgeH1.mq5"
+  $targetEx5 = Join-Path $eaDir "ForgeBridgeH1.ex5"
+  $compileLog = Join-Path $eaDir "ForgeBridgeH1_compile.log"
   Copy-Item $SourceEa $targetMq5 -Force
 
   $editor = Join-Path $XmInstallPath "metaeditor64.exe"
@@ -138,7 +139,7 @@ function Get-ForgeBridgeCharts([string]$DataPath) {
     return @()
   }
   return @(Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse -ErrorAction SilentlyContinue |
-    Where-Object { (Get-Content $_.FullName -Raw) -match "name=ForgeBridge" })
+    Where-Object { (Get-Content $_.FullName -Raw) -match "(?m)^name=ForgeBridgeH1\s*$" })
 }
 
 function Stop-XmTerminal([string]$XmInstallPath) {
@@ -166,21 +167,39 @@ function Attach-ForgeBridge(
   Stop-XmTerminal $XmInstallPath
 
   $chartsRoot = Join-Path $DataPath "MQL5\Profiles\Charts"
-  $charts = Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
+  $allEurusdCharts = Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
     Where-Object {
       $text = Get-Content $_.FullName -Raw
-      $text -match "(?m)^symbol=EURUSD\s*$" -and
+      $text -match "(?m)^symbol=EURUSD\s*$"
+    }
+  $m15Chart = $allEurusdCharts |
+    Where-Object {
+      $text = Get-Content $_.FullName -Raw
+      $text -match "(?m)^period_type=0\s*$" -and
+      $text -match "(?m)^period_size=15\s*$" -and
+      $text -match "(?m)^name=ForgeBridge\s*$"
+    } | Select-Object -First 1
+  if (-not $m15Chart) {
+    throw "Active EURUSD M15 ForgeBridge chart not found."
+  }
+  $activeProfileDir = $m15Chart.DirectoryName
+  $charts = $allEurusdCharts |
+    Where-Object {
+      $text = Get-Content $_.FullName -Raw
+      $_.DirectoryName -eq $activeProfileDir -and
       $text -match "(?m)^period_type=1\s*$" -and
       $text -match "(?m)^period_size=1\s*$"
     }
   $target = $charts |
-    Where-Object { (Get-Content $_.FullName -Raw) -match "name=(ForexForgeEA|ForgeBridge)" } |
+    Where-Object { (Get-Content $_.FullName -Raw) -match "(?m)^name=ForgeBridgeH1\s*$" } |
     Select-Object -First 1
   if (-not $target) {
     $target = $charts | Select-Object -First 1
   }
   if (-not $target) {
-    throw "EURUSD H1 chart not found in the MT5 profile."
+    $targetPath = Join-Path $activeProfileDir "chart_h1_edgeminer.chr"
+    Copy-Item $m15Chart.FullName $targetPath -Force
+    $target = Get-Item $targetPath
   }
 
   $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
@@ -188,19 +207,19 @@ function Attach-ForgeBridge(
   $mode = if ($TradingEnabled) { 1 } else { 0 }
   $block = @"
 <expert>
-name=ForgeBridge
-path=Experts\EdgeMiner2\ForgeBridge.ex5
+name=ForgeBridgeH1
+path=Experts\EdgeMinerH1\ForgeBridgeH1.ex5
 expertmode=$mode
 <inputs>
 InpMode=0
-InpBridgeSubdir=bridge
+InpBridgeSubdir=bridge_h1
 InpDecisionWaitMs=8000
 InpPollMs=500
 InpChartBars=336
 InpHeartbeatMs=2000
 InpHistoryChunk=750
 InpRiskPct=$RiskPct
-InpMagic=20260724
+InpMagic=20260725
 InpSlipPoints=30
 InpMaxHoldBars=36
 </inputs>
@@ -208,11 +227,10 @@ InpMaxHoldBars=36
 "@
 
   $text = Get-Content $target.FullName -Raw
-  if ($text -match "(?s)<expert>.*?</expert>") {
-    $text = [regex]::Replace($text, "(?s)<expert>.*?</expert>", $block, 1)
-  } else {
-    $text = $text -replace "<window>", ($block + "`r`n<window>")
-  }
+  $text = $text -replace "(?m)^period_type=\d+\s*$", "period_type=1"
+  $text = $text -replace "(?m)^period_size=\d+\s*$", "period_size=1"
+  $text = [regex]::Replace($text, "(?s)<expert>.*?</expert>\s*", "")
+  $text = [regex]::Replace($text, "<window>", ($block + "`r`n<window>"), 1)
   Set-Content -Path $target.FullName -Value $text -Encoding Unicode
 
   Start-Process -FilePath (Join-Path $XmInstallPath "terminal64.exe")
@@ -234,8 +252,13 @@ function Restart-BridgeService {
     }
   }
   # A stale PID file can leave an older service writing to the same bridge.
+  $escapedRepo = [regex]::Escape($RepoRoot)
+  $escapedBridge = [regex]::Escape($ProjectBridge)
   Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-    Where-Object { $_.CommandLine -match "mt5_bridge_service\.py" } |
+    Where-Object {
+      $_.CommandLine -match "mt5_bridge_service\.py" -and
+      ($_.CommandLine -match $escapedRepo -or $_.CommandLine -match $escapedBridge)
+    } |
     ForEach-Object {
       Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
     }
@@ -252,7 +275,7 @@ function Restart-BridgeService {
   $commandLine = (
     "`"$pythonw`" scripts/mt5_bridge_service.py " +
     "--model-id `"$ModelId`" --risk-pct $RiskPct --poll $PollSeconds " +
-    "--bridge-dir `"$ProjectBridge`""
+    "--monitor-port 8865 --bridge-dir `"$ProjectBridge`""
   )
   $created = Invoke-CimMethod -ClassName Win32_Process -MethodName Create `
     -Arguments @{ CommandLine = $commandLine; CurrentDirectory = $RepoRoot }
@@ -308,7 +331,7 @@ if (-not $NoRestartTerminal -and -not $Attach) {
   Start-Sleep -Seconds 8
 }
 
-if ($StartBridgeService) {
+if ($StartBridgeService -and -not $SkipBridgeService) {
   Write-Step "Restart MT5 Bridge service"
   $servicePid = Restart-BridgeService
   Write-Host "Service : PID $servicePid"

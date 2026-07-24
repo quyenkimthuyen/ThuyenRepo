@@ -224,11 +224,17 @@ def get_paper_monitor(
   spread_pips: float = DEFAULT_SPREAD_PIPS,
   slippage_pips: float = DEFAULT_SLIPPAGE_PIPS,
   risk_pct: float = DEFAULT_RISK_PCT_PER_TRADE,
+  feature_profile: str | None = None,
+  mining_search_space: dict | None = None,
+  model_id: str | None = None,
 ) -> dict:
+  from mt5_bridge.models import get_model_run_params, resolve_model
+  model_params = get_model_run_params(resolve_model(model_id))
   if train_weeks is None:
-    from mt5_bridge.models import get_model_run_params, resolve_model
-    model_params = get_model_run_params(resolve_model())
     train_weeks = int(model_params.get("train_weeks") or 3)
+  feature_profile = feature_profile or model_params.get("feature_profile") or "current"
+  if mining_search_space is None:
+    mining_search_space = model_params.get("mining_search_space")
   reset_kb_cache()
   if use_learning:
     set_kb_profile(kb_profile, kb_snapshot)
@@ -239,4 +245,6 @@ def get_paper_monitor(
     risk_pct=risk_pct,
     kb_profile=kb_profile if use_learning else None,
     kb_snapshot=kb_snapshot if use_learning else None,
+    feature_profile=feature_profile,
+    mining_search_space=mining_search_space,
   )

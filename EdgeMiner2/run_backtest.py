@@ -25,7 +25,8 @@ from optimizer import optimize_on_window, set_kb_profile, get_knowledge_base, re
 from knowledge_base import KnowledgeBase
 from strategy import compute_metrics
 from strategy_miner import (
-  MinedStrategy, generate_signals_mined, backtest_mined, Rule,
+  MinedStrategy, MiningSearchSpace, generate_signals_mined, backtest_mined, Rule,
+  mining_search_space_to_dict,
 )
 
 REPORT_DIR = Path(__file__).parent / "results"
@@ -51,6 +52,11 @@ def strategy_to_dict(s: MinedStrategy) -> dict:
     "ml_prob_min": s.ml_prob_min,
     "rr": s.rr_ratio,
     "atr_mult": s.atr_mult_sl,
+    "max_hold_bars": s.max_hold_bars,
+    "min_bars_between": s.min_bars_between,
+    "session_filter": s.session_filter,
+    "session_start_hour": s.session_start_hour,
+    "session_end_hour": s.session_end_hour,
     "long_rules": rules_to_list(s.long_rules),
     "short_rules": rules_to_list(s.short_rules),
   }
@@ -75,6 +81,7 @@ def _run_holdout_forward(
   use_learning: bool, train_weeks: int,
   spread_pips: float, slippage_pips: float,
   kb: KnowledgeBase | None = None,
+  search_space: MiningSearchSpace | None = None,
 ) -> tuple[list, dict | None]:
   """Mine 1 lần tại holdout, trade holdout không re-optimize (strict forward)."""
   train_start_idx, train_end_idx = get_train_window_indices(df, holdout_cutoff, train_weeks)
@@ -83,6 +90,7 @@ def _run_holdout_forward(
   strat = optimize_on_window(
     fm, train_start_idx, train_end_idx,
     use_learning=use_learning, as_of=holdout_cutoff, kb=kb,
+    search_space=search_space,
   )
   if strat is None:
     return [], None
@@ -112,6 +120,8 @@ def run_walk_forward(
   kb_snapshot: int | str | None = None,
   oos_from: str | None = None,
   oos_to: str | None = None,
+  feature_profile: str = "current",
+  search_space: MiningSearchSpace | None = None,
 ) -> dict:
   data_meta = require_canonical_mt5_data()
   reset_kb_cache()
@@ -131,7 +141,7 @@ def run_walk_forward(
     holdout_cutoff = df.index[-1] - pd.DateOffset(months=holdout_months)
 
   df_wf = df[df.index < holdout_cutoff] if holdout_cutoff is not None else df
-  fm = FeatureMatrix(df)
+  fm = FeatureMatrix(df, profile=feature_profile)
 
   train_end_date = df_wf.index[0] + pd.Timedelta(weeks=train_weeks)
   oos_mask = df_wf.index >= train_end_date
@@ -178,6 +188,7 @@ def run_walk_forward(
     strat = optimize_on_window(
       fm, train_start_idx, train_end_idx,
       use_learning=use_learning, as_of=week_start, kb=kb_instance,
+      search_space=search_space,
     )
     if strat is None:
       strat = prev_strat
@@ -222,6 +233,7 @@ def run_walk_forward(
   if holdout_cutoff is not None:
     holdout_trades, holdout_strat = _run_holdout_forward(
       df, fm, holdout_cutoff, use_learning, train_weeks, spread_pips, slippage_pips, kb_instance,
+      search_space,
     )
 
   overall = compute_metrics(all_oos_trades, risk_pct_per_trade)
@@ -277,6 +289,8 @@ def run_walk_forward(
       "holdout_months": holdout_months,
       "risk_pct_per_trade": risk_pct_per_trade,
       "data_fingerprint": data_meta.get("fingerprint"),
+      "feature_profile": feature_profile,
+      "mining_search_space": mining_search_space_to_dict(search_space),
     },
     "overall_oos": _pack_metrics(overall, avg_tpw),
     "last_1_year": _pack_metrics(year_m, year_m["n_trades"] / year_weeks),

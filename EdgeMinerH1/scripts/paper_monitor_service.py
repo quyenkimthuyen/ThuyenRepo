@@ -88,7 +88,7 @@ def main() -> int:
   try:
     chart_server = start_paper_live_monitor_server()
     atexit.register(chart_server.shutdown)
-    print("paper chart=http://127.0.0.1:8766", flush=True)
+    print("paper chart=http://127.0.0.1:8866", flush=True)
   except OSError as exc:
     print(f"paper chart unavailable: {exc}", flush=True)
 

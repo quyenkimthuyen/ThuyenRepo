@@ -218,11 +218,8 @@ InpMaxHoldBars=36
   $text = Get-Content $target.FullName -Raw
   $text = $text -replace "(?m)^period_type=\d+\s*$", "period_type=0"
   $text = $text -replace "(?m)^period_size=\d+\s*$", "period_size=15"
-  if ($text -match "(?s)<expert>.*?</expert>") {
-    $text = [regex]::Replace($text, "(?s)<expert>.*?</expert>", $block, 1)
-  } else {
-    $text = $text -replace "<window>", ($block + "`r`n<window>")
-  }
+  $text = [regex]::Replace($text, "(?s)<expert>.*?</expert>\s*", "")
+  $text = [regex]::Replace($text, "<window>", ($block + "`r`n<window>"), 1)
   Set-Content -Path $target.FullName -Value $text -Encoding Unicode
 
   Start-Process -FilePath (Join-Path $XmInstallPath "terminal64.exe")
@@ -244,8 +241,13 @@ function Restart-BridgeService {
     }
   }
   # A stale PID file can leave an older service writing to the same bridge.
+  $escapedRepo = [regex]::Escape($RepoRoot)
+  $escapedBridge = [regex]::Escape($ProjectBridge)
   Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-    Where-Object { $_.CommandLine -match "mt5_bridge_service\.py" } |
+    Where-Object {
+      $_.CommandLine -match "mt5_bridge_service\.py" -and
+      ($_.CommandLine -match $escapedRepo -or $_.CommandLine -match $escapedBridge)
+    } |
     ForEach-Object {
       Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
     }
@@ -262,7 +264,7 @@ function Restart-BridgeService {
   $commandLine = (
     "`"$pythonw`" scripts/mt5_bridge_service.py " +
     "--model-id `"$ModelId`" --risk-pct $RiskPct --poll $PollSeconds " +
-    "--bridge-dir `"$ProjectBridge`""
+    "--monitor-port 8765 --bridge-dir `"$ProjectBridge`""
   )
   $created = Invoke-CimMethod -ClassName Win32_Process -MethodName Create `
     -Arguments @{ CommandLine = $commandLine; CurrentDirectory = $RepoRoot }

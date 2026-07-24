@@ -24,6 +24,8 @@ REPLAY_CSV_NAME = "replay_signals.csv"
 
 DEFAULT_MODEL_ID = ""
 DEFAULT_MAGIC = 20260724
+DEFAULT_TIMEFRAME = "M15"
+INSTANCE_ID = "M15"
 
 
 def ensure_bridge_dir(path: Path | None = None) -> Path:

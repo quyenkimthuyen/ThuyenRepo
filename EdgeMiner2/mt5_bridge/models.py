@@ -70,6 +70,8 @@ def get_model_run_params(model: dict | None = None, model_id: str | None = None)
       "kb_snapshot": 1,
       "spread_pips": float(DEFAULT_SPREAD_PIPS),
       "slippage_pips": float(DEFAULT_SLIPPAGE_PIPS),
+      "feature_profile": "current",
+      "mining_search_space": None,
       "trade_model_id": None,
     }
   return {
@@ -82,6 +84,11 @@ def get_model_run_params(model: dict | None = None, model_id: str | None = None)
     "oos_to": m.get("oos_to"),
     "spread_pips": float(m.get("spread_pips", DEFAULT_SPREAD_PIPS)),
     "slippage_pips": float(m.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
+    "feature_profile": (
+      m.get("feature_profile")
+      or ("legacy" if int(m.get("feature_schema") or 0) < 3 else "current")
+    ),
+    "mining_search_space": m.get("mining_search_space"),
     "trade_model_id": m.get("id"),
     "label": m.get("label"),
   }
