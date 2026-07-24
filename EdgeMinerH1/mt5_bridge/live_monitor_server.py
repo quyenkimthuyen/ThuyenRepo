@@ -61,9 +61,33 @@ let firstRender = true;
 
 function mt5Time(value) {{
   if (!value) return null;
-  const p = String(value).trim().split(" ");
-  return p[0].replaceAll(".","-") + "T" + (p[1] || "00:00") +
-    ((p[1] || "").split(":").length === 2 ? ":00" : "");
+  const s = String(value).trim();
+  // ISO / App journal: 2026-07-24T12:34:56+05:30
+  const iso = s.match(/^(\\d{{4}})-(\\d{{2}})-(\\d{{2}})[T ](\\d{{2}}):(\\d{{2}})(?::(\\d{{2}}))?/);
+  if (iso) return iso[1]+"-"+iso[2]+"-"+iso[3]+"T"+iso[4]+":"+iso[5]+":"+(iso[6]||"00");
+  // MT5: 2026.07.24 12:34[:56]
+  const p = s.split(/\\s+/);
+  const d = (p[0]||"").replaceAll(".","-");
+  if (!/^\\d{{4}}-\\d{{2}}-\\d{{2}}$/.test(d)) return null;
+  let t = p[1] || "00:00:00";
+  if (t.split(":").length === 2) t += ":00";
+  return d + "T" + t;
+}}
+function px5(v) {{
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toFixed(5) : "—";
+}}
+function tradeHover(t, ep) {{
+  const dir = String(t.direction || t.dir || "").toUpperCase();
+  const st = String(t.status || "").toUpperCase();
+  return (st==="SIGNAL"?"Signal ":"Entry ")+dir+
+    "<br>Entry: "+px5(ep)+
+    "<br>SL: "+px5(t.sl)+" · TP: "+px5(t.tp)+
+    "<br>Lots: "+(t.lots!=null?t.lots:"—")+
+    " · Ticket: "+(t.ticket!=null?t.ticket:"—")+
+    "<br>R: "+(t.r!=null?t.r:"—")+" · P/L: "+(t.profit!=null?t.profit:"—")+
+    "<br>"+(t.strategy_name || t.signal_id || "")+
+    "<extra></extra>";
 }}
 function setText(id, text, cls="") {{
   const el=document.getElementById(id); el.textContent=text; el.className="value "+cls;
@@ -71,7 +95,8 @@ function setText(id, text, cls="") {{
 function tradeLayers(trades, start, end) {{
   const out=[], shapes=[], annotations=[];
   for (const t of (trades || [])) {{
-    const et=mt5Time(t.entry_time || t.entry), ep=Number(t.entry_px);
+    const et=mt5Time(t.entry_time || t.entry);
+    const ep=Number(t.entry_px != null ? t.entry_px : t.entry);
     if (!et || !Number.isFinite(ep)) continue;
     const xt=mt5Time(t.exit_time || t.exit), lineEnd=xt || end;
     if (lineEnd < start || et > end) continue;
@@ -79,6 +104,7 @@ function tradeLayers(trades, start, end) {{
     const buy=dir==="BUY" || dir==="LONG", color=buy?COLORS.up:COLORS.down;
     const status=String(t.status || "CLOSED").toUpperCase(), signal=status==="SIGNAL";
     const lineStart=et<start?start:et, sl=Number(t.sl), tp=Number(t.tp);
+    const labelColor = signal ? COLORS.live : color;
     if (Number.isFinite(sl) && Number.isFinite(tp)) {{
       shapes.push({{type:"rect",xref:"x",yref:"y",x0:lineStart,x1:lineEnd,
         y0:Math.min(ep,sl),y1:Math.max(ep,sl),
@@ -89,38 +115,64 @@ function tradeLayers(trades, start, end) {{
         fillcolor:signal?"rgba(247,201,72,.06)":"rgba(8,153,129,.10)",
         line:{{width:0}},layer:"below"}});
     }}
+    out.push({{
+      type:"scatter",mode:"lines",x:[lineStart,lineEnd],y:[ep,ep],
+      line:{{color:labelColor,width:1.1,dash:"solid"}},showlegend:false,
+      hoverinfo:"skip",xaxis:"x",yaxis:"y"
+    }});
     if (et >= start) out.push({{
       type:"scatter",mode:"markers+text",x:[et],y:[ep],
       marker:{{symbol:signal?"diamond":(buy?"triangle-up":"triangle-down"),
-        size:signal?15:13,color:signal?COLORS.live:color,
+        size:signal?15:13,color:labelColor,
         line:{{width:signal?2:1,color:"white"}}}},
       text:[(signal?"SIGNAL ":"ENTRY ")+dir+" "+ep.toFixed(5)],
       textposition:buy?"top center":"bottom center",
-      textfont:{{size:9,color:signal?COLORS.live:color}},
-      hovertemplate:(signal?"Signal ":"Entry ")+dir+"<br>%{{x}} @ %{{y:.5f}}<extra></extra>",
+      textfont:{{size:10,color:labelColor,family:"Arial"}},
+      hovertemplate:tradeHover(t, ep),
       showlegend:false,xaxis:"x",yaxis:"y"
     }});
     for (const [value,label,lineColor] of [[t.sl,"SL",COLORS.sl],[t.tp,"TP",COLORS.tp]]) {{
       const px=Number(value); if (!Number.isFinite(px)) continue;
+      const lc = signal ? COLORS.live : lineColor;
       out.push({{
-        type:"scatter",mode:"lines",x:[lineStart,lineEnd],y:[px,px],
-        line:{{color:signal?COLORS.live:lineColor,width:1.2,dash:signal?"dash":"dot"}},showlegend:false,
-        hovertemplate:label+": %{{y:.5f}}<extra></extra>",xaxis:"x",yaxis:"y"
+        type:"scatter",mode:"lines+markers+text",
+        x:[lineStart,lineEnd],y:[px,px],
+        line:{{color:lc,width:1.4,dash:signal?"dash":"dot"}},
+        marker:{{size:[0,7],color:lc}},
+        text:["", label+" "+px.toFixed(5)],
+        textposition:"middle right",
+        textfont:{{size:10,color:lc,family:"Arial"}},
+        showlegend:false,
+        hovertemplate:label+": %{{y:.5f}}<br>"+dir+" ticket "+(t.ticket!=null?t.ticket:"—")+"<extra></extra>",
+        xaxis:"x",yaxis:"y"
       }});
     }}
     const xp=Number(t.exit_px);
-    if (xt && xt>=start && Number.isFinite(xp)) out.push({{
+    if (status==="CLOSED" && xt && xt>=start && Number.isFinite(xp)) out.push({{
       type:"scatter",mode:"markers+text",x:[xt],y:[xp],
-      marker:{{symbol:"x",size:11,color:Number(t.r)>0?COLORS.tp:COLORS.sl}},
-      text:["EXIT "+xp.toFixed(5)],textposition:"bottom center",textfont:{{size:9}},
+      marker:{{symbol:"x",size:12,color:Number(t.r)>0?COLORS.tp:COLORS.sl}},
+      text:["EXIT "+xp.toFixed(5)+(t.r!=null?" ("+Number(t.r).toFixed(2)+"R)":"")],
+      textposition:"bottom center",textfont:{{size:10}},
       showlegend:false,xaxis:"x",yaxis:"y",
-      hovertemplate:"Exit<br>%{{x}} @ %{{y:.5f}}<extra></extra>"
+      hovertemplate:"Exit<br>%{{x}} @ %{{y:.5f}}<br>R: "+(t.r!=null?t.r:"—")+
+        " · P/L: "+(t.profit!=null?t.profit:"—")+"<extra></extra>"
     }});
-    if (status==="OPEN") annotations.push({{
-      xref:"x",yref:"y",x:et,y:ep,text:"● OPEN",showarrow:true,arrowhead:2,
-      font:{{size:10,color:COLORS.live}},bgcolor:"rgba(0,0,0,.65)",
-      bordercolor:COLORS.live
-    }});
+    if (status === "OPEN" || status === "SIGNAL") {{
+      const card = [
+        (signal?"SIGNAL":"OPEN")+" "+dir+(t.ticket!=null?" #"+t.ticket:""),
+        "E "+ep.toFixed(5),
+        Number.isFinite(sl) ? ("SL "+sl.toFixed(5)) : null,
+        Number.isFinite(tp) ? ("TP "+tp.toFixed(5)) : null,
+        t.lots!=null ? (Number(t.lots).toFixed(2)+" lot") : null,
+      ].filter(Boolean).join("<br>");
+      annotations.push({{
+        xref:"x",yref:"y",x:et,y:ep,
+        text:card,showarrow:true,arrowhead:2,ax:buy?48:-48,ay:buy?-42:42,
+        font:{{size:10,color:labelColor,family:"Arial"}},
+        align:"left",bgcolor:"rgba(19,23,34,.88)",
+        bordercolor:labelColor,borderwidth:1,borderpad:4
+      }});
+    }}
   }}
   return {{traces:out,shapes,annotations}};
 }}
@@ -187,7 +239,7 @@ async function refresh() {{
     const layout={{
       title:{{text:"{chart_title}",font:{{size:14,color:COLORS.text}},x:.01}},
       paper_bgcolor:COLORS.bg,plot_bgcolor:COLORS.bg,font:{{color:COLORS.text,size:11}},
-      margin:{{l:8,r:76,t:42,b:28}},showlegend:false,hovermode:"x unified",
+      margin:{{l:8,r:96,t:42,b:28}},showlegend:false,hovermode:"closest",
       uirevision:"mt5-live",dragmode:"pan",shapes,annotations,
       xaxis:{{domain:[0,1],anchor:"y",rangeslider:{{visible:false}},showticklabels:false,
         gridcolor:COLORS.grid,rangebreaks:[{{bounds:["sat","mon"]}}]}},

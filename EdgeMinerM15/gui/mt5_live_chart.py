@@ -104,28 +104,45 @@ def _add_trade(fig: go.Figure, trade: dict, chart_start, chart_end) -> None:
 
   exit_time = _parse_mt5_time(trade.get("exit_time") or trade.get("exit"))
   status = str(trade.get("status") or "CLOSED").upper()
+  signal = status == "SIGNAL"
   line_end = exit_time if exit_time is not None else chart_end
   if line_end < chart_start or entry_time > chart_end:
     return
   line_start = max(entry_time, chart_start)
   direction = str(trade.get("direction") or trade.get("dir") or "").upper()
   is_buy = direction in ("BUY", "LONG")
-  marker = "triangle-up" if is_buy else "triangle-down"
-  color = TV_UP if is_buy else TV_DOWN
+  marker = "diamond" if signal else ("triangle-up" if is_buy else "triangle-down")
+  color = TV_LIVE if signal else (TV_UP if is_buy else TV_DOWN)
+
+  # Entry hold line
+  fig.add_trace(go.Scatter(
+    x=[line_start, line_end], y=[entry, entry],
+    mode="lines",
+    line=dict(color=color, width=1.1),
+    showlegend=False,
+    hoverinfo="skip",
+  ), row=1, col=1)
+
+  hover = (
+    f"{'Signal' if signal else 'Entry'} {direction}<br>"
+    f"Entry: {entry:.5f}<br>"
+    f"SL: {trade.get('sl', '—')} · TP: {trade.get('tp', '—')}<br>"
+    f"Lots: {trade.get('lots', '—')} · Ticket: {trade.get('ticket', '—')}<br>"
+    f"R: {trade.get('r', '—')} · P/L: {trade.get('profit', '—')}<br>"
+    f"{trade.get('strategy_name') or trade.get('signal_id') or ''}"
+    "<extra></extra>"
+  )
 
   if entry_time >= chart_start:
     fig.add_trace(go.Scatter(
       x=[entry_time], y=[entry],
       mode="markers+text",
       marker=dict(symbol=marker, size=14, color=color, line=dict(width=1, color="white")),
-      text=[f"{direction} {entry:.5f}"],
+      text=[f"{'SIGNAL' if signal else 'ENTRY'} {direction} {entry:.5f}"],
       textposition="top center" if is_buy else "bottom center",
-      textfont=dict(size=9, color=color),
+      textfont=dict(size=10, color=color),
       showlegend=False,
-      hovertemplate=(
-        f"{direction}<br>%{{x}} @ %{{y:.5f}}<br>"
-        f"Ticket: {trade.get('ticket', '—')}<extra></extra>"
-      ),
+      hovertemplate=hover,
     ), row=1, col=1)
 
   for value, label, line_color in (
@@ -136,29 +153,69 @@ def _add_trade(fig: go.Figure, trade: dict, chart_start, chart_end) -> None:
       price = float(value)
     except (TypeError, ValueError):
       continue
+    lc = TV_LIVE if signal else line_color
     fig.add_trace(go.Scatter(
       x=[line_start, line_end], y=[price, price],
-      mode="lines",
-      line=dict(color=line_color, width=1.3, dash="dot"),
+      mode="lines+markers+text",
+      line=dict(color=lc, width=1.4, dash="dash" if signal else "dot"),
+      marker=dict(size=[0, 7], color=lc),
+      text=["", f"{label} {price:.5f}"],
+      textposition="middle right",
+      textfont=dict(size=10, color=lc),
       showlegend=False,
       hovertemplate=f"{label}: %{{y:.5f}}<extra></extra>",
     ), row=1, col=1)
 
   exit_px = trade.get("exit_px")
   if status == "CLOSED" and exit_time is not None and exit_px is not None and exit_time >= chart_start:
+    r_val = trade.get("r")
+    r_txt = f" ({float(r_val):+.2f}R)" if r_val is not None else ""
     fig.add_trace(go.Scatter(
       x=[exit_time], y=[float(exit_px)],
       mode="markers+text",
-      marker=dict(symbol="x", size=11, color=TV_TP if (trade.get("r") or 0) > 0 else TV_SL),
-      text=[f"EXIT {float(exit_px):.5f}"],
+      marker=dict(symbol="x", size=12, color=TV_TP if (r_val or 0) > 0 else TV_SL),
+      text=[f"EXIT {float(exit_px):.5f}{r_txt}"],
       textposition="bottom center",
-      textfont=dict(size=9),
+      textfont=dict(size=10),
       showlegend=False,
       hovertemplate=(
         f"Exit<br>%{{x}} @ %{{y:.5f}}<br>"
         f"R: {trade.get('r', '—')} · P/L: {trade.get('profit', '—')}<extra></extra>"
       ),
     ), row=1, col=1)
+
+  if status in ("OPEN", "SIGNAL"):
+    try:
+      sl_f = float(trade["sl"]) if trade.get("sl") is not None else None
+    except (TypeError, ValueError):
+      sl_f = None
+    try:
+      tp_f = float(trade["tp"]) if trade.get("tp") is not None else None
+    except (TypeError, ValueError):
+      tp_f = None
+    lines = [
+      f"{'SIGNAL' if signal else 'OPEN'} {direction}"
+      + (f" #{trade.get('ticket')}" if trade.get("ticket") is not None else ""),
+      f"E {entry:.5f}",
+    ]
+    if sl_f is not None:
+      lines.append(f"SL {sl_f:.5f}")
+    if tp_f is not None:
+      lines.append(f"TP {tp_f:.5f}")
+    if trade.get("lots") is not None:
+      try:
+        lines.append(f"{float(trade['lots']):.2f} lot")
+      except (TypeError, ValueError):
+        pass
+    fig.add_annotation(
+      x=entry_time, y=entry, text="<br>".join(lines),
+      showarrow=True, arrowhead=2,
+      ax=48 if is_buy else -48, ay=-42 if is_buy else 42,
+      font=dict(size=10, color=color),
+      align="left", bgcolor="rgba(19,23,34,.88)",
+      bordercolor=color, borderwidth=1, borderpad=4,
+      row=1, col=1,
+    )
 
 
 def build_ea_chart(

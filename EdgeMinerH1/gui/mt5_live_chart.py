@@ -221,8 +221,8 @@ def build_ea_chart(
     plot_bgcolor=TV_BG,
     font=dict(color=TV_TEXT, size=11),
     height=620 if has_volume else 560,
-    margin=dict(l=8, r=72, t=48, b=32),
-    hovermode="x unified",
+    margin=dict(l=8, r=96, t=48, b=32),
+    hovermode="closest",
     xaxis_rangeslider_visible=False,
     uirevision="mt5-live-chart",
   )
