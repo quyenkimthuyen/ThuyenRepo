@@ -297,6 +297,30 @@ def _render_service_controls() -> None:
       st.rerun()
     st.caption("`results/mt5_bridge_service.log` · `results/mt5_bridge_service.pid`")
 
+    st.divider()
+    st.markdown("##### Triển khai EA sang MT5")
+    st.caption("Sao chép và biên dịch EA `ForgeBridge.mq5`, tự động thiết lập Junction và liên kết biểu đồ EURUSD M15.")
+    if st.button("Chạy Script Triển khai (Deploy)", icon=":material/settings_suggest:", use_container_width=True):
+      with st.spinner("Đang chạy deploy script..."):
+        try:
+          import subprocess
+          cmd = [
+            "powershell.exe",
+            "-ExecutionPolicy", "Bypass",
+            "-File", "scripts/deploy_xm_forgebridge.ps1",
+            "-Attach",
+            "-EnableTrading"
+          ]
+          res = subprocess.run(cmd, capture_output=True, text=True, check=False)
+          if res.returncode == 0:
+            st.success("Triển khai EA thành công!")
+            st.code(res.stdout)
+          else:
+            st.error(f"Lỗi khi triển khai (Mã lỗi: {res.returncode}):")
+            st.code(res.stderr + "\n" + res.stdout)
+        except Exception as e:
+          st.error(f"Lỗi: {e}")
+
 
 def _render_history_sync() -> None:
   history = get_history_status()
