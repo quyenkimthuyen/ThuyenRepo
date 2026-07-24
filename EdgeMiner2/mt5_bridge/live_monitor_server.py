@@ -21,11 +21,30 @@ def _plotly_js_path() -> Path:
 def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str:
   paper_mode = mode == "paper"
   chart_title = "EURUSD M15 · Paper Trade" if paper_mode else "EURUSD M15 · XM MT5 live"
-  labels = (
-    ("PAPER ENGINE", "LAST PRICE", "DAY TRADES", "SLOTS LEFT", "SESSION")
-    if paper_mode else
-    ("EA CONNECTION", "BID / ASK", "SPREAD", "OPEN POSITIONS", "ALGO TRADING")
-  )
+  if paper_mode:
+    labels = ("PAPER ENGINE", "LAST PRICE", "DAY TRADES", "SLOTS LEFT", "SESSION")
+    grid_cols = 5
+    status_cells = f"""
+    <div class="metric"><div class="label">{labels[0]}</div><div class="value" id="conn">WAITING</div></div>
+    <div class="metric"><div class="label">{labels[1]}</div><div class="value" id="price">—</div></div>
+    <div class="metric"><div class="label">{labels[2]}</div><div class="value" id="spread">—</div></div>
+    <div class="metric"><div class="label">{labels[3]}</div><div class="value" id="positions">—</div></div>
+    <div class="metric"><div class="label">{labels[4]}</div><div class="value" id="trading">—</div></div>
+    """
+  else:
+    labels = (
+      "EA", "BID / ASK", "SPREAD", "OPEN", "ALGO", "DECISION", "SLOTS",
+    )
+    grid_cols = 7
+    status_cells = f"""
+    <div class="metric"><div class="label">{labels[0]}</div><div class="value" id="conn">WAITING</div></div>
+    <div class="metric"><div class="label">{labels[1]}</div><div class="value" id="price">—</div></div>
+    <div class="metric"><div class="label">{labels[2]}</div><div class="value" id="spread">—</div></div>
+    <div class="metric"><div class="label">{labels[3]}</div><div class="value" id="positions">—</div></div>
+    <div class="metric"><div class="label">{labels[4]}</div><div class="value" id="trading">—</div></div>
+    <div class="metric"><div class="label">{labels[5]}</div><div class="value" id="decision">—</div></div>
+    <div class="metric"><div class="label">{labels[6]}</div><div class="value" id="slots">—</div></div>
+    """
   return f"""<!doctype html>
 <html>
 <head>
@@ -33,21 +52,17 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
     html,body{{margin:0;background:#131722;color:#d1d4dc;font-family:Arial,sans-serif}}
-    #status{{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr));gap:8px;padding:8px 10px}}
+    #status{{display:grid;grid-template-columns:repeat({grid_cols},minmax(90px,1fr));gap:8px;padding:8px 10px}}
     .metric{{background:#1e222d;border:1px solid #2a2e39;border-radius:6px;padding:7px 10px}}
-    .label{{font-size:11px;color:#8b8f9a}} .value{{font-size:16px;font-weight:600;margin-top:3px}}
+    .label{{font-size:11px;color:#8b8f9a}} .value{{font-size:15px;font-weight:600;margin-top:3px}}
     #note{{font-size:11px;color:#8b8f9a;padding:0 12px 4px}} #chart{{height:585px}}
-    .online{{color:#26a69a}} .offline{{color:#ef5350}}
+    .online{{color:#26a69a}} .offline{{color:#ef5350}} .flat{{color:#d1d4dc}} .signal{{color:#f7c948}}
   </style>
   <script src="/plotly.min.js"></script>
 </head>
 <body>
   <div id="status">
-    <div class="metric"><div class="label">{labels[0]}</div><div class="value" id="conn">WAITING</div></div>
-    <div class="metric"><div class="label">{labels[1]}</div><div class="value" id="price">—</div></div>
-    <div class="metric"><div class="label">{labels[2]}</div><div class="value" id="spread">—</div></div>
-    <div class="metric"><div class="label">{labels[3]}</div><div class="value" id="positions">—</div></div>
-    <div class="metric"><div class="label">{labels[4]}</div><div class="value" id="trading">—</div></div>
+    {status_cells}
   </div>
   <div id="note">Đang kết nối ForgeBridge EA…</div>
   <div id="chart"></div>
@@ -154,13 +169,23 @@ async function refresh() {{
       online=Boolean(conn.connected) && age<=10;
       setText("conn",online?"ONLINE":"OFFLINE",online?"online":"offline");
       setText("price",(conn.bid ?? "—")+" / "+(conn.ask ?? "—"));
-      setText("spread",conn.spread_points!=null?conn.spread_points+" points":"—");
+      setText("spread",conn.spread_points!=null?conn.spread_points+" pts":"—");
       setText("positions",conn.positions ?? "—");
       allowed=Boolean(conn.terminal_trade_allowed && conn.account_trade_allowed);
       setText("trading",allowed?"ON":"OFF",allowed?"online":"offline");
+      const decision=snap.decision || {{}};
+      const action=String(decision.action || "—").toUpperCase();
+      const reason=String(decision.reason || "—");
+      let dcls="flat";
+      if (action==="BUY" || action==="SELL") dcls="signal";
+      else if (action==="HOLD") dcls="online";
+      else if (!online) dcls="offline";
+      setText("decision",action,dcls);
+      setText("slots",decision.slots_remaining ?? "—");
       document.getElementById("note").textContent=
-        "Heartbeat "+age.toFixed(1)+"s · MT5 server "+(conn.server_time || "—")+
-        " · cập nhật trực tiếp, không reload chart";
+        "Heartbeat "+age.toFixed(1)+"s · MT5 "+(conn.server_time || "—")+
+        " · reason "+reason+
+        " · strategy "+(decision.strategy_name || "—");
     }}
 
     const x=rows.map(r=>mt5Time(r.time));
