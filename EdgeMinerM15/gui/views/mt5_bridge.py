@@ -248,7 +248,7 @@ def _render_live_chart(max_bars: int) -> None:
     st.caption(
       "Chart cập nhật mỗi 2s trong trình duyệt (không chớp Streamlit). "
       "Desk phía trên refresh mỗi 5s. "
-      "Lệnh: ENTRY + đường giá · nhãn SL/TP · card chi tiết khi OPEN/SIGNAL · hover = ticket/lots/R."
+      "🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit — giống Paper Trade."
     )
     return
 
@@ -260,7 +260,7 @@ def _render_live_chart(max_bars: int) -> None:
     st.caption("Đang chờ EA xuất `bars.json` để vẽ chart.")
   else:
     st.plotly_chart(fig, use_container_width=True, key="mt5_ea_live_chart")
-    st.caption("▲▼ ENTRY · nhãn SL/TP · ✕ EXIT · card chi tiết khi lệnh OPEN.")
+    st.caption("🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit — giống Paper Trade.")
 
 
 def _render_manual_test_orders() -> None:

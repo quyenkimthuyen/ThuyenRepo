@@ -73,108 +73,121 @@ function mt5Time(value) {{
   if (t.split(":").length === 2) t += ":00";
   return d + "T" + t;
 }}
-function px5(v) {{
-  const n = Number(v);
-  return Number.isFinite(n) ? n.toFixed(5) : "—";
-}}
-function tradeHover(t, ep) {{
-  const dir = String(t.direction || t.dir || "").toUpperCase();
-  const st = String(t.status || "").toUpperCase();
-  return (st==="SIGNAL"?"Signal ":"Entry ")+dir+
-    "<br>Entry: "+px5(ep)+
-    "<br>SL: "+px5(t.sl)+" · TP: "+px5(t.tp)+
-    "<br>Lots: "+(t.lots!=null?t.lots:"—")+
-    " · Ticket: "+(t.ticket!=null?t.ticket:"—")+
-    "<br>R: "+(t.r!=null?t.r:"—")+" · P/L: "+(t.profit!=null?t.profit:"—")+
-    "<br>"+(t.strategy_name || t.signal_id || "")+
-    "<extra></extra>";
-}}
 function setText(id, text, cls="") {{
   const el=document.getElementById(id); el.textContent=text; el.className="value "+cls;
 }}
 function tradeLayers(trades, start, end) {{
+  // Same drawing style as Paper Trade (_add_order_overlays):
+  // risk/reward zones · SL/TP lines + labels · ENTRY ▲▼ · EXIT ✕ · OPEN badge
   const out=[], shapes=[], annotations=[];
+  const ENTRY_BLUE = "#2962ff";
   for (const t of (trades || [])) {{
-    const et=mt5Time(t.entry_time || t.entry);
-    const ep=Number(t.entry_px != null ? t.entry_px : t.entry);
+    const et = mt5Time(t.entry_time || t.entry || t.signal_time);
+    const ep = Number(t.entry_px != null ? t.entry_px : t.entry);
     if (!et || !Number.isFinite(ep)) continue;
-    const xt=mt5Time(t.exit_time || t.exit), lineEnd=xt || end;
+    const xt = mt5Time(t.exit_time || t.exit);
+    const lineEnd = xt || end;
     if (lineEnd < start || et > end) continue;
-    const dir=String(t.direction || t.dir || "").toUpperCase();
-    const buy=dir==="BUY" || dir==="LONG", color=buy?COLORS.up:COLORS.down;
-    const status=String(t.status || "CLOSED").toUpperCase(), signal=status==="SIGNAL";
-    const lineStart=et<start?start:et, sl=Number(t.sl), tp=Number(t.tp);
-    const labelColor = signal ? COLORS.live : color;
+    const dir = String(t.direction || t.dir || "").toUpperCase();
+    const isLong = dir === "BUY" || dir === "LONG";
+    const status = String(t.status || "CLOSED").toUpperCase();
+    const signal = status === "SIGNAL";
+    const lineStart = et < start ? start : et;
+    const sl = Number(t.sl), tp = Number(t.tp);
+    const lineDash = signal ? "dash" : "dot";
+    const riskFill = signal ? "rgba(255,193,7,0.08)" : "rgba(242,54,69,0.12)";
+    const rewFill = signal ? "rgba(255,193,7,0.06)" : "rgba(8,153,129,0.10)";
+    const slColor = signal ? "#ffc107" : COLORS.sl;
+    const tpColor = signal ? "#ffc107" : COLORS.tp;
+
     if (Number.isFinite(sl) && Number.isFinite(tp)) {{
-      shapes.push({{type:"rect",xref:"x",yref:"y",x0:lineStart,x1:lineEnd,
-        y0:Math.min(ep,sl),y1:Math.max(ep,sl),
-        fillcolor:signal?"rgba(247,201,72,.08)":"rgba(242,54,69,.12)",
-        line:{{width:0}},layer:"below"}});
-      shapes.push({{type:"rect",xref:"x",yref:"y",x0:lineStart,x1:lineEnd,
-        y0:Math.min(ep,tp),y1:Math.max(ep,tp),
-        fillcolor:signal?"rgba(247,201,72,.06)":"rgba(8,153,129,.10)",
-        line:{{width:0}},layer:"below"}});
+      shapes.push({{
+        type:"rect", xref:"x", yref:"y", x0:lineStart, x1:lineEnd,
+        y0:isLong ? sl : ep, y1:isLong ? ep : sl,
+        fillcolor:riskFill, line:{{width:0}}, layer:"below"
+      }});
+      shapes.push({{
+        type:"rect", xref:"x", yref:"y", x0:lineStart, x1:lineEnd,
+        y0:isLong ? ep : tp, y1:isLong ? tp : ep,
+        fillcolor:rewFill, line:{{width:0}}, layer:"below"
+      }});
+      for (const [px, label, color] of [[sl,"SL",slColor],[tp,"TP",tpColor]]) {{
+        out.push({{
+          type:"scatter", mode:"lines", x:[lineStart, lineEnd], y:[px, px],
+          line:{{color:color, width:1.5, dash:lineDash}}, showlegend:false,
+          hovertemplate:label+": %{{y:.5f}}<extra></extra>",
+          xaxis:"x", yaxis:"y"
+        }});
+        annotations.push({{
+          xref:"x", yref:"y", x:lineEnd, y:px,
+          text:label+" "+px.toFixed(5), showarrow:false,
+          font:{{size:9, color:color}}, xanchor:"left", xshift:4
+        }});
+      }}
     }}
-    out.push({{
-      type:"scatter",mode:"lines",x:[lineStart,lineEnd],y:[ep,ep],
-      line:{{color:labelColor,width:1.1,dash:"solid"}},showlegend:false,
-      hoverinfo:"skip",xaxis:"x",yaxis:"y"
-    }});
-    if (et >= start) out.push({{
-      type:"scatter",mode:"markers+text",x:[et],y:[ep],
-      marker:{{symbol:signal?"diamond":(buy?"triangle-up":"triangle-down"),
-        size:signal?15:13,color:labelColor,
-        line:{{width:signal?2:1,color:"white"}}}},
-      text:[(signal?"SIGNAL ":"ENTRY ")+dir+" "+ep.toFixed(5)],
-      textposition:buy?"top center":"bottom center",
-      textfont:{{size:10,color:labelColor,family:"Arial"}},
-      hovertemplate:tradeHover(t, ep),
-      showlegend:false,xaxis:"x",yaxis:"y"
-    }});
-    for (const [value,label,lineColor] of [[t.sl,"SL",COLORS.sl],[t.tp,"TP",COLORS.tp]]) {{
-      const px=Number(value); if (!Number.isFinite(px)) continue;
-      const lc = signal ? COLORS.live : lineColor;
+
+    if (signal) {{
+      const st = mt5Time(t.signal_time) || et;
+      if (st >= start) out.push({{
+        type:"scatter", mode:"markers+text", x:[st], y:[ep],
+        marker:{{symbol:"diamond", size:16, color:"#ffc107",
+          line:{{width:2, color:"white"}}}},
+        text:["🔔 SIGNAL"],
+        textposition:isLong ? "top center" : "bottom center",
+        textfont:{{size:10, color:"#ffc107"}},
+        hovertemplate:"Tín hiệu "+dir+"<br>%{{x}}<br>Entry dự kiến: "+ep.toFixed(5)+
+          "<br>SL: "+(Number.isFinite(sl)?sl.toFixed(5):"—")+
+          "<br>TP: "+(Number.isFinite(tp)?tp.toFixed(5):"—")+"<extra></extra>",
+        showlegend:false, xaxis:"x", yaxis:"y"
+      }});
+      if (et >= start) out.push({{
+        type:"scatter", mode:"markers+text", x:[et], y:[ep],
+        marker:{{symbol:"circle-open", size:12, color:"#ffc107", line:{{width:2}}}},
+        text:["ENTRY? "+ep.toFixed(5)], textposition:"middle right",
+        textfont:{{size:9, color:"#ffc107"}},
+        hovertemplate:"Entry dự kiến<br>%{{x}} @ %{{y:.5f}}<extra></extra>",
+        showlegend:false, xaxis:"x", yaxis:"y"
+      }});
+    }} else if (et >= start) {{
+      const mColor = isLong ? COLORS.up : COLORS.down;
       out.push({{
-        type:"scatter",mode:"lines+markers+text",
-        x:[lineStart,lineEnd],y:[px,px],
-        line:{{color:lc,width:1.4,dash:signal?"dash":"dot"}},
-        marker:{{size:[0,7],color:lc}},
-        text:["", label+" "+px.toFixed(5)],
-        textposition:"middle right",
-        textfont:{{size:10,color:lc,family:"Arial"}},
-        showlegend:false,
-        hovertemplate:label+": %{{y:.5f}}<br>"+dir+" ticket "+(t.ticket!=null?t.ticket:"—")+"<extra></extra>",
-        xaxis:"x",yaxis:"y"
+        type:"scatter", mode:"markers+text", x:[et], y:[ep],
+        marker:{{symbol:isLong ? "triangle-up" : "triangle-down", size:14,
+          color:mColor, line:{{width:1, color:"white"}}}},
+        text:["ENTRY "+ep.toFixed(5)],
+        textposition:isLong ? "top center" : "bottom center",
+        textfont:{{size:9, color:ENTRY_BLUE}},
+        hovertemplate:"Entry<br>%{{x}}<br>"+dir+" @ %{{y:.5f}}<br>SL: "+
+          (Number.isFinite(sl)?sl.toFixed(5):"—")+"<br>TP: "+
+          (Number.isFinite(tp)?tp.toFixed(5):"—")+"<extra></extra>",
+        showlegend:false, xaxis:"x", yaxis:"y"
       }});
     }}
-    const xp=Number(t.exit_px);
-    if (status==="CLOSED" && xt && xt>=start && Number.isFinite(xp)) out.push({{
-      type:"scatter",mode:"markers+text",x:[xt],y:[xp],
-      marker:{{symbol:"x",size:12,color:Number(t.r)>0?COLORS.tp:COLORS.sl}},
-      text:["EXIT "+xp.toFixed(5)+(t.r!=null?" ("+Number(t.r).toFixed(2)+"R)":"")],
-      textposition:"bottom center",textfont:{{size:10}},
-      showlegend:false,xaxis:"x",yaxis:"y",
-      hovertemplate:"Exit<br>%{{x}} @ %{{y:.5f}}<br>R: "+(t.r!=null?t.r:"—")+
-        " · P/L: "+(t.profit!=null?t.profit:"—")+"<extra></extra>"
-    }});
-    if (status === "OPEN" || status === "SIGNAL") {{
-      const card = [
-        (signal?"SIGNAL":"OPEN")+" "+dir+(t.ticket!=null?" #"+t.ticket:""),
-        "E "+ep.toFixed(5),
-        Number.isFinite(sl) ? ("SL "+sl.toFixed(5)) : null,
-        Number.isFinite(tp) ? ("TP "+tp.toFixed(5)) : null,
-        t.lots!=null ? (Number(t.lots).toFixed(2)+" lot") : null,
-      ].filter(Boolean).join("<br>");
+
+    const xp = Number(t.exit_px);
+    if (!signal && status === "CLOSED" && xt && xt >= start && Number.isFinite(xp)) {{
+      const reason = t.reason || "";
+      const rVal = Number(t.r);
+      const exitColor = (Number.isFinite(rVal) && rVal > 0) ? COLORS.tp : COLORS.sl;
+      out.push({{
+        type:"scatter", mode:"markers+text", x:[xt], y:[xp],
+        marker:{{symbol:"x", size:10, color:exitColor, line:{{width:2}}}},
+        text:["EXIT "+xp.toFixed(5)+(reason ? " ("+reason+")" : "")],
+        textposition:"bottom center",
+        textfont:{{size:9, color:exitColor}},
+        hovertemplate:"Exit: %{{y:.5f}}<br>R="+(t.r != null ? t.r : "—")+"<extra></extra>",
+        showlegend:false, xaxis:"x", yaxis:"y"
+      }});
+    }} else if (status === "OPEN") {{
       annotations.push({{
-        xref:"x",yref:"y",x:et,y:ep,
-        text:card,showarrow:true,arrowhead:2,ax:buy?48:-48,ay:buy?-42:42,
-        font:{{size:10,color:labelColor,family:"Arial"}},
-        align:"left",bgcolor:"rgba(19,23,34,.88)",
-        bordercolor:labelColor,borderwidth:1,borderpad:4
+        xref:"x", yref:"y", x:et, y:ep, text:"● OPEN",
+        showarrow:true, arrowhead:2,
+        font:{{size:10, color:"#ffeb3b"}},
+        bgcolor:"rgba(0,0,0,0.6)", bordercolor:"#ffeb3b"
       }});
     }}
   }}
-  return {{traces:out,shapes,annotations}};
+  return {{traces:out, shapes, annotations}};
 }}
 async function refresh() {{
   try {{
@@ -239,7 +252,7 @@ async function refresh() {{
     const layout={{
       title:{{text:"{chart_title}",font:{{size:14,color:COLORS.text}},x:.01}},
       paper_bgcolor:COLORS.bg,plot_bgcolor:COLORS.bg,font:{{color:COLORS.text,size:11}},
-      margin:{{l:8,r:96,t:42,b:28}},showlegend:false,hovermode:"closest",
+      margin:{{l:8,r:96,t:42,b:28}},showlegend:false,hovermode:"x unified",
       uirevision:"mt5-live",dragmode:"pan",shapes,annotations,
       xaxis:{{domain:[0,1],anchor:"y",rangeslider:{{visible:false}},showticklabels:false,
         gridcolor:COLORS.grid,rangebreaks:[{{bounds:["sat","mon"]}}]}},

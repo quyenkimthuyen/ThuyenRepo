@@ -95,7 +95,7 @@ def _render_live_chart(max_bars: int) -> None:
     st.plotly_chart(fig, use_container_width=True, key="mt5_ea_live_chart")
     st.caption(
       "Nến và đường LIVE lấy trực tiếp từ XM MT5 · "
-      "▲▼ entry · ✕ exit · đường chấm đỏ/xanh = SL/TP."
+      "🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit — giống Paper Trade."
     )
 
 
