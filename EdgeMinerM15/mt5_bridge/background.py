@@ -225,6 +225,9 @@ def _fill_fp(fill: dict | None) -> str | None:
 
 
 def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last_fill_fp: str | None):
+  from mt5_bridge.protocol import BRIDGE_SIM_DIR
+
+  is_sim = Path(bridge_dir).resolve() == BRIDGE_SIM_DIR.resolve()
   seen_fills: set[str] = set()
   if isinstance(last_fill_fp, str) and last_fill_fp.startswith("["):
     try:
@@ -239,16 +242,17 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
     fp_fill = _fill_fp(fill)
     if not fp_fill or fp_fill in seen_fills:
       return
-    append_event(
-      "ea_to_app",
-      "fill_received",
-      bridge_dir=bridge_dir,
-      payload=fill,
-      summary=(
-        f"fill {fill.get('event') or fill.get('action')} ok={fill.get('ok')} "
-        f"sid={fill.get('signal_id')} detail={fill.get('detail')}"
-      ),
-    )
+    if not is_sim:
+      append_event(
+        "ea_to_app",
+        "fill_received",
+        bridge_dir=bridge_dir,
+        payload=fill,
+        summary=(
+          f"fill {fill.get('event') or fill.get('action')} ok={fill.get('ok')} "
+          f"sid={fill.get('signal_id')} detail={fill.get('detail')}"
+        ),
+      )
     last_decision = engine._last_decision if engine else None
     process_fill(
       fill,
@@ -257,22 +261,27 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
       model_id=engine.model_id if engine else None,
     )
     seen_fills.add(fp_fill)
-    save_config(last_run_at=_now_iso())
+    if not is_sim:
+      save_config(last_run_at=_now_iso())
 
   # HistoryFeed: drain append-only queue (open+close can land within 1ms)
   fills_q = ensure_bridge_dir(bridge_dir) / "ea_fills.jsonl"
   if fills_q.exists():
     try:
-      for line in fills_q.read_text(encoding="utf-8-sig").splitlines():
-        line = line.strip()
-        if not line:
-          continue
-        try:
-          payload = json.loads(line)
-        except Exception:
-          continue
-        if isinstance(payload, dict):
-          _ingest_fill(payload)
+      raw = fills_q.read_text(encoding="utf-8-sig")
+      if raw.strip():
+        for line in raw.splitlines():
+          line = line.strip()
+          if not line:
+            continue
+          try:
+            payload = json.loads(line)
+          except Exception:
+            continue
+          if isinstance(payload, dict):
+            _ingest_fill(payload)
+        # Truncate so we do not re-read a growing file every 30ms
+        fills_q.write_text("", encoding="utf-8")
     except Exception:
       pass
 
@@ -284,62 +293,53 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
 
   bar = read_json(bar_path(bridge_dir))
   if not isinstance(bar, dict):
-    write_status(bridge_dir, state="waiting_bar", error=None, **_engine_status_fields(engine))
     return last_bar_fp, last_fill_fp
 
   fp = _bar_fp(bar)
   if not fp:
-    write_status(
-      bridge_dir, state="bad_bar", error="bar missing time",
-      **_engine_status_fields(engine),
-    )
     return last_bar_fp, last_fill_fp
 
   if fp == last_bar_fp:
-    write_status(
-      bridge_dir,
-      state="idle",
-      last_bar=fp,
-      last_action=(engine._last_decision or {}).get("action"),
-      error=None,
-      **_engine_status_fields(engine),
-    )
+    # Idle wait — do not rewrite status.json every ~30ms (GUI + antivirus lag)
     return last_bar_fp, last_fill_fp
 
-  append_event(
-    "ea_to_app",
-    "bar_received",
-    bridge_dir=bridge_dir,
-    payload={
-      "symbol": bar.get("symbol"),
-      "time": bar.get("time") or bar.get("bar_time"),
-      "close": bar.get("close"),
-      "account": bar.get("account"),
-    },
-    summary=f"bar {bar.get('symbol')} {bar.get('time') or bar.get('bar_time')} c={bar.get('close')}",
-  )
+  if not is_sim:
+    append_event(
+      "ea_to_app",
+      "bar_received",
+      bridge_dir=bridge_dir,
+      payload={
+        "symbol": bar.get("symbol"),
+        "time": bar.get("time") or bar.get("bar_time"),
+        "close": bar.get("close"),
+        "account": bar.get("account"),
+      },
+      summary=f"bar {bar.get('symbol')} {bar.get('time') or bar.get('bar_time')} c={bar.get('close')}",
+    )
 
   decision = engine.decide_for_bar(bar)
   atomic_write_json(decision_path(bridge_dir), decision)
-  append_event(
-    "app_to_ea",
-    "decision_sent",
-    bridge_dir=bridge_dir,
-    payload={
-      "action": decision.get("action"),
-      "bar_time": decision.get("bar_time"),
-      "signal_id": decision.get("signal_id"),
-      "reason": decision.get("reason"),
-      "entry": decision.get("entry"),
-      "sl": decision.get("sl"),
-      "tp": decision.get("tp"),
-      "strategy_name": decision.get("strategy_name"),
-    },
-    summary=(
-      f"decision {decision.get('action')} bar={decision.get('bar_time')} "
-      f"reason={decision.get('reason')}"
-    ),
-  )
+  action_u = str(decision.get("action") or "").upper()
+  if not is_sim or action_u in ("BUY", "SELL"):
+    append_event(
+      "app_to_ea",
+      "decision_sent",
+      bridge_dir=bridge_dir,
+      payload={
+        "action": decision.get("action"),
+        "bar_time": decision.get("bar_time"),
+        "signal_id": decision.get("signal_id"),
+        "reason": decision.get("reason"),
+        "entry": decision.get("entry"),
+        "sl": decision.get("sl"),
+        "tp": decision.get("tp"),
+        "strategy_name": decision.get("strategy_name"),
+      },
+      summary=(
+        f"decision {decision.get('action')} bar={decision.get('bar_time')} "
+        f"reason={decision.get('reason')}"
+      ),
+    )
   write_status(
     bridge_dir,
     state="decided",
@@ -351,12 +351,13 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
     error=None,
     **_engine_status_fields(engine),
   )
-  save_config(
-    last_run_at=_now_iso(),
-    last_action=decision.get("action"),
-    last_bar=fp,
-    last_error=None,
-  )
+  if not is_sim:
+    save_config(
+      last_run_at=_now_iso(),
+      last_action=decision.get("action"),
+      last_bar=fp,
+      last_error=None,
+    )
   return fp, last_fill_fp
 
 
@@ -593,7 +594,13 @@ def is_sim_running() -> bool:
 def get_sim_status() -> dict:
   from mt5_bridge.ea_simulator import load_sim_state, sync_state_from_ea
   from mt5_bridge.protocol import BRIDGE_SIM_DIR
-  # persist=False: UI polls must not rewrite sim_state (Streamlit remount / flicker)
+
+  # Short TTL cache — Streamlit fragments must not hammer disk every redraw
+  now = time.time()
+  cached = getattr(get_sim_status, "_cache", None)
+  if isinstance(cached, tuple) and (now - cached[0]) < 1.0:
+    return dict(cached[1])
+
   if is_sim_running():
     try:
       st = sync_state_from_ea(BRIDGE_SIM_DIR, persist=False)
@@ -613,6 +620,7 @@ def get_sim_status() -> dict:
     st["paused"] = bool(is_sim_running() and not ctrl.get("enabled") and ctrl.get("request_id"))
   except Exception:
     st["paused"] = bool(_sim_pause.is_set()) if is_sim_thread_running() else False
+  get_sim_status._cache = (now, dict(st))
   return st
 
 

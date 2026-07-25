@@ -8,7 +8,7 @@
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
 #property copyright "EdgeMiner2 bridge"
-#property version   "1.08"
+#property version   "1.09"
 
 #include <Trade/Trade.mqh>
 
@@ -1048,7 +1048,8 @@ void ReportCloseIfNeeded(const string reason)
                        || g_open_source == "manual_test";
    WriteFillJsonEx("close", g_open_signal_id, g_open_action, true, close_reason,
                    g_open_ticket, exit_px, g_open_sl, g_open_tp, g_open_lots, profit, close_reason,
-                   manual_close, manual_close ? (g_open_source == "manual_test" ? "manual_test" : "user_edit") : "strategy");
+                   manual_close, manual_close ? (g_open_source == "manual_test" ? "manual_test" : "user_edit") : "strategy",
+                   (InpMode == BRIDGE_HISTORY_FEED ? g_sim_last_bar : ""));
    g_open_ticket = 0;
    g_open_signal_id = "";
    g_open_source = "strategy";

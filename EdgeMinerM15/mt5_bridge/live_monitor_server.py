@@ -46,12 +46,41 @@ def _parse_broker_bar_time(value):
   return None
 
 
+_SIM_CACHE_FRAME = None
+_SIM_CACHE_MTIME = None
+
+
+def _cached_broker_ohlc():
+  """Load MT5 parquet once per mtime — chart poll must not re-read 40k bars every second."""
+  global _SIM_CACHE_FRAME, _SIM_CACHE_MTIME
+  import pandas as pd
+
+  from mt5_bridge.history_sync import MT5_CACHE_PATH, load_mt5_cache, utc_to_broker_time
+
+  try:
+    mtime = MT5_CACHE_PATH.stat().st_mtime if MT5_CACHE_PATH.exists() else None
+  except OSError:
+    mtime = None
+  if _SIM_CACHE_FRAME is not None and mtime is not None and mtime == _SIM_CACHE_MTIME:
+    return _SIM_CACHE_FRAME.copy()
+  cache = load_mt5_cache()
+  if cache is None or cache.empty:
+    _SIM_CACHE_FRAME = None
+    _SIM_CACHE_MTIME = mtime
+    return None
+  frame = cache.copy()
+  frame.index = pd.DatetimeIndex([utc_to_broker_time(ts) for ts in frame.index])
+  frame = frame[~frame.index.duplicated(keep="last")].sort_index()
+  _SIM_CACHE_FRAME = frame
+  _SIM_CACHE_MTIME = mtime
+  return frame.copy()
+
+
 def build_sim_snapshot(*, max_bars: int = 672) -> dict:
   """OHLC from MT5 cache in sim from/to, clipped to EA cursor — for smooth iframe chart."""
   import pandas as pd
 
   from mt5_bridge.ea_simulator import load_sim_state, sync_state_from_ea
-  from mt5_bridge.history_sync import load_mt5_cache, utc_to_broker_time
 
   try:
     st = sync_state_from_ea(BRIDGE_SIM_DIR, persist=False)
@@ -74,14 +103,12 @@ def build_sim_snapshot(*, max_bars: int = 672) -> dict:
     status = "idle"
     last_bar = ""  # preview full from/to window
 
-  cache = load_mt5_cache()
+  cache = _cached_broker_ohlc()
   bars: list[dict] = []
   connection: dict = read_json(connection_path(BRIDGE_SIM_DIR)) or {}
 
   if cache is not None and not cache.empty:
-    frame = cache.copy()
-    frame.index = pd.DatetimeIndex([utc_to_broker_time(ts) for ts in frame.index])
-    frame = frame[~frame.index.duplicated(keep="last")].sort_index()
+    frame = cache
 
     def _bound(s):
       if not s:
@@ -128,17 +155,36 @@ def build_sim_snapshot(*, max_bars: int = 672) -> dict:
     if bars:
       last = bars[-1]
       close = float(last["close"])
+      # Prefer historical bar spread (HistoryFeed). connection.json still carries
+      # live SYMBOL_SPREAD / bid-ask from the terminal (~39) which is misleading on sim.
+      bar_live = read_json(bar_path(BRIDGE_SIM_DIR)) or {}
+      try:
+        spr = int(
+          bar_live.get("spread_points")
+          if bar_live.get("spread_points") is not None
+          else (connection.get("spread_points") or 0)
+        )
+      except (TypeError, ValueError):
+        spr = 0
+      point = 0.00001
+      try:
+        if bar_live.get("point") is not None:
+          point = float(bar_live["point"])
+        elif connection.get("point") is not None:
+          point = float(connection["point"])
+      except (TypeError, ValueError):
+        point = 0.00001
       connection = {
         **connection,
         "connected": True,
         "bid": close,
-        "ask": close,
-        "spread_points": connection.get("spread_points") or 0,
+        "ask": round(close + spr * point, 5) if spr > 0 else close,
+        "spread_points": spr,
         "positions": connection.get("positions") or 0,
         "terminal_trade_allowed": True,
         "account_trade_allowed": True,
         "server_time": last["time"],
-        "bar": last,
+        "bar": {**last, "spread_points": spr},
       }
 
   if not bars:
@@ -148,6 +194,13 @@ def build_sim_snapshot(*, max_bars: int = 672) -> dict:
 
   raw_trades = load_trades(BRIDGE_SIM_DIR)
   trades = []
+  # Visible candle window (broker wall-clock)
+  chart_t0 = _parse_broker_bar_time(bars[0]["time"]) if bars else None
+  chart_t1 = _parse_broker_bar_time(bars[-1]["time"]) if bars else None
+  win_end = _bound(date_to)
+  if win_end is not None:
+    win_end = win_end.normalize() + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+
   for t in raw_trades:
     tc = dict(t)
     # Chart needs real entry — never invent from exit (orphan closes break Plotly)
@@ -161,10 +214,29 @@ def build_sim_snapshot(*, max_bars: int = 672) -> dict:
       continue
     if sl is not None and abs(ep - sl) < 1e-9:
       continue  # zero-risk zone paints broken rectangles
-    if not (tc.get("entry_time") or tc.get("bar_time")):
+    entry_raw = tc.get("entry_time") or tc.get("bar_time")
+    if not entry_raw:
       continue
-    if not tc.get("entry_time"):
-      tc["entry_time"] = tc.get("bar_time")
+    tc["entry_time"] = entry_raw
+    et = _parse_broker_bar_time(entry_raw)
+    xt = _parse_broker_bar_time(tc.get("exit_time") or tc.get("exit"))
+    # Wall-clock exit (EA close without bar_time) spans into "today" and wrecks overlays
+    if et is not None and xt is not None:
+      bad_exit = (
+        xt < et
+        or (xt - et) > pd.Timedelta(days=10)
+        or (win_end is not None and xt > win_end + pd.Timedelta(days=1))
+      )
+      if bad_exit:
+        tc.pop("exit_time", None)
+        tc.pop("exit_px", None)
+        xt = None
+    # Skip trades whose entry is outside the visible candle window
+    if chart_t0 is not None and chart_t1 is not None and et is not None:
+      if et > chart_t1 or (xt is None and et < chart_t0 - pd.Timedelta(days=1)):
+        # Keep if still open across window; drop if entirely before with no valid exit
+        if xt is None and et < chart_t0:
+          continue
     trades.append(tc)
 
   decision = read_json(decision_path(BRIDGE_SIM_DIR)) or {}
@@ -231,7 +303,7 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
     <div class="metric"><div class="label">{labels[6]}</div><div class="value" id="slots">—</div></div>
     """
     price_tag = "SIM"
-    ui_rev = "mt5-sim-v2"
+    ui_rev = "mt5-sim-v3"
     snap_url = "/snapshot?mode=sim"
     note0 = "Simulate History Feed — status + chart cập nhật mượt (Plotly.react)."
   elif paper_mode:
@@ -644,7 +716,7 @@ def start_live_monitor_server(
           max_bars = max(96, min(1344, int((query.get("bars") or ["672"])[0])))
         except (TypeError, ValueError):
           max_bars = 672
-        poll_ms = 1000 if mode == "sim" else 2000
+        poll_ms = 2000 if mode == "sim" else 2000
         self._send(
           200,
           _chart_html(max_bars, mode=mode, poll_ms=poll_ms).encode("utf-8"),

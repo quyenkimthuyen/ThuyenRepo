@@ -155,15 +155,7 @@ def process_once(engine: BridgeEngine, bridge_dir: Path, *, last_fp: str | None,
     return last_fp, last_fill_fp
 
   if fp == last_fp:
-    write_status(
-      bridge_dir,
-      state="idle",
-      model_id=engine.model_id,
-      last_bar=fp,
-      last_action=(engine._last_decision or {}).get("action"),
-      week_start=(engine._last_decision or {}).get("week_start"),
-      error=None,
-    )
+    # Same closed bar — do not rewrite status.json every poll (disk lock / GUI lag)
     return last_fp, last_fill_fp
 
   append_event(
@@ -232,7 +224,9 @@ def main() -> int:
       print(f"[bridge] live monitor=http://127.0.0.1:{args.monitor_port}", flush=True)
     except OSError as e:
       print(f"[bridge] live monitor unavailable: {e}", flush=True)
-  engine = BridgeEngine(model_id=args.model_id, risk_pct=args.risk_pct)
+  engine = BridgeEngine(
+    model_id=args.model_id, risk_pct=args.risk_pct, bridge_dir=bridge_dir,
+  )
   print(
     f"[bridge] dir={bridge_dir} model={engine.model_id} "
     f"conditions_fp={engine.conditions_fp}",
@@ -273,7 +267,9 @@ def main() -> int:
         desired_risk = float(runtime_cfg.get("risk_pct", engine.risk_pct))
         args.poll = float(runtime_cfg.get("poll_sec", args.poll))
         if desired_model != engine.model_id or abs(desired_risk - engine.risk_pct) > 1e-9:
-          engine = BridgeEngine(model_id=desired_model, risk_pct=desired_risk)
+          engine = BridgeEngine(
+            model_id=desired_model, risk_pct=desired_risk, bridge_dir=bridge_dir,
+          )
           engine.ensure_history()
           last_fp = None
           append_event(

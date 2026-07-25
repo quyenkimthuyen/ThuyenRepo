@@ -457,7 +457,7 @@ def _render_live_chart(max_bars: int) -> None:
           write_sim_state({"date_from": key[0], "date_to": key[1] or None})
           st.session_state["_sim_chart_dates"] = key
       components.iframe(
-        f"{sim_url}/chart?mode=sim&bars={max_bars}&v=sim2",
+        f"{sim_url}/chart?mode=sim&bars={max_bars}&v=sim3",
         height=700,
         scrolling=False,
       )
@@ -690,9 +690,9 @@ def _render_history_sync() -> None:
       st.rerun()
 
 
-@st.fragment(run_every=timedelta(seconds=2))
+@st.fragment(run_every=timedelta(seconds=5))
 def _render_sim_progress_fragment() -> None:
-  """Live progress bar and status caption — updates every 2s without flickering buttons."""
+  """Progress caption — slow poll so Streamlit stays usable while feed runs."""
   try:
     sim = bridge_bg.get_sim_status()
   except Exception as e:
@@ -1356,8 +1356,9 @@ def render():
     )
     max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
     _render_live_chart(max_bars)
-    _render_model_monitor()
-    st.caption("Bấm **Refresh** ở Simulate hoặc đổi tab để cập nhật Sức khỏe / Rủi ro.")
+    with st.expander("Theo dõi model · Sức khỏe / Rủi ro", expanded=False):
+      st.caption("Mở khi cần — tránh load nặng lúc feed đang chạy.")
+      _render_model_monitor()
     _render_sim_desk_static()
   else:
     _trader_desk_fragment()

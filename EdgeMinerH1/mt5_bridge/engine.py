@@ -1,4 +1,4 @@
-"""Bridge decision engine — merge MT5 H1 bars + weekly remine."""
+"""Bridge decision engine — merge MT5 M15 bars + weekly remine."""
 from __future__ import annotations
 
 import hashlib
@@ -87,6 +87,8 @@ class BridgeEngine:
     self.bridge_dir = bridge_dir
     self._df: pd.DataFrame | None = None
     self._strat_cache: dict[str, Any] = {}
+    self._fm: FeatureMatrix | None = None
+    self._fm_key: tuple | None = None
     self._last_bar_key: str | None = None
     self._last_decision: dict | None = None
     self._model = resolve_model(model_id)
@@ -112,7 +114,29 @@ class BridgeEngine:
     self._params = new_params
     if changed:
       self._strat_cache.clear()
+      self._fm = None
+      self._fm_key = None
     return changed
+
+  def _feature_matrix(self, df: pd.DataFrame, feature_profile: str) -> FeatureMatrix:
+    """Build FeatureMatrix like OOS walk-forward (full series, cached).
+
+    Do not clip lookback before features: ``htf_trend`` (H4 EMA200) and
+    ``roc_5`` (global std) change under short windows and diverge from Health KB ON.
+    """
+    if df.empty:
+      raise ValueError("empty history for FeatureMatrix")
+    key = (
+      feature_profile,
+      len(df),
+      str(df.index[0]),
+      str(df.index[-1]),
+    )
+    if self._fm is None or self._fm_key != key:
+      ensure_label_cache_for_df(len(df))
+      self._fm = FeatureMatrix(df, profile=feature_profile)
+      self._fm_key = key
+    return self._fm
 
   def ensure_history(self, force: bool = False) -> pd.DataFrame:
     """Load canonical broker history and request EA synchronization when needed."""
@@ -140,33 +164,38 @@ class BridgeEngine:
     self._df.to_parquet(self.mt5_cache)
 
   def merge_bar(self, bar: dict) -> pd.Timestamp:
-    """Append/overwrite one M15 bar from EA. Returns bar timestamp."""
+    """Ensure bar is in the in-memory series. Avoid rewriting parquet on HistoryFeed replay.
+
+    HistoryFeed re-sends bars already in ``mt5_eurusd_m15.parquet``. Rewriting the
+    full cache (+ invalidating FeatureMatrix) every bar pegs disk/CPU and freezes the GUI.
+    """
+    ts = _parse_bar_time(bar)
+    df = self.load()
+    if ts in df.index:
+      return ts
+
+    row = {
+      "Open": float(bar["open"]),
+      "High": float(bar["high"]),
+      "Low": float(bar["low"]),
+      "Close": float(bar["close"]),
+      "Volume": float(bar.get("volume") or bar.get("tick_volume") or 0),
+    }
     if self.mt5_cache.resolve() == MT5_CACHE_PATH.resolve():
       self._df = merge_history_bars([bar], {
         "server": bar.get("server"),
         "account": bar.get("account"),
         "symbol": bar.get("symbol"),
       })
-      return _parse_bar_time(bar)
-    df = self.load()
-    ts = _parse_bar_time(bar)
-    row = pd.DataFrame(
-      {
-        "Open": [float(bar["open"])],
-        "High": [float(bar["high"])],
-        "Low": [float(bar["low"])],
-        "Close": [float(bar["close"])],
-        "Volume": [float(bar.get("volume") or bar.get("tick_volume") or 0)],
-      },
-      index=[ts],
-    )
-    if ts in df.index:
-      df.loc[ts] = row.iloc[0]
     else:
-      df = pd.concat([df, row]).sort_index()
+      add = pd.DataFrame([row], index=[ts])
+      df = pd.concat([df, add]).sort_index()
       df = df[~df.index.duplicated(keep="last")]
-    self._df = df
-    self._save_mt5_cache()
+      self._df = df
+      self._save_mt5_cache()
+    # New tip only — remine/features must refresh
+    self._fm = None
+    self._fm_key = None
     return ts
 
   def decide_for_bar(self, bar: dict) -> dict:
@@ -187,7 +216,7 @@ class BridgeEngine:
     if (
       not self._model
       or self._model.get("data_source") != "mt5_ea"
-      or self._model.get("data_timeframe") != "H1"
+      or self._model.get("data_timeframe") != "M15"
       or int(self._model.get("feature_schema") or 0) < 2
     ):
       decision = self._flat(
@@ -196,9 +225,6 @@ class BridgeEngine:
       return self._remember(bar_key, decision)
 
     df = self.load()
-    # No look-ahead: decide only with bars up to the closed signal bar
-    # (HistoryFeed replays Jan while cache may end in "today").
-    df = df.loc[:bar_ts]
     if df.empty or bar_ts not in df.index:
       decision = self._flat(
         bar_ts, model_id, reason="bar_not_in_series",
@@ -206,19 +232,15 @@ class BridgeEngine:
       return self._remember(bar_key, decision)
 
     week_start, week_end = _week_bounds_for_ts(bar_ts)
-    # Keep train window + warmup only — full multi-year FeatureMatrix every bar is too slow for feed
-    lookback = pd.Timedelta(weeks=int(train_weeks) + 4)
-    clip_from = week_start - lookback
-    if len(df) and df.index[0] < clip_from:
-      df = df.loc[clip_from:]
 
-    ensure_label_cache_for_df(len(df))
     feature_profile = params.get("feature_profile") or "current"
     search_payload = params.get("mining_search_space")
     search_space = (
       mining_search_space_from_dict(search_payload) if search_payload else None
     )
-    fm = FeatureMatrix(df, profile=feature_profile)
+    # Full history FeatureMatrix — same as OOS Health (KB ON). Short lookback
+    # clip used to warp htf_trend / roc_5 and mine weaker strategies.
+    fm = self._feature_matrix(df, feature_profile)
 
     cache_key = (
       f"{week_start.date()}|{model_id}|{kb_profile}@{kb_snapshot}|{train_weeks}w|"
@@ -322,7 +344,7 @@ class BridgeEngine:
 
     action = "BUY" if direction == 1 else "SELL"
     sig_id = _signal_id(model_id, bar_ts, action)
-    expires = bar_ts + pd.Timedelta(hours=1)
+    expires = bar_ts + pd.Timedelta(minutes=15)
     decision = {
       "signal_id": sig_id,
       "action": action,
@@ -370,7 +392,7 @@ class BridgeEngine:
       "magic": self.magic,
       "bar_time": _fmt_bar(bar_ts),
       "model_id": model_id,
-      "expires_bar_time": _fmt_bar(bar_ts + pd.Timedelta(hours=1)),
+      "expires_bar_time": _fmt_bar(bar_ts + pd.Timedelta(minutes=15)),
       "week_start": str(week_start.date()) if week_start is not None else None,
       "strategy_name": getattr(strat, "name", None),
       "slots_remaining": slots_remaining,

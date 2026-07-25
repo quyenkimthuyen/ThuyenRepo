@@ -457,7 +457,7 @@ def _render_live_chart(max_bars: int) -> None:
           write_sim_state({"date_from": key[0], "date_to": key[1] or None})
           st.session_state["_sim_chart_dates"] = key
       components.iframe(
-        f"{sim_url}/chart?mode=sim&bars={max_bars}&v=sim2",
+        f"{sim_url}/chart?mode=sim&bars={max_bars}&v=sim3",
         height=700,
         scrolling=False,
       )
@@ -690,9 +690,9 @@ def _render_history_sync() -> None:
       st.rerun()
 
 
-@st.fragment(run_every=timedelta(seconds=2))
+@st.fragment(run_every=timedelta(seconds=5))
 def _render_sim_progress_fragment() -> None:
-  """Live progress bar and status caption — updates every 2s without flickering buttons."""
+  """Progress caption — slow poll so Streamlit stays usable while feed runs."""
   try:
     sim = bridge_bg.get_sim_status()
   except Exception as e:
@@ -808,10 +808,9 @@ def _render_simulate_ea() -> None:
     if not hasattr(st.session_state["sim_ea_to"], "isoformat"):
       st.session_state["sim_ea_to"] = default_to
     delay_cur = int(st.session_state["sim_ea_delay"])
-    if delay_cur < 1 or delay_cur > 2000:
-      st.session_state["sim_ea_delay"] = 100
-    elif delay_cur % 10 != 0:
-      st.session_state["sim_ea_delay"] = max(1, min(2000, round(delay_cur / 10) * 10))
+    # Slider: min=10, step=10 → value must be 10,20,...,2000
+    if delay_cur < 10 or delay_cur > 2000 or delay_cur % 10 != 0:
+      st.session_state["sim_ea_delay"] = max(10, min(2000, round(delay_cur / 10) * 10 or 100))
   except Exception:
     st.session_state["sim_ea_from"] = default_from
     st.session_state["sim_ea_to"] = default_to
@@ -825,11 +824,11 @@ def _render_simulate_ea() -> None:
   with c3:
     delay_ms = st.slider(
       "Delay giữa các bar (ms)",
-      min_value=1,
+      min_value=10,
       max_value=2000,
       step=10,
       key="sim_ea_delay",
-      help="1000 = 1s.",
+      help="10 = 10ms. 1000 = 1s.",
     )
 
   # Auto-refreshing progress fragment

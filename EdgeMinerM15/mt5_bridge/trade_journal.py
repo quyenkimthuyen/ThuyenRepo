@@ -363,6 +363,23 @@ def process_fill(
       "lots": fill.get("lots") if fill.get("lots") is not None else row.get("lots"),
       "updated_at": _now(),
     })
+    # Prefer logical bar clock; reject wall-clock exits that dwarf max hold (HistoryFeed)
+    exit_raw = row.get("exit_time")
+    entry_raw = row.get("entry_time") or row.get("bar_time")
+    if exit_raw and entry_raw and not fill.get("bar_time"):
+      try:
+        import pandas as pd
+        et = pd.Timestamp(str(entry_raw).replace(".", "-")[:16])
+        xt = pd.Timestamp(str(exit_raw).replace(".", "-")[:19])
+        if xt < et or (xt - et) > pd.Timedelta(days=10):
+          # Keep bar_time from fill.time only if it looks like broker minutes stamp
+          tfill = str(fill.get("time") or "")
+          if tfill.count(":") == 1 or (len(tfill) <= 16 and "T" not in tfill):
+            row["exit_time"] = tfill
+          else:
+            row["exit_time"] = entry_raw  # last resort: mark close at entry bar
+      except Exception:
+        pass
     if "mode" not in row or not row.get("mode"):
       row["mode"] = trade_mode(row)
     save_trades(trades, bridge_dir)
