@@ -80,7 +80,7 @@ def start_history_feed_control(cfg: SimConfig) -> dict[str, Any]:
   """Enable EA HISTORY_FEED via sim_control.json (control only)."""
   bridge_dir = ensure_bridge_dir(Path(cfg.bridge_dir))
   request_id = cfg.request_id or uuid.uuid4().hex[:12]
-  delay = max(50, int(cfg.delay_ms))
+  delay = max(10, int(cfg.delay_ms))
   if cfg.clear_journal:
     clear_trades(bridge_dir)
 
@@ -299,7 +299,7 @@ def run_history_feed_control(
         **{
           "from": _norm_date(cfg.date_from),
           "to": _norm_date(cfg.date_to),
-          "delay_ms": max(50, int(cfg.delay_ms)),
+          "delay_ms": max(10, int(cfg.delay_ms)),
         },
       )
       write_sim_state({"status": "running"})

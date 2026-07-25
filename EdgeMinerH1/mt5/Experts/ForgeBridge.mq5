@@ -1271,7 +1271,7 @@ bool ReadSimControlFile()
    if(fr != "") g_sim_from = fr;
    if(to != "") g_sim_to = to;
    int delay = (int)JsonGetDouble(json, "delay_ms", g_sim_delay_ms);
-   g_sim_delay_ms = (int)MathMax(50, delay);
+   g_sim_delay_ms = (int)MathMax(10, delay);
    string rid = JsonGetString(json, "request_id");
    if(rid != "") g_sim_request_id = rid;
    return true;
@@ -1595,7 +1595,7 @@ void ProcessHistoryFeed()
       g_sim_enabled = false;
    WriteSimControlFile();
 
-   Sleep((int)MathMax(50, g_sim_delay_ms));
+   Sleep((int)MathMax(10, g_sim_delay_ms));
 }
 
 //+------------------------------------------------------------------+

@@ -735,8 +735,9 @@ def _render_simulate_ea() -> None:
     with c3:
       delay_ms = st.slider(
         "Delay giữa các bar (ms)",
-        50, 2000, 100, step=50, key="sim_ea_delay",
-        help="Tốc độ EA Sleep giữa các bar (min 50ms).",
+        10, 2000, 100, step=10, key="sim_ea_delay",
+        help="Tốc độ EA Sleep giữa các bar (min 10ms; 1000 = 1s). "
+             "Thấp hơn → feed nhanh hơn; MT5 Sleep thường không chính xác dưới ~10–15ms.",
       )
 
     ea_st = sim.get("ea_status") or "—"
