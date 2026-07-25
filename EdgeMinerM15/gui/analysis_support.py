@@ -55,6 +55,38 @@ def start_model_report_job(model: dict | None = None) -> str:
   )
 
 
+def start_model_health_job(
+  model: dict | None = None,
+  *,
+  refresh_kb_on: bool = True,
+  start_date: str = "2022-01-01",
+) -> str:
+  """Chạy KB ON (+optional) và KB OFF cùng OOS → biểu đồ sức khỏe theo tháng."""
+  from gui.long_task_background import start_job
+
+  m = model or get_active_trade_model()
+  if not m:
+    raise ValueError("Chưa có trade model.")
+  set_active_trade_model(m["id"])
+  p = get_model_run_params(m)
+  return start_job(
+    "model_health",
+    {
+      "model_id": m["id"],
+      "refresh_kb_on": refresh_kb_on,
+      "start_date": start_date,
+      "train_weeks": int(p.get("train_weeks") or 6),
+      "spread_pips": float(p.get("spread_pips", 1.0)),
+      "slippage_pips": float(p.get("slippage_pips", 0.3)),
+      "kb_profile": p.get("kb_profile"),
+      "kb_snapshot": p.get("kb_snapshot"),
+      "oos_from": p.get("oos_from"),
+      "oos_to": p.get("oos_to"),
+    },
+    label=f"Sức khỏe model · {format_model_label(m)[:40]}",
+  )
+
+
 def render_report_required_panel(*, key_prefix: str = "an_rep") -> bool:
   """
   Hiển thị khi chưa có báo cáo khớp model.

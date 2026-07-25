@@ -66,7 +66,7 @@ python run_learning.py     # Self-learning multi-epoch
 | 1 | **Cài đặt** | Train 3/6/9T · giai đoạn học · vòng học · OOS 2025–2026 |
 | 2 | **Học & tối ưu → Huấn luyện bộ nhớ** | Tạo/học KB theo giai đoạn |
 | 3 | **Học & tối ưu → Grid Search** | Chạy theo Cài đặt → tạo **Trade Model** |
-| 4 | **Phân tích** | Chọn Trade Model → Risk / Nhật ký / Chiến lược |
+| 4 | **Phân tích / Trade Models** | Risk · Nhật ký · Chiến lược · **Sức khỏe** (tháng KB ON/OFF) |
 | 5 | **Giám sát paper** / **MT5 Bridge** | Bật service → **tự remine mỗi tuần** (không cần Grid lại) |
 
 Đổi Cài đặt → Grid Search chỉ chạy **combo mới** (giữ kết quả cũ).

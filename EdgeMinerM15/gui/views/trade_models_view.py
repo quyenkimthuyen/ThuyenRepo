@@ -1,4 +1,4 @@
-"""Trade Models — quản lý model + phân tích (Risk / Nhật ký / Chiến lược)."""
+"""Trade Models — quản lý model + phân tích (Risk / Nhật ký / Chiến lược / Sức khỏe)."""
 from __future__ import annotations
 
 import pandas as pd
@@ -10,6 +10,7 @@ from gui.trade_model import (
   format_model_oneline,
   get_active_trade_model,
   list_trade_models,
+  load_model_kb_off_report,
   load_model_report,
   set_active_trade_model,
 )
@@ -18,15 +19,17 @@ from gui.ui_preferences import preference_callback, restore_widget, set_widget_p
 from gui.views import risk_dashboard, trade_journal, strategy_inspector
 
 # Child of Trade Models: quản lý + phân tích theo model đang chọn
-SUB_KEYS = ["manage", "risk", "journal", "strategy"]
+SUB_KEYS = ["manage", "health", "risk", "journal", "strategy"]
 SUB_LABELS = {
   "manage": "Quản lý",
+  "health": "Sức khỏe",
   "risk": "Rủi ro",
   "journal": "Nhật ký",
   "strategy": "Chiến lược",
 }
 SUB_ICONS = {
   "manage": ":material/inventory_2:",
+  "health": ":material/monitor_heart:",
   "risk": ":material/shield:",
   "journal": ":material/receipt_long:",
   "strategy": ":material/candlestick_chart:",
@@ -131,6 +134,150 @@ def _render_manage(models, active):
     st.caption(format_model_oneline(m))
 
 
+def _render_health():
+  """Monthly OOS chart KB ON vs OFF + degradation verdict."""
+  from gui.analysis_support import start_model_health_job
+  from gui.long_task_ui import render_task_status, task_blocks_ui
+  from gui.model_health import (
+    assess_monthly_degradation,
+    build_model_timeline_figure,
+    build_monthly_kb_compare_figure,
+    monthly_oos_from_report,
+  )
+
+  active = get_active_trade_model()
+  if not active:
+    st.warning("Chưa chọn Trade Model — mở tab **Quản lý** và bấm dùng model.")
+    return
+
+  st.caption(
+    f"Model: **{format_model_label(active)}** · "
+    f"OOS `{active.get('oos_from') or '—'} → {active.get('oos_to') or '—'}` · "
+    "Timeline giai đoạn + OOS theo **tháng** để phát hiện suy giảm."
+  )
+
+  timeline = build_model_timeline_figure(
+    active,
+    title=f"Giai đoạn model · {format_model_label(active)}",
+  )
+  if timeline:
+    st.plotly_chart(timeline, use_container_width=True)
+    st.caption(
+      "KB học = era bộ nhớ · Train shift = cửa sổ remine "
+      f"**{active.get('train_weeks') or '—'} tuần** trước mỗi tuần OOS · "
+      "OOS = khoảng kiểm chứng."
+    )
+  else:
+    st.info("Chưa đủ thông tin KB / OOS để vẽ timeline giai đoạn.")
+
+  render_task_status(key_prefix="tm_health")
+  blocked = task_blocks_ui("tm_health")
+
+  report_on = load_model_report(active["id"])
+  report_off = load_model_kb_off_report(active["id"])
+
+  c1, c2, c3 = st.columns([2, 2, 1])
+  with c1:
+    refresh_on = st.checkbox(
+      "Chạy lại KB ON (cập nhật report model)",
+      value=not bool(report_on),
+      key="tm_health_refresh_on",
+      help="Tắt nếu đã có report ON — chỉ chạy baseline KB OFF cho nhanh hơn.",
+    )
+  with c2:
+    st.caption(
+      f"KB ON report: **{'có' if report_on else 'chưa'}** · "
+      f"KB OFF baseline: **{'có' if report_off else 'chưa'}**"
+    )
+  with c3:
+    if st.button(
+      "Chạy so sánh",
+      type="primary",
+      icon=":material/play_arrow:",
+      use_container_width=True,
+      disabled=blocked,
+      key="tm_health_run",
+    ):
+      try:
+        start_model_health_job(active, refresh_kb_on=refresh_on)
+        st.toast("Đã bắt đầu backtest KB ON/OFF nền")
+        st.rerun()
+      except Exception as e:
+        st.error(str(e))
+
+  if not report_on:
+    st.info(
+      "Chưa có báo cáo backtest của model. Bấm **Chạy so sánh** "
+      "(bật cập nhật KB ON) hoặc tạo report từ tab Phân tích."
+    )
+    return
+
+  on_m = monthly_oos_from_report(report_on)
+  off_m = monthly_oos_from_report(report_off) if report_off else None
+  assess = assess_monthly_degradation(on_m, baseline=off_m)
+
+  verdict = assess.get("verdict")
+  if verdict == "degraded":
+    st.error(assess["message"])
+  elif verdict == "watch":
+    st.warning(assess["message"])
+  elif verdict == "stable":
+    st.success(assess["message"])
+  else:
+    st.info(assess["message"])
+
+  m1, m2, m3, m4 = st.columns(4)
+  m1.metric("Tháng OOS", assess.get("n_months") or 0)
+  m2.metric(
+    "R nửa đầu",
+    f"{assess['early_r']:+.1f}" if assess.get("early_r") is not None else "—",
+  )
+  m3.metric(
+    "R nửa sau",
+    f"{assess['late_r']:+.1f}" if assess.get("late_r") is not None else "—",
+    delta=(
+      f"{assess['delta_r']:+.1f}" if assess.get("delta_r") is not None else None
+    ),
+  )
+  edge = assess.get("edge_late")
+  m4.metric(
+    "Edge KB (nửa sau)",
+    f"{edge:+.1f}R" if edge is not None else "—",
+    help="Tổng (KB ON − KB OFF) trên nửa sau giai đoạn OOS.",
+  )
+
+  fig = build_monthly_kb_compare_figure(
+    on_m, off_m,
+    title=f"OOS theo tháng · {format_model_label(active)}",
+  )
+  if fig:
+    st.plotly_chart(fig, use_container_width=True)
+  else:
+    st.warning("Không gom được chuỗi theo tháng từ report.")
+
+  if report_off is None:
+    st.caption(
+      "Chưa có baseline **KB OFF**. Chạy so sánh để vẽ cặp ON/OFF và đo lợi thế KB theo tháng."
+    )
+
+  table = on_m.copy()
+  if off_m is not None and not off_m.empty:
+    off_r = off_m.set_index("month")["total_r"]
+    table["kb_off_r"] = table["month"].map(off_r)
+    table["edge_r"] = (table["total_r"] - table["kb_off_r"]).round(3)
+  st.dataframe(table, use_container_width=True, hide_index=True)
+
+  with st.expander("Cách đọc"):
+    st.markdown(
+      "- **Timeline**: KB học (era) → cửa sổ train dịch chuyển → OOS. "
+      "KB `trained_to` nên ≤ `oos_from` (không nhìn trước).\n"
+      "- **KB ON** = report Trade Model (có bộ nhớ).\n"
+      "- **KB OFF** = cùng train weeks / OOS, không KB — baseline thị trường.\n"
+      "- Nửa sau yếu hơn nửa đầu → model/KB có thể **suy giảm** trên giai đoạn gần.\n"
+      "- Edge ON−OFF thu hẹp hoặc âm ở tháng gần → KB đang **kéo xuống**, nên học era mới / Grid lại."
+    )
+
+
 def _render_analysis(sub: str):
   active = get_active_trade_model()
   if not active:
@@ -139,6 +286,10 @@ def _render_analysis(sub: str):
 
   from gui.trade_model import format_model_label
   st.caption(f"Phân tích theo: **{format_model_label(active)}**")
+
+  if sub == "health":
+    _render_health()
+    return
 
   st.session_state["_analysis_hub"] = True
   try:
@@ -168,7 +319,7 @@ def render(embedded: bool = False):
 
   sub = _resolve_subtab()
 
-  cols = st.columns(4)
+  cols = st.columns(len(SUB_KEYS))
   for col, key in zip(cols, SUB_KEYS):
     with col:
       if icon_btn(
@@ -186,5 +337,7 @@ def render(embedded: bool = False):
 
   if sub == "manage":
     _render_manage(models, active)
+  elif sub == "health":
+    _render_health()
   else:
     _render_analysis(sub)

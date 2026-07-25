@@ -112,6 +112,11 @@ def model_report_path(model_id: str) -> Path:
   return MODELS_DIR / f"{model_id}.json"
 
 
+def model_kb_off_report_path(model_id: str) -> Path:
+  MODELS_DIR.mkdir(parents=True, exist_ok=True)
+  return MODELS_DIR / f"{model_id}_kb_off.json"
+
+
 def save_model_report(model_id: str, report: dict):
   payload = dict(report)
   cfg = dict(payload.get("config") or {})
@@ -120,11 +125,28 @@ def save_model_report(model_id: str, report: dict):
   _write_json(model_report_path(model_id), payload)
 
 
+def save_model_kb_off_report(model_id: str, report: dict):
+  payload = dict(report)
+  cfg = dict(payload.get("config") or {})
+  cfg["trade_model_id"] = model_id
+  cfg["use_learning_kb"] = False
+  cfg["kb_compare_role"] = "kb_off_baseline"
+  payload["config"] = cfg
+  _write_json(model_kb_off_report_path(model_id), payload)
+
+
 def load_model_report(model_id: str | None = None) -> dict | None:
   mid = model_id or load_active_model_id()
   if not mid:
     return None
   return _read_json(model_report_path(mid))
+
+
+def load_model_kb_off_report(model_id: str | None = None) -> dict | None:
+  mid = model_id or load_active_model_id()
+  if not mid:
+    return None
+  return _read_json(model_kb_off_report_path(mid))
 
 
 def get_active_trade_model(*, force_reload: bool = False) -> dict | None:

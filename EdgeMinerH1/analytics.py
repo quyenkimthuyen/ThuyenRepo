@@ -76,6 +76,71 @@ def yearly_breakdown(trades_df: pd.DataFrame) -> pd.DataFrame:
   return pd.DataFrame(rows)
 
 
+def monthly_breakdown(trades_df: pd.DataFrame) -> pd.DataFrame:
+  """Aggregate OOS trades by calendar month (entry time)."""
+  if trades_df is None or trades_df.empty or "r" not in trades_df.columns:
+    return pd.DataFrame(columns=["month", "n_trades", "win_rate_pct", "total_r", "avg_r", "cum_r"])
+  df = trades_df.copy()
+  if "entry" not in df.columns:
+    return pd.DataFrame(columns=["month", "n_trades", "win_rate_pct", "total_r", "avg_r", "cum_r"])
+  df["entry"] = pd.to_datetime(df["entry"], errors="coerce")
+  df = df.dropna(subset=["entry"])
+  if df.empty:
+    return pd.DataFrame(columns=["month", "n_trades", "win_rate_pct", "total_r", "avg_r", "cum_r"])
+  df["month"] = df["entry"].dt.to_period("M").astype(str)
+  rows = []
+  for month, g in df.groupby("month", sort=True):
+    wins = (g["r"] > 0).sum()
+    rows.append({
+      "month": month,
+      "n_trades": int(len(g)),
+      "win_rate_pct": round(float(wins / len(g) * 100), 1) if len(g) else None,
+      "total_r": round(float(g["r"].sum()), 3),
+      "avg_r": round(float(g["r"].mean()), 3) if len(g) else None,
+    })
+  out = pd.DataFrame(rows)
+  if out.empty:
+    return out
+  out["cum_r"] = out["total_r"].cumsum().round(3)
+  return out
+
+
+def monthly_from_weekly_log(weekly_log: list[dict] | None) -> pd.DataFrame:
+  """Sum weekly OOS R into calendar months (week_start)."""
+  rows = []
+  for w in weekly_log or []:
+    if "oos_r" not in w:
+      continue
+    ws = w.get("week_start") or w.get("week")
+    if not ws:
+      continue
+    try:
+      ts = pd.Timestamp(ws)
+    except Exception:
+      continue
+    rows.append({
+      "month": ts.to_period("M").strftime("%Y-%m"),
+      "oos_r": float(w["oos_r"]),
+      "oos_trades": int(w.get("oos_trades") or 0),
+    })
+  if not rows:
+    return pd.DataFrame(columns=["month", "n_trades", "win_rate_pct", "total_r", "avg_r", "cum_r"])
+  raw = pd.DataFrame(rows)
+  g = raw.groupby("month", sort=True).agg(
+    total_r=("oos_r", "sum"),
+    n_trades=("oos_trades", "sum"),
+  ).reset_index()
+  g["total_r"] = g["total_r"].round(3)
+  g["n_trades"] = g["n_trades"].astype(int)
+  g["win_rate_pct"] = None
+  g["avg_r"] = g.apply(
+    lambda r: round(r["total_r"] / r["n_trades"], 3) if r["n_trades"] else None,
+    axis=1,
+  )
+  g["cum_r"] = g["total_r"].cumsum().round(3)
+  return g[["month", "n_trades", "win_rate_pct", "total_r", "avg_r", "cum_r"]]
+
+
 def weekly_r_histogram(weekly_log: list[dict]) -> pd.DataFrame:
   rows = []
   for w in weekly_log:
