@@ -9,7 +9,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from gui.mt5_live_chart import build_ea_chart, connection_health, load_ea_chart_data
+from gui.mt5_live_chart import build_ea_chart, connection_health, load_ea_chart_data, load_sim_chart_data
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
 from gui.trade_model import format_model_label, get_active_trade_model
@@ -388,7 +388,7 @@ def _trader_desk_fragment() -> None:
 
 
 def _render_live_chart(max_bars: int) -> None:
-  """Live: browser iframe when monitor server ready. Simulate: Plotly from bridge_sim."""
+  """Live: browser iframe when monitor server ready. Simulate: replay window chart."""
   bridge_dir = _active_bridge_dir()
   mode = _bridge_mode()
   legend = "🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit — giống Paper Trade."
@@ -412,18 +412,69 @@ def _render_live_chart(max_bars: int) -> None:
       )
       return
     st.warning("Live chart server chưa chạy; đang dùng snapshot tĩnh.")
+    frame, connection = load_ea_chart_data(max_bars=max_bars, bridge_dir=bridge_dir)
+    trades = load_trades(bridge_dir)
+    fig = build_ea_chart(frame, connection, trades)
+    if fig is None:
+      st.caption(f"Đang chờ EA xuất `bars.json` trong `{bridge_dir.name}/` để vẽ chart.")
+    else:
+      st.plotly_chart(fig, use_container_width=True, key="mt5_ea_live_chart")
+      st.caption(f"Live · `{bridge_dir.name}/` · {legend}")
+    return
 
-  frame, connection = load_ea_chart_data(max_bars=max_bars, bridge_dir=bridge_dir)
+  _render_sim_chart_fragment(max_bars)
+
+
+@st.fragment(run_every=timedelta(seconds=2))
+def _render_sim_chart_fragment(max_bars: int) -> None:
+  """Progressive History Feed chart: cache OHLC in [from,to], clipped to EA last_bar."""
+  bridge_dir = _active_bridge_dir()
+  legend = "🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit — giống Paper Trade."
+  sim = bridge_bg.get_sim_status()
+  date_from = sim.get("date_from") or st.session_state.get("sim_ea_from")
+  date_to = sim.get("date_to") or st.session_state.get("sim_ea_to")
+  if hasattr(date_from, "isoformat"):
+    date_from = date_from.isoformat()
+  if hasattr(date_to, "isoformat"):
+    date_to = date_to.isoformat()
+  last_bar = sim.get("last_bar")
+  status = str(sim.get("status") or "idle")
+  # Running: clip to EA cursor. Idle: preview full from/to. Completed: full window.
+  if status in ("running", "paused"):
+    progress_only = True
+  else:
+    progress_only = False
+
+  frame, connection = load_sim_chart_data(
+    date_from=str(date_from) if date_from else None,
+    date_to=str(date_to) if date_to else None,
+    last_bar=str(last_bar) if last_bar else None,
+    max_bars=max_bars,
+    bridge_dir=bridge_dir,
+    progress_only=progress_only,
+  )
   trades = load_trades(bridge_dir)
-  fig = build_ea_chart(frame, connection, trades)
-  chart_key = "mt5_ea_sim_chart" if mode == "sim" else "mt5_ea_live_chart"
+  title = (
+    f"EURUSD H1 · Simulate {date_from or '?'} → {date_to or '?'}"
+    + (f" · cursor {last_bar}" if last_bar else "")
+  )
+  fig = build_ea_chart(
+    frame, connection, trades,
+    title=title,
+    price_line_label="SIM",
+  )
   if fig is None:
     st.caption(
-      f"Đang chờ EA xuất `bars.json` trong `{bridge_dir.name}/` để vẽ chart."
+      "Chưa vẽ được chart Simulate — cần `data/mt5_eurusd_m15.parquet` "
+      "(đồng bộ history Live một lần) và chọn Từ/Đến ngày."
     )
-  else:
-    st.plotly_chart(fig, use_container_width=True, key=chart_key)
-    st.caption(f"{'Simulate' if mode == 'sim' else 'Live'} · `{bridge_dir.name}/` · {legend}")
+    return
+  st.plotly_chart(fig, use_container_width=True, key="mt5_ea_sim_chart")
+  n = len(frame)
+  st.caption(
+    f"Simulate replay · `{bridge_dir.name}/` · {n} nến "
+    f"({frame.index[0]} → {frame.index[-1]}) · status `{status}` · {legend}"
+  )
 
 
 def _render_manual_test_orders() -> None:

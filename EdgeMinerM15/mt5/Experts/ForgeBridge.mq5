@@ -390,6 +390,43 @@ bool WriteBarsJson()
 }
 
 //+------------------------------------------------------------------+
+bool WriteBarsJsonHistoryFeed(const int upto_exclusive)
+{
+   // Write historical feed bars [0 .. upto_exclusive) for App chart replay
+   if(g_hist_n < 1 || upto_exclusive < 1)
+      return false;
+   int end = MathMin(upto_exclusive, g_hist_n);
+   int start = MathMax(0, end - MathMax(48, InpChartBars));
+
+   int h = FileOpen(BridgePath("bars.json"), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
+   if(h == INVALID_HANDLE)
+      return false;
+
+   string prefix = "{\"symbol\":\"" + _Symbol + "\",";
+   prefix += "\"updated_at\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\",";
+   prefix += "\"period\":\"M15\",\"source\":\"history_feed\",\"bars\":[";
+   FileWriteString(h, prefix);
+   for(int i = start; i < end; i++)
+   {
+      if(i > start) FileWriteString(h, ",");
+      string row = "{";
+      row += "\"time\":\"" + TimeToString(g_hist_rates[i].time, TIME_DATE | TIME_MINUTES) + "\",";
+      row += "\"time_msc\":" + IntegerToString((long)g_hist_rates[i].time * 1000) + ",";
+      row += "\"open\":" + DoubleToString(g_hist_rates[i].open, _Digits) + ",";
+      row += "\"high\":" + DoubleToString(g_hist_rates[i].high, _Digits) + ",";
+      row += "\"low\":" + DoubleToString(g_hist_rates[i].low, _Digits) + ",";
+      row += "\"close\":" + DoubleToString(g_hist_rates[i].close, _Digits) + ",";
+      row += "\"tick_volume\":" + IntegerToString((long)g_hist_rates[i].tick_volume) + ",";
+      row += "\"spread_points\":" + IntegerToString(g_hist_rates[i].spread);
+      row += "}";
+      FileWriteString(h, row);
+   }
+   FileWriteString(h, "]}\n");
+   FileClose(h);
+   return true;
+}
+
+//+------------------------------------------------------------------+
 bool ReadBridgeText(const string name, string &text)
 {
    int h = FileOpen(BridgePath(name), FILE_READ | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
@@ -1518,8 +1555,7 @@ void ProcessHistoryFeed()
       WriteSimControlFile();
       return;
    }
-   if((g_hist_cursor % 32) == 0)
-      WriteBarsJson();
+   WriteBarsJsonHistoryFeed(g_hist_cursor + 1);
    WriteConnectionJson();
 
    string want = TimeToString(r.time, TIME_DATE | TIME_MINUTES);

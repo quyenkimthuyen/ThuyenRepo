@@ -78,6 +78,100 @@ def load_ea_chart_data(
   return frame, connection
 
 
+def load_sim_chart_data(
+  *,
+  date_from: str | None,
+  date_to: str | None,
+  last_bar: str | None = None,
+  max_bars: int = 672,
+  bridge_dir: Path | None = None,
+  progress_only: bool = True,
+) -> tuple[pd.DataFrame, dict]:
+  """Chart for History Feed: OHLC from MT5 cache in [from,to], clipped to last_bar.
+
+  progress_only=True (while feed running): only bars up to EA cursor.
+  progress_only=False / no last_bar: show full selected window (preview).
+  """
+  from mt5_bridge.history_sync import load_mt5_cache, utc_to_broker_time
+  from mt5_bridge.protocol import bar_path
+
+  connection = read_json(connection_path(bridge_dir)) or {}
+  cache = load_mt5_cache()
+  if cache is None or cache.empty:
+    # Fallback to whatever EA wrote (may be live bars — last resort)
+    return load_ea_chart_data(max_bars=max_bars, bridge_dir=bridge_dir)
+
+  frame = cache.copy()
+  if not isinstance(frame.index, pd.DatetimeIndex):
+    return pd.DataFrame(), connection
+
+  # Cache index is UTC-naive internal; chart / EA use broker wall-clock
+  broker_index = pd.DatetimeIndex([utc_to_broker_time(ts) for ts in frame.index])
+  frame = frame.copy()
+  frame.index = broker_index
+  frame = frame[~frame.index.duplicated(keep="last")].sort_index()
+
+  def _day(s: str | None) -> pd.Timestamp | None:
+    if not s:
+      return None
+    t = _parse_mt5_time(str(s)[:16].replace("-", "."))
+    if t is None:
+      try:
+        t = pd.Timestamp(str(s)[:10])
+      except Exception:
+        return None
+    return t
+
+  t0 = _day(date_from)
+  t1 = _day(date_to)
+  if t0 is not None:
+    frame = frame.loc[frame.index >= t0.normalize()]
+  if t1 is not None:
+    # include full end day
+    end = (t1.normalize() + pd.Timedelta(days=1)) - pd.Timedelta(seconds=1)
+    frame = frame.loc[frame.index <= end]
+
+  last_ts = _parse_mt5_time(last_bar) if last_bar else None
+  if last_ts is None:
+    # Prefer current bar.json from EA feed
+    bar = read_json(bar_path(bridge_dir)) or {}
+    last_ts = _parse_mt5_time(bar.get("bar_time") or bar.get("time"))
+
+  if progress_only and last_ts is not None:
+    frame = frame.loc[frame.index <= last_ts]
+  elif progress_only and last_ts is None:
+    # Feed started but no bar yet — wait (do not show future end of window)
+    return pd.DataFrame(), connection
+
+  if frame.empty:
+    return pd.DataFrame(), connection
+
+  limit = max(24, int(max_bars))
+  if len(frame) > limit:
+    # Replay/running: keep newest (near cursor). Preview idle: start at date_from.
+    frame = frame.tail(limit) if progress_only else frame.head(limit)
+  if "Volume" not in frame.columns:
+    frame["Volume"] = 0
+
+  # Connection stub at replay cursor (not live tick)
+  last = frame.iloc[-1]
+  close = float(last["Close"])
+  connection = {
+    **connection,
+    "bid": close,
+    "ask": close,
+    "connected": True,
+    "bar": {
+      "time": frame.index[-1].strftime("%Y.%m.%d %H:%M"),
+      "open": float(last["Open"]),
+      "high": float(last["High"]),
+      "low": float(last["Low"]),
+      "close": close,
+    },
+  }
+  return frame, connection
+
+
 def connection_health(
   connection: dict,
   stale_after_seconds: float = 10.0,
@@ -253,6 +347,7 @@ def build_ea_chart(
   trades: list[dict],
   *,
   title: str = "EURUSD M15 · XM MT5 live",
+  price_line_label: str = "LIVE",
 ) -> go.Figure | None:
   if frame.empty:
     return None
@@ -296,7 +391,7 @@ def build_ea_chart(
     mid = (float(bid) + float(ask)) / 2
     fig.add_hline(
       y=mid, line_width=1, line_dash="dash", line_color=TV_LIVE,
-      annotation_text=f"LIVE {mid:.5f}",
+      annotation_text=f"{price_line_label} {mid:.5f}",
       annotation_font_color=TV_LIVE, row=1, col=1,
     )
 
