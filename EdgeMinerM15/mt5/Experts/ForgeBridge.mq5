@@ -8,7 +8,7 @@
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
 #property copyright "EdgeMiner2 bridge"
-#property version   "1.06"
+#property version   "1.07"
 
 #include <Trade/Trade.mqh>
 
@@ -23,7 +23,7 @@ input group "=== Bridge ==="
 input ENUM_BRIDGE_MODE InpMode = BRIDGE_LIVE;
 input string InpBridgeSubdir   = "bridge";          // under MQL5/Files/ (use bridge_sim for HistoryFeed)
 input int    InpDecisionWaitMs = 8000;              // Live: wait for decision
-input int    InpHistoryDecisionWaitMs = 2500;       // HistoryFeed: max wait (App catch-up)
+input int    InpHistoryDecisionWaitMs = 20000;      // HistoryFeed: max wait (remine tuần có thể chậm)
 input int    InpPollMs         = 500;
 input int    InpChartBars      = 1344;              // M15 bars exported for App chart
 input int    InpHeartbeatMs    = 2000;              // Live connection/tick snapshot
@@ -1572,9 +1572,8 @@ void ProcessHistoryFeed()
    bool flat = InpHistoryPaperFills ? (!g_paper_open) : (PositionsByMagic() == 0);
    if(flat && g_pending_decision == "")
    {
-      // Pace ≈ App decide + delay — do NOT burn full live 8s on every miss.
-      // Budget scales with delay_ms; hard-capped by InpHistoryDecisionWaitMs.
-      int wait_ms = (int)MathMax(400, MathMin(InpHistoryDecisionWaitMs, g_sim_delay_ms + 800));
+      // Budget: đủ cho remine tuần đầu; không đốt full live timeout mỗi bar khi App vắng.
+      int wait_ms = (int)MathMax(5000, MathMin(InpHistoryDecisionWaitMs, g_sim_delay_ms + 8000));
       string json;
       if(WaitDecisionForBar(want, json, wait_ms))
       {

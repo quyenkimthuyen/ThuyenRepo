@@ -337,7 +337,9 @@ def _worker():
   append_event("system", "service_start", bridge_dir=bridge_dir, summary="bridge thread started")
   start_history_sync(bridge_dir)
   try:
-    _engine = BridgeEngine(model_id=cfg["model_id"], risk_pct=cfg["risk_pct"])
+    _engine = BridgeEngine(
+      model_id=cfg["model_id"], risk_pct=cfg["risk_pct"], bridge_dir=BRIDGE_DIR,
+    )
     if MT5_CACHE_PATH.exists():
       _engine.ensure_history()
     write_status(
@@ -372,7 +374,9 @@ def _worker():
         _engine.model_id != cfg["model_id"]
         or abs(_engine.risk_pct - float(cfg["risk_pct"])) > 1e-9
       ):
-        _engine = BridgeEngine(model_id=cfg["model_id"], risk_pct=float(cfg["risk_pct"]))
+        _engine = BridgeEngine(
+          model_id=cfg["model_id"], risk_pct=float(cfg["risk_pct"]), bridge_dir=BRIDGE_DIR,
+        )
         _engine.ensure_history()
         append_event(
           "system", "engine_reload", bridge_dir=bridge_dir,
@@ -504,7 +508,9 @@ def ensure_worker_running() -> None:
 def process_once_now() -> dict | None:
   cfg = load_config()
   bridge_dir = ensure_bridge_dir(Path(cfg["bridge_dir"]))
-  engine = BridgeEngine(model_id=cfg["model_id"], risk_pct=float(cfg["risk_pct"]))
+  engine = BridgeEngine(
+    model_id=cfg["model_id"], risk_pct=float(cfg["risk_pct"]), bridge_dir=bridge_dir,
+  )
   process_history_sync(bridge_dir)
   engine.ensure_history()
   _cycle(engine, bridge_dir, None, None)
@@ -547,7 +553,7 @@ def _run_sim_bridge_loop(stop_event: threading.Event, model_id: str | None, risk
 
   bridge_dir = ensure_bridge_dir(BRIDGE_SIM_DIR)
   mid = model_id or load_config().get("model_id")
-  engine = BridgeEngine(model_id=mid, risk_pct=float(risk_pct))
+  engine = BridgeEngine(model_id=mid, risk_pct=float(risk_pct), bridge_dir=bridge_dir)
   try:
     if MT5_CACHE_PATH.exists():
       engine.ensure_history()

@@ -1,4 +1,4 @@
-"""Bridge decision engine — merge MT5 M15 bars + weekly remine."""
+"""Bridge decision engine — merge MT5 H1 bars + weekly remine."""
 from __future__ import annotations
 
 import hashlib
@@ -25,6 +25,7 @@ from mt5_bridge.models import (
   strategy_conditions,
 )
 from mt5_bridge.protocol import DEFAULT_MAGIC, DEFAULT_MODEL_ID, utc_now_iso
+from mt5_bridge.trade_journal import load_trades, trade_mode
 from optimizer import get_knowledge_base, optimize_on_window, set_kb_profile
 from paper_monitor import _project_signal_levels, _week_bounds_for_ts
 from strategy_miner import (
@@ -33,6 +34,38 @@ from strategy_miner import (
 )
 
 MT5_CACHE = MT5_CACHE_PATH
+
+
+def _journal_open_and_day_count(
+  bridge_dir: Path,
+  broker_day,
+) -> tuple[bool, int]:
+  """Real EA/paper fills — source of truth for open + day slots (not theoretical backtest)."""
+  has_open = False
+  day_n = 0
+  for trade in load_trades(bridge_dir):
+    if trade_mode(trade) != "auto":
+      continue
+    status = str(trade.get("status") or "").upper()
+    if status == "OPEN":
+      has_open = True
+    if status not in ("OPEN", "CLOSED"):
+      continue
+    entry_raw = trade.get("entry_time") or trade.get("bar_time") or trade.get("updated_at")
+    if not entry_raw:
+      continue
+    try:
+      raw = str(entry_raw).strip().replace(".", "-")
+      # broker wall "2026-01-02 08:15" or ISO
+      if "T" in raw:
+        et = utc_to_broker_time(pd.Timestamp(raw))
+      else:
+        et = utc_to_broker_time(parse_broker_time(raw[:16]))
+      if et.date() == broker_day:
+        day_n += 1
+    except Exception:
+      continue
+  return has_open, day_n
 
 
 class BridgeEngine:
@@ -45,11 +78,13 @@ class BridgeEngine:
     risk_pct: float = DEFAULT_RISK_PCT_PER_TRADE,
     magic: int = DEFAULT_MAGIC,
     mt5_cache: Path | None = None,
+    bridge_dir: Path | None = None,
   ):
     self.model_id = model_id
     self.risk_pct = float(risk_pct)
     self.magic = int(magic)
     self.mt5_cache = mt5_cache or MT5_CACHE
+    self.bridge_dir = bridge_dir
     self._df: pd.DataFrame | None = None
     self._strat_cache: dict[str, Any] = {}
     self._last_bar_key: str | None = None
@@ -247,16 +282,27 @@ class BridgeEngine:
 
     direction = int(signals[bar_idx]) if 0 <= bar_idx < len(signals) else 0
     broker_day = utc_to_broker_time(bar_ts).date()
-    day_trades = [
-      trade for trade in week_trades
-      if utc_to_broker_time(trade.entry_time).date() == broker_day
-    ]
-    slots_left = max(int(strat.max_trades_per_day) - len(day_trades), 0)
-    if open_position:
-      decision = self._hold(
-        bar_ts, model_id, reason="position_open", week_start=week_start, strat=strat,
-      )
-      return self._remember(bar_key, decision)
+    if self.bridge_dir is not None:
+      # Journal = EA/paper truth. Do not block on theoretical backtest open
+      # (HistoryFeed timeout miss would otherwise freeze the whole week).
+      real_open, day_n = _journal_open_and_day_count(self.bridge_dir, broker_day)
+      slots_left = max(int(strat.max_trades_per_day) - day_n, 0)
+      if real_open:
+        decision = self._hold(
+          bar_ts, model_id, reason="position_open", week_start=week_start, strat=strat,
+        )
+        return self._remember(bar_key, decision)
+    else:
+      day_trades = [
+        trade for trade in week_trades
+        if utc_to_broker_time(trade.entry_time).date() == broker_day
+      ]
+      slots_left = max(int(strat.max_trades_per_day) - len(day_trades), 0)
+      if open_position:
+        decision = self._hold(
+          bar_ts, model_id, reason="position_open", week_start=week_start, strat=strat,
+        )
+        return self._remember(bar_key, decision)
 
     if direction == 0 or slots_left <= 0:
       decision = self._flat(
