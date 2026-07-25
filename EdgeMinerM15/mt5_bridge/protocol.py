@@ -8,6 +8,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 BRIDGE_DIR = ROOT / "mt5" / "bridge"
+BRIDGE_SIM_DIR = ROOT / "mt5" / "bridge_sim"
 
 BAR_NAME = "bar.json"
 BARS_NAME = "bars.json"

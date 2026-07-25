@@ -509,3 +509,87 @@ def process_once_now() -> dict | None:
   engine.ensure_history()
   _cycle(engine, bridge_dir, None, None)
   return engine._last_decision
+
+
+# --- Simulate EA worker (isolated bridge_sim; does not touch live service) ---
+
+_sim_thread: threading.Thread | None = None
+_sim_stop = threading.Event()
+_sim_pause = threading.Event()
+_sim_lock = threading.Lock()
+
+
+def is_sim_running() -> bool:
+  return _sim_thread is not None and _sim_thread.is_alive()
+
+
+def get_sim_status() -> dict:
+  from mt5_bridge.ea_simulator import load_sim_state
+  st = load_sim_state()
+  st["running"] = is_sim_running()
+  st["paused"] = bool(_sim_pause.is_set()) if is_sim_running() else False
+  return st
+
+
+def start_sim_worker(
+  *,
+  date_from: str,
+  date_to: str,
+  delay_ms: int = 0,
+  model_id: str | None = None,
+  risk_pct: float = 1.0,
+) -> bool:
+  """Start Simulate EA thread. Returns False if already running."""
+  global _sim_thread
+  with _sim_lock:
+    if is_sim_running():
+      return False
+    from mt5_bridge.ea_simulator import SimConfig, run_simulation
+    from mt5_bridge.protocol import BRIDGE_SIM_DIR
+
+    _sim_stop.clear()
+    _sim_pause.clear()
+    cfg = SimConfig(
+      date_from=date_from,
+      date_to=date_to,
+      delay_ms=max(0, int(delay_ms)),
+      model_id=model_id or load_config().get("model_id"),
+      risk_pct=float(risk_pct),
+      bridge_dir=BRIDGE_SIM_DIR,
+    )
+
+    def _run():
+      try:
+        run_simulation(
+          cfg,
+          stop_event=_sim_stop,
+          pause_event=_sim_pause,
+        )
+      except Exception as e:
+        from mt5_bridge.ea_simulator import write_sim_state
+        write_sim_state({"status": "error", "error": str(e)})
+
+    _sim_thread = threading.Thread(target=_run, name="ea-simulator", daemon=True)
+    _sim_thread.start()
+    return True
+
+
+def pause_sim_worker(paused: bool = True) -> None:
+  if paused:
+    _sim_pause.set()
+  else:
+    _sim_pause.clear()
+
+
+def stop_sim_worker() -> None:
+  global _sim_thread
+  _sim_stop.set()
+  _sim_pause.clear()
+  t = _sim_thread
+  if t and t.is_alive():
+    t.join(timeout=5.0)
+  _sim_thread = None
+  from mt5_bridge.ea_simulator import load_sim_state, write_sim_state
+  st = load_sim_state()
+  if st.get("status") == "running" or st.get("status") == "paused":
+    write_sim_state({"status": "stopped"})

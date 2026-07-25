@@ -63,10 +63,19 @@ def load_backtest_baseline(model: dict | None) -> dict[str, Any]:
   }
 
 
-def load_live_auto_trades(model_id: str | None = None) -> dict[str, Any]:
-  """Closed Bridge auto trades, optionally filtered to model_id."""
-  raw = load_trades()
-  auto = filter_trades(raw, mode=MODE_AUTO)
+def load_live_auto_trades(
+  model_id: str | None = None,
+  *,
+  bridge_dir=None,
+  date_from=None,
+  date_to=None,
+) -> dict[str, Any]:
+  """Closed Bridge auto trades, optionally filtered to model_id / date window."""
+  raw = load_trades(bridge_dir)
+  auto = filter_trades(
+    raw, bridge_dir=bridge_dir, mode=MODE_AUTO,
+    date_from=date_from, date_to=date_to,
+  )
   if model_id:
     matched = [t for t in auto if (t.get("model_id") or model_id) == model_id]
     # Prefer model-matched; if none tagged yet, fall back to all auto
@@ -76,7 +85,10 @@ def load_live_auto_trades(model_id: str | None = None) -> dict[str, Any]:
   closed = [t for t in trades if str(t.get("status") or "").upper() == "CLOSED"]
   trades_df = live_trades_to_analytics_df(closed)
   monthly = monthly_breakdown(trades_df)
-  stats = compute_stats(trades, mode=MODE_AUTO)
+  stats = compute_stats(
+    trades, bridge_dir=bridge_dir, mode=MODE_AUTO,
+    date_from=date_from, date_to=date_to,
+  )
   return {
     "trades": closed,
     "trades_df": trades_df,
@@ -85,6 +97,7 @@ def load_live_auto_trades(model_id: str | None = None) -> dict[str, Any]:
     "equity": equity_series(trades_df),
     "n_auto_all": len([t for t in auto if str(t.get("status") or "").upper() == "CLOSED"]),
     "filtered_by_model": bool(model_id) and any(t.get("model_id") == model_id for t in closed),
+    "bridge_dir": str(bridge_dir) if bridge_dir else None,
   }
 
 
@@ -117,6 +130,7 @@ def build_bt_vs_live_monthly_figure(
   live_monthly: pd.DataFrame,
   *,
   title: str = "OOS theo tháng · Backtest vs Live",
+  live_name: str = "Live Auto",
 ) -> go.Figure | None:
   months = sorted(set(
     list(bt_monthly["month"]) if bt_monthly is not None and not bt_monthly.empty else []
@@ -147,9 +161,10 @@ def build_bt_vs_live_monthly_figure(
     marker_color="#2962ff", opacity=0.85,
   ), row=1, col=1)
   fig.add_trace(go.Bar(
-    x=months, y=[live_map.get(m) for m in months], name="Live Auto",
+    x=months, y=[live_map.get(m) for m in months], name=live_name,
     marker_color="#26a69a", opacity=0.85,
   ), row=1, col=1)
+
 
   # Cumulative only where series exists (don't invent zeros across gaps)
   if bt_cum:
@@ -161,7 +176,7 @@ def build_bt_vs_live_monthly_figure(
   if live_cum:
     lx = [m for m in months if m in live_cum]
     fig.add_trace(go.Scatter(
-      x=lx, y=[live_cum[m] for m in lx], name="Cum Live",
+      x=lx, y=[live_cum[m] for m in lx], name=f"Cum {live_name}",
       line=dict(color="#26a69a", width=2.5),
     ), row=2, col=1)
 
@@ -190,6 +205,7 @@ def build_equity_overlay_figure(
   live_equity: pd.DataFrame,
   *,
   title: str = "Equity R · Backtest vs Live",
+  live_name: str = "Live Auto",
 ) -> go.Figure | None:
   if (bt_equity is None or bt_equity.empty) and (live_equity is None or live_equity.empty):
     return None
@@ -206,11 +222,11 @@ def build_equity_overlay_figure(
   if live_equity is not None and not live_equity.empty:
     fig.add_trace(go.Scatter(
       x=live_equity["entry"], y=live_equity["equity_r"],
-      name="Live Auto", line=dict(color="#26a69a", width=2.5),
+      name=live_name, line=dict(color="#26a69a", width=2.5),
     ))
     fig.add_trace(go.Scatter(
       x=live_equity["entry"], y=-live_equity["drawdown_r"],
-      name="DD Live", line=dict(color="#80cbc4", width=1, dash="dot"),
+      name=f"DD {live_name}", line=dict(color="#80cbc4", width=1, dash="dot"),
     ))
   fig.update_layout(
     title=dict(text=title, font=dict(size=13)),
@@ -223,11 +239,47 @@ def build_equity_overlay_figure(
   return fig
 
 
-def build_monitor_bundle(model: dict | None) -> dict[str, Any]:
-  """Assemble everything the Bridge UI needs for Backtest vs Live."""
+def build_monitor_bundle(
+  model: dict | None,
+  *,
+  source: str = "live",
+  date_from=None,
+  date_to=None,
+) -> dict[str, Any]:
+  """
+  Assemble Backtest vs Live/Sim bundle.
+  source: "live" | "sim"
+  """
+  from mt5_bridge.protocol import BRIDGE_DIR, BRIDGE_SIM_DIR
+
+  src = (source or "live").lower()
+  bridge_dir = BRIDGE_SIM_DIR if src == "sim" else BRIDGE_DIR
+  live_label = "Simulate EA" if src == "sim" else "Live Auto"
+
   bt = load_backtest_baseline(model)
-  live = load_live_auto_trades((model or {}).get("id"))
-  aligned = align_monthly(bt["monthly"], live["monthly"])
+  live = load_live_auto_trades(
+    (model or {}).get("id"),
+    bridge_dir=bridge_dir,
+    date_from=date_from,
+    date_to=date_to,
+  )
+
+  # When comparing sim window, also clip BT monthly to overlapping months only in edge metrics
+  bt_monthly = bt["monthly"]
+  if date_from is not None or date_to is not None:
+    bt_df = bt["trades_df"]
+    if bt_df is not None and not bt_df.empty and "entry" in bt_df.columns:
+      mask = pd.Series(True, index=bt_df.index)
+      if date_from is not None:
+        mask &= bt_df["entry"] >= pd.Timestamp(date_from)
+      if date_to is not None:
+        mask &= bt_df["entry"] < (pd.Timestamp(date_to) + pd.Timedelta(days=1))
+      clipped = bt_df.loc[mask]
+      if not clipped.empty:
+        from analytics import monthly_breakdown as _mb
+        bt_monthly = _mb(clipped)
+
+  aligned = align_monthly(bt_monthly, live["monthly"])
   overlap = overlapping_months(aligned)
   live_assess = assess_monthly_degradation(live["monthly"], baseline=None)
 
@@ -247,7 +299,9 @@ def build_monitor_bundle(model: dict | None) -> dict[str, Any]:
     "model_id": (model or {}).get("id"),
     "conditions_fp": bt.get("conditions_fp"),
     "has_report": bt["report"] is not None,
-    "bt": bt,
+    "source": src,
+    "live_label": live_label,
+    "bt": {**bt, "monthly": bt_monthly},
     "live": live,
     "aligned": aligned,
     "overlap": overlap,
