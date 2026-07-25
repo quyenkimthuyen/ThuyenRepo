@@ -636,3 +636,12 @@ def stop_sim_worker() -> None:
   _sim_thread = None
   _sim_bridge_thread = None
   write_sim_state({"status": "stopped"})
+
+
+def reset_sim_data() -> dict:
+  """Stop feed if running, then wipe bridge_sim artifacts for a clean rerun."""
+  if is_sim_running():
+    stop_sim_worker()
+  from mt5_bridge.ea_simulator import reset_sim_data as _reset
+  from mt5_bridge.protocol import BRIDGE_SIM_DIR
+  return _reset(BRIDGE_SIM_DIR)

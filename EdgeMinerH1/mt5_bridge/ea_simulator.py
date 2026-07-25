@@ -128,9 +128,76 @@ def stop_history_feed_control(bridge_dir: Path | None = None) -> dict[str, Any]:
   return write_sim_state({"status": "stopped", "ea_status": "idle"})
 
 
+def reset_sim_data(bridge_dir: Path | None = None) -> dict[str, Any]:
+  """Wipe bridge_sim run artifacts so the next History Feed starts clean."""
+  from mt5_bridge.comm_log import clear_log
+
+  bridge_dir = ensure_bridge_dir(bridge_dir or BRIDGE_SIM_DIR)
+  clear_trades(bridge_dir)
+  clear_log(bridge_dir)
+
+  # Ephemeral protocol files from the previous run
+  for name in (
+    "bar.json",
+    "bars.json",
+    "connection.json",
+    "decision.json",
+    "fill.json",
+    "status.json",
+    "command.json",
+    "command_ack.json",
+    "history_request.json",
+    "history_chunk.json",
+    "history_ack.json",
+    "history_status.json",
+  ):
+    path = bridge_dir / name
+    if path.exists():
+      try:
+        path.unlink()
+      except OSError:
+        pass
+
+  write_sim_control(
+    bridge_dir,
+    merge=False,
+    enabled=False,
+    **{
+      "from": "",
+      "to": "",
+      "delay_ms": 100,
+      "request_id": "",
+      "ea_status": "idle",
+      "bars_done": 0,
+      "bars_total": 0,
+      "last_bar": "",
+      "error": "",
+    },
+  )
+  if SIM_STATE_PATH.exists():
+    try:
+      SIM_STATE_PATH.unlink()
+    except OSError:
+      pass
+  return write_sim_state({
+    "status": "idle",
+    "source": "ea_history_feed",
+    "ea_status": "idle",
+    "bars_done": 0,
+    "bars_total": 0,
+    "progress": 0.0,
+    "last_bar": None,
+    "n_fills": 0,
+    "error": None,
+    "enabled": False,
+    "bridge_dir": str(bridge_dir),
+  })
+
+
 def sync_state_from_ea(bridge_dir: Path | None = None) -> dict[str, Any]:
   """Mirror EA fields from sim_control.json into app sim_state."""
   bridge_dir = bridge_dir or BRIDGE_SIM_DIR
+  prev = load_sim_state()
   ctrl = read_sim_control(bridge_dir)
   ea_status = str(ctrl.get("ea_status") or "idle")
   bars_done = int(ctrl.get("bars_done") or 0)
@@ -141,16 +208,18 @@ def sync_state_from_ea(bridge_dir: Path | None = None) -> dict[str, Any]:
   if error == "":
     error = None
 
-  status = "running"
-  if ea_status == "completed" or (not enabled and ea_status in ("completed", "idle")):
-    if ea_status == "completed":
-      status = "completed"
-    elif not enabled:
-      status = load_sim_state().get("status") or "idle"
-      if status == "running":
-        status = "stopped"
-  if ea_status == "error":
+  if ea_status == "completed":
+    status = "completed"
+  elif ea_status == "error":
     status = "error"
+  elif prev.get("status") == "paused":
+    status = "paused"
+  elif enabled or ea_status == "running":
+    status = "running"
+  elif prev.get("status") in ("running", "paused"):
+    status = "stopped"
+  else:
+    status = str(prev.get("status") or "idle")
 
   trades_path = ensure_bridge_dir(bridge_dir) / "trades.json"
   n_fills = 0
@@ -172,12 +241,13 @@ def sync_state_from_ea(bridge_dir: Path | None = None) -> dict[str, Any]:
     "error": error,
     "n_fills": n_fills,
     "enabled": enabled,
-    "request_id": ctrl.get("request_id"),
-    "date_from": ctrl.get("from") or load_sim_state().get("date_from"),
-    "date_to": ctrl.get("to") or load_sim_state().get("date_to"),
-    "delay_ms": ctrl.get("delay_ms"),
+    "request_id": ctrl.get("request_id") or prev.get("request_id"),
+    "date_from": ctrl.get("from") or prev.get("date_from"),
+    "date_to": ctrl.get("to") or prev.get("date_to"),
+    "delay_ms": ctrl.get("delay_ms") or prev.get("delay_ms"),
     "bridge_dir": str(bridge_dir),
     "source": "ea_history_feed",
+    "model_id": prev.get("model_id"),
   })
 
 
@@ -190,9 +260,9 @@ def run_history_feed_control(
   poll_sec: float = 0.5,
 ) -> dict[str, Any]:
   """Write control, poll EA until completed/stopped/error."""
-  start_history_feed_control(cfg)
+  st0 = start_history_feed_control(cfg)
   bridge_dir = Path(cfg.bridge_dir)
-  request_id = cfg.request_id or load_sim_state().get("request_id")
+  request_id = st0.get("request_id")
 
   while True:
     if stop_event is not None and stop_event.is_set():

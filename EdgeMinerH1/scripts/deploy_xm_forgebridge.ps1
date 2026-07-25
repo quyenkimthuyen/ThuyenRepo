@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
   [string]$TerminalDataPath = "",
   [string]$InstallPath = "",
@@ -245,8 +245,8 @@ InpMaxHoldBars=36
   $text = Get-Content $target.FullName -Raw
   $text = $text -replace "(?m)^period_type=\d+\s*$", "period_type=1"
   $text = $text -replace "(?m)^period_size=\d+\s*$", "period_size=1"
-  $text = [regex]::Replace($text, "(?s)<expert>.*?</expert>\s*", "")
-  $text = [regex]::Replace($text, "<window>", ($block + "`r`n<window>"), 1)
+  $text = [regex]::Replace($text, '(?s)<expert>.*?</expert>\s*', '')
+  $text = [regex]::Replace($text, '<window>', ($block + "`r`n" + '<window>'), 1)
   Set-Content -Path $target.FullName -Value $text -Encoding Unicode
 
   Start-Process -FilePath (Join-Path $XmInstallPath "terminal64.exe")
@@ -374,7 +374,7 @@ if ($StartBridgeService -and -not $SkipBridgeService) {
 
 Write-Step "Done"
 if ($IsHistoryFeed) {
-  Write-Host "History Feed ready: App Simulate → Start feed."
+  Write-Host "History Feed ready: App Simulate -> Start feed."
 } else {
   Write-Host "Live ready. For Simulate: -Mode HistoryFeed -Attach"
 }

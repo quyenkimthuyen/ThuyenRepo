@@ -687,7 +687,7 @@ def _render_simulate_ea() -> None:
     if sim.get("bars_total"):
       st.progress(min(1.0, prog))
 
-    b1, b2, b3, b4 = st.columns(4)
+    b1, b2, b3, b4, b5 = st.columns(5)
     if b1.button(
       "Start feed", type="primary", icon=":material/play_arrow:",
       disabled=running or not active, use_container_width=True, key="sim_ea_start",
@@ -720,7 +720,18 @@ def _render_simulate_ea() -> None:
     ):
       bridge_bg.stop_sim_worker()
       st.rerun()
-    if b4.button("Refresh", icon=":material/refresh:", use_container_width=True, key="sim_ea_refresh"):
+    if b4.button(
+      "Reset data",
+      icon=":material/delete_sweep:",
+      use_container_width=True,
+      key="sim_ea_reset",
+      help="Xóa trades/fills/log/bar/decision/sim_control lần chạy trước để chạy lại sạch.",
+      disabled=running,
+    ):
+      bridge_bg.reset_sim_data()
+      st.toast("Đã xóa dữ liệu Simulate — có thể Start feed lại")
+      st.rerun()
+    if b5.button("Refresh", icon=":material/refresh:", use_container_width=True, key="sim_ea_refresh"):
       st.rerun()
 
 

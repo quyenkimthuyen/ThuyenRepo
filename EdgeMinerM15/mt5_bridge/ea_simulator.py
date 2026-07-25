@@ -128,6 +128,72 @@ def stop_history_feed_control(bridge_dir: Path | None = None) -> dict[str, Any]:
   return write_sim_state({"status": "stopped", "ea_status": "idle"})
 
 
+def reset_sim_data(bridge_dir: Path | None = None) -> dict[str, Any]:
+  """Wipe bridge_sim run artifacts so the next History Feed starts clean."""
+  from mt5_bridge.comm_log import clear_log
+
+  bridge_dir = ensure_bridge_dir(bridge_dir or BRIDGE_SIM_DIR)
+  clear_trades(bridge_dir)
+  clear_log(bridge_dir)
+
+  # Ephemeral protocol files from the previous run
+  for name in (
+    "bar.json",
+    "bars.json",
+    "connection.json",
+    "decision.json",
+    "fill.json",
+    "status.json",
+    "command.json",
+    "command_ack.json",
+    "history_request.json",
+    "history_chunk.json",
+    "history_ack.json",
+    "history_status.json",
+  ):
+    path = bridge_dir / name
+    if path.exists():
+      try:
+        path.unlink()
+      except OSError:
+        pass
+
+  write_sim_control(
+    bridge_dir,
+    merge=False,
+    enabled=False,
+    **{
+      "from": "",
+      "to": "",
+      "delay_ms": 100,
+      "request_id": "",
+      "ea_status": "idle",
+      "bars_done": 0,
+      "bars_total": 0,
+      "last_bar": "",
+      "error": "",
+    },
+  )
+  if SIM_STATE_PATH.exists():
+    try:
+      SIM_STATE_PATH.unlink()
+    except OSError:
+      pass
+  return write_sim_state({
+    "status": "idle",
+    "source": "ea_history_feed",
+    "ea_status": "idle",
+    "bars_done": 0,
+    "bars_total": 0,
+    "progress": 0.0,
+    "last_bar": None,
+    "n_fills": 0,
+    "error": None,
+    "enabled": False,
+    "bridge_dir": str(bridge_dir),
+  })
+
+
 def sync_state_from_ea(bridge_dir: Path | None = None) -> dict[str, Any]:
   """Mirror EA fields from sim_control.json into app sim_state."""
   bridge_dir = bridge_dir or BRIDGE_SIM_DIR

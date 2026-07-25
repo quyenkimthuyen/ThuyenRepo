@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
   [string]$TerminalDataPath = "",
   [string]$InstallPath = "",
@@ -22,7 +22,7 @@ $ProjectBridge = Join-Path $RepoRoot "mt5\bridge"
 $ProjectBridgeSim = Join-Path $RepoRoot "mt5\bridge_sim"
 $IsHistoryFeed = ($Mode -eq "HistoryFeed")
 if ($IsHistoryFeed) {
-  # Simulate uses App feed control + bridge_sim cycle — do not restart live service.
+  # Simulate uses App feed control + bridge_sim cycle - do not restart live service.
   $SkipBridgeService = $true
 }
 if (-not $ModelId) {
@@ -247,7 +247,7 @@ function Select-AttachChart(
       Write-Warning "Using second EURUSD chart for HistoryFeed to avoid overwriting Live."
       return $charts[1]
     }
-    Write-Warning "Only one EURUSD chart found — HistoryFeed attach may replace Live inputs. Open a second chart for Live."
+    Write-Warning "Only one EURUSD chart found - HistoryFeed attach may replace Live inputs. Open a second chart for Live."
     return $charts[0]
   }
 
@@ -275,8 +275,8 @@ function Attach-ForgeBridge(
   $text = Get-Content $target.FullName -Raw
   $text = $text -replace "(?m)^period_type=\d+\s*$", "period_type=0"
   $text = $text -replace "(?m)^period_size=\d+\s*$", "period_size=15"
-  $text = [regex]::Replace($text, "(?s)<expert>.*?</expert>\s*", "")
-  $text = [regex]::Replace($text, "<window>", ($block + "`r`n<window>"), 1)
+  $text = [regex]::Replace($text, '(?s)<expert>.*?</expert>\s*', '')
+  $text = [regex]::Replace($text, '<window>', ($block + "`r`n" + '<window>'), 1)
   Set-Content -Path $target.FullName -Value $text -Encoding Unicode
 
   Start-Process -FilePath (Join-Path $XmInstallPath "terminal64.exe")
@@ -404,7 +404,7 @@ if ($StartBridgeService -and -not $SkipBridgeService) {
 
 Write-Step "Done"
 if ($IsHistoryFeed) {
-  Write-Host "History Feed ready: App Simulate → Start feed (sim_control.json)."
+  Write-Host "History Feed ready: App Simulate -> Start feed (sim_control.json)."
 } else {
   Write-Host "Live ready. For Simulate: -Mode HistoryFeed -Attach"
 }
