@@ -568,7 +568,9 @@ def _render_model_monitor() -> None:
     verdict = assess.get("verdict")
     m4.metric("Live verdict", verdict or "—")
 
-    if live_n < 5:
+    if live_n == 0:
+      st.info("Chưa có lệnh **auto** đã đóng trên Bridge — KPI Backtest vẫn hiện để đối chiếu.")
+    elif live_n < 5:
       st.caption("Live còn ít lệnh — chỉ theo dõi, chưa đủ để kết luận suy giảm.")
     elif verdict == "degraded":
       st.error(assess.get("message") or "")
@@ -896,6 +898,9 @@ def render():
   # Trader desk (auto-refresh) — chart stays outside fragment
   _trader_desk_fragment()
 
+  # Backtest vs Live — above chart so it is not buried under the live iframe
+  _render_model_monitor()
+
   _render_service_controls()
   _render_manual_test_orders()
   _render_history_sync()
@@ -916,7 +921,6 @@ def render():
   max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
   _render_live_chart(max_bars)
 
-  _render_model_monitor()
   _render_stats_section()
   _render_debug_sections()
 

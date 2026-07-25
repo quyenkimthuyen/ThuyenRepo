@@ -620,7 +620,13 @@ def _render_model_monitor() -> None:
         f"{lv.get('avg_r') if lv.get('avg_r') is not None else '—'}"
       )
 
-    if live_n < 5:
+    if live_n == 0:
+      st.warning(
+        "Chưa có **live trade** trong `mt5/bridge/trades.json` "
+        "(auto đã đóng = 0) — biểu đồ Rủi ro hiện chỉ **Backtest OOS**. "
+        "Khi Bridge khớp lệnh auto, đường Live + KPI cột phải sẽ hiện."
+      )
+    elif live_n < 5:
       st.caption("Mẫu live nhỏ — so sánh rủi ro mang tính tham khảo.")
 
     eq_fig = build_equity_overlay_figure(
@@ -630,6 +636,8 @@ def _render_model_monitor() -> None:
     )
     if eq_fig:
       st.plotly_chart(eq_fig, use_container_width=True)
+      if live_n == 0:
+        st.caption("Chỉ có đường Backtest — chưa có chuỗi equity Live.")
     else:
       st.info("Chưa đủ equity series để overlay.")
 
@@ -898,6 +906,9 @@ def render():
   # Trader desk (auto-refresh) — chart stays outside fragment
   _trader_desk_fragment()
 
+  # Backtest vs Live — above chart so it is not buried under the live iframe
+  _render_model_monitor()
+
   _render_service_controls()
   _render_manual_test_orders()
   _render_history_sync()
@@ -918,7 +929,6 @@ def render():
   max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
   _render_live_chart(max_bars)
 
-  _render_model_monitor()
   _render_stats_section()
   _render_debug_sections()
 
