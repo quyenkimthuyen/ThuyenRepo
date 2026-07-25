@@ -558,9 +558,18 @@ def _run_sim_bridge_loop(stop_event: threading.Event, model_id: str | None, risk
   while not stop_event.is_set():
     try:
       last_bar_fp, last_fill_fp = _cycle(engine, bridge_dir, last_bar_fp, last_fill_fp)
-    except Exception:
-      pass
-    time.sleep(0.15)
+    except Exception as e:
+      try:
+        write_status(
+          bridge_dir,
+          state="error",
+          error=f"sim_bridge: {e}",
+          **_engine_status_fields(engine),
+        )
+      except Exception:
+        pass
+    # Tight poll so HistoryFeed delay_ms is not dominated by App lag
+    time.sleep(0.03)
 
 
 def start_sim_worker(

@@ -26,7 +26,7 @@ from mt5_bridge.models import (
 )
 from mt5_bridge.protocol import DEFAULT_MAGIC, DEFAULT_MODEL_ID, utc_now_iso
 from optimizer import get_knowledge_base, optimize_on_window, set_kb_profile
-from paper_monitor import _current_week_bounds, _project_signal_levels
+from paper_monitor import _project_signal_levels, _week_bounds_for_ts
 from strategy_miner import (
   backtest_mined, ensure_label_cache_for_df, generate_signals_mined,
   mining_search_space_from_dict,
@@ -161,6 +161,22 @@ class BridgeEngine:
       return self._remember(bar_key, decision)
 
     df = self.load()
+    # No look-ahead: decide only with bars up to the closed signal bar
+    # (HistoryFeed replays Jan while cache may end in "today").
+    df = df.loc[:bar_ts]
+    if df.empty or bar_ts not in df.index:
+      decision = self._flat(
+        bar_ts, model_id, reason="bar_not_in_series",
+      )
+      return self._remember(bar_key, decision)
+
+    week_start, week_end = _week_bounds_for_ts(bar_ts)
+    # Keep train window + warmup only — full multi-year FeatureMatrix every bar is too slow for feed
+    lookback = pd.Timedelta(weeks=int(train_weeks) + 4)
+    clip_from = week_start - lookback
+    if len(df) and df.index[0] < clip_from:
+      df = df.loc[clip_from:]
+
     ensure_label_cache_for_df(len(df))
     feature_profile = params.get("feature_profile") or "current"
     search_payload = params.get("mining_search_space")
@@ -168,7 +184,6 @@ class BridgeEngine:
       mining_search_space_from_dict(search_payload) if search_payload else None
     )
     fm = FeatureMatrix(df, profile=feature_profile)
-    week_start, week_end = _current_week_bounds(df)
 
     cache_key = (
       f"{week_start.date()}|{model_id}|{kb_profile}@{kb_snapshot}|{train_weeks}w|"
@@ -254,7 +269,8 @@ class BridgeEngine:
     proj = _project_signal_levels(fm, strat, bar_idx, direction, spread, slip)
     if not proj:
       decision = self._flat(
-        bar_ts, model_id, reason="cannot_project_levels", week_start=week_start, strat=strat,
+        bar_ts, model_id, reason="levels_unavailable", week_start=week_start, strat=strat,
+        slots_remaining=slots_left,
       )
       return self._remember(bar_key, decision)
 

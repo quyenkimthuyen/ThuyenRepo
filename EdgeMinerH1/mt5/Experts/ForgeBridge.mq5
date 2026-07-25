@@ -8,7 +8,7 @@
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
 #property copyright "EdgeMinerH1 bridge"
-#property version   "1.05"
+#property version   "1.06"
 
 #include <Trade/Trade.mqh>
 
@@ -22,7 +22,8 @@ enum ENUM_BRIDGE_MODE
 input group "=== Bridge ==="
 input ENUM_BRIDGE_MODE InpMode = BRIDGE_LIVE;
 input string InpBridgeSubdir   = "bridge_h1";       // under MQL5/Files/ (use bridge_sim for HistoryFeed)
-input int    InpDecisionWaitMs = 8000;              // Live/HistoryFeed: wait for decision
+input int    InpDecisionWaitMs = 8000;              // Live: wait for decision
+input int    InpHistoryDecisionWaitMs = 2500;       // HistoryFeed: max wait (App catch-up)
 input int    InpPollMs         = 500;
 input int    InpChartBars      = 720;               // H1 bars exported for App chart
 input int    InpHeartbeatMs    = 2000;              // Live connection/tick snapshot
@@ -741,10 +742,16 @@ void ProcessManualCommand()
 }
 
 //+------------------------------------------------------------------+
-bool WaitDecisionForBar(const string want_bar_time, string &json_out)
+bool WaitDecisionForBar(const string want_bar_time, string &json_out, const int wait_ms_override = -1)
 {
+   int wait_ms = (wait_ms_override > 0) ? wait_ms_override : InpDecisionWaitMs;
+   // History feed: poll tightly so low delay_ms is not wasted on Sleep(500)
+   int poll = InpPollMs;
+   if(InpMode == BRIDGE_HISTORY_FEED)
+      poll = (int)MathMax(20, MathMin(50, InpPollMs));
+
    uint start = GetTickCount();
-   while(GetTickCount() - start < (uint)InpDecisionWaitMs)
+   while(GetTickCount() - start < (uint)wait_ms)
    {
       if(ReadDecisionJson(json_out))
       {
@@ -753,7 +760,7 @@ bool WaitDecisionForBar(const string want_bar_time, string &json_out)
          if(bt == want_bar_time || StringFind(json_out, want_bar_time) >= 0)
             return true;
       }
-      Sleep(InpPollMs);
+      Sleep(poll);
    }
    if(!ReadDecisionJson(json_out))
       return false;
@@ -1565,8 +1572,11 @@ void ProcessHistoryFeed()
    bool flat = InpHistoryPaperFills ? (!g_paper_open) : (PositionsByMagic() == 0);
    if(flat && g_pending_decision == "")
    {
+      // Pace ≈ App decide + delay — do NOT burn full live 8s on every miss.
+      // Budget scales with delay_ms; hard-capped by InpHistoryDecisionWaitMs.
+      int wait_ms = (int)MathMax(400, MathMin(InpHistoryDecisionWaitMs, g_sim_delay_ms + 800));
       string json;
-      if(WaitDecisionForBar(want, json))
+      if(WaitDecisionForBar(want, json, wait_ms))
       {
          string action = JsonGetString(json, "action");
          StringToUpper(action);
@@ -1574,7 +1584,8 @@ void ProcessHistoryFeed()
             g_pending_decision = json;
       }
       else
-         Print("ForgeBridge HistoryFeed: no decision for ", want);
+         Print("ForgeBridge HistoryFeed: no decision for ", want,
+               " (waited ", wait_ms, "ms — Start feed App / bridge_sim loop?)");
    }
 
    g_hist_cursor++;

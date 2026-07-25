@@ -18,8 +18,13 @@ from strategy_miner import generate_signals_mined, backtest_mined
 
 
 def _current_week_bounds(df: pd.DataFrame) -> tuple[pd.Timestamp, pd.Timestamp]:
-  now = df.index[-1]
-  week_start = now - pd.Timedelta(days=now.weekday())
+  return _week_bounds_for_ts(df.index[-1])
+
+
+def _week_bounds_for_ts(ts: pd.Timestamp) -> tuple[pd.Timestamp, pd.Timestamp]:
+  """ISO week containing ``ts`` (broker/series time) — used by live + HistoryFeed."""
+  now = pd.Timestamp(ts)
+  week_start = now - pd.Timedelta(days=int(now.weekday()))
   week_start = week_start.normalize()
   if week_start.hour > 0:
     week_start = pd.Timestamp(week_start.date())
