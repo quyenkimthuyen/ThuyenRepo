@@ -6750,3 +6750,166 @@ ConnectionAbortedError: [WinError 10053] An established connection was aborted b
 [bridge] live monitor unavailable: [Errno 98] Address already in use
 [bridge] dir=C:\Work\ThuyenRepo\EdgeMinerM15\mt5\bridge model=tm_m15_best_2_49216b56
 [bridge] history bars=38719
+
+--- start 2026-07-25T12:48:36+07:00 ---
+[bridge] live monitor=http://127.0.0.1:8765
+[bridge] dir=C:\Work\ThuyenRepo\EdgeMinerM15\mt5\bridge model=tm_m15_best_2_49216b56 conditions_fp=5a1f7bd0f375
+[bridge] history bars=38719
+[bridge] bar=2026.07.24 15:30 action=FLAT reason=no_signal strat=Forge RR3 full 2L5S bb+zscore #E3A7
+Traceback (most recent call last):
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\scripts\mt5_bridge_service.py", line 305, in main
+    last_fp, last_fill_fp = process_once(
+                            ~~~~~~~~~~~~^
+      engine, bridge_dir, last_fp=last_fp, last_fill_fp=last_fill_fp,
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\scripts\mt5_bridge_service.py", line 158, in process_once
+    write_status(
+    ~~~~~~~~~~~~^
+      bridge_dir,
+      ^^^^^^^^^^^
+    ...<5 lines>...
+      error=None,
+      ^^^^^^^^^^^
+    )
+    ^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\mt5_bridge\protocol.py", line 209, in write_status
+    atomic_write_json(status_path(bridge_dir), payload)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\mt5_bridge\protocol.py", line 46, in atomic_write_json
+    tmp.replace(path)
+    ~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\pathlib\__init__.py", line 1091, in replace
+    os.replace(self, target)
+    ~~~~~~~~~~^^^^^^^^^^^^^^
+PermissionError: [WinError 5] Access is denied: 'C:\\Work\\ThuyenRepo\\EdgeMinerM15\\mt5\\bridge\\status.json.tmp' -> 'C:\\Work\\ThuyenRepo\\EdgeMinerM15\\mt5\\bridge\\status.json'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\scripts\mt5_bridge_service.py", line 326, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\scripts\mt5_bridge_service.py", line 309, in main
+    write_status(
+    ~~~~~~~~~~~~^
+      bridge_dir,
+      ^^^^^^^^^^^
+    ...<3 lines>...
+      traceback=traceback.format_exc()[-2000:],
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\mt5_bridge\protocol.py", line 209, in write_status
+    atomic_write_json(status_path(bridge_dir), payload)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\mt5_bridge\protocol.py", line 46, in atomic_write_json
+    tmp.replace(path)
+    ~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\pathlib\__init__.py", line 1091, in replace
+    os.replace(self, target)
+    ~~~~~~~~~~^^^^^^^^^^^^^^
+PermissionError: [WinError 5] Access is denied: 'C:\\Work\\ThuyenRepo\\EdgeMinerM15\\mt5\\bridge\\status.json.tmp' -> 'C:\\Work\\ThuyenRepo\\EdgeMinerM15\\mt5\\bridge\\status.json'
+
+--- start 2026-07-25T13:49:50+07:00 ---
+Traceback (most recent call last):
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\scripts\mt5_bridge_service.py", line 326, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\scripts\mt5_bridge_service.py", line 224, in main
+    _register_service_process(args)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\scripts\mt5_bridge_service.py", line 65, in _register_service_process
+    save_config(
+    ~~~~~~~~~~~^
+      enabled=True,
+      ^^^^^^^^^^^^^
+    ...<6 lines>...
+      last_error=None,
+      ^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\mt5_bridge\background.py", line 110, in save_config
+    _write_json(CONFIG_PATH, cfg)
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\mt5_bridge\background.py", line 77, in _write_json
+    tmp.replace(path)
+    ~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\pathlib\__init__.py", line 1091, in replace
+    os.replace(self, target)
+    ~~~~~~~~~~^^^^^^^^^^^^^^
+PermissionError: [WinError 5] Access is denied: 'C:\\Work\\ThuyenRepo\\EdgeMinerM15\\results\\mt5_bridge_config.tmp' -> 'C:\\Work\\ThuyenRepo\\EdgeMinerM15\\results\\mt5_bridge_config.json'
+
+--- start 2026-07-25T13:50:36+07:00 ---
+[bridge] live monitor=http://127.0.0.1:8765
+[bridge] dir=C:\Work\ThuyenRepo\EdgeMinerM15\mt5\bridge model=tm_m15_best_2_49216b56 conditions_fp=5a1f7bd0f375
+[bridge] history bars=38719
+[bridge] bar=2026.07.24 15:30 action=FLAT reason=no_signal strat=Forge RR3 full 2L5S bb+zscore #E3A7
+Traceback (most recent call last):
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\scripts\mt5_bridge_service.py", line 305, in main
+    last_fp, last_fill_fp = process_once(
+                            ~~~~~~~~~~~~^
+      engine, bridge_dir, last_fp=last_fp, last_fill_fp=last_fill_fp,
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\scripts\mt5_bridge_service.py", line 158, in process_once
+    write_status(
+    ~~~~~~~~~~~~^
+      bridge_dir,
+      ^^^^^^^^^^^
+    ...<5 lines>...
+      error=None,
+      ^^^^^^^^^^^
+    )
+    ^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\mt5_bridge\protocol.py", line 209, in write_status
+    atomic_write_json(status_path(bridge_dir), payload)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\mt5_bridge\protocol.py", line 46, in atomic_write_json
+    tmp.replace(path)
+    ~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\pathlib\__init__.py", line 1091, in replace
+    os.replace(self, target)
+    ~~~~~~~~~~^^^^^^^^^^^^^^
+PermissionError: [WinError 5] Access is denied: 'C:\\Work\\ThuyenRepo\\EdgeMinerM15\\mt5\\bridge\\status.json.tmp' -> 'C:\\Work\\ThuyenRepo\\EdgeMinerM15\\mt5\\bridge\\status.json'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\scripts\mt5_bridge_service.py", line 326, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\scripts\mt5_bridge_service.py", line 309, in main
+    write_status(
+    ~~~~~~~~~~~~^
+      bridge_dir,
+      ^^^^^^^^^^^
+    ...<3 lines>...
+      traceback=traceback.format_exc()[-2000:],
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\mt5_bridge\protocol.py", line 209, in write_status
+    atomic_write_json(status_path(bridge_dir), payload)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\mt5_bridge\protocol.py", line 46, in atomic_write_json
+    tmp.replace(path)
+    ~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\pathlib\__init__.py", line 1091, in replace
+    os.replace(self, target)
+    ~~~~~~~~~~^^^^^^^^^^^^^^
+PermissionError: [WinError 5] Access is denied: 'C:\\Work\\ThuyenRepo\\EdgeMinerM15\\mt5\\bridge\\status.json.tmp' -> 'C:\\Work\\ThuyenRepo\\EdgeMinerM15\\mt5\\bridge\\status.json'
+
+--- start 2026-07-25T17:40:18+07:00 ---
+[bridge] live monitor=http://127.0.0.1:8765
+[bridge] dir=C:\Work\ThuyenRepo\EdgeMinerM15\mt5\bridge model=tm_m15_best_2_49216b56 conditions_fp=5a1f7bd0f375
+[bridge] history bars=38719
+[bridge] bar=2026.07.24 15:30 action=FLAT reason=no_signal strat=Forge RR3 full 2L5S bb+zscore #E3A7
+
+--- start 2026-07-25T18:03:00+07:00 ---
+[bridge] live monitor=http://127.0.0.1:8765
+[bridge] dir=C:\Work\ThuyenRepo\EdgeMinerM15\mt5\bridge model=tm_m15_best_2_49216b56 conditions_fp=5a1f7bd0f375
+[bridge] history bars=38719
+[bridge] bar=2026.07.24 15:30 action=FLAT reason=no_signal strat=Forge RR3 full 2L5S bb+zscore #E3A7

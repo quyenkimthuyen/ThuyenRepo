@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -44,7 +45,22 @@ def atomic_write_json(path: Path, data: Any) -> None:
   with open(tmp, "w", encoding="utf-8", newline="\n") as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
     f.write("\n")
-  tmp.replace(path)
+  for attempt in range(5):
+    try:
+      tmp.replace(path)
+      return
+    except OSError:
+      if attempt < 4:
+        time.sleep(0.05)
+      else:
+        try:
+          with open(path, "w", encoding="utf-8", newline="\n") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+          if tmp.exists():
+            tmp.unlink(missing_ok=True)
+        except Exception:
+          pass
 
 
 def read_json(path: Path) -> dict | list | None:

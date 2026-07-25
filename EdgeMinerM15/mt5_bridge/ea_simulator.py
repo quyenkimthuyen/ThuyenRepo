@@ -17,6 +17,7 @@ from typing import Any, Callable
 
 from mt5_bridge.protocol import (
   BRIDGE_SIM_DIR,
+  atomic_write_json,
   ensure_bridge_dir,
   read_sim_control,
   write_sim_control,
@@ -56,9 +57,7 @@ def write_sim_state(update: dict[str, Any]) -> dict:
       cur = {}
   cur.update(update)
   cur["updated_at"] = _now()
-  tmp = SIM_STATE_PATH.with_suffix(".tmp")
-  tmp.write_text(json.dumps(cur, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-  tmp.replace(SIM_STATE_PATH)
+  atomic_write_json(SIM_STATE_PATH, cur)
   return cur
 
 
@@ -205,17 +204,19 @@ def sync_state_from_ea(bridge_dir: Path | None = None) -> dict[str, Any]:
   progress = (bars_done / bars_total) if bars_total > 0 else 0.0
   enabled = bool(ctrl.get("enabled"))
   error = ctrl.get("error") or None
-  if error == "":
+  if not error:
     error = None
 
   if ea_status == "completed":
     status = "completed"
   elif ea_status == "error":
     status = "error"
-  elif prev.get("status") == "paused":
-    status = "paused"
+    if not error:
+      error = "EA reported error status"
   elif enabled or ea_status == "running":
     status = "running"
+  elif prev.get("status") == "paused":
+    status = "paused"
   elif prev.get("status") in ("running", "paused"):
     status = "stopped"
   else:
