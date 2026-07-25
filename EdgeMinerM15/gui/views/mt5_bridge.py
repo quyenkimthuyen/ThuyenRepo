@@ -522,6 +522,126 @@ def _render_history_sync() -> None:
       st.rerun()
 
 
+def _render_model_monitor() -> None:
+  """Backtest OOS vs Live Auto — health + risk (same model conditions as desk)."""
+  from gui.bridge_model_monitor import (
+    build_bt_vs_live_monthly_figure,
+    build_equity_overlay_figure,
+    build_monitor_bundle,
+  )
+
+  active = get_active_trade_model()
+  st.subheader("Theo dõi model · Backtest vs Live")
+  if not active:
+    st.info("Chọn Trade Model active để so sánh report OOS với lệnh Bridge auto.")
+    return
+
+  bundle = build_monitor_bundle(active)
+  st.caption(
+    f"**{bundle['model_label']}** · fp `{bundle.get('conditions_fp') or '—'}` · "
+    "Live chỉ tính lệnh **auto** đã đóng (không gồm lệnh sửa / test market)."
+  )
+
+  if not bundle["has_report"]:
+    st.warning(
+      "Chưa có report backtest của model. Chạy **Trade Models → Sức khỏe** "
+      "(bật Chạy lại KB ON, đúng search space) rồi quay lại."
+    )
+
+  tab_h, tab_r = st.tabs(["Sức khỏe", "Rủi ro"])
+  kpi = bundle["kpi"]
+  live_n = int(kpi["live"].get("n_trades") or 0)
+
+  with tab_h:
+    assess = bundle["live_assess"]
+    m1, m2, m3, m4 = st.columns(4)
+    bt_r = kpi["bt"].get("total_r")
+    live_r = kpi["live"].get("total_r")
+    m1.metric("Backtest OOS (full)", f"{bt_r:+.1f}R" if bt_r is not None else "—")
+    m2.metric("Live Auto (full)", f"{live_r:+.1f}R" if live_r is not None else "—")
+    ov_e = bundle.get("overlap_edge")
+    m3.metric(
+      "Edge Live−BT (tháng trùng)",
+      f"{ov_e:+.1f}R" if ov_e is not None else "—",
+      help="Tổng R live − backtest trên các tháng có cả hai chuỗi.",
+    )
+    verdict = assess.get("verdict")
+    m4.metric("Live verdict", verdict or "—")
+
+    if live_n == 0:
+      st.info("Chưa có lệnh **auto** đã đóng trên Bridge — KPI Backtest vẫn hiện để đối chiếu.")
+    elif live_n < 5:
+      st.caption("Live còn ít lệnh — chỉ theo dõi, chưa đủ để kết luận suy giảm.")
+    elif verdict == "degraded":
+      st.error(assess.get("message") or "")
+    elif verdict == "watch":
+      st.warning(assess.get("message") or "")
+    elif verdict == "stable":
+      st.success(assess.get("message") or "")
+    else:
+      st.info(assess.get("message") or "Chưa đủ tháng live.")
+
+    fig = build_bt_vs_live_monthly_figure(
+      bundle["bt"]["monthly"],
+      bundle["live"]["monthly"],
+      title=f"Tháng · Backtest vs Live · {bundle['model_label']}",
+    )
+    if fig:
+      st.plotly_chart(fig, use_container_width=True)
+    else:
+      st.info("Chưa có chuỗi tháng để vẽ (cần report OOS và/hoặc lệnh live).")
+
+    aligned = bundle.get("aligned")
+    if aligned is not None and not aligned.empty:
+      st.dataframe(aligned, use_container_width=True, hide_index=True)
+
+  with tab_r:
+    c1, c2 = st.columns(2)
+    with c1:
+      st.markdown("**Backtest OOS**")
+      b = kpi["bt"]
+      r1, r2, r3 = st.columns(3)
+      r1.metric("WR%", f"{b.get('win_rate_pct')}%" if b.get("win_rate_pct") is not None else "—")
+      r2.metric("Total R", f"{b.get('total_r'):+.1f}" if b.get("total_r") is not None else "—")
+      r3.metric("Max DD", f"{b.get('max_drawdown_r')}R" if b.get("max_drawdown_r") is not None else "—")
+      st.caption(
+        f"n={b.get('n_trades') or '—'} · avg "
+        f"{b.get('avg_r') if b.get('avg_r') is not None else '—'}"
+      )
+    with c2:
+      st.markdown("**Live Auto**")
+      lv = kpi["live"]
+      r1, r2, r3 = st.columns(3)
+      r1.metric("WR%", f"{lv.get('win_rate_pct')}%" if lv.get("win_rate_pct") is not None else "—")
+      r2.metric("Total R", f"{lv.get('total_r'):+.1f}" if lv.get("total_r") is not None else "—")
+      r3.metric("Max DD", f"{lv.get('max_drawdown_r')}R" if lv.get("max_drawdown_r") is not None else "—")
+      st.caption(
+        f"n={lv.get('n_trades') or '—'} · avg "
+        f"{lv.get('avg_r') if lv.get('avg_r') is not None else '—'}"
+      )
+
+    if live_n < 5:
+      st.caption("Mẫu live nhỏ — so sánh rủi ro mang tính tham khảo.")
+
+    eq_fig = build_equity_overlay_figure(
+      bundle["bt"]["equity"],
+      bundle["live"]["equity"],
+      title=f"Equity · Backtest vs Live · {bundle['model_label']}",
+    )
+    if eq_fig:
+      st.plotly_chart(eq_fig, use_container_width=True)
+    else:
+      st.info("Chưa đủ equity series để overlay.")
+
+  with st.expander("Cách đọc Backtest vs Live"):
+    st.markdown(
+      "- **Backtest OOS** = report Trade Model (cùng điều kiện remine / Health).\n"
+      "- **Live Auto** = fill Bridge `mode=auto` đã đóng.\n"
+      "- **Edge tháng trùng** = Live − Backtest trên tháng có cả hai — công bằng hơn full OOS.\n"
+      "- Live yếu hơn BT kéo dài → kiểm tra spread thực, session, hoặc Grid lại."
+    )
+
+
 def _render_stats_section() -> None:
   st.subheader("Thống kê lệnh Bridge")
   st.caption(
@@ -798,6 +918,7 @@ def render():
   max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
   _render_live_chart(max_bars)
 
+  _render_model_monitor()
   _render_stats_section()
   _render_debug_sections()
 
