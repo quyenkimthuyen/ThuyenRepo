@@ -527,12 +527,14 @@ def is_sim_running() -> bool:
 def get_sim_status() -> dict:
   from mt5_bridge.ea_simulator import load_sim_state, sync_state_from_ea
   from mt5_bridge.protocol import BRIDGE_SIM_DIR
+  # persist=False: UI polls must not rewrite sim_state (Streamlit remount / flicker)
   if is_sim_running():
     try:
-      sync_state_from_ea(BRIDGE_SIM_DIR)
+      st = sync_state_from_ea(BRIDGE_SIM_DIR, persist=False)
     except Exception:
-      pass
-  st = load_sim_state()
+      st = load_sim_state()
+  else:
+    st = load_sim_state()
   st["running"] = is_sim_running()
   st["paused"] = bool(_sim_pause.is_set()) if is_sim_running() else False
   return st

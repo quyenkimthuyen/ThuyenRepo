@@ -17,6 +17,7 @@ from typing import Any, Callable
 
 from mt5_bridge.protocol import (
   BRIDGE_SIM_DIR,
+  atomic_write_json,
   ensure_bridge_dir,
   read_sim_control,
   write_sim_control,
@@ -56,9 +57,7 @@ def write_sim_state(update: dict[str, Any]) -> dict:
       cur = {}
   cur.update(update)
   cur["updated_at"] = _now()
-  tmp = SIM_STATE_PATH.with_suffix(".tmp")
-  tmp.write_text(json.dumps(cur, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-  tmp.replace(SIM_STATE_PATH)
+  atomic_write_json(SIM_STATE_PATH, cur)
   return cur
 
 
@@ -194,8 +193,16 @@ def reset_sim_data(bridge_dir: Path | None = None) -> dict[str, Any]:
   })
 
 
-def sync_state_from_ea(bridge_dir: Path | None = None) -> dict[str, Any]:
-  """Mirror EA fields from sim_control.json into app sim_state."""
+def sync_state_from_ea(
+  bridge_dir: Path | None = None,
+  *,
+  persist: bool = True,
+) -> dict[str, Any]:
+  """Mirror EA fields from sim_control.json into app sim_state.
+
+  persist=False: return merged status without writing disk (UI polls — avoids
+  Streamlit file-watcher full reruns that remount the chart iframe).
+  """
   bridge_dir = bridge_dir or BRIDGE_SIM_DIR
   prev = load_sim_state()
   ctrl = read_sim_control(bridge_dir)
@@ -205,17 +212,19 @@ def sync_state_from_ea(bridge_dir: Path | None = None) -> dict[str, Any]:
   progress = (bars_done / bars_total) if bars_total > 0 else 0.0
   enabled = bool(ctrl.get("enabled"))
   error = ctrl.get("error") or None
-  if error == "":
+  if not error:
     error = None
 
   if ea_status == "completed":
     status = "completed"
   elif ea_status == "error":
     status = "error"
-  elif prev.get("status") == "paused":
-    status = "paused"
+    if not error:
+      error = "EA reported error status"
   elif enabled or ea_status == "running":
     status = "running"
+  elif prev.get("status") == "paused":
+    status = "paused"
   elif prev.get("status") in ("running", "paused"):
     status = "stopped"
   else:
@@ -231,7 +240,7 @@ def sync_state_from_ea(bridge_dir: Path | None = None) -> dict[str, Any]:
     except Exception:
       n_fills = 0
 
-  return write_sim_state({
+  payload = {
     "status": status,
     "ea_status": ea_status,
     "bars_done": bars_done,
@@ -248,7 +257,11 @@ def sync_state_from_ea(bridge_dir: Path | None = None) -> dict[str, Any]:
     "bridge_dir": str(bridge_dir),
     "source": "ea_history_feed",
     "model_id": prev.get("model_id"),
-  })
+    "updated_at": _now(),
+  }
+  if not persist:
+    return {**prev, **payload}
+  return write_sim_state(payload)
 
 
 def run_history_feed_control(
@@ -263,11 +276,13 @@ def run_history_feed_control(
   st0 = start_history_feed_control(cfg)
   bridge_dir = Path(cfg.bridge_dir)
   request_id = st0.get("request_id")
+  last_persist_bars = -1
+  last_persist_t = 0.0
 
   while True:
     if stop_event is not None and stop_event.is_set():
       stop_history_feed_control(bridge_dir)
-      return sync_state_from_ea(bridge_dir)
+      return sync_state_from_ea(bridge_dir, persist=True)
 
     if pause_event is not None and pause_event.is_set():
       write_sim_control(bridge_dir, enabled=False)
@@ -275,7 +290,7 @@ def run_history_feed_control(
       while pause_event.is_set():
         if stop_event is not None and stop_event.is_set():
           stop_history_feed_control(bridge_dir)
-          return sync_state_from_ea(bridge_dir)
+          return sync_state_from_ea(bridge_dir, persist=True)
         time.sleep(0.25)
       write_sim_control(
         bridge_dir,
@@ -289,7 +304,19 @@ def run_history_feed_control(
       )
       write_sim_state({"status": "running"})
 
-    st = sync_state_from_ea(bridge_dir)
+    # Throttle disk writes — frequent writes remount Streamlit iframes
+    now = time.time()
+    st = sync_state_from_ea(bridge_dir, persist=False)
+    bars_done = int(st.get("bars_done") or 0)
+    should_persist = (
+      st.get("status") in ("completed", "error", "stopped")
+      or (bars_done != last_persist_bars and (now - last_persist_t) >= 2.0)
+      or (now - last_persist_t) >= 5.0
+    )
+    if should_persist:
+      st = sync_state_from_ea(bridge_dir, persist=True)
+      last_persist_bars = bars_done
+      last_persist_t = now
     if on_progress:
       on_progress(st)
     if st.get("status") in ("completed", "error", "stopped"):

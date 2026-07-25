@@ -54,10 +54,9 @@ def build_sim_snapshot(*, max_bars: int = 672) -> dict:
   from mt5_bridge.history_sync import load_mt5_cache, utc_to_broker_time
 
   try:
-    sync_state_from_ea(BRIDGE_SIM_DIR)
+    st = sync_state_from_ea(BRIDGE_SIM_DIR, persist=False)
   except Exception:
-    pass
-  st = load_sim_state()
+    st = load_sim_state()
   from mt5_bridge.protocol import read_sim_control
   ctrl = read_sim_control(BRIDGE_SIM_DIR) or {}
   date_from = st.get("date_from") or ctrl.get("from")
@@ -164,15 +163,25 @@ def build_sim_snapshot(*, max_bars: int = 672) -> dict:
       "strategy_name": decision.get("strategy_name"),
     }]
 
-  done = int(st.get("bars_done") or 0)
-  total = int(st.get("bars_total") or 0)
+  done = int(ctrl.get("bars_done") or st.get("bars_done") or 0)
+  total = int(ctrl.get("bars_total") or st.get("bars_total") or 0)
+  sim_out = {
+    **st,
+    "status": status,
+    "ea_status": ea_status,
+    "bars_done": done,
+    "bars_total": total,
+    "last_bar": last_bar or st.get("last_bar"),
+    "date_from": date_from,
+    "date_to": date_to,
+  }
   return {
     "history": {"bars": bars, "source": "sim_cache"},
     "connection": connection,
     "connection_mtime": None,
     "trades": trades,
     "decision": decision,
-    "sim": st,
+    "sim": sim_out,
     "online": status in ("running", "paused", "completed") or bool(bars),
     "progress": f"{done}/{total}" if total else str(done),
   }
@@ -184,7 +193,7 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
   if sim_mode:
     chart_title = "EURUSD M15 · Simulate History Feed"
     labels = (
-      "FEED", "CURSOR PX", "PROGRESS", "OPEN", "STATUS", "DECISION", "LAST BAR",
+      "FEED", "QUOTE", "SPREAD", "PROGRESS", "FEED STATUS", "DECISION", "LAST BAR",
     )
     grid_cols = 7
     status_cells = f"""
@@ -199,7 +208,7 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
     price_tag = "SIM"
     ui_rev = "mt5-sim"
     snap_url = "/snapshot?mode=sim"
-    note0 = "Simulate History Feed — cập nhật mượt trong trình duyệt (Plotly.react)."
+    note0 = "Simulate History Feed — status + chart cập nhật mượt (Plotly.react, không remount Streamlit)."
   elif paper_mode:
     chart_title = "EURUSD M15 · Paper Trade"
     labels = ("PAPER ENGINE", "LAST PRICE", "DAY TRADES", "SLOTS LEFT", "SESSION")
@@ -428,13 +437,16 @@ async function refresh() {{
       const st=String(sim.status || "idle");
       online=Boolean(snap.online) || st==="running" || st==="paused" || st==="completed";
       const last=rows[rows.length-1];
-      setText("conn",st.toUpperCase(), online?"online":"offline");
-      setText("price",Number(last.close).toFixed(5));
-      setText("spread",snap.progress || ((sim.bars_done||0)+"/"+(sim.bars_total||"—")));
-      setText("positions",conn.positions ?? "—");
-      setText("trading",(sim.ea_status || st).toUpperCase(), online?"online":"offline");
+      const bid=conn.bid!=null?Number(conn.bid):Number(last.close);
+      const ask=conn.ask!=null?Number(conn.ask):bid;
+      const spr=conn.spread_points!=null?conn.spread_points:"—";
+      setText("conn",online?"ONLINE":"OFFLINE", online?"online":"offline");
+      setText("price",bid.toFixed(5)+" / "+ask.toFixed(5));
+      setText("spread",spr!=="—"?spr+" pts":"—");
+      setText("positions",snap.progress || ((sim.bars_done||0)+"/"+(sim.bars_total||"—")));
+      setText("trading",st.toUpperCase(), online?"online":"offline");
       const decision=snap.decision || {{}};
-      const action=String(decision.action || "—").toUpperCase();
+      const action=String(decision.action || "FLAT").toUpperCase();
       let dcls="flat";
       if (action==="BUY" || action==="SELL") dcls="signal";
       else if (action==="HOLD") dcls="online";
@@ -442,8 +454,10 @@ async function refresh() {{
       setText("slots",sim.last_bar || last.time || "—");
       document.getElementById("note").textContent=
         "Simulate "+(sim.date_from||"?")+" → "+(sim.date_to||"?")+
+        " · EA "+(sim.ea_status||st)+
         " · cursor "+(sim.last_bar || last.time || "—")+
-        " · "+rows.length+" nến · Plotly.react (không giật Streamlit)";
+        " · reason "+(decision.reason||"—")+
+        " · "+rows.length+" nến";
     }} else {{
       online=Boolean(conn.connected) && age<=10;
       setText("conn",online?"ONLINE":"OFFLINE",online?"online":"offline");

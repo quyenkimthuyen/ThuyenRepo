@@ -236,8 +236,12 @@ def _render_error_banner(
     st.error(" · ".join(dict.fromkeys(errors)))
 
 
-def _render_trader_desk() -> None:
-  """Desk strip + banners + today/week PnL (refreshed by fragment)."""
+def _render_trader_desk(*, include_live_metrics: bool = True) -> None:
+  """Desk strip + banners + today/week PnL (refreshed by fragment).
+
+  include_live_metrics=False (Simulate): skip Streamlit metric strip — FEED/Quote
+  update smoothly inside the chart iframe instead (avoids 5s remount chop).
+  """
   bridge_dir = _active_bridge_dir()
   mode = _bridge_mode()
   connection = read_json(connection_path(bridge_dir)) or {}
@@ -259,48 +263,55 @@ def _render_trader_desk() -> None:
     active_model_id=active_id,
   )
 
-  # --- 5-column trader strip ---
-  c1, c2, c3, c4, c5 = st.columns(5)
-  age = health.get("age_seconds")
-  age_txt = f"{age:.0f}s" if age is not None else "—"
-  ea_label = "FEED" if mode == "sim" else "EA"
-  if health.get("online") or (mode == "sim" and service_status.get("running")):
-    c1.metric(ea_label, f"ONLINE · {age_txt}")
-  else:
-    c1.metric(ea_label, f"OFFLINE · {age_txt}")
+  if include_live_metrics:
+    # --- 5-column trader strip ---
+    c1, c2, c3, c4, c5 = st.columns(5)
+    age = health.get("age_seconds")
+    age_txt = f"{age:.0f}s" if age is not None else "—"
+    ea_label = "FEED" if mode == "sim" else "EA"
+    if health.get("online") or (mode == "sim" and service_status.get("running")):
+      c1.metric(ea_label, f"ONLINE · {age_txt}")
+    else:
+      c1.metric(ea_label, f"OFFLINE · {age_txt}")
 
-  bid, ask = connection.get("bid"), connection.get("ask")
-  spread = connection.get("spread_points")
-  if bid is not None and ask is not None:
-    c2.metric("Quote", f"{_fmt_px(bid)} / {_fmt_px(ask)}")
-  else:
-    c2.metric("Quote", "—")
-  c2.caption(f"Spread: {spread if spread is not None else '—'} pts")
+    bid, ask = connection.get("bid"), connection.get("ask")
+    spread = connection.get("spread_points")
+    if bid is not None and ask is not None:
+      c2.metric("Quote", f"{_fmt_px(bid)} / {_fmt_px(ask)}")
+    else:
+      c2.metric("Quote", "—")
+    c2.caption(f"Spread: {spread if spread is not None else '—'} pts")
 
-  if mode == "sim":
-    ea_st = service_status.get("ea_status") or "—"
-    c3.metric("Feed", str(service_status.get("status") or "idle").upper())
-    c3.caption(
-      f"EA `{ea_st}` · {service_status.get('bars_done') or 0}/"
-      f"{service_status.get('bars_total') or '—'}"
+    if mode == "sim":
+      ea_st = service_status.get("ea_status") or "—"
+      c3.metric("Feed", str(service_status.get("status") or "idle").upper())
+      c3.caption(
+        f"EA `{ea_st}` · {service_status.get('bars_done') or 0}/"
+        f"{service_status.get('bars_total') or '—'}"
+      )
+    else:
+      algo_on = health.get("trade_allowed")
+      c3.metric("Algo", "ON" if algo_on else "OFF")
+      c3.caption(f"Acct {connection.get('account') or '—'}")
+
+    action = str(decision.get("action") or service_status.get("last_action") or "—").upper()
+    reason = str(decision.get("reason") or file_status.get("reason") or "—")
+    c4.metric("Decision", action)
+    c4.caption(reason[:48] if reason else "—")
+
+    risk = decision.get("risk_pct")
+    if risk is None:
+      risk = service_status.get("risk_pct") or bridge_bg.load_config().get("risk_pct")
+    slots = decision.get("slots_remaining")
+    if slots is None:
+      slots = "—"
+    c5.metric("Risk / Slots", f"{float(risk):.1f}% · {slots}" if risk is not None else f"— · {slots}")
+  else:
+    action = str(decision.get("action") or service_status.get("last_action") or "—").upper()
+    st.caption(
+      "Status FEED / Quote / Progress cập nhật mượt trên chart iframe bên dưới "
+      "(không remount Streamlit mỗi 5s)."
     )
-  else:
-    algo_on = health.get("trade_allowed")
-    c3.metric("Algo", "ON" if algo_on else "OFF")
-    c3.caption(f"Acct {connection.get('account') or '—'}")
-
-  action = str(decision.get("action") or service_status.get("last_action") or "—").upper()
-  reason = str(decision.get("reason") or file_status.get("reason") or "—")
-  c4.metric("Decision", action)
-  c4.caption(reason[:48] if reason else "—")
-
-  risk = decision.get("risk_pct")
-  if risk is None:
-    risk = service_status.get("risk_pct") or bridge_bg.load_config().get("risk_pct")
-  slots = decision.get("slots_remaining")
-  if slots is None:
-    slots = "—"
-  c5.metric("Risk / Slots", f"{float(risk):.1f}% · {slots}" if risk is not None else f"— · {slots}")
 
   # Strategy line
   st.markdown(
@@ -384,8 +395,12 @@ def _render_trader_desk() -> None:
 @st.fragment(run_every=timedelta(seconds=5))
 def _trader_desk_fragment() -> None:
   """Refresh desk without rerunning the live chart iframe."""
-  _render_trader_desk()
+  _render_trader_desk(include_live_metrics=True)
 
+
+def _render_sim_desk_static() -> None:
+  """Simulate: strategy/PnL once (no 5s Streamlit remount). Live FEED is in iframe."""
+  _render_trader_desk(include_live_metrics=False)
 
 def _render_live_chart(max_bars: int) -> None:
   """Live + Simulate: persistent browser iframe (Plotly.react) — no Streamlit flicker."""
@@ -404,26 +419,30 @@ def _render_live_chart(max_bars: int) -> None:
     except (OSError, URLError):
       server_ready = False
     if server_ready:
-      from mt5_bridge.ea_simulator import load_sim_state, write_sim_state
       d_from = st.session_state.get("sim_ea_from")
       d_to = st.session_state.get("sim_ea_to")
       if d_from:
-        write_sim_state({
-          "date_from": d_from.isoformat() if hasattr(d_from, "isoformat") else str(d_from),
-          "date_to": d_to.isoformat() if hasattr(d_to, "isoformat") else str(d_to),
-        })
+        # Only write when from/to change — avoid remounting iframe every rerun
+        key = (
+          d_from.isoformat() if hasattr(d_from, "isoformat") else str(d_from),
+          d_to.isoformat() if d_to and hasattr(d_to, "isoformat") else str(d_to or ""),
+        )
+        if st.session_state.get("_sim_chart_dates") != key:
+          from mt5_bridge.ea_simulator import write_sim_state
+          write_sim_state({"date_from": key[0], "date_to": key[1] or None})
+          st.session_state["_sim_chart_dates"] = key
       components.iframe(
         f"{sim_url}/chart?mode=sim&bars={max_bars}",
         height=700,
         scrolling=False,
       )
       st.caption(
-        "Chart Simulate cập nhật trong trình duyệt (Plotly.react, không giật). "
+        "Chart + status FEED cập nhật trong trình duyệt (Plotly.react, không giật). "
         "Cần cache H1 + Từ/Đến (hoặc Start feed). " + legend
       )
       return
     st.warning(
-      "Chart server Simulate (:8878) chưa chạy. Đang fallback snapshot tĩnh."
+      f"Chart server Simulate (:{SIM_MONITOR_PORT}) chưa chạy. Đang fallback snapshot tĩnh."
     )
     from mt5_bridge.ea_simulator import load_sim_state
     sim = load_sim_state()
@@ -597,7 +616,7 @@ def _render_service_controls() -> None:
 
     st.divider()
     st.markdown("##### Triển khai EA sang MT5")
-    st.caption("Sao chép và biên dịch EA `ForgeBridge.mq5`, tự động thiết lập Junction và liên kết biểu đồ EURUSD M15.")
+    st.caption("Sao chép và biên dịch EA `ForgeBridge.mq5`, tự động thiết lập Junction và liên kết biểu đồ EURUSD H1.")
     if st.button("Chạy Script Triển khai (Deploy)", icon=":material/settings_suggest:", use_container_width=True):
       with st.spinner("Đang chạy deploy script..."):
         try:
@@ -630,7 +649,7 @@ def _render_history_sync() -> None:
     if history.get("state") in ("requesting", "receiving"):
       st.progress(
         received / max(available, 1),
-        text=f"Đồng bộ lịch sử MT5: {received}/{available or '?'} nến M15",
+        text=f"Đồng bộ lịch sử MT5: {received}/{available or '?'} nến H1",
       )
     elif history_data.get("bars"):
       st.caption(
@@ -1200,34 +1219,51 @@ def render():
   else:
     st.info(
       "Simulate: deploy EA `HISTORY_FEED` + `InpBridgeSubdir=bridge_sim`, "
-      "rồi Start feed bên dưới. Desk/chart/stats đọc `bridge_sim/`."
+      "rồi Start feed bên dưới. Status FEED sống trên chart iframe; "
+      "`bridge_sim/`."
     )
-
-  _trader_desk_fragment()
-  _render_model_monitor()
 
   if mode == "sim":
     _render_simulate_ea()
+    st.subheader(f"Giám sát MT5 · {_mode_label()}")
+    chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]
+    restore_widget(
+      "mt5_chart_range", "7 ngày",
+      preference_key="mt5.chart_range",
+      options=chart_ranges,
+    )
+    range_label = st.selectbox(
+      "Khoảng chart",
+      chart_ranges,
+      key="mt5_chart_range",
+      on_change=preference_callback("mt5_chart_range", "mt5.chart_range"),
+    )
+    max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
+    _render_live_chart(max_bars)
+    _render_model_monitor()
+    _render_sim_desk_static()
   else:
+    _trader_desk_fragment()
+    _render_model_monitor()
     _render_service_controls()
     _render_manual_test_orders()
     _render_history_sync()
 
-  st.subheader(f"Giám sát MT5 · {_mode_label()}")
-  chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]
-  restore_widget(
-    "mt5_chart_range", "7 ngày",
-    preference_key="mt5.chart_range",
-    options=chart_ranges,
-  )
-  range_label = st.selectbox(
-    "Khoảng chart",
-    chart_ranges,
-    key="mt5_chart_range",
-    on_change=preference_callback("mt5_chart_range", "mt5.chart_range"),
-  )
-  max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
-  _render_live_chart(max_bars)
+    st.subheader(f"Giám sát MT5 · {_mode_label()}")
+    chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]
+    restore_widget(
+      "mt5_chart_range", "7 ngày",
+      preference_key="mt5.chart_range",
+      options=chart_ranges,
+    )
+    range_label = st.selectbox(
+      "Khoảng chart",
+      chart_ranges,
+      key="mt5_chart_range",
+      on_change=preference_callback("mt5_chart_range", "mt5.chart_range"),
+    )
+    max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
+    _render_live_chart(max_bars)
 
   _render_stats_section()
   _render_debug_sections()
