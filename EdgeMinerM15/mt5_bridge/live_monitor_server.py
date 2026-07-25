@@ -7,10 +7,24 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from mt5_bridge.protocol import bars_path, connection_path, decision_path, read_json
+from mt5_bridge.protocol import (
+  BRIDGE_DIR,
+  BRIDGE_SIM_DIR,
+  bar_path,
+  bars_path,
+  connection_path,
+  decision_path,
+  read_json,
+)
 from mt5_bridge.trade_journal import load_trades
 
 DEFAULT_MONITOR_PORT = 8765
+# Dedicated Simulate chart port (avoid stale Live monitor on 8765 lacking mode=sim)
+SIM_MONITOR_PORT = 8876
+_CHART_SERVER = None
+_CHART_SERVER_LOCK = threading.Lock()
+_SIM_CHART_SERVER = None
+_SIM_CHART_SERVER_LOCK = threading.Lock()
 
 
 def _plotly_js_path() -> Path:
@@ -18,10 +32,176 @@ def _plotly_js_path() -> Path:
   return Path(plotly.__file__).resolve().parent / "package_data" / "plotly.min.js"
 
 
+def _parse_broker_bar_time(value):
+  import pandas as pd
+  if value is None or value == "":
+    return None
+  s = str(value).strip()
+  for candidate in (s.replace("-", ".")[:19], s[:19].replace(".", "-")):
+    ts = pd.to_datetime(candidate, errors="coerce")
+    if not pd.isna(ts):
+      if getattr(ts, "tzinfo", None) is not None:
+        ts = ts.tz_localize(None)
+      return ts
+  return None
+
+
+def build_sim_snapshot(*, max_bars: int = 672) -> dict:
+  """OHLC from MT5 cache in sim from/to, clipped to EA cursor — for smooth iframe chart."""
+  import pandas as pd
+
+  from mt5_bridge.ea_simulator import load_sim_state, sync_state_from_ea
+  from mt5_bridge.history_sync import load_mt5_cache, utc_to_broker_time
+
+  try:
+    sync_state_from_ea(BRIDGE_SIM_DIR)
+  except Exception:
+    pass
+  st = load_sim_state()
+  from mt5_bridge.protocol import read_sim_control
+  ctrl = read_sim_control(BRIDGE_SIM_DIR) or {}
+  date_from = st.get("date_from") or ctrl.get("from")
+  date_to = st.get("date_to") or ctrl.get("to")
+  ea_status = str(ctrl.get("ea_status") or st.get("ea_status") or "idle")
+  enabled = bool(ctrl.get("enabled"))
+  last_bar = ctrl.get("last_bar") or st.get("last_bar") or ""
+  if enabled or ea_status == "running":
+    status = "running"
+  elif ea_status == "paused" or st.get("status") == "paused":
+    status = "paused"
+  elif ea_status == "completed":
+    status = "completed"
+  else:
+    status = "idle"
+    last_bar = ""  # preview full from/to window
+
+  cache = load_mt5_cache()
+  bars: list[dict] = []
+  connection: dict = read_json(connection_path(BRIDGE_SIM_DIR)) or {}
+
+  if cache is not None and not cache.empty:
+    frame = cache.copy()
+    frame.index = pd.DatetimeIndex([utc_to_broker_time(ts) for ts in frame.index])
+    frame = frame[~frame.index.duplicated(keep="last")].sort_index()
+
+    def _bound(s):
+      if not s:
+        return None
+      raw = str(s).strip().replace(".", "-")
+      try:
+        return pd.Timestamp(raw[:10])
+      except Exception:
+        return _parse_broker_bar_time(s)
+
+    t0, t1 = _bound(date_from), _bound(date_to)
+    if t0 is not None:
+      frame = frame.loc[frame.index >= t0.normalize()]
+    if t1 is not None:
+      end = t1.normalize() + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+      frame = frame.loc[frame.index <= end]
+
+    last_ts = _parse_broker_bar_time(last_bar) if last_bar else None
+    # Only use live bar.json as cursor while feed is active
+    if last_ts is None and status in ("running", "paused"):
+      bar = read_json(bar_path(BRIDGE_SIM_DIR)) or {}
+      last_ts = _parse_broker_bar_time(bar.get("bar_time") or bar.get("time"))
+
+    if status in ("running", "paused"):
+      if last_ts is not None:
+        frame = frame.loc[frame.index <= last_ts]
+      else:
+        frame = frame.iloc[0:0]
+    # idle/completed: full window (then tail)
+
+    limit = max(96, int(max_bars))
+    if len(frame) > limit:
+      frame = frame.tail(limit) if status in ("running", "paused", "completed") else frame.head(limit)
+
+    for ts, row in frame.iterrows():
+      bars.append({
+        "time": ts.strftime("%Y.%m.%d %H:%M"),
+        "open": float(row["Open"]),
+        "high": float(row["High"]),
+        "low": float(row["Low"]),
+        "close": float(row["Close"]),
+        "tick_volume": float(row["Volume"]) if "Volume" in row.index else 0.0,
+      })
+    if bars:
+      last = bars[-1]
+      close = float(last["close"])
+      connection = {
+        **connection,
+        "connected": True,
+        "bid": close,
+        "ask": close,
+        "spread_points": connection.get("spread_points") or 0,
+        "positions": connection.get("positions") or 0,
+        "terminal_trade_allowed": True,
+        "account_trade_allowed": True,
+        "server_time": last["time"],
+        "bar": last,
+      }
+
+  if not bars:
+    # Fallback: EA bars.json (may be incomplete)
+    hist = read_json(bars_path(BRIDGE_SIM_DIR)) or {}
+    bars = list(hist.get("bars") or [])[-max(96, int(max_bars)):]
+
+  trades = load_trades(BRIDGE_SIM_DIR)
+  decision = read_json(decision_path(BRIDGE_SIM_DIR)) or {}
+  action = str(decision.get("action") or "").upper()
+  signal_id = decision.get("signal_id")
+  known = any(signal_id and t.get("signal_id") == signal_id for t in trades)
+  if action in ("BUY", "SELL") and not known:
+    trades = list(trades) + [{
+      "status": "SIGNAL",
+      "signal_id": signal_id,
+      "direction": action,
+      "entry_time": decision.get("entry_time") or decision.get("bar_time"),
+      "entry_px": decision.get("entry"),
+      "sl": decision.get("sl"),
+      "tp": decision.get("tp"),
+      "strategy_name": decision.get("strategy_name"),
+    }]
+
+  done = int(st.get("bars_done") or 0)
+  total = int(st.get("bars_total") or 0)
+  return {
+    "history": {"bars": bars, "source": "sim_cache"},
+    "connection": connection,
+    "connection_mtime": None,
+    "trades": trades,
+    "decision": decision,
+    "sim": st,
+    "online": status in ("running", "paused", "completed") or bool(bars),
+    "progress": f"{done}/{total}" if total else str(done),
+  }
+
+
 def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str:
   paper_mode = mode == "paper"
-  chart_title = "EURUSD M15 · Paper Trade" if paper_mode else "EURUSD M15 · XM MT5 live"
-  if paper_mode:
+  sim_mode = mode == "sim"
+  if sim_mode:
+    chart_title = "EURUSD M15 · Simulate History Feed"
+    labels = (
+      "FEED", "CURSOR PX", "PROGRESS", "OPEN", "STATUS", "DECISION", "LAST BAR",
+    )
+    grid_cols = 7
+    status_cells = f"""
+    <div class="metric"><div class="label">{labels[0]}</div><div class="value" id="conn">WAITING</div></div>
+    <div class="metric"><div class="label">{labels[1]}</div><div class="value" id="price">—</div></div>
+    <div class="metric"><div class="label">{labels[2]}</div><div class="value" id="spread">—</div></div>
+    <div class="metric"><div class="label">{labels[3]}</div><div class="value" id="positions">—</div></div>
+    <div class="metric"><div class="label">{labels[4]}</div><div class="value" id="trading">—</div></div>
+    <div class="metric"><div class="label">{labels[5]}</div><div class="value" id="decision">—</div></div>
+    <div class="metric"><div class="label">{labels[6]}</div><div class="value" id="slots">—</div></div>
+    """
+    price_tag = "SIM"
+    ui_rev = "mt5-sim"
+    snap_url = "/snapshot?mode=sim"
+    note0 = "Simulate History Feed — cập nhật mượt trong trình duyệt (Plotly.react)."
+  elif paper_mode:
+    chart_title = "EURUSD M15 · Paper Trade"
     labels = ("PAPER ENGINE", "LAST PRICE", "DAY TRADES", "SLOTS LEFT", "SESSION")
     grid_cols = 5
     status_cells = f"""
@@ -31,7 +211,12 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
     <div class="metric"><div class="label">{labels[3]}</div><div class="value" id="positions">—</div></div>
     <div class="metric"><div class="label">{labels[4]}</div><div class="value" id="trading">—</div></div>
     """
+    price_tag = "LIVE"
+    ui_rev = "mt5-live"
+    snap_url = "/snapshot"
+    note0 = "Đang kết nối ForgeBridge EA…"
   else:
+    chart_title = "EURUSD M15 · XM MT5 live"
     labels = (
       "EA", "BID / ASK", "SPREAD", "OPEN", "ALGO", "DECISION", "SLOTS",
     )
@@ -45,6 +230,10 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
     <div class="metric"><div class="label">{labels[5]}</div><div class="value" id="decision">—</div></div>
     <div class="metric"><div class="label">{labels[6]}</div><div class="value" id="slots">—</div></div>
     """
+    price_tag = "LIVE"
+    ui_rev = "mt5-live"
+    snap_url = "/snapshot"
+    note0 = "Đang kết nối ForgeBridge EA…"
   return f"""<!doctype html>
 <html>
 <head>
@@ -64,12 +253,16 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
   <div id="status">
     {status_cells}
   </div>
-  <div id="note">Đang kết nối ForgeBridge EA…</div>
+  <div id="note">{note0}</div>
   <div id="chart"></div>
 <script>
 const MAX_BARS = {max_bars};
 const PAPER_MODE = {str(paper_mode).lower()};
+const SIM_MODE = {str(sim_mode).lower()};
 const POLL_MS = {max(500, int(poll_ms))};
+const SNAP_URL = "{snap_url}";
+const PRICE_TAG = "{price_tag}";
+const UI_REV = "{ui_rev}";
 const COLORS = {{bg:"#131722", grid:"#363a45", text:"#d1d4dc", up:"#26a69a",
   down:"#ef5350", sl:"#f23645", tp:"#089981", live:"#f7c948"}};
 let firstRender = true;
@@ -206,7 +399,7 @@ function tradeLayers(trades, start, end) {{
 }}
 async function refresh() {{
   try {{
-    const response=await fetch("/snapshot",{{cache:"no-store"}});
+    const response=await fetch(SNAP_URL,{{cache:"no-store"}});
     if (!response.ok) throw new Error("HTTP "+response.status);
     const snap=await response.json(), conn=snap.connection || {{}};
     let rows=((snap.history || {{}}).bars || []).slice();
@@ -214,7 +407,7 @@ async function refresh() {{
     const byTime=new Map();
     for (const r of rows) byTime.set(r.time,r);
     rows=Array.from(byTime.values()).sort((a,b)=>String(a.time).localeCompare(String(b.time))).slice(-MAX_BARS);
-    if (!rows.length) throw new Error("Chưa có bars.json");
+    if (!rows.length) throw new Error(SIM_MODE ? "Chưa có nến Simulate (chọn from/to hoặc Start feed)" : "Chưa có bars.json");
 
     const age=Math.max(0,(Date.now()/1000)-Number(snap.connection_mtime || 0));
     const state=snap.state || {{}};
@@ -230,6 +423,27 @@ async function refresh() {{
       setText("trading",allowed?"ACTIVE":"OFF",allowed?"online":"offline");
       document.getElementById("note").textContent=
         "Giá live EA "+(conn.server_time || "—")+" · Paper snapshot "+(state.updated_at || "—");
+    }} else if (SIM_MODE) {{
+      const sim=snap.sim || {{}};
+      const st=String(sim.status || "idle");
+      online=Boolean(snap.online) || st==="running" || st==="paused" || st==="completed";
+      const last=rows[rows.length-1];
+      setText("conn",st.toUpperCase(), online?"online":"offline");
+      setText("price",Number(last.close).toFixed(5));
+      setText("spread",snap.progress || ((sim.bars_done||0)+"/"+(sim.bars_total||"—")));
+      setText("positions",conn.positions ?? "—");
+      setText("trading",(sim.ea_status || st).toUpperCase(), online?"online":"offline");
+      const decision=snap.decision || {{}};
+      const action=String(decision.action || "—").toUpperCase();
+      let dcls="flat";
+      if (action==="BUY" || action==="SELL") dcls="signal";
+      else if (action==="HOLD") dcls="online";
+      setText("decision",action,dcls);
+      setText("slots",sim.last_bar || last.time || "—");
+      document.getElementById("note").textContent=
+        "Simulate "+(sim.date_from||"?")+" → "+(sim.date_to||"?")+
+        " · cursor "+(sim.last_bar || last.time || "—")+
+        " · "+rows.length+" nến · Plotly.react (không giật Streamlit)";
     }} else {{
       online=Boolean(conn.connected) && age<=10;
       setText("conn",online?"ONLINE":"OFFLINE",online?"online":"offline");
@@ -271,14 +485,14 @@ async function refresh() {{
       shapes.push({{type:"line",xref:"paper",x0:0,x1:1,yref:"y",
         y0:mid,y1:mid,line:{{color:COLORS.live,width:1,dash:"dash"}}}});
       annotations.push({{xref:"paper",x:1,yref:"y",y:mid,
-        text:"LIVE "+mid.toFixed(5),showarrow:false,xanchor:"left",
+        text:PRICE_TAG+" "+mid.toFixed(5),showarrow:false,xanchor:"left",
         font:{{color:COLORS.live,size:10}}}});
     }}
     const layout={{
       title:{{text:"{chart_title}",font:{{size:14,color:COLORS.text}},x:.01}},
       paper_bgcolor:COLORS.bg,plot_bgcolor:COLORS.bg,font:{{color:COLORS.text,size:11}},
       margin:{{l:8,r:96,t:42,b:28}},showlegend:false,hovermode:"x unified",
-      uirevision:"mt5-live",dragmode:"pan",shapes,annotations,
+      uirevision:UI_REV,dragmode:"pan",shapes,annotations,
       xaxis:{{domain:[0,1],anchor:"y",rangeslider:{{visible:false}},showticklabels:false,
         gridcolor:COLORS.grid,rangebreaks:[{{bounds:["sat","mon"]}}]}},
       yaxis:{{domain:[.22,1],side:"right",gridcolor:COLORS.grid,title:"Price"}},
@@ -328,6 +542,20 @@ def start_live_monitor_server(
           self._send(404, b"plotly.js not found", "text/plain")
         return
       if parsed.path == "/snapshot":
+        query = parse_qs(parsed.query)
+        mode = (query.get("mode") or ["live"])[0].lower()
+        try:
+          max_bars = max(96, min(1344, int((query.get("bars") or ["672"])[0])))
+        except (TypeError, ValueError):
+          max_bars = 672
+        if mode == "sim":
+          payload = build_sim_snapshot(max_bars=max_bars)
+          self._send(
+            200,
+            json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8"),
+            "application/json; charset=utf-8",
+          )
+          return
         conn_file = connection_path(bridge_dir)
         trades = load_trades(bridge_dir)
         decision = read_json(decision_path(bridge_dir)) or {}
@@ -363,13 +591,19 @@ def start_live_monitor_server(
         return
       if parsed.path in ("/", "/chart"):
         query = parse_qs(parsed.query)
+        mode = (query.get("mode") or ["mt5"])[0].lower()
+        if mode not in ("mt5", "live", "sim", "paper"):
+          mode = "mt5"
+        if mode == "live":
+          mode = "mt5"
         try:
           max_bars = max(96, min(1344, int((query.get("bars") or ["672"])[0])))
         except (TypeError, ValueError):
           max_bars = 672
+        poll_ms = 1000 if mode == "sim" else 2000
         self._send(
           200,
-          _chart_html(max_bars).encode("utf-8"),
+          _chart_html(max_bars, mode=mode, poll_ms=poll_ms).encode("utf-8"),
           "text/html; charset=utf-8",
         )
         return
@@ -389,3 +623,62 @@ def start_live_monitor_server(
   )
   thread.start()
   return server
+
+
+def ensure_chart_server(
+  bridge_dir: Path | None = None,
+  port: int = DEFAULT_MONITOR_PORT,
+) -> bool:
+  """Start chart HTTP server once. Use SIM_MONITOR_PORT for Simulate (avoids stale Live process)."""
+  global _CHART_SERVER, _SIM_CHART_SERVER
+  import urllib.request
+
+  port = int(port)
+  is_sim = port == SIM_MONITOR_PORT
+  lock = _SIM_CHART_SERVER_LOCK if is_sim else _CHART_SERVER_LOCK
+
+  def _healthy() -> bool:
+    try:
+      with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=0.4) as r:
+        return r.read() == b"ok"
+    except Exception:
+      return False
+
+  if _healthy() and not is_sim:
+    return True
+  # For sim port: if something answers but lacks mode=sim, still try; prefer our process
+  with lock:
+    if is_sim:
+      # Always prefer a server we started on SIM port (fresh code)
+      if _SIM_CHART_SERVER is not None and _healthy():
+        return True
+      if _healthy():
+        # Probe sim snapshot
+        try:
+          with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/snapshot?mode=sim&bars=48", timeout=1.0
+          ) as r:
+            data = json.loads(r.read().decode("utf-8"))
+          if "sim" in data or (data.get("history") or {}).get("source") == "sim_cache":
+            return True
+        except Exception:
+          pass
+      try:
+        _SIM_CHART_SERVER = start_live_monitor_server(
+          Path(bridge_dir) if bridge_dir else BRIDGE_SIM_DIR,
+          port=port,
+        )
+      except OSError:
+        pass
+      return _healthy()
+
+    if _healthy():
+      return True
+    try:
+      _CHART_SERVER = start_live_monitor_server(
+        Path(bridge_dir) if bridge_dir else BRIDGE_DIR,
+        port=port,
+      )
+    except OSError:
+      pass
+    return _healthy()

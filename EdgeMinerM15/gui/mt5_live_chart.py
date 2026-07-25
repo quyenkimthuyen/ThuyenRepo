@@ -117,7 +117,7 @@ def load_sim_chart_data(
     t = _parse_mt5_time(str(s)[:16].replace("-", "."))
     if t is None:
       try:
-        t = pd.Timestamp(str(s)[:10])
+        t = pd.Timestamp(str(s).replace(".", "-")[:10])
       except Exception:
         return None
     return t
