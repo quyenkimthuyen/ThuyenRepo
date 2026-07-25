@@ -585,7 +585,7 @@ def start_sim_worker(
     cfg = SimConfig(
       date_from=date_from,
       date_to=date_to,
-      delay_ms=max(10, int(delay_ms)),
+      delay_ms=max(1, int(delay_ms)),
       model_id=mid,
       risk_pct=float(risk_pct),
       bridge_dir=BRIDGE_SIM_DIR,

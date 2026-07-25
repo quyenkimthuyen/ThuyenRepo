@@ -48,7 +48,7 @@ def main() -> int:
   cfg = SimConfig(
     date_from=args.date_from,
     date_to=args.date_to,
-    delay_ms=max(10, int(args.delay_ms)),
+    delay_ms=max(1, int(args.delay_ms)),
     model_id=mid,
     risk_pct=float(args.risk_pct),
     bridge_dir=bridge_dir,
