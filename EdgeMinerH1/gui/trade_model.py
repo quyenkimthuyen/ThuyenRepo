@@ -91,7 +91,7 @@ def format_model_label(m: dict) -> str:
   if m.get("label_custom"):
     return m.get("label") or m.get("id", "?")
   return build_trade_profile_label({
-    "train_months": m.get("train_months"),
+    "train_weeks": m.get("train_weeks"),
     "use_kb": m.get("use_kb", True),
     "kb_profile": m.get("kb_profile"),
     "kb_snapshot": m.get("kb_snapshot"),
@@ -190,11 +190,11 @@ def set_active_trade_model(model_id: str | None) -> dict | None:
 def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | None = None) -> dict:
   from gui.app_settings import canonical_kb_profile, default_learning_era
   from gui.services import load_data_meta
-  tm = row.get("train_months", 6)
+  tw = row.get("train_weeks", 6)
   kb = canonical_kb_profile(row.get("kb_profile")) or default_learning_era()["kb_profile"]
   ep = _normalize_snapshot(row.get("kb_snapshot"))
   auto_label = label or build_trade_profile_label({
-    "train_months": tm,
+    "train_weeks": tw,
     "use_kb": bool(row.get("use_kb", True)),
     "kb_profile": kb if row.get("use_kb") else None,
     "kb_snapshot": ep,
@@ -204,10 +204,15 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
   if label is None and row.get("total_r") is not None:
     auto_label += f" · {row.get('total_r', 0):+.1f}R"
   data_meta = load_data_meta()
-  if data_meta.get("source") != "mt5_ea" or not data_meta.get("fingerprint"):
+  if (
+    data_meta.get("source") != "mt5_ea"
+    or data_meta.get("timeframe") != "M15"
+    or not data_meta.get("fingerprint")
+  ):
     raise RuntimeError("Không thể tạo Trade Model khi dữ liệu chưa được xác nhận từ MT5 EA.")
   return {
-    "train_months": tm,
+    "train_weeks": tw,
+    "max_trades_per_day": 2,
     "use_kb": bool(row.get("use_kb", True)),
     "kb_profile": kb if row.get("use_kb") else None,
     "kb_snapshot": ep,
@@ -220,6 +225,8 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
     "max_drawdown_r": row.get("max_drawdown_r"),
     "profit_factor": row.get("profit_factor"),
     "n_trades": row.get("n_trades"),
+    "feature_profile": row.get("feature_profile") or "current",
+    "mining_search_space": row.get("mining_search_space"),
     "source": "grid_search",
     "data_source": data_meta.get("source"),
     "data_broker": data_meta.get("broker"),
@@ -230,7 +237,7 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
     "data_end": data_meta.get("end"),
     "data_bars": data_meta.get("bars"),
     "data_fingerprint": data_meta.get("fingerprint"),
-    "feature_schema": 1,
+    "feature_schema": 3,
     "grid_run_id": run_id,
     "grid_key": row.get("key"),
     "label": auto_label,
@@ -432,6 +439,9 @@ def delete_trade_model(model_id: str) -> bool:
   path = model_report_path(model_id)
   if path.exists():
     path.unlink()
+  off = model_kb_off_report_path(model_id)
+  if off.exists():
+    off.unlink()
   if load_active_model_id() == model_id:
     remaining = store["models"]
     set_active_trade_model(remaining[0]["id"] if remaining else None)
@@ -440,14 +450,15 @@ def delete_trade_model(model_id: str) -> bool:
 
 
 def get_model_run_params(model: dict | None = None) -> dict:
+  """Canonical run params — delegates to mt5_bridge.models (same as Bridge)."""
   m = model or get_active_trade_model()
   if not m:
     from gui.app_settings import default_learning_era, get_settings
     s = get_settings()
     era = default_learning_era(s)
-    trains = s.get("strategy_train_months") or [3, 6, 9]
+    trains = s.get("strategy_train_weeks") or [3, 6, 9]
     return {
-      "train_months": trains[0] if trains else 6,
+      "train_weeks": trains[0] if trains else 6,
       "use_learning": True,
       "use_kb": True,
       "kb_profile": era["kb_profile"],
@@ -456,19 +467,11 @@ def get_model_run_params(model: dict | None = None) -> dict:
       "oos_to": s.get("backtest_to"),
       "spread_pips": float(s.get("spread_pips", DEFAULT_SPREAD_PIPS)),
       "slippage_pips": float(s.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
+      "feature_profile": "current",
+      "mining_search_space": None,
     }
-  return {
-    "train_months": int(m.get("train_months", 6)),
-    "use_learning": bool(m.get("use_kb", True)),
-    "use_kb": bool(m.get("use_kb", True)),
-    "kb_profile": m.get("kb_profile") or "default",
-    "kb_snapshot": _normalize_snapshot(m.get("kb_snapshot")),
-    "oos_from": m.get("oos_from"),
-    "oos_to": m.get("oos_to"),
-    "spread_pips": float(m.get("spread_pips", DEFAULT_SPREAD_PIPS)),
-    "slippage_pips": float(m.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
-    "trade_model_id": m.get("id"),
-  }
+  from mt5_bridge.models import get_model_run_params as bridge_run_params
+  return bridge_run_params(m, m.get("id"))
 
 
 def trade_model_to_workspace(m: dict | None = None) -> dict:
@@ -477,7 +480,7 @@ def trade_model_to_workspace(m: dict | None = None) -> dict:
     from gui.app_settings import default_learning_era, get_settings
     s = get_settings()
     era = default_learning_era(s)
-    trains = s.get("strategy_train_months") or [3, 6, 9]
+    trains = s.get("strategy_train_weeks") or [3, 6, 9]
     return {
       "label": "Chưa chọn trade model",
       "kb_profile": era["kb_profile"],
@@ -485,7 +488,7 @@ def trade_model_to_workspace(m: dict | None = None) -> dict:
       "oos_from": s.get("backtest_from"),
       "oos_to": s.get("backtest_to"),
       "use_learning": True,
-      "train_months": trains[0] if trains else 6,
+      "train_weeks": trains[0] if trains else 6,
     }
   return {
     "label": format_model_label(m),
@@ -494,9 +497,14 @@ def trade_model_to_workspace(m: dict | None = None) -> dict:
     "oos_from": m.get("oos_from"),
     "oos_to": m.get("oos_to"),
     "use_learning": bool(m.get("use_kb", True)),
-    "train_months": m.get("train_months", 6),
+    "train_weeks": m.get("train_weeks", 6),
     "spread_pips": m.get("spread_pips", DEFAULT_SPREAD_PIPS),
     "slippage_pips": m.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS),
+    "feature_profile": (
+      m.get("feature_profile")
+      or ("legacy" if int(m.get("feature_schema") or 0) < 3 else "current")
+    ),
+    "mining_search_space": m.get("mining_search_space"),
     "trade_model_id": m.get("id"),
   }
 
@@ -510,6 +518,31 @@ def report_matches_model(report: dict, model: dict | None = None) -> bool:
     return cfg["trade_model_id"] == m["id"]
   from gui.workspace import report_matches_workspace
   return report_matches_workspace(report, trade_model_to_workspace(m))
+
+
+def _space_fingerprint(space: dict | None) -> tuple:
+  if not space:
+    return ()
+  return (
+    tuple(tuple(x) if isinstance(x, list) else x for x in (space.get("session_ranges") or [])),
+    tuple(space.get("min_bars_between") or []),
+    tuple(space.get("max_hold_bars") or []),
+  )
+
+
+def report_search_space_matches_model(
+  report: dict | None,
+  model: dict | None = None,
+) -> bool:
+  """True if report mining space matches the Trade Model (session/spacing/hold)."""
+  m = model or get_active_trade_model()
+  if not report or not m:
+    return False
+  expected = m.get("mining_search_space")
+  if not expected:
+    return True
+  actual = (report.get("config") or {}).get("mining_search_space")
+  return _space_fingerprint(expected) == _space_fingerprint(actual)
 
 
 def ensure_trade_models_loaded():

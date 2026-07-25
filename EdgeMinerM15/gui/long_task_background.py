@@ -149,6 +149,8 @@ def _worker_backtest(state: dict):
     kb_snapshot=p.get("kb_snapshot"),
     oos_from=p.get("oos_from"),
     oos_to=p.get("oos_to"),
+    feature_profile=p.get("feature_profile"),
+    mining_search_space=p.get("mining_search_space"),
     on_progress=on_prog,
     archive=bool(p.get("archive")),
     archive_label=p.get("archive_label"),
@@ -177,6 +179,8 @@ def _worker_backtest(state: dict):
       holdout_months=int(p.get("holdout_months") or 0),
       oos_from=p.get("oos_from"),
       oos_to=p.get("oos_to"),
+      feature_profile=p.get("feature_profile"),
+      mining_search_space=p.get("mining_search_space"),
       on_progress=on_prog2,
       archive=bool(p.get("archive")),
       sync_workspace=False,
@@ -212,6 +216,16 @@ def _worker_model_health(state: dict):
   kb_profile = p.get("kb_profile") or model.get("kb_profile")
   kb_snapshot = p.get("kb_snapshot", model.get("kb_snapshot"))
   refresh_on = bool(p.get("refresh_kb_on", True))
+  feature_profile = (
+    p.get("feature_profile")
+    or model.get("feature_profile")
+    or "current"
+  )
+  mining_search_space = (
+    p.get("mining_search_space")
+    if "mining_search_space" in p
+    else model.get("mining_search_space")
+  )
 
   report_on = None
   if refresh_on:
@@ -230,6 +244,8 @@ def _worker_model_health(state: dict):
       kb_snapshot=kb_snapshot,
       oos_from=oos_from,
       oos_to=oos_to,
+      feature_profile=feature_profile,
+      mining_search_space=mining_search_space,
       on_progress=on_prog,
       archive=False,
       sync_workspace=True,
@@ -253,6 +269,8 @@ def _worker_model_health(state: dict):
     holdout_months=0,
     oos_from=oos_from,
     oos_to=oos_to,
+    feature_profile=feature_profile,
+    mining_search_space=mining_search_space,
     on_progress=on_prog_off,
     archive=False,
     sync_workspace=False,
@@ -261,11 +279,30 @@ def _worker_model_health(state: dict):
 
   on_r = (report_on or {}).get("overall_oos", {}).get("total_r") if report_on else None
   off_r = (report_off.get("overall_oos") or {}).get("total_r")
+  from mt5_bridge.models import conditions_fingerprint, describe_strategy_conditions, get_model_run_params
+  run_params = get_model_run_params(model, model_id)
+  # Prefer explicit job params (already sourced from same helper in analysis_support).
+  if p.get("mining_search_space") is not None or p.get("feature_profile"):
+    run_params = {
+      **run_params,
+      "train_weeks": train_weeks,
+      "spread_pips": spread,
+      "slippage_pips": slip,
+      "kb_profile": kb_profile,
+      "kb_snapshot": kb_snapshot,
+      "feature_profile": feature_profile,
+      "mining_search_space": mining_search_space,
+      "use_learning": True,
+      "use_kb": True,
+      "trade_model_id": model_id,
+    }
   _finish(state, status="completed", result={
     "model_id": model_id,
     "kb_on_total_r": on_r,
     "kb_off_total_r": off_r,
     "refreshed_on": refresh_on,
+    "conditions_fp": conditions_fingerprint(run_params),
+    "run_conditions": describe_strategy_conditions(run_params),
   })
 
 

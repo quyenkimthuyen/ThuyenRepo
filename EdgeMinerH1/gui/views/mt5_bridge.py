@@ -1,4 +1,4 @@
-"""MT5 Bridge — App quyết định (Best 3m), EA ForgeBridge execute + log giao tiếp."""
+"""MT5 Bridge — Trader desk: EA live status, decision, open risk, PnL."""
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -9,7 +9,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from gui.mt5_live_chart import build_ea_chart, load_ea_chart_data
+from gui.mt5_live_chart import build_ea_chart, connection_health, load_ea_chart_data
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
 from gui.trade_model import format_model_label, get_active_trade_model
@@ -44,23 +44,6 @@ from mt5_bridge.trade_journal import (
 )
 
 
-def _fmt_px(value) -> str:
-  if value is None:
-    return "—"
-  try:
-    return f"{float(value):.5f}"
-  except (TypeError, ValueError):
-    return str(value)
-
-
-def _model_label(m: dict) -> str:
-  try:
-    from gui.trade_model import format_model_label
-    return format_model_label(m)
-  except Exception:
-    return m.get("label") or m.get("id") or "?"
-
-
 def _save_bridge_runtime_settings() -> None:
   active = get_active_trade_model()
   bridge_bg.save_config(
@@ -68,6 +51,269 @@ def _save_bridge_runtime_settings() -> None:
     risk_pct=float(st.session_state.get("mt5_risk_pct", 1.0)),
     poll_sec=float(st.session_state.get("mt5_poll_sec", 2.0)),
   )
+
+
+def _render_conditions_alignment(
+  *,
+  active: dict | None,
+  decision: dict,
+  file_status: dict,
+) -> None:
+  """Show that Bridge remine uses the same strategy conditions as Health."""
+  from mt5_bridge.models import (
+    conditions_fingerprint,
+    describe_strategy_conditions,
+    get_model_run_params,
+  )
+
+  if not active:
+    st.caption("Chưa chọn Trade Model — Bridge có thể dùng default miner.")
+    return
+
+  model_params = get_model_run_params(active, active.get("id"))
+  model_desc = describe_strategy_conditions(model_params)
+  model_fp = model_desc["conditions_fp"]
+  live_fp = (
+    decision.get("conditions_fp")
+    or file_status.get("conditions_fp")
+  )
+  live_desc = file_status.get("run_conditions") or decision.get("run_conditions") or {}
+
+  ss = active.get("mining_search_space") or {}
+  st.caption(
+    f"Điều kiện remine (= Sức khỏe): train **{model_desc.get('train_weeks')}w** · "
+    f"KB `{model_desc.get('kb_profile')}@ep{model_desc.get('kb_snapshot')}` · "
+    f"session `{ss.get('session_ranges')}` · spacing `{ss.get('min_bars_between')}` · "
+    f"hold `{ss.get('max_hold_bars')}` · "
+    f"spread/slip `{model_desc.get('spread_pips')}/{model_desc.get('slippage_pips')}` · "
+    f"fp `{model_fp}`"
+  )
+  if live_fp and live_fp != model_fp:
+    st.warning(
+      f"Bridge đang chạy fp `{live_fp}` ≠ model `{model_fp}`. "
+      "Stop/Start service (hoặc đợi reload) để khớp lại với Trade Model / Sức khỏe."
+    )
+  elif live_fp:
+    st.success(f"Bridge khớp điều kiện model (fp `{live_fp}`).")
+  elif live_desc:
+    live_check = conditions_fingerprint({
+      **model_params,
+      **{k: live_desc.get(k) for k in (
+        "train_weeks", "kb_profile", "kb_snapshot", "feature_profile",
+        "spread_pips", "slippage_pips", "use_learning",
+      ) if live_desc.get(k) is not None},
+      "mining_search_space": active.get("mining_search_space"),
+      "trade_model_id": active.get("id"),
+    })
+    if live_check == model_fp:
+      st.success(f"Bridge khớp điều kiện model (fp `{model_fp}`).")
+    else:
+      st.info("Chưa có fingerprint trên decision — Start Bridge lại để ghi fp.")
+  else:
+    st.info("Chưa có decision/status mới — Start Bridge để xác nhận fp khớp Sức khỏe.")
+
+
+
+def _fmt_px(value) -> str:
+  try:
+    return f"{float(value):.5f}"
+  except (TypeError, ValueError):
+    return "—"
+
+
+def _unrealized_r(trade: dict, connection: dict) -> float | None:
+  """Estimate open R from live bid/ask vs entry/SL."""
+  try:
+    entry = float(trade.get("entry_px") if trade.get("entry_px") is not None else trade.get("entry"))
+    sl = float(trade["sl"])
+  except (TypeError, ValueError, KeyError):
+    return None
+  risk = abs(entry - sl)
+  if risk <= 0:
+    return None
+  direction = str(trade.get("direction") or trade.get("dir") or "").upper()
+  bid, ask = connection.get("bid"), connection.get("ask")
+  try:
+    if direction in ("BUY", "LONG"):
+      mark = float(bid)
+      return round((mark - entry) / risk, 3)
+    if direction in ("SELL", "SHORT"):
+      mark = float(ask)
+      return round((entry - mark) / risk, 3)
+  except (TypeError, ValueError):
+    return None
+  return None
+
+
+def _open_trade(trades: list[dict]) -> dict | None:
+  for trade in reversed(trades):
+    if str(trade.get("status") or "").upper() == "OPEN":
+      return trade
+  return None
+
+
+def _period_stats(trades: list[dict], *, today: date) -> tuple[dict, dict]:
+  """Desk PnL = Auto only (Trade Model). Manual-edited fills stay out."""
+  week_from = today - timedelta(days=today.weekday())
+  today_stats = compute_stats(
+    filter_trades(trades, date_from=today, date_to=today, mode="auto"),
+  )
+  week_stats = compute_stats(
+    filter_trades(trades, date_from=week_from, date_to=today, mode="auto"),
+  )
+  return today_stats, week_stats
+
+
+def _render_error_banner(
+  *,
+  file_status: dict,
+  service_status: dict,
+  decision: dict,
+  active_model_id: str | None,
+) -> None:
+  errors: list[str] = []
+  if service_status.get("last_error"):
+    errors.append(str(service_status["last_error"]))
+  state = str(file_status.get("state") or "").lower()
+  if state == "error" and file_status.get("error"):
+    errors.append(str(file_status["error"]))
+  decision_model = decision.get("model_id") or file_status.get("model_id")
+  if active_model_id and decision_model and decision_model != active_model_id:
+    errors.append(
+      f"Model lệch: decision=`{decision_model}` · active=`{active_model_id}`"
+    )
+  if errors:
+    st.error(" · ".join(dict.fromkeys(errors)))
+
+
+def _render_trader_desk() -> None:
+  """Live desk strip + banners + today/week PnL (refreshed by fragment)."""
+  connection = read_json(connection_path()) or {}
+  decision = read_json(decision_path()) or {}
+  file_status = read_json(status_path()) or {}
+  service_status = bridge_bg.get_status()
+  active = get_active_trade_model()
+  active_id = (active or {}).get("id")
+  trades = load_trades()
+  health = connection_health(connection)
+  today = date.today()
+  today_stats, week_stats = _period_stats(trades, today=today)
+
+  _render_error_banner(
+    file_status=file_status,
+    service_status=service_status,
+    decision=decision,
+    active_model_id=active_id,
+  )
+
+  # --- 5-column trader strip ---
+  c1, c2, c3, c4, c5 = st.columns(5)
+  age = health.get("age_seconds")
+  age_txt = f"{age:.0f}s" if age is not None else "—"
+  if health.get("online"):
+    c1.metric("EA", f"ONLINE · {age_txt}")
+  else:
+    c1.metric("EA", f"OFFLINE · {age_txt}")
+
+  bid, ask = connection.get("bid"), connection.get("ask")
+  spread = connection.get("spread_points")
+  if bid is not None and ask is not None:
+    c2.metric("Quote", f"{_fmt_px(bid)} / {_fmt_px(ask)}")
+  else:
+    c2.metric("Quote", "—")
+  c2.caption(f"Spread: {spread if spread is not None else '—'} pts")
+
+  algo_on = health.get("trade_allowed")
+  c3.metric("Algo", "ON" if algo_on else "OFF")
+  c3.caption(f"Acct {connection.get('account') or '—'}")
+
+  action = str(decision.get("action") or service_status.get("last_action") or "—").upper()
+  reason = str(decision.get("reason") or file_status.get("reason") or "—")
+  c4.metric("Decision", action)
+  c4.caption(reason[:48] if reason else "—")
+
+  risk = decision.get("risk_pct")
+  if risk is None:
+    risk = service_status.get("risk_pct") or bridge_bg.load_config().get("risk_pct")
+  slots = decision.get("slots_remaining")
+  if slots is None:
+    slots = "—"
+  c5.metric("Risk / Slots", f"{float(risk):.1f}% · {slots}" if risk is not None else f"— · {slots}")
+
+  # Strategy line
+  st.markdown(
+    f"**Chiến lược tuần:** "
+    f"`{decision.get('strategy_name') or 'đang chờ mine'}` · "
+    f"tuần `{decision.get('week_start') or '—'}` · "
+    f"TM `{decision.get('model_id') or service_status.get('model_id') or '—'}`"
+  )
+  _render_conditions_alignment(
+    active=active,
+    decision=decision,
+    file_status=file_status,
+  )
+  svc = "OFF"
+  if service_status.get("running"):
+    mode = service_status.get("runtime_mode") or "on"
+    pid = service_status.get("service_pid")
+    svc = f"ON · {mode}" + (f" · pid {pid}" if pid else "")
+  st.caption(
+    f"Service `{svc}` · Bridge `{file_status.get('state') or '—'}` · "
+    f"Bar `{str(service_status.get('last_bar') or '—')[:19]}` · "
+    f"Decision `{str(decision.get('updated_at') or '—')[:19]}`"
+  )
+
+  # --- Open position / pending SIGNAL ---
+  open_trade = _open_trade(trades)
+  if open_trade:
+    ur = _unrealized_r(open_trade, connection)
+    ur_txt = f"{ur:+.2f}R" if ur is not None else "—"
+    direction = str(open_trade.get("direction") or open_trade.get("dir") or "?").upper()
+    st.info(
+      f"**Lệnh đang mở:** {direction} @ **{_fmt_px(open_trade.get('entry_px') or open_trade.get('entry'))}** · "
+      f"SL **{_fmt_px(open_trade.get('sl'))}** · TP **{_fmt_px(open_trade.get('tp'))}** · "
+      f"Ước tính **{ur_txt}** · ticket `{open_trade.get('ticket') or '—'}`"
+    )
+  elif action in ("BUY", "SELL"):
+    st.warning(
+      f"**SIGNAL chờ:** {action} @ **{_fmt_px(decision.get('entry'))}** · "
+      f"SL **{_fmt_px(decision.get('sl'))}** · TP **{_fmt_px(decision.get('tp'))}** · "
+      f"expires `{decision.get('expires_bar_time') or '—'}` · "
+      f"id `{decision.get('signal_id') or '—'}`"
+    )
+
+  # --- Today / Week compact PnL (Auto / Trade Model only) ---
+  p1, p2, p3, p4 = st.columns(4)
+  p1.metric(
+    "Today R (auto)",
+    f"{today_stats['total_r']:+.2f}" if today_stats["n_trades"] else "0.00",
+  )
+  p2.metric(
+    "Week R (auto)",
+    f"{week_stats['total_r']:+.2f}" if week_stats["n_trades"] else "0.00",
+  )
+  open_n = sum(
+    1 for t in trades
+    if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "auto"
+  )
+  open_manual = sum(
+    1 for t in trades
+    if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "manual"
+  )
+  p3.metric("Open auto", open_n)
+  wr = today_stats.get("win_rate_pct")
+  p4.metric(
+    "Today WR (auto)",
+    f"{wr}%" if wr is not None else "—",
+  )
+  if open_manual:
+    st.caption(f"Có **{open_manual}** lệnh mở thuộc mode sửa — không tính vào R auto / Trade Model.")
+
+
+@st.fragment(run_every=timedelta(seconds=5))
+def _trader_desk_fragment() -> None:
+  """Refresh desk without rerunning the live chart iframe."""
+  _render_trader_desk()
 
 
 def _render_live_chart(max_bars: int) -> None:
@@ -86,8 +332,9 @@ def _render_live_chart(max_bars: int) -> None:
       scrolling=False,
     )
     st.caption(
-      "Chart cập nhật trực tiếp mỗi 2 giây trong trình duyệt, "
-      "không rerun Streamlit nên không chớp."
+      "Chart cập nhật mỗi 2s trong trình duyệt (không chớp Streamlit). "
+      "Desk phía trên refresh mỗi 5s. "
+      "🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit — giống Paper Trade."
     )
     return
 
@@ -99,89 +346,11 @@ def _render_live_chart(max_bars: int) -> None:
     st.caption("Đang chờ EA xuất `bars.json` để vẽ chart.")
   else:
     st.plotly_chart(fig, use_container_width=True, key="mt5_ea_live_chart")
-    st.caption(
-      "Nến và đường LIVE lấy trực tiếp từ XM MT5 · "
-      "🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit — giống Paper Trade."
-    )
+    st.caption("🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit — giống Paper Trade.")
 
 
-def render():
-  render_page_header(ALL_ITEMS["mt5_bridge"], show_workspace=False)
-
-  st.info(
-    "**MT5 Bridge** = lệnh thật/demo: EA `ForgeBridge` → App decide → EA execute. "
-    "**Khác Paper** (chỉ mô phỏng). Paper `SIGNAL`/`FILLED` ≠ đã vào MT5 — "
-    "chỉ tin fill trong **Thống kê lệnh** / `trades.json`."
-  )
-  st.caption(
-    "Background mặc định = **process riêng** (`mt5_bridge_service.py`) — "
-    "đổi tab / refresh GUI **không** dừng service. Chỉ dừng khi bấm Stop hoặc kill process."
-  )
-
-  cfg = bridge_bg.load_config()
-  status = bridge_bg.get_status()
-
-  c1, c2, c3, c4 = st.columns(4)
-  mode = status.get("runtime_mode") or "off"
-  pid = status.get("service_pid")
-  svc_label = "OFF"
-  if status.get("running"):
-    svc_label = f"ON · {mode}" + (f" · pid {pid}" if pid else "")
-  c1.metric("Service", svc_label)
-  c2.metric("Last action", status.get("last_action") or "—")
-  c3.metric("Last bar", str(status.get("last_bar") or "—")[:19])
-  file_status = read_json(status_path()) or {}
-  c4.metric("Bridge state", file_status.get("state") or "—")
-  current_decision = read_json(decision_path()) or {}
-  st.markdown(
-    f"**Chiến lược tuần hiện tại:** "
-    f"`{current_decision.get('strategy_name') or 'đang chờ mine'}`"
-  )
-  st.caption(
-    f"Áp dụng từ tuần `{current_decision.get('week_start') or '—'}` · "
-    f"Trade Model `{current_decision.get('model_id') or status.get('model_id') or '—'}` · "
-    f"quyết định gần nhất `{current_decision.get('updated_at') or '—'}` · "
-    "tự mine lại khi bước sang tuần mới."
-  )
-
-  with st.expander("Cấu hình service", expanded=not status.get("running")):
-    active_model = get_active_trade_model()
-    model_id = (active_model or {}).get("id") or DEFAULT_MODEL_ID
-    if cfg.get("model_id") != model_id:
-      cfg = bridge_bg.save_config(model_id=model_id)
-    st.markdown(
-      f"Trade Model dùng chung với Paper: **"
-      f"{format_model_label(active_model) if active_model else model_id}**"
-    )
-    st.session_state.setdefault("mt5_risk_pct", float(cfg.get("risk_pct", 1.0)))
-    st.session_state.setdefault("mt5_poll_sec", float(cfg.get("poll_sec", 2.0)))
-    risk = st.number_input(
-      "Risk % / lệnh", 0.1, 5.0, step=0.1, key="mt5_risk_pct",
-      on_change=_save_bridge_runtime_settings,
-    )
-    poll = st.number_input(
-      "Poll (giây)", 0.5, 30.0, step=0.5, key="mt5_poll_sec",
-      on_change=_save_bridge_runtime_settings,
-    )
-    st.caption(f"Thư mục bridge: `{BRIDGE_DIR}`")
-
-    b1, b2, b3 = st.columns(3)
-    if b1.button("Start", icon=":material/play_arrow:", type="primary", use_container_width=True):
-      bridge_bg.save_config(model_id=model_id, risk_pct=risk, poll_sec=poll, enabled=True)
-      bridge_bg.start_worker(detached=True)
-      st.success("Đã start process nền (sống khi refresh GUI).")
-      st.rerun()
-    if b2.button("Stop", icon=":material/stop:", use_container_width=True):
-      bridge_bg.stop_worker()
-      st.rerun()
-    if b3.button("1 bar", icon=":material/bolt:", use_container_width=True, help="Xử lý 1 bar ngay"):
-      bridge_bg.save_config(model_id=model_id, risk_pct=risk, poll_sec=poll)
-      with st.spinner("Decide…"):
-        dec = bridge_bg.process_once_now()
-      st.write(dec)
-      st.rerun()
-    st.caption(f"Log process: `results/mt5_bridge_service.log` · PID file: `results/mt5_bridge_service.pid`")
-
+def _render_manual_test_orders() -> None:
+  """Immediate BUY/SELL/CLOSE via command.json — verify EA bridge without waiting for bar close."""
   with st.expander("Kiểm tra bridge (market ngay)", expanded=False):
     st.caption(
       "Ghi `command.json` → EA xử lý ngay trên tick (không chờ nến đóng). "
@@ -196,19 +365,21 @@ def render():
       digits=int(digits) if digits is not None else None,
       point=float(point) if point is not None else None,
     )
-    tc1, tc2, tc3 = st.columns(3)
-    sl_pips = tc1.number_input("SL (pips)", 1.0, 200.0, 20.0, step=1.0, key="mt5_test_sl_pips")
-    tp_pips = tc2.number_input("TP (pips)", 1.0, 400.0, 40.0, step=1.0, key="mt5_test_tp_pips")
+
+    c1, c2, c3 = st.columns(3)
+    sl_pips = c1.number_input("SL (pips)", 1.0, 200.0, 20.0, step=1.0, key="mt5_test_sl_pips")
+    tp_pips = c2.number_input("TP (pips)", 1.0, 400.0, 40.0, step=1.0, key="mt5_test_tp_pips")
     if bid is not None and ask is not None:
-      tc3.metric("Quote", f"{_fmt_px(bid)} / {_fmt_px(ask)}")
-      tc3.caption(f"pip≈{pip:g}")
+      c3.metric("Quote", f"{_fmt_px(bid)} / {_fmt_px(ask)}")
+      c3.caption(f"pip≈{pip:g}")
     else:
-      tc3.warning("Chưa có bid/ask — EA offline?")
+      c3.warning("Chưa có bid/ask — EA offline?")
+
     confirm = st.checkbox(
       "Tôi hiểu đây là lệnh market thật/demo trên MT5",
       key="mt5_test_confirm",
     )
-    tb1, tb2, tb3 = st.columns(3)
+    b1, b2, b3 = st.columns(3)
 
     def _send_market(action: str) -> None:
       if bid is None or ask is None:
@@ -228,11 +399,11 @@ def render():
       st.success(f"Đã gửi {action} · chờ EA ack · id `{payload.get('signal_id')}`")
       st.session_state["mt5_last_test_cmd"] = payload
 
-    if tb1.button("BUY market", type="primary", use_container_width=True, disabled=not confirm):
+    if b1.button("BUY market", type="primary", use_container_width=True, disabled=not confirm):
       _send_market("BUY")
-    if tb2.button("SELL market", use_container_width=True, disabled=not confirm):
+    if b2.button("SELL market", use_container_width=True, disabled=not confirm):
       _send_market("SELL")
-    if tb3.button("CLOSE all", use_container_width=True, disabled=not confirm):
+    if b3.button("CLOSE all", use_container_width=True, disabled=not confirm):
       payload = write_manual_close_command()
       append_event(
         "app_to_ea",
@@ -258,9 +429,74 @@ def render():
       st.markdown("**fill gần nhất**")
       st.json(fill or {"_": "chưa có fill"})
 
-  if status.get("last_error"):
-    st.error(status["last_error"])
 
+def _render_service_controls() -> None:
+  cfg = bridge_bg.load_config()
+  status = bridge_bg.get_status()
+  with st.expander("Cấu hình service", expanded=not status.get("running")):
+    active_model = get_active_trade_model()
+    model_id = (active_model or {}).get("id") or DEFAULT_MODEL_ID
+    if cfg.get("model_id") != model_id:
+      cfg = bridge_bg.save_config(model_id=model_id)
+    st.markdown(
+      f"Trade Model: **"
+      f"{format_model_label(active_model) if active_model else model_id}**"
+    )
+    st.session_state.setdefault("mt5_risk_pct", float(cfg.get("risk_pct", 1.0)))
+    st.session_state.setdefault("mt5_poll_sec", float(cfg.get("poll_sec", 2.0)))
+    risk = st.number_input(
+      "Risk % / lệnh", 0.1, 5.0, step=0.1, key="mt5_risk_pct",
+      on_change=_save_bridge_runtime_settings,
+    )
+    poll = st.number_input(
+      "Poll (giây)", 0.5, 30.0, step=0.5, key="mt5_poll_sec",
+      on_change=_save_bridge_runtime_settings,
+    )
+    st.caption(f"Bridge dir: `{BRIDGE_DIR}`")
+
+    b1, b2, b3 = st.columns(3)
+    if b1.button("Start", icon=":material/play_arrow:", type="primary", use_container_width=True):
+      bridge_bg.save_config(model_id=model_id, risk_pct=risk, poll_sec=poll, enabled=True)
+      bridge_bg.start_worker(detached=True)
+      st.success("Đã start process nền.")
+      st.rerun()
+    if b2.button("Stop", icon=":material/stop:", use_container_width=True):
+      bridge_bg.stop_worker()
+      st.rerun()
+    if b3.button("1 bar", icon=":material/bolt:", use_container_width=True, help="Xử lý 1 bar ngay"):
+      bridge_bg.save_config(model_id=model_id, risk_pct=risk, poll_sec=poll)
+      with st.spinner("Decide…"):
+        dec = bridge_bg.process_once_now()
+      st.write(dec)
+      st.rerun()
+    st.caption("`results/mt5_bridge_service.log` · `results/mt5_bridge_service.pid`")
+
+    st.divider()
+    st.markdown("##### Triển khai EA sang MT5")
+    st.caption("Sao chép và biên dịch EA `ForgeBridge.mq5`, tự động thiết lập Junction và liên kết biểu đồ EURUSD M15.")
+    if st.button("Chạy Script Triển khai (Deploy)", icon=":material/settings_suggest:", use_container_width=True):
+      with st.spinner("Đang chạy deploy script..."):
+        try:
+          import subprocess
+          cmd = [
+            "powershell.exe",
+            "-ExecutionPolicy", "Bypass",
+            "-File", "scripts/deploy_xm_forgebridge.ps1",
+            "-Attach",
+            "-EnableTrading"
+          ]
+          res = subprocess.run(cmd, capture_output=True, text=True, check=False)
+          if res.returncode == 0:
+            st.success("Triển khai EA thành công!")
+            st.code(res.stdout)
+          else:
+            st.error(f"Lỗi khi triển khai (Mã lỗi: {res.returncode}):")
+            st.code(res.stderr + "\n" + res.stdout)
+        except Exception as e:
+          st.error(f"Lỗi: {e}")
+
+
+def _render_history_sync() -> None:
   history = get_history_status()
   history_data = history.get("data") or {}
   received = int(history.get("received_bars") or 0)
@@ -270,40 +506,26 @@ def render():
     if history.get("state") in ("requesting", "receiving"):
       st.progress(
         received / max(available, 1),
-        text=f"Đồng bộ lịch sử MT5: {received}/{available or '?'} nến H1",
+        text=f"Đồng bộ lịch sử MT5: {received}/{available or '?'} nến M15",
       )
     elif history_data.get("bars"):
       st.caption(
-        f"Dữ liệu MT5: **{history_data.get('bars')} nến H1** · "
+        f"MT5 history: **{history_data.get('bars')} nến** · "
         f"{str(history_data.get('start'))[:10]} → {str(history_data.get('end'))[:16]} · "
         f"{history_data.get('broker') or '?'}"
       )
     else:
-      st.warning("Chưa có lịch sử MT5 để train và tạo tín hiệu.")
+      st.warning("Chưa có lịch sử MT5 để train / tín hiệu.")
   with h2:
     if st.button("Đồng bộ history", key="mt5_history_sync", use_container_width=True):
       start_history_sync(force=True)
       st.rerun()
 
-  st.subheader("Giám sát MT5 trực tiếp")
-  chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]
-  restore_widget(
-    "mt5_chart_range", "7 ngày",
-    preference_key="mt5.chart_range",
-    options=chart_ranges,
-  )
-  range_label = st.selectbox(
-    "Khoảng chart",
-    chart_ranges,
-    key="mt5_chart_range",
-    on_change=preference_callback("mt5_chart_range", "mt5.chart_range"),
-  )
-  max_bars = {"48 giờ": 48, "7 ngày": 168, "14 ngày": 336}[range_label]
-  _render_live_chart(max_bars)
 
+def _render_stats_section() -> None:
   st.subheader("Thống kê lệnh Bridge")
   st.caption(
-    "Từ `mt5/bridge_h1/trades.json` — tách **Auto** (chiến lược thuần) vs **Lệnh sửa** "
+    "Từ `mt5/bridge/trades.json` — tách **Auto** (chiến lược thuần) vs **Lệnh sửa** "
     "(test market / sửa SL·TP tay / đóng tay). R luôn theo SL kế hoạch lúc mở."
   )
 
@@ -311,10 +533,10 @@ def render():
   today = date.today()
   default_from = today - timedelta(days=30)
   default_to = today
-  for trow in all_trades:
+  for t in all_trades:
     for key in ("entry_time", "exit_time"):
       try:
-        ts = pd.Timestamp(trow.get(key)).date()
+        ts = pd.Timestamp(t.get(key)).date()
         if ts < default_from:
           default_from = ts
       except Exception:
@@ -322,16 +544,16 @@ def render():
 
   p1, p2, p3 = st.columns([2, 1, 1])
   preset_options = [
-    "Tất cả",
     "Hôm nay",
+    "Tuần này (T2→nay)",
     "7 ngày",
     "30 ngày",
-    "Tuần này (T2→nay)",
     "Tháng này",
+    "Tất cả",
     "Tùy chọn",
   ]
   restore_widget(
-    "bridge_stats_preset", "Tất cả",
+    "bridge_stats_preset", "Hôm nay",
     preference_key="mt5.stats_preset",
     options=preset_options,
   )
@@ -383,17 +605,17 @@ def render():
     date_from, date_to = date_to, date_from
 
   period_trades = filter_trades(all_trades, date_from=date_from, date_to=date_to)
-  n_auto = sum(1 for x in period_trades if trade_mode(x) == "auto")
-  n_manual = sum(1 for x in period_trades if trade_mode(x) == "manual")
+  n_auto = sum(1 for t in period_trades if trade_mode(t) == "auto")
+  n_manual = sum(1 for t in period_trades if trade_mode(t) == "manual")
   if date_from or date_to:
     st.caption(
       f"Lọc: **{date_from or '…'} → {date_to or '…'}** · "
       f"{len(period_trades)} lệnh (auto {n_auto} · sửa {n_manual})"
     )
 
-  def _stats_block(label: str, mode: str | None):
-    trades_m = filter_trades(all_trades, date_from=date_from, date_to=date_to, mode=mode)
-    stats = compute_stats(trades_m)
+  def _stats_block(label: str, mode: str | None) -> None:
+    trades = filter_trades(all_trades, date_from=date_from, date_to=date_to, mode=mode)
+    stats = compute_stats(trades)
     st.markdown(f"**{label}** · {stats['n_filtered']} lệnh")
     s1, s2, s3, s4, s5, s6 = st.columns(6)
     s1.metric("Đã đóng", stats["n_trades"])
@@ -451,89 +673,133 @@ def render():
   )
   mode_filter = {"Auto": "auto", "Lệnh sửa": "manual", "Tất cả": None}[table_mode]
   trades = filter_trades(all_trades, date_from=date_from, date_to=date_to, mode=mode_filter)
-  view = trades if show_open else [x for x in trades if x.get("status") == "CLOSED"]
+  view = trades if show_open else [t for t in trades if t.get("status") == "CLOSED"]
   view = list(reversed(view))
   if not view:
     st.info("Không có lệnh trong giai đoạn / mode đã chọn.")
   else:
     table = []
-    for x in view:
+    for t in view:
       table.append({
-        "mode": trade_mode(x),
-        "status": x.get("status"),
-        "result": x.get("result") or ("OPEN" if x.get("status") == "OPEN" else "—"),
-        "dir": x.get("direction"),
-        "entry_time": x.get("entry_time"),
-        "exit_time": x.get("exit_time"),
-        "entry": x.get("entry_px"),
-        "exit": x.get("exit_px"),
-        "sl": x.get("sl"),
-        "sl₀": x.get("sl_initial"),
-        "tp": x.get("tp"),
-        "R": x.get("r"),
-        "profit": x.get("profit"),
-        "reason": x.get("reason"),
-        "intervened": ",".join(x.get("interventions") or []) or "—",
-        "ticket": x.get("ticket"),
-        "signal_id": x.get("signal_id"),
-        "strategy": x.get("strategy_name"),
+        "mode": trade_mode(t),
+        "status": t.get("status"),
+        "result": t.get("result") or ("OPEN" if t.get("status") == "OPEN" else "—"),
+        "dir": t.get("direction"),
+        "entry_time": t.get("entry_time"),
+        "exit_time": t.get("exit_time"),
+        "entry": t.get("entry_px"),
+        "exit": t.get("exit_px"),
+        "sl": t.get("sl"),
+        "sl₀": t.get("sl_initial"),
+        "tp": t.get("tp"),
+        "R": t.get("r"),
+        "profit": t.get("profit"),
+        "reason": t.get("reason"),
+        "intervened": ",".join(t.get("interventions") or []) or "—",
+        "ticket": t.get("ticket"),
+        "signal_id": t.get("signal_id"),
+        "strategy": t.get("strategy_name"),
       })
     st.dataframe(pd.DataFrame(table), use_container_width=True, hide_index=True)
     with st.expander("JSON lệnh đầy đủ"):
       st.json(view[:30])
 
-  st.subheader("Snapshot files (App ↔ EA)")
-  t1, t2, t3, t4, t5 = st.tabs([
-    "connection.json",
-    "bars.json",
-    "bar.json (EA→App)",
-    "decision.json (App→EA)",
-    "fill.json (EA→App)",
-  ])
-  with t1:
-    st.json(read_json(connection_path()) or {"_": "chưa có heartbeat"})
-  with t2:
-    bars = read_json(bars_path()) or {}
-    if isinstance(bars, dict) and bars.get("bars"):
-      st.caption(f"{len(bars['bars'])} nến · cập nhật `{bars.get('updated_at', '—')}`")
-      st.json({**bars, "bars": bars["bars"][-5:]})
-    else:
-      st.json({"_": "chưa có lịch sử nến"})
-  with t3:
-    st.json(read_json(bar_path()) or {"_": "chưa có — EA Live chưa ghi bar"})
-  with t4:
-    st.json(read_json(decision_path()) or {"_": "chưa có decision"})
-  with t5:
-    st.json(read_json(fill_path()) or {"_": "chưa có fill"})
 
-  st.subheader("Nhật ký giao tiếp")
-  st.caption("File: `mt5/bridge/comm_log.jsonl` — bar / decision / fill / system")
-  lc1, lc2 = st.columns([1, 4])
-  restore_widget("bridge_log_limit", 200, preference_key="mt5.log_limit")
-  limit = lc1.number_input(
-    "Số dòng", 20, 1000, step=20, key="bridge_log_limit",
-    on_change=preference_callback("bridge_log_limit", "mt5.log_limit"),
-  )
-  if lc2.button("Xóa log"):
-    clear_log()
-    st.rerun()
+def _render_debug_sections() -> None:
+  with st.expander("Snapshot files (App ↔ EA)", expanded=False):
+    t1, t2, t3, t4, t5, t6 = st.tabs([
+      "connection.json",
+      "bars.json",
+      "bar.json (EA→App)",
+      "decision.json (App→EA)",
+      "command.json (test)",
+      "fill.json (EA→App)",
+    ])
+    with t1:
+      st.json(read_json(connection_path()) or {"_": "chưa có heartbeat"})
+    with t2:
+      bars = read_json(bars_path()) or {}
+      if isinstance(bars, dict) and bars.get("bars"):
+        st.caption(f"{len(bars['bars'])} nến · cập nhật `{bars.get('updated_at', '—')}`")
+        st.json({**bars, "bars": bars["bars"][-5:]})
+      else:
+        st.json({"_": "chưa có lịch sử nến"})
+    with t3:
+      st.json(read_json(bar_path()) or {"_": "chưa có — EA Live chưa ghi bar"})
+    with t4:
+      st.json(read_json(decision_path()) or {"_": "chưa có decision"})
+    with t5:
+      st.json({
+        "command": read_json(command_path()) or {"_": "trống (EA đã xóa sau khi xử lý)"},
+        "command_ack": read_json(command_ack_path()) or {"_": "chưa có"},
+      })
+    with t6:
+      st.json(read_json(fill_path()) or {"_": "chưa có fill"})
 
-  events = list(reversed(read_events(limit=int(limit))))
-  if not events:
-    st.warning(
-      "Chưa có log. Start service và gắn EA ForgeBridge (Live), "
-      "hoặc bấm **Xử lý 1 bar ngay**."
+  with st.expander("Nhật ký giao tiếp", expanded=False):
+    st.caption("`mt5/bridge/comm_log.jsonl` — bar / decision / fill / system")
+    lc1, lc2 = st.columns([1, 4])
+    restore_widget("bridge_log_limit", 200, preference_key="mt5.log_limit")
+    limit = lc1.number_input(
+      "Số dòng", 20, 1000, step=20, key="bridge_log_limit",
+      on_change=preference_callback("bridge_log_limit", "mt5.log_limit"),
     )
-  else:
-    rows = [{
-      "ts": e.get("ts"),
-      "hướng": e.get("direction"),
-      "sự kiện": e.get("event"),
-      "tóm tắt": e.get("summary"),
-    } for e in events]
-    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-    with st.expander("Chi tiết JSON từng event"):
-      st.json(events[:50])
+    if lc2.button("Xóa log"):
+      clear_log()
+      st.rerun()
+
+    events = list(reversed(read_events(limit=int(limit))))
+    if not events:
+      st.warning("Chưa có log. Start service + gắn EA ForgeBridge, hoặc bấm **1 bar**.")
+    else:
+      rows = [{
+        "ts": e.get("ts"),
+        "hướng": e.get("direction"),
+        "sự kiện": e.get("event"),
+        "tóm tắt": e.get("summary"),
+      } for e in events]
+      st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+      with st.expander("Chi tiết JSON từng event"):
+        st.json(events[:50])
+
+
+def render():
+  render_page_header(ALL_ITEMS["mt5_bridge"], show_workspace=False)
+
+  st.caption(
+    "MT5 ForgeBridge · **lệnh thật/demo** theo Trade Model · EA execute. "
+    "Khác **Paper** (chỉ mô phỏng). Service process riêng — refresh GUI không dừng."
+  )
+  st.info(
+    "Paper có `SIGNAL`/`FILLED` ≠ lệnh đã vào MT5. "
+    "Chỉ tin fill trong **Thống kê lệnh Bridge** / `trades.json`."
+  )
+
+  # Trader desk (auto-refresh) — chart stays outside fragment
+  _trader_desk_fragment()
+
+  _render_service_controls()
+  _render_manual_test_orders()
+  _render_history_sync()
+
+  st.subheader("Giám sát MT5 trực tiếp")
+  chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]
+  restore_widget(
+    "mt5_chart_range", "7 ngày",
+    preference_key="mt5.chart_range",
+    options=chart_ranges,
+  )
+  range_label = st.selectbox(
+    "Khoảng chart",
+    chart_ranges,
+    key="mt5_chart_range",
+    on_change=preference_callback("mt5_chart_range", "mt5.chart_range"),
+  )
+  max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
+  _render_live_chart(max_bars)
+
+  _render_stats_section()
+  _render_debug_sections()
 
   st.divider()
-  st.markdown("Chi tiết: **Hướng dẫn** (mục MT5 Bridge) hoặc `mt5/bridge/README.md`.")
+  st.caption("Chi tiết: mục **Hướng dẫn** / `mt5/bridge/README.md`.")

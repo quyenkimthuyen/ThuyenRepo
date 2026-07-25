@@ -1,4 +1,4 @@
-"""Bridge decision engine — merge MT5 bars + Best 3m weekly remine."""
+"""Bridge decision engine — merge MT5 M15 bars + weekly remine."""
 from __future__ import annotations
 
 import hashlib
@@ -7,7 +7,7 @@ from typing import Any
 
 import pandas as pd
 
-from config import DEFAULT_RISK_PCT_PER_TRADE, MIN_TRAIN_BARS, TRAIN_MONTHS
+from config import DEFAULT_RISK_PCT_PER_TRADE, MIN_TRAIN_BARS, TRAIN_WEEKS
 from data_loader import get_train_window_indices, get_week_indices
 from feature_engine import FeatureMatrix
 from mt5_bridge.history_sync import (
@@ -17,11 +17,20 @@ from mt5_bridge.history_sync import (
   start_history_sync,
   utc_to_broker_time,
 )
-from mt5_bridge.models import get_model_run_params, resolve_model
+from mt5_bridge.models import (
+  conditions_fingerprint,
+  describe_strategy_conditions,
+  get_model_run_params,
+  resolve_model,
+  strategy_conditions,
+)
 from mt5_bridge.protocol import DEFAULT_MAGIC, DEFAULT_MODEL_ID, utc_now_iso
 from optimizer import get_knowledge_base, optimize_on_window, set_kb_profile
 from paper_monitor import _current_week_bounds, _project_signal_levels
-from strategy_miner import backtest_mined, ensure_label_cache_for_df, generate_signals_mined
+from strategy_miner import (
+  backtest_mined, ensure_label_cache_for_df, generate_signals_mined,
+  mining_search_space_from_dict,
+)
 
 MT5_CACHE = MT5_CACHE_PATH
 
@@ -52,6 +61,24 @@ class BridgeEngine:
   def params(self) -> dict:
     return self._params
 
+  @property
+  def conditions_fp(self) -> str:
+    return conditions_fingerprint(self._params)
+
+  def describe_conditions(self) -> dict:
+    return describe_strategy_conditions(self._params)
+
+  def refresh_model(self) -> bool:
+    """Re-read Trade Model from disk. Clear remine cache if conditions changed."""
+    new_model = resolve_model(self.model_id)
+    new_params = get_model_run_params(new_model, self.model_id)
+    changed = conditions_fingerprint(new_params) != self.conditions_fp
+    self._model = new_model
+    self._params = new_params
+    if changed:
+      self._strat_cache.clear()
+    return changed
+
   def ensure_history(self, force: bool = False) -> pd.DataFrame:
     """Load canonical broker history and request EA synchronization when needed."""
     if force:
@@ -78,7 +105,7 @@ class BridgeEngine:
     self._df.to_parquet(self.mt5_cache)
 
   def merge_bar(self, bar: dict) -> pd.Timestamp:
-    """Append/overwrite one H1 bar from EA. Returns bar timestamp."""
+    """Append/overwrite one M15 bar from EA. Returns bar timestamp."""
     if self.mt5_cache.resolve() == MT5_CACHE_PATH.resolve():
       self._df = merge_history_bars([bar], {
         "server": bar.get("server"),
@@ -108,21 +135,26 @@ class BridgeEngine:
     return ts
 
   def decide_for_bar(self, bar: dict) -> dict:
-    """Produce decision.json payload for the closed H1 bar from EA."""
+    """Produce decision.json payload for the closed M15 bar from EA."""
     bar_ts = self.merge_bar(bar)
     bar_key = bar_ts.isoformat(sep=" ")
     if bar_key == self._last_bar_key and self._last_decision is not None:
       return self._last_decision
 
     params = self._params
-    train_months = int(params.get("train_months") or TRAIN_MONTHS)
+    train_weeks = int(params.get("train_weeks") or TRAIN_WEEKS)
     use_learning = bool(params.get("use_learning", True))
     kb_profile = params.get("kb_profile")
     kb_snapshot = params.get("kb_snapshot")
     spread = float(params.get("spread_pips", 1.0))
     slip = float(params.get("slippage_pips", 0.3))
     model_id = params.get("trade_model_id") or self.model_id
-    if not self._model or self._model.get("data_source") != "mt5_ea":
+    if (
+      not self._model
+      or self._model.get("data_source") != "mt5_ea"
+      or self._model.get("data_timeframe") != "M15"
+      or int(self._model.get("feature_schema") or 0) < 2
+    ):
       decision = self._flat(
         bar_ts, model_id, reason="legacy_data_source_blocked",
       )
@@ -130,11 +162,17 @@ class BridgeEngine:
 
     df = self.load()
     ensure_label_cache_for_df(len(df))
-    fm = FeatureMatrix(df)
+    feature_profile = params.get("feature_profile") or "current"
+    search_payload = params.get("mining_search_space")
+    search_space = (
+      mining_search_space_from_dict(search_payload) if search_payload else None
+    )
+    fm = FeatureMatrix(df, profile=feature_profile)
     week_start, week_end = _current_week_bounds(df)
 
     cache_key = (
-      f"{week_start.date()}|{model_id}|{kb_profile}@{kb_snapshot}|{train_months}"
+      f"{week_start.date()}|{model_id}|{kb_profile}@{kb_snapshot}|{train_weeks}w|"
+      f"{feature_profile}|{search_space!r}"
     )
     strat = self._strat_cache.get(cache_key)
     if strat is None:
@@ -143,7 +181,7 @@ class BridgeEngine:
         if kb_profile:
           set_kb_profile(kb_profile, kb_snapshot)
         kb = get_knowledge_base(kb_profile, kb_snapshot)
-      ts, te = get_train_window_indices(df, week_start, train_months)
+      ts, te = get_train_window_indices(df, week_start, train_weeks)
       if ts is None or (te - ts) < MIN_TRAIN_BARS:
         decision = self._flat(
           bar_ts, model_id, reason="insufficient_train_data", week_start=week_start,
@@ -151,6 +189,7 @@ class BridgeEngine:
         return self._remember(bar_key, decision)
       strat = optimize_on_window(
         fm, ts, te, use_learning=use_learning, as_of=week_start, kb=kb,
+        search_space=search_space,
       )
       if strat is None:
         decision = self._flat(
@@ -192,7 +231,12 @@ class BridgeEngine:
       bar_idx = bar_idx.start
 
     direction = int(signals[bar_idx]) if 0 <= bar_idx < len(signals) else 0
-    slots_left = max(int(strat.max_trades_per_week) - len(week_trades), 0)
+    broker_day = utc_to_broker_time(bar_ts).date()
+    day_trades = [
+      trade for trade in week_trades
+      if utc_to_broker_time(trade.entry_time).date() == broker_day
+    ]
+    slots_left = max(int(strat.max_trades_per_day) - len(day_trades), 0)
     if open_position:
       decision = self._hold(
         bar_ts, model_id, reason="position_open", week_start=week_start, strat=strat,
@@ -216,7 +260,7 @@ class BridgeEngine:
 
     action = "BUY" if direction == 1 else "SELL"
     sig_id = _signal_id(model_id, bar_ts, action)
-    expires = bar_ts + pd.Timedelta(hours=2)
+    expires = bar_ts + pd.Timedelta(minutes=15)
     decision = {
       "signal_id": sig_id,
       "action": action,
@@ -240,6 +284,8 @@ class BridgeEngine:
       "strategy_name": strat.name,
       "updated_at": utc_now_iso(),
       "reason": "signal",
+      "conditions_fp": self.conditions_fp,
+      "run_conditions": strategy_conditions(self._params),
     }
     return self._remember(bar_key, decision)
 
@@ -262,12 +308,14 @@ class BridgeEngine:
       "magic": self.magic,
       "bar_time": _fmt_bar(bar_ts),
       "model_id": model_id,
-      "expires_bar_time": _fmt_bar(bar_ts + pd.Timedelta(hours=2)),
+      "expires_bar_time": _fmt_bar(bar_ts + pd.Timedelta(minutes=15)),
       "week_start": str(week_start.date()) if week_start is not None else None,
       "strategy_name": getattr(strat, "name", None),
       "slots_remaining": slots_remaining,
       "updated_at": utc_now_iso(),
       "reason": reason,
+      "conditions_fp": self.conditions_fp,
+      "run_conditions": strategy_conditions(self._params),
     }
 
   def _hold(

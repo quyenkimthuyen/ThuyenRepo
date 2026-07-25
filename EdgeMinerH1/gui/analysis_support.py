@@ -40,13 +40,15 @@ def start_model_report_job(model: dict | None = None) -> str:
     "backtest",
     {
       "use_learning": bool(p.get("use_kb", True)),
-      "train_months": int(p.get("train_months") or 6),
+      "train_weeks": int(p.get("train_weeks") or 6),
       "spread_pips": float(p.get("spread_pips", 1.0)),
       "slippage_pips": float(p.get("slippage_pips", 0.3)),
       "kb_profile": p.get("kb_profile"),
       "kb_snapshot": p.get("kb_snapshot"),
       "oos_from": p.get("oos_from"),
       "oos_to": p.get("oos_to"),
+      "feature_profile": p.get("feature_profile") or "current",
+      "mining_search_space": p.get("mining_search_space"),
       "holdout_months": 0,
       "archive": True,
       "archive_label": f"TM {format_model_label(m)[:48]}",
@@ -82,10 +84,11 @@ def start_model_health_job(
       "kb_snapshot": p.get("kb_snapshot"),
       "oos_from": p.get("oos_from"),
       "oos_to": p.get("oos_to"),
+      "feature_profile": p.get("feature_profile") or "current",
+      "mining_search_space": p.get("mining_search_space"),
     },
     label=f"Sức khỏe model · {format_model_label(m)[:40]}",
   )
-
 
 
 def render_report_required_panel(*, key_prefix: str = "an_rep") -> bool:

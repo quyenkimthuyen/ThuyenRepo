@@ -47,6 +47,8 @@ def start_model_report_job(model: dict | None = None) -> str:
       "kb_snapshot": p.get("kb_snapshot"),
       "oos_from": p.get("oos_from"),
       "oos_to": p.get("oos_to"),
+      "feature_profile": p.get("feature_profile") or "current",
+      "mining_search_space": p.get("mining_search_space"),
       "holdout_months": 0,
       "archive": True,
       "archive_label": f"TM {format_model_label(m)[:48]}",
@@ -82,6 +84,8 @@ def start_model_health_job(
       "kb_snapshot": p.get("kb_snapshot"),
       "oos_from": p.get("oos_from"),
       "oos_to": p.get("oos_to"),
+      "feature_profile": p.get("feature_profile") or "current",
+      "mining_search_space": p.get("mining_search_space"),
     },
     label=f"Sức khỏe model · {format_model_label(m)[:40]}",
   )

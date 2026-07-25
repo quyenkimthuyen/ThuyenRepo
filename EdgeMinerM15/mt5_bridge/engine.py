@@ -17,7 +17,13 @@ from mt5_bridge.history_sync import (
   start_history_sync,
   utc_to_broker_time,
 )
-from mt5_bridge.models import get_model_run_params, resolve_model
+from mt5_bridge.models import (
+  conditions_fingerprint,
+  describe_strategy_conditions,
+  get_model_run_params,
+  resolve_model,
+  strategy_conditions,
+)
 from mt5_bridge.protocol import DEFAULT_MAGIC, DEFAULT_MODEL_ID, utc_now_iso
 from optimizer import get_knowledge_base, optimize_on_window, set_kb_profile
 from paper_monitor import _current_week_bounds, _project_signal_levels
@@ -54,6 +60,24 @@ class BridgeEngine:
   @property
   def params(self) -> dict:
     return self._params
+
+  @property
+  def conditions_fp(self) -> str:
+    return conditions_fingerprint(self._params)
+
+  def describe_conditions(self) -> dict:
+    return describe_strategy_conditions(self._params)
+
+  def refresh_model(self) -> bool:
+    """Re-read Trade Model from disk. Clear remine cache if conditions changed."""
+    new_model = resolve_model(self.model_id)
+    new_params = get_model_run_params(new_model, self.model_id)
+    changed = conditions_fingerprint(new_params) != self.conditions_fp
+    self._model = new_model
+    self._params = new_params
+    if changed:
+      self._strat_cache.clear()
+    return changed
 
   def ensure_history(self, force: bool = False) -> pd.DataFrame:
     """Load canonical broker history and request EA synchronization when needed."""
@@ -260,6 +284,8 @@ class BridgeEngine:
       "strategy_name": strat.name,
       "updated_at": utc_now_iso(),
       "reason": "signal",
+      "conditions_fp": self.conditions_fp,
+      "run_conditions": strategy_conditions(self._params),
     }
     return self._remember(bar_key, decision)
 
@@ -288,6 +314,8 @@ class BridgeEngine:
       "slots_remaining": slots_remaining,
       "updated_at": utc_now_iso(),
       "reason": reason,
+      "conditions_fp": self.conditions_fp,
+      "run_conditions": strategy_conditions(self._params),
     }
 
   def _hold(

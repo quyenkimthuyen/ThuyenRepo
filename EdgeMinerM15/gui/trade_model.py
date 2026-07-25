@@ -450,6 +450,7 @@ def delete_trade_model(model_id: str) -> bool:
 
 
 def get_model_run_params(model: dict | None = None) -> dict:
+  """Canonical run params — delegates to mt5_bridge.models (same as Bridge)."""
   m = model or get_active_trade_model()
   if not m:
     from gui.app_settings import default_learning_era, get_settings
@@ -469,23 +470,8 @@ def get_model_run_params(model: dict | None = None) -> dict:
       "feature_profile": "current",
       "mining_search_space": None,
     }
-  return {
-    "train_weeks": int(m.get("train_weeks", 6)),
-    "use_learning": bool(m.get("use_kb", True)),
-    "use_kb": bool(m.get("use_kb", True)),
-    "kb_profile": m.get("kb_profile") or "default",
-    "kb_snapshot": _normalize_snapshot(m.get("kb_snapshot")),
-    "oos_from": m.get("oos_from"),
-    "oos_to": m.get("oos_to"),
-    "spread_pips": float(m.get("spread_pips", DEFAULT_SPREAD_PIPS)),
-    "slippage_pips": float(m.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
-    "feature_profile": (
-      m.get("feature_profile")
-      or ("legacy" if int(m.get("feature_schema") or 0) < 3 else "current")
-    ),
-    "mining_search_space": m.get("mining_search_space"),
-    "trade_model_id": m.get("id"),
-  }
+  from mt5_bridge.models import get_model_run_params as bridge_run_params
+  return bridge_run_params(m, m.get("id"))
 
 
 def trade_model_to_workspace(m: dict | None = None) -> dict:
@@ -532,6 +518,31 @@ def report_matches_model(report: dict, model: dict | None = None) -> bool:
     return cfg["trade_model_id"] == m["id"]
   from gui.workspace import report_matches_workspace
   return report_matches_workspace(report, trade_model_to_workspace(m))
+
+
+def _space_fingerprint(space: dict | None) -> tuple:
+  if not space:
+    return ()
+  return (
+    tuple(tuple(x) if isinstance(x, list) else x for x in (space.get("session_ranges") or [])),
+    tuple(space.get("min_bars_between") or []),
+    tuple(space.get("max_hold_bars") or []),
+  )
+
+
+def report_search_space_matches_model(
+  report: dict | None,
+  model: dict | None = None,
+) -> bool:
+  """True if report mining space matches the Trade Model (session/spacing/hold)."""
+  m = model or get_active_trade_model()
+  if not report or not m:
+    return False
+  expected = m.get("mining_search_space")
+  if not expected:
+    return True
+  actual = (report.get("config") or {}).get("mining_search_space")
+  return _space_fingerprint(expected) == _space_fingerprint(actual)
 
 
 def ensure_trade_models_loaded():

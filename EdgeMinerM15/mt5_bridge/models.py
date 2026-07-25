@@ -1,6 +1,11 @@
-"""Headless trade-model loaders (no Streamlit)."""
+"""Headless trade-model loaders (no Streamlit).
+
+Canonical source for Bridge + Health/backtest run conditions
+(train weeks, KB, feature profile, mining search space, spread/slip).
+"""
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -11,6 +16,19 @@ from run_backtest import REPORT_DIR
 MODELS_PATH = REPORT_DIR / "trade_models.json"
 ACTIVE_MODEL_PATH = REPORT_DIR / "active_trade_model.json"
 DEFAULT_MODEL_ID = ""
+
+# Fields that must match between MT5 Bridge live remine and Health/backtest.
+STRATEGY_CONDITION_KEYS = (
+  "trade_model_id",
+  "train_weeks",
+  "use_learning",
+  "kb_profile",
+  "kb_snapshot",
+  "feature_profile",
+  "spread_pips",
+  "slippage_pips",
+  "mining_search_space",
+)
 
 
 def _read_json(path: Path) -> Any:
@@ -68,11 +86,14 @@ def get_model_run_params(model: dict | None = None, model_id: str | None = None)
       "use_kb": True,
       "kb_profile": "era_2023_2025",
       "kb_snapshot": 1,
+      "oos_from": None,
+      "oos_to": None,
       "spread_pips": float(DEFAULT_SPREAD_PIPS),
       "slippage_pips": float(DEFAULT_SLIPPAGE_PIPS),
       "feature_profile": "current",
       "mining_search_space": None,
       "trade_model_id": None,
+      "label": None,
     }
   return {
     "train_weeks": int(m.get("train_weeks", 3)),
@@ -92,3 +113,42 @@ def get_model_run_params(model: dict | None = None, model_id: str | None = None)
     "trade_model_id": m.get("id"),
     "label": m.get("label"),
   }
+
+
+def strategy_conditions(params: dict | None) -> dict[str, Any]:
+  """Subset of params shared by Bridge remine and Health/backtest."""
+  p = params or {}
+  ss = p.get("mining_search_space") or None
+  return {
+    "trade_model_id": p.get("trade_model_id"),
+    "train_weeks": int(p.get("train_weeks") or 3),
+    "use_learning": bool(p.get("use_learning", p.get("use_kb", True))),
+    "kb_profile": p.get("kb_profile"),
+    "kb_snapshot": p.get("kb_snapshot"),
+    "feature_profile": p.get("feature_profile") or "current",
+    "spread_pips": round(float(p.get("spread_pips") or DEFAULT_SPREAD_PIPS), 4),
+    "slippage_pips": round(float(p.get("slippage_pips") or DEFAULT_SLIPPAGE_PIPS), 4),
+    "mining_search_space": ss,
+  }
+
+
+def conditions_fingerprint(params: dict | None) -> str:
+  raw = json.dumps(strategy_conditions(params), sort_keys=True, default=str, ensure_ascii=False)
+  return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
+
+
+def describe_strategy_conditions(params: dict | None) -> dict[str, Any]:
+  """UI-friendly summary (session / spacing / hold)."""
+  c = strategy_conditions(params)
+  ss = c.get("mining_search_space") or {}
+  return {
+    **{k: c[k] for k in c if k != "mining_search_space"},
+    "session_ranges": ss.get("session_ranges"),
+    "min_bars_between": ss.get("min_bars_between"),
+    "max_hold_bars": ss.get("max_hold_bars"),
+    "conditions_fp": conditions_fingerprint(params),
+  }
+
+
+def conditions_match(a: dict | None, b: dict | None) -> bool:
+  return conditions_fingerprint(a) == conditions_fingerprint(b)

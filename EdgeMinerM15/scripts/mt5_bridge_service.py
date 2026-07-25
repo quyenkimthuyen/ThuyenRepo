@@ -233,7 +233,11 @@ def main() -> int:
     except OSError as e:
       print(f"[bridge] live monitor unavailable: {e}", flush=True)
   engine = BridgeEngine(model_id=args.model_id, risk_pct=args.risk_pct)
-  print(f"[bridge] dir={bridge_dir} model={engine.model_id}", flush=True)
+  print(
+    f"[bridge] dir={bridge_dir} model={engine.model_id} "
+    f"conditions_fp={engine.conditions_fp}",
+    flush=True,
+  )
   start_history_sync(bridge_dir, force=args.seed)
   try:
     engine.ensure_history()
@@ -241,7 +245,11 @@ def main() -> int:
   except Exception as e:
     print(f"[bridge] waiting for MT5 history: {e}", flush=True)
 
-  write_status(bridge_dir, state="running", model_id=engine.model_id, error=None)
+  write_status(
+    bridge_dir, state="running", model_id=engine.model_id, error=None,
+    conditions_fp=engine.conditions_fp,
+    run_conditions=engine.describe_conditions(),
+  )
   last_fp: str | None = None
   last_fill_fp: str | None = None
   while True:
@@ -251,6 +259,8 @@ def main() -> int:
         write_status(
           bridge_dir, state="syncing_history", model_id=engine.model_id,
           history=history, error=None,
+          conditions_fp=engine.conditions_fp,
+          run_conditions=engine.describe_conditions(),
         )
         if args.once:
           return 0
@@ -268,11 +278,29 @@ def main() -> int:
           last_fp = None
           append_event(
             "system", "engine_reload", bridge_dir=bridge_dir,
-            summary=f"model={desired_model} risk={desired_risk}",
+            summary=(
+              f"model={desired_model} risk={desired_risk} "
+              f"fp={engine.conditions_fp}"
+            ),
           )
           write_status(
             bridge_dir, state="running", model_id=desired_model,
             error=None, reason="config_reload",
+            conditions_fp=engine.conditions_fp,
+            run_conditions=engine.describe_conditions(),
+          )
+        elif engine.refresh_model():
+          last_fp = None
+          append_event(
+            "system", "engine_reload", bridge_dir=bridge_dir,
+            summary=f"conditions_fp={engine.conditions_fp} (model params updated)",
+            payload=engine.describe_conditions(),
+          )
+          write_status(
+            bridge_dir, state="running", model_id=engine.model_id,
+            error=None, reason="conditions_reload",
+            conditions_fp=engine.conditions_fp,
+            run_conditions=engine.describe_conditions(),
           )
       last_fp, last_fill_fp = process_once(
         engine, bridge_dir, last_fp=last_fp, last_fill_fp=last_fill_fp,

@@ -135,7 +135,7 @@ def _render_manage(models, active):
 
 
 def _render_health():
-  """Monthly OOS chart KB ON vs OFF + degradation verdict."""
+  """Monthly OOS chart KB ON vs OFF + degradation signals."""
   from gui.analysis_support import start_model_health_job
   from gui.long_task_ui import render_task_status, task_blocks_ui
   from gui.model_health import (
@@ -144,16 +144,46 @@ def _render_health():
     build_monthly_kb_compare_figure,
     monthly_oos_from_report,
   )
+  from gui.trade_model import (
+    report_search_space_matches_model,
+    render_model_picker,
+  )
 
-  active = get_active_trade_model()
-  if not active:
-    st.warning("Chưa chọn Trade Model — mở tab **Quản lý** và bấm dùng model.")
+  models = list_trade_models()
+  if not models:
+    st.warning("Chưa có Trade Model — tạo từ Grid Search rồi quay lại.")
     return
 
   st.caption(
-    f"Model: **{format_model_label(active)}** · "
+    "Chọn model để xem sức khỏe. Grid có nhiều **vòng KB (ep1…ep4)**; "
+    "chỉ các combo đã **Lưu Trade Model** mới xuất hiện ở đây "
+    f"(hiện **{len(models)}** model)."
+  )
+  active = render_model_picker(key="tm_health_pick", label="Trade model để kiểm tra")
+  if not active:
+    return
+
+  rows = []
+  for m in models:
+    ss = m.get("mining_search_space") or {}
+    spacing = ss.get("min_bars_between") or ["—"]
+    rows.append({
+      "Model": format_model_label(m),
+      "KB vòng": m.get("kb_snapshot") or "—",
+      "Train": f"{m.get('train_weeks')}w",
+      "Session": ss.get("session_ranges") or "default",
+      "Spacing": spacing[0] if spacing else "—",
+      "Grid R": m.get("total_r"),
+      "WR%": m.get("win_rate_pct"),
+      "Active": "✓" if m.get("id") == active.get("id") else "",
+    })
+  st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+  st.caption(
+    f"Đang xem: **{format_model_label(active)}** · "
     f"OOS `{active.get('oos_from') or '—'} → {active.get('oos_to') or '—'}` · "
-    "Timeline giai đoạn + OOS theo **tháng** để phát hiện suy giảm."
+    f"KB ep**{active.get('kb_snapshot') or '—'}** · "
+    "KPI Grid ở bảng trên; biểu đồ dưới lấy từ **report backtest** (cần khớp search space)."
   )
 
   timeline = build_model_timeline_figure(
@@ -175,20 +205,38 @@ def _render_health():
 
   report_on = load_model_report(active["id"])
   report_off = load_model_kb_off_report(active["id"])
+  space_ok = report_search_space_matches_model(report_on, active) if report_on else True
+
+  if report_on and not space_ok:
+    cfg_ss = (report_on.get("config") or {}).get("mining_search_space") or {}
+    model_ss = active.get("mining_search_space") or {}
+    st.error(
+      "Report hiện tại **không khớp** search space của model "
+      f"(report: session `{cfg_ss.get('session_ranges')}` · spacing "
+      f"`{cfg_ss.get('min_bars_between')}` vs model: "
+      f"`{model_ss.get('session_ranges')}` · `{model_ss.get('min_bars_between')}`). "
+      "Lần chạy Sức khỏe trước đã dùng miner **default** → số lệch KPI Grid. "
+      "Bật **Chạy lại KB ON** và bấm **Chạy so sánh**."
+    )
 
   c1, c2, c3 = st.columns([2, 2, 1])
   with c1:
     refresh_on = st.checkbox(
       "Chạy lại KB ON (cập nhật report model)",
-      value=not bool(report_on),
+      value=(not bool(report_on)) or (not space_ok),
       key="tm_health_refresh_on",
-      help="Tắt nếu đã có report ON — chỉ chạy baseline KB OFF cho nhanh hơn.",
+      help="Bật khi chưa có report hoặc report lệch session/spacing của model.",
     )
   with c2:
-    st.caption(
-      f"KB ON report: **{'có' if report_on else 'chưa'}** · "
-      f"KB OFF baseline: **{'có' if report_off else 'chưa'}**"
-    )
+    reg_r = active.get("total_r")
+    on_r = (report_on or {}).get("overall_oos", {}).get("total_r") if report_on else None
+    bits = [
+      f"KB ON report: **{'có' if report_on else 'chưa'}**"
+      + (f" ({on_r:+.1f}R)" if on_r is not None else ""),
+      f"Grid KPI: **{float(reg_r):+.1f}R**" if reg_r is not None else "Grid KPI: —",
+      f"KB OFF: **{'có' if report_off else 'chưa'}**",
+    ]
+    st.caption(" · ".join(bits))
   with c3:
     if st.button(
       "Chạy so sánh",
@@ -200,7 +248,7 @@ def _render_health():
     ):
       try:
         start_model_health_job(active, refresh_kb_on=refresh_on)
-        st.toast("Đã bắt đầu backtest KB ON/OFF nền")
+        st.toast("Đã bắt đầu backtest KB ON/OFF (đúng search space model)")
         st.rerun()
       except Exception as e:
         st.error(str(e))
@@ -211,6 +259,12 @@ def _render_health():
       "(bật cập nhật KB ON) hoặc tạo report từ tab Phân tích."
     )
     return
+
+  if not space_ok:
+    st.warning(
+      "Đang hiển thị report **lệch config** — chỉ mang tính tham khảo. "
+      "Chạy lại so sánh để có số khớp model."
+    )
 
   on_m = monthly_oos_from_report(report_on)
   off_m = monthly_oos_from_report(report_off) if report_off else None
@@ -269,12 +323,10 @@ def _render_health():
 
   with st.expander("Cách đọc"):
     st.markdown(
-      "- **Timeline**: KB học (era) → cửa sổ train dịch chuyển → OOS. "
-      "KB `trained_to` nên ≤ `oos_from` (không nhìn trước).\n"
-      "- **KB ON** = report Trade Model (có bộ nhớ).\n"
-      "- **KB OFF** = cùng train weeks / OOS, không KB — baseline thị trường.\n"
-      "- Nửa sau yếu hơn nửa đầu → model/KB có thể **suy giảm** trên giai đoạn gần.\n"
-      "- Edge ON−OFF thu hẹp hoặc âm ở tháng gần → KB đang **kéo xuống**, nên học era mới / Grid lại."
+      "- **Bảng model**: KPI lúc **Grid/optimize** (ep3, ep4 nếu đã lưu).\n"
+      "- **Timeline**: KB học → train shift → OOS.\n"
+      "- **KB ON/OFF chart**: phải chạy với **đúng** session/spacing của model.\n"
+      "- Nửa sau yếu / edge thu hẹp → cân nhắc học era mới hoặc Grid lại."
     )
 
 

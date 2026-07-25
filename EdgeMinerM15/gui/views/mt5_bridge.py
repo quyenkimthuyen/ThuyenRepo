@@ -53,6 +53,67 @@ def _save_bridge_runtime_settings() -> None:
   )
 
 
+def _render_conditions_alignment(
+  *,
+  active: dict | None,
+  decision: dict,
+  file_status: dict,
+) -> None:
+  """Show that Bridge remine uses the same strategy conditions as Health."""
+  from mt5_bridge.models import (
+    conditions_fingerprint,
+    describe_strategy_conditions,
+    get_model_run_params,
+  )
+
+  if not active:
+    st.caption("Chưa chọn Trade Model — Bridge có thể dùng default miner.")
+    return
+
+  model_params = get_model_run_params(active, active.get("id"))
+  model_desc = describe_strategy_conditions(model_params)
+  model_fp = model_desc["conditions_fp"]
+  live_fp = (
+    decision.get("conditions_fp")
+    or file_status.get("conditions_fp")
+  )
+  live_desc = file_status.get("run_conditions") or decision.get("run_conditions") or {}
+
+  ss = active.get("mining_search_space") or {}
+  st.caption(
+    f"Điều kiện remine (= Sức khỏe): train **{model_desc.get('train_weeks')}w** · "
+    f"KB `{model_desc.get('kb_profile')}@ep{model_desc.get('kb_snapshot')}` · "
+    f"session `{ss.get('session_ranges')}` · spacing `{ss.get('min_bars_between')}` · "
+    f"hold `{ss.get('max_hold_bars')}` · "
+    f"spread/slip `{model_desc.get('spread_pips')}/{model_desc.get('slippage_pips')}` · "
+    f"fp `{model_fp}`"
+  )
+  if live_fp and live_fp != model_fp:
+    st.warning(
+      f"Bridge đang chạy fp `{live_fp}` ≠ model `{model_fp}`. "
+      "Stop/Start service (hoặc đợi reload) để khớp lại với Trade Model / Sức khỏe."
+    )
+  elif live_fp:
+    st.success(f"Bridge khớp điều kiện model (fp `{live_fp}`).")
+  elif live_desc:
+    live_check = conditions_fingerprint({
+      **model_params,
+      **{k: live_desc.get(k) for k in (
+        "train_weeks", "kb_profile", "kb_snapshot", "feature_profile",
+        "spread_pips", "slippage_pips", "use_learning",
+      ) if live_desc.get(k) is not None},
+      "mining_search_space": active.get("mining_search_space"),
+      "trade_model_id": active.get("id"),
+    })
+    if live_check == model_fp:
+      st.success(f"Bridge khớp điều kiện model (fp `{model_fp}`).")
+    else:
+      st.info("Chưa có fingerprint trên decision — Start Bridge lại để ghi fp.")
+  else:
+    st.info("Chưa có decision/status mới — Start Bridge để xác nhận fp khớp Sức khỏe.")
+
+
+
 def _fmt_px(value) -> str:
   try:
     return f"{float(value):.5f}"
@@ -185,6 +246,11 @@ def _render_trader_desk() -> None:
     f"`{decision.get('strategy_name') or 'đang chờ mine'}` · "
     f"tuần `{decision.get('week_start') or '—'}` · "
     f"TM `{decision.get('model_id') or service_status.get('model_id') or '—'}`"
+  )
+  _render_conditions_alignment(
+    active=active,
+    decision=decision,
+    file_status=file_status,
   )
   svc = "OFF"
   if service_status.get("running"):

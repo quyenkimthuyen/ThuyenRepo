@@ -102,11 +102,35 @@ def execute_backtest(
   kb_snapshot: int | str | None = None,
   oos_from: str | None = None,
   oos_to: str | None = None,
+  feature_profile: str | None = None,
+  mining_search_space: dict | None = None,
   on_progress=None,
   archive: bool = False,
   archive_label: str | None = None,
   sync_workspace: bool = True,
 ) -> dict:
+  from strategy_miner import mining_search_space_from_dict
+
+  # Prefer explicit args; else pull from active Trade Model so health/analysis
+  # re-runs match session/spacing/hold of the saved model (not miner defaults).
+  if feature_profile is None or mining_search_space is None:
+    try:
+      from mt5_bridge.models import get_model_run_params, resolve_model
+      from gui.trade_model import get_active_trade_model
+      active = get_active_trade_model() or resolve_model()
+      mp = get_model_run_params(active, (active or {}).get("id"))
+      if feature_profile is None:
+        feature_profile = mp.get("feature_profile") or "current"
+      if mining_search_space is None:
+        mining_search_space = mp.get("mining_search_space")
+    except Exception:
+      feature_profile = feature_profile or "current"
+
+  search_space = (
+    mining_search_space_from_dict(mining_search_space)
+    if mining_search_space else None
+  )
+
   df = load_eurusd_m15(start_date)
   reset_kb_cache()
   if use_learning:
@@ -123,6 +147,8 @@ def execute_backtest(
     kb_snapshot=kb_snapshot if use_learning else None,
     oos_from=oos_from or None,
     oos_to=oos_to or None,
+    feature_profile=feature_profile or "current",
+    search_space=search_space,
     on_progress=on_progress,
     verbose=False,
   )

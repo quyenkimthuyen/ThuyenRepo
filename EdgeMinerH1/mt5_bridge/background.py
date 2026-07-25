@@ -49,6 +49,16 @@ def _now_iso() -> str:
   return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
+def _engine_status_fields(engine: BridgeEngine, **extra) -> dict:
+  """Status fields shared with Health (same Trade Model conditions fingerprint)."""
+  return {
+    "model_id": engine.model_id,
+    "conditions_fp": engine.conditions_fp,
+    "run_conditions": engine.describe_conditions(),
+    **extra,
+  }
+
+
 def _read_json(path: Path) -> dict | None:
   if not path.exists():
     return None
@@ -244,22 +254,25 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
 
   bar = read_json(bar_path(bridge_dir))
   if not isinstance(bar, dict):
-    write_status(bridge_dir, state="waiting_bar", model_id=engine.model_id, error=None)
+    write_status(bridge_dir, state="waiting_bar", error=None, **_engine_status_fields(engine))
     return last_bar_fp, last_fill_fp
 
   fp = _bar_fp(bar)
   if not fp:
-    write_status(bridge_dir, state="bad_bar", model_id=engine.model_id, error="bar missing time")
+    write_status(
+      bridge_dir, state="bad_bar", error="bar missing time",
+      **_engine_status_fields(engine),
+    )
     return last_bar_fp, last_fill_fp
 
   if fp == last_bar_fp:
     write_status(
       bridge_dir,
       state="idle",
-      model_id=engine.model_id,
       last_bar=fp,
       last_action=(engine._last_decision or {}).get("action"),
       error=None,
+      **_engine_status_fields(engine),
     )
     return last_bar_fp, last_fill_fp
 
@@ -300,13 +313,13 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
   write_status(
     bridge_dir,
     state="decided",
-    model_id=engine.model_id,
     last_bar=fp,
     last_action=decision.get("action"),
     reason=decision.get("reason"),
     week_start=decision.get("week_start"),
     strategy_name=decision.get("strategy_name"),
     error=None,
+    **_engine_status_fields(engine),
   )
   save_config(
     last_run_at=_now_iso(),
@@ -327,7 +340,13 @@ def _worker():
     _engine = BridgeEngine(model_id=cfg["model_id"], risk_pct=cfg["risk_pct"])
     if MT5_CACHE_PATH.exists():
       _engine.ensure_history()
-    write_status(bridge_dir, state="running", model_id=_engine.model_id, error=None, runtime="thread")
+    write_status(
+      bridge_dir,
+      state="running",
+      error=None,
+      runtime="thread",
+      **_engine_status_fields(_engine),
+    )
   except Exception as e:
     save_config(last_error=str(e), enabled=False)
     append_event(
@@ -357,7 +376,14 @@ def _worker():
         _engine.ensure_history()
         append_event(
           "system", "engine_reload", bridge_dir=bridge_dir,
-          summary=f"model={cfg['model_id']} risk={cfg['risk_pct']}",
+          summary=f"model={cfg['model_id']} risk={cfg['risk_pct']} fp={_engine.conditions_fp}",
+        )
+      elif _engine and _engine.refresh_model():
+        # Same model_id but mining/KB/spread changed on disk — keep Bridge = Health.
+        append_event(
+          "system", "engine_reload", bridge_dir=bridge_dir,
+          summary=f"conditions_fp={_engine.conditions_fp} (model params updated)",
+          payload=_engine.describe_conditions(),
         )
       last_bar_fp, last_fill_fp = _cycle(_engine, bridge_dir, last_bar_fp, last_fill_fp)
     except Exception as e:
