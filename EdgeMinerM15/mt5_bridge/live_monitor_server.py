@@ -146,13 +146,22 @@ def build_sim_snapshot(*, max_bars: int = 672) -> dict:
     hist = read_json(bars_path(BRIDGE_SIM_DIR)) or {}
     bars = list(hist.get("bars") or [])[-max(96, int(max_bars)):]
 
-  trades = load_trades(BRIDGE_SIM_DIR)
+  raw_trades = load_trades(BRIDGE_SIM_DIR)
+  trades = []
+  for t in raw_trades:
+    tc = dict(t)
+    if not tc.get("entry_time"):
+      tc["entry_time"] = tc.get("bar_time") or tc.get("exit_time")
+    if tc.get("entry_px") is None:
+      tc["entry_px"] = tc.get("entry") if tc.get("entry") is not None else tc.get("exit_px")
+    trades.append(tc)
+
   decision = read_json(decision_path(BRIDGE_SIM_DIR)) or {}
   action = str(decision.get("action") or "").upper()
   signal_id = decision.get("signal_id")
   known = any(signal_id and t.get("signal_id") == signal_id for t in trades)
   if action in ("BUY", "SELL") and not known:
-    trades = list(trades) + [{
+    trades.append({
       "status": "SIGNAL",
       "signal_id": signal_id,
       "direction": action,
@@ -161,7 +170,7 @@ def build_sim_snapshot(*, max_bars: int = 672) -> dict:
       "sl": decision.get("sl"),
       "tp": decision.get("tp"),
       "strategy_name": decision.get("strategy_name"),
-    }]
+    })
 
   done = int(ctrl.get("bars_done") or st.get("bars_done") or 0)
   total = int(ctrl.get("bars_total") or st.get("bars_total") or 0)

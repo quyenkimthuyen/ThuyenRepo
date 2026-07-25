@@ -42,7 +42,22 @@ def _write_json(path: Path, data: dict) -> None:
   tmp = path.with_suffix(path.suffix + ".tmp")
   with open(tmp, "w", encoding="utf-8") as handle:
     json.dump(data, handle, indent=2, ensure_ascii=False)
-  tmp.replace(path)
+  for attempt in range(5):
+    try:
+      tmp.replace(path)
+      return
+    except OSError:
+      if attempt < 4:
+        time.sleep(0.05)
+      else:
+        try:
+          import shutil
+          shutil.copy2(tmp, path)
+          if tmp.exists():
+            tmp.unlink(missing_ok=True)
+          return
+        except Exception:
+          pass
 
 
 def load_config() -> dict:

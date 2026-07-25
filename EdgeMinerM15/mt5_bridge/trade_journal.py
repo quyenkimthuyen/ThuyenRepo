@@ -206,7 +206,7 @@ def process_fill(
       "origin": source,
       "intervened": is_manual,
       "interventions": ["manual_test_open"] if is_manual else [],
-      "entry_time": fill.get("time") or _now(),
+      "entry_time": fill.get("bar_time") or (decision or {}).get("bar_time") or fill.get("time") or _now(),
       "entry_px": float(entry) if entry is not None else None,
       "sl": float(sl) if sl is not None else None,
       "tp": float(tp) if tp is not None else None,
@@ -287,7 +287,7 @@ def process_fill(
         "origin": source,
         "intervened": is_manual,
         "interventions": ["orphan_close"],
-        "entry_time": None,
+        "entry_time": fill.get("bar_time") or (decision or {}).get("bar_time"),
         "entry_px": fill.get("entry"),
         "sl": fill.get("sl"),
         "tp": fill.get("tp"),
@@ -345,7 +345,7 @@ def process_fill(
 
     row.update({
       "status": "CLOSED",
-      "exit_time": fill.get("time") or _now(),
+      "exit_time": fill.get("bar_time") or fill.get("time") or _now(),
       "exit_px": float(exit_px) if exit_px is not None else row.get("exit_px"),
       "profit": float(fill["profit"]) if fill.get("profit") is not None else row.get("profit"),
       "r": r if r is not None else row.get("r"),

@@ -70,11 +70,7 @@ def _read_json(path: Path) -> dict | None:
 
 
 def _write_json(path: Path, data: dict) -> None:
-  path.parent.mkdir(parents=True, exist_ok=True)
-  tmp = path.with_suffix(".tmp")
-  with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(data, f, indent=2, ensure_ascii=False)
-  tmp.replace(path)
+  atomic_write_json(path, data)
 
 
 def load_config() -> dict:

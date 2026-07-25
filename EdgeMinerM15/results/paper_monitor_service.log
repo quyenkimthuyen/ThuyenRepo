@@ -139,3 +139,58 @@ paper chart=http://127.0.0.1:8766
 2026-07-25 18:03:02.240 WARNING streamlit.runtime.caching.cache_data_api: No runtime found, using MemoryCacheStorageManager
 2026-07-25 18:03:02.241 WARNING streamlit.runtime.caching.cache_data_api: No runtime found, using MemoryCacheStorageManager
 paper bar=2026-07-24 12:30:00 model=tm_m15_best_2_49216b56 trades=6
+
+--- start 2026-07-25T21:28:00+07:00 ---
+paper chart=http://127.0.0.1:8766
+2026-07-25 21:28:02.600 WARNING streamlit.runtime.caching.cache_data_api: No runtime found, using MemoryCacheStorageManager
+2026-07-25 21:28:02.601 WARNING streamlit.runtime.caching.cache_data_api: No runtime found, using MemoryCacheStorageManager
+paper bar=2026-07-24 12:30:00 model=tm_m15_best_2_49216b56 trades=6
+----------------------------------------
+Exception occurred during processing of request from ('127.0.0.1', 50657)
+Traceback (most recent call last):
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\paper_live_monitor_server.py", line 190, in do_GET
+    self._send(200, body, "application/json; charset=utf-8")
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\paper_live_monitor_server.py", line 163, in _send
+    self.wfile.write(body)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Python314\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Python314\Lib\socketserver.py", line 697, in process_request_thread
+    self.finish_request(request, client_address)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\socketserver.py", line 362, in finish_request
+    self.RequestHandlerClass(request, client_address, self)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\socketserver.py", line 766, in __init__
+    self.handle()
+    ~~~~~~~~~~~^^
+  File "C:\Python314\Lib\http\server.py", line 496, in handle
+    self.handle_one_request()
+    ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\http\server.py", line 484, in handle_one_request
+    method()
+    ~~~~~~^^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\paper_live_monitor_server.py", line 193, in do_GET
+    self._send(500, body, "application/json; charset=utf-8")
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Work\ThuyenRepo\EdgeMinerM15\paper_live_monitor_server.py", line 162, in _send
+    self.end_headers()
+    ~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\http\server.py", line 598, in end_headers
+    self.flush_headers()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\Python314\Lib\http\server.py", line 602, in flush_headers
+    self.wfile.write(b"".join(self._headers_buffer))
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\socketserver.py", line 845, in write
+    self._sock.sendall(b)
+    ~~~~~~~~~~~~~~~~~~^^^
+ConnectionAbortedError: [WinError 10053] An established connection was aborted by the software in your host machine
+----------------------------------------

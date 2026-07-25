@@ -43,7 +43,22 @@ def _write(payload: dict) -> None:
   tmp = TRADES_PATH.with_suffix(TRADES_PATH.suffix + ".tmp")
   with open(tmp, "w", encoding="utf-8") as handle:
     json.dump(payload, handle, indent=2, ensure_ascii=False, default=str)
-  tmp.replace(TRADES_PATH)
+  for attempt in range(5):
+    try:
+      tmp.replace(TRADES_PATH)
+      return
+    except OSError:
+      if attempt < 4:
+        time.sleep(0.05)
+      else:
+        try:
+          import shutil
+          shutil.copy2(tmp, TRADES_PATH)
+          if tmp.exists():
+            tmp.unlink(missing_ok=True)
+          return
+        except Exception:
+          pass
 
 
 def load_meta() -> dict:

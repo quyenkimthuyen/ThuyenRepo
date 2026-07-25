@@ -39,28 +39,49 @@ def ensure_bridge_dir(path: Path | None = None) -> Path:
   return d
 
 
+def safe_replace(src: Path, dst: Path, attempts: int = 5, delay: float = 0.05) -> None:
+  dst.parent.mkdir(parents=True, exist_ok=True)
+  for attempt in range(attempts):
+    try:
+      src.replace(dst)
+      return
+    except OSError as err:
+      if attempt < attempts - 1:
+        time.sleep(delay)
+      else:
+        try:
+          import shutil
+          shutil.copy2(src, dst)
+          if src.exists():
+            src.unlink(missing_ok=True)
+          return
+        except Exception:
+          if src.exists():
+            try:
+              src.unlink(missing_ok=True)
+            except Exception:
+              pass
+          raise err
+
+
 def atomic_write_json(path: Path, data: Any) -> None:
   path.parent.mkdir(parents=True, exist_ok=True)
   tmp = path.with_suffix(path.suffix + ".tmp")
   with open(tmp, "w", encoding="utf-8", newline="\n") as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
     f.write("\n")
-  for attempt in range(5):
+  try:
+    safe_replace(tmp, path)
+  except Exception:
     try:
-      tmp.replace(path)
-      return
-    except OSError:
-      if attempt < 4:
-        time.sleep(0.05)
-      else:
-        try:
-          with open(path, "w", encoding="utf-8", newline="\n") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-            f.write("\n")
-          if tmp.exists():
-            tmp.unlink(missing_ok=True)
-        except Exception:
-          pass
+      with open(path, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+      if tmp.exists():
+        tmp.unlink(missing_ok=True)
+    except Exception:
+      pass
+
 
 
 def read_json(path: Path) -> dict | list | None:

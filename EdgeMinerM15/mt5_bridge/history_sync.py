@@ -14,6 +14,7 @@ import pandas as pd
 from mt5_bridge.protocol import (
   BRIDGE_DIR,
   atomic_write_json,
+  safe_replace,
   history_ack_path,
   history_chunk_path,
   history_request_path,
@@ -91,7 +92,7 @@ def _write_cache(frame: pd.DataFrame, source: dict) -> None:
   DATA_DIR.mkdir(parents=True, exist_ok=True)
   tmp = MT5_CACHE_PATH.with_suffix(".parquet.tmp")
   frame.to_parquet(tmp)
-  tmp.replace(MT5_CACHE_PATH)
+  safe_replace(tmp, MT5_CACHE_PATH)
   diffs = frame.index.to_series().diff().dropna()
   gaps = int(((diffs > pd.Timedelta(minutes=15)) & (diffs < pd.Timedelta(hours=48))).sum())
   fingerprint = hashlib.sha256(

@@ -364,30 +364,55 @@ def _render_trader_desk(*, include_live_metrics: bool = True) -> None:
       f"id `{decision.get('signal_id') or '—'}`"
     )
 
-  # --- Today / Week compact PnL (Auto / Trade Model only) ---
+  # --- PnL Metrics (Auto / Trade Model only) ---
   p1, p2, p3, p4 = st.columns(4)
-  p1.metric(
-    "Today R (auto)",
-    f"{today_stats['total_r']:+.2f}" if today_stats["n_trades"] else "0.00",
-  )
-  p2.metric(
-    "Week R (auto)",
-    f"{week_stats['total_r']:+.2f}" if week_stats["n_trades"] else "0.00",
-  )
-  open_n = sum(
-    1 for t in trades
-    if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "auto"
-  )
-  open_manual = sum(
-    1 for t in trades
-    if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "manual"
-  )
-  p3.metric("Open auto", open_n)
-  wr = today_stats.get("win_rate_pct")
-  p4.metric(
-    "Today WR (auto)",
-    f"{wr}%" if wr is not None else "—",
-  )
+  if mode == "sim":
+    sim_stats = compute_stats(filter_trades(trades, mode="auto"))
+    p1.metric(
+      "Sim R (auto)",
+      f"{sim_stats['total_r']:+.2f}" if sim_stats["n_trades"] else "0.00",
+    )
+    p2.metric(
+      "Sim Trades",
+      f"{sim_stats['n_trades']} lệnh",
+    )
+    open_n = sum(
+      1 for t in trades
+      if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "auto"
+    )
+    open_manual = sum(
+      1 for t in trades
+      if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "manual"
+    )
+    p3.metric("Open auto", open_n)
+    wr = sim_stats.get("win_rate_pct")
+    p4.metric(
+      "Sim WR (auto)",
+      f"{wr}%" if wr is not None else "—",
+    )
+  else:
+    p1.metric(
+      "Today R (auto)",
+      f"{today_stats['total_r']:+.2f}" if today_stats["n_trades"] else "0.00",
+    )
+    p2.metric(
+      "Week R (auto)",
+      f"{week_stats['total_r']:+.2f}" if week_stats["n_trades"] else "0.00",
+    )
+    open_n = sum(
+      1 for t in trades
+      if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "auto"
+    )
+    open_manual = sum(
+      1 for t in trades
+      if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "manual"
+    )
+    p3.metric("Open auto", open_n)
+    wr = today_stats.get("win_rate_pct")
+    p4.metric(
+      "Today WR (auto)",
+      f"{wr}%" if wr is not None else "—",
+    )
   if open_manual:
     st.caption(f"Có **{open_manual}** lệnh mở thuộc mode sửa — không tính vào R auto / Trade Model.")
 
@@ -665,6 +690,39 @@ def _render_history_sync() -> None:
       st.rerun()
 
 
+@st.fragment(run_every=timedelta(seconds=2))
+def _render_sim_progress_fragment() -> None:
+  """Live progress bar and status caption — updates every 2s without flickering buttons."""
+  sim = bridge_bg.get_sim_status()
+  active = get_active_trade_model()
+  running = bool(sim.get("running"))
+  delay_ms = int(st.session_state.get("sim_ea_delay", 100))
+
+  ea_st = sim.get("ea_status") or "—"
+  runtime = sim.get("runtime") or "—"
+  pid = sim.get("service_pid")
+  st.caption(
+    f"Model: **{format_model_label(active) if active else '—'}** · "
+    f"app `{sim.get('status') or 'idle'}` · EA `{ea_st}` · "
+    f"runtime `{runtime}`"
+    + (f" pid `{pid}`" if pid else "")
+    + f" · {sim.get('bars_done') or 0}/{sim.get('bars_total') or '—'} bars · "
+    f"trades `{sim.get('n_fills') or 0}` · last `{sim.get('last_bar') or '—'}` · "
+    f"delay `{delay_ms}`ms"
+  )
+  if running and runtime != "process":
+    st.warning(
+      "Feed đang chạy nhưng không phải `runtime process` — App có thể chưa Restart "
+      "sau bản vá. Stop feed → Restart app → Start lại."
+    )
+  if sim.get("error"):
+    st.error(sim["error"])
+
+  prog = float(sim.get("progress") or 0)
+  if sim.get("bars_total"):
+    st.progress(min(1.0, prog))
+
+
 def _render_simulate_ea() -> None:
   """App controls EA HISTORY_FEED (from/to/delay); EA sends bar/fill via bridge_sim."""
   from datetime import date as date_cls
@@ -756,29 +814,8 @@ def _render_simulate_ea() -> None:
   d_to = st.session_state["sim_ea_to"]
   delay_ms = int(st.session_state["sim_ea_delay"])
 
-  ea_st = sim.get("ea_status") or "—"
-  runtime = sim.get("runtime") or "—"
-  pid = sim.get("service_pid")
-  st.caption(
-    f"Model: **{format_model_label(active) if active else '—'}** · "
-    f"app `{sim.get('status') or 'idle'}` · EA `{ea_st}` · "
-    f"runtime `{runtime}`"
-    + (f" pid `{pid}`" if pid else "")
-    + f" · {sim.get('bars_done') or 0}/{sim.get('bars_total') or '—'} bars · "
-    f"trades `{sim.get('n_fills') or 0}` · last `{sim.get('last_bar') or '—'}` · "
-    f"delay `{delay_ms}`ms"
-  )
-  if running and runtime != "process":
-    st.warning(
-      "Feed đang chạy nhưng không phải `runtime process` — App có thể chưa Restart "
-      "sau bản vá. Stop feed → Restart app → Start lại."
-    )
-  if sim.get("error"):
-    st.error(sim["error"])
-
-  prog = float(sim.get("progress") or 0)
-  if sim.get("bars_total"):
-    st.progress(min(1.0, prog))
+  # Auto-refreshing progress fragment
+  _render_sim_progress_fragment()
 
   b1, b2, b3, b4, b5 = st.columns(5)
   if b1.button(
@@ -834,6 +871,7 @@ def _render_simulate_ea() -> None:
     st.rerun()
 
 
+@st.fragment
 def _render_model_monitor() -> None:
   """Backtest OOS vs Live Auto / Simulate EA — health + risk."""
   from gui.bridge_model_monitor import (
@@ -988,6 +1026,7 @@ def _render_model_monitor() -> None:
     )
 
 
+@st.fragment
 def _render_stats_section() -> None:
   bridge_dir = _active_bridge_dir()
   mode = _bridge_mode()
@@ -1020,16 +1059,18 @@ def _render_stats_section() -> None:
     "Tất cả",
     "Tùy chọn",
   ]
+  default_preset = "Tất cả" if mode == "sim" else "Hôm nay"
+  pref_key = "mt5.sim_stats_preset" if mode == "sim" else "mt5.stats_preset"
   restore_widget(
-    "bridge_stats_preset", "Hôm nay",
-    preference_key="mt5.stats_preset",
+    "bridge_stats_preset", default_preset,
+    preference_key=pref_key,
     options=preset_options,
   )
   preset = p1.selectbox(
     "Giai đoạn",
     preset_options,
     key="bridge_stats_preset",
-    on_change=preference_callback("bridge_stats_preset", "mt5.stats_preset"),
+    on_change=preference_callback("bridge_stats_preset", pref_key),
   )
   date_from = None
   date_to = None
@@ -1173,6 +1214,7 @@ def _render_stats_section() -> None:
       st.json(view[:30])
 
 
+@st.fragment
 def _render_debug_sections() -> None:
   bridge_dir = _active_bridge_dir()
   with st.expander(f"Snapshot files (App ↔ EA) · `{bridge_dir.name}`", expanded=False):
