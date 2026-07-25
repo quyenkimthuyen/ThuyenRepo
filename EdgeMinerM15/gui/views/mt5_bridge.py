@@ -678,8 +678,9 @@ def _render_simulate_ea() -> None:
   st.subheader("Điều khiển History Feed")
   st.caption(
     "EA MT5 gửi `bar.json` / `fill.json` như live — App chỉ chọn giai đoạn + tốc độ. "
-    f"`InpMode = HISTORY_FEED`, `InpBridgeSubdir = {BRIDGE_SIM_DIR.name}` "
-    "(chart riêng, demo khuyến nghị)."
+    f"`InpMode = HISTORY_FEED`, `InpBridgeSubdir = {BRIDGE_SIM_DIR.name}`. "
+    "Start feed = **process nền** (`mt5_bridge_sim_service.py`) giống Live — "
+    "remine không làm đơ GUI."
   )
 
   st.markdown("##### Triển khai EA Simulate sang MT5")
@@ -735,16 +736,20 @@ def _render_simulate_ea() -> None:
     with c3:
       delay_ms = st.slider(
         "Delay giữa các bar (ms)",
-        1, 2000, 100, step=1, key="sim_ea_delay",
+        1, 2000, 100, step=10, key="sim_ea_delay",
         help="Tốc độ EA Sleep giữa các bar (min 1ms; 1000 = 1s). "
-             "Thấp hơn → feed nhanh hơn; dưới ~10–15ms MT5 Sleep có thể không đều.",
+             "Bước 10ms để GUI nhẹ hơn khi kéo slider.",
       )
 
     ea_st = sim.get("ea_status") or "—"
+    runtime = sim.get("runtime") or "—"
+    pid = sim.get("service_pid")
     st.caption(
       f"Model: **{format_model_label(active) if active else '—'}** · "
       f"app `{sim.get('status') or 'idle'}` · EA `{ea_st}` · "
-      f"{sim.get('bars_done') or 0}/{sim.get('bars_total') or '—'} bars · "
+      f"runtime `{runtime}`"
+      + (f" pid `{pid}`" if pid else "")
+      + f" · {sim.get('bars_done') or 0}/{sim.get('bars_total') or '—'} bars · "
       f"trades `{sim.get('n_fills') or 0}` · last `{sim.get('last_bar') or '—'}`"
     )
     if sim.get("error"):
@@ -770,7 +775,7 @@ def _render_simulate_ea() -> None:
           risk_pct=float(st.session_state.get("mt5_risk_pct", 1.0)),
         )
         if ok:
-          st.toast("Đã ghi sim_control — chờ EA HISTORY_FEED")
+          st.toast("Đã start sim service (process nền) — GUI không bị đơ remine")
           st.rerun()
         else:
           st.warning("Feed đang chạy")

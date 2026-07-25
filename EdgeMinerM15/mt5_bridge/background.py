@@ -517,7 +517,7 @@ def process_once_now() -> dict | None:
   return engine._last_decision
 
 
-# --- Simulate EA worker: App writes sim_control; EA HISTORY_FEED + bridge_sim cycle ---
+# --- Simulate EA worker: detached process (like Live) so Streamlit stays smooth ---
 
 _sim_thread: threading.Thread | None = None
 _sim_bridge_thread: threading.Thread | None = None
@@ -525,9 +525,38 @@ _sim_stop = threading.Event()
 _sim_pause = threading.Event()
 _sim_lock = threading.Lock()
 
+SIM_PID_PATH = REPORT_DIR / "mt5_bridge_sim_service.pid"
+SIM_SERVICE_LOG = REPORT_DIR / "mt5_bridge_sim_service.log"
+SIM_SERVICE_SCRIPT = ROOT / "scripts" / "mt5_bridge_sim_service.py"
+
+
+def _read_sim_pid() -> int | None:
+  if not SIM_PID_PATH.exists():
+    return None
+  try:
+    return int(SIM_PID_PATH.read_text(encoding="utf-8").strip())
+  except Exception:
+    return None
+
+
+def _clear_sim_pid() -> None:
+  try:
+    if SIM_PID_PATH.exists():
+      SIM_PID_PATH.unlink()
+  except Exception:
+    pass
+
+
+def is_sim_process_running() -> bool:
+  return _pid_alive(_read_sim_pid())
+
+
+def is_sim_thread_running() -> bool:
+  return _sim_thread is not None and _sim_thread.is_alive()
+
 
 def is_sim_running() -> bool:
-  return _sim_thread is not None and _sim_thread.is_alive()
+  return is_sim_process_running() or is_sim_thread_running()
 
 
 def get_sim_status() -> dict:
@@ -542,7 +571,17 @@ def get_sim_status() -> dict:
   else:
     st = load_sim_state()
   st["running"] = is_sim_running()
-  st["paused"] = bool(_sim_pause.is_set()) if is_sim_running() else False
+  st["runtime"] = "process" if is_sim_process_running() else (
+    "thread" if is_sim_thread_running() else st.get("runtime")
+  )
+  st["service_pid"] = _read_sim_pid() if is_sim_process_running() else st.get("service_pid")
+  # Pause = sim_control.enabled false while process still alive
+  try:
+    from mt5_bridge.protocol import read_sim_control
+    ctrl = read_sim_control(BRIDGE_SIM_DIR) or {}
+    st["paused"] = bool(is_sim_running() and not ctrl.get("enabled") and ctrl.get("request_id"))
+  except Exception:
+    st["paused"] = bool(_sim_pause.is_set()) if is_sim_thread_running() else False
   return st
 
 
@@ -585,8 +624,12 @@ def start_sim_worker(
   delay_ms: int = 100,
   model_id: str | None = None,
   risk_pct: float = 1.0,
+  detached: bool = True,
 ) -> bool:
-  """Start HISTORY_FEED control + bridge_sim decision loop. Returns False if already running."""
+  """Start HISTORY_FEED control + bridge_sim decide loop.
+
+  Default = detached OS process (GUI stays smooth, like Live service).
+  """
   global _sim_thread, _sim_bridge_thread
   with _sim_lock:
     if is_sim_running():
@@ -594,13 +637,53 @@ def start_sim_worker(
     from mt5_bridge.ea_simulator import SimConfig, run_history_feed_control, write_sim_state
     from mt5_bridge.protocol import BRIDGE_SIM_DIR
 
+    mid = model_id or load_config().get("model_id")
+    delay = max(1, int(delay_ms))
+
+    if detached:
+      REPORT_DIR.mkdir(parents=True, exist_ok=True)
+      cmd = [
+        sys.executable,
+        str(SIM_SERVICE_SCRIPT),
+        "--from", str(date_from),
+        "--to", str(date_to),
+        "--delay-ms", str(delay),
+        "--risk-pct", str(float(risk_pct)),
+        "--bridge-dir", str(BRIDGE_SIM_DIR),
+      ]
+      if mid:
+        cmd.extend(["--model-id", str(mid)])
+      logf = open(SIM_SERVICE_LOG, "a", encoding="utf-8")
+      logf.write(f"\n--- start {_now_iso()} ---\n")
+      logf.flush()
+      proc = subprocess.Popen(
+        cmd,
+        cwd=str(ROOT),
+        stdout=logf,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+        close_fds=True,
+      )
+      SIM_PID_PATH.write_text(str(proc.pid), encoding="utf-8")
+      write_sim_state({
+        "status": "running",
+        "runtime": "process",
+        "service_pid": proc.pid,
+        "model_id": mid,
+        "date_from": date_from,
+        "date_to": date_to,
+        "delay_ms": delay,
+        "error": None,
+      })
+      return True
+
+    # Fallback: in-process threads (dev only — blocks Streamlit when remine)
     _sim_stop.clear()
     _sim_pause.clear()
-    mid = model_id or load_config().get("model_id")
     cfg = SimConfig(
       date_from=date_from,
       date_to=date_to,
-      delay_ms=max(1, int(delay_ms)),
+      delay_ms=delay,
       model_id=mid,
       risk_pct=float(risk_pct),
       bridge_dir=BRIDGE_SIM_DIR,
@@ -627,13 +710,32 @@ def start_sim_worker(
     _sim_bridge_thread.start()
     _sim_thread = threading.Thread(target=_run_control, name="ea-history-control", daemon=True)
     _sim_thread.start()
+    write_sim_state({"status": "running", "runtime": "thread", "model_id": mid})
     return True
 
 
 def pause_sim_worker(paused: bool = True) -> None:
+  """Pause/resume via sim_control.enabled (works for detached process)."""
+  from mt5_bridge.ea_simulator import write_sim_state
+  from mt5_bridge.protocol import BRIDGE_SIM_DIR, read_sim_control, write_sim_control
+
+  ctrl = read_sim_control(BRIDGE_SIM_DIR) or {}
   if paused:
+    write_sim_control(BRIDGE_SIM_DIR, enabled=False)
+    write_sim_state({"status": "paused"})
     _sim_pause.set()
   else:
+    write_sim_control(
+      BRIDGE_SIM_DIR,
+      enabled=True,
+      request_id=ctrl.get("request_id"),
+      **{
+        k: ctrl[k]
+        for k in ("from", "to", "delay_ms")
+        if ctrl.get(k) is not None
+      },
+    )
+    write_sim_state({"status": "running"})
     _sim_pause.clear()
 
 
@@ -647,12 +749,30 @@ def stop_sim_worker() -> None:
     stop_history_feed_control(BRIDGE_SIM_DIR)
   except Exception:
     pass
+
+  pid = _read_sim_pid()
+  if _pid_alive(pid):
+    try:
+      os.kill(int(pid), signal.SIGTERM)
+    except OSError:
+      pass
+    for _ in range(40):
+      if not _pid_alive(pid):
+        break
+      time.sleep(0.1)
+    if _pid_alive(pid):
+      try:
+        os.kill(int(pid), signal.SIGKILL)
+      except OSError:
+        pass
+  _clear_sim_pid()
+
   for t in (_sim_thread, _sim_bridge_thread):
     if t and t.is_alive():
       t.join(timeout=5.0)
   _sim_thread = None
   _sim_bridge_thread = None
-  write_sim_state({"status": "stopped"})
+  write_sim_state({"status": "stopped", "service_pid": None})
 
 
 def reset_sim_data() -> dict:
