@@ -364,30 +364,55 @@ def _render_trader_desk(*, include_live_metrics: bool = True) -> None:
       f"id `{decision.get('signal_id') or '—'}`"
     )
 
-  # --- Today / Week compact PnL (Auto / Trade Model only) ---
+  # --- PnL Metrics (Auto / Trade Model only) ---
   p1, p2, p3, p4 = st.columns(4)
-  p1.metric(
-    "Today R (auto)",
-    f"{today_stats['total_r']:+.2f}" if today_stats["n_trades"] else "0.00",
-  )
-  p2.metric(
-    "Week R (auto)",
-    f"{week_stats['total_r']:+.2f}" if week_stats["n_trades"] else "0.00",
-  )
-  open_n = sum(
-    1 for t in trades
-    if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "auto"
-  )
-  open_manual = sum(
-    1 for t in trades
-    if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "manual"
-  )
-  p3.metric("Open auto", open_n)
-  wr = today_stats.get("win_rate_pct")
-  p4.metric(
-    "Today WR (auto)",
-    f"{wr}%" if wr is not None else "—",
-  )
+  if mode == "sim":
+    sim_stats = compute_stats(filter_trades(trades, mode="auto"))
+    p1.metric(
+      "Sim R (auto)",
+      f"{sim_stats['total_r']:+.2f}" if sim_stats["n_trades"] else "0.00",
+    )
+    p2.metric(
+      "Sim Trades",
+      f"{sim_stats['n_trades']} lệnh",
+    )
+    open_n = sum(
+      1 for t in trades
+      if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "auto"
+    )
+    open_manual = sum(
+      1 for t in trades
+      if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "manual"
+    )
+    p3.metric("Open auto", open_n)
+    wr = sim_stats.get("win_rate_pct")
+    p4.metric(
+      "Sim WR (auto)",
+      f"{wr}%" if wr is not None else "—",
+    )
+  else:
+    p1.metric(
+      "Today R (auto)",
+      f"{today_stats['total_r']:+.2f}" if today_stats["n_trades"] else "0.00",
+    )
+    p2.metric(
+      "Week R (auto)",
+      f"{week_stats['total_r']:+.2f}" if week_stats["n_trades"] else "0.00",
+    )
+    open_n = sum(
+      1 for t in trades
+      if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "auto"
+    )
+    open_manual = sum(
+      1 for t in trades
+      if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) == "manual"
+    )
+    p3.metric("Open auto", open_n)
+    wr = today_stats.get("win_rate_pct")
+    p4.metric(
+      "Today WR (auto)",
+      f"{wr}%" if wr is not None else "—",
+    )
   if open_manual:
     st.caption(f"Có **{open_manual}** lệnh mở thuộc mode sửa — không tính vào R auto / Trade Model.")
 
@@ -438,7 +463,7 @@ def _render_live_chart(max_bars: int) -> None:
       )
       st.caption(
         "Chart + status FEED cập nhật trong trình duyệt (Plotly.react, không giật). "
-        "Cần cache H1 + Từ/Đến (hoặc Start feed). " + legend
+        "Cần cache M15 + Từ/Đến (hoặc Start feed). " + legend
       )
       return
     st.warning(
@@ -456,11 +481,11 @@ def _render_live_chart(max_bars: int) -> None:
     )
     fig = build_ea_chart(
       frame, connection, load_trades(bridge_dir),
-      title="EURUSD H1 · Simulate (static fallback)",
+      title="EURUSD M15 · Simulate (static fallback)",
       price_line_label="SIM",
     )
     if fig is None:
-      st.caption("Chưa vẽ được chart — cần `data/mt5_eurusd_h1.parquet`.")
+      st.caption("Chưa vẽ được chart — cần `data/mt5_eurusd_m15.parquet`.")
     else:
       st.plotly_chart(fig, use_container_width=True, key="mt5_ea_sim_chart_fallback")
     return
@@ -616,7 +641,7 @@ def _render_service_controls() -> None:
 
     st.divider()
     st.markdown("##### Triển khai EA sang MT5")
-    st.caption("Sao chép và biên dịch EA `ForgeBridge.mq5`, tự động thiết lập Junction và liên kết biểu đồ EURUSD H1.")
+    st.caption("Sao chép và biên dịch EA `ForgeBridge.mq5`, tự động thiết lập Junction và liên kết biểu đồ EURUSD M15.")
     if st.button("Chạy Script Triển khai (Deploy)", icon=":material/settings_suggest:", use_container_width=True):
       with st.spinner("Đang chạy deploy script..."):
         try:
@@ -649,7 +674,7 @@ def _render_history_sync() -> None:
     if history.get("state") in ("requesting", "receiving"):
       st.progress(
         received / max(available, 1),
-        text=f"Đồng bộ lịch sử MT5: {received}/{available or '?'} nến H1",
+        text=f"Đồng bộ lịch sử MT5: {received}/{available or '?'} nến M15",
       )
     elif history_data.get("bars"):
       st.caption(
@@ -663,6 +688,46 @@ def _render_history_sync() -> None:
     if st.button("Đồng bộ history", key="mt5_history_sync", use_container_width=True):
       start_history_sync(force=True)
       st.rerun()
+
+
+@st.fragment(run_every=timedelta(seconds=2))
+def _render_sim_progress_fragment() -> None:
+  """Live progress bar and status caption — updates every 2s without flickering buttons."""
+  try:
+    sim = bridge_bg.get_sim_status()
+  except Exception as e:
+    st.warning(f"Không đọc được sim status: {e}")
+    return
+  active = get_active_trade_model()
+  running = bool(sim.get("running"))
+  delay_ms = int(st.session_state.get("sim_ea_delay", 100) or 100)
+
+  ea_st = sim.get("ea_status") or "—"
+  runtime = sim.get("runtime") or "—"
+  pid = sim.get("service_pid")
+  st.caption(
+    f"Model: **{format_model_label(active) if active else '—'}** · "
+    f"app `{sim.get('status') or 'idle'}` · EA `{ea_st}` · "
+    f"runtime `{runtime}`"
+    + (f" pid `{pid}`" if pid else "")
+    + f" · {sim.get('bars_done') or 0}/{sim.get('bars_total') or '—'} bars · "
+    f"trades `{sim.get('n_fills') or 0}` · last `{sim.get('last_bar') or '—'}` · "
+    f"delay `{delay_ms}`ms"
+  )
+  if running and runtime != "process":
+    st.warning(
+      "Feed đang chạy nhưng không phải `runtime process` — App có thể chưa Restart "
+      "sau bản vá. Stop feed → Restart app → Start lại."
+    )
+  if sim.get("error"):
+    st.error(sim["error"])
+
+  try:
+    prog = float(sim.get("progress") or 0)
+  except (TypeError, ValueError):
+    prog = 0.0
+  if sim.get("bars_total"):
+    st.progress(min(1.0, max(0.0, prog)))
 
 
 def _render_simulate_ea() -> None:
@@ -689,7 +754,7 @@ def _render_simulate_ea() -> None:
 
   st.markdown("##### Triển khai EA Simulate sang MT5")
   st.caption(
-    "Compile ForgeBridge, junction `bridge_sim`, gắn chart EURUSD H1 với "
+    "Compile ForgeBridge, junction `bridge_sim`, gắn chart EURUSD M15 với "
     "`HISTORY_FEED` (ưu tiên chart không phải Live)."
   )
   if st.button(
@@ -736,49 +801,39 @@ def _render_simulate_ea() -> None:
     st.session_state["sim_ea_to"] = default_to
   if "sim_ea_delay" not in st.session_state:
     st.session_state["sim_ea_delay"] = 100
+  # Sanitize after code change (old form may leave bad types / out-of-range)
+  try:
+    if not hasattr(st.session_state["sim_ea_from"], "isoformat"):
+      st.session_state["sim_ea_from"] = default_from
+    if not hasattr(st.session_state["sim_ea_to"], "isoformat"):
+      st.session_state["sim_ea_to"] = default_to
+    delay_cur = int(st.session_state["sim_ea_delay"])
+    if delay_cur < 1 or delay_cur > 2000:
+      st.session_state["sim_ea_delay"] = 100
+    elif delay_cur % 10 != 0:
+      st.session_state["sim_ea_delay"] = max(1, min(2000, round(delay_cur / 10) * 10))
+  except Exception:
+    st.session_state["sim_ea_from"] = default_from
+    st.session_state["sim_ea_to"] = default_to
+    st.session_state["sim_ea_delay"] = 100
 
-  # Form: kéo ngày/slider không rerun cả trang (tránh GUI nặng như trước)
-  with st.form("sim_ea_params_form", clear_on_submit=False):
-    c1, c2, c3 = st.columns(3)
-    with c1:
-      st.date_input("Từ ngày", key="sim_ea_from")
-    with c2:
-      st.date_input("Đến ngày", key="sim_ea_to")
-    with c3:
-      st.slider(
-        "Delay giữa các bar (ms)",
-        1, 2000, step=10, key="sim_ea_delay",
-        help="1000 = 1s. Chỉ áp dụng khi bấm Áp dụng / Start feed.",
-      )
-    st.form_submit_button("Áp dụng from / to / delay", use_container_width=True)
-
-  d_from = st.session_state["sim_ea_from"]
-  d_to = st.session_state["sim_ea_to"]
-  delay_ms = int(st.session_state["sim_ea_delay"])
-
-  ea_st = sim.get("ea_status") or "—"
-  runtime = sim.get("runtime") or "—"
-  pid = sim.get("service_pid")
-  st.caption(
-    f"Model: **{format_model_label(active) if active else '—'}** · "
-    f"app `{sim.get('status') or 'idle'}` · EA `{ea_st}` · "
-    f"runtime `{runtime}`"
-    + (f" pid `{pid}`" if pid else "")
-    + f" · {sim.get('bars_done') or 0}/{sim.get('bars_total') or '—'} bars · "
-    f"trades `{sim.get('n_fills') or 0}` · last `{sim.get('last_bar') or '—'}` · "
-    f"delay `{delay_ms}`ms"
-  )
-  if running and runtime != "process":
-    st.warning(
-      "Feed đang chạy nhưng không phải `runtime process` — App có thể chưa Restart "
-      "sau bản vá. Stop feed → Restart app → Start lại."
+  c1, c2, c3 = st.columns(3)
+  with c1:
+    d_from = st.date_input("Từ ngày", key="sim_ea_from")
+  with c2:
+    d_to = st.date_input("Đến ngày", key="sim_ea_to")
+  with c3:
+    delay_ms = st.slider(
+      "Delay giữa các bar (ms)",
+      min_value=1,
+      max_value=2000,
+      step=10,
+      key="sim_ea_delay",
+      help="1000 = 1s.",
     )
-  if sim.get("error"):
-    st.error(sim["error"])
 
-  prog = float(sim.get("progress") or 0)
-  if sim.get("bars_total"):
-    st.progress(min(1.0, prog))
+  # Auto-refreshing progress fragment
+  _render_sim_progress_fragment()
 
   b1, b2, b3, b4, b5 = st.columns(5)
   if b1.button(
@@ -834,15 +889,18 @@ def _render_simulate_ea() -> None:
     st.rerun()
 
 
-@st.fragment(run_every=timedelta(seconds=8))
-def _sim_model_monitor_fragment() -> None:
-  """Refresh Sức khỏe / Rủi ro while History Feed runs (reads bridge_sim/)."""
-  _render_model_monitor()
-
-
 
 def _render_model_monitor() -> None:
   """Backtest OOS vs Live Auto / Simulate EA — health + risk."""
+  try:
+    _render_model_monitor_body()
+  except Exception as e:
+    st.error(f"Không render được Theo dõi model: {e}")
+    with st.expander("Chi tiết lỗi"):
+      st.exception(e)
+
+
+def _render_model_monitor_body() -> None:
   from gui.bridge_model_monitor import (
     build_bt_vs_live_monthly_figure,
     build_equity_overlay_figure,
@@ -883,7 +941,7 @@ def _render_model_monitor() -> None:
   if source == "sim":
     st.caption(
       "Simulate: KPI/biểu đồ đọc `mt5/bridge_sim/trades.json` theo **entry_time** lịch sử "
-      "(không dùng giờ tường lúc fill). Tự refresh ~8s khi feed chạy."
+      "(không dùng giờ tường lúc fill). Bấm Refresh để cập nhật."
     )
 
   if not bundle["has_report"]:
@@ -1007,6 +1065,7 @@ def _render_model_monitor() -> None:
     )
 
 
+@st.fragment
 def _render_stats_section() -> None:
   bridge_dir = _active_bridge_dir()
   mode = _bridge_mode()
@@ -1039,16 +1098,18 @@ def _render_stats_section() -> None:
     "Tất cả",
     "Tùy chọn",
   ]
+  default_preset = "Tất cả" if mode == "sim" else "Hôm nay"
+  pref_key = "mt5.sim_stats_preset" if mode == "sim" else "mt5.stats_preset"
   restore_widget(
-    "bridge_stats_preset", "Hôm nay",
-    preference_key="mt5.stats_preset",
+    "bridge_stats_preset", default_preset,
+    preference_key=pref_key,
     options=preset_options,
   )
   preset = p1.selectbox(
     "Giai đoạn",
     preset_options,
     key="bridge_stats_preset",
-    on_change=preference_callback("bridge_stats_preset", "mt5.stats_preset"),
+    on_change=preference_callback("bridge_stats_preset", pref_key),
   )
   date_from = None
   date_to = None
@@ -1192,6 +1253,7 @@ def _render_stats_section() -> None:
       st.json(view[:30])
 
 
+@st.fragment
 def _render_debug_sections() -> None:
   bridge_dir = _active_bridge_dir()
   with st.expander(f"Snapshot files (App ↔ EA) · `{bridge_dir.name}`", expanded=False):
@@ -1275,24 +1337,28 @@ def render():
       "`bridge_sim/`."
     )
 
+  chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]
+  chart_key = "mt5_chart_range_sim" if mode == "sim" else "mt5_chart_range_live"
+  pref_key = "mt5.chart_range_sim" if mode == "sim" else "mt5.chart_range"
+
   if mode == "sim":
     _render_simulate_ea()
     st.subheader(f"Giám sát MT5 · {_mode_label()}")
-    chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]
     restore_widget(
-      "mt5_chart_range", "7 ngày",
-      preference_key="mt5.chart_range",
+      chart_key, "7 ngày",
+      preference_key=pref_key,
       options=chart_ranges,
     )
     range_label = st.selectbox(
       "Khoảng chart",
       chart_ranges,
-      key="mt5_chart_range",
-      on_change=preference_callback("mt5_chart_range", "mt5.chart_range"),
+      key=chart_key,
+      on_change=preference_callback(chart_key, pref_key),
     )
     max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
     _render_live_chart(max_bars)
-    _sim_model_monitor_fragment()
+    _render_model_monitor()
+    st.caption("Bấm **Refresh** ở Simulate hoặc đổi tab để cập nhật Sức khỏe / Rủi ro.")
     _render_sim_desk_static()
   else:
     _trader_desk_fragment()
@@ -1302,17 +1368,16 @@ def render():
     _render_history_sync()
 
     st.subheader(f"Giám sát MT5 · {_mode_label()}")
-    chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]
     restore_widget(
-      "mt5_chart_range", "7 ngày",
-      preference_key="mt5.chart_range",
+      chart_key, "7 ngày",
+      preference_key=pref_key,
       options=chart_ranges,
     )
     range_label = st.selectbox(
       "Khoảng chart",
       chart_ranges,
-      key="mt5_chart_range",
-      on_change=preference_callback("mt5_chart_range", "mt5.chart_range"),
+      key=chart_key,
+      on_change=preference_callback(chart_key, pref_key),
     )
     max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
     _render_live_chart(max_bars)

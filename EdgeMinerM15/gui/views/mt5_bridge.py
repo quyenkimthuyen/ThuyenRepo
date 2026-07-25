@@ -693,10 +693,14 @@ def _render_history_sync() -> None:
 @st.fragment(run_every=timedelta(seconds=2))
 def _render_sim_progress_fragment() -> None:
   """Live progress bar and status caption — updates every 2s without flickering buttons."""
-  sim = bridge_bg.get_sim_status()
+  try:
+    sim = bridge_bg.get_sim_status()
+  except Exception as e:
+    st.warning(f"Không đọc được sim status: {e}")
+    return
   active = get_active_trade_model()
   running = bool(sim.get("running"))
-  delay_ms = int(st.session_state.get("sim_ea_delay", 100))
+  delay_ms = int(st.session_state.get("sim_ea_delay", 100) or 100)
 
   ea_st = sim.get("ea_status") or "—"
   runtime = sim.get("runtime") or "—"
@@ -718,9 +722,12 @@ def _render_sim_progress_fragment() -> None:
   if sim.get("error"):
     st.error(sim["error"])
 
-  prog = float(sim.get("progress") or 0)
+  try:
+    prog = float(sim.get("progress") or 0)
+  except (TypeError, ValueError):
+    prog = 0.0
   if sim.get("bars_total"):
-    st.progress(min(1.0, prog))
+    st.progress(min(1.0, max(0.0, prog)))
 
 
 def _render_simulate_ea() -> None:
@@ -794,25 +801,35 @@ def _render_simulate_ea() -> None:
     st.session_state["sim_ea_to"] = default_to
   if "sim_ea_delay" not in st.session_state:
     st.session_state["sim_ea_delay"] = 100
+  # Sanitize after code change (old form may leave bad types / out-of-range)
+  try:
+    if not hasattr(st.session_state["sim_ea_from"], "isoformat"):
+      st.session_state["sim_ea_from"] = default_from
+    if not hasattr(st.session_state["sim_ea_to"], "isoformat"):
+      st.session_state["sim_ea_to"] = default_to
+    delay_cur = int(st.session_state["sim_ea_delay"])
+    # Slider: min=10, step=10 → value must be 10,20,...,2000
+    if delay_cur < 10 or delay_cur > 2000 or delay_cur % 10 != 0:
+      st.session_state["sim_ea_delay"] = max(10, min(2000, round(delay_cur / 10) * 10 or 100))
+  except Exception:
+    st.session_state["sim_ea_from"] = default_from
+    st.session_state["sim_ea_to"] = default_to
+    st.session_state["sim_ea_delay"] = 100
 
-  # Form: kéo ngày/slider không rerun cả trang (tránh GUI nặng như trước)
-  with st.form("sim_ea_params_form", clear_on_submit=False):
-    c1, c2, c3 = st.columns(3)
-    with c1:
-      st.date_input("Từ ngày", key="sim_ea_from")
-    with c2:
-      st.date_input("Đến ngày", key="sim_ea_to")
-    with c3:
-      st.slider(
-        "Delay giữa các bar (ms)",
-        1, 2000, step=10, key="sim_ea_delay",
-        help="1000 = 1s. Chỉ áp dụng khi bấm Áp dụng / Start feed.",
-      )
-    st.form_submit_button("Áp dụng from / to / delay", use_container_width=True)
-
-  d_from = st.session_state["sim_ea_from"]
-  d_to = st.session_state["sim_ea_to"]
-  delay_ms = int(st.session_state["sim_ea_delay"])
+  c1, c2, c3 = st.columns(3)
+  with c1:
+    d_from = st.date_input("Từ ngày", key="sim_ea_from")
+  with c2:
+    d_to = st.date_input("Đến ngày", key="sim_ea_to")
+  with c3:
+    delay_ms = st.slider(
+      "Delay giữa các bar (ms)",
+      min_value=10,
+      max_value=2000,
+      step=10,
+      key="sim_ea_delay",
+      help="10 = 10ms. 1000 = 1s.",
+    )
 
   # Auto-refreshing progress fragment
   _render_sim_progress_fragment()
@@ -872,15 +889,17 @@ def _render_simulate_ea() -> None:
 
 
 
-@st.fragment(run_every=timedelta(seconds=8))
-def _sim_model_monitor_fragment() -> None:
-  """Refresh Sức khỏe / Rủi ro while History Feed runs (reads bridge_sim/)."""
-  _render_model_monitor()
-
-
-
 def _render_model_monitor() -> None:
   """Backtest OOS vs Live Auto / Simulate EA — health + risk."""
+  try:
+    _render_model_monitor_body()
+  except Exception as e:
+    st.error(f"Không render được Theo dõi model: {e}")
+    with st.expander("Chi tiết lỗi"):
+      st.exception(e)
+
+
+def _render_model_monitor_body() -> None:
   from gui.bridge_model_monitor import (
     build_bt_vs_live_monthly_figure,
     build_equity_overlay_figure,
@@ -921,7 +940,7 @@ def _render_model_monitor() -> None:
   if source == "sim":
     st.caption(
       "Simulate: KPI/biểu đồ đọc `mt5/bridge_sim/trades.json` theo **entry_time** lịch sử "
-      "(không dùng giờ tường lúc fill). Tự refresh ~8s khi feed chạy."
+      "(không dùng giờ tường lúc fill). Bấm Refresh để cập nhật."
     )
 
   if not bundle["has_report"]:
@@ -1317,24 +1336,28 @@ def render():
       "`bridge_sim/`."
     )
 
+  chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]
+  chart_key = "mt5_chart_range_sim" if mode == "sim" else "mt5_chart_range_live"
+  pref_key = "mt5.chart_range_sim" if mode == "sim" else "mt5.chart_range"
+
   if mode == "sim":
     _render_simulate_ea()
     st.subheader(f"Giám sát MT5 · {_mode_label()}")
-    chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]
     restore_widget(
-      "mt5_chart_range", "7 ngày",
-      preference_key="mt5.chart_range",
+      chart_key, "7 ngày",
+      preference_key=pref_key,
       options=chart_ranges,
     )
     range_label = st.selectbox(
       "Khoảng chart",
       chart_ranges,
-      key="mt5_chart_range",
-      on_change=preference_callback("mt5_chart_range", "mt5.chart_range"),
+      key=chart_key,
+      on_change=preference_callback(chart_key, pref_key),
     )
     max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
     _render_live_chart(max_bars)
-    _sim_model_monitor_fragment()
+    _render_model_monitor()
+    st.caption("Bấm **Refresh** ở Simulate hoặc đổi tab để cập nhật Sức khỏe / Rủi ro.")
     _render_sim_desk_static()
   else:
     _trader_desk_fragment()
@@ -1344,17 +1367,16 @@ def render():
     _render_history_sync()
 
     st.subheader(f"Giám sát MT5 · {_mode_label()}")
-    chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]
     restore_widget(
-      "mt5_chart_range", "7 ngày",
-      preference_key="mt5.chart_range",
+      chart_key, "7 ngày",
+      preference_key=pref_key,
       options=chart_ranges,
     )
     range_label = st.selectbox(
       "Khoảng chart",
       chart_ranges,
-      key="mt5_chart_range",
-      on_change=preference_callback("mt5_chart_range", "mt5.chart_range"),
+      key=chart_key,
+      on_change=preference_callback(chart_key, pref_key),
     )
     max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
     _render_live_chart(max_bars)
