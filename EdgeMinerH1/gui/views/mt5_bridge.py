@@ -679,8 +679,12 @@ def _render_simulate_ea() -> None:
   st.caption(
     "EA MT5 gửi `bar.json` / `fill.json` như live — App chỉ chọn giai đoạn + tốc độ. "
     f"`InpMode = HISTORY_FEED`, `InpBridgeSubdir = {BRIDGE_SIM_DIR.name}`. "
-    "Start feed = **process nền** (`mt5_bridge_sim_service.py`) giống Live — "
-    "remine không làm đơ GUI."
+    "Start feed = **process nền** (`mt5_bridge_sim_service.py`) giống Live."
+  )
+  st.info(
+    "App Windows tắt file-watcher → **đổi code phải Restart app** "
+    "(`scripts/run_app_windows.ps1 -Action Restart`). "
+    "Sau Start feed, dòng trạng thái phải có `runtime process` + `pid`."
   )
 
   st.markdown("##### Triển khai EA Simulate sang MT5")
@@ -717,94 +721,117 @@ def _render_simulate_ea() -> None:
       except Exception as e:
         st.error(f"Lỗi: {e}")
 
-  with st.container():
-    default_from = date_cls.fromisoformat(
-      str((active or {}).get("oos_from") or "2026-01-01")[:10]
-    )
-    default_to = date_cls.fromisoformat(
-      str((active or {}).get("oos_to") or "2026-01-31")[:10]
-    )
-    if (default_to - default_from).days > 60:
-      from datetime import timedelta as _td
-      default_to = default_from + _td(days=14)
+  default_from = date_cls.fromisoformat(
+    str((active or {}).get("oos_from") or "2026-01-01")[:10]
+  )
+  default_to = date_cls.fromisoformat(
+    str((active or {}).get("oos_to") or "2026-01-31")[:10]
+  )
+  if (default_to - default_from).days > 60:
+    from datetime import timedelta as _td
+    default_to = default_from + _td(days=14)
+  if "sim_ea_from" not in st.session_state:
+    st.session_state["sim_ea_from"] = default_from
+  if "sim_ea_to" not in st.session_state:
+    st.session_state["sim_ea_to"] = default_to
+  if "sim_ea_delay" not in st.session_state:
+    st.session_state["sim_ea_delay"] = 100
 
+  # Form: kéo ngày/slider không rerun cả trang (tránh GUI nặng như trước)
+  with st.form("sim_ea_params_form", clear_on_submit=False):
     c1, c2, c3 = st.columns(3)
     with c1:
-      d_from = st.date_input("Từ ngày", value=default_from, key="sim_ea_from")
+      st.date_input("Từ ngày", key="sim_ea_from")
     with c2:
-      d_to = st.date_input("Đến ngày", value=default_to, key="sim_ea_to")
+      st.date_input("Đến ngày", key="sim_ea_to")
     with c3:
-      delay_ms = st.slider(
+      st.slider(
         "Delay giữa các bar (ms)",
-        1, 2000, 100, step=10, key="sim_ea_delay",
-        help="Tốc độ EA Sleep giữa các bar (min 1ms; 1000 = 1s). "
-             "Bước 10ms để GUI nhẹ hơn khi kéo slider.",
+        1, 2000, step=10, key="sim_ea_delay",
+        help="1000 = 1s. Chỉ áp dụng khi bấm Áp dụng / Start feed.",
       )
+    st.form_submit_button("Áp dụng from / to / delay", use_container_width=True)
 
-    ea_st = sim.get("ea_status") or "—"
-    runtime = sim.get("runtime") or "—"
-    pid = sim.get("service_pid")
-    st.caption(
-      f"Model: **{format_model_label(active) if active else '—'}** · "
-      f"app `{sim.get('status') or 'idle'}` · EA `{ea_st}` · "
-      f"runtime `{runtime}`"
-      + (f" pid `{pid}`" if pid else "")
-      + f" · {sim.get('bars_done') or 0}/{sim.get('bars_total') or '—'} bars · "
-      f"trades `{sim.get('n_fills') or 0}` · last `{sim.get('last_bar') or '—'}`"
+  d_from = st.session_state["sim_ea_from"]
+  d_to = st.session_state["sim_ea_to"]
+  delay_ms = int(st.session_state["sim_ea_delay"])
+
+  ea_st = sim.get("ea_status") or "—"
+  runtime = sim.get("runtime") or "—"
+  pid = sim.get("service_pid")
+  st.caption(
+    f"Model: **{format_model_label(active) if active else '—'}** · "
+    f"app `{sim.get('status') or 'idle'}` · EA `{ea_st}` · "
+    f"runtime `{runtime}`"
+    + (f" pid `{pid}`" if pid else "")
+    + f" · {sim.get('bars_done') or 0}/{sim.get('bars_total') or '—'} bars · "
+    f"trades `{sim.get('n_fills') or 0}` · last `{sim.get('last_bar') or '—'}` · "
+    f"delay `{delay_ms}`ms"
+  )
+  if running and runtime != "process":
+    st.warning(
+      "Feed đang chạy nhưng không phải `runtime process` — App có thể chưa Restart "
+      "sau bản vá. Stop feed → Restart app → Start lại."
     )
-    if sim.get("error"):
-      st.error(sim["error"])
+  if sim.get("error"):
+    st.error(sim["error"])
 
-    prog = float(sim.get("progress") or 0)
-    if sim.get("bars_total"):
-      st.progress(min(1.0, prog))
+  prog = float(sim.get("progress") or 0)
+  if sim.get("bars_total"):
+    st.progress(min(1.0, prog))
 
-    b1, b2, b3, b4, b5 = st.columns(5)
-    if b1.button(
-      "Start feed", type="primary", icon=":material/play_arrow:",
-      disabled=running or not active, use_container_width=True, key="sim_ea_start",
-    ):
-      if d_to < d_from:
-        st.error("Đến ngày phải ≥ Từ ngày")
-      else:
-        ok = bridge_bg.start_sim_worker(
-          date_from=str(d_from),
-          date_to=str(d_to),
-          delay_ms=int(delay_ms),
-          model_id=(active or {}).get("id"),
-          risk_pct=float(st.session_state.get("mt5_risk_pct", 1.0)),
+  b1, b2, b3, b4, b5 = st.columns(5)
+  if b1.button(
+    "Start feed", type="primary", icon=":material/play_arrow:",
+    disabled=running or not active, use_container_width=True, key="sim_ea_start",
+  ):
+    if d_to < d_from:
+      st.error("Đến ngày phải ≥ Từ ngày")
+    else:
+      ok = bridge_bg.start_sim_worker(
+        date_from=str(d_from),
+        date_to=str(d_to),
+        delay_ms=int(delay_ms),
+        model_id=(active or {}).get("id"),
+        risk_pct=float(st.session_state.get("mt5_risk_pct", 1.0)),
+      )
+      if ok:
+        import time as _time
+        _time.sleep(0.4)
+        st2 = bridge_bg.get_sim_status()
+        st.success(
+          f"Sim service nền đã start · runtime=`{st2.get('runtime')}` · "
+          f"pid=`{st2.get('service_pid')}` — xem `results/mt5_bridge_sim_service.log`"
         )
-        if ok:
-          st.toast("Đã start sim service (process nền) — GUI không bị đơ remine")
-          st.rerun()
-        else:
-          st.warning("Feed đang chạy")
-    if b2.button(
-      "Pause" if not sim.get("paused") else "Resume",
-      icon=":material/pause:",
-      disabled=not running, use_container_width=True, key="sim_ea_pause",
-    ):
-      bridge_bg.pause_sim_worker(not bool(sim.get("paused")))
-      st.rerun()
-    if b3.button(
-      "Stop", icon=":material/stop:",
-      disabled=not running, use_container_width=True, key="sim_ea_stop",
-    ):
-      bridge_bg.stop_sim_worker()
-      st.rerun()
-    if b4.button(
-      "Reset data",
-      icon=":material/delete_sweep:",
-      use_container_width=True,
-      key="sim_ea_reset",
-      help="Xóa trades/fills/log/bar/decision/sim_control lần chạy trước để chạy lại sạch.",
-      disabled=running,
-    ):
-      bridge_bg.reset_sim_data()
-      st.toast("Đã xóa dữ liệu Simulate — có thể Start feed lại")
-      st.rerun()
-    if b5.button("Refresh", icon=":material/refresh:", use_container_width=True, key="sim_ea_refresh"):
-      st.rerun()
+        st.rerun()
+      else:
+        st.warning("Feed đang chạy")
+  if b2.button(
+    "Pause" if not sim.get("paused") else "Resume",
+    icon=":material/pause:",
+    disabled=not running, use_container_width=True, key="sim_ea_pause",
+  ):
+    bridge_bg.pause_sim_worker(not bool(sim.get("paused")))
+    st.rerun()
+  if b3.button(
+    "Stop", icon=":material/stop:",
+    disabled=not running, use_container_width=True, key="sim_ea_stop",
+  ):
+    bridge_bg.stop_sim_worker()
+    st.rerun()
+  if b4.button(
+    "Reset data",
+    icon=":material/delete_sweep:",
+    use_container_width=True,
+    key="sim_ea_reset",
+    help="Xóa trades/fills/log/bar/decision/sim_control lần chạy trước để chạy lại sạch.",
+    disabled=running,
+  ):
+    bridge_bg.reset_sim_data()
+    st.toast("Đã xóa dữ liệu Simulate — có thể Start feed lại")
+    st.rerun()
+  if b5.button("Refresh", icon=":material/refresh:", use_container_width=True, key="sim_ea_refresh"):
+    st.rerun()
 
 
 def _render_model_monitor() -> None:
