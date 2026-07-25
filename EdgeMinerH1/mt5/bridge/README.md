@@ -26,6 +26,7 @@ Trong app: sidebar **MT5 Bridge**
 - **Kiểm tra bridge (market ngay)** — nút BUY/SELL/CLOSE ghi `command.json` (EA v1.03+ xử lý ngay trên tick, không chờ nến đóng)
 - **Nhật ký giao tiếp** `comm_log.jsonl` (EA→App bar/fill, App→EA decision)
 - **Thống kê lệnh** `trades.json` (thắng/thua, R)
+- **Simulate EA (History Feed)** — ForgeBridge **v1.05** `InpMode = HISTORY_FEED`, `InpBridgeSubdir = bridge_sim`; App ghi `sim_control.json`
 - **Mode Auto vs Lệnh sửa** — EA v1.04 đồng bộ sửa/đóng tay; thống kê tách để review chiến lược công bằng
 
 ## Deploy / cập nhật XM Global MT5 (Windows)

@@ -24,6 +24,7 @@ FILL_NAME = "fill.json"
 STATUS_NAME = "status.json"
 REPLAY_NAME = "replay_decisions.json"
 REPLAY_CSV_NAME = "replay_signals.csv"
+SIM_CONTROL_NAME = "sim_control.json"
 
 DEFAULT_MODEL_ID = ""
 DEFAULT_MAGIC = 20260724
@@ -111,6 +112,34 @@ def replay_path(bridge_dir: Path | None = None) -> Path:
 def replay_csv_path(bridge_dir: Path | None = None) -> Path:
   return ensure_bridge_dir(bridge_dir) / REPLAY_CSV_NAME
 
+
+
+def sim_control_path(bridge_dir: Path | None = None) -> Path:
+  return ensure_bridge_dir(bridge_dir or BRIDGE_SIM_DIR) / SIM_CONTROL_NAME
+
+
+def read_sim_control(bridge_dir: Path | None = None) -> dict[str, Any]:
+  data = read_json(sim_control_path(bridge_dir))
+  return data if isinstance(data, dict) else {}
+
+
+def write_sim_control(
+  bridge_dir: Path | None = None,
+  *,
+  merge: bool = True,
+  **fields: Any,
+) -> dict[str, Any]:
+  """Write App→EA history-feed control file (EA updates ea_status/bars_*)."""
+  path = sim_control_path(bridge_dir)
+  cur: dict[str, Any] = {}
+  if merge:
+    prev = read_json(path)
+    if isinstance(prev, dict):
+      cur.update(prev)
+  cur.update(fields)
+  cur["updated_at"] = utc_now_iso()
+  atomic_write_json(path, cur)
+  return cur
 
 def utc_now_iso() -> str:
   return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")

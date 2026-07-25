@@ -7,6 +7,8 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from pathlib import Path
+
 from mt5_bridge.protocol import bars_path, connection_path, read_json
 
 TV_BG = "#131722"
@@ -36,10 +38,14 @@ def _parse_mt5_time(value) -> pd.Timestamp | None:
     return None
 
 
-def load_ea_chart_data(max_bars: int = 336) -> tuple[pd.DataFrame, dict]:
-  """Load EA M15 history and replace the latest candle with its live snapshot."""
-  history = read_json(bars_path()) or {}
-  connection = read_json(connection_path()) or {}
+def load_ea_chart_data(
+  max_bars: int = 336,
+  *,
+  bridge_dir: Path | None = None,
+) -> tuple[pd.DataFrame, dict]:
+  """Load EA history and replace the latest candle with its live snapshot."""
+  history = read_json(bars_path(bridge_dir)) or {}
+  connection = read_json(connection_path(bridge_dir)) or {}
   rows = list(history.get("bars") or []) if isinstance(history, dict) else []
   current = connection.get("bar") if isinstance(connection, dict) else None
   if isinstance(current, dict):
@@ -72,24 +78,32 @@ def load_ea_chart_data(max_bars: int = 336) -> tuple[pd.DataFrame, dict]:
   return frame, connection
 
 
-def connection_health(connection: dict, stale_after_seconds: float = 10.0) -> dict:
-  path = connection_path()
+def connection_health(
+  connection: dict,
+  stale_after_seconds: float = 10.0,
+  *,
+  bridge_dir: Path | None = None,
+) -> dict:
+  path = connection_path(bridge_dir)
   age = None
   try:
     age = max(0.0, datetime.now().timestamp() - path.stat().st_mtime)
   except OSError:
     pass
+  # History feed may refresh slower than live heartbeat
   fresh = age is not None and age <= stale_after_seconds
-  terminal_connected = bool(connection.get("connected"))
+  terminal_connected = bool(connection.get("connected", True if connection else False))
+  if connection and "connected" not in connection and age is not None:
+    terminal_connected = fresh
   return {
     "online": fresh and terminal_connected,
     "fresh": fresh,
     "age_seconds": age,
     "terminal_connected": terminal_connected,
     "trade_allowed": bool(
-      connection.get("terminal_trade_allowed")
-      and connection.get("account_trade_allowed")
-    ),
+      connection.get("terminal_trade_allowed", True)
+      and connection.get("account_trade_allowed", True)
+    ) if connection else False,
   }
 
 

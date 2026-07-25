@@ -5,6 +5,8 @@ param(
   [string]$ModelId = "",
   [double]$RiskPct = 1.0,
   [double]$PollSeconds = 2.0,
+  [ValidateSet("Live", "HistoryFeed")]
+  [string]$Mode = "Live",
   [switch]$Attach,
   [switch]$EnableTrading,
   [switch]$RestartTerminal,
@@ -17,6 +19,12 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $SourceEa = Join-Path $RepoRoot "mt5\Experts\ForgeBridge.mq5"
 $ProjectBridge = Join-Path $RepoRoot "mt5\bridge"
+$ProjectBridgeSim = Join-Path $RepoRoot "mt5\bridge_sim"
+$IsHistoryFeed = ($Mode -eq "HistoryFeed")
+if ($IsHistoryFeed) {
+  # Simulate uses App feed control + bridge_sim cycle — do not restart live service.
+  $SkipBridgeService = $true
+}
 if (-not $ModelId) {
   $activeModelPath = Join-Path $RepoRoot "results\active_trade_model.json"
   if (Test-Path $activeModelPath) {
@@ -72,11 +80,15 @@ function Find-TerminalDataPath([string]$XmInstallPath) {
   return $match.FullName
 }
 
-function Ensure-BridgeJunction([string]$DataPath) {
+function Ensure-NamedBridgeJunction(
+  [string]$DataPath,
+  [string]$SubdirName,
+  [string]$ProjectTarget
+) {
   $filesDir = Join-Path $DataPath "MQL5\Files"
-  $link = Join-Path $filesDir "bridge"
+  $link = Join-Path $filesDir $SubdirName
   New-Item -ItemType Directory -Path $filesDir -Force | Out-Null
-  New-Item -ItemType Directory -Path $ProjectBridge -Force | Out-Null
+  New-Item -ItemType Directory -Path $ProjectTarget -Force | Out-Null
 
   if (Test-Path $link) {
     $item = Get-Item $link -Force
@@ -84,14 +96,18 @@ function Ensure-BridgeJunction([string]$DataPath) {
       throw "$link exists but is not a junction. Refusing to delete existing data."
     }
     $targets = @($item.Target) | ForEach-Object { [string]$_ }
-    if ($targets -notcontains $ProjectBridge) {
-      throw "$link targets '$($targets -join ", ")', expected '$ProjectBridge'."
+    if ($targets -notcontains $ProjectTarget) {
+      throw "$link targets '$($targets -join ", ")', expected '$ProjectTarget'."
     }
     return $link
   }
 
-  New-Item -ItemType Junction -Path $link -Target $ProjectBridge | Out-Null
+  New-Item -ItemType Junction -Path $link -Target $ProjectTarget | Out-Null
   return $link
+}
+
+function Ensure-BridgeJunction([string]$DataPath) {
+  return Ensure-NamedBridgeJunction $DataPath "bridge" $ProjectBridge
 }
 
 function Compile-Ea([string]$DataPath, [string]$XmInstallPath) {
@@ -118,54 +134,37 @@ function Compile-Ea([string]$DataPath, [string]$XmInstallPath) {
 
   $logText = if (Test-Path $compileLog) {
     Get-Content $compileLog -Raw -Encoding Unicode
-  } else {
-    ""
-  }
-  if ($logText -notmatch "Result:\s+0 errors,\s+0 warnings" -or -not (Test-Path $targetEx5)) {
-    Write-Host $logText
+  } else { "" }
+  if ($proc.ExitCode -ne 0 -and $logText -notmatch "0 error") {
     throw "ForgeBridge compile failed (MetaEditor exit=$($proc.ExitCode))."
   }
-
-  return @{
-    Source = $targetMq5
-    Binary = $targetEx5
-    Log = $compileLog
+  if (-not (Test-Path $targetEx5)) {
+    throw "Compile produced no EX5: $targetEx5"
   }
+  return @{ Binary = $targetEx5; Log = $compileLog }
+}
+
+function Stop-XmTerminal([string]$XmInstallPath) {
+  Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.Name -eq "terminal64.exe" -and
+      $_.ExecutablePath -and
+      $_.ExecutablePath.StartsWith($XmInstallPath, [System.StringComparison]::OrdinalIgnoreCase)
+    } |
+    ForEach-Object {
+      Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+  Start-Sleep -Seconds 2
 }
 
 function Get-ForgeBridgeCharts([string]$DataPath) {
   $chartsRoot = Join-Path $DataPath "MQL5\Profiles\Charts"
-  if (-not (Test-Path $chartsRoot)) {
-    return @()
-  }
-  return @(Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse -ErrorAction SilentlyContinue |
+  if (-not (Test-Path $chartsRoot)) { return @() }
+  return @(Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
     Where-Object { (Get-Content $_.FullName -Raw) -match "name=ForgeBridge" })
 }
 
-function Stop-XmTerminal([string]$XmInstallPath) {
-  $procs = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-    Where-Object {
-      $_.Name -eq "terminal64.exe" -and
-      $_.ExecutablePath -eq (Join-Path $XmInstallPath "terminal64.exe")
-    }
-  foreach ($row in $procs) {
-    $proc = Get-Process -Id $row.ProcessId -ErrorAction SilentlyContinue
-    if ($proc) {
-      $null = $proc.CloseMainWindow()
-      if (-not $proc.WaitForExit(15000)) {
-        Stop-Process -Id $proc.Id -Force
-      }
-    }
-  }
-}
-
-function Attach-ForgeBridge(
-  [string]$DataPath,
-  [string]$XmInstallPath,
-  [bool]$TradingEnabled
-) {
-  Stop-XmTerminal $XmInstallPath
-
+function Get-EurusdM15Charts([string]$DataPath) {
   $chartsRoot = Join-Path $DataPath "MQL5\Profiles\Charts"
   $allEurusdCharts = Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
     Where-Object {
@@ -178,35 +177,30 @@ function Attach-ForgeBridge(
       $text -match "(?m)^period_type=0\s*$" -and
       $text -match "(?m)^period_size=15\s*$"
     }
-  if (-not $charts) {
-    $charts = $allEurusdCharts
-  }
-  $target = $charts |
-    Where-Object { (Get-Content $_.FullName -Raw) -match "name=(ForexForgeEA|ForgeBridge)" } |
-    Select-Object -First 1
-  if (-not $target) {
-    $target = $charts | Select-Object -First 1
-  }
-  if (-not $target) {
-    throw "EURUSD M15 chart not found in the MT5 profile."
-  }
+  if (-not $charts) { $charts = $allEurusdCharts }
+  return @($charts)
+}
 
-  $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-  Copy-Item $target.FullName "$($target.FullName).backup_$timestamp" -Force
+function New-ForgeBridgeExpertBlock(
+  [bool]$TradingEnabled,
+  [int]$InpMode,
+  [string]$BridgeSubdir
+) {
   $mode = if ($TradingEnabled) { 1 } else { 0 }
-  $block = @"
+  return @"
 <expert>
 name=ForgeBridge
 path=Experts\EdgeMiner2\ForgeBridge.ex5
 expertmode=$mode
 <inputs>
-InpMode=0
-InpBridgeSubdir=bridge
+InpMode=$InpMode
+InpBridgeSubdir=$BridgeSubdir
 InpDecisionWaitMs=8000
 InpPollMs=500
 InpChartBars=1344
 InpHeartbeatMs=2000
 InpHistoryChunk=750
+InpHistoryPaperFills=true
 InpRiskPct=$RiskPct
 InpMagic=20260724
 InpSlipPoints=30
@@ -214,6 +208,69 @@ InpMaxHoldBars=36
 </inputs>
 </expert>
 "@
+}
+
+function Select-AttachChart(
+  [string]$DataPath,
+  [bool]$PreferHistoryFeed
+) {
+  $charts = Get-EurusdM15Charts $DataPath
+  if (-not $charts -or $charts.Count -eq 0) {
+    throw "EURUSD M15 chart not found in the MT5 profile."
+  }
+
+  if ($PreferHistoryFeed) {
+    $alreadySim = $charts |
+      Where-Object {
+        $t = Get-Content $_.FullName -Raw
+        $t -match "name=ForgeBridge" -and $t -match "InpBridgeSubdir=bridge_sim"
+      } | Select-Object -First 1
+    if ($alreadySim) { return $alreadySim }
+
+    $notLiveExpert = @($charts |
+      Where-Object {
+        $t = Get-Content $_.FullName -Raw
+        -not (
+          $t -match "name=ForgeBridge" -and
+          $t -match "InpBridgeSubdir=bridge" -and
+          $t -notmatch "InpBridgeSubdir=bridge_sim"
+        )
+      })
+    if ($notLiveExpert.Count -gt 0) {
+      $empty = $notLiveExpert | Where-Object {
+        (Get-Content $_.FullName -Raw) -notmatch "name=ForgeBridge"
+      } | Select-Object -First 1
+      if ($empty) { return $empty }
+      return ($notLiveExpert | Select-Object -First 1)
+    }
+    if ($charts.Count -gt 1) {
+      Write-Warning "Using second EURUSD chart for HistoryFeed to avoid overwriting Live."
+      return $charts[1]
+    }
+    Write-Warning "Only one EURUSD chart found — HistoryFeed attach may replace Live inputs. Open a second chart for Live."
+    return $charts[0]
+  }
+
+  $target = $charts |
+    Where-Object { (Get-Content $_.FullName -Raw) -match "name=(ForexForgeEA|ForgeBridge)" } |
+    Select-Object -First 1
+  if (-not $target) { $target = $charts | Select-Object -First 1 }
+  return $target
+}
+
+function Attach-ForgeBridge(
+  [string]$DataPath,
+  [string]$XmInstallPath,
+  [bool]$TradingEnabled,
+  [int]$InpMode = 0,
+  [string]$BridgeSubdir = "bridge"
+) {
+  Stop-XmTerminal $XmInstallPath
+
+  $target = Select-AttachChart $DataPath ($InpMode -eq 2)
+  $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+  Copy-Item $target.FullName "$($target.FullName).backup_$timestamp" -Force
+  $block = New-ForgeBridgeExpertBlock $TradingEnabled $InpMode $BridgeSubdir
 
   $text = Get-Content $target.FullName -Raw
   $text = $text -replace "(?m)^period_type=\d+\s*$", "period_type=0"
@@ -292,10 +349,22 @@ if (-not $TerminalDataPath) {
 }
 Write-Host "Install : $InstallPath"
 Write-Host "Data    : $TerminalDataPath"
+Write-Host "Mode    : $Mode"
 
 Write-Step "Link MQL5 Files to app"
-$bridgeLink = Ensure-BridgeJunction $TerminalDataPath
-Write-Host "Bridge  : $bridgeLink -> $ProjectBridge"
+if ($IsHistoryFeed) {
+  $bridgeLink = Ensure-NamedBridgeJunction $TerminalDataPath "bridge_sim" $ProjectBridgeSim
+  Write-Host "Bridge  : $bridgeLink -> $ProjectBridgeSim"
+  try {
+    $liveLink = Ensure-BridgeJunction $TerminalDataPath
+    Write-Host "Live    : $liveLink -> $ProjectBridge"
+  } catch {
+    Write-Warning "Live bridge junction skipped: $($_.Exception.Message)"
+  }
+} else {
+  $bridgeLink = Ensure-BridgeJunction $TerminalDataPath
+  Write-Host "Bridge  : $bridgeLink -> $ProjectBridge"
+}
 
 Write-Step "Copy and compile ForgeBridge"
 $compiled = Compile-Ea $TerminalDataPath $InstallPath
@@ -303,14 +372,21 @@ Write-Host "EX5     : $($compiled.Binary)"
 
 $attached = Get-ForgeBridgeCharts $TerminalDataPath
 if ($Attach) {
-  Write-Step "Attach ForgeBridge to EURUSD M15"
-  $chart = Attach-ForgeBridge $TerminalDataPath $InstallPath $EnableTrading.IsPresent
-  Write-Host "Chart   : $chart"
-  Write-Host "Trading : $($EnableTrading.IsPresent)"
+  if ($IsHistoryFeed) {
+    Write-Step "Attach ForgeBridge HISTORY_FEED to EURUSD M15"
+    $chart = Attach-ForgeBridge $TerminalDataPath $InstallPath $false 2 "bridge_sim"
+    Write-Host "Chart   : $chart"
+    Write-Host "Inputs  : InpMode=2 (HISTORY_FEED), InpBridgeSubdir=bridge_sim, paper fills"
+  } else {
+    Write-Step "Attach ForgeBridge Live to EURUSD M15"
+    $chart = Attach-ForgeBridge $TerminalDataPath $InstallPath $EnableTrading.IsPresent 0 "bridge"
+    Write-Host "Chart   : $chart"
+    Write-Host "Trading : $($EnableTrading.IsPresent)"
+  }
 } elseif ($attached.Count -gt 0) {
   Write-Host "Attached: $($attached[0].FullName)"
 } else {
-  Write-Warning "EA deployed but not attached. Run with -Attach (and -EnableTrading to allow orders)."
+  Write-Warning "EA deployed but not attached. Run with -Attach (and -EnableTrading for Live)."
 }
 
 if (-not $NoRestartTerminal -and -not $Attach) {
@@ -327,5 +403,10 @@ if ($StartBridgeService -and -not $SkipBridgeService) {
 }
 
 Write-Step "Done"
+if ($IsHistoryFeed) {
+  Write-Host "History Feed ready: App Simulate → Start feed (sim_control.json)."
+} else {
+  Write-Host "Live ready. For Simulate: -Mode HistoryFeed -Attach"
+}
 Write-Host "Next update command:"
 Write-Host "powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`""

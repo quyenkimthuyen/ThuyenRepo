@@ -2,29 +2,32 @@
 //| ForgeBridge.mq5                                                  |
 //| Thin execution EA — App (Best 3m) decides via mt5/bridge files.  |
 //| Modes:                                                           |
-//|   Live   — write bar.json, read decision.json (App service)      |
-//|   Replay — read replay_signals.csv for Strategy Tester compare   |
+//|   Live         — write bar.json, read decision.json (App)        |
+//|   Replay       — read replay_signals.csv (Strategy Tester)       |
+//|   HistoryFeed  — CopyRates paced by App sim_control.json         |
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
 #property copyright "EdgeMinerH1 bridge"
-#property version   "1.04"
+#property version   "1.05"
 
 #include <Trade/Trade.mqh>
 
 enum ENUM_BRIDGE_MODE
 {
-   BRIDGE_LIVE = 0,    // Live file bridge
-   BRIDGE_REPLAY = 1   // Replay CSV (tester)
+   BRIDGE_LIVE = 0,           // Live file bridge
+   BRIDGE_REPLAY = 1,         // Replay CSV (tester)
+   BRIDGE_HISTORY_FEED = 2    // App-controlled historical bar feed
 };
 
 input group "=== Bridge ==="
 input ENUM_BRIDGE_MODE InpMode = BRIDGE_LIVE;
-input string InpBridgeSubdir   = "bridge_h1";          // under MQL5/Files/
-input int    InpDecisionWaitMs = 8000;              // Live: wait for decision
+input string InpBridgeSubdir   = "bridge_h1";       // under MQL5/Files/ (use bridge_sim for HistoryFeed)
+input int    InpDecisionWaitMs = 8000;              // Live/HistoryFeed: wait for decision
 input int    InpPollMs         = 500;
-input int    InpChartBars      = 720;              // H1 bars exported for App chart
+input int    InpChartBars      = 720;               // H1 bars exported for App chart
 input int    InpHeartbeatMs    = 2000;              // Live connection/tick snapshot
 input int    InpHistoryChunk   = 750;               // Bars per history sync response
+input bool   InpHistoryPaperFills = true;           // HistoryFeed: paper fills from OHLC (no OrderSend)
 
 input group "=== Risk ==="
 input double InpRiskPct        = 1.0;
@@ -70,6 +73,23 @@ int      g_rep_hold[];
 int      g_rep_n = 0;
 int      g_rep_cursor = 0;
 
+// History feed (App sim_control.json)
+MqlRates g_hist_rates[];
+int      g_hist_n = 0;
+int      g_hist_cursor = 0;
+string   g_sim_request_id = "";
+bool     g_sim_enabled = false;
+string   g_sim_from = "";
+string   g_sim_to = "";
+int      g_sim_delay_ms = 100;
+string   g_sim_ea_status = "idle";
+string   g_sim_last_bar = "";
+string   g_sim_error = "";
+string   g_pending_decision = "";
+bool     g_paper_open = false;
+int      g_paper_held = 0;
+ulong    g_paper_ticket = 700000;
+
 //+------------------------------------------------------------------+
 string BridgePath(const string name)
 {
@@ -95,11 +115,24 @@ int OnInit()
       }
       Print("ForgeBridge Replay loaded signals=", g_rep_n);
    }
+   else if(InpMode == BRIDGE_HISTORY_FEED)
+   {
+      if(AccountInfoInteger(ACCOUNT_MARGIN_MODE) != ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)
+      {
+         Print("ForgeBridge H1 requires a hedging account.");
+         return INIT_FAILED;
+      }
+      g_sim_ea_status = "idle";
+      WriteSimControlFile();
+      EventSetMillisecondTimer(50);
+      Print("ForgeBridge HistoryFeed | Files/", InpBridgeSubdir,
+            " | paper=", InpHistoryPaperFills, " | magic=", InpMagic);
+   }
    else
    {
       if(AccountInfoInteger(ACCOUNT_MARGIN_MODE) != ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)
       {
-         Print("ForgeBridge M15 requires a hedging account.");
+         Print("ForgeBridge H1 requires a hedging account.");
          return INIT_FAILED;
       }
       WriteBarsJson();
@@ -119,6 +152,11 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTimer()
 {
+   if(InpMode == BRIDGE_HISTORY_FEED)
+   {
+      ProcessHistoryFeed();
+      return;
+   }
    if(InpMode == BRIDGE_LIVE)
    {
       WriteConnectionJson();
@@ -212,6 +250,20 @@ double JsonGetDouble(const string json, const string key, const double def = 0)
    return StringToDouble(rest);
 }
 
+bool JsonGetBool(const string json, const string key, const bool def = false)
+{
+   string pat = "\"" + key + "\"";
+   int p = StringFind(json, pat);
+   if(p < 0) return def;
+   int colon = StringFind(json, ":", p);
+   if(colon < 0) return def;
+   string rest = StringSubstr(json, colon + 1);
+   StringTrimLeft(rest);
+   if(StringFind(rest, "true") == 0) return true;
+   if(StringFind(rest, "false") == 0) return false;
+   return def;
+}
+
 //+------------------------------------------------------------------+
 bool WriteBarJson(datetime t1)
 {
@@ -228,7 +280,7 @@ bool WriteBarJson(datetime t1)
 
    string json = "{";
    json += "\"symbol\":\"" + _Symbol + "\",";
-   json += "\"period\":\"M15\",";
+   json += "\"period\":\"H1\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"time\":\"" + bar_time + "\",";
@@ -240,6 +292,45 @@ bool WriteBarJson(datetime t1)
    json += "\"close\":" + DoubleToString(r[0].close, _Digits) + ",";
    json += "\"volume\":" + DoubleToString((double)r[0].tick_volume, 0) + ",";
    json += "\"tick_volume\":" + IntegerToString((int)r[0].tick_volume) + ",";
+   json += "\"spread_points\":" + IntegerToString(spread) + ",";
+   json += "\"digits\":" + IntegerToString(_Digits) + ",";
+   json += "\"point\":" + DoubleToString(_Point, _Digits) + ",";
+   json += "\"account\":" + IntegerToString((int)login);
+   json += "}\n";
+
+   int h = FileOpen(BridgePath("bar.json"), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
+   if(h == INVALID_HANDLE)
+   {
+      Print("ForgeBridge: cannot write bar.json err=", GetLastError());
+      return false;
+   }
+   FileWriteString(h, json);
+   FileClose(h);
+   return true;
+}
+
+//+------------------------------------------------------------------+
+bool WriteBarJsonFromRate(const MqlRates &rate)
+{
+   long time_msc = (long)rate.time * 1000;
+   string bar_time = TimeToString(rate.time, TIME_DATE | TIME_MINUTES);
+   int spread = (rate.spread > 0) ? rate.spread : (int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+   long login = AccountInfoInteger(ACCOUNT_LOGIN);
+
+   string json = "{";
+   json += "\"symbol\":\"" + _Symbol + "\",";
+   json += "\"period\":\"H1\",";
+   json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
+   json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
+   json += "\"time\":\"" + bar_time + "\",";
+   json += "\"bar_time\":\"" + bar_time + "\",";
+   json += "\"time_msc\":" + IntegerToString(time_msc) + ",";
+   json += "\"open\":" + DoubleToString(rate.open, _Digits) + ",";
+   json += "\"high\":" + DoubleToString(rate.high, _Digits) + ",";
+   json += "\"low\":" + DoubleToString(rate.low, _Digits) + ",";
+   json += "\"close\":" + DoubleToString(rate.close, _Digits) + ",";
+   json += "\"volume\":" + DoubleToString((double)rate.tick_volume, 0) + ",";
+   json += "\"tick_volume\":" + IntegerToString((int)rate.tick_volume) + ",";
    json += "\"spread_points\":" + IntegerToString(spread) + ",";
    json += "\"digits\":" + IntegerToString(_Digits) + ",";
    json += "\"point\":" + DoubleToString(_Point, _Digits) + ",";
@@ -276,7 +367,7 @@ bool WriteBarsJson()
 
    string prefix = "{\"symbol\":\"" + _Symbol + "\",";
    prefix += "\"updated_at\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\",";
-   prefix += "\"period\":\"M15\",\"bars\":[";
+   prefix += "\"period\":\"H1\",\"bars\":[";
    FileWriteString(h, prefix);
    for(int i = 0; i < copied; i++)
    {
@@ -351,7 +442,7 @@ bool ProcessHistoryRequest()
    string from_time_text = JsonGetString(request, "from_time");
    datetime from_time = StringToTime(from_time_text == "" ? "2025.01.01 00:00" : from_time_text);
    int oldest_shift = iBarShift(_Symbol, PERIOD_H1, from_time, false);
-   int available = MathMax(0, MathMin(total - 1, oldest_shift)); // exclude forming M15 bar
+   int available = MathMax(0, MathMin(total - 1, oldest_shift)); // exclude forming H1 bar
    int wanted = MathMin(chunk_size, MathMax(0, available - offset));
 
    MqlRates rates[];
@@ -372,7 +463,7 @@ bool ProcessHistoryRequest()
       return false;
 
    string prefix = "{\"request_id\":\"" + request_id + "\",";
-   prefix += "\"symbol\":\"" + _Symbol + "\",\"period\":\"M15\",";
+   prefix += "\"symbol\":\"" + _Symbol + "\",\"period\":\"H1\",";
    prefix += "\"server\":\"" + AccountInfoString(ACCOUNT_SERVER) + "\",";
    prefix += "\"account\":" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)) + ",";
    prefix += "\"server_utc_offset_seconds\":" + IntegerToString(server_offset) + ",";
@@ -427,7 +518,7 @@ bool WriteConnectionJson()
 
    string json = "{";
    json += "\"symbol\":\"" + _Symbol + "\",";
-   json += "\"period\":\"M15\",";
+   json += "\"period\":\"H1\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
    json += "\"bridge_subdir\":\"" + InpBridgeSubdir + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
@@ -663,7 +754,7 @@ void WriteFillJsonEx(
    json += "\"detail\":\"" + detail + "\",";
    json += "\"ticket\":" + IntegerToString((long)ticket) + ",";
    json += "\"symbol\":\"" + _Symbol + "\",";
-   json += "\"period\":\"M15\",";
+   json += "\"period\":\"H1\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"price\":" + DoubleToString(price, _Digits) + ",";
@@ -1112,8 +1203,372 @@ void OpenFromReplay(int idx)
 }
 
 //+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+datetime ParseControlDate(string s)
+{
+   StringReplace(s, "-", ".");
+   StringReplace(s, "T", " ");
+   StringTrimLeft(s);
+   StringTrimRight(s);
+   if(StringLen(s) == 10)
+      s += " 00:00";
+   return StringToTime(s);
+}
+
+bool ReadSimControlFile()
+{
+   int h = FileOpen(BridgePath("sim_control.json"),
+                    FILE_READ | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
+   if(h == INVALID_HANDLE)
+      return false;
+   string json = "";
+   while(!FileIsEnding(h))
+      json += FileReadString(h) + "\n";
+   FileClose(h);
+   if(StringLen(json) < 5)
+      return false;
+
+   g_sim_enabled = JsonGetBool(json, "enabled", false);
+   string fr = JsonGetString(json, "from");
+   string to = JsonGetString(json, "to");
+   if(fr != "") g_sim_from = fr;
+   if(to != "") g_sim_to = to;
+   int delay = (int)JsonGetDouble(json, "delay_ms", g_sim_delay_ms);
+   g_sim_delay_ms = (int)MathMax(50, delay);
+   string rid = JsonGetString(json, "request_id");
+   if(rid != "") g_sim_request_id = rid;
+   return true;
+}
+
+void WriteSimControlFile()
+{
+   string json = "{";
+   json += "\"enabled\":" + (g_sim_enabled ? "true" : "false") + ",";
+   json += "\"from\":\"" + g_sim_from + "\",";
+   json += "\"to\":\"" + g_sim_to + "\",";
+   json += "\"delay_ms\":" + IntegerToString(g_sim_delay_ms) + ",";
+   json += "\"request_id\":\"" + g_sim_request_id + "\",";
+   json += "\"ea_status\":\"" + g_sim_ea_status + "\",";
+   json += "\"bars_done\":" + IntegerToString(g_hist_cursor) + ",";
+   json += "\"bars_total\":" + IntegerToString(g_hist_n) + ",";
+   json += "\"last_bar\":\"" + g_sim_last_bar + "\",";
+   json += "\"error\":\"" + g_sim_error + "\",";
+   json += "\"updated_at\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\"";
+   json += "}\n";
+   int h = FileOpen(BridgePath("sim_control.json"), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
+   if(h == INVALID_HANDLE)
+      return;
+   FileWriteString(h, json);
+   FileClose(h);
+}
+
+bool LoadHistoryRatesRange()
+{
+   datetime t_from = ParseControlDate(g_sim_from);
+   datetime t_to = ParseControlDate(g_sim_to);
+   if(t_from <= 0 || t_to <= 0 || t_to < t_from)
+   {
+      g_sim_error = "bad_from_to";
+      g_sim_ea_status = "error";
+      return false;
+   }
+   // Include the full end day when only a date is given
+   if(StringLen(g_sim_to) <= 10)
+      t_to += PeriodSeconds(PERIOD_H1) * 96 - 1;
+
+   ArrayFree(g_hist_rates);
+   ArraySetAsSeries(g_hist_rates, false);
+   int copied = CopyRates(_Symbol, PERIOD_H1, t_from, t_to, g_hist_rates);
+   if(copied < 1)
+   {
+      g_sim_error = "copy_rates_failed";
+      g_sim_ea_status = "error";
+      g_hist_n = 0;
+      return false;
+   }
+   g_hist_n = copied;
+   g_hist_cursor = 0;
+   g_sim_error = "";
+   g_pending_decision = "";
+   g_paper_open = false;
+   g_paper_held = 0;
+   g_last_signal_id = "";
+   g_open_ticket = 0;
+   g_open_signal_id = "";
+   g_had_position = false;
+   Print("ForgeBridge HistoryFeed loaded bars=", g_hist_n,
+         " from=", TimeToString(g_hist_rates[0].time, TIME_DATE | TIME_MINUTES),
+         " to=", TimeToString(g_hist_rates[g_hist_n - 1].time, TIME_DATE | TIME_MINUTES));
+   return true;
+}
+
+void ReportPaperClose(const string reason, const double exit_px)
+{
+   if(!g_paper_open)
+      return;
+   double profit = 0;
+   if(g_risk > 0)
+   {
+      if(g_open_action == "BUY")
+         profit = (exit_px - g_open_entry) / g_risk;
+      else
+         profit = (g_open_entry - exit_px) / g_risk;
+   }
+   WriteFillJsonEx("close", g_open_signal_id, g_open_action, true, reason,
+                   g_open_ticket, exit_px, g_open_sl, g_open_tp, g_open_lots, profit, reason,
+                   false, "strategy");
+   g_paper_open = false;
+   g_paper_held = 0;
+   g_open_ticket = 0;
+   g_open_signal_id = "";
+   g_had_position = false;
+}
+
+void ManagePaperHistory(const MqlRates &r)
+{
+   if(!g_paper_open)
+      return;
+   g_paper_held++;
+
+   if(g_exit_mode == 1 || g_exit_mode == 2)
+   {
+      if(g_open_action == "BUY")
+      {
+         if(r.close >= g_open_entry + g_risk * g_trail_act)
+         {
+            double nsl = r.close - g_risk * g_trail_dist;
+            if(nsl > g_open_sl)
+               g_open_sl = nsl;
+         }
+      }
+      else
+      {
+         if(r.close <= g_open_entry - g_risk * g_trail_act)
+         {
+            double nsl = r.close + g_risk * g_trail_dist;
+            if(g_open_sl == 0 || nsl < g_open_sl)
+               g_open_sl = nsl;
+         }
+      }
+   }
+
+   if(g_open_action == "BUY")
+   {
+      if(g_open_sl > 0 && r.low <= g_open_sl)
+      {
+         ReportPaperClose("sl", g_open_sl);
+         return;
+      }
+      if(g_open_tp > 0 && r.high >= g_open_tp)
+      {
+         ReportPaperClose("tp", g_open_tp);
+         return;
+      }
+   }
+   else
+   {
+      if(g_open_sl > 0 && r.high >= g_open_sl)
+      {
+         ReportPaperClose("sl", g_open_sl);
+         return;
+      }
+      if(g_open_tp > 0 && r.low <= g_open_tp)
+      {
+         ReportPaperClose("tp", g_open_tp);
+         return;
+      }
+   }
+
+   if(g_paper_held >= g_max_hold)
+      ReportPaperClose("max_hold", r.close);
+}
+
+bool PaperOpenFromDecision(const string json, const double entry_price)
+{
+   string action = JsonGetString(json, "action");
+   StringToUpper(action);
+   if(action != "BUY" && action != "SELL")
+      return false;
+
+   string sid = JsonGetString(json, "signal_id");
+   if(sid != "" && sid == g_last_signal_id)
+      return false;
+
+   double sl = JsonGetDouble(json, "sl", 0);
+   double tp = JsonGetDouble(json, "tp", 0);
+   if(sl <= 0 || tp <= 0 || entry_price <= 0)
+      return false;
+
+   string em = JsonGetString(json, "exit_mode");
+   StringToLower(em);
+   if(em == "full" || em == "0") g_exit_mode = 0;
+   else if(em == "hybrid" || em == "1") g_exit_mode = 1;
+   else if(em == "trail" || em == "2") g_exit_mode = 2;
+   else if(em == "partial" || em == "3") g_exit_mode = 3;
+   else g_exit_mode = 2;
+   g_trail_act = JsonGetDouble(json, "trail_activate_r", 1.0);
+   g_trail_dist = JsonGetDouble(json, "trail_distance_r", 0.5);
+   g_max_hold = (int)JsonGetDouble(json, "max_hold_bars", InpMaxHoldBars);
+
+   double sl_dist = MathAbs(entry_price - sl);
+   if(sl_dist <= 0) return false;
+   g_risk = sl_dist;
+   double lots = LotsForRisk(sl_dist);
+   if(lots <= 0) lots = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+
+   g_paper_ticket++;
+   g_open_ticket = g_paper_ticket;
+   g_open_signal_id = sid;
+   g_open_action = action;
+   g_open_entry = entry_price;
+   g_open_sl = sl;
+   g_open_tp = tp;
+   g_open_lots = lots;
+   g_open_source = "strategy";
+   g_user_intervened = false;
+   g_had_position = true;
+   g_paper_open = true;
+   g_paper_held = 0;
+   g_last_signal_id = sid;
+
+   WriteFillJsonEx("open", sid, action, true, "opened",
+                   g_open_ticket, entry_price, sl, tp, lots, 0, "opened",
+                   false, "strategy");
+   Print("ForgeBridge HistoryFeed paper ", action, " @", entry_price, " sid=", sid);
+   return true;
+}
+
+void ApplyPendingOpen(const MqlRates &r)
+{
+   if(g_pending_decision == "" || g_paper_open)
+      return;
+   if(PositionsByMagic() > 0 && !InpHistoryPaperFills)
+      return;
+   if(InpHistoryPaperFills)
+      PaperOpenFromDecision(g_pending_decision, r.open);
+   else
+      OpenFromDecision(g_pending_decision);
+   g_pending_decision = "";
+}
+
+void ProcessHistoryFeed()
+{
+   static string s_loaded_request = "";
+
+   if(!ReadSimControlFile())
+      return;
+
+   if(!g_sim_enabled)
+   {
+      if(g_sim_ea_status == "running")
+      {
+         g_sim_ea_status = "idle";
+         WriteSimControlFile();
+      }
+      return;
+   }
+
+   if(g_sim_request_id == "" || g_sim_from == "" || g_sim_to == "")
+   {
+      g_sim_error = "missing_control_fields";
+      g_sim_ea_status = "error";
+      WriteSimControlFile();
+      return;
+   }
+
+   if(s_loaded_request != g_sim_request_id)
+   {
+      if(!LoadHistoryRatesRange())
+      {
+         WriteSimControlFile();
+         return;
+      }
+      s_loaded_request = g_sim_request_id;
+      g_sim_ea_status = "running";
+      WriteSimControlFile();
+   }
+
+   if(g_hist_n < 1 || g_hist_cursor >= g_hist_n)
+   {
+      if(g_paper_open && g_hist_n > 0)
+         ReportPaperClose("end_range", g_hist_rates[g_hist_n - 1].close);
+      else if(g_had_position && PositionsByMagic() > 0)
+         CloseAllByMagic("end_range");
+      g_sim_ea_status = "completed";
+      g_sim_enabled = false;
+      WriteSimControlFile();
+      Print("ForgeBridge HistoryFeed completed bars=", g_hist_n);
+      return;
+   }
+
+   MqlRates r = g_hist_rates[g_hist_cursor];
+
+   // Open pending from previous bar decision at this bar's open
+   ApplyPendingOpen(r);
+
+   if(InpHistoryPaperFills)
+      ManagePaperHistory(r);
+   else
+      ManageOpen();
+
+   if(!WriteBarJsonFromRate(r))
+   {
+      g_sim_error = "write_bar_failed";
+      g_sim_ea_status = "error";
+      WriteSimControlFile();
+      return;
+   }
+   if((g_hist_cursor % 32) == 0)
+      WriteBarsJson();
+   WriteConnectionJson();
+
+   string want = TimeToString(r.time, TIME_DATE | TIME_MINUTES);
+   g_sim_last_bar = want;
+
+   // Only ask for a new entry when flat
+   bool flat = InpHistoryPaperFills ? (!g_paper_open) : (PositionsByMagic() == 0);
+   if(flat && g_pending_decision == "")
+   {
+      string json;
+      if(WaitDecisionForBar(want, json))
+      {
+         string action = JsonGetString(json, "action");
+         StringToUpper(action);
+         if(action == "BUY" || action == "SELL")
+            g_pending_decision = json;
+      }
+      else
+         Print("ForgeBridge HistoryFeed: no decision for ", want);
+   }
+
+   g_hist_cursor++;
+   g_sim_ea_status = "running";
+   g_sim_error = "";
+   // Re-read so App Stop/Pause (enabled=false) is not overwritten
+   bool still = g_sim_enabled;
+   string keep_status = g_sim_ea_status;
+   string keep_last = g_sim_last_bar;
+   string keep_err = g_sim_error;
+   int keep_cursor = g_hist_cursor;
+   ReadSimControlFile();
+   g_sim_ea_status = keep_status;
+   g_sim_last_bar = keep_last;
+   g_sim_error = keep_err;
+   g_hist_cursor = keep_cursor;
+   if(!still)
+      g_sim_enabled = false;
+   WriteSimControlFile();
+
+   Sleep((int)MathMax(50, g_sim_delay_ms));
+}
+
+//+------------------------------------------------------------------+
 void OnTick()
 {
+   // History feed is timer-driven; do not trade live ticks in parallel
+   if(InpMode == BRIDGE_HISTORY_FEED)
+      return;
+
    ManageOpen();
 
    uint now_ms = GetTickCount();
