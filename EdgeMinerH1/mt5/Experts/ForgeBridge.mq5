@@ -7,8 +7,8 @@
 //|   HistoryFeed  — CopyRates paced by App sim_control.json         |
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
-#property copyright "EdgeMinerH1 bridge"
-#property version   "1.07"
+#property copyright "EdgeMiner2 bridge"
+#property version   "1.08"
 
 #include <Trade/Trade.mqh>
 
@@ -21,9 +21,9 @@ enum ENUM_BRIDGE_MODE
 
 input group "=== Bridge ==="
 input ENUM_BRIDGE_MODE InpMode = BRIDGE_LIVE;
-input string InpBridgeSubdir   = "bridge_h1";       // under MQL5/Files/ (use bridge_sim for HistoryFeed)
+input string InpBridgeSubdir   = "bridge";          // under MQL5/Files/ (use bridge_sim for HistoryFeed)
 input int    InpDecisionWaitMs = 8000;              // Live: wait for decision
-input int    InpHistoryDecisionWaitMs = 20000;       // HistoryFeed: max wait (App catch-up)
+input int    InpHistoryDecisionWaitMs = 20000;      // HistoryFeed: max wait (remine tuần có thể chậm)
 input int    InpPollMs         = 500;
 input int    InpChartBars      = 720;               // H1 bars exported for App chart
 input int    InpHeartbeatMs    = 2000;              // Live connection/tick snapshot
@@ -32,7 +32,7 @@ input bool   InpHistoryPaperFills = true;           // HistoryFeed: paper fills 
 
 input group "=== Risk ==="
 input double InpRiskPct        = 1.0;
-input ulong InpMagic        = 20260725;
+input ulong  InpMagic          = 20260724;
 input int    InpSlipPoints     = 30;
 input int    InpMaxHoldBars    = 36;                // fallback if decision omits
 
@@ -120,7 +120,7 @@ int OnInit()
    {
       if(AccountInfoInteger(ACCOUNT_MARGIN_MODE) != ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)
       {
-         Print("ForgeBridge H1 requires a hedging account.");
+         Print("ForgeBridge M15 requires a hedging account.");
          return INIT_FAILED;
       }
       g_sim_ea_status = "idle";
@@ -133,7 +133,7 @@ int OnInit()
    {
       if(AccountInfoInteger(ACCOUNT_MARGIN_MODE) != ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)
       {
-         Print("ForgeBridge H1 requires a hedging account.");
+         Print("ForgeBridge M15 requires a hedging account.");
          return INIT_FAILED;
       }
       WriteBarsJson();
@@ -480,7 +480,7 @@ bool ProcessHistoryRequest()
    string from_time_text = JsonGetString(request, "from_time");
    datetime from_time = StringToTime(from_time_text == "" ? "2025.01.01 00:00" : from_time_text);
    int oldest_shift = iBarShift(_Symbol, PERIOD_H1, from_time, false);
-   int available = MathMax(0, MathMin(total - 1, oldest_shift)); // exclude forming H1 bar
+   int available = MathMax(0, MathMin(total - 1, oldest_shift)); // exclude forming M15 bar
    int wanted = MathMin(chunk_size, MathMax(0, available - offset));
 
    MqlRates rates[];
@@ -784,7 +784,8 @@ void WriteFillJsonEx(
    const double profit,
    const string reason,
    const bool manual = false,
-   const string source = ""
+   const string source = "",
+   const string bar_time = ""
 )
 {
    string src = source;
@@ -802,6 +803,8 @@ void WriteFillJsonEx(
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"price\":" + DoubleToString(price, _Digits) + ",";
+   if(event == "close" && g_open_entry > 0)
+      json += "\"entry\":" + DoubleToString(g_open_entry, _Digits) + ",";
    json += "\"sl\":" + DoubleToString(sl, _Digits) + ",";
    json += "\"tp\":" + DoubleToString(tp, _Digits) + ",";
    json += "\"lots\":" + DoubleToString(lots, 2) + ",";
@@ -809,12 +812,29 @@ void WriteFillJsonEx(
    json += "\"reason\":\"" + reason + "\",";
    json += "\"manual\":" + (manual ? "true" : "false") + ",";
    json += "\"source\":\"" + src + "\",";
-   json += "\"time\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\"";
+   if(bar_time != "")
+      json += "\"bar_time\":\"" + bar_time + "\",";
+   // HistoryFeed: prefer bar_time as logical clock; wall time is secondary
+   if(bar_time != "")
+      json += "\"time\":\"" + bar_time + "\"";
+   else
+      json += "\"time\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\"";
    json += "}\n";
    int h = FileOpen(BridgePath("fill.json"), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
-   if(h == INVALID_HANDLE) return;
-   FileWriteString(h, json);
-   FileClose(h);
+   if(h != INVALID_HANDLE)
+   {
+      FileWriteString(h, json);
+      FileClose(h);
+   }
+   // Append queue so open+close at delay=1ms are not lost (fill.json is single-slot)
+   h = FileOpen(BridgePath("ea_fills.jsonl"),
+                FILE_READ | FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
+   if(h != INVALID_HANDLE)
+   {
+      FileSeek(h, 0, SEEK_END);
+      FileWriteString(h, json);
+      FileClose(h);
+   }
 }
 
 void WriteFillJson(const string signal_id, const string action, const bool ok, const string detail)
@@ -1346,7 +1366,7 @@ bool LoadHistoryRatesRange()
    return true;
 }
 
-void ReportPaperClose(const string reason, const double exit_px)
+void ReportPaperClose(const string reason, const double exit_px, const string bar_time = "")
 {
    if(!g_paper_open)
       return;
@@ -1358,9 +1378,14 @@ void ReportPaperClose(const string reason, const double exit_px)
       else
          profit = (g_open_entry - exit_px) / g_risk;
    }
+   string bt = bar_time;
+   if(bt == "")
+      bt = g_sim_last_bar;
    WriteFillJsonEx("close", g_open_signal_id, g_open_action, true, reason,
                    g_open_ticket, exit_px, g_open_sl, g_open_tp, g_open_lots, profit, reason,
-                   false, "strategy");
+                   false, "strategy", bt);
+   // Include entry on close payload via price fields already; App open may have been missed —
+   // also stamp entry into a dedicated field by rewriting is hard in MQL; bar_time helps chart.
    g_paper_open = false;
    g_paper_held = 0;
    g_open_ticket = 0;
@@ -1400,12 +1425,12 @@ void ManagePaperHistory(const MqlRates &r)
    {
       if(g_open_sl > 0 && r.low <= g_open_sl)
       {
-         ReportPaperClose("sl", g_open_sl);
+         ReportPaperClose("sl", g_open_sl, TimeToString(r.time, TIME_DATE | TIME_MINUTES));
          return;
       }
       if(g_open_tp > 0 && r.high >= g_open_tp)
       {
-         ReportPaperClose("tp", g_open_tp);
+         ReportPaperClose("tp", g_open_tp, TimeToString(r.time, TIME_DATE | TIME_MINUTES));
          return;
       }
    }
@@ -1413,21 +1438,21 @@ void ManagePaperHistory(const MqlRates &r)
    {
       if(g_open_sl > 0 && r.high >= g_open_sl)
       {
-         ReportPaperClose("sl", g_open_sl);
+         ReportPaperClose("sl", g_open_sl, TimeToString(r.time, TIME_DATE | TIME_MINUTES));
          return;
       }
       if(g_open_tp > 0 && r.low <= g_open_tp)
       {
-         ReportPaperClose("tp", g_open_tp);
+         ReportPaperClose("tp", g_open_tp, TimeToString(r.time, TIME_DATE | TIME_MINUTES));
          return;
       }
    }
 
    if(g_paper_held >= g_max_hold)
-      ReportPaperClose("max_hold", r.close);
+      ReportPaperClose("max_hold", r.close, TimeToString(r.time, TIME_DATE | TIME_MINUTES));
 }
 
-bool PaperOpenFromDecision(const string json, const double entry_price)
+bool PaperOpenFromDecision(const string json, const double entry_price, const string bar_time = "")
 {
    string action = JsonGetString(json, "action");
    StringToUpper(action);
@@ -1475,10 +1500,13 @@ bool PaperOpenFromDecision(const string json, const double entry_price)
    g_paper_held = 0;
    g_last_signal_id = sid;
 
+   string bt = bar_time;
+   if(bt == "")
+      bt = g_sim_last_bar;
    WriteFillJsonEx("open", sid, action, true, "opened",
                    g_open_ticket, entry_price, sl, tp, lots, 0, "opened",
-                   false, "strategy");
-   Print("ForgeBridge HistoryFeed paper ", action, " @", entry_price, " sid=", sid);
+                   false, "strategy", bt);
+   Print("ForgeBridge HistoryFeed paper ", action, " @", entry_price, " sid=", sid, " bar=", bt);
    return true;
 }
 
@@ -1488,8 +1516,9 @@ void ApplyPendingOpen(const MqlRates &r)
       return;
    if(PositionsByMagic() > 0 && !InpHistoryPaperFills)
       return;
+   string bt = TimeToString(r.time, TIME_DATE | TIME_MINUTES);
    if(InpHistoryPaperFills)
-      PaperOpenFromDecision(g_pending_decision, r.open);
+      PaperOpenFromDecision(g_pending_decision, r.open, bt);
    else
       OpenFromDecision(g_pending_decision);
    g_pending_decision = "";
@@ -1535,7 +1564,11 @@ void ProcessHistoryFeed()
    if(g_hist_n < 1 || g_hist_cursor >= g_hist_n)
    {
       if(g_paper_open && g_hist_n > 0)
-         ReportPaperClose("end_range", g_hist_rates[g_hist_n - 1].close);
+         ReportPaperClose(
+           "end_range",
+           g_hist_rates[g_hist_n - 1].close,
+           TimeToString(g_hist_rates[g_hist_n - 1].time, TIME_DATE | TIME_MINUTES)
+         );
       else if(g_had_position && PositionsByMagic() > 0)
          CloseAllByMagic("end_range");
       g_sim_ea_status = "completed";

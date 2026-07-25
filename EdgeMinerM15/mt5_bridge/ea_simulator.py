@@ -142,6 +142,8 @@ def reset_sim_data(bridge_dir: Path | None = None) -> dict[str, Any]:
     "connection.json",
     "decision.json",
     "fill.json",
+    "ea_fills.jsonl",
+    "fills.jsonl",
     "status.json",
     "command.json",
     "command_ack.json",

@@ -206,7 +206,7 @@ def process_fill(
       "origin": source,
       "intervened": is_manual,
       "interventions": ["manual_test_open"] if is_manual else [],
-      "entry_time": fill.get("time") or _now(),
+      "entry_time": fill.get("bar_time") or (decision or {}).get("bar_time") or fill.get("time") or _now(),
       "entry_px": float(entry) if entry is not None else None,
       "sl": float(sl) if sl is not None else None,
       "tp": float(tp) if tp is not None else None,
@@ -287,8 +287,12 @@ def process_fill(
         "origin": source,
         "intervened": is_manual,
         "interventions": ["orphan_close"],
-        "entry_time": None,
-        "entry_px": fill.get("entry"),
+        "entry_time": fill.get("bar_time") or (decision or {}).get("bar_time") or fill.get("time"),
+        "entry_px": (
+          fill.get("entry") if fill.get("entry") is not None
+          else fill.get("entry_px") if fill.get("entry_px") is not None
+          else fill.get("open_price")
+        ),
         "sl": fill.get("sl"),
         "tp": fill.get("tp"),
         "sl_initial": fill.get("sl"),
@@ -296,6 +300,11 @@ def process_fill(
         "lots": fill.get("lots"),
         "model_id": model_id,
       }
+      if row["entry_px"] is not None:
+        try:
+          row["entry_px"] = float(row["entry_px"])
+        except (TypeError, ValueError):
+          row["entry_px"] = None
       trades.append(row)
 
     exit_px = fill.get("price") or fill.get("exit_px") or fill.get("close_price")
@@ -345,7 +354,7 @@ def process_fill(
 
     row.update({
       "status": "CLOSED",
-      "exit_time": fill.get("time") or _now(),
+      "exit_time": fill.get("bar_time") or fill.get("time") or _now(),
       "exit_px": float(exit_px) if exit_px is not None else row.get("exit_px"),
       "profit": float(fill["profit"]) if fill.get("profit") is not None else row.get("profit"),
       "r": r if r is not None else row.get("r"),
@@ -433,9 +442,12 @@ def compute_stats(
   date_from=None,
   date_to=None,
   mode: str | None = None,
+  use_exit_time: bool = True,
 ) -> dict[str, Any]:
   raw = trades if trades is not None else load_trades(bridge_dir)
-  filtered = filter_trades(raw, date_from=date_from, date_to=date_to, mode=mode)
+  filtered = filter_trades(
+    raw, date_from=date_from, date_to=date_to, mode=mode, use_exit_time=use_exit_time,
+  )
   closed = [t for t in filtered if t.get("status") == "CLOSED"]
   open_n = sum(1 for t in filtered if t.get("status") == "OPEN")
   wins = [t for t in closed if t.get("result") == "WIN"]

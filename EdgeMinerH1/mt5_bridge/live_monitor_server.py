@@ -146,22 +146,47 @@ def build_sim_snapshot(*, max_bars: int = 672) -> dict:
     hist = read_json(bars_path(BRIDGE_SIM_DIR)) or {}
     bars = list(hist.get("bars") or [])[-max(96, int(max_bars)):]
 
-  trades = load_trades(BRIDGE_SIM_DIR)
+  raw_trades = load_trades(BRIDGE_SIM_DIR)
+  trades = []
+  for t in raw_trades:
+    tc = dict(t)
+    # Chart needs real entry — never invent from exit (orphan closes break Plotly)
+    if tc.get("entry_px") is None:
+      continue
+    try:
+      ep = float(tc["entry_px"])
+      sl = float(tc["sl"]) if tc.get("sl") is not None else None
+      tp = float(tc["tp"]) if tc.get("tp") is not None else None
+    except (TypeError, ValueError):
+      continue
+    if sl is not None and abs(ep - sl) < 1e-9:
+      continue  # zero-risk zone paints broken rectangles
+    if not (tc.get("entry_time") or tc.get("bar_time")):
+      continue
+    if not tc.get("entry_time"):
+      tc["entry_time"] = tc.get("bar_time")
+    trades.append(tc)
+
   decision = read_json(decision_path(BRIDGE_SIM_DIR)) or {}
   action = str(decision.get("action") or "").upper()
   signal_id = decision.get("signal_id")
   known = any(signal_id and t.get("signal_id") == signal_id for t in trades)
   if action in ("BUY", "SELL") and not known:
-    trades = list(trades) + [{
-      "status": "SIGNAL",
-      "signal_id": signal_id,
-      "direction": action,
-      "entry_time": decision.get("entry_time") or decision.get("bar_time"),
-      "entry_px": decision.get("entry"),
-      "sl": decision.get("sl"),
-      "tp": decision.get("tp"),
-      "strategy_name": decision.get("strategy_name"),
-    }]
+    entry = decision.get("entry")
+    sl = decision.get("sl")
+    tp = decision.get("tp")
+    et = decision.get("entry_time") or decision.get("bar_time")
+    if entry is not None and sl is not None and tp is not None and et:
+      trades.append({
+        "status": "SIGNAL",
+        "signal_id": signal_id,
+        "direction": action,
+        "entry_time": et,
+        "entry_px": entry,
+        "sl": sl,
+        "tp": tp,
+        "strategy_name": decision.get("strategy_name"),
+      })
 
   done = int(ctrl.get("bars_done") or st.get("bars_done") or 0)
   total = int(ctrl.get("bars_total") or st.get("bars_total") or 0)
@@ -206,9 +231,9 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
     <div class="metric"><div class="label">{labels[6]}</div><div class="value" id="slots">—</div></div>
     """
     price_tag = "SIM"
-    ui_rev = "mt5-sim"
+    ui_rev = "mt5-sim-v2"
     snap_url = "/snapshot?mode=sim"
-    note0 = "Simulate History Feed — status + chart cập nhật mượt (Plotly.react, không remount Streamlit)."
+    note0 = "Simulate History Feed — status + chart cập nhật mượt (Plotly.react)."
   elif paper_mode:
     chart_title = "EURUSD H1 · Paper Trade"
     labels = ("PAPER ENGINE", "LAST PRICE", "DAY TRADES", "SLOTS LEFT", "SESSION")
@@ -291,7 +316,9 @@ function mt5Time(value) {{
   return d + "T" + t;
 }}
 function setText(id, text, cls="") {{
-  const el=document.getElementById(id); el.textContent=text; el.className="value "+cls;
+  const el=document.getElementById(id);
+  if (!el) return;
+  el.textContent=text; el.className="value "+cls;
 }}
 function tradeLayers(trades, start, end) {{
   // Same drawing style as Paper Trade (_add_order_overlays):
@@ -299,18 +326,20 @@ function tradeLayers(trades, start, end) {{
   const out=[], shapes=[], annotations=[];
   const ENTRY_BLUE = "#2962ff";
   for (const t of (trades || [])) {{
-    const et = mt5Time(t.entry_time || t.entry || t.signal_time);
+    try {{
+    const et = mt5Time(t.entry_time || t.bar_time || t.signal_time);
     const ep = Number(t.entry_px != null ? t.entry_px : t.entry);
-    if (!et || !Number.isFinite(ep)) continue;
+    if (!et || !Number.isFinite(ep) || ep <= 0) continue;
     const xt = mt5Time(t.exit_time || t.exit);
     const lineEnd = xt || end;
-    if (lineEnd < start || et > end) continue;
+    if (!start || !end || lineEnd < start || et > end) continue;
     const dir = String(t.direction || t.dir || "").toUpperCase();
     const isLong = dir === "BUY" || dir === "LONG";
     const status = String(t.status || "CLOSED").toUpperCase();
     const signal = status === "SIGNAL";
     const lineStart = et < start ? start : et;
     const sl = Number(t.sl), tp = Number(t.tp);
+    if (Number.isFinite(sl) && Math.abs(sl - ep) < 1e-9) continue;
     const lineDash = signal ? "dash" : "dot";
     const riskFill = signal ? "rgba(255,193,7,0.08)" : "rgba(242,54,69,0.12)";
     const rewFill = signal ? "rgba(255,193,7,0.06)" : "rgba(8,153,129,0.10)";
@@ -403,6 +432,7 @@ function tradeLayers(trades, start, end) {{
         bgcolor:"rgba(0,0,0,0.6)", bordercolor:"#ffeb3b"
       }});
     }}
+    }} catch (e) {{ /* skip bad trade overlay */ }}
   }}
   return {{traces:out, shapes, annotations}};
 }}

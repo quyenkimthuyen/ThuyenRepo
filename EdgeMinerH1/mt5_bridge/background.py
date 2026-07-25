@@ -70,11 +70,7 @@ def _read_json(path: Path) -> dict | None:
 
 
 def _write_json(path: Path, data: dict) -> None:
-  path.parent.mkdir(parents=True, exist_ok=True)
-  tmp = path.with_suffix(".tmp")
-  with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(data, f, indent=2, ensure_ascii=False)
-  tmp.replace(path)
+  atomic_write_json(path, data)
 
 
 def load_config() -> dict:
@@ -229,9 +225,20 @@ def _fill_fp(fill: dict | None) -> str | None:
 
 
 def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last_fill_fp: str | None):
-  fill = read_json(fill_path(bridge_dir))
-  fp_fill = _fill_fp(fill if isinstance(fill, dict) else None)
-  if fp_fill and fp_fill != last_fill_fp and isinstance(fill, dict):
+  seen_fills: set[str] = set()
+  if isinstance(last_fill_fp, str) and last_fill_fp.startswith("["):
+    try:
+      seen_fills = set(json.loads(last_fill_fp))
+    except Exception:
+      seen_fills = {last_fill_fp} if last_fill_fp else set()
+  elif last_fill_fp:
+    seen_fills = {last_fill_fp}
+
+  def _ingest_fill(fill: dict) -> None:
+    nonlocal seen_fills
+    fp_fill = _fill_fp(fill)
+    if not fp_fill or fp_fill in seen_fills:
+      return
     append_event(
       "ea_to_app",
       "fill_received",
@@ -249,8 +256,31 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
       decision=last_decision if isinstance(last_decision, dict) else None,
       model_id=engine.model_id if engine else None,
     )
-    last_fill_fp = fp_fill
+    seen_fills.add(fp_fill)
     save_config(last_run_at=_now_iso())
+
+  # HistoryFeed: drain append-only queue (open+close can land within 1ms)
+  fills_q = ensure_bridge_dir(bridge_dir) / "ea_fills.jsonl"
+  if fills_q.exists():
+    try:
+      for line in fills_q.read_text(encoding="utf-8-sig").splitlines():
+        line = line.strip()
+        if not line:
+          continue
+        try:
+          payload = json.loads(line)
+        except Exception:
+          continue
+        if isinstance(payload, dict):
+          _ingest_fill(payload)
+    except Exception:
+      pass
+
+  fill = read_json(fill_path(bridge_dir))
+  if isinstance(fill, dict):
+    _ingest_fill(fill)
+
+  last_fill_fp = json.dumps(sorted(seen_fills)[-80:], ensure_ascii=False)
 
   bar = read_json(bar_path(bridge_dir))
   if not isinstance(bar, dict):
@@ -328,6 +358,7 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
     last_error=None,
   )
   return fp, last_fill_fp
+
 
 
 def _worker():

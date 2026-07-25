@@ -16,19 +16,35 @@ from mt5_bridge.trade_journal import MODE_AUTO, compute_stats, filter_trades, lo
 
 def live_trades_to_analytics_df(trades: list[dict]) -> pd.DataFrame:
   """Map Bridge journal rows → analytics schema (entry, r)."""
+  from mt5_bridge.trade_journal import _compute_r
+
   rows = []
   for t in trades:
     if t.get("status") and str(t.get("status")).upper() != "CLOSED":
       continue
-    if t.get("r") is None:
+    r_val = t.get("r")
+    if r_val is None:
+      entry = t.get("entry_px")
+      exit_px = t.get("exit_px")
+      sl = t.get("sl_initial") if t.get("sl_initial") is not None else t.get("sl")
+      direction = t.get("direction") or t.get("dir")
+      if entry is not None and exit_px is not None and sl is not None:
+        r_val = _compute_r(str(direction), float(entry), float(exit_px), float(sl))
+      elif t.get("profit") is not None:
+        try:
+          r_val = float(t["profit"])  # HistoryFeed paper: profit often = R
+        except (TypeError, ValueError):
+          r_val = None
+    if r_val is None:
       continue
-    entry = t.get("entry_time") or t.get("exit_time") or t.get("updated_at")
+    # Prefer historical entry (sim); wall-clock exit breaks monthly buckets
+    entry = t.get("entry_time") or t.get("bar_time") or t.get("exit_time") or t.get("updated_at")
     if not entry:
       continue
     rows.append({
       "entry": entry,
       "exit": t.get("exit_time"),
-      "r": float(t["r"]),
+      "r": float(r_val),
       "dir": t.get("direction") or t.get("dir"),
       "result": t.get("result"),
     })
@@ -69,12 +85,49 @@ def load_live_auto_trades(
   bridge_dir=None,
   date_from=None,
   date_to=None,
+  use_exit_time: bool = True,
 ) -> dict[str, Any]:
-  """Closed Bridge auto trades, optionally filtered to model_id / date window."""
+  """Closed Bridge auto trades, optionally filtered to model_id / date window.
+
+  use_exit_time=False → filter by entry_time (HistoryFeed / Simulate: exit may be
+  wall-clock while entry is broker bar time).
+  """
+  from mt5_bridge.trade_journal import _compute_r
+
   raw = load_trades(bridge_dir)
+  # Backfill missing R so health/risk charts can use sim fills
+  for t in raw:
+    if str(t.get("status") or "").upper() != "CLOSED":
+      continue
+    if t.get("r") is not None:
+      continue
+    entry = t.get("entry_px")
+    exit_px = t.get("exit_px")
+    sl = t.get("sl_initial") if t.get("sl_initial") is not None else t.get("sl")
+    r_val = None
+    if entry is not None and exit_px is not None and sl is not None:
+      r_val = _compute_r(str(t.get("direction") or ""), float(entry), float(exit_px), float(sl))
+    # HistoryFeed paper often stores R-multiple in profit when open fill was missed
+    if r_val is None and t.get("profit") is not None:
+      try:
+        r_val = float(t["profit"])
+      except (TypeError, ValueError):
+        r_val = None
+    if r_val is None:
+      continue
+    t["r"] = r_val
+    if not t.get("result"):
+      if r_val > 0.05:
+        t["result"] = "WIN"
+      elif r_val < -0.05:
+        t["result"] = "LOSS"
+      else:
+        t["result"] = "BE"
+
   auto = filter_trades(
     raw, bridge_dir=bridge_dir, mode=MODE_AUTO,
     date_from=date_from, date_to=date_to,
+    use_exit_time=use_exit_time,
   )
   if model_id:
     matched = [t for t in auto if (t.get("model_id") or model_id) == model_id]
@@ -88,7 +141,26 @@ def load_live_auto_trades(
   stats = compute_stats(
     trades, bridge_dir=bridge_dir, mode=MODE_AUTO,
     date_from=date_from, date_to=date_to,
+    use_exit_time=use_exit_time,
   )
+  # Recompute stats R from closed list (filter_trades path may still miss R fill)
+  rs = [float(t["r"]) for t in closed if t.get("r") is not None]
+  if rs:
+    wins = sum(1 for t in closed if t.get("result") == "WIN")
+    stats = {
+      **stats,
+      "n_trades": len(closed),
+      "total_r": round(sum(rs), 3),
+      "avg_r": round(sum(rs) / len(rs), 3),
+      "win_rate_pct": round(100.0 * wins / len(closed), 1) if closed else None,
+    }
+    peak = eq = max_dd = 0.0
+    for r in rs:
+      eq += r
+      peak = max(peak, eq)
+      max_dd = min(max_dd, eq - peak)
+    stats["max_drawdown_r"] = round(max_dd, 3)
+
   return {
     "trades": closed,
     "trades_df": trades_df,
@@ -262,6 +334,8 @@ def build_monitor_bundle(
     bridge_dir=bridge_dir,
     date_from=date_from,
     date_to=date_to,
+    # Simulate: filter by historical entry_time, not wall-clock exit_time
+    use_exit_time=(src != "sim"),
   )
 
   # When comparing sim window, also clip BT monthly to overlapping months only in edge metrics

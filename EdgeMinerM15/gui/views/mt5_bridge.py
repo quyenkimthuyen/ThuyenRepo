@@ -457,7 +457,7 @@ def _render_live_chart(max_bars: int) -> None:
           write_sim_state({"date_from": key[0], "date_to": key[1] or None})
           st.session_state["_sim_chart_dates"] = key
       components.iframe(
-        f"{sim_url}/chart?mode=sim&bars={max_bars}",
+        f"{sim_url}/chart?mode=sim&bars={max_bars}&v=sim2",
         height=700,
         scrolling=False,
       )
@@ -871,7 +871,14 @@ def _render_simulate_ea() -> None:
     st.rerun()
 
 
-@st.fragment
+
+@st.fragment(run_every=timedelta(seconds=8))
+def _sim_model_monitor_fragment() -> None:
+  """Refresh Sức khỏe / Rủi ro while History Feed runs (reads bridge_sim/)."""
+  _render_model_monitor()
+
+
+
 def _render_model_monitor() -> None:
   """Backtest OOS vs Live Auto / Simulate EA — health + risk."""
   from gui.bridge_model_monitor import (
@@ -891,8 +898,14 @@ def _render_model_monitor() -> None:
   sim_st = load_sim_state()
   date_from = date_to = None
   if source == "sim":
-    date_from = sim_st.get("date_from")
-    date_to = sim_st.get("date_to")
+    d0 = st.session_state.get("sim_ea_from")
+    d1 = st.session_state.get("sim_ea_to")
+    date_from = (
+      d0.isoformat() if hasattr(d0, "isoformat") else None
+    ) or sim_st.get("date_from") or None
+    date_to = (
+      d1.isoformat() if hasattr(d1, "isoformat") else None
+    ) or sim_st.get("date_to") or None
 
   bundle = build_monitor_bundle(
     active, source=source, date_from=date_from, date_to=date_to,
@@ -902,8 +915,14 @@ def _render_model_monitor() -> None:
     f"**{bundle['model_label']}** · fp `{bundle.get('conditions_fp') or '—'}` · "
     f"Đối chiếu **{live_label}** (auto đã đóng)"
     + (f" · cửa sổ sim `{date_from} → {date_to}`" if source == "sim" and date_from else "")
+    + f" · nguồn `{bundle.get('live', {}).get('bridge_dir') or '—'}`"
     + "."
   )
+  if source == "sim":
+    st.caption(
+      "Simulate: KPI/biểu đồ đọc `mt5/bridge_sim/trades.json` theo **entry_time** lịch sử "
+      "(không dùng giờ tường lúc fill). Tự refresh ~8s khi feed chạy."
+    )
 
   if not bundle["has_report"]:
     st.warning(
@@ -1315,7 +1334,7 @@ def render():
     )
     max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
     _render_live_chart(max_bars)
-    _render_model_monitor()
+    _sim_model_monitor_fragment()
     _render_sim_desk_static()
   else:
     _trader_desk_fragment()
