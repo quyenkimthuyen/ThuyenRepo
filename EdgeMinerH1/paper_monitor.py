@@ -27,6 +27,17 @@ def _current_week_bounds(df: pd.DataFrame) -> tuple[pd.Timestamp, pd.Timestamp]:
   return week_start, week_end
 
 
+def _week_bounds_for_ts(ts: pd.Timestamp) -> tuple[pd.Timestamp, pd.Timestamp]:
+  """ISO week containing ``ts`` (broker/series time) — used by live + HistoryFeed."""
+  now = pd.Timestamp(ts)
+  week_start = now - pd.Timedelta(days=int(now.weekday()))
+  week_start = week_start.normalize()
+  if week_start.hour > 0:
+    week_start = pd.Timestamp(week_start.date())
+  week_end = week_start + pd.Timedelta(days=7)
+  return week_start, week_end
+
+
 def _project_signal_levels(
   fm, strat, bar_idx: int, direction: int,
   spread_pips: float, slippage_pips: float,

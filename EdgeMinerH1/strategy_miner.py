@@ -82,6 +82,58 @@ class MinedStrategy:
   name: str = "mined_v3"
 
 
+@dataclass(frozen=True)
+class MiningSearchSpace:
+  """Optional bridge/grid payload — H1 learning uses classic mine defaults."""
+  target_trades_per_week: float = 2.0
+  include_session_regime_rules: bool = False
+  drawdown_penalty: float = 0.0
+  loss_streak_penalty: float = 0.0
+  rr_ratios: tuple[float, ...] = (2.5, 3.0)
+  atr_multipliers: tuple[float, ...] = (0.9, 1.05)
+  max_hold_bars: tuple[int, ...] = (36,)
+  min_bars_between: tuple[int, ...] = (4,)
+  session_ranges: tuple[tuple[int, int], ...] = ((7, 20),)
+  session_filters: tuple[bool, ...] = (True,)
+  score_thresholds: tuple[float, ...] = (0.6, 1.0, 1.6, 2.2)
+  min_rules_matches: tuple[int, ...] = (1, 2)
+  ml_probability_thresholds: tuple[float, ...] = (0.36, 0.40, 0.44, 0.48)
+  min_feature_samples: int = 30
+  min_threshold_samples: int = 10
+  min_binary_samples: int = 8
+
+
+def mining_search_space_from_dict(value: dict | None) -> MiningSearchSpace | None:
+  if not value:
+    return None
+  try:
+    from dataclasses import fields
+    allowed = {f.name for f in fields(MiningSearchSpace)}
+    kwargs = {k: v for k, v in value.items() if k in allowed}
+    # tuple-ify list fields
+    for key in (
+      "rr_ratios", "atr_multipliers", "max_hold_bars", "min_bars_between",
+      "session_filters", "score_thresholds", "min_rules_matches",
+      "ml_probability_thresholds",
+    ):
+      if key in kwargs and isinstance(kwargs[key], list):
+        kwargs[key] = tuple(kwargs[key])
+    if "session_ranges" in kwargs:
+      kwargs["session_ranges"] = tuple(tuple(x) for x in kwargs["session_ranges"])
+    return MiningSearchSpace(**kwargs)
+  except Exception:
+    return None
+
+
+def mining_search_space_to_dict(space: MiningSearchSpace | None) -> dict:
+  from dataclasses import asdict
+  return asdict(space) if space is not None else {}
+
+
+def constrain_strategy_to_space(strat: MinedStrategy, space: MiningSearchSpace | None) -> MinedStrategy:
+  return strat
+
+
 CONTINUOUS_FEATURES = [
   "rsi", "adx", "bb_pos", "bb_width_pct", "atr_pct", "zscore_20",
   "price_vs_ema21", "price_vs_ema50", "ema_slope_8", "ema_slope_21",
