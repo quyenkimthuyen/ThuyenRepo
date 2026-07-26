@@ -1464,6 +1464,7 @@ bool PaperOpenFromDecision(const string json, const double entry_price, const st
    if(sid != "" && sid == g_last_signal_id)
       return false;
 
+   double planned = JsonGetDouble(json, "entry", 0);
    double sl = JsonGetDouble(json, "sl", 0);
    double tp = JsonGetDouble(json, "tp", 0);
    if(sl <= 0 || tp <= 0 || entry_price <= 0)
@@ -1480,8 +1481,48 @@ bool PaperOpenFromDecision(const string json, const double entry_price, const st
    g_trail_dist = JsonGetDouble(json, "trail_distance_r", 0.5);
    g_max_hold = (int)JsonGetDouble(json, "max_hold_bars", InpMaxHoldBars);
 
+   // Rebase SL/TP onto actual fill open using planned risk/RR from App decision.
+   // HistoryFeed fills at bar open (raw); decision levels are vs spread-adjusted
+   // planned entry — without rebase, risk collapses and paper R explodes vs OOS.
+   double planned_risk = (planned > 0.0) ? MathAbs(planned - sl) : 0.0;
+   double rr = JsonGetDouble(json, "rr", 0.0);
+   if(rr <= 0.0 && planned_risk > 0.0 && planned > 0.0)
+      rr = MathAbs(tp - planned) / planned_risk;
+   if(rr <= 0.0)
+      rr = 2.0;
+
+   if(planned_risk > 0.0)
+   {
+      if(action == "BUY")
+      {
+         sl = entry_price - planned_risk;
+         tp = entry_price + planned_risk * rr;
+      }
+      else
+      {
+         sl = entry_price + planned_risk;
+         tp = entry_price - planned_risk * rr;
+      }
+   }
+   else
+   {
+      // No planned entry: shift absolute levels by fill delta if possible
+      if(planned > 0.0)
+      {
+         double delta = entry_price - planned;
+         sl += delta;
+         tp += delta;
+      }
+   }
+
    double sl_dist = MathAbs(entry_price - sl);
-   if(sl_dist <= 0) return false;
+   if(sl_dist <= 0.0)
+      return false;
+   // Guard: refuse near-zero risk (< 0.5 pip) after rebase
+   double pip = (_Digits == 3 || _Digits == 5) ? (10.0 * _Point) : _Point;
+   if(sl_dist < 0.5 * pip)
+      return false;
+
    g_risk = sl_dist;
    double lots = LotsForRisk(sl_dist);
    if(lots <= 0) lots = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
@@ -1507,7 +1548,9 @@ bool PaperOpenFromDecision(const string json, const double entry_price, const st
    WriteFillJsonEx("open", sid, action, true, "opened",
                    g_open_ticket, entry_price, sl, tp, lots, 0, "opened",
                    false, "strategy", bt);
-   Print("ForgeBridge HistoryFeed paper ", action, " @", entry_price, " sid=", sid, " bar=", bt);
+   Print("ForgeBridge HistoryFeed paper ", action, " @", entry_price,
+         " sl=", sl, " tp=", tp, " risk=", sl_dist,
+         " sid=", sid, " bar=", bt);
    return true;
 }
 
