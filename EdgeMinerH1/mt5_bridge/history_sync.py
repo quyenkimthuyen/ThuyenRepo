@@ -14,6 +14,7 @@ import pandas as pd
 from mt5_bridge.protocol import (
   BRIDGE_DIR,
   atomic_write_json,
+  safe_replace,
   history_ack_path,
   history_chunk_path,
   history_request_path,
@@ -27,6 +28,7 @@ DATA_DIR = ROOT / "data"
 MT5_CACHE_PATH = DATA_DIR / "mt5_eurusd_h1.parquet"
 MT5_META_PATH = DATA_DIR / "mt5_eurusd_h1_meta.json"
 BROKER_TIMEZONE = os.environ.get("EDGEMINER_BROKER_TIMEZONE", "Europe/Helsinki")
+DATA_START_BROKER = "2023-01-01 00:00"
 DEFAULT_CHUNK_SIZE = 750
 _store_lock = threading.RLock()
 
@@ -73,7 +75,8 @@ def normalize_mt5_bars(bars: list[dict]) -> pd.DataFrame:
     (frame["High"] >= frame[["Open", "Close", "Low"]].max(axis=1))
     & (frame["Low"] <= frame[["Open", "Close", "High"]].min(axis=1))
   )
-  return frame.loc[valid].dropna()
+  frame = frame.loc[valid].dropna()
+  return frame.loc[frame.index >= parse_broker_time(DATA_START_BROKER)]
 
 
 def load_mt5_cache() -> pd.DataFrame | None:
@@ -81,14 +84,15 @@ def load_mt5_cache() -> pd.DataFrame | None:
     return None
   frame = pd.read_parquet(MT5_CACHE_PATH)
   frame.index = pd.to_datetime(frame.index, utc=True).tz_convert(None)
-  return frame.sort_index()[~frame.index.duplicated(keep="last")]
+  frame = frame.sort_index()[~frame.index.duplicated(keep="last")]
+  return frame.loc[frame.index >= parse_broker_time(DATA_START_BROKER)]
 
 
 def _write_cache(frame: pd.DataFrame, source: dict) -> None:
   DATA_DIR.mkdir(parents=True, exist_ok=True)
   tmp = MT5_CACHE_PATH.with_suffix(".parquet.tmp")
   frame.to_parquet(tmp)
-  tmp.replace(MT5_CACHE_PATH)
+  safe_replace(tmp, MT5_CACHE_PATH)
   diffs = frame.index.to_series().diff().dropna()
   gaps = int(((diffs > pd.Timedelta(hours=1)) & (diffs < pd.Timedelta(hours=48))).sum())
   fingerprint = hashlib.sha256(
@@ -139,6 +143,7 @@ def _new_request(offset: int, bridge_dir: Path, chunk_size: int) -> dict:
     "action": "export_h1_history",
     "symbol": "EURUSD",
     "period": "H1",
+    "from_time": "2023.01.01 00:00",
     "offset": int(offset),
     "chunk_size": int(chunk_size),
     "requested_at": utc_now_iso(),

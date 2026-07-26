@@ -346,7 +346,7 @@ def build_ea_chart(
   connection: dict,
   trades: list[dict],
   *,
-  title: str = "EURUSD M15 · XM MT5 live",
+  title: str = "EURUSD H1 · XM MT5 live",
   price_line_label: str = "LIVE",
 ) -> go.Figure | None:
   if frame.empty:

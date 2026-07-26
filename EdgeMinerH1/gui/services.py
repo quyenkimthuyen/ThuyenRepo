@@ -11,7 +11,7 @@ from config import (
   DEFAULT_HOLDOUT_MONTHS, DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS,
   DEFAULT_START_DATE, DEFAULT_RISK_PCT_PER_TRADE,
 )
-from data_loader import META_PATH, download_eurusd_m15, load_eurusd_m15
+from data_loader import META_PATH, download_eurusd_h1, load_eurusd_h1
 from kb_profiles import (
   DEFAULT_PROFILE_ID, create_profile, delete_profile, kb_valid_for_backtest,
   list_profiles, load_kb as load_kb_from_profiles, register_profile, slice_df_for_period,
@@ -58,13 +58,13 @@ def load_kb(profile_id: str = DEFAULT_PROFILE_ID) -> KnowledgeBase:
 
 
 def get_ohlc_df(start: str = DEFAULT_START_DATE) -> pd.DataFrame:
-  return load_eurusd_m15(start)
+  return load_eurusd_h1(start)
 
 
 @st.cache_data(ttl=300, show_spinner=False)
 def get_ohlc_df_cached(start: str = DEFAULT_START_DATE) -> pd.DataFrame:
   """Cached OHLC — tránh đọc parquet lại mỗi lần chuyển tab."""
-  return load_eurusd_m15(start)
+  return load_eurusd_h1(start)
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -79,7 +79,7 @@ def get_ohlc_window_cached(chart_from: str, chart_to: str, start: str = DEFAULT_
 
 def refresh_market_data(start: str = DEFAULT_START_DATE) -> pd.DataFrame:
   _clear_ohlc_streamlit_cache()
-  return download_eurusd_m15(start, force_refresh=True)
+  return download_eurusd_h1(start, force_refresh=True)
 
 
 def _clear_ohlc_streamlit_cache() -> None:
@@ -131,7 +131,7 @@ def execute_backtest(
     if mining_search_space else None
   )
 
-  df = load_eurusd_m15(start_date)
+  df = load_eurusd_h1(start_date)
   reset_kb_cache()
   if use_learning:
     set_kb_profile(kb_profile, kb_snapshot)
@@ -189,7 +189,7 @@ def execute_learning(
     path.unlink()
 
   kb = KnowledgeBase(path)
-  df = load_eurusd_m15(from_date)
+  df = load_eurusd_h1(from_date)
   df = slice_df_for_period(df, from_date, until_date)
   fm = FeatureMatrix(df)
 
@@ -264,7 +264,7 @@ def get_paper_monitor(
   reset_kb_cache()
   if use_learning:
     set_kb_profile(kb_profile, kb_snapshot)
-  df = load_eurusd_m15(DEFAULT_START_DATE)
+  df = load_eurusd_h1(DEFAULT_START_DATE)
   return get_monitor_state(
     df, use_learning=use_learning, train_weeks=int(train_weeks),
     spread_pips=spread_pips, slippage_pips=slippage_pips,

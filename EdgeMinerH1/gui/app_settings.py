@@ -15,18 +15,18 @@ SETTINGS_PATH = REPORT_DIR / "app_settings.json"
 # Giai đoạn học → kb_profile (đã học hoặc sẽ học)
 LEARNING_ERA_OPTIONS = [
   {
-    "key": "2023-2025",
-    "label": "2023–2025",
-    "learn_from": "2023-01-01",
+    "key": "2025-full",
+    "label": "2025 (12 tháng)",
+    "learn_from": "2025-01-01",
     "learn_until": "2025-12-31",
-    "kb_profile": "era_2023_2025",
+    "kb_profile": "era_2025_full",
   },
   {
-    "key": "2024-2025",
-    "label": "2024–2025",
-    "learn_from": "2024-01-01",
+    "key": "2025-h2",
+    "label": "2025 (6 tháng cuối)",
+    "learn_from": "2025-07-01",
     "learn_until": "2025-12-31",
-    "kb_profile": "era_2024_2025",
+    "kb_profile": "era_2025_h2",
   },
 ]
 
@@ -41,26 +41,30 @@ LEGACY_KB_PROFILE_MAP = {
 DEFAULT_SETTINGS = {
   "id": "default",
   "label": "Cài đặt mặc định",
-  "strategy_train_months": [3, 6, 9],
-  "learning_era_keys": ["2023-2025", "2024-2025"],
+  "strategy_train_weeks": [3, 6, 9],
+  "learning_era_keys": ["2025-full", "2025-h2"],
   "learning_loops": 4,
-  "backtest_from": "2025-01-01",
+  "backtest_from": "2026-01-01",
   "backtest_to": "2026-12-31",
   "spread_pips": DEFAULT_SPREAD_PIPS,
   "slippage_pips": DEFAULT_SLIPPAGE_PIPS,
-  "grid_objective": "total_r",
+  "grid_objective": "risk_adjusted",
   "updated_at": None,
 }
 
-TRAIN_MONTH_OPTIONS = [3, 6, 9]
+TRAIN_WEEK_OPTIONS = [3, 6, 9]
+# Compatibility import for removed comparison views.
+TRAIN_MONTH_OPTIONS = TRAIN_WEEK_OPTIONS
 
 
 def _sanitize_settings(data: dict) -> dict:
   """Chỉ giữ giá trị hợp lệ theo schema Settings."""
   allowed_era_keys = {e["key"] for e in LEARNING_ERA_OPTIONS}
   out = {**DEFAULT_SETTINGS, **data}
-  trains = [t for t in (out.get("strategy_train_months") or []) if t in TRAIN_MONTH_OPTIONS]
-  out["strategy_train_months"] = trains or list(TRAIN_MONTH_OPTIONS)
+  legacy_trains = out.get("strategy_train_months") or []
+  trains = [t for t in (out.get("strategy_train_weeks") or legacy_trains) if t in TRAIN_WEEK_OPTIONS]
+  out["strategy_train_weeks"] = trains or list(TRAIN_WEEK_OPTIONS)
+  out.pop("strategy_train_months", None)
   eras = [k for k in (out.get("learning_era_keys") or []) if k in allowed_era_keys]
   out["learning_era_keys"] = eras or [e["key"] for e in LEARNING_ERA_OPTIONS]
   out["learning_loops"] = max(1, min(12, int(out.get("learning_loops") or 4)))
@@ -136,7 +140,7 @@ def default_learning_era(settings: dict | None = None) -> dict:
 
 def settings_backtest_period(settings: dict | None = None) -> tuple[str, str]:
   s = settings or load_settings()
-  return s.get("backtest_from", "2025-01-01"), s.get("backtest_to", "2026-12-31")
+  return s.get("backtest_from", "2026-01-01"), s.get("backtest_to", "2026-12-31")
 
 
 def era_to_compare_spec(era: dict, settings: dict | None = None) -> dict:
@@ -211,7 +215,7 @@ def settings_grid_signature(settings: dict | None = None) -> str:
   """Chữ ký cấu hình — đổi khi cần chạy lại grid."""
   s = settings or get_settings()
   eras = sorted(s.get("learning_era_keys") or [])
-  trains = sorted(s.get("strategy_train_months") or [])
+  trains = sorted(s.get("strategy_train_weeks") or [])
   parts = [
     ",".join(str(t) for t in trains),
     ",".join(eras),
@@ -236,7 +240,7 @@ def settings_changed_since_last_grid() -> bool:
 
 def format_settings_summary(settings: dict | None = None) -> str:
   s = settings or get_settings()
-  trains = ", ".join(f"{t}T" for t in sorted(s.get("strategy_train_months") or []))
+  trains = ", ".join(f"{t} tuần" for t in sorted(s.get("strategy_train_weeks") or []))
   eras = ", ".join(s.get("learning_era_keys") or [])
   oos = f"{s.get('backtest_from', '?')[:4]}–{s.get('backtest_to', '?')[:4]}"
   return (
@@ -252,12 +256,12 @@ def grid_build_kwargs(settings: dict | None = None) -> dict:
   kb_profiles = [e["kb_profile"] for e in eras]
   loops = int(s.get("learning_loops") or 4)
   return {
-    "train_months": list(s.get("strategy_train_months") or [3, 6, 9]),
+    "train_weeks": list(s.get("strategy_train_weeks") or [3, 6, 9]),
     "kb_profiles": kb_profiles,
     "include_kb_off": False,
     "epoch_mode": "selected",
     "selected_epochs": {e["kb_profile"]: list(range(1, loops + 1)) for e in eras},
-    "oos_from": s.get("backtest_from", "2025-01-01"),
+    "oos_from": s.get("backtest_from", "2026-01-01"),
     "oos_to": s.get("backtest_to", "2026-12-31"),
     "spread_pips": float(s.get("spread_pips", DEFAULT_SPREAD_PIPS)),
     "slippage_pips": float(s.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),

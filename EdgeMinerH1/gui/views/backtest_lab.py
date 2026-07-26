@@ -83,7 +83,7 @@ def render(embedded: bool = False):
           "backtest",
           {
             "use_learning": params["use_learning"],
-            "train_months": params["train_months"],
+            "train_weeks": params["train_weeks"],
             "start_date": st.session_state.get("lab_start", "2022-01-01"),
             "spread_pips": params["spread_pips"],
             "slippage_pips": params["slippage_pips"],
@@ -95,7 +95,7 @@ def render(embedded: bool = False):
             "compare_kb_off": compare_off,
             "archive": archive,
           },
-          label=f"Backtest · Train {params['train_months']}m",
+          label=f"Backtest · Train {params['train_weeks']} tuần",
         )
         st.toast("Backtest đã bắt đầu chạy nền")
         st.rerun()

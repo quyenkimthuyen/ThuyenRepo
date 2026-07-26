@@ -279,7 +279,7 @@ def render(embedded: bool = False):
     c1.metric("🏆 Total R", f"{best.get('total_r', 0):+.2f}")
     c2.metric("WR%", f"{best.get('win_rate_pct', 0)}%")
     c3.metric("Max DD", f"{best.get('max_drawdown_r', 0)}R")
-    c4.metric("Train", f"{best.get('train_months')}m")
+    c4.metric("Train", f"{best.get('train_weeks')} tuần")
     st.success(
       f"**Tốt nhất:** {best.get('label')} · PF {best.get('profit_factor')} · {best.get('n_trades')} lệnh"
     )
@@ -307,7 +307,7 @@ def render(embedded: bool = False):
   from gui.app_settings import kb_profile_label
 
   show_cols = [
-    "label", "train_months", "use_kb", "giai_doan", "kb_snapshot",
+    "label", "train_weeks", "use_kb", "giai_doan", "kb_snapshot",
     "n_trades", "win_rate_pct", "avg_rr", "total_r", "max_drawdown_r",
     "profit_factor", "risk_adjusted",
   ]
@@ -324,7 +324,7 @@ def render(embedded: bool = False):
     for i, r in enumerate(valid_rows[:50]):
       options.append(
         f"#{i+1} · {r.get('label')} · R={r.get('total_r', 0):+.2f} · "
-        f"WR={r.get('win_rate_pct', 0)}% · train={r.get('train_months')}m"
+        f"WR={r.get('win_rate_pct', 0)}% · train={r.get('train_weeks')} tuần"
       )
     default_names = {
       option: str((valid_rows[i].get("label") or f"Grid #{i + 1}"))[:80]
@@ -392,16 +392,16 @@ def render(embedded: bool = False):
       axis=1,
     )
     fig = px.bar(
-      plot_df, x="train_months", y="total_r", color="kb_tag",
+      plot_df, x="train_weeks", y="total_r", color="kb_tag",
       barmode="group", title="Total R theo train window",
     )
     fig.update_layout(height=400)
     st.plotly_chart(fig, use_container_width=True)
 
   with tab2:
-    pivot_df = plot_df.groupby(["train_months", "kb_tag"], as_index=False)["total_r"].max()
+    pivot_df = plot_df.groupby(["train_weeks", "kb_tag"], as_index=False)["total_r"].max()
     if len(pivot_df) > 1:
-      piv = pivot_df.pivot(index="kb_tag", columns="train_months", values="total_r")
+      piv = pivot_df.pivot(index="kb_tag", columns="train_weeks", values="total_r")
       fig_h = go.Figure(data=go.Heatmap(
         z=piv.values,
         x=[str(c) for c in piv.columns],

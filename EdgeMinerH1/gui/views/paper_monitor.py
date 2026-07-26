@@ -200,7 +200,7 @@ def _tradingview_chart(
   orders: list[dict],
   chart_from: str,
   chart_to: str,
-  title: str = "EUR/USD M15",
+  title: str = "EUR/USD H1",
 ) -> go.Figure | None:
   window = ohlc_window
   if window.empty:
@@ -406,7 +406,7 @@ def _get_chart_figure(state: dict) -> go.Figure | None:
     window = get_ohlc_window_cached(chart_from, chart_to)
     fig = _tradingview_chart(
       window, orders, chart_from, chart_to,
-      title=f"EUR/USD M15 · Tuần {state.get('week_start', '')}",
+      title=f"EUR/USD H1 · Tuần {state.get('week_start', '')}",
     )
   except Exception:
     return None
@@ -524,7 +524,7 @@ def _resolve_period(preset: str) -> tuple[date | None, date | None]:
 
 
 def _bars_for_period(date_from: date | None, date_to: date | None) -> int:
-  """M15 bars estimate for chart window (cap 5000)."""
+  """H1 bars estimate for chart window (cap 5000)."""
   if date_from is None or date_to is None:
     return 1344
   days = max(1, (date_to - date_from).days + 1)
@@ -654,7 +654,7 @@ def _render_chart_panel(
       f"{date_from} → {date_to}" if date_from or date_to else "toàn bộ / gần đây"
     )
     st.caption(
-      f"Chart Paper · giai đoạn **{label}** · ~{max_bars} nến M15 · "
+      f"Chart Paper · giai đoạn **{label}** · ~{max_bars} nến H1 · "
       "cập nhật tại chỗ, không chớp."
     )
     return
@@ -689,7 +689,7 @@ def _render_chart_panel(
     window = get_ohlc_window_cached(chart_from, chart_to)
     fig = _tradingview_chart(
       window, overlay, chart_from, chart_to,
-      title=f"EUR/USD M15 · {chart_from} → {chart_to}",
+      title=f"EUR/USD H1 · {chart_from} → {chart_to}",
     )
   except Exception:
     fig = None
@@ -966,7 +966,7 @@ def render():
       f"Spread **{spread}** / slip **{slip}** pip · "
       f"KB **{'ON' if use_kb else 'OFF'}** · "
       "cùng remine params với Live/Simulate · "
-      "service chỉ tính lại khi có nến M15 mới hoặc cấu hình/model thay đổi. "
+      "service chỉ tính lại khi có nến H1 mới hoặc cấu hình/model thay đổi. "
       "Mở tab khi service tắt **không** remine — chỉ **Start** / **Chạy ngay**."
     )
     st.session_state.setdefault("paper_risk_pct", float(cfg.get("risk_pct", 1.0)))

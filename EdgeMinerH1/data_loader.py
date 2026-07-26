@@ -20,7 +20,11 @@ DEFAULT_START = "2023-01-01"
 def require_canonical_mt5_data() -> dict:
   """Fail closed unless the active cache has complete MT5 provenance."""
   meta = read_json(META_PATH)
-  if not isinstance(meta, dict) or meta.get("source") != "mt5_ea":
+  if (
+    not isinstance(meta, dict)
+    or meta.get("source") != "mt5_ea"
+    or meta.get("timeframe") != "H1"
+  ):
     raise RuntimeError("Dữ liệu chưa được xác nhận từ ForgeBridge/XM MT5.")
   missing = [key for key in ("broker", "fingerprint", "bars", "start", "end") if not meta.get(key)]
   if missing:
@@ -88,9 +92,9 @@ def load_eurusd_h1(
   ).dropna()
 
 
-def get_train_window_indices(df: pd.DataFrame, as_of: pd.Timestamp, months: int = 3):
+def get_train_window_indices(df: pd.DataFrame, as_of: pd.Timestamp, weeks: int = 3):
   """Return (start_idx, end_idx) for training window ending at as_of (exclusive)."""
-  train_start = as_of - pd.DateOffset(months=months)
+  train_start = as_of - pd.Timedelta(weeks=weeks)
   mask = (df.index >= train_start) & (df.index < as_of)
   indices = df.index[mask]
   if len(indices) < 100:
@@ -98,7 +102,6 @@ def get_train_window_indices(df: pd.DataFrame, as_of: pd.Timestamp, months: int 
   start_idx = df.index.get_loc(indices[0])
   end_idx = df.index.get_loc(indices[-1]) + 1
   return start_idx, end_idx
-
 
 def get_week_indices(df: pd.DataFrame, week_start: pd.Timestamp, week_end: pd.Timestamp):
   """Return (start_idx, end_idx) for a trading week [week_start, week_end)."""

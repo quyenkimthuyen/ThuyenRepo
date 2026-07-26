@@ -134,6 +134,7 @@ def dedupe_trades(trades: list[dict]) -> list[dict]:
       return cur
     if prev_closed and not cur_closed:
       return prev
+    # Prefer row with strategy_name / richer fields
     prev_named = bool(prev.get("strategy_name"))
     cur_named = bool(cur.get("strategy_name"))
     if cur_named and not prev_named:
@@ -157,16 +158,20 @@ def dedupe_trades(trades: list[dict]) -> list[dict]:
     else:
       by_ticket[key] = _prefer(by_ticket[key], t)
 
+  # Dedupe ticket-less rows by id
   by_id: dict[str, dict] = {}
+  orphan: list[dict] = []
   for t in no_ticket:
     tid = t.get("id")
     if not tid:
+      orphan.append(t)
       continue
     if tid not in by_id:
       by_id[tid] = t
     else:
       by_id[tid] = _prefer(by_id[tid], t)
 
+  # Preserve roughly original order
   seen_tickets: set[str] = set()
   seen_ids: set[str] = set()
   out: list[dict] = []

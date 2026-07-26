@@ -150,7 +150,7 @@ def apply_report_to_profile(report_id: str) -> dict:
   cfg = report.get("config") or {}
   o = report.get("overall_oos") or {}
   row = {
-    "train_months": cfg.get("train_months"),
+    "train_weeks": cfg.get("train_weeks"),
     "use_kb": bool(cfg.get("use_learning_kb")),
     "kb_profile": cfg.get("kb_profile"),
     "kb_snapshot": cfg.get("kb_snapshot"),

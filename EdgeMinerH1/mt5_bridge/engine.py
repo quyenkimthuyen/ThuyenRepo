@@ -1,4 +1,4 @@
-"""Bridge decision engine — merge MT5 M15 bars + weekly remine."""
+"""Bridge decision engine — merge MT5 H1 bars + weekly remine."""
 from __future__ import annotations
 
 import hashlib
@@ -241,7 +241,7 @@ class BridgeEngine:
   def merge_bar(self, bar: dict) -> pd.Timestamp:
     """Ensure bar is in the in-memory series. Avoid rewriting parquet on HistoryFeed replay.
 
-    HistoryFeed re-sends bars already in ``mt5_eurusd_m15.parquet``. Rewriting the
+    HistoryFeed re-sends bars already in ``mt5_eurusd_h1.parquet``. Rewriting the
     full cache (+ invalidating FeatureMatrix) every bar pegs disk/CPU and freezes the GUI.
     """
     ts = _parse_bar_time(bar)
@@ -274,7 +274,7 @@ class BridgeEngine:
     return ts
 
   def decide_for_bar(self, bar: dict) -> dict:
-    """Produce decision.json for the closed M15 bar (Live + HistoryFeed + OOS-parity).
+    """Produce decision.json for the closed H1 bar (Live + HistoryFeed + OOS-parity).
 
     Live and Simulate share this path: same Trade Model conditions, KB snapshot,
     full-history FeatureMatrix, and weekly ``optimize_on_window`` as Health OOS.
@@ -296,7 +296,7 @@ class BridgeEngine:
     if (
       not self._model
       or self._model.get("data_source") != "mt5_ea"
-      or self._model.get("data_timeframe") != "M15"
+      or self._model.get("data_timeframe") != "H1"
       or int(self._model.get("feature_schema") or 0) < 2
     ):
       decision = self._flat(
@@ -433,7 +433,7 @@ class BridgeEngine:
 
     action = "BUY" if direction == 1 else "SELL"
     sig_id = _signal_id(model_id, bar_ts, action)
-    expires = bar_ts + pd.Timedelta(minutes=15)
+    expires = bar_ts + pd.Timedelta(hours=1)
     decision = {
       "signal_id": sig_id,
       "action": action,
@@ -481,7 +481,7 @@ class BridgeEngine:
       "magic": self.magic,
       "bar_time": _fmt_bar(bar_ts),
       "model_id": model_id,
-      "expires_bar_time": _fmt_bar(bar_ts + pd.Timedelta(minutes=15)),
+      "expires_bar_time": _fmt_bar(bar_ts + pd.Timedelta(hours=1)),
       "week_start": str(week_start.date()) if week_start is not None else None,
       "strategy_name": getattr(strat, "name", None),
       "slots_remaining": slots_remaining,

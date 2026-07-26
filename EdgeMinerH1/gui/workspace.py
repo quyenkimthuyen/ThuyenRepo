@@ -20,7 +20,7 @@ def workspace_id(ws: dict) -> str:
   pid = re.sub(r"[^a-zA-Z0-9_-]+", "_", (ws.get("kb_profile") or "default"))
   oos_f = (ws.get("oos_from") or "auto")[:10].replace("-", "")
   oos_t = (ws.get("oos_to") or "auto")[:10].replace("-", "")
-  tm = ws.get("train_months", 6)
+  tm = ws.get("train_weeks", 6)
   mid = ws.get("trade_model_id") or "nomodel"
   return f"{mid}__{pid}__{oos_f}_{oos_t}__t{tm}"
 
@@ -38,7 +38,7 @@ def workspace_report_path(ws: dict | None = None) -> Path:
 def format_workspace_label(ws: dict) -> str:
   from gui.glossary import build_trade_profile_label
   return build_trade_profile_label({
-    "train_months": ws.get("train_months", 6),
+    "train_weeks": ws.get("train_weeks", 6),
     "use_kb": ws.get("use_learning", True),
     "kb_profile": ws.get("kb_profile"),
     "kb_snapshot": ws.get("kb_snapshot"),
@@ -159,7 +159,7 @@ def profile_mismatch_details(report: dict, ws: dict | None = None) -> list[str]:
     if a is not None and b is not None and a != b:
       diffs.append(f"**{label}:** báo cáo `{a}` · model `{b}`")
 
-  _add("Cửa sổ học (tháng)", cfg.get("train_months"), ws.get("train_months"))
+  _add("Cửa sổ học (tuần)", cfg.get("train_weeks"), ws.get("train_weeks"))
   _add("Profile bộ nhớ", cfg.get("kb_profile"), ws.get("kb_profile"))
   ep_cfg = cfg.get("kb_snapshot")
   ep_ws = ws.get("kb_snapshot")

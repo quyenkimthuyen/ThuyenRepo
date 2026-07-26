@@ -13,7 +13,7 @@ def render():
   st.markdown("""
 ## 1. ForexForge là gì?
 
-**ForexForge** là hệ thống backtest & self-learning cho **EUR/USD khung M15**, gồm:
+**ForexForge** là hệ thống backtest & self-learning cho **EUR/USD khung H1**, gồm:
 
 - **Walk-forward backtest** — train 3/6/9 tuần, re-optimize hàng tuần, trade OOS (không look-ahead)
 - **Strategy miner** — khai phá rule từ features + lọc ML
@@ -45,7 +45,7 @@ python run_backtest.py --holdout-months 12  # Tách 12 tháng cuối forward tes
 
 | Bước | Mô tả |
 |------|--------|
-| 1 | ForgeBridge đồng bộ **EUR/USD M15** từ XM MT5 → cache `data/mt5_eurusd_m15.parquet` |
+| 1 | ForgeBridge đồng bộ **EUR/USD H1** từ XM MT5 → cache `data/mt5_eurusd_h1.parquet` |
 | 2 | Tính **37+ features** causal (`feature_engine.py`) |
 | 3 | Mỗi tuần: train 3/6/9 tuần trước → mine/optimize strategy |
 | 4 | Trade **tuần OOS** (signal close bar *i*, entry open bar *i+1*) |
@@ -92,7 +92,7 @@ Tuần 1 OOS:  |---- train N tuần trước ----| → mine strategy → trade t
 Tuần 2 OOS:       |---- train N tuần ----| → mine lại    → trade tuần 2
 ```
 
-- Mỗi tuần: lấy **3/6/9 tuần M15** ngay trước tuần OOS
+- Mỗi tuần: lấy **3/6/9 tuần H1** ngay trước tuần OOS
 - **Mine** rules + ML → strategy cho **đúng tuần đó**
 - Trade OOS 1 tuần, cửa sổ train trượt về phía trước
 
@@ -213,7 +213,7 @@ App **không** tự đổi model trong danh sách mỗi tuần.
 1. Mở **MT5 Bridge** → chọn Trade Model (Best 3m) → **Start service**
 2. Service chạy **process riêng** (không phụ thuộc tab GUI) — đổi tab / refresh page **không** dừng; bấm **Stop** mới tắt
 3. Trên MT5: compile/attach EA `ForgeBridge`, `InpMode = Live` (thư mục `MQL5/Files/bridge`)
-4. Mỗi M15 mới: EA ghi `bar.json` → App decide → `decision.json` → EA BUY/SELL hoặc FLAT
+4. Mỗi H1 mới: EA ghi `bar.json` → App decide → `decision.json` → EA BUY/SELL hoặc FLAT
 5. Remine Live = **cùng đường Health OOS / Simulate** (KB ON, full FeatureMatrix, cùng `conditions_fp`). Trên desk Live mở **Parity tuần này** để đối chiếu `strategy_name` với weekly_log Health.
 6. **Paper** = desk nhẹ (không bắt buộc để chứng minh Live). **Simulate** = replay quá khứ App↔EA khi cần.
 7. Xem **Nhật ký giao tiếp** trên GUI (`comm_log.jsonl`: `bar_received`, `decision_sent`, `fill_received`)
@@ -386,7 +386,7 @@ run_learning.py             # Self-learning
 strategy_miner.py           # Mine + backtest
 feature_engine.py           # Features
 knowledge_base.py           # KB
-data/mt5_eurusd_m15.parquet # Cache M15 chuẩn từ ForgeBridge/XM MT5
+data/mt5_eurusd_h1.parquet # Cache H1 chuẩn từ ForgeBridge/XM MT5
 mt5_bridge/                 # Bridge App ↔ MT5 EA
 mt5/Experts/ForgeBridge.mq5 # EA execute (Live / Replay)
 mt5/bridge/                 # bar/decision/fill/comm_log/replay
@@ -403,8 +403,8 @@ learning/kb_profiles/       # KB từng giai đoạn
 
 ## 14. Hạn chế đã biết
 
-- Một pair / một timeframe (EUR/USD M15)
-- Paper Monitor dùng cùng dữ liệu nến M15 từ broker với Grid và MT5 Bridge
+- Một pair / một timeframe (EUR/USD H1)
+- Paper Monitor dùng cùng dữ liệu nến H1 từ broker với Grid và MT5 Bridge
 - MT5 Bridge cần EA + service App chạy đồng thời; Wine/SSL login broker vẫn có thể fail trên Linux Docker
 - Intrabar SL/TP — thứ tự chạm có thể khác live
 - RoR là ước lượng, không phải Monte Carlo đầy đủ
@@ -415,7 +415,7 @@ learning/kb_profiles/       # KB từng giai đoạn
 ## 15. FAQ
 
 **Q: Kết quả 60% WR có vào live được không?**  
-A: Chỉ sau paper + hold-out + spread. KB OFF phải vẫn profitable.
+A: Chỉ sau hold-out + spread + **Live Parity / Health OOS** khớp kỳ vọng. KB OFF phải vẫn profitable. Paper desk là tuỳ chọn.
 
 **Q: KB ON hay OFF?**  
 A: **OFF** để đánh giá. **ON** khi muốn tận dụng kinh nghiệm đã học (có rủi ro overfit).
@@ -427,16 +427,16 @@ A: Miner có thể bias theo regime. Kiểm tra Trade Journal → Direction bias
 A: ~2 phút cho 4 năm / 224 tuần. Dùng cache data, tránh refresh liên tục.
 
 **Q: Quy trình nào nên làm trước?**  
-A: KB OFF baseline → học KB era → OOS với profile → Report Compare → hold-out → paper.
+A: KB OFF baseline → học KB era → OOS với profile → Report Compare → hold-out → **Live + Parity** (Paper desk tuỳ chọn).
 
 **Q: App có tự optimize mỗi tuần không?**  
-A: **Có remine strategy mỗi tuần** khi Paper (chu kỳ) hoặc MT5 Bridge service đang chạy. **Không** tự chạy lại Grid / tạo Trade Model mới — phải làm tay khi muốn đổi model.
+A: **Có remine strategy mỗi tuần** khi Paper và/hoặc Bridge Live đang chạy (cùng Trade Model). **Không** tự Grid / tạo model mới.
 
-**Q: MT5 Bridge khác Paper Monitor thế nào?**  
-A: Cùng nến MT5 + cùng Trade Model. **Paper** mô phỏng tuần (desk thống kê, không gửi EA). **Bridge** gửi `BUY`/`SELL` cho EA mở lệnh thật/demo; thống kê từ fill trong `trades.json`. Xem bảng so sánh mục **6**.
+**Q: Paper · Live · Simulate khác nhau thế nào?**  
+A: **Cùng Trade Model active**. Paper = desk nhẹ không EA. Live = lệnh MT5 + Parity vs Health. Simulate = replay App↔EA quá khứ. Xem bảng mục **6**.
 
 **Q: Paper có `SIGNAL` thì MT5 có vào lệnh không?**  
-A: Chỉ khi Bridge service + EA đang chạy **đúng lúc bar tín hiệu đóng**. Paper có thể hiện `SIGNAL`/`FILLED` khi remine lại tuần — Bridge **không** backfill bar đã qua.
+A: Chỉ khi Bridge Live + EA đang chạy **đúng lúc bar tín hiệu đóng**. Paper `FILLED` ≠ lệnh MT5.
 
 **Q: Có hỗ trợ MT4 không?**  
 A: Không — chỉ **MT5** (`ForgeBridge.mq5`).
@@ -489,7 +489,7 @@ graph TD
   with st.expander("Sơ đồ walk-forward (mermaid)"):
     st.code("""
 graph LR
-  A[XM MT5 M15] --> B[Features]
+  A[XM MT5 H1] --> B[Features]
   B --> C[Train 3/6/9 tuần]
   C --> D[Mine Strategy]
   D --> E[Trade OOS tuần]

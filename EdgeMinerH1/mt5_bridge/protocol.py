@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -28,8 +29,8 @@ SIM_CONTROL_NAME = "sim_control.json"
 
 DEFAULT_MODEL_ID = ""
 DEFAULT_MAGIC = 20260724
-DEFAULT_TIMEFRAME = "M15"
-INSTANCE_ID = "M15"
+DEFAULT_TIMEFRAME = "H1"
+INSTANCE_ID = "H1"
 
 
 def ensure_bridge_dir(path: Path | None = None) -> Path:
@@ -38,13 +39,49 @@ def ensure_bridge_dir(path: Path | None = None) -> Path:
   return d
 
 
+def safe_replace(src: Path, dst: Path, attempts: int = 5, delay: float = 0.05) -> None:
+  dst.parent.mkdir(parents=True, exist_ok=True)
+  for attempt in range(attempts):
+    try:
+      src.replace(dst)
+      return
+    except OSError as err:
+      if attempt < attempts - 1:
+        time.sleep(delay)
+      else:
+        try:
+          import shutil
+          shutil.copy2(src, dst)
+          if src.exists():
+            src.unlink(missing_ok=True)
+          return
+        except Exception:
+          if src.exists():
+            try:
+              src.unlink(missing_ok=True)
+            except Exception:
+              pass
+          raise err
+
+
 def atomic_write_json(path: Path, data: Any) -> None:
   path.parent.mkdir(parents=True, exist_ok=True)
   tmp = path.with_suffix(path.suffix + ".tmp")
   with open(tmp, "w", encoding="utf-8", newline="\n") as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
     f.write("\n")
-  tmp.replace(path)
+  try:
+    safe_replace(tmp, path)
+  except Exception:
+    try:
+      with open(path, "w", encoding="utf-8", newline="\n") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+      if tmp.exists():
+        tmp.unlink(missing_ok=True)
+    except Exception:
+      pass
+
 
 
 def read_json(path: Path) -> dict | list | None:
@@ -113,7 +150,6 @@ def replay_csv_path(bridge_dir: Path | None = None) -> Path:
   return ensure_bridge_dir(bridge_dir) / REPLAY_CSV_NAME
 
 
-
 def sim_control_path(bridge_dir: Path | None = None) -> Path:
   return ensure_bridge_dir(bridge_dir or BRIDGE_SIM_DIR) / SIM_CONTROL_NAME
 
@@ -140,6 +176,7 @@ def write_sim_control(
   cur["updated_at"] = utc_now_iso()
   atomic_write_json(path, cur)
   return cur
+
 
 def utc_now_iso() -> str:
   return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")

@@ -288,7 +288,7 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
   paper_mode = mode == "paper"
   sim_mode = mode == "sim"
   if sim_mode:
-    chart_title = "EURUSD M15 · Simulate History Feed"
+    chart_title = "EURUSD H1 · Simulate History Feed"
     labels = (
       "FEED", "QUOTE", "SPREAD", "PROGRESS", "FEED STATUS", "DECISION", "LAST BAR",
     )
@@ -307,7 +307,7 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
     snap_url = "/snapshot?mode=sim"
     note0 = "Simulate History Feed — status + chart cập nhật mượt (Plotly.react)."
   elif paper_mode:
-    chart_title = "EURUSD M15 · Paper Trade"
+    chart_title = "EURUSD H1 · Paper Trade"
     labels = ("PAPER ENGINE", "LAST PRICE", "DAY TRADES", "SLOTS LEFT", "SESSION")
     grid_cols = 5
     status_cells = f"""
@@ -322,7 +322,7 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
     snap_url = "/snapshot"
     note0 = "Đang kết nối ForgeBridge EA…"
   else:
-    chart_title = "EURUSD M15 · XM MT5 live"
+    chart_title = "EURUSD H1 · XM MT5 live"
     labels = (
       "EA", "BID / ASK", "SPREAD", "OPEN", "ALGO", "DECISION", "SLOTS",
     )

@@ -8,7 +8,7 @@
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
 #property copyright "EdgeMiner2 bridge"
-#property version   "1.08"
+#property version   "1.09"
 
 #include <Trade/Trade.mqh>
 
@@ -25,7 +25,7 @@ input string InpBridgeSubdir   = "bridge";          // under MQL5/Files/ (use br
 input int    InpDecisionWaitMs = 8000;              // Live: wait for decision
 input int    InpHistoryDecisionWaitMs = 20000;      // HistoryFeed: max wait (remine tuần có thể chậm)
 input int    InpPollMs         = 500;
-input int    InpChartBars      = 1344;              // M15 bars exported for App chart
+input int    InpChartBars      = 336;               // H1 bars exported for App chart
 input int    InpHeartbeatMs    = 2000;              // Live connection/tick snapshot
 input int    InpHistoryChunk   = 750;               // Bars per history sync response
 input bool   InpHistoryPaperFills = true;           // HistoryFeed: paper fills from OHLC (no OrderSend)
@@ -37,7 +37,7 @@ input int    InpSlipPoints     = 30;
 input int    InpMaxHoldBars    = 36;                // fallback if decision omits
 
 CTrade   trade;
-const string INSTANCE_ID = "M15";
+const string INSTANCE_ID = "H1";
 datetime g_last_bar = 0;
 datetime g_last_fill_bar = 0;
 string   g_last_signal_id = "";
@@ -120,7 +120,7 @@ int OnInit()
    {
       if(AccountInfoInteger(ACCOUNT_MARGIN_MODE) != ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)
       {
-         Print("ForgeBridge M15 requires a hedging account.");
+         Print("ForgeBridge H1 requires a hedging account.");
          return INIT_FAILED;
       }
       g_sim_ea_status = "idle";
@@ -133,7 +133,7 @@ int OnInit()
    {
       if(AccountInfoInteger(ACCOUNT_MARGIN_MODE) != ACCOUNT_MARGIN_MODE_RETAIL_HEDGING)
       {
-         Print("ForgeBridge M15 requires a hedging account.");
+         Print("ForgeBridge H1 requires a hedging account.");
          return INIT_FAILED;
       }
       WriteBarsJson();
@@ -270,7 +270,7 @@ bool WriteBarJson(datetime t1)
 {
    MqlRates r[];
    ArraySetAsSeries(r, true);
-   if(CopyRates(_Symbol, PERIOD_M15, 1, 1, r) < 1)
+   if(CopyRates(_Symbol, PERIOD_H1, 1, 1, r) < 1)
       return false;
 
    long time_msc = (long)r[0].time * 1000;
@@ -281,7 +281,7 @@ bool WriteBarJson(datetime t1)
 
    string json = "{";
    json += "\"symbol\":\"" + _Symbol + "\",";
-   json += "\"period\":\"M15\",";
+   json += "\"period\":\"H1\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"time\":\"" + bar_time + "\",";
@@ -320,7 +320,7 @@ bool WriteBarJsonFromRate(const MqlRates &rate)
 
    string json = "{";
    json += "\"symbol\":\"" + _Symbol + "\",";
-   json += "\"period\":\"M15\",";
+   json += "\"period\":\"H1\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"time\":\"" + bar_time + "\",";
@@ -355,7 +355,7 @@ bool WriteBarsJson()
    int requested = MathMax(48, InpChartBars);
    MqlRates rates[];
    ArraySetAsSeries(rates, false);
-   int copied = CopyRates(_Symbol, PERIOD_M15, 0, requested, rates);
+   int copied = CopyRates(_Symbol, PERIOD_H1, 0, requested, rates);
    if(copied < 1)
       return false;
 
@@ -368,7 +368,7 @@ bool WriteBarsJson()
 
    string prefix = "{\"symbol\":\"" + _Symbol + "\",";
    prefix += "\"updated_at\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\",";
-   prefix += "\"period\":\"M15\",\"bars\":[";
+   prefix += "\"period\":\"H1\",\"bars\":[";
    FileWriteString(h, prefix);
    for(int i = 0; i < copied; i++)
    {
@@ -405,7 +405,7 @@ bool WriteBarsJsonHistoryFeed(const int upto_exclusive)
 
    string prefix = "{\"symbol\":\"" + _Symbol + "\",";
    prefix += "\"updated_at\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\",";
-   prefix += "\"period\":\"M15\",\"source\":\"history_feed\",\"bars\":[";
+   prefix += "\"period\":\"H1\",\"source\":\"history_feed\",\"bars\":[";
    FileWriteString(h, prefix);
    for(int i = start; i < end; i++)
    {
@@ -476,18 +476,18 @@ bool ProcessHistoryRequest()
    int offset = (int)MathMax(0, JsonGetDouble(request, "offset", 0));
    int chunk_size = (int)MathMax(100, MathMin(2000,
       JsonGetDouble(request, "chunk_size", InpHistoryChunk)));
-   int total = Bars(_Symbol, PERIOD_M15);
+   int total = Bars(_Symbol, PERIOD_H1);
    string from_time_text = JsonGetString(request, "from_time");
    datetime from_time = StringToTime(from_time_text == "" ? "2025.01.01 00:00" : from_time_text);
-   int oldest_shift = iBarShift(_Symbol, PERIOD_M15, from_time, false);
-   int available = MathMax(0, MathMin(total - 1, oldest_shift)); // exclude forming M15 bar
+   int oldest_shift = iBarShift(_Symbol, PERIOD_H1, from_time, false);
+   int available = MathMax(0, MathMin(total - 1, oldest_shift)); // exclude forming H1 bar
    int wanted = MathMin(chunk_size, MathMax(0, available - offset));
 
    MqlRates rates[];
    ArraySetAsSeries(rates, false);
    int copied = 0;
    if(wanted > 0)
-      copied = CopyRates(_Symbol, PERIOD_M15, offset + 1, wanted, rates);
+      copied = CopyRates(_Symbol, PERIOD_H1, offset + 1, wanted, rates);
    if(copied < 0)
       copied = 0;
 
@@ -501,7 +501,7 @@ bool ProcessHistoryRequest()
       return false;
 
    string prefix = "{\"request_id\":\"" + request_id + "\",";
-   prefix += "\"symbol\":\"" + _Symbol + "\",\"period\":\"M15\",";
+   prefix += "\"symbol\":\"" + _Symbol + "\",\"period\":\"H1\",";
    prefix += "\"server\":\"" + AccountInfoString(ACCOUNT_SERVER) + "\",";
    prefix += "\"account\":" + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)) + ",";
    prefix += "\"server_utc_offset_seconds\":" + IntegerToString(server_offset) + ",";
@@ -541,7 +541,7 @@ bool WriteConnectionJson()
 {
    MqlRates current[];
    ArraySetAsSeries(current, true);
-   if(CopyRates(_Symbol, PERIOD_M15, 0, 1, current) < 1)
+   if(CopyRates(_Symbol, PERIOD_H1, 0, 1, current) < 1)
       return false;
 
    MqlTick tick;
@@ -556,7 +556,7 @@ bool WriteConnectionJson()
 
    string json = "{";
    json += "\"symbol\":\"" + _Symbol + "\",";
-   json += "\"period\":\"M15\",";
+   json += "\"period\":\"H1\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
    json += "\"bridge_subdir\":\"" + InpBridgeSubdir + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
@@ -799,7 +799,7 @@ void WriteFillJsonEx(
    json += "\"detail\":\"" + detail + "\",";
    json += "\"ticket\":" + IntegerToString((long)ticket) + ",";
    json += "\"symbol\":\"" + _Symbol + "\",";
-   json += "\"period\":\"M15\",";
+   json += "\"period\":\"H1\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"price\":" + DoubleToString(price, _Digits) + ",";
@@ -1132,7 +1132,7 @@ void ManageOpen()
       SyncPositionLevels(ticket);
 
       datetime open_time = (datetime)PositionGetInteger(POSITION_TIME);
-      int held = (int)((TimeCurrent() - open_time) / PeriodSeconds(PERIOD_M15));
+      int held = (int)((TimeCurrent() - open_time) / PeriodSeconds(PERIOD_H1));
       if(held >= g_max_hold)
       {
          if(trade.PositionClose(ticket))
@@ -1240,7 +1240,7 @@ double AtrAt(int shift)
    int bars = 120;
    MqlRates rates[];
    ArraySetAsSeries(rates, true);
-   if(CopyRates(_Symbol, PERIOD_M15, 0, bars, rates) < bars)
+   if(CopyRates(_Symbol, PERIOD_H1, 0, bars, rates) < bars)
       return 0;
    double alpha = 1.0 / 14.0;
    double series[];
@@ -1383,11 +1383,11 @@ bool LoadHistoryRatesRange()
    }
    // Include the full end day when only a date is given
    if(StringLen(g_sim_to) <= 10)
-      t_to += PeriodSeconds(PERIOD_M15) * 96 - 1;
+      t_to += PeriodSeconds(PERIOD_H1) * 24 - 1;
 
    ArrayFree(g_hist_rates);
    ArraySetAsSeries(g_hist_rates, false);
-   int copied = CopyRates(_Symbol, PERIOD_M15, t_from, t_to, g_hist_rates);
+   int copied = CopyRates(_Symbol, PERIOD_H1, t_from, t_to, g_hist_rates);
    if(copied < 1)
    {
       g_sim_error = "copy_rates_failed";
@@ -1747,7 +1747,7 @@ void OnTick()
 
    ProcessManualCommand();
 
-   datetime t0 = iTime(_Symbol, PERIOD_M15, 0);
+   datetime t0 = iTime(_Symbol, PERIOD_H1, 0);
    if(t0 == 0 || t0 == g_last_bar)
       return;
    g_last_bar = t0;
@@ -1756,7 +1756,7 @@ void OnTick()
    if(PositionsByMagic() > 0)
       return;
 
-   datetime t1 = iTime(_Symbol, PERIOD_M15, 1);
+   datetime t1 = iTime(_Symbol, PERIOD_H1, 1);
    if(t1 == 0 || t1 == g_last_fill_bar)
       return;
 

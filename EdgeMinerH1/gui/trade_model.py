@@ -301,7 +301,7 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
   data_meta = load_data_meta()
   if (
     data_meta.get("source") != "mt5_ea"
-    or data_meta.get("timeframe") != "M15"
+    or data_meta.get("timeframe") != "H1"
     or not data_meta.get("fingerprint")
   ):
     raise RuntimeError("Không thể tạo Trade Model khi dữ liệu chưa được xác nhận từ MT5 EA.")

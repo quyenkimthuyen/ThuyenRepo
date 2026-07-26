@@ -3,7 +3,7 @@ param(
   [ValidateSet("Start", "Restart", "Stop", "Status")]
   [string]$Action = "Restart",
   [ValidateRange(1, 65535)]
-  [int]$Port = 8502,
+  [int]$Port = 8501,
   [ValidateRange(5, 120)]
   [int]$TimeoutSeconds = 30
 )

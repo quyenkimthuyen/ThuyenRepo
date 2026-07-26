@@ -12,7 +12,7 @@ COMPARE_PATH = REPORT_DIR / "train_window_compare.json"
 def train_month_options() -> list[int]:
   from gui.app_settings import TRAIN_MONTH_OPTIONS, get_settings
   s = get_settings()
-  return list(s.get("strategy_train_months") or TRAIN_MONTH_OPTIONS)
+  return list(s.get("strategy_train_weeks") or TRAIN_MONTH_OPTIONS)
 
 
 def default_spec() -> dict:
@@ -49,8 +49,8 @@ def _write_json(path: Path, data: dict):
   tmp.replace(path)
 
 
-def result_key(train_months: int, use_kb: bool) -> str:
-  return f"{train_months}m_{'kb_on' if use_kb else 'kb_off'}"
+def result_key(train_weeks: int, use_kb: bool) -> str:
+  return f"{train_weeks}w_{'kb_on' if use_kb else 'kb_off'}"
 
 
 def load_train_window_cache() -> dict | None:
@@ -107,7 +107,7 @@ def run_train_window_matrix(
     key = result_key(tm, use_kb)
     reports[key] = execute_backtest(
       use_learning=use_kb,
-      train_months=tm,
+      train_weeks=tm,
       kb_profile=kb_profile if use_kb else "default",
       oos_from=oos_from,
       oos_to=oos_to,

@@ -1,4 +1,4 @@
-"""Live and Simulate must share BridgeEngine decisions for the same bars (H1).
+"""Live and Simulate must share BridgeEngine decisions for the same bars.
 
 Both modes call ``BridgeEngine.decide_for_bar`` with the same Trade Model /
 FeatureMatrix path — only ``bridge_dir`` (journal) differs. Empty journals
@@ -16,9 +16,10 @@ from mt5_bridge.engine import BridgeEngine, _normalize
 from mt5_bridge.history_sync import utc_to_broker_time
 from mt5_bridge.trade_journal import save_trades
 
-MODEL_ID = "tm_mt5_best_94ef551a"
-WEEK = "2025-01-06"
+MODEL_ID = "tm_m15_best_2_49216b56"
+WEEK = "2026-01-26"
 
+# Fields that must match for Live vs Simulate (wall-clock stamp excluded)
 _DECISION_COMPARE_KEYS = (
   "action",
   "signal_id",
@@ -77,6 +78,7 @@ def _week_bar_timestamps(frame: pd.DataFrame, week: str, *, limit: int = 48) -> 
   idx = frame.index[(frame.index >= week_start) & (frame.index < week_end)]
   if len(idx) == 0:
     return []
+  # Sample across the week (not only tip) — keep runtime bounded
   step = max(1, len(idx) // limit)
   return list(idx[::step][:limit])
 
@@ -86,6 +88,7 @@ def _decision_slice(decision: dict) -> dict:
 
 
 def _make_pair_engines(tmp_path: Path, frame: pd.DataFrame) -> tuple[BridgeEngine, BridgeEngine]:
+  """Live + Simulate engines: same model/cache content, empty journals, isolated dirs."""
   live_dir = tmp_path / "bridge_live"
   sim_dir = tmp_path / "bridge_sim"
   live_dir.mkdir(parents=True)
@@ -153,13 +156,16 @@ def test_live_sim_same_decision_on_same_bars(mt5_frame, active_model, tmp_path):
       assert d_live.get("strategy_name") == d_sim.get("strategy_name")
       assert d_live.get("conditions_fp") == live.conditions_fp
 
+  # At least remine produced a named strategy on FLAT bars too
   tip = live.decide_for_bar(_bar_payload(mt5_frame, bars[-1]))
   assert tip.get("strategy_name") == row.get("strategy") or tip.get("strategy_name")
+  # Soft: if week has no signal in sampled bars, still OK if strategy remine matched
   if not matched_signal:
     assert tip.get("strategy_name") == row.get("strategy")
 
 
 def test_live_sim_hold_flat_contract_identical(mt5_frame, active_model, tmp_path):
+  """With empty journals, HOLD/FLAT reasons must match (no divergent open-position logic)."""
   bars = _week_bar_timestamps(mt5_frame, WEEK, limit=12)
   if len(bars) < 2:
     pytest.skip("need ≥2 bars in week")
@@ -173,13 +179,12 @@ def test_live_sim_hold_flat_contract_identical(mt5_frame, active_model, tmp_path
     assert d_live.get("action") == d_sim.get("action")
     assert d_live.get("reason") == d_sim.get("reason")
     reasons.append(d_live.get("reason"))
-  assert any(
-    r in ("no_signal", "signal", "no_slots", "position_open", "levels_unavailable")
-    for r in reasons
-  )
+  # Sanity: engine actually decided something known
+  assert any(r in ("no_signal", "signal", "no_slots", "position_open", "levels_unavailable") for r in reasons)
 
 
 def test_live_sim_signal_id_stable_across_modes(mt5_frame, active_model, tmp_path):
+  """Same bar + action ⇒ same signal_id (EA/App handshake key)."""
   week_start = pd.Timestamp(WEEK)
   week_end = week_start + pd.Timedelta(days=7)
   bars = list(mt5_frame.index[(mt5_frame.index >= week_start) & (mt5_frame.index < week_end)])
@@ -187,6 +192,7 @@ def test_live_sim_signal_id_stable_across_modes(mt5_frame, active_model, tmp_pat
     pytest.skip("no bars")
 
   live, sim = _make_pair_engines(tmp_path, mt5_frame)
+  # Warm remine once, then scan for a real signal bar
   live.decide_for_bar(_bar_payload(mt5_frame, bars[0]))
   sim.decide_for_bar(_bar_payload(mt5_frame, bars[0]))
 

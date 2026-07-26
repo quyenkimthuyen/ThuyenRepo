@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Simulate ForgeBest3m_WF EA on canonical ForgeBridge/XM MT5 H1 data."""
+"""Simulate the legacy WF schedule on canonical ForgeBridge/XM MT5 H1 data."""
 from __future__ import annotations
 
 import json

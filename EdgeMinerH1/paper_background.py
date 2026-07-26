@@ -48,7 +48,22 @@ def _write_json(path: Path, data: dict):
   tmp = path.with_suffix(".tmp")
   with open(tmp, "w", encoding="utf-8") as f:
     json.dump(_json_safe(data), f, indent=2, ensure_ascii=False)
-  tmp.replace(path)
+  for attempt in range(5):
+    try:
+      tmp.replace(path)
+      return
+    except OSError:
+      if attempt < 4:
+        time.sleep(0.05)
+      else:
+        try:
+          import shutil
+          shutil.copy2(tmp, path)
+          if tmp.exists():
+            tmp.unlink(missing_ok=True)
+          return
+        except Exception:
+          pass
 
 
 def load_config() -> dict:
@@ -80,6 +95,7 @@ def _run_cycle(cfg: dict, *, force_refresh: bool = False) -> dict:
     spread_pips=float(cfg.get("spread_pips", 1.0)),
     slippage_pips=float(cfg.get("slippage_pips", 0.3)),
     risk_pct=float(cfg.get("risk_pct", 1.0)),
+    model_id=cfg.get("model_id"),
   )
   state["model_id"] = cfg.get("model_id")
   state["updated_at"] = _now_iso()

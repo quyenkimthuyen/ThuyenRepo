@@ -18,9 +18,9 @@ WEEK = "2026-01-26"
 
 @pytest.fixture(scope="module")
 def mt5_frame() -> pd.DataFrame:
-  path = Path(__file__).resolve().parents[1] / "data" / "mt5_eurusd_m15.parquet"
+  path = Path(__file__).resolve().parents[1] / "data" / "mt5_eurusd_h1.parquet"
   if not path.exists():
-    pytest.skip("mt5 m15 cache missing")
+    pytest.skip("mt5 h1 cache missing")
   return _normalize(pd.read_parquet(path))
 
 
@@ -61,7 +61,7 @@ def test_live_decide_strategy_matches_oos_week(mt5_frame, tmp_path):
     pytest.skip(f"week {WEEK} not in report")
 
   week_start = pd.Timestamp(WEEK)
-  bar_ts = week_start + pd.Timedelta(days=7) - pd.Timedelta(minutes=15)
+  bar_ts = week_start + pd.Timedelta(days=7) - pd.Timedelta(hours=1)
   if bar_ts not in mt5_frame.index:
     # pad to nearest available bar at/before target
     idx = mt5_frame.index.get_indexer([bar_ts], method="pad")[0]

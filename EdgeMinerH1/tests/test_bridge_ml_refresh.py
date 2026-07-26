@@ -1,4 +1,4 @@
-"""Regression: mid-week H1 bar append must not IndexError; live last bar can signal."""
+"""Regression: mid-week bar append must not IndexError; live last bar can signal."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -31,20 +31,14 @@ def mt5_frame() -> pd.DataFrame:
 
 
 def test_decide_survives_in_session_append_with_cached_strat(mt5_frame, tmp_path):
-  # Pick an in-session weekday bar near the end of history.
-  frame = mt5_frame
-  target = None
-  for ts in reversed(frame.index[:-3]):
-    broker = utc_to_broker_time(ts)
-    if broker.weekday() < 5 and 8 <= broker.hour <= 16:
-      target = ts
-      break
-  assert target is not None, "no in-session bar found"
-  cut = int(frame.index.get_loc(target))
+  # Broker 08:00 on 2026-07-23 — inside session, after weekly strat is cached.
+  target = pd.Timestamp("2026-07-23 05:00:00")
+  assert target in mt5_frame.index
+  cut = int(mt5_frame.index.get_loc(target))
   cache = tmp_path / "mt5.parquet"
-  frame.iloc[:cut].to_parquet(cache)
+  mt5_frame.iloc[:cut].to_parquet(cache)
 
-  eng = BridgeEngine(model_id="tm_mt5_best_94ef551a", mt5_cache=cache)
+  eng = BridgeEngine(model_id="tm_m15_best_2_49216b56", mt5_cache=cache)
   eng.load()
   warmup = eng.decide_for_bar(_bar_payload(eng._df, eng._df.index[-1]))
   assert warmup.get("action") in {"FLAT", "BUY", "SELL", "HOLD"}
@@ -55,18 +49,19 @@ def test_decide_survives_in_session_append_with_cached_strat(mt5_frame, tmp_path
   assert ml is not None and ml._prob_long is not None
   probs_before = len(ml._prob_long)
 
-  # Append several in-session bars; previously this could raise IndexError.
-  saw_tradeable = False
-  for ts in frame.index[cut:cut + 3]:
-    decision = eng.decide_for_bar(_bar_payload(frame, ts))
-    assert decision.get("action") in {"FLAT", "BUY", "SELL", "HOLD"}
-    assert decision.get("reason") != "error"
-    assert len(ml._prob_long) == len(eng._df)
-    assert len(ml._prob_long) >= probs_before
-    if decision.get("action") in {"BUY", "SELL"}:
-      saw_tradeable = True
-      assert decision.get("reason") == "signal"
+  # First in-session append is the known paper SHORT signal bar (last bar live).
+  first = mt5_frame.index[cut]
+  decision = eng.decide_for_bar(_bar_payload(mt5_frame, first))
+  assert decision.get("action") in {"FLAT", "BUY", "SELL", "HOLD"}
+  assert decision.get("reason") != "error"
+  assert len(ml._prob_long) == len(eng._df)
+  assert len(ml._prob_long) >= probs_before
+  # Live last-bar path should be able to emit SELL for this known signal.
+  assert decision.get("action") == "SELL"
+  assert decision.get("reason") == "signal"
 
-  # At least ensure last-bar path works without crash; signal may be flat.
-  assert len(eng._df) == cut + 3
-  _ = saw_tradeable  # optional depending on market/strategy that week
+  # Further appends must not IndexError on stale ML probs.
+  for ts in mt5_frame.index[cut + 1:cut + 3]:
+    decision = eng.decide_for_bar(_bar_payload(mt5_frame, ts))
+    assert decision.get("action") in {"FLAT", "BUY", "SELL", "HOLD"}
+    assert len(ml._prob_long) == len(eng._df)

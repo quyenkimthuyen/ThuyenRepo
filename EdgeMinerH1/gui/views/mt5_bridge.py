@@ -595,11 +595,11 @@ def _render_live_chart(max_bars: int) -> None:
     )
     fig = build_ea_chart(
       frame, connection, load_trades(bridge_dir),
-      title="EURUSD M15 · Simulate (static fallback)",
+      title="EURUSD H1 · Simulate (static fallback)",
       price_line_label="SIM",
     )
     if fig is None:
-      st.caption("Chưa vẽ được chart — cần `data/mt5_eurusd_m15.parquet`.")
+      st.caption("Chưa vẽ được chart — cần `data/mt5_eurusd_h1.parquet`.")
     else:
       st.plotly_chart(fig, use_container_width=True, key="mt5_ea_sim_chart_fallback")
     return
@@ -755,7 +755,7 @@ def _render_service_controls() -> None:
 
     st.divider()
     st.markdown("##### Triển khai EA sang MT5")
-    st.caption("Sao chép và biên dịch EA `ForgeBridge.mq5`, tự động thiết lập Junction và liên kết biểu đồ EURUSD M15.")
+    st.caption("Sao chép và biên dịch EA `ForgeBridge.mq5`, tự động thiết lập Junction và liên kết biểu đồ EURUSD H1.")
     if st.button("Chạy Script Triển khai (Deploy)", icon=":material/settings_suggest:", use_container_width=True):
       with st.spinner("Đang chạy deploy script..."):
         try:
@@ -788,7 +788,7 @@ def _render_history_sync() -> None:
     if history.get("state") in ("requesting", "receiving"):
       st.progress(
         received / max(available, 1),
-        text=f"Đồng bộ lịch sử MT5: {received}/{available or '?'} nến M15",
+        text=f"Đồng bộ lịch sử MT5: {received}/{available or '?'} nến H1",
       )
     elif history_data.get("bars"):
       st.caption(
@@ -852,6 +852,36 @@ def _render_sim_progress_fragment() -> None:
   if sim.get("bars_total"):
     st.progress(min(1.0, max(0.0, prog)))
 
+  b2, b3, b4, b5 = st.columns(4)
+  if b2.button(
+    "Pause" if not sim.get("paused") else "Resume",
+    icon=":material/pause:",
+    disabled=not running, use_container_width=True, key="sim_ea_pause",
+  ):
+    bridge_bg.pause_sim_worker(not bool(sim.get("paused")))
+    st.rerun()
+  if b3.button(
+    "Stop", icon=":material/stop:",
+    disabled=not running, use_container_width=True, key="sim_ea_stop",
+  ):
+    bridge_bg.stop_sim_worker()
+    st.rerun()
+  if b4.button(
+    "Reset data",
+    icon=":material/delete_sweep:",
+    use_container_width=True,
+    key="sim_ea_reset",
+    help="Xóa trades/fills/log/bar/decision/sim_control lần chạy trước để chạy lại sạch.",
+    disabled=running,
+  ):
+    bridge_bg.reset_sim_data()
+    st.toast("Đã xóa dữ liệu Simulate — có thể Start feed lại")
+    st.rerun()
+  if b5.button("Refresh", icon=":material/refresh:", use_container_width=True, key="sim_ea_refresh"):
+    import time as _time
+    st.session_state["bridge_ui_refresh_tick"] = _time.strftime("%H:%M:%S")
+    st.rerun()
+
 
 def _render_simulate_ea() -> None:
   """App controls EA HISTORY_FEED (from/to/delay); EA sends bar/fill via bridge_sim."""
@@ -878,7 +908,7 @@ def _render_simulate_ea() -> None:
 
   st.markdown("##### Triển khai EA Simulate sang MT5")
   st.caption(
-    "Compile ForgeBridge, junction `bridge_sim`, gắn chart EURUSD M15 với "
+    "Compile ForgeBridge, junction `bridge_sim`, gắn chart EURUSD H1 với "
     "`HISTORY_FEED` (ưu tiên chart không phải Live)."
   )
   if st.button(
@@ -1035,37 +1065,6 @@ def _render_simulate_ea() -> None:
         st.rerun()
       else:
         st.warning("Feed đang chạy")
-
-  b2, b3, b4, b5 = st.columns(4)
-  if b2.button(
-    "Pause" if not sim.get("paused") else "Resume",
-    icon=":material/pause:",
-    disabled=not running, use_container_width=True, key="sim_ea_pause",
-  ):
-    bridge_bg.pause_sim_worker(not bool(sim.get("paused")))
-    st.rerun()
-  if b3.button(
-    "Stop", icon=":material/stop:",
-    disabled=not running, use_container_width=True, key="sim_ea_stop",
-  ):
-    bridge_bg.stop_sim_worker()
-    st.rerun()
-  if b4.button(
-    "Reset data",
-    icon=":material/delete_sweep:",
-    use_container_width=True,
-    key="sim_ea_reset",
-    help="Xóa trades/fills/log/bar/decision/sim_control lần chạy trước để chạy lại sạch.",
-    disabled=running,
-  ):
-    bridge_bg.reset_sim_data()
-    st.toast("Đã xóa dữ liệu Simulate — có thể Start feed lại")
-    st.rerun()
-  if b5.button("Refresh", icon=":material/refresh:", use_container_width=True, key="sim_ea_refresh"):
-    import time as _time
-    st.session_state["bridge_ui_refresh_tick"] = _time.strftime("%H:%M:%S")
-    st.rerun()
-
 
 
 def _render_model_monitor() -> None:
@@ -1249,6 +1248,10 @@ def _render_model_monitor_body() -> None:
     )
     if eq_fig:
       st.plotly_chart(eq_fig, use_container_width=True)
+      st.caption(
+        "Cùng trục thời gian entry · nền/chú thích **xanh dương = OOS**, "
+        f"**xanh ngọc = {live_label}**."
+      )
       if live_n == 0:
         st.caption("Chỉ có đường Backtest — chưa có chuỗi equity đối chiếu.")
     else:
@@ -1259,6 +1262,8 @@ def _render_model_monitor_body() -> None:
       "- **Backtest OOS** = report Trade Model (cùng điều kiện remine / Health).\n"
       "- **Live Auto** = fill Bridge live `mode=auto`.\n"
       "- **Simulate EA** = fill từ `bridge_sim/` (EA HISTORY_FEED, App chỉ điều khiển from/to/delay).\n"
+      "- Biểu đồ dùng **cùng trục tháng/thời gian**; chú thích Timeline màu xanh dương (OOS) "
+      "và xanh ngọc (Live/Sim) cho biết khoảng có dữ liệu từng nguồn.\n"
       "- Edge gần 0 trên cùng giai đoạn sim → model + đường App↔EA ổn.\n"
       "- Live/Sim yếu hơn BT kéo dài → kiểm tra spread thực, session, hoặc Grid lại."
     )

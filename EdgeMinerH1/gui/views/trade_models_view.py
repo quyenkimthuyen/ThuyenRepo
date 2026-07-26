@@ -183,7 +183,8 @@ def _render_health():
     f"Đang xem: **{format_model_label(active)}** · "
     f"OOS `{active.get('oos_from') or '—'} → {active.get('oos_to') or '—'}` · "
     f"KB ep**{active.get('kb_snapshot') or '—'}** · "
-    "KPI Grid ở bảng trên; biểu đồ dưới lấy từ **report backtest** (cần khớp search space)."
+    "KPI Grid ở bảng trên; report backtest dùng **cùng điều kiện remine** với MT5 Bridge "
+    "(train/KB/session/spacing/spread)."
   )
 
   timeline = build_model_timeline_figure(
