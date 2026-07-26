@@ -947,19 +947,9 @@ def _render_simulate_ea() -> None:
   with st.form("sim_ea_params_form", clear_on_submit=False):
     c1, c2, c3 = st.columns(3)
     with c1:
-      st.date_input(
-        "Từ ngày",
-        key="sim_ea_from",
-        disabled=running,
-        on_change=preference_callback("sim_ea_from", "mt5.sim_from"),
-      )
+      st.date_input("Từ ngày", key="sim_ea_from", disabled=running)
     with c2:
-      st.date_input(
-        "Đến ngày",
-        key="sim_ea_to",
-        disabled=running,
-        on_change=preference_callback("sim_ea_to", "mt5.sim_to"),
-      )
+      st.date_input("Đến ngày", key="sim_ea_to", disabled=running)
     with c3:
       st.slider(
         "Delay giữa các bar (ms)",
@@ -969,7 +959,6 @@ def _render_simulate_ea() -> None:
         key="sim_ea_delay",
         disabled=running,
         help="Lưu bằng nút Lưu setting hoặc Start feed. 1000 = 1s.",
-        on_change=preference_callback("sim_ea_delay", "mt5.sim_delay"),
       )
     b_save, b_start = st.columns(2)
     with b_save:
