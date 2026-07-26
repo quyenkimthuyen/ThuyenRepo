@@ -434,13 +434,18 @@ class BridgeEngine:
     action = "BUY" if direction == 1 else "SELL"
     sig_id = _signal_id(model_id, bar_ts, action)
     expires = bar_ts + pd.Timedelta(minutes=15)
+    try:
+      from gui.edge_improve import risk_pct_for_bridge
+      risk_pct = float(risk_pct_for_bridge(self.risk_pct))
+    except Exception:
+      risk_pct = float(self.risk_pct)
     decision = {
       "signal_id": sig_id,
       "action": action,
       "entry": proj["entry_px"],
       "sl": proj["sl"],
       "tp": proj["tp"],
-      "risk_pct": self.risk_pct,
+      "risk_pct": risk_pct,
       "magic": self.magic,
       "bar_time": _fmt_bar(bar_ts),
       "entry_time": proj["entry_time"],

@@ -1,0 +1,46 @@
+{
+  "updated_at": "2026-07-26T15:16:10",
+  "status": "complete",
+  "active_before": {
+    "id": "tm_m15_best_2_49216b56",
+    "total_r": 174.503,
+    "win_rate_pct": 51.94,
+    "label": "M15 Best · session_08_17 · spacing_16",
+    "regime_rules": false
+  },
+  "active_after": {
+    "id": "tm_m15_best_2_49216b56",
+    "total_r": 184.763,
+    "win_rate_pct": 52.48,
+    "n_trades": 202,
+    "max_drawdown_r": 9.91,
+    "trades_per_week": 6.97,
+    "profit_factor": 2.596,
+    "label": "M15 Best · champion+regime · spacing_16",
+    "kb_profile": "era_2025_full",
+    "kb_snapshot": 4,
+    "train_weeks": 3,
+    "mining": "session_08_17 · spacing_16 · regime_rules · dd_pen=0.15 · streak_pen=0.10",
+    "health": "stable"
+  },
+  "delta_r": 10.26,
+  "passes": [
+    {"space": "champion_plus_v0", "best_r": 184.763},
+    {"space": "improved_v1", "best_r": 172.15},
+    {"space": "tight_session_v2", "best_r": 168.992},
+    {"space": "london_ny_v3", "best_r": 155.369},
+    {"space": "champion_plus_v0_kb_extra_ep4-6", "best_r": 184.763}
+  ],
+  "kb_extra": {
+    "era_2025_full": "ep5+ep6",
+    "era_2025_h2": "ep5+ep6",
+    "note": "ep5/6 không vượt ep4 trên champion_plus space"
+  },
+  "hooks": [
+    "gui/edge_improve.py",
+    "risk_pct_for_bridge in mt5_bridge/engine.py",
+    "health caption in trade_model banner",
+    "improved search space in grid run_single",
+    "scripts/run_improve_search.py + finalize_improve_search.py"
+  ]
+}

@@ -1,6 +1,6 @@
 {
-  "run_id": "gs_improve_champion_plus_v0_20260726_123749",
-  "updated_at": "2026-07-26T12:37:49+05:30",
+  "run_id": "gs_improve_tight_session_v2_20260726_130634",
+  "updated_at": "2026-07-26T13:06:34+05:30",
   "objective": "risk_adjusted",
   "config": {
     "train_weeks": [
@@ -41,7 +41,7 @@
     "learning_loops": 4,
     "source": "app_settings",
     "timeframe": "M15",
-    "search_space_name": "champion_plus_v0",
+    "search_space_name": "tight_session_v2",
     "mining_search_space": {
       "rr_ratios": [
         2.5,
@@ -55,19 +55,23 @@
         96
       ],
       "min_bars_between": [
-        16
+        16,
+        20
       ],
       "session_ranges": [
         [
           8,
           17
+        ],
+        [
+          12,
+          20
         ]
       ],
       "session_filters": [
         true
       ],
       "score_thresholds": [
-        0.6,
         1.0,
         1.6,
         2.2
@@ -77,18 +81,18 @@
         2
       ],
       "ml_probability_thresholds": [
-        0.36,
         0.4,
         0.44,
-        0.48
+        0.48,
+        0.52
       ],
       "min_feature_samples": 30,
       "min_threshold_samples": 10,
       "min_binary_samples": 8,
       "include_session_regime_rules": true,
       "target_trades_per_week": 10.0,
-      "drawdown_penalty": 0.15,
-      "loss_streak_penalty": 0.1
+      "drawdown_penalty": 0.22,
+      "loss_streak_penalty": 0.15
     },
     "improve_pass": true
   },
@@ -102,13 +106,13 @@
     "kb_snapshot": 4,
     "oos_from": "2026-01-01",
     "oos_to": "2026-12-31",
-    "n_trades": 202,
-    "win_rate_pct": 52.48,
-    "avg_rr": 2.423,
-    "total_r": 184.763,
-    "max_drawdown_r": 9.91,
-    "profit_factor": 2.596,
-    "trades_per_week": 6.97,
+    "n_trades": 190,
+    "win_rate_pct": 51.58,
+    "avg_rr": 2.447,
+    "total_r": 168.992,
+    "max_drawdown_r": 8.79,
+    "profit_factor": 2.444,
+    "trades_per_week": 6.55,
     "feature_profile": "current",
     "mining_search_space": {
       "rr_ratios": [
@@ -123,19 +127,23 @@
         96
       ],
       "min_bars_between": [
-        16
+        16,
+        20
       ],
       "session_ranges": [
         [
           8,
           17
+        ],
+        [
+          12,
+          20
         ]
       ],
       "session_filters": [
         true
       ],
       "score_thresholds": [
-        0.6,
         1.0,
         1.6,
         2.2
@@ -145,21 +153,21 @@
         2
       ],
       "ml_probability_thresholds": [
-        0.36,
         0.4,
         0.44,
-        0.48
+        0.48,
+        0.52
       ],
       "min_feature_samples": 30,
       "min_threshold_samples": 10,
       "min_binary_samples": 8,
       "include_session_regime_rules": true,
       "target_trades_per_week": 10.0,
-      "drawdown_penalty": 0.15,
-      "loss_streak_penalty": 0.1
+      "drawdown_penalty": 0.22,
+      "loss_streak_penalty": 0.15
     },
     "error": null,
-    "risk_adjusted": 18.644
+    "risk_adjusted": 19.225
   },
   "rows": [
     {
@@ -171,13 +179,13 @@
       "kb_snapshot": 4,
       "oos_from": "2026-01-01",
       "oos_to": "2026-12-31",
-      "n_trades": 202,
-      "win_rate_pct": 52.48,
-      "avg_rr": 2.423,
-      "total_r": 184.763,
-      "max_drawdown_r": 9.91,
-      "profit_factor": 2.596,
-      "trades_per_week": 6.97,
+      "n_trades": 190,
+      "win_rate_pct": 51.58,
+      "avg_rr": 2.447,
+      "total_r": 168.992,
+      "max_drawdown_r": 8.79,
+      "profit_factor": 2.444,
+      "trades_per_week": 6.55,
       "feature_profile": "current",
       "mining_search_space": {
         "rr_ratios": [
@@ -192,19 +200,23 @@
           96
         ],
         "min_bars_between": [
-          16
+          16,
+          20
         ],
         "session_ranges": [
           [
             8,
             17
+          ],
+          [
+            12,
+            20
           ]
         ],
         "session_filters": [
           true
         ],
         "score_thresholds": [
-          0.6,
           1.0,
           1.6,
           2.2
@@ -214,157 +226,21 @@
           2
         ],
         "ml_probability_thresholds": [
-          0.36,
           0.4,
           0.44,
-          0.48
+          0.48,
+          0.52
         ],
         "min_feature_samples": 30,
         "min_threshold_samples": 10,
         "min_binary_samples": 8,
         "include_session_regime_rules": true,
         "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
       },
       "error": null,
-      "risk_adjusted": 18.644
-    },
-    {
-      "key": "69299ac47000",
-      "label": "Học 3 tuần · Học 2025 (12 tháng) · vòng 1 · Kiểm chứng 2026",
-      "train_weeks": 3,
-      "use_kb": true,
-      "kb_profile": "era_2025_full",
-      "kb_snapshot": 1,
-      "oos_from": "2026-01-01",
-      "oos_to": "2026-12-31",
-      "n_trades": 212,
-      "win_rate_pct": 49.53,
-      "avg_rr": 2.385,
-      "total_r": 164.06,
-      "max_drawdown_r": 10.52,
-      "profit_factor": 2.231,
-      "trades_per_week": 7.31,
-      "feature_profile": "current",
-      "mining_search_space": {
-        "rr_ratios": [
-          2.5,
-          3.0
-        ],
-        "atr_multipliers": [
-          0.9,
-          1.05
-        ],
-        "max_hold_bars": [
-          96
-        ],
-        "min_bars_between": [
-          16
-        ],
-        "session_ranges": [
-          [
-            8,
-            17
-          ]
-        ],
-        "session_filters": [
-          true
-        ],
-        "score_thresholds": [
-          0.6,
-          1.0,
-          1.6,
-          2.2
-        ],
-        "min_rules_matches": [
-          1,
-          2
-        ],
-        "ml_probability_thresholds": [
-          0.36,
-          0.4,
-          0.44,
-          0.48
-        ],
-        "min_feature_samples": 30,
-        "min_threshold_samples": 10,
-        "min_binary_samples": 8,
-        "include_session_regime_rules": true,
-        "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
-      },
-      "error": null,
-      "risk_adjusted": 15.595
-    },
-    {
-      "key": "cb8c89910aaa",
-      "label": "Học 3 tuần · Học 2025 (12 tháng) · vòng 3 · Kiểm chứng 2026",
-      "train_weeks": 3,
-      "use_kb": true,
-      "kb_profile": "era_2025_full",
-      "kb_snapshot": 3,
-      "oos_from": "2026-01-01",
-      "oos_to": "2026-12-31",
-      "n_trades": 205,
-      "win_rate_pct": 49.27,
-      "avg_rr": 2.338,
-      "total_r": 151.764,
-      "max_drawdown_r": 12.08,
-      "profit_factor": 2.117,
-      "trades_per_week": 7.07,
-      "feature_profile": "current",
-      "mining_search_space": {
-        "rr_ratios": [
-          2.5,
-          3.0
-        ],
-        "atr_multipliers": [
-          0.9,
-          1.05
-        ],
-        "max_hold_bars": [
-          96
-        ],
-        "min_bars_between": [
-          16
-        ],
-        "session_ranges": [
-          [
-            8,
-            17
-          ]
-        ],
-        "session_filters": [
-          true
-        ],
-        "score_thresholds": [
-          0.6,
-          1.0,
-          1.6,
-          2.2
-        ],
-        "min_rules_matches": [
-          1,
-          2
-        ],
-        "ml_probability_thresholds": [
-          0.36,
-          0.4,
-          0.44,
-          0.48
-        ],
-        "min_feature_samples": 30,
-        "min_threshold_samples": 10,
-        "min_binary_samples": 8,
-        "include_session_regime_rules": true,
-        "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
-      },
-      "error": null,
-      "risk_adjusted": 12.563
+      "risk_adjusted": 19.225
     },
     {
       "key": "57a57d1a6d91",
@@ -375,13 +251,13 @@
       "kb_snapshot": 2,
       "oos_from": "2026-01-01",
       "oos_to": "2026-12-31",
-      "n_trades": 212,
-      "win_rate_pct": 47.64,
-      "avg_rr": 2.439,
-      "total_r": 155.267,
-      "max_drawdown_r": 13.87,
-      "profit_factor": 2.133,
-      "trades_per_week": 7.31,
+      "n_trades": 190,
+      "win_rate_pct": 47.89,
+      "avg_rr": 2.487,
+      "total_r": 145.373,
+      "max_drawdown_r": 8.78,
+      "profit_factor": 2.218,
+      "trades_per_week": 6.55,
       "feature_profile": "current",
       "mining_search_space": {
         "rr_ratios": [
@@ -396,19 +272,23 @@
           96
         ],
         "min_bars_between": [
-          16
+          16,
+          20
         ],
         "session_ranges": [
           [
             8,
             17
+          ],
+          [
+            12,
+            20
           ]
         ],
         "session_filters": [
           true
         ],
         "score_thresholds": [
-          0.6,
           1.0,
           1.6,
           2.2
@@ -418,89 +298,21 @@
           2
         ],
         "ml_probability_thresholds": [
-          0.36,
           0.4,
           0.44,
-          0.48
+          0.48,
+          0.52
         ],
         "min_feature_samples": 30,
         "min_threshold_samples": 10,
         "min_binary_samples": 8,
         "include_session_regime_rules": true,
         "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
       },
       "error": null,
-      "risk_adjusted": 11.194
-    },
-    {
-      "key": "fac3ff5beb28",
-      "label": "Học 6 tuần · Học 2025 (12 tháng) · vòng 4 · Kiểm chứng 2026",
-      "train_weeks": 6,
-      "use_kb": true,
-      "kb_profile": "era_2025_full",
-      "kb_snapshot": 4,
-      "oos_from": "2026-01-01",
-      "oos_to": "2026-12-31",
-      "n_trades": 225,
-      "win_rate_pct": 45.78,
-      "avg_rr": 2.301,
-      "total_r": 131.646,
-      "max_drawdown_r": 16.23,
-      "profit_factor": 1.851,
-      "trades_per_week": 7.76,
-      "feature_profile": "current",
-      "mining_search_space": {
-        "rr_ratios": [
-          2.5,
-          3.0
-        ],
-        "atr_multipliers": [
-          0.9,
-          1.05
-        ],
-        "max_hold_bars": [
-          96
-        ],
-        "min_bars_between": [
-          16
-        ],
-        "session_ranges": [
-          [
-            8,
-            17
-          ]
-        ],
-        "session_filters": [
-          true
-        ],
-        "score_thresholds": [
-          0.6,
-          1.0,
-          1.6,
-          2.2
-        ],
-        "min_rules_matches": [
-          1,
-          2
-        ],
-        "ml_probability_thresholds": [
-          0.36,
-          0.4,
-          0.44,
-          0.48
-        ],
-        "min_feature_samples": 30,
-        "min_threshold_samples": 10,
-        "min_binary_samples": 8,
-        "include_session_regime_rules": true,
-        "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
-      },
-      "error": null,
-      "risk_adjusted": 8.111
+      "risk_adjusted": 16.557
     },
     {
       "key": "8d0ef90459e0",
@@ -511,13 +323,13 @@
       "kb_snapshot": 3,
       "oos_from": "2026-01-01",
       "oos_to": "2026-12-31",
-      "n_trades": 225,
-      "win_rate_pct": 43.56,
-      "avg_rr": 2.414,
-      "total_r": 125.549,
-      "max_drawdown_r": 16.39,
-      "profit_factor": 1.702,
-      "trades_per_week": 7.76,
+      "n_trades": 213,
+      "win_rate_pct": 49.3,
+      "avg_rr": 2.349,
+      "total_r": 157.888,
+      "max_drawdown_r": 10.82,
+      "profit_factor": 2.13,
+      "trades_per_week": 7.34,
       "feature_profile": "current",
       "mining_search_space": {
         "rr_ratios": [
@@ -532,19 +344,23 @@
           96
         ],
         "min_bars_between": [
-          16
+          16,
+          20
         ],
         "session_ranges": [
           [
             8,
             17
+          ],
+          [
+            12,
+            20
           ]
         ],
         "session_filters": [
           true
         ],
         "score_thresholds": [
-          0.6,
           1.0,
           1.6,
           2.2
@@ -554,106 +370,38 @@
           2
         ],
         "ml_probability_thresholds": [
-          0.36,
           0.4,
           0.44,
-          0.48
+          0.48,
+          0.52
         ],
         "min_feature_samples": 30,
         "min_threshold_samples": 10,
         "min_binary_samples": 8,
         "include_session_regime_rules": true,
         "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
       },
       "error": null,
-      "risk_adjusted": 7.66
+      "risk_adjusted": 14.592
     },
     {
-      "key": "78fdb525e8ae",
-      "label": "Học 6 tuần · Học 2025 (12 tháng) · vòng 2 · Kiểm chứng 2026",
-      "train_weeks": 6,
-      "use_kb": true,
-      "kb_profile": "era_2025_full",
-      "kb_snapshot": 2,
-      "oos_from": "2026-01-01",
-      "oos_to": "2026-12-31",
-      "n_trades": 228,
-      "win_rate_pct": 46.05,
-      "avg_rr": 2.236,
-      "total_r": 128.01,
-      "max_drawdown_r": 17.7,
-      "profit_factor": 1.757,
-      "trades_per_week": 7.86,
-      "feature_profile": "current",
-      "mining_search_space": {
-        "rr_ratios": [
-          2.5,
-          3.0
-        ],
-        "atr_multipliers": [
-          0.9,
-          1.05
-        ],
-        "max_hold_bars": [
-          96
-        ],
-        "min_bars_between": [
-          16
-        ],
-        "session_ranges": [
-          [
-            8,
-            17
-          ]
-        ],
-        "session_filters": [
-          true
-        ],
-        "score_thresholds": [
-          0.6,
-          1.0,
-          1.6,
-          2.2
-        ],
-        "min_rules_matches": [
-          1,
-          2
-        ],
-        "ml_probability_thresholds": [
-          0.36,
-          0.4,
-          0.44,
-          0.48
-        ],
-        "min_feature_samples": 30,
-        "min_threshold_samples": 10,
-        "min_binary_samples": 8,
-        "include_session_regime_rules": true,
-        "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
-      },
-      "error": null,
-      "risk_adjusted": 7.232
-    },
-    {
-      "key": "6e0aba808182",
-      "label": "Học 9 tuần · Học 2025 (12 tháng) · vòng 1 · Kiểm chứng 2026",
-      "train_weeks": 9,
+      "key": "69299ac47000",
+      "label": "Học 3 tuần · Học 2025 (12 tháng) · vòng 1 · Kiểm chứng 2026",
+      "train_weeks": 3,
       "use_kb": true,
       "kb_profile": "era_2025_full",
       "kb_snapshot": 1,
       "oos_from": "2026-01-01",
       "oos_to": "2026-12-31",
-      "n_trades": 231,
-      "win_rate_pct": 44.59,
-      "avg_rr": 2.428,
-      "total_r": 138.953,
-      "max_drawdown_r": 20.02,
-      "profit_factor": 1.833,
-      "trades_per_week": 7.97,
+      "n_trades": 194,
+      "win_rate_pct": 48.97,
+      "avg_rr": 2.421,
+      "total_r": 149.38,
+      "max_drawdown_r": 11.43,
+      "profit_factor": 2.239,
+      "trades_per_week": 6.69,
       "feature_profile": "current",
       "mining_search_space": {
         "rr_ratios": [
@@ -668,19 +416,23 @@
           96
         ],
         "min_bars_between": [
-          16
+          16,
+          20
         ],
         "session_ranges": [
           [
             8,
             17
+          ],
+          [
+            12,
+            20
           ]
         ],
         "session_filters": [
           true
         ],
         "score_thresholds": [
-          0.6,
           1.0,
           1.6,
           2.2
@@ -690,38 +442,38 @@
           2
         ],
         "ml_probability_thresholds": [
-          0.36,
           0.4,
           0.44,
-          0.48
+          0.48,
+          0.52
         ],
         "min_feature_samples": 30,
         "min_threshold_samples": 10,
         "min_binary_samples": 8,
         "include_session_regime_rules": true,
         "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
       },
       "error": null,
-      "risk_adjusted": 6.941
+      "risk_adjusted": 13.069
     },
     {
-      "key": "cd1c637ad85d",
-      "label": "Học 9 tuần · Học 2025 (12 tháng) · vòng 2 · Kiểm chứng 2026",
-      "train_weeks": 9,
+      "key": "cb8c89910aaa",
+      "label": "Học 3 tuần · Học 2025 (12 tháng) · vòng 3 · Kiểm chứng 2026",
+      "train_weeks": 3,
       "use_kb": true,
       "kb_profile": "era_2025_full",
-      "kb_snapshot": 2,
+      "kb_snapshot": 3,
       "oos_from": "2026-01-01",
       "oos_to": "2026-12-31",
-      "n_trades": 232,
-      "win_rate_pct": 43.1,
-      "avg_rr": 2.429,
-      "total_r": 126.279,
-      "max_drawdown_r": 21.76,
-      "profit_factor": 1.641,
-      "trades_per_week": 8.0,
+      "n_trades": 193,
+      "win_rate_pct": 49.22,
+      "avg_rr": 2.363,
+      "total_r": 144.517,
+      "max_drawdown_r": 12.79,
+      "profit_factor": 2.141,
+      "trades_per_week": 6.66,
       "feature_profile": "current",
       "mining_search_space": {
         "rr_ratios": [
@@ -736,19 +488,23 @@
           96
         ],
         "min_bars_between": [
-          16
+          16,
+          20
         ],
         "session_ranges": [
           [
             8,
             17
+          ],
+          [
+            12,
+            20
           ]
         ],
         "session_filters": [
           true
         ],
         "score_thresholds": [
-          0.6,
           1.0,
           1.6,
           2.2
@@ -758,157 +514,21 @@
           2
         ],
         "ml_probability_thresholds": [
-          0.36,
           0.4,
           0.44,
-          0.48
+          0.48,
+          0.52
         ],
         "min_feature_samples": 30,
         "min_threshold_samples": 10,
         "min_binary_samples": 8,
         "include_session_regime_rules": true,
         "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
       },
       "error": null,
-      "risk_adjusted": 5.803
-    },
-    {
-      "key": "94dea932498b",
-      "label": "Học 6 tuần · Học 2025 (12 tháng) · vòng 1 · Kiểm chứng 2026",
-      "train_weeks": 6,
-      "use_kb": true,
-      "kb_profile": "era_2025_full",
-      "kb_snapshot": 1,
-      "oos_from": "2026-01-01",
-      "oos_to": "2026-12-31",
-      "n_trades": 237,
-      "win_rate_pct": 43.46,
-      "avg_rr": 2.405,
-      "total_r": 130.245,
-      "max_drawdown_r": 23.96,
-      "profit_factor": 1.764,
-      "trades_per_week": 8.17,
-      "feature_profile": "current",
-      "mining_search_space": {
-        "rr_ratios": [
-          2.5,
-          3.0
-        ],
-        "atr_multipliers": [
-          0.9,
-          1.05
-        ],
-        "max_hold_bars": [
-          96
-        ],
-        "min_bars_between": [
-          16
-        ],
-        "session_ranges": [
-          [
-            8,
-            17
-          ]
-        ],
-        "session_filters": [
-          true
-        ],
-        "score_thresholds": [
-          0.6,
-          1.0,
-          1.6,
-          2.2
-        ],
-        "min_rules_matches": [
-          1,
-          2
-        ],
-        "ml_probability_thresholds": [
-          0.36,
-          0.4,
-          0.44,
-          0.48
-        ],
-        "min_feature_samples": 30,
-        "min_threshold_samples": 10,
-        "min_binary_samples": 8,
-        "include_session_regime_rules": true,
-        "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
-      },
-      "error": null,
-      "risk_adjusted": 5.436
-    },
-    {
-      "key": "a41796d710f2",
-      "label": "Học 9 tuần · Học 2025 (12 tháng) · vòng 4 · Kiểm chứng 2026",
-      "train_weeks": 9,
-      "use_kb": true,
-      "kb_profile": "era_2025_full",
-      "kb_snapshot": 4,
-      "oos_from": "2026-01-01",
-      "oos_to": "2026-12-31",
-      "n_trades": 232,
-      "win_rate_pct": 42.24,
-      "avg_rr": 2.358,
-      "total_r": 110.685,
-      "max_drawdown_r": 21.81,
-      "profit_factor": 1.622,
-      "trades_per_week": 8.0,
-      "feature_profile": "current",
-      "mining_search_space": {
-        "rr_ratios": [
-          2.5,
-          3.0
-        ],
-        "atr_multipliers": [
-          0.9,
-          1.05
-        ],
-        "max_hold_bars": [
-          96
-        ],
-        "min_bars_between": [
-          16
-        ],
-        "session_ranges": [
-          [
-            8,
-            17
-          ]
-        ],
-        "session_filters": [
-          true
-        ],
-        "score_thresholds": [
-          0.6,
-          1.0,
-          1.6,
-          2.2
-        ],
-        "min_rules_matches": [
-          1,
-          2
-        ],
-        "ml_probability_thresholds": [
-          0.36,
-          0.4,
-          0.44,
-          0.48
-        ],
-        "min_feature_samples": 30,
-        "min_threshold_samples": 10,
-        "min_binary_samples": 8,
-        "include_session_regime_rules": true,
-        "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
-      },
-      "error": null,
-      "risk_adjusted": 5.075
+      "risk_adjusted": 11.299
     },
     {
       "key": "a76ea20fd00d",
@@ -919,13 +539,13 @@
       "kb_snapshot": 3,
       "oos_from": "2026-01-01",
       "oos_to": "2026-12-31",
-      "n_trades": 235,
-      "win_rate_pct": 41.7,
-      "avg_rr": 2.412,
-      "total_r": 113.282,
-      "max_drawdown_r": 25.23,
-      "profit_factor": 1.604,
-      "trades_per_week": 8.1,
+      "n_trades": 218,
+      "win_rate_pct": 45.41,
+      "avg_rr": 2.431,
+      "total_r": 138.678,
+      "max_drawdown_r": 17.34,
+      "profit_factor": 1.954,
+      "trades_per_week": 7.52,
       "feature_profile": "current",
       "mining_search_space": {
         "rr_ratios": [
@@ -940,19 +560,23 @@
           96
         ],
         "min_bars_between": [
-          16
+          16,
+          20
         ],
         "session_ranges": [
           [
             8,
             17
+          ],
+          [
+            12,
+            20
           ]
         ],
         "session_filters": [
           true
         ],
         "score_thresholds": [
-          0.6,
           1.0,
           1.6,
           2.2
@@ -962,38 +586,38 @@
           2
         ],
         "ml_probability_thresholds": [
-          0.36,
           0.4,
           0.44,
-          0.48
+          0.48,
+          0.52
         ],
         "min_feature_samples": 30,
         "min_threshold_samples": 10,
         "min_binary_samples": 8,
         "include_session_regime_rules": true,
         "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
       },
       "error": null,
-      "risk_adjusted": 4.49
+      "risk_adjusted": 7.998
     },
     {
-      "key": "6bf7d779ad02",
-      "label": "Học 6 tuần · Học 2025 (6 tháng cuối) · vòng 4 · Kiểm chứng 2026",
+      "key": "fac3ff5beb28",
+      "label": "Học 6 tuần · Học 2025 (12 tháng) · vòng 4 · Kiểm chứng 2026",
       "train_weeks": 6,
       "use_kb": true,
-      "kb_profile": "era_2025_h2",
+      "kb_profile": "era_2025_full",
       "kb_snapshot": 4,
       "oos_from": "2026-01-01",
       "oos_to": "2026-12-31",
-      "n_trades": 138,
-      "win_rate_pct": 57.25,
-      "avg_rr": 1.425,
-      "total_r": 62.153,
-      "max_drawdown_r": 7.6,
-      "profit_factor": 1.929,
-      "trades_per_week": 4.76,
+      "n_trades": 210,
+      "win_rate_pct": 44.76,
+      "avg_rr": 2.435,
+      "total_r": 128.662,
+      "max_drawdown_r": 19.46,
+      "profit_factor": 1.886,
+      "trades_per_week": 7.24,
       "feature_profile": "current",
       "mining_search_space": {
         "rr_ratios": [
@@ -1008,19 +632,23 @@
           96
         ],
         "min_bars_between": [
-          16
+          16,
+          20
         ],
         "session_ranges": [
           [
             8,
             17
+          ],
+          [
+            12,
+            20
           ]
         ],
         "session_filters": [
           true
         ],
         "score_thresholds": [
-          0.6,
           1.0,
           1.6,
           2.2
@@ -1030,38 +658,38 @@
           2
         ],
         "ml_probability_thresholds": [
-          0.36,
           0.4,
           0.44,
-          0.48
+          0.48,
+          0.52
         ],
         "min_feature_samples": 30,
         "min_threshold_samples": 10,
         "min_binary_samples": 8,
         "include_session_regime_rules": true,
         "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
       },
       "error": null,
-      "risk_adjusted": -1000000000000.0
+      "risk_adjusted": 6.612
     },
     {
-      "key": "4faea67edd6c",
-      "label": "Học 6 tuần · Học 2025 (6 tháng cuối) · vòng 1 · Kiểm chứng 2026",
+      "key": "94dea932498b",
+      "label": "Học 6 tuần · Học 2025 (12 tháng) · vòng 1 · Kiểm chứng 2026",
       "train_weeks": 6,
       "use_kb": true,
-      "kb_profile": "era_2025_h2",
+      "kb_profile": "era_2025_full",
       "kb_snapshot": 1,
       "oos_from": "2026-01-01",
       "oos_to": "2026-12-31",
-      "n_trades": 133,
-      "win_rate_pct": 41.35,
-      "avg_rr": 2.353,
-      "total_r": 59.705,
-      "max_drawdown_r": 8.9,
-      "profit_factor": 1.661,
-      "trades_per_week": 4.59,
+      "n_trades": 211,
+      "win_rate_pct": 44.55,
+      "avg_rr": 2.412,
+      "total_r": 124.923,
+      "max_drawdown_r": 20.78,
+      "profit_factor": 1.811,
+      "trades_per_week": 7.28,
       "feature_profile": "current",
       "mining_search_space": {
         "rr_ratios": [
@@ -1076,19 +704,23 @@
           96
         ],
         "min_bars_between": [
-          16
+          16,
+          20
         ],
         "session_ranges": [
           [
             8,
             17
+          ],
+          [
+            12,
+            20
           ]
         ],
         "session_filters": [
           true
         ],
         "score_thresholds": [
-          0.6,
           1.0,
           1.6,
           2.2
@@ -1098,38 +730,38 @@
           2
         ],
         "ml_probability_thresholds": [
-          0.36,
           0.4,
           0.44,
-          0.48
+          0.48,
+          0.52
         ],
         "min_feature_samples": 30,
         "min_threshold_samples": 10,
         "min_binary_samples": 8,
         "include_session_regime_rules": true,
         "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
       },
       "error": null,
-      "risk_adjusted": -1000000000000.0
+      "risk_adjusted": 6.012
     },
     {
-      "key": "f32a44028204",
-      "label": "Học 6 tuần · Học 2025 (6 tháng cuối) · vòng 2 · Kiểm chứng 2026",
-      "train_weeks": 6,
+      "key": "cd1c637ad85d",
+      "label": "Học 9 tuần · Học 2025 (12 tháng) · vòng 2 · Kiểm chứng 2026",
+      "train_weeks": 9,
       "use_kb": true,
-      "kb_profile": "era_2025_h2",
+      "kb_profile": "era_2025_full",
       "kb_snapshot": 2,
       "oos_from": "2026-01-01",
       "oos_to": "2026-12-31",
-      "n_trades": 130,
-      "win_rate_pct": 42.31,
-      "avg_rr": 2.271,
-      "total_r": 57.761,
-      "max_drawdown_r": 9.76,
-      "profit_factor": 1.62,
-      "trades_per_week": 4.48,
+      "n_trades": 223,
+      "win_rate_pct": 44.84,
+      "avg_rr": 2.412,
+      "total_r": 134.395,
+      "max_drawdown_r": 22.59,
+      "profit_factor": 1.837,
+      "trades_per_week": 7.69,
       "feature_profile": "current",
       "mining_search_space": {
         "rr_ratios": [
@@ -1144,19 +776,23 @@
           96
         ],
         "min_bars_between": [
-          16
+          16,
+          20
         ],
         "session_ranges": [
           [
             8,
             17
+          ],
+          [
+            12,
+            20
           ]
         ],
         "session_filters": [
           true
         ],
         "score_thresholds": [
-          0.6,
           1.0,
           1.6,
           2.2
@@ -1166,21 +802,237 @@
           2
         ],
         "ml_probability_thresholds": [
-          0.36,
           0.4,
           0.44,
-          0.48
+          0.48,
+          0.52
         ],
         "min_feature_samples": 30,
         "min_threshold_samples": 10,
         "min_binary_samples": 8,
         "include_session_regime_rules": true,
         "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
       },
       "error": null,
-      "risk_adjusted": -1000000000000.0
+      "risk_adjusted": 5.949
+    },
+    {
+      "key": "78fdb525e8ae",
+      "label": "Học 6 tuần · Học 2025 (12 tháng) · vòng 2 · Kiểm chứng 2026",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2025_full",
+      "kb_snapshot": 2,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "n_trades": 216,
+      "win_rate_pct": 44.44,
+      "avg_rr": 2.433,
+      "total_r": 129.746,
+      "max_drawdown_r": 22.39,
+      "profit_factor": 1.834,
+      "trades_per_week": 7.45,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16,
+          20
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ],
+          [
+            12,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48,
+          0.52
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
+      },
+      "error": null,
+      "risk_adjusted": 5.795
+    },
+    {
+      "key": "a41796d710f2",
+      "label": "Học 9 tuần · Học 2025 (12 tháng) · vòng 4 · Kiểm chứng 2026",
+      "train_weeks": 9,
+      "use_kb": true,
+      "kb_profile": "era_2025_full",
+      "kb_snapshot": 4,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "n_trades": 215,
+      "win_rate_pct": 43.72,
+      "avg_rr": 2.385,
+      "total_r": 117.025,
+      "max_drawdown_r": 20.22,
+      "profit_factor": 1.783,
+      "trades_per_week": 7.41,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16,
+          20
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ],
+          [
+            12,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48,
+          0.52
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
+      },
+      "error": null,
+      "risk_adjusted": 5.788
+    },
+    {
+      "key": "6e0aba808182",
+      "label": "Học 9 tuần · Học 2025 (12 tháng) · vòng 1 · Kiểm chứng 2026",
+      "train_weeks": 9,
+      "use_kb": true,
+      "kb_profile": "era_2025_full",
+      "kb_snapshot": 1,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "n_trades": 218,
+      "win_rate_pct": 42.66,
+      "avg_rr": 2.447,
+      "total_r": 116.29,
+      "max_drawdown_r": 22.64,
+      "profit_factor": 1.703,
+      "trades_per_week": 7.52,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16,
+          20
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ],
+          [
+            12,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48,
+          0.52
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
+      },
+      "error": null,
+      "risk_adjusted": 5.136
     },
     {
       "key": "71e7dc8c0710",
@@ -1191,148 +1043,12 @@
       "kb_snapshot": 3,
       "oos_from": "2026-01-01",
       "oos_to": "2026-12-31",
-      "n_trades": 135,
-      "win_rate_pct": 40.74,
-      "avg_rr": 2.309,
-      "total_r": 54.304,
-      "max_drawdown_r": 11.47,
-      "profit_factor": 1.597,
-      "trades_per_week": 4.66,
-      "feature_profile": "current",
-      "mining_search_space": {
-        "rr_ratios": [
-          2.5,
-          3.0
-        ],
-        "atr_multipliers": [
-          0.9,
-          1.05
-        ],
-        "max_hold_bars": [
-          96
-        ],
-        "min_bars_between": [
-          16
-        ],
-        "session_ranges": [
-          [
-            8,
-            17
-          ]
-        ],
-        "session_filters": [
-          true
-        ],
-        "score_thresholds": [
-          0.6,
-          1.0,
-          1.6,
-          2.2
-        ],
-        "min_rules_matches": [
-          1,
-          2
-        ],
-        "ml_probability_thresholds": [
-          0.36,
-          0.4,
-          0.44,
-          0.48
-        ],
-        "min_feature_samples": 30,
-        "min_threshold_samples": 10,
-        "min_binary_samples": 8,
-        "include_session_regime_rules": true,
-        "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
-      },
-      "error": null,
-      "risk_adjusted": -1000000000000.0
-    },
-    {
-      "key": "5d1cdb44056a",
-      "label": "Học 9 tuần · Học 2025 (6 tháng cuối) · vòng 4 · Kiểm chứng 2026",
-      "train_weeks": 9,
-      "use_kb": true,
-      "kb_profile": "era_2025_h2",
-      "kb_snapshot": 4,
-      "oos_from": "2026-01-01",
-      "oos_to": "2026-12-31",
-      "n_trades": 143,
-      "win_rate_pct": 51.05,
-      "avg_rr": 1.602,
-      "total_r": 54.162,
-      "max_drawdown_r": 11.46,
-      "profit_factor": 1.594,
-      "trades_per_week": 4.93,
-      "feature_profile": "current",
-      "mining_search_space": {
-        "rr_ratios": [
-          2.5,
-          3.0
-        ],
-        "atr_multipliers": [
-          0.9,
-          1.05
-        ],
-        "max_hold_bars": [
-          96
-        ],
-        "min_bars_between": [
-          16
-        ],
-        "session_ranges": [
-          [
-            8,
-            17
-          ]
-        ],
-        "session_filters": [
-          true
-        ],
-        "score_thresholds": [
-          0.6,
-          1.0,
-          1.6,
-          2.2
-        ],
-        "min_rules_matches": [
-          1,
-          2
-        ],
-        "ml_probability_thresholds": [
-          0.36,
-          0.4,
-          0.44,
-          0.48
-        ],
-        "min_feature_samples": 30,
-        "min_threshold_samples": 10,
-        "min_binary_samples": 8,
-        "include_session_regime_rules": true,
-        "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
-      },
-      "error": null,
-      "risk_adjusted": -1000000000000.0
-    },
-    {
-      "key": "5d40bbe50981",
-      "label": "Học 9 tuần · Học 2025 (6 tháng cuối) · vòng 3 · Kiểm chứng 2026",
-      "train_weeks": 9,
-      "use_kb": true,
-      "kb_profile": "era_2025_h2",
-      "kb_snapshot": 3,
-      "oos_from": "2026-01-01",
-      "oos_to": "2026-12-31",
       "n_trades": 137,
-      "win_rate_pct": 42.34,
-      "avg_rr": 2.029,
-      "total_r": 44.357,
-      "max_drawdown_r": 11.46,
-      "profit_factor": 1.349,
+      "win_rate_pct": 45.99,
+      "avg_rr": 2.064,
+      "total_r": 64.812,
+      "max_drawdown_r": 8.1,
+      "profit_factor": 1.68,
       "trades_per_week": 4.72,
       "feature_profile": "current",
       "mining_search_space": {
@@ -1348,19 +1064,23 @@
           96
         ],
         "min_bars_between": [
-          16
+          16,
+          20
         ],
         "session_ranges": [
           [
             8,
             17
+          ],
+          [
+            12,
+            20
           ]
         ],
         "session_filters": [
           true
         ],
         "score_thresholds": [
-          0.6,
           1.0,
           1.6,
           2.2
@@ -1370,18 +1090,378 @@
           2
         ],
         "ml_probability_thresholds": [
-          0.36,
           0.4,
           0.44,
-          0.48
+          0.48,
+          0.52
         ],
         "min_feature_samples": 30,
         "min_threshold_samples": 10,
         "min_binary_samples": 8,
         "include_session_regime_rules": true,
         "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
+      },
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "6bf7d779ad02",
+      "label": "Học 6 tuần · Học 2025 (6 tháng cuối) · vòng 4 · Kiểm chứng 2026",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2025_h2",
+      "kb_snapshot": 4,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "n_trades": 132,
+      "win_rate_pct": 49.24,
+      "avg_rr": 1.876,
+      "total_r": 63.981,
+      "max_drawdown_r": 7.6,
+      "profit_factor": 1.97,
+      "trades_per_week": 4.55,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16,
+          20
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ],
+          [
+            12,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48,
+          0.52
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
+      },
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "f32a44028204",
+      "label": "Học 6 tuần · Học 2025 (6 tháng cuối) · vòng 2 · Kiểm chứng 2026",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2025_h2",
+      "kb_snapshot": 2,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "n_trades": 133,
+      "win_rate_pct": 42.86,
+      "avg_rr": 2.147,
+      "total_r": 53.621,
+      "max_drawdown_r": 7.6,
+      "profit_factor": 1.57,
+      "trades_per_week": 4.59,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16,
+          20
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ],
+          [
+            12,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48,
+          0.52
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
+      },
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "4faea67edd6c",
+      "label": "Học 6 tuần · Học 2025 (6 tháng cuối) · vòng 1 · Kiểm chứng 2026",
+      "train_weeks": 6,
+      "use_kb": true,
+      "kb_profile": "era_2025_h2",
+      "kb_snapshot": 1,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "n_trades": 130,
+      "win_rate_pct": 40.0,
+      "avg_rr": 2.347,
+      "total_r": 50.971,
+      "max_drawdown_r": 7.6,
+      "profit_factor": 1.531,
+      "trades_per_week": 4.48,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16,
+          20
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ],
+          [
+            12,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48,
+          0.52
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
+      },
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "19021aed34d4",
+      "label": "Học 3 tuần · Học 2025 (6 tháng cuối) · vòng 4 · Kiểm chứng 2026",
+      "train_weeks": 3,
+      "use_kb": true,
+      "kb_profile": "era_2025_h2",
+      "kb_snapshot": 4,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "n_trades": 112,
+      "win_rate_pct": 58.04,
+      "avg_rr": 1.366,
+      "total_r": 48.586,
+      "max_drawdown_r": 6.65,
+      "profit_factor": 1.837,
+      "trades_per_week": 3.86,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16,
+          20
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ],
+          [
+            12,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48,
+          0.52
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
+      },
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "083b3b5f162a",
+      "label": "Học 9 tuần · Học 2025 (6 tháng cuối) · vòng 1 · Kiểm chứng 2026",
+      "train_weeks": 9,
+      "use_kb": true,
+      "kb_profile": "era_2025_h2",
+      "kb_snapshot": 1,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "n_trades": 126,
+      "win_rate_pct": 38.89,
+      "avg_rr": 2.394,
+      "total_r": 46.22,
+      "max_drawdown_r": 11.45,
+      "profit_factor": 1.363,
+      "trades_per_week": 4.34,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16,
+          20
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ],
+          [
+            12,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48,
+          0.52
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
       },
       "error": null,
       "risk_adjusted": -1000000000000.0
@@ -1395,12 +1475,156 @@
       "kb_snapshot": 2,
       "oos_from": "2026-01-01",
       "oos_to": "2026-12-31",
-      "n_trades": 136,
-      "win_rate_pct": 37.5,
-      "avg_rr": 2.422,
-      "total_r": 44.215,
+      "n_trades": 125,
+      "win_rate_pct": 38.4,
+      "avg_rr": 2.436,
+      "total_r": 45.801,
       "max_drawdown_r": 11.45,
-      "profit_factor": 1.256,
+      "profit_factor": 1.348,
+      "trades_per_week": 4.31,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16,
+          20
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ],
+          [
+            12,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48,
+          0.52
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
+      },
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "5d40bbe50981",
+      "label": "Học 9 tuần · Học 2025 (6 tháng cuối) · vòng 3 · Kiểm chứng 2026",
+      "train_weeks": 9,
+      "use_kb": true,
+      "kb_profile": "era_2025_h2",
+      "kb_snapshot": 3,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "n_trades": 130,
+      "win_rate_pct": 41.54,
+      "avg_rr": 2.114,
+      "total_r": 43.852,
+      "max_drawdown_r": 11.46,
+      "profit_factor": 1.32,
+      "trades_per_week": 4.48,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16,
+          20
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ],
+          [
+            12,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48,
+          0.52
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
+      },
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "5d1cdb44056a",
+      "label": "Học 9 tuần · Học 2025 (6 tháng cuối) · vòng 4 · Kiểm chứng 2026",
+      "train_weeks": 9,
+      "use_kb": true,
+      "kb_profile": "era_2025_h2",
+      "kb_snapshot": 4,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "n_trades": 136,
+      "win_rate_pct": 45.59,
+      "avg_rr": 1.71,
+      "total_r": 36.794,
+      "max_drawdown_r": 10.36,
+      "profit_factor": 1.317,
       "trades_per_week": 4.69,
       "feature_profile": "current",
       "mining_search_space": {
@@ -1416,19 +1640,23 @@
           96
         ],
         "min_bars_between": [
-          16
+          16,
+          20
         ],
         "session_ranges": [
           [
             8,
             17
+          ],
+          [
+            12,
+            20
           ]
         ],
         "session_filters": [
           true
         ],
         "score_thresholds": [
-          0.6,
           1.0,
           1.6,
           2.2
@@ -1438,290 +1666,18 @@
           2
         ],
         "ml_probability_thresholds": [
-          0.36,
           0.4,
           0.44,
-          0.48
+          0.48,
+          0.52
         ],
         "min_feature_samples": 30,
         "min_threshold_samples": 10,
         "min_binary_samples": 8,
         "include_session_regime_rules": true,
         "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
-      },
-      "error": null,
-      "risk_adjusted": -1000000000000.0
-    },
-    {
-      "key": "aa5cd0aa0f04",
-      "label": "Học 3 tuần · Học 2025 (6 tháng cuối) · vòng 2 · Kiểm chứng 2026",
-      "train_weeks": 3,
-      "use_kb": true,
-      "kb_profile": "era_2025_h2",
-      "kb_snapshot": 2,
-      "oos_from": "2026-01-01",
-      "oos_to": "2026-12-31",
-      "n_trades": 117,
-      "win_rate_pct": 38.46,
-      "avg_rr": 2.449,
-      "total_r": 44.079,
-      "max_drawdown_r": 9.86,
-      "profit_factor": 1.38,
-      "trades_per_week": 4.03,
-      "feature_profile": "current",
-      "mining_search_space": {
-        "rr_ratios": [
-          2.5,
-          3.0
-        ],
-        "atr_multipliers": [
-          0.9,
-          1.05
-        ],
-        "max_hold_bars": [
-          96
-        ],
-        "min_bars_between": [
-          16
-        ],
-        "session_ranges": [
-          [
-            8,
-            17
-          ]
-        ],
-        "session_filters": [
-          true
-        ],
-        "score_thresholds": [
-          0.6,
-          1.0,
-          1.6,
-          2.2
-        ],
-        "min_rules_matches": [
-          1,
-          2
-        ],
-        "ml_probability_thresholds": [
-          0.36,
-          0.4,
-          0.44,
-          0.48
-        ],
-        "min_feature_samples": 30,
-        "min_threshold_samples": 10,
-        "min_binary_samples": 8,
-        "include_session_regime_rules": true,
-        "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
-      },
-      "error": null,
-      "risk_adjusted": -1000000000000.0
-    },
-    {
-      "key": "083b3b5f162a",
-      "label": "Học 9 tuần · Học 2025 (6 tháng cuối) · vòng 1 · Kiểm chứng 2026",
-      "train_weeks": 9,
-      "use_kb": true,
-      "kb_profile": "era_2025_h2",
-      "kb_snapshot": 1,
-      "oos_from": "2026-01-01",
-      "oos_to": "2026-12-31",
-      "n_trades": 135,
-      "win_rate_pct": 38.52,
-      "avg_rr": 2.329,
-      "total_r": 43.909,
-      "max_drawdown_r": 11.45,
-      "profit_factor": 1.324,
-      "trades_per_week": 4.66,
-      "feature_profile": "current",
-      "mining_search_space": {
-        "rr_ratios": [
-          2.5,
-          3.0
-        ],
-        "atr_multipliers": [
-          0.9,
-          1.05
-        ],
-        "max_hold_bars": [
-          96
-        ],
-        "min_bars_between": [
-          16
-        ],
-        "session_ranges": [
-          [
-            8,
-            17
-          ]
-        ],
-        "session_filters": [
-          true
-        ],
-        "score_thresholds": [
-          0.6,
-          1.0,
-          1.6,
-          2.2
-        ],
-        "min_rules_matches": [
-          1,
-          2
-        ],
-        "ml_probability_thresholds": [
-          0.36,
-          0.4,
-          0.44,
-          0.48
-        ],
-        "min_feature_samples": 30,
-        "min_threshold_samples": 10,
-        "min_binary_samples": 8,
-        "include_session_regime_rules": true,
-        "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
-      },
-      "error": null,
-      "risk_adjusted": -1000000000000.0
-    },
-    {
-      "key": "040ea67cf96a",
-      "label": "Học 3 tuần · Học 2025 (6 tháng cuối) · vòng 1 · Kiểm chứng 2026",
-      "train_weeks": 3,
-      "use_kb": true,
-      "kb_profile": "era_2025_h2",
-      "kb_snapshot": 1,
-      "oos_from": "2026-01-01",
-      "oos_to": "2026-12-31",
-      "n_trades": 117,
-      "win_rate_pct": 39.32,
-      "avg_rr": 2.359,
-      "total_r": 43.463,
-      "max_drawdown_r": 11.53,
-      "profit_factor": 1.443,
-      "trades_per_week": 4.03,
-      "feature_profile": "current",
-      "mining_search_space": {
-        "rr_ratios": [
-          2.5,
-          3.0
-        ],
-        "atr_multipliers": [
-          0.9,
-          1.05
-        ],
-        "max_hold_bars": [
-          96
-        ],
-        "min_bars_between": [
-          16
-        ],
-        "session_ranges": [
-          [
-            8,
-            17
-          ]
-        ],
-        "session_filters": [
-          true
-        ],
-        "score_thresholds": [
-          0.6,
-          1.0,
-          1.6,
-          2.2
-        ],
-        "min_rules_matches": [
-          1,
-          2
-        ],
-        "ml_probability_thresholds": [
-          0.36,
-          0.4,
-          0.44,
-          0.48
-        ],
-        "min_feature_samples": 30,
-        "min_threshold_samples": 10,
-        "min_binary_samples": 8,
-        "include_session_regime_rules": true,
-        "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
-      },
-      "error": null,
-      "risk_adjusted": -1000000000000.0
-    },
-    {
-      "key": "19021aed34d4",
-      "label": "Học 3 tuần · Học 2025 (6 tháng cuối) · vòng 4 · Kiểm chứng 2026",
-      "train_weeks": 3,
-      "use_kb": true,
-      "kb_profile": "era_2025_h2",
-      "kb_snapshot": 4,
-      "oos_from": "2026-01-01",
-      "oos_to": "2026-12-31",
-      "n_trades": 116,
-      "win_rate_pct": 50.86,
-      "avg_rr": 1.588,
-      "total_r": 42.54,
-      "max_drawdown_r": 8.61,
-      "profit_factor": 1.65,
-      "trades_per_week": 4.0,
-      "feature_profile": "current",
-      "mining_search_space": {
-        "rr_ratios": [
-          2.5,
-          3.0
-        ],
-        "atr_multipliers": [
-          0.9,
-          1.05
-        ],
-        "max_hold_bars": [
-          96
-        ],
-        "min_bars_between": [
-          16
-        ],
-        "session_ranges": [
-          [
-            8,
-            17
-          ]
-        ],
-        "session_filters": [
-          true
-        ],
-        "score_thresholds": [
-          0.6,
-          1.0,
-          1.6,
-          2.2
-        ],
-        "min_rules_matches": [
-          1,
-          2
-        ],
-        "ml_probability_thresholds": [
-          0.36,
-          0.4,
-          0.44,
-          0.48
-        ],
-        "min_feature_samples": 30,
-        "min_threshold_samples": 10,
-        "min_binary_samples": 8,
-        "include_session_regime_rules": true,
-        "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
       },
       "error": null,
       "risk_adjusted": -1000000000000.0
@@ -1735,13 +1691,13 @@
       "kb_snapshot": 3,
       "oos_from": "2026-01-01",
       "oos_to": "2026-12-31",
-      "n_trades": 121,
-      "win_rate_pct": 38.84,
-      "avg_rr": 2.225,
-      "total_r": 35.099,
-      "max_drawdown_r": 8.15,
-      "profit_factor": 1.295,
-      "trades_per_week": 4.17,
+      "n_trades": 126,
+      "win_rate_pct": 42.06,
+      "avg_rr": 1.962,
+      "total_r": 35.997,
+      "max_drawdown_r": 11.53,
+      "profit_factor": 1.412,
+      "trades_per_week": 4.34,
       "feature_profile": "current",
       "mining_search_space": {
         "rr_ratios": [
@@ -1756,19 +1712,23 @@
           96
         ],
         "min_bars_between": [
-          16
+          16,
+          20
         ],
         "session_ranges": [
           [
             8,
             17
+          ],
+          [
+            12,
+            20
           ]
         ],
         "session_filters": [
           true
         ],
         "score_thresholds": [
-          0.6,
           1.0,
           1.6,
           2.2
@@ -1778,28 +1738,166 @@
           2
         ],
         "ml_probability_thresholds": [
-          0.36,
           0.4,
           0.44,
-          0.48
+          0.48,
+          0.52
         ],
         "min_feature_samples": 30,
         "min_threshold_samples": 10,
         "min_binary_samples": 8,
         "include_session_regime_rules": true,
         "target_trades_per_week": 10.0,
-        "drawdown_penalty": 0.15,
-        "loss_streak_penalty": 0.1
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
+      },
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "040ea67cf96a",
+      "label": "Học 3 tuần · Học 2025 (6 tháng cuối) · vòng 1 · Kiểm chứng 2026",
+      "train_weeks": 3,
+      "use_kb": true,
+      "kb_profile": "era_2025_h2",
+      "kb_snapshot": 1,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "n_trades": 109,
+      "win_rate_pct": 37.61,
+      "avg_rr": 2.375,
+      "total_r": 33.902,
+      "max_drawdown_r": 10.23,
+      "profit_factor": 1.408,
+      "trades_per_week": 3.76,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16,
+          20
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ],
+          [
+            12,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48,
+          0.52
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
+      },
+      "error": null,
+      "risk_adjusted": -1000000000000.0
+    },
+    {
+      "key": "aa5cd0aa0f04",
+      "label": "Học 3 tuần · Học 2025 (6 tháng cuối) · vòng 2 · Kiểm chứng 2026",
+      "train_weeks": 3,
+      "use_kb": true,
+      "kb_profile": "era_2025_h2",
+      "kb_snapshot": 2,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-12-31",
+      "n_trades": 115,
+      "win_rate_pct": 36.52,
+      "avg_rr": 2.411,
+      "total_r": 32.578,
+      "max_drawdown_r": 11.53,
+      "profit_factor": 1.221,
+      "trades_per_week": 3.97,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16,
+          20
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ],
+          [
+            12,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48,
+          0.52
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.22,
+        "loss_streak_penalty": 0.15
       },
       "error": null,
       "risk_adjusted": -1000000000000.0
     }
   ],
-  "re_ranked_at": "2026-07-26T15:16:07",
-  "global_pick": {
-    "total_r": 184.763,
-    "risk_adjusted": 18.644,
-    "key": "e395967f3d96",
-    "from_run": "gs_improve_champion_plus_v0_20260726_123749.json"
-  }
+  "re_ranked_at": "2026-07-26T15:16:07"
 }
