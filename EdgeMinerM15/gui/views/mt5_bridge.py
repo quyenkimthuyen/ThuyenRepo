@@ -13,7 +13,7 @@ from gui.mt5_live_chart import build_ea_chart, connection_health, load_ea_chart_
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
 from gui.trade_model import format_model_label, get_active_trade_model
-from gui.ui_preferences import preference_callback, restore_widget
+from gui.ui_preferences import preference_callback, restore_widget, set_preference
 from mt5_bridge.history_sync import get_history_status, start_history_sync
 from mt5_bridge import background as bridge_bg
 from mt5_bridge.comm_log import append_event, clear_log, read_events
@@ -248,6 +248,64 @@ def _unrealized_r(trade: dict, connection: dict) -> float | None:
   except (TypeError, ValueError):
     return None
   return None
+
+
+def _parse_ui_date(val) -> date | None:
+  if val is None or val == "":
+    return None
+  if isinstance(val, date):
+    return val
+  if hasattr(val, "date") and callable(getattr(val, "date", None)):
+    try:
+      return val.date()
+    except Exception:
+      pass
+  s = str(val).strip().replace("/", "-").replace(".", "-")[:10]
+  try:
+    return date.fromisoformat(s)
+  except Exception:
+    return None
+
+
+def _sim_feed_window() -> tuple[date | None, date | None]:
+  """History Feed Từ/Đến — session widgets, then sim_state."""
+  d0 = _parse_ui_date(st.session_state.get("sim_ea_from"))
+  d1 = _parse_ui_date(st.session_state.get("sim_ea_to"))
+  if d0 and d1:
+    return d0, d1
+  try:
+    from mt5_bridge.ea_simulator import load_sim_state
+    sim = load_sim_state()
+    d0 = d0 or _parse_ui_date(sim.get("date_from"))
+    d1 = d1 or _parse_ui_date(sim.get("date_to") or sim.get("last_bar"))
+  except Exception:
+    pass
+  return d0, d1
+
+
+def _months_spanning(d0: date, d1: date) -> list[str]:
+  """YYYY-MM labels from d0 through d1 inclusive."""
+  if d1 < d0:
+    d0, d1 = d1, d0
+  months: list[str] = []
+  y, m = d0.year, d0.month
+  while (y, m) <= (d1.year, d1.month):
+    months.append(f"{y:04d}-{m:02d}")
+    m += 1
+    if m > 12:
+      m = 1
+      y += 1
+  return months
+
+
+def _month_bounds(ym: str) -> tuple[date, date]:
+  y, m = int(ym[:4]), int(ym[5:7])
+  start = date(y, m, 1)
+  if m == 12:
+    end = date(y + 1, 1, 1) - timedelta(days=1)
+  else:
+    end = date(y, m + 1, 1) - timedelta(days=1)
+  return start, end
 
 
 def _open_trade(trades: list[dict]) -> dict | None:
@@ -505,26 +563,16 @@ def _render_live_chart(max_bars: int) -> None:
     except (OSError, URLError):
       server_ready = False
     if server_ready:
-      d_from = st.session_state.get("sim_ea_from")
-      d_to = st.session_state.get("sim_ea_to")
-      if d_from:
-        # Only write when from/to change — avoid remounting iframe every rerun
-        key = (
-          d_from.isoformat() if hasattr(d_from, "isoformat") else str(d_from),
-          d_to.isoformat() if d_to and hasattr(d_to, "isoformat") else str(d_to or ""),
-        )
-        if st.session_state.get("_sim_chart_dates") != key:
-          from mt5_bridge.ea_simulator import write_sim_state
-          write_sim_state({"date_from": key[0], "date_to": key[1] or None})
-          st.session_state["_sim_chart_dates"] = key
+      # Dates are applied only on Start feed — do not write_sim_state here
+      # (changing Từ/Đến must not trigger disk/chart rebuild before Start).
       components.iframe(
-        f"{sim_url}/chart?mode=sim&bars={max_bars}&v=sim3",
+        f"{sim_url}/chart?mode=sim&bars={max_bars}&v=sim4",
         height=700,
         scrolling=False,
       )
       st.caption(
         "Chart + status FEED cập nhật trong trình duyệt (Plotly.react, không giật). "
-        "Cần cache M15 + Từ/Đến (hoặc Start feed). " + legend
+        "Từ/Đến chỉ áp dụng khi **Start feed**. " + legend
       )
       return
     st.warning(
@@ -856,20 +904,30 @@ def _render_simulate_ea() -> None:
   if (default_to - default_from).days > 60:
     from datetime import timedelta as _td
     default_to = default_from + _td(days=14)
-  if "sim_ea_from" not in st.session_state:
-    st.session_state["sim_ea_from"] = default_from
-  if "sim_ea_to" not in st.session_state:
-    st.session_state["sim_ea_to"] = default_to
-  if "sim_ea_delay" not in st.session_state:
-    st.session_state["sim_ea_delay"] = 100
-  # Sanitize after code change (old form may leave bad types / out-of-range)
+
+  # Persist like other tabs (ui_preferences.json) — survive refresh / app restart
+  restore_widget(
+    "sim_ea_from", default_from,
+    preference_key="mt5.sim_from",
+    decode=_parse_ui_date,
+  )
+  restore_widget(
+    "sim_ea_to", default_to,
+    preference_key="mt5.sim_to",
+    decode=_parse_ui_date,
+  )
+  restore_widget(
+    "sim_ea_delay", 100,
+    preference_key="mt5.sim_delay",
+    decode=lambda v: int(v),
+  )
+  # Sanitize after restore / code change (slider: min=10, step=10)
   try:
-    if not hasattr(st.session_state["sim_ea_from"], "isoformat"):
-      st.session_state["sim_ea_from"] = default_from
-    if not hasattr(st.session_state["sim_ea_to"], "isoformat"):
-      st.session_state["sim_ea_to"] = default_to
+    if not isinstance(st.session_state["sim_ea_from"], date):
+      st.session_state["sim_ea_from"] = _parse_ui_date(st.session_state["sim_ea_from"]) or default_from
+    if not isinstance(st.session_state["sim_ea_to"], date):
+      st.session_state["sim_ea_to"] = _parse_ui_date(st.session_state["sim_ea_to"]) or default_to
     delay_cur = int(st.session_state["sim_ea_delay"])
-    # Slider: min=10, step=10 → value must be 10,20,...,2000
     if delay_cur < 10 or delay_cur > 2000 or delay_cur % 10 != 0:
       st.session_state["sim_ea_delay"] = max(10, min(2000, round(delay_cur / 10) * 10 or 100))
   except Exception:
@@ -877,32 +935,82 @@ def _render_simulate_ea() -> None:
     st.session_state["sim_ea_to"] = default_to
     st.session_state["sim_ea_delay"] = 100
 
-  c1, c2, c3 = st.columns(3)
-  with c1:
-    d_from = st.date_input("Từ ngày", key="sim_ea_from")
-  with c2:
-    d_to = st.date_input("Đến ngày", key="sim_ea_to")
-  with c3:
-    delay_ms = st.slider(
-      "Delay giữa các bar (ms)",
-      min_value=10,
-      max_value=2000,
-      step=10,
-      key="sim_ea_delay",
-      help="10 = 10ms. 1000 = 1s.",
-    )
+  def _persist_sim_ea_settings() -> None:
+    set_preference("mt5.sim_from", st.session_state.get("sim_ea_from"))
+    set_preference("mt5.sim_to", st.session_state.get("sim_ea_to"))
+    try:
+      set_preference("mt5.sim_delay", int(st.session_state.get("sim_ea_delay") or 100))
+    except (TypeError, ValueError):
+      set_preference("mt5.sim_delay", 100)
 
-  # Auto-refreshing progress fragment
+  # Form: kéo ngày/slider KHÔNG rerun trang — Lưu / Start mới ghi preference (+ Start ghi EA)
+  with st.form("sim_ea_params_form", clear_on_submit=False):
+    c1, c2, c3 = st.columns(3)
+    with c1:
+      st.date_input(
+        "Từ ngày",
+        key="sim_ea_from",
+        disabled=running,
+        on_change=preference_callback("sim_ea_from", "mt5.sim_from"),
+      )
+    with c2:
+      st.date_input(
+        "Đến ngày",
+        key="sim_ea_to",
+        disabled=running,
+        on_change=preference_callback("sim_ea_to", "mt5.sim_to"),
+      )
+    with c3:
+      st.slider(
+        "Delay giữa các bar (ms)",
+        min_value=10,
+        max_value=2000,
+        step=10,
+        key="sim_ea_delay",
+        disabled=running,
+        help="Lưu bằng nút Lưu setting hoặc Start feed. 1000 = 1s.",
+        on_change=preference_callback("sim_ea_delay", "mt5.sim_delay"),
+      )
+    b_save, b_start = st.columns(2)
+    with b_save:
+      save_clicked = st.form_submit_button(
+        "Lưu setting",
+        icon=":material/save:",
+        disabled=running,
+        use_container_width=True,
+      )
+    with b_start:
+      start_clicked = st.form_submit_button(
+        "Start feed",
+        type="primary",
+        icon=":material/play_arrow:",
+        disabled=running or not active,
+        use_container_width=True,
+      )
+
+  d_from = st.session_state["sim_ea_from"]
+  d_to = st.session_state["sim_ea_to"]
+  delay_ms = int(st.session_state["sim_ea_delay"])
+  st.caption(
+    f"Đang chọn `{d_from}` → `{d_to}` · delay `{delay_ms}`ms — "
+    "đã lưu preference khi **Lưu setting** / **Start feed** (giữ sau refresh / restart app)."
+  )
+
+  # Auto-refreshing progress fragment (only polls status — light)
   _render_sim_progress_fragment()
 
-  b1, b2, b3, b4, b5 = st.columns(5)
-  if b1.button(
-    "Start feed", type="primary", icon=":material/play_arrow:",
-    disabled=running or not active, use_container_width=True, key="sim_ea_start",
-  ):
+  if save_clicked:
     if d_to < d_from:
       st.error("Đến ngày phải ≥ Từ ngày")
     else:
+      _persist_sim_ea_settings()
+      st.toast("Đã lưu setting Simulate")
+
+  if start_clicked:
+    if d_to < d_from:
+      st.error("Đến ngày phải ≥ Từ ngày")
+    else:
+      _persist_sim_ea_settings()
       ok = bridge_bg.start_sim_worker(
         date_from=str(d_from),
         date_to=str(d_to),
@@ -921,6 +1029,8 @@ def _render_simulate_ea() -> None:
         st.rerun()
       else:
         st.warning("Feed đang chạy")
+
+  b2, b3, b4, b5 = st.columns(4)
   if b2.button(
     "Pause" if not sim.get("paused") else "Resume",
     icon=":material/pause:",
@@ -958,6 +1068,12 @@ def _render_model_monitor() -> None:
     st.error(f"Không render được Theo dõi model: {e}")
     with st.expander("Chi tiết lỗi"):
       st.exception(e)
+
+
+@st.fragment(run_every=timedelta(seconds=12))
+def _model_monitor_auto_fragment() -> None:
+  """Auto-refresh Sức khỏe / Rủi ro while Live service or Sim feed is running."""
+  _render_model_monitor()
 
 
 def _render_model_monitor_body() -> None:
@@ -1137,76 +1253,175 @@ def _render_stats_section() -> None:
 
   all_trades = load_trades(bridge_dir)
   today = date.today()
-  default_from = today - timedelta(days=30)
-  default_to = today
-  for t in all_trades:
-    for key in ("entry_time", "exit_time"):
-      try:
-        ts = pd.Timestamp(t.get(key)).date()
-        if ts < default_from:
-          default_from = ts
-      except Exception:
-        pass
+  sim_from, sim_to = _sim_feed_window() if mode == "sim" else (None, None)
+
+  # Defaults for "Tùy chọn" pickers
+  if mode == "sim" and sim_from and sim_to:
+    default_from, default_to = sim_from, sim_to
+  else:
+    default_from = today - timedelta(days=30)
+    default_to = today
+    for t in all_trades:
+      for key in ("entry_time", "exit_time"):
+        try:
+          ts = pd.Timestamp(t.get(key)).date()
+          if ts < default_from:
+            default_from = ts
+        except Exception:
+          pass
 
   p1, p2, p3 = st.columns([2, 1, 1])
-  preset_options = [
-    "Hôm nay",
-    "Tuần này (T2→nay)",
-    "7 ngày",
-    "30 ngày",
-    "Tháng này",
-    "Tất cả",
-    "Tùy chọn",
-  ]
-  default_preset = "Tất cả" if mode == "sim" else "Hôm nay"
-  pref_key = "mt5.sim_stats_preset" if mode == "sim" else "mt5.stats_preset"
+  if mode == "sim":
+    preset_options = [
+      "Cửa sổ History Feed",
+      "Tháng trong cửa sổ",
+      "Tất cả lệnh",
+      "Tùy chọn",
+    ]
+    default_preset = "Cửa sổ History Feed"
+    pref_key = "mt5.sim_stats_preset"
+    widget_key = "bridge_stats_preset_sim"
+    st.caption(
+      "Simulate lọc theo **giai đoạn quá khứ** (History Feed), "
+      "không dùng Hôm nay / Tuần này theo lịch máy."
+    )
+  else:
+    preset_options = [
+      "Hôm nay",
+      "Tuần này (T2→nay)",
+      "7 ngày",
+      "30 ngày",
+      "Tháng này",
+      "Tất cả",
+      "Tùy chọn",
+    ]
+    default_preset = "Hôm nay"
+    pref_key = "mt5.stats_preset"
+    widget_key = "bridge_stats_preset_live"
+
   restore_widget(
-    "bridge_stats_preset", default_preset,
+    widget_key, default_preset,
     preference_key=pref_key,
     options=preset_options,
   )
+  # Migrate old live-relative presets saved under sim key
+  cur = st.session_state.get(widget_key)
+  if mode == "sim" and cur not in preset_options:
+    st.session_state[widget_key] = default_preset
+
   preset = p1.selectbox(
     "Giai đoạn",
     preset_options,
-    key="bridge_stats_preset",
-    on_change=preference_callback("bridge_stats_preset", pref_key),
+    key=widget_key,
+    on_change=preference_callback(widget_key, pref_key),
   )
   date_from = None
   date_to = None
-  if preset == "Hôm nay":
-    date_from = date_to = today
-  elif preset == "7 ngày":
-    date_from, date_to = today - timedelta(days=6), today
-  elif preset == "30 ngày":
-    date_from, date_to = today - timedelta(days=29), today
-  elif preset == "Tuần này (T2→nay)":
-    date_from = today - timedelta(days=today.weekday())
-    date_to = today
-  elif preset == "Tháng này":
-    date_from = today.replace(day=1)
-    date_to = today
-  elif preset == "Tùy chọn":
-    restore_widget(
-      "bridge_from", default_from,
-      preference_key="mt5.date_from",
-      decode=date.fromisoformat,
-    )
-    restore_widget(
-      "bridge_to", default_to,
-      preference_key="mt5.date_to",
-      decode=date.fromisoformat,
-    )
-    date_from = p2.date_input(
-      "Từ ngày", key="bridge_from",
-      on_change=preference_callback("bridge_from", "mt5.date_from"),
-    )
-    date_to = p3.date_input(
-      "Đến ngày", key="bridge_to",
-      on_change=preference_callback("bridge_to", "mt5.date_to"),
-    )
+
+  if mode == "sim":
+    if preset == "Cửa sổ History Feed":
+      date_from, date_to = sim_from, sim_to
+      if not date_from or not date_to:
+        st.warning("Chưa có Từ/Đến History Feed — chọn **Tùy chọn** hoặc Start feed.")
+      else:
+        p2.caption(f"Từ `{date_from}`")
+        p3.caption(f"Đến `{date_to}`")
+    elif preset == "Tháng trong cửa sổ":
+      if sim_from and sim_to:
+        months = _months_spanning(sim_from, sim_to)
+      else:
+        months = []
+        for t in all_trades:
+          et = _parse_ui_date(str(t.get("entry_time") or "")[:10].replace(".", "-"))
+          if et:
+            ym = f"{et.year:04d}-{et.month:02d}"
+            if ym not in months:
+              months.append(ym)
+        months.sort()
+      if not months:
+        st.warning("Chưa xác định được tháng trong cửa sổ feed.")
+        p2.caption("—")
+        p3.caption("—")
+      else:
+        month_key = "bridge_stats_sim_month"
+        restore_widget(
+          month_key, months[0],
+          preference_key="mt5.sim_stats_month",
+          options=months,
+        )
+        if st.session_state.get(month_key) not in months:
+          st.session_state[month_key] = months[0]
+        ym = p2.selectbox(
+          "Tháng",
+          months,
+          key=month_key,
+          on_change=preference_callback(month_key, "mt5.sim_stats_month"),
+        )
+        date_from, date_to = _month_bounds(ym)
+        # Clip to feed window when known
+        if sim_from and date_from < sim_from:
+          date_from = sim_from
+        if sim_to and date_to > sim_to:
+          date_to = sim_to
+        p3.caption(f"`{date_from}` → `{date_to}`")
+    elif preset == "Tùy chọn":
+      restore_widget(
+        "bridge_from_sim", default_from,
+        preference_key="mt5.sim_date_from",
+        decode=date.fromisoformat,
+      )
+      restore_widget(
+        "bridge_to_sim", default_to,
+        preference_key="mt5.sim_date_to",
+        decode=date.fromisoformat,
+      )
+      date_from = p2.date_input(
+        "Từ ngày", key="bridge_from_sim",
+        on_change=preference_callback("bridge_from_sim", "mt5.sim_date_from"),
+      )
+      date_to = p3.date_input(
+        "Đến ngày", key="bridge_to_sim",
+        on_change=preference_callback("bridge_to_sim", "mt5.sim_date_to"),
+      )
+    else:
+      # Tất cả lệnh
+      p2.caption("Toàn bộ journal")
+      p3.caption("—")
   else:
-    p2.caption("—")
-    p3.caption("—")
+    if preset == "Hôm nay":
+      date_from = date_to = today
+    elif preset == "7 ngày":
+      date_from, date_to = today - timedelta(days=6), today
+    elif preset == "30 ngày":
+      date_from, date_to = today - timedelta(days=29), today
+    elif preset == "Tuần này (T2→nay)":
+      date_from = today - timedelta(days=today.weekday())
+      date_to = today
+    elif preset == "Tháng này":
+      date_from = today.replace(day=1)
+      date_to = today
+    elif preset == "Tùy chọn":
+      restore_widget(
+        "bridge_from", default_from,
+        preference_key="mt5.date_from",
+        decode=date.fromisoformat,
+      )
+      restore_widget(
+        "bridge_to", default_to,
+        preference_key="mt5.date_to",
+        decode=date.fromisoformat,
+      )
+      date_from = p2.date_input(
+        "Từ ngày", key="bridge_from",
+        on_change=preference_callback("bridge_from", "mt5.date_from"),
+      )
+      date_to = p3.date_input(
+        "Đến ngày", key="bridge_to",
+        on_change=preference_callback("bridge_to", "mt5.date_to"),
+      )
+    else:
+      p2.caption("—")
+      p3.caption("—")
 
   if date_from and date_to and date_from > date_to:
     st.warning("Từ ngày > Đến ngày — đã đảo lại.")
@@ -1218,6 +1433,11 @@ def _render_stats_section() -> None:
   if date_from or date_to:
     st.caption(
       f"Lọc: **{date_from or '…'} → {date_to or '…'}** · "
+      f"{len(period_trades)} lệnh (auto {n_auto} · sửa {n_manual})"
+    )
+  elif mode == "sim":
+    st.caption(
+      f"Lọc: **tất cả lệnh journal** · "
       f"{len(period_trades)} lệnh (auto {n_auto} · sửa {n_manual})"
     )
 
@@ -1419,13 +1639,23 @@ def render():
     )
     max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
     _render_live_chart(max_bars)
-    with st.expander("Theo dõi model · Sức khỏe / Rủi ro", expanded=False):
-      st.caption("Mở khi cần — tránh load nặng lúc feed đang chạy.")
-      _render_model_monitor()
+    sim_running = bool(bridge_bg.get_sim_status().get("running"))
+    if sim_running:
+      st.caption("Sức khỏe / Rủi ro · tự cập nhật ~12s khi feed chạy.")
+      _model_monitor_auto_fragment()
+    else:
+      with st.expander("Theo dõi model · Sức khỏe / Rủi ro", expanded=False):
+        st.caption("Mở khi cần — chỉ Start feed mới chạy remine/ghi bridge.")
+        _render_model_monitor()
     _render_sim_desk_static()
   else:
     _trader_desk_fragment()
-    _render_model_monitor()
+    live_running = bool(bridge_bg.get_status().get("running"))
+    if live_running:
+      st.caption("Sức khỏe / Rủi ro · tự cập nhật ~12s khi Bridge service chạy.")
+      _model_monitor_auto_fragment()
+    else:
+      _render_model_monitor()
     _render_service_controls()
     _render_manual_test_orders()
     _render_history_sync()

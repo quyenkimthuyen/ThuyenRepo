@@ -46,6 +46,31 @@ from mt5_bridge.protocol import (
 from mt5_bridge.trade_journal import process_fill
 
 
+def _fill_fp(fill: dict | None) -> str | None:
+  """Stable fingerprint so sticky fill.json after restart is not re-applied forever."""
+  if not isinstance(fill, dict):
+    return None
+  return (
+    str(fill.get("signal_id") or "")
+    + "|"
+    + str(fill.get("time") or fill.get("bar_time") or "")
+    + "|"
+    + str(fill.get("event") or fill.get("detail") or "")
+    + "|"
+    + str(fill.get("ticket") or "")
+    + "|"
+    + str(fill.get("reason") or "")
+    + "|"
+    + str(fill.get("price") or fill.get("exit_px") or "")
+    + "|"
+    + str(fill.get("sl") or "")
+    + "|"
+    + str(fill.get("tp") or "")
+    + "|"
+    + str(fill.get("manual") or "")
+  )
+
+
 def _register_service_process(args) -> None:
   """Persist PID/config and provide output handles for pythonw on Windows."""
   from mt5_bridge.background import PID_PATH, SERVICE_LOG, load_config, save_config
@@ -129,17 +154,7 @@ def process_once(engine: BridgeEngine, bridge_dir: Path, *, last_fp: str | None,
         ),
       )
       return
-    ffp = (
-      str(fill.get("signal_id") or "")
-      + "|"
-      + str(fill.get("time") or "")
-      + "|"
-      + str(fill.get("event") or fill.get("detail") or "")
-      + "|"
-      + str(fill.get("ticket") or "")
-      + "|"
-      + str(fill.get("reason") or "")
-    )
+    ffp = _fill_fp(fill)
     if not ffp or ffp in seen_fills:
       return
     append_event(

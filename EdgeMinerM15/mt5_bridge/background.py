@@ -208,13 +208,15 @@ def _fill_fp(fill: dict | None) -> str | None:
   return (
     str(fill.get("signal_id") or "")
     + "|"
-    + str(fill.get("time") or "")
+    + str(fill.get("time") or fill.get("bar_time") or "")
     + "|"
     + str(fill.get("event") or fill.get("detail") or "")
     + "|"
     + str(fill.get("ticket") or "")
     + "|"
     + str(fill.get("reason") or "")
+    + "|"
+    + str(fill.get("price") or fill.get("exit_px") or "")
     + "|"
     + str(fill.get("sl") or "")
     + "|"

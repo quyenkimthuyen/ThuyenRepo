@@ -45,16 +45,18 @@ def _now() -> str:
 def load_trades(bridge_dir: Path | None = None) -> list[dict]:
   data = read_json(trades_path(bridge_dir))
   if isinstance(data, dict):
-    return list(data.get("trades") or [])
-  if isinstance(data, list):
-    return data
-  return []
+    trades = list(data.get("trades") or [])
+  elif isinstance(data, list):
+    trades = data
+  else:
+    trades = []
+  return dedupe_trades(trades)
 
 
 def save_trades(trades: list[dict], bridge_dir: Path | None = None) -> None:
   atomic_write_json(trades_path(bridge_dir), {
     "updated_at": _now(),
-    "trades": trades,
+    "trades": dedupe_trades(trades),
   })
 
 
@@ -100,6 +102,97 @@ def _find_open(
     if t.get("status") == "OPEN":
       return t
   return None
+
+
+def _find_by_ticket_or_signal(
+  trades: list[dict],
+  *,
+  signal_id: str | None = None,
+  ticket: int | str | None = None,
+  statuses: tuple[str, ...] | None = None,
+) -> dict | None:
+  """Latest trade matching ticket/signal_id (optionally filtered by status)."""
+  for t in reversed(trades):
+    if statuses and str(t.get("status") or "").upper() not in statuses:
+      continue
+    if ticket is not None and str(t.get("ticket")) == str(ticket):
+      return t
+    if signal_id and t.get("signal_id") == signal_id:
+      return t
+  return None
+
+
+def dedupe_trades(trades: list[dict]) -> list[dict]:
+  """Keep one row per ticket (preferred) or id — HistoryFeed may re-send closes."""
+  if not trades:
+    return []
+
+  def _prefer(prev: dict, cur: dict) -> dict:
+    prev_closed = str(prev.get("status") or "").upper() == "CLOSED"
+    cur_closed = str(cur.get("status") or "").upper() == "CLOSED"
+    if cur_closed and not prev_closed:
+      return cur
+    if prev_closed and not cur_closed:
+      return prev
+    # Prefer row with strategy_name / richer fields
+    prev_named = bool(prev.get("strategy_name"))
+    cur_named = bool(cur.get("strategy_name"))
+    if cur_named and not prev_named:
+      return cur
+    if prev_named and not cur_named:
+      return prev
+    if str(cur.get("updated_at") or "") >= str(prev.get("updated_at") or ""):
+      return cur
+    return prev
+
+  by_ticket: dict[str, dict] = {}
+  no_ticket: list[dict] = []
+  for t in trades:
+    ticket = t.get("ticket")
+    if ticket is None or ticket == "":
+      no_ticket.append(t)
+      continue
+    key = str(ticket)
+    if key not in by_ticket:
+      by_ticket[key] = t
+    else:
+      by_ticket[key] = _prefer(by_ticket[key], t)
+
+  # Dedupe ticket-less rows by id
+  by_id: dict[str, dict] = {}
+  orphan: list[dict] = []
+  for t in no_ticket:
+    tid = t.get("id")
+    if not tid:
+      orphan.append(t)
+      continue
+    if tid not in by_id:
+      by_id[tid] = t
+    else:
+      by_id[tid] = _prefer(by_id[tid], t)
+
+  # Preserve roughly original order
+  seen_tickets: set[str] = set()
+  seen_ids: set[str] = set()
+  out: list[dict] = []
+  for t in trades:
+    ticket = t.get("ticket")
+    if ticket is not None and ticket != "":
+      key = str(ticket)
+      if key in seen_tickets:
+        continue
+      seen_tickets.add(key)
+      out.append(by_ticket[key])
+      continue
+    tid = t.get("id")
+    if tid:
+      if tid in seen_ids:
+        continue
+      seen_ids.add(tid)
+      out.append(by_id[tid])
+      continue
+    out.append(t)
+  return out
 
 
 def _mark_manual(row: dict, reason: str) -> None:
@@ -179,7 +272,6 @@ def process_fill(
       if act in ("BUY", "SELL") and fill.get("ok", True):
         event = "open"
 
-  _append_fill_log({**fill, "event": event}, bridge_dir)
   trades = load_trades(bridge_dir)
 
   if event == "open":
@@ -187,10 +279,18 @@ def process_fill(
     if action not in ("BUY", "SELL"):
       return None
     sid = fill.get("signal_id") or (decision or {}).get("signal_id")
+    ticket = fill.get("ticket")
+    # Idempotent: Live restart / sticky fill.json must not spawn duplicate rows
     if sid:
       for t in trades:
         if t.get("signal_id") == sid and t.get("status") in ("OPEN", "CLOSED"):
           return t
+    if ticket is not None:
+      existing = _find_by_ticket_or_signal(
+        trades, ticket=ticket, statuses=("OPEN", "CLOSED"),
+      )
+      if existing:
+        return existing
     entry = fill.get("price") or fill.get("entry") or (decision or {}).get("entry")
     sl = fill.get("sl") if fill.get("sl") is not None else (decision or {}).get("sl")
     tp = fill.get("tp") if fill.get("tp") is not None else (decision or {}).get("tp")
@@ -198,7 +298,7 @@ def process_fill(
     row = {
       "id": f"bt_{sid or fill.get('ticket') or _now()}",
       "signal_id": sid,
-      "ticket": fill.get("ticket"),
+      "ticket": ticket,
       "symbol": fill.get("symbol") or "EURUSD",
       "direction": action,
       "status": "OPEN",
@@ -224,6 +324,7 @@ def process_fill(
       "strategy_name": (decision or {}).get("strategy_name"),
       "updated_at": _now(),
     }
+    _append_fill_log({**fill, "event": event}, bridge_dir)
     trades.append(row)
     save_trades(trades, bridge_dir)
     append_event(
@@ -241,6 +342,7 @@ def process_fill(
     row = _find_open(trades, signal_id=sid, ticket=ticket)
     if not row:
       return None
+    _append_fill_log({**fill, "event": event}, bridge_dir)
     detail_l = detail or str(fill.get("reason") or "").lower()
     if fill.get("sl") is not None:
       row["sl"] = float(fill["sl"])
@@ -274,6 +376,15 @@ def process_fill(
     ticket = fill.get("ticket")
     sid = fill.get("signal_id")
     row = _find_open(trades, signal_id=sid, ticket=ticket)
+    # EA / Live service restart often re-reads sticky fill.json. After the first
+    # close the OPEN row is gone — update existing CLOSED, never append orphans.
+    if not row:
+      row = _find_by_ticket_or_signal(
+        trades, signal_id=sid, ticket=ticket, statuses=("CLOSED",),
+      )
+      # Already finalized — no-op (prevents Live Health/Risk inflation)
+      if row is not None and row.get("exit_px") is not None:
+        return row
     if not row:
       is_manual, source = _infer_open_manual(fill, decision)
       row = {
@@ -307,6 +418,7 @@ def process_fill(
           row["entry_px"] = None
       trades.append(row)
 
+    _append_fill_log({**fill, "event": event}, bridge_dir)
     exit_px = fill.get("price") or fill.get("exit_px") or fill.get("close_price")
     entry = row.get("entry_px")
     # Fair R: always vs planned (initial) SL
