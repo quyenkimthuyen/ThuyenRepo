@@ -177,6 +177,18 @@ def set_active_trade_model(model_id: str | None) -> dict | None:
     except Exception:
       pass
     try:
+      from paper_service import save_config as save_paper_config
+      save_paper_config(model_id=model_id)
+    except Exception:
+      pass
+    try:
+      from mt5_bridge.ea_simulator import load_sim_state, write_sim_state
+      sim = load_sim_state()
+      if not sim.get("running") and not sim.get("enabled"):
+        write_sim_state({"model_id": model_id})
+    except Exception:
+      pass
+    try:
       from gui.workspace import save_workspace_file
       save_workspace_file(trade_model_to_workspace(m))
     except Exception:
@@ -185,6 +197,89 @@ def set_active_trade_model(model_id: str | None) -> dict | None:
   save_active_model_id(None)
   st.session_state.pop("active_trade_model", None)
   return None
+
+
+def sync_active_model_into_runtime_configs() -> dict | None:
+  """Keep Paper / Live / Simulate runtime configs on the same active Trade Model id."""
+  active = get_active_trade_model()
+  mid = (active or {}).get("id")
+  if not mid:
+    return active
+  try:
+    from paper_service import load_config as paper_load, save_config as paper_save
+    cfg = paper_load()
+    if cfg.get("model_id") != mid:
+      paper_save(model_id=mid)
+  except Exception:
+    pass
+  try:
+    from mt5_bridge.background import load_config as bridge_load, save_config as bridge_save
+    cfg = bridge_load()
+    if cfg.get("model_id") != mid:
+      bridge_save(model_id=mid)
+  except Exception:
+    pass
+  try:
+    from mt5_bridge.ea_simulator import load_sim_state, write_sim_state
+    sim = load_sim_state()
+    if (
+      not sim.get("running")
+      and not sim.get("enabled")
+      and sim.get("model_id") != mid
+    ):
+      write_sim_state({"model_id": mid})
+  except Exception:
+    pass
+  return active
+
+
+def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
+  """One active Trade Model for Paper · Live · Simulate — same remine params.
+
+  context: ``paper`` | ``live`` | ``simulate`` | ``bridge`` | ``shared``
+  """
+  from mt5_bridge.models import describe_strategy_conditions
+
+  active = sync_active_model_into_runtime_configs()
+  ctx = (context or "shared").lower()
+  roles = {
+    "paper": "Paper = desk nhẹ (không EA). Kiểm Live chính = Parity / Health OOS.",
+    "live": "Live = lệnh MT5 thật/demo. Remine = cùng Trade Model với Paper & Simulate.",
+    "simulate": "Simulate = replay quá khứ qua App↔EA. Cùng Trade Model với Live.",
+    "bridge": "Live & Simulate dùng chung Trade Model active với Paper.",
+    "shared": "Paper · Live · Simulate dùng chung một Trade Model active.",
+  }
+  st.markdown("##### Trade Model · dùng chung Paper · Live · Simulate")
+  if not active:
+    st.warning(
+      "Chưa chọn Trade Model — vào **Học & tối ưu → Trade Models → Quản lý** "
+      "rồi chọn active. Cả 3 mode sẽ dùng cùng model đó."
+    )
+    st.caption(roles.get(ctx, roles["shared"]))
+    return None
+
+  params = get_model_run_params(active)
+  try:
+    desc = describe_strategy_conditions(params)
+    fp = desc.get("conditions_fp") or "—"
+    train_w = desc.get("train_weeks")
+    kb_p = desc.get("kb_profile")
+    kb_ep = desc.get("kb_snapshot")
+  except Exception:
+    fp = "—"
+    train_w = params.get("train_weeks")
+    kb_p = params.get("kb_profile")
+    kb_ep = params.get("kb_snapshot")
+
+  st.success(
+    f"**{format_model_label(active)}** · id `{active.get('id')}` · "
+    f"train **{train_w}w** · KB `{kb_p}@ep{kb_ep}` · fp `{fp}`"
+  )
+  st.caption(
+    roles.get(ctx, roles["shared"])
+    + " · Đổi model: **Trade Models → Quản lý** (tự đồng bộ Paper/Live/Sim config)."
+  )
+  return active
 
 
 def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | None = None) -> dict:

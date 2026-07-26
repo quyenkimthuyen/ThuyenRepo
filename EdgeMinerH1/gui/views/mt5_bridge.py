@@ -12,7 +12,7 @@ import streamlit.components.v1 as components
 from gui.mt5_live_chart import build_ea_chart, connection_health, load_ea_chart_data, load_sim_chart_data
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
-from gui.trade_model import format_model_label, get_active_trade_model
+from gui.trade_model import format_model_label, get_active_trade_model, render_shared_trade_model_banner
 from gui.ui_preferences import preference_callback, restore_widget, set_preference
 from mt5_bridge.history_sync import get_history_status, start_history_sync
 from mt5_bridge import background as bridge_bg
@@ -85,6 +85,7 @@ def _render_mode_switcher() -> str:
     help=(
       "Live = mt5/bridge (EA live). "
       "Simulate = mt5/bridge_sim (EA HISTORY_FEED). "
+      "Cùng Trade Model active với Paper. "
       "Desk, chart, thống kê, sức khỏe/rủi ro đều theo mode này."
     ),
   )
@@ -92,13 +93,13 @@ def _render_mode_switcher() -> str:
   bdir = _active_bridge_dir()
   if mode == "sim":
     st.caption(
-      f"**Simulate** · `{bdir.name}/` · EA `HISTORY_FEED` gửi bar/fill · "
-      "cùng desk / chart / thống kê / Backtest-vs-bridge như Live."
+      f"**Simulate** · `{bdir.name}/` · EA `HISTORY_FEED` · "
+      "replay quá khứ qua App↔EA — cùng Trade Model với Live/Paper."
     )
   else:
     st.caption(
       f"**Live** · `{bdir.name}/` · EA ForgeBridge Live · "
-      "lệnh thật/demo theo Trade Model."
+      "lệnh thật/demo · kiểm kỳ vọng bằng **Parity tuần này** / Health OOS."
     )
   return mode
 
@@ -715,9 +716,9 @@ def _render_service_controls() -> None:
     model_id = (active_model or {}).get("id") or DEFAULT_MODEL_ID
     if cfg.get("model_id") != model_id:
       cfg = bridge_bg.save_config(model_id=model_id)
-    st.markdown(
-      f"Trade Model: **"
-      f"{format_model_label(active_model) if active_model else model_id}**"
+    st.caption(
+      "Trade Model lấy từ banner phía trên (dùng chung Paper · Live · Simulate). "
+      f"Service đang gắn id `{model_id}`."
     )
     st.session_state.setdefault("mt5_risk_pct", float(cfg.get("risk_pct", 1.0)))
     st.session_state.setdefault("mt5_poll_sec", float(cfg.get("poll_sec", 2.0)))
@@ -853,7 +854,8 @@ def _render_simulate_ea() -> None:
   st.caption(
     "EA MT5 gửi `bar.json` / `fill.json` như live — App chỉ chọn giai đoạn + tốc độ. "
     f"`InpMode = HISTORY_FEED`, `InpBridgeSubdir = {BRIDGE_SIM_DIR.name}`. "
-    "Start feed = **process nền** (`mt5_bridge_sim_service.py`) giống Live."
+    "Start feed = **process nền** (`mt5_bridge_sim_service.py`) · "
+    "**cùng Trade Model active** với Live/Paper."
   )
   st.info(
     "App Windows tắt file-watcher → **đổi code phải Restart app** "
@@ -1045,6 +1047,8 @@ def _render_simulate_ea() -> None:
     st.toast("Đã xóa dữ liệu Simulate — có thể Start feed lại")
     st.rerun()
   if b5.button("Refresh", icon=":material/refresh:", use_container_width=True, key="sim_ea_refresh"):
+    import time as _time
+    st.session_state["bridge_ui_refresh_tick"] = _time.strftime("%H:%M:%S")
     st.rerun()
 
 
@@ -1063,6 +1067,12 @@ def _render_model_monitor() -> None:
 def _model_monitor_auto_fragment() -> None:
   """Auto-refresh Sức khỏe / Rủi ro while Live service or Sim feed is running."""
   _render_model_monitor()
+
+
+@st.fragment(run_every=timedelta(seconds=12))
+def _stats_auto_fragment() -> None:
+  """Auto-refresh Thống kê lệnh while feed/service is running."""
+  _render_stats_section()
 
 
 def _render_model_monitor_body() -> None:
@@ -1106,7 +1116,7 @@ def _render_model_monitor_body() -> None:
   if source == "sim":
     st.caption(
       "Simulate: KPI/biểu đồ đọc `mt5/bridge_sim/trades.json` theo **entry_time** lịch sử "
-      "(không dùng giờ tường lúc fill). Bấm Refresh để cập nhật."
+      "(không dùng giờ tường lúc fill). Tự cập nhật ~12s khi feed chạy; hoặc bấm Refresh."
     )
 
   if not bundle["has_report"]:
@@ -1230,14 +1240,16 @@ def _render_model_monitor_body() -> None:
     )
 
 
-@st.fragment
 def _render_stats_section() -> None:
+  """Thống kê lệnh — đọc lại trades.json mỗi lần gọi (không cache fragment)."""
   bridge_dir = _active_bridge_dir()
   mode = _bridge_mode()
+  tick = st.session_state.get("bridge_ui_refresh_tick")
   st.subheader(f"Thống kê lệnh Bridge · {_mode_label()}")
   st.caption(
     f"Từ `{bridge_dir}/trades.json` — tách **Auto** (chiến lược thuần) vs **Lệnh sửa** "
     "(test market / sửa SL·TP tay / đóng tay). R luôn theo SL kế hoạch lúc mở."
+    + (f" · refresh `{tick}`" if tick else "")
   )
 
   all_trades = load_trades(bridge_dir)
@@ -1588,23 +1600,24 @@ def render():
   render_page_header(ALL_ITEMS["mt5_bridge"], show_workspace=False)
 
   st.caption(
-    "MT5 ForgeBridge · 2 mode **Live** / **Simulate** dùng chung desk, chart, "
-    "thống kê, sức khỏe/rủi ro — khác thư mục `bridge/` vs `bridge_sim/`."
+    "MT5 ForgeBridge · **Live** / **Simulate** + trang **Paper** dùng **cùng Trade Model active** "
+    "(remine / `conditions_fp`). Paper = desk nhẹ; Live = lệnh MT5 + Parity; Simulate = replay App↔EA."
   )
 
   mode = _render_mode_switcher()
+  render_shared_trade_model_banner(context="simulate" if mode == "sim" else "live")
 
   if mode == "live":
     st.info(
       "Live remine = Health OOS / Simulate (KB ON). "
       "Mở **Parity tuần này** trên desk để đối chiếu `strategy_name`. "
-      "Chỉ tin fill trong **Thống kê lệnh Bridge** / `trades.json` "
-      "(Paper `SIGNAL`/`FILLED` ≠ lệnh MT5)."
+      "Paper không bắt buộc để chứng minh Live. "
+      "Chỉ tin fill trong **Thống kê lệnh Bridge** / `trades.json`."
     )
   else:
     st.info(
-      "Simulate: replay History Feed để kiểm quá khứ — "
-      "không bắt buộc để xác nhận logic Live. "
+      "Simulate: replay History Feed để kiểm App↔EA trên quá khứ — "
+      "cùng Trade Model với Live. "
       "EA `HISTORY_FEED` + `InpBridgeSubdir=bridge_sim`, Start feed bên dưới."
     )
 
@@ -1664,7 +1677,16 @@ def render():
     max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
     _render_live_chart(max_bars)
 
-  _render_stats_section()
+  # Thống kê: auto khi feed/service chạy (cùng nhịp Health/Risk); Refresh cũng full rerun
+  svc_running = (
+    bool(bridge_bg.get_sim_status().get("running")) if mode == "sim"
+    else bool(bridge_bg.get_status().get("running"))
+  )
+  if svc_running:
+    st.caption("Thống kê lệnh · tự cập nhật ~12s khi feed/service chạy (hoặc bấm Refresh).")
+    _stats_auto_fragment()
+  else:
+    _render_stats_section()
   _render_debug_sections()
 
   st.divider()

@@ -163,35 +163,31 @@ Mỗi tuần OOS: TRAIN 3 THÁNG → mine (+ KB) → trade 1 tuần
 |-------|----------|
 | **Tổng quan** | Tiến độ, KPI, Refresh data |
 | **Học & tối ưu** | ① Cài đặt → ② Huấn luyện KB → ③ Grid Search → ④ Trade Models (Quản lý · Rủi ro · Nhật ký · Chiến lược) |
-| **Giám sát paper** | **Mô phỏng** lệnh tuần trên nến MT5 — desk thống kê, **không** gửi EA |
-| **MT5 Bridge** | **Lệnh thật/demo**: App decide → EA `ForgeBridge` execute · fill journal |
+| **Giám sát paper** | **Desk nhẹ** — mô phỏng tuần trên nến MT5, **không** gửi EA · cùng Trade Model |
+| **MT5 Bridge** | **Live** (lệnh MT5) + **Simulate** (replay HISTORY_FEED) · cùng Trade Model |
 | **Hướng dẫn** | Tài liệu này |
 
-**Trade Model**: chọn trong **Học & tối ưu → Trade Models → Quản lý** — Paper, Bridge & phân tích dùng chung.
+**Trade Model**: chọn một lần trong **Học & tối ưu → Trade Models → Quản lý** — **Paper · Live · Simulate** dùng chung (`active_trade_model.json` + cùng `conditions_fp` remine).
 
-### Paper Trade vs MT5 Bridge (hai chế độ)
+### Ba mode · cùng Trade Model
 
-Cùng Trade Model + cùng nến broker — **khác cách vào lệnh**:
-
-| | **Paper Trade** | **MT5 Bridge** |
-|---|---|---|
-| **Là gì** | Remine + backtest lại **tuần hiện tại** mỗi nến mới | Quyết định **từng bar đóng** → EA mở/đóng |
-| **Tiền** | Không — chỉ mô phỏng | Có (demo/live) trên tài khoản MT5 |
-| **OUTPUT** | `paper_monitor_state.json` · desk WR/R/DD | `decision.json` + `trades.json` (fill) |
-| **`SIGNAL`** | Tín hiệu mô phỏng chưa khớp entry | Bridge phải gửi `BUY`/`SELL` đúng lúc bar đóng |
-| **`FILLED` / CLOSED** | Kết quả backtest trên history tuần | Lệnh EA đã open/close |
-| **Khi lệch** | Paper có thể “vẽ lại” tín hiệu bar cũ sau khi remine | Không backfill — miss nếu service/EA tắt |
-| **Dùng khi** | Kiểm tra model trước live (≥3 tuần) | Chạy tiền thật/demo song song hoặc sau paper |
+| | **Paper** | **Live** (Bridge) | **Simulate** |
+|---|---|---|---|
+| **Là gì** | Remine tuần hiện tại trên desk app | Quyết định từng bar → EA mở/đóng | Replay đoạn quá khứ qua App↔EA |
+| **Tiền** | Không | Có (demo/live) trên MT5 | Không (history feed) |
+| **OUTPUT** | `paper_monitor_state.json` · paper journal | `bridge/trades.json` (fill) | `bridge_sim/trades.json` |
+| **Khi dùng** | Theo dõi nhẹ, không bật EA | Vận hành thật + **Parity / Health OOS** | Nghi đường bridge / so khớp quá khứ |
+| **Không dùng để** | Chứng minh Live đúng OOS | — | Thay Parity tuần live |
 
 ```
-Nến M15 (ForgeBridge)
+Trade Model active (một combo)
         │
-        ├─► Paper service  → mô phỏng tuần → desk thống kê (trang Giám sát paper)
-        │
-        └─► Bridge service → decision.json → EA → fill → trades.json (trang MT5 Bridge)
+        ├─► Paper service     → desk nhẹ (không EA)
+        ├─► Bridge Live       → decision.json → EA → fill (kiểm bằng Parity)
+        └─► Bridge Simulate   → HISTORY_FEED → cùng engine remine
 ```
 
-**Quy tắc trader:** Paper `SIGNAL` trên bar vừa đóng + Bridge đang chạy → Bridge phải ra cùng hướng. Paper `FILLED` trên bar đã qua ≠ MT5 đã vào lệnh (trừ khi lúc đó Bridge đã `BUY`/`SELL`).
+**Quy tắc trader:** Kiểm Live kỳ vọng = **Parity tuần này** + Health OOS (và fill `trades.json`). Paper `SIGNAL`/`FILLED` ≠ lệnh MT5. Simulate không bắt buộc mỗi ngày.
 
 ### Remine hàng tuần tự động vs cập nhật Trade Model
 
@@ -200,14 +196,14 @@ App **không** tự đổi model trong danh sách mỗi tuần.
 
 | Việc | Tự động? | Điều kiện |
 |------|----------|-----------|
-| **Remine strategy mỗi tuần** (mine lại trên cửa sổ train gần nhất → tín hiệu tuần mới) | Có | **Giám sát paper** bật chu kỳ *hoặc* **MT5 Bridge** Start service |
+| **Remine strategy mỗi tuần** (mine lại trên cửa sổ train gần nhất → tín hiệu tuần mới) | Có | **Paper** và/hoặc **MT5 Bridge Live** Start service (cùng Trade Model) |
 | Đồng bộ lịch sử MT5 | Có (EA chunk + bar live) | Tổng quan hoặc MT5 Bridge |
 | **Huấn luyện KB** (epoch mới) | Không | Học & tối ưu → ② Huấn luyện |
 | **Grid Search** xếp hạng combo mới | Không | Khi đổi Cài đặt hoặc muốn model khác |
 | **Tạo / chọn Trade Model** | Không | Chỉ khi đổi combo active (vd Best 3m → model khác) |
 | Export Replay / Frozen EA (MT5 Tester) | Không | Chạy script export khi cần lịch/EA mới |
 
-**Vận hành hàng ngày / tuần:** chọn Trade Model một lần → bật Paper và/hoặc Bridge service → mỗi tuần app tự remine theo cấu hình đó.  
+**Vận hành hàng ngày / tuần:** chọn Trade Model một lần → bật **Live** (và tuỳ chọn Paper desk) → mỗi tuần app tự remine theo cấu hình đó. Dùng **Parity** để đối chiếu OOS. **Simulate** khi cần replay.  
 **Chỉ** chạy lại KB → Grid → chọn model khi muốn đổi “bộ não” (KB mới, train window / OOS khác).
 
 ### MT5 Bridge — dùng thế nào?
@@ -219,7 +215,7 @@ App **không** tự đổi model trong danh sách mỗi tuần.
 3. Trên MT5: compile/attach EA `ForgeBridge`, `InpMode = Live` (thư mục `MQL5/Files/bridge`)
 4. Mỗi M15 mới: EA ghi `bar.json` → App decide → `decision.json` → EA BUY/SELL hoặc FLAT
 5. Remine Live = **cùng đường Health OOS / Simulate** (KB ON, full FeatureMatrix, cùng `conditions_fp`). Trên desk Live mở **Parity tuần này** để đối chiếu `strategy_name` với weekly_log Health.
-6. **Simulate** (History Feed) chỉ để **replay** đoạn quá khứ — không bắt buộc để kiểm chứng logic Live.
+6. **Paper** = desk nhẹ (không bắt buộc để chứng minh Live). **Simulate** = replay quá khứ App↔EA khi cần.
 7. Xem **Nhật ký giao tiếp** trên GUI (`comm_log.jsonl`: `bar_received`, `decision_sent`, `fill_received`)
 8. Xem **Thống kê lệnh Bridge** (thắng/thua, R, profit) — EA ghi `fill.json` open/close → App lưu `trades.json`
 
@@ -352,11 +348,11 @@ Checklist hiển thị ở **Tổng quan** và **Trade Models → Rủi ro**.
 | 2 | **Học & tối ưu → ② Huấn luyện bộ nhớ** | Học KB đủ theo Cài đặt |
 | 3 | **Học & tối ưu → ③ Grid Search** | Chạy combo → xếp hạng |
 | 4 | **Học & tối ưu → ④ Trade Models** | Tạo & chọn model · xem Rủi ro / Nhật ký / Chiến lược |
-| 5 | **Giám sát paper** + **MT5 Bridge** | Bật chu kỳ / Start service → **tự remine mỗi tuần** |
+| 5 | **MT5 Bridge Live** (+ tuỳ chọn Paper / Simulate) | Start Live → remine · Parity vs Health · Paper desk nhẹ nếu muốn |
 
-Chỉ live **micro lot** khi paper/bridge khớp kỳ vọng backtest.
+Chỉ live **micro lot** khi Live + Parity/Health khớp kỳ vọng backtest.
 
-**Không cần Grid lại mỗi tuần** — Paper/Bridge tự remine theo Trade Model đang chọn. Grid/KB chỉ khi muốn cập nhật model.
+**Không cần Grid lại mỗi tuần** — Paper/Live/Sim tự remine theo Trade Model đang chọn. Grid/KB chỉ khi muốn cập nhật model.
 
 ### Mẹo tối ưu
 
@@ -419,7 +415,7 @@ learning/kb_profiles/       # KB từng giai đoạn
 ## 15. FAQ
 
 **Q: Kết quả 60% WR có vào live được không?**  
-A: Chỉ sau paper + hold-out + spread. KB OFF phải vẫn profitable.
+A: Chỉ sau hold-out + spread + **Live Parity / Health OOS** khớp kỳ vọng. KB OFF phải vẫn profitable. Paper desk là tuỳ chọn.
 
 **Q: KB ON hay OFF?**  
 A: **OFF** để đánh giá. **ON** khi muốn tận dụng kinh nghiệm đã học (có rủi ro overfit).
@@ -431,16 +427,16 @@ A: Miner có thể bias theo regime. Kiểm tra Trade Journal → Direction bias
 A: ~2 phút cho 4 năm / 224 tuần. Dùng cache data, tránh refresh liên tục.
 
 **Q: Quy trình nào nên làm trước?**  
-A: KB OFF baseline → học KB era → OOS với profile → Report Compare → hold-out → paper.
+A: KB OFF baseline → học KB era → OOS với profile → Report Compare → hold-out → **Live + Parity** (Paper desk tuỳ chọn).
 
 **Q: App có tự optimize mỗi tuần không?**  
-A: **Có remine strategy mỗi tuần** khi Paper (chu kỳ) hoặc MT5 Bridge service đang chạy. **Không** tự chạy lại Grid / tạo Trade Model mới — phải làm tay khi muốn đổi model.
+A: **Có remine strategy mỗi tuần** khi Paper và/hoặc Bridge Live đang chạy (cùng Trade Model). **Không** tự Grid / tạo model mới.
 
-**Q: MT5 Bridge khác Paper Monitor thế nào?**  
-A: Cùng nến MT5 + cùng Trade Model. **Paper** mô phỏng tuần (desk thống kê, không gửi EA). **Bridge** gửi `BUY`/`SELL` cho EA mở lệnh thật/demo; thống kê từ fill trong `trades.json`. Xem bảng so sánh mục **6**.
+**Q: Paper · Live · Simulate khác nhau thế nào?**  
+A: **Cùng Trade Model active**. Paper = desk nhẹ không EA. Live = lệnh MT5 + Parity vs Health. Simulate = replay App↔EA quá khứ. Xem bảng mục **6**.
 
 **Q: Paper có `SIGNAL` thì MT5 có vào lệnh không?**  
-A: Chỉ khi Bridge service + EA đang chạy **đúng lúc bar tín hiệu đóng**. Paper có thể hiện `SIGNAL`/`FILLED` khi remine lại tuần — Bridge **không** backfill bar đã qua.
+A: Chỉ khi Bridge Live + EA đang chạy **đúng lúc bar tín hiệu đóng**. Paper `FILLED` ≠ lệnh MT5.
 
 **Q: Có hỗ trợ MT4 không?**  
 A: Không — chỉ **MT5** (`ForgeBridge.mq5`).

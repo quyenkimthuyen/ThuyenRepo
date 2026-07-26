@@ -216,7 +216,7 @@ class BridgeEngine:
     if (
       not self._model
       or self._model.get("data_source") != "mt5_ea"
-      or self._model.get("data_timeframe") != "M15"
+      or self._model.get("data_timeframe") not in ("M15", "H1")
       or int(self._model.get("feature_schema") or 0) < 2
     ):
       decision = self._flat(

@@ -14,7 +14,11 @@ import streamlit.components.v1 as components
 
 from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 from kb_profiles import DEFAULT_PROFILE_ID
-from gui.trade_model import format_model_label, get_active_trade_model, get_model_run_params
+from gui.trade_model import (
+  get_active_trade_model,
+  get_model_run_params,
+  render_shared_trade_model_banner,
+)
 from gui.services import get_ohlc_window_cached, get_paper_monitor
 from gui.ui_preferences import preference_callback, restore_widget
 from paper_journal import (
@@ -414,7 +418,7 @@ def _get_chart_figure(state: dict) -> go.Figure | None:
 
 
 def _resolve_monitor_state(monitor_params: dict, *, manual_refresh: bool) -> dict:
-  """Ưu tiên session/file cache — không chặn UI trong lúc EA đồng bộ history."""
+  """Ưu tiên session/file cache — không remine khi chỉ mở tab (giống Simulate idle)."""
   if manual_refresh:
     _invalidate_chart_cache()
     st.session_state.pop("monitor_state", None)
@@ -443,19 +447,37 @@ def _resolve_monitor_state(monitor_params: dict, *, manual_refresh: bool) -> dic
     if cached:
       return cached
     # Chưa có state — hiện placeholder, để background tự cập nhật (không sync download).
-    st.info("Đang chờ background cập nhật paper… (hoặc bấm **Refresh ngay**)")
-    return {"error": None, "pending": True, "week_start": "—", "week_trades_taken": 0,
-            "strategy": {"max_trades_per_day": 0}, "slots_remaining": 0, "in_session": False,
-            "signals_this_week": [], "recent_trades": [], "last_bar": "—", "week_wr": "—",
-            "week_total_r": "—"}
+    st.info("Đang chờ background cập nhật paper… (hoặc bấm **Chạy ngay**)")
+    return _pending_monitor_placeholder()
 
-  if cached:
+  # Service OFF: never remine on tab open / widget rerun — only Start or Chạy ngay
+  if cached and not cached.get("pending"):
     return cached
 
-  with st.spinner("Cập nhật..."):
-    state = get_paper_monitor(**monitor_params)
-  st.session_state["monitor_state"] = state
-  return state
+  saved = load_saved_state()
+  if saved and not saved.get("error") and not saved.get("pending"):
+    st.session_state["monitor_state"] = saved
+    st.session_state["pm_shown_at"] = saved.get("updated_at")
+    return saved
+
+  return _pending_monitor_placeholder()
+
+
+def _pending_monitor_placeholder() -> dict:
+  return {
+    "error": None,
+    "pending": True,
+    "week_start": "—",
+    "week_trades_taken": 0,
+    "strategy": {"max_trades_per_day": 0},
+    "slots_remaining": 0,
+    "in_session": False,
+    "signals_this_week": [],
+    "recent_trades": [],
+    "last_bar": "—",
+    "week_wr": "—",
+    "week_total_r": "—",
+  }
 
 
 def _poll_check_update() -> bool:
@@ -610,10 +632,9 @@ def _render_chart_panel(
     with urlopen(f"{monitor_url}/health", timeout=0.5) as response:
       server_ready = response.read() == b"ok"
   except (OSError, URLError):
-    server_ready = (
-      False if is_background_enabled()
-      else _paper_live_chart_server() is not None
-    )
+    # Do not start chart server on idle tab open (lag) — Plotly fallback only
+    server_ready = False
+
   if server_ready:
     poll_sec = max(0.5, float(load_config().get("poll_sec", 2.0)))
     query = {
@@ -723,15 +744,19 @@ def _render_monitor_body(
   max_bars: int = 672,
 ):
   if state.get("pending"):
-    st.caption("Chưa có snapshot paper — đợi chu kỳ nền hoặc **Refresh ngay**.")
+    st.info(
+      "Chưa có snapshot Paper — **không remine khi mở tab** (tránh trang chậm). "
+      "Bấm **Start** (service nền) hoặc **Chạy ngay** để tính."
+    )
     return
   if state.get("error"):
     st.error(state["error"])
     return
 
   st.info(
-    "**Paper Trade** = mô phỏng trên nến MT5 (cùng data với Bridge) — "
-    "**không** gửi lệnh sang EA. Muốn lệnh thật/demo → trang **MT5 Bridge**."
+    "**Paper Trade** = desk nhẹ trên nến MT5 (cùng Trade Model với Live/Simulate) — "
+    "**không** gửi EA. Kiểm Live chính = **MT5 Bridge → Parity tuần này** / Health OOS. "
+    "Simulate chỉ khi cần replay App↔EA."
   )
 
   # Sync latest week into journal (idempotent)
@@ -862,15 +887,15 @@ def _render_monitor_body(
   with st.expander("Strategy JSON (tuần hiện tại)"):
     st.json(strategy)
 
-  with st.expander("Paper vs MT5 Bridge — nhớ nhanh"):
+  with st.expander("Paper · Live · Simulate — nhớ nhanh"):
     st.markdown(
       """
-| | **Paper** (trang này) | **MT5 Bridge** |
-|---|---|---|
-| Lệnh | Mô phỏng trên history/live bars | EA mở/đóng trên tài khoản MT5 |
-| Journal | `results/paper_trades.json` | `mt5/bridge/trades.json` |
-| Giai đoạn | Lọc + chart theo preset (giống Bridge) | Lọc + chart theo preset |
-| Reset | Nút **Reset data** — monitor từ đầu | Xóa nhật ký lệnh Bridge |
+| | **Paper** | **Live** (Bridge) | **Simulate** |
+|---|---|---|---|
+| Trade Model | **Cùng active** | **Cùng active** | **Cùng active** |
+| Vai trò | Desk nhẹ, không EA | Lệnh MT5 thật/demo | Replay quá khứ App↔EA |
+| Kiểm Live đúng? | Không bắt buộc | **Parity / Health OOS** | Tuỳ chọn khi nghi bridge |
+| Journal | `paper_trades.json` | `mt5/bridge/trades.json` | `mt5/bridge_sim/trades.json` |
 """
     )
 
@@ -910,12 +935,13 @@ def render():
     if not state.get("paper_started_at"):
       if st.button("📌 Ghi nhận bắt đầu paper", key="pm_wf_start"):
         mark_paper_started()
-        st.toast("Đã ghi nhận — theo dõi ≥3 tuần trước khi live")
+        st.toast("Đã ghi nhận Paper desk — kiểm Live chính bằng Parity / Health OOS")
         st.rerun()
 
   active_model = get_active_trade_model()
+  render_shared_trade_model_banner(context="paper")
   if not active_model:
-    st.warning("Chưa chọn Trade Model — paper dùng cài đặt mặc định.")
+    st.caption("Chưa có model — paper có thể dùng cài đặt mặc định (không khuyến nghị).")
 
   params = get_model_run_params()
   use_kb = params["use_kb"]
@@ -936,14 +962,12 @@ def render():
   s4.metric("Bar cuối", str(status.get("last_bar") or "—")[:19])
 
   with st.expander("Cấu hình service", expanded=not status.get("running")):
-    st.markdown(
-      f"Trade Model dùng chung với MT5: **"
-      f"{format_model_label(active_model) if active_model else '—'}**"
-    )
     st.caption(
       f"Spread **{spread}** / slip **{slip}** pip · "
       f"KB **{'ON' if use_kb else 'OFF'}** · "
-      "service chỉ tính lại khi có nến M15 mới hoặc cấu hình/model thay đổi."
+      "cùng remine params với Live/Simulate · "
+      "service chỉ tính lại khi có nến M15 mới hoặc cấu hình/model thay đổi. "
+      "Mở tab khi service tắt **không** remine — chỉ **Start** / **Chạy ngay**."
     )
     st.session_state.setdefault("paper_risk_pct", float(cfg.get("risk_pct", 1.0)))
     st.session_state.setdefault("paper_poll_sec", float(cfg.get("poll_sec", 2.0)))
@@ -1001,15 +1025,17 @@ def render():
     )
     if status.get("last_error"):
       st.error(f"Background lỗi: {status['last_error']}")
-    _render_chart_panel(
-      state, date_from=date_from, date_to=date_to, max_bars=max_bars,
-    )
+    if not state.get("pending"):
+      _render_chart_panel(
+        state, date_from=date_from, date_to=date_to, max_bars=max_bars,
+      )
     _background_live_panel()
   else:
     _background_status_bar()
+    # Idle: skip heavy chart until snapshot exists (and never auto-start chart server)
     _render_monitor_body(
       state,
-      include_chart=True,
+      include_chart=bool(state) and not state.get("pending"),
       date_from=date_from,
       date_to=date_to,
       max_bars=max_bars,
