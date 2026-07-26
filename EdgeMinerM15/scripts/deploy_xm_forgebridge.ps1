@@ -206,7 +206,7 @@ function Get-EurusdM15Charts([string]$DataPath) {
       $text -match "(?m)^period_size=15\s*$"
     }
   if (-not $charts) {
-    throw "EURUSD M15 chart not found (period_size=15). Open a EURUSD M15 chart before deploy — refusing to attach onto other TFs."
+    throw "EURUSD M15 chart not found (period_size=15). Open a EURUSD M15 chart before deploy; refusing to attach onto other TFs."
   }
   return @($charts)
 }

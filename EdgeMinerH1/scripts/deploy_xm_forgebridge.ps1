@@ -210,13 +210,13 @@ function Get-EurusdH1Charts([string]$DataPath) {
       )
     }
   if (-not $charts) {
-    throw "EURUSD H1 chart not found (period_size=60). Open a EURUSD H1 chart before deploy — refusing to attach onto M15."
+    throw "EURUSD H1 chart not found (period_size=60). Open a EURUSD H1 chart before deploy; refusing to attach onto M15."
   }
   return @($charts)
 }
 
 function Get-EurusdM15Charts([string]$DataPath) {
-  # Compat alias — H1 deploy prefers H1 charts.
+  # Compat alias - H1 deploy prefers H1 charts.
   return Get-EurusdH1Charts $DataPath
 }
 
