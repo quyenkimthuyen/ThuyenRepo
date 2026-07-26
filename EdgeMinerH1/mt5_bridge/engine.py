@@ -145,6 +145,8 @@ class BridgeEngine:
     if self.mt5_cache.exists():
       df = pd.read_parquet(self.mt5_cache)
       self._df = _normalize(df)
+      self._fm = None
+      self._fm_key = None
       return self._df
     start_history_sync()
     raise RuntimeError("MT5 history is not ready")
@@ -156,6 +158,79 @@ class BridgeEngine:
       self._df = _normalize(pd.read_parquet(self.mt5_cache))
       return self._df
     return self.ensure_history()
+
+  def _canonical_frame(self) -> pd.DataFrame:
+    """Full parquet history for weekly remine (matches Health OOS / tip tests).
+
+    HistoryFeed must not remine on a truncated in-memory tip — that locks a
+    weaker strategy for the whole week in ``_strat_cache``.
+    """
+    if self.mt5_cache.exists():
+      return _normalize(pd.read_parquet(self.mt5_cache))
+    return self.load()
+
+  def _sync_working_frame_from_canonical(self, canonical: pd.DataFrame) -> pd.DataFrame:
+    """Prefer longer canonical series as working ``_df`` when safe."""
+    if canonical is None or canonical.empty:
+      return self.load()
+    cur = self._df
+    if cur is None or len(canonical) >= len(cur):
+      if cur is None or len(canonical) != len(cur) or (
+        len(canonical) and (
+          canonical.index[0] != cur.index[0] or canonical.index[-1] != cur.index[-1]
+        )
+      ):
+        self._df = canonical
+        self._fm = None
+        self._fm_key = None
+    return self.load()
+
+  def _remine_week_strategy(
+    self,
+    *,
+    week_start: pd.Timestamp,
+    cache_key: str,
+    train_weeks: int,
+    use_learning: bool,
+    kb_profile,
+    kb_snapshot,
+    feature_profile: str,
+    search_space,
+  ):
+    """Mine once per week on full-history FM; cache until week/model changes."""
+    cached = self._strat_cache.get(cache_key)
+    if cached is not None:
+      return cached
+
+    canonical = self._canonical_frame()
+    df_mine = self._sync_working_frame_from_canonical(canonical)
+    ts, te = get_train_window_indices(df_mine, week_start, train_weeks)
+    if ts is None or (te - ts) < MIN_TRAIN_BARS:
+      return None
+
+    fm_mine = self._feature_matrix(df_mine, feature_profile)
+    kb = None
+    if use_learning:
+      if kb_profile:
+        set_kb_profile(kb_profile, kb_snapshot)
+      kb = get_knowledge_base(kb_profile, kb_snapshot)
+    strat = optimize_on_window(
+      fm_mine, ts, te, use_learning=use_learning, as_of=week_start, kb=kb,
+      search_space=search_space,
+    )
+    if strat is None:
+      return None
+    self._strat_cache[cache_key] = strat
+    try:
+      name = getattr(strat, "name", None) or str(strat)
+    except Exception:
+      name = "?"
+    print(
+      f"[bridge] remine week={week_start.date()} strategy={name} "
+      f"fm_len={len(df_mine)} train_bars={te - ts} fp={self.conditions_fp}",
+      flush=True,
+    )
+    return strat
 
   def _save_mt5_cache(self) -> None:
     if self._df is None or self._df.empty:
@@ -199,7 +274,12 @@ class BridgeEngine:
     return ts
 
   def decide_for_bar(self, bar: dict) -> dict:
-    """Produce decision.json payload for the closed M15 bar from EA."""
+    """Produce decision.json for the closed M15 bar (Live + HistoryFeed + OOS-parity).
+
+    Live and Simulate share this path: same Trade Model conditions, KB snapshot,
+    full-history FeatureMatrix, and weekly ``optimize_on_window`` as Health OOS.
+    Only execution differs (real fills vs paper HistoryFeed).
+    """
     bar_ts = self.merge_bar(bar)
     bar_key = bar_ts.isoformat(sep=" ")
     if bar_key == self._last_bar_key and self._last_decision is not None:
@@ -216,7 +296,7 @@ class BridgeEngine:
     if (
       not self._model
       or self._model.get("data_source") != "mt5_ea"
-      or self._model.get("data_timeframe") not in ("M15", "H1")
+      or self._model.get("data_timeframe") != "M15"
       or int(self._model.get("feature_schema") or 0) < 2
     ):
       decision = self._flat(
@@ -225,6 +305,14 @@ class BridgeEngine:
       return self._remember(bar_key, decision)
 
     df = self.load()
+    if df.empty or bar_ts not in df.index:
+      # Heal: bar may exist only on canonical cache while working series truncated
+      try:
+        canonical = self._canonical_frame()
+        if bar_ts in canonical.index:
+          df = self._sync_working_frame_from_canonical(canonical)
+      except Exception:
+        pass
     if df.empty or bar_ts not in df.index:
       decision = self._flat(
         bar_ts, model_id, reason="bar_not_in_series",
@@ -238,37 +326,38 @@ class BridgeEngine:
     search_space = (
       mining_search_space_from_dict(search_payload) if search_payload else None
     )
-    # Full history FeatureMatrix — same as OOS Health (KB ON). Short lookback
-    # clip used to warp htf_trend / roc_5 and mine weaker strategies.
-    fm = self._feature_matrix(df, feature_profile)
-
     cache_key = (
       f"{week_start.date()}|{model_id}|{kb_profile}@{kb_snapshot}|{train_weeks}w|"
       f"{feature_profile}|{search_space!r}"
     )
-    strat = self._strat_cache.get(cache_key)
+    # Eager remine on first decision of the week (FLAT or SIGNAL) using full-history FM
+    strat = self._remine_week_strategy(
+      week_start=week_start,
+      cache_key=cache_key,
+      train_weeks=train_weeks,
+      use_learning=use_learning,
+      kb_profile=kb_profile,
+      kb_snapshot=kb_snapshot,
+      feature_profile=feature_profile,
+      search_space=search_space,
+    )
     if strat is None:
-      kb = None
-      if use_learning:
-        if kb_profile:
-          set_kb_profile(kb_profile, kb_snapshot)
-        kb = get_knowledge_base(kb_profile, kb_snapshot)
-      ts, te = get_train_window_indices(df, week_start, train_weeks)
-      if ts is None or (te - ts) < MIN_TRAIN_BARS:
-        decision = self._flat(
-          bar_ts, model_id, reason="insufficient_train_data", week_start=week_start,
-        )
-        return self._remember(bar_key, decision)
-      strat = optimize_on_window(
-        fm, ts, te, use_learning=use_learning, as_of=week_start, kb=kb,
-        search_space=search_space,
+      # Distinguish train vs mine failure
+      df_chk = self.load()
+      ts, te = get_train_window_indices(df_chk, week_start, train_weeks)
+      reason = (
+        "insufficient_train_data"
+        if ts is None or (te - ts) < MIN_TRAIN_BARS
+        else "no_strategy"
       )
-      if strat is None:
-        decision = self._flat(
-          bar_ts, model_id, reason="no_strategy", week_start=week_start,
-        )
-        return self._remember(bar_key, decision)
-      self._strat_cache[cache_key] = strat
+      decision = self._flat(
+        bar_ts, model_id, reason=reason, week_start=week_start,
+      )
+      return self._remember(bar_key, decision)
+
+    # Signal scan FM: working series (synced to canonical when remine ran)
+    df = self.load()
+    fm = self._feature_matrix(df, feature_profile)
 
     # Cached weekly strat keeps ML probs sized to the fm at mine-time.
     # Live bars append mid-week → refresh probs before scanning signals.

@@ -640,8 +640,13 @@ def _run_sim_bridge_loop(stop_event: threading.Event, model_id: str | None, risk
   try:
     if MT5_CACHE_PATH.exists():
       engine.ensure_history()
-  except Exception:
-    pass
+      print(
+        f"[sim-bridge] canonical history bars={len(engine.load())} "
+        f"fp={engine.conditions_fp}",
+        flush=True,
+      )
+  except Exception as e:
+    print(f"[sim-bridge] ensure_history failed: {e}", flush=True)
   last_bar_fp = None
   last_fill_fp = None
   while not stop_event.is_set():
@@ -661,11 +666,10 @@ def _run_sim_bridge_loop(stop_event: threading.Event, model_id: str | None, risk
         )
       except Exception:
         pass
-      # Drop caches and continue — better than killing the whole feed
+      # Drop FeatureMatrix only — keep weekly strat cache (avoid mid-week remine drift)
       try:
         engine._fm = None
         engine._fm_key = None
-        engine._strat_cache.clear()
       except Exception:
         pass
       time.sleep(1.0)
