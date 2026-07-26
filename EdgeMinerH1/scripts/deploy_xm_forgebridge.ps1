@@ -209,7 +209,9 @@ function Get-EurusdH1Charts([string]$DataPath) {
         $text -match "PERIOD_H1"
       )
     }
-  if (-not $charts) { $charts = $allEurusdCharts }
+  if (-not $charts) {
+    throw "EURUSD H1 chart not found (period_size=60). Open a EURUSD H1 chart before deploy — refusing to attach onto M15."
+  }
   return @($charts)
 }
 

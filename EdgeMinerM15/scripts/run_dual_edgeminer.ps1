@@ -5,8 +5,18 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$M15Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$H1Root = "C:\Work\ThuyenRepo\EdgeMinerH1"
+$Here = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$Parent = Split-Path $Here -Parent
+$leaf = Split-Path $Here -Leaf
+if ($leaf -eq "EdgeMinerH1") {
+  $H1Root = $Here
+  $M15Root = Join-Path $Parent "EdgeMinerM15"
+  if (-not (Test-Path $M15Root)) { $M15Root = "C:\Work\ThuyenRepo\EdgeMinerM15" }
+} else {
+  $M15Root = $Here
+  $H1Root = Join-Path $Parent "EdgeMinerH1"
+  if (-not (Test-Path $H1Root)) { $H1Root = "C:\Work\ThuyenRepo\EdgeMinerH1" }
+}
 $M15AppPort = 8501
 $H1AppPort = 8502
 $Expected = @{
@@ -16,7 +26,7 @@ $Expected = @{
 
 function Assert-Layout {
   if (-not (Test-Path $H1Root)) { throw "H1 repo not found: $H1Root" }
-  if ($M15Root -eq $H1Root) { throw "H1 and M15 roots must be different." }
+  if ($M15Root -eq $H1Root) { throw "M15 and H1 roots must be different." }
   if ($Expected.M15.Magic -eq $Expected.H1.Magic) { throw "Magic numbers collide." }
   if ($Expected.M15.Bridge -eq $Expected.H1.Bridge) { throw "Bridge folders collide." }
   foreach ($root in @($M15Root, $H1Root)) {

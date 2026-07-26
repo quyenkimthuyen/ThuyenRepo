@@ -126,7 +126,7 @@ int OnInit()
       g_sim_ea_status = "idle";
       WriteSimControlFile();
       EventSetMillisecondTimer(50);
-      Print("ForgeBridgeH1 HistoryFeed | Files/", InpBridgeSubdir,
+      Print("ForgeBridgeH1Sim HistoryFeed | Files/", InpBridgeSubdir,
             " | paper=", InpHistoryPaperFills, " | magic=", InpMagic);
    }
    else

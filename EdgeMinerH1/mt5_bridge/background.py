@@ -636,7 +636,13 @@ def _run_sim_bridge_loop(stop_event: threading.Event, model_id: str | None, risk
 
   bridge_dir = ensure_bridge_dir(BRIDGE_SIM_DIR)
   mid = model_id or load_config().get("model_id")
-  engine = BridgeEngine(model_id=mid, risk_pct=float(risk_pct), bridge_dir=bridge_dir)
+  from mt5_bridge.protocol import DEFAULT_SIM_MAGIC
+  engine = BridgeEngine(
+    model_id=mid,
+    risk_pct=float(risk_pct),
+    magic=int(DEFAULT_SIM_MAGIC),
+    bridge_dir=bridge_dir,
+  )
   try:
     if MT5_CACHE_PATH.exists():
       engine.ensure_history()

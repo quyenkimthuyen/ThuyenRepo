@@ -5,20 +5,30 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$M15Root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$H1Root = "C:\Work\ThuyenRepo\EdgeMinerH1"
+$Here = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$Parent = Split-Path $Here -Parent
+$leaf = Split-Path $Here -Leaf
+if ($leaf -eq "EdgeMinerH1") {
+  $H1Root = $Here
+  $M15Root = Join-Path $Parent "EdgeMinerM15"
+  if (-not (Test-Path $M15Root)) { $M15Root = "C:\Work\ThuyenRepo\EdgeMinerM15" }
+} else {
+  $M15Root = $Here
+  $H1Root = Join-Path $Parent "EdgeMinerH1"
+  if (-not (Test-Path $H1Root)) { $H1Root = "C:\Work\ThuyenRepo\EdgeMinerH1" }
+}
 $M15AppPort = 8501
 $H1AppPort = 8502
 $Expected = @{
-  H1 = @{ Period = "H1"; Magic = 20260724; Instance = "H1"; Bridge = "bridge" }
+  M15 = @{ Period = "M15"; Magic = 20260724; Instance = "M15"; Bridge = "bridge" }
   H1 = @{ Period = "H1"; Magic = 20260725; Instance = "H1"; Bridge = "bridge_h1" }
 }
 
 function Assert-Layout {
   if (-not (Test-Path $H1Root)) { throw "H1 repo not found: $H1Root" }
-  if ($M15Root -eq $H1Root) { throw "H1 and H1 roots must be different." }
-  if ($Expected.H1.Magic -eq $Expected.H1.Magic) { throw "Magic numbers collide." }
-  if ($Expected.H1.Bridge -eq $Expected.H1.Bridge) { throw "Bridge folders collide." }
+  if ($M15Root -eq $H1Root) { throw "M15 and H1 roots must be different." }
+  if ($Expected.M15.Magic -eq $Expected.H1.Magic) { throw "Magic numbers collide." }
+  if ($Expected.M15.Bridge -eq $Expected.H1.Bridge) { throw "Bridge folders collide." }
   foreach ($root in @($M15Root, $H1Root)) {
     if (-not (Test-Path (Join-Path $root "results\active_trade_model.json"))) {
       throw "No active model in $root"
@@ -111,11 +121,11 @@ function Deploy-Dual {
   Invoke-App $H1Root Stop $H1AppPort
   & powershell -ExecutionPolicy Bypass -File (Join-Path $M15Root "scripts\deploy_xm_forgebridge.ps1") `
     -Attach -SkipBridgeService -RiskPct 1.0
-  if ($LASTEXITCODE -ne 0) { throw "H1 EA deploy failed." }
+  if ($LASTEXITCODE -ne 0) { throw "M15 EA deploy failed." }
   & powershell -ExecutionPolicy Bypass -File (Join-Path $H1Root "scripts\deploy_xm_forgebridge.ps1") `
     -Attach -SkipBridgeService -RiskPct 1.0
   if ($LASTEXITCODE -ne 0) { throw "H1 EA deploy failed." }
-  Read-Connection (Join-Path $M15Root "mt5\bridge\connection.json") $Expected.H1 | Out-Null
+  Read-Connection (Join-Path $M15Root "mt5\bridge\connection.json") $Expected.M15 | Out-Null
   Read-Connection (Join-Path $H1Root "mt5\bridge_h1\connection.json") $Expected.H1 | Out-Null
   Enable-ExpertTrading
   Start-Services
@@ -126,11 +136,11 @@ function Deploy-Dual {
 function Show-Status {
   $processes = Get-CimInstance Win32_Process
   foreach ($item in @(
-    @{ Name = "H1 app"; Pattern = [regex]::Escape("$M15Root\gui\app.py"); Port = 8501 },
+    @{ Name = "M15 app"; Pattern = [regex]::Escape("$M15Root\gui\app.py"); Port = 8501 },
     @{ Name = "H1 app"; Pattern = [regex]::Escape("$H1Root\gui\app.py"); Port = 8502 },
-    @{ Name = "H1 bridge"; Pattern = [regex]::Escape("$M15Root\mt5\bridge"); Port = 8765 },
+    @{ Name = "M15 bridge"; Pattern = [regex]::Escape("$M15Root\mt5\bridge"); Port = 8765 },
     @{ Name = "H1 bridge"; Pattern = [regex]::Escape("$H1Root\mt5\bridge_h1"); Port = 8865 },
-    @{ Name = "H1 paper"; Pattern = [regex]::Escape("$M15Root\scripts\paper_monitor_service.py"); Port = 8766 },
+    @{ Name = "M15 paper"; Pattern = [regex]::Escape("$M15Root\scripts\paper_monitor_service.py"); Port = 8766 },
     @{ Name = "H1 paper"; Pattern = [regex]::Escape("$H1Root\scripts\paper_monitor_service.py"); Port = 8866 }
   )) {
     $count = @($processes | Where-Object { $_.CommandLine -match $item.Pattern }).Count

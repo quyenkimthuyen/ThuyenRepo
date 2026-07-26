@@ -1134,7 +1134,7 @@ def _render_model_monitor_body() -> None:
     )
   else:
     st.caption(
-      "Live: KPI/biểu đồ đọc `mt5/bridge/trades.json` (auto đã đóng). "
+      f"Live: KPI/biểu đồ đọc `mt5/{BRIDGE_DIR.name}/trades.json` (auto đã đóng). "
       "Tự cập nhật ~12s khi service chạy; hoặc mở expander / Refresh."
     )
 

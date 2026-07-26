@@ -296,10 +296,17 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
   if label is None and row.get("total_r") is not None:
     auto_label += f" · {row.get('total_r', 0):+.1f}R"
   data_meta = load_data_meta()
-  if data_meta.get("source") != "mt5_ea" or not data_meta.get("fingerprint"):
-    raise RuntimeError("Không thể tạo Trade Model khi dữ liệu chưa được xác nhận từ MT5 EA.")
+  if (
+    data_meta.get("source") != "mt5_ea"
+    or str(data_meta.get("timeframe") or "").upper() != "H1"
+    or not data_meta.get("fingerprint")
+  ):
+    raise RuntimeError(
+      "Không thể tạo Trade Model khi dữ liệu chưa được xác nhận từ MT5 EA (H1)."
+    )
   return {
     "train_months": tm,
+    "max_trades_per_week": int(row.get("max_trades_per_week") or 2),
     "use_kb": bool(row.get("use_kb", True)),
     "kb_profile": kb if row.get("use_kb") else None,
     "kb_snapshot": ep,
@@ -312,6 +319,8 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
     "max_drawdown_r": row.get("max_drawdown_r"),
     "profit_factor": row.get("profit_factor"),
     "n_trades": row.get("n_trades"),
+    "feature_profile": row.get("feature_profile") or "current",
+    "mining_search_space": row.get("mining_search_space"),
     "source": "grid_search",
     "data_source": data_meta.get("source"),
     "data_broker": data_meta.get("broker"),
@@ -322,7 +331,7 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
     "data_end": data_meta.get("end"),
     "data_bars": data_meta.get("bars"),
     "data_fingerprint": data_meta.get("fingerprint"),
-    "feature_schema": 1,
+    "feature_schema": 3,
     "grid_run_id": run_id,
     "grid_key": row.get("key"),
     "label": auto_label,

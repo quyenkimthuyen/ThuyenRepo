@@ -7,8 +7,8 @@ import streamlit as st
 
 HELP = {
   "oos": "Giai đoạn **kiểm chứng** — chỉ mô phỏng lệnh, không dùng để tối ưu chiến lược.",
-  "train_weeks": "Số tuần dữ liệu gần nhất để **tìm chiến lược mới mỗi tuần** (walk-forward).",
-  "train_months": "Đã thay bằng cửa sổ học 3/6/9 tuần.",
+  "train_weeks": "Số tuần dữ liệu gần nhất để học (M15).",
+  "train_months": "Số tháng dữ liệu gần nhất để **tìm chiến lược mới mỗi tuần** (H1 walk-forward: 3/6/9).",
   "kb": "**Bộ nhớ kinh nghiệm** — lưu rule/chiến lược đã học từ các tuần trước.",
   "kb_on": "Dùng bộ nhớ kinh nghiệm khi tìm chiến lược (thường cho kết quả tốt hơn, cần kiểm chứng thêm).",
   "kb_off": "Không dùng bộ nhớ — đánh giá **khách quan nhất**, nên chạy trước khi tin vào kết quả.",
@@ -29,7 +29,7 @@ HELP = {
     "Xem desk thống kê tuần trước khi bật Bridge live."
   ),
   "mt5_bridge": (
-    "**MT5 Bridge** — App quyết định → EA `ForgeBridge` mở/đóng lệnh trên tài khoản MT5. "
+    "**MT5 Bridge** — App quyết định → EA `ForgeBridgeH1` / `ForgeBridgeH1Sim` mở/đóng lệnh trên MT5. "
     "Khác Paper: có fill thật trong `trades.json`."
   ),
   "grid_search": "Thử nhiều combo tham số tự động để tìm setting tốt hơn.",
@@ -111,17 +111,18 @@ def build_trade_profile_label(tp: dict) -> str:
   Tên cấu hình giao dịch — thống nhất toàn app.
   VD: Học 3 tháng · Giai đoạn 2024 · vòng 3 · Kiểm chứng 2025–2026
   """
-  train = tp.get("train_weeks", "?")
+  train = tp.get("train_months", tp.get("train_weeks", "?"))
   oos = _short_year_range(tp.get("oos_from"), tp.get("oos_to"))
+  unit = "tháng" if "train_months" in tp or "train_weeks" not in tp else "tuần"
   if not tp.get("use_kb", True):
-    return f"Học {train} tuần · Không bộ nhớ · Kiểm chứng {oos}"
+    return f"Học {train} {unit} · Không bộ nhớ · Kiểm chứng {oos}"
   mem = format_memory_profile(tp.get("kb_profile"))
   ep = format_epoch(
     None if tp.get("kb_snapshot") in (None, "", "latest", "Latest") else tp.get("kb_snapshot")
   )
   if ep != "mới nhất":
-    return f"Học {train} tuần · {mem} · {ep} · Kiểm chứng {oos}"
-  return f"Học {train} tuần · {mem} · Kiểm chứng {oos}"
+    return f"Học {train} {unit} · {mem} · {ep} · Kiểm chứng {oos}"
+  return f"Học {train} {unit} · {mem} · Kiểm chứng {oos}"
 
 
 def format_kb_mode(use_kb: bool) -> str:
@@ -152,14 +153,15 @@ def format_kb_line(use_kb: bool, kb_profile: str | None, kb_snapshot) -> str:
 
 def format_profile_oneline(tp: dict) -> str:
   """Một dòng cấu hình — tiếng Việt, ít viết tắt."""
-  train = tp.get("train_weeks", "?")
+  train = tp.get("train_months", tp.get("train_weeks", "?"))
+  unit = "tháng" if "train_months" in tp or "train_weeks" not in tp else "tuần"
   kb = format_kb_line(bool(tp.get("use_kb", True)), tp.get("kb_profile"), tp.get("kb_snapshot"))
   oos_f = tp.get("oos_from", "?")
   oos_t = tp.get("oos_to", "?")
   spread = tp.get("spread_pips", 1)
   slip = tp.get("slippage_pips", 0.3)
   return (
-    f"Học **{train} tuần** · {kb} · "
+    f"Học **{train} {unit}** · {kb} · "
     f"Kiểm chứng {oos_f} → {oos_t} · "
     f"phí {spread}/{slip} pip"
   )

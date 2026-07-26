@@ -58,7 +58,10 @@ def optimize_on_window(
   use_learning: bool = True,
   as_of=None,
   kb: KnowledgeBase | None = None,
+  search_space=None,
 ) -> Optional[MinedStrategy]:
+  # search_space accepted for Bridge/M15 API parity; H1 miner uses built-in defaults
+  # when the Trade Model does not pin a custom mining_search_space.
   if use_learning:
     kb = kb or get_knowledge_base()
     return mine_strategy_learning(

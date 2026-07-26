@@ -190,15 +190,15 @@ App **không** tự đổi model trong danh sách mỗi tuần.
 
 Đây là cầu nối **MetaTrader 5** (không phải MT4):
 
-1. Mở **MT5 Bridge** → chọn Trade Model (Best 3m) → **Start service**
+1. Mở **MT5 Bridge** → chọn Trade Model → **Start service**
 2. Service chạy **process riêng** (không phụ thuộc tab GUI) — đổi tab / refresh page **không** dừng; bấm **Stop** mới tắt
-3. Trên MT5: compile/attach EA `ForgeBridge`, `InpMode = Live` (thư mục `MQL5/Files/bridge`)
+3. Trên MT5: deploy/attach EA `ForgeBridgeH1` (Live, `MQL5/Files/bridge_h1`) hoặc `ForgeBridgeH1Sim` (Simulate, `bridge_sim_h1`)
 4. Mỗi H1 mới: EA ghi `bar.json` → App remine/decide → `decision.json` → EA BUY/SELL hoặc FLAT
 5. Xem **Nhật ký giao tiếp** trên GUI (`comm_log.jsonl`: `bar_received`, `decision_sent`, `fill_received`)
 6. Xem **Thống kê lệnh Bridge** (thắng/thua, R, profit) — EA ghi `fill.json` open/close → App lưu `trades.json`
 
 CLI tương đương GUI service: `python scripts/mt5_bridge_service.py`  
-Chi tiết file: `mt5/bridge/README.md`
+Chi tiết file: `mt5/bridge_h1/` (Live) · `mt5/bridge_sim_h1/` (Simulate)
 
 ---
 
@@ -368,7 +368,8 @@ data/mt5_eurusd_h1.parquet  # Cache H1 chuẩn từ ForgeBridge/XM MT5
 mt5_bridge/                 # Bridge App ↔ MT5 EA
 mt5/Experts/ForgeBridgeH1.mq5    # EA Live
 mt5/Experts/ForgeBridgeH1Sim.mq5 # EA Simulate (HistoryFeed)
-mt5/bridge/                 # bar/decision/fill/comm_log/replay
+mt5/bridge_h1/              # Live bar/decision/fill/comm_log
+mt5/bridge_sim_h1/          # Simulate HistoryFeed artifacts
 scripts/mt5_bridge_service.py
 scripts/export_bridge_replay.py
 results/backtest_report.json
@@ -418,7 +419,7 @@ A: Paper và Bridge dùng chung nến từ **MT5 broker**. Paper mô phỏng l�
 A: Không — chỉ **MT5** (`ForgeBridgeH1.mq5`).
 
 **Q: Xem log giao tiếp App ↔ EA ở đâu?**  
-A: GUI **MT5 Bridge** → Nhật ký giao tiếp, hoặc file `mt5/bridge/comm_log.jsonl`.
+A: GUI **MT5 Bridge** → Nhật ký giao tiếp, hoặc file `mt5/bridge_h1/comm_log.jsonl` (Live) / `mt5/bridge_sim_h1/comm_log.jsonl` (Sim).
 
 **Q: Khác nhau Train 3 tháng, KB và Epoch?**  
 A: **Train 3 tháng** = mine strategy mỗi tuần WF (luôn chạy). **KB** = bộ nhớ dài hạn (rules/genomes/ML). **Epoch** = một vòng học full giai đoạn để cải thiện KB. Xem mục **5** trong Usage Guide.

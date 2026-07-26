@@ -296,15 +296,17 @@ class BridgeEngine:
     spread = float(params.get("spread_pips", 1.0))
     slip = float(params.get("slippage_pips", 0.3))
     model_id = params.get("trade_model_id") or self.model_id
-    if (
-      not self._model
-      or self._model.get("data_source") != "mt5_ea"
-      or self._model.get("data_timeframe") != "H1"
-      or int(self._model.get("feature_schema") or 0) < 2
-    ):
-      decision = self._flat(
-        bar_ts, model_id, reason="legacy_data_source_blocked",
-      )
+    if not self._model:
+      decision = self._flat(bar_ts, model_id, reason="no_active_model")
+      return self._remember(bar_key, decision)
+    if self._model.get("data_source") != "mt5_ea":
+      decision = self._flat(bar_ts, model_id, reason="legacy_data_source_blocked")
+      return self._remember(bar_key, decision)
+    if self._model.get("data_timeframe") != "H1":
+      decision = self._flat(bar_ts, model_id, reason="wrong_timeframe_model")
+      return self._remember(bar_key, decision)
+    if int(self._model.get("feature_schema") or 0) < 2:
+      decision = self._flat(bar_ts, model_id, reason="legacy_feature_schema")
       return self._remember(bar_key, decision)
 
     df = self.load()
