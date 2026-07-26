@@ -938,6 +938,7 @@ bool OpenFromDecision(const string json)
    g_user_intervened = manual_open;
    g_ea_modifying = false;
 
+   double planned = JsonGetDouble(json, "entry", 0);
    double sl = JsonGetDouble(json, "sl", 0);
    double tp = JsonGetDouble(json, "tp", 0);
 
@@ -961,8 +962,45 @@ bool OpenFromDecision(const string json)
       Print("ForgeBridge: decision missing sl/tp");
       return false;
    }
+
+   // Same as HistoryFeed paper: decision SL/TP are vs planned entry; live fills
+   // at current bid/ask. Rebase so risk/RR (and lot size) stay as intended —
+   // otherwise risk collapses → oversized lots + inflated R.
+   double planned_risk = (planned > 0.0) ? MathAbs(planned - sl) : 0.0;
+   double rr = JsonGetDouble(json, "rr", 0.0);
+   if(rr <= 0.0 && planned_risk > 0.0 && planned > 0.0)
+      rr = MathAbs(tp - planned) / planned_risk;
+   if(rr <= 0.0)
+      rr = 2.0;
+
+   if(planned_risk > 0.0)
+   {
+      if(action == "BUY")
+      {
+         sl = price - planned_risk;
+         tp = price + planned_risk * rr;
+      }
+      else
+      {
+         sl = price + planned_risk;
+         tp = price - planned_risk * rr;
+      }
+   }
+   else if(planned > 0.0)
+   {
+      double delta = price - planned;
+      sl += delta;
+      tp += delta;
+   }
+
    double sl_dist = MathAbs(price - sl);
    if(sl_dist <= 0) return false;
+   double pip = (_Digits == 3 || _Digits == 5) ? (10.0 * _Point) : _Point;
+   if(sl_dist < 0.5 * pip)
+   {
+      Print("ForgeBridge: risk too small after rebase (", sl_dist, ")");
+      return false;
+   }
    g_risk = sl_dist;
    double lots = LotsForRisk(sl_dist);
    if(lots <= 0) return false;
@@ -990,6 +1028,11 @@ bool OpenFromDecision(const string json)
          lots = PositionGetDouble(POSITION_VOLUME);
          break;
       }
+      // Keep R / trail math on intended risk (fill may differ slightly from request)
+      if(planned_risk > 0.0)
+         g_risk = planned_risk;
+      else
+         g_risk = MathAbs(price - sl);
       g_open_ticket = ticket;
       g_open_signal_id = sid;
       g_open_action = action;
@@ -1001,8 +1044,9 @@ bool OpenFromDecision(const string json)
       g_sync_tp = tp;
       g_had_position = true;
       g_last_signal_id = sid;
-      Print("ForgeBridge entry ", action, " ticket=", ticket, " lots=", lots, " sl=", sl, " tp=", tp,
-            " source=", g_open_source);
+      Print("ForgeBridge entry ", action, " ticket=", ticket, " lots=", lots,
+            " entry=", price, " sl=", sl, " tp=", tp,
+            " risk=", g_risk, " source=", g_open_source);
    }
 
    WriteFillJsonEx("open", sid, action, ok, ok ? "opened" : IntegerToString(trade.ResultRetcode()),
