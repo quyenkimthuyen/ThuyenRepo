@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import atexit
+import json
 import os
 import sys
 import time
@@ -108,39 +109,84 @@ def _identity_matches(payload: dict | None) -> bool:
 
 
 def process_once(engine: BridgeEngine, bridge_dir: Path, *, last_fp: str | None, last_fill_fp: str | None = None):
-  fill = read_json(fill_path(bridge_dir))
-  if isinstance(fill, dict):
+  seen_fills: set[str] = set()
+  if isinstance(last_fill_fp, str) and last_fill_fp.startswith("["):
+    try:
+      seen_fills = set(json.loads(last_fill_fp))
+    except Exception:
+      seen_fills = {last_fill_fp} if last_fill_fp else set()
+  elif last_fill_fp:
+    seen_fills = {last_fill_fp}
+
+  def _ingest_fill(fill: dict) -> None:
+    nonlocal seen_fills
     if not _identity_matches(fill):
       write_status(
         bridge_dir, state="identity_error", model_id=engine.model_id,
-        error=f"Rejected fill from {fill.get('instance_id')}/{fill.get('period')}/{fill.get('magic')}",
+        error=(
+          f"Rejected fill from {fill.get('instance_id')}/"
+          f"{fill.get('period')}/{fill.get('magic')}"
+        ),
       )
-      fill = None
+      return
+    ffp = (
+      str(fill.get("signal_id") or "")
+      + "|"
+      + str(fill.get("time") or "")
+      + "|"
+      + str(fill.get("event") or fill.get("detail") or "")
+      + "|"
+      + str(fill.get("ticket") or "")
+      + "|"
+      + str(fill.get("reason") or "")
+    )
+    if not ffp or ffp in seen_fills:
+      return
+    append_event(
+      "ea_to_app", "fill_received", bridge_dir=bridge_dir, payload=fill,
+      summary=(
+        f"fill {fill.get('event') or fill.get('action')} ok={fill.get('ok')} "
+        f"sid={fill.get('signal_id')}"
+      ),
+    )
+    process_fill(
+      fill,
+      bridge_dir=bridge_dir,
+      decision=engine._last_decision if isinstance(engine._last_decision, dict) else None,
+      model_id=engine.model_id,
+    )
+    seen_fills.add(ffp)
+
+  # Drain append queue then truncate (open+close can land within one poll)
+  fills_q = ensure_bridge_dir(bridge_dir) / "ea_fills.jsonl"
+  if fills_q.exists():
+    try:
+      raw = fills_q.read_text(encoding="utf-8-sig")
+      if raw.strip():
+        for line in raw.splitlines():
+          line = line.strip()
+          if not line:
+            continue
+          try:
+            payload = json.loads(line)
+          except Exception:
+            continue
+          if isinstance(payload, dict):
+            _ingest_fill(payload)
+        fills_q.write_text("", encoding="utf-8")
+    except Exception:
+      pass
+
+  fill = read_json(fill_path(bridge_dir))
   if isinstance(fill, dict):
-    ffp = str(fill.get("signal_id") or "") + "|" + str(fill.get("time") or "") + "|" + str(fill.get("event") or fill.get("detail") or "")
-    if ffp and ffp != last_fill_fp:
-      append_event(
-        "ea_to_app", "fill_received", bridge_dir=bridge_dir, payload=fill,
-        summary=f"fill {fill.get('event') or fill.get('action')} ok={fill.get('ok')} sid={fill.get('signal_id')}",
-      )
-      process_fill(
-        fill,
-        bridge_dir=bridge_dir,
-        decision=engine._last_decision if isinstance(engine._last_decision, dict) else None,
-        model_id=engine.model_id,
-      )
-      last_fill_fp = ffp
+    _ingest_fill(fill)
+
+  last_fill_fp = json.dumps(sorted(seen_fills)[-80:], ensure_ascii=False)
 
   path = bar_path(bridge_dir)
   bar = read_json(path)
   if not isinstance(bar, dict):
-    write_status(
-      bridge_dir,
-      state="waiting_bar",
-      model_id=engine.model_id,
-      error=None,
-      last_bar=None,
-    )
+    # Avoid status.json spam while waiting for EA bar
     return last_fp, last_fill_fp
   if not _identity_matches(bar):
     write_status(
@@ -151,7 +197,6 @@ def process_once(engine: BridgeEngine, bridge_dir: Path, *, last_fp: str | None,
 
   fp = _bar_fingerprint(bar)
   if not fp:
-    write_status(bridge_dir, state="bad_bar", model_id=engine.model_id, error="bar missing time")
     return last_fp, last_fill_fp
 
   if fp == last_fp:
@@ -182,6 +227,8 @@ def process_once(engine: BridgeEngine, bridge_dir: Path, *, last_fp: str | None,
     reason=decision.get("reason"),
     week_start=decision.get("week_start"),
     strategy_name=decision.get("strategy_name"),
+    conditions_fp=decision.get("conditions_fp"),
+    run_conditions=decision.get("run_conditions"),
     error=None,
   )
   try:

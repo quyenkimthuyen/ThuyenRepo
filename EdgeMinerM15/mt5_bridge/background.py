@@ -642,6 +642,28 @@ def _run_sim_bridge_loop(stop_event: threading.Event, model_id: str | None, risk
   while not stop_event.is_set():
     try:
       last_bar_fp, last_fill_fp = _cycle(engine, bridge_dir, last_bar_fp, last_fill_fp)
+    except MemoryError as e:
+      msg = f"sim_bridge MemoryError: {e}"
+      print(f"[sim-bridge] {msg}", flush=True)
+      try:
+        from mt5_bridge.ea_simulator import write_sim_state
+        write_sim_state({"error": msg, "status": "error"})
+        write_status(
+          bridge_dir,
+          state="error",
+          error=msg,
+          **_engine_status_fields(engine),
+        )
+      except Exception:
+        pass
+      # Drop caches and continue — better than killing the whole feed
+      try:
+        engine._fm = None
+        engine._fm_key = None
+        engine._strat_cache.clear()
+      except Exception:
+        pass
+      time.sleep(1.0)
     except Exception as e:
       try:
         write_status(
@@ -652,6 +674,8 @@ def _run_sim_bridge_loop(stop_event: threading.Event, model_id: str | None, risk
         )
       except Exception:
         pass
+      print(f"[sim-bridge] cycle error: {e}", flush=True)
+      time.sleep(0.2)
     # Tight poll so HistoryFeed delay_ms is not dominated by App lag
     time.sleep(0.03)
 

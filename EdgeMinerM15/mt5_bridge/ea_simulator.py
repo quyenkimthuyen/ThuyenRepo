@@ -208,6 +208,23 @@ def sync_state_from_ea(
   bridge_dir = bridge_dir or BRIDGE_SIM_DIR
   prev = load_sim_state()
   ctrl = read_sim_control(bridge_dir)
+  # EA rewrites sim_control every bar — transient empty/partial JSON must NOT
+  # demote a running feed to "stopped" (that kills the App sim service mid-run).
+  if not ctrl:
+    kept = str(prev.get("status") or "running")
+    if kept not in ("running", "paused", "completed", "error"):
+      kept = "running"
+    payload = {
+      **prev,
+      "status": kept,
+      "error": prev.get("error"),
+      "updated_at": _now(),
+      "read_glitch": True,
+    }
+    if not persist:
+      return payload
+    return write_sim_state({k: v for k, v in payload.items() if k != "read_glitch"})
+
   ea_status = str(ctrl.get("ea_status") or "idle")
   bars_done = int(ctrl.get("bars_done") or 0)
   bars_total = int(ctrl.get("bars_total") or 0)
@@ -217,6 +234,7 @@ def sync_state_from_ea(
   if not error:
     error = None
 
+  in_progress = bars_total > 0 and 0 < bars_done < bars_total
   if ea_status == "completed":
     status = "completed"
   elif ea_status == "error":
@@ -225,9 +243,12 @@ def sync_state_from_ea(
       error = "EA reported error status"
   elif enabled or ea_status == "running":
     status = "running"
-  elif prev.get("status") == "paused":
+  elif prev.get("status") == "paused" or ea_status == "paused":
     status = "paused"
-  elif prev.get("status") in ("running", "paused"):
+  elif in_progress and prev.get("status") == "running":
+    # enabled briefly false / idle flicker while EA still mid-range
+    status = "running"
+  elif prev.get("status") in ("running", "paused") and not enabled:
     status = "stopped"
   else:
     status = str(prev.get("status") or "idle")
@@ -240,7 +261,7 @@ def sync_state_from_ea(
       trades = data.get("trades") if isinstance(data, dict) else data
       n_fills = len(trades or [])
     except Exception:
-      n_fills = 0
+      n_fills = int(prev.get("n_fills") or 0)
 
   payload = {
     "status": status,
@@ -248,7 +269,7 @@ def sync_state_from_ea(
     "bars_done": bars_done,
     "bars_total": bars_total,
     "progress": progress,
-    "last_bar": ctrl.get("last_bar") or None,
+    "last_bar": ctrl.get("last_bar") or prev.get("last_bar"),
     "error": error,
     "n_fills": n_fills,
     "enabled": enabled,
@@ -280,11 +301,15 @@ def run_history_feed_control(
   request_id = st0.get("request_id")
   last_persist_bars = -1
   last_persist_t = 0.0
+  stop_hits = 0
+  last_bars_done = -1
 
   while True:
     if stop_event is not None and stop_event.is_set():
       stop_history_feed_control(bridge_dir)
-      return sync_state_from_ea(bridge_dir, persist=True)
+      st = sync_state_from_ea(bridge_dir, persist=True)
+      st["stop_reason"] = "stop_event"
+      return st
 
     if pause_event is not None and pause_event.is_set():
       write_sim_control(bridge_dir, enabled=False)
@@ -310,6 +335,9 @@ def run_history_feed_control(
     now = time.time()
     st = sync_state_from_ea(bridge_dir, persist=False)
     bars_done = int(st.get("bars_done") or 0)
+    if bars_done > last_bars_done:
+      last_bars_done = bars_done
+      stop_hits = 0
     should_persist = (
       st.get("status") in ("completed", "error", "stopped")
       or (bars_done != last_persist_bars and (now - last_persist_t) >= 2.0)
@@ -321,8 +349,29 @@ def run_history_feed_control(
       last_persist_t = now
     if on_progress:
       on_progress(st)
-    if st.get("status") in ("completed", "error", "stopped"):
+
+    status = st.get("status")
+    if status in ("completed", "error"):
+      print(
+        f"[sim-control] exit status={status} bars={bars_done}/"
+        f"{st.get('bars_total')} ea={st.get('ea_status')} err={st.get('error')}",
+        flush=True,
+      )
       return st
+    if status == "stopped":
+      stop_hits += 1
+      # Require sustained stop (avoid JSON race on sim_control mid-write)
+      if stop_hits >= 6:
+        print(
+          f"[sim-control] exit status=stopped after {stop_hits} polls "
+          f"enabled={st.get('enabled')} ea={st.get('ea_status')} "
+          f"bars={bars_done}/{st.get('bars_total')} last={st.get('last_bar')}",
+          flush=True,
+        )
+        st["stop_reason"] = "ea_disabled_or_idle"
+        return st
+    else:
+      stop_hits = 0
     time.sleep(max(0.2, float(poll_sec)))
 
 

@@ -103,12 +103,22 @@ def main() -> int:
       flush=True,
     )
     st = run_history_feed_control(cfg, stop_event=stop, pause_event=None)
-    print(f"[sim-service] finished status={st.get('status')}", flush=True)
+    print(
+      f"[sim-service] finished status={st.get('status')} "
+      f"reason={st.get('stop_reason') or st.get('error') or '-'} "
+      f"bars={st.get('bars_done')}/{st.get('bars_total')} "
+      f"last={st.get('last_bar')}",
+      flush=True,
+    )
     write_sim_state({
       "status": st.get("status") or "completed",
       "service_pid": None,
       "runtime": "process",
       "error": st.get("error"),
+      "stop_reason": st.get("stop_reason"),
+      "bars_done": st.get("bars_done"),
+      "bars_total": st.get("bars_total"),
+      "last_bar": st.get("last_bar"),
     })
     return 0
   except Exception as e:

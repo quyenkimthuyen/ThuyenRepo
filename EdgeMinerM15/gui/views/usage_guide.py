@@ -218,8 +218,10 @@ App **không** tự đổi model trong danh sách mỗi tuần.
 2. Service chạy **process riêng** (không phụ thuộc tab GUI) — đổi tab / refresh page **không** dừng; bấm **Stop** mới tắt
 3. Trên MT5: compile/attach EA `ForgeBridge`, `InpMode = Live` (thư mục `MQL5/Files/bridge`)
 4. Mỗi M15 mới: EA ghi `bar.json` → App decide → `decision.json` → EA BUY/SELL hoặc FLAT
-5. Xem **Nhật ký giao tiếp** trên GUI (`comm_log.jsonl`: `bar_received`, `decision_sent`, `fill_received`)
-6. Xem **Thống kê lệnh Bridge** (thắng/thua, R, profit) — EA ghi `fill.json` open/close → App lưu `trades.json`
+5. Remine Live = **cùng đường Health OOS / Simulate** (KB ON, full FeatureMatrix, cùng `conditions_fp`). Trên desk Live mở **Parity tuần này** để đối chiếu `strategy_name` với weekly_log Health.
+6. **Simulate** (History Feed) chỉ để **replay** đoạn quá khứ — không bắt buộc để kiểm chứng logic Live.
+7. Xem **Nhật ký giao tiếp** trên GUI (`comm_log.jsonl`: `bar_received`, `decision_sent`, `fill_received`)
+8. Xem **Thống kê lệnh Bridge** (thắng/thua, R, profit) — EA ghi `fill.json` open/close → App lưu `trades.json`
 
 CLI tương đương GUI service: `python scripts/mt5_bridge_service.py`  
 Chi tiết file: `mt5/bridge/README.md`

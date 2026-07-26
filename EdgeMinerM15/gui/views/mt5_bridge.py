@@ -163,6 +163,61 @@ def _render_conditions_alignment(
     st.info("Chưa có decision/status mới — Start Bridge để xác nhận fp khớp Sức khỏe.")
 
 
+def _render_live_oos_parity(
+  *,
+  active: dict | None,
+  decision: dict,
+  file_status: dict,
+) -> None:
+  """Live desk: compare this week strategy vs Health OOS weekly_log."""
+  from gui.bridge_model_monitor import compare_live_week_to_oos
+
+  week = decision.get("week_start") or file_status.get("week_start")
+  strat = decision.get("strategy_name") or file_status.get("strategy_name")
+  fp = decision.get("conditions_fp") or file_status.get("conditions_fp")
+  with st.expander("Parity tuần này · Live vs Health OOS", expanded=False):
+    st.caption(
+      "Live remine = cùng đường Sim/OOS (KB ON, full FeatureMatrix). "
+      "Đối chiếu `strategy_name` tuần hiện tại với weekly_log Health — "
+      "không cần History Feed để kiểm chứng logic Live."
+    )
+    parity = compare_live_week_to_oos(
+      active,
+      week_start=week,
+      strategy_name=strat,
+      conditions_fp=fp,
+    )
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Tuần", str(parity.get("week_start") or "—"))
+    fp_ok = parity.get("fp_match")
+    c2.metric(
+      "conditions_fp",
+      "khớp" if fp_ok is True else ("lệch" if fp_ok is False else "—"),
+    )
+    sm = parity.get("strategy_match")
+    c3.metric(
+      "strategy",
+      "MATCH" if sm is True else ("LỆCH" if sm is False else "—"),
+    )
+    st.caption(
+      f"Live `{parity.get('live_strategy') or '—'}` · "
+      f"OOS `{parity.get('oos_strategy') or '—'}` · "
+      f"model fp `{parity.get('model_fp') or '—'}`"
+    )
+    status = parity.get("status")
+    msg = parity.get("message") or ""
+    if status == "match" and fp_ok is not False:
+      st.success(msg)
+    elif status == "mismatch" or fp_ok is False:
+      st.warning(msg if status == "mismatch" else (
+        f"fp Live `{parity.get('live_fp')}` ≠ model `{parity.get('model_fp')}`. " + msg
+      ))
+    elif status == "week_not_in_report":
+      st.info(msg)
+    else:
+      st.caption(msg)
+
+
 
 def _fmt_px(value) -> str:
   try:
@@ -325,6 +380,12 @@ def _render_trader_desk(*, include_live_metrics: bool = True) -> None:
     decision=decision,
     file_status=file_status,
   )
+  if mode != "sim":
+    _render_live_oos_parity(
+      active=active,
+      decision=decision,
+      file_status=file_status,
+    )
   if mode == "sim":
     st.caption(
       f"Simulate `{service_status.get('status') or 'idle'}` · "
@@ -1326,14 +1387,16 @@ def render():
 
   if mode == "live":
     st.info(
-      "Paper có `SIGNAL`/`FILLED` ≠ lệnh đã vào MT5. "
-      "Chỉ tin fill trong **Thống kê lệnh Bridge** / `trades.json`."
+      "Live remine = Health OOS / Simulate (KB ON). "
+      "Mở **Parity tuần này** trên desk để đối chiếu `strategy_name`. "
+      "Chỉ tin fill trong **Thống kê lệnh Bridge** / `trades.json` "
+      "(Paper `SIGNAL`/`FILLED` ≠ lệnh MT5)."
     )
   else:
     st.info(
-      "Simulate: deploy EA `HISTORY_FEED` + `InpBridgeSubdir=bridge_sim`, "
-      "rồi Start feed bên dưới. Status FEED sống trên chart iframe; "
-      "`bridge_sim/`."
+      "Simulate: replay History Feed để kiểm quá khứ — "
+      "không bắt buộc để xác nhận logic Live. "
+      "EA `HISTORY_FEED` + `InpBridgeSubdir=bridge_sim`, Start feed bên dưới."
     )
 
   chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]

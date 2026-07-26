@@ -400,3 +400,85 @@ def build_monitor_bundle(
       },
     },
   }
+
+
+
+def compare_live_week_to_oos(
+  model: dict | None,
+  *,
+  week_start: str | None,
+  strategy_name: str | None,
+  conditions_fp: str | None = None,
+) -> dict[str, Any]:
+  """Compare Live decision week vs Health OOS weekly_log (no remine)."""
+  params = get_model_run_params(model, (model or {}).get("id"))
+  model_fp = conditions_fingerprint(params)
+  out: dict[str, Any] = {
+    "model_fp": model_fp,
+    "live_fp": conditions_fp,
+    "fp_match": (
+      None if not conditions_fp else str(conditions_fp) == str(model_fp)
+    ),
+    "week_start": week_start,
+    "live_strategy": strategy_name,
+    "oos_strategy": None,
+    "oos_r": None,
+    "strategy_match": None,
+    "status": "no_decision",
+    "message": "Chưa có week_start / strategy trên decision — đợi Bridge decide.",
+  }
+  if not week_start:
+    return out
+  if not model or not model.get("id"):
+    out["status"] = "no_model"
+    out["message"] = "Chưa chọn Trade Model active."
+    return out
+
+  report = load_model_report(model["id"])
+  if not report:
+    out["status"] = "no_report"
+    out["message"] = (
+      "Chưa có report Health OOS — chạy Trade Models → Sức khỏe (KB ON) rồi đối chiếu."
+    )
+    return out
+
+  week_key = str(week_start)[:10]
+  hit = None
+  for row in report.get("weekly_log") or []:
+    if not isinstance(row, dict):
+      continue
+    if str(row.get("week_start") or "")[:10] == week_key:
+      hit = row
+      break
+
+  if hit is None:
+    out["status"] = "week_not_in_report"
+    out["message"] = (
+      f"Tuần `{week_key}` chưa có trong report Health "
+      "(tuần mới hơn tip OOS, hoặc chưa refresh KB ON)."
+    )
+    return out
+
+  oos_name = hit.get("strategy") or hit.get("strategy_name")
+  out["oos_strategy"] = oos_name
+  out["oos_r"] = hit.get("oos_r")
+  if not strategy_name:
+    out["status"] = "waiting_strategy"
+    out["message"] = f"OOS tuần này: `{oos_name}` — Live chưa ghi strategy_name."
+    return out
+
+  match = str(strategy_name) == str(oos_name)
+  out["strategy_match"] = match
+  if match:
+    out["status"] = "match"
+    out["message"] = (
+      f"MATCH · Live = OOS `{oos_name}`"
+      + (f" · OOS R={out['oos_r']}" if out["oos_r"] is not None else "")
+    )
+  else:
+    out["status"] = "mismatch"
+    out["message"] = (
+      f"LỆCH strategy · Live `{strategy_name}` ≠ OOS `{oos_name}`. "
+      "Kiểm tra fp / Restart bridge service / refresh Health cùng search space."
+    )
+  return out
