@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
   [string]$TerminalDataPath = "",
   [string]$InstallPath = "",
@@ -220,33 +220,36 @@ function Attach-ForgeBridge(
   $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
   Copy-Item $target.FullName "$($target.FullName).backup_$timestamp" -Force
   $mode = if ($TradingEnabled) { 1 } else { 0 }
-  $block = @"
-<expert>
-name=ForgeBridgeH1
-path=Experts\EdgeMinerH1\ForgeBridgeH1.ex5
-expertmode=$mode
-<inputs>
-InpMode=$InpMode
-InpBridgeSubdir=$BridgeSubdir
-InpDecisionWaitMs=8000
-InpPollMs=500
-InpChartBars=336
-InpHeartbeatMs=2000
-InpHistoryChunk=750
-InpHistoryPaperFills=true
-InpRiskPct=$RiskPct
-InpMagic=20260725
-InpSlipPoints=30
-InpMaxHoldBars=36
-</inputs>
-</expert>
-"@
+  $lines = @(
+    '<expert>',
+    'name=ForgeBridgeH1',
+    'path=Experts\EdgeMinerH1\ForgeBridgeH1.ex5',
+    "expertmode=$mode",
+    '<inputs>',
+    "InpMode=$InpMode",
+    "InpBridgeSubdir=$BridgeSubdir",
+    'InpDecisionWaitMs=8000',
+    'InpPollMs=500',
+    'InpChartBars=336',
+    'InpHeartbeatMs=2000',
+    'InpHistoryChunk=750',
+    'InpHistoryPaperFills=true',
+    "InpRiskPct=$RiskPct",
+    'InpMagic=20260725',
+    'InpSlipPoints=30',
+    'InpMaxHoldBars=36',
+    '</inputs>',
+    '</expert>'
+  )
+  $block = ($lines -join "`r`n")
 
   $text = Get-Content $target.FullName -Raw
-  $text = $text -replace "(?m)^period_type=\d+\s*$", "period_type=1"
-  $text = $text -replace "(?m)^period_size=\d+\s*$", "period_size=1"
-  $text = [regex]::Replace($text, '(?s)<expert>.*?</expert>\s*', '')
-  $text = [regex]::Replace($text, '<window>', ($block + "`r`n" + '<window>'), 1)
+  $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=1'
+  $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=1'
+  $expertPattern = '(?s)<expert>.*?</expert>\s*'
+  $windowTag = '<window>'
+  $text = [regex]::Replace($text, $expertPattern, '')
+  $text = [regex]::Replace($text, $windowTag, ($block + "`r`n" + $windowTag), 1)
   Set-Content -Path $target.FullName -Value $text -Encoding Unicode
 
   Start-Process -FilePath (Join-Path $XmInstallPath "terminal64.exe")

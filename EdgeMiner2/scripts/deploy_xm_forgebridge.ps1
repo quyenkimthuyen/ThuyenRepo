@@ -194,32 +194,36 @@ function Attach-ForgeBridge(
   $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
   Copy-Item $target.FullName "$($target.FullName).backup_$timestamp" -Force
   $mode = if ($TradingEnabled) { 1 } else { 0 }
-  $block = @"
-<expert>
-name=ForgeBridge
-path=Experts\EdgeMiner2\ForgeBridge.ex5
-expertmode=$mode
-<inputs>
-InpMode=0
-InpBridgeSubdir=bridge
-InpDecisionWaitMs=8000
-InpPollMs=500
-InpChartBars=1344
-InpHeartbeatMs=2000
-InpHistoryChunk=750
-InpRiskPct=$RiskPct
-InpMagic=20260724
-InpSlipPoints=30
-InpMaxHoldBars=36
-</inputs>
-</expert>
-"@
+  $lines = @(
+    '<expert>',
+    'name=ForgeBridge',
+    'path=Experts\EdgeMiner2\ForgeBridge.ex5',
+    "expertmode=$mode",
+    '<inputs>',
+    'InpMode=0',
+    'InpBridgeSubdir=bridge',
+    'InpDecisionWaitMs=8000',
+    'InpPollMs=500',
+    'InpChartBars=1344',
+    'InpHeartbeatMs=2000',
+    'InpHistoryChunk=750',
+    "InpRiskPct=$RiskPct",
+    'InpMagic=20260724',
+    'InpSlipPoints=30',
+    'InpMaxHoldBars=36',
+    '</inputs>',
+    '</expert>'
+  )
+  $block = ($lines -join "`r`n")
 
   $text = Get-Content $target.FullName -Raw
-  $text = $text -replace "(?m)^period_type=\d+\s*$", "period_type=0"
-  $text = $text -replace "(?m)^period_size=\d+\s*$", "period_size=15"
-  $text = [regex]::Replace($text, "(?s)<expert>.*?</expert>\s*", "")
-  $text = [regex]::Replace($text, "<window>", ($block + "`r`n<window>"), 1)
+  $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=0'
+  $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=15'
+  # Patterns MUST stay single-quoted. Double quotes make PS parse < as redirection.
+  $expertPattern = '(?s)<expert>.*?</expert>\s*'
+  $windowTag = '<window>'
+  $text = [regex]::Replace($text, $expertPattern, '')
+  $text = [regex]::Replace($text, $windowTag, ($block + "`r`n" + $windowTag), 1)
   Set-Content -Path $target.FullName -Value $text -Encoding Unicode
 
   Start-Process -FilePath (Join-Path $XmInstallPath "terminal64.exe")

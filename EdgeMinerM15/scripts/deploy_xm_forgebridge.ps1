@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
   [string]$TerminalDataPath = "",
   [string]$InstallPath = "",
@@ -187,27 +187,30 @@ function New-ForgeBridgeExpertBlock(
   [string]$BridgeSubdir
 ) {
   $mode = if ($TradingEnabled) { 1 } else { 0 }
-  return @"
-<expert>
-name=ForgeBridge
-path=Experts\EdgeMiner2\ForgeBridge.ex5
-expertmode=$mode
-<inputs>
-InpMode=$InpMode
-InpBridgeSubdir=$BridgeSubdir
-InpDecisionWaitMs=8000
-InpPollMs=500
-InpChartBars=1344
-InpHeartbeatMs=2000
-InpHistoryChunk=750
-InpHistoryPaperFills=true
-InpRiskPct=$RiskPct
-InpMagic=20260724
-InpSlipPoints=30
-InpMaxHoldBars=36
-</inputs>
-</expert>
-"@
+  # Build as lines (avoid @"..."@ here-strings with <expert> - PS 5.1 can break on
+  # smart-quotes / encoding and then treat < as the reserved redirect operator).
+  $lines = @(
+    '<expert>',
+    'name=ForgeBridge',
+    'path=Experts\EdgeMiner2\ForgeBridge.ex5',
+    "expertmode=$mode",
+    '<inputs>',
+    "InpMode=$InpMode",
+    "InpBridgeSubdir=$BridgeSubdir",
+    'InpDecisionWaitMs=8000',
+    'InpPollMs=500',
+    'InpChartBars=1344',
+    'InpHeartbeatMs=2000',
+    'InpHistoryChunk=750',
+    'InpHistoryPaperFills=true',
+    "InpRiskPct=$RiskPct",
+    'InpMagic=20260724',
+    'InpSlipPoints=30',
+    'InpMaxHoldBars=36',
+    '</inputs>',
+    '</expert>'
+  )
+  return ($lines -join "`r`n")
 }
 
 function Select-AttachChart(
@@ -273,10 +276,13 @@ function Attach-ForgeBridge(
   $block = New-ForgeBridgeExpertBlock $TradingEnabled $InpMode $BridgeSubdir
 
   $text = Get-Content $target.FullName -Raw
-  $text = $text -replace "(?m)^period_type=\d+\s*$", "period_type=0"
-  $text = $text -replace "(?m)^period_size=\d+\s*$", "period_size=15"
-  $text = [regex]::Replace($text, '(?s)<expert>.*?</expert>\s*', '')
-  $text = [regex]::Replace($text, '<window>', ($block + "`r`n" + '<window>'), 1)
+  $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=0'
+  $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=15'
+  # Patterns MUST stay single-quoted. Double quotes make PS parse < as redirection.
+  $expertPattern = '(?s)<expert>.*?</expert>\s*'
+  $windowTag = '<window>'
+  $text = [regex]::Replace($text, $expertPattern, '')
+  $text = [regex]::Replace($text, $windowTag, ($block + "`r`n" + $windowTag), 1)
   Set-Content -Path $target.FullName -Value $text -Encoding Unicode
 
   Start-Process -FilePath (Join-Path $XmInstallPath "terminal64.exe")
