@@ -97,14 +97,6 @@ def main():
     )
 
   run_grid()
-  try:
-    from gui.edge_improve import build_live_oos_feedback, maybe_promote_grid_best
-    fb = build_live_oos_feedback(source="live")
-    log(f"Feedback: mean_edge={fb.get('mean_edge_r')} tips={fb.get('suggestions')}")
-    promo = maybe_promote_grid_best(require_better_than_active=True)
-    log(f"Promote: ok={promo.get('ok')} reason={promo.get('reason')} model={None if not promo.get('model') else promo['model'].get('id')}")
-  except Exception as e:
-    log(f"Promote/feedback skip: {e}")
   log("=== HOÀN TẤT ===")
   return 0
 

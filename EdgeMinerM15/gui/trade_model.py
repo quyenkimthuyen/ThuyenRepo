@@ -275,19 +275,8 @@ def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
     f"**{format_model_label(active)}** · id `{active.get('id')}` · "
     f"train **{train_w}w** · KB `{kb_p}@ep{kb_ep}` · fp `{fp}`"
   )
-  health_cap = ""
-  try:
-    from gui.edge_improve import assess_model_health
-    h = assess_model_health(active.get("id"))
-    v = h.get("verdict") or "—"
-    health_cap = f" · Health `{v}`"
-    if v == "degraded":
-      st.warning(h.get("message") or "Model đang suy giảm — cân nhắc Grid / promote.")
-  except Exception:
-    pass
   st.caption(
     roles.get(ctx, roles["shared"])
-    + health_cap
     + " · Đổi model: **Trade Models → Quản lý** (tự đồng bộ Paper/Live/Sim config)."
   )
   return active

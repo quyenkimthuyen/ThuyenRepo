@@ -191,18 +191,13 @@ def _score(row: dict, objective: str) -> float:
     r = float(row.get("total_r") or 0)
     dd = float(row.get("max_drawdown_r") or 1)
     frequency = float(row.get("trades_per_week") or 0)
-    # Soft band around ~7–10 trades/week (allow 6.5–10.5 for float noise)
-    if r <= 0 or not 6.5 <= frequency <= 10.5:
+    if r <= 0 or not 7.0 <= frequency <= 10.0:
       return -1e12
     return r / max(dd, 0.5)
   return float(row.get("total_r") or 0)
 
 
-def run_single(spec: GridSpec, *, search_space=None) -> dict:
-  from gui.edge_improve import improved_mining_search_space, improved_search_space_dict
-  from strategy_miner import mining_search_space_to_dict
-
-  space = search_space if search_space is not None else improved_mining_search_space()
+def run_single(spec: GridSpec) -> dict:
   df = load_eurusd_m15(DEFAULT_START_DATE)
   reset_kb_cache()
   if spec.use_kb and spec.kb_profile:
@@ -217,7 +212,6 @@ def run_single(spec: GridSpec, *, search_space=None) -> dict:
     kb_snapshot=spec.kb_snapshot if spec.use_kb else None,
     oos_from=spec.oos_from,
     oos_to=spec.oos_to,
-    search_space=space,
     verbose=False,
   )
   o = result.get("overall_oos", {})
@@ -237,11 +231,6 @@ def run_single(spec: GridSpec, *, search_space=None) -> dict:
     "max_drawdown_r": o.get("max_drawdown_r"),
     "profit_factor": o.get("profit_factor"),
     "trades_per_week": o.get("trades_per_week"),
-    "feature_profile": result.get("feature_profile") or "current",
-    "mining_search_space": (
-      result.get("mining_search_space") or mining_search_space_to_dict(space)
-      or improved_search_space_dict()
-    ),
     "error": None,
   }
   row["risk_adjusted"] = round(_score(row, "risk_adjusted"), 3)
@@ -253,7 +242,6 @@ def run_grid(
   *,
   objective: str = "total_r",
   on_progress: Callable[[int, int, str], None] | None = None,
-  search_space=None,
 ) -> list[dict]:
   rows: list[dict] = []
   total = len(specs)
@@ -261,7 +249,7 @@ def run_grid(
     if on_progress:
       on_progress(i + 1, total, spec.label())
     try:
-      rows.append(run_single(spec, search_space=search_space))
+      rows.append(run_single(spec))
     except Exception as e:
       rows.append({
         "key": spec.key(),
