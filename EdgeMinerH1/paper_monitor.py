@@ -6,7 +6,7 @@ import pandas as pd
 from analytics import trade_objects_to_rows
 from config import (
   DEFAULT_RISK_PCT_PER_TRADE, DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS,
-  MIN_TRAIN_BARS, TRAIN_WEEKS,
+  MIN_TRAIN_BARS, TRAIN_MONTHS,
 )
 from data_loader import get_train_window_indices, get_week_indices
 from execution import adjust_entry_price
@@ -14,19 +14,12 @@ from feature_engine import FeatureMatrix
 from mt5_bridge.history_sync import utc_to_broker_time
 from optimizer import optimize_on_window
 from strategy import compute_metrics
-from strategy_miner import (
-  generate_signals_mined, backtest_mined, mining_search_space_from_dict,
-)
+from strategy_miner import generate_signals_mined, backtest_mined
 
 
 def _current_week_bounds(df: pd.DataFrame) -> tuple[pd.Timestamp, pd.Timestamp]:
-  return _week_bounds_for_ts(df.index[-1])
-
-
-def _week_bounds_for_ts(ts: pd.Timestamp) -> tuple[pd.Timestamp, pd.Timestamp]:
-  """ISO week containing ``ts`` (broker/series time) — used by live + HistoryFeed."""
-  now = pd.Timestamp(ts)
-  week_start = now - pd.Timedelta(days=int(now.weekday()))
+  now = df.index[-1]
+  week_start = now - pd.Timedelta(days=now.weekday())
   week_start = week_start.normalize()
   if week_start.hour > 0:
     week_start = pd.Timestamp(week_start.date())
@@ -76,24 +69,18 @@ def _project_signal_levels(
 def get_monitor_state(
   df: pd.DataFrame,
   use_learning: bool = False,
-  train_weeks: int = TRAIN_WEEKS,
+  train_months: int = TRAIN_MONTHS,
   spread_pips: float = DEFAULT_SPREAD_PIPS,
   slippage_pips: float = DEFAULT_SLIPPAGE_PIPS,
   risk_pct: float = DEFAULT_RISK_PCT_PER_TRADE,
   kb_profile: str | None = None,
   kb_snapshot: int | str | None = None,
-  feature_profile: str = "current",
-  mining_search_space: dict | None = None,
 ) -> dict:
   """Trạng thái paper monitor: strategy tuần này, tín hiệu, lệnh đã có."""
   from strategy_miner import ensure_label_cache_for_df
 
   ensure_label_cache_for_df(len(df))
-  search_space = (
-    mining_search_space_from_dict(mining_search_space)
-    if mining_search_space else None
-  )
-  fm = FeatureMatrix(df, profile=feature_profile)
+  fm = FeatureMatrix(df)
   week_start, week_end = _current_week_bounds(df)
 
   kb = None
@@ -103,14 +90,13 @@ def get_monitor_state(
       set_kb_profile(kb_profile, kb_snapshot)
     kb = get_knowledge_base(kb_profile, kb_snapshot)
 
-  train_start_idx, train_end_idx = get_train_window_indices(df, week_start, train_weeks)
+  train_start_idx, train_end_idx = get_train_window_indices(df, week_start, train_months)
   if train_start_idx is None or (train_end_idx - train_start_idx) < MIN_TRAIN_BARS:
     return {"error": "Không đủ dữ liệu train cho tuần hiện tại."}
 
   strat = optimize_on_window(
     fm, train_start_idx, train_end_idx,
     use_learning=use_learning, as_of=week_start, kb=kb,
-    search_space=search_space,
   )
   if strat is None:
     return {"error": "Không mine được strategy."}
@@ -148,27 +134,7 @@ def get_monitor_state(
   chart_to = min(df.index[-1], week_end + pad)
 
   last_bar = df.index[-1]
-  broker_last_bar = utc_to_broker_time(last_bar)
-  in_session = 7 <= broker_last_bar.hour <= 20
-  day_trades = [
-    trade for trade in week_trades
-    if utc_to_broker_time(trade.entry_time).date() == broker_last_bar.date()
-  ]
-
-  wins = [t for t in trade_rows if float(t.get("r") or 0) > 0]
-  losses = [t for t in trade_rows if float(t.get("r") or 0) < 0]
-  be = [t for t in trade_rows if float(t.get("r") or 0) == 0]
-  longs = [t for t in trade_rows if t.get("dir") == "LONG"]
-  shorts = [t for t in trade_rows if t.get("dir") == "SHORT"]
-  by_reason: dict[str, int] = {}
-  for t in trade_rows:
-    reason = str(t.get("reason") or "other")
-    by_reason[reason] = by_reason.get(reason, 0) + 1
-  avg_r = (
-    round(sum(float(t.get("r") or 0) for t in trade_rows) / len(trade_rows), 3)
-    if trade_rows else 0.0
-  )
-  expectancy_r = round(avg_r, 3) if trade_rows else 0.0
+  in_session = 7 <= utc_to_broker_time(last_bar).hour <= 20
 
   orders = []
   for t in trade_rows:
@@ -220,45 +186,20 @@ def get_monitor_state(
       "rr": strat.rr_ratio,
       "atr_mult_sl": strat.atr_mult_sl,
       "ml_prob_min": strat.ml_prob_min,
-      "max_trades_per_day": strat.max_trades_per_day,
+      "max_trades_per_week": strat.max_trades_per_week,
       "max_hold_bars": strat.max_hold_bars,
     },
     "week_trades_taken": week_m["n_trades"],
-    "day_trades_taken": len(day_trades),
     "week_total_r": round(week_m["total_r"], 2),
     "week_return_pct": round(week_m["total_r"] * risk_pct, 2),
     "risk_pct": risk_pct,
     "risk_of_ruin_pct": week_m.get("risk_of_ruin_pct", 0.0),
     "week_wr": round(week_m["win_rate"] * 100, 1),
-    "slots_remaining": max(strat.max_trades_per_day - len(day_trades), 0),
+    "slots_remaining": max(strat.max_trades_per_week - week_m["n_trades"], 0),
     "kb_profile": kb_profile,
     "kb_snapshot": kb_snapshot if kb_snapshot not in (None, "latest") else "latest",
     "signals_this_week": signal_bars,
     "recent_trades": trade_rows,
     "orders": orders,
     "open_position": open_position,
-    # Desk stats — góc nhìn trader
-    "desk": {
-      "n_closed": len(trade_rows),
-      "n_open": 1 if open_position else 0,
-      "n_signal": sum(1 for s in signal_bars if s.get("status") == "SIGNAL"),
-      "n_wins": len(wins),
-      "n_losses": len(losses),
-      "n_be": len(be),
-      "n_long": len(longs),
-      "n_short": len(shorts),
-      "avg_r": avg_r,
-      "expectancy_r": expectancy_r,
-      "avg_win_r": round(float(week_m.get("avg_win_r") or 0), 3),
-      "avg_loss_r": round(float(week_m.get("avg_loss_r") or 0), 3),
-      "max_drawdown_r": round(float(week_m.get("max_drawdown_r") or 0), 3),
-      "profit_factor": (
-        None if week_m.get("profit_factor") == float("inf")
-        else round(float(week_m.get("profit_factor") or 0), 3)
-      ),
-      "max_win_streak": int(week_m.get("max_win_streak") or 0),
-      "max_loss_streak": int(week_m.get("max_loss_streak") or 0),
-      "by_reason": by_reason,
-      "total_pips": round(float(week_m.get("total_pips") or 0), 1),
-    },
   }

@@ -21,7 +21,7 @@ def main() -> int:
   report = run_walk_forward(
     load_eurusd_h1("2025-01-01"),
     use_learning=bool(model.get("use_kb", True)),
-    train_weeks=int(model["train_weeks"]),
+    train_months=int(model.get("train_months") or 3),
     spread_pips=float(model.get("spread_pips", 1.0)),
     slippage_pips=float(model.get("slippage_pips", 0.3)),
     holdout_months=0,

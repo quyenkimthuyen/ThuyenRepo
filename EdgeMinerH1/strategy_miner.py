@@ -9,7 +9,6 @@ import threading
 import numpy as np
 import pandas as pd
 
-from config import BARS_PER_WEEK, MAX_TRADES_PER_DAY, TARGET_TRADES_PER_WEEK
 from feature_engine import FeatureMatrix
 from ml_scorer import MLScorer
 from strategy import Trade, compute_metrics
@@ -68,11 +67,10 @@ class MinedStrategy:
   score_threshold: float = 2.0
   atr_mult_sl: float = 0.9
   rr_ratio: float = 2.5
-  # H1 strategy defaults (hold/spacing)
   max_hold_bars: int = 36
   min_bars_between: int = 4
   min_rules_match: int = 2
-  max_trades_per_day: int = MAX_TRADES_PER_DAY
+  max_trades_per_week: int = 2
   ml_prob_min: float = 0.40
   exit_mode: str = "trail"       # full | partial | trail
   partial_pct: float = 0.4
@@ -80,121 +78,24 @@ class MinedStrategy:
   trail_activate_r: float = 1.0
   trail_distance_r: float = 0.5
   session_filter: bool = True
-  session_start_hour: int = 7
-  session_end_hour: int = 20
-  # Soft HTF bias: boost aligned / dampen counter-trend entries
-  htf_align_boost: float = 1.12
-  htf_counter_dampen: float = 0.88
   ml_scorer: MLScorer | None = None
   name: str = "mined_v3"
-
-
-@dataclass(frozen=True)
-class MiningSearchSpace:
-  """Immutable mining grid; H1 defaults (spacing_4 + hold_36)."""
-  rr_ratios: tuple[float, ...] = (2.5, 3.0)
-  atr_multipliers: tuple[float, ...] = (0.9, 1.05)
-  max_hold_bars: tuple[int, ...] = (36,)
-  min_bars_between: tuple[int, ...] = (4,)
-  session_ranges: tuple[tuple[int, int], ...] = ((7, 20),)
-  session_filters: tuple[bool, ...] = (True,)
-  score_thresholds: tuple[float, ...] = (0.6, 1.0, 1.6, 2.2)
-  min_rules_matches: tuple[int, ...] = (1, 2)
-  ml_probability_thresholds: tuple[float, ...] = (0.36, 0.40, 0.44, 0.48)
-  min_feature_samples: int = 30
-  min_threshold_samples: int = 10
-  min_binary_samples: int = 8
-  include_session_regime_rules: bool = False
-  target_trades_per_week: float = TARGET_TRADES_PER_WEEK
-  drawdown_penalty: float = 0.0
-  loss_streak_penalty: float = 0.0
-
-
-def mining_search_space_from_dict(value: dict | None) -> MiningSearchSpace:
-  """Build a typed search space from JSON-compatible model metadata."""
-  if not value:
-    return MiningSearchSpace()
-  tuple_fields = {
-    "rr_ratios", "atr_multipliers", "max_hold_bars", "min_bars_between",
-    "session_filters", "score_thresholds", "min_rules_matches",
-    "ml_probability_thresholds",
-  }
-  kwargs = {}
-  for key in MiningSearchSpace.__dataclass_fields__:
-    if key not in value:
-      continue
-    raw = value[key]
-    if key == "session_ranges":
-      kwargs[key] = tuple(tuple(int(part) for part in pair) for pair in raw)
-    elif key in tuple_fields:
-      kwargs[key] = tuple(raw)
-    else:
-      kwargs[key] = raw
-  return MiningSearchSpace(**kwargs)
-
-
-def mining_search_space_to_dict(space: MiningSearchSpace | None) -> dict:
-  from dataclasses import asdict
-  return asdict(space or MiningSearchSpace())
-
-
-def constrain_strategy_to_space(
-  strat: MinedStrategy, space: MiningSearchSpace | None,
-) -> MinedStrategy:
-  """Project inherited KB genomes into the controlled experiment space."""
-  if space is None:
-    return strat
-
-  def nearest(value, choices):
-    return min(choices, key=lambda candidate: abs(float(candidate) - float(value)))
-
-  strat.rr_ratio = float(nearest(strat.rr_ratio, space.rr_ratios))
-  strat.atr_mult_sl = float(nearest(strat.atr_mult_sl, space.atr_multipliers))
-  strat.max_hold_bars = int(nearest(strat.max_hold_bars, space.max_hold_bars))
-  strat.min_bars_between = int(nearest(strat.min_bars_between, space.min_bars_between))
-  strat.score_threshold = float(nearest(strat.score_threshold, space.score_thresholds))
-  strat.min_rules_match = int(nearest(strat.min_rules_match, space.min_rules_matches))
-  strat.ml_prob_min = float(nearest(
-    strat.ml_prob_min, space.ml_probability_thresholds,
-  ))
-  strat.session_filter = bool(
-    strat.session_filter if strat.session_filter in space.session_filters
-    else space.session_filters[0]
-  )
-  strat.session_start_hour, strat.session_end_hour = min(
-    space.session_ranges,
-    key=lambda pair: (
-      abs(pair[0] - strat.session_start_hour) + abs(pair[1] - strat.session_end_hour)
-    ),
-  )
-  return strat
 
 
 CONTINUOUS_FEATURES = [
   "rsi", "adx", "bb_pos", "bb_width_pct", "atr_pct", "zscore_20",
   "price_vs_ema21", "price_vs_ema50", "ema_slope_8", "ema_slope_21",
   "macd_hist", "roc_5", "body_ratio", "lower_wick_ratio", "upper_wick_ratio",
-  "session_vwap_dist", "swing_strength",
 ]
-BINARY_LONG = [
-  "sweep_low_fade", "squeeze_break_up", "pullback_long", "range_buy",
-  "engulf_bull", "macd_cross_up", "ema_stack_bull",
-  "rejection_bull", "displacement_bull", "structure_break_up", "confluence_long",
-]
-BINARY_SHORT = [
-  "sweep_high_fade", "squeeze_break_dn", "pullback_short", "range_sell",
-  "engulf_bear", "macd_cross_dn", "ema_stack_bear",
-  "rejection_bear", "displacement_bear", "structure_break_dn", "confluence_short",
-]
-SESSION_REGIME_BINARY = [
-  "london_session", "ny_session", "overlap_session", "asia_session", "london_open",
-  "regime_trending", "regime_ranging", "regime_high_vol", "regime_low_vol",
-]
+BINARY_LONG = ["sweep_low_fade", "squeeze_break_up", "pullback_long", "range_buy",
+               "engulf_bull", "macd_cross_up", "ema_stack_bull"]
+BINARY_SHORT = ["sweep_high_fade", "squeeze_break_dn", "pullback_short", "range_sell",
+                "engulf_bear", "macd_cross_dn", "ema_stack_bear"]
 
 
-def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36):
+def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9):
   ensure_label_cache_for_df(fm.n)
-  key = (fm.n, start, end, rr, atr_mult, max_hold_bars)
+  key = (fm.n, start, end, rr, atr_mult)
   with _LABEL_LOCK:
     cached = LABEL_CACHE.get(key)
     if cached is not None:
@@ -206,7 +107,7 @@ def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36):
   long_win = np.zeros(fm.n, dtype=np.int8)
   short_win = np.zeros(fm.n, dtype=np.int8)
   o, h, l, atr_v = fm.open, fm.high, fm.low, fm.atr
-  max_hold = max_hold_bars
+  max_hold = 36
   last_i = min(end - max_hold - 2, fm.n - max_hold - 2)
 
   for i in range(start, last_i):
@@ -237,10 +138,7 @@ def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36):
   return long_win, short_win
 
 
-def _mine_threshold_rules(
-  fm, feat_name, direction, wins, start, end, top_n=3,
-  min_feature_samples=30, min_threshold_samples=10,
-):
+def _mine_threshold_rules(fm, feat_name, direction, wins, start, end, top_n=3):
   if len(wins) != fm.n:
     return []
   feat = fm.get(feat_name)
@@ -249,7 +147,7 @@ def _mine_threshold_rules(
   valid[start:end] = True
   valid[:fm.warmup] = False
   valid &= ~np.isnan(feat)
-  if valid.sum() < min_feature_samples:
+  if valid.sum() < 30:
     return []
   baseline = wins[valid].mean()
   min_wr = max(baseline + 0.05, 0.32)
@@ -257,7 +155,7 @@ def _mine_threshold_rules(
     thr = np.nanpercentile(feat[valid], pct)
     for op in ("gt", "lt"):
       cond = valid & (feat > thr if op == "gt" else feat < thr)
-      if cond.sum() < min_threshold_samples:
+      if cond.sum() < 10:
         continue
       wr = wins[cond].mean()
       lift = wr - baseline
@@ -267,7 +165,7 @@ def _mine_threshold_rules(
   return [r for _, r in rules[:top_n]]
 
 
-def _mine_binary_rules(fm, feat_names, direction, wins, start, end, min_binary_samples=8):
+def _mine_binary_rules(fm, feat_names, direction, wins, start, end):
   if len(wins) != fm.n:
     return []
   rules = []
@@ -276,14 +174,9 @@ def _mine_binary_rules(fm, feat_names, direction, wins, start, end, min_binary_s
   valid[:fm.warmup] = False
   baseline = wins[valid].mean() if valid.sum() > 0 else 0.28
   for name in feat_names:
-    try:
-      feat = fm.get(name)
-    except (KeyError, AttributeError):
-      continue
-    if len(feat) != fm.n:
-      continue
+    feat = fm.get(name)
     cond = valid & (feat > 0.5)
-    if cond.sum() < min_binary_samples:
+    if cond.sum() < 8:
       continue
     wr = wins[cond].mean()
     lift = wr - baseline
@@ -306,32 +199,6 @@ def _count_matching_rules(fm, rules, i):
   return score, count
 
 
-def _htf_bias(fm, i: int, direction: int, strat) -> float:
-  """Soft higher-timeframe alignment multiplier (price-action confluence)."""
-  try:
-    htf = float(fm.get("htf_trend")[i])
-  except (KeyError, AttributeError, TypeError, ValueError):
-    return 1.0
-  if np.isnan(htf) or htf == 0.0:
-    return 1.0
-  boost = float(getattr(strat, "htf_align_boost", 1.12) or 1.12)
-  damp = float(getattr(strat, "htf_counter_dampen", 0.88) or 0.88)
-  aligned = (direction == 1 and htf > 0) or (direction == -1 and htf < 0)
-  return boost if aligned else damp
-
-
-def _pa_confluence_bonus(fm, i: int, direction: int) -> float:
-  """Extra score when multiple PA setups fire together."""
-  key = "confluence_long" if direction == 1 else "confluence_short"
-  try:
-    v = float(fm.get(key)[i])
-  except (KeyError, AttributeError, TypeError, ValueError):
-    return 0.0
-  if np.isnan(v):
-    return 0.0
-  return 0.35 * v
-
-
 def generate_signals_mined(
   fm, strat, start_idx=0, end_idx=None, *, include_last_bar: bool = False,
 ):
@@ -344,15 +211,12 @@ def generate_signals_mined(
     strat.ml_scorer.refresh_for_fm(fm)
   ml_l_arr = strat.ml_scorer._prob_long if strat.ml_scorer and strat.ml_scorer._prob_long is not None else None
   ml_s_arr = strat.ml_scorer._prob_short if strat.ml_scorer and strat.ml_scorer._prob_short is not None else None
-  hours = getattr(fm, "broker_hours", None)
-  if hours is None:
-    hours = fm.hours
 
   # Backtest needs i+1 entry bar → stop at end_idx-1.
   # Live bridge decides on the just-closed last bar → include it.
   stop = min(end_idx, fm.n) if include_last_bar else end_idx - 1
   for i in range(max(start_idx, fm.warmup), stop):
-    if strat.session_filter and not (strat.session_start_hour <= hours[i] <= strat.session_end_hour):
+    if strat.session_filter and not (7 <= fm.hours[i] <= 20):
       continue
 
     ls, lc = _count_matching_rules(fm, strat.long_rules, i)
@@ -369,9 +233,9 @@ def generate_signals_mined(
       else 0.5
     )
 
-    # Rule score + ML + soft HTF / PA confluence
-    combined_l = ls * (0.5 + ml_l) * _htf_bias(fm, i, 1, strat) + _pa_confluence_bonus(fm, i, 1)
-    combined_s = ss * (0.5 + ml_s) * _htf_bias(fm, i, -1, strat) + _pa_confluence_bonus(fm, i, -1)
+    # Kết hợp rule score + ML probability
+    combined_l = ls * (0.5 + ml_l)
+    combined_s = ss * (0.5 + ml_s)
 
     if lc >= strat.min_rules_match and combined_l >= strat.score_threshold and combined_l > combined_s:
       if ml_l >= strat.ml_prob_min:
@@ -380,21 +244,22 @@ def generate_signals_mined(
       if ml_s >= strat.ml_prob_min:
         candidates.append((combined_s + ml_s * 2, -1, i))
 
-  if candidates and strat.max_trades_per_day > 0:
-    from mt5_bridge.history_sync import utc_to_broker_time
-    day_buckets: dict[str, list] = {}
+  if candidates and strat.max_trades_per_week > 0:
+    week_buckets: dict[str, list] = {}
     for score, direction, i in candidates:
-      broker_day = utc_to_broker_time(fm.index[i]).strftime("%Y-%m-%d")
-      day_buckets.setdefault(broker_day, []).append((score, direction, i))
-    for items in day_buckets.values():
+      wk = fm.index[i].strftime("%Y-%W")
+      week_buckets.setdefault(wk, []).append((score, direction, i))
+    for items in week_buckets.values():
       items.sort(key=lambda x: x[0], reverse=True)
-      selected: list[int] = []
+      last_bar = -strat.min_bars_between - 1
+      taken = 0
       for score, direction, i in items:
-        if len(selected) >= strat.max_trades_per_day:
+        if taken >= strat.max_trades_per_week:
           break
-        if all(abs(i - other) >= strat.min_bars_between for other in selected):
+        if i - last_bar >= strat.min_bars_between:
           signals[i] = direction
-          selected.append(i)
+          last_bar = i
+          taken += 1
   return signals
 
 
@@ -404,7 +269,6 @@ def backtest_mined(
   return_open: bool = False,
 ):
   from execution import adjust_entry_price, adjust_exit_price
-  from mt5_bridge.history_sync import utc_to_broker_time
 
   if end_idx is None:
     end_idx = fm.n
@@ -414,7 +278,6 @@ def backtest_mined(
   in_trade = False
   direction = entry_price = sl = tp = risk = 0.0
   entry_idx = partial_done = trail_active = 0.0
-  entries_by_broker_day: dict[str, int] = {}
 
   while i < end_idx - 1:
     if in_trade:
@@ -485,10 +348,6 @@ def backtest_mined(
       entry_idx = i + 1
       if entry_idx >= end_idx:
         break
-      broker_day = utc_to_broker_time(fm.index[entry_idx]).strftime("%Y-%m-%d")
-      if entries_by_broker_day.get(broker_day, 0) >= strat.max_trades_per_day:
-        i += 1
-        continue
       entry_price = adjust_entry_price(o[entry_idx], int(sig), spread_pips, slippage_pips)
       sl_d = strat.atr_mult_sl * av
       direction = float(sig)
@@ -499,7 +358,6 @@ def backtest_mined(
       else:
         sl, tp = entry_price + sl_d, entry_price - sl_d * strat.rr_ratio
       in_trade = True
-      entries_by_broker_day[broker_day] = entries_by_broker_day.get(broker_day, 0) + 1
       i = entry_idx + 1
       continue
     i += 1
@@ -525,74 +383,39 @@ def backtest_mined(
 
 
 def _weeks_in_window(start, end):
-  return max((end - start) / float(BARS_PER_WEEK), 1.0)
+  return max((end - start) / 168.0, 1.0)
 
 
-def score_strategy_metrics(
-  m, weeks, target_tpw=TARGET_TRADES_PER_WEEK,
-  drawdown_penalty: float = 0.0, loss_streak_penalty: float = 0.0,
-):
-  """Fitness tuned for realistic H1 edge (~45–55% WR × RR≥2) and total R / DD."""
+def score_strategy_metrics(m, weeks, target_tpw=2.0):
   if m["n_trades"] < 3:
     return -1e6
   tpw = m["n_trades"] / weeks
   wr, rr, tr, pf = m["win_rate"], m["avg_rr"], m["total_r"], m["profit_factor"]
-  dd = float(m.get("max_drawdown_r") or 0)
-  # Soft frequency band: prefer ~7–10 tpw but allow quality over volume
-  freq_score = 45 - abs(tpw - target_tpw) * 22
-  if tpw < 5:
-    freq_score -= 45
-  elif tpw < 7:
-    freq_score -= 20
-  if tpw > 12:
-    freq_score -= 35
-  elif tpw > 10:
-    freq_score -= 15
+  freq_score = 55 - abs(tpw - target_tpw) * 30
+  if tpw < 0.8:
+    freq_score -= 50
+  if tpw > 4:
+    freq_score -= 40
 
-  expectancy = wr * rr - (1.0 - wr)  # approx R per trade at fixed RR
-  s = (
-    wr * 130
-    + min(rr, 4) * 50
-    + min(pf, 4) * 18
-    + tr * 12
-    + max(expectancy, -0.5) * 90
-    + freq_score
-  )
-  # Achievable quality bonuses (previous 55/58/60 rarely fired)
-  if wr >= 0.45 and rr >= 2.0:
-    s += 45
-  if wr >= 0.48 and rr >= 2.2:
-    s += 70
-  if wr >= 0.52 and rr >= 2.0:
-    s += 90
-  if wr >= 0.55 and rr >= 2.0:
-    s += 60
+  s = wr * 150 + min(rr, 4) * 55 + min(pf, 4) * 12 + tr * 8 + freq_score
+  if wr >= 0.55 and rr >= 1.9:
+    s += 80
+  if wr >= 0.58 and rr >= 2.0:
+    s += 130
+  if wr >= 0.60 and rr >= 2.0:
+    s += 80
   if rr >= 2.0:
     s += 40
   if rr < 1.7:
     s -= (1.7 - rr) * 100
   if wr < 0.40:
-    s -= (0.40 - wr) * 200
+    s -= (0.40 - wr) * 180
   if tr <= 0:
-    s -= 50
-  # Built-in mild risk-adjusted reward (research: lower DD with spacing/hold)
-  if dd > 0 and tr > 0:
-    s += min(tr / dd, 10.0) * 12
-  elif tr > 0 and dd <= 0:
-    s += 40
-  # Mild default DD / streak friction even when penalties are 0
-  s -= dd * (drawdown_penalty if drawdown_penalty > 0 else 0.8)
-  s -= float(m.get("max_loss_streak") or 0) * (
-    loss_streak_penalty if loss_streak_penalty > 0 else 1.5
-  )
+    s -= 40
   return s
 
 
-def mine_strategy(
-  fm, train_start, train_end, target_tpw=TARGET_TRADES_PER_WEEK,
-  search_space: MiningSearchSpace | None = None,
-):
-  space = search_space or MiningSearchSpace(target_trades_per_week=target_tpw)
+def mine_strategy(fm, train_start, train_end, target_tpw=2.0):
   with _LABEL_LOCK:
     if len(LABEL_CACHE) > 200:
       LABEL_CACHE.clear()
@@ -608,85 +431,60 @@ def mine_strategy(
                 ("hybrid", {"trail_activate_r": 1.8, "trail_distance_r": 0.6}),
                 ("partial", {"partial_pct": 0.35, "partial_at_r": 1.5})]
 
-  for rr in space.rr_ratios:
-    for atr_m in space.atr_multipliers:
-      for max_hold in space.max_hold_bars:
-        long_wins, short_wins = _label_outcomes(
-          fm, train_start, train_end, rr, atr_m, max_hold,
-        )
+  for rr in [2.5, 3.0]:
+    for atr_m in [0.9, 1.05]:
+      long_wins, short_wins = _label_outcomes(fm, train_start, train_end, rr, atr_m)
 
-        ml = MLScorer()
-        ml.fit(fm, train_start, train_end, long_wins, short_wins)
+      ml = MLScorer()
+      ml.fit(fm, train_start, train_end, long_wins, short_wins)
 
-        long_rules, short_rules = [], []
-        for feat in CONTINUOUS_FEATURES:
-          long_rules.extend(_mine_threshold_rules(
-            fm, feat, "long", long_wins, train_start, train_end, 2,
-            space.min_feature_samples, space.min_threshold_samples,
-          ))
-          short_rules.extend(_mine_threshold_rules(
-            fm, feat, "short", short_wins, train_start, train_end, 2,
-            space.min_feature_samples, space.min_threshold_samples,
-          ))
-        extra_binary = SESSION_REGIME_BINARY if space.include_session_regime_rules else []
-        long_rules.extend(_mine_binary_rules(
-          fm, BINARY_LONG + extra_binary, "long", long_wins,
-          train_start, train_end, space.min_binary_samples,
-        ))
-        short_rules.extend(_mine_binary_rules(
-          fm, BINARY_SHORT + extra_binary, "short", short_wins,
-          train_start, train_end, space.min_binary_samples,
-        ))
-        long_rules = sorted(long_rules, key=lambda r: r.weight, reverse=True)[:6]
-        short_rules = sorted(short_rules, key=lambda r: r.weight, reverse=True)[:6]
+      long_rules, short_rules = [], []
+      for feat in CONTINUOUS_FEATURES:
+        long_rules.extend(_mine_threshold_rules(fm, feat, "long", long_wins, train_start, train_end, 2))
+        short_rules.extend(_mine_threshold_rules(fm, feat, "short", short_wins, train_start, train_end, 2))
+      long_rules.extend(_mine_binary_rules(fm, BINARY_LONG, "long", long_wins, train_start, train_end))
+      short_rules.extend(_mine_binary_rules(fm, BINARY_SHORT, "short", short_wins, train_start, train_end))
+      long_rules = sorted(long_rules, key=lambda r: r.weight, reverse=True)[:6]
+      short_rules = sorted(short_rules, key=lambda r: r.weight, reverse=True)[:6]
 
-        for name in ["sweep_low_fade", "pullback_long"]:
-          if len(long_rules) < 2:
-            long_rules.append(Rule(name, "long", "eq1", 0.5, weight=0.4))
-        for name in ["sweep_high_fade", "pullback_short"]:
-          if len(short_rules) < 2:
-            short_rules.append(Rule(name, "short", "eq1", 0.5, weight=0.4))
+      for name in ["sweep_low_fade", "pullback_long"]:
+        if len(long_rules) < 2:
+          long_rules.append(Rule(name, "long", "eq1", 0.5, weight=0.4))
+      for name in ["sweep_high_fade", "pullback_short"]:
+        if len(short_rules) < 2:
+          short_rules.append(Rule(name, "short", "eq1", 0.5, weight=0.4))
 
-        for exit_mode, exit_kw in exit_modes:
-          for spacing in space.min_bars_between:
-            for session_start, session_end in space.session_ranges:
-              for session_filter in space.session_filters:
-                for thr in space.score_thresholds:
-                  for min_match in space.min_rules_matches:
-                    for ml_thr in space.ml_probability_thresholds:
-                      strat = MinedStrategy(
-                        long_rules=long_rules, short_rules=short_rules,
-                        score_threshold=thr, atr_mult_sl=atr_m, rr_ratio=rr,
-                        max_hold_bars=max_hold, min_bars_between=spacing,
-                        min_rules_match=min_match,
-                        max_trades_per_day=MAX_TRADES_PER_DAY, ml_prob_min=ml_thr,
-                        session_filter=session_filter,
-                        session_start_hour=session_start, session_end_hour=session_end,
-                        exit_mode=exit_mode, ml_scorer=ml,
-                        name=f"v3_{exit_mode}_rr{rr}",
-                        **exit_kw,
-                      )
-                      sig = generate_signals_mined(fm, strat, train_start, train_end)
-                      fit_trades = backtest_mined(fm, strat, sig, train_start, split)
-                      val_trades = backtest_mined(fm, strat, sig, split, train_end)
-                      comb = compute_metrics(fit_trades + val_trades)
-                      val_m = compute_metrics(val_trades)
+      for exit_mode, exit_kw in exit_modes:
+        for thr in [0.6, 1.0, 1.6, 2.2]:
+          for min_match in [1, 2]:
+            for ml_thr in [0.36, 0.40, 0.44, 0.48]:
+              strat = MinedStrategy(
+                long_rules=long_rules, short_rules=short_rules,
+                score_threshold=thr, atr_mult_sl=atr_m, rr_ratio=rr,
+                min_bars_between=4, min_rules_match=min_match,
+                max_trades_per_week=2, ml_prob_min=ml_thr,
+                exit_mode=exit_mode, ml_scorer=ml,
+                name=f"v3_{exit_mode}_rr{rr}",
+                **exit_kw,
+              )
+              sig = generate_signals_mined(fm, strat, train_start, train_end)
+              fit_trades = backtest_mined(fm, strat, sig, train_start, split)
+              val_trades = backtest_mined(fm, strat, sig, split, train_end)
+              comb = compute_metrics(fit_trades + val_trades)
+              val_m = compute_metrics(val_trades)
 
-                      if comb["n_trades"] < 3:
-                        continue
+              if comb["n_trades"] < 3:
+                continue
 
-                      s = score_strategy_metrics(
-                        comb, weeks, space.target_trades_per_week,
-                        space.drawdown_penalty, space.loss_streak_penalty,
-                      )
-                      if val_m["n_trades"] >= 2 and val_m["total_r"] < -4:
-                        s -= 80
+              s = score_strategy_metrics(comb, weeks, target_tpw)
+              if val_m["n_trades"] >= 2 and val_m["total_r"] < -4:
+                s -= 80
 
-                      if s > best_fallback_score:
-                        best_fallback_score, best_fallback = s, strat
+              if s > best_fallback_score:
+                best_fallback_score, best_fallback = s, strat
 
-                      if comb["win_rate"] >= 0.50 and comb["avg_rr"] >= 1.6 and comb["total_r"] > 0:
-                        if s > best_score:
-                          best_score, best = s, strat
+              if comb["win_rate"] >= 0.50 and comb["avg_rr"] >= 1.6 and comb["total_r"] > 0:
+                if s > best_score:
+                  best_score, best = s, strat
 
   return best if best is not None else best_fallback

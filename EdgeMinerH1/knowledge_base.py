@@ -163,12 +163,7 @@ class KnowledgeBase:
       "partial_at_r": strat.partial_at_r,
       "trail_activate_r": strat.trail_activate_r,
       "trail_distance_r": strat.trail_distance_r,
-      "max_trades_per_day": strat.max_trades_per_day,
-      "max_hold_bars": strat.max_hold_bars,
-      "min_bars_between": strat.min_bars_between,
-      "session_filter": strat.session_filter,
-      "session_start_hour": strat.session_start_hour,
-      "session_end_hour": strat.session_end_hour,
+      "max_trades_per_week": strat.max_trades_per_week,
     }
 
   def dict_to_strategy(self, g: dict):
@@ -189,12 +184,7 @@ class KnowledgeBase:
       partial_at_r=g.get("partial_at_r", 1.5),
       trail_activate_r=g.get("trail_activate_r", 1.8),
       trail_distance_r=g.get("trail_distance_r", 0.6),
-      max_trades_per_day=g.get("max_trades_per_day", g.get("max_trades_per_week", 2)),
-      max_hold_bars=g.get("max_hold_bars", 36),
-      min_bars_between=g.get("min_bars_between", 4),
-      session_filter=g.get("session_filter", True),
-      session_start_hour=g.get("session_start_hour", 7),
-      session_end_hour=g.get("session_end_hour", 20),
+      max_trades_per_week=g.get("max_trades_per_week", 2),
       name=name,
     )
 

@@ -32,7 +32,7 @@ from kb_profiles import (
   create_profile, register_profile, slice_df_for_period,
   profile_path, DEFAULT_PROFILE_ID,
 )
-from config import TRAIN_WEEKS, MIN_TRAIN_BARS, DEFAULT_SPREAD_PIPS, DEFAULT_SLIPPAGE_PIPS
+from config import TRAIN_MONTHS, MIN_TRAIN_BARS, DEFAULT_SPREAD_PIPS, DEFAULT_SLIPPAGE_PIPS
 from meta_learner import mine_strategy_learning, record_trade_learning
 from optimizer import TARGET_TRADES_PER_WEEK
 from strategy import compute_metrics
@@ -50,7 +50,7 @@ def generate_weekly_schedule(df, first_trade_date):
 
 
 def run_epoch(df, fm: FeatureMatrix, kb: KnowledgeBase, epoch: int) -> dict:
-  train_end_date = df.index[0] + pd.Timedelta(weeks=TRAIN_WEEKS)
+  train_end_date = df.index[0] + pd.DateOffset(months=TRAIN_MONTHS)
   oos_mask = df.index >= train_end_date
   first_trade_date = df.index[oos_mask][0]
   first_trade_date -= pd.Timedelta(days=first_trade_date.weekday())
@@ -64,7 +64,7 @@ def run_epoch(df, fm: FeatureMatrix, kb: KnowledgeBase, epoch: int) -> dict:
 
   desc = f"Epoch {epoch} (genomes={len(kb.genomes)}, rules={len(kb.rule_stats)})"
   for week_start, week_end in tqdm(weeks, desc=desc):
-    train_start_idx, train_end_idx = get_train_window_indices(df, week_start, TRAIN_WEEKS)
+    train_start_idx, train_end_idx = get_train_window_indices(df, week_start, TRAIN_MONTHS)
     if train_start_idx is None or (train_end_idx - train_start_idx) < MIN_TRAIN_BARS:
       continue
 
@@ -175,7 +175,7 @@ def main():
   parser.add_argument("--kb-profile", default=DEFAULT_PROFILE_ID,
                       help="ID profile KB (lưu tại learning/kb_profiles/)")
   parser.add_argument("--kb-name", default=None, help="Tên hiển thị profile")
-  parser.add_argument("--from-date", default="2025-01-01", help="Data H1 từ ngày")
+  parser.add_argument("--from-date", default="2022-01-01", help="Data từ ngày")
   parser.add_argument("--until-date", default=None, help="Data đến ngày (giai đoạn KB)")
   args = parser.parse_args()
 

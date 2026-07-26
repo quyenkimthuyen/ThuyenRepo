@@ -528,7 +528,7 @@ async function refresh() {{
       const last=rows[rows.length-1];
       setText("conn",online?"READY":"WAITING",online?"online":"offline");
       setText("price",Number(last.close).toFixed(5));
-      setText("spread",(state.day_trades_taken ?? "—")+"/"+(state.strategy?.max_trades_per_day ?? "—"));
+      setText("spread",(state.week_trades_taken ?? "—")+"/"+(state.strategy?.max_trades_per_week ?? "—"));
       setText("positions",state.slots_remaining ?? "—");
       allowed=Boolean(state.in_session);
       setText("trading",allowed?"ACTIVE":"OFF",allowed?"online":"offline");

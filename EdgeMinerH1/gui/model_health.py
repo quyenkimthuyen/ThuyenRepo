@@ -128,7 +128,7 @@ def resolve_model_periods(model: dict | None) -> list[dict[str, Any]]:
 
   segments: list[dict[str, Any]] = []
   kb_id = model.get("kb_profile")
-  train_weeks = int(model.get("train_weeks") or 3)
+  train_months = int(model.get("train_months") or model.get("train_weeks") or 3)
   oos_from = _as_ts(model.get("oos_from"))
   oos_to = _as_ts(model.get("oos_to"))
 
@@ -160,26 +160,26 @@ def resolve_model_periods(model: dict | None) -> list[dict[str, Any]]:
       "detail": f"{kb_from.date()} → {kb_to.date()}",
     })
 
-  if oos_from is not None and train_weeks > 0:
-    first_start = oos_from - pd.Timedelta(weeks=train_weeks)
+  if oos_from is not None and train_months > 0:
+    first_start = oos_from - pd.DateOffset(months=train_months)
     segments.append({
       "lane": "Train shift",
-      "label": f"Train đầu · {train_weeks} tuần trước OOS",
+      "label": f"Train đầu · {train_months} tháng trước OOS",
       "start": first_start,
       "end": oos_from,
       "color": "#ffa726",
       "detail": (
-        f"Cửa sổ remine tuần đầu OOS: {first_start.date()} → {oos_from.date()} "
-        f"(dịch {train_weeks} tuần mỗi tuần)"
+        f"Cửa sổ remine tháng đầu OOS: {first_start.date()} → {oos_from.date()} "
+        f"(dịch {train_months} tháng mỗi tháng)"
       ),
     })
     if oos_to is not None and oos_to > oos_from:
       # Last remine typically ends just before the last OOS week.
       last_as_of = max(oos_from, oos_to - pd.Timedelta(weeks=1))
-      last_start = last_as_of - pd.Timedelta(weeks=train_weeks)
+      last_start = last_as_of - pd.DateOffset(months=train_months)
       segments.append({
         "lane": "Train shift",
-        "label": f"Train cuối · {train_weeks} tuần (shift)",
+        "label": f"Train cuối · {train_months} tháng (shift)",
         "start": last_start,
         "end": last_as_of,
         "color": "#ffb74d",

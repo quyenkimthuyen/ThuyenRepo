@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from config import (
   DEFAULT_HOLDOUT_MONTHS, DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS,
-  DEFAULT_TF, MIN_TRAIN_BARS, TARGET_TRADES_PER_WEEK, TRAIN_WEEKS,
+  MIN_TRAIN_BARS, TRAIN_MONTHS,
 )
 from data_loader import (
   get_train_window_indices, get_week_indices, load_eurusd_h1,
@@ -21,12 +21,14 @@ from feature_engine import FeatureMatrix
 from kb_profiles import (
   DEFAULT_PROFILE_ID, kb_valid_for_backtest, load_kb, suggest_profiles_for_oos,
 )
-from optimizer import optimize_on_window, set_kb_profile, get_knowledge_base, reset_kb_cache
+from optimizer import (
+  optimize_on_window, TARGET_TRADES_PER_WEEK,
+  set_kb_profile, get_knowledge_base, reset_kb_cache,
+)
 from knowledge_base import KnowledgeBase
 from strategy import compute_metrics
 from strategy_miner import (
-  MinedStrategy, MiningSearchSpace, generate_signals_mined, backtest_mined, Rule,
-  mining_search_space_to_dict,
+  MinedStrategy, generate_signals_mined, backtest_mined, Rule,
 )
 
 REPORT_DIR = Path(__file__).parent / "results"
@@ -52,11 +54,6 @@ def strategy_to_dict(s: MinedStrategy) -> dict:
     "ml_prob_min": s.ml_prob_min,
     "rr": s.rr_ratio,
     "atr_mult": s.atr_mult_sl,
-    "max_hold_bars": s.max_hold_bars,
-    "min_bars_between": s.min_bars_between,
-    "session_filter": s.session_filter,
-    "session_start_hour": s.session_start_hour,
-    "session_end_hour": s.session_end_hour,
     "long_rules": rules_to_list(s.long_rules),
     "short_rules": rules_to_list(s.short_rules),
   }
@@ -78,19 +75,17 @@ def _trades_to_json(trades) -> list[dict]:
 
 def _run_holdout_forward(
   df: pd.DataFrame, fm: FeatureMatrix, holdout_cutoff: pd.Timestamp,
-  use_learning: bool, train_weeks: int,
+  use_learning: bool, train_months: int,
   spread_pips: float, slippage_pips: float,
   kb: KnowledgeBase | None = None,
-  search_space: MiningSearchSpace | None = None,
 ) -> tuple[list, dict | None]:
   """Mine 1 lần tại holdout, trade holdout không re-optimize (strict forward)."""
-  train_start_idx, train_end_idx = get_train_window_indices(df, holdout_cutoff, train_weeks)
+  train_start_idx, train_end_idx = get_train_window_indices(df, holdout_cutoff, train_months)
   if train_start_idx is None:
     return [], None
   strat = optimize_on_window(
     fm, train_start_idx, train_end_idx,
     use_learning=use_learning, as_of=holdout_cutoff, kb=kb,
-    search_space=search_space,
   )
   if strat is None:
     return [], None
@@ -109,7 +104,7 @@ def _run_holdout_forward(
 def run_walk_forward(
   df: pd.DataFrame,
   use_learning: bool = True,
-  train_weeks: int = TRAIN_WEEKS,
+  train_months: int = TRAIN_MONTHS,
   on_progress: Optional[ProgressCallback] = None,
   verbose: bool = True,
   spread_pips: float = DEFAULT_SPREAD_PIPS,
@@ -120,8 +115,6 @@ def run_walk_forward(
   kb_snapshot: int | str | None = None,
   oos_from: str | None = None,
   oos_to: str | None = None,
-  feature_profile: str = "current",
-  search_space: MiningSearchSpace | None = None,
 ) -> dict:
   data_meta = require_canonical_mt5_data()
   reset_kb_cache()
@@ -141,9 +134,9 @@ def run_walk_forward(
     holdout_cutoff = df.index[-1] - pd.DateOffset(months=holdout_months)
 
   df_wf = df[df.index < holdout_cutoff] if holdout_cutoff is not None else df
-  fm = FeatureMatrix(df, profile=feature_profile)
+  fm = FeatureMatrix(df)
 
-  train_end_date = df_wf.index[0] + pd.Timedelta(weeks=train_weeks)
+  train_end_date = df_wf.index[0] + pd.DateOffset(months=train_months)
   oos_mask = df_wf.index >= train_end_date
   first_trade_date = df_wf.index[oos_mask][0]
   first_trade_date -= pd.Timedelta(days=first_trade_date.weekday())
@@ -180,7 +173,7 @@ def run_walk_forward(
     if on_progress:
       on_progress(wi + 1, len(weeks), week_start)
 
-    train_start_idx, train_end_idx = get_train_window_indices(df, week_start, train_weeks)
+    train_start_idx, train_end_idx = get_train_window_indices(df, week_start, train_months)
     if train_start_idx is None or (train_end_idx - train_start_idx) < MIN_TRAIN_BARS:
       weekly_log.append({"week_start": str(week_start.date()), "status": "skip_train"})
       continue
@@ -188,7 +181,6 @@ def run_walk_forward(
     strat = optimize_on_window(
       fm, train_start_idx, train_end_idx,
       use_learning=use_learning, as_of=week_start, kb=kb_instance,
-      search_space=search_space,
     )
     if strat is None:
       strat = prev_strat
@@ -232,8 +224,7 @@ def run_walk_forward(
   holdout_trades, holdout_strat = [], None
   if holdout_cutoff is not None:
     holdout_trades, holdout_strat = _run_holdout_forward(
-      df, fm, holdout_cutoff, use_learning, train_weeks, spread_pips, slippage_pips, kb_instance,
-      search_space,
+      df, fm, holdout_cutoff, use_learning, train_months, spread_pips, slippage_pips, kb_instance,
     )
 
   overall = compute_metrics(all_oos_trades, risk_pct_per_trade)
@@ -275,9 +266,9 @@ def run_walk_forward(
     "oos_start": str(first_trade_date.date()),
     "config": {
       "version": "adaptive_miner_v4",
-      "train_weeks": train_weeks,
+      "train_months": train_months,
       "target_trades_per_week": TARGET_TRADES_PER_WEEK,
-      "pair": "EUR/USD", "tf": DEFAULT_TF,
+      "pair": "EUR/USD", "tf": "H1",
       "use_learning_kb": use_learning,
       "kb_profile": profile_id if use_learning else None,
       "kb_snapshot": (kb_snapshot if kb_snapshot not in (None, "latest") else "latest") if use_learning else None,
@@ -289,8 +280,6 @@ def run_walk_forward(
       "holdout_months": holdout_months,
       "risk_pct_per_trade": risk_pct_per_trade,
       "data_fingerprint": data_meta.get("fingerprint"),
-      "feature_profile": feature_profile,
-      "mining_search_space": mining_search_space_to_dict(search_space),
     },
     "overall_oos": _pack_metrics(overall, avg_tpw),
     "last_1_year": _pack_metrics(year_m, year_m["n_trades"] / year_weeks),
@@ -298,7 +287,7 @@ def run_walk_forward(
       "win_rate_above_60": year_m["win_rate"] >= 0.60,
       "rr_above_2": year_m["avg_rr"] >= 2.0,
       "profitable": year_m["total_r"] > 0,
-      "trades_per_week_target": 7.0 <= avg_tpw <= TARGET_TRADES_PER_WEEK,
+      "trades_per_week_near_2": 1.2 <= avg_tpw <= 3.0,
     },
     "last_strategy": strategy_to_dict(last_strat) if last_strat else None,
     "weekly_log": weekly_log,
@@ -349,7 +338,6 @@ def main():
   parser.add_argument("--spread", type=float, default=DEFAULT_SPREAD_PIPS)
   parser.add_argument("--slippage", type=float, default=DEFAULT_SLIPPAGE_PIPS)
   parser.add_argument("--holdout-months", type=int, default=DEFAULT_HOLDOUT_MONTHS)
-  parser.add_argument("--train-weeks", type=int, default=TRAIN_WEEKS)
   parser.add_argument("--kb-profile", default=DEFAULT_PROFILE_ID, help="ID KB profile (giai đoạn)")
   parser.add_argument("--kb-epoch", default=None,
                       help="Snapshot epoch (cumulative, vd 2 hoặc 8). Mặc định: latest")
@@ -357,12 +345,11 @@ def main():
   parser.add_argument("--oos-to", default=None, help="OOS kết thúc YYYY-MM-DD")
   args = parser.parse_args()
 
-  df = load_eurusd_h1("2025-01-01")
+  df = load_eurusd_h1("2022-01-01")
   print(f"{len(df)} bars: {df.index[0].date()} -> {df.index[-1].date()}")
   kb_snap = int(args.kb_epoch) if args.kb_epoch and args.kb_epoch != "latest" else None
   result = run_walk_forward(
     df, use_learning=not args.no_kb,
-    train_weeks=args.train_weeks,
     spread_pips=args.spread, slippage_pips=args.slippage,
     holdout_months=args.holdout_months,
     kb_profile=args.kb_profile if not args.no_kb else None,

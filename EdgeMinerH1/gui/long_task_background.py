@@ -18,7 +18,6 @@ JOB_LABELS = {
   "era_compare": "So sánh giai đoạn",
   "epoch_sweep": "Kiểm chứng từng vòng học",
   "train_window": "So sánh cửa sổ học",
-  "model_health": "Sức khỏe Trade Model (KB ON/OFF)",
 }
 
 _lock = threading.Lock()
@@ -140,7 +139,7 @@ def _worker_backtest(state: dict):
 
   report = execute_backtest(
     use_learning=p["use_learning"],
-    train_weeks=p["train_weeks"],
+    train_months=p["train_months"],
     start_date=p.get("start_date", "2022-01-01"),
     spread_pips=p["spread_pips"],
     slippage_pips=p["slippage_pips"],
@@ -149,8 +148,6 @@ def _worker_backtest(state: dict):
     kb_snapshot=p.get("kb_snapshot"),
     oos_from=p.get("oos_from"),
     oos_to=p.get("oos_to"),
-    feature_profile=p.get("feature_profile"),
-    mining_search_space=p.get("mining_search_space"),
     on_progress=on_prog,
     archive=bool(p.get("archive")),
     archive_label=p.get("archive_label"),
@@ -172,15 +169,13 @@ def _worker_backtest(state: dict):
 
     report_off = execute_backtest(
       use_learning=False,
-      train_weeks=p["train_weeks"],
+      train_months=p["train_months"],
       start_date=p.get("start_date", "2022-01-01"),
       spread_pips=p["spread_pips"],
       slippage_pips=p["slippage_pips"],
       holdout_months=int(p.get("holdout_months") or 0),
       oos_from=p.get("oos_from"),
       oos_to=p.get("oos_to"),
-      feature_profile=p.get("feature_profile"),
-      mining_search_space=p.get("mining_search_space"),
       on_progress=on_prog2,
       archive=bool(p.get("archive")),
       sync_workspace=False,
@@ -190,120 +185,6 @@ def _worker_backtest(state: dict):
     result["kb_compare"] = True
 
   _finish(state, status="completed", result=result)
-
-
-def _worker_model_health(state: dict):
-  """Backtest KB ON (+ optional refresh) and KB OFF for the same Trade Model OOS."""
-  from gui.services import execute_backtest
-  from gui.trade_model import (
-    get_model_by_id,
-    save_model_kb_off_report,
-    save_model_report,
-  )
-
-  p = state["params"]
-  model_id = p["model_id"]
-  model = get_model_by_id(model_id)
-  if not model:
-    raise ValueError(f"Trade model `{model_id}` không tồn tại.")
-
-  start_date = p.get("start_date") or "2022-01-01"
-  train_weeks = int(p.get("train_weeks") or model.get("train_weeks") or 6)
-  spread = float(p.get("spread_pips") or model.get("spread_pips") or 1.0)
-  slip = float(p.get("slippage_pips") or model.get("slippage_pips") or 0.3)
-  oos_from = p.get("oos_from") or model.get("oos_from")
-  oos_to = p.get("oos_to") or model.get("oos_to")
-  kb_profile = p.get("kb_profile") or model.get("kb_profile")
-  kb_snapshot = p.get("kb_snapshot", model.get("kb_snapshot"))
-  refresh_on = bool(p.get("refresh_kb_on", True))
-  feature_profile = (
-    p.get("feature_profile")
-    or model.get("feature_profile")
-    or "current"
-  )
-  mining_search_space = (
-    p.get("mining_search_space")
-    if "mining_search_space" in p
-    else model.get("mining_search_space")
-  )
-
-  report_on = None
-  if refresh_on:
-    def on_prog(step, total, _ws):
-      _check_cancel()
-      _update_progress(state, step, max(total * 2, 1), f"KB ON · WF {step}/{total}")
-
-    report_on = execute_backtest(
-      use_learning=True,
-      train_weeks=train_weeks,
-      start_date=start_date,
-      spread_pips=spread,
-      slippage_pips=slip,
-      holdout_months=0,
-      kb_profile=kb_profile,
-      kb_snapshot=kb_snapshot,
-      oos_from=oos_from,
-      oos_to=oos_to,
-      feature_profile=feature_profile,
-      mining_search_space=mining_search_space,
-      on_progress=on_prog,
-      archive=False,
-      sync_workspace=True,
-    )
-    save_model_report(model_id, report_on)
-
-  def on_prog_off(step, total, _ws):
-    _check_cancel()
-    base = total if refresh_on else 0
-    _update_progress(
-      state, base + step, max((total * 2) if refresh_on else total, 1),
-      f"KB OFF · WF {step}/{total}",
-    )
-
-  report_off = execute_backtest(
-    use_learning=False,
-    train_weeks=train_weeks,
-    start_date=start_date,
-    spread_pips=spread,
-    slippage_pips=slip,
-    holdout_months=0,
-    oos_from=oos_from,
-    oos_to=oos_to,
-    feature_profile=feature_profile,
-    mining_search_space=mining_search_space,
-    on_progress=on_prog_off,
-    archive=False,
-    sync_workspace=False,
-  )
-  save_model_kb_off_report(model_id, report_off)
-
-  on_r = (report_on or {}).get("overall_oos", {}).get("total_r") if report_on else None
-  off_r = (report_off.get("overall_oos") or {}).get("total_r")
-  from mt5_bridge.models import conditions_fingerprint, describe_strategy_conditions, get_model_run_params
-  run_params = get_model_run_params(model, model_id)
-  # Prefer explicit job params (already sourced from same helper in analysis_support).
-  if p.get("mining_search_space") is not None or p.get("feature_profile"):
-    run_params = {
-      **run_params,
-      "train_weeks": train_weeks,
-      "spread_pips": spread,
-      "slippage_pips": slip,
-      "kb_profile": kb_profile,
-      "kb_snapshot": kb_snapshot,
-      "feature_profile": feature_profile,
-      "mining_search_space": mining_search_space,
-      "use_learning": True,
-      "use_kb": True,
-      "trade_model_id": model_id,
-    }
-  _finish(state, status="completed", result={
-    "model_id": model_id,
-    "kb_on_total_r": on_r,
-    "kb_off_total_r": off_r,
-    "refreshed_on": refresh_on,
-    "conditions_fp": conditions_fingerprint(run_params),
-    "run_conditions": describe_strategy_conditions(run_params),
-  })
 
 
 def _worker_learning(state: dict):
@@ -407,7 +288,6 @@ def _worker_train_window(state: dict):
 
 _DISPATCH = {
   "backtest": _worker_backtest,
-  "model_health": _worker_model_health,
   "learning": _worker_learning,
   "era_learn": _worker_era_learn,
   "era_compare": _worker_era_compare,

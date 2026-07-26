@@ -38,7 +38,7 @@ def main():
     max_hold_bars=int(s.get("max_hold_bars", 36)),
     min_bars_between=int(s.get("min_bars_between", 4)),
     min_rules_match=int(s.get("min_rules_match", 2)),
-    max_trades_per_day=int(s.get("max_trades_per_day", 2)),
+    max_trades_per_week=int(s.get("max_trades_per_week", 2)),
     ml_prob_min=float(s.get("ml_prob_min", 0.3)),
     exit_mode=str(s.get("exit_mode", "hybrid")),
     trail_activate_r=float(s.get("trail_activate_r", 1.8)),

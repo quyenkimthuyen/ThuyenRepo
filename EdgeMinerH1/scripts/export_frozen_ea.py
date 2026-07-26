@@ -63,7 +63,7 @@ def main():
       "rr": strat.get("rr", 3.0),
       "atr_mult_sl": strat.get("atr_mult", 0.9),
       "min_rules_match": 2,
-      "max_trades_per_day": 2,
+      "max_trades_per_week": 2,
       "min_bars_between": 4,
       "max_hold_bars": 36,
       "session_filter": True,

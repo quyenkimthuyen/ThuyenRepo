@@ -91,7 +91,7 @@ def format_model_label(m: dict) -> str:
   if m.get("label_custom"):
     return m.get("label") or m.get("id", "?")
   return build_trade_profile_label({
-    "train_weeks": m.get("train_weeks"),
+    "train_months": m.get("train_months"),
     "use_kb": m.get("use_kb", True),
     "kb_profile": m.get("kb_profile"),
     "kb_snapshot": m.get("kb_snapshot"),
@@ -112,11 +112,6 @@ def model_report_path(model_id: str) -> Path:
   return MODELS_DIR / f"{model_id}.json"
 
 
-def model_kb_off_report_path(model_id: str) -> Path:
-  MODELS_DIR.mkdir(parents=True, exist_ok=True)
-  return MODELS_DIR / f"{model_id}_kb_off.json"
-
-
 def save_model_report(model_id: str, report: dict):
   payload = dict(report)
   cfg = dict(payload.get("config") or {})
@@ -125,28 +120,11 @@ def save_model_report(model_id: str, report: dict):
   _write_json(model_report_path(model_id), payload)
 
 
-def save_model_kb_off_report(model_id: str, report: dict):
-  payload = dict(report)
-  cfg = dict(payload.get("config") or {})
-  cfg["trade_model_id"] = model_id
-  cfg["use_learning_kb"] = False
-  cfg["kb_compare_role"] = "kb_off_baseline"
-  payload["config"] = cfg
-  _write_json(model_kb_off_report_path(model_id), payload)
-
-
 def load_model_report(model_id: str | None = None) -> dict | None:
   mid = model_id or load_active_model_id()
   if not mid:
     return None
   return _read_json(model_report_path(mid))
-
-
-def load_model_kb_off_report(model_id: str | None = None) -> dict | None:
-  mid = model_id or load_active_model_id()
-  if not mid:
-    return None
-  return _read_json(model_kb_off_report_path(mid))
 
 
 def get_active_trade_model(*, force_reload: bool = False) -> dict | None:
@@ -177,18 +155,6 @@ def set_active_trade_model(model_id: str | None) -> dict | None:
     except Exception:
       pass
     try:
-      from paper_service import save_config as save_paper_config
-      save_paper_config(model_id=model_id)
-    except Exception:
-      pass
-    try:
-      from mt5_bridge.ea_simulator import load_sim_state, write_sim_state
-      sim = load_sim_state()
-      if not sim.get("running") and not sim.get("enabled"):
-        write_sim_state({"model_id": model_id})
-    except Exception:
-      pass
-    try:
       from gui.workspace import save_workspace_file
       save_workspace_file(trade_model_to_workspace(m))
     except Exception:
@@ -199,97 +165,14 @@ def set_active_trade_model(model_id: str | None) -> dict | None:
   return None
 
 
-def sync_active_model_into_runtime_configs() -> dict | None:
-  """Keep Paper / Live / Simulate runtime configs on the same active Trade Model id."""
-  active = get_active_trade_model()
-  mid = (active or {}).get("id")
-  if not mid:
-    return active
-  try:
-    from paper_service import load_config as paper_load, save_config as paper_save
-    cfg = paper_load()
-    if cfg.get("model_id") != mid:
-      paper_save(model_id=mid)
-  except Exception:
-    pass
-  try:
-    from mt5_bridge.background import load_config as bridge_load, save_config as bridge_save
-    cfg = bridge_load()
-    if cfg.get("model_id") != mid:
-      bridge_save(model_id=mid)
-  except Exception:
-    pass
-  try:
-    from mt5_bridge.ea_simulator import load_sim_state, write_sim_state
-    sim = load_sim_state()
-    if (
-      not sim.get("running")
-      and not sim.get("enabled")
-      and sim.get("model_id") != mid
-    ):
-      write_sim_state({"model_id": mid})
-  except Exception:
-    pass
-  return active
-
-
-def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
-  """One active Trade Model for Paper · Live · Simulate — same remine params.
-
-  context: ``paper`` | ``live`` | ``simulate`` | ``bridge`` | ``shared``
-  """
-  from mt5_bridge.models import describe_strategy_conditions
-
-  active = sync_active_model_into_runtime_configs()
-  ctx = (context or "shared").lower()
-  roles = {
-    "paper": "Paper = desk nhẹ (không EA). Kiểm Live chính = Parity / Health OOS.",
-    "live": "Live = lệnh MT5 thật/demo. Remine = cùng Trade Model với Paper & Simulate.",
-    "simulate": "Simulate = replay quá khứ qua App↔EA. Cùng Trade Model với Live.",
-    "bridge": "Live & Simulate dùng chung Trade Model active với Paper.",
-    "shared": "Paper · Live · Simulate dùng chung một Trade Model active.",
-  }
-  st.markdown("##### Trade Model · dùng chung Paper · Live · Simulate")
-  if not active:
-    st.warning(
-      "Chưa chọn Trade Model — vào **Học & tối ưu → Trade Models → Quản lý** "
-      "rồi chọn active. Cả 3 mode sẽ dùng cùng model đó."
-    )
-    st.caption(roles.get(ctx, roles["shared"]))
-    return None
-
-  params = get_model_run_params(active)
-  try:
-    desc = describe_strategy_conditions(params)
-    fp = desc.get("conditions_fp") or "—"
-    train_w = desc.get("train_weeks")
-    kb_p = desc.get("kb_profile")
-    kb_ep = desc.get("kb_snapshot")
-  except Exception:
-    fp = "—"
-    train_w = params.get("train_weeks")
-    kb_p = params.get("kb_profile")
-    kb_ep = params.get("kb_snapshot")
-
-  st.success(
-    f"**{format_model_label(active)}** · id `{active.get('id')}` · "
-    f"train **{train_w}w** · KB `{kb_p}@ep{kb_ep}` · fp `{fp}`"
-  )
-  st.caption(
-    roles.get(ctx, roles["shared"])
-    + " · Đổi model: **Trade Models → Quản lý** (tự đồng bộ Paper/Live/Sim config)."
-  )
-  return active
-
-
 def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | None = None) -> dict:
   from gui.app_settings import canonical_kb_profile, default_learning_era
   from gui.services import load_data_meta
-  tw = row.get("train_weeks", 6)
+  tm = row.get("train_months", 6)
   kb = canonical_kb_profile(row.get("kb_profile")) or default_learning_era()["kb_profile"]
   ep = _normalize_snapshot(row.get("kb_snapshot"))
   auto_label = label or build_trade_profile_label({
-    "train_weeks": tw,
+    "train_months": tm,
     "use_kb": bool(row.get("use_kb", True)),
     "kb_profile": kb if row.get("use_kb") else None,
     "kb_snapshot": ep,
@@ -299,15 +182,10 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
   if label is None and row.get("total_r") is not None:
     auto_label += f" · {row.get('total_r', 0):+.1f}R"
   data_meta = load_data_meta()
-  if (
-    data_meta.get("source") != "mt5_ea"
-    or data_meta.get("timeframe") != "H1"
-    or not data_meta.get("fingerprint")
-  ):
+  if data_meta.get("source") != "mt5_ea" or not data_meta.get("fingerprint"):
     raise RuntimeError("Không thể tạo Trade Model khi dữ liệu chưa được xác nhận từ MT5 EA.")
   return {
-    "train_weeks": tw,
-    "max_trades_per_day": 2,
+    "train_months": tm,
     "use_kb": bool(row.get("use_kb", True)),
     "kb_profile": kb if row.get("use_kb") else None,
     "kb_snapshot": ep,
@@ -320,8 +198,6 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
     "max_drawdown_r": row.get("max_drawdown_r"),
     "profit_factor": row.get("profit_factor"),
     "n_trades": row.get("n_trades"),
-    "feature_profile": row.get("feature_profile") or "current",
-    "mining_search_space": row.get("mining_search_space"),
     "source": "grid_search",
     "data_source": data_meta.get("source"),
     "data_broker": data_meta.get("broker"),
@@ -332,7 +208,7 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
     "data_end": data_meta.get("end"),
     "data_bars": data_meta.get("bars"),
     "data_fingerprint": data_meta.get("fingerprint"),
-    "feature_schema": 3,
+    "feature_schema": 1,
     "grid_run_id": run_id,
     "grid_key": row.get("key"),
     "label": auto_label,
@@ -534,9 +410,6 @@ def delete_trade_model(model_id: str) -> bool:
   path = model_report_path(model_id)
   if path.exists():
     path.unlink()
-  off = model_kb_off_report_path(model_id)
-  if off.exists():
-    off.unlink()
   if load_active_model_id() == model_id:
     remaining = store["models"]
     set_active_trade_model(remaining[0]["id"] if remaining else None)
@@ -545,15 +418,14 @@ def delete_trade_model(model_id: str) -> bool:
 
 
 def get_model_run_params(model: dict | None = None) -> dict:
-  """Canonical run params — delegates to mt5_bridge.models (same as Bridge)."""
   m = model or get_active_trade_model()
   if not m:
     from gui.app_settings import default_learning_era, get_settings
     s = get_settings()
     era = default_learning_era(s)
-    trains = s.get("strategy_train_weeks") or [3, 6, 9]
+    trains = s.get("strategy_train_months") or [3, 6, 9]
     return {
-      "train_weeks": trains[0] if trains else 6,
+      "train_months": trains[0] if trains else 6,
       "use_learning": True,
       "use_kb": True,
       "kb_profile": era["kb_profile"],
@@ -562,11 +434,19 @@ def get_model_run_params(model: dict | None = None) -> dict:
       "oos_to": s.get("backtest_to"),
       "spread_pips": float(s.get("spread_pips", DEFAULT_SPREAD_PIPS)),
       "slippage_pips": float(s.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
-      "feature_profile": "current",
-      "mining_search_space": None,
     }
-  from mt5_bridge.models import get_model_run_params as bridge_run_params
-  return bridge_run_params(m, m.get("id"))
+  return {
+    "train_months": int(m.get("train_months", 6)),
+    "use_learning": bool(m.get("use_kb", True)),
+    "use_kb": bool(m.get("use_kb", True)),
+    "kb_profile": m.get("kb_profile") or "default",
+    "kb_snapshot": _normalize_snapshot(m.get("kb_snapshot")),
+    "oos_from": m.get("oos_from"),
+    "oos_to": m.get("oos_to"),
+    "spread_pips": float(m.get("spread_pips", DEFAULT_SPREAD_PIPS)),
+    "slippage_pips": float(m.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
+    "trade_model_id": m.get("id"),
+  }
 
 
 def trade_model_to_workspace(m: dict | None = None) -> dict:
@@ -575,7 +455,7 @@ def trade_model_to_workspace(m: dict | None = None) -> dict:
     from gui.app_settings import default_learning_era, get_settings
     s = get_settings()
     era = default_learning_era(s)
-    trains = s.get("strategy_train_weeks") or [3, 6, 9]
+    trains = s.get("strategy_train_months") or [3, 6, 9]
     return {
       "label": "Chưa chọn trade model",
       "kb_profile": era["kb_profile"],
@@ -583,7 +463,7 @@ def trade_model_to_workspace(m: dict | None = None) -> dict:
       "oos_from": s.get("backtest_from"),
       "oos_to": s.get("backtest_to"),
       "use_learning": True,
-      "train_weeks": trains[0] if trains else 6,
+      "train_months": trains[0] if trains else 6,
     }
   return {
     "label": format_model_label(m),
@@ -592,14 +472,9 @@ def trade_model_to_workspace(m: dict | None = None) -> dict:
     "oos_from": m.get("oos_from"),
     "oos_to": m.get("oos_to"),
     "use_learning": bool(m.get("use_kb", True)),
-    "train_weeks": m.get("train_weeks", 6),
+    "train_months": m.get("train_months", 6),
     "spread_pips": m.get("spread_pips", DEFAULT_SPREAD_PIPS),
     "slippage_pips": m.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS),
-    "feature_profile": (
-      m.get("feature_profile")
-      or ("legacy" if int(m.get("feature_schema") or 0) < 3 else "current")
-    ),
-    "mining_search_space": m.get("mining_search_space"),
     "trade_model_id": m.get("id"),
   }
 
@@ -613,31 +488,6 @@ def report_matches_model(report: dict, model: dict | None = None) -> bool:
     return cfg["trade_model_id"] == m["id"]
   from gui.workspace import report_matches_workspace
   return report_matches_workspace(report, trade_model_to_workspace(m))
-
-
-def _space_fingerprint(space: dict | None) -> tuple:
-  if not space:
-    return ()
-  return (
-    tuple(tuple(x) if isinstance(x, list) else x for x in (space.get("session_ranges") or [])),
-    tuple(space.get("min_bars_between") or []),
-    tuple(space.get("max_hold_bars") or []),
-  )
-
-
-def report_search_space_matches_model(
-  report: dict | None,
-  model: dict | None = None,
-) -> bool:
-  """True if report mining space matches the Trade Model (session/spacing/hold)."""
-  m = model or get_active_trade_model()
-  if not report or not m:
-    return False
-  expected = m.get("mining_search_space")
-  if not expected:
-    return True
-  actual = (report.get("config") or {}).get("mining_search_space")
-  return _space_fingerprint(expected) == _space_fingerprint(actual)
 
 
 def ensure_trade_models_loaded():

@@ -1,9 +1,8 @@
 """7. Paper / Live Monitor — tín hiệu tuần hiện tại + chart TradingView."""
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import timedelta
 from urllib.error import URLError
-from urllib.parse import urlencode
 from urllib.request import urlopen
 
 import pandas as pd
@@ -14,21 +13,8 @@ import streamlit.components.v1 as components
 
 from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 from kb_profiles import DEFAULT_PROFILE_ID
-from gui.trade_model import (
-  get_active_trade_model,
-  get_model_run_params,
-  render_shared_trade_model_banner,
-)
+from gui.trade_model import format_model_label, get_active_trade_model, get_model_run_params
 from gui.services import get_ohlc_window_cached, get_paper_monitor
-from gui.ui_preferences import preference_callback, restore_widget
-from paper_journal import (
-  compute_stats,
-  filter_trades,
-  load_meta,
-  load_trades,
-  reset_monitor,
-  sync_from_state,
-)
 from paper_live_monitor_server import (
   DEFAULT_PAPER_MONITOR_PORT,
   start_paper_live_monitor_server,
@@ -331,31 +317,6 @@ def _orders_for_display(state: dict) -> list[dict]:
   return orders
 
 
-def _trade_journal_df(orders: list[dict]) -> pd.DataFrame:
-  rows = []
-  for i, o in enumerate(orders, start=1):
-    status = o.get("status", "CLOSED")
-    direction = o.get("dir") or o.get("direction") or "—"
-    r_val = o.get("r")
-    rows.append({
-      "#": i,
-      "Trạng thái": status,
-      "Hướng": direction,
-      "Tín hiệu": str(o.get("signal_time") or "—")[:16],
-      "Entry": str(o.get("entry") or o.get("entry_time") or "—")[:16],
-      "Giá": o.get("entry_px"),
-      "SL": o.get("sl"),
-      "TP": o.get("tp"),
-      "Exit": str(o.get("exit") or o.get("exit_time") or "—")[:16] if status == "CLOSED" else "—",
-      "Exit giá": o.get("exit_px") if status == "CLOSED" else None,
-      "R": None if r_val is None else round(float(r_val), 2),
-      "Pips": o.get("pnl_pips"),
-      "Lý do": o.get("reason") or ("chờ entry" if status == "SIGNAL" else "—"),
-      "Risk pips": o.get("risk_pips"),
-    })
-  return pd.DataFrame(rows)
-
-
 def _chart_cache_key(state: dict) -> str:
   orders = _orders_for_display(state)
   sig_n = sum(1 for o in orders if o.get("status") == "SIGNAL")
@@ -418,7 +379,7 @@ def _get_chart_figure(state: dict) -> go.Figure | None:
 
 
 def _resolve_monitor_state(monitor_params: dict, *, manual_refresh: bool) -> dict:
-  """Ưu tiên session/file cache — không remine khi chỉ mở tab (giống Simulate idle)."""
+  """Ưu tiên session/file cache — không chặn UI trong lúc EA đồng bộ history."""
   if manual_refresh:
     _invalidate_chart_cache()
     st.session_state.pop("monitor_state", None)
@@ -447,37 +408,19 @@ def _resolve_monitor_state(monitor_params: dict, *, manual_refresh: bool) -> dic
     if cached:
       return cached
     # Chưa có state — hiện placeholder, để background tự cập nhật (không sync download).
-    st.info("Đang chờ background cập nhật paper… (hoặc bấm **Chạy ngay**)")
-    return _pending_monitor_placeholder()
+    st.info("Đang chờ background cập nhật paper… (hoặc bấm **Refresh ngay**)")
+    return {"error": None, "pending": True, "week_start": "—", "week_trades_taken": 0,
+            "strategy": {"max_trades_per_week": 0}, "slots_remaining": 0, "in_session": False,
+            "signals_this_week": [], "recent_trades": [], "last_bar": "—", "week_wr": "—",
+            "week_total_r": "—"}
 
-  # Service OFF: never remine on tab open / widget rerun — only Start or Chạy ngay
-  if cached and not cached.get("pending"):
+  if cached:
     return cached
 
-  saved = load_saved_state()
-  if saved and not saved.get("error") and not saved.get("pending"):
-    st.session_state["monitor_state"] = saved
-    st.session_state["pm_shown_at"] = saved.get("updated_at")
-    return saved
-
-  return _pending_monitor_placeholder()
-
-
-def _pending_monitor_placeholder() -> dict:
-  return {
-    "error": None,
-    "pending": True,
-    "week_start": "—",
-    "week_trades_taken": 0,
-    "strategy": {"max_trades_per_day": 0},
-    "slots_remaining": 0,
-    "in_session": False,
-    "signals_this_week": [],
-    "recent_trades": [],
-    "last_bar": "—",
-    "week_wr": "—",
-    "week_total_r": "—",
-  }
+  with st.spinner("Cập nhật..."):
+    state = get_paper_monitor(**monitor_params)
+  st.session_state["monitor_state"] = state
+  return state
 
 
 def _poll_check_update() -> bool:
@@ -494,212 +437,52 @@ def _poll_check_update() -> bool:
   return False
 
 
-def _period_options() -> list[str]:
-  return [
-    "Hôm nay",
-    "Tuần này (T2→nay)",
-    "7 ngày",
-    "30 ngày",
-    "Tháng này",
-    "Tất cả",
-    "Tùy chọn",
-  ]
-
-
-def _resolve_period(preset: str) -> tuple[date | None, date | None]:
-  today = date.today()
-  if preset == "Hôm nay":
-    return today, today
-  if preset == "7 ngày":
-    return today - timedelta(days=6), today
-  if preset == "30 ngày":
-    return today - timedelta(days=29), today
-  if preset == "Tuần này (T2→nay)":
-    return today - timedelta(days=today.weekday()), today
-  if preset == "Tháng này":
-    return today.replace(day=1), today
-  if preset == "Tùy chọn":
-    return None, None  # filled by date_input callers
-  return None, None  # Tất cả
-
-
-def _bars_for_period(date_from: date | None, date_to: date | None) -> int:
-  """H1 bars estimate for chart window (cap 5000)."""
-  if date_from is None or date_to is None:
-    return 1344
-  days = max(1, (date_to - date_from).days + 1)
-  return max(96, min(5000, days * 96))
-
-
-def _render_period_controls() -> tuple[date | None, date | None, int]:
-  """Period filter shared by stats + chart. Returns (from, to, max_bars)."""
-  all_trades = load_trades()
-  today = date.today()
-  default_from = today - timedelta(days=30)
-  default_to = today
-  for trade in all_trades:
-    for key in ("entry_time", "exit_time", "entry", "exit"):
-      try:
-        ts = pd.Timestamp(trade.get(key)).date()
-        if ts < default_from:
-          default_from = ts
-      except Exception:
-        pass
-
-  p1, p2, p3, p4 = st.columns([2, 1, 1, 1])
-  restore_widget(
-    "paper_stats_preset", "Tuần này (T2→nay)",
-    preference_key="paper.stats_preset",
-    options=_period_options(),
-  )
-  preset = p1.selectbox(
-    "Giai đoạn",
-    _period_options(),
-    key="paper_stats_preset",
-    on_change=preference_callback("paper_stats_preset", "paper.stats_preset"),
-  )
-  date_from, date_to = _resolve_period(preset)
-  if preset == "Tùy chọn":
-    restore_widget(
-      "paper_from", default_from,
-      preference_key="paper.date_from",
-      decode=date.fromisoformat,
-    )
-    restore_widget(
-      "paper_to", default_to,
-      preference_key="paper.date_to",
-      decode=date.fromisoformat,
-    )
-    date_from = p2.date_input(
-      "Từ ngày", key="paper_from",
-      on_change=preference_callback("paper_from", "paper.date_from"),
-    )
-    date_to = p3.date_input(
-      "Đến ngày", key="paper_to",
-      on_change=preference_callback("paper_to", "paper.date_to"),
-    )
-  else:
-    p2.caption(str(date_from or "—"))
-    p3.caption(str(date_to or "—"))
-
-  meta = load_meta()
-  if p4.button(
-    "Reset data",
-    icon=":material/restart_alt:",
-    help="Xóa nhật ký paper + snapshot — monitor lại từ đầu (bỏ qua lệnh remine trước mốc reset).",
-    use_container_width=True,
-  ):
-    info = reset_monitor()
-    st.session_state.pop("monitor_state", None)
-    st.session_state.pop("pm_shown_at", None)
-    _invalidate_chart_cache()
-    st.success(
-      f"Đã reset paper. Monitor từ `{info.get('monitor_from')}`. "
-      "Bấm **Chạy ngay** / đợi service để ghi lệnh mới."
-    )
-    st.rerun()
-
-  if date_from and date_to and date_from > date_to:
-    st.warning("Từ ngày > Đến ngày — đã đảo lại.")
-    date_from, date_to = date_to, date_from
-
-  if meta.get("monitor_from"):
-    st.caption(
-      f"Journal: **{meta.get('n_trades', 0)}** lệnh · "
-      f"monitor từ `{meta.get('monitor_from')}` · "
-      f"cập nhật `{meta.get('updated_at') or '—'}`"
-    )
-  else:
-    st.caption(
-      f"Journal: **{meta.get('n_trades', 0)}** lệnh · "
-      "chưa reset — đang gom từ remine tuần."
-    )
-
-  return date_from, date_to, _bars_for_period(date_from, date_to)
-
-
-def _render_chart_panel(
-  state: dict,
-  *,
-  date_from: date | None = None,
-  date_to: date | None = None,
-  max_bars: int = 672,
-):
-  """Persistent browser chart; window follows selected period."""
-  st.subheader("Biểu đồ theo giai đoạn")
+def _render_chart_panel(state: dict):
+  """Persistent browser chart; background updates data without replacing it."""
+  st.subheader("Biểu đồ tuần (TradingView style)")
   monitor_url = f"http://127.0.0.1:{DEFAULT_PAPER_MONITOR_PORT}"
   try:
     with urlopen(f"{monitor_url}/health", timeout=0.5) as response:
       server_ready = response.read() == b"ok"
   except (OSError, URLError):
-    # Do not start chart server on idle tab open (lag) — Plotly fallback only
-    server_ready = False
-
+    # When the detached service is enabled, let it own port 8766. Starting a
+    # Streamlit fallback during service startup can create two listeners.
+    server_ready = (
+      False if is_background_enabled()
+      else _paper_live_chart_server() is not None
+    )
   if server_ready:
     poll_sec = max(0.5, float(load_config().get("poll_sec", 2.0)))
-    query = {
-      "bars": int(max_bars),
-      "poll": f"{poll_sec:g}",
-    }
-    if date_from:
-      query["from"] = date_from.isoformat()
-    if date_to:
-      query["to"] = date_to.isoformat()
     components.iframe(
-      f"{monitor_url}/chart?{urlencode(query)}",
+      f"{monitor_url}/chart?bars=168&poll={poll_sec:g}",
       height=700,
       scrolling=False,
     )
-    label = (
-      f"{date_from} → {date_to}" if date_from or date_to else "toàn bộ / gần đây"
-    )
     st.caption(
-      f"Chart Paper · giai đoạn **{label}** · ~{max_bars} nến H1 · "
-      "cập nhật tại chỗ, không chớp."
+      "Chart Paper cập nhật tại chỗ theo dữ liệu background, "
+      "không rerun Plotly nên không chớp."
     )
     return
 
-  # Plotly fallback — slice OHLC to period
-  chart_from = (
-    str(date_from) if date_from
-    else state.get("chart_from", state.get("week_start", ""))
+  key = _chart_cache_key(state)
+  cached_fig = (
+    st.session_state.get("pm_fig")
+    if st.session_state.get("pm_fig_key") == key else None
   )
-  chart_to = (
-    str(date_to) if date_to
-    else state.get("chart_to", state.get("last_bar", ""))
-  )
-  period_orders = filter_trades(
-    load_trades(), date_from=date_from, date_to=date_to,
-  )
-  # Map journal rows to overlay schema
-  overlay = []
-  for row in period_orders:
-    overlay.append({
-      **row,
-      "dir": row.get("dir") or row.get("direction"),
-      "entry": row.get("entry") or row.get("entry_time"),
-      "exit": row.get("exit") or row.get("exit_time"),
-      "status": row.get("status") or "CLOSED",
-    })
-  for row in _orders_for_display(state):
-    if str(row.get("status") or "").upper() == "SIGNAL":
-      overlay.append(row)
 
-  try:
-    window = get_ohlc_window_cached(chart_from, chart_to)
-    fig = _tradingview_chart(
-      window, overlay, chart_from, chart_to,
-      title=f"EUR/USD H1 · {chart_from} → {chart_to}",
-    )
-  except Exception:
-    fig = None
-  if fig:
-    st.plotly_chart(fig, use_container_width=True, key="pm_tv_chart_period")
+  if cached_fig is not None:
+    st.plotly_chart(cached_fig, use_container_width=True, key="pm_tv_chart")
   else:
-    st.caption("Không đủ dữ liệu OHLC cho chart giai đoạn này.")
+    with st.spinner("🔄 Đang vẽ biểu đồ..."):
+      fig = _get_chart_figure(state)
+    if fig:
+      st.plotly_chart(fig, use_container_width=True, key="pm_tv_chart")
+    else:
+      st.caption("Không đủ dữ liệu OHLC cho chart.")
 
   st.caption(
-    "🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit"
+    "🟢 Vùng xanh = reward · 🔴 Vùng đỏ = risk · "
+    "🔔 SIGNAL = tín hiệu chưa khớp · ▲▼ ENTRY · ✕ exit"
   )
 
 
@@ -725,180 +508,93 @@ def _background_live_panel():
   _poll_check_update()
   state = st.session_state.get("monitor_state")
   if state:
-    date_from = st.session_state.get("pm_period_from")
-    date_to = st.session_state.get("pm_period_to")
-    _render_monitor_body(
-      state,
-      include_chart=False,
-      date_from=date_from,
-      date_to=date_to,
-    )
+    _render_monitor_body(state, include_chart=False)
 
 
-def _render_monitor_body(
-  state: dict,
-  *,
-  include_chart: bool = True,
-  date_from: date | None = None,
-  date_to: date | None = None,
-  max_bars: int = 672,
-):
+def _render_monitor_body(state: dict, *, include_chart: bool = True):
   if state.get("pending"):
-    st.info(
-      "Chưa có snapshot Paper — **không remine khi mở tab** (tránh trang chậm). "
-      "Bấm **Start** (service nền) hoặc **Chạy ngay** để tính."
-    )
+    st.caption("Chưa có snapshot paper — đợi chu kỳ nền hoặc **Refresh ngay**.")
     return
   if state.get("error"):
     st.error(state["error"])
     return
 
-  st.info(
-    "**Paper Trade** = desk nhẹ trên nến MT5 (cùng Trade Model với Live/Simulate) — "
-    "**không** gửi EA. Kiểm Live chính = **MT5 Bridge → Parity tuần này** / Health OOS. "
-    "Simulate chỉ khi cần replay App↔EA."
-  )
+  c1, c2, c3, c4, c5 = st.columns(5)
+  c1.metric("Tuần", state["week_start"])
+  c2.metric("Lệnh tuần", f"{state['week_trades_taken']}/{state['strategy']['max_trades_per_week']}")
+  c3.metric("Slots còn", state["slots_remaining"])
+  c4.metric("Session", "ACTIVE" if state["in_session"] else "OFF")
+  c5.metric("Ước tính", f"{state.get('week_return_pct', 0):+.2f}%")
 
-  # Sync latest week into journal (idempotent)
-  try:
-    sync_from_state(state)
-  except Exception:
-    pass
-
-  period_trades = filter_trades(load_trades(), date_from=date_from, date_to=date_to)
-  stats = compute_stats(period_trades)
-  strategy = state.get("strategy") or {}
-
-  # --- Desk KPI theo giai đoạn ---
-  k1, k2, k3, k4, k5, k6 = st.columns(6)
-  k1.metric("Đã đóng", stats["n_trades"])
-  k2.metric("Đang mở", stats["n_open"])
-  k3.metric("Thắng / Thua", f"{stats['n_wins']}/{stats['n_losses']}")
-  k4.metric(
-    "Win rate",
-    f"{stats['win_rate_pct']}%" if stats["win_rate_pct"] is not None else "—",
-  )
-  k5.metric(
-    "Tổng R",
-    f"{stats['total_r']:+.2f}R" if stats["n_trades"] else "—",
-  )
-  k6.metric("Max DD", f"{stats['max_drawdown_r']:.2f}R")
-
-  s1, s2, s3, s4, s5 = st.columns(5)
-  s1.metric(
-    "Hôm nay (tuần live)",
-    f"{state.get('day_trades_taken', 0)}/{strategy.get('max_trades_per_day', '?')}",
-  )
-  s2.metric("Slots còn", state.get("slots_remaining", 0))
-  s3.metric("Session", "ACTIVE" if state.get("in_session") else "OFF")
-  s4.metric("Avg R", stats["avg_r"] if stats["avg_r"] is not None else "—")
-  s5.metric("Pips", f"{stats['total_pips']:+.1f}")
-
-  if date_from or date_to:
-    st.caption(
-      f"Thống kê lọc: **{date_from or '…'} → {date_to or '…'}** · "
-      f"{stats['n_filtered']} lệnh trong khoảng"
-    )
   ep = state.get("kb_snapshot", "latest")
-  st.caption(
-    f"Tuần live **{state.get('week_start')}** → **{state.get('week_end')}** · "
-    f"Bar cuối `{state.get('last_bar')}` · "
-    f"Risk **{state.get('risk_pct', 1.0)}%**/lệnh · "
-    f"KB `{state.get('kb_profile', '-')}@{ep}` · "
-    f"Model `{state.get('model_id') or '—'}`"
-    + (f" · Cập nhật `{state.get('updated_at')}`" if state.get("updated_at") else "")
+  updated = state.get("updated_at", "")
+  cap = (
+    f"Bar cuối: {state['last_bar']} | WR tuần: {state['week_wr']}% | "
+    f"R: {state['week_total_r']} · Risk: {state.get('risk_pct', 1.0)}%/lệnh · "
+    f"KB: {state.get('kb_profile', '-')} · epoch **{ep}**"
   )
+  if updated:
+    cap += f" · Cập nhật: `{updated}`"
+  st.caption(cap)
+  strategy = state.get("strategy") or {}
   st.markdown(
-    f"**Strategy tuần này:** `{strategy.get('name') or 'đang chờ mine'}` · "
-    f"RR 1:{strategy.get('rr', '—')} · hold ≤{strategy.get('max_hold_bars', '—')} bars · "
-    f"exit `{strategy.get('exit_mode', '—')}`"
+    f"**Chiến lược tuần hiện tại:** `{strategy.get('name') or 'đang chờ mine'}`"
   )
-
-  b1, b2, b3 = st.columns(3)
-  with b1:
-    st.markdown("**Hướng (giai đoạn)**")
-    st.write(f"LONG **{stats['n_long']}** · SHORT **{stats['n_short']}**")
-  with b2:
-    st.markdown("**Thoát lệnh**")
-    reasons = stats.get("by_reason") or {}
-    if reasons:
-      st.write(" · ".join(f"{k} **{v}**" for k, v in sorted(reasons.items())))
-    else:
-      st.caption("Chưa có lệnh đóng trong giai đoạn.")
-  with b3:
-    st.markdown("**Tuần live (remine)**")
-    st.write(
-      f"WR {state.get('week_wr', 0)}% · "
-      f"R {state.get('week_total_r', 0):+.2f} · "
-      f"{state.get('week_trades_taken', 0)} lệnh"
-    )
+  st.caption(
+    f"Áp dụng từ tuần `{state.get('week_start', '—')}` · "
+    f"Trade Model `{state.get('model_id') or '—'}` · "
+    "tự mine lại khi bước sang tuần mới."
+  )
 
   if state.get("open_position"):
     op = state["open_position"]
-    st.warning(
-      f"Lệnh **OPEN:** {op.get('dir')} @ **{op.get('entry_px')}** · "
-      f"SL **{op.get('sl')}** · TP **{op.get('tp')}** · "
+    st.info(
+      f"🟡 **Lệnh đang mở:** {op['dir']} @ **{op['entry_px']}** · "
+      f"SL **{op['sl']}** · TP **{op['tp']}** · "
       f"Giữ {op.get('bars_held', 0)}/{op.get('max_hold_bars', '?')} bars"
     )
 
   if include_chart:
-    _render_chart_panel(
-      state, date_from=date_from, date_to=date_to, max_bars=max_bars,
-    )
+    _render_chart_panel(state)
 
-  st.subheader("Nhật ký lệnh (giai đoạn)")
-  st.caption(
-    "`CLOSED` / `OPEN` từ journal bền vững · `SIGNAL` từ tuần live. "
-    "**Reset data** xóa journal để monitor từ đầu."
-  )
-  show_open = st.checkbox("Hiện cả lệnh đang mở", value=True, key="paper_show_open")
-  view = period_trades if show_open else [
-    t for t in period_trades if t.get("status") == "CLOSED"
-  ]
-  # Attach current SIGNAL rows (not in journal)
-  signal_rows = [
-    o for o in _orders_for_display(state)
-    if str(o.get("status") or "").upper() == "SIGNAL"
-  ]
-  journal_df = _trade_journal_df(list(reversed(view)) + signal_rows)
-  if not journal_df.empty:
-    st.dataframe(
-      journal_df,
-      hide_index=True,
-      use_container_width=True,
-      column_config={
-        "R": st.column_config.NumberColumn(format="%+.2f"),
-        "Pips": st.column_config.NumberColumn(format="%+.1f"),
-        "Giá": st.column_config.NumberColumn(format="%.5f"),
-        "SL": st.column_config.NumberColumn(format="%.5f"),
-        "TP": st.column_config.NumberColumn(format="%.5f"),
-        "Exit giá": st.column_config.NumberColumn(format="%.5f"),
-      },
-    )
-    with st.expander("Chi tiết từng lệnh", expanded=any(
-      str(o.get("status") or "").upper() in ("OPEN", "SIGNAL")
-      for o in (view + signal_rows)
-    )):
-      for i, order in enumerate(view + signal_rows):
-        _order_card(order, i)
+  st.subheader("Chi tiết lệnh")
+  orders = _orders_for_display(state)
+  if orders:
+    for i, order in enumerate(orders):
+      _order_card(order, i)
   else:
-    st.caption("Không có lệnh trong giai đoạn đã chọn.")
+    st.caption("Chưa có lệnh tuần này.")
 
-  with st.expander("Strategy JSON (tuần hiện tại)"):
-    st.json(strategy)
+  st.subheader("Bảng lệnh & tín hiệu")
+  col_a, col_b = st.columns(2)
+  with col_a:
+    st.markdown("**Lệnh đã khớp**")
+    if state.get("recent_trades"):
+      df = pd.DataFrame(state["recent_trades"])
+      show_cols = [c for c in [
+        "entry", "exit", "dir", "entry_px", "sl", "tp", "exit_px", "r", "reason", "pnl_pips",
+      ] if c in df.columns]
+      st.dataframe(df[show_cols], hide_index=True, use_container_width=True)
+    else:
+      st.caption("Chưa có lệnh.")
+  with col_b:
+    st.markdown("**Tín hiệu tuần này**")
+    if state.get("signals_this_week"):
+      sig_df = pd.DataFrame(state["signals_this_week"])
+      show_cols = [c for c in [
+        "status", "signal_time", "entry_time", "direction", "entry_px", "sl", "tp", "risk_pips", "rr",
+      ] if c in sig_df.columns]
+      st.dataframe(sig_df[show_cols], hide_index=True, use_container_width=True)
+    else:
+      st.caption("Chưa có tín hiệu.")
 
-  with st.expander("Paper · Live · Simulate — nhớ nhanh"):
-    st.markdown(
-      """
-| | **Paper** | **Live** (Bridge) | **Simulate** |
-|---|---|---|---|
-| Trade Model | **Cùng active** | **Cùng active** | **Cùng active** |
-| Vai trò | Desk nhẹ, không EA | Lệnh MT5 thật/demo | Replay quá khứ App↔EA |
-| Kiểm Live đúng? | Không bắt buộc | **Parity / Health OOS** | Tuỳ chọn khi nghi bridge |
-| Journal | `paper_trades.json` | `mt5/bridge/trades.json` | `mt5/bridge_sim/trades.json` |
-"""
-    )
+  with st.expander("Strategy đang dùng"):
+    st.json(state["strategy"])
 
+  st.warning(
+    "**Paper monitor** dùng cùng dữ liệu H1 từ ForgeBridge/XM MT5 với Grid và Bridge. "
+    "Tín hiệu được tính trên nến đóng, không phải từng tick."
+  )
 
 
 def _save_paper_runtime_settings() -> None:
@@ -935,13 +631,12 @@ def render():
     if not state.get("paper_started_at"):
       if st.button("📌 Ghi nhận bắt đầu paper", key="pm_wf_start"):
         mark_paper_started()
-        st.toast("Đã ghi nhận Paper desk — kiểm Live chính bằng Parity / Health OOS")
+        st.toast("Đã ghi nhận — theo dõi ≥3 tuần trước khi live")
         st.rerun()
 
   active_model = get_active_trade_model()
-  render_shared_trade_model_banner(context="paper")
   if not active_model:
-    st.caption("Chưa có model — paper có thể dùng cài đặt mặc định (không khuyến nghị).")
+    st.warning("Chưa chọn Trade Model — paper dùng cài đặt mặc định.")
 
   params = get_model_run_params()
   use_kb = params["use_kb"]
@@ -962,12 +657,14 @@ def render():
   s4.metric("Bar cuối", str(status.get("last_bar") or "—")[:19])
 
   with st.expander("Cấu hình service", expanded=not status.get("running")):
+    st.markdown(
+      f"Trade Model dùng chung với MT5: **"
+      f"{format_model_label(active_model) if active_model else '—'}**"
+    )
     st.caption(
       f"Spread **{spread}** / slip **{slip}** pip · "
       f"KB **{'ON' if use_kb else 'OFF'}** · "
-      "cùng remine params với Live/Simulate · "
-      "service chỉ tính lại khi có nến H1 mới hoặc cấu hình/model thay đổi. "
-      "Mở tab khi service tắt **không** remine — chỉ **Start** / **Chạy ngay**."
+      "service chỉ tính lại khi có nến H1 mới hoặc cấu hình/model thay đổi."
     )
     st.session_state.setdefault("paper_risk_pct", float(cfg.get("risk_pct", 1.0)))
     st.session_state.setdefault("paper_poll_sec", float(cfg.get("poll_sec", 2.0)))
@@ -1002,19 +699,13 @@ def render():
   _on_settings_changed(_settings_signature(use_kb, kb_profile, kb_snapshot, spread, slip))
 
   monitor_params = dict(
-    use_learning=use_kb, train_weeks=params["train_weeks"],
+    use_learning=use_kb, train_months=params["train_months"],
     spread_pips=spread, slippage_pips=slip,
     risk_pct=float(risk),
     kb_profile=kb_profile,
     kb_snapshot=kb_snapshot,
   )
   state = _resolve_monitor_state(monitor_params, manual_refresh=manual_refresh)
-
-  st.subheader("Giai đoạn & reset")
-  date_from, date_to, max_bars = _render_period_controls()
-  st.session_state["pm_period_from"] = date_from
-  st.session_state["pm_period_to"] = date_to
-  st.session_state["pm_period_bars"] = max_bars
 
   if is_background_enabled():
     status = get_background_status()
@@ -1025,18 +716,8 @@ def render():
     )
     if status.get("last_error"):
       st.error(f"Background lỗi: {status['last_error']}")
-    if not state.get("pending"):
-      _render_chart_panel(
-        state, date_from=date_from, date_to=date_to, max_bars=max_bars,
-      )
+    _render_chart_panel(state)
     _background_live_panel()
   else:
     _background_status_bar()
-    # Idle: skip heavy chart until snapshot exists (and never auto-start chart server)
-    _render_monitor_body(
-      state,
-      include_chart=bool(state) and not state.get("pending"),
-      date_from=date_from,
-      date_to=date_to,
-      max_bars=max_bars,
-    )
+    _render_monitor_body(state)
