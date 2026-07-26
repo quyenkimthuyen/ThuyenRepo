@@ -3,7 +3,7 @@ param(
   [ValidateSet("Start", "Restart", "Stop", "Status")]
   [string]$Action = "Restart",
   [ValidateRange(1, 65535)]
-  [int]$Port = 8501,
+  [int]$Port = 8502,
   [ValidateRange(5, 120)]
   [int]$TimeoutSeconds = 30
 )
@@ -37,19 +37,19 @@ function Get-AppProcesses {
   }
 
   Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
-    Where-Object {
-      $_.CommandLine -match "streamlit" -and
-      $_.CommandLine -match $escapedAppPath
-    } |
-    ForEach-Object { [void]$processIds.Add([int]$_.ProcessId) }
+  Where-Object {
+    $_.CommandLine -match "streamlit" -and
+    $_.CommandLine -match $escapedAppPath
+  } |
+  ForEach-Object { [void]$processIds.Add([int]$_.ProcessId) }
 
   Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue |
-    ForEach-Object {
-      $row = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.OwningProcess)" -ErrorAction SilentlyContinue
-      if ($row -and $row.CommandLine -match "streamlit" -and $row.CommandLine -match $escapedAppPath) {
-        [void]$processIds.Add([int]$row.ProcessId)
-      }
+  ForEach-Object {
+    $row = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.OwningProcess)" -ErrorAction SilentlyContinue
+    if ($row -and $row.CommandLine -match "streamlit" -and $row.CommandLine -match $escapedAppPath) {
+      [void]$processIds.Add([int]$row.ProcessId)
     }
+  }
 
   foreach ($processId in $processIds) {
     $row = Get-CimInstance Win32_Process -Filter "ProcessId=$processId" -ErrorAction SilentlyContinue
@@ -82,7 +82,7 @@ function Start-App {
   }
 
   $portOwner = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue |
-    Select-Object -First 1
+  Select-Object -First 1
   if ($portOwner) {
     throw "Port $Port is already used by PID $($portOwner.OwningProcess)."
   }
