@@ -169,3 +169,7 @@ def describe_strategy_conditions(params: dict | None) -> dict[str, Any]:
     "max_hold_bars": ss.get("max_hold_bars") if isinstance(ss, dict) else None,
     "conditions_fp": conditions_fingerprint(params),
   }
+
+
+def conditions_match(a: dict | None, b: dict | None) -> bool:
+  return conditions_fingerprint(a) == conditions_fingerprint(b)

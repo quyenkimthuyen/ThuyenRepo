@@ -47,6 +47,18 @@ def _now() -> str:
   return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
+def _canonical_sim_bridge_dir(raw: Any = None) -> Path:
+  """Always use H1 bridge_sim_h1 — ignore stale bridge_sim paths from older deploys."""
+  try:
+    if raw:
+      p = Path(str(raw))
+      if p.resolve() == BRIDGE_SIM_DIR.resolve():
+        return BRIDGE_SIM_DIR
+  except Exception:
+    pass
+  return BRIDGE_SIM_DIR
+
+
 def write_sim_state(update: dict[str, Any]) -> dict:
   REPORT_DIR.mkdir(parents=True, exist_ok=True)
   cur: dict[str, Any] = {}
@@ -56,6 +68,7 @@ def write_sim_state(update: dict[str, Any]) -> dict:
     except Exception:
       cur = {}
   cur.update(update)
+  cur["bridge_dir"] = str(_canonical_sim_bridge_dir(cur.get("bridge_dir")))
   cur["updated_at"] = _now()
   atomic_write_json(SIM_STATE_PATH, cur)
   return cur
@@ -63,11 +76,19 @@ def write_sim_state(update: dict[str, Any]) -> dict:
 
 def load_sim_state() -> dict[str, Any]:
   if not SIM_STATE_PATH.exists():
-    return {"status": "idle"}
+    return {"status": "idle", "bridge_dir": str(BRIDGE_SIM_DIR)}
   try:
-    return json.loads(SIM_STATE_PATH.read_text(encoding="utf-8"))
+    cur = json.loads(SIM_STATE_PATH.read_text(encoding="utf-8"))
   except Exception:
-    return {"status": "idle"}
+    return {"status": "idle", "bridge_dir": str(BRIDGE_SIM_DIR)}
+  want = str(BRIDGE_SIM_DIR)
+  if str(cur.get("bridge_dir") or "") != want:
+    cur["bridge_dir"] = want
+    try:
+      atomic_write_json(SIM_STATE_PATH, cur)
+    except Exception:
+      pass
+  return cur
 
 
 def _norm_date(s: str) -> str:

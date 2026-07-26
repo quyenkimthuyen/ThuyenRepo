@@ -1129,7 +1129,7 @@ def _render_model_monitor_body() -> None:
   )
   if source == "sim":
     st.caption(
-      "Simulate: KPI/biểu đồ đọc `mt5/bridge_sim/trades.json` theo **entry_time** lịch sử "
+      f"Simulate: KPI/biểu đồ đọc `mt5/{BRIDGE_SIM_DIR.name}/trades.json` theo **entry_time** lịch sử "
       "(không dùng giờ tường lúc fill). Tự cập nhật ~12s khi feed chạy; hoặc bấm Refresh."
     )
   else:
@@ -1261,7 +1261,7 @@ def _render_model_monitor_body() -> None:
     st.markdown(
       "- **Backtest OOS** = report Trade Model (cùng điều kiện remine / Health).\n"
       "- **Live Auto** = fill Bridge live `mode=auto`.\n"
-      "- **Simulate EA** = fill từ `bridge_sim/` (EA HISTORY_FEED, App chỉ điều khiển from/to/delay).\n"
+      f"- **Simulate EA** = fill từ `{BRIDGE_SIM_DIR.name}/` (EA HISTORY_FEED, App chỉ điều khiển from/to/delay).\n"
       "- Biểu đồ dùng **cùng trục tháng/thời gian**; chú thích Timeline màu xanh dương (OOS) "
       "và xanh ngọc (Live/Sim) cho biết khoảng có dữ liệu từng nguồn.\n"
       "- Edge gần 0 trên cùng giai đoạn sim → model + đường App↔EA ổn.\n"

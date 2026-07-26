@@ -33,11 +33,16 @@ def test_dual_runtime_resources_are_unique():
   assert h1_protocol.DEFAULT_TIMEFRAME == "H1"
   assert h1_protocol.INSTANCE_ID == "H1"
   assert h1_protocol.BRIDGE_DIR == H1_ROOT / "mt5" / "bridge_h1"
+  assert h1_protocol.BRIDGE_SIM_DIR == H1_ROOT / "mt5" / "bridge_sim_h1"
   assert len({
     M15_BRIDGE_PORT, M15_PAPER_PORT,
     h1_live_monitor.DEFAULT_MONITOR_PORT,
     h1_paper_monitor.DEFAULT_PAPER_MONITOR_PORT,
   }) == 4
+  from mt5_bridge.live_monitor_server import SIM_MONITOR_PORT as M15_SIM_PORT
+  assert M15_SIM_PORT != h1_live_monitor.SIM_MONITOR_PORT
+  assert h1_live_monitor.DEFAULT_MONITOR_PORT == 8865
+  assert h1_live_monitor.SIM_MONITOR_PORT == 8877
 
 
 def test_h1_config_never_points_to_m15_bridge():
