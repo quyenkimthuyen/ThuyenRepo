@@ -7,7 +7,7 @@ stays responsive (same idea as mt5_bridge_service.py for Live).
 Usage:
   python scripts/mt5_bridge_sim_service.py \\
     --from 2026-01-01 --to 2026-01-14 --delay-ms 100 \\
-    --model-id tm_m15_best_2_xxx --risk-pct 1.0
+    --model-id tm_mt5_best_xxx --risk-pct 1.0
 """
 from __future__ import annotations
 

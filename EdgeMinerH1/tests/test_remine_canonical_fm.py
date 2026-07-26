@@ -11,7 +11,7 @@ from mt5_bridge.engine import BridgeEngine, _normalize
 from mt5_bridge.history_sync import utc_to_broker_time
 from mt5_bridge.trade_journal import save_trades
 
-MODEL_ID = "tm_m15_best_2_49216b56"
+MODEL_ID = "tm_mt5_best_94ef551a"
 WEEK = "2026-03-16"
 ROOT = Path(__file__).resolve().parents[1]
 

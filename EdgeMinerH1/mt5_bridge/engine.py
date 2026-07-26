@@ -18,6 +18,7 @@ from mt5_bridge.history_sync import (
   utc_to_broker_time,
 )
 from mt5_bridge.models import (
+  coerce_instance_model_id,
   conditions_fingerprint,
   describe_strategy_conditions,
   get_model_run_params,
@@ -80,7 +81,7 @@ class BridgeEngine:
     mt5_cache: Path | None = None,
     bridge_dir: Path | None = None,
   ):
-    self.model_id = model_id
+    self.model_id = coerce_instance_model_id(model_id) or model_id
     self.risk_pct = float(risk_pct)
     self.magic = int(magic)
     self.mt5_cache = mt5_cache or MT5_CACHE
@@ -91,8 +92,8 @@ class BridgeEngine:
     self._fm_key: tuple | None = None
     self._last_bar_key: str | None = None
     self._last_decision: dict | None = None
-    self._model = resolve_model(model_id)
-    self._params = get_model_run_params(self._model, model_id)
+    self._model = resolve_model(self.model_id)
+    self._params = get_model_run_params(self._model, self.model_id)
 
   @property
   def params(self) -> dict:

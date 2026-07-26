@@ -10,8 +10,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS, DEFAULT_TF, TRAIN_WEEKS
 from run_backtest import REPORT_DIR
+from mt5_bridge.protocol import INSTANCE_ID, DEFAULT_TIMEFRAME
 
 MODELS_PATH = REPORT_DIR / "trade_models.json"
 ACTIVE_MODEL_PATH = REPORT_DIR / "active_trade_model.json"
@@ -72,8 +73,30 @@ def load_active_model_id() -> str | None:
   return models[0]["id"] if models else None
 
 
+def coerce_instance_model_id(model_id: str | None) -> str | None:
+  """Prefer active H1 model when a foreign TF id (e.g. tm_m15_*) is passed."""
+  mid = (model_id or "").strip() or None
+  active = load_active_model_id()
+  tf = (DEFAULT_TIMEFRAME or DEFAULT_TF or INSTANCE_ID or "").upper()
+  if not mid:
+    return active
+  mid_l = mid.lower()
+  # Reject cross-TF leftovers after M15↔H1 sync / shared configs.
+  if tf == "H1" and ("m15" in mid_l or mid_l.startswith("tm_m15")):
+    return active or mid
+  if tf == "M15" and ("_h1" in mid_l or "mt5_best" in mid_l and "m15" not in mid_l):
+    # Keep M15 active if caller passed an H1 id by mistake
+    m = get_model_by_id(mid)
+    if m and str(m.get("data_timeframe") or "").upper() == "H1":
+      return active or mid
+  m = get_model_by_id(mid)
+  if m and tf and str(m.get("data_timeframe") or "").upper() not in ("", tf):
+    return active or mid
+  return mid
+
+
 def resolve_model(model_id: str | None = None) -> dict | None:
-  mid = model_id or load_active_model_id()
+  mid = coerce_instance_model_id(model_id or load_active_model_id())
   return get_model_by_id(mid) if mid else None
 
 
@@ -81,7 +104,7 @@ def get_model_run_params(model: dict | None = None, model_id: str | None = None)
   m = model or resolve_model(model_id)
   if not m:
     return {
-      "train_weeks": 3,
+      "train_weeks": int(TRAIN_WEEKS),
       "use_learning": True,
       "use_kb": True,
       "kb_profile": "era_2023_2025",
@@ -96,7 +119,7 @@ def get_model_run_params(model: dict | None = None, model_id: str | None = None)
       "label": None,
     }
   return {
-    "train_weeks": int(m.get("train_weeks", 3)),
+    "train_weeks": int(m.get("train_weeks", TRAIN_WEEKS)),
     "use_learning": bool(m.get("use_kb", True)),
     "use_kb": bool(m.get("use_kb", True)),
     "kb_profile": m.get("kb_profile") or "default",

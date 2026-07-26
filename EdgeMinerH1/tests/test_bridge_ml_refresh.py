@@ -38,7 +38,7 @@ def test_decide_survives_in_session_append_with_cached_strat(mt5_frame, tmp_path
   cache = tmp_path / "mt5.parquet"
   mt5_frame.iloc[:cut].to_parquet(cache)
 
-  eng = BridgeEngine(model_id="tm_m15_best_2_49216b56", mt5_cache=cache)
+  eng = BridgeEngine(model_id="tm_mt5_best_94ef551a", mt5_cache=cache)
   eng.load()
   warmup = eng.decide_for_bar(_bar_payload(eng._df, eng._df.index[-1]))
   assert warmup.get("action") in {"FLAT", "BUY", "SELL", "HOLD"}
