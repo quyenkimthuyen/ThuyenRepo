@@ -600,17 +600,20 @@ def get_sim_status() -> dict:
   # Short TTL cache — Streamlit fragments must not hammer disk every redraw
   now = time.time()
   cached = getattr(get_sim_status, "_cache", None)
-  if isinstance(cached, tuple) and (now - cached[0]) < 1.0:
+  if isinstance(cached, tuple) and (now - cached[0]) < 0.4:
     return dict(cached[1])
 
-  if is_sim_running():
-    try:
-      st = sync_state_from_ea(BRIDGE_SIM_DIR, persist=False)
-    except Exception:
-      st = load_sim_state()
-  else:
+  # Always mirror sim_control.json (EA updates bars_done/last_bar even if PID
+  # detection briefly lags after Start — otherwise UI looks frozen until Refresh).
+  try:
+    st = sync_state_from_ea(BRIDGE_SIM_DIR, persist=False)
+  except Exception:
     st = load_sim_state()
   st["running"] = is_sim_running()
+  # Brief PID lag after Start: EA already wrote enabled/running to sim_control
+  ea_st = str(st.get("ea_status") or "")
+  if not st["running"] and (ea_st == "running" or bool(st.get("enabled"))):
+    st["running"] = True
   st["runtime"] = "process" if is_sim_process_running() else (
     "thread" if is_sim_thread_running() else st.get("runtime")
   )
@@ -619,7 +622,7 @@ def get_sim_status() -> dict:
   try:
     from mt5_bridge.protocol import read_sim_control
     ctrl = read_sim_control(BRIDGE_SIM_DIR) or {}
-    st["paused"] = bool(is_sim_running() and not ctrl.get("enabled") and ctrl.get("request_id"))
+    st["paused"] = bool(st["running"] and not ctrl.get("enabled") and ctrl.get("request_id"))
   except Exception:
     st["paused"] = bool(_sim_pause.is_set()) if is_sim_thread_running() else False
   get_sim_status._cache = (now, dict(st))

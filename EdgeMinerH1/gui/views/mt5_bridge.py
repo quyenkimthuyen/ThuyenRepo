@@ -423,8 +423,8 @@ def _render_trader_desk(*, include_live_metrics: bool = True) -> None:
   else:
     action = str(decision.get("action") or service_status.get("last_action") or "—").upper()
     st.caption(
-      "Status FEED / Quote / Progress cập nhật mượt trên chart iframe bên dưới "
-      "(không remount Streamlit mỗi 5s)."
+      "FEED / Quote cập nhật trên chart iframe · "
+      "Bar / Decision / Sim R tự refresh ~3s trên desk này."
     )
 
   # Strategy line
@@ -543,9 +543,13 @@ def _trader_desk_fragment() -> None:
   _render_trader_desk(include_live_metrics=True)
 
 
-def _render_sim_desk_static() -> None:
-  """Simulate: strategy/PnL once (no 5s Streamlit remount). Live FEED is in iframe."""
+@st.fragment(run_every=timedelta(seconds=3))
+def _sim_desk_fragment() -> None:
+  """Refresh Sim status / Sim R / open trade — chart stays in iframe (no remount)."""
+  if hasattr(bridge_bg.get_sim_status, "_cache"):
+    bridge_bg.get_sim_status._cache = None
   _render_trader_desk(include_live_metrics=False)
+
 
 def _render_live_chart(max_bars: int) -> None:
   """Live + Simulate: persistent browser iframe (Plotly.react) — no Streamlit flicker."""
@@ -800,10 +804,13 @@ def _render_history_sync() -> None:
       st.rerun()
 
 
-@st.fragment(run_every=timedelta(seconds=5))
+@st.fragment(run_every=timedelta(seconds=2))
 def _render_sim_progress_fragment() -> None:
-  """Progress caption — slow poll so Streamlit stays usable while feed runs."""
+  """Auto status/progress + Pause/Stop while feed runs (no full-page Refresh needed)."""
   try:
+    # Bust short status cache so each fragment tick sees fresh sim_control
+    if hasattr(bridge_bg.get_sim_status, "_cache"):
+      bridge_bg.get_sim_status._cache = None
     sim = bridge_bg.get_sim_status()
   except Exception as e:
     st.warning(f"Không đọc được sim status: {e}")
@@ -811,6 +818,12 @@ def _render_sim_progress_fragment() -> None:
   active = get_active_trade_model()
   running = bool(sim.get("running"))
   delay_ms = int(st.session_state.get("sim_ea_delay", 100) or 100)
+
+  # Form Start/disabled uses full-script `running` — remount page when feed flips
+  prev_run = bool(st.session_state.get("_sim_ui_was_running"))
+  if prev_run != running:
+    st.session_state["_sim_ui_was_running"] = running
+    st.rerun()
 
   ea_st = sim.get("ea_status") or "—"
   runtime = sim.get("runtime") or "—"
@@ -824,10 +837,10 @@ def _render_sim_progress_fragment() -> None:
     f"trades `{sim.get('n_fills') or 0}` · last `{sim.get('last_bar') or '—'}` · "
     f"delay `{delay_ms}`ms"
   )
-  if running and runtime != "process":
+  if running and runtime not in ("process", "thread"):
     st.warning(
-      "Feed đang chạy nhưng không phải `runtime process` — App có thể chưa Restart "
-      "sau bản vá. Stop feed → Restart app → Start lại."
+      "Feed đang chạy nhưng runtime chưa rõ process/thread — đợi 1–2s hoặc Restart app "
+      "nếu vẫn không có `pid`."
     )
   if sim.get("error"):
     st.error(sim["error"])
@@ -1011,6 +1024,8 @@ def _render_simulate_ea() -> None:
       )
       if ok:
         import time as _time
+        if hasattr(bridge_bg.get_sim_status, "_cache"):
+          bridge_bg.get_sim_status._cache = None
         _time.sleep(0.4)
         st2 = bridge_bg.get_sim_status()
         st.success(
@@ -1117,6 +1132,11 @@ def _render_model_monitor_body() -> None:
     st.caption(
       "Simulate: KPI/biểu đồ đọc `mt5/bridge_sim/trades.json` theo **entry_time** lịch sử "
       "(không dùng giờ tường lúc fill). Tự cập nhật ~12s khi feed chạy; hoặc bấm Refresh."
+    )
+  else:
+    st.caption(
+      "Live: KPI/biểu đồ đọc `mt5/bridge/trades.json` (auto đã đóng). "
+      "Tự cập nhật ~12s khi service chạy; hoặc mở expander / Refresh."
     )
 
   if not bundle["has_report"]:
@@ -1647,17 +1667,13 @@ def render():
       _model_monitor_auto_fragment()
     else:
       with st.expander("Theo dõi model · Sức khỏe / Rủi ro", expanded=False):
-        st.caption("Mở khi cần — chỉ Start feed mới chạy remine/ghi bridge.")
+        st.caption("Mở khi cần — tránh load nặng khi chưa Start feed.")
         _render_model_monitor()
-    _render_sim_desk_static()
+    st.caption("Desk Simulate · Bar / Decision / Sim R tự cập nhật ~3s (chart iframe không giật).")
+    _sim_desk_fragment()
   else:
+    # Live: cùng thứ tự Simulate — desk/controls → chart giá → Sức khỏe/Rủi ro
     _trader_desk_fragment()
-    live_running = bool(bridge_bg.get_status().get("running"))
-    if live_running:
-      st.caption("Sức khỏe / Rủi ro · tự cập nhật ~12s khi Bridge service chạy.")
-      _model_monitor_auto_fragment()
-    else:
-      _render_model_monitor()
     _render_service_controls()
     _render_manual_test_orders()
     _render_history_sync()
@@ -1676,6 +1692,15 @@ def render():
     )
     max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
     _render_live_chart(max_bars)
+
+    live_running = bool(bridge_bg.get_status().get("running"))
+    if live_running:
+      st.caption("Sức khỏe / Rủi ro · tự cập nhật ~12s khi Bridge service chạy.")
+      _model_monitor_auto_fragment()
+    else:
+      with st.expander("Theo dõi model · Sức khỏe / Rủi ro", expanded=False):
+        st.caption("Mở khi cần — tránh load nặng khi chưa Start service (giống Simulate).")
+        _render_model_monitor()
 
   # Thống kê: auto khi feed/service chạy (cùng nhịp Health/Risk); Refresh cũng full rerun
   svc_running = (
