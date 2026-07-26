@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-BRIDGE_DIR = ROOT / "mt5" / "bridge"
-BRIDGE_SIM_DIR = ROOT / "mt5" / "bridge_sim"
+BRIDGE_DIR = ROOT / "mt5" / "bridge_h1"
+BRIDGE_SIM_DIR = ROOT / "mt5" / "bridge_sim_h1"
 
 BAR_NAME = "bar.json"
 BARS_NAME = "bars.json"
@@ -28,7 +28,7 @@ REPLAY_CSV_NAME = "replay_signals.csv"
 SIM_CONTROL_NAME = "sim_control.json"
 
 DEFAULT_MODEL_ID = ""
-DEFAULT_MAGIC = 20260724
+DEFAULT_MAGIC = 20260725
 DEFAULT_TIMEFRAME = "H1"
 INSTANCE_ID = "H1"
 

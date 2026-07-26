@@ -59,11 +59,32 @@ def test_process_scripts_are_repo_scoped():
 
 
 def test_eas_use_magic_and_hedging_guards():
-  h1 = (M15_ROOT / "mt5" / "Experts" / "ForgeBridge.mq5").read_text(encoding="utf-8")
-  h1 = (H1_ROOT / "mt5" / "Experts" / "ForgeBridge.mq5").read_text(encoding="utf-8")
+  m15 = (M15_ROOT / "mt5" / "Experts" / "ForgeBridgeM15.mq5").read_text(encoding="utf-8")
+  m15_sim = (M15_ROOT / "mt5" / "Experts" / "ForgeBridgeM15Sim.mq5").read_text(encoding="utf-8")
+  h1 = (H1_ROOT / "mt5" / "Experts" / "ForgeBridgeH1.mq5").read_text(encoding="utf-8")
+  h1_sim = (H1_ROOT / "mt5" / "Experts" / "ForgeBridgeH1Sim.mq5").read_text(encoding="utf-8")
+  assert 'const string INSTANCE_ID = "M15"' in m15
+  assert 'const string INSTANCE_ID = "M15"' in m15_sim
   assert 'const string INSTANCE_ID = "H1"' in h1
-  assert 'const string INSTANCE_ID = "H1"' in h1
+  assert 'const string INSTANCE_ID = "H1"' in h1_sim
+  assert "ACCOUNT_MARGIN_MODE_RETAIL_HEDGING" in m15
   assert "ACCOUNT_MARGIN_MODE_RETAIL_HEDGING" in h1
-  assert "ACCOUNT_MARGIN_MODE_RETAIL_HEDGING" in h1
+  assert 'InpBridgeSubdir   = "bridge"' in m15
+  assert "InpMagic          = 20260724" in m15
+  assert 'InpMode = BRIDGE_HISTORY_FEED' in m15_sim
+  assert 'InpBridgeSubdir   = "bridge_sim"' in m15_sim
+  assert "InpMagic          = 20260726" in m15_sim
   assert 'InpBridgeSubdir   = "bridge_h1"' in h1
   assert "InpMagic          = 20260725" in h1
+  assert 'InpMode = BRIDGE_HISTORY_FEED' in h1_sim
+  assert 'InpBridgeSubdir   = "bridge_sim_h1"' in h1_sim
+  assert "InpMagic          = 20260727" in h1_sim
+  for root, live, sim in (
+    (M15_ROOT, "ForgeBridgeM15", "ForgeBridgeM15Sim"),
+    (H1_ROOT, "ForgeBridgeH1", "ForgeBridgeH1Sim"),
+  ):
+    deploy = (root / "scripts" / "deploy_xm_forgebridge.ps1").read_text(encoding="utf-8-sig")
+    assert f'$EaNameLive = "{live}"' in deploy
+    assert f'$EaNameSim = "{sim}"' in deploy
+    assert "Compile-OneEa" in deploy
+    assert "InpMagic=$EaMagic" in deploy

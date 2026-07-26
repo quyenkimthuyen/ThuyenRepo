@@ -17,10 +17,21 @@ param(
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$SourceEa = Join-Path $RepoRoot "mt5\Experts\ForgeBridge.mq5"
+$SourceEaLive = Join-Path $RepoRoot "mt5\Experts\ForgeBridgeM15.mq5"
+$SourceEaSim = Join-Path $RepoRoot "mt5\Experts\ForgeBridgeM15Sim.mq5"
 $ProjectBridge = Join-Path $RepoRoot "mt5\bridge"
 $ProjectBridgeSim = Join-Path $RepoRoot "mt5\bridge_sim"
+$BridgeSubdirLive = "bridge"
+$BridgeSubdirSim = "bridge_sim"
+$EaNameLive = "ForgeBridgeM15"
+$EaNameSim = "ForgeBridgeM15Sim"
+$EaFolder = "EdgeMinerM15"
+$EaMagicLive = 20260724
+$EaMagicSim = 20260726
 $IsHistoryFeed = ($Mode -eq "HistoryFeed")
+$EaName = if ($IsHistoryFeed) { $EaNameSim } else { $EaNameLive }
+$SourceEa = if ($IsHistoryFeed) { $SourceEaSim } else { $SourceEaLive }
+$EaMagic = if ($IsHistoryFeed) { $EaMagicSim } else { $EaMagicLive }
 if ($IsHistoryFeed) {
   # Simulate uses App feed control + bridge_sim cycle - do not restart live service.
   $SkipBridgeService = $true
@@ -96,10 +107,14 @@ function Ensure-NamedBridgeJunction(
       throw "$link exists but is not a junction. Refusing to delete existing data."
     }
     $targets = @($item.Target) | ForEach-Object { [string]$_ }
-    if ($targets -notcontains $ProjectTarget) {
-      throw "$link targets '$($targets -join ", ")', expected '$ProjectTarget'."
+    if ($targets -contains $ProjectTarget) {
+      return $link
     }
-    return $link
+    Write-Warning "Relinking $link from '$($targets -join ", ")' -> '$ProjectTarget'"
+    cmd /c "rmdir `"$link`""
+    if (Test-Path $link) {
+      throw "Failed to remove old junction: $link"
+    }
   }
 
   New-Item -ItemType Junction -Path $link -Target $ProjectTarget | Out-Null
@@ -107,20 +122,25 @@ function Ensure-NamedBridgeJunction(
 }
 
 function Ensure-BridgeJunction([string]$DataPath) {
-  return Ensure-NamedBridgeJunction $DataPath "bridge" $ProjectBridge
+  return Ensure-NamedBridgeJunction $DataPath $BridgeSubdirLive $ProjectBridge
 }
 
-function Compile-Ea([string]$DataPath, [string]$XmInstallPath) {
-  if (-not (Test-Path $SourceEa)) {
-    throw "EA source not found: $SourceEa"
+function Compile-OneEa(
+  [string]$DataPath,
+  [string]$XmInstallPath,
+  [string]$Src,
+  [string]$Name
+) {
+  if (-not (Test-Path $Src)) {
+    throw "EA source not found: $Src"
   }
 
-  $eaDir = Join-Path $DataPath "MQL5\Experts\EdgeMiner2"
+  $eaDir = Join-Path $DataPath "MQL5\Experts\$EaFolder"
   New-Item -ItemType Directory -Path $eaDir -Force | Out-Null
-  $targetMq5 = Join-Path $eaDir "ForgeBridge.mq5"
-  $targetEx5 = Join-Path $eaDir "ForgeBridge.ex5"
-  $compileLog = Join-Path $eaDir "ForgeBridge_compile.log"
-  Copy-Item $SourceEa $targetMq5 -Force
+  $targetMq5 = Join-Path $eaDir "$Name.mq5"
+  $targetEx5 = Join-Path $eaDir "$Name.ex5"
+  $compileLog = Join-Path $eaDir "${Name}_compile.log"
+  Copy-Item $Src $targetMq5 -Force
 
   $editor = Join-Path $XmInstallPath "metaeditor64.exe"
   if (-not (Test-Path $editor)) {
@@ -136,12 +156,20 @@ function Compile-Ea([string]$DataPath, [string]$XmInstallPath) {
     Get-Content $compileLog -Raw -Encoding Unicode
   } else { "" }
   if ($proc.ExitCode -ne 0 -and $logText -notmatch "0 error") {
-    throw "ForgeBridge compile failed (MetaEditor exit=$($proc.ExitCode))."
+    throw "$Name compile failed (MetaEditor exit=$($proc.ExitCode))."
   }
   if (-not (Test-Path $targetEx5)) {
     throw "Compile produced no EX5: $targetEx5"
   }
   return @{ Binary = $targetEx5; Log = $compileLog }
+}
+
+function Compile-Ea([string]$DataPath, [string]$XmInstallPath) {
+  # Always compile Live + Sim so both can run side-by-side on the same MT5.
+  $live = Compile-OneEa $DataPath $XmInstallPath $SourceEaLive $EaNameLive
+  $sim = Compile-OneEa $DataPath $XmInstallPath $SourceEaSim $EaNameSim
+  if ($IsHistoryFeed) { return $sim }
+  return $live
 }
 
 function Stop-XmTerminal([string]$XmInstallPath) {
@@ -161,7 +189,7 @@ function Get-ForgeBridgeCharts([string]$DataPath) {
   $chartsRoot = Join-Path $DataPath "MQL5\Profiles\Charts"
   if (-not (Test-Path $chartsRoot)) { return @() }
   return @(Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
-    Where-Object { (Get-Content $_.FullName -Raw) -match "name=ForgeBridge" })
+    Where-Object { (Get-Content $_.FullName -Raw) -match "name=$EaName" })
 }
 
 function Get-EurusdM15Charts([string]$DataPath) {
@@ -191,8 +219,8 @@ function New-ForgeBridgeExpertBlock(
   # smart-quotes / encoding and then treat < as the reserved redirect operator).
   $lines = @(
     '<expert>',
-    'name=ForgeBridge',
-    'path=Experts\EdgeMiner2\ForgeBridge.ex5',
+    "name=$EaName",
+    "path=Experts\$EaFolder\$EaName.ex5",
     "expertmode=$mode",
     '<inputs>',
     "InpMode=$InpMode",
@@ -204,7 +232,7 @@ function New-ForgeBridgeExpertBlock(
     'InpHistoryChunk=750',
     'InpHistoryPaperFills=true',
     "InpRiskPct=$RiskPct",
-    'InpMagic=20260724',
+    "InpMagic=$EaMagic",
     'InpSlipPoints=30',
     'InpMaxHoldBars=36',
     '</inputs>',
@@ -226,7 +254,7 @@ function Select-AttachChart(
     $alreadySim = $charts |
       Where-Object {
         $t = Get-Content $_.FullName -Raw
-        $t -match "name=ForgeBridge" -and $t -match "InpBridgeSubdir=bridge_sim"
+        $t -match "name=$EaNameSim" -and $t -match "InpBridgeSubdir=$BridgeSubdirSim"
       } | Select-Object -First 1
     if ($alreadySim) { return $alreadySim }
 
@@ -234,14 +262,14 @@ function Select-AttachChart(
       Where-Object {
         $t = Get-Content $_.FullName -Raw
         -not (
-          $t -match "name=ForgeBridge" -and
-          $t -match "InpBridgeSubdir=bridge" -and
-          $t -notmatch "InpBridgeSubdir=bridge_sim"
+          $t -match "name=$EaNameLive" -and
+          $t -match "InpBridgeSubdir=$BridgeSubdirLive" -and
+          $t -notmatch "InpBridgeSubdir=$BridgeSubdirSim"
         )
       })
     if ($notLiveExpert.Count -gt 0) {
       $empty = $notLiveExpert | Where-Object {
-        (Get-Content $_.FullName -Raw) -notmatch "name=ForgeBridge"
+        (Get-Content $_.FullName -Raw) -notmatch "name=(ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)"
       } | Select-Object -First 1
       if ($empty) { return $empty }
       return ($notLiveExpert | Select-Object -First 1)
@@ -255,7 +283,7 @@ function Select-AttachChart(
   }
 
   $target = $charts |
-    Where-Object { (Get-Content $_.FullName -Raw) -match "name=(ForexForgeEA|ForgeBridge)" } |
+    Where-Object { (Get-Content $_.FullName -Raw) -match "name=($EaNameLive|ForgeBridgeM15|ForgeBridge)" } |
     Select-Object -First 1
   if (-not $target) { $target = $charts | Select-Object -First 1 }
   return $target
@@ -359,7 +387,7 @@ Write-Host "Mode    : $Mode"
 
 Write-Step "Link MQL5 Files to app"
 if ($IsHistoryFeed) {
-  $bridgeLink = Ensure-NamedBridgeJunction $TerminalDataPath "bridge_sim" $ProjectBridgeSim
+  $bridgeLink = Ensure-NamedBridgeJunction $TerminalDataPath $BridgeSubdirSim $ProjectBridgeSim
   Write-Host "Bridge  : $bridgeLink -> $ProjectBridgeSim"
   try {
     $liveLink = Ensure-BridgeJunction $TerminalDataPath
@@ -372,20 +400,20 @@ if ($IsHistoryFeed) {
   Write-Host "Bridge  : $bridgeLink -> $ProjectBridge"
 }
 
-Write-Step "Copy and compile ForgeBridge"
+Write-Step "Copy and compile $EaName"
 $compiled = Compile-Ea $TerminalDataPath $InstallPath
 Write-Host "EX5     : $($compiled.Binary)"
 
 $attached = Get-ForgeBridgeCharts $TerminalDataPath
 if ($Attach) {
   if ($IsHistoryFeed) {
-    Write-Step "Attach ForgeBridge HISTORY_FEED to EURUSD M15"
-    $chart = Attach-ForgeBridge $TerminalDataPath $InstallPath $false 2 "bridge_sim"
+    Write-Step "Attach $EaName HISTORY_FEED to EURUSD M15"
+    $chart = Attach-ForgeBridge $TerminalDataPath $InstallPath $false 2 $BridgeSubdirSim
     Write-Host "Chart   : $chart"
-    Write-Host "Inputs  : InpMode=2 (HISTORY_FEED), InpBridgeSubdir=bridge_sim, paper fills"
+    Write-Host "Inputs  : InpMode=2 (HISTORY_FEED), InpBridgeSubdir=$BridgeSubdirSim, paper fills"
   } else {
-    Write-Step "Attach ForgeBridge Live to EURUSD M15"
-    $chart = Attach-ForgeBridge $TerminalDataPath $InstallPath $EnableTrading.IsPresent 0 "bridge"
+    Write-Step "Attach $EaName Live to EURUSD M15"
+    $chart = Attach-ForgeBridge $TerminalDataPath $InstallPath $EnableTrading.IsPresent 0 $BridgeSubdirLive
     Write-Host "Chart   : $chart"
     Write-Host "Trading : $($EnableTrading.IsPresent)"
   }

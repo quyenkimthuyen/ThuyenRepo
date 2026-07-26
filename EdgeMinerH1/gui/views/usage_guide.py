@@ -366,7 +366,8 @@ feature_engine.py           # Features
 knowledge_base.py           # KB
 data/mt5_eurusd_h1.parquet  # Cache H1 chuẩn từ ForgeBridge/XM MT5
 mt5_bridge/                 # Bridge App ↔ MT5 EA
-mt5/Experts/ForgeBridge.mq5 # EA execute (Live / Replay)
+mt5/Experts/ForgeBridgeH1.mq5    # EA Live
+mt5/Experts/ForgeBridgeH1Sim.mq5 # EA Simulate (HistoryFeed)
 mt5/bridge/                 # bar/decision/fill/comm_log/replay
 scripts/mt5_bridge_service.py
 scripts/export_bridge_replay.py
@@ -414,7 +415,7 @@ A: **Có remine strategy mỗi tuần** khi Paper (chu kỳ) hoặc MT5 Bridge s
 A: Paper và Bridge dùng chung nến từ **MT5 broker**. Paper mô phỏng lệnh; Bridge gửi quyết định cho EA mở lệnh thật/demo.
 
 **Q: Có hỗ trợ MT4 không?**  
-A: Không — chỉ **MT5** (`ForgeBridge.mq5`).
+A: Không — chỉ **MT5** (`ForgeBridgeH1.mq5`).
 
 **Q: Xem log giao tiếp App ↔ EA ở đâu?**  
 A: GUI **MT5 Bridge** → Nhật ký giao tiếp, hoặc file `mt5/bridge/comm_log.jsonl`.

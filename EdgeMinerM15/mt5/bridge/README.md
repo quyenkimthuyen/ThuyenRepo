@@ -51,7 +51,7 @@ powershell -ExecutionPolicy Bypass -File scripts/deploy_xm_forgebridge.ps1 -Atta
 powershell -ExecutionPolicy Bypass -File scripts/deploy_xm_forgebridge.ps1 -Mode HistoryFeed -Attach
 ```
 
-Sau này khi sửa `mt5/Experts/ForgeBridge.mq5`, chỉ chạy lệnh đầu tiên. Script
+Sau này khi sửa `mt5/Experts/ForgeBridgeM15.mq5`, chỉ chạy lệnh đầu tiên. Script
 idempotent và không thay chart nếu ForgeBridge đã được gắn.
 Chỉ dùng `-NoRestartTerminal` khi muốn compile mà chưa nạp EA mới vào chart.
 

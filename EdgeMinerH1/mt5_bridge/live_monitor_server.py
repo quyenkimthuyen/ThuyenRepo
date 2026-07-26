@@ -18,7 +18,7 @@ from mt5_bridge.protocol import (
 )
 from mt5_bridge.trade_journal import load_trades
 
-DEFAULT_MONITOR_PORT = 8765
+DEFAULT_MONITOR_PORT = 8865
 # Dedicated Simulate chart port (avoid stale Live monitor on 8765 lacking mode=sim)
 SIM_MONITOR_PORT = 8876
 _CHART_SERVER = None

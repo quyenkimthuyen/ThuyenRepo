@@ -15,7 +15,7 @@ from mt5_bridge.live_monitor_server import _chart_html, _plotly_js_path
 from mt5_bridge.protocol import bars_path, connection_path, read_json
 from paper_background import STATE_PATH, load_saved_state
 
-DEFAULT_PAPER_MONITOR_PORT = 8766
+DEFAULT_PAPER_MONITOR_PORT = 8866
 _snapshot_lock = threading.Lock()
 _snapshot_key: tuple | None = None
 _snapshot_cache: dict | None = None

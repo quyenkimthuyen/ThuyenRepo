@@ -15,7 +15,7 @@ Cùng Trade Model + cùng cache H1. Paper **không** thay thế Bridge — dùng
 
 ## GUI
 
-Trong app: sidebar **MT5 Bridge** — switch **Live | Simulate** (cùng desk/chart/thống kê/sức khỏe; khác `bridge/` vs `bridge_sim/`)
+Trong app: sidebar **MT5 Bridge** — switch **Live | Simulate** (cùng desk/chart/thống kê/sức khỏe; khác `bridge_h1/` vs `bridge_sim_h1/`)
 
 - Start/Stop service — mặc định **process riêng** (`scripts/mt5_bridge_service.py`)
   - Đổi tab / refresh Streamlit **không** dừng service
@@ -27,7 +27,7 @@ Trong app: sidebar **MT5 Bridge** — switch **Live | Simulate** (cùng desk/cha
 - **Nhật ký giao tiếp** `comm_log.jsonl` (EA→App bar/fill, App→EA decision)
 - **Thống kê lệnh** `trades.json` (thắng/thua, R)
 - **Mode Auto vs Lệnh sửa** — EA v1.04 đồng bộ sửa/đóng tay (`modify`/`manual_close`); thống kê tách để review chiến lược công bằng (R theo SL kế hoạch)
-- **Simulate EA (History Feed)** — ForgeBridge **v1.05** `InpMode = HISTORY_FEED`, `InpBridgeSubdir = bridge_sim`; App ghi `sim_control.json` (from/to/delay); EA `CopyRates` gửi bar/fill như live
+- **Simulate EA (History Feed)** — ForgeBridgeH1 `InpMode = HISTORY_FEED`, `InpBridgeSubdir = bridge_sim_h1`; App ghi `sim_control.json` (from/to/delay); EA `CopyRates` gửi bar/fill như live
 
 ## Deploy / cập nhật XM Global MT5 (Windows)
 
@@ -47,11 +47,11 @@ powershell -ExecutionPolicy Bypass -File scripts/deploy_xm_forgebridge.ps1 -Atta
 # Thay EA trên chart và bật giao dịch
 powershell -ExecutionPolicy Bypass -File scripts/deploy_xm_forgebridge.ps1 -Attach -EnableTrading
 
-# Simulate (HISTORY_FEED + bridge_sim, chart riêng)
+# Simulate (HISTORY_FEED + bridge_sim_h1, chart riêng)
 powershell -ExecutionPolicy Bypass -File scripts/deploy_xm_forgebridge.ps1 -Mode HistoryFeed -Attach
 ```
 
-Sau này khi sửa `mt5/Experts/ForgeBridge.mq5`, chỉ chạy lệnh đầu tiên. Script
+Sau này khi sửa `mt5/Experts/ForgeBridgeH1.mq5`, chỉ chạy lệnh đầu tiên. Script
 idempotent và không thay chart nếu ForgeBridge đã được gắn.
 Chỉ dùng `-NoRestartTerminal` khi muốn compile mà chưa nạp EA mới vào chart.
 
@@ -119,9 +119,9 @@ python scripts/export_bridge_replay.py
 ## History Feed (Simulate EA)
 
 1. Biên dịch lại ForgeBridge **1.05**, gắn EURUSD H1 (demo khuyến nghị).
-2. Inputs: `InpMode = HISTORY_FEED`, `InpBridgeSubdir = bridge_sim` (junction/Files giống live).
+2. Inputs: `InpMode = HISTORY_FEED`, `InpBridgeSubdir = bridge_sim_h1` (junction/Files giống live).
 3. App **MT5 Bridge → Simulate EA**: chọn from/to + delay → Start feed.
-4. Service quyết định chạy trên `mt5/bridge_sim/` (không đụng `bridge/` live).
+4. Service quyết định chạy trên `mt5/bridge_sim_h1/` (không đụng `bridge_h1/` live).
 
 ## Thống kê lệnh
 

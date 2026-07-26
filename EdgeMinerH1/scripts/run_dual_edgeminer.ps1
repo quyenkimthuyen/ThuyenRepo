@@ -81,7 +81,7 @@ function Enable-ExpertTrading {
     -ErrorAction Stop | Select-Object -First 1
   $terminalData = Split-Path (Split-Path (Split-Path $bridgeItem.FullName))
   $chartsRoot = Join-Path $terminalData "MQL5\Profiles\Charts"
-  $names = @("ForgeBridge", "ForgeBridgeH1")
+  $names = @("ForgeBridgeM15", "ForgeBridgeM15Sim", "ForgeBridgeH1", "ForgeBridgeH1Sim")
   foreach ($name in $names) {
     $chart = Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
       Where-Object { (Get-Content $_.FullName -Raw) -match "(?m)^name=$name\s*$" } |

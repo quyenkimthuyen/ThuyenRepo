@@ -3,7 +3,7 @@
 Hệ thống backtest walk-forward + self-learning cho **EUR/USD khung M15**, dùng thống nhất dữ liệu broker từ ForgeBridge/XM MT5.
 
 > `ForgeBest3m_Frozen.mq5` và `ForgeBest3m_WF.mq5` là EA H1 legacy, không tương thích
-> với model M15 và không được dùng cho live. Live/Paper chỉ dùng `ForgeBridge.mq5`.
+> với model M15 và không được dùng cho live. Live/Paper chỉ dùng `ForgeBridgeM15.mq5`.
 
 Chạy song song với `C:\Work\ThuyenRepo\EdgeMinerH1`:
 

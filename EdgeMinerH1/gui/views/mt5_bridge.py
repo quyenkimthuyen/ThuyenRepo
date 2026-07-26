@@ -83,8 +83,8 @@ def _render_mode_switcher() -> str:
     key="mt5_bridge_mode",
     on_change=preference_callback("mt5_bridge_mode", "mt5.bridge_mode"),
     help=(
-      "Live = mt5/bridge (EA live). "
-      "Simulate = mt5/bridge_sim (EA HISTORY_FEED). "
+      f"Live = mt5/{BRIDGE_DIR.name} (EA live). "
+      f"Simulate = mt5/{BRIDGE_SIM_DIR.name} (EA HISTORY_FEED). "
       "Cùng Trade Model active với Paper. "
       "Desk, chart, thống kê, sức khỏe/rủi ro đều theo mode này."
     ),
@@ -98,7 +98,7 @@ def _render_mode_switcher() -> str:
     )
   else:
     st.caption(
-      f"**Live** · `{bdir.name}/` · EA ForgeBridge Live · "
+      f"**Live** · `{bdir.name}/` · EA ForgeBridgeH1 Live · "
       "lệnh thật/demo · kiểm kỳ vọng bằng **Parity tuần này** / Health OOS."
     )
   return mode
@@ -755,7 +755,7 @@ def _render_service_controls() -> None:
 
     st.divider()
     st.markdown("##### Triển khai EA sang MT5")
-    st.caption("Sao chép và biên dịch EA `ForgeBridge.mq5`, tự động thiết lập Junction và liên kết biểu đồ EURUSD H1.")
+    st.caption("Sao chép và biên dịch EA `ForgeBridgeH1` + `ForgeBridgeH1Sim`, tự động thiết lập Junction và liên kết biểu đồ EURUSD H1 (Live/Sim song song).")
     if st.button("Chạy Script Triển khai (Deploy)", icon=":material/settings_suggest:", use_container_width=True):
       with st.spinner("Đang chạy deploy script..."):
         try:
@@ -908,8 +908,8 @@ def _render_simulate_ea() -> None:
 
   st.markdown("##### Triển khai EA Simulate sang MT5")
   st.caption(
-    "Compile ForgeBridge, junction `bridge_sim`, gắn chart EURUSD H1 với "
-    "`HISTORY_FEED` (ưu tiên chart không phải Live)."
+    f"Compile ForgeBridgeH1Sim, junction `{BRIDGE_SIM_DIR.name}`, gắn chart EURUSD H1 với "
+    "`HISTORY_FEED` (chart riêng, không đè Live)."
   )
   if st.button(
     "Deploy Simulate EA",
@@ -1647,7 +1647,7 @@ def render():
     st.info(
       "Simulate: replay History Feed để kiểm App↔EA trên quá khứ — "
       "cùng Trade Model với Live. "
-      "EA `HISTORY_FEED` + `InpBridgeSubdir=bridge_sim`, Start feed bên dưới."
+      f"EA `HISTORY_FEED` + `InpBridgeSubdir={BRIDGE_SIM_DIR.name}`, Start feed bên dưới."
     )
 
   chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]

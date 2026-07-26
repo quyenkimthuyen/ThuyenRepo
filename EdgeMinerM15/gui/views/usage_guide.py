@@ -388,7 +388,8 @@ feature_engine.py           # Features
 knowledge_base.py           # KB
 data/mt5_eurusd_m15.parquet # Cache M15 chuẩn từ ForgeBridge/XM MT5
 mt5_bridge/                 # Bridge App ↔ MT5 EA
-mt5/Experts/ForgeBridge.mq5 # EA execute (Live / Replay)
+mt5/Experts/ForgeBridgeM15.mq5    # EA Live
+mt5/Experts/ForgeBridgeM15Sim.mq5 # EA Simulate (HistoryFeed)
 mt5/bridge/                 # bar/decision/fill/comm_log/replay
 scripts/mt5_bridge_service.py
 scripts/export_bridge_replay.py
@@ -439,7 +440,7 @@ A: **Cùng Trade Model active**. Paper = desk nhẹ không EA. Live = lệnh MT5
 A: Chỉ khi Bridge Live + EA đang chạy **đúng lúc bar tín hiệu đóng**. Paper `FILLED` ≠ lệnh MT5.
 
 **Q: Có hỗ trợ MT4 không?**  
-A: Không — chỉ **MT5** (`ForgeBridge.mq5`).
+A: Không — chỉ **MT5** (`ForgeBridgeM15.mq5`).
 
 **Q: Xem log giao tiếp App ↔ EA ở đâu?**  
 A: GUI **MT5 Bridge** → Nhật ký giao tiếp, hoặc file `mt5/bridge/comm_log.jsonl`.

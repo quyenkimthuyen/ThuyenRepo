@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """CLI: start EA HISTORY_FEED control (App writes sim_control; EA sends bars).
 
-Requires ForgeBridge v1.05 on chart with InpMode=HISTORY_FEED, InpBridgeSubdir=bridge_sim.
+Requires ForgeBridgeM15 on chart with InpMode=HISTORY_FEED, InpBridgeSubdir=bridge_sim.
 Also run a bridge decision loop on bridge_sim (GUI Start feed, or this script's poll
 expects an external BridgeEngine — prefer GUI).
 
