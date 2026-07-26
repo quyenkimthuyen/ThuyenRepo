@@ -1198,6 +1198,10 @@ def _render_model_monitor_body() -> None:
     )
     if fig:
       st.plotly_chart(fig, use_container_width=True)
+      st.caption(
+        "Cùng trục tháng · nền/chú thích **xanh dương = Timeline OOS**, "
+        f"**xanh ngọc = Timeline {live_label}** (khoảng tháng có dữ liệu từng nguồn)."
+      )
     else:
       st.info("Chưa có chuỗi tháng để vẽ (cần report OOS và/hoặc lệnh live/sim).")
 

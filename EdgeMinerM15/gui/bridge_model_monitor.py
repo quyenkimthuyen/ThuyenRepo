@@ -197,6 +197,70 @@ def overlapping_months(aligned: pd.DataFrame) -> pd.DataFrame:
   return aligned.dropna(subset=["bt_r", "live_r"]).copy()
 
 
+_OOS_COLOR = "#2962ff"
+_LIVE_COLOR = "#26a69a"
+
+
+def _month_range_label(months: list) -> str:
+  ms = sorted({str(m) for m in months if m is not None and str(m)})
+  if not ms:
+    return "—"
+  if len(ms) == 1:
+    return ms[0]
+  return f"{ms[0]} → {ms[-1]}"
+
+
+def _add_timeline_annotations(
+  fig: go.Figure,
+  *,
+  oos_months: list,
+  live_months: list,
+  live_name: str = "Live Auto",
+  row: int | None = None,
+  show_legend: bool = True,
+) -> None:
+  """Soft vrects + optional legend: cùng trục tháng, 2 chú thích thời gian màu OOS / Live."""
+  oos_m = sorted({str(m) for m in (oos_months or []) if m is not None and str(m)})
+  live_m = sorted({str(m) for m in (live_months or []) if m is not None and str(m)})
+  trace_kw = {"row": row, "col": 1} if row else {}
+
+  if show_legend and oos_m:
+    fig.add_trace(go.Scatter(
+      x=[None], y=[None], mode="lines",
+      name=f"Timeline OOS · {_month_range_label(oos_m)}",
+      line=dict(color=_OOS_COLOR, width=8),
+      hoverinfo="skip",
+      showlegend=True,
+      legendgroup="timeline_oos",
+    ), **trace_kw)
+  if show_legend and live_m:
+    fig.add_trace(go.Scatter(
+      x=[None], y=[None], mode="lines",
+      name=f"Timeline {live_name} · {_month_range_label(live_m)}",
+      line=dict(color=_LIVE_COLOR, width=8),
+      hoverinfo="skip",
+      showlegend=True,
+      legendgroup="timeline_live",
+    ), **trace_kw)
+
+  shape_kwargs: dict[str, Any] = dict(layer="below", line_width=0)
+  if row is not None:
+    shape_kwargs["row"] = row
+    shape_kwargs["col"] = 1
+  if oos_m:
+    fig.add_vrect(
+      x0=oos_m[0], x1=oos_m[-1],
+      fillcolor="rgba(41,98,255,0.07)",
+      **shape_kwargs,
+    )
+  if live_m:
+    fig.add_vrect(
+      x0=live_m[0], x1=live_m[-1],
+      fillcolor="rgba(38,166,154,0.07)",
+      **shape_kwargs,
+    )
+
+
 def build_bt_vs_live_monthly_figure(
   bt_monthly: pd.DataFrame,
   live_monthly: pd.DataFrame,
@@ -214,14 +278,18 @@ def build_bt_vs_live_monthly_figure(
 
   bt_map = {}
   bt_cum = {}
+  oos_months: list = []
   if bt_monthly is not None and not bt_monthly.empty:
     bt_map = dict(zip(bt_monthly["month"], bt_monthly["total_r"]))
     bt_cum = dict(zip(bt_monthly["month"], bt_monthly["cum_r"]))
+    oos_months = list(bt_monthly["month"])
   live_map = {}
   live_cum = {}
+  live_months: list = []
   if live_monthly is not None and not live_monthly.empty:
     live_map = dict(zip(live_monthly["month"], live_monthly["total_r"]))
     live_cum = dict(zip(live_monthly["month"], live_monthly["cum_r"]))
+    live_months = list(live_monthly["month"])
 
   fig = make_subplots(
     rows=2, cols=1, shared_xaxes=True,
@@ -230,39 +298,59 @@ def build_bt_vs_live_monthly_figure(
   )
   fig.add_trace(go.Bar(
     x=months, y=[bt_map.get(m) for m in months], name="Backtest OOS",
-    marker_color="#2962ff", opacity=0.85,
+    marker_color=_OOS_COLOR, opacity=0.85,
+    legendgroup="series_oos",
   ), row=1, col=1)
   fig.add_trace(go.Bar(
     x=months, y=[live_map.get(m) for m in months], name=live_name,
-    marker_color="#26a69a", opacity=0.85,
+    marker_color=_LIVE_COLOR, opacity=0.85,
+    legendgroup="series_live",
   ), row=1, col=1)
-
 
   # Cumulative only where series exists (don't invent zeros across gaps)
   if bt_cum:
     bx = [m for m in months if m in bt_cum]
     fig.add_trace(go.Scatter(
       x=bx, y=[bt_cum[m] for m in bx], name="Cum Backtest",
-      line=dict(color="#2962ff", width=2.5),
+      line=dict(color=_OOS_COLOR, width=2.5),
+      legendgroup="series_oos",
     ), row=2, col=1)
   if live_cum:
     lx = [m for m in months if m in live_cum]
     fig.add_trace(go.Scatter(
       x=lx, y=[live_cum[m] for m in lx], name=f"Cum {live_name}",
-      line=dict(color="#26a69a", width=2.5),
+      line=dict(color=_LIVE_COLOR, width=2.5),
+      legendgroup="series_live",
     ), row=2, col=1)
+
+  _add_timeline_annotations(
+    fig,
+    oos_months=oos_months,
+    live_months=live_months,
+    live_name=live_name,
+    row=1,
+    show_legend=True,
+  )
+  _add_timeline_annotations(
+    fig,
+    oos_months=oos_months,
+    live_months=live_months,
+    live_name=live_name,
+    row=2,
+    show_legend=False,
+  )
 
   fig.update_layout(
     title=dict(text=title, font=dict(size=13)),
     barmode="group",
     bargap=0.18,
-    height=520,
-    margin=dict(l=48, r=24, t=72, b=96),
+    height=540,
+    margin=dict(l=48, r=24, t=72, b=120),
     legend=dict(
-      orientation="h", yanchor="top", y=-0.18, x=0,
+      orientation="h", yanchor="top", y=-0.22, x=0,
       bgcolor="rgba(255,255,255,0.9)",
       bordercolor="rgba(0,0,0,0.08)", borderwidth=1,
-      font=dict(size=11), tracegroupgap=24,
+      font=dict(size=11), tracegroupgap=16,
     ),
     hovermode="x unified",
   )
@@ -282,29 +370,80 @@ def build_equity_overlay_figure(
   if (bt_equity is None or bt_equity.empty) and (live_equity is None or live_equity.empty):
     return None
   fig = go.Figure()
+  oos_months: list = []
+  live_months: list = []
   if bt_equity is not None and not bt_equity.empty:
     fig.add_trace(go.Scatter(
       x=bt_equity["entry"], y=bt_equity["equity_r"],
-      name="Backtest OOS", line=dict(color="#2962ff", width=2),
+      name="Backtest OOS", line=dict(color=_OOS_COLOR, width=2),
+      legendgroup="series_oos",
     ))
     fig.add_trace(go.Scatter(
       x=bt_equity["entry"], y=-bt_equity["drawdown_r"],
       name="DD Backtest", line=dict(color="#90caf9", width=1, dash="dot"),
+      legendgroup="series_oos",
     ))
+    try:
+      oos_months = list(
+        pd.to_datetime(bt_equity["entry"], errors="coerce").dropna().dt.to_period("M").astype(str)
+      )
+    except Exception:
+      oos_months = []
   if live_equity is not None and not live_equity.empty:
     fig.add_trace(go.Scatter(
       x=live_equity["entry"], y=live_equity["equity_r"],
-      name=live_name, line=dict(color="#26a69a", width=2.5),
+      name=live_name, line=dict(color=_LIVE_COLOR, width=2.5),
+      legendgroup="series_live",
     ))
     fig.add_trace(go.Scatter(
       x=live_equity["entry"], y=-live_equity["drawdown_r"],
       name=f"DD {live_name}", line=dict(color="#80cbc4", width=1, dash="dot"),
+      legendgroup="series_live",
     ))
+    try:
+      live_months = list(
+        pd.to_datetime(live_equity["entry"], errors="coerce").dropna().dt.to_period("M").astype(str)
+      )
+    except Exception:
+      live_months = []
+
+  # Date-axis timeline bands (min→max entry) + legend swatches
+  if oos_months:
+    fig.add_trace(go.Scatter(
+      x=[None], y=[None], mode="lines",
+      name=f"Timeline OOS · {_month_range_label(oos_months)}",
+      line=dict(color=_OOS_COLOR, width=8),
+      hoverinfo="skip",
+      legendgroup="timeline_oos",
+    ))
+  if live_months:
+    fig.add_trace(go.Scatter(
+      x=[None], y=[None], mode="lines",
+      name=f"Timeline {live_name} · {_month_range_label(live_months)}",
+      line=dict(color=_LIVE_COLOR, width=8),
+      hoverinfo="skip",
+      legendgroup="timeline_live",
+    ))
+  if bt_equity is not None and not bt_equity.empty:
+    xs = pd.to_datetime(bt_equity["entry"], errors="coerce").dropna()
+    if len(xs):
+      fig.add_vrect(
+        x0=xs.min(), x1=xs.max(),
+        fillcolor="rgba(41,98,255,0.06)", layer="below", line_width=0,
+      )
+  if live_equity is not None and not live_equity.empty:
+    xs = pd.to_datetime(live_equity["entry"], errors="coerce").dropna()
+    if len(xs):
+      fig.add_vrect(
+        x0=xs.min(), x1=xs.max(),
+        fillcolor="rgba(38,166,154,0.06)", layer="below", line_width=0,
+      )
+
   fig.update_layout(
     title=dict(text=title, font=dict(size=13)),
-    height=400,
-    margin=dict(l=40, r=20, t=48, b=80),
-    legend=dict(orientation="h", yanchor="top", y=-0.2, x=0),
+    height=420,
+    margin=dict(l=40, r=20, t=48, b=100),
+    legend=dict(orientation="h", yanchor="top", y=-0.22, x=0),
     hovermode="x unified",
     yaxis_title="R",
   )

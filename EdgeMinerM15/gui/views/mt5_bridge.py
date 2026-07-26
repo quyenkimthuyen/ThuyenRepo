@@ -1197,6 +1197,10 @@ def _render_model_monitor_body() -> None:
     )
     if fig:
       st.plotly_chart(fig, use_container_width=True)
+      st.caption(
+        "Cùng trục tháng · nền/chú thích **xanh dương = Timeline OOS**, "
+        f"**xanh ngọc = Timeline {live_label}** (khoảng tháng có dữ liệu từng nguồn)."
+      )
     else:
       st.info("Chưa có chuỗi tháng để vẽ (cần report OOS và/hoặc lệnh live/sim).")
 
@@ -1244,6 +1248,10 @@ def _render_model_monitor_body() -> None:
     )
     if eq_fig:
       st.plotly_chart(eq_fig, use_container_width=True)
+      st.caption(
+        "Cùng trục thời gian entry · nền/chú thích **xanh dương = OOS**, "
+        f"**xanh ngọc = {live_label}**."
+      )
       if live_n == 0:
         st.caption("Chỉ có đường Backtest — chưa có chuỗi equity đối chiếu.")
     else:
@@ -1254,6 +1262,8 @@ def _render_model_monitor_body() -> None:
       "- **Backtest OOS** = report Trade Model (cùng điều kiện remine / Health).\n"
       "- **Live Auto** = fill Bridge live `mode=auto`.\n"
       "- **Simulate EA** = fill từ `bridge_sim/` (EA HISTORY_FEED, App chỉ điều khiển from/to/delay).\n"
+      "- Biểu đồ dùng **cùng trục tháng/thời gian**; chú thích Timeline màu xanh dương (OOS) "
+      "và xanh ngọc (Live/Sim) cho biết khoảng có dữ liệu từng nguồn.\n"
       "- Edge gần 0 trên cùng giai đoạn sim → model + đường App↔EA ổn.\n"
       "- Live/Sim yếu hơn BT kéo dài → kiểm tra spread thực, session, hoặc Grid lại."
     )
