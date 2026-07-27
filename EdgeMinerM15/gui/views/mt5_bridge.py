@@ -1095,17 +1095,21 @@ def _stats_auto_fragment() -> None:
 
 def _render_model_monitor_body() -> None:
   from gui.bridge_model_monitor import (
+    LIVE_SERIES_COLOR,
+    OOS_SERIES_COLOR,
     build_bt_vs_live_monthly_figure,
     build_equity_overlay_figure,
+    build_equity_series_figure,
+    build_monthly_series_figure,
     build_monitor_bundle,
   )
   from mt5_bridge.ea_simulator import load_sim_state
 
   active = get_active_trade_model()
   source = _bridge_mode()
-  st.subheader(f"Theo dõi model · Backtest vs {_mode_label()}")
+  st.subheader(f"Theo dõi model · {_mode_label()}")
   if not active:
-    st.info("Chọn Trade Model active để so sánh report OOS với lệnh Bridge auto.")
+    st.info("Chọn Trade Model active để xem report OOS và lệnh Bridge auto.")
     return
 
   sim_st = load_sim_state()
@@ -1125,22 +1129,11 @@ def _render_model_monitor_body() -> None:
   )
   live_label = bundle.get("live_label") or "Live Auto"
   st.caption(
-    f"**{bundle['model_label']}** · fp `{bundle.get('conditions_fp') or '—'}` · "
-    f"Đối chiếu **{live_label}** (auto đã đóng)"
+    f"**{bundle['model_label']}** · fp `{bundle.get('conditions_fp') or '—'}`"
     + (f" · cửa sổ sim `{date_from} → {date_to}`" if source == "sim" and date_from else "")
     + f" · nguồn `{bundle.get('live', {}).get('bridge_dir') or '—'}`"
     + "."
   )
-  if source == "sim":
-    st.caption(
-      f"Simulate: KPI/biểu đồ đọc `mt5/{BRIDGE_SIM_DIR.name}/trades.json` theo **entry_time** lịch sử "
-      "(không dùng giờ tường lúc fill). Tự cập nhật ~12s khi feed chạy; hoặc bấm Refresh."
-    )
-  else:
-    st.caption(
-      "Live: KPI/biểu đồ đọc `mt5/bridge/trades.json` (auto đã đóng). "
-      "Tự cập nhật ~12s khi service chạy; hoặc mở expander / Refresh."
-    )
 
   if not bundle["has_report"]:
     st.warning(
@@ -1148,9 +1141,99 @@ def _render_model_monitor_body() -> None:
       "(bật Chạy lại KB ON, đúng search space) rồi quay lại."
     )
 
-  tab_h, tab_r = st.tabs(["Sức khỏe", "Rủi ro"])
   kpi = bundle["kpi"]
   live_n = int(kpi["live"].get("n_trades") or 0)
+
+  # Live: OOS và Live khác giai đoạn thời gian → tách 2 đoạn, mặc định thu gọn.
+  if source == "live":
+    st.caption(
+      "OOS (Health) và Live Auto **không cùng giai đoạn** — xem riêng từng phần bên dưới."
+    )
+    with st.expander("① OOS · Health report", expanded=False):
+      b = kpi["bt"]
+      m1, m2, m3, m4 = st.columns(4)
+      m1.metric("Total R", f"{b.get('total_r'):+.1f}" if b.get("total_r") is not None else "—")
+      m2.metric("WR%", f"{b.get('win_rate_pct')}%" if b.get("win_rate_pct") is not None else "—")
+      m3.metric("Max DD", f"{b.get('max_drawdown_r')}R" if b.get("max_drawdown_r") is not None else "—")
+      m4.metric("Trades", f"{b.get('n_trades') or '—'}")
+      th, tr = st.tabs(["Sức khỏe", "Rủi ro"])
+      with th:
+        fig = build_monthly_series_figure(
+          bundle["bt"]["monthly"],
+          title=f"Tháng · OOS · {bundle['model_label']}",
+          series_name="Backtest OOS",
+          color=OOS_SERIES_COLOR,
+        )
+        if fig:
+          st.plotly_chart(fig, use_container_width=True)
+        else:
+          st.info("Chưa có chuỗi tháng OOS.")
+      with tr:
+        eq = build_equity_series_figure(
+          bundle["bt"]["equity"],
+          title=f"Equity · OOS · {bundle['model_label']}",
+          series_name="Backtest OOS",
+          color=OOS_SERIES_COLOR,
+        )
+        if eq:
+          st.plotly_chart(eq, use_container_width=True)
+        else:
+          st.info("Chưa có equity OOS.")
+
+    with st.expander(f"② {live_label} · Bridge auto", expanded=False):
+      lv = kpi["live"]
+      assess = bundle["live_assess"]
+      m1, m2, m3, m4 = st.columns(4)
+      m1.metric("Total R", f"{lv.get('total_r'):+.1f}" if lv.get("total_r") is not None else "—")
+      m2.metric("WR%", f"{lv.get('win_rate_pct')}%" if lv.get("win_rate_pct") is not None else "—")
+      m3.metric("Max DD", f"{lv.get('max_drawdown_r')}R" if lv.get("max_drawdown_r") is not None else "—")
+      m4.metric("Trades", f"{live_n}")
+      verdict = assess.get("verdict")
+      if live_n == 0:
+        st.info(
+          f"Chưa có lệnh **auto** đã đóng trên Bridge (`mt5/{BRIDGE_DIR.name}/trades.json`)."
+        )
+      elif live_n < 5:
+        st.caption(f"{live_label} còn ít lệnh — chỉ theo dõi.")
+      elif verdict == "degraded":
+        st.error(assess.get("message") or "")
+      elif verdict == "watch":
+        st.warning(assess.get("message") or "")
+      elif verdict == "stable":
+        st.success(assess.get("message") or "")
+      elif assess.get("message"):
+        st.info(assess.get("message"))
+      th, tr = st.tabs(["Sức khỏe", "Rủi ro"])
+      with th:
+        fig = build_monthly_series_figure(
+          bundle["live"]["monthly"],
+          title=f"Tháng · {live_label} · {bundle['model_label']}",
+          series_name=live_label,
+          color=LIVE_SERIES_COLOR,
+        )
+        if fig:
+          st.plotly_chart(fig, use_container_width=True)
+        else:
+          st.info(f"Chưa có chuỗi tháng {live_label}.")
+      with tr:
+        eq = build_equity_series_figure(
+          bundle["live"]["equity"],
+          title=f"Equity · {live_label} · {bundle['model_label']}",
+          series_name=live_label,
+          color=LIVE_SERIES_COLOR,
+        )
+        if eq:
+          st.plotly_chart(eq, use_container_width=True)
+        else:
+          st.info(f"Chưa có equity {live_label}.")
+    return
+
+  # Simulate: cùng cửa sổ lịch sử → giữ overlay Backtest vs Sim
+  st.caption(
+    f"Simulate: KPI/biểu đồ đọc `mt5/{BRIDGE_SIM_DIR.name}/trades.json` theo **entry_time** lịch sử "
+    "(không dùng giờ tường lúc fill). Tự cập nhật ~12s khi feed chạy; hoặc bấm Refresh."
+  )
+  tab_h, tab_r = st.tabs(["Sức khỏe", "Rủi ro"])
 
   with tab_h:
     assess = bundle["live_assess"]
@@ -1169,13 +1252,10 @@ def _render_model_monitor_body() -> None:
     m4.metric(f"{live_label} verdict", verdict or "—")
 
     if live_n == 0:
-      if source == "sim":
-        st.info(
-          "Chưa có lệnh Simulate — ở mode **Simulate**, Start feed "
-          "(EA HISTORY_FEED) rồi Refresh."
-        )
-      else:
-        st.info("Chưa có lệnh **auto** đã đóng trên Bridge — KPI Backtest vẫn hiện để đối chiếu.")
+      st.info(
+        "Chưa có lệnh Simulate — ở mode **Simulate**, Start feed "
+        "(EA HISTORY_FEED) rồi Refresh."
+      )
     elif live_n < 5:
       st.caption(f"{live_label} còn ít lệnh — chỉ theo dõi, chưa đủ để kết luận suy giảm.")
     elif verdict == "degraded":
@@ -1187,7 +1267,7 @@ def _render_model_monitor_body() -> None:
     else:
       st.info(assess.get("message") or f"Chưa đủ tháng {live_label}.")
 
-    if source == "sim" and ov_e is not None and live_n >= 5:
+    if ov_e is not None and live_n >= 5:
       st.caption(
         "Edge gần 0 / cùng hướng với BT trên cửa sổ sim → protocol App↔EA "
         "và Trade Model khớp kỳ vọng train trên giai đoạn đó."
@@ -1261,15 +1341,15 @@ def _render_model_monitor_body() -> None:
     else:
       st.info("Chưa đủ equity series để overlay.")
 
-  with st.expander("Cách đọc Backtest vs Live/Sim"):
+  with st.expander("Cách đọc Backtest vs Simulate"):
     st.markdown(
-      "- **Backtest OOS** = report Trade Model (cùng điều kiện remine / Health).\n"
-      "- **Live Auto** = fill Bridge live `mode=auto`.\n"
-      f"- **Simulate EA** = fill từ `{BRIDGE_SIM_DIR.name}/` (EA HISTORY_FEED, App chỉ điều khiển from/to/delay).\n"
-      "- Biểu đồ dùng **cùng trục tháng/thời gian**; chú thích Timeline màu xanh dương (OOS) "
-      "và xanh ngọc (Live/Sim) cho biết khoảng có dữ liệu từng nguồn.\n"
-      "- Edge gần 0 trên cùng giai đoạn sim → model + đường App↔EA ổn.\n"
-      "- Live/Sim yếu hơn BT kéo dài → kiểm tra spread thực, session, hoặc Grid lại."
+      "- **Backtest OOS** = report Trade Model (cùng điều kiện remine / Health).
+"
+      f"- **Simulate EA** = fill từ `{BRIDGE_SIM_DIR.name}/` (EA HISTORY_FEED).
+"
+      "- Overlay cùng cửa sổ sim → Edge gần 0 nghĩa là model + App↔EA khớp.
+"
+      "- Live mode xem **riêng** OOS vs Live (khác giai đoạn)."
     )
 
 
@@ -1707,12 +1787,14 @@ def render():
     _render_live_chart(max_bars)
 
     live_running = bool(bridge_bg.get_status().get("running"))
-    if live_running:
-      st.caption("Sức khỏe / Rủi ro · tự cập nhật ~12s khi Bridge service chạy.")
-      _model_monitor_auto_fragment()
-    else:
-      with st.expander("Theo dõi model · Sức khỏe / Rủi ro", expanded=False):
-        st.caption("Mở khi cần — tránh load nặng khi chưa Start service (giống Simulate).")
+    with st.expander("Theo dõi model · Sức khỏe / Rủi ro", expanded=False):
+      st.caption(
+        "Mặc định thu gọn — OOS và Live tách riêng (khác giai đoạn). "
+        + ("Tự cập nhật ~12s khi service chạy." if live_running else "Mở khi cần kiểm tra.")
+      )
+      if live_running:
+        _model_monitor_auto_fragment()
+      else:
         _render_model_monitor()
 
   # Thống kê: auto khi feed/service chạy (cùng nhịp Health/Risk); Refresh cũng full rerun

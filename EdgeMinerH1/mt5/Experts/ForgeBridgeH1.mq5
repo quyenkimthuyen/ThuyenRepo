@@ -756,9 +756,11 @@ bool WaitDecisionForBar(const string want_bar_time, string &json_out, const int 
    {
       if(ReadDecisionJson(json_out))
       {
+         // Exact bar_time only — StringFind matched expires_bar_time (= next bar)
+         // and opened fills 1 bar late vs Python OOS.
          string bt = JsonGetString(json_out, "bar_time");
          if(bt == "" ) bt = JsonGetString(json_out, "time");
-         if(bt == want_bar_time || StringFind(json_out, want_bar_time) >= 0)
+         if(bt == want_bar_time)
             return true;
       }
       Sleep(poll);
@@ -1446,6 +1448,11 @@ void ManagePaperHistory(const MqlRates &r)
       return;
    g_paper_held++;
 
+   // Python backtest_mined enters at open then starts SL/TP/trail on the *next* bar
+   // (i = entry_idx + 1). Checking the entry bar here caused same-bar SL and R drift.
+   if(g_paper_held <= 1)
+      return;
+
    // Match Python OOS trail: activate/move from bar high (BUY) / low (SELL)
    if(g_exit_mode == 1 || g_exit_mode == 2)
    {
@@ -1501,7 +1508,8 @@ void ManagePaperHistory(const MqlRates &r)
       }
    }
 
-   if(g_paper_held >= g_max_hold)
+   // held includes entry bar; Python uses (i - entry_idx) >= max_hold
+   if(g_paper_held - 1 >= g_max_hold)
       ReportPaperClose("max_hold", r.close, TimeToString(r.time, TIME_DATE | TIME_MINUTES));
 }
 

@@ -199,6 +199,8 @@ def overlapping_months(aligned: pd.DataFrame) -> pd.DataFrame:
 
 _OOS_COLOR = "#2962ff"
 _LIVE_COLOR = "#26a69a"
+OOS_SERIES_COLOR = _OOS_COLOR
+LIVE_SERIES_COLOR = _LIVE_COLOR
 
 
 def _month_range_label(months: list) -> str:
@@ -444,6 +446,77 @@ def build_equity_overlay_figure(
     height=420,
     margin=dict(l=40, r=20, t=48, b=100),
     legend=dict(orientation="h", yanchor="top", y=-0.22, x=0),
+    hovermode="x unified",
+    yaxis_title="R",
+  )
+  return fig
+
+
+def build_monthly_series_figure(
+  monthly: pd.DataFrame,
+  *,
+  title: str,
+  series_name: str,
+  color: str | None = None,
+) -> go.Figure | None:
+  """Single-source monthly R chart (own time axis — no OOS/Live overlay)."""
+  if monthly is None or monthly.empty:
+    return None
+  color = color or _OOS_COLOR
+  months = list(monthly["month"])
+  fig = make_subplots(
+    rows=2, cols=1, shared_xaxes=True,
+    row_heights=[0.55, 0.45], vertical_spacing=0.12,
+    subplot_titles=("R từng tháng", "R tích lũy"),
+  )
+  fig.add_trace(go.Bar(
+    x=months, y=list(monthly["total_r"]), name=series_name,
+    marker_color=color, opacity=0.9,
+  ), row=1, col=1)
+  fig.add_trace(go.Scatter(
+    x=months, y=list(monthly["cum_r"]), name=f"Cum {series_name}",
+    line=dict(color=color, width=2.5),
+  ), row=2, col=1)
+  fig.update_layout(
+    title=dict(text=title, font=dict(size=13)),
+    height=480,
+    margin=dict(l=48, r=24, t=64, b=48),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+    hovermode="x unified",
+  )
+  fig.update_yaxes(title_text="R / tháng", row=1, col=1)
+  fig.update_yaxes(title_text="Cum R", row=2, col=1)
+  fig.update_xaxes(title_text="Tháng", row=2, col=1)
+  return fig
+
+
+def build_equity_series_figure(
+  equity: pd.DataFrame,
+  *,
+  title: str,
+  series_name: str,
+  color: str | None = None,
+) -> go.Figure | None:
+  """Single-source equity / DD chart (own time axis)."""
+  if equity is None or equity.empty:
+    return None
+  color = color or _OOS_COLOR
+  dd_color = "#90caf9" if color == _OOS_COLOR else "#80cbc4"
+  fig = go.Figure()
+  fig.add_trace(go.Scatter(
+    x=equity["entry"], y=equity["equity_r"],
+    name=series_name, line=dict(color=color, width=2.5),
+  ))
+  fig.add_trace(go.Scatter(
+    x=equity["entry"], y=-equity["drawdown_r"],
+    name=f"DD {series_name}",
+    line=dict(color=dd_color, width=1, dash="dot"),
+  ))
+  fig.update_layout(
+    title=dict(text=title, font=dict(size=13)),
+    height=380,
+    margin=dict(l=40, r=20, t=48, b=48),
+    legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
     hovermode="x unified",
     yaxis_title="R",
   )
