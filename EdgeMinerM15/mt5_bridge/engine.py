@@ -232,6 +232,7 @@ class BridgeEngine:
         ts_use, te_use = ts_fb, te_fb
       attach_ml_scorer(
         strat, fm_mine, ts_use, te_use, kb=kb, as_of=week_start,
+        search_space=search_space,
       )
       self._strat_cache[cache_key] = strat
       name = getattr(strat, "name", None) or "?"

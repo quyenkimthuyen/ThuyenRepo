@@ -120,21 +120,38 @@ def attach_ml_scorer(
   *,
   kb=None,
   as_of=None,
+  search_space=None,
 ) -> MinedStrategy:
-  """Retrain ML on the week train window and attach (matches meta_learner path)."""
+  """Retrain ML on the week train window — mirrors ``mine_strategy_learning`` labels."""
   from meta_learner import _fit_ml_with_experience
   from knowledge_base import KnowledgeBase
+  from strategy_miner import MiningSearchSpace, constrain_strategy_to_space
 
-  rr, atr_m = float(strat.rr_ratio), float(strat.atr_mult_sl)
+  space = search_space or MiningSearchSpace()
+  controlled = search_space is not None
+  # Same seed labels as meta_learner.mine_strategy_learning
+  rr, atr_m, max_hold = (
+    float(space.rr_ratios[0]),
+    float(space.atr_multipliers[0]),
+    int(space.max_hold_bars[0]),
+  )
   if kb is not None and getattr(kb, "genomes", None):
     try:
       top = kb.top_genomes(1)[0]
-      rr = float(top.get("rr_ratio", rr))
-      atr_m = float(top.get("atr_mult_sl", atr_m))
+      seed_strat = kb.dict_to_strategy(top)
+      if controlled:
+        seed_strat = constrain_strategy_to_space(seed_strat, space)
+      rr = float(seed_strat.rr_ratio)
+      atr_m = float(seed_strat.atr_mult_sl)
+      max_hold = int(seed_strat.max_hold_bars)
     except Exception:
       pass
+  else:
+    max_hold = int(getattr(strat, "max_hold_bars", max_hold) or max_hold)
 
-  long_wins, short_wins = _label_outcomes(fm, train_start, train_end, rr, atr_m)
+  long_wins, short_wins = _label_outcomes(
+    fm, train_start, train_end, rr, atr_m, max_hold,
+  )
   if isinstance(kb, KnowledgeBase):
     ml = _fit_ml_with_experience(
       fm, train_start, train_end, long_wins, short_wins, kb, as_of=as_of,
