@@ -92,6 +92,9 @@ def test_eas_and_deploy_names():
   assert 'InpMode = BRIDGE_HISTORY_FEED' in sim
   assert '$EaNameLive = "ForgeBridgeH1"' in deploy
   assert '$EaNameSim = "ForgeBridgeH1Sim"' in deploy
+  assert "Compile ONLY the EA" in deploy
+  assert "Attached exactly one EA" in deploy
+  assert "refusing to overwrite" in deploy
   assert "refusing to attach onto M15" in deploy or "period_size=60" in deploy
 
 

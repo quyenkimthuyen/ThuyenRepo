@@ -755,7 +755,10 @@ def _render_service_controls() -> None:
 
     st.divider()
     st.markdown("##### Triển khai EA sang MT5")
-    st.caption("Sao chép và biên dịch EA `ForgeBridgeM15` + `ForgeBridgeM15Sim`, tự động thiết lập Junction và liên kết biểu đồ EURUSD M15 (Live/Sim song song).")
+    st.caption(
+      "Deploy **Live only**: compile/attach `ForgeBridgeM15` "
+      f"(folder `{BRIDGE_DIR.name}`). Không đụng Sim hay chart khác."
+    )
     if st.button("Chạy Script Triển khai (Deploy)", icon=":material/settings_suggest:", use_container_width=True):
       with st.spinner("Đang chạy deploy script..."):
         try:
@@ -764,6 +767,7 @@ def _render_service_controls() -> None:
             "powershell.exe",
             "-ExecutionPolicy", "Bypass",
             "-File", "scripts/deploy_xm_forgebridge.ps1",
+            "-Mode", "Live",
             "-Attach",
             "-EnableTrading"
           ]
@@ -908,8 +912,8 @@ def _render_simulate_ea() -> None:
 
   st.markdown("##### Triển khai EA Simulate sang MT5")
   st.caption(
-    f"Compile ForgeBridgeM15Sim, junction `{BRIDGE_SIM_DIR.name}`, gắn chart EURUSD M15 với "
-    "`HISTORY_FEED` (chart riêng, không đè Live)."
+    f"Deploy **Simulate only**: compile/attach `ForgeBridgeM15Sim`, "
+    f"junction `{BRIDGE_SIM_DIR.name}`, chart M15 riêng (không đè Live)."
   )
   if st.button(
     "Deploy Simulate EA",

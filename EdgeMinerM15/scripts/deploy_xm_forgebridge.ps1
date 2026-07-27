@@ -165,11 +165,8 @@ function Compile-OneEa(
 }
 
 function Compile-Ea([string]$DataPath, [string]$XmInstallPath) {
-  # Always compile Live + Sim so both can run side-by-side on the same MT5.
-  $live = Compile-OneEa $DataPath $XmInstallPath $SourceEaLive $EaNameLive
-  $sim = Compile-OneEa $DataPath $XmInstallPath $SourceEaSim $EaNameSim
-  if ($IsHistoryFeed) { return $sim }
-  return $live
+  # Compile ONLY the EA for the selected Mode (Live or HistoryFeed).
+  return Compile-OneEa $DataPath $XmInstallPath $SourceEa $EaName
 }
 
 function Stop-XmTerminal([string]$XmInstallPath) {
@@ -243,6 +240,10 @@ function New-ForgeBridgeExpertBlock(
   return ($lines -join "`r`n")
 }
 
+function Get-ForgeFamilyPattern {
+  return 'name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b'
+}
+
 function Select-AttachChart(
   [string]$DataPath,
   [bool]$PreferHistoryFeed
@@ -252,43 +253,30 @@ function Select-AttachChart(
     throw "EURUSD M15 chart not found in the MT5 profile."
   }
 
-  if ($PreferHistoryFeed) {
-    $alreadySim = $charts |
-      Where-Object {
-        $t = Get-Content $_.FullName -Raw
-        $t -match "name=$EaNameSim" -and $t -match "InpBridgeSubdir=$BridgeSubdirSim"
-      } | Select-Object -First 1
-    if ($alreadySim) { return $alreadySim }
+  $wantedName = if ($PreferHistoryFeed) { $EaNameSim } else { $EaNameLive }
+  $otherName = if ($PreferHistoryFeed) { $EaNameLive } else { $EaNameSim }
+  $family = Get-ForgeFamilyPattern
 
-    $notLiveExpert = @($charts |
-      Where-Object {
-        $t = Get-Content $_.FullName -Raw
-        -not (
-          $t -match "name=$EaNameLive" -and
-          $t -match "InpBridgeSubdir=$BridgeSubdirLive" -and
-          $t -notmatch "InpBridgeSubdir=$BridgeSubdirSim"
-        )
-      })
-    if ($notLiveExpert.Count -gt 0) {
-      $empty = $notLiveExpert | Where-Object {
-        (Get-Content $_.FullName -Raw) -notmatch "name=(ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)"
-      } | Select-Object -First 1
-      if ($empty) { return $empty }
-      return ($notLiveExpert | Select-Object -First 1)
-    }
-    if ($charts.Count -gt 1) {
-      Write-Warning "Using second EURUSD chart for HistoryFeed to avoid overwriting Live."
-      return $charts[1]
-    }
-    Write-Warning "Only one EURUSD chart found - HistoryFeed attach may replace Live inputs. Open a second chart for Live."
-    return $charts[0]
+  # 1) Re-attach only the chart that already has THIS EA name.
+  $same = @($charts | Where-Object {
+    (Get-Content $_.FullName -Raw) -match ("name=" + [regex]::Escape($wantedName))
+  })
+  if ($same.Count -gt 0) {
+    Write-Host "Attach target: existing $wantedName on $($same[0].Name)"
+    return $same[0]
   }
 
-  $target = $charts |
-    Where-Object { (Get-Content $_.FullName -Raw) -match "name=($EaNameLive|ForgeBridgeM15|ForgeBridge)" } |
-    Select-Object -First 1
-  if (-not $target) { $target = $charts | Select-Object -First 1 }
-  return $target
+  # 2) Prefer a chart with no ForgeBridge* EA (do not touch Live/Sim/other TF EAs).
+  $free = @($charts | Where-Object {
+    (Get-Content $_.FullName -Raw) -notmatch $family
+  })
+  if ($free.Count -gt 0) {
+    Write-Host "Attach target: free EURUSD M15 chart $($free[0].Name) for $wantedName"
+    return $free[0]
+  }
+
+  # 3) Never overwrite the other role (Live <-> Sim) or sibling TF EAs.
+  throw ("No free EURUSD M15 chart for $wantedName. Open another EURUSD M15 chart; refusing to overwrite $otherName / other ForgeBridge EAs.")
 }
 
 function Attach-ForgeBridge(
@@ -296,7 +284,7 @@ function Attach-ForgeBridge(
   [string]$XmInstallPath,
   [bool]$TradingEnabled,
   [int]$InpMode = 0,
-  [string]$BridgeSubdir = "bridge"
+  [string]$BridgeSubdir = $BridgeSubdirLive
 ) {
   Stop-XmTerminal $XmInstallPath
 
@@ -308,13 +296,18 @@ function Attach-ForgeBridge(
   $text = Get-Content $target.FullName -Raw
   $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=0'
   $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=15'
+  # Remove only ForgeBridge* experts on THIS chart; keep other experts/indicators.
   # Patterns MUST stay single-quoted. Double quotes make PS parse < as redirection.
-  $expertPattern = '(?s)<expert>.*?</expert>\s*'
+  $forgeExpertPattern = '(?s)<expert>\s*name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b.*?</expert>\s*'
   $windowTag = '<window>'
-  $text = [regex]::Replace($text, $expertPattern, '')
+  $text = [regex]::Replace($text, $forgeExpertPattern, '')
+  if ($text -notmatch [regex]::Escape($windowTag)) {
+    throw "Chart $($target.FullName) has no <window> tag; cannot attach $EaName."
+  }
   $text = [regex]::Replace($text, $windowTag, ($block + "`r`n" + $windowTag), 1)
   Set-Content -Path $target.FullName -Value $text -Encoding Unicode
 
+  Write-Host "Attached exactly one EA: $EaName (mode=$InpMode, subdir=$BridgeSubdir)"
   Start-Process -FilePath (Join-Path $XmInstallPath "terminal64.exe")
   Start-Sleep -Seconds 8
   return $target.FullName
