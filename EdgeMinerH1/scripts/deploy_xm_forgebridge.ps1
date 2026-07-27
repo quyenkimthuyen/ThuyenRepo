@@ -202,12 +202,13 @@ function Get-EurusdH1Charts([string]$DataPath) {
       $text = Get-Content $_.FullName -Raw
       (
         ($text -match "(?m)^period_type=0\s*$" -and $text -match "(?m)^period_size=60\s*$") -or
+        ($text -match "(?m)^period_type=1\s*$" -and $text -match "(?m)^period_size=1\s*$") -or
         $text -match "(?m)^period=60\s*$" -or
         $text -match "PERIOD_H1"
       )
     }
   if (-not $charts) {
-    throw "EURUSD H1 chart not found (period_size=60). Open a EURUSD H1 chart before deploy; refusing to attach onto M15."
+    throw "EURUSD H1 chart not found (period_size=60 or period_type=1/period_size=1). Open a EURUSD H1 chart before deploy; refusing to attach onto M15."
   }
   return @($charts)
 }
@@ -303,8 +304,8 @@ function Attach-ForgeBridge(
   $block = New-ForgeBridgeExpertBlock $TradingEnabled $InpMode $BridgeSubdir
 
   $text = Get-Content $target.FullName -Raw
-  $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=0'
-  $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=60'
+  $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=1'
+  $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=1'
   # Remove only ForgeBridge* experts on THIS chart; keep other experts/indicators.
   # Patterns MUST stay single-quoted. Double quotes make PS parse < as redirection.
   $forgeExpertPattern = '(?s)<expert>\s*name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b.*?</expert>\s*'

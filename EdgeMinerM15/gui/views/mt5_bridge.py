@@ -1343,12 +1343,9 @@ def _render_model_monitor_body() -> None:
 
   with st.expander("Cách đọc Backtest vs Simulate"):
     st.markdown(
-      "- **Backtest OOS** = report Trade Model (cùng điều kiện remine / Health).
-"
-      f"- **Simulate EA** = fill từ `{BRIDGE_SIM_DIR.name}/` (EA HISTORY_FEED).
-"
-      "- Overlay cùng cửa sổ sim → Edge gần 0 nghĩa là model + App↔EA khớp.
-"
+      "- **Backtest OOS** = report Trade Model (cùng điều kiện remine / Health).\n"
+      f"- **Simulate EA** = fill từ `{BRIDGE_SIM_DIR.name}/` (EA HISTORY_FEED).\n"
+      "- Overlay cùng cửa sổ sim → Edge gần 0 nghĩa là model + App↔EA khớp.\n"
       "- Live mode xem **riêng** OOS vs Live (khác giai đoạn)."
     )
 
