@@ -122,7 +122,32 @@ def save_model_report(model_id: str, report: dict):
   cfg = dict(payload.get("config") or {})
   cfg["trade_model_id"] = model_id
   payload["config"] = cfg
+  schedule_weekly = payload.pop("schedule_weekly", None)
   _write_json(model_report_path(model_id), payload)
+  try:
+    from trade_model_schedule import (
+      build_schedule_payload,
+      save_model_schedule,
+      schedule_from_walk_forward_result,
+    )
+    if schedule_weekly:
+      sched = build_schedule_payload(
+        model_id=model_id,
+        weekly_entries=list(schedule_weekly),
+        config=cfg,
+        data_fingerprint=(payload.get("data_source") or {}).get("fingerprint")
+        or cfg.get("data_fingerprint"),
+        overall=payload.get("overall_oos"),
+        source="walk_forward",
+      )
+    else:
+      payload_with = dict(payload)
+      payload_with["schedule_weekly"] = report.get("schedule_weekly")
+      sched = schedule_from_walk_forward_result(payload_with, model_id)
+    if sched:
+      save_model_schedule(model_id, sched)
+  except Exception:
+    pass
 
 
 def save_model_kb_off_report(model_id: str, report: dict):

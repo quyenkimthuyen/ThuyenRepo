@@ -28,6 +28,7 @@ from strategy_miner import (
   MinedStrategy, MiningSearchSpace, generate_signals_mined, backtest_mined, Rule,
   mining_search_space_to_dict,
 )
+from trade_model_schedule import week_entry_from_strategy
 
 REPORT_DIR = Path(__file__).parent / "results"
 ProgressCallback = Callable[[int, int, object], None]
@@ -166,6 +167,7 @@ def run_walk_forward(
     weeks = [w for w in weeks if w[0] <= pd.Timestamp(oos_to)]
   all_oos_trades = []
   weekly_log = []
+  schedule_weekly: list[dict] = []
   last_strat: MinedStrategy | None = None
   prev_strat: MinedStrategy | None = None
 
@@ -228,6 +230,16 @@ def run_walk_forward(
       "oos_pips": round(week_m["total_pips"], 1),
       "oos_r": round(week_m["total_r"], 2),
     })
+    schedule_weekly.append(week_entry_from_strategy(
+      week_start=week_start,
+      week_end=week_end,
+      strat=strat,
+      train_start_idx=train_start_idx,
+      train_end_idx=train_end_idx,
+      oos_trades=week_m["n_trades"],
+      oos_r=round(week_m["total_r"], 3),
+      oos_wr=round(week_m["win_rate"], 3),
+    ))
 
   holdout_trades, holdout_strat = [], None
   if holdout_cutoff is not None:
@@ -302,6 +314,7 @@ def run_walk_forward(
     },
     "last_strategy": strategy_to_dict(last_strat) if last_strat else None,
     "weekly_log": weekly_log,
+    "schedule_weekly": schedule_weekly,
     "trades": _trades_to_json(all_oos_trades),
   }
 
@@ -326,6 +339,14 @@ def save_backtest_report(result: dict, report_dir: Path = REPORT_DIR) -> Path:
     json.dump(result, f, indent=2, ensure_ascii=False)
   if result.get("trades"):
     pd.DataFrame(result["trades"]).to_csv(report_dir / "oos_trades.csv", index=False)
+  mid = (result.get("config") or {}).get("trade_model_id")
+  if mid and result.get("schedule_weekly"):
+    from trade_model_schedule import (
+      schedule_from_walk_forward_result, save_model_schedule,
+    )
+    payload = schedule_from_walk_forward_result(result, mid)
+    if payload:
+      save_model_schedule(mid, payload)
   return path
 
 

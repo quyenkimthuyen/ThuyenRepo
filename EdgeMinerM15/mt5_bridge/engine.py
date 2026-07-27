@@ -32,6 +32,13 @@ from strategy_miner import (
   backtest_mined, ensure_label_cache_for_df, generate_signals_mined,
   mining_search_space_from_dict,
 )
+from trade_model_schedule import (
+  append_live_week,
+  attach_ml_scorer,
+  lookup_week_strategy,
+  strategy_from_dict,
+  week_entry_from_strategy,
+)
 
 MT5_CACHE = MT5_CACHE_PATH
 
@@ -197,23 +204,49 @@ class BridgeEngine:
     feature_profile: str,
     search_space,
   ):
-    """Mine once per week on full-history FM; cache until week/model changes."""
+    """Prefer frozen Trade Model schedule; remine only for unseen weeks."""
     cached = self._strat_cache.get(cache_key)
     if cached is not None:
       return cached
 
     canonical = self._canonical_frame()
     df_mine = self._sync_working_frame_from_canonical(canonical)
-    ts, te = get_train_window_indices(df_mine, week_start, train_weeks)
-    if ts is None or (te - ts) < MIN_TRAIN_BARS:
-      return None
-
     fm_mine = self._feature_matrix(df_mine, feature_profile)
+
     kb = None
     if use_learning:
       if kb_profile:
         set_kb_profile(kb_profile, kb_snapshot)
       kb = get_knowledge_base(kb_profile, kb_snapshot)
+
+    # 1) Frozen OOS / previously live-frozen week — before train-window gate
+    scheduled = lookup_week_strategy(self.model_id, week_start)
+    if scheduled and isinstance(scheduled.get("strategy"), dict):
+      strat = strategy_from_dict(scheduled["strategy"])
+      ts_use = int(scheduled.get("train_start_idx", -1))
+      te_use = int(scheduled.get("train_end_idx", -1))
+      if ts_use < 0 or te_use <= ts_use or te_use > fm_mine.n:
+        ts_fb, te_fb = get_train_window_indices(df_mine, week_start, train_weeks)
+        if ts_fb is None or (te_fb - ts_fb) < MIN_TRAIN_BARS:
+          return None
+        ts_use, te_use = ts_fb, te_fb
+      attach_ml_scorer(
+        strat, fm_mine, ts_use, te_use, kb=kb, as_of=week_start,
+      )
+      self._strat_cache[cache_key] = strat
+      name = getattr(strat, "name", None) or "?"
+      print(
+        f"[bridge] schedule week={week_start.date()} strategy={name} "
+        f"fm_len={len(df_mine)} train_bars={te_use - ts_use} fp={self.conditions_fp}",
+        flush=True,
+      )
+      return strat
+
+    # 2) Unseen future week — remine once, then freeze into live_weeks
+    ts, te = get_train_window_indices(df_mine, week_start, train_weeks)
+    if ts is None or (te - ts) < MIN_TRAIN_BARS:
+      return None
+
     strat = optimize_on_window(
       fm_mine, ts, te, use_learning=use_learning, as_of=week_start, kb=kb,
       search_space=search_space,
@@ -221,6 +254,18 @@ class BridgeEngine:
     if strat is None:
       return None
     self._strat_cache[cache_key] = strat
+    try:
+      append_live_week(
+        self.model_id,
+        week_entry_from_strategy(
+          week_start=week_start,
+          strat=strat,
+          train_start_idx=ts,
+          train_end_idx=te,
+        ),
+      )
+    except Exception as exc:
+      print(f"[bridge] live_weeks append failed: {exc}", flush=True)
     try:
       name = getattr(strat, "name", None) or str(strat)
     except Exception:
