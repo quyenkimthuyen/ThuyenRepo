@@ -46,6 +46,7 @@ string   g_open_signal_id = "";
 string   g_open_action = "";
 double   g_open_entry = 0;
 double   g_open_sl = 0;
+double   g_open_sl_initial = 0;  // paper trail: detect SL moved from plan
 double   g_open_tp = 0;
 double   g_open_lots = 0;
 double   g_risk = 0;
@@ -1435,6 +1436,7 @@ void ReportPaperClose(const string reason, const double exit_px, const string ba
    g_paper_held = 0;
    g_open_ticket = 0;
    g_open_signal_id = "";
+   g_open_sl_initial = 0;
    g_had_position = false;
 }
 
@@ -1444,33 +1446,38 @@ void ManagePaperHistory(const MqlRates &r)
       return;
    g_paper_held++;
 
+   // Match Python OOS trail: activate/move from bar high (BUY) / low (SELL)
    if(g_exit_mode == 1 || g_exit_mode == 2)
    {
       if(g_open_action == "BUY")
       {
-         if(r.close >= g_open_entry + g_risk * g_trail_act)
+         if(r.high >= g_open_entry + g_risk * g_trail_act)
          {
-            double nsl = r.close - g_risk * g_trail_dist;
+            double nsl = r.high - g_risk * g_trail_dist;
             if(nsl > g_open_sl)
                g_open_sl = nsl;
          }
       }
       else
       {
-         if(r.close <= g_open_entry - g_risk * g_trail_act)
+         if(r.low <= g_open_entry - g_risk * g_trail_act)
          {
-            double nsl = r.close + g_risk * g_trail_dist;
+            double nsl = r.low + g_risk * g_trail_dist;
             if(g_open_sl == 0 || nsl < g_open_sl)
                g_open_sl = nsl;
          }
       }
    }
 
+   const bool trail_moved = (g_open_sl_initial > 0.0
+                             && MathAbs(g_open_sl - g_open_sl_initial) > (_Point * 0.5));
+
    if(g_open_action == "BUY")
    {
       if(g_open_sl > 0 && r.low <= g_open_sl)
       {
-         ReportPaperClose("sl", g_open_sl, TimeToString(r.time, TIME_DATE | TIME_MINUTES));
+         ReportPaperClose(trail_moved ? "trail" : "sl", g_open_sl,
+                          TimeToString(r.time, TIME_DATE | TIME_MINUTES));
          return;
       }
       if(g_open_tp > 0 && r.high >= g_open_tp)
@@ -1483,7 +1490,8 @@ void ManagePaperHistory(const MqlRates &r)
    {
       if(g_open_sl > 0 && r.high >= g_open_sl)
       {
-         ReportPaperClose("sl", g_open_sl, TimeToString(r.time, TIME_DATE | TIME_MINUTES));
+         ReportPaperClose(trail_moved ? "trail" : "sl", g_open_sl,
+                          TimeToString(r.time, TIME_DATE | TIME_MINUTES));
          return;
       }
       if(g_open_tp > 0 && r.low <= g_open_tp)
@@ -1577,6 +1585,7 @@ bool PaperOpenFromDecision(const string json, const double entry_price, const st
    g_open_action = action;
    g_open_entry = entry_price;
    g_open_sl = sl;
+   g_open_sl_initial = sl;
    g_open_tp = tp;
    g_open_lots = lots;
    g_open_source = "strategy";

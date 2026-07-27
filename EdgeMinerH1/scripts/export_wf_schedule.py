@@ -20,34 +20,14 @@ from data_loader import load_eurusd_h1, get_train_window_indices, get_week_indic
 from feature_engine import FeatureMatrix
 from kb_profiles import load_kb
 from optimizer import optimize_on_window, set_kb_profile, reset_kb_cache
-from run_backtest import generate_weekly_schedule, strategy_to_dict
+from run_backtest import generate_weekly_schedule
 from strategy import compute_metrics
 from strategy_miner import (
-  MinedStrategy, Rule, generate_signals_mined, backtest_mined,
+  MinedStrategy, generate_signals_mined, backtest_mined,
 )
+from trade_model_schedule import full_strategy_dict
 
 OUT = ROOT / "mt5" / "frozen" / "best_3m_wf_schedule.json"
-
-
-def full_strategy_dict(s: MinedStrategy) -> dict:
-  base = strategy_to_dict(s)
-  base.update({
-    "score_threshold": float(s.score_threshold),
-    "atr_mult_sl": float(s.atr_mult_sl),
-    "rr_ratio": float(s.rr_ratio),
-    "min_rules_match": int(s.min_rules_match),
-    "max_trades_per_week": int(s.max_trades_per_week),
-    "min_bars_between": int(s.min_bars_between),
-    "max_hold_bars": int(s.max_hold_bars),
-    "ml_prob_min": float(s.ml_prob_min),
-    "exit_mode": s.exit_mode,
-    "partial_pct": float(s.partial_pct),
-    "partial_at_r": float(s.partial_at_r),
-    "trail_activate_r": float(s.trail_activate_r),
-    "trail_distance_r": float(s.trail_distance_r),
-    "session_filter": bool(s.session_filter),
-  })
-  return base
 
 
 def main():
