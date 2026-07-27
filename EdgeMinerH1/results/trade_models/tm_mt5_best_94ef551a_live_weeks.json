@@ -1,0 +1,93 @@
+{
+  "meta": {
+    "model_id": "tm_mt5_best_94ef551a",
+    "source": "live_remine",
+    "n_weeks": 1
+  },
+  "weekly": [
+    {
+      "week_start": "2024-12-30",
+      "strategy": {
+        "name": "Forge RR3 hybrid 3L5S rsi+price #A495",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.41271941446517235,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.5779141492726668,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.12160121906736596,
+            "w": 1.324015638373437
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10959971723087344,
+            "w": 0.01279715049545697
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 41.2070293150465,
+            "w": 0.0662756909888658
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 68.04245267755577,
+            "w": 1356.7126456962349
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.4898179226337769,
+            "w": 354.8038297724132
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0076409039962706,
+            "w": 10.916562753947407
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.08444397715958696,
+            "w": 16.72554050191242
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.91296396184243,
+            "w": 0.30925777515189706
+          }
+        ]
+      },
+      "train_start_idx": 7743,
+      "train_end_idx": 12390
+    }
+  ]
+}
