@@ -49,7 +49,8 @@ def _clear_settings_widgets() -> None:
 
 def _init_widget_state(settings: dict, era_labels: list[str], eras: list[dict]) -> None:
   tf = get_active_tf()
-  if st.session_state.get("settings_tf_bound") != tf:
+  tf_changed = st.session_state.get("settings_tf_bound") != tf
+  if tf_changed:
     _clear_settings_widgets()
     st.session_state["settings_tf_bound"] = tf
 
@@ -81,7 +82,9 @@ def _init_widget_state(settings: dict, era_labels: list[str], eras: list[dict]) 
     ),
   }
   for key, value in defaults.items():
-    st.session_state.setdefault(key, value)
+    # After TF switch, always reload from that TF's saved settings (OOS H1 ≠ M15)
+    if tf_changed or key not in st.session_state:
+      st.session_state[key] = value
 
 
 def render(embedded: bool = False):

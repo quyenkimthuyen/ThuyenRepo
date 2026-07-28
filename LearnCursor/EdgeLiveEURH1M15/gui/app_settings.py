@@ -273,6 +273,8 @@ def save_settings(settings: dict):
   st.session_state.pop("app_settings", None)
   st.session_state.pop("app_settings_tf", None)
   st.session_state.pop("settings_grid_signature", None)
+  st.session_state.pop("settings_grid_signature_M15", None)
+  st.session_state.pop("settings_grid_signature_H1", None)
 
 
 def get_settings() -> dict:
@@ -288,6 +290,8 @@ def clear_settings_cache() -> None:
   st.session_state.pop("app_settings", None)
   st.session_state.pop("app_settings_tf", None)
   st.session_state.pop("settings_grid_signature", None)
+  st.session_state.pop("settings_grid_signature_M15", None)
+  st.session_state.pop("settings_grid_signature_H1", None)
 
 
 def update_settings(**fields) -> dict:
@@ -301,13 +305,12 @@ def update_settings(**fields) -> dict:
 
 
 def settings_grid_signature(settings: dict | None = None) -> str:
+  """Chữ ký cấu hình — khớp format EdgeMinerH1/M15 (mỗi TF có results riêng)."""
   s = settings or get_settings()
   field = train_field_name()
   trains = sorted(s.get(field) or [])
   eras = sorted(s.get("learning_era_keys") or [])
   parts = [
-    _tf(),
-    field,
     ",".join(str(t) for t in trains),
     ",".join(eras),
     str(s.get("learning_loops", 4)),
@@ -319,14 +322,52 @@ def settings_grid_signature(settings: dict | None = None) -> str:
   return "|".join(parts)
 
 
+def _normalize_grid_signature(sig: str | None) -> str:
+  """Strip optional TF/field prefixes added by older unified builds."""
+  if not sig:
+    return ""
+  parts = str(sig).split("|")
+  # Legacy / EdgeMiner: 7 parts. Unified briefly used TF|field|… (9 parts).
+  if len(parts) >= 9 and parts[0] in ("H1", "M15") and parts[1].startswith("strategy_train_"):
+    parts = parts[2:]
+  return "|".join(parts)
+
+
+def _grid_signature_session_key(tf: str | None = None) -> str:
+  return f"settings_grid_signature_{str(tf or _tf()).upper()}"
+
+
 def settings_changed_since_last_grid() -> bool:
-  last_sig = st.session_state.get("settings_grid_signature")
+  """True only when current TF settings differ from that TF's last grid run."""
+  key = _grid_signature_session_key()
+  last_sig = st.session_state.get(key)
+  if not last_sig:
+    # Compat: old shared session key
+    last_sig = st.session_state.get("settings_grid_signature")
   if not last_sig:
     from gui.grid_search_engine import load_latest_grid_run
     run = load_latest_grid_run()
-    if run and run.get("config", {}).get("settings_signature"):
-      last_sig = run["config"]["settings_signature"]
-  return last_sig != settings_grid_signature()
+    cfg = (run or {}).get("config") or {}
+    last_sig = cfg.get("settings_signature")
+    # Fallback: rebuild from stored OOS / trains if signature missing
+    if not last_sig and run:
+      unit = cfg.get("train_unit") or train_unit_for()
+      trains = cfg.get("train_months") if unit == "months" else cfg.get("train_weeks")
+      eras = cfg.get("learning_era_keys") or []
+      last_sig = "|".join([
+        ",".join(str(t) for t in sorted(trains or [])),
+        ",".join(sorted(eras)),
+        str(cfg.get("learning_loops", 4)),
+        str(cfg.get("oos_from") or ""),
+        str(cfg.get("oos_to") or ""),
+        str(cfg.get("spread_pips", 1.0)),
+        str(cfg.get("slippage_pips", 0.3)),
+      ])
+  if not last_sig:
+    return False
+  return _normalize_grid_signature(last_sig) != _normalize_grid_signature(
+    settings_grid_signature()
+  )
 
 
 def format_settings_summary(settings: dict | None = None) -> str:
@@ -336,10 +377,12 @@ def format_settings_summary(settings: dict | None = None) -> str:
   unit_label = "tháng" if unit == "months" else "tuần"
   trains = ", ".join(f"{t} {unit_label}" for t in sorted(s.get(field) or []))
   eras = ", ".join(s.get("learning_era_keys") or [])
-  oos = f"{s.get('backtest_from', '?')[:4]}–{s.get('backtest_to', '?')[:4]}"
+  oos_from = str(s.get("backtest_from") or "?")[:10]
+  oos_to = str(s.get("backtest_to") or "?")[:10]
   return (
     f"**{_tf()}** · Học chiến lược: **{trains}** · Giai đoạn: **{eras}** · "
-    f"Vòng học: **{s.get('learning_loops', 4)}** · Kiểm chứng: **{oos}**"
+    f"Vòng học: **{s.get('learning_loops', 4)}** · "
+    f"Kiểm chứng: **{oos_from} → {oos_to}**"
   )
 
 

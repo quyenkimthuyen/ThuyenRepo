@@ -233,7 +233,9 @@ def render(embedded: bool = False):
     config = {**grid_config, "seed_rows": kept_rows}
     try:
       rid = start_grid_search(new_specs, objective=objective, config=config)
-      st.session_state["settings_grid_signature"] = settings_grid_signature()
+      from gui.app_settings import _grid_signature_session_key
+      st.session_state[_grid_signature_session_key()] = settings_grid_signature()
+      st.session_state.pop("settings_grid_signature", None)
       st.toast(f"Grid `{rid}` — {len(new_specs)} combo mới")
       st.rerun()
     except RuntimeError as e:
@@ -246,7 +248,9 @@ def render(embedded: bool = False):
     objective = get_settings().get("grid_objective", "total_r")
     try:
       rid = start_grid_search(specs, objective=objective, config=grid_config)
-      st.session_state["settings_grid_signature"] = settings_grid_signature()
+      from gui.app_settings import _grid_signature_session_key
+      st.session_state[_grid_signature_session_key()] = settings_grid_signature()
+      st.session_state.pop("settings_grid_signature", None)
       st.toast(f"Grid full `{rid}` — {len(specs)} combo")
       st.rerun()
     except RuntimeError as e:
