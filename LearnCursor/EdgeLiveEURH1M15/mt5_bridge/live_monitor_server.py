@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -362,7 +363,7 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000, tf: st
     <div class="metric"><div class="label">{labels[6]}</div><div class="value" id="slots">—</div></div>
     """
     price_tag = "LIVE"
-    ui_rev = "mt5-live-v2"
+    ui_rev = "mt5-live-v3"
     snap_url = "/snapshot"
     note0 = f"Đang kết nối ForgeBridge {tf_label}…"
   return f"""<!doctype html>
@@ -538,79 +539,98 @@ async function refresh() {{
     const response=await fetch(SNAP_URL,{{cache:"no-store"}});
     if (!response.ok) throw new Error("HTTP "+response.status);
     const snap=await response.json(), conn=snap.connection || {{}};
+    // Prefer server-side age (same clock as Streamlit desk). Browser Date.now()
+    // vs file mtime breaks when client/server clocks differ.
+    let age = Number(snap.connection_age_sec);
+    if (!Number.isFinite(age)) {{
+      const serverNow = Number(snap.server_now);
+      const mtime = Number(snap.connection_mtime);
+      if (Number.isFinite(serverNow) && Number.isFinite(mtime) && mtime > 0) {{
+        age = Math.max(0, serverNow - mtime);
+      }} else if (Number.isFinite(mtime) && mtime > 0) {{
+        age = Math.max(0, (Date.now()/1000) - mtime);
+      }} else {{
+        age = 9999;
+      }}
+    }}
+    const state=snap.state || {{}};
+    let online, allowed;
+    if (PAPER_MODE) {{
+      online=Boolean(snap.online);
+      setText("conn",online?"READY":"WAITING",online?"online":"offline");
+      allowed=Boolean(state.in_session);
+      setText("trading",allowed?"ACTIVE":"OFF",allowed?"online":"offline");
+    }} else if (SIM_MODE) {{
+      const sim=snap.sim || {{}};
+      const st=String(sim.status || "idle");
+      online=Boolean(snap.online) || st==="running" || st==="paused" || st==="completed";
+      setText("conn",online?"ONLINE":"OFFLINE", online?"online":"offline");
+      setText("trading",st.toUpperCase(), online?"online":"offline");
+    }} else {{
+      // Match Streamlit desk: connected + fresh heartbeat (stale_after=30s)
+      online=Boolean(conn.connected) && age<=30;
+      setText("conn",online?"ONLINE":"OFFLINE",online?"online":"offline");
+      setText("price",(conn.bid != null ? conn.bid : "-")+" / "+(conn.ask != null ? conn.ask : "-"));
+      setText("spread",conn.spread_points!=null?conn.spread_points+" pts":"-");
+      setText("positions",conn.positions ?? "-");
+      allowed=Boolean(conn.terminal_trade_allowed && conn.account_trade_allowed);
+      setText("trading",allowed?"ON":"OFF",allowed?"online":"offline");
+      const decision0=snap.decision || {{}};
+      const action0=String(decision0.action || "-").toUpperCase();
+      let dcls0="flat";
+      if (action0==="BUY" || action0==="SELL") dcls0="signal";
+      else if (action0==="HOLD") dcls0="online";
+      else if (!online) dcls0="offline";
+      setText("decision",action0,dcls0);
+      setText("slots",decision0.slots_remaining ?? "-");
+      document.getElementById("note").textContent=
+        "Heartbeat "+age.toFixed(1)+"s · MT5 "+(conn.server_time || "-")+
+        " · reason "+String(decision0.reason || "-")+
+        " · strategy "+(decision0.strategy_name || "-");
+    }}
+
     let rows=((snap.history || {{}}).bars || []).slice();
     if (conn.bar) rows.push(conn.bar);
     const byTime=new Map();
     for (const r of rows) byTime.set(r.time,r);
     rows=Array.from(byTime.values()).sort((a,b)=>String(a.time).localeCompare(String(b.time))).slice(-MAX_BARS);
-    if (!rows.length) throw new Error(SIM_MODE ? "Chưa có nến Simulate (chọn from/to hoặc Start feed)" : "Chưa có bars.json");
+    if (!rows.length) {{
+      document.getElementById("note").textContent =
+        (document.getElementById("note").textContent || "") +
+        " · Chua co bars.json (status van cap nhat tu connection)";
+      return;
+    }}
 
-    const age=Math.max(0,(Date.now()/1000)-Number(snap.connection_mtime || 0));
-    const state=snap.state || {{}};
-    let online, allowed;
     if (PAPER_MODE) {{
-      online=Boolean(snap.online);
       const last=rows[rows.length-1];
-      setText("conn",online?"READY":"WAITING",online?"online":"offline");
       setText("price",Number(last.close).toFixed(5));
-      setText("spread",(state.day_trades_taken ?? "—")+"/"+(state.strategy?.max_trades_per_day ?? "—"));
-      setText("positions",state.slots_remaining ?? "—");
-      allowed=Boolean(state.in_session);
-      setText("trading",allowed?"ACTIVE":"OFF",allowed?"online":"offline");
+      setText("spread",(state.day_trades_taken ?? "-")+"/"+(state.strategy?.max_trades_per_day ?? "-"));
+      setText("positions",state.slots_remaining ?? "-");
       document.getElementById("note").textContent=
-        "Giá live EA "+(conn.server_time || "—")+" · Paper snapshot "+(state.updated_at || "—");
+        "Gia live EA "+(conn.server_time || "-")+" · Paper snapshot "+(state.updated_at || "-");
     }} else if (SIM_MODE) {{
       const sim=snap.sim || {{}};
       const st=String(sim.status || "idle");
-      online=Boolean(snap.online) || st==="running" || st==="paused" || st==="completed";
       const last=rows[rows.length-1];
       const bid=conn.bid!=null?Number(conn.bid):Number(last.close);
       const ask=conn.ask!=null?Number(conn.ask):bid;
-      const spr=conn.spread_points!=null?conn.spread_points:"—";
-      setText("conn",online?"ONLINE":"OFFLINE", online?"online":"offline");
+      const spr=conn.spread_points!=null?conn.spread_points:"-";
       setText("price",bid.toFixed(5)+" / "+ask.toFixed(5));
-      setText("spread",spr!=="—"?spr+" pts":"—");
-      setText("positions",snap.progress || ((sim.bars_done||0)+"/"+(sim.bars_total||"—")));
-      setText("trading",st.toUpperCase(), online?"online":"offline");
+      setText("spread",spr!=="-"?spr+" pts":"-");
+      setText("positions",snap.progress || ((sim.bars_done||0)+"/"+(sim.bars_total||"-")));
       const decision=snap.decision || {{}};
       const action=String(decision.action || "FLAT").toUpperCase();
       let dcls="flat";
       if (action==="BUY" || action==="SELL") dcls="signal";
       else if (action==="HOLD") dcls="online";
       setText("decision",action,dcls);
-      setText("slots",sim.last_bar || last.time || "—");
+      setText("slots",sim.last_bar || last.time || "-");
       document.getElementById("note").textContent=
         "Simulate "+(sim.date_from||"?")+" → "+(sim.date_to||"?")+
         " · EA "+(sim.ea_status||st)+
-        " · cursor "+(sim.last_bar || last.time || "—")+
-        " · reason "+(decision.reason||"—")+
-        " · "+rows.length+" nến";
-    }} else {{
-      // File mtime can lag on synced folders — allow 30s before OFFLINE
-      online=Boolean(conn.connected) && age<=30;
-      const stale=Boolean(conn.connected) && age>30;
-      setText("conn",online?"ONLINE":(stale?"STALE":"OFFLINE"),online?"online":"offline");
-      setText("price",(conn.bid ?? "—")+" / "+(conn.ask ?? "—"));
-      setText("spread",conn.spread_points!=null?conn.spread_points+" pts":"—");
-      setText("positions",conn.positions ?? "—");
-      allowed=Boolean(conn.terminal_trade_allowed && conn.account_trade_allowed);
-      setText("trading",allowed?"ON":"OFF",allowed?"online":"offline");
-      const decision=snap.decision || {{}};
-      const action=String(decision.action || "—").toUpperCase();
-      const reason=String(decision.reason || "—");
-      let dcls="flat";
-      if (action==="BUY" || action==="SELL") dcls="signal";
-      else if (action==="HOLD") dcls="online";
-      else if (!online) dcls="offline";
-      setText("decision",action,dcls);
-      setText("slots",decision.slots_remaining ?? "—");
-      let note="Heartbeat "+age.toFixed(1)+"s · MT5 "+(conn.server_time || "—")+
-        " · reason "+reason+
-        " · strategy "+(decision.strategy_name || "—");
-      if (!online) {{
-        note += " · Kiểm tra chart EA đang chạy + AutoTrading (Algo) bật";
-      }}
-      document.getElementById("note").textContent=note;
+        " · cursor "+(sim.last_bar || last.time || "-")+
+        " · reason "+(decision.reason||"-")+
+        " · "+rows.length+" nen";
     }}
 
     const x=rows.map(r=>mt5Time(r.time));
@@ -649,8 +669,12 @@ async function refresh() {{
     await Plotly.react("chart",traces,layout,{{displaylogo:false,responsive:true,scrollZoom:true}});
     firstRender=false;
   }} catch (err) {{
-    document.getElementById("note").textContent="Lỗi chart: "+err.message;
-    setText("conn","OFFLINE","offline");
+    // Do not force EA OFFLINE on Plotly/draw errors — desk status is connection-based.
+    const msg = String(err && err.message ? err.message : err);
+    document.getElementById("note").textContent="Loi chart: "+msg;
+    if (msg.indexOf("HTTP") === 0 || msg.indexOf("Failed to fetch") >= 0) {{
+      setText("conn","OFFLINE","offline");
+    }}
   }}
 }}
 refresh();
@@ -722,10 +746,17 @@ def start_live_monitor_server(
             "tp": decision.get("tp"),
             "strategy_name": decision.get("strategy_name"),
           })
+        server_now = time.time()
+        conn_mtime = conn_file.stat().st_mtime if conn_file.exists() else None
+        conn_age = (
+          max(0.0, server_now - conn_mtime) if conn_mtime is not None else None
+        )
         payload = {
           "history": read_json(bars_path(bridge_dir)) or {},
           "connection": read_json(conn_file) or {},
-          "connection_mtime": conn_file.stat().st_mtime if conn_file.exists() else None,
+          "connection_mtime": conn_mtime,
+          "server_now": server_now,
+          "connection_age_sec": conn_age,
           "trades": trades,
           "decision": decision,
         }
