@@ -720,24 +720,29 @@ def _render_service_controls() -> None:
   st.session_state.setdefault(risk_key, float(cfg.get("risk_pct", 1.0)))
   st.session_state.setdefault(poll_key, float(cfg.get("poll_sec", 2.0)))
 
-  b1, b2, b3, b4 = st.columns([1, 1, 1, 2])
+  running = bool(status.get("running"))
+  b1, b2, b3 = st.columns([1.5, 1.5, 3])
   risk = float(st.session_state.get(risk_key, 1.0))
   poll = float(st.session_state.get(poll_key, 2.0))
-  if b1.button("Start", icon=":material/play_arrow:", type="primary", use_container_width=True):
-    bridge_bg.save_config(tf=_bridge_tf(), model_id=model_id, risk_pct=risk, poll_sec=poll, enabled=True)
-    bridge_bg.start_worker(detached=True, tf=_bridge_tf())
-    st.rerun()
-  if b2.button("Stop", icon=":material/stop:", use_container_width=True):
-    bridge_bg.stop_worker(tf=_bridge_tf())
-    st.rerun()
-  if b3.button("1 bar", icon=":material/bolt:", use_container_width=True, help="Xử lý 1 bar ngay"):
+
+  if running:
+    if b1.button("Stop", icon=":material/stop:", type="secondary", use_container_width=True, key=_sk("mt5_live_stop")):
+      bridge_bg.stop_worker(tf=_bridge_tf())
+      st.rerun()
+  else:
+    if b1.button("Start", icon=":material/play_arrow:", type="primary", use_container_width=True, key=_sk("mt5_live_start")):
+      bridge_bg.save_config(tf=_bridge_tf(), model_id=model_id, risk_pct=risk, poll_sec=poll, enabled=True)
+      bridge_bg.start_worker(detached=True, tf=_bridge_tf())
+      st.rerun()
+
+  if b2.button("1 bar", icon=":material/bolt:", use_container_width=True, help="Xử lý 1 bar ngay", key=_sk("mt5_live_one_bar")):
     bridge_bg.save_config(tf=_bridge_tf(), model_id=model_id, risk_pct=risk, poll_sec=poll)
     with st.spinner("Decide…"):
       dec = bridge_bg.process_once_now(tf=_bridge_tf())
     st.write(dec)
     st.rerun()
-  running = bool(status.get("running"))
-  b4.caption(
+
+  b3.caption(
     f"Service **{'ON' if running else 'OFF'}**"
     + (f" · pid `{status.get('service_pid')}`" if status.get("service_pid") else "")
   )

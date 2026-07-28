@@ -752,6 +752,7 @@ def start_live_monitor_server(
           max(0.0, server_now - conn_mtime) if conn_mtime is not None else None
         )
         payload = {
+          "bridge_subdir": bridge_dir.name,
           "history": read_json(bars_path(bridge_dir)) or {},
           "connection": read_json(conn_file) or {},
           "connection_mtime": conn_mtime,
@@ -827,12 +828,23 @@ def ensure_chart_server(
   is_sim = port in SIM_MONITOR_PORTS
   profile = profile_for_port(port)
   default_dir = profile.bridge_dir if profile else (BRIDGE_SIM_DIR if is_sim else BRIDGE_DIR)
+  target_dir = Path(bridge_dir) if bridge_dir else default_dir
   lock = _chart_server_lock(port)
 
   def _healthy() -> bool:
     try:
       with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=0.4) as r:
-        return r.read() == b"ok"
+        if r.read() != b"ok":
+          return False
+      if target_dir:
+        with urllib.request.urlopen(
+          f"http://127.0.0.1:{port}/snapshot?bars=1", timeout=0.4
+        ) as r:
+          snap = json.loads(r.read().decode("utf-8"))
+          server_dir = snap.get("bridge_subdir")
+          if server_dir and server_dir != target_dir.name:
+            return False
+      return True
     except Exception:
       return False
 
@@ -857,7 +869,7 @@ def ensure_chart_server(
           pass
       try:
         _CHART_SERVERS[port] = start_live_monitor_server(
-          Path(bridge_dir) if bridge_dir else default_dir,
+          target_dir,
           port=port,
         )
       except OSError:
@@ -868,7 +880,7 @@ def ensure_chart_server(
       return True
     try:
       _CHART_SERVERS[port] = start_live_monitor_server(
-        Path(bridge_dir) if bridge_dir else default_dir,
+        target_dir,
         port=port,
       )
     except OSError:
