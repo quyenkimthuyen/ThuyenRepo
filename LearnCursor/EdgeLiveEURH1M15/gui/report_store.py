@@ -1,24 +1,34 @@
-"""Lưu & tải báo cáo backtest để so sánh."""
+"""Lưu & tải báo cáo backtest để so sánh — theo TF (results/h1|m15/reports)."""
 from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPORTS_DIR = Path(__file__).resolve().parent.parent / "results" / "reports"
-INDEX_PATH = REPORTS_DIR / "index.json"
+from tf_context import REPORT_DIR
+
+
+def _reports_dir() -> Path:
+  d = Path(str(REPORT_DIR / "reports"))
+  d.mkdir(parents=True, exist_ok=True)
+  return d
+
+
+def _index_path() -> Path:
+  return _reports_dir() / "index.json"
 
 
 def _load_index() -> dict:
-  if not INDEX_PATH.exists():
+  path = _index_path()
+  if not path.exists():
     return {"reports": []}
-  with open(INDEX_PATH, encoding="utf-8") as f:
+  with open(path, encoding="utf-8") as f:
     return json.load(f)
 
 
 def _save_index(data: dict):
-  REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-  with open(INDEX_PATH, "w", encoding="utf-8") as f:
+  reports_dir = _reports_dir()
+  with open(reports_dir / "index.json", "w", encoding="utf-8") as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
 
 
@@ -54,10 +64,10 @@ def report_summary(result: dict) -> dict:
 
 
 def save_report(result: dict, label: str | None = None, report_id: str | None = None) -> str:
-  REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+  reports_dir = _reports_dir()
   ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
   rid = report_id or f"rpt_{ts}"
-  path = REPORTS_DIR / f"{rid}.json"
+  path = reports_dir / f"{rid}.json"
   with open(path, "w", encoding="utf-8") as f:
     json.dump(result, f, indent=2, ensure_ascii=False)
 
@@ -83,7 +93,7 @@ def list_reports() -> list[dict]:
 
 
 def load_report(report_id: str) -> dict | None:
-  path = REPORTS_DIR / f"{report_id}.json"
+  path = _reports_dir() / f"{report_id}.json"
   if not path.exists():
     return None
   with open(path, encoding="utf-8") as f:
@@ -94,7 +104,7 @@ def load_report(report_id: str) -> dict | None:
 
 
 def delete_report(report_id: str) -> bool:
-  path = REPORTS_DIR / f"{report_id}.json"
+  path = _reports_dir() / f"{report_id}.json"
   if path.exists():
     path.unlink()
   idx = _load_index()
@@ -105,7 +115,7 @@ def delete_report(report_id: str) -> bool:
 
 
 def import_current_backtest(path: Path) -> str | None:
-  """Import results/backtest_report.json vào kho so sánh."""
+  """Import results/{tf}/backtest_report.json vào kho so sánh của TF hiện tại."""
   if not path.exists():
     return None
   with open(path, encoding="utf-8") as f:

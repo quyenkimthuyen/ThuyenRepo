@@ -208,20 +208,34 @@ function Get-ForgeBridgeCharts([string]$DataPath) {
     Where-Object { (Get-Content $_.FullName -Raw) -match "name=$EaName" })
 }
 
+function Test-IsTfChart([string]$Text) {
+  if ($Text -notmatch "(?m)^symbol=EURUSD\s*$") { return $false }
+  if ($Timeframe -eq "H1") {
+    # XM/MT5 may encode H1 as classic minutes (type=0,size=60) or hour units (type=1,size=1).
+    return (
+      ($Text -match "(?m)^period_type=0\s*$" -and $Text -match "(?m)^period_size=60\s*$") -or
+      ($Text -match "(?m)^period_type=1\s*$" -and $Text -match "(?m)^period_size=1\s*$") -or
+      $Text -match "(?m)^period=60\s*$" -or
+      $Text -match "PERIOD_H1"
+    )
+  }
+  # M15: classic minute encoding
+  return (
+    $Text -match "(?m)^period_type=0\s*$" -and
+    $Text -match "(?m)^period_size=15\s*$"
+  )
+}
+
 function Get-EurusdTfCharts([string]$DataPath) {
   $chartsRoot = Join-Path $DataPath "MQL5\Profiles\Charts"
-  $allEurusdCharts = Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
+  $charts = Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
     Where-Object {
-      $text = Get-Content $_.FullName -Raw
-      $text -match "(?m)^symbol=EURUSD\s*$"
-    }
-  $charts = $allEurusdCharts |
-    Where-Object {
-      $text = Get-Content $_.FullName -Raw
-      $text -match "(?m)^period_type=0\s*$" -and
-      $text -match ("(?m)^period_size=" + $PeriodSize + "\s*$")
+      Test-IsTfChart (Get-Content $_.FullName -Raw)
     }
   if (-not $charts) {
+    if ($Timeframe -eq "H1") {
+      throw "EURUSD H1 chart not found (period_size=60 or period_type=1/period_size=1). Open a EURUSD H1 chart before deploy; refusing to attach onto other TFs."
+    }
     throw ("EURUSD $Timeframe chart not found (period_size=$PeriodSize). Open a EURUSD $Timeframe chart before deploy; refusing to attach onto other TFs.")
   }
   return @($charts)
@@ -318,8 +332,14 @@ function Attach-ForgeBridge(
   $block = New-ForgeBridgeExpertBlock $TradingEnabled $InpMode $BridgeSubdir
 
   $text = Get-Content $target.FullName -Raw
-  $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=0'
-  $text = $text -replace '(?m)^period_size=\d+\s*$', ("period_size=" + $PeriodSize)
+  if ($Timeframe -eq "H1") {
+    # Keep XM's preferred H1 encoding (hour units) — matches EdgeMinerH1 deploy.
+    $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=1'
+    $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=1'
+  } else {
+    $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=0'
+    $text = $text -replace '(?m)^period_size=\d+\s*$', ("period_size=" + $PeriodSize)
+  }
   # Remove only ForgeBridge* experts on THIS chart; keep other experts/indicators.
   # Patterns MUST stay single-quoted. Double quotes make PS parse < as redirection.
   $forgeExpertPattern = '(?s)<expert>\s*name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b.*?</expert>\s*'

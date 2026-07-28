@@ -2,7 +2,7 @@
   "meta": {
     "model_id": "tm_mt5_best_94ef551a",
     "source": "live_remine",
-    "n_weeks": 2
+    "n_weeks": 1
   },
   "weekly": [
     {
@@ -88,66 +88,6 @@
       },
       "train_start_idx": 7743,
       "train_end_idx": 12390
-    },
-    {
-      "week_start": "2026-07-27",
-      "strategy": {
-        "name": "Forge RR2.5 full 2L2S range+sweep #3F2A",
-        "exit_mode": "full",
-        "ml_prob_min": 0.42279093282005786,
-        "rr": 2.5,
-        "atr_mult": 0.9,
-        "score_threshold": 0.6,
-        "atr_mult_sl": 0.9,
-        "rr_ratio": 2.5,
-        "min_rules_match": 2,
-        "max_trades_per_day": 0,
-        "min_bars_between": 12,
-        "max_hold_bars": 96,
-        "partial_pct": 0.4,
-        "partial_at_r": 1.2,
-        "trail_activate_r": 1.0,
-        "trail_distance_r": 0.5,
-        "session_filter": true,
-        "session_start_hour": 7,
-        "session_end_hour": 20,
-        "htf_align_boost": 1.12,
-        "htf_counter_dampen": 0.88,
-        "long_rules": [
-          {
-            "feat": "range_buy",
-            "direction": "long",
-            "op": "eq1",
-            "thr": 0.5,
-            "w": 1.761353711790393
-          },
-          {
-            "feat": "sweep_low_fade",
-            "direction": "long",
-            "op": "eq1",
-            "thr": 0.5,
-            "w": 0.4
-          }
-        ],
-        "short_rules": [
-          {
-            "feat": "sweep_high_fade",
-            "direction": "short",
-            "op": "eq1",
-            "thr": 0.5,
-            "w": 0.4
-          },
-          {
-            "feat": "pullback_short",
-            "direction": "short",
-            "op": "eq1",
-            "thr": 0.5,
-            "w": 0.4
-          }
-        ]
-      },
-      "train_start_idx": 17566,
-      "train_end_idx": 22146
     }
   ]
 }

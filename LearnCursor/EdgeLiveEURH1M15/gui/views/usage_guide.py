@@ -395,7 +395,7 @@ scripts/mt5_bridge_service.py
 scripts/export_bridge_replay.py
 results/backtest_report.json
 results/learning_report.json
-results/reports/              # Kho báo cáo Report Compare
+results/{h1|m15}/reports/     # Kho báo cáo Report Compare (theo TF)
 kb_profiles.py              # Quản lý profile KB
 learning/kb_profiles/       # KB từng giai đoạn
 ```
