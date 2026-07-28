@@ -324,37 +324,61 @@ function Attach-ForgeBridge(
   [int]$InpMode = 0,
   [string]$BridgeSubdir = $BridgeSubdirLive
 ) {
-  Stop-XmTerminal $XmInstallPath
-
+  # Resolve target chart BEFORE stopping MT5 — failed H1 attach must not leave terminal down.
   $target = Select-AttachChart $DataPath ($InpMode -eq 2)
-  $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-  Copy-Item $target.FullName "$($target.FullName).backup_$timestamp" -Force
-  $block = New-ForgeBridgeExpertBlock $TradingEnabled $InpMode $BridgeSubdir
+  $terminalStarted = $false
+  try {
+    Stop-XmTerminal $XmInstallPath
 
-  $text = Get-Content $target.FullName -Raw
-  if ($Timeframe -eq "H1") {
-    # Keep XM's preferred H1 encoding (hour units) — matches EdgeMinerH1 deploy.
-    $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=1'
-    $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=1'
-  } else {
-    $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=0'
-    $text = $text -replace '(?m)^period_size=\d+\s*$', ("period_size=" + $PeriodSize)
-  }
-  # Remove only ForgeBridge* experts on THIS chart; keep other experts/indicators.
-  # Patterns MUST stay single-quoted. Double quotes make PS parse < as redirection.
-  $forgeExpertPattern = '(?s)<expert>\s*name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b.*?</expert>\s*'
-  $windowTag = '<window>'
-  $text = [regex]::Replace($text, $forgeExpertPattern, '')
-  if ($text -notmatch [regex]::Escape($windowTag)) {
-    throw "Chart $($target.FullName) has no <window> tag; cannot attach $EaName."
-  }
-  $text = [regex]::Replace($text, $windowTag, ($block + "`r`n" + $windowTag), 1)
-  Set-Content -Path $target.FullName -Value $text -Encoding Unicode
+    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+    Copy-Item $target.FullName "$($target.FullName).backup_$timestamp" -Force
+    $block = New-ForgeBridgeExpertBlock $TradingEnabled $InpMode $BridgeSubdir
 
-  Write-Host "Attached exactly one EA: $EaName (mode=$InpMode, subdir=$BridgeSubdir)"
-  Start-Process -FilePath (Join-Path $XmInstallPath "terminal64.exe")
-  Start-Sleep -Seconds 8
-  return $target.FullName
+    $text = Get-Content $target.FullName -Raw
+    if ($Timeframe -eq "H1") {
+      # Keep XM's preferred H1 encoding (hour units) — matches EdgeMinerH1 deploy.
+      $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=1'
+      $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=1'
+    } else {
+      $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=0'
+      $text = $text -replace '(?m)^period_size=\d+\s*$', ("period_size=" + $PeriodSize)
+    }
+    # Remove only ForgeBridge* experts on THIS chart; keep other experts/indicators.
+    # Patterns MUST stay single-quoted. Double quotes make PS parse < as redirection.
+    $forgeExpertPattern = '(?s)<expert>\s*name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b.*?</expert>\s*'
+    $windowTag = '<window>'
+    $text = [regex]::Replace($text, $forgeExpertPattern, '')
+    if ($text -notmatch [regex]::Escape($windowTag)) {
+      throw "Chart $($target.FullName) has no <window> tag; cannot attach $EaName."
+    }
+    $text = [regex]::Replace($text, $windowTag, ($block + "`r`n" + $windowTag), 1)
+    Set-Content -Path $target.FullName -Value $text -Encoding Unicode
+
+    Write-Host "Attached exactly one EA: $EaName (mode=$InpMode, subdir=$BridgeSubdir)"
+    Start-Process -FilePath (Join-Path $XmInstallPath "terminal64.exe")
+    $terminalStarted = $true
+    Start-Sleep -Seconds 8
+    return $target.FullName
+  } finally {
+    if (-not $terminalStarted) {
+      # Attach failed after Stop — bring MT5 back so other EAs keep heartbeating.
+      try {
+        $running = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+          Where-Object {
+            $_.Name -eq "terminal64.exe" -and
+            $_.ExecutablePath -and
+            $_.ExecutablePath.StartsWith($XmInstallPath, [System.StringComparison]::OrdinalIgnoreCase)
+          }
+        if (-not $running) {
+          Write-Warning "Attach failed — restarting XM MT5 so Live EAs stay online."
+          Start-Process -FilePath (Join-Path $XmInstallPath "terminal64.exe")
+          Start-Sleep -Seconds 5
+        }
+      } catch {
+        Write-Warning "Could not restart XM MT5 after attach failure: $($_.Exception.Message)"
+      }
+    }
+  }
 }
 
 function Restart-BridgeService {

@@ -308,11 +308,12 @@ def build_sim_snapshot(bridge_dir: Path | None = None, *, max_bars: int = 672) -
   }
 
 
-def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str:
+def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000, tf: str = "M15") -> str:
   paper_mode = mode == "paper"
   sim_mode = mode == "sim"
+  tf_label = str(tf or "M15").upper()
   if sim_mode:
-    chart_title = "EURUSD M15 · Simulate History Feed"
+    chart_title = f"EURUSD {tf_label} · Simulate History Feed"
     labels = (
       "FEED", "QUOTE", "SPREAD", "PROGRESS", "FEED STATUS", "DECISION", "LAST BAR",
     )
@@ -331,7 +332,7 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
     snap_url = "/snapshot?mode=sim"
     note0 = "Simulate History Feed — status + chart cập nhật mượt (Plotly.react)."
   elif paper_mode:
-    chart_title = "EURUSD M15 · Paper Trade"
+    chart_title = f"EURUSD {tf_label} · Paper Trade"
     labels = ("PAPER ENGINE", "LAST PRICE", "DAY TRADES", "SLOTS LEFT", "SESSION")
     grid_cols = 5
     status_cells = f"""
@@ -346,9 +347,9 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
     snap_url = "/snapshot"
     note0 = "Đang kết nối ForgeBridge EA…"
   else:
-    chart_title = "EURUSD M15 · XM MT5 live"
+    chart_title = f"EURUSD {tf_label} · XM MT5 live"
     labels = (
-      "EA", "BID / ASK", "SPREAD", "OPEN", "ALGO", "DECISION", "SLOTS",
+      "EA", "BID / ASK", "SPREAD", "OPEN", "AutoTrade", "DECISION", "SLOTS",
     )
     grid_cols = 7
     status_cells = f"""
@@ -361,9 +362,9 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
     <div class="metric"><div class="label">{labels[6]}</div><div class="value" id="slots">—</div></div>
     """
     price_tag = "LIVE"
-    ui_rev = "mt5-live"
+    ui_rev = "mt5-live-v2"
     snap_url = "/snapshot"
-    note0 = "Đang kết nối ForgeBridge EA…"
+    note0 = f"Đang kết nối ForgeBridge {tf_label}…"
   return f"""<!doctype html>
 <html>
 <head>
@@ -585,8 +586,10 @@ async function refresh() {{
         " · reason "+(decision.reason||"—")+
         " · "+rows.length+" nến";
     }} else {{
-      online=Boolean(conn.connected) && age<=10;
-      setText("conn",online?"ONLINE":"OFFLINE",online?"online":"offline");
+      // File mtime can lag on synced folders — allow 30s before OFFLINE
+      online=Boolean(conn.connected) && age<=30;
+      const stale=Boolean(conn.connected) && age>30;
+      setText("conn",online?"ONLINE":(stale?"STALE":"OFFLINE"),online?"online":"offline");
       setText("price",(conn.bid ?? "—")+" / "+(conn.ask ?? "—"));
       setText("spread",conn.spread_points!=null?conn.spread_points+" pts":"—");
       setText("positions",conn.positions ?? "—");
@@ -601,10 +604,13 @@ async function refresh() {{
       else if (!online) dcls="offline";
       setText("decision",action,dcls);
       setText("slots",decision.slots_remaining ?? "—");
-      document.getElementById("note").textContent=
-        "Heartbeat "+age.toFixed(1)+"s · MT5 "+(conn.server_time || "—")+
+      let note="Heartbeat "+age.toFixed(1)+"s · MT5 "+(conn.server_time || "—")+
         " · reason "+reason+
         " · strategy "+(decision.strategy_name || "—");
+      if (!online) {{
+        note += " · Kiểm tra chart EA đang chạy + AutoTrading (Algo) bật";
+      }}
+      document.getElementById("note").textContent=note;
     }}
 
     const x=rows.map(r=>mt5Time(r.time));
@@ -741,9 +747,13 @@ def start_live_monitor_server(
         except (TypeError, ValueError):
           max_bars = 672
         poll_ms = 2000 if mode == "sim" else 2000
+        profile = profile_for_dir(bridge_dir)
+        tf_label = profile.tf if profile else "M15"
         self._send(
           200,
-          _chart_html(max_bars, mode=mode, poll_ms=poll_ms).encode("utf-8"),
+          _chart_html(
+            max_bars, mode=mode, poll_ms=poll_ms, tf=tf_label,
+          ).encode("utf-8"),
           "text/html; charset=utf-8",
         )
         return
@@ -755,7 +765,7 @@ def start_live_monitor_server(
   class ReusableServer(ThreadingHTTPServer):
     allow_reuse_address = True
 
-  server = ReusableServer(("127.0.0.1", int(port)), Handler)
+  server = ReusableServer(("0.0.0.0", int(port)), Handler)
   thread = threading.Thread(
     target=server.serve_forever,
     name="mt5-live-monitor-http",

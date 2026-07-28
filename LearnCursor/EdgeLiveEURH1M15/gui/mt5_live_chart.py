@@ -181,7 +181,7 @@ def load_sim_chart_data(
 
 def connection_health(
   connection: dict,
-  stale_after_seconds: float = 10.0,
+  stale_after_seconds: float = 30.0,
   *,
   bridge_dir: Path | None = None,
 ) -> dict:
@@ -191,7 +191,7 @@ def connection_health(
     age = max(0.0, datetime.now().timestamp() - path.stat().st_mtime)
   except OSError:
     pass
-  # History feed may refresh slower than live heartbeat
+  # History feed / synced folders may refresh slower than live heartbeat
   fresh = age is not None and age <= stale_after_seconds
   terminal_connected = bool(connection.get("connected", True if connection else False))
   if connection and "connected" not in connection and age is not None:

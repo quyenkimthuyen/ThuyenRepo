@@ -83,6 +83,29 @@ Write-Host ""
 if ($failed.Count -gt 0) {
   Write-Host "==> Deploy finished with errors:" -ForegroundColor Red
   foreach ($f in $failed) { Write-Host "  - $f" -ForegroundColor Red }
+  # Always try to leave MT5 running after a partial Deploy ALL
+  try {
+    $install = if ($InstallPath) { $InstallPath } else {
+      (& {
+        $running = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+          Where-Object { $_.Name -eq "terminal64.exe" -and $_.ExecutablePath -match "XM Global MT5" } |
+          Select-Object -First 1
+        if ($running) { Split-Path $running.ExecutablePath } else { "C:\Program Files\XM Global MT5" }
+      })
+    }
+    $alive = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+      Where-Object {
+        $_.Name -eq "terminal64.exe" -and
+        $_.ExecutablePath -and
+        $_.ExecutablePath.StartsWith($install, [System.StringComparison]::OrdinalIgnoreCase)
+      }
+    if (-not $alive -and (Test-Path (Join-Path $install "terminal64.exe"))) {
+      Write-Warning "Restarting XM MT5 after partial deploy…"
+      Start-Process -FilePath (Join-Path $install "terminal64.exe")
+    }
+  } catch {
+    Write-Warning "Could not ensure MT5 is running: $($_.Exception.Message)"
+  }
   throw ("Deploy ALL incomplete ({0}/{1} failed)." -f $failed.Count, $Jobs.Count)
 }
 
