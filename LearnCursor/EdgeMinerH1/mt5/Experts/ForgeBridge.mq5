@@ -1,0 +1,2 @@
+// Deprecated filename — use ForgeBridgeH1.mq5 (unique EA for dual MT5 deploy).
+// This stub is intentionally empty so old Navigator entries are obvious.
