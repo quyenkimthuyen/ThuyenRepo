@@ -2,7 +2,7 @@
   "meta": {
     "model_id": "tm_mt5_best_94ef551a",
     "source": "live_remine",
-    "n_weeks": 1
+    "n_weeks": 2
   },
   "weekly": [
     {
@@ -88,6 +88,101 @@
       },
       "train_start_idx": 7743,
       "train_end_idx": 12390
+    },
+    {
+      "week_start": "2026-07-27",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L5S rsi+price #7AEE",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.39099407672089703,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.644750888486387,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "long_rules": [
+          {
+            "feat": "bb_width_pct",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1083342483061042,
+            "w": 0.0651179547969513
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.20094732665632267,
+            "w": 0.040352050696769545
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.09978789751852928,
+            "w": 0.2856382017472119
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 41.2070293150465,
+            "w": 0.2462149675987532
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 68.04245267755577,
+            "w": 3085.752504692379
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.4898179226337769,
+            "w": 1068.4096895401171
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.11594256102272002,
+            "w": 5.790245875762019
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 32.632581582401386,
+            "w": 7.974498458491257
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 3.552133115650038
+          }
+        ]
+      },
+      "train_start_idx": 17566,
+      "train_end_idx": 22146
     }
   ]
 }
