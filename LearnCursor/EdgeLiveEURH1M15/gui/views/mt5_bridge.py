@@ -539,49 +539,30 @@ def _sim_desk_fragment() -> None:
   _render_trader_desk(include_live_metrics=False)
 
 
-def _chart_public_origin(port: int) -> str:
-  """Browser-reachable chart base URL.
-
-  Streamlit may be opened as http://LAN:8501 — iframe must NOT use 127.0.0.1
-  (that would hit the viewer's machine, not the app host). Chart server binds
-  0.0.0.0 so LAN host works.
-  """
-  host = "127.0.0.1"
-  try:
-    ctx = getattr(st, "context", None)
-    headers = getattr(ctx, "headers", None) if ctx is not None else None
-    raw = ""
-    if headers is not None:
-      raw = headers.get("Host") or headers.get("host") or ""
-    if raw:
-      host = str(raw).split(":")[0].strip() or host
-  except Exception:
-    pass
-  return f"http://{host}:{int(port)}"
-
-
 def _render_live_chart(max_bars: int) -> None:
-  """Live + Simulate: persistent browser iframe (Plotly.react) — no Streamlit flicker."""
+  """Live + Simulate: persistent browser iframe (Plotly.react) — no Streamlit flicker.
+
+  Matches EdgeMinerH1/M15: Live chart comes from the bridge-service monitor on
+  127.0.0.1:{port}. Simulate starts a dedicated chart server via ensure_chart_server.
+  """
   bridge_dir = _active_bridge_dir()
   mode = _bridge_mode()
   tf = _bridge_tf()
   port = monitor_port_for(tf, mode)
   legend = "🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit"
-  # Server-side health always hits local loopback
-  local_url = f"http://127.0.0.1:{port}"
-  chart_url = _chart_public_origin(port)
-
-  ensure_chart_server(bridge_dir, port, tf=tf, mode=mode)
-  try:
-    with urlopen(f"{local_url}/health", timeout=0.5) as response:
-      server_ready = response.read() == b"ok"
-  except (OSError, URLError):
-    server_ready = False
+  # Same as EdgeMiner: browser + Streamlit + bridge service share one machine.
+  monitor_url = f"http://127.0.0.1:{port}"
 
   if mode == "sim":
+    ensure_chart_server(bridge_dir, port, tf=tf, mode="sim")
+    try:
+      with urlopen(f"{monitor_url}/health", timeout=0.5) as response:
+        server_ready = response.read() == b"ok"
+    except (OSError, URLError):
+      server_ready = False
     if server_ready:
       components.iframe(
-        f"{chart_url}/chart?mode=sim&bars={max_bars}&v=sim5",
+        f"{monitor_url}/chart?mode=sim&bars={max_bars}&v=sim4",
         height=700,
         scrolling=False,
       )
@@ -610,15 +591,33 @@ def _render_live_chart(max_bars: int) -> None:
       st.plotly_chart(fig, use_container_width=True, key=_sk("mt5_ea_sim_chart_fallback"))
     return
 
+  # Live — EdgeMiner: do not require GUI chart server; bridge service owns the monitor.
+  try:
+    with urlopen(f"{monitor_url}/health", timeout=0.5) as response:
+      server_ready = response.read() == b"ok"
+  except (OSError, URLError):
+    server_ready = False
+  if not server_ready:
+    # Fallback if Live worker not started yet / monitor died
+    ensure_chart_server(bridge_dir, port, tf=tf, mode="live")
+    try:
+      with urlopen(f"{monitor_url}/health", timeout=0.5) as response:
+        server_ready = response.read() == b"ok"
+    except (OSError, URLError):
+      server_ready = False
+
   if server_ready:
     components.iframe(
-      f"{chart_url}/chart?bars={max_bars}&v=live2",
+      f"{monitor_url}/chart?bars={max_bars}",
       height=700,
       scrolling=False,
     )
     st.caption(legend)
     return
-  st.warning(f"Live chart server {tf} (:{port}) chưa sẵn sàng.")
+  st.warning(
+    f"Live chart server {tf} (:{port}) chưa chạy — bấm **Start** service "
+    "(bridge worker mở monitor giống EdgeMiner)."
+  )
   frame, connection = load_ea_chart_data(max_bars=max_bars, bridge_dir=bridge_dir)
   trades = load_trades(bridge_dir)
   fig = build_ea_chart(

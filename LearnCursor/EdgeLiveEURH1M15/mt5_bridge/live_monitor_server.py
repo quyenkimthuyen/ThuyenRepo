@@ -765,7 +765,7 @@ def start_live_monitor_server(
   class ReusableServer(ThreadingHTTPServer):
     allow_reuse_address = True
 
-  server = ReusableServer(("0.0.0.0", int(port)), Handler)
+  server = ReusableServer(("127.0.0.1", int(port)), Handler)
   thread = threading.Thread(
     target=server.serve_forever,
     name="mt5-live-monitor-http",
