@@ -324,7 +324,7 @@ function Attach-ForgeBridge(
   [int]$InpMode = 0,
   [string]$BridgeSubdir = $BridgeSubdirLive
 ) {
-  # Resolve target chart BEFORE stopping MT5 — failed H1 attach must not leave terminal down.
+  # Resolve target chart BEFORE stopping MT5 - failed H1 attach must not leave terminal down.
   $target = Select-AttachChart $DataPath ($InpMode -eq 2)
   $terminalStarted = $false
   try {
@@ -336,7 +336,7 @@ function Attach-ForgeBridge(
 
     $text = Get-Content $target.FullName -Raw
     if ($Timeframe -eq "H1") {
-      # Keep XM's preferred H1 encoding (hour units) — matches EdgeMinerH1 deploy.
+      # Keep XM's preferred H1 encoding (hour units) - matches EdgeMinerH1 deploy.
       $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=1'
       $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=1'
     } else {
@@ -361,7 +361,7 @@ function Attach-ForgeBridge(
     return $target.FullName
   } finally {
     if (-not $terminalStarted) {
-      # Attach failed after Stop — bring MT5 back so other EAs keep heartbeating.
+      # Attach failed after Stop - bring MT5 back so other EAs keep heartbeating.
       try {
         $running = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
           Where-Object {
@@ -370,7 +370,7 @@ function Attach-ForgeBridge(
             $_.ExecutablePath.StartsWith($XmInstallPath, [System.StringComparison]::OrdinalIgnoreCase)
           }
         if (-not $running) {
-          Write-Warning "Attach failed — restarting XM MT5 so Live EAs stay online."
+          Write-Warning "Attach failed - restarting XM MT5 so Live EAs stay online."
           Start-Process -FilePath (Join-Path $XmInstallPath "terminal64.exe")
           Start-Sleep -Seconds 5
         }
@@ -506,4 +506,4 @@ if ($IsHistoryFeed) {
   Write-Host "Live ready. For Simulate: -Mode HistoryFeed -Attach"
 }
 Write-Host "Next update command:"
-Write-Host "powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+Write-Host ('powershell -ExecutionPolicy Bypass -File "{0}"' -f $PSCommandPath)

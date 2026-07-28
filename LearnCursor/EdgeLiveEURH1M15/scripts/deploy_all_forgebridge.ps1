@@ -15,7 +15,7 @@ if (-not (Test-Path $DeployOne)) {
   throw "Missing deploy script: $DeployOne"
 }
 
-# Four concurrent runtimes: M15/H1 × Live/Sim
+# Four concurrent runtimes: M15/H1 x Live/Sim
 $Jobs = @(
   @{ Timeframe = "M15"; Mode = "Live" },
   @{ Timeframe = "M15"; Mode = "HistoryFeed" },
@@ -23,11 +23,11 @@ $Jobs = @(
   @{ Timeframe = "H1"; Mode = "HistoryFeed" }
 )
 
-Write-Host "==> Deploy ALL 4 EAs (M15/H1 · Live/Simulate)" -ForegroundColor Cyan
+Write-Host "==> Deploy ALL 4 EAs (M15/H1 | Live/Simulate)" -ForegroundColor Cyan
 if ($CompileOnly) {
   Write-Host "Mode: compile + bridge junctions only (no chart attach)"
 } elseif ($Attach) {
-  Write-Host "Mode: compile + attach (need 2× EURUSD M15 + 2× EURUSD H1 free/matching charts)"
+  Write-Host "Mode: compile + attach (need 2x EURUSD M15 + 2x EURUSD H1 free/matching charts)"
 } else {
   Write-Host "Mode: compile + junctions; pass -Attach to bind charts"
 }
@@ -41,7 +41,7 @@ foreach ($job in $Jobs) {
   Write-Host ("==== [{0}/{1}] {2} {3} ====" -f $i, $Jobs.Count, $job.Timeframe, $job.Mode) `
     -ForegroundColor Yellow
 
-  # Do NOT name this $args — that is a reserved automatic variable in PowerShell.
+  # Do NOT name this $args - that is a reserved automatic variable in PowerShell.
   $deployParams = @{
     Timeframe         = $job.Timeframe
     Mode              = $job.Mode
@@ -100,7 +100,7 @@ if ($failed.Count -gt 0) {
         $_.ExecutablePath.StartsWith($install, [System.StringComparison]::OrdinalIgnoreCase)
       }
     if (-not $alive -and (Test-Path (Join-Path $install "terminal64.exe"))) {
-      Write-Warning "Restarting XM MT5 after partial deploy…"
+      Write-Warning "Restarting XM MT5 after partial deploy..."
       Start-Process -FilePath (Join-Path $install "terminal64.exe")
     }
   } catch {
@@ -110,5 +110,5 @@ if ($failed.Count -gt 0) {
 }
 
 Write-Host "==> All 4 EAs deployed" -ForegroundColor Green
-Write-Host "EAs: ForgeBridgeM15 · ForgeBridgeM15Sim · ForgeBridgeH1 · ForgeBridgeH1Sim"
+Write-Host "EAs: ForgeBridgeM15 | ForgeBridgeM15Sim | ForgeBridgeH1 | ForgeBridgeH1Sim"
 Write-Host "Next: start Live/Sim workers from MT5 Bridge (per TF)."
