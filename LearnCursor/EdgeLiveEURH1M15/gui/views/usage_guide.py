@@ -167,7 +167,7 @@ Mỗi tuần OOS: TRAIN 3 THÁNG → mine (+ KB) → trade 1 tuần
 | **MT5 Bridge** | **Live** (lệnh MT5) + **Simulate** (replay HISTORY_FEED) · cùng Trade Model |
 | **Hướng dẫn** | Tài liệu này |
 
-**Trade Model**: chọn một lần trong **Học & tối ưu → Trade Models → Quản lý** — **Paper · Live · Simulate** dùng chung (`active_trade_model.json` + cùng `conditions_fp` remine).
+**Trade Model**: chọn riêng theo **Timeframe Bridge** (H1 ≠ M15) trong **Học & tối ưu → Trade Models → Quản lý** — Live/Sim của từng TF dùng `results/{h1|m15}/active_trade_model.json`.
 
 ### Ba mode · cùng Trade Model
 

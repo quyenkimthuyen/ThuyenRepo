@@ -72,9 +72,9 @@ class MinedStrategy:
   score_threshold: float = 2.0
   atr_mult_sl: float = 0.9
   rr_ratio: float = 2.5
-  # Researched M15 defaults: longer hold + wider spacing ↑ total R & WR
-  max_hold_bars: int = 96
-  min_bars_between: int = 12
+  # Defaults filled for active TF in __post_init__ when left at TF markers
+  max_hold_bars: int = 0
+  min_bars_between: int = 0
   min_rules_match: int = 2
   max_trades_per_day: int = MAX_TRADES_PER_DAY
   max_trades_per_week: int = MAX_TRADES_PER_WEEK
@@ -93,10 +93,25 @@ class MinedStrategy:
   ml_scorer: MLScorer | None = None
   name: str = "mined_v3"
 
+  def __post_init__(self):
+    hold, spacing = _default_hold_spacing()
+    if not self.max_hold_bars:
+      self.max_hold_bars = hold
+    if not self.min_bars_between:
+      self.min_bars_between = spacing
+
+
+def _default_hold_spacing(tf: str | None = None) -> tuple[int, int]:
+  """H1: 36/4 · M15: 96/12 (from EdgeMinerH1 / EdgeMinerM15)."""
+  t = str(tf or get_active_tf()).upper()
+  if t == "H1":
+    return 36, 4
+  return 96, 12
+
 
 @dataclass(frozen=True)
 class MiningSearchSpace:
-  """Immutable mining grid; defaults match researched M15 combo (spacing_12 + hold_96)."""
+  """Immutable mining grid; use default_mining_search_space(tf) for TF defaults."""
   rr_ratios: tuple[float, ...] = (2.5, 3.0)
   atr_multipliers: tuple[float, ...] = (0.9, 1.05)
   max_hold_bars: tuple[int, ...] = (96,)
@@ -115,10 +130,28 @@ class MiningSearchSpace:
   loss_streak_penalty: float = 0.0
 
 
+def default_mining_search_space(tf: str | None = None) -> MiningSearchSpace:
+  t = str(tf or get_active_tf()).upper()
+  hold, spacing = _default_hold_spacing(t)
+  d = get_tf_defaults(t)
+  if t == "H1":
+    return MiningSearchSpace(
+      target_trades_per_week=d.target_trades_per_week,
+      max_hold_bars=(hold,),
+      min_bars_between=(spacing,),
+      session_ranges=((7, 20),),
+    )
+  return MiningSearchSpace(
+    target_trades_per_week=d.target_trades_per_week,
+    max_hold_bars=(hold,),
+    min_bars_between=(spacing,),
+  )
+
+
 def mining_search_space_from_dict(value: dict | None) -> MiningSearchSpace:
   """Build a typed search space from JSON-compatible model metadata."""
   if not value:
-    return MiningSearchSpace()
+    return default_mining_search_space()
   tuple_fields = {
     "rr_ratios", "atr_multipliers", "max_hold_bars", "min_bars_between",
     "session_filters", "score_thresholds", "min_rules_matches",
@@ -617,7 +650,10 @@ def mine_strategy(
   fm, train_start, train_end, target_tpw=TARGET_TRADES_PER_WEEK,
   search_space: MiningSearchSpace | None = None,
 ):
-  space = search_space or MiningSearchSpace(target_trades_per_week=target_tpw)
+  space = search_space or default_mining_search_space()
+  if target_tpw is not None and space.target_trades_per_week != target_tpw:
+    from dataclasses import replace
+    space = replace(space, target_trades_per_week=float(target_tpw))
   with _LABEL_LOCK:
     if len(LABEL_CACHE) > 200:
       LABEL_CACHE.clear()

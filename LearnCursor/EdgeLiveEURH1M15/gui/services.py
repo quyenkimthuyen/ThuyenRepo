@@ -7,11 +7,12 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from data_loader import META_PATH, download_eurusd, load_eurusd
 from config import (
   DEFAULT_HOLDOUT_MONTHS, DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS,
-  DEFAULT_START_DATE, DEFAULT_RISK_PCT_PER_TRADE,
+  DEFAULT_START_DATE, DEFAULT_RISK_PCT_PER_TRADE, get_active_tf,
 )
-from data_loader import META_PATH, download_eurusd_m15, load_eurusd_m15
+from runtime_profiles import get_tf_defaults
 from kb_profiles import (
   DEFAULT_PROFILE_ID, create_profile, delete_profile, kb_valid_for_backtest,
   list_profiles, load_kb as load_kb_from_profiles, register_profile, slice_df_for_period,
@@ -49,36 +50,42 @@ def load_learning_report() -> dict | None:
 
 
 def load_data_meta() -> dict:
-  return load_json(META_PATH) or {}
+  from mt5_bridge.history_sync import cache_meta_for
+  from mt5_bridge.protocol import read_json
+  return read_json(cache_meta_for(get_active_tf())) or {}
 
 
 def load_kb(profile_id: str = DEFAULT_PROFILE_ID) -> KnowledgeBase:
   return load_kb_from_profiles(profile_id)
 
 
-def get_ohlc_df(start: str = DEFAULT_START_DATE) -> pd.DataFrame:
-  return load_eurusd_m15(start)
+def get_ohlc_df(start: str | None = None) -> pd.DataFrame:
+  d = get_tf_defaults(get_active_tf())
+  return load_eurusd(start or d.start_date, tf=d.tf)
 
 
 @st.cache_data(ttl=300, show_spinner=False)
-def get_ohlc_df_cached(start: str = DEFAULT_START_DATE) -> pd.DataFrame:
+def get_ohlc_df_cached(start: str = DEFAULT_START_DATE, tf: str = "M15") -> pd.DataFrame:
   """Cached OHLC — tránh đọc parquet lại mỗi lần chuyển tab."""
-  return load_eurusd_m15(start)
+  return load_eurusd(start, tf=tf)
 
 
 @st.cache_data(ttl=300, show_spinner=False)
-def get_ohlc_window_cached(chart_from: str, chart_to: str, start: str = DEFAULT_START_DATE) -> pd.DataFrame:
+def get_ohlc_window_cached(
+  chart_from: str, chart_to: str, start: str = DEFAULT_START_DATE, tf: str = "M15",
+) -> pd.DataFrame:
   """Chỉ load slice OHLC cho chart (tuần hiện tại + padding)."""
-  ohlc = get_ohlc_df_cached(start)
+  ohlc = get_ohlc_df_cached(start, tf=tf)
   window = ohlc.loc[pd.Timestamp(chart_from):pd.Timestamp(chart_to)]
   if window.empty:
     window = ohlc.tail(672)
   return window.copy()
 
 
-def refresh_market_data(start: str = DEFAULT_START_DATE) -> pd.DataFrame:
+def refresh_market_data(start: str | None = None) -> pd.DataFrame:
   _clear_ohlc_streamlit_cache()
-  return download_eurusd_m15(start, force_refresh=True)
+  d = get_tf_defaults(get_active_tf())
+  return download_eurusd(start or d.start_date, force_refresh=True, tf=d.tf)
 
 
 def _clear_ohlc_streamlit_cache() -> None:
@@ -91,8 +98,11 @@ def _clear_ohlc_streamlit_cache() -> None:
 
 def execute_backtest(
   use_learning: bool = False,
-  train_weeks: int = 3,
-  start_date: str = DEFAULT_START_DATE,
+  train_weeks: int | None = None,
+  train_months: int | None = None,
+  train_unit: str | None = None,
+  train_length: int | None = None,
+  start_date: str | None = None,
   spread_pips: float = DEFAULT_SPREAD_PIPS,
   slippage_pips: float = DEFAULT_SLIPPAGE_PIPS,
   holdout_months: int = DEFAULT_HOLDOUT_MONTHS,
@@ -122,6 +132,9 @@ def execute_backtest(
         feature_profile = mp.get("feature_profile") or "current"
       if mining_search_space is None:
         mining_search_space = mp.get("mining_search_space")
+      if train_weeks is None and train_months is None and train_length is None:
+        train_weeks = mp.get("train_weeks")
+        train_months = mp.get("train_months")
     except Exception:
       feature_profile = feature_profile or "current"
 
@@ -130,7 +143,8 @@ def execute_backtest(
     if mining_search_space else None
   )
 
-  df = load_eurusd_m15(start_date)
+  d = get_tf_defaults(get_active_tf())
+  df = load_eurusd(start_date or d.start_date, tf=d.tf)
   reset_kb_cache()
   if use_learning:
     set_kb_profile(kb_profile, kb_snapshot)
@@ -138,6 +152,9 @@ def execute_backtest(
     df,
     use_learning=use_learning,
     train_weeks=train_weeks,
+    train_months=train_months,
+    train_unit=train_unit,
+    train_length=train_length,
     spread_pips=spread_pips,
     slippage_pips=slippage_pips,
     holdout_months=holdout_months,
@@ -174,7 +191,7 @@ def execute_learning(
   reset_kb: bool = False,
   kb_profile: str = DEFAULT_PROFILE_ID,
   kb_name: str | None = None,
-  from_date: str = DEFAULT_START_DATE,
+  from_date: str | None = None,
   until_date: str | None = None,
   on_epoch_done=None,
 ) -> dict:
@@ -188,8 +205,9 @@ def execute_learning(
     path.unlink()
 
   kb = KnowledgeBase(path)
-  df = load_eurusd_m15(from_date)
-  df = slice_df_for_period(df, from_date, until_date)
+  d = get_tf_defaults(get_active_tf())
+  df = load_eurusd(from_date or d.start_date, tf=d.tf)
+  df = slice_df_for_period(df, from_date or d.start_date, until_date)
   fm = FeatureMatrix(df)
 
   all_epoch_results = []

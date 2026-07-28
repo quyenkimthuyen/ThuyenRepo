@@ -66,10 +66,12 @@ def _write_json(path: Path, data: dict):
 
 
 def get_active_workspace() -> dict:
+  from config import get_active_tf
   from gui.trade_model import get_active_trade_model, trade_model_to_workspace
   m = get_active_trade_model()
   ws = trade_model_to_workspace(m)
-  st.session_state["active_workspace"] = ws
+  st.session_state[f"active_workspace_{get_active_tf()}"] = ws
+  st.session_state.pop("active_workspace", None)  # legacy shared key
   return ws
 
 
@@ -85,7 +87,9 @@ def set_active_workspace(**fields) -> dict:
         store["models"][i] = updated
         break
     save_models_store(store)
-    st.session_state["active_trade_model"] = updated
+    from gui.trade_model import _active_model_session_key
+    st.session_state[_active_model_session_key()] = updated
+    st.session_state.pop("active_trade_model", None)
   ws = get_active_workspace()
   save_workspace_file(ws)
   return ws

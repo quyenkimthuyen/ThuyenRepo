@@ -174,107 +174,138 @@ def load_model_kb_off_report(model_id: str | None = None) -> dict | None:
   return _read_json(model_kb_off_report_path(mid))
 
 
-def get_active_trade_model(*, force_reload: bool = False) -> dict | None:
+def _active_model_session_key(tf: str | None = None) -> str:
+  from config import get_active_tf
+  return f"active_trade_model_{str(tf or get_active_tf()).upper()}"
+
+
+def get_active_trade_model(*, force_reload: bool = False, tf: str | None = None) -> dict | None:
+  """Active Trade Model for one TF (H1 and M15 are independent)."""
+  from config import get_active_tf, set_active_tf
+
+  t = str(tf or get_active_tf()).upper()
+  key = _active_model_session_key(t)
   if force_reload:
-    st.session_state.pop("active_trade_model", None)
-  if "active_trade_model" in st.session_state:
-    return st.session_state["active_trade_model"]
-  mid = load_active_model_id()
-  if not mid:
-    return None
-  m = get_model_by_id(mid)
-  if m:
-    st.session_state["active_trade_model"] = m
-  return m
+    st.session_state.pop(key, None)
+    st.session_state.pop("active_trade_model", None)  # legacy shared key
+
+  if key in st.session_state:
+    return st.session_state[key]
+
+  # Resolve under the requested TF's results/ (REPORT_DIR is TF-dynamic)
+  prev = get_active_tf()
+  try:
+    if t != prev:
+      set_active_tf(t)
+    mid = load_active_model_id()
+    if not mid:
+      st.session_state[key] = None
+      return None
+    m = get_model_by_id(mid)
+    st.session_state[key] = m
+    return m
+  finally:
+    if t != prev:
+      set_active_tf(prev)
 
 
-def set_active_trade_model(model_id: str | None) -> dict | None:
-  if model_id:
-    m = get_model_by_id(model_id)
-    if not m:
-      raise ValueError(f"Trade model `{model_id}` không tồn tại.")
-    save_active_model_id(model_id)
-    st.session_state["active_trade_model"] = m
-    st.session_state.pop("backtest_report", None)
-    try:
-      from mt5_bridge.background import save_config as save_bridge_config
-      save_bridge_config(model_id=model_id)
-      save_bridge_config(model_id=model_id, tf="H1")
-    except TypeError:
+def set_active_trade_model(model_id: str | None, *, tf: str | None = None) -> dict | None:
+  """Set active Trade Model for one TF only — never overwrite the other TF."""
+  from config import get_active_tf, set_active_tf
+
+  t = str(tf or get_active_tf()).upper()
+  key = _active_model_session_key(t)
+  prev = get_active_tf()
+  try:
+    if t != prev:
+      set_active_tf(t)
+    if model_id:
+      m = get_model_by_id(model_id)
+      if not m:
+        raise ValueError(f"Trade model `{model_id}` không tồn tại (TF {t}).")
+      save_active_model_id(model_id)
+      st.session_state[key] = m
+      st.session_state.pop("active_trade_model", None)
+      st.session_state.pop("backtest_report", None)
       try:
         from mt5_bridge.background import save_config as save_bridge_config
-        save_bridge_config(model_id=model_id)
+        save_bridge_config(model_id=model_id, tf=t)
       except Exception:
         pass
-    except Exception:
-      pass
-    try:
-      from mt5_bridge.ea_simulator import load_sim_state, write_sim_state
-      sim = load_sim_state()
-      if not sim.get("running") and not sim.get("enabled"):
-        write_sim_state({"model_id": model_id})
-    except Exception:
-      pass
-    try:
-      from gui.workspace import save_workspace_file
-      save_workspace_file(trade_model_to_workspace(m))
-    except Exception:
-      pass
-    return m
-  save_active_model_id(None)
+      try:
+        from mt5_bridge.ea_simulator import load_sim_state, write_sim_state
+        from runtime_profiles import get_profile
+        sim_dir = get_profile(t, "sim").bridge_dir
+        sim = load_sim_state(sim_dir)
+        if not sim.get("running") and not sim.get("enabled"):
+          write_sim_state({"model_id": model_id}, sim_dir)
+      except Exception:
+        pass
+      try:
+        from gui.workspace import save_workspace_file
+        save_workspace_file(trade_model_to_workspace(m))
+      except Exception:
+        pass
+      return m
+    save_active_model_id(None)
+    st.session_state[key] = None
+    st.session_state.pop("active_trade_model", None)
+    return None
+  finally:
+    if t != prev:
+      set_active_tf(prev)
+
+
+def clear_active_model_cache() -> None:
+  """Drop session caches for both TFs (call when switching timeframe)."""
   st.session_state.pop("active_trade_model", None)
-  return None
+  st.session_state.pop("active_trade_model_M15", None)
+  st.session_state.pop("active_trade_model_H1", None)
+  st.session_state.pop("backtest_report", None)
 
 
 def sync_active_model_into_runtime_configs() -> dict | None:
-  """Keep Live / Simulate runtime configs on the same active Trade Model id."""
-  active = get_active_trade_model()
+  """Keep Live/Sim of the *current* TF on that TF's active Trade Model."""
+  from config import get_active_tf
+
+  t = get_active_tf()
+  active = get_active_trade_model(tf=t)
   mid = (active or {}).get("id")
   if not mid:
     return active
   try:
     from mt5_bridge.background import load_config as bridge_load, save_config as bridge_save
-    for tf in ("M15", "H1"):
-      try:
-        cfg = bridge_load(tf=tf)
-        if cfg.get("model_id") != mid:
-          bridge_save(model_id=mid, tf=tf)
-      except TypeError:
-        cfg = bridge_load()
-        if cfg.get("model_id") != mid:
-          bridge_save(model_id=mid)
-        break
-  except Exception:
-    pass
-  try:
-    from mt5_bridge.background import load_config as bridge_load, save_config as bridge_save
-    cfg = bridge_load()
+    cfg = bridge_load(tf=t)
     if cfg.get("model_id") != mid:
-      bridge_save(model_id=mid)
+      bridge_save(model_id=mid, tf=t)
   except Exception:
     pass
   try:
     from mt5_bridge.ea_simulator import load_sim_state, write_sim_state
-    sim = load_sim_state()
+    from runtime_profiles import get_profile
+    sim_dir = get_profile(t, "sim").bridge_dir
+    sim = load_sim_state(sim_dir)
     if (
       not sim.get("running")
       and not sim.get("enabled")
       and sim.get("model_id") != mid
     ):
-      write_sim_state({"model_id": mid})
+      write_sim_state({"model_id": mid}, sim_dir)
   except Exception:
     pass
   return active
 
 
 def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
-  """Compact active Trade Model strip for Live / Simulate."""
+  """Compact active Trade Model strip for Live / Simulate (per active TF)."""
+  from config import get_active_tf
   from mt5_bridge.models import describe_strategy_conditions
 
   active = sync_active_model_into_runtime_configs()
   if not active:
     st.warning(
-      "Chưa chọn Trade Model — **Học & tối ưu → Trade Models → Quản lý**."
+      f"Chưa chọn Trade Model **{get_active_tf()}** — "
+      "**Học & tối ưu → Trade Models → Quản lý**."
     )
     return None
 
@@ -283,17 +314,25 @@ def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
     desc = describe_strategy_conditions(params)
     fp = (desc.get("conditions_fp") or "—")[:12]
     train_w = desc.get("train_weeks")
+    train_m = desc.get("train_months")
     kb_p = desc.get("kb_profile")
     kb_ep = desc.get("kb_snapshot")
   except Exception:
     fp = "—"
     train_w = params.get("train_weeks")
+    train_m = params.get("train_months")
     kb_p = params.get("kb_profile")
     kb_ep = params.get("kb_snapshot")
 
+  if train_m is not None:
+    train_txt = f"{train_m}m"
+  elif train_w is not None:
+    train_txt = f"{train_w}w"
+  else:
+    train_txt = "—"
   st.caption(
-    f"**Trade Model** · {format_model_label(active)} · "
-    f"train {train_w}w · KB `{kb_p}@ep{kb_ep}` · fp `{fp}…`"
+    f"**Trade Model · {get_active_tf()}** · {format_model_label(active)} · "
+    f"train **{train_txt}** · KB `{kb_p}@ep{kb_ep}` · fp `{fp}…`"
   )
   return active
 
@@ -301,11 +340,21 @@ def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
 def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | None = None) -> dict:
   from gui.app_settings import canonical_kb_profile, default_learning_era
   from gui.services import load_data_meta
-  tw = row.get("train_weeks", 6)
+  tw = row.get("train_weeks")
+  tm = row.get("train_months")
+  train_unit = row.get("train_unit")
+  train_length = row.get("train_length")
+  if train_length is None:
+    train_length = tm if tm is not None else tw
+  if train_unit is None:
+    from config import get_active_tf
+    from runtime_profiles import get_tf_defaults
+    train_unit = get_tf_defaults(get_active_tf()).train_unit
   kb = canonical_kb_profile(row.get("kb_profile")) or default_learning_era()["kb_profile"]
   ep = _normalize_snapshot(row.get("kb_snapshot"))
   auto_label = label or build_trade_profile_label({
-    "train_weeks": tw,
+    "train_weeks": train_length if train_unit == "weeks" else None,
+    "train_months": train_length if train_unit == "months" else None,
     "use_kb": bool(row.get("use_kb", True)),
     "kb_profile": kb if row.get("use_kb") else None,
     "kb_snapshot": ep,
@@ -317,13 +366,20 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
   data_meta = load_data_meta()
   if (
     data_meta.get("source") != "mt5_ea"
-    or data_meta.get("timeframe") != "M15"
+    or data_meta.get("timeframe") not in ("M15", "H1")
     or not data_meta.get("fingerprint")
   ):
     raise RuntimeError("Không thể tạo Trade Model khi dữ liệu chưa được xác nhận từ MT5 EA.")
+  from config import get_active_tf
+  from runtime_profiles import get_tf_defaults
+  d = get_tf_defaults(get_active_tf())
   return {
-    "train_weeks": tw,
-    "max_trades_per_day": 2,
+    "train_weeks": int(train_length) if train_unit == "weeks" else None,
+    "train_months": int(train_length) if train_unit == "months" else None,
+    "train_unit": train_unit,
+    "train_length": int(train_length) if train_length is not None else d.train_length,
+    "max_trades_per_day": d.max_trades_per_day,
+    "max_trades_per_week": d.max_trades_per_week,
     "use_kb": bool(row.get("use_kb", True)),
     "kb_profile": kb if row.get("use_kb") else None,
     "kb_snapshot": ep,
@@ -557,6 +613,7 @@ def delete_trade_model(model_id: str) -> bool:
     remaining = store["models"]
     set_active_trade_model(remaining[0]["id"] if remaining else None)
   st.session_state.pop("active_trade_model", None)
+  st.session_state.pop(_active_model_session_key(), None)
   return True
 
 
@@ -564,12 +621,18 @@ def get_model_run_params(model: dict | None = None) -> dict:
   """Canonical run params — delegates to mt5_bridge.models (same as Bridge)."""
   m = model or get_active_trade_model()
   if not m:
-    from gui.app_settings import default_learning_era, get_settings
+    from gui.app_settings import default_learning_era, get_settings, train_field_name, train_unit_for
     s = get_settings()
     era = default_learning_era(s)
-    trains = s.get("strategy_train_weeks") or [3, 6, 9]
+    field = train_field_name()
+    trains = s.get(field) or [3, 6, 9]
+    unit = train_unit_for()
+    length = trains[0] if trains else 3
     return {
-      "train_weeks": trains[0] if trains else 6,
+      "train_weeks": length if unit == "weeks" else None,
+      "train_months": length if unit == "months" else None,
+      "train_unit": unit,
+      "train_length": length,
       "use_learning": True,
       "use_kb": True,
       "kb_profile": era["kb_profile"],
@@ -588,10 +651,13 @@ def get_model_run_params(model: dict | None = None) -> dict:
 def trade_model_to_workspace(m: dict | None = None) -> dict:
   m = m or get_active_trade_model()
   if not m:
-    from gui.app_settings import default_learning_era, get_settings
+    from gui.app_settings import default_learning_era, get_settings, train_field_name, train_unit_for
     s = get_settings()
     era = default_learning_era(s)
-    trains = s.get("strategy_train_weeks") or [3, 6, 9]
+    field = train_field_name()
+    trains = s.get(field) or [3, 6, 9]
+    unit = train_unit_for()
+    length = trains[0] if trains else 3
     return {
       "label": "Chưa chọn trade model",
       "kb_profile": era["kb_profile"],
@@ -599,7 +665,10 @@ def trade_model_to_workspace(m: dict | None = None) -> dict:
       "oos_from": s.get("backtest_from"),
       "oos_to": s.get("backtest_to"),
       "use_learning": True,
-      "train_weeks": trains[0] if trains else 6,
+      "train_weeks": length if unit == "weeks" else None,
+      "train_months": length if unit == "months" else None,
+      "train_unit": unit,
+      "train_length": length,
     }
   return {
     "label": format_model_label(m),
@@ -662,18 +731,20 @@ def ensure_trade_models_loaded():
 
 
 def render_model_picker(*, key: str = "tm_pick", label: str = "Trade model") -> dict | None:
+  from config import get_active_tf
+  tf = get_active_tf()
   models = list_trade_models()
   if not models:
-    st.info("Chưa có trade model — tạo từ **Học → Grid Search**.")
+    st.info(f"Chưa có trade model **{tf}** — tạo từ **Học → Grid Search** (đúng TF).")
     return None
   labels = [format_model_label(m) for m in models]
   id_by_label = {format_model_label(m): m["id"] for m in models}
-  active = get_active_trade_model()
+  active = get_active_trade_model(tf=tf)
   active_id = active.get("id") if active else models[0]["id"]
   current = format_model_label(active) if active else labels[0]
   idx = labels.index(current) if current in labels else 0
-  pick = st.selectbox(label, labels, index=idx, key=key)
+  pick = st.selectbox(f"{label} · {tf}", labels, index=idx, key=f"{key}_{tf}")
   if id_by_label.get(pick) != active_id:
-    set_active_trade_model(id_by_label[pick])
+    set_active_trade_model(id_by_label[pick], tf=tf)
     st.rerun()
-  return get_active_trade_model()
+  return get_active_trade_model(tf=tf)

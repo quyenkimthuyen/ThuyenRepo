@@ -33,6 +33,7 @@ if ($CompileOnly) {
 }
 
 $i = 0
+$failed = @()
 foreach ($job in $Jobs) {
   $i++
   $isLast = ($i -eq $Jobs.Count)
@@ -40,35 +41,51 @@ foreach ($job in $Jobs) {
   Write-Host ("==== [{0}/{1}] {2} {3} ====" -f $i, $Jobs.Count, $job.Timeframe, $job.Mode) `
     -ForegroundColor Yellow
 
-  $args = @{
+  # Do NOT name this $args — that is a reserved automatic variable in PowerShell.
+  $deployParams = @{
     Timeframe         = $job.Timeframe
     Mode              = $job.Mode
     RiskPct           = $RiskPct
     PollSeconds       = $PollSeconds
     SkipBridgeService = $true
   }
-  if ($TerminalDataPath) { $args.TerminalDataPath = $TerminalDataPath }
-  if ($InstallPath) { $args.InstallPath = $InstallPath }
+  if ($TerminalDataPath) { $deployParams.TerminalDataPath = $TerminalDataPath }
+  if ($InstallPath) { $deployParams.InstallPath = $InstallPath }
 
   if ($Attach -and -not $CompileOnly) {
-    $args.Attach = $true
+    $deployParams.Attach = $true
     if ($EnableTrading -and $job.Mode -eq "Live") {
-      $args.EnableTrading = $true
+      $deployParams.EnableTrading = $true
     }
   } else {
     # Avoid restarting MT5 4 times when only compiling
     if (-not $isLast) {
-      $args.NoRestartTerminal = $true
+      $deployParams.NoRestartTerminal = $true
     }
   }
 
-  & $DeployOne @args
-  if ($LASTEXITCODE -ne 0) {
-    throw ("Deploy failed for {0} {1} (exit {2})" -f $job.Timeframe, $job.Mode, $LASTEXITCODE)
+  try {
+    # Nested .ps1 does not reliably set $LASTEXITCODE (often $null).
+    # With ErrorActionPreference=Stop, a real failure throws; $? is the reliable check.
+    & $DeployOne @deployParams
+    if (-not $?) {
+      throw ("Nested deploy returned failure for {0} {1}" -f $job.Timeframe, $job.Mode)
+    }
+    Write-Host ("OK {0} {1}" -f $job.Timeframe, $job.Mode) -ForegroundColor Green
+  } catch {
+    $msg = $_.Exception.Message
+    Write-Host ("FAILED {0} {1}: {2}" -f $job.Timeframe, $job.Mode, $msg) -ForegroundColor Red
+    $failed += ("{0} {1}: {2}" -f $job.Timeframe, $job.Mode, $msg)
   }
 }
 
 Write-Host ""
+if ($failed.Count -gt 0) {
+  Write-Host "==> Deploy finished with errors:" -ForegroundColor Red
+  foreach ($f in $failed) { Write-Host "  - $f" -ForegroundColor Red }
+  throw ("Deploy ALL incomplete ({0}/{1} failed)." -f $failed.Count, $Jobs.Count)
+}
+
 Write-Host "==> All 4 EAs deployed" -ForegroundColor Green
 Write-Host "EAs: ForgeBridgeM15 · ForgeBridgeM15Sim · ForgeBridgeH1 · ForgeBridgeH1Sim"
 Write-Host "Next: start Live/Sim workers from MT5 Bridge (per TF)."

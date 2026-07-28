@@ -531,16 +531,22 @@ def build_monitor_bundle(
   source: str = "live",
   date_from=None,
   date_to=None,
+  tf: str | None = None,
+  bridge_dir=None,
 ) -> dict[str, Any]:
   """
-  Assemble Backtest vs Live/Sim bundle.
+  Assemble Backtest vs Live/Sim bundle for one TF.
   source: "live" | "sim"
   """
-  from mt5_bridge.protocol import BRIDGE_DIR, BRIDGE_SIM_DIR
+  from config import get_active_tf
+  from runtime_profiles import get_profile
 
   src = (source or "live").lower()
-  bridge_dir = BRIDGE_SIM_DIR if src == "sim" else BRIDGE_DIR
-  live_label = "Simulate EA" if src == "sim" else "Live Auto"
+  t = str(tf or get_active_tf()).upper()
+  mode = "sim" if src == "sim" else "live"
+  if bridge_dir is None:
+    bridge_dir = get_profile(t, mode).bridge_dir
+  live_label = f"Simulate EA ({t})" if src == "sim" else f"Live Auto ({t})"
 
   bt = load_backtest_baseline(model)
   live = load_live_auto_trades(

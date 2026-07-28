@@ -86,6 +86,7 @@ def load_sim_chart_data(
   max_bars: int = 672,
   bridge_dir: Path | None = None,
   progress_only: bool = True,
+  tf: str | None = None,
 ) -> tuple[pd.DataFrame, dict]:
   """Chart for History Feed: OHLC from MT5 cache in [from,to], clipped to last_bar.
 
@@ -94,9 +95,15 @@ def load_sim_chart_data(
   """
   from mt5_bridge.history_sync import load_mt5_cache, utc_to_broker_time
   from mt5_bridge.protocol import bar_path
+  from runtime_profiles import profile_for_dir
 
   connection = read_json(connection_path(bridge_dir)) or {}
-  cache = load_mt5_cache()
+  resolved_tf = tf
+  if resolved_tf is None and bridge_dir is not None:
+    profile = profile_for_dir(bridge_dir)
+    if profile:
+      resolved_tf = profile.tf
+  cache = load_mt5_cache(resolved_tf)
   if cache is None or cache.empty:
     # Fallback to whatever EA wrote (may be live bars — last resort)
     return load_ea_chart_data(max_bars=max_bars, bridge_dir=bridge_dir)

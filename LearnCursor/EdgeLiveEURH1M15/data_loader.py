@@ -166,7 +166,10 @@ def get_train_window_indices(
     train_unit, length = "months", int(months)
   elif train_unit is None:
     d = get_tf_defaults(str(tf or get_active_tf()).upper())
-    train_unit, length = d.train_unit, int(length or d.train_length)
+    train_unit = d.train_unit
+    length = int(length if length is not None else d.train_length)
+  else:
+    length = int(length if length is not None else get_tf_defaults(str(tf or get_active_tf()).upper()).train_length)
 
   if train_unit == "months":
     train_start = as_of - pd.DateOffset(months=int(length))

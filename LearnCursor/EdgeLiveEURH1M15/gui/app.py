@@ -182,6 +182,33 @@ def main():
     st.session_state["mt5_bridge_tf"] = tf
     set_widget_preference("active_tf", tf, "app.active_tf")
     set_widget_preference("mt5_bridge_tf", tf, "mt5.bridge_tf")
+    # Learning settings + Trade Model are per-TF
+    try:
+      from gui.app_settings import clear_settings_cache
+      clear_settings_cache()
+    except Exception:
+      pass
+    try:
+      from gui.trade_model import clear_active_model_cache
+      clear_active_model_cache()
+    except Exception:
+      pass
+    for key in (
+      "settings_train_weeks", "settings_train_months", "settings_era_labels",
+      "settings_learning_loops", "settings_backtest_from", "settings_backtest_to",
+      "settings_spread", "settings_slip", "settings_objective", "settings_tf_bound",
+      "app_settings", "app_settings_tf",
+      # Analysis / learning caches must not leak across TF
+      "backtest_report", "active_workspace", "active_workspace_M15", "active_workspace_H1",
+      "_workspace_pickers_synced", "lab_kb_compare",
+      "hub_learn_id", "hub_learn_name", "hub_learn_from", "hub_learn_until",
+      "_sim_ui_was_running",
+      # Legacy unscoped bridge widgets
+      "mt5_risk_pct", "mt5_poll_sec",
+      "sim_ea_from", "sim_ea_to", "sim_ea_delay",
+      "bridge_from", "bridge_to", "bridge_from_sim", "bridge_to_sim",
+    ):
+      st.session_state.pop(key, None)
 
   tf_choice = st.sidebar.radio(
     "Timeframe Bridge",

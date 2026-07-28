@@ -7,8 +7,8 @@ import streamlit as st
 
 HELP = {
   "oos": "Giai đoạn **kiểm chứng** — chỉ mô phỏng lệnh, không dùng để tối ưu chiến lược.",
-  "train_weeks": "Số tuần dữ liệu gần nhất để **tìm chiến lược mới mỗi tuần** (walk-forward).",
-  "train_months": "Đã thay bằng cửa sổ học 3/6/9 tuần.",
+  "train_weeks": "Số tuần dữ liệu gần nhất để **tìm chiến lược mới mỗi tuần** (walk-forward · M15).",
+  "train_months": "Số tháng dữ liệu gần nhất để **tìm chiến lược mới mỗi tuần** (walk-forward · H1).",
   "kb": "**Bộ nhớ kinh nghiệm** — lưu rule/chiến lược đã học từ các tuần trước.",
   "kb_on": "Dùng bộ nhớ kinh nghiệm khi tìm chiến lược (thường cho kết quả tốt hơn, cần kiểm chứng thêm).",
   "kb_off": "Không dùng bộ nhớ — đánh giá **khách quan nhất**, nên chạy trước khi tin vào kết quả.",
@@ -111,17 +111,22 @@ def build_trade_profile_label(tp: dict) -> str:
   Tên cấu hình giao dịch — thống nhất toàn app.
   VD: Học 3 tháng · Giai đoạn 2024 · vòng 3 · Kiểm chứng 2025–2026
   """
-  train = tp.get("train_weeks", "?")
+  if tp.get("train_months") is not None:
+    train_txt = f"{tp.get('train_months')} tháng"
+  elif tp.get("train_weeks") is not None:
+    train_txt = f"{tp.get('train_weeks')} tuần"
+  else:
+    train_txt = "?"
   oos = _short_year_range(tp.get("oos_from"), tp.get("oos_to"))
   if not tp.get("use_kb", True):
-    return f"Học {train} tuần · Không bộ nhớ · Kiểm chứng {oos}"
+    return f"Học {train_txt} · Không bộ nhớ · Kiểm chứng {oos}"
   mem = format_memory_profile(tp.get("kb_profile"))
   ep = format_epoch(
     None if tp.get("kb_snapshot") in (None, "", "latest", "Latest") else tp.get("kb_snapshot")
   )
   if ep != "mới nhất":
-    return f"Học {train} tuần · {mem} · {ep} · Kiểm chứng {oos}"
-  return f"Học {train} tuần · {mem} · Kiểm chứng {oos}"
+    return f"Học {train_txt} · {mem} · {ep} · Kiểm chứng {oos}"
+  return f"Học {train_txt} · {mem} · Kiểm chứng {oos}"
 
 
 def format_kb_mode(use_kb: bool) -> str:

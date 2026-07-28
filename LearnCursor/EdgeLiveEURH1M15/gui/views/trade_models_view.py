@@ -49,16 +49,21 @@ def _resolve_subtab() -> str:
 
 
 def _render_manage(models, active):
+  from config import get_active_tf
+  tf = get_active_tf()
   st.caption(
-    f"**{len(models)}** model · Active: **{format_model_label(active) if active else '—'}**"
+    f"**{tf}** · **{len(models)}** model · Active: "
+    f"**{format_model_label(active) if active else '—'}**"
   )
 
   rows = []
   for m in models:
     from gui.app_settings import kb_profile_label
+    train = m.get("train_months") or m.get("train_weeks")
+    train_lbl = f"{train} tháng" if m.get("train_months") else f"{train} tuần"
     rows.append({
       "Tên": format_model_label(m),
-      "Train": f"{m.get('train_weeks')} tuần",
+      "Train": train_lbl,
       "Giai đoạn học": kb_profile_label(m.get("kb_profile")),
       "Vòng": m.get("kb_snapshot") or "latest",
       "Total R": m.get("total_r"),
@@ -78,16 +83,18 @@ def _render_manage(models, active):
   id_by_label = {format_model_label(m): m["id"] for m in models}
   labels = list(id_by_label.keys())
   default_pick = format_model_label(active) if active else labels[0]
+  pick_key = f"tm_view_pick_{tf}"
+  pref_key = f"trade_models.selected_{tf}"
   restore_widget(
-    "tm_view_pick", default_pick,
-    preference_key="trade_models.selected",
+    pick_key, default_pick,
+    preference_key=pref_key,
     options=labels,
   )
   pick = st.selectbox(
-    "Chọn model",
+    f"Chọn model · {tf}",
     labels,
-    key="tm_view_pick",
-    on_change=preference_callback("tm_view_pick", "trade_models.selected"),
+    key=pick_key,
+    on_change=preference_callback(pick_key, pref_key),
   )
   mid = id_by_label[pick]
   m = next(x for x in models if x["id"] == mid)
@@ -95,13 +102,13 @@ def _render_manage(models, active):
   c1, c2, c3 = st.columns(3)
   with c1:
     if st.button(
-      "Dùng cho paper & phân tích",
+      f"Dùng cho Bridge & phân tích ({tf})",
       icon=":material/check_circle:",
-      key="tm_activate",
+      key=f"tm_activate_{tf}",
       use_container_width=True,
     ):
-      set_active_trade_model(mid)
-      st.toast(f"Đã chọn «{pick}»")
+      set_active_trade_model(mid, tf=tf)
+      st.toast(f"[{tf}] Đã chọn «{pick}»")
       st.rerun()
   with c2:
     report = load_model_report(mid)
@@ -111,12 +118,12 @@ def _render_manage(models, active):
     else:
       st.caption("Chưa có báo cáo backtest lưu riêng")
   with c3:
-    if st.button("Xóa", icon=":material/delete:", key="tm_delete", use_container_width=True):
+    if st.button("Xóa", icon=":material/delete:", key=f"tm_delete_{tf}", use_container_width=True):
       if delete_trade_model(mid):
         st.toast("Đã xóa trade model")
         st.rerun()
 
-  if st.button("Gộp model trùng", icon=":material/merge:", key="tm_dedupe"):
+  if st.button("Gộp model trùng", icon=":material/merge:", key=f"tm_dedupe_{tf}"):
     from gui.trade_model import dedupe_trade_models, load_active_model_id
     keep = set()
     aid = load_active_model_id()
@@ -332,13 +339,16 @@ def _render_health():
 
 
 def _render_analysis(sub: str):
+  from config import get_active_tf
   active = get_active_trade_model()
   if not active:
-    st.warning("Chưa chọn Trade Model — mở tab **Quản lý** và bấm dùng model.")
+    st.warning(
+      f"Chưa chọn Trade Model **{get_active_tf()}** — mở tab **Quản lý** và bấm dùng model."
+    )
     return
 
   from gui.trade_model import format_model_label
-  st.caption(f"Phân tích theo: **{format_model_label(active)}**")
+  st.caption(f"**{get_active_tf()}** · Phân tích: **{format_model_label(active)}**")
 
   if sub == "health":
     _render_health()
@@ -358,15 +368,17 @@ def _render_analysis(sub: str):
 
 def render(embedded: bool = False):
   if not embedded:
-    st.header("Trade Models")
+    from config import get_active_tf
+    st.header(f"Trade Models · {get_active_tf()}")
 
   models = list_trade_models()
   active = get_active_trade_model()
 
   if not models:
+    from config import get_active_tf
     st.info(
-      "Chưa có trade model. Chạy **Grid Search** và nhấn **Tạo Trade Model** "
-      "trên combo tốt nhất."
+      f"Chưa có trade model **{get_active_tf()}**. Chạy **Grid Search** (đúng TF) "
+      "và nhấn **Tạo Trade Model** trên combo tốt nhất."
     )
     return
 

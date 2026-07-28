@@ -36,12 +36,16 @@ from gui.ui_preferences import (
 
 
 def _grid_combo_changed(default_names: dict[str, str]) -> None:
-  persist_widget("gs_pick_combo", "grid.selected_combo")
-  selected = st.session_state.get("gs_pick_combo")
+  from config import get_active_tf
+  tf = get_active_tf()
+  pick_key = f"gs_pick_combo_{tf}"
+  name_key = f"gs_any_tm_name_{tf}"
+  persist_widget(pick_key, f"grid.selected_combo_{tf}")
+  selected = st.session_state.get(pick_key)
   set_widget_preference(
-    "gs_any_tm_name",
+    name_key,
     default_names.get(selected, "Grid model"),
-    "grid.model_name",
+    f"grid.model_name_{tf}",
   )
 
 
@@ -318,25 +322,32 @@ def render(embedded: bool = False):
   st.dataframe(display_df[show_cols].head(50), use_container_width=True, hide_index=True, height=400)
 
   if not running and valid_rows:
+    from config import get_active_tf
+    tf = get_active_tf()
     st.subheader("Tạo Trade Model từ combo bất kỳ")
     st.caption("Chọn bất kỳ dòng trong bảng (không chỉ best) → đặt tên → tạo model.")
     options = []
     for i, r in enumerate(valid_rows[:50]):
+      train = r.get("train_months") or r.get("train_weeks")
+      unit = "tháng" if r.get("train_months") is not None else "tuần"
       options.append(
         f"#{i+1} · {r.get('label')} · R={r.get('total_r', 0):+.2f} · "
-        f"WR={r.get('win_rate_pct', 0)}% · train={r.get('train_weeks')} tuần"
+        f"WR={r.get('win_rate_pct', 0)}% · train={train} {unit}"
       )
     default_names = {
       option: str((valid_rows[i].get("label") or f"Grid #{i + 1}"))[:80]
       for i, option in enumerate(options)
     }
+    pick_key = f"gs_pick_combo_{tf}"
+    name_key = f"gs_any_tm_name_{tf}"
+    active_key = f"gs_any_tm_active_{tf}"
     restore_widget(
-      "gs_pick_combo", options[0],
-      preference_key="grid.selected_combo",
+      pick_key, options[0],
+      preference_key=f"grid.selected_combo_{tf}",
       options=options,
     )
     pick = st.selectbox(
-      "Combo", options, key="gs_pick_combo",
+      f"Combo · {tf}", options, key=pick_key,
       on_change=_grid_combo_changed,
       args=(default_names,),
     )
@@ -344,19 +355,19 @@ def render(embedded: bool = False):
     chosen = valid_rows[pick_idx]
     default_name = chosen.get("label") or f"Grid #{pick_idx+1}"
     restore_widget(
-      "gs_any_tm_name", str(default_name)[:80],
-      preference_key="grid.model_name",
+      name_key, str(default_name)[:80],
+      preference_key=f"grid.model_name_{tf}",
     )
     name = st.text_input(
-      "Tên Trade Model", key="gs_any_tm_name",
-      on_change=preference_callback("gs_any_tm_name", "grid.model_name"),
+      "Tên Trade Model", key=name_key,
+      on_change=preference_callback(name_key, f"grid.model_name_{tf}"),
     )
-    restore_widget("gs_any_tm_active", True, preference_key="grid.set_active")
+    restore_widget(active_key, True, preference_key=f"grid.set_active_{tf}")
     set_active = st.checkbox(
-      "Đặt làm model đang dùng", key="gs_any_tm_active",
-      on_change=preference_callback("gs_any_tm_active", "grid.set_active"),
+      f"Đặt làm model đang dùng ({tf})", key=active_key,
+      on_change=preference_callback(active_key, f"grid.set_active_{tf}"),
     )
-    if st.button("＋ Tạo Trade Model từ combo đã chọn", type="primary", key="gs_create_any_tm"):
+    if st.button("＋ Tạo Trade Model từ combo đã chọn", type="primary", key=f"gs_create_any_tm_{tf}"):
       from gui.trade_model import find_model_by_grid_key
       label = (name or "").strip() or None
       existed = find_model_by_grid_key(chosen.get("key"))

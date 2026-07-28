@@ -1,17 +1,21 @@
-"""Cài đặt — profile cấu hình mặc định cho grid search & học."""
+"""Cài đặt — TF-aware profile cho Grid Search & học (H1 tháng / M15 tuần)."""
 from __future__ import annotations
 
 from datetime import date
 
 import streamlit as st
 
-from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS, get_active_tf
 from gui.app_settings import (
-  LEARNING_ERA_OPTIONS,
+  TRAIN_OPTIONS,
+  default_settings_for,
   format_settings_summary,
   get_settings,
+  learning_era_options,
   settings_changed_since_last_grid,
   settings_grid_signature,
+  train_field_name,
+  train_unit_for,
   update_settings,
 )
 from gui.glossary import HELP
@@ -19,6 +23,7 @@ from gui.page_chrome import render_page_header
 
 SETTING_WIDGET_KEYS = (
   "settings_train_weeks",
+  "settings_train_months",
   "settings_era_labels",
   "settings_learning_loops",
   "settings_backtest_from",
@@ -26,6 +31,7 @@ SETTING_WIDGET_KEYS = (
   "settings_spread",
   "settings_slip",
   "settings_objective",
+  "settings_tf_bound",
 )
 
 
@@ -36,23 +42,43 @@ def _date_value(value: str, fallback: str) -> date:
     return date.fromisoformat(fallback)
 
 
-def _init_widget_state(settings: dict, era_labels: list[str]) -> None:
-  era_by_label = {e["label"]: e["key"] for e in LEARNING_ERA_OPTIONS}
+def _clear_settings_widgets() -> None:
+  for key in SETTING_WIDGET_KEYS:
+    st.session_state.pop(key, None)
+
+
+def _init_widget_state(settings: dict, era_labels: list[str], eras: list[dict]) -> None:
+  tf = get_active_tf()
+  if st.session_state.get("settings_tf_bound") != tf:
+    _clear_settings_widgets()
+    st.session_state["settings_tf_bound"] = tf
+
+  era_by_label = {e["label"]: e["key"] for e in eras}
+  unit = train_unit_for()
+  field = train_field_name()
+  defaults_tf = default_settings_for()
+  train_key = "settings_train_months" if unit == "months" else "settings_train_weeks"
   defaults = {
-    "settings_train_weeks": [
-      t for t in settings.get("strategy_train_weeks", [3, 6, 9])
-      if t in (3, 6, 9)
+    train_key: [
+      t for t in settings.get(field, [3, 6, 9])
+      if t in TRAIN_OPTIONS
     ],
     "settings_era_labels": [
       label for label in era_labels
-      if era_by_label[label] in (settings.get("learning_era_keys") or [])
+      if era_by_label.get(label) in (settings.get("learning_era_keys") or [])
     ],
     "settings_learning_loops": int(settings.get("learning_loops") or 4),
-    "settings_backtest_from": _date_value(settings.get("backtest_from", ""), "2026-01-01"),
-    "settings_backtest_to": _date_value(settings.get("backtest_to", ""), "2026-12-31"),
+    "settings_backtest_from": _date_value(
+      settings.get("backtest_from", ""), defaults_tf["backtest_from"],
+    ),
+    "settings_backtest_to": _date_value(
+      settings.get("backtest_to", ""), defaults_tf["backtest_to"],
+    ),
     "settings_spread": float(settings.get("spread_pips", DEFAULT_SPREAD_PIPS)),
     "settings_slip": float(settings.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
-    "settings_objective": settings.get("grid_objective", "risk_adjusted"),
+    "settings_objective": settings.get(
+      "grid_objective", defaults_tf.get("grid_objective", "total_r"),
+    ),
   }
   for key, value in defaults.items():
     st.session_state.setdefault(key, value)
@@ -62,17 +88,21 @@ def render(embedded: bool = False):
   embedded = embedded or bool(st.session_state.get("_learning_hub"))
   if not embedded:
     from gui.navigation import ALL_ITEMS
-    # Fallback if opened outside hub (legacy links)
     item = ALL_ITEMS.get("learning")
     if item:
       render_page_header(item, show_profile=False)
     st.caption("Cài đặt nằm trong **Học & tối ưu → ① Cài đặt**.")
 
+  tf = get_active_tf()
+  unit = train_unit_for()
+  field = train_field_name()
+  eras = learning_era_options()
   s = get_settings()
 
   st.markdown(
-    "Cấu hình **mặc định** cho Grid Search và huấn luyện. "
-    "Khi đổi cài đặt, chạy lại **③ Grid Search** — chỉ combo mới được tính."
+    f"Cấu hình **{_tf_label(tf)}** cho Grid Search và huấn luyện. "
+    "Đổi timeframe trên sidebar để cấu hình TF kia. "
+    "Khi đổi cài đặt, chạy lại **③ Grid Search**."
   )
 
   if settings_changed_since_last_grid():
@@ -83,24 +113,32 @@ def render(embedded: bool = False):
 
   st.info(format_settings_summary(s))
 
-  era_labels = [e["label"] for e in LEARNING_ERA_OPTIONS]
-  era_keys = {e["label"]: e["key"] for e in LEARNING_ERA_OPTIONS}
-  _init_widget_state(s, era_labels)
+  era_labels = [e["label"] for e in eras]
+  era_keys = {e["label"]: e["key"] for e in eras}
+  _init_widget_state(s, era_labels, eras)
 
   st.markdown("#### Chiến lược")
-  train_weeks = st.multiselect(
-    "Cửa sổ học chiến lược (tuần)",
-    [3, 6, 9],
-    key="settings_train_weeks",
-    help=HELP["train_weeks"],
-  )
+  if unit == "months":
+    trains = st.multiselect(
+      "Cửa sổ học chiến lược (tháng)",
+      TRAIN_OPTIONS,
+      key="settings_train_months",
+      help=HELP.get("train_months") or HELP.get("train_weeks"),
+    )
+  else:
+    trains = st.multiselect(
+      "Cửa sổ học chiến lược (tuần)",
+      TRAIN_OPTIONS,
+      key="settings_train_weeks",
+      help=HELP.get("train_weeks"),
+    )
 
   st.markdown("#### Học bộ nhớ")
   picked_eras = st.multiselect(
     "Giai đoạn học",
     era_labels,
     key="settings_era_labels",
-    help="Mỗi giai đoạn = một profile bộ nhớ — grid sẽ thử mọi combo train × giai đoạn × vòng học.",
+    help="Mỗi giai đoạn = một profile bộ nhớ — grid thử combo train × giai đoạn × vòng học.",
   )
   learning_loops = st.number_input(
     "Số vòng học (epoch)",
@@ -128,6 +166,7 @@ def render(embedded: bool = False):
       "Trượt giá (pip)", 0.0, 2.0, step=0.1, key="settings_slip",
     )
 
+  defaults_tf = default_settings_for()
   objective = st.selectbox(
     "Mục tiêu Grid Search",
     ["total_r", "win_rate_pct", "profit_factor", "risk_adjusted"],
@@ -135,7 +174,7 @@ def render(embedded: bool = False):
   )
 
   valid = True
-  if not train_weeks:
+  if not trains:
     st.warning("Chọn ít nhất một cửa sổ học chiến lược; thay đổi này chưa được lưu.")
     valid = False
   if not picked_eras:
@@ -146,7 +185,7 @@ def render(embedded: bool = False):
     valid = False
 
   current = {
-    "strategy_train_weeks": list(train_weeks),
+    field: list(trains),
     "learning_era_keys": [era_keys[label] for label in picked_eras],
     "learning_loops": int(learning_loops),
     "backtest_from": backtest_from.isoformat(),
@@ -155,23 +194,21 @@ def render(embedded: bool = False):
     "slippage_pips": float(slip),
     "grid_objective": objective,
   }
-  changed = any(s.get(key) != value for key, value in current.items())
+  # Drop the other train field so sanitize stays clean
+  other = "strategy_train_weeks" if field == "strategy_train_months" else "strategy_train_months"
+  current[other] = None
+
+  changed = any(s.get(key) != value for key, value in current.items() if value is not None)
   if valid and changed:
-    update_settings(
-      **current,
-    )
+    update_settings(**current)
     st.caption("Đã tự động lưu. Chạy Grid Search lại để áp dụng cấu hình mới.")
 
   st.divider()
   st.caption(
-    f"Chữ ký grid: `{settings_grid_signature()}` · "
-    f"Cập nhật: {s.get('updated_at') or '—'}"
+    f"TF `{tf}` · Chữ ký grid: `{settings_grid_signature()}` · "
+    f"Cập nhật: {s.get('updated_at') or '—'} · mặc định obj `{defaults_tf.get('grid_objective')}`"
   )
 
-  if st.button("↺ Khôi phục mặc định", key="settings_reset"):
-    from gui.app_settings import DEFAULT_SETTINGS, save_settings
-    save_settings(dict(DEFAULT_SETTINGS))
-    for key in SETTING_WIDGET_KEYS:
-      st.session_state.pop(key, None)
-    st.toast("Đã khôi phục cài đặt mặc định")
-    st.rerun()
+
+def _tf_label(tf: str) -> str:
+  return f"**{tf}** ({'tháng' if train_unit_for(tf) == 'months' else 'tuần'})"

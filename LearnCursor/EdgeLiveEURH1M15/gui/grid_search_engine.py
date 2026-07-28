@@ -1,4 +1,4 @@
-"""Grid search engine — quét tham số backtest walk-forward."""
+"""Grid search engine — quét tham số backtest walk-forward (H1 months / M15 weeks)."""
 from __future__ import annotations
 
 import hashlib
@@ -7,11 +7,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable
 
-from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS, DEFAULT_START_DATE
-from data_loader import load_eurusd_m15
+from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS, get_active_tf
+from data_loader import load_eurusd
 from kb_profiles import list_snapshots, list_profiles, kb_valid_for_backtest
 from optimizer import reset_kb_cache, set_kb_profile
 from run_backtest import REPORT_DIR, run_walk_forward
+from runtime_profiles import get_tf_defaults
 
 RUNS_DIR = REPORT_DIR / "grid_search"
 LATEST_PATH = RUNS_DIR / "latest.json"
@@ -26,7 +27,8 @@ OBJECTIVES = {
 
 @dataclass
 class GridSpec:
-  train_weeks: int
+  train_length: int
+  train_unit: str  # "weeks" | "months"
   use_kb: bool
   kb_profile: str | None
   kb_snapshot: int | None  # None = latest
@@ -34,30 +36,36 @@ class GridSpec:
   oos_to: str
   spread_pips: float = DEFAULT_SPREAD_PIPS
   slippage_pips: float = DEFAULT_SLIPPAGE_PIPS
+  tf: str = "M15"
+
+  @property
+  def train_weeks(self) -> int | None:
+    return self.train_length if self.train_unit == "weeks" else None
+
+  @property
+  def train_months(self) -> int | None:
+    return self.train_length if self.train_unit == "months" else None
 
   def key(self) -> str:
     snap = "latest" if self.kb_snapshot is None else f"ep{self.kb_snapshot:03d}"
     kb = self.kb_profile or "off"
-    raw = f"M15|{self.train_weeks}w|{kb}|{snap}|{self.oos_from}|{self.oos_to}"
+    u = "m" if self.train_unit == "months" else "w"
+    raw = f"{self.tf}|{self.train_length}{u}|{kb}|{snap}|{self.oos_from}|{self.oos_to}"
     return hashlib.md5(raw.encode()).hexdigest()[:12]
 
   def label(self) -> str:
     from gui.glossary import build_trade_profile_label
-    if not self.use_kb:
-      return build_trade_profile_label({
-        "train_weeks": self.train_weeks,
-        "use_kb": False,
-        "oos_from": self.oos_from,
-        "oos_to": self.oos_to,
-      })
-    return build_trade_profile_label({
-      "train_weeks": self.train_weeks,
-      "use_kb": True,
-      "kb_profile": self.kb_profile,
-      "kb_snapshot": self.kb_snapshot,
+    train_key = "train_months" if self.train_unit == "months" else "train_weeks"
+    base = {
+      train_key: self.train_length,
+      "use_kb": self.use_kb,
       "oos_from": self.oos_from,
       "oos_to": self.oos_to,
-    })
+    }
+    if self.use_kb:
+      base["kb_profile"] = self.kb_profile
+      base["kb_snapshot"] = self.kb_snapshot
+    return build_trade_profile_label(base)
 
   def _snap_label(self) -> str:
     return "latest" if self.kb_snapshot is None else f"ep{self.kb_snapshot:03d}"
@@ -79,7 +87,10 @@ def snapshots_for_profile(profile_id: str, *, include_latest: bool = True) -> li
 
 def build_grid(
   *,
-  train_weeks: list[int],
+  train_weeks: list[int] | None = None,
+  train_months: list[int] | None = None,
+  train_unit: str | None = None,
+  tf: str | None = None,
   kb_profiles: list[str],
   include_kb_off: bool = True,
   epoch_mode: str = "latest",
@@ -89,14 +100,27 @@ def build_grid(
   spread_pips: float = DEFAULT_SPREAD_PIPS,
   slippage_pips: float = DEFAULT_SLIPPAGE_PIPS,
   max_runs: int = 60,
+  **_extra,
 ) -> list[GridSpec]:
   """Sinh danh sách GridSpec; cắt bớt nếu vượt max_runs."""
-  specs: list[GridSpec] = []
-  base = dict(oos_from=oos_from, oos_to=oos_to, spread_pips=spread_pips, slippage_pips=slippage_pips)
+  t = str(tf or get_active_tf()).upper()
+  unit = train_unit or get_tf_defaults(t).train_unit
+  trains = list(train_months if unit == "months" else (train_weeks or []))
+  if not trains:
+    trains = [get_tf_defaults(t).train_length]
 
-  for tm in train_weeks:
+  specs: list[GridSpec] = []
+  base = dict(
+    oos_from=oos_from, oos_to=oos_to,
+    spread_pips=spread_pips, slippage_pips=slippage_pips,
+    train_unit=unit, tf=t,
+  )
+
+  for tm in trains:
     if include_kb_off:
-      specs.append(GridSpec(train_weeks=tm, use_kb=False, kb_profile=None, kb_snapshot=None, **base))
+      specs.append(GridSpec(
+        train_length=tm, use_kb=False, kb_profile=None, kb_snapshot=None, **base,
+      ))
 
     for pid in kb_profiles:
       ok, _ = kb_valid_for_backtest(pid, oos_from, oos_to)
@@ -111,7 +135,7 @@ def build_grid(
 
       for snap in epochs:
         specs.append(GridSpec(
-          train_weeks=tm, use_kb=True, kb_profile=pid, kb_snapshot=snap, **base,
+          train_length=tm, use_kb=True, kb_profile=pid, kb_snapshot=snap, **base,
         ))
 
   if len(specs) > max_runs:
@@ -131,7 +155,7 @@ def expected_grid_count_from_settings(settings: dict | None = None) -> int:
   """Số combo lý thuyết theo Settings (không cần KB đã học)."""
   from gui.app_settings import grid_build_kwargs
   kw = grid_build_kwargs(settings)
-  trains = len(kw.get("train_weeks") or [])
+  trains = len(kw.get("train_months") or kw.get("train_weeks") or [])
   profiles = len(kw.get("kb_profiles") or [])
   loops = int(kw.get("learning_loops") or 4)
   if kw.get("include_kb_off"):
@@ -191,21 +215,31 @@ def _score(row: dict, objective: str) -> float:
     r = float(row.get("total_r") or 0)
     dd = float(row.get("max_drawdown_r") or 1)
     frequency = float(row.get("trades_per_week") or 0)
-    if r <= 0 or not 7.0 <= frequency <= 10.0:
-      return -1e12
+    tf = str(get_active_tf()).upper()
+    # M15 aims ~7–10 trades/week; H1 is sparse (~1–3)
+    if tf == "H1":
+      if r <= 0 or frequency > 5.0:
+        return -1e12
+    else:
+      if r <= 0 or not 7.0 <= frequency <= 10.0:
+        return -1e12
     return r / max(dd, 0.5)
   return float(row.get("total_r") or 0)
 
 
 def run_single(spec: GridSpec) -> dict:
-  df = load_eurusd_m15(DEFAULT_START_DATE)
+  d = get_tf_defaults(spec.tf)
+  df = load_eurusd(d.start_date, tf=spec.tf)
   reset_kb_cache()
   if spec.use_kb and spec.kb_profile:
     set_kb_profile(spec.kb_profile, spec.kb_snapshot)
   result = run_walk_forward(
     df,
     use_learning=spec.use_kb,
-    train_weeks=spec.train_weeks,
+    train_weeks=spec.train_weeks if spec.train_unit == "weeks" else None,
+    train_months=spec.train_months if spec.train_unit == "months" else None,
+    train_unit=spec.train_unit,
+    train_length=spec.train_length,
     spread_pips=spec.spread_pips,
     slippage_pips=spec.slippage_pips,
     kb_profile=spec.kb_profile if spec.use_kb else None,
@@ -219,6 +253,10 @@ def run_single(spec: GridSpec) -> dict:
     "key": spec.key(),
     "label": spec.label(),
     "train_weeks": spec.train_weeks,
+    "train_months": spec.train_months,
+    "train_unit": spec.train_unit,
+    "train_length": spec.train_length,
+    "tf": spec.tf,
     "use_kb": spec.use_kb,
     "kb_profile": spec.kb_profile,
     "kb_snapshot": spec.kb_snapshot,
@@ -255,6 +293,10 @@ def run_grid(
         "key": spec.key(),
         "label": spec.label(),
         "train_weeks": spec.train_weeks,
+        "train_months": spec.train_months,
+        "train_unit": spec.train_unit,
+        "train_length": spec.train_length,
+        "tf": spec.tf,
         "use_kb": spec.use_kb,
         "kb_profile": spec.kb_profile,
         "kb_snapshot": spec.kb_snapshot,
