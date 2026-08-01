@@ -183,15 +183,34 @@ function Stop-XmTerminal([string]$XmInstallPath) {
   Start-Sleep -Seconds 2
 }
 
+function Get-ActiveChartsRoot([string]$DataPath) {
+  $commonIni = Join-Path $DataPath "config\common.ini"
+  if (-not (Test-Path $commonIni)) {
+    throw "MT5 common.ini not found: $commonIni"
+  }
+  $commonText = Get-Content $commonIni -Raw
+  $profileMatch = [regex]::Match($commonText, '(?m)^ProfileLast=(.+?)\s*$')
+  if (-not $profileMatch.Success) {
+    throw "Cannot determine the active MT5 chart profile from $commonIni."
+  }
+  $profileName = $profileMatch.Groups[1].Value.Trim()
+  if ((Split-Path $profileName -Leaf) -ne $profileName) {
+    throw "Invalid active MT5 profile name: $profileName"
+  }
+  $chartsRoot = Join-Path $DataPath "MQL5\Profiles\Charts\$profileName"
+  New-Item -ItemType Directory -Path $chartsRoot -Force | Out-Null
+  return $chartsRoot
+}
+
 function Get-ForgeBridgeCharts([string]$DataPath) {
-  $chartsRoot = Join-Path $DataPath "MQL5\Profiles\Charts"
+  $chartsRoot = Get-ActiveChartsRoot $DataPath
   if (-not (Test-Path $chartsRoot)) { return @() }
   return @(Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
     Where-Object { (Get-Content $_.FullName -Raw) -match "name=$EaName" })
 }
 
 function Get-EurusdH1Charts([string]$DataPath) {
-  $chartsRoot = Join-Path $DataPath "MQL5\Profiles\Charts"
+  $chartsRoot = Get-ActiveChartsRoot $DataPath
   $allEurusdCharts = Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
     Where-Object {
       $text = Get-Content $_.FullName -Raw
@@ -207,10 +226,43 @@ function Get-EurusdH1Charts([string]$DataPath) {
         $text -match "PERIOD_H1"
       )
     }
-  if (-not $charts) {
-    throw "EURUSD H1 chart not found (period_size=60 or period_type=1/period_size=1). Open a EURUSD H1 chart before deploy; refusing to attach onto M15."
-  }
   return @($charts)
+}
+
+function New-EurusdH1Chart([string]$DataPath) {
+  $chartsRoot = Get-ActiveChartsRoot $DataPath
+  $family = Get-ForgeFamilyPattern
+  $templates = @(Get-ChildItem $chartsRoot -Filter "*.chr" |
+    Where-Object {
+      (Get-Content $_.FullName -Raw) -match "(?m)^symbol=EURUSD\s*$"
+    })
+  if ($templates.Count -eq 0) {
+    throw "No EURUSD chart exists in active MT5 profile '$($chartsRoot | Split-Path -Leaf)'. Open one EURUSD chart and retry."
+  }
+
+  $template = @($templates | Where-Object {
+    (Get-Content $_.FullName -Raw) -notmatch $family
+  } | Select-Object -First 1)
+  if ($template.Count -eq 0) {
+    $template = @($templates | Select-Object -First 1)
+  }
+
+  $usedNumbers = @(Get-ChildItem $chartsRoot -Filter "chart*.chr" | ForEach-Object {
+    if ($_.BaseName -match '^chart(\d+)$') { [int]$Matches[1] }
+  })
+  [int]$nextNumber = if ($usedNumbers.Count -gt 0) {
+    [int](($usedNumbers | Measure-Object -Maximum).Maximum) + 1
+  } else { 1 }
+  $targetPath = Join-Path $chartsRoot ("chart{0:D2}.chr" -f $nextNumber)
+  $text = Get-Content $template[0].FullName -Raw
+  $text = $text -replace '(?m)^id=\d+\s*$', ("id=" + [DateTime]::UtcNow.Ticks)
+  $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=1'
+  $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=1'
+  $forgeExpertPattern = '(?s)<expert>\s*name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b.*?</expert>\s*'
+  $text = [regex]::Replace($text, $forgeExpertPattern, '')
+  Set-Content -Path $targetPath -Value $text -Encoding Unicode
+  Write-Host "Created EURUSD H1 chart in active profile: $targetPath"
+  return Get-Item $targetPath
 }
 
 function Get-EurusdM15Charts([string]$DataPath) {
@@ -260,7 +312,7 @@ function Select-AttachChart(
 ) {
   $charts = Get-EurusdH1Charts $DataPath
   if (-not $charts -or $charts.Count -eq 0) {
-    throw "EURUSD H1 chart not found in the MT5 profile."
+    $charts = @(New-EurusdH1Chart $DataPath)
   }
 
   $wantedName = if ($PreferHistoryFeed) { $EaNameSim } else { $EaNameLive }
@@ -312,7 +364,36 @@ function Attach-ForgeBridge(
   $windowTag = '<window>'
   $text = [regex]::Replace($text, $forgeExpertPattern, '')
   if ($text -notmatch [regex]::Escape($windowTag)) {
-    throw "Chart $($target.FullName) has no <window> tag; cannot attach $EaName."
+    if ($text -notmatch '</chart>') {
+      throw "Chart $($target.FullName) has neither <window> nor </chart>; cannot attach $EaName."
+    }
+    $text = $text -replace '(?m)^windows_total=0\s*$', 'windows_total=1'
+    $mainWindow = @(
+      '<window>',
+      'height=100',
+      '',
+      '<indicator>',
+      'name=Main',
+      'path=',
+      'apply=1',
+      'show_data=1',
+      'scale_inherit=0',
+      'scale_line=0',
+      'scale_line_percent=50',
+      'scale_line_value=0.000000',
+      'scale_fix_min=0',
+      'scale_fix_min_val=0.000000',
+      'scale_fix_max=0',
+      'scale_fix_max_val=0.000000',
+      '</indicator>',
+      '</window>'
+    ) -join "`r`n"
+    $text = [regex]::Replace(
+      $text,
+      '</chart>',
+      ($mainWindow + "`r`n</chart>"),
+      1
+    )
   }
   $text = [regex]::Replace($text, $windowTag, ($block + "`r`n" + $windowTag), 1)
   Set-Content -Path $target.FullName -Value $text -Encoding Unicode
@@ -366,6 +447,9 @@ function Restart-BridgeService {
     -Arguments @{ CommandLine = $commandLine; CurrentDirectory = $RepoRoot }
   if ($created.ReturnValue -ne 0) {
     throw "Cannot create Bridge service (Win32 return=$($created.ReturnValue))."
+  }
+  if ($created.ProcessId) {
+    [System.IO.File]::WriteAllText($pidFile, [string]$created.ProcessId)
   }
 
   Start-Sleep -Seconds 6

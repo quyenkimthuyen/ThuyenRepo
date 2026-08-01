@@ -763,15 +763,23 @@ def _render_service_controls() -> None:
       with st.spinner("Đang chạy deploy script..."):
         try:
           import subprocess
+          from pathlib import Path as _P
+          script = _P(__file__).resolve().parents[2] / "scripts" / "deploy_xm_forgebridge.ps1"
           cmd = [
             "powershell.exe",
             "-ExecutionPolicy", "Bypass",
-            "-File", "scripts/deploy_xm_forgebridge.ps1",
+            "-File", str(script),
             "-Mode", "Live",
             "-Attach",
-            "-EnableTrading"
+            "-EnableTrading",
           ]
-          res = subprocess.run(cmd, capture_output=True, text=True, check=False)
+          res = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            cwd=str(script.parent.parent),
+          )
           if res.returncode == 0:
             st.success("Triển khai EA thành công!")
             st.code(res.stdout)
@@ -934,7 +942,13 @@ def _render_simulate_ea() -> None:
           "-Attach",
           "-SkipBridgeService",
         ]
-        res = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        res = subprocess.run(
+          cmd,
+          capture_output=True,
+          text=True,
+          check=False,
+          cwd=str(script.parent.parent),
+        )
         if res.returncode == 0:
           st.success("Deploy Simulate EA thành công — tiếp theo Start feed bên dưới.")
           st.code(res.stdout or "(no stdout)")
