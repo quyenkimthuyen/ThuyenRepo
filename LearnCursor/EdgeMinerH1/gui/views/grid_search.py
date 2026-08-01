@@ -13,6 +13,7 @@ from gui.app_settings import (
   settings_changed_since_last_grid,
   settings_grid_signature,
 )
+from gui.charts import show_plotly
 from gui.grid_search_background import (
   get_grid_status, is_grid_running, load_job_state,
   start_grid_search, stop_grid_search,
@@ -391,14 +392,16 @@ def render(embedded: bool = False):
       ),
       axis=1,
     )
+    grid_train_title = "Grid · Total R theo cửa sổ train"
     fig = px.bar(
       plot_df, x="train_months", y="total_r", color="kb_tag",
-      barmode="group", title="Total R theo train window",
+      barmode="group", title=grid_train_title,
     )
     fig.update_layout(height=400)
-    st.plotly_chart(fig, use_container_width=True)
+    show_plotly(fig, grid_train_title)
 
   with tab2:
+    grid_heatmap_title = "Grid · Heatmap Total R"
     pivot_df = plot_df.groupby(["train_months", "kb_tag"], as_index=False)["total_r"].max()
     if len(pivot_df) > 1:
       piv = pivot_df.pivot(index="kb_tag", columns="train_months", values="total_r")
@@ -410,18 +413,19 @@ def render(embedded: bool = False):
         text=[[f"{v:+.1f}" for v in row] for row in piv.values],
         texttemplate="%{text}",
       ))
-      fig_h.update_layout(title="Total R heatmap", height=max(300, len(piv) * 40))
-      st.plotly_chart(fig_h, use_container_width=True)
+      fig_h.update_layout(title=grid_heatmap_title, height=max(300, len(piv) * 40))
+      show_plotly(fig_h, grid_heatmap_title)
 
   with tab3:
+    grid_top_title = "Grid · Top 15 combo"
     top = df.head(15)
     fig2 = go.Figure(go.Bar(
       x=top["total_r"], y=top["label"], orientation="h",
       marker_color=["#2ecc71" if r > 0 else "#e74c3c" for r in top["total_r"]],
     ))
     fig2.update_layout(
-      title="Top 15", height=500,
+      title=grid_top_title, height=500,
       margin=dict(l=200, r=20, t=40, b=40),
       yaxis=dict(autorange="reversed"),
     )
-    st.plotly_chart(fig2, use_container_width=True)
+    show_plotly(fig2, grid_top_title)

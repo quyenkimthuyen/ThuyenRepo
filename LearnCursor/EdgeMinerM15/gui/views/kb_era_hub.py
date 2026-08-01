@@ -17,6 +17,7 @@ from gui.ui_preferences import (
   restore_widget,
   set_widget_preference,
 )
+from gui.charts import show_plotly
 from gui.workspace import set_active_from_preset, set_active_workspace
 
 
@@ -25,7 +26,7 @@ def _list_era_profiles():
   return list_era_profiles()
 
 
-def _epoch_chart(history: list[dict]):
+def _epoch_chart(history: list[dict], *, title: str = "Tiến bộ qua từng vòng học"):
   if not history:
     return None
   epochs = [h["epoch"] for h in history]
@@ -35,7 +36,7 @@ def _epoch_chart(history: list[dict]):
   fig.add_trace(go.Scatter(x=epochs, y=[h["total_r"] for h in history],
                            name="Total R", yaxis="y2", line=dict(color="#2ecc71")))
   fig.update_layout(
-    title="Tiến bộ qua từng vòng học",
+    title=title,
     yaxis=dict(title="Tỷ lệ thắng %"),
     yaxis2=dict(title="Tổng R", overlaying="y", side="right"),
     height=320, margin=dict(l=40, r=40, t=50, b=40),
@@ -138,9 +139,11 @@ def _render_kb_results():
     + ("file KB" if source == "kb" else "báo cáo phiên gần nhất")
   )
   st.dataframe(pd.DataFrame(history), use_container_width=True, hide_index=True)
-  fig = _epoch_chart(history)
+  from gui.app_settings import kb_profile_label
+  chart_name = f"Tiến bộ vòng học · {kb_profile_label(pid)} ({pid})"
+  fig = _epoch_chart(history, title=chart_name)
   if fig:
-    st.plotly_chart(fig, use_container_width=True)
+    show_plotly(fig, chart_name, key=f"hub_epoch_chart_{pid}")
 
 
 def _tab_profiles():

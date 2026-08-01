@@ -8,6 +8,7 @@ from analytics import equity_series, trades_json_to_df
 from config import DEFAULT_MAX_WEEKLY_LOSS_R, DEFAULT_RISK_PCT_PER_TRADE
 from strategy import risk_of_ruin_approx
 from gui.analysis_support import get_matching_analysis_report, render_report_required_panel
+from gui.charts import show_plotly
 from gui.glossary import HELP, METRIC_LABELS
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
@@ -69,8 +70,9 @@ def render(embedded: bool = False):
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=eq["entry"], y=eq["equity_r"], name="Equity R", fill="tozeroy"))
     fig.add_trace(go.Scatter(x=eq["entry"], y=-eq["drawdown_r"], name="Drawdown", line=dict(color="red")))
-    fig.update_layout(height=400, title="Lợi nhuận & sụt giảm (R)", margin=dict(l=40, r=20, t=40, b=40))
-    st.plotly_chart(fig, use_container_width=True)
+    chart_title = "Rủi ro · Lợi nhuận & sụt giảm (R)"
+    fig.update_layout(height=400, title=chart_title, margin=dict(l=40, r=20, t=40, b=40))
+    show_plotly(fig, chart_title)
 
   st.subheader("Kiểm tra giới hạn lỗ theo tuần")
   if "weekly_log" in report:

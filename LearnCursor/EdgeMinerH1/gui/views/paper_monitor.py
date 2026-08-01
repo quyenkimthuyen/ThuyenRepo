@@ -13,6 +13,7 @@ import streamlit.components.v1 as components
 
 from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS
 from kb_profiles import DEFAULT_PROFILE_ID
+from gui.charts import show_plotly
 from gui.trade_model import format_model_label, get_active_trade_model, get_model_run_params
 from gui.services import get_ohlc_window_cached, get_paper_monitor
 from paper_live_monitor_server import (
@@ -363,11 +364,12 @@ def _get_chart_figure(state: dict) -> go.Figure | None:
   orders = _orders_for_display(state)
   chart_from = state.get("chart_from", state.get("week_start", ""))
   chart_to = state.get("chart_to", state.get("last_bar", ""))
+  chart_title = f"EUR/USD H1 · {chart_from} → {chart_to}"
   try:
     window = get_ohlc_window_cached(chart_from, chart_to)
     fig = _tradingview_chart(
       window, orders, chart_from, chart_to,
-      title=f"EUR/USD H1 · Tuần {state.get('week_start', '')}",
+      title=chart_title,
     )
   except Exception:
     return None
@@ -469,14 +471,17 @@ def _render_chart_panel(state: dict):
     st.session_state.get("pm_fig")
     if st.session_state.get("pm_fig_key") == key else None
   )
+  chart_from = state.get("chart_from", state.get("week_start", ""))
+  chart_to = state.get("chart_to", state.get("last_bar", ""))
+  chart_title = f"EUR/USD H1 · {chart_from} → {chart_to}"
 
   if cached_fig is not None:
-    st.plotly_chart(cached_fig, use_container_width=True, key="pm_tv_chart")
+    show_plotly(cached_fig, chart_title, key="pm_tv_chart")
   else:
     with st.spinner("🔄 Đang vẽ biểu đồ..."):
       fig = _get_chart_figure(state)
     if fig:
-      st.plotly_chart(fig, use_container_width=True, key="pm_tv_chart")
+      show_plotly(fig, chart_title, key="pm_tv_chart")
     else:
       st.caption("Không đủ dữ liệu OHLC cho chart.")
 

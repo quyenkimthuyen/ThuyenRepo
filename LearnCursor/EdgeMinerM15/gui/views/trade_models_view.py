@@ -13,6 +13,7 @@ from gui.trade_model import (
   load_model_report,
   set_active_trade_model,
 )
+from gui.charts import show_plotly
 from gui.ui_theme import icon_btn
 from gui.ui_preferences import preference_callback, restore_widget, set_widget_preference
 from gui.views import risk_dashboard, trade_journal, strategy_inspector
@@ -140,12 +141,10 @@ def _render_health(active: dict):
     "report backtest dùng cùng điều kiện remine với MT5 Bridge."
   )
 
-  timeline = build_model_timeline_figure(
-    active,
-    title=f"Giai đoạn model · {format_model_label(active)}",
-  )
+  timeline_title = f"Giai đoạn model · {format_model_label(active)}"
+  timeline = build_model_timeline_figure(active, title=timeline_title)
   if timeline:
-    st.plotly_chart(timeline, use_container_width=True)
+    show_plotly(timeline, timeline_title)
     st.caption(
       "KB học = era bộ nhớ · Train shift = cửa sổ remine "
       f"**{active.get('train_weeks') or '—'} tuần** trước mỗi tuần OOS · "
@@ -253,12 +252,10 @@ def _render_health(active: dict):
     help="Tổng (KB ON − KB OFF) trên nửa sau giai đoạn OOS.",
   )
 
-  fig = build_monthly_kb_compare_figure(
-    on_m, off_m,
-    title=f"OOS theo tháng · {format_model_label(active)}",
-  )
+  monthly_title = f"OOS theo tháng · {format_model_label(active)}"
+  fig = build_monthly_kb_compare_figure(on_m, off_m, title=monthly_title)
   if fig:
-    st.plotly_chart(fig, use_container_width=True)
+    show_plotly(fig, monthly_title)
   else:
     st.warning("Không gom được chuỗi theo tháng từ report.")
 

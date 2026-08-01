@@ -4,6 +4,7 @@ from __future__ import annotations
 import plotly.graph_objects as go
 import streamlit as st
 
+from gui.charts import show_plotly
 from gui.components import constraint_checklist, kb_profile_picker, oos_period_inputs
 from gui.long_task_background import start_job
 from gui.long_task_ui import render_task_status, task_blocks_ui
@@ -212,10 +213,15 @@ def render_era_compare():
       x=eq["entry"], y=eq["equity_r"],
       name=spec["label"] + ep_lbl, mode="lines",
     ))
-  fig.update_layout(height=420, margin=dict(l=40, r=20, t=40, b=40), legend=dict(orientation="h", y=1.02))
-  st.plotly_chart(fig, use_container_width=True)
+  era_equity_title = "So sánh profile · Equity (R)"
+  fig.update_layout(
+    height=420, title=era_equity_title,
+    margin=dict(l=40, r=20, t=40, b=40), legend=dict(orientation="h", y=1.02),
+  )
+  show_plotly(fig, era_equity_title)
 
   st.markdown("#### Drawdown (R)")
+  era_dd_title = "So sánh profile · Drawdown (R)"
   fig_dd = go.Figure()
   for spec in display_specs:
     rep = reports.get(spec["key"])
@@ -228,8 +234,8 @@ def render_era_compare():
       x=eq["entry"], y=eq["drawdown_r"],
       name=spec["label"], mode="lines",
     ))
-  fig_dd.update_layout(height=300, margin=dict(l=40, r=20, t=40, b=40))
-  st.plotly_chart(fig_dd, use_container_width=True)
+  fig_dd.update_layout(height=300, title=era_dd_title, margin=dict(l=40, r=20, t=40, b=40))
+  show_plotly(fig_dd, era_dd_title)
 
   with st.expander("Chi tiết constraints từng profile"):
     for spec in display_specs:
@@ -370,8 +376,12 @@ def render_epoch_sweep():
       x=eq["entry"], y=eq["equity_r"],
       name=f"{ep} ({oos_r:+.1f}R OOS)", mode="lines",
     ))
-  fig.update_layout(height=420, margin=dict(l=40, r=20, t=40, b=40), legend=dict(orientation="h", y=1.02))
-  st.plotly_chart(fig, use_container_width=True)
+  epoch_equity_title = "So sánh vòng học · Equity OOS"
+  fig.update_layout(
+    height=420, title=epoch_equity_title,
+    margin=dict(l=40, r=20, t=40, b=40), legend=dict(orientation="h", y=1.02),
+  )
+  show_plotly(fig, epoch_equity_title)
 
 
 def render_train_window():
@@ -468,10 +478,15 @@ def render_train_window():
         ys.append(rep["overall_oos"]["total_r"])
     if xs:
       fig.add_trace(go.Bar(x=xs, y=ys, name=name, marker_color=color))
-  fig.update_layout(barmode="group", height=360, title="Tổng R (kiểm chứng)", margin=dict(l=40, r=20, t=50, b=40))
-  st.plotly_chart(fig, use_container_width=True)
+  tw_bar_title = "Cửa sổ học · Tổng R KB ON/OFF"
+  fig.update_layout(
+    barmode="group", height=360, title=tw_bar_title,
+    margin=dict(l=40, r=20, t=50, b=40),
+  )
+  show_plotly(fig, tw_bar_title)
 
   st.markdown("#### Đường lợi nhuận kiểm chứng")
+  tw_equity_title = "Cửa sổ học · Equity OOS"
   fig2 = go.Figure()
   for tm in months:
     for use_kb in (False, True):
@@ -488,6 +503,9 @@ def render_train_window():
         x=eq["entry"], y=eq["equity_r"],
         name=f"{tm}m {tag} ({r:+.1f}R)", mode="lines",
       ))
-  fig2.update_layout(height=440, margin=dict(l=40, r=20, t=40, b=40), legend=dict(orientation="h", y=1.02))
-  st.plotly_chart(fig2, use_container_width=True)
+  fig2.update_layout(
+    height=440, title=tw_equity_title,
+    margin=dict(l=40, r=20, t=40, b=40), legend=dict(orientation="h", y=1.02),
+  )
+  show_plotly(fig2, tw_equity_title)
 

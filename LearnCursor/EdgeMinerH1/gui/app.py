@@ -182,6 +182,10 @@ def main():
   _sidebar_status()
 
   st.sidebar.divider()
+  from gui.mt5_deploy_ui import render_sidebar_deploy_eas
+  render_sidebar_deploy_eas()
+
+  st.sidebar.divider()
   st.sidebar.caption("Cài đặt → KB → Grid → Model → Live/Simulate")
 
   item = ALL_ITEMS[page_key]

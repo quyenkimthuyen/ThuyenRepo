@@ -10,6 +10,7 @@ from gui.report_store import (
   delete_report, import_current_backtest, list_reports, load_report,
   report_label, save_report, summaries_table,
 )
+from gui.charts import show_plotly
 from gui.live_workflow import apply_report_to_profile, assess_workflow, load_workflow_state
 from gui.services import BACKTEST_REPORT, load_backtest_report
 
@@ -37,7 +38,7 @@ def _equity_overlay(reports: list[dict]):
       mode="lines",
     ))
   fig.update_layout(
-    title="Equity curve (R) — overlay",
+    title="So sánh báo cáo · Equity overlay",
     height=400, margin=dict(l=40, r=20, t=50, b=40),
     legend=dict(orientation="h", yanchor="bottom", y=1.02),
   )
@@ -188,17 +189,20 @@ def render(embedded: bool = False):
 
   c1, c2 = st.columns(2)
   with c1:
-    fig = _metrics_bar_chart(cmp_df, "Total R", "Total R")
+    total_r_title = "So sánh báo cáo · Total R"
+    fig = _metrics_bar_chart(cmp_df, "Total R", total_r_title)
     if fig:
-      st.plotly_chart(fig, use_container_width=True)
+      show_plotly(fig, total_r_title)
   with c2:
-    fig2 = _metrics_bar_chart(cmp_df, "WR%", "Win Rate %")
+    wr_title = "So sánh báo cáo · Win Rate %"
+    fig2 = _metrics_bar_chart(cmp_df, "WR%", wr_title)
     if fig2:
-      st.plotly_chart(fig2, use_container_width=True)
+      show_plotly(fig2, wr_title)
 
+  equity_title = "So sánh báo cáo · Equity overlay"
   fig3 = _equity_overlay(reports)
   if fig3 and fig3.data:
-    st.plotly_chart(fig3, use_container_width=True)
+    show_plotly(fig3, equity_title)
 
   st.subheader("Xóa báo cáo")
   del_id = st.selectbox("Chọn ID xóa", [r["id"] for r in archived], key="cmp_del")
