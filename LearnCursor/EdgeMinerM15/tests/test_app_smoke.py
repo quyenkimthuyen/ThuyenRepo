@@ -15,6 +15,7 @@ APP = Path(__file__).resolve().parents[1] / "gui" / "app.py"
     ("learning", "settings", None),
     ("learning", "train_kb", None),
     ("learning", "grid", None),
+    ("models", None, "info"),
     ("models", None, "health"),
     ("models", None, "risk"),
     ("models", None, "journal"),

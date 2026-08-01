@@ -10,6 +10,10 @@ from gui.page_chrome import render_page_header
 def render():
   render_page_header(ALL_ITEMS["guide"], show_workspace=False)
 
+  from gui.glossary import render_glossary_guide
+  render_glossary_guide()
+  st.divider()
+
   st.markdown("""
 ## 1. ForexForge là gì?
 
@@ -165,7 +169,7 @@ Mỗi tuần OOS: TRAIN 3 THÁNG → mine (+ KB) → trade 1 tuần
 | **Học & tối ưu** | ① Cài đặt → ② Huấn luyện KB → ③ Grid Search → ④ Trade Models (Quản lý · Rủi ro · Nhật ký · Chiến lược) |
 | **Giám sát paper** | Tín hiệu & lệnh tuần trên cùng dữ liệu broker MT5 |
 | **MT5 Bridge** | App quyết định Best 3m · EA `ForgeBridge` execute · log giao tiếp |
-| **Hướng dẫn** | Tài liệu này |
+| **Hướng dẫn** | Thuật ngữ & viết tắt · quy trình · FAQ |
 
 **Trade Model**: chọn trong **Học & tối ưu → Trade Models → Quản lý** — Paper, Bridge & phân tích dùng chung.
 

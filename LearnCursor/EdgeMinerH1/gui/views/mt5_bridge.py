@@ -1749,7 +1749,16 @@ def render():
   mode = _render_mode_switcher()
   render_shared_trade_model_banner(context="simulate" if mode == "sim" else "live")
 
-  chart_ranges = ["48 giờ", "7 ngày", "14 ngày"]
+  chart_ranges = ["1 ngày", "1 tuần", "1 tháng", "6 tháng", "1 năm", "Tất cả"]
+  # H1 ≈ 24 bars/day
+  chart_bars = {
+    "1 ngày": 24,
+    "1 tuần": 168,
+    "1 tháng": 720,
+    "6 tháng": 4368,
+    "1 năm": 8760,
+    "Tất cả": 200_000,
+  }
   chart_key = "mt5_chart_range_sim" if mode == "sim" else "mt5_chart_range_live"
   pref_key = "mt5.chart_range_sim" if mode == "sim" else "mt5.chart_range"
 
@@ -1768,7 +1777,7 @@ def render():
   # 3) Chart
   st.subheader(f"Biểu đồ · {_mode_label()}")
   restore_widget(
-    chart_key, "7 ngày",
+    chart_key, "1 tuần",
     preference_key=pref_key,
     options=chart_ranges,
   )
@@ -1778,7 +1787,7 @@ def render():
     key=chart_key,
     on_change=preference_callback(chart_key, pref_key),
   )
-  max_bars = {"48 giờ": 192, "7 ngày": 672, "14 ngày": 1344}[range_label]
+  max_bars = chart_bars[range_label]
   _render_live_chart(max_bars)
 
   # 4) Thống kê

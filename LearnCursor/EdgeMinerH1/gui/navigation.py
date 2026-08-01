@@ -37,7 +37,7 @@ NAV_ITEMS: tuple[NavItem, ...] = (
   ),
   NavItem(
     "guide", "Hướng dẫn", "usage_guide",
-    "Quy trình · khái niệm · FAQ",
+    "Thuật ngữ · quy trình · FAQ",
     ":material/menu_book:",
   ),
 )

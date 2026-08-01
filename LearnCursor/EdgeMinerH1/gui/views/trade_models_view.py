@@ -1,4 +1,4 @@
-"""Trade Models — dropdown model chung + Sức khỏe / Rủi ro / Nhật ký / Chiến lược."""
+"""Trade Models — dropdown model chung + Thông tin / Sức khỏe / Rủi ro / Nhật ký / Chiến lược."""
 from __future__ import annotations
 
 import pandas as pd
@@ -19,14 +19,16 @@ from gui.ui_preferences import preference_callback, restore_widget, set_widget_p
 from gui.views import risk_dashboard, trade_journal, strategy_inspector
 
 # Sub-views driven by the shared model dropdown above.
-SUB_KEYS = ["health", "risk", "journal", "strategy"]
+SUB_KEYS = ["info", "health", "risk", "journal", "strategy"]
 SUB_LABELS = {
+  "info": "Thông tin",
   "health": "Sức khỏe",
   "risk": "Rủi ro",
   "journal": "Nhật ký",
   "strategy": "Chiến lược",
 }
 SUB_ICONS = {
+  "info": ":material/info:",
   "health": ":material/monitor_heart:",
   "risk": ":material/shield:",
   "journal": ":material/receipt_long:",
@@ -38,11 +40,11 @@ def _resolve_subtab() -> str:
   legacy = st.session_state.get("analysis_tab")
   if legacy in ("risk", "journal", "strategy", "health") and "models_subtab" not in st.session_state:
     set_widget_preference("models_subtab", legacy, "navigation.models_subtab")
-  # Old "manage" bookmark → health
+  # Old "manage" bookmark → info
   if st.session_state.get("models_subtab") == "manage":
-    set_widget_preference("models_subtab", "health", "navigation.models_subtab")
+    set_widget_preference("models_subtab", "info", "navigation.models_subtab")
   return restore_widget(
-    "models_subtab", "health",
+    "models_subtab", "info",
     preference_key="navigation.models_subtab",
     options=SUB_KEYS,
   )
@@ -81,7 +83,7 @@ def _render_shared_model_bar(models: list[dict]) -> dict | None:
       labels,
       key="tm_shared_pick",
       on_change=_on_shared_model_change,
-      help="Mọi tab Sức khỏe / Rủi ro / Nhật ký / Chiến lược dùng model này.",
+      help="Mọi tab Thông tin / Sức khỏe / Rủi ro / Nhật ký / Chiến lược dùng model này.",
     )
   mid = id_by_label[pick]
   m = next(x for x in models if x["id"] == mid)
@@ -122,6 +124,56 @@ def _render_shared_model_bar(models: list[dict]) -> dict | None:
   )
 
   return active
+
+
+def _render_model_info(active: dict):
+  """KPI + mục tiêu của Trade Model đang chọn (trước đây ở Tổng quan)."""
+  from analytics import direction_bias, trades_json_to_df, yearly_breakdown
+  from gui.components import constraint_checklist, kpi_row, status_banner, warn_long_bias, warn_no_costs
+  from gui.glossary import METRIC_LABELS, backtest_kpi_items
+  from gui.services import load_data_meta, load_kb
+
+  st.caption(f"Thông tin backtest của **{format_model_label(active)}**.")
+
+  report = load_model_report(active["id"])
+  kb = load_kb(active.get("kb_profile") or "default")
+  kb_summary = {
+    "genomes": len(kb.genomes),
+    "rules": len(kb.rule_stats),
+    "ml_samples": len(kb.ml_experience),
+  }
+  data_meta = load_data_meta()
+
+  status_banner(report, kb_summary, data_meta)
+  warn_no_costs()
+
+  if not report:
+    st.info(
+      "Chưa có báo cáo backtest của model. Vào **Sức khỏe** → **Chạy so sánh** "
+      "để tạo report, hoặc tạo model từ Grid Search."
+    )
+    return
+
+  o = report.get("overall_oos") or {}
+  y = report.get("last_1_year") or {}
+  items = backtest_kpi_items(o, y)
+  if o.get("trades_per_week") is not None:
+    items.append((
+      METRIC_LABELS["trades_per_week"],
+      f"{o['trades_per_week']}",
+      f"{o.get('n_trades', '—')} lệnh",
+    ))
+  kpi_row(items)
+
+  with st.expander("Mục tiêu & OOS theo năm", expanded=False):
+    constraint_checklist(report.get("constraints_met", {}))
+    trades_df = trades_json_to_df(report.get("trades", []))
+    if not trades_df.empty:
+      st.dataframe(yearly_breakdown(trades_df), use_container_width=True, hide_index=True)
+      bias = direction_bias(trades_df)
+      if not bias.empty and "LONG" in bias["dir"].values:
+        pct = bias.loc[bias["dir"] == "LONG", "pct"].iloc[0]
+        warn_long_bias(pct)
 
 
 def _render_health(active: dict):
@@ -329,7 +381,9 @@ def render(embedded: bool = False):
 
   st.divider()
 
-  if sub == "health":
+  if sub == "info":
+    _render_model_info(active)
+  elif sub == "health":
     _render_health(active)
   else:
     _render_analysis(sub, active)

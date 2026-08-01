@@ -1,12 +1,17 @@
 """ForexForge GUI — full application."""
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
-# Windows consoles often use cp1252 — avoid UnicodeEncodeError on Vietnamese logs.
-for _stream in (sys.stdout, sys.stderr):
-  if hasattr(_stream, "reconfigure"):
+# Windows consoles / Streamlit workers may have stdout/stderr is None (pythonw).
+# Guard before any import that prints or uses tqdm.
+for _name in ("stdout", "stderr"):
+  _stream = getattr(sys, _name, None)
+  if _stream is None:
+    setattr(sys, _name, open(os.devnull, "w", encoding="utf-8", errors="replace"))
+  elif hasattr(_stream, "reconfigure"):
     try:
       _stream.reconfigure(encoding="utf-8", errors="replace")
     except Exception:
@@ -174,9 +179,6 @@ def main():
 
   st.sidebar.markdown("### ForexForge")
   st.sidebar.caption("EUR/USD M15 · retrain tuần")
-
-  from gui.glossary import render_glossary_expander
-  render_glossary_expander(location="sidebar")
 
   page_key = _render_sidebar_nav()
   _sidebar_status()

@@ -307,6 +307,14 @@ def _worker_model_health(state: dict):
 
 
 def _worker_learning(state: dict):
+  import os
+  import sys
+
+  # Background thread under Streamlit can have stdout/stderr is None → tqdm/.write crash.
+  for name in ("stdout", "stderr"):
+    if getattr(sys, name, None) is None:
+      setattr(sys, name, open(os.devnull, "w", encoding="utf-8", errors="replace"))
+
   from gui.services import execute_learning
 
   p = state["params"]

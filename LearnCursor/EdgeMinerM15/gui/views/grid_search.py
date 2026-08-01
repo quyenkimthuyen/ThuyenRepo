@@ -49,7 +49,7 @@ def _grid_combo_changed(default_names: dict[str, str]) -> None:
 @st.fragment(run_every=timedelta(seconds=5))
 def _grid_progress_fragment():
   status = get_grid_status()
-  if status["running"]:
+  if status["running"] or status.get("status") == "interrupted":
     st.progress(
       status["done"] / max(status["total"], 1),
       text=(
@@ -57,6 +57,9 @@ def _grid_progress_fragment():
         f"({status['pct']}%) · {status['current_label'] or '…'}"
       ),
     )
+    return
+  # Parent still shows "running" until full remount — unlock completed UI.
+  st.rerun()
 
 
 def _render_job_status():

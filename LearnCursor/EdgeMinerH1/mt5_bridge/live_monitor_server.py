@@ -139,7 +139,7 @@ def build_sim_snapshot(*, max_bars: int = 672) -> dict:
         frame = frame.iloc[0:0]
     # idle/completed: full window (then tail)
 
-    limit = max(96, int(max_bars))
+    limit = max(24, int(max_bars))
     if len(frame) > limit:
       frame = frame.tail(limit) if status in ("running", "paused", "completed") else frame.head(limit)
 
@@ -190,7 +190,7 @@ def build_sim_snapshot(*, max_bars: int = 672) -> dict:
   if not bars:
     # Fallback: EA bars.json (may be incomplete)
     hist = read_json(bars_path(BRIDGE_SIM_DIR)) or {}
-    bars = list(hist.get("bars") or [])[-max(96, int(max_bars)):]
+    bars = list(hist.get("bars") or [])[-max(24, int(max_bars)):]
 
   raw_trades = load_trades(BRIDGE_SIM_DIR)
   trades = []
@@ -661,7 +661,7 @@ def start_live_monitor_server(
         query = parse_qs(parsed.query)
         mode = (query.get("mode") or ["live"])[0].lower()
         try:
-          max_bars = max(96, min(1344, int((query.get("bars") or ["672"])[0])))
+          max_bars = max(24, min(200_000, int((query.get("bars") or ["672"])[0])))
         except (TypeError, ValueError):
           max_bars = 672
         if mode == "sim":
@@ -713,7 +713,7 @@ def start_live_monitor_server(
         if mode == "live":
           mode = "mt5"
         try:
-          max_bars = max(96, min(1344, int((query.get("bars") or ["672"])[0])))
+          max_bars = max(24, min(200_000, int((query.get("bars") or ["672"])[0])))
         except (TypeError, ValueError):
           max_bars = 672
         poll_ms = 2000 if mode == "sim" else 2000
