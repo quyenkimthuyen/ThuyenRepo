@@ -1,4 +1,4 @@
-"""Trade Model — mô hình giao dịch tạo từ Grid Search (dùng cho paper & phân tích)."""
+"""Trade Model — mô hình giao dịch tạo từ Grid Search (Live · Simulate · phân tích)."""
 from __future__ import annotations
 
 import json
@@ -202,11 +202,6 @@ def set_active_trade_model(model_id: str | None) -> dict | None:
     except Exception:
       pass
     try:
-      from paper_service import save_config as save_paper_config
-      save_paper_config(model_id=model_id)
-    except Exception:
-      pass
-    try:
       from mt5_bridge.ea_simulator import load_sim_state, write_sim_state
       sim = load_sim_state()
       if not sim.get("running") and not sim.get("enabled"):
@@ -225,18 +220,11 @@ def set_active_trade_model(model_id: str | None) -> dict | None:
 
 
 def sync_active_model_into_runtime_configs() -> dict | None:
-  """Keep Paper / Live / Simulate runtime configs on the same active Trade Model id."""
+  """Keep Live / Simulate runtime configs on the same active Trade Model id."""
   active = get_active_trade_model()
   mid = (active or {}).get("id")
   if not mid:
     return active
-  try:
-    from paper_service import load_config as paper_load, save_config as paper_save
-    cfg = paper_load()
-    if cfg.get("model_id") != mid:
-      paper_save(model_id=mid)
-  except Exception:
-    pass
   try:
     from mt5_bridge.background import load_config as bridge_load, save_config as bridge_save
     cfg = bridge_load()
@@ -259,26 +247,26 @@ def sync_active_model_into_runtime_configs() -> dict | None:
 
 
 def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
-  """One active Trade Model for Paper · Live · Simulate — same remine params.
+  """One active Trade Model for Live · Simulate — same remine params.
 
-  context: ``paper`` | ``live`` | ``simulate`` | ``bridge`` | ``shared``
+  context: ``live`` | ``simulate`` | ``bridge`` | ``shared``
   """
   from mt5_bridge.models import describe_strategy_conditions
 
   active = sync_active_model_into_runtime_configs()
   ctx = (context or "shared").lower()
   roles = {
-    "paper": "Paper = desk nhẹ (không EA). Kiểm Live chính = Parity / Health OOS.",
-    "live": "Live = lệnh MT5 thật/demo. Remine = cùng Trade Model với Paper & Simulate.",
+    "paper": "Paper desk đã bỏ — dùng Live Parity / Health OOS.",
+    "live": "Live = lệnh MT5 thật/demo. Remine = cùng Trade Model với Simulate.",
     "simulate": "Simulate = replay quá khứ qua App↔EA. Cùng Trade Model với Live.",
-    "bridge": "Live & Simulate dùng chung Trade Model active với Paper.",
-    "shared": "Paper · Live · Simulate dùng chung một Trade Model active.",
+    "bridge": "Live & Simulate dùng chung Trade Model active.",
+    "shared": "Live · Simulate dùng chung một Trade Model active.",
   }
-  st.markdown("##### Trade Model · dùng chung Paper · Live · Simulate")
+  st.markdown("##### Trade Model · dùng chung Live · Simulate")
   if not active:
     st.warning(
-      "Chưa chọn Trade Model — vào **Học & tối ưu → Trade Models → Quản lý** "
-      "rồi chọn active. Cả 3 mode sẽ dùng cùng model đó."
+      "Chưa chọn Trade Model — vào **Trade Models** "
+      "rồi chọn model trên dropdown. Live/Simulate sẽ dùng cùng model đó."
     )
     st.caption(roles.get(ctx, roles["shared"]))
     return None
@@ -302,7 +290,7 @@ def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
   )
   st.caption(
     roles.get(ctx, roles["shared"])
-    + " · Đổi model: **Trade Models → Quản lý** (tự đồng bộ Paper/Live/Sim config)."
+    + " · Đổi model: **Trade Models** (tự đồng bộ Live/Sim)."
   )
   return active
 

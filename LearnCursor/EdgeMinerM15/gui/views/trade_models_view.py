@@ -1,4 +1,4 @@
-"""Trade Models — quản lý model + phân tích (Risk / Nhật ký / Chiến lược / Sức khỏe)."""
+"""Trade Models — dropdown model chung + Sức khỏe / Rủi ro / Nhật ký / Chiến lược."""
 from __future__ import annotations
 
 import pandas as pd
@@ -7,7 +7,6 @@ import streamlit as st
 from gui.trade_model import (
   delete_trade_model,
   format_model_label,
-  format_model_oneline,
   get_active_trade_model,
   list_trade_models,
   load_model_kb_off_report,
@@ -18,17 +17,15 @@ from gui.ui_theme import icon_btn
 from gui.ui_preferences import preference_callback, restore_widget, set_widget_preference
 from gui.views import risk_dashboard, trade_journal, strategy_inspector
 
-# Child of Trade Models: quản lý + phân tích theo model đang chọn
-SUB_KEYS = ["manage", "health", "risk", "journal", "strategy"]
+# Sub-views driven by the shared model dropdown above.
+SUB_KEYS = ["health", "risk", "journal", "strategy"]
 SUB_LABELS = {
-  "manage": "Quản lý",
   "health": "Sức khỏe",
   "risk": "Rủi ro",
   "journal": "Nhật ký",
   "strategy": "Chiến lược",
 }
 SUB_ICONS = {
-  "manage": ":material/inventory_2:",
   "health": ":material/monitor_heart:",
   "risk": ":material/shield:",
   "journal": ":material/receipt_long:",
@@ -37,104 +34,96 @@ SUB_ICONS = {
 
 
 def _resolve_subtab() -> str:
-  # Compat: old analysis_tab / analysis hub
   legacy = st.session_state.get("analysis_tab")
-  if legacy in ("risk", "journal", "strategy") and "models_subtab" not in st.session_state:
+  if legacy in ("risk", "journal", "strategy", "health") and "models_subtab" not in st.session_state:
     set_widget_preference("models_subtab", legacy, "navigation.models_subtab")
+  # Old "manage" bookmark → health
+  if st.session_state.get("models_subtab") == "manage":
+    set_widget_preference("models_subtab", "health", "navigation.models_subtab")
   return restore_widget(
-    "models_subtab", "manage",
+    "models_subtab", "health",
     preference_key="navigation.models_subtab",
     options=SUB_KEYS,
   )
 
 
-def _render_manage(models, active):
-  st.caption(
-    f"**{len(models)}** model · Active: **{format_model_label(active) if active else '—'}**"
-  )
+def _on_shared_model_change():
+  preference_callback("tm_shared_pick", "trade_models.selected")()
+  models = list_trade_models()
+  id_by_label = {format_model_label(m): m["id"] for m in models}
+  pick = st.session_state.get("tm_shared_pick")
+  mid = id_by_label.get(pick)
+  active = get_active_trade_model()
+  if mid and (not active or active.get("id") != mid):
+    set_active_trade_model(mid)
 
-  rows = []
-  for m in models:
-    from gui.app_settings import kb_profile_label
-    rows.append({
-      "Tên": format_model_label(m),
-      "Train": f"{m.get('train_weeks')} tuần",
-      "Giai đoạn học": kb_profile_label(m.get("kb_profile")),
-      "Vòng": m.get("kb_snapshot") or "latest",
-      "Total R": m.get("total_r"),
-      "WR%": m.get("win_rate_pct"),
-      "Active": "✓" if active and m.get("id") == active.get("id") else "",
-      "id": m.get("id"),
-    })
-  df = pd.DataFrame(rows)
-  st.dataframe(
-    df.drop(columns=["id"]),
-    use_container_width=True,
-    hide_index=True,
-    height=min(400, 60 + len(rows) * 38),
-  )
 
-  st.markdown("#### Thao tác")
+def _render_shared_model_bar(models: list[dict]) -> dict | None:
+  """Top dropdown — selection becomes active Trade Model for all tabs."""
   id_by_label = {format_model_label(m): m["id"] for m in models}
   labels = list(id_by_label.keys())
+  active = get_active_trade_model()
   default_pick = format_model_label(active) if active else labels[0]
+  if default_pick not in labels:
+    default_pick = labels[0]
+
   restore_widget(
-    "tm_view_pick", default_pick,
+    "tm_shared_pick", default_pick,
     preference_key="trade_models.selected",
     options=labels,
   )
-  pick = st.selectbox(
-    "Chọn model",
-    labels,
-    key="tm_view_pick",
-    on_change=preference_callback("tm_view_pick", "trade_models.selected"),
-  )
+
+  c1, c2, c3 = st.columns([3, 1, 1])
+  with c1:
+    pick = st.selectbox(
+      "Trade Model",
+      labels,
+      key="tm_shared_pick",
+      on_change=_on_shared_model_change,
+      help="Mọi tab Sức khỏe / Rủi ro / Nhật ký / Chiến lược dùng model này.",
+    )
   mid = id_by_label[pick]
   m = next(x for x in models if x["id"] == mid)
+  active = get_active_trade_model()
+  if not active or active.get("id") != mid:
+    set_active_trade_model(mid)
+    active = get_active_trade_model()
 
-  c1, c2, c3 = st.columns(3)
-  with c1:
-    if st.button(
-      "Dùng cho paper & phân tích",
-      icon=":material/check_circle:",
-      key="tm_activate",
-      use_container_width=True,
-    ):
-      set_active_trade_model(mid)
-      st.toast(f"Đã chọn «{pick}»")
-      st.rerun()
   with c2:
     report = load_model_report(mid)
     if report:
       o = report.get("overall_oos") or {}
       st.metric("Backtest R", f"{o.get('total_r', m.get('total_r', 0)):+.2f}")
+    elif m.get("total_r") is not None:
+      st.metric("Grid R", f"{float(m.get('total_r')):+.2f}")
     else:
-      st.caption("Chưa có báo cáo backtest lưu riêng")
+      st.caption("Chưa có report")
+
   with c3:
-    if st.button("Xóa", icon=":material/delete:", key="tm_delete", use_container_width=True):
+    if st.button(
+      "Xóa",
+      icon=":material/delete:",
+      key="tm_delete",
+      use_container_width=True,
+      help="Xóa Trade Model đang chọn.",
+    ):
       if delete_trade_model(mid):
         st.toast("Đã xóa trade model")
         st.rerun()
 
-  if st.button("Gộp model trùng", icon=":material/merge:", key="tm_dedupe"):
-    from gui.trade_model import dedupe_trade_models, load_active_model_id
-    keep = set()
-    aid = load_active_model_id()
-    if aid:
-      keep.add(aid)
-    result = dedupe_trade_models(keep_ids=keep)
-    st.success(
-      f"Giữ {result['kept']} · xóa {len(result['removed'])} trùng combo · "
-      f"đổi tên {len(result['renamed'])}"
-    )
-    st.rerun()
+  from gui.app_settings import kb_profile_label
+  st.caption(
+    f"**{len(models)}** model · "
+    f"train `{m.get('train_weeks')} tuần` · "
+    f"KB `{kb_profile_label(m.get('kb_profile'))}` · "
+    f"ep `{m.get('kb_snapshot') or 'latest'}` · "
+    f"OOS `{m.get('oos_from') or '—'} → {m.get('oos_to') or '—'}`"
+  )
 
-  with st.expander("Chi tiết model"):
-    st.json(m)
-    st.caption(format_model_oneline(m))
+  return active
 
 
-def _render_health():
+def _render_health(active: dict):
   """Monthly OOS chart KB ON vs OFF + degradation signals."""
   from gui.analysis_support import start_model_health_job
   from gui.long_task_ui import render_task_status, task_blocks_ui
@@ -144,47 +133,11 @@ def _render_health():
     build_monthly_kb_compare_figure,
     monthly_oos_from_report,
   )
-  from gui.trade_model import (
-    report_search_space_matches_model,
-    render_model_picker,
-  )
-
-  models = list_trade_models()
-  if not models:
-    st.warning("Chưa có Trade Model — tạo từ Grid Search rồi quay lại.")
-    return
-
-  st.caption(
-    "Chọn model để xem sức khỏe. Grid có nhiều **vòng KB (ep1…ep4)**; "
-    "chỉ các combo đã **Lưu Trade Model** mới xuất hiện ở đây "
-    f"(hiện **{len(models)}** model)."
-  )
-  active = render_model_picker(key="tm_health_pick", label="Trade model để kiểm tra")
-  if not active:
-    return
-
-  rows = []
-  for m in models:
-    ss = m.get("mining_search_space") or {}
-    spacing = ss.get("min_bars_between") or ["—"]
-    rows.append({
-      "Model": format_model_label(m),
-      "KB vòng": m.get("kb_snapshot") or "—",
-      "Train": f"{m.get('train_weeks')}w",
-      "Session": ss.get("session_ranges") or "default",
-      "Spacing": spacing[0] if spacing else "—",
-      "Grid R": m.get("total_r"),
-      "WR%": m.get("win_rate_pct"),
-      "Active": "✓" if m.get("id") == active.get("id") else "",
-    })
-  st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+  from gui.trade_model import report_search_space_matches_model
 
   st.caption(
     f"Đang xem: **{format_model_label(active)}** · "
-    f"OOS `{active.get('oos_from') or '—'} → {active.get('oos_to') or '—'}` · "
-    f"KB ep**{active.get('kb_snapshot') or '—'}** · "
-    "KPI Grid ở bảng trên; report backtest dùng **cùng điều kiện remine** với MT5 Bridge "
-    "(train/KB/session/spacing/spread)."
+    "report backtest dùng cùng điều kiện remine với MT5 Bridge."
   )
 
   timeline = build_model_timeline_figure(
@@ -216,7 +169,6 @@ def _render_health():
       f"(report: session `{cfg_ss.get('session_ranges')}` · spacing "
       f"`{cfg_ss.get('min_bars_between')}` vs model: "
       f"`{model_ss.get('session_ranges')}` · `{model_ss.get('min_bars_between')}`). "
-      "Lần chạy Sức khỏe trước đã dùng miner **default** → số lệch KPI Grid. "
       "Bật **Chạy lại KB ON** và bấm **Chạy so sánh**."
     )
 
@@ -257,7 +209,7 @@ def _render_health():
   if not report_on:
     st.info(
       "Chưa có báo cáo backtest của model. Bấm **Chạy so sánh** "
-      "(bật cập nhật KB ON) hoặc tạo report từ tab Phân tích."
+      "(bật cập nhật KB ON)."
     )
     return
 
@@ -324,26 +276,14 @@ def _render_health():
 
   with st.expander("Cách đọc"):
     st.markdown(
-      "- **Bảng model**: KPI lúc **Grid/optimize** (ep3, ep4 nếu đã lưu).\n"
       "- **Timeline**: KB học → train shift → OOS.\n"
       "- **KB ON/OFF chart**: phải chạy với **đúng** session/spacing của model.\n"
       "- Nửa sau yếu / edge thu hẹp → cân nhắc học era mới hoặc Grid lại."
     )
 
 
-def _render_analysis(sub: str):
-  active = get_active_trade_model()
-  if not active:
-    st.warning("Chưa chọn Trade Model — mở tab **Quản lý** và bấm dùng model.")
-    return
-
-  from gui.trade_model import format_model_label
+def _render_analysis(sub: str, active: dict):
   st.caption(f"Phân tích theo: **{format_model_label(active)}**")
-
-  if sub == "health":
-    _render_health()
-    return
-
   st.session_state["_analysis_hub"] = True
   try:
     if sub == "risk":
@@ -361,8 +301,6 @@ def render(embedded: bool = False):
     st.header("Trade Models")
 
   models = list_trade_models()
-  active = get_active_trade_model()
-
   if not models:
     st.info(
       "Chưa có trade model. Chạy **Grid Search** và nhấn **Tạo Trade Model** "
@@ -370,6 +308,12 @@ def render(embedded: bool = False):
     )
     return
 
+  active = _render_shared_model_bar(models)
+  if not active:
+    st.warning("Chưa chọn được Trade Model.")
+    return
+
+  st.divider()
   sub = _resolve_subtab()
 
   cols = st.columns(len(SUB_KEYS))
@@ -388,9 +332,7 @@ def render(embedded: bool = False):
 
   st.divider()
 
-  if sub == "manage":
-    _render_manage(models, active)
-  elif sub == "health":
-    _render_health()
+  if sub == "health":
+    _render_health(active)
   else:
-    _render_analysis(sub)
+    _render_analysis(sub, active)

@@ -721,7 +721,7 @@ def _render_service_controls() -> None:
     if cfg.get("model_id") != model_id:
       cfg = bridge_bg.save_config(model_id=model_id)
     st.caption(
-      "Trade Model lấy từ banner phía trên (dùng chung Paper · Live · Simulate). "
+      "Trade Model lấy từ banner phía trên (dùng chung Live · Simulate). "
       f"Service đang gắn id `{model_id}`."
     )
     st.session_state.setdefault("mt5_risk_pct", float(cfg.get("risk_pct", 1.0)))
@@ -1724,8 +1724,8 @@ def render():
   render_page_header(ALL_ITEMS["mt5_bridge"], show_workspace=False)
 
   st.caption(
-    "MT5 ForgeBridge · **Live** / **Simulate** + trang **Paper** dùng **cùng Trade Model active** "
-    "(remine / `conditions_fp`). Paper = desk nhẹ; Live = lệnh MT5 + Parity; Simulate = replay App↔EA."
+    "MT5 ForgeBridge · **Live** / **Simulate** dùng **cùng Trade Model active** "
+    "(remine / `conditions_fp`). Live = lệnh MT5 + Parity; Simulate = replay App↔EA."
   )
 
   mode = _render_mode_switcher()

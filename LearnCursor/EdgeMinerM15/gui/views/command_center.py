@@ -70,7 +70,7 @@ def render():
   from gui.ui_theme import icon_btn
 
   st.subheader("Đi tới")
-  c1, c2, c3 = st.columns(3)
+  c1, c2, c3, c4 = st.columns(4)
   with c1:
     if icon_btn("Học & tối ưu", key="cc_nav_learning", icon=":material/school:"):
       set_widget_preference("nav_page", "learning", "navigation.page")
@@ -80,10 +80,15 @@ def render():
       )
       st.rerun()
   with c2:
-    if icon_btn("Paper", key="cc_nav_paper", icon=":material/monitoring:"):
-      set_widget_preference("nav_page", "paper", "navigation.page")
+    if icon_btn("Trade Models", key="cc_nav_models", icon=":material/inventory_2:"):
+      set_widget_preference("nav_page", "models", "navigation.page")
+      set_widget_preference("models_subtab", "health", "navigation.models_subtab")
       st.rerun()
   with c3:
+    if icon_btn("MT5 Bridge", key="cc_nav_bridge", icon=":material/hub:"):
+      set_widget_preference("nav_page", "mt5_bridge", "navigation.page")
+      st.rerun()
+  with c4:
     if icon_btn("Đồng bộ MT5", key="cc_refresh", icon=":material/sync:"):
       with st.spinner("Gửi yêu cầu lịch sử tới ForgeBridge EA..."):
         refresh_market_data()

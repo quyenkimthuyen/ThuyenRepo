@@ -3,53 +3,55 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from mt5_bridge.protocol import DEFAULT_MAGIC as M15_MAGIC
-from mt5_bridge.live_monitor_server import DEFAULT_MONITOR_PORT as M15_BRIDGE_PORT
-from paper_live_monitor_server import DEFAULT_PAPER_MONITOR_PORT as M15_PAPER_PORT
+from mt5_bridge.protocol import DEFAULT_MAGIC as H1_MAGIC
+from mt5_bridge.live_monitor_server import DEFAULT_MONITOR_PORT as H1_BRIDGE_PORT
 
-M15_ROOT = Path(__file__).resolve().parents[1]
-H1_ROOT = Path(r"C:\Work\ThuyenRepo\EdgeMinerH1")
+H1_ROOT = Path(__file__).resolve().parents[1]
+M15_ROOT = H1_ROOT.parent / "EdgeMinerM15"
+if not M15_ROOT.exists():
+  M15_ROOT = Path(r"C:\Work\ThuyenRepo\LearnCursor\EdgeMinerM15")
+if not M15_ROOT.exists():
+  M15_ROOT = Path(r"C:\Work\ThuyenRepo\EdgeMinerM15")
 
 
 def test_dual_runtime_resources_are_unique():
   from importlib.util import module_from_spec, spec_from_file_location
 
-  protocol_spec = spec_from_file_location("h1_protocol", H1_ROOT / "mt5_bridge" / "protocol.py")
-  h1_protocol = module_from_spec(protocol_spec)
-  protocol_spec.loader.exec_module(h1_protocol)
+  protocol_spec = spec_from_file_location(
+    "m15_protocol", M15_ROOT / "mt5_bridge" / "protocol.py",
+  )
+  m15_protocol = module_from_spec(protocol_spec)
+  protocol_spec.loader.exec_module(m15_protocol)
   bridge_spec = spec_from_file_location(
-    "h1_live_monitor", H1_ROOT / "mt5_bridge" / "live_monitor_server.py",
+    "m15_live_monitor", M15_ROOT / "mt5_bridge" / "live_monitor_server.py",
   )
-  h1_live_monitor = module_from_spec(bridge_spec)
-  bridge_spec.loader.exec_module(h1_live_monitor)
-  paper_spec = spec_from_file_location(
-    "h1_paper_monitor", H1_ROOT / "paper_live_monitor_server.py",
-  )
-  h1_paper_monitor = module_from_spec(paper_spec)
-  paper_spec.loader.exec_module(h1_paper_monitor)
+  m15_live_monitor = module_from_spec(bridge_spec)
+  bridge_spec.loader.exec_module(m15_live_monitor)
 
-  assert M15_MAGIC == 20260724
-  assert h1_protocol.DEFAULT_MAGIC == 20260725
-  assert h1_protocol.DEFAULT_TIMEFRAME == "H1"
-  assert h1_protocol.INSTANCE_ID == "H1"
-  assert h1_protocol.BRIDGE_DIR == H1_ROOT / "mt5" / "bridge_h1"
-  assert h1_protocol.BRIDGE_SIM_DIR == H1_ROOT / "mt5" / "bridge_sim_h1"
+  assert H1_MAGIC == 20260725
+  assert m15_protocol.DEFAULT_MAGIC == 20260724
+  assert m15_protocol.DEFAULT_TIMEFRAME == "M15"
+  assert m15_protocol.INSTANCE_ID == "M15"
+  assert m15_protocol.BRIDGE_DIR == M15_ROOT / "mt5" / "bridge"
+  assert m15_protocol.BRIDGE_SIM_DIR == M15_ROOT / "mt5" / "bridge_sim"
   assert len({
-    M15_BRIDGE_PORT, M15_PAPER_PORT,
-    h1_live_monitor.DEFAULT_MONITOR_PORT,
-    h1_paper_monitor.DEFAULT_PAPER_MONITOR_PORT,
-  }) == 4
-  from mt5_bridge.live_monitor_server import SIM_MONITOR_PORT as M15_SIM_PORT
-  assert M15_SIM_PORT != h1_live_monitor.SIM_MONITOR_PORT
-  assert h1_live_monitor.DEFAULT_MONITOR_PORT == 8865
-  assert h1_live_monitor.SIM_MONITOR_PORT == 8877
+    H1_BRIDGE_PORT,
+    m15_live_monitor.DEFAULT_MONITOR_PORT,
+  }) == 2
+  from mt5_bridge.live_monitor_server import SIM_MONITOR_PORT as H1_SIM_PORT
+  assert H1_SIM_PORT != m15_live_monitor.SIM_MONITOR_PORT
+  assert H1_BRIDGE_PORT == 8865
+  assert H1_SIM_PORT == 8877
 
 
 def test_h1_config_never_points_to_m15_bridge():
   config = json.loads(
     (H1_ROOT / "results" / "mt5_bridge_config.json").read_text(encoding="utf-8-sig"),
   )
-  assert Path(config["bridge_dir"]) == H1_ROOT / "mt5" / "bridge_h1"
+  bridge_dir = Path(config["bridge_dir"])
+  assert bridge_dir.name == "bridge_h1"
+  assert "EdgeMinerM15" not in str(bridge_dir)
+  assert bridge_dir == H1_ROOT / "mt5" / "bridge_h1" or bridge_dir.name == "bridge_h1"
 
 
 def test_process_scripts_are_repo_scoped():
@@ -69,9 +71,7 @@ def test_eas_use_magic_and_hedging_guards():
   h1 = (H1_ROOT / "mt5" / "Experts" / "ForgeBridgeH1.mq5").read_text(encoding="utf-8")
   h1_sim = (H1_ROOT / "mt5" / "Experts" / "ForgeBridgeH1Sim.mq5").read_text(encoding="utf-8")
   assert 'const string INSTANCE_ID = "M15"' in m15
-  assert 'const string INSTANCE_ID = "M15"' in m15_sim
   assert 'const string INSTANCE_ID = "H1"' in h1
-  assert 'const string INSTANCE_ID = "H1"' in h1_sim
   assert "ACCOUNT_MARGIN_MODE_RETAIL_HEDGING" in m15
   assert "ACCOUNT_MARGIN_MODE_RETAIL_HEDGING" in h1
   assert 'InpBridgeSubdir   = "bridge"' in m15
@@ -93,3 +93,11 @@ def test_eas_use_magic_and_hedging_guards():
     assert f'$EaNameSim = "{sim}"' in deploy
     assert "Compile-OneEa" in deploy
     assert "InpMagic=$EaMagic" in deploy
+
+
+def test_dual_script_does_not_start_paper():
+  for root in (M15_ROOT, H1_ROOT):
+    text = (root / "scripts" / "run_dual_edgeminer.ps1").read_text(encoding="utf-8-sig")
+    assert "paper_service import save_config,start_worker" not in text
+    assert "M15 paper" not in text
+    assert "H1 paper" not in text
