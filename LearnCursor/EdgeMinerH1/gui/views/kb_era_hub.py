@@ -4,7 +4,10 @@ from __future__ import annotations
 import plotly.graph_objects as go
 import streamlit as st
 
-from kb_profiles import DEFAULT_PROFILE_ID, delete_profile, get_profile, list_profiles
+from kb_profiles import (
+  DEFAULT_PROFILE_ID, delete_profile, get_profile, list_disk_profile_ids,
+  list_profiles, purge_orphan_snapshots,
+)
 from gui.components import (
   settings_era_presets, list_kb_profiles_df, suggested_oos_range,
 )
@@ -370,6 +373,89 @@ def _tab_learn():
       st.rerun()
     except RuntimeError as e:
       st.error(str(e))
+
+  with st.expander("Reset dữ liệu KB", expanded=False):
+    st.caption(
+      "Xóa file bộ nhớ + snapshot trên đĩa (kể cả orphan). Không xóa giai đoạn trong **Cài đặt**. "
+      "Profile `default` không xóa được."
+    )
+    eras = resolve_learning_eras(s)
+    era_ids = [e["kb_profile"] for e in eras if e.get("kb_profile")]
+    all_profiles = [
+      p["id"] for p in list_profiles()
+      if p.get("id") and p["id"] != DEFAULT_PROFILE_ID and p.get("exists")
+    ]
+    disk_ids = [pid for pid in list_disk_profile_ids() if pid != DEFAULT_PROFILE_ID]
+    options = sorted(set(era_ids) | set(all_profiles) | set(disk_ids))
+    also_related = st.checkbox(
+      "Cũng xóa backtest/report + file Trade Model orphan",
+      key="hub_kb_reset_related",
+    )
+    if not options and not also_related:
+      st.caption("Chưa có profile KB / snapshot để xóa.")
+    else:
+      pick_reset = st.multiselect(
+        "Profile cần xóa",
+        options,
+        default=[pid for pid in era_ids if pid in options],
+        key="hub_kb_reset_pick",
+      ) if options else []
+      confirm_kb = st.checkbox(
+        "Xác nhận xóa vĩnh viễn dữ liệu đã chọn",
+        key="hub_kb_reset_confirm",
+      )
+      if st.button(
+        "Xóa dữ liệu KB đã chọn",
+        type="secondary",
+        icon=":material/delete_forever:",
+        key="hub_kb_reset_btn",
+        disabled=running or not confirm_kb or (not pick_reset and not also_related),
+      ):
+        deleted = []
+        for pid in pick_reset:
+          if delete_profile(pid):
+            deleted.append(pid)
+        orphans = purge_orphan_snapshots()
+        notes = []
+        if deleted:
+          notes.append(f"KB: {', '.join(deleted)}")
+        if orphans:
+          notes.append(f"orphan snap: {', '.join(orphans)}")
+        try:
+          from gui.services import BACKTEST_REPORT, LEARNING_REPORT, load_learning_report
+          from run_backtest import REPORT_DIR
+          lr = load_learning_report() or {}
+          if (not pick_reset or lr.get("kb_profile") in deleted) and LEARNING_REPORT.exists():
+            LEARNING_REPORT.unlink()
+            st.session_state.pop("learning_report", None)
+          if also_related:
+            from gui.report_store import clear_all_reports
+            from gui.trade_model import purge_orphan_model_artifacts
+            n_rpt = clear_all_reports()
+            tm_files = purge_orphan_model_artifacts()
+            for path in (BACKTEST_REPORT, REPORT_DIR / "oos_trades.csv"):
+              if path.exists():
+                path.unlink()
+            st.session_state.pop("backtest_report", None)
+            notes.append(f"reports={n_rpt}, tm_orphan={len(tm_files)}")
+        except Exception:
+          pass
+        try:
+          from gui.workspace import load_workspace_file, save_workspace_file
+          ws = load_workspace_file() or {}
+          if ws.get("kb_profile") in set(deleted) | set(orphans):
+            ws["kb_profile"] = DEFAULT_PROFILE_ID
+            ws["kb_snapshot"] = None
+            ws["label"] = "Chưa chọn trade model"
+            save_workspace_file(ws)
+            st.session_state.pop("active_workspace", None)
+        except Exception:
+          pass
+        if notes:
+          st.success("Đã xóa — " + "; ".join(notes))
+        else:
+          st.warning("Không xóa được dữ liệu nào.")
+        st.rerun()
 
   _render_kb_results()
 

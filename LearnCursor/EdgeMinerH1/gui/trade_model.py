@@ -485,12 +485,10 @@ def dedupe_trade_models(*, keep_ids: set[str] | None = None) -> dict:
       seen_labels.add(low)
 
   for mid in removed:
-    path = model_report_path(mid)
-    if path.exists():
-      try:
-        path.unlink()
-      except OSError:
-        pass
+    try:
+      delete_model_artifacts(mid)
+    except OSError:
+      pass
 
   store["models"] = kept
   save_models_store(store)
@@ -503,6 +501,51 @@ def dedupe_trade_models(*, keep_ids: set[str] | None = None) -> dict:
   return {"removed": removed, "renamed": renamed, "kept": len(kept)}
 
 
+def _model_id_from_artifact_name(name: str) -> str | None:
+  if not name.endswith(".json"):
+    return None
+  stem = name[:-5]
+  for suffix in ("_kb_off", "_live_weeks", "_schedule"):
+    if stem.endswith(suffix):
+      return stem[: -len(suffix)]
+  return stem
+
+
+def model_artifact_paths(model_id: str) -> list[Path]:
+  paths = [model_report_path(model_id), model_kb_off_report_path(model_id)]
+  try:
+    from trade_model_schedule import model_live_weeks_path, model_schedule_path
+    paths.extend([model_schedule_path(model_id), model_live_weeks_path(model_id)])
+  except Exception:
+    pass
+  return paths
+
+
+def delete_model_artifacts(model_id: str) -> list[str]:
+  cleared: list[str] = []
+  for path in model_artifact_paths(model_id):
+    if path.exists():
+      path.unlink()
+      cleared.append(path.name)
+  return cleared
+
+
+def purge_orphan_model_artifacts() -> list[str]:
+  """Xóa file artifact trên đĩa không còn model trong registry."""
+  known = {m.get("id") for m in list_trade_models() if m.get("id")}
+  cleared: list[str] = []
+  if not MODELS_DIR.exists():
+    return cleared
+  orphan_ids: set[str] = set()
+  for path in MODELS_DIR.glob("*.json"):
+    mid = _model_id_from_artifact_name(path.name)
+    if mid and mid not in known:
+      orphan_ids.add(mid)
+  for mid in sorted(orphan_ids):
+    cleared.extend(delete_model_artifacts(mid))
+  return cleared
+
+
 def delete_trade_model(model_id: str) -> bool:
   store = load_models_store()
   before = len(store["models"])
@@ -510,9 +553,7 @@ def delete_trade_model(model_id: str) -> bool:
   if len(store["models"]) == before:
     return False
   save_models_store(store)
-  path = model_report_path(model_id)
-  if path.exists():
-    path.unlink()
+  delete_model_artifacts(model_id)
   if load_active_model_id() == model_id:
     remaining = store["models"]
     set_active_trade_model(remaining[0]["id"] if remaining else None)

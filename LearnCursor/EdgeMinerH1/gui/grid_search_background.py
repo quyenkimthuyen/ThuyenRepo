@@ -242,6 +242,26 @@ def stop_grid_search(*, wait: bool = True):
   _thread = None
 
 
+def clear_grid_results(*, delete_archives: bool = True) -> dict:
+  """Xóa kết quả Grid Search trên đĩa (latest + job_state + tùy chọn gs_*.json)."""
+  from gui.grid_search_engine import LATEST_PATH
+
+  if is_grid_running():
+    raise RuntimeError("Grid Search đang chạy — hủy trước khi xóa dữ liệu.")
+  stop_grid_search(wait=True)
+
+  cleared: list[str] = []
+  for path in (JOB_STATE_PATH, LATEST_PATH):
+    if path.exists():
+      path.unlink()
+      cleared.append(path.name)
+  if delete_archives and RUNS_DIR.exists():
+    for path in sorted(RUNS_DIR.glob("gs_*.json")):
+      path.unlink()
+      cleared.append(path.name)
+  return {"cleared": cleared, "n": len(cleared)}
+
+
 def ensure_grid_worker_running():
   """Khôi phục worker nếu server restart giữa chừng."""
   global _thread

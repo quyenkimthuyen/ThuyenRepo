@@ -15,7 +15,7 @@ from gui.app_settings import (
 )
 from gui.charts import show_plotly
 from gui.grid_search_background import (
-  get_grid_status, is_grid_running, load_job_state,
+  clear_grid_results, get_grid_status, is_grid_running, load_job_state,
   start_grid_search, stop_grid_search,
 )
 from gui.grid_search_engine import (
@@ -251,6 +251,34 @@ def render(embedded: bool = False):
       st.rerun()
     except RuntimeError as e:
       st.error(str(e))
+
+  with st.expander("Reset dữ liệu Grid Search", expanded=False):
+    st.caption(
+      "Xóa `latest.json`, `job_state.json` và các file `gs_*.json`. "
+      "Không ảnh hưởng KB hay Trade Model."
+    )
+    confirm_gs = st.checkbox(
+      "Xác nhận xóa toàn bộ kết quả Grid Search",
+      key="gs_reset_confirm",
+    )
+    if st.button(
+      "Xóa kết quả Grid Search",
+      type="secondary",
+      icon=":material/delete_forever:",
+      key="gs_reset_btn",
+      disabled=running or not confirm_gs,
+    ):
+      try:
+        out = clear_grid_results(delete_archives=True)
+        st.session_state.pop("settings_grid_signature", None)
+        n = out.get("n") or 0
+        if n:
+          st.success(f"Đã xóa {n} file Grid Search.")
+        else:
+          st.info("Không có dữ liệu Grid để xóa.")
+        st.rerun()
+      except RuntimeError as e:
+        st.error(str(e))
 
   rows, objective = _rows_for_display(job_status)
   data = load_latest_grid_run()

@@ -284,7 +284,7 @@ def _render_health(active: dict):
   else:
     st.info(assess["message"])
 
-  m1, m2, m3, m4 = st.columns(4)
+  m1, m2, m3, m4, m5 = st.columns(5)
   m1.metric("Tháng OOS", assess.get("n_months") or 0)
   m2.metric(
     "R nửa đầu",
@@ -297,11 +297,18 @@ def _render_health(active: dict):
       f"{assess['delta_r']:+.1f}" if assess.get("delta_r") is not None else None
     ),
   )
-  edge = assess.get("edge_late")
   m4.metric(
-    "Edge KB (nửa sau)",
-    f"{edge:+.1f}R" if edge is not None else "—",
-    help="Tổng (KB ON − KB OFF) trên nửa sau giai đoạn OOS.",
+    "Edge KB nửa đầu",
+    f"{assess['edge_early']:+.1f}R" if assess.get("edge_early") is not None else "—",
+    help="Tổng (KB ON − KB OFF) trên nửa đầu OOS.",
+  )
+  m5.metric(
+    "Edge KB nửa sau",
+    f"{assess['edge_late']:+.1f}R" if assess.get("edge_late") is not None else "—",
+    delta=(
+      f"{assess['edge_delta']:+.1f}" if assess.get("edge_delta") is not None else None
+    ),
+    help="Tổng (KB ON − KB OFF) nửa sau · delta = nửa sau − nửa đầu.",
   )
 
   monthly_title = f"OOS theo tháng · {format_model_label(active)}"

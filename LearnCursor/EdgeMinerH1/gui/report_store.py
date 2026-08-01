@@ -104,6 +104,17 @@ def delete_report(report_id: str) -> bool:
   return len(idx["reports"]) < before
 
 
+def clear_all_reports() -> int:
+  """Xóa toàn bộ báo cáo lưu trong results/reports."""
+  n = 0
+  if REPORTS_DIR.exists():
+    for path in list(REPORTS_DIR.glob("rpt_*.json")):
+      path.unlink()
+      n += 1
+  _save_index({"reports": []})
+  return n
+
+
 def import_current_backtest(path: Path) -> str | None:
   """Import results/backtest_report.json vào kho so sánh."""
   if not path.exists():
