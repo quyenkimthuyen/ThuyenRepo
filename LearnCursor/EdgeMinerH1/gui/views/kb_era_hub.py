@@ -43,6 +43,105 @@ def _epoch_chart(history: list[dict]):
   return fig
 
 
+def _render_kb_results():
+  """Kết quả học — chọn bất kỳ KB profile đã có qua dropdown."""
+  from gui.components import _profile_label
+  from kb_profiles import get_profile, list_era_profiles, load_kb
+
+  import pandas as pd
+
+  learning = st.session_state.get("learning_report") or load_learning_report()
+  profiles = list_era_profiles()
+  if not profiles and not learning:
+    return
+
+  st.markdown("#### Kết quả học")
+
+  label_to_id: dict[str, str] = {}
+  for p in profiles:
+    label_to_id[_profile_label(p)] = p["id"]
+
+  latest_pid = str((learning or {}).get("kb_profile") or "").strip()
+  if latest_pid and latest_pid not in label_to_id.values():
+    meta = get_profile(latest_pid) or {
+      "id": latest_pid,
+      "name": latest_pid,
+      "trained_from": (learning or {}).get("trained_from"),
+      "trained_to": (learning or {}).get("trained_to"),
+      "epochs": len((learning or {}).get("epoch_history") or []),
+    }
+    label_to_id[_profile_label(meta)] = latest_pid
+
+  if not label_to_id:
+    st.caption("Chưa có KB để xem — chạy học trước.")
+    return
+
+  options = list(label_to_id.keys())
+  default_idx = 0
+  if latest_pid:
+    for i, (_label, pid) in enumerate(label_to_id.items()):
+      if pid == latest_pid:
+        default_idx = i
+        break
+
+  restore_widget(
+    "hub_result_kb",
+    options[default_idx],
+    preference_key="training.result_kb",
+    options=options,
+  )
+
+  picked = st.selectbox(
+    "Chọn KB để xem kết quả",
+    options,
+    key="hub_result_kb",
+    on_change=preference_callback("hub_result_kb", "training.result_kb"),
+    help="Xem lịch sử vòng học của mọi profile KB đã có.",
+  )
+  pid = label_to_id[picked]
+  meta = get_profile(pid) or {}
+
+  history: list[dict] = []
+  source = "kb"
+  try:
+    kb = load_kb(pid)
+    history = list(kb.epoch_history or [])
+  except Exception:
+    history = []
+
+  if not history and learning and str(learning.get("kb_profile") or "") == pid:
+    history = list(learning.get("epoch_history") or [])
+    source = "session"
+
+  trained_from = meta.get("trained_from")
+  trained_to = meta.get("trained_to")
+  is_latest_session = bool(learning and latest_pid == pid)
+  if is_latest_session:
+    trained_from = trained_from or learning.get("trained_from")
+    trained_to = trained_to or learning.get("trained_to")
+    st.caption(
+      f"Profile **{pid}** · {trained_from or '?'} → {trained_to or '?'} · "
+      f"**phiên học gần nhất**"
+    )
+  else:
+    st.caption(
+      f"Profile **{pid}** · {trained_from or '?'} → {trained_to or '?'}"
+    )
+
+  if not history:
+    st.info("Profile này chưa có lịch sử vòng học.")
+    return
+
+  st.caption(
+    f"{len(history)} vòng · nguồn: "
+    + ("file KB" if source == "kb" else "báo cáo phiên gần nhất")
+  )
+  st.dataframe(pd.DataFrame(history), use_container_width=True, hide_index=True)
+  fig = _epoch_chart(history)
+  if fig:
+    st.plotly_chart(fig, use_container_width=True)
+
+
 def _tab_profiles():
   st.subheader("Danh sách profile bộ nhớ")
   st.caption("_Ẩn «Bộ nhớ chung» (profile cũ) — chỉ hiện giai đoạn era đã học._")
@@ -171,14 +270,15 @@ def _tab_merge():
 
 
 def _tab_learn():
-  from gui.app_settings import default_learning_era, get_settings
+  from gui.app_settings import default_learning_era, get_settings, resolve_learning_eras
 
   st.subheader("Huấn luyện bộ nhớ kinh nghiệm")
   s = get_settings()
   era = default_learning_era(s)
   loops = int(s.get("learning_loops") or 4)
+  era_labels = ", ".join(e["label"] for e in resolve_learning_eras(s)) or "—"
   st.caption(
-    f"Theo **Cài đặt**: giai đoạn **{', '.join(s.get('learning_era_keys') or [])}** · "
+    f"Theo **Cài đặt**: giai đoạn **{era_labels}** · "
     f"**{loops}** vòng học · kiểm chứng **{s.get('backtest_from')} → {s.get('backtest_to')}**"
   )
 
@@ -268,29 +368,19 @@ def _tab_learn():
     except RuntimeError as e:
       st.error(str(e))
 
-  learning = st.session_state.get("learning_report") or load_learning_report()
-  if learning:
-    st.markdown("#### Kết quả học gần nhất")
-    st.caption(
-      f"Profile **{learning.get('kb_profile')}** · "
-      f"{learning.get('trained_from')} → {learning.get('trained_to')}"
-    )
-    history = learning.get("epoch_history", [])
-    if history:
-      import pandas as pd
-      st.dataframe(pd.DataFrame(history), use_container_width=True, hide_index=True)
-      fig = _epoch_chart(history)
-      if fig:
-        st.plotly_chart(fig, use_container_width=True)
+  _render_kb_results()
 
 
 def render_training_only():
   """Tab huấn luyện — gọi từ Learning hub."""
-  from gui.app_settings import LEARNING_ERA_OPTIONS, get_settings
+  from gui.app_settings import get_settings, resolve_learning_eras
 
   s = get_settings()
   loops = int(s.get("learning_loops") or 4)
-  st.caption(f"Mặc định **{loops} vòng học** theo Cài đặt — chỉnh tại **Cài đặt**.")
+  eras = ", ".join(e["label"] for e in resolve_learning_eras(s)) or "—"
+  st.caption(
+    f"Mặc định **{loops} vòng học** · giai đoạn **{eras}** theo Cài đặt — chỉnh tại **Cài đặt**."
+  )
 
   _tab_learn()
 
