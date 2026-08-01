@@ -83,14 +83,8 @@ def _render_mode_switcher() -> str:
     horizontal=True,
     key="mt5_bridge_mode",
     on_change=preference_callback("mt5_bridge_mode", "mt5.bridge_mode"),
-    help="Live = giao dịch MT5 thật/demo. Simulate = replay lịch sử để kiểm thử.",
   )
-  mode = _bridge_mode()
-  if mode == "sim":
-    st.caption("**Simulate** — replay lịch sử trên MT5, cùng Trade Model với Live.")
-  else:
-    st.caption("**Live** — theo dõi EA và lệnh trên tài khoản MT5 đang gắn.")
-  return mode
+  return _bridge_mode()
 
 
 def _render_conditions_alignment(
@@ -532,6 +526,26 @@ def _sim_desk_fragment() -> None:
   _render_trader_desk(include_live_metrics=False)
 
 
+def _chart_server_healthy(url: str) -> bool:
+  try:
+    with urlopen(f"{url}/health", timeout=0.5) as response:
+      return response.read() == b"ok"
+  except (OSError, URLError):
+    return False
+
+
+@st.fragment(run_every=timedelta(seconds=2))
+def _live_chart_recover_fragment(max_bars: int) -> None:
+  """After Stop→Start, chart server may lag; retry until ready then remount iframe."""
+  from mt5_bridge.live_monitor_server import ensure_chart_server
+
+  ensure_chart_server(BRIDGE_DIR, DEFAULT_MONITOR_PORT)
+  if _chart_server_healthy(f"http://127.0.0.1:{DEFAULT_MONITOR_PORT}"):
+    st.rerun()
+  else:
+    st.caption("Đang chờ Live chart server…")
+
+
 def _render_live_chart(max_bars: int) -> None:
   """Live + Simulate: persistent browser iframe (Plotly.react) — no Streamlit flicker."""
   bridge_dir = _active_bridge_dir()
@@ -543,11 +557,7 @@ def _render_live_chart(max_bars: int) -> None:
     from mt5_bridge.live_monitor_server import SIM_MONITOR_PORT, ensure_chart_server
     sim_url = f"http://127.0.0.1:{SIM_MONITOR_PORT}"
     ensure_chart_server(BRIDGE_SIM_DIR, SIM_MONITOR_PORT)
-    try:
-      with urlopen(f"{sim_url}/health", timeout=0.5) as response:
-        server_ready = response.read() == b"ok"
-    except (OSError, URLError):
-      server_ready = False
+    server_ready = _chart_server_healthy(sim_url)
     if server_ready:
       # Dates are applied only on Start feed — do not write_sim_state here
       # (changing Từ/Đến must not trigger disk/chart rebuild before Start).
@@ -583,11 +593,9 @@ def _render_live_chart(max_bars: int) -> None:
       show_plotly(fig, sim_chart_title, key="mt5_ea_sim_chart_fallback")
     return
 
-  try:
-    with urlopen(f"{monitor_url}/health", timeout=0.5) as response:
-      server_ready = response.read() == b"ok"
-  except (OSError, URLError):
-    server_ready = False
+  from mt5_bridge.live_monitor_server import ensure_chart_server
+  ensure_chart_server(BRIDGE_DIR, DEFAULT_MONITOR_PORT)
+  server_ready = _chart_server_healthy(monitor_url)
   if server_ready:
     components.iframe(
       f"{monitor_url}/chart?bars={max_bars}",
@@ -606,6 +614,9 @@ def _render_live_chart(max_bars: int) -> None:
   else:
     show_plotly(fig, live_chart_title, key="mt5_ea_live_chart")
     st.caption(legend)
+  # Auto-recover after Stop→Start without forcing a manual page refresh.
+  if bool(bridge_bg.get_status().get("running")):
+    _live_chart_recover_fragment(max_bars)
 
 
 def _render_manual_test_orders(*, show_json: bool = True) -> None:
@@ -747,6 +758,14 @@ def _render_service_controls() -> None:
       bridge_bg.save_config(model_id=model_id, risk_pct=risk, poll_sec=poll, enabled=True)
       ok = bridge_bg.start_worker(detached=True)
       if ok:
+        from mt5_bridge.live_monitor_server import ensure_chart_server
+        import time as _time
+        ensure_chart_server(BRIDGE_DIR, DEFAULT_MONITOR_PORT)
+        monitor_url = f"http://127.0.0.1:{DEFAULT_MONITOR_PORT}"
+        for _ in range(15):
+          if _chart_server_healthy(monitor_url):
+            break
+          _time.sleep(0.2)
         st.toast("Đã start service")
       else:
         st.error("Không start được service — mở mục Kỹ thuật để xem log.")
@@ -901,9 +920,6 @@ def _render_simulate_ea() -> None:
   running = bool(sim.get("running"))
 
   st.subheader("Điều khiển History Feed")
-  st.caption(
-    "Chọn giai đoạn và tốc độ replay — cùng Trade Model với Live."
-  )
 
   default_from = date_cls.fromisoformat(
     str((active or {}).get("oos_from") or "2026-01-01")[:10]
@@ -953,57 +969,47 @@ def _render_simulate_ea() -> None:
     except (TypeError, ValueError):
       set_preference("mt5.sim_delay", 100)
 
-  # Form: kéo ngày/slider KHÔNG rerun trang — Lưu / Start mới ghi preference (+ Start ghi EA)
-  with st.form("sim_ea_params_form", clear_on_submit=False):
-    c1, c2, c3 = st.columns(3)
-    with c1:
-      st.date_input("Từ ngày", key="sim_ea_from", disabled=running)
-    with c2:
-      st.date_input("Đến ngày", key="sim_ea_to", disabled=running)
-    with c3:
-      st.slider(
-        "Delay giữa các bar (ms)",
-        min_value=10,
-        max_value=2000,
-        step=10,
-        key="sim_ea_delay",
-        disabled=running,
-        help="Lưu bằng nút Lưu setting hoặc Start feed. 1000 = 1s.",
-      )
-    b_save, b_start = st.columns(2)
-    with b_save:
-      save_clicked = st.form_submit_button(
-        "Lưu setting",
-        icon=":material/save:",
-        disabled=running,
-        use_container_width=True,
-      )
-    with b_start:
-      start_clicked = st.form_submit_button(
-        "Start feed",
-        type="primary",
-        icon=":material/play_arrow:",
-        disabled=running or not active,
-        use_container_width=True,
-      )
+  c1, c2, c3 = st.columns(3)
+  with c1:
+    st.date_input(
+      "Từ ngày",
+      key="sim_ea_from",
+      disabled=running,
+      on_change=preference_callback("sim_ea_from", "mt5.sim_from"),
+    )
+  with c2:
+    st.date_input(
+      "Đến ngày",
+      key="sim_ea_to",
+      disabled=running,
+      on_change=preference_callback("sim_ea_to", "mt5.sim_to"),
+    )
+  with c3:
+    st.slider(
+      "Delay giữa các bar (ms)",
+      min_value=10,
+      max_value=2000,
+      step=10,
+      key="sim_ea_delay",
+      disabled=running,
+      help="1000 = 1s. Tự lưu khi đổi.",
+      on_change=preference_callback("sim_ea_delay", "mt5.sim_delay"),
+    )
+  start_clicked = st.button(
+    "Start feed",
+    type="primary",
+    icon=":material/play_arrow:",
+    disabled=running or not active,
+    use_container_width=True,
+    key="sim_ea_start",
+  )
 
   d_from = st.session_state["sim_ea_from"]
   d_to = st.session_state["sim_ea_to"]
   delay_ms = int(st.session_state["sim_ea_delay"])
-  st.caption(
-    f"Đang chọn `{d_from}` → `{d_to}` · delay `{delay_ms}`ms — "
-    "đã lưu preference khi **Lưu setting** / **Start feed** (giữ sau refresh / restart app)."
-  )
 
   # Auto-refreshing progress fragment (only polls status — light)
   _render_sim_progress_fragment()
-
-  if save_clicked:
-    if d_to < d_from:
-      st.error("Đến ngày phải ≥ Từ ngày")
-    else:
-      _persist_sim_ea_settings()
-      st.toast("Đã lưu setting Simulate")
 
   if start_clicked:
     if d_to < d_from:
@@ -1321,11 +1327,8 @@ def _render_stats_section() -> None:
   mode = _bridge_mode()
   tick = st.session_state.get("bridge_ui_refresh_tick")
   st.subheader(f"Thống kê lệnh · {_mode_label()}")
-  st.caption(
-    "Tách **Auto** (chiến lược) và **Lệnh sửa** (test / sửa tay). "
-    "R theo SL kế hoạch lúc mở."
-    + (f" · cập nhật `{tick}`" if tick else "")
-  )
+  if tick:
+    st.caption(f"Cập nhật `{tick}`")
 
   all_trades = load_trades(bridge_dir)
   today = date.today()
@@ -1357,10 +1360,6 @@ def _render_stats_section() -> None:
     default_preset = "Cửa sổ History Feed"
     pref_key = "mt5.sim_stats_preset"
     widget_key = "bridge_stats_preset_sim"
-    st.caption(
-      "Simulate lọc theo **giai đoạn quá khứ** (History Feed), "
-      "không dùng Hôm nay / Tuần này theo lịch máy."
-    )
   else:
     preset_options = [
       "Hôm nay",
@@ -1507,15 +1506,17 @@ def _render_stats_section() -> None:
   n_auto = sum(1 for t in period_trades if trade_mode(t) == "auto")
   n_manual = sum(1 for t in period_trades if trade_mode(t) == "manual")
   if date_from or date_to:
-    st.caption(
-      f"Lọc: **{date_from or '…'} → {date_to or '…'}** · "
-      f"{len(period_trades)} lệnh (auto {n_auto} · sửa {n_manual})"
-    )
+    if mode == "sim":
+      st.caption(
+        f"Lọc: **{date_from or '…'} → {date_to or '…'}** · {n_auto} lệnh"
+      )
+    else:
+      st.caption(
+        f"Lọc: **{date_from or '…'} → {date_to or '…'}** · "
+        f"{len(period_trades)} lệnh (auto {n_auto} · sửa {n_manual})"
+      )
   elif mode == "sim":
-    st.caption(
-      f"Lọc: **tất cả lệnh journal** · "
-      f"{len(period_trades)} lệnh (auto {n_auto} · sửa {n_manual})"
-    )
+    st.caption(f"Lọc: **tất cả lệnh journal** · {n_auto} lệnh")
 
   def _stats_block(label: str, mode: str | None) -> None:
     trades = filter_trades(all_trades, date_from=date_from, date_to=date_to, mode=mode)
@@ -1536,21 +1537,20 @@ def _render_stats_section() -> None:
       stats["total_profit"] if stats["total_profit"] is not None else "—",
     )
 
-  tab_auto, tab_manual, tab_all = st.tabs([
-    f"Auto (review chiến lược) · {n_auto}",
-    f"Lệnh sửa · {n_manual}",
-    f"Tất cả · {len(period_trades)}",
-  ])
-  with tab_auto:
-    st.caption(
-      "Review Trade Model: **không** gồm lệnh đã sửa SL/TP, đóng tay, hay test market."
-    )
+  if mode == "sim":
     _stats_block("Auto", "auto")
-  with tab_manual:
-    st.caption("Test market / user sửa SL·TP / đóng tay trên MT5 — đồng bộ App nhưng tách khỏi review auto.")
-    _stats_block("Lệnh sửa", "manual")
-  with tab_all:
-    _stats_block("Tất cả", None)
+  else:
+    tab_auto, tab_manual, tab_all = st.tabs([
+      f"Auto (review chiến lược) · {n_auto}",
+      f"Lệnh sửa · {n_manual}",
+      f"Tất cả · {len(period_trades)}",
+    ])
+    with tab_auto:
+      _stats_block("Auto", "auto")
+    with tab_manual:
+      _stats_block("Lệnh sửa", "manual")
+    with tab_all:
+      _stats_block("Tất cả", None)
 
   tc1, tc2 = st.columns([1, 4])
   if tc1.button("Xóa nhật ký lệnh", key="bridge_clear_trades"):
@@ -1562,20 +1562,23 @@ def _render_stats_section() -> None:
     on_change=preference_callback("bridge_show_open", "mt5.show_open"),
   )
 
-  mode_options = ["Auto", "Lệnh sửa", "Tất cả"]
-  restore_widget(
-    "bridge_stats_table_mode", "Tất cả",
-    preference_key="mt5.stats_table_mode",
-    options=mode_options,
-  )
-  table_mode = st.radio(
-    "Bảng lệnh theo mode",
-    mode_options,
-    horizontal=True,
-    key="bridge_stats_table_mode",
-    on_change=preference_callback("bridge_stats_table_mode", "mt5.stats_table_mode"),
-  )
-  mode_filter = {"Auto": "auto", "Lệnh sửa": "manual", "Tất cả": None}[table_mode]
+  if mode == "sim":
+    mode_filter = "auto"
+  else:
+    mode_options = ["Auto", "Lệnh sửa", "Tất cả"]
+    restore_widget(
+      "bridge_stats_table_mode", "Tất cả",
+      preference_key="mt5.stats_table_mode",
+      options=mode_options,
+    )
+    table_mode = st.radio(
+      "Bảng lệnh theo mode",
+      mode_options,
+      horizontal=True,
+      key="bridge_stats_table_mode",
+      on_change=preference_callback("bridge_stats_table_mode", "mt5.stats_table_mode"),
+    )
+    mode_filter = {"Auto": "auto", "Lệnh sửa": "manual", "Tất cả": None}[table_mode]
   trades = filter_trades(all_trades, date_from=date_from, date_to=date_to, mode=mode_filter)
   view = trades if show_open else [t for t in trades if t.get("status") == "CLOSED"]
   view = list(reversed(view))
@@ -1742,8 +1745,6 @@ def _render_tech_panel() -> None:
 
 def render():
   render_page_header(ALL_ITEMS["mt5_bridge"], show_workspace=False)
-
-  st.caption("MT5 Bridge · theo dõi lệnh và điều khiển EA theo Trade Model đang chọn.")
 
   mode = _render_mode_switcher()
   render_shared_trade_model_banner(context="simulate" if mode == "sim" else "live")

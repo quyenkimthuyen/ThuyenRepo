@@ -32,7 +32,7 @@ NAV_ITEMS: tuple[NavItem, ...] = (
   ),
   NavItem(
     "mt5_bridge", "MT5 Bridge", "mt5_bridge",
-    "Lệnh thật/demo · EA execute · fill journal",
+    "",
     ":material/hub:",
   ),
   NavItem(

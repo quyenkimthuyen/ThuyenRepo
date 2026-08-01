@@ -247,51 +247,12 @@ def sync_active_model_into_runtime_configs() -> dict | None:
 
 
 def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
-  """One active Trade Model for Live · Simulate — same remine params.
-
-  context: ``live`` | ``simulate`` | ``bridge`` | ``shared``
-  """
-  from mt5_bridge.models import describe_strategy_conditions
-
+  """Sync active Trade Model into Live/Sim runtime; warn only when missing."""
   active = sync_active_model_into_runtime_configs()
-  ctx = (context or "shared").lower()
-  roles = {
-    "paper": "Paper desk đã bỏ — dùng Live Parity / Health OOS.",
-    "live": "Live = lệnh MT5 thật/demo. Remine = cùng Trade Model với Simulate.",
-    "simulate": "Simulate = replay quá khứ qua App↔EA. Cùng Trade Model với Live.",
-    "bridge": "Live & Simulate dùng chung Trade Model active.",
-    "shared": "Live · Simulate dùng chung một Trade Model active.",
-  }
-  st.markdown("##### Trade Model · dùng chung Live · Simulate")
   if not active:
     st.warning(
-      "Chưa chọn Trade Model — vào **Trade Models** "
-      "rồi chọn model trên dropdown. Live/Simulate sẽ dùng cùng model đó."
+      "Chưa chọn Trade Model — vào **Trade Models** rồi chọn model."
     )
-    st.caption(roles.get(ctx, roles["shared"]))
-    return None
-
-  params = get_model_run_params(active)
-  try:
-    desc = describe_strategy_conditions(params)
-    fp = desc.get("conditions_fp") or "—"
-    train_w = desc.get("train_weeks")
-    kb_p = desc.get("kb_profile")
-    kb_ep = desc.get("kb_snapshot")
-  except Exception:
-    fp = "—"
-    train_w = params.get("train_weeks")
-    kb_p = params.get("kb_profile")
-    kb_ep = params.get("kb_snapshot")
-
-  st.success(
-    f"**{format_model_label(active)}** · id `{active.get('id')}` · "
-    f"train **{train_w}w** · KB `{kb_p}@ep{kb_ep}` · fp `{fp}`"
-  )
-  st.caption(
-    roles.get(ctx, roles["shared"])
-    + " · Đổi model: **Trade Models** (tự đồng bộ Live/Sim)."
-  )
   return active
 
 
