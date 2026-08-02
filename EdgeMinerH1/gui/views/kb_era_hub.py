@@ -4,7 +4,10 @@ from __future__ import annotations
 import plotly.graph_objects as go
 import streamlit as st
 
-from kb_profiles import DEFAULT_PROFILE_ID, delete_profile, get_profile, list_profiles
+from kb_profiles import (
+  DEFAULT_PROFILE_ID, delete_profile, get_profile, list_disk_profile_ids,
+  list_profiles, purge_orphan_snapshots,
+)
 from gui.components import (
   settings_era_presets, list_kb_profiles_df, suggested_oos_range,
 )
@@ -17,6 +20,7 @@ from gui.ui_preferences import (
   restore_widget,
   set_widget_preference,
 )
+from gui.charts import show_plotly
 from gui.workspace import set_active_from_preset, set_active_workspace
 
 
@@ -25,7 +29,7 @@ def _list_era_profiles():
   return list_era_profiles()
 
 
-def _epoch_chart(history: list[dict]):
+def _epoch_chart(history: list[dict], *, title: str = "Tiến bộ qua từng vòng học"):
   if not history:
     return None
   epochs = [h["epoch"] for h in history]
@@ -35,12 +39,113 @@ def _epoch_chart(history: list[dict]):
   fig.add_trace(go.Scatter(x=epochs, y=[h["total_r"] for h in history],
                            name="Total R", yaxis="y2", line=dict(color="#2ecc71")))
   fig.update_layout(
-    title="Tiến bộ qua từng vòng học",
+    title=title,
     yaxis=dict(title="Tỷ lệ thắng %"),
     yaxis2=dict(title="Tổng R", overlaying="y", side="right"),
     height=320, margin=dict(l=40, r=40, t=50, b=40),
   )
   return fig
+
+
+def _render_kb_results():
+  """Kết quả học — chọn bất kỳ KB profile đã có qua dropdown."""
+  from gui.components import _profile_label
+  from kb_profiles import get_profile, list_era_profiles, load_kb
+
+  import pandas as pd
+
+  learning = st.session_state.get("learning_report") or load_learning_report()
+  profiles = list_era_profiles()
+  if not profiles and not learning:
+    return
+
+  st.markdown("#### Kết quả học")
+
+  label_to_id: dict[str, str] = {}
+  for p in profiles:
+    label_to_id[_profile_label(p)] = p["id"]
+
+  latest_pid = str((learning or {}).get("kb_profile") or "").strip()
+  if latest_pid and latest_pid not in label_to_id.values():
+    meta = get_profile(latest_pid) or {
+      "id": latest_pid,
+      "name": latest_pid,
+      "trained_from": (learning or {}).get("trained_from"),
+      "trained_to": (learning or {}).get("trained_to"),
+      "epochs": len((learning or {}).get("epoch_history") or []),
+    }
+    label_to_id[_profile_label(meta)] = latest_pid
+
+  if not label_to_id:
+    st.caption("Chưa có KB để xem — chạy học trước.")
+    return
+
+  options = list(label_to_id.keys())
+  default_idx = 0
+  if latest_pid:
+    for i, (_label, pid) in enumerate(label_to_id.items()):
+      if pid == latest_pid:
+        default_idx = i
+        break
+
+  restore_widget(
+    "hub_result_kb",
+    options[default_idx],
+    preference_key="training.result_kb",
+    options=options,
+  )
+
+  picked = st.selectbox(
+    "Chọn KB để xem kết quả",
+    options,
+    key="hub_result_kb",
+    on_change=preference_callback("hub_result_kb", "training.result_kb"),
+    help="Xem lịch sử vòng học của mọi profile KB đã có.",
+  )
+  pid = label_to_id[picked]
+  meta = get_profile(pid) or {}
+
+  history: list[dict] = []
+  source = "kb"
+  try:
+    kb = load_kb(pid)
+    history = list(kb.epoch_history or [])
+  except Exception:
+    history = []
+
+  if not history and learning and str(learning.get("kb_profile") or "") == pid:
+    history = list(learning.get("epoch_history") or [])
+    source = "session"
+
+  trained_from = meta.get("trained_from")
+  trained_to = meta.get("trained_to")
+  is_latest_session = bool(learning and latest_pid == pid)
+  if is_latest_session:
+    trained_from = trained_from or learning.get("trained_from")
+    trained_to = trained_to or learning.get("trained_to")
+    st.caption(
+      f"Profile **{pid}** · {trained_from or '?'} → {trained_to or '?'} · "
+      f"**phiên học gần nhất**"
+    )
+  else:
+    st.caption(
+      f"Profile **{pid}** · {trained_from or '?'} → {trained_to or '?'}"
+    )
+
+  if not history:
+    st.info("Profile này chưa có lịch sử vòng học.")
+    return
+
+  st.caption(
+    f"{len(history)} vòng · nguồn: "
+    + ("file KB" if source == "kb" else "báo cáo phiên gần nhất")
+  )
+  st.dataframe(pd.DataFrame(history), use_container_width=True, hide_index=True)
+  from gui.app_settings import kb_profile_label
+  chart_name = f"Tiến bộ vòng học · {kb_profile_label(pid)} ({pid})"
+  fig = _epoch_chart(history, title=chart_name)
+  if fig:
+    show_plotly(fig, chart_name, key=f"hub_epoch_chart_{pid}")
 
 
 def _tab_profiles():
@@ -171,14 +276,15 @@ def _tab_merge():
 
 
 def _tab_learn():
-  from gui.app_settings import default_learning_era, get_settings
+  from gui.app_settings import default_learning_era, get_settings, resolve_learning_eras
 
   st.subheader("Huấn luyện bộ nhớ kinh nghiệm")
   s = get_settings()
   era = default_learning_era(s)
   loops = int(s.get("learning_loops") or 4)
+  era_labels = ", ".join(e["label"] for e in resolve_learning_eras(s)) or "—"
   st.caption(
-    f"Theo **Cài đặt**: giai đoạn **{', '.join(s.get('learning_era_keys') or [])}** · "
+    f"Theo **Cài đặt**: giai đoạn **{era_labels}** · "
     f"**{loops}** vòng học · kiểm chứng **{s.get('backtest_from')} → {s.get('backtest_to')}**"
   )
 
@@ -268,29 +374,102 @@ def _tab_learn():
     except RuntimeError as e:
       st.error(str(e))
 
-  learning = st.session_state.get("learning_report") or load_learning_report()
-  if learning:
-    st.markdown("#### Kết quả học gần nhất")
+  with st.expander("Reset dữ liệu KB", expanded=False):
     st.caption(
-      f"Profile **{learning.get('kb_profile')}** · "
-      f"{learning.get('trained_from')} → {learning.get('trained_to')}"
+      "Xóa file bộ nhớ + snapshot trên đĩa (kể cả orphan). Không xóa giai đoạn trong **Cài đặt**. "
+      "Profile `default` không xóa được."
     )
-    history = learning.get("epoch_history", [])
-    if history:
-      import pandas as pd
-      st.dataframe(pd.DataFrame(history), use_container_width=True, hide_index=True)
-      fig = _epoch_chart(history)
-      if fig:
-        st.plotly_chart(fig, use_container_width=True)
+    eras = resolve_learning_eras(s)
+    era_ids = [e["kb_profile"] for e in eras if e.get("kb_profile")]
+    all_profiles = [
+      p["id"] for p in list_profiles()
+      if p.get("id") and p["id"] != DEFAULT_PROFILE_ID and p.get("exists")
+    ]
+    disk_ids = [pid for pid in list_disk_profile_ids() if pid != DEFAULT_PROFILE_ID]
+    options = sorted(set(era_ids) | set(all_profiles) | set(disk_ids))
+    also_related = st.checkbox(
+      "Cũng xóa backtest/report + file Trade Model orphan",
+      key="hub_kb_reset_related",
+    )
+    if not options and not also_related:
+      st.caption("Chưa có profile KB / snapshot để xóa.")
+    else:
+      pick_reset = st.multiselect(
+        "Profile cần xóa",
+        options,
+        default=[pid for pid in era_ids if pid in options],
+        key="hub_kb_reset_pick",
+      ) if options else []
+      confirm_kb = st.checkbox(
+        "Xác nhận xóa vĩnh viễn dữ liệu đã chọn",
+        key="hub_kb_reset_confirm",
+      )
+      if st.button(
+        "Xóa dữ liệu KB đã chọn",
+        type="secondary",
+        icon=":material/delete_forever:",
+        key="hub_kb_reset_btn",
+        disabled=running or not confirm_kb or (not pick_reset and not also_related),
+      ):
+        deleted = []
+        for pid in pick_reset:
+          if delete_profile(pid):
+            deleted.append(pid)
+        orphans = purge_orphan_snapshots()
+        notes = []
+        if deleted:
+          notes.append(f"KB: {', '.join(deleted)}")
+        if orphans:
+          notes.append(f"orphan snap: {', '.join(orphans)}")
+        try:
+          from gui.services import BACKTEST_REPORT, LEARNING_REPORT, load_learning_report
+          from run_backtest import REPORT_DIR
+          lr = load_learning_report() or {}
+          if (not pick_reset or lr.get("kb_profile") in deleted) and LEARNING_REPORT.exists():
+            LEARNING_REPORT.unlink()
+            st.session_state.pop("learning_report", None)
+          if also_related:
+            from gui.report_store import clear_all_reports
+            from gui.trade_model import purge_orphan_model_artifacts
+            n_rpt = clear_all_reports()
+            tm_files = purge_orphan_model_artifacts()
+            for path in (BACKTEST_REPORT, REPORT_DIR / "oos_trades.csv"):
+              if path.exists():
+                path.unlink()
+            st.session_state.pop("backtest_report", None)
+            notes.append(f"reports={n_rpt}, tm_orphan={len(tm_files)}")
+        except Exception:
+          pass
+        try:
+          from gui.workspace import load_workspace_file, save_workspace_file
+          ws = load_workspace_file() or {}
+          if ws.get("kb_profile") in set(deleted) | set(orphans):
+            ws["kb_profile"] = DEFAULT_PROFILE_ID
+            ws["kb_snapshot"] = None
+            ws["label"] = "Chưa chọn trade model"
+            save_workspace_file(ws)
+            st.session_state.pop("active_workspace", None)
+        except Exception:
+          pass
+        if notes:
+          st.success("Đã xóa — " + "; ".join(notes))
+        else:
+          st.warning("Không xóa được dữ liệu nào.")
+        st.rerun()
+
+  _render_kb_results()
 
 
 def render_training_only():
   """Tab huấn luyện — gọi từ Learning hub."""
-  from gui.app_settings import LEARNING_ERA_OPTIONS, get_settings
+  from gui.app_settings import get_settings, resolve_learning_eras
 
   s = get_settings()
   loops = int(s.get("learning_loops") or 4)
-  st.caption(f"Mặc định **{loops} vòng học** theo Cài đặt — chỉnh tại **Cài đặt**.")
+  eras = ", ".join(e["label"] for e in resolve_learning_eras(s)) or "—"
+  st.caption(
+    f"Mặc định **{loops} vòng học** · giai đoạn **{eras}** theo Cài đặt — chỉnh tại **Cài đặt**."
+  )
 
   _tab_learn()
 

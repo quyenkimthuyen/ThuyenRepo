@@ -1,4 +1,4 @@
-"""Trade Model — mô hình giao dịch tạo từ Grid Search (dùng cho paper & phân tích)."""
+"""Trade Model — mô hình giao dịch tạo từ Grid Search (Live · Simulate · phân tích)."""
 from __future__ import annotations
 
 import json
@@ -205,11 +205,6 @@ def set_active_trade_model(model_id: str | None) -> dict | None:
     except Exception:
       pass
     try:
-      from paper_service import save_config as save_paper_config
-      save_paper_config(model_id=model_id)
-    except Exception:
-      pass
-    try:
       from mt5_bridge.ea_simulator import load_sim_state, write_sim_state
       sim = load_sim_state()
       if not sim.get("running") and not sim.get("enabled"):
@@ -228,18 +223,11 @@ def set_active_trade_model(model_id: str | None) -> dict | None:
 
 
 def sync_active_model_into_runtime_configs() -> dict | None:
-  """Keep Paper / Live / Simulate runtime configs on the same active Trade Model id."""
+  """Keep Live / Simulate runtime configs on the same active Trade Model id."""
   active = get_active_trade_model()
   mid = (active or {}).get("id")
   if not mid:
     return active
-  try:
-    from paper_service import load_config as paper_load, save_config as paper_save
-    cfg = paper_load()
-    if cfg.get("model_id") != mid:
-      paper_save(model_id=mid)
-  except Exception:
-    pass
   try:
     from mt5_bridge.background import load_config as bridge_load, save_config as bridge_save
     cfg = bridge_load()
@@ -262,47 +250,26 @@ def sync_active_model_into_runtime_configs() -> dict | None:
 
 
 def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
-  """One active Trade Model for Paper · Live · Simulate — same remine params."""
-  from mt5_bridge.models import describe_strategy_conditions, get_model_run_params
-
+  """Sync active Trade Model into Live/Sim runtime; show selection at page top."""
   active = sync_active_model_into_runtime_configs()
-  ctx = (context or "shared").lower()
-  roles = {
-    "paper": "Paper = desk nhẹ (không EA). Kiểm Live chính = Parity / Health OOS.",
-    "live": "Live = lệnh MT5 thật/demo. Remine = cùng Trade Model với Paper & Simulate.",
-    "simulate": "Simulate = replay quá khứ qua App↔EA. Cùng Trade Model với Live.",
-    "bridge": "Live & Simulate dùng chung Trade Model active với Paper.",
-    "shared": "Paper · Live · Simulate dùng chung một Trade Model active.",
-  }
-  st.markdown("##### Trade Model · dùng chung Paper · Live · Simulate")
   if not active:
     st.warning(
-      "Chưa chọn Trade Model — vào **Học & tối ưu → Trade Models → Quản lý** "
-      "rồi chọn active. Cả 3 mode sẽ dùng cùng model đó."
+      "Chưa chọn Trade Model — vào **Trade Models** rồi chọn model."
     )
-    st.caption(roles.get(ctx, roles["shared"]))
-    return None
-
-  params = get_model_run_params(active)
-  try:
-    desc = describe_strategy_conditions(params)
-    fp = desc.get("conditions_fp") or "—"
-    train_m = desc.get("train_months")
-    kb_p = desc.get("kb_profile")
-    kb_ep = desc.get("kb_snapshot")
-  except Exception:
-    fp = "—"
-    train_m = params.get("train_months")
-    kb_p = params.get("kb_profile")
-    kb_ep = params.get("kb_snapshot")
-
-  st.success(
-    f"**{format_model_label(active)}** · id `{active.get('id')}` · "
-    f"train **{train_m} tháng** · KB `{kb_p}@ep{kb_ep}` · fp `{fp}`"
-  )
+    return active
+  label = format_model_label(active)
+  oos_from = str(active.get("oos_from") or "—")[:10]
+  oos_to = str(active.get("oos_to") or "—")[:10]
+  bits = [f"**Trade Model:** {label}"]
+  if active.get("total_r") is not None:
+    try:
+      bits.append(f"**{float(active['total_r']):+.1f}R**")
+    except (TypeError, ValueError):
+      pass
+  st.markdown(" · ".join(bits))
   st.caption(
-    roles.get(ctx, roles["shared"])
-    + " · Đổi model: **Trade Models → Quản lý** (tự đồng bộ Paper/Live/Sim config)."
+    f"OOS `{oos_from} → {oos_to}` · dùng chung Live / Simulate / Paper · "
+    "đổi tại **Trade Models → Quản lý**"
   )
   return active
 
@@ -533,12 +500,10 @@ def dedupe_trade_models(*, keep_ids: set[str] | None = None) -> dict:
       seen_labels.add(low)
 
   for mid in removed:
-    path = model_report_path(mid)
-    if path.exists():
-      try:
-        path.unlink()
-      except OSError:
-        pass
+    try:
+      delete_model_artifacts(mid)
+    except OSError:
+      pass
 
   store["models"] = kept
   save_models_store(store)
@@ -551,6 +516,51 @@ def dedupe_trade_models(*, keep_ids: set[str] | None = None) -> dict:
   return {"removed": removed, "renamed": renamed, "kept": len(kept)}
 
 
+def _model_id_from_artifact_name(name: str) -> str | None:
+  if not name.endswith(".json"):
+    return None
+  stem = name[:-5]
+  for suffix in ("_kb_off", "_live_weeks", "_schedule"):
+    if stem.endswith(suffix):
+      return stem[: -len(suffix)]
+  return stem
+
+
+def model_artifact_paths(model_id: str) -> list[Path]:
+  paths = [model_report_path(model_id), model_kb_off_report_path(model_id)]
+  try:
+    from trade_model_schedule import model_live_weeks_path, model_schedule_path
+    paths.extend([model_schedule_path(model_id), model_live_weeks_path(model_id)])
+  except Exception:
+    pass
+  return paths
+
+
+def delete_model_artifacts(model_id: str) -> list[str]:
+  cleared: list[str] = []
+  for path in model_artifact_paths(model_id):
+    if path.exists():
+      path.unlink()
+      cleared.append(path.name)
+  return cleared
+
+
+def purge_orphan_model_artifacts() -> list[str]:
+  """Xóa file artifact trên đĩa không còn model trong registry."""
+  known = {m.get("id") for m in list_trade_models() if m.get("id")}
+  cleared: list[str] = []
+  if not MODELS_DIR.exists():
+    return cleared
+  orphan_ids: set[str] = set()
+  for path in MODELS_DIR.glob("*.json"):
+    mid = _model_id_from_artifact_name(path.name)
+    if mid and mid not in known:
+      orphan_ids.add(mid)
+  for mid in sorted(orphan_ids):
+    cleared.extend(delete_model_artifacts(mid))
+  return cleared
+
+
 def delete_trade_model(model_id: str) -> bool:
   store = load_models_store()
   before = len(store["models"])
@@ -558,9 +568,7 @@ def delete_trade_model(model_id: str) -> bool:
   if len(store["models"]) == before:
     return False
   save_models_store(store)
-  path = model_report_path(model_id)
-  if path.exists():
-    path.unlink()
+  delete_model_artifacts(model_id)
   if load_active_model_id() == model_id:
     remaining = store["models"]
     set_active_trade_model(remaining[0]["id"] if remaining else None)

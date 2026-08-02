@@ -1,0 +1,6933 @@
+{
+  "meta": {
+    "source": "walk_forward",
+    "model_id": "tm_h_c_3_th_ng_h_c_2024_2025_v__7a631c84",
+    "data_fingerprint": "20d090bb61c2ba43c9ea22f3e5e35e16e4af044ec78b4c12d21c68d048e9bd59",
+    "config": {
+      "version": "adaptive_miner_v4",
+      "train_months": 3,
+      "target_trades_per_week": 2.0,
+      "pair": "EUR/USD",
+      "tf": "H1",
+      "use_learning_kb": true,
+      "kb_profile": "era_2024_2025",
+      "kb_snapshot": 2,
+      "kb_validation": {
+        "ok": true,
+        "message": "OK — KB học đến 2025-12-31; OOS từ 2025-01-01. Walk-forward lọc kinh nghiệm theo as_of mỗi tuần.",
+        "profile_id": "era_2024_2025"
+      },
+      "oos_from": "2025-01-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "holdout_months": 0,
+      "risk_pct_per_trade": 1.0,
+      "data_fingerprint": "20d090bb61c2ba43c9ea22f3e5e35e16e4af044ec78b4c12d21c68d048e9bd59",
+      "trade_model_id": "tm_h_c_3_th_ng_h_c_2024_2025_v__7a631c84"
+    },
+    "n_weeks": 82,
+    "overall": {
+      "n_trades": 141,
+      "trades_per_week": 1.72,
+      "win_rate_pct": 56.74,
+      "avg_rr": 2.017,
+      "profit_factor": 2.601,
+      "total_pips": 1098.29,
+      "total_r": 108.75,
+      "max_drawdown_r": 5.44,
+      "max_win_streak": 7,
+      "max_loss_streak": 5,
+      "risk_of_ruin_pct": 0.0
+    }
+  },
+  "weekly": [
+    {
+      "week_start": "2025-01-06",
+      "strategy": {
+        "name": "Forge RR2.5 hybrid 4L4S price+rsi #83AC",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 2.5,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.5,
+        "min_rules_match": 3,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.23315849811594785
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.08912418725459788
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.000285314280948694
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 4.188940257905856
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.188706936050708,
+            "w": 3.3309497921908067
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.789749884902625
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.822806169826805
+          }
+        ]
+      },
+      "train_start_idx": 10983,
+      "train_end_idx": 12475,
+      "week_end": "2025-01-13",
+      "oos_trades": 2,
+      "oos_r": 1.482,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-01-13",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L4S rsi+price #FCEC",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.3106511935580629
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.04079755780541288
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00016160755584793108
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 7.1613516042366365
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 6.573042059861896
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.4029656931934267
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5029042429038575,
+            "w": 3.5724269400423796
+          }
+        ]
+      },
+      "train_start_idx": 11103,
+      "train_end_idx": 12597,
+      "week_end": "2025-01-20",
+      "oos_trades": 2,
+      "oos_r": 4.696,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-01-20",
+      "strategy": {
+        "name": "Forge RR3 hybrid 3L3S rsi+price #CD14",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4244468208207366,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8022075823809822,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.01301648987746731
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 1.4544680026313795e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 11.96930811048373
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 0.9172130616908106
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 10.476496774463028
+          }
+        ]
+      },
+      "train_start_idx": 11223,
+      "train_end_idx": 12717,
+      "week_end": "2025-01-27",
+      "oos_trades": 1,
+      "oos_r": -1.071,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-01-27",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L4S rsi+price #FCEC",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.3106511935580629
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.07222778675611413
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.000538691852826437
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 5.8276026257514095
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.271880389854388
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.8099852989161334
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 2.7394239163894496
+          }
+        ]
+      },
+      "train_start_idx": 11343,
+      "train_end_idx": 12837,
+      "week_end": "2025-02-03",
+      "oos_trades": 1,
+      "oos_r": 1.823,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-02-03",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S price+rsi #0A73",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.24503694197100837
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.06609842843985735
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.000538691852826437
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 4.331254124581336
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.822534228792632
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.8099852989161334
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 3.93407631583696
+          }
+        ]
+      },
+      "train_start_idx": 11463,
+      "train_end_idx": 12957,
+      "week_end": "2025-02-10",
+      "oos_trades": 2,
+      "oos_r": 0.252,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-02-10",
+      "strategy": {
+        "name": "Forge RR2 hybrid 3L3S rsi+price #EB19",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.5161013519329698,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8022075823809822,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.11679151146378072,
+            "w": 0.007788000182380311
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 6.933137027053263e-07
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 32.54894209584939
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 0.9595060058510465
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5646560244241645,
+            "w": 15.483609373438593
+          }
+        ]
+      },
+      "train_start_idx": 11583,
+      "train_end_idx": 13077,
+      "week_end": "2025-02-17",
+      "oos_trades": 2,
+      "oos_r": 6.335,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-02-17",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #4792",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7479185163880628,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7479185163880628,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.17805292299653291
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.03225563610394972
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 8.559428428460819e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 10.028678034231786
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 8.298736225925962
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.5820232926496975
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 7.766596041185539
+          }
+        ]
+      },
+      "train_start_idx": 11703,
+      "train_end_idx": 13197,
+      "week_end": "2025-02-24",
+      "oos_trades": 2,
+      "oos_r": -2.167,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-02-24",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L4S rsi+price #FCF0",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.477726064223131
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.24503694197100837
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10828416061052727,
+            "w": 0.07650794129379927
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 4.848226675437932e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 10.730489721759719
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.357152529091463
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 33.11431149991314,
+            "w": 1.7180579787711814
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 6.409015269785832
+          }
+        ]
+      },
+      "train_start_idx": 11823,
+      "train_end_idx": 13317,
+      "week_end": "2025-03-03",
+      "oos_trades": 2,
+      "oos_r": 2.174,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-03-03",
+      "strategy": {
+        "name": "Forge RR2 hybrid 3L3S price+rsi #8965",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4244468208207366,
+        "rr": 2.0,
+        "atr_mult": 0.7682695669873689,
+        "score_threshold": 0.9486039065045624,
+        "atr_mult_sl": 0.7682695669873689,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.086394206042
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 7.703485585614736e-06
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 4.304007188861462
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.1033958176146577
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 15.781098573616694
+          }
+        ]
+      },
+      "train_start_idx": 11969,
+      "train_end_idx": 13437,
+      "week_end": "2025-03-10",
+      "oos_trades": 1,
+      "oos_r": -1.05,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-03-10",
+      "strategy": {
+        "name": "Forge RR3 hybrid 3L3S price+rsi #2C1A",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.49929386029470674,
+        "rr": 3.0,
+        "atr_mult": 0.7283602754489782,
+        "score_threshold": 0.8022075823809822,
+        "atr_mult_sl": 0.7283602754489782,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.11679151146378072,
+            "w": 0.007788000182380311
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 6.933137027053263e-07
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 53.670041083050734,
+            "w": 22.433535489220997
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 0.9856440342170988
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 35.23430261034559
+          }
+        ]
+      },
+      "train_start_idx": 12089,
+      "train_end_idx": 13558,
+      "week_end": "2025-03-17",
+      "oos_trades": 2,
+      "oos_r": 0.199,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-03-17",
+      "strategy": {
+        "name": "Forge RR2 hybrid 3L4S price+rsi #A7B7",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4066048558605772,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8239876444442578,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.03733541585910153
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 42.50486321899735,
+            "w": 0.00030512553876028606
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 6.577355054257967
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.225001912197892
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 0.9221439015450209
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 10.133802632437812
+          }
+        ]
+      },
+      "train_start_idx": 12209,
+      "train_end_idx": 13678,
+      "week_end": "2025-03-24",
+      "oos_trades": 2,
+      "oos_r": 0.591,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-03-24",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #CDBE",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.24503694197100837
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.03733541585910153
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00016160755584793108
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 6.621125916734495
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 5.361008973008116
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.3221485056675937
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.807957899895628
+          }
+        ]
+      },
+      "train_start_idx": 12329,
+      "train_end_idx": 13798,
+      "week_end": "2025-03-31",
+      "oos_trades": 1,
+      "oos_r": -1.072,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-03-31",
+      "strategy": {
+        "name": "Forge RR2 hybrid 3L4S rsi+price #7510",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3545958258698137,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.05710521245685428
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.000285314280948694
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 8.086200229492784
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 6.58688699955961
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.0752489004187185
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.66118782468998
+          }
+        ]
+      },
+      "train_start_idx": 12414,
+      "train_end_idx": 13918,
+      "week_end": "2025-04-07",
+      "oos_trades": 2,
+      "oos_r": 1.968,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-04-07",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L3S rsi+price #126D",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4066048558605772,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8239876444442578,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.24503694197100837
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.011911891023451159
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 1.4544680026313795e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 11.71298884106754
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.8197155873520376
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 3.772672464251072
+          }
+        ]
+      },
+      "train_start_idx": 12499,
+      "train_end_idx": 14038,
+      "week_end": "2025-04-14",
+      "oos_trades": 1,
+      "oos_r": 1.974,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-04-14",
+      "strategy": {
+        "name": "Forge RR2 hybrid 3L3S rsi+price #0CA9",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.472133303142495,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8022075823809822,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.011012709671446031
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 1.4544680026313795e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 11.71298884106754
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 0.9221439015450209
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 10.10118461900608
+          }
+        ]
+      },
+      "train_start_idx": 12621,
+      "train_end_idx": 14158,
+      "week_end": "2025-04-21",
+      "oos_trades": 1,
+      "oos_r": -1.09,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-04-21",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L3S price+rsi #118E",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4066048558605772,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.6675018302900498,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.17805292299653291
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.008796143105764404
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 7.703485585614736e-06
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 5.653097387105682
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 30.781738130809142,
+            "w": 1.327518413729068
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 7.044154598304601
+          }
+        ]
+      },
+      "train_start_idx": 12741,
+      "train_end_idx": 14278,
+      "week_end": "2025-04-28",
+      "oos_trades": 2,
+      "oos_r": 5.131,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-04-28",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S price+rsi #1FB8",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 3,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.24503694197100837
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.034517113572439556
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00016160755584793108
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 4.137345251863346
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0039429059889715,
+            "w": 2.7819037480945465
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.327518413729068
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.814200353272305
+          }
+        ]
+      },
+      "train_start_idx": 12861,
+      "train_end_idx": 14398,
+      "week_end": "2025-05-05",
+      "oos_trades": 1,
+      "oos_r": 2.377,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-05-05",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #5E54",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.42265601534132513,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.7769698683500954,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.5965380537486988
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.2238403226543639
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.07987265049374011
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00016160755584793108
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 6.504892831325783
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 5.193393413319361
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.327518413729068
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.096613632101943
+          }
+        ]
+      },
+      "train_start_idx": 13005,
+      "train_end_idx": 14518,
+      "week_end": "2025-05-12",
+      "oos_trades": 2,
+      "oos_r": 2.556,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-05-12",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #4278",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3414480235395055,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.24503694197100837
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.03215408226712485
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 42.75552158617718,
+            "w": 0.00030512553876028606
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 61.962395256308085,
+            "w": 5.099879324140846
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.188353480092007,
+            "w": 4.670289758075506
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.327518413729068
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5188695521399749,
+            "w": 3.5724269400423796
+          }
+        ]
+      },
+      "train_start_idx": 13125,
+      "train_end_idx": 14638,
+      "week_end": "2025-05-19",
+      "oos_trades": 2,
+      "oos_r": 3.819,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-05-19",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S price+rsi #F80D",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4270192334227712,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.0550463263997292
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.24503694197100837
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.05692542206583537
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.000538691852826437
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 57.90476961450548,
+            "w": 3.0
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.1694110935084467,
+            "w": 3.3309497921908067
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.8271063648329517
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 3.846731333173007
+          }
+        ]
+      },
+      "train_start_idx": 13245,
+      "train_end_idx": 14758,
+      "week_end": "2025-05-26",
+      "oos_trades": 2,
+      "oos_r": 0.504,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-05-26",
+      "strategy": {
+        "name": "Forge RR2 hybrid 3L3S price+rsi #472A",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4244468208207366,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8022075823809822,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 3,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.010258782850324244
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 1.4544680026313795e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 4.258436835045303
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 0.9258891903302968
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 10.258319821205946
+          }
+        ]
+      },
+      "train_start_idx": 13365,
+      "train_end_idx": 14878,
+      "week_end": "2025-06-02",
+      "oos_trades": 1,
+      "oos_r": 1.512,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-06-02",
+      "strategy": {
+        "name": "Forge RR3 full 4L4S price+rsi #9499",
+        "exit_mode": "full",
+        "ml_prob_min": 0.37914035219059117,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.0819393179154813
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.24503694197100837
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.05692542206583537
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 42.53889496851076,
+            "w": 0.0010170851292009536
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 4.286883027031837
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.609672173720047
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.389870727588655
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.461539077893294
+          }
+        ]
+      },
+      "train_start_idx": 13435,
+      "train_end_idx": 14998,
+      "week_end": "2025-06-09",
+      "oos_trades": 2,
+      "oos_r": 1.883,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-06-09",
+      "strategy": {
+        "name": "Forge RR2.5 full 4L4S rsi+price #C458",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 2.5,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.5,
+        "min_rules_match": 3,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.17805292299653291
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.04235512840333254
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.05296428365338958
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 8.520776173479586
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.897309129741814
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.23189208934111
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5024833966491254,
+            "w": 2.5349280293326277
+          }
+        ]
+      },
+      "train_start_idx": 13555,
+      "train_end_idx": 15118,
+      "week_end": "2025-06-16",
+      "oos_trades": 2,
+      "oos_r": 1.377,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-06-16",
+      "strategy": {
+        "name": "Forge RR3 full 4L4S rsi+price #FFAE",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7645230554644598,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7645230554644598,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.17805292299653291
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.04235512840333254
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.028052153429167104
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 8.513577730116836
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.13187108641589
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.23189208934111
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.6051719663901585
+          }
+        ]
+      },
+      "train_start_idx": 13675,
+      "train_end_idx": 15238,
+      "week_end": "2025-06-23",
+      "oos_trades": 2,
+      "oos_r": 1.874,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-06-23",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L4S rsi+price #FCEC",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.24503694197100837
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.0744045926516768
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00016160755584793108
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 7.306438562751172
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0246783699421156,
+            "w": 4.670289758075506
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.0104951168526748
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.43066025298734
+          }
+        ]
+      },
+      "train_start_idx": 13795,
+      "train_end_idx": 15358,
+      "week_end": "2025-06-30",
+      "oos_trades": 2,
+      "oos_r": 0.746,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-06-30",
+      "strategy": {
+        "name": "Forge RR3 full 3L4S rsi+price #6A44",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.17805292299653291
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.09808730181821614,
+            "w": 0.07650794129379927
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 8.361294081026774
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 6.318399536627889
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.16382935820918,
+            "w": 1.607253606768609
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 7.774330314979469
+          }
+        ]
+      },
+      "train_start_idx": 13915,
+      "train_end_idx": 15478,
+      "week_end": "2025-07-07",
+      "oos_trades": 2,
+      "oos_r": 5.838,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-07-07",
+      "strategy": {
+        "name": "Forge RR2 hybrid 2L3S rsi+price #78A5",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4244468208207366,
+        "rr": 2.0,
+        "atr_mult": 0.702772567036668,
+        "score_threshold": 0.8859945528780324,
+        "atr_mult_sl": 0.702772567036668,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.007633005590803832
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 17.227237212885278
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.6052853367428475
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 14.907862679690854
+          }
+        ]
+      },
+      "train_start_idx": 14038,
+      "train_end_idx": 15598,
+      "week_end": "2025-07-14",
+      "oos_trades": 2,
+      "oos_r": 2.009,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-07-14",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L4S rsi+price #DD4E",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4230175481468057,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.139980337563837
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.24503694197100837
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.03215408226712485
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.04733278253441673
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 7.293114873993707
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 6.528482353518082
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.8593422009111924
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.460061437734421
+          }
+        ]
+      },
+      "train_start_idx": 14158,
+      "train_end_idx": 15718,
+      "week_end": "2025-07-21",
+      "oos_trades": 2,
+      "oos_r": 0.818,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-07-21",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #9121",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.41938047032684367,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.17805292299653291
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.04235512840333254
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.04733278253441673
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 8.285460636292935
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 5.755288596183602
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.2953666216880073
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.458999343220783
+          }
+        ]
+      },
+      "train_start_idx": 14278,
+      "train_end_idx": 15838,
+      "week_end": "2025-07-28",
+      "oos_trades": 2,
+      "oos_r": 1.078,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-07-28",
+      "strategy": {
+        "name": "Forge RR3 full 4L4S rsi+price #5928",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.24503694197100837
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.03215408226712485
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00014442440771837361
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 6.571247882179772
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 5.180740764386908
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.365910098271586
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.65629481379468
+          }
+        ]
+      },
+      "train_start_idx": 14398,
+      "train_end_idx": 15958,
+      "week_end": "2025-08-04",
+      "oos_trades": 2,
+      "oos_r": -2.082,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-08-04",
+      "strategy": {
+        "name": "Forge RR3 full 4L4S rsi+price #5928",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.22840739744814298
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.04235512840333254
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.0002278669694398572
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 58.40662984003345,
+            "w": 5.712823344239977
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 5.453707129443506
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.214899102028589
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.331505106915728
+          }
+        ]
+      },
+      "train_start_idx": 14515,
+      "train_end_idx": 16078,
+      "week_end": "2025-08-11",
+      "oos_trades": 2,
+      "oos_r": 1.829,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-08-11",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S price+rsi #0A73",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.17805292299653291
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.04235512840333254
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.0002278669694398572
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 4.142089620230082
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.0095236735687445
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.236029785844917
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.248472709137014
+          }
+        ]
+      },
+      "train_start_idx": 14635,
+      "train_end_idx": 16198,
+      "week_end": "2025-08-18",
+      "oos_trades": 2,
+      "oos_r": 0.114,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-08-18",
+      "strategy": {
+        "name": "Forge RR3 full 4L4S price+rsi #9CF8",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.22210218480563387
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.023924113931739287
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 6.836009083195715e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 64.55159212781895,
+            "w": 5.099879324140846
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 8.429992723892374
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.2639189488150717
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 7.478023803685479
+          }
+        ]
+      },
+      "train_start_idx": 14755,
+      "train_end_idx": 16318,
+      "week_end": "2025-08-25",
+      "oos_trades": 2,
+      "oos_r": 5.815,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-08-25",
+      "strategy": {
+        "name": "Forge RR3 full 3L3S rsi+price #9D2A",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.7889093688155093,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.15415332115393263
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 36.9800099325929,
+            "w": 0.00030512553876028606
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 9.322181759113965
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 5.597126724021549
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.6721709372931626
+          }
+        ]
+      },
+      "train_start_idx": 14875,
+      "train_end_idx": 16438,
+      "week_end": "2025-09-01",
+      "oos_trades": 1,
+      "oos_r": -1.081,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-09-01",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #CDBE",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8608294413507854,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.24503694197100837
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.03014076100802203
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00014442440771837361
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 6.477705046421705
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 3.874878651646819
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.7901970393375235
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.5998722192782
+          }
+        ]
+      },
+      "train_start_idx": 14995,
+      "train_end_idx": 16558,
+      "week_end": "2025-09-08",
+      "oos_trades": 2,
+      "oos_r": -2.188,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-09-08",
+      "strategy": {
+        "name": "Forge RR3 full 3L4S price+rsi #B541",
+        "exit_mode": "full",
+        "ml_prob_min": 0.43902357607801223,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.5756497268775304,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.011874133047889627
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 2.050802724958715e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 5.674134630033004
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0744437924218027,
+            "w": 5.735670739818583
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.2966813871852445
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.278917366974883
+          }
+        ]
+      },
+      "train_start_idx": 15115,
+      "train_end_idx": 16678,
+      "week_end": "2025-09-15",
+      "oos_trades": 2,
+      "oos_r": 5.792,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-09-15",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #7283",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4317055262408683,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.3056297054178336
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.06974576435995267
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.0004814146923945788
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 5.688446720177078
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.460596254545819
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.8843288423319193
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.296753909606032
+          }
+        ]
+      },
+      "train_start_idx": 15235,
+      "train_end_idx": 16798,
+      "week_end": "2025-09-22",
+      "oos_trades": 2,
+      "oos_r": 0.669,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-09-22",
+      "strategy": {
+        "name": "Forge RR3 full 4L4S price+rsi #00CD",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4009157207466917,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8653785918505409,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.24503694197100837
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.03014076100802203
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00014442440771837361
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 7.016087897639799
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 6.210442007800395
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 32.214460082999956,
+            "w": 1.6110622840276627
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 7.788399747647209
+          }
+        ]
+      },
+      "train_start_idx": 15355,
+      "train_end_idx": 16918,
+      "week_end": "2025-09-29",
+      "oos_trades": 1,
+      "oos_r": 2.916,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-09-29",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #CDBE",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.2792329721251964
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.03014076100802203
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00014442440771837361
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 56.55552445312253,
+            "w": 4.678978574347762
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.987993928980374
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.375518752515471
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.589550293560517
+          }
+        ]
+      },
+      "train_start_idx": 15475,
+      "train_end_idx": 17038,
+      "week_end": "2025-10-06",
+      "oos_trades": 2,
+      "oos_r": 0.094,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-10-06",
+      "strategy": {
+        "name": "Forge RR3 full 4L4S rsi+price #5928",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.17805292299653291
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.02102190414895154
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 6.836009083195715e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 8.546112364408327
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 6.466309669938535
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.6404347804437795
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 6.425163903635752
+          }
+        ]
+      },
+      "train_start_idx": 15595,
+      "train_end_idx": 17158,
+      "week_end": "2025-10-13",
+      "oos_trades": 1,
+      "oos_r": -1.072,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-10-13",
+      "strategy": {
+        "name": "Forge RR3 full 4L4S rsi+price #972B",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 3,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.17805292299653291
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.048644716461540435
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 6.836009083195715e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 56.84416930725644,
+            "w": 4.678978574347762
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 3.8890640679452
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.6404347804437795
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 6.356204602554783
+          }
+        ]
+      },
+      "train_start_idx": 15715,
+      "train_end_idx": 17278,
+      "week_end": "2025-10-20",
+      "oos_trades": 1,
+      "oos_r": 2.913,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-10-20",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #CDBE",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8416559847060461,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.3923002769702766
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.17805292299653291
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.09935652302702086,
+            "w": 0.1
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 39.46541248860256,
+            "w": 0.0010170851292009536
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 57.76903011048088,
+            "w": 5.57146715892852
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0355686467277712,
+            "w": 4.303995567187974
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.380355196057005
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.048200772767543
+          }
+        ]
+      },
+      "train_start_idx": 15835,
+      "train_end_idx": 17398,
+      "week_end": "2025-10-27",
+      "oos_trades": 2,
+      "oos_r": 0.135,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-10-27",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S price+rsi #8E62",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4401577008142503,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8653785918505409,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.12518615455919174
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.02102190414895154
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 6.836009083195715e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 7.214286668204017
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 7.206880572136701
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 32.214460082999956,
+            "w": 1.5735483590766024
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5624716023758286,
+            "w": 7.667492367535139
+          }
+        ]
+      },
+      "train_start_idx": 15955,
+      "train_end_idx": 17518,
+      "week_end": "2025-11-03",
+      "oos_trades": 2,
+      "oos_r": 2.417,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-11-03",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S price+rsi #0A73",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.0768255846853123
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.17805292299653291
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10828416061052727,
+            "w": 0.1
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 2.050802724958715e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 56.38035037954711,
+            "w": 7.407725859053093
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 12.022220958856394
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 33.11431149991314,
+            "w": 1.7180579787711814
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 6.076917999252236
+          }
+        ]
+      },
+      "train_start_idx": 16075,
+      "train_end_idx": 17637,
+      "week_end": "2025-11-10",
+      "oos_trades": 2,
+      "oos_r": 1.447,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-11-10",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S price+rsi #EC26",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4009157207466917,
+        "rr": 3.0,
+        "atr_mult": 0.7074002470817762,
+        "score_threshold": 1.0373975135592501,
+        "atr_mult_sl": 0.7074002470817762,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.17805292299653291
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.03721707111293047
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.0002278669694398572
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 5.630510121344128
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 5.771732751361899
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 32.214460082999956,
+            "w": 1.5735483590766024
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 11.008772438658902
+          }
+        ]
+      },
+      "train_start_idx": 16195,
+      "train_end_idx": 17757,
+      "week_end": "2025-11-17",
+      "oos_trades": 2,
+      "oos_r": 4.039,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2025-11-17",
+      "strategy": {
+        "name": "Forge RR3 hybrid 3L3S rsi+price #961A",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.49108819800809467,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8022075823809822,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 3,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.7442504385371862
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.11679151146378072,
+            "w": 0.007788000182380311
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 5.537167357388529e-07
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 58.68849837793558,
+            "w": 15.812011198063955
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.2333120692440918
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5656320033126068,
+            "w": 15.483609373438593
+          }
+        ]
+      },
+      "train_start_idx": 16315,
+      "train_end_idx": 17877,
+      "week_end": "2025-11-24",
+      "oos_trades": 0,
+      "oos_r": 0.0,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-11-24",
+      "strategy": {
+        "name": "Forge RR3 full 4L4S price+rsi #C530",
+        "exit_mode": "full",
+        "ml_prob_min": 0.39129318203686503,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8653785918505409,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.12480615907381387
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.09859364524109046,
+            "w": 0.028405352016086897
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 42.2265499493022,
+            "w": 0.00030512553876028606
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 7.504304617380355
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 7.543531472463081
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 32.214460082999956,
+            "w": 1.5735483590766024
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 11.054431932306683
+          }
+        ]
+      },
+      "train_start_idx": 16435,
+      "train_end_idx": 17997,
+      "week_end": "2025-12-01",
+      "oos_trades": 1,
+      "oos_r": -1.079,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-12-01",
+      "strategy": {
+        "name": "Forge RR2 hybrid 3L3S price+rsi #B79B",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4244468208207366,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.9080080659709109,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.005956946431579106
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 5.102862787865078e-06
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 56.87237538757657,
+            "w": 3.0
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.3158859795072009
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5486881687673738,
+            "w": 6.787171762938938
+          }
+        ]
+      },
+      "train_start_idx": 16558,
+      "train_end_idx": 18117,
+      "week_end": "2025-12-08",
+      "oos_trades": 2,
+      "oos_r": 0.388,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-12-08",
+      "strategy": {
+        "name": "Forge RR3 full 3L4S rsi+price #F639",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.205151652249271
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.028405352016086897
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 7.058019812380063
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 6.220660174346249
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.4789608589835719
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.105634602942769
+          }
+        ]
+      },
+      "train_start_idx": 16678,
+      "train_end_idx": 18237,
+      "week_end": "2025-12-15",
+      "oos_trades": 2,
+      "oos_r": 1.817,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-12-15",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L4S rsi+price #E1A2",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.36623085003725253,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.205151652249271
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.02690158160723825
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00013153004546351745
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 4.172761701933837
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.021680728459333
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.4954071615519977
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.305471332308994
+          }
+        ]
+      },
+      "train_start_idx": 16798,
+      "train_end_idx": 18357,
+      "week_end": "2025-12-22",
+      "oos_trades": 2,
+      "oos_r": -2.238,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2025-12-22",
+      "strategy": {
+        "name": "Forge RR2 full 4L3S rsi+price #3C5D",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4066048558605772,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8239876444442578,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.15178533813135858
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.005342923687131768
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 5.102862787865078e-06
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 16.041999461134907
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 36.18970898381582,
+            "w": 1.4954071615519977
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 6.143119397144964
+          }
+        ]
+      },
+      "train_start_idx": 16918,
+      "train_end_idx": 18477,
+      "week_end": "2025-12-29",
+      "oos_trades": 2,
+      "oos_r": 0.756,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2025-12-29",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #CDBE",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.205151652249271
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.047626421880380555
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.0004384334848783915
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 5.6426469828934085
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.421364156156478
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.0581770577579794
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 3.617003663948801
+          }
+        ]
+      },
+      "train_start_idx": 17038,
+      "train_end_idx": 18561,
+      "week_end": "2026-01-05",
+      "oos_trades": 3,
+      "oos_r": 4.424,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-01-05",
+      "strategy": {
+        "name": "Forge RR2 full 3L3S rsi+price #B6E8",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4244468208207366,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8022075823809822,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.008582968773489153
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 1.1837704091716571e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 11.563809071632118
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.042984648426944
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 9.74569798317267
+          }
+        ]
+      },
+      "train_start_idx": 17155,
+      "train_end_idx": 18645,
+      "week_end": "2026-01-12",
+      "oos_trades": 2,
+      "oos_r": 0.745,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2026-01-12",
+      "strategy": {
+        "name": "Forge RR3 full 4L4S rsi+price #9C1D",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.12480615907381387
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.02964758981577548
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00018899491806907695
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 64.374856887999,
+            "w": 4.110468203425751
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.1459737904984169,
+            "w": 3.0
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.059755662943551
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.226534850736222
+          }
+        ]
+      },
+      "train_start_idx": 17275,
+      "train_end_idx": 18765,
+      "week_end": "2026-01-19",
+      "oos_trades": 1,
+      "oos_r": 2.912,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-01-19",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L3S price+adx #A1C0",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.37914035219059117,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8816699946615878,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.9816369731207482
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.12480615907381387
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.02964758981577548
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00018899491806907695
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 5.86873481166704
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.5792503862571214
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 7.5103381999571095
+          }
+        ]
+      },
+      "train_start_idx": 17395,
+      "train_end_idx": 18885,
+      "week_end": "2026-01-26",
+      "oos_trades": 2,
+      "oos_r": 0.283,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2026-01-26",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #CDBE",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.205151652249271
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.047626421880380555
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.0004384334848783915
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 5.6426469828934085
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.421364156156478
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.0581770577579794
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 3.6399024285569896
+          }
+        ]
+      },
+      "train_start_idx": 17515,
+      "train_end_idx": 19005,
+      "week_end": "2026-02-02",
+      "oos_trades": 2,
+      "oos_r": -2.127,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2026-02-02",
+      "strategy": {
+        "name": "Forge RR3 full 4L4S rsi+price #CFB3",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3959216198530159,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8413398993036781,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.27036391647355656
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.02690158160723825
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00013153004546351745
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 55.6681759151969,
+            "w": 5.099879324140846
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 3.9820751725427463
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.4954071615519977
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.129646816176495
+          }
+        ]
+      },
+      "train_start_idx": 17635,
+      "train_end_idx": 19125,
+      "week_end": "2026-02-09",
+      "oos_trades": 1,
+      "oos_r": -1.108,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2026-02-09",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L3S rsi+price #51F7",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4066048558605772,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8024511309490825,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1952417012274786,
+            "w": 0.33722054050004274
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.005342923687131768
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 37.4918066580415,
+            "w": 1.1837704091716571e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 15.874223844967165
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.6547805537667593
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.226534850736222
+          }
+        ]
+      },
+      "train_start_idx": 17755,
+      "train_end_idx": 19245,
+      "week_end": "2026-02-16",
+      "oos_trades": 2,
+      "oos_r": -2.204,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2026-02-16",
+      "strategy": {
+        "name": "Forge RR2 hybrid 3L3S rsi+price #FDB3",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4244468208207366,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8022075823809822,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 3,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.008582968773489153
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 1.1837704091716571e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 11.563809071632118
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.042984648426944
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 9.74569798317267
+          }
+        ]
+      },
+      "train_start_idx": 17875,
+      "train_end_idx": 19365,
+      "week_end": "2026-02-23",
+      "oos_trades": 0,
+      "oos_r": 0.0,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2026-02-23",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L3S price+rsi #303B",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3385399157826299,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.6470953546792904,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.12480615907381387
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.11488082796022335,
+            "w": 0.043215184871253
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 41.36967114625098,
+            "w": 0.00013153004546351745
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 4.1182512820734445
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.9288806264201488
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 6.607623374413209
+          }
+        ]
+      },
+      "train_start_idx": 17995,
+      "train_end_idx": 19485,
+      "week_end": "2026-03-02",
+      "oos_trades": 2,
+      "oos_r": 3.3,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-03-02",
+      "strategy": {
+        "name": "Forge RR3 hybrid 3L3S price+rsi #5EFE",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.37914035219059117,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.9816369731207482
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.12480615907381387
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00018899491806907695
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 4.1182512820734445
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 5.86873481166704
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.5792503862571214
+          }
+        ]
+      },
+      "train_start_idx": 18141,
+      "train_end_idx": 19605,
+      "week_end": "2026-03-09",
+      "oos_trades": 2,
+      "oos_r": -2.114,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2026-03-09",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L3S price+rsi #5CA1",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4187576857068511,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8435985297872655,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.205151652249271
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.008582968773489153
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 1.1837704091716571e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 4.1182512820734445
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 32.214460082999956,
+            "w": 1.6110622840276627
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 7.805208755421234
+          }
+        ]
+      },
+      "train_start_idx": 18261,
+      "train_end_idx": 19726,
+      "week_end": "2026-03-16",
+      "oos_trades": 2,
+      "oos_r": 4.052,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-03-16",
+      "strategy": {
+        "name": "Forge RR2 hybrid 3L3S rsi+price #E0A2",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.4244468208207366,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.7657035993913962,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.117769985630233
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.008582968773489153
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 1.1837704091716571e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 11.563809071632118
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.042984648426944
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 9.74569798317267
+          }
+        ]
+      },
+      "train_start_idx": 18381,
+      "train_end_idx": 19846,
+      "week_end": "2026-03-23",
+      "oos_trades": 2,
+      "oos_r": 4.294,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2026-03-23",
+      "strategy": {
+        "name": "Forge RR3 full 4L4S rsi+price #7910",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7133469744245909,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7133469744245909,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.17996796554594657,
+            "w": 0.24496746598229807
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.01674631486888086
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 5.6698475420723085e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 62.76680925584358,
+            "w": 4.678978574347762
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 3.9820751725427463
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 31.748359494953565,
+            "w": 1.1593473168794761
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 6.607623374413209
+          }
+        ]
+      },
+      "train_start_idx": 18501,
+      "train_end_idx": 19966,
+      "week_end": "2026-03-30",
+      "oos_trades": 2,
+      "oos_r": 1.929,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2026-03-30",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #CDBE",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.205151652249271
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.02690158160723825
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00013153004546351745
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 7.00086152168763
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 6.199148298071047
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.4954071615519977
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.129646816176495
+          }
+        ]
+      },
+      "train_start_idx": 18585,
+      "train_end_idx": 20086,
+      "week_end": "2026-04-06",
+      "oos_trades": 2,
+      "oos_r": 1.431,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2026-04-06",
+      "strategy": {
+        "name": "Forge RR2 hybrid 4L4S rsi+price #FCEC",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.12480615907381387
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10828416061052727,
+            "w": 0.07650794129379927
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 1.7009542626216925e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 54.43296651184042,
+            "w": 10.168958838764668
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 3.9820751725427463
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 33.11431149991314,
+            "w": 2.0590168203037438
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 8.583691045710102
+          }
+        ]
+      },
+      "train_start_idx": 18669,
+      "train_end_idx": 20206,
+      "week_end": "2026-04-13",
+      "oos_trades": 2,
+      "oos_r": 5.521,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2026-04-13",
+      "strategy": {
+        "name": "Forge RR2.5 hybrid 3L4S rsi+price #CB3A",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 2.5,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.5,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.12480615907381387
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 5.6698475420723085e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 61.08213437494086,
+            "w": 7.00086152168763
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 5.285640893260448
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.9288806264201488
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 7.365658388635235
+          }
+        ]
+      },
+      "train_start_idx": 18789,
+      "train_end_idx": 20326,
+      "week_end": "2026-04-20",
+      "oos_trades": 2,
+      "oos_r": 3.313,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-04-20",
+      "strategy": {
+        "name": "Forge RR3 full 4L4S rsi+price #9C1D",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.325127610691338
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.12480615907381387
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.01674631486888086
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 5.6698475420723085e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 8.81727186442382
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 6.680427407134166
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.3928309418153122
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.307699137535596
+          }
+        ]
+      },
+      "train_start_idx": 18909,
+      "train_end_idx": 20446,
+      "week_end": "2026-04-27",
+      "oos_trades": 1,
+      "oos_r": -1.103,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2026-04-27",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #EE73",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.794186420880139,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.794186420880139,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.205151652249271
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.02690158160723825
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00013153004546351745
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 6.42306983753395
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 5.032873904438418
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.4954071615519977
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.601730411140122
+          }
+        ]
+      },
+      "train_start_idx": 19029,
+      "train_end_idx": 20566,
+      "week_end": "2026-05-04",
+      "oos_trades": 2,
+      "oos_r": 0.474,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2026-05-04",
+      "strategy": {
+        "name": "Forge RR2 full 4L4S rsi+price #3B00",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.205151652249271
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.047626421880380555
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.0004384334848783915
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 5.6426469828934085
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.9925127332141679,
+            "w": 3.3309497921908067
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.0581770577579794
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 3.6399024285569896
+          }
+        ]
+      },
+      "train_start_idx": 19173,
+      "train_end_idx": 20686,
+      "week_end": "2026-05-11",
+      "oos_trades": 2,
+      "oos_r": -2.202,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2026-05-11",
+      "strategy": {
+        "name": "Forge RR3 full 4L3S rsi+price #7D67",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.12480615907381387
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.01674631486888086
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.018582015668398958
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 9.610435645769577
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.1572762443537714,
+            "w": 4.670289758075506
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.6436259821773889
+          }
+        ]
+      },
+      "train_start_idx": 19293,
+      "train_end_idx": 20806,
+      "week_end": "2026-05-18",
+      "oos_trades": 2,
+      "oos_r": 5.749,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-05-18",
+      "strategy": {
+        "name": "Forge RR3 full 4L4S rsi+price #8803",
+        "exit_mode": "full",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7142313040650335,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7142313040650335,
+        "rr_ratio": 3.0,
+        "min_rules_match": 3,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.205151652249271
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10828416061052727,
+            "w": 0.07650794129379927
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.04310686217807898
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 10.168958838764668
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 9.218748385349269
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 30.1121344855205,
+            "w": 1.7180579787711814
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.977918214562754
+          }
+        ]
+      },
+      "train_start_idx": 19413,
+      "train_end_idx": 20926,
+      "week_end": "2026-05-25",
+      "oos_trades": 1,
+      "oos_r": -1.083,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2026-05-25",
+      "strategy": {
+        "name": "Forge RR2 full 4L4S price+rsi #3E9B",
+        "exit_mode": "full",
+        "ml_prob_min": 0.35283579241115315,
+        "rr": 2.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8753755944722079,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.9816369731207482
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.2448891339988091
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.02690158160723825
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00013153004546351745
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 5.393079359667444
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 5.687635951598385
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.9996206329279174
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.230405810736625
+          }
+        ]
+      },
+      "train_start_idx": 19533,
+      "train_end_idx": 21046,
+      "week_end": "2026-06-01",
+      "oos_trades": 2,
+      "oos_r": 3.721,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-06-01",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S price+rsi #C3F7",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3695178134807645,
+        "rr": 3.0,
+        "atr_mult": 0.7870333592765598,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7870333592765598,
+        "rr_ratio": 3.0,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.9816369731207482
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.12455642643875907
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.1019333436783172,
+            "w": 0.043215184871253
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.04310686217807898
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 4.1182512820734445
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 3.9820751725427463
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.5792503862571214
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 7.5103381999571095
+          }
+        ]
+      },
+      "train_start_idx": 19603,
+      "train_end_idx": 21166,
+      "week_end": "2026-06-08",
+      "oos_trades": 2,
+      "oos_r": 0.28,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2026-06-08",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S price+rsi #2541",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7203324910696598,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7203324910696598,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.1955535329765754
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.12480615907381387
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10653031726232927,
+            "w": 0.047626421880380555
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00018899491806907695
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 57.23736913379919,
+            "w": 4.03021242188584
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 5.86873481166704
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.6547805537667593
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 5.226534850736222
+          }
+        ]
+      },
+      "train_start_idx": 19723,
+      "train_end_idx": 21286,
+      "week_end": "2026-06-15",
+      "oos_trades": 2,
+      "oos_r": 2.728,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-06-15",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L3S rsi+price #A4DF",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.40518669768231413,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8435985297872655,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.205151652249271
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.008582968773489153
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 1.1837704091716571e-05
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 11.563809071632118
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 32.214460082999956,
+            "w": 1.6110622840276627
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 7.805208755421234
+          }
+        ]
+      },
+      "train_start_idx": 19843,
+      "train_end_idx": 21406,
+      "week_end": "2026-06-22",
+      "oos_trades": 2,
+      "oos_r": 3.4,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-06-22",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #44E1",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.36988735372449927,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.205151652249271
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.02690158160723825
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.00013153004546351745
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 6.42306983753395
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 3.9820751725427463
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.4954071615519977
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 4.307699137535596
+          }
+        ]
+      },
+      "train_start_idx": 19963,
+      "train_end_idx": 21526,
+      "week_end": "2026-06-29",
+      "oos_trades": 2,
+      "oos_r": -2.195,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2026-06-29",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #524E",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.9685802508388603,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 3,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.205151652249271
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.047626421880380555
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.0004384334848783915
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 5.6426469828934085
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.421364156156478
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 33.28154916224873,
+            "w": 1.5956470658453763
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 3.6399024285569896
+          }
+        ]
+      },
+      "train_start_idx": 20083,
+      "train_end_idx": 21646,
+      "week_end": "2026-07-06",
+      "oos_trades": 1,
+      "oos_r": 1.28,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-07-06",
+      "strategy": {
+        "name": "Forge RR2.5 hybrid 3L4S rsi+price #9388",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3795466861270272,
+        "rr": 2.5,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10683257574747647,
+            "w": 0.07650794129379927
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.0004384334848783915
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 5.6426469828934085
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.421364156156478
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.0581770577579794
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 3.6399024285569896
+          }
+        ]
+      },
+      "train_start_idx": 20206,
+      "train_end_idx": 21766,
+      "week_end": "2026-07-13",
+      "oos_trades": 2,
+      "oos_r": 0.099,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2026-07-13",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S rsi+price #CDBE",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7,
+        "score_threshold": 0.8457677065075332,
+        "atr_mult_sl": 0.7,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.205151652249271
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.047626421880380555
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.0004384334848783915
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 5.6426469828934085
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 4.421364156156478
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 2.0581770577579794
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 3.6399024285569896
+          }
+        ]
+      },
+      "train_start_idx": 20326,
+      "train_end_idx": 21886,
+      "week_end": "2026-07-20",
+      "oos_trades": 1,
+      "oos_r": 2.509,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-07-20",
+      "strategy": {
+        "name": "Forge RR2.5 full 3L3S price+rsi #9240",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4198627271216037,
+        "rr": 2.5,
+        "atr_mult": 0.7732954971883562,
+        "score_threshold": 0.9366543517950178,
+        "atr_mult_sl": 0.7732954971883562,
+        "rr_ratio": 2.5,
+        "min_rules_match": 2,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2857919218266276
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.10705139745061154,
+            "w": 0.005342923687131768
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.018582015668398958
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 59.43395289208621,
+            "w": 5.653331207433189
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.345314462662087
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 13.993844932265104
+          }
+        ]
+      },
+      "train_start_idx": 20446,
+      "train_end_idx": 22007,
+      "week_end": "2026-07-27",
+      "oos_trades": 1,
+      "oos_r": 2.35,
+      "oos_wr": 1.0
+    },
+    {
+      "week_start": "2026-07-27",
+      "strategy": {
+        "name": "Forge RR3 hybrid 4L4S price+rsi #272D",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.3887628909004178,
+        "rr": 3.0,
+        "atr_mult": 0.7822929186224824,
+        "score_threshold": 0.8454576577018743,
+        "atr_mult_sl": 0.7822929186224824,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_week": 2,
+        "min_bars_between": 4,
+        "max_hold_bars": 36,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "long_rules": [
+          {
+            "feat": "squeeze_break_up",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.2202554339208407
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "long",
+            "op": "lt",
+            "thr": 0.1835066269624145,
+            "w": 0.12480615907381387
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.09699753262897998,
+            "w": 0.1
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 40.8449098919461,
+            "w": 0.018582015668398958
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rsi",
+            "direction": "short",
+            "op": "gt",
+            "thr": 61.034268565361295,
+            "w": 4.678978574347762
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0829583278147457,
+            "w": 6.680427407134166
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 34.085142189972125,
+            "w": 1.9288806264201488
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5553626014609189,
+            "w": 6.607623374413209
+          }
+        ]
+      },
+      "train_start_idx": 20566,
+      "train_end_idx": 22127,
+      "week_end": "2026-08-03",
+      "oos_trades": 2,
+      "oos_r": 0.122,
+      "oos_wr": 0.5
+    }
+  ]
+}

@@ -25,7 +25,6 @@ def test_bridge_identity_and_ports_unique():
     INSTANCE_ID,
   )
   from mt5_bridge.live_monitor_server import DEFAULT_MONITOR_PORT, SIM_MONITOR_PORT
-  from paper_live_monitor_server import DEFAULT_PAPER_MONITOR_PORT
 
   assert INSTANCE_ID == "H1"
   assert DEFAULT_TIMEFRAME == "H1"
@@ -35,7 +34,6 @@ def test_bridge_identity_and_ports_unique():
   assert DEFAULT_SIM_MAGIC == 20260727
   assert DEFAULT_MONITOR_PORT == 8865
   assert SIM_MONITOR_PORT == 8877
-  assert DEFAULT_PAPER_MONITOR_PORT == 8866
 
   if M15_ROOT.exists():
     import importlib.util
@@ -52,11 +50,10 @@ def test_bridge_identity_and_ports_unique():
     ports = {
       DEFAULT_MONITOR_PORT,
       SIM_MONITOR_PORT,
-      DEFAULT_PAPER_MONITOR_PORT,
       m15_mon.DEFAULT_MONITOR_PORT,
       m15_mon.SIM_MONITOR_PORT,
     }
-    assert len(ports) == 5
+    assert len(ports) == 4
     assert m15_proto.BRIDGE_DIR.name == "bridge"
     assert m15_proto.BRIDGE_SIM_DIR.name == "bridge_sim"
 

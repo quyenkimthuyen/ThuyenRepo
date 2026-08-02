@@ -13,8 +13,9 @@ from gui.app_settings import (
   settings_changed_since_last_grid,
   settings_grid_signature,
 )
+from gui.charts import show_plotly
 from gui.grid_search_background import (
-  get_grid_status, is_grid_running, load_job_state,
+  clear_grid_results, get_grid_status, is_grid_running, load_job_state,
   start_grid_search, stop_grid_search,
 )
 from gui.grid_search_engine import (
@@ -48,7 +49,7 @@ def _grid_combo_changed(default_names: dict[str, str]) -> None:
 @st.fragment(run_every=timedelta(seconds=5))
 def _grid_progress_fragment():
   status = get_grid_status()
-  if status["running"]:
+  if status["running"] or status.get("status") == "interrupted":
     st.progress(
       status["done"] / max(status["total"], 1),
       text=(
@@ -56,6 +57,9 @@ def _grid_progress_fragment():
         f"({status['pct']}%) · {status['current_label'] or '…'}"
       ),
     )
+    return
+  # Parent still shows "running" until full remount — unlock completed UI.
+  st.rerun()
 
 
 def _render_job_status():
@@ -248,6 +252,34 @@ def render(embedded: bool = False):
     except RuntimeError as e:
       st.error(str(e))
 
+  with st.expander("Reset dữ liệu Grid Search", expanded=False):
+    st.caption(
+      "Xóa `latest.json`, `job_state.json` và các file `gs_*.json`. "
+      "Không ảnh hưởng KB hay Trade Model."
+    )
+    confirm_gs = st.checkbox(
+      "Xác nhận xóa toàn bộ kết quả Grid Search",
+      key="gs_reset_confirm",
+    )
+    if st.button(
+      "Xóa kết quả Grid Search",
+      type="secondary",
+      icon=":material/delete_forever:",
+      key="gs_reset_btn",
+      disabled=running or not confirm_gs,
+    ):
+      try:
+        out = clear_grid_results(delete_archives=True)
+        st.session_state.pop("settings_grid_signature", None)
+        n = out.get("n") or 0
+        if n:
+          st.success(f"Đã xóa {n} file Grid Search.")
+        else:
+          st.info("Không có dữ liệu Grid để xóa.")
+        st.rerun()
+      except RuntimeError as e:
+        st.error(str(e))
+
   rows, objective = _rows_for_display(job_status)
   data = load_latest_grid_run()
 
@@ -391,14 +423,16 @@ def render(embedded: bool = False):
       ),
       axis=1,
     )
+    grid_train_title = "Grid · Total R theo cửa sổ train"
     fig = px.bar(
       plot_df, x="train_weeks", y="total_r", color="kb_tag",
-      barmode="group", title="Total R theo train window",
+      barmode="group", title=grid_train_title,
     )
     fig.update_layout(height=400)
-    st.plotly_chart(fig, use_container_width=True)
+    show_plotly(fig, grid_train_title)
 
   with tab2:
+    grid_heatmap_title = "Grid · Heatmap Total R"
     pivot_df = plot_df.groupby(["train_weeks", "kb_tag"], as_index=False)["total_r"].max()
     if len(pivot_df) > 1:
       piv = pivot_df.pivot(index="kb_tag", columns="train_weeks", values="total_r")
@@ -410,18 +444,19 @@ def render(embedded: bool = False):
         text=[[f"{v:+.1f}" for v in row] for row in piv.values],
         texttemplate="%{text}",
       ))
-      fig_h.update_layout(title="Total R heatmap", height=max(300, len(piv) * 40))
-      st.plotly_chart(fig_h, use_container_width=True)
+      fig_h.update_layout(title=grid_heatmap_title, height=max(300, len(piv) * 40))
+      show_plotly(fig_h, grid_heatmap_title)
 
   with tab3:
+    grid_top_title = "Grid · Top 15 combo"
     top = df.head(15)
     fig2 = go.Figure(go.Bar(
       x=top["total_r"], y=top["label"], orientation="h",
       marker_color=["#2ecc71" if r > 0 else "#e74c3c" for r in top["total_r"]],
     ))
     fig2.update_layout(
-      title="Top 15", height=500,
+      title=grid_top_title, height=500,
       margin=dict(l=200, r=20, t=40, b=40),
       yaxis=dict(autorange="reversed"),
     )
-    st.plotly_chart(fig2, use_container_width=True)
+    show_plotly(fig2, grid_top_title)

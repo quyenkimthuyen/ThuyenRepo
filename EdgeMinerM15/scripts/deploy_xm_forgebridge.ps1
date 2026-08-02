@@ -5,7 +5,7 @@ param(
   [string]$ModelId = "",
   [double]$RiskPct = 1.0,
   [double]$PollSeconds = 2.0,
-  [ValidateSet("Live", "HistoryFeed")]
+  [ValidateSet("Live", "HistoryFeed", "Both")]
   [string]$Mode = "Live",
   [switch]$Attach,
   [switch]$EnableTrading,
@@ -28,6 +28,7 @@ $EaNameSim = "ForgeBridgeM15Sim"
 $EaFolder = "EdgeMinerM15"
 $EaMagicLive = 20260724
 $EaMagicSim = 20260726
+$IsBoth = ($Mode -eq "Both")
 $IsHistoryFeed = ($Mode -eq "HistoryFeed")
 $EaName = if ($IsHistoryFeed) { $EaNameSim } else { $EaNameLive }
 $SourceEa = if ($IsHistoryFeed) { $SourceEaSim } else { $SourceEaLive }
@@ -182,15 +183,34 @@ function Stop-XmTerminal([string]$XmInstallPath) {
   Start-Sleep -Seconds 2
 }
 
+function Get-ActiveChartsRoot([string]$DataPath) {
+  $commonIni = Join-Path $DataPath "config\common.ini"
+  if (-not (Test-Path $commonIni)) {
+    throw "MT5 common.ini not found: $commonIni"
+  }
+  $commonText = Get-Content $commonIni -Raw
+  $profileMatch = [regex]::Match($commonText, '(?m)^ProfileLast=(.+?)\s*$')
+  if (-not $profileMatch.Success) {
+    throw "Cannot determine the active MT5 chart profile from $commonIni."
+  }
+  $profileName = $profileMatch.Groups[1].Value.Trim()
+  if ((Split-Path $profileName -Leaf) -ne $profileName) {
+    throw "Invalid active MT5 profile name: $profileName"
+  }
+  $chartsRoot = Join-Path $DataPath "MQL5\Profiles\Charts\$profileName"
+  New-Item -ItemType Directory -Path $chartsRoot -Force | Out-Null
+  return $chartsRoot
+}
+
 function Get-ForgeBridgeCharts([string]$DataPath) {
-  $chartsRoot = Join-Path $DataPath "MQL5\Profiles\Charts"
+  $chartsRoot = Get-ActiveChartsRoot $DataPath
   if (-not (Test-Path $chartsRoot)) { return @() }
   return @(Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
     Where-Object { (Get-Content $_.FullName -Raw) -match "name=$EaName" })
 }
 
 function Get-EurusdM15Charts([string]$DataPath) {
-  $chartsRoot = Join-Path $DataPath "MQL5\Profiles\Charts"
+  $chartsRoot = Get-ActiveChartsRoot $DataPath
   $allEurusdCharts = Get-ChildItem $chartsRoot -Filter "*.chr" -Recurse |
     Where-Object {
       $text = Get-Content $_.FullName -Raw
@@ -202,10 +222,137 @@ function Get-EurusdM15Charts([string]$DataPath) {
       $text -match "(?m)^period_type=0\s*$" -and
       $text -match "(?m)^period_size=15\s*$"
     }
-  if (-not $charts) {
-    throw "EURUSD M15 chart not found (period_size=15). Open a EURUSD M15 chart before deploy; refusing to attach onto other TFs."
-  }
   return @($charts)
+}
+
+function New-MinimalEurusdChartText(
+  [int]$PeriodType,
+  [int]$PeriodSize
+) {
+  $id = [DateTime]::UtcNow.Ticks
+  $lines = @(
+    '<chart>',
+    "id=$id",
+    'symbol=EURUSD',
+    "period_type=$PeriodType",
+    "period_size=$PeriodSize",
+    'digits=5',
+    'tick_size=0.000000',
+    'scale_fix=0',
+    'scale_bar=0',
+    'scale=8',
+    'mode=1',
+    'fore=0',
+    'grid=1',
+    'volume=0',
+    'scroll=1',
+    'shift=1',
+    'shift_size=20.000000',
+    'ohlc=0',
+    'bidline=1',
+    'askline=0',
+    'lastline=0',
+    'days=0',
+    'descriptions=0',
+    'windows_total=1',
+    'window_type=1',
+    'background_color=0',
+    'foreground_color=16777215',
+    'barup_color=65280',
+    'bardown_color=65280',
+    'bullcandle_color=0',
+    'bearcandle_color=16777215',
+    'chartline_color=65280',
+    'volumes_color=3329330',
+    'grid_color=10061943',
+    'bidline_color=10061943',
+    'askline_color=255',
+    'lastline_color=49152',
+    'stops_color=255',
+    '',
+    '<window>',
+    'height=100',
+    '',
+    '<indicator>',
+    'name=Main',
+    'path=',
+    'apply=1',
+    'show_data=1',
+    'scale_inherit=0',
+    'scale_line=0',
+    'scale_line_percent=50',
+    'scale_line_value=0.000000',
+    'scale_fix_min=0',
+    'scale_fix_min_val=0.000000',
+    'scale_fix_max=0',
+    'scale_fix_max_val=0.000000',
+    '</indicator>',
+    '</window>',
+    '</chart>'
+  )
+  return ($lines -join "`r`n")
+}
+
+function Find-EurusdChartTemplate([string]$DataPath) {
+  $chartsBase = Join-Path $DataPath "MQL5\Profiles\Charts"
+  if (-not (Test-Path $chartsBase)) { return $null }
+  $family = Get-ForgeFamilyPattern
+  $all = @(Get-ChildItem $chartsBase -Filter "*.chr" -Recurse -ErrorAction SilentlyContinue |
+    Where-Object {
+      (Get-Content $_.FullName -Raw) -match "(?m)^symbol=EURUSD\s*$"
+    })
+  if ($all.Count -eq 0) { return $null }
+  $free = @($all | Where-Object {
+    (Get-Content $_.FullName -Raw) -notmatch $family
+  } | Select-Object -First 1)
+  if ($free.Count -gt 0) { return $free[0] }
+  return $all[0]
+}
+
+function New-EurusdM15Chart([string]$DataPath) {
+  $chartsRoot = Get-ActiveChartsRoot $DataPath
+  $family = Get-ForgeFamilyPattern
+  $templates = @(Get-ChildItem $chartsRoot -Filter "*.chr" -ErrorAction SilentlyContinue |
+    Where-Object {
+      (Get-Content $_.FullName -Raw) -match "(?m)^symbol=EURUSD\s*$"
+    })
+  # Active profile empty (e.g. Default with 0 charts) - borrow EURUSD from any profile.
+  if ($templates.Count -eq 0) {
+    $borrowed = Find-EurusdChartTemplate $DataPath
+    if ($borrowed) {
+      Write-Host "No EURUSD in active profile; using template from $($borrowed.Directory.Name)\$($borrowed.Name)"
+      $templates = @($borrowed)
+    }
+  }
+
+  $usedNumbers = @(Get-ChildItem $chartsRoot -Filter "chart*.chr" -ErrorAction SilentlyContinue | ForEach-Object {
+    if ($_.BaseName -match '^chart(\d+)$') { [int]$Matches[1] }
+  })
+  [int]$nextNumber = if ($usedNumbers.Count -gt 0) {
+    [int](($usedNumbers | Measure-Object -Maximum).Maximum) + 1
+  } else { 1 }
+  $targetPath = Join-Path $chartsRoot ("chart{0:D2}.chr" -f $nextNumber)
+
+  if ($templates.Count -eq 0) {
+    Write-Host "No EURUSD template anywhere - creating blank EURUSD M15 chart."
+    $text = New-MinimalEurusdChartText 0 15
+  } else {
+    $template = @($templates | Where-Object {
+      (Get-Content $_.FullName -Raw) -notmatch $family
+    } | Select-Object -First 1)
+    if ($template.Count -eq 0) {
+      $template = @($templates | Select-Object -First 1)
+    }
+    $text = Get-Content $template[0].FullName -Raw
+    $text = $text -replace '(?m)^id=\d+\s*$', ("id=" + [DateTime]::UtcNow.Ticks)
+    $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=0'
+    $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=15'
+    $forgeExpertPattern = '(?s)<expert>\s*name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b.*?</expert>\s*'
+    $text = [regex]::Replace($text, $forgeExpertPattern, '')
+  }
+  Set-Content -Path $targetPath -Value $text -Encoding Unicode
+  Write-Host "Created EURUSD M15 chart in active profile: $targetPath"
+  return Get-Item $targetPath
 }
 
 function New-ForgeBridgeExpertBlock(
@@ -250,7 +397,7 @@ function Select-AttachChart(
 ) {
   $charts = Get-EurusdM15Charts $DataPath
   if (-not $charts -or $charts.Count -eq 0) {
-    throw "EURUSD M15 chart not found in the MT5 profile."
+    $charts = @(New-EurusdM15Chart $DataPath)
   }
 
   $wantedName = if ($PreferHistoryFeed) { $EaNameSim } else { $EaNameLive }
@@ -275,8 +422,85 @@ function Select-AttachChart(
     return $free[0]
   }
 
-  # 3) Never overwrite the other role (Live <-> Sim) or sibling TF EAs.
-  throw ("No free EURUSD M15 chart for $wantedName. Open another EURUSD M15 chart; refusing to overwrite $otherName / other ForgeBridge EAs.")
+  # 3) All M15 charts already have a ForgeBridge* EA - create a new chart
+  #    (clone template, strip experts) instead of overwriting Live <-> Sim.
+  Write-Host "No free EURUSD M15 chart for $wantedName; creating a new chart (keep $otherName intact)."
+  $created = @(New-EurusdM15Chart $DataPath)
+  if ($created.Count -eq 0) {
+    throw ("Failed to create EURUSD M15 chart for $wantedName.")
+  }
+  Write-Host "Attach target: new chart $($created[0].Name) for $wantedName"
+  return $created[0]
+}
+
+function Write-ForgeBridgeToChart(
+  [string]$DataPath,
+  [bool]$TradingEnabled,
+  [int]$InpMode = 0,
+  [string]$BridgeSubdir = $BridgeSubdirLive,
+  [string]$ExpertName,
+  [int]$Magic
+) {
+  <#
+    Patch a chart profile to attach ExpertName. Does NOT stop/start MT5 -
+    caller stops once, writes Live+Sim charts, then starts once.
+  #>
+  $prevName = $script:EaName
+  $prevMagic = $script:EaMagic
+  $script:EaName = $ExpertName
+  $script:EaMagic = $Magic
+  try {
+    $target = Select-AttachChart $DataPath ($InpMode -eq 2)
+    $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+    Copy-Item $target.FullName "$($target.FullName).backup_$timestamp" -Force
+    $block = New-ForgeBridgeExpertBlock $TradingEnabled $InpMode $BridgeSubdir
+
+    $text = Get-Content $target.FullName -Raw
+    $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=0'
+    $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=15'
+    $forgeExpertPattern = '(?s)<expert>\s*name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b.*?</expert>\s*'
+    $windowTag = '<window>'
+    $text = [regex]::Replace($text, $forgeExpertPattern, '')
+    if ($text -notmatch [regex]::Escape($windowTag)) {
+      if ($text -notmatch '</chart>') {
+        throw "Chart $($target.FullName) has neither <window> nor </chart>; cannot attach $ExpertName."
+      }
+      $text = $text -replace '(?m)^windows_total=0\s*$', 'windows_total=1'
+      $mainWindow = @(
+        '<window>',
+        'height=100',
+        '',
+        '<indicator>',
+        'name=Main',
+        'path=',
+        'apply=1',
+        'show_data=1',
+        'scale_inherit=0',
+        'scale_line=0',
+        'scale_line_percent=50',
+        'scale_line_value=0.000000',
+        'scale_fix_min=0',
+        'scale_fix_min_val=0.000000',
+        'scale_fix_max=0',
+        'scale_fix_max_val=0.000000',
+        '</indicator>',
+        '</window>'
+      ) -join "`r`n"
+      $text = [regex]::Replace(
+        $text,
+        '</chart>',
+        ($mainWindow + "`r`n</chart>"),
+        1
+      )
+    }
+    $text = [regex]::Replace($text, $windowTag, ($block + "`r`n" + $windowTag), 1)
+    Set-Content -Path $target.FullName -Value $text -Encoding Unicode
+    Write-Host "Attached $ExpertName (mode=$InpMode, subdir=$BridgeSubdir) -> $($target.Name)"
+    return $target.FullName
+  } finally {
+    $script:EaName = $prevName
+    $script:EaMagic = $prevMagic
+  }
 }
 
 function Attach-ForgeBridge(
@@ -287,30 +511,12 @@ function Attach-ForgeBridge(
   [string]$BridgeSubdir = $BridgeSubdirLive
 ) {
   Stop-XmTerminal $XmInstallPath
-
-  $target = Select-AttachChart $DataPath ($InpMode -eq 2)
-  $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-  Copy-Item $target.FullName "$($target.FullName).backup_$timestamp" -Force
-  $block = New-ForgeBridgeExpertBlock $TradingEnabled $InpMode $BridgeSubdir
-
-  $text = Get-Content $target.FullName -Raw
-  $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=0'
-  $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=15'
-  # Remove only ForgeBridge* experts on THIS chart; keep other experts/indicators.
-  # Patterns MUST stay single-quoted. Double quotes make PS parse < as redirection.
-  $forgeExpertPattern = '(?s)<expert>\s*name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b.*?</expert>\s*'
-  $windowTag = '<window>'
-  $text = [regex]::Replace($text, $forgeExpertPattern, '')
-  if ($text -notmatch [regex]::Escape($windowTag)) {
-    throw "Chart $($target.FullName) has no <window> tag; cannot attach $EaName."
+  $chart = Write-ForgeBridgeToChart $DataPath $TradingEnabled $InpMode $BridgeSubdir $EaName $EaMagic
+  if (-not $NoRestartTerminal) {
+    Start-Process -FilePath (Join-Path $XmInstallPath "terminal64.exe")
+    Start-Sleep -Seconds 8
   }
-  $text = [regex]::Replace($text, $windowTag, ($block + "`r`n" + $windowTag), 1)
-  Set-Content -Path $target.FullName -Value $text -Encoding Unicode
-
-  Write-Host "Attached exactly one EA: $EaName (mode=$InpMode, subdir=$BridgeSubdir)"
-  Start-Process -FilePath (Join-Path $XmInstallPath "terminal64.exe")
-  Start-Sleep -Seconds 8
-  return $target.FullName
+  return $chart
 }
 
 function Restart-BridgeService {
@@ -357,6 +563,9 @@ function Restart-BridgeService {
   if ($created.ReturnValue -ne 0) {
     throw "Cannot create Bridge service (Win32 return=$($created.ReturnValue))."
   }
+  if ($created.ProcessId) {
+    [System.IO.File]::WriteAllText($pidFile, [string]$created.ProcessId)
+  }
 
   Start-Sleep -Seconds 6
   if (-not (Test-Path $pidFile)) {
@@ -381,27 +590,50 @@ Write-Host "Data    : $TerminalDataPath"
 Write-Host "Mode    : $Mode"
 
 Write-Step "Link MQL5 Files to app"
-if ($IsHistoryFeed) {
-  $bridgeLink = Ensure-NamedBridgeJunction $TerminalDataPath $BridgeSubdirSim $ProjectBridgeSim
-  Write-Host "Bridge  : $bridgeLink -> $ProjectBridgeSim"
+if ($IsBoth -or $IsHistoryFeed) {
+  $bridgeLinkSim = Ensure-NamedBridgeJunction $TerminalDataPath $BridgeSubdirSim $ProjectBridgeSim
+  Write-Host "Sim     : $bridgeLinkSim -> $ProjectBridgeSim"
+}
+if ($IsBoth -or -not $IsHistoryFeed) {
+  $bridgeLink = Ensure-BridgeJunction $TerminalDataPath
+  Write-Host "Live    : $bridgeLink -> $ProjectBridge"
+} elseif ($IsHistoryFeed) {
   try {
     $liveLink = Ensure-BridgeJunction $TerminalDataPath
     Write-Host "Live    : $liveLink -> $ProjectBridge"
   } catch {
     Write-Warning "Live bridge junction skipped: $($_.Exception.Message)"
   }
-} else {
-  $bridgeLink = Ensure-BridgeJunction $TerminalDataPath
-  Write-Host "Bridge  : $bridgeLink -> $ProjectBridge"
 }
 
-Write-Step "Copy and compile $EaName"
-$compiled = Compile-Ea $TerminalDataPath $InstallPath
-Write-Host "EX5     : $($compiled.Binary)"
+if ($IsBoth) {
+  Write-Step "Copy and compile $EaNameLive + $EaNameSim"
+  $compiledLive = Compile-OneEa $TerminalDataPath $InstallPath $SourceEaLive $EaNameLive
+  Write-Host "EX5 Live: $($compiledLive.Binary)"
+  $compiledSim = Compile-OneEa $TerminalDataPath $InstallPath $SourceEaSim $EaNameSim
+  Write-Host "EX5 Sim : $($compiledSim.Binary)"
+} else {
+  Write-Step "Copy and compile $EaName"
+  $compiled = Compile-Ea $TerminalDataPath $InstallPath
+  Write-Host "EX5     : $($compiled.Binary)"
+}
 
 $attached = Get-ForgeBridgeCharts $TerminalDataPath
 if ($Attach) {
-  if ($IsHistoryFeed) {
+  if ($IsBoth) {
+    Write-Step "Attach Live + Simulate (single MT5 restart)"
+    Stop-XmTerminal $InstallPath
+    $chartLive = Write-ForgeBridgeToChart `
+      $TerminalDataPath $EnableTrading.IsPresent 0 $BridgeSubdirLive $EaNameLive $EaMagicLive
+    Write-Host "Live chart : $chartLive | Trading=$($EnableTrading.IsPresent)"
+    $chartSim = Write-ForgeBridgeToChart `
+      $TerminalDataPath $false 2 $BridgeSubdirSim $EaNameSim $EaMagicSim
+    Write-Host "Sim chart  : $chartSim | HISTORY_FEED"
+    if (-not $NoRestartTerminal) {
+      Start-Process -FilePath (Join-Path $InstallPath "terminal64.exe")
+      Start-Sleep -Seconds 8
+    }
+  } elseif ($IsHistoryFeed) {
     Write-Step "Attach $EaName HISTORY_FEED to EURUSD M15"
     $chart = Attach-ForgeBridge $TerminalDataPath $InstallPath $false 2 $BridgeSubdirSim
     Write-Host "Chart   : $chart"
@@ -432,10 +664,12 @@ if ($StartBridgeService -and -not $SkipBridgeService) {
 }
 
 Write-Step "Done"
-if ($IsHistoryFeed) {
+if ($IsBoth) {
+  Write-Host "Live + Simulate ready (one MT5 restart). Start service / Start feed as needed."
+} elseif ($IsHistoryFeed) {
   Write-Host "History Feed ready: App Simulate -> Start feed (sim_control.json)."
 } else {
-  Write-Host "Live ready. For Simulate: -Mode HistoryFeed -Attach"
+  Write-Host "Live ready. For Simulate: -Mode HistoryFeed -Attach  |  Both: -Mode Both -Attach -EnableTrading"
 }
 Write-Host "Next update command:"
 Write-Host "powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`""

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-import uuid
+import re
 from pathlib import Path
 
 import streamlit as st
@@ -12,8 +12,8 @@ from run_backtest import REPORT_DIR
 
 SETTINGS_PATH = REPORT_DIR / "app_settings.json"
 
-# Giai đoạn học → kb_profile (đã học hoặc sẽ học)
-LEARNING_ERA_OPTIONS = [
+# Seed mặc định — sau đó catalog lưu trong app_settings.json (learning_eras).
+DEFAULT_LEARNING_ERAS = [
   {
     "key": "2025-full",
     "label": "2025 (12 tháng)",
@@ -30,6 +30,9 @@ LEARNING_ERA_OPTIONS = [
   },
 ]
 
+# Backward-compat name used by older imports.
+LEARNING_ERA_OPTIONS = DEFAULT_LEARNING_ERAS
+
 # ID profile cũ (EdgeMiner1) → key Settings
 LEGACY_KB_PROFILE_MAP = {
   "era_2022_2024": "2022-2025",
@@ -42,7 +45,8 @@ DEFAULT_SETTINGS = {
   "id": "default",
   "label": "Cài đặt mặc định",
   "strategy_train_weeks": [3, 6, 9],
-  "learning_era_keys": ["2025-full", "2025-h2"],
+  "learning_eras": [dict(e) for e in DEFAULT_LEARNING_ERAS],
+  "learning_era_keys": [e["key"] for e in DEFAULT_LEARNING_ERAS],
   "learning_loops": 4,
   "backtest_from": "2026-01-01",
   "backtest_to": "2026-12-31",
@@ -57,16 +61,71 @@ TRAIN_WEEK_OPTIONS = [3, 6, 9]
 TRAIN_MONTH_OPTIONS = TRAIN_WEEK_OPTIONS
 
 
+def _slug(text: str, *, fallback: str = "era") -> str:
+  slug = re.sub(r"[^a-zA-Z0-9]+", "-", str(text or "").strip().lower()).strip("-")
+  return (slug or fallback)[:48]
+
+
+def make_era_key(label: str, learn_from: str, learn_until: str) -> str:
+  base = _slug(label) or f"{str(learn_from)[:4]}-{str(learn_until)[:4]}"
+  return base[:40]
+
+
+def make_kb_profile(era_key: str) -> str:
+  return "era_" + re.sub(r"[^a-zA-Z0-9_]+", "_", era_key).strip("_")
+
+
+def _normalize_era(raw: dict | None) -> dict | None:
+  if not isinstance(raw, dict):
+    return None
+  learn_from = str(raw.get("learn_from") or "").strip()[:10]
+  learn_until = str(raw.get("learn_until") or "").strip()[:10]
+  if not learn_from or not learn_until:
+    return None
+  label = str(raw.get("label") or "").strip() or f"{learn_from[:4]}–{learn_until[:4]}"
+  key = str(raw.get("key") or "").strip() or make_era_key(label, learn_from, learn_until)
+  kb_profile = str(raw.get("kb_profile") or "").strip() or make_kb_profile(key)
+  return {
+    "key": key,
+    "label": label,
+    "learn_from": learn_from,
+    "learn_until": learn_until,
+    "kb_profile": kb_profile,
+  }
+
+
+def _normalize_era_catalog(raw_eras) -> list[dict]:
+  out: list[dict] = []
+  seen: set[str] = set()
+  for item in raw_eras or []:
+    era = _normalize_era(item)
+    if not era or era["key"] in seen:
+      continue
+    seen.add(era["key"])
+    out.append(era)
+  return out or [dict(e) for e in DEFAULT_LEARNING_ERAS]
+
+
+def get_learning_era_catalog(settings: dict | None = None) -> list[dict]:
+  """Catalog giai đoạn học (có thể thêm/bớt) — lưu trong settings."""
+  if settings is None:
+    data = _read_json(SETTINGS_PATH) or {}
+    return _normalize_era_catalog(data.get("learning_eras") or DEFAULT_LEARNING_ERAS)
+  return _normalize_era_catalog(settings.get("learning_eras") or DEFAULT_LEARNING_ERAS)
+
+
 def _sanitize_settings(data: dict) -> dict:
   """Chỉ giữ giá trị hợp lệ theo schema Settings."""
-  allowed_era_keys = {e["key"] for e in LEARNING_ERA_OPTIONS}
   out = {**DEFAULT_SETTINGS, **data}
+  catalog = _normalize_era_catalog(out.get("learning_eras") or DEFAULT_LEARNING_ERAS)
+  out["learning_eras"] = catalog
+  allowed_era_keys = {e["key"] for e in catalog}
   legacy_trains = out.get("strategy_train_months") or []
   trains = [t for t in (out.get("strategy_train_weeks") or legacy_trains) if t in TRAIN_WEEK_OPTIONS]
   out["strategy_train_weeks"] = trains or list(TRAIN_WEEK_OPTIONS)
   out.pop("strategy_train_months", None)
   eras = [k for k in (out.get("learning_era_keys") or []) if k in allowed_era_keys]
-  out["learning_era_keys"] = eras or [e["key"] for e in LEARNING_ERA_OPTIONS]
+  out["learning_era_keys"] = eras or [e["key"] for e in catalog]
   out["learning_loops"] = max(1, min(12, int(out.get("learning_loops") or 4)))
   return out
 
@@ -89,24 +148,24 @@ def _write_json(path: Path, data: dict):
   tmp.replace(path)
 
 
-def era_by_key(key: str) -> dict | None:
-  for e in LEARNING_ERA_OPTIONS:
+def era_by_key(key: str, settings: dict | None = None) -> dict | None:
+  for e in get_learning_era_catalog(settings):
     if e["key"] == key:
       return e
   return None
 
 
-def era_by_kb_profile(kb_profile_id: str | None) -> dict | None:
+def era_by_kb_profile(kb_profile_id: str | None, settings: dict | None = None) -> dict | None:
   """Map profile ID → giai đoạn Settings (hỗ trợ ID cũ)."""
   if not kb_profile_id:
     return None
   pid = str(kb_profile_id)
-  for e in LEARNING_ERA_OPTIONS:
+  for e in get_learning_era_catalog(settings):
     if e["kb_profile"] == pid:
       return e
   legacy_key = LEGACY_KB_PROFILE_MAP.get(pid)
   if legacy_key:
-    return era_by_key(legacy_key)
+    return era_by_key(legacy_key, settings)
   return None
 
 
@@ -126,7 +185,8 @@ def canonical_kb_profile(profile_id: str | None) -> str | None:
 def resolve_learning_eras(settings: dict | None = None) -> list[dict]:
   settings = settings or load_settings()
   keys = settings.get("learning_era_keys") or []
-  return [e for k in keys if (e := era_by_key(k))]
+  catalog = {e["key"]: e for e in get_learning_era_catalog(settings)}
+  return [catalog[k] for k in keys if k in catalog]
 
 
 def settings_kb_profile_ids(settings: dict | None = None) -> list[str]:
@@ -135,7 +195,10 @@ def settings_kb_profile_ids(settings: dict | None = None) -> list[str]:
 
 def default_learning_era(settings: dict | None = None) -> dict:
   eras = resolve_learning_eras(settings)
-  return eras[0] if eras else LEARNING_ERA_OPTIONS[0]
+  if eras:
+    return eras[0]
+  catalog = get_learning_era_catalog(settings)
+  return catalog[0] if catalog else dict(DEFAULT_LEARNING_ERAS[0])
 
 
 def settings_backtest_period(settings: dict | None = None) -> tuple[str, str]:
@@ -184,6 +247,8 @@ def load_settings() -> dict:
   data = _read_json(SETTINGS_PATH)
   if not data:
     return dict(DEFAULT_SETTINGS)
+  if not data.get("learning_eras"):
+    data["learning_eras"] = [dict(e) for e in DEFAULT_LEARNING_ERAS]
   return _sanitize_settings(data)
 
 
@@ -211,14 +276,69 @@ def update_settings(**fields) -> dict:
   return s
 
 
+def add_learning_era(
+  *,
+  label: str,
+  learn_from: str,
+  learn_until: str,
+  activate: bool = True,
+) -> dict:
+  """Thêm giai đoạn học vào catalog (và optionally bật trong learning_era_keys)."""
+  s = dict(get_settings())
+  catalog = list(get_learning_era_catalog(s))
+  key = make_era_key(label, learn_from, learn_until)
+  existing_keys = {e["key"] for e in catalog}
+  n = 2
+  base_key = key
+  while key in existing_keys:
+    key = f"{base_key}-{n}"
+    n += 1
+  era = _normalize_era({
+    "key": key,
+    "label": label,
+    "learn_from": learn_from,
+    "learn_until": learn_until,
+    "kb_profile": make_kb_profile(key),
+  })
+  if not era:
+    raise ValueError("Giai đoạn học không hợp lệ.")
+  if learn_from > learn_until:
+    raise ValueError("Ngày bắt đầu phải trước ngày kết thúc.")
+  catalog.append(era)
+  s["learning_eras"] = catalog
+  keys = list(s.get("learning_era_keys") or [])
+  if activate and era["key"] not in keys:
+    keys.append(era["key"])
+  s["learning_era_keys"] = keys
+  return update_settings(**s)
+
+
+def remove_learning_era(era_key: str) -> dict:
+  """Xóa giai đoạn khỏi catalog (không cho xóa hết)."""
+  s = dict(get_settings())
+  catalog = [e for e in get_learning_era_catalog(s) if e["key"] != era_key]
+  if not catalog:
+    raise ValueError("Phải giữ ít nhất một giai đoạn học.")
+  s["learning_eras"] = catalog
+  s["learning_era_keys"] = [
+    k for k in (s.get("learning_era_keys") or []) if k != era_key
+  ] or [catalog[0]["key"]]
+  return update_settings(**s)
+
+
 def settings_grid_signature(settings: dict | None = None) -> str:
   """Chữ ký cấu hình — đổi khi cần chạy lại grid."""
   s = settings or get_settings()
   eras = sorted(s.get("learning_era_keys") or [])
   trains = sorted(s.get("strategy_train_weeks") or [])
+  catalog = {
+    e["key"]: f"{e['learn_from']}:{e['learn_until']}:{e['kb_profile']}"
+    for e in get_learning_era_catalog(s)
+  }
+  era_sig = ",".join(f"{k}={catalog.get(k, '')}" for k in eras)
   parts = [
     ",".join(str(t) for t in trains),
-    ",".join(eras),
+    era_sig,
     str(s.get("learning_loops", 4)),
     s.get("backtest_from", ""),
     s.get("backtest_to", ""),
@@ -241,7 +361,10 @@ def settings_changed_since_last_grid() -> bool:
 def format_settings_summary(settings: dict | None = None) -> str:
   s = settings or get_settings()
   trains = ", ".join(f"{t} tuần" for t in sorted(s.get("strategy_train_weeks") or []))
-  eras = ", ".join(s.get("learning_era_keys") or [])
+  eras = ", ".join(
+    era_by_key(k, s)["label"] if era_by_key(k, s) else k
+    for k in (s.get("learning_era_keys") or [])
+  )
   oos = f"{s.get('backtest_from', '?')[:4]}–{s.get('backtest_to', '?')[:4]}"
   return (
     f"Học chiến lược: **{trains}** · Giai đoạn học: **{eras}** · "

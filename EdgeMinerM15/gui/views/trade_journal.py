@@ -8,6 +8,7 @@ from analytics import (
   exit_reason_stats, direction_bias, filter_trades_df,
   ohlc_around_trade, trades_json_to_df,
 )
+from gui.charts import show_plotly
 from gui.components import warn_long_bias, warn_no_costs
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
@@ -165,7 +166,10 @@ def render(embedded: bool = False):
     window = ohlc_around_trade(ohlc, trade_row["entry"], bars=48)
     fig = _trade_chart(window, trade_row)
     if fig:
-      st.plotly_chart(fig, use_container_width=True)
+      chart_title = (
+        f"{trade_row.get('dir')} | R={trade_row.get('r')} | {trade_row.get('reason')}"
+      )
+      show_plotly(fig, chart_title)
   except Exception as e:
     st.caption(f"Không load được chart: {e}")
 

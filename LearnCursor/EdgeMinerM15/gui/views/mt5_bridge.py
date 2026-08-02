@@ -853,9 +853,7 @@ def _render_sim_progress_fragment() -> None:
   except Exception as e:
     st.warning(f"Không đọc được sim status: {e}")
     return
-  active = get_active_trade_model()
   running = bool(sim.get("running"))
-  delay_ms = int(st.session_state.get("sim_ea_delay", 100) or 100)
 
   # Form Start/disabled uses full-script `running` — remount page when feed flips
   prev_run = bool(st.session_state.get("_sim_ui_was_running"))
@@ -863,13 +861,14 @@ def _render_sim_progress_fragment() -> None:
     st.session_state["_sim_ui_was_running"] = running
     st.rerun()
 
-  st.caption(
-    f"**{format_model_label(active) if active else '—'}** · "
-    f"{str(sim.get('status') or 'idle').upper()}"
-    + (f" · tạm dừng" if sim.get("paused") else "")
-    + f" · {sim.get('bars_done') or 0}/{sim.get('bars_total') or '—'} nến · "
-    f"{sim.get('n_fills') or 0} lệnh · delay {delay_ms}ms"
-  )
+  # Trade Model is shown at page top — only show compact feed progress while running
+  if running:
+    st.caption(
+      f"{str(sim.get('status') or 'running').upper()}"
+      + (" · tạm dừng" if sim.get("paused") else "")
+      + f" · {sim.get('bars_done') or 0}/{sim.get('bars_total') or '—'} nến · "
+      f"{sim.get('n_fills') or 0} lệnh"
+    )
   if sim.get("error"):
     st.error(sim["error"])
 
@@ -1746,8 +1745,11 @@ def _render_tech_panel() -> None:
 def render():
   render_page_header(ALL_ITEMS["mt5_bridge"], show_workspace=False)
 
+  # Trade Model first — before Live/Simulate switcher
+  render_shared_trade_model_banner(
+    context="simulate" if _bridge_mode() == "sim" else "live",
+  )
   mode = _render_mode_switcher()
-  render_shared_trade_model_banner(context="simulate" if mode == "sim" else "live")
 
   chart_ranges = ["1 ngày", "1 tuần", "1 tháng", "6 tháng", "1 năm", "Tất cả"]
   # M15 ≈ 96 bars/day

@@ -309,19 +309,54 @@ def create_profile(profile_id: str, name: str, copy_from: str | None = None) -> 
   return kb
 
 
+def list_disk_profile_ids() -> list[str]:
+  """Profile IDs còn file KB hoặc thư mục snapshot trên đĩa (kể cả orphan)."""
+  ids: set[str] = set()
+  if PROFILES_DIR.exists():
+    for path in PROFILES_DIR.glob("*.json"):
+      if path.name == INDEX_PATH.name:
+        continue
+      ids.add(path.stem)
+  if SNAPSHOTS_DIR.exists():
+    for path in SNAPSHOTS_DIR.iterdir():
+      if path.is_dir() and path.name.strip():
+        ids.add(path.name)
+  return sorted(ids)
+
+
+def purge_orphan_snapshots() -> list[str]:
+  """Xóa thư mục snapshot không còn file profile JSON tương ứng."""
+  removed: list[str] = []
+  if not SNAPSHOTS_DIR.exists():
+    return removed
+  for path in list(SNAPSHOTS_DIR.iterdir()):
+    if not path.is_dir():
+      continue
+    pid = path.name
+    if pid == DEFAULT_PROFILE_ID:
+      continue
+    if profile_path(pid).exists():
+      continue
+    shutil.rmtree(path)
+    removed.append(pid)
+  return removed
+
+
 def delete_profile(profile_id: str) -> bool:
   if profile_id == DEFAULT_PROFILE_ID:
     return False
   path = profile_path(profile_id)
+  snap_root = SNAPSHOTS_DIR / profile_id
+  had = path.exists() or snap_root.exists()
   if path.exists():
     path.unlink()
-  snap_root = SNAPSHOTS_DIR / profile_id
   if snap_root.exists():
     shutil.rmtree(snap_root)
   idx = _load_index()
+  before = len(idx.get("profiles", []))
   idx["profiles"] = [p for p in idx.get("profiles", []) if p["id"] != profile_id]
   _save_index(idx)
-  return True
+  return had or len(idx["profiles"]) < before
 
 
 def _merge_rule_stat(target: dict, source: dict):

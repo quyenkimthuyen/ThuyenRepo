@@ -6,33 +6,37 @@ import streamlit as st
 # --- Giải thích ngắn (dùng trong help= / caption) ---
 
 HELP = {
-  "oos": "Giai đoạn **kiểm chứng** — chỉ mô phỏng lệnh, không dùng để tối ưu chiến lược.",
+  "oos": "Giai đoạn **kiểm chứng** — chỉ mô phỏng lệnh, không dùng để tối ưu chiến lược (OOS).",
   "train_weeks": "Số tuần dữ liệu gần nhất để **tìm chiến lược mới mỗi tuần** (walk-forward).",
   "train_months": "Đã thay bằng cửa sổ học 3/6/9 tuần.",
-  "kb": "**Bộ nhớ kinh nghiệm** — lưu rule/chiến lược đã học từ các tuần trước.",
-  "kb_on": "Dùng bộ nhớ kinh nghiệm khi tìm chiến lược (thường cho kết quả tốt hơn, cần kiểm chứng thêm).",
+  "kb": "**Bộ nhớ kinh nghiệm (KB)** — lưu rule/chiến lược đã học từ các tuần trước.",
+  "kb_on": "Dùng bộ nhớ kinh nghiệm khi tìm chiến lược (thường tốt hơn, cần kiểm chứng thêm).",
   "kb_off": "Không dùng bộ nhớ — đánh giá **khách quan nhất**, nên chạy trước khi tin vào kết quả.",
-  "epoch": "**Vòng học** — chạy cả giai đoạn một lần để cập nhật bộ nhớ (ep001, ep002, …).",
+  "epoch": "**Vòng học (epoch)** — chạy cả giai đoạn một lần để cập nhật bộ nhớ (ep001, ep002, …).",
   "spread": "Chênh lệch mua/bán (pip) — trừ vào mỗi lệnh khi mô phỏng.",
   "slippage": "Trượt giá (pip) — mô phỏng khớp lệnh kém hơn giá lý tưởng.",
-  "r_unit": "**Đơn vị R** — lợi nhuận tính theo rủi ro mỗi lệnh (1R = thắng/thua bằng 1 lần risk).",
-  "drawdown": "Mức **sụt giảm** lớn nhất từ đỉnh equity (đơn vị R).",
-  "win_rate": "Tỷ lệ lệnh **thắng** trong giai đoạn kiểm chứng.",
-  "rr": "Tỷ lệ **lãi trung bình / lỗ trung bình** mỗi lệnh.",
-  "profit_factor": "Tổng lãi ÷ tổng lỗ — >1 nghĩa là có lời.",
-  "risk_of_ruin": "Ước lượng **xác suất phá sản** theo expectancy & % rủi ro/lệnh — không phải xác suất thực tế 100%.",
+  "r_unit": "**Đơn vị R** — lợi nhuận theo rủi ro mỗi lệnh (1R = ±1 lần risk).",
+  "drawdown": "**Max DD** — mức sụt giảm lớn nhất từ đỉnh equity (đơn vị R).",
+  "win_rate": "**WR** — tỷ lệ lệnh thắng trong giai đoạn kiểm chứng.",
+  "rr": "**RR** — lãi trung bình ÷ lỗ trung bình mỗi lệnh.",
+  "profit_factor": "**PF** — tổng lãi ÷ tổng lỗ; >1 nghĩa là có lời.",
+  "risk_of_ruin": "**RoR** — ước lượng xác suất phá sản (không phải Monte Carlo đầy đủ).",
   "holdout": "Giữ **vài tháng cuối** chỉ để test — không dùng khi tối ưu walk-forward chính.",
-  "trade_profile": "Một **cấu hình giao dịch** gồm: cửa sổ học, bộ nhớ, giai đoạn test, phí.",
-  "walk_forward": "Mỗi tuần: học trên data gần → trade tuần tiếp theo → lặp lại (tránh nhìn trước tương lai).",
+  "trade_profile": "**Trade Model** — cấu hình giao dịch: cửa sổ học, bộ nhớ, giai đoạn test, phí.",
+  "walk_forward": "**WF** — mỗi tuần học trên data gần → trade tuần sau → lặp (tránh nhìn trước).",
   "paper": (
     "**Paper Trade** — mô phỏng lệnh trên nến MT5, không gửi EA. "
-    "Xem desk thống kê tuần trước khi bật Bridge live."
+    "Desk thống kê tuần (tùy chọn trước Live)."
   ),
   "mt5_bridge": (
-    "**MT5 Bridge** — App quyết định → EA `ForgeBridge` mở/đóng lệnh trên tài khoản MT5. "
-    "Khác Paper: có fill thật trong `trades.json`."
+    "**MT5 Bridge** — App quyết định → EA `ForgeBridge` mở/đóng lệnh trên MT5. "
+    "Live = thật/demo; Simulate = replay History Feed."
   ),
-  "grid_search": "Thử nhiều combo tham số tự động để tìm setting tốt hơn.",
+  "grid_search": "**Grid Search** — thử nhiều combo tham số để tìm setting tốt hơn.",
+  "remine": "**Remine** — mỗi tuần mine lại strategy trên cửa sổ học gần nhất (không đổi Trade Model).",
+  "parity": "**Parity** — đối chiếu strategy tuần Live với weekly_log Health OOS.",
+  "fp": "**fp / conditions_fp** — fingerprint điều kiện remine; Live/Sim phải khớp Trade Model.",
+  "history_feed": "**History Feed** — EA phát lại nến lịch sử theo Từ/Đến để Simulate.",
 }
 
 # --- Nhãn metric (hiển thị) ---
@@ -190,22 +194,66 @@ def backtest_kpi_items(overall: dict, last_year: dict | None = None) -> list[tup
 
 
 def render_glossary_expander(*, location: str = "sidebar"):
-  """Bảng thuật ngữ nhanh — sidebar hoặc main."""
-  items = [
-    ("Kiểm chứng", "Giai đoạn chỉ test lệnh, không tối ưu lại chiến lược (trước: OOS)."),
-    ("Học N tháng", "Mỗi tuần lấy N tháng data gần nhất để tìm chiến lược."),
-    ("Bộ nhớ", "Kinh nghiệm tích lũy từ các tuần/tháng trước (trước: KB)."),
-    ("Giai đoạn", "Profile bộ nhớ gắn một khoảng thời gian, vd. Giai đoạn 2024 (trước: era_2024)."),
-    ("Vòng học", "Một lần chạy cả giai đoạn để cập nhật bộ nhớ (trước: epoch)."),
-    ("Bộ nhớ chung", "Profile mặc định, không gắn giai đoạn cụ thể (trước: default)."),
-    ("Đơn vị R", "Lợi nhuận theo rủi ro mỗi lệnh (1R = ±1 lần risk)."),
-    ("Walk-forward", "Học từng tuần → trade tuần sau → lặp (tránh nhìn trước)."),
-    ("Paper Trade", "Mô phỏng lệnh trên nến MT5 — không gửi EA; desk thống kê tuần."),
-    ("MT5 Bridge", "App quyết định + EA execute lệnh thật/demo trên MT5."),
-    ("SIGNAL", "Paper: có tín hiệu chưa khớp. Bridge: phải gửi BUY/SELL lúc bar đóng."),
+  """Deprecated — thuật ngữ đã chuyển vào trang Hướng dẫn."""
+  if location == "sidebar":
+    return
+  render_glossary_guide()
+
+
+def glossary_sections() -> list[tuple[str, list[tuple[str, str]]]]:
+  """Thuật ngữ & viết tắt dùng trong app (M15)."""
+  return [
+    ("Học & kiểm chứng", [
+      ("OOS / Kiểm chứng", "Giai đoạn chỉ test lệnh, không tối ưu lại chiến lược."),
+      ("Học N tuần", "Mỗi tuần lấy N tuần data gần nhất để tìm chiến lược (3/6/9)."),
+      ("WF / Walk-forward", "Học trên cửa sổ gần → trade tuần sau → trượt cửa sổ (không nhìn trước)."),
+      ("KB / Bộ nhớ", "Knowledge Base — kinh nghiệm tích lũy (rules, genomes, ML)."),
+      ("KB ON / OFF", "ON = dùng bộ nhớ khi mine; OFF = đánh giá khách quan nhất."),
+      ("Epoch / Vòng học", "Một lần chạy cả giai đoạn để cập nhật KB (ep001, ep002, …)."),
+      ("Giai đoạn (era)", "Profile KB gắn khoảng thời gian, vd. era_2025_full."),
+      ("Hold-out", "Giữ vài tháng cuối chỉ để test — không dùng khi tối ưu WF chính."),
+      ("Remine", "Mỗi tuần mine lại strategy trên cửa sổ học gần nhất (không đổi Trade Model)."),
+    ]),
+    ("Tối ưu & model", [
+      ("Grid Search", "Thử nhiều combo tham số, xếp hạng để chọn Trade Model."),
+      ("Trade Model", "Snapshot cấu hình đã chọn (cửa sổ học, KB/epoch, OOS, phí) — dùng chung Live/Simulate."),
+      ("Health / Health OOS", "Báo cáo backtest OOS của model (chuẩn so sánh Live/Sim)."),
+      ("fp / conditions_fp", "Fingerprint điều kiện remine; Live/Sim phải khớp Trade Model đang chọn."),
+      ("Edge", "Chênh lệch R (Live/Sim − Backtest, hoặc KB ON − OFF); gần 0 ≈ khớp kỳ vọng."),
+    ]),
+    ("Vận hành MT5", [
+      ("MT5 Bridge", "App quyết định + EA mở/đóng lệnh trên MetaTrader 5."),
+      ("Live", "Lệnh thật/demo trên tài khoản MT5 đang gắn EA."),
+      ("Simulate", "Replay quá khứ qua App↔EA (History Feed), cùng Trade Model với Live."),
+      ("History Feed", "EA phát lại nến lịch sử theo Từ/Đến để Simulate."),
+      ("Parity", "Đối chiếu strategy tuần Live với weekly_log Health OOS."),
+      ("EA", "Expert Advisor trên MT5 (`ForgeBridgeM15` / `ForgeBridgeM15Sim`)."),
+      ("InpMode", "Input EA: Live / History Feed (Simulate)."),
+      ("Magic", "Magic Number — tách lệnh Bridge khỏi EA khác trên cùng tài khoản."),
+      ("Paper Trade", "Mô phỏng lệnh trên nến MT5, không gửi EA (desk thống kê tuần)."),
+    ]),
+    ("Chỉ số & lệnh", [
+      ("R", "Đơn vị lợi nhuận theo rủi ro mỗi lệnh (1R = ±1 lần risk)."),
+      ("WR", "Win Rate — tỷ lệ lệnh thắng (%)."),
+      ("RR", "Reward/Risk — lãi trung bình ÷ lỗ trung bình mỗi lệnh."),
+      ("PF", "Profit Factor — tổng lãi ÷ tổng lỗ (>1 = có lời)."),
+      ("Max DD", "Max Drawdown — sụt giảm tối đa từ đỉnh equity (R)."),
+      ("RoR", "Risk of Ruin — ước lượng xác suất phá sản (không phải Monte Carlo đầy đủ)."),
+      ("PnL", "Profit and Loss — lãi/lỗ (desk thường tính lệnh Auto theo Trade Model)."),
+      ("Spread / Slippage", "Chênh mua-bán / trượt giá (pip) trừ vào mô phỏng."),
+      ("SL / TP", "Stop Loss / Take Profit."),
+      ("SIGNAL", "Có tín hiệu chưa khớp; Bridge phải gửi BUY/SELL lúc bar đóng."),
+      ("OPEN / CLOSED / FILLED", "Trạng thái lệnh: đang mở / đã đóng / đã khớp (Paper FILLED ≠ lệnh MT5)."),
+      ("Auto / Lệnh sửa", "Auto = chiến lược Trade Model; Lệnh sửa = test market / sửa tay SL·TP."),
+    ]),
   ]
-  container = st.sidebar if location == "sidebar" else st
-  with container.expander("📖 Thuật ngữ nhanh", expanded=False):
-    for term, desc in items:
-      st.markdown(f"**{term}** — {desc}")
-    st.caption("Chi tiết: trang **Hướng dẫn**.")
+
+
+def render_glossary_guide() -> None:
+  """Thuật ngữ đầy đủ — trang Hướng dẫn."""
+  st.subheader("Thuật ngữ & viết tắt")
+  st.caption("Các từ / viết tắt xuất hiện trong app. Hover help trên từng ô nhập cũng dùng cùng định nghĩa.")
+  for section, items in glossary_sections():
+    with st.expander(section, expanded=(section == "Học & kiểm chứng")):
+      for term, desc in items:
+        st.markdown(f"**{term}** — {desc}")

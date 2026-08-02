@@ -9,6 +9,7 @@ from analytics import (
   equity_series, rolling_win_rate, trades_json_to_df,
   weekly_r_histogram, yearly_breakdown,
 )
+from gui.charts import show_plotly
 from gui.components import constraint_checklist, kpi_row, warn_kb_leak, warn_no_costs
 from gui.glossary import HELP, METRIC_LABELS, backtest_kpi_items
 from gui.long_task_background import start_job
@@ -27,7 +28,10 @@ def _equity_chart(eq_df):
                            line=dict(color="#2ecc71", width=2)), row=1, col=1)
   fig.add_trace(go.Scatter(x=eq_df["entry"], y=eq_df["drawdown_r"], name="Sụt giảm",
                            fill="tozeroy", line=dict(color="#e74c3c")), row=2, col=1)
-  fig.update_layout(height=480, margin=dict(l=40, r=20, t=40, b=40), showlegend=False)
+  fig.update_layout(
+    height=480, title="Backtest · Lợi nhuận & sụt giảm (R)",
+    margin=dict(l=40, r=20, t=40, b=40), showlegend=False,
+  )
   return fig
 
 
@@ -163,23 +167,26 @@ def render(embedded: bool = False):
 
   c1, c2 = st.columns([2, 1])
   with c1:
+    equity_title = "Backtest · Lợi nhuận & sụt giảm (R)"
     fig = _equity_chart(eq_df)
     if fig:
-      st.plotly_chart(fig, use_container_width=True)
+      show_plotly(fig, equity_title)
   with c2:
     st.subheader("Theo năm")
     st.dataframe(yearly_breakdown(trades_df), use_container_width=True, hide_index=True)
 
   c3, c4 = st.columns(2)
   with c3:
+    rolling_title = "Tỷ lệ thắng 20 lệnh gần nhất"
     fig2 = _rolling_wr_chart(rw_df)
     if fig2:
-      st.plotly_chart(fig2, use_container_width=True)
+      show_plotly(fig2, rolling_title)
   with c4:
     wh = weekly_r_histogram(report.get("weekly_log", []))
+    weekly_title = "Lợi nhuận theo tuần (R)"
     fig3 = _weekly_hist(wh.tail(52) if len(wh) > 52 else wh)
     if fig3:
-      st.plotly_chart(fig3, use_container_width=True)
+      show_plotly(fig3, weekly_title)
 
   st.subheader("Nhật ký từng tuần (walk-forward)")
   wlog = [w for w in report.get("weekly_log", []) if "oos_trades" in w]

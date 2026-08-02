@@ -55,8 +55,6 @@ function Invoke-Python([string]$Root, [string]$Code) {
 function Start-Services {
   Invoke-Python $M15Root "from mt5_bridge.background import save_config,start_worker; save_config(enabled=True,model_id='tm_m15_best_2_49216b56',risk_pct=1.0,poll_sec=2.0,bridge_dir=r'$M15Root\mt5\bridge'); assert start_worker()"
   Invoke-Python $H1Root "from mt5_bridge.background import save_config,start_worker; save_config(enabled=True,model_id='tm_mt5_best_94ef551a',risk_pct=1.0,poll_sec=2.0,bridge_dir=r'$H1Root\mt5\bridge_h1'); assert start_worker()"
-  Invoke-Python $M15Root "from paper_service import save_config,start_worker; save_config(enabled=True,model_id='tm_m15_best_2_49216b56',risk_pct=1.0,poll_sec=2.0); assert start_worker()"
-  Invoke-Python $H1Root "from paper_service import save_config,start_worker; save_config(enabled=True,model_id='tm_mt5_best_94ef551a',risk_pct=1.0,poll_sec=2.0); assert start_worker()"
 }
 
 function Stop-Services {
@@ -139,9 +137,7 @@ function Show-Status {
     @{ Name = "M15 app"; Pattern = [regex]::Escape("$M15Root\gui\app.py"); Port = 8501 },
     @{ Name = "H1 app"; Pattern = [regex]::Escape("$H1Root\gui\app.py"); Port = 8502 },
     @{ Name = "M15 bridge"; Pattern = [regex]::Escape("$M15Root\mt5\bridge"); Port = 8765 },
-    @{ Name = "H1 bridge"; Pattern = [regex]::Escape("$H1Root\mt5\bridge_h1"); Port = 8865 },
-    @{ Name = "M15 paper"; Pattern = [regex]::Escape("$M15Root\scripts\paper_monitor_service.py"); Port = 8766 },
-    @{ Name = "H1 paper"; Pattern = [regex]::Escape("$H1Root\scripts\paper_monitor_service.py"); Port = 8866 }
+    @{ Name = "H1 bridge"; Pattern = [regex]::Escape("$H1Root\mt5\bridge_h1"); Port = 8865 }
   )) {
     $count = @($processes | Where-Object { $_.CommandLine -match $item.Pattern }).Count
     $listener = Get-NetTCPConnection -State Listen -LocalPort $item.Port -ErrorAction SilentlyContinue

@@ -2,7 +2,7 @@
   "meta": {
     "model_id": "tm_m15_best_2_49216b56",
     "source": "live_remine",
-    "n_weeks": 1
+    "n_weeks": 2
   },
   "weekly": [
     {
@@ -85,6 +85,87 @@
       },
       "train_start_idx": 23208,
       "train_end_idx": 24504
+    },
+    {
+      "week_start": "2026-07-27",
+      "strategy": {
+        "name": "Forge RR3 full 2L5S bb+zscore #E6B5",
+        "exit_mode": "full",
+        "ml_prob_min": 0.36,
+        "rr": 3.0,
+        "atr_mult": 1.05,
+        "score_threshold": 0.6,
+        "atr_mult_sl": 1.05,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 16,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 8,
+        "session_end_hour": 17,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.12
+          },
+          {
+            "feat": "pullback_long",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.4
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "bb_pos",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.668699457271361,
+            "w": 1.2506644680779402
+          },
+          {
+            "feat": "zscore_20",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.6215314668303841,
+            "w": 0.8280903719790591
+          },
+          {
+            "feat": "bb_pos",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.8063698317088707,
+            "w": 0.5003024447085814
+          },
+          {
+            "feat": "zscore_20",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2254793282433727,
+            "w": 0.46348721217957556
+          },
+          {
+            "feat": "macd_hist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.08148540194383821,
+            "w": 0.554249858341451
+          }
+        ]
+      },
+      "train_start_idx": 37324,
+      "train_end_idx": 38751
     }
   ]
 }

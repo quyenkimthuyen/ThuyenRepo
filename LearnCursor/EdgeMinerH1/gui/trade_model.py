@@ -250,12 +250,27 @@ def sync_active_model_into_runtime_configs() -> dict | None:
 
 
 def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
-  """Sync active Trade Model into Live/Sim runtime; warn only when missing."""
+  """Sync active Trade Model into Live/Sim runtime; show selection at page top."""
   active = sync_active_model_into_runtime_configs()
   if not active:
     st.warning(
       "Chưa chọn Trade Model — vào **Trade Models** rồi chọn model."
     )
+    return active
+  label = format_model_label(active)
+  oos_from = str(active.get("oos_from") or "—")[:10]
+  oos_to = str(active.get("oos_to") or "—")[:10]
+  bits = [f"**Trade Model:** {label}"]
+  if active.get("total_r") is not None:
+    try:
+      bits.append(f"**{float(active['total_r']):+.1f}R**")
+    except (TypeError, ValueError):
+      pass
+  st.markdown(" · ".join(bits))
+  st.caption(
+    f"OOS `{oos_from} → {oos_to}` · dùng chung Live / Simulate / Paper · "
+    "đổi tại **Trade Models → Quản lý**"
+  )
   return active
 
 

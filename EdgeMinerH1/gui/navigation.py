@@ -13,31 +13,31 @@ class NavItem:
   icon: str = ""  # Streamlit Material icon, e.g. ":material/home:"
 
 
-# Flat list — Cài đặt & Phân tích nằm trong Học & tối ưu (Trade Models).
+# Flat list — Trade Models is a top-level sidebar page.
 NAV_ITEMS: tuple[NavItem, ...] = (
   NavItem(
     "home", "Tổng quan", "command_center",
-    "Data · KB → Grid → Model → Paper",
+    "Data · KB → Grid → Model → Live/Simulate",
     ":material/dashboard:",
   ),
   NavItem(
     "learning", "Học & tối ưu", "learning_hub",
-    "Cài đặt → KB → Grid → Trade Model (Quản lý · Rủi ro · Nhật ký · Chiến lược)",
+    "Cài đặt → KB → Grid Search",
     ":material/school:",
   ),
   NavItem(
-    "paper", "Giám sát paper", "paper_monitor",
-    "Mô phỏng lệnh tuần · thống kê desk · không gửi EA",
-    ":material/monitoring:",
+    "models", "Trade Models", "trade_models_view",
+    "Chọn model · Sức khỏe · Rủi ro · Nhật ký · Chiến lược",
+    ":material/inventory_2:",
   ),
   NavItem(
     "mt5_bridge", "MT5 Bridge", "mt5_bridge",
-    "Lệnh thật/demo · EA execute · fill journal",
+    "",
     ":material/hub:",
   ),
   NavItem(
     "guide", "Hướng dẫn", "usage_guide",
-    "Quy trình · khái niệm · FAQ",
+    "Thuật ngữ · quy trình · FAQ",
     ":material/menu_book:",
   ),
 )
@@ -62,8 +62,9 @@ NAV_GROUPS: tuple[NavGroup, ...] = (
 
 LEGACY_ALIASES: dict[str, str] = {
   "Command Center": "home",
-  "Paper Monitor": "paper",
-  "Giám sát paper": "paper",
+  "Paper Monitor": "models",
+  "Giám sát paper": "models",
+  "paper": "models",
   "Backtest Lab": "learning",
   "Grid Search": "learning",
   "Report Compare": "learning",
@@ -72,13 +73,14 @@ LEGACY_ALIASES: dict[str, str] = {
   "Bộ nhớ & học": "learning",
   "Learning Center": "learning",
   "Nghiên cứu": "learning",
-  "Risk Dashboard": "learning",
-  "Quản trị rủi ro": "learning",
-  "Trade Journal": "learning",
-  "Nhật ký lệnh": "learning",
-  "Strategy Inspector": "learning",
-  "Chiến lược": "learning",
-  "Phân tích": "learning",
+  "Risk Dashboard": "models",
+  "Quản trị rủi ro": "models",
+  "Trade Journal": "models",
+  "Nhật ký lệnh": "models",
+  "Strategy Inspector": "models",
+  "Chiến lược": "models",
+  "Phân tích": "models",
+  "Trade Models": "models",
   "Usage Guide": "guide",
   "Cài đặt": "learning",
   "Settings": "learning",
@@ -96,13 +98,6 @@ LEARNING_TAB_BY_ALIAS: dict[str, str] = {
   "Report Compare": "grid",
   "KB & Học": "train_kb",
   "Learning Center": "train_kb",
-  "Risk Dashboard": "models",
-  "Quản trị rủi ro": "models",
-  "Trade Journal": "models",
-  "Nhật ký lệnh": "models",
-  "Strategy Inspector": "models",
-  "Chiến lược": "models",
-  "Phân tích": "models",
 }
 
 # Sets models_subtab (and analysis_tab) when opening from legacy names
@@ -114,6 +109,9 @@ ANALYSIS_TAB_BY_ALIAS: dict[str, str] = {
   "Strategy Inspector": "strategy",
   "Chiến lược": "strategy",
   "Phân tích": "risk",
+  "Paper Monitor": "health",
+  "Giám sát paper": "health",
+  "paper": "health",
 }
 
 ALL_ITEMS: dict[str, NavItem] = {item.key: item for item in NAV_ITEMS}

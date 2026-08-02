@@ -71,19 +71,48 @@ def assess_monthly_degradation(
       edge_late = round(float((on[late_m] - b[late_m]).sum()), 3)
       edge_delta = round(edge_late - edge_early, 3)
 
-  # Heuristic thresholds (R over half-window)
-  if delta <= -8 or (edge_delta is not None and edge_delta <= -5):
-    verdict, msg = "degraded", (
-      f"Dấu hiệu suy giảm: nửa sau {late_r:+.1f}R vs nửa đầu {early_r:+.1f}R "
-      f"(Δ {delta:+.1f}R)."
+  # Heuristic thresholds (R over half-window).
+  # Absolute R and KB edge are independent signals — edge can degrade while
+  # late-half R is still higher (e.g. market easy for both ON and OFF).
+  r_bad = delta <= -8
+  r_soft = delta <= -3
+  edge_bad = edge_delta is not None and edge_delta <= -5
+  edge_soft = edge_delta is not None and edge_delta <= -2
+
+  def _r_half() -> str:
+    return f"nửa sau {late_r:+.1f}R vs nửa đầu {early_r:+.1f}R (Δ {delta:+.1f}R)"
+
+  def _edge_half() -> str:
+    return (
+      f"lợi thế KB ON−OFF nửa sau {edge_late:+.1f}R "
+      f"vs nửa đầu {edge_early:+.1f}R (Δ edge {edge_delta:+.1f}R)"
     )
-    if edge_delta is not None:
-      msg += f" Lợi thế KB ON−OFF nửa sau {edge_late:+.1f}R (Δ edge {edge_delta:+.1f}R)."
-  elif delta <= -3 or (edge_delta is not None and edge_delta <= -2):
-    verdict, msg = "watch", (
-      f"Theo dõi: nửa sau yếu hơn nửa đầu (Δ {delta:+.1f}R). "
-      "Nên so KB ON/OFF và Paper Auto gần đây."
-    )
+
+  if r_bad or edge_bad:
+    verdict = "degraded"
+    if edge_bad and not r_bad:
+      msg = (
+        f"Dấu hiệu suy giảm lợi thế KB: {_edge_half()}. "
+        f"Tổng R vẫn ổn ({_r_half()}) — OFF bắt kịp / ON kém nổi hơn."
+      )
+    elif r_bad and edge_bad:
+      msg = f"Dấu hiệu suy giảm: {_r_half()}; {_edge_half()}."
+    else:
+      msg = f"Dấu hiệu suy giảm tổng R: {_r_half()}."
+      if edge_delta is not None:
+        msg += f" {_edge_half().capitalize()}."
+  elif r_soft or edge_soft:
+    verdict = "watch"
+    if edge_soft and not r_soft:
+      msg = (
+        f"Theo dõi lợi thế KB: {_edge_half()}. "
+        f"Tổng R: {_r_half()}."
+      )
+    else:
+      msg = (
+        f"Theo dõi: nửa sau yếu hơn nửa đầu (Δ {delta:+.1f}R). "
+        "Nên so KB ON/OFF và Paper Auto gần đây."
+      )
   elif late_r < 0 and early_r > 0:
     verdict, msg = "watch", (
       f"Nửa đầu dương ({early_r:+.1f}R) nhưng nửa sau âm ({late_r:+.1f}R)."
@@ -93,6 +122,8 @@ def assess_monthly_degradation(
       f"Chưa thấy suy giảm rõ: nửa đầu {early_r:+.1f}R · nửa sau {late_r:+.1f}R "
       f"(Δ {delta:+.1f}R)."
     )
+    if edge_delta is not None:
+      msg += f" Edge KB Δ {edge_delta:+.1f}R."
 
   return {
     "n_months": n,

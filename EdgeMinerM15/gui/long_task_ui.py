@@ -16,6 +16,7 @@ from gui.long_task_background import (
 
 @st.fragment(run_every=timedelta(seconds=3))
 def _task_progress_fragment():
+  """Poll tiến trình; khi task kết thúc → full rerun để hiện banner hoàn thành/lỗi."""
   status = get_task_status()
   if status["running"]:
     st.progress(
@@ -25,6 +26,9 @@ def _task_progress_fragment():
         f"({status['pct']}%) · {status['progress_text'] or '…'}"
       ),
     )
+    return
+  # Parent script still thinks task is running until a full remount.
+  st.rerun()
 
 
 def _dismiss_button(key_prefix: str):
@@ -61,6 +65,8 @@ def render_task_status(
     extra = ""
     if status["job_type"] == "backtest" and res.get("total_r") is not None:
       extra = f" · **{res['total_r']}R**"
+    elif status["job_type"] == "learning" and res.get("kb_profile"):
+      extra = f" · `{res['kb_profile']}`"
     c1, c2 = st.columns([5, 1])
     with c1:
       st.success(f"✅ Hoàn thành **{status['job_label']}**{extra}")

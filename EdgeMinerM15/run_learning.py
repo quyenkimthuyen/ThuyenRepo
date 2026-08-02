@@ -63,7 +63,13 @@ def run_epoch(df, fm: FeatureMatrix, kb: KnowledgeBase, epoch: int) -> dict:
   prev_strat: MinedStrategy | None = None
 
   desc = f"Epoch {epoch} (genomes={len(kb.genomes)}, rules={len(kb.rule_stats)})"
-  for week_start, week_end in tqdm(weeks, desc=desc):
+  # Streamlit / background threads may have sys.stdout is None → tqdm crashes on .write
+  week_iter = tqdm(
+    weeks,
+    desc=desc,
+    disable=sys.stdout is None or not hasattr(sys.stdout, "write"),
+  )
+  for week_start, week_end in week_iter:
     train_start_idx, train_end_idx = get_train_window_indices(df, week_start, TRAIN_WEEKS)
     if train_start_idx is None or (train_end_idx - train_start_idx) < MIN_TRAIN_BARS:
       continue

@@ -19,6 +19,7 @@ from gui.trade_model import (
   get_model_run_params,
   render_shared_trade_model_banner,
 )
+from gui.charts import show_plotly
 from gui.services import get_ohlc_window_cached, get_paper_monitor
 from gui.ui_preferences import preference_callback, restore_widget
 from paper_journal import (
@@ -687,14 +688,15 @@ def _render_chart_panel(
 
   try:
     window = get_ohlc_window_cached(chart_from, chart_to)
+    chart_title = f"EUR/USD M15 · {chart_from} → {chart_to}"
     fig = _tradingview_chart(
       window, overlay, chart_from, chart_to,
-      title=f"EUR/USD M15 · {chart_from} → {chart_to}",
+      title=chart_title,
     )
   except Exception:
     fig = None
   if fig:
-    st.plotly_chart(fig, use_container_width=True, key="pm_tv_chart_period")
+    show_plotly(fig, chart_title, key="pm_tv_chart_period")
   else:
     st.caption("Không đủ dữ liệu OHLC cho chart giai đoạn này.")
 
