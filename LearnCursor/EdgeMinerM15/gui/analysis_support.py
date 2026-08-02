@@ -39,6 +39,7 @@ def start_model_report_job(model: dict | None = None) -> str:
   return start_job(
     "backtest",
     {
+      "model_id": m["id"],
       "use_learning": bool(p.get("use_kb", True)),
       "train_weeks": int(p.get("train_weeks") or 6),
       "spread_pips": float(p.get("spread_pips", 1.0)),

@@ -115,6 +115,7 @@ def _render_shared_model_bar(models: list[dict]) -> dict | None:
         st.rerun()
 
   from gui.app_settings import kb_profile_label
+  from gui.workspace import profile_mismatch_details
   st.caption(
     f"**{len(models)}** model · "
     f"train `{m.get('train_months')} tháng` · "
@@ -122,6 +123,16 @@ def _render_shared_model_bar(models: list[dict]) -> dict | None:
     f"ep `{m.get('kb_snapshot') or 'latest'}` · "
     f"OOS `{m.get('oos_from') or '—'} → {m.get('oos_to') or '—'}`"
   )
+  if report:
+    mismatches = profile_mismatch_details(report, {**m, "trade_model_id": mid})
+    if mismatches:
+      grid_r = m.get("total_r")
+      extra = f" Grid KPI: **{float(grid_r):+.2f}R**." if grid_r is not None else ""
+      st.warning(
+        "Báo cáo Backtest **không khớp** model đang chọn — "
+        + " · ".join(mismatches)
+        + f".{extra} Chạy lại báo cáo / Sức khỏe (bật **Chạy lại KB ON**)."
+      )
 
   return active
 

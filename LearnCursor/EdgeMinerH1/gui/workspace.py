@@ -181,8 +181,11 @@ def report_matches_workspace(report: dict, ws: dict | None = None) -> bool:
   """True nếu config báo cáo khớp workspace (không gọi report_matches_model — tránh vòng lặp)."""
   ws = ws or get_active_workspace()
   cfg = report.get("config") or {}
+  # Id stamp alone is not enough — a cross-synced report can carry the
+  # destination model_id while still having the wrong train window.
   if cfg.get("trade_model_id") and ws.get("trade_model_id"):
-    return cfg["trade_model_id"] == ws["trade_model_id"]
+    if cfg["trade_model_id"] != ws["trade_model_id"]:
+      return False
   return not profile_mismatch_details(report, ws)
 
 

@@ -131,8 +131,13 @@ def _finish(state: dict, *, status: str, error: str | None = None, result: dict 
 
 def _worker_backtest(state: dict):
   from gui.services import execute_backtest
+  from gui.trade_model import save_model_report
 
   p = state["params"]
+  target_model_id = p.get("model_id")
+  # Pin report to the model that started the job — never to whichever
+  # model happens to be active when the background worker finishes.
+  sync_active = not bool(target_model_id)
 
   def on_prog(step, total, _ws):
     _check_cancel()
@@ -152,12 +157,15 @@ def _worker_backtest(state: dict):
     on_progress=on_prog,
     archive=bool(p.get("archive")),
     archive_label=p.get("archive_label"),
-    sync_workspace=True,
+    sync_workspace=sync_active,
   )
+  if target_model_id:
+    save_model_report(target_model_id, report)
 
   result = {
     "total_r": (report.get("overall_oos") or {}).get("total_r"),
     "kb_compare": False,
+    "model_id": target_model_id,
   }
 
   if p.get("compare_kb_off"):
@@ -232,7 +240,7 @@ def _worker_model_health(state: dict):
       oos_to=oos_to,
       on_progress=on_prog,
       archive=False,
-      sync_workspace=True,
+      sync_workspace=False,
     )
     save_model_report(model_id, report_on)
 

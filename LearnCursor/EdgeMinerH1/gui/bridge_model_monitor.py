@@ -199,6 +199,8 @@ def overlapping_months(aligned: pd.DataFrame) -> pd.DataFrame:
 
 _OOS_COLOR = "#2962ff"
 _LIVE_COLOR = "#26a69a"
+_OOS_DD_COLOR = "#7b1fa2"   # purple — clear vs blue equity + gold DD
+_LIVE_DD_COLOR = "#f9a825"  # gold — clear vs teal equity + purple DD
 OOS_SERIES_COLOR = _OOS_COLOR
 LIVE_SERIES_COLOR = _LIVE_COLOR
 
@@ -382,7 +384,7 @@ def build_equity_overlay_figure(
     ))
     fig.add_trace(go.Scatter(
       x=bt_equity["entry"], y=-bt_equity["drawdown_r"],
-      name="DD Backtest", line=dict(color="#90caf9", width=1, dash="dot"),
+      name="DD Backtest", line=dict(color=_OOS_DD_COLOR, width=2, dash="dash"),
       legendgroup="series_oos",
     ))
     try:
@@ -399,7 +401,7 @@ def build_equity_overlay_figure(
     ))
     fig.add_trace(go.Scatter(
       x=live_equity["entry"], y=-live_equity["drawdown_r"],
-      name=f"DD {live_name}", line=dict(color="#80cbc4", width=1, dash="dot"),
+      name=f"DD {live_name}", line=dict(color=_LIVE_DD_COLOR, width=2, dash="dot"),
       legendgroup="series_live",
     ))
     try:
@@ -501,7 +503,7 @@ def build_equity_series_figure(
   if equity is None or equity.empty:
     return None
   color = color or _OOS_COLOR
-  dd_color = "#90caf9" if color == _OOS_COLOR else "#80cbc4"
+  dd_color = _OOS_DD_COLOR if color == _OOS_COLOR else _LIVE_DD_COLOR
   fig = go.Figure()
   fig.add_trace(go.Scatter(
     x=equity["entry"], y=equity["equity_r"],
@@ -510,7 +512,10 @@ def build_equity_series_figure(
   fig.add_trace(go.Scatter(
     x=equity["entry"], y=-equity["drawdown_r"],
     name=f"DD {series_name}",
-    line=dict(color=dd_color, width=1, dash="dot"),
+    line=dict(
+      color=dd_color, width=2,
+      dash="dash" if color == _OOS_COLOR else "dot",
+    ),
   ))
   fig.update_layout(
     title=dict(text=title, font=dict(size=13)),
