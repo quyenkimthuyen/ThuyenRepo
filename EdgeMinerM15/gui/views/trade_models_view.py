@@ -116,12 +116,27 @@ def _render_shared_model_bar(models: list[dict]) -> dict | None:
 
   from gui.app_settings import kb_profile_label
   from gui.workspace import profile_mismatch_details
+  ss = m.get("mining_search_space") or {}
+  mining_bits = []
+  if ss.get("anti_chase"):
+    mining_bits.append(
+      f"chase rsi<{ss.get('anti_chase_fixed_rsi', '?')}"
+      + (f"∨vwap<{ss.get('anti_chase_fixed_vwap')}" if ss.get("anti_chase_use_vwap") else "")
+    )
+  if ss.get("rr_ratios"):
+    mining_bits.append(f"RR{ss.get('rr_ratios')}")
+  if ss.get("selection_mode") and ss.get("selection_mode") != "legacy":
+    mining_bits.append(str(ss.get("selection_mode")))
+  if ss.get("exit_modes_full_only"):
+    mining_bits.append("exit:full")
+  mining_txt = " · ".join(mining_bits) if mining_bits else "baseline miner"
   st.caption(
     f"**{len(models)}** model · "
     f"train `{m.get('train_weeks')} tuần` · "
     f"KB `{kb_profile_label(m.get('kb_profile'))}` · "
     f"ep `{m.get('kb_snapshot') or 'latest'}` · "
-    f"OOS `{m.get('oos_from') or '—'} → {m.get('oos_to') or '—'}`"
+    f"OOS `{m.get('oos_from') or '—'} → {m.get('oos_to') or '—'}` · "
+    f"mining `{mining_txt}`"
   )
   if report:
     mismatches = profile_mismatch_details(report, {**m, "trade_model_id": mid})
@@ -145,6 +160,22 @@ def _render_model_info(active: dict):
   from gui.services import load_data_meta, load_kb
 
   st.caption(f"Thông tin backtest của **{format_model_label(active)}**.")
+
+  ss = active.get("mining_search_space") or {}
+  if ss:
+    st.info(
+      "**Mining:** "
+      f"mode `{ss.get('selection_mode', 'legacy')}` · "
+      f"RR `{ss.get('rr_ratios')}` · "
+      f"anti-chase "
+      + (
+        f"RSI<{ss.get('anti_chase_fixed_rsi')} "
+        f"{'OR' if ss.get('anti_chase_logic') == 'or' else 'AND'} "
+        f"VWAP<{ss.get('anti_chase_fixed_vwap')}"
+        if ss.get("anti_chase") else "off"
+      )
+      + (" · exit full only" if ss.get("exit_modes_full_only") else "")
+    )
 
   report = load_model_report(active["id"])
   kb = load_kb(active.get("kb_profile") or "default")

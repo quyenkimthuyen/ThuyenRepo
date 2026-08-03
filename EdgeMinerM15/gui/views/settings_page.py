@@ -28,6 +28,7 @@ SETTING_WIDGET_KEYS = (
   "settings_spread",
   "settings_slip",
   "settings_objective",
+  "settings_mining_presets",
   "settings_new_era_label",
   "settings_new_era_from",
   "settings_new_era_until",
@@ -47,6 +48,21 @@ def _era_option(era: dict) -> str:
 
 
 def _init_widget_state(settings: dict, era_options: list[str], option_to_key: dict[str, str]) -> None:
+  from mining_presets import (
+    RECOMMENDED_PRESET,
+    list_curated_presets,
+    list_presets,
+    preset_label,
+  )
+
+  known = list_presets()
+  label_by_name = {preset_label(n): n for n in known}
+  option_names = []
+  for name in list(list_curated_presets()) + list(settings.get("mining_presets") or []):
+    if name in known and name not in option_names:
+      option_names.append(name)
+  mining_options = [preset_label(n) for n in option_names]
+  saved = list(settings.get("mining_presets") or [RECOMMENDED_PRESET])
   defaults = {
     "settings_train_weeks": [
       t for t in settings.get("strategy_train_weeks", [3, 6, 9])
@@ -62,6 +78,9 @@ def _init_widget_state(settings: dict, era_options: list[str], option_to_key: di
     "settings_spread": float(settings.get("spread_pips", DEFAULT_SPREAD_PIPS)),
     "settings_slip": float(settings.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
     "settings_objective": settings.get("grid_objective", "risk_adjusted"),
+    "settings_mining_presets": [
+      preset_label(n) for n in saved if n in known
+    ] or [preset_label(RECOMMENDED_PRESET)],
     "settings_new_era_label": "",
     "settings_new_era_from": date(2024, 1, 1),
     "settings_new_era_until": date(2025, 12, 31),
@@ -71,6 +90,14 @@ def _init_widget_state(settings: dict, era_options: list[str], option_to_key: di
   # Drop stale options if catalog changed (add/remove).
   selected = st.session_state.get("settings_era_labels") or []
   st.session_state["settings_era_labels"] = [opt for opt in selected if opt in option_to_key]
+  st.session_state["_settings_mining_option_names"] = option_names
+  st.session_state["_settings_mining_label_to_name"] = label_by_name
+  # Keep multiselect values in the current option set.
+  picked = st.session_state.get("settings_mining_presets") or []
+  st.session_state["settings_mining_presets"] = [
+    opt for opt in picked if opt in mining_options
+  ] or [preset_label(RECOMMENDED_PRESET)]
+
 
 
 def _render_era_catalog(settings: dict) -> list[dict]:
@@ -225,6 +252,24 @@ def render(embedded: bool = False):
     key="settings_objective",
   )
 
+  st.markdown("#### Mining search space")
+  mining_option_names = st.session_state.get("_settings_mining_option_names") or []
+  from mining_presets import preset_label
+  mining_options = [preset_label(n) for n in mining_option_names]
+  mining_picked = st.multiselect(
+    "Preset mining (Grid Search)",
+    mining_options,
+    key="settings_mining_presets",
+    help=(
+      "Hướng **Elite OR-quality**: void SHORT khi RSI≥58 hoặc VWAP≥1.5, "
+      "RR ladder 3.2–4.0, exit full only. Bỏ trống = miner baseline cũ."
+    ),
+  )
+  st.caption(
+    "Khuyến nghị: **Elite OR-quality** (WR ~71% / RR ~2.8 trên OOS gần nhất). "
+    "Trade Model active mang search space riêng cho Live / remine."
+  )
+
   valid = True
   if not train_weeks:
     st.warning("Chọn ít nhất một cửa sổ học chiến lược; thay đổi này chưa được lưu.")
@@ -236,6 +281,8 @@ def render(embedded: bool = False):
     st.warning("Ngày bắt đầu phải trước ngày kết thúc; thay đổi này chưa được lưu.")
     valid = False
 
+  label_to_name = st.session_state.get("_settings_mining_label_to_name") or {}
+  mining_names = [label_to_name[opt] for opt in mining_picked if opt in label_to_name]
   current = {
     "strategy_train_weeks": list(train_weeks),
     "learning_era_keys": [option_to_key[opt] for opt in picked_eras if opt in option_to_key],
@@ -245,6 +292,7 @@ def render(embedded: bool = False):
     "spread_pips": float(spread),
     "slippage_pips": float(slip),
     "grid_objective": objective,
+    "mining_presets": mining_names,
   }
   changed = any(s.get(key) != value for key, value in current.items())
   if valid and changed:

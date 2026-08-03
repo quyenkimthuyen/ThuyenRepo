@@ -34,30 +34,38 @@ class GridSpec:
   oos_to: str
   spread_pips: float = DEFAULT_SPREAD_PIPS
   slippage_pips: float = DEFAULT_SLIPPAGE_PIPS
+  # Opt-in only. None keeps legacy grid keys / default MiningSearchSpace.
+  mining_preset: str | None = None
 
   def key(self) -> str:
     snap = "latest" if self.kb_snapshot is None else f"ep{self.kb_snapshot:03d}"
     kb = self.kb_profile or "off"
     raw = f"M15|{self.train_weeks}w|{kb}|{snap}|{self.oos_from}|{self.oos_to}"
+    if self.mining_preset:
+      raw += f"|msp:{self.mining_preset}"
     return hashlib.md5(raw.encode()).hexdigest()[:12]
 
   def label(self) -> str:
     from gui.glossary import build_trade_profile_label
     if not self.use_kb:
-      return build_trade_profile_label({
+      base = build_trade_profile_label({
         "train_weeks": self.train_weeks,
         "use_kb": False,
         "oos_from": self.oos_from,
         "oos_to": self.oos_to,
       })
-    return build_trade_profile_label({
-      "train_weeks": self.train_weeks,
-      "use_kb": True,
-      "kb_profile": self.kb_profile,
-      "kb_snapshot": self.kb_snapshot,
-      "oos_from": self.oos_from,
-      "oos_to": self.oos_to,
-    })
+    else:
+      base = build_trade_profile_label({
+        "train_weeks": self.train_weeks,
+        "use_kb": True,
+        "kb_profile": self.kb_profile,
+        "kb_snapshot": self.kb_snapshot,
+        "oos_from": self.oos_from,
+        "oos_to": self.oos_to,
+      })
+    if self.mining_preset:
+      return f"{base} · preset {self.mining_preset}"
+    return base
 
   def _snap_label(self) -> str:
     return "latest" if self.kb_snapshot is None else f"ep{self.kb_snapshot:03d}"
@@ -89,30 +97,45 @@ def build_grid(
   spread_pips: float = DEFAULT_SPREAD_PIPS,
   slippage_pips: float = DEFAULT_SLIPPAGE_PIPS,
   max_runs: int = 60,
+  mining_presets: list[str] | None = None,
 ) -> list[GridSpec]:
-  """Sinh danh sách GridSpec; cắt bớt nếu vượt max_runs."""
+  """Sinh danh sách GridSpec; cắt bớt nếu vượt max_runs.
+
+  ``mining_presets`` is opt-in. Empty/None → one combo per train×KB (legacy).
+  Non-empty → cartesian product with those presets (existing keys unchanged
+  when preset is omitted from a given spec).
+  """
   specs: list[GridSpec] = []
   base = dict(oos_from=oos_from, oos_to=oos_to, spread_pips=spread_pips, slippage_pips=slippage_pips)
+  preset_names: list[str | None] = [None]
+  if mining_presets:
+    preset_names = list(mining_presets)
 
   for tm in train_weeks:
-    if include_kb_off:
-      specs.append(GridSpec(train_weeks=tm, use_kb=False, kb_profile=None, kb_snapshot=None, **base))
-
-    for pid in kb_profiles:
-      ok, _ = kb_valid_for_backtest(pid, oos_from, oos_to)
-      if not ok:
-        continue
-      if epoch_mode == "latest":
-        epochs: list[int | None] = [None]
-      elif epoch_mode == "all":
-        epochs = snapshots_for_profile(pid)
-      else:
-        epochs = (selected_epochs or {}).get(pid) or [None]
-
-      for snap in epochs:
+    for preset in preset_names:
+      preset_kw = {"mining_preset": preset} if preset else {}
+      if include_kb_off:
         specs.append(GridSpec(
-          train_weeks=tm, use_kb=True, kb_profile=pid, kb_snapshot=snap, **base,
+          train_weeks=tm, use_kb=False, kb_profile=None, kb_snapshot=None,
+          **base, **preset_kw,
         ))
+
+      for pid in kb_profiles:
+        ok, _ = kb_valid_for_backtest(pid, oos_from, oos_to)
+        if not ok:
+          continue
+        if epoch_mode == "latest":
+          epochs: list[int | None] = [None]
+        elif epoch_mode == "all":
+          epochs = snapshots_for_profile(pid)
+        else:
+          epochs = (selected_epochs or {}).get(pid) or [None]
+
+        for snap in epochs:
+          specs.append(GridSpec(
+            train_weeks=tm, use_kb=True, kb_profile=pid, kb_snapshot=snap,
+            **base, **preset_kw,
+          ))
 
   if len(specs) > max_runs:
     specs = specs[:max_runs]
@@ -198,10 +221,17 @@ def _score(row: dict, objective: str) -> float:
 
 
 def run_single(spec: GridSpec) -> dict:
+  from mining_presets import get_preset
+  from strategy_miner import mining_search_space_from_dict
+
   df = load_eurusd_m15(DEFAULT_START_DATE)
   reset_kb_cache()
   if spec.use_kb and spec.kb_profile:
     set_kb_profile(spec.kb_profile, spec.kb_snapshot)
+  space_dict = get_preset(spec.mining_preset) if spec.mining_preset else None
+  search_space = (
+    mining_search_space_from_dict(space_dict) if space_dict is not None else None
+  )
   result = run_walk_forward(
     df,
     use_learning=spec.use_kb,
@@ -212,6 +242,7 @@ def run_single(spec: GridSpec) -> dict:
     kb_snapshot=spec.kb_snapshot if spec.use_kb else None,
     oos_from=spec.oos_from,
     oos_to=spec.oos_to,
+    search_space=search_space,
     verbose=False,
   )
   o = result.get("overall_oos", {})
@@ -224,6 +255,8 @@ def run_single(spec: GridSpec) -> dict:
     "kb_snapshot": spec.kb_snapshot,
     "oos_from": spec.oos_from,
     "oos_to": spec.oos_to,
+    "mining_preset": spec.mining_preset,
+    "mining_search_space": space_dict,
     "n_trades": o.get("n_trades"),
     "win_rate_pct": o.get("win_rate_pct"),
     "avg_rr": o.get("avg_rr"),

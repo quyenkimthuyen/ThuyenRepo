@@ -85,13 +85,28 @@ class MinedStrategy:
   # Soft HTF bias: boost aligned / dampen counter-trend entries
   htf_align_boost: float = 1.12
   htf_counter_dampen: float = 0.88
+  # Opt-in edge surgery (calibrated on train only)
+  blocked_hours: tuple[int, ...] = ()
+  allow_long: bool = True
+  allow_short: bool = True
+  # Opt-in anti-chase: block exhaustion entries (SHORT into high RSI, etc.)
+  anti_chase: bool = False
+  anti_chase_rsi_short_max: float = 100.0  # allow short only if RSI < max
+  anti_chase_rsi_long_min: float = 0.0     # allow long only if RSI > min
+  anti_chase_vwap_short_max: float = 99.0  # allow short only if vwap_dist < max
+  anti_chase_logic: str = "or"             # or | and
   ml_scorer: MLScorer | None = None
   name: str = "mined_v3"
 
 
 @dataclass(frozen=True)
 class MiningSearchSpace:
-  """Immutable mining grid; defaults match researched M15 combo (spacing_12 + hold_96)."""
+  """Immutable mining grid; defaults match researched M15 combo (spacing_12 + hold_96).
+
+  Opt-in only — leave ``selection_mode="legacy"`` (default) to preserve existing
+  Trade Models / Grid behavior. ``expectancy_frontier`` changes how candidates are
+  ranked inside ``mine_strategy`` without altering the default search ranges.
+  """
   rr_ratios: tuple[float, ...] = (2.5, 3.0)
   atr_multipliers: tuple[float, ...] = (0.9, 1.05)
   max_hold_bars: tuple[int, ...] = (96,)
@@ -108,6 +123,29 @@ class MiningSearchSpace:
   target_trades_per_week: float = TARGET_TRADES_PER_WEEK
   drawdown_penalty: float = 0.0
   loss_streak_penalty: float = 0.0
+  # legacy | expectancy_frontier | elite_frontier (opt-in joint WR×RR selection)
+  selection_mode: str = "legacy"
+  # Opt-in: after mining, kill toxic hours / weak side using TRAIN trades only
+  edge_surgery: bool = False
+  edge_surgery_min_hour_trades: int = 3
+  edge_surgery_max_hour_wr: float = 0.42
+  edge_surgery_dominant_side_ratio: float = 0.70
+  # When False, only dominant/weak-side veto runs (hours stay open).
+  edge_surgery_hours: bool = True
+  # Opt-in anti-chase gate (train-calibrated RSI / VWAP exhaustion veto)
+  anti_chase: bool = False
+  # off | calibrate | fixed — fixed does not re-rank genomes (safer OOS)
+  anti_chase_mode: str = "calibrate"
+  anti_chase_fixed_rsi: float = 65.0
+  anti_chase_fixed_vwap: float = 99.0
+  anti_chase_rsi_caps: tuple[float, ...] = (60.0, 62.0, 65.0, 68.0, 100.0)
+  anti_chase_min_tpw: float = 5.0
+  anti_chase_use_vwap: bool = False
+  anti_chase_vwap_caps: tuple[float, ...] = (1.5, 2.0, 2.5, 99.0)
+  # or = void if RSI or VWAP is chase; and = void only if both are chase
+  anti_chase_logic: str = "or"
+  # Opt-in: only mine full exits (no hybrid/partial that clip winners → RR↓)
+  exit_modes_full_only: bool = False
 
 
 def mining_search_space_from_dict(value: dict | None) -> MiningSearchSpace:
@@ -117,7 +155,7 @@ def mining_search_space_from_dict(value: dict | None) -> MiningSearchSpace:
   tuple_fields = {
     "rr_ratios", "atr_multipliers", "max_hold_bars", "min_bars_between",
     "session_filters", "score_thresholds", "min_rules_matches",
-    "ml_probability_thresholds",
+    "ml_probability_thresholds", "anti_chase_rsi_caps", "anti_chase_vwap_caps",
   }
   kwargs = {}
   for key in MiningSearchSpace.__dataclass_fields__:
@@ -351,8 +389,14 @@ def generate_signals_mined(
   # Backtest needs i+1 entry bar → stop at end_idx-1.
   # Live bridge decides on the just-closed last bar → include it.
   stop = min(end_idx, fm.n) if include_last_bar else end_idx - 1
+  blocked = set(int(h) for h in (getattr(strat, "blocked_hours", ()) or ()))
+  allow_long = bool(getattr(strat, "allow_long", True))
+  allow_short = bool(getattr(strat, "allow_short", True))
+
   for i in range(max(start_idx, fm.warmup), stop):
     if strat.session_filter and not (strat.session_start_hour <= hours[i] <= strat.session_end_hour):
+      continue
+    if blocked and int(hours[i]) in blocked:
       continue
 
     ls, lc = _count_matching_rules(fm, strat.long_rules, i)
@@ -373,10 +417,20 @@ def generate_signals_mined(
     combined_l = ls * (0.5 + ml_l) * _htf_bias(fm, i, 1, strat) + _pa_confluence_bonus(fm, i, 1)
     combined_s = ss * (0.5 + ml_s) * _htf_bias(fm, i, -1, strat) + _pa_confluence_bonus(fm, i, -1)
 
-    if lc >= strat.min_rules_match and combined_l >= strat.score_threshold and combined_l > combined_s:
+    if (
+      allow_long
+      and lc >= strat.min_rules_match
+      and combined_l >= strat.score_threshold
+      and combined_l > combined_s
+    ):
       if ml_l >= strat.ml_prob_min:
         candidates.append((combined_l + ml_l * 2, 1, i))
-    elif sc >= strat.min_rules_match and combined_s >= strat.score_threshold and combined_s > combined_l:
+    elif (
+      allow_short
+      and sc >= strat.min_rules_match
+      and combined_s >= strat.score_threshold
+      and combined_s > combined_l
+    ):
       if ml_s >= strat.ml_prob_min:
         candidates.append((combined_s + ml_s * 2, -1, i))
 
@@ -395,7 +449,47 @@ def generate_signals_mined(
         if all(abs(i - other) >= strat.min_bars_between for other in selected):
           signals[i] = direction
           selected.append(i)
+
+  # Anti-chase void AFTER selection — cancel chase fills without promoting
+  # lower-ranked replacements (that pattern destroyed WR in earlier A/Bs).
+  if getattr(strat, "anti_chase", False):
+    for i in range(fm.n):
+      if signals[i] != 0 and _is_chase_entry(fm, strat, i, int(signals[i])):
+        signals[i] = 0
   return signals
+
+
+def _is_chase_entry(fm, strat, signal_idx: int, direction: int) -> bool:
+  """Causal anti-chase check on the SIGNAL bar (no entry-bar lookahead)."""
+  if not getattr(strat, "anti_chase", False):
+    return False
+  try:
+    rsi_v = float(fm.get("rsi")[signal_idx])
+  except Exception:
+    rsi_v = float("nan")
+  try:
+    vwap_v = float(fm.get("session_vwap_dist")[signal_idx])
+  except Exception:
+    vwap_v = float("nan")
+  logic = str(getattr(strat, "anti_chase_logic", "or") or "or").lower()
+  if direction < 0:
+    short_max = float(getattr(strat, "anti_chase_rsi_short_max", 100.0) or 100.0)
+    vwap_max = float(getattr(strat, "anti_chase_vwap_short_max", 99.0) or 99.0)
+    rsi_chase = np.isfinite(rsi_v) and rsi_v >= short_max
+    vwap_chase = np.isfinite(vwap_v) and vwap_v >= vwap_max
+    if logic == "and":
+      return bool(rsi_chase and vwap_chase)
+    # OR: RSI chase; VWAP chase only when cap is actively set (< 90).
+    if rsi_chase:
+      return True
+    if vwap_max < 90 and vwap_chase:
+      return True
+    return False
+  if direction > 0:
+    long_min = float(getattr(strat, "anti_chase_rsi_long_min", 0.0) or 0.0)
+    if np.isfinite(rsi_v) and rsi_v <= long_min:
+      return True
+  return False
 
 
 def backtest_mined(
@@ -482,6 +576,10 @@ def backtest_mined(
       if np.isnan(av) or av <= 0:
         i += 1
         continue
+      # Void chase signals without replacement (keeps ranking of the original book).
+      if _is_chase_entry(fm, strat, i, int(sig)):
+        i += 1
+        continue
       entry_idx = i + 1
       if entry_idx >= end_idx:
         break
@@ -531,30 +629,44 @@ def _weeks_in_window(start, end):
 def score_strategy_metrics(
   m, weeks, target_tpw=TARGET_TRADES_PER_WEEK,
   drawdown_penalty: float = 0.0, loss_streak_penalty: float = 0.0,
+  selection_mode: str = "legacy",
 ):
-  """Fitness tuned for realistic M15 edge (~45–55% WR × RR≥2) and total R / DD."""
+  """Fitness tuned for realistic M15 edge (~45–55% WR × RR≥2) and total R / DD.
+
+  ``selection_mode="expectancy_frontier"`` (opt-in) ranks by joint WR×RR
+  geometric mean so the miner cannot buy WR by sacrificing RR (or vice versa).
+  """
   if m["n_trades"] < 3:
     return -1e6
   tpw = m["n_trades"] / weeks
   wr, rr, tr, pf = m["win_rate"], m["avg_rr"], m["total_r"], m["profit_factor"]
   dd = float(m.get("max_drawdown_r") or 0)
-  # Soft frequency band: prefer ~7–10 tpw but allow quality over volume
-  freq_score = 45 - abs(tpw - target_tpw) * 22
-  if tpw < 5:
-    freq_score -= 45
-  elif tpw < 7:
-    freq_score -= 20
-  if tpw > 12:
-    freq_score -= 35
-  elif tpw > 10:
-    freq_score -= 15
+  elite = selection_mode == "elite_frontier"
+  # Soft frequency band: prefer ~7–10 tpw but allow quality over volume.
+  # Elite sniper bands around a low target (accept sparse high-quality books).
+  if elite:
+    freq_score = 35 - abs(tpw - target_tpw) * 12
+    if tpw < max(1.5, target_tpw * 0.45):
+      freq_score -= 25
+    if tpw > max(12.0, target_tpw * 2.5):
+      freq_score -= 30
+  else:
+    freq_score = 45 - abs(tpw - target_tpw) * 22
+    if tpw < 5:
+      freq_score -= 45
+    elif tpw < 7:
+      freq_score -= 20
+    if tpw > 12:
+      freq_score -= 35
+    elif tpw > 10:
+      freq_score -= 15
 
   expectancy = wr * rr - (1.0 - wr)  # approx R per trade at fixed RR
   s = (
     wr * 130
-    + min(rr, 4) * 50
+    + min(rr, 4.5 if elite else 4) * 50
     + min(pf, 4) * 18
-    + tr * 12
+    + tr * (6 if elite else 12)
     + max(expectancy, -0.5) * 90
     + freq_score
   )
@@ -585,7 +697,338 @@ def score_strategy_metrics(
   s -= float(m.get("max_loss_streak") or 0) * (
     loss_streak_penalty if loss_streak_penalty > 0 else 1.5
   )
+
+  if selection_mode in ("expectancy_frontier", "elite_frontier"):
+    # Geometric joint score: punish one-sided WR↑/RR↓ or RR↑/WR↓ trades.
+    wr_ref = 0.60 if elite else 0.48
+    rr_ref = 3.0 if elite else 2.4
+    rr_cap = 4.5 if elite else 3.5
+    wr_n = max(wr / wr_ref, 0.05)
+    rr_n = max(min(rr, rr_cap) / rr_ref, 0.05)
+    exp_n = max(expectancy / (0.80 if elite else 0.45), 0.05)
+    joint = (wr_n * rr_n * exp_n) ** (1.0 / 3.0)
+    s = s * (0.40 if elite else 0.55) + joint * (280 if elite else 220)
+    if wr >= 0.48 and rr >= 2.3:
+      s += 110
+    elif wr >= 0.46 and rr >= 2.5:
+      s += 80
+    if wr < 0.44:
+      s -= (0.44 - wr) * 260
+    if rr < 2.1:
+      s -= (2.1 - rr) * 140
+    if elite:
+      # Challenge bonuses: WR>60% × RR>3 (Total R may fall).
+      if wr >= 0.55 and rr >= 2.8:
+        s += 160
+      if wr >= 0.58 and rr >= 3.0:
+        s += 220
+      if wr >= 0.60 and rr >= 3.0:
+        s += 320
+      if wr < 0.52:
+        s -= (0.52 - wr) * 300
+      if rr < 2.6:
+        s -= (2.6 - rr) * 180
   return s
+
+
+def _passes_best_gate(metrics: dict, selection_mode: str) -> bool:
+  """Hard gate for the preferred genome; frontier mode is less WR-overfit."""
+  wr = float(metrics.get("win_rate") or 0)
+  rr = float(metrics.get("avg_rr") or 0)
+  tr = float(metrics.get("total_r") or 0)
+  if tr <= 0:
+    return False
+  if selection_mode == "elite_frontier":
+    expectancy = wr * rr - (1.0 - wr)
+    return (
+      (wr >= 0.55 and rr >= 2.8 and expectancy >= 0.45)
+      or (wr >= 0.58 and rr >= 2.6 and expectancy >= 0.50)
+      or (wr >= 0.52 and rr >= 3.0 and expectancy >= 0.55)
+      or (wr >= 0.60 and rr >= 2.5 and expectancy >= 0.50)
+    )
+  if selection_mode == "expectancy_frontier":
+    expectancy = wr * rr - (1.0 - wr)
+    return (
+      (wr >= 0.46 and rr >= 2.2 and expectancy >= 0.30)
+      or (wr >= 0.48 and rr >= 2.0 and expectancy >= 0.28)
+      or (wr >= 0.44 and rr >= 2.6 and expectancy >= 0.35)
+    )
+  return wr >= 0.50 and rr >= 1.6
+
+
+def calibrate_edge_surgery(
+  fm, strat: MinedStrategy, train_start: int, train_end: int,
+  *,
+  min_hour_trades: int = 3,
+  max_hour_wr: float = 0.42,
+  dominant_side_ratio: float = 0.70,
+  block_hours: bool = True,
+) -> MinedStrategy:
+  """Kill toxic broker-hours / weak side using TRAIN trades only (no OOS leak)."""
+  if strat is None:
+    return strat
+  # Reset prior surgery so re-calibration is idempotent.
+  strat.blocked_hours = ()
+  strat.allow_long = True
+  strat.allow_short = True
+
+  signals = generate_signals_mined(fm, strat, train_start, train_end)
+  trades = backtest_mined(fm, strat, signals, train_start, train_end)
+  if len(trades) < 5:
+    return strat
+
+  by_hour: dict[int, list[float]] = {}
+  by_side: dict[int, list[float]] = {1: [], -1: []}
+  for trade in trades:
+    hour = int(pd.Timestamp(trade.entry_time).hour)
+    by_hour.setdefault(hour, []).append(float(trade.r_multiple))
+    by_side.setdefault(int(trade.direction), []).append(float(trade.r_multiple))
+
+  blocked = []
+  if block_hours:
+    for hour, rs in by_hour.items():
+      if len(rs) < min_hour_trades:
+        continue
+      wr = sum(1 for r in rs if r > 0) / len(rs)
+      mean_r = sum(rs) / len(rs)
+      # Only kill clearly toxic hours (avoid noisy 3-trade flukes).
+      if len(rs) >= max(min_hour_trades, 5) and (wr <= max_hour_wr or mean_r < -0.15):
+        blocked.append(hour)
+      elif len(rs) >= min_hour_trades and wr <= min(max_hour_wr, 0.30) and mean_r < 0:
+        blocked.append(hour)
+
+  allow_long = True
+  allow_short = True
+  long_rs = by_side.get(1) or []
+  short_rs = by_side.get(-1) or []
+  n = max(len(trades), 1)
+  long_exp = (sum(long_rs) / len(long_rs)) if long_rs else 0.0
+  short_exp = (sum(short_rs) / len(short_rs)) if short_rs else 0.0
+  long_share = len(long_rs) / n
+  short_share = len(short_rs) / n
+
+  # Classic both-sides sample gate
+  if len(long_rs) >= 3 and len(short_rs) >= 3:
+    if long_exp < 0 and short_exp > 0 and short_exp - long_exp >= 0.10:
+      allow_long = False
+    elif short_exp < 0 and long_exp > 0 and long_exp - short_exp >= 0.10:
+      allow_short = False
+
+  # Dominant-side gate: minority side with non-positive expectancy gets cut
+  # even with 1–2 trades (common: book is ~99% SHORT).
+  if short_share >= dominant_side_ratio and len(long_rs) >= 1 and long_exp <= 0:
+    allow_long = False
+  if long_share >= dominant_side_ratio and len(short_rs) >= 1 and short_exp <= 0:
+    allow_short = False
+
+  strat.blocked_hours = tuple(sorted(set(blocked)))
+  strat.allow_long = allow_long
+  strat.allow_short = allow_short
+  if blocked or not allow_long or not allow_short:
+    tag = []
+    if blocked:
+      tag.append("h" + ",".join(str(h) for h in strat.blocked_hours))
+    if not allow_long:
+      tag.append("noL")
+    if not allow_short:
+      tag.append("noS")
+    base = strat.name.split("|surg:")[0]
+    strat.name = f"{base}|surg:{'+'.join(tag)}"
+  return strat
+
+
+def apply_edge_surgery(
+  fm, strat: MinedStrategy, train_start: int, train_end: int,
+  space: MiningSearchSpace | None,
+) -> MinedStrategy:
+  """Shallow-copy + calibrate when ``space.edge_surgery`` is enabled."""
+  import copy
+  if strat is None:
+    return strat
+  space = space or MiningSearchSpace()
+  out = copy.copy(strat)
+  if not space.edge_surgery:
+    return out
+  return calibrate_edge_surgery(
+    fm, out, train_start, train_end,
+    min_hour_trades=int(space.edge_surgery_min_hour_trades),
+    max_hour_wr=float(space.edge_surgery_max_hour_wr),
+    dominant_side_ratio=float(getattr(space, "edge_surgery_dominant_side_ratio", 0.70)),
+    block_hours=bool(getattr(space, "edge_surgery_hours", True)),
+  )
+
+
+def calibrate_anti_chase(
+  fm, strat: MinedStrategy, train_start: int, train_end: int,
+  *,
+  rsi_caps: tuple[float, ...] = (60.0, 62.0, 65.0, 68.0, 100.0),
+  vwap_caps: tuple[float, ...] = (99.0,),
+  min_tpw: float = 5.0,
+  selection_mode: str = "expectancy_frontier",
+  target_tpw: float = TARGET_TRADES_PER_WEEK,
+  drawdown_penalty: float = 0.0,
+  loss_streak_penalty: float = 0.0,
+) -> MinedStrategy:
+  """Train-only RSI/VWAP exhaustion veto — kills chase-shorts that destroy WR.
+
+  Empirically on M15 SHORT books: high RSI / high VWAP-extension entries print
+  ~30% WR while low-RSI continuation shorts print ~65–70% at similar RR.
+  """
+  if strat is None:
+    return strat
+  import copy
+  probe = copy.copy(strat)
+  probe.anti_chase = False
+  probe.anti_chase_rsi_short_max = 100.0
+  probe.anti_chase_rsi_long_min = 0.0
+  probe.anti_chase_vwap_short_max = 99.0
+
+  signals = generate_signals_mined(fm, probe, train_start, train_end)
+  trades = backtest_mined(fm, probe, signals, train_start, train_end)
+  weeks = _weeks_in_window(train_start, train_end)
+  if len(trades) < 5:
+    strat.anti_chase = True
+    strat.anti_chase_rsi_short_max = 65.0
+    strat.anti_chase_rsi_long_min = 35.0
+    strat.anti_chase_vwap_short_max = 99.0
+    return strat
+
+  rsi_arr = fm.get("rsi")
+  vwap_arr = fm.get("session_vwap_dist")
+  best_score = -1e18
+  best = (65.0, 99.0)
+
+  def entry_feats(trade: Trade):
+    ts = pd.Timestamp(trade.entry_time)
+    i = int(fm.index.get_indexer([ts], method="pad")[0])
+    if i < 0 or i >= fm.n:
+      return None, None
+    rsi = float(rsi_arr[i]) if rsi_arr is not None else float("nan")
+    vwap = float(vwap_arr[i]) if vwap_arr is not None else float("nan")
+    return rsi, vwap
+
+  for rsi_cap in rsi_caps:
+    for vwap_cap in vwap_caps:
+      kept = []
+      for trade in trades:
+        rsi, vwap = entry_feats(trade)
+        if trade.direction == -1:
+          if np.isfinite(rsi) and rsi >= float(rsi_cap):
+            continue
+          if np.isfinite(vwap) and vwap >= float(vwap_cap):
+            continue
+        elif trade.direction == 1:
+          long_min = max(0.0, 100.0 - float(rsi_cap)) if float(rsi_cap) < 100 else 0.0
+          if np.isfinite(rsi) and rsi <= long_min:
+            continue
+        kept.append(trade)
+      metrics = compute_metrics(kept)
+      if metrics["n_trades"] < 3:
+        continue
+      tpw = metrics["n_trades"] / weeks
+      s = score_strategy_metrics(
+        metrics, weeks, target_tpw, drawdown_penalty, loss_streak_penalty,
+        selection_mode,
+      )
+      # Soft frequency floor — allow quality books below 7 tpw.
+      if tpw < min_tpw:
+        s -= (min_tpw - tpw) * 55
+      if s > best_score:
+        best_score = s
+        best = (float(rsi_cap), float(vwap_cap))
+
+  rsi_cap, vwap_cap = best
+  strat.anti_chase = True
+  strat.anti_chase_rsi_short_max = rsi_cap
+  strat.anti_chase_rsi_long_min = (
+    max(0.0, 100.0 - rsi_cap) if rsi_cap < 100 else 0.0
+  )
+  strat.anti_chase_vwap_short_max = vwap_cap
+  base = strat.name.split("|chase:")[0]
+  strat.name = f"{base}|chase:rsi<{rsi_cap:g}+vwap<{vwap_cap:g}"
+  return strat
+
+
+def apply_anti_chase(
+  fm, strat: MinedStrategy, train_start: int, train_end: int,
+  space: MiningSearchSpace | None,
+) -> MinedStrategy:
+  import copy
+  if strat is None:
+    return strat
+  space = space or MiningSearchSpace()
+  out = copy.copy(strat)
+  if not space.anti_chase:
+    return out
+  vwap_caps = (
+    space.anti_chase_vwap_caps if space.anti_chase_use_vwap else (99.0,)
+  )
+  return calibrate_anti_chase(
+    fm, out, train_start, train_end,
+    rsi_caps=tuple(float(x) for x in space.anti_chase_rsi_caps),
+    vwap_caps=tuple(float(x) for x in vwap_caps),
+    min_tpw=float(space.anti_chase_min_tpw),
+    selection_mode=str(space.selection_mode or "legacy"),
+    target_tpw=float(space.target_trades_per_week),
+    drawdown_penalty=float(space.drawdown_penalty),
+    loss_streak_penalty=float(space.loss_streak_penalty),
+  )
+
+
+def apply_fixed_anti_chase(
+  strat: MinedStrategy, space: MiningSearchSpace | None,
+) -> MinedStrategy:
+  """Attach a fixed RSI/VWAP veto without re-ranking genomes."""
+  import copy
+  if strat is None:
+    return strat
+  space = space or MiningSearchSpace()
+  if not space.anti_chase:
+    return strat
+  out = copy.copy(strat)
+  out.anti_chase = True
+  rsi_cap = float(space.anti_chase_fixed_rsi)
+  out.anti_chase_rsi_short_max = rsi_cap
+  out.anti_chase_rsi_long_min = max(0.0, 100.0 - rsi_cap) if rsi_cap < 100 else 0.0
+  out.anti_chase_vwap_short_max = (
+    float(space.anti_chase_fixed_vwap) if space.anti_chase_use_vwap else 99.0
+  )
+  out.anti_chase_logic = str(getattr(space, "anti_chase_logic", "or") or "or")
+  base = out.name.split("|chase:")[0]
+  out.name = (
+    f"{base}|chase:fixed_{out.anti_chase_logic}"
+    f"_rsi<{out.anti_chase_rsi_short_max:g}"
+    f"+vwap<{out.anti_chase_vwap_short_max:g}"
+  )
+  return out
+
+
+def apply_breakthrough_filters(
+  fm, strat: MinedStrategy, train_start: int, train_end: int,
+  space: MiningSearchSpace | None,
+  *,
+  for_scoring: bool = False,
+) -> MinedStrategy:
+  """Compose opt-in post-mine filters (surgery → anti-chase).
+
+  ``for_scoring=True`` skips fixed anti-chase so genome ranking stays stable;
+  fixed gates are applied only on the final chosen strategy.
+  """
+  space = space or MiningSearchSpace()
+  out = apply_edge_surgery(fm, strat, train_start, train_end, space)
+  if not space.anti_chase:
+    return out
+  mode = str(getattr(space, "anti_chase_mode", "calibrate") or "calibrate")
+  if mode == "fixed":
+    if for_scoring:
+      # Rank genomes without the fixed veto; attach veto only on the final pick.
+      out.anti_chase = False
+      out.anti_chase_rsi_short_max = 100.0
+      out.anti_chase_rsi_long_min = 0.0
+      out.anti_chase_vwap_short_max = 99.0
+      return out
+    return apply_fixed_anti_chase(out, space)
+  return apply_anti_chase(fm, out, train_start, train_end, space)
 
 
 def mine_strategy(
@@ -607,6 +1050,8 @@ def mine_strategy(
   exit_modes = [("full", {}),
                 ("hybrid", {"trail_activate_r": 1.8, "trail_distance_r": 0.6}),
                 ("partial", {"partial_pct": 0.35, "partial_at_r": 1.5})]
+  if getattr(space, "exit_modes_full_only", False):
+    exit_modes = [("full", {})]
 
   for rr in space.rr_ratios:
     for atr_m in space.atr_multipliers:
@@ -675,18 +1120,41 @@ def mine_strategy(
                       if comb["n_trades"] < 3:
                         continue
 
-                      s = score_strategy_metrics(
-                        comb, weeks, space.target_trades_per_week,
-                        space.drawdown_penalty, space.loss_streak_penalty,
-                      )
+                      if space.selection_mode in ("expectancy_frontier", "elite_frontier"):
+                        # Rank mostly on held-out train slice → less WR overfit.
+                        val_weeks = max(weeks * 0.35, 0.5)
+                        s_val = score_strategy_metrics(
+                          val_m, val_weeks, space.target_trades_per_week,
+                          space.drawdown_penalty, space.loss_streak_penalty,
+                          space.selection_mode,
+                        )
+                        s_all = score_strategy_metrics(
+                          comb, weeks, space.target_trades_per_week,
+                          space.drawdown_penalty, space.loss_streak_penalty,
+                          space.selection_mode,
+                        )
+                        s = 0.7 * s_val + 0.3 * s_all
+                        gate_m = val_m if val_m["n_trades"] >= 2 else comb
+                      else:
+                        s = score_strategy_metrics(
+                          comb, weeks, space.target_trades_per_week,
+                          space.drawdown_penalty, space.loss_streak_penalty,
+                          space.selection_mode,
+                        )
+                        gate_m = comb
                       if val_m["n_trades"] >= 2 and val_m["total_r"] < -4:
                         s -= 80
 
                       if s > best_fallback_score:
                         best_fallback_score, best_fallback = s, strat
 
-                      if comb["win_rate"] >= 0.50 and comb["avg_rr"] >= 1.6 and comb["total_r"] > 0:
+                      if _passes_best_gate(gate_m, space.selection_mode):
                         if s > best_score:
                           best_score, best = s, strat
 
-  return best if best is not None else best_fallback
+  chosen = best if best is not None else best_fallback
+  if chosen is not None:
+    chosen = apply_breakthrough_filters(
+      fm, chosen, train_start, train_end, space, for_scoring=False,
+    )
+  return chosen

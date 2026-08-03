@@ -63,15 +63,17 @@ python run_learning.py     # Self-learning multi-epoch
 
 | Bước | Trang | Việc làm |
 |------|-------|----------|
-| 1 | **Cài đặt** | Train 3/6/9T · giai đoạn học · vòng học · OOS 2025–2026 |
+| 1 | **Cài đặt** | Train 3/6/9T · giai đoạn học · vòng học · OOS · **Mining preset** |
 | 2 | **Học & tối ưu → Huấn luyện bộ nhớ** | Tạo/học KB theo giai đoạn |
-| 3 | **Học & tối ưu → Grid Search** | Chạy theo Cài đặt → tạo **Trade Model** |
+| 3 | **Học & tối ưu → Grid Search** | Chạy theo Cài đặt (gồm mining preset) → tạo **Trade Model** |
 | 4 | **Phân tích / Trade Models** | Risk · Nhật ký · Chiến lược · **Sức khỏe** (tháng KB ON/OFF) |
 | 5 | **Giám sát paper** / **MT5 Bridge** | Bật service → **tự remine mỗi tuần** (không cần Grid lại) |
 
 Đổi Cài đặt → Grid Search chỉ chạy **combo mới** (giữ kết quả cũ).
 
-**Lưu ý:** Trade Model là cấu hình đã lưu. Paper/Bridge **dùng** cấu hình đó để remine hàng tuần — **không** tự ghi đè model trong danh sách. Chỉ chạy lại KB → Grid → chọn model khi muốn đổi “bộ não”.
+**Mining search space:** lớp cấu hình *cách mine* (RR, exit, anti-chase…) — khác KB và train weeks. Mặc định app: preset **`elite_or_quality`**. Chi tiết: [`docs/mining_search_space.md`](docs/mining_search_space.md). Audit xếp hạng / loại bỏ: [`docs/mining_space_audit.md`](docs/mining_space_audit.md).
+
+**Lưu ý:** Trade Model là cấu hình đã lưu (kèm `mining_search_space`). Paper/Bridge **dùng** cấu hình đó để remine hàng tuần — **không** tự ghi đè model trong danh sách. Chỉ chạy lại KB → Grid → chọn model khi muốn đổi “bộ não”.
 
 ### 6 bước trên GUI (legacy)
 
@@ -135,9 +137,11 @@ Chi tiết + sơ đồ: GUI → **Usage Guide** mục **5**.
 | Giám sát paper | **Mô phỏng** lệnh tuần trên nến MT5 · desk thống kê · **không** gửi EA |
 | **MT5 Bridge** | **Lệnh thật/demo** · App decide · EA execute · fill journal · remine khi Start |
 | **Học & tối ưu** | Grid Search · Trade Models · so sánh · học KB (**thủ công** khi cập nhật model) |
-| **Cài đặt** | Train window · giai đoạn học · kiểm chứng |
+| **Cài đặt** | Train window · giai đoạn học · kiểm chứng · **Mining preset** |
 | **Phân tích** | Risk · Nhật ký lệnh · Chiến lược (theo Trade Model) |
-| Hướng dẫn | Tài liệu đầy đủ — mục **Paper vs MT5 Bridge** |
+| Hướng dẫn | Tài liệu đầy đủ — mục **Paper vs MT5 Bridge** · **Mining search space** |
+
+**Mining search space (mặc định `elite_or_quality`):** xem [`docs/mining_search_space.md`](docs/mining_search_space.md).
 
 **Paper ≠ Bridge:** cùng model/nến; Paper vẽ lại tuần mô phỏng; Bridge chỉ vào lệnh khi service+EA chạy lúc bar đóng. Chi tiết: GUI **Hướng dẫn** mục 6.
 

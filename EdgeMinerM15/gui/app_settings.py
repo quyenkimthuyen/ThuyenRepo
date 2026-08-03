@@ -53,6 +53,8 @@ DEFAULT_SETTINGS = {
   "spread_pips": DEFAULT_SPREAD_PIPS,
   "slippage_pips": DEFAULT_SLIPPAGE_PIPS,
   "grid_objective": "risk_adjusted",
+  # Opt-in mining direction for Grid — default = elite_or_quality.
+  "mining_presets": ["elite_or_quality"],
   "updated_at": None,
 }
 
@@ -127,6 +129,17 @@ def _sanitize_settings(data: dict) -> dict:
   eras = [k for k in (out.get("learning_era_keys") or []) if k in allowed_era_keys]
   out["learning_era_keys"] = eras or [e["key"] for e in catalog]
   out["learning_loops"] = max(1, min(12, int(out.get("learning_loops") or 4)))
+  try:
+    from mining_presets import RECOMMENDED_PRESET, list_presets
+    known = set(list_presets())
+    raw_presets = out.get("mining_presets")
+    if raw_presets is None:
+      presets = [RECOMMENDED_PRESET]
+    else:
+      presets = [p for p in list(raw_presets or []) if p in known]
+    out["mining_presets"] = presets
+  except Exception:
+    out["mining_presets"] = list(out.get("mining_presets") or [])
   return out
 
 
@@ -336,6 +349,7 @@ def settings_grid_signature(settings: dict | None = None) -> str:
     for e in get_learning_era_catalog(s)
   }
   era_sig = ",".join(f"{k}={catalog.get(k, '')}" for k in eras)
+  presets = ",".join(sorted(str(p) for p in (s.get("mining_presets") or [])))
   parts = [
     ",".join(str(t) for t in trains),
     era_sig,
@@ -344,6 +358,7 @@ def settings_grid_signature(settings: dict | None = None) -> str:
     s.get("backtest_to", ""),
     str(s.get("spread_pips", 1.0)),
     str(s.get("slippage_pips", 0.3)),
+    f"msp:{presets}",
   ]
   return "|".join(parts)
 
@@ -366,9 +381,17 @@ def format_settings_summary(settings: dict | None = None) -> str:
     for k in (s.get("learning_era_keys") or [])
   )
   oos = f"{s.get('backtest_from', '?')[:4]}–{s.get('backtest_to', '?')[:4]}"
+  try:
+    from mining_presets import preset_label
+    msp = ", ".join(
+      preset_label(p) for p in (s.get("mining_presets") or [])
+    ) or "baseline miner"
+  except Exception:
+    msp = ", ".join(s.get("mining_presets") or []) or "baseline miner"
   return (
     f"Học chiến lược: **{trains}** · Giai đoạn học: **{eras}** · "
-    f"Vòng học: **{s.get('learning_loops', 4)}** · Kiểm chứng: **{oos}**"
+    f"Vòng học: **{s.get('learning_loops', 4)}** · Kiểm chứng: **{oos}** · "
+    f"Mining: **{msp}**"
   )
 
 
@@ -392,6 +415,8 @@ def grid_build_kwargs(settings: dict | None = None) -> dict:
     "settings_signature": settings_grid_signature(s),
     "learning_era_keys": list(s.get("learning_era_keys") or []),
     "learning_loops": loops,
+    # Opt-in only; empty keeps legacy grid combo count / keys.
+    "mining_presets": list(s.get("mining_presets") or []) or None,
   }
 
 

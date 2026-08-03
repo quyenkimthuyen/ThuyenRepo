@@ -1,10 +1,26 @@
 """8. Usage Guide — hướng dẫn vận hành ForexForge."""
 from __future__ import annotations
 
+from pathlib import Path
+
 import streamlit as st
 
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
+
+_MINING_DOC = Path(__file__).resolve().parents[2] / "docs" / "mining_search_space.md"
+
+
+def _render_mining_search_space_doc() -> None:
+  """Show full Mining search space doc inside the Usage Guide."""
+  with st.expander("Mining search space — tài liệu đầy đủ", expanded=False):
+    if _MINING_DOC.exists():
+      st.markdown(_MINING_DOC.read_text(encoding="utf-8"))
+    else:
+      st.warning(
+        f"Không tìm thấy `{_MINING_DOC.name}`. "
+        "Mở file `docs/mining_search_space.md` trong repo."
+      )
 
 
 def render():
@@ -158,6 +174,22 @@ Mỗi tuần OOS: TRAIN 3 THÁNG → mine (+ KB) → trade 1 tuần
 - **Train 3/6/9 tuần** — luôn có, mỗi tuần, strategy ngắn hạn
 - **KB** — bộ nhớ dài hạn; bật/tắt + chọn profile giai đoạn
 - **Epoch** — học nhiều vòng để KB tốt hơn; snapshot = chọn phiên bản KB
+
+---
+
+## 5b. Mining search space (cách miner tìm edge)
+
+Khác với **train weeks** (nhìn bao nhiêu tuần) và **KB** (đã nhớ gì), **Mining search space** quyết định miner **được phép tìm theo kiểu nào**: RR mục tiêu, exit full/trail, anti-chase RSI/VWAP, cách chấm genome…
+
+```
+Cài đặt (preset) → Grid Search → Trade Model lưu space → Live/Paper remine theo model active
+```
+
+- Mặc định app: preset **`elite_or_quality`** (void SHORT khi RSI≥58 **hoặc** VWAP≥1.5, RR 3.2–4, exit full).
+- Đổi preset ở Cài đặt **chưa** đổi Live — cần Grid → tạo / chọn Trade Model mới.
+- Xóa Trade Model **không** mất preset trong code hay KB; train lại được.
+
+Tài liệu đầy đủ (tiếng Việt, chi tiết + FAQ): mở expander **Mining search space — tài liệu đầy đủ** bên dưới, hoặc file `docs/mining_search_space.md`.
 
 ---
 
@@ -452,6 +484,9 @@ A: GUI **MT5 Bridge** → Nhật ký giao tiếp, hoặc file `mt5/bridge/comm_l
 **Q: Khác nhau Train theo tuần, KB và Epoch?**
 A: **Train 3/6/9 tuần** = mine strategy mỗi tuần WF (luôn chạy). **KB** = bộ nhớ dài hạn (rules/genomes/ML). **Epoch** = một vòng học full giai đoạn để cải thiện KB. Xem mục **5** trong Usage Guide.
 
+**Q: Mining search space là gì? Đổi Settings có đổi Live không?**
+A: Là **cách miner được phép tìm edge** (RR, exit, anti-chase…), khác KB/train weeks. Mặc định: preset **`elite_or_quality`**. Đổi ở Cài đặt chỉ ảnh hưởng Grid; Live theo **Trade Model active**. Xem mục **5b** và `docs/mining_search_space.md`.
+
 ---
 
 ## 16. Kiến trúc
@@ -464,6 +499,8 @@ Data → Features → Miner (+ML) → Walk-forward → Metrics
 
 *ForexForge v4 — Walk-forward strategy mining that learns from every trade.*
   """)
+
+  _render_mining_search_space_doc()
 
   with st.expander("Sơ đồ Train theo tuần · KB · Epoch (mermaid)"):
     st.code("""

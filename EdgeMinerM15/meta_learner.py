@@ -20,6 +20,7 @@ from strategy_miner import (
   score_strategy_metrics, _label_outcomes, _mine_threshold_rules, _mine_binary_rules,
   _count_matching_rules, CONTINUOUS_FEATURES, BINARY_LONG, BINARY_SHORT,
   _weeks_in_window, MiningSearchSpace, constrain_strategy_to_space,
+  apply_breakthrough_filters,
 )
 
 _DETERMINISM_LOCK = threading.RLock()
@@ -97,22 +98,43 @@ def _evaluate_genome(
   fm, strat: MinedStrategy, train_start, train_end, weeks,
   target_tpw=TARGET_TRADES_PER_WEEK,
   search_space: MiningSearchSpace | None = None,
-) -> tuple[float, dict]:
+) -> tuple[float, dict, MinedStrategy]:
+  space = search_space or MiningSearchSpace(target_trades_per_week=target_tpw)
+  # Score with surgery / calibrate-chase only. Fixed anti-chase is applied later
+  # on the final genome so ranking matches the unfiltered frontier book.
+  strat = apply_breakthrough_filters(
+    fm, strat, train_start, train_end, space, for_scoring=True,
+  )
   span = train_end - train_start
   split = train_start + int(span * 0.65)
   sig = generate_signals_mined(fm, strat, train_start, train_end)
   fit_trades = backtest_mined(fm, strat, sig, train_start, split)
   val_trades = backtest_mined(fm, strat, sig, split, train_end)
   comb = compute_metrics(fit_trades + val_trades)
-  space = search_space or MiningSearchSpace(target_trades_per_week=target_tpw)
-  s = score_strategy_metrics(
-    comb, weeks, space.target_trades_per_week,
-    space.drawdown_penalty, space.loss_streak_penalty,
-  )
   val_m = compute_metrics(val_trades)
+
+  if space.selection_mode in ("expectancy_frontier", "elite_frontier"):
+    val_weeks = max(weeks * 0.35, 0.5)
+    s_val = score_strategy_metrics(
+      val_m, val_weeks, space.target_trades_per_week,
+      space.drawdown_penalty, space.loss_streak_penalty,
+      space.selection_mode,
+    )
+    s_all = score_strategy_metrics(
+      comb, weeks, space.target_trades_per_week,
+      space.drawdown_penalty, space.loss_streak_penalty,
+      space.selection_mode,
+    )
+    s = 0.7 * s_val + 0.3 * s_all
+  else:
+    s = score_strategy_metrics(
+      comb, weeks, space.target_trades_per_week,
+      space.drawdown_penalty, space.loss_streak_penalty,
+      space.selection_mode,
+    )
   if val_m["n_trades"] >= 2 and val_m["total_r"] < -4:
     s -= 80
-  return s, comb
+  return s, comb, strat
 
 
 def mine_strategy_learning(
@@ -193,7 +215,7 @@ def _mine_strategy_learning_impl(
       strat = constrain_strategy_to_space(strat, space)
     strat.ml_scorer = ml
     strat = apply_kb_rule_weights(strat, kb, as_of=as_of)
-    s, comb = _evaluate_genome(
+    s, comb, strat = _evaluate_genome(
       fm, strat, train_start, train_end, weeks, target_tpw, space,
     )
     if comb["n_trades"] >= 2 and s > best_score:
@@ -208,7 +230,7 @@ def _mine_strategy_learning_impl(
     if fresh:
       fresh.ml_scorer = ml
       fresh = apply_kb_rule_weights(fresh, kb, as_of=as_of)
-      s, comb = _evaluate_genome(
+      s, comb, fresh = _evaluate_genome(
         fm, fresh, train_start, train_end, weeks, target_tpw, space,
       )
       if s > best_score:
@@ -226,7 +248,7 @@ def _mine_strategy_learning_impl(
         mutant = constrain_strategy_to_space(mutant, space)
       mutant.ml_scorer = ml
       mutant = apply_kb_rule_weights(mutant, kb, as_of=as_of)
-      s, comb = _evaluate_genome(
+      s, comb, mutant = _evaluate_genome(
         fm, mutant, train_start, train_end, weeks, target_tpw, space,
       )
       if comb["n_trades"] >= 2 and s > best_score:
@@ -234,6 +256,11 @@ def _mine_strategy_learning_impl(
 
   if best is not None and update_kb:
     kb.add_genome(best, best_score)
+
+  if best is not None:
+    best = apply_breakthrough_filters(
+      fm, best, train_start, train_end, space, for_scoring=False,
+    )
 
   return best
 

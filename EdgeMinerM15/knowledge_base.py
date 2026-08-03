@@ -169,6 +169,14 @@ class KnowledgeBase:
       "session_filter": strat.session_filter,
       "session_start_hour": strat.session_start_hour,
       "session_end_hour": strat.session_end_hour,
+      "blocked_hours": list(getattr(strat, "blocked_hours", ()) or ()),
+      "allow_long": bool(getattr(strat, "allow_long", True)),
+      "allow_short": bool(getattr(strat, "allow_short", True)),
+      "anti_chase": bool(getattr(strat, "anti_chase", False)),
+      "anti_chase_rsi_short_max": float(getattr(strat, "anti_chase_rsi_short_max", 100.0)),
+      "anti_chase_rsi_long_min": float(getattr(strat, "anti_chase_rsi_long_min", 0.0)),
+      "anti_chase_vwap_short_max": float(getattr(strat, "anti_chase_vwap_short_max", 99.0)),
+      "anti_chase_logic": str(getattr(strat, "anti_chase_logic", "or")),
     }
 
   def dict_to_strategy(self, g: dict):
@@ -195,6 +203,14 @@ class KnowledgeBase:
       session_filter=g.get("session_filter", True),
       session_start_hour=g.get("session_start_hour", 7),
       session_end_hour=g.get("session_end_hour", 20),
+      blocked_hours=tuple(int(h) for h in (g.get("blocked_hours") or ())),
+      allow_long=bool(g.get("allow_long", True)),
+      allow_short=bool(g.get("allow_short", True)),
+      anti_chase=bool(g.get("anti_chase", False)),
+      anti_chase_rsi_short_max=float(g.get("anti_chase_rsi_short_max", 100.0)),
+      anti_chase_rsi_long_min=float(g.get("anti_chase_rsi_long_min", 0.0)),
+      anti_chase_vwap_short_max=float(g.get("anti_chase_vwap_short_max", 99.0)),
+      anti_chase_logic=str(g.get("anti_chase_logic", "or")),
       name=name,
     )
 
