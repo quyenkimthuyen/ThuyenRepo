@@ -161,6 +161,16 @@ def main() -> int:
     help="Comma-separated preset names",
   )
   parser.add_argument("--workers", type=int, default=2)
+  parser.add_argument("--train-weeks", type=int, default=None)
+  parser.add_argument("--kb-profile", default=None)
+  parser.add_argument("--kb-snapshot", default=None, help="Epoch int or 'latest'")
+  parser.add_argument("--oos-from", default=None)
+  parser.add_argument("--oos-to", default=None)
+  parser.add_argument(
+    "--out",
+    default=None,
+    help="Output JSON path (default: results/research/wr_rr_breakthrough/latest.json)",
+  )
   parser.add_argument(
     "--promote",
     action="store_true",
@@ -170,10 +180,27 @@ def main() -> int:
   args = parser.parse_args()
 
   mid, meta, model = _model_cfg(args.model_id)
+  if args.train_weeks is not None:
+    model["train_weeks"] = int(args.train_weeks)
+  if args.kb_profile is not None:
+    model["kb_profile"] = args.kb_profile
+    model["use_kb"] = True
+  if args.kb_snapshot is not None:
+    snap = str(args.kb_snapshot).strip().lower()
+    model["kb_snapshot"] = None if snap in ("", "latest", "none") else int(snap)
+  if args.oos_from is not None:
+    model["oos_from"] = args.oos_from
+  if args.oos_to is not None:
+    model["oos_to"] = args.oos_to
+
   names = [n.strip() for n in args.presets.split(",") if n.strip()]
   unknown = [n for n in names if n not in PRESETS]
   if unknown:
     raise SystemExit(f"Unknown presets {unknown}. Known: {list_presets()}")
+
+  out_path = Path(args.out) if args.out else RESULT_PATH
+  if not out_path.is_absolute():
+    out_path = ROOT / out_path
 
   df = load_eurusd_m15("2025-01-01").copy()
   fingerprint = hashlib.sha256(
@@ -191,6 +218,11 @@ def main() -> int:
   workers = max(1, min(args.workers, len(jobs)))
   print(
     f"Breakthrough A/B | model={mid} | presets={names} | workers={workers}",
+    flush=True,
+  )
+  print(
+    f"  cfg train={model['train_weeks']}w kb={model.get('kb_profile')} "
+    f"ep={model.get('kb_snapshot')} OOS={model.get('oos_from')}→{model.get('oos_to')}",
     flush=True,
   )
   if workers == 1:
@@ -291,13 +323,13 @@ def main() -> int:
     ),
     "promoted_model_id": None if not promoted else promoted.get("id"),
   }
-  OUT_DIR.mkdir(parents=True, exist_ok=True)
-  RESULT_PATH.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+  out_path.parent.mkdir(parents=True, exist_ok=True)
+  out_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
   print(json.dumps({
     "winner": payload["winner"]["name"] if payload["winner"] else None,
     "beats_wr_and_rr": payload["beats_wr_and_rr"],
     "deltas_vs_baseline": deltas,
-    "path": str(RESULT_PATH),
+    "path": str(out_path),
   }, indent=2, ensure_ascii=False), flush=True)
   return 0
 

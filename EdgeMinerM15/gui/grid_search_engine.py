@@ -334,6 +334,78 @@ def load_latest_grid_run() -> dict | None:
     return None
 
 
+def load_grid_run(run_id: str | None) -> dict | None:
+  """Load one archived run by id. ``None`` / ``latest`` → latest.json."""
+  if not run_id or str(run_id).strip().lower() in ("latest", "current", ""):
+    return load_latest_grid_run()
+  rid = str(run_id).strip()
+  path = RUNS_DIR / f"{rid}.json"
+  if not path.exists():
+    # Allow passing bare timestamp id without gs_ prefix mismatch
+    alt = RUNS_DIR / rid
+    path = alt if alt.exists() else path
+  if not path.exists():
+    return None
+  try:
+    with open(path, encoding="utf-8") as f:
+      return json.load(f)
+  except Exception:
+    return None
+
+
+def list_grid_runs(*, limit: int = 40) -> list[dict]:
+  """Summaries of archived Grid Search runs, newest first.
+
+  Each item: run_id, updated_at, objective, n_runs, best_total_r, best_label, path, is_latest.
+  """
+  if not RUNS_DIR.exists():
+    return []
+  latest = load_latest_grid_run() or {}
+  latest_id = latest.get("run_id")
+  seen: set[str] = set()
+  out: list[dict] = []
+
+  paths = list(RUNS_DIR.glob("gs_*.json"))
+  loaded: list[tuple[str, dict, str]] = []
+  for path in paths:
+    try:
+      with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    except Exception:
+      continue
+    rid = str(data.get("run_id") or path.stem)
+    loaded.append((rid, data, str(path)))
+
+  loaded.sort(
+    key=lambda item: str(item[1].get("updated_at") or ""),
+    reverse=True,
+  )
+
+  for rid, data, path_str in loaded:
+    if rid in seen:
+      continue
+    seen.add(rid)
+    best = data.get("best") or (data.get("rows") or [None])[0] or {}
+    rows = data.get("rows") or []
+    n_ok = sum(1 for r in rows if not r.get("error"))
+    out.append({
+      "run_id": rid,
+      "updated_at": data.get("updated_at") or "",
+      "objective": data.get("objective") or "total_r",
+      "n_runs": int(data.get("n_runs") or len(rows)),
+      "n_ok": n_ok,
+      "best_total_r": best.get("total_r"),
+      "best_win_rate_pct": best.get("win_rate_pct"),
+      "best_label": best.get("label"),
+      "settings_signature": (data.get("config") or {}).get("settings_signature"),
+      "path": path_str,
+      "is_latest": rid == latest_id,
+    })
+    if len(out) >= limit:
+      break
+  return out
+
+
 def existing_row_keys(rows: list[dict] | None) -> set[str]:
   """Key combo đã chạy thành công — dùng cho grid tăng dần."""
   if not rows:

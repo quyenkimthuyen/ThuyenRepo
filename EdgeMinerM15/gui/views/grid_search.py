@@ -24,6 +24,8 @@ from gui.grid_search_engine import (
   estimate_grid_count,
   filter_specs_for_incremental,
   grid_readiness,
+  list_grid_runs,
+  load_grid_run,
   load_latest_grid_run,
   merge_grid_results,
 )
@@ -122,23 +124,50 @@ def _render_job_status():
   return status
 
 
-def _rows_for_display(status: dict) -> tuple[list, str]:
+def _rows_for_display(status: dict, *, history_run: dict | None = None) -> tuple[list, str, dict | None]:
+  """Return (rows, objective, source_run_payload).
+
+  When ``history_run`` is set (viewing an archive), use that payload as-is.
+  Otherwise prefer live job rows while running, else latest.json.
+  """
   job = load_job_state() or {}
-  data = load_latest_grid_run()
   settings = get_settings()
-  objective = settings.get("grid_objective", "total_r")
+  default_objective = settings.get("grid_objective", "total_r")
+
+  if history_run is not None:
+    rows = list(history_run.get("rows") or [])
+    objective = history_run.get("objective") or default_objective
+    return rows, objective, history_run
+
+  data = load_latest_grid_run()
+  objective = default_objective
 
   if status.get("running") and job.get("rows"):
     rows = job["rows"]
+    objective = job.get("objective") or (data or {}).get("objective") or objective
+    source = data
   else:
     rows = (data or {}).get("rows") or job.get("rows") or []
     objective = (data or {}).get("objective") or job.get("objective") or objective
+    source = data
 
   seed = (job.get("config") or {}).get("seed_rows") or []
-  if seed and rows:
+  if seed and rows and status.get("running"):
     rows = merge_grid_results(seed, rows, objective=objective)
 
-  return rows, objective
+  return rows, objective, source
+
+
+def _history_option_label(summary: dict) -> str:
+  rid = summary.get("run_id") or "?"
+  when = str(summary.get("updated_at") or "")[:19].replace("T", " ")
+  n = summary.get("n_ok")
+  if n is None:
+    n = summary.get("n_runs") or 0
+  best_r = summary.get("best_total_r")
+  best_txt = f"{float(best_r):+.1f}R" if best_r is not None else "—"
+  tag = " · latest" if summary.get("is_latest") else ""
+  return f"{when} · `{rid}` · {n} combo · best {best_txt}{tag}"
 
 
 def render(embedded: bool = False):
@@ -254,7 +283,7 @@ def render(embedded: bool = False):
 
   with st.expander("Reset dữ liệu Grid Search", expanded=False):
     st.caption(
-      "Xóa `latest.json`, `job_state.json` và các file `gs_*.json`. "
+      "Xóa `latest.json`, `job_state.json` và các file `gs_*.json` (cả lịch sử). "
       "Không ảnh hưởng KB hay Trade Model."
     )
     confirm_gs = st.checkbox(
@@ -271,6 +300,7 @@ def render(embedded: bool = False):
       try:
         out = clear_grid_results(delete_archives=True)
         st.session_state.pop("settings_grid_signature", None)
+        st.session_state.pop("gs_history_pick", None)
         n = out.get("n") or 0
         if n:
           st.success(f"Đã xóa {n} file Grid Search.")
@@ -280,8 +310,46 @@ def render(embedded: bool = False):
       except RuntimeError as e:
         st.error(str(e))
 
-  rows, objective = _rows_for_display(job_status)
-  data = load_latest_grid_run()
+  # --- History selector (archived gs_*.json runs) ---
+  history_run = None
+  viewing_history = False
+  archives = list_grid_runs(limit=40) if not running else []
+  if archives and not running:
+    st.markdown("#### Lịch sử lần chạy")
+    hist_labels = ["● Hiện tại (latest)"] + [_history_option_label(a) for a in archives]
+    hist_ids = ["__latest__"] + [a["run_id"] for a in archives]
+    restore_widget(
+      "gs_history_pick", hist_labels[0],
+      preference_key="grid.history_run",
+      options=hist_labels,
+    )
+    # Drop stale selection if archive list changed
+    if st.session_state.get("gs_history_pick") not in hist_labels:
+      st.session_state["gs_history_pick"] = hist_labels[0]
+    pick_label = st.selectbox(
+      "Xem kết quả lần chạy",
+      hist_labels,
+      key="gs_history_pick",
+      help="Mỗi lần Grid Search lưu file `gs_*.json`. Chọn để xem lại bảng / tạo Trade Model.",
+    )
+    pick_idx = hist_labels.index(pick_label) if pick_label in hist_labels else 0
+    if pick_idx > 0:
+      viewing_history = True
+      history_run = load_grid_run(hist_ids[pick_idx])
+      if history_run is None:
+        st.warning(f"Không đọc được run `{hist_ids[pick_idx]}`.")
+        viewing_history = False
+      else:
+        st.info(
+          f"Đang xem lịch sử **`{history_run.get('run_id')}`** · "
+          f"{history_run.get('updated_at') or '—'} · "
+          f"{history_run.get('n_runs') or len(history_run.get('rows') or [])} combo. "
+          "Chọn **● Hiện tại (latest)** để quay lại kết quả mới nhất."
+        )
+
+  rows, objective, data = _rows_for_display(
+    job_status, history_run=history_run if viewing_history else None,
+  )
 
   if not rows and not running:
     if ready_n == 0:
@@ -291,6 +359,8 @@ def render(embedded: bool = False):
         f"mỗi giai đoạn **{get_settings().get('learning_loops', 4)}** vòng. "
         "Sau đó quay lại Grid Search."
       )
+    elif archives:
+      st.info("Lần chạy hiện tại trống — chọn một run trong **Lịch sử lần chạy** ở trên.")
     else:
       st.info("Nhấn **Chạy Grid Search** để bắt đầu.")
     return
@@ -300,9 +370,11 @@ def render(embedded: bool = False):
     return
 
   if data and data.get("updated_at") and not running:
+    obj_label = OBJECTIVES.get(objective, objective)
+    hist_tag = " · lịch sử" if viewing_history else ""
     st.caption(
       f"Lần chạy: `{data.get('run_id')}` · {data['updated_at']} · "
-      f"Mục tiêu: **{OBJECTIVES.get(objective, objective)}**"
+      f"Mục tiêu: **{obj_label}**{hist_tag}"
     )
 
   best = rows[0] if rows else None
