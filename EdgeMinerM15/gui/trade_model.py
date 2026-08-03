@@ -100,10 +100,78 @@ def format_model_label(m: dict) -> str:
   })
 
 
-def format_model_oneline(m: dict) -> str:
-  line = format_model_label(m)
+def resolve_model_total_r(
+  m: dict | None,
+  *,
+  report: dict | None = None,
+  load_report: bool = True,
+) -> dict:
+  """Canonical Total R for banners / sidebar (per Trade Model).
+
+  Priority (because mỗi model có OOS / remine riêng):
+  1. Report remine/backtest của **chính model đó** → ``overall_oos.total_r`` (nguồn ``oos``)
+  2. KPI lúc tạo từ Grid → registry ``total_r`` (nguồn ``grid``)
+
+  Không dùng ``backtest_report.json`` global trừ khi caller đã resolve report đúng model.
+  """
+  out = {
+    "value": None,
+    "source": None,  # "oos" | "grid" | None
+    "oos_from": None,
+    "oos_to": None,
+  }
+  if not m:
+    return out
+  out["oos_from"] = (str(m.get("oos_from") or "")[:10] or None)
+  out["oos_to"] = (str(m.get("oos_to") or "")[:10] or None)
+
+  rep = report
+  if rep is None and load_report and m.get("id"):
+    rep = load_model_report(m["id"])
+  if rep:
+    o = rep.get("overall_oos") or {}
+    if o.get("total_r") is not None:
+      try:
+        out["value"] = float(o["total_r"])
+        out["source"] = "oos"
+        # Prefer report window if present
+        cfg = rep.get("config") or {}
+        rf = cfg.get("oos_from") or rep.get("oos_start")
+        rt = cfg.get("oos_to")
+        if rf:
+          out["oos_from"] = str(rf)[:10]
+        if rt:
+          out["oos_to"] = str(rt)[:10]
+        return out
+      except (TypeError, ValueError):
+        pass
+
   if m.get("total_r") is not None:
-    line += f" · **{m['total_r']:+.2f}R**"
+    try:
+      out["value"] = float(m["total_r"])
+      out["source"] = "grid"
+    except (TypeError, ValueError):
+      pass
+  return out
+
+
+def format_model_total_r_text(resolved: dict, *, signed: bool = True, bold: bool = False) -> str:
+  """Human label: ``+69.41R OOS`` or ``+125.07R Grid``."""
+  v = resolved.get("value")
+  if v is None:
+    return "—"
+  src = resolved.get("source")
+  tag = "OOS" if src == "oos" else ("Grid" if src == "grid" else "")
+  num = f"{float(v):+.2f}R" if signed else f"{float(v):.2f}R"
+  body = f"{num} {tag}".strip() if tag else num
+  return f"**{body}**" if bold else body
+
+
+def format_model_oneline(m: dict, *, report: dict | None = None) -> str:
+  line = format_model_label(m)
+  resolved = resolve_model_total_r(m, report=report, load_report=report is None)
+  if resolved.get("value") is not None:
+    line += f" · {format_model_total_r_text(resolved, bold=True)}"
   return line
 
 
@@ -115,6 +183,12 @@ def model_report_path(model_id: str) -> Path:
 def model_kb_off_report_path(model_id: str) -> Path:
   MODELS_DIR.mkdir(parents=True, exist_ok=True)
   return MODELS_DIR / f"{model_id}_kb_off.json"
+
+
+def model_mining_baseline_report_path(model_id: str) -> Path:
+  """Walk-forward with baseline mining space (same KB/train/OOS as model)."""
+  MODELS_DIR.mkdir(parents=True, exist_ok=True)
+  return MODELS_DIR / f"{model_id}_mining_baseline.json"
 
 
 def save_model_report(model_id: str, report: dict):
@@ -160,6 +234,15 @@ def save_model_kb_off_report(model_id: str, report: dict):
   _write_json(model_kb_off_report_path(model_id), payload)
 
 
+def save_model_mining_baseline_report(model_id: str, report: dict):
+  payload = dict(report)
+  cfg = dict(payload.get("config") or {})
+  cfg["trade_model_id"] = model_id
+  cfg["mining_compare_role"] = "baseline_miner"
+  payload["config"] = cfg
+  _write_json(model_mining_baseline_report_path(model_id), payload)
+
+
 def load_model_report(model_id: str | None = None) -> dict | None:
   mid = model_id or load_active_model_id()
   if not mid:
@@ -172,6 +255,13 @@ def load_model_kb_off_report(model_id: str | None = None) -> dict | None:
   if not mid:
     return None
   return _read_json(model_kb_off_report_path(mid))
+
+
+def load_model_mining_baseline_report(model_id: str | None = None) -> dict | None:
+  mid = model_id or load_active_model_id()
+  if not mid:
+    return None
+  return _read_json(model_mining_baseline_report_path(mid))
 
 
 def get_active_trade_model(*, force_reload: bool = False) -> dict | None:
@@ -255,17 +345,22 @@ def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
     )
     return active
   label = format_model_label(active)
-  oos_from = str(active.get("oos_from") or "—")[:10]
-  oos_to = str(active.get("oos_to") or "—")[:10]
+  resolved = resolve_model_total_r(active)
   bits = [f"**Trade Model:** {label}"]
-  if active.get("total_r") is not None:
-    try:
-      bits.append(f"**{float(active['total_r']):+.1f}R**")
-    except (TypeError, ValueError):
-      pass
+  if resolved.get("value") is not None:
+    bits.append(format_model_total_r_text(resolved, bold=True))
   st.markdown(" · ".join(bits))
+  oos_from = resolved.get("oos_from") or str(active.get("oos_from") or "—")[:10]
+  oos_to = resolved.get("oos_to") or str(active.get("oos_to") or "—")[:10]
+  src_note = (
+    "Total R = remine/backtest OOS của model"
+    if resolved.get("source") == "oos"
+    else "Total R = KPI Grid (chưa có report remine)"
+    if resolved.get("source") == "grid"
+    else "chưa có Total R"
+  )
   st.caption(
-    f"OOS `{oos_from} → {oos_to}` · dùng chung Live / Simulate / Paper · "
+    f"OOS `{oos_from} → {oos_to}` · {src_note} · dùng chung Live / Simulate / Paper · "
     "đổi tại **Trade Models → Quản lý**"
   )
   return active
@@ -535,14 +630,18 @@ def _model_id_from_artifact_name(name: str) -> str | None:
   if not name.endswith(".json"):
     return None
   stem = name[:-5]
-  for suffix in ("_kb_off", "_kb_pin", "_live_weeks", "_schedule"):
+  for suffix in ("_kb_off", "_mining_baseline", "_kb_pin", "_live_weeks", "_schedule"):
     if stem.endswith(suffix):
       return stem[: -len(suffix)]
   return stem
 
 
 def model_artifact_paths(model_id: str) -> list[Path]:
-  paths = [model_report_path(model_id), model_kb_off_report_path(model_id)]
+  paths = [
+    model_report_path(model_id),
+    model_kb_off_report_path(model_id),
+    model_mining_baseline_report_path(model_id),
+  ]
   try:
     from trade_model_kb_pin import model_kb_pin_path
     paths.append(model_kb_pin_path(model_id))

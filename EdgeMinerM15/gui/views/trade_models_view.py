@@ -162,21 +162,31 @@ def _render_model_info(active: dict):
 
   st.caption(f"Thông tin backtest của **{format_model_label(active)}**.")
 
+  from mining_presets import space_direction_line
+
   ss = active.get("mining_search_space") or {}
-  if ss:
-    st.info(
-      "**Mining:** "
-      f"mode `{ss.get('selection_mode', 'legacy')}` · "
-      f"RR `{ss.get('rr_ratios')}` · "
-      f"anti-chase "
-      + (
-        f"RSI<{ss.get('anti_chase_fixed_rsi')} "
-        f"{'OR' if ss.get('anti_chase_logic') == 'or' else 'AND'} "
-        f"VWAP<{ss.get('anti_chase_fixed_vwap')}"
-        if ss.get("anti_chase") else "off"
+  preset_hint = None
+  grid_key = str(active.get("grid_key") or "")
+  if "|msp:" in grid_key:
+    preset_hint = grid_key.split("|msp:", 1)[-1].split("|", 1)[0].strip() or None
+  st.info(
+    f"**Hướng mining:** {space_direction_line(ss, preset_name=preset_hint)}"
+    + (
+      ""
+      if not ss
+      else (
+        f"  \nKnobs: mode `{ss.get('selection_mode', 'legacy')}` · "
+        f"RR `{ss.get('rr_ratios')}` · anti-chase "
+        + (
+          f"RSI<{ss.get('anti_chase_fixed_rsi')} "
+          f"{'OR' if ss.get('anti_chase_logic') == 'or' else 'AND'} "
+          f"VWAP<{ss.get('anti_chase_fixed_vwap')}"
+          if ss.get("anti_chase") else "off"
+        )
+        + (" · exit full only" if ss.get("exit_modes_full_only") else "")
       )
-      + (" · exit full only" if ss.get("exit_modes_full_only") else "")
     )
+  )
 
   report = load_model_report(active["id"])
   kb = load_kb(active.get("kb_profile") or "default")
@@ -377,7 +387,134 @@ def _render_health(active: dict):
     st.markdown(
       "- **Timeline**: KB học → train shift → OOS.\n"
       "- **KB ON/OFF chart**: phải chạy với **đúng** session/spacing của model.\n"
-      "- Nửa sau yếu / edge thu hẹp → cân nhắc học era mới hoặc Grid lại."
+      "- Nửa sau yếu / edge thu hẹp → cân nhắc học era mới hoặc Grid lại.\n"
+      "- **Mining space vs baseline** (bên dưới): tách riêng “preset lỗi thời” "
+      "khỏi suy giảm KB/market."
+    )
+
+  _render_mining_space_freshness(active, report_on)
+
+
+def _render_mining_space_freshness(active: dict, report_on: dict | None):
+  """A/B active mining space vs baseline miner — stale-space signal."""
+  from gui.analysis_support import start_mining_space_health_job
+  from gui.charts import show_plotly
+  from gui.long_task_ui import render_task_status, task_blocks_ui
+  from gui.mining_space_health import (
+    assess_mining_space_freshness,
+    build_monthly_space_compare_figure,
+  )
+  from gui.model_health import monthly_oos_from_report
+  from gui.trade_model import load_model_mining_baseline_report
+  from mining_presets import match_preset_name, preset_label, space_direction_line
+
+  st.divider()
+  st.markdown("#### Mining space vs baseline miner")
+  ss = active.get("mining_search_space") or {}
+  preset = match_preset_name(ss)
+  if not ss or preset == "baseline":
+    st.info(
+      "Model đang dùng **baseline miner** (hoặc không gắn preset) — "
+      "không cần A/B mining space. Đổi preset qua Grid nếu muốn hướng Elite/…"
+    )
+    return
+
+  st.caption(
+    f"Hướng model: {space_direction_line(ss, preset_name=preset)}. "
+    "So với **baseline** trên **cùng** KB / train / OOS — "
+    "để biết preset còn giữ lợi thế hay đã lỗi thời."
+  )
+
+  render_task_status(key_prefix="tm_msp_health")
+  blocked = task_blocks_ui("tm_msp_health")
+  report_base = load_model_mining_baseline_report(active["id"])
+
+  c1, c2, c3 = st.columns([2, 2, 1])
+  with c1:
+    refresh_active = st.checkbox(
+      "Chạy lại report active trước khi so",
+      value=not bool(report_on),
+      key="tm_msp_refresh_active",
+      help="Thường tắt nếu đã có report KB ON khớp model.",
+    )
+  with c2:
+    st.caption(
+      f"Active report: **{'có' if report_on else 'chưa'}** · "
+      f"Baseline miner: **{'có' if report_base else 'chưa'}** · "
+      f"Preset: **{preset_label(preset) if preset else 'custom'}**"
+    )
+  with c3:
+    if st.button(
+      "So mining space",
+      type="secondary",
+      icon=":material/compare_arrows:",
+      use_container_width=True,
+      disabled=blocked,
+      key="tm_msp_run",
+    ):
+      try:
+        start_mining_space_health_job(active, refresh_active=refresh_active)
+        st.toast("Đã bắt đầu A/B mining space vs baseline")
+        st.rerun()
+      except Exception as e:
+        st.error(str(e))
+
+  if not report_on or not report_base:
+    st.info(
+      "Bấm **So mining space** để chạy walk-forward baseline miner "
+      "(cùng KB/train/OOS). Có thể mất vài phút."
+    )
+    return
+
+  assess = assess_mining_space_freshness(
+    report_on, report_base, preset_name=preset,
+  )
+  verdict = assess.get("verdict")
+  if verdict == "stale":
+    st.error(assess["message"])
+  elif verdict == "watch":
+    st.warning(assess["message"])
+  elif verdict == "fresh":
+    st.success(assess["message"])
+  else:
+    st.info(assess["message"])
+
+  d1, d2, d3, d4, d5 = st.columns(5)
+  d1.metric("Tháng chung", assess.get("n_months") or 0)
+  d2.metric(
+    "Edge nửa sau",
+    f"{assess['late_edge_r']:+.1f}R" if assess.get("late_edge_r") is not None else "—",
+    help="Σ (active − baseline) trên nửa sau OOS.",
+  )
+  d3.metric(
+    f"Edge {assess.get('recent_months') or 3} tháng gần",
+    f"{assess['recent_edge_r']:+.1f}R" if assess.get("recent_edge_r") is not None else "—",
+  )
+  wr = (assess.get("delta") or {}).get("win_rate_pct")
+  rr = (assess.get("delta") or {}).get("avg_rr")
+  d4.metric("ΔWR vs baseline", f"{wr:+.1f}pp" if wr is not None else "—")
+  d5.metric("ΔRR vs baseline", f"{rr:+.2f}" if rr is not None else "—")
+
+  on_m = monthly_oos_from_report(report_on)
+  base_m = monthly_oos_from_report(report_base)
+  space_title = (
+    f"Mining space · {preset_label(preset) if preset else 'active'} vs baseline"
+  )
+  fig = build_monthly_space_compare_figure(
+    on_m, base_m,
+    title=space_title,
+    active_name=preset_label(preset) if preset else "Active space",
+    baseline_name="Baseline miner",
+  )
+  if fig:
+    show_plotly(fig, space_title)
+
+  with st.expander("Cách đọc mining space"):
+    st.markdown(
+      "- **Edge > 0**: preset đang thắng baseline miner cùng điều kiện.\n"
+      "- **Nửa sau / 3 tháng gần âm mạnh** hoặc **ΔWR và ΔRR đều âm** → "
+      "preset có thể lỗi thời → audit / Grid / đổi model.\n"
+      "- Khác với KB ON/OFF: đây cố định KB, chỉ đổi **khung mine**."
     )
 
 

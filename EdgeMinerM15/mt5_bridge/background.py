@@ -92,19 +92,58 @@ def load_config() -> dict:
     "last_error": data.get("last_error"),
     "last_action": data.get("last_action"),
     "last_bar": data.get("last_bar"),
+    # Opt-in consecutive-loss circuit breaker (Live). Numeric defaults are
+    # overwritten in the GUI from int(model Max DD)+1 when a Trade Model is set.
+    "loss_guard_enabled": bool(data.get("loss_guard_enabled", True)),
+    "loss_guard_max_day": int(
+      data["loss_guard_max_day"] if "loss_guard_max_day" in data else 3
+    ),
+    "loss_guard_max_week": int(
+      data["loss_guard_max_week"] if "loss_guard_max_week" in data else 3
+    ),
+    "loss_guard_tripped": bool(data.get("loss_guard_tripped", False)),
+    "loss_guard_tripped_at": data.get("loss_guard_tripped_at"),
+    "loss_guard_tripped_reason": data.get("loss_guard_tripped_reason"),
   }
 
 
 def save_config(**updates) -> dict:
   cfg = load_config()
   # Allow clearing nullable fields with None (e.g. service_pid)
-  nullable = {"service_pid", "last_error", "last_action", "last_bar", "last_run_at"}
+  nullable = {
+    "service_pid", "last_error", "last_action", "last_bar", "last_run_at",
+    "loss_guard_tripped_at", "loss_guard_tripped_reason",
+  }
   for k, v in updates.items():
     if v is None and k not in nullable:
       continue
     cfg[k] = v
   _write_json(CONFIG_PATH, cfg)
   return cfg
+
+
+def check_and_apply_loss_guard(
+  *,
+  bridge_dir: Path | None = None,
+  bar: dict | None = None,
+  model_id: str | None = None,
+  cfg: dict | None = None,
+) -> dict | None:
+  """If consecutive-loss limits hit → FLAT + disable service. Returns trip or None."""
+  from mt5_bridge.loss_guard import apply_loss_guard_halt, evaluate_loss_guard
+
+  runtime = cfg or load_config()
+  trip = evaluate_loss_guard(runtime, bridge_dir=bridge_dir)
+  if not trip:
+    return None
+  apply_loss_guard_halt(
+    trip,
+    bridge_dir=bridge_dir,
+    bar=bar,
+    model_id=model_id or runtime.get("model_id"),
+  )
+  _stop.set()
+  return trip
 
 
 def _pid_alive(pid: int | None) -> bool:
@@ -294,6 +333,15 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
   last_fill_fp = json.dumps(sorted(seen_fills)[-80:], ensure_ascii=False)
 
   bar = read_json(bar_path(bridge_dir))
+  if not is_sim:
+    trip = check_and_apply_loss_guard(
+      bridge_dir=bridge_dir,
+      bar=bar if isinstance(bar, dict) else None,
+      model_id=engine.model_id if engine else None,
+    )
+    if trip:
+      return last_bar_fp, last_fill_fp
+
   if not isinstance(bar, dict):
     return last_bar_fp, last_fill_fp
 
@@ -320,6 +368,16 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
     )
 
   decision = engine.decide_for_bar(bar)
+  # Never open new risk if guard already tripped mid-cycle (config race).
+  if not is_sim:
+    runtime = load_config()
+    if runtime.get("loss_guard_tripped") or not runtime.get("enabled", True):
+      from mt5_bridge.loss_guard import build_flat_halt_decision
+      decision = build_flat_halt_decision(
+        bar,
+        reason=runtime.get("loss_guard_tripped_reason") or "Loss guard / service disabled",
+        model_id=engine.model_id,
+      )
   atomic_write_json(decision_path(bridge_dir), decision)
   action_u = str(decision.get("action") or "").upper()
   if not is_sim or action_u in ("BUY", "SELL"):
@@ -424,6 +482,8 @@ def _worker():
           payload=_engine.describe_conditions(),
         )
       last_bar_fp, last_fill_fp = _cycle(_engine, bridge_dir, last_bar_fp, last_fill_fp)
+      if _stop.is_set() or not load_config().get("enabled"):
+        break
     except Exception as e:
       save_config(last_error=str(e), last_run_at=_now_iso())
       append_event(

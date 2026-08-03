@@ -52,7 +52,35 @@ def _save_bridge_runtime_settings() -> None:
     model_id=(active or {}).get("id") or DEFAULT_MODEL_ID,
     risk_pct=float(st.session_state.get("mt5_risk_pct", 1.0)),
     poll_sec=float(st.session_state.get("mt5_poll_sec", 2.0)),
+    loss_guard_enabled=bool(st.session_state.get("mt5_loss_guard_enabled", True)),
+    loss_guard_max_day=int(st.session_state.get("mt5_loss_guard_max_day", 3)),
+    loss_guard_max_week=int(st.session_state.get("mt5_loss_guard_max_week", 5)),
   )
+
+
+def resolve_loss_guard_limits(
+  *,
+  prev_model_id: str | None,
+  model_id: str,
+  cfg_max_day: int | None,
+  cfg_max_week: int | None,
+  suggested: int,
+) -> tuple[int, int, bool]:
+  """Pick day/week limits for the Loss guard widgets.
+
+  Returns ``(max_day, max_week, reset_for_model_change)``.
+  On refresh (``prev_model_id is None``) restore from config; only when the
+  Trade Model changes in-session do we reset to ``suggested``.
+  """
+  if prev_model_id is None:
+    day = int(cfg_max_day if cfg_max_day is not None else suggested)
+    week = int(cfg_max_week if cfg_max_week is not None else suggested)
+    return day, week, False
+  if prev_model_id != model_id:
+    return int(suggested), int(suggested), True
+  day = int(cfg_max_day if cfg_max_day is not None else suggested)
+  week = int(cfg_max_week if cfg_max_week is not None else suggested)
+  return day, week, False
 
 
 def _bridge_mode() -> str:
@@ -724,7 +752,12 @@ def _render_live_deploy() -> None:
 
 
 def _render_service_controls() -> None:
-  """Trader desk controls: risk + Start/Stop only."""
+  """Trader desk controls: risk + loss guard + Start/Stop only."""
+  from mt5_bridge.loss_guard import (
+    default_streak_limit_from_model,
+    loss_guard_status,
+  )
+
   cfg = bridge_bg.load_config()
   status = bridge_bg.get_status()
   active_model = get_active_trade_model()
@@ -732,14 +765,90 @@ def _render_service_controls() -> None:
   if cfg.get("model_id") != model_id:
     cfg = bridge_bg.save_config(model_id=model_id)
 
+  suggested = default_streak_limit_from_model(active_model)
+  model_dd = (active_model or {}).get("max_drawdown_r")
+
   st.subheader("Điều khiển Live")
   st.session_state.setdefault("mt5_risk_pct", float(cfg.get("risk_pct", 1.0)))
   st.session_state.setdefault("mt5_poll_sec", float(cfg.get("poll_sec", 2.0)))
+  st.session_state.setdefault(
+    "mt5_loss_guard_enabled", bool(cfg.get("loss_guard_enabled", True)),
+  )
+
+  # Restore thresholds from saved config after refresh.
+  # Only reset to ⌊|MaxDD|⌋+1 when the Trade Model actually changes in-session
+  # (not on first paint after F5, when `_mt5_loss_guard_model_id` is missing).
+  prev_mid = st.session_state.get("_mt5_loss_guard_model_id")
+  day_lim, week_lim, reset_for_model = resolve_loss_guard_limits(
+    prev_model_id=prev_mid,
+    model_id=str(model_id),
+    cfg_max_day=cfg.get("loss_guard_max_day"),
+    cfg_max_week=cfg.get("loss_guard_max_week"),
+    suggested=suggested,
+  )
+  st.session_state["_mt5_loss_guard_model_id"] = model_id
+  if reset_for_model:
+    st.session_state["mt5_loss_guard_max_day"] = day_lim
+    st.session_state["mt5_loss_guard_max_week"] = week_lim
+    bridge_bg.save_config(
+      loss_guard_max_day=day_lim,
+      loss_guard_max_week=week_lim,
+    )
+  else:
+    st.session_state.setdefault("mt5_loss_guard_max_day", day_lim)
+    st.session_state.setdefault("mt5_loss_guard_max_week", week_lim)
+
   risk = st.number_input(
     "Risk % / lệnh", 0.1, 5.0, step=0.1, key="mt5_risk_pct",
     on_change=_save_bridge_runtime_settings,
   )
   poll = float(st.session_state.get("mt5_poll_sec", cfg.get("poll_sec", 2.0)))
+
+  st.markdown("**Loss guard — dừng service khi thua liên tiếp**")
+  st.checkbox(
+    "Bật loss guard (chỉ lệnh auto)",
+    key="mt5_loss_guard_enabled",
+    on_change=_save_bridge_runtime_settings,
+    help=(
+      "Đếm chuỗi LOSS liên tiếp (trailing) của lệnh **auto** trong ngày / tuần ISO. "
+      "Chạm ngưỡng → ghi FLAT + Stop service để tránh bug đốt tài khoản. "
+      f"Mặc định = int(Max DD model) + 1 → **{suggested}**."
+    ),
+  )
+  dd_txt = f"{float(model_dd):.2f}R" if model_dd is not None else "—"
+  st.caption(
+    f"Gợi ý từ model: Max DD **{dd_txt}** → default "
+    f"**⌊|Max DD|⌋ + 1 = {suggested}** (áp dụng khi đổi Trade Model)."
+  )
+  g1, g2 = st.columns(2)
+  with g1:
+    st.number_input(
+      "Max thua liên tiếp / ngày",
+      min_value=0, max_value=40, step=1,
+      key="mt5_loss_guard_max_day",
+      on_change=_save_bridge_runtime_settings,
+      help=f"0 = tắt ngưỡng ngày. Mặc định gợi ý = {suggested}.",
+    )
+  with g2:
+    st.number_input(
+      "Max thua liên tiếp / tuần",
+      min_value=0, max_value=40, step=1,
+      key="mt5_loss_guard_max_week",
+      on_change=_save_bridge_runtime_settings,
+      help=f"0 = tắt ngưỡng tuần (ISO Mon–Sun). Mặc định gợi ý = {suggested}.",
+    )
+
+  guard = loss_guard_status(cfg, bridge_dir=BRIDGE_DIR)
+  if guard.get("tripped"):
+    st.error(
+      f"Loss guard đã dừng service lúc `{guard.get('tripped_at') or '—'}` — "
+      f"{guard.get('tripped_reason') or ''}"
+    )
+  elif guard.get("enabled"):
+    st.caption(
+      f"Chuỗi hiện tại: ngày **{guard.get('day_streak', 0)}**/{guard.get('max_day') or '—'} · "
+      f"tuần **{guard.get('week_streak', 0)}**/{guard.get('max_week') or '—'}"
+    )
 
   running = bool(status.get("running"))
   if running:
@@ -755,7 +864,20 @@ def _render_service_controls() -> None:
       use_container_width=True,
       key="mt5_live_svc_start",
     ):
-      bridge_bg.save_config(model_id=model_id, risk_pct=risk, poll_sec=poll, enabled=True)
+      bridge_bg.save_config(
+        model_id=model_id,
+        risk_pct=risk,
+        poll_sec=poll,
+        enabled=True,
+        loss_guard_enabled=bool(st.session_state.get("mt5_loss_guard_enabled", True)),
+        loss_guard_max_day=int(st.session_state.get("mt5_loss_guard_max_day", 3)),
+        loss_guard_max_week=int(st.session_state.get("mt5_loss_guard_max_week", 5)),
+        # Clear previous trip so Start is intentional after a halt.
+        loss_guard_tripped=False,
+        loss_guard_tripped_at=None,
+        loss_guard_tripped_reason=None,
+        last_error=None,
+      )
       ok = bridge_bg.start_worker(detached=True)
       if ok:
         from mt5_bridge.live_monitor_server import ensure_chart_server

@@ -35,7 +35,8 @@ HELP = {
   "grid_search": "**Grid Search** — thử nhiều combo tham số để tìm setting tốt hơn.",
   "mining_preset": (
     "**Mining preset** — không gian tìm chiến lược (RR, exit, anti-chase…). "
-    "Mặc định app: **elite_or_quality** (void RSI/VWAP OR, RR 3.2–4, exit full)."
+    "Mặc định app: **elite_or_quality** (void RSI/VWAP OR, RR 3.2–4, exit full). "
+    "Xem bảng Chi tiết preset trong Cài đặt."
   ),
   "remine": "**Remine** — mỗi tuần mine lại strategy trên cửa sổ học gần nhất (không đổi Trade Model).",
   "parity": "**Parity** — đối chiếu strategy tuần Live với weekly_log Health OOS.",

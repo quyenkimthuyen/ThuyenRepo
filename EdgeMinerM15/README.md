@@ -71,6 +71,8 @@ python run_learning.py     # Self-learning multi-epoch
 
 Đổi Cài đặt → Grid Search chỉ chạy **combo mới** (giữ kết quả cũ).
 
+**Grid Search axes:** `train weeks × KB profile × epoch × mining preset` (OOS/spread/slip cố định; `grid_objective` chỉ xếp hạng). Chi tiết: [`docs/grid_search.md`](docs/grid_search.md).
+
 **Mining search space:** lớp cấu hình *cách mine* (RR, exit, anti-chase…) — khác KB và train weeks. Mặc định app: preset **`elite_or_quality`**. Chi tiết: [`docs/mining_search_space.md`](docs/mining_search_space.md). Audit xếp hạng / loại bỏ: [`docs/mining_space_audit.md`](docs/mining_space_audit.md).
 
 **Lưu ý:** Trade Model là cấu hình đã lưu (kèm `mining_search_space`). Paper/Bridge **dùng** cấu hình đó để remine hàng tuần — **không** tự ghi đè model trong danh sách. Chỉ chạy lại KB → Grid → chọn model khi muốn đổi “bộ não”.

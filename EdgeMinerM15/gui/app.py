@@ -104,18 +104,25 @@ def _render_sidebar_nav() -> str:
 
 
 def _sidebar_status():
-  from gui.services import load_backtest_report
-  from gui.trade_model import format_model_label, get_active_trade_model
+  from gui.trade_model import (
+    format_model_label,
+    format_model_total_r_text,
+    get_active_trade_model,
+    resolve_model_total_r,
+  )
 
   m = get_active_trade_model()
   if m:
     st.sidebar.divider()
     st.sidebar.caption(f"Trade model: **{format_model_label(m)}**")
-    report = load_backtest_report()
-    if report:
-      o = report.get("overall_oos") or {}
-      st.sidebar.caption(f"Backtest: **{o.get('total_r', '—')}R**")
-
+    resolved = resolve_model_total_r(m)
+    if resolved.get("value") is not None:
+      oos = ""
+      if resolved.get("oos_from") and resolved.get("oos_to"):
+        oos = f" · `{resolved['oos_from']}→{resolved['oos_to']}`"
+      st.sidebar.caption(
+        f"Total R: {format_model_total_r_text(resolved, bold=True)}{oos}"
+      )
   try:
     from gui.grid_search_background import get_grid_status
     gs = get_grid_status()

@@ -5,7 +5,6 @@ import streamlit as st
 
 from gui.navigation import NavItem
 from gui.trade_model import format_model_oneline, get_active_trade_model
-from gui.workspace import report_matches_workspace
 
 
 def render_page_header(
@@ -27,21 +26,11 @@ def render_page_header(
 
 
 def render_profile_strip(*, compact: bool = True):
-  from gui.services import load_backtest_report
-
   m = get_active_trade_model()
   if not m:
     st.caption("📦 _Chưa chọn trade model_")
     return
   line = format_model_oneline(m)
-  report = load_backtest_report()
-  if report:
-    o = report.get("overall_oos") or {}
-    match = report_matches_workspace(report)
-    if match:
-      line += f" · Backtest **{o.get('total_r', '—')}R** (✓)"
-    else:
-      line += " · _Chưa có backtest cho model này_"
   if compact:
     st.caption(f"📦 {line}")
   else:

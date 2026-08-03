@@ -200,6 +200,31 @@ def process_once(engine: BridgeEngine, bridge_dir: Path, *, last_fp: str | None,
 
   path = bar_path(bridge_dir)
   bar = read_json(path)
+
+  # Consecutive-loss circuit breaker (Live process service).
+  try:
+    from mt5_bridge.background import check_and_apply_loss_guard, load_config
+    trip = check_and_apply_loss_guard(
+      bridge_dir=bridge_dir,
+      bar=bar if isinstance(bar, dict) else None,
+      model_id=engine.model_id,
+    )
+    if trip:
+      print(f"[bridge] HALT: {trip.get('reason')}", flush=True)
+      return last_fp, last_fill_fp
+    runtime = load_config()
+    if runtime.get("loss_guard_tripped") or not runtime.get("enabled", True):
+      from mt5_bridge.loss_guard import build_flat_halt_decision
+      decision = build_flat_halt_decision(
+        bar if isinstance(bar, dict) else None,
+        reason=runtime.get("loss_guard_tripped_reason") or "service disabled",
+        model_id=engine.model_id,
+      )
+      atomic_write_json(decision_path(bridge_dir), decision)
+      return last_fp, last_fill_fp
+  except Exception as e:
+    print(f"[bridge] loss_guard check error: {e}", flush=True)
+
   if not isinstance(bar, dict):
     # Avoid status.json spam while waiting for EA bar
     return last_fp, last_fill_fp
@@ -363,6 +388,14 @@ def main() -> int:
       last_fp, last_fill_fp = process_once(
         engine, bridge_dir, last_fp=last_fp, last_fill_fp=last_fill_fp,
       )
+      if not args.once:
+        from mt5_bridge.background import load_config
+        if not load_config().get("enabled", True):
+          print("[bridge] enabled=false — exiting (loss guard or Stop)", flush=True)
+          write_status(
+            bridge_dir, state="stopped", model_id=engine.model_id, error=None,
+          )
+          return 0
     except Exception as e:
       write_status(
         bridge_dir,

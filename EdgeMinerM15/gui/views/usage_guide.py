@@ -8,19 +8,35 @@ import streamlit as st
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
 
-_MINING_DOC = Path(__file__).resolve().parents[2] / "docs" / "mining_search_space.md"
+_DOCS = Path(__file__).resolve().parents[2] / "docs"
+_MINING_DOC = _DOCS / "mining_search_space.md"
+_GRID_DOC = _DOCS / "grid_search.md"
+
+
+def _render_doc_expander(title: str, path: Path, fallback: str) -> None:
+  with st.expander(title, expanded=False):
+    if path.exists():
+      st.markdown(path.read_text(encoding="utf-8"))
+    else:
+      st.warning(f"Không tìm thấy `{path.name}`. {fallback}")
 
 
 def _render_mining_search_space_doc() -> None:
   """Show full Mining search space doc inside the Usage Guide."""
-  with st.expander("Mining search space — tài liệu đầy đủ", expanded=False):
-    if _MINING_DOC.exists():
-      st.markdown(_MINING_DOC.read_text(encoding="utf-8"))
-    else:
-      st.warning(
-        f"Không tìm thấy `{_MINING_DOC.name}`. "
-        "Mở file `docs/mining_search_space.md` trong repo."
-      )
+  _render_doc_expander(
+    "Mining search space — tài liệu đầy đủ",
+    _MINING_DOC,
+    "Mở file `docs/mining_search_space.md` trong repo.",
+  )
+
+
+def _render_grid_search_doc() -> None:
+  """Show Grid Search parameter doc inside the Usage Guide."""
+  _render_doc_expander(
+    "Grid Search — tham số & combo (tài liệu đầy đủ)",
+    _GRID_DOC,
+    "Mở file `docs/grid_search.md` trong repo.",
+  )
 
 
 def render():
@@ -193,6 +209,31 @@ Tài liệu đầy đủ (tiếng Việt, chi tiết + FAQ): mở expander **Min
 
 ---
 
+## 5c. Grid Search dựa trên những tham số nào?
+
+Grid = **tích Descartes** các trục từ **Cài đặt** (không quét từng knob RR/ATR riêng — các knobs đó nằm trong mining preset).
+
+| Trục | Settings | Ví dụ gần đây |
+|------|----------|---------------|
+| Train weeks | `strategy_train_weeks` | `3, 6, 9` |
+| KB profile | `learning_era_keys` | `era_2025_2026_6thang` |
+| KB epoch | `learning_loops` → ep1…epN | `1–4` |
+| Mining preset | `mining_presets` | `elite_or_quality` |
+| OOS / spread / slip | `backtest_*`, phí | cố định cho mọi combo |
+
+```
+Số combo ≈ train × KB profile × epoch × mining_preset
+(ví dụ 3 × 1 × 4 × 1 = 12; không gồm KB OFF)
+```
+
+- **`grid_objective`** chỉ xếp hạng winner — **không** nhân số combo.
+- Đổi Cài đặt → Grid chỉ chạy **combo mới**.
+- Học KB **không** phụ thuộc mining preset; preset khóa khi Grid/remine/Live.
+
+Tài liệu đầy đủ: expander **Grid Search — tham số & combo** bên dưới, hoặc `docs/grid_search.md`.
+
+---
+
 ## 6. Các trang GUI (theo quy trình)
 
 | Trang | Mục đích |
@@ -246,8 +287,8 @@ App **không** tự đổi model trong danh sách mỗi tuần.
 
 Đây là cầu nối **MetaTrader 5** (không phải MT4):
 
-1. Mở **MT5 Bridge** → chọn Trade Model (Best 3m) → **Start service**
-2. Service chạy **process riêng** (không phụ thuộc tab GUI) — đổi tab / refresh page **không** dừng; bấm **Stop** mới tắt
+1. Mở **MT5 Bridge** → chọn Trade Model (Best 3m) → cấu hình **Loss guard** (max thua liên tiếp / ngày·tuần) → **Start service**
+2. Service chạy **process riêng** (không phụ thuộc tab GUI) — đổi tab / refresh page **không** dừng; bấm **Stop** mới tắt (hoặc Loss guard tự Stop)
 3. Trên MT5: compile/attach EA `ForgeBridge`, `InpMode = Live` (thư mục `MQL5/Files/bridge`)
 4. Mỗi M15 mới: EA ghi `bar.json` → App decide → `decision.json` → EA BUY/SELL hoặc FLAT
 5. Remine Live = **cùng đường Health OOS / Simulate** (KB ON, full FeatureMatrix, cùng `conditions_fp`). Trên desk Live mở **Parity tuần này** để đối chiếu `strategy_name` với weekly_log Health.
@@ -390,6 +431,8 @@ Chỉ live **micro lot** khi Live + Parity/Health khớp kỳ vọng backtest.
 
 **Không cần Grid lại mỗi tuần** — Paper/Live/Sim tự remine theo Trade Model đang chọn. Grid/KB chỉ khi muốn cập nhật model.
 
+**Mining space lỗi thời?** Trade Models → **Sức khỏe** → panel *Mining space vs baseline miner* (A/B cùng KB; khác với KB ON/OFF).
+
 ### Mẹo tối ưu
 
 1. **Luôn bật spread/slippage** trong Cài đặt.
@@ -481,11 +524,17 @@ A: Không — chỉ **MT5** (`ForgeBridgeM15.mq5`).
 **Q: Xem log giao tiếp App ↔ EA ở đâu?**  
 A: GUI **MT5 Bridge** → Nhật ký giao tiếp, hoặc file `mt5/bridge/comm_log.jsonl`.
 
+**Q: Loss guard trên Live là gì?**  
+A: Cấu hình khi Start: dừng service nếu lệnh **auto** thua liên tiếp đạt ngưỡng trong **ngày** hoặc **tuần**. Mặc định ngưỡng = **⌊|Max DD model|⌋ + 1** (vd DD 11.35R → 12). Ghi FLAT + Stop. Start lại xóa cờ tripped.
+
 **Q: Khác nhau Train theo tuần, KB và Epoch?**
 A: **Train 3/6/9 tuần** = mine strategy mỗi tuần WF (luôn chạy). **KB** = bộ nhớ dài hạn (rules/genomes/ML). **Epoch** = một vòng học full giai đoạn để cải thiện KB. Xem mục **5** trong Usage Guide.
 
 **Q: Mining search space là gì? Đổi Settings có đổi Live không?**
 A: Là **cách miner được phép tìm edge** (RR, exit, anti-chase…), khác KB/train weeks. Mặc định: preset **`elite_or_quality`**. Đổi ở Cài đặt chỉ ảnh hưởng Grid; Live theo **Trade Model active**. Xem mục **5b** và `docs/mining_search_space.md`.
+
+**Q: Grid Search dựa trên những tham số nào?**
+A: Train weeks × KB profile × epoch × mining preset (+ OOS/spread/slip cố định). `grid_objective` chỉ xếp hạng, không nhân combo. Xem mục **5c** và `docs/grid_search.md`.
 
 ---
 
@@ -501,6 +550,7 @@ Data → Features → Miner (+ML) → Walk-forward → Metrics
   """)
 
   _render_mining_search_space_doc()
+  _render_grid_search_doc()
 
   with st.expander("Sơ đồ Train theo tuần · KB · Epoch (mermaid)"):
     st.code("""

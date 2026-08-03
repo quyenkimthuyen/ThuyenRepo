@@ -12,6 +12,7 @@ from gui.app_settings import (
   get_settings,
   settings_changed_since_last_grid,
   settings_grid_signature,
+  update_settings,
 )
 from gui.charts import show_plotly
 from gui.grid_search_background import (
@@ -20,6 +21,8 @@ from gui.grid_search_background import (
 )
 from gui.grid_search_engine import (
   OBJECTIVES,
+  _score,
+  apply_objective_to_run,
   build_grid_from_settings,
   delete_grid_run,
   estimate_grid_count,
@@ -126,10 +129,17 @@ def _render_job_status():
   return status
 
 
-def _rows_for_display(status: dict, *, history_run: dict | None = None) -> tuple[list, str, dict | None]:
+def _rows_for_display(
+  status: dict,
+  *,
+  history_run: dict | None = None,
+  force_latest: bool = False,
+) -> tuple[list, str, dict | None]:
   """Return (rows, objective, source_run_payload).
 
   When ``history_run`` is set (viewing an archive), use that payload as-is.
+  When ``force_latest`` (selector = Hiện tại), always use ``latest.json`` —
+  never fall back to leftover ``job_state.rows`` from another run.
   Otherwise prefer live job rows while running, else latest.json.
   """
   job = load_job_state() or {}
@@ -144,12 +154,17 @@ def _rows_for_display(status: dict, *, history_run: dict | None = None) -> tuple
   data = load_latest_grid_run()
   objective = default_objective
 
+  if force_latest:
+    rows = list((data or {}).get("rows") or [])
+    objective = (data or {}).get("objective") or objective
+    return rows, objective, data
+
   if status.get("running") and job.get("rows"):
-    rows = job["rows"]
+    rows = list(job["rows"])
     objective = job.get("objective") or (data or {}).get("objective") or objective
     source = data
   else:
-    rows = (data or {}).get("rows") or job.get("rows") or []
+    rows = list((data or {}).get("rows") or [])
     objective = (data or {}).get("objective") or job.get("objective") or objective
     source = data
 
@@ -177,6 +192,79 @@ def _history_option_label(summary: dict) -> str:
     f"{when} · `{rid}` · {n} combo · best {best_txt} · "
     f"train {train} · OOS {oos} · mining {mining}{tag}"
   )
+
+
+def _extract_grid_run_id(value: str | None) -> str | None:
+  """Parse ``gs_YYYYMMDD_HHMMSS`` from a preference label or raw id."""
+  import re
+  text = str(value or "").strip()
+  if not text:
+    return None
+  if text in ("__latest__", "latest", "current"):
+    return "__latest__"
+  if text.startswith("gs_") and " " not in text and "·" not in text:
+    return text
+  match = re.search(r"gs_\d{8}_\d{6}", text)
+  return match.group(0) if match else None
+
+
+def _on_grid_objective_changed() -> None:
+  persist_widget("gs_objective", "grid.objective")
+  obj = st.session_state.get("gs_objective") or "total_r"
+  update_settings(grid_objective=obj)
+  st.session_state["_gs_objective_dirty"] = True
+
+
+def _selected_grid_objective() -> str:
+  keys = list(OBJECTIVES.keys())
+  raw = st.session_state.get("gs_objective")
+  if raw in keys:
+    return str(raw)
+  saved = get_settings().get("grid_objective", "risk_adjusted")
+  return saved if saved in keys else "total_r"
+
+
+def _on_grid_history_changed() -> None:
+  persist_widget("gs_history_run_id", "grid.history_run_id")
+  # Combo picker options are per-run — drop sticky selection from another run.
+  st.session_state.pop("gs_pick_combo", None)
+  for key in ("gs_any_tm_name", "grid.selected_combo"):
+    st.session_state.pop(key, None)
+
+
+def _sort_rows_for_objective(rows: list, objective: str) -> list:
+  """Stable display order by the selected Grid objective."""
+  valid = [r for r in rows if not r.get("error")]
+  errors = [r for r in rows if r.get("error")]
+  valid.sort(key=lambda r: _score(r, objective or "total_r"), reverse=True)
+  return valid + errors
+
+
+def _resolve_best_row(
+  data: dict | None,
+  rows: list,
+  objective: str,
+) -> dict | None:
+  """Best combo belonging to this run payload (never borrow from another run)."""
+  valid = [r for r in (rows or []) if isinstance(r, dict) and not r.get("error")]
+  if not valid:
+    return None
+  stored = (data or {}).get("best")
+  if isinstance(stored, dict) and not stored.get("error"):
+    sk = stored.get("key")
+    if sk:
+      match = next((r for r in valid if r.get("key") == sk), None)
+      if match is not None:
+        return match
+    # Legacy payloads without key — only trust stored if metrics match a row.
+    for r in valid:
+      if (
+        r.get("total_r") == stored.get("total_r")
+        and r.get("train_weeks") == stored.get("train_weeks")
+        and r.get("win_rate_pct") == stored.get("win_rate_pct")
+      ):
+        return r
+  return max(valid, key=lambda r: _score(r, objective or "total_r"))
 
 
 def _render_run_config_panel(run_payload: dict | None, *, objective: str, viewing_history: bool) -> None:
@@ -246,6 +334,30 @@ def render(embedded: bool = False):
   job_status = _render_job_status()
   running = bool(job_status.get("running"))
 
+  # Mục tiêu xếp hạng — trên trang Grid (không còn ở Cài đặt).
+  obj_keys = list(OBJECTIVES.keys())
+  restore_widget(
+    "gs_objective",
+    get_settings().get("grid_objective", "risk_adjusted"),
+    preference_key="grid.objective",
+    options=obj_keys,
+  )
+  if st.session_state.get("gs_objective") not in obj_keys:
+    st.session_state["gs_objective"] = obj_keys[0]
+  st.selectbox(
+    "Mục tiêu xếp hạng (Best / bảng kết quả)",
+    obj_keys,
+    format_func=lambda k: OBJECTIVES.get(k, k),
+    key="gs_objective",
+    on_change=_on_grid_objective_changed,
+    help=(
+      "Chỉ đổi thứ tự xếp hạng combo đã có — không cần chạy lại Grid. "
+      "Report (latest / lần chạy đang xem) được cập nhật theo mục tiêu mới."
+    ),
+    disabled=running,
+  )
+  selected_objective = _selected_grid_objective()
+
   specs, grid_config = build_grid_from_settings()
   grid_kw = {
     k: v for k, v in grid_config.items()
@@ -295,7 +407,7 @@ def render(embedded: bool = False):
     if is_grid_running():
       st.warning("Grid search đang chạy.")
       return
-    objective = get_settings().get("grid_objective", "total_r")
+    objective = selected_objective
     config = {**grid_config, "seed_rows": kept_rows}
     try:
       rid = start_grid_search(new_specs, objective=objective, config=config)
@@ -309,7 +421,7 @@ def render(embedded: bool = False):
     if is_grid_running():
       st.warning("Grid search đang chạy.")
       return
-    objective = get_settings().get("grid_objective", "total_r")
+    objective = selected_objective
     try:
       rid = start_grid_search(specs, objective=objective, config=grid_config)
       st.session_state["settings_grid_signature"] = settings_grid_signature()
@@ -338,6 +450,7 @@ def render(embedded: bool = False):
         out = clear_grid_results(delete_archives=True)
         st.session_state.pop("settings_grid_signature", None)
         st.session_state.pop("gs_history_pick", None)
+        st.session_state.pop("gs_history_run_id", None)
         n = out.get("n") or 0
         if n:
           st.success(f"Đã xóa {n} file Grid Search.")
@@ -350,44 +463,72 @@ def render(embedded: bool = False):
   # --- History selector (archived gs_*.json runs) ---
   history_run = None
   viewing_history = False
+  force_latest = True
+  selected_run_id = None
   archives = list_grid_runs(limit=40) if not running else []
   if archives and not running:
     st.markdown("#### Lịch sử lần chạy")
-    hist_labels = ["● Hiện tại (latest)"] + [_history_option_label(a) for a in archives]
-    hist_ids = ["__latest__"] + [a["run_id"] for a in archives]
+    latest_token = "__latest__"
+    hist_ids = [latest_token] + [str(a["run_id"]) for a in archives]
+    hist_labels = {
+      latest_token: "● Hiện tại (latest)",
+      **{str(a["run_id"]): _history_option_label(a) for a in archives},
+    }
+
+    # Migrate old preference that stored the full dropdown label.
+    from gui.ui_preferences import get_preference, delete_preference
+    legacy = get_preference("grid.history_run")
+    if legacy and not get_preference("grid.history_run_id"):
+      migrated = _extract_grid_run_id(str(legacy))
+      if migrated and migrated in hist_ids:
+        set_widget_preference("gs_history_run_id", migrated, "grid.history_run_id")
+      delete_preference("grid.history_run")
+
     restore_widget(
-      "gs_history_pick", hist_labels[0],
-      preference_key="grid.history_run",
-      options=hist_labels,
+      "gs_history_run_id", latest_token,
+      preference_key="grid.history_run_id",
+      options=hist_ids,
     )
-    # Drop stale selection if archive list changed
-    if st.session_state.get("gs_history_pick") not in hist_labels:
-      st.session_state["gs_history_pick"] = hist_labels[0]
-    pick_label = st.selectbox(
+    if st.session_state.get("gs_history_run_id") not in hist_ids:
+      st.session_state["gs_history_run_id"] = latest_token
+
+    pick_id = st.selectbox(
       "Xem kết quả lần chạy",
-      hist_labels,
-      key="gs_history_pick",
-      help="Mỗi lần Grid Search lưu file `gs_*.json`. Chọn để xem lại bảng / tạo Trade Model / xóa.",
+      hist_ids,
+      format_func=lambda rid: hist_labels.get(rid, rid),
+      key="gs_history_run_id",
+      on_change=_on_grid_history_changed,
+      help=(
+        "Mỗi lần Grid Search lưu file `gs_*.json`. "
+        "Chọn run_id để xem đúng bảng / cấu hình của lần đó."
+      ),
     )
-    pick_idx = hist_labels.index(pick_label) if pick_label in hist_labels else 0
-    # Resolve concrete run id for delete (latest pointer → actual latest run_id)
-    selected_run_id = None
-    if pick_idx == 0:
+    if pick_id == latest_token:
       viewing_history = False
-      selected_run_id = (archives[0].get("run_id") if archives else None)
+      force_latest = True
+      selected_run_id = next(
+        (a.get("run_id") for a in archives if a.get("is_latest")),
+        archives[0].get("run_id"),
+      )
     else:
       viewing_history = True
-      selected_run_id = hist_ids[pick_idx]
+      force_latest = False
+      selected_run_id = pick_id
       history_run = load_grid_run(selected_run_id)
       if history_run is None:
         st.warning(f"Không đọc được run `{selected_run_id}`.")
         viewing_history = False
+        force_latest = True
         selected_run_id = None
+        history_run = None
       else:
+        # Guard: file payload must match the selected id.
+        file_rid = str(history_run.get("run_id") or selected_run_id)
         st.info(
-          f"Đang xem lịch sử **`{history_run.get('run_id')}`** · "
+          f"Đang xem lịch sử **`{file_rid}`** · "
           f"{history_run.get('updated_at') or '—'} · "
-          f"{history_run.get('n_runs') or len(history_run.get('rows') or [])} combo. "
+          f"**{len(history_run.get('rows') or [])}** combo trong file "
+          f"(n_runs={history_run.get('n_runs') or '—'}). "
           "Chọn **● Hiện tại (latest)** để quay lại kết quả mới nhất."
         )
 
@@ -419,6 +560,7 @@ def render(embedded: bool = False):
             if is_grid_running():
               raise RuntimeError("Grid Search đang chạy — hủy trước khi xóa.")
             out = delete_grid_run(selected_run_id)
+            st.session_state.pop("gs_history_run_id", None)
             st.session_state.pop("gs_history_pick", None)
             msg = f"Đã xóa `{out.get('deleted')}`."
             if out.get("promoted_latest"):
@@ -430,9 +572,21 @@ def render(embedded: bool = False):
           except (RuntimeError, ValueError, FileNotFoundError) as e:
             st.error(str(e))
 
-  rows, objective, data = _rows_for_display(
-    job_status, history_run=history_run if viewing_history else None,
+  rows, _stored_obj, data = _rows_for_display(
+    job_status,
+    history_run=history_run if viewing_history else None,
+    force_latest=force_latest and not running,
   )
+  # Rank by mục tiêu trên trang Grid (không khóa theo objective đã lưu trong run).
+  objective = selected_objective
+  dirty = bool(st.session_state.pop("_gs_objective_dirty", False))
+  if data and not running and (dirty or (data.get("objective") != objective)):
+    data = apply_objective_to_run(data, objective, persist=True) or data
+    rows = list(data.get("rows") or [])
+    if dirty:
+      st.toast(f"Đã xếp lại report theo: {OBJECTIVES.get(objective, objective)}")
+  else:
+    rows = _sort_rows_for_objective(list(rows or []), objective)
 
   if not rows and not running:
     if ready_n == 0:
@@ -455,21 +609,35 @@ def render(embedded: bool = False):
   if data and not running:
     _render_run_config_panel(data, objective=objective, viewing_history=viewing_history)
 
-  best = rows[0] if rows else None
+  display_run_id = str((data or {}).get("run_id") or selected_run_id or "—")
+  best = _resolve_best_row(data, rows, objective)
   if best and not best.get("error"):
+    obj_label = OBJECTIVES.get(objective, objective)
+    st.markdown(
+      f"##### Best của lần chạy `{display_run_id}`"
+      + (" *(lịch sử)*" if viewing_history else " *(latest)*")
+      + f" · xếp theo **{obj_label}**"
+    )
     c1, c2, c3, c4 = st.columns(4)
-    c1.metric("🏆 Total R", f"{best.get('total_r', 0):+.2f}")
+    # Include run_id in labels so Streamlit cannot keep a sticky metric identity.
+    c1.metric(f"Total R · {display_run_id[-6:]}", f"{float(best.get('total_r') or 0):+.2f}")
     c2.metric("WR%", f"{best.get('win_rate_pct', 0)}%")
     c3.metric("Max DD", f"{best.get('max_drawdown_r', 0)}R")
     c4.metric("Train", f"{best.get('train_weeks')} tuần")
     st.success(
-      f"**Tốt nhất:** {best.get('label')} · PF {best.get('profit_factor')} · {best.get('n_trades')} lệnh"
+      f"**Tốt nhất:** {best.get('label')} · "
+      f"key `{best.get('key') or '—'}` · "
+      f"PF {best.get('profit_factor')} · {best.get('n_trades')} lệnh"
     )
     if not running:
-      if st.button("✓ Tạo Trade Model từ combo tốt nhất (dùng ngay)", key="gs_apply_tm"):
+      apply_key = f"gs_apply_tm_{display_run_id}"
+      if st.button(
+        "✓ Tạo Trade Model từ combo tốt nhất (dùng ngay)",
+        key=apply_key,
+      ):
         from gui.trade_model import find_model_by_grid_key
         existed = find_model_by_grid_key(best.get("key"))
-        m = create_trade_model(best, run_id=(data or {}).get("run_id"), set_active=True)
+        m = create_trade_model(best, run_id=display_run_id, set_active=True)
         if existed and existed.get("id") == m.get("id"):
           st.toast("Combo này đã có Trade Model — đã chọn lại (không tạo trùng)")
         else:
@@ -477,6 +645,12 @@ def render(embedded: bool = False):
         st.rerun()
 
   st.subheader("Bảng kết quả")
+  st.caption(
+    f"Đang hiển thị run **`{display_run_id}`** · "
+    f"{len([r for r in rows if not r.get('error')])} combo hợp lệ"
+    + (" · (lịch sử)" if viewing_history else " · (latest)")
+    + f" · objective `{objective}`"
+  )
   valid_rows = [r for r in rows if not r.get("error")]
   df = pd.DataFrame(valid_rows)
   if df.empty:

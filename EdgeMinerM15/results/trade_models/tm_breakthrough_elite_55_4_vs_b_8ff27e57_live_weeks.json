@@ -1,22 +1,22 @@
 {
   "meta": {
-    "model_id": "tm_h_c_3_tu_n_h_c_2025-2026-6th_3d4bb441",
+    "model_id": "tm_breakthrough_elite_55_4_vs_b_8ff27e57",
     "source": "live_remine",
     "n_weeks": 1
   },
   "weekly": [
     {
-      "week_start": "2026-07-27",
+      "week_start": "2026-08-03",
       "strategy": {
-        "name": "Forge RR3 full 2L4S range+rsi #E895",
+        "name": "Forge RR4 full 2L4S rsi+ema #2399|chase:fixed_or_rsi<55+vwap<99",
         "exit_mode": "full",
-        "ml_prob_min": 0.3448412330940105,
-        "rr": 3.0,
-        "atr_mult": 0.7888794240124593,
+        "ml_prob_min": 0.4,
+        "rr": 4.0,
+        "atr_mult": 0.9,
         "score_threshold": 0.6,
-        "atr_mult_sl": 0.7888794240124593,
-        "rr_ratio": 3.0,
-        "min_rules_match": 1,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 4.0,
+        "min_rules_match": 2,
         "max_trades_per_day": 2,
         "min_bars_between": 12,
         "max_hold_bars": 96,
@@ -29,20 +29,28 @@
         "session_end_hour": 20,
         "htf_align_boost": 1.12,
         "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": true,
+        "anti_chase_rsi_short_max": 55.0,
+        "anti_chase_rsi_long_min": 45.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
         "long_rules": [
           {
             "feat": "range_buy",
             "direction": "long",
             "op": "eq1",
             "thr": 0.5,
-            "w": 0.062247477106361575
+            "w": 0.00428288603609059
           },
           {
             "feat": "adx",
             "direction": "long",
             "op": "lt",
             "thr": 16.672582456171885,
-            "w": 0.008424249997573595
+            "w": 0.002527274999272078
           }
         ],
         "short_rules": [
@@ -51,33 +59,33 @@
             "direction": "short",
             "op": "eq1",
             "thr": 0.5,
-            "w": 5.387346023423133
+            "w": 3.779124384329959
           },
           {
             "feat": "swing_strength",
             "direction": "short",
             "op": "gt",
             "thr": 0.7789051709851896,
-            "w": 1.8453197399846994
+            "w": 2.3749269866178953
           },
           {
             "feat": "rsi",
             "direction": "short",
             "op": "gt",
             "thr": 58.44888747697333,
-            "w": 5.333734376486917
+            "w": 7.651545542863381
           },
           {
             "feat": "ema_slope_8",
             "direction": "short",
             "op": "gt",
             "thr": 0.15683842123350092,
-            "w": 3.25594196551153
+            "w": 5.293567750710318
           }
         ]
       },
-      "train_start_idx": 37324,
-      "train_end_idx": 38764
+      "train_start_idx": 36364,
+      "train_end_idx": 39231
     }
   ]
 }

@@ -27,7 +27,6 @@ SETTING_WIDGET_KEYS = (
   "settings_backtest_to",
   "settings_spread",
   "settings_slip",
-  "settings_objective",
   "settings_mining_presets",
   "settings_new_era_label",
   "settings_new_era_from",
@@ -77,7 +76,6 @@ def _init_widget_state(settings: dict, era_options: list[str], option_to_key: di
     "settings_backtest_to": _date_value(settings.get("backtest_to", ""), "2026-12-31"),
     "settings_spread": float(settings.get("spread_pips", DEFAULT_SPREAD_PIPS)),
     "settings_slip": float(settings.get("slippage_pips", DEFAULT_SLIPPAGE_PIPS)),
-    "settings_objective": settings.get("grid_objective", "risk_adjusted"),
     "settings_mining_presets": [
       preset_label(n) for n in saved if n in known
     ] or [preset_label(RECOMMENDED_PRESET)],
@@ -246,15 +244,14 @@ def render(embedded: bool = False):
       "Trượt giá (pip)", 0.0, 2.0, step=0.1, key="settings_slip",
     )
 
-  objective = st.selectbox(
-    "Mục tiêu Grid Search",
-    ["total_r", "win_rate_pct", "profit_factor", "risk_adjusted"],
-    key="settings_objective",
+  st.caption(
+    "Mục tiêu xếp hạng Grid Search nằm ở trang **Grid Search** "
+    "(đổi objective → bảng / Best đổi ngay, không cần chạy lại combo)."
   )
 
   st.markdown("#### Mining search space")
   mining_option_names = st.session_state.get("_settings_mining_option_names") or []
-  from mining_presets import preset_label
+  from mining_presets import curated_preset_catalog, preset_label
   mining_options = [preset_label(n) for n in mining_option_names]
   mining_picked = st.multiselect(
     "Preset mining (Grid Search)",
@@ -269,6 +266,14 @@ def render(embedded: bool = False):
     "Khuyến nghị: **Elite OR-quality** (WR ~71% / RR ~2.8 trên OOS gần nhất). "
     "Trade Model active mang search space riêng cho Live / remine."
   )
+  with st.expander("Chi tiết preset — ý định & trade-off", expanded=False):
+    catalog = curated_preset_catalog()
+    if catalog:
+      st.dataframe(catalog, hide_index=True, use_container_width=True)
+    st.caption(
+      "Mỗi preset = baseline + vài knobs (RR, exit, anti-chase, cách chấm điểm). "
+      "Đổi preset → chạy lại Grid → tạo Trade Model mới nếu muốn Live dùng hướng đó."
+    )
 
   valid = True
   if not train_weeks:
@@ -291,7 +296,6 @@ def render(embedded: bool = False):
     "backtest_to": backtest_to.isoformat(),
     "spread_pips": float(spread),
     "slippage_pips": float(slip),
-    "grid_objective": objective,
     "mining_presets": mining_names,
   }
   changed = any(s.get(key) != value for key, value in current.items())

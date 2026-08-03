@@ -324,6 +324,49 @@ def save_grid_run(
   return rid
 
 
+def apply_objective_to_run(
+  run_payload: dict | None,
+  objective: str,
+  *,
+  persist: bool = True,
+) -> dict | None:
+  """Re-rank an existing Grid run by ``objective`` and optionally rewrite files.
+
+  Does not re-compute walk-forward — only reorders rows / best for display & TM.
+  """
+  if not run_payload:
+    return None
+  rows = [dict(r) for r in (run_payload.get("rows") or [])]
+  # Ensure risk_adjusted column exists for ranking / table.
+  for r in rows:
+    if r.get("error"):
+      continue
+    if r.get("risk_adjusted") is None:
+      r["risk_adjusted"] = round(_score(r, "risk_adjusted"), 3)
+  valid = [r for r in rows if not r.get("error")]
+  errors = [r for r in rows if r.get("error")]
+  valid.sort(key=lambda r: _score(r, objective or "total_r"), reverse=True)
+  ordered = valid + errors
+  out = dict(run_payload)
+  out["objective"] = objective
+  out["rows"] = ordered
+  out["best"] = ordered[0] if ordered else None
+  out["n_runs"] = len(ordered)
+  out["updated_at"] = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+  if persist:
+    rid = str(out.get("run_id") or "").strip()
+    RUNS_DIR.mkdir(parents=True, exist_ok=True)
+    if rid:
+      path = RUNS_DIR / f"{rid}.json"
+      with open(path, "w", encoding="utf-8") as f:
+        json.dump(out, f, indent=2, ensure_ascii=False)
+    latest = load_latest_grid_run() or {}
+    if not rid or latest.get("run_id") == rid or not latest:
+      with open(LATEST_PATH, "w", encoding="utf-8") as f:
+        json.dump(out, f, indent=2, ensure_ascii=False)
+  return out
+
+
 def load_latest_grid_run() -> dict | None:
   if not LATEST_PATH.exists():
     return None

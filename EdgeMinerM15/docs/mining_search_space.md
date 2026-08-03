@@ -169,8 +169,22 @@ Hằng số code: `RECOMMENDED_PRESET = "elite_or_quality"` · `CURATED_PRESETS`
 
 ### Grid Search
 
+Grid quét **train × KB profile × epoch × mining preset** (OOS / spread / slip cố định theo Settings). Chi tiết + ví dụ số combo: [`docs/grid_search.md`](grid_search.md).
+
 - Chữ ký settings có `msp:elite_or_quality` (và preset khác nếu chọn)
-- Đổi preset → cảnh báo “cài đặt đã đổi” → chạy lại Grid phần combo mới
+- Đổi preset / train / era / epoch → cảnh báo “cài đặt đã đổi” → chạy lại Grid phần combo mới
+- `grid_objective` chọn trên trang **Grid Search** — chỉ xếp hạng winner (Best / bảng), không nhân số combo; đổi mục tiêu → report xếp lại ngay
+- Học KB **không** truyền mining preset; preset áp khi Grid / remine / Live
+
+### Sức khỏe — mining space lỗi thời?
+
+**Trade Models → Sức khỏe** có panel **Mining space vs baseline miner**:
+
+- Cùng KB / train / OOS, chỉ đổi search space → baseline
+- Edge tháng + nửa sau / 3 tháng gần + ΔWR / ΔRR
+- Verdict `fresh` / `watch` / `stale` (không nhầm với suy giảm KB ON−OFF)
+
+Bấm **So mining space** để chạy (lưu `*_mining_baseline.json`).
 
 ---
 
@@ -223,7 +237,7 @@ Số liệu OOS có thể lệch nhẹ theo data MT5 mới; hướng mining gi�
 | `meta_learner.py` | Chấm genome khi KB path dùng frontier/elite |
 | `gui/app_settings.py` | Default Settings + chữ ký grid có `msp:` |
 | `gui/views/settings_page.py` | UI chọn preset |
-| `gui/grid_search_engine.py` | Nhân combo theo `mining_presets` |
+| `gui/grid_search_engine.py` | Nhân combo theo `mining_presets` (xem thêm [`grid_search.md`](grid_search.md)) |
 | `gui/trade_model.py` / services | Remine đọc `mining_search_space` từ model |
 | `scripts/compare_wr_rr_breakthrough.py` | A/B preset vs baseline, promote model |
 

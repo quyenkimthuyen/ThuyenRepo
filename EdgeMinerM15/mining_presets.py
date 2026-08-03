@@ -297,12 +297,77 @@ PRESET_LABELS: dict[str, str] = {
   "elite_60_35": "Elite RSI60 · RR3.5",
 }
 
+# Single source for Settings catalog + Trade Model direction line.
+# intent = dùng khi nào; knobs = đòn bẩy chính; tradeoff = cái đổi lấy được.
+PRESET_BLURBS: dict[str, dict[str, str]] = {
+  "baseline": {
+    "intent": "So sánh công bằng / hành vi miner cũ",
+    "knobs": "RR 2.5–3 · exit full/hybrid/partial · legacy score",
+    "tradeoff": "~9 lệnh/tuần · WR thấp hơn Elite · Total R cao hơn",
+  },
+  "frontier_rr_hi": {
+    "intent": "Chấm joint WR×RR nhẹ, gần giữ Total R",
+    "knobs": "RR ladder cao hơn · expectancy_frontier",
+    "tradeoff": "Gần baseline về tần suất; lift nhẹ chất lượng",
+  },
+  "edge_gentle": {
+    "intent": "Cắt giờ/side độc trên train; giữ gần tần suất baseline",
+    "knobs": "edge_surgery nhẹ · frontier RR",
+    "tradeoff": "R↑ DD↓ so với baseline; vẫn nhiều lệnh",
+  },
+  "anti_chase": {
+    "intent": "Void đuổi giá — RSI/VWAP calibrate trên train",
+    "knobs": "anti_chase calibrate · ngưỡng học từ train",
+    "tradeoff": "WR↑ · tần suất vừa (~5 lệnh/tuần)",
+  },
+  "anti_chase_fixed_70": {
+    "intent": "Cân bằng WR + Total R (void RSI≥70 cố định)",
+    "knobs": "anti_chase fixed RSI<70 · không re-rank genome",
+    "tradeoff": "WR↑ nhẹ và Total R↑; gần tần suất baseline",
+  },
+  "anti_chase_and_70_15": {
+    "intent": "Void chỉ khi RSI và VWAP đều chase (AND)",
+    "knobs": "fixed RSI∨VWAP · logic AND",
+    "tradeoff": "Ít void hơn OR · gần giữ Total R",
+  },
+  "elite_or_quality": {
+    "intent": "Ưu tiên WR/DD — hướng khuyến nghị app",
+    "knobs": "void RSI≥58 OR VWAP≥1.5 · RR 3.2–4 · exit full · elite_frontier",
+    "tradeoff": "WR/DD tốt · ít lệnh (~2/tuần) · Total R thấp hơn baseline",
+  },
+  "elite_60_3": {
+    "intent": "Elite WR-first, chỉ RSI void (không VWAP)",
+    "knobs": "RSI≥58 fixed · RR 3.5–4 · exit full · elite_frontier",
+    "tradeoff": "WR cao · ít lệnh hơn baseline",
+  },
+  "elite_60_3_vwap": {
+    "intent": "Elite siết hơn bằng VWAP OR",
+    "knobs": "RSI≥58 OR VWAP≥1.2 · RR 3.5–4 · exit full",
+    "tradeoff": "WR cao hơn elite_60_3 · fill ít hơn",
+  },
+  "elite_55_4": {
+    "intent": "Niche WR>60 & RR>3 — rất chọn lọc",
+    "knobs": "RSI≥55 · RR 4.0 only · exit full",
+    "tradeoff": "RR cao · rất ít lệnh (~1/tuần)",
+  },
+  "elite_60_35": {
+    "intent": "Elite dự phòng — RSI lỏng hơn một chút",
+    "knobs": "RSI≥60 · RR 3.5 · exit full",
+    "tradeoff": "Cân bằng hơn elite chặt; vẫn chất lượng > tần suất",
+  },
+}
+
 
 def preset_label(name: str) -> str:
   label = PRESET_LABELS.get(name, name)
   if name in DEPRECATED_PRESETS:
     return f"{label} (deprecated)"
   return label
+
+
+def preset_blurb(name: str) -> dict[str, str]:
+  """Intent / knobs / tradeoff for a preset (empty dict if unknown)."""
+  return dict(PRESET_BLURBS.get(name) or {})
 
 
 def recommended_presets() -> list[str]:
@@ -317,6 +382,81 @@ def list_curated_presets() -> list[str]:
 def list_active_presets() -> list[str]:
   """All non-deprecated presets (CLI / advanced)."""
   return [n for n in PRESETS if n not in DEPRECATED_PRESETS]
+
+
+def curated_preset_catalog() -> list[dict[str, str]]:
+  """Rows for Settings expander table (curated only)."""
+  rows: list[dict[str, str]] = []
+  for name in list_curated_presets():
+    blurb = preset_blurb(name)
+    rows.append({
+      "Preset": preset_label(name),
+      "Ý định": blurb.get("intent") or "—",
+      "Knobs chính": blurb.get("knobs") or _summarize_space_knobs(PRESETS.get(name) or {}),
+      "Trade-off": blurb.get("tradeoff") or "—",
+    })
+  return rows
+
+
+def _normalize_space_dict(space: dict | None) -> dict:
+  """JSON-comparable form (lists, sorted keys) for preset matching."""
+  if not space:
+    return {}
+  return _jsonable(dict(space))
+
+
+def match_preset_name(space: dict | None) -> str | None:
+  """Best-effort: which named preset equals this stored search space."""
+  target = _normalize_space_dict(space)
+  if not target:
+    return None
+  for name, preset in PRESETS.items():
+    if _normalize_space_dict(preset) == target:
+      return name
+  return None
+
+
+def space_direction_line(
+  space: dict | None,
+  *,
+  preset_name: str | None = None,
+) -> str:
+  """One-line direction for Trade Model / banners."""
+  name = preset_name or match_preset_name(space)
+  if name:
+    blurb = preset_blurb(name)
+    intent = blurb.get("intent") or ""
+    label = preset_label(name)
+    if intent:
+      return f"**{label}** — {intent}"
+    return f"**{label}**"
+  if not space:
+    return "**Baseline miner** — không gắn preset (search space mặc định)"
+  return (
+    f"Space tùy chỉnh · {_summarize_space_knobs(space)}"
+  )
+
+
+def _summarize_space_knobs(space: dict | None) -> str:
+  ss = space or {}
+  bits: list[str] = []
+  mode = ss.get("selection_mode") or "legacy"
+  if mode != "legacy":
+    bits.append(str(mode))
+  if ss.get("rr_ratios") is not None:
+    bits.append(f"RR{list(ss.get('rr_ratios'))}")
+  if ss.get("anti_chase"):
+    rsi = ss.get("anti_chase_fixed_rsi", "?")
+    part = f"chase RSI<{rsi}"
+    if ss.get("anti_chase_use_vwap"):
+      logic = "OR" if ss.get("anti_chase_logic") == "or" else "AND"
+      part += f" {logic} VWAP<{ss.get('anti_chase_fixed_vwap', '?')}"
+    bits.append(part)
+  if ss.get("edge_surgery"):
+    bits.append("edge_surgery")
+  if ss.get("exit_modes_full_only"):
+    bits.append("exit:full")
+  return " · ".join(bits) if bits else "baseline knobs"
 
 
 PRESETS: dict[str, dict] = {

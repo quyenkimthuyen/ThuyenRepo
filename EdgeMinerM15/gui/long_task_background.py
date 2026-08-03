@@ -19,6 +19,7 @@ JOB_LABELS = {
   "epoch_sweep": "Kiểm chứng từng vòng học",
   "train_window": "So sánh cửa sổ học",
   "model_health": "Sức khỏe Trade Model (KB ON/OFF)",
+  "mining_space_health": "Mining space vs baseline miner",
 }
 
 _lock = threading.Lock()
@@ -297,21 +298,128 @@ def _worker_model_health(state: dict):
       "train_weeks": train_weeks,
       "spread_pips": spread,
       "slippage_pips": slip,
+      "oos_from": oos_from,
+      "oos_to": oos_to,
       "kb_profile": kb_profile,
       "kb_snapshot": kb_snapshot,
       "feature_profile": feature_profile,
       "mining_search_space": mining_search_space,
-      "use_learning": True,
-      "use_kb": True,
-      "trade_model_id": model_id,
     }
+  fp = conditions_fingerprint(run_params)
   _finish(state, status="completed", result={
     "model_id": model_id,
     "kb_on_total_r": on_r,
     "kb_off_total_r": off_r,
-    "refreshed_on": refresh_on,
-    "conditions_fp": conditions_fingerprint(run_params),
-    "run_conditions": describe_strategy_conditions(run_params),
+    "conditions_fp": fp,
+    "conditions": describe_strategy_conditions(run_params),
+  })
+
+
+def _worker_mining_space_health(state: dict):
+  """Same KB/train/OOS as model, but mining space = baseline miner for A/B."""
+  from gui.services import execute_backtest
+  from gui.trade_model import (
+    get_model_by_id,
+    save_model_mining_baseline_report,
+    save_model_report,
+  )
+  from mining_presets import get_preset
+
+  p = state["params"]
+  model_id = p["model_id"]
+  model = get_model_by_id(model_id)
+  if not model:
+    raise ValueError(f"Trade model `{model_id}` không tồn tại.")
+
+  start_date = p.get("start_date") or "2022-01-01"
+  train_weeks = int(p.get("train_weeks") or model.get("train_weeks") or 6)
+  spread = float(p.get("spread_pips") or model.get("spread_pips") or 1.0)
+  slip = float(p.get("slippage_pips") or model.get("slippage_pips") or 0.3)
+  oos_from = p.get("oos_from") or model.get("oos_from")
+  oos_to = p.get("oos_to") or model.get("oos_to")
+  kb_profile = p.get("kb_profile") or model.get("kb_profile")
+  kb_snapshot = p.get("kb_snapshot", model.get("kb_snapshot"))
+  feature_profile = (
+    p.get("feature_profile")
+    or model.get("feature_profile")
+    or "current"
+  )
+  active_space = (
+    p.get("mining_search_space")
+    if "mining_search_space" in p
+    else model.get("mining_search_space")
+  )
+  refresh_active = bool(p.get("refresh_active", False))
+  baseline_space = get_preset("baseline")
+
+  report_active = None
+  if refresh_active:
+    def on_prog_active(step, total, _ws):
+      _check_cancel()
+      _update_progress(
+        state, step, max(total * 2, 1), f"Active space · WF {step}/{total}",
+      )
+
+    report_active = execute_backtest(
+      use_learning=bool(model.get("use_kb", True)),
+      train_weeks=train_weeks,
+      start_date=start_date,
+      spread_pips=spread,
+      slippage_pips=slip,
+      holdout_months=0,
+      kb_profile=kb_profile if model.get("use_kb", True) else None,
+      kb_snapshot=kb_snapshot if model.get("use_kb", True) else None,
+      kb_pin_path=model.get("kb_pin_path") if model.get("use_kb", True) else None,
+      oos_from=oos_from,
+      oos_to=oos_to,
+      feature_profile=feature_profile,
+      mining_search_space=active_space,
+      on_progress=on_prog_active,
+      archive=False,
+      sync_workspace=False,
+    )
+    save_model_report(model_id, report_active)
+
+  def on_prog_base(step, total, _ws):
+    _check_cancel()
+    base = total if refresh_active else 0
+    _update_progress(
+      state,
+      base + step,
+      max((total * 2) if refresh_active else total, 1),
+      f"Baseline miner · WF {step}/{total}",
+    )
+
+  report_base = execute_backtest(
+    use_learning=bool(model.get("use_kb", True)),
+    train_weeks=train_weeks,
+    start_date=start_date,
+    spread_pips=spread,
+    slippage_pips=slip,
+    holdout_months=0,
+    kb_profile=kb_profile if model.get("use_kb", True) else None,
+    kb_snapshot=kb_snapshot if model.get("use_kb", True) else None,
+    kb_pin_path=model.get("kb_pin_path") if model.get("use_kb", True) else None,
+    oos_from=oos_from,
+    oos_to=oos_to,
+    feature_profile=feature_profile,
+    mining_search_space=baseline_space,
+    on_progress=on_prog_base,
+    archive=False,
+    sync_workspace=False,
+  )
+  save_model_mining_baseline_report(model_id, report_base)
+
+  active_r = (
+    (report_active or {}).get("overall_oos", {}).get("total_r")
+    if report_active else None
+  )
+  base_r = (report_base.get("overall_oos") or {}).get("total_r")
+  _finish(state, status="completed", result={
+    "model_id": model_id,
+    "active_total_r": active_r,
+    "baseline_total_r": base_r,
+    "compared_presets": ["active", "baseline"],
   })
 
 
@@ -425,6 +533,7 @@ def _worker_train_window(state: dict):
 _DISPATCH = {
   "backtest": _worker_backtest,
   "model_health": _worker_model_health,
+  "mining_space_health": _worker_mining_space_health,
   "learning": _worker_learning,
   "era_learn": _worker_era_learn,
   "era_compare": _worker_era_compare,

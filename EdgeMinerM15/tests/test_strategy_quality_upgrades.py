@@ -198,6 +198,27 @@ def test_elite_presets_opt_in():
   assert "elite_or_quality" in list_curated_presets()
 
 
+def test_preset_blurbs_and_direction_line():
+  from mining_presets import (
+    RECOMMENDED_PRESET,
+    curated_preset_catalog,
+    get_preset,
+    match_preset_name,
+    preset_blurb,
+    space_direction_line,
+  )
+
+  blurb = preset_blurb(RECOMMENDED_PRESET)
+  assert "WR" in blurb["intent"] or "ưu tiên" in blurb["intent"].lower()
+  assert blurb.get("knobs") and blurb.get("tradeoff")
+  catalog = curated_preset_catalog()
+  assert catalog and all("Ý định" in row for row in catalog)
+  assert match_preset_name(get_preset(RECOMMENDED_PRESET)) == RECOMMENDED_PRESET
+  line = space_direction_line(get_preset(RECOMMENDED_PRESET))
+  assert "Elite OR-quality" in line
+  assert "Baseline miner" in space_direction_line(None)
+
+
 def test_app_settings_default_mining_preset():
   from gui.app_settings import DEFAULT_SETTINGS, _sanitize_settings
   assert DEFAULT_SETTINGS["mining_presets"] == ["elite_or_quality"]
