@@ -250,6 +250,7 @@ def _worker_model_health(state: dict):
       holdout_months=0,
       kb_profile=kb_profile,
       kb_snapshot=kb_snapshot,
+      kb_pin_path=model.get("kb_pin_path"),
       oos_from=oos_from,
       oos_to=oos_to,
       feature_profile=feature_profile,

@@ -176,13 +176,21 @@ Hằng số code: `RECOMMENDED_PRESET = "elite_or_quality"` · `CURATED_PRESETS`
 
 ## 7. Xóa model rồi train lại?
 
-**Có.** Xóa Trade Model chỉ mất metadata + report/schedule của model đó.
+**Có.** Xóa Trade Model chỉ mất metadata + report/schedule/**KB pin** của model đó.
 
 Còn lại:
 
 - Preset `elite_or_quality` trong code
 - Settings `mining_presets`
-- KB profile / epoch (nếu không xóa KB)
+- KB profile / epoch (nếu không xóa KB) — **không bắt buộc** cho Bridge/Paper của model đã pin
+
+### KB pin (độc lập khỏi catalog KB)
+
+Khi tạo / reuse Trade Model (KB ON), app copy snapshot KB sang:
+
+`results/trade_models/<model_id>_kb_pin.json`
+
+Model lưu `kb_pin_path` + `kb_fingerprint`. Remine (Bridge / Paper / Health) **ưu tiên pin**; xóa profile KB gốc không làm gãy model đã pin. Pin **không** bị ghi đè khi live remine (`update_kb=False`).
 
 ### Cách A — CLI (nhanh, giống lúc research)
 
@@ -238,8 +246,11 @@ A: Ít lệnh hơn (void + RR cao khó hit). Expectancy/lệnh và DD thường 
 **Q: `elite_55_4` vs `elite_or_quality`?**  
 A: `elite_55_4` siết hơn (RSI&lt;55, RR=4) → WR>60% và RR>3 nhưng rất ít lệnh. `elite_or_quality` cân bằng WR rất cao + Total R / DD dễ dùng hơn cho app mặc định.
 
+**Q: Xóa KB profile / Settings có gãy Bridge không?**  
+A: Model đã pin thì không — remine đọc `*_kb_pin.json` cạnh Trade Model, không cần catalog KB gốc.
+
 ---
 
 ## 10. Tóm tắt một đoạn
 
-Mining search space là **cách miner được phép tìm edge**, đóng gói thành preset. App mặc định hướng **`elite_or_quality`**: void SHORT exhaustion (RSI∨VWAP), RR ladder cao, exit full, chấm điểm elite. Settings điều khiển Grid; Trade Model đóng gói cho Live; xóa model vẫn train lại được vì preset + KB còn nguyên.
+Mining search space là **cách miner được phép tìm edge**, đóng gói thành preset. App mặc định hướng **`elite_or_quality`**: void SHORT exhaustion (RSI∨VWAP), RR ladder cao, exit full, chấm điểm elite. Settings điều khiển Grid; Trade Model đóng gói mining space + **KB pin** cho Live; xóa model vẫn train lại được vì preset (+ catalog KB nếu còn) trong code/Settings.

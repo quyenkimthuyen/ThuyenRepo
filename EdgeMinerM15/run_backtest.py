@@ -119,6 +119,7 @@ def run_walk_forward(
   risk_pct_per_trade: float = 1.0,
   kb_profile: str | None = None,
   kb_snapshot: int | str | None = None,
+  kb_pin_path: str | None = None,
   oos_from: str | None = None,
   oos_to: str | None = None,
   feature_profile: str = "current",
@@ -131,11 +132,25 @@ def run_walk_forward(
   profile_id = kb_profile or DEFAULT_PROFILE_ID
 
   if use_learning:
-    set_kb_profile(profile_id, kb_snapshot)
-    kb_instance = get_knowledge_base(profile_id, kb_snapshot)
-    check_start = oos_from or str(df.index[0].date())
-    ok, msg = kb_valid_for_backtest(profile_id, check_start, oos_to)
-    kb_validation = {"ok": ok, "message": msg, "profile_id": profile_id}
+    from trade_model_kb_pin import load_kb_for_run, resolve_pin_absolute
+    pinned = resolve_pin_absolute(kb_pin_path)
+    if pinned is not None:
+      kb_instance = load_kb_for_run(
+        use_learning=True, kb_pin_path=kb_pin_path,
+        kb_profile=profile_id, kb_snapshot=kb_snapshot,
+      )
+      kb_validation = {
+        "ok": True,
+        "message": f"KB pin `{pinned.name}`",
+        "profile_id": profile_id,
+        "pinned": True,
+      }
+    else:
+      set_kb_profile(profile_id, kb_snapshot)
+      kb_instance = get_knowledge_base(profile_id, kb_snapshot)
+      check_start = oos_from or str(df.index[0].date())
+      ok, msg = kb_valid_for_backtest(profile_id, check_start, oos_to)
+      kb_validation = {"ok": ok, "message": msg, "profile_id": profile_id}
 
   holdout_cutoff = None
   if holdout_months > 0:

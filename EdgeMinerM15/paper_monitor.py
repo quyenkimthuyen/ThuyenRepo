@@ -82,6 +82,7 @@ def get_monitor_state(
   risk_pct: float = DEFAULT_RISK_PCT_PER_TRADE,
   kb_profile: str | None = None,
   kb_snapshot: int | str | None = None,
+  kb_pin_path: str | None = None,
   feature_profile: str = "current",
   mining_search_space: dict | None = None,
 ) -> dict:
@@ -98,10 +99,13 @@ def get_monitor_state(
 
   kb = None
   if use_learning:
-    from optimizer import set_kb_profile, get_knowledge_base
-    if kb_profile:
-      set_kb_profile(kb_profile, kb_snapshot)
-    kb = get_knowledge_base(kb_profile, kb_snapshot)
+    from trade_model_kb_pin import load_kb_for_run
+    kb = load_kb_for_run(
+      use_learning=True,
+      kb_profile=kb_profile,
+      kb_snapshot=kb_snapshot,
+      kb_pin_path=kb_pin_path,
+    )
 
   train_start_idx, train_end_idx = get_train_window_indices(df, week_start, train_weeks)
   if train_start_idx is None or (train_end_idx - train_start_idx) < MIN_TRAIN_BARS:

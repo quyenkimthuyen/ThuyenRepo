@@ -136,7 +136,8 @@ def _render_shared_model_bar(models: list[dict]) -> dict | None:
     f"KB `{kb_profile_label(m.get('kb_profile'))}` · "
     f"ep `{m.get('kb_snapshot') or 'latest'}` · "
     f"OOS `{m.get('oos_from') or '—'} → {m.get('oos_to') or '—'}` · "
-    f"mining `{mining_txt}`"
+    f"mining `{mining_txt}` · "
+    f"KB pin `{'yes · ' + str(m.get('kb_fingerprint') or '')[:8] if m.get('kb_pin_path') else 'no'}`"
   )
   if report:
     mismatches = profile_mismatch_details(report, {**m, "trade_model_id": mid})

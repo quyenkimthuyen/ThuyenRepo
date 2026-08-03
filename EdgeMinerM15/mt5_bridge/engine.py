@@ -215,9 +215,17 @@ class BridgeEngine:
 
     kb = None
     if use_learning:
-      if kb_profile:
+      from trade_model_kb_pin import load_kb_for_run
+      pin = (self._params or {}).get("kb_pin_path")
+      kb = load_kb_for_run(
+        use_learning=True,
+        kb_profile=kb_profile,
+        kb_snapshot=kb_snapshot,
+        kb_pin_path=pin,
+      )
+      if kb is None and kb_profile:
         set_kb_profile(kb_profile, kb_snapshot)
-      kb = get_knowledge_base(kb_profile, kb_snapshot)
+        kb = get_knowledge_base(kb_profile, kb_snapshot)
 
     # 1) Frozen OOS / previously live-frozen week — before train-window gate
     scheduled = lookup_week_strategy(self.model_id, week_start)

@@ -403,6 +403,21 @@ def create_trade_model(
         save_models_store(store)
       if set_active:
         set_active_trade_model(existing["id"])
+      # Ensure older models get a KB pin when reused.
+      try:
+        from trade_model_kb_pin import ensure_model_kb_pin
+        store = load_models_store()
+        for m in store["models"]:
+          if m.get("id") != existing["id"]:
+            continue
+          before = m.get("kb_fingerprint")
+          ensure_model_kb_pin(m)
+          if m.get("kb_fingerprint") != before:
+            existing = m
+            save_models_store(store)
+          break
+      except Exception:
+        pass
       if build_report and not load_model_report(existing["id"]):
         try:
           from gui.analysis_support import start_model_report_job
@@ -420,6 +435,11 @@ def create_trade_model(
     "label": name,
     "created_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
   }
+  try:
+    from trade_model_kb_pin import ensure_model_kb_pin
+    ensure_model_kb_pin(model)
+  except Exception:
+    pass
   store = load_models_store()
   store["models"].append(model)
   save_models_store(store)
@@ -515,7 +535,7 @@ def _model_id_from_artifact_name(name: str) -> str | None:
   if not name.endswith(".json"):
     return None
   stem = name[:-5]
-  for suffix in ("_kb_off", "_live_weeks", "_schedule"):
+  for suffix in ("_kb_off", "_kb_pin", "_live_weeks", "_schedule"):
     if stem.endswith(suffix):
       return stem[: -len(suffix)]
   return stem
@@ -523,6 +543,11 @@ def _model_id_from_artifact_name(name: str) -> str | None:
 
 def model_artifact_paths(model_id: str) -> list[Path]:
   paths = [model_report_path(model_id), model_kb_off_report_path(model_id)]
+  try:
+    from trade_model_kb_pin import model_kb_pin_path
+    paths.append(model_kb_pin_path(model_id))
+  except Exception:
+    pass
   try:
     from trade_model_schedule import model_live_weeks_path, model_schedule_path
     paths.extend([model_schedule_path(model_id), model_live_weeks_path(model_id)])

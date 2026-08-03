@@ -100,6 +100,7 @@ def execute_backtest(
   risk_pct: float = DEFAULT_RISK_PCT_PER_TRADE,
   kb_profile: str = DEFAULT_PROFILE_ID,
   kb_snapshot: int | str | None = None,
+  kb_pin_path: str | None = None,
   oos_from: str | None = None,
   oos_to: str | None = None,
   feature_profile: str | None = None,
@@ -113,7 +114,7 @@ def execute_backtest(
 
   # Prefer explicit args; else pull from active Trade Model so health/analysis
   # re-runs match session/spacing/hold of the saved model (not miner defaults).
-  if feature_profile is None or mining_search_space is None:
+  if feature_profile is None or mining_search_space is None or kb_pin_path is None:
     try:
       from mt5_bridge.models import get_model_run_params, resolve_model
       from gui.trade_model import get_active_trade_model
@@ -123,6 +124,8 @@ def execute_backtest(
         feature_profile = mp.get("feature_profile") or "current"
       if mining_search_space is None:
         mining_search_space = mp.get("mining_search_space")
+      if kb_pin_path is None:
+        kb_pin_path = mp.get("kb_pin_path")
     except Exception:
       feature_profile = feature_profile or "current"
 
@@ -133,7 +136,7 @@ def execute_backtest(
 
   df = load_eurusd_m15(start_date)
   reset_kb_cache()
-  if use_learning:
+  if use_learning and not kb_pin_path:
     set_kb_profile(kb_profile, kb_snapshot)
   result = run_walk_forward(
     df,
@@ -145,6 +148,7 @@ def execute_backtest(
     risk_pct_per_trade=risk_pct,
     kb_profile=kb_profile if use_learning else None,
     kb_snapshot=kb_snapshot if use_learning else None,
+    kb_pin_path=kb_pin_path if use_learning else None,
     oos_from=oos_from or None,
     oos_to=oos_to or None,
     feature_profile=feature_profile or "current",
@@ -261,8 +265,9 @@ def get_paper_monitor(
   feature_profile = feature_profile or model_params.get("feature_profile") or "current"
   if mining_search_space is None:
     mining_search_space = model_params.get("mining_search_space")
+  kb_pin_path = model_params.get("kb_pin_path") if use_learning else None
   reset_kb_cache()
-  if use_learning:
+  if use_learning and not kb_pin_path:
     set_kb_profile(kb_profile, kb_snapshot)
   df = load_eurusd_m15(DEFAULT_START_DATE)
   return get_monitor_state(
@@ -271,6 +276,7 @@ def get_paper_monitor(
     risk_pct=risk_pct,
     kb_profile=kb_profile if use_learning else None,
     kb_snapshot=kb_snapshot if use_learning else None,
+    kb_pin_path=kb_pin_path,
     feature_profile=feature_profile,
     mining_search_space=mining_search_space,
   )
