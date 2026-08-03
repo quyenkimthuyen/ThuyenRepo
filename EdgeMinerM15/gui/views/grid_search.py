@@ -21,6 +21,7 @@ from gui.grid_search_background import (
 from gui.grid_search_engine import (
   OBJECTIVES,
   build_grid_from_settings,
+  delete_grid_run,
   estimate_grid_count,
   filter_specs_for_incremental,
   grid_readiness,
@@ -28,6 +29,7 @@ from gui.grid_search_engine import (
   load_grid_run,
   load_latest_grid_run,
   merge_grid_results,
+  summarize_grid_config,
 )
 from gui.trade_model import create_trade_model
 from gui.ui_preferences import (
@@ -167,7 +169,42 @@ def _history_option_label(summary: dict) -> str:
   best_r = summary.get("best_total_r")
   best_txt = f"{float(best_r):+.1f}R" if best_r is not None else "—"
   tag = " · latest" if summary.get("is_latest") else ""
-  return f"{when} · `{rid}` · {n} combo · best {best_txt}{tag}"
+  train = summary.get("train_txt") or "—"
+  oos = summary.get("oos_txt") or "—"
+  mining = summary.get("mining_txt") or "—"
+  # Compact dropdown line; full details shown in the config panel below.
+  return (
+    f"{when} · `{rid}` · {n} combo · best {best_txt} · "
+    f"train {train} · OOS {oos} · mining {mining}{tag}"
+  )
+
+
+def _render_run_config_panel(run_payload: dict | None, *, objective: str, viewing_history: bool) -> None:
+  """Show KB / OOS / mining / train / epoch details for the selected grid run."""
+  if not run_payload:
+    return
+  cfg = summarize_grid_config(run_payload.get("config"))
+  obj_label = OBJECTIVES.get(objective, objective)
+  title = "Cấu hình lần chạy đang xem" + (" (lịch sử)" if viewing_history else "")
+  with st.expander(title, expanded=True):
+    c1, c2 = st.columns(2)
+    with c1:
+      st.markdown(
+        f"- **Run:** `{run_payload.get('run_id') or '—'}`  \n"
+        f"- **Thời điểm:** {run_payload.get('updated_at') or '—'}  \n"
+        f"- **Mục tiêu xếp hạng:** {obj_label}  \n"
+        f"- **Train weeks:** {cfg['train_txt']}  \n"
+        f"- **OOS:** {cfg['oos_txt']}  \n"
+        f"- **Phí:** {cfg['cost_txt']}"
+      )
+    with c2:
+      st.markdown(
+        f"- **KB / giai đoạn:** {cfg['kb_txt']}  \n"
+        f"- **Epoch:** {cfg['epochs_txt']}  \n"
+        f"- **Mining space:** {cfg['mining_txt']}  \n"
+        f"- **Số combo:** {run_payload.get('n_runs') or len(run_payload.get('rows') or [])}  \n"
+        f"- **Chữ ký settings:** `{cfg.get('settings_signature') or '—'}`"
+      )
 
 
 def render(embedded: bool = False):
@@ -330,15 +367,22 @@ def render(embedded: bool = False):
       "Xem kết quả lần chạy",
       hist_labels,
       key="gs_history_pick",
-      help="Mỗi lần Grid Search lưu file `gs_*.json`. Chọn để xem lại bảng / tạo Trade Model.",
+      help="Mỗi lần Grid Search lưu file `gs_*.json`. Chọn để xem lại bảng / tạo Trade Model / xóa.",
     )
     pick_idx = hist_labels.index(pick_label) if pick_label in hist_labels else 0
-    if pick_idx > 0:
+    # Resolve concrete run id for delete (latest pointer → actual latest run_id)
+    selected_run_id = None
+    if pick_idx == 0:
+      viewing_history = False
+      selected_run_id = (archives[0].get("run_id") if archives else None)
+    else:
       viewing_history = True
-      history_run = load_grid_run(hist_ids[pick_idx])
+      selected_run_id = hist_ids[pick_idx]
+      history_run = load_grid_run(selected_run_id)
       if history_run is None:
-        st.warning(f"Không đọc được run `{hist_ids[pick_idx]}`.")
+        st.warning(f"Không đọc được run `{selected_run_id}`.")
         viewing_history = False
+        selected_run_id = None
       else:
         st.info(
           f"Đang xem lịch sử **`{history_run.get('run_id')}`** · "
@@ -346,6 +390,45 @@ def render(embedded: bool = False):
           f"{history_run.get('n_runs') or len(history_run.get('rows') or [])} combo. "
           "Chọn **● Hiện tại (latest)** để quay lại kết quả mới nhất."
         )
+
+    if selected_run_id:
+      with st.expander(f"Xóa lần chạy `{selected_run_id}`", expanded=False):
+        summary = next((a for a in archives if a.get("run_id") == selected_run_id), None)
+        if summary:
+          st.caption(
+            f"Train **{summary.get('train_txt')}** · OOS **{summary.get('oos_txt')}** · "
+            f"KB **{summary.get('kb_txt')}** · Mining **{summary.get('mining_txt')}** · "
+            f"Epoch **{summary.get('epochs_txt')}**"
+          )
+        st.caption(
+          "Chỉ xóa file kết quả Grid này (`gs_*.json`). "
+          "Không xóa KB hay Trade Model. Nếu đây là latest, app sẽ chuyển latest sang run mới hơn (nếu còn)."
+        )
+        confirm_one = st.checkbox(
+          f"Xác nhận xóa `{selected_run_id}`",
+          key=f"gs_delete_one_confirm_{selected_run_id}",
+        )
+        if st.button(
+          "Xóa lần chạy này",
+          type="secondary",
+          icon=":material/delete:",
+          key=f"gs_delete_one_btn_{selected_run_id}",
+          disabled=not confirm_one,
+        ):
+          try:
+            if is_grid_running():
+              raise RuntimeError("Grid Search đang chạy — hủy trước khi xóa.")
+            out = delete_grid_run(selected_run_id)
+            st.session_state.pop("gs_history_pick", None)
+            msg = f"Đã xóa `{out.get('deleted')}`."
+            if out.get("promoted_latest"):
+              msg += f" Latest → `{out['promoted_latest']}`."
+            elif out.get("was_latest"):
+              msg += " Đã xóa latest (không còn run nào)."
+            st.toast(msg)
+            st.rerun()
+          except (RuntimeError, ValueError, FileNotFoundError) as e:
+            st.error(str(e))
 
   rows, objective, data = _rows_for_display(
     job_status, history_run=history_run if viewing_history else None,
@@ -369,13 +452,8 @@ def render(embedded: bool = False):
     st.caption("Đang chờ kết quả combo đầu tiên…")
     return
 
-  if data and data.get("updated_at") and not running:
-    obj_label = OBJECTIVES.get(objective, objective)
-    hist_tag = " · lịch sử" if viewing_history else ""
-    st.caption(
-      f"Lần chạy: `{data.get('run_id')}` · {data['updated_at']} · "
-      f"Mục tiêu: **{obj_label}**{hist_tag}"
-    )
+  if data and not running:
+    _render_run_config_panel(data, objective=objective, viewing_history=viewing_history)
 
   best = rows[0] if rows else None
   if best and not best.get("error"):

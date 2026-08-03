@@ -353,10 +353,65 @@ def load_grid_run(run_id: str | None) -> dict | None:
     return None
 
 
+def summarize_grid_config(config: dict | None) -> dict:
+  """Normalize saved grid ``config`` into display-friendly fields."""
+  cfg = config or {}
+  trains = cfg.get("train_weeks") or []
+  if isinstance(trains, (int, float)):
+    trains = [int(trains)]
+  trains = [int(t) for t in trains]
+
+  kb_profiles = list(cfg.get("kb_profiles") or [])
+  era_keys = list(cfg.get("learning_era_keys") or [])
+  selected = cfg.get("selected_epochs") or {}
+  loops = cfg.get("learning_loops")
+  epoch_bits = []
+  if isinstance(selected, dict) and selected:
+    for pid, eps in selected.items():
+      ep_txt = ",".join(str(e) if e is not None else "latest" for e in (eps or []))
+      short = str(pid).replace("era_", "")
+      epoch_bits.append(f"{short}:[{ep_txt}]")
+  elif loops:
+    epoch_bits.append(f"ep1–{loops}")
+
+  mining = cfg.get("mining_presets")
+  if mining is None:
+    mining_txt = "baseline miner"
+  elif not mining:
+    mining_txt = "baseline miner"
+  else:
+    mining_txt = ", ".join(str(p) for p in mining)
+
+  oos_from = str(cfg.get("oos_from") or "—")[:10]
+  oos_to = str(cfg.get("oos_to") or "—")[:10]
+  return {
+    "train_weeks": trains,
+    "train_txt": ",".join(str(t) for t in trains) + (" tuần" if trains else "—"),
+    "kb_profiles": kb_profiles,
+    "kb_txt": ", ".join(p.replace("era_", "") for p in kb_profiles) or (
+      ", ".join(era_keys) if era_keys else "—"
+    ),
+    "learning_era_keys": era_keys,
+    "epochs_txt": "; ".join(epoch_bits) if epoch_bits else "—",
+    "learning_loops": loops,
+    "oos_from": oos_from,
+    "oos_to": oos_to,
+    "oos_txt": f"{oos_from} → {oos_to}",
+    "mining_presets": list(mining) if isinstance(mining, list) else mining,
+    "mining_txt": mining_txt,
+    "spread_pips": cfg.get("spread_pips"),
+    "slippage_pips": cfg.get("slippage_pips"),
+    "cost_txt": (
+      f"spread {cfg.get('spread_pips', '—')} / slip {cfg.get('slippage_pips', '—')}"
+    ),
+    "settings_signature": cfg.get("settings_signature"),
+  }
+
+
 def list_grid_runs(*, limit: int = 40) -> list[dict]:
   """Summaries of archived Grid Search runs, newest first.
 
-  Each item: run_id, updated_at, objective, n_runs, best_total_r, best_label, path, is_latest.
+  Each item: run_id, updated_at, objective, n_runs, best_*, config summary fields, path, is_latest.
   """
   if not RUNS_DIR.exists():
     return []
@@ -388,6 +443,7 @@ def list_grid_runs(*, limit: int = 40) -> list[dict]:
     best = data.get("best") or (data.get("rows") or [None])[0] or {}
     rows = data.get("rows") or []
     n_ok = sum(1 for r in rows if not r.get("error"))
+    summary = summarize_grid_config(data.get("config"))
     out.append({
       "run_id": rid,
       "updated_at": data.get("updated_at") or "",
@@ -397,13 +453,63 @@ def list_grid_runs(*, limit: int = 40) -> list[dict]:
       "best_total_r": best.get("total_r"),
       "best_win_rate_pct": best.get("win_rate_pct"),
       "best_label": best.get("label"),
-      "settings_signature": (data.get("config") or {}).get("settings_signature"),
+      "settings_signature": summary.get("settings_signature"),
       "path": path_str,
       "is_latest": rid == latest_id,
+      **summary,
     })
     if len(out) >= limit:
       break
   return out
+
+
+def delete_grid_run(run_id: str) -> dict:
+  """Delete one archived Grid Search run (``gs_*.json``).
+
+  If that run is also ``latest.json``, promote the next newest archive to
+  latest — or remove ``latest.json`` when no archives remain.
+  """
+  rid = str(run_id or "").strip()
+  if not rid or rid in ("__latest__", "latest", "current"):
+    raise ValueError("Chọn một run cụ thể (gs_…) để xóa.")
+  if not rid.startswith("gs_"):
+    # tolerate ids without prefix if file is gs_{id}.json
+    candidate = RUNS_DIR / f"gs_{rid}.json"
+    if candidate.exists():
+      rid = f"gs_{rid}"
+
+  path = RUNS_DIR / f"{rid}.json"
+  if not path.exists():
+    raise FileNotFoundError(f"Không tìm thấy Grid run `{rid}`.")
+
+  latest = load_latest_grid_run() or {}
+  was_latest = latest.get("run_id") == rid
+
+  path.unlink()
+  cleared = [path.name]
+
+  if was_latest and LATEST_PATH.exists():
+    LATEST_PATH.unlink()
+    cleared.append(LATEST_PATH.name)
+
+  # Promote next newest archive to latest.json when we removed current latest.
+  remaining = list_grid_runs(limit=1)
+  promoted = None
+  if was_latest and remaining:
+    nxt = load_grid_run(remaining[0]["run_id"])
+    if nxt:
+      RUNS_DIR.mkdir(parents=True, exist_ok=True)
+      with open(LATEST_PATH, "w", encoding="utf-8") as f:
+        json.dump(nxt, f, indent=2, ensure_ascii=False)
+      promoted = nxt.get("run_id")
+
+  return {
+    "deleted": rid,
+    "cleared": cleared,
+    "was_latest": was_latest,
+    "promoted_latest": promoted,
+    "remaining": len(list_grid_runs(limit=10_000)),
+  }
 
 
 def existing_row_keys(rows: list[dict] | None) -> set[str]:
