@@ -263,10 +263,29 @@ if command -v rsync >/dev/null 2>&1; then
     --exclude 'C:\\Work\\*' \
     "$SRC_ROOT/" "$DST_ROOT/"
 else
-  cp -a "$SRC_ROOT" "$DST_ROOT"
-  rm -rf "$DST_ROOT/.venv" "$DST_ROOT/__pycache__"
+  # Trailing /. copies contents into DST (plain cp -a SRC DST nests SRC basename).
+  cp -a "$SRC_ROOT"/. "$DST_ROOT"/
+  rm -rf "$DST_ROOT/.venv"
   find "$DST_ROOT" -type d -name '__pycache__' -prune -exec rm -rf {} + 2>/dev/null || true
+  find "$DST_ROOT" -type d -name '.pytest_cache' -prune -exec rm -rf {} + 2>/dev/null || true
+  rm -f "$DST_ROOT"/results/*.pid "$DST_ROOT"/results/*.log 2>/dev/null || true
+  rm -f "$DST_ROOT"/results/jobs/long_task_state.json 2>/dev/null || true
 fi
+
+# Prefer python3, then Windows py launcher, then python.
+run_python() {
+  if command -v python3 >/dev/null 2>&1; then
+    python3 "$@"
+  elif command -v py >/dev/null 2>&1; then
+    py -3 "$@"
+  elif command -v python >/dev/null 2>&1; then
+    python "$@"
+  else
+    echo "No python3/py/python found; cannot specialize clone." >&2
+    exit 1
+  fi
+}
+echo "Using Python: $(command -v python3 || command -v py || command -v python)"
 
 # Rename bridge folders
 if [[ -d "$DST_ROOT/mt5/bridge" ]]; then
@@ -304,7 +323,7 @@ export CLONE_SPEC="${SPEC_UPPER}"
 export CLONE_VERSION="$VERSION_UPPER"
 export CLONE_OFFSET="$OFFSET"
 
-python3 - <<'PY'
+run_python - <<'PY'
 from __future__ import annotations
 
 import os
@@ -354,48 +373,48 @@ replace_file(
   [
     (r'^BRIDGE_DIR = ROOT / "mt5" / "bridge"', f'BRIDGE_DIR = ROOT / "mt5" / "{bridge_live}"'),
     (r'^BRIDGE_SIM_DIR = ROOT / "mt5" / "bridge_sim"', f'BRIDGE_SIM_DIR = ROOT / "mt5" / "{bridge_sim}"'),
-    (r"^DEFAULT_MAGIC = 20260724", f"DEFAULT_MAGIC = {magic_live}"),
-    (r"^DEFAULT_SIM_MAGIC = 20260726", f"DEFAULT_SIM_MAGIC = {magic_sim}"),
+    (r"^DEFAULT_MAGIC = \d+", f"DEFAULT_MAGIC = {magic_live}"),
+    (r"^DEFAULT_SIM_MAGIC = \d+", f"DEFAULT_SIM_MAGIC = {magic_sim}"),
     (r'^INSTANCE_ID = "M15"', f'INSTANCE_ID = "{instance_id}"'),
   ],
 )
 
-# live monitor ports
+# live monitor ports — match any current value (source may already be non-default)
 replace_file(
   root / "mt5_bridge" / "live_monitor_server.py",
   [
-    (r"^DEFAULT_MONITOR_PORT = 8765", f"DEFAULT_MONITOR_PORT = {bridge_port}"),
-    (r"^SIM_MONITOR_PORT = 8876", f"SIM_MONITOR_PORT = {sim_port}"),
-    (r"^COMPARE_MONITOR_PORT = 8886", f"COMPARE_MONITOR_PORT = {compare_port}"),
+    (r"^DEFAULT_MONITOR_PORT = \d+", f"DEFAULT_MONITOR_PORT = {bridge_port}"),
+    (r"^SIM_MONITOR_PORT = \d+", f"SIM_MONITOR_PORT = {sim_port}"),
+    (r"^COMPARE_MONITOR_PORT = \d+", f"COMPARE_MONITOR_PORT = {compare_port}"),
   ],
 )
 
 replace_file(
   root / "paper_live_monitor_server.py",
   [
-    (r"^DEFAULT_PAPER_MONITOR_PORT = 8766", f"DEFAULT_PAPER_MONITOR_PORT = {paper_port}"),
+    (r"^DEFAULT_PAPER_MONITOR_PORT = \d+", f"DEFAULT_PAPER_MONITOR_PORT = {paper_port}"),
   ],
 )
 
 replace_file(
   root / "scripts" / "run_app_linux.sh",
   [
-    (r"^PORT=8501", f"PORT={app_port}"),
-    (r"default: 8501", f"default: {app_port}"),
+    (r"^PORT=\d+", f"PORT={app_port}"),
+    (r"default: \d+", f"default: {app_port}"),
   ],
 )
 
 replace_file(
   root / "scripts" / "run_app_windows.ps1",
   [
-    (r"\[int\]\$Port = 8501", f"[int]$Port = {app_port}"),
+    (r"\[int\]\$Port = \d+", f"[int]$Port = {app_port}"),
   ],
 )
 
 replace_file(
   root / "scripts" / "paper_monitor_service.py",
   [
-    (r"http://127\.0\.0\.1:8766", f"http://127.0.0.1:{paper_port}"),
+    (r"http://127\.0\.0\.1:\d+", f"http://127.0.0.1:{paper_port}"),
   ],
 )
 
@@ -421,19 +440,29 @@ if deploy.exists():
   text = re.sub(r'\$EaNameLive = "[^"]+"', f'$EaNameLive = "{ea_live}"', text)
   text = re.sub(r'\$EaNameSim = "[^"]+"', f'$EaNameSim = "{ea_sim}"', text)
   text = text.replace('$EaFolder = "EdgeMinerM15"', f'$EaFolder = "{repo_name}"')
-  text = text.replace("$EaMagicLive = 20260724", f"$EaMagicLive = {magic_live}")
-  text = text.replace("$EaMagicSim = 20260726", f"$EaMagicSim = {magic_sim}")
-  text = text.replace("--monitor-port 8765", f"--monitor-port {bridge_port}")
-  cur_pat = f"name=(?:{ea_sim}|{ea_live}|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\\b"
-  want_pat = (
-    f"name=(?:{ea_sim}|{ea_live}|ForgeBridgeM15Sim|ForgeBridgeM15|"
-    f"ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\\b"
+  text = re.sub(r"\$EaMagicLive = \d+", f"$EaMagicLive = {magic_live}", text)
+  text = re.sub(r"\$EaMagicSim = \d+", f"$EaMagicSim = {magic_sim}", text)
+  text = re.sub(r"--monitor-port \d+", f"--monitor-port {bridge_port}", text)
+  # Keep ALL ForgeBridge* charts protected (stock + every sibling clone).
+  # Listing only this clone's EA lets deploy steal B4 when attaching B5 (and vice versa).
+  broad_family = r"name=ForgeBridge[A-Za-z0-9]*\b"
+  broad_expert = r"(?s)<expert>\s*name=ForgeBridge[A-Za-z0-9]*\b.*?</expert>\s*"
+  text, n_fam = re.subn(
+    r"function Get-ForgeFamilyPattern \{.*?return '[^']+'.*?\}",
+    f"function Get-ForgeFamilyPattern {{\n  return '{broad_family}'\n}}",
+    text,
+    count=1,
+    flags=re.DOTALL,
   )
-  old_pat = "name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\\b"
-  if cur_pat in text:
-    text = text.replace(cur_pat, want_pat)
-  elif old_pat in text:
-    text = text.replace(old_pat, want_pat)
+  text, n_exp = re.subn(
+    r"\$forgeExpertPattern = '[^']*'",
+    f"$forgeExpertPattern = '{broad_expert}'",
+    text,
+  )
+  if n_fam == 0:
+    print("  warn: Get-ForgeFamilyPattern not rewritten")
+  if n_exp == 0:
+    print("  warn: forgeExpertPattern not rewritten")
   deploy.write_text(text, encoding="utf-8")
   print("  patched scripts/deploy_xm_forgebridge.ps1")
 else:
@@ -536,7 +565,7 @@ manifest.write_text(
 | Bridge monitor | `{bridge_port}` (= 8765 + {offset}*10) |
 | Paper monitor | `{paper_port}` (= 8766 + {offset}*10) |
 | Sim monitor | `{sim_port}` (= 8876 + {offset}*10) |
-| Compare monitor | `{compare_port}` (= 8886 + {offset}*10) |
+| Compare monitor | `{compare_port}` (= 8986 + {offset}*10) |
 | Magic live / sim | `{magic_live}` / `{magic_sim}` |
 
 ## Run
@@ -606,7 +635,7 @@ PY
 
 # Soften dual-runtime test expectations for this clone (local identity).
 if [[ -f "$DST_ROOT/tests/test_dual_runtime_contract.py" ]]; then
-  python3 - <<'PY'
+  run_python - <<'PY'
 from pathlib import Path
 import os, re
 p = Path(os.environ["CLONE_DST_ROOT"]) / "tests" / "test_dual_runtime_contract.py"

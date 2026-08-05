@@ -351,7 +351,7 @@ function New-EurusdH1Chart([string]$DataPath) {
     $text = $text -replace '(?m)^id=\d+\s*$', ("id=" + [DateTime]::UtcNow.Ticks)
     $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=1'
     $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=1'
-    $forgeExpertPattern = '(?s)<expert>\s*name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b.*?</expert>\s*'
+    $forgeExpertPattern = '(?s)<expert>\s*name=ForgeBridge[A-Za-z0-9]*\b.*?</expert>\s*'
     $text = [regex]::Replace($text, $forgeExpertPattern, '')
   }
   Set-Content -Path $targetPath -Value $text -Encoding Unicode
@@ -397,7 +397,8 @@ function New-ForgeBridgeExpertBlock(
 }
 
 function Get-ForgeFamilyPattern {
-  return 'name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b'
+  # Charts owned by ANY ForgeBridge instance (including M15 clones) are not free.
+  return 'name=ForgeBridge[A-Za-z0-9]*\b'
 }
 
 function Select-AttachChart(
@@ -467,7 +468,7 @@ function Write-ForgeBridgeToChart(
     $text = Get-Content $target.FullName -Raw
     $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=1'
     $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=1'
-    $forgeExpertPattern = '(?s)<expert>\s*name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b.*?</expert>\s*'
+    $forgeExpertPattern = '(?s)<expert>\s*name=ForgeBridge[A-Za-z0-9]*\b.*?</expert>\s*'
     $windowTag = '<window>'
     $text = [regex]::Replace($text, $forgeExpertPattern, '')
     if ($text -notmatch [regex]::Escape($windowTag)) {

@@ -1,0 +1,99 @@
+{
+  "updated_at": "2026-08-05T19:15:10+07:00",
+  "state": "decided",
+  "model_id": "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e",
+  "last_bar": "2026.08.05 15:00",
+  "last_action": "FLAT",
+  "reason": "no_signal",
+  "week_start": "2026-08-03",
+  "strategy_name": "Forge RR3.5 full 2L5S range+swing #6837|chase:fixed_or_rsi<58+vwap<1.5",
+  "conditions_fp": "e396506059c5",
+  "run_conditions": {
+    "trade_model_id": "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e",
+    "train_weeks": 3,
+    "use_learning": true,
+    "kb_profile": "era_2025_2026_6thang",
+    "kb_snapshot": 3,
+    "kb_fingerprint": "70d66ccdffb654f6",
+    "feature_profile": "current",
+    "spread_pips": 1.0,
+    "slippage_pips": 0.3,
+    "mining_search_space": {
+      "rr_ratios": [
+        3.2,
+        3.5,
+        4.0
+      ],
+      "atr_multipliers": [
+        0.9,
+        1.05
+      ],
+      "max_hold_bars": [
+        96
+      ],
+      "min_bars_between": [
+        12
+      ],
+      "session_ranges": [
+        [
+          7,
+          20
+        ]
+      ],
+      "session_filters": [
+        true
+      ],
+      "score_thresholds": [
+        0.6,
+        1.0,
+        1.6,
+        2.2
+      ],
+      "min_rules_matches": [
+        1,
+        2
+      ],
+      "ml_probability_thresholds": [
+        0.36,
+        0.4,
+        0.44,
+        0.48
+      ],
+      "min_feature_samples": 30,
+      "min_threshold_samples": 10,
+      "min_binary_samples": 8,
+      "include_session_regime_rules": false,
+      "target_trades_per_week": 3.5,
+      "drawdown_penalty": 0.5,
+      "loss_streak_penalty": 1.0,
+      "selection_mode": "elite_frontier",
+      "edge_surgery": false,
+      "edge_surgery_min_hour_trades": 3,
+      "edge_surgery_max_hour_wr": 0.42,
+      "edge_surgery_dominant_side_ratio": 0.7,
+      "edge_surgery_hours": true,
+      "anti_chase": true,
+      "anti_chase_mode": "fixed",
+      "anti_chase_fixed_rsi": 58.0,
+      "anti_chase_fixed_vwap": 1.5,
+      "anti_chase_rsi_caps": [
+        60.0,
+        62.0,
+        65.0,
+        68.0,
+        100.0
+      ],
+      "anti_chase_min_tpw": 5.0,
+      "anti_chase_use_vwap": true,
+      "anti_chase_vwap_caps": [
+        1.5,
+        2.0,
+        2.5,
+        99.0
+      ],
+      "anti_chase_logic": "or",
+      "exit_modes_full_only": true
+    }
+  },
+  "error": null
+}

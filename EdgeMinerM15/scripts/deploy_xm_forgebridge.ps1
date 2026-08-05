@@ -347,7 +347,9 @@ function New-EurusdM15Chart([string]$DataPath) {
     $text = $text -replace '(?m)^id=\d+\s*$', ("id=" + [DateTime]::UtcNow.Ticks)
     $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=0'
     $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=15'
-    $forgeExpertPattern = '(?s)<expert>\s*name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b.*?</expert>\s*'
+    # Match every ForgeBridge* (stock M15/H1 + clones M15B4/M15B5/...) so we never
+    # copy a sibling instance's expert onto a new chart template.
+    $forgeExpertPattern = '(?s)<expert>\s*name=ForgeBridge[A-Za-z0-9]*\b.*?</expert>\s*'
     $text = [regex]::Replace($text, $forgeExpertPattern, '')
   }
   Set-Content -Path $targetPath -Value $text -Encoding Unicode
@@ -388,7 +390,9 @@ function New-ForgeBridgeExpertBlock(
 }
 
 function Get-ForgeFamilyPattern {
-  return 'name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b'
+  # Charts owned by ANY ForgeBridge instance (including sibling clones) are not free.
+  # ForgeBridgeM15\b does not match ForgeBridgeM15B4 — must use the open suffix.
+  return 'name=ForgeBridge[A-Za-z0-9]*\b'
 }
 
 function Select-AttachChart(
@@ -458,7 +462,7 @@ function Write-ForgeBridgeToChart(
     $text = Get-Content $target.FullName -Raw
     $text = $text -replace '(?m)^period_type=\d+\s*$', 'period_type=0'
     $text = $text -replace '(?m)^period_size=\d+\s*$', 'period_size=15'
-    $forgeExpertPattern = '(?s)<expert>\s*name=(?:ForgeBridgeM15Sim|ForgeBridgeM15|ForgeBridgeH1Sim|ForgeBridgeH1|ForgeBridge)\b.*?</expert>\s*'
+    $forgeExpertPattern = '(?s)<expert>\s*name=ForgeBridge[A-Za-z0-9]*\b.*?</expert>\s*'
     $windowTag = '<window>'
     $text = [regex]::Replace($text, $forgeExpertPattern, '')
     if ($text -notmatch [regex]::Escape($windowTag)) {

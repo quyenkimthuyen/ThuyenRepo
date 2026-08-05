@@ -18,9 +18,9 @@ from mt5_bridge.protocol import (
 )
 from mt5_bridge.trade_journal import load_trades
 
-DEFAULT_MONITOR_PORT = 8805
+DEFAULT_MONITOR_PORT = 8815
 # Dedicated Simulate chart port (avoid stale Live monitor on 8765 lacking mode=sim)
-SIM_MONITOR_PORT = 8916
+SIM_MONITOR_PORT = 8926
 # Dedicated Compare Trade chart port (iframe Plotly.react, same UX as Simulate)
 COMPARE_MONITOR_PORT = 9036
 _CHART_SERVER = None

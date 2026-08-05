@@ -1,0 +1,3163 @@
+{
+  "generated_at": "2026-08-03T14:20:33+05:30",
+  "baseline_model_id": "tm_h_c_6_tu_n_h_c_2025-2026-6th_bc18d887",
+  "model_config": {
+    "train_weeks": 6,
+    "use_kb": true,
+    "kb_profile": "era_2025_2026_6thang",
+    "kb_snapshot": 3,
+    "oos_from": "2026-01-01",
+    "oos_to": "2026-12-31",
+    "spread_pips": 1.0,
+    "slippage_pips": 0.3,
+    "feature_profile": "current"
+  },
+  "data_end": "2026-07-31 20:30:00",
+  "data_fingerprint": "39ca635bf8714aabc018f15f4e7c27e23a1d49c17749200c32fb5dcf7d485571",
+  "frozen_active_oos": {
+    "n_trades": 279,
+    "trades_per_week": 9.3,
+    "win_rate_pct": 47.67,
+    "avg_rr": 2.462,
+    "profit_factor": 2.138,
+    "total_pips": 1136.22,
+    "total_r": 208.982,
+    "max_drawdown_r": 11.35,
+    "max_win_streak": 9,
+    "max_loss_streak": 10,
+    "risk_of_ruin_pct": 0.0
+  },
+  "ranked": [
+    {
+      "name": "anti_chase",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          58.0,
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 154,
+        "trades_per_week": 5.13,
+        "win_rate_pct": 60.39,
+        "avg_rr": 2.378,
+        "profit_factor": 3.357,
+        "total_pips": 979.29,
+        "total_r": 185.591,
+        "max_drawdown_r": 4.82,
+        "max_win_streak": 9,
+        "max_loss_streak": 4,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 154,
+      "win_rate_pct": 60.39,
+      "avg_rr": 2.378,
+      "total_r": 185.591,
+      "max_drawdown_r": 4.82,
+      "profit_factor": 3.357,
+      "trades_per_week": 5.13,
+      "error": null
+    },
+    {
+      "name": "nova",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.65,
+        "edge_surgery_hours": false,
+        "anti_chase": true,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          58.0,
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 153,
+        "trades_per_week": 5.1,
+        "win_rate_pct": 57.52,
+        "avg_rr": 2.442,
+        "profit_factor": 3.173,
+        "total_pips": 941.98,
+        "total_r": 173.709,
+        "max_drawdown_r": 4.82,
+        "max_win_streak": 9,
+        "max_loss_streak": 4,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 153,
+      "win_rate_pct": 57.52,
+      "avg_rr": 2.442,
+      "total_r": 173.709,
+      "max_drawdown_r": 4.82,
+      "profit_factor": 3.173,
+      "trades_per_week": 5.1,
+      "error": null
+    },
+    {
+      "name": "anti_chase_fixed_62",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 62.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 141,
+        "trades_per_week": 4.7,
+        "win_rate_pct": 56.74,
+        "avg_rr": 2.518,
+        "profit_factor": 3.317,
+        "total_pips": 951.23,
+        "total_r": 162.844,
+        "max_drawdown_r": 4.81,
+        "max_win_streak": 9,
+        "max_loss_streak": 4,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 141,
+      "win_rate_pct": 56.74,
+      "avg_rr": 2.518,
+      "total_r": 162.844,
+      "max_drawdown_r": 4.81,
+      "profit_factor": 3.317,
+      "trades_per_week": 4.7,
+      "error": null
+    },
+    {
+      "name": "anti_chase_fixed_70",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 70.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 235,
+        "trades_per_week": 7.83,
+        "win_rate_pct": 52.34,
+        "avg_rr": 2.52,
+        "profit_factor": 2.743,
+        "total_pips": 1343.62,
+        "total_r": 228.262,
+        "max_drawdown_r": 6.67,
+        "max_win_streak": 8,
+        "max_loss_streak": 6,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 235,
+      "win_rate_pct": 52.34,
+      "avg_rr": 2.52,
+      "total_r": 228.262,
+      "max_drawdown_r": 6.67,
+      "profit_factor": 2.743,
+      "trades_per_week": 7.83,
+      "error": null
+    },
+    {
+      "name": "anti_chase_strict",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 6.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          55.0,
+          58.0,
+          60.0,
+          62.0,
+          65.0
+        ],
+        "anti_chase_min_tpw": 4.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 147,
+        "trades_per_week": 4.9,
+        "win_rate_pct": 57.14,
+        "avg_rr": 2.434,
+        "profit_factor": 3.062,
+        "total_pips": 916.79,
+        "total_r": 162.793,
+        "max_drawdown_r": 5.69,
+        "max_win_streak": 8,
+        "max_loss_streak": 5,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 147,
+      "win_rate_pct": 57.14,
+      "avg_rr": 2.434,
+      "total_r": 162.793,
+      "max_drawdown_r": 5.69,
+      "profit_factor": 3.062,
+      "trades_per_week": 4.9,
+      "error": null
+    },
+    {
+      "name": "nova_fixed",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.65,
+        "edge_surgery_hours": false,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 143,
+        "trades_per_week": 4.77,
+        "win_rate_pct": 56.64,
+        "avg_rr": 2.482,
+        "profit_factor": 3.148,
+        "total_pips": 945.51,
+        "total_r": 159.924,
+        "max_drawdown_r": 5.91,
+        "max_win_streak": 7,
+        "max_loss_streak": 5,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 143,
+      "win_rate_pct": 56.64,
+      "avg_rr": 2.482,
+      "total_r": 159.924,
+      "max_drawdown_r": 5.91,
+      "profit_factor": 3.148,
+      "trades_per_week": 4.77,
+      "error": null
+    },
+    {
+      "name": "anti_chase_and_70_15",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 70.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 231,
+        "trades_per_week": 7.7,
+        "win_rate_pct": 51.95,
+        "avg_rr": 2.499,
+        "profit_factor": 2.526,
+        "total_pips": 1223.95,
+        "total_r": 216.339,
+        "max_drawdown_r": 7.96,
+        "max_win_streak": 8,
+        "max_loss_streak": 7,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 231,
+      "win_rate_pct": 51.95,
+      "avg_rr": 2.499,
+      "total_r": 216.339,
+      "max_drawdown_r": 7.96,
+      "profit_factor": 2.526,
+      "trades_per_week": 7.7,
+      "error": null
+    },
+    {
+      "name": "anti_chase_and_65_2",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 194,
+        "trades_per_week": 6.47,
+        "win_rate_pct": 52.58,
+        "avg_rr": 2.479,
+        "profit_factor": 2.729,
+        "total_pips": 1107.25,
+        "total_r": 185.096,
+        "max_drawdown_r": 5.77,
+        "max_win_streak": 7,
+        "max_loss_streak": 5,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 194,
+      "win_rate_pct": 52.58,
+      "avg_rr": 2.479,
+      "total_r": 185.096,
+      "max_drawdown_r": 5.77,
+      "profit_factor": 2.729,
+      "trades_per_week": 6.47,
+      "error": null
+    },
+    {
+      "name": "edge_gentle",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 5,
+        "edge_surgery_max_hour_wr": 0.32,
+        "edge_surgery_dominant_side_ratio": 0.65,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 274,
+        "trades_per_week": 9.13,
+        "win_rate_pct": 48.91,
+        "avg_rr": 2.486,
+        "profit_factor": 2.242,
+        "total_pips": 1249.74,
+        "total_r": 221.264,
+        "max_drawdown_r": 8.1,
+        "max_win_streak": 9,
+        "max_loss_streak": 7,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 274,
+      "win_rate_pct": 48.91,
+      "avg_rr": 2.486,
+      "total_r": 221.264,
+      "max_drawdown_r": 8.1,
+      "profit_factor": 2.242,
+      "trades_per_week": 9.13,
+      "error": null
+    },
+    {
+      "name": "anti_chase_and_68_2",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 68.0,
+        "anti_chase_fixed_vwap": 2.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 224,
+        "trades_per_week": 7.47,
+        "win_rate_pct": 50.0,
+        "avg_rr": 2.508,
+        "profit_factor": 2.34,
+        "total_pips": 1071.56,
+        "total_r": 193.821,
+        "max_drawdown_r": 9.36,
+        "max_win_streak": 8,
+        "max_loss_streak": 7,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 224,
+      "win_rate_pct": 50.0,
+      "avg_rr": 2.508,
+      "total_r": 193.821,
+      "max_drawdown_r": 9.36,
+      "profit_factor": 2.34,
+      "trades_per_week": 7.47,
+      "error": null
+    },
+    {
+      "name": "anti_chase_fixed_65",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 180,
+        "trades_per_week": 6.0,
+        "win_rate_pct": 51.67,
+        "avg_rr": 2.43,
+        "profit_factor": 2.599,
+        "total_pips": 968.69,
+        "total_r": 160.222,
+        "max_drawdown_r": 6.07,
+        "max_win_streak": 8,
+        "max_loss_streak": 5,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 180,
+      "win_rate_pct": 51.67,
+      "avg_rr": 2.43,
+      "total_r": 160.222,
+      "max_drawdown_r": 6.07,
+      "profit_factor": 2.599,
+      "trades_per_week": 6.0,
+      "error": null
+    },
+    {
+      "name": "frontier_rr_hi",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.8,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 267,
+        "trades_per_week": 8.9,
+        "win_rate_pct": 48.31,
+        "avg_rr": 2.473,
+        "profit_factor": 2.228,
+        "total_pips": 1208.62,
+        "total_r": 207.735,
+        "max_drawdown_r": 11.32,
+        "max_win_streak": 9,
+        "max_loss_streak": 10,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 267,
+      "win_rate_pct": 48.31,
+      "avg_rr": 2.473,
+      "total_r": 207.735,
+      "max_drawdown_r": 11.32,
+      "profit_factor": 2.228,
+      "trades_per_week": 8.9,
+      "error": null
+    },
+    {
+      "name": "baseline",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "legacy",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 276,
+        "trades_per_week": 9.2,
+        "win_rate_pct": 47.83,
+        "avg_rr": 2.457,
+        "profit_factor": 2.118,
+        "total_pips": 1147.29,
+        "total_r": 206.88,
+        "max_drawdown_r": 11.32,
+        "max_win_streak": 9,
+        "max_loss_streak": 10,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 276,
+      "win_rate_pct": 47.83,
+      "avg_rr": 2.457,
+      "total_r": 206.88,
+      "max_drawdown_r": 11.32,
+      "profit_factor": 2.118,
+      "trades_per_week": 9.2,
+      "error": null
+    },
+    {
+      "name": "edge_surgery",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "legacy",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 274,
+        "trades_per_week": 9.13,
+        "win_rate_pct": 47.81,
+        "avg_rr": 2.453,
+        "profit_factor": 2.154,
+        "total_pips": 1153.0,
+        "total_r": 205.025,
+        "max_drawdown_r": 11.32,
+        "max_win_streak": 9,
+        "max_loss_streak": 10,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 274,
+      "win_rate_pct": 47.81,
+      "avg_rr": 2.453,
+      "total_r": 205.025,
+      "max_drawdown_r": 11.32,
+      "profit_factor": 2.154,
+      "trades_per_week": 9.13,
+      "error": null
+    },
+    {
+      "name": "anti_chase_fixed_68",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 68.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 220,
+        "trades_per_week": 7.33,
+        "win_rate_pct": 49.09,
+        "avg_rr": 2.444,
+        "profit_factor": 2.384,
+        "total_pips": 1065.15,
+        "total_r": 175.508,
+        "max_drawdown_r": 11.01,
+        "max_win_streak": 8,
+        "max_loss_streak": 9,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 220,
+      "win_rate_pct": 49.09,
+      "avg_rr": 2.444,
+      "total_r": 175.508,
+      "max_drawdown_r": 11.01,
+      "profit_factor": 2.384,
+      "trades_per_week": 7.33,
+      "error": null
+    },
+    {
+      "name": "frontier_rr",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 269,
+        "trades_per_week": 8.97,
+        "win_rate_pct": 46.47,
+        "avg_rr": 2.452,
+        "profit_factor": 2.018,
+        "total_pips": 1034.76,
+        "total_r": 186.546,
+        "max_drawdown_r": 11.32,
+        "max_win_streak": 9,
+        "max_loss_streak": 10,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 269,
+      "win_rate_pct": 46.47,
+      "avg_rr": 2.452,
+      "total_r": 186.546,
+      "max_drawdown_r": 11.32,
+      "profit_factor": 2.018,
+      "trades_per_week": 8.97,
+      "error": null
+    },
+    {
+      "name": "edge_surgery_v2",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 9.0,
+        "drawdown_penalty": 1.0,
+        "loss_streak_penalty": 2.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.45,
+        "edge_surgery_dominant_side_ratio": 0.65,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 269,
+        "trades_per_week": 8.97,
+        "win_rate_pct": 44.98,
+        "avg_rr": 2.5,
+        "profit_factor": 1.875,
+        "total_pips": 918.69,
+        "total_r": 177.129,
+        "max_drawdown_r": 9.9,
+        "max_win_streak": 6,
+        "max_loss_streak": 8,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 269,
+      "win_rate_pct": 44.98,
+      "avg_rr": 2.5,
+      "total_r": 177.129,
+      "max_drawdown_r": 9.9,
+      "profit_factor": 1.875,
+      "trades_per_week": 8.97,
+      "error": null
+    },
+    {
+      "name": "edge_side_only",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.65,
+        "edge_surgery_hours": false,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 268,
+        "trades_per_week": 8.93,
+        "win_rate_pct": 46.27,
+        "avg_rr": 2.478,
+        "profit_factor": 2.051,
+        "total_pips": 1076.4,
+        "total_r": 187.243,
+        "max_drawdown_r": 16.62,
+        "max_win_streak": 9,
+        "max_loss_streak": 10,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 268,
+      "win_rate_pct": 46.27,
+      "avg_rr": 2.478,
+      "total_r": 187.243,
+      "max_drawdown_r": 16.62,
+      "profit_factor": 2.051,
+      "trades_per_week": 8.93,
+      "error": null
+    },
+    {
+      "name": "edge_surgery_rr",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 266,
+        "trades_per_week": 8.87,
+        "win_rate_pct": 45.11,
+        "avg_rr": 2.491,
+        "profit_factor": 1.904,
+        "total_pips": 942.97,
+        "total_r": 175.171,
+        "max_drawdown_r": 14.86,
+        "max_win_streak": 9,
+        "max_loss_streak": 10,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 266,
+      "win_rate_pct": 45.11,
+      "avg_rr": 2.491,
+      "total_r": 175.171,
+      "max_drawdown_r": 14.86,
+      "profit_factor": 1.904,
+      "trades_per_week": 8.87,
+      "error": null
+    },
+    {
+      "name": "edge_surgery_v2_clean",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 9.0,
+        "drawdown_penalty": 1.0,
+        "loss_streak_penalty": 2.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.45,
+        "edge_surgery_dominant_side_ratio": 0.65,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 243,
+        "trades_per_week": 8.1,
+        "win_rate_pct": 44.44,
+        "avg_rr": 2.529,
+        "profit_factor": 1.897,
+        "total_pips": 869.34,
+        "total_r": 158.062,
+        "max_drawdown_r": 12.87,
+        "max_win_streak": 5,
+        "max_loss_streak": 11,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 243,
+      "win_rate_pct": 44.44,
+      "avg_rr": 2.529,
+      "total_r": 158.062,
+      "max_drawdown_r": 12.87,
+      "profit_factor": 1.897,
+      "trades_per_week": 8.1,
+      "error": null
+    },
+    {
+      "name": "wr_rr_lock",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05,
+          1.2
+        ],
+        "max_hold_bars": [
+          64,
+          96
+        ],
+        "min_bars_between": [
+          16
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 1.5,
+        "loss_streak_penalty": 2.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 227,
+        "trades_per_week": 7.57,
+        "win_rate_pct": 46.26,
+        "avg_rr": 2.329,
+        "profit_factor": 1.861,
+        "total_pips": 740.58,
+        "total_r": 140.553,
+        "max_drawdown_r": 11.91,
+        "max_win_streak": 6,
+        "max_loss_streak": 11,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 227,
+      "win_rate_pct": 46.26,
+      "avg_rr": 2.329,
+      "total_r": 140.553,
+      "max_drawdown_r": 11.91,
+      "profit_factor": 1.861,
+      "trades_per_week": 7.57,
+      "error": null
+    },
+    {
+      "name": "wr_rr_sniper",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 1.5,
+        "loss_streak_penalty": 2.0,
+        "selection_mode": "legacy",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 222,
+        "trades_per_week": 7.4,
+        "win_rate_pct": 42.79,
+        "avg_rr": 2.432,
+        "profit_factor": 1.717,
+        "total_pips": 609.36,
+        "total_r": 120.038,
+        "max_drawdown_r": 11.78,
+        "max_win_streak": 5,
+        "max_loss_streak": 9,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 222,
+      "win_rate_pct": 42.79,
+      "avg_rr": 2.432,
+      "total_r": 120.038,
+      "max_drawdown_r": 11.78,
+      "profit_factor": 1.717,
+      "trades_per_week": 7.4,
+      "error": null
+    },
+    {
+      "name": "wr_rr_frontier",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 1.5,
+        "loss_streak_penalty": 2.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 223,
+        "trades_per_week": 7.43,
+        "win_rate_pct": 43.05,
+        "avg_rr": 2.35,
+        "profit_factor": 1.672,
+        "total_pips": 580.6,
+        "total_r": 113.585,
+        "max_drawdown_r": 13.97,
+        "max_win_streak": 6,
+        "max_loss_streak": 9,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 223,
+      "win_rate_pct": 43.05,
+      "avg_rr": 2.35,
+      "total_r": 113.585,
+      "max_drawdown_r": 13.97,
+      "profit_factor": 1.672,
+      "trades_per_week": 7.43,
+      "error": null
+    },
+    {
+      "name": "elite_60_3",
+      "mining_search_space": {
+        "rr_ratios": [
+          3.5,
+          4.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 3.0,
+        "drawdown_penalty": 0.5,
+        "loss_streak_penalty": 1.0,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 58.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 63,
+        "trades_per_week": 2.1,
+        "win_rate_pct": 60.32,
+        "avg_rr": 2.897,
+        "profit_factor": 3.909,
+        "total_pips": 518.98,
+        "total_r": 98.142,
+        "max_drawdown_r": 4.43,
+        "max_win_streak": 9,
+        "max_loss_streak": 4,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 63,
+      "win_rate_pct": 60.32,
+      "avg_rr": 2.897,
+      "total_r": 98.142,
+      "max_drawdown_r": 4.43,
+      "profit_factor": 3.909,
+      "trades_per_week": 2.1,
+      "error": null
+    },
+    {
+      "name": "elite_60_3_vwap",
+      "mining_search_space": {
+        "rr_ratios": [
+          3.5,
+          4.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 3.0,
+        "drawdown_penalty": 0.5,
+        "loss_streak_penalty": 1.0,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 58.0,
+        "anti_chase_fixed_vwap": 1.2,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 61,
+        "trades_per_week": 2.03,
+        "win_rate_pct": 63.93,
+        "avg_rr": 3.0,
+        "profit_factor": 4.373,
+        "total_pips": 585.21,
+        "total_r": 107.634,
+        "max_drawdown_r": 4.62,
+        "max_win_streak": 8,
+        "max_loss_streak": 4,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 61,
+      "win_rate_pct": 63.93,
+      "avg_rr": 3.0,
+      "total_r": 107.634,
+      "max_drawdown_r": 4.62,
+      "profit_factor": 4.373,
+      "trades_per_week": 2.03,
+      "error": null
+    },
+    {
+      "name": "elite_55_4",
+      "mining_search_space": {
+        "rr_ratios": [
+          4.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 2.5,
+        "drawdown_penalty": 0.5,
+        "loss_streak_penalty": 1.0,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 55.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 36,
+        "trades_per_week": 1.2,
+        "win_rate_pct": 61.11,
+        "avg_rr": 3.386,
+        "profit_factor": 5.317,
+        "total_pips": 434.37,
+        "total_r": 68.821,
+        "max_drawdown_r": 3.44,
+        "max_win_streak": 4,
+        "max_loss_streak": 3,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 36,
+      "win_rate_pct": 61.11,
+      "avg_rr": 3.386,
+      "total_r": 68.821,
+      "max_drawdown_r": 3.44,
+      "profit_factor": 5.317,
+      "trades_per_week": 1.2,
+      "error": null
+    },
+    {
+      "name": "elite_or_quality",
+      "mining_search_space": {
+        "rr_ratios": [
+          3.2,
+          3.5,
+          4.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 3.5,
+        "drawdown_penalty": 0.5,
+        "loss_streak_penalty": 1.0,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 58.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 65,
+        "trades_per_week": 2.17,
+        "win_rate_pct": 70.77,
+        "avg_rr": 2.776,
+        "profit_factor": 6.414,
+        "total_pips": 759.41,
+        "total_r": 125.071,
+        "max_drawdown_r": 2.53,
+        "max_win_streak": 8,
+        "max_loss_streak": 2,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 65,
+      "win_rate_pct": 70.77,
+      "avg_rr": 2.776,
+      "total_r": 125.071,
+      "max_drawdown_r": 2.53,
+      "profit_factor": 6.414,
+      "trades_per_week": 2.17,
+      "error": null
+    },
+    {
+      "name": "elite_60_35",
+      "mining_search_space": {
+        "rr_ratios": [
+          3.5
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 4.0,
+        "drawdown_penalty": 0.5,
+        "loss_streak_penalty": 1.0,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 60.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true
+      },
+      "feature_profile": "current",
+      "overall_oos": {
+        "n_trades": 100,
+        "trades_per_week": 3.33,
+        "win_rate_pct": 56.0,
+        "avg_rr": 2.933,
+        "profit_factor": 3.129,
+        "total_pips": 710.82,
+        "total_r": 136.737,
+        "max_drawdown_r": 4.41,
+        "max_win_streak": 8,
+        "max_loss_streak": 4,
+        "risk_of_ruin_pct": 0.0
+      },
+      "n_trades": 100,
+      "win_rate_pct": 56.0,
+      "avg_rr": 2.933,
+      "total_r": 136.737,
+      "max_drawdown_r": 4.41,
+      "profit_factor": 3.129,
+      "trades_per_week": 3.33,
+      "error": null
+    }
+  ],
+  "deltas_vs_baseline": {
+    "wr_rr_sniper": {
+      "win_rate_pct": -5.04,
+      "avg_rr": -0.025,
+      "total_r": -86.842,
+      "max_drawdown_r": 0.46,
+      "profit_factor": -0.401,
+      "n_trades": -54.0
+    },
+    "wr_rr_lock": {
+      "win_rate_pct": -1.57,
+      "avg_rr": -0.128,
+      "total_r": -66.327,
+      "max_drawdown_r": 0.59,
+      "profit_factor": -0.257,
+      "n_trades": -49.0
+    },
+    "wr_rr_frontier": {
+      "win_rate_pct": -4.78,
+      "avg_rr": -0.107,
+      "total_r": -93.295,
+      "max_drawdown_r": 2.65,
+      "profit_factor": -0.446,
+      "n_trades": -53.0
+    },
+    "frontier_rr": {
+      "win_rate_pct": -1.36,
+      "avg_rr": -0.005,
+      "total_r": -20.334,
+      "max_drawdown_r": 0.0,
+      "profit_factor": -0.1,
+      "n_trades": -7.0
+    },
+    "frontier_rr_hi": {
+      "win_rate_pct": 0.48,
+      "avg_rr": 0.016,
+      "total_r": 0.855,
+      "max_drawdown_r": 0.0,
+      "profit_factor": 0.11,
+      "n_trades": -9.0
+    },
+    "edge_side_only": {
+      "win_rate_pct": -1.56,
+      "avg_rr": 0.021,
+      "total_r": -19.637,
+      "max_drawdown_r": 5.3,
+      "profit_factor": -0.067,
+      "n_trades": -8.0
+    },
+    "edge_gentle": {
+      "win_rate_pct": 1.08,
+      "avg_rr": 0.029,
+      "total_r": 14.384,
+      "max_drawdown_r": -3.22,
+      "profit_factor": 0.124,
+      "n_trades": -2.0
+    },
+    "edge_surgery": {
+      "win_rate_pct": -0.02,
+      "avg_rr": -0.004,
+      "total_r": -1.855,
+      "max_drawdown_r": 0.0,
+      "profit_factor": 0.036,
+      "n_trades": -2.0
+    },
+    "edge_surgery_rr": {
+      "win_rate_pct": -2.72,
+      "avg_rr": 0.034,
+      "total_r": -31.709,
+      "max_drawdown_r": 3.54,
+      "profit_factor": -0.214,
+      "n_trades": -10.0
+    },
+    "edge_surgery_v2_clean": {
+      "win_rate_pct": -3.39,
+      "avg_rr": 0.072,
+      "total_r": -48.818,
+      "max_drawdown_r": 1.55,
+      "profit_factor": -0.221,
+      "n_trades": -33.0
+    },
+    "edge_surgery_v2": {
+      "win_rate_pct": -2.85,
+      "avg_rr": 0.043,
+      "total_r": -29.751,
+      "max_drawdown_r": -1.42,
+      "profit_factor": -0.243,
+      "n_trades": -7.0
+    },
+    "anti_chase_fixed_62": {
+      "win_rate_pct": 8.91,
+      "avg_rr": 0.061,
+      "total_r": -44.036,
+      "max_drawdown_r": -6.51,
+      "profit_factor": 1.199,
+      "n_trades": -135.0
+    },
+    "anti_chase": {
+      "win_rate_pct": 12.56,
+      "avg_rr": -0.079,
+      "total_r": -21.289,
+      "max_drawdown_r": -6.5,
+      "profit_factor": 1.239,
+      "n_trades": -122.0
+    },
+    "anti_chase_fixed_65": {
+      "win_rate_pct": 3.84,
+      "avg_rr": -0.027,
+      "total_r": -46.658,
+      "max_drawdown_r": -5.25,
+      "profit_factor": 0.481,
+      "n_trades": -96.0
+    },
+    "anti_chase_strict": {
+      "win_rate_pct": 9.31,
+      "avg_rr": -0.023,
+      "total_r": -44.087,
+      "max_drawdown_r": -5.63,
+      "profit_factor": 0.944,
+      "n_trades": -129.0
+    },
+    "anti_chase_fixed_68": {
+      "win_rate_pct": 1.26,
+      "avg_rr": -0.013,
+      "total_r": -31.372,
+      "max_drawdown_r": -0.31,
+      "profit_factor": 0.266,
+      "n_trades": -56.0
+    },
+    "anti_chase_fixed_70": {
+      "win_rate_pct": 4.51,
+      "avg_rr": 0.063,
+      "total_r": 21.382,
+      "max_drawdown_r": -4.65,
+      "profit_factor": 0.625,
+      "n_trades": -41.0
+    },
+    "anti_chase_and_65_2": {
+      "win_rate_pct": 4.75,
+      "avg_rr": 0.022,
+      "total_r": -21.784,
+      "max_drawdown_r": -5.55,
+      "profit_factor": 0.611,
+      "n_trades": -82.0
+    },
+    "anti_chase_and_68_2": {
+      "win_rate_pct": 2.17,
+      "avg_rr": 0.051,
+      "total_r": -13.059,
+      "max_drawdown_r": -1.96,
+      "profit_factor": 0.222,
+      "n_trades": -52.0
+    },
+    "anti_chase_and_70_15": {
+      "win_rate_pct": 4.12,
+      "avg_rr": 0.042,
+      "total_r": 9.459,
+      "max_drawdown_r": -3.36,
+      "profit_factor": 0.408,
+      "n_trades": -45.0
+    },
+    "nova_fixed": {
+      "win_rate_pct": 8.81,
+      "avg_rr": 0.025,
+      "total_r": -46.956,
+      "max_drawdown_r": -5.41,
+      "profit_factor": 1.03,
+      "n_trades": -133.0
+    },
+    "elite_60_3": {
+      "win_rate_pct": 12.49,
+      "avg_rr": 0.44,
+      "total_r": -108.738,
+      "max_drawdown_r": -6.89,
+      "profit_factor": 1.791,
+      "n_trades": -213.0
+    },
+    "elite_60_3_vwap": {
+      "win_rate_pct": 16.1,
+      "avg_rr": 0.543,
+      "total_r": -99.246,
+      "max_drawdown_r": -6.7,
+      "profit_factor": 2.255,
+      "n_trades": -215.0
+    },
+    "nova": {
+      "win_rate_pct": 9.69,
+      "avg_rr": -0.015,
+      "total_r": -33.171,
+      "max_drawdown_r": -6.5,
+      "profit_factor": 1.055,
+      "n_trades": -123.0
+    },
+    "elite_55_4": {
+      "win_rate_pct": 13.28,
+      "avg_rr": 0.929,
+      "total_r": -138.059,
+      "max_drawdown_r": -7.88,
+      "profit_factor": 3.199,
+      "n_trades": -240.0
+    },
+    "elite_or_quality": {
+      "win_rate_pct": 22.94,
+      "avg_rr": 0.319,
+      "total_r": -81.809,
+      "max_drawdown_r": -8.79,
+      "profit_factor": 4.296,
+      "n_trades": -211.0
+    },
+    "elite_60_35": {
+      "win_rate_pct": 8.17,
+      "avg_rr": 0.476,
+      "total_r": -70.143,
+      "max_drawdown_r": -6.91,
+      "profit_factor": 1.011,
+      "n_trades": -176.0
+    }
+  },
+  "winner": {
+    "name": "anti_chase",
+    "mining_search_space": {
+      "rr_ratios": [
+        2.5,
+        3.0,
+        3.2
+      ],
+      "atr_multipliers": [
+        0.9,
+        1.05
+      ],
+      "max_hold_bars": [
+        96
+      ],
+      "min_bars_between": [
+        12
+      ],
+      "session_ranges": [
+        [
+          7,
+          20
+        ]
+      ],
+      "session_filters": [
+        true
+      ],
+      "score_thresholds": [
+        0.6,
+        1.0,
+        1.6,
+        2.2
+      ],
+      "min_rules_matches": [
+        1,
+        2
+      ],
+      "ml_probability_thresholds": [
+        0.36,
+        0.4,
+        0.44,
+        0.48
+      ],
+      "min_feature_samples": 30,
+      "min_threshold_samples": 10,
+      "min_binary_samples": 8,
+      "include_session_regime_rules": false,
+      "target_trades_per_week": 7.0,
+      "drawdown_penalty": 0.0,
+      "loss_streak_penalty": 0.0,
+      "selection_mode": "expectancy_frontier",
+      "edge_surgery": false,
+      "edge_surgery_min_hour_trades": 3,
+      "edge_surgery_max_hour_wr": 0.42,
+      "edge_surgery_dominant_side_ratio": 0.7,
+      "edge_surgery_hours": true,
+      "anti_chase": true,
+      "anti_chase_mode": "calibrate",
+      "anti_chase_fixed_rsi": 65.0,
+      "anti_chase_fixed_vwap": 99.0,
+      "anti_chase_rsi_caps": [
+        58.0,
+        60.0,
+        62.0,
+        65.0,
+        68.0,
+        100.0
+      ],
+      "anti_chase_min_tpw": 5.0,
+      "anti_chase_use_vwap": false,
+      "anti_chase_vwap_caps": [
+        1.5,
+        2.0,
+        2.5,
+        99.0
+      ],
+      "anti_chase_logic": "or",
+      "exit_modes_full_only": false
+    },
+    "feature_profile": "current",
+    "overall_oos": {
+      "n_trades": 154,
+      "trades_per_week": 5.13,
+      "win_rate_pct": 60.39,
+      "avg_rr": 2.378,
+      "profit_factor": 3.357,
+      "total_pips": 979.29,
+      "total_r": 185.591,
+      "max_drawdown_r": 4.82,
+      "max_win_streak": 9,
+      "max_loss_streak": 4,
+      "risk_of_ruin_pct": 0.0
+    },
+    "n_trades": 154,
+    "win_rate_pct": 60.39,
+    "avg_rr": 2.378,
+    "total_r": 185.591,
+    "max_drawdown_r": 4.82,
+    "profit_factor": 3.357,
+    "trades_per_week": 5.13,
+    "error": null
+  },
+  "beats_wr_and_rr": false,
+  "promoted_model_id": null
+}
