@@ -18,13 +18,27 @@ from mt5_bridge.protocol import (
 )
 from mt5_bridge.trade_journal import load_trades
 
-DEFAULT_MONITOR_PORT = 8765
+DEFAULT_MONITOR_PORT = 8805
 # Dedicated Simulate chart port (avoid stale Live monitor on 8765 lacking mode=sim)
-SIM_MONITOR_PORT = 8876
+SIM_MONITOR_PORT = 8916
+# Dedicated Compare Trade chart port (iframe Plotly.react, same UX as Simulate)
+COMPARE_MONITOR_PORT = 8886
 _CHART_SERVER = None
 _CHART_SERVER_LOCK = threading.Lock()
 _SIM_CHART_SERVER = None
 _SIM_CHART_SERVER_LOCK = threading.Lock()
+_COMPARE_CHART_SERVER = None
+_COMPARE_CHART_SERVER_LOCK = threading.Lock()
+
+_COMPARE_PALETTE = (
+  "#2962ff",
+  "#26a69a",
+  "#ef6c00",
+  "#8e24aa",
+  "#00897b",
+  "#c62828",
+  "#5d4037",
+)
 
 
 def _plotly_js_path() -> Path:
@@ -284,10 +298,162 @@ def build_sim_snapshot(*, max_bars: int = 672) -> dict:
   }
 
 
+def compare_chart_view_path() -> Path:
+  from run_backtest import REPORT_DIR
+  return REPORT_DIR / "compare_trade" / "chart_view.json"
+
+
+def write_compare_chart_view(payload: dict) -> dict:
+  """UI writes view config; iframe snapshot polls this file (no Streamlit remount)."""
+  from mt5_bridge.protocol import atomic_write_json
+
+  path = compare_chart_view_path()
+  path.parent.mkdir(parents=True, exist_ok=True)
+  data = dict(payload or {})
+  atomic_write_json(path, data)
+  return data
+
+
+def load_compare_chart_view() -> dict:
+  path = compare_chart_view_path()
+  data = read_json(path)
+  return data if isinstance(data, dict) else {}
+
+
+def build_compare_snapshot(*, max_bars: int | None = None) -> dict:
+  """OHLC + multi-model trades for Compare Trade iframe chart."""
+  import pandas as pd
+
+  from mt5_bridge.compare_runner import COMPARE_ROOT, model_dir
+  from mt5_bridge.trade_journal import load_trades as _load_trades
+
+  view = load_compare_chart_view()
+  date_from = view.get("date_from")
+  date_to = view.get("date_to")
+  # Prefer chart_view.json (Streamlit "Khoảng chart") over URL ?bars=.
+  # Iframe URL stays stable (bars=200000) so pan/zoom isn't remounted on range change.
+  try:
+    if view.get("max_bars") is not None:
+      limit = int(view.get("max_bars"))
+    elif max_bars is not None:
+      limit = int(max_bars)
+    else:
+      limit = 672
+  except (TypeError, ValueError):
+    limit = 672
+  limit = max(24, min(200_000, limit))
+  models = list(view.get("models") or [])
+  show_connectors = bool(view.get("show_connectors", True))
+  run_id = view.get("run_id")
+
+  cache = _cached_broker_ohlc()
+  bars: list[dict] = []
+  if cache is not None and not cache.empty:
+    frame = cache
+
+    def _bound(s):
+      if not s:
+        return None
+      raw = str(s).strip().replace(".", "-")
+      try:
+        return pd.Timestamp(raw[:10])
+      except Exception:
+        return _parse_broker_bar_time(s)
+
+    t0, t1 = _bound(date_from), _bound(date_to)
+    if t0 is not None:
+      frame = frame.loc[frame.index >= t0.normalize()]
+    if t1 is not None:
+      end = t1.normalize() + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+      frame = frame.loc[frame.index <= end]
+    if len(frame) > limit:
+      frame = frame.tail(limit)
+    for ts, row in frame.iterrows():
+      bars.append({
+        "time": ts.strftime("%Y.%m.%d %H:%M"),
+        "open": float(row["Open"]),
+        "high": float(row["High"]),
+        "low": float(row["Low"]),
+        "close": float(row["Close"]),
+        "tick_volume": float(row["Volume"]) if "Volume" in row.index else 0.0,
+      })
+
+  trades: list[dict] = []
+  n_models = 0
+  for i, m in enumerate(models):
+    mid = str(m.get("model_id") or "")
+    label = str(m.get("label") or mid or f"model_{i}")
+    color = str(m.get("color") or _COMPARE_PALETTE[i % len(_COMPARE_PALETTE)])
+    if not mid or not run_id:
+      continue
+    n_models += 1
+    try:
+      raw = _load_trades(model_dir(str(run_id), mid))
+    except Exception:
+      raw = []
+    for t in raw:
+      status = str(t.get("status") or "").upper()
+      if status not in ("OPEN", "CLOSED"):
+        continue
+      row = dict(t)
+      row["model_id"] = mid
+      row["model_label"] = label
+      row["model_color"] = color
+      row["compare_connectors"] = show_connectors
+      trades.append(row)
+
+  last_close = float(bars[-1]["close"]) if bars else None
+  connection = {
+    "connected": bool(bars),
+    "bid": last_close,
+    "ask": last_close,
+    "spread_points": 0,
+  }
+  return {
+    "history": {"bars": bars, "source": "compare_cache"},
+    "connection": connection,
+    "connection_mtime": None,
+    "trades": trades,
+    "decision": {},
+    "compare": {
+      "run_id": run_id,
+      "date_from": date_from,
+      "date_to": date_to,
+      "max_bars": limit,
+      "n_models": n_models,
+      "n_trades": len(trades),
+      "show_connectors": show_connectors,
+      "models": models,
+    },
+    "online": bool(bars),
+    "progress": f"{len(bars)} bars · {len(trades)} fills",
+  }
+
+
 def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str:
   paper_mode = mode == "paper"
   sim_mode = mode == "sim"
-  if sim_mode:
+  compare_mode = mode == "compare"
+  if compare_mode:
+    chart_title = "EURUSD M15 · Compare Trade"
+    labels = (
+      "COMPARE", "QUOTE", "WINDOW", "BARS", "MODELS", "FILLS", "RUN",
+    )
+    grid_cols = 7
+    status_cells = f"""
+    <div class="metric"><div class="label">{labels[0]}</div><div class="value" id="conn">WAITING</div></div>
+    <div class="metric"><div class="label">{labels[1]}</div><div class="value" id="price">—</div></div>
+    <div class="metric"><div class="label">{labels[2]}</div><div class="value" id="spread">—</div></div>
+    <div class="metric"><div class="label">{labels[3]}</div><div class="value" id="positions">—</div></div>
+    <div class="metric"><div class="label">{labels[4]}</div><div class="value" id="trading">—</div></div>
+    <div class="metric"><div class="label">{labels[5]}</div><div class="value" id="decision">—</div></div>
+    <div class="metric"><div class="label">{labels[6]}</div><div class="value" id="slots">—</div></div>
+    """
+    price_tag = "CMP"
+    ui_rev = "mt5-compare-v2"
+    snap_url = "/snapshot?mode=compare"
+    note0 = "Compare Trade — chart iframe mượt (Plotly.react), giống Simulate."
+  elif sim_mode:
     chart_title = "EURUSD M15 · Simulate History Feed"
     labels = (
       "FEED", "QUOTE", "SPREAD", "PROGRESS", "FEED STATUS", "DECISION", "LAST BAR",
@@ -365,6 +531,7 @@ def _chart_html(max_bars: int, *, mode: str = "mt5", poll_ms: int = 2000) -> str
 const MAX_BARS = {max_bars};
 const PAPER_MODE = {str(paper_mode).lower()};
 const SIM_MODE = {str(sim_mode).lower()};
+const COMPARE_MODE = {str(compare_mode).lower()};
 const POLL_MS = {max(500, int(poll_ms))};
 const SNAP_URL = "{snap_url}";
 const PRICE_TAG = "{price_tag}";
@@ -395,8 +562,10 @@ function setText(id, text, cls="") {{
 function tradeLayers(trades, start, end) {{
   // Same drawing style as Paper Trade (_add_order_overlays):
   // risk/reward zones · SL/TP lines + labels · ENTRY ▲▼ · EXIT ✕ · OPEN badge
+  // Compare mode: color by model_color, skip SL/TP zones (too noisy for multi-model)
   const out=[], shapes=[], annotations=[];
   const ENTRY_BLUE = "#2962ff";
+  const seenModels = new Set();
   for (const t of (trades || [])) {{
     try {{
     const et = mt5Time(t.entry_time || t.bar_time || t.signal_time);
@@ -417,8 +586,11 @@ function tradeLayers(trades, start, end) {{
     const rewFill = signal ? "rgba(255,193,7,0.06)" : "rgba(8,153,129,0.10)";
     const slColor = signal ? "#ffc107" : COLORS.sl;
     const tpColor = signal ? "#ffc107" : COLORS.tp;
+    const modelLabel = t.model_label ? String(t.model_label) : "";
+    const modelColor = t.model_color ? String(t.model_color) : "";
+    const isCompare = COMPARE_MODE || Boolean(modelLabel || modelColor);
 
-    if (Number.isFinite(sl) && Number.isFinite(tp)) {{
+    if (!isCompare && Number.isFinite(sl) && Number.isFinite(tp)) {{
       shapes.push({{
         type:"rect", xref:"x", yref:"y", x0:lineStart, x1:lineEnd,
         y0:isLong ? sl : ep, y1:isLong ? ep : sl,
@@ -467,18 +639,23 @@ function tradeLayers(trades, start, end) {{
         showlegend:false, xaxis:"x", yaxis:"y"
       }});
     }} else if (et >= start) {{
-      const mColor = isLong ? COLORS.up : COLORS.down;
+      const mColor = modelColor || (isLong ? COLORS.up : COLORS.down);
+      const showLeg = isCompare && modelLabel && !seenModels.has(modelLabel);
+      if (showLeg) seenModels.add(modelLabel);
       out.push({{
-        type:"scatter", mode:"markers+text", x:[et], y:[ep],
-        marker:{{symbol:isLong ? "triangle-up" : "triangle-down", size:14,
+        type:"scatter", mode:isCompare ? "markers" : "markers+text", x:[et], y:[ep],
+        marker:{{symbol:isLong ? "triangle-up" : "triangle-down", size:isCompare ? 11 : 14,
           color:mColor, line:{{width:1, color:"white"}}}},
-        text:["ENTRY "+ep.toFixed(5)],
+        text:isCompare ? undefined : ["ENTRY "+ep.toFixed(5)],
         textposition:isLong ? "top center" : "bottom center",
         textfont:{{size:9, color:ENTRY_BLUE}},
-        hovertemplate:"Entry<br>%{{x}}<br>"+dir+" @ %{{y:.5f}}<br>SL: "+
-          (Number.isFinite(sl)?sl.toFixed(5):"—")+"<br>TP: "+
-          (Number.isFinite(tp)?tp.toFixed(5):"—")+"<extra></extra>",
-        showlegend:false, xaxis:"x", yaxis:"y"
+        name:modelLabel || "Entry",
+        legendgroup:modelLabel || undefined,
+        showlegend:showLeg,
+        hovertemplate:(modelLabel ? ("<b>"+modelLabel+"</b><br>") : "")+
+          "Entry<br>%{{x}}<br>"+dir+" @ %{{y:.5f}}<br>R="+(t.r != null ? t.r : "—")+
+          "<br>"+(t.reason || "")+"<extra></extra>",
+        xaxis:"x", yaxis:"y"
       }});
     }}
 
@@ -487,21 +664,35 @@ function tradeLayers(trades, start, end) {{
       const reason = t.reason || "";
       const rVal = Number(t.r);
       const exitColor = (Number.isFinite(rVal) && rVal > 0) ? COLORS.tp : COLORS.sl;
+      const mColor = modelColor || exitColor;
       out.push({{
-        type:"scatter", mode:"markers+text", x:[xt], y:[xp],
-        marker:{{symbol:"x", size:10, color:exitColor, line:{{width:2}}}},
-        text:["EXIT "+xp.toFixed(5)+(reason ? " ("+reason+")" : "")],
+        type:"scatter", mode:isCompare ? "markers" : "markers+text", x:[xt], y:[xp],
+        marker:{{symbol:"x", size:isCompare ? 9 : 10, color:exitColor,
+          line:{{width:2, color:isCompare ? mColor : exitColor}}}},
+        text:isCompare ? undefined : ["EXIT "+xp.toFixed(5)+(reason ? " ("+reason+")" : "")],
         textposition:"bottom center",
         textfont:{{size:9, color:exitColor}},
-        hovertemplate:"Exit: %{{y:.5f}}<br>R="+(t.r != null ? t.r : "—")+"<extra></extra>",
-        showlegend:false, xaxis:"x", yaxis:"y"
+        legendgroup:modelLabel || undefined,
+        showlegend:false,
+        hovertemplate:(modelLabel ? ("<b>"+modelLabel+"</b> ") : "")+
+          "Exit: %{{y:.5f}}<br>R="+(t.r != null ? t.r : "—")+
+          (reason ? (" · "+reason) : "")+"<extra></extra>",
+        xaxis:"x", yaxis:"y"
       }});
+      if (isCompare && t.compare_connectors !== false && et >= start) {{
+        out.push({{
+          type:"scatter", mode:"lines", x:[et, xt], y:[ep, xp],
+          line:{{color:mColor, width:1.2, dash:"dot"}}, opacity:0.55,
+          legendgroup:modelLabel || undefined, showlegend:false,
+          hoverinfo:"skip", xaxis:"x", yaxis:"y"
+        }});
+      }}
     }} else if (status === "OPEN") {{
       annotations.push({{
         xref:"x", yref:"y", x:et, y:ep, text:"● OPEN",
         showarrow:true, arrowhead:2,
-        font:{{size:10, color:"#ffeb3b"}},
-        bgcolor:"rgba(0,0,0,0.6)", bordercolor:"#ffeb3b"
+        font:{{size:10, color:modelColor || "#ffeb3b"}},
+        bgcolor:"rgba(0,0,0,0.6)", bordercolor:modelColor || "#ffeb3b"
       }});
     }}
     }} catch (e) {{ /* skip bad trade overlay */ }}
@@ -517,8 +708,13 @@ async function refresh() {{
     if (conn.bar) rows.push(conn.bar);
     const byTime=new Map();
     for (const r of rows) byTime.set(r.time,r);
-    rows=Array.from(byTime.values()).sort((a,b)=>String(a.time).localeCompare(String(b.time))).slice(-MAX_BARS);
-    if (!rows.length) throw new Error(SIM_MODE ? "Chưa có nến Simulate (chọn from/to hoặc Start feed)" : "Chưa có bars.json");
+    rows=Array.from(byTime.values()).sort((a,b)=>String(a.time).localeCompare(String(b.time)));
+    // Compare: server already clipped via chart_view.json — do not re-slice with URL bars=
+    if (!COMPARE_MODE) rows = rows.slice(-MAX_BARS);
+    if (!rows.length) throw new Error(
+      COMPARE_MODE ? "Chưa có nến Compare (kiểm tra Chart từ/đến + MT5 cache)"
+      : (SIM_MODE ? "Chưa có nến Simulate (chọn from/to hoặc Start feed)" : "Chưa có bars.json")
+    );
 
     const age=Math.max(0,(Date.now()/1000)-Number(snap.connection_mtime || 0));
     const state=snap.state || {{}};
@@ -560,6 +756,22 @@ async function refresh() {{
         " · cursor "+(sim.last_bar || last.time || "—")+
         " · reason "+(decision.reason||"—")+
         " · "+rows.length+" nến";
+    }} else if (COMPARE_MODE) {{
+      const cmp=snap.compare || {{}};
+      online=Boolean(snap.online) || rows.length>0;
+      const last=rows[rows.length-1];
+      const px=Number(last.close);
+      setText("conn",online?"READY":"WAITING", online?"online":"offline");
+      setText("price",Number.isFinite(px)?px.toFixed(5):"—");
+      setText("spread",(cmp.date_from||"?")+" → "+(cmp.date_to||"?"));
+      setText("positions",String(rows.length));
+      setText("trading",String(cmp.n_models ?? "—")+" model", online?"online":"offline");
+      setText("decision",String(cmp.n_trades ?? (snap.trades||[]).length)+" fills");
+      setText("slots",cmp.run_id || "—");
+      document.getElementById("note").textContent=
+        "Compare "+(cmp.date_from||"?")+" → "+(cmp.date_to||"?")+
+        " · run "+(cmp.run_id||"—")+
+        " · "+rows.length+" nến · "+((snap.trades||[]).length)+" lệnh · pan/zoom giữ nguyên (uirevision)";
     }} else {{
       online=Boolean(conn.connected) && age<=10;
       setText("conn",online?"ONLINE":"OFFLINE",online?"online":"offline");
@@ -607,7 +819,9 @@ async function refresh() {{
     const layout={{
       title:{{text:"{chart_title}",font:{{size:14,color:COLORS.text}},x:.01}},
       paper_bgcolor:COLORS.bg,plot_bgcolor:COLORS.bg,font:{{color:COLORS.text,size:11}},
-      margin:{{l:8,r:96,t:42,b:28}},showlegend:false,hovermode:"x unified",
+      margin:{{l:8,r:96,t:42,b:COMPARE_MODE?72:28}},
+      showlegend:COMPARE_MODE,hovermode:"x unified",
+      legend:COMPARE_MODE?{{orientation:"h",y:-0.08,x:0,font:{{size:11}}}}:undefined,
       uirevision:UI_REV,dragmode:"pan",shapes,annotations,
       xaxis:{{domain:[0,1],anchor:"y",rangeslider:{{visible:false}},showticklabels:false,
         gridcolor:COLORS.grid,rangebreaks:[{{bounds:["sat","mon"]}}]}},
@@ -672,6 +886,15 @@ def start_live_monitor_server(
             "application/json; charset=utf-8",
           )
           return
+        if mode == "compare":
+          # max_bars / date window come from compare_trade/chart_view.json
+          payload = build_compare_snapshot()
+          self._send(
+            200,
+            json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8"),
+            "application/json; charset=utf-8",
+          )
+          return
         conn_file = connection_path(bridge_dir)
         trades = load_trades(bridge_dir)
         decision = read_json(decision_path(bridge_dir)) or {}
@@ -708,7 +931,7 @@ def start_live_monitor_server(
       if parsed.path in ("/", "/chart"):
         query = parse_qs(parsed.query)
         mode = (query.get("mode") or ["mt5"])[0].lower()
-        if mode not in ("mt5", "live", "sim", "paper"):
+        if mode not in ("mt5", "live", "sim", "paper", "compare"):
           mode = "mt5"
         if mode == "live":
           mode = "mt5"
@@ -716,7 +939,7 @@ def start_live_monitor_server(
           max_bars = max(24, min(200_000, int((query.get("bars") or ["672"])[0])))
         except (TypeError, ValueError):
           max_bars = 672
-        poll_ms = 2000 if mode == "sim" else 2000
+        poll_ms = 1500 if mode == "compare" else 2000
         self._send(
           200,
           _chart_html(max_bars, mode=mode, poll_ms=poll_ms).encode("utf-8"),
@@ -745,13 +968,19 @@ def ensure_chart_server(
   bridge_dir: Path | None = None,
   port: int = DEFAULT_MONITOR_PORT,
 ) -> bool:
-  """Start chart HTTP server once. Use SIM_MONITOR_PORT for Simulate (avoids stale Live process)."""
-  global _CHART_SERVER, _SIM_CHART_SERVER
+  """Start chart HTTP server once. Use SIM/COMPARE ports for dedicated iframes."""
+  global _CHART_SERVER, _SIM_CHART_SERVER, _COMPARE_CHART_SERVER
   import urllib.request
 
   port = int(port)
   is_sim = port == SIM_MONITOR_PORT
-  lock = _SIM_CHART_SERVER_LOCK if is_sim else _CHART_SERVER_LOCK
+  is_compare = port == COMPARE_MONITOR_PORT
+  if is_compare:
+    lock = _COMPARE_CHART_SERVER_LOCK
+  elif is_sim:
+    lock = _SIM_CHART_SERVER_LOCK
+  else:
+    lock = _CHART_SERVER_LOCK
 
   def _healthy() -> bool:
     try:
@@ -760,10 +989,31 @@ def ensure_chart_server(
     except Exception:
       return False
 
-  if _healthy() and not is_sim:
+  if _healthy() and not is_sim and not is_compare:
     return True
-  # For sim port: if something answers but lacks mode=sim, still try; prefer our process
   with lock:
+    if is_compare:
+      if _COMPARE_CHART_SERVER is not None and _healthy():
+        return True
+      if _healthy():
+        try:
+          with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/snapshot?mode=compare&bars=48", timeout=1.0
+          ) as r:
+            data = json.loads(r.read().decode("utf-8"))
+          if "compare" in data or (data.get("history") or {}).get("source") == "compare_cache":
+            return True
+        except Exception:
+          pass
+      try:
+        _COMPARE_CHART_SERVER = start_live_monitor_server(
+          Path(bridge_dir) if bridge_dir else BRIDGE_DIR,
+          port=port,
+        )
+      except OSError:
+        pass
+      return _healthy()
+
     if is_sim:
       # Always prefer a server we started on SIM port (fresh code)
       if _SIM_CHART_SERVER is not None and _healthy():

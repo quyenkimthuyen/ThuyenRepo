@@ -1,0 +1,2086 @@
+{
+  "generated_at": "2026-07-24T10:49:07+05:30",
+  "status": "completed",
+  "active_model_id": "tm_m15_best_2_49216b56",
+  "data_fingerprint": "119ebe9df3b1cffb5be71e252a168480574e2b8f46fa79588cdc59863c3f74c0",
+  "data_end": "2026-07-24 04:00:00",
+  "selection_window": [
+    "2026-01-05 00:00:00",
+    "2026-05-01 00:00:00"
+  ],
+  "holdout_window": [
+    "2026-05-01 00:00:00",
+    "2026-07-24 04:00:00"
+  ],
+  "frozen_active": {
+    "selection": {
+      "n_trades": 129,
+      "trades_per_week": 7.784,
+      "win_rate_pct": 43.411,
+      "avg_rr": 2.4394,
+      "profit_factor": 1.7956,
+      "total_r": 71.63,
+      "max_drawdown_r": 12.54,
+      "risk_adjusted": 5.7121,
+      "max_loss_streak": 10
+    },
+    "holdout": {
+      "n_trades": 109,
+      "trades_per_week": 9.162,
+      "win_rate_pct": 43.119,
+      "avg_rr": 2.3905,
+      "profit_factor": 1.9477,
+      "total_r": 58.8,
+      "max_drawdown_r": 14.25,
+      "risk_adjusted": 4.1263,
+      "max_loss_streak": 10
+    },
+    "overall": {
+      "n_trades": 238,
+      "trades_per_week": 8.21,
+      "win_rate_pct": 43.28,
+      "avg_rr": 2.416,
+      "profit_factor": 1.854,
+      "total_pips": 823.87,
+      "total_r": 130.414,
+      "max_drawdown_r": 14.25,
+      "max_win_streak": 6,
+      "max_loss_streak": 10,
+      "risk_of_ruin_pct": 0.0
+    }
+  },
+  "phase_one": [
+    {
+      "name": "legacy_hold36_space4",
+      "feature_profile": "current",
+      "overrides": {
+        "max_hold_bars": [
+          36
+        ],
+        "min_bars_between": [
+          4
+        ]
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          36
+        ],
+        "min_bars_between": [
+          4
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 129,
+          "trades_per_week": 7.784,
+          "win_rate_pct": 35.659,
+          "avg_rr": 2.3152,
+          "profit_factor": 1.2777,
+          "total_r": 26.51,
+          "max_drawdown_r": 18.72,
+          "risk_adjusted": 1.4161,
+          "max_loss_streak": 11
+        },
+        "holdout": {
+          "n_trades": 105,
+          "trades_per_week": 8.732,
+          "win_rate_pct": 44.762,
+          "avg_rr": 2.0724,
+          "profit_factor": 1.8003,
+          "total_r": 46.27,
+          "max_drawdown_r": 13.16,
+          "risk_adjusted": 3.516,
+          "max_loss_streak": 11
+        },
+        "overall": {
+          "n_trades": 234,
+          "trades_per_week": 8.07,
+          "win_rate_pct": 39.74,
+          "avg_rr": 2.198,
+          "profit_factor": 1.464,
+          "total_pips": 437.24,
+          "total_r": 72.76,
+          "max_drawdown_r": 22.37,
+          "max_win_streak": 7,
+          "max_loss_streak": 11,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "hold_64",
+      "feature_profile": "current",
+      "overrides": {
+        "max_hold_bars": [
+          64
+        ]
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 127,
+          "trades_per_week": 7.664,
+          "win_rate_pct": 44.882,
+          "avg_rr": 2.1989,
+          "profit_factor": 1.752,
+          "total_r": 62.75,
+          "max_drawdown_r": 10.86,
+          "risk_adjusted": 5.7781,
+          "max_loss_streak": 9
+        },
+        "holdout": {
+          "n_trades": 107,
+          "trades_per_week": 8.898,
+          "win_rate_pct": 45.794,
+          "avg_rr": 2.3733,
+          "profit_factor": 2.0839,
+          "total_r": 67.63,
+          "max_drawdown_r": 12.77,
+          "risk_adjusted": 5.296,
+          "max_loss_streak": 9
+        },
+        "overall": {
+          "n_trades": 234,
+          "trades_per_week": 8.07,
+          "win_rate_pct": 45.3,
+          "avg_rr": 2.282,
+          "profit_factor": 1.884,
+          "total_pips": 788.28,
+          "total_r": 130.464,
+          "max_drawdown_r": 12.76,
+          "max_win_streak": 6,
+          "max_loss_streak": 9,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "causal_baseline",
+      "feature_profile": "current",
+      "overrides": {},
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 129,
+          "trades_per_week": 7.784,
+          "win_rate_pct": 43.411,
+          "avg_rr": 2.4394,
+          "profit_factor": 1.7956,
+          "total_r": 71.63,
+          "max_drawdown_r": 12.54,
+          "risk_adjusted": 5.7121,
+          "max_loss_streak": 10
+        },
+        "holdout": {
+          "n_trades": 109,
+          "trades_per_week": 9.064,
+          "win_rate_pct": 43.119,
+          "avg_rr": 2.3905,
+          "profit_factor": 1.9477,
+          "total_r": 58.8,
+          "max_drawdown_r": 14.25,
+          "risk_adjusted": 4.1263,
+          "max_loss_streak": 10
+        },
+        "overall": {
+          "n_trades": 238,
+          "trades_per_week": 8.21,
+          "win_rate_pct": 43.28,
+          "avg_rr": 2.416,
+          "profit_factor": 1.854,
+          "total_pips": 823.87,
+          "total_r": 130.414,
+          "max_drawdown_r": 14.25,
+          "max_win_streak": 6,
+          "max_loss_streak": 10,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "hold_128",
+      "feature_profile": "current",
+      "overrides": {
+        "max_hold_bars": [
+          128
+        ]
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          128
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 130,
+          "trades_per_week": 7.845,
+          "win_rate_pct": 37.692,
+          "avg_rr": 2.4841,
+          "profit_factor": 1.5096,
+          "total_r": 46.07,
+          "max_drawdown_r": 13.77,
+          "risk_adjusted": 3.3457,
+          "max_loss_streak": 12
+        },
+        "holdout": {
+          "n_trades": 108,
+          "trades_per_week": 8.981,
+          "win_rate_pct": 45.37,
+          "avg_rr": 2.4404,
+          "profit_factor": 2.1622,
+          "total_r": 70.58,
+          "max_drawdown_r": 10.0,
+          "risk_adjusted": 7.058,
+          "max_loss_streak": 8
+        },
+        "overall": {
+          "n_trades": 238,
+          "trades_per_week": 8.21,
+          "win_rate_pct": 41.18,
+          "avg_rr": 2.468,
+          "profit_factor": 1.751,
+          "total_pips": 741.66,
+          "total_r": 116.644,
+          "max_drawdown_r": 13.77,
+          "max_win_streak": 5,
+          "max_loss_streak": 12,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "spacing_16",
+      "feature_profile": "current",
+      "overrides": {
+        "min_bars_between": [
+          16
+        ]
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          16
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 125,
+          "trades_per_week": 7.543,
+          "win_rate_pct": 44.0,
+          "avg_rr": 2.4829,
+          "profit_factor": 1.8843,
+          "total_r": 75.26,
+          "max_drawdown_r": 14.3,
+          "risk_adjusted": 5.2629,
+          "max_loss_streak": 13
+        },
+        "holdout": {
+          "n_trades": 108,
+          "trades_per_week": 8.981,
+          "win_rate_pct": 48.148,
+          "avg_rr": 2.3773,
+          "profit_factor": 2.2062,
+          "total_r": 78.73,
+          "max_drawdown_r": 12.73,
+          "risk_adjusted": 6.1846,
+          "max_loss_streak": 9
+        },
+        "overall": {
+          "n_trades": 233,
+          "trades_per_week": 8.03,
+          "win_rate_pct": 45.92,
+          "avg_rr": 2.434,
+          "profit_factor": 2.01,
+          "total_pips": 900.68,
+          "total_r": 153.967,
+          "max_drawdown_r": 14.3,
+          "max_win_streak": 6,
+          "max_loss_streak": 13,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "spacing_8",
+      "feature_profile": "current",
+      "overrides": {
+        "min_bars_between": [
+          8
+        ]
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          8
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 129,
+          "trades_per_week": 7.784,
+          "win_rate_pct": 44.961,
+          "avg_rr": 2.1991,
+          "profit_factor": 1.8358,
+          "total_r": 63.98,
+          "max_drawdown_r": 10.98,
+          "risk_adjusted": 5.827,
+          "max_loss_streak": 10
+        },
+        "holdout": {
+          "n_trades": 110,
+          "trades_per_week": 9.147,
+          "win_rate_pct": 46.364,
+          "avg_rr": 2.2726,
+          "profit_factor": 2.0196,
+          "total_r": 66.18,
+          "max_drawdown_r": 9.54,
+          "risk_adjusted": 6.9371,
+          "max_loss_streak": 8
+        },
+        "overall": {
+          "n_trades": 239,
+          "trades_per_week": 8.24,
+          "win_rate_pct": 45.61,
+          "avg_rr": 2.236,
+          "profit_factor": 1.91,
+          "total_pips": 838.84,
+          "total_r": 130.209,
+          "max_drawdown_r": 10.99,
+          "max_win_streak": 5,
+          "max_loss_streak": 10,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "atr_1_65",
+      "feature_profile": "current",
+      "overrides": {
+        "atr_multipliers": [
+          1.65
+        ]
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.65
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 98,
+          "trades_per_week": 5.914,
+          "win_rate_pct": 40.816,
+          "avg_rr": 2.5118,
+          "profit_factor": 1.6604,
+          "total_r": 45.81,
+          "max_drawdown_r": 7.65,
+          "risk_adjusted": 5.9882,
+          "max_loss_streak": 7
+        },
+        "holdout": {
+          "n_trades": 84,
+          "trades_per_week": 6.985,
+          "win_rate_pct": 41.667,
+          "avg_rr": 2.4803,
+          "profit_factor": 1.77,
+          "total_r": 41.59,
+          "max_drawdown_r": 6.55,
+          "risk_adjusted": 6.3496,
+          "max_loss_streak": 6
+        },
+        "overall": {
+          "n_trades": 182,
+          "trades_per_week": 6.28,
+          "win_rate_pct": 41.21,
+          "avg_rr": 2.497,
+          "profit_factor": 1.703,
+          "total_pips": 856.94,
+          "total_r": 87.392,
+          "max_drawdown_r": 7.65,
+          "max_win_streak": 6,
+          "max_loss_streak": 7,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "atr_1_35",
+      "feature_profile": "current",
+      "overrides": {
+        "atr_multipliers": [
+          1.35
+        ]
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          1.35
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 115,
+          "trades_per_week": 6.94,
+          "win_rate_pct": 41.739,
+          "avg_rr": 2.4211,
+          "profit_factor": 1.6223,
+          "total_r": 53.86,
+          "max_drawdown_r": 5.99,
+          "risk_adjusted": 8.9917,
+          "max_loss_streak": 5
+        },
+        "holdout": {
+          "n_trades": 98,
+          "trades_per_week": 8.149,
+          "win_rate_pct": 41.837,
+          "avg_rr": 2.4363,
+          "profit_factor": 1.7394,
+          "total_r": 47.98,
+          "max_drawdown_r": 9.19,
+          "risk_adjusted": 5.2209,
+          "max_loss_streak": 8
+        },
+        "overall": {
+          "n_trades": 213,
+          "trades_per_week": 7.34,
+          "win_rate_pct": 41.78,
+          "avg_rr": 2.428,
+          "profit_factor": 1.669,
+          "total_pips": 800.34,
+          "total_r": 101.832,
+          "max_drawdown_r": 9.19,
+          "max_win_streak": 7,
+          "max_loss_streak": 8,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "session_08_17",
+      "feature_profile": "current",
+      "overrides": {
+        "session_ranges": [
+          [
+            8,
+            17
+          ]
+        ]
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 118,
+          "trades_per_week": 7.121,
+          "win_rate_pct": 41.525,
+          "avg_rr": 2.4637,
+          "profit_factor": 1.6368,
+          "total_r": 58.34,
+          "max_drawdown_r": 10.98,
+          "risk_adjusted": 5.3133,
+          "max_loss_streak": 10
+        },
+        "holdout": {
+          "n_trades": 101,
+          "trades_per_week": 8.399,
+          "win_rate_pct": 53.465,
+          "avg_rr": 2.3686,
+          "profit_factor": 2.8325,
+          "total_r": 95.09,
+          "max_drawdown_r": 6.49,
+          "risk_adjusted": 14.6518,
+          "max_loss_streak": 5
+        },
+        "overall": {
+          "n_trades": 219,
+          "trades_per_week": 7.55,
+          "win_rate_pct": 47.03,
+          "avg_rr": 2.424,
+          "profit_factor": 2.032,
+          "total_pips": 843.96,
+          "total_r": 153.383,
+          "max_drawdown_r": 10.99,
+          "max_win_streak": 7,
+          "max_loss_streak": 10,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "rr_2_2",
+      "feature_profile": "current",
+      "overrides": {
+        "rr_ratios": [
+          2.2
+        ]
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 130,
+          "trades_per_week": 7.845,
+          "win_rate_pct": 47.692,
+          "avg_rr": 1.8088,
+          "profit_factor": 1.5469,
+          "total_r": 49.6,
+          "max_drawdown_r": 8.96,
+          "risk_adjusted": 5.5357,
+          "max_loss_streak": 8
+        },
+        "holdout": {
+          "n_trades": 114,
+          "trades_per_week": 9.48,
+          "win_rate_pct": 53.509,
+          "avg_rr": 1.7564,
+          "profit_factor": 1.9894,
+          "total_r": 62.73,
+          "max_drawdown_r": 7.49,
+          "risk_adjusted": 8.3752,
+          "max_loss_streak": 5
+        },
+        "overall": {
+          "n_trades": 244,
+          "trades_per_week": 8.41,
+          "win_rate_pct": 50.41,
+          "avg_rr": 1.785,
+          "profit_factor": 1.715,
+          "total_pips": 638.72,
+          "total_r": 112.299,
+          "max_drawdown_r": 8.98,
+          "max_win_streak": 11,
+          "max_loss_streak": 8,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "quality_filter",
+      "feature_profile": "current",
+      "overrides": {
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2,
+          2.8
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48,
+          0.52
+        ],
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 2.0,
+        "loss_streak_penalty": 3.0
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2,
+          2.8
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48,
+          0.52
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 2.0,
+        "loss_streak_penalty": 3.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 123,
+          "trades_per_week": 7.422,
+          "win_rate_pct": 41.463,
+          "avg_rr": 2.3845,
+          "profit_factor": 1.5851,
+          "total_r": 55.88,
+          "max_drawdown_r": 16.49,
+          "risk_adjusted": 3.3887,
+          "max_loss_streak": 15
+        },
+        "holdout": {
+          "n_trades": 107,
+          "trades_per_week": 8.898,
+          "win_rate_pct": 46.729,
+          "avg_rr": 2.2716,
+          "profit_factor": 2.1159,
+          "total_r": 66.35,
+          "max_drawdown_r": 13.14,
+          "risk_adjusted": 5.0495,
+          "max_loss_streak": 9
+        },
+        "overall": {
+          "n_trades": 230,
+          "trades_per_week": 7.93,
+          "win_rate_pct": 43.91,
+          "avg_rr": 2.333,
+          "profit_factor": 1.781,
+          "total_pips": 720.33,
+          "total_r": 122.243,
+          "max_drawdown_r": 16.49,
+          "max_win_streak": 6,
+          "max_loss_streak": 15,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "regime_rules",
+      "feature_profile": "current",
+      "overrides": {
+        "include_session_regime_rules": true,
+        "min_feature_samples": 100,
+        "min_threshold_samples": 30,
+        "min_binary_samples": 20
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 100,
+        "min_threshold_samples": 30,
+        "min_binary_samples": 20,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 129,
+          "trades_per_week": 7.784,
+          "win_rate_pct": 42.636,
+          "avg_rr": 2.4335,
+          "profit_factor": 1.7207,
+          "total_r": 67.25,
+          "max_drawdown_r": 15.44,
+          "risk_adjusted": 4.3556,
+          "max_loss_streak": 14
+        },
+        "holdout": {
+          "n_trades": 110,
+          "trades_per_week": 9.147,
+          "win_rate_pct": 43.636,
+          "avg_rr": 2.3828,
+          "profit_factor": 1.9303,
+          "total_r": 61.1,
+          "max_drawdown_r": 14.12,
+          "risk_adjusted": 4.3272,
+          "max_loss_streak": 10
+        },
+        "overall": {
+          "n_trades": 239,
+          "trades_per_week": 8.24,
+          "win_rate_pct": 43.1,
+          "avg_rr": 2.411,
+          "profit_factor": 1.803,
+          "total_pips": 793.51,
+          "total_r": 128.364,
+          "max_drawdown_r": 15.44,
+          "max_win_streak": 5,
+          "max_loss_streak": 14,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "native_features",
+      "feature_profile": "m15_native",
+      "overrides": {},
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 114,
+          "trades_per_week": 6.879,
+          "win_rate_pct": 38.596,
+          "avg_rr": 2.5204,
+          "profit_factor": 1.6747,
+          "total_r": 46.51,
+          "max_drawdown_r": 16.66,
+          "risk_adjusted": 2.7917,
+          "max_loss_streak": 10
+        },
+        "holdout": {
+          "n_trades": 102,
+          "trades_per_week": 8.482,
+          "win_rate_pct": 46.078,
+          "avg_rr": 2.2594,
+          "profit_factor": 2.0479,
+          "total_r": 59.72,
+          "max_drawdown_r": 9.12,
+          "risk_adjusted": 6.5482,
+          "max_loss_streak": 5
+        },
+        "overall": {
+          "n_trades": 216,
+          "trades_per_week": 7.45,
+          "win_rate_pct": 42.13,
+          "avg_rr": 2.389,
+          "profit_factor": 1.819,
+          "total_pips": 688.46,
+          "total_r": 106.236,
+          "max_drawdown_r": 22.18,
+          "max_win_streak": 7,
+          "max_loss_streak": 10,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    }
+  ],
+  "phase_two": [
+    {
+      "name": "balanced_current",
+      "feature_profile": "current",
+      "overrides": {
+        "rr_ratios": [
+          2.2
+        ],
+        "atr_multipliers": [
+          1.35
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          8
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ]
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48
+        ],
+        "include_session_regime_rules": true,
+        "min_feature_samples": 100,
+        "min_threshold_samples": 30,
+        "min_binary_samples": 20,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 2.0,
+        "loss_streak_penalty": 3.0
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2
+        ],
+        "atr_multipliers": [
+          1.35
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          8
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 100,
+        "min_threshold_samples": 30,
+        "min_binary_samples": 20,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 2.0,
+        "loss_streak_penalty": 3.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 120,
+          "trades_per_week": 7.241,
+          "win_rate_pct": 41.667,
+          "avg_rr": 1.8171,
+          "profit_factor": 1.3131,
+          "total_r": 22.9,
+          "max_drawdown_r": 16.04,
+          "risk_adjusted": 1.4277,
+          "max_loss_streak": 10
+        },
+        "holdout": {
+          "n_trades": 104,
+          "trades_per_week": 8.648,
+          "win_rate_pct": 52.885,
+          "avg_rr": 1.8465,
+          "profit_factor": 2.0776,
+          "total_r": 59.08,
+          "max_drawdown_r": 6.82,
+          "risk_adjusted": 8.6628,
+          "max_loss_streak": 5
+        },
+        "overall": {
+          "n_trades": 224,
+          "trades_per_week": 7.72,
+          "win_rate_pct": 46.88,
+          "avg_rr": 1.838,
+          "profit_factor": 1.582,
+          "total_pips": 641.48,
+          "total_r": 82.008,
+          "max_drawdown_r": 16.03,
+          "max_win_streak": 7,
+          "max_loss_streak": 10,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "combo_spacing_8__rr_2_2",
+      "feature_profile": "current",
+      "overrides": {
+        "min_bars_between": [
+          8
+        ],
+        "rr_ratios": [
+          2.2
+        ]
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          8
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 132,
+          "trades_per_week": 7.966,
+          "win_rate_pct": 44.697,
+          "avg_rr": 1.7186,
+          "profit_factor": 1.3918,
+          "total_r": 32.2,
+          "max_drawdown_r": 8.93,
+          "risk_adjusted": 3.6058,
+          "max_loss_streak": 8
+        },
+        "holdout": {
+          "n_trades": 112,
+          "trades_per_week": 9.314,
+          "win_rate_pct": 47.321,
+          "avg_rr": 1.7478,
+          "profit_factor": 1.6172,
+          "total_r": 39.24,
+          "max_drawdown_r": 7.1,
+          "risk_adjusted": 5.5268,
+          "max_loss_streak": 5
+        },
+        "overall": {
+          "n_trades": 244,
+          "trades_per_week": 8.41,
+          "win_rate_pct": 45.9,
+          "avg_rr": 1.734,
+          "profit_factor": 1.479,
+          "total_pips": 443.85,
+          "total_r": 71.436,
+          "max_drawdown_r": 8.94,
+          "max_win_streak": 7,
+          "max_loss_streak": 8,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "combo_spacing_8__hold_64",
+      "feature_profile": "current",
+      "overrides": {
+        "min_bars_between": [
+          8
+        ],
+        "max_hold_bars": [
+          64
+        ]
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          8
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 128,
+          "trades_per_week": 7.724,
+          "win_rate_pct": 42.188,
+          "avg_rr": 2.2409,
+          "profit_factor": 1.6304,
+          "total_r": 53.33,
+          "max_drawdown_r": 10.02,
+          "risk_adjusted": 5.3224,
+          "max_loss_streak": 9
+        },
+        "holdout": {
+          "n_trades": 108,
+          "trades_per_week": 8.981,
+          "win_rate_pct": 44.444,
+          "avg_rr": 2.3286,
+          "profit_factor": 1.8343,
+          "total_r": 60.85,
+          "max_drawdown_r": 12.23,
+          "risk_adjusted": 4.9755,
+          "max_loss_streak": 10
+        },
+        "overall": {
+          "n_trades": 236,
+          "trades_per_week": 8.14,
+          "win_rate_pct": 43.22,
+          "avg_rr": 2.285,
+          "profit_factor": 1.708,
+          "total_pips": 661.89,
+          "total_r": 114.19,
+          "max_drawdown_r": 12.23,
+          "max_win_streak": 6,
+          "max_loss_streak": 10,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "combo_hold_64__rr_2_2",
+      "feature_profile": "current",
+      "overrides": {
+        "max_hold_bars": [
+          64
+        ],
+        "rr_ratios": [
+          2.2
+        ]
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 131,
+          "trades_per_week": 7.905,
+          "win_rate_pct": 48.855,
+          "avg_rr": 1.7274,
+          "profit_factor": 1.5878,
+          "total_r": 49.48,
+          "max_drawdown_r": 8.93,
+          "risk_adjusted": 5.5409,
+          "max_loss_streak": 8
+        },
+        "holdout": {
+          "n_trades": 111,
+          "trades_per_week": 9.231,
+          "win_rate_pct": 54.054,
+          "avg_rr": 1.7498,
+          "profit_factor": 2.1933,
+          "total_r": 63.03,
+          "max_drawdown_r": 7.2,
+          "risk_adjusted": 8.7542,
+          "max_loss_streak": 5
+        },
+        "overall": {
+          "n_trades": 242,
+          "trades_per_week": 8.34,
+          "win_rate_pct": 51.24,
+          "avg_rr": 1.741,
+          "profit_factor": 1.816,
+          "total_pips": 677.5,
+          "total_r": 112.538,
+          "max_drawdown_r": 8.94,
+          "max_win_streak": 7,
+          "max_loss_streak": 8,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    },
+    {
+      "name": "balanced_native",
+      "feature_profile": "m15_native",
+      "overrides": {
+        "rr_ratios": [
+          2.2
+        ],
+        "atr_multipliers": [
+          1.35
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          8
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ]
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48
+        ],
+        "include_session_regime_rules": true,
+        "min_feature_samples": 100,
+        "min_threshold_samples": 30,
+        "min_binary_samples": 20,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 2.0,
+        "loss_streak_penalty": 3.0
+      },
+      "mining_search_space": {
+        "rr_ratios": [
+          2.2
+        ],
+        "atr_multipliers": [
+          1.35
+        ],
+        "max_hold_bars": [
+          64
+        ],
+        "min_bars_between": [
+          8
+        ],
+        "session_ranges": [
+          [
+            8,
+            17
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 100,
+        "min_threshold_samples": 30,
+        "min_binary_samples": 20,
+        "include_session_regime_rules": true,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 2.0,
+        "loss_streak_penalty": 3.0
+      },
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "summary": {
+        "selection": {
+          "n_trades": 106,
+          "trades_per_week": 6.397,
+          "win_rate_pct": 45.283,
+          "avg_rr": 1.8005,
+          "profit_factor": 1.4696,
+          "total_r": 31.21,
+          "max_drawdown_r": 14.6,
+          "risk_adjusted": 2.1377,
+          "max_loss_streak": 12
+        },
+        "holdout": {
+          "n_trades": 85,
+          "trades_per_week": 7.068,
+          "win_rate_pct": 50.588,
+          "avg_rr": 1.8483,
+          "profit_factor": 1.8098,
+          "total_r": 42.01,
+          "max_drawdown_r": 6.83,
+          "risk_adjusted": 6.1508,
+          "max_loss_streak": 5
+        },
+        "overall": {
+          "n_trades": 191,
+          "trades_per_week": 6.59,
+          "win_rate_pct": 47.64,
+          "avg_rr": 1.826,
+          "profit_factor": 1.594,
+          "total_pips": 525.27,
+          "total_r": 73.258,
+          "max_drawdown_r": 21.53,
+          "max_win_streak": 8,
+          "max_loss_streak": 12,
+          "risk_of_ruin_pct": 0.0
+        }
+      },
+      "error": null
+    }
+  ],
+  "completed_at": "2026-07-24T10:58:08+05:30",
+  "recommended": {
+    "name": "spacing_8",
+    "feature_profile": "current",
+    "overrides": {
+      "min_bars_between": [
+        8
+      ]
+    },
+    "mining_search_space": {
+      "rr_ratios": [
+        2.5,
+        3.0
+      ],
+      "atr_multipliers": [
+        0.9,
+        1.05
+      ],
+      "max_hold_bars": [
+        96
+      ],
+      "min_bars_between": [
+        8
+      ],
+      "session_ranges": [
+        [
+          7,
+          20
+        ]
+      ],
+      "session_filters": [
+        true
+      ],
+      "score_thresholds": [
+        0.6,
+        1.0,
+        1.6,
+        2.2
+      ],
+      "min_rules_matches": [
+        1,
+        2
+      ],
+      "ml_probability_thresholds": [
+        0.36,
+        0.4,
+        0.44,
+        0.48
+      ],
+      "min_feature_samples": 30,
+      "min_threshold_samples": 10,
+      "min_binary_samples": 8,
+      "include_session_regime_rules": false,
+      "target_trades_per_week": 10.0,
+      "drawdown_penalty": 0.0,
+      "loss_streak_penalty": 0.0
+    },
+    "spread_pips": 1.0,
+    "slippage_pips": 0.3,
+    "summary": {
+      "selection": {
+        "n_trades": 129,
+        "trades_per_week": 7.784,
+        "win_rate_pct": 44.961,
+        "avg_rr": 2.1991,
+        "profit_factor": 1.8358,
+        "total_r": 63.98,
+        "max_drawdown_r": 10.98,
+        "risk_adjusted": 5.827,
+        "max_loss_streak": 10
+      },
+      "holdout": {
+        "n_trades": 110,
+        "trades_per_week": 9.147,
+        "win_rate_pct": 46.364,
+        "avg_rr": 2.2726,
+        "profit_factor": 2.0196,
+        "total_r": 66.18,
+        "max_drawdown_r": 9.54,
+        "risk_adjusted": 6.9371,
+        "max_loss_streak": 8
+      },
+      "overall": {
+        "n_trades": 239,
+        "trades_per_week": 8.24,
+        "win_rate_pct": 45.61,
+        "avg_rr": 2.236,
+        "profit_factor": 1.91,
+        "total_pips": 838.84,
+        "total_r": 130.209,
+        "max_drawdown_r": 10.99,
+        "max_win_streak": 5,
+        "max_loss_streak": 10,
+        "risk_of_ruin_pct": 0.0
+      }
+    },
+    "error": null
+  },
+  "stress": {
+    "name": "spacing_8",
+    "feature_profile": "current",
+    "overrides": {
+      "min_bars_between": [
+        8
+      ]
+    },
+    "mining_search_space": {
+      "rr_ratios": [
+        2.5,
+        3.0
+      ],
+      "atr_multipliers": [
+        0.9,
+        1.05
+      ],
+      "max_hold_bars": [
+        96
+      ],
+      "min_bars_between": [
+        8
+      ],
+      "session_ranges": [
+        [
+          7,
+          20
+        ]
+      ],
+      "session_filters": [
+        true
+      ],
+      "score_thresholds": [
+        0.6,
+        1.0,
+        1.6,
+        2.2
+      ],
+      "min_rules_matches": [
+        1,
+        2
+      ],
+      "ml_probability_thresholds": [
+        0.36,
+        0.4,
+        0.44,
+        0.48
+      ],
+      "min_feature_samples": 30,
+      "min_threshold_samples": 10,
+      "min_binary_samples": 8,
+      "include_session_regime_rules": false,
+      "target_trades_per_week": 10.0,
+      "drawdown_penalty": 0.0,
+      "loss_streak_penalty": 0.0
+    },
+    "spread_pips": 1.5,
+    "slippage_pips": 0.5,
+    "summary": {
+      "selection": {
+        "n_trades": 129,
+        "trades_per_week": 7.784,
+        "win_rate_pct": 42.636,
+        "avg_rr": 1.9974,
+        "profit_factor": 1.5658,
+        "total_r": 43.36,
+        "max_drawdown_r": 11.54,
+        "risk_adjusted": 3.7574,
+        "max_loss_streak": 10
+      },
+      "holdout": {
+        "n_trades": 109,
+        "trades_per_week": 9.064,
+        "win_rate_pct": 42.202,
+        "avg_rr": 2.0277,
+        "profit_factor": 1.5492,
+        "total_r": 37.98,
+        "max_drawdown_r": 15.27,
+        "risk_adjusted": 2.4872,
+        "max_loss_streak": 10
+      },
+      "overall": {
+        "n_trades": 238,
+        "trades_per_week": 8.21,
+        "win_rate_pct": 42.44,
+        "avg_rr": 2.011,
+        "profit_factor": 1.56,
+        "total_pips": 574.01,
+        "total_r": 81.346,
+        "max_drawdown_r": 15.28,
+        "max_win_streak": 5,
+        "max_loss_streak": 10,
+        "risk_of_ruin_pct": 0.0
+      }
+    },
+    "error": null
+  },
+  "promotion": {
+    "thresholds": {
+      "win_rate_pct": 45.119,
+      "total_r": 58.8,
+      "max_drawdown_r": 15.675,
+      "risk_adjusted": 4.126
+    },
+    "checks": {
+      "frequency_7_to_10": true,
+      "win_rate_plus_2pp": true,
+      "total_r_above_baseline": true,
+      "drawdown_within_10pct": true,
+      "risk_adjusted_not_worse": true,
+      "stress_profitable": true,
+      "stress_frequency_7_to_10": true
+    },
+    "passed": true
+  }
+}

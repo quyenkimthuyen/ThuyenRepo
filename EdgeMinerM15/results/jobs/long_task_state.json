@@ -1,132 +1,61 @@
 {
   "status": "completed",
-  "job_type": "model_health",
-  "job_id": "job_model_health_20260803_224256",
-  "label": "Sức khỏe model · Học 3 tuần · Học 2025-2026-6thang · vòng",
+  "job_type": "compare_trade",
+  "job_id": "job_compare_trade_20260805_120529",
+  "label": "Compare Trade",
   "params": {
-    "model_id": "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e",
-    "refresh_kb_on": false,
-    "start_date": "2022-01-01",
-    "train_weeks": 3,
-    "spread_pips": 1.0,
-    "slippage_pips": 0.3,
-    "kb_profile": "era_2025_2026_6thang",
-    "kb_snapshot": 3,
-    "oos_from": "2026-04-01",
-    "oos_to": "2026-12-31",
-    "feature_profile": "current",
-    "mining_search_space": {
-      "rr_ratios": [
-        3.2,
-        3.5,
-        4.0
-      ],
-      "atr_multipliers": [
-        0.9,
-        1.05
-      ],
-      "max_hold_bars": [
-        96
-      ],
-      "min_bars_between": [
-        12
-      ],
-      "session_ranges": [
-        [
-          7,
-          20
-        ]
-      ],
-      "session_filters": [
-        true
-      ],
-      "score_thresholds": [
-        0.6,
-        1.0,
-        1.6,
-        2.2
-      ],
-      "min_rules_matches": [
-        1,
-        2
-      ],
-      "ml_probability_thresholds": [
-        0.36,
-        0.4,
-        0.44,
-        0.48
-      ],
-      "min_feature_samples": 30,
-      "min_threshold_samples": 10,
-      "min_binary_samples": 8,
-      "include_session_regime_rules": false,
-      "target_trades_per_week": 3.5,
-      "drawdown_penalty": 0.5,
-      "loss_streak_penalty": 1.0,
-      "selection_mode": "elite_frontier",
-      "edge_surgery": false,
-      "edge_surgery_min_hour_trades": 3,
-      "edge_surgery_max_hour_wr": 0.42,
-      "edge_surgery_dominant_side_ratio": 0.7,
-      "edge_surgery_hours": true,
-      "anti_chase": true,
-      "anti_chase_mode": "fixed",
-      "anti_chase_fixed_rsi": 58.0,
-      "anti_chase_fixed_vwap": 1.5,
-      "anti_chase_rsi_caps": [
-        60.0,
-        62.0,
-        65.0,
-        68.0,
-        100.0
-      ],
-      "anti_chase_min_tpw": 5.0,
-      "anti_chase_use_vwap": true,
-      "anti_chase_vwap_caps": [
-        1.5,
-        2.0,
-        2.5,
-        99.0
-      ],
-      "anti_chase_logic": "or",
-      "exit_modes_full_only": true
-    }
+    "model_ids": [
+      "tm_breakthrough_elite_or_qualit_d23dbb33",
+      "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e",
+      "tm_breakthrough_elite_60_3_vwap_c1ad2c33"
+    ],
+    "date_from": "2026-01-01",
+    "date_to": "2026-07-31",
+    "risk_pct": 1.0
   },
-  "total": 18,
-  "done": 18,
+  "total": 14463,
+  "done": 14463,
   "progress_text": "",
   "result": {
-    "model_id": "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e",
-    "kb_on_total_r": null,
-    "kb_off_total_r": -15.349,
-    "conditions_fp": "e396506059c5",
-    "conditions": {
-      "trade_model_id": "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e",
-      "train_weeks": 3,
-      "use_learning": true,
-      "kb_profile": "era_2025_2026_6thang",
-      "kb_snapshot": 3,
-      "kb_fingerprint": "70d66ccdffb654f6",
-      "feature_profile": "current",
-      "spread_pips": 1.0,
-      "slippage_pips": 0.3,
-      "session_ranges": [
-        [
-          7,
-          20
-        ]
-      ],
-      "min_bars_between": [
-        12
-      ],
-      "max_hold_bars": [
-        96
-      ],
-      "conditions_fp": "e396506059c5"
+    "run_id": "ct_20260805_120530_0e76eb",
+    "n_models": 3,
+    "bars_done": 14463,
+    "bars_total": 14463,
+    "per_model": {
+      "tm_breakthrough_elite_or_qualit_d23dbb33": {
+        "n_fills": 124,
+        "error": null,
+        "stats": {
+          "total_r": 128.4,
+          "win_rate_pct": 71.0,
+          "n_trades": 62,
+          "max_drawdown_r": 2.0
+        }
+      },
+      "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e": {
+        "n_fills": 128,
+        "error": null,
+        "stats": {
+          "total_r": 133.8,
+          "win_rate_pct": 70.3,
+          "n_trades": 64,
+          "max_drawdown_r": 3.0
+        }
+      },
+      "tm_breakthrough_elite_60_3_vwap_c1ad2c33": {
+        "n_fills": 126,
+        "error": null,
+        "stats": {
+          "total_r": 133.5,
+          "win_rate_pct": 68.3,
+          "n_trades": 63,
+          "max_drawdown_r": 2.0
+        }
+      }
     }
   },
-  "started_at": "2026-08-03T22:42:56+07:00",
-  "updated_at": "2026-08-03T22:45:05+07:00",
-  "finished_at": "2026-08-03T22:45:05+07:00",
+  "started_at": "2026-08-05T12:05:29+05:30",
+  "updated_at": "2026-08-05T12:15:40+05:30",
+  "finished_at": "2026-08-05T12:15:40+05:30",
   "error": null
 }

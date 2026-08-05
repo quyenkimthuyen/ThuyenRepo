@@ -1,0 +1,40 @@
+Frozen Best 3m into a static MT5 EA from the model’s last strategy (Forge RR3 hybrid 4L2S price+bb #0998).
+
+  Created
+
+  ┌────────────────────────────────────┬──────────────────────────────────────┐
+  │ File                               │ Purpose                              │
+  ├────────────────────────────────────┼──────────────────────────────────────┤
+  │ mt5/Experts/ForgeBest3m_Frozen.mq5 │ Compilable EA (rules + hybrid trail) │
+  ├────────────────────────────────────┼──────────────────────────────────────┤
+  │ mt5/frozen/best_3m_frozen.json     │ Snapshot of frozen params            │
+  ├────────────────────────────────────┼──────────────────────────────────────┤
+  │ scripts/export_frozen_ea.py        │ Re-export from a trade model later   │
+  └────────────────────────────────────┴──────────────────────────────────────┘
+
+  Frozen logic
+
+  • Long: bb_width_pct low + price below EMA50 (ATR-norm) + low atr_pct
+  • Short: pullback_short + ADX > 38.6
+  • Exits: RR=3, ATR SL×0.738, hybrid trail @ 1.8R / 0.6R
+  • Filters: session 07–20, max 2 trades/week, min 4 bars apart
+  • ML/KB/weekly re-mine: off
+
+  Install & test in MT5
+
+  1. Copy ForgeBest3m_Frozen.mq5 → MQL5/Experts/
+  2. Compile in MetaEditor
+  3. Attach to EURUSD H1 (Strategy Tester or chart)
+  4. Enable Algo Trading
+
+  Expectation
+
+  This will not match the app’s ~+134R walk-forward. That edge came from re-mining every week; this EA is one frozen rule set only.
+
+  Re-freeze after a new backtest:
+
+  python3 scripts/export_frozen_ea.py --model-id tm_best_3m_64e3f742
+
+  (Then update the hardcoded rules in the .mq5 if last_strategy changed.)
+
+

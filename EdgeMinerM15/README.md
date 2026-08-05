@@ -15,6 +15,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run_dual_edgeminer.ps1 -Actio
 M15 dùng app/Bridge/Paper `8501/8765/8766`, folder `bridge`, Magic `20260724`.
 H1 dùng `8502/8865/8866`, folder `bridge_h1`, Magic `20260725`.
 
+Clone thêm instance M15 (cô lập repo + magic + port):
+
+```bash
+./scripts/clone_m15_instance.sh B4 --dry-run   # xem ma trận ID
+./scripts/clone_m15_instance.sh B4             # tạo ../EdgeMinerM15B4
+# Spec = <Version><Offset> → names dùng cả spec (B4); ports = default + offset*10
+```
+
 ## Chạy app
 
 Windows PowerShell:
@@ -31,13 +39,22 @@ powershell -ExecutionPolicy Bypass -File scripts/run_app_windows.ps1 -Action Sta
 powershell -ExecutionPolicy Bypass -File scripts/run_app_windows.ps1 -Action Stop
 ```
 
-App mặc định mở tại `http://127.0.0.1:8501`. Có thể đổi cổng bằng `-Port 8502`.
+App mặc định mở tại `http://127.0.0.1:8501`. Có thể đổi cổng bằng `-Port 8502` (Windows) hoặc `--port 8502` (Linux).
 
 Linux/macOS:
 
 ```bash
 pip install -r requirements.txt
-python run_gui.py          # Giao diện (khuyến nghị)
+
+# Lifecycle (cùng hành vi với run_app_windows.ps1)
+./scripts/run_app_linux.sh Start
+./scripts/run_app_linux.sh Restart          # mặc định nếu không truyền action
+./scripts/run_app_linux.sh Status
+./scripts/run_app_linux.sh Stop
+# ./scripts/run_app_linux.sh Restart --port 8502
+
+# Hoặc chạy trực tiếp (foreground)
+python run_gui.py
 ```
 
 CLI:

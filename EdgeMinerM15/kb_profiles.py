@@ -205,7 +205,10 @@ def resolve_kb_path(profile_id: str, snapshot_epoch: int | str | None = None) ->
 
 def list_profiles() -> list[dict]:
   idx = _load_index()
-  profiles = idx.get("profiles", [])
+  profiles = [
+    p for p in idx.get("profiles", [])
+    if isinstance(p, dict) and str(p.get("id") or "").strip()
+  ]
   # đảm bảo default luôn có trong danh sách
   if not any(p["id"] == DEFAULT_PROFILE_ID for p in profiles):
     profiles.insert(0, {
@@ -257,9 +260,15 @@ def register_profile(
   note: str = "",
 ) -> dict:
   """Đăng ký / cập nhật metadata profile sau learning."""
+  profile_id = str(profile_id or "").strip()
+  if not profile_id:
+    raise ValueError("profile_id rỗng — không đăng ký KB profile.")
   PROFILES_DIR.mkdir(parents=True, exist_ok=True)
   idx = _load_index()
-  profiles = idx.get("profiles", [])
+  profiles = [
+    p for p in idx.get("profiles", [])
+    if isinstance(p, dict) and str(p.get("id") or "").strip()
+  ]
   entry = {
     "id": profile_id,
     "name": name,
@@ -288,6 +297,9 @@ def register_profile(
 
 def create_profile(profile_id: str, name: str, copy_from: str | None = None) -> KnowledgeBase:
   """Tạo KB profile mới (trống hoặc copy từ profile khác)."""
+  profile_id = str(profile_id or "").strip()
+  if not profile_id:
+    raise ValueError("profile_id rỗng — không tạo KB profile.")
   path = profile_path(profile_id)
   if path.exists():
     return load_kb(profile_id)
@@ -316,7 +328,10 @@ def list_disk_profile_ids() -> list[str]:
     for path in PROFILES_DIR.glob("*.json"):
       if path.name == INDEX_PATH.name:
         continue
-      ids.add(path.stem)
+      stem = path.stem.strip()
+      if not stem:
+        continue
+      ids.add(stem)
   if SNAPSHOTS_DIR.exists():
     for path in SNAPSHOTS_DIR.iterdir():
       if path.is_dir() and path.name.strip():
