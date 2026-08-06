@@ -166,7 +166,14 @@ def run_compare(
   full = _normalize(raw)
   replay = slice_replay_frame(full, date_from, date_to)
   if replay.empty:
-    raise ValueError(f"Không có bar trong khoảng {date_from} → {date_to}.")
+    avail = "—"
+    if full is not None and not full.empty:
+      avail = f"{str(full.index[0].date())} → {str(full.index[-1].date())}"
+    raise ValueError(
+      f"Không có bar trong khoảng {date_from} → {date_to}. "
+      f"MT5 M15 cache hiện có: {avail}. "
+      "Chọn ngày trong khoảng cache (hoặc đồng bộ thêm history từ MT5 Bridge)."
+    )
 
   rid = run_id or f"ct_{datetime.now(timezone.utc).astimezone().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
   run: dict[str, Any] = {

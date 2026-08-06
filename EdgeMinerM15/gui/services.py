@@ -105,6 +105,7 @@ def execute_backtest(
   oos_to: str | None = None,
   feature_profile: str | None = None,
   mining_search_space: dict | None = None,
+  remine_each_week: bool = True,
   on_progress=None,
   archive: bool = False,
   archive_label: str | None = None,
@@ -153,6 +154,7 @@ def execute_backtest(
     oos_to=oos_to or None,
     feature_profile=feature_profile or "current",
     search_space=search_space,
+    remine_each_week=remine_each_week,
     on_progress=on_progress,
     verbose=False,
   )

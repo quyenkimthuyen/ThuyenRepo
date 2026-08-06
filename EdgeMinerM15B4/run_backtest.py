@@ -124,6 +124,7 @@ def run_walk_forward(
   oos_to: str | None = None,
   feature_profile: str = "current",
   search_space: MiningSearchSpace | None = None,
+  remine_each_week: bool = True,
 ) -> dict:
   data_meta = require_canonical_mt5_data()
   reset_kb_cache()
@@ -186,13 +187,17 @@ def run_walk_forward(
   last_strat: MinedStrategy | None = None
   prev_strat: MinedStrategy | None = None
 
+  remine_mode = "weekly" if remine_each_week else "freeze_first"
   if verbose:
     print(f"Walk-forward | bars={len(df)} | KB={'ON' if use_learning else 'OFF'} "
-          f"| profile={profile_id if use_learning else '-'} | weeks={len(weeks)}")
+          f"| remine={remine_mode} | profile={profile_id if use_learning else '-'} "
+          f"| weeks={len(weeks)}")
     if use_learning:
       print(f"  KB check: {kb_validation['message']}")
 
   week_iter = tqdm(weeks, desc="Walk-forward", disable=not verbose or on_progress is not None)
+  frozen_strat: MinedStrategy | None = None
+  frozen_train: tuple[int, int] | None = None
   for wi, (week_start, week_end) in enumerate(week_iter):
     if on_progress:
       on_progress(wi + 1, len(weeks), week_start)
@@ -202,16 +207,24 @@ def run_walk_forward(
       weekly_log.append({"week_start": str(week_start.date()), "status": "skip_train"})
       continue
 
-    strat = optimize_on_window(
-      fm, train_start_idx, train_end_idx,
-      use_learning=use_learning, as_of=week_start, kb=kb_instance,
-      search_space=search_space,
-    )
-    if strat is None:
-      strat = prev_strat
-    if strat is None:
-      weekly_log.append({"week_start": str(week_start.date()), "status": "skip_no_strategy"})
-      continue
+    if (not remine_each_week) and frozen_strat is not None:
+      strat = frozen_strat
+      if frozen_train is not None:
+        train_start_idx, train_end_idx = frozen_train
+    else:
+      strat = optimize_on_window(
+        fm, train_start_idx, train_end_idx,
+        use_learning=use_learning, as_of=week_start, kb=kb_instance,
+        search_space=search_space,
+      )
+      if strat is None:
+        strat = prev_strat
+      if strat is None:
+        weekly_log.append({"week_start": str(week_start.date()), "status": "skip_no_strategy"})
+        continue
+      if not remine_each_week:
+        frozen_strat = strat
+        frozen_train = (train_start_idx, train_end_idx)
 
     last_strat, prev_strat = strat, strat
     oos_start, oos_end = get_week_indices(df, week_start, week_end)
@@ -318,6 +331,8 @@ def run_walk_forward(
       "data_fingerprint": data_meta.get("fingerprint"),
       "feature_profile": feature_profile,
       "mining_search_space": mining_search_space_to_dict(search_space),
+      "remine_each_week": bool(remine_each_week),
+      "remine_mode": remine_mode,
     },
     "overall_oos": _pack_metrics(overall, avg_tpw),
     "last_1_year": _pack_metrics(year_m, year_m["n_trades"] / year_weeks),

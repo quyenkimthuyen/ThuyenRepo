@@ -49,7 +49,8 @@ def test_chunk_protocol_resumes_until_done(tmp_path, monkeypatch):
   request = read_json(history_sync.history_request_path(bridge))
   assert request["action"] == "export_m15_history"
   assert request["period"] == "M15"
-  assert request["from_time"] == "2025.01.01 00:00"
+  assert request["from_time"] == history_sync.data_start_mt5_wall()
+  assert request["from_time"] == "2024.01.01 00:00"
   atomic_write_json(history_chunk_path(bridge), {
     "request_id": request["request_id"],
     "symbol": "EURUSD",

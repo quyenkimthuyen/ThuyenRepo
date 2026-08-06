@@ -337,6 +337,11 @@ def build_monthly_kb_compare_figure(
   off_monthly: pd.DataFrame | None = None,
   *,
   title: str = "OOS theo tháng · KB ON vs OFF",
+  on_name: str = "KB ON",
+  off_name: str = "KB OFF",
+  on_color: str = "#26a69a",
+  off_color: str = "#787b86",
+  cum_on_color: str = "#2962ff",
 ) -> go.Figure | None:
   if on_monthly is None or on_monthly.empty:
     return None
@@ -350,8 +355,8 @@ def build_monthly_kb_compare_figure(
   )
 
   fig.add_trace(go.Bar(
-    x=months, y=on["total_r"], name="KB ON",
-    marker_color="#26a69a", opacity=0.85,
+    x=months, y=on["total_r"], name=on_name,
+    marker_color=on_color, opacity=0.85,
   ), row=1, col=1)
 
   if off_monthly is not None and not off_monthly.empty:
@@ -359,17 +364,17 @@ def build_monthly_kb_compare_figure(
     off_map = dict(zip(off["month"], off["total_r"]))
     off_y = [off_map.get(m) for m in months]
     fig.add_trace(go.Bar(
-      x=months, y=off_y, name="KB OFF",
-      marker_color="#787b86", opacity=0.75,
+      x=months, y=off_y, name=off_name,
+      marker_color=off_color, opacity=0.75,
     ), row=1, col=1)
     fig.add_trace(go.Scatter(
-      x=list(off["month"]), y=off["cum_r"], name="Cum KB OFF",
-      line=dict(color="#787b86", width=2, dash="dot"),
+      x=list(off["month"]), y=off["cum_r"], name=f"Cum {off_name}",
+      line=dict(color=off_color, width=2, dash="dot"),
     ), row=2, col=1)
 
   fig.add_trace(go.Scatter(
-    x=months, y=on["cum_r"], name="Cum KB ON",
-    line=dict(color="#2962ff", width=2.5),
+    x=months, y=on["cum_r"], name=f"Cum {on_name}",
+    line=dict(color=cum_on_color, width=2.5),
   ), row=2, col=1)
 
   fig.update_layout(

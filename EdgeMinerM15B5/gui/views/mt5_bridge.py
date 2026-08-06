@@ -245,34 +245,13 @@ def _render_live_oos_parity(
 
 
 def _fmt_px(value) -> str:
-  try:
-    return f"{float(value):.5f}"
-  except (TypeError, ValueError):
-    return "—"
+  from gui.bridge_desk_stats import fmt_px
+  return fmt_px(value)
 
 
 def _unrealized_r(trade: dict, connection: dict) -> float | None:
-  """Estimate open R from live bid/ask vs entry/SL."""
-  try:
-    entry = float(trade.get("entry_px") if trade.get("entry_px") is not None else trade.get("entry"))
-    sl = float(trade["sl"])
-  except (TypeError, ValueError, KeyError):
-    return None
-  risk = abs(entry - sl)
-  if risk <= 0:
-    return None
-  direction = str(trade.get("direction") or trade.get("dir") or "").upper()
-  bid, ask = connection.get("bid"), connection.get("ask")
-  try:
-    if direction in ("BUY", "LONG"):
-      mark = float(bid)
-      return round((mark - entry) / risk, 3)
-    if direction in ("SELL", "SHORT"):
-      mark = float(ask)
-      return round((entry - mark) / risk, 3)
-  except (TypeError, ValueError):
-    return None
-  return None
+  from gui.bridge_desk_stats import unrealized_r
+  return unrealized_r(trade, connection)
 
 
 def _parse_ui_date(val) -> date | None:
@@ -334,22 +313,13 @@ def _month_bounds(ym: str) -> tuple[date, date]:
 
 
 def _open_trade(trades: list[dict]) -> dict | None:
-  for trade in reversed(trades):
-    if str(trade.get("status") or "").upper() == "OPEN":
-      return trade
-  return None
+  from gui.bridge_desk_stats import open_trade
+  return open_trade(trades)
 
 
 def _period_stats(trades: list[dict], *, today: date) -> tuple[dict, dict]:
-  """Desk PnL = Auto only (Trade Model). Manual-edited fills stay out."""
-  week_from = today - timedelta(days=today.weekday())
-  today_stats = compute_stats(
-    filter_trades(trades, date_from=today, date_to=today, mode="auto"),
-  )
-  week_stats = compute_stats(
-    filter_trades(trades, date_from=week_from, date_to=today, mode="auto"),
-  )
-  return today_stats, week_stats
+  from gui.bridge_desk_stats import period_stats
+  return period_stats(trades, today=today)
 
 
 def _render_error_banner(
@@ -359,17 +329,14 @@ def _render_error_banner(
   decision: dict,
   active_model_id: str | None,
 ) -> None:
+  """Service/EA errors only — model lệch nằm trong Checklist sẵn sàng Live."""
+  del decision, active_model_id  # kept in signature for call-site compatibility
   errors: list[str] = []
   if service_status.get("last_error"):
     errors.append(str(service_status["last_error"]))
   state = str(file_status.get("state") or "").lower()
   if state == "error" and file_status.get("error"):
     errors.append(str(file_status["error"]))
-  decision_model = decision.get("model_id") or file_status.get("model_id")
-  if active_model_id and decision_model and decision_model != active_model_id:
-    errors.append(
-      f"Model lệch: decision=`{decision_model}` · active=`{active_model_id}`"
-    )
   if errors:
     st.error(" · ".join(dict.fromkeys(errors)))
 
@@ -1674,8 +1641,17 @@ def _render_stats_section() -> None:
       _stats_block("Tất cả", None)
 
   tc1, tc2 = st.columns([1, 4])
-  if tc1.button("Xóa nhật ký lệnh", key="bridge_clear_trades"):
+  if tc1.button(
+    "Xóa nhật ký lệnh",
+    key="bridge_clear_trades",
+    help=(
+      "Xóa trades.json + fills log, và clean decision.json stale "
+      "(strategy/week cũ). Không cần Start Live chỉ để sync tip — "
+      "checklist chưa OK thì không khuyến khích Start."
+    ),
+  ):
     clear_trades(bridge_dir)
+    st.toast("Đã xóa nhật ký + decision stale")
     st.rerun()
   restore_widget("bridge_show_open", True, preference_key="mt5.show_open")
   show_open = tc2.checkbox(
@@ -1868,10 +1844,25 @@ def render():
   render_page_header(ALL_ITEMS["mt5_bridge"], show_workspace=False)
 
   # Trade Model first — before Live/Simulate switcher
-  render_shared_trade_model_banner(
+  active = render_shared_trade_model_banner(
     context="simulate" if _bridge_mode() == "sim" else "live",
   )
   mode = _render_mode_switcher()
+
+  # Pre-Live checklist (fp/parity when decision exists)
+  from gui.live_readiness import render_live_readiness
+
+  bridge_dir = _active_bridge_dir()
+  decision = read_json(decision_path(bridge_dir)) or {}
+  file_status = read_json(status_path(bridge_dir)) or {}
+  render_live_readiness(
+    active,
+    decision=decision,
+    file_status=file_status,
+    include_bridge=(mode == "live"),
+    expanded=(mode == "live"),
+    key_prefix=f"bridge_ready_{mode}",
+  )
 
   chart_ranges = ["1 ngày", "1 tuần", "1 tháng", "6 tháng", "1 năm", "Tất cả"]
   # M15 ≈ 96 bars/day

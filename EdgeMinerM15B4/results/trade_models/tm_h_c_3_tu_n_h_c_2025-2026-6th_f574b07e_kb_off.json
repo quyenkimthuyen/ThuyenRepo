@@ -5,15 +5,15 @@
     "pair": "EURUSD",
     "timeframe": "M15",
     "broker_timezone": "Europe/Helsinki",
-    "fingerprint": "172c3457e07be4865ff49a1f3932a460d6df5f72806148d32a7044f72ef1b701",
+    "fingerprint": "5c20c05b39eda28244417e7adad177b063348f212b3faffa9d0a3e9a966e25d1",
     "start": "2025-01-02 06:00:00",
-    "end": "2026-08-03 15:15:00",
-    "bars": 39240
+    "end": "2026-08-05 11:45:00",
+    "bars": 39484
   },
   "data_range": {
     "start": "2025-01-02",
-    "end": "2026-08-03",
-    "bars": 39240
+    "end": "2026-08-05",
+    "bars": 39484
   },
   "oos_start": "2026-03-30",
   "config": {
@@ -35,7 +35,7 @@
     "slippage_pips": 0.3,
     "holdout_months": 0,
     "risk_pct_per_trade": 1.0,
-    "data_fingerprint": "172c3457e07be4865ff49a1f3932a460d6df5f72806148d32a7044f72ef1b701",
+    "data_fingerprint": "5c20c05b39eda28244417e7adad177b063348f212b3faffa9d0a3e9a966e25d1",
     "feature_profile": "current",
     "mining_search_space": {
       "rr_ratios": [
@@ -113,31 +113,33 @@
       "anti_chase_logic": "or",
       "exit_modes_full_only": true
     },
+    "remine_each_week": true,
+    "remine_mode": "weekly",
     "trade_model_id": "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e",
     "kb_compare_role": "kb_off_baseline"
   },
   "overall_oos": {
-    "n_trades": 50,
-    "trades_per_week": 2.78,
-    "win_rate_pct": 20.0,
-    "avg_rr": 2.677,
-    "profit_factor": 0.589,
-    "total_pips": -100.85,
-    "total_r": -15.349,
-    "max_drawdown_r": 14.95,
+    "n_trades": 52,
+    "trades_per_week": 2.89,
+    "win_rate_pct": 19.23,
+    "avg_rr": 2.673,
+    "profit_factor": 0.566,
+    "total_pips": -110.95,
+    "total_r": -17.738,
+    "max_drawdown_r": 16.56,
     "max_win_streak": 2,
     "max_loss_streak": 14,
     "risk_of_ruin_pct": 95.0
   },
   "last_1_year": {
-    "n_trades": 50,
-    "trades_per_week": 2.78,
-    "win_rate_pct": 20.0,
-    "avg_rr": 2.677,
-    "profit_factor": 0.589,
-    "total_pips": -100.85,
-    "total_r": -15.349,
-    "max_drawdown_r": 14.95,
+    "n_trades": 52,
+    "trades_per_week": 2.89,
+    "win_rate_pct": 19.23,
+    "avg_rr": 2.673,
+    "profit_factor": 0.566,
+    "total_pips": -110.95,
+    "total_r": -17.738,
+    "max_drawdown_r": 16.56,
     "max_win_streak": 2,
     "max_loss_streak": 14,
     "risk_of_ruin_pct": 95.0
@@ -163,46 +165,46 @@
       {
         "feat": "price_vs_ema50",
         "op": "lt",
-        "thr": -1.9092,
-        "w": 1.393
+        "thr": -1.905,
+        "w": 1.424
       },
       {
         "feat": "atr_pct",
         "op": "lt",
-        "thr": 0.0349,
-        "w": 1.113
+        "thr": 0.0353,
+        "w": 1.111
       },
       {
         "feat": "price_vs_ema21",
         "op": "lt",
-        "thr": -0.5252,
-        "w": 0.927
-      },
-      {
-        "feat": "price_vs_ema50",
-        "op": "lt",
-        "thr": -0.8894,
-        "w": 0.927
+        "thr": -0.5186,
+        "w": 0.942
       },
       {
         "feat": "ema_slope_21",
         "op": "lt",
-        "thr": -0.0525,
-        "w": 0.927
+        "thr": -0.0519,
+        "w": 0.942
+      },
+      {
+        "feat": "price_vs_ema50",
+        "op": "lt",
+        "thr": -0.8686,
+        "w": 0.923
       },
       {
         "feat": "rsi",
         "op": "lt",
-        "thr": 45.3627,
-        "w": 0.907
+        "thr": 45.4763,
+        "w": 0.903
       }
     ],
     "short_rules": [
       {
         "feat": "price_vs_ema50",
         "op": "gt",
-        "thr": 2.1688,
-        "w": 1.296
+        "thr": 2.2171,
+        "w": 1.507
       },
       {
         "feat": "sweep_high_fade",
@@ -420,14 +422,14 @@
     {
       "week_start": "2026-08-03",
       "strategy": "v3_full_rr3.2|chase:fixed_or_rsi<58+vwap<1.5",
-      "score_thr": 0.6,
+      "score_thr": 1.0,
       "long_rules": 6,
       "short_rules": 2,
-      "train_wr": 0.75,
-      "oos_trades": 0,
+      "train_wr": 0.8,
+      "oos_trades": 2,
       "oos_wr": 0.0,
-      "oos_pips": 0.0,
-      "oos_r": 0.0
+      "oos_pips": -10.1,
+      "oos_r": -2.39
     }
   ],
   "schedule_weekly": [
@@ -740,7 +742,7 @@
             "feat": "roc_5",
             "direction": "long",
             "op": "lt",
-            "thr": -0.4520714304295683,
+            "thr": -0.45317937351176213,
             "w": 0.7013888888888892
           },
           {
@@ -1831,7 +1833,7 @@
         "ml_prob_min": 0.48,
         "rr": 3.2,
         "atr_mult": 0.9,
-        "score_threshold": 0.6,
+        "score_threshold": 1.0,
         "atr_mult_sl": 0.9,
         "rr_ratio": 3.2,
         "min_rules_match": 1,
@@ -1860,43 +1862,43 @@
             "feat": "price_vs_ema50",
             "direction": "long",
             "op": "lt",
-            "thr": -1.9091908259661787,
-            "w": 1.3931618486629
+            "thr": -1.904963971166805,
+            "w": 1.4236111111111116
           },
           {
             "feat": "atr_pct",
             "direction": "long",
             "op": "lt",
-            "thr": 0.034882190688063655,
-            "w": 1.1134415689426203
+            "thr": 0.03531640462387724,
+            "w": 1.1111111111111116
           },
           {
             "feat": "price_vs_ema21",
             "direction": "long",
             "op": "lt",
-            "thr": -0.5252378536335216,
-            "w": 0.9271478626489138
-          },
-          {
-            "feat": "price_vs_ema50",
-            "direction": "long",
-            "op": "lt",
-            "thr": -0.8894005232607279,
-            "w": 0.9271478626489138
+            "thr": -0.5186159339264488,
+            "w": 0.9424603174603174
           },
           {
             "feat": "ema_slope_21",
             "direction": "long",
             "op": "lt",
-            "thr": -0.05252378536336883,
-            "w": 0.9271478626489138
+            "thr": -0.05186159339277788,
+            "w": 0.9424603174603174
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.8686459643792587,
+            "w": 0.9226190476190477
           },
           {
             "feat": "rsi",
             "direction": "long",
             "op": "lt",
-            "thr": 45.362678544619925,
-            "w": 0.9071478626489138
+            "thr": 45.4762890405277,
+            "w": 0.9027777777777779
           }
         ],
         "short_rules": [
@@ -1904,8 +1906,8 @@
             "feat": "price_vs_ema50",
             "direction": "short",
             "op": "gt",
-            "thr": 2.1688178675932726,
-            "w": 1.2964505711527439
+            "thr": 2.2170703247057633,
+            "w": 1.5069444444444446
           },
           {
             "feat": "sweep_high_fade",
@@ -1917,10 +1919,10 @@
         ]
       },
       "train_start_idx": 37804,
-      "train_end_idx": 39231,
+      "train_end_idx": 39244,
       "week_end": "2026-08-10",
-      "oos_trades": 0,
-      "oos_r": 0.0,
+      "oos_trades": 2,
+      "oos_r": -2.389,
       "oos_wr": 0.0
     }
   ],
@@ -2523,6 +2525,30 @@
       "tp": 1.14653,
       "pnl_pips": -4.7,
       "r": -1.21,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-08-03 10:30:00",
+      "exit": "2026-08-03 14:00:00",
+      "dir": "LONG",
+      "entry_px": 1.1523,
+      "exit_px": 1.15172,
+      "sl": 1.1518,
+      "tp": 1.1539,
+      "pnl_pips": -5.8,
+      "r": -1.16,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-08-04 04:15:00",
+      "exit": "2026-08-04 05:45:00",
+      "dir": "LONG",
+      "entry_px": 1.15066,
+      "exit_px": 1.15023,
+      "sl": 1.15031,
+      "tp": 1.15178,
+      "pnl_pips": -4.3,
+      "r": -1.23,
       "reason": "sl"
     }
   ]

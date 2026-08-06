@@ -188,6 +188,20 @@ def _render_model_info(active: dict):
     )
   )
 
+  from gui.model_health import build_model_timeline_figure
+
+  timeline_title = f"Giai đoạn model · {format_model_label(active)}"
+  timeline = build_model_timeline_figure(active, title=timeline_title)
+  if timeline:
+    show_plotly(timeline, timeline_title)
+    st.caption(
+      "KB học = era bộ nhớ · Train shift = cửa sổ remine "
+      f"**{active.get('train_weeks') or '—'} tuần** trước mỗi tuần OOS · "
+      "OOS = khoảng kiểm chứng."
+    )
+  else:
+    st.caption("Chưa đủ thông tin KB / OOS để vẽ timeline giai đoạn.")
+
   report = load_model_report(active["id"])
   kb = load_kb(active.get("kb_profile") or "default")
   kb_summary = {
@@ -204,6 +218,13 @@ def _render_model_info(active: dict):
     st.info(
       "Chưa có báo cáo backtest của model. Vào **Sức khỏe** → **Chạy so sánh** "
       "để tạo report, hoặc tạo model từ Grid Search."
+    )
+    from gui.live_readiness import render_live_readiness
+    render_live_readiness(
+      active,
+      include_bridge=False,
+      expanded=True,
+      key_prefix="tm_info_ready",
     )
     return
 
@@ -228,6 +249,15 @@ def _render_model_info(active: dict):
         pct = bias.loc[bias["dir"] == "LONG", "pct"].iloc[0]
         warn_long_bias(pct)
 
+  from gui.live_readiness import render_live_readiness
+
+  render_live_readiness(
+    active,
+    include_bridge=False,
+    expanded=False,
+    key_prefix="tm_info_ready",
+  )
+
 
 def _render_health(active: dict):
   """Monthly OOS chart KB ON vs OFF + degradation signals."""
@@ -235,7 +265,6 @@ def _render_health(active: dict):
   from gui.long_task_ui import render_task_status, task_blocks_ui
   from gui.model_health import (
     assess_monthly_degradation,
-    build_model_timeline_figure,
     build_monthly_kb_compare_figure,
     monthly_oos_from_report,
   )
@@ -243,20 +272,9 @@ def _render_health(active: dict):
 
   st.caption(
     f"Đang xem: **{format_model_label(active)}** · "
-    "report backtest dùng cùng điều kiện remine với MT5 Bridge."
+    "report backtest dùng cùng điều kiện remine với MT5 Bridge. "
+    "Timeline giai đoạn nằm ở tab **Thông tin**."
   )
-
-  timeline_title = f"Giai đoạn model · {format_model_label(active)}"
-  timeline = build_model_timeline_figure(active, title=timeline_title)
-  if timeline:
-    show_plotly(timeline, timeline_title)
-    st.caption(
-      "KB học = era bộ nhớ · Train shift = cửa sổ remine "
-      f"**{active.get('train_weeks') or '—'} tuần** trước mỗi tuần OOS · "
-      "OOS = khoảng kiểm chứng."
-    )
-  else:
-    st.info("Chưa đủ thông tin KB / OOS để vẽ timeline giai đoạn.")
 
   render_task_status(key_prefix="tm_health")
   blocked = task_blocks_ui("tm_health")
@@ -385,14 +403,160 @@ def _render_health(active: dict):
 
   with st.expander("Cách đọc"):
     st.markdown(
-      "- **Timeline**: KB học → train shift → OOS.\n"
       "- **KB ON/OFF chart**: phải chạy với **đúng** session/spacing của model.\n"
       "- Nửa sau yếu / edge thu hẹp → cân nhắc học era mới hoặc Grid lại.\n"
+      "- Timeline giai đoạn (KB / train / OOS) nằm ở tab **Thông tin**.\n"
+      "- **Remine ON/OFF** (bên dưới): freeze strategy tuần đầu vs remine mỗi tuần.\n"
       "- **Mining space vs baseline** (bên dưới): tách riêng “preset lỗi thời” "
       "khỏi suy giảm KB/market."
     )
 
+  _render_remine_on_off(active, report_on)
   _render_mining_space_freshness(active, report_on)
+
+
+def _render_remine_on_off(active: dict, report_on: dict | None):
+  """Remine weekly (ON) vs freeze first-week strategy (OFF)."""
+  from gui.analysis_support import start_remine_health_job
+  from gui.charts import show_plotly
+  from gui.long_task_ui import render_task_status, task_blocks_ui
+  from gui.model_health import (
+    assess_monthly_degradation,
+    build_monthly_kb_compare_figure,
+    monthly_oos_from_report,
+  )
+  from gui.trade_model import load_model_remine_off_report
+
+  st.divider()
+  st.markdown("#### Remine ON / OFF")
+  st.caption(
+    "**ON** = mine lại mỗi tuần (report Health hiện có). "
+    "**OFF** = mine tuần OOS đầu rồi **giữ nguyên** strategy cho các tuần sau "
+    "(cùng KB / train / OOS)."
+  )
+
+  render_task_status(key_prefix="tm_remine_health")
+  blocked = task_blocks_ui("tm_remine_health")
+  report_off = load_model_remine_off_report(active["id"])
+
+  c1, c2, c3 = st.columns([2, 2, 1])
+  with c1:
+    refresh_on = st.checkbox(
+      "Chạy lại Remine ON trước khi so",
+      value=not bool(report_on),
+      key="tm_remine_refresh_on",
+      help="Thường tắt nếu đã có report Health (KB ON / remine weekly).",
+    )
+  with c2:
+    on_r = (report_on or {}).get("overall_oos", {}).get("total_r") if report_on else None
+    off_r = (report_off or {}).get("overall_oos", {}).get("total_r") if report_off else None
+    bits = [
+      f"Remine ON: **{'có' if report_on else 'chưa'}**"
+      + (f" ({on_r:+.1f}R)" if on_r is not None else ""),
+      f"Remine OFF: **{'có' if report_off else 'chưa'}**"
+      + (f" ({off_r:+.1f}R)" if off_r is not None else ""),
+    ]
+    st.caption(" · ".join(bits))
+  with c3:
+    if st.button(
+      "So Remine",
+      type="secondary",
+      icon=":material/compare_arrows:",
+      use_container_width=True,
+      disabled=blocked,
+      key="tm_remine_run",
+    ):
+      try:
+        start_remine_health_job(active, refresh_remine_on=refresh_on)
+        st.toast("Đã bắt đầu Remine ON/OFF")
+        st.rerun()
+      except Exception as e:
+        st.error(str(e))
+
+  if not report_on or not report_off:
+    st.info(
+      "Bấm **So Remine** để chạy Remine OFF (freeze tuần đầu). "
+      "Remine ON dùng report Health nếu đã có."
+    )
+    return
+
+  on_m = monthly_oos_from_report(report_on)
+  off_m = monthly_oos_from_report(report_off)
+  assess = assess_monthly_degradation(on_m, baseline=off_m)
+
+  on_total = (report_on.get("overall_oos") or {}).get("total_r")
+  off_total = (report_off.get("overall_oos") or {}).get("total_r")
+  edge = None
+  if on_total is not None and off_total is not None:
+    edge = float(on_total) - float(off_total)
+
+  k1, k2, k3, k4 = st.columns(4)
+  k1.metric(
+    "Total R · Remine ON",
+    f"{float(on_total):+.1f}" if on_total is not None else "—",
+  )
+  k2.metric(
+    "Total R · Remine OFF",
+    f"{float(off_total):+.1f}" if off_total is not None else "—",
+  )
+  k3.metric(
+    "Edge ON−OFF",
+    f"{edge:+.1f}R" if edge is not None else "—",
+    help="Dương = remine hàng tuần tốt hơn freeze strategy tuần đầu.",
+  )
+  k4.metric(
+    "Edge nửa sau",
+    f"{assess['edge_late']:+.1f}R" if assess.get("edge_late") is not None else "—",
+    delta=(
+      f"{assess['edge_delta']:+.1f}" if assess.get("edge_delta") is not None else None
+    ),
+    help="Σ (Remine ON − OFF) trên nửa sau OOS.",
+  )
+
+  if edge is not None:
+    if edge >= 5:
+      st.success(
+        f"Remine ON hơn OFF **{edge:+.1f}R** trên toàn OOS — "
+        "remine hàng tuần đang có giá trị."
+      )
+    elif edge <= -5:
+      st.warning(
+        f"Remine ON kém OFF **{edge:+.1f}R** — "
+        "trên kỳ này freeze strategy tuần đầu tốt hơn (remine có thể nhiễu)."
+      )
+    else:
+      st.info(
+        f"Remine ON≈OFF (Δ {edge:+.1f}R) — lợi thế remine chưa rõ trên kỳ OOS này."
+      )
+
+  title = f"OOS theo tháng · Remine ON vs OFF · {format_model_label(active)}"
+  fig = build_monthly_kb_compare_figure(
+    on_m, off_m,
+    title=title,
+    on_name="Remine ON",
+    off_name="Remine OFF",
+    on_color="#26a69a",
+    off_color="#ef6c00",
+    cum_on_color="#2962ff",
+  )
+  if fig:
+    show_plotly(fig, title)
+
+  table = on_m.copy()
+  if off_m is not None and not off_m.empty:
+    off_map = off_m.set_index("month")["total_r"]
+    table["remine_off_r"] = table["month"].map(off_map)
+    table["edge_r"] = (table["total_r"] - table["remine_off_r"]).round(3)
+  st.dataframe(table, use_container_width=True, hide_index=True)
+
+  with st.expander("Cách đọc Remine ON/OFF"):
+    st.markdown(
+      "- **Remine ON**: mỗi tuần mine lại trên cửa sổ train (đường Live/Health).\n"
+      "- **Remine OFF**: chỉ mine tuần đầu OOS, giữ strategy đó suốt kỳ.\n"
+      "- **Edge dương** → nên giữ remine tuần. **Edge âm mạnh** → cân nhắc freeze / "
+      "rà soát search space.\n"
+      "- Khác KB ON/OFF: cả hai nhánh Remine đều dùng **cùng KB** của model."
+    )
 
 
 def _render_mining_space_freshness(active: dict, report_on: dict | None):
@@ -479,21 +643,57 @@ def _render_mining_space_freshness(active: dict, report_on: dict | None):
   else:
     st.info(assess["message"])
 
-  d1, d2, d3, d4, d5 = st.columns(5)
-  d1.metric("Tháng chung", assess.get("n_months") or 0)
-  d2.metric(
-    "Edge nửa sau",
-    f"{assess['late_edge_r']:+.1f}R" if assess.get("late_edge_r") is not None else "—",
-    help="Σ (active − baseline) trên nửa sau OOS.",
+  active_oos = assess.get("active") or {}
+  base_oos = assess.get("baseline") or {}
+  delta = assess.get("delta") or {}
+  on_r = active_oos.get("total_r")
+  off_r = base_oos.get("total_r")
+  on_wr = active_oos.get("win_rate_pct")
+  off_wr = base_oos.get("win_rate_pct")
+  d_r = delta.get("total_r")
+  d_wr = delta.get("win_rate_pct")
+  d_rr = delta.get("avg_rr")
+
+  m1, m2, m3, m4, m5, m6 = st.columns(6)
+  m1.metric(
+    "Total R · Active",
+    f"{float(on_r):+.1f}" if on_r is not None else "—",
   )
-  d3.metric(
-    f"Edge {assess.get('recent_months') or 3} tháng gần",
+  m2.metric(
+    "Total R · Baseline",
+    f"{float(off_r):+.1f}" if off_r is not None else "—",
+  )
+  m3.metric(
+    "ΔR",
+    f"{float(d_r):+.1f}" if d_r is not None else "—",
+    help="Active − Baseline · Total R toàn OOS.",
+  )
+  m4.metric(
+    "WR · Active",
+    f"{float(on_wr):.1f}%" if on_wr is not None else "—",
+  )
+  m5.metric(
+    "WR · Baseline",
+    f"{float(off_wr):.1f}%" if off_wr is not None else "—",
+  )
+  m6.metric(
+    "ΔWR",
+    f"{float(d_wr):+.1f}pp" if d_wr is not None else "—",
+    delta=(f"ΔRR {float(d_rr):+.2f}" if d_rr is not None else None),
+    help="Active − Baseline · Win rate toàn OOS. ΔRR ở dòng phụ.",
+  )
+
+  e1, e2, e3 = st.columns(3)
+  e1.metric("Tháng chung", assess.get("n_months") or 0)
+  e2.metric(
+    "Edge R nửa sau",
+    f"{assess['late_edge_r']:+.1f}R" if assess.get("late_edge_r") is not None else "—",
+    help="Σ (active − baseline) R trên nửa sau OOS.",
+  )
+  e3.metric(
+    f"Edge R {assess.get('recent_months') or 3} tháng gần",
     f"{assess['recent_edge_r']:+.1f}R" if assess.get("recent_edge_r") is not None else "—",
   )
-  wr = (assess.get("delta") or {}).get("win_rate_pct")
-  rr = (assess.get("delta") or {}).get("avg_rr")
-  d4.metric("ΔWR vs baseline", f"{wr:+.1f}pp" if wr is not None else "—")
-  d5.metric("ΔRR vs baseline", f"{rr:+.2f}" if rr is not None else "—")
 
   on_m = monthly_oos_from_report(report_on)
   base_m = monthly_oos_from_report(report_base)
@@ -509,12 +709,29 @@ def _render_mining_space_freshness(active: dict, report_on: dict | None):
   if fig:
     show_plotly(fig, space_title)
 
+  # Monthly table: R + WR side by side
+  table = on_m.copy()
+  if base_m is not None and not base_m.empty:
+    b = base_m.set_index("month")
+    table["baseline_r"] = table["month"].map(b["total_r"])
+    table["edge_r"] = (table["total_r"] - table["baseline_r"]).round(3)
+    if "win_rate_pct" in b.columns:
+      table["baseline_wr"] = table["month"].map(b["win_rate_pct"])
+    if "win_rate_pct" in table.columns and "baseline_wr" in table.columns:
+      table["edge_wr_pp"] = (table["win_rate_pct"] - table["baseline_wr"]).round(1)
+    table = table.rename(columns={
+      "total_r": "active_r",
+      "win_rate_pct": "active_wr",
+    })
+  st.dataframe(table, use_container_width=True, hide_index=True)
+
   with st.expander("Cách đọc mining space"):
     st.markdown(
-      "- **Edge > 0**: preset đang thắng baseline miner cùng điều kiện.\n"
-      "- **Nửa sau / 3 tháng gần âm mạnh** hoặc **ΔWR và ΔRR đều âm** → "
-      "preset có thể lỗi thời → audit / Grid / đổi model.\n"
-      "- Khác với KB ON/OFF: đây cố định KB, chỉ đổi **khung mine**."
+      "- Biểu đồ trên: **Total R** (cột) và **Win rate %** (đường) — cùng tháng.\n"
+      "- Preset hướng WR: ưu tiên **ΔWR**; **ΔR** là sanity check PnL.\n"
+      "- **ΔWR và ΔRR đều âm** hoặc edge R nửa sau / 3 tháng gần âm mạnh → "
+      "preset có thể lỗi thời.\n"
+      "- Khác KB ON/OFF: cố định KB, chỉ đổi **khung mine**."
     )
 
 

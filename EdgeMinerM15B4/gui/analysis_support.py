@@ -126,6 +126,40 @@ def start_mining_space_health_job(
   )
 
 
+def start_remine_health_job(
+  model: dict | None = None,
+  *,
+  refresh_remine_on: bool = False,
+  start_date: str = "2022-01-01",
+) -> str:
+  """Remine ON (weekly) vs Remine OFF (freeze first-week strategy), same KB/OOS."""
+  from gui.long_task_background import start_job
+
+  m = model or get_active_trade_model()
+  if not m:
+    raise ValueError("Chưa có trade model.")
+  set_active_trade_model(m["id"])
+  p = get_model_run_params(m)
+  return start_job(
+    "remine_health",
+    {
+      "model_id": m["id"],
+      "refresh_remine_on": refresh_remine_on,
+      "start_date": start_date,
+      "train_weeks": int(p.get("train_weeks") or 6),
+      "spread_pips": float(p.get("spread_pips", 1.0)),
+      "slippage_pips": float(p.get("slippage_pips", 0.3)),
+      "kb_profile": p.get("kb_profile"),
+      "kb_snapshot": p.get("kb_snapshot"),
+      "oos_from": p.get("oos_from"),
+      "oos_to": p.get("oos_to"),
+      "feature_profile": p.get("feature_profile") or "current",
+      "mining_search_space": p.get("mining_search_space"),
+    },
+    label=f"Remine ON/OFF · {format_model_label(m)[:40]}",
+  )
+
+
 def render_report_required_panel(*, key_prefix: str = "an_rep") -> bool:
   """
   Hiển thị khi chưa có báo cáo khớp model.

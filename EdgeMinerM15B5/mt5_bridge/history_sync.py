@@ -28,9 +28,17 @@ DATA_DIR = ROOT / "data"
 MT5_CACHE_PATH = DATA_DIR / "mt5_eurusd_m15.parquet"
 MT5_META_PATH = DATA_DIR / "mt5_eurusd_m15_meta.json"
 BROKER_TIMEZONE = os.environ.get("EDGEMINER_BROKER_TIMEZONE", "Europe/Helsinki")
-DATA_START_BROKER = "2025-01-01 00:00"
+# Inclusive lower bound for MT5 M15 cache / history export (broker wall-clock).
+# Override with EDGEMINER_DATA_START if needed, e.g. "2023-01-01 00:00".
+DATA_START_BROKER = os.environ.get("EDGEMINER_DATA_START", "2024-01-01 00:00")
 DEFAULT_CHUNK_SIZE = 750
 _store_lock = threading.RLock()
+
+
+def data_start_mt5_wall() -> str:
+  """``from_time`` for EA history export (MT5 ``StringToTime`` format)."""
+  ts = pd.Timestamp(str(DATA_START_BROKER).replace(".", "-"))
+  return ts.strftime("%Y.%m.%d %H:%M")
 
 
 def parse_broker_time(value) -> pd.Timestamp:
@@ -143,7 +151,7 @@ def _new_request(offset: int, bridge_dir: Path, chunk_size: int) -> dict:
     "action": "export_m15_history",
     "symbol": "EURUSD",
     "period": "M15",
-    "from_time": "2025.01.01 00:00",
+    "from_time": data_start_mt5_wall(),
     "offset": int(offset),
     "chunk_size": int(chunk_size),
     "requested_at": utc_now_iso(),

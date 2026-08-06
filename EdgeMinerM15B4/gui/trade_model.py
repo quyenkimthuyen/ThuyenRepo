@@ -185,6 +185,12 @@ def model_kb_off_report_path(model_id: str) -> Path:
   return MODELS_DIR / f"{model_id}_kb_off.json"
 
 
+def model_remine_off_report_path(model_id: str) -> Path:
+  """Walk-forward with strategy frozen after first OOS week (Remine OFF)."""
+  MODELS_DIR.mkdir(parents=True, exist_ok=True)
+  return MODELS_DIR / f"{model_id}_remine_off.json"
+
+
 def model_mining_baseline_report_path(model_id: str) -> Path:
   """Walk-forward with baseline mining space (same KB/train/OOS as model)."""
   MODELS_DIR.mkdir(parents=True, exist_ok=True)
@@ -234,6 +240,19 @@ def save_model_kb_off_report(model_id: str, report: dict):
   _write_json(model_kb_off_report_path(model_id), payload)
 
 
+def save_model_remine_off_report(model_id: str, report: dict):
+  payload = dict(report)
+  cfg = dict(payload.get("config") or {})
+  cfg["trade_model_id"] = model_id
+  cfg["remine_each_week"] = False
+  cfg["remine_mode"] = "freeze_first"
+  cfg["remine_compare_role"] = "remine_off_baseline"
+  payload["config"] = cfg
+  # Do not overwrite weekly remine schedule from a freeze run.
+  payload.pop("schedule_weekly", None)
+  _write_json(model_remine_off_report_path(model_id), payload)
+
+
 def save_model_mining_baseline_report(model_id: str, report: dict):
   payload = dict(report)
   cfg = dict(payload.get("config") or {})
@@ -255,6 +274,13 @@ def load_model_kb_off_report(model_id: str | None = None) -> dict | None:
   if not mid:
     return None
   return _read_json(model_kb_off_report_path(mid))
+
+
+def load_model_remine_off_report(model_id: str | None = None) -> dict | None:
+  mid = model_id or load_active_model_id()
+  if not mid:
+    return None
+  return _read_json(model_remine_off_report_path(mid))
 
 
 def load_model_mining_baseline_report(model_id: str | None = None) -> dict | None:
@@ -630,7 +656,7 @@ def _model_id_from_artifact_name(name: str) -> str | None:
   if not name.endswith(".json"):
     return None
   stem = name[:-5]
-  for suffix in ("_kb_off", "_mining_baseline", "_kb_pin", "_live_weeks", "_schedule"):
+  for suffix in ("_kb_off", "_remine_off", "_mining_baseline", "_kb_pin", "_live_weeks", "_schedule"):
     if stem.endswith(suffix):
       return stem[: -len(suffix)]
   return stem
@@ -640,6 +666,7 @@ def model_artifact_paths(model_id: str) -> list[Path]:
   paths = [
     model_report_path(model_id),
     model_kb_off_report_path(model_id),
+    model_remine_off_report_path(model_id),
     model_mining_baseline_report_path(model_id),
   ]
   try:

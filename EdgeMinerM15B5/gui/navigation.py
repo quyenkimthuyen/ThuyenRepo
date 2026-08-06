@@ -36,6 +36,11 @@ NAV_ITEMS: tuple[NavItem, ...] = (
     ":material/compare_arrows:",
   ),
   NavItem(
+    "live_trade", "Live Trade", "live_trade_dash",
+    "Theo dõi Live hàng ngày · KPI · trạng thái",
+    ":material/monitoring:",
+  ),
+  NavItem(
     "mt5_bridge", "MT5 Bridge", "mt5_bridge",
     "",
     ":material/hub:",
@@ -88,6 +93,9 @@ LEGACY_ALIASES: dict[str, str] = {
   "Trade Models": "models",
   "Compare Trade": "compare_trade",
   "compare": "compare_trade",
+  "Live Trade": "live_trade",
+  "live": "live_trade",
+  "live_trade": "live_trade",
   "Usage Guide": "guide",
   "Cài đặt": "learning",
   "Settings": "learning",

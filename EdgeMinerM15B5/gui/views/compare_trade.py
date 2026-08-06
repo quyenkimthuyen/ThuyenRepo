@@ -23,12 +23,37 @@ def _parse_ui_date(v):
     return None
 
 
+def _mt5_cache_range() -> tuple[date | None, date | None]:
+  """Available broker dates in MT5 M15 cache (Compare source)."""
+  try:
+    from mt5_bridge.history_sync import load_mt5_cache
+
+    df = load_mt5_cache()
+    if df is None or df.empty:
+      return None, None
+    return df.index[0].date(), df.index[-1].date()
+  except Exception:
+    return None, None
+
+
 def render():
   render_page_header(ALL_ITEMS["compare_trade"], show_profile=False)
   st.caption(
     "Chạy nhiều Trade Model song song trên lịch sử MT5 cache — "
     "không dùng EA. Live / Simulate 1-model giữ nguyên ở MT5 Bridge."
   )
+
+  cache_from, cache_to = _mt5_cache_range()
+  if cache_from and cache_to:
+    st.info(
+      f"MT5 M15 cache: **{cache_from} → {cache_to}**. "
+      "Compare chỉ chạy trong khoảng này "
+      "(đồng bộ thêm history ở MT5 Bridge nếu cần năm cũ hơn)."
+    )
+  else:
+    st.warning(
+      "Chưa có MT5 M15 cache — Start Bridge / sync history trước khi Compare."
+    )
 
   from gui.long_task_background import get_task_status, is_task_running, start_job
   from gui.long_task_ui import render_task_status, task_blocks_ui
@@ -143,6 +168,11 @@ def render():
       st.error("Đến ngày phải ≥ Từ ngày")
     elif len(model_ids) < 2:
       st.error("Chọn ít nhất 2 model")
+    elif cache_from and cache_to and (d_to < cache_from or d_from > cache_to):
+      st.error(
+        f"Khoảng {d_from} → {d_to} nằm ngoài MT5 M15 cache "
+        f"({cache_from} → {cache_to}). Đổi ngày hoặc sync thêm history."
+      )
     else:
       set_preference("compare.from", d_from)
       set_preference("compare.to", d_to)
