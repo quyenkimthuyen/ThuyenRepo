@@ -43,3 +43,25 @@ def test_exact_match_accepts_current_bar_only():
   }
   assert _exact_bar_time_match("2026.06.05 10:00", decision) is True
   assert _exact_bar_time_match("2026.06.05 11:00", decision) is False
+
+
+def test_live_buy_schema_only_matches_exact_bar_time():
+  """Live WaitDecisionForBar + OpenFromDecision contract (file side)."""
+  decision = {
+    "action": "BUY",
+    "signal_id": "sig_live_schema_1",
+    "bar_time": "2026.03.10 10:00",
+    "expires_bar_time": "2026.03.10 10:15",
+    "entry": 1.1000,
+    "sl": 1.0990,
+    "tp": 1.1020,
+    "magic": 20260724,
+    "model_id": "tm_live_pipeline",
+  }
+  assert str(decision["action"]).upper() == "BUY"
+  assert float(decision["sl"]) > 0 and float(decision["tp"]) > 0
+  assert decision["signal_id"]
+  assert _exact_bar_time_match("2026.03.10 10:00", decision) is True
+  # Next M15 bar must not accept this decision (would open 1 bar late)
+  assert _exact_bar_time_match("2026.03.10 10:15", decision) is False
+  assert _mql_string_find_match("2026.03.10 10:15", decision) is True  # documents old bug
