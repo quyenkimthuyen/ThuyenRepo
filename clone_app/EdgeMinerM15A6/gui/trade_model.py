@@ -185,6 +185,12 @@ def model_kb_off_report_path(model_id: str) -> Path:
   return MODELS_DIR / f"{model_id}_kb_off.json"
 
 
+def model_remine_off_report_path(model_id: str) -> Path:
+  """Walk-forward with strategy frozen after first OOS week (Remine OFF)."""
+  MODELS_DIR.mkdir(parents=True, exist_ok=True)
+  return MODELS_DIR / f"{model_id}_remine_off.json"
+
+
 def model_mining_baseline_report_path(model_id: str) -> Path:
   """Walk-forward with baseline mining space (same KB/train/OOS as model)."""
   MODELS_DIR.mkdir(parents=True, exist_ok=True)
@@ -234,6 +240,19 @@ def save_model_kb_off_report(model_id: str, report: dict):
   _write_json(model_kb_off_report_path(model_id), payload)
 
 
+def save_model_remine_off_report(model_id: str, report: dict):
+  payload = dict(report)
+  cfg = dict(payload.get("config") or {})
+  cfg["trade_model_id"] = model_id
+  cfg["remine_each_week"] = False
+  cfg["remine_mode"] = "freeze_first"
+  cfg["remine_compare_role"] = "remine_off_baseline"
+  payload["config"] = cfg
+  # Do not overwrite weekly remine schedule from a freeze run.
+  payload.pop("schedule_weekly", None)
+  _write_json(model_remine_off_report_path(model_id), payload)
+
+
 def save_model_mining_baseline_report(model_id: str, report: dict):
   payload = dict(report)
   cfg = dict(payload.get("config") or {})
@@ -255,6 +274,13 @@ def load_model_kb_off_report(model_id: str | None = None) -> dict | None:
   if not mid:
     return None
   return _read_json(model_kb_off_report_path(mid))
+
+
+def load_model_remine_off_report(model_id: str | None = None) -> dict | None:
+  mid = model_id or load_active_model_id()
+  if not mid:
+    return None
+  return _read_json(model_remine_off_report_path(mid))
 
 
 def load_model_mining_baseline_report(model_id: str | None = None) -> dict | None:
@@ -446,17 +472,65 @@ def find_model_by_label(label: str | None) -> dict | None:
   return None
 
 
-def _unique_label(desired: str) -> str:
+def _unique_label(desired: str, *, exclude_id: str | None = None) -> str:
   """Avoid identical display names: Best 3m, Best 3m (2), …"""
   base = (desired or "Trade model").strip() or "Trade model"
-  existing = {(m.get("label") or "").strip().lower() for m in list_trade_models()}
-  existing |= {format_model_label(m).strip().lower() for m in list_trade_models()}
+  existing: set[str] = set()
+  for m in list_trade_models():
+    if exclude_id and m.get("id") == exclude_id:
+      continue
+    existing.add((m.get("label") or "").strip().lower())
+    existing.add(format_model_label(m).strip().lower())
   if base.lower() not in existing:
     return base
   n = 2
   while f"{base} ({n})".lower() in existing:
     n += 1
   return f"{base} ({n})"
+
+
+def rename_trade_model(model_id: str, new_label: str) -> dict | None:
+  """Set a custom display label. Keeps ``id`` stable for Live/Sim/journal links."""
+  desired = (new_label or "").strip()
+  if not desired:
+    raise ValueError("Tên Trade Model không được trống.")
+  store = load_models_store()
+  target = None
+  for m in store.get("models") or []:
+    if m.get("id") == model_id:
+      target = m
+      break
+  if target is None:
+    return None
+  name = _unique_label(desired, exclude_id=model_id)
+  target["label"] = name
+  target["label_custom"] = True
+  save_models_store(store)
+  return target
+
+
+def reset_trade_model_label(model_id: str) -> dict | None:
+  """Clear custom name and restore auto label from train/KB/OOS fields."""
+  store = load_models_store()
+  target = None
+  for m in store.get("models") or []:
+    if m.get("id") == model_id:
+      target = m
+      break
+  if target is None:
+    return None
+  auto = build_trade_profile_label({
+    "train_weeks": target.get("train_weeks"),
+    "use_kb": target.get("use_kb", True),
+    "kb_profile": target.get("kb_profile"),
+    "kb_snapshot": target.get("kb_snapshot"),
+    "oos_from": target.get("oos_from"),
+    "oos_to": target.get("oos_to"),
+  })
+  target["label"] = _unique_label(auto, exclude_id=model_id)
+  target["label_custom"] = False
+  save_models_store(store)
+  return target
 
 
 def create_trade_model(
@@ -630,7 +704,7 @@ def _model_id_from_artifact_name(name: str) -> str | None:
   if not name.endswith(".json"):
     return None
   stem = name[:-5]
-  for suffix in ("_kb_off", "_mining_baseline", "_kb_pin", "_live_weeks", "_schedule"):
+  for suffix in ("_kb_off", "_remine_off", "_mining_baseline", "_kb_pin", "_live_weeks", "_schedule"):
     if stem.endswith(suffix):
       return stem[: -len(suffix)]
   return stem
@@ -640,6 +714,7 @@ def model_artifact_paths(model_id: str) -> list[Path]:
   paths = [
     model_report_path(model_id),
     model_kb_off_report_path(model_id),
+    model_remine_off_report_path(model_id),
     model_mining_baseline_report_path(model_id),
   ]
   try:

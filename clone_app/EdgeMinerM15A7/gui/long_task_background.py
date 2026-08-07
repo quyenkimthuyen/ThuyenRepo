@@ -19,6 +19,7 @@ JOB_LABELS = {
   "epoch_sweep": "Kiểm chứng từng vòng học",
   "train_window": "So sánh cửa sổ học",
   "model_health": "Sức khỏe Trade Model (KB ON/OFF)",
+  "remine_health": "Sức khỏe Remine ON/OFF",
   "mining_space_health": "Mining space vs baseline miner",
   "kb_then_grid": "Pipeline: học KB → Grid Search",
   "compare_trade": "Compare Trade (multi-model)",
@@ -314,6 +315,110 @@ def _worker_model_health(state: dict):
     "kb_off_total_r": off_r,
     "conditions_fp": fp,
     "conditions": describe_strategy_conditions(run_params),
+  })
+
+
+def _worker_remine_health(state: dict):
+  """Remine ON (weekly mine) vs Remine OFF (freeze first-week strategy)."""
+  from gui.services import execute_backtest
+  from gui.trade_model import (
+    get_model_by_id,
+    save_model_remine_off_report,
+    save_model_report,
+  )
+
+  p = state["params"]
+  model_id = p["model_id"]
+  model = get_model_by_id(model_id)
+  if not model:
+    raise ValueError(f"Trade model `{model_id}` không tồn tại.")
+
+  start_date = p.get("start_date") or "2022-01-01"
+  train_weeks = int(p.get("train_weeks") or model.get("train_weeks") or 6)
+  spread = float(p.get("spread_pips") or model.get("spread_pips") or 1.0)
+  slip = float(p.get("slippage_pips") or model.get("slippage_pips") or 0.3)
+  oos_from = p.get("oos_from") or model.get("oos_from")
+  oos_to = p.get("oos_to") or model.get("oos_to")
+  kb_profile = p.get("kb_profile") or model.get("kb_profile")
+  kb_snapshot = p.get("kb_snapshot", model.get("kb_snapshot"))
+  refresh_on = bool(p.get("refresh_remine_on", False))
+  use_kb = bool(model.get("use_kb", True))
+  feature_profile = (
+    p.get("feature_profile")
+    or model.get("feature_profile")
+    or "current"
+  )
+  mining_search_space = (
+    p.get("mining_search_space")
+    if "mining_search_space" in p
+    else model.get("mining_search_space")
+  )
+
+  report_on = None
+  if refresh_on:
+    def on_prog_on(step, total, _ws):
+      _check_cancel()
+      _update_progress(
+        state, step, max(total * 2, 1), f"Remine ON · WF {step}/{total}",
+      )
+
+    report_on = execute_backtest(
+      use_learning=use_kb,
+      train_weeks=train_weeks,
+      start_date=start_date,
+      spread_pips=spread,
+      slippage_pips=slip,
+      holdout_months=0,
+      kb_profile=kb_profile,
+      kb_snapshot=kb_snapshot,
+      kb_pin_path=model.get("kb_pin_path"),
+      oos_from=oos_from,
+      oos_to=oos_to,
+      feature_profile=feature_profile,
+      mining_search_space=mining_search_space,
+      remine_each_week=True,
+      on_progress=on_prog_on,
+      archive=False,
+      sync_workspace=False,
+    )
+    save_model_report(model_id, report_on)
+
+  def on_prog_off(step, total, _ws):
+    _check_cancel()
+    base = total if refresh_on else 0
+    _update_progress(
+      state, base + step, max((total * 2) if refresh_on else total, 1),
+      f"Remine OFF · WF {step}/{total}",
+    )
+
+  report_off = execute_backtest(
+    use_learning=use_kb,
+    train_weeks=train_weeks,
+    start_date=start_date,
+    spread_pips=spread,
+    slippage_pips=slip,
+    holdout_months=0,
+    kb_profile=kb_profile,
+    kb_snapshot=kb_snapshot,
+    kb_pin_path=model.get("kb_pin_path"),
+    oos_from=oos_from,
+    oos_to=oos_to,
+    feature_profile=feature_profile,
+    mining_search_space=mining_search_space,
+    remine_each_week=False,
+    on_progress=on_prog_off,
+    archive=False,
+    sync_workspace=False,
+  )
+  save_model_remine_off_report(model_id, report_off)
+
+  on_r = (report_on or {}).get("overall_oos", {}).get("total_r") if report_on else None
+  off_r = (report_off.get("overall_oos") or {}).get("total_r")
+  _finish(state, status="completed", result={
+    "model_id": model_id,
+    "remine_on_total_r": on_r,
+    "remine_off_total_r": off_r,
+    "remine_mode_off": "freeze_first",
   })
 
 
@@ -639,7 +744,6 @@ def _worker_kb_then_grid(state: dict):
   })
 
 
-
 def _worker_compare_trade(state: dict):
   """Multi-model history compare — no EA, MT5 cache + Python paper fills."""
   import os
@@ -691,10 +795,10 @@ def _worker_compare_trade(state: dict):
   })
 
 
-
 _DISPATCH = {
   "backtest": _worker_backtest,
   "model_health": _worker_model_health,
+  "remine_health": _worker_remine_health,
   "mining_space_health": _worker_mining_space_health,
   "learning": _worker_learning,
   "era_learn": _worker_era_learn,

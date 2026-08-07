@@ -27,10 +27,105 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = ROOT / "data"
 MT5_CACHE_PATH = DATA_DIR / "mt5_eurusd_m15.parquet"
 MT5_META_PATH = DATA_DIR / "mt5_eurusd_m15_meta.json"
+DATA_START_CONFIG_PATH = DATA_DIR / "data_start.json"
 BROKER_TIMEZONE = os.environ.get("EDGEMINER_BROKER_TIMEZONE", "Europe/Helsinki")
-DATA_START_BROKER = "2025-01-01 00:00"
+# Inclusive lower bound for MT5 M15 cache / history export (broker wall-clock).
+# Priority: EDGEMINER_DATA_START env → data/data_start.json → default.
+DEFAULT_DATA_START = "2024-01-01 00:00"
 DEFAULT_CHUNK_SIZE = 750
 _store_lock = threading.RLock()
+
+
+def normalize_data_start(value: str | None) -> str:
+  """Normalize to ``YYYY-MM-DD HH:MM`` (broker wall-clock)."""
+  raw = str(value or "").strip().replace(".", "-")
+  if not raw:
+    raise ValueError("data start trống")
+  ts = pd.Timestamp(raw)
+  if pd.isna(ts):
+    raise ValueError(f"data start không hợp lệ: {value!r}")
+  return ts.strftime("%Y-%m-%d %H:%M")
+
+
+def _read_data_start_file() -> str | None:
+  data = read_json(DATA_START_CONFIG_PATH)
+  if not isinstance(data, dict):
+    return None
+  raw = data.get("data_start") or data.get("EDGEMINER_DATA_START")
+  if not raw:
+    return None
+  try:
+    return normalize_data_start(str(raw))
+  except (TypeError, ValueError):
+    return None
+
+
+def get_data_start_broker() -> str:
+  """Effective lower bound for cache / EA history export."""
+  env = os.environ.get("EDGEMINER_DATA_START")
+  if env and str(env).strip():
+    try:
+      return normalize_data_start(env)
+    except (TypeError, ValueError):
+      pass
+  from_file = _read_data_start_file()
+  if from_file:
+    return from_file
+  return DEFAULT_DATA_START
+
+
+def data_start_source() -> str:
+  """Where the effective data start comes from: ``env`` | ``file`` | ``default``."""
+  env = os.environ.get("EDGEMINER_DATA_START")
+  if env and str(env).strip():
+    try:
+      normalize_data_start(env)
+      return "env"
+    except (TypeError, ValueError):
+      pass
+  if _read_data_start_file():
+    return "file"
+  return "default"
+
+
+def set_data_start_broker(
+  value: str,
+  *,
+  sync: bool = True,
+  bridge_dir: Path | None = None,
+) -> dict:
+  """Persist data start to ``data/data_start.json`` and optionally force history sync.
+
+  Env ``EDGEMINER_DATA_START`` still wins for reads while set; clearing it lets
+  the file take effect (including in the already-running bridge service).
+  """
+  normalized = normalize_data_start(value)
+  DATA_DIR.mkdir(parents=True, exist_ok=True)
+  atomic_write_json(DATA_START_CONFIG_PATH, {
+    "data_start": normalized,
+    "updated_at": utc_now_iso(),
+  })
+  # Keep current process consistent even if env was previously unset.
+  result: dict = {
+    "data_start": normalized,
+    "source": data_start_source(),
+    "env_overrides": data_start_source() == "env",
+    "effective": get_data_start_broker(),
+    "sync": None,
+  }
+  if sync:
+    result["sync"] = start_history_sync(bridge_dir, force=True)
+  return result
+
+
+# Backward-compatible alias (prefer get_data_start_broker() for live reads).
+DATA_START_BROKER = get_data_start_broker()
+
+
+def data_start_mt5_wall() -> str:
+  """``from_time`` for EA history export (MT5 ``StringToTime`` format)."""
+  ts = pd.Timestamp(str(get_data_start_broker()).replace(".", "-"))
+  return ts.strftime("%Y.%m.%d %H:%M")
 
 
 def parse_broker_time(value) -> pd.Timestamp:
@@ -76,7 +171,7 @@ def normalize_mt5_bars(bars: list[dict]) -> pd.DataFrame:
     & (frame["Low"] <= frame[["Open", "Close", "High"]].min(axis=1))
   )
   frame = frame.loc[valid].dropna()
-  return frame.loc[frame.index >= parse_broker_time(DATA_START_BROKER)]
+  return frame.loc[frame.index >= parse_broker_time(get_data_start_broker())]
 
 
 def load_mt5_cache() -> pd.DataFrame | None:
@@ -85,7 +180,7 @@ def load_mt5_cache() -> pd.DataFrame | None:
   frame = pd.read_parquet(MT5_CACHE_PATH)
   frame.index = pd.to_datetime(frame.index, utc=True).tz_convert(None)
   frame = frame.sort_index()[~frame.index.duplicated(keep="last")]
-  return frame.loc[frame.index >= parse_broker_time(DATA_START_BROKER)]
+  return frame.loc[frame.index >= parse_broker_time(get_data_start_broker())]
 
 
 def _write_cache(frame: pd.DataFrame, source: dict) -> None:
@@ -143,7 +238,7 @@ def _new_request(offset: int, bridge_dir: Path, chunk_size: int) -> dict:
     "action": "export_m15_history",
     "symbol": "EURUSD",
     "period": "M15",
-    "from_time": "2025.01.01 00:00",
+    "from_time": data_start_mt5_wall(),
     "offset": int(offset),
     "chunk_size": int(chunk_size),
     "requested_at": utc_now_iso(),

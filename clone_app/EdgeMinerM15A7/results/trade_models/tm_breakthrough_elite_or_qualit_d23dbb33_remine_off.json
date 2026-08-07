@@ -1,0 +1,877 @@
+{
+  "data_source": {
+    "source": "mt5_ea",
+    "broker": "XMGlobal-MT5 7",
+    "pair": "EURUSD",
+    "timeframe": "M15",
+    "broker_timezone": "Europe/Helsinki",
+    "fingerprint": "be09f16ea8d132f267160c83a42fbbc4672682aff7680833962467f82148cd08",
+    "start": "2025-01-02 06:00:00",
+    "end": "2026-08-05 12:00:00",
+    "bars": 39246
+  },
+  "data_range": {
+    "start": "2025-01-02",
+    "end": "2026-08-05",
+    "bars": 39246
+  },
+  "oos_start": "2026-03-30",
+  "config": {
+    "version": "adaptive_miner_v4",
+    "train_weeks": 6,
+    "target_trades_per_week": 10.0,
+    "pair": "EUR/USD",
+    "tf": "M15",
+    "use_learning_kb": true,
+    "kb_profile": "era_2025_2026_6thang",
+    "kb_snapshot": 3,
+    "kb_validation": {
+      "ok": true,
+      "message": "KB pin `tm_breakthrough_elite_or_qualit_d23dbb33_kb_pin.json`",
+      "profile_id": "era_2025_2026_6thang",
+      "pinned": true
+    },
+    "oos_from": "2026-04-01",
+    "oos_to": "2026-12-31",
+    "spread_pips": 1.0,
+    "slippage_pips": 0.3,
+    "holdout_months": 0,
+    "risk_pct_per_trade": 1.0,
+    "data_fingerprint": "be09f16ea8d132f267160c83a42fbbc4672682aff7680833962467f82148cd08",
+    "feature_profile": "current",
+    "mining_search_space": {
+      "rr_ratios": [
+        3.2,
+        3.5,
+        4.0
+      ],
+      "atr_multipliers": [
+        0.9,
+        1.05
+      ],
+      "max_hold_bars": [
+        96
+      ],
+      "min_bars_between": [
+        12
+      ],
+      "session_ranges": [
+        [
+          7,
+          20
+        ]
+      ],
+      "session_filters": [
+        true
+      ],
+      "score_thresholds": [
+        0.6,
+        1.0,
+        1.6,
+        2.2
+      ],
+      "min_rules_matches": [
+        1,
+        2
+      ],
+      "ml_probability_thresholds": [
+        0.36,
+        0.4,
+        0.44,
+        0.48
+      ],
+      "min_feature_samples": 30,
+      "min_threshold_samples": 10,
+      "min_binary_samples": 8,
+      "include_session_regime_rules": false,
+      "target_trades_per_week": 3.5,
+      "drawdown_penalty": 0.5,
+      "loss_streak_penalty": 1.0,
+      "selection_mode": "elite_frontier",
+      "edge_surgery": false,
+      "edge_surgery_min_hour_trades": 3,
+      "edge_surgery_max_hour_wr": 0.42,
+      "edge_surgery_dominant_side_ratio": 0.7,
+      "edge_surgery_hours": true,
+      "anti_chase": true,
+      "anti_chase_mode": "fixed",
+      "anti_chase_fixed_rsi": 58.0,
+      "anti_chase_fixed_vwap": 1.5,
+      "anti_chase_rsi_caps": [
+        60.0,
+        62.0,
+        65.0,
+        68.0,
+        100.0
+      ],
+      "anti_chase_min_tpw": 5.0,
+      "anti_chase_use_vwap": true,
+      "anti_chase_vwap_caps": [
+        1.5,
+        2.0,
+        2.5,
+        99.0
+      ],
+      "anti_chase_logic": "or",
+      "exit_modes_full_only": true
+    },
+    "remine_each_week": false,
+    "remine_mode": "freeze_first",
+    "trade_model_id": "tm_breakthrough_elite_or_qualit_d23dbb33",
+    "remine_compare_role": "remine_off_baseline"
+  },
+  "overall_oos": {
+    "n_trades": 38,
+    "trades_per_week": 2.11,
+    "win_rate_pct": 73.68,
+    "avg_rr": 2.58,
+    "profit_factor": 6.5,
+    "total_pips": 324.11,
+    "total_r": 72.557,
+    "max_drawdown_r": 1.21,
+    "max_win_streak": 7,
+    "max_loss_streak": 2,
+    "risk_of_ruin_pct": 0.0
+  },
+  "last_1_year": {
+    "n_trades": 38,
+    "trades_per_week": 2.11,
+    "win_rate_pct": 73.68,
+    "avg_rr": 2.58,
+    "profit_factor": 6.5,
+    "total_pips": 324.11,
+    "total_r": 72.557,
+    "max_drawdown_r": 1.21,
+    "max_win_streak": 7,
+    "max_loss_streak": 2,
+    "risk_of_ruin_pct": 0.0
+  },
+  "constraints_met": {
+    "win_rate_above_60": true,
+    "rr_above_2": true,
+    "profitable": true,
+    "trades_per_week_target": false
+  },
+  "last_strategy": {
+    "name": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+    "exit_mode": "full",
+    "ml_prob_min": 0.36,
+    "rr": 3.2,
+    "atr_mult": 0.9,
+    "max_hold_bars": 96,
+    "min_bars_between": 12,
+    "session_filter": true,
+    "session_start_hour": 7,
+    "session_end_hour": 20,
+    "long_rules": [
+      {
+        "feat": "range_buy",
+        "op": "eq1",
+        "thr": 0.5,
+        "w": 0.159
+      },
+      {
+        "feat": "adx",
+        "op": "lt",
+        "thr": 16.6726,
+        "w": 0.028
+      }
+    ],
+    "short_rules": [
+      {
+        "feat": "swing_strength",
+        "op": "gt",
+        "thr": 0.8238,
+        "w": 1.887
+      },
+      {
+        "feat": "rsi",
+        "op": "gt",
+        "thr": 58.4489,
+        "w": 4.544
+      },
+      {
+        "feat": "ema_slope_8",
+        "op": "gt",
+        "thr": 0.1533,
+        "w": 3.083
+      }
+    ]
+  },
+  "weekly_log": [
+    {
+      "week_start": "2026-04-06",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 0,
+      "oos_wr": 0.0,
+      "oos_pips": 0.0,
+      "oos_r": 0.0
+    },
+    {
+      "week_start": "2026-04-13",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 2,
+      "oos_wr": 0.0,
+      "oos_pips": -10.9,
+      "oos_r": -2.38
+    },
+    {
+      "week_start": "2026-04-20",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 3,
+      "oos_wr": 1.0,
+      "oos_pips": 44.3,
+      "oos_r": 9.05
+    },
+    {
+      "week_start": "2026-04-27",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 2,
+      "oos_wr": 0.5,
+      "oos_pips": 3.3,
+      "oos_r": 1.7
+    },
+    {
+      "week_start": "2026-05-04",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 1,
+      "oos_wr": 1.0,
+      "oos_pips": 22.1,
+      "oos_r": 3.09
+    },
+    {
+      "week_start": "2026-05-11",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 6,
+      "oos_wr": 0.667,
+      "oos_pips": 43.4,
+      "oos_r": 9.8
+    },
+    {
+      "week_start": "2026-05-18",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 3,
+      "oos_wr": 1.0,
+      "oos_pips": 41.8,
+      "oos_r": 9.06
+    },
+    {
+      "week_start": "2026-05-25",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 2,
+      "oos_wr": 1.0,
+      "oos_pips": 27.1,
+      "oos_r": 5.98
+    },
+    {
+      "week_start": "2026-06-01",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 3,
+      "oos_wr": 0.333,
+      "oos_pips": -1.1,
+      "oos_r": 0.74
+    },
+    {
+      "week_start": "2026-06-08",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 0,
+      "oos_wr": 0.0,
+      "oos_pips": 0.0,
+      "oos_r": 0.0
+    },
+    {
+      "week_start": "2026-06-15",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 3,
+      "oos_wr": 1.0,
+      "oos_pips": 47.7,
+      "oos_r": 9.06
+    },
+    {
+      "week_start": "2026-06-22",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 3,
+      "oos_wr": 1.0,
+      "oos_pips": 39.3,
+      "oos_r": 9.02
+    },
+    {
+      "week_start": "2026-06-29",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 1,
+      "oos_wr": 1.0,
+      "oos_pips": 8.1,
+      "oos_r": 2.91
+    },
+    {
+      "week_start": "2026-07-06",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 3,
+      "oos_wr": 0.667,
+      "oos_pips": 21.3,
+      "oos_r": 4.87
+    },
+    {
+      "week_start": "2026-07-13",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 2,
+      "oos_wr": 0.5,
+      "oos_pips": 8.6,
+      "oos_r": 1.81
+    },
+    {
+      "week_start": "2026-07-20",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 2,
+      "oos_wr": 0.5,
+      "oos_pips": 4.7,
+      "oos_r": 1.86
+    },
+    {
+      "week_start": "2026-07-27",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 2,
+      "oos_wr": 1.0,
+      "oos_pips": 24.4,
+      "oos_r": 5.99
+    },
+    {
+      "week_start": "2026-08-03",
+      "strategy": "Forge RR3 full 2L3S rsi+swing #4520|chase:fixed_or_rsi<58+vwap<1.5",
+      "score_thr": 0.6,
+      "long_rules": 2,
+      "short_rules": 3,
+      "train_wr": 0.875,
+      "oos_trades": 0,
+      "oos_wr": 0.0,
+      "oos_pips": 0.0,
+      "oos_r": 0.0
+    }
+  ],
+  "trades": [
+    {
+      "entry": "2026-04-15 05:15:00",
+      "exit": "2026-04-15 06:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.17913,
+      "exit_px": 1.17953,
+      "sl": 1.17945,
+      "tp": 1.17811,
+      "pnl_pips": -4.0,
+      "r": -1.25,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-16 16:15:00",
+      "exit": "2026-04-17 08:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.17836,
+      "exit_px": 1.17905,
+      "sl": 1.17897,
+      "tp": 1.1764,
+      "pnl_pips": -6.9,
+      "r": -1.13,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-21 05:30:00",
+      "exit": "2026-04-21 07:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.17796,
+      "exit_px": 1.17712,
+      "sl": 1.17825,
+      "tp": 1.17704,
+      "pnl_pips": 8.4,
+      "r": 2.92,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-21 14:45:00",
+      "exit": "2026-04-21 15:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.17697,
+      "exit_px": 1.17537,
+      "sl": 1.1775,
+      "tp": 1.17529,
+      "pnl_pips": 16.0,
+      "r": 3.05,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-22 14:00:00",
+      "exit": "2026-04-22 14:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.17393,
+      "exit_px": 1.17194,
+      "sl": 1.17458,
+      "tp": 1.17186,
+      "pnl_pips": 19.9,
+      "r": 3.08,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-28 04:45:00",
+      "exit": "2026-04-28 05:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.17144,
+      "exit_px": 1.17065,
+      "sl": 1.17171,
+      "tp": 1.17057,
+      "pnl_pips": 7.9,
+      "r": 2.91,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-29 07:15:00",
+      "exit": "2026-04-29 11:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.17046,
+      "exit_px": 1.17092,
+      "sl": 1.17084,
+      "tp": 1.16923,
+      "pnl_pips": -4.6,
+      "r": -1.21,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-04 13:45:00",
+      "exit": "2026-05-04 16:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.1714,
+      "exit_px": 1.16919,
+      "sl": 1.17211,
+      "tp": 1.16911,
+      "pnl_pips": 22.1,
+      "r": 3.09,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-12 06:00:00",
+      "exit": "2026-05-12 07:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.17606,
+      "exit_px": 1.17495,
+      "sl": 1.17643,
+      "tp": 1.17487,
+      "pnl_pips": 11.1,
+      "r": 2.99,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-12 16:15:00",
+      "exit": "2026-05-12 19:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.17355,
+      "exit_px": 1.17424,
+      "sl": 1.17416,
+      "tp": 1.1716,
+      "pnl_pips": -6.9,
+      "r": -1.13,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-13 11:45:00",
+      "exit": "2026-05-13 12:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.17153,
+      "exit_px": 1.17027,
+      "sl": 1.17195,
+      "tp": 1.17019,
+      "pnl_pips": 12.6,
+      "r": 3.01,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-13 16:30:00",
+      "exit": "2026-05-14 06:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.17146,
+      "exit_px": 1.17205,
+      "sl": 1.17197,
+      "tp": 1.16984,
+      "pnl_pips": -5.9,
+      "r": -1.16,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-14 17:45:00",
+      "exit": "2026-05-14 23:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.16783,
+      "exit_px": 1.16632,
+      "sl": 1.16833,
+      "tp": 1.16624,
+      "pnl_pips": 15.1,
+      "r": 3.04,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-15 17:15:00",
+      "exit": "2026-05-17 21:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.16322,
+      "exit_px": 1.16149,
+      "sl": 1.16379,
+      "tp": 1.16141,
+      "pnl_pips": 17.3,
+      "r": 3.06,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-19 06:30:00",
+      "exit": "2026-05-19 08:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.16412,
+      "exit_px": 1.16294,
+      "sl": 1.16451,
+      "tp": 1.16286,
+      "pnl_pips": 11.8,
+      "r": 3.0,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-19 17:15:00",
+      "exit": "2026-05-20 05:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.161,
+      "exit_px": 1.15924,
+      "sl": 1.16157,
+      "tp": 1.15916,
+      "pnl_pips": 17.6,
+      "r": 3.06,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-20 06:30:00",
+      "exit": "2026-05-20 08:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.16032,
+      "exit_px": 1.15907,
+      "sl": 1.16074,
+      "tp": 1.15899,
+      "pnl_pips": 12.5,
+      "r": 3.01,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-26 06:45:00",
+      "exit": "2026-05-26 07:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.16345,
+      "exit_px": 1.16267,
+      "sl": 1.16372,
+      "tp": 1.16259,
+      "pnl_pips": 7.8,
+      "r": 2.9,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-27 14:15:00",
+      "exit": "2026-05-27 14:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.16466,
+      "exit_px": 1.16273,
+      "sl": 1.16529,
+      "tp": 1.16265,
+      "pnl_pips": 19.3,
+      "r": 3.07,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-01 17:45:00",
+      "exit": "2026-06-02 06:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.16337,
+      "exit_px": 1.16404,
+      "sl": 1.16396,
+      "tp": 1.16147,
+      "pnl_pips": -6.7,
+      "r": -1.14,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-03 07:45:00",
+      "exit": "2026-06-03 08:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.16201,
+      "exit_px": 1.16075,
+      "sl": 1.16243,
+      "tp": 1.16067,
+      "pnl_pips": 12.6,
+      "r": 3.01,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-03 15:00:00",
+      "exit": "2026-06-04 09:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.16108,
+      "exit_px": 1.16178,
+      "sl": 1.1617,
+      "tp": 1.1591,
+      "pnl_pips": -7.0,
+      "r": -1.13,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-17 07:15:00",
+      "exit": "2026-06-17 08:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.16122,
+      "exit_px": 1.16031,
+      "sl": 1.16153,
+      "tp": 1.16023,
+      "pnl_pips": 9.1,
+      "r": 2.94,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-17 13:15:00",
+      "exit": "2026-06-17 14:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.15992,
+      "exit_px": 1.15862,
+      "sl": 1.16035,
+      "tp": 1.15854,
+      "pnl_pips": 13.0,
+      "r": 3.01,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-18 15:00:00",
+      "exit": "2026-06-18 18:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.14847,
+      "exit_px": 1.14591,
+      "sl": 1.1493,
+      "tp": 1.14583,
+      "pnl_pips": 25.6,
+      "r": 3.1,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-22 05:45:00",
+      "exit": "2026-06-22 07:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.14591,
+      "exit_px": 1.14479,
+      "sl": 1.14629,
+      "tp": 1.14471,
+      "pnl_pips": 11.2,
+      "r": 2.99,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-22 10:15:00",
+      "exit": "2026-06-22 13:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.14596,
+      "exit_px": 1.14421,
+      "sl": 1.14653,
+      "tp": 1.14413,
+      "pnl_pips": 17.5,
+      "r": 3.06,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-24 06:15:00",
+      "exit": "2026-06-24 06:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.13721,
+      "exit_px": 1.13615,
+      "sl": 1.13757,
+      "tp": 1.13607,
+      "pnl_pips": 10.6,
+      "r": 2.98,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-07-01 05:45:00",
+      "exit": "2026-07-01 06:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.14083,
+      "exit_px": 1.14002,
+      "sl": 1.14111,
+      "tp": 1.13994,
+      "pnl_pips": 8.1,
+      "r": 2.91,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-07-06 13:30:00",
+      "exit": "2026-07-06 15:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.14187,
+      "exit_px": 1.14242,
+      "sl": 1.14234,
+      "tp": 1.14036,
+      "pnl_pips": -5.5,
+      "r": -1.17,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-07-07 18:00:00",
+      "exit": "2026-07-07 19:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.14264,
+      "exit_px": 1.14135,
+      "sl": 1.14307,
+      "tp": 1.14127,
+      "pnl_pips": 12.9,
+      "r": 3.01,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-07-10 12:15:00",
+      "exit": "2026-07-10 13:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.14337,
+      "exit_px": 1.14198,
+      "sl": 1.14383,
+      "tp": 1.1419,
+      "pnl_pips": 13.9,
+      "r": 3.03,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-07-13 04:30:00",
+      "exit": "2026-07-13 04:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.13996,
+      "exit_px": 1.14042,
+      "sl": 1.14034,
+      "tp": 1.13875,
+      "pnl_pips": -4.6,
+      "r": -1.21,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-07-16 12:00:00",
+      "exit": "2026-07-16 12:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.14668,
+      "exit_px": 1.14536,
+      "sl": 1.14712,
+      "tp": 1.14528,
+      "pnl_pips": 13.2,
+      "r": 3.02,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-07-21 17:30:00",
+      "exit": "2026-07-21 20:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.14085,
+      "exit_px": 1.1397,
+      "sl": 1.14123,
+      "tp": 1.13962,
+      "pnl_pips": 11.5,
+      "r": 2.99,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-07-23 17:00:00",
+      "exit": "2026-07-24 01:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.13782,
+      "exit_px": 1.1385,
+      "sl": 1.13842,
+      "tp": 1.13589,
+      "pnl_pips": -6.8,
+      "r": -1.13,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-07-27 16:30:00",
+      "exit": "2026-07-27 20:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.13805,
+      "exit_px": 1.13657,
+      "sl": 1.13854,
+      "tp": 1.13649,
+      "pnl_pips": 14.8,
+      "r": 3.04,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-07-28 07:15:00",
+      "exit": "2026-07-28 09:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.13713,
+      "exit_px": 1.13617,
+      "sl": 1.13746,
+      "tp": 1.13609,
+      "pnl_pips": 9.6,
+      "r": 2.95,
+      "reason": "tp"
+    }
+  ]
+}

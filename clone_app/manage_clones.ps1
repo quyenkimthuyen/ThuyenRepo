@@ -7,13 +7,13 @@
 #   .\manage_clones.ps1 Status
 #   .\manage_clones.ps1 Start -Apps A6,A8
 #   .\manage_clones.ps1 DeployEA
-#   .\manage_clones.ps1 DeployEA -EnableTrading
+#   .\manage_clones.ps1 DeployEA -NoEnableTrading
 #   .\manage_clones.ps1 DeployEA -NoAttach
-#   .\manage_clones.ps1 DeployEA -EnableTrading -Apps A6
+#   .\manage_clones.ps1 DeployEA -Apps A6
 #   .\manage_clones.ps1 DeployEA -Mode Both -Apps A7,A8
 #
-# DeployEA attaches EA to charts by default. Use -NoAttach to only compile/link.
-# Trading stays off unless -EnableTrading.
+# DeployEA attaches EA to charts and enables trading by default.
+# Use -NoAttach for compile/link only; -NoEnableTrading to attach with trading off.
 
 [CmdletBinding()]
 param(
@@ -32,10 +32,12 @@ param(
   [ValidateSet("Live", "HistoryFeed", "Both")]
   [string]$Mode = "Live",
 
-  # DeployEA attaches by default; -NoAttach = compile/link only.
+  # DeployEA attaches + enables trading by default.
+  # -NoAttach = compile/link only; -NoEnableTrading = attach with trading off.
   [switch]$Attach,
   [switch]$NoAttach,
   [switch]$EnableTrading,
+  [switch]$NoEnableTrading,
   [switch]$NoRestartTerminal,
   [switch]$SkipBridgeService,
 
@@ -116,6 +118,11 @@ function Invoke-CloneDeployEA {
   if ($Attach.IsPresent) { $doAttach = $true }
   if ($NoAttach.IsPresent) { $doAttach = $false }
 
+  # DeployEA defaults to EnableTrading (unless -NoEnableTrading).
+  $doTrading = -not $NoEnableTrading.IsPresent
+  if ($EnableTrading.IsPresent) { $doTrading = $true }
+  if ($NoEnableTrading.IsPresent) { $doTrading = $false }
+
   $params = @{
     Mode        = $Mode
     RiskPct     = $RiskPct
@@ -125,7 +132,7 @@ function Invoke-CloneDeployEA {
   if ($InstallPath) { $params.InstallPath = $InstallPath }
   if ($TerminalDataPath) { $params.TerminalDataPath = $TerminalDataPath }
   if ($doAttach) { $params.Attach = $true }
-  if ($EnableTrading) { $params.EnableTrading = $true }
+  if ($doTrading) { $params.EnableTrading = $true }
   if ($SkipBridgeService) { $params.SkipBridgeService = $true }
   if ($SuppressTerminalRestart -or $NoRestartTerminal) {
     $params.NoRestartTerminal = $true
@@ -134,7 +141,7 @@ function Invoke-CloneDeployEA {
   $noRestart = $params.ContainsKey("NoRestartTerminal")
   Write-Host ""
   Write-Host ("==== {0} ({1}) DeployEA Mode={2} Attach={3} Trading={4} NoRestart={5} ====" -f `
-    $Key, $meta.Folder, $Mode, $doAttach, [bool]$EnableTrading, $noRestart) -ForegroundColor Cyan
+    $Key, $meta.Folder, $Mode, $doAttach, $doTrading, $noRestart) -ForegroundColor Cyan
 
   & $deploy @params
 }

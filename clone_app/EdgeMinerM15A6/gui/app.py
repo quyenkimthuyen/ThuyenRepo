@@ -25,7 +25,7 @@ if str(ROOT) not in sys.path:
 
 from gui.views import (
   command_center, usage_guide,
-  learning_hub, mt5_bridge, trade_models_view, compare_trade,
+  learning_hub, mt5_bridge, trade_models_view, compare_trade, live_trade_dash,
 )
 from gui.navigation import (
   ALL_ITEMS, LEGACY_ALIASES, NAV_ITEMS,
@@ -38,6 +38,7 @@ from gui.workspace import ensure_profiles_loaded
 VIEW_MODULES = {
   "command_center": command_center,
   "mt5_bridge": mt5_bridge,
+  "live_trade_dash": live_trade_dash,
   "learning_hub": learning_hub,
   "trade_models_view": trade_models_view,
   "compare_trade": compare_trade,

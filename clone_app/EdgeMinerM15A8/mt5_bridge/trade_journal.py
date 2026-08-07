@@ -632,8 +632,40 @@ def compute_stats(
   }
 
 
-def clear_trades(bridge_dir: Path | None = None) -> None:
+def clear_decision(bridge_dir: Path | None = None) -> None:
+  """Wipe stale decision.json so desk/Parity don't show leftover tip.
+
+  Writes a neutral FLAT (no strategy/week/fp) so EA reads a safe file instead of
+  an old tip from a previous model — without requiring Start Live to sync.
+  """
+  from datetime import datetime, timezone
+
+  from mt5_bridge.protocol import atomic_write_json, decision_path, ensure_bridge_dir
+
+  bridge_dir = ensure_bridge_dir(bridge_dir)
+  now = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+  atomic_write_json(
+    decision_path(bridge_dir),
+    {
+      "action": "FLAT",
+      "reason": "cleared_journal",
+      "strategy_name": None,
+      "week_start": None,
+      "conditions_fp": None,
+      "model_id": None,
+      "updated_at": now,
+      "signal_id": None,
+      "entry": None,
+      "sl": None,
+      "tp": None,
+    },
+  )
+
+
+def clear_trades(bridge_dir: Path | None = None, *, clear_decision_file: bool = True) -> None:
   save_trades([], bridge_dir)
   path = fills_log_path(bridge_dir)
   if path.exists():
     path.unlink()
+  if clear_decision_file:
+    clear_decision(bridge_dir)

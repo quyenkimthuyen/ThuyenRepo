@@ -126,6 +126,31 @@ def monthly_from_weekly_log(weekly_log: list[dict] | None) -> pd.DataFrame:
   if not rows:
     return pd.DataFrame(columns=["month", "n_trades", "win_rate_pct", "total_r", "avg_r", "cum_r"])
   raw = pd.DataFrame(rows)
+  # Optional per-week WR → month WR weighted by trades
+  wr_rows = []
+  for w in weekly_log:
+    if "oos_r" not in w:
+      continue
+    ws = w.get("week_start") or w.get("week")
+    if not ws:
+      continue
+    wr = w.get("oos_wr")
+    if wr is None:
+      continue
+    try:
+      wr_f = float(wr)
+      # weekly_log stores oos_wr as fraction (0-1) in walk-forward
+      if wr_f <= 1.0:
+        wr_f *= 100.0
+      ts = pd.Timestamp(ws)
+      wr_rows.append({
+        "month": ts.to_period("M").strftime("%Y-%m"),
+        "oos_wr_pct": wr_f,
+        "oos_trades": int(w.get("oos_trades") or 0),
+      })
+    except Exception:
+      continue
+
   g = raw.groupby("month", sort=True).agg(
     total_r=("oos_r", "sum"),
     n_trades=("oos_trades", "sum"),
@@ -133,6 +158,15 @@ def monthly_from_weekly_log(weekly_log: list[dict] | None) -> pd.DataFrame:
   g["total_r"] = g["total_r"].round(3)
   g["n_trades"] = g["n_trades"].astype(int)
   g["win_rate_pct"] = None
+  if wr_rows:
+    wr_df = pd.DataFrame(wr_rows)
+    def _wavg(grp):
+      w = grp["oos_trades"].clip(lower=0)
+      if float(w.sum()) <= 0:
+        return round(float(grp["oos_wr_pct"].mean()), 1)
+      return round(float((grp["oos_wr_pct"] * w).sum() / w.sum()), 1)
+    wr_m = wr_df.groupby("month").apply(_wavg, include_groups=False)
+    g["win_rate_pct"] = g["month"].map(wr_m)
   g["avg_r"] = g.apply(
     lambda r: round(r["total_r"] / r["n_trades"], 3) if r["n_trades"] else None,
     axis=1,

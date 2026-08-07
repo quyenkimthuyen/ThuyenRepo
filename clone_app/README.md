@@ -20,13 +20,13 @@ cd C:\Work\ThuyenRepo\clone_app
 .\manage_clones.ps1 Restart
 .\manage_clones.ps1 Start -Apps A6,A8
 .\manage_clones.ps1 DeployEA
-.\manage_clones.ps1 DeployEA -EnableTrading
+.\manage_clones.ps1 DeployEA -NoEnableTrading
 .\manage_clones.ps1 DeployEA -NoAttach
-.\manage_clones.ps1 DeployEA -EnableTrading -Apps A6
+.\manage_clones.ps1 DeployEA -Apps A6
 .\manage_clones.ps1 DeployEA -Mode Both -Apps A7,A8
 ```
 
-`DeployEA` compiles, links bridge folders, **attaches EA to charts by default**, and starts each clone's bridge service. Use `-NoAttach` for compile/link only. Trading stays off unless `-EnableTrading`. When deploying multiple apps it uses `-NoRestartTerminal` until the last one (one MT5 restart at the end).
+`DeployEA` compiles, links bridge folders, **attaches EA to charts and enables trading by default**, and starts each clone's bridge service. Use `-NoAttach` for compile/link only; `-NoEnableTrading` to attach with trading off. When deploying multiple apps it uses `-NoRestartTerminal` until the last one (one MT5 restart at the end).
 
 Or from cmd: `manage_clones.cmd Start` / `manage_clones.cmd Restart A7` / `manage_clones.cmd DeployEA`.
 

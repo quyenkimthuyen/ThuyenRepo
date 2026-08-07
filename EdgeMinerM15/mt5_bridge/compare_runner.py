@@ -47,25 +47,111 @@ def load_run(run_id: str) -> dict | None:
     return None
 
 
-def load_latest_run() -> dict | None:
+def _latest_run_id() -> str | None:
   if not LATEST_PATH.exists():
-    # Fall back to newest run dir
-    if not COMPARE_ROOT.exists():
-      return None
-    dirs = sorted(
-      [p for p in COMPARE_ROOT.iterdir() if p.is_dir() and (p / "run.json").exists()],
-      key=lambda p: p.stat().st_mtime,
-      reverse=True,
-    )
-    if not dirs:
-      return None
-    return load_run(dirs[0].name)
+    return None
   try:
     meta = json.loads(LATEST_PATH.read_text(encoding="utf-8"))
   except Exception:
     return None
   rid = meta.get("run_id")
-  return load_run(rid) if rid else None
+  return str(rid) if rid else None
+
+
+def summarize_run(run: dict, *, is_latest: bool = False) -> dict[str, Any]:
+  """Compact row for history dropdown / archive list."""
+  per = run.get("per_model") or {}
+  best_r = None
+  for info in per.values():
+    if not isinstance(info, dict):
+      continue
+    stats = info.get("stats") or {}
+    tr = stats.get("total_r")
+    if tr is None:
+      continue
+    try:
+      val = float(tr)
+    except (TypeError, ValueError):
+      continue
+    best_r = val if best_r is None else max(best_r, val)
+  return {
+    "run_id": run.get("run_id"),
+    "status": run.get("status"),
+    "date_from": run.get("date_from"),
+    "date_to": run.get("date_to"),
+    "risk_pct": run.get("risk_pct"),
+    "n_models": len(run.get("model_ids") or []),
+    "model_ids": list(run.get("model_ids") or []),
+    "best_total_r": best_r,
+    "started_at": run.get("started_at"),
+    "finished_at": run.get("finished_at"),
+    "updated_at": run.get("updated_at") or run.get("finished_at") or run.get("started_at"),
+    "error": run.get("error"),
+    "is_latest": bool(is_latest),
+  }
+
+
+def list_compare_runs(*, limit: int = 50) -> list[dict[str, Any]]:
+  """Newest-first summaries of saved Compare Trade runs."""
+  if not COMPARE_ROOT.exists():
+    return []
+  latest_id = _latest_run_id()
+  dirs = [
+    p for p in COMPARE_ROOT.iterdir()
+    if p.is_dir() and (p / "run.json").exists()
+  ]
+  dirs.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+  out: list[dict[str, Any]] = []
+  for path in dirs[: max(1, int(limit))]:
+    run = load_run(path.name)
+    if not run:
+      continue
+    rid = str(run.get("run_id") or path.name)
+    out.append(summarize_run(run, is_latest=(rid == latest_id)))
+  return out
+
+
+def delete_compare_run(run_id: str) -> bool:
+  """Remove one compare run directory. Retargets latest.json if needed."""
+  import shutil
+
+  rid = str(run_id or "").strip()
+  if not rid or "/" in rid or "\\" in rid or rid in (".", ".."):
+    return False
+  path = COMPARE_ROOT / rid
+  if not path.is_dir() or not (path / "run.json").exists():
+    return False
+  was_latest = _latest_run_id() == rid
+  shutil.rmtree(path, ignore_errors=True)
+  if was_latest:
+    remaining = list_compare_runs(limit=1)
+    if remaining:
+      _write_json(LATEST_PATH, {
+        "run_id": remaining[0]["run_id"],
+        "updated_at": remaining[0].get("updated_at") or _now(),
+      })
+    elif LATEST_PATH.exists():
+      LATEST_PATH.unlink(missing_ok=True)
+  return True
+
+
+def load_latest_run() -> dict | None:
+  rid = _latest_run_id()
+  if rid:
+    run = load_run(rid)
+    if run:
+      return run
+  # Fall back to newest run dir
+  if not COMPARE_ROOT.exists():
+    return None
+  dirs = sorted(
+    [p for p in COMPARE_ROOT.iterdir() if p.is_dir() and (p / "run.json").exists()],
+    key=lambda p: p.stat().st_mtime,
+    reverse=True,
+  )
+  if not dirs:
+    return None
+  return load_run(dirs[0].name)
 
 
 def save_run(run: dict) -> dict:

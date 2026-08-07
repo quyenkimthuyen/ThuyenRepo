@@ -49,7 +49,8 @@ def test_chunk_protocol_resumes_until_done(tmp_path, monkeypatch):
   request = read_json(history_sync.history_request_path(bridge))
   assert request["action"] == "export_m15_history"
   assert request["period"] == "M15"
-  assert request["from_time"] == "2025.01.01 00:00"
+  assert request["from_time"] == history_sync.data_start_mt5_wall()
+  assert request["from_time"] == "2024.01.01 00:00"
   atomic_write_json(history_chunk_path(bridge), {
     "request_id": request["request_id"],
     "symbol": "EURUSD",
@@ -79,3 +80,32 @@ def test_chunk_protocol_resumes_until_done(tmp_path, monkeypatch):
   assert status["state"] == "completed"
   assert status["received_bars"] == 3
   assert len(history_sync.load_mt5_cache()) == 3
+
+
+def test_set_data_start_persists_and_drives_from_time(tmp_path, monkeypatch):
+  _temp_store(tmp_path, monkeypatch)
+  monkeypatch.setattr(history_sync, "DATA_START_CONFIG_PATH", tmp_path / "data_start.json")
+  monkeypatch.delenv("EDGEMINER_DATA_START", raising=False)
+  monkeypatch.setattr(history_sync, "DATA_DIR", tmp_path)
+
+  bridge = tmp_path / "bridge"
+  result = history_sync.set_data_start_broker("2023-01-01", sync=True, bridge_dir=bridge)
+  assert result["data_start"] == "2023-01-01 00:00"
+  assert result["effective"] == "2023-01-01 00:00"
+  assert history_sync.data_start_source() == "file"
+  assert history_sync.data_start_mt5_wall() == "2023.01.01 00:00"
+
+  request = read_json(history_sync.history_request_path(bridge))
+  assert request["from_time"] == "2023.01.01 00:00"
+  cfg = read_json(history_sync.DATA_START_CONFIG_PATH)
+  assert cfg["data_start"] == "2023-01-01 00:00"
+
+
+def test_env_overrides_data_start_file(tmp_path, monkeypatch):
+  _temp_store(tmp_path, monkeypatch)
+  monkeypatch.setattr(history_sync, "DATA_START_CONFIG_PATH", tmp_path / "data_start.json")
+  monkeypatch.setattr(history_sync, "DATA_DIR", tmp_path)
+  history_sync.set_data_start_broker("2023-01-01", sync=False)
+  monkeypatch.setenv("EDGEMINER_DATA_START", "2022-06-01 00:00")
+  assert history_sync.get_data_start_broker() == "2022-06-01 00:00"
+  assert history_sync.data_start_source() == "env"

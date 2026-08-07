@@ -87,6 +87,22 @@ def render_task_status(
         bits.append(f"{res['bars_done']}/{res.get('bars_total', '?')} bar")
       if bits:
         extra = " · " + " · ".join(bits)
+    elif status["job_type"] == "remine_health":
+      bits = []
+      if res.get("remine_on_total_r") is not None:
+        bits.append(f"ON **{res['remine_on_total_r']}R**")
+      if res.get("remine_off_total_r") is not None:
+        bits.append(f"OFF **{res['remine_off_total_r']}R**")
+      if bits:
+        extra = " · " + " · ".join(bits)
+    elif status["job_type"] == "model_health":
+      bits = []
+      if res.get("kb_on_total_r") is not None:
+        bits.append(f"KB ON **{res['kb_on_total_r']}R**")
+      if res.get("kb_off_total_r") is not None:
+        bits.append(f"OFF **{res['kb_off_total_r']}R**")
+      if bits:
+        extra = " · " + " · ".join(bits)
     c1, c2 = st.columns([5, 1])
     with c1:
       st.success(f"✅ Hoàn thành **{status['job_label']}**{extra}")

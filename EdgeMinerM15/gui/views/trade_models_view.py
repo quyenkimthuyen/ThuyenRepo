@@ -11,6 +11,8 @@ from gui.trade_model import (
   list_trade_models,
   load_model_kb_off_report,
   load_model_report,
+  rename_trade_model,
+  reset_trade_model_label,
   set_active_trade_model,
 )
 from gui.charts import show_plotly
@@ -70,11 +72,19 @@ def _render_shared_model_bar(models: list[dict]) -> dict | None:
   if default_pick not in labels:
     default_pick = labels[0]
 
+  # Apply rename/reset pick before the selectbox is instantiated.
+  pending = st.session_state.pop("_tm_pending_pick", None)
+  if pending and pending in labels:
+    st.session_state["tm_shared_pick"] = pending
+    default_pick = pending
+
   restore_widget(
     "tm_shared_pick", default_pick,
     preference_key="trade_models.selected",
     options=labels,
   )
+  if st.session_state.get("tm_shared_pick") not in labels:
+    st.session_state["tm_shared_pick"] = default_pick
 
   c1, c2, c3 = st.columns([3, 1, 1])
   with c1:
@@ -113,6 +123,57 @@ def _render_shared_model_bar(models: list[dict]) -> dict | None:
       if delete_trade_model(mid):
         st.toast("Đã xóa trade model")
         st.rerun()
+
+  rename_key = f"tm_rename_input_{mid}"
+  if st.session_state.get("_tm_rename_mid") != mid:
+    st.session_state[rename_key] = format_model_label(m)
+    st.session_state["_tm_rename_mid"] = mid
+  elif rename_key not in st.session_state:
+    st.session_state[rename_key] = format_model_label(m)
+  with st.expander("Đổi tên (theo dõi)", expanded=bool(m.get("label_custom"))):
+    st.caption(
+      f"`id` giữ nguyên: `{mid}` — chỉ đổi tên hiển thị trên dropdown / banner."
+    )
+    r1, r2, r3 = st.columns([3, 1, 1])
+    with r1:
+      st.text_input(
+        "Tên hiển thị",
+        key=rename_key,
+        placeholder="VD: A6-elite-2023 · live-week34",
+      )
+    with r2:
+      if st.button("Lưu tên", type="primary", key="tm_rename_save", use_container_width=True):
+        try:
+          updated = rename_trade_model(mid, st.session_state.get(rename_key) or "")
+        except ValueError as exc:
+          st.error(str(exc))
+        else:
+          if updated:
+            from gui.ui_preferences import set_preference
+            new_lab = format_model_label(updated)
+            # Do not touch tm_shared_pick after selectbox exists — apply next run.
+            st.session_state["_tm_pending_pick"] = new_lab
+            set_preference("trade_models.selected", new_lab)
+            st.toast(f"Đã đổi tên → {new_lab}")
+            st.rerun()
+    with r3:
+      if st.button(
+        "Tên auto",
+        key="tm_rename_reset",
+        use_container_width=True,
+        disabled=not bool(m.get("label_custom")),
+        help="Bỏ tên tùy chỉnh, dùng lại label train/KB/OOS.",
+      ):
+        updated = reset_trade_model_label(mid)
+        if updated:
+          from gui.ui_preferences import set_preference
+          new_lab = format_model_label(updated)
+          st.session_state["_tm_pending_pick"] = new_lab
+          set_preference("trade_models.selected", new_lab)
+          # Refresh rename text box on next run (cannot mutate widget key now).
+          st.session_state.pop("_tm_rename_mid", None)
+          st.toast("Đã khôi phục tên tự động")
+          st.rerun()
 
   from gui.app_settings import kb_profile_label
   from gui.workspace import profile_mismatch_details
@@ -188,20 +249,6 @@ def _render_model_info(active: dict):
     )
   )
 
-  from gui.model_health import build_model_timeline_figure
-
-  timeline_title = f"Giai đoạn model · {format_model_label(active)}"
-  timeline = build_model_timeline_figure(active, title=timeline_title)
-  if timeline:
-    show_plotly(timeline, timeline_title)
-    st.caption(
-      "KB học = era bộ nhớ · Train shift = cửa sổ remine "
-      f"**{active.get('train_weeks') or '—'} tuần** trước mỗi tuần OOS · "
-      "OOS = khoảng kiểm chứng."
-    )
-  else:
-    st.caption("Chưa đủ thông tin KB / OOS để vẽ timeline giai đoạn.")
-
   report = load_model_report(active["id"])
   kb = load_kb(active.get("kb_profile") or "default")
   kb_summary = {
@@ -214,49 +261,63 @@ def _render_model_info(active: dict):
   status_banner(report, kb_summary, data_meta)
   warn_no_costs()
 
+  from gui.live_readiness import render_live_readiness
+
   if not report:
     st.info(
       "Chưa có báo cáo backtest của model. Vào **Sức khỏe** → **Chạy so sánh** "
       "để tạo report, hoặc tạo model từ Grid Search."
     )
-    from gui.live_readiness import render_live_readiness
     render_live_readiness(
       active,
       include_bridge=False,
       expanded=True,
       key_prefix="tm_info_ready",
     )
-    return
+  else:
+    o = report.get("overall_oos") or {}
+    y = report.get("last_1_year") or {}
+    items = backtest_kpi_items(o, y)
+    if o.get("trades_per_week") is not None:
+      items.append((
+        METRIC_LABELS["trades_per_week"],
+        f"{o['trades_per_week']}",
+        f"{o.get('n_trades', '—')} lệnh",
+      ))
+    kpi_row(items)
 
-  o = report.get("overall_oos") or {}
-  y = report.get("last_1_year") or {}
-  items = backtest_kpi_items(o, y)
-  if o.get("trades_per_week") is not None:
-    items.append((
-      METRIC_LABELS["trades_per_week"],
-      f"{o['trades_per_week']}",
-      f"{o.get('n_trades', '—')} lệnh",
-    ))
-  kpi_row(items)
+    with st.expander("Mục tiêu & OOS theo năm", expanded=False):
+      constraint_checklist(report.get("constraints_met", {}))
+      trades_df = trades_json_to_df(report.get("trades", []))
+      if not trades_df.empty:
+        st.dataframe(yearly_breakdown(trades_df), use_container_width=True, hide_index=True)
+        bias = direction_bias(trades_df)
+        if not bias.empty and "LONG" in bias["dir"].values:
+          pct = bias.loc[bias["dir"] == "LONG", "pct"].iloc[0]
+          warn_long_bias(pct)
 
-  with st.expander("Mục tiêu & OOS theo năm", expanded=False):
-    constraint_checklist(report.get("constraints_met", {}))
-    trades_df = trades_json_to_df(report.get("trades", []))
-    if not trades_df.empty:
-      st.dataframe(yearly_breakdown(trades_df), use_container_width=True, hide_index=True)
-      bias = direction_bias(trades_df)
-      if not bias.empty and "LONG" in bias["dir"].values:
-        pct = bias.loc[bias["dir"] == "LONG", "pct"].iloc[0]
-        warn_long_bias(pct)
+    render_live_readiness(
+      active,
+      include_bridge=False,
+      expanded=False,
+      key_prefix="tm_info_ready",
+    )
 
-  from gui.live_readiness import render_live_readiness
+  # Timeline dưới cùng — KPI / readiness trước
+  from gui.model_health import build_model_timeline_figure
 
-  render_live_readiness(
-    active,
-    include_bridge=False,
-    expanded=False,
-    key_prefix="tm_info_ready",
-  )
+  st.divider()
+  timeline_title = f"Giai đoạn model · {format_model_label(active)}"
+  timeline = build_model_timeline_figure(active, title=timeline_title)
+  if timeline:
+    show_plotly(timeline, timeline_title)
+    st.caption(
+      "KB học = era bộ nhớ · Train shift = cửa sổ remine "
+      f"**{active.get('train_weeks') or '—'} tuần** trước mỗi tuần OOS · "
+      "OOS = khoảng kiểm chứng."
+    )
+  else:
+    st.caption("Chưa đủ thông tin KB / OOS để vẽ timeline giai đoạn.")
 
 
 def _render_health(active: dict):

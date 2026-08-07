@@ -81,6 +81,15 @@ def start_history_feed_control(cfg: SimConfig) -> dict[str, Any]:
   bridge_dir = ensure_bridge_dir(Path(cfg.bridge_dir))
   request_id = cfg.request_id or uuid.uuid4().hex[:12]
   delay = max(1, int(cfg.delay_ms))
+
+  # Snapshot previous run before wiping journal for a new feed.
+  try:
+    from mt5_bridge.sim_history import archive_sim_run, new_sim_run_id
+    archive_sim_run(bridge_dir=bridge_dir, status="stopped")
+    run_id = new_sim_run_id()
+  except Exception:
+    run_id = uuid.uuid4().hex[:12]
+
   if cfg.clear_journal:
     clear_trades(bridge_dir)
 
@@ -109,6 +118,10 @@ def start_history_feed_control(cfg: SimConfig) -> dict[str, Any]:
     "date_to": cfg.date_to,
     "delay_ms": delay,
     "request_id": request_id,
+    "run_id": run_id,
+    "archived": False,
+    "started_at": _now(),
+    "finished_at": None,
     "bridge_dir": str(bridge_dir),
     "model_id": cfg.model_id,
     "bars_done": 0,
@@ -118,13 +131,20 @@ def start_history_feed_control(cfg: SimConfig) -> dict[str, Any]:
     "n_fills": 0,
     "error": None,
     "ea_status": "idle",
+    "enabled": True,
   })
 
 
 def stop_history_feed_control(bridge_dir: Path | None = None) -> dict[str, Any]:
   bridge_dir = ensure_bridge_dir(bridge_dir or BRIDGE_SIM_DIR)
   write_sim_control(bridge_dir, enabled=False)
-  return write_sim_state({"status": "stopped", "ea_status": "idle"})
+  st = write_sim_state({"status": "stopped", "ea_status": "idle", "finished_at": _now()})
+  try:
+    from mt5_bridge.sim_history import archive_sim_run
+    archive_sim_run(bridge_dir=bridge_dir, state=st, status="stopped")
+  except Exception:
+    pass
+  return st
 
 
 def reset_sim_data(bridge_dir: Path | None = None) -> dict[str, Any]:
@@ -132,6 +152,11 @@ def reset_sim_data(bridge_dir: Path | None = None) -> dict[str, Any]:
   from mt5_bridge.comm_log import clear_log
 
   bridge_dir = ensure_bridge_dir(bridge_dir or BRIDGE_SIM_DIR)
+  try:
+    from mt5_bridge.sim_history import archive_sim_run
+    archive_sim_run(bridge_dir=bridge_dir, status="stopped")
+  except Exception:
+    pass
   clear_trades(bridge_dir)
   clear_log(bridge_dir)
 
@@ -280,11 +305,23 @@ def sync_state_from_ea(
     "bridge_dir": str(bridge_dir),
     "source": "ea_history_feed",
     "model_id": prev.get("model_id"),
+    "run_id": prev.get("run_id"),
+    "archived": prev.get("archived"),
+    "started_at": prev.get("started_at"),
     "updated_at": _now(),
   }
+  if status == "completed" and not prev.get("finished_at"):
+    payload["finished_at"] = _now()
   if not persist:
     return {**prev, **payload}
-  return write_sim_state(payload)
+  out = write_sim_state(payload)
+  if status == "completed" and not prev.get("archived"):
+    try:
+      from mt5_bridge.sim_history import archive_sim_run
+      archive_sim_run(bridge_dir=bridge_dir, state=out, status="completed")
+    except Exception:
+      pass
+  return out
 
 
 def run_history_feed_control(

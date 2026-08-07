@@ -36,11 +36,47 @@ def _mt5_cache_range() -> tuple[date | None, date | None]:
     return None, None
 
 
+def _compare_history_label(summary: dict) -> str:
+  rid = summary.get("run_id") or "?"
+  when = str(summary.get("updated_at") or summary.get("started_at") or "")[:19].replace("T", " ")
+  d0 = summary.get("date_from") or "?"
+  d1 = summary.get("date_to") or "?"
+  n = summary.get("n_models") or 0
+  best = summary.get("best_total_r")
+  best_txt = f"{float(best):+.1f}R" if best is not None else "—"
+  status = summary.get("status") or "?"
+  tag = " · latest" if summary.get("is_latest") else ""
+  return (
+    f"{when} · `{rid}` · {d0}→{d1} · {n} model · best {best_txt} · {status}{tag}"
+  )
+
+
+def _extract_compare_run_id(value: str | None) -> str | None:
+  import re
+  text = str(value or "").strip()
+  if not text:
+    return None
+  if text in ("__latest__", "latest", "current"):
+    return "__latest__"
+  if text.startswith("ct_") and " " not in text and "·" not in text:
+    return text
+  match = re.search(r"ct_\d{8}_\d{6}_[0-9a-f]+", text)
+  return match.group(0) if match else None
+
+
+def _on_compare_history_changed() -> None:
+  raw = st.session_state.get("cmp_history_run_id")
+  rid = _extract_compare_run_id(raw) or raw
+  if rid:
+    set_preference("compare.history_run_id", rid)
+
+
 def render():
   render_page_header(ALL_ITEMS["compare_trade"], show_profile=False)
   st.caption(
     "Chạy nhiều Trade Model song song trên lịch sử MT5 cache — "
-    "không dùng EA. Live / Simulate 1-model giữ nguyên ở MT5 Bridge."
+    "không dùng EA. Live / Simulate 1-model giữ nguyên ở MT5 Bridge. "
+    "Mỗi lần Start được lưu — chọn lịch sử bên dưới để xem lại."
   )
 
   cache_from, cache_to = _mt5_cache_range()
@@ -59,6 +95,8 @@ def render():
   from gui.long_task_ui import render_task_status, task_blocks_ui
   from mt5_bridge.compare_runner import (
     COMPARE_ROOT,
+    delete_compare_run,
+    list_compare_runs,
     load_latest_run,
     load_run,
     model_stats_rows,
@@ -195,10 +233,86 @@ def render():
         st.error(str(e))
 
   st.divider()
-  run = load_latest_run()
+  archives = list_compare_runs(limit=50)
+  latest_token = "__latest__"
+  hist_ids = [latest_token] + [
+    str(a.get("run_id")) for a in archives if a.get("run_id")
+  ]
+  # Deduplicate while keeping order
+  seen = set()
+  hist_ids = [x for x in hist_ids if not (x in seen or seen.add(x))]
+  id_to_summary = {str(a.get("run_id")): a for a in archives if a.get("run_id")}
+  hist_labels = {
+    latest_token: (
+      "★ Latest · " + _compare_history_label(archives[0])
+      if archives else "★ Latest (chưa có run)"
+    ),
+    **{rid: _compare_history_label(id_to_summary[rid]) for rid in hist_ids if rid != latest_token and rid in id_to_summary},
+  }
+
+  # After a new Start completes, jump to latest unless user pinned another run.
   status = get_task_status()
   result = status.get("result") or {}
-  if status.get("job_type") == "compare_trade" and result.get("run_id"):
+  if (
+    status.get("job_type") == "compare_trade"
+    and result.get("run_id")
+    and not status.get("running")
+  ):
+    just_done = str(result["run_id"])
+    if st.session_state.get("_cmp_seen_result_run") != just_done:
+      st.session_state["_cmp_seen_result_run"] = just_done
+      st.session_state["_cmp_pending_history"] = latest_token
+
+  pending_hist = st.session_state.pop("_cmp_pending_history", None)
+  if pending_hist and pending_hist in hist_ids:
+    st.session_state["cmp_history_run_id"] = pending_hist
+
+  restore_widget(
+    "cmp_history_run_id", latest_token,
+    preference_key="compare.history_run_id",
+    options=hist_ids,
+  )
+  if st.session_state.get("cmp_history_run_id") not in hist_ids:
+    st.session_state["cmp_history_run_id"] = latest_token
+
+  h1, h2 = st.columns([4, 1])
+  with h1:
+    st.selectbox(
+      "Lịch sử Compare",
+      hist_ids,
+      format_func=lambda rid: hist_labels.get(rid, rid),
+      key="cmp_history_run_id",
+      on_change=_on_compare_history_changed,
+      help="Mỗi lần Start Compare được lưu. Chọn run cũ để xem lại equity / lệnh.",
+    )
+  with h2:
+    selected_hist = st.session_state.get("cmp_history_run_id") or latest_token
+    can_delete = (
+      selected_hist not in (latest_token, None, "")
+      and selected_hist in id_to_summary
+      and not (is_task_running() and status.get("job_type") == "compare_trade")
+    )
+    if st.button(
+      "Xóa run",
+      key="cmp_history_delete",
+      use_container_width=True,
+      disabled=not can_delete,
+      help="Xóa thư mục results/compare_trade/<run_id> của run đang xem.",
+    ):
+      if delete_compare_run(str(selected_hist)):
+        st.session_state["_cmp_pending_history"] = latest_token
+        set_preference("compare.history_run_id", latest_token)
+        st.toast(f"Đã xóa `{selected_hist}`")
+        st.rerun()
+
+  selected_hist = st.session_state.get("cmp_history_run_id") or latest_token
+  if selected_hist == latest_token:
+    run = load_latest_run()
+  else:
+    run = load_run(str(selected_hist))
+
+  # Live job override only when viewing Latest and a compare job just finished / is active
+  if selected_hist == latest_token and status.get("job_type") == "compare_trade" and result.get("run_id"):
     rid = result["run_id"]
     run = load_run(rid) or run
 
@@ -207,11 +321,16 @@ def render():
     return
 
   run_id = run.get("run_id")
-  st.subheader(f"Kết quả · `{run_id}`")
+  viewing_old = bool(selected_hist != latest_token and run_id)
+  st.subheader(
+    f"Kết quả · `{run_id}`"
+    + (" · (lịch sử)" if viewing_old else " · (latest)")
+  )
   st.caption(
     f"Status: **{run.get('status')}** · "
     f"{run.get('date_from')} → {run.get('date_to')} · "
     f"bars {run.get('bars_done', 0)}/{run.get('bars_total', 0)}"
+    + (f" · started `{str(run.get('started_at') or '')[:19]}`" if run.get("started_at") else "")
   )
   if run.get("error"):
     st.error(run["error"])

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Any
+from pathlib import Path
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -534,15 +535,20 @@ def build_monitor_bundle(
   source: str = "live",
   date_from=None,
   date_to=None,
+  bridge_dir=None,
 ) -> dict[str, Any]:
   """
   Assemble Backtest vs Live/Sim bundle.
   source: "live" | "sim"
+  bridge_dir: optional override (e.g. archived simulate_runs/<id>).
   """
   from mt5_bridge.protocol import BRIDGE_DIR, BRIDGE_SIM_DIR
 
   src = (source or "live").lower()
-  bridge_dir = BRIDGE_SIM_DIR if src == "sim" else BRIDGE_DIR
+  if bridge_dir is not None:
+    bridge_dir = Path(bridge_dir)
+  else:
+    bridge_dir = BRIDGE_SIM_DIR if src == "sim" else BRIDGE_DIR
   live_label = "Simulate EA" if src == "sim" else "Live Auto"
 
   bt = load_backtest_baseline(model)

@@ -89,12 +89,57 @@ def _bridge_mode() -> str:
   return "sim" if str(label).startswith("Simulate") else "live"
 
 
+def _sim_history_label(summary: dict) -> str:
+  rid = summary.get("run_id") or "?"
+  when = str(summary.get("updated_at") or summary.get("started_at") or "")[:19].replace("T", " ")
+  d0 = summary.get("date_from") or "?"
+  d1 = summary.get("date_to") or "?"
+  n = summary.get("n_fills")
+  if n is None:
+    n = "?"
+  total_r = summary.get("total_r")
+  r_txt = f"{float(total_r):+.1f}R" if total_r is not None else "—"
+  status = summary.get("status") or "?"
+  tag = " · latest" if summary.get("is_latest") else ""
+  return f"{when} · `{rid}` · {d0}→{d1} · {n} fills · {r_txt} · {status}{tag}"
+
+
+def _sim_viewing_archive() -> tuple[bool, dict | None]:
+  """Whether Simulate UI is showing an archived run (not live bridge_sim)."""
+  if _bridge_mode() != "sim":
+    return False, None
+  token = st.session_state.get("sim_history_run_id") or "__live__"
+  if token in ("__live__", "", None):
+    return False, None
+  try:
+    from mt5_bridge.sim_history import load_sim_run
+    meta = load_sim_run(str(token))
+  except Exception:
+    return False, None
+  return (True, meta) if meta else (False, None)
+
+
 def _active_bridge_dir():
+  """Live EA I/O directory (desk / chart / feed). Always current bridge_sim in Simulate."""
   return BRIDGE_SIM_DIR if _bridge_mode() == "sim" else BRIDGE_DIR
 
 
+def _sim_stats_bridge_dir():
+  """Trades source for Simulate stats/monitor — live or archived run."""
+  if _bridge_mode() != "sim":
+    return BRIDGE_DIR
+  viewing, meta = _sim_viewing_archive()
+  if viewing and meta and meta.get("run_id"):
+    from mt5_bridge.sim_history import archived_trades_dir
+    return archived_trades_dir(str(meta["run_id"]))
+  return BRIDGE_SIM_DIR
+
+
 def _mode_label() -> str:
-  return "Simulate" if _bridge_mode() == "sim" else "Live"
+  if _bridge_mode() != "sim":
+    return "Live"
+  viewing, _ = _sim_viewing_archive()
+  return "Simulate · lịch sử" if viewing else "Simulate"
 
 
 def _render_mode_switcher() -> str:
@@ -272,7 +317,13 @@ def _parse_ui_date(val) -> date | None:
 
 
 def _sim_feed_window() -> tuple[date | None, date | None]:
-  """History Feed Từ/Đến — session widgets, then sim_state."""
+  """History Feed Từ/Đến — archive meta when viewing history, else widgets/sim_state."""
+  viewing, meta = _sim_viewing_archive()
+  if viewing and meta:
+    d0 = _parse_ui_date(meta.get("date_from"))
+    d1 = _parse_ui_date(meta.get("date_to"))
+    if d0 and d1:
+      return d0, d1
   d0 = _parse_ui_date(st.session_state.get("sim_ea_from"))
   d1 = _parse_ui_date(st.session_state.get("sim_ea_to"))
   if d0 and d1:
@@ -1117,6 +1168,8 @@ def _render_simulate_ea() -> None:
           bridge_bg.get_sim_status._cache = None
         _time.sleep(0.4)
         st2 = bridge_bg.get_sim_status()
+        st.session_state["_sim_pending_history"] = "__live__"
+        set_preference("mt5.sim_history_run_id", "__live__")
         st.success(
           f"Sim service nền đã start · runtime=`{st2.get('runtime')}` · "
           f"pid=`{st2.get('service_pid')}` — xem `results/mt5_bridge_sim_service.log`"
@@ -1124,6 +1177,84 @@ def _render_simulate_ea() -> None:
         st.rerun()
       else:
         st.warning("Feed đang chạy")
+
+  _render_sim_history_picker()
+
+
+def _render_sim_history_picker() -> None:
+  """Browse archived Simulate runs (results/simulate_runs)."""
+  from mt5_bridge.sim_history import delete_sim_run, list_sim_runs
+
+  archives = list_sim_runs(limit=50)
+  live_token = "__live__"
+  hist_ids = [live_token] + [str(a.get("run_id")) for a in archives if a.get("run_id")]
+  seen: set[str] = set()
+  hist_ids = [x for x in hist_ids if not (x in seen or seen.add(x))]
+  id_to_summary = {str(a.get("run_id")): a for a in archives if a.get("run_id")}
+  hist_labels = {
+    live_token: "★ Live · bridge_sim hiện tại (feed / desk)",
+    **{
+      rid: _sim_history_label(id_to_summary[rid])
+      for rid in hist_ids if rid != live_token and rid in id_to_summary
+    },
+  }
+
+  pending = st.session_state.pop("_sim_pending_history", None)
+  if pending and pending in hist_ids:
+    st.session_state["sim_history_run_id"] = pending
+
+  restore_widget(
+    "sim_history_run_id", live_token,
+    preference_key="mt5.sim_history_run_id",
+    options=hist_ids,
+  )
+  if st.session_state.get("sim_history_run_id") not in hist_ids:
+    st.session_state["sim_history_run_id"] = live_token
+
+  st.subheader("Lịch sử Simulate")
+  st.caption(
+    "Mỗi lần Start/Stop/hoàn tất feed được lưu vào `results/simulate_runs/`. "
+    "Chọn run cũ để xem lại Thống kê / Sức khỏe (read-only)."
+  )
+  h1, h2 = st.columns([4, 1])
+  with h1:
+    st.selectbox(
+      "Run đã lưu",
+      hist_ids,
+      format_func=lambda rid: hist_labels.get(rid, rid),
+      key="sim_history_run_id",
+      on_change=lambda: set_preference(
+        "mt5.sim_history_run_id",
+        st.session_state.get("sim_history_run_id"),
+      ),
+      help="Live = dữ liệu bridge_sim đang dùng cho EA feed.",
+    )
+  with h2:
+    selected = st.session_state.get("sim_history_run_id") or live_token
+    running_now = bool(bridge_bg.get_sim_status().get("running"))
+    can_delete = selected != live_token and selected in id_to_summary and not running_now
+    if st.button(
+      "Xóa run",
+      key="sim_history_delete",
+      use_container_width=True,
+      disabled=not can_delete,
+      help="Xóa archive results/simulate_runs/<run_id>.",
+    ):
+      if delete_sim_run(str(selected)):
+        st.session_state["_sim_pending_history"] = live_token
+        set_preference("mt5.sim_history_run_id", live_token)
+        st.toast(f"Đã xóa `{selected}`")
+        st.rerun()
+
+  viewing, meta = _sim_viewing_archive()
+  if viewing and meta:
+    st.info(
+      f"Đang xem lịch sử **`{meta.get('run_id')}`** · "
+      f"{meta.get('date_from')} → {meta.get('date_to')} · "
+      f"model `{meta.get('model_id') or '—'}` · "
+      f"status **{meta.get('status')}** — "
+      "Start feed vẫn dùng Live bridge_sim."
+    )
 
 
 def _render_model_monitor() -> None:
@@ -1169,18 +1300,30 @@ def _render_model_monitor_body() -> None:
 
   sim_st = load_sim_state()
   date_from = date_to = None
+  view_bridge = None
   if source == "sim":
-    d0 = st.session_state.get("sim_ea_from")
-    d1 = st.session_state.get("sim_ea_to")
-    date_from = (
-      d0.isoformat() if hasattr(d0, "isoformat") else None
-    ) or sim_st.get("date_from") or None
-    date_to = (
-      d1.isoformat() if hasattr(d1, "isoformat") else None
-    ) or sim_st.get("date_to") or None
+    viewing, meta = _sim_viewing_archive()
+    if viewing and meta:
+      date_from = meta.get("date_from")
+      date_to = meta.get("date_to")
+      from mt5_bridge.sim_history import archived_trades_dir
+      view_bridge = archived_trades_dir(str(meta["run_id"]))
+    else:
+      d0 = st.session_state.get("sim_ea_from")
+      d1 = st.session_state.get("sim_ea_to")
+      date_from = (
+        d0.isoformat() if hasattr(d0, "isoformat") else None
+      ) or sim_st.get("date_from") or None
+      date_to = (
+        d1.isoformat() if hasattr(d1, "isoformat") else None
+      ) or sim_st.get("date_to") or None
 
   bundle = build_monitor_bundle(
-    active, source=source, date_from=date_from, date_to=date_to,
+    active,
+    source=source,
+    date_from=date_from,
+    date_to=date_to,
+    bridge_dir=view_bridge,
   )
   live_label = bundle.get("live_label") or "Live Auto"
   if source == "sim" and date_from:
@@ -1411,7 +1554,7 @@ def _render_model_monitor_body() -> None:
 
 def _render_stats_section() -> None:
   """Thống kê lệnh — đọc lại trades.json mỗi lần gọi (không cache fragment)."""
-  bridge_dir = _active_bridge_dir()
+  bridge_dir = _sim_stats_bridge_dir() if _bridge_mode() == "sim" else _active_bridge_dir()
   mode = _bridge_mode()
   tick = st.session_state.get("bridge_ui_refresh_tick")
   st.subheader(f"Thống kê lệnh · {_mode_label()}")
