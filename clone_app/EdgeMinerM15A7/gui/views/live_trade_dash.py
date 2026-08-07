@@ -1,4 +1,4 @@
-"""Live Trade — daily trader desk (one viewport, no chart / Start-Stop)."""
+"""Live Trade — daily trader desk (pulse + Start/Stop Bridge + PnL)."""
 from __future__ import annotations
 
 from datetime import timedelta
@@ -7,13 +7,11 @@ from html import escape
 import streamlit as st
 
 from gui.bridge_desk_stats import fmt_px, snapshot_live_desk
-from gui.bridge_model_monitor import compare_live_week_to_oos
-from gui.live_readiness import assess_live_readiness, render_live_readiness
-from gui.trade_model import format_model_label, get_active_trade_model
-from gui.ui_preferences import set_widget_preference
+from gui.trade_model import format_model_label, get_active_trade_model, get_model_by_id
 from mt5_bridge import background as bridge_bg
 from mt5_bridge.loss_guard import loss_guard_status
-from mt5_bridge.protocol import BRIDGE_DIR
+from mt5_bridge.live_monitor_server import DEFAULT_MONITOR_PORT, ensure_chart_server
+from mt5_bridge.protocol import normalize_model_ids, resolve_live_bridge_dir
 
 _CSS_KEY = "_live_trade_dash_css_v4"  # bump when CSS changes (debug/cache only)
 
@@ -79,9 +77,42 @@ def _inject_css() -> None:
   st.session_state[_CSS_KEY] = True
 
 
-def _go_mt5_bridge() -> None:
-  set_widget_preference("nav_page", "mt5_bridge", "navigation.page")
-  st.rerun()
+def _live_dir():
+  return resolve_live_bridge_dir()
+
+
+def _start_live_bridge(model_ids: list[str]) -> bool:
+  """Start Live Bridge from desk using roster đã chọn ở Trade Models."""
+  ids = normalize_model_ids(model_ids)
+  if not ids:
+    st.error("Chưa chọn Trade Model — mở MT5 Bridge → tab Trade Models.")
+    return False
+  cfg = bridge_bg.load_config()
+  risk = float(cfg.get("risk_pct") or 1.0)
+  poll = float(cfg.get("poll_sec") or 2.0)
+  primary = ids[0]
+  bdir = _live_dir()
+  bridge_bg.save_config(
+    model_id=primary,
+    model_ids=ids,
+    risk_pct=risk,
+    poll_sec=poll,
+    bridge_dir=str(bdir),
+    enabled=True,
+    loss_guard_tripped=False,
+    loss_guard_tripped_at=None,
+    loss_guard_tripped_reason=None,
+    last_error=None,
+  )
+  bridge_bg.sync_bridge_roster(
+    bridge_dir=bdir,
+    model_ids=ids,
+    risk_pct=risk,
+  )
+  ok = bridge_bg.start_worker(detached=True)
+  if ok:
+    ensure_chart_server(bdir, DEFAULT_MONITOR_PORT)
+  return ok
 
 
 def _chip(label: str, *, kind: str = "muted") -> str:
@@ -95,6 +126,7 @@ def _pulse_html(
   bridge_running: bool,
   algo_on: bool | None,
   quote_txt: str,
+  risk_txt: str | None = None,
 ) -> str:
   chips = [
     _chip(
@@ -109,8 +141,10 @@ def _pulse_html(
       f"ALGO {'ON' if algo_on else 'OFF'}",
       kind="on" if algo_on else "off",
     ),
-    _chip(quote_txt, kind="muted"),
   ]
+  if risk_txt:
+    chips.append(_chip(risk_txt, kind="muted"))
+  chips.append(_chip(quote_txt, kind="muted"))
   return f'<div class="ltd-pulse">{"".join(chips)}</div>'
 
 
@@ -192,69 +226,16 @@ def _short_strat(name: str | None, *, max_len: int = 42) -> str:
   return s
 
 
-def _parity_status_label(status: str | None) -> tuple[str, str]:
-  """Return (chip_label, chip_kind)."""
-  s = str(status or "")
-  if s == "match":
-    return "MATCH", "on"
-  if s == "mismatch":
-    return "LỆCH", "off"
-  if s == "week_not_in_report":
-    return "Ngoài OOS", "warn"
-  if s == "waiting_strategy":
-    return "Chờ strategy", "warn"
-  if s in ("no_decision", "no_model", "no_report"):
-    return "Chưa đủ data", "muted"
-  return (s.upper() if s else "—"), "muted"
-
-
-def _ready_badge(verdict: str, summary: str) -> str:
-  kind = "ok" if verdict == "ready" else ("warn" if verdict == "caution" else "bad")
-  label = {
-    "ready": "READY",
-    "caution": "CAUTION",
-    "blocked": "BLOCKED",
-  }.get(verdict, verdict.upper())
-  # Keep badge short — full checklist is in expander
-  short_map = {
-    "ready": "OK để theo dõi Live",
-    "caution": "Có cảnh báo — xem checklist",
-    "blocked": "Chưa sẵn sàng — xem checklist",
-  }
-  short = escape(short_map.get(verdict) or (summary or "")[:80])
-  return f'<span class="ltd-ready {kind}"><b>{label}</b> · {short}</span>'
-
-
-def _trust_html(
+def _guard_html(
   *,
-  parity_status: str | None,
-  live_strat: str | None,
-  oos_strat: str | None,
-  oos_r: float | None,
   guard_day: str,
   guard_week: str,
   guard_tripped: bool,
   guard_off: bool,
 ) -> str:
-  """Parity / OOS R / Guard only — week+strategy live in _context_html."""
-  kind = "ok"
-  if parity_status == "mismatch" or guard_tripped:
-    kind = "bad"
-  elif parity_status in ("week_not_in_report", "waiting_strategy", "no_report"):
-    kind = "warn"
-
-  p_label, p_chip = _parity_status_label(parity_status)
-  chips = [
-    '<span class="ltd-trust-label">Parity</span>',
-    _chip(p_label, kind=p_chip),
-  ]
-  if oos_r is not None:
-    try:
-      chips.append(_chip(f"OOS {float(oos_r):+.1f}R", kind="muted"))
-    except (TypeError, ValueError):
-      pass
-
-  chips.append('<span class="ltd-trust-label" style="margin-left:0.35rem">Guard</span>')
+  """Loss guard strip only — Live là giai đoạn sau OOS, không hiện Parity."""
+  kind = "bad" if guard_tripped else "ok"
+  chips = ['<span class="ltd-trust-label">Guard</span>']
   if guard_off:
     chips.append(_chip("tắt", kind="muted"))
   else:
@@ -263,26 +244,13 @@ def _trust_html(
     if guard_tripped:
       g_txt += " · TRIPPED"
     chips.append(_chip(g_txt, kind=g_kind))
-
-  # Detail only when something needs attention (avoid repeating strategy on MATCH)
-  live_s = _short_strat(live_strat)
-  oos_s = _short_strat(oos_strat)
   detail = ""
-  if parity_status == "mismatch":
-    detail = (
-      f'Live <b>{escape(live_s)}</b> ≠ Health <b>{escape(oos_s)}</b>'
-      " — Stop/Start Bridge hoặc refresh Health"
-    )
-  elif parity_status == "week_not_in_report":
-    detail = "Tuần live mới hơn tip OOS — bình thường nếu đang live tuần mới"
-  elif parity_status in ("waiting_strategy", "no_decision", "no_model", "no_report"):
-    detail = "Chưa đối chiếu được với Health tuần này"
-
-  detail_html = f'<p class="ltd-trust-detail">{detail}</p>' if detail else ""
+  if guard_tripped:
+    detail = '<p class="ltd-trust-detail">Loss guard đã kích hoạt — Bridge FLAT / Stop.</p>'
   return (
     f'<div class="ltd-trust {kind}">'
     f'<div class="ltd-trust-row">{"".join(chips)}</div>'
-    f"{detail_html}"
+    f"{detail}"
     f"</div>"
   )
 
@@ -301,20 +269,40 @@ def _render_dashboard_body() -> None:
   open_t = snap["open_trade"]
   ur = snap["unrealized_r"]
 
-  ready = assess_live_readiness(
-    active,
-    decision=decision,
-    file_status=file_status,
-    include_bridge=True,
-  )
-  verdict = str(ready.get("verdict") or "blocked")
+  model_ids = snap.get("model_ids") or []
+  per_model = snap.get("per_model") or []
+  if not model_ids:
+    from gui.trade_model import get_bridge_runtime_model_ids
+    model_ids = get_bridge_runtime_model_ids()
+  if len(model_ids) > 1:
+    from gui.trade_model import format_model_short
+    parts = []
+    for mid in model_ids[:4]:
+      m = get_model_by_id(mid)
+      parts.append(format_model_short(m, max_len=24) if m else mid[:16])
+    model_line = f"{len(model_ids)} model · " + " · ".join(parts)
+    if len(model_ids) > 4:
+      model_line += f" +{len(model_ids) - 4}"
+  elif model_ids:
+    m0 = get_model_by_id(model_ids[0])
+    model_line = format_model_label(m0) if m0 else model_ids[0][:28]
+  else:
+    model_line = format_model_label(active) if active else "Chưa chọn Trade Model"
 
-  model_line = format_model_label(active) if active else "Chưa chọn Trade Model"
+  bridge_running = bool(service_status.get("running"))
+  ea_online = bool(health.get("online"))
+  try:
+    cfg_risk = bridge_bg.load_config()
+    risk_pct = float(cfg_risk.get("risk_pct") or 1.0)
+  except Exception:
+    risk_pct = 1.0
+  n_models = max(1, len(model_ids))
+  risk_txt = f"Risk {risk_pct:g}%/lệnh · max ~{risk_pct * n_models:g}%"
+
   st.markdown(
     f'<div class="ltd-wrap">'
     f'<p class="ltd-title">Live Trade</p>'
     f'<p class="ltd-model">{escape(model_line)}</p>'
-    f'{_ready_badge(verdict, str(ready.get("summary") or ""))}'
     f"</div>",
     unsafe_allow_html=True,
   )
@@ -335,63 +323,121 @@ def _render_dashboard_body() -> None:
   strat = decision.get("strategy_name") or file_status.get("strategy_name") or "—"
   week = decision.get("week_start") or file_status.get("week_start") or "—"
   reason = str(decision.get("reason") or file_status.get("reason") or "")
-  fp = decision.get("conditions_fp") or file_status.get("conditions_fp")
 
   st.markdown(
     _pulse_html(
-      ea_online=bool(health.get("online")),
+      ea_online=ea_online,
       age_txt=age_txt,
-      bridge_running=bool(service_status.get("running")),
+      bridge_running=bridge_running,
       algo_on=bool(health.get("trade_allowed")),
       quote_txt=quote_txt,
+      risk_txt=risk_txt,
     )
     + _context_html(week=str(week), strategy=str(strat)),
     unsafe_allow_html=True,
   )
 
-  # C. Hero — position or decision only
-  if open_t:
-    st.markdown(_hero_open_html(open_t, ur), unsafe_allow_html=True)
+  # Start/Stop — một nút theo trạng thái; điều hướng Bridge nằm ở sidebar
+  if bridge_running:
+    if st.button(
+      "Stop Bridge",
+      type="secondary",
+      use_container_width=True,
+      key="live_dash_stop_bridge",
+    ):
+      bridge_bg.stop_worker()
+      st.toast("Đã Stop Bridge")
+      st.rerun()
+  else:
+    if st.button(
+      "Start Bridge Live",
+      type="primary",
+      use_container_width=True,
+      key="live_dash_start_bridge",
+      disabled=not model_ids,
+      help="Bật service Bridge với roster đang chọn (tab Trade Models).",
+    ):
+      if _start_live_bridge(model_ids):
+        st.toast(f"Đã Start Bridge · {len(model_ids)} model")
+        st.rerun()
+      else:
+        st.error("Không Start được Bridge — xem MT5 Bridge → Kỹ thuật / log.")
+    if ea_online:
+      st.caption(
+        "EA online · Bridge tắt — bấm Start để trade với roster đã chọn."
+      )
+    if not model_ids:
+      st.warning("Chưa có Trade Model trong roster — mở MT5 Bridge → Trade Models.")
+
+  # C. Hero — position(s) or decision
+  opens = snap.get("open_trades") or ([] if not open_t else [open_t])
+  if opens:
+    if len(opens) == 1:
+      st.markdown(_hero_open_html(opens[0], ur), unsafe_allow_html=True)
+    else:
+      st.markdown(
+        f'<div class="ltd-hero open-long"><p class="ltd-hero-kicker">Open</p>'
+        f'<p class="ltd-hero-dir buy">{len(opens)} lệnh mở</p>'
+        f'<p class="ltd-hero-meta">Tổng unrealized xem từng model bên dưới</p></div>',
+        unsafe_allow_html=True,
+      )
   else:
     st.markdown(
       _hero_flat_html(action=action, reason=reason),
       unsafe_allow_html=True,
     )
 
-  # D. Scoreboard — 4 numbers only
+  # D. Scoreboard — aggregate (all models)
   today_r = float(today_stats.get("total_r") or 0.0) if today_stats.get("n_trades") else 0.0
   week_r = float(week_stats.get("total_r") or 0.0) if week_stats.get("n_trades") else 0.0
   wr = today_stats.get("win_rate_pct")
   n_today = int(today_stats.get("n_trades") or 0)
 
   c1, c2, c3, c4 = st.columns(4)
-  c1.metric("Today R", f"{today_r:+.2f}")
-  c2.metric("Week R", f"{week_r:+.2f}")
+  c1.metric("Today R (tổng)", f"{today_r:+.2f}")
+  c2.metric("Week R (tổng)", f"{week_r:+.2f}")
   c3.metric("WR hôm nay", f"{float(wr):.0f}%" if wr is not None else "—")
   c4.metric("Closed hôm nay", n_today)
   if snap.get("open_manual"):
     st.caption(
       f"Có **{snap['open_manual']}** lệnh mở mode sửa — không tính vào R auto."
     )
+  if snap.get("open_auto"):
+    st.caption(f"Lệnh auto đang mở: **{snap['open_auto']}**")
 
-  # E. Trust — status only (week/strategy already in context line)
-  parity = compare_live_week_to_oos(
-    active,
-    week_start=week if week != "—" else None,
-    strategy_name=strat if strat != "—" else None,
-    conditions_fp=fp,
-  )
-  pst = parity.get("status")
-  live_name = parity.get("live_strategy") or strat
-  oos_name = parity.get("oos_strategy")
-  oos_r = parity.get("oos_r")
+  # D2. Per-model breakdown
+  if len(per_model) >= 1:
+    with st.expander(f"Theo từng model ({len(per_model)})", expanded=len(per_model) > 1):
+      rows = []
+      for pm in per_model:
+        mid = pm.get("model_id")
+        m = get_model_by_id(mid) if mid else None
+        ts = pm.get("today_stats") or {}
+        ws = pm.get("week_stats") or {}
+        ot_m = pm.get("open_trade")
+        ur_m = pm.get("unrealized_r")
+        rows.append({
+          "Model": format_model_label(m) if m else (mid or "?")[:28],
+          "Magic": pm.get("magic"),
+          "Open": (
+            f"{ot_m.get('direction')} uR={ur_m:+.2f}" if ot_m and ur_m is not None
+            else (str(ot_m.get("direction")) if ot_m else "—")
+          ),
+          "Today R": ts.get("total_r"),
+          "Week R": ws.get("total_r"),
+          "N today": ts.get("n_trades") or 0,
+          "Last": pm.get("last_action") or "—",
+        })
+      import pandas as pd
+      st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
 
+  # E. Guard only — Live là giai đoạn sau OOS, không so Parity tuần
   guard_day = guard_week = "—"
   guard_tripped = False
   guard_off = True
   try:
     cfg = bridge_bg.load_config()
-    guard = loss_guard_status(cfg, bridge_dir=BRIDGE_DIR, trades=snap["trades"])
+    guard = loss_guard_status(cfg, bridge_dir=_live_dir(), trades=snap["trades"])
     guard_off = not bool(guard.get("enabled"))
     if not guard_off:
       guard_day = f"{guard.get('day_streak')}/{guard.get('max_day')}"
@@ -401,11 +447,7 @@ def _render_dashboard_body() -> None:
     pass
 
   st.markdown(
-    _trust_html(
-      parity_status=pst,
-      live_strat=str(live_name) if live_name else None,
-      oos_strat=str(oos_name) if oos_name else None,
-      oos_r=float(oos_r) if oos_r is not None else None,
+    _guard_html(
       guard_day=guard_day,
       guard_week=guard_week,
       guard_tripped=guard_tripped,
@@ -413,23 +455,6 @@ def _render_dashboard_body() -> None:
     ),
     unsafe_allow_html=True,
   )
-
-  # F. Footer
-  render_live_readiness(
-    active,
-    decision=decision,
-    file_status=file_status,
-    include_bridge=True,
-    expanded=False,
-    key_prefix="live_dash_ready",
-  )
-  if st.button(
-    "MT5 Bridge — Start/Stop · chart",
-    type="secondary",
-    use_container_width=True,
-    key="live_dash_goto_bridge",
-  ):
-    _go_mt5_bridge()
 
 
 @st.fragment(run_every=timedelta(seconds=5))

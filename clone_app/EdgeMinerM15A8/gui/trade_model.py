@@ -90,6 +90,9 @@ def save_active_model_id(model_id: str | None):
 def format_model_label(m: dict) -> str:
   if m.get("label_custom"):
     return m.get("label") or m.get("id", "?")
+  # Prefer stored display label when present (promoted / renamed models)
+  if m.get("label"):
+    return str(m["label"])
   return build_trade_profile_label({
     "train_weeks": m.get("train_weeks"),
     "use_kb": m.get("use_kb", True),
@@ -98,6 +101,72 @@ def format_model_label(m: dict) -> str:
     "oos_from": m.get("oos_from"),
     "oos_to": m.get("oos_to"),
   })
+
+
+def format_model_short(m: dict | None, *, max_len: int = 42) -> str:
+  """Compact name for sidebar / roster tables."""
+  if not m:
+    return "?"
+  name = str(m.get("label") or format_model_label(m) or m.get("id") or "?").strip()
+  # Drop redundant "Breakthrough " prefix noise in dense UI
+  if name.lower().startswith("breakthrough "):
+    name = name[13:]
+  if max_len and len(name) > max_len:
+    return name[: max_len - 1] + "…"
+  return name
+
+
+def bridge_roster_display_rows(
+  *,
+  include_runtime: bool = True,
+  prefer_sim: bool = False,
+) -> list[dict]:
+  """Rows for Bridge multi-model roster UI (sidebar / banner / checklist)."""
+  from mt5_bridge.protocol import (
+    resolve_live_bridge_dir,
+    resolve_sim_bridge_dir,
+    read_json,
+    read_models_roster,
+    status_path,
+  )
+
+  ids = get_bridge_runtime_model_ids()
+  live_dir = resolve_live_bridge_dir()
+  sim_dir = resolve_sim_bridge_dir()
+  primary_dir = sim_dir if prefer_sim else live_dir
+  alt_dir = live_dir if prefer_sim else sim_dir
+  roster = read_models_roster(primary_dir) or read_models_roster(alt_dir) or {}
+  magic_by_id = {
+    str(r.get("id")): r.get("magic")
+    for r in (roster.get("models") or [])
+    if isinstance(r, dict) and r.get("id")
+  }
+  status = read_json(status_path(primary_dir)) or {}
+  per = status.get("per_model") if isinstance(status.get("per_model"), dict) else {}
+  if not per:
+    alt_st = read_json(status_path(alt_dir)) or {}
+    per = alt_st.get("per_model") if isinstance(alt_st.get("per_model"), dict) else {}
+
+  rows = []
+  for mid in ids:
+    m = get_model_by_id(mid)
+    resolved = resolve_model_total_r(m) if m else {}
+    pm = per.get(mid) or {}
+    rows.append({
+      "id": mid,
+      "name": format_model_short(m) if m else mid[:28],
+      "label": format_model_label(m) if m else mid,
+      "magic": magic_by_id.get(mid),
+      "oos_r": resolved.get("value"),
+      "oos_from": resolved.get("oos_from"),
+      "oos_to": resolved.get("oos_to"),
+      "last_action": pm.get("action") if include_runtime else None,
+      "last_reason": (pm.get("reason") or "")[:40] if include_runtime else None,
+      "strategy": (pm.get("strategy_name") or "")[:36] if include_runtime else None,
+      "conditions_fp": pm.get("conditions_fp") if include_runtime else None,
+      "model": m,
+    })
+  return rows
 
 
 def resolve_model_total_r(
@@ -336,16 +405,26 @@ def set_active_trade_model(model_id: str | None) -> dict | None:
 
 
 def sync_active_model_into_runtime_configs() -> dict | None:
-  """Keep Live / Simulate runtime configs on the same active Trade Model id."""
+  """Keep Live / Simulate runtime configs aware of the active Trade Model.
+
+  Does **not** collapse ``model_ids`` when Bridge already has a multi-model roster.
+  """
   active = get_active_trade_model()
   mid = (active or {}).get("id")
   if not mid:
     return active
   try:
     from mt5_bridge.background import load_config as bridge_load, save_config as bridge_save
+    from mt5_bridge.protocol import normalize_model_ids
+
     cfg = bridge_load()
-    if cfg.get("model_id") != mid:
-      bridge_save(model_id=mid)
+    roster = normalize_model_ids(cfg.get("model_ids"), fallback=cfg.get("model_id"))
+    if len(roster) > 1:
+      # Multi-model Bridge session — keep roster; only ensure primary is set.
+      if cfg.get("model_id") not in roster:
+        bridge_save(model_id=roster[0], model_ids=roster)
+    elif cfg.get("model_id") != mid:
+      bridge_save(model_id=mid, model_ids=[mid])
   except Exception:
     pass
   try:
@@ -355,6 +434,7 @@ def sync_active_model_into_runtime_configs() -> dict | None:
       not sim.get("running")
       and not sim.get("enabled")
       and sim.get("model_id") != mid
+      and not (sim.get("model_ids") and len(sim.get("model_ids") or []) > 1)
     ):
       write_sim_state({"model_id": mid})
   except Exception:
@@ -362,14 +442,57 @@ def sync_active_model_into_runtime_configs() -> dict | None:
   return active
 
 
+def get_bridge_runtime_model_ids() -> list[str]:
+  """Model ids selected for MT5 Bridge Live/Sim (multi-model roster)."""
+  try:
+    from mt5_bridge.background import load_config as bridge_load
+    from mt5_bridge.protocol import normalize_model_ids
+
+    cfg = bridge_load()
+    return normalize_model_ids(cfg.get("model_ids"), fallback=cfg.get("model_id"))
+  except Exception:
+    active = get_active_trade_model()
+    return [str(active["id"])] if active and active.get("id") else []
+
+
 def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
   """Sync active Trade Model into Live/Sim runtime; show selection at page top."""
   active = sync_active_model_into_runtime_configs()
+  bridge_ids = get_bridge_runtime_model_ids() if context in ("live", "simulate", "shared") else []
+
+  if len(bridge_ids) > 1:
+    rows = bridge_roster_display_rows(
+      include_runtime=True,
+      prefer_sim=(context == "simulate"),
+    )
+    st.markdown(f"**Bridge đang chạy {len(rows)} Trade Model** · Risk %/lệnh chung · 1 lệnh mở / model")
+    table = []
+    for i, r in enumerate(rows, 1):
+      oos = f"{r['oos_r']:+.1f}R" if r.get("oos_r") is not None else "—"
+      table.append({
+        "#": i,
+        "Model": r["name"],
+        "Magic": r.get("magic") or "—",
+        "OOS R": oos,
+        "Last": r.get("last_action") or "—",
+        "Reason": r.get("last_reason") or "—",
+      })
+    import pandas as pd
+    st.dataframe(pd.DataFrame(table), hide_index=True, use_container_width=True)
+    st.caption(
+      "Checklist / thống kê bên dưới áp dụng **từng model trong roster**. "
+      "Đổi danh sách tại **Điều khiển** (multiselect)."
+    )
+    # Prefer first roster model as context for single-model callers
+    first = get_model_by_id(bridge_ids[0])
+    return first or active
+
   if not active:
     st.warning(
       "Chưa chọn Trade Model — vào **Trade Models** rồi chọn model."
     )
     return active
+
   label = format_model_label(active)
   resolved = resolve_model_total_r(active)
   bits = [f"**Trade Model:** {label}"]

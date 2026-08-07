@@ -61,10 +61,14 @@ def _latest_run_id() -> str | None:
 
 def summarize_sim_run(run: dict, *, is_latest: bool = False) -> dict[str, Any]:
   stats = run.get("stats") or {}
+  mids = run.get("model_ids") or ([] if not run.get("model_id") else [run.get("model_id")])
   return {
     "run_id": run.get("run_id"),
     "status": run.get("status"),
     "model_id": run.get("model_id"),
+    "model_ids": list(mids),
+    "n_models": len(mids),
+    "risk_pct": run.get("risk_pct"),
     "date_from": run.get("date_from"),
     "date_to": run.get("date_to"),
     "delay_ms": run.get("delay_ms"),
@@ -166,13 +170,29 @@ def archive_sim_run(
     _write_json(dest / "trades.json", {"trades": trades})
 
   stats = compute_stats(trades, mode="auto", use_exit_time=False)
+  model_ids = list(st.get("model_ids") or [])
+  if not model_ids and st.get("model_id"):
+    model_ids = [str(st.get("model_id"))]
+  per_model = []
+  for mid in model_ids:
+    ms = compute_stats(trades, mode="auto", model_id=mid, use_exit_time=False)
+    per_model.append({
+      "model_id": mid,
+      "n_trades": ms.get("n_trades"),
+      "total_r": ms.get("total_r"),
+      "win_rate_pct": ms.get("win_rate_pct"),
+      "max_drawdown_r": ms.get("max_drawdown_r"),
+      "avg_r": ms.get("avg_r"),
+    })
   finished = status in ("completed", "stopped", "error") or st.get("status") in (
     "completed", "stopped", "error",
   )
   run = {
     "run_id": rid,
     "status": status or st.get("status") or ("completed" if finished else "running"),
-    "model_id": st.get("model_id"),
+    "model_id": st.get("model_id") or (model_ids[0] if model_ids else None),
+    "model_ids": model_ids,
+    "risk_pct": st.get("risk_pct"),
     "date_from": st.get("date_from"),
     "date_to": st.get("date_to"),
     "delay_ms": st.get("delay_ms"),
@@ -188,6 +208,7 @@ def archive_sim_run(
       "max_drawdown_r": stats.get("max_drawdown_r"),
       "avg_r": stats.get("avg_r"),
     },
+    "per_model": per_model,
     "error": st.get("error"),
     "started_at": st.get("started_at") or st.get("updated_at") or _now(),
     "finished_at": _now() if finished else st.get("finished_at"),

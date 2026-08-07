@@ -5,6 +5,7 @@ import json
 import threading
 from dataclasses import asdict
 from datetime import datetime, timezone
+from pathlib import Path
 
 from gui.grid_search_engine import (
   GridSpec,
@@ -36,11 +37,46 @@ def _read_json(path) -> dict | None:
 
 
 def _write_json(path, data: dict):
+  """Atomic-ish JSON write that survives Windows file locks (WinError 5)."""
+  import os
+  import time
+  import shutil
+
   RUNS_DIR.mkdir(parents=True, exist_ok=True)
-  tmp = path.with_suffix(".tmp")
-  with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(data, f, indent=2, ensure_ascii=False)
-  tmp.replace(path)
+  path = Path(path)
+  payload = json.dumps(data, indent=2, ensure_ascii=False)
+  tmp = path.with_name(f"{path.stem}.{os.getpid()}.{threading.get_ident()}.tmp")
+  with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+    f.write(payload)
+    f.flush()
+  last_err = None
+  for attempt in range(10):
+    try:
+      os.replace(str(tmp), str(path))
+      return
+    except OSError as err:
+      last_err = err
+      time.sleep(0.05 * (attempt + 1))
+  try:
+    shutil.copyfile(str(tmp), str(path))
+    tmp.unlink(missing_ok=True)
+    return
+  except OSError as err:
+    last_err = err
+  try:
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+      f.write(payload)
+    tmp.unlink(missing_ok=True)
+    return
+  except OSError as err:
+    last_err = err
+  finally:
+    try:
+      tmp.unlink(missing_ok=True)
+    except OSError:
+      pass
+  if last_err is not None:
+    raise last_err
 
 
 def spec_to_dict(spec: GridSpec) -> dict:

@@ -260,14 +260,17 @@ def apply_loss_guard_halt(
   bridge_dir: Path | None = None,
   bar: dict | None = None,
   model_id: str | None = None,
+  model_ids: list[str] | None = None,
 ) -> dict:
-  """Persist halt, force FLAT decision, disable service config."""
+  """Persist halt, force FLAT decision(s), disable service config."""
   from mt5_bridge.background import save_config
   from mt5_bridge.comm_log import append_event
   from mt5_bridge.protocol import (
     atomic_write_json,
     decision_path,
     ensure_bridge_dir,
+    normalize_model_ids,
+    write_model_decision,
     write_status,
   )
 
@@ -283,12 +286,22 @@ def apply_loss_guard_halt(
     last_action="FLAT",
     last_run_at=now,
   )
-  decision = build_flat_halt_decision(bar, reason=reason, model_id=model_id)
-  atomic_write_json(decision_path(bridge_dir), decision)
+  ids = normalize_model_ids(model_ids, fallback=model_id)
+  primary = ids[0] if ids else model_id
+  decision = build_flat_halt_decision(bar, reason=reason, model_id=primary)
+  if ids:
+    for mid in ids:
+      d = build_flat_halt_decision(bar, reason=reason, model_id=mid)
+      write_model_decision(
+        d, bridge_dir=bridge_dir, mirror_primary=True, primary_model_id=primary,
+      )
+  else:
+    atomic_write_json(decision_path(bridge_dir), decision)
   write_status(
     bridge_dir,
     state="halted",
-    model_id=model_id,
+    model_id=primary,
+    model_ids=ids,
     error=reason,
     last_action="FLAT",
     reason=reason,

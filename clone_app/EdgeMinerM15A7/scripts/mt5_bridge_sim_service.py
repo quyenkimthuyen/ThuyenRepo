@@ -7,7 +7,7 @@ stays responsive (same idea as mt5_bridge_service.py for Live).
 Usage:
   python scripts/mt5_bridge_sim_service.py \\
     --from 2026-01-01 --to 2026-01-14 --delay-ms 100 \\
-    --model-id tm_m15_best_2_xxx --risk-pct 1.0
+    --model-ids tm_a,tm_b --risk-pct 1.0
 """
 from __future__ import annotations
 
@@ -42,6 +42,7 @@ def _register(pid_path: Path, log_path: Path, args) -> None:
     "service_pid": os.getpid(),
     "runtime": "process",
     "model_id": args.model_id,
+    "model_ids": list(getattr(args, "model_ids_list", None) or []),
     "date_from": args.date_from,
     "date_to": args.date_to,
     "delay_ms": args.delay_ms,
@@ -61,7 +62,7 @@ def _register(pid_path: Path, log_path: Path, args) -> None:
 def main() -> int:
   from mt5_bridge.background import _run_sim_bridge_loop
   from mt5_bridge.ea_simulator import SimConfig, run_history_feed_control, write_sim_state
-  from mt5_bridge.protocol import BRIDGE_SIM_DIR
+  from mt5_bridge.protocol import BRIDGE_SIM_DIR, normalize_model_ids
   from run_backtest import REPORT_DIR
 
   ap = argparse.ArgumentParser(description="MT5 Bridge Simulate HistoryFeed service")
@@ -69,9 +70,18 @@ def main() -> int:
   ap.add_argument("--to", dest="date_to", required=True)
   ap.add_argument("--delay-ms", type=int, default=100)
   ap.add_argument("--model-id", default=None)
+  ap.add_argument("--model-ids", default=None, help="Comma-separated model ids")
   ap.add_argument("--risk-pct", type=float, default=1.0)
   ap.add_argument("--bridge-dir", default=str(BRIDGE_SIM_DIR))
   args = ap.parse_args()
+
+  ids = normalize_model_ids(
+    [x.strip() for x in str(args.model_ids).split(",")] if args.model_ids else None,
+    fallback=args.model_id,
+  )
+  args.model_ids_list = ids
+  if ids and not args.model_id:
+    args.model_id = ids[0]
 
   pid_path = REPORT_DIR / "mt5_bridge_sim_service.pid"
   log_path = REPORT_DIR / "mt5_bridge_sim_service.log"
@@ -90,7 +100,7 @@ def main() -> int:
 
   bridge_thread = threading.Thread(
     target=_run_sim_bridge_loop,
-    args=(stop, args.model_id, float(args.risk_pct)),
+    args=(stop, args.model_id, float(args.risk_pct), ids),
     name="sim-bridge-decide",
     daemon=True,
   )
@@ -99,7 +109,7 @@ def main() -> int:
   try:
     print(
       f"[sim-service] pid={os.getpid()} from={args.date_from} to={args.date_to} "
-      f"delay_ms={args.delay_ms} model={args.model_id}",
+      f"delay_ms={args.delay_ms} models={ids or [args.model_id]}",
       flush=True,
     )
     st = run_history_feed_control(cfg, stop_event=stop, pause_event=None)
@@ -119,6 +129,7 @@ def main() -> int:
       "bars_done": st.get("bars_done"),
       "bars_total": st.get("bars_total"),
       "last_bar": st.get("last_bar"),
+      "model_ids": ids,
     })
     return 0
   except Exception as e:

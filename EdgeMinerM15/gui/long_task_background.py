@@ -49,11 +49,55 @@ def _read_json(path: Path) -> dict | None:
 
 
 def _write_json(path: Path, data: dict):
+  """Atomic-ish JSON write that survives Windows file locks (WinError 5)."""
+  import os
+  import time
+  import shutil
+
   path.parent.mkdir(parents=True, exist_ok=True)
-  tmp = path.with_suffix(".tmp")
-  with open(tmp, "w", encoding="utf-8") as f:
-    json.dump(data, f, indent=2, ensure_ascii=False)
-  tmp.replace(path)
+  payload = json.dumps(data, indent=2, ensure_ascii=False)
+  tmp = path.with_name(f"{path.stem}.{os.getpid()}.{threading.get_ident()}.tmp")
+  with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+    f.write(payload)
+    f.flush()
+    try:
+      os.fsync(f.fileno())
+    except OSError:
+      pass
+
+  last_err: OSError | None = None
+  for attempt in range(10):
+    try:
+      os.replace(str(tmp), str(path))
+      return
+    except OSError as err:
+      last_err = err
+      time.sleep(0.05 * (attempt + 1))
+
+  try:
+    shutil.copyfile(str(tmp), str(path))
+    tmp.unlink(missing_ok=True)
+    return
+  except OSError as err:
+    last_err = err
+
+  # Last resort: overwrite destination in place (non-atomic but unlocks UI/jobs).
+  try:
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
+      f.write(payload)
+      f.flush()
+    tmp.unlink(missing_ok=True)
+    return
+  except OSError as err:
+    last_err = err
+  finally:
+    try:
+      tmp.unlink(missing_ok=True)
+    except OSError:
+      pass
+  if last_err is not None:
+    raise last_err
+  raise OSError(f"Failed to write {path}")
 
 
 def load_job_state() -> dict | None:

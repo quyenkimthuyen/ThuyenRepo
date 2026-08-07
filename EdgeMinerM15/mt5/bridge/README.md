@@ -107,14 +107,23 @@ python scripts/export_bridge_replay.py
 | `connection.json` | EA (heartbeat, tick, nến hiện tại, trạng thái trading) |
 | `bars.json` | EA (1344 nến M15 cho chart) |
 | `bar.json` | EA |
-| `decision.json` | App |
-| `fill.json` | EA (open/close + ticket/price/profit) |
+| `decision.json` | App (primary model mirror) |
+| `models.json` | App → EA roster (`model_id`↔magic, shared `risk_pct`) |
+| `decisions/<model_id>.json` | App (một file quyết định / model) |
+| `fill.json` | EA (open/close + ticket/price/profit + `model_id`/`magic`) |
 | `trades.json` | App journal (lệnh + R thắng/thua) |
 | `fills.jsonl` | App (raw fill history) |
 | `status.json` | App |
 | `comm_log.jsonl` | App (log giao tiếp) |
 | `sim_control.json` | App→EA HistoryFeed (`enabled`/`from`/`to`/`delay_ms`); EA cập nhật `ea_status`/`bars_*` |
 | `replay_decisions.json` / `replay_signals.csv` | export script |
+
+## Multi-model (Live + Simulate)
+
+- App chọn 1–5 Trade Model; **Risk % / lệnh chung** (tổng rủi ro ≈ N× nếu mở đồng thời).
+- Mỗi model một magic (`base + index`); tối đa **1 lệnh mở / magic**.
+- Cần tài khoản **hedging**. Compile lại `ForgeBridgeM15` / `ForgeBridgeM15Sim` sau khi kéo code mới.
+- Live Trade dashboard: KPI tổng + bảng từng model.
 
 ## History Feed (Simulate EA)
 

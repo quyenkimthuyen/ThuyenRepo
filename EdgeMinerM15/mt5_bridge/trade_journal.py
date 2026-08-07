@@ -90,17 +90,42 @@ def _find_open(
   *,
   signal_id: str | None = None,
   ticket: int | str | None = None,
+  model_id: str | None = None,
+  magic: int | str | None = None,
 ) -> dict | None:
+  mid = str(model_id) if model_id else None
+  mag = str(magic) if magic is not None and str(magic) != "" else None
+
+  def _side_ok(t: dict) -> bool:
+    if mid and str(t.get("model_id") or "") not in ("", mid):
+      # Allow empty model_id on legacy rows only when magic matches.
+      if mag is None or str(t.get("magic") or "") != mag:
+        return False
+    if mag is not None and str(t.get("magic") or "") not in ("", mag):
+      if mid is None or str(t.get("model_id") or "") != mid:
+        return False
+    return True
+
   for t in reversed(trades):
     if t.get("status") != "OPEN":
+      continue
+    if not _side_ok(t):
       continue
     if ticket is not None and str(t.get("ticket")) == str(ticket):
       return t
     if signal_id and t.get("signal_id") == signal_id:
       return t
   for t in reversed(trades):
-    if t.get("status") == "OPEN":
-      return t
+    if t.get("status") != "OPEN":
+      continue
+    if not _side_ok(t):
+      continue
+    return t
+  # Legacy fallback: only when no model/magic scope requested
+  if mid is None and mag is None:
+    for t in reversed(trades):
+      if t.get("status") == "OPEN":
+        return t
   return None
 
 
@@ -319,7 +344,8 @@ def process_fill(
       "r": None,
       "result": None,
       "reason": None,
-      "model_id": model_id or (decision or {}).get("model_id"),
+      "model_id": model_id or (decision or {}).get("model_id") or fill.get("model_id"),
+      "magic": fill.get("magic") if fill.get("magic") is not None else (decision or {}).get("magic"),
       "bar_time": (decision or {}).get("bar_time") or fill.get("bar_time"),
       "strategy_name": (decision or {}).get("strategy_name"),
       "updated_at": _now(),
@@ -339,7 +365,9 @@ def process_fill(
   if event == "modify":
     ticket = fill.get("ticket")
     sid = fill.get("signal_id")
-    row = _find_open(trades, signal_id=sid, ticket=ticket)
+    mid = model_id or (decision or {}).get("model_id") or fill.get("model_id")
+    mag = fill.get("magic") if fill.get("magic") is not None else (decision or {}).get("magic")
+    row = _find_open(trades, signal_id=sid, ticket=ticket, model_id=mid, magic=mag)
     if not row:
       return None
     _append_fill_log({**fill, "event": event}, bridge_dir)
@@ -375,7 +403,9 @@ def process_fill(
   if event == "close":
     ticket = fill.get("ticket")
     sid = fill.get("signal_id")
-    row = _find_open(trades, signal_id=sid, ticket=ticket)
+    mid = model_id or (decision or {}).get("model_id") or fill.get("model_id")
+    mag = fill.get("magic") if fill.get("magic") is not None else (decision or {}).get("magic")
+    row = _find_open(trades, signal_id=sid, ticket=ticket, model_id=mid, magic=mag)
     # EA / Live service restart often re-reads sticky fill.json. After the first
     # close the OPEN row is gone — update existing CLOSED, never append orphans.
     if not row:
@@ -409,7 +439,8 @@ def process_fill(
         "sl_initial": fill.get("sl"),
         "tp_initial": fill.get("tp"),
         "lots": fill.get("lots"),
-        "model_id": model_id,
+        "model_id": mid,
+        "magic": mag,
       }
       if row["entry_px"] is not None:
         try:

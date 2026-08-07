@@ -1,16 +1,110 @@
 {
-  "status": "idle",
-  "job_type": null,
-  "job_id": null,
-  "label": null,
-  "params": {},
-  "total": 0,
-  "done": 0,
+  "status": "completed",
+  "job_type": "mining_space_health",
+  "job_id": "job_mining_space_health_20260807_181143",
+  "label": "Mining space vs baseline · Balance",
+  "params": {
+    "model_id": "tm_breakthrough_elite_60_3_vwap_c1ad2c33",
+    "refresh_active": false,
+    "start_date": "2022-01-01",
+    "train_weeks": 6,
+    "spread_pips": 1.0,
+    "slippage_pips": 0.3,
+    "kb_profile": "era_2025_2026_6thang",
+    "kb_snapshot": 3,
+    "oos_from": "2026-01-01",
+    "oos_to": "2026-12-31",
+    "feature_profile": "current",
+    "mining_search_space": {
+      "rr_ratios": [
+        3.5,
+        4.0
+      ],
+      "atr_multipliers": [
+        0.9,
+        1.05
+      ],
+      "max_hold_bars": [
+        96
+      ],
+      "min_bars_between": [
+        12
+      ],
+      "session_ranges": [
+        [
+          7,
+          20
+        ]
+      ],
+      "session_filters": [
+        true
+      ],
+      "score_thresholds": [
+        0.6,
+        1.0,
+        1.6,
+        2.2
+      ],
+      "min_rules_matches": [
+        1,
+        2
+      ],
+      "ml_probability_thresholds": [
+        0.36,
+        0.4,
+        0.44,
+        0.48
+      ],
+      "min_feature_samples": 30,
+      "min_threshold_samples": 10,
+      "min_binary_samples": 8,
+      "include_session_regime_rules": false,
+      "target_trades_per_week": 3.0,
+      "drawdown_penalty": 0.5,
+      "loss_streak_penalty": 1.0,
+      "selection_mode": "elite_frontier",
+      "edge_surgery": false,
+      "edge_surgery_min_hour_trades": 3,
+      "edge_surgery_max_hour_wr": 0.42,
+      "edge_surgery_dominant_side_ratio": 0.7,
+      "edge_surgery_hours": true,
+      "anti_chase": true,
+      "anti_chase_mode": "fixed",
+      "anti_chase_fixed_rsi": 58.0,
+      "anti_chase_fixed_vwap": 1.2,
+      "anti_chase_rsi_caps": [
+        60.0,
+        62.0,
+        65.0,
+        68.0,
+        100.0
+      ],
+      "anti_chase_min_tpw": 5.0,
+      "anti_chase_use_vwap": true,
+      "anti_chase_vwap_caps": [
+        1.5,
+        2.0,
+        2.5,
+        99.0
+      ],
+      "anti_chase_logic": "or",
+      "exit_modes_full_only": true
+    }
+  },
+  "total": 31,
+  "done": 31,
   "progress_text": "",
-  "result": null,
-  "started_at": null,
-  "updated_at": "2026-08-07T09:22:52+07:00",
-  "finished_at": null,
-  "error": null,
-  "dismissed_from": "job_compare_trade_20260806_221453"
+  "result": {
+    "model_id": "tm_breakthrough_elite_60_3_vwap_c1ad2c33",
+    "active_total_r": null,
+    "baseline_total_r": 210.269,
+    "compared_presets": [
+      "active",
+      "baseline"
+    ]
+  },
+  "started_at": "2026-08-07T18:11:43+07:00",
+  "updated_at": "2026-08-07T18:13:32+07:00",
+  "finished_at": "2026-08-07T18:13:32+07:00",
+  "error": null
 }

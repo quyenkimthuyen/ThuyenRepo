@@ -58,13 +58,12 @@ def render_sidebar_deploy_eas() -> None:
   """Compact Deploy Live+Simulate — one script run, one MT5 restart."""
   live_ea = ea_live_name()
   sim_ea = ea_sim_name()
-  st.sidebar.markdown("**Deploy EA**")
-  st.sidebar.caption(f"{live_ea} + {sim_ea} · 1 lần restart MT5")
   if st.sidebar.button(
     "Deploy Live + Simulate",
     icon=":material/settings_suggest:",
     use_container_width=True,
     key="sidebar_mt5_deploy_both",
+    help=f"{live_ea} + {sim_ea} · 1 lần restart MT5",
   ):
     with st.spinner(f"Deploy {live_ea} + {sim_ea} (một lần)…"):
       try:

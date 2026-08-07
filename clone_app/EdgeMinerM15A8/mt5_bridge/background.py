@@ -21,13 +21,21 @@ from mt5_bridge.engine import BridgeEngine
 from mt5_bridge.history_sync import MT5_CACHE_PATH, process_history_sync, start_history_sync
 from mt5_bridge.protocol import (
   BRIDGE_DIR,
+  DEFAULT_MAGIC,
   DEFAULT_MODEL_ID,
+  DEFAULT_SIM_MAGIC,
+  MAX_BRIDGE_MODELS,
   atomic_write_json,
   bar_path,
   decision_path,
   ensure_bridge_dir,
   fill_path,
+  magic_to_model_id,
+  normalize_model_ids,
   read_json,
+  read_models_roster,
+  write_model_decision,
+  write_models_roster,
   write_status,
 )
 from mt5_bridge.trade_journal import process_fill
@@ -43,20 +51,36 @@ _lock = threading.Lock()
 _thread: threading.Thread | None = None
 _stop = threading.Event()
 _engine: BridgeEngine | None = None
+_engines: dict[str, BridgeEngine] = {}
 
 
 def _now_iso() -> str:
   return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
-def _engine_status_fields(engine: BridgeEngine, **extra) -> dict:
-  """Status fields shared with Health (same Trade Model conditions fingerprint)."""
-  return {
-    "model_id": engine.model_id,
-    "conditions_fp": engine.conditions_fp,
-    "run_conditions": engine.describe_conditions(),
-    **extra,
-  }
+def _engine_status_fields(engine: BridgeEngine | None, **extra) -> dict:
+  """Status fields shared with Health (same Trade Model conditions fingerprint).
+
+  ``extra`` overrides engine defaults — callers must not also pass the same keys
+  as explicit kwargs alongside ``**_engine_status_fields(...)``.
+  """
+  out: dict = {}
+  if engine is not None:
+    out = {
+      "model_id": engine.model_id,
+      "conditions_fp": engine.conditions_fp,
+      "run_conditions": engine.describe_conditions(),
+    }
+  out.update(extra)
+  return out
+
+
+def config_model_ids(cfg: dict | None = None) -> list[str]:
+  data = cfg or load_config()
+  return normalize_model_ids(
+    data.get("model_ids"),
+    fallback=data.get("model_id") or DEFAULT_MODEL_ID,
+  )
 
 
 def _read_json(path: Path) -> dict | None:
@@ -73,6 +97,88 @@ def _write_json(path: Path, data: dict) -> None:
   atomic_write_json(path, data)
 
 
+def sync_bridge_roster(
+  *,
+  bridge_dir: Path | None = None,
+  model_ids: list[str] | None = None,
+  risk_pct: float | None = None,
+  base_magic: int | None = None,
+  labels: dict[str, str] | None = None,
+) -> dict:
+  """Write models.json for EA; returns roster payload."""
+  cfg = load_config()
+  ids = normalize_model_ids(model_ids, fallback=None) or config_model_ids(cfg)
+  risk = float(risk_pct if risk_pct is not None else cfg.get("risk_pct") or 1.0)
+  from mt5_bridge.protocol import BRIDGE_SIM_DIR
+  bdir = ensure_bridge_dir(bridge_dir or Path(cfg.get("bridge_dir") or BRIDGE_DIR))
+  is_sim = Path(bdir).resolve() == BRIDGE_SIM_DIR.resolve()
+  base = int(
+    base_magic
+    if base_magic is not None
+    else (DEFAULT_SIM_MAGIC if is_sim else DEFAULT_MAGIC)
+  )
+  label_map = dict(labels or {})
+  if not label_map:
+    try:
+      from gui.trade_model import format_model_label, list_trade_models
+      by_id = {
+        str(m.get("id") or ""): format_model_label(m)
+        for m in list_trade_models()
+        if m.get("id")
+      }
+      for mid in ids:
+        if mid in by_id:
+          label_map[mid] = by_id[mid]
+    except Exception:
+      pass
+  return write_models_roster(
+    ids, risk_pct=risk, bridge_dir=bdir, base_magic=base, labels=label_map,
+  )
+
+
+def build_engines(
+  model_ids: list[str],
+  *,
+  risk_pct: float,
+  bridge_dir: Path,
+  base_magic: int,
+  existing_engines: dict[str, BridgeEngine] | None = None,
+) -> dict[str, BridgeEngine]:
+  """Create/reuse BridgeEngine per model with stable magics from roster."""
+  roster = write_models_roster(
+    model_ids,
+    risk_pct=float(risk_pct),
+    bridge_dir=bridge_dir,
+    base_magic=int(base_magic),
+  )
+  magic_by_id = {
+    str(r["id"]): int(r["magic"])
+    for r in (roster.get("models") or [])
+    if isinstance(r, dict) and r.get("id") is not None
+  }
+  prev = existing_engines or {}
+  out: dict[str, BridgeEngine] = {}
+  for mid in normalize_model_ids(model_ids):
+    magic = int(magic_by_id.get(mid, base_magic))
+    old = prev.get(mid)
+    if (
+      old is not None
+      and old.model_id == mid
+      and abs(old.risk_pct - float(risk_pct)) < 1e-9
+      and int(old.magic) == magic
+    ):
+      out[mid] = old
+    else:
+      eng = BridgeEngine(
+        model_id=mid,
+        risk_pct=float(risk_pct),
+        magic=magic,
+        bridge_dir=bridge_dir,
+      )
+      out[mid] = eng
+  return out
+
+
 def load_config() -> dict:
   data = _read_json(CONFIG_PATH) or {}
   bridge_dir = data.get("bridge_dir") or str(BRIDGE_DIR)
@@ -80,9 +186,13 @@ def load_config() -> dict:
   # that path is invalid and causes a failed service restart on every rerun.
   if os.name == "nt" and str(bridge_dir).startswith("/"):
     bridge_dir = str(BRIDGE_DIR)
+  model_id = data.get("model_id") or DEFAULT_MODEL_ID
+  model_ids = normalize_model_ids(data.get("model_ids"), fallback=model_id)
+  primary = model_ids[0] if model_ids else model_id
   return {
     "enabled": bool(data.get("enabled", False)),
-    "model_id": data.get("model_id") or DEFAULT_MODEL_ID,
+    "model_id": primary,
+    "model_ids": model_ids,
     "risk_pct": float(data.get("risk_pct", 1.0)),
     "poll_sec": float(data.get("poll_sec", 2.0)),
     "bridge_dir": bridge_dir,
@@ -118,6 +228,14 @@ def save_config(**updates) -> dict:
     if v is None and k not in nullable:
       continue
     cfg[k] = v
+  if "model_ids" in updates or "model_id" in updates:
+    ids = normalize_model_ids(
+      cfg.get("model_ids"),
+      fallback=cfg.get("model_id") or DEFAULT_MODEL_ID,
+    )
+    cfg["model_ids"] = ids
+    if ids:
+      cfg["model_id"] = ids[0]
   _write_json(CONFIG_PATH, cfg)
   return cfg
 
@@ -127,6 +245,7 @@ def check_and_apply_loss_guard(
   bridge_dir: Path | None = None,
   bar: dict | None = None,
   model_id: str | None = None,
+  model_ids: list[str] | None = None,
   cfg: dict | None = None,
 ) -> dict | None:
   """If consecutive-loss limits hit → FLAT + disable service. Returns trip or None."""
@@ -136,11 +255,13 @@ def check_and_apply_loss_guard(
   trip = evaluate_loss_guard(runtime, bridge_dir=bridge_dir)
   if not trip:
     return None
+  ids = normalize_model_ids(model_ids, fallback=None) or config_model_ids(runtime)
   apply_loss_guard_halt(
     trip,
     bridge_dir=bridge_dir,
     bar=bar,
-    model_id=model_id or runtime.get("model_id"),
+    model_id=model_id or (ids[0] if ids else runtime.get("model_id")),
+    model_ids=ids,
   )
   _stop.set()
   return trip
@@ -265,10 +386,22 @@ def _fill_fp(fill: dict | None) -> str | None:
   )
 
 
-def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last_fill_fp: str | None):
+def _cycle(
+  engines: dict[str, BridgeEngine] | BridgeEngine,
+  bridge_dir: Path,
+  last_bar_fp: str | None,
+  last_fill_fp: str | None,
+):
   from mt5_bridge.protocol import BRIDGE_SIM_DIR
 
+  if isinstance(engines, BridgeEngine):
+    eng_map: dict[str, BridgeEngine] = {engines.model_id: engines}
+  else:
+    eng_map = dict(engines or {})
+  primary = next(iter(eng_map.values()), None)
+  primary_id = primary.model_id if primary else None
   is_sim = Path(bridge_dir).resolve() == BRIDGE_SIM_DIR.resolve()
+  roster = read_models_roster(bridge_dir)
   seen_fills: set[str] = set()
   if isinstance(last_fill_fp, str) and last_fill_fp.startswith("["):
     try:
@@ -278,11 +411,31 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
   elif last_fill_fp:
     seen_fills = {last_fill_fp}
 
+  def _resolve_engine_for_fill(fill: dict) -> BridgeEngine | None:
+    mid = str(fill.get("model_id") or "") or None
+    if mid and mid in eng_map:
+      return eng_map[mid]
+    mag = fill.get("magic")
+    mapped = magic_to_model_id(roster, mag)
+    if mapped and mapped in eng_map:
+      return eng_map[mapped]
+    if mag is not None:
+      try:
+        m = int(mag)
+      except (TypeError, ValueError):
+        m = None
+      if m is not None:
+        for eng in eng_map.values():
+          if int(eng.magic) == m:
+            return eng
+    return primary
+
   def _ingest_fill(fill: dict) -> None:
     nonlocal seen_fills
     fp_fill = _fill_fp(fill)
     if not fp_fill or fp_fill in seen_fills:
       return
+    eng = _resolve_engine_for_fill(fill)
     if not is_sim:
       append_event(
         "ea_to_app",
@@ -291,15 +444,16 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
         payload=fill,
         summary=(
           f"fill {fill.get('event') or fill.get('action')} ok={fill.get('ok')} "
-          f"sid={fill.get('signal_id')} detail={fill.get('detail')}"
+          f"sid={fill.get('signal_id')} model={fill.get('model_id') or (eng.model_id if eng else '')} "
+          f"detail={fill.get('detail')}"
         ),
       )
-    last_decision = engine._last_decision if engine else None
+    last_decision = eng._last_decision if eng else None
     process_fill(
       fill,
       bridge_dir=bridge_dir,
       decision=last_decision if isinstance(last_decision, dict) else None,
-      model_id=engine.model_id if engine else None,
+      model_id=(eng.model_id if eng else None) or fill.get("model_id"),
     )
     seen_fills.add(fp_fill)
     if not is_sim:
@@ -337,7 +491,8 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
     trip = check_and_apply_loss_guard(
       bridge_dir=bridge_dir,
       bar=bar if isinstance(bar, dict) else None,
-      model_id=engine.model_id if engine else None,
+      model_id=primary_id,
+      model_ids=list(eng_map.keys()),
     )
     if trip:
       return last_bar_fp, last_fill_fp
@@ -367,54 +522,81 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
       summary=f"bar {bar.get('symbol')} {bar.get('time') or bar.get('bar_time')} c={bar.get('close')}",
     )
 
-  decision = engine.decide_for_bar(bar)
-  # Never open new risk if guard already tripped mid-cycle (config race).
-  if not is_sim:
-    runtime = load_config()
-    if runtime.get("loss_guard_tripped") or not runtime.get("enabled", True):
+  runtime = load_config() if not is_sim else {}
+  halt = (
+    (not is_sim)
+    and (runtime.get("loss_guard_tripped") or not runtime.get("enabled", True))
+  )
+  per_model: dict[str, dict] = {}
+  last_decision: dict | None = None
+  for mid, eng in eng_map.items():
+    if halt:
       from mt5_bridge.loss_guard import build_flat_halt_decision
       decision = build_flat_halt_decision(
         bar,
         reason=runtime.get("loss_guard_tripped_reason") or "Loss guard / service disabled",
-        model_id=engine.model_id,
+        model_id=mid,
       )
-  atomic_write_json(decision_path(bridge_dir), decision)
-  action_u = str(decision.get("action") or "").upper()
-  if not is_sim or action_u in ("BUY", "SELL"):
-    append_event(
-      "app_to_ea",
-      "decision_sent",
+      decision["magic"] = eng.magic
+      decision["risk_pct"] = eng.risk_pct
+    else:
+      decision = eng.decide_for_bar(bar)
+    write_model_decision(
+      decision,
       bridge_dir=bridge_dir,
-      payload={
-        "action": decision.get("action"),
-        "bar_time": decision.get("bar_time"),
-        "signal_id": decision.get("signal_id"),
-        "reason": decision.get("reason"),
-        "entry": decision.get("entry"),
-        "sl": decision.get("sl"),
-        "tp": decision.get("tp"),
-        "strategy_name": decision.get("strategy_name"),
-      },
-      summary=(
-        f"decision {decision.get('action')} bar={decision.get('bar_time')} "
-        f"reason={decision.get('reason')}"
-      ),
+      mirror_primary=True,
+      primary_model_id=primary_id,
     )
+    last_decision = decision
+    per_model[mid] = {
+      "action": decision.get("action"),
+      "reason": decision.get("reason"),
+      "signal_id": decision.get("signal_id"),
+      "magic": decision.get("magic"),
+      "strategy_name": decision.get("strategy_name"),
+      "conditions_fp": decision.get("conditions_fp") or eng.conditions_fp,
+    }
+    action_u = str(decision.get("action") or "").upper()
+    if not is_sim or action_u in ("BUY", "SELL"):
+      append_event(
+        "app_to_ea",
+        "decision_sent",
+        bridge_dir=bridge_dir,
+        payload={
+          "action": decision.get("action"),
+          "bar_time": decision.get("bar_time"),
+          "signal_id": decision.get("signal_id"),
+          "reason": decision.get("reason"),
+          "entry": decision.get("entry"),
+          "sl": decision.get("sl"),
+          "tp": decision.get("tp"),
+          "strategy_name": decision.get("strategy_name"),
+          "model_id": mid,
+          "magic": decision.get("magic"),
+        },
+        summary=(
+          f"decision {mid} {decision.get('action')} bar={decision.get('bar_time')} "
+          f"reason={decision.get('reason')}"
+        ),
+      )
+
   write_status(
     bridge_dir,
     state="decided",
     last_bar=fp,
-    last_action=decision.get("action"),
-    reason=decision.get("reason"),
-    week_start=decision.get("week_start"),
-    strategy_name=decision.get("strategy_name"),
+    last_action=(last_decision or {}).get("action"),
+    reason=(last_decision or {}).get("reason"),
+    week_start=(last_decision or {}).get("week_start"),
+    strategy_name=(last_decision or {}).get("strategy_name"),
+    model_ids=list(eng_map.keys()),
+    per_model=per_model,
     error=None,
-    **_engine_status_fields(engine),
+    **_engine_status_fields(primary),
   )
   if not is_sim:
     save_config(
       last_run_at=_now_iso(),
-      last_action=decision.get("action"),
+      last_action=(last_decision or {}).get("action"),
       last_bar=fp,
       last_error=None,
     )
@@ -423,22 +605,29 @@ def _cycle(engine: BridgeEngine, bridge_dir: Path, last_bar_fp: str | None, last
 
 
 def _worker():
-  global _engine
+  global _engine, _engines
   cfg = load_config()
   bridge_dir = ensure_bridge_dir(Path(cfg["bridge_dir"]))
   append_event("system", "service_start", bridge_dir=bridge_dir, summary="bridge thread started")
   start_history_sync(bridge_dir)
   try:
-    _engine = BridgeEngine(
-      model_id=cfg["model_id"], risk_pct=cfg["risk_pct"], bridge_dir=BRIDGE_DIR,
+    ids = config_model_ids(cfg)
+    _engines = build_engines(
+      ids,
+      risk_pct=float(cfg["risk_pct"]),
+      bridge_dir=BRIDGE_DIR,
+      base_magic=DEFAULT_MAGIC,
     )
-    if MT5_CACHE_PATH.exists():
-      _engine.ensure_history()
+    _engine = next(iter(_engines.values()), None)
+    if MT5_CACHE_PATH.exists() and _engine:
+      for eng in _engines.values():
+        eng.ensure_history()
     write_status(
       bridge_dir,
       state="running",
       error=None,
       runtime="thread",
+      model_ids=list(_engines.keys()),
       **_engine_status_fields(_engine),
     )
   except Exception as e:
@@ -462,26 +651,36 @@ def _worker():
       if not MT5_CACHE_PATH.exists():
         _stop.wait(poll)
         continue
-      if _engine and (
-        _engine.model_id != cfg["model_id"]
-        or abs(_engine.risk_pct - float(cfg["risk_pct"])) > 1e-9
-      ):
-        _engine = BridgeEngine(
-          model_id=cfg["model_id"], risk_pct=float(cfg["risk_pct"]), bridge_dir=BRIDGE_DIR,
+      desired_ids = config_model_ids(cfg)
+      desired_risk = float(cfg["risk_pct"])
+      cur_ids = list(_engines.keys())
+      risk_changed = any(
+        abs(e.risk_pct - desired_risk) > 1e-9 for e in _engines.values()
+      )
+      if cur_ids != desired_ids or risk_changed:
+        _engines = build_engines(
+          desired_ids,
+          risk_pct=desired_risk,
+          bridge_dir=BRIDGE_DIR,
+          base_magic=DEFAULT_MAGIC,
+          existing_engines=_engines,
         )
-        _engine.ensure_history()
+        _engine = next(iter(_engines.values()), None)
+        for eng in _engines.values():
+          eng.ensure_history()
         append_event(
           "system", "engine_reload", bridge_dir=bridge_dir,
-          summary=f"model={cfg['model_id']} risk={cfg['risk_pct']} fp={_engine.conditions_fp}",
+          summary=f"models={desired_ids} risk={desired_risk}",
         )
-      elif _engine and _engine.refresh_model():
-        # Same model_id but mining/KB/spread changed on disk — keep Bridge = Health.
-        append_event(
-          "system", "engine_reload", bridge_dir=bridge_dir,
-          summary=f"conditions_fp={_engine.conditions_fp} (model params updated)",
-          payload=_engine.describe_conditions(),
-        )
-      last_bar_fp, last_fill_fp = _cycle(_engine, bridge_dir, last_bar_fp, last_fill_fp)
+      else:
+        for eng in _engines.values():
+          if eng.refresh_model():
+            append_event(
+              "system", "engine_reload", bridge_dir=bridge_dir,
+              summary=f"conditions_fp={eng.conditions_fp} model={eng.model_id}",
+              payload=eng.describe_conditions(),
+            )
+      last_bar_fp, last_fill_fp = _cycle(_engines, bridge_dir, last_bar_fp, last_fill_fp)
       if _stop.is_set() or not load_config().get("enabled"):
         break
     except Exception as e:
@@ -521,11 +720,22 @@ def start_process_worker() -> bool:
     cmd = [
       sys.executable,
       str(SERVICE_SCRIPT),
-      "--model-id", str(cfg.get("model_id") or DEFAULT_MODEL_ID),
       "--risk-pct", str(cfg.get("risk_pct") or 1.0),
       "--poll", str(cfg.get("poll_sec") or 2.0),
       "--bridge-dir", str(cfg.get("bridge_dir") or BRIDGE_DIR),
     ]
+    ids = config_model_ids(cfg)
+    if ids:
+      cmd.extend(["--model-ids", ",".join(ids)])
+      cmd.extend(["--model-id", ids[0]])
+    else:
+      cmd.extend(["--model-id", str(cfg.get("model_id") or DEFAULT_MODEL_ID)])
+    sync_bridge_roster(
+      bridge_dir=Path(cfg.get("bridge_dir") or BRIDGE_DIR),
+      model_ids=ids,
+      risk_pct=float(cfg.get("risk_pct") or 1.0),
+      base_magic=DEFAULT_MAGIC,
+    )
     logf = open(SERVICE_LOG, "a", encoding="utf-8")
     logf.write(f"\n--- start {_now_iso()} ---\n")
     logf.flush()
@@ -602,13 +812,19 @@ def ensure_worker_running() -> None:
 def process_once_now() -> dict | None:
   cfg = load_config()
   bridge_dir = ensure_bridge_dir(Path(cfg["bridge_dir"]))
-  engine = BridgeEngine(
-    model_id=cfg["model_id"], risk_pct=float(cfg["risk_pct"]), bridge_dir=bridge_dir,
+  ids = config_model_ids(cfg)
+  engines = build_engines(
+    ids,
+    risk_pct=float(cfg["risk_pct"]),
+    bridge_dir=bridge_dir,
+    base_magic=DEFAULT_MAGIC,
   )
   process_history_sync(bridge_dir)
-  engine.ensure_history()
-  _cycle(engine, bridge_dir, None, None)
-  return engine._last_decision
+  for eng in engines.values():
+    eng.ensure_history()
+  _cycle(engines, bridge_dir, None, None)
+  primary = next(iter(engines.values()), None)
+  return primary._last_decision if primary else None
 
 
 # --- Simulate EA worker: detached process (like Live) so Streamlit stays smooth ---
@@ -689,20 +905,31 @@ def get_sim_status() -> dict:
   return st
 
 
-def _run_sim_bridge_loop(stop_event: threading.Event, model_id: str | None, risk_pct: float) -> None:
+def _run_sim_bridge_loop(
+  stop_event: threading.Event,
+  model_id: str | None,
+  risk_pct: float,
+  model_ids: list[str] | None = None,
+) -> None:
   """BridgeEngine cycle on bridge_sim while EA feeds bars."""
-  from mt5_bridge.engine import BridgeEngine
   from mt5_bridge.protocol import BRIDGE_SIM_DIR, ensure_bridge_dir
 
   bridge_dir = ensure_bridge_dir(BRIDGE_SIM_DIR)
-  mid = model_id or load_config().get("model_id")
-  engine = BridgeEngine(model_id=mid, risk_pct=float(risk_pct), bridge_dir=bridge_dir)
+  ids = normalize_model_ids(model_ids, fallback=model_id or load_config().get("model_id"))
+  engines = build_engines(
+    ids,
+    risk_pct=float(risk_pct),
+    bridge_dir=bridge_dir,
+    base_magic=DEFAULT_SIM_MAGIC,
+  )
+  primary = next(iter(engines.values()), None)
   try:
     if MT5_CACHE_PATH.exists():
-      engine.ensure_history()
+      for eng in engines.values():
+        eng.ensure_history()
       print(
-        f"[sim-bridge] canonical history bars={len(engine.load())} "
-        f"fp={engine.conditions_fp}",
+        f"[sim-bridge] canonical history models={list(engines.keys())} "
+        f"fp={primary.conditions_fp if primary else '-'}",
         flush=True,
       )
   except Exception as e:
@@ -711,7 +938,7 @@ def _run_sim_bridge_loop(stop_event: threading.Event, model_id: str | None, risk
   last_fill_fp = None
   while not stop_event.is_set():
     try:
-      last_bar_fp, last_fill_fp = _cycle(engine, bridge_dir, last_bar_fp, last_fill_fp)
+      last_bar_fp, last_fill_fp = _cycle(engines, bridge_dir, last_bar_fp, last_fill_fp)
     except MemoryError as e:
       msg = f"sim_bridge MemoryError: {e}"
       print(f"[sim-bridge] {msg}", flush=True)
@@ -722,14 +949,16 @@ def _run_sim_bridge_loop(stop_event: threading.Event, model_id: str | None, risk
           bridge_dir,
           state="error",
           error=msg,
-          **_engine_status_fields(engine),
+          model_ids=list(engines.keys()),
+          **_engine_status_fields(primary),
         )
       except Exception:
         pass
       # Drop FeatureMatrix only — keep weekly strat cache (avoid mid-week remine drift)
       try:
-        engine._fm = None
-        engine._fm_key = None
+        for eng in engines.values():
+          eng._fm = None
+          eng._fm_key = None
       except Exception:
         pass
       time.sleep(1.0)
@@ -739,7 +968,8 @@ def _run_sim_bridge_loop(stop_event: threading.Event, model_id: str | None, risk
           bridge_dir,
           state="error",
           error=f"sim_bridge: {e}",
-          **_engine_status_fields(engine),
+          model_ids=list(engines.keys()),
+          **_engine_status_fields(primary),
         )
       except Exception:
         pass
@@ -755,6 +985,7 @@ def start_sim_worker(
   date_to: str,
   delay_ms: int = 100,
   model_id: str | None = None,
+  model_ids: list[str] | None = None,
   risk_pct: float = 1.0,
   detached: bool = True,
 ) -> bool:
@@ -769,8 +1000,15 @@ def start_sim_worker(
     from mt5_bridge.ea_simulator import SimConfig, run_history_feed_control, write_sim_state
     from mt5_bridge.protocol import BRIDGE_SIM_DIR
 
-    mid = model_id or load_config().get("model_id")
+    ids = normalize_model_ids(model_ids, fallback=model_id or load_config().get("model_id"))
+    mid = ids[0] if ids else (model_id or load_config().get("model_id"))
     delay = max(1, int(delay_ms))
+    sync_bridge_roster(
+      bridge_dir=BRIDGE_SIM_DIR,
+      model_ids=ids,
+      risk_pct=float(risk_pct),
+      base_magic=DEFAULT_SIM_MAGIC,
+    )
 
     if detached:
       REPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -783,6 +1021,8 @@ def start_sim_worker(
         "--risk-pct", str(float(risk_pct)),
         "--bridge-dir", str(BRIDGE_SIM_DIR),
       ]
+      if ids:
+        cmd.extend(["--model-ids", ",".join(ids)])
       if mid:
         cmd.extend(["--model-id", str(mid)])
       logf = open(SIM_SERVICE_LOG, "a", encoding="utf-8")
@@ -802,6 +1042,7 @@ def start_sim_worker(
         "runtime": "process",
         "service_pid": proc.pid,
         "model_id": mid,
+        "model_ids": ids,
         "date_from": date_from,
         "date_to": date_to,
         "delay_ms": delay,
@@ -835,14 +1076,16 @@ def start_sim_worker(
 
     _sim_bridge_thread = threading.Thread(
       target=_run_sim_bridge_loop,
-      args=(_sim_stop, mid, float(risk_pct)),
+      args=(_sim_stop, mid, float(risk_pct), ids),
       name="ea-history-bridge",
       daemon=True,
     )
     _sim_bridge_thread.start()
     _sim_thread = threading.Thread(target=_run_control, name="ea-history-control", daemon=True)
     _sim_thread.start()
-    write_sim_state({"status": "running", "runtime": "thread", "model_id": mid})
+    write_sim_state({
+      "status": "running", "runtime": "thread", "model_id": mid, "model_ids": ids,
+    })
     return True
 
 

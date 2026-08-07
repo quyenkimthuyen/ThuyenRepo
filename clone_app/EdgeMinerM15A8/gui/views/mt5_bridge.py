@@ -13,7 +13,11 @@ from gui.charts import show_plotly
 from gui.mt5_live_chart import build_ea_chart, connection_health, load_ea_chart_data, load_sim_chart_data
 from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
-from gui.trade_model import format_model_label, get_active_trade_model, render_shared_trade_model_banner
+from gui.trade_model import (
+  format_model_label,
+  get_active_trade_model,
+  list_trade_models,
+)
 from gui.ui_preferences import preference_callback, restore_widget, set_preference
 from mt5_bridge.history_sync import get_history_status, start_history_sync
 from mt5_bridge import background as bridge_bg
@@ -23,6 +27,7 @@ from mt5_bridge.protocol import (
   BRIDGE_DIR,
   BRIDGE_SIM_DIR,
   DEFAULT_MODEL_ID,
+  MAX_BRIDGE_MODELS,
   bar_path,
   bars_path,
   command_ack_path,
@@ -30,9 +35,12 @@ from mt5_bridge.protocol import (
   connection_path,
   decision_path,
   fill_path,
+  normalize_model_ids,
   pip_size_from_quotes,
   prices_from_pips,
   read_json,
+  resolve_live_bridge_dir,
+  resolve_sim_bridge_dir,
   status_path,
   write_manual_close_command,
   write_manual_market_command,
@@ -46,10 +54,175 @@ from mt5_bridge.trade_journal import (
 )
 
 
+def _bridge_any_service_running() -> bool:
+  return bool(bridge_bg.get_status().get("running")) or bool(
+    bridge_bg.get_sim_status().get("running")
+  )
+
+
+def _render_bridge_models_tab() -> list[str]:
+  """Một chỗ chọn Trade Model + Risk + checklist — dùng chung Live & Simulate."""
+  from gui.live_readiness import render_live_readiness
+  from gui.trade_model import (
+    bridge_roster_display_rows,
+    format_model_short,
+    get_bridge_runtime_model_ids,
+  )
+
+  cfg = bridge_bg.load_config()
+  labels, by_label, by_id = _bridge_model_options()
+  cfg_ids = normalize_model_ids(cfg.get("model_ids"), fallback=cfg.get("model_id"))
+  default_labels = []
+  for mid in cfg_ids:
+    m = by_id.get(mid)
+    if m is not None:
+      default_labels.append(format_model_label(m))
+  if not default_labels and labels:
+    # Migrate old Simulate-only preference if present
+    sim_pref = st.session_state.get("mt5_sim_models")
+    if isinstance(sim_pref, list) and sim_pref:
+      default_labels = [x for x in sim_pref if x in labels]
+    if not default_labels:
+      active = get_active_trade_model()
+      if active:
+        default_labels = [format_model_label(active)]
+      else:
+        default_labels = labels[:1]
+
+  running = _bridge_any_service_running()
+  restore_widget(
+    "mt5_bridge_models", default_labels,
+    preference_key="mt5.bridge_model_labels",
+    options=labels,
+    multiple=True,
+  )
+  st.subheader("Trade Models · Bridge")
+  st.caption(
+    "Chọn model **một lần** — áp dụng cho cả **Live** và **Simulate**. "
+    "Mỗi model một magic · tối đa 1 lệnh mở · Risk % chung."
+  )
+  picked_labels = st.multiselect(
+    "Trade models (1–5)",
+    labels,
+    key="mt5_bridge_models",
+    max_selections=MAX_BRIDGE_MODELS,
+    disabled=running or not labels,
+    on_change=preference_callback("mt5_bridge_models", "mt5.bridge_model_labels"),
+    help="Đổi model khi cả Live và Simulate đang Stop.",
+  )
+  model_ids = normalize_model_ids([by_label[x] for x in picked_labels if x in by_label])
+  if not model_ids and cfg_ids:
+    model_ids = cfg_ids
+  primary_id = model_ids[0] if model_ids else (
+    (get_active_trade_model() or {}).get("id") or DEFAULT_MODEL_ID
+  )
+  if model_ids and (
+    cfg.get("model_ids") != model_ids or cfg.get("model_id") != primary_id
+  ):
+    cfg = bridge_bg.save_config(model_id=primary_id, model_ids=model_ids)
+
+  st.session_state.setdefault("mt5_risk_pct", float(cfg.get("risk_pct", 1.0)))
+  risk = st.number_input(
+    "Risk % / lệnh (chung mọi model · Live & Simulate)",
+    0.1, 5.0, step=0.1,
+    key="mt5_risk_pct",
+    disabled=running,
+    on_change=_save_bridge_runtime_settings,
+  )
+  n_sel = max(1, len(model_ids))
+  st.caption(
+    f"**{n_sel}** model · nếu tất cả cùng mở → rủi ro ≈ **{float(risk) * n_sel:.1f}%** balance · "
+    "cần tài khoản **hedging**."
+  )
+  if running:
+    st.info("Live hoặc Simulate đang chạy — Stop trước khi đổi model / Risk %.")
+
+  # Roster snapshot
+  ids_runtime = get_bridge_runtime_model_ids() or model_ids
+  if ids_runtime:
+    prefer_sim = bool(bridge_bg.get_sim_status().get("running")) and not bool(
+      bridge_bg.get_status().get("running")
+    )
+    rows = bridge_roster_display_rows(include_runtime=True, prefer_sim=prefer_sim)
+    if rows:
+      table = []
+      for i, r in enumerate(rows, 1):
+        oos = f"{r['oos_r']:+.1f}R" if r.get("oos_r") is not None else "—"
+        table.append({
+          "#": i,
+          "Model": r["name"],
+          "Magic": r.get("magic") or "—",
+          "OOS R": oos,
+          "Last": r.get("last_action") or "—",
+          "Reason": r.get("last_reason") or "—",
+        })
+      st.dataframe(pd.DataFrame(table), hide_index=True, use_container_width=True)
+    else:
+      for mid in ids_runtime:
+        m = by_id.get(mid)
+        st.caption(f"· {format_model_short(m) if m else mid[:28]}")
+
+  st.divider()
+  # Prefer live status; fall back to sim — use configured/clone bridge dirs
+  live_st = read_json(status_path(resolve_live_bridge_dir())) or {}
+  sim_st = read_json(status_path(resolve_sim_bridge_dir())) or {}
+  if bridge_bg.get_status().get("running") or (
+    live_st.get("per_model") or live_st.get("model_ids")
+  ):
+    bridge_dir = resolve_live_bridge_dir()
+    file_status = live_st
+  else:
+    bridge_dir = resolve_sim_bridge_dir()
+    file_status = sim_st
+  decision = read_json(decision_path(bridge_dir)) or {}
+  active = by_id.get(primary_id) or get_active_trade_model()
+  render_live_readiness(
+    active,
+    decision=decision,
+    file_status=file_status,
+    include_bridge=True,
+    expanded=True,
+    key_prefix="bridge_models_ready",
+  )
+  return model_ids
+
+
+def _bridge_model_options() -> tuple[list[str], dict[str, str], dict[str, dict]]:
+  """labels, label→id, id→model for multiselect."""
+  models = list_trade_models()
+  labels = [format_model_label(m) for m in models]
+  by_label = {format_model_label(m): str(m.get("id") or "") for m in models}
+  by_id = {str(m.get("id") or ""): m for m in models if m.get("id")}
+  return labels, by_label, by_id
+
+
+def _selected_bridge_model_ids(
+  *,
+  widget_key: str = "mt5_bridge_models",
+  fallback_active: bool = True,
+) -> list[str]:
+  labels, by_label, _ = _bridge_model_options()
+  picked = st.session_state.get(widget_key) or []
+  ids = normalize_model_ids([by_label[x] for x in picked if x in by_label])
+  if ids:
+    return ids
+  cfg_ids = normalize_model_ids(bridge_bg.load_config().get("model_ids"))
+  if cfg_ids:
+    return cfg_ids
+  if fallback_active:
+    active = get_active_trade_model()
+    if active and active.get("id"):
+      return [str(active["id"])]
+  if labels:
+    return normalize_model_ids([by_label[labels[0]]])
+  return []
+
+
 def _save_bridge_runtime_settings() -> None:
-  active = get_active_trade_model()
+  ids = _selected_bridge_model_ids()
   bridge_bg.save_config(
-    model_id=(active or {}).get("id") or DEFAULT_MODEL_ID,
+    model_id=ids[0] if ids else DEFAULT_MODEL_ID,
+    model_ids=ids,
     risk_pct=float(st.session_state.get("mt5_risk_pct", 1.0)),
     poll_sec=float(st.session_state.get("mt5_poll_sec", 2.0)),
     loss_guard_enabled=bool(st.session_state.get("mt5_loss_guard_enabled", True)),
@@ -120,19 +293,21 @@ def _sim_viewing_archive() -> tuple[bool, dict | None]:
 
 
 def _active_bridge_dir():
-  """Live EA I/O directory (desk / chart / feed). Always current bridge_sim in Simulate."""
-  return BRIDGE_SIM_DIR if _bridge_mode() == "sim" else BRIDGE_DIR
+  """Live EA I/O directory (desk / chart / feed). Always current sim dir in Simulate."""
+  from mt5_bridge.protocol import resolve_live_bridge_dir, resolve_sim_bridge_dir
+  return resolve_sim_bridge_dir() if _bridge_mode() == "sim" else resolve_live_bridge_dir()
 
 
 def _sim_stats_bridge_dir():
   """Trades source for Simulate stats/monitor — live or archived run."""
+  from mt5_bridge.protocol import resolve_live_bridge_dir, resolve_sim_bridge_dir
   if _bridge_mode() != "sim":
-    return BRIDGE_DIR
+    return resolve_live_bridge_dir()
   viewing, meta = _sim_viewing_archive()
   if viewing and meta and meta.get("run_id"):
     from mt5_bridge.sim_history import archived_trades_dir
     return archived_trades_dir(str(meta["run_id"]))
-  return BRIDGE_SIM_DIR
+  return resolve_sim_bridge_dir()
 
 
 def _mode_label() -> str:
@@ -167,22 +342,99 @@ def _render_conditions_alignment(
   file_status: dict,
   detailed: bool = False,
 ) -> None:
-  """Show that Bridge remine uses the same strategy conditions as Health."""
+  """Show Bridge remine fp khớp roster Trade Models (multi-model aware)."""
+  from gui.trade_model import (
+    format_model_short,
+    get_bridge_runtime_model_ids,
+    get_model_by_id,
+  )
   from mt5_bridge.models import (
     conditions_fingerprint,
     describe_strategy_conditions,
     get_model_run_params,
   )
+  from mt5_bridge.protocol import normalize_model_ids
 
-  if not active:
+  roster_ids = normalize_model_ids(
+    file_status.get("model_ids") or get_bridge_runtime_model_ids(),
+    fallback=(active or {}).get("id"),
+  )
+  per = file_status.get("per_model") if isinstance(file_status.get("per_model"), dict) else {}
+
+  def _fp_for_model(m: dict | None, mid: str) -> str | None:
+    if not m:
+      return None
+    params = get_model_run_params(m, mid)
+    return conditions_fingerprint(params)
+
+  # Multi-model: verify each roster slot (not “active” vs primary root fp)
+  if len(roster_ids) > 1:
+    rows = []
+    n_match = n_miss = n_skip = 0
+    for mid in roster_ids:
+      m = get_model_by_id(mid)
+      expect = _fp_for_model(m, mid)
+      slot = per.get(mid) if isinstance(per.get(mid), dict) else {}
+      live = (
+        (slot or {}).get("conditions_fp")
+        or (decision.get("conditions_fp") if decision.get("model_id") == mid else None)
+      )
+      if expect and live and str(live) == str(expect):
+        state = "match"
+        n_match += 1
+      elif expect and live:
+        state = "mismatch"
+        n_miss += 1
+      else:
+        state = "unknown"
+        n_skip += 1
+      rows.append({
+        "Model": format_model_short(m, max_len=36) if m else mid[:28],
+        "State": state,
+        "Expect": (str(expect)[:10] + "…") if expect else "—",
+        "Bridge": (str(live)[:10] + "…") if live else "—",
+      })
+
+    if not detailed:
+      if n_miss:
+        st.warning(
+          f"Bridge lệch **{n_miss}/{len(roster_ids)}** model — "
+          "Stop rồi Start lại feed/service để đồng bộ."
+        )
+      elif n_match == len(roster_ids):
+        st.success(f"Bridge khớp **{len(roster_ids)}** Trade Model trong roster.")
+      else:
+        st.caption(
+          f"Chưa xác nhận đủ fp ({n_match} khớp · {n_skip} chờ) — "
+          "Start feed / đợi decision mới."
+        )
+      return
+
+    st.caption(f"Roster Bridge · {len(roster_ids)} model · kiểm tra `conditions_fp` từng slot")
+    import pandas as pd
+    st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+    if n_miss:
+      st.warning("Có model lệch fp — Stop/Start Simulate hoặc Live để nạp lại roster.")
+    elif n_match == len(roster_ids):
+      st.success("Mọi model trong roster khớp điều kiện remine / Health.")
+    else:
+      st.info("Một số slot chưa có fp — đợi Bridge decide.")
+    return
+
+  # Single-model: compare against roster primary (or active)
+  mid = roster_ids[0] if roster_ids else (active or {}).get("id")
+  model = get_model_by_id(mid) if mid else active
+  if not model:
     st.caption("Chưa chọn Trade Model.")
     return
 
-  model_params = get_model_run_params(active, active.get("id"))
+  model_params = get_model_run_params(model, mid or model.get("id"))
   model_desc = describe_strategy_conditions(model_params)
   model_fp = model_desc["conditions_fp"]
+  slot = per.get(str(mid)) if mid and isinstance(per.get(str(mid)), dict) else {}
   live_fp = (
-    decision.get("conditions_fp")
+    (slot or {}).get("conditions_fp")
+    or decision.get("conditions_fp")
     or file_status.get("conditions_fp")
   )
   live_desc = file_status.get("run_conditions") or decision.get("run_conditions") or {}
@@ -199,8 +451,8 @@ def _render_conditions_alignment(
         "train_weeks", "kb_profile", "kb_snapshot", "feature_profile",
         "spread_pips", "slippage_pips", "use_learning",
       ) if live_desc.get(k) is not None},
-      "mining_search_space": active.get("mining_search_space"),
-      "trade_model_id": active.get("id"),
+      "mining_search_space": model.get("mining_search_space"),
+      "trade_model_id": model.get("id"),
     })
     match_state = "match" if live_check == model_fp else "unknown"
 
@@ -213,7 +465,7 @@ def _render_conditions_alignment(
       st.caption("Chưa xác nhận khớp model — Start service / đợi tín hiệu mới.")
     return
 
-  ss = active.get("mining_search_space") or {}
+  ss = model.get("mining_search_space") or {}
   st.caption(
     f"Điều kiện remine (= Sức khỏe): train **{model_desc.get('train_weeks')}w** · "
     f"KB `{model_desc.get('kb_profile')}@ep{model_desc.get('kb_snapshot')}` · "
@@ -231,62 +483,6 @@ def _render_conditions_alignment(
     st.success(f"Bridge khớp điều kiện model (fp `{live_fp or model_fp}`).")
   else:
     st.info("Chưa có decision/status mới — Start Bridge để xác nhận fp khớp Sức khỏe.")
-
-
-def _render_live_oos_parity(
-  *,
-  active: dict | None,
-  decision: dict,
-  file_status: dict,
-) -> None:
-  """Live desk: compare this week strategy vs Health OOS weekly_log."""
-  from gui.bridge_model_monitor import compare_live_week_to_oos
-
-  week = decision.get("week_start") or file_status.get("week_start")
-  strat = decision.get("strategy_name") or file_status.get("strategy_name")
-  fp = decision.get("conditions_fp") or file_status.get("conditions_fp")
-  with st.expander("Parity tuần này · Live vs Health OOS", expanded=False):
-    st.caption(
-      "Live remine = cùng đường Sim/OOS (KB ON, full FeatureMatrix). "
-      "Đối chiếu `strategy_name` tuần hiện tại với weekly_log Health — "
-      "không cần History Feed để kiểm chứng logic Live."
-    )
-    parity = compare_live_week_to_oos(
-      active,
-      week_start=week,
-      strategy_name=strat,
-      conditions_fp=fp,
-    )
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Tuần", str(parity.get("week_start") or "—"))
-    fp_ok = parity.get("fp_match")
-    c2.metric(
-      "conditions_fp",
-      "khớp" if fp_ok is True else ("lệch" if fp_ok is False else "—"),
-    )
-    sm = parity.get("strategy_match")
-    c3.metric(
-      "strategy",
-      "MATCH" if sm is True else ("LỆCH" if sm is False else "—"),
-    )
-    st.caption(
-      f"Live `{parity.get('live_strategy') or '—'}` · "
-      f"OOS `{parity.get('oos_strategy') or '—'}` · "
-      f"model fp `{parity.get('model_fp') or '—'}`"
-    )
-    status = parity.get("status")
-    msg = parity.get("message") or ""
-    if status == "match" and fp_ok is not False:
-      st.success(msg)
-    elif status == "mismatch" or fp_ok is False:
-      st.warning(msg if status == "mismatch" else (
-        f"fp Live `{parity.get('live_fp')}` ≠ model `{parity.get('model_fp')}`. " + msg
-      ))
-    elif status == "week_not_in_report":
-      st.info(msg)
-    else:
-      st.caption(msg)
-
 
 
 def _fmt_px(value) -> str:
@@ -585,7 +781,7 @@ def _live_chart_recover_fragment(max_bars: int) -> None:
   """After Stop→Start, chart server may lag; retry until ready then remount iframe."""
   from mt5_bridge.live_monitor_server import ensure_chart_server
 
-  ensure_chart_server(BRIDGE_DIR, DEFAULT_MONITOR_PORT)
+  ensure_chart_server(resolve_live_bridge_dir(), DEFAULT_MONITOR_PORT)
   if _chart_server_healthy(f"http://127.0.0.1:{DEFAULT_MONITOR_PORT}"):
     st.rerun()
   else:
@@ -640,7 +836,7 @@ def _render_live_chart(max_bars: int) -> None:
     return
 
   from mt5_bridge.live_monitor_server import ensure_chart_server
-  ensure_chart_server(BRIDGE_DIR, DEFAULT_MONITOR_PORT)
+  ensure_chart_server(resolve_live_bridge_dir(), DEFAULT_MONITOR_PORT)
   server_ready = _chart_server_healthy(monitor_url)
   if server_ready:
     components.iframe(
@@ -748,7 +944,7 @@ def _render_manual_test_orders(*, show_json: bool = True) -> None:
 def _render_live_deploy() -> None:
   from gui.mt5_deploy_ui import ea_live_name, run_deploy_mode
   st.markdown("##### Triển khai EA Live (riêng)")
-  st.caption(f"Chỉ `{ea_live_name()}` · folder `{BRIDGE_DIR.name}`.")
+  st.caption(f"Chỉ `{ea_live_name()}` · folder `{resolve_live_bridge_dir().name}`.")
   if st.button(
     "Deploy Live only",
     icon=":material/settings_suggest:",
@@ -770,7 +966,7 @@ def _render_live_deploy() -> None:
 
 
 def _render_service_controls() -> None:
-  """Trader desk controls: risk + loss guard + Start/Stop only."""
+  """Trader desk controls: loss guard + Start/Stop (model chọn ở tab Trade Models)."""
   from mt5_bridge.loss_guard import (
     default_streak_limit_from_model,
     loss_guard_status,
@@ -778,33 +974,37 @@ def _render_service_controls() -> None:
 
   cfg = bridge_bg.load_config()
   status = bridge_bg.get_status()
-  active_model = get_active_trade_model()
-  model_id = (active_model or {}).get("id") or DEFAULT_MODEL_ID
-  if cfg.get("model_id") != model_id:
-    cfg = bridge_bg.save_config(model_id=model_id)
+  _, _, by_id = _bridge_model_options()
+  model_ids = normalize_model_ids(cfg.get("model_ids"), fallback=cfg.get("model_id"))
+  if not model_ids:
+    model_ids = _selected_bridge_model_ids()
+  primary_id = model_ids[0] if model_ids else (
+    (get_active_trade_model() or {}).get("id") or DEFAULT_MODEL_ID
+  )
+  active_model = by_id.get(primary_id) or get_active_trade_model()
+  running = bool(status.get("running"))
 
   suggested = default_streak_limit_from_model(active_model)
-  model_dd = (active_model or {}).get("max_drawdown_r")
 
   st.subheader("Điều khiển Live")
+  if not model_ids:
+    st.warning("Chưa chọn Trade Model — mở tab **Trade Models**.")
+
   st.session_state.setdefault("mt5_risk_pct", float(cfg.get("risk_pct", 1.0)))
   st.session_state.setdefault("mt5_poll_sec", float(cfg.get("poll_sec", 2.0)))
   st.session_state.setdefault(
     "mt5_loss_guard_enabled", bool(cfg.get("loss_guard_enabled", True)),
   )
 
-  # Restore thresholds from saved config after refresh.
-  # Only reset to ⌊|MaxDD|⌋+1 when the Trade Model actually changes in-session
-  # (not on first paint after F5, when `_mt5_loss_guard_model_id` is missing).
   prev_mid = st.session_state.get("_mt5_loss_guard_model_id")
   day_lim, week_lim, reset_for_model = resolve_loss_guard_limits(
     prev_model_id=prev_mid,
-    model_id=str(model_id),
+    model_id=str(primary_id),
     cfg_max_day=cfg.get("loss_guard_max_day"),
     cfg_max_week=cfg.get("loss_guard_max_week"),
     suggested=suggested,
   )
-  st.session_state["_mt5_loss_guard_model_id"] = model_id
+  st.session_state["_mt5_loss_guard_model_id"] = primary_id
   if reset_for_model:
     st.session_state["mt5_loss_guard_max_day"] = day_lim
     st.session_state["mt5_loss_guard_max_week"] = week_lim
@@ -816,101 +1016,44 @@ def _render_service_controls() -> None:
     st.session_state.setdefault("mt5_loss_guard_max_day", day_lim)
     st.session_state.setdefault("mt5_loss_guard_max_week", week_lim)
 
-  risk = st.number_input(
-    "Risk % / lệnh", 0.1, 5.0, step=0.1, key="mt5_risk_pct",
-    on_change=_save_bridge_runtime_settings,
-  )
+  risk = float(st.session_state.get("mt5_risk_pct", cfg.get("risk_pct", 1.0)))
   poll = float(st.session_state.get("mt5_poll_sec", cfg.get("poll_sec", 2.0)))
 
-  st.markdown("**Loss guard — dừng service khi thua liên tiếp**")
   st.checkbox(
-    "Bật loss guard (chỉ lệnh auto)",
+    "Loss guard (thua liên tiếp → FLAT + Stop)",
     key="mt5_loss_guard_enabled",
     on_change=_save_bridge_runtime_settings,
     help=(
-      "Đếm chuỗi LOSS liên tiếp (trailing) của lệnh **auto** trong ngày / tuần ISO. "
-      "Chạm ngưỡng → ghi FLAT + Stop service để tránh bug đốt tài khoản. "
-      f"Mặc định = int(Max DD model) + 1 → **{suggested}**."
+      "Đếm chuỗi LOSS auto (ngày / tuần ISO). Chạm ngưỡng → FLAT mọi model + Stop. "
+      f"Gợi ý mặc định ≈ ⌊|Max DD|⌋+1 = **{suggested}**."
     ),
-  )
-  dd_txt = f"{float(model_dd):.2f}R" if model_dd is not None else "—"
-  st.caption(
-    f"Gợi ý từ model: Max DD **{dd_txt}** → default "
-    f"**⌊|Max DD|⌋ + 1 = {suggested}** (áp dụng khi đổi Trade Model)."
   )
   g1, g2 = st.columns(2)
   with g1:
     st.number_input(
-      "Max thua liên tiếp / ngày",
+      "Max thua / ngày",
       min_value=0, max_value=40, step=1,
       key="mt5_loss_guard_max_day",
       on_change=_save_bridge_runtime_settings,
-      help=f"0 = tắt ngưỡng ngày. Mặc định gợi ý = {suggested}.",
+      help=f"0 = tắt. Gợi ý = {suggested}.",
     )
   with g2:
     st.number_input(
-      "Max thua liên tiếp / tuần",
+      "Max thua / tuần",
       min_value=0, max_value=40, step=1,
       key="mt5_loss_guard_max_week",
       on_change=_save_bridge_runtime_settings,
-      help=f"0 = tắt ngưỡng tuần (ISO Mon–Sun). Mặc định gợi ý = {suggested}.",
+      help=f"0 = tắt (ISO Mon–Sun). Gợi ý = {suggested}.",
     )
 
-  guard = loss_guard_status(cfg, bridge_dir=BRIDGE_DIR)
+  guard = loss_guard_status(cfg, bridge_dir=resolve_live_bridge_dir())
   if guard.get("tripped"):
     st.error(
       f"Loss guard đã dừng service lúc `{guard.get('tripped_at') or '—'}` — "
       f"{guard.get('tripped_reason') or ''}"
     )
-  elif guard.get("enabled"):
-    st.caption(
-      f"Chuỗi hiện tại: ngày **{guard.get('day_streak', 0)}**/{guard.get('max_day') or '—'} · "
-      f"tuần **{guard.get('week_streak', 0)}**/{guard.get('max_week') or '—'}"
-    )
 
-  running = bool(status.get("running"))
   if running:
-    st.caption("Service **đang chạy**.")
-  else:
-    st.caption("Service **đang tắt** — bấm Start để bắt đầu.")
-
-  if not running:
-    if st.button(
-      "Start",
-      icon=":material/play_arrow:",
-      type="primary",
-      use_container_width=True,
-      key="mt5_live_svc_start",
-    ):
-      bridge_bg.save_config(
-        model_id=model_id,
-        risk_pct=risk,
-        poll_sec=poll,
-        enabled=True,
-        loss_guard_enabled=bool(st.session_state.get("mt5_loss_guard_enabled", True)),
-        loss_guard_max_day=int(st.session_state.get("mt5_loss_guard_max_day", 3)),
-        loss_guard_max_week=int(st.session_state.get("mt5_loss_guard_max_week", 5)),
-        # Clear previous trip so Start is intentional after a halt.
-        loss_guard_tripped=False,
-        loss_guard_tripped_at=None,
-        loss_guard_tripped_reason=None,
-        last_error=None,
-      )
-      ok = bridge_bg.start_worker(detached=True)
-      if ok:
-        from mt5_bridge.live_monitor_server import ensure_chart_server
-        import time as _time
-        ensure_chart_server(BRIDGE_DIR, DEFAULT_MONITOR_PORT)
-        monitor_url = f"http://127.0.0.1:{DEFAULT_MONITOR_PORT}"
-        for _ in range(15):
-          if _chart_server_healthy(monitor_url):
-            break
-          _time.sleep(0.2)
-        st.toast("Đã start service")
-      else:
-        st.error("Không start được service — mở mục Kỹ thuật để xem log.")
-      st.rerun()
-  else:
     if st.button(
       "Stop",
       icon=":material/stop:",
@@ -920,6 +1063,69 @@ def _render_service_controls() -> None:
       bridge_bg.stop_worker()
       st.toast("Đã stop service")
       st.rerun()
+  else:
+    if st.button(
+      "Start",
+      icon=":material/play_arrow:",
+      type="primary",
+      use_container_width=True,
+      key="mt5_live_svc_start",
+      disabled=not model_ids,
+    ):
+      bridge_bg.save_config(
+        model_id=primary_id,
+        model_ids=model_ids,
+        risk_pct=risk,
+        poll_sec=poll,
+        enabled=True,
+        loss_guard_enabled=bool(st.session_state.get("mt5_loss_guard_enabled", True)),
+        loss_guard_max_day=int(st.session_state.get("mt5_loss_guard_max_day", 3)),
+        loss_guard_max_week=int(st.session_state.get("mt5_loss_guard_max_week", 5)),
+        loss_guard_tripped=False,
+        loss_guard_tripped_at=None,
+        loss_guard_tripped_reason=None,
+        last_error=None,
+      )
+      bridge_bg.sync_bridge_roster(
+        bridge_dir=resolve_live_bridge_dir(),
+        model_ids=model_ids,
+        risk_pct=float(risk),
+      )
+      ok = bridge_bg.start_worker(detached=True)
+      if ok:
+        from mt5_bridge.live_monitor_server import ensure_chart_server
+        import time as _time
+        ensure_chart_server(resolve_live_bridge_dir(), DEFAULT_MONITOR_PORT)
+        monitor_url = f"http://127.0.0.1:{DEFAULT_MONITOR_PORT}"
+        for _ in range(15):
+          if _chart_server_healthy(monitor_url):
+            break
+          _time.sleep(0.2)
+        st.toast(f"Đã start service · {len(model_ids)} model")
+      else:
+        st.error("Không start được service — mở mục Kỹ thuật để xem log.")
+      st.rerun()
+
+  # Per-model stats strip
+  trades = load_trades(resolve_live_bridge_dir())
+  if model_ids and trades:
+    rows = []
+    for mid in model_ids:
+      stt = compute_stats(trades, mode="auto", model_id=mid, use_exit_time=False)
+      m = by_id.get(mid)
+      rows.append({
+        "Model": format_model_label(m) if m is not None else mid[:24],
+        "N": stt.get("n_trades") or 0,
+        "WR%": stt.get("win_rate_pct"),
+        "Total R": stt.get("total_r"),
+        "MaxDD": stt.get("max_drawdown_r"),
+      })
+    agg = compute_stats(trades, mode="auto", use_exit_time=False)
+    st.caption(
+      f"Tổng (auto): N={agg.get('n_trades') or 0} · "
+      f"WR={agg.get('win_rate_pct')}% · R={agg.get('total_r')}"
+    )
+    st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
 
 
 def _render_live_advanced_controls() -> None:
@@ -936,7 +1142,7 @@ def _render_live_advanced_controls() -> None:
     on_change=_save_bridge_runtime_settings,
   )
   st.caption(
-    f"Bridge dir: `{BRIDGE_DIR}` · model `{model_id}` · "
+    f"Bridge dir: `{resolve_live_bridge_dir()}` · model `{model_id}` · "
     f"runtime `{status.get('runtime_mode') or 'off'}` · "
     f"pid `{status.get('service_pid') or '—'}`"
   )
@@ -1001,7 +1207,7 @@ def _render_sim_progress_fragment() -> None:
     st.session_state["_sim_ui_was_running"] = running
     st.rerun()
 
-  # Trade Model is shown at page top — only show compact feed progress while running
+  # Model chọn ở tab Trade Models — chỉ hiện progress feed khi chạy
   if running:
     st.caption(
       f"{str(sim.get('status') or 'running').upper()}"
@@ -1054,17 +1260,30 @@ def _render_simulate_ea() -> None:
   """App controls EA HISTORY_FEED (from/to/delay); EA sends bar/fill via bridge_sim."""
   from datetime import date as date_cls
 
-  active = get_active_trade_model()
+  _, _, by_id = _bridge_model_options()
+  cfg = bridge_bg.load_config()
+  model_ids = normalize_model_ids(cfg.get("model_ids"), fallback=cfg.get("model_id"))
+  if not model_ids:
+    model_ids = _selected_bridge_model_ids()
+  primary = by_id.get(model_ids[0]) if model_ids else get_active_trade_model()
+
   sim = bridge_bg.get_sim_status()
   running = bool(sim.get("running"))
 
   st.subheader("Điều khiển History Feed")
+  if not model_ids:
+    st.warning("Chưa chọn Trade Model — mở tab **Trade Models**.")
+
+  st.session_state.setdefault(
+    "mt5_risk_pct", float(cfg.get("risk_pct", 1.0)),
+  )
+  risk = float(st.session_state.get("mt5_risk_pct", cfg.get("risk_pct", 1.0)))
 
   default_from = date_cls.fromisoformat(
-    str((active or {}).get("oos_from") or "2026-01-01")[:10]
+    str((primary or {}).get("oos_from") or "2026-01-01")[:10]
   )
   default_to = date_cls.fromisoformat(
-    str((active or {}).get("oos_to") or "2026-01-31")[:10]
+    str((primary or {}).get("oos_to") or "2026-01-31")[:10]
   )
   if (default_to - default_from).days > 60:
     from datetime import timedelta as _td
@@ -1107,6 +1326,7 @@ def _render_simulate_ea() -> None:
       set_preference("mt5.sim_delay", int(st.session_state.get("sim_ea_delay") or 100))
     except (TypeError, ValueError):
       set_preference("mt5.sim_delay", 100)
+    set_preference("mt5.bridge_model_labels", st.session_state.get("mt5_bridge_models"))
 
   c1, c2, c3 = st.columns(3)
   with c1:
@@ -1138,7 +1358,7 @@ def _render_simulate_ea() -> None:
     "Start feed",
     type="primary",
     icon=":material/play_arrow:",
-    disabled=running or not active,
+    disabled=running or not model_ids,
     use_container_width=True,
     key="sim_ea_start",
   )
@@ -1155,12 +1375,18 @@ def _render_simulate_ea() -> None:
       st.error("Đến ngày phải ≥ Từ ngày")
     else:
       _persist_sim_ea_settings()
+      bridge_bg.save_config(
+        model_id=model_ids[0],
+        model_ids=model_ids,
+        risk_pct=float(risk),
+      )
       ok = bridge_bg.start_sim_worker(
         date_from=str(d_from),
         date_to=str(d_to),
         delay_ms=int(delay_ms),
-        model_id=(active or {}).get("id"),
-        risk_pct=float(st.session_state.get("mt5_risk_pct", 1.0)),
+        model_id=model_ids[0],
+        model_ids=model_ids,
+        risk_pct=float(risk),
       )
       if ok:
         import time as _time
@@ -1171,7 +1397,8 @@ def _render_simulate_ea() -> None:
         st.session_state["_sim_pending_history"] = "__live__"
         set_preference("mt5.sim_history_run_id", "__live__")
         st.success(
-          f"Sim service nền đã start · runtime=`{st2.get('runtime')}` · "
+          f"Sim service nền đã start · {len(model_ids)} model · "
+          f"runtime=`{st2.get('runtime')}` · "
           f"pid=`{st2.get('service_pid')}` — xem `results/mt5_bridge_sim_service.log`"
         )
         st.rerun()
@@ -1180,6 +1407,26 @@ def _render_simulate_ea() -> None:
 
   _render_sim_history_picker()
 
+  # Per-model stats on live sim journal
+  sim_trades = load_trades(BRIDGE_SIM_DIR)
+  if model_ids and sim_trades:
+    rows = []
+    for mid in model_ids:
+      stt = compute_stats(sim_trades, mode="auto", model_id=mid, use_exit_time=False)
+      m = by_id.get(mid)
+      rows.append({
+        "Model": format_model_label(m) if m else mid[:24],
+        "N": stt.get("n_trades") or 0,
+        "WR%": stt.get("win_rate_pct"),
+        "Total R": stt.get("total_r"),
+        "MaxDD": stt.get("max_drawdown_r"),
+      })
+    agg = compute_stats(sim_trades, mode="auto", use_exit_time=False)
+    st.caption(
+      f"Tổng sim (auto): N={agg.get('n_trades') or 0} · "
+      f"WR={agg.get('win_rate_pct')}% · R={agg.get('total_r')}"
+    )
+    st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
 
 def _render_sim_history_picker() -> None:
   """Browse archived Simulate runs (results/simulate_runs)."""
@@ -1288,13 +1535,22 @@ def _render_model_monitor_body() -> None:
     build_equity_series_figure,
     build_monthly_series_figure,
     build_monitor_bundle,
+    build_multi_model_equity_figure,
+    build_multi_model_monthly_figure,
+    load_live_auto_trades,
+  )
+  from gui.trade_model import (
+    format_model_label,
+    get_bridge_runtime_model_ids,
+    get_model_by_id,
   )
   from mt5_bridge.ea_simulator import load_sim_state
 
   active = get_active_trade_model()
   source = _bridge_mode()
+  bridge_mids = get_bridge_runtime_model_ids()
   st.subheader(f"Theo dõi model · {_mode_label()}")
-  if not active:
+  if not active and not bridge_mids:
     st.info("Chọn Trade Model active để xem report OOS và lệnh Bridge auto.")
     return
 
@@ -1317,6 +1573,74 @@ def _render_model_monitor_body() -> None:
       date_to = (
         d1.isoformat() if hasattr(d1, "isoformat") else None
       ) or sim_st.get("date_to") or None
+
+  # Multi-model Bridge: overlay Live/Sim equity + monthly per selected model
+  if len(bridge_mids) > 1:
+    st.markdown(f"**{len(bridge_mids)} model đang chạy Bridge** — equity / tháng (auto)")
+    eq_map: dict = {}
+    mo_map: dict = {}
+    kpi_rows = []
+    for mid in bridge_mids:
+      bm = get_model_by_id(mid)
+      label = format_model_label(bm) if bm else mid[:24]
+      live = load_live_auto_trades(
+        mid,
+        bridge_dir=view_bridge,
+        date_from=date_from,
+        date_to=date_to,
+        use_exit_time=(source != "sim"),
+      )
+      short = label if len(label) <= 36 else label[:34] + "…"
+      if live.get("equity") is not None and not getattr(live["equity"], "empty", True):
+        eq_map[short] = live["equity"]
+      if live.get("monthly") is not None and not getattr(live["monthly"], "empty", True):
+        mo_map[short] = live["monthly"]
+      stt = live.get("stats") or {}
+      kpi_rows.append({
+        "Model": short,
+        "N": stt.get("n_trades") or 0,
+        "WR%": stt.get("win_rate_pct"),
+        "Total R": stt.get("total_r"),
+        "MaxDD": stt.get("max_drawdown_r"),
+      })
+    if kpi_rows:
+      st.dataframe(pd.DataFrame(kpi_rows), hide_index=True, use_container_width=True)
+    fig_eq = build_multi_model_equity_figure(
+      eq_map, title=f"Equity R · {_mode_label()} · multi-model",
+    )
+    if fig_eq:
+      show_plotly(fig_eq, f"Equity multi · {_mode_label()}")
+    else:
+      st.info("Chưa đủ lệnh auto theo model để vẽ equity overlay.")
+    fig_mo = build_multi_model_monthly_figure(
+      mo_map, title=f"R theo tháng · {_mode_label()} · multi-model",
+    )
+    if fig_mo:
+      show_plotly(fig_mo, f"Tháng multi · {_mode_label()}")
+    st.divider()
+
+  # Detail: pick any roster model (no “model chính”)
+  from gui.trade_model import format_model_short
+  detail_ids = bridge_mids if bridge_mids else (
+    [str(active["id"])] if active and active.get("id") else []
+  )
+  if not detail_ids:
+    return
+  if len(detail_ids) > 1:
+    st.markdown("**Chi tiết OOS vs Bridge** — chọn model:")
+    pick = st.selectbox(
+      "Model",
+      detail_ids,
+      format_func=lambda mid: format_model_short(get_model_by_id(mid), max_len=48),
+      key=f"monitor_detail_mid_{source}",
+      label_visibility="collapsed",
+    )
+    active = get_model_by_id(pick)
+  elif not active:
+    active = get_model_by_id(detail_ids[0])
+
+  if not active:
+    return
 
   bundle = build_monitor_bundle(
     active,
@@ -1389,7 +1713,7 @@ def _render_model_monitor_body() -> None:
       verdict = assess.get("verdict")
       if live_n == 0:
         st.info(
-          f"Chưa có lệnh **auto** đã đóng trên Bridge (`mt5/{BRIDGE_DIR.name}/trades.json`)."
+          f"Chưa có lệnh **auto** đã đóng trên Bridge (`mt5/{resolve_live_bridge_dir().name}/trades.json`)."
         )
       elif live_n < 5:
         st.caption(f"{live_label} còn ít lệnh — chỉ theo dõi.")
@@ -1749,9 +2073,11 @@ def _render_stats_section() -> None:
   elif mode == "sim":
     st.caption(f"Lọc: **tất cả lệnh journal** · {n_auto} lệnh")
 
-  def _stats_block(label: str, mode: str | None) -> None:
-    trades = filter_trades(all_trades, date_from=date_from, date_to=date_to, mode=mode)
-    stats = compute_stats(trades)
+  def _stats_block(label: str, mode: str | None, *, model_id: str | None = None) -> None:
+    trades = filter_trades(
+      all_trades, date_from=date_from, date_to=date_to, mode=mode, model_id=model_id,
+    )
+    stats = compute_stats(trades, mode=mode, model_id=model_id)
     st.markdown(f"**{label}** · {stats['n_filtered']} lệnh")
     s1, s2, s3, s4, s5, s6 = st.columns(6)
     s1.metric("Đã đóng", stats["n_trades"])
@@ -1768,8 +2094,11 @@ def _render_stats_section() -> None:
       stats["total_profit"] if stats["total_profit"] is not None else "—",
     )
 
+  from gui.trade_model import format_model_label, get_bridge_runtime_model_ids, get_model_by_id
+  bridge_mids = get_bridge_runtime_model_ids()
+
   if mode == "sim":
-    _stats_block("Auto", "auto")
+    _stats_block("Auto (tổng)", "auto")
   else:
     tab_auto, tab_manual, tab_all = st.tabs([
       f"Auto (review chiến lược) · {n_auto}",
@@ -1777,11 +2106,40 @@ def _render_stats_section() -> None:
       f"Tất cả · {len(period_trades)}",
     ])
     with tab_auto:
-      _stats_block("Auto", "auto")
+      _stats_block("Auto (tổng)", "auto")
     with tab_manual:
       _stats_block("Lệnh sửa", "manual")
     with tab_all:
       _stats_block("Tất cả", None)
+
+  if len(bridge_mids) > 1:
+    st.markdown("**Theo từng Trade Model (auto)**")
+    rows = []
+    for mid in bridge_mids:
+      stt = compute_stats(
+        filter_trades(
+          all_trades, date_from=date_from, date_to=date_to, mode="auto", model_id=mid,
+        ),
+      )
+      bm = get_model_by_id(mid)
+      rows.append({
+        "Model": format_model_label(bm) if bm else mid[:28],
+        "Đóng": stt.get("n_trades") or 0,
+        "Mở": stt.get("n_open") or 0,
+        "WR%": stt.get("win_rate_pct"),
+        "Total R": stt.get("total_r"),
+        "MaxDD": stt.get("max_drawdown_r"),
+        "Avg R": stt.get("avg_r"),
+      })
+    st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+    with st.expander("Chi tiết KPI từng model", expanded=False):
+      for mid in bridge_mids:
+        bm = get_model_by_id(mid)
+        _stats_block(
+          format_model_label(bm) if bm else mid[:28],
+          "auto",
+          model_id=mid,
+        )
 
   tc1, tc2 = st.columns([1, 4])
   if tc1.button(
@@ -1828,6 +2186,7 @@ def _render_stats_section() -> None:
     table = []
     for t in view:
       table.append({
+        "model": (t.get("model_id") or "—")[:28],
         "mode": trade_mode(t),
         "status": t.get("status"),
         "result": t.get("result") or ("OPEN" if t.get("status") == "OPEN" else "—"),
@@ -1959,12 +2318,6 @@ def _render_tech_panel() -> None:
       file_status=file_status,
       detailed=True,
     )
-    if mode != "sim":
-      _render_live_oos_parity(
-        active=active,
-        decision=decision,
-        file_status=file_status,
-      )
 
     st.divider()
     st.caption("Deploy cả hai: dùng nút **Deploy Live + Simulate** trên sidebar.")
@@ -1986,85 +2339,72 @@ def _render_tech_panel() -> None:
 def render():
   render_page_header(ALL_ITEMS["mt5_bridge"], show_workspace=False)
 
-  # Trade Model first — before Live/Simulate switcher
-  active = render_shared_trade_model_banner(
-    context="simulate" if _bridge_mode() == "sim" else "live",
-  )
-  mode = _render_mode_switcher()
+  tab_models, tab_ops = st.tabs(["Trade Models", "Vận hành"])
 
-  # Pre-Live checklist (fp/parity when decision exists)
-  from gui.live_readiness import render_live_readiness
+  with tab_models:
+    _render_bridge_models_tab()
 
-  bridge_dir = _active_bridge_dir()
-  decision = read_json(decision_path(bridge_dir)) or {}
-  file_status = read_json(status_path(bridge_dir)) or {}
-  render_live_readiness(
-    active,
-    decision=decision,
-    file_status=file_status,
-    include_bridge=(mode == "live"),
-    expanded=(mode == "live"),
-    key_prefix=f"bridge_ready_{mode}",
-  )
+  with tab_ops:
+    mode = _render_mode_switcher()
 
-  chart_ranges = ["1 ngày", "1 tuần", "1 tháng", "6 tháng", "1 năm", "Tất cả"]
-  # M15 ≈ 96 bars/day
-  chart_bars = {
-    "1 ngày": 96,
-    "1 tuần": 672,
-    "1 tháng": 2880,
-    "6 tháng": 17472,
-    "1 năm": 35040,
-    "Tất cả": 200_000,
-  }
-  chart_key = "mt5_chart_range_sim" if mode == "sim" else "mt5_chart_range_live"
-  pref_key = "mt5.chart_range_sim" if mode == "sim" else "mt5.chart_range"
+    chart_ranges = ["1 ngày", "1 tuần", "1 tháng", "6 tháng", "1 năm", "Tất cả"]
+    # M15 ≈ 96 bars/day
+    chart_bars = {
+      "1 ngày": 96,
+      "1 tuần": 672,
+      "1 tháng": 2880,
+      "6 tháng": 17472,
+      "1 năm": 35040,
+      "Tất cả": 200_000,
+    }
+    chart_key = "mt5_chart_range_sim" if mode == "sim" else "mt5_chart_range_live"
+    pref_key = "mt5.chart_range_sim" if mode == "sim" else "mt5.chart_range"
 
-  # 1) Điều khiển
-  if mode == "sim":
-    _render_simulate_ea()
-  else:
-    _render_service_controls()
-
-  # 2) Desk
-  if mode == "sim":
-    _sim_desk_fragment()
-  else:
-    _trader_desk_fragment()
-
-  # 3) Chart
-  st.subheader(f"Biểu đồ · {_mode_label()}")
-  restore_widget(
-    chart_key, "1 tuần",
-    preference_key=pref_key,
-    options=chart_ranges,
-  )
-  range_label = st.selectbox(
-    "Khoảng chart",
-    chart_ranges,
-    key=chart_key,
-    on_change=preference_callback(chart_key, pref_key),
-  )
-  max_bars = chart_bars[range_label]
-  _render_live_chart(max_bars)
-
-  # 4) Thống kê
-  svc_running = (
-    bool(bridge_bg.get_sim_status().get("running")) if mode == "sim"
-    else bool(bridge_bg.get_status().get("running"))
-  )
-  if svc_running:
-    _stats_auto_fragment()
-  else:
-    _render_stats_section()
-
-  # 5) Sức khỏe / Rủi ro (thu gọn)
-  live_or_sim_running = svc_running
-  with st.expander("Sức khỏe / Rủi ro model", expanded=False):
-    if live_or_sim_running:
-      _model_monitor_auto_fragment()
+    # 1) Điều khiển
+    if mode == "sim":
+      _render_simulate_ea()
     else:
-      _render_model_monitor()
+      _render_service_controls()
 
-  # 6) Kỹ thuật
-  _render_tech_panel()
+    # 2) Desk
+    if mode == "sim":
+      _sim_desk_fragment()
+    else:
+      _trader_desk_fragment()
+
+    # 3) Chart
+    st.subheader(f"Biểu đồ · {_mode_label()}")
+    restore_widget(
+      chart_key, "1 tuần",
+      preference_key=pref_key,
+      options=chart_ranges,
+    )
+    range_label = st.selectbox(
+      "Khoảng chart",
+      chart_ranges,
+      key=chart_key,
+      on_change=preference_callback(chart_key, pref_key),
+    )
+    max_bars = chart_bars[range_label]
+    _render_live_chart(max_bars)
+
+    # 4) Thống kê
+    svc_running = (
+      bool(bridge_bg.get_sim_status().get("running")) if mode == "sim"
+      else bool(bridge_bg.get_status().get("running"))
+    )
+    if svc_running:
+      _stats_auto_fragment()
+    else:
+      _render_stats_section()
+
+    # 5) Sức khỏe / Rủi ro (thu gọn)
+    live_or_sim_running = svc_running
+    with st.expander("Sức khỏe / Rủi ro model", expanded=False):
+      if live_or_sim_running:
+        _model_monitor_auto_fragment()
+      else:
+        _render_model_monitor()
+
+    # 6) Kỹ thuật
+    _render_tech_panel()

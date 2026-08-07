@@ -1,83 +1,130 @@
 {
   "status": "completed",
-  "job_type": "compare_trade",
-  "job_id": "job_compare_trade_20260807_091402",
-  "label": "Compare Trade",
+  "job_type": "model_health",
+  "job_id": "job_model_health_20260807_175301",
+  "label": "Sức khỏe model · BestR",
   "params": {
-    "model_ids": [
-      "tm_breakthrough_elite_or_qualit_d23dbb33",
-      "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e",
-      "tm_breakthrough_elite_60_3_vwap_c1ad2c33",
-      "tm_h_c_6_tu_n_h_c_2025-2026-6th_7507124e",
-      "tm_breakthrough_anti_chase_fixe_bdedbc09"
-    ],
-    "date_from": "2026-08-03",
-    "date_to": "2026-08-07",
-    "risk_pct": 1.0
-  },
-  "total": 61,
-  "done": 61,
-  "progress_text": "",
-  "result": {
-    "run_id": "ct_20260807_091404_ad2a61",
-    "n_models": 5,
-    "bars_done": 61,
-    "bars_total": 61,
-    "per_model": {
-      "tm_breakthrough_elite_or_qualit_d23dbb33": {
-        "n_fills": 0,
-        "error": null,
-        "stats": {
-          "total_r": 0.0,
-          "win_rate_pct": null,
-          "n_trades": 0,
-          "max_drawdown_r": 0.0
-        }
-      },
-      "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e": {
-        "n_fills": 0,
-        "error": null,
-        "stats": {
-          "total_r": 0.0,
-          "win_rate_pct": null,
-          "n_trades": 0,
-          "max_drawdown_r": 0.0
-        }
-      },
-      "tm_breakthrough_elite_60_3_vwap_c1ad2c33": {
-        "n_fills": 0,
-        "error": null,
-        "stats": {
-          "total_r": 0.0,
-          "win_rate_pct": null,
-          "n_trades": 0,
-          "max_drawdown_r": 0.0
-        }
-      },
-      "tm_h_c_6_tu_n_h_c_2025-2026-6th_7507124e": {
-        "n_fills": 2,
-        "error": null,
-        "stats": {
-          "total_r": 3.0,
-          "win_rate_pct": 100.0,
-          "n_trades": 1,
-          "max_drawdown_r": 0.0
-        }
-      },
-      "tm_breakthrough_anti_chase_fixe_bdedbc09": {
-        "n_fills": 0,
-        "error": null,
-        "stats": {
-          "total_r": 0.0,
-          "win_rate_pct": null,
-          "n_trades": 0,
-          "max_drawdown_r": 0.0
-        }
-      }
+    "model_id": "tm_breakthrough_anti_chase_fixe_748923b2",
+    "refresh_kb_on": false,
+    "start_date": "2022-01-01",
+    "train_weeks": 6,
+    "spread_pips": 1.0,
+    "slippage_pips": 0.3,
+    "kb_profile": "era_2025_2026_6thang",
+    "kb_snapshot": 3,
+    "oos_from": "2026-01-01",
+    "oos_to": "2026-12-31",
+    "feature_profile": "current",
+    "mining_search_space": {
+      "rr_ratios": [
+        2.5,
+        3.0,
+        3.2
+      ],
+      "atr_multipliers": [
+        0.9,
+        1.05
+      ],
+      "max_hold_bars": [
+        96
+      ],
+      "min_bars_between": [
+        12
+      ],
+      "session_ranges": [
+        [
+          7,
+          20
+        ]
+      ],
+      "session_filters": [
+        true
+      ],
+      "score_thresholds": [
+        0.6,
+        1.0,
+        1.6,
+        2.2
+      ],
+      "min_rules_matches": [
+        1,
+        2
+      ],
+      "ml_probability_thresholds": [
+        0.36,
+        0.4,
+        0.44,
+        0.48
+      ],
+      "min_feature_samples": 30,
+      "min_threshold_samples": 10,
+      "min_binary_samples": 8,
+      "include_session_regime_rules": false,
+      "target_trades_per_week": 7.0,
+      "drawdown_penalty": 0.0,
+      "loss_streak_penalty": 0.0,
+      "selection_mode": "expectancy_frontier",
+      "edge_surgery": false,
+      "edge_surgery_min_hour_trades": 3,
+      "edge_surgery_max_hour_wr": 0.42,
+      "edge_surgery_dominant_side_ratio": 0.7,
+      "edge_surgery_hours": true,
+      "anti_chase": true,
+      "anti_chase_mode": "fixed",
+      "anti_chase_fixed_rsi": 62.0,
+      "anti_chase_fixed_vwap": 99.0,
+      "anti_chase_rsi_caps": [
+        60.0,
+        62.0,
+        65.0,
+        68.0,
+        100.0
+      ],
+      "anti_chase_min_tpw": 5.0,
+      "anti_chase_use_vwap": false,
+      "anti_chase_vwap_caps": [
+        1.5,
+        2.0,
+        2.5,
+        99.0
+      ]
     }
   },
-  "started_at": "2026-08-07T09:14:02+07:00",
-  "updated_at": "2026-08-07T09:14:54+07:00",
-  "finished_at": "2026-08-07T09:14:54+07:00",
+  "total": 31,
+  "done": 31,
+  "progress_text": "",
+  "result": {
+    "model_id": "tm_breakthrough_anti_chase_fixe_748923b2",
+    "kb_on_total_r": null,
+    "kb_off_total_r": -1.669,
+    "conditions_fp": "c58232d10b00",
+    "conditions": {
+      "trade_model_id": "tm_breakthrough_anti_chase_fixe_748923b2",
+      "train_weeks": 6,
+      "use_learning": true,
+      "kb_profile": "era_2025_2026_6thang",
+      "kb_snapshot": 3,
+      "kb_fingerprint": "d4e84f6b0b9e6606",
+      "feature_profile": "current",
+      "spread_pips": 1.0,
+      "slippage_pips": 0.3,
+      "session_ranges": [
+        [
+          7,
+          20
+        ]
+      ],
+      "min_bars_between": [
+        12
+      ],
+      "max_hold_bars": [
+        96
+      ],
+      "conditions_fp": "c58232d10b00"
+    }
+  },
+  "started_at": "2026-08-07T17:53:01+07:00",
+  "updated_at": "2026-08-07T18:16:33+07:00",
+  "finished_at": "2026-08-07T18:16:33+07:00",
   "error": null
 }

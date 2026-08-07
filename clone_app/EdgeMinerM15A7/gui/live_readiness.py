@@ -31,7 +31,7 @@ def assess_live_readiness(
   include_bridge: bool = True,
 ) -> dict[str, Any]:
   """
-  Aggregate Health / Remine / Space / fp / Parity into a pre-Live checklist.
+  Aggregate Health / Remine / Space / fp into a pre-Live checklist.
 
   ``include_bridge=False`` skips fp/parity (e.g. Trade Models tab without desk).
   """
@@ -58,7 +58,7 @@ def assess_live_readiness(
   # 1) Trade Model
   if not active or not active.get("id"):
     items.append(_item(
-      "model", "Trade Model active", "fail",
+      "model", "Trade Model", "fail",
       "Chưa chọn Trade Model.",
       hint="Trade Models → chọn model rồi quay lại Bridge.",
     ))
@@ -71,10 +71,10 @@ def assess_live_readiness(
     }
 
   mid = str(active["id"])
-  from gui.trade_model import format_model_label
+  from gui.trade_model import format_model_label, format_model_short
   items.append(_item(
-    "model", "Trade Model active", "pass",
-    format_model_label(active),
+    "model", "Trade Model", "pass",
+    format_model_short(active, max_len=56) or format_model_label(active),
   ))
 
   # 2) Health report KB ON + space match
@@ -227,30 +227,48 @@ def assess_live_readiness(
           assess.get("message") or "Chưa đủ dữ liệu space.",
         ))
 
-  # 6–8) Bridge model_id + fp + Parity
+  # 6–7) Bridge model_id + fp (per-model slot when multi roster)
+  # Live là giai đoạn sau OOS — không so Parity tuần vs Health.
   if include_bridge:
-    decision_model = decision.get("model_id") or file_status.get("model_id")
-    if not decision_model:
+    per = file_status.get("per_model") if isinstance(file_status.get("per_model"), dict) else {}
+    slot = per.get(mid) if isinstance(per.get(mid), dict) else {}
+    roster_ids = [str(x) for x in (file_status.get("model_ids") or [])]
+    decision_model = (
+      slot.get("model_id")
+      or decision.get("model_id")
+      or file_status.get("model_id")
+    )
+
+    if mid in per or mid in roster_ids:
       items.append(_item(
-        "bridge_model", "Model ID Bridge vs active", "skip",
-        "Chưa có model_id trên decision/status.",
-        hint="Start Live để Bridge ghi model đang chạy.",
+        "bridge_model", "Model trong roster Bridge", "pass",
+        f"Đang chạy · magic `{slot.get('magic') or '—'}`",
+      ))
+    elif not decision_model and not roster_ids and not per:
+      items.append(_item(
+        "bridge_model", "Model trong roster Bridge", "skip",
+        "Chưa Start Bridge — chưa có roster/status.",
+        hint="Start Live/Simulate để Bridge ghi model đang chạy.",
       ))
     elif str(decision_model) == str(mid):
       items.append(_item(
-        "bridge_model", "Model ID Bridge vs active", "pass",
-        f"Khớp `{mid}`.",
+        "bridge_model", "Model trong roster Bridge", "pass",
+        f"Khớp `{mid[:20]}…`.",
       ))
     else:
       items.append(_item(
-        "bridge_model", "Model ID Bridge vs active", "fail",
-        f"decision=`{decision_model}` · active=`{mid}`.",
-        hint="Stop rồi Start lại Bridge để nạp Trade Model đang chọn.",
+        "bridge_model", "Model trong roster Bridge", "fail",
+        f"decision=`{decision_model}` · checklist=`{mid}`.",
+        hint="Stop rồi Start lại Bridge với đúng multiselect.",
       ))
 
     params = get_model_run_params(active, mid)
     model_fp = conditions_fingerprint(params)
-    live_fp = decision.get("conditions_fp") or file_status.get("conditions_fp")
+    live_fp = (
+      slot.get("conditions_fp")
+      or decision.get("conditions_fp")
+      or file_status.get("conditions_fp")
+    )
     if not live_fp:
       items.append(_item(
         "fp", "conditions_fp Bridge", "skip",
@@ -268,47 +286,6 @@ def assess_live_readiness(
         f"Bridge `{str(live_fp)[:10]}…` ≠ model `{str(model_fp)[:10]}…`.",
         hint="Stop rồi Start lại Bridge service.",
       ))
-
-    from gui.bridge_model_monitor import compare_live_week_to_oos
-
-    week = decision.get("week_start") or file_status.get("week_start")
-    strat = decision.get("strategy_name") or file_status.get("strategy_name")
-    if not week and not strat:
-      items.append(_item(
-        "parity", "Parity tuần Live vs Health", "skip",
-        "Chưa có tuần/strategy trên decision.",
-        hint="Đợi Bridge decide hoặc mở Parity trên desk.",
-      ))
-    else:
-      parity = compare_live_week_to_oos(
-        active,
-        week_start=week,
-        strategy_name=strat,
-        conditions_fp=live_fp,
-      )
-      st_p = parity.get("status")
-      if st_p == "match":
-        items.append(_item(
-          "parity", "Parity tuần Live vs Health", "pass",
-          parity.get("message") or "MATCH",
-        ))
-      elif st_p == "mismatch":
-        items.append(_item(
-          "parity", "Parity tuần Live vs Health", "fail",
-          parity.get("message") or "Strategy lệch Health.",
-          hint="Kiểm tra fp / Restart Bridge / refresh Health.",
-        ))
-      elif st_p == "week_not_in_report":
-        items.append(_item(
-          "parity", "Parity tuần Live vs Health", "warn",
-          parity.get("message") or "Tuần mới hơn tip OOS.",
-          hint="Bình thường nếu đang live tuần sau OOS report.",
-        ))
-      else:
-        items.append(_item(
-          "parity", "Parity tuần Live vs Health", "skip",
-          parity.get("message") or str(st_p),
-        ))
 
   n_pass = sum(1 for i in items if i["status"] == "pass")
   n_warn = sum(1 for i in items if i["status"] == "warn")
@@ -348,6 +325,84 @@ def assess_live_readiness(
   }
 
 
+def _decision_for_model(
+  mid: str,
+  *,
+  file_status: dict | None,
+  fallback: dict | None,
+) -> dict:
+  """Prefer decisions/<model_id>.json, then per_model slot, then shared decision."""
+  from mt5_bridge.protocol import (
+    BRIDGE_DIR,
+    BRIDGE_SIM_DIR,
+    decision_path_for,
+    read_json,
+  )
+
+  for bridge_dir in (BRIDGE_DIR, BRIDGE_SIM_DIR):
+    try:
+      d = read_json(decision_path_for(mid, bridge_dir))
+      if d:
+        return d
+    except Exception:
+      pass
+  per = (file_status or {}).get("per_model") if isinstance((file_status or {}).get("per_model"), dict) else {}
+  slot = per.get(mid) if isinstance(per.get(mid), dict) else {}
+  if slot:
+    out = dict(slot)
+    out.setdefault("model_id", mid)
+    return out
+  return dict(fallback or {})
+
+
+def _render_checklist_items(result: dict) -> None:
+  import streamlit as st
+
+  icon = {"pass": "✅", "warn": "⚠️", "fail": "❌", "skip": "○"}
+  for it in result.get("items") or []:
+    line = f"{icon.get(it['status'], '·')} **{it['label']}** — {it['detail']}"
+    if it.get("hint") and it["status"] in ("fail", "warn", "skip"):
+      line += f"  \n↳ _{it['hint']}_"
+    st.markdown(line)
+
+
+def _aggregate_multi_results(per: list[dict[str, Any]]) -> dict[str, Any]:
+  n_pass = sum(int(r["result"].get("n_pass") or 0) for r in per)
+  n_warn = sum(int(r["result"].get("n_warn") or 0) for r in per)
+  n_fail = sum(int(r["result"].get("n_fail") or 0) for r in per)
+  n_skip = sum(int(r["result"].get("n_skip") or 0) for r in per)
+  blocked = sum(1 for r in per if r["result"].get("verdict") == "blocked")
+  caution = sum(1 for r in per if r["result"].get("verdict") == "caution")
+  ready_n = sum(1 for r in per if r["result"].get("verdict") == "ready")
+  if blocked:
+    verdict, ready = "blocked", False
+    summary = (
+      f"**{blocked}/{len(per)}** model chưa sẵn sàng · "
+      f"{ready_n} OK · {caution} cảnh báo · {n_fail} mục đỏ."
+    )
+  elif caution:
+    verdict, ready = "caution", True
+    summary = (
+      f"Có thể Live micro — **{caution}/{len(per)}** model còn cảnh báo · "
+      f"{ready_n} sẵn sàng."
+    )
+  else:
+    verdict, ready = "ready", True
+    summary = f"Sẵn sàng Live — **{len(per)}** model đạt checklist."
+  return {
+    "verdict": verdict,
+    "ready": ready,
+    "summary": summary,
+    "items": [],
+    "n_pass": n_pass,
+    "n_warn": n_warn,
+    "n_fail": n_fail,
+    "n_skip": n_skip,
+    "per_model": per,
+    "model_ids": [r["id"] for r in per],
+  }
+
+
 def render_live_readiness(
   model: dict | None = None,
   *,
@@ -357,8 +412,80 @@ def render_live_readiness(
   expanded: bool = True,
   key_prefix: str = "live_ready",
 ) -> dict[str, Any]:
-  """Streamlit panel for the checklist."""
+  """Streamlit panel for the checklist (single or multi Bridge roster)."""
   import streamlit as st
+
+  from gui.trade_model import (
+    format_model_short,
+    get_bridge_runtime_model_ids,
+    get_model_by_id,
+  )
+
+  bridge_ids = get_bridge_runtime_model_ids() if include_bridge else []
+
+  # Multi-model Bridge: checklist từng model trong roster
+  if include_bridge and len(bridge_ids) > 1:
+    per: list[dict[str, Any]] = []
+    for mid in bridge_ids:
+      m = get_model_by_id(mid) or ({"id": mid} if model and str(model.get("id")) == mid else None)
+      if m is None:
+        m = {"id": mid}
+      d = _decision_for_model(mid, file_status=file_status, fallback=decision)
+      r = assess_live_readiness(
+        m,
+        decision=d,
+        file_status=file_status,
+        include_bridge=include_bridge,
+      )
+      per.append({"id": mid, "model": m, "result": r})
+
+    result = _aggregate_multi_results(per)
+    verdict = result.get("verdict")
+    title = f"Checklist sẵn sàng Live · {len(per)} model"
+    with st.expander(title, expanded=expanded):
+      if verdict == "ready":
+        st.success(result["summary"])
+      elif verdict == "caution":
+        st.warning(result["summary"])
+      else:
+        st.error(result["summary"])
+
+      # Compact overview table
+      overview = []
+      for row in per:
+        rr = row["result"]
+        icon = {"ready": "✅", "caution": "⚠️", "blocked": "❌"}.get(
+          rr.get("verdict"), "·"
+        )
+        overview.append({
+          "Status": icon,
+          "Model": format_model_short(row.get("model"), max_len=40),
+          "OK": rr.get("n_pass") or 0,
+          "Warn": rr.get("n_warn") or 0,
+          "Fail": rr.get("n_fail") or 0,
+        })
+      import pandas as pd
+      st.dataframe(pd.DataFrame(overview), hide_index=True, use_container_width=True)
+
+      tabs = st.tabs([
+        format_model_short(row.get("model"), max_len=28) for row in per
+      ])
+      for tab, row in zip(tabs, per):
+        with tab:
+          rr = row["result"]
+          if rr.get("verdict") == "ready":
+            st.success(rr["summary"])
+          elif rr.get("verdict") == "caution":
+            st.warning(rr["summary"])
+          else:
+            st.error(rr["summary"])
+          _render_checklist_items(rr)
+
+      st.caption(
+        "Checklist theo **từng model trong Bridge roster**. "
+        "Remine ON · Health report · conditions_fp khi Bridge đã chạy."
+      )
+    return result
 
   result = assess_live_readiness(
     model,
@@ -376,15 +503,10 @@ def render_live_readiness(
     else:
       st.error(result["summary"])
 
-    icon = {"pass": "✅", "warn": "⚠️", "fail": "❌", "skip": "○"}
-    for it in result.get("items") or []:
-      line = f"{icon.get(it['status'], '·')} **{it['label']}** — {it['detail']}"
-      if it.get("hint") and it["status"] in ("fail", "warn", "skip"):
-        line += f"  \n↳ _{it['hint']}_"
-      st.markdown(line)
+    _render_checklist_items(result)
 
     st.caption(
       "Mặc định Bridge = **Remine ON**. Checklist đọc report Sức khỏe "
-      "(KB / Remine / Space) + fp / Parity khi Bridge đã chạy."
+      "(KB / Remine / Space) + conditions_fp khi Bridge đã chạy."
     )
   return result
