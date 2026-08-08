@@ -1,0 +1,91 @@
+{
+  "meta": {
+    "model_id": "tm_btcusd_realr_85_2r_wr45_d877b3f2",
+    "source": "live_remine",
+    "n_weeks": 1
+  },
+  "weekly": [
+    {
+      "week_start": "2026-08-03",
+      "strategy": {
+        "name": "Forge RR3 full 2L4S price+session #8BE0",
+        "exit_mode": "full",
+        "ml_prob_min": 0.4,
+        "rr": 3.0,
+        "atr_mult": 1.05,
+        "score_threshold": 0.6,
+        "atr_mult_sl": 1.05,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.0008099999999999998
+          },
+          {
+            "feat": "pullback_long",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.4
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "macd_cross_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 3.275986799970476
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.6046845671551537,
+            "w": 5.64759269328183
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "gt",
+            "thr": 33.653731223855075,
+            "w": 0.10485713185469075
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.718796644630656,
+            "w": 3.9514288939792785
+          }
+        ]
+      },
+      "train_start_idx": 84546,
+      "train_end_idx": 90581
+    }
+  ]
+}

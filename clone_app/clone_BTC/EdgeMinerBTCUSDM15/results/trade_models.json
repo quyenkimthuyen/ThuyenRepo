@@ -1,0 +1,801 @@
+{
+  "models": [
+    {
+      "train_weeks": 9,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_2026_6thang",
+      "kb_snapshot": 4,
+      "oos_from": "2026-04-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 25.0,
+      "slippage_pips": 5.0,
+      "total_r": 85.161,
+      "win_rate_pct": 44.75,
+      "max_drawdown_r": 14.86,
+      "profit_factor": 1.705,
+      "n_trades": 219,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "legacy",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "BTCUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2023-12-31 22:00:00",
+      "data_end": "2026-08-08 00:15:00",
+      "data_bars": 91063,
+      "data_fingerprint": "7322bc2549bf6bd1e97600291a42a75e0fa7374a726871b77188ebaf2da7d83c",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260808_080438",
+      "grid_key": "877e5ac35db3",
+      "label_custom": true,
+      "id": "tm_btcusd_realr_85_2r_wr45_d877b3f2",
+      "label": "BTCUSD RealR +85.2R WR45",
+      "created_at": "2026-08-08T08:04:38+07:00",
+      "kb_pin_path": "trade_models\\tm_btcusd_realr_85_2r_wr45_d877b3f2_kb_pin.json",
+      "kb_fingerprint": "88a537a24b9db527",
+      "kb_pin_bytes": 1114746,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\clone_app\\clone_BTC\\EdgeMinerBTCUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep004.json"
+    },
+    {
+      "train_weeks": 9,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_2026_6thang",
+      "kb_snapshot": 4,
+      "oos_from": "2026-04-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 25.0,
+      "slippage_pips": 5.0,
+      "total_r": 84.315,
+      "win_rate_pct": 40.33,
+      "max_drawdown_r": 10.19,
+      "profit_factor": 1.747,
+      "n_trades": 181,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 70.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "BTCUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2023-12-31 22:00:00",
+      "data_end": "2026-08-08 00:15:00",
+      "data_bars": 91063,
+      "data_fingerprint": "7322bc2549bf6bd1e97600291a42a75e0fa7374a726871b77188ebaf2da7d83c",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260808_080438",
+      "grid_key": "33eeac342577",
+      "label_custom": true,
+      "id": "tm_btcusd_wr40_84_3r_wr40_93ed901b",
+      "label": "BTCUSD WR40+ +84.3R WR40",
+      "created_at": "2026-08-08T08:04:38+07:00",
+      "kb_pin_path": "trade_models\\tm_btcusd_wr40_84_3r_wr40_93ed901b_kb_pin.json",
+      "kb_fingerprint": "88a537a24b9db527",
+      "kb_pin_bytes": 1114746,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\clone_app\\clone_BTC\\EdgeMinerBTCUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep004.json"
+    },
+    {
+      "train_weeks": 12,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_2026_6thang",
+      "kb_snapshot": 4,
+      "oos_from": "2026-04-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 25.0,
+      "slippage_pips": 5.0,
+      "total_r": 106.594,
+      "win_rate_pct": 42.79,
+      "max_drawdown_r": 16.24,
+      "profit_factor": 1.902,
+      "n_trades": 215,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "BTCUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2023-12-31 22:00:00",
+      "data_end": "2026-08-08 03:00:00",
+      "data_bars": 91073,
+      "data_fingerprint": "82b9b02bae97457cb9d7ca81b8c9acc8fc7c35f7ad77944e943327bbb1b8f90f",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260808_101652",
+      "grid_key": "978e1f35ab30",
+      "label_custom": true,
+      "id": "tm_btcusd_bestr_106_6r_wr43_b5f1818a",
+      "label": "BTCUSD BestR +106.6R WR43",
+      "created_at": "2026-08-08T10:16:53+07:00",
+      "kb_pin_path": "trade_models\\tm_btcusd_bestr_106_6r_wr43_b5f1818a_kb_pin.json",
+      "kb_fingerprint": "88a537a24b9db527",
+      "kb_pin_bytes": 1114746,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\clone_app\\clone_BTC\\EdgeMinerBTCUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep004.json"
+    },
+    {
+      "train_weeks": 12,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_2026_6thang",
+      "kb_snapshot": 4,
+      "oos_from": "2026-04-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 25.0,
+      "slippage_pips": 5.0,
+      "total_r": 64.841,
+      "win_rate_pct": 47.56,
+      "max_drawdown_r": 6.7,
+      "profit_factor": 2.366,
+      "n_trades": 82,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.65,
+        "edge_surgery_hours": false,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "BTCUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2023-12-31 22:00:00",
+      "data_end": "2026-08-08 03:00:00",
+      "data_bars": 91073,
+      "data_fingerprint": "82b9b02bae97457cb9d7ca81b8c9acc8fc7c35f7ad77944e943327bbb1b8f90f",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260808_101652",
+      "grid_key": "1a72d6288989",
+      "label_custom": true,
+      "id": "tm_btcusd_riskadj_64_8r_dd7_wr4_f8da0eef",
+      "label": "BTCUSD RiskAdj +64.8R dd7 WR48",
+      "created_at": "2026-08-08T10:20:50+07:00",
+      "kb_pin_path": "trade_models\\tm_btcusd_riskadj_64_8r_dd7_wr4_f8da0eef_kb_pin.json",
+      "kb_fingerprint": "88a537a24b9db527",
+      "kb_pin_bytes": 1114746,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\clone_app\\clone_BTC\\EdgeMinerBTCUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep004.json"
+    },
+    {
+      "train_weeks": 9,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_2026_6thang",
+      "kb_snapshot": 4,
+      "oos_from": "2026-04-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 25.0,
+      "slippage_pips": 5.0,
+      "total_r": 94.589,
+      "win_rate_pct": 41.95,
+      "max_drawdown_r": 10.03,
+      "profit_factor": 1.848,
+      "n_trades": 174,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 68.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "BTCUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2023-12-31 22:00:00",
+      "data_end": "2026-08-08 04:45:00",
+      "data_bars": 91080,
+      "data_fingerprint": "b71ef980da977a25f4bac653c981e0b3eae974a0452dc21072633a53c1a77000",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260808_120354",
+      "grid_key": "a05807d70c32",
+      "label_custom": true,
+      "id": "tm_btcusd_riskadj_94_6r_dd10_wr_2386b8a5",
+      "label": "BTCUSD RiskAdj +94.6R dd10 WR42",
+      "created_at": "2026-08-08T12:05:44+07:00",
+      "kb_pin_path": "trade_models\\tm_btcusd_riskadj_94_6r_dd10_wr_2386b8a5_kb_pin.json",
+      "kb_fingerprint": "88a537a24b9db527",
+      "kb_pin_bytes": 1114746,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\clone_app\\clone_BTC\\EdgeMinerBTCUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep004.json"
+    },
+    {
+      "train_weeks": 12,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_2026_6thang",
+      "kb_snapshot": 5,
+      "oos_from": "2026-04-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 25.0,
+      "slippage_pips": 5.0,
+      "total_r": 94.131,
+      "win_rate_pct": 41.11,
+      "max_drawdown_r": 10.16,
+      "profit_factor": 1.792,
+      "n_trades": 180,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 68.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "BTCUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2023-12-31 22:00:00",
+      "data_end": "2026-08-08 06:15:00",
+      "data_bars": 91086,
+      "data_fingerprint": "951591023feba0f75434b13511e9e4fe09507b317aad47f64c26994ab8601275",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260808_134211",
+      "grid_key": "92e2d991c588",
+      "label_custom": true,
+      "id": "tm_btcusd_riskadj_94_1r_dd10_wr_4d9d85be",
+      "label": "BTCUSD RiskAdj +94.1R dd10 WR41",
+      "created_at": "2026-08-08T13:43:38+07:00",
+      "kb_pin_path": "trade_models\\tm_btcusd_riskadj_94_1r_dd10_wr_4d9d85be_kb_pin.json",
+      "kb_fingerprint": "1a6e1c545c44ce3a",
+      "kb_pin_bytes": 1533648,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\clone_app\\clone_BTC\\EdgeMinerBTCUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep005.json"
+    },
+    {
+      "train_weeks": 12,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_2026_6thang",
+      "kb_snapshot": 5,
+      "oos_from": "2026-04-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 25.0,
+      "slippage_pips": 5.0,
+      "total_r": 106.588,
+      "win_rate_pct": 40.28,
+      "max_drawdown_r": 12.05,
+      "profit_factor": 1.849,
+      "n_trades": 216,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "BTCUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2023-12-31 22:00:00",
+      "data_end": "2026-08-08 06:15:00",
+      "data_bars": 91086,
+      "data_fingerprint": "951591023feba0f75434b13511e9e4fe09507b317aad47f64c26994ab8601275",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260808_134211",
+      "grid_key": "7f8cc61ff993",
+      "label_custom": true,
+      "id": "tm_btcusd_bestr_106_6r_wr40_ep5_4d075a7f",
+      "label": "BTCUSD BestR +106.6R WR40",
+      "created_at": "2026-08-08T13:44:23+07:00",
+      "kb_pin_path": "trade_models\\tm_btcusd_bestr_106_6r_wr40_ep5_4d075a7f_kb_pin.json",
+      "kb_fingerprint": "1a6e1c545c44ce3a",
+      "kb_pin_bytes": 1533648,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\clone_app\\clone_BTC\\EdgeMinerBTCUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep005.json"
+    }
+  ]
+}
