@@ -1,0 +1,690 @@
+{
+  "models": [
+    {
+      "train_weeks": 6,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_2026_6thang",
+      "kb_snapshot": 3,
+      "oos_from": "2026-04-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 1.5,
+      "slippage_pips": 0.3,
+      "total_r": 99.738,
+      "win_rate_pct": 52.67,
+      "max_drawdown_r": 5.75,
+      "profit_factor": 2.218,
+      "n_trades": 150,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 10.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": false,
+        "anti_chase_mode": "calibrate",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "GBPUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2024-01-01 22:00:00",
+      "data_end": "2026-08-07 20:30:00",
+      "data_bars": 64607,
+      "data_fingerprint": "8fd9c145c3f9d9f3cdbcf0140461457fad822610245fa961b2bc8024619805ef",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260808_143753",
+      "grid_key": "3e771283d038",
+      "label_custom": true,
+      "id": "tm_gbpusd_bestr_99_7r_wr53_6bcb3684",
+      "label": "GBPUSD BestR +99.7R WR53",
+      "created_at": "2026-08-08T14:37:53+07:00",
+      "kb_pin_path": "trade_models\\tm_gbpusd_bestr_99_7r_wr53_6bcb3684_kb_pin.json",
+      "kb_fingerprint": "b33ee60055ea2561",
+      "kb_pin_bytes": 1095795,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\clone_app\\clone_GBP\\EdgeMinerGBPUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep003.json"
+    },
+    {
+      "train_weeks": 6,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_h2",
+      "kb_snapshot": 4,
+      "oos_from": "2026-01-01",
+      "oos_to": "2026-08-07",
+      "spread_pips": 1.5,
+      "slippage_pips": 0.3,
+      "total_r": 94.983,
+      "win_rate_pct": 56.9,
+      "max_drawdown_r": 4.7,
+      "profit_factor": 2.591,
+      "n_trades": 116,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 68.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "GBPUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2024-01-01 22:00:00",
+      "data_end": "2026-08-07 20:30:00",
+      "data_bars": 64607,
+      "data_fingerprint": "8fd9c145c3f9d9f3cdbcf0140461457fad822610245fa961b2bc8024619805ef",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260808_143753",
+      "grid_key": "5f71624789a5",
+      "label_custom": true,
+      "id": "tm_gbpusd_riskadj_95_0r_dd5_wr5_ad5636dc",
+      "label": "GBPUSD RiskAdj +95.0R dd5 WR57",
+      "created_at": "2026-08-08T14:38:31+07:00",
+      "kb_pin_path": "trade_models\\tm_gbpusd_riskadj_95_0r_dd5_wr5_ad5636dc_kb_pin.json",
+      "kb_fingerprint": "38c897a1e7d667cb",
+      "kb_pin_bytes": 1421459,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\clone_app\\clone_GBP\\EdgeMinerGBPUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep004.json",
+      "learn_from": "2025-07-01",
+      "learn_until": "2025-12-31"
+    },
+    {
+      "train_weeks": 6,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_2026_6thang",
+      "kb_snapshot": 5,
+      "oos_from": "2026-04-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 1.5,
+      "slippage_pips": 0.3,
+      "total_r": 79.693,
+      "win_rate_pct": 69.35,
+      "max_drawdown_r": 2.47,
+      "profit_factor": 4.226,
+      "n_trades": 62,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 62.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "GBPUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2024-01-01 22:00:00",
+      "data_end": "2026-08-07 20:30:00",
+      "data_bars": 64607,
+      "data_fingerprint": "8fd9c145c3f9d9f3cdbcf0140461457fad822610245fa961b2bc8024619805ef",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260808_180221",
+      "grid_key": "69154bd53fdf",
+      "label_custom": true,
+      "id": "tm_gbpusd_riskadj_79_7r_dd2_wr6_160c0c79",
+      "label": "GBPUSD BestR@WR60 +79.7R WR69",
+      "created_at": "2026-08-08T18:03:02+07:00",
+      "kb_pin_path": "trade_models\\tm_gbpusd_riskadj_79_7r_dd2_wr6_160c0c79_kb_pin.json",
+      "kb_fingerprint": "7f6128627a024a3a",
+      "kb_pin_bytes": 1744549,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\clone_app\\clone_GBP\\EdgeMinerGBPUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep005.json"
+    },
+    {
+      "train_weeks": 9,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_2026_6thang",
+      "kb_snapshot": 4,
+      "oos_from": "2026-04-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 1.5,
+      "slippage_pips": 0.3,
+      "total_r": 79.486,
+      "win_rate_pct": 60.23,
+      "max_drawdown_r": 4.83,
+      "profit_factor": 3.05,
+      "n_trades": 88,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 99.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": false,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "GBPUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2024-01-01 22:00:00",
+      "data_end": "2026-08-07 20:30:00",
+      "data_bars": 64607,
+      "data_fingerprint": "8fd9c145c3f9d9f3cdbcf0140461457fad822610245fa961b2bc8024619805ef",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260808_211527",
+      "grid_key": "433f5fd79dd4",
+      "label_custom": true,
+      "id": "tm_gbpusd_wr60_alt_79_5r_wr60_d7b0f5ed",
+      "label": "GBPUSD WR60+ alt +79.5R WR60",
+      "created_at": "2026-08-08T21:16:08+07:00",
+      "kb_pin_path": "trade_models\\tm_gbpusd_wr60_alt_79_5r_wr60_d7b0f5ed_kb_pin.json",
+      "kb_fingerprint": "38c897a1e7d667cb",
+      "kb_pin_bytes": 1421459,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\clone_app\\clone_GBP\\EdgeMinerGBPUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep004.json"
+    },
+    {
+      "train_weeks": 6,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_2026_6thang",
+      "kb_snapshot": 3,
+      "oos_from": "2026-04-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 1.5,
+      "slippage_pips": 0.3,
+      "total_r": 92.311,
+      "win_rate_pct": 55.74,
+      "max_drawdown_r": 4.72,
+      "profit_factor": 2.44,
+      "n_trades": 122,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 8.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 70.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "and",
+        "exit_modes_full_only": false
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "GBPUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2024-01-01 22:00:00",
+      "data_end": "2026-08-07 20:30:00",
+      "data_bars": 64607,
+      "data_fingerprint": "8fd9c145c3f9d9f3cdbcf0140461457fad822610245fa961b2bc8024619805ef",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260809_105815",
+      "grid_key": "3115122663e4",
+      "label_custom": false,
+      "id": "tm_h_c_6_tu_n_giai_o_n_2025_202_36e9ae9f",
+      "label": "Học 6 tuần · Giai đoạn 2025–2026–6thang · vòng 3 · Kiểm chứng 2026 · +92.3R",
+      "created_at": "2026-08-09T13:43:21+07:00",
+      "kb_pin_path": "trade_models\\tm_h_c_6_tu_n_giai_o_n_2025_202_36e9ae9f_kb_pin.json",
+      "kb_fingerprint": "b33ee60055ea2561",
+      "kb_pin_bytes": 1095795,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\backtest\\EdgeMinerGBPUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep003.json"
+    },
+    {
+      "train_weeks": 9,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_2026_6thang",
+      "kb_snapshot": 4,
+      "oos_from": "2026-04-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 1.5,
+      "slippage_pips": 0.3,
+      "total_r": 66.643,
+      "win_rate_pct": 66.67,
+      "max_drawdown_r": 2.42,
+      "profit_factor": 3.725,
+      "n_trades": 57,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          2.5,
+          3.0,
+          3.2
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 7.0,
+        "drawdown_penalty": 0.0,
+        "loss_streak_penalty": 0.0,
+        "selection_mode": "expectancy_frontier",
+        "edge_surgery": true,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.65,
+        "edge_surgery_hours": false,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 65.0,
+        "anti_chase_fixed_vwap": 2.0,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": false
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "GBPUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2024-01-01 22:00:00",
+      "data_end": "2026-08-07 20:30:00",
+      "data_bars": 64607,
+      "data_fingerprint": "8fd9c145c3f9d9f3cdbcf0140461457fad822610245fa961b2bc8024619805ef",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260809_105815",
+      "grid_key": "e6f94d81e397",
+      "label_custom": true,
+      "id": "tm_h_c_9_tu_n_h_c_2025-2026-6th_625eda54",
+      "label": "Học 9 tuần · Học 2025-2026-6thang · vòng 4 · Kiểm chứng 2026 · preset nova_fixed",
+      "created_at": "2026-08-09T13:44:45+07:00",
+      "kb_pin_path": "trade_models\\tm_h_c_9_tu_n_h_c_2025-2026-6th_625eda54_kb_pin.json",
+      "kb_fingerprint": "38c897a1e7d667cb",
+      "kb_pin_bytes": 1421459,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\backtest\\EdgeMinerGBPUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep004.json"
+    }
+  ]
+}

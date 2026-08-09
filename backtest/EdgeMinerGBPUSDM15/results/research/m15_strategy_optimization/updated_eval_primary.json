@@ -1,0 +1,107 @@
+{
+  "generated_at": "2026-07-24T10:48:48+05:30",
+  "elapsed_sec": 65.7,
+  "active_model_id": "tm_m15_best_2_49216b56",
+  "mining_search_space": {
+    "rr_ratios": [
+      2.5,
+      3.0
+    ],
+    "atr_multipliers": [
+      0.9,
+      1.05
+    ],
+    "max_hold_bars": [
+      96
+    ],
+    "min_bars_between": [
+      12
+    ],
+    "session_ranges": [
+      [
+        7,
+        20
+      ]
+    ],
+    "session_filters": [
+      true
+    ],
+    "score_thresholds": [
+      0.6,
+      1.0,
+      1.6,
+      2.2
+    ],
+    "min_rules_matches": [
+      1,
+      2
+    ],
+    "ml_probability_thresholds": [
+      0.36,
+      0.4,
+      0.44,
+      0.48
+    ],
+    "min_feature_samples": 30,
+    "min_threshold_samples": 10,
+    "min_binary_samples": 8,
+    "include_session_regime_rules": false,
+    "target_trades_per_week": 10.0,
+    "drawdown_penalty": 0.0,
+    "loss_streak_penalty": 0.0
+  },
+  "report_path": "/thuyen_check/logging/bk/EdgeMiner2/results/backtest_report.json",
+  "model_report_path": "/thuyen_check/logging/bk/EdgeMiner2/results/trade_models/tm_m15_best_2_49216b56.json",
+  "summary": {
+    "selection": {
+      "n_trades": 129,
+      "trades_per_week": 7.784,
+      "win_rate_pct": 43.411,
+      "avg_rr": 2.4394,
+      "profit_factor": 1.7956,
+      "total_r": 71.63,
+      "max_drawdown_r": 12.54,
+      "risk_adjusted": 5.7121,
+      "max_loss_streak": 10
+    },
+    "holdout": {
+      "n_trades": 109,
+      "trades_per_week": 9.064,
+      "win_rate_pct": 43.119,
+      "avg_rr": 2.3905,
+      "profit_factor": 1.9477,
+      "total_r": 58.8,
+      "max_drawdown_r": 14.25,
+      "risk_adjusted": 4.1263,
+      "max_loss_streak": 10
+    },
+    "overall": {
+      "n_trades": 238,
+      "trades_per_week": 8.21,
+      "win_rate_pct": 43.28,
+      "avg_rr": 2.416,
+      "profit_factor": 1.854,
+      "total_pips": 823.87,
+      "total_r": 130.414,
+      "max_drawdown_r": 14.25,
+      "max_win_streak": 6,
+      "max_loss_streak": 10,
+      "risk_of_ruin_pct": 0.0
+    }
+  },
+  "constraints_met": {
+    "win_rate_above_60": false,
+    "rr_above_2": true,
+    "profitable": true,
+    "trades_per_week_target": true
+  },
+  "compared_to_frozen_old": {
+    "old_overall": {
+      "win_rate_pct": 44.73,
+      "avg_rr": 2.191,
+      "total_r": 110.02,
+      "max_drawdown_r": 18.47
+    },
+    "note": "Frozen active before PA/ML + default spacing/hold promote"
+  }
+}
