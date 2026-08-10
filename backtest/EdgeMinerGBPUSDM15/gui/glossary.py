@@ -1,4 +1,4 @@
-"""Thuật ngữ & nhãn UI — giúp app dễ hiểu hơn cho người dùng."""
+﻿"""Thuật ngữ & nhãn UI — giúp app dễ hiểu hơn cho người dùng."""
 from __future__ import annotations
 
 import streamlit as st
@@ -25,8 +25,21 @@ HELP = {
   "trade_profile": "**Trade Model** — cấu hình giao dịch: cửa sổ học, bộ nhớ, giai đoạn test, phí.",
   "walk_forward": "**WF** — mỗi tuần học trên data gần → trade tuần sau → lặp (tránh nhìn trước).",
   "paper": (
-    "**Paper Trade** — mô phỏng lệnh trên nến MT5, không gửi EA. "
-    "Desk thống kê tuần (tùy chọn trước Live)."
+    "**Sim fills** (tên code cũ: *paper fills*) — khớp lệnh mô phỏng OHLC trong "
+    "**Compare Trade** / HistoryFeed (`mt5_bridge.paper_fill.PaperBook`). "
+    "**Không** phải desk Paper Monitor (đã gỡ khỏi nav)."
+  ),
+  "active_model": (
+    "**Active** — Trade Model đang xem/phân tích (dropdown Trade Models). "
+    "Không điều khiển lệnh Live/Sim."
+  ),
+  "bridge_roster": (
+    "**Bridge roster** — 1–5 model chọn trên MT5 Bridge cho Live/Simulate. "
+    "Archive/xóa sẽ gỡ id khỏi roster; id còn sót = *id ma* (nút Dọn roster)."
+  ),
+  "archive_model": (
+    "**Archive** — cất model nghiên cứu (giữ report), ẩn khỏi Active/Bridge. "
+    "Ưu tiên hơn Xóa cứng. Restore không tự add lại Bridge."
   ),
   "mt5_bridge": (
     "**MT5 Bridge** — App quyết định → EA `ForgeBridge` mở/đóng lệnh trên MT5. "
@@ -63,7 +76,7 @@ CONSTRAINT_LABELS = {
   "profitable": "Có lời (1 năm gần nhất)",
   "win_rate_above_60": "Tỷ lệ thắng > 60% (1 năm)",
   "rr_above_2": "Lãi/lỗ > 2 (1 năm)",
-  "trades_per_week_target": "Mục tiêu 7–10 lệnh/tuần, tối đa 2 lệnh/ngày broker",
+  # trades_per_week_target retired — tần suất không còn gate live/checklist
 }
 
 # --- Tên hiển thị profile bộ nhớ (ID kỹ thuật → tên dễ hiểu) ---
@@ -222,20 +235,24 @@ def glossary_sections() -> list[tuple[str, list[tuple[str, str]]]]:
     ("Tối ưu & model", [
       ("Grid Search", "Thử nhiều combo tham số, xếp hạng để chọn Trade Model."),
       ("Trade Model", "Snapshot cấu hình đã chọn (cửa sổ học, KB/epoch, OOS, phí) — dùng chung Live/Simulate."),
+      ("Active", "Model đang phân tích trong Trade Models — không điều khiển lệnh."),
+      ("Archive", "Cất kệ nghiên cứu (giữ report); gỡ khỏi Bridge. Restore không tự add Bridge."),
       ("Health / Health OOS", "Báo cáo backtest OOS của model (chuẩn so sánh Live/Sim)."),
       ("fp / conditions_fp", "Fingerprint điều kiện remine; Live/Sim phải khớp Trade Model đang chọn."),
       ("Edge", "Chênh lệch R (Live/Sim − Backtest, hoặc KB ON − OFF); gần 0 ≈ khớp kỳ vọng."),
     ]),
     ("Vận hành MT5", [
       ("MT5 Bridge", "App quyết định + EA mở/đóng lệnh trên MetaTrader 5."),
+      ("Bridge roster", "1–5 model runtime Live/Sim (multiselect). Khác Active."),
       ("Live", "Lệnh thật/demo trên tài khoản MT5 đang gắn EA."),
-      ("Simulate", "Replay quá khứ qua App↔EA (History Feed), cùng Trade Model với Live."),
+      ("Simulate", "Replay quá khứ qua App↔EA (History Feed), cùng roster với Live."),
       ("History Feed", "EA phát lại nến lịch sử theo Từ/Đến để Simulate."),
       ("Parity", "Đối chiếu strategy tuần Live với weekly_log Health OOS."),
-      ("EA", "Expert Advisor trên MT5 (`ForgeBridgeM15` / `ForgeBridgeM15Sim`)."),
+      ("EA", "Expert Advisor trên MT5 (`ForgeBridgeM15G23` / `ForgeBridgeM15G23Sim`)."),
       ("InpMode", "Input EA: Live / History Feed (Simulate)."),
       ("Magic", "Magic Number — tách lệnh Bridge khỏi EA khác trên cùng tài khoản."),
-      ("Paper Trade", "Mô phỏng lệnh trên nến MT5, không gửi EA (desk thống kê tuần)."),
+      ("Sim fills / PaperBook", "Khớp lệnh mô phỏng OHLC trong Compare / HistoryFeed (module `paper_fill`). Không phải desk Paper Monitor."),
+      ("Id ma", "Id còn trong Bridge config nhưng model đã Archive/xóa — dùng Dọn roster."),
     ]),
     ("Chỉ số & lệnh", [
       ("R", "Đơn vị lợi nhuận theo rủi ro mỗi lệnh (1R = ±1 lần risk)."),
@@ -248,7 +265,7 @@ def glossary_sections() -> list[tuple[str, list[tuple[str, str]]]]:
       ("Spread / Slippage", "Chênh mua-bán / trượt giá (pip) trừ vào mô phỏng."),
       ("SL / TP", "Stop Loss / Take Profit."),
       ("SIGNAL", "Có tín hiệu chưa khớp; Bridge phải gửi BUY/SELL lúc bar đóng."),
-      ("OPEN / CLOSED / FILLED", "Trạng thái lệnh: đang mở / đã đóng / đã khớp (Paper FILLED ≠ lệnh MT5)."),
+      ("OPEN / CLOSED / FILLED", "Trạng thái lệnh: đang mở / đã đóng / đã khớp (sim FILLED ≠ lệnh MT5 Live)."),
       ("Auto / Lệnh sửa", "Auto = chiến lược Trade Model; Lệnh sửa = test market / sửa tay SL·TP."),
     ]),
   ]

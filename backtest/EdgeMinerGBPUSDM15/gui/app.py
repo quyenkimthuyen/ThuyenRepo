@@ -74,9 +74,9 @@ def _resolve_page_key() -> str:
     set_widget_preference("models_subtab", sub, "navigation.models_subtab")
     return "models"
   if key == "paper":
-    set_widget_preference("nav_page", "models", "navigation.page")
-    set_widget_preference("models_subtab", "health", "navigation.models_subtab")
-    return "models"
+    # Paper Monitor retired — send bookmarks to MT5 Bridge
+    set_widget_preference("nav_page", "mt5_bridge", "navigation.page")
+    return "mt5_bridge"
   if key == "learning" and st.session_state.get("learning_tab") == "models":
     set_widget_preference("nav_page", "models", "navigation.page")
     set_widget_preference("learning_tab", "grid", "navigation.learning_tab")
@@ -168,7 +168,7 @@ def main():
   inject_theme()
 
   st.sidebar.markdown("### ForexForge")
-  st.sidebar.caption("GBP/USD M15 · retrain tuần")
+  st.sidebar.caption("EUR/USD M15 · retrain tuần")
 
   page_key = _render_sidebar_nav()
   _sidebar_status()

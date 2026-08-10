@@ -1,3 +1,5 @@
 # Project Rules & Customizations
 
-- **Paper Execution vs. MT5 Real Orders**: Trạng thái `SIGNAL` / `FILLED` trong Paper Trading/Monitor **KHÔNG** đồng nghĩa với việc lệnh đã được đặt thành công trên MT5. Chỉ xác nhận lệnh đã vào MT5 dựa trên **Thống kê lệnh Bridge** hoặc file `trades.json` / `positions` trực tiếp của Bridge.
+- **Sim fills ≠ MT5 orders**: Trạng thái `SIGNAL` / `FILLED` từ Compare Trade / HistoryFeed (`PaperBook` / `paper_fill`) **KHÔNG** đồng nghĩa lệnh đã vào MT5. Chỉ xác nhận lệnh MT5 qua **Thống kê lệnh Bridge** hoặc `trades.json` / positions của Bridge Live.
+- **Paper Monitor retired**: Không còn desk Giám sát paper trên nav. Code/module tên `paper_*` còn lại là helper nội bộ hoặc stub redirect.
+- **Active ≠ Bridge**: Active = phân tích; Bridge roster = runtime Live/Sim. Archive/xóa phải prune `model_ids`.

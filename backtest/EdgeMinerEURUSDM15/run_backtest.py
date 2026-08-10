@@ -340,7 +340,8 @@ def run_walk_forward(
       "win_rate_above_60": year_m["win_rate"] >= 0.60,
       "rr_above_2": year_m["avg_rr"] >= 2.0,
       "profitable": year_m["total_r"] > 0,
-      "trades_per_week_target": 7.0 <= avg_tpw <= TARGET_TRADES_PER_WEEK,
+      # Frequency band (7–10/week) removed: elite presets intentionally trade less;
+      # tần suất không còn là điều kiện “đủ live”.
     },
     "last_strategy": strategy_to_dict(last_strat) if last_strat else None,
     "weekly_log": weekly_log,

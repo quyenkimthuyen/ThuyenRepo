@@ -61,22 +61,158 @@ def save_models_store(store: dict):
   _write_json(MODELS_PATH, store)
 
 
-def list_trade_models() -> list[dict]:
-  return load_models_store().get("models") or []
+def is_model_archived(m: dict | None) -> bool:
+  return bool(m and m.get("archived"))
+
+
+def list_trade_models(*, include_archived: bool = False) -> list[dict]:
+  """Registry models. By default hide archived (research shelf)."""
+  models = list(load_models_store().get("models") or [])
+  if include_archived:
+    return models
+  return [m for m in models if not is_model_archived(m)]
 
 
 def get_model_by_id(model_id: str) -> dict | None:
-  for m in list_trade_models():
+  for m in list_trade_models(include_archived=True):
     if m.get("id") == model_id:
       return m
   return None
+
+
+def known_live_model_ids() -> set[str]:
+  """Ids eligible for Bridge / Active (not archived)."""
+  return {str(m["id"]) for m in list_trade_models(include_archived=False) if m.get("id")}
+
+
+def bridge_ghost_model_ids() -> list[str]:
+  """Bridge config ids missing from live store (deleted or archived)."""
+  known = known_live_model_ids()
+  ghosts: list[str] = []
+  for mid in get_bridge_runtime_model_ids():
+    if mid and mid not in known:
+      ghosts.append(str(mid))
+  return ghosts
+
+
+def _prune_bridge_label_prefs(remaining_ids: list[str]) -> None:
+  """Drop stale labels from UI prefs so multiselect does not revive ghosts."""
+  try:
+    from gui.ui_preferences import get_preference, set_preference
+  except Exception:
+    return
+  try:
+    labels = get_preference("mt5.bridge_model_labels")
+  except Exception:
+    labels = None
+  if not isinstance(labels, list):
+    return
+  id_set = {str(x) for x in remaining_ids}
+  keep: list[str] = []
+  for lab in labels:
+    m = None
+    for row in list_trade_models(include_archived=False):
+      if format_model_label(row) == lab and str(row.get("id")) in id_set:
+        m = row
+        break
+    if m is not None:
+      keep.append(lab)
+  if keep != labels:
+    try:
+      set_preference("mt5.bridge_model_labels", keep)
+    except Exception:
+      pass
+
+
+def prune_bridge_roster(
+  *,
+  remove_ids: set[str] | None = None,
+  drop_unknown: bool = True,
+) -> dict:
+  """Remove deleted/archived/explicit ids from Bridge ``model_ids``.
+
+  Returns ``{before, after, removed, error?}``.
+  """
+  remove_ids = {str(x) for x in (remove_ids or set()) if x}
+  known = known_live_model_ids()
+  try:
+    from mt5_bridge.background import load_config, save_config
+    from mt5_bridge.protocol import normalize_model_ids
+
+    cfg = load_config()
+    before = normalize_model_ids(cfg.get("model_ids"), fallback=cfg.get("model_id"))
+    after: list[str] = []
+    removed: list[str] = []
+    for mid in before:
+      mid_s = str(mid)
+      if mid_s in remove_ids or (drop_unknown and mid_s not in known):
+        removed.append(mid_s)
+      elif mid_s not in after:
+        after.append(mid_s)
+    if removed or list(before) != after:
+      save_config(
+        model_id=after[0] if after else "",
+        model_ids=after,
+      )
+    _prune_bridge_label_prefs(after)
+    # Best-effort: rewrite bridge models.json roster if present
+    try:
+      from mt5_bridge.protocol import BRIDGE_DIR, BRIDGE_SIM_DIR, write_models_roster
+      for bdir in (BRIDGE_DIR, BRIDGE_SIM_DIR):
+        try:
+          write_models_roster(after, bridge_dir=bdir)
+        except Exception:
+          pass
+    except Exception:
+      pass
+    return {"before": list(before), "after": after, "removed": removed}
+  except Exception as exc:
+    return {"before": [], "after": [], "removed": [], "error": str(exc)}
+
+
+def archive_trade_model(model_id: str) -> dict | None:
+  """Shelf a research model: keep artifacts, hide from live lists, prune Bridge."""
+  store = load_models_store()
+  target = None
+  for m in store.get("models") or []:
+    if m.get("id") == model_id:
+      target = m
+      break
+  if target is None:
+    return None
+  target["archived"] = True
+  target["archived_at"] = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+  save_models_store(store)
+  prune_bridge_roster(remove_ids={str(model_id)})
+  if load_active_model_id() == model_id:
+    remaining = list_trade_models(include_archived=False)
+    set_active_trade_model(remaining[0]["id"] if remaining else None)
+  st.session_state.pop("active_trade_model", None)
+  return target
+
+
+def unarchive_trade_model(model_id: str) -> dict | None:
+  """Restore archived model to live store lists (does not auto-add to Bridge)."""
+  store = load_models_store()
+  target = None
+  for m in store.get("models") or []:
+    if m.get("id") == model_id:
+      target = m
+      break
+  if target is None:
+    return None
+  target["archived"] = False
+  target.pop("archived_at", None)
+  save_models_store(store)
+  st.session_state.pop("active_trade_model", None)
+  return target
 
 
 def load_active_model_id() -> str | None:
   data = _read_json(ACTIVE_MODEL_PATH)
   if isinstance(data, dict) and data.get("id"):
     return data["id"]
-  models = list_trade_models()
+  models = list_trade_models(include_archived=False)
   return models[0]["id"] if models else None
 
 
@@ -269,30 +405,93 @@ def _mining_space_brief(ss: dict | None) -> str:
   return " · ".join(bits) if bits else "baseline"
 
 
+OVERVIEW_HIGH_DD_R = 6.5
+
+
+def desk_pair_code() -> str:
+  """EUR / GBP / OTHER — drives overview default sort."""
+  import re
+  try:
+    from mt5_bridge.protocol import INSTANCE_ID
+    inst = str(INSTANCE_ID or "").upper()
+    if "GBP" in inst or re.search(r"M15G\d", inst):
+      return "GBP"
+    if "EUR" in inst or re.search(r"M15E\d", inst):
+      return "EUR"
+  except Exception:
+    pass
+  try:
+    from gui.services import load_data_meta
+    pair = str((load_data_meta() or {}).get("pair") or "").upper()
+    if "GBP" in pair:
+      return "GBP"
+    if "EUR" in pair:
+      return "EUR"
+  except Exception:
+    pass
+  return "EUR"
+
+
+def _overview_badges(
+  *,
+  source: str | None,
+  dd: float | None,
+  wr: float | None,
+  has_oos_block: bool,
+  archived: bool = False,
+) -> list[str]:
+  """Badge tags: Archived / Live-ok / High-DD / Grid-only / Stale."""
+  badges: list[str] = []
+  if archived:
+    badges.append("Archived")
+  high_dd = dd is not None and float(dd) > OVERVIEW_HIGH_DD_R
+  if high_dd:
+    badges.append("High-DD")
+  if (
+    not archived
+    and source == "oos"
+    and has_oos_block
+    and not high_dd
+    and wr is not None
+  ):
+    badges.append("Live-ok")
+  if source == "grid":
+    badges.append("Grid-only")
+  if source not in ("oos", "grid") or (source == "oos" and not has_oos_block):
+    badges.append("Stale")
+  order = ["Archived", "Live-ok", "High-DD", "Grid-only", "Stale"]
+  return [b for b in order if b in badges]
+
+
 def build_trade_models_compare_rows(
   models: list[dict] | None = None,
   *,
   active_id: str | None = None,
   bridge_ids: list[str] | None = None,
+  sort_desk: str | None = None,
 ) -> list[dict]:
   """Rows for the Trade Models overview compare table (all models).
 
   Prefers each model's ``overall_oos`` report when present; falls back to
   registry Grid KPI fields so every stored model appears.
   """
-  models = list(models if models is not None else list_trade_models())
+  models = list(
+    models if models is not None else list_trade_models(include_archived=True)
+  )
   if active_id is None:
     active = get_active_trade_model()
     active_id = str(active["id"]) if active and active.get("id") else None
   if bridge_ids is None:
     bridge_ids = get_bridge_runtime_model_ids()
   bridge_set = {str(x) for x in (bridge_ids or []) if x}
+  desk = (sort_desk or desk_pair_code()).upper()
 
   rows: list[dict] = []
   for m in models:
     mid = str(m.get("id") or "")
     if not mid:
       continue
+    archived = is_model_archived(m)
     report = load_model_report(mid)
     oos = (report or {}).get("overall_oos") or {}
     resolved = resolve_model_total_r(m, report=report, load_report=False)
@@ -320,7 +519,7 @@ def build_trade_models_compare_rows(
         pass
 
     roles: list[str] = []
-    if active_id and mid == str(active_id):
+    if active_id and mid == str(active_id) and not archived:
       roles.append("Active")
     if mid in bridge_set:
       roles.append("Bridge")
@@ -331,10 +530,26 @@ def build_trade_models_compare_rows(
     oos_win = f"{oos_from}→{oos_to}" if oos_from != "—" or oos_to != "—" else "—"
 
     src = resolved.get("source")
-    source_label = "OOS" if src == "oos" else ("Grid" if src == "grid" else "—")
+    # Emphasize OOS vs muted Grid in plain text (dataframe has no rich cells)
+    if src == "oos":
+      source_label = "● OOS"
+    elif src == "grid":
+      source_label = "○ Grid"
+    else:
+      source_label = "—"
+
+    badges = _overview_badges(
+      source=src,
+      dd=dd,
+      wr=wr,
+      has_oos_block=bool(oos),
+      archived=archived,
+    )
+    high_dd = dd is not None and float(dd) > OVERVIEW_HIGH_DD_R
 
     rows.append({
       "id": mid,
+      "Badge": " · ".join(badges) if badges else "—",
       "Vai trò": role,
       "Model": format_model_short(m, max_len=48),
       "Total R": round(float(total_r), 2) if total_r is not None else None,
@@ -349,11 +564,51 @@ def build_trade_models_compare_rows(
       "Mining": _mining_space_brief(m.get("mining_search_space")),
       "Nguồn": source_label,
       "_label": format_model_label(m),
+      "_source": src,
+      "_high_dd": high_dd,
+      "_has_oos": src == "oos",
+      "_archived": archived,
       "_sort_r": float(total_r) if total_r is not None else float("-inf"),
+      "_sort_wr": float(wr) if wr is not None else float("-inf"),
+      "_sort_dd": float(dd) if dd is not None else float("inf"),
     })
 
-  rows.sort(key=lambda r: r.get("_sort_r", float("-inf")), reverse=True)
+  if desk == "GBP":
+    # Prefer quality: high WR, low DD, then Total R
+    rows.sort(
+      key=lambda r: (
+        -r.get("_sort_wr", float("-inf")),
+        r.get("_sort_dd", float("inf")),
+        -r.get("_sort_r", float("-inf")),
+      )
+    )
+  else:
+    rows.sort(key=lambda r: r.get("_sort_r", float("-inf")), reverse=True)
   return rows
+
+
+def overview_row_visible(
+  row: dict,
+  *,
+  show_all: bool,
+  show_archived: bool = False,
+  bridge_ids: list[str] | None = None,
+) -> bool:
+  """Default filter: hide archived, High-DD, non-OOS (Bridge ghosts still shown)."""
+  if row.get("_archived") and not show_archived and not show_all:
+    return False
+  if show_all:
+    return True
+  bridge_set = {str(x) for x in (bridge_ids or []) if x}
+  if row.get("id") in bridge_set:
+    return True
+  if row.get("_archived"):
+    return False
+  if row.get("_high_dd"):
+    return False
+  if not row.get("_has_oos"):
+    return False
+  return True
 
 
 def model_report_path(model_id: str) -> Path:
@@ -475,11 +730,21 @@ def get_active_trade_model(*, force_reload: bool = False) -> dict | None:
   if force_reload:
     st.session_state.pop("active_trade_model", None)
   if "active_trade_model" in st.session_state:
-    return st.session_state["active_trade_model"]
+    cached = st.session_state["active_trade_model"]
+    if cached and not is_model_archived(cached):
+      return cached
+    st.session_state.pop("active_trade_model", None)
   mid = load_active_model_id()
   if not mid:
     return None
   m = get_model_by_id(mid)
+  if m and is_model_archived(m):
+    # Active file still points at archived shelf — fall through to live list
+    live = list_trade_models(include_archived=False)
+    if not live:
+      return None
+    m = live[0]
+    save_active_model_id(m["id"])
   if m:
     st.session_state["active_trade_model"] = m
   return m
@@ -490,21 +755,14 @@ def set_active_trade_model(model_id: str | None) -> dict | None:
     m = get_model_by_id(model_id)
     if not m:
       raise ValueError(f"Trade model `{model_id}` không tồn tại.")
+    if is_model_archived(m):
+      raise ValueError(
+        f"Trade model `{model_id}` đang Archived — Restore trước khi đặt Active."
+      )
     save_active_model_id(model_id)
     st.session_state["active_trade_model"] = m
     st.session_state.pop("backtest_report", None)
-    try:
-      from mt5_bridge.background import save_config as save_bridge_config
-      save_bridge_config(model_id=model_id)
-    except Exception:
-      pass
-    try:
-      from mt5_bridge.ea_simulator import load_sim_state, write_sim_state
-      sim = load_sim_state()
-      if not sim.get("running") and not sim.get("enabled"):
-        write_sim_state({"model_id": model_id})
-    except Exception:
-      pass
+    # Do not rewrite Bridge roster from Active (analysis pointer only).
     try:
       from gui.workspace import save_workspace_file
       save_workspace_file(trade_model_to_workspace(m))
@@ -517,41 +775,13 @@ def set_active_trade_model(model_id: str | None) -> dict | None:
 
 
 def sync_active_model_into_runtime_configs() -> dict | None:
-  """Keep Live / Simulate runtime configs aware of the active Trade Model.
+  """Deprecated no-op.
 
-  Does **not** collapse ``model_ids`` when Bridge already has a multi-model roster.
+  Active Trade Model is analysis-only (Trade Models tabs). Bridge roster is
+  chosen explicitly on MT5 Bridge and must not be overwritten by Active.
+  Kept for import compatibility with older callers.
   """
-  active = get_active_trade_model()
-  mid = (active or {}).get("id")
-  if not mid:
-    return active
-  try:
-    from mt5_bridge.background import load_config as bridge_load, save_config as bridge_save
-    from mt5_bridge.protocol import normalize_model_ids
-
-    cfg = bridge_load()
-    roster = normalize_model_ids(cfg.get("model_ids"), fallback=cfg.get("model_id"))
-    if len(roster) > 1:
-      # Multi-model Bridge session — keep roster; only ensure primary is set.
-      if cfg.get("model_id") not in roster:
-        bridge_save(model_id=roster[0], model_ids=roster)
-    elif cfg.get("model_id") != mid:
-      bridge_save(model_id=mid, model_ids=[mid])
-  except Exception:
-    pass
-  try:
-    from mt5_bridge.ea_simulator import load_sim_state, write_sim_state
-    sim = load_sim_state()
-    if (
-      not sim.get("running")
-      and not sim.get("enabled")
-      and sim.get("model_id") != mid
-      and not (sim.get("model_ids") and len(sim.get("model_ids") or []) > 1)
-    ):
-      write_sim_state({"model_id": mid})
-  except Exception:
-    pass
-  return active
+  return get_active_trade_model()
 
 
 def get_bridge_runtime_model_ids() -> list[str]:
@@ -563,21 +793,26 @@ def get_bridge_runtime_model_ids() -> list[str]:
     cfg = bridge_load()
     return normalize_model_ids(cfg.get("model_ids"), fallback=cfg.get("model_id"))
   except Exception:
-    active = get_active_trade_model()
-    return [str(active["id"])] if active and active.get("id") else []
+    return []
 
 
 def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
-  """Sync active Trade Model into Live/Sim runtime; show selection at page top."""
-  active = sync_active_model_into_runtime_configs()
-  bridge_ids = get_bridge_runtime_model_ids() if context in ("live", "simulate", "shared") else []
+  """Show Bridge roster (runtime). Does not sync or display Active as runtime.
+
+  ``context`` is kept for callers; Paper Monitor is retired — prefer
+  ``live`` / ``simulate`` / ``shared``.
+  """
+  bridge_ids = get_bridge_runtime_model_ids()
+  prefer_sim = context == "simulate"
 
   if len(bridge_ids) > 1:
     rows = bridge_roster_display_rows(
       include_runtime=True,
-      prefer_sim=(context == "simulate"),
+      prefer_sim=prefer_sim,
     )
-    st.markdown(f"**Bridge đang chạy {len(rows)} Trade Model** · Risk %/lệnh chung · 1 lệnh mở / model")
+    st.markdown(
+      f"**Bridge đang chạy {len(rows)} Trade Model** · Risk %/lệnh chung · 1 lệnh mở / model"
+    )
     table = []
     for i, r in enumerate(rows, 1):
       oos = f"{r['oos_r']:+.1f}R" if r.get("oos_r") is not None else "—"
@@ -592,39 +827,29 @@ def render_shared_trade_model_banner(*, context: str = "shared") -> dict | None:
     import pandas as pd
     st.dataframe(pd.DataFrame(table), hide_index=True, use_container_width=True)
     st.caption(
-      "Checklist / thống kê bên dưới áp dụng **từng model trong roster**. "
-      "Đổi danh sách tại **Điều khiển** (multiselect)."
+      "Roster runtime (Live/Sim). Đổi danh sách tại **MT5 Bridge → Trade Models** (multiselect). "
+      "Active trong tab Trade Models chỉ để phân tích — không điều khiển Bridge."
     )
-    # Prefer first roster model as context for single-model callers
-    first = get_model_by_id(bridge_ids[0])
-    return first or active
+    return get_model_by_id(bridge_ids[0])
 
-  if not active:
-    st.warning(
-      "Chưa chọn Trade Model — vào **Trade Models** rồi chọn model."
-    )
-    return active
+  if len(bridge_ids) == 1:
+    m = get_model_by_id(bridge_ids[0])
+    if m:
+      label = format_model_label(m)
+      resolved = resolve_model_total_r(m)
+      bits = [f"**Bridge:** {label}"]
+      if resolved.get("value") is not None:
+        bits.append(format_model_total_r_text(resolved, bold=True))
+      st.markdown(" · ".join(bits))
+      st.caption(
+        "Model trên MT5 Bridge (runtime). Phân tích model khác: tab **Trade Models** (Active)."
+      )
+      return m
 
-  label = format_model_label(active)
-  resolved = resolve_model_total_r(active)
-  bits = [f"**Trade Model:** {label}"]
-  if resolved.get("value") is not None:
-    bits.append(format_model_total_r_text(resolved, bold=True))
-  st.markdown(" · ".join(bits))
-  oos_from = resolved.get("oos_from") or str(active.get("oos_from") or "—")[:10]
-  oos_to = resolved.get("oos_to") or str(active.get("oos_to") or "—")[:10]
-  src_note = (
-    "Total R = remine/backtest OOS của model"
-    if resolved.get("source") == "oos"
-    else "Total R = KPI Grid (chưa có report remine)"
-    if resolved.get("source") == "grid"
-    else "chưa có Total R"
+  st.warning(
+    "Chưa chọn roster Bridge — mở **MT5 Bridge** → tab Trade Models, chọn 1–5 model rồi Start."
   )
-  st.caption(
-    f"OOS `{oos_from} → {oos_to}` · {src_note} · dùng chung Live / Simulate / Paper · "
-    "đổi tại **Trade Models → Quản lý**"
-  )
-  return active
+  return None
 
 
 def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | None = None) -> dict:
@@ -998,8 +1223,9 @@ def delete_trade_model(model_id: str) -> bool:
     return False
   save_models_store(store)
   delete_model_artifacts(model_id)
+  prune_bridge_roster(remove_ids={str(model_id)})
   if load_active_model_id() == model_id:
-    remaining = store["models"]
+    remaining = list_trade_models(include_archived=False)
     set_active_trade_model(remaining[0]["id"] if remaining else None)
   st.session_state.pop("active_trade_model", None)
   return True

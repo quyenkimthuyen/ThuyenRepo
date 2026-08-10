@@ -1,4 +1,9 @@
-"""7. Paper / Live Monitor — tín hiệu tuần hiện tại + chart TradingView."""
+"""Paper Monitor GUI — **retired**.
+
+``render()`` only shows a redirect to MT5 Bridge / Compare Trade.
+Legacy desk helpers below are unreachable from nav; kept for import
+compatibility with Compare/HistoryFeed tooling that still shares names.
+"""
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -919,10 +924,27 @@ def _save_paper_runtime_settings() -> None:
 
 
 def render():
+  """Paper Monitor desk retired — redirect to MT5 Bridge."""
+  from gui.ui_preferences import set_widget_preference
+
+  st.warning(
+    "**Paper Monitor đã gỡ.** Dùng **Compare Trade** (so model) và **MT5 Bridge** (Live/Sim)."
+  )
+  if st.button("Mở MT5 Bridge", type="primary", key="pm_retired_go_bridge"):
+    set_widget_preference("nav_page", "mt5_bridge", "navigation.page")
+    st.rerun()
+  if st.button("Mở Compare Trade", key="pm_retired_go_compare"):
+    set_widget_preference("nav_page", "compare_trade", "navigation.page")
+    st.rerun()
+  return
+
+
+def _render_legacy_paper_desk_removed():
+  """Legacy Paper Monitor UI kept below for reference; not reachable from nav."""
   from gui.navigation import ALL_ITEMS
   from gui.page_chrome import render_page_header
 
-  render_page_header(ALL_ITEMS["paper"])
+  render_page_header(ALL_ITEMS.get("mt5_bridge") or list(ALL_ITEMS.values())[0])
 
   from gui.live_workflow import assess_workflow, load_workflow_state, mark_paper_started
   from gui.trade_model import get_model_run_params, get_active_trade_model

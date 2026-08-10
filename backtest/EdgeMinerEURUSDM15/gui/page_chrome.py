@@ -1,10 +1,9 @@
-"""Shared page chrome — header gọn + Trade Model."""
+"""Shared page chrome — header gọn + Bridge (runtime) hoặc Active (Trade Models)."""
 from __future__ import annotations
 
 import streamlit as st
 
 from gui.navigation import NavItem
-from gui.trade_model import format_model_oneline, get_active_trade_model
 
 
 def render_page_header(
@@ -14,7 +13,7 @@ def render_page_header(
   show_workspace: bool | None = None,
   compact_workspace: bool = True,
 ):
-  """Tiêu đề trang + trade model một dòng."""
+  """Tiêu đề trang + strip model (Bridge runtime hoặc Active phân tích)."""
   if show_workspace is not None:
     show_profile = show_workspace
   title = f"{item.icon} {item.label}" if getattr(item, "icon", None) else item.label
@@ -35,28 +34,51 @@ def render_profile_strip(*, compact: bool = True):
   )
 
   nav = st.session_state.get("nav_page") or ""
-  bridge_ids = get_bridge_runtime_model_ids()
-  if nav in ("mt5_bridge", "live_trade", "live_trade_dash") and len(bridge_ids) > 1:
-    parts = []
-    for mid in bridge_ids[:5]:
-      bm = get_model_by_id(mid)
-      parts.append(format_model_short(bm, max_len=28) if bm else mid[:16])
-    line = f"{len(bridge_ids)} model · " + " · ".join(parts)
+
+  # Trade Models: Active = model đang phân tích (không phải runtime Bridge).
+  if nav == "models":
+    m = get_active_trade_model()
+    if not m:
+      st.caption("📦 Active (phân tích): _chưa chọn_")
+      return
+    line = format_model_oneline(m)
+    prefix = "📦 Active (phân tích): "
     if compact:
-      st.caption(f"📦 Bridge: {line}")
+      st.caption(f"{prefix}{line}")
     else:
-      st.info(f"📦 Bridge: {line}")
+      st.info(f"{prefix}{line}")
     return
 
-  m = get_active_trade_model()
-  if not m:
-    st.caption("📦 _Chưa chọn trade model_")
+  # Runtime pages: show Bridge roster only.
+  bridge_ids = get_bridge_runtime_model_ids()
+  if nav in ("mt5_bridge", "live_trade", "live_trade_dash", "compare_trade", "home"):
+    if len(bridge_ids) > 1:
+      parts = []
+      for mid in bridge_ids[:5]:
+        bm = get_model_by_id(mid)
+        parts.append(format_model_short(bm, max_len=28) if bm else mid[:16])
+      line = f"{len(bridge_ids)} model · " + " · ".join(parts)
+      text = f"📦 Bridge: {line}"
+    elif len(bridge_ids) == 1:
+      bm = get_model_by_id(bridge_ids[0])
+      line = format_model_oneline(bm) if bm else bridge_ids[0]
+      text = f"📦 Bridge: {line}"
+    else:
+      text = "📦 Bridge: _chưa chọn roster — mở MT5 Bridge_"
+    if compact:
+      st.caption(text)
+    else:
+      st.info(text)
     return
-  line = format_model_oneline(m)
-  if compact:
-    st.caption(f"📦 {line}")
-  else:
-    st.info(f"📦 {line}")
+
+  # Other pages: Bridge if set, else quiet.
+  if bridge_ids:
+    if len(bridge_ids) == 1:
+      bm = get_model_by_id(bridge_ids[0])
+      line = format_model_short(bm) if bm else bridge_ids[0][:24]
+      st.caption(f"📦 Bridge: {line}")
+    else:
+      st.caption(f"📦 Bridge: {len(bridge_ids)} model")
 
 
 # Alias tương thích

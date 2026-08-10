@@ -1,17 +1,24 @@
 {
-  "status": "completed",
-  "job_type": "mining_space_health",
-  "job_id": "job_mining_space_health_20260809_213427",
-  "label": "Mining space vs baseline · Học 9 tuần · Học 2025-2026-6thang · ",
+  "status": "running",
+  "job_type": "model_checks_suite",
+  "job_id": "job_model_checks_suite_20260810_100139",
+  "label": "Check thiếu · GBPUSD BestR +99.7R WR53 · KB ON / OFF → Remine ON / OFF → Mining ",
   "params": {
-    "model_id": "tm_h_c_9_tu_n_h_c_2025-2026-6th_625eda54",
-    "refresh_active": false,
+    "model_id": "tm_gbpusd_bestr_99_7r_wr53_6bcb3684",
+    "steps": [
+      "model_health",
+      "remine_health",
+      "mining_space_health"
+    ],
     "start_date": "2022-01-01",
-    "train_weeks": 9,
+    "refresh_kb_on": false,
+    "refresh_remine_on": false,
+    "refresh_active": false,
+    "train_weeks": 6,
     "spread_pips": 1.5,
     "slippage_pips": 0.3,
     "kb_profile": "era_2025_2026_6thang",
-    "kb_snapshot": 4,
+    "kb_snapshot": 3,
     "oos_from": "2026-04-01",
     "oos_to": "2026-12-31",
     "feature_profile": "current",
@@ -60,19 +67,19 @@
       "min_threshold_samples": 10,
       "min_binary_samples": 8,
       "include_session_regime_rules": false,
-      "target_trades_per_week": 7.0,
+      "target_trades_per_week": 10.0,
       "drawdown_penalty": 0.0,
       "loss_streak_penalty": 0.0,
       "selection_mode": "expectancy_frontier",
-      "edge_surgery": true,
+      "edge_surgery": false,
       "edge_surgery_min_hour_trades": 3,
       "edge_surgery_max_hour_wr": 0.42,
-      "edge_surgery_dominant_side_ratio": 0.65,
-      "edge_surgery_hours": false,
-      "anti_chase": true,
-      "anti_chase_mode": "fixed",
+      "edge_surgery_dominant_side_ratio": 0.7,
+      "edge_surgery_hours": true,
+      "anti_chase": false,
+      "anti_chase_mode": "calibrate",
       "anti_chase_fixed_rsi": 65.0,
-      "anti_chase_fixed_vwap": 2.0,
+      "anti_chase_fixed_vwap": 99.0,
       "anti_chase_rsi_caps": [
         60.0,
         62.0,
@@ -81,7 +88,7 @@
         100.0
       ],
       "anti_chase_min_tpw": 5.0,
-      "anti_chase_use_vwap": true,
+      "anti_chase_use_vwap": false,
       "anti_chase_vwap_caps": [
         1.5,
         2.0,
@@ -92,20 +99,18 @@
       "exit_modes_full_only": false
     }
   },
-  "total": 18,
-  "done": 18,
-  "progress_text": "",
-  "result": {
-    "model_id": "tm_h_c_9_tu_n_h_c_2025-2026-6th_625eda54",
-    "active_total_r": null,
-    "baseline_total_r": 66.451,
-    "compared_presets": [
-      "active",
-      "baseline"
-    ]
-  },
-  "started_at": "2026-08-09T21:34:27+07:00",
-  "updated_at": "2026-08-09T21:36:15+07:00",
-  "finished_at": "2026-08-09T21:36:15+07:00",
-  "error": null
+  "total": 1000,
+  "done": 263,
+  "progress_text": "[1/3] Sức khỏe Trade Model (KB ON/OFF) · KB OFF · WF 15/19",
+  "result": null,
+  "started_at": "2026-08-10T10:01:39+07:00",
+  "updated_at": "2026-08-10T10:10:20+07:00",
+  "finished_at": null,
+  "error": null,
+  "_defer_finish": true,
+  "_suite": {
+    "i": 0,
+    "n": 3,
+    "label": "Sức khỏe Trade Model (KB ON/OFF)"
+  }
 }

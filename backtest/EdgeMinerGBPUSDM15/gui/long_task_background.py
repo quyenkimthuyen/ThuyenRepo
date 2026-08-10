@@ -21,6 +21,7 @@ JOB_LABELS = {
   "model_health": "Sức khỏe Trade Model (KB ON/OFF)",
   "remine_health": "Sức khỏe Remine ON/OFF",
   "mining_space_health": "Mining space vs baseline miner",
+  "model_checks_suite": "Check Trade Model (tất cả phần thiếu)",
   "kb_then_grid": "Pipeline: học KB → Grid Search",
   "compare_trade": "Compare Trade (multi-model)",
 }
@@ -116,10 +117,30 @@ def _check_cancel():
 
 
 def _update_progress(state: dict, done: int, total: int, text: str = ""):
+  suite = state.get("_suite")
+  if isinstance(suite, dict) and suite.get("n"):
+    n = max(int(suite["n"]), 1)
+    i = int(suite.get("i") or 0)
+    inner = float(done) / max(float(total), 1.0)
+    frac = (i + min(max(inner, 0.0), 1.0)) / n
+    done = int(round(frac * 1000))
+    total = 1000
+    label = str(suite.get("label") or "")
+    if label:
+      text = f"[{i + 1}/{n}] {label}" + (f" · {text}" if text else "")
   state["done"] = done
   state["total"] = max(total, 1)
-  state["progress_text"] = text
+  if text:
+    state["progress_text"] = text
   _save_state(state)
+
+
+def _complete_or_return(state: dict, result: dict) -> dict:
+  """Finish job unless suite runner asked to chain more steps."""
+  if state.get("_defer_finish"):
+    return result
+  _finish(state, status="completed", result=result)
+  return result
 
 
 def is_task_running() -> bool:
@@ -353,7 +374,7 @@ def _worker_model_health(state: dict):
       "mining_search_space": mining_search_space,
     }
   fp = conditions_fingerprint(run_params)
-  _finish(state, status="completed", result={
+  return _complete_or_return(state, {
     "model_id": model_id,
     "kb_on_total_r": on_r,
     "kb_off_total_r": off_r,
@@ -458,7 +479,7 @@ def _worker_remine_health(state: dict):
 
   on_r = (report_on or {}).get("overall_oos", {}).get("total_r") if report_on else None
   off_r = (report_off.get("overall_oos") or {}).get("total_r")
-  _finish(state, status="completed", result={
+  return _complete_or_return(state, {
     "model_id": model_id,
     "remine_on_total_r": on_r,
     "remine_off_total_r": off_r,
@@ -566,11 +587,50 @@ def _worker_mining_space_health(state: dict):
     if report_active else None
   )
   base_r = (report_base.get("overall_oos") or {}).get("total_r")
-  _finish(state, status="completed", result={
+  return _complete_or_return(state, {
     "model_id": model_id,
     "active_total_r": active_r,
     "baseline_total_r": base_r,
     "compared_presets": ["active", "baseline"],
+  })
+
+
+def _worker_model_checks_suite(state: dict):
+  """Run missing health checks sequentially (one background slot)."""
+  steps = [str(x) for x in (state.get("params") or {}).get("steps") or []]
+  allowed = {"model_health", "remine_health", "mining_space_health"}
+  steps = [s for s in steps if s in allowed]
+  if not steps:
+    raise ValueError("Không có bước check nào để chạy.")
+
+  runners = {
+    "model_health": _worker_model_health,
+    "remine_health": _worker_remine_health,
+    "mining_space_health": _worker_mining_space_health,
+  }
+  by_step: dict = {}
+  state["_defer_finish"] = True
+  try:
+    for i, step in enumerate(steps):
+      _check_cancel()
+      state["_suite"] = {
+        "i": i,
+        "n": len(steps),
+        "label": JOB_LABELS.get(step, step),
+      }
+      _update_progress(state, 0, 1, "bắt đầu")
+      # Per-step refresh flags already on params from analysis_support
+      by_step[step] = runners[step](state) or {}
+    state.pop("_suite", None)
+  finally:
+    state.pop("_defer_finish", None)
+    state.pop("_suite", None)
+
+  _finish(state, status="completed", result={
+    "model_id": (state.get("params") or {}).get("model_id"),
+    "steps_done": steps,
+    "by_step": by_step,
+    "n_steps": len(steps),
   })
 
 
@@ -844,6 +904,7 @@ _DISPATCH = {
   "model_health": _worker_model_health,
   "remine_health": _worker_remine_health,
   "mining_space_health": _worker_mining_space_health,
+  "model_checks_suite": _worker_model_checks_suite,
   "learning": _worker_learning,
   "era_learn": _worker_era_learn,
   "era_compare": _worker_era_compare,

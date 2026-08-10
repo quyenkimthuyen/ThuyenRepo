@@ -1,33 +1,37 @@
-# MT5 Bridge — App quyết định, EA execute
+﻿# MT5 Bridge — App quyết định, EA execute
 
 > **MT5** (MetaTrader 5), không phải MT4.
 
-## Paper Trade vs Bridge
+## So sánh kênh (đừng nhầm tên “paper”)
 
-| | **Giám sát paper** | **MT5 Bridge** (trang này) |
-|---|---|---|
-| Lệnh | Mô phỏng trên nến | EA mở/đóng trên tài khoản |
-| File | `results/paper_monitor_state.json` | `decision.json` + `trades.json` |
-| Thống kê | Desk tuần (WR, R, DD, nhật ký) | Fill thật từ EA |
-| `SIGNAL` | Tín hiệu mô phỏng chưa khớp | Phải gửi `BUY`/`SELL` lúc bar đóng |
+| | **Compare Trade** | **Simulate** (HistoryFeed) | **Live** (trang này) |
+|---|---|---|---|
+| Lệnh | *Sim fills* Python (`PaperBook`) trên cache M15 | App↔EA replay nến lịch sử | EA mở/đóng trên tài khoản |
+| File | `results/compare_runs/…` | `bridge_sim/trades.json` | `decision.json` + `trades.json` |
+| EA | Không | Có (`HISTORY_FEED`) | Có (`Live`) |
+| Tiền | Không | Không | Demo/live trên MT5 |
 
-Cùng Trade Model + cùng cache M15. Paper **không** thay thế Bridge — dùng để kiểm tra trước/live song song.
+Desk **Paper Monitor** (GUI cũ, `paper_monitor_state.json`, port chart `8996`) đã **gỡ**.  
+Module/code còn tên `paper_*` / `PaperBook` chỉ là helper khớp lệnh mô phỏng cho Compare/HistoryFeed — **không** phải trang Giám sát paper.
+
+**Active ≠ Bridge:** dropdown Trade Models = phân tích. Roster Live/Sim chọn trên tab **Trade Models · Bridge** trong GUI.
 
 ## GUI
 
-Trong app: sidebar **MT5 Bridge** — switch **Live | Simulate** (cùng desk/chart/thống kê/sức khỏe; khác `bridge/` vs `bridge_sim/`)
+Trong app: sidebar **MT5 Bridge** — switch **Live | Simulate** (cùng desk/chart/thống kê/sức khỏe; khác `bridge_m15g23/` vs `bridge_sim_m15g23/`)
 
 - Start/Stop service — mặc định **process riêng** (`scripts/mt5_bridge_service.py`)
   - Đổi tab / refresh Streamlit **không** dừng service
   - Tắt khi bấm Stop, hoặc kill PID trong `results/mt5_bridge_service.pid`
-- Chọn Trade Model (mặc định Best 3m)
+- Chọn **1–5 Trade Model** (roster Bridge; không gồm model Archived)
 - Chart M15 live, heartbeat, Bid/Ask, spread và lệnh từ chính ForgeBridge EA
+- Cảnh báo **id ma** nếu roster còn id đã Archive/xóa → nút **Dọn roster**
 - Xem snapshot `connection.json` / `bars.json` / `bar.json` / `decision.json` / `fill.json`
 - **Kiểm tra bridge (market ngay)** — nút BUY/SELL/CLOSE ghi `command.json` (EA v1.03+ xử lý ngay trên tick, không chờ nến đóng)
 - **Nhật ký giao tiếp** `comm_log.jsonl` (EA→App bar/fill, App→EA decision)
 - **Thống kê lệnh** `trades.json` (thắng/thua, R)
 - **Mode Auto vs Lệnh sửa** — EA v1.04 đồng bộ sửa/đóng tay (`modify`/`manual_close`); thống kê tách để review chiến lược công bằng (R theo SL kế hoạch)
-- **Simulate EA (History Feed)** — ForgeBridge **v1.05** `InpMode = HISTORY_FEED`, `InpBridgeSubdir = bridge_sim`; App ghi `sim_control.json` (from/to/delay); EA `CopyRates` gửi bar/fill như live
+- **Simulate EA (History Feed)** — ForgeBridge **v1.05** `InpMode = HISTORY_FEED`, `InpBridgeSubdir = bridge_sim_m15g23`; App ghi `sim_control.json` (from/to/delay); EA `CopyRates` gửi bar/fill như live
 
 ## Deploy / cập nhật XM Global MT5 (Windows)
 
@@ -38,7 +42,7 @@ Script tự tìm XM Global MT5 và Data Folder, copy + compile EA, kiểm tra
 powershell -ExecutionPolicy Bypass -File scripts/deploy_xm_forgebridge.ps1
 ```
 
-Lần đầu cần tự gắn vào chart EURUSD M15:
+Lần đầu cần tự gắn vào chart GBPUSD M15:
 
 ```powershell
 # Gắn để test, không cho đặt lệnh
@@ -51,14 +55,14 @@ powershell -ExecutionPolicy Bypass -File scripts/deploy_xm_forgebridge.ps1 -Atta
 powershell -ExecutionPolicy Bypass -File scripts/deploy_xm_forgebridge.ps1 -Mode HistoryFeed -Attach
 ```
 
-Sau này khi sửa `mt5/Experts/ForgeBridgeM15.mq5`, chỉ chạy lệnh đầu tiên. Script
+Sau này khi sửa `mt5/Experts/ForgeBridgeM15G23.mq5`, chỉ chạy lệnh đầu tiên. Script
 idempotent và không thay chart nếu ForgeBridge đã được gắn.
 Chỉ dùng `-NoRestartTerminal` khi muốn compile mà chưa nạp EA mới vào chart.
 
 ### Remine hàng tuần
 
-Khi **Start service**: mỗi tuần ISO mới App tự `optimize_on_window` theo Trade Model đang chọn (train months + KB).  
-**Không** cần chạy lại Grid Search mỗi tuần. Chỉ đổi Trade Model / học KB / Grid khi muốn cập nhật cấu hình model.
+Khi **Start service**: mỗi tuần ISO mới App tự `optimize_on_window` theo **từng model trong Bridge roster** (train weeks + KB pin).  
+**Không** cần Grid mỗi tuần. Chỉ Archive/đổi roster / học KB / Grid khi muốn cập nhật “bộ não”.
 
 ## Flow Live
 
@@ -122,15 +126,15 @@ python scripts/export_bridge_replay.py
 
 - App chọn 1–5 Trade Model; **Risk % / lệnh chung** (tổng rủi ro ≈ N× nếu mở đồng thời).
 - Mỗi model một magic (`base + index`); tối đa **1 lệnh mở / magic**.
-- Cần tài khoản **hedging**. Compile lại `ForgeBridgeM15` / `ForgeBridgeM15Sim` sau khi kéo code mới.
+- Cần tài khoản **hedging**. Compile lại `ForgeBridgeM15G23` / `ForgeBridgeM15G23Sim` sau khi kéo code mới.
 - Live Trade dashboard: KPI tổng + bảng từng model.
 
 ## History Feed (Simulate EA)
 
-1. Biên dịch lại ForgeBridge **1.05**, gắn EURUSD M15 (demo khuyến nghị).
-2. Inputs: `InpMode = HISTORY_FEED`, `InpBridgeSubdir = bridge_sim` (junction/Files giống live).
+1. Biên dịch lại ForgeBridge **1.05**, gắn GBPUSD M15 (demo khuyến nghị).
+2. Inputs: `InpMode = HISTORY_FEED`, `InpBridgeSubdir = bridge_sim_m15g23` (junction/Files giống live).
 3. App **MT5 Bridge → Simulate EA**: chọn from/to + delay → Start feed.
-4. Service quyết định chạy trên `mt5/bridge_sim/` (không đụng `bridge/` live).
+4. Service quyết định chạy trên `mt5/bridge_sim_m15g23/` (không đụng `bridge_m15g23/` live).
 
 ## Thống kê lệnh
 

@@ -1,7 +1,10 @@
-"""Python OHLC paper fills — port of ForgeBridge HISTORY_FEED ManagePaperHistory.
+"""Python OHLC *sim fills* for Compare Trade / HistoryFeed.
+
+Legacy name ``paper_fill`` / ``PaperBook`` matches EA ``ManagePaperHistory`` /
+``InpHistoryPaperFills`` — **not** the retired Paper Monitor GUI desk.
 
 Entry at next bar open after BUY/SELL decision; SL/TP/trail/max_hold start on the
-bar after entry (held <= 1 skipped), matching EA InpHistoryPaperFills.
+bar after entry (held <= 1 skipped).
 """
 from __future__ import annotations
 

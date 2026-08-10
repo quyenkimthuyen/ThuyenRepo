@@ -65,11 +65,11 @@ Ví dụ các knobs quan trọng:
 ┌─────────────────┐
 │  Trade Model    │  lưu nguyên mining_search_space + train + KB + OOS
 └────────┬────────┘
-         │ set active
+         │ set active / chọn Bridge roster
          ▼
 ┌─────────────────┐
-│ Live / Paper /  │  remine hàng tuần = đọc space từ model active
-│ Bridge          │  (không đọc lại Settings lúc runtime)
+│ Live / Simulate │  remine hàng tuần = đọc space từ từng model trong
+│ (MT5 Bridge)    │  Bridge roster (không đọc lại Settings lúc runtime)
 └─────────────────┘
 ```
 
@@ -78,10 +78,10 @@ Ví dụ các knobs quan trọng:
 | Nơi | Vai trò |
 |-----|---------|
 | **Cài đặt → Mining search space** | Preset nào Grid sẽ thử. Đổi → chữ ký grid đổi → cần chạy lại Grid. |
-| **Trade Model** | Bản “đóng gói” dùng thật: Live/Paper/remine theo space **đã lưu**. |
-| **`mining_presets.py`** | Định nghĩa preset trong code. Xóa model **không** mất preset. |
+| **Trade Model** | Bản “đóng gói” dùng thật: Live/Sim/remine theo space **đã lưu**. |
+| **`mining_presets.py`** | Định nghĩa preset trong code. Archive/xóa model **không** mất preset. |
 
-**Nguyên tắc vàng:** Muốn đổi hướng mining cho live → tạo / chọn Trade Model mới có `mining_search_space` đúng, rồi set active. Chỉ đổi Settings thì **chưa** đổi live cho đến khi Grid → tạo model mới.
+**Nguyên tắc vàng:** Muốn đổi hướng mining cho live → tạo Trade Model mới có `mining_search_space` đúng, rồi **thêm vào Bridge roster**. Chỉ đổi Settings thì **chưa** đổi live cho đến khi Grid → model mới → chọn trên Bridge. Active chỉ để phân tích.
 
 ---
 
@@ -188,15 +188,16 @@ Bấm **So mining space** để chạy (lưu `*_mining_baseline.json`).
 
 ---
 
-## 7. Xóa model rồi train lại?
+## 7. Archive / xóa model rồi train lại?
 
-**Có.** Xóa Trade Model chỉ mất metadata + report/schedule/**KB pin** của model đó.
+**Archive** (khuyến nghị): giữ report/schedule/KB pin, ẩn khỏi Active/Bridge, gỡ `model_ids`.  
+**Xóa cứng**: mất metadata + report/schedule/KB pin của model đó.
 
 Còn lại:
 
 - Preset `elite_or_quality` trong code
 - Settings `mining_presets`
-- KB profile / epoch (nếu không xóa KB) — **không bắt buộc** cho Bridge/Paper của model đã pin
+- KB profile / epoch (nếu không xóa KB) — **không bắt buộc** cho Bridge Live/Sim của model đã pin
 
 ### KB pin (độc lập khỏi catalog KB)
 
@@ -204,7 +205,7 @@ Khi tạo / reuse Trade Model (KB ON), app copy snapshot KB sang:
 
 `results/trade_models/<model_id>_kb_pin.json`
 
-Model lưu `kb_pin_path` + `kb_fingerprint`. Remine (Bridge / Paper / Health) **ưu tiên pin**; xóa profile KB gốc không làm gãy model đã pin. Pin **không** bị ghi đè khi live remine (`update_kb=False`).
+Model lưu `kb_pin_path` + `kb_fingerprint`. Remine (Bridge Live/Sim / Health) **ưu tiên pin**; xóa profile KB gốc không làm gãy model đã pin. Pin **không** bị ghi đè khi live remine (`update_kb=False`).
 
 ### Cách A — CLI (nhanh, giống lúc research)
 
@@ -215,14 +216,14 @@ cd EdgeMinerM15
   --workers 1 --promote --set-active
 ```
 
-Script lấy train / KB / OOS từ **model active** (hoặc `--model-id`). Nếu đã xóa hết model liên quan, chọn một model còn KB `era_2025_2026_6thang` ep3 làm neo, hoặc tạo model baseline rồi chạy lại.
+Script lấy train / KB / OOS từ **model active** (hoặc `--model-id`). Nếu đã Archive/xóa hết model liên quan, chọn một model còn KB `era_2025_2026_6thang` ep3 làm neo, hoặc tạo model baseline rồi chạy lại.
 
 ### Cách B — trong app
 
 1. Cài đặt: giữ preset **Elite OR-quality**
 2. Grid Search: chạy lại
 3. Chọn combo: train **6 tuần** · KB **2025-2026-6thang** · **ep3** · preset elite_or_quality
-4. Tạo Trade Model → set active
+4. Tạo Trade Model → đặt Active (phân tích) → thêm vào **Bridge roster** nếu muốn Live
 
 Số liệu OOS có thể lệch nhẹ theo data MT5 mới; hướng mining giữ nguyên nhờ preset.
 
@@ -246,7 +247,7 @@ Số liệu OOS có thể lệch nhẹ theo data MT5 mới; hướng mining gi�
 ## 9. Câu hỏi thường gặp
 
 **Q: Đổi preset ở Cài đặt rồi Live có đổi ngay không?**  
-A: Không. Live theo Trade Model active. Cần Grid (hoặc script promote) → model mới → set active.
+A: Không. Live/Sim theo **Bridge roster**. Cần Grid (hoặc script promote) → model mới → chọn trên Bridge. Active chỉ phân tích.
 
 **Q: Baseline miner có bị phá không?**  
 A: Không. Không chọn preset / model không có `mining_search_space` → hành vi cũ.
@@ -267,4 +268,4 @@ A: Model đã pin thì không — remine đọc `*_kb_pin.json` cạnh Trade Mod
 
 ## 10. Tóm tắt một đoạn
 
-Mining search space là **cách miner được phép tìm edge**, đóng gói thành preset. App mặc định hướng **`elite_or_quality`**: void SHORT exhaustion (RSI∨VWAP), RR ladder cao, exit full, chấm điểm elite. Settings điều khiển Grid; Trade Model đóng gói mining space + **KB pin** cho Live; xóa model vẫn train lại được vì preset (+ catalog KB nếu còn) trong code/Settings.
+Mining search space là **cách miner được phép tìm edge**, đóng gói thành preset. App mặc định hướng **`elite_or_quality`**: void SHORT exhaustion (RSI∨VWAP), RR ladder cao, exit full, chấm điểm elite. Settings điều khiển Grid; Trade Model đóng gói mining space + **KB pin** cho Live/Sim (Bridge roster); Archive model vẫn train lại được vì preset (+ catalog KB nếu còn) trong code/Settings.

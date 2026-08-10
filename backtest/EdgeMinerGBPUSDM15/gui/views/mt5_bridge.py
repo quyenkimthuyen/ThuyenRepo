@@ -64,16 +64,44 @@ def _render_bridge_models_tab() -> list[str]:
   """Một chỗ chọn Trade Model + Risk + checklist — dùng chung Live & Simulate."""
   from gui.live_readiness import render_live_readiness
   from gui.trade_model import (
+    bridge_ghost_model_ids,
     bridge_roster_display_rows,
     format_model_short,
     get_bridge_runtime_model_ids,
+    prune_bridge_roster,
   )
 
   cfg = bridge_bg.load_config()
   labels, by_label, by_id = _bridge_model_options()
   cfg_ids = normalize_model_ids(cfg.get("model_ids"), fallback=cfg.get("model_id"))
+  ghosts = bridge_ghost_model_ids()
+  if ghosts:
+    g1, g2 = st.columns([4, 1])
+    with g1:
+      st.warning(
+        "Roster Bridge có **id ma** (đã Archive/xóa): "
+        + ", ".join(f"`{g}`" for g in ghosts[:6])
+        + (" …" if len(ghosts) > 6 else "")
+      )
+    with g2:
+      if st.button(
+        "Dọn roster",
+        key="bridge_prune_ghosts",
+        use_container_width=True,
+        help="Gỡ id không còn trong store live khỏi Bridge config + models.json.",
+      ):
+        result = prune_bridge_roster(drop_unknown=True)
+        if result.get("error"):
+          st.error(result["error"])
+        else:
+          removed = result.get("removed") or []
+          st.toast(f"Đã gỡ {len(removed)} id" if removed else "Roster đã sạch")
+          st.rerun()
+
   default_labels = []
   for mid in cfg_ids:
+    if mid in ghosts:
+      continue
     m = by_id.get(mid)
     if m is not None:
       default_labels.append(format_model_label(m))
@@ -99,7 +127,8 @@ def _render_bridge_models_tab() -> list[str]:
   st.subheader("Trade Models · Bridge")
   st.caption(
     "Chọn model **một lần** — áp dụng cho cả **Live** và **Simulate**. "
-    "Mỗi model một magic · tối đa 1 lệnh mở · Risk % chung."
+    "Mỗi model một magic · tối đa 1 lệnh mở · Risk % chung. "
+    "Danh sách không gồm model Archived."
   )
   picked_labels = st.multiselect(
     "Trade models (1–5)",
@@ -108,11 +137,13 @@ def _render_bridge_models_tab() -> list[str]:
     max_selections=MAX_BRIDGE_MODELS,
     disabled=running or not labels,
     on_change=preference_callback("mt5_bridge_models", "mt5.bridge_model_labels"),
-    help="Đổi model khi cả Live và Simulate đang Stop.",
+    help="Đổi model khi cả Live và Simulate đang Stop. Archived không hiện ở đây.",
   )
   model_ids = normalize_model_ids([by_label[x] for x in picked_labels if x in by_label])
+  # Never persist ghost ids from stale config when user has an empty/valid pick
   if not model_ids and cfg_ids:
-    model_ids = cfg_ids
+    live_cfg = [mid for mid in cfg_ids if mid in by_id]
+    model_ids = live_cfg
   primary_id = model_ids[0] if model_ids else (
     (get_active_trade_model() or {}).get("id") or DEFAULT_MODEL_ID
   )
@@ -120,6 +151,10 @@ def _render_bridge_models_tab() -> list[str]:
     cfg.get("model_ids") != model_ids or cfg.get("model_id") != primary_id
   ):
     cfg = bridge_bg.save_config(model_id=primary_id, model_ids=model_ids)
+  elif ghosts and not running:
+    # Auto-suggest prune path already shown; do not silently rewrite while
+    # user may still want to inspect ghosts via "Dọn roster".
+    pass
 
   st.session_state.setdefault("mt5_risk_pct", float(cfg.get("risk_pct", 1.0)))
   risk = st.number_input(
@@ -160,7 +195,8 @@ def _render_bridge_models_tab() -> list[str]:
     else:
       for mid in ids_runtime:
         m = by_id.get(mid)
-        st.caption(f"· {format_model_short(m) if m else mid[:28]}")
+        label = format_model_short(m) if m else f"{mid[:28]} (id ma)"
+        st.caption(f"· {label}")
 
   st.divider()
   # Prefer live status; fall back to sim — use configured/clone bridge dirs
@@ -188,8 +224,8 @@ def _render_bridge_models_tab() -> list[str]:
 
 
 def _bridge_model_options() -> tuple[list[str], dict[str, str], dict[str, dict]]:
-  """labels, label→id, id→model for multiselect."""
-  models = list_trade_models()
+  """labels, label→id, id→model for multiselect (live models only)."""
+  models = list_trade_models(include_archived=False)
   labels = [format_model_label(m) for m in models]
   by_label = {format_model_label(m): str(m.get("id") or "") for m in models}
   by_id = {str(m.get("id") or ""): m for m in models if m.get("id")}
@@ -792,7 +828,7 @@ def _render_live_chart(max_bars: int) -> None:
   """Live + Simulate: persistent browser iframe (Plotly.react) — no Streamlit flicker."""
   bridge_dir = _active_bridge_dir()
   mode = _bridge_mode()
-  legend = "🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit — giống Paper Trade."
+  legend = "🟢 reward · 🔴 risk · 🔔 SIGNAL · ▲▼ ENTRY · ✕ exit — overlay giống Compare/Sim."
   monitor_url = f"http://127.0.0.1:{DEFAULT_MONITOR_PORT}"
 
   if mode == "sim":
@@ -823,7 +859,7 @@ def _render_live_chart(max_bars: int) -> None:
       bridge_dir=bridge_dir,
       progress_only=str(sim.get("status") or "") in ("running", "paused"),
     )
-    sim_chart_title = "GBPUSD M15 · Simulate (static fallback)"
+    sim_chart_title = "EURUSD M15 · Simulate (static fallback)"
     fig = build_ea_chart(
       frame, connection, load_trades(bridge_dir),
       title=sim_chart_title,
@@ -847,7 +883,7 @@ def _render_live_chart(max_bars: int) -> None:
     st.caption(legend)
     return
   st.warning("Live chart server chưa chạy; đang dùng snapshot tĩnh.")
-  live_chart_title = "GBPUSD M15 · XM MT5 live"
+  live_chart_title = "EURUSD M15 · XM MT5 live"
   frame, connection = load_ea_chart_data(max_bars=max_bars, bridge_dir=bridge_dir)
   trades = load_trades(bridge_dir)
   fig = build_ea_chart(frame, connection, trades, title=live_chart_title)

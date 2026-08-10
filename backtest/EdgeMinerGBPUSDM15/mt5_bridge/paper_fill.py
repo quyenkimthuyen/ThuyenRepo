@@ -1,7 +1,10 @@
-"""Python OHLC paper fills — port of ForgeBridge HISTORY_FEED ManagePaperHistory.
+"""Python OHLC *sim fills* for Compare Trade / HistoryFeed.
+
+Legacy name ``paper_fill`` / ``PaperBook`` matches EA ``ManagePaperHistory`` /
+``InpHistoryPaperFills`` — **not** the retired Paper Monitor GUI desk.
 
 Entry at next bar open after BUY/SELL decision; SL/TP/trail/max_hold start on the
-bar after entry (held <= 1 skipped), matching EA InpHistoryPaperFills.
+bar after entry (held <= 1 skipped).
 """
 from __future__ import annotations
 
@@ -11,7 +14,7 @@ from typing import Any
 
 from mt5_bridge.trade_journal import process_fill
 
-# GBPUSD 5-digit: Point≈0.00001, pip=0.0001
+# EURUSD 5-digit: Point≈0.00001, pip=0.0001
 _POINT = 1e-5
 _PIP = 1e-4
 
@@ -161,7 +164,7 @@ class PaperBook:
       "manual": False,
       "source": "strategy",
       "bar_time": bar_time,
-      "symbol": "GBPUSD",
+      "symbol": "EURUSD",
       "model_id": self.model_id or decision.get("model_id"),
     }
     process_fill(
@@ -245,7 +248,7 @@ class PaperBook:
       "manual": False,
       "source": "strategy",
       "bar_time": bar_time,
-      "symbol": "GBPUSD",
+      "symbol": "EURUSD",
       "model_id": self.model_id,
     }
     process_fill(fill, bridge_dir=self.bridge_dir, model_id=self.model_id)

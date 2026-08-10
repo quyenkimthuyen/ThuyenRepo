@@ -1,4 +1,9 @@
-"""7. Paper / Live Monitor — tín hiệu tuần hiện tại + chart TradingView."""
+"""Paper Monitor GUI — **retired**.
+
+``render()`` only shows a redirect to MT5 Bridge / Compare Trade.
+Legacy desk helpers below are unreachable from nav; kept for import
+compatibility with Compare/HistoryFeed tooling that still shares names.
+"""
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -201,7 +206,7 @@ def _tradingview_chart(
   orders: list[dict],
   chart_from: str,
   chart_to: str,
-  title: str = "GBP/USD M15",
+  title: str = "EUR/USD M15",
 ) -> go.Figure | None:
   window = ohlc_window
   if window.empty:
@@ -224,7 +229,7 @@ def _tradingview_chart(
     low=window["Low"], close=window["Close"],
     increasing_line_color=TV_UP, decreasing_line_color=TV_DOWN,
     increasing_fillcolor=TV_UP, decreasing_fillcolor=TV_DOWN,
-    name="GBP/USD",
+    name="EUR/USD",
     showlegend=False,
   ), row=price_row, col=1)
 
@@ -407,7 +412,7 @@ def _get_chart_figure(state: dict) -> go.Figure | None:
     window = get_ohlc_window_cached(chart_from, chart_to)
     fig = _tradingview_chart(
       window, orders, chart_from, chart_to,
-      title=f"GBP/USD M15 · Tuần {state.get('week_start', '')}",
+      title=f"EUR/USD M15 · Tuần {state.get('week_start', '')}",
     )
   except Exception:
     return None
@@ -688,7 +693,7 @@ def _render_chart_panel(
 
   try:
     window = get_ohlc_window_cached(chart_from, chart_to)
-    chart_title = f"GBP/USD M15 · {chart_from} → {chart_to}"
+    chart_title = f"EUR/USD M15 · {chart_from} → {chart_to}"
     fig = _tradingview_chart(
       window, overlay, chart_from, chart_to,
       title=chart_title,
@@ -919,10 +924,27 @@ def _save_paper_runtime_settings() -> None:
 
 
 def render():
+  """Paper Monitor desk retired — redirect to MT5 Bridge."""
+  from gui.ui_preferences import set_widget_preference
+
+  st.warning(
+    "**Paper Monitor đã gỡ.** Dùng **Compare Trade** (so model) và **MT5 Bridge** (Live/Sim)."
+  )
+  if st.button("Mở MT5 Bridge", type="primary", key="pm_retired_go_bridge"):
+    set_widget_preference("nav_page", "mt5_bridge", "navigation.page")
+    st.rerun()
+  if st.button("Mở Compare Trade", key="pm_retired_go_compare"):
+    set_widget_preference("nav_page", "compare_trade", "navigation.page")
+    st.rerun()
+  return
+
+
+def _render_legacy_paper_desk_removed():
+  """Legacy Paper Monitor UI kept below for reference; not reachable from nav."""
   from gui.navigation import ALL_ITEMS
   from gui.page_chrome import render_page_header
 
-  render_page_header(ALL_ITEMS["paper"])
+  render_page_header(ALL_ITEMS.get("mt5_bridge") or list(ALL_ITEMS.values())[0])
 
   from gui.live_workflow import assess_workflow, load_workflow_state, mark_paper_started
   from gui.trade_model import get_model_run_params, get_active_trade_model

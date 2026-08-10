@@ -9,7 +9,8 @@
 | Bridge live / sim | `bridge_m15e21` / `bridge_sim_m15e21` |
 | EA live / sim | `ForgeBridgeM15E21` / `ForgeBridgeM15E21Sim` |
 | App port | `8711` |
-| Bridge / Paper / Sim / Compare | `8975` / `8976` / `9086` / `9196` |
+| Bridge / Sim / Compare | `8975` / `9086` / `9196` |
+| Legacy paper-chart port | `8976` (Paper Monitor desk đã gỡ — giữ slot để tránh đụng port cũ) |
 | Magic live / sim | `20261021` / `20262021` |
 | Pip | `0.0001` |
 | Spread / slip default | `1.0` / `0.3` |

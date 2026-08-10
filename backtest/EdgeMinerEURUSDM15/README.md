@@ -3,7 +3,7 @@
 Hệ thống backtest walk-forward + self-learning cho **EUR/USD khung M15**, dùng thống nhất dữ liệu broker từ ForgeBridge/XM MT5.
 
 > `ForgeBest3m_Frozen.mq5` và `ForgeBest3m_WF.mq5` là EA H1 legacy, không tương thích
-> với model M15 và không được dùng cho live. Live/Paper chỉ dùng `ForgeBridgeM15E21.mq5`.
+> với model M15 và không được dùng cho live. Live/Simulate chỉ dùng `ForgeBridgeM15E21.mq5`.
 
 Chạy song song với `C:\Work\ThuyenRepo\EdgeMinerH1`:
 
@@ -12,8 +12,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run_dual_edgeminer.ps1 -Actio
 powershell -ExecutionPolicy Bypass -File .\scripts\run_dual_edgeminer.ps1 -Action Restart
 ```
 
-Backtest desk E21: app/Bridge/Paper `8711/8975/8976`, folder `bridge_m15e21`, Magic `20261021`.
-H1 dùng `8502/8865/8866`, folder `bridge_h1`, Magic `20260725`.
+Backtest desk E21: app `8711` · Bridge `8975` · Sim chart `9086` · Compare `9196`
+(port `8976` = legacy Paper Monitor chart — desk đã gỡ, không dùng).
+Folder `bridge_m15e21`, Magic `20261021`. H1 dùng `8502/8865/8866`, folder `bridge_h1`, Magic `20260725`.
 
 Clone thêm instance M15 (cô lập repo + magic + port):
 
@@ -83,8 +84,8 @@ python run_learning.py     # Self-learning multi-epoch
 | 1 | **Cài đặt** | Train 3/6/9T · giai đoạn học · vòng học · OOS · **Mining preset** |
 | 2 | **Học & tối ưu → Huấn luyện bộ nhớ** | Tạo/học KB theo giai đoạn |
 | 3 | **Học & tối ưu → Grid Search** | Chạy theo Cài đặt (gồm mining preset) → tạo **Trade Model** |
-| 4 | **Phân tích / Trade Models** | Risk · Nhật ký · Chiến lược · **Sức khỏe** (tháng KB ON/OFF) |
-| 5 | **Giám sát paper** / **MT5 Bridge** | Bật service → **tự remine mỗi tuần** (không cần Grid lại) |
+| 4 | **Trade Models** | Tổng hợp · Sức khỏe · Rủi ro · Nhật ký · Chiến lược (**Active** = phân tích) |
+| 5 | **Compare Trade** / **MT5 Bridge** | So model → Start Live/Sim theo **Bridge roster** → remine hàng tuần |
 
 Đổi Cài đặt → Grid Search chỉ chạy **combo mới** (giữ kết quả cũ).
 
@@ -92,9 +93,9 @@ python run_learning.py     # Self-learning multi-epoch
 
 **Mining search space:** lớp cấu hình *cách mine* (RR, exit, anti-chase…) — khác KB và train weeks. Mặc định app: preset **`elite_or_quality`**. Chi tiết: [`docs/mining_search_space.md`](docs/mining_search_space.md). Audit xếp hạng / loại bỏ: [`docs/mining_space_audit.md`](docs/mining_space_audit.md).
 
-**Lưu ý:** Trade Model là cấu hình đã lưu (kèm `mining_search_space`). Paper/Bridge **dùng** cấu hình đó để remine hàng tuần — **không** tự ghi đè model trong danh sách. Chỉ chạy lại KB → Grid → chọn model khi muốn đổi “bộ não”.
+**Lưu ý:** Trade Model lưu kèm `mining_search_space`. **MT5 Bridge** remine theo roster đã chọn — **không** lấy từ Active, **không** tự ghi đè store. Model nghiên cứu nên **Archive** (giữ report); Xóa cứng chỉ khi muốn mất artifact. Chỉ KB → Grid → model mới khi đổi “bộ não”.
 
-### 6 bước trên GUI (legacy)
+### 6 bước trên GUI (legacy — tham khảo)
 
 | Bước | Trang | Việc làm |
 |------|-------|----------|
@@ -103,9 +104,9 @@ python run_learning.py     # Self-learning multi-epoch
 | 3 | KB & Giai đoạn → Học KB | Tạo profile (vd `era_2022_2023`), học 2022–2023, 3–5 epoch |
 | 4 | KB & Giai đoạn → Backtest OOS | Chọn profile + OOS 2024, so sánh KB ON/OFF |
 | 5 | Report Compare | So sánh metrics, equity overlay |
-| 6 | Backtest Lab, Journal, Risk, Paper | Hold-out 12 tháng, kiểm tra lệnh, paper 3–6 tháng |
+| 6 | Trade Models · Compare · Bridge | Hold-out / Health OOS → Compare → Live + Parity |
 
-Chi tiết đầy đủ: mở GUI → **Usage Guide**.
+Chi tiết đầy đủ: mở GUI → **Hướng dẫn**.
 
 ### CLI nhanh
 
@@ -153,18 +154,16 @@ Chi tiết + sơ đồ: GUI → **Usage Guide** mục **5**.
 | Trang | Mục đích |
 |-------|----------|
 | Tổng quan | KPI, quy trình live |
-| Giám sát paper | **Mô phỏng** lệnh tuần trên nến MT5 · desk thống kê · **không** gửi EA |
-| **MT5 Bridge** | **Lệnh thật/demo** · App decide · EA execute · fill journal · remine khi Start |
-| **Học & tối ưu** | Grid Search · Trade Models · so sánh · học KB (**thủ công** khi cập nhật model) |
-| **Cài đặt** | Train window · giai đoạn học · kiểm chứng · **Mining preset** |
-| **Phân tích** | Risk · Nhật ký lệnh · Chiến lược (theo Trade Model) |
-| Hướng dẫn | Tài liệu đầy đủ — mục **Paper vs MT5 Bridge** · **Mining search space** |
+| **Học & tối ưu** | Cài đặt · Huấn luyện KB · Grid Search |
+| **Trade Models** | Active (phân tích) · Tổng hợp (Archive/Rename) · Sức khỏe · Risk · Journal |
+| **Compare Trade** | So nhiều model trên lịch sử (**không EA**; khớp lệnh = *sim fills* nội bộ) |
+| **MT5 Bridge** | **Live** (lệnh MT5) + **Simulate** (HistoryFeed) · roster 1–5 model · remine khi Start |
+| Hướng dẫn | Thuật ngữ · Active vs Bridge · Archive · sim fills |
 
 **Mining search space (mặc định `elite_or_quality`):** xem [`docs/mining_search_space.md`](docs/mining_search_space.md).
 
-**Paper ≠ Bridge:** cùng model/nến; Paper vẽ lại tuần mô phỏng; Bridge chỉ vào lệnh khi service+EA chạy lúc bar đóng. Chi tiết: GUI **Hướng dẫn** mục 6.
-
-### Trang cũ (EdgeMiner1)
+**Active ≠ Bridge:** Active chỉ cho tab phân tích. Lệnh Live/Sim theo roster trên **MT5 Bridge**.  
+**“Paper” trong code** (`PaperBook`, `paper_fill.py`, port `8976`) = helper khớp lệnh mô phỏng cho Compare/HistoryFeed — **không** phải desk Paper Monitor (đã gỡ). Chi tiết: GUI **Hướng dẫn** mục 6.
 
 ---
 
@@ -179,7 +178,7 @@ era_2022_2024.json   ← học 2022–2024, backtest OOS 2025
 
 Quy tắc: `trained_to ≤ oos_from` — app kiểm tra và cảnh báo trên GUI.
 
-**Epoch snapshot:** Mỗi epoch học lưu file riêng (`snapshots/{profile}/epNNN.json`). Chọn **Latest** hoặc **Epoch N** khi backtest/paper. CLI: `--kb-epoch 2`.
+**Epoch snapshot:** Mỗi epoch học lưu file riêng (`snapshots/{profile}/epNNN.json`). Chọn **Latest** hoặc **Epoch N** khi backtest/remine. CLI: `--kb-epoch 2`.
 
 ---
 
@@ -220,8 +219,9 @@ results/reports/             # Kho báo cáo so sánh
 |--------|--------|
 | Win rate (1Y) | > 60% |
 | RR | > 2 |
-| Tần suất | mục tiêu 7–10 lệnh/tuần, tối đa 2 lệnh/ngày broker |
 | Profitable | Total R > 0 |
+
+Tần suất lệnh/tuần **không** còn là điều kiện checklist / “đủ live” (preset elite cố ý ít lệnh hơn). Vẫn xem cột Tpw trên Tổng hợp để biết mật độ giao dịch.
 
 Mặc định chi phí: spread **1.0 pip**, slippage **0.3 pip**.
 
@@ -231,7 +231,7 @@ Mặc định chi phí: spread **1.0 pip**, slippage **0.3 pip**.
 
 1. KB OFF profitable trên ≥2 giai đoạn OOS
 2. Hold-out 12 tháng
-3. Paper Monitor 3–6 tháng
+3. Compare Trade + Parity / Health OOS
 4. Micro lot đầu tiên
 
 *ForexForge v4 — Walk-forward strategy mining that learns from every trade.*

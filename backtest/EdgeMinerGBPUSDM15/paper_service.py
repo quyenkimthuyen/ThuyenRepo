@@ -1,4 +1,8 @@
-"""Detached Paper Monitor service lifecycle and persisted runtime settings."""
+"""Detached Paper Monitor service lifecycle — **legacy / unused by GUI**.
+
+Paper Monitor desk is retired. Prefer MT5 Bridge. This module remains so
+old scripts and ``app.py`` startup ``stop_worker()`` do not crash.
+"""
 from __future__ import annotations
 
 import json

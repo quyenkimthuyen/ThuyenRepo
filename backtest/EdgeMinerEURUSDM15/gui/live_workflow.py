@@ -1,4 +1,4 @@
-"""Quy trình live — huấn luyện KB → Grid → Trade Model → paper → live."""
+"""Quy trình live — huấn luyện KB → Grid → Trade Model → Compare → Live Bridge."""
 from __future__ import annotations
 
 import json
@@ -8,6 +8,7 @@ from pathlib import Path
 from run_backtest import REPORT_DIR
 
 WORKFLOW_PATH = REPORT_DIR / "live_workflow.json"
+COMPARE_ROOT = REPORT_DIR / "compare_trade"
 
 _WORKFLOW_STEPS_STATIC: tuple[dict, ...] = (
   {
@@ -32,28 +33,31 @@ _WORKFLOW_STEPS_STATIC: tuple[dict, ...] = (
     "title": "Tạo Trade Model",
     "short": "③ Model",
     "subtitle": "Lưu combo đã chọn",
-    "detail": "Tạo **Trade Model** từ kết quả Grid Search — dùng cho paper & phân tích.",
-    "nav_page": "learning",
-    "learning_tab": "models",
+    "detail": (
+      "Tạo **Trade Model** từ Grid — dùng để phân tích (Trade Models) "
+      "và chọn vào roster **MT5 Bridge**."
+    ),
+    "nav_page": "models",
+    "learning_tab": None,
   },
   {
     "id": 4,
-    "key": "paper",
-    "title": "Paper vài tuần",
-    "short": "④ Paper",
-    "subtitle": "Đúng Trade Model đã chọn",
-    "detail": "Giám sát paper ≥3 tuần — so với backtest.",
-    "nav_page": "paper",
+    "key": "compare",
+    "title": "Compare Trade",
+    "short": "④ Compare",
+    "subtitle": "So nhiều model trên lịch sử",
+    "detail": "Chạy **Compare Trade** (không EA) để đối chiếu model trước khi Live.",
+    "nav_page": "compare_trade",
     "learning_tab": None,
   },
   {
     "id": 5,
     "key": "live",
-    "title": "Live nhỏ → scale",
+    "title": "Live Bridge",
     "short": "⑤ Live",
-    "subtitle": "Chỉ khi paper khớp backtest",
-    "detail": "Micro lot, theo dõi chênh lệch thực tế trước khi tăng size.",
-    "nav_page": "paper",
+    "subtitle": "Roster trên MT5 Bridge",
+    "detail": "Chọn 1–5 model trên **MT5 Bridge**, Start Live · theo dõi Parity / Health.",
+    "nav_page": "mt5_bridge",
     "learning_tab": None,
   },
 )
@@ -136,7 +140,8 @@ def load_workflow_state() -> dict:
     data = {}
   data.setdefault("chosen_report_id", None)
   data.setdefault("chosen_profile_id", None)
-  data.setdefault("paper_started_at", None)
+  data.setdefault("paper_started_at", None)  # legacy field; unused
+  data.setdefault("compare_started_at", None)
   data.setdefault("live_notes", "")
   data.setdefault("manual", {})
   return data
@@ -219,10 +224,32 @@ def apply_report_to_profile(report_id: str) -> dict:
 
 
 def mark_paper_started():
+  """Deprecated — Paper Monitor retired. No-op kept for old callers."""
+  return
+
+
+def mark_compare_started():
   state = load_workflow_state()
-  if not state.get("paper_started_at"):
-    state["paper_started_at"] = datetime.now(timezone.utc).isoformat()
+  if not state.get("compare_started_at"):
+    state["compare_started_at"] = datetime.now(timezone.utc).isoformat()
     save_workflow_state(state)
+
+
+def _has_compare_run() -> bool:
+  latest = COMPARE_ROOT / "latest.json"
+  if latest.exists():
+    return True
+  if not COMPARE_ROOT.is_dir():
+    return False
+  return any(p.is_dir() and (p / "run.json").exists() for p in COMPARE_ROOT.iterdir())
+
+
+def _bridge_roster_ready() -> bool:
+  try:
+    from gui.trade_model import get_bridge_runtime_model_ids
+    return bool(get_bridge_runtime_model_ids())
+  except Exception:
+    return False
 
 
 _assess_cache: dict | None = None
@@ -251,12 +278,8 @@ def assess_workflow(*, force: bool = False) -> dict:
   step1_done = r["kb_complete"] or bool(state.get("manual", {}).get("1"))
   step2_done = has_grid or bool(state.get("manual", {}).get("2"))
   step3_done = bool(state.get("chosen_report_id")) or bool(state.get("manual", {}).get("3"))
-  step4_done = bool(state.get("manual", {}).get("4"))
-  step5_done = bool(state.get("manual", {}).get("5"))
-
-  paper_state = _read_json(REPORT_DIR / "paper_monitor_state.json")
-  if state.get("paper_started_at") and paper_state:
-    step4_done = step4_done or bool(state.get("manual", {}).get("4"))
+  step4_done = bool(state.get("manual", {}).get("4")) or _has_compare_run()
+  step5_done = bool(state.get("manual", {}).get("5")) or _bridge_roster_ready()
 
   ranked = rank_reports(entries)
   best = ranked[0] if ranked else None
@@ -308,15 +331,20 @@ def assess_workflow(*, force: bool = False) -> dict:
         progress = "Chưa có kết quả Grid Search"
     elif sid == 4:
       done = step4_done
-      if state.get("paper_started_at"):
-        progress = f"Paper từ {state['paper_started_at'][:10]}"
-      elif paper_state:
-        progress = "Paper đang chạy — đánh dấu khi đủ ≥3 tuần"
+      if _has_compare_run():
+        progress = "Đã có Compare Trade run"
+      elif state.get("compare_started_at"):
+        progress = f"Compare từ {state['compare_started_at'][:10]}"
       else:
-        progress = "Chưa bắt đầu paper"
+        progress = "Chưa chạy Compare Trade"
     else:
       done = step5_done
-      progress = state.get("live_notes") or "Chỉ khi paper khớp backtest"
+      if _bridge_roster_ready():
+        from gui.trade_model import get_bridge_runtime_model_ids
+        n = len(get_bridge_runtime_model_ids())
+        progress = state.get("live_notes") or f"Bridge roster · {n} model"
+      else:
+        progress = state.get("live_notes") or "Chọn roster trên MT5 Bridge rồi Start"
 
     steps[sid] = {
       "done": done,

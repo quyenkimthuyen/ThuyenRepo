@@ -5,7 +5,7 @@ import streamlit as st
 
 from gui.live_workflow import (
   assess_workflow,
-  mark_paper_started,
+  mark_compare_started,
   save_workflow_state,
   workflow_steps,
 )
@@ -62,6 +62,8 @@ def render_workflow_panel():
   c1, c2 = st.columns(2)
   with c1:
     if st.button(f"▶ Làm bước {cur}", type="primary", use_container_width=True, key=f"wf_go_{cur}"):
+      if cur == 4:
+        mark_compare_started()
       _go(spec["nav_page"], learning_tab=spec.get("learning_tab"))
   with c2:
     if not info["done"] and st.button(
@@ -76,11 +78,6 @@ def render_workflow_panel():
       st.toast(f"Đã đánh dấu bước {cur}")
       st.rerun()
 
-  if cur == 4 and not state.get("paper_started_at"):
-    if st.button("📡 Bắt đầu theo dõi paper", use_container_width=True, key="wf_paper_start"):
-      mark_paper_started()
-      _go("paper")
-
   with st.expander("Tất cả các bước", expanded=False):
     for step in steps:
       sid = step["id"]
@@ -90,7 +87,7 @@ def render_workflow_panel():
 
 
 def render_workflow_banner(*, page_step: int | None = None):
-  """Banner ngắn trên Paper (chỉ khi chưa xong bước đó)."""
+  """Banner ngắn quy trình (Compare / Bridge)."""
   wf = assess_workflow()
   cur = wf["current_step"]
   steps = workflow_steps()

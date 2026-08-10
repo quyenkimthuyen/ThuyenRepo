@@ -17,7 +17,7 @@ class NavItem:
 NAV_ITEMS: tuple[NavItem, ...] = (
   NavItem(
     "home", "Tổng quan", "command_center",
-    "Data · KB → Grid → Model → Live/Simulate",
+    "Data · KB → Grid → Model → Compare → Bridge Live/Sim",
     ":material/dashboard:",
   ),
   NavItem(
@@ -72,9 +72,10 @@ NAV_GROUPS: tuple[NavGroup, ...] = (
 
 LEGACY_ALIASES: dict[str, str] = {
   "Command Center": "home",
-  "Paper Monitor": "models",
-  "Giám sát paper": "models",
-  "paper": "models",
+  # Paper Monitor retired → MT5 Bridge
+  "Paper Monitor": "mt5_bridge",
+  "Giám sát paper": "mt5_bridge",
+  "paper": "mt5_bridge",
   "Backtest Lab": "learning",
   "Grid Search": "learning",
   "Report Compare": "learning",
@@ -124,9 +125,6 @@ ANALYSIS_TAB_BY_ALIAS: dict[str, str] = {
   "Strategy Inspector": "strategy",
   "Chiến lược": "strategy",
   "Phân tích": "risk",
-  "Paper Monitor": "health",
-  "Giám sát paper": "health",
-  "paper": "health",
 }
 
 ALL_ITEMS: dict[str, NavItem] = {item.key: item for item in NAV_ITEMS}

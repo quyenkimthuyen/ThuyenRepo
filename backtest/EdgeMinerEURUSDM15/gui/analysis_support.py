@@ -160,6 +160,129 @@ def start_remine_health_job(
   )
 
 
+def list_missing_model_health_checks(model: dict | None = None) -> list[dict]:
+  """Checks còn thiếu cho Trade Model (Health / Remine / Mining space).
+
+  Mỗi phần tử: ``{key, label, reason, refresh_*}``.
+  """
+  from gui.trade_model import (
+    load_model_kb_off_report,
+    load_model_mining_baseline_report,
+    load_model_remine_off_report,
+    load_model_report,
+    report_search_space_matches_model,
+  )
+  from mining_presets import match_preset_name
+
+  m = model or get_active_trade_model()
+  if not m or not m.get("id"):
+    return []
+
+  mid = str(m["id"])
+  report_on = load_model_report(mid)
+  report_off = load_model_kb_off_report(mid)
+  remine_off = load_model_remine_off_report(mid)
+  space_ok = report_search_space_matches_model(report_on, m) if report_on else False
+  missing: list[dict] = []
+
+  need_health = (not report_on) or (not space_ok) or (not report_off)
+  if need_health:
+    reasons = []
+    if not report_on:
+      reasons.append("chưa có report KB ON")
+    elif not space_ok:
+      reasons.append("report lệch mining space")
+    if not report_off:
+      reasons.append("chưa có KB OFF")
+    missing.append({
+      "key": "model_health",
+      "label": "KB ON / OFF",
+      "reason": " · ".join(reasons),
+      "refresh_kb_on": (not report_on) or (not space_ok),
+    })
+
+  if not remine_off:
+    missing.append({
+      "key": "remine_health",
+      "label": "Remine ON / OFF",
+      "reason": "chưa có baseline Remine OFF",
+      "refresh_remine_on": not bool(report_on and space_ok),
+    })
+
+  ss = m.get("mining_search_space") or {}
+  preset = match_preset_name(ss) if ss else None
+  if ss and preset and preset != "baseline":
+    base_rep = load_model_mining_baseline_report(mid)
+    if not base_rep:
+      missing.append({
+        "key": "mining_space_health",
+        "label": "Mining space vs baseline",
+        "reason": f"preset `{preset}` chưa so baseline",
+        "refresh_active": not bool(report_on and space_ok),
+      })
+
+  return missing
+
+
+def start_missing_model_checks_job(
+  model: dict | None = None,
+  *,
+  start_date: str = "2022-01-01",
+) -> str:
+  """Một nút: chạy lần lượt mọi check Health còn thiếu của model."""
+  from gui.long_task_background import start_job
+
+  m = model or get_active_trade_model()
+  if not m:
+    raise ValueError("Chưa có trade model.")
+  missing = list_missing_model_health_checks(m)
+  if not missing:
+    raise ValueError("Model đã đủ check Sức khỏe — không cần chạy thêm.")
+
+  set_active_trade_model(m["id"])
+  p = get_model_run_params(m)
+  steps = [row["key"] for row in missing]
+  refresh_kb_on = True
+  refresh_remine_on = False
+  refresh_active = False
+  for row in missing:
+    if row["key"] == "model_health":
+      refresh_kb_on = bool(row.get("refresh_kb_on", True))
+    elif row["key"] == "remine_health":
+      # After health step in same suite, ON report will exist — only refresh if
+      # health is not also in this suite and ON is still missing.
+      refresh_remine_on = bool(row.get("refresh_remine_on", False)) and (
+        "model_health" not in steps
+      )
+    elif row["key"] == "mining_space_health":
+      refresh_active = bool(row.get("refresh_active", False)) and (
+        "model_health" not in steps
+      )
+
+  labels = " → ".join(row["label"] for row in missing)
+  return start_job(
+    "model_checks_suite",
+    {
+      "model_id": m["id"],
+      "steps": steps,
+      "start_date": start_date,
+      "refresh_kb_on": refresh_kb_on,
+      "refresh_remine_on": refresh_remine_on,
+      "refresh_active": refresh_active,
+      "train_weeks": int(p.get("train_weeks") or 6),
+      "spread_pips": float(p.get("spread_pips", 1.0)),
+      "slippage_pips": float(p.get("slippage_pips", 0.3)),
+      "kb_profile": p.get("kb_profile"),
+      "kb_snapshot": p.get("kb_snapshot"),
+      "oos_from": p.get("oos_from"),
+      "oos_to": p.get("oos_to"),
+      "feature_profile": p.get("feature_profile") or "current",
+      "mining_search_space": p.get("mining_search_space"),
+    },
+    label=f"Check thiếu · {format_model_label(m)[:28]} · {labels}"[:80],
+  )
+
+
 def render_report_required_panel(*, key_prefix: str = "an_rep") -> bool:
   """
   Hiển thị khi chưa có báo cáo khớp model.

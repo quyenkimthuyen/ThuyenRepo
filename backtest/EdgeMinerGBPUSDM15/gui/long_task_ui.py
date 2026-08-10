@@ -103,6 +103,16 @@ def render_task_status(
         bits.append(f"OFF **{res['kb_off_total_r']}R**")
       if bits:
         extra = " · " + " · ".join(bits)
+    elif status["job_type"] == "model_checks_suite":
+      bits = []
+      n = res.get("n_steps")
+      if n is not None:
+        bits.append(f"{n} bước")
+      done = res.get("steps_done") or []
+      if done:
+        bits.append(" → ".join(str(x) for x in done))
+      if bits:
+        extra = " · " + " · ".join(bits)
     c1, c2 = st.columns([5, 1])
     with c1:
       st.success(f"✅ Hoàn thành **{status['job_label']}**{extra}")

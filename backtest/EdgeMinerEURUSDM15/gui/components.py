@@ -23,7 +23,11 @@ def kpi_row(items: list[tuple[str, str, str | None]]):
 def constraint_checklist(constraints: dict, labels: dict[str, str] | None = None):
   from gui.glossary import CONSTRAINT_LABELS
   labels = labels or CONSTRAINT_LABELS
+  # Skip retired keys still present on old reports (e.g. trades_per_week_target)
+  retired = {"trades_per_week_target"}
   for key, label in labels.items():
+    if key in retired:
+      continue
     ok = constraints.get(key, False)
     icon = "✅" if ok else "❌"
     st.markdown(f"{icon} **{label}**")

@@ -5,18 +5,26 @@ import pandas as pd
 import streamlit as st
 
 from gui.trade_model import (
+  OVERVIEW_HIGH_DD_R,
+  archive_trade_model,
+  bridge_ghost_model_ids,
   build_trade_models_compare_rows,
   delete_trade_model,
+  desk_pair_code,
   format_model_label,
   get_active_trade_model,
   get_bridge_runtime_model_ids,
   get_model_by_id,
+  is_model_archived,
   list_trade_models,
   load_model_kb_off_report,
   load_model_report,
+  overview_row_visible,
+  prune_bridge_roster,
   rename_trade_model,
   reset_trade_model_label,
   set_active_trade_model,
+  unarchive_trade_model,
 )
 from gui.charts import show_plotly
 from gui.ui_theme import icon_btn
@@ -81,8 +89,10 @@ def _apply_pending_model_pick(updated: dict | None):
 def _render_shared_model_bar(models: list[dict]) -> dict | None:
   """Top dropdown — selection becomes active Trade Model for detail tabs.
 
-  Rename / xóa nằm ở tab **Tổng hợp** (chọn dòng trong bảng).
+  Rename / Archive nằm ở tab **Tổng hợp** (chọn dòng trong bảng).
   """
+  if not models:
+    return None
   id_by_label = {format_model_label(m): m["id"] for m in models}
   labels = list(id_by_label.keys())
   active = get_active_trade_model()
@@ -113,7 +123,7 @@ def _render_shared_model_bar(models: list[dict]) -> dict | None:
       on_change=_on_shared_model_change,
       help=(
         "Model Active cho tab Thông tin / Sức khỏe / Rủi ro / Nhật ký / Chiến lược. "
-        "Đổi tên hoặc xóa: tab **Tổng hợp** → chọn dòng."
+        "Đổi tên hoặc Archive: tab **Tổng hợp** → chọn dòng."
       ),
     )
   mid = id_by_label[pick]
@@ -157,7 +167,7 @@ def _render_shared_model_bar(models: list[dict]) -> dict | None:
     f"OOS `{m.get('oos_from') or '—'} → {m.get('oos_to') or '—'}` · "
     f"mining `{mining_txt}` · "
     f"KB pin `{'yes · ' + str(m.get('kb_fingerprint') or '')[:8] if m.get('kb_pin_path') else 'no'}` "
-    f"· Đổi tên/xóa ở tab **Tổng hợp**"
+    f"· Đổi tên/Archive ở tab **Tổng hợp**"
   )
   if report:
     mismatches = profile_mismatch_details(report, {**m, "trade_model_id": mid})
@@ -174,33 +184,110 @@ def _render_shared_model_bar(models: list[dict]) -> dict | None:
 
 
 def _render_models_overview(models: list[dict], active: dict | None):
-  """Compare table of every stored Trade Model — Active / rename / delete here."""
+  """Compare table — badges, default filter, desk sort, rename/archive."""
+  desk = desk_pair_code()
+  sort_hint = (
+    "sort mặc định **WR ↓ → DD ↑ → R ↓** (desk GBP)"
+    if desk == "GBP"
+    else "sort mặc định **Total R ↓** (desk EUR)"
+  )
   st.caption(
-    "So sánh **tất cả** Trade Model (ưu tiên KPI OOS từ report; fallback Grid). "
-    "Click 1 dòng → **Đổi tên** / **Xóa**. Chọn model Active ở dropdown phía trên."
+    f"So sánh Trade Model · desk **{desk}** · {sort_hint}. "
+    "Click 1 dòng → **Đổi tên** / **Archive**. Active chọn ở dropdown phía trên."
   )
 
+  ghosts = bridge_ghost_model_ids()
+  if ghosts:
+    g1, g2 = st.columns([4, 1])
+    with g1:
+      st.warning(
+        "Bridge đang giữ **id ma** (đã Archive/xóa khỏi store live): "
+        + ", ".join(f"`{g}`" for g in ghosts[:8])
+        + (" …" if len(ghosts) > 8 else "")
+        + ". Dọn roster để Live/Sim không tham chiếu model chết."
+      )
+    with g2:
+      if st.button(
+        "Dọn Bridge",
+        key="tm_ov_prune_ghosts",
+        use_container_width=True,
+        help="Gỡ mọi id không còn trong store live khỏi Bridge model_ids.",
+      ):
+        result = prune_bridge_roster(drop_unknown=True)
+        removed = result.get("removed") or []
+        if result.get("error"):
+          st.error(result["error"])
+        elif removed:
+          st.toast(f"Đã gỡ {len(removed)} id khỏi Bridge")
+          st.rerun()
+        else:
+          st.info("Không còn id ma.")
+
+  # Overview includes archived shelf; dropdown Active stays live-only.
+  store_models = list_trade_models(include_archived=True)
   active_id = str(active["id"]) if active and active.get("id") else None
   bridge_ids = get_bridge_runtime_model_ids()
-  rows = build_trade_models_compare_rows(
-    models,
+  all_rows = build_trade_models_compare_rows(
+    store_models,
     active_id=active_id,
     bridge_ids=bridge_ids,
+    sort_desk=desk,
   )
-  if not rows:
+  if not all_rows:
     st.info("Chưa có Trade Model trong store.")
     return
 
+  f1, f2 = st.columns(2)
+  with f1:
+    show_all = st.toggle(
+      "Hiện tất cả",
+      value=False,
+      key="tm_overview_show_all",
+      help=(
+        f"Mặc định ẩn High-DD (DD>{OVERVIEW_HIGH_DD_R:g}R), model chưa OOS, và Archived. "
+        "Model đang trên Bridge luôn hiện. Bật để xem toàn bộ store."
+      ),
+    )
+  with f2:
+    show_archived = st.toggle(
+      "Hiện Archived",
+      value=False,
+      key="tm_overview_show_archived",
+      help="Hiện model đã Archive (kệ nghiên cứu). Không tự đưa lại lên Bridge.",
+    )
+
+  rows = [
+    r for r in all_rows
+    if overview_row_visible(
+      r,
+      show_all=show_all,
+      show_archived=show_archived,
+      bridge_ids=bridge_ids,
+    )
+  ]
+  hidden_n = len(all_rows) - len(rows)
+  if hidden_n > 0 and not show_all:
+    st.caption(
+      f"Đang ẩn **{hidden_n}** model (Archived / High-DD / chưa OOS). "
+      "Bật **Hiện Archived** hoặc **Hiện tất cả** để xem."
+    )
+
+  if not rows:
+    st.warning("Không còn model sau filter — bật **Hiện Archived** / **Hiện tất cả**.")
+    return
+
   display_cols = [
-    "Vai trò", "Model", "Total R", "WR %", "Max DD", "PF",
+    "Badge", "Vai trò", "Model", "Total R", "WR %", "Max DD", "PF",
     "Lệnh", "Tpw", "Train", "KB ep", "OOS", "Mining", "Nguồn",
   ]
-  df = pd.DataFrame(rows)
-  show = df[display_cols].copy()
+  show = pd.DataFrame(rows)[display_cols].copy()
 
-  c1, c2, c3, c4 = st.columns(4)
+  n_live = sum(1 for r in all_rows if "Live-ok" in (r.get("Badge") or ""))
+  n_hdd = sum(1 for r in all_rows if "High-DD" in (r.get("Badge") or ""))
+  n_arch = sum(1 for r in all_rows if r.get("_archived"))
+  c1, c2, c3, c4, c5 = st.columns(5)
   with c1:
-    st.metric("Số model", len(rows))
+    st.metric("Hiện / Tổng", f"{len(rows)}/{len(all_rows)}")
   with c2:
     best_r = next((r for r in rows if r.get("Total R") is not None), None)
     st.metric(
@@ -224,6 +311,8 @@ def _render_models_overview(models: list[dict], active: dict | None):
       f"{best_dd['Max DD']:.2f}R" if best_dd else "—",
       help=best_dd["Model"] if best_dd else None,
     )
+  with c5:
+    st.metric("Live-ok / High-DD / Arch", f"{n_live} / {n_hdd} / {n_arch}")
 
   event = st.dataframe(
     show,
@@ -233,6 +322,15 @@ def _render_models_overview(models: list[dict], active: dict | None):
     selection_mode="single-row",
     key="tm_overview_table",
     column_config={
+      "Badge": st.column_config.TextColumn(
+        "Badge",
+        width="medium",
+        help=(
+          "Archived = kệ nghiên cứu · Live-ok = có OOS + DD≤"
+          f"{OVERVIEW_HIGH_DD_R:g}R · High-DD = DD>"
+          f"{OVERVIEW_HIGH_DD_R:g}R · Grid-only = chưa remine report · Stale = thiếu KPI"
+        ),
+      ),
       "Vai trò": st.column_config.TextColumn("Vai trò", width="small"),
       "Model": st.column_config.TextColumn("Model", width="medium"),
       "Total R": st.column_config.NumberColumn("Total R", format="%+.2f"),
@@ -243,7 +341,14 @@ def _render_models_overview(models: list[dict], active: dict | None):
       "Tpw": st.column_config.NumberColumn("Tpw", format="%.2f"),
       "Train": st.column_config.NumberColumn("Train", format="%d"),
       "Mining": st.column_config.TextColumn("Mining", width="large"),
-      "Nguồn": st.column_config.TextColumn("Nguồn", width="small"),
+      "Nguồn": st.column_config.TextColumn(
+        "Nguồn",
+        width="small",
+        help=(
+          "● OOS = KPI từ report remine/backtest của model (tin hơn). "
+          "○ Grid = KPI lúc tạo từ Grid Search (chưa có report OOS)."
+        ),
+      ),
     },
   )
 
@@ -255,14 +360,20 @@ def _render_models_overview(models: list[dict], active: dict | None):
   except Exception:
     selected_idx = None
 
+  notes = (
+    f"- **Badge**: Archived / Live-ok / High-DD (>{OVERVIEW_HIGH_DD_R:g}R) / Grid-only / Stale.\n"
+    "- **Nguồn**: `● OOS` đậm nghĩa tin hơn; `○ Grid` = KPI tạo model, nên remine trước Live.\n"
+    f"- **Sort**: {sort_hint} — click header cột để sort lại.\n"
+    "- Model trên **Bridge** luôn hiện dù filter mặc định đang ẩn.\n"
+    "- **Archive** = cất kệ nghiên cứu (giữ report), gỡ khỏi Bridge; "
+    "**Xóa cứng** chỉ khi cần xóa vĩnh viễn.\n"
+    "- Active chỉ để phân tích (dropdown phía trên)."
+  )
+
   if selected_idx is None or not (0 <= selected_idx < len(rows)):
-    st.caption("Tip: click 1 dòng → Đổi tên / Xóa. Active chọn ở dropdown phía trên.")
+    st.caption("Tip: click 1 dòng → Đổi tên / Archive. Active chọn ở dropdown phía trên.")
     with st.expander("Ghi chú đọc bảng", expanded=False):
-      st.markdown(
-        "- **Vai trò**: `Active` = model đang chọn trong app; `Bridge` = đang gắn MT5 Live/Sim.\n"
-        "- **Nguồn**: `OOS` = từ report remine/backtest; `Grid` = KPI lúc tạo từ Grid Search.\n"
-        "- Sort mặc định theo **Total R** giảm dần — click header cột để sort lại."
-      )
+      st.markdown(notes)
     return
 
   picked = rows[selected_idx]
@@ -270,13 +381,16 @@ def _render_models_overview(models: list[dict], active: dict | None):
   lab = picked.get("_label") or picked.get("Model")
   model = get_model_by_id(mid) or {}
   is_custom = bool(model.get("label_custom"))
+  archived = bool(picked.get("_archived") or is_model_archived(model))
   on_bridge = mid in {str(x) for x in (bridge_ids or []) if x}
 
   st.markdown(f"**Đang chọn trong bảng:** {lab}")
   st.caption(
+    f"Badge `{picked.get('Badge')}` · {picked.get('Nguồn')} · "
     f"R={picked.get('Total R')} · WR={picked.get('WR %')}% · "
     f"DD={picked.get('Max DD')} · id `{mid}`"
     + (" · đang trên Bridge" if on_bridge else "")
+    + (" · Archived" if archived else "")
   )
 
   rename_key = f"tm_ov_rename_{mid}"
@@ -293,9 +407,16 @@ def _render_models_overview(models: list[dict], active: dict | None):
       key=rename_key,
       placeholder="VD: BestR live · WR60 desk",
       help="Chỉ đổi tên hiển thị; `id` giữ nguyên cho Bridge/journal.",
+      disabled=archived,
     )
   with r2:
-    if st.button("Lưu tên", type="primary", key="tm_ov_rename_save", use_container_width=True):
+    if st.button(
+      "Lưu tên",
+      type="primary",
+      key="tm_ov_rename_save",
+      use_container_width=True,
+      disabled=archived,
+    ):
       try:
         updated = rename_trade_model(mid, st.session_state.get(rename_key) or "")
       except ValueError as exc:
@@ -310,7 +431,7 @@ def _render_models_overview(models: list[dict], active: dict | None):
       "Tên auto",
       key="tm_ov_rename_reset",
       use_container_width=True,
-      disabled=not is_custom,
+      disabled=archived or not is_custom,
       help="Bỏ tên tùy chỉnh, dùng lại label train/KB/OOS.",
     ):
       updated = reset_trade_model_label(mid)
@@ -320,8 +441,41 @@ def _render_models_overview(models: list[dict], active: dict | None):
         st.toast("Đã khôi phục tên tự động")
         st.rerun()
 
-  d1, d2 = st.columns([1, 3])
-  with d1:
+  a1, a2, a3 = st.columns([1, 1, 2])
+  with a1:
+    if archived:
+      if st.button(
+        "Restore",
+        type="primary",
+        icon=":material/unarchive:",
+        use_container_width=True,
+        key="tm_ov_unarchive",
+        help="Đưa lại vào danh sách live (không tự thêm Bridge).",
+      ):
+        updated = unarchive_trade_model(mid)
+        if updated:
+          _apply_pending_model_pick(updated)
+          st.toast("Đã Restore model")
+          st.rerun()
+    else:
+      if st.button(
+        "Archive",
+        type="primary",
+        icon=":material/archive:",
+        use_container_width=True,
+        key="tm_ov_archive",
+        help="Cất kệ nghiên cứu · giữ report · gỡ khỏi Bridge model_ids.",
+      ):
+        if archive_trade_model(mid):
+          st.session_state.pop("_tm_ov_rename_mid", None)
+          remaining = list_trade_models(include_archived=False)
+          if remaining:
+            _apply_pending_model_pick(remaining[0])
+          else:
+            st.session_state.pop("_tm_pending_pick", None)
+          st.toast("Đã Archive · đã gỡ khỏi Bridge nếu có")
+          st.rerun()
+  with a2:
     confirm_key = "tm_ov_delete_confirm"
     if st.session_state.get(confirm_key) == mid:
       if st.button(
@@ -329,44 +483,41 @@ def _render_models_overview(models: list[dict], active: dict | None):
         type="primary",
         use_container_width=True,
         key="tm_ov_delete_yes",
-        help="Xóa model + report/schedule gắn với id này.",
+        help="Xóa vĩnh viễn model + report/schedule gắn với id này.",
       ):
         if delete_trade_model(mid):
           st.session_state.pop(confirm_key, None)
           st.session_state.pop("_tm_ov_rename_mid", None)
-          remaining = list_trade_models()
+          remaining = list_trade_models(include_archived=False)
           if remaining:
             _apply_pending_model_pick(remaining[0])
           else:
             st.session_state.pop("_tm_pending_pick", None)
-          st.toast("Đã xóa trade model")
+          st.toast("Đã xóa cứng trade model")
           st.rerun()
       if st.button("Hủy", use_container_width=True, key="tm_ov_delete_cancel"):
         st.session_state.pop(confirm_key, None)
         st.rerun()
     else:
       if st.button(
-        "Xóa",
-        icon=":material/delete:",
+        "Xóa cứng",
+        icon=":material/delete_forever:",
         use_container_width=True,
         key="tm_ov_delete",
-        help="Xóa model khỏi store (cần xác nhận).",
+        help="Xóa vĩnh viễn (ưu tiên Archive). Cần xác nhận.",
       ):
         st.session_state[confirm_key] = mid
         st.rerun()
-  with d2:
-    if on_bridge:
-      st.warning("Model đang trên Bridge — xóa có thể làm roster Live trống.")
+  with a3:
+    if on_bridge and not archived:
+      st.warning("Đang trên Bridge — Archive sẽ gỡ khỏi roster Live/Sim.")
+    elif archived:
+      st.caption("Archived: report giữ nguyên · Restore để dùng lại phân tích.")
     elif st.session_state.get(confirm_key) == mid:
-      st.error("Xóa vĩnh viễn report + schedule của model này.")
+      st.error("Xóa cứng = mất report + schedule. Nên Archive nếu chỉ muốn cất kệ.")
 
   with st.expander("Ghi chú đọc bảng", expanded=False):
-    st.markdown(
-      "- **Vai trò**: `Active` = model đang chọn ở dropdown phía trên; `Bridge` = đang gắn MT5 Live/Sim.\n"
-      "- **Nguồn**: `OOS` = từ report remine/backtest; `Grid` = KPI lúc tạo từ Grid Search.\n"
-      "- Sort mặc định theo **Total R** giảm dần — click header cột để sort lại.\n"
-      "- **Đổi tên / Xóa** trên tab này; chọn model Active ở dropdown phía trên."
-    )
+    st.markdown(notes)
 
 
 def _render_model_info(active: dict):
@@ -416,7 +567,54 @@ def _render_model_info(active: dict):
   status_banner(report, kb_summary, data_meta)
   warn_no_costs()
 
+  from gui.analysis_support import (
+    list_missing_model_health_checks,
+    start_missing_model_checks_job,
+  )
   from gui.live_readiness import render_live_readiness
+  from gui.long_task_ui import render_task_status, task_blocks_ui
+
+  missing = list_missing_model_health_checks(active)
+  render_task_status(key_prefix="tm_info_suite")
+  blocked = task_blocks_ui("tm_info_suite")
+
+  with st.container(border=True):
+    st.markdown("#### Check Sức khỏe còn thiếu")
+    if not missing:
+      st.success(
+        "Đủ report: KB ON/OFF · Remine OFF · Mining baseline (nếu cần). "
+        "Chi tiết biểu đồ ở tab **Sức khỏe**."
+      )
+    else:
+      st.caption(
+        "Một nút chạy lần lượt mọi phần còn thiếu (không cần nhảy từng đoạn trên Sức khỏe)."
+      )
+      for row in missing:
+        st.markdown(f"- **{row['label']}** — {row['reason']}")
+      b1, b2 = st.columns([2, 3])
+      with b1:
+        if st.button(
+          "Chạy tất cả check thiếu",
+          type="primary",
+          icon=":material/playlist_play:",
+          use_container_width=True,
+          disabled=blocked,
+          key="tm_info_run_all_checks",
+          help=(
+            "Chạy tuần tự: KB ON/OFF → Remine ON/OFF → Mining space vs baseline "
+            "(chỉ các mục còn thiếu)."
+          ),
+        ):
+          try:
+            start_missing_model_checks_job(active)
+            st.toast(f"Đã bắt đầu {len(missing)} check · xem tiến trình phía trên")
+            st.rerun()
+          except Exception as e:
+            st.error(str(e))
+      with b2:
+        st.caption(
+          "Có thể chuyển tab trong lúc chạy. Kết quả lưu vào model — mở **Sức khỏe** để xem chart."
+        )
 
   if not report:
     st.info(
@@ -969,8 +1167,33 @@ def render(embedded: bool = False):
   if not embedded:
     st.header("Trade Models")
 
-  models = list_trade_models()
+  models = list_trade_models(include_archived=False)
+  archived_n = len(list_trade_models(include_archived=True)) - len(models)
   if not models:
+    if archived_n > 0:
+      st.info(
+        f"Không còn model live — có **{archived_n}** model Archived. "
+        "Mở tab **Tổng hợp** → bật **Hiện Archived** để Restore."
+      )
+      st.divider()
+      sub = _resolve_subtab()
+      cols = st.columns(len(SUB_KEYS))
+      for col, key in zip(cols, SUB_KEYS):
+        with col:
+          if icon_btn(
+            SUB_LABELS[key],
+            key=f"tm_sub_{key}",
+            icon=SUB_ICONS[key],
+            active=(sub == key),
+          ):
+            set_widget_preference("models_subtab", key, "navigation.models_subtab")
+            st.rerun()
+      st.divider()
+      if sub == "overview":
+        _render_models_overview([], None)
+      else:
+        st.caption("Cần Restore ít nhất 1 model để mở các tab chi tiết.")
+      return
     st.info(
       "Chưa có trade model. Chạy **Grid Search** và nhấn **Tạo Trade Model** "
       "trên combo tốt nhất."

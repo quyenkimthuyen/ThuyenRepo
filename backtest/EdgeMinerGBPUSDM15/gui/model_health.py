@@ -111,7 +111,7 @@ def assess_monthly_degradation(
     else:
       msg = (
         f"Theo dõi: nửa sau yếu hơn nửa đầu (Δ {delta:+.1f}R). "
-        "Nên so KB ON/OFF và Paper Auto gần đây."
+        "Nên so KB ON/OFF và Compare Trade gần đây."
       )
   elif late_r < 0 and early_r > 0:
     verdict, msg = "watch", (
