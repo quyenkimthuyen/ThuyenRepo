@@ -251,21 +251,19 @@ ELITE_60_35 = {
 # App-recommended direction (WR-first quality book; used by Settings default).
 RECOMMENDED_PRESET = "elite_or_quality"
 
-# Shown in Settings UI (audit 2026-08-03 — see docs/mining_space_audit.md).
-# B4 Grid 2026-08-04: dropped elite_60_35 / anti_chase / anti_chase_and_70_15 (weak or redundant).
+# Shown in Settings UI — trimmed 2026-08-10 (drop near-duplicate elite / frontier).
+# Keep: default quality · R-balance · gentle edge · niche elite · baseline neo.
+# See docs/mining_space_audit.md.
 CURATED_PRESETS: tuple[str, ...] = (
   "elite_or_quality",
   "anti_chase_fixed_70",
   "edge_gentle",
-  "elite_60_3_vwap",
   "elite_55_4",
-  "elite_60_3",
-  "frontier_rr_hi",
   "baseline",
 )
 
-# Lost A/B vs baseline on current KB — hidden from Settings curated list.
-# Still in PRESETS for CLI / regression compares.
+# Lost A/B vs baseline / redundant vs curated — hidden from Settings.
+# Still in PRESETS for CLI / regression / old Trade Models.
 DEPRECATED_PRESETS: tuple[str, ...] = (
   "wr_rr_frontier",
   "wr_rr_sniper",
@@ -280,6 +278,17 @@ DEPRECATED_PRESETS: tuple[str, ...] = (
   "elite_60_35",
   "anti_chase",
   "anti_chase_and_70_15",
+  # Redundant with curated (2026-08-10)
+  "elite_60_3",
+  "elite_60_3_vwap",
+  "frontier_rr_hi",
+  "nova",
+  "nova_fixed",
+  "anti_chase_fixed_62",
+  "anti_chase_fixed_65",
+  "anti_chase_strict",
+  "anti_chase_and_65_2",
+  "anti_chase_and_68_2",
 )
 
 # Compact labels for Settings / Grid UI (unknown keys fall back to raw name).

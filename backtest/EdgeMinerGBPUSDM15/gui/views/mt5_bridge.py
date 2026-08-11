@@ -27,7 +27,9 @@ from mt5_bridge.protocol import (
   BRIDGE_DIR,
   BRIDGE_SIM_DIR,
   DEFAULT_MODEL_ID,
+  INSTANCE_ID,
   MAX_BRIDGE_MODELS,
+  ROOT,
   bar_path,
   bars_path,
   command_ack_path,
@@ -45,6 +47,14 @@ from mt5_bridge.protocol import (
   write_manual_close_command,
   write_manual_market_command,
 )
+
+
+def _desk_symbol() -> str:
+  """Fallback chart symbol when connection.json is empty (EUR vs GBP desks)."""
+  name = ROOT.name.upper()
+  if "GBP" in name or INSTANCE_ID.upper().startswith("M15G"):
+    return "GBPUSD"
+  return "EURUSD"
 from mt5_bridge.trade_journal import (
   clear_trades,
   compute_stats,
@@ -657,7 +667,21 @@ def _render_trader_desk(*, include_live_metrics: bool = True) -> None:
     age = health.get("age_seconds")
     age_txt = f"{age:.0f}s" if age is not None else "—"
     ea_label = "FEED" if mode == "sim" else "EA"
-    if health.get("online") or (mode == "sim" and service_status.get("running")):
+    if mode == "sim":
+      ea_st = str(service_status.get("ea_status") or "idle")
+      bars_done = int(service_status.get("bars_done") or 0)
+      ea_feeding = ea_st == "running" or bars_done > 0
+      if health.get("online") and ea_feeding:
+        c1.metric(ea_label, f"ONLINE · {age_txt}")
+      elif service_status.get("running") and not ea_feeding:
+        c1.metric(ea_label, f"CHỜ EA · {age_txt}")
+        c1.caption("App đã Start — chờ EA History Feed")
+      elif health.get("online"):
+        c1.metric(ea_label, f"EA OK · {age_txt}")
+        c1.caption("Sim EA online · chưa Start feed")
+      else:
+        c1.metric(ea_label, f"OFFLINE · {age_txt}")
+    elif health.get("online"):
       c1.metric(ea_label, f"ONLINE · {age_txt}")
     else:
       c1.metric(ea_label, f"OFFLINE · {age_txt}")
@@ -819,8 +843,12 @@ def _live_chart_recover_fragment(max_bars: int) -> None:
 
   ensure_chart_server(resolve_live_bridge_dir(), DEFAULT_MONITOR_PORT)
   if _chart_server_healthy(f"http://127.0.0.1:{DEFAULT_MONITOR_PORT}"):
-    st.rerun()
+    # One-shot remount — do not loop st.rerun every 2s once healthy.
+    if not st.session_state.get("_live_chart_recovered"):
+      st.session_state["_live_chart_recovered"] = True
+      st.rerun()
   else:
+    st.session_state["_live_chart_recovered"] = False
     st.caption("Đang chờ Live chart server…")
 
 
@@ -859,7 +887,8 @@ def _render_live_chart(max_bars: int) -> None:
       bridge_dir=bridge_dir,
       progress_only=str(sim.get("status") or "") in ("running", "paused"),
     )
-    sim_chart_title = "EURUSD M15 · Simulate (static fallback)"
+    sym = str((connection or {}).get("symbol") or "").strip().upper() or _desk_symbol()
+    sim_chart_title = f"{sym} M15 · Simulate (static fallback)"
     fig = build_ea_chart(
       frame, connection, load_trades(bridge_dir),
       title=sim_chart_title,
@@ -883,9 +912,10 @@ def _render_live_chart(max_bars: int) -> None:
     st.caption(legend)
     return
   st.warning("Live chart server chưa chạy; đang dùng snapshot tĩnh.")
-  live_chart_title = "EURUSD M15 · XM MT5 live"
   frame, connection = load_ea_chart_data(max_bars=max_bars, bridge_dir=bridge_dir)
   trades = load_trades(bridge_dir)
+  sym = str((connection or {}).get("symbol") or "").strip().upper() or _desk_symbol()
+  live_chart_title = f"{sym} M15 · XM MT5 live"
   fig = build_ea_chart(frame, connection, trades, title=live_chart_title)
   if fig is None:
     st.caption("Đang chờ EA gửi nến để vẽ chart.")
@@ -1100,47 +1130,87 @@ def _render_service_controls() -> None:
       st.toast("Đã stop service")
       st.rerun()
   else:
+    live_dir = resolve_live_bridge_dir()
+    live_conn = read_json(connection_path(live_dir)) or {}
+    live_health = connection_health(
+      live_conn, stale_after_seconds=15.0, bridge_dir=live_dir,
+    )
+    ea_online = bool(live_health.get("online"))
+    start_label = "Start" if ea_online else "Deploy EA Live + Start"
+    start_icon = ":material/play_arrow:" if ea_online else ":material/settings_suggest:"
     if st.button(
-      "Start",
-      icon=":material/play_arrow:",
+      start_label,
+      icon=start_icon,
       type="primary",
       use_container_width=True,
       key="mt5_live_svc_start",
       disabled=not model_ids,
+      help=(
+        "Live EA online — Start Bridge service."
+        if ea_online else
+        "Live EA offline — Deploy Live rồi Start trong một bước."
+      ),
     ):
-      bridge_bg.save_config(
-        model_id=primary_id,
-        model_ids=model_ids,
-        risk_pct=risk,
-        poll_sec=poll,
-        enabled=True,
-        loss_guard_enabled=bool(st.session_state.get("mt5_loss_guard_enabled", True)),
-        loss_guard_max_day=int(st.session_state.get("mt5_loss_guard_max_day", 3)),
-        loss_guard_max_week=int(st.session_state.get("mt5_loss_guard_max_week", 5)),
-        loss_guard_tripped=False,
-        loss_guard_tripped_at=None,
-        loss_guard_tripped_reason=None,
-        last_error=None,
-      )
-      bridge_bg.sync_bridge_roster(
-        bridge_dir=resolve_live_bridge_dir(),
-        model_ids=model_ids,
-        risk_pct=float(risk),
-      )
-      ok = bridge_bg.start_worker(detached=True)
-      if ok:
-        from mt5_bridge.live_monitor_server import ensure_chart_server
-        import time as _time
-        ensure_chart_server(resolve_live_bridge_dir(), DEFAULT_MONITOR_PORT)
-        monitor_url = f"http://127.0.0.1:{DEFAULT_MONITOR_PORT}"
-        for _ in range(15):
-          if _chart_server_healthy(monitor_url):
-            break
-          _time.sleep(0.2)
-        st.toast(f"Đã start service · {len(model_ids)} model")
-      else:
-        st.error("Không start được service — mở mục Kỹ thuật để xem log.")
-      st.rerun()
+      ea_ready = ea_online
+      if not ea_ready:
+        from gui.mt5_deploy_ui import deploy_ea_and_wait_online, ea_live_name
+        if bridge_bg.is_running():
+          st.warning("Live Bridge đang chạy — không Deploy lại. Dùng Stop rồi Start.")
+        else:
+          with st.spinner(f"Đang deploy `{ea_live_name()}` (tối đa ~90s)…"):
+            ok_dep, detail = deploy_ea_and_wait_online(
+              "Live",
+              live_dir,
+              enable_trading=True,
+              wait_sec=20.0,
+              deploy_timeout_sec=90.0,
+            )
+          if not ok_dep:
+            st.error(detail.split("\n", 1)[0])
+            if "\n" in detail:
+              st.code(detail.split("\n", 1)[1])
+          else:
+            st.toast(f"Đã deploy `{ea_live_name()}` · EA online")
+            ea_ready = True
+
+      if ea_ready:
+        bridge_bg.save_config(
+          model_id=primary_id,
+          model_ids=model_ids,
+          risk_pct=risk,
+          poll_sec=poll,
+          enabled=True,
+          loss_guard_enabled=bool(st.session_state.get("mt5_loss_guard_enabled", True)),
+          loss_guard_max_day=int(st.session_state.get("mt5_loss_guard_max_day", 3)),
+          loss_guard_max_week=int(st.session_state.get("mt5_loss_guard_max_week", 5)),
+          loss_guard_tripped=False,
+          loss_guard_tripped_at=None,
+          loss_guard_tripped_reason=None,
+          last_error=None,
+        )
+        bridge_bg.sync_bridge_roster(
+          bridge_dir=live_dir,
+          model_ids=model_ids,
+          risk_pct=float(risk),
+        )
+        ok = bridge_bg.start_worker(detached=True)
+        if ok:
+          from mt5_bridge.live_monitor_server import ensure_chart_server
+          import time as _time
+          ensure_chart_server(live_dir, DEFAULT_MONITOR_PORT)
+          monitor_url = f"http://127.0.0.1:{DEFAULT_MONITOR_PORT}"
+          for _ in range(15):
+            if _chart_server_healthy(monitor_url):
+              break
+            _time.sleep(0.2)
+          st.toast(f"Đã start service · {len(model_ids)} model")
+        else:
+          st.error("Không start được service — mở mục Kỹ thuật để xem log.")
+        st.rerun()
+    if ea_online:
+      age = live_health.get("age_seconds")
+      age_txt = f"{age:.0f}s" if age is not None else "—"
+      st.caption(f"Live EA online · heartbeat {age_txt}")
 
   # Per-model stats strip
   trades = load_trades(resolve_live_bridge_dir())
@@ -1237,20 +1307,34 @@ def _render_sim_progress_fragment() -> None:
     return
   running = bool(sim.get("running"))
 
-  # Form Start/disabled uses full-script `running` — remount page when feed flips
+  # Remount Start/Stop parent only when run-state flips — debounce to avoid
+  # full-page refresh storms that make Simulate feel “treo”.
   prev_run = bool(st.session_state.get("_sim_ui_was_running"))
   if prev_run != running:
-    st.session_state["_sim_ui_was_running"] = running
-    st.rerun()
+    import time as _time
+    last = float(st.session_state.get("_sim_ui_flip_ts") or 0.0)
+    now = _time.time()
+    if (now - last) >= 1.5:
+      st.session_state["_sim_ui_was_running"] = running
+      st.session_state["_sim_ui_flip_ts"] = now
+      st.rerun()
 
   # Model chọn ở tab Trade Models — chỉ hiện progress feed khi chạy
   if running:
+    ea_st = str(sim.get("ea_status") or "idle")
+    bars_done = int(sim.get("bars_done") or 0)
+    bars_total = sim.get("bars_total") or "—"
     st.caption(
       f"{str(sim.get('status') or 'running').upper()}"
       + (" · tạm dừng" if sim.get("paused") else "")
-      + f" · {sim.get('bars_done') or 0}/{sim.get('bars_total') or '—'} nến · "
+      + f" · EA `{ea_st}` · {bars_done}/{bars_total} nến · "
       f"{sim.get('n_fills') or 0} lệnh"
     )
+    if ea_st in ("", "idle") and bars_done == 0 and not sim.get("error"):
+      st.warning(
+        "Đang chờ EA History Feed… Nếu EA chưa gắn chart / sai folder, "
+        "App sẽ tự dừng sau ~25s kèm thông báo lỗi."
+      )
   if sim.get("error"):
     st.error(sim["error"])
 
@@ -1390,14 +1474,32 @@ def _render_simulate_ea() -> None:
       help="1000 = 1s. Tự lưu khi đổi.",
       on_change=preference_callback("sim_ea_delay", "mt5.sim_delay"),
     )
+
+  # EA online? → Start feed; offline → Deploy EA Sim + Start feed
+  _sim_conn = read_json(connection_path(BRIDGE_SIM_DIR)) or {}
+  _sim_health = connection_health(
+    _sim_conn, stale_after_seconds=15.0, bridge_dir=BRIDGE_SIM_DIR,
+  )
+  _ea_online = bool(_sim_health.get("online"))
+  _start_label = "Start feed" if _ea_online else "Deploy EA Sim + Start feed"
+  _start_icon = ":material/play_arrow:" if _ea_online else ":material/settings_suggest:"
   start_clicked = st.button(
-    "Start feed",
+    _start_label,
     type="primary",
-    icon=":material/play_arrow:",
+    icon=_start_icon,
     disabled=running or not model_ids,
     use_container_width=True,
     key="sim_ea_start",
+    help=(
+      "Sim EA đang online — Start History Feed."
+      if _ea_online else
+      "Sim EA offline — Deploy Simulate rồi Start feed trong một bước."
+    ),
   )
+  if _ea_online:
+    _age = _sim_health.get("age_seconds")
+    _age_txt = f"{_age:.0f}s" if _age is not None else "—"
+    st.caption(f"Sim EA online · heartbeat {_age_txt}")
 
   d_from = st.session_state["sim_ea_from"]
   d_to = st.session_state["sim_ea_to"]
@@ -1410,41 +1512,84 @@ def _render_simulate_ea() -> None:
     if d_to < d_from:
       st.error("Đến ngày phải ≥ Từ ngày")
     else:
-      _persist_sim_ea_settings()
-      bridge_bg.save_config(
-        model_id=model_ids[0],
-        model_ids=model_ids,
-        risk_pct=float(risk),
-      )
-      ok = bridge_bg.start_sim_worker(
-        date_from=str(d_from),
-        date_to=str(d_to),
-        delay_ms=int(delay_ms),
-        model_id=model_ids[0],
-        model_ids=model_ids,
-        risk_pct=float(risk),
-      )
-      if ok:
-        import time as _time
-        if hasattr(bridge_bg.get_sim_status, "_cache"):
-          bridge_bg.get_sim_status._cache = None
-        _time.sleep(0.4)
-        st2 = bridge_bg.get_sim_status()
-        st.session_state["_sim_pending_history"] = "__live__"
-        set_preference("mt5.sim_history_run_id", "__live__")
-        st.success(
-          f"Sim service nền đã start · {len(model_ids)} model · "
-          f"runtime=`{st2.get('runtime')}` · "
-          f"pid=`{st2.get('service_pid')}` — xem `results/mt5_bridge_sim_service.log`"
+      import time as _time
+      ea_ready = _ea_online
+
+      if not ea_ready:
+        from gui.mt5_deploy_ui import deploy_ea_and_wait_online, ea_sim_name
+        if bridge_bg.is_sim_running():
+          st.warning("Sim feed đang chạy — không Deploy lại. Dùng Stop rồi Start.")
+        else:
+          with st.spinner(f"Đang deploy `{ea_sim_name()}` (tối đa ~90s)…"):
+            ok_dep, detail = deploy_ea_and_wait_online(
+              "HistoryFeed",
+              BRIDGE_SIM_DIR,
+              skip_bridge_service=True,
+              wait_sec=20.0,
+              deploy_timeout_sec=90.0,
+            )
+          if not ok_dep:
+            st.error(detail.split("\n", 1)[0])
+            if "\n" in detail:
+              st.code(detail.split("\n", 1)[1])
+          else:
+            st.toast(f"Đã deploy `{ea_sim_name()}` · EA online")
+            ea_ready = True
+
+      if ea_ready:
+        _persist_sim_ea_settings()
+        bridge_bg.save_config(
+          model_id=model_ids[0],
+          model_ids=model_ids,
+          risk_pct=float(risk),
         )
-        st.rerun()
-      else:
-        st.warning("Feed đang chạy")
+        ok = bridge_bg.start_sim_worker(
+          date_from=str(d_from),
+          date_to=str(d_to),
+          delay_ms=int(delay_ms),
+          model_id=model_ids[0],
+          model_ids=model_ids,
+          risk_pct=float(risk),
+        )
+        if ok:
+          import time as _time
+          if hasattr(bridge_bg.get_sim_status, "_cache"):
+            bridge_bg.get_sim_status._cache = None
+          _time.sleep(0.4)
+          st2 = bridge_bg.get_sim_status()
+          st.session_state["_sim_pending_history"] = "__live__"
+          set_preference("mt5.sim_history_run_id", "__live__")
+          st.success(
+            f"Sim feed đã start · {len(model_ids)} model · "
+            f"pid=`{st2.get('service_pid')}`"
+          )
+          st.rerun()
+        else:
+          st.warning("Feed đang chạy")
 
   _render_sim_history_picker()
 
   # Per-model stats on live sim journal
   sim_trades = load_trades(BRIDGE_SIM_DIR)
+  _sim_open_n = sum(
+    1 for t in (sim_trades or []) if str(t.get("status") or "").upper() == "OPEN"
+  )
+  if _sim_open_n > 0 and not running:
+    st.warning(
+      f"App đang nhớ **{_sim_open_n} lệnh mở** trên Simulate trong khi feed đã dừng — "
+      "model sẽ bị HOLD (`position_open`) nếu Start lại mà không xóa treo. "
+      "Thường do mất close fill (multi-model / delay thấp)."
+    )
+    if st.button(
+      "Xóa lệnh treo trên App",
+      key="sim_clear_ghost_opens",
+      type="primary",
+      help="Đóng ghost OPEN trong journal Simulate (R=0 / BE) để model vào lệnh lại.",
+    ):
+      from mt5_bridge.trade_journal import close_ghost_journal_opens
+      n = close_ghost_journal_opens(BRIDGE_SIM_DIR, reason="journal_desync")
+      st.toast(f"Đã đóng {n} lệnh treo" if n else "Không còn lệnh treo")
+      st.rerun()
   if model_ids and sim_trades:
     rows = []
     for mid in model_ids:
@@ -2190,6 +2335,19 @@ def _render_stats_section() -> None:
     clear_trades(bridge_dir)
     st.toast("Đã xóa nhật ký + decision stale")
     st.rerun()
+  if mode == "sim":
+    n_open_now = sum(
+      1 for t in all_trades if str(t.get("status") or "").upper() == "OPEN"
+    )
+    if n_open_now > 0 and tc2.button(
+      f"Xóa {n_open_now} lệnh treo",
+      key="bridge_sim_clear_ghosts",
+      help="Đóng ghost OPEN (journal lệch EA paper) — tránh HOLD vĩnh viễn.",
+    ):
+      from mt5_bridge.trade_journal import close_ghost_journal_opens
+      n = close_ghost_journal_opens(bridge_dir, reason="journal_desync")
+      st.toast(f"Đã đóng {n} lệnh treo")
+      st.rerun()
   restore_widget("bridge_show_open", True, preference_key="mt5.show_open")
   show_open = tc2.checkbox(
     "Hiện cả lệnh đang mở", key="bridge_show_open",

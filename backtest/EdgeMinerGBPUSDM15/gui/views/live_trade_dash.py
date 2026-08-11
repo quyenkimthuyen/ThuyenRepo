@@ -92,6 +92,13 @@ def _start_live_bridge(model_ids: list[str]) -> bool:
   poll = float(cfg.get("poll_sec") or 2.0)
   primary = ids[0]
   bdir = _live_dir()
+  # Do not wipe trades — but drop sticky fill.json so Stop→Start cannot
+  # re-open a ghost journal row (same class of bug as Simulate BestWinRate).
+  try:
+    from mt5_bridge.trade_journal import clear_sticky_fill_files
+    clear_sticky_fill_files(bdir)
+  except Exception:
+    pass
   bridge_bg.save_config(
     model_id=primary,
     model_ids=ids,
@@ -157,7 +164,7 @@ def _risk_pips(trade: dict) -> str | None:
   dist = abs(entry - sl)
   if dist <= 0:
     return None
-  # GBPUSD M15 desk: 1 pip = 0.0001
+  # EURUSD M15 desk: 1 pip = 0.0001
   return f"{dist / 0.0001:.1f} pip"
 
 
@@ -349,25 +356,84 @@ def _render_dashboard_body() -> None:
       st.toast("Đã Stop Bridge")
       st.rerun()
   else:
+    start_label = (
+      "Start Bridge Live" if ea_online else "Deploy EA Live + Start Bridge"
+    )
     if st.button(
-      "Start Bridge Live",
+      start_label,
       type="primary",
       use_container_width=True,
       key="live_dash_start_bridge",
       disabled=not model_ids,
-      help="Bật service Bridge với roster đang chọn (tab Trade Models).",
+      help=(
+        "Bật service Bridge với roster đang chọn."
+        if ea_online else
+        "Live EA offline — Deploy Live rồi Start Bridge trong một bước."
+      ),
     ):
-      if _start_live_bridge(model_ids):
-        st.toast(f"Đã Start Bridge · {len(model_ids)} model")
-        st.rerun()
-      else:
-        st.error("Không Start được Bridge — xem MT5 Bridge → Kỹ thuật / log.")
+      ea_ready = ea_online
+      if not ea_ready:
+        from gui.mt5_deploy_ui import deploy_ea_and_wait_online, ea_live_name
+        if bridge_bg.is_running():
+          st.warning("Live Bridge đang chạy — không Deploy lại.")
+        else:
+          with st.spinner(f"Đang deploy `{ea_live_name()}` (tối đa ~90s)…"):
+            ok_dep, detail = deploy_ea_and_wait_online(
+              "Live",
+              _live_dir(),
+              enable_trading=True,
+              wait_sec=20.0,
+              deploy_timeout_sec=90.0,
+            )
+          if not ok_dep:
+            st.error(detail.split("\n", 1)[0])
+            if "\n" in detail:
+              st.code(detail.split("\n", 1)[1])
+          else:
+            st.toast(f"Đã deploy `{ea_live_name()}` · EA online")
+            ea_ready = True
+      if ea_ready:
+        if _start_live_bridge(model_ids):
+          st.toast(f"Đã Start Bridge · {len(model_ids)} model")
+          st.rerun()
+        else:
+          st.error("Không Start được Bridge — xem MT5 Bridge → Kỹ thuật / log.")
     if ea_online:
       st.caption(
         "EA online · Bridge tắt — bấm Start để trade với roster đã chọn."
       )
     if not model_ids:
       st.warning("Chưa có Trade Model trong roster — mở MT5 Bridge → Trade Models.")
+
+  # App sổ lệnh ↔ MT5 (tránh kẹt «đang có lệnh» ảo)
+  desync = snap.get("journal_mt5_desync")
+  if desync:
+    msg = str(desync.get("message") or "App và MT5 đang lệch số lệnh mở.")
+    if desync.get("fixable"):
+      st.error(msg)
+      if st.button(
+        "Xóa lệnh treo trên App",
+        type="primary",
+        use_container_width=True,
+        key="live_dash_clear_ghost_opens",
+        help="Chỉ khi MT5 đã hết lệnh mở. Xóa trạng thái lệnh treo trên App để model vào lệnh mới được.",
+      ):
+        from mt5_bridge.trade_journal import close_ghost_journal_opens
+        n = close_ghost_journal_opens(_live_dir(), reason="journal_desync")
+        st.toast(f"Đã xóa {n} lệnh treo trên App")
+        st.rerun()
+    else:
+      st.warning(msg)
+  elif ea_online:
+    ea_n = snap.get("ea_positions")
+    j_n = int(snap.get("open_auto") or 0)
+    if ea_n is not None:
+      if j_n == 0 and int(ea_n) == 0:
+        st.caption("Không có lệnh mở — App và MT5 khớp ✓")
+      elif j_n == int(ea_n):
+        st.caption(f"Đang mở {j_n} lệnh — App và MT5 khớp ✓")
+      else:
+        st.caption(f"App: {j_n} lệnh mở · MT5: {ea_n} lệnh mở")
 
   # C. Hero — position(s) or decision
   opens = snap.get("open_trades") or ([] if not open_t else [open_t])

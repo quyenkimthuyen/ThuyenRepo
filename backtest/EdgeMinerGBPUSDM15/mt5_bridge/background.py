@@ -459,26 +459,11 @@ def _cycle(
     if not is_sim:
       save_config(last_run_at=_now_iso())
 
-  # HistoryFeed: drain append-only queue (open+close can land within 1ms)
-  fills_q = ensure_bridge_dir(bridge_dir) / "ea_fills.jsonl"
-  if fills_q.exists():
-    try:
-      raw = fills_q.read_text(encoding="utf-8-sig")
-      if raw.strip():
-        for line in raw.splitlines():
-          line = line.strip()
-          if not line:
-            continue
-          try:
-            payload = json.loads(line)
-          except Exception:
-            continue
-          if isinstance(payload, dict):
-            _ingest_fill(payload)
-        # Truncate so we do not re-read a growing file every 30ms
-        fills_q.write_text("", encoding="utf-8")
-    except Exception:
-      pass
+  # HistoryFeed: atomic drain so EA appends during read are not truncated away
+  from mt5_bridge.trade_journal import drain_ea_fills_queue
+
+  for payload in drain_ea_fills_queue(bridge_dir):
+    _ingest_fill(payload)
 
   fill = read_json(fill_path(bridge_dir))
   if isinstance(fill, dict):
@@ -701,6 +686,11 @@ def start_thread_worker() -> bool:
   with _lock:
     if is_process_running() or is_thread_running():
       return True
+    try:
+      from mt5_bridge.trade_journal import clear_sticky_fill_files
+      clear_sticky_fill_files(BRIDGE_DIR)
+    except Exception:
+      pass
     save_config(enabled=True, mode="thread")
     _stop.clear()
     _thread = threading.Thread(target=_worker, name="mt5-bridge", daemon=True)
@@ -714,6 +704,11 @@ def start_process_worker() -> bool:
     if is_process_running():
       save_config(enabled=True, mode="process")
       return True
+    try:
+      from mt5_bridge.trade_journal import clear_sticky_fill_files
+      clear_sticky_fill_files(BRIDGE_DIR)
+    except Exception:
+      pass
     _stop.set()
     cfg = load_config()
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -886,10 +881,27 @@ def get_sim_status() -> dict:
   except Exception:
     st = load_sim_state()
   st["running"] = is_sim_running()
-  # Brief PID lag after Start: EA already wrote enabled/running to sim_control
   ea_st = str(st.get("ea_status") or "")
-  if not st["running"] and (ea_st == "running" or bool(st.get("enabled"))):
-    st["running"] = True
+  bars_done = int(st.get("bars_done") or 0)
+  bars_total = int(st.get("bars_total") or 0)
+  enabled = bool(st.get("enabled"))
+  # Brief PID lag after Start only — do NOT treat enabled=True alone as running
+  # (that left the UI stuck “running” after a dead process / failed deploy).
+  # Also require enabled so Stop (enabled=False) cannot leave a ghost running flag
+  # when EA never rewrote ea_status=idle.
+  if not st["running"] and enabled:
+    if ea_st == "running" and (bars_done > 0 or bars_total > 0):
+      st["running"] = True
+    else:
+      started = str(st.get("started_at") or "")
+      try:
+        from datetime import datetime
+        ts = datetime.fromisoformat(started)
+        age = abs(now - ts.timestamp())
+        if age <= 8.0 and str(st.get("status") or "") == "running":
+          st["running"] = True
+      except Exception:
+        pass
   st["runtime"] = "process" if is_sim_process_running() else (
     "thread" if is_sim_thread_running() else st.get("runtime")
   )
@@ -932,6 +944,26 @@ def _run_sim_bridge_loop(
         f"fp={primary.conditions_fp if primary else '-'}",
         flush=True,
       )
+      # Pre-warm first feed week so EA is not stalled waiting on remine
+      # during the first WaitDecisionForBar (felt like “treo lệnh đầu”).
+      try:
+        from mt5_bridge.ea_simulator import load_sim_state
+        import pandas as pd
+        st0 = load_sim_state()
+        raw = str(st0.get("date_from") or "").replace(".", "-")[:10]
+        if raw:
+          ts0 = pd.Timestamp(raw)
+          if ts0.tzinfo is None:
+            # Match bridge bar timezone handling loosely
+            pass
+          for eng in engines.values():
+            try:
+              eng.prewarm_week(ts0)
+            except Exception as e:
+              print(f"[sim-bridge] prewarm {eng.model_id}: {e}", flush=True)
+          print(f"[sim-bridge] prewarm done for week of {raw}", flush=True)
+      except Exception as e:
+        print(f"[sim-bridge] prewarm skipped: {e}", flush=True)
   except Exception as e:
     print(f"[sim-bridge] ensure_history failed: {e}", flush=True)
   last_bar_fp = None

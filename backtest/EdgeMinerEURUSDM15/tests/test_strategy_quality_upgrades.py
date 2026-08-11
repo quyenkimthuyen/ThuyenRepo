@@ -196,6 +196,15 @@ def test_elite_presets_opt_in():
   assert "wr_rr_frontier" in DEPRECATED_PRESETS
   assert "wr_rr_frontier" not in list_curated_presets()
   assert "elite_or_quality" in list_curated_presets()
+  assert list_curated_presets() == [
+    "elite_or_quality",
+    "anti_chase_fixed_70",
+    "edge_gentle",
+    "elite_55_4",
+    "baseline",
+  ]
+  assert "elite_60_3_vwap" in DEPRECATED_PRESETS
+  assert "frontier_rr_hi" not in list_curated_presets()
 
 
 def test_preset_blurbs_and_direction_line():

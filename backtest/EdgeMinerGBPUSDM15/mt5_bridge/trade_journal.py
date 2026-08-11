@@ -7,6 +7,8 @@ Modes (for fair strategy review):
 from __future__ import annotations
 
 import json
+import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,6 +18,7 @@ from mt5_bridge.protocol import BRIDGE_DIR, ensure_bridge_dir, atomic_write_json
 
 TRADES_NAME = "trades.json"
 FILLS_LOG_NAME = "fills.jsonl"
+EA_FILLS_QUEUE_NAME = "ea_fills.jsonl"
 
 MODE_AUTO = "auto"
 MODE_MANUAL = "manual"
@@ -289,7 +292,8 @@ def process_fill(
       event = "modify"
     elif detail in (
       "closed", "close", "sl", "tp", "max_hold", "manual",
-      "manual_close", "ea_close", "stop_out",
+      "manual_close", "ea_close", "stop_out", "trail",
+      "end_range", "journal_desync", "sim_end_reconcile",
     ):
       event = "close"
     else:
@@ -324,7 +328,7 @@ def process_fill(
       "id": f"bt_{sid or fill.get('ticket') or _now()}",
       "signal_id": sid,
       "ticket": ticket,
-      "symbol": fill.get("symbol") or "GBPUSD",
+      "symbol": fill.get("symbol") or "EURUSD",
       "direction": action,
       "status": "OPEN",
       "mode": MODE_MANUAL if is_manual else MODE_AUTO,
@@ -421,7 +425,7 @@ def process_fill(
         "id": f"bt_close_{ticket or _now()}",
         "signal_id": sid,
         "ticket": ticket,
-        "symbol": fill.get("symbol") or "GBPUSD",
+        "symbol": fill.get("symbol") or "EURUSD",
         "direction": str(fill.get("action") or "").upper() or "?",
         "status": "CLOSED",
         "mode": MODE_MANUAL if is_manual else MODE_AUTO,
@@ -700,3 +704,132 @@ def clear_trades(bridge_dir: Path | None = None, *, clear_decision_file: bool = 
     path.unlink()
   if clear_decision_file:
     clear_decision(bridge_dir)
+
+
+def clear_sticky_fill_files(bridge_dir: Path | None = None) -> list[str]:
+  """Remove single-slot fill.json / ea_fills queue without wiping the journal.
+
+  Live Start must not re-ingest a sticky open fill after a previous Stop —
+  that recreates ghost OPEN rows and freezes models on HOLD.
+  """
+  d = ensure_bridge_dir(bridge_dir)
+  removed: list[str] = []
+  for name in ("fill.json", EA_FILLS_QUEUE_NAME):
+    path = d / name
+    if path.exists():
+      try:
+        path.unlink()
+        removed.append(name)
+      except OSError:
+        pass
+  return removed
+
+
+def drain_ea_fills_queue(bridge_dir: Path | None = None) -> list[dict[str, Any]]:
+  """Atomically claim ``ea_fills.jsonl`` so EA appends during drain are not lost.
+
+  Old path read-then-truncate raced multi-model closes at low delay_ms: EA could
+  append a close between read and truncate, App wiped it, journal stayed OPEN
+  forever (engine HOLD / position_open).
+  """
+  d = ensure_bridge_dir(bridge_dir)
+  path = d / EA_FILLS_QUEUE_NAME
+  if not path.exists():
+    return []
+  try:
+    if path.stat().st_size <= 0:
+      return []
+  except OSError:
+    return []
+
+  claimed = d / f".ea_fills_drain_{time.time_ns()}.jsonl"
+  raw = ""
+  try:
+    os.replace(path, claimed)
+    raw = claimed.read_text(encoding="utf-8-sig")
+  except OSError:
+    # Rename busy (EA has handle) — best-effort read + truncate + re-read.
+    try:
+      raw = path.read_text(encoding="utf-8-sig")
+      path.write_text("", encoding="utf-8")
+      extra = path.read_text(encoding="utf-8-sig")
+      if extra.strip():
+        raw = (raw or "") + ("\n" if raw and not raw.endswith("\n") else "") + extra
+        path.write_text("", encoding="utf-8")
+    except OSError:
+      return []
+  finally:
+    try:
+      if claimed.exists():
+        claimed.unlink()
+    except OSError:
+      pass
+
+  out: list[dict[str, Any]] = []
+  for line in (raw or "").splitlines():
+    line = line.strip()
+    if not line:
+      continue
+    try:
+      payload = json.loads(line)
+    except Exception:
+      continue
+    if isinstance(payload, dict):
+      out.append(payload)
+  return out
+
+
+def close_ghost_journal_opens(
+  bridge_dir: Path | None = None,
+  *,
+  reason: str = "journal_desync",
+  model_id: str | None = None,
+) -> int:
+  """Mark journal OPEN rows CLOSED when EA/paper is already flat (desync repair)."""
+  trades = load_trades(bridge_dir)
+  mid = str(model_id) if model_id else None
+  n = 0
+  now = _now()
+  for t in trades:
+    if str(t.get("status") or "").upper() != "OPEN":
+      continue
+    if mid and str(t.get("model_id") or "") != mid:
+      continue
+    t["status"] = "CLOSED"
+    t["exit_time"] = t.get("exit_time") or now
+    if t.get("exit_px") is None:
+      t["exit_px"] = t.get("entry_px")
+    t["reason"] = reason
+    if t.get("result") is None:
+      t["result"] = "BE"
+    if t.get("r") is None:
+      t["r"] = 0.0
+    t["updated_at"] = now
+    interventions = list(t.get("interventions") or [])
+    if "journal_desync" not in interventions:
+      interventions.append("journal_desync")
+    t["interventions"] = interventions
+    n += 1
+  if n:
+    save_trades(trades, bridge_dir)
+    append_event(
+      "system",
+      "journal_desync_cleared",
+      bridge_dir=bridge_dir,
+      summary=f"closed {n} ghost OPEN ({reason})",
+      payload={"n": n, "reason": reason, "model_id": mid},
+    )
+  clear_sticky_fill_files(bridge_dir)
+  return n
+
+
+def count_open_trades(bridge_dir: Path | None = None, *, model_id: str | None = None) -> int:
+  mid = str(model_id) if model_id else None
+  n = 0
+  for t in load_trades(bridge_dir):
+    if str(t.get("status") or "").upper() != "OPEN":
+      continue
+    if mid and str(t.get("model_id") or "") != mid:
+      continue
+    n += 1
+  return n

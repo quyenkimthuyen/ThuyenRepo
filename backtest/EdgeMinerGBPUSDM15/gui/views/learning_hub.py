@@ -1,4 +1,4 @@
-"""Học & tối ưu — Cài đặt → Huấn luyện KB → Grid Search."""
+"""Học & tối ưu — Cài đặt → Huấn luyện KB → Grid Search → Final Train."""
 from __future__ import annotations
 
 import streamlit as st
@@ -7,18 +7,20 @@ from gui.navigation import ALL_ITEMS
 from gui.page_chrome import render_page_header
 from gui.ui_theme import icon_btn
 from gui.ui_preferences import restore_widget, set_widget_preference
-from gui.views import grid_search, kb_era_hub, settings_page
+from gui.views import final_train, grid_search, kb_era_hub, settings_page
 
-CORE_TAB_KEYS = ["settings", "train_kb", "grid"]
+CORE_TAB_KEYS = ["settings", "train_kb", "grid", "final"]
 CORE_TAB_LABELS = {
   "settings": "Cài đặt",
   "train_kb": "Huấn luyện",
   "grid": "Grid Search",
+  "final": "Final Train",
 }
 CORE_TAB_ICONS = {
   "settings": ":material/settings:",
   "train_kb": ":material/psychology:",
   "grid": ":material/grid_view:",
+  "final": ":material/emoji_events:",
 }
 
 TAB_KEYS = CORE_TAB_KEYS
@@ -30,7 +32,8 @@ def _default_learning_tab() -> str:
 
   data = load_latest_grid_run()
   if data and (data.get("rows") or []):
-    return "grid"
+    # Có kết quả Grid → Final Train để xếp combo / tạo Trade Model.
+    return "final"
   r = grid_readiness()
   if r["kb_complete"]:
     return "grid"
@@ -39,22 +42,25 @@ def _default_learning_tab() -> str:
 
 def _render_workflow_strip():
   from gui.grid_search_engine import grid_readiness, load_latest_grid_run
-  from gui.trade_model import get_active_trade_model
+  from gui.trade_model import get_active_trade_model, list_trade_models
 
   r = grid_readiness()
   has_grid = bool((load_latest_grid_run() or {}).get("rows"))
-  has_model = bool(get_active_trade_model())
+  has_models = bool(list_trade_models(include_archived=False))
+  has_active = bool(get_active_trade_model())
   kb_done = r["kb_complete"]
 
   mark = {"done": "●", "current": "◉", "todo": "○"}
   s_kb = "done" if kb_done else "current"
   s_grid = "done" if has_grid else ("current" if kb_done else "todo")
-  s_model = "done" if has_model else ("current" if has_grid else "todo")
+  s_final = "done" if has_models else ("current" if has_grid else "todo")
+  s_model = "done" if has_active else ("current" if has_models else "todo")
 
   st.caption(
     f"{mark['done']} Cài đặt · "
     f"{mark[s_kb]} KB ({r['ready_combos']}/{r['expected_combos']}) · "
-    f"{mark[s_grid]} Grid · {mark[s_model]} Model (sidebar)"
+    f"{mark[s_grid]} Grid · {mark[s_final]} Final · "
+    f"{mark[s_model]} Model (sidebar)"
   )
 
 
@@ -83,7 +89,7 @@ def render():
     options=TAB_KEYS,
   )
 
-  cols = st.columns(3)
+  cols = st.columns(len(CORE_TAB_KEYS))
   for col, tab_key in zip(cols, CORE_TAB_KEYS):
     with col:
       if icon_btn(
@@ -104,6 +110,8 @@ def render():
       _render_subview(settings_page)
     elif selected == "train_kb":
       kb_era_hub.render_training_only()
+    elif selected == "final":
+      _render_subview(final_train)
     else:
       _render_subview(grid_search)
   finally:

@@ -38,13 +38,13 @@ def show_plotly(
 ):
   """
   Hiển thị biểu đồ Plotly với **tên riêng** (title) và Streamlit key duy nhất.
-  Dùng thay cho st.plotly_chart trong toàn app.
+  Dùng thay cho st.plotly_chart trong toàn app. Trả về giá trị widget (vd. selection).
   """
   if fig is None:
-    return
+    return None
   ensure_chart_title(fig, name)
   chart_key = key or f"chart_{_slug_key(name)}"
-  st.plotly_chart(
+  return st.plotly_chart(
     fig,
     use_container_width=use_container_width,
     key=chart_key,

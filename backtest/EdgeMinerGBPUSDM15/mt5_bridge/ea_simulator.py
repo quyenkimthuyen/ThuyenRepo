@@ -27,6 +27,8 @@ from run_backtest import REPORT_DIR
 
 ROOT = Path(__file__).resolve().parents[1]
 SIM_STATE_PATH = REPORT_DIR / "mt5_bridge_sim_state.json"
+# Fail fast if Sim EA never acks (no bars / still idle) after Start.
+EA_ACK_TIMEOUT_SEC = 25.0
 
 ProgressCb = Callable[[dict[str, Any]], None]
 
@@ -92,6 +94,15 @@ def start_history_feed_control(cfg: SimConfig) -> dict[str, Any]:
 
   if cfg.clear_journal:
     clear_trades(bridge_dir)
+    # Sticky fill.json from a Stop mid-trade must not re-open a ghost position
+    # on the next Start (engine would HOLD forever on position_open).
+    for name in ("fill.json", "ea_fills.jsonl", "fills.jsonl"):
+      path = bridge_dir / name
+      if path.exists():
+        try:
+          path.unlink()
+        except OSError:
+          pass
 
   write_sim_control(
     bridge_dir,
@@ -120,6 +131,8 @@ def start_history_feed_control(cfg: SimConfig) -> dict[str, Any]:
     "request_id": request_id,
     "run_id": run_id,
     "archived": False,
+    "ghosts_reconciled": False,
+    "ghosts_closed": 0,
     "started_at": _now(),
     "finished_at": None,
     "bridge_dir": str(bridge_dir),
@@ -137,8 +150,19 @@ def start_history_feed_control(cfg: SimConfig) -> dict[str, Any]:
 
 def stop_history_feed_control(bridge_dir: Path | None = None) -> dict[str, Any]:
   bridge_dir = ensure_bridge_dir(bridge_dir or BRIDGE_SIM_DIR)
-  write_sim_control(bridge_dir, enabled=False)
-  st = write_sim_state({"status": "stopped", "ea_status": "idle", "finished_at": _now()})
+  # Clear EA status so UI cannot stay stuck "running" after Stop with EA offline.
+  write_sim_control(
+    bridge_dir,
+    enabled=False,
+    ea_status="idle",
+    error="",
+  )
+  st = write_sim_state({
+    "status": "stopped",
+    "ea_status": "idle",
+    "enabled": False,
+    "finished_at": _now(),
+  })
   try:
     from mt5_bridge.sim_history import archive_sim_run
     archive_sim_run(bridge_dir=bridge_dir, state=st, status="stopped")
@@ -266,7 +290,9 @@ def sync_state_from_ea(
     status = "error"
     if not error:
       error = "EA reported error status"
-  elif enabled or ea_status == "running":
+  elif enabled:
+    # App still wants feed on — do not use stale ea_status=running alone
+    # (that left status="running" after Stop when EA had not rewritten control yet).
     status = "running"
   elif prev.get("status") == "paused" or ea_status == "paused":
     status = "paused"
@@ -315,7 +341,36 @@ def sync_state_from_ea(
   if not persist:
     return {**prev, **payload}
   out = write_sim_state(payload)
-  if status == "completed" and not prev.get("archived"):
+  if status in ("completed", "stopped", "error") and not prev.get("ghosts_reconciled"):
+    try:
+      from mt5_bridge.trade_journal import close_ghost_journal_opens, count_open_trades
+      # Final drain then close any journal OPEN left after paper/EA went flat.
+      from mt5_bridge.trade_journal import drain_ea_fills_queue, process_fill
+      for fill_payload in drain_ea_fills_queue(bridge_dir):
+        process_fill(
+          fill_payload,
+          bridge_dir=bridge_dir,
+          model_id=fill_payload.get("model_id"),
+        )
+      n_ghost = close_ghost_journal_opens(bridge_dir, reason="sim_end_reconcile")
+      if n_ghost:
+        print(f"[sim] reconciled {n_ghost} ghost OPEN after {status}", flush=True)
+        # refresh fill count for archive
+        try:
+          data = json.loads(trades_path.read_text(encoding="utf-8"))
+          trades = data.get("trades") if isinstance(data, dict) else data
+          out = write_sim_state({
+            "n_fills": len(trades or []),
+            "ghosts_reconciled": True,
+            "ghosts_closed": n_ghost,
+          })
+        except Exception:
+          out = write_sim_state({"ghosts_reconciled": True, "ghosts_closed": n_ghost})
+      elif count_open_trades(bridge_dir) == 0:
+        out = write_sim_state({"ghosts_reconciled": True, "ghosts_closed": 0})
+    except Exception as e:
+      print(f"[sim] ghost reconcile skipped: {e}", flush=True)
+  if status == "completed" and not out.get("archived") and not prev.get("archived"):
     try:
       from mt5_bridge.sim_history import archive_sim_run
       archive_sim_run(bridge_dir=bridge_dir, state=out, status="completed")
@@ -331,8 +386,14 @@ def run_history_feed_control(
   pause_event: threading.Event | None = None,
   on_progress: ProgressCb | None = None,
   poll_sec: float = 0.5,
+  ea_ack_timeout_sec: float = EA_ACK_TIMEOUT_SEC,
 ) -> dict[str, Any]:
-  """Write control, poll EA until completed/stopped/error."""
+  """Write control, poll EA until completed/stopped/error.
+
+  If the Sim EA never acknowledges within ``ea_ack_timeout_sec`` (still idle,
+  zero bars), stop the feed and return ``status=error`` so the UI is not left
+  hung forever when the EA is not deployed.
+  """
   st0 = start_history_feed_control(cfg)
   bridge_dir = Path(cfg.bridge_dir)
   request_id = st0.get("request_id")
@@ -340,6 +401,9 @@ def run_history_feed_control(
   last_persist_t = 0.0
   stop_hits = 0
   last_bars_done = -1
+  t0 = time.time()
+  ea_acked = False
+  timeout_sec = max(5.0, float(ea_ack_timeout_sec))
 
   while True:
     if stop_event is not None and stop_event.is_set():
@@ -367,11 +431,53 @@ def run_history_feed_control(
         },
       )
       write_sim_state({"status": "running"})
+      # Don't count pause time against EA ack timeout
+      t0 = time.time()
 
     # Throttle disk writes — frequent writes remount Streamlit iframes
     now = time.time()
     st = sync_state_from_ea(bridge_dir, persist=False)
     bars_done = int(st.get("bars_done") or 0)
+    bars_total = int(st.get("bars_total") or 0)
+    ea_status = str(st.get("ea_status") or "idle")
+    if (
+      not ea_acked
+      and (
+        ea_status in ("running", "completed", "error")
+        or bars_done > 0
+        or bars_total > 0
+      )
+    ):
+      ea_acked = True
+
+    if not ea_acked and (now - t0) >= timeout_sec:
+      msg = (
+        f"EA Simulate không phản hồi trong {timeout_sec:.0f}s — "
+        "gắn ForgeBridge*Sim lên chart (InpMode=History Feed), "
+        "đúng folder bridge_sim, rồi Deploy lại nếu cần."
+      )
+      print(f"[sim-control] EA ack timeout: {msg}", flush=True)
+      write_sim_control(
+        bridge_dir,
+        enabled=False,
+        ea_status="error",
+        error=msg,
+      )
+      out = write_sim_state({
+        "status": "error",
+        "ea_status": "error",
+        "error": msg,
+        "enabled": False,
+        "finished_at": _now(),
+        "stop_reason": "ea_ack_timeout",
+      })
+      try:
+        from mt5_bridge.sim_history import archive_sim_run
+        archive_sim_run(bridge_dir=bridge_dir, state=out, status="error")
+      except Exception:
+        pass
+      return out
+
     if bars_done > last_bars_done:
       last_bars_done = bars_done
       stop_hits = 0

@@ -14,10 +14,20 @@ from typing import Any
 
 from mt5_bridge.trade_journal import process_fill
 
-# EURUSD 5-digit: Point≈0.00001, pip=0.0001
+# FX majors 5-digit: Point≈0.00001, pip=0.0001
 _POINT = 1e-5
 _PIP = 1e-4
 
+
+def _desk_symbol() -> str:
+  try:
+    from mt5_bridge.protocol import INSTANCE_ID, ROOT
+    name = ROOT.name.upper()
+    if "GBP" in name or str(INSTANCE_ID).upper().startswith("M15G"):
+      return "GBPUSD"
+  except Exception:
+    pass
+  return "EURUSD"
 
 def _exit_mode_code(raw: Any) -> int:
   s = str(raw or "").strip().lower()
@@ -164,7 +174,7 @@ class PaperBook:
       "manual": False,
       "source": "strategy",
       "bar_time": bar_time,
-      "symbol": "EURUSD",
+      "symbol": _desk_symbol(),
       "model_id": self.model_id or decision.get("model_id"),
     }
     process_fill(
@@ -248,7 +258,7 @@ class PaperBook:
       "manual": False,
       "source": "strategy",
       "bar_time": bar_time,
-      "symbol": "EURUSD",
+      "symbol": _desk_symbol(),
       "model_id": self.model_id,
     }
     process_fill(fill, bridge_dir=self.bridge_dir, model_id=self.model_id)

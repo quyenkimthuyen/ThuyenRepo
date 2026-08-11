@@ -336,6 +336,35 @@ class BridgeEngine:
     self._fm_key = None
     return ts
 
+  def prewarm_week(self, bar_ts: pd.Timestamp) -> None:
+    """Load/remine strategy for ``bar_ts`` week before HistoryFeed asks for decisions."""
+    params = self._params or {}
+    train_weeks = int(params.get("train_weeks") or TRAIN_WEEKS)
+    use_learning = bool(params.get("use_learning", True))
+    kb_profile = params.get("kb_profile")
+    kb_snapshot = params.get("kb_snapshot")
+    feature_profile = params.get("feature_profile") or "current"
+    search_payload = params.get("mining_search_space")
+    search_space = (
+      mining_search_space_from_dict(search_payload) if search_payload else None
+    )
+    week_start, _week_end = _week_bounds_for_ts(bar_ts)
+    model_id = params.get("trade_model_id") or self.model_id
+    cache_key = (
+      f"{week_start.date()}|{model_id}|{kb_profile}@{kb_snapshot}|{train_weeks}w|"
+      f"{feature_profile}|{search_space!r}"
+    )
+    self._remine_week_strategy(
+      week_start=week_start,
+      cache_key=cache_key,
+      train_weeks=train_weeks,
+      use_learning=use_learning,
+      kb_profile=kb_profile,
+      kb_snapshot=kb_snapshot,
+      feature_profile=feature_profile,
+      search_space=search_space,
+    )
+
   def decide_for_bar(self, bar: dict) -> dict:
     """Produce decision.json for the closed M15 bar (Live + HistoryFeed + OOS-parity).
 

@@ -317,6 +317,7 @@ int OnInit()
       }
       g_sim_ea_status = "idle";
       WriteSimControlFile();
+      WriteConnectionJson();  // App can detect Sim EA online before Start feed
       EventSetMillisecondTimer(50);
       Print("ForgeBridgeM15E21 HistoryFeed | Files/", InpBridgeSubdir,
             " | paper=", InpHistoryPaperFills, " | models=", g_model_n,
@@ -1027,7 +1028,7 @@ bool WaitDecisionForBar(const string want_bar_time, string &json_out, const int 
 }
 
 //+------------------------------------------------------------------+
-void WriteFillJsonEx(
+bool WriteFillJsonEx(
    const string event,
    const string signal_id,
    const string action,
@@ -1079,21 +1080,35 @@ void WriteFillJsonEx(
    else
       json += "\"time\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\"";
    json += "}\n";
+
+   bool ok_slot = false;
    int h = FileOpen(BridgePath("fill.json"), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
    if(h != INVALID_HANDLE)
    {
       FileWriteString(h, json);
       FileClose(h);
+      ok_slot = true;
    }
-   // Append queue so open+close at delay=1ms are not lost (fill.json is single-slot)
-   h = FileOpen(BridgePath("ea_fills.jsonl"),
-                FILE_READ | FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
-   if(h != INVALID_HANDLE)
+   // Append queue so open+close at delay=1ms are not lost (fill.json is single-slot).
+   // Retry: App may briefly lock the file while draining.
+   bool ok_q = false;
+   for(int attempt = 0; attempt < 6 && !ok_q; attempt++)
    {
-      FileSeek(h, 0, SEEK_END);
-      FileWriteString(h, json);
-      FileClose(h);
+      h = FileOpen(BridgePath("ea_fills.jsonl"),
+                   FILE_READ | FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
+      if(h != INVALID_HANDLE)
+      {
+         FileSeek(h, 0, SEEK_END);
+         FileWriteString(h, json);
+         FileClose(h);
+         ok_q = true;
+         break;
+      }
+      Sleep(5 + attempt * 5);
    }
+   // Queue is source of truth for multi-model; slot file alone is lossy under
+   // concurrent closes (fill.json is single-slot and gets overwritten).
+   return ok_q;
 }
 
 void WriteFillJson(const string signal_id, const string action, const bool ok, const string detail)
@@ -1711,16 +1726,26 @@ bool LoadHistoryRatesRange()
    g_open_ticket = 0;
    g_open_signal_id = "";
    g_had_position = false;
+   // Multi-model: wipe ALL slot paper/pending — otherwise a Stop mid-trade leaves
+   // g_slot_paper_open[] true while journal was cleared, or vice versa.
+   ArrayInitialize(g_slot_paper_open, false);
+   ArrayInitialize(g_slot_paper_held, 0);
+   for(int i = 0; i < MAX_MODELS; i++)
+   {
+      g_slot_pending[i] = "";
+      g_slot_ticket[i] = 0;
+      g_slot_sid[i] = "";
+   }
    Print("ForgeBridgeM15E21 HistoryFeed loaded bars=", g_hist_n,
          " from=", TimeToString(g_hist_rates[0].time, TIME_DATE | TIME_MINUTES),
          " to=", TimeToString(g_hist_rates[g_hist_n - 1].time, TIME_DATE | TIME_MINUTES));
    return true;
 }
 
-void ReportPaperClose(const string reason, const double exit_px, const string bar_time = "")
+bool ReportPaperClose(const string reason, const double exit_px, const string bar_time = "")
 {
    if(!g_paper_open)
-      return;
+      return false;
    double profit = 0;
    if(g_risk > 0)
    {
@@ -1732,17 +1757,23 @@ void ReportPaperClose(const string reason, const double exit_px, const string ba
    string bt = bar_time;
    if(bt == "")
       bt = g_sim_last_bar;
-   WriteFillJsonEx("close", g_open_signal_id, g_open_action, true, reason,
-                   g_open_ticket, exit_px, g_open_sl, g_open_tp, g_open_lots, profit, reason,
-                   false, "strategy", bt);
-   // Include entry on close payload via price fields already; App open may have been missed —
-   // also stamp entry into a dedicated field by rewriting is hard in MQL; bar_time helps chart.
+   // Do not clear paper state if the fill never reached App — otherwise journal
+   // stays OPEN forever and the model freezes on HOLD / position_open.
+   if(!WriteFillJsonEx("close", g_open_signal_id, g_open_action, true, reason,
+                       g_open_ticket, exit_px, g_open_sl, g_open_tp, g_open_lots, profit, reason,
+                       false, "strategy", bt))
+   {
+      Print("ForgeBridgeM15E21 HistoryFeed paper close write failed sid=", g_open_signal_id,
+            " reason=", reason, " — will retry");
+      return false;
+   }
    g_paper_open = false;
    g_paper_held = 0;
    g_open_ticket = 0;
    g_open_signal_id = "";
    g_open_sl_initial = 0;
    g_had_position = false;
+   return true;
 }
 
 void ManagePaperHistory(const MqlRates &r)
@@ -1927,9 +1958,18 @@ bool PaperOpenFromDecision(const string json, const double entry_price, const st
    string bt = bar_time;
    if(bt == "")
       bt = g_sim_last_bar;
-   WriteFillJsonEx("open", sid, action, true, "opened",
-                   g_open_ticket, entry_price, sl, tp, lots, 0, "opened",
-                   false, "strategy", bt);
+   if(!WriteFillJsonEx("open", sid, action, true, "opened",
+                       g_open_ticket, entry_price, sl, tp, lots, 0, "opened",
+                       false, "strategy", bt))
+   {
+      Print("ForgeBridgeM15E21 HistoryFeed paper open write failed sid=", sid);
+      g_paper_open = false;
+      g_paper_held = 0;
+      g_open_ticket = 0;
+      g_open_signal_id = "";
+      g_had_position = false;
+      return false;
+   }
    Print("ForgeBridgeM15E21 HistoryFeed paper ", action, " @", entry_price,
          " sl=", sl, " tp=", tp, " risk=", sl_dist,
          " sid=", sid, " bar=", bt);
@@ -2032,6 +2072,7 @@ void ManagePaperHistoryAll(const MqlRates &r)
 void ProcessHistoryFeed()
 {
    static string s_loaded_request = "";
+   static uint s_last_idle_hb_ms = 0;
 
    if(!ReadSimControlFile())
       return;
@@ -2042,6 +2083,13 @@ void ProcessHistoryFeed()
       {
          g_sim_ea_status = "idle";
          WriteSimControlFile();
+      }
+      // Idle heartbeat so App knows Sim EA is on chart before/while waiting for Start
+      uint now_ms = GetTickCount();
+      if(s_last_idle_hb_ms == 0 || now_ms - s_last_idle_hb_ms >= (uint)MathMax(500, InpHeartbeatMs))
+      {
+         WriteConnectionJson();
+         s_last_idle_hb_ms = now_ms;
       }
       return;
    }
@@ -2068,12 +2116,49 @@ void ProcessHistoryFeed()
 
    if(g_hist_n < 1 || g_hist_cursor >= g_hist_n)
    {
-      if(g_paper_open && g_hist_n > 0)
-         ReportPaperClose(
-           "end_range",
-           g_hist_rates[g_hist_n - 1].close,
-           TimeToString(g_hist_rates[g_hist_n - 1].time, TIME_DATE | TIME_MINUTES)
-         );
+      // Force-close every paper slot (not only the last active globals).
+      if(InpHistoryPaperFills)
+      {
+         for(int s = 0; s < g_model_n; s++)
+         {
+            if(!g_slot_paper_open[s])
+               continue;
+            SetActiveSlot(s);
+            g_open_ticket = g_slot_ticket[s];
+            g_open_signal_id = g_slot_sid[s];
+            g_open_action = g_slot_action[s];
+            g_open_entry = g_slot_entry[s];
+            g_open_sl = g_slot_sl[s];
+            g_open_sl_initial = g_slot_sl_init[s];
+            g_open_tp = g_slot_tp[s];
+            g_open_lots = g_slot_lots[s];
+            g_risk = g_slot_risk[s];
+            g_paper_open = true;
+            bool closed = false;
+            for(int attempt = 0; attempt < 6 && !closed; attempt++)
+            {
+               closed = ReportPaperClose(
+                 "end_range",
+                 g_hist_n > 0 ? g_hist_rates[g_hist_n - 1].close : g_open_entry,
+                 g_hist_n > 0
+                   ? TimeToString(g_hist_rates[g_hist_n - 1].time, TIME_DATE | TIME_MINUTES)
+                   : g_sim_last_bar
+               );
+               if(!closed)
+                  Sleep(10 + attempt * 10);
+            }
+            if(closed)
+            {
+               g_slot_paper_open[s] = false;
+               g_slot_ticket[s] = 0;
+               g_slot_sid[s] = "";
+            }
+         }
+         g_paper_open = false;
+         for(int i = 0; i < g_model_n; i++)
+            if(g_slot_paper_open[i])
+               g_paper_open = true;
+      }
       else if(g_had_position && PositionsByMagic() > 0)
          CloseAllByMagic("end_range");
       g_sim_ea_status = "completed";
@@ -2106,10 +2191,13 @@ void ProcessHistoryFeed()
    string want = TimeToString(r.time, TIME_DATE | TIME_MINUTES);
    g_sim_last_bar = want;
 
-   // Ask each flat model for a decision (parallel models, shared wait budget)
+   // Ask each flat model for a decision — ONE shared wait budget for the bar
+   // (not wait_ms × N models; that stacked to ~48s and felt “treo lệnh đầu”).
    LoadModelsRoster();
-   int wait_ms = (int)MathMax(5000, MathMin(InpHistoryDecisionWaitMs, g_sim_delay_ms + 8000));
-   wait_ms = (int)MathMax(wait_ms, 3000 * MathMax(1, g_model_n));
+   int wait_ms = (int)MathMax(2500, MathMin(InpHistoryDecisionWaitMs, g_sim_delay_ms + 6000));
+   wait_ms = (int)MathMax(wait_ms, 1500 * MathMax(1, g_model_n));
+   wait_ms = (int)MathMin(wait_ms, InpHistoryDecisionWaitMs);
+   uint deadline = GetTickCount() + (uint)wait_ms;
    for(int s = 0; s < g_model_n; s++)
    {
       bool flat = InpHistoryPaperFills
@@ -2117,8 +2205,11 @@ void ProcessHistoryFeed()
          : (PositionsByMagic(g_model_magics[s]) == 0);
       if(!flat || g_slot_pending[s] != "")
          continue;
+      int remain = (int)(deadline - GetTickCount());
+      if(remain < 150)
+         break;
       string json;
-      if(WaitDecisionForBar(want, json, wait_ms, g_model_ids[s]))
+      if(WaitDecisionForBar(want, json, remain, g_model_ids[s]))
       {
          string action = JsonGetString(json, "action");
          StringToUpper(action);
@@ -2191,18 +2282,24 @@ void OnTick()
       return;
    }
 
-   // Live: publish closed bar, wait for App decision(s) — one open per model magic
+   // Live: publish closed bar, wait for App decision(s) — one open per model magic.
+   // Shared wait budget (not InpDecisionWaitMs × N) so 4 models don't block ~32s.
    if(!WriteBarJson(t1))
       return;
 
    string want = TimeToString(t1, TIME_DATE | TIME_MINUTES);
    bool any_open = false;
+   int live_wait = (int)MathMax(InpDecisionWaitMs, 1500 * MathMax(1, g_model_n));
+   uint deadline = GetTickCount() + (uint)live_wait;
    for(int s = 0; s < g_model_n; s++)
    {
       if(PositionsByMagic(g_model_magics[s]) > 0)
          continue;
+      int remain = (int)(deadline - GetTickCount());
+      if(remain < 150)
+         break;
       string json;
-      if(!WaitDecisionForBar(want, json, -1, g_model_ids[s]))
+      if(!WaitDecisionForBar(want, json, remain, g_model_ids[s]))
       {
          if(g_model_n == 1)
             Print("ForgeBridge: no decision for ", want);

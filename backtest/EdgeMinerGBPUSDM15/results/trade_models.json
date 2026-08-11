@@ -685,6 +685,120 @@
       "kb_fingerprint": "38c897a1e7d667cb",
       "kb_pin_bytes": 1421459,
       "kb_pin_source": "C:\\Work\\ThuyenRepo\\backtest\\EdgeMinerGBPUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep004.json"
+    },
+    {
+      "train_weeks": 6,
+      "max_trades_per_day": 2,
+      "use_kb": true,
+      "kb_profile": "era_2025_2026_6thang",
+      "kb_snapshot": 4,
+      "oos_from": "2026-04-01",
+      "oos_to": "2026-12-31",
+      "spread_pips": 1.5,
+      "slippage_pips": 0.3,
+      "total_r": 31.326,
+      "win_rate_pct": 80.95,
+      "max_drawdown_r": 1.25,
+      "profit_factor": 5.516,
+      "n_trades": 21,
+      "feature_profile": "current",
+      "mining_search_space": {
+        "rr_ratios": [
+          3.2,
+          3.5,
+          4.0
+        ],
+        "atr_multipliers": [
+          0.9,
+          1.05
+        ],
+        "max_hold_bars": [
+          96
+        ],
+        "min_bars_between": [
+          12
+        ],
+        "session_ranges": [
+          [
+            7,
+            20
+          ]
+        ],
+        "session_filters": [
+          true
+        ],
+        "score_thresholds": [
+          0.6,
+          1.0,
+          1.6,
+          2.2
+        ],
+        "min_rules_matches": [
+          1,
+          2
+        ],
+        "ml_probability_thresholds": [
+          0.36,
+          0.4,
+          0.44,
+          0.48
+        ],
+        "min_feature_samples": 30,
+        "min_threshold_samples": 10,
+        "min_binary_samples": 8,
+        "include_session_regime_rules": false,
+        "target_trades_per_week": 3.5,
+        "drawdown_penalty": 0.5,
+        "loss_streak_penalty": 1.0,
+        "selection_mode": "elite_frontier",
+        "edge_surgery": false,
+        "edge_surgery_min_hour_trades": 3,
+        "edge_surgery_max_hour_wr": 0.42,
+        "edge_surgery_dominant_side_ratio": 0.7,
+        "edge_surgery_hours": true,
+        "anti_chase": true,
+        "anti_chase_mode": "fixed",
+        "anti_chase_fixed_rsi": 58.0,
+        "anti_chase_fixed_vwap": 1.5,
+        "anti_chase_rsi_caps": [
+          60.0,
+          62.0,
+          65.0,
+          68.0,
+          100.0
+        ],
+        "anti_chase_min_tpw": 5.0,
+        "anti_chase_use_vwap": true,
+        "anti_chase_vwap_caps": [
+          1.5,
+          2.0,
+          2.5,
+          99.0
+        ],
+        "anti_chase_logic": "or",
+        "exit_modes_full_only": true
+      },
+      "source": "grid_search",
+      "data_source": "mt5_ea",
+      "data_broker": "XMGlobal-MT5 7",
+      "data_symbol": "GBPUSD",
+      "data_timeframe": "M15",
+      "data_timezone": "Europe/Helsinki",
+      "data_start": "2024-01-01 22:00:00",
+      "data_end": "2026-08-10 04:00:00",
+      "data_bars": 64637,
+      "data_fingerprint": "7d7f1cf00deaa62ee2442732928b5bae27310802f7ec021966891b2c226f955a",
+      "feature_schema": 3,
+      "grid_run_id": "gs_20260808_180221",
+      "grid_key": "a32f67648232",
+      "label_custom": true,
+      "id": "tm_bestwinrate_7e6dcdd2",
+      "label": "bestWinrate",
+      "created_at": "2026-08-10T11:24:51+07:00",
+      "kb_pin_path": "trade_models\\tm_bestwinrate_7e6dcdd2_kb_pin.json",
+      "kb_fingerprint": "38c897a1e7d667cb",
+      "kb_pin_bytes": 1421459,
+      "kb_pin_source": "C:\\Work\\ThuyenRepo\\backtest\\EdgeMinerGBPUSDM15\\learning\\kb_profiles\\snapshots\\era_2025_2026_6thang\\ep004.json"
     }
   ]
 }

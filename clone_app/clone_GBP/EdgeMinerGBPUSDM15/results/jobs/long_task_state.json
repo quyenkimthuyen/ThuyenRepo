@@ -1,103 +1,72 @@
 {
-  "status": "running",
-  "job_type": "model_health",
-  "job_id": "job_model_health_20260808_180950",
-  "label": "Sức khỏe model · GBPUSD RiskAdj +79.7R dd2 WR69",
+  "status": "completed",
+  "job_type": "compare_trade",
+  "job_id": "job_compare_trade_20260808_220338",
+  "label": "Compare Trade",
   "params": {
-    "model_id": "tm_gbpusd_riskadj_79_7r_dd2_wr6_160c0c79",
-    "refresh_kb_on": true,
-    "start_date": "2022-01-01",
-    "train_weeks": 6,
-    "spread_pips": 1.5,
-    "slippage_pips": 0.3,
-    "kb_profile": "era_2025_2026_6thang",
-    "kb_snapshot": 5,
-    "oos_from": "2026-04-01",
-    "oos_to": "2026-12-31",
-    "feature_profile": "current",
-    "mining_search_space": {
-      "rr_ratios": [
-        2.5,
-        3.0,
-        3.2
-      ],
-      "atr_multipliers": [
-        0.9,
-        1.05
-      ],
-      "max_hold_bars": [
-        96
-      ],
-      "min_bars_between": [
-        12
-      ],
-      "session_ranges": [
-        [
-          7,
-          20
-        ]
-      ],
-      "session_filters": [
-        true
-      ],
-      "score_thresholds": [
-        0.6,
-        1.0,
-        1.6,
-        2.2
-      ],
-      "min_rules_matches": [
-        1,
-        2
-      ],
-      "ml_probability_thresholds": [
-        0.36,
-        0.4,
-        0.44,
-        0.48
-      ],
-      "min_feature_samples": 30,
-      "min_threshold_samples": 10,
-      "min_binary_samples": 8,
-      "include_session_regime_rules": false,
-      "target_trades_per_week": 7.0,
-      "drawdown_penalty": 0.0,
-      "loss_streak_penalty": 0.0,
-      "selection_mode": "expectancy_frontier",
-      "edge_surgery": false,
-      "edge_surgery_min_hour_trades": 3,
-      "edge_surgery_max_hour_wr": 0.42,
-      "edge_surgery_dominant_side_ratio": 0.7,
-      "edge_surgery_hours": true,
-      "anti_chase": true,
-      "anti_chase_mode": "fixed",
-      "anti_chase_fixed_rsi": 62.0,
-      "anti_chase_fixed_vwap": 99.0,
-      "anti_chase_rsi_caps": [
-        60.0,
-        62.0,
-        65.0,
-        68.0,
-        100.0
-      ],
-      "anti_chase_min_tpw": 5.0,
-      "anti_chase_use_vwap": false,
-      "anti_chase_vwap_caps": [
-        1.5,
-        2.0,
-        2.5,
-        99.0
-      ],
-      "anti_chase_logic": "or",
-      "exit_modes_full_only": false
+    "model_ids": [
+      "tm_gbpusd_bestr_99_7r_wr53_6bcb3684",
+      "tm_gbpusd_riskadj_95_0r_dd5_wr5_ad5636dc",
+      "tm_gbpusd_riskadj_79_7r_dd2_wr6_160c0c79",
+      "tm_gbpusd_wr60_alt_79_5r_wr60_d7b0f5ed"
+    ],
+    "date_from": "2024-01-01",
+    "date_to": "2024-12-31",
+    "risk_pct": 1.0
+  },
+  "total": 24898,
+  "done": 24898,
+  "progress_text": "",
+  "result": {
+    "run_id": "ct_20260808_220342_989f69",
+    "n_models": 4,
+    "bars_done": 24898,
+    "bars_total": 24898,
+    "per_model": {
+      "tm_gbpusd_bestr_99_7r_wr53_6bcb3684": {
+        "n_fills": 806,
+        "error": null,
+        "stats": {
+          "total_r": 334.229,
+          "win_rate_pct": 55.3,
+          "n_trades": 403,
+          "max_drawdown_r": 9.239
+        }
+      },
+      "tm_gbpusd_riskadj_95_0r_dd5_wr5_ad5636dc": {
+        "n_fills": 586,
+        "error": null,
+        "stats": {
+          "total_r": 258.263,
+          "win_rate_pct": 56.0,
+          "n_trades": 293,
+          "max_drawdown_r": 7.8
+        }
+      },
+      "tm_gbpusd_riskadj_79_7r_dd2_wr6_160c0c79": {
+        "n_fills": 274,
+        "error": null,
+        "stats": {
+          "total_r": 155.849,
+          "win_rate_pct": 60.6,
+          "n_trades": 137,
+          "max_drawdown_r": 4.0
+        }
+      },
+      "tm_gbpusd_wr60_alt_79_5r_wr60_d7b0f5ed": {
+        "n_fills": 440,
+        "error": null,
+        "stats": {
+          "total_r": 157.335,
+          "win_rate_pct": 52.7,
+          "n_trades": 220,
+          "max_drawdown_r": 9.253
+        }
+      }
     }
   },
-  "total": 36,
-  "done": 18,
-  "progress_text": "KB ON · WF 18/18",
-  "result": null,
-  "started_at": "2026-08-08T18:09:50+07:00",
-  "updated_at": "2026-08-08T18:11:22+07:00",
-  "finished_at": null,
+  "started_at": "2026-08-08T22:03:38+07:00",
+  "updated_at": "2026-08-08T23:18:14+07:00",
+  "finished_at": "2026-08-08T23:18:14+07:00",
   "error": null
 }

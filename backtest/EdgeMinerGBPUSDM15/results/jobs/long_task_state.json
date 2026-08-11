@@ -1,10 +1,10 @@
 {
-  "status": "running",
+  "status": "completed",
   "job_type": "model_checks_suite",
-  "job_id": "job_model_checks_suite_20260810_100139",
-  "label": "Check thiếu · GBPUSD BestR +99.7R WR53 · KB ON / OFF → Remine ON / OFF → Mining ",
+  "job_id": "job_model_checks_suite_20260810_112613",
+  "label": "Check thiếu · bestWinrate · KB ON / OFF → Remine ON / OFF → Mining space vs base",
   "params": {
-    "model_id": "tm_gbpusd_bestr_99_7r_wr53_6bcb3684",
+    "model_id": "tm_bestwinrate_7e6dcdd2",
     "steps": [
       "model_health",
       "remine_health",
@@ -18,15 +18,15 @@
     "spread_pips": 1.5,
     "slippage_pips": 0.3,
     "kb_profile": "era_2025_2026_6thang",
-    "kb_snapshot": 3,
+    "kb_snapshot": 4,
     "oos_from": "2026-04-01",
     "oos_to": "2026-12-31",
     "feature_profile": "current",
     "mining_search_space": {
       "rr_ratios": [
-        2.5,
-        3.0,
-        3.2
+        3.2,
+        3.5,
+        4.0
       ],
       "atr_multipliers": [
         0.9,
@@ -67,19 +67,19 @@
       "min_threshold_samples": 10,
       "min_binary_samples": 8,
       "include_session_regime_rules": false,
-      "target_trades_per_week": 10.0,
-      "drawdown_penalty": 0.0,
-      "loss_streak_penalty": 0.0,
-      "selection_mode": "expectancy_frontier",
+      "target_trades_per_week": 3.5,
+      "drawdown_penalty": 0.5,
+      "loss_streak_penalty": 1.0,
+      "selection_mode": "elite_frontier",
       "edge_surgery": false,
       "edge_surgery_min_hour_trades": 3,
       "edge_surgery_max_hour_wr": 0.42,
       "edge_surgery_dominant_side_ratio": 0.7,
       "edge_surgery_hours": true,
-      "anti_chase": false,
-      "anti_chase_mode": "calibrate",
-      "anti_chase_fixed_rsi": 65.0,
-      "anti_chase_fixed_vwap": 99.0,
+      "anti_chase": true,
+      "anti_chase_mode": "fixed",
+      "anti_chase_fixed_rsi": 58.0,
+      "anti_chase_fixed_vwap": 1.5,
       "anti_chase_rsi_caps": [
         60.0,
         62.0,
@@ -88,7 +88,7 @@
         100.0
       ],
       "anti_chase_min_tpw": 5.0,
-      "anti_chase_use_vwap": false,
+      "anti_chase_use_vwap": true,
       "anti_chase_vwap_caps": [
         1.5,
         2.0,
@@ -96,21 +96,70 @@
         99.0
       ],
       "anti_chase_logic": "or",
-      "exit_modes_full_only": false
+      "exit_modes_full_only": true
     }
   },
   "total": 1000,
-  "done": 263,
-  "progress_text": "[1/3] Sức khỏe Trade Model (KB ON/OFF) · KB OFF · WF 15/19",
-  "result": null,
-  "started_at": "2026-08-10T10:01:39+07:00",
-  "updated_at": "2026-08-10T10:10:20+07:00",
-  "finished_at": null,
-  "error": null,
-  "_defer_finish": true,
-  "_suite": {
-    "i": 0,
-    "n": 3,
-    "label": "Sức khỏe Trade Model (KB ON/OFF)"
-  }
+  "done": 1000,
+  "progress_text": "",
+  "result": {
+    "model_id": "tm_bestwinrate_7e6dcdd2",
+    "steps_done": [
+      "model_health",
+      "remine_health",
+      "mining_space_health"
+    ],
+    "by_step": {
+      "model_health": {
+        "model_id": "tm_bestwinrate_7e6dcdd2",
+        "kb_on_total_r": null,
+        "kb_off_total_r": 8.936,
+        "conditions_fp": "89b7f05f6b24",
+        "conditions": {
+          "trade_model_id": "tm_bestwinrate_7e6dcdd2",
+          "train_weeks": 6,
+          "use_learning": true,
+          "kb_profile": "era_2025_2026_6thang",
+          "kb_snapshot": 4,
+          "kb_fingerprint": "38c897a1e7d667cb",
+          "feature_profile": "current",
+          "spread_pips": 1.5,
+          "slippage_pips": 0.3,
+          "session_ranges": [
+            [
+              7,
+              20
+            ]
+          ],
+          "min_bars_between": [
+            12
+          ],
+          "max_hold_bars": [
+            96
+          ],
+          "conditions_fp": "89b7f05f6b24"
+        }
+      },
+      "remine_health": {
+        "model_id": "tm_bestwinrate_7e6dcdd2",
+        "remine_on_total_r": null,
+        "remine_off_total_r": 31.751,
+        "remine_mode_off": "freeze_first"
+      },
+      "mining_space_health": {
+        "model_id": "tm_bestwinrate_7e6dcdd2",
+        "active_total_r": null,
+        "baseline_total_r": 77.706,
+        "compared_presets": [
+          "active",
+          "baseline"
+        ]
+      }
+    },
+    "n_steps": 3
+  },
+  "started_at": "2026-08-10T11:26:13+07:00",
+  "updated_at": "2026-08-10T11:31:53+07:00",
+  "finished_at": "2026-08-10T11:31:53+07:00",
+  "error": null
 }

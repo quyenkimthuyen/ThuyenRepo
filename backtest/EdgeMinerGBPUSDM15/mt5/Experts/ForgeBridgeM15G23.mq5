@@ -1711,6 +1711,16 @@ bool LoadHistoryRatesRange()
    g_open_ticket = 0;
    g_open_signal_id = "";
    g_had_position = false;
+   // Multi-model: wipe ALL slot paper/pending — otherwise a Stop mid-trade leaves
+   // g_slot_paper_open[] true while journal was cleared, or vice versa.
+   ArrayInitialize(g_slot_paper_open, false);
+   ArrayInitialize(g_slot_paper_held, 0);
+   for(int i = 0; i < MAX_MODELS; i++)
+   {
+      g_slot_pending[i] = "";
+      g_slot_ticket[i] = 0;
+      g_slot_sid[i] = "";
+   }
    Print("ForgeBridgeM15G23 HistoryFeed loaded bars=", g_hist_n,
          " from=", TimeToString(g_hist_rates[0].time, TIME_DATE | TIME_MINUTES),
          " to=", TimeToString(g_hist_rates[g_hist_n - 1].time, TIME_DATE | TIME_MINUTES));
@@ -2068,12 +2078,37 @@ void ProcessHistoryFeed()
 
    if(g_hist_n < 1 || g_hist_cursor >= g_hist_n)
    {
-      if(g_paper_open && g_hist_n > 0)
-         ReportPaperClose(
-           "end_range",
-           g_hist_rates[g_hist_n - 1].close,
-           TimeToString(g_hist_rates[g_hist_n - 1].time, TIME_DATE | TIME_MINUTES)
-         );
+      // Force-close every paper slot (not only the last active globals).
+      if(InpHistoryPaperFills)
+      {
+         for(int s = 0; s < g_model_n; s++)
+         {
+            if(!g_slot_paper_open[s])
+               continue;
+            SetActiveSlot(s);
+            g_open_ticket = g_slot_ticket[s];
+            g_open_signal_id = g_slot_sid[s];
+            g_open_action = g_slot_action[s];
+            g_open_entry = g_slot_entry[s];
+            g_open_sl = g_slot_sl[s];
+            g_open_sl_initial = g_slot_sl_init[s];
+            g_open_tp = g_slot_tp[s];
+            g_open_lots = g_slot_lots[s];
+            g_risk = g_slot_risk[s];
+            g_paper_open = true;
+            ReportPaperClose(
+              "end_range",
+              g_hist_n > 0 ? g_hist_rates[g_hist_n - 1].close : g_open_entry,
+              g_hist_n > 0
+                ? TimeToString(g_hist_rates[g_hist_n - 1].time, TIME_DATE | TIME_MINUTES)
+                : g_sim_last_bar
+            );
+            g_slot_paper_open[s] = false;
+            g_slot_ticket[s] = 0;
+            g_slot_sid[s] = "";
+         }
+         g_paper_open = false;
+      }
       else if(g_had_position && PositionsByMagic() > 0)
          CloseAllByMagic("end_range");
       g_sim_ea_status = "completed";
@@ -2106,10 +2141,13 @@ void ProcessHistoryFeed()
    string want = TimeToString(r.time, TIME_DATE | TIME_MINUTES);
    g_sim_last_bar = want;
 
-   // Ask each flat model for a decision (parallel models, shared wait budget)
+   // Ask each flat model for a decision — ONE shared wait budget for the bar
+   // (not wait_ms × N models).
    LoadModelsRoster();
-   int wait_ms = (int)MathMax(5000, MathMin(InpHistoryDecisionWaitMs, g_sim_delay_ms + 8000));
-   wait_ms = (int)MathMax(wait_ms, 3000 * MathMax(1, g_model_n));
+   int wait_ms = (int)MathMax(2500, MathMin(InpHistoryDecisionWaitMs, g_sim_delay_ms + 6000));
+   wait_ms = (int)MathMax(wait_ms, 1500 * MathMax(1, g_model_n));
+   wait_ms = (int)MathMin(wait_ms, InpHistoryDecisionWaitMs);
+   uint deadline = GetTickCount() + (uint)wait_ms;
    for(int s = 0; s < g_model_n; s++)
    {
       bool flat = InpHistoryPaperFills
@@ -2117,8 +2155,11 @@ void ProcessHistoryFeed()
          : (PositionsByMagic(g_model_magics[s]) == 0);
       if(!flat || g_slot_pending[s] != "")
          continue;
+      int remain = (int)(deadline - GetTickCount());
+      if(remain < 150)
+         break;
       string json;
-      if(WaitDecisionForBar(want, json, wait_ms, g_model_ids[s]))
+      if(WaitDecisionForBar(want, json, remain, g_model_ids[s]))
       {
          string action = JsonGetString(json, "action");
          StringToUpper(action);
@@ -2191,18 +2232,24 @@ void OnTick()
       return;
    }
 
-   // Live: publish closed bar, wait for App decision(s) — one open per model magic
+   // Live: publish closed bar, wait for App decision(s) — one open per model magic.
+   // Shared wait budget (not InpDecisionWaitMs × N) so 4 models don't block ~32s.
    if(!WriteBarJson(t1))
       return;
 
    string want = TimeToString(t1, TIME_DATE | TIME_MINUTES);
    bool any_open = false;
+   int live_wait = (int)MathMax(InpDecisionWaitMs, 1500 * MathMax(1, g_model_n));
+   uint deadline = GetTickCount() + (uint)live_wait;
    for(int s = 0; s < g_model_n; s++)
    {
       if(PositionsByMagic(g_model_magics[s]) > 0)
          continue;
+      int remain = (int)(deadline - GetTickCount());
+      if(remain < 150)
+         break;
       string json;
-      if(!WaitDecisionForBar(want, json, -1, g_model_ids[s]))
+      if(!WaitDecisionForBar(want, json, remain, g_model_ids[s]))
       {
          if(g_model_n == 1)
             Print("ForgeBridge: no decision for ", want);

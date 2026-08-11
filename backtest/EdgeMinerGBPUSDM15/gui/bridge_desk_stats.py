@@ -59,6 +59,74 @@ def count_open(trades: list[dict], *, mode: str | None = "auto") -> int:
   return len(open_trades(trades, mode=mode))
 
 
+def journal_mt5_position_desync(
+  *,
+  journal_open_n: int,
+  ea_positions: int | None,
+  ea_online: bool,
+  decision_reason: str | None = None,
+) -> dict[str, Any] | None:
+  """Detect Live journal↔MT5 desync that can freeze a model on HOLD forever.
+
+  Same failure mode as Simulate sticky fill: journal says OPEN → engine
+  ``reason=position_open`` → no new entries, even if MT5 is already flat.
+  """
+  if not ea_online or ea_positions is None:
+    return None
+  try:
+    mt5_n = int(ea_positions)
+  except (TypeError, ValueError):
+    return None
+  jn = int(journal_open_n or 0)
+  reason = str(decision_reason or "").strip().lower()
+  if jn > 0 and mt5_n == 0:
+    return {
+      "kind": "journal_ghost_open",
+      "severity": True,
+      "journal_open": jn,
+      "mt5_positions": mt5_n,
+      "message": (
+        f"App đang nhớ {jn} lệnh mở nhưng trên MT5 không còn lệnh nào. "
+        "Model sẽ không vào lệnh mới cho đến khi xóa lệnh treo trên App."
+      ),
+    }
+  if jn == 0 and mt5_n > 0:
+    return {
+      "kind": "mt5_orphan_position",
+      "fixable": False,
+      "journal_open": jn,
+      "mt5_positions": mt5_n,
+      "message": (
+        f"Trên MT5 còn {mt5_n} lệnh mở nhưng App không thấy — "
+        "kiểm tra magic/roster; Bridge có thể mở thêm lệnh trùng."
+      ),
+    }
+  if jn != mt5_n and jn > 0 and mt5_n > 0:
+    return {
+      "kind": "count_mismatch",
+      "fixable": False,
+      "journal_open": jn,
+      "mt5_positions": mt5_n,
+      "message": (
+        f"Số lệnh mở lệch: App={jn} · MT5={mt5_n}. "
+        "Mở MT5 Bridge để đối chiếu từng model."
+      ),
+    }
+  if reason == "position_open" and mt5_n == 0:
+    return {
+      "kind": "hold_without_mt5",
+      "fixable": True,
+      "journal_open": jn,
+      "mt5_positions": mt5_n,
+      "message": (
+        "App đang giữ trạng thái «đang có lệnh» trong khi MT5 trống — "
+        "bấm «Xóa lệnh treo trên App» nếu desk vẫn hiện lệnh mở."
+      ),
+    }
+
+  return None
+
+
 def period_stats(
   trades: list[dict],
   *,
@@ -148,6 +216,19 @@ def snapshot_live_desk(
     1 for t in trades
     if str(t.get("status") or "").upper() == "OPEN" and trade_mode(t) != "auto"
   )
+  ea_pos = connection.get("positions")
+  try:
+    ea_pos_n = int(ea_pos) if ea_pos is not None else None
+  except (TypeError, ValueError):
+    ea_pos_n = None
+  desync = journal_mt5_position_desync(
+    journal_open_n=open_auto,
+    ea_positions=ea_pos_n,
+    ea_online=bool(health.get("online")),
+    decision_reason=str(
+      (decision or {}).get("reason") or (file_status or {}).get("reason") or ""
+    ),
+  )
   return {
     "connection": connection,
     "decision": decision,
@@ -165,4 +246,6 @@ def snapshot_live_desk(
     "model_ids": ids,
     "per_model": per_model,
     "today": today,
+    "ea_positions": ea_pos_n,
+    "journal_mt5_desync": desync,
   }

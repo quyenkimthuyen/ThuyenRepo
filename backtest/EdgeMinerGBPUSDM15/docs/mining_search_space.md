@@ -140,11 +140,13 @@ Không cần nhớ hết — Settings chỉ hiện **curated** (đã audit). Đ�
 
 | Nhóm | Ví dụ | Khi nào dùng |
 |------|--------|--------------|
-| Baseline | `baseline` | So sánh công bằng / hành vi miner cũ |
-| Frontier | `frontier_rr_hi` | Joint WR×RR nhẹ, gần giữ Total R |
-| Anti-chase cân bằng | `anti_chase_fixed_70` | Void RSI≥70; WR↑ và Total R↑ |
+| Elite (mặc định) | **`elite_or_quality`** | WR/DD ưu tiên; ít lệnh |
+| Elite niche | `elite_55_4` | Siết hơn (RSI&lt;55 · RR4) |
+| Anti-chase cân bằng | `anti_chase_fixed_70` | Void RSI≥70; giữ Total R |
 | Edge gentle | `edge_gentle` | R↑ DD↓ gần tần suất baseline |
-| Elite | **`elite_or_quality`**, `elite_55_4`… | WR/DD ưu tiên; ít lệnh hơn |
+| Baseline | `baseline` | Neo so sánh / miner cũ |
+
+Settings chỉ hiện **5 curated** ở trên. Preset trùng (vd `elite_60_3*`, `frontier_rr_hi`) đã **deprecated** — vẫn gọi được qua CLI / model cũ.
 
 Audit xếp hạng + danh sách **DROP**: [`docs/mining_space_audit.md`](mining_space_audit.md).
 

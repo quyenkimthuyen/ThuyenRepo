@@ -96,8 +96,10 @@ Không bắt buộc xóa ngay; ưu tiên **ẩn khỏi curated Settings**.
 | Frontier nhẹ | `frontier_rr_hi` |
 | AND void nhẹ | `anti_chase_and_70_15` |
 
-**Curated Settings (gợi ý):**  
-`elite_or_quality`, `anti_chase_fixed_70`, `edge_gentle`, `elite_55_4`, `elite_60_3_vwap`, `frontier_rr_hi`, `baseline`
+**Curated Settings (2026-08-10 — gọn trùng lặp):**  
+`elite_or_quality`, `anti_chase_fixed_70`, `edge_gentle`, `elite_55_4`, `baseline`
+
+Ẩn khỏi Settings (vẫn trong code): `elite_60_3`, `elite_60_3_vwap`, `frontier_rr_hi`, và họ anti-chase/nova dư thừa.
 
 ---
 
