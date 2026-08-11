@@ -28,8 +28,8 @@ def mutate_genome(
   """Tạo biến thể mới từ genome."""
   child = copy.deepcopy(g)
   child["name"] = g.get("name", "genome") + "_mut"
-  child.setdefault("max_hold_bars", 96)
-  child.setdefault("min_bars_between", 8)
+  child.setdefault("max_hold_bars", 192)
+  child.setdefault("min_bars_between", 16)
   child.setdefault("session_filter", True)
   child.setdefault("session_start_hour", 7)
   child.setdefault("session_end_hour", 20)
@@ -100,10 +100,10 @@ def crossover(
   child["atr_mult_sl"] = random.choice([g1["atr_mult_sl"], g2["atr_mult_sl"]])
   child["exit_mode"] = random.choice([g1["exit_mode"], g2["exit_mode"]])
   child["max_hold_bars"] = random.choice([
-    g1.get("max_hold_bars", 96), g2.get("max_hold_bars", 96),
+    g1.get("max_hold_bars", 192), g2.get("max_hold_bars", 192),
   ])
   child["min_bars_between"] = random.choice([
-    g1.get("min_bars_between", 8), g2.get("min_bars_between", 8),
+    g1.get("min_bars_between", 16), g2.get("min_bars_between", 16),
   ])
   session = random.choice([
     (g1.get("session_start_hour", 7), g1.get("session_end_hour", 20)),

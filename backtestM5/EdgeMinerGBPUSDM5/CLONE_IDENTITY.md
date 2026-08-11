@@ -9,7 +9,7 @@
 | Bridge live / sim | `bridge_m5g33` / `bridge_sim_m5g33` |
 | EA live / sim | `ForgeBridgeM5G33` / `ForgeBridgeM5G33Sim` |
 | App port | `8831` |
-| Magic live / sim | `20261033` / `20262033` |
+| Magic live / sim | `20261081` / `20262081` |
 | Spread / slip default | `1.5` / `0.3` |
 | Data cache | `data/mt5_gbpusd_m5.parquet` |
 | Cloned from | `backtest/EdgeMinerGBPUSDM15` (M15) |

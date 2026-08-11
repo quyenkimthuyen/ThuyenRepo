@@ -157,10 +157,13 @@ def prune_bridge_roster(
     _prune_bridge_label_prefs(after)
     # Best-effort: rewrite bridge models.json roster if present
     try:
-      from mt5_bridge.protocol import BRIDGE_DIR, BRIDGE_SIM_DIR, write_models_roster
+      from mt5_bridge.protocol import (
+        BRIDGE_DIR, BRIDGE_SIM_DIR, DEFAULT_MAGIC, DEFAULT_SIM_MAGIC, write_models_roster,
+      )
       for bdir in (BRIDGE_DIR, BRIDGE_SIM_DIR):
         try:
-          write_models_roster(after, bridge_dir=bdir)
+          base = DEFAULT_SIM_MAGIC if Path(bdir).resolve() == BRIDGE_SIM_DIR.resolve() else DEFAULT_MAGIC
+          write_models_roster(after, bridge_dir=bdir, base_magic=base)
         except Exception:
           pass
     except Exception:

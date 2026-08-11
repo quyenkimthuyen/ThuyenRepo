@@ -11,7 +11,7 @@
 | App port | `8731` |
 | Bridge / Sim / Compare | `8995` / `9106` / `9216` |
 | Legacy paper-chart port | `8996` (Paper Monitor desk đã gỡ — giữ slot để tránh đụng port cũ) |
-| Magic live / sim | `20261023` / `20262023` |
+| Magic live / sim | `20261041` / `20262041` |
 | Pip | `0.0001` |
 | Spread / slip default | `1.5` / `0.3` |
 | Data cache | `data/mt5_gbpusd_m15.parquet` |

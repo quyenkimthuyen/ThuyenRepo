@@ -179,29 +179,37 @@ def promote_top(n: int = 3) -> list[dict]:
     print("  no grid run to promote", flush=True)
     return []
   rows = [r for r in (run.get("rows") or []) if not r.get("error")]
-  rows = sorted(rows, key=lambda r: float(r.get("total_r") or -1e9), reverse=True)
+
+  def _rdd(r: dict) -> float:
+    return float(r.get("total_r") or 0) / max(float(r.get("max_drawdown_r") or 1), 0.5)
+
+  def _quality(r: dict) -> float:
+    total_r = float(r.get("total_r") or 0)
+    pf = float(r.get("profit_factor") or 0)
+    wr = float(r.get("win_rate_pct") or 0)
+    if total_r <= 0 or pf < 1.2:
+      return -1e12
+    return _rdd(r) * 2.0 + pf * 25.0 + wr * 0.8 + total_r * 0.04
+
   created = []
-  labels = ["BestTotalR", "BestWinRate", "Balance"]
-  # pick diversified: best total_r, best win_rate, best risk_adjusted if present
+  labels = ["BestQuality", "BestTotalR", "BestWinRate"]
   picks: list[tuple[str, dict]] = []
-  if rows:
-    picks.append((labels[0], rows[0]))
+  by_q = sorted(rows, key=_quality, reverse=True)
+  by_r = sorted(rows, key=lambda r: float(r.get("total_r") or -1e9), reverse=True)
   by_wr = sorted(rows, key=lambda r: float(r.get("win_rate_pct") or 0), reverse=True)
-  if by_wr and by_wr[0] not in [p[1] for p in picks]:
-    picks.append((labels[1], by_wr[0]))
-  by_ra = sorted(
-    rows,
-    key=lambda r: float(r.get("risk_adjusted") or r.get("score") or r.get("total_r") or -1e9),
-    reverse=True,
-  )
-  for row in by_ra:
-    if row not in [p[1] for p in picks]:
-      picks.append((labels[2] if len(picks) == 2 else f"Top{len(picks)+1}", row))
-      break
+  for label, pool in ((labels[0], by_q), (labels[1], by_r), (labels[2], by_wr)):
+    for row in pool:
+      if row not in [p[1] for p in picks]:
+        picks.append((label, row))
+        break
   for label, row in picks[:n]:
     m = create_trade_model(row, run_id=run.get("run_id"), label=label, set_active=(len(created) == 0))
     created.append(m)
-    print(f"  Trade Model {m.get('id')} · {m.get('label')} · {m.get('total_r')}R", flush=True)
+    print(
+      f"  Trade Model {m.get('id')} · {m.get('label')} · {m.get('total_r')}R "
+      f"PF={m.get('profit_factor')} WR={m.get('win_rate_pct')} DD={m.get('max_drawdown_r')}",
+      flush=True,
+    )
   return created
 
 

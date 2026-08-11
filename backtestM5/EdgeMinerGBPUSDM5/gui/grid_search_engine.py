@@ -7,7 +7,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable
 
-from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS, DEFAULT_START_DATE
+from config import (
+  DEFAULT_SLIPPAGE_PIPS,
+  DEFAULT_SPREAD_PIPS,
+  DEFAULT_START_DATE,
+  TARGET_TRADES_PER_WEEK,
+)
 from data_loader import load_eurusd_m15
 from kb_profiles import list_snapshots, list_profiles, kb_valid_for_backtest
 from optimizer import reset_kb_cache, set_kb_profile
@@ -21,6 +26,7 @@ OBJECTIVES = {
   "win_rate_pct": "Tỷ lệ thắng % (cao nhất)",
   "profit_factor": "Hệ số lợi nhuận (cao nhất)",
   "risk_adjusted": "R / sụt giảm (cao nhất)",
+  "quality": "Chất lượng (R/DD + PF + WR)",
 }
 
 
@@ -215,9 +221,21 @@ def _score(row: dict, objective: str) -> float:
     r = float(row.get("total_r") or 0)
     dd = float(row.get("max_drawdown_r") or 1)
     frequency = float(row.get("trades_per_week") or 0)
-    if r <= 0 or not 7.0 <= frequency <= 10.0:
+    # M5 denser book + elite quality: allow ~0.35×–1.35× TARGET (elite often ~9–14 tpw).
+    lo = max(6.0, TARGET_TRADES_PER_WEEK * 0.35)
+    hi = TARGET_TRADES_PER_WEEK * 1.35
+    if r <= 0 or not lo <= frequency <= hi:
       return -1e12
     return r / max(dd, 0.5)
+  if objective == "quality":
+    r = float(row.get("total_r") or 0)
+    dd = float(row.get("max_drawdown_r") or 1)
+    pf = float(row.get("profit_factor") or 0)
+    wr = float(row.get("win_rate_pct") or 0)
+    n = int(row.get("n_trades") or 0)
+    if r <= 0 or pf < 1.2 or n < 40:
+      return -1e12
+    return (r / max(dd, 0.5)) * 2.0 + pf * 25.0 + wr * 0.8 + r * 0.04
   return float(row.get("total_r") or 0)
 
 
@@ -278,16 +296,17 @@ def run_grid(
   *,
   objective: str = "total_r",
   on_progress: Callable[[int, int, str], None] | None = None,
+  workers: int = 1,
 ) -> list[dict]:
   rows: list[dict] = []
   total = len(specs)
-  for i, spec in enumerate(specs):
-    if on_progress:
-      on_progress(i + 1, total, spec.label())
+  workers = max(1, int(workers or 1))
+
+  def _safe(spec: GridSpec) -> dict:
     try:
-      rows.append(run_single(spec))
+      return run_single(spec)
     except Exception as e:
-      rows.append({
+      return {
         "key": spec.key(),
         "label": spec.label(),
         "train_weeks": spec.train_weeks,
@@ -295,7 +314,35 @@ def run_grid(
         "kb_profile": spec.kb_profile,
         "kb_snapshot": spec.kb_snapshot,
         "error": str(e),
-      })
+      }
+
+  if workers <= 1 or total <= 1:
+    for i, spec in enumerate(specs):
+      if on_progress:
+        on_progress(i + 1, total, spec.label())
+      rows.append(_safe(spec))
+  else:
+    from concurrent.futures import ProcessPoolExecutor, as_completed
+    done = 0
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+      futs = {pool.submit(run_single, spec): spec for spec in specs}
+      for fut in as_completed(futs):
+        spec = futs[fut]
+        done += 1
+        if on_progress:
+          on_progress(done, total, spec.label())
+        try:
+          rows.append(fut.result())
+        except Exception as e:
+          rows.append({
+            "key": spec.key(),
+            "label": spec.label(),
+            "train_weeks": spec.train_weeks,
+            "use_kb": spec.use_kb,
+            "kb_profile": spec.kb_profile,
+            "kb_snapshot": spec.kb_snapshot,
+            "error": str(e),
+          })
   rows.sort(key=lambda r: _score(r, objective), reverse=True)
   return rows
 

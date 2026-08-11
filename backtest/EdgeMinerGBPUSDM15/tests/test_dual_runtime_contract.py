@@ -26,7 +26,7 @@ def test_dual_runtime_resources_are_unique():
   h1_live_monitor = module_from_spec(bridge_spec)
   bridge_spec.loader.exec_module(h1_live_monitor)
 
-  assert M15_MAGIC == 20261023
+  assert M15_MAGIC == 20261041
   assert h1_protocol.DEFAULT_MAGIC == 20260725
   assert h1_protocol.DEFAULT_TIMEFRAME == "H1"
   assert h1_protocol.INSTANCE_ID == "H1"
@@ -75,10 +75,10 @@ def test_eas_use_magic_and_hedging_guards():
   assert "ACCOUNT_MARGIN_MODE_RETAIL_HEDGING" in m15
   assert "ACCOUNT_MARGIN_MODE_RETAIL_HEDGING" in h1
   assert 'InpBridgeSubdir   = "bridge_m15g23"' in m15
-  assert "InpMagic          = 20261023" in m15
+  assert "InpMagic          = 20261041" in m15
   assert 'InpMode = BRIDGE_HISTORY_FEED' in m15_sim
   assert 'InpBridgeSubdir   = "bridge_sim_m15g23"' in m15_sim
-  assert "InpMagic          = 20262023" in m15_sim
+  assert "InpMagic          = 20262041" in m15_sim
   assert 'InpBridgeSubdir   = "bridge_h1"' in h1
   assert "InpMagic          = 20260725" in h1
   assert 'InpMode = BRIDGE_HISTORY_FEED' in h1_sim

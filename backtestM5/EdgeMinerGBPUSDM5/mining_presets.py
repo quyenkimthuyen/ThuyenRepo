@@ -28,6 +28,7 @@ BASELINE_SPACE = _jsonable(mining_search_space_to_dict(MiningSearchSpace()))
 WR_RR_SNIPER = {
   **BASELINE_SPACE,
   "min_bars_between": [24],
+  "max_hold_bars": [192],
   "session_ranges": [[8, 17]],
   "score_thresholds": [1.0, 1.6, 2.2],
   "min_rules_matches": [2],
@@ -197,8 +198,9 @@ NOVA_FIXED = {
   "edge_surgery_dominant_side_ratio": 0.65,
 }
 
-# Challenge: WR>60% × RR>3 (accept lower Total R).
+# Challenge: WR>60% × RR>3 (accept lower Total R) on denser M5 capacity.
 # Math: loss drag ~1.15R ⇒ need avg_win ≥ ~3.5; quality void lifts WR.
+# TPW targets ~50–60% of config TARGET (24) — quality-first but not M15-sparse.
 ELITE_60_3 = {
   **BASELINE_SPACE,
   "rr_ratios": [3.5, 4.0],
@@ -208,7 +210,10 @@ ELITE_60_3 = {
   "anti_chase_mode": "fixed",
   "anti_chase_fixed_rsi": 58.0,
   "anti_chase_use_vwap": False,
-  "target_trades_per_week": 7.0,
+  "max_hold_bars": [192],
+  "min_bars_between": [16],
+  "target_trades_per_week": 12.0,
+  "anti_chase_min_tpw": 6.0,
   "drawdown_penalty": 0.5,
   "loss_streak_penalty": 1.0,
 }
@@ -226,7 +231,7 @@ ELITE_55_4 = {
   **ELITE_60_3,
   "rr_ratios": [4.0],
   "anti_chase_fixed_rsi": 55.0,
-  "target_trades_per_week": 6.0,
+  "target_trades_per_week": 10.0,
 }
 
 # Sweet-spot OR-void: RSI≥58 or VWAP≥1.5, RR ladder 3.2–4.0.
@@ -237,7 +242,19 @@ ELITE_OR_QUALITY = {
   "anti_chase_use_vwap": True,
   "anti_chase_fixed_vwap": 1.5,
   "anti_chase_logic": "or",
-  "target_trades_per_week": 8.0,
+  "target_trades_per_week": 14.0,
+}
+
+# M5 stretch: denser than elite_or but keep anti-chase + high RR (era5 sweet spot ~11 tpw).
+ELITE_M5_BALANCED = {
+  **ELITE_OR_QUALITY,
+  "rr_ratios": [3.0, 3.5, 4.0],
+  "anti_chase_fixed_rsi": 60.0,
+  "anti_chase_fixed_vwap": 1.5,
+  "target_trades_per_week": 16.0,
+  "anti_chase_min_tpw": 8.0,
+  "score_thresholds": [1.0, 1.6, 2.2],
+  "min_rules_matches": [2],
 }
 
 # Conf-style: slightly looser RSI but still full+high RR.
@@ -245,7 +262,7 @@ ELITE_60_35 = {
   **ELITE_60_3,
   "rr_ratios": [3.5],
   "anti_chase_fixed_rsi": 60.0,
-  "target_trades_per_week": 10.0,
+  "target_trades_per_week": 16.0,
 }
 
 # App-recommended direction (WR-first quality book; used by Settings default).
@@ -256,8 +273,8 @@ RECOMMENDED_PRESET = "elite_or_quality"
 # See docs/mining_space_audit.md.
 CURATED_PRESETS: tuple[str, ...] = (
   "elite_or_quality",
+  "elite_m5_balanced",
   "anti_chase_fixed_70",
-  "edge_gentle",
   "elite_55_4",
   "baseline",
 )
@@ -304,6 +321,7 @@ PRESET_LABELS: dict[str, str] = {
   "elite_60_3_vwap": "Elite WR60 · VWAP",
   "elite_55_4": "Elite WR60 · RR4 (ít lệnh)",
   "elite_or_quality": "Elite OR-quality (khuyến nghị)",
+  "elite_m5_balanced": "Elite M5 balanced (R↑ giữ DD)",
   "elite_60_35": "Elite RSI60 · RR3.5",
 }
 
@@ -344,6 +362,11 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "intent": "Ưu tiên WR/DD — hướng khuyến nghị app",
     "knobs": "void RSI≥58 OR VWAP≥1.5 · RR 3.2–4 · exit full · elite_frontier",
     "tradeoff": "WR/DD tốt · ít lệnh (~2/tuần) · Total R thấp hơn baseline",
+  },
+  "elite_m5_balanced": {
+    "intent": "M5 stretch: gần BestBalance (~11–16 tpw) giữ anti-chase",
+    "knobs": "void RSI≥60 OR VWAP≥1.5 · RR 3–4 · TPW 16 · exit full",
+    "tradeoff": "R↑ hơn elite_or · DD vẫn thấp hơn baseline denser",
   },
   "elite_60_3": {
     "intent": "Elite WR-first, chỉ RSI void (không VWAP)",
@@ -497,6 +520,7 @@ PRESETS: dict[str, dict] = {
   "elite_60_3_vwap": deepcopy(ELITE_60_3_VWAP),
   "elite_55_4": deepcopy(ELITE_55_4),
   "elite_or_quality": deepcopy(ELITE_OR_QUALITY),
+  "elite_m5_balanced": deepcopy(ELITE_M5_BALANCED),
   "elite_60_35": deepcopy(ELITE_60_35),
 }
 

@@ -151,6 +151,10 @@ start_app() {
   local python=""
   if [[ -x "$REPO_ROOT/.venv/bin/python" ]]; then
     python="$REPO_ROOT/.venv/bin/python"
+  elif [[ -x "/home/thuyenng/work/ThuyenRepo/EdgeMinerM15B5/.venv/bin/python" ]]; then
+    python="/home/thuyenng/work/ThuyenRepo/EdgeMinerM15B5/.venv/bin/python"
+  elif [[ -x "/home/thuyenng/work/ThuyenRepo/EdgeMinerM15/.venv/bin/python" ]]; then
+    python="/home/thuyenng/work/ThuyenRepo/EdgeMinerM15/.venv/bin/python"
   elif command -v python3 >/dev/null 2>&1; then
     python="$(command -v python3)"
   elif command -v python >/dev/null 2>&1; then

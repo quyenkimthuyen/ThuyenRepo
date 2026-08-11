@@ -174,6 +174,22 @@ def test_elite_frontier_rewards_wr60_rr3():
   assert elite > mid
 
 
+def test_m5_frequency_band_prefers_dense_target():
+  """Legacy fitness must reward ~24 tpw, not leftover M15 7–10 caps."""
+  weeks = 4.0
+  base = {
+    "win_rate": 0.48, "avg_rr": 2.3, "profit_factor": 2.0,
+    "max_drawdown_r": 10.0, "max_loss_streak": 5, "total_r": 60.0,
+  }
+  sparse = score_strategy_metrics(
+    {**base, "n_trades": 32}, weeks, target_tpw=24.0,  # 8 tpw
+  )
+  dense = score_strategy_metrics(
+    {**base, "n_trades": 96}, weeks, target_tpw=24.0,  # 24 tpw
+  )
+  assert dense > sparse
+
+
 def test_elite_presets_opt_in():
   from mining_presets import RECOMMENDED_PRESET, get_preset, preset_label
   from strategy_miner import mining_search_space_from_dict
@@ -184,12 +200,16 @@ def test_elite_presets_opt_in():
   assert space.rr_ratios == (3.5, 4.0)
   assert space.anti_chase is True
   assert space.anti_chase_fixed_rsi == 58.0
+  assert space.target_trades_per_week == 12.0
+  assert space.max_hold_bars == (192,)
+  assert space.min_bars_between == (16,)
   assert MiningSearchSpace().exit_modes_full_only is False
   assert RECOMMENDED_PRESET == "elite_or_quality"
   eoq = mining_search_space_from_dict(get_preset(RECOMMENDED_PRESET))
   assert eoq.anti_chase_use_vwap is True
   assert eoq.anti_chase_logic == "or"
   assert eoq.rr_ratios == (3.2, 3.5, 4.0)
+  assert eoq.target_trades_per_week == 14.0
   assert "OR-quality" in preset_label(RECOMMENDED_PRESET)
   from mining_presets import CURATED_PRESETS, DEPRECATED_PRESETS, list_curated_presets
   assert RECOMMENDED_PRESET in CURATED_PRESETS
@@ -198,8 +218,8 @@ def test_elite_presets_opt_in():
   assert "elite_or_quality" in list_curated_presets()
   assert list_curated_presets() == [
     "elite_or_quality",
+    "elite_m5_balanced",
     "anti_chase_fixed_70",
-    "edge_gentle",
     "elite_55_4",
     "baseline",
   ]

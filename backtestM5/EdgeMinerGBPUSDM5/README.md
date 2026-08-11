@@ -1,4 +1,4 @@
-> **M5 desk `G33`** — `M5G33` · app/bridge/sim/compare `8831/9095/9206/9316` · folder `bridge_m5g33` · magic `20261033` · cloned from M15 `EdgeMinerGBPUSDM15`.
+> **M5 desk `G33`** — `M5G33` · app/bridge/sim/compare `8831/9095/9206/9316` · folder `bridge_m5g33` · magic `20261081` · cloned from M15 `EdgeMinerGBPUSDM15`.
 
 > **Backtest desk `G23`** — instance `M5G33` · app `8731` · Bridge `8995` · Sim `9106` · Compare `9216`
 > (port `8996` = legacy Paper Monitor chart — desk đã gỡ) · folder `bridge_m5g33` · magic `20261023`.

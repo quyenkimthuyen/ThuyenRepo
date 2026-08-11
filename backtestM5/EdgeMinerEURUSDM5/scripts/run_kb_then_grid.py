@@ -60,7 +60,7 @@ def run_grid():
   def on_prog(done, total, label):
     log(f"Grid {done}/{total}: {label}")
 
-  rows = run_grid(specs, objective=objective, on_progress=on_prog)
+  rows = run_grid(specs, objective=objective, on_progress=on_prog, workers=6)
   rid = save_grid_run(rows, config={**config, "timeframe": "M5"}, objective=objective)
   ok = [x for x in rows if not x.get("error")]
   log(f"Grid xong: {rid} · {len(ok)}/{len(rows)} combo OK")

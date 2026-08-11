@@ -69,7 +69,7 @@ def download_eurusd_m15(
   if cached is None or cached.empty:
     start_history_sync()
     raise RuntimeError(
-      "Chưa có lịch sử M15 từ MT5. Hãy giữ ForgeBridge EA và MT5 Bridge service "
+      "Chưa có lịch sử M5 từ MT5. Hãy giữ ForgeBridge EA và MT5 Bridge service "
       "đang chạy để hoàn tất đồng bộ history."
     )
   require_canonical_mt5_data()

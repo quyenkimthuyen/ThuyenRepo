@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//| ForgeBridgeM15G23.mq5 — EdgeMiner M15G23 (magic 20261023, bridge_m15g23)       |
+//| ForgeBridgeM15G23.mq5 — EdgeMiner M15G23 (magic 20261041, bridge_m15g23)       |
 //| Thin execution EA — App (Best 3m) decides via mt5/bridge files.  |
 //| Modes:                                                           |
 //|   Live         — write bar.json, read decision.json (App)        |
@@ -32,7 +32,7 @@ input bool   InpHistoryPaperFills = true;           // HistoryFeed: paper fills 
 
 input group "=== Risk ==="
 input double InpRiskPct        = 1.0;
-input ulong  InpMagic          = 20261023;        // base magic; multi-model uses models.json
+input ulong  InpMagic          = 20261041;        // base magic; multi-model uses models.json
 input int    InpMaxModels      = 5;               // max concurrent trade models
 input int    InpSlipPoints     = 30;
 input int    InpMaxHoldBars    = 36;                // fallback if decision omits

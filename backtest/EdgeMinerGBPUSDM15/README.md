@@ -1,5 +1,5 @@
 > **Backtest desk `G23`** — instance `M15G23` · app `8731` · Bridge `8995` · Sim `9106` · Compare `9216`
-> (port `8996` = legacy Paper Monitor chart — desk đã gỡ) · folder `bridge_m15g23` · magic `20261023`.
+> (port `8996` = legacy Paper Monitor chart — desk đã gỡ) · folder `bridge_m15g23` · magic `20261041`.
 
 # ForexForge — GBP/USD M15 Self-Learning Trading System
 
@@ -16,7 +16,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\run_dual_edgeminer.ps1 -Actio
 ```
 
 M15G23: app `8731` · Bridge `8995` · Sim chart `9106` · Compare `9216`
-(port `8996` legacy paper-chart — không dùng). Folder `bridge_m15g23`, Magic `20261023`.
+(port `8996` legacy paper-chart — không dùng). Folder `bridge_m15g23`, Magic `20261041`.
 H1 dùng `8502/8865/8866`, folder `bridge_h1`, Magic `20260725`.
 
 Clone thêm instance M15 (cô lập repo + magic + port):

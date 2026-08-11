@@ -229,7 +229,7 @@ SESSION_REGIME_BINARY = [
 ]
 
 
-def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=36):
+def _label_outcomes(fm, start, end, rr=2.5, atr_mult=0.9, max_hold_bars=108):
   ensure_label_cache_for_df(fm.n)
   key = (fm.n, start, end, rr, atr_mult, max_hold_bars)
   with _LABEL_LOCK:
@@ -630,7 +630,10 @@ def score_strategy_metrics(
   drawdown_penalty: float = 0.0, loss_streak_penalty: float = 0.0,
   selection_mode: str = "legacy",
 ):
-  """Fitness tuned for realistic M15 edge (~45–55% WR × RR≥2) and total R / DD.
+  """Fitness tuned for M5 hybrid edge (~45–55% WR × RR≥2) and total R / DD.
+
+  Soft frequency band scales with ``target_tpw`` (config default ~24) so denser
+  M5 books are not punished by leftover M15 hard caps (7–10 tpw).
 
   ``selection_mode="expectancy_frontier"`` (opt-in) ranks by joint WR×RR
   geometric mean so the miner cannot buy WR by sacrificing RR (or vice versa).
@@ -641,23 +644,26 @@ def score_strategy_metrics(
   wr, rr, tr, pf = m["win_rate"], m["avg_rr"], m["total_r"], m["profit_factor"]
   dd = float(m.get("max_drawdown_r") or 0)
   elite = selection_mode == "elite_frontier"
-  # Soft frequency band: prefer ~7–10 tpw but allow quality over volume.
-  # Elite sniper bands around a low target (accept sparse high-quality books).
+  tgt = max(float(target_tpw), 1.0)
+  # Soft frequency band relative to target (not hard-coded M15 7–10).
+  # Elite sniper bands around its (usually lower) quality target.
   if elite:
-    freq_score = 35 - abs(tpw - target_tpw) * 12
-    if tpw < max(1.5, target_tpw * 0.45):
+    freq_score = 35 - abs(tpw - tgt) * 12
+    if tpw < max(1.5, tgt * 0.45):
       freq_score -= 25
-    if tpw > max(12.0, target_tpw * 2.5):
+    if tpw > tgt * 2.5:
       freq_score -= 30
   else:
-    freq_score = 45 - abs(tpw - target_tpw) * 22
-    if tpw < 5:
+    # Slope softens as target grows so ±4 tpw around 24 is not catastrophic.
+    slope = 22.0 * (10.0 / max(tgt, 10.0))
+    freq_score = 45 - abs(tpw - tgt) * slope
+    if tpw < max(3.0, tgt * 0.45):
       freq_score -= 45
-    elif tpw < 7:
+    elif tpw < max(5.0, tgt * 0.70):
       freq_score -= 20
-    if tpw > 12:
+    if tpw > tgt * 1.60:
       freq_score -= 35
-    elif tpw > 10:
+    elif tpw > tgt * 1.25:
       freq_score -= 15
 
   expectancy = wr * rr - (1.0 - wr)  # approx R per trade at fixed RR

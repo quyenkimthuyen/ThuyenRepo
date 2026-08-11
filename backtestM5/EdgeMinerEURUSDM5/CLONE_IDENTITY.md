@@ -11,7 +11,7 @@
 | App port | `8811` |
 | Bridge / Sim / Compare | `9075` / `9186` / `9296` |
 | Legacy paper-chart port | `9076` |
-| Magic live / sim | `20261031` / `20262031` |
+| Magic live / sim | `20261061` / `20262061` |
 | Pip | `0.0001` |
 | Spread / slip default | `1.0` / `0.3` |
 | Data cache | `data/mt5_eurusd_m5.parquet` |

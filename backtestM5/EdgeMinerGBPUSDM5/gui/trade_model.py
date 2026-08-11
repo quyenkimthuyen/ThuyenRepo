@@ -9,7 +9,12 @@ from pathlib import Path
 
 import streamlit as st
 
-from config import DEFAULT_SLIPPAGE_PIPS, DEFAULT_SPREAD_PIPS, DEFAULT_FEATURE_PROFILE
+from config import (
+  DEFAULT_SLIPPAGE_PIPS,
+  DEFAULT_SPREAD_PIPS,
+  DEFAULT_FEATURE_PROFILE,
+  MAX_TRADES_PER_DAY,
+)
 from gui.glossary import build_trade_profile_label
 from run_backtest import REPORT_DIR
 
@@ -157,10 +162,13 @@ def prune_bridge_roster(
     _prune_bridge_label_prefs(after)
     # Best-effort: rewrite bridge models.json roster if present
     try:
-      from mt5_bridge.protocol import BRIDGE_DIR, BRIDGE_SIM_DIR, write_models_roster
+      from mt5_bridge.protocol import (
+        BRIDGE_DIR, BRIDGE_SIM_DIR, DEFAULT_MAGIC, DEFAULT_SIM_MAGIC, write_models_roster,
+      )
       for bdir in (BRIDGE_DIR, BRIDGE_SIM_DIR):
         try:
-          write_models_roster(after, bridge_dir=bdir)
+          base = DEFAULT_SIM_MAGIC if Path(bdir).resolve() == BRIDGE_SIM_DIR.resolve() else DEFAULT_MAGIC
+          write_models_roster(after, bridge_dir=bdir, base_magic=base)
         except Exception:
           pass
     except Exception:
@@ -877,7 +885,7 @@ def model_from_grid_row(row: dict, *, run_id: str | None = None, label: str | No
     raise RuntimeError("Không thể tạo Trade Model khi dữ liệu chưa được xác nhận từ MT5 EA.")
   return {
     "train_weeks": tw,
-    "max_trades_per_day": 2,
+    "max_trades_per_day": MAX_TRADES_PER_DAY,
     "use_kb": bool(row.get("use_kb", True)),
     "kb_profile": kb if row.get("use_kb") else None,
     "kb_snapshot": ep,

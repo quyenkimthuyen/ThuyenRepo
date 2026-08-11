@@ -1,4 +1,4 @@
-> **M5 desk `E31`** — `M5E31` · app/bridge/sim/compare `8811/9075/9186/9296` · folder `bridge_m5e31` · magic `20261031` · cloned from M15 `EdgeMinerEURUSDM15`.
+> **M5 desk `E31`** — `M5E31` · app/bridge/sim/compare `8811/9075/9186/9296` · folder `bridge_m5e31` · magic `20261061` · cloned from M15 `EdgeMinerEURUSDM15`.
 
 # ForexForge — EUR/USD M15 Self-Learning Trading System
 

@@ -19,11 +19,11 @@ for _name in ("stdout", "stderr"):
 
 import streamlit as st
 
-from config import DEFAULT_PAIR, DEFAULT_TF
-
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
   sys.path.insert(0, str(ROOT))
+
+from config import DEFAULT_PAIR, DEFAULT_TF
 
 from gui.views import (
   command_center, usage_guide,
