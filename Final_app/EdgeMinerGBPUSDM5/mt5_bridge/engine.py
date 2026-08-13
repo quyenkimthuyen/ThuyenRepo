@@ -240,13 +240,11 @@ class BridgeEngine:
     scheduled = lookup_week_strategy(self.model_id, week_start)
     if scheduled and isinstance(scheduled.get("strategy"), dict):
       strat = strategy_from_dict(scheduled["strategy"])
-      ts_use = int(scheduled.get("train_start_idx", -1))
-      te_use = int(scheduled.get("train_end_idx", -1))
-      if ts_use < 0 or te_use <= ts_use or te_use > fm_mine.n:
-        ts_fb, te_fb = get_train_window_indices(df_mine, week_start, train_weeks)
-        if ts_fb is None or (te_fb - ts_fb) < MIN_TRAIN_BARS:
-          return None
-        ts_use, te_use = ts_fb, te_fb
+      # Recompute train window from calendar week — stored train_*_idx can drift
+      # when OHLC history shifts and would poison ML labels / Live·Sim parity.
+      ts_use, te_use = get_train_window_indices(df_mine, week_start, train_weeks)
+      if ts_use is None or (te_use - ts_use) < MIN_TRAIN_BARS:
+        return None
       attach_ml_scorer(
         strat, fm_mine, ts_use, te_use, kb=kb, as_of=week_start,
         search_space=search_space,
@@ -553,6 +551,8 @@ class BridgeEngine:
       "reason": "signal",
       "conditions_fp": self.conditions_fp,
       "run_conditions": strategy_conditions(self._params),
+      "spread_pips": spread,
+      "slippage_pips": slip,
     }
     return self._remember(bar_key, decision)
 

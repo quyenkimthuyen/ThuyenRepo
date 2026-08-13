@@ -24,7 +24,12 @@ from live_config import BRIDGE_DIR, RESULTS_DIR  # noqa: E402
 from materialize_models import materialize_enabled  # noqa: E402
 from runtime_bootstrap import bootstrap_host  # noqa: E402
 from safety import is_kill_switch_armed  # noqa: E402
-from shared.constants import LIVE_BRIDGE_PORT, LIVE_MAGIC_BASE  # noqa: E402
+from shared.constants import (  # noqa: E402
+  LIVE_BRIDGE_PORT,
+  LIVE_MAGIC_BASE,
+  LIVE_SIM_MAGIC_BASE,
+  LIVE_SIM_PORT,
+)
 
 
 def _register(args, model_ids: list[str]) -> None:
@@ -78,23 +83,64 @@ def main() -> int:
   ap.add_argument("--model-ids", default=None)
   ap.add_argument("--risk-pct", type=float, default=1.0)
   ap.add_argument("--poll", type=float, default=2.0)
-  ap.add_argument("--monitor-port", type=int, default=LIVE_BRIDGE_PORT)
+  ap.add_argument("--monitor-port", type=int, default=None)
   ap.add_argument("--once", action="store_true")
   ap.add_argument("--seed", action="store_true")
+  ap.add_argument(
+    "--sim",
+    action="store_true",
+    help="Sim/replay mode: sim magics, skip EA history wait, treat bridge as sim",
+  )
   args = ap.parse_args()
+  if args.monitor_port is None:
+    args.monitor_port = LIVE_SIM_PORT if args.sim else LIVE_BRIDGE_PORT
 
   RESULTS_DIR.mkdir(parents=True, exist_ok=True)
   mat = materialize_enabled()
-  if args.symbol != mat["symbol"] or args.timeframe != mat["timeframe"]:
+  groups = mat.get("groups") or []
+  match = [
+    g for g in groups
+    if str(g.get("symbol")) == str(args.symbol)
+    and str(g.get("timeframe")) == str(args.timeframe)
+  ]
+  if not match and groups:
     print(
-      f"[live-bridge] WARN CLI {args.symbol}/{args.timeframe} vs roster "
-      f"{mat['symbol']}/{mat['timeframe']} — using roster",
+      f"[live-bridge] WARN no group for CLI {args.symbol}/{args.timeframe}; "
+      f"available={[ (g['symbol'], g['timeframe']) for g in groups ]}",
       flush=True,
     )
-    args.symbol, args.timeframe = mat["symbol"], mat["timeframe"]
+  book_ids = list(match[0]["model_ids"]) if match else list(mat.get("model_ids") or [])
 
   desk = bootstrap_host(args.symbol, args.timeframe, force=True)
-  print(f"[live-bridge] host={desk.name} symbol={args.symbol} tf={args.timeframe}", flush=True)
+  print(
+    f"[live-bridge] host={desk.name} symbol={args.symbol} tf={args.timeframe} "
+    f"sim={bool(args.sim)}",
+    flush=True,
+  )
+
+  from debug_log import (  # noqa: E402
+    check_pending_signal_timeouts,
+    install_comm_log_mirror,
+    log_ea_sync_if_changed,
+    log_event,
+    prune_old_logs,
+  )
+  prune_old_logs()
+  log_event(
+    "worker_start",
+    summary=f"start {args.symbol} {args.timeframe} sim={bool(args.sim)}",
+    payload={
+      "model_ids": book_ids,
+      "risk_pct": args.risk_pct,
+      "poll": args.poll,
+      "sim": bool(args.sim),
+      "once": bool(args.once),
+    },
+    symbol=args.symbol,
+    timeframe=args.timeframe,
+    bridge_dir=args.bridge_dir,
+    source="worker",
+  )
 
   from mt5_bridge.background import (  # noqa: WPS433
     _cycle,
@@ -110,18 +156,29 @@ def main() -> int:
     start_history_sync,
   )
   from mt5_bridge.live_monitor_server import start_live_monitor_server
-  from mt5_bridge.protocol import (
+  import mt5_bridge.protocol as protocol  # noqa: WPS433
+  from mt5_bridge.protocol import (  # noqa: WPS433
     ensure_bridge_dir,
     normalize_model_ids,
     write_status,
   )
+  # After desk modules imported — mirror + re-bind stale append_event refs
+  install_comm_log_mirror(symbol=args.symbol, timeframe=args.timeframe)
+  import mt5_bridge.background as background  # noqa: WPS433
+
+  if args.sim:
+    # Isolate sim worker state from live Start/Stop config.
+    background.CONFIG_PATH = RESULTS_DIR / "mt5_bridge_sim_config.json"
+    background.PID_PATH = RESULTS_DIR / "mt5_bridge_sim_service.pid"
+    background.SERVICE_LOG = RESULTS_DIR / "mt5_bridge_sim_service.log"
+    protocol.CONFIG_PATH = RESULTS_DIR / "mt5_bridge_sim_config.json"
 
   cli_ids = normalize_model_ids(
     [x.strip() for x in str(args.model_ids).split(",")] if args.model_ids else None,
-    fallback=args.model_id or (mat["model_ids"][0] if mat["model_ids"] else ""),
+    fallback=args.model_id or (book_ids[0] if book_ids else ""),
   )
   if not cli_ids:
-    cli_ids = list(mat["model_ids"])
+    cli_ids = list(book_ids)
   if not cli_ids:
     print("[live-bridge] no models", flush=True)
     return 2
@@ -130,6 +187,10 @@ def main() -> int:
     _register(args, cli_ids)
 
   bridge_dir = ensure_bridge_dir(args.bridge_dir)
+  if args.sim:
+    # Make background._cycle treat this dir as sim (skip live-only guards).
+    protocol.BRIDGE_SIM_DIR = bridge_dir
+
   monitor_server = None
   if not args.once:
     try:
@@ -139,26 +200,35 @@ def main() -> int:
     except OSError as e:
       print(f"[live-bridge] monitor unavailable: {e}", flush=True)
 
+  magic_base = int(LIVE_SIM_MAGIC_BASE if args.sim else LIVE_MAGIC_BASE)
   engines = build_engines(
     cli_ids,
     risk_pct=float(args.risk_pct),
     bridge_dir=bridge_dir,
-    base_magic=int(LIVE_MAGIC_BASE),
+    base_magic=magic_base,
   )
   primary = next(iter(engines.values()), None)
   print(
     f"[live-bridge] dir={bridge_dir} models={list(engines.keys())} "
-    f"risk={args.risk_pct} fp={primary.conditions_fp if primary else '-'}",
+    f"risk={args.risk_pct} magic_base={magic_base} "
+    f"fp={primary.conditions_fp if primary else '-'}",
     flush=True,
   )
-  start_history_sync(bridge_dir, force=args.seed)
+  if not args.sim:
+    start_history_sync(bridge_dir, force=args.seed)
+  elif not MT5_CACHE_PATH.exists():
+    print(
+      f"[live-bridge] sim mode needs cache at {MT5_CACHE_PATH} "
+      f"(run live/scripts/seed_mt5_cache.py)",
+      flush=True,
+    )
   try:
     for eng in engines.values():
       eng.ensure_history()
     if primary:
       print(f"[live-bridge] history bars={len(primary.load())}", flush=True)
   except Exception as e:
-    print(f"[live-bridge] waiting for MT5 history: {e}", flush=True)
+    print(f"[live-bridge] waiting for history: {e}", flush=True)
 
   write_status(
     bridge_dir,
@@ -172,12 +242,15 @@ def main() -> int:
 
   while True:
     try:
-      if is_kill_switch_armed():
+      if (not args.sim) and is_kill_switch_armed():
         write_status(bridge_dir, state="halted", halt_source="kill_switch", error="kill_switch")
         print("[live-bridge] kill-switch armed — exiting", flush=True)
         return 0
 
-      history = process_history_sync(bridge_dir)
+      if not args.sim:
+        history = process_history_sync(bridge_dir)
+      else:
+        history = {"ok": True, "source": "sim_cache"}
       if not MT5_CACHE_PATH.exists():
         write_status(
           bridge_dir,
@@ -211,7 +284,7 @@ def main() -> int:
             desired_ids,
             risk_pct=desired_risk,
             bridge_dir=bridge_dir,
-            base_magic=int(LIVE_MAGIC_BASE),
+            base_magic=magic_base,
             existing_engines=engines,
           )
           primary = next(iter(engines.values()), None)
@@ -223,29 +296,37 @@ def main() -> int:
             summary=f"models={desired_ids} risk={desired_risk}",
           )
 
-      # Loss guard (desk implementation)
-      try:
-        from mt5_bridge.background import check_and_apply_loss_guard
-        check_and_apply_loss_guard(
-          bridge_dir=bridge_dir,
-          model_id=(primary.model_id if primary else None),
-        )
-        cfg_now = load_config()
-        if cfg_now.get("loss_guard_tripped"):
-          write_status(
-            bridge_dir,
-            state="halted",
-            halt_source="loss_guard",
-            error=cfg_now.get("loss_guard_tripped_reason"),
+      if not args.sim:
+        try:
+          from mt5_bridge.background import check_and_apply_loss_guard
+          check_and_apply_loss_guard(
+            bridge_dir=bridge_dir,
+            model_id=(primary.model_id if primary else None),
           )
-          if args.once:
-            return 0
-          time.sleep(max(0.5, args.poll))
-          continue
-      except Exception as lg_exc:
-        print(f"[live-bridge] loss_guard skip: {lg_exc}", flush=True)
+          cfg_now = load_config()
+          if cfg_now.get("loss_guard_tripped"):
+            write_status(
+              bridge_dir,
+              state="halted",
+              halt_source="loss_guard",
+              error=cfg_now.get("loss_guard_tripped_reason"),
+            )
+            if args.once:
+              return 0
+            time.sleep(max(0.5, args.poll))
+            continue
+        except Exception as lg_exc:
+          print(f"[live-bridge] loss_guard skip: {lg_exc}", flush=True)
 
       last_fp, last_fill_fp = _cycle(engines, bridge_dir, last_fp, last_fill_fp)
+      if not args.sim:
+        try:
+          log_ea_sync_if_changed(
+            bridge_dir, symbol=args.symbol, timeframe=args.timeframe,
+          )
+          check_pending_signal_timeouts(older_than_sec=120.0)
+        except Exception as dbg_exc:
+          print(f"[live-bridge] debug_log skip: {dbg_exc}", flush=True)
       write_status(
         bridge_dir,
         state="running",
@@ -258,6 +339,19 @@ def main() -> int:
     except Exception:
       err = traceback.format_exc()
       print(err, flush=True)
+      try:
+        log_event(
+          "worker_error",
+          summary=err.splitlines()[-1] if err else "error",
+          payload={"traceback": err[-4000:]},
+          level="error",
+          symbol=args.symbol,
+          timeframe=args.timeframe,
+          bridge_dir=bridge_dir,
+          source="worker",
+        )
+      except Exception:
+        pass
       write_status(bridge_dir, state="error", error=err[-500:])
       if args.once:
         return 1

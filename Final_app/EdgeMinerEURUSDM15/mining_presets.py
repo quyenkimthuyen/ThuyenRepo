@@ -248,6 +248,90 @@ ELITE_60_35 = {
   "target_trades_per_week": 4.0,
 }
 
+# EUR M15 rescue: WR↑ without elite's ultra-low fill rate.
+# Fixed RSI void milder than elite_58, keep RR ladder for Total R, gentle hour surgery.
+EUR_M15_BALANCE = {
+  **ANTI_CHASE_FIXED_65,
+  "rr_ratios": [2.5, 3.0, 3.2],
+  "exit_modes_full_only": False,
+  "target_trades_per_week": 8.0,
+  "drawdown_penalty": 0.5,
+  "loss_streak_penalty": 1.0,
+  "edge_surgery": True,
+  "edge_surgery_hours": True,
+  "edge_surgery_min_hour_trades": 5,
+  "edge_surgery_max_hour_wr": 0.30,
+  "edge_surgery_dominant_side_ratio": 0.65,
+  "selection_mode": "expectancy_frontier",
+}
+
+# EUR M15 WR push: RSI62 + VWAP OR void, still mid frequency.
+EUR_M15_WR = {
+  **ANTI_CHASE_FIXED_62,
+  "anti_chase_use_vwap": True,
+  "anti_chase_fixed_vwap": 1.8,
+  "anti_chase_logic": "or",
+  "rr_ratios": [2.8, 3.0, 3.2],
+  "target_trades_per_week": 6.0,
+  "exit_modes_full_only": False,
+  "selection_mode": "expectancy_frontier",
+  "edge_surgery": True,
+  "edge_surgery_hours": True,
+  "edge_surgery_min_hour_trades": 4,
+  "edge_surgery_max_hour_wr": 0.35,
+  "edge_surgery_dominant_side_ratio": 0.65,
+  "drawdown_penalty": 0.5,
+  "loss_streak_penalty": 1.5,
+}
+
+# Round2: frontier R ladder + RSI65 void (blend StretchR + balance WR).
+EUR_M15_STRETCH_WR = {
+  **FRONTIER_RR_HI,
+  "anti_chase": True,
+  "anti_chase_mode": "fixed",
+  "anti_chase_fixed_rsi": 65.0,
+  "anti_chase_use_vwap": False,
+  "target_trades_per_week": 8.0,
+  "drawdown_penalty": 0.5,
+  "loss_streak_penalty": 1.0,
+  "exit_modes_full_only": False,
+}
+
+# Round2: RSI63 middle + slightly stricter hour cut.
+EUR_M15_BALANCE_V2 = {
+  **EUR_M15_BALANCE,
+  "anti_chase_fixed_rsi": 63.0,
+  "target_trades_per_week": 7.0,
+  "edge_surgery_max_hour_wr": 0.28,
+  "rr_ratios": [2.6, 3.0, 3.2],
+}
+
+# Round2: London/NY core hours only.
+EUR_M15_LONDON = {
+  **EUR_M15_BALANCE,
+  "session_ranges": [[8, 17]],
+  "anti_chase_fixed_rsi": 64.0,
+  "target_trades_per_week": 7.0,
+}
+
+# Round2: max-R path with light RSI70 + gentle hour surgery.
+EUR_M15_HI_R = {
+  **FRONTIER_RR_HI,
+  "anti_chase": True,
+  "anti_chase_mode": "fixed",
+  "anti_chase_fixed_rsi": 70.0,
+  "anti_chase_use_vwap": False,
+  "edge_surgery": True,
+  "edge_surgery_hours": True,
+  "edge_surgery_min_hour_trades": 5,
+  "edge_surgery_max_hour_wr": 0.32,
+  "edge_surgery_dominant_side_ratio": 0.65,
+  "target_trades_per_week": 9.0,
+  "drawdown_penalty": 0.0,
+  "loss_streak_penalty": 0.5,
+  "exit_modes_full_only": False,
+}
+
 # App-recommended direction (WR-first quality book; used by Settings default).
 RECOMMENDED_PRESET = "elite_or_quality"
 
@@ -260,6 +344,12 @@ CURATED_PRESETS: tuple[str, ...] = (
   "edge_gentle",
   "elite_55_4",
   "baseline",
+  "eur_m15_balance",
+  "eur_m15_wr",
+  "eur_m15_stretch_wr",
+  "eur_m15_balance_v2",
+  "eur_m15_london",
+  "eur_m15_hi_r",
 )
 
 # Lost A/B vs baseline / redundant vs curated — hidden from Settings.
@@ -305,6 +395,12 @@ PRESET_LABELS: dict[str, str] = {
   "elite_55_4": "Elite WR60 · RR4 (ít lệnh)",
   "elite_or_quality": "Elite OR-quality (khuyến nghị)",
   "elite_60_35": "Elite RSI60 · RR3.5",
+  "eur_m15_balance": "EUR M15 balance (WR+R)",
+  "eur_m15_wr": "EUR M15 WR push",
+  "eur_m15_stretch_wr": "EUR M15 stretch+WR",
+  "eur_m15_balance_v2": "EUR M15 balance v2",
+  "eur_m15_london": "EUR M15 London session",
+  "eur_m15_hi_r": "EUR M15 hi-R light void",
 }
 
 # Single source for Settings catalog + Trade Model direction line.
@@ -364,6 +460,36 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "intent": "Elite dự phòng — RSI lỏng hơn một chút",
     "knobs": "RSI≥60 · RR 3.5 · exit full",
     "tradeoff": "Cân bằng hơn elite chặt; vẫn chất lượng > tần suất",
+  },
+  "eur_m15_balance": {
+    "intent": "EUR M15 — nâng WR + giữ Total R (không elite-sparse)",
+    "knobs": "RSI≥65 · edge giờ độc · RR 2.5–3.2 · ~8 lệnh/tuần",
+    "tradeoff": "WR/DD tốt hơn anti_chase_70 · R cao hơn elite_or",
+  },
+  "eur_m15_wr": {
+    "intent": "EUR M15 — đẩy WR (RSI62∨VWAP) vẫn đủ fill",
+    "knobs": "RSI≥62 OR VWAP≥1.8 · edge giờ · RR 2.8–3.2",
+    "tradeoff": "WR ưu tiên · Total R vừa · ít lệnh hơn balance",
+  },
+  "eur_m15_stretch_wr": {
+    "intent": "EUR M15 — blend frontier TotalR + RSI65 WR",
+    "knobs": "frontier RR hi · RSI≥65 · ~8 lệnh/tuần",
+    "tradeoff": "R gần StretchR · WR gần balance",
+  },
+  "eur_m15_balance_v2": {
+    "intent": "EUR M15 — tinh chỉnh balance (RSI63, giờ độc chặt hơn)",
+    "knobs": "RSI≥63 · hour WR≤28% · RR 2.6–3.2",
+    "tradeoff": "WR↑ nhẹ vs v1 · fill vừa",
+  },
+  "eur_m15_london": {
+    "intent": "EUR M15 — chỉ session London/NY core 8–17",
+    "knobs": "session [8,17] · RSI≥64 · edge giờ",
+    "tradeoff": "Ít lệnh hơn · có thể WR↑ nếu Asia nhiễu",
+  },
+  "eur_m15_hi_r": {
+    "intent": "EUR M15 — tối đa R với void RSI70 nhẹ",
+    "knobs": "frontier RR hi · RSI≥70 · edge giờ nhẹ",
+    "tradeoff": "Total R ưu tiên · WR vừa",
   },
 }
 
@@ -498,6 +624,12 @@ PRESETS: dict[str, dict] = {
   "elite_55_4": deepcopy(ELITE_55_4),
   "elite_or_quality": deepcopy(ELITE_OR_QUALITY),
   "elite_60_35": deepcopy(ELITE_60_35),
+  "eur_m15_balance": deepcopy(EUR_M15_BALANCE),
+  "eur_m15_wr": deepcopy(EUR_M15_WR),
+  "eur_m15_stretch_wr": deepcopy(EUR_M15_STRETCH_WR),
+  "eur_m15_balance_v2": deepcopy(EUR_M15_BALANCE_V2),
+  "eur_m15_london": deepcopy(EUR_M15_LONDON),
+  "eur_m15_hi_r": deepcopy(EUR_M15_HI_R),
 }
 
 

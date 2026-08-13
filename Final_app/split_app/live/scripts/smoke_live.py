@@ -177,7 +177,7 @@ def main() -> int:
   # 10) Deploy script identity
   dep = LIVE / "scripts" / "deploy_live_ea.ps1"
   dep_txt = dep.read_text(encoding="utf-8")
-  for needle in ("ForgeBridgeLive", "bridge_live", "20263001", "EdgeMinerLive", "bridge_control"):
+  for needle in ("ForgeBridgeLive", "bridge_live", "20263001", "EdgeMinerLive", "bridge_control", "FromRoster"):
     assert needle in dep_txt, needle
   _ok("deploy_live_ea.ps1")
 

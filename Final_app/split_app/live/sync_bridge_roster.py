@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sync enabled installed models → mt5/bridge_live/models.json for ForgeBridgeLive."""
+"""Sync enabled models → per-book bridge_*/models.json for ForgeBridgeLive."""
 from __future__ import annotations
 
 import json
@@ -12,6 +12,7 @@ SPLIT = LIVE.parent
 sys.path.insert(0, str(SPLIT))
 sys.path.insert(0, str(LIVE))
 
+from books import bridge_dir, group_models_by_book  # noqa: E402
 from live_config import BRIDGE_DIR, BRIDGE_SIM_DIR  # noqa: E402
 from magic_allocator import assign_magics  # noqa: E402
 from package_store import default_roster_from_installed, load_roster, save_roster  # noqa: E402
@@ -49,15 +50,33 @@ def main() -> int:
   roster = load_roster()
   models = roster.get("models") or default_roster_from_installed()
   live_rows = assign_magics(models, sim=False)
-  sim_rows = assign_magics(models, sim=True)
-  save_roster(live_rows)
-  p1 = write_models_json(BRIDGE_DIR, live_rows, base_magic=LIVE_MAGIC_BASE)
-  # sim uses same logical models, sim magic block
-  write_models_json(BRIDGE_SIM_DIR, sim_rows, base_magic=LIVE_SIM_MAGIC_BASE)
-  print(f"Wrote {p1} ({sum(1 for r in live_rows if r.get('enabled'))} enabled)")
-  for r in live_rows:
-    if r.get("enabled"):
-      print(f"  magic={r.get('magic')} {r.get('label')} {r.get('symbol')} {r.get('timeframe')}")
+  save_roster(live_rows, active_book=roster.get("active_book"))
+  sim_rows = assign_magics(live_rows, sim=True)
+
+  enabled_live = [r for r in live_rows if r.get("enabled")]
+  enabled_sim = [r for r in sim_rows if r.get("enabled")]
+  groups_live = group_models_by_book(enabled_live)
+  groups_sim = group_models_by_book(enabled_sim)
+  if not groups_live:
+    write_models_json(BRIDGE_DIR, [], base_magic=LIVE_MAGIC_BASE)
+    write_models_json(BRIDGE_SIM_DIR, [], base_magic=LIVE_SIM_MAGIC_BASE)
+    print("No enabled models")
+    return 0
+
+  first = True
+  for (sym, tf), rows in groups_live.items():
+    p = write_models_json(bridge_dir(sym, tf, sim=False), rows, base_magic=LIVE_MAGIC_BASE)
+    sim_book = groups_sim.get((sym, tf), [])
+    write_models_json(bridge_dir(sym, tf, sim=True), sim_book, base_magic=LIVE_SIM_MAGIC_BASE)
+    if first:
+      write_models_json(BRIDGE_DIR, rows, base_magic=LIVE_MAGIC_BASE)
+      write_models_json(BRIDGE_SIM_DIR, sim_book, base_magic=LIVE_SIM_MAGIC_BASE)
+      first = False
+    print(f"Wrote {p} ({len(rows)} models) {sym} {tf}")
+    for r in rows:
+      print(f"  live magic={r.get('magic')} {r.get('label')}")
+    for r in sim_book:
+      print(f"  sim  magic={r.get('magic')} {r.get('label')}")
   return 0
 
 

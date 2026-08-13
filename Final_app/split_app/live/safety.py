@@ -51,9 +51,27 @@ def write_flatten_command(
   bridge_dir: Path | None = None,
   reason: str = "live_flatten",
 ) -> dict:
-  """Ask EA to close all roster magics via command.json."""
-  bdir = Path(bridge_dir or BRIDGE_DIR)
-  bdir.mkdir(parents=True, exist_ok=True)
+  """Ask EA(s) to close roster magics via command.json."""
+  dirs: list[Path]
+  if bridge_dir is not None:
+    dirs = [Path(bridge_dir)]
+  else:
+    dirs = [BRIDGE_DIR]
+    try:
+      from books import bridge_dir as bdir_fn, group_models_by_book
+      enabled = [r for r in (load_roster().get("models") or []) if r.get("enabled")]
+      for (sym, tf), _ in group_models_by_book(enabled).items():
+        p = bdir_fn(sym, tf, sim=False)
+        if p not in dirs:
+          dirs.append(p)
+      workers = _read(RESULTS_DIR / "live_workers.json") or {}
+      for w in workers.get("workers") or []:
+        p = Path(w.get("bridge_dir") or "")
+        if p and p not in dirs:
+          dirs.append(p)
+    except Exception:
+      pass
+
   payload = {
     "cmd": "close",
     "action": "FLAT",
@@ -61,22 +79,23 @@ def write_flatten_command(
     "reason": reason,
     "updated_at": _now(),
   }
-  _write(bdir / "command.json", payload)
-  # Also force FLAT decisions so remine won't re-open until next cycle clears
   flat = {
     "action": "FLAT",
     "reason": reason,
     "halt": False,
     "updated_at": _now(),
   }
-  _write(bdir / "decision.json", flat)
-  dec_dir = bdir / "decisions"
-  dec_dir.mkdir(exist_ok=True)
-  roster = load_roster()
-  for row in roster.get("models") or []:
-    mid = row.get("model_id")
-    if mid and row.get("enabled"):
-      _write(dec_dir / f"{mid}.json", {**flat, "model_id": mid})
+  for bdir in dirs:
+    bdir.mkdir(parents=True, exist_ok=True)
+    _write(bdir / "command.json", payload)
+    _write(bdir / "decision.json", flat)
+    dec_dir = bdir / "decisions"
+    dec_dir.mkdir(exist_ok=True)
+    roster = load_roster()
+    for row in roster.get("models") or []:
+      mid = row.get("model_id")
+      if mid and row.get("enabled"):
+        _write(dec_dir / f"{mid}.json", {**flat, "model_id": mid})
   return payload
 
 
@@ -100,17 +119,21 @@ def arm_kill_switch(*, reason: str = "manual_kill_switch", flatten: bool = True)
   })
   _write(CONFIG_PATH, cfg)
 
-  pid = cfg.get("service_pid")
-  if not pid and PID_PATH.exists():
-    try:
-      pid = int(PID_PATH.read_text(encoding="utf-8").strip())
-    except ValueError:
-      pid = None
-  if _pid_alive(pid):
-    try:
-      os.kill(int(pid), signal.SIGTERM)
-    except OSError:
-      pass
+  try:
+    from bridge_control import stop_bridge
+    stop_bridge(flatten=False)
+  except Exception:
+    pid = cfg.get("service_pid")
+    if not pid and PID_PATH.exists():
+      try:
+        pid = int(PID_PATH.read_text(encoding="utf-8").strip())
+      except ValueError:
+        pid = None
+    if _pid_alive(pid):
+      try:
+        os.kill(int(pid), signal.SIGTERM)
+      except OSError:
+        pass
 
   if flatten:
     write_flatten_command(reason=f"kill_switch:{reason}")
@@ -165,6 +188,10 @@ def default_loss_guard_from_roster() -> dict[str, Any]:
     "loss_guard_enabled": True,
     "loss_guard_max_day": int(max_day),
     "loss_guard_max_week": int(max_week),
+    "loss_guard_max_day_dd_r": 6.0,
+    "loss_guard_max_week_dd_r": 10.0,
+    "loss_guard_max_day_loss_r": 0.0,
+    "loss_guard_max_week_loss_r": 0.0,
     "loss_guard_tripped": False,
     "loss_guard_tripped_at": None,
     "loss_guard_tripped_reason": None,

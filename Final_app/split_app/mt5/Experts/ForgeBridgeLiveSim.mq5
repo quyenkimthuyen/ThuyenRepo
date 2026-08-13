@@ -8,7 +8,7 @@
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
 #property copyright "EdgeMinerM15 bridge SIM"
-#property version   "1.09"
+#property version   "1.10"
 
 #include <Trade/Trade.mqh>
 
@@ -29,6 +29,7 @@ input int    InpChartBars      = 4032;              // M15 bars exported for App
 input int    InpHeartbeatMs    = 2000;              // Live connection/tick snapshot
 input int    InpHistoryChunk   = 750;               // Bars per history sync response
 input bool   InpHistoryPaperFills = true;           // HistoryFeed: paper fills from OHLC (no OrderSend)
+input bool   InpShowComment    = true;              // Chart Comment: bar + per-model sync status
 
 input group "=== Risk ==="
 input double InpRiskPct        = 1.0;
@@ -83,6 +84,15 @@ int      g_max_hold = 36;
 bool     g_had_position = false;
 uint     g_last_heartbeat_ms = 0;
 string   g_last_history_request = "";
+
+// Chart / App sync status (last closed-bar handshake)
+string   g_sync_bar = "";
+string   g_sync_summary = "boot";
+string   g_sync_line[MAX_MODELS];
+string   g_sync_status[MAX_MODELS];
+string   g_sync_action[MAX_MODELS];
+int      g_sync_n = 0;
+uint     g_last_comment_ms = 0;
 
 // Multi-model roster (App writes models.json)
 string   g_model_ids[MAX_MODELS];
@@ -147,6 +157,11 @@ string BridgePath(const string name)
 // Forward decls — roster loader uses JSON helpers defined below
 string JsonGetString(const string json, const string key);
 double JsonGetDouble(const string json, const string key, const double def = 0);
+void RefreshChartComment(const bool force = false);
+void WriteEaSyncJson();
+void PublishBarSyncBegin(const string bar_want);
+void PublishBarSyncModel(const int slot, const string status, const string action, const string detail);
+void PublishBarSyncEnd(const bool do_print);
 
 string DecisionPathForModel(const string model_id)
 {
@@ -339,6 +354,8 @@ int OnInit()
       Print("ForgeBridgeLive HistoryFeed | Files/", InpBridgeSubdir,
             " | paper=", InpHistoryPaperFills, " | models=", g_model_n,
             " | base_magic=", InpMagic);
+      g_sync_summary = "history feed idle";
+      RefreshChartComment(true);
    }
    else
    {
@@ -352,6 +369,8 @@ int OnInit()
       EventSetMillisecondTimer((int)MathMax(500, InpHeartbeatMs));
       Print("ForgeBridgeLive Live | Files/", InpBridgeSubdir,
             " | models=", g_model_n, " | base_magic=", InpMagic);
+      g_sync_summary = "live ready | waiting first bar";
+      RefreshChartComment(true);
    }
 
    return INIT_SUCCEEDED;
@@ -360,6 +379,7 @@ int OnInit()
 void OnDeinit(const int reason)
 {
    EventKillTimer();
+   Comment("");
 }
 
 //+------------------------------------------------------------------+
@@ -375,6 +395,7 @@ void OnTimer()
       WriteConnectionJson();
       ProcessHistoryRequest();
       ProcessManualCommand();
+      RefreshChartComment(false);
    }
 }
 
@@ -2207,6 +2228,7 @@ void ProcessHistoryFeed()
 
    string want = TimeToString(r.time, TIME_DATE | TIME_MINUTES);
    g_sim_last_bar = want;
+   PublishBarSyncBegin(want);
 
    // Ask each flat model for a decision — ONE shared wait budget for the bar
    // (not wait_ms × N models; that stacked to ~48s and felt “treo lệnh đầu”).
@@ -2221,22 +2243,38 @@ void ProcessHistoryFeed()
          ? (!g_slot_paper_open[s])
          : (PositionsByMagic(g_model_magics[s]) == 0);
       if(!flat || g_slot_pending[s] != "")
+      {
+         PublishBarSyncModel(s, "OPEN", "-", "skip");
          continue;
+      }
       int remain = (int)(deadline - GetTickCount());
       if(remain < 150)
-         break;
+      {
+         PublishBarSyncModel(s, "TIMEOUT", "-", "budget");
+         continue;
+      }
       string json;
       if(WaitDecisionForBar(want, json, remain, g_model_ids[s]))
       {
          string action = JsonGetString(json, "action");
          StringToUpper(action);
          if(action == "BUY" || action == "SELL")
+         {
             g_slot_pending[s] = json;
+            PublishBarSyncModel(s, "OK", action, "pending");
+         }
+         else
+            PublishBarSyncModel(s, "OK", (action == "" ? "FLAT" : action), "");
       }
-      else if(g_model_n == 1)
+      else
+      {
+         PublishBarSyncModel(s, "TIMEOUT", "-", IntegerToString(wait_ms) + "ms");
          Print("ForgeBridgeLive HistoryFeed: no decision for ", want,
+               " model=", g_model_ids[s],
                " (waited ", wait_ms, "ms — Start feed App / bridge_sim loop?)");
+      }
    }
+   PublishBarSyncEnd(true);
 
    g_hist_cursor++;
    g_sim_ea_status = "running";
@@ -2259,10 +2297,153 @@ void ProcessHistoryFeed()
    Sleep((int)MathMax(1, g_sim_delay_ms));
 }
 
+
+//+------------------------------------------------------------------+
+string ModeTag()
+{
+   if(InpMode == BRIDGE_HISTORY_FEED) return "HISTORY_FEED";
+   if(InpMode == BRIDGE_REPLAY) return "REPLAY";
+   return "LIVE";
+}
+
+string ShortModelId(const string mid)
+{
+   int n = StringLen(mid);
+   if(n <= 20) return mid;
+   return StringSubstr(mid, 0, 12) + ".." + StringSubstr(mid, n - 6, 6);
+}
+
+string JsonEscapeLocal(const string s)
+{
+   string o = s;
+   StringReplace(o, "\\", "\\\\");
+   StringReplace(o, "\"", "\\\"");
+   return o;
+}
+
+void RefreshChartComment(const bool force = false)
+{
+   if(!InpShowComment)
+   {
+      Comment("");
+      return;
+   }
+   uint now_ms = GetTickCount();
+   if(!force && g_last_comment_ms != 0 && now_ms - g_last_comment_ms < 400)
+      return;
+   g_last_comment_ms = now_ms;
+
+   string txt = "ForgeBridgeLiveSim " + ModeTag() + "\n";
+   txt += _Symbol + " " + PeriodTag() + " | " + InpBridgeSubdir + "\n";
+   txt += "models=" + IntegerToString(MathMax(g_model_n, 0))
+      + " magic_base=" + IntegerToString((long)InpMagic) + "\n";
+   if(g_sync_bar != "")
+      txt += "bar " + g_sync_bar + "\n";
+   txt += g_sync_summary + "\n";
+   for(int i = 0; i < g_sync_n; i++)
+      txt += g_sync_line[i] + "\n";
+   Comment(txt);
+}
+
+void WriteEaSyncJson()
+{
+   string json = "{";
+   json += "\"updated_at\":\"" + TimeToString(TimeLocal(), TIME_DATE | TIME_SECONDS) + "\",";
+   json += "\"server_time\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\",";
+   json += "\"symbol\":\"" + _Symbol + "\",";
+   json += "\"period\":\"" + PeriodTag() + "\",";
+   json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
+   json += "\"bridge_subdir\":\"" + JsonEscapeLocal(InpBridgeSubdir) + "\",";
+   json += "\"mode\":\"" + ModeTag() + "\",";
+   json += "\"bar_time\":\"" + JsonEscapeLocal(g_sync_bar) + "\",";
+   json += "\"summary\":\"" + JsonEscapeLocal(g_sync_summary) + "\",";
+   json += "\"model_n\":" + IntegerToString(g_sync_n) + ",";
+   json += "\"models\":[";
+   for(int i = 0; i < g_sync_n; i++)
+   {
+      if(i > 0) json += ",";
+      string mid = (i < g_model_n ? g_model_ids[i] : "");
+      ulong mag = (i < g_model_n ? g_model_magics[i] : InpMagic);
+      json += "{";
+      json += "\"id\":\"" + JsonEscapeLocal(mid) + "\",";
+      json += "\"magic\":" + IntegerToString((long)mag) + ",";
+      json += "\"status\":\"" + JsonEscapeLocal(g_sync_status[i]) + "\",";
+      json += "\"action\":\"" + JsonEscapeLocal(g_sync_action[i]) + "\"";
+      json += "}";
+   }
+   json += "]}\n";
+
+   int h = FileOpen(BridgePath("ea_sync.json"), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
+   if(h == INVALID_HANDLE)
+      return;
+   FileWriteString(h, json);
+   FileClose(h);
+}
+
+void PublishBarSyncBegin(const string bar_want)
+{
+   g_sync_bar = bar_want;
+   g_sync_n = 0;
+   g_sync_summary = "waiting App decision...";
+   for(int i = 0; i < MAX_MODELS; i++)
+   {
+      g_sync_line[i] = "";
+      g_sync_status[i] = "";
+      g_sync_action[i] = "";
+   }
+   RefreshChartComment(true);
+}
+
+void PublishBarSyncModel(const int slot, const string status, const string action, const string detail)
+{
+   if(slot < 0 || slot >= MAX_MODELS)
+      return;
+   if(slot >= g_sync_n)
+      g_sync_n = slot + 1;
+   string mid = (slot < g_model_n ? g_model_ids[slot] : "");
+   ulong mag = (slot < g_model_n ? g_model_magics[slot] : InpMagic);
+   string act = action;
+   if(act == "")
+      act = "-";
+   g_sync_status[slot] = status;
+   g_sync_action[slot] = act;
+   g_sync_line[slot] = ShortModelId(mid) + " #" + IntegerToString((long)mag)
+      + " " + status + " " + act
+      + (detail != "" ? (" " + detail) : "");
+}
+
+void PublishBarSyncEnd(const bool do_print)
+{
+   int n_to = 0, n_sig = 0;
+   for(int i = 0; i < g_sync_n; i++)
+   {
+      string st = g_sync_status[i];
+      if(st == "TIMEOUT") n_to++;
+      else if(st == "BUY" || st == "SELL" || st == "ENTERED") n_sig++;
+   }
+   if(n_to > 0)
+      g_sync_summary = "TIMEOUT " + IntegerToString(n_to) + "/" + IntegerToString(g_sync_n)
+         + " | App chậm / worker tắt?";
+   else if(n_sig > 0)
+      g_sync_summary = "SYNC OK | entries " + IntegerToString(n_sig);
+   else
+      g_sync_summary = "SYNC OK | flat/hold";
+
+   WriteEaSyncJson();
+   RefreshChartComment(true);
+   if(do_print)
+   {
+      Print("ForgeBridge bar ", g_sync_bar, " | ", g_sync_summary,
+            " | models=", g_sync_n, " | ", InpBridgeSubdir);
+      for(int i = 0; i < g_sync_n; i++)
+         Print("  ", g_sync_line[i]);
+   }
+}
+
+
 //+------------------------------------------------------------------+
 void OnTick()
 {
-   // History feed is timer-driven; do not trade live ticks in parallel
    if(InpMode == BRIDGE_HISTORY_FEED)
       return;
 
@@ -2274,6 +2455,7 @@ void OnTick()
    {
       WriteConnectionJson();
       g_last_heartbeat_ms = now_ms;
+      RefreshChartComment(false);
    }
 
    ProcessManualCommand();
@@ -2299,37 +2481,51 @@ void OnTick()
       return;
    }
 
-   // Live: publish closed bar, wait for App decision(s) — one open per model magic.
-   // Shared wait budget (not InpDecisionWaitMs × N) so 4 models don't block ~32s.
    if(!WriteBarJson(t1))
       return;
 
    string want = TimeToString(t1, TIME_DATE | TIME_MINUTES);
+   PublishBarSyncBegin(want);
    bool any_open = false;
    int live_wait = (int)MathMax(InpDecisionWaitMs, 1500 * MathMax(1, g_model_n));
    uint deadline = GetTickCount() + (uint)live_wait;
    for(int s = 0; s < g_model_n; s++)
    {
       if(PositionsByMagic(g_model_magics[s]) > 0)
+      {
+         PublishBarSyncModel(s, "OPEN", "-", "skip");
          continue;
+      }
       int remain = (int)(deadline - GetTickCount());
       if(remain < 150)
-         break;
+      {
+         PublishBarSyncModel(s, "TIMEOUT", "-", "budget");
+         continue;
+      }
       string json;
       if(!WaitDecisionForBar(want, json, remain, g_model_ids[s]))
       {
-         if(g_model_n == 1)
-            Print("ForgeBridge: no decision for ", want);
+         PublishBarSyncModel(s, "TIMEOUT", "-", IntegerToString(live_wait) + "ms");
+         Print("ForgeBridge: no decision for ", want, " model=", g_model_ids[s]);
          continue;
       }
       string action = JsonGetString(json, "action");
       StringToUpper(action);
       if(action == "FLAT" || action == "HOLD" || action == "")
+      {
+         PublishBarSyncModel(s, "OK", (action == "" ? "FLAT" : action), "");
          continue;
+      }
       SetActiveSlot(s);
       if(OpenFromDecision(json))
+      {
          any_open = true;
+         PublishBarSyncModel(s, "ENTERED", action, "");
+      }
+      else
+         PublishBarSyncModel(s, "FAIL", action, "OrderSend");
    }
+   PublishBarSyncEnd(true);
    if(any_open)
       g_last_fill_bar = t1;
 }

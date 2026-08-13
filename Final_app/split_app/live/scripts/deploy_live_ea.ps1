@@ -2,9 +2,11 @@
 # Defaults: Attach + EnableTrading (parity with Final_app manage DeployEA).
 #
 #   .\deploy_live_ea.ps1
+#   .\deploy_live_ea.ps1 -FromRoster          # all enabled books (one MT5 restart)
 #   .\deploy_live_ea.ps1 -Mode Both
 #   .\deploy_live_ea.ps1 -NoAttach
 #   .\deploy_live_ea.ps1 -Symbol EURUSD -Timeframe M5
+#   # Called from Live Start (Python): -FromRoster -SkipBridgeService -Attach -EnableTrading
 #
 [CmdletBinding()]
 param(
@@ -18,6 +20,7 @@ param(
   [double]$PollSeconds = 2.0,
   [ValidateSet("Live", "HistoryFeed", "Both")]
   [string]$Mode = "Live",
+  [switch]$FromRoster,
   [switch]$Attach,
   [switch]$NoAttach,
   [switch]$EnableTrading,
@@ -53,22 +56,74 @@ if ($EnableTrading.IsPresent) { $doTrading = $true }
 if ($doAttach) { $Attach = $true } else { $Attach = $false }
 if ($doTrading) { $EnableTrading = $true } else { $EnableTrading = $false }
 
+function Get-BookKey([string]$Sym, [string]$Tf) {
+  return ("{0}_{1}" -f $Sym.ToLowerInvariant(), $Tf.ToLowerInvariant())
+}
+
+function Get-EnabledBooksFromRoster([string]$RosterFile) {
+  if (-not (Test-Path $RosterFile)) { return @() }
+  $roster = Get-Content $RosterFile -Raw | ConvertFrom-Json
+  $enabled = @($roster.models | Where-Object { $_.enabled })
+  $map = @{}
+  foreach ($row in $enabled) {
+    $sym = ([string]$row.symbol).Trim().ToUpperInvariant()
+    $tf = ([string]$row.timeframe).Trim().ToUpperInvariant()
+    if (-not $sym -or -not $tf) { continue }
+    $key = Get-BookKey $sym $tf
+    if (-not $map.ContainsKey($key)) {
+      $magic = $null
+      try { if ($null -ne $row.magic) { $magic = [int]$row.magic } } catch {}
+      $risk = 1.0
+      try { if ($null -ne $row.risk_pct) { $risk = [double]$row.risk_pct } } catch {}
+      $map[$key] = [ordered]@{
+        Symbol = $sym
+        Timeframe = $tf
+        PeriodSize = if ($tf -eq "M15") { 15 } else { 5 }
+        BridgeSubdir = ("bridge_live_{0}" -f $key)
+        ProjectDir = Join-Path $RepoRoot ("mt5\bridge_live_{0}" -f $key)
+        Magic = $magic
+        RiskPct = $risk
+        ModelIds = @([string]$row.model_id)
+      }
+    } else {
+      $map[$key].ModelIds += [string]$row.model_id
+      if ($null -eq $map[$key].Magic -and $null -ne $row.magic) {
+        try { $map[$key].Magic = [int]$row.magic } catch {}
+      }
+    }
+  }
+  return @($map.Values)
+}
+
 # Resolve Symbol/Timeframe from live_roster.json when not passed
 $RosterPath = Join-Path $LiveRoot "results\live_roster.json"
-if ((-not $Symbol -or -not $Timeframe) -and (Test-Path $RosterPath)) {
-  try {
-    $roster = Get-Content $RosterPath -Raw | ConvertFrom-Json
-    $enabled = @($roster.models | Where-Object { $_.enabled })
-    if ($enabled.Count -gt 0) {
-      if (-not $Symbol) { $Symbol = [string]$enabled[0].symbol }
-      if (-not $Timeframe) { $Timeframe = [string]$enabled[0].timeframe }
-    }
-  } catch {}
+$RosterBooks = @()
+if (Test-Path $RosterPath) {
+  try { $RosterBooks = @(Get-EnabledBooksFromRoster $RosterPath) } catch { $RosterBooks = @() }
+}
+# Auto multi-book when -FromRoster, or when Symbol/TF omitted and roster has books
+$useFromRoster = [bool]$FromRoster.IsPresent
+if ((-not $Symbol -or -not $Timeframe) -and $RosterBooks.Count -gt 0 -and $Mode -eq "Live") {
+  $useFromRoster = $true
+}
+if ((-not $Symbol -or -not $Timeframe) -and $RosterBooks.Count -gt 0) {
+  if (-not $Symbol) { $Symbol = [string]$RosterBooks[0].Symbol }
+  if (-not $Timeframe) { $Timeframe = [string]$RosterBooks[0].Timeframe }
 }
 if (-not $Symbol) { $Symbol = "EURUSD" }
 if (-not $Timeframe) { $Timeframe = "M5" }
 $PeriodSize = if ($Timeframe -eq "M15") { 15 } else { 5 }
-Write-Host ("Live DeployEA Symbol={0} TF={1} period_size={2} Attach={3} Trading={4}" -f $Symbol, $Timeframe, $PeriodSize, $Attach, $EnableTrading) -ForegroundColor Cyan
+if ($useFromRoster -and $Mode -eq "Live" -and $RosterBooks.Count -eq 0) {
+  throw "FromRoster: no enabled models in $RosterPath"
+}
+if ($useFromRoster -and $Mode -eq "Live") {
+  Write-Host ("Live DeployEA FromRoster books={0} Attach={1} Trading={2}" -f $RosterBooks.Count, $Attach, $EnableTrading) -ForegroundColor Cyan
+  foreach ($b in $RosterBooks) {
+    Write-Host ("  - {0} {1} subdir={2} models={3}" -f $b.Symbol, $b.Timeframe, $b.BridgeSubdir, ($b.ModelIds -join ","))
+  }
+} else {
+  Write-Host ("Live DeployEA Symbol={0} TF={1} period_size={2} Attach={3} Trading={4}" -f $Symbol, $Timeframe, $PeriodSize, $Attach, $EnableTrading) -ForegroundColor Cyan
+}
 
 # Sync Python roster → models.json before compile/attach
 $pyCandidates = @(
@@ -284,7 +339,7 @@ function New-MinimalTargetChartText(
   $lines = @(
     '<chart>',
     "id=$id",
-    'symbol=$Symbol',
+    "symbol=$Symbol",
     "period_type=$PeriodType",
     "period_size=$PeriodSize",
     'digits=5',
@@ -603,14 +658,17 @@ function Restart-BridgeService {
     Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
   }
 
-  # Prefer Live Python bridge_control (materialize + start)
+  # Prefer Live Python bridge_control (materialize + start).
+  # Skip nested auto-deploy (this script already attached EAs).
   $stopCmd = "import bridge_control; bridge_control.stop_bridge()"
   & $py -c $stopCmd 2>$null
   Push-Location $LiveRoot
   try {
+    $env:LIVE_SKIP_EA_DEPLOY = "1"
     & $py -c "import bridge_control; print(bridge_control.start_bridge(poll_sec=$PollSeconds)['pid'])"
     if ($LASTEXITCODE -ne 0) { throw "bridge_control.start_bridge failed" }
   } finally {
+    Remove-Item Env:LIVE_SKIP_EA_DEPLOY -ErrorAction SilentlyContinue
     Pop-Location
   }
 
@@ -641,7 +699,18 @@ if ($IsBoth -or $IsHistoryFeed) {
   $bridgeLinkSim = Ensure-NamedBridgeJunction $TerminalDataPath $BridgeSubdirSim $ProjectBridgeSim
   Write-Host "Sim     : $bridgeLinkSim -> $ProjectBridgeSim"
 }
-if ($IsBoth -or -not $IsHistoryFeed) {
+if ($useFromRoster -and $Mode -eq "Live") {
+  foreach ($b in $RosterBooks) {
+    New-Item -ItemType Directory -Path $b.ProjectDir -Force | Out-Null
+    $link = Ensure-NamedBridgeJunction $TerminalDataPath $b.BridgeSubdir $b.ProjectDir
+    Write-Host ("Live    : {0} -> {1}" -f $link, $b.ProjectDir)
+  }
+  # Legacy default subdir → first book (old EA input default bridge_live)
+  if ($RosterBooks.Count -gt 0) {
+    $legacy = Ensure-NamedBridgeJunction $TerminalDataPath $BridgeSubdirLive $RosterBooks[0].ProjectDir
+    Write-Host "Legacy  : $legacy -> $($RosterBooks[0].ProjectDir)"
+  }
+} elseif ($IsBoth -or -not $IsHistoryFeed) {
   $bridgeLink = Ensure-BridgeJunction $TerminalDataPath
   Write-Host "Live    : $bridgeLink -> $ProjectBridge"
 } elseif ($IsHistoryFeed) {
@@ -667,7 +736,28 @@ if ($IsBoth) {
 
 $attached = Get-ForgeBridgeCharts $TerminalDataPath
 if ($Attach) {
-  if ($IsBoth) {
+  if ($useFromRoster -and $Mode -eq "Live") {
+    Write-Step ("Attach Live EA for {0} book(s) (single MT5 restart)" -f $RosterBooks.Count)
+    Stop-XmTerminal $InstallPath
+    $attachedPaths = @()
+    foreach ($b in $RosterBooks) {
+      $script:Symbol = [string]$b.Symbol
+      $script:Timeframe = [string]$b.Timeframe
+      $script:PeriodSize = [int]$b.PeriodSize
+      $script:RiskPct = [double]$b.RiskPct
+      $mag = if ($null -ne $b.Magic) { [int]$b.Magic } else { [int]$EaMagicLive }
+      Write-Host ("Attaching {0} {1} InpBridgeSubdir={2} magic={3}" -f $b.Symbol, $b.Timeframe, $b.BridgeSubdir, $mag)
+      $chartPath = Write-ForgeBridgeToChart `
+        $TerminalDataPath $doTrading 0 $b.BridgeSubdir $EaNameLive $mag
+      $attachedPaths += $chartPath
+      Write-Host "  -> $chartPath | Trading=$doTrading"
+    }
+    if (-not $NoRestartTerminal) {
+      Start-Process -FilePath (Join-Path $InstallPath "terminal64.exe")
+      Start-Sleep -Seconds 8
+    }
+    $attached = @($attachedPaths)
+  } elseif ($IsBoth) {
     Write-Step "Attach Live + Simulate (single MT5 restart)"
     Stop-XmTerminal $InstallPath
     $chartLive = Write-ForgeBridgeToChart `
@@ -686,8 +776,25 @@ if ($Attach) {
     Write-Host "Chart   : $chart"
     Write-Host "Inputs  : InpMode=2 (HISTORY_FEED), InpBridgeSubdir=$BridgeSubdirSim, paper fills"
   } else {
-    Write-Step "Attach $EaName Live to $Symbol $Timeframe"
-    $chart = Attach-ForgeBridge $TerminalDataPath $InstallPath $doTrading 0 $BridgeSubdirLive
+    # Single-book Live: prefer per-book subdir when roster known
+    $liveSub = $BridgeSubdirLive
+    $liveProj = $ProjectBridge
+    $liveMagic = $EaMagicLive
+    if ($RosterBooks.Count -gt 0) {
+      $match = @($RosterBooks | Where-Object {
+        $_.Symbol -eq $Symbol -and $_.Timeframe -eq $Timeframe
+      } | Select-Object -First 1)
+      if ($match.Count -gt 0) {
+        $liveSub = $match[0].BridgeSubdir
+        $liveProj = $match[0].ProjectDir
+        if ($null -ne $match[0].Magic) { $liveMagic = [int]$match[0].Magic }
+        New-Item -ItemType Directory -Path $liveProj -Force | Out-Null
+        Ensure-NamedBridgeJunction $TerminalDataPath $liveSub $liveProj | Out-Null
+      }
+    }
+    Write-Step "Attach $EaName Live to $Symbol $Timeframe (subdir=$liveSub)"
+    $script:EaMagic = $liveMagic
+    $chart = Attach-ForgeBridge $TerminalDataPath $InstallPath $doTrading 0 $liveSub
     Write-Host "Chart   : $chart"
     Write-Host "Trading : $doTrading"
   }
@@ -711,12 +818,15 @@ if ($StartBridgeService -and -not $SkipBridgeService) {
 }
 
 Write-Step "Done"
-if ($IsBoth) {
+if ($useFromRoster -and $Mode -eq "Live") {
+  Write-Host ("Live ready for {0} book(s) from roster (one MT5 restart)." -f $RosterBooks.Count)
+} elseif ($IsBoth) {
   Write-Host "Live + Simulate ready (one MT5 restart). Start service / Start feed as needed."
 } elseif ($IsHistoryFeed) {
   Write-Host "History Feed ready: App Simulate -> Start feed (sim_control.json)."
 } else {
   Write-Host "Live ready. For Simulate: -Mode HistoryFeed -Attach  |  Both: -Mode Both -Attach -EnableTrading"
+  Write-Host "Multi-book: -FromRoster -Attach -EnableTrading -SkipBridgeService"
 }
 Write-Host "Next update command:"
-Write-Host "powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+Write-Host "powershell -ExecutionPolicy Bypass -File `"$PSCommandPath`" -FromRoster"

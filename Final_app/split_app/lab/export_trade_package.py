@@ -79,7 +79,11 @@ def export_one(desk_name: str, model: dict, out_dir: Path) -> Path:
   meta = DESK_META[desk_name]
   desk = FINAL / desk_name
   mid = model.get("id") or "unknown"
-  label = model.get("label") or mid
+  raw_label = model.get("label") or mid
+  # Disambiguate across desks: "EURUSD M5 · BestQuality"
+  label = f"{meta['symbol']} {meta['timeframe']} · {raw_label}"
+  if raw_label.startswith(f"{meta['symbol']} {meta['timeframe']}"):
+    label = raw_label
   kb_pin = resolve_kb_pin(desk, model) if model.get("use_kb", True) else None
   if model.get("use_kb", True) and kb_pin is None:
     raise RuntimeError(

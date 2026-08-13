@@ -25,11 +25,15 @@ def _purge_host_modules() -> None:
     "kb_profiles",
     "config",
     "features",
+    "feature_engine",
     "data_loader",
+    "gui",
+    "analytics",
   )
-  # Keep live_config — only purge if it came from a desk
+  # Keep live package modules (live_config, etc.) — only purge desk-side imports.
+  keep = {"live_config", "books", "package_store", "materialize_models", "runtime_host"}
   for name in list(sys.modules):
-    if name in ("live_config",):
+    if name in keep or name.startswith("live_"):
       continue
     if name in drop_prefixes or any(name.startswith(p + ".") for p in drop_prefixes):
       del sys.modules[name]
@@ -77,6 +81,13 @@ def bootstrap_host(symbol: str, timeframe: str, *, force: bool = False) -> Path:
 
   sched.REPORT_DIR = RESULTS_DIR
   sched.MODELS_DIR = RESULTS_DIR / "trade_models"
+
+  import gui.trade_model as tm  # noqa: WPS433
+
+  tm.REPORT_DIR = RESULTS_DIR
+  tm.MODELS_PATH = RESULTS_DIR / "trade_models.json"
+  tm.ACTIVE_MODEL_PATH = RESULTS_DIR / "active_trade_model.json"
+  tm.MODELS_DIR = RESULTS_DIR / "trade_models"
 
   import mt5_bridge.models as models  # noqa: WPS433
 

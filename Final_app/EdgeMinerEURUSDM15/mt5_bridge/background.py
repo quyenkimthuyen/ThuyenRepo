@@ -211,6 +211,10 @@ def load_config() -> dict:
     "loss_guard_max_week": int(
       data["loss_guard_max_week"] if "loss_guard_max_week" in data else 3
     ),
+    "loss_guard_max_day_dd_r": float(data.get("loss_guard_max_day_dd_r") or 0),
+    "loss_guard_max_week_dd_r": float(data.get("loss_guard_max_week_dd_r") or 0),
+    "loss_guard_max_day_loss_r": float(data.get("loss_guard_max_day_loss_r") or 0),
+    "loss_guard_max_week_loss_r": float(data.get("loss_guard_max_week_loss_r") or 0),
     "loss_guard_tripped": bool(data.get("loss_guard_tripped", False)),
     "loss_guard_tripped_at": data.get("loss_guard_tripped_at"),
     "loss_guard_tripped_reason": data.get("loss_guard_tripped_reason"),

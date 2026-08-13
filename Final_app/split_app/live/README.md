@@ -2,21 +2,87 @@
 
 Import `.tmpkg` từ lab → roster → **1 EA chung** `ForgeBridgeLive` → remine tuần tại chỗ (KB pin trong package).
 
-## Tính năng (v1)
+## UI (trader desk)
 
-| Phần | Module |
-|------|--------|
-| Import / list packages | `import_trade_package.py` |
-| Roster on/off + risk% + magic | `package_store.py`, `magic_allocator.py` |
-| Materialize → BridgeEngine store | `materialize_models.py` |
-| Remine host (Final_app desk code) | `runtime_host.py`, `runtime_bootstrap.py` |
-| Bridge Start/Stop | `bridge_control.py`, `scripts/mt5_bridge_service_live.py` |
-| Chart symbol/TF check | `chart_validate.py` |
-| Flatten / kill-switch / loss-guard | `safety.py` (+ desk loss_guard in service) |
-| Journal | `journal_view.py` |
-| Windows DeployEA | `scripts/deploy_live_ea.ps1` |
+Mở app → nav **Replay | Live | Models | Setup**:
+- **Replay / Live** — desk giao dịch (cockpit + History)
+- **Models** — import / delete / roster
+- **Setup** — runtime, risk, autostart, reset
+
+Auto-refresh trong sidebar.
+
+Modules: `gui/app.py`, `gui/theme.py`, `desk_snapshot.py`.
 
 Magic / port: base **`20263001`**, UI **`8601`**, monitor **`9601`**.
+
+## Linux Simulate / Replay (no MT5)
+
+**Mặc định (khuyến nghị): schedule-parity** — replay genome đóng băng từng tuần
+bằng `backtest_mined` (cùng path lab Health/OOS). Kết quả R/WR khớp lab khi
+package có `schedule.json`.
+
+```bash
+cd /home/thuyenng/work/ThuyenRepo/Final_app/split_app
+# UI Start OOS replay → parity; hoặc:
+../../EdgeMinerM15B5/.venv/bin/python live/scripts/run_parity_oos_batch.py
+# Kết quả: live/results/parity_oos_batch.json · parity_<sym>_<tf>.json
+```
+
+**Paper path (EA protocol smoke)** — bar → decision → paper fill:
+
+```bash
+LIVE_REPLAY_MODE=paper ../../EdgeMinerM15B5/.venv/bin/python live/scripts/run_oos_replay_batch.py
+```
+
+Multi symbol/TF: roster bật nhiều model → mỗi book (symbol+TF) chạy worker/bridge
+riêng; nhiều model cùng book dùng magic riêng (`20263001+` live / `20264001+` sim).
+
+**Bắt buộc cho parity:** export `.tmpkg` kèm `schedule.json`. Thiếu schedule →
+Live remine tuần và **không** khớp lab. Backfill:
+
+```bash
+../../EdgeMinerM15B5/.venv/bin/python Final_app/ensure_live_schedules.py --from-live-roster
+# chỉ sync schedule lab → installed packages:
+../../EdgeMinerM15B5/.venv/bin/python Final_app/ensure_live_schedules.py --from-live-roster --sync-packages-only
+```
+
+Live/Sim luôn **recompute train window** theo `week_start` (không dùng
+`train_*_idx` cũ trong schedule — index tuyệt đối lệch khi parquet đổi).
+
+## Reset data
+
+UI **Setup → Reset data** (gõ `RESET`) hoặc CLI:
+
+```bash
+cd /home/thuyenng/work/ThuyenRepo/Final_app/split_app/live
+# full wipe incl. packages + roster:
+../../EdgeMinerM15B5/.venv/bin/python scripts/reset_live_data.py --yes
+# giữ packages/roster, wipe journal/sim/cache rồi re-seed OHLC:
+../../EdgeMinerM15B5/.venv/bin/python scripts/reset_live_data.py --yes --keep-packages
+```
+
+Windows + MT5 thật vẫn dùng EA `ForgeBridgeLive` / `ForgeBridgeLiveSim` như cũ.
+
+**EA chart Comment (v1.10+):** mỗi nến đóng hiện sync status trên chart + Experts log
+(`SYNC OK` / `TIMEOUT`) và ghi `ea_sync.json` để Live **Pipeline health** đối chiếu.
+Tắt: input `InpShowComment=false`. Cần re-deploy/compile EA trên Windows.
+
+**Windows autostart (mặc định theo Start/Stop trading):**
+- **Start trading** → gắn Scheduled Task (reboot: MT5 + Live app + bridge)
+- **Stop / Kill** → gỡ task
+
+```powershell
+# Task được Start/Stop quản lý; kiểm tra thủ công:
+.\live\scripts\install_autostart_windows.ps1 -Action Status
+.\live\scripts\boot_autostart_windows.ps1 -DelaySec 2
+```
+
+Tắt gắn/gỡ tự động: `LIVE_SKIP_AUTOSTART=1`.
+
+```powershell
+.\live\scripts\deploy_live_ea.ps1 -FromRoster -SkipBridgeService
+.\live\scripts\deploy_live_ea.ps1 -Symbol EURUSD -Timeframe M5
+```
 
 ## Commands
 
@@ -26,6 +92,7 @@ cd /home/thuyenng/work/ThuyenRepo/Final_app/split_app
 # Import
 python live/import_trade_package.py packages_out/some.tmpkg
 python live/import_trade_package.py --list
+python live/import_trade_package.py --delete M15_EURUSD_tm_example
 
 # Roster → models.json
 python live/sync_bridge_roster.py
@@ -47,7 +114,7 @@ Windows:
 
 ```powershell
 .\live\scripts\run_app_windows.ps1 -Action Start
-.\live\scripts\deploy_live_ea.ps1   # Attach + EnableTrading default
+.\live\scripts\deploy_live_ea.ps1 -FromRoster   # all enabled books; also auto on Live Start
 .\live\scripts\deploy_live_ea.ps1 -Symbol EURUSD -Timeframe M5 -Mode Both
 ```
 
