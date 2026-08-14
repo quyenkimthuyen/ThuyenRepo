@@ -37,6 +37,25 @@ def _read(path: Path) -> Any:
     return None
 
 
+def _fmt_sync_summary(raw: str) -> str:
+  """Normalize EA ANSI mojibake for UI (Vietnamese was written as FILE_ANSI)."""
+  s = str(raw or "").strip()
+  if not s:
+    return s
+  # Common corruption of "App chậm / worker tắt?" (and ASCII "?" replacements)
+  low = s.lower()
+  if ("app ch" in low or "app slow" in low) and "worker" in low:
+    if "TIMEOUT" in s.upper():
+      head = s.split("|", 1)[0].strip()
+      return f"{head} | App slow / worker down?"
+    return "App slow / worker down?"
+  return s
+
+
+def _tf_bar_seconds(tf: str) -> float:
+  return float(TF_SECONDS.get(str(tf).upper(), 300))
+
+
 def _parse_ts(raw: Any) -> datetime | None:
   if not raw:
     return None
@@ -193,6 +212,8 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
     sync_summary = ""
     sync_bar = None
     sync_age = None
+    pending_ea_timeout = False
+    history_empty = False
 
     if sim:
       book_level = "ok"
@@ -277,7 +298,31 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
 
       hist_state = str(hist.get("state") or "").lower()
       hist_age = _age_seconds(_parse_ts(hist.get("updated_at")))
-      if hist_state in ("requesting", "waiting") and hist_age is not None and hist_age > HISTORY_STUCK_SEC:
+      hist_bars = int(hist.get("stored_bars") or hist.get("received_bars") or 0)
+      cache_path = RESULTS_DIR / "data" / f"mt5_{sym_n.lower()}_{tf_n.lower()}.parquet"
+      history_empty = (
+        worker_alive
+        and (
+          st == "syncing_history"
+          or (not cache_path.exists())
+          or (hist_state in ("completed", "error") and hist_bars <= 0 and not cache_path.exists())
+        )
+      )
+      if history_empty:
+        book_level = _worst(book_level, "danger")
+        book_flags.append("HISTORY_EMPTY")
+        alerts.append({
+          "level": "danger",
+          "scope": "book",
+          "symbol": sym_n,
+          "timeframe": tf_n,
+          "code": "HISTORY_EMPTY",
+          "message": (
+            f"{sym_n} {tf_n}: chưa có MT5 history cache "
+            f"(state={st or hist_state or '—'}; EA export 0 bar?)"
+          ),
+        })
+      elif hist_state in ("requesting", "waiting") and hist_age is not None and hist_age > HISTORY_STUCK_SEC:
         book_level = _worst(book_level, "warn")
         book_flags.append("HISTORY_STUCK")
         alerts.append({
@@ -291,20 +336,15 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
 
       # EA ea_sync.json — last closed-bar handshake written by ForgeBridgeLive
       sync_age = _age_seconds(_parse_ts(ea_sync.get("updated_at"))) or _file_age_seconds(bdir / "ea_sync.json")
-      sync_summary = str(ea_sync.get("summary") or "")
+      sync_summary = _fmt_sync_summary(str(ea_sync.get("summary") or ""))
       sync_bar = _norm_bar_key(ea_sync.get("bar_time"))
+      pending_ea_timeout = False
       if isinstance(ea_sync, dict) and ea_sync:
-        if "TIMEOUT" in sync_summary.upper():
-          book_level = _worst(book_level, "danger")
-          book_flags.append("EA_SYNC_TIMEOUT")
-          alerts.append({
-            "level": "danger",
-            "scope": "book",
-            "symbol": sym_n,
-            "timeframe": tf_n,
-            "code": "EA_SYNC_TIMEOUT",
-            "message": f"{sym_n} {tf_n}: EA sync {sync_summary}",
-          })
+        # Sticky TIMEOUT from a past remine/boot must not stay danger forever.
+        sync_fresh = sync_age is not None and sync_age < max(120.0, _tf_bar_seconds(tf_n) * 2)
+        # HISTORY_EMPTY is the root cause — don't also scream TIMEOUT.
+        if "TIMEOUT" in sync_summary.upper() and sync_fresh and not history_empty:
+          pending_ea_timeout = True
         if sync_bar and bar_key and sync_bar != bar_key and (bar_file_age or 0) > DECISION_LAG_SEC:
           book_level = _worst(book_level, "warn")
           book_flags.append("EA_SYNC_LAG")
@@ -407,6 +447,56 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
         "ok": level == "ok",
       })
       book_level = _worst(book_level, level)
+
+    if pending_ea_timeout:
+      # Decisions may arrive after EA's wait budget — if all models match sync/current bar,
+      # treat as healthy (sticky ea_sync TIMEOUT must not keep alarming).
+      caught = False
+      match_bar = sync_bar or bar_key
+      if match_bar and rows:
+        caught = all(
+          _norm_bar_key(
+            (decisions.get(str(r.get("model_id") or "")) or {}).get("bar_time")
+            or (decisions.get(str(r.get("model_id") or "")) or {}).get("time")
+          )
+          == match_bar
+          for r in rows
+        )
+      if caught:
+        sync_summary = "SYNC OK | late catch-up"
+        # Drop TIMEOUT from book flags — pipeline is caught up.
+      else:
+        # Soften: worker alive + decisions arriving (any model matched) → warn, not danger.
+        any_matched = any(
+          _norm_bar_key(
+            (decisions.get(str(r.get("model_id") or "")) or {}).get("bar_time")
+            or (decisions.get(str(r.get("model_id") or "")) or {}).get("time")
+          )
+          == match_bar
+          for r in rows
+        ) if match_bar and rows else False
+        if worker_alive and any_matched:
+          book_level = _worst(book_level, "warn")
+          book_flags.append("EA_SYNC_LATE")
+          alerts.append({
+            "level": "warn",
+            "scope": "book",
+            "symbol": sym_n,
+            "timeframe": tf_n,
+            "code": "EA_SYNC_LATE",
+            "message": f"{sym_n} {tf_n}: EA sync late — {sync_summary}",
+          })
+        else:
+          book_level = _worst(book_level, "danger")
+          book_flags.append("EA_SYNC_TIMEOUT")
+          alerts.append({
+            "level": "danger",
+            "scope": "book",
+            "symbol": sym_n,
+            "timeframe": tf_n,
+            "code": "EA_SYNC_TIMEOUT",
+            "message": f"{sym_n} {tf_n}: EA sync {sync_summary}",
+          })
 
     book_row = {
       "symbol": sym_n,

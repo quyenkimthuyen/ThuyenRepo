@@ -113,6 +113,7 @@ def build_equity_figure(
   by_model: dict[str, pd.DataFrame] | None = None,
   title: str = "Equity & drawdown (R)",
   labels: dict[str, str] | None = None,
+  theme: str = "light",
 ) -> go.Figure | None:
   labels = labels or {}
   by_model = by_model or {}
@@ -121,6 +122,8 @@ def build_equity_figure(
   if not has_combined and not has_models:
     return None
 
+  # Light-only desk theme
+  dark = False
   # No subplot_titles — they collide with the legend. Axis titles carry meaning.
   fig = make_subplots(
     rows=2, cols=1, shared_xaxes=True,
@@ -129,9 +132,22 @@ def build_equity_figure(
   )
 
   palette = (
-    "#2a9d8f", "#e76f51", "#457b9d", "#bc6c25",
-    "#6d597a", "#e9c46a", "#264653", "#8d99ae",
+    "#2dd4bf", "#fb7185", "#38bdf8", "#fbbf24",
+    "#a78bfa", "#34d399", "#f472b6", "#94a3b8",
+  ) if dark else (
+    "#0f766e", "#b91c1c", "#1d4ed8", "#b45309",
+    "#6d28d9", "#047857", "#be185d", "#475569",
   )
+  all_line = "#5eead4" if dark else "#0f766e"
+  all_fill = "rgba(45,212,191,0.16)" if dark else "rgba(15,118,110,0.10)"
+  dd_line = "#fb7185" if dark else "#b91c1c"
+  dd_fill = "rgba(251,113,133,0.22)" if dark else "rgba(185,28,28,0.18)"
+  grid = "rgba(232,238,246,0.10)" if dark else "rgba(15,23,42,0.08)"
+  zero = "rgba(232,238,246,0.28)" if dark else "rgba(15,23,42,0.28)"
+  font_c = "#e8eef6" if dark else "#0f172a"
+  plot_bg = "#0f172a" if dark else "#f8fafc"
+  paper_bg = "#151d2b" if dark else "#ffffff"
+  legend_bg = "rgba(15,23,42,0.92)" if dark else "rgba(255,255,255,0.92)"
 
   if has_combined:
     x = combined["t"]
@@ -141,9 +157,9 @@ def build_equity_figure(
         y=combined["equity_r"],
         name="All",
         legendgroup="all",
-        line=dict(color="#1a365d", width=2.6),
+        line=dict(color=all_line, width=2.6),
         fill="tozeroy",
-        fillcolor="rgba(26,54,93,0.10)",
+        fillcolor=all_fill,
         hovertemplate="%{x|%Y-%m-%d}<br>All: %{y:.2f}R<extra></extra>",
       ),
       row=1, col=1,
@@ -155,9 +171,9 @@ def build_equity_figure(
         y=combined["drawdown_r"],
         name="Drawdown",
         legendgroup="dd",
-        line=dict(color="#b91c1c", width=1.8),
+        line=dict(color=dd_line, width=1.8),
         fill="tozeroy",
-        fillcolor="rgba(185,28,28,0.18)",
+        fillcolor=dd_fill,
         hovertemplate="%{x|%Y-%m-%d}<br>DD: %{y:.2f}R<extra></extra>",
       ),
       row=2, col=1,
@@ -177,7 +193,7 @@ def build_equity_figure(
           name=name,
           legendgroup=f"m{i}",
           line=dict(color=color, width=1.3, dash="dot"),
-          opacity=0.85,
+          opacity=0.9,
           hovertemplate=f"%{{x|%Y-%m-%d}}<br>{name}: %{{y:.2f}}R<extra></extra>",
         ),
         row=1, col=1,
@@ -188,42 +204,46 @@ def build_equity_figure(
   layout_kw: dict[str, Any] = dict(
     height=500 if n_legend <= 5 else 540,
     margin=dict(l=56, r=16, t=16 if not title else 36, b=92 if n_legend <= 6 else 118),
+    font=dict(color=font_c, size=12),
     legend=dict(
       orientation="h",
       yanchor="top",
       y=-0.16,
       x=0,
       xanchor="left",
-      font=dict(size=11),
-      bgcolor="rgba(255,255,255,0.9)",
+      font=dict(size=11, color=font_c),
+      bgcolor=legend_bg,
       borderwidth=0,
       itemwidth=36,
       traceorder="normal",
     ),
     hovermode="x unified",
-    template="plotly_white",
-    plot_bgcolor="#fafafa",
-    paper_bgcolor="white",
+    template="plotly_dark" if dark else "plotly_white",
+    plot_bgcolor=plot_bg,
+    paper_bgcolor=paper_bg,
   )
   if title:
-    layout_kw["title"] = dict(text=title, x=0.0, xanchor="left", font=dict(size=14))
+    layout_kw["title"] = dict(
+      text=title, x=0.0, xanchor="left", font=dict(size=14, color=font_c),
+    )
   fig.update_layout(**layout_kw)
   fig.update_yaxes(
-    title_text="Equity (R)", title_font=dict(size=12),
-    showgrid=True, gridcolor="rgba(0,0,0,0.06)", zeroline=True,
-    zerolinecolor="rgba(0,0,0,0.25)", row=1, col=1,
+    title_text="Equity (R)", title_font=dict(size=12, color=font_c),
+    tickfont=dict(color=font_c),
+    showgrid=True, gridcolor=grid, zeroline=True,
+    zerolinecolor=zero, row=1, col=1,
   )
   fig.update_yaxes(
-    title_text="Drawdown (R)", title_font=dict(size=12),
-    showgrid=True, gridcolor="rgba(0,0,0,0.06)",
-    # Larger DD = worse; keep growing downward visually via autorange reversed? 
-    # Positive DD filled to zero is clearer than negative values.
+    title_text="Drawdown (R)", title_font=dict(size=12, color=font_c),
+    tickfont=dict(color=font_c),
+    showgrid=True, gridcolor=grid,
     rangemode="tozero",
     row=2, col=1,
   )
   fig.update_xaxes(showticklabels=False, row=1, col=1)
   fig.update_xaxes(
-    title_text=None, showgrid=False, tickfont=dict(size=11), row=2, col=1,
+    title_text=None, showgrid=False,
+    tickfont=dict(size=11, color=font_c), row=2, col=1,
   )
   return fig
 
@@ -232,6 +252,7 @@ def equity_payload_from_trades(
   trades: list[dict],
   *,
   period: str = "all",
+  theme: str = "light",
 ) -> dict[str, Any]:
   labels = _label_map()
   combined = trades_to_equity_df(trades, period=period)
@@ -252,6 +273,7 @@ def equity_payload_from_trades(
     by_model=by_model if len(by_model) > 1 else {},
     title="",
     labels=labels,
+    theme=theme,
   )
   return {
     "source": "journal",
@@ -272,7 +294,11 @@ def equity_payload_from_trades(
   }
 
 
-def equity_payload_from_parity(books: list[dict]) -> dict[str, Any]:
+def equity_payload_from_parity(
+  books: list[dict],
+  *,
+  theme: str = "light",
+) -> dict[str, Any]:
   """Aggregate parity book results into equity charts (week grain)."""
   labels = _label_map()
   all_weeks: list[dict] = []
@@ -308,6 +334,7 @@ def equity_payload_from_parity(books: list[dict]) -> dict[str, Any]:
     by_model=by_model if len(by_model) > 1 else {},
     title="",
     labels={**labels, **{m: (by_model[m].attrs.get("label") or m) for m in by_model}},
+    theme=theme,
   )
   return {
     "source": "parity_weeks",
@@ -333,9 +360,12 @@ def render_equity_section(
   *,
   period: str = "all",
   parity_books: list[dict] | None = None,
+  theme: str | None = None,
 ) -> dict[str, Any] | None:
   """Pick best data source and return payload (caller renders figure)."""
-  journal = equity_payload_from_trades(trades, period=period)
+  if theme is None:
+    theme = "light"
+  journal = equity_payload_from_trades(trades, period=period, theme="light")
   if journal["n_points"] > 0:
     return journal
   if parity_books:
@@ -345,11 +375,13 @@ def render_equity_section(
       if b.get("models") and any("weeks" in (m or {}) for m in b.get("models") or []):
         rich.append(b)
     if rich:
-      return equity_payload_from_parity(rich)
+      return equity_payload_from_parity(rich, theme=theme)
     # load from results files if only progress stubs
     try:
       import json
+
       from live_config import RESULTS_DIR
+
       loaded = []
       for b in parity_books:
         sym = (b.get("symbol") or "").lower()
@@ -360,7 +392,12 @@ def render_equity_section(
         if path.exists():
           loaded.append(json.loads(path.read_text(encoding="utf-8")))
       if loaded:
-        return equity_payload_from_parity(loaded)
+        return equity_payload_from_parity(loaded, theme=theme)
+      books = []
+      for p in RESULTS_DIR.glob("parity_*.json"):
+        books.append(json.loads(p.read_text(encoding="utf-8")))
+      if books:
+        return equity_payload_from_parity(books, theme=theme)
     except Exception:
       pass
-  return journal if journal["figure"] is not None else None
+  return journal if journal.get("figure") is not None else None

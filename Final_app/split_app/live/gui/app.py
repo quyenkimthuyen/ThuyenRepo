@@ -1,6 +1,7 @@
 """EdgeMiner Live — trader desk UI (daily ops first, config second)."""
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -17,9 +18,7 @@ from desk_snapshot import desk_snapshot  # noqa: E402
 from live_config import BRIDGE_DIR, INBOX_DIR  # noqa: E402
 from journal_view import (  # noqa: E402
   load_recent_fills,
-  load_trades,
   load_trades_many,
-  stats_by_model_table,
   journal_summary_many,
   stats_by_model_many,
   PERIOD_LABELS,
@@ -61,7 +60,12 @@ from risk_prefs import (  # noqa: E402
   save_risk_prefs,
 )
 from shared.constants import LIVE_APP_PORT, LIVE_INSTANCE_ID, LIVE_MAGIC_BASE  # noqa: E402
-from theme import inject_theme, pill, r_class  # noqa: E402
+from theme import (  # noqa: E402
+  inject_theme,
+  pill,
+  r_class,
+  signal_badge,
+)
 
 st.set_page_config(
   page_title="EdgeMiner Live",
@@ -136,8 +140,8 @@ def render_replay_desk() -> dict:
   from datetime import date as _date
 
   st.session_state.desk_mode = "Replay"
-  if "stats_period" not in st.session_state or st.session_state.stats_period == "today":
-    st.session_state.stats_period = "all"
+  if "replay_stats_period" not in st.session_state:
+    st.session_state.replay_stats_period = "all"
 
   snap = desk_snapshot(sim=True)
   tone = snap["health_tone"]
@@ -181,17 +185,22 @@ def render_replay_desk() -> dict:
   except ValueError:
     d_to = _date(2026, 8, 7)
 
-  oc1, oc2, oc3 = st.columns([1.1, 1.1, 1.6])
-  with oc1:
-    oos_from = st.date_input("OOS from", value=d_from, key="oos_from_date")
-  with oc2:
-    oos_to = st.date_input("OOS to", value=d_to, key="oos_to_date")
-  with oc3:
-    st.caption("Khoảng OOS áp dụng mọi model đang On (parity khớp lab).")
-    if st.button("Save range", use_container_width=True, key="oos_save_btn"):
-      save_oos_prefs(date_from=str(oos_from), date_to=str(oos_to))
-      st.toast(f"OOS {oos_from} → {oos_to}")
+  # Seed widget state once from saved prefs (survives refresh / restart).
+  if "oos_from_date" not in st.session_state:
+    st.session_state.oos_from_date = d_from
+  if "oos_to_date" not in st.session_state:
+    st.session_state.oos_to_date = d_to
 
+  oc1, oc2 = st.columns(2)
+  with oc1:
+    oos_from = st.date_input("OOS from", key="oos_from_date")
+  with oc2:
+    oos_to = st.date_input("OOS to", key="oos_to_date")
+
+  # Auto-save range — no Save button; keep last config in oos_prefs.json
+  cur_from, cur_to = str(oos_from), str(oos_to)
+  if cur_from != str(prefs.get("from") or "") or cur_to != str(prefs.get("to") or ""):
+    save_oos_prefs(date_from=cur_from, date_to=cur_to)
   if not models:
     st.info("Chưa bật model — mở **Models**, bật On, Save.")
   else:
@@ -465,8 +474,8 @@ def _render_health_panel(health: dict, *, sim: bool = False) -> None:
 def render_live_desk() -> dict:
   """Live desk — Control → Now → Pipeline → Session (History gộp vào)."""
   st.session_state.desk_mode = "Live"
-  if "stats_period" not in st.session_state or st.session_state.stats_period not in PERIODS:
-    st.session_state.stats_period = "today"
+  if "live_stats_period" not in st.session_state or st.session_state.live_stats_period not in PERIODS:
+    st.session_state.live_stats_period = "all"
 
   snap = desk_snapshot(sim=False)
   tone = snap["health_tone"]
@@ -531,17 +540,58 @@ def render_live_desk() -> dict:
 
   a1, a2, a3, a4 = st.columns([1.3, 1, 1, 1.2])
   with a1:
-    start_disabled = bool(running or snap["kill_switch"] or not models)
+    mt5_up = True
+    if os.name == "nt":
+      try:
+        from deploy_ea import is_mt5_running
+        mt5_up = bool(is_mt5_running())
+      except Exception:
+        mt5_up = True
+    # Allow Start when MT5 is down even if workers still "Running".
+    start_disabled = bool(snap["kill_switch"] or not models or (running and mt5_up))
+    start_why = ""
+    if snap["kill_switch"]:
+      start_why = "Kill đang armed — bấm Disarm kill trước."
+    elif running and not mt5_up:
+      start_why = "MT5 đã tắt — bấm Start để mở lại terminal (+ deploy nếu cần)."
+    elif running:
+      start_why = "Bridge đang Running — bấm Stop rồi Start lại nếu cần."
+    elif not models:
+      start_why = "Chưa có model On — mở Models, bật On, Save."
+    if not mt5_up and os.name == "nt":
+      st.warning("XM MT5 không chạy — Start sẽ mở lại terminal64.")
+    start_label = "Start trading" if mt5_up or not running else "Mở lại MT5 + Start"
     if st.button(
-      "Start trading",
+      start_label,
       type="primary",
       use_container_width=True,
       disabled=start_disabled,
       key="desk_start",
+      help=start_why or "Deploy EA (nếu thiếu) rồi start bridge workers.",
     ):
       try:
         with st.spinner("Checking / deploying EA trên MT5 (Windows)…"):
-          out = start_bridge(require_chart=False)
+          if running and not mt5_up:
+            # Workers still up but terminal closed — reopen MT5 without full stop first.
+            from deploy_ea import ensure_live_eas_deployed, ensure_mt5_running
+            mt5 = ensure_mt5_running(wait_sec=12.0)
+            if not mt5.get("ok"):
+              raise RuntimeError(
+                "Không mở lại được XM MT5.\n"
+                f"{mt5.get('error') or mt5.get('reason') or ''}"
+              )
+            dep = ensure_live_eas_deployed(
+              force=True, wait_online=False, wait_sec=15.0,
+            )
+            out = {"n_workers": "kept", "deploy": dep, "pid": "—"}
+            if mt5.get("started"):
+              st.toast("XM MT5 đã mở lại")
+          else:
+            out = start_bridge(require_chart=False)
+            dep = out.get("deploy") or {}
+            mt5 = (dep.get("mt5") or {}) if isinstance(dep, dict) else {}
+            if mt5.get("started"):
+              st.toast("XM MT5 đã khởi động")
         dep = out.get("deploy") or {}
         if dep.get("deployed"):
           n = (dep.get("coverage") or {}).get("n_books") or len(dep.get("books") or [])
@@ -551,6 +601,8 @@ def render_live_desk() -> dict:
         st.rerun()
       except Exception as exc:
         st.error(str(exc))
+    if start_why:
+      st.caption(start_why)
   with a2:
     if st.button("Stop", use_container_width=True, disabled=not running, key="desk_stop"):
       stop_bridge(flatten=False)
@@ -577,7 +629,9 @@ def render_live_desk() -> dict:
   left, right = st.columns([1.35, 1])
   with left:
     act = dec.get("action") or "—"
-    act_cls = f"decision-{dec.get('tone') or 'unknown'}"
+    sig_tone = dec.get("tone") or "unknown"
+    act_cls = f"decision-{sig_tone}"
+    panel_cls = f"signal-{sig_tone}"
     reason = dec.get("reason") or "—"
     meta_bits = []
     if dec.get("bar_time"):
@@ -590,15 +644,19 @@ def render_live_desk() -> dict:
     model_line = labels.get(str(mid), mid) if mid else (
       models[0].get("label") if models else "—"
     )
+    badge = signal_badge(sig_tone)
     st.markdown(
       f"""
-      <div class="panel">
-        <div class="panel-label">Signal</div>
+      <div class="panel signal-panel {panel_cls}">
+        <div class="signal-head">
+          <div class="panel-label">Signal</div>
+          <span class="signal-badge">{badge}</span>
+        </div>
         <div class="decision-action {act_cls}">{act}</div>
         <div class="decision-meta">
-          <div><strong>{model_line}</strong></div>
-          <div>{reason}</div>
-          <div>{meta}</div>
+          <div class="decision-model">{model_line}</div>
+          <div class="decision-reason">{reason}</div>
+          <div class="decision-wait">{meta}</div>
         </div>
       </div>
       """,
@@ -609,20 +667,39 @@ def render_live_desk() -> dict:
     tot_r = journal.get("total_r") or 0.0
     wr = journal.get("win_rate_pct")
     wr_s = f"{wr}%" if wr is not None else "—"
+    n_today = today.get("n") or 0
+    n_closed = journal.get("n_closed") or 0
+    n_open = len(snap.get("open_trades") or [])
     st.markdown(
       f"""
-      <div class="panel">
+      <div class="panel session-panel">
         <div class="panel-label">Session</div>
         <div class="stat-grid">
-          <div><div class="stat-k">Today R</div><div class="stat-v {r_class(day_r)}">{day_r:+.2f}</div></div>
-          <div><div class="stat-k">Today trades</div><div class="stat-v">{today.get('n') or 0}</div></div>
-          <div><div class="stat-k">Total R</div><div class="stat-v {r_class(tot_r)}">{tot_r:+.2f}</div></div>
-          <div><div class="stat-k">Win rate</div><div class="stat-v">{wr_s}</div></div>
+          <div class="stat-cell">
+            <div class="stat-k">Today R</div>
+            <div class="stat-v {r_class(day_r)}">{day_r:+.2f}</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-k">Closed</div>
+            <div class="stat-v neutral">{n_today if n_today else n_closed}</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-k">Total R</div>
+            <div class="stat-v {r_class(tot_r)}">{tot_r:+.2f}</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-k">Win rate</div>
+            <div class="stat-v neutral">{wr_s}</div>
+          </div>
         </div>
       </div>
       """,
       unsafe_allow_html=True,
     )
+    if n_open:
+      st.caption(f"Đang mở {n_open} vị thế.")
+    elif n_today == 0 and n_closed == 0:
+      st.caption("Chưa có lệnh đóng — thống kê R cập nhật khi EA đóng lệnh.")
 
   if snap.get("open_trades"):
     st.markdown('<div class="panel-label">Open positions</div>', unsafe_allow_html=True)
@@ -648,17 +725,43 @@ def render_live_desk() -> dict:
     options=list(PERIODS),
     format_func=lambda k: PERIOD_LABELS.get(k, k),
     horizontal=True,
-    key="stats_period",
+    key="live_stats_period",
   )
-  from journal_view import journal_summary
-  summary = journal_summary(period=period)
-  model_table = stats_by_model_table(period=period, compact=False)
-  trades = load_trades()
-  fills = load_recent_fills(limit=25)
+  from desk_snapshot import _bridge_dirs_for_enabled, book_models
+  from journal_view import filter_trades_by_period
+
+  bdirs = _bridge_dirs_for_enabled(book_models(), sim=False)
+  if not bdirs:
+    bdirs = [Path(p) for p in (snap.get("bridge_dirs") or [])] or [BRIDGE_DIR]
+  summary = journal_summary_many(bdirs, period=period)
+  rows = [
+    r for r in stats_by_model_many(bdirs, period=period)
+    if (r.get("n_closed") or 0) or (r.get("n_open") or 0)
+  ]
+  model_table = [
+    {
+      "Model": r.get("label"),
+      "Market": f"{r.get('symbol') or ''} {r.get('timeframe') or ''}".strip() or "—",
+      "Open": r.get("n_open"),
+      "Closed": r.get("n_closed"),
+      "W": r.get("wins"),
+      "L": r.get("losses"),
+      "WR%": r.get("win_rate_pct"),
+      "Total R": r.get("total_r"),
+      "Avg R": r.get("avg_r"),
+    }
+    for r in rows
+  ]
+  all_trades = load_trades_many(bdirs)
+  trades = filter_trades_by_period(all_trades, period)
+  fills = []
+  for bdir in bdirs:
+    fills.extend(load_recent_fills(bdir, limit=25))
+  fills = fills[-25:]
 
   c1, c2, c3, c4 = st.columns(4)
   c1.metric("Closed", summary.get("n_closed") or 0)
-  c2.metric("Total R", summary.get("total_r") or 0)
+  c2.metric("Total R", f"{float(summary.get('total_r') or 0):+.3f}")
   c3.metric("WR%", summary.get("win_rate_pct") if summary.get("win_rate_pct") is not None else "—")
   c4.metric("W/L", f"{summary.get('wins') or 0}/{summary.get('losses') or 0}")
 
@@ -667,7 +770,7 @@ def render_live_desk() -> dict:
   else:
     st.caption(f"Chưa có lệnh đóng trong {PERIOD_LABELS.get(period, period)}.")
 
-  eq = render_equity_section(trades, period=period, parity_books=None)
+  eq = render_equity_section(trades, period="all", parity_books=None)
   if eq and eq.get("figure") is not None:
     with st.expander("Equity & drawdown", expanded=True):
       e1, e2, e3 = st.columns(3)
@@ -1035,7 +1138,7 @@ def render_models_page() -> None:
         )
       with c4:
         st.markdown(
-          f"<div style='padding-top:1.6rem;opacity:0.7;font-family:IBM Plex Mono,monospace;font-size:0.85rem'>"
+          f"<div style='padding-top:1.6rem;color:var(--desk-muted);font-family:IBM Plex Mono,monospace;font-size:0.85rem'>"
           f"{row.get('magic') or '—'}</div>",
           unsafe_allow_html=True,
         )
@@ -1051,6 +1154,7 @@ def render_models_page() -> None:
           cwd=str(LIVE),
           capture_output=True,
           text=True,
+          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0,
         )
         st.toast("Saved · synced to EA")
         st.rerun()
@@ -1061,6 +1165,7 @@ def render_models_page() -> None:
           cwd=str(LIVE),
           capture_output=True,
           text=True,
+          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0,
         )
         if r.returncode == 0:
           st.success((r.stdout or "Synced").strip().split("\n")[0])
@@ -1094,6 +1199,7 @@ def render_models_page() -> None:
           cwd=str(LIVE),
           capture_output=True,
           text=True,
+          creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0,
         )
         if r.returncode == 0:
           st.success((r.stdout or "Imported").strip())
@@ -1123,7 +1229,7 @@ def render_models_page() -> None:
       with c_a:
         st.markdown(
           f"**{row.get('label')}**  \n"
-          f"<span style='opacity:0.6;font-size:0.85rem'>"
+          f"<span style='color:var(--desk-muted);font-size:0.85rem'>"
           f"{row.get('symbol')} {row.get('timeframe')} · {row.get('model_id')}"
           f"{' · On' if on else ''}</span>",
           unsafe_allow_html=True,
@@ -1157,6 +1263,7 @@ def render_models_page() -> None:
                   capture_output=True,
                   text=True,
                   check=False,
+                  creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0,
                 )
               except Exception:
                 pass

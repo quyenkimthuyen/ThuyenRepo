@@ -15,9 +15,15 @@ from schedule_parity import run_all_enabled_parity  # noqa: E402
 
 
 def main() -> int:
+  if hasattr(sys.stdout, "reconfigure"):
+    try:
+      sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+      sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+      pass
   oos_from = os.environ.get("LIVE_REPLAY_FROM") or "2026-01-01"
   oos_to = os.environ.get("LIVE_REPLAY_TO") or "2026-08-07"
-  print(f"==== Schedule-parity OOS {oos_from} → {oos_to} ====", flush=True)
+  print(f"==== Schedule-parity OOS {oos_from} -> {oos_to} ====", flush=True)
   out = run_all_enabled_parity(oos_from=oos_from, oos_to=oos_to)
   print(json_dumps(out), flush=True)
   return 0 if out.get("ok") else 1

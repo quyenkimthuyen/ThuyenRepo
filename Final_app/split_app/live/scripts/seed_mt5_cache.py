@@ -23,10 +23,24 @@ DESK_DATA_CANDIDATES = (
   "data/{sym}_{tf}.parquet",
   "results/data/mt5_{sym}_{tf}.parquet",
 )
+MIN_PARQUET_BYTES = 1024
 
 
 def _now() -> str:
   return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+
+
+def _looks_like_parquet(path: Path) -> bool:
+  try:
+    if not path.is_file() or path.stat().st_size < MIN_PARQUET_BYTES:
+      return False
+    with path.open("rb") as f:
+      head = f.read(4)
+      f.seek(-4, 2)
+      tail = f.read(4)
+    return head == b"PAR1" and tail == b"PAR1"
+  except OSError:
+    return False
 
 
 def find_source(symbol: str, timeframe: str, src: Path | None = None) -> Path:
@@ -34,24 +48,30 @@ def find_source(symbol: str, timeframe: str, src: Path | None = None) -> Path:
     p = Path(src)
     if not p.exists():
       raise FileNotFoundError(p)
+    if not _looks_like_parquet(p):
+      raise ValueError(f"Not a readable parquet: {p} ({p.stat().st_size} bytes)")
     return p
   sym = normalize_symbol(symbol).lower()
   tf = normalize_timeframe(timeframe).lower()
+  candidates: list[Path] = []
   desk = resolve_host_desk(symbol, timeframe)
   for tmpl in DESK_DATA_CANDIDATES:
-    p = desk / tmpl.format(sym=sym, tf=tf)
-    if p.exists():
-      return p
-  # Final_app sibling desks
-  for desk2 in FINAL.glob("EdgeMiner*"):
-    for tmpl in DESK_DATA_CANDIDATES:
-      p = desk2 / tmpl.format(sym=sym, tf=tf)
-      if p.exists():
-        return p
-  raise FileNotFoundError(
-    f"No parquet for {symbol} {timeframe}. Pass --src PATH or place "
-    f"mt5_{sym}_{tf}.parquet under the host desk data/."
-  )
+    candidates.append(desk / tmpl.format(sym=sym, tf=tf))
+  # Final_app sibling desks + nearby backtest trees
+  for root in (FINAL, FINAL.parent / "backtest", FINAL.parent / "backtestM5"):
+    if not root.exists():
+      continue
+    for desk2 in root.glob("EdgeMiner*"):
+      for tmpl in DESK_DATA_CANDIDATES:
+        candidates.append(desk2 / tmpl.format(sym=sym, tf=tf))
+  good = [p for p in candidates if _looks_like_parquet(p)]
+  if not good:
+    raise FileNotFoundError(
+      f"No readable parquet for {symbol} {timeframe}. Pass --src PATH or place "
+      f"mt5_{sym}_{tf}.parquet under the host desk data/."
+    )
+  # Prefer largest (usually longest history)
+  return max(good, key=lambda p: p.stat().st_size)
 
 
 def seed(symbol: str, timeframe: str, *, src: Path | None = None) -> dict:

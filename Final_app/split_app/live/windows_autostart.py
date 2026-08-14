@@ -6,6 +6,7 @@ Installs a per-user Scheduled Task that runs ``boot_autostart_windows.ps1``.
 from __future__ import annotations
 
 import json
+import os
 import platform
 import subprocess
 from datetime import datetime, timezone
@@ -73,7 +74,7 @@ def save_prefs(**updates: Any) -> dict[str, Any]:
   return cur
 
 
-def _run_ps(args: list[str], *, timeout_sec: float = 90.0) -> dict[str, Any]:
+def _run_ps(args: list[str], *, timeout_sec: float = 25.0) -> dict[str, Any]:
   if not is_windows():
     return {
       "ok": False,
@@ -107,7 +108,8 @@ def _run_ps(args: list[str], *, timeout_sec: float = 90.0) -> dict[str, Any]:
       text=True,
       check=False,
       cwd=str(LIVE_ROOT),
-      timeout=max(30.0, float(timeout_sec)),
+      timeout=max(10.0, float(timeout_sec)),
+      creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0,
     )
   except subprocess.TimeoutExpired as e:
     return {
@@ -186,7 +188,7 @@ def enable_autostart(
     "-Action", "Install",
     "-DelaySec", str(int(delay_sec)),
     "-Port", str(int(port)),
-  ], timeout_sec=90.0)
+  ], timeout_sec=25.0)
   return {
     "ok": bool(out.get("ok")),
     "skipped": False,

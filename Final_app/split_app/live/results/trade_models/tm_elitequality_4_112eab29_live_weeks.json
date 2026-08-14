@@ -1,0 +1,131 @@
+{
+  "meta": {
+    "model_id": "tm_elitequality_4_112eab29",
+    "source": "live_remine",
+    "n_weeks": 1
+  },
+  "weekly": [
+    {
+      "week_start": "2026-08-10",
+      "strategy": {
+        "name": "Forge RR3 full 6L5S session+price #69E2|surg:h8,10,14,17+noS|chase:fixed_or_rsi<63+vwap<99",
+        "exit_mode": "full",
+        "ml_prob_min": 0.36,
+        "rr": 3.0,
+        "atr_mult": 1.05,
+        "score_threshold": 0.6,
+        "atr_mult_sl": 1.05,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.35,
+        "partial_at_r": 1.5,
+        "trail_activate_r": 1.0,
+        "trail_distance_r": 0.5,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [
+          8,
+          10,
+          14,
+          17
+        ],
+        "allow_long": true,
+        "allow_short": false,
+        "anti_chase": true,
+        "anti_chase_rsi_short_max": 63.0,
+        "anti_chase_rsi_long_min": 37.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "range_buy",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 4.198159882329441
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -1.7171216664525866,
+            "w": 9.309332307100618
+          },
+          {
+            "feat": "rejection_bull",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.366092525167375
+          },
+          {
+            "feat": "rsi",
+            "direction": "long",
+            "op": "lt",
+            "thr": 38.38326636554769,
+            "w": 3.8859083671517594
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "long",
+            "op": "lt",
+            "thr": -1.8924320677448636,
+            "w": 15.368143283954216
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "long",
+            "op": "lt",
+            "thr": -0.7921753313302496,
+            "w": 14.746929088965151
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "rejection_bear",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.9044867828259122
+          },
+          {
+            "feat": "adx",
+            "direction": "short",
+            "op": "lt",
+            "thr": 13.70144020745806,
+            "w": 0.5193428537867714
+          },
+          {
+            "feat": "price_vs_ema50",
+            "direction": "short",
+            "op": "gt",
+            "thr": -0.009602015515133396,
+            "w": 0.10529554722990886
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.5545686246233057,
+            "w": 0.2044304169720184
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.327060239610753,
+            "w": 0.06266036011442182
+          }
+        ]
+      },
+      "train_start_idx": 60300,
+      "train_end_idx": 64620
+    }
+  ]
+}

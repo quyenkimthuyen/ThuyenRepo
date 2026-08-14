@@ -100,6 +100,14 @@ python live/sync_bridge_roster.py
 # Smoke (no MT5 required for most checks)
 ../../EdgeMinerM15B5/.venv/bin/python live/scripts/smoke_live.py
 
+# Windows Live E2E (app HTTP + desk + safety + deploy PARSE)
+# From split_app on Windows:
+.\live\scripts\test_live_windows.ps1
+.\live\scripts\test_live_windows.ps1 -WithDeploy          # optional: deploy -NoAttach
+.\live\scripts\test_live_windows.ps1 -WithBridgeOnce      # optional: service --once
+# Or:
+python live/scripts/test_live_windows.py
+
 # Bridge service
 ../../EdgeMinerM15B5/.venv/bin/python -c "import bridge_control; print(bridge_control.start_bridge())"
 # stop:

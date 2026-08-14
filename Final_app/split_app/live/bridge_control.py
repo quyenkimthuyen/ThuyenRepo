@@ -53,13 +53,100 @@ def _write(path: Path, data: Any) -> None:
 
 
 def _pid_alive(pid: int | None) -> bool:
+  """Return True if process exists and has not exited.
+
+  On Windows prefer OpenProcess/GetExitCodeProcess — more reliable than os.kill
+  for workers started with CREATE_NEW_PROCESS_GROUP.
+  """
   if not pid:
     return False
   try:
-    os.kill(int(pid), 0)
+    pid_i = int(pid)
+  except (TypeError, ValueError):
+    return False
+  if pid_i <= 0:
+    return False
+
+  if os.name == "nt":
+    try:
+      import ctypes
+      from ctypes import wintypes
+
+      PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+      STILL_ACTIVE = 259
+      handle = ctypes.windll.kernel32.OpenProcess(
+        PROCESS_QUERY_LIMITED_INFORMATION, False, pid_i,
+      )
+      if not handle:
+        return False
+      try:
+        code = wintypes.DWORD()
+        if ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(code)) == 0:
+          return False
+        return int(code.value) == STILL_ACTIVE
+      finally:
+        ctypes.windll.kernel32.CloseHandle(handle)
+    except Exception:
+      pass
+
+  try:
+    os.kill(pid_i, 0)
     return True
   except OSError:
     return False
+  except ValueError:
+    return False
+
+
+def _worker_log_tail_since_start(log_path: Path, *, max_lines: int = 20) -> str:
+  if not log_path.is_file():
+    return ""
+  try:
+    text = log_path.read_text(encoding="utf-8", errors="replace")
+  except OSError:
+    return ""
+  idx = text.rfind("--- start ")
+  chunk = text[idx:] if idx >= 0 else text
+  lines = chunk.splitlines()
+  return "\n".join(lines[-max_lines:])
+
+
+def _worker_looks_crashed(log_path: Path) -> bool:
+  """True only when the latest start block ends with a hard failure."""
+  tail = _worker_log_tail_since_start(log_path, max_lines=40).lower()
+  if not tail.strip():
+    return False
+  fatal = (
+    "traceback (most recent call last):",
+    "permissionerror:",
+    "modulenotfounderror:",
+    "systemexit",
+  )
+  # Progress lines mean the worker got past bootstrap — not an immediate exit.
+  progress = (
+    "[live-bridge] history bars=",
+    "[live-bridge] waiting for history",
+    "[bridge] remine week=",
+    "[bridge] schedule week=",
+    "monitor=http://",
+  )
+  if any(p in tail for p in progress):
+    return False
+  return any(f in tail for f in fatal)
+
+
+def _worker_status_active(bridge_dir: str | Path | None) -> bool:
+  if not bridge_dir:
+    return False
+  try:
+    data = _read(Path(bridge_dir) / "status.json") or {}
+  except Exception:
+    return False
+  state = str(data.get("state") or "").lower()
+  return state in {
+    "starting", "running", "syncing_history", "waiting_history",
+    "ready", "idle", "decision",
+  }
 
 
 def load_config() -> dict:
@@ -122,7 +209,7 @@ def service_pid() -> int | None:
 def prepare_runtime(
   *,
   require_chart: bool = False,
-  poll_sec: float = 2.0,
+  poll_sec: float = 0.5,
   sim: bool = False,
 ) -> dict[str, Any]:
   if is_kill_switch_armed():
@@ -240,7 +327,7 @@ def prepare_runtime(
 def start_bridge(
   *,
   require_chart: bool = False,
-  poll_sec: float = 2.0,
+  poll_sec: float = 0.5,
   once: bool = False,
   sim: bool = False,
   auto_deploy_ea: bool = True,
@@ -262,8 +349,8 @@ def start_bridge(
   deploy_info: dict[str, Any] | None = None
   if (not sim) and auto_deploy_ea:
     from deploy_ea import ensure_live_eas_deployed
-    # Windows: check coverage → deploy all enabled books → wait heartbeat.
-    # Linux: skipped (no MT5). Env LIVE_SKIP_EA_DEPLOY=1 also skips.
+    # Windows: ensure MT5 running → check coverage → deploy all enabled books → wait heartbeat.
+    # Linux: skipped (no MT5). Env LIVE_SKIP_EA_DEPLOY=1 also skips (but still tries to open MT5).
     deploy_info = ensure_live_eas_deployed(
       force=False,
       wait_online=True,
@@ -273,6 +360,27 @@ def start_bridge(
     if require_chart:
       # Re-validate after deploy so Start fails clearly if a book is still offline
       prep = prepare_runtime(require_chart=True, poll_sec=poll_sec, sim=sim)
+  elif (not sim) and os.name == "nt":
+    # Deploy skipped, but still boot terminal if user closed MT5.
+    try:
+      from deploy_ea import ensure_mt5_running
+      mt5 = ensure_mt5_running()
+      deploy_info = {
+        "ok": bool(mt5.get("ok")),
+        "skipped": True,
+        "reason": "deploy_skipped_mt5_only",
+        "deployed": False,
+        "mt5": mt5,
+      }
+      if not mt5.get("ok"):
+        raise RuntimeError(
+          "Không khởi động được XM Global MT5.\n"
+          f"{mt5.get('error') or mt5.get('reason') or ''}"
+        )
+    except RuntimeError:
+      raise
+    except Exception:
+      pass
 
   try:
     from debug_log import log_event, prune_old_logs
@@ -335,14 +443,24 @@ def start_bridge(
     logf = open(log_path, "a", encoding="utf-8")
     logf.write(f"\n--- start {_now()} sim={sim} ---\n")
     logf.flush()
-    proc = subprocess.Popen(
-      cmd,
-      cwd=str(LIVE_ROOT),
-      stdout=logf,
-      stderr=subprocess.STDOUT,
-      start_new_session=True,
-      close_fds=True,
-    )
+    # Stagger multi-book starts so materialize + heavy imports don't stampede.
+    if started:
+      time.sleep(0.8)
+    popen_kwargs: dict[str, Any] = {
+      "cwd": str(LIVE_ROOT),
+      "stdout": logf,
+      "stderr": subprocess.STDOUT,
+      "close_fds": False if os.name == "nt" else True,
+    }
+    if os.name == "nt":
+      # New process group + no console flash when Streamlit starts workers.
+      popen_kwargs["creationflags"] = (
+        subprocess.CREATE_NEW_PROCESS_GROUP
+        | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+      )
+    else:
+      popen_kwargs["start_new_session"] = True
+    proc = subprocess.Popen(cmd, **popen_kwargs)
     pid_path.write_text(str(proc.pid), encoding="utf-8")
     w = {
       "key": key,
@@ -382,12 +500,58 @@ def start_bridge(
     last_deploy=deploy_info,
   )
 
+  # Confirm workers stay up. Bootstrap/remine is slow — poll PIDs up to 20s.
+  # Only fail when every worker pid is dead AND logs show a hard crash (not progress).
+  if workers and not once:
+    deadline = time.time() + 20.0
+    alive_pids: list[dict] = []
+    while time.time() < deadline:
+      alive_pids = [w for w in workers if _pid_alive(w.get("pid"))]
+      if len(alive_pids) >= max(1, len(workers) // 2):
+        break
+      time.sleep(0.5)
+
+    if not alive_pids:
+      soft_ok = []
+      for w in workers:
+        logp = Path(w.get("log") or "")
+        if not logp.is_file():
+          continue
+        if _worker_looks_crashed(logp):
+          continue
+        tail = _worker_log_tail_since_start(logp, max_lines=40)
+        if "[live-bridge]" in tail or "[bridge]" in tail or _worker_status_active(w.get("bridge_dir")):
+          soft_ok.append(w)
+      if soft_ok:
+        alive_pids = soft_ok
+      else:
+        tails: list[str] = []
+        for w in workers[:4]:
+          chunk = _worker_log_tail_since_start(Path(w.get("log") or ""), max_lines=16)
+          if chunk:
+            tails.append(f"[{w.get('key')}]\n{chunk}")
+        detail = "\n\n".join(tails) if tails else "no worker logs"
+        raise RuntimeError(
+          "Start failed — bridge workers exited immediately.\n"
+          "Xem log worker trong live/results/workers/.\n"
+          f"{detail}"
+        )
+
+    for w in workers:
+      w["alive"] = _pid_alive(w.get("pid"))
+    save_workers(workers)
+
   autostart_info: dict[str, Any] | None = None
   if (not sim) and (not once) and workers:
     try:
-      from windows_autostart import sync_autostart_with_trading
-      # Start trading → gắn Scheduled Task (MT5 + app + bridge sau reboot)
-      autostart_info = sync_autostart_with_trading(active=True)
+      if str(os.environ.get("LIVE_SKIP_AUTOSTART") or "").strip().lower() in (
+        "1", "true", "yes", "on",
+      ):
+        autostart_info = {"ok": True, "skipped": True, "reason": "env:LIVE_SKIP_AUTOSTART"}
+      else:
+        from windows_autostart import sync_autostart_with_trading
+        # Keep this best-effort and short — never block Start for long.
+        autostart_info = sync_autostart_with_trading(active=True)
       try:
         from debug_log import log_event
         log_event(
@@ -398,13 +562,14 @@ def start_bridge(
         )
       except Exception:
         pass
-    except Exception:
-      autostart_info = None
+    except Exception as exc:
+      autostart_info = {"ok": False, "skipped": False, "reason": f"error:{exc}"}
 
+  alive_n = sum(1 for w in workers if _pid_alive(w.get("pid"))) if workers else 0
   return {
     "pid": primary.get("pid"),
     "workers": workers,
-    "n_workers": len(workers),
+    "n_workers": alive_n or len(workers),
     "once": once,
     "sim": bool(sim),
     "deploy": deploy_info,

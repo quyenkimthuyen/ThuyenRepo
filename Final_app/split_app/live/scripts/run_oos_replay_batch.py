@@ -39,7 +39,7 @@ def main() -> int:
     return 1
 
   results = {"started_at": _now(), "oos_from": OOS_FROM, "oos_to": OOS_TO, "books": []}
-  print(f"==== OOS batch replay {OOS_FROM} → {OOS_TO} · {len(groups)} books ====", flush=True)
+  print(f"==== OOS batch replay {OOS_FROM} -> {OOS_TO} · {len(groups)} books ====", flush=True)
 
   for (sym, tf), rows in groups.items():
     print(f"\n## Seed {sym} {tf}", flush=True)

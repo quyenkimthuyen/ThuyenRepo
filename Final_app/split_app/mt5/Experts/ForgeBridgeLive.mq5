@@ -8,7 +8,7 @@
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
 #property copyright "EdgeMinerM15 bridge"
-#property version   "1.10"
+#property version   "1.20"
 
 #include <Trade/Trade.mqh>
 
@@ -22,7 +22,7 @@ enum ENUM_BRIDGE_MODE
 input group "=== Bridge ==="
 input ENUM_BRIDGE_MODE InpMode = BRIDGE_LIVE;
 input string InpBridgeSubdir   = "bridge_live";          // under MQL5/Files/ (use bridge_sim for HistoryFeed)
-input int    InpDecisionWaitMs = 8000;              // Live: wait for decision
+input int    InpDecisionWaitMs = 60000;             // Live: shared wait for ALL models (parallel poll)
 input int    InpHistoryDecisionWaitMs = 20000;      // HistoryFeed: max wait (remine tuần có thể chậm)
 input int    InpPollMs         = 500;
 input int    InpChartBars      = 4032;              // M15 bars exported for App chart
@@ -92,6 +92,8 @@ string   g_sync_line[MAX_MODELS];
 string   g_sync_status[MAX_MODELS];   // OK|TIMEOUT|OPEN|FLAT|BUY|SELL|...
 string   g_sync_action[MAX_MODELS];
 int      g_sync_n = 0;
+bool     g_late_pending = false;      // TIMEOUT slots — keep polling after wait budget
+datetime g_pending_bar_dt = 0;        // closed bar time for late recovery
 uint     g_last_comment_ms = 0;
 
 // Multi-model roster (App writes models.json)
@@ -162,6 +164,10 @@ void WriteEaSyncJson();
 void PublishBarSyncBegin(const string bar_want);
 void PublishBarSyncModel(const int slot, const string status, const string action, const string detail);
 void PublishBarSyncEnd(const bool do_print);
+bool DecisionMatchesBar(const string json, const string want_bar_time);
+bool TryReadDecisionForBar(const string want_bar_time, const string model_id, string &json_out);
+bool ApplyLiveDecisionSlot(const int slot, const string json, bool &any_open);
+void TryRecoverLateDecisions();
 
 string DecisionPathForModel(const string model_id)
 {
@@ -723,7 +729,10 @@ bool ProcessHistoryRequest()
    string from_time_text = JsonGetString(request, "from_time");
    datetime from_time = StringToTime(from_time_text == "" ? "2024.01.01 00:00" : from_time_text);
    int oldest_shift = iBarShift(_Symbol, Period(), from_time, false);
-   int available = MathMax(0, MathMin(total - 1, oldest_shift)); // exclude forming M15 bar
+   // iBarShift returns -1 when from_time is outside loaded history; treat as "all bars".
+   if(oldest_shift < 0)
+      oldest_shift = MathMax(0, total - 1);
+   int available = MathMax(0, MathMin(total - 1, oldest_shift)); // exclude forming bar
    int wanted = MathMin(chunk_size, MathMax(0, available - offset));
 
    MqlRates rates[];
@@ -1062,6 +1071,99 @@ bool WaitDecisionForBar(const string want_bar_time, string &json_out, const int 
    string bt = JsonGetString(json_out, "bar_time");
    if(bt == "") bt = JsonGetString(json_out, "time");
    return bt == want_bar_time;
+}
+
+bool DecisionMatchesBar(const string json, const string want_bar_time)
+{
+   string bt = JsonGetString(json, "bar_time");
+   if(bt == "")
+      bt = JsonGetString(json, "time");
+   return (bt != "" && bt == want_bar_time);
+}
+
+bool TryReadDecisionForBar(const string want_bar_time, const string model_id, string &json_out)
+{
+   bool ok = (model_id != "")
+      ? ReadDecisionJsonForModel(model_id, json_out)
+      : ReadDecisionJson(json_out);
+   if(!ok)
+      return false;
+   return DecisionMatchesBar(json_out, want_bar_time);
+}
+
+bool ApplyLiveDecisionSlot(const int slot, const string json, bool &any_open)
+{
+   if(slot < 0 || slot >= g_model_n)
+      return false;
+   string action = JsonGetString(json, "action");
+   StringToUpper(action);
+   if(action == "FLAT" || action == "HOLD" || action == "")
+   {
+      PublishBarSyncModel(slot, "OK", (action == "" ? "FLAT" : action), "");
+      return true;
+   }
+   SetActiveSlot(slot);
+   if(OpenFromDecision(json))
+   {
+      any_open = true;
+      PublishBarSyncModel(slot, "ENTERED", action, "");
+      return true;
+   }
+   PublishBarSyncModel(slot, "FAIL", action, "OrderSend");
+   return true;
+}
+
+void TryRecoverLateDecisions()
+{
+   if(!g_late_pending || g_sync_bar == "" || g_model_n <= 0)
+      return;
+   bool any_open = false;
+   bool changed = false;
+   int still_to = 0;
+   for(int s = 0; s < g_model_n; s++)
+   {
+      if(g_sync_status[s] != "TIMEOUT")
+         continue;
+      if(PositionsByMagic(g_model_magics[s]) > 0)
+      {
+         PublishBarSyncModel(s, "OPEN", "-", "late");
+         changed = true;
+         continue;
+      }
+      string json;
+      if(!TryReadDecisionForBar(g_sync_bar, g_model_ids[s], json))
+      {
+         still_to++;
+         continue;
+      }
+      string action = JsonGetString(json, "action");
+      StringToUpper(action);
+      if(action == "FLAT" || action == "HOLD" || action == "")
+      {
+         PublishBarSyncModel(s, "OK", (action == "" ? "FLAT" : action), "late");
+      }
+      else
+      {
+         SetActiveSlot(s);
+         if(OpenFromDecision(json))
+         {
+            any_open = true;
+            PublishBarSyncModel(s, "ENTERED", action, "late");
+         }
+         else
+            PublishBarSyncModel(s, "FAIL", action, "OrderSend");
+      }
+      changed = true;
+   }
+   if(any_open && g_pending_bar_dt > 0)
+      g_last_fill_bar = g_pending_bar_dt;
+   if(changed)
+      PublishBarSyncEnd(false);
+   if(still_to <= 0)
+   {
+      g_late_pending = false;
+      g_pending_bar_dt = 0;
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -2374,12 +2476,32 @@ void PublishBarSyncEnd(const bool do_print)
       else n_ok++;
    }
    if(n_to > 0)
+   {
       g_sync_summary = "TIMEOUT " + IntegerToString(n_to) + "/" + IntegerToString(g_sync_n)
-         + " | App chậm / worker tắt?";
-   else if(n_sig > 0)
-      g_sync_summary = "SYNC OK | entries " + IntegerToString(n_sig);
+         + " | App slow / worker down?";
+      g_late_pending = true;
+   }
    else
-      g_sync_summary = "SYNC OK | flat/hold";
+   {
+      g_late_pending = false;
+      g_pending_bar_dt = 0;
+      // If any model line carries "late", surface catch-up (not a fresh miss).
+      bool any_late = false;
+      for(int i = 0; i < g_sync_n; i++)
+      {
+         if(StringFind(g_sync_line[i], " late") >= 0)
+         {
+            any_late = true;
+            break;
+         }
+      }
+      if(any_late)
+         g_sync_summary = "SYNC OK | late catch-up";
+      else if(n_sig > 0)
+         g_sync_summary = "SYNC OK | entries " + IntegerToString(n_sig);
+      else
+         g_sync_summary = "SYNC OK | flat/hold";
+   }
 
    WriteEaSyncJson();
    RefreshChartComment(true);
@@ -2411,6 +2533,7 @@ void OnTick()
    }
 
    ProcessManualCommand();
+   TryRecoverLateDecisions();
 
    datetime t0 = iTime(_Symbol, Period(), 0);
    if(t0 == 0 || t0 == g_last_bar)
@@ -2433,51 +2556,59 @@ void OnTick()
       return;
    }
 
-   // Live: publish closed bar, wait for App decision(s) — one open per model magic.
-   // Shared wait budget (not InpDecisionWaitMs × N) so 4 models don't block ~32s.
+   // Live: publish closed bar, wait in PARALLEL for all model decisions.
+   // Sequential wait drained the shared budget on model #0 and caused TIMEOUT 2/3–3/3.
    if(!WriteBarJson(t1))
       return;
 
    string want = TimeToString(t1, TIME_DATE | TIME_MINUTES);
    PublishBarSyncBegin(want);
-   bool any_open = false;
-   int live_wait = (int)MathMax(InpDecisionWaitMs, 1500 * MathMax(1, g_model_n));
-   uint deadline = GetTickCount() + (uint)live_wait;
+   g_pending_bar_dt = t1;
+   g_late_pending = false;
+
+   bool pending[MAX_MODELS];
+   int n_pending = 0;
    for(int s = 0; s < g_model_n; s++)
    {
+      pending[s] = false;
       if(PositionsByMagic(g_model_magics[s]) > 0)
       {
          PublishBarSyncModel(s, "OPEN", "-", "skip");
          continue;
       }
-      int remain = (int)(deadline - GetTickCount());
-      if(remain < 150)
+      pending[s] = true;
+      n_pending++;
+   }
+
+   // Budget scales with model count; hard cap 120s (week-boundary remine can lag).
+   int live_wait = (int)MathMax(InpDecisionWaitMs, 30000 * MathMax(1, g_model_n));
+   live_wait = (int)MathMin(live_wait, 120000);
+   uint deadline = GetTickCount() + (uint)live_wait;
+   int poll = (int)MathMax(50, InpPollMs);
+   bool any_open = false;
+
+   while(n_pending > 0 && GetTickCount() < deadline)
+   {
+      for(int s = 0; s < g_model_n; s++)
       {
-         PublishBarSyncModel(s, "TIMEOUT", "-", "budget");
+         if(!pending[s])
+            continue;
+         string json;
+         if(!TryReadDecisionForBar(want, g_model_ids[s], json))
+            continue;
+         ApplyLiveDecisionSlot(s, json, any_open);
+         pending[s] = false;
+         n_pending--;
+      }
+      if(n_pending > 0)
+         Sleep(poll);
+   }
+
+   for(int s = 0; s < g_model_n; s++)
+   {
+      if(!pending[s])
          continue;
-      }
-      string json;
-      if(!WaitDecisionForBar(want, json, remain, g_model_ids[s]))
-      {
-         PublishBarSyncModel(s, "TIMEOUT", "-", IntegerToString(live_wait) + "ms");
-         Print("ForgeBridge: no decision for ", want, " model=", g_model_ids[s]);
-         continue;
-      }
-      string action = JsonGetString(json, "action");
-      StringToUpper(action);
-      if(action == "FLAT" || action == "HOLD" || action == "")
-      {
-         PublishBarSyncModel(s, "OK", (action == "" ? "FLAT" : action), "");
-         continue;
-      }
-      SetActiveSlot(s);
-      if(OpenFromDecision(json))
-      {
-         any_open = true;
-         PublishBarSyncModel(s, "ENTERED", action, "");
-      }
-      else
-         PublishBarSyncModel(s, "FAIL", action, "OrderSend");
+      PublishBarSyncModel(s, "TIMEOUT", "-", IntegerToString(live_wait) + "ms");
    }
    PublishBarSyncEnd(true);
    if(any_open)

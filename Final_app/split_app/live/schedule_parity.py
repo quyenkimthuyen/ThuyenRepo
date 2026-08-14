@@ -245,7 +245,24 @@ def run_book_parity(
   desk = bootstrap_host(symbol, timeframe, force=True)
   cache = seed_exact(symbol, timeframe)
 
-  df = pd.read_parquet(cache)
+  try:
+    df = pd.read_parquet(cache)
+  except Exception as exc:
+    return {
+      "ok": False,
+      "error": f"cache_read_failed:{exc}",
+      "symbol": symbol,
+      "timeframe": timeframe,
+      "cache": str(cache),
+    }
+  if df is None or len(df) < 100:
+    return {
+      "ok": False,
+      "error": f"cache_too_small:{len(df) if df is not None else 0}",
+      "symbol": symbol,
+      "timeframe": timeframe,
+      "cache": str(cache),
+    }
   rename = {
     c: c[:1].upper() + c[1:] if c.lower() in ("open", "high", "low", "close", "volume") else c
     for c in df.columns
@@ -289,8 +306,8 @@ def run_book_parity(
     )
     results.append(out)
     print(
-      f"  → R={out.get('total_r')} WR={out.get('win_rate_pct')} n={out.get('n_trades')} "
-      f"lab_R={out.get('lab_total_r')} ΔR={out.get('delta_r')} err={out.get('error')}",
+      f"  -> R={out.get('total_r')} WR={out.get('win_rate_pct')} n={out.get('n_trades')} "
+      f"lab_R={out.get('lab_total_r')} dR={out.get('delta_r')} err={out.get('error')}",
       flush=True,
     )
 

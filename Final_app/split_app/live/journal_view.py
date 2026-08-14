@@ -167,13 +167,28 @@ def _is_open(t: dict) -> bool:
 
 
 def _parse_ts(raw: Any) -> datetime | None:
+  """Parse journal/EA timestamps. Naive MT5 wall times stay local (not UTC)."""
   if not raw:
     return None
+  if isinstance(raw, datetime):
+    if raw.tzinfo:
+      return raw
+    return raw.replace(tzinfo=_now_local().tzinfo) if _now_local().tzinfo else raw
   s = str(raw).strip()
+  if not s:
+    return None
   try:
     if s.endswith("Z"):
       s = s[:-1] + "+00:00"
-    return datetime.fromisoformat(s)
+    # EA TimeToString: "YYYY.MM.DD HH:MM" or "YYYY.MM.DD HH:MM:SS"
+    if len(s) >= 10 and s[4] == "." and s[7] == ".":
+      s = s.replace(".", "-", 2)
+    dt = datetime.fromisoformat(s)
+    if dt.tzinfo is None:
+      local_tz = _now_local().tzinfo
+      if local_tz is not None:
+        dt = dt.replace(tzinfo=local_tz)
+    return dt
   except ValueError:
     return None
 
@@ -263,7 +278,8 @@ def _in_period(ts: datetime | None, start: datetime | None, end: datetime | None
   if ts is None:
     return False
   if ts.tzinfo is None:
-    ts = ts.replace(tzinfo=timezone.utc).astimezone()
+    local_tz = _now_local().tzinfo
+    ts = ts.replace(tzinfo=local_tz) if local_tz else ts
   else:
     ts = ts.astimezone()
   if start is not None and ts < start:

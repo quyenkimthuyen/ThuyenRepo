@@ -301,6 +301,33 @@ def process_history_sync(
     return status
 
   bars = chunk.get("bars") if isinstance(chunk.get("bars"), list) else []
+  available = int(chunk.get("available_bars") or 0)
+  # EA may publish done=true with 0 bars when iBarShift fails / chart has no rates.
+  # Never treat that as success when the parquet cache is still missing.
+  if chunk.get("done") and not bars and available <= 0 and not MT5_CACHE_PATH.exists():
+    atomic_write_json(history_ack_path(bridge_dir), {
+      "request_id": request["request_id"],
+      "accepted_bars": 0,
+      "next_offset": int(chunk.get("next_offset") or 0),
+      "acknowledged_at": utc_now_iso(),
+      "error": "empty_history_chunk",
+    })
+    status.update({
+      "state": "error",
+      "offset": int(chunk.get("next_offset") or request.get("offset") or 0),
+      "received_bars": int(status.get("received_bars") or 0),
+      "stored_bars": 0,
+      "available_bars": available,
+      "processed_request_id": chunk.get("request_id"),
+      "broker": chunk.get("server"),
+      "symbol": chunk.get("symbol"),
+      "updated_at": utc_now_iso(),
+      "completed_at": None,
+      "error": "EA returned 0 history bars (chart not ready?)",
+    })
+    atomic_write_json(status_file, status)
+    return status
+
   frame = merge_history_bars(bars, chunk)
   next_offset = int(chunk.get("next_offset") or request.get("offset") or 0)
   received = int(status.get("received_bars") or 0) + len(bars)
@@ -315,7 +342,7 @@ def process_history_sync(
     "offset": next_offset,
     "received_bars": received,
     "stored_bars": len(frame),
-    "available_bars": int(chunk.get("available_bars") or 0),
+    "available_bars": available,
     "processed_request_id": chunk.get("request_id"),
     "broker": chunk.get("server"),
     "symbol": chunk.get("symbol"),

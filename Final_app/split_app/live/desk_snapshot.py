@@ -10,12 +10,10 @@ from books import bridge_dir, group_models_by_book
 from chart_validate import read_chart_identity
 from live_config import BRIDGE_DIR, RESULTS_DIR
 from journal_view import (
-  journal_summary,
   journal_summary_many,
   load_recent_fills,
   load_trades,
   load_trades_many,
-  stats_by_model,
   stats_by_model_many,
 )
 from package_store import default_roster_from_installed, list_installed, load_roster
@@ -33,13 +31,29 @@ def _read(path: Path) -> Any:
 
 
 def _parse_ts(raw: Any) -> datetime | None:
+  """Parse bridge timestamps. Naive MT5 wall times stay local (not UTC)."""
   if not raw:
     return None
+  if isinstance(raw, datetime):
+    if raw.tzinfo:
+      return raw
+    local_tz = datetime.now().astimezone().tzinfo
+    return raw.replace(tzinfo=local_tz) if local_tz else raw
   s = str(raw).strip()
+  if not s:
+    return None
   try:
     if s.endswith("Z"):
       s = s[:-1] + "+00:00"
-    return datetime.fromisoformat(s)
+    # EA TimeToString: "YYYY.MM.DD HH:MM[:SS]"
+    if len(s) >= 10 and s[4] == "." and s[7] == ".":
+      s = s.replace(".", "-", 2)
+    dt = datetime.fromisoformat(s)
+    if dt.tzinfo is None:
+      local_tz = datetime.now().astimezone().tzinfo
+      if local_tz is not None:
+        dt = dt.replace(tzinfo=local_tz)
+    return dt
   except ValueError:
     return None
 
@@ -114,30 +128,20 @@ def open_trades(bridge_dir: Path | None = None) -> list[dict]:
   return out
 
 
-def today_r(bridge_dir: Path | None = None) -> dict[str, Any]:
-  today = datetime.now().astimezone().date()
-  r_vals: list[float] = []
-  n = 0
-  for t in load_trades(bridge_dir):
-    st = str(t.get("status") or "").upper()
-    if st != "CLOSED" and t.get("exit") is None and t.get("status") != "closed":
-      continue
-    ts = _parse_ts(t.get("closed_at") or t.get("exit_time") or t.get("updated_at") or t.get("ts"))
-    if ts is None:
-      continue
-    if ts.astimezone().date() != today:
-      continue
-    try:
-      if t.get("r") is not None:
-        r_vals.append(float(t["r"]))
-        n += 1
-    except (TypeError, ValueError):
-      pass
+def today_r(bridge_dirs: list[Path] | Path | None = None) -> dict[str, Any]:
+  """Closed-trade stats for local calendar today across one or many bridges."""
+  if bridge_dirs is None:
+    dirs = [BRIDGE_DIR]
+  elif isinstance(bridge_dirs, Path):
+    dirs = [bridge_dirs]
+  else:
+    dirs = list(bridge_dirs)
+  day = journal_summary_many(dirs, period="today")
   return {
-    "n": n,
-    "total_r": round(sum(r_vals), 3) if r_vals else 0.0,
-    "wins": sum(1 for r in r_vals if r > 0),
-    "losses": sum(1 for r in r_vals if r < 0),
+    "n": int(day.get("n_closed") or 0),
+    "total_r": float(day.get("total_r") or 0.0),
+    "wins": int(day.get("wins") or 0),
+    "losses": int(day.get("losses") or 0),
   }
 
 
@@ -205,44 +209,27 @@ def desk_snapshot(*, sim: bool = False) -> dict[str, Any]:
   n_models = len(enabled)
 
   kill = bool(bstat.get("kill_switch") or is_kill_switch_armed())
+  # Always aggregate across enabled books (legacy single BRIDGE_DIR alone misses M5/GBP…).
+  journal = journal_summary_many(bdirs, period="all")
+  day = today_r(bdirs)
+  opens = []
+  seen_t = set()
+  for t in load_trades_many(bdirs):
+    if t.get("exit") is not None or str(t.get("status") or "").upper() == "CLOSED":
+      continue
+    key = (t.get("ticket"), t.get("signal_id"), t.get("model_id"))
+    if key in seen_t:
+      continue
+    seen_t.add(key)
+    opens.append(t)
+  by_model = stats_by_model_many(bdirs, period="all")
+  recent = []
+  for bdir in bdirs:
+    recent.extend(load_recent_fills(bdir, limit=20))
+  recent = recent[-20:]
   if sim:
-    journal = journal_summary_many(bdirs, period="all")
-    day = {
-      "n": journal.get("n_closed") or 0,
-      "total_r": journal.get("total_r") or 0.0,
-      "wins": journal.get("wins") or 0,
-      "losses": journal.get("losses") or 0,
-    }
-    opens = []
-    seen_t = set()
-    for t in load_trades_many(bdirs):
-      if t.get("exit") is not None or str(t.get("status") or "").upper() == "CLOSED":
-        continue
-      key = (t.get("ticket"), t.get("signal_id"), t.get("model_id"))
-      if key in seen_t:
-        continue
-      seen_t.add(key)
-      opens.append(t)
-    by_model = stats_by_model_many(bdirs, period="all")
-    recent = []
-    for bdir in bdirs:
-      recent.extend(load_recent_fills(bdir, limit=20))
-    recent = recent[-20:]
     replay = load_sim_progress()
   else:
-    journal = journal_summary()
-    day = today_r()
-    opens = []
-    seen_t = set()
-    for bdir in bdirs:
-      for t in open_trades(bdir):
-        key = (t.get("ticket"), t.get("signal_id"), t.get("model_id"))
-        if key in seen_t:
-          continue
-        seen_t.add(key)
-        opens.append(t)
-    by_model = stats_by_model()
-    recent = load_recent_fills(limit=12)
     replay = {"running": False, "books": []}
 
   if sim:

@@ -82,12 +82,9 @@ def bootstrap_host(symbol: str, timeframe: str, *, force: bool = False) -> Path:
   sched.REPORT_DIR = RESULTS_DIR
   sched.MODELS_DIR = RESULTS_DIR / "trade_models"
 
-  import gui.trade_model as tm  # noqa: WPS433
-
-  tm.REPORT_DIR = RESULTS_DIR
-  tm.MODELS_PATH = RESULTS_DIR / "trade_models.json"
-  tm.ACTIVE_MODEL_PATH = RESULTS_DIR / "active_trade_model.json"
-  tm.MODELS_DIR = RESULTS_DIR / "trade_models"
+  # Do NOT import gui.trade_model here — it pulls Streamlit and can crash/hang
+  # headless bridge workers while the Live UI is already running on :8601.
+  # Runtime model IO goes through mt5_bridge.models (patched below).
 
   import mt5_bridge.models as models  # noqa: WPS433
 

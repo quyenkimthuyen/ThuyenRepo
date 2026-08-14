@@ -24,6 +24,13 @@ from live_config import BRIDGE_DIR, RESULTS_DIR  # noqa: E402
 from materialize_models import materialize_enabled  # noqa: E402
 from runtime_bootstrap import bootstrap_host  # noqa: E402
 from safety import is_kill_switch_armed  # noqa: E402
+from debug_log import (  # noqa: E402
+  check_pending_signal_timeouts,
+  install_comm_log_mirror,
+  log_ea_sync_if_changed,
+  log_event,
+  prune_old_logs,
+)
 from shared.constants import (  # noqa: E402
   LIVE_BRIDGE_PORT,
   LIVE_MAGIC_BASE,
@@ -51,8 +58,8 @@ def _register(args, model_ids: list[str]) -> None:
     mode="process",
     service_pid=pid,
     bridge_dir=str(args.bridge_dir),
-    model_id=model_ids[0] if model_ids else args.model_id,
-    model_ids=model_ids,
+    # Do not overwrite global union model_ids — each book worker has its own set.
+    # Keep last_error clear; leave model_ids to bridge_control.start_bridge.
     risk_pct=args.risk_pct,
     poll_sec=args.poll,
     symbol=args.symbol,
@@ -82,7 +89,7 @@ def main() -> int:
   ap.add_argument("--model-id", default="")
   ap.add_argument("--model-ids", default=None)
   ap.add_argument("--risk-pct", type=float, default=1.0)
-  ap.add_argument("--poll", type=float, default=2.0)
+  ap.add_argument("--poll", type=float, default=0.5)
   ap.add_argument("--monitor-port", type=int, default=None)
   ap.add_argument("--once", action="store_true")
   ap.add_argument("--seed", action="store_true")
@@ -118,13 +125,6 @@ def main() -> int:
     flush=True,
   )
 
-  from debug_log import (  # noqa: E402
-    check_pending_signal_timeouts,
-    install_comm_log_mirror,
-    log_ea_sync_if_changed,
-    log_event,
-    prune_old_logs,
-  )
   prune_old_logs()
   log_event(
     "worker_start",
@@ -146,7 +146,6 @@ def main() -> int:
     _cycle,
     _engine_status_fields,
     build_engines,
-    config_model_ids,
     load_config,
   )
   from mt5_bridge.comm_log import append_event
@@ -182,6 +181,9 @@ def main() -> int:
   if not cli_ids:
     print("[live-bridge] no models", flush=True)
     return 2
+  # Pin this worker to its book models forever — global mt5_bridge_config.json
+  # holds the UNION of all books and must never replace engines here.
+  pinned_ids = list(cli_ids)
 
   if not args.once:
     _register(args, cli_ids)
@@ -239,6 +241,7 @@ def main() -> int:
   )
   last_fp: str | None = None
   last_fill_fp: str | None = None
+  last_hist_force_at = 0.0
 
   while True:
     try:
@@ -252,12 +255,29 @@ def main() -> int:
       else:
         history = {"ok": True, "source": "sim_cache"}
       if not MT5_CACHE_PATH.exists():
+        # Empty EA export (done + 0 bars) used to stick as "completed" forever.
+        hist_state = str((history or {}).get("state") or "").lower()
+        stored = int((history or {}).get("stored_bars") or (history or {}).get("received_bars") or 0)
+        avail = int((history or {}).get("available_bars") or 0)
+        now = time.time()
+        if (
+          hist_state in ("completed", "error")
+          and stored <= 0
+          and avail <= 0
+          and (now - last_hist_force_at) >= 30.0
+        ):
+          print(
+            f"[live-bridge] history {hist_state} with 0 bars — force re-sync",
+            flush=True,
+          )
+          history = start_history_sync(bridge_dir, force=True)
+          last_hist_force_at = now
         write_status(
           bridge_dir,
           state="syncing_history",
           model_ids=list(engines.keys()),
           history=history,
-          error=None,
+          error=(history or {}).get("error"),
           **_engine_status_fields(primary),
         )
         if args.once:
@@ -265,14 +285,14 @@ def main() -> int:
           return 0
         time.sleep(max(0.2, args.poll))
         continue
-
       if not args.once:
         runtime_cfg = load_config()
         if runtime_cfg.get("kill_switch") or not runtime_cfg.get("enabled", True):
           if not runtime_cfg.get("enabled", True) and not runtime_cfg.get("kill_switch"):
             write_status(bridge_dir, state="stopped", error=None)
             return 0
-        desired_ids = config_model_ids(runtime_cfg) or list(engines.keys())
+        # Never adopt global config.model_ids (all books). Stay on pinned book set.
+        desired_ids = list(pinned_ids)
         desired_risk = float(runtime_cfg.get("risk_pct", args.risk_pct))
         args.poll = float(runtime_cfg.get("poll_sec", args.poll))
         cur_ids = list(engines.keys())

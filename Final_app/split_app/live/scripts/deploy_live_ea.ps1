@@ -1,4 +1,4 @@
-# Deploy shared ForgeBridgeLive (+ Sim) to XM Global MT5.
+﻿# Deploy shared ForgeBridgeLive (+ Sim) to XM Global MT5.
 # Defaults: Attach + EnableTrading (parity with Final_app manage DeployEA).
 #
 #   .\deploy_live_ea.ps1
@@ -72,23 +72,34 @@ function Get-EnabledBooksFromRoster([string]$RosterFile) {
     $key = Get-BookKey $sym $tf
     if (-not $map.ContainsKey($key)) {
       $magic = $null
-      try { if ($null -ne $row.magic) { $magic = [int]$row.magic } } catch {}
+      try {
+        if ($null -ne $row.magic) { $magic = [int]$row.magic }
+      } catch {
+        $magic = $null
+      }
       $risk = 1.0
-      try { if ($null -ne $row.risk_pct) { $risk = [double]$row.risk_pct } } catch {}
-      $map[$key] = [ordered]@{
+      try {
+        if ($null -ne $row.risk_pct) { $risk = [double]$row.risk_pct }
+      } catch {
+        $risk = 1.0
+      }
+      $period = 5
+      if ($tf -eq "M15") { $period = 15 }
+      $entry = New-Object psobject -Property @{
         Symbol = $sym
         Timeframe = $tf
-        PeriodSize = if ($tf -eq "M15") { 15 } else { 5 }
+        PeriodSize = $period
         BridgeSubdir = ("bridge_live_{0}" -f $key)
         ProjectDir = Join-Path $RepoRoot ("mt5\bridge_live_{0}" -f $key)
         Magic = $magic
         RiskPct = $risk
         ModelIds = @([string]$row.model_id)
       }
+      $map[$key] = $entry
     } else {
       $map[$key].ModelIds += [string]$row.model_id
       if ($null -eq $map[$key].Magic -and $null -ne $row.magic) {
-        try { $map[$key].Magic = [int]$row.magic } catch {}
+        try { $map[$key].Magic = [int]$row.magic } catch { }
       }
     }
   }
@@ -125,7 +136,7 @@ if ($useFromRoster -and $Mode -eq "Live") {
   Write-Host ("Live DeployEA Symbol={0} TF={1} period_size={2} Attach={3} Trading={4}" -f $Symbol, $Timeframe, $PeriodSize, $Attach, $EnableTrading) -ForegroundColor Cyan
 }
 
-# Sync Python roster → models.json before compile/attach
+# Sync Python roster -> models.json before compile/attach
 $pyCandidates = @(
   "C:\Work\ThuyenRepo\EdgeMinerM15B5\.venv\Scripts\python.exe",
   "python"
@@ -148,7 +159,7 @@ if (-not $ModelId) {
     $ModelId = (Get-Content $activeModelPath -Raw | ConvertFrom-Json).id
   }
   if (-not $ModelId -and $StartBridgeService -and -not $SkipBridgeService) {
-    Write-Warning "No ModelId — relying on live_roster / models.json multi-model roster."
+    Write-Warning "No ModelId - relying on live_roster / models.json multi-model roster."
   }
 }
 
@@ -171,7 +182,7 @@ function Find-XmInstallPath {
   if (Test-Path (Join-Path $default "terminal64.exe")) {
     return $default
   }
-  throw "XM Global MT5 not found. Pass -InstallPath <folder>."
+  throw 'XM Global MT5 not found. Pass -InstallPath with the MT5 install folder.'
 }
 
 function Find-TerminalDataPath([string]$XmInstallPath) {
@@ -216,7 +227,7 @@ function Ensure-NamedBridgeJunction(
     if ($targets -contains $ProjectTarget) {
       return $link
     }
-    Write-Warning "Relinking $link from '$($targets -join ", ")' -> '$ProjectTarget'"
+    Write-Warning ("Relinking {0} from '{1}' -> '{2}'" -f $link, ($targets -join ', '), $ProjectTarget)
     cmd /c "rmdir `"$link`""
     if (Test-Path $link) {
       throw "Failed to remove old junction: $link"
@@ -426,7 +437,7 @@ function New-TargetChart([string]$DataPath) {
   if ($templates.Count -eq 0) {
     $borrowed = Find-EurusdChartTemplate $DataPath
     if ($borrowed) {
-      Write-Host "No EURUSD in active profile; using template from $($borrowed.Directory.Name)\$($borrowed.Name)"
+      Write-Host ("No EURUSD in active profile; template from {0}\{1}" -f $borrowed.Directory.Name, $borrowed.Name)
       $templates = @($borrowed)
     }
   }
@@ -497,7 +508,7 @@ function New-ForgeBridgeExpertBlock(
 
 function Get-ForgeFamilyPattern {
   # Charts owned by ANY ForgeBridge instance (including sibling clones) are not free.
-  # ForgeBridgeM5F3\b does not match ForgeBridgeM5F3B4 — must use the open suffix.
+  # ForgeBridgeM5F3\b does not match ForgeBridgeM5F3B4 - must use the open suffix.
   return 'name=ForgeBridge[A-Za-z0-9]*\b'
 }
 
@@ -573,7 +584,7 @@ function Write-ForgeBridgeToChart(
     $text = [regex]::Replace($text, $forgeExpertPattern, '')
     if ($text -notmatch [regex]::Escape($windowTag)) {
       if ($text -notmatch '</chart>') {
-        throw "Chart $($target.FullName) has neither <window> nor </chart>; cannot attach $ExpertName."
+        throw ("Chart {0} has neither window nor chart closing tag; cannot attach {1}." -f $target.FullName, $ExpertName)
       }
       $text = $text -replace '(?m)^windows_total=0\s*$', 'windows_total=1'
       $mainWindow = @(
@@ -705,7 +716,7 @@ if ($useFromRoster -and $Mode -eq "Live") {
     $link = Ensure-NamedBridgeJunction $TerminalDataPath $b.BridgeSubdir $b.ProjectDir
     Write-Host ("Live    : {0} -> {1}" -f $link, $b.ProjectDir)
   }
-  # Legacy default subdir → first book (old EA input default bridge_live)
+  # Legacy default subdir -> first book (old EA input default bridge_live)
   if ($RosterBooks.Count -gt 0) {
     $legacy = Ensure-NamedBridgeJunction $TerminalDataPath $BridgeSubdirLive $RosterBooks[0].ProjectDir
     Write-Host "Legacy  : $legacy -> $($RosterBooks[0].ProjectDir)"

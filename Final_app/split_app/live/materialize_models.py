@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import time
 from pathlib import Path
 from typing import Any
 
@@ -20,9 +22,60 @@ def _read(path: Path) -> Any:
 
 def _write(path: Path, data: Any) -> None:
   path.parent.mkdir(parents=True, exist_ok=True)
-  tmp = path.with_suffix(path.suffix + ".tmp")
-  tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False, default=str) + "\n", encoding="utf-8")
-  tmp.replace(path)
+  payload = json.dumps(data, indent=2, ensure_ascii=False, default=str) + "\n"
+  last: Exception | None = None
+  for i in range(8):
+    tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}.{i}")
+    try:
+      tmp.write_text(payload, encoding="utf-8")
+      os.replace(tmp, path)
+      return
+    except OSError as exc:
+      last = exc
+      try:
+        if tmp.exists():
+          tmp.unlink()
+      except OSError:
+        pass
+      time.sleep(0.05 * (i + 1))
+  if last:
+    raise last
+
+
+def _safe_copy2(src: Path, dest: Path) -> None:
+  """Copy with retries — multi-worker Start races on the same kb_pin/schedule files."""
+  dest.parent.mkdir(parents=True, exist_ok=True)
+  try:
+    if dest.exists():
+      ss, ds = src.stat(), dest.stat()
+      if ss.st_size == ds.st_size and abs(ss.st_mtime - ds.st_mtime) < 2.0:
+        return
+  except OSError:
+    pass
+
+  last: Exception | None = None
+  for i in range(10):
+    tmp = dest.with_suffix(dest.suffix + f".tmp.{os.getpid()}.{i}")
+    try:
+      shutil.copy2(src, tmp)
+      os.replace(tmp, dest)
+      return
+    except OSError as exc:
+      last = exc
+      try:
+        if tmp.exists():
+          tmp.unlink()
+      except OSError:
+        pass
+      time.sleep(0.05 * (i + 1))
+
+  # Another worker likely finished the same copy — keep existing dest if present.
+  if dest.exists() and dest.stat().st_size > 0:
+    print(f"[materialize] WARN copy busy, keeping {dest.name}: {last}", flush=True)
+    return
+  if last:
+    raise last
+
 
 
 def enabled_roster_rows(roster: dict | None = None) -> list[dict]:
@@ -93,7 +146,7 @@ def _materialize_rows(rows: list[dict]) -> tuple[list[dict], dict[str, str], dic
       if not src_pin.exists():
         raise ValueError(f"{install_id}: use_kb but kb_pin.json missing")
       dest_pin = models_dir / f"{mid}_kb_pin.json"
-      shutil.copy2(src_pin, dest_pin)
+      _safe_copy2(src_pin, dest_pin)
       m["kb_pin_path"] = f"trade_models/{mid}_kb_pin.json"
       if manifest.get("kb_fingerprint"):
         m["kb_fingerprint"] = manifest["kb_fingerprint"]
@@ -106,13 +159,13 @@ def _materialize_rows(rows: list[dict]) -> tuple[list[dict], dict[str, str], dic
         desk = resolve_host_desk(sym, tf)
         lab_sched = desk / "results" / "trade_models" / f"{mid}_schedule.json"
         if lab_sched.exists():
-          shutil.copy2(lab_sched, pkg / "schedule.json")
+          _safe_copy2(lab_sched, pkg / "schedule.json")
           sched_src = pkg / "schedule.json"
           print(f"[materialize] backfilled schedule from {desk.name} → {install_id}", flush=True)
       except Exception as exc:
         print(f"[materialize] schedule backfill failed {install_id}: {exc}", flush=True)
     if sched_src.exists():
-      shutil.copy2(sched_src, models_dir / f"{mid}_schedule.json")
+      _safe_copy2(sched_src, models_dir / f"{mid}_schedule.json")
       # Drop remine overrides so Live/Sim prefer frozen OOS genomes
       live_weeks = models_dir / f"{mid}_live_weeks.json"
       if live_weeks.exists():

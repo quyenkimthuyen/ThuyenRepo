@@ -73,7 +73,34 @@ def _pid_alive(pid: int | None) -> bool:
   if not pid:
     return False
   try:
-    os.kill(int(pid), 0)
+    pid_i = int(pid)
+  except (TypeError, ValueError):
+    return False
+  if pid_i <= 0:
+    return False
+  if os.name == "nt":
+    try:
+      import ctypes
+      from ctypes import wintypes
+
+      PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+      STILL_ACTIVE = 259
+      handle = ctypes.windll.kernel32.OpenProcess(
+        PROCESS_QUERY_LIMITED_INFORMATION, False, pid_i,
+      )
+      if not handle:
+        return False
+      try:
+        code = wintypes.DWORD()
+        if ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(code)) == 0:
+          return False
+        return int(code.value) == STILL_ACTIVE
+      finally:
+        ctypes.windll.kernel32.CloseHandle(handle)
+    except Exception:
+      return False
+  try:
+    os.kill(pid_i, 0)
     return True
   except OSError:
     return False
@@ -81,6 +108,16 @@ def _pid_alive(pid: int | None) -> bool:
 
 def _kill_tree(pid: int | None) -> None:
   if not _pid_alive(pid):
+    return
+  if os.name == "nt":
+    try:
+      subprocess.run(
+        ["taskkill", "/PID", str(int(pid)), "/T", "/F"],
+        check=False,
+        capture_output=True,
+      )
+    except Exception:
+      pass
     return
   try:
     os.killpg(int(pid), signal.SIGTERM)
@@ -111,6 +148,8 @@ def is_replay_running() -> bool:
       pid = None
   if _pid_alive(pid):
     return True
+  if os.name == "nt":
+    return False
   try:
     out = subprocess.check_output(
       ["pgrep", "-f", "run_linux_replay_inline.py|run_oos_replay_batch.py|run_parity_oos_batch.py|schedule_parity"],
@@ -129,13 +168,14 @@ def stop_replay() -> dict[str, Any]:
     except ValueError:
       pid = None
   _kill_tree(pid)
-  try:
-    subprocess.run(
-      ["pkill", "-f", "run_linux_replay_inline.py|run_oos_replay_batch.py|run_parity_oos_batch.py"],
-      check=False,
-    )
-  except Exception:
-    pass
+  if os.name != "nt":
+    try:
+      subprocess.run(
+        ["pkill", "-f", "run_linux_replay_inline.py|run_oos_replay_batch.py|run_parity_oos_batch.py"],
+        check=False,
+      )
+    except Exception:
+      pass
   if PID_PATH.exists():
     try:
       PID_PATH.unlink()
@@ -166,18 +206,30 @@ def start_oos_replay(
   env = os.environ.copy()
   env["LIVE_REPLAY_FROM"] = date_from
   env["LIVE_REPLAY_TO"] = date_to
+  # Windows consoles default to cp1252 — force UTF-8 for batch prints.
+  env.setdefault("PYTHONUTF8", "1")
+  env.setdefault("PYTHONIOENCODING", "utf-8")
   mode = (mode or env.get("LIVE_REPLAY_MODE") or "parity").strip().lower()
   script = SCRIPT_PAPER if mode in ("paper", "ea", "inline") else SCRIPT_PARITY
   logf = open(LOG_PATH, "a", encoding="utf-8")
-  logf.write(f"\n==== UI start {_now()} mode={mode} {date_from}→{date_to} ====\n")
+  logf.write(f"\n==== UI start {_now()} mode={mode} {date_from}->{date_to} ====\n")
   logf.flush()
+  popen_kwargs: dict[str, Any] = {
+    "cwd": str(LIVE_ROOT.parent),
+    "stdout": logf,
+    "stderr": subprocess.STDOUT,
+    "env": env,
+  }
+  if os.name == "nt":
+    popen_kwargs["creationflags"] = (
+      subprocess.CREATE_NEW_PROCESS_GROUP
+      | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+    )
+  else:
+    popen_kwargs["start_new_session"] = True
   proc = subprocess.Popen(
     [sys.executable, "-u", str(script)],
-    cwd=str(LIVE_ROOT.parent),
-    stdout=logf,
-    stderr=subprocess.STDOUT,
-    start_new_session=True,
-    env=env,
+    **popen_kwargs,
   )
   PID_PATH.write_text(str(proc.pid), encoding="utf-8")
   return {
