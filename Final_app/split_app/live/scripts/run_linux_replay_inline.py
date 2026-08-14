@@ -59,7 +59,7 @@ def _seed(symbol: str, timeframe: str, src: Path | None) -> Path:
   return Path(info["dest"])
 
 
-def prepare_sim_book(symbol: str, timeframe: str) -> dict:
+def prepare_sim_book(symbol: str, timeframe: str, *, materialize: bool = True) -> dict:
   roster = load_roster()
   live_rows = assign_magics(roster.get("models") or [], sim=False)
   save_roster(live_rows, active_book=roster.get("active_book"))
@@ -72,7 +72,8 @@ def prepare_sim_book(symbol: str, timeframe: str) -> dict:
   ]
   if not book_sim:
     raise SystemExit(f"No enabled models for {symbol} {timeframe}")
-  materialize_enabled(roster={"models": live_rows})
+  if materialize:
+    materialize_enabled(roster={"models": live_rows})
   bdir = bridge_dir(symbol, timeframe, sim=True)
   write_models_json(bdir, book_sim, base_magic=LIVE_SIM_MAGIC_BASE)
   return {
@@ -92,6 +93,11 @@ def main() -> int:
   ap.add_argument("--parquet", type=Path, default=None)
   ap.add_argument("--seed", action="store_true")
   ap.add_argument("--progress-every", type=int, default=100)
+  ap.add_argument(
+    "--skip-materialize",
+    action="store_true",
+    help="Parent batch already materialized — avoid concurrent trade_models writes",
+  )
   args = ap.parse_args()
 
   symbol = normalize_symbol(args.symbol)
@@ -105,7 +111,7 @@ def main() -> int:
       RESULTS_DIR / "data" / f"mt5_{symbol.lower()}_{timeframe.lower()}.parquet"
     )
 
-  prep = prepare_sim_book(symbol, timeframe)
+  prep = prepare_sim_book(symbol, timeframe, materialize=not args.skip_materialize)
   bdir: Path = prep["bridge_dir"]
   model_ids = prep["model_ids"]
   print(f"[inline] {symbol}/{timeframe} models={model_ids} dir={bdir}", flush=True)
@@ -285,6 +291,9 @@ def main() -> int:
     "models": model_ids,
     "updated_at": _now(),
   }
+  # Per-book summary (safe under parallel multi-book batch)
+  out_book = RESULTS_DIR / f"replay_last_{symbol.lower()}_{timeframe.lower()}.json"
+  out_book.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
   out = RESULTS_DIR / "replay_last.json"
   out.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
   print(json.dumps(summary, indent=2), flush=True)

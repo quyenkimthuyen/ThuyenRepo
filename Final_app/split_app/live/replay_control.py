@@ -19,41 +19,17 @@ PID_PATH = RESULTS_DIR / "replay_oos_batch.pid"
 LOG_PATH = RESULTS_DIR / "replay_oos_batch.log"
 STATE_PATH = RESULTS_DIR / "replay_oos_batch.json"
 OOS_PREFS_PATH = RESULTS_DIR / "oos_prefs.json"
-# Default: schedule-parity (lab-accurate). Set LIVE_REPLAY_MODE=paper for EA-path smoke.
+STRATEGY_STATS_PATH = RESULTS_DIR / "replay_strategy_stats.json"
+# Default: live_like (bridge/paper = same decide path as Live).
+# Lab check: mode=parity (frozen schedule backtest).
 SCRIPT_PARITY = LIVE_ROOT / "scripts" / "run_parity_oos_batch.py"
 SCRIPT_PAPER = LIVE_ROOT / "scripts" / "run_oos_replay_batch.py"
 INLINE = LIVE_ROOT / "scripts" / "run_linux_replay_inline.py"
 OOS_FROM = "2026-01-01"
 OOS_TO = "2026-08-07"
 
-
-def load_oos_prefs() -> dict[str, str]:
-  data = _read(OOS_PREFS_PATH) or {}
-  return {
-    "from": str(data.get("from") or OOS_FROM)[:10],
-    "to": str(data.get("to") or OOS_TO)[:10],
-  }
-
-
-def save_oos_prefs(*, date_from: str, date_to: str) -> dict[str, str]:
-  payload = {
-    "from": str(date_from)[:10],
-    "to": str(date_to)[:10],
-    "updated_at": _now(),
-  }
-  RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-  OOS_PREFS_PATH.write_text(
-    json.dumps(payload, indent=2) + "\n", encoding="utf-8",
-  )
-  return {"from": payload["from"], "to": payload["to"]}
-
-
-def _normalize_oos_range(date_from: str, date_to: str) -> tuple[str, str]:
-  a = str(date_from or OOS_FROM).strip()[:10]
-  b = str(date_to or OOS_TO).strip()[:10]
-  if a > b:
-    a, b = b, a
-  return a, b
+LIVE_LIKE_MODES = frozenset({"live_like", "paper", "ea", "inline"})
+PARITY_MODES = frozenset({"parity", "lab", "schedule_parity"})
 
 
 def _now() -> str:
@@ -67,6 +43,144 @@ def _read(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
   except (OSError, json.JSONDecodeError):
     return None
+
+
+def _write(path: Path, data: Any) -> None:
+  path.parent.mkdir(parents=True, exist_ok=True)
+  tmp = path.with_suffix(path.suffix + ".tmp")
+  tmp.write_text(
+    json.dumps(data, indent=2, ensure_ascii=False, default=str) + "\n",
+    encoding="utf-8",
+  )
+  tmp.replace(path)
+
+
+def normalize_replay_mode(mode: str | None) -> str:
+  raw = str(mode or "").strip().lower()
+  if raw in LIVE_LIKE_MODES:
+    return "live_like"
+  if raw in PARITY_MODES:
+    return "parity"
+  return "live_like"
+
+
+def load_oos_prefs() -> dict[str, Any]:
+  data = _read(OOS_PREFS_PATH) or {}
+  return {
+    "from": str(data.get("from") or OOS_FROM)[:10],
+    "to": str(data.get("to") or OOS_TO)[:10],
+    "mode": normalize_replay_mode(data.get("mode") or "live_like"),
+    "force_remine": bool(data.get("force_remine")),
+  }
+
+
+def save_oos_prefs(
+  *,
+  date_from: str | None = None,
+  date_to: str | None = None,
+  mode: str | None = None,
+  force_remine: bool | None = None,
+) -> dict[str, Any]:
+  prev = load_oos_prefs()
+  payload = {
+    "from": str(date_from if date_from is not None else prev["from"])[:10],
+    "to": str(date_to if date_to is not None else prev["to"])[:10],
+    "mode": normalize_replay_mode(mode if mode is not None else prev["mode"]),
+    "force_remine": bool(force_remine if force_remine is not None else prev["force_remine"]),
+    "updated_at": _now(),
+  }
+  RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+  _write(OOS_PREFS_PATH, payload)
+  return {
+    "from": payload["from"],
+    "to": payload["to"],
+    "mode": payload["mode"],
+    "force_remine": payload["force_remine"],
+  }
+
+
+def _normalize_oos_range(date_from: str, date_to: str) -> tuple[str, str]:
+  a = str(date_from or OOS_FROM).strip()[:10]
+  b = str(date_to or OOS_TO).strip()[:10]
+  if a > b:
+    a, b = b, a
+  return a, b
+
+
+def reset_strategy_stats(*, mode: str, force_remine: bool = False) -> dict[str, Any]:
+  payload = {
+    "updated_at": _now(),
+    "mode": normalize_replay_mode(mode),
+    "force_remine": bool(force_remine),
+    "schedule_hits": 0,
+    "remine_count": 0,
+    "skip_count": 0,
+    "by_model": {},
+    "events": [],
+  }
+  _write(STRATEGY_STATS_PATH, payload)
+  return payload
+
+
+def load_strategy_stats() -> dict[str, Any]:
+  return _read(STRATEGY_STATS_PATH) or {}
+
+
+def paper_results_summary() -> dict[str, Any]:
+  """Aggregate Live-like (paper/inline) outcomes for Replay Results."""
+  roster = load_roster()
+  enabled = [r for r in (roster.get("models") or []) if r.get("enabled")]
+  batch = _read(STATE_PATH) or {}
+  last = _read(RESULTS_DIR / "replay_last.json") or {}
+  books_out = []
+  total_fills = 0
+  total_signals = 0
+  n_ok = 0
+  for (sym, tf), rows in group_models_by_book(enabled).items():
+    bdir = bridge_dir(sym, tf, sim=True)
+    sc = _read(bdir / "sim_control.json") or {}
+    # Prefer per-book archive from batch
+    book_arch = _read(RESULTS_DIR / f"replay_oos_{sym.lower()}_{tf.lower()}.json") or {}
+    summ = book_arch.get("summary") or {}
+    fills = int(sc.get("n_fills") or summ.get("n_fills") or 0)
+    signals = int(sc.get("n_signals") or summ.get("n_signals") or 0)
+    status = sc.get("ea_status") or summ.get("status") or "idle"
+    ok = status == "completed" or fills > 0 or (
+      int(sc.get("bars_done") or 0) > 0
+      and int(sc.get("bars_done") or 0) >= int(sc.get("bars_total") or 0) > 0
+    )
+    if ok:
+      n_ok += 1
+    total_fills += fills
+    total_signals += signals
+    books_out.append({
+      "symbol": sym,
+      "timeframe": tf,
+      "n_models": len(rows),
+      "n_fills": fills,
+      "n_signals": signals,
+      "status": status,
+      "bars_done": sc.get("bars_done") or summ.get("bars_total"),
+      "bars_total": sc.get("bars_total") or summ.get("bars_total"),
+      "ok": ok,
+      "labels": [r.get("label") or r.get("model_id") for r in rows],
+    })
+  prefs = load_oos_prefs()
+  return {
+    "mode": "live_like",
+    "n_books": len(books_out),
+    "n_models": len(enabled),
+    "n_ok": n_ok,
+    "n_fills": total_fills,
+    "n_signals": total_signals,
+    "ok": bool(books_out) and n_ok == len(books_out),
+    "books": books_out,
+    "oos_from": batch.get("oos_from") or last.get("date_from") or prefs["from"],
+    "oos_to": batch.get("oos_to") or last.get("date_to") or prefs["to"],
+    "updated_at": batch.get("finished_at") or last.get("updated_at"),
+    "batch": batch,
+    "last": last,
+  }
 
 
 def _pid_alive(pid: int | None) -> bool:
@@ -190,29 +304,45 @@ def start_oos_replay(
   date_to: str | None = None,
   restart: bool = True,
   mode: str | None = None,
+  force_remine: bool | None = None,
 ) -> dict[str, Any]:
   prefs = load_oos_prefs()
   date_from, date_to = _normalize_oos_range(
     date_from or prefs["from"],
     date_to or prefs["to"],
   )
-  save_oos_prefs(date_from=date_from, date_to=date_to)
+  mode_n = normalize_replay_mode(mode if mode is not None else prefs["mode"])
+  force = bool(force_remine if force_remine is not None else prefs["force_remine"])
+  if mode_n != "live_like":
+    force = False
+  save_oos_prefs(
+    date_from=date_from,
+    date_to=date_to,
+    mode=mode_n,
+    force_remine=force,
+  )
 
   if restart and is_replay_running():
     stop_replay()
     time.sleep(0.5)
 
   RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+  reset_strategy_stats(mode=mode_n, force_remine=force)
+
   env = os.environ.copy()
   env["LIVE_REPLAY_FROM"] = date_from
   env["LIVE_REPLAY_TO"] = date_to
-  # Windows consoles default to cp1252 — force UTF-8 for batch prints.
+  env["LIVE_REPLAY_MODE"] = "paper" if mode_n == "live_like" else "parity"
+  env["LIVE_REPLAY_FORCE_REMINE"] = "1" if force else "0"
   env.setdefault("PYTHONUTF8", "1")
   env.setdefault("PYTHONIOENCODING", "utf-8")
-  mode = (mode or env.get("LIVE_REPLAY_MODE") or "parity").strip().lower()
-  script = SCRIPT_PAPER if mode in ("paper", "ea", "inline") else SCRIPT_PARITY
+
+  script = SCRIPT_PAPER if mode_n == "live_like" else SCRIPT_PARITY
   logf = open(LOG_PATH, "a", encoding="utf-8")
-  logf.write(f"\n==== UI start {_now()} mode={mode} {date_from}->{date_to} ====\n")
+  logf.write(
+    f"\n==== UI start {_now()} mode={mode_n} force_remine={force} "
+    f"{date_from}->{date_to} ====\n"
+  )
   logf.flush()
   popen_kwargs: dict[str, Any] = {
     "cwd": str(LIVE_ROOT.parent),
@@ -235,7 +365,8 @@ def start_oos_replay(
   return {
     "started": True,
     "pid": proc.pid,
-    "mode": mode,
+    "mode": mode_n,
+    "force_remine": force,
     "script": str(script),
     "log": str(LOG_PATH),
     "from": date_from,
@@ -249,6 +380,8 @@ def load_sim_progress() -> dict[str, Any]:
   roster = load_roster()
   enabled = [r for r in (roster.get("models") or []) if r.get("enabled")]
   books = []
+  prefs = load_oos_prefs()
+  mode = prefs.get("mode") or "live_like"
   parity_batch = _read(RESULTS_DIR / "parity_oos_batch.json") or {}
   parity_by_book = {
     (b.get("symbol"), b.get("timeframe")): b
@@ -266,31 +399,36 @@ def load_sim_progress() -> dict[str, Any]:
     total = int(sc.get("bars_total") or 0)
     models = parity.get("models") or []
     tot_r = sum(float(m.get("total_r") or 0) for m in models if m.get("ok"))
-    if models:
+    use_parity = mode == "parity" and bool(models)
+    if use_parity:
       ea_status = "completed" if not parity.get("partial") else "running"
+    elif done and total and done >= total:
+      ea_status = sc.get("ea_status") or "completed"
     elif is_replay_running():
-      ea_status = "pending"
+      ea_status = sc.get("ea_status") or "running"
     else:
       ea_status = sc.get("ea_status") or "idle"
     books.append({
       "symbol": sym,
       "timeframe": tf,
       "bridge_dir": str(bdir),
-      "mode": "parity" if models else (sc.get("source") or "paper"),
+      "mode": "parity" if use_parity else (sc.get("source") or "paper"),
       "ea_status": ea_status,
       "bars_done": done,
       "bars_total": total,
       "pct": (
-        100.0 if models and not parity.get("partial")
+        100.0 if use_parity and not parity.get("partial")
         else (
-          round(100.0 * len(models) / max(len(rows), 1), 1) if models
+          round(100.0 * len(models) / max(len(rows), 1), 1) if use_parity and models
           else (round(100.0 * done / total, 1) if total else 0.0)
         )
       ),
       "last_bar": sc.get("last_bar") or bar.get("bar_time"),
-      "n_fills": sc.get("n_fills") or sum(int(m.get("n_trades") or 0) for m in models),
+      "n_fills": sc.get("n_fills") or (
+        sum(int(m.get("n_trades") or 0) for m in models) if use_parity else 0
+      ),
       "n_signals": sc.get("n_signals"),
-      "parity_total_r": round(tot_r, 2) if models else None,
+      "parity_total_r": round(tot_r, 2) if use_parity and models else None,
       "parity_models": [
         {
           "id": m.get("model_id"),
@@ -300,20 +438,27 @@ def load_sim_progress() -> dict[str, Any]:
           "err": m.get("error"),
         }
         for m in models
-      ],
+      ] if use_parity else [],
       "close": bar.get("close"),
-      "updated_at": parity.get("updated_at") or sc.get("updated_at") or status.get("updated_at"),
+      "updated_at": (
+        (parity.get("updated_at") if use_parity else None)
+        or sc.get("updated_at")
+        or status.get("updated_at")
+      ),
       "n_models": len(rows),
     })
   batch = _read(STATE_PATH) or parity_batch or {}
-  prefs = load_oos_prefs()
   last = batch if batch.get("oos_from") else parity_batch
+  stats = load_strategy_stats()
   return {
     "running": is_replay_running(),
     "pid": int(PID_PATH.read_text().strip()) if PID_PATH.exists() and is_replay_running() else None,
     "log": str(LOG_PATH),
+    "mode": mode,
+    "force_remine": bool(prefs.get("force_remine")),
     "books": books,
     "batch": batch,
+    "strategy_stats": stats,
     "oos_from": last.get("oos_from") or prefs["from"],
     "oos_to": last.get("oos_to") or prefs["to"],
   }

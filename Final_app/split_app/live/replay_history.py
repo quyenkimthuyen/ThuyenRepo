@@ -21,6 +21,14 @@ CURRENT_GLOBS = (
   "replay_oos_batch.json",
   "replay_oos_batch.log",
   "replay_oos_batch.pid",
+  "replay_strategy_stats.json",
+  "live_preflight.json",
+  "remine_gate_last.json",
+  "remine_gate_alerts.jsonl",
+  "risk_cap_last.json",
+  "risk_cap_alerts.jsonl",
+  "risk_cap.lock",
+  "risk_cap_reservations",
 )
 
 
@@ -51,7 +59,11 @@ def _rm(path: Path) -> bool:
   if not path.exists():
     return False
   try:
-    path.unlink()
+    if path.is_dir():
+      import shutil
+      shutil.rmtree(path)
+    else:
+      path.unlink()
     return True
   except OSError:
     return False
@@ -102,16 +114,17 @@ def archive_parity_batch(payload: dict) -> dict[str, Any]:
   stamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
   run_id = f"run_{stamp}"
   summary = _summarize_batch(payload)
+  mode = str(payload.get("mode") or "schedule_parity")
   entry = {
     "run_id": run_id,
     "created_at": payload.get("updated_at") or _now(),
     "oos_from": payload.get("oos_from"),
     "oos_to": payload.get("oos_to"),
     "ok": payload.get("ok"),
-    "mode": "schedule_parity",
+    "mode": mode,
     **{k: summary[k] for k in ("n_books", "n_models", "n_ok", "n_fail", "total_r")},
   }
-  full = {**payload, "run_id": run_id, "summary": summary}
+  full = {**payload, "run_id": run_id, "summary": summary, "mode": mode}
   path = HISTORY_DIR / f"{run_id}.json"
   _write(path, full)
 
@@ -119,6 +132,74 @@ def archive_parity_batch(payload: dict) -> dict[str, Any]:
   runs = [r for r in (index.get("runs") or []) if r.get("run_id") != run_id]
   runs.insert(0, {**entry, "file": path.name})
   # keep last 50 runs in index
+  index = {"updated_at": _now(), "runs": runs[:50]}
+  _write(INDEX_PATH, index)
+  return entry
+
+
+def archive_live_like_run(payload: dict | None = None) -> dict[str, Any]:
+  """Archive a Live-like (paper/inline) batch into replay_history/."""
+  from replay_control import load_strategy_stats, paper_results_summary
+
+  paper = payload or paper_results_summary()
+  stats = load_strategy_stats()
+  HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+  stamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
+  run_id = f"run_{stamp}"
+  models = []
+  for b in paper.get("books") or []:
+    for lab in b.get("labels") or [f"{b.get('symbol')} {b.get('timeframe')}"]:
+      models.append({
+        "label": lab,
+        "symbol": b.get("symbol"),
+        "timeframe": b.get("timeframe"),
+        "n_fills": b.get("n_fills"),
+        "n_signals": b.get("n_signals"),
+        "ok": b.get("ok"),
+        "status": b.get("status"),
+      })
+  summary = {
+    "n_books": paper.get("n_books"),
+    "n_models": paper.get("n_models"),
+    "n_ok": paper.get("n_ok"),
+    "n_fail": max(int(paper.get("n_models") or 0) - int(paper.get("n_ok") or 0), 0),
+    "total_r": None,
+    "n_fills": paper.get("n_fills"),
+    "n_signals": paper.get("n_signals"),
+    "models": models,
+    "strategy_stats": {
+      "schedule_hits": stats.get("schedule_hits"),
+      "remine_count": stats.get("remine_count"),
+      "skip_count": stats.get("skip_count"),
+      "force_remine": stats.get("force_remine"),
+    },
+  }
+  entry = {
+    "run_id": run_id,
+    "created_at": paper.get("updated_at") or _now(),
+    "oos_from": paper.get("oos_from"),
+    "oos_to": paper.get("oos_to"),
+    "ok": paper.get("ok"),
+    "mode": "live_like",
+    "n_books": summary["n_books"],
+    "n_models": summary["n_models"],
+    "n_ok": summary["n_ok"],
+    "n_fail": summary["n_fail"],
+    "total_r": summary["total_r"],
+    "n_fills": summary["n_fills"],
+  }
+  full = {
+    **paper,
+    "run_id": run_id,
+    "summary": summary,
+    "mode": "live_like",
+    "strategy_stats": stats,
+  }
+  path = HISTORY_DIR / f"{run_id}.json"
+  _write(path, full)
+  index = _read(INDEX_PATH) or {"runs": []}
+  runs = [r for r in (index.get("runs") or []) if r.get("run_id") != run_id]
+  runs.insert(0, {**entry, "file": path.name})
   index = {"updated_at": _now(), "runs": runs[:50]}
   _write(INDEX_PATH, index)
   return entry

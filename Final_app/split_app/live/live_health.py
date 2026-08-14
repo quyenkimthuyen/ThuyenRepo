@@ -432,12 +432,61 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
         flags.append("HALT")
 
       reason = str(dec.get("reason") or dec.get("halt_source") or "")[:80]
+      strat_src = str(dec.get("strategy_source") or "").strip().lower() or None
+      if strat_src == "remine_gate_fail" or reason == "remine_gate_fail":
+        flags.append("GATE_FAIL")
+        level = _worst(level, "danger")
+        alerts.append({
+          "level": "danger",
+          "scope": "model",
+          "symbol": sym_n,
+          "timeframe": tf_n,
+          "model_id": mid,
+          "code": "REMINE_GATE_FAIL",
+          "message": (
+            f"{label}: remine gate FAIL — "
+            + "; ".join(str(x) for x in (dec.get("remine_gate_reasons") or ["blocked"]))
+          )[:160],
+        })
+      elif reason in ("risk_cap", "risk_cap_error"):
+        flags.append("RISK_CAP")
+        level = _worst(level, "warn")
+        alerts.append({
+          "level": "warn",
+          "scope": "model",
+          "symbol": sym_n,
+          "timeframe": tf_n,
+          "model_id": mid,
+          "code": "RISK_CAP",
+          "message": (
+            f"{label}: risk cap block — "
+            + "; ".join(str(x) for x in (dec.get("risk_cap_reasons") or [reason]))
+          )[:160],
+        })
+      elif strat_src == "remine":
+        flags.append("REMINE")
+        level = _worst(level, "warn")
+        if dec.get("remine_gate_ok") is True:
+          alerts.append({
+            "level": "warn",
+            "scope": "model",
+            "symbol": sym_n,
+            "timeframe": tf_n,
+            "model_id": mid,
+            "code": "REMINE_OK",
+            "message": f"{label}: using remined week (gate pass)",
+          })
       models_out.append({
         "model_id": mid,
         "label": label,
         "magic": row.get("magic"),
         "action": action,
         "reason": reason,
+        "strategy_source": strat_src,
+        "remine_gate_ok": dec.get("remine_gate_ok"),
+        "remine_gate_reasons": dec.get("remine_gate_reasons"),
+        "risk_cap_ok": dec.get("risk_cap_ok"),
+        "risk_cap_reasons": dec.get("risk_cap_reasons"),
         "bar_time": dec_bar or dec.get("bar_time"),
         "decision_age_sec": dec_age,
         "decision_age": _fmt_age(dec_age),
@@ -543,6 +592,19 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
   else:
     summary = "HEALTHY"
 
+  remine_last = {}
+  risk_cap_last = {}
+  try:
+    from remine_gate import load_last_alert
+    remine_last = load_last_alert() or {}
+  except Exception:
+    remine_last = {}
+  try:
+    from risk_cap import load_last_alert as load_risk_cap_last
+    risk_cap_last = load_risk_cap_last() or {}
+  except Exception:
+    risk_cap_last = {}
+
   return {
     "updated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
     "sim": bool(sim),
@@ -555,4 +617,6 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
     "n_danger": n_danger,
     "alerts": alerts[:20],
     "books": books_out,
+    "remine_gate_last": remine_last,
+    "risk_cap_last": risk_cap_last,
   }

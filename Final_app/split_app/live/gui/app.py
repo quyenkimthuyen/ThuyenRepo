@@ -35,6 +35,8 @@ from package_store import (  # noqa: E402
 from books import bridge_subdir, group_models_by_book  # noqa: E402
 from replay_control import (  # noqa: E402
   load_oos_prefs,
+  load_strategy_stats,
+  paper_results_summary,
   save_oos_prefs,
   start_oos_replay,
   stop_replay,
@@ -187,51 +189,128 @@ def _render_replay_live_panels() -> dict:
   models = snap.get("models") or []
   running = bool(snap.get("bridge_running"))
   books = replay.get("books") or []
-  parity = _parity_results_from_replay(replay, models)
+  prefs = load_oos_prefs()
+  mode = str(prefs.get("mode") or replay.get("mode") or "live_like")
+  parity = _parity_results_from_replay(replay, models) if mode == "parity" else {}
+  paper = paper_results_summary() if mode == "live_like" else {}
+  stats = load_strategy_stats() if mode == "live_like" else (replay.get("strategy_stats") or {})
 
   st.caption(
     f"Updated {snap.get('updated_at')} · "
     f"{'RUNNING' if running else 'Idle'}"
     + (f" · pid {replay.get('pid')}" if replay.get("pid") else "")
+    + f" · mode={mode}"
+    + (" · force_remine" if prefs.get("force_remine") else "")
   )
 
   # ── 2. Progress ─────────────────────────────────────────────────────
   st.markdown('<div class="panel-label" style="margin-top:0.25rem">2 · Progress</div>', unsafe_allow_html=True)
-  if running and not any(b.get("parity_models") for b in books):
-    st.caption("Đang chạy batch… chờ model đầu tiên.")
-  if running or any(b.get("parity_models") for b in books) or books:
-    _render_replay_progress(replay, models)
+  if mode == "parity":
+    if running and not any(b.get("parity_models") for b in books):
+      st.caption("Đang chạy Lab parity… chờ model đầu tiên.")
+    if running or any(b.get("parity_models") for b in books) or books:
+      _render_replay_progress(replay, models)
+    else:
+      st.caption("Chưa có progress — Start OOS replay.")
   else:
-    st.caption("Chưa có progress — Start OOS replay.")
+    if running or any(int(b.get("bars_done") or 0) for b in books) or books:
+      for b in books:
+        done = int(b.get("bars_done") or 0)
+        total = int(b.get("bars_total") or 0)
+        pct = b.get("pct") or 0
+        st.caption(
+          f"{b.get('symbol')} {b.get('timeframe')} · {b.get('ea_status')} · "
+          f"{done}/{total} bars ({pct}%) · fills={b.get('n_fills')} · signals={b.get('n_signals')}"
+        )
+        if total:
+          st.progress(min(max(float(pct) / 100.0, 0.0), 1.0))
+    else:
+      st.caption("Chưa có progress — Start Live-like replay.")
 
-  # ── 3. Results (parity, not empty paper journal) ────────────────────
+  # ── 3. Results ──────────────────────────────────────────────────────
   st.markdown('<div class="panel-label" style="margin-top:0.75rem">3 · Results</div>', unsafe_allow_html=True)
   c1, c2, c3, c4 = st.columns(4)
-  c1.metric("Total R", parity.get("total_r") if parity.get("n_models") else "—")
-  c2.metric(
-    "Models OK",
-    f"{parity.get('n_ok')}/{parity.get('n_models')}" if parity.get("n_models") else "—",
-  )
-  c3.metric(
-    "OOS",
-    f"{replay.get('oos_from') or '—'} → {replay.get('oos_to') or '—'}",
-  )
-  if running:
-    status_txt = "RUNNING"
-  elif not parity.get("n_models"):
-    status_txt = "—"
+  if mode == "parity":
+    c1.metric("Total R", parity.get("total_r") if parity.get("n_models") else "—")
+    c2.metric(
+      "Models OK",
+      f"{parity.get('n_ok')}/{parity.get('n_models')}" if parity.get("n_models") else "—",
+    )
+    c3.metric(
+      "OOS",
+      f"{replay.get('oos_from') or '—'} → {replay.get('oos_to') or '—'}",
+    )
+    if running:
+      status_txt = "RUNNING"
+    elif not parity.get("n_models"):
+      status_txt = "—"
+    else:
+      status_txt = "OK" if parity.get("ok") else "FAIL"
+    c4.metric("Status", status_txt)
+    if parity.get("rows"):
+      st.dataframe(parity["rows"], use_container_width=True, hide_index=True)
+    else:
+      st.caption("Chưa có kết quả Lab parity — Start với mode Lab parity.")
   else:
-    status_txt = "OK" if parity.get("ok") else "FAIL"
-  c4.metric("Status", status_txt)
+    c1.metric("Fills", paper.get("n_fills") if paper.get("n_books") else "—")
+    c2.metric(
+      "Books OK",
+      f"{paper.get('n_ok')}/{paper.get('n_books')}" if paper.get("n_books") else "—",
+    )
+    c3.metric(
+      "OOS",
+      f"{paper.get('oos_from') or replay.get('oos_from') or '—'} → "
+      f"{paper.get('oos_to') or replay.get('oos_to') or '—'}",
+    )
+    if running:
+      status_txt = "RUNNING"
+    elif not paper.get("n_books"):
+      status_txt = "—"
+    else:
+      status_txt = "OK" if paper.get("ok") else "FAIL"
+    c4.metric("Status", status_txt)
+    if paper.get("books"):
+      st.dataframe(
+        [{
+          "Book": f"{b.get('symbol')} {b.get('timeframe')}",
+          "Models": b.get("n_models"),
+          "Fills": b.get("n_fills"),
+          "Signals": b.get("n_signals"),
+          "Bars": f"{b.get('bars_done') or '—'}/{b.get('bars_total') or '—'}",
+          "Status": b.get("status"),
+          "OK": b.get("ok"),
+        } for b in paper["books"]],
+        use_container_width=True,
+        hide_index=True,
+      )
+    else:
+      st.caption("Chưa có kết quả Live-like — Start OOS replay (bridge/paper).")
 
-  if parity.get("rows"):
-    st.dataframe(parity["rows"], use_container_width=True, hide_index=True)
-  else:
-    st.caption("Chưa có kết quả parity — Start OOS replay.")
+    if stats:
+      s1, s2, s3 = st.columns(3)
+      s1.metric("Schedule hits", stats.get("schedule_hits") or 0)
+      s2.metric("Remine", stats.get("remine_count") or 0)
+      s3.metric("Skip", stats.get("skip_count") or 0)
+      bym = stats.get("by_model") or {}
+      if bym:
+        st.dataframe(
+          [{
+            "Model": mid,
+            "Schedule": v.get("schedule_hits"),
+            "Remine": v.get("remine_count"),
+            "Skip": v.get("skip_count"),
+          } for mid, v in bym.items()],
+          use_container_width=True,
+          hide_index=True,
+        )
 
   bdirs = [Path(p) for p in (snap.get("bridge_dirs") or [])]
   trades = load_trades_many(bdirs) if bdirs else []
-  eq = render_equity_section(trades, period="all", parity_books=books)
+  eq = render_equity_section(
+    trades,
+    period="all",
+    parity_books=books if mode == "parity" else None,
+  )
   if eq and eq.get("figure") is not None:
     with st.expander("Equity & drawdown", expanded=True):
       e1, e2, e3 = st.columns(3)
@@ -254,21 +333,32 @@ def _render_replay_live_panels() -> dict:
       rows_t = [{k: t.get(k) for k in keys} for t in trades[-80:]] if keys else trades[-80:]
       st.dataframe(rows_t, use_container_width=True, hide_index=True)
     else:
-      st.caption("Chưa có trade journal (parity dùng weekly genomes).")
+      st.caption(
+        "Chưa có trade journal"
+        + (" (Lab parity dùng weekly genomes)." if mode == "parity" else " (chạy Live-like để có paper fills).")
+      )
 
   # ── 4. Past runs ────────────────────────────────────────────────────
   st.markdown('<div class="panel-label" style="margin-top:0.75rem">4 · Past runs</div>', unsafe_allow_html=True)
   runs = list_replay_runs(limit=20)
   cur = latest_parity_snapshot()
-  if cur and not runs:
+  if mode == "parity" and cur and not runs:
     from replay_history import archive_parity_batch
     if cur.get("books") and st.button("Archive current result into history", key="archive_cur"):
-      archive_parity_batch(cur)
+      archive_parity_batch({**cur, "mode": "schedule_parity"})
+      st.rerun()
+  if mode == "live_like" and paper.get("n_books") and not running:
+    from replay_history import archive_live_like_run
+    if st.button("Archive current Live-like result", key="archive_live_like"):
+      archive_live_like_run(paper)
+      st.toast("Archived Live-like run")
       st.rerun()
   if runs:
     options = {
-      f"{r.get('created_at', '')[:19]} · {r.get('oos_from')}→{r.get('oos_to')} · "
-      f"R={r.get('total_r')} · {r.get('n_ok')}/{r.get('n_models')} ok · {r.get('run_id')}": r
+      f"{r.get('created_at', '')[:19]} · {r.get('mode') or 'parity'} · "
+      f"{r.get('oos_from')}→{r.get('oos_to')} · "
+      f"R={r.get('total_r')} · fills={r.get('n_fills')} · "
+      f"{r.get('n_ok')}/{r.get('n_models')} ok · {r.get('run_id')}": r
       for r in runs
     }
     labels = list(options.keys())
@@ -283,14 +373,14 @@ def _render_replay_live_panels() -> dict:
     chosen = options.get(pick) or runs[0]
     detail = load_replay_run(str(chosen.get("run_id"))) or {}
     hist_models = (detail.get("summary") or {}).get("models") or []
-    if not hist_models:
+    if not hist_models and chosen.get("mode") != "live_like":
       from replay_history import _summarize_batch
       hist_models = (_summarize_batch(detail).get("models") or [])
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Total R", chosen.get("total_r"))
+    m1.metric("Total R", chosen.get("total_r") if chosen.get("total_r") is not None else "—")
     m2.metric("Models OK", f"{chosen.get('n_ok')}/{chosen.get('n_models')}")
     m3.metric("OOS", f"{chosen.get('oos_from')} → {chosen.get('oos_to')}")
-    m4.metric("Status", "OK" if chosen.get("ok") else "FAIL")
+    m4.metric("Mode", chosen.get("mode") or "—")
     if hist_models:
       st.dataframe(
         [{
@@ -300,7 +390,7 @@ def _render_replay_live_panels() -> dict:
           "Lab R": m.get("lab_total_r"),
           "ΔR": m.get("delta_r"),
           "WR%": m.get("win_rate_pct"),
-          "Trades": m.get("n_trades"),
+          "Trades": m.get("n_trades") or m.get("n_fills"),
           "OK": m.get("ok"),
         } for m in hist_models],
         use_container_width=True,
@@ -392,6 +482,30 @@ def render_replay_desk() -> dict:
     st.session_state.oos_from_date = d_from
   if "oos_to_date" not in st.session_state:
     st.session_state.oos_to_date = d_to
+  if "replay_mode_radio" not in st.session_state:
+    st.session_state.replay_mode_radio = (
+      "Live-like (bridge)" if prefs.get("mode") != "parity" else "Lab parity"
+    )
+
+  mode_label = st.radio(
+    "Replay mode",
+    ["Live-like (bridge)", "Lab parity"],
+    horizontal=True,
+    key="replay_mode_radio",
+    help=(
+      "Live-like = cùng BridgeEngine với Live (paper fills). "
+      "Lab parity = genome đóng băng, khớp TotalR/WR Lab."
+    ),
+  )
+  mode = "live_like" if mode_label.startswith("Live-like") else "parity"
+  force_remine = False
+  if mode == "live_like":
+    force_remine = st.checkbox(
+      "Force remine (ignore schedule — stress path tuần mới)",
+      value=bool(prefs.get("force_remine")),
+      key="replay_force_remine",
+      help="Bỏ qua schedule.json, ép optimize_on_window như Live khi gặp tuần chưa freeze.",
+    )
 
   oc1, oc2 = st.columns(2)
   with oc1:
@@ -400,8 +514,18 @@ def render_replay_desk() -> dict:
     oos_to = st.date_input("OOS to", key="oos_to_date")
 
   cur_from, cur_to = str(oos_from), str(oos_to)
-  if cur_from != str(prefs.get("from") or "") or cur_to != str(prefs.get("to") or ""):
-    save_oos_prefs(date_from=cur_from, date_to=cur_to)
+  if (
+    cur_from != str(prefs.get("from") or "")
+    or cur_to != str(prefs.get("to") or "")
+    or mode != prefs.get("mode")
+    or bool(force_remine) != bool(prefs.get("force_remine"))
+  ):
+    save_oos_prefs(
+      date_from=cur_from,
+      date_to=cur_to,
+      mode=mode,
+      force_remine=force_remine if mode == "live_like" else False,
+    )
   if not models:
     st.info("Chưa bật model — mở **Models**, bật On, Save.")
   else:
@@ -425,9 +549,13 @@ def render_replay_desk() -> dict:
         out = start_oos_replay(
           date_from=str(st.session_state.get("oos_from_date") or load_oos_prefs()["from"]),
           date_to=str(st.session_state.get("oos_to_date") or load_oos_prefs()["to"]),
+          mode=mode,
+          force_remine=force_remine if mode == "live_like" else False,
           restart=True,
         )
-        st.toast(f"Replay {out.get('from')}→{out.get('to')} · pid {out.get('pid')}")
+        st.toast(
+          f"Replay {out.get('mode')} {out.get('from')}→{out.get('to')} · pid {out.get('pid')}"
+        )
         st.rerun()
       except Exception as exc:
         st.error(str(exc))
@@ -442,7 +570,14 @@ def render_replay_desk() -> dict:
       st.toast("Replay stopped")
       st.rerun()
   with a3:
-    st.caption(f"Window **{oos_from} → {oos_to}** · schedule-parity (lab TotalR/WR).")
+    if mode == "live_like":
+      hint = "Live-like · bridge decide → paper fill · books song song (1 process/book)"
+      if force_remine:
+        hint += " · FORCE REMINE"
+    else:
+      hint = "Lab parity · schedule genomes (TotalR/WR)"
+    st.caption(f"Window **{oos_from} → {oos_to}** · {hint}")
+  st.caption("Parity OK ≠ Live OK — dùng **Live-like** trước khi Start trading.")
 
   # Live panels: native fragment poll (streamlit-autorefresh is unreliable on 1.60).
   auto = bool(st.session_state.get("auto_refresh"))
@@ -509,7 +644,9 @@ def _render_health_panel(health: dict, *, sim: bool = False) -> None:
       models_html.append(
         "<div class='health-model'>"
         f"<div><strong>{m.get('label') or m.get('model_id')}</strong>"
-        f"<div class='model-meta'>magic {m.get('magic') or '—'} · {m.get('reason') or ''}</div></div>"
+        f"<div class='model-meta'>magic {m.get('magic') or '—'} · {m.get('reason') or ''}"
+        f"{(' · src=' + str(m.get('strategy_source'))) if m.get('strategy_source') else ''}"
+        f"</div></div>"
         f"<div>{m.get('action') or '—'}</div>"
         f"<div class='model-meta'>dec {m.get('decision_age')} · bar {m.get('bar_time') or '—'}</div>"
         f"{_health_flag_html(m.get('level') or 'muted', mflags)}"
@@ -530,8 +667,26 @@ def _render_health_panel(health: dict, *, sim: bool = False) -> None:
     )
   st.caption(
     "TIMEOUT/LAG = decision chưa khớp nến EA · EA_STALE = heartbeat chết · "
-    "WORKER_STALE = App không cập nhật status. Bật Auto-refresh để theo dõi."
+    "WORKER_STALE = App không cập nhật status · GATE_FAIL = remine bị chặn · "
+    "RISK_CAP = vượt trần risk đồng thời · REMINE = genome remine (đã qua gate)."
   )
+  rg = health.get("remine_gate_last") or {}
+  if rg:
+    ok = rg.get("ok")
+    st.caption(
+      f"Remine gate last: {'PASS' if ok else 'FAIL'} · "
+      f"{rg.get('model_id')} · week {rg.get('week_start')} · "
+      f"PF={(rg.get('metrics') or {}).get('profit_factor')} · "
+      f"n={(rg.get('metrics') or {}).get('n_trades')}"
+      + (f" · {'; '.join(rg.get('reasons') or [])}" if rg.get('reasons') else "")
+    )
+  rc = health.get("risk_cap_last") or {}
+  if rc:
+    st.caption(
+      f"Risk cap last: {'OK' if rc.get('ok') else 'BLOCK'} · "
+      f"{rc.get('model_id')} · proj={rc.get('projected_risk_pct')}% · "
+      f"{'; '.join(rc.get('reasons') or []) or '—'}"
+    )
 
 
 def render_live_desk() -> dict:
@@ -666,6 +821,10 @@ def render_live_desk() -> dict:
         st.error(str(exc))
     if start_why:
       st.caption(start_why)
+    st.caption(
+      "Parity OK ≠ Live OK — Start chạy preflight decide_for_bar. "
+      "Dùng Replay · Live-like trước khi trade thật."
+    )
   with a2:
     if st.button("Stop", use_container_width=True, disabled=not running, key="desk_stop"):
       stop_bridge(flatten=False)
@@ -875,7 +1034,7 @@ def render_live_desk() -> dict:
 
 
 def render_setup_page() -> None:
-  """Setup — Risk → Safety → Runtime → Windows/EA → Danger zone."""
+  """Setup tabs: Risk · Quality · Control · System."""
   st.markdown(
     f"""
     <div class="desk-top">
@@ -887,74 +1046,70 @@ def render_setup_page() -> None:
     """,
     unsafe_allow_html=True,
   )
+  st.caption("Risk = mất tiền · Quality = remine · Control = kill/workers · System = EA & wipe")
 
-  # ── 1. Risk limits ──────────────────────────────────────────────────
-  st.markdown('<div class="panel-label">1 · Risk limits</div>', unsafe_allow_html=True)
-  st.caption(
-    "Chạm ngưỡng → FLAT + dừng service. Áp dụng Live trading. 0 = tắt ngưỡng đó."
+  tab_risk, tab_quality, tab_control, tab_system = st.tabs(
+    ["Risk", "Quality", "Control", "System"]
   )
-  prefs = load_risk_prefs()
-  snap_r = risk_status_snapshot()
-  if snap_r.get("tripped"):
-    st.error(
-      f"TRIPPED · {snap_r.get('tripped_reason') or 'risk guard'} "
-      f"· {snap_r.get('tripped_at') or ''}"
-    )
-    if st.button("Clear trip (cho phép Start lại)", key="clear_risk_trip"):
-      clear_loss_guard_trip()
-      st.toast("Trip cleared — bấm Start trading")
-      st.rerun()
 
-  cstat = st.columns(4)
-  cstat[0].metric("DD hôm nay", f"{snap_r.get('day_dd_r') if snap_r.get('day_dd_r') is not None else '—'}R")
-  cstat[1].metric("DD tuần", f"{snap_r.get('week_dd_r') if snap_r.get('week_dd_r') is not None else '—'}R")
-  cstat[2].metric("R hôm nay", snap_r.get("day_total_r") if snap_r.get("day_total_r") is not None else "—")
-  cstat[3].metric("Streak thua ngày", snap_r.get("day_streak") if snap_r.get("day_streak") is not None else "—")
+  # ── Risk: loss guard + concurrent cap ───────────────────────────────
+  with tab_risk:
+    st.markdown('<div class="panel-label">1 · Loss guard</div>', unsafe_allow_html=True)
+    st.caption(
+      "Sau khi lỗ/DD chạm ngưỡng → FLAT + dừng service. "
+      "Khác concurrent cap (chặn trước khi mở lệnh). 0 = tắt ngưỡng đó."
+    )
+    prefs = load_risk_prefs()
+    snap_r = risk_status_snapshot()
+    if snap_r.get("tripped"):
+      st.error(
+        f"TRIPPED · {snap_r.get('tripped_reason') or 'risk guard'} "
+        f"· {snap_r.get('tripped_at') or ''}"
+      )
+      if st.button("Clear trip (cho phép Start lại)", key="clear_risk_trip"):
+        clear_loss_guard_trip()
+        st.toast("Trip cleared — bấm Start trading")
+        st.rerun()
 
-  en = st.toggle("Enable risk guard", value=bool(prefs.get("loss_guard_enabled", True)), key="risk_en")
-  r1, r2 = st.columns(2)
-  with r1:
-    day_dd = st.number_input(
-      "Max DD ngày (R)", min_value=0.0, max_value=100.0,
-      value=float(prefs.get("loss_guard_max_day_dd_r") or 0), step=0.5, key="risk_day_dd",
-      help="Peak-to-trough drawdown trong ngày ≥ ngưỡng → stop",
-    )
-    week_dd = st.number_input(
-      "Max DD tuần (R)", min_value=0.0, max_value=200.0,
-      value=float(prefs.get("loss_guard_max_week_dd_r") or 0), step=0.5, key="risk_week_dd",
-    )
-    day_loss = st.number_input(
-      "Max lỗ ngày (R)", min_value=0.0, max_value=100.0,
-      value=float(prefs.get("loss_guard_max_day_loss_r") or 0), step=0.5, key="risk_day_loss",
-      help="Tổng R trong ngày ≤ −ngưỡng → stop (0=tắt)",
-    )
-  with r2:
-    week_loss = st.number_input(
-      "Max lỗ tuần (R)", min_value=0.0, max_value=200.0,
-      value=float(prefs.get("loss_guard_max_week_loss_r") or 0), step=0.5, key="risk_week_loss",
-    )
-    day_streak = st.number_input(
-      "Max thua liên tiếp / ngày", min_value=0, max_value=50,
-      value=int(prefs.get("loss_guard_max_day") or 0), step=1, key="risk_day_streak",
-    )
-    week_streak = st.number_input(
-      "Max thua liên tiếp / tuần", min_value=0, max_value=80,
-      value=int(prefs.get("loss_guard_max_week") or 0), step=1, key="risk_week_streak",
-    )
+    cstat = st.columns(4)
+    cstat[0].metric("DD hôm nay", f"{snap_r.get('day_dd_r') if snap_r.get('day_dd_r') is not None else '—'}R")
+    cstat[1].metric("DD tuần", f"{snap_r.get('week_dd_r') if snap_r.get('week_dd_r') is not None else '—'}R")
+    cstat[2].metric("R hôm nay", snap_r.get("day_total_r") if snap_r.get("day_total_r") is not None else "—")
+    cstat[3].metric("Streak thua ngày", snap_r.get("day_streak") if snap_r.get("day_streak") is not None else "—")
 
-  if st.button("Save risk limits", type="primary", key="save_risk_limits"):
-    save_risk_prefs(
-      loss_guard_enabled=bool(en),
-      loss_guard_max_day_dd_r=float(day_dd),
-      loss_guard_max_week_dd_r=float(week_dd),
-      loss_guard_max_day_loss_r=float(day_loss),
-      loss_guard_max_week_loss_r=float(week_loss),
-      loss_guard_max_day=int(day_streak),
-      loss_guard_max_week=int(week_streak),
-    )
-    try:
-      from bridge_control import save_config
-      save_config(
+    en = st.toggle("Enable risk guard", value=bool(prefs.get("loss_guard_enabled", True)), key="risk_en")
+    r1, r2 = st.columns(2)
+    with r1:
+      day_dd = st.number_input(
+        "Max DD ngày (R)", min_value=0.0, max_value=100.0,
+        value=float(prefs.get("loss_guard_max_day_dd_r") or 0), step=0.5, key="risk_day_dd",
+        help="Peak-to-trough drawdown trong ngày ≥ ngưỡng → stop",
+      )
+      week_dd = st.number_input(
+        "Max DD tuần (R)", min_value=0.0, max_value=200.0,
+        value=float(prefs.get("loss_guard_max_week_dd_r") or 0), step=0.5, key="risk_week_dd",
+      )
+      day_loss = st.number_input(
+        "Max lỗ ngày (R)", min_value=0.0, max_value=100.0,
+        value=float(prefs.get("loss_guard_max_day_loss_r") or 0), step=0.5, key="risk_day_loss",
+        help="Tổng R trong ngày ≤ −ngưỡng → stop (0=tắt)",
+      )
+    with r2:
+      week_loss = st.number_input(
+        "Max lỗ tuần (R)", min_value=0.0, max_value=200.0,
+        value=float(prefs.get("loss_guard_max_week_loss_r") or 0), step=0.5, key="risk_week_loss",
+      )
+      day_streak = st.number_input(
+        "Max thua liên tiếp / ngày", min_value=0, max_value=50,
+        value=int(prefs.get("loss_guard_max_day") or 0), step=1, key="risk_day_streak",
+      )
+      week_streak = st.number_input(
+        "Max thua liên tiếp / tuần", min_value=0, max_value=80,
+        value=int(prefs.get("loss_guard_max_week") or 0), step=1, key="risk_week_streak",
+      )
+
+    if st.button("Save loss guard", type="primary", key="save_risk_limits"):
+      save_risk_prefs(
         loss_guard_enabled=bool(en),
         loss_guard_max_day_dd_r=float(day_dd),
         loss_guard_max_week_dd_r=float(week_dd),
@@ -963,186 +1118,305 @@ def render_setup_page() -> None:
         loss_guard_max_day=int(day_streak),
         loss_guard_max_week=int(week_streak),
       )
+      try:
+        from bridge_control import save_config
+        save_config(
+          loss_guard_enabled=bool(en),
+          loss_guard_max_day_dd_r=float(day_dd),
+          loss_guard_max_week_dd_r=float(week_dd),
+          loss_guard_max_day_loss_r=float(day_loss),
+          loss_guard_max_week_loss_r=float(week_loss),
+          loss_guard_max_day=int(day_streak),
+          loss_guard_max_week=int(week_streak),
+        )
+      except Exception:
+        pass
+      st.toast("Loss guard saved")
+      st.rerun()
+
+    st.markdown('<div class="panel-label" style="margin-top:0.75rem">2 · Concurrent risk cap</div>', unsafe_allow_html=True)
+    st.caption(
+      "Giới hạn tổng risk đang mở + SIGNAL chờ fill trên toàn portfolio "
+      "(mỗi model vẫn chỉ 1 lệnh). Vượt trần → FLAT reason=risk_cap. "
+      "Tắt: env LIVE_RISK_CAP=0."
+    )
+    try:
+      from risk_cap import (
+        collect_exposure,
+        load_last_alert as load_rc_last,
+        load_prefs as load_rc_prefs,
+        save_prefs as save_rc_prefs,
+      )
+      rc = load_rc_prefs()
+      last_rc = load_rc_last()
+      rc_en = st.toggle("Enable concurrent risk cap", value=bool(rc.get("enabled", True)), key="rc_en")
+      c1, c2, c3 = st.columns(3)
+      with c1:
+        rc_max_r = st.number_input(
+          "Max open risk % (sum)", min_value=0.0, max_value=50.0,
+          value=float(rc.get("max_open_risk_pct") or 3.0), step=0.5, key="rc_max_r",
+        )
+      with c2:
+        rc_max_n = st.number_input(
+          "Max open positions", min_value=0, max_value=50,
+          value=int(rc.get("max_open_positions") or 4), key="rc_max_n",
+        )
+      with c3:
+        rc_age = st.number_input(
+          "Pending signal max age (s)", min_value=60, max_value=7200,
+          value=int(rc.get("pending_max_age_sec") or 900), step=60, key="rc_age",
+        )
+      rc_pend = st.checkbox(
+        "Count pending BUY/SELL as reserved risk",
+        value=bool(rc.get("include_pending_signals", True)),
+        key="rc_pend",
+      )
+      if st.button("Save risk cap", key="rc_save"):
+        save_rc_prefs({
+          "enabled": bool(rc_en),
+          "max_open_risk_pct": float(rc_max_r),
+          "max_open_positions": int(rc_max_n),
+          "pending_max_age_sec": int(rc_age),
+          "include_pending_signals": bool(rc_pend),
+        })
+        st.toast("Risk cap saved")
+        st.rerun()
+      try:
+        exp = collect_exposure(sim=False)
+        st.caption(
+          f"Now (live bridges): open={exp.get('n_open')} "
+          f"({exp.get('open_risk_pct')}%) · pending={exp.get('n_pending')} "
+          f"({exp.get('pending_risk_pct')}%) · total={exp.get('total_risk_pct')}%"
+        )
+      except Exception as exp_exc:
+        st.caption(f"Exposure snapshot unavailable: {exp_exc}")
+      if last_rc:
+        st.caption(
+          f"Last: {'OK' if last_rc.get('ok') else 'BLOCK'} · {last_rc.get('model_id')} · "
+          f"proj={last_rc.get('projected_risk_pct')}% · {last_rc.get('reasons') or '—'}"
+        )
+    except Exception as exc:
+      st.caption(f"Risk cap UI unavailable: {exc}")
+
+  # ── Quality: remine gate ────────────────────────────────────────────
+  with tab_quality:
+    st.markdown('<div class="panel-label">1 · Remine quality gate</div>', unsafe_allow_html=True)
+    st.caption(
+      "Tuần chưa có trong schedule → remine. Gate đo strategy trên train window; "
+      "FAIL → FLAT + alert (không trade). Tắt: env LIVE_REMINE_GATE=0."
+    )
+    try:
+      from remine_gate import load_last_alert, load_prefs as load_rg_prefs, save_prefs as save_rg_prefs
+      rg = load_rg_prefs()
+      last_rg = load_last_alert()
+      rg_en = st.toggle("Enable remine gate", value=bool(rg.get("enabled", True)), key="rg_en")
+      g1, g2, g3 = st.columns(3)
+      with g1:
+        rg_n = st.number_input("Min n_trades (train)", min_value=0, max_value=500, value=int(rg.get("min_n_trades") or 20), key="rg_n")
+      with g2:
+        rg_pf = st.number_input("Min profit_factor", min_value=0.0, max_value=10.0, value=float(rg.get("min_profit_factor") or 1.3), step=0.1, key="rg_pf")
+      with g3:
+        rg_tr = st.number_input("Min total_r", min_value=-50.0, max_value=50.0, value=float(rg.get("min_total_r") or 0.0), step=0.5, key="rg_tr")
+      rg_cmp = st.checkbox("So với baseline PF model (≥ ratio × baseline)", value=bool(rg.get("compare_baseline", True)), key="rg_cmp")
+      rg_ratio = st.number_input(
+        "Min PF vs baseline ratio", min_value=0.0, max_value=1.5,
+        value=float(rg.get("min_pf_vs_baseline") or 0.75), step=0.05, key="rg_ratio",
+        disabled=not rg_cmp,
+      )
+      if st.button("Save remine gate", key="rg_save"):
+        save_rg_prefs({
+          "enabled": bool(rg_en),
+          "min_n_trades": int(rg_n),
+          "min_profit_factor": float(rg_pf),
+          "min_total_r": float(rg_tr),
+          "compare_baseline": bool(rg_cmp),
+          "min_pf_vs_baseline": float(rg_ratio),
+        })
+        st.toast("Remine gate saved")
+        st.rerun()
+      if last_rg:
+        st.caption(
+          f"Last: {'PASS' if last_rg.get('ok') else 'FAIL'} · {last_rg.get('model_id')} · "
+          f"week {last_rg.get('week_start')} · {last_rg.get('reasons') or '—'}"
+        )
+    except Exception as exc:
+      st.caption(f"Remine gate UI unavailable: {exc}")
+
+  # ── Control: kill + workers ─────────────────────────────────────────
+  with tab_control:
+    st.markdown('<div class="panel-label">1 · Kill-switch</div>', unsafe_allow_html=True)
+    st.caption("Emergency kill dừng mọi model, khóa latch, và Flatten. Dùng khi cần dừng tay.")
+    kill_on = is_kill_switch_armed()
+    st.markdown(
+      f'<div class="pill-row">{pill("KILL ARMED" if kill_on else "Kill off", "danger" if kill_on else "muted")}</div>',
+      unsafe_allow_html=True,
+    )
+    k1, k2 = st.columns(2)
+    with k1:
+      if st.button("Arm kill-switch", type="primary", key="setup_arm_kill"):
+        arm_kill_switch(reason="setup_kill", flatten=True)
+        st.rerun()
+    with k2:
+      if st.button("Disarm kill-switch", key="setup_disarm_kill"):
+        disarm_kill_switch()
+        st.rerun()
+
+    st.markdown('<div class="panel-label" style="margin-top:0.75rem">2 · Workers</div>', unsafe_allow_html=True)
+    st.caption("Hàng ngày Start/Stop trên desk Live; đây là trạng thái kỹ thuật.")
+    try:
+      from debug_log import support_bundle_hint
+      st.caption(f"Debug logs (hỗ trợ): `{support_bundle_hint()}`")
     except Exception:
       pass
-    st.toast("Risk limits saved")
-    st.rerun()
-
-  # ── 2. Safety ───────────────────────────────────────────────────────
-  st.markdown('<div class="panel-label" style="margin-top:0.75rem">2 · Safety</div>', unsafe_allow_html=True)
-  st.caption("Emergency kill dừng mọi model, khóa latch, và Flatten. Dùng khi cần dừng tay.")
-  kill_on = is_kill_switch_armed()
-  st.markdown(
-    f'<div class="pill-row">{pill("KILL ARMED" if kill_on else "Kill off", "danger" if kill_on else "muted")}</div>',
-    unsafe_allow_html=True,
-  )
-  k1, k2 = st.columns(2)
-  with k1:
-    if st.button("Arm kill-switch", type="primary", key="setup_arm_kill"):
-      arm_kill_switch(reason="setup_kill", flatten=True)
-      st.rerun()
-  with k2:
-    if st.button("Disarm kill-switch", key="setup_disarm_kill"):
-      disarm_kill_switch()
-      st.rerun()
-
-  # ── 3. Runtime ──────────────────────────────────────────────────────
-  st.markdown('<div class="panel-label" style="margin-top:0.75rem">3 · Runtime</div>', unsafe_allow_html=True)
-  st.caption("Workers / service — hàng ngày Start/Stop trên desk Live; đây là trạng thái kỹ thuật.")
-  try:
-    from debug_log import support_bundle_hint
-    st.caption(f"Debug logs (hỗ trợ): `{support_bundle_hint()}`")
-  except Exception:
-    pass
-  st_stat = status()
-  m1, m2, m3 = st.columns(3)
-  m1.metric("Workers", st_stat.get("n_workers") or (1 if st_stat["running"] else 0))
-  m2.metric("PID", st_stat["pid"] or "—")
-  m3.metric("Kill-switch", "ARMED" if kill_on else "off")
-  if st_stat.get("workers"):
-    for w in st_stat["workers"]:
-      mark = "●" if w.get("alive") else "○"
-      mids = ", ".join(w.get("model_ids") or []) or "—"
-      st.caption(
-        f"{mark} models [{mids}] · {w.get('symbol')} {w.get('timeframe')} · pid {w.get('pid')}"
-      )
-  rt1, rt2 = st.columns(2)
-  with rt1:
-    if st.button("Start (require EA online)", key="setup_start_bridge"):
-      try:
-        with st.spinner("Auto-deploy EA (nếu thiếu) rồi Start…"):
-          out = start_bridge(require_chart=True)
-        dep = out.get("deploy") or {}
-        st.success(
-          f"workers={out.get('n_workers')} pid={out.get('pid')}"
-          + (f" · deployed={dep.get('deployed')}" if dep else "")
+    st_stat = status()
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Workers", st_stat.get("n_workers") or (1 if st_stat["running"] else 0))
+    m2.metric("PID", st_stat["pid"] or "—")
+    m3.metric("Kill-switch", "ARMED" if kill_on else "off")
+    if st_stat.get("workers"):
+      for w in st_stat["workers"]:
+        mark = "●" if w.get("alive") else "○"
+        mids = ", ".join(w.get("model_ids") or []) or "—"
+        st.caption(
+          f"{mark} models [{mids}] · {w.get('symbol')} {w.get('timeframe')} · pid {w.get('pid')}"
         )
-        st.rerun()
-      except Exception as exc:
-        st.error(str(exc))
-  with rt2:
-    if st.button("Stop + flatten", key="setup_stop_bridge"):
-      stop_bridge(flatten=True)
-      st.rerun()
-
-  # ── 4. Windows / EA ─────────────────────────────────────────────────
-  st.markdown('<div class="panel-label" style="margin-top:0.75rem">4 · Windows / EA</div>', unsafe_allow_html=True)
-  with st.expander("Autostart sau reboot", expanded=False):
-    from windows_autostart import (
-      is_windows as _is_win_as,
-      load_prefs as _as_prefs,
-      task_status as _as_status,
-    )
-    st_as = _as_status()
-    prefs_as = st_as.get("prefs") or _as_prefs()
-    st.markdown(
-      "**Theo Start / Stop trading:**\n"
-      "- **Start** → gắn Scheduled Task (reboot: MT5 + Live app + bridge)\n"
-      "- **Stop / Emergency kill** → gỡ task\n"
-    )
-    if not _is_win_as():
-      st.caption("Task thật chỉ đăng ký trên PC Windows chạy MT5.")
-    else:
-      installed = bool(st_as.get("task_installed"))
-      st.write(
-        f"Task: **{'INSTALLED' if installed else 'not installed'}** · "
-        f"enabled={prefs_as.get('enabled')} · start_bridge={prefs_as.get('start_bridge')}"
-      )
-      st.caption(f"Delay logon {prefs_as.get('delay_sec') or 45}s · log: results/debug_logs/boot_*.log")
-      if st.button("Refresh status", key="as_refresh"):
-        st.rerun()
-
-  with st.expander("EA attach (auto-deploy)", expanded=False):
-    enabled = [r for r in (load_roster().get("models") or []) if r.get("enabled")]
-    groups = group_models_by_book(enabled)
-    if not groups:
-      st.info("Bật ít nhất một model rồi Save ở Models.")
-    else:
-      lines = [
-        "Live **Start** trên Windows tự check + deploy EA đủ mọi book đang bật "
-        "(`deploy_live_ea.ps1 -FromRoster`).",
-        "",
-        "Mỗi thị trường (symbol+TF) → 1 chart `ForgeBridgeLive` với `InpBridgeSubdir`:",
-        "",
-      ]
-      for (sym, tf), rows in groups.items():
-        sub = bridge_subdir(sym, tf, sim=False)
-        labels = ", ".join(r.get("label") or r.get("model_id") for r in rows)
-        lines.append(f"- **{labels}** · {sym} {tf}")
-        lines.append(f"  → `InpBridgeSubdir={sub}`")
-      lines.append("")
-      lines.append(f"Magic base `{LIVE_MAGIC_BASE}` · manual: `deploy_live_ea.ps1 -FromRoster`")
-      lines.append("Tắt auto-deploy: env `LIVE_SKIP_EA_DEPLOY=1`")
-      st.markdown("\n".join(lines))
-      if st.button("Deploy EA now (Windows)", key="setup_deploy_ea_now"):
+    rt1, rt2 = st.columns(2)
+    with rt1:
+      if st.button("Start (require EA online)", key="setup_start_bridge"):
         try:
-          from deploy_ea import ensure_live_eas_deployed
-          with st.spinner("Deploying all enabled books…"):
-            info = ensure_live_eas_deployed(force=True, wait_online=True, wait_sec=60.0)
+          with st.spinner("Auto-deploy EA (nếu thiếu) rồi Start…"):
+            out = start_bridge(require_chart=True)
+          dep = out.get("deploy") or {}
           st.success(
-            f"OK · books={(info.get('coverage') or {}).get('n_books')} "
-            f"deployed={info.get('deployed')} skipped={info.get('skipped')}"
+            f"workers={out.get('n_workers')} pid={out.get('pid')}"
+            + (f" · deployed={dep.get('deployed')}" if dep else "")
           )
+          st.rerun()
         except Exception as exc:
           st.error(str(exc))
-
-  # ── 5. Danger zone ──────────────────────────────────────────────────
-  st.markdown('<div class="panel-label" style="margin-top:0.75rem">5 · Danger zone</div>', unsafe_allow_html=True)
-  with st.expander("Reset all Live data", expanded=False):
-    st.caption(
-      "Xóa journal · sim/parity · bridge state · OHLC cache · "
-      "(tuỳ chọn) packages + roster. Dừng workers/replay trước khi wipe."
-    )
-    wipe_packages = st.checkbox(
-      "Also remove installed packages & clear roster",
-      value=True,
-      key="reset_wipe_packages",
-    )
-    reseed = st.checkbox(
-      "Re-seed OHLC from lab after wipe (only if packages kept)",
-      value=True,
-      key="reset_reseed",
-      disabled=wipe_packages,
-    )
-    confirm = st.text_input(
-      "Type RESET to confirm",
-      value="",
-      key="reset_confirm_txt",
-      placeholder="RESET",
-    )
-    if st.button("Reset all Live data", type="primary", key="reset_all_btn"):
-      if confirm.strip() != "RESET":
-        st.error("Gõ đúng RESET để xác nhận.")
-      else:
-        with st.spinner("Resetting…"):
-          out = reset_live_data(
-            stop_services=True,
-            journal=True,
-            sim_parity=True,
-            runtime=True,
-            ohlc_cache=True,
-            include_packages=bool(wipe_packages),
-            reseed_ohlc=bool(reseed) and not wipe_packages,
-            disarm_kill=True,
-          )
-        st.session_state["last_reset"] = out
+    with rt2:
+      if st.button("Stop + flatten", key="setup_stop_bridge"):
+        stop_bridge(flatten=True)
         st.rerun()
 
-    last = st.session_state.get("last_reset")
-    if last:
-      if last.get("ok"):
-        st.success(
-          "Last reset OK · bridges={n} · packages={p} · roster_cleared={r} · reseed={s}".format(
-            n=len(last.get("bridges") or {}),
-            p=last.get("packages_removed") or 0,
-            r=last.get("roster_cleared"),
-            s=len(last.get("reseed") or []),
-          )
-        )
+  # ── System: Windows/EA + danger ─────────────────────────────────────
+  with tab_system:
+    st.markdown('<div class="panel-label">1 · Windows / EA</div>', unsafe_allow_html=True)
+    with st.expander("Autostart sau reboot", expanded=False):
+      from windows_autostart import (
+        is_windows as _is_win_as,
+        load_prefs as _as_prefs,
+        task_status as _as_status,
+      )
+      st_as = _as_status()
+      prefs_as = st_as.get("prefs") or _as_prefs()
+      st.markdown(
+        "**Theo Start / Stop trading:**\n"
+        "- **Start** → gắn Scheduled Task (reboot: MT5 + Live app + bridge)\n"
+        "- **Stop / Emergency kill** → gỡ task\n"
+      )
+      if not _is_win_as():
+        st.caption("Task thật chỉ đăng ký trên PC Windows chạy MT5.")
       else:
-        st.warning("Last reset có lỗi: " + "; ".join(last.get("errors") or [])[:400])
-      with st.expander("Last reset details", expanded=False):
-        st.json(last)
+        installed = bool(st_as.get("task_installed"))
+        st.write(
+          f"Task: **{'INSTALLED' if installed else 'not installed'}** · "
+          f"enabled={prefs_as.get('enabled')} · start_bridge={prefs_as.get('start_bridge')}"
+        )
+        st.caption(f"Delay logon {prefs_as.get('delay_sec') or 45}s · log: results/debug_logs/boot_*.log")
+        if st.button("Refresh status", key="as_refresh"):
+          st.rerun()
+
+    with st.expander("EA attach (auto-deploy)", expanded=False):
+      enabled = [r for r in (load_roster().get("models") or []) if r.get("enabled")]
+      groups = group_models_by_book(enabled)
+      if not groups:
+        st.info("Bật ít nhất một model rồi Save ở Models.")
+      else:
+        lines = [
+          "Live **Start** trên Windows tự check + deploy EA đủ mọi book đang bật "
+          "(`deploy_live_ea.ps1 -FromRoster`).",
+          "",
+          "Mỗi thị trường (symbol+TF) → 1 chart `ForgeBridgeLive` với `InpBridgeSubdir`:",
+          "",
+        ]
+        for (sym, tf), rows in groups.items():
+          sub = bridge_subdir(sym, tf, sim=False)
+          labels = ", ".join(r.get("label") or r.get("model_id") for r in rows)
+          lines.append(f"- **{labels}** · {sym} {tf}")
+          lines.append(f"  → `InpBridgeSubdir={sub}`")
+        lines.append("")
+        lines.append(f"Magic base `{LIVE_MAGIC_BASE}` · manual: `deploy_live_ea.ps1 -FromRoster`")
+        lines.append("Tắt auto-deploy: env `LIVE_SKIP_EA_DEPLOY=1`")
+        st.markdown("\n".join(lines))
+        if st.button("Deploy EA now (Windows)", key="setup_deploy_ea_now"):
+          try:
+            from deploy_ea import ensure_live_eas_deployed
+            with st.spinner("Deploying all enabled books…"):
+              info = ensure_live_eas_deployed(force=True, wait_online=True, wait_sec=60.0)
+            st.success(
+              f"OK · books={(info.get('coverage') or {}).get('n_books')} "
+              f"deployed={info.get('deployed')} skipped={info.get('skipped')}"
+            )
+          except Exception as exc:
+            st.error(str(exc))
+
+    st.markdown('<div class="panel-label" style="margin-top:0.75rem">2 · Danger zone</div>', unsafe_allow_html=True)
+    with st.expander("Reset all Live data", expanded=False):
+      st.caption(
+        "Xóa journal · sim/parity · bridge state · OHLC cache · "
+        "(tuỳ chọn) packages + roster. Dừng workers/replay trước khi wipe."
+      )
+      wipe_packages = st.checkbox(
+        "Also remove installed packages & clear roster",
+        value=True,
+        key="reset_wipe_packages",
+      )
+      reseed = st.checkbox(
+        "Re-seed OHLC from lab after wipe (only if packages kept)",
+        value=True,
+        key="reset_reseed",
+        disabled=wipe_packages,
+      )
+      confirm = st.text_input(
+        "Type RESET to confirm",
+        value="",
+        key="reset_confirm_txt",
+        placeholder="RESET",
+      )
+      if st.button("Reset all Live data", type="primary", key="reset_all_btn"):
+        if confirm.strip() != "RESET":
+          st.error("Gõ đúng RESET để xác nhận.")
+        else:
+          with st.spinner("Resetting…"):
+            out = reset_live_data(
+              stop_services=True,
+              journal=True,
+              sim_parity=True,
+              runtime=True,
+              ohlc_cache=True,
+              include_packages=bool(wipe_packages),
+              reseed_ohlc=bool(reseed) and not wipe_packages,
+              disarm_kill=True,
+            )
+          st.session_state["last_reset"] = out
+          st.rerun()
+
+      last = st.session_state.get("last_reset")
+      if last:
+        if last.get("ok"):
+          st.success(
+            "Last reset OK · bridges={n} · packages={p} · roster_cleared={r} · reseed={s}".format(
+              n=len(last.get("bridges") or {}),
+              p=last.get("packages_removed") or 0,
+              r=last.get("roster_cleared"),
+              s=len(last.get("reseed") or []),
+            )
+          )
+        else:
+          st.warning("Last reset có lỗi: " + "; ".join(last.get("errors") or [])[:400])
+        with st.expander("Last reset details", expanded=False):
+          st.json(last)
 
 
 def render_models_page() -> None:
@@ -1455,7 +1729,7 @@ nav = st.radio(
   horizontal=True,
   key="top_nav",
   label_visibility="collapsed",
-  help="Live = trading · Replay = OOS desk · Models = import/roster · Setup = risk & kỹ thuật",
+  help="Live = trading · Replay = OOS desk · Models = import/roster · Setup = Risk/Quality/Control/System",
 )
 # Keep URL in sync so F5 / refresh stays on Live · Replay · Models · Setup
 if _nav_from_query() != nav:

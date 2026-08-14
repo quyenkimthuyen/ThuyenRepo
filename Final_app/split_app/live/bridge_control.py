@@ -331,6 +331,7 @@ def start_bridge(
   once: bool = False,
   sim: bool = False,
   auto_deploy_ea: bool = True,
+  skip_preflight: bool = False,
 ) -> dict[str, Any]:
   if is_kill_switch_armed():
     raise RuntimeError("Kill-switch armed — Disarm before Start")
@@ -343,6 +344,17 @@ def start_bridge(
   # Stop prior workers first for clean multi-start
   if is_running() and not once:
     stop_bridge(flatten=False, sync_autostart=False)
+
+  preflight: dict[str, Any] | None = None
+  if (not sim) and (not skip_preflight) and (not once):
+    from preflight_live import preflight_enabled_books
+    preflight = preflight_enabled_books(sim=False)
+    if not preflight.get("ok"):
+      raise RuntimeError(
+        "Live preflight failed — decision path broken before Start.\n"
+        f"{preflight.get('error') or 'see live/results/live_preflight.json'}\n"
+        "Fix packages/schedule/OHLC, or run Replay · Live-like first."
+      )
 
   prep = prepare_runtime(require_chart=False, poll_sec=poll_sec, sim=sim)
 
@@ -391,6 +403,7 @@ def start_bridge(
       payload={
         "sim": bool(sim),
         "require_chart": bool(require_chart),
+        "preflight_ok": (preflight or {}).get("ok") if preflight is not None else None,
         "deploy": {
           "skipped": (deploy_info or {}).get("skipped"),
           "deployed": (deploy_info or {}).get("deployed"),

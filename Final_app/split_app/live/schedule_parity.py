@@ -372,6 +372,7 @@ def run_all_enabled_parity(
     "books": [],
     "ok": False,
     "status": "running",
+    "mode": "parity",
   })
   for (sym, tf), _ in groups.items():
     books.append(run_book_parity(sym, tf, oos_from=oos_from, oos_to=oos_to))
@@ -383,6 +384,7 @@ def run_all_enabled_parity(
       "ok": all(b.get("ok") for b in books),
       "status": "running",
       "partial": True,
+      "mode": "parity",
     })
   payload = {
     "updated_at": _now(),
@@ -391,6 +393,7 @@ def run_all_enabled_parity(
     "books": books,
     "ok": all(b.get("ok") for b in books),
     "status": "completed",
+    "mode": "parity",
   }
   _write(batch_path, payload)
   try:
