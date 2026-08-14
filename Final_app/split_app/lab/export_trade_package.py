@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
-"""Export Trade Model(s) from Final_app lab desks → .tmpkg packages."""
+"""Export Trade Model(s) from Final_app lab desks → .tmpkg packages.
+
+Requires a frozen ``*_schedule.json`` (OOS weekly genomes) so Live parity can
+match lab metrics. Missing schedule → export fails (use --ensure-schedule to
+run desk export_model_schedule.py first).
+"""
 from __future__ import annotations
 
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -12,7 +18,12 @@ SPLIT = Path(__file__).resolve().parents[1]
 FINAL = SPLIT.parent
 sys.path.insert(0, str(SPLIT))
 
-from shared.package_format import build_manifest, write_package  # noqa: E402
+from shared.package_format import (  # noqa: E402
+  build_manifest,
+  schedule_weekly_count,
+  validate_schedule_payload,
+  write_package,
+)
 
 DESK_META = {
   "EdgeMinerEURUSDM15": {"instance": "M15F1", "symbol": "EURUSD", "timeframe": "M15"},
@@ -20,6 +31,8 @@ DESK_META = {
   "EdgeMinerEURUSDM5": {"instance": "M5F3", "symbol": "EURUSD", "timeframe": "M5"},
   "EdgeMinerGBPUSDM5": {"instance": "M5F4", "symbol": "GBPUSD", "timeframe": "M5"},
 }
+
+PY = Path("/home/thuyenng/work/ThuyenRepo/EdgeMinerM15B5/.venv/bin/python")
 
 
 def _slug(s: str) -> str:
@@ -67,6 +80,22 @@ def load_schedule(desk: Path, model_id: str) -> dict | None:
   return None
 
 
+def ensure_schedule(desk: Path, model_id: str) -> dict | None:
+  """Run desk export_model_schedule.py then reload schedule.json."""
+  script = desk / "scripts" / "export_model_schedule.py"
+  if not script.exists():
+    raise RuntimeError(f"{desk.name}: missing scripts/export_model_schedule.py")
+  py = str(PY if PY.exists() else sys.executable)
+  print(f"==> ensure schedule {desk.name} {model_id}", flush=True)
+  rc = subprocess.run(
+    [py, str(script), "--model-id", model_id, "--quiet"],
+    cwd=str(desk),
+  ).returncode
+  if rc != 0:
+    raise RuntimeError(f"{desk.name}/{model_id}: export_model_schedule failed rc={rc}")
+  return load_schedule(desk, model_id)
+
+
 def metrics_from_model(m: dict) -> dict:
   keys = (
     "total_r", "profit_factor", "win_rate_pct", "max_drawdown_r",
@@ -75,7 +104,13 @@ def metrics_from_model(m: dict) -> dict:
   return {k: m.get(k) for k in keys if m.get(k) is not None}
 
 
-def export_one(desk_name: str, model: dict, out_dir: Path) -> Path:
+def export_one(
+  desk_name: str,
+  model: dict,
+  out_dir: Path,
+  *,
+  ensure_sched: bool = False,
+) -> Path:
   meta = DESK_META[desk_name]
   desk = FINAL / desk_name
   mid = model.get("id") or "unknown"
@@ -88,6 +123,22 @@ def export_one(desk_name: str, model: dict, out_dir: Path) -> Path:
   if model.get("use_kb", True) and kb_pin is None:
     raise RuntimeError(
       f"{desk_name}/{label}: use_kb but kb_pin missing — run promote/ensure pin on lab desk first"
+    )
+
+  schedule = load_schedule(desk, mid)
+  sched_errs = validate_schedule_payload(schedule)
+  if sched_errs and ensure_sched:
+    schedule = ensure_schedule(desk, mid)
+    sched_errs = validate_schedule_payload(schedule)
+  if sched_errs:
+    hint = (
+      f"Freeze schedule first:\n"
+      f"  cd {desk} && {PY if PY.exists() else 'python'} "
+      f"scripts/export_model_schedule.py --model-id {mid}\n"
+      f"Or re-run export with --ensure-schedule"
+    )
+    raise RuntimeError(
+      f"{desk_name}/{label}: incomplete package — {'; '.join(sched_errs)}\n{hint}"
     )
 
   payload = {
@@ -132,14 +183,19 @@ def export_one(desk_name: str, model: dict, out_dir: Path) -> Path:
   )
   out_name = f"{meta['instance']}_{_slug(label)}_{mid[-8:]}.tmpkg"
   out_path = out_dir / out_name
-  return write_package(
+  path = write_package(
     out_path,
     manifest=manifest,
     model=payload,
     metrics=metrics_from_model(model),
     kb_pin_src=kb_pin,
-    schedule=load_schedule(desk, mid),
+    schedule=schedule,
   )
+  print(
+    f"  schedule_weeks={schedule_weekly_count(schedule)} → {path.name}",
+    flush=True,
+  )
+  return path
 
 
 def main() -> int:
@@ -151,6 +207,11 @@ def main() -> int:
   ap.add_argument("--label")
   ap.add_argument("--all", action="store_true", help="Export all live models on desk(s)")
   ap.add_argument("--best-only", action="store_true", help="Only labels starting with Best")
+  ap.add_argument(
+    "--ensure-schedule",
+    action="store_true",
+    help="If schedule missing, run desk export_model_schedule.py before packaging",
+  )
   ap.add_argument("--out", type=Path, default=SPLIT / "packages_out")
   args = ap.parse_args()
 
@@ -160,6 +221,7 @@ def main() -> int:
 
   args.out.mkdir(parents=True, exist_ok=True)
   exported = []
+  failed = 0
 
   for desk_name in desks:
     desk = FINAL / desk_name
@@ -170,10 +232,14 @@ def main() -> int:
     if args.list:
       print(f"=== {desk_name} ({len(models)}) ===")
       for m in models:
+        mid = m.get("id")
+        sched = load_schedule(desk, str(mid))
+        n_w = schedule_weekly_count(sched)
+        ready = "OK" if n_w else "NO_SCHEDULE"
         print(
-          f"  {m.get('id')} | {m.get('label')} | "
+          f"  {ready:11} {m.get('id')} | {m.get('label')} | "
           f"R={m.get('total_r')} PF={m.get('profit_factor')} "
-          f"oos={m.get('oos_from')}→{m.get('oos_to')}"
+          f"oos={m.get('oos_from')}→{m.get('oos_to')} | weeks={n_w}"
         )
       continue
 
@@ -196,16 +262,22 @@ def main() -> int:
 
     for m in chosen:
       try:
-        path = export_one(desk_name, m, args.out)
+        path = export_one(
+          desk_name,
+          m,
+          args.out,
+          ensure_sched=bool(args.ensure_schedule),
+        )
         print(f"OK {desk_name} · {m.get('label')} → {path}", flush=True)
         exported.append(str(path))
       except Exception as exc:
+        failed += 1
         print(f"FAIL {desk_name} · {m.get('label')}: {exc}", flush=True)
 
   if args.list:
     return 0
-  print(f"Exported {len(exported)} package(s) → {args.out}", flush=True)
-  return 0 if exported else 1
+  print(f"Exported {len(exported)} package(s) · failed={failed} → {args.out}", flush=True)
+  return 0 if exported and failed == 0 else 1
 
 
 if __name__ == "__main__":

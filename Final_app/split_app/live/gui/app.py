@@ -97,26 +97,43 @@ def _render_replay_progress(replay: dict, models: list[dict]) -> None:
   # Prefer per-model parity results when present
   model_rows = []
   for b in books:
-    for pm in b.get("parity_models") or []:
+    pms = b.get("parity_models") or []
+    if not pms and (b.get("ea_status") in ("running", "pending") or replay.get("running")):
+      model_rows.append({
+        "label": f"{b.get('n_models') or '?'} model(s)",
+        "market": f"{b.get('symbol')} {b.get('timeframe')}",
+        "status": b.get("ea_status") or "pending",
+        "R": None,
+        "lab_R": None,
+        "dR": None,
+        "pct": float(b.get("pct") or 0),
+        "err": None,
+      })
+      continue
+    for pm in pms:
       mid = str(pm.get("id") or pm.get("model_id") or "")
+      err = pm.get("err") or pm.get("error")
       model_rows.append({
         "label": labels.get(mid) or mid or "—",
         "market": f"{b.get('symbol')} {b.get('timeframe')}",
-        "status": b.get("ea_status") or "done",
+        "status": ("FAIL" if err else (b.get("ea_status") or "done")),
         "R": pm.get("R"),
         "lab_R": pm.get("lab_R"),
         "dR": pm.get("dR"),
-        "pct": 100.0 if b.get("ea_status") == "completed" or b.get("pct") else (b.get("pct") or 0),
+        "pct": 100.0 if (pm.get("R") is not None or err) else float(b.get("pct") or 0),
+        "err": err,
       })
   if model_rows:
     for row in model_rows:
       dr = row.get("dR")
       dr_s = f"ΔR {dr:+.2f}" if isinstance(dr, (int, float)) else ""
+      err = row.get("err")
+      err_s = f" · {err}" if err else ""
       st.progress(
         min(1.0, float(row.get("pct") or 0) / 100.0),
         text=(
           f"{row['label']} · {row['market']} · "
-          f"R={row.get('R')} (lab {row.get('lab_R')}) {dr_s} · {row['status']}"
+          f"R={row.get('R')} (lab {row.get('lab_R')}) {dr_s} · {row['status']}{err_s}"
         ),
       )
     return
@@ -135,9 +152,198 @@ def _render_replay_progress(replay: dict, models: list[dict]) -> None:
     )
 
 
+def _parity_results_from_replay(replay: dict, models: list[dict]) -> dict:
+  """Aggregate live parity numbers for Results metrics (not paper journal)."""
+  labels = _model_label_map(models)
+  rows = []
+  for b in replay.get("books") or []:
+    for pm in b.get("parity_models") or []:
+      mid = str(pm.get("id") or pm.get("model_id") or "")
+      err = pm.get("err") or pm.get("error")
+      rows.append({
+        "Model": labels.get(mid) or mid,
+        "Market": f"{b.get('symbol') or ''} {b.get('timeframe') or ''}".strip(),
+        "R": pm.get("R"),
+        "Lab R": pm.get("lab_R"),
+        "ΔR": pm.get("dR"),
+        "OK": (err is None) and (pm.get("R") is not None),
+        "Error": err,
+      })
+  n_ok = sum(1 for r in rows if r.get("OK"))
+  tot_r = round(sum(float(r.get("R") or 0) for r in rows if r.get("OK")), 3)
+  return {
+    "rows": rows,
+    "n_models": len(rows),
+    "n_ok": n_ok,
+    "total_r": tot_r,
+    "ok": bool(rows) and n_ok == len(rows),
+  }
+
+
+def _render_replay_live_panels() -> dict:
+  """Progress + Results + Past runs — safe to poll via st.fragment."""
+  snap = desk_snapshot(sim=True)
+  replay = snap.get("replay") or {}
+  models = snap.get("models") or []
+  running = bool(snap.get("bridge_running"))
+  books = replay.get("books") or []
+  parity = _parity_results_from_replay(replay, models)
+
+  st.caption(
+    f"Updated {snap.get('updated_at')} · "
+    f"{'RUNNING' if running else 'Idle'}"
+    + (f" · pid {replay.get('pid')}" if replay.get("pid") else "")
+  )
+
+  # ── 2. Progress ─────────────────────────────────────────────────────
+  st.markdown('<div class="panel-label" style="margin-top:0.25rem">2 · Progress</div>', unsafe_allow_html=True)
+  if running and not any(b.get("parity_models") for b in books):
+    st.caption("Đang chạy batch… chờ model đầu tiên.")
+  if running or any(b.get("parity_models") for b in books) or books:
+    _render_replay_progress(replay, models)
+  else:
+    st.caption("Chưa có progress — Start OOS replay.")
+
+  # ── 3. Results (parity, not empty paper journal) ────────────────────
+  st.markdown('<div class="panel-label" style="margin-top:0.75rem">3 · Results</div>', unsafe_allow_html=True)
+  c1, c2, c3, c4 = st.columns(4)
+  c1.metric("Total R", parity.get("total_r") if parity.get("n_models") else "—")
+  c2.metric(
+    "Models OK",
+    f"{parity.get('n_ok')}/{parity.get('n_models')}" if parity.get("n_models") else "—",
+  )
+  c3.metric(
+    "OOS",
+    f"{replay.get('oos_from') or '—'} → {replay.get('oos_to') or '—'}",
+  )
+  if running:
+    status_txt = "RUNNING"
+  elif not parity.get("n_models"):
+    status_txt = "—"
+  else:
+    status_txt = "OK" if parity.get("ok") else "FAIL"
+  c4.metric("Status", status_txt)
+
+  if parity.get("rows"):
+    st.dataframe(parity["rows"], use_container_width=True, hide_index=True)
+  else:
+    st.caption("Chưa có kết quả parity — Start OOS replay.")
+
+  bdirs = [Path(p) for p in (snap.get("bridge_dirs") or [])]
+  trades = load_trades_many(bdirs) if bdirs else []
+  eq = render_equity_section(trades, period="all", parity_books=books)
+  if eq and eq.get("figure") is not None:
+    with st.expander("Equity & drawdown", expanded=True):
+      e1, e2, e3 = st.columns(3)
+      e1.metric("Curve R", eq.get("total_r") or 0)
+      e2.metric("Max DD", f"{eq.get('max_dd_r') or 0}R")
+      e3.metric(
+        "Source",
+        "parity weeks" if eq.get("source") == "parity_weeks" else f"{eq.get('n_points') or 0} trades",
+      )
+      st.plotly_chart(eq["figure"], use_container_width=True, config={"displayModeBar": False})
+      st.caption("Đậm = all · nét đứt = từng model · panel dưới = DD từ đỉnh (R).")
+
+  with st.expander("Trades", expanded=False):
+    if trades:
+      prefer = [
+        "closed_at", "exit_time", "updated_at", "model_id", "action", "direction",
+        "entry", "exit", "sl", "r", "result", "status", "mode", "reason", "magic",
+      ]
+      keys = [k for k in prefer if any(k in t for t in trades)]
+      rows_t = [{k: t.get(k) for k in keys} for t in trades[-80:]] if keys else trades[-80:]
+      st.dataframe(rows_t, use_container_width=True, hide_index=True)
+    else:
+      st.caption("Chưa có trade journal (parity dùng weekly genomes).")
+
+  # ── 4. Past runs ────────────────────────────────────────────────────
+  st.markdown('<div class="panel-label" style="margin-top:0.75rem">4 · Past runs</div>', unsafe_allow_html=True)
+  runs = list_replay_runs(limit=20)
+  cur = latest_parity_snapshot()
+  if cur and not runs:
+    from replay_history import archive_parity_batch
+    if cur.get("books") and st.button("Archive current result into history", key="archive_cur"):
+      archive_parity_batch(cur)
+      st.rerun()
+  if runs:
+    options = {
+      f"{r.get('created_at', '')[:19]} · {r.get('oos_from')}→{r.get('oos_to')} · "
+      f"R={r.get('total_r')} · {r.get('n_ok')}/{r.get('n_models')} ok · {r.get('run_id')}": r
+      for r in runs
+    }
+    labels = list(options.keys())
+    latest_id = str(runs[0].get("run_id") or "")
+    prev_latest = str(st.session_state.get("_replay_hist_latest_id") or "")
+    if latest_id and latest_id != prev_latest:
+      st.session_state["_replay_hist_latest_id"] = latest_id
+      st.session_state["replay_hist_pick"] = labels[0]
+    elif st.session_state.get("replay_hist_pick") not in options:
+      st.session_state["replay_hist_pick"] = labels[0]
+    pick = st.selectbox("Past runs", labels, key="replay_hist_pick")
+    chosen = options.get(pick) or runs[0]
+    detail = load_replay_run(str(chosen.get("run_id"))) or {}
+    hist_models = (detail.get("summary") or {}).get("models") or []
+    if not hist_models:
+      from replay_history import _summarize_batch
+      hist_models = (_summarize_batch(detail).get("models") or [])
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Total R", chosen.get("total_r"))
+    m2.metric("Models OK", f"{chosen.get('n_ok')}/{chosen.get('n_models')}")
+    m3.metric("OOS", f"{chosen.get('oos_from')} → {chosen.get('oos_to')}")
+    m4.metric("Status", "OK" if chosen.get("ok") else "FAIL")
+    if hist_models:
+      st.dataframe(
+        [{
+          "Model": m.get("label") or m.get("model_id"),
+          "Market": f"{m.get('symbol') or ''} {m.get('timeframe') or ''}".strip(),
+          "R": m.get("total_r"),
+          "Lab R": m.get("lab_total_r"),
+          "ΔR": m.get("delta_r"),
+          "WR%": m.get("win_rate_pct"),
+          "Trades": m.get("n_trades"),
+          "OK": m.get("ok"),
+        } for m in hist_models],
+        use_container_width=True,
+        hide_index=True,
+      )
+  else:
+    st.caption("Chưa có run lưu — Start OOS replay một lần để tạo history.")
+
+  with st.expander("Reset replay history", expanded=False):
+    wipe_archive = st.checkbox("Also delete past runs archive", value=True, key="wipe_replay_arch")
+    confirm_rep = st.text_input(
+      "Type CLEAR to reset",
+      value="",
+      key="replay_reset_confirm",
+      placeholder="CLEAR",
+    )
+    if st.button("Reset replay history", type="primary", key="reset_replay_btn"):
+      if confirm_rep.strip() != "CLEAR":
+        st.error("Gõ đúng CLEAR để xác nhận.")
+      else:
+        out = reset_replay_history(
+          stop_replay_proc=True,
+          clear_archive=bool(wipe_archive),
+          clear_current=True,
+          clear_sim_journals=True,
+        )
+        st.session_state["last_replay_reset"] = out
+        st.toast("Replay history cleared")
+        st.rerun()
+    last_rr = st.session_state.get("last_replay_reset")
+    if last_rr:
+      st.caption(
+        f"Last reset removed {len(last_rr.get('removed') or [])} files"
+        + ("" if last_rr.get("ok") else f" · errors: {last_rr.get('errors')}")
+      )
+
+  return snap
+
+
 def render_replay_desk() -> dict:
   """Replay desk — Run → Progress → Results → Past runs (no Live chrome)."""
   from datetime import date as _date
+  from datetime import timedelta
 
   st.session_state.desk_mode = "Replay"
   if "replay_stats_period" not in st.session_state:
@@ -145,9 +351,6 @@ def render_replay_desk() -> dict:
 
   snap = desk_snapshot(sim=True)
   tone = snap["health_tone"]
-  journal = snap["journal"]
-  replay = snap.get("replay") or {}
-  today = snap["today"]
   models = snap.get("models") or []
   running = bool(snap.get("bridge_running"))
 
@@ -185,7 +388,6 @@ def render_replay_desk() -> dict:
   except ValueError:
     d_to = _date(2026, 8, 7)
 
-  # Seed widget state once from saved prefs (survives refresh / restart).
   if "oos_from_date" not in st.session_state:
     st.session_state.oos_from_date = d_from
   if "oos_to_date" not in st.session_state:
@@ -197,7 +399,6 @@ def render_replay_desk() -> dict:
   with oc2:
     oos_to = st.date_input("OOS to", key="oos_to_date")
 
-  # Auto-save range — no Save button; keep last config in oos_prefs.json
   cur_from, cur_to = str(oos_from), str(oos_to)
   if cur_from != str(prefs.get("from") or "") or cur_to != str(prefs.get("to") or ""):
     save_oos_prefs(date_from=cur_from, date_to=cur_to)
@@ -243,154 +444,16 @@ def render_replay_desk() -> dict:
   with a3:
     st.caption(f"Window **{oos_from} → {oos_to}** · schedule-parity (lab TotalR/WR).")
 
-  # ── 2. Progress ─────────────────────────────────────────────────────
-  books = replay.get("books") or []
-  if running or books:
-    st.markdown('<div class="panel-label" style="margin-top:0.75rem">2 · Progress</div>', unsafe_allow_html=True)
-    if running and not books:
-      st.caption("Đang khởi động batch…")
-    else:
-      _render_replay_progress(replay, models)
+  # Live panels: native fragment poll (streamlit-autorefresh is unreliable on 1.60).
+  auto = bool(st.session_state.get("auto_refresh"))
+  every = max(1, int(st.session_state.get("auto_refresh_every") or 5))
+  if auto:
+    @st.fragment(run_every=timedelta(seconds=every))
+    def _replay_live_fragment() -> dict:
+      return _render_replay_live_panels()
 
-  # ── 3. Results ──────────────────────────────────────────────────────
-  st.markdown('<div class="panel-label" style="margin-top:0.75rem">3 · Results</div>', unsafe_allow_html=True)
-  day_r = today.get("total_r") or 0.0
-  tot_r = journal.get("total_r") or 0.0
-  wr = journal.get("win_rate_pct")
-  c1, c2, c3, c4 = st.columns(4)
-  c1.metric("OOS R", f"{day_r:+.2f}")
-  c2.metric("Closed", today.get("n") or journal.get("n_closed") or 0)
-  c3.metric("Total R", f"{tot_r:+.2f}")
-  c4.metric("Win rate", f"{wr}%" if wr is not None else "—")
-
-  bdirs = [Path(p) for p in (snap.get("bridge_dirs") or [])]
-  rows = stats_by_model_many(bdirs, period="all") if bdirs else []
-  if rows:
-    st.dataframe(
-      [{
-        "Model": r.get("label"),
-        "Market": f"{r.get('symbol') or ''} {r.get('timeframe') or ''}".strip() or "—",
-        "Closed": r.get("n_closed"),
-        "W/L": f"{r.get('wins')}/{r.get('losses')}",
-        "WR%": r.get("win_rate_pct"),
-        "R": r.get("total_r"),
-        "Open": r.get("n_open"),
-      } for r in rows],
-      use_container_width=True,
-      hide_index=True,
-    )
-  else:
-    st.caption("Chưa có kết quả — Start OOS replay.")
-
-  trades = load_trades_many(bdirs) if bdirs else []
-  parity_books = books
-  eq = render_equity_section(trades, period="all", parity_books=parity_books)
-  if eq and eq.get("figure") is not None:
-    with st.expander("Equity & drawdown", expanded=True):
-      e1, e2, e3 = st.columns(3)
-      e1.metric("Curve R", eq.get("total_r") or 0)
-      e2.metric("Max DD", f"{eq.get('max_dd_r') or 0}R")
-      e3.metric(
-        "Source",
-        "parity weeks" if eq.get("source") == "parity_weeks" else f"{eq.get('n_points') or 0} trades",
-      )
-      st.plotly_chart(eq["figure"], use_container_width=True, config={"displayModeBar": False})
-      st.caption("Đậm = all · nét đứt = từng model · panel dưới = DD từ đỉnh (R).")
-
-  with st.expander("Trades", expanded=False):
-    if trades:
-      prefer = [
-        "closed_at", "exit_time", "updated_at", "model_id", "action", "direction",
-        "entry", "exit", "sl", "r", "result", "status", "mode", "reason", "magic",
-      ]
-      keys = [k for k in prefer if any(k in t for t in trades)]
-      rows_t = [{k: t.get(k) for k in keys} for t in trades[-80:]] if keys else trades[-80:]
-      st.dataframe(rows_t, use_container_width=True, hide_index=True)
-    else:
-      st.caption("Chưa có trade.")
-
-  # ── 4. Past runs ────────────────────────────────────────────────────
-  st.markdown('<div class="panel-label" style="margin-top:0.75rem">4 · Past runs</div>', unsafe_allow_html=True)
-  runs = list_replay_runs(limit=20)
-  cur = latest_parity_snapshot()
-  if cur and not runs:
-    from replay_history import archive_parity_batch
-    if cur.get("books") and st.button("Archive current result into history", key="archive_cur"):
-      archive_parity_batch(cur)
-      st.rerun()
-  if runs:
-    options = {
-      f"{r.get('created_at', '')[:19]} · {r.get('oos_from')}→{r.get('oos_to')} · "
-      f"R={r.get('total_r')} · {r.get('n_ok')}/{r.get('n_models')} ok · {r.get('run_id')}": r
-      for r in runs
-    }
-    pick = st.selectbox("Past runs", list(options.keys()), key="replay_hist_pick")
-    chosen = options.get(pick) or runs[0]
-    detail = load_replay_run(str(chosen.get("run_id"))) or {}
-    hist_models = (detail.get("summary") or {}).get("models") or []
-    if not hist_models:
-      from replay_history import _summarize_batch
-      hist_models = (_summarize_batch(detail).get("models") or [])
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Total R", chosen.get("total_r"))
-    m2.metric("Models OK", f"{chosen.get('n_ok')}/{chosen.get('n_models')}")
-    m3.metric("OOS", f"{chosen.get('oos_from')} → {chosen.get('oos_to')}")
-    m4.metric("Status", "OK" if chosen.get("ok") else "FAIL")
-    if hist_models:
-      st.dataframe(
-        [{
-          "Model": m.get("label") or m.get("model_id"),
-          "Market": f"{m.get('symbol') or ''} {m.get('timeframe') or ''}".strip(),
-          "R": m.get("total_r"),
-          "Lab R": m.get("lab_total_r"),
-          "ΔR": m.get("delta_r"),
-          "WR%": m.get("win_rate_pct"),
-          "Trades": m.get("n_trades"),
-          "OK": m.get("ok"),
-        } for m in hist_models],
-        use_container_width=True,
-        hide_index=True,
-      )
-    with st.expander("Raw run JSON", expanded=False):
-      st.json({
-        "run_id": detail.get("run_id"),
-        "oos_from": detail.get("oos_from"),
-        "oos_to": detail.get("oos_to"),
-        "ok": detail.get("ok"),
-        "summary": detail.get("summary"),
-      })
-  else:
-    st.caption("Chưa có run lưu — Start OOS replay một lần để tạo history.")
-
-  with st.expander("Reset replay history", expanded=False):
-    wipe_archive = st.checkbox("Also delete past runs archive", value=True, key="wipe_replay_arch")
-    confirm_rep = st.text_input(
-      "Type CLEAR to reset",
-      value="",
-      key="replay_reset_confirm",
-      placeholder="CLEAR",
-    )
-    if st.button("Reset replay history", type="primary", key="reset_replay_btn"):
-      if confirm_rep.strip() != "CLEAR":
-        st.error("Gõ đúng CLEAR để xác nhận.")
-      else:
-        out = reset_replay_history(
-          stop_replay_proc=True,
-          clear_archive=bool(wipe_archive),
-          clear_current=True,
-          clear_sim_journals=True,
-        )
-        st.session_state["last_replay_reset"] = out
-        st.toast("Replay history cleared")
-        st.rerun()
-    last_rr = st.session_state.get("last_replay_reset")
-    if last_rr:
-      st.caption(
-        f"Last reset removed {len(last_rr.get('removed') or [])} files"
-        + ("" if last_rr.get("ok") else f" · errors: {last_rr.get('errors')}")
-      )
-
-  return snap
+    return _replay_live_fragment() or snap
+  return _render_replay_live_panels()
 
 
 def _health_flag_html(level: str, text: str) -> str:
@@ -1098,7 +1161,12 @@ def render_models_page() -> None:
 
   # ── 1. Roster ───────────────────────────────────────────────────────
   st.markdown('<div class="panel-label">1 · Roster</div>', unsafe_allow_html=True)
-  st.caption("Bật/tắt và risk theo **model**. Symbol·TF = thị trường của model đó. Save rồi Start ở Live.")
+  st.caption(
+    "Bật/tắt và risk theo **model**. Chỉ package **READY** (có schedule.json) mới On được. "
+    "Save rồi Start ở Live."
+  )
+
+  from package_store import package_ready, sanitize_roster_models
 
   roster = load_roster()
   models = roster.get("models") or default_roster_from_installed()
@@ -1111,7 +1179,10 @@ def render_models_page() -> None:
         "label": inst["label"],
         "symbol": inst["symbol"],
         "timeframe": inst["timeframe"],
-        "enabled": True,
+        "enabled": bool(inst.get("ready")),
+        "ready": inst.get("ready"),
+        "has_schedule": inst.get("has_schedule"),
+        "schedule_weeks": inst.get("schedule_weeks"),
         "risk_pct": 1.0,
         "magic": None,
       })
@@ -1121,12 +1192,26 @@ def render_models_page() -> None:
   else:
     edited = []
     for i, row in enumerate(models):
+      iid = str(row.get("install_id") or "")
+      info = package_ready(iid) if iid else {"ready": False, "error": "no install_id", "schedule_weeks": 0}
+      ready = bool(info.get("ready"))
       c1, c2, c3, c4 = st.columns([3.2, 0.8, 1.1, 1])
       with c1:
-        st.markdown(f"**{row.get('label') or row.get('model_id')}**")
-        st.caption(f"{row.get('symbol')} {row.get('timeframe')} · {row.get('model_id')}")
+        badge = "READY" if ready else "NO SCHEDULE"
+        st.markdown(f"**{row.get('label') or row.get('model_id')}** · `{badge}`")
+        st.caption(
+          f"{row.get('symbol')} {row.get('timeframe')} · {row.get('model_id')} · "
+          f"weeks={info.get('schedule_weeks') or 0}"
+          + (f" · {info.get('error')}" if not ready and info.get("error") else "")
+        )
       with c2:
-        en = st.toggle("On", value=bool(row.get("enabled", True)), key=f"en_{i}")
+        en = st.toggle(
+          "On",
+          value=bool(row.get("enabled", True)) and ready,
+          key=f"en_{i}",
+          disabled=not ready,
+          help=None if ready else "Thiếu schedule.json — re-export từ Lab",
+        )
       with c3:
         risk = st.number_input(
           "Risk %",
@@ -1142,13 +1227,23 @@ def render_models_page() -> None:
           f"{row.get('magic') or '—'}</div>",
           unsafe_allow_html=True,
         )
-      edited.append({**row, "enabled": en, "risk_pct": risk})
+      edited.append({
+        **row,
+        "enabled": bool(en) and ready,
+        "ready": ready,
+        "has_schedule": info.get("has_schedule"),
+        "schedule_weeks": info.get("schedule_weeks"),
+        "risk_pct": risk,
+      })
 
     s1, s2, s3 = st.columns([1.4, 1, 1])
     with s1:
       if st.button("Save roster", type="primary", use_container_width=True, key="save_roster_btn"):
-        assigned = assign_magics(edited, sim=False)
+        cleaned, warns = sanitize_roster_models(edited)
+        assigned = assign_magics(cleaned, sim=False)
         save_roster(assigned)
+        for w in warns:
+          st.warning(w)
         subprocess.run(
           [sys.executable, str(LIVE / "sync_bridge_roster.py")],
           cwd=str(LIVE),
@@ -1178,7 +1273,7 @@ def render_models_page() -> None:
 
   # ── 2. Import ───────────────────────────────────────────────────────
   st.markdown('<div class="panel-label" style="margin-top:0.75rem">2 · Import</div>', unsafe_allow_html=True)
-  st.caption("Nhận package từ Lab (.tmpkg) rồi thêm vào roster.")
+  st.caption("Nhận package từ Lab (.tmpkg). Bắt buộc có **schedule.json** — thiếu thì import bị từ chối.")
   up = st.file_uploader("Upload .tmpkg", type=["tmpkg"], key="models_upload")
   path_txt = st.text_input("Or path to .tmpkg", "", key="models_path")
   if st.button("Import package", type="primary", key="import_pkg_btn"):
@@ -1225,13 +1320,17 @@ def render_models_page() -> None:
     for row in installed:
       iid = str(row.get("install_id") or "")
       on = iid in enabled_ids
+      ready = bool(row.get("ready"))
       c_a, c_b = st.columns([4, 1])
       with c_a:
         st.markdown(
-          f"**{row.get('label')}**  \n"
+          f"**{row.get('label')}** · `{'READY' if ready else 'INCOMPLETE'}`  \n"
           f"<span style='color:var(--desk-muted);font-size:0.85rem'>"
           f"{row.get('symbol')} {row.get('timeframe')} · {row.get('model_id')}"
-          f"{' · On' if on else ''}</span>",
+          f" · weeks={row.get('schedule_weeks') or 0}"
+          f"{' · On' if on else ''}"
+          f"{'' if ready else ' · ' + str(row.get('ready_error') or 'missing schedule')}"
+          f"</span>",
           unsafe_allow_html=True,
         )
       with c_b:
@@ -1281,30 +1380,69 @@ def render_models_page() -> None:
 # ── Sidebar ───────────────────────────────────────────────────────────
 with st.sidebar:
   st.markdown("### Desk")
-  auto = st.toggle("Auto-refresh", value=True if st.session_state.desk_mode == "Replay" else False, key="auto_refresh")
-  every = st.select_slider("Every (sec)", options=[5, 10, 15, 30], value=5)
+  # Auto-refresh ON when entering Replay (progress/results need polling).
+  _nav_for_auto = st.session_state.get("top_nav")
+  if "auto_refresh" not in st.session_state:
+    st.session_state.auto_refresh = _nav_for_auto == "Replay"
+  if _nav_for_auto == "Replay" and st.session_state.get("_auto_refresh_nav_prev") != "Replay":
+    st.session_state.auto_refresh = True
+  st.session_state["_auto_refresh_nav_prev"] = _nav_for_auto
+  auto = st.toggle("Auto-refresh", key="auto_refresh")
+  every = st.select_slider("Every (sec)", options=[5, 10, 15, 30], value=5, key="auto_refresh_every")
   if st.button("Refresh now", use_container_width=True):
     st.rerun()
   st.caption(f"{LIVE_INSTANCE_ID} · :{LIVE_APP_PORT} · magic {LIVE_MAGIC_BASE}")
   if auto:
-    st.caption("Auto-refresh cập nhật số liệu — không đổi layout.")
+    if st.session_state.get("top_nav") == "Replay":
+      st.caption("Replay panels tự poll (fragment) — không cần F5.")
+    else:
+      st.caption("Auto-refresh cập nhật số liệu — không đổi layout.")
 
-# Full-page refresh only (no fragment): fragments remount cockpit vs tabs and feel like a UI change.
-if auto:
+# Full-page refresh for Live/Setup. Replay uses st.fragment(run_every) in-desk
+# (streamlit-autorefresh custom component is unreliable on Streamlit 1.60).
+if auto and st.session_state.get("top_nav") != "Replay":
   try:
     from streamlit_autorefresh import st_autorefresh  # type: ignore
 
     st_autorefresh(interval=int(every) * 1000, key="desk_refresh")
   except Exception:
-    # Soft fallback: timed full rerun via meta is jarring — skip; user can Refresh now.
-    pass
+    from datetime import timedelta
+    import time as _time
+
+    _every_s = max(1, int(every))
+
+    @st.fragment(run_every=timedelta(seconds=_every_s))
+    def _desk_auto_refresh_fallback() -> None:
+      now = _time.time()
+      last = float(st.session_state.get("_desk_refresh_last") or 0.0)
+      if last <= 0.0 or (now - last) < (_every_s - 0.5):
+        if last <= 0.0:
+          st.session_state["_desk_refresh_last"] = now
+        return
+      st.session_state["_desk_refresh_last"] = now
+      st.rerun()
+
+    _desk_auto_refresh_fallback()
 
 # Top-level nav: Live first · Replay desk · Models/Setup pages
+# Persist in ?nav= so browser refresh stays on the same page.
 _TOP_NAV = ("Live", "Replay", "Models", "Setup")
+
+
+def _nav_from_query() -> str | None:
+  raw = st.query_params.get("nav") or st.query_params.get("page")
+  if isinstance(raw, (list, tuple)):
+    raw = raw[0] if raw else None
+  raw = str(raw or "").strip()
+  return raw if raw in _TOP_NAV else None
+
+
 if "top_nav" not in st.session_state:
-  # migrate old History/Models/Setup section if present
+  qp_nav = _nav_from_query()
   legacy = st.session_state.get("live_section")
-  if legacy in ("Models", "Setup"):
+  if qp_nav:
+    st.session_state.top_nav = qp_nav
+  elif legacy in ("Models", "Setup"):
     st.session_state.top_nav = legacy
   elif st.session_state.get("desk_mode") in _TOP_NAV:
     st.session_state.top_nav = st.session_state.desk_mode
@@ -1319,6 +1457,9 @@ nav = st.radio(
   label_visibility="collapsed",
   help="Live = trading · Replay = OOS desk · Models = import/roster · Setup = risk & kỹ thuật",
 )
+# Keep URL in sync so F5 / refresh stays on Live · Replay · Models · Setup
+if _nav_from_query() != nav:
+  st.query_params["nav"] = nav
 
 snap: dict = {"journal": {}, "bridge_dirs": []}
 journal = {}

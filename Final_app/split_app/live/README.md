@@ -37,10 +37,22 @@ LIVE_REPLAY_MODE=paper ../../EdgeMinerM15B5/.venv/bin/python live/scripts/run_oo
 Multi symbol/TF: roster bật nhiều model → mỗi book (symbol+TF) chạy worker/bridge
 riêng; nhiều model cùng book dùng magic riêng (`20263001+` live / `20264001+` sim).
 
-**Bắt buộc cho parity:** export `.tmpkg` kèm `schedule.json`. Thiếu schedule →
-Live remine tuần và **không** khớp lab. Backfill:
+**Bắt buộc cho parity / Live:** `.tmpkg` phải kèm `schedule.json` (weekly genomes).
+Thiếu schedule → **export FAIL**, **import REJECT**, roster **không cho On**.
 
 ```bash
+# Lab: freeze schedule rồi đóng gói
+cd Final_app/EdgeMinerEURUSDM15
+../../EdgeMinerM15B5/.venv/bin/python scripts/export_model_schedule.py --model-id tm_...
+cd ../split_app
+../../EdgeMinerM15B5/.venv/bin/python lab/export_trade_package.py --desk EdgeMinerEURUSDM15 --model-id tm_...
+# hoặc một lệnh (auto-freeze nếu thiếu):
+../../EdgeMinerM15B5/.venv/bin/python lab/export_trade_package.py --desk EdgeMinerEURUSDM15 --model-id tm_... --ensure-schedule
+
+# Live: audit installed
+../../EdgeMinerM15B5/.venv/bin/python live/import_trade_package.py --audit
+
+# Backfill schedules for desks / sync into packages:
 ../../EdgeMinerM15B5/.venv/bin/python Final_app/ensure_live_schedules.py --from-live-roster
 # chỉ sync schedule lab → installed packages:
 ../../EdgeMinerM15B5/.venv/bin/python Final_app/ensure_live_schedules.py --from-live-roster --sync-packages-only

@@ -266,20 +266,26 @@ def load_sim_progress() -> dict[str, Any]:
     total = int(sc.get("bars_total") or 0)
     models = parity.get("models") or []
     tot_r = sum(float(m.get("total_r") or 0) for m in models if m.get("ok"))
+    if models:
+      ea_status = "completed" if not parity.get("partial") else "running"
+    elif is_replay_running():
+      ea_status = "pending"
+    else:
+      ea_status = sc.get("ea_status") or "idle"
     books.append({
       "symbol": sym,
       "timeframe": tf,
       "bridge_dir": str(bdir),
       "mode": "parity" if models else (sc.get("source") or "paper"),
-      "ea_status": (
-        "completed" if models and parity.get("ok") is not None
-        else (sc.get("ea_status") or "idle")
-      ),
+      "ea_status": ea_status,
       "bars_done": done,
       "bars_total": total,
       "pct": (
-        100.0 if models
-        else (round(100.0 * done / total, 1) if total else 0.0)
+        100.0 if models and not parity.get("partial")
+        else (
+          round(100.0 * len(models) / max(len(rows), 1), 1) if models
+          else (round(100.0 * done / total, 1) if total else 0.0)
+        )
       ),
       "last_bar": sc.get("last_bar") or bar.get("bar_time"),
       "n_fills": sc.get("n_fills") or sum(int(m.get("n_trades") or 0) for m in models),

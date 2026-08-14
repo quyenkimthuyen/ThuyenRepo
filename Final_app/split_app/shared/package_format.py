@@ -20,9 +20,47 @@ REQUIRED_MODEL_KEYS = (
   "feature_profile",
 )
 
+# Live schedule-parity requires frozen weekly genomes. Packages without a usable
+# schedule.json are rejected on export/import and cannot be enabled on Live.
+SCHEDULE_REQUIRED = True
+MIN_SCHEDULE_WEEKS = 1
+
 
 def utc_now_iso() -> str:
   return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+
+
+def schedule_weekly_count(schedule: dict[str, Any] | None) -> int:
+  if not isinstance(schedule, dict):
+    return 0
+  return len(list(schedule.get("weekly") or []))
+
+
+def validate_schedule_payload(schedule: dict[str, Any] | None) -> list[str]:
+  """Return errors if schedule is missing/unusable for Live parity."""
+  if not isinstance(schedule, dict):
+    return ["missing schedule.json (export lab schedule before packaging)"]
+  weekly = list(schedule.get("weekly") or [])
+  if len(weekly) < MIN_SCHEDULE_WEEKS:
+    return [
+      f"schedule.json weekly[] empty/too short "
+      f"(need ≥{MIN_SCHEDULE_WEEKS}, got {len(weekly)})"
+    ]
+  with_strat = sum(1 for w in weekly if isinstance((w or {}).get("strategy"), dict))
+  if with_strat < MIN_SCHEDULE_WEEKS:
+    return ["schedule.json weekly entries missing strategy genomes"]
+  return []
+
+
+def package_has_usable_schedule(pkg_dir: Path) -> bool:
+  path = Path(pkg_dir) / "schedule.json"
+  if not path.exists():
+    return False
+  try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+  except (OSError, json.JSONDecodeError):
+    return False
+  return not validate_schedule_payload(data)
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -74,8 +112,9 @@ def validate_model_payload(model: dict[str, Any]) -> list[str]:
   return errors
 
 
-def validate_package_dir(pkg_dir: Path) -> list[str]:
+def validate_package_dir(pkg_dir: Path, *, require_schedule: bool | None = None) -> list[str]:
   errors: list[str] = []
+  require_sched = SCHEDULE_REQUIRED if require_schedule is None else bool(require_schedule)
   man_path = pkg_dir / "manifest.json"
   if not man_path.exists():
     return ["missing manifest.json"]
@@ -93,6 +132,16 @@ def validate_package_dir(pkg_dir: Path) -> list[str]:
     errors.extend(validate_model_payload(model))
   if manifest.get("use_kb") and not (pkg_dir / "kb_pin.json").exists():
     errors.append("use_kb=true but kb_pin.json missing")
+  sched_path = pkg_dir / "schedule.json"
+  if require_sched or sched_path.exists():
+    schedule = None
+    if sched_path.exists():
+      try:
+        schedule = json.loads(sched_path.read_text(encoding="utf-8"))
+      except (OSError, json.JSONDecodeError) as exc:
+        errors.append(f"schedule.json unreadable: {exc}")
+        schedule = None
+    errors.extend(validate_schedule_payload(schedule))
   sums = pkg_dir / "SHA256SUMS"
   if sums.exists():
     for line in sums.read_text(encoding="utf-8").splitlines():
@@ -148,7 +197,10 @@ def write_package(
     dest.write_bytes(Path(kb_pin_src).read_bytes())
     kb_fp = _sha256_file(dest)[:16]
     files.append("kb_pin.json")
-  if schedule is not None:
+  sched_errs = validate_schedule_payload(schedule)
+  if SCHEDULE_REQUIRED and sched_errs:
+    raise ValueError("package invalid: " + "; ".join(sched_errs))
+  if schedule is not None and not sched_errs:
     (staging / "schedule.json").write_text(
       json.dumps(schedule, indent=2, ensure_ascii=False, default=str) + "\n",
       encoding="utf-8",
@@ -157,6 +209,8 @@ def write_package(
 
   manifest = dict(manifest)
   manifest["files"] = files
+  manifest["has_schedule"] = "schedule.json" in files
+  manifest["schedule_weeks"] = schedule_weekly_count(schedule) if schedule else 0
   if kb_fp:
     manifest["kb_fingerprint"] = kb_fp
   (staging / "manifest.json").write_text(

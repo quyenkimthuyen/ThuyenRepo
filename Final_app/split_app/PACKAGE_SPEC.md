@@ -7,9 +7,12 @@ manifest.json          # required
 model.json             # required — Trade Model fields for live remine
 metrics.json           # optional — OOS KPI snapshot (display only)
 kb_pin.json            # required if use_kb
-schedule.json          # optional — frozen weekly strategies from lab WF
+schedule.json          # **required** — frozen weekly strategies from lab WF
 SHA256SUMS             # required
 ```
+
+Live **rejects** packages without a usable `schedule.json` (`weekly[]` with strategy genomes).
+Export from Lab fails if schedule is missing; use `--ensure-schedule` to freeze first.
 
 ## manifest.json
 

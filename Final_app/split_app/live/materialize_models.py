@@ -79,8 +79,18 @@ def _safe_copy2(src: Path, dest: Path) -> None:
 
 
 def enabled_roster_rows(roster: dict | None = None) -> list[dict]:
+  from package_store import save_roster, sanitize_roster_models
+
   data = roster or load_roster()
-  return [r for r in (data.get("models") or []) if r.get("enabled") and r.get("install_id")]
+  models = list(data.get("models") or [])
+  cleaned, warnings = sanitize_roster_models(models)
+  if warnings:
+    # Persist force-disabled incomplete packages so UI/roster stay consistent.
+    save_roster(cleaned, active_book=data.get("active_book"))
+    for w in warnings:
+      print(f"[materialize] {w}", flush=True)
+  return [r for r in cleaned if r.get("enabled") and r.get("install_id")]
+
 
 
 def assert_homogeneous_roster(rows: list[dict]) -> tuple[str, str]:
@@ -164,21 +174,31 @@ def _materialize_rows(rows: list[dict]) -> tuple[list[dict], dict[str, str], dic
           print(f"[materialize] backfilled schedule from {desk.name} → {install_id}", flush=True)
       except Exception as exc:
         print(f"[materialize] schedule backfill failed {install_id}: {exc}", flush=True)
-    if sched_src.exists():
-      _safe_copy2(sched_src, models_dir / f"{mid}_schedule.json")
-      # Drop remine overrides so Live/Sim prefer frozen OOS genomes
-      live_weeks = models_dir / f"{mid}_live_weeks.json"
-      if live_weeks.exists():
-        try:
-          live_weeks.unlink()
-        except OSError:
-          pass
-    else:
-      print(
-        f"[materialize] WARN {install_id}: no schedule.json — "
-        "simulate will remine weekly and will NOT match lab OOS metrics",
-        flush=True,
+    if not sched_src.exists():
+      raise ValueError(
+        f"{install_id}: missing schedule.json — re-export .tmpkg from Lab with "
+        f"frozen schedule (export_model_schedule.py / --ensure-schedule). "
+        f"Incomplete packages cannot be enabled for Live/Replay parity."
       )
+    # Validate weekly genomes before copying into Live store
+    try:
+      from shared.package_format import validate_schedule_payload
+      sched_data = _read(sched_src) or {}
+      sched_errs = validate_schedule_payload(sched_data)
+      if sched_errs:
+        raise ValueError(f"{install_id}: " + "; ".join(sched_errs))
+    except ValueError:
+      raise
+    except Exception as exc:
+      raise ValueError(f"{install_id}: schedule.json unreadable: {exc}") from exc
+    _safe_copy2(sched_src, models_dir / f"{mid}_schedule.json")
+    # Drop remine overrides so Live/Sim prefer frozen OOS genomes
+    live_weeks = models_dir / f"{mid}_live_weeks.json"
+    if live_weeks.exists():
+      try:
+        live_weeks.unlink()
+      except OSError:
+        pass
 
     # Ensure bridge engine accepts this TF (desk checks data_timeframe)
     m["data_source"] = "mt5_ea"

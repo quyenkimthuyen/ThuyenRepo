@@ -293,6 +293,7 @@ def run_book_parity(
   bdir = bridge_dir(symbol, timeframe, sim=True)
   bdir.mkdir(parents=True, exist_ok=True)
   results = []
+  out_path = RESULTS_DIR / f"parity_{symbol.lower()}_{timeframe.lower()}.json"
   for row in enabled:
     mid = str(row["model_id"])
     print(f"[parity] {symbol} {timeframe} · {mid}", flush=True)
@@ -310,6 +311,20 @@ def run_book_parity(
       f"lab_R={out.get('lab_total_r')} dR={out.get('delta_r')} err={out.get('error')}",
       flush=True,
     )
+    # Incremental write so Live Replay UI can poll mid-book.
+    _write(out_path, {
+      "updated_at": _now(),
+      "mode": "schedule_parity",
+      "host": desk.name,
+      "symbol": symbol,
+      "timeframe": timeframe,
+      "oos_from": oos_from,
+      "oos_to": oos_to,
+      "cache": str(cache),
+      "models": list(results),
+      "ok": all(r.get("ok") for r in results),
+      "partial": len(results) < len(enabled),
+    })
 
   summary = {
     "updated_at": _now(),
@@ -323,7 +338,6 @@ def run_book_parity(
     "models": results,
     "ok": all(r.get("ok") for r in results),
   }
-  out_path = RESULTS_DIR / f"parity_{symbol.lower()}_{timeframe.lower()}.json"
   _write(out_path, summary)
   _write(RESULTS_DIR / "replay_last.json", {
     "status": "completed",
@@ -349,16 +363,36 @@ def run_all_enabled_parity(
   enabled = [r for r in (roster.get("models") or []) if r.get("enabled")]
   groups = group_models_by_book(enabled)
   books = []
+  batch_path = RESULTS_DIR / "parity_oos_batch.json"
+  # Mark batch as running so UI shows status immediately.
+  _write(batch_path, {
+    "updated_at": _now(),
+    "oos_from": oos_from,
+    "oos_to": oos_to,
+    "books": [],
+    "ok": False,
+    "status": "running",
+  })
   for (sym, tf), _ in groups.items():
     books.append(run_book_parity(sym, tf, oos_from=oos_from, oos_to=oos_to))
+    _write(batch_path, {
+      "updated_at": _now(),
+      "oos_from": oos_from,
+      "oos_to": oos_to,
+      "books": list(books),
+      "ok": all(b.get("ok") for b in books),
+      "status": "running",
+      "partial": True,
+    })
   payload = {
     "updated_at": _now(),
     "oos_from": oos_from,
     "oos_to": oos_to,
     "books": books,
     "ok": all(b.get("ok") for b in books),
+    "status": "completed",
   }
-  _write(RESULTS_DIR / "parity_oos_batch.json", payload)
+  _write(batch_path, payload)
   try:
     from replay_history import archive_parity_batch
     entry = archive_parity_batch(payload)

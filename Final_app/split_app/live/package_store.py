@@ -2,11 +2,22 @@
 from __future__ import annotations
 
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from live_config import INSTALLED_DIR, ROSTER_PATH
+from live_config import INSTALLED_DIR, LIVE_ROOT, ROSTER_PATH
+
+_SPLIT = LIVE_ROOT.parent
+if str(_SPLIT) not in sys.path:
+  sys.path.insert(0, str(_SPLIT))
+
+from shared.package_format import (  # noqa: E402
+  package_has_usable_schedule,
+  schedule_weekly_count,
+  validate_package_dir,
+)
 
 
 def _now() -> str:
@@ -26,6 +37,35 @@ def _write(path: Path, data: Any) -> None:
   tmp.replace(path)
 
 
+def package_ready(install_id: str | Path) -> dict[str, Any]:
+  """Check whether an installed package is complete enough for Live use."""
+  if isinstance(install_id, Path):
+    dest = install_id
+    iid = dest.name
+  else:
+    iid = str(install_id or "").strip()
+    dest = INSTALLED_DIR / iid
+  if not dest.is_dir():
+    return {
+      "install_id": iid,
+      "ready": False,
+      "has_schedule": False,
+      "schedule_weeks": 0,
+      "error": f"not installed: {iid}",
+    }
+  errs = validate_package_dir(dest)
+  sched = _read(dest / "schedule.json") or {}
+  n_w = schedule_weekly_count(sched) if isinstance(sched, dict) else 0
+  has = package_has_usable_schedule(dest)
+  return {
+    "install_id": iid,
+    "ready": not errs and has,
+    "has_schedule": has,
+    "schedule_weeks": n_w,
+    "error": "; ".join(errs) if errs else None,
+  }
+
+
 def list_installed() -> list[dict]:
   INSTALLED_DIR.mkdir(parents=True, exist_ok=True)
   rows = []
@@ -34,6 +74,7 @@ def list_installed() -> list[dict]:
       continue
     man = _read(d / "manifest.json") or {}
     model = _read(d / "model.json") or {}
+    ready = package_ready(d)
     rows.append({
       "install_id": d.name,
       "path": str(d),
@@ -46,6 +87,10 @@ def list_installed() -> list[dict]:
       "lab": man.get("lab"),
       "kb_fingerprint": man.get("kb_fingerprint"),
       "installed_at": (_read(d / "install_meta.json") or {}).get("installed_at"),
+      "has_schedule": ready.get("has_schedule"),
+      "schedule_weeks": ready.get("schedule_weeks"),
+      "ready": ready.get("ready"),
+      "ready_error": ready.get("error"),
     })
   return rows
 
@@ -74,8 +119,32 @@ def load_roster() -> dict:
   return data
 
 
+def sanitize_roster_models(models: list[dict]) -> tuple[list[dict], list[str]]:
+  """Force-disable incomplete packages; return (models, warnings)."""
+  out: list[dict] = []
+  warnings: list[str] = []
+  for row in models:
+    r = dict(row)
+    iid = str(r.get("install_id") or "")
+    if not iid:
+      out.append(r)
+      continue
+    info = package_ready(iid)
+    r["has_schedule"] = info.get("has_schedule")
+    r["schedule_weeks"] = info.get("schedule_weeks")
+    r["ready"] = info.get("ready")
+    if r.get("enabled") and not info.get("ready"):
+      r["enabled"] = False
+      warnings.append(
+        f"{r.get('label') or iid}: disabled — {info.get('error') or 'incomplete package'}"
+      )
+    out.append(r)
+  return out, warnings
+
+
 def save_roster(models: list[dict], *, active_book: dict | None = None) -> dict:
-  """Persist roster. active_book kept optional for backward compat (unused by UI)."""
+  """Persist roster. Incomplete packages cannot stay enabled."""
+  models, _warnings = sanitize_roster_models(models)
   prev = load_roster()
   payload: dict[str, Any] = {"updated_at": _now(), "models": models}
   if active_book is not None:
@@ -87,16 +156,20 @@ def save_roster(models: list[dict], *, active_book: dict | None = None) -> dict:
 
 
 def default_roster_from_installed(*, active_book: dict | None = None) -> list[dict]:
-  """All installed models On by default — app routes by chart behind the scenes."""
+  """Installed models — only READY packages default to On."""
   rows = []
   for inst in list_installed():
+    ready = bool(inst.get("ready"))
     rows.append({
       "install_id": inst["install_id"],
       "model_id": inst["model_id"],
       "label": inst["label"],
       "symbol": inst["symbol"],
       "timeframe": inst["timeframe"],
-      "enabled": True,
+      "enabled": ready,
+      "ready": ready,
+      "has_schedule": inst.get("has_schedule"),
+      "schedule_weeks": inst.get("schedule_weeks"),
       "risk_pct": 1.0,
       "magic": None,
     })
