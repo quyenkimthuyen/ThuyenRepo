@@ -347,14 +347,39 @@ def start_bridge(
 
   preflight: dict[str, Any] | None = None
   if (not sim) and (not skip_preflight) and (not once):
-    from preflight_live import preflight_enabled_books
-    preflight = preflight_enabled_books(sim=False)
-    if not preflight.get("ok"):
-      raise RuntimeError(
-        "Live preflight failed — decision path broken before Start.\n"
-        f"{preflight.get('error') or 'see live/results/live_preflight.json'}\n"
-        "Fix packages/schedule/OHLC, or run Replay · Live-like first."
+    from preflight_live import preflight_enabled_books, preflight_packages_ready
+    # Reuse a fresh OK preflight to avoid multi-minute remine behind the UI spinner.
+    cached = _read(RESULTS_DIR / "live_preflight.json") or {}
+    cached_ok = bool(cached.get("ok"))
+    cached_age = None
+    try:
+      from datetime import datetime
+      ts = cached.get("updated_at")
+      if ts:
+        cached_age = (datetime.now().astimezone() - datetime.fromisoformat(str(ts))).total_seconds()
+    except Exception:
+      cached_age = None
+    if cached_ok and cached_age is not None and cached_age < 20 * 60:
+      preflight = {**cached, "skipped_reuse": True, "age_sec": cached_age}
+      print(f"[start] reuse preflight ok age={cached_age:.0f}s", flush=True)
+    else:
+      # Default: packages + OHLC only. Full decide/remine hangs Start with 12 models.
+      # Set LIVE_FULL_PREFLIGHT=1 to force decide_for_bar gate.
+      full = str(os.environ.get("LIVE_FULL_PREFLIGHT") or "").strip().lower() in (
+        "1", "true", "yes", "on",
       )
+      if full:
+        print("[start] running live preflight (decide_for_bar)…", flush=True)
+        preflight = preflight_enabled_books(sim=False)
+      else:
+        print("[start] running fast preflight (packages + OHLC)…", flush=True)
+        preflight = preflight_packages_ready(sim=False)
+      if not preflight.get("ok"):
+        raise RuntimeError(
+          "Live preflight failed — decision path broken before Start.\n"
+          f"{preflight.get('error') or 'see live/results/live_preflight.json'}\n"
+          "Fix packages/schedule/OHLC, or run Replay · Live-like first."
+        )
 
   prep = prepare_runtime(require_chart=False, poll_sec=poll_sec, sim=sim)
 

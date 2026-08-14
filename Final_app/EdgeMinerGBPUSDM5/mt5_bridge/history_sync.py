@@ -31,7 +31,7 @@ DATA_START_CONFIG_PATH = DATA_DIR / "data_start.json"
 BROKER_TIMEZONE = os.environ.get("EDGEMINER_BROKER_TIMEZONE", "Europe/Helsinki")
 # Inclusive lower bound for MT5 M15 cache / history export (broker wall-clock).
 # Priority: EDGEMINER_DATA_START env → data/data_start.json → default.
-DEFAULT_DATA_START = "2024-01-01 00:00"
+DEFAULT_DATA_START = "2023-01-01 00:00"
 DEFAULT_CHUNK_SIZE = 750
 _store_lock = threading.RLock()
 

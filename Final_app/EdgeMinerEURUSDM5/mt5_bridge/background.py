@@ -518,9 +518,12 @@ def _cycle(
   )
   per_model: dict[str, dict] = {}
   last_decision: dict | None = None
-  for mid, eng in eng_map.items():
-    if halt:
-      from mt5_bridge.loss_guard import build_flat_halt_decision
+  # Decide models then write. Multi-model books rebuild FeatureMatrix per engine
+  # (~10–20s); running them sequentially trips Live LAG/TIMEOUT on M5.
+  decided_rows: list[tuple[str, BridgeEngine, dict]] = []
+  if halt:
+    from mt5_bridge.loss_guard import build_flat_halt_decision
+    for mid, eng in eng_map.items():
       decision = build_flat_halt_decision(
         bar,
         reason=runtime.get("loss_guard_tripped_reason") or "Loss guard / service disabled",
@@ -528,8 +531,53 @@ def _cycle(
       )
       decision["magic"] = eng.magic
       decision["risk_pct"] = eng.risk_pct
+      decided_rows.append((mid, eng, decision))
+  else:
+    # Merge tip once into shared parquet / primary frame, then share with peers
+    # so parallel decide_for_bar does not race-rewrite the cache.
+    if primary is not None:
+      primary.merge_bar(bar)
+      tip_df = primary._df
+      for eng in eng_map.values():
+        if eng is primary or tip_df is None:
+          continue
+        eng._df = tip_df
+        eng._fm = None
+        eng._fm_key = None
+      # One FeatureMatrix build per feature_profile before parallel decide.
+      if tip_df is not None and not tip_df.empty:
+        try:
+          from config import DEFAULT_FEATURE_PROFILE as _default_fp
+        except ImportError:
+          _default_fp = "current"
+        seen_fp: set[str] = set()
+        for eng in eng_map.values():
+          fp = str((eng.params or {}).get("feature_profile") or _default_fp)
+          if fp in seen_fp:
+            continue
+          seen_fp.add(fp)
+          try:
+            eng._feature_matrix(tip_df, fp)
+          except Exception as exc:
+            print(f"[bridge] fm prewarm skip fp={fp}: {exc}", flush=True)
+
+    def _decide_one(item: tuple[str, BridgeEngine]) -> tuple[str, BridgeEngine, dict]:
+      mid, eng = item
+      return mid, eng, eng.decide_for_bar(bar)
+
+    items = list(eng_map.items())
+    if len(items) <= 1:
+      decided_rows = [_decide_one(items[0])] if items else []
     else:
-      decision = eng.decide_for_bar(bar)
+      from concurrent.futures import ThreadPoolExecutor, as_completed
+
+      with ThreadPoolExecutor(max_workers=min(4, len(items))) as pool:
+        futs = [pool.submit(_decide_one, it) for it in items]
+        decided_rows = [fut.result() for fut in as_completed(futs)]
+      order = {mid: i for i, mid in enumerate(eng_map.keys())}
+      decided_rows.sort(key=lambda row: order.get(row[0], 0))
+
+  for mid, eng, decision in decided_rows:
     write_model_decision(
       decision,
       bridge_dir=bridge_dir,

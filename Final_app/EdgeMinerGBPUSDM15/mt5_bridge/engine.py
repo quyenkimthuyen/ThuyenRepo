@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,21 @@ from trade_model_schedule import (
 )
 
 MT5_CACHE = MT5_CACHE_PATH
+
+# Same book parquet + feature_profile → one FeatureMatrix per tip (multi-model).
+_FM_BOOK_CACHE: dict[tuple, FeatureMatrix] = {}
+_FM_BOOK_LOCK = threading.Lock()
+_FM_BOOK_CACHE_MAX = 8
+
+
+def _fm_book_key(mt5_cache: Path, feature_profile: str, df: pd.DataFrame) -> tuple:
+  return (
+    str(Path(mt5_cache).resolve()),
+    str(feature_profile),
+    int(len(df)),
+    str(df.index[0]) if len(df) else "",
+    str(df.index[-1]) if len(df) else "",
+  )
 
 
 def _journal_open_and_day_count(
@@ -139,19 +155,47 @@ class BridgeEngine:
 
     Do not clip lookback before features: ``htf_trend`` (H4 EMA200) and
     ``roc_5`` (global std) change under short windows and diverge from Health KB ON.
+
+    Multi-model books share one FM per (parquet, profile, tip) so Live does not
+    rebuild the same ~100k-bar matrix N times every bar.
     """
     if df.empty:
       raise ValueError("empty history for FeatureMatrix")
-    key = (
+    local_key = (
       feature_profile,
       len(df),
       str(df.index[0]),
       str(df.index[-1]),
     )
-    if self._fm is None or self._fm_key != key:
-      ensure_label_cache_for_df(len(df))
-      self._fm = FeatureMatrix(df, profile=feature_profile)
-      self._fm_key = key
+    if self._fm is not None and self._fm_key == local_key:
+      return self._fm
+
+    book_key = _fm_book_key(self.mt5_cache, feature_profile, df)
+    with _FM_BOOK_LOCK:
+      shared = _FM_BOOK_CACHE.get(book_key)
+      if shared is not None:
+        self._fm = shared
+        self._fm_key = local_key
+        return shared
+
+    ensure_label_cache_for_df(len(df))
+    fm = FeatureMatrix(df, profile=feature_profile)
+
+    with _FM_BOOK_LOCK:
+      shared = _FM_BOOK_CACHE.get(book_key)
+      if shared is not None:
+        self._fm = shared
+        self._fm_key = local_key
+        return shared
+      prefix = book_key[:2]
+      for stale in [k for k in _FM_BOOK_CACHE if k[:2] == prefix and k != book_key]:
+        _FM_BOOK_CACHE.pop(stale, None)
+      while len(_FM_BOOK_CACHE) >= _FM_BOOK_CACHE_MAX:
+        _FM_BOOK_CACHE.pop(next(iter(_FM_BOOK_CACHE)), None)
+      _FM_BOOK_CACHE[book_key] = fm
+
+    self._fm = fm
+    self._fm_key = local_key
     return self._fm
 
   def ensure_history(self, force: bool = False) -> pd.DataFrame:

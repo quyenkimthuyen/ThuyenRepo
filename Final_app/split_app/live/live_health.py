@@ -12,6 +12,7 @@ from bridge_control import load_workers, status as bridge_status
 from chart_validate import read_chart_identity
 from live_config import RESULTS_DIR
 from package_store import load_roster
+from remine_gate import gate_enabled
 from runtime_host import normalize_symbol, normalize_timeframe
 
 # Heartbeat is ~2s; allow slack for disk/UI lag
@@ -167,6 +168,7 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
   bstat = bridge_status()
   workers = list(bstat.get("workers") or load_workers().get("workers") or [])
   bridge_running = bool(bstat.get("running")) if not sim else False
+  remine_gate_on = bool(gate_enabled())
 
   books_out: list[dict[str, Any]] = []
   alerts: list[dict[str, Any]] = []
@@ -355,6 +357,11 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
 
     decisions = _load_decisions_by_model(bdir)
     models_out: list[dict[str, Any]] = []
+    n_models = max(1, len(rows))
+    # Shared FM + parallel decide: warm bars usually <25s. Keep modest headroom
+    # for cold remine / first bar after Start (not a substitute for speed fixes).
+    lag_lim = max(DECISION_LAG_SEC, min(45.0, 8.0 * n_models))
+    timeout_lim = max(DECISION_TIMEOUT_SEC, min(90.0, 15.0 * n_models))
     for row in rows:
       mid = str(row.get("model_id") or "")
       label = row.get("label") or mid
@@ -378,7 +385,7 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
       elif not bridge_running:
         level = "muted"
       elif not dec:
-        if worker_alive and bar_key and (bar_file_age is not None and bar_file_age > DECISION_TIMEOUT_SEC):
+        if worker_alive and bar_key and (bar_file_age is not None and bar_file_age > timeout_lim):
           level = "danger"
           flags.append("NO_DECISION")
           alerts.append({
@@ -398,7 +405,7 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
           flags.append("NO_DECISION")
       elif bar_key and dec_bar and not matched:
         lag_ref = bar_file_age
-        if lag_ref is not None and lag_ref > DECISION_TIMEOUT_SEC and worker_alive:
+        if lag_ref is not None and lag_ref > timeout_lim and worker_alive:
           level = "danger"
           flags.append("TIMEOUT")
           alerts.append({
@@ -413,7 +420,7 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
               f"(+{_fmt_age(lag_ref)})"
             ),
           })
-        elif lag_ref is not None and lag_ref > DECISION_LAG_SEC and worker_alive:
+        elif lag_ref is not None and lag_ref > lag_lim and worker_alive:
           level = "warn"
           flags.append("LAG")
           alerts.append({
@@ -448,6 +455,20 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
             + "; ".join(str(x) for x in (dec.get("remine_gate_reasons") or ["blocked"]))
           )[:160],
         })
+      elif strat_src == "schedule_fallback":
+        flags.append("SCHEDULE_FALLBACK")
+        level = _worst(level, "warn")
+        alerts.append({
+          "level": "warn",
+          "scope": "model",
+          "symbol": sym_n,
+          "timeframe": tf_n,
+          "model_id": mid,
+          "code": "SCHEDULE_FALLBACK",
+          "message": (
+            f"{label}: remine gate fail -> using prior schedule week"
+          )[:160],
+        })
       elif reason in ("risk_cap", "risk_cap_error"):
         flags.append("RISK_CAP")
         level = _worst(level, "warn")
@@ -464,9 +485,12 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
           )[:160],
         })
       elif strat_src == "remine":
-        flags.append("REMINE")
-        level = _worst(level, "warn")
-        if dec.get("remine_gate_ok") is True:
+        # Remine past schedule is normal on Live. Only surface as WARN when the
+        # quality gate is ON (and passed). Gate OFF → keep src=remine in meta,
+        # do not paint orange HEALTHY/OK.
+        if remine_gate_on:
+          flags.append("REMINE")
+          level = _worst(level, "warn")
           alerts.append({
             "level": "warn",
             "scope": "model",
@@ -578,18 +602,23 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
 
   n_warn = sum(1 for a in alerts if a.get("level") == "warn")
   n_danger = sum(1 for a in alerts if a.get("level") == "danger")
+  # Summary must follow `overall` (book/model level), not alerts alone —
+  # soft warns (EA_SLOW, REMINE, …) can raise overall without an alert row,
+  # which previously showed HEALTHY/OK text on an orange pill.
   summary = "OK"
   if not enabled:
     summary = "NO MODELS"
   elif sim:
     summary = "REPLAY"
-  elif not bridge_running:
+  elif not bridge_running or overall == "muted":
     summary = "IDLE"
-  elif n_danger:
-    summary = f"{n_danger} ISSUE{'S' if n_danger != 1 else ''}"
-  elif n_warn:
-    summary = f"{n_warn} WARN"
-  else:
+  elif overall == "danger" or n_danger:
+    n = n_danger or sum(1 for b in books_out if b.get("level") == "danger") or 1
+    summary = f"{n} ISSUE{'S' if n != 1 else ''}"
+  elif overall == "warn" or n_warn:
+    n = n_warn or sum(1 for b in books_out if b.get("level") == "warn") or 1
+    summary = f"{n} WARN"
+  elif overall == "ok":
     summary = "HEALTHY"
 
   remine_last = {}

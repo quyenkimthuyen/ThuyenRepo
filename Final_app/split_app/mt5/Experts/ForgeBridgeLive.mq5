@@ -371,9 +371,11 @@ int OnInit()
       }
       WriteBarsJson();
       WriteConnectionJson();
+      WritePositionsJson();
       EventSetMillisecondTimer((int)MathMax(500, InpHeartbeatMs));
       Print("ForgeBridgeLive Live | Files/", InpBridgeSubdir,
-            " | models=", g_model_n, " | base_magic=", InpMagic);
+            " | models=", g_model_n, " | base_magic=", InpMagic,
+            " | mt5_positions=", PositionsByMagic());
       g_sync_summary = "live ready | waiting first bar";
       RefreshChartComment(true);
    }
@@ -427,6 +429,74 @@ int PositionsByMagic()
    if(n == 0)
       n = PositionsByMagic(InpMagic);
    return n;
+}
+
+//+------------------------------------------------------------------+
+string ModelIdForMagic(const ulong magic)
+{
+   for(int s = 0; s < g_model_n; s++)
+   {
+      if(g_model_magics[s] == magic)
+         return g_model_ids[s];
+   }
+   return "";
+}
+
+// Snapshot open MT5 positions for App journal reconcile (restart / desync safe).
+bool WritePositionsJson()
+{
+   LoadModelsRoster();
+   string json = "{";
+   json += "\"updated_at\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\",";
+   json += "\"server_time\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\",";
+   json += "\"symbol\":\"" + _Symbol + "\",";
+   json += "\"period\":\"" + PeriodTag() + "\",";
+   json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
+   json += "\"bridge_subdir\":\"" + InpBridgeSubdir + "\",";
+   json += "\"positions\":[";
+
+   bool first = true;
+   int n = 0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(!PositionSelectByTicket(ticket)) continue;
+      if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
+      ulong magic = (ulong)PositionGetInteger(POSITION_MAGIC);
+      bool ours = false;
+      for(int s = 0; s < g_model_n; s++)
+      {
+         if(g_model_magics[s] == magic) { ours = true; break; }
+      }
+      if(!ours && magic != InpMagic) continue;
+
+      string mid = ModelIdForMagic(magic);
+      string typ = (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) ? "BUY" : "SELL";
+      if(!first) json += ",";
+      first = false;
+      json += "{";
+      json += "\"ticket\":" + IntegerToString((long)ticket) + ",";
+      json += "\"magic\":" + IntegerToString((long)magic) + ",";
+      if(mid != "")
+         json += "\"model_id\":\"" + mid + "\",";
+      json += "\"type\":\"" + typ + "\",";
+      json += "\"volume\":" + DoubleToString(PositionGetDouble(POSITION_VOLUME), 2) + ",";
+      json += "\"price_open\":" + DoubleToString(PositionGetDouble(POSITION_PRICE_OPEN), _Digits) + ",";
+      json += "\"sl\":" + DoubleToString(PositionGetDouble(POSITION_SL), _Digits) + ",";
+      json += "\"tp\":" + DoubleToString(PositionGetDouble(POSITION_TP), _Digits) + ",";
+      json += "\"profit\":" + DoubleToString(PositionGetDouble(POSITION_PROFIT), 2) + ",";
+      json += "\"time\":\"" + TimeToString((datetime)PositionGetInteger(POSITION_TIME), TIME_DATE | TIME_SECONDS) + "\"";
+      json += "}";
+      n++;
+   }
+   json += "],\"n\":" + IntegerToString(n) + "}\n";
+
+   int h = FileOpen(BridgePath("positions.json"), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
+   if(h == INVALID_HANDLE)
+      return false;
+   FileWriteString(h, json);
+   FileClose(h);
+   return true;
 }
 
 //+------------------------------------------------------------------+
@@ -727,7 +797,7 @@ bool ProcessHistoryRequest()
       JsonGetDouble(request, "chunk_size", InpHistoryChunk)));
    int total = Bars(_Symbol, Period());
    string from_time_text = JsonGetString(request, "from_time");
-   datetime from_time = StringToTime(from_time_text == "" ? "2024.01.01 00:00" : from_time_text);
+   datetime from_time = StringToTime(from_time_text == "" ? "2023.01.01 00:00" : from_time_text);
    int oldest_shift = iBarShift(_Symbol, Period(), from_time, false);
    // iBarShift returns -1 when from_time is outside loaded history; treat as "all bars".
    if(oldest_shift < 0)
@@ -839,6 +909,7 @@ bool WriteConnectionJson()
       return false;
    FileWriteString(h, json);
    FileClose(h);
+   WritePositionsJson();
    return true;
 }
 
@@ -1468,6 +1539,17 @@ bool OpenFromDecision(const string json)
       g_sync_sl = sl;
       g_sync_tp = tp;
       g_had_position = true;
+      Print("ForgeBridge ENTERED app_signal sid=", sid,
+            " model=", g_active_model_id,
+            " magic=", g_active_magic,
+            " ticket=", ticket,
+            " ", action,
+            " lots=", lots,
+            " entry=", price,
+            " sl=", sl,
+            " tp=", tp,
+            " source=", g_open_source);
+      WritePositionsJson();
       g_last_signal_id = sid;
       Print("ForgeBridge entry ", action, " ticket=", ticket, " lots=", lots,
             " entry=", price, " sl=", sl, " tp=", tp,
@@ -1527,6 +1609,7 @@ void ReportCloseIfNeeded(const string reason)
    g_sync_sl = 0;
    g_sync_tp = 0;
    g_had_position = false;
+   WritePositionsJson();
 }
 
 //+------------------------------------------------------------------+

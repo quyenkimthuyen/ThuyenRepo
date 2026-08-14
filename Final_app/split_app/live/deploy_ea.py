@@ -397,6 +397,21 @@ def book_ea_status(book: dict[str, Any], *, stale_after: float = 180.0) -> dict[
 
 def roster_ea_coverage(*, stale_after: float = 180.0) -> dict[str, Any]:
   books = enabled_books()
+  # Stale bridge JSON must not count as online when the terminal is down.
+  if is_windows() and books and not is_mt5_running():
+    statuses = []
+    for b in books:
+      st = book_ea_status(b, stale_after=stale_after)
+      st = {**st, "online": False, "connected": False, "mt5_down": True}
+      statuses.append(st)
+    return {
+      "books": statuses,
+      "n_books": len(statuses),
+      "n_online": 0,
+      "all_online": False,
+      "missing": statuses,
+      "mt5_running": False,
+    }
   statuses = [book_ea_status(b, stale_after=stale_after) for b in books]
   missing = [s for s in statuses if not s.get("online")]
   return {
@@ -405,6 +420,7 @@ def roster_ea_coverage(*, stale_after: float = 180.0) -> dict[str, Any]:
     "n_online": len(statuses) - len(missing),
     "all_online": bool(statuses) and not missing,
     "missing": missing,
+    "mt5_running": True if is_windows() else None,
   }
 
 
@@ -567,13 +583,35 @@ def ensure_live_eas_deployed(
     )
 
   cov_before = roster_ea_coverage(stale_after=stale_after)
-  # Fresh MT5 boot (or terminal was down) must re-attach even if stale files look "online".
   mt5_was_down = bool(mt5.get("started"))
-  need_deploy = force or mt5_was_down or (not cov_before["all_online"])
+
+  # Fresh MT5 boot: charts are often already profiled — wait for heartbeat first
+  # instead of immediately running a full Attach/restart deploy (can look "treo").
+  if mt5_was_down and not force:
+    print("[deploy_ea] MT5 just started — waiting for EA heartbeats before re-attach", flush=True)
+    cov_boot = wait_books_online(
+      wait_sec=min(35.0, float(wait_sec)),
+      stale_after=stale_after,
+    )
+    if cov_boot.get("all_online"):
+      return {
+        "ok": True,
+        "skipped": False,
+        "reason": "mt5_restarted_heartbeats_ok",
+        "deployed": False,
+        "mt5": mt5,
+        "coverage_before": cov_before,
+        "coverage": cov_boot,
+        "books": books,
+      }
+    cov_before = cov_boot
+
+  need_deploy = force or (not cov_before.get("all_online"))
   deploy_result = None
   if need_deploy:
+    print("[deploy_ea] deploying ForgeBridgeLive from roster…", flush=True)
     deploy_result = run_deploy_live_from_roster(
-      timeout_sec=deploy_timeout_sec,
+      timeout_sec=min(float(deploy_timeout_sec), 180.0),
       enable_trading=True,
     )
     if not deploy_result.get("ok"):

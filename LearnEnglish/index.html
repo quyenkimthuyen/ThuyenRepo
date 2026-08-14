@@ -173,13 +173,14 @@
     </nav>
 
     <script>
-      const STORAGE_KEY = 'lexirise-vocabulary-store-v3';
+      const STORAGE_KEY = 'lexirise-vocabulary-store-v4';
       const LEARNING_LIMIT = 10;
       const DEFAULT_QUIZ_QUESTION_LIMIT = 20;
       const MIN_QUIZ_QUESTION_LIMIT = 1;
       const MAX_QUIZ_QUESTION_LIMIT = 100;
       const REVIEW_INTERVAL_HOURS = [4, 12, 24, 72, 168, 336, 720];
       const DATA_SOURCES = [
+        { name: 'hangout1', label: 'Hang Out! 1', file: 'all-topics-hangout1.json' },
         { name: 'toeic', label: 'TOEIC', file: 'all-topics-toeic.json' },
         { name: 'grade9', label: 'Grade 9', file: 'all-topics-grade9.json' },
         { name: 'grade4', label: 'Grade 4', file: 'all-topics-grade4.json' },
@@ -470,6 +471,17 @@
       }
 
       function prettyTopic(topic) {
+        if (!topic) return '';
+        if (topic === 'hangout' || topic === 'hangout1') return 'Hangout (All Hang Out 1 Units)';
+        if (topic.startsWith('hangout1-welcome')) return 'Hang Out 1 - Welcome Unit';
+        if (topic.startsWith('hangout1-unit')) {
+          const match = topic.match(/^hangout1-unit(\d+)-(.*)$/);
+          if (match) {
+            const unitNum = match[1];
+            const unitName = match[2].replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+            return `Hang Out 1 - Unit ${unitNum}: ${unitName}`;
+          }
+        }
         // Convert hyphens/underscores to spaces and capitalize each word
         return topic
           .replace(/[-_]/g, ' ')
@@ -561,11 +573,20 @@
       }
 
       function getTopics(words = state.words) {
-        return [...new Set(words.map((word) => word.topic).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        const topics = [...new Set(words.map((word) => word.topic).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+        const hasHangout = words.some((word) => word.topic && word.topic.startsWith('hangout1'));
+        if (hasHangout && !topics.includes('hangout')) {
+          return ['hangout', ...topics];
+        }
+        return topics;
       }
 
       function getTopicWords() {
-        return state.topicFilter === 'all' ? state.words : state.words.filter((word) => word.topic === state.topicFilter);
+        if (state.topicFilter === 'all') return state.words;
+        if (state.topicFilter === 'hangout' || state.topicFilter === 'hangout1') {
+          return state.words.filter((word) => word.topic && word.topic.startsWith('hangout1'));
+        }
+        return state.words.filter((word) => word.topic === state.topicFilter);
       }
 
       function ensureWordOrder() {
@@ -1235,6 +1256,10 @@
               <h2>Learn Vocabulary</h2>
             </div>
             <div class="toolbar">
+              <label class="muted small" for="learnDataSourceSelect">Vocabulary Source</label>
+              <select class="search" id="learnDataSourceSelect" aria-label="Choose vocabulary source">
+                ${DATA_SOURCES.map((item) => `<option value="${escapeHtml(item.name)}"${state.dataSourceName === item.name ? ' selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}
+              </select>
               <label class="muted small" for="topicSelect">Topic</label>
               <select class="search" id="topicSelect" aria-label="Choose topic">
                 <option value="all"${state.topicFilter === 'all' ? ' selected' : ''}>All topics</option>
@@ -1712,7 +1737,7 @@
           render();
           return;
         }
-        if (event.target.id === 'dataSourceSelect') {
+        if (event.target.id === 'dataSourceSelect' || event.target.id === 'learnDataSourceSelect') {
           if (state.autoLearn.isPlaying) stopAutoLearn();
           const nextSource = event.target.value;
           if (!DATA_SOURCES.some((source) => source.name === nextSource)) return;

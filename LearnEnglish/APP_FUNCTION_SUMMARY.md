@@ -21,6 +21,7 @@ Words are stored in `data/` as consolidated source files. The Stats page setting
 
 Current source files:
 
+- `data/all-topics-hangout1.json`
 - `data/all-topics-toeic.json`
 - `data/all-topics-grade9.json`
 - `data/all-topics-grade4.json`

@@ -174,7 +174,7 @@ function Find-FreeAppPort {
   }
   foreach ($p in $candidates) {
     if (-not (Test-PortHasLiveOwner -CheckPort $p)) {
-      # Ghost-only listen still breaks HTTP on some Windows builds — skip if HTTP already dead-locked.
+      # Ghost-only listen still breaks HTTP on some Windows builds - skip if HTTP already dead-locked.
       if ((Get-NetTCPConnection -State Listen -LocalPort $p -ErrorAction SilentlyContinue) -and -not (Test-PortHttpOk -CheckPort $p)) {
         # Only ghosts: try next port
         $live = $false
@@ -240,8 +240,8 @@ function Start-App {
     Start-Sleep -Seconds 1
   }
 
-  # Timed out — usually ghost socket ate the bind. Kill and retry one fallback port.
-  Write-Host "Port $Port did not become healthy — stopping PID $($created.ProcessId) and retrying fallback."
+  # Timed out - usually ghost socket ate the bind. Kill and retry one fallback port.
+  Write-Host "Port $Port did not become healthy - stopping PID $($created.ProcessId) and retrying fallback."
   Stop-Process -Id $created.ProcessId -Force -ErrorAction SilentlyContinue
   Start-Sleep -Seconds 1
 

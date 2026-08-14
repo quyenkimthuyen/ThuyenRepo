@@ -165,12 +165,21 @@ def main() -> int:
   install_comm_log_mirror(symbol=args.symbol, timeframe=args.timeframe)
   import mt5_bridge.background as background  # noqa: WPS433
 
+  book_key = f"{str(args.symbol).lower()}_{str(args.timeframe).lower()}"
+  # Each book worker must NOT share mt5_bridge_config.json — 4 processes
+  # racing atomic .tmp replace causes PermissionError and kills the worker.
+  worker_cfg = RESULTS_DIR / f"mt5_bridge_worker_{book_key}.json"
+  worker_pid = RESULTS_DIR / f"mt5_bridge_worker_{book_key}.pid"
+  background.CONFIG_PATH = worker_cfg
+  background.PID_PATH = worker_pid
+  protocol.CONFIG_PATH = worker_cfg
+
   if args.sim:
     # Isolate sim worker state from live Start/Stop config.
-    background.CONFIG_PATH = RESULTS_DIR / "mt5_bridge_sim_config.json"
-    background.PID_PATH = RESULTS_DIR / "mt5_bridge_sim_service.pid"
+    background.CONFIG_PATH = RESULTS_DIR / f"mt5_bridge_sim_{book_key}.json"
+    background.PID_PATH = RESULTS_DIR / f"mt5_bridge_sim_{book_key}.pid"
     background.SERVICE_LOG = RESULTS_DIR / "mt5_bridge_sim_service.log"
-    protocol.CONFIG_PATH = RESULTS_DIR / "mt5_bridge_sim_config.json"
+    protocol.CONFIG_PATH = background.CONFIG_PATH
 
   cli_ids = normalize_model_ids(
     [x.strip() for x in str(args.model_ids).split(",")] if args.model_ids else None,
@@ -239,6 +248,14 @@ def main() -> int:
     error=None,
     **_engine_status_fields(primary),
   )
+  if not args.sim:
+    try:
+      from position_sync import reconcile_bridge_positions
+      rec = reconcile_bridge_positions(bridge_dir, reason="worker_start_reconcile")
+      if rec.get("closed"):
+        print(f"[live-bridge] startup reconcile closed={rec.get('closed')}", flush=True)
+    except Exception as sync_exc:
+      print(f"[live-bridge] startup position_sync skip: {sync_exc}", flush=True)
   last_fp: str | None = None
   last_fill_fp: str | None = None
   last_hist_force_at = 0.0
@@ -315,6 +332,13 @@ def main() -> int:
             "system", "engine_reload", bridge_dir=bridge_dir,
             summary=f"models={desired_ids} risk={desired_risk}",
           )
+
+      if not args.sim:
+        try:
+          from position_sync import reconcile_bridge_positions
+          reconcile_bridge_positions(bridge_dir)
+        except Exception as sync_exc:
+          print(f"[live-bridge] position_sync skip: {sync_exc}", flush=True)
 
       if not args.sim:
         try:

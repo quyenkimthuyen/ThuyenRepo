@@ -683,7 +683,7 @@ bool ProcessHistoryRequest()
       JsonGetDouble(request, "chunk_size", InpHistoryChunk)));
    int total = Bars(_Symbol, PERIOD_M5);
    string from_time_text = JsonGetString(request, "from_time");
-   datetime from_time = StringToTime(from_time_text == "" ? "2024.01.01 00:00" : from_time_text);
+   datetime from_time = StringToTime(from_time_text == "" ? "2023.01.01 00:00" : from_time_text);
    int oldest_shift = iBarShift(_Symbol, PERIOD_M5, from_time, false);
    int available = MathMax(0, MathMin(total - 1, oldest_shift)); // exclude forming M15 bar
    int wanted = MathMin(chunk_size, MathMax(0, available - offset));

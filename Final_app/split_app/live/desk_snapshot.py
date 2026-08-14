@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -201,8 +202,30 @@ def desk_snapshot(*, sim: bool = False) -> dict[str, Any]:
     ea_online = bool(bars) or is_replay_running()
     ea_fresh = 0.0 if ea_online else None
   else:
-    ea_fresh = _age_seconds(bar_ts)
-    ea_online = bool(charts) and (ea_fresh is None or ea_fresh < 180)
+    # Do NOT use candle bar_time for EA liveness — broker candle clocks can look
+    # hours "stale" vs wall clock while connection.json is still heartbeat-fresh.
+    ea_fresh = None
+    for bdir in bdirs:
+      for name in ("connection.json", "ea_sync.json", "heartbeat.json", "bar.json"):
+        p = Path(bdir) / name
+        try:
+          if not p.exists():
+            continue
+          age = max(0.0, time.time() - p.stat().st_mtime)
+          if ea_fresh is None or age < ea_fresh:
+            ea_fresh = age
+        except OSError:
+          continue
+    # Fallback: parsed connection updated_at if present
+    if ea_fresh is None:
+      for bdir in bdirs:
+        conn = _read(Path(bdir) / "connection.json") or {}
+        sync = _read(Path(bdir) / "ea_sync.json") or {}
+        ts = _parse_ts(conn.get("updated_at") or sync.get("updated_at"))
+        age = _age_seconds(ts)
+        if age is not None and (ea_fresh is None or age < ea_fresh):
+          ea_fresh = age
+    ea_online = bool(charts) and (ea_fresh is not None and ea_fresh < 180)
 
   workers = bstat.get("workers") or []
   alive_workers = [w for w in workers if w.get("alive")]

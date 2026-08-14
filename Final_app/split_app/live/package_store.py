@@ -15,6 +15,7 @@ if str(_SPLIT) not in sys.path:
 
 from shared.package_format import (  # noqa: E402
   package_has_usable_schedule,
+  repair_package_crlf,
   schedule_weekly_count,
   validate_package_dir,
 )
@@ -53,6 +54,8 @@ def package_ready(install_id: str | Path) -> dict[str, Any]:
       "schedule_weeks": 0,
       "error": f"not installed: {iid}",
     }
+  # Windows Git checkout often CRLF-izes JSON and breaks SHA256SUMS — repair in place.
+  repair_package_crlf(dest)
   errs = validate_package_dir(dest)
   sched = _read(dest / "schedule.json") or {}
   n_w = schedule_weekly_count(sched) if isinstance(sched, dict) else 0

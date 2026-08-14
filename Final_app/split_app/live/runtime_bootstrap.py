@@ -110,6 +110,37 @@ def _bump_strategy_stat(model_id: str, source: str, week_start: Any) -> None:
     pass
 
 
+def _prior_schedule_strategy(model_id: str, week_start) -> Any | None:
+  """Return strategy from the latest schedule week strictly before week_start."""
+  try:
+    import pandas as pd
+    from trade_model_schedule import load_model_schedule, strategy_from_dict
+  except Exception:
+    return None
+  try:
+    key = str(pd.Timestamp(week_start).date())
+  except Exception:
+    key = str(week_start)[:10]
+  payload = load_model_schedule(model_id) or {}
+  best_ws = None
+  best_row = None
+  for row in payload.get("weekly") or []:
+    if not isinstance(row, dict) or not isinstance(row.get("strategy"), dict):
+      continue
+    ws = str(row.get("week_start") or "")[:10]
+    if not ws or ws >= key:
+      continue
+    if best_ws is None or ws > best_ws:
+      best_ws = ws
+      best_row = row
+  if not best_row:
+    return None
+  try:
+    return strategy_from_dict(best_row["strategy"])
+  except Exception:
+    return None
+
+
 def _patch_schedule_and_engine(sched: Any, engine: Any) -> None:
   """Force-remine env + remine quality gate + strategy_source on decisions."""
   global _ENGINE_PATCHED
@@ -197,6 +228,24 @@ def _patch_schedule_and_engine(sched: Any, engine: Any) -> None:
           if cache_key:
             self._strat_cache.pop(cache_key, None)
           remove_live_week_entry(self.model_id, week_start)
+          # Prefer prior frozen schedule week over hard FLAT when remine fails gate
+          # (common on Windows when current week is beyond package OOS schedule).
+          fb = _prior_schedule_strategy(self.model_id, week_start)
+          if fb is not None:
+            self._last_strategy_source = "schedule_fallback"
+            self._last_flat_reason = None
+            _bump_strategy_stat(self.model_id, "schedule_fallback", week_start)
+            if cache_key:
+              self._strat_cache[cache_key] = fb
+            try:
+              print(
+                f"[remine_gate] fallback model={self.model_id} week={week_start} "
+                f"-> prior schedule ({'; '.join(result.get('reasons') or [])})",
+                flush=True,
+              )
+            except Exception:
+              pass
+            return fb
           self._last_strategy_source = "remine_gate_fail"
           self._last_flat_reason = "remine_gate_fail"
           _bump_strategy_stat(self.model_id, "none", week_start)
@@ -211,6 +260,15 @@ def _patch_schedule_and_engine(sched: Any, engine: Any) -> None:
         remove_live_week_entry(self.model_id, week_start)
       except Exception:
         pass
+      fb = _prior_schedule_strategy(self.model_id, week_start)
+      if fb is not None:
+        self._last_strategy_source = "schedule_fallback"
+        self._last_flat_reason = None
+        self._last_remine_gate = {"ok": False, "reasons": [str(exc)], "fallback": True}
+        _bump_strategy_stat(self.model_id, "schedule_fallback", week_start)
+        if cache_key:
+          self._strat_cache[cache_key] = fb
+        return fb
       self._last_strategy_source = "remine_gate_fail"
       self._last_flat_reason = "remine_gate_error"
       self._last_remine_gate = {"ok": False, "reasons": [str(exc)]}
@@ -276,15 +334,26 @@ def bootstrap_host(symbol: str, timeframe: str, *, force: bool = False) -> Path:
     return Path(_BOOTSTRAPPED["desk"])
 
   desk = resolve_host_desk(symbol, timeframe)
-  if _BOOTSTRAPPED.get("key") and _BOOTSTRAPPED.get("key") != key:
-    _purge_host_modules()
+  prev_desk = _BOOTSTRAPPED.get("desk")
+  # Always purge when switching desks (or force) so config/mt5_bridge cannot
+  # stay bound to the previous host (M15 config lacks DEFAULT_FEATURE_PROFILE).
+  if force or (_BOOTSTRAPPED.get("key") and _BOOTSTRAPPED.get("key") != key):
+    if _BOOTSTRAPPED.get("key"):
+      _purge_host_modules()
 
   live_str = str(LIVE_ROOT)
   split_str = str(LIVE_ROOT.parent)
   desk_str = str(desk)
-  for p in (desk_str, split_str, live_str):
-    if p in sys.path:
-      sys.path.remove(p)
+  # Drop previous desk path too — otherwise M15 stays ahead of M5 on sys.path.
+  for p in (desk_str, split_str, live_str, prev_desk):
+    if not p:
+      continue
+    ps = str(p)
+    while ps in sys.path:
+      sys.path.remove(ps)
+  # desk first (host modules), then split, then live — keep live importable
+  # for deploy_ea / bridge_control after preflight bootstraps a desk.
+  sys.path.insert(0, live_str)
   sys.path.insert(0, split_str)
   sys.path.insert(0, desk_str)
 

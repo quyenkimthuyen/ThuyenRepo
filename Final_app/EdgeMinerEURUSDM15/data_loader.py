@@ -14,7 +14,7 @@ from mt5_bridge.protocol import read_json
 
 CACHE_PATH = MT5_CACHE_PATH
 META_PATH = MT5_META_PATH
-DEFAULT_START = "2025-01-01"
+DEFAULT_START = "2023-01-01"
 
 
 def require_canonical_mt5_data() -> dict:

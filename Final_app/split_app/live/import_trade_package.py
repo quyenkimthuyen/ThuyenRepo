@@ -34,11 +34,26 @@ def import_one(tmpkg: Path) -> Path:
   tmpkg = Path(tmpkg)
   if not tmpkg.exists():
     raise FileNotFoundError(tmpkg)
+  if tmpkg.is_dir():
+    raise IsADirectoryError(
+      f"{tmpkg} is a folder, not a .tmpkg file.\n"
+      f"Export from Lab first, then import a file like:\n"
+      f"  python live/import_trade_package.py {tmpkg / 'YourModel.tmpkg'}\n"
+      f"Or import every .tmpkg in that folder:\n"
+      f"  python live/import_trade_package.py --dir {tmpkg}"
+    )
+  if tmpkg.suffix.lower() != ".tmpkg":
+    raise ValueError(f"expected a .tmpkg package, got: {tmpkg.name}")
   staging = INSTALLED_DIR / "_staging"
   if staging.exists():
     shutil.rmtree(staging)
   try:
     extract_package(tmpkg, staging)
+  except PermissionError as exc:
+    raise PermissionError(
+      f"Cannot read package file {tmpkg}: {exc}\n"
+      "Close any program locking the file, or copy the .tmpkg elsewhere and retry."
+    ) from exc
   except ValueError as exc:
     if staging.exists():
       shutil.rmtree(staging, ignore_errors=True)
@@ -108,9 +123,29 @@ def import_one(tmpkg: Path) -> Path:
   return dest
 
 
+def import_dir(folder: Path) -> list[Path]:
+  folder = Path(folder)
+  if not folder.is_dir():
+    raise NotADirectoryError(folder)
+  pkgs = sorted(folder.glob("*.tmpkg"))
+  if not pkgs:
+    raise FileNotFoundError(
+      f"No .tmpkg files in {folder}.\n"
+      "Export from Lab:\n"
+      "  python lab/export_trade_package.py --ensure-schedule --out packages_out"
+    )
+  return [import_one(p) for p in pkgs]
+
+
 def main() -> int:
   ap = argparse.ArgumentParser()
-  ap.add_argument("package", nargs="?", help="Path to .tmpkg")
+  ap.add_argument("package", nargs="?", help="Path to .tmpkg (file, not folder)")
+  ap.add_argument(
+    "--dir",
+    type=Path,
+    metavar="FOLDER",
+    help="Import every .tmpkg in FOLDER (e.g. packages_out)",
+  )
   ap.add_argument("--list", action="store_true")
   ap.add_argument(
     "--delete",
@@ -143,8 +178,15 @@ def main() -> int:
     )
     return 0
 
+  if args.dir:
+    dests = import_dir(args.dir)
+    for dest in dests:
+      print(f"Installed → {dest}")
+    print(f"Done · {len(dests)} package(s)")
+    return 0
+
   if not args.package:
-    ap.error("package path required (or --list / --delete / --audit)")
+    ap.error("package path required (or --dir / --list / --delete / --audit)")
   dest = import_one(Path(args.package))
   print(f"Installed → {dest}")
   return 0

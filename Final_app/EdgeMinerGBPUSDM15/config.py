@@ -1,7 +1,7 @@
 """Global defaults for ForexForge."""
 from dataclasses import dataclass
 
-DEFAULT_START_DATE = "2025-01-01"
+DEFAULT_START_DATE = "2023-01-01"
 DEFAULT_PAIR = "GBP/USD"
 DEFAULT_TF = "M15"
 BAR_MINUTES = 15

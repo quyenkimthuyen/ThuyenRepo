@@ -1,30 +1,61 @@
 {
-  "updated_at": "2026-08-13T09:21:30+05:30",
+  "updated_at": "2026-08-14T22:15:44+07:00",
   "stopped": {
     "bridge": {
       "stopped": true,
-      "pids": []
+      "pids": [
+        368,
+        26260,
+        29600,
+        660
+      ],
+      "autostart": {
+        "ok": true,
+        "skipped": false,
+        "prefs": {
+          "enabled": false,
+          "start_mt5": true,
+          "start_app": true,
+          "start_bridge": false,
+          "delay_sec": 45,
+          "port": 8601,
+          "updated_at": "2026-08-14T22:15:44+07:00"
+        },
+        "task": {
+          "ok": true,
+          "skipped": false,
+          "reason": null,
+          "stdout": "Task EdgeMinerLiveBoot already absent\n",
+          "stderr": "",
+          "code": 0
+        },
+        "message": "Task EdgeMinerLiveBoot already absent"
+      }
     },
     "replay": {
       "stopped": true,
-      "at": "2026-08-13T09:21:31+05:30"
+      "at": "2026-08-14T22:15:45+07:00"
     }
   },
   "bridges": {
     "bridge_live": {
-      "files": 15,
+      "files": 21,
       "dirs": 1
     },
     "bridge_live_eurusd_m15": {
-      "files": 13,
+      "files": 27,
       "dirs": 1
     },
     "bridge_live_eurusd_m5": {
-      "files": 13,
+      "files": 26,
       "dirs": 1
     },
     "bridge_live_gbpusd_m15": {
-      "files": 13,
+      "files": 27,
+      "dirs": 1
+    },
+    "bridge_live_gbpusd_m5": {
+      "files": 22,
       "dirs": 1
     },
     "bridge_sim_live": {
@@ -32,63 +63,44 @@
       "dirs": 1
     },
     "bridge_sim_live_eurusd_m15": {
-      "files": 14,
+      "files": 2,
       "dirs": 1
     },
     "bridge_sim_live_eurusd_m5": {
-      "files": 14,
+      "files": 2,
       "dirs": 1
     },
     "bridge_sim_live_gbpusd_m15": {
-      "files": 14,
+      "files": 2,
+      "dirs": 1
+    },
+    "bridge_sim_live_gbpusd_m5": {
+      "files": 2,
       "dirs": 1
     }
   },
   "results_removed": [
-    "parity_eurusd_m5.json",
-    "parity_oos_batch.json",
-    "parity_eurusd_m15.json",
-    "parity_gbpusd_m15.json",
-    "replay_oos_eurusd_m15.json",
-    "replay_oos_eurusd_m5.json",
-    "replay_last.json",
-    "replay_oos_batch.log",
-    "replay_smoke.log",
+    "replay_last_eurusd_m15.json",
+    "replay_last_gbpusd_m15.json",
+    "replay_strategy_stats.json",
+    "replay_oos_eurusd_m15.log",
+    "replay_oos_eurusd_m5.log",
+    "replay_oos_gbpusd_m15.log",
+    "replay_oos_gbpusd_m5.log",
     "kill_switch.json",
     "live_workers.json",
     "mt5_bridge_config.json",
-    "mt5_bridge_sim_config.json",
-    "mt5_bridge_sim_service.pid",
     "active_trade_model.json",
     "trade_models.json"
   ],
   "cache_removed": true,
-  "packages_removed": 0,
-  "roster_cleared": false,
-  "reseed": [
-    {
-      "symbol": "EURUSD",
-      "timeframe": "M15",
-      "bars": 39473,
-      "sha256": "7f3207189034082c9498d80b596c07fa163c10c89c5a4d49277529d9681784a5"
-    },
-    {
-      "symbol": "EURUSD",
-      "timeframe": "M5",
-      "bars": 99973,
-      "sha256": "1619472eb96b11a28d8cc0363afa710ee309aba7f78bbb6edd4e209f414b7350"
-    },
-    {
-      "symbol": "GBPUSD",
-      "timeframe": "M15",
-      "bars": 64716,
-      "sha256": "d282f6dbd8a3803f4d5bb6ea144254b2867ec8e9129b7ad80898d1dabeeb1026"
-    }
-  ],
+  "packages_removed": 14,
+  "roster_cleared": true,
+  "reseed": [],
   "errors": [],
   "kill_disarmed": true,
-  "trade_models_files_removed": 15,
-  "worker_logs_removed": 12,
-  "cache_files_removed": 8,
+  "trade_models_files_removed": 45,
+  "worker_logs_removed": 8,
+  "cache_files_removed": 9,
   "ok": true
 }

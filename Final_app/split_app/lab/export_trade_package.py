@@ -110,14 +110,16 @@ def export_one(
   out_dir: Path,
   *,
   ensure_sched: bool = False,
+  desk_path: Path | None = None,
+  label_override: str | None = None,
 ) -> Path:
   meta = DESK_META[desk_name]
-  desk = FINAL / desk_name
+  desk = Path(desk_path) if desk_path is not None else FINAL / desk_name
   mid = model.get("id") or "unknown"
-  raw_label = model.get("label") or mid
+  raw_label = (label_override or model.get("label") or mid)
   # Disambiguate across desks: "EURUSD M5 · BestQuality"
   label = f"{meta['symbol']} {meta['timeframe']} · {raw_label}"
-  if raw_label.startswith(f"{meta['symbol']} {meta['timeframe']}"):
+  if not label_override and raw_label.startswith(f"{meta['symbol']} {meta['timeframe']}"):
     label = raw_label
   kb_pin = resolve_kb_pin(desk, model) if model.get("use_kb", True) else None
   if model.get("use_kb", True) and kb_pin is None:
@@ -171,7 +173,7 @@ def export_one(
   lab = {
     "desk": desk_name,
     "instance": meta["instance"],
-    "repo_relative": f"Final_app/{desk_name}",
+    "repo_relative": str(desk.relative_to(FINAL.parent)) if FINAL.parent in desk.parents else str(desk),
   }
   files = ["manifest.json", "model.json"]
   manifest = build_manifest(
@@ -181,7 +183,7 @@ def export_one(
     timeframe=meta["timeframe"],
     files=files,
   )
-  out_name = f"{meta['instance']}_{_slug(label)}_{mid[-8:]}.tmpkg"
+  out_name = f"{meta['instance']}_{_slug(raw_label)}_{mid[-8:]}.tmpkg"
   out_path = out_dir / out_name
   path = write_package(
     out_path,

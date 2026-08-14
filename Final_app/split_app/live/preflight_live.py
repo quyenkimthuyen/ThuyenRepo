@@ -228,6 +228,100 @@ def preflight_enabled_books(*, sim: bool = False) -> dict[str, Any]:
   return out
 
 
+def preflight_packages_ready(*, sim: bool = False) -> dict[str, Any]:
+  """Fast Start gate: roster + schedule packages + OHLC cache (no remine).
+
+  Full ``preflight_enabled_books`` remine can hang the UI for minutes with
+  multi-model books; workers remine on the first live bar instead.
+  """
+  from package_store import package_ready
+
+  roster = load_roster()
+  models = [m for m in (roster.get("models") or []) if m.get("enabled")]
+  if not models:
+    out = {
+      "ok": False,
+      "error": "no_enabled_models",
+      "mode": "packages_only",
+      "updated_at": _now(),
+      "books": [],
+    }
+    _write(PREFLIGHT_PATH, out)
+    return out
+
+  assigned = assign_magics(models, sim=False)
+  save_roster(assigned, active_book=roster.get("active_book"))
+  try:
+    mat = materialize_enabled(roster={"models": assigned})
+  except Exception as exc:
+    out = {
+      "ok": False,
+      "error": f"materialize_failed:{exc}",
+      "mode": "packages_only",
+      "updated_at": _now(),
+      "books": [],
+    }
+    _write(PREFLIGHT_PATH, out)
+    return out
+
+  books_out: list[dict[str, Any]] = []
+  all_ok = True
+  for (sym, tf), rows in group_models_by_book(assigned).items():
+    sym = normalize_symbol(sym)
+    tf = normalize_timeframe(tf)
+    book_entry: dict[str, Any] = {
+      "symbol": sym,
+      "timeframe": tf,
+      "models": [],
+      "ok": True,
+    }
+    cache = RESULTS_DIR / "data" / f"mt5_{sym.lower()}_{tf.lower()}.parquet"
+    if not cache.exists():
+      seeded = _seed_cache(sym, tf)
+      cache = Path(seeded) if seeded else cache
+    if not cache.exists():
+      book_entry["ok"] = False
+      book_entry["error"] = "missing_ohlc_cache"
+      all_ok = False
+    for row in rows:
+      iid = str(row.get("install_id") or "")
+      mid = str(row.get("model_id") or "")
+      info = package_ready(iid) if iid else {"ready": False, "error": "no install_id"}
+      ok = bool(info.get("ready"))
+      book_entry["models"].append({
+        "model_id": mid,
+        "install_id": iid,
+        "ok": ok,
+        "schedule_weeks": info.get("schedule_weeks"),
+        "error": None if ok else (info.get("error") or "package_not_ready"),
+      })
+      if not ok:
+        book_entry["ok"] = False
+        all_ok = False
+    books_out.append(book_entry)
+
+  out = {
+    "ok": all_ok,
+    "mode": "packages_only",
+    "updated_at": _now(),
+    "materialize_n": (mat or {}).get("n"),
+    "books": books_out,
+  }
+  if not all_ok:
+    fails = []
+    for b in books_out:
+      if b.get("ok"):
+        continue
+      if b.get("error"):
+        fails.append(f"{b.get('symbol')} {b.get('timeframe')}: {b.get('error')}")
+      for m in b.get("models") or []:
+        if not m.get("ok"):
+          fails.append(f"{m.get('model_id')}: {m.get('error') or 'not_ready'}")
+    out["error"] = "; ".join(fails[:8]) or "preflight_failed"
+  _write(PREFLIGHT_PATH, out)
+  return out
+
+
 def load_last_preflight() -> dict[str, Any]:
   if not PREFLIGHT_PATH.exists():
     return {}

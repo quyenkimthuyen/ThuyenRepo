@@ -25,7 +25,7 @@ STRATEGY_STATS_PATH = RESULTS_DIR / "replay_strategy_stats.json"
 SCRIPT_PARITY = LIVE_ROOT / "scripts" / "run_parity_oos_batch.py"
 SCRIPT_PAPER = LIVE_ROOT / "scripts" / "run_oos_replay_batch.py"
 INLINE = LIVE_ROOT / "scripts" / "run_linux_replay_inline.py"
-OOS_FROM = "2026-01-01"
+OOS_FROM = "2023-01-01"
 OOS_TO = "2026-08-07"
 
 LIVE_LIKE_MODES = frozenset({"live_like", "paper", "ea", "inline"})

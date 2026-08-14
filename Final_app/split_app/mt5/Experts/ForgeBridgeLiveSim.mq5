@@ -728,7 +728,7 @@ bool ProcessHistoryRequest()
       JsonGetDouble(request, "chunk_size", InpHistoryChunk)));
    int total = Bars(_Symbol, Period());
    string from_time_text = JsonGetString(request, "from_time");
-   datetime from_time = StringToTime(from_time_text == "" ? "2024.01.01 00:00" : from_time_text);
+   datetime from_time = StringToTime(from_time_text == "" ? "2023.01.01 00:00" : from_time_text);
    int oldest_shift = iBarShift(_Symbol, Period(), from_time, false);
    // iBarShift returns -1 when from_time is outside loaded history; treat as "all bars".
    if(oldest_shift < 0)

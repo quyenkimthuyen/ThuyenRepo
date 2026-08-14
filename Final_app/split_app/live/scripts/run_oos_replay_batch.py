@@ -25,7 +25,7 @@ from magic_allocator import assign_magics  # noqa: E402
 from materialize_models import materialize_enabled  # noqa: E402
 from package_store import load_roster, save_roster  # noqa: E402
 
-OOS_FROM = os.environ.get("LIVE_REPLAY_FROM") or "2026-01-01"
+OOS_FROM = os.environ.get("LIVE_REPLAY_FROM") or "2023-01-01"
 OOS_TO = os.environ.get("LIVE_REPLAY_TO") or "2026-08-07"
 # Cap parallel book workers (default = all books). Override: LIVE_REPLAY_BOOK_WORKERS=2
 _WORKERS_ENV = os.environ.get("LIVE_REPLAY_BOOK_WORKERS", "").strip()

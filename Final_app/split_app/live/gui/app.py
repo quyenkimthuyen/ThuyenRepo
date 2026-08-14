@@ -470,7 +470,7 @@ def render_replay_desk() -> dict:
   st.markdown('<div class="panel-label">1 · Run</div>', unsafe_allow_html=True)
   prefs = load_oos_prefs()
   try:
-    d_from = _date.fromisoformat(str(prefs.get("from") or "2026-01-01")[:10])
+    d_from = _date.fromisoformat(str(prefs.get("from") or "2023-01-01")[:10])
   except ValueError:
     d_from = _date(2026, 1, 1)
   try:
@@ -627,7 +627,11 @@ def _render_health_panel(health: dict, *, sim: bool = False) -> None:
     return
 
   for book in books:
-    flags = " · ".join(book.get("flags") or []) or "OK"
+    book_lv = book.get("level") or "muted"
+    flags = " · ".join(book.get("flags") or [])
+    if not flags:
+      # Never paint "OK" in warn/danger colors — that mismatch looked broken.
+      flags = "OK" if book_lv == "ok" else str(book_lv).upper()
     worker = (
       f"pid {book.get('worker_pid')}" if book.get("worker_alive") else "worker down"
     )
@@ -657,7 +661,7 @@ def _render_health_panel(health: dict, *, sim: bool = False) -> None:
       <div class="health-book">
         <div class="health-book-head">
           <div class="health-book-title">{book.get('symbol')} {book.get('timeframe')} · {book.get('n_models')} model(s)
-            {_health_flag_html(book.get('level') or 'muted', flags)}</div>
+            {_health_flag_html(book_lv, flags)}</div>
           <div class="health-book-meta">{head_meta}</div>
         </div>
         {''.join(models_html)}
@@ -668,7 +672,7 @@ def _render_health_panel(health: dict, *, sim: bool = False) -> None:
   st.caption(
     "TIMEOUT/LAG = decision chưa khớp nến EA · EA_STALE = heartbeat chết · "
     "WORKER_STALE = App không cập nhật status · GATE_FAIL = remine bị chặn · "
-    "RISK_CAP = vượt trần risk đồng thời · REMINE = genome remine (đã qua gate)."
+    "RISK_CAP = vượt trần risk đồng thời · REMINE = remine khi gate đang bật."
   )
   rg = health.get("remine_gate_last") or {}
   if rg:
@@ -788,7 +792,10 @@ def render_live_desk() -> dict:
       help=start_why or "Deploy EA (nếu thiếu) rồi start bridge workers.",
     ):
       try:
-        with st.spinner("Checking / deploying EA trên MT5 (Windows)…"):
+        with st.spinner(
+          "Start Live: check packages/OHLC → MT5/EA → workers "
+          "(không remine lúc Start; remine trên nến đầu)…"
+        ):
           if running and not mt5_up:
             # Workers still up but terminal closed — reopen MT5 without full stop first.
             from deploy_ea import ensure_live_eas_deployed, ensure_mt5_running
@@ -799,7 +806,7 @@ def render_live_desk() -> dict:
                 f"{mt5.get('error') or mt5.get('reason') or ''}"
               )
             dep = ensure_live_eas_deployed(
-              force=True, wait_online=False, wait_sec=15.0,
+              force=False, wait_online=True, wait_sec=45.0,
             )
             out = {"n_workers": "kept", "deploy": dep, "pid": "—"}
             if mt5.get("started"):
@@ -822,8 +829,7 @@ def render_live_desk() -> dict:
     if start_why:
       st.caption(start_why)
     st.caption(
-      "Parity OK ≠ Live OK — Start chạy preflight decide_for_bar. "
-      "Dùng Replay · Live-like trước khi trade thật."
+      "Start chỉ check package + OHLC (nhanh). Remine chạy trên worker khi có nến mới."
     )
   with a2:
     if st.button("Stop", use_container_width=True, disabled=not running, key="desk_stop"):
@@ -1202,8 +1208,8 @@ def render_setup_page() -> None:
   with tab_quality:
     st.markdown('<div class="panel-label">1 · Remine quality gate</div>', unsafe_allow_html=True)
     st.caption(
-      "Tuần chưa có trong schedule → remine. Gate đo strategy trên train window; "
-      "FAIL → FLAT + alert (không trade). Tắt: env LIVE_REMINE_GATE=0."
+      "Gate chỉ kiểm tra chất lượng sau khi remine (FAIL → FLAT / schedule fallback). "
+      "Tắt gate ≠ tắt remine: tuần ngoài schedule vẫn remine bình thường; Live chỉ thôi cảnh báo REMINE_OK."
     )
     try:
       from remine_gate import load_last_alert, load_prefs as load_rg_prefs, save_prefs as save_rg_prefs
@@ -1436,8 +1442,9 @@ def render_models_page() -> None:
   # ── 1. Roster ───────────────────────────────────────────────────────
   st.markdown('<div class="panel-label">1 · Roster</div>', unsafe_allow_html=True)
   st.caption(
-    "Bật/tắt và risk theo **model**. Chỉ package **READY** (có schedule.json) mới On được. "
-    "Save rồi Start ở Live."
+    "Bật/tắt và risk theo **model**. Chỉ package **READY** (có schedule.json + checksum OK) mới On được. "
+    "Save rồi Start ở Live. Nếu sau `git pull` trên Windows thấy checksum mismatch / toggle xám — "
+    "bấm **Rebuild from installed** (app tự sửa CRLF)."
   )
 
   from package_store import package_ready, sanitize_roster_models
@@ -1484,7 +1491,10 @@ def render_models_page() -> None:
           value=bool(row.get("enabled", True)) and ready,
           key=f"en_{i}",
           disabled=not ready,
-          help=None if ready else "Thiếu schedule.json — re-export từ Lab",
+          help=None if ready else (
+            (info.get("error") or "Package incomplete")
+            + " — bấm Rebuild from installed nếu lỗi checksum trên Windows"
+          ),
         )
       with c3:
         risk = st.number_input(
@@ -1549,7 +1559,7 @@ def render_models_page() -> None:
   st.markdown('<div class="panel-label" style="margin-top:0.75rem">2 · Import</div>', unsafe_allow_html=True)
   st.caption("Nhận package từ Lab (.tmpkg). Bắt buộc có **schedule.json** — thiếu thì import bị từ chối.")
   up = st.file_uploader("Upload .tmpkg", type=["tmpkg"], key="models_upload")
-  path_txt = st.text_input("Or path to .tmpkg", "", key="models_path")
+  path_txt = st.text_input("Or path to .tmpkg (file) / packages_out folder", "", key="models_path")
   if st.button("Import package", type="primary", key="import_pkg_btn"):
     try:
       if up is not None:
@@ -1557,14 +1567,19 @@ def render_models_page() -> None:
         dest = INBOX_DIR / up.name
         dest.write_bytes(up.getvalue())
         pkg = dest
+        cmd = [sys.executable, str(LIVE / "import_trade_package.py"), str(pkg)]
       elif path_txt.strip():
         pkg = Path(path_txt.strip())
+        if pkg.is_dir():
+          cmd = [sys.executable, str(LIVE / "import_trade_package.py"), "--dir", str(pkg)]
+        else:
+          cmd = [sys.executable, str(LIVE / "import_trade_package.py"), str(pkg)]
       else:
-        st.error("Choose a file or path")
-        pkg = None
-      if pkg:
+        st.error("Choose a .tmpkg file, or path to file / packages_out folder")
+        cmd = None
+      if cmd:
         r = subprocess.run(
-          [sys.executable, str(LIVE / "import_trade_package.py"), str(pkg)],
+          cmd,
           cwd=str(LIVE),
           capture_output=True,
           text=True,

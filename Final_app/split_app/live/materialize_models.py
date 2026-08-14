@@ -171,7 +171,7 @@ def _materialize_rows(rows: list[dict]) -> tuple[list[dict], dict[str, str], dic
         if lab_sched.exists():
           _safe_copy2(lab_sched, pkg / "schedule.json")
           sched_src = pkg / "schedule.json"
-          print(f"[materialize] backfilled schedule from {desk.name} → {install_id}", flush=True)
+          print(f"[materialize] backfilled schedule from {desk.name} -> {install_id}", flush=True)
       except Exception as exc:
         print(f"[materialize] schedule backfill failed {install_id}: {exc}", flush=True)
     if not sched_src.exists():

@@ -128,18 +128,32 @@ def safe_replace(src: Path, dst: Path, attempts: int = 5, delay: float = 0.05) -
 def atomic_write_json(path: Path, data: Any) -> None:
   path.parent.mkdir(parents=True, exist_ok=True)
   tmp = path.with_suffix(path.suffix + ".tmp")
-  with open(tmp, "w", encoding="utf-8", newline="\n") as f:
-    json.dump(data, f, indent=2, ensure_ascii=False)
-    f.write("\n")
-  try:
-    safe_replace(tmp, path)
-  except Exception:
+  payload = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+  last_err: Exception | None = None
+  for attempt in range(8):
     try:
-      with open(path, "w", encoding="utf-8", newline="\n") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-        f.write("\n")
-      if tmp.exists():
-        tmp.unlink(missing_ok=True)
+      with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+        f.write(payload)
+      safe_replace(tmp, path)
+      return
+    except PermissionError as err:
+      last_err = err
+      time.sleep(0.05 * (attempt + 1))
+    except Exception as err:
+      last_err = err
+      try:
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+          f.write(payload)
+        if tmp.exists():
+          tmp.unlink(missing_ok=True)
+        return
+      except Exception as err2:
+        last_err = err2
+        time.sleep(0.05 * (attempt + 1))
+  if last_err is not None:
+    # Best-effort: never crash the live worker over a status/config stamp.
+    try:
+      print(f"[atomic_write_json] skip {path.name}: {last_err}", flush=True)
     except Exception:
       pass
 

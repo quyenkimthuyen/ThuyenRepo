@@ -68,11 +68,54 @@ def _sha256_bytes(data: bytes) -> str:
 
 
 def _sha256_file(path: Path) -> str:
-  h = hashlib.sha256()
-  with open(path, "rb") as f:
-    for chunk in iter(lambda: f.read(1024 * 1024), b""):
-      h.update(chunk)
-  return h.hexdigest()
+  """Hash package member bytes.
+
+  Normalize CRLF→LF so Git ``core.autocrlf`` on Windows does not break
+  SHA256SUMS that were authored with Unix line endings.
+  """
+  data = Path(path).read_bytes()
+  if b"\r" in data:
+    data = data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+  return _sha256_bytes(data)
+
+
+def _write_json_lf(path: Path, payload: Any) -> None:
+  """Write JSON with explicit LF newlines (stable across Windows/Unix)."""
+  text = json.dumps(payload, indent=2, ensure_ascii=False, default=str) + "\n"
+  path.write_text(text, encoding="utf-8", newline="\n")
+
+
+def repair_package_crlf(pkg_dir: Path) -> list[str]:
+  """Rewrite package text files to LF if Git/autocrlf introduced CR.
+
+  Returns list of repaired relative names. Safe no-op when already LF.
+  """
+  pkg_dir = Path(pkg_dir)
+  if not pkg_dir.is_dir():
+    return []
+  repaired: list[str] = []
+  names = {"manifest.json", "model.json", "metrics.json", "kb_pin.json", "schedule.json", "SHA256SUMS"}
+  sums = pkg_dir / "SHA256SUMS"
+  if sums.exists():
+    for line in sums.read_text(encoding="utf-8").splitlines():
+      line = line.strip()
+      if not line or line.startswith("#"):
+        continue
+      parts = line.split()
+      if len(parts) >= 2:
+        names.add(parts[-1])
+  for name in sorted(names):
+    fp = pkg_dir / name
+    if not fp.is_file():
+      continue
+    raw = fp.read_bytes()
+    if b"\r" not in raw:
+      continue
+    fixed = raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    if fixed != raw:
+      fp.write_bytes(fixed)
+      repaired.append(name)
+  return repaired
 
 
 def build_manifest(
@@ -181,30 +224,23 @@ def write_package(
   staging.mkdir(parents=True)
 
   files = ["manifest.json", "model.json"]
-  (staging / "model.json").write_text(
-    json.dumps(model, indent=2, ensure_ascii=False, default=str) + "\n",
-    encoding="utf-8",
-  )
+  _write_json_lf(staging / "model.json", model)
   if metrics is not None:
-    (staging / "metrics.json").write_text(
-      json.dumps(metrics, indent=2, ensure_ascii=False, default=str) + "\n",
-      encoding="utf-8",
-    )
+    _write_json_lf(staging / "metrics.json", metrics)
     files.append("metrics.json")
   kb_fp = None
   if kb_pin_src and Path(kb_pin_src).exists():
     dest = staging / "kb_pin.json"
-    dest.write_bytes(Path(kb_pin_src).read_bytes())
+    # Keep LF so digests stay portable after Git checkout on Windows.
+    raw = Path(kb_pin_src).read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    dest.write_bytes(raw)
     kb_fp = _sha256_file(dest)[:16]
     files.append("kb_pin.json")
   sched_errs = validate_schedule_payload(schedule)
   if SCHEDULE_REQUIRED and sched_errs:
     raise ValueError("package invalid: " + "; ".join(sched_errs))
   if schedule is not None and not sched_errs:
-    (staging / "schedule.json").write_text(
-      json.dumps(schedule, indent=2, ensure_ascii=False, default=str) + "\n",
-      encoding="utf-8",
-    )
+    _write_json_lf(staging / "schedule.json", schedule)
     files.append("schedule.json")
 
   manifest = dict(manifest)
@@ -213,16 +249,13 @@ def write_package(
   manifest["schedule_weeks"] = schedule_weekly_count(schedule) if schedule else 0
   if kb_fp:
     manifest["kb_fingerprint"] = kb_fp
-  (staging / "manifest.json").write_text(
-    json.dumps(manifest, indent=2, ensure_ascii=False, default=str) + "\n",
-    encoding="utf-8",
-  )
+  _write_json_lf(staging / "manifest.json", manifest)
 
   sum_lines = []
   for name in files:
     digest = _sha256_file(staging / name)
     sum_lines.append(f"{digest}  {name}")
-  (staging / "SHA256SUMS").write_text("\n".join(sum_lines) + "\n", encoding="utf-8")
+  (staging / "SHA256SUMS").write_text("\n".join(sum_lines) + "\n", encoding="utf-8", newline="\n")
 
   errs = validate_package_dir(staging)
   if errs:
