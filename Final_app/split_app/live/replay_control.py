@@ -401,7 +401,14 @@ def load_sim_progress() -> dict[str, Any]:
     tot_r = sum(float(m.get("total_r") or 0) for m in models if m.get("ok"))
     use_parity = mode == "parity" and bool(models)
     if use_parity:
-      ea_status = "completed" if not parity.get("partial") else "running"
+      if parity.get("partial"):
+        ea_status = "running"
+      elif models and all(m.get("ok") is False or m.get("error") for m in models):
+        ea_status = "failed"
+      elif models and any(int(m.get("n_trades") or 0) <= 0 for m in models):
+        ea_status = "failed"
+      else:
+        ea_status = "completed"
     elif done and total and done >= total:
       ea_status = sc.get("ea_status") or "completed"
     elif is_replay_running():
@@ -435,6 +442,9 @@ def load_sim_progress() -> dict[str, Any]:
           "R": m.get("total_r"),
           "lab_R": m.get("lab_total_r"),
           "dR": m.get("delta_r"),
+          "win_rate_pct": m.get("win_rate_pct"),
+          "lab_win_rate_pct": m.get("lab_win_rate_pct"),
+          "n_trades": m.get("n_trades"),
           "err": m.get("error"),
         }
         for m in models

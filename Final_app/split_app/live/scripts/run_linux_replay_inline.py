@@ -211,9 +211,20 @@ def main() -> int:
           print(f"[inline] process_fill warn: {exc}", flush=True)
         n_fills += 1
 
-    bar = _write_bar(
-      bdir, symbol=symbol, period=timeframe, magic=primary_magic, ts=ts, row=row,
-    )
+    bar = None
+    for attempt in range(20):
+      try:
+        bar = _write_bar(
+          bdir, symbol=symbol, period=timeframe, magic=primary_magic, ts=ts, row=row,
+        )
+        break
+      except OSError as exc:
+        if attempt >= 19:
+          raise
+        print(f"[inline] bar.json write retry {attempt + 1}/20: {exc}", flush=True)
+        time.sleep(min(0.5, 0.02 * (attempt + 1)))
+    if bar is None:
+      continue
 
     # decide inline (same engine as Live)
     for mid, eng in engines.items():

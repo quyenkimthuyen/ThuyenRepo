@@ -52,8 +52,15 @@ from mt5_bridge.protocol import (
 def _desk_symbol() -> str:
   """Fallback chart symbol when connection.json is empty (EUR vs GBP desks)."""
   name = ROOT.name.upper()
-  if "GBP" in name or INSTANCE_ID.upper().startswith("M15G"):
+  inst = str(INSTANCE_ID or "").upper()
+  if "GBP" in name or inst.startswith(("M15G", "M5G")) or inst in {"M15F2", "M5F4"}:
     return "GBPUSD"
+  try:
+    from config import DEFAULT_PAIR
+    if "GBP" in str(DEFAULT_PAIR or "").upper():
+      return "GBPUSD"
+  except Exception:
+    pass
   return "EURUSD"
 from mt5_bridge.trade_journal import (
   clear_trades,

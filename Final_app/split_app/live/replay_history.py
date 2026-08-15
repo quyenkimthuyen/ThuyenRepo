@@ -86,6 +86,7 @@ def _summarize_batch(payload: dict) -> dict[str, Any]:
         "lab_total_r": m.get("lab_total_r"),
         "delta_r": m.get("delta_r"),
         "win_rate_pct": m.get("win_rate_pct"),
+        "lab_win_rate_pct": m.get("lab_win_rate_pct"),
         "n_trades": m.get("n_trades"),
         "ok": m.get("ok"),
         "error": m.get("error"),

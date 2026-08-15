@@ -9,6 +9,7 @@ opens at next-bar open and manages SL/TP/trail/max_hold like the EA paper path.
 from __future__ import annotations
 
 import json
+import os
 import time
 import uuid
 from datetime import datetime, timezone
@@ -26,17 +27,64 @@ def _now() -> str:
   return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
 
 
-def _atomic_write(path: Path, data: Any) -> None:
+def _is_transient_win_lock(exc: BaseException) -> bool:
+  """Windows file lock / share / access-denied while another reader holds the path."""
+  if isinstance(exc, PermissionError):
+    return True
+  winerr = getattr(exc, "winerror", None)
+  # 5=Access denied, 32=Sharing violation, 33=Lock violation
+  if winerr in (5, 32, 33):
+    return True
+  errno = getattr(exc, "errno", None)
+  return errno in (11, 13, 16)  # EAGAIN / EACCES / EBUSY
+
+
+def _atomic_write(path: Path, data: Any, *, retries: int = 16) -> None:
+  """Write JSON with Windows-safe replace + retry.
+
+  Parallel decision workers / Explorer / AV often hold ``bar.json`` open;
+  a single ``.tmp.replace()`` then raises WinError 5 and used to kill replay.
+  """
   path.parent.mkdir(parents=True, exist_ok=True)
-  tmp = path.with_suffix(path.suffix + ".tmp")
-  tmp.write_text(json.dumps(data, ensure_ascii=False, default=str) + "\n", encoding="utf-8")
-  tmp.replace(path)
+  payload = json.dumps(data, ensure_ascii=False, default=str) + "\n"
+  last_exc: BaseException | None = None
+  for attempt in range(max(1, int(retries))):
+    tmp = path.with_name(f"{path.stem}.{os.getpid()}.{time.time_ns()}.{attempt}.tmp")
+    try:
+      tmp.write_text(payload, encoding="utf-8")
+      os.replace(str(tmp), str(path))
+      return
+    except OSError as exc:
+      last_exc = exc
+      try:
+        tmp.unlink(missing_ok=True)
+      except OSError:
+        pass
+      if not _is_transient_win_lock(exc):
+        raise
+      time.sleep(min(0.25, 0.01 * (attempt + 1)))
+  # Last resort: non-atomic overwrite — keep replay alive.
+  try:
+    path.write_text(payload, encoding="utf-8")
+    return
+  except OSError as exc:
+    last_exc = exc
+  if last_exc:
+    raise last_exc
+  raise OSError(f"cannot write {path}")
 
 
 def _append_jsonl(path: Path, row: dict) -> None:
   path.parent.mkdir(parents=True, exist_ok=True)
-  with open(path, "a", encoding="utf-8") as f:
-    f.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
+  for attempt in range(8):
+    try:
+      with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
+      return
+    except OSError as exc:
+      if not _is_transient_win_lock(exc) or attempt >= 7:
+        raise
+      time.sleep(0.02 * (attempt + 1))
 
 
 def mt5_bar_time(ts: pd.Timestamp) -> str:

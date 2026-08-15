@@ -63,9 +63,20 @@ def seed_exact(symbol: str, timeframe: str) -> Path:
 
 
 def load_schedule(model_id: str) -> dict | None:
-  from trade_model_schedule import load_model_schedule
-
-  return load_model_schedule(model_id)
+  # Live materialized schedule first (no desk import required).
+  live_path = RESULTS_DIR / "trade_models" / f"{model_id}_schedule.json"
+  if live_path.exists():
+    try:
+      data = _read(live_path)
+      if isinstance(data, dict) and data.get("weekly"):
+        return data
+    except Exception:
+      pass
+  try:
+    from trade_model_schedule import load_model_schedule
+    return load_model_schedule(model_id)
+  except Exception:
+    return None
 
 
 def replay_model_parity(
@@ -78,17 +89,6 @@ def replay_model_parity(
   df: pd.DataFrame,
 ) -> dict[str, Any]:
   """Replay one model via frozen schedule + backtest_mined."""
-  from feature_engine import FeatureMatrix
-  from data_loader import get_train_window_indices, get_week_indices
-  from config import MIN_TRAIN_BARS
-  from strategy_miner import (
-    backtest_mined,
-    generate_signals_mined,
-    mining_search_space_from_dict,
-  )
-  from trade_model_kb_pin import load_kb_for_run
-  from trade_model_schedule import attach_ml_scorer, strategy_from_dict
-
   # Prefer Live materialized store (package), then desk get_model_by_id.
   model: dict = {}
   store = _read(RESULTS_DIR / "trade_models.json") or {}
@@ -104,14 +104,72 @@ def replay_model_parity(
       model = {}
   sched = load_schedule(model_id)
   weekly = list((sched or {}).get("weekly") or [])
+  lab_overall = ((sched or {}).get("meta") or {}).get("overall") or {}
   if not weekly:
     return {
       "model_id": model_id,
+      "label": model.get("label"),
       "ok": False,
       "error": "missing_schedule",
-      "total_r": 0.0,
+      "total_r": None,
+      "win_rate_pct": None,
       "n_trades": 0,
+      "lab_total_r": lab_overall.get("total_r"),
+      "lab_win_rate_pct": lab_overall.get("win_rate_pct"),
+      "lab_n_trades": lab_overall.get("n_trades"),
+      "symbol": symbol,
+      "timeframe": timeframe,
     }
+
+  week_starts = []
+  for entry in weekly:
+    try:
+      week_starts.append(pd.Timestamp(entry.get("week_start")))
+    except Exception:
+      continue
+  sched_from = min(week_starts).date().isoformat() if week_starts else None
+  sched_to = max(week_starts).date().isoformat() if week_starts else None
+
+  oos_from_ts = pd.Timestamp(oos_from)
+  oos_to_ts = pd.Timestamp(oos_to)
+  weeks_in_oos = [
+    e for e in weekly
+    if e.get("week_start") is not None
+    and oos_from_ts <= pd.Timestamp(e.get("week_start")) <= oos_to_ts
+  ]
+  if not weeks_in_oos:
+    return {
+      "model_id": model_id,
+      "label": model.get("label"),
+      "ok": False,
+      "error": (
+        f"no_schedule_weeks_in_oos:{oos_from}->{oos_to} "
+        f"(schedule {sched_from}->{sched_to})"
+      ),
+      "total_r": None,
+      "win_rate_pct": None,
+      "n_trades": 0,
+      "lab_total_r": lab_overall.get("total_r"),
+      "lab_win_rate_pct": lab_overall.get("win_rate_pct"),
+      "lab_n_trades": lab_overall.get("n_trades"),
+      "delta_r": None,
+      "schedule_from": sched_from,
+      "schedule_to": sched_to,
+      "weeks": [],
+      "symbol": symbol,
+      "timeframe": timeframe,
+    }
+
+  from feature_engine import FeatureMatrix
+  from data_loader import get_train_window_indices, get_week_indices
+  from config import MIN_TRAIN_BARS
+  from strategy_miner import (
+    backtest_mined,
+    generate_signals_mined,
+    mining_search_space_from_dict,
+  )
+  from trade_model_kb_pin import load_kb_for_run
+  from trade_model_schedule import attach_ml_scorer, strategy_from_dict
 
   feature_profile = model.get("feature_profile") or (
     "m5_parity" if timeframe == "M5" else "current"
@@ -136,14 +194,10 @@ def replay_model_parity(
   fm = FeatureMatrix(df, profile=feature_profile)
   all_trades = []
   week_rows = []
-  oos_from_ts = pd.Timestamp(oos_from)
-  oos_to_ts = pd.Timestamp(oos_to)
 
-  for entry in weekly:
+  for entry in weeks_in_oos:
     ws = pd.Timestamp(entry.get("week_start"))
     we = pd.Timestamp(entry.get("week_end") or (ws + pd.Timedelta(days=7)))
-    if ws < oos_from_ts or ws > oos_to_ts:
-      continue
     strat_d = entry.get("strategy")
     if not isinstance(strat_d, dict):
       continue
@@ -184,13 +238,12 @@ def replay_model_parity(
   n = len(all_trades)
   wins = sum(1 for t in all_trades if t.r_multiple > 0)
   total_r = sum(float(t.r_multiple) for t in all_trades)
-  lab_overall = ((sched or {}).get("meta") or {}).get("overall") or {}
   return {
     "model_id": model_id,
     "label": model.get("label"),
     "ok": True,
     "n_trades": n,
-    "win_rate_pct": round(100.0 * wins / n, 2) if n else 0.0,
+    "win_rate_pct": round(100.0 * wins / n, 2) if n else None,
     "total_r": round(total_r, 3),
     "profit_factor": _pf(all_trades),
     "max_drawdown_r": _max_dd(all_trades),
@@ -198,10 +251,13 @@ def replay_model_parity(
     "lab_win_rate_pct": lab_overall.get("win_rate_pct"),
     "lab_n_trades": lab_overall.get("n_trades"),
     "delta_r": round(total_r - float(lab_overall.get("total_r") or 0), 3),
+    "schedule_from": sched_from,
+    "schedule_to": sched_to,
     "weeks": week_rows,
     "symbol": symbol,
     "timeframe": timeframe,
   }
+
 
 
 def _pf(trades: list) -> float:

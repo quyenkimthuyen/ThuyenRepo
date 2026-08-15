@@ -32,8 +32,14 @@ LEARNING_REPORT = REPORT_DIR / "learning_report.json"
 def load_json(path: Path) -> dict | None:
   if not path.exists():
     return None
-  with open(path, encoding="utf-8") as f:
-    return json.load(f)
+  try:
+    raw = path.read_text(encoding="utf-8").strip()
+    if not raw:
+      return None
+    data = json.loads(raw)
+    return data if isinstance(data, dict) else None
+  except (json.JSONDecodeError, OSError, UnicodeError):
+    return None
 
 
 def load_backtest_report(workspace_aware: bool = True) -> dict | None:

@@ -168,7 +168,10 @@ def _parity_results_from_replay(replay: dict, models: list[dict]) -> dict:
         "R": pm.get("R"),
         "Lab R": pm.get("lab_R"),
         "ΔR": pm.get("dR"),
-        "OK": (err is None) and (pm.get("R") is not None),
+        "WR%": pm.get("win_rate_pct"),
+        "Lab WR%": pm.get("lab_win_rate_pct"),
+        "Trades": pm.get("n_trades"),
+        "OK": (err is None) and (pm.get("R") is not None) and int(pm.get("n_trades") or 0) > 0,
         "Error": err,
       })
   n_ok = sum(1 for r in rows if r.get("OK"))
@@ -390,12 +393,31 @@ def _render_replay_live_panels() -> dict:
           "Lab R": m.get("lab_total_r"),
           "ΔR": m.get("delta_r"),
           "WR%": m.get("win_rate_pct"),
+          "Lab WR%": m.get("lab_win_rate_pct"),
           "Trades": m.get("n_trades") or m.get("n_fills"),
           "OK": m.get("ok"),
+          "Error": m.get("error") or m.get("err"),
         } for m in hist_models],
         use_container_width=True,
         hide_index=True,
       )
+      zero_wr = [
+        m for m in hist_models
+        if (m.get("win_rate_pct") in (0, 0.0) or m.get("n_trades") == 0)
+        and not (m.get("error") or m.get("err"))
+      ]
+      bad = [m for m in hist_models if m.get("error") or m.get("err") or m.get("ok") is False]
+      if bad:
+        sample = (bad[0].get("error") or bad[0].get("err") or "ok=false")
+        st.warning(
+          f"{len(bad)}/{len(hist_models)} model lỗi parity — ví dụ: {sample}. "
+          "Với Lab parity, OOS phải giao với tuần trong schedule.json (thường 2026)."
+        )
+      elif zero_wr and chosen.get("mode") in ("parity", "schedule_parity", None):
+        st.warning(
+          "WR%=0 / 0 trades — OOS window không khớp schedule weeks "
+          "(Lab WR% bên cạnh mới là số từ Lab overall)."
+        )
   else:
     st.caption("Chưa có run lưu — Start OOS replay một lần để tạo history.")
 
@@ -564,6 +586,38 @@ def render_replay_desk() -> dict:
         warn_bits.append(
           f"{label}: khoảng OOS không giao data ({c0}→{c1}) — không có bar để chạy"
         )
+
+    # Lab parity needs OOS to overlap frozen schedule weeks (often 2026-only).
+    if mode == "parity":
+      sched_spans: list[tuple[str, str, str]] = []
+      for m in models:
+        mid = str(m.get("model_id") or m.get("id") or "")
+        if not mid:
+          continue
+        sp = RESULTS_DIR / "trade_models" / f"{mid}_schedule.json"
+        if not sp.exists():
+          continue
+        try:
+          weekly = (_json.loads(sp.read_text(encoding="utf-8")).get("weekly") or [])
+          starts = [str(w.get("week_start") or "")[:10] for w in weekly if w.get("week_start")]
+          starts = [s for s in starts if s]
+          if starts:
+            sched_spans.append((mid, min(starts), max(starts)))
+        except Exception:
+          continue
+      if sched_spans:
+        s0 = min(s[1] for s in sched_spans)
+        s1 = max(s[2] for s in sched_spans)
+        if sel_to < s0 or sel_from > s1:
+          warn_bits.append(
+            f"Lab parity: OOS {sel_from}→{sel_to} KHÔNG giao schedule weeks "
+            f"({s0}→{s1}) — sẽ ra 0 trades / WR%=0. Đổi OOS sang khoảng schedule."
+          )
+        elif sel_from < s0 or sel_to > s1:
+          warn_bits.append(
+            f"Lab parity: schedule weeks chỉ có {s0}→{s1} — phần OOS ngoài khoảng này bị bỏ."
+          )
+
     for w in warn_bits:
       st.warning(w)
   except Exception:

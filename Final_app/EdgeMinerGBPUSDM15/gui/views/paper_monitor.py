@@ -206,7 +206,7 @@ def _tradingview_chart(
   orders: list[dict],
   chart_from: str,
   chart_to: str,
-  title: str = "EUR/USD M15",
+  title: str = "GBP/USD M15",
 ) -> go.Figure | None:
   window = ohlc_window
   if window.empty:
@@ -229,7 +229,7 @@ def _tradingview_chart(
     low=window["Low"], close=window["Close"],
     increasing_line_color=TV_UP, decreasing_line_color=TV_DOWN,
     increasing_fillcolor=TV_UP, decreasing_fillcolor=TV_DOWN,
-    name="EUR/USD",
+    name="GBP/USD",
     showlegend=False,
   ), row=price_row, col=1)
 
@@ -412,7 +412,7 @@ def _get_chart_figure(state: dict) -> go.Figure | None:
     window = get_ohlc_window_cached(chart_from, chart_to)
     fig = _tradingview_chart(
       window, orders, chart_from, chart_to,
-      title=f"EUR/USD M15 · Tuần {state.get('week_start', '')}",
+      title=f"GBP/USD M15 · Tuần {state.get('week_start', '')}",
     )
   except Exception:
     return None
@@ -693,7 +693,7 @@ def _render_chart_panel(
 
   try:
     window = get_ohlc_window_cached(chart_from, chart_to)
-    chart_title = f"EUR/USD M15 · {chart_from} → {chart_to}"
+    chart_title = f"GBP/USD M15 · {chart_from} → {chart_to}"
     fig = _tradingview_chart(
       window, overlay, chart_from, chart_to,
       title=chart_title,

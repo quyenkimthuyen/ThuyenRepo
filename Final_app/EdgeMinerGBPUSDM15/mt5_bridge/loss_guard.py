@@ -381,7 +381,7 @@ def build_flat_halt_decision(
   return {
     "action": "FLAT",
     "ok": True,
-    "symbol": bar.get("symbol") or "EURUSD",
+    "symbol": bar.get("symbol") or "GBPUSD",
     "bar_time": bar.get("time") or bar.get("bar_time"),
     "reason": reason,
     "halt": True,

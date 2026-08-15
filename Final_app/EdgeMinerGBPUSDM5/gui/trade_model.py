@@ -417,17 +417,39 @@ OVERVIEW_HIGH_DD_R = 6.5
 
 
 def desk_pair_code() -> str:
-  """EUR / GBP / OTHER — drives overview default sort."""
+  """EUR / GBP / OTHER — drives overview default sort & Final Train weights."""
   import re
+  from pathlib import Path
+
   try:
-    from mt5_bridge.protocol import INSTANCE_ID
-    inst = str(INSTANCE_ID or "").upper()
-    if "GBP" in inst or re.search(r"M(?:15|5)G\d", inst):
+    from config import DEFAULT_PAIR
+    pair = str(DEFAULT_PAIR or "").upper().replace("/", "")
+    if "GBP" in pair:
       return "GBP"
-    if "EUR" in inst or re.search(r"M(?:15|5)E\d", inst):
+    if "EUR" in pair:
       return "EUR"
   except Exception:
     pass
+
+  try:
+    root_name = Path(__file__).resolve().parents[1].name.upper()
+    if "GBP" in root_name:
+      return "GBP"
+    if "EUR" in root_name:
+      return "EUR"
+  except Exception:
+    pass
+
+  try:
+    from mt5_bridge.protocol import INSTANCE_ID
+    inst = str(INSTANCE_ID or "").upper()
+    if "GBP" in inst or re.search(r"M(?:15|5)G\d", inst) or inst in {"M15F2", "M5F4"}:
+      return "GBP"
+    if "EUR" in inst or re.search(r"M(?:15|5)E\d", inst) or inst in {"M15F1", "M5F3"}:
+      return "EUR"
+  except Exception:
+    pass
+
   try:
     from gui.services import load_data_meta
     pair = str((load_data_meta() or {}).get("pair") or "").upper()

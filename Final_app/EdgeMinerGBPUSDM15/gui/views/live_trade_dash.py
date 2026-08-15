@@ -164,7 +164,7 @@ def _risk_pips(trade: dict) -> str | None:
   dist = abs(entry - sl)
   if dist <= 0:
     return None
-  # EURUSD M15 desk: 1 pip = 0.0001
+  # GBPUSD M15 desk: 1 pip = 0.0001
   return f"{dist / 0.0001:.1f} pip"
 
 

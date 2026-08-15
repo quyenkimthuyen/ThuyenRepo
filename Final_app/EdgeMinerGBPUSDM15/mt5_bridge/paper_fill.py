@@ -23,8 +23,15 @@ def _desk_symbol() -> str:
   try:
     from mt5_bridge.protocol import INSTANCE_ID, ROOT
     name = ROOT.name.upper()
-    if "GBP" in name or str(INSTANCE_ID).upper().startswith("M15G"):
+    inst = str(INSTANCE_ID or "").upper()
+    if "GBP" in name or inst.startswith("M15G") or inst.startswith("M5G") or inst in {"M15F2", "M5F4"}:
       return "GBPUSD"
+    try:
+      from config import DEFAULT_PAIR
+      if "GBP" in str(DEFAULT_PAIR or "").upper():
+        return "GBPUSD"
+    except Exception:
+      pass
   except Exception:
     pass
   return "EURUSD"

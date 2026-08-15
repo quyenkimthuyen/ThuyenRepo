@@ -33,6 +33,7 @@ from gui.navigation import (
 )
 from gui.ui_theme import icon_btn, inject_theme
 from gui.ui_preferences import restore_widget, set_widget_preference
+from config import DEFAULT_PAIR, DEFAULT_TF
 from gui.workspace import ensure_profiles_loaded
 
 VIEW_MODULES = {
@@ -129,7 +130,7 @@ def _sidebar_status():
 
 def main():
   st.set_page_config(
-    page_title="ForexForge",
+    page_title=f"ForexForge · {DEFAULT_PAIR} {DEFAULT_TF}",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -168,7 +169,7 @@ def main():
   inject_theme()
 
   st.sidebar.markdown("### ForexForge")
-  st.sidebar.caption("EUR/USD M15 · retrain tuần")
+  st.sidebar.caption(f"{DEFAULT_PAIR} {DEFAULT_TF} · retrain tuần")
 
   page_key = _render_sidebar_nav()
   _sidebar_status()
