@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -33,9 +35,32 @@ def _read(path: Path) -> Any:
 
 def _write(path: Path, data: Any) -> None:
   path.parent.mkdir(parents=True, exist_ok=True)
-  tmp = path.with_suffix(".tmp")
-  tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False, default=str) + "\n", encoding="utf-8")
-  tmp.replace(path)
+  # Unique temp avoids parallel writers colliding on the same ``.tmp`` name.
+  tmp = path.with_name(f"{path.stem}.{os.getpid()}.{time.time_ns()}.tmp")
+  payload = json.dumps(data, indent=2, ensure_ascii=False, default=str) + "\n"
+  last_exc: OSError | None = None
+  for attempt in range(8):
+    try:
+      tmp.write_text(payload, encoding="utf-8")
+      tmp.replace(path)
+      return
+    except OSError as exc:
+      last_exc = exc
+      # Windows: parallel replay books can contend on live_roster.json
+      if getattr(exc, "winerror", None) != 32 and getattr(exc, "errno", None) not in (11, 16):
+        try:
+          tmp.unlink(missing_ok=True)
+        except OSError:
+          pass
+        raise
+      time.sleep(0.05 * (attempt + 1))
+  try:
+    tmp.unlink(missing_ok=True)
+  except OSError:
+    pass
+  if last_exc:
+    raise last_exc
+  raise OSError(f"cannot write {path}")
 
 
 def package_ready(install_id: str | Path) -> dict[str, Any]:

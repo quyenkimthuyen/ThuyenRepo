@@ -47,9 +47,30 @@ def _read(path: Path) -> Any:
 
 def _write(path: Path, data: Any) -> None:
   path.parent.mkdir(parents=True, exist_ok=True)
-  tmp = path.with_suffix(path.suffix + ".tmp")
-  tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False, default=str) + "\n", encoding="utf-8")
-  tmp.replace(path)
+  tmp = path.with_name(f"{path.stem}.{os.getpid()}.{time.time_ns()}.tmp")
+  payload = json.dumps(data, indent=2, ensure_ascii=False, default=str) + "\n"
+  last_exc: OSError | None = None
+  for attempt in range(8):
+    try:
+      tmp.write_text(payload, encoding="utf-8")
+      tmp.replace(path)
+      return
+    except OSError as exc:
+      last_exc = exc
+      if getattr(exc, "winerror", None) != 32 and getattr(exc, "errno", None) not in (11, 16):
+        try:
+          tmp.unlink(missing_ok=True)
+        except OSError:
+          pass
+        raise
+      time.sleep(0.05 * (attempt + 1))
+  try:
+    tmp.unlink(missing_ok=True)
+  except OSError:
+    pass
+  if last_exc:
+    raise last_exc
+  raise OSError(f"cannot write {path}")
 
 
 def _pid_alive(pid: int | None) -> bool:
@@ -333,6 +354,8 @@ def start_bridge(
   auto_deploy_ea: bool = True,
   skip_preflight: bool = False,
 ) -> dict[str, Any]:
+  t0 = time.time()
+  preflight_mode = "none"
   if is_kill_switch_armed():
     raise RuntimeError("Kill-switch armed — Disarm before Start")
   cfg0 = load_config()
@@ -346,6 +369,7 @@ def start_bridge(
     stop_bridge(flatten=False, sync_autostart=False)
 
   preflight: dict[str, Any] | None = None
+  preflight_t0 = time.time()
   if (not sim) and (not skip_preflight) and (not once):
     from preflight_live import preflight_enabled_books, preflight_packages_ready
     # Reuse a fresh OK preflight to avoid multi-minute remine behind the UI spinner.
@@ -361,6 +385,7 @@ def start_bridge(
       cached_age = None
     if cached_ok and cached_age is not None and cached_age < 20 * 60:
       preflight = {**cached, "skipped_reuse": True, "age_sec": cached_age}
+      preflight_mode = "reuse"
       print(f"[start] reuse preflight ok age={cached_age:.0f}s", flush=True)
     else:
       # Default: packages + OHLC only. Full decide/remine hangs Start with 12 models.
@@ -369,9 +394,11 @@ def start_bridge(
         "1", "true", "yes", "on",
       )
       if full:
+        preflight_mode = "full"
         print("[start] running live preflight (decide_for_bar)…", flush=True)
         preflight = preflight_enabled_books(sim=False)
       else:
+        preflight_mode = "fast"
         print("[start] running fast preflight (packages + OHLC)…", flush=True)
         preflight = preflight_packages_ready(sim=False)
       if not preflight.get("ok"):
@@ -380,6 +407,9 @@ def start_bridge(
           f"{preflight.get('error') or 'see live/results/live_preflight.json'}\n"
           "Fix packages/schedule/OHLC, or run Replay · Live-like first."
         )
+  elif skip_preflight:
+    preflight_mode = "skip"
+  preflight_sec = round(time.time() - preflight_t0, 2)
 
   prep = prepare_runtime(require_chart=False, poll_sec=poll_sec, sim=sim)
 
@@ -422,13 +452,26 @@ def start_bridge(
   try:
     from debug_log import log_event, prune_old_logs
     prune_old_logs()
+    books_planned = [
+      {"symbol": g.get("symbol"), "timeframe": g.get("timeframe"), "model_ids": g.get("model_ids")}
+      for g in (prep.get("groups") or [])
+      if not g.get("skip")
+    ]
     log_event(
       "bridge_start",
-      summary=f"start sim={sim} workers={len([g for g in prep.get('groups') or [] if not g.get('skip')])}",
+      summary=(
+        f"start sim={sim} preflight={preflight_mode} "
+        f"books={len(books_planned)} preflight_sec={preflight_sec}"
+      ),
       payload={
         "sim": bool(sim),
         "require_chart": bool(require_chart),
+        "preflight_mode": preflight_mode,
+        "preflight_sec": preflight_sec,
         "preflight_ok": (preflight or {}).get("ok") if preflight is not None else None,
+        "preflight_age_sec": (preflight or {}).get("age_sec") if preflight else None,
+        "books": books_planned,
+        "n_books": len(books_planned),
         "deploy": {
           "skipped": (deploy_info or {}).get("skipped"),
           "deployed": (deploy_info or {}).get("deployed"),
@@ -521,6 +564,25 @@ def start_bridge(
       "model_ids": g["model_ids"],
       "sim": bool(sim),
     })
+    try:
+      from debug_log import log_event
+      log_event(
+        "worker_spawn",
+        summary=f"spawn {sym} {tf} pid={proc.pid}",
+        payload={
+          "pid": proc.pid,
+          "monitor_port": port,
+          "model_ids": g["model_ids"],
+          "log": str(log_path),
+          "sim": bool(sim),
+        },
+        symbol=sym,
+        timeframe=tf,
+        bridge_dir=bdir,
+        source="bridge_control",
+      )
+    except Exception:
+      pass
     if once:
       break
 
@@ -604,6 +666,38 @@ def start_bridge(
       autostart_info = {"ok": False, "skipped": False, "reason": f"error:{exc}"}
 
   alive_n = sum(1 for w in workers if _pid_alive(w.get("pid"))) if workers else 0
+  duration_sec = round(time.time() - t0, 2)
+  try:
+    from debug_log import log_event
+    log_event(
+      "bridge_start_done",
+      summary=(
+        f"done preflight={preflight_mode} alive={alive_n}/{len(workers)} "
+        f"duration_sec={duration_sec}"
+      ),
+      payload={
+        "preflight_mode": preflight_mode,
+        "preflight_sec": preflight_sec,
+        "duration_sec": duration_sec,
+        "n_workers": len(workers),
+        "alive": alive_n,
+        "books": [
+          {
+            "key": w.get("key"),
+            "symbol": w.get("symbol"),
+            "timeframe": w.get("timeframe"),
+            "pid": w.get("pid"),
+            "alive": _pid_alive(w.get("pid")),
+            "model_ids": w.get("model_ids"),
+          }
+          for w in workers
+        ],
+        "sim": bool(sim),
+      },
+      source="bridge_control",
+    )
+  except Exception:
+    pass
   return {
     "pid": primary.get("pid"),
     "workers": workers,
@@ -612,6 +706,9 @@ def start_bridge(
     "sim": bool(sim),
     "deploy": deploy_info,
     "autostart": autostart_info,
+    "preflight_mode": preflight_mode,
+    "preflight_sec": preflight_sec,
+    "duration_sec": duration_sec,
     **prep,
   }
 
@@ -622,6 +719,19 @@ def stop_bridge(*, flatten: bool = False, sync_autostart: bool = True) -> dict[s
   for w in workers:
     pid = w.get("pid")
     pids.append(pid)
+    try:
+      from debug_log import log_event
+      log_event(
+        "worker_kill",
+        summary=f"kill {w.get('symbol')} {w.get('timeframe')} pid={pid}",
+        payload={"pid": pid, "flatten": bool(flatten), "key": w.get("key")},
+        symbol=w.get("symbol"),
+        timeframe=w.get("timeframe"),
+        bridge_dir=w.get("bridge_dir"),
+        source="bridge_control",
+      )
+    except Exception:
+      pass
     _kill_pid(pid)
     bdir = Path(w.get("bridge_dir") or "")
     if bdir:

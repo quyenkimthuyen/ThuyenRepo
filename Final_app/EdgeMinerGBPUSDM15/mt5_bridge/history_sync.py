@@ -177,7 +177,19 @@ def normalize_mt5_bars(bars: list[dict]) -> pd.DataFrame:
 def load_mt5_cache() -> pd.DataFrame | None:
   if not MT5_CACHE_PATH.exists():
     return None
-  frame = pd.read_parquet(MT5_CACHE_PATH)
+  try:
+    frame = pd.read_parquet(MT5_CACHE_PATH)
+  except Exception as exc:
+    # Quarantine corrupt shells (PAR1…PAR1 but thrift broken) so sync can rebuild.
+    bad = MT5_CACHE_PATH.with_suffix(".parquet.corrupt")
+    try:
+      if bad.exists():
+        bad.unlink()
+      MT5_CACHE_PATH.replace(bad)
+      print(f"[history_sync] corrupt cache → {bad.name}: {exc}", flush=True)
+    except OSError as move_exc:
+      print(f"[history_sync] corrupt cache unreadable: {exc} (move failed: {move_exc})", flush=True)
+    return None
   frame.index = pd.to_datetime(frame.index, utc=True).tz_convert(None)
   frame = frame.sort_index()[~frame.index.duplicated(keep="last")]
   return frame.loc[frame.index >= parse_broker_time(get_data_start_broker())]

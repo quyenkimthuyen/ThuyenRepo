@@ -434,55 +434,45 @@ def apply_risk_cap_to_decision(
       risk_pct = 1.0
 
   RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-  with open(LOCK_PATH, "a+", encoding="utf-8") as lockf:
-    try:
-      import fcntl
-      fcntl.flock(lockf.fileno(), fcntl.LOCK_EX)
-    except Exception:
-      pass
-    try:
-      check = check_signal_allowed(
-        model_id=mid, risk_pct=float(risk_pct), sim=sim,
-      )
-      if check.get("ok"):
-        if not check.get("skipped"):
-          _reserve_signal(
-            model_id=mid, risk_pct=float(risk_pct), sim=sim, action=action,
-          )
-        out = dict(decision)
-        out["risk_cap_ok"] = True
-        out["risk_cap_projected_risk_pct"] = check.get("projected_risk_pct")
-        return out
-      emit_risk_cap_alert({
-        "ok": False,
-        "event": "risk_cap_block",
-        "model_id": mid,
-        "action": action,
-        "reasons": check.get("reasons"),
-        "projected_risk_pct": check.get("projected_risk_pct"),
-        "projected_positions": check.get("projected_positions"),
-        "exposure": {
-          "n_open": (check.get("exposure") or {}).get("n_open"),
-          "n_pending": (check.get("exposure") or {}).get("n_pending"),
-          "open_risk_pct": (check.get("exposure") or {}).get("open_risk_pct"),
-          "pending_risk_pct": (check.get("exposure") or {}).get("pending_risk_pct"),
-          "total_risk_pct": (check.get("exposure") or {}).get("total_risk_pct"),
-        },
-        "prefs": check.get("prefs"),
-      })
-      blocked = dict(decision)
-      blocked["action"] = "FLAT"
-      blocked["reason"] = "risk_cap"
-      blocked["risk_cap_ok"] = False
-      blocked["risk_cap_reasons"] = check.get("reasons")
-      blocked["risk_cap_projected_risk_pct"] = check.get("projected_risk_pct")
-      blocked.pop("entry", None)
-      blocked.pop("sl", None)
-      blocked.pop("tp", None)
-      return blocked
-    finally:
-      try:
-        import fcntl
-        fcntl.flock(lockf.fileno(), fcntl.LOCK_UN)
-      except Exception:
-        pass
+  from file_lock import interprocess_lock
+
+  with interprocess_lock(LOCK_PATH, timeout_sec=10.0):
+    check = check_signal_allowed(
+      model_id=mid, risk_pct=float(risk_pct), sim=sim,
+    )
+    if check.get("ok"):
+      if not check.get("skipped"):
+        _reserve_signal(
+          model_id=mid, risk_pct=float(risk_pct), sim=sim, action=action,
+        )
+      out = dict(decision)
+      out["risk_cap_ok"] = True
+      out["risk_cap_projected_risk_pct"] = check.get("projected_risk_pct")
+      return out
+    emit_risk_cap_alert({
+      "ok": False,
+      "event": "risk_cap_block",
+      "model_id": mid,
+      "action": action,
+      "reasons": check.get("reasons"),
+      "projected_risk_pct": check.get("projected_risk_pct"),
+      "projected_positions": check.get("projected_positions"),
+      "exposure": {
+        "n_open": (check.get("exposure") or {}).get("n_open"),
+        "n_pending": (check.get("exposure") or {}).get("n_pending"),
+        "open_risk_pct": (check.get("exposure") or {}).get("open_risk_pct"),
+        "pending_risk_pct": (check.get("exposure") or {}).get("pending_risk_pct"),
+        "total_risk_pct": (check.get("exposure") or {}).get("total_risk_pct"),
+      },
+      "prefs": check.get("prefs"),
+    })
+    blocked = dict(decision)
+    blocked["action"] = "FLAT"
+    blocked["reason"] = "risk_cap"
+    blocked["risk_cap_ok"] = False
+    blocked["risk_cap_reasons"] = check.get("reasons")
+    blocked["risk_cap_projected_risk_pct"] = check.get("projected_risk_pct")
+    blocked.pop("entry", None)
+    blocked.pop("sl", None)
+    blocked.pop("tp", None)
+    return blocked

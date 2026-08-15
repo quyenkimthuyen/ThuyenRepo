@@ -1,5 +1,9 @@
-# Boot sequence after Windows logon: XM MT5 → Live Streamlit app → optional bridge.
+﻿# Boot sequence after Windows logon: XM MT5 -> Live Streamlit app -> optional bridge.
 # Invoked by Scheduled Task "EdgeMinerLiveBoot" (see install_autostart_windows.ps1).
+#
+# IMPORTANT: Keep this file ASCII-only (or UTF-8 WITH BOM). Windows PowerShell 5.1
+# reads BOM-less UTF-8 as system ANSI; UTF-8 em-dash bytes then become a stray
+# quote and break parsing (functions after Start-XmMt5 disappear).
 #
 #   powershell -ExecutionPolicy Bypass -File .\boot_autostart_windows.ps1
 #
@@ -83,11 +87,11 @@ function Start-XmMt5 {
   }
   $install = Find-XmInstallPath
   if (-not $install) {
-    Write-BootLog "MT5 install not found — skip"
+    Write-BootLog "MT5 install not found - skip"
     return $false
   }
   $exe = Join-Path $install "terminal64.exe"
-  Write-BootLog "Starting MT5: $exe"
+  Write-BootLog ("Starting MT5: {0}" -f $exe)
   Start-Process -FilePath $exe
   Start-Sleep -Seconds 12
   return $true
@@ -95,39 +99,53 @@ function Start-XmMt5 {
 
 function Start-LiveApp([int]$AppPort) {
   if (-not (Test-Path $RunApp)) {
-    throw "Missing $RunApp"
+    throw ("Missing {0}" -f $RunApp)
   }
-  Write-BootLog "Starting Live app on :$AppPort"
+  Write-BootLog ("Starting Live app on :{0}" -f $AppPort)
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $RunApp -Action Start -Port $AppPort -TimeoutSeconds 60
   if ($LASTEXITCODE -ne 0) {
-    throw "run_app_windows.ps1 failed exit=$LASTEXITCODE"
+    throw ("run_app_windows.ps1 failed exit={0}" -f $LASTEXITCODE)
   }
 }
 
-function Start-LiveBridgeIfRequested {
-  $pyCandidates = @(
+function Resolve-LivePython {
+  $candidates = @(
     "C:\Work\ThuyenRepo\EdgeMinerM15B5\.venv\Scripts\python.exe",
     (Join-Path $LiveRoot "..\..\..\EdgeMinerM15B5\.venv\Scripts\python.exe"),
-    "python"
+    "C:\Python314\python.exe",
+    "C:\Python313\python.exe",
+    "C:\Python312\python.exe"
   )
-  $py = $null
-  foreach ($c in $pyCandidates) {
-    if ($c -eq "python") { $py = "python"; break }
-    $resolved = $c
-    try { $resolved = (Resolve-Path $c -ErrorAction SilentlyContinue).Path } catch {}
-    if ($resolved -and (Test-Path $resolved)) { $py = $resolved; break }
+  foreach ($c in $candidates) {
+    if ($c -and (Test-Path -LiteralPath $c)) {
+      return [string](Resolve-Path -LiteralPath $c).Path
+    }
   }
+  $cmd = Get-Command python.exe -ErrorAction SilentlyContinue
+  if ($cmd -and $cmd.Source -and (Test-Path -LiteralPath $cmd.Source)) {
+    return [string]$cmd.Source
+  }
+  $cmd = Get-Command py.exe -ErrorAction SilentlyContinue
+  if ($cmd -and $cmd.Source) {
+    return [string]$cmd.Source
+  }
+  return $null
+}
+
+function Start-LiveBridgeIfRequested {
+  $py = Resolve-LivePython
   if (-not $py) {
-    Write-BootLog "Python not found — skip bridge start"
+    Write-BootLog "Python not found - skip bridge start"
     return
   }
-  Write-BootLog "Starting Live bridge workers (auto_deploy_ea)"
+  Write-BootLog ("Starting Live bridge workers via {0}" -f $py)
   Push-Location $LiveRoot
   try {
     $env:LIVE_SKIP_EA_DEPLOY = "0"
-    & $py -c "import bridge_control; print(bridge_control.start_bridge(auto_deploy_ea=True))"
+    $code = "import bridge_control; print(bridge_control.start_bridge(auto_deploy_ea=True))"
+    & $py -c $code
     if ($LASTEXITCODE -ne 0) {
-      Write-BootLog "bridge start failed exit=$LASTEXITCODE"
+      Write-BootLog ("bridge start failed exit={0}" -f $LASTEXITCODE)
     } else {
       Write-BootLog "bridge start OK"
     }
@@ -155,23 +173,41 @@ Write-BootLog ("Boot autostart begin delay={0}s mt5={1} app={2} bridge={3} port=
   $DelaySec, $doMt5, $doApp, $doBridge, $Port)
 
 if ($DelaySec -gt 0) {
-  Write-BootLog "Waiting ${DelaySec}s for desktop/network…"
+  Write-BootLog ("Waiting {0}s for desktop/network..." -f $DelaySec)
   Start-Sleep -Seconds $DelaySec
 }
 
+$failed = $false
 try {
   if ($doMt5) {
     [void](Start-XmMt5)
   }
+} catch {
+  $failed = $true
+  Write-BootLog ("MT5 step FAILED: {0}" -f $_.Exception.Message)
+}
+
+try {
   if ($doApp) {
     Start-LiveApp $Port
   }
+} catch {
+  $failed = $true
+  Write-BootLog ("App step FAILED: {0}" -f $_.Exception.Message)
+}
+
+try {
   if ($doBridge) {
     Start-LiveBridgeIfRequested
   }
-  Write-BootLog "Boot autostart done"
-  exit 0
 } catch {
-  Write-BootLog ("Boot autostart FAILED: {0}" -f $_.Exception.Message)
+  $failed = $true
+  Write-BootLog ("Bridge step FAILED: {0}" -f $_.Exception.Message)
+}
+
+if ($failed) {
+  Write-BootLog "Boot autostart finished with errors"
   exit 1
 }
+Write-BootLog "Boot autostart done"
+exit 0

@@ -62,7 +62,11 @@ def _seed(symbol: str, timeframe: str, src: Path | None) -> Path:
 def prepare_sim_book(symbol: str, timeframe: str, *, materialize: bool = True) -> dict:
   roster = load_roster()
   live_rows = assign_magics(roster.get("models") or [], sim=False)
-  save_roster(live_rows, active_book=roster.get("active_book"))
+  # Batch parent already materializes + save_roster once. Parallel book workers
+  # must not rewrite live_roster.json (Windows WinError 32 file lock).
+  if materialize:
+    save_roster(live_rows, active_book=roster.get("active_book"))
+    materialize_enabled(roster={"models": live_rows})
   sim_rows = assign_magics(live_rows, sim=True)
   book_sim = [
     r for r in sim_rows
@@ -72,8 +76,6 @@ def prepare_sim_book(symbol: str, timeframe: str, *, materialize: bool = True) -
   ]
   if not book_sim:
     raise SystemExit(f"No enabled models for {symbol} {timeframe}")
-  if materialize:
-    materialize_enabled(roster={"models": live_rows})
   bdir = bridge_dir(symbol, timeframe, sim=True)
   write_models_json(bdir, book_sim, base_magic=LIVE_SIM_MAGIC_BASE)
   return {
@@ -291,11 +293,9 @@ def main() -> int:
     "models": model_ids,
     "updated_at": _now(),
   }
-  # Per-book summary (safe under parallel multi-book batch)
+  # Per-book summary only (shared replay_last.json races under parallel books)
   out_book = RESULTS_DIR / f"replay_last_{symbol.lower()}_{timeframe.lower()}.json"
   out_book.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-  out = RESULTS_DIR / "replay_last.json"
-  out.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
   print(json.dumps(summary, indent=2), flush=True)
   return 0
 

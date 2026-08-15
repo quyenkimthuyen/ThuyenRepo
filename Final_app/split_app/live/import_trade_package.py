@@ -174,21 +174,21 @@ def main() -> int:
     out = delete_installed(args.delete)
     print(
       f"Deleted {out['install_id']} ({out.get('label') or out.get('model_id')}) "
-      f"· roster -{out.get('removed_from_roster')}"
+      f"- roster -{out.get('removed_from_roster')}"
     )
     return 0
 
   if args.dir:
     dests = import_dir(args.dir)
     for dest in dests:
-      print(f"Installed → {dest}")
-    print(f"Done · {len(dests)} package(s)")
+      print(f"Installed -> {dest}")
+    print(f"Done - {len(dests)} package(s)")
     return 0
 
   if not args.package:
     ap.error("package path required (or --dir / --list / --delete / --audit)")
   dest = import_one(Path(args.package))
-  print(f"Installed → {dest}")
+  print(f"Installed -> {dest}")
   return 0
 
 

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -48,12 +49,30 @@ def _read(path: Path) -> Any:
 
 def _write(path: Path, data: Any) -> None:
   path.parent.mkdir(parents=True, exist_ok=True)
-  tmp = path.with_suffix(path.suffix + ".tmp")
-  tmp.write_text(
-    json.dumps(data, indent=2, ensure_ascii=False, default=str) + "\n",
-    encoding="utf-8",
-  )
-  tmp.replace(path)
+  tmp = path.with_name(f"{path.stem}.{os.getpid()}.{time.time_ns()}.tmp")
+  payload = json.dumps(data, indent=2, ensure_ascii=False, default=str) + "\n"
+  last_exc: OSError | None = None
+  for attempt in range(8):
+    try:
+      tmp.write_text(payload, encoding="utf-8")
+      tmp.replace(path)
+      return
+    except OSError as exc:
+      last_exc = exc
+      if getattr(exc, "winerror", None) != 32 and getattr(exc, "errno", None) not in (11, 16):
+        try:
+          tmp.unlink(missing_ok=True)
+        except OSError:
+          pass
+        raise
+      time.sleep(0.05 * (attempt + 1))
+  try:
+    tmp.unlink(missing_ok=True)
+  except OSError:
+    pass
+  if last_exc:
+    raise last_exc
+  raise OSError(f"cannot write {path}")
 
 
 def gate_enabled() -> bool:
@@ -249,6 +268,43 @@ def emit_remine_alert(payload: dict[str, Any]) -> dict[str, Any]:
 
 def load_last_alert() -> dict[str, Any]:
   return _read(LAST_PATH) or {}
+
+
+def load_gate_by_model_week(week_start: str | None = None) -> dict[str, dict[str, Any]]:
+  """Latest remine-gate alert per model_id (optionally filtered to ``week_start``).
+
+  Scans ``remine_gate_alerts.jsonl`` tail-first so newer events win.
+  """
+  out: dict[str, dict[str, Any]] = {}
+  if not ALERTS_PATH.exists():
+    last = load_last_alert()
+    mid = str(last.get("model_id") or "")
+    if mid and (not week_start or str(last.get("week_start") or "") == str(week_start)):
+      out[mid] = last
+    return out
+  try:
+    lines = ALERTS_PATH.read_text(encoding="utf-8", errors="replace").splitlines()
+  except OSError:
+    return out
+  week_s = str(week_start) if week_start else None
+  # Newest last in file — walk reverse, keep first hit per model
+  for line in reversed(lines):
+    line = line.strip()
+    if not line:
+      continue
+    try:
+      row = json.loads(line)
+    except json.JSONDecodeError:
+      continue
+    if not isinstance(row, dict):
+      continue
+    mid = str(row.get("model_id") or "")
+    if not mid or mid in out:
+      continue
+    if week_s and str(row.get("week_start") or "") != week_s:
+      continue
+    out[mid] = row
+  return out
 
 
 def remove_live_week_entry(model_id: str, week_start: Any) -> bool:

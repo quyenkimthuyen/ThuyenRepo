@@ -1,4 +1,4 @@
-# Install / uninstall Windows logon Scheduled Task for Live boot autostart.
+﻿# Install / uninstall Windows logon Scheduled Task for Live boot autostart.
 #
 #   .\install_autostart_windows.ps1 -Action Install
 #   .\install_autostart_windows.ps1 -Action Uninstall
@@ -67,12 +67,14 @@ switch ($Action) {
       "-Port", "$Port"
     ) -join " "
 
-    $action = New-ScheduledTaskAction `
+    # NOTE: do not name this $Action - that shadows the -Action param (ValidateSet)
+    # and PowerShell then rejects MSFT_TaskExecAction as an invalid Action value.
+    $taskAction = New-ScheduledTaskAction `
       -Execute "powershell.exe" `
       -Argument $arg `
       -WorkingDirectory $LiveRoot
 
-    # At current user logon — MT5/UI need interactive session
+    # At current user logon - MT5/UI need interactive session
     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
     $settings = New-ScheduledTaskSettingsSet `
       -AllowStartIfOnBatteries `
@@ -87,21 +89,21 @@ switch ($Action) {
 
     Register-ScheduledTask `
       -TaskName $TaskName `
-      -Action $action `
+      -Action $taskAction `
       -Trigger $trigger `
       -Settings $settings `
       -Principal $principal `
-      -Description "EdgeMiner Live: start XM MT5 + Live app after Windows logon" `
+      -Description "EdgeMiner Live: start XM MT5 + Live app + bridge after Windows logon" `
       -Force | Out-Null
 
-    # Persist prefs enabled
+    # Persist prefs enabled (keep start_bridge from existing prefs when present)
     $prefsPath = Join-Path $LiveRoot "results\autostart_prefs.json"
     New-Item -ItemType Directory -Path (Split-Path $prefsPath) -Force | Out-Null
     $prefs = @{
       enabled = $true
       start_mt5 = $true
       start_app = $true
-      start_bridge = $false
+      start_bridge = $true
       delay_sec = $DelaySec
       port = $Port
       updated_at = (Get-Date).ToString("o")

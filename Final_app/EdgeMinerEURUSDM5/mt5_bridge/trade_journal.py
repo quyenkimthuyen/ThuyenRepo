@@ -88,6 +88,31 @@ def _compute_r(direction: str, entry: float, exit_px: float, sl: float) -> float
   return None
 
 
+def _is_reconcile_placeholder(row: dict) -> bool:
+  """Ghost closes from position_sync (no EA fill yet) — allow real fill to overwrite."""
+  interventions = [str(x) for x in (row.get("interventions") or [])]
+  reason = str(row.get("reason") or "").lower()
+  if any(
+    tag in interventions
+    for tag in (
+      "journal_desync",
+      "ea_reconnect_reconcile",
+      "worker_start_reconcile",
+      "mt5_flat",
+      "magic_not_in_roster",
+    )
+  ):
+    return True
+  if reason in (
+    "ea_reconnect_reconcile",
+    "worker_start_reconcile",
+    "mt5_flat",
+    "magic_not_in_roster",
+  ):
+    return True
+  return False
+
+
 def _find_open(
   trades: list[dict],
   *,
@@ -416,8 +441,10 @@ def process_fill(
       row = _find_by_ticket_or_signal(
         trades, signal_id=sid, ticket=ticket, statuses=("CLOSED",),
       )
-      # Already finalized — no-op (prevents Live Health/Risk inflation)
-      if row is not None and row.get("exit_px") is not None:
+      # Already finalized with a real exit — no-op.
+      # Reconcile placeholders (BE @ entry, journal_desync) MUST be upgradable
+      # when the real EA close fill arrives later.
+      if row is not None and row.get("exit_px") is not None and not _is_reconcile_placeholder(row):
         return row
     if not row:
       is_manual, source = _infer_open_manual(fill, decision)

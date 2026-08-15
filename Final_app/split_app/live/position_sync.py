@@ -94,6 +94,135 @@ def connection_position_count(bridge_dir: Path) -> int | None:
     return None
 
 
+def _risk_dist(entry: float, sl: float) -> float | None:
+  try:
+    d = abs(float(entry) - float(sl))
+  except (TypeError, ValueError):
+    return None
+  return d if d > 0 else None
+
+
+def _compute_r(direction: str, entry: float, exit_px: float, sl: float) -> float | None:
+  risk = _risk_dist(entry, sl)
+  if not risk:
+    return None
+  d = (direction or "").upper()
+  if d in ("BUY", "LONG"):
+    return round((float(exit_px) - float(entry)) / risk, 3)
+  if d in ("SELL", "SHORT"):
+    return round((float(entry) - float(exit_px)) / risk, 3)
+  return None
+
+
+def _matching_close_fill(
+  bridge_dir: Path,
+  *,
+  ticket: int = 0,
+  signal_id: str | None = None,
+) -> dict[str, Any] | None:
+  """Prefer sticky fill.json close, then recent fills.jsonl close for this ticket."""
+  bdir = Path(bridge_dir)
+  candidates: list[dict[str, Any]] = []
+  sticky = _read(bdir / "fill.json")
+  if isinstance(sticky, dict):
+    candidates.append(sticky)
+  for name in ("fills.jsonl", "ea_fills.jsonl"):
+    path = bdir / name
+    if not path.is_file():
+      continue
+    try:
+      lines = path.read_text(encoding="utf-8").splitlines()[-80:]
+    except OSError:
+      continue
+    for line in reversed(lines):
+      line = line.strip()
+      if not line:
+        continue
+      try:
+        row = json.loads(line)
+      except json.JSONDecodeError:
+        continue
+      if isinstance(row, dict):
+        candidates.append(row)
+
+  for fill in candidates:
+    event = str(fill.get("event") or "").lower()
+    detail = str(fill.get("detail") or fill.get("reason") or "").lower()
+    is_close = event == "close" or detail in (
+      "closed", "close", "sl", "tp", "max_hold", "manual",
+      "manual_close", "ea_close", "stop_out", "trail", "end_range",
+    )
+    if not is_close:
+      continue
+    try:
+      ft = int(fill.get("ticket") or 0)
+    except (TypeError, ValueError):
+      ft = 0
+    if ticket and ft and ft == ticket:
+      return fill
+    if signal_id and fill.get("signal_id") == signal_id:
+      return fill
+  return None
+
+
+def _apply_close_from_fill(trade: dict[str, Any], fill: dict[str, Any], *, now: str) -> None:
+  exit_px = fill.get("price") or fill.get("exit_px") or fill.get("close_price")
+  entry = trade.get("entry_px")
+  if entry is None:
+    entry = fill.get("entry") or fill.get("entry_px")
+  sl_for_r = trade.get("sl_initial")
+  if sl_for_r is None:
+    sl_for_r = trade.get("sl") if trade.get("sl") is not None else fill.get("sl")
+  direction = trade.get("direction") or fill.get("action")
+  r = None
+  if entry is not None and exit_px is not None and sl_for_r is not None:
+    r = _compute_r(str(direction), float(entry), float(exit_px), float(sl_for_r))
+  result = None
+  if r is not None:
+    if r > 0.05:
+      result = "WIN"
+    elif r < -0.05:
+      result = "LOSS"
+    else:
+      result = "BE"
+  elif fill.get("profit") is not None:
+    try:
+      p = float(fill["profit"])
+      result = "WIN" if p > 0 else ("LOSS" if p < 0 else "BE")
+    except (TypeError, ValueError):
+      result = None
+
+  trade["status"] = "CLOSED"
+  # Prefer existing wall-clock exit (reconcile/ISO) over broker-minute fill.time
+  # so period filters (Today / This week) stay correct.
+  if not trade.get("exit_time"):
+    trade["exit_time"] = fill.get("time") or fill.get("bar_time") or now
+  elif fill.get("bar_time") and "T" not in str(trade.get("exit_time")):
+    trade["exit_time"] = fill.get("bar_time") or fill.get("time") or trade.get("exit_time")
+  if exit_px is not None:
+    try:
+      trade["exit_px"] = float(exit_px)
+    except (TypeError, ValueError):
+      trade["exit_px"] = trade.get("exit_px") or trade.get("entry_px")
+  elif trade.get("exit_px") is None:
+    trade["exit_px"] = trade.get("entry_px")
+  if fill.get("profit") is not None:
+    try:
+      trade["profit"] = float(fill["profit"])
+    except (TypeError, ValueError):
+      pass
+  if r is not None:
+    trade["r"] = r
+  elif trade.get("r") is None:
+    trade["r"] = 0.0
+  if result:
+    trade["result"] = result
+  elif trade.get("result") is None:
+    trade["result"] = "BE"
+  trade["reason"] = str(fill.get("reason") or fill.get("detail") or trade.get("reason") or "ea_close")
+  trade["updated_at"] = now
+
+
 def reconcile_bridge_positions(
   bridge_dir: Path | str,
   *,
@@ -107,6 +236,7 @@ def reconcile_bridge_positions(
   2. Else if connection.positions == 0: close all OPEN (flat on MT5).
   3. Always close OPEN whose magic is not in this book's models.json roster
      (stale after magic remap / Rebuild roster).
+  Prefer matching EA close fill (fill.json / fills.jsonl) over inventing BE @ entry.
   """
   bdir = Path(bridge_dir)
   trades_path = bdir / "trades.json"
@@ -155,19 +285,27 @@ def reconcile_bridge_positions(
     if not ghost:
       continue
 
-    t["status"] = "CLOSED"
-    t["exit_time"] = t.get("exit_time") or now
-    if t.get("exit_px") is None:
-      t["exit_px"] = t.get("entry_px")
-    t["reason"] = detail
-    if t.get("result") is None:
-      t["result"] = "BE"
-    if t.get("r") is None:
-      t["r"] = 0.0
-    t["updated_at"] = now
+    fill = _matching_close_fill(
+      bdir, ticket=ticket, signal_id=str(t.get("signal_id") or "") or None,
+    )
     interventions = list(t.get("interventions") or [])
-    if "journal_desync" not in interventions:
-      interventions.append("journal_desync")
+    if fill:
+      _apply_close_from_fill(t, fill, now=now)
+      if "fill_recovered" not in interventions:
+        interventions.append("fill_recovered")
+    else:
+      t["status"] = "CLOSED"
+      t["exit_time"] = t.get("exit_time") or now
+      if t.get("exit_px") is None:
+        t["exit_px"] = t.get("entry_px")
+      t["reason"] = detail
+      if t.get("result") is None:
+        t["result"] = "BE"
+      if t.get("r") is None:
+        t["r"] = 0.0
+      t["updated_at"] = now
+      if "journal_desync" not in interventions:
+        interventions.append("journal_desync")
     if detail not in interventions:
       interventions.append(detail)
     t["interventions"] = interventions

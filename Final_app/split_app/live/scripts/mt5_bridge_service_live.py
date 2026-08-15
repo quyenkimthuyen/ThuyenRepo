@@ -38,6 +38,35 @@ from shared.constants import (  # noqa: E402
   LIVE_SIM_PORT,
 )
 
+# Filled after argparse so atexit / wrapper can log worker_exit even on crash.
+_WORKER_CTX: dict[str, object] = {}
+
+
+def _log_worker_exit(*, code: int, reason: str, traceback_text: str | None = None) -> None:
+  if _WORKER_CTX.get("_exit_logged"):
+    return
+  try:
+    payload: dict = {
+      "exit_code": int(code),
+      "reason": reason,
+      "pid": os.getpid(),
+    }
+    if traceback_text:
+      payload["traceback"] = traceback_text[-4000:]
+    log_event(
+      "worker_exit",
+      summary=f"exit={code} {reason}",
+      payload=payload,
+      level="error" if int(code) != 0 else "info",
+      symbol=str(_WORKER_CTX.get("symbol") or "") or None,
+      timeframe=str(_WORKER_CTX.get("timeframe") or "") or None,
+      bridge_dir=_WORKER_CTX.get("bridge_dir"),  # type: ignore[arg-type]
+      source="worker",
+    )
+    _WORKER_CTX["_exit_logged"] = True
+  except Exception:
+    pass
+
 
 def _register(args, model_ids: list[str]) -> None:
   from mt5_bridge.background import PID_PATH, SERVICE_LOG, save_config
@@ -101,9 +130,45 @@ def main() -> int:
   args = ap.parse_args()
   if args.monitor_port is None:
     args.monitor_port = LIVE_SIM_PORT if args.sim else LIVE_BRIDGE_PORT
+  _WORKER_CTX.update({
+    "symbol": args.symbol,
+    "timeframe": args.timeframe,
+    "bridge_dir": args.bridge_dir,
+    "sim": bool(args.sim),
+  })
 
   RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-  mat = materialize_enabled()
+  # Parent prepare_runtime / OOS batch already materializes once. Parallel book
+  # workers must not rewrite shared trade_models.json (Windows file races).
+  # Opt-in: LIVE_WORKER_MATERIALIZE=1
+  _do_mat = os.environ.get("LIVE_WORKER_MATERIALIZE", "").strip().lower() in (
+    "1", "true", "yes", "on",
+  )
+  if _do_mat:
+    mat = materialize_enabled()
+  else:
+    from books import group_models_by_book
+    from package_store import load_roster
+
+    rows = [r for r in (load_roster().get("models") or []) if r.get("enabled")]
+    groups_out = []
+    for (sym, tf), grow in group_models_by_book(rows).items():
+      groups_out.append({
+        "symbol": sym,
+        "timeframe": tf,
+        "model_ids": [str(r.get("model_id")) for r in grow],
+        "rows": grow,
+        "n": len(grow),
+      })
+    mat = {
+      "groups": groups_out,
+      "model_ids": [str(r.get("model_id")) for r in rows],
+      "n": len(rows),
+    }
+    print(
+      f"[live-bridge] skip materialize (shared store) · groups={len(groups_out)}",
+      flush=True,
+    )
   groups = mat.get("groups") or []
   match = [
     g for g in groups
@@ -128,13 +193,15 @@ def main() -> int:
   prune_old_logs()
   log_event(
     "worker_start",
-    summary=f"start {args.symbol} {args.timeframe} sim={bool(args.sim)}",
+    summary=f"start {args.symbol} {args.timeframe} sim={bool(args.sim)} pid={os.getpid()}",
     payload={
+      "pid": os.getpid(),
       "model_ids": book_ids,
       "risk_pct": args.risk_pct,
       "poll": args.poll,
       "sim": bool(args.sim),
       "once": bool(args.once),
+      "monitor_port": args.monitor_port,
     },
     symbol=args.symbol,
     timeframe=args.timeframe,
@@ -189,6 +256,7 @@ def main() -> int:
     cli_ids = list(book_ids)
   if not cli_ids:
     print("[live-bridge] no models", flush=True)
+    _log_worker_exit(code=2, reason="no_models")
     return 2
   # Pin this worker to its book models forever — global mt5_bridge_config.json
   # holds the UNION of all books and must never replace engines here.
@@ -250,15 +318,44 @@ def main() -> int:
   )
   if not args.sim:
     try:
+      # Sticky EA fill.json first — real close must beat ghost BE reconcile.
+      from mt5_bridge.protocol import fill_path, read_json
+      from mt5_bridge.trade_journal import drain_ea_fills_queue, process_fill
+      for payload in drain_ea_fills_queue(bridge_dir):
+        if isinstance(payload, dict):
+          process_fill(payload, bridge_dir=bridge_dir, model_id=payload.get("model_id"))
+      sticky = read_json(fill_path(bridge_dir))
+      if isinstance(sticky, dict):
+        process_fill(sticky, bridge_dir=bridge_dir, model_id=sticky.get("model_id"))
+    except Exception as fill_exc:
+      print(f"[live-bridge] startup fill ingest skip: {fill_exc}", flush=True)
+    try:
       from position_sync import reconcile_bridge_positions
       rec = reconcile_bridge_positions(bridge_dir, reason="worker_start_reconcile")
       if rec.get("closed"):
         print(f"[live-bridge] startup reconcile closed={rec.get('closed')}", flush=True)
     except Exception as sync_exc:
       print(f"[live-bridge] startup position_sync skip: {sync_exc}", flush=True)
+    try:
+      from weekend_preremine import maybe_preremine_engines
+      pre = maybe_preremine_engines(
+        engines,
+        symbol=args.symbol,
+        timeframe=args.timeframe,
+        bridge_dir=bridge_dir,
+      )
+      if not pre.get("skipped"):
+        print(
+          f"[live-bridge] weekend_preremine week={pre.get('week_start')} "
+          f"ok={pre.get('ok')} models={len(pre.get('models') or [])}",
+          flush=True,
+        )
+    except Exception as pre_exc:
+      print(f"[live-bridge] weekend_preremine skip: {pre_exc}", flush=True)
   last_fp: str | None = None
   last_fill_fp: str | None = None
   last_hist_force_at = 0.0
+  last_preremine_check = 0.0
 
   while True:
     try:
@@ -340,6 +437,23 @@ def main() -> int:
         except Exception as sync_exc:
           print(f"[live-bridge] position_sync skip: {sync_exc}", flush=True)
 
+      # End-of-week pre-remine for *next* Monday (quiet market). Fallback remains
+      # first-bar remine if this never ran or failed.
+      if not args.sim and not args.once:
+        now_chk = time.time()
+        if (now_chk - last_preremine_check) >= 60.0:
+          last_preremine_check = now_chk
+          try:
+            from weekend_preremine import maybe_preremine_engines
+            maybe_preremine_engines(
+              engines,
+              symbol=args.symbol,
+              timeframe=args.timeframe,
+              bridge_dir=bridge_dir,
+            )
+          except Exception as pre_exc:
+            print(f"[live-bridge] weekend_preremine skip: {pre_exc}", flush=True)
+
       if not args.sim:
         try:
           from mt5_bridge.background import check_and_apply_loss_guard
@@ -403,4 +517,40 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-  raise SystemExit(main())
+  _rc = 1
+  _tb: str | None = None
+  _reason = "error"
+  try:
+    _rc = int(main() or 0)
+    _reason = "ok" if _rc == 0 else f"return_{_rc}"
+  except SystemExit as _se:
+    if _se.code is None:
+      _rc = 0
+    elif isinstance(_se.code, int):
+      _rc = int(_se.code)
+    else:
+      _rc = 1
+    _reason = "system_exit" if _rc != 0 else "ok"
+    _log_worker_exit(code=_rc, reason=_reason)
+    raise
+  except Exception:
+    _tb = traceback.format_exc()
+    print(_tb, flush=True)
+    try:
+      log_event(
+        "worker_error",
+        summary=(_tb.splitlines()[-1] if _tb else "fatal"),
+        payload={"traceback": (_tb or "")[-4000:]},
+        level="error",
+        symbol=str(_WORKER_CTX.get("symbol") or "") or None,
+        timeframe=str(_WORKER_CTX.get("timeframe") or "") or None,
+        bridge_dir=_WORKER_CTX.get("bridge_dir"),  # type: ignore[arg-type]
+        source="worker",
+      )
+    except Exception:
+      pass
+    _rc = 1
+    _reason = "uncaught_exception"
+  finally:
+    _log_worker_exit(code=_rc, reason=_reason, traceback_text=_tb)
+  raise SystemExit(_rc)

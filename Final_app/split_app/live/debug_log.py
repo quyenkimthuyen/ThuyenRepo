@@ -111,7 +111,11 @@ def log_event(
       "EdgeMiner Live debug logs (for support / AI diagnosis).\n"
       "Traders normally ignore this folder.\n"
       f"Retention: {RETENTION_DAYS} days. Env LIVE_DEBUG_RETENTION_DAYS to change.\n"
-      "Each line = JSON event (decision, fill, ea_sync, error, start/stop…).\n",
+      "Each line = JSON event (decision, fill, ea_sync, error, start/stop…).\n"
+      "Lifecycle: bridge_start / worker_spawn / worker_start / worker_exit / "
+      "worker_kill / bridge_start_done / bridge_stop.\n"
+      "Start path payload includes preflight_mode (reuse|fast|full|skip|none), "
+      "preflight_sec, duration_sec, books.\n",
       encoding="utf-8",
     )
   path = day / f"{key}.jsonl"

@@ -167,16 +167,20 @@ def enable_autostart(
   delay_sec: int = 45,
   port: int = 8601,
 ) -> dict[str, Any]:
-  """Save prefs + register Scheduled Task (At logon)."""
-  prefs = save_prefs(
-    enabled=True,
-    start_mt5=bool(start_mt5),
-    start_app=bool(start_app),
-    start_bridge=bool(start_bridge),
-    delay_sec=int(delay_sec),
-    port=int(port),
-  )
+  """Save prefs + register Scheduled Task (At logon).
+
+  On Windows, ``enabled=True`` is committed only after the task registers
+  successfully (avoids prefs saying enabled while Task is absent).
+  """
+  draft = {
+    "start_mt5": bool(start_mt5),
+    "start_app": bool(start_app),
+    "start_bridge": bool(start_bridge),
+    "delay_sec": int(delay_sec),
+    "port": int(port),
+  }
   if not is_windows():
+    prefs = save_prefs(enabled=True, **draft)
     return {
       "ok": True,
       "skipped": True,
@@ -184,17 +188,45 @@ def enable_autostart(
       "prefs": prefs,
       "message": "Prefs saved. Install Scheduled Task on Windows machine.",
     }
+  # Write intended prefs before install so boot script / PS can read them,
+  # but roll enabled back if Register-ScheduledTask fails.
+  save_prefs(enabled=False, **draft)
   out = _run_ps([
     "-Action", "Install",
     "-DelaySec", str(int(delay_sec)),
     "-Port", str(int(port)),
-  ], timeout_sec=25.0)
+  ], timeout_sec=45.0)
+  if out.get("ok"):
+    prefs = save_prefs(enabled=True, **draft)
+    # Confirm task is visible to Status
+    st = task_status()
+    if not st.get("task_installed"):
+      return {
+        "ok": False,
+        "skipped": False,
+        "prefs": prefs,
+        "task": out,
+        "status": st,
+        "message": (
+          "Install reported OK but task not visible: "
+          + str(st.get("detail") or out.get("stderr") or "")
+        ).strip(),
+      }
+    return {
+      "ok": True,
+      "skipped": False,
+      "prefs": prefs,
+      "task": out,
+      "status": st,
+      "message": (out.get("stdout") or "").strip() or "Scheduled Task installed",
+    }
+  prefs = save_prefs(enabled=False, **draft)
   return {
-    "ok": bool(out.get("ok")),
+    "ok": False,
     "skipped": False,
     "prefs": prefs,
     "task": out,
-    "message": (out.get("stdout") or out.get("stderr") or "").strip(),
+    "message": (out.get("stderr") or out.get("stdout") or out.get("reason") or "install failed").strip(),
   }
 
 

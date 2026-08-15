@@ -19,22 +19,50 @@ def _prefs_path() -> Path:
     return Path(__file__).resolve().parents[1] / "results" / _PREF_NAME
 
 
+def load_ui_prefs() -> dict:
+  """Sidebar / desk prefs that must survive browser refresh."""
+  path = _prefs_path()
+  out: dict = {
+    "theme": "light",
+    "auto_refresh": False,
+    "auto_refresh_every": 5,
+  }
+  try:
+    if path.exists():
+      raw = json.loads(path.read_text(encoding="utf-8"))
+      if isinstance(raw, dict):
+        out.update(raw)
+  except Exception:
+    pass
+  out["theme"] = "light"
+  out["auto_refresh"] = bool(out.get("auto_refresh"))
+  try:
+    every = int(out.get("auto_refresh_every") or 5)
+  except (TypeError, ValueError):
+    every = 5
+  if every not in (5, 10, 15, 30):
+    every = 5
+  out["auto_refresh_every"] = every
+  return out
+
+
+def save_ui_prefs(updates: dict | None = None) -> dict:
+  path = _prefs_path()
+  path.parent.mkdir(parents=True, exist_ok=True)
+  payload = load_ui_prefs()
+  if updates:
+    payload.update(updates)
+  payload["theme"] = "light"
+  path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+  return payload
+
+
 def load_theme_pref() -> ThemeMode:
   return "light"
 
 
 def save_theme_pref(mode: ThemeMode = "light") -> None:
-  path = _prefs_path()
-  path.parent.mkdir(parents=True, exist_ok=True)
-  payload: dict = {"theme": "light"}
-  try:
-    if path.exists():
-      old = json.loads(path.read_text(encoding="utf-8"))
-      if isinstance(old, dict):
-        payload = {**old, "theme": "light"}
-  except Exception:
-    pass
-  path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+  save_ui_prefs({"theme": "light"})
 
 
 def get_theme_mode() -> ThemeMode:

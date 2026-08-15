@@ -15,9 +15,13 @@ from package_store import load_roster
 from remine_gate import gate_enabled
 from runtime_host import normalize_symbol, normalize_timeframe
 
-# Heartbeat is ~2s; allow slack for disk/UI lag
+# EA process liveness = connection.json write age (OnTimer/OnTick), not broker tick clock.
+# Heartbeat rewrite is ~2s; allow slack for disk/UI lag.
 EA_WARN_SEC = 45.0
 EA_STALE_SEC = 90.0
+# Broker last-tick age (tick_time_msc). Stale ticks while EA file is fresh = market quiet.
+TICK_WARN_SEC = 45.0
+TICK_STALE_SEC = 90.0
 # Worker status.json should refresh every poll cycle while running
 WORKER_WARN_SEC = 90.0
 WORKER_STALE_SEC = 180.0
@@ -25,6 +29,8 @@ WORKER_STALE_SEC = 180.0
 DECISION_LAG_SEC = 25.0
 DECISION_TIMEOUT_SEC = 45.0
 HISTORY_STUCK_SEC = 300.0
+# Local wall clock: Fri from this hour, Sat, Sun → expect no FX ticks.
+MARKET_QUIET_FRI_HOUR = 18
 
 TF_SECONDS = {"M1": 60, "M5": 300, "M15": 900, "M30": 1800, "H1": 3600}
 
@@ -104,6 +110,29 @@ def _fmt_age(sec: float | None) -> str:
   if sec < 3600:
     return f"{int(sec // 60)}m"
   return f"{int(sec // 3600)}h"
+
+
+def _in_market_quiet_window(now: datetime | None = None) -> bool:
+  """Fri ≥ MARKET_QUIET_FRI_HOUR, all Saturday, all Sunday (local)."""
+  ts = now or datetime.now().astimezone()
+  if ts.tzinfo is None:
+    ts = ts.replace(tzinfo=timezone.utc).astimezone()
+  wd = int(ts.weekday())  # Mon=0 … Sun=6
+  if wd >= 5:
+    return True
+  if wd == 4 and int(ts.hour) >= MARKET_QUIET_FRI_HOUR:
+    return True
+  return False
+
+
+def _tick_age_seconds(conn: dict[str, Any]) -> float | None:
+  raw = conn.get("tick_time_msc") if isinstance(conn, dict) else None
+  if raw is None:
+    return None
+  try:
+    return max(0.0, time.time() - (float(raw) / 1000.0))
+  except (TypeError, ValueError):
+    return None
 
 
 def _norm_bar_key(raw: Any) -> str | None:
@@ -192,22 +221,19 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
     bar_path = bdir / "bar.json"
     status_path = bdir / "status.json"
 
-    # Prefer EA tick clock, then file mtime
-    ea_age = None
-    if isinstance(conn, dict) and conn.get("tick_time_msc"):
-      try:
-        ea_age = max(0.0, time.time() - (float(conn["tick_time_msc"]) / 1000.0))
-      except (TypeError, ValueError):
-        ea_age = None
-    if ea_age is None:
-      ea_age = _file_age_seconds(conn_path)
-    if ea_age is None:
-      ea_age = _file_age_seconds(bar_path)
+    # Split clocks: EA process write vs broker last tick (weekend quiet ≠ EA dead).
+    tick_age = _tick_age_seconds(conn if isinstance(conn, dict) else {})
+    conn_age = _file_age_seconds(conn_path)
+    if conn_age is None:
+      conn_age = _age_seconds(_parse_ts((conn or {}).get("updated_at") if isinstance(conn, dict) else None))
+    # Primary "EA age" for UI = connection write freshness (process alive).
+    ea_age = conn_age if conn_age is not None else _file_age_seconds(bar_path)
 
     bar_time_raw = bar.get("time") or bar.get("bar_time") or (conn.get("bar") or {}).get("time")
     bar_key = _norm_bar_key(bar_time_raw)
     bar_file_age = _file_age_seconds(bar_path)
     status_age = _age_seconds(_parse_ts(status.get("updated_at"))) or _file_age_seconds(status_path)
+    market_quiet = _in_market_quiet_window()
 
     book_flags: list[str] = []
     book_level = "ok"
@@ -264,7 +290,8 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
           "message": f"{sym_n} {tf_n}: state={st} · {status.get('error') or status.get('reason') or '—'}",
         })
 
-      if ea_age is None or not (chart.get("symbol") or conn or bar):
+      has_ea_signal = bool(chart.get("symbol") or conn or bar)
+      if ea_age is None or not has_ea_signal:
         book_level = _worst(book_level, "danger")
         book_flags.append("EA_OFFLINE")
         alerts.append({
@@ -277,6 +304,7 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
         })
         ea_state = "offline"
       elif ea_age > EA_STALE_SEC:
+        # connection.json not rewritten → EA/chart truly stuck or removed
         book_level = _worst(book_level, "danger")
         book_flags.append("EA_STALE")
         ea_state = "stale"
@@ -286,7 +314,10 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
           "symbol": sym_n,
           "timeframe": tf_n,
           "code": "EA_STALE",
-          "message": f"{sym_n} {tf_n}: EA heartbeat {_fmt_age(ea_age)} — có thể kẹt/chart tắt",
+          "message": (
+            f"{sym_n} {tf_n}: EA connection {_fmt_age(ea_age)} — "
+            "chart/EA có thể tắt (không ghi connection.json)"
+          ),
         })
       elif ea_age > EA_WARN_SEC:
         book_level = _worst(book_level, "warn")
@@ -297,6 +328,42 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
         if conn.get("connected") is False:
           book_level = _worst(book_level, "warn")
           book_flags.append("TERMINAL_DISC")
+        # EA alive but broker tick clock frozen (weekend / holiday / feed pause)
+        if tick_age is not None and tick_age > TICK_STALE_SEC:
+          book_flags.append("TICK_STALE")
+          if market_quiet:
+            book_flags.append("MARKET_QUIET")
+            ea_state = "quiet"
+            # Expected weekend — warn only, do not raise overall to danger
+            book_level = _worst(book_level, "warn")
+            alerts.append({
+              "level": "warn",
+              "scope": "book",
+              "symbol": sym_n,
+              "timeframe": tf_n,
+              "code": "MARKET_QUIET",
+              "message": (
+                f"{sym_n} {tf_n}: market quiet · last tick {_fmt_age(tick_age)} "
+                "(cuối tuần/không có tick — EA vẫn online)"
+              ),
+            })
+          else:
+            ea_state = "tick_stale"
+            book_level = _worst(book_level, "warn")
+            alerts.append({
+              "level": "warn",
+              "scope": "book",
+              "symbol": sym_n,
+              "timeframe": tf_n,
+              "code": "TICK_STALE",
+              "message": (
+                f"{sym_n} {tf_n}: last tick {_fmt_age(tick_age)} — "
+                "EA online nhưng feed/tick đứng"
+              ),
+            })
+        elif tick_age is not None and tick_age > TICK_WARN_SEC:
+          book_flags.append("TICK_SLOW")
+          book_level = _worst(book_level, "warn")
 
       hist_state = str(hist.get("state") or "").lower()
       hist_age = _age_seconds(_parse_ts(hist.get("updated_at")))
@@ -440,7 +507,9 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
 
       reason = str(dec.get("reason") or dec.get("halt_source") or "")[:80]
       strat_src = str(dec.get("strategy_source") or "").strip().lower() or None
-      if strat_src == "remine_gate_fail" or reason == "remine_gate_fail":
+      # Gate OFF → do not surface remine/schedule_fallback noise (sticky decision
+      # tags from an earlier gate-on remine stay in decision.json until next bar).
+      if remine_gate_on and (strat_src == "remine_gate_fail" or reason == "remine_gate_fail"):
         flags.append("GATE_FAIL")
         level = _worst(level, "danger")
         alerts.append({
@@ -455,7 +524,7 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
             + "; ".join(str(x) for x in (dec.get("remine_gate_reasons") or ["blocked"]))
           )[:160],
         })
-      elif strat_src == "schedule_fallback":
+      elif remine_gate_on and strat_src == "schedule_fallback":
         flags.append("SCHEDULE_FALLBACK")
         level = _worst(level, "warn")
         alerts.append({
@@ -585,6 +654,8 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
       "ea_state": ea_state if not sim else "replay",
       "ea_age_sec": ea_age,
       "ea_age": _fmt_age(ea_age),
+      "tick_age_sec": tick_age if not sim else None,
+      "tick_age": _fmt_age(tick_age) if not sim else "—",
       "bar_time": bar_key or bar_time_raw,
       "bar_age_sec": bar_file_age,
       "bar_age": _fmt_age(bar_file_age),

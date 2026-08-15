@@ -85,6 +85,8 @@ def journal_summary_many(
   r_vals = [r for t in closed if (r := _trade_r(t)) is not None]
   wins = sum(1 for t in closed if _trade_result(t) == "WIN")
   losses = sum(1 for t in closed if _trade_result(t) == "LOSS")
+  bes = sum(1 for t in closed if _trade_result(t) == "BE")
+  decided = wins + losses
   fills = 0
   for b in bridge_dirs:
     fills += len(load_recent_fills(b, limit=5000))
@@ -96,7 +98,8 @@ def journal_summary_many(
     "total_r": round(sum(r_vals), 3) if r_vals else 0.0,
     "wins": wins,
     "losses": losses,
-    "win_rate_pct": round(100.0 * wins / len(closed), 1) if closed else None,
+    "be": bes,
+    "win_rate_pct": round(100.0 * wins / decided, 1) if decided else None,
     "recent_fills": fills,
   }
 
@@ -329,6 +332,7 @@ def _summarize_group(trades: list[dict]) -> dict[str, Any]:
     if r is not None:
       rs.append(r)
   n_closed = len(closed)
+  decided = wins + losses
   return {
     "n_trades": len(trades),
     "n_closed": n_closed,
@@ -338,7 +342,7 @@ def _summarize_group(trades: list[dict]) -> dict[str, Any]:
     "be": bes,
     "total_r": round(sum(rs), 3) if rs else 0.0,
     "avg_r": round(sum(rs) / len(rs), 3) if rs else None,
-    "win_rate_pct": round(100.0 * wins / n_closed, 1) if n_closed else None,
+    "win_rate_pct": round(100.0 * wins / decided, 1) if decided else None,
   }
 
 
@@ -352,6 +356,8 @@ def journal_summary(
   r_vals = [r for t in closed if (r := _trade_r(t)) is not None]
   wins = sum(1 for t in closed if _trade_result(t) == "WIN")
   losses = sum(1 for t in closed if _trade_result(t) == "LOSS")
+  bes = sum(1 for t in closed if _trade_result(t) == "BE")
+  decided = wins + losses
   return {
     "period": period,
     "period_label": PERIOD_LABELS.get(period, period),
@@ -360,7 +366,8 @@ def journal_summary(
     "total_r": round(sum(r_vals), 3) if r_vals else 0.0,
     "wins": wins,
     "losses": losses,
-    "win_rate_pct": round(100.0 * wins / len(closed), 1) if closed else None,
+    "be": bes,
+    "win_rate_pct": round(100.0 * wins / decided, 1) if decided else None,
     "recent_fills": len(load_recent_fills(bridge_dir, limit=500)),
   }
 

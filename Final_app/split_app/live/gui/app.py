@@ -513,6 +513,62 @@ def render_replay_desk() -> dict:
   with oc2:
     oos_to = st.date_input("OOS to", key="oos_to_date")
 
+  # Warn only when selected OOS is outside cache for enabled books.
+  try:
+    from books import group_models_by_book
+    from live_config import RESULTS_DIR
+    import json as _json
+
+    def _cache_span(sym: str, tf: str) -> tuple[str | None, str | None]:
+      meta_p = RESULTS_DIR / "data" / f"mt5_{sym.lower()}_{tf.lower()}_meta.json"
+      if meta_p.exists():
+        try:
+          meta = _json.loads(meta_p.read_text(encoding="utf-8"))
+          start = str(meta.get("start") or "")[:10] or None
+          end = str(meta.get("end") or "")[:10] or None
+          if start and end:
+            return start, end
+        except Exception:
+          pass
+      pq = RESULTS_DIR / "data" / f"mt5_{sym.lower()}_{tf.lower()}.parquet"
+      if pq.exists():
+        try:
+          import pandas as pd
+          df = pd.read_parquet(pq)
+          if len(df):
+            return str(df.index[0])[:10], str(df.index[-1])[:10]
+        except Exception:
+          return None, None
+      return None, None
+
+    warn_bits: list[str] = []
+    sel_from = str(oos_from)
+    sel_to = str(oos_to)
+    for (sym, tf), _rows in group_models_by_book(models).items():
+      c0, c1 = _cache_span(str(sym), str(tf))
+      label = f"{sym} {tf}"
+      if not c0 or not c1:
+        warn_bits.append(f"{label}: chưa có OHLC cache — không replay được")
+        continue
+      eff_from = max(sel_from, c0)
+      eff_to = min(sel_to, c1)
+      if sel_from < c0:
+        warn_bits.append(
+          f"{label}: OOS from {sel_from} sớm hơn data ({c0}) — replay bắt đầu {eff_from}"
+        )
+      if sel_to > c1:
+        warn_bits.append(
+          f"{label}: OOS to {sel_to} muộn hơn data ({c1}) — replay kết thúc {eff_to}"
+        )
+      if eff_from > eff_to:
+        warn_bits.append(
+          f"{label}: khoảng OOS không giao data ({c0}→{c1}) — không có bar để chạy"
+        )
+    for w in warn_bits:
+      st.warning(w)
+  except Exception:
+    pass
+
   cur_from, cur_to = str(oos_from), str(oos_to)
   if (
     cur_from != str(prefs.get("from") or "")
@@ -528,13 +584,6 @@ def render_replay_desk() -> dict:
     )
   if not models:
     st.info("Chưa bật model — mở **Models**, bật On, Save.")
-  else:
-    chips = " · ".join(
-      f"{m.get('label') or m.get('model_id')} ({m.get('symbol')} {m.get('timeframe')})"
-      for m in models[:8]
-    )
-    extra = f" · +{len(models) - 8} more" if len(models) > 8 else ""
-    st.caption(f"Models on: {chips}{extra}")
 
   a1, a2, a3 = st.columns([1.4, 1, 2])
   with a1:
@@ -637,6 +686,7 @@ def _render_health_panel(health: dict, *, sim: bool = False) -> None:
     )
     head_meta = (
       f"EA {book.get('ea_state')} {book.get('ea_age')} · "
+      f"tick {book.get('tick_age') or '—'} · "
       f"bar {book.get('bar_time') or '—'} ({book.get('bar_age')}) · "
       f"status {book.get('status_state')} {book.get('status_age')} · {worker}"
     )
@@ -670,7 +720,8 @@ def _render_health_panel(health: dict, *, sim: bool = False) -> None:
       unsafe_allow_html=True,
     )
   st.caption(
-    "TIMEOUT/LAG = decision chưa khớp nến EA · EA_STALE = heartbeat chết · "
+    "TIMEOUT/LAG = decision chưa khớp nến EA · EA_STALE = connection.json không ghi (EA/chart tắt) · "
+    "MARKET_QUIET/TICK_STALE = EA online nhưng broker không có tick mới (cuối tuần) · "
     "WORKER_STALE = App không cập nhật status · GATE_FAIL = remine bị chặn · "
     "RISK_CAP = vượt trần risk đồng thời · REMINE = remine khi gate đang bật."
   )
@@ -1209,8 +1260,177 @@ def render_setup_page() -> None:
     st.markdown('<div class="panel-label">1 · Remine quality gate</div>', unsafe_allow_html=True)
     st.caption(
       "Gate chỉ kiểm tra chất lượng sau khi remine (FAIL → FLAT / schedule fallback). "
-      "Tắt gate ≠ tắt remine: tuần ngoài schedule vẫn remine bình thường; Live chỉ thôi cảnh báo REMINE_OK."
+      "Tắt gate ≠ tắt remine: tuần ngoài schedule vẫn remine bình thường; Live chỉ thôi cảnh báo REMINE_OK. "
+      "Cuối tuần (T6 ≥18h / T7 / CN) worker pre-remine tuần tới; Thứ 2 chỉ fallback nếu chưa freeze."
     )
+    try:
+      from weekend_preremine import (
+        in_weekend_preremine_window,
+        load_all_preremine_state,
+        next_week_start,
+        weekend_preremine_target,
+      )
+      tgt = weekend_preremine_target()
+      target_week = str((tgt or next_week_start()).date())
+      if tgt is not None:
+        st.caption(f"Weekend pre-remine window · target week {target_week}")
+      elif in_weekend_preremine_window():
+        st.caption(f"Weekend pre-remine · next week {target_week}")
+      else:
+        st.caption(f"Weekend pre-remine idle · next week will be {target_week}")
+
+      books = (load_all_preremine_state().get("books") or {})
+      gate_by_model: dict[str, dict] = {}
+      try:
+        from remine_gate import load_gate_by_model_week
+        gate_by_model = load_gate_by_model_week(target_week)
+      except Exception:
+        gate_by_model = {}
+
+      def _fmt_num(v: Any, digits: int = 2) -> str:
+        if v is None or v == "":
+          return "—"
+        try:
+          x = float(v)
+          if x != x:  # NaN
+            return "—"
+          if abs(x - round(x)) < 1e-9:
+            return str(int(round(x)))
+          return f"{x:.{digits}f}"
+        except (TypeError, ValueError):
+          return str(v)
+
+      def _row_from_info(book: str, mid: str, info: dict, pr_status: str) -> dict:
+        src = str(info.get("source") or "—")
+        gate_row = gate_by_model.get(mid) or {}
+        # Prefer persisted weekend state; fall back to alerts for this target week.
+        metrics = {}
+        if info.get("n_trades") is not None or info.get("profit_factor") is not None:
+          metrics = {
+            "n_trades": info.get("n_trades"),
+            "profit_factor": info.get("profit_factor"),
+            "total_r": info.get("total_r"),
+          }
+        elif isinstance(gate_row.get("metrics"), dict) and str(gate_row.get("week_start") or "") == target_week:
+          metrics = gate_row.get("metrics") or {}
+        baseline_pf = info.get("baseline_pf")
+        if baseline_pf is None and isinstance(gate_row.get("baseline"), dict):
+          if str(gate_row.get("week_start") or "") == target_week:
+            baseline_pf = (gate_row.get("baseline") or {}).get("profit_factor")
+        gate_label = info.get("gate")
+        if not gate_label:
+          if src in ("schedule_hit", "state_done"):
+            gate_label = "—"
+          elif isinstance(gate_row, dict) and str(gate_row.get("week_start") or "") == target_week and "ok" in gate_row:
+            gate_label = "PASS" if gate_row.get("ok") else "FAIL"
+          elif src == "remine":
+            gate_label = "PASS"
+          elif src == "schedule_fallback":
+            gate_label = "FAIL"
+          else:
+            gate_label = "—"
+        reasons = info.get("gate_reasons") or info.get("error")
+        if (not reasons or reasons == "—") and gate_row.get("reasons") and str(gate_row.get("week_start") or "") == target_week:
+          reasons = "; ".join(str(x) for x in (gate_row.get("reasons") or []))
+        if isinstance(reasons, list):
+          reasons = "; ".join(str(x) for x in reasons)
+        reason_s = str(reasons or "").strip() or "—"
+        return {
+          "book": book,
+          "model": mid,
+          "week": str(info.get("week_start") or "—") if info else "—",
+          "status": pr_status,
+          "source": src,
+          "gate": gate_label,
+          "n": _fmt_num(metrics.get("n_trades"), 0),
+          "PF": _fmt_num(metrics.get("profit_factor"), 2),
+          "R": _fmt_num(metrics.get("total_r"), 1),
+          "base_PF": _fmt_num(baseline_pf, 2),
+          "reason": reason_s[:100],
+          "updated": str(info.get("updated_at") or "—")[:19] if info else "—",
+        }
+
+      # Roster models → pending if not yet in pre-remine state for target week.
+      roster_rows: list[dict] = []
+      try:
+        from package_store import load_roster
+        for m in (load_roster().get("models") or []):
+          if not m.get("enabled", True):
+            continue
+          sym = str(m.get("symbol") or "").upper()
+          tf = str(m.get("timeframe") or "").upper()
+          mid = str(m.get("model_id") or m.get("id") or "")
+          if not (sym and tf and mid):
+            continue
+          roster_rows.append(
+            {
+              "book": f"{sym.lower()}_{tf.lower()}",
+              "symbol": sym,
+              "timeframe": tf,
+              "model_id": mid,
+            }
+          )
+      except Exception:
+        roster_rows = []
+
+      by_book_model: dict[tuple[str, str], dict] = {}
+      for bk, row in books.items():
+        for mid, info in (row.get("models") or {}).items():
+          by_book_model[(str(bk), str(mid))] = dict(info or {})
+
+      status_rows: list[dict] = []
+      seen: set[tuple[str, str]] = set()
+      for rr in roster_rows:
+        key = (rr["book"], rr["model_id"])
+        seen.add(key)
+        info = by_book_model.get(key) or {}
+        week = str(info.get("week_start") or "")
+        if info and week == target_week and info.get("ok"):
+          pr_status = "READY"
+        elif info and week == target_week and info.get("ok") is False:
+          pr_status = "FAIL"
+        elif info and week and week != target_week:
+          pr_status = "STALE"
+        elif info:
+          pr_status = "PARTIAL"
+        else:
+          pr_status = "PENDING"
+        status_rows.append(_row_from_info(rr["book"], rr["model_id"], info, pr_status))
+      # Orphan state entries (not in roster) still useful to show.
+      for (bk, mid), info in sorted(by_book_model.items()):
+        if (bk, mid) in seen:
+          continue
+        week = str(info.get("week_start") or "")
+        pr_status = "READY" if (week == target_week and info.get("ok")) else (
+          "FAIL" if info.get("ok") is False else "STALE"
+        )
+        status_rows.append(_row_from_info(bk, mid, info, pr_status))
+
+      if status_rows:
+        ready_n = sum(1 for r in status_rows if r["status"] == "READY")
+        st.caption(
+          f"Pre-remine models · {ready_n}/{len(status_rows)} READY for week {target_week} · "
+          "n/PF/R = train metrics sau remine · base_PF = package baseline · gate = PASS/FAIL/—"
+        )
+        st.dataframe(
+          status_rows,
+          use_container_width=True,
+          hide_index=True,
+          height=min(420, 42 + 35 * len(status_rows)),
+          column_config={
+            "model": st.column_config.TextColumn("model", width="medium"),
+            "reason": st.column_config.TextColumn("reason", width="large"),
+          },
+        )
+      elif books:
+        bits = []
+        for bk, row in sorted(books.items()):
+          mods = row.get("models") or {}
+          ok_n = sum(1 for m in mods.values() if m.get("ok"))
+          bits.append(f"{bk} {ok_n}/{len(mods)}@{row.get('week_start') or '—'}")
+        st.caption("Pre-remine state · " + " · ".join(bits))
+    except Exception:
+      pass
     try:
       from remine_gate import load_last_alert, load_prefs as load_rg_prefs, save_prefs as save_rg_prefs
       rg = load_rg_prefs()
@@ -1578,11 +1798,16 @@ def render_models_page() -> None:
         st.error("Choose a .tmpkg file, or path to file / packages_out folder")
         cmd = None
       if cmd:
+        env = os.environ.copy()
+        env.setdefault("PYTHONIOENCODING", "utf-8")
         r = subprocess.run(
           cmd,
           cwd=str(LIVE),
           capture_output=True,
           text=True,
+          encoding="utf-8",
+          errors="replace",
+          env=env,
           creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0,
         )
         if r.returncode == 0:
@@ -1669,23 +1894,48 @@ def render_models_page() -> None:
 # ── Sidebar ───────────────────────────────────────────────────────────
 with st.sidebar:
   st.markdown("### Desk")
-  # Auto-refresh ON when entering Replay (progress/results need polling).
-  _nav_for_auto = st.session_state.get("top_nav")
+  # Persist Auto-refresh across F5 via results/ui_prefs.json
+  from gui.theme import load_ui_prefs, save_ui_prefs
+  _ui_prefs = load_ui_prefs()
+  # top_nav may be set later in this script run — also read ?nav= here.
+  _qp_nav = st.query_params.get("nav") or st.query_params.get("page")
+  if isinstance(_qp_nav, (list, tuple)):
+    _qp_nav = _qp_nav[0] if _qp_nav else None
+  _nav_for_auto = st.session_state.get("top_nav") or str(_qp_nav or "").strip() or None
   if "auto_refresh" not in st.session_state:
-    st.session_state.auto_refresh = _nav_for_auto == "Replay"
+    st.session_state.auto_refresh = bool(_ui_prefs.get("auto_refresh"))
+  if "auto_refresh_every" not in st.session_state:
+    st.session_state.auto_refresh_every = int(_ui_prefs.get("auto_refresh_every") or 5)
+  # Entering Replay: force ON for progress polling (session only — don't overwrite prefs).
+  _forced_replay_auto = False
   if _nav_for_auto == "Replay" and st.session_state.get("_auto_refresh_nav_prev") != "Replay":
     st.session_state.auto_refresh = True
+    _forced_replay_auto = True
   st.session_state["_auto_refresh_nav_prev"] = _nav_for_auto
   auto = st.toggle("Auto-refresh", key="auto_refresh")
-  every = st.select_slider("Every (sec)", options=[5, 10, 15, 30], value=5, key="auto_refresh_every")
+  every = st.select_slider(
+    "Every (sec)",
+    options=[5, 10, 15, 30],
+    key="auto_refresh_every",
+  )
+  # Save user changes only (skip the automatic Replay force-on write).
+  _saved_auto = bool(_ui_prefs.get("auto_refresh"))
+  _saved_every = int(_ui_prefs.get("auto_refresh_every") or 5)
+  if (not _forced_replay_auto) and (
+    bool(auto) != _saved_auto or int(every) != _saved_every
+  ):
+    save_ui_prefs({
+      "auto_refresh": bool(auto),
+      "auto_refresh_every": int(every),
+    })
   if st.button("Refresh now", use_container_width=True):
     st.rerun()
   st.caption(f"{LIVE_INSTANCE_ID} · :{LIVE_APP_PORT} · magic {LIVE_MAGIC_BASE}")
   if auto:
-    if st.session_state.get("top_nav") == "Replay":
+    if st.session_state.get("top_nav") == "Replay" or _nav_for_auto == "Replay":
       st.caption("Replay panels tự poll (fragment) — không cần F5.")
     else:
-      st.caption("Auto-refresh cập nhật số liệu — không đổi layout.")
+      st.caption("Auto-refresh cập nhật số liệu — giữ sau refresh trang.")
 
 # Full-page refresh for Live/Setup. Replay uses st.fragment(run_every) in-desk
 # (streamlit-autorefresh custom component is unreliable on Streamlit 1.60).

@@ -55,14 +55,11 @@ def _force_remine_enabled() -> bool:
 def _bump_strategy_stat(model_id: str, source: str, week_start: Any) -> None:
   """Increment schedule/remine counters for Replay Results (best-effort)."""
   try:
+    from file_lock import interprocess_lock
+
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     lock_path = STATS_PATH.with_suffix(".lock")
-    with open(lock_path, "a+", encoding="utf-8") as lockf:
-      try:
-        import fcntl
-        fcntl.flock(lockf.fileno(), fcntl.LOCK_EX)
-      except Exception:
-        pass
+    with interprocess_lock(lock_path, timeout_sec=10.0):
       data: dict[str, Any]
       if STATS_PATH.exists():
         try:
@@ -98,14 +95,9 @@ def _bump_strategy_stat(model_id: str, source: str, week_start: Any) -> None:
         "week_start": ws,
       })
       data["events"] = events[-200:]
-      tmp = STATS_PATH.with_suffix(".json.tmp")
+      tmp = STATS_PATH.with_name(f"{STATS_PATH.stem}.{os.getpid()}.tmp")
       tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False, default=str) + "\n", encoding="utf-8")
       tmp.replace(STATS_PATH)
-      try:
-        import fcntl
-        fcntl.flock(lockf.fileno(), fcntl.LOCK_UN)
-      except Exception:
-        pass
   except Exception:
     pass
 

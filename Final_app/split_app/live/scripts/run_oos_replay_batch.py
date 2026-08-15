@@ -141,7 +141,7 @@ def main() -> int:
         "--symbol", sym, "--timeframe", tf,
         "--from", OOS_FROM, "--to", OOS_TO,
         "--delay-ms", "0",
-        "--seed",
+        # Parent already seeded per-book parquet — avoid parallel seed races.
         "--skip-materialize",
         "--progress-every", "25",
       ],

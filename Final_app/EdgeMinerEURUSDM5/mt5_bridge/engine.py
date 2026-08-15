@@ -341,7 +341,12 @@ class BridgeEngine:
     if self._df is None or self._df.empty:
       return
     self.mt5_cache.parent.mkdir(parents=True, exist_ok=True)
-    self._df.to_parquet(self.mt5_cache)
+    # Atomic replace — direct to_parquet can leave a corrupt PAR1/PAR1 shell
+    # if the process is killed mid-write (seen as thrift deserialize errors).
+    from mt5_bridge.protocol import safe_replace
+    tmp = self.mt5_cache.with_suffix(self.mt5_cache.suffix + ".tmp")
+    self._df.to_parquet(tmp)
+    safe_replace(tmp, self.mt5_cache)
 
   def merge_bar(self, bar: dict) -> pd.Timestamp:
     """Ensure bar is in the in-memory series. Avoid rewriting parquet on HistoryFeed replay.
