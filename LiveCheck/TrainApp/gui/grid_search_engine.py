@@ -223,9 +223,9 @@ def _score(row: dict, objective: str) -> float:
     dd = float(row.get("max_drawdown_r") or 1)
     frequency = float(row.get("trades_per_week") or 0)
     if str(DEFAULT_TF or "").upper() == "M5":
-      # M5 denser book + elite quality: allow ~0.35×–1.35× TARGET.
-      lo = max(6.0, TARGET_TRADES_PER_WEEK * 0.35)
-      hi = TARGET_TRADES_PER_WEEK * 1.35
+      # Allow M15-like snipers (~2–4 tpw) and denser stretch books.
+      lo = max(1.5, TARGET_TRADES_PER_WEEK * 0.15)
+      hi = max(TARGET_TRADES_PER_WEEK * 1.6, 8.0)
     else:
       lo, hi = 7.0, 10.0
     if r <= 0 or not lo <= frequency <= hi:
@@ -237,9 +237,16 @@ def _score(row: dict, objective: str) -> float:
     pf = float(row.get("profit_factor") or 0)
     wr = float(row.get("win_rate_pct") or 0)
     n = int(row.get("n_trades") or 0)
-    if r <= 0 or pf < 1.2 or n < 40:
+    tpw = float(row.get("trades_per_week") or 0)
+    m5 = str(DEFAULT_TF or "").upper() == "M5"
+    min_n = 25 if m5 else 40
+    if r <= 0 or pf < 1.2 or n < min_n:
       return -1e12
-    return (r / max(dd, 0.5)) * 2.0 + pf * 25.0 + wr * 0.8 + r * 0.04
+    wr_w = 1.6 if m5 else 0.8
+    score = (r / max(dd, 0.5)) * 2.0 + pf * 25.0 + wr * wr_w + r * 0.04
+    if m5 and tpw > 6.0:
+      score -= (tpw - 6.0) * 6.0
+    return score
   return float(row.get("total_r") or 0)
 
 

@@ -1,18 +1,16 @@
 {
-  "label": "BestQuality",
-  "kb_profile": "era_5_thang_cuoi_2025",
-  "kb_snapshot": 1,
+  "label": "M5Q WR45 RR3.25 +48R",
+  "kb_profile": "era_2025_2026_6thang",
+  "kb_snapshot": null,
   "oos_from": "2026-01-01",
   "oos_to": "2026-08-07",
   "use_learning": true,
-  "train_weeks": 3,
+  "train_weeks": 6,
   "spread_pips": 1.5,
   "slippage_pips": 0.3,
   "feature_profile": "m5_parity",
   "mining_search_space": {
     "rr_ratios": [
-      3.2,
-      3.5,
       4.0
     ],
     "atr_multipliers": [
@@ -20,10 +18,10 @@
       1.05
     ],
     "max_hold_bars": [
-      192
+      288
     ],
     "min_bars_between": [
-      16
+      36
     ],
     "session_ranges": [
       [
@@ -54,7 +52,8 @@
     "min_threshold_samples": 10,
     "min_binary_samples": 8,
     "include_session_regime_rules": false,
-    "target_trades_per_week": 14.0,
+    "target_trades_per_week": 2.5,
+    "max_trades_per_day": 2,
     "drawdown_penalty": 0.5,
     "loss_streak_penalty": 1.0,
     "selection_mode": "elite_frontier",
@@ -65,8 +64,8 @@
     "edge_surgery_hours": true,
     "anti_chase": true,
     "anti_chase_mode": "fixed",
-    "anti_chase_fixed_rsi": 58.0,
-    "anti_chase_fixed_vwap": 1.5,
+    "anti_chase_fixed_rsi": 55.0,
+    "anti_chase_fixed_vwap": 99.0,
     "anti_chase_rsi_caps": [
       60.0,
       62.0,
@@ -74,8 +73,8 @@
       68.0,
       100.0
     ],
-    "anti_chase_min_tpw": 6.0,
-    "anti_chase_use_vwap": true,
+    "anti_chase_min_tpw": 3.0,
+    "anti_chase_use_vwap": false,
     "anti_chase_vwap_caps": [
       1.5,
       2.0,
@@ -85,5 +84,5 @@
     "anti_chase_logic": "or",
     "exit_modes_full_only": true
   },
-  "trade_model_id": "tm_bestquality_28e7e716"
+  "trade_model_id": "tm_m5q_wr45_rr3_25_48r_eb437b01"
 }

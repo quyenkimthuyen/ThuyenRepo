@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-16T21:12:50+07:00",
+  "generated_at": "2026-08-16T23:03:28+07:00",
   "system": "AIEdge-v1 WalkForward",
   "protocol": {
     "name": "AIEdge-v1",
@@ -276,11 +276,96 @@
         "trainapp_dd_stressed": 78.893,
         "caveat": "Primary TrainApp baseline is cost-stressed to AIEdge spreads. AIEdge test metrics were not used for selection."
       }
+    },
+    {
+      "desk": "g33",
+      "pair": "GBPUSD",
+      "tf": "M5",
+      "aiedge_cost_spread_pips": 2.0,
+      "aiedge": {
+        "desk": "g33",
+        "system": "AIEdge-ValidateSelect-CostGate-WF",
+        "space": "anti_chase_fixed_70",
+        "params": {
+          "preset": "anti_chase_fixed_70",
+          "train_weeks": 6,
+          "cost_gate_mult": null,
+          "selection": "validate_wf_robust_score",
+          "soft_fallback": true,
+          "last_strategy": {
+            "name": "Forge RR3.2 full 2L4S sweep+session #DF49|chase:fixed_or_rsi<70+vwap<99",
+            "rr": 3.2,
+            "atr_mult": 1.05,
+            "ml_prob_min": 0.48,
+            "score_threshold": 1.0,
+            "max_hold_bars": 192,
+            "min_bars_between": 16,
+            "n_long_rules": 2,
+            "n_short_rules": 4,
+            "anti_chase": true,
+            "exit_mode": "full"
+          }
+        },
+        "param_key": "wf|anti_chase_fixed_70|tw6|gateNone",
+        "validate": {
+          "n_trades": 379,
+          "total_r": 32.792,
+          "win_rate_pct": 37.2,
+          "avg_rr": 1.859,
+          "max_drawdown_r": 41.443,
+          "profit_factor": 1.181,
+          "robust_score": -0.099
+        },
+        "test": {
+          "n_trades": 340,
+          "total_r": -63.954,
+          "win_rate_pct": 30.29,
+          "avg_rr": 1.843,
+          "max_drawdown_r": 91.043,
+          "profit_factor": 0.867,
+          "robust_score": -1.938
+        }
+      },
+      "trainapp_baseline": {
+        "source": "fair_wf_same_cost",
+        "label": "TrainApp default elite_or_quality tw6 @ 2.0pip (no cost-gate)",
+        "metrics_raw": {
+          "n_trades": 75,
+          "total_r": -22.903,
+          "win_rate_pct": 21.33,
+          "avg_rr": 2.598,
+          "max_drawdown_r": 27.771,
+          "profit_factor": 0.81,
+          "robust_score": -2.508
+        },
+        "metrics": {
+          "n_trades": 75,
+          "total_r": -22.903,
+          "win_rate_pct": 21.33,
+          "avg_rr": 2.598,
+          "max_drawdown_r": 27.771,
+          "profit_factor": 0.81,
+          "robust_score": -2.508
+        },
+        "note": "Re-simulated under AIEdge protocol costs on the locked TEST window. Published TrainApp grid rows that train on overlapping 2025-2026 eras are NOT used."
+      },
+      "decision": {
+        "winner": "TrainApp",
+        "reason": "TrainApp higher total_r with DD <= candidate",
+        "aiedge_robust": -1.938,
+        "trainapp_robust_stressed": -2.508,
+        "trainapp_robust_raw": -2.508,
+        "aiedge_total_r": -63.954,
+        "trainapp_total_r_stressed": -22.903,
+        "aiedge_dd": 91.043,
+        "trainapp_dd_stressed": 27.771,
+        "caveat": "Primary TrainApp baseline is cost-stressed to AIEdge spreads. AIEdge test metrics were not used for selection."
+      }
     }
   ],
   "summary": {
     "aiedge_wins": 3,
-    "trainapp_wins": 0,
+    "trainapp_wins": 1,
     "ties": 0,
     "proof_claim": "AIEdge wins on locked protocol",
     "method": "Both systems use the same causal weekly walk-forward miner and the same realistic desk spreads on the locked TEST window. TrainApp-fair uses the fixed recommended recipe (elite_or_quality, 6w). AIEdge selects preset\u00d7train_weeks (+ optional cost-gate) on VALIDATE only, then runs TEST once. Published TrainApp grids that mined on overlapping 2025-2026 eras are excluded as protocol-invalid."

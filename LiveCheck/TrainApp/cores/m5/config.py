@@ -28,8 +28,8 @@ DEFAULT_TF = str(_CFG.get("tf") or "M5")
 BAR_MINUTES = int(_CFG.get("bar_minutes") or (5 if DEFAULT_TF == "M5" else 15))
 BARS_PER_WEEK = 7 * 24 * (60 // BAR_MINUTES)
 TRAIN_WEEKS = int(_CFG.get("train_weeks") or 3)
-TARGET_TRADES_PER_WEEK = float(_CFG.get("target_trades_per_week") or (24.0 if DEFAULT_TF == "M5" else 10.0))
-MAX_TRADES_PER_DAY = int(_CFG.get("max_trades_per_day") or (5 if DEFAULT_TF == "M5" else 2))
+TARGET_TRADES_PER_WEEK = float(_CFG.get("target_trades_per_week") or 10.0)
+MAX_TRADES_PER_DAY = int(_CFG.get("max_trades_per_day") or 2)
 MIN_TRAIN_BARS = int(_CFG.get("min_train_bars") or (1500 if DEFAULT_TF == "M5" else 500))
 
 TRAIN_MONTHS = TRAIN_WEEKS

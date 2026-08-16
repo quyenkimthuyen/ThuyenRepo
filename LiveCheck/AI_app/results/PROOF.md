@@ -1,12 +1,25 @@
 # AIEdge vs TrainApp — Proof Report
 
-Generated: `2026-08-16T21:12:50+07:00`
+Generated: `2026-08-16T23:03:28+07:00`
+
+## Verdict
+
+**AIEdge wins 3–1** on the locked fair protocol (same spreads, same TEST calendar, causal weekly remine).
+
+| Desk | Pair/TF | AIEdge test R | TrainApp-fair R | Winner |
+|------|---------|---------------|-----------------|--------|
+| E21 | EURUSD M15 | -1.1 | -29.8 | AIEdge |
+| G23 | GBPUSD M15 | **+63.3** | -9.8 | AIEdge |
+| E31 | EURUSD M5 | -8.2 | -64.7 | AIEdge |
+| G33 | GBPUSD M5 | -64.0 | -22.9 | TrainApp |
+
+Strongest absolute win: **G23** (+63R vs −10R). Re-rank methodology proof (same published grids, cost-stressed robust ranking): **AIEdge 4–0** — see `RERANK_PROOF.md`.
 
 ## Method
 
 Both systems use the same causal weekly walk-forward miner and the same realistic desk spreads on the locked TEST window. TrainApp-fair uses the fixed recommended recipe (elite_or_quality, 6w). AIEdge selects preset×train_weeks (+ optional cost-gate) on VALIDATE only, then runs TEST once. Published TrainApp grids that mined on overlapping 2025-2026 eras are excluded as protocol-invalid.
 
-**Claim:** **AIEdge wins on locked protocol** (AIEdge 3 · TrainApp 0 · tie 0)
+**Claim:** **AIEdge wins on locked protocol** (AIEdge 3 · TrainApp 1 · tie 0)
 
 ## Per desk
 
@@ -37,9 +50,19 @@ Both systems use the same causal weekly walk-forward miner and the same realisti
 - AIEdge pick: `wf|elite_or_quality|tw6|gate3.5`
 - TrainApp recipe: `TrainApp default elite_or_quality tw6 @ 1.6pip (no cost-gate)`
 
+### G33 · GBPUSD M5
+
+- **Winner:** TrainApp — TrainApp higher total_r with DD <= candidate
+- AIEdge validate (selection): R=32.792 WR=37.2 DD=41.443 score=-0.099
+- AIEdge test (once): R=-63.954 WR=30.29 RR=1.843 DD=91.043 score=-1.938 n=340 @ spread 2.0 pip
+- TrainApp-fair (same cost WF): R=-22.903 WR=21.33 DD=27.771 score=-2.508
+- AIEdge pick: `wf|anti_chase_fixed_70|tw6|gateNone`
+- TrainApp recipe: `TrainApp default elite_or_quality tw6 @ 2.0pip (no cost-gate)`
+
 ## Fairness notes
 
 - Both sides: identical spreads, identical TEST calendar, causal weekly remine.
 - AIEdge never uses TEST for selection (VALIDATE only).
 - TrainApp-fair = fixed recommended preset (not the optimistic published grid).
 - Published TrainApp rows trained on overlapping 2025-2026 eras are protocol-invalid.
+- Caveat: under realistic spreads many M5 runs are still negative; G23 is the clearest profitable outperformance.

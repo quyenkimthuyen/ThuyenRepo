@@ -101,10 +101,11 @@ class MinedStrategy:
 
 @dataclass(frozen=True)
 class MiningSearchSpace:
-  """Immutable mining grid for M5 denser book.
+  """Immutable mining grid for M5.
 
-  Quality anchors (RR/ATR/session) stay M15-like; capacity opens for ~×2.4 trades/week
-  vs M15 because M5 offers ~3× bars (more setups) without lowering bar quality filters.
+  Quality anchors (RR/ATR/session) stay M15-like. Default spacing is still in
+  M5 bars; elite presets scale spacing to M15 wall-clock (~3h) and sniper TPW
+  so WR models can match M15 instead of a dense mid-40s book.
   """
   rr_ratios: tuple[float, ...] = (2.5, 3.0)
   atr_multipliers: tuple[float, ...] = (0.9, 1.05)
@@ -120,6 +121,7 @@ class MiningSearchSpace:
   min_binary_samples: int = 8
   include_session_regime_rules: bool = False
   target_trades_per_week: float = TARGET_TRADES_PER_WEEK
+  max_trades_per_day: int = MAX_TRADES_PER_DAY
   drawdown_penalty: float = 0.0
   loss_streak_penalty: float = 0.0
   # legacy | expectancy_frontier | elite_frontier (opt-in joint WR×RR selection)
@@ -204,6 +206,8 @@ def constrain_strategy_to_space(
       abs(pair[0] - strat.session_start_hour) + abs(pair[1] - strat.session_end_hour)
     ),
   )
+  if getattr(space, "max_trades_per_day", None):
+    strat.max_trades_per_day = int(space.max_trades_per_day)
   return strat
 
 
@@ -630,10 +634,10 @@ def score_strategy_metrics(
   drawdown_penalty: float = 0.0, loss_streak_penalty: float = 0.0,
   selection_mode: str = "legacy",
 ):
-  """Fitness tuned for M5 hybrid edge (~45–55% WR × RR≥2) and total R / DD.
+  """Fitness: band frequency around ``target_tpw`` (elite sniper ~3.5, baseline ~10).
 
-  Soft frequency band scales with ``target_tpw`` (config default ~24) so denser
-  M5 books are not punished by leftover M15 hard caps (7–10 tpw).
+  Soft frequency band scales with ``target_tpw`` so a sniper preset is not
+  pulled back toward a dense book, and a dense preset is not forced sparse.
 
   ``selection_mode="expectancy_frontier"`` (opt-in) ranks by joint WR×RR
   geometric mean so the miner cannot buy WR by sacrificing RR (or vice versa).
@@ -1109,7 +1113,8 @@ def mine_strategy(
                         score_threshold=thr, atr_mult_sl=atr_m, rr_ratio=rr,
                         max_hold_bars=max_hold, min_bars_between=spacing,
                         min_rules_match=min_match,
-                        max_trades_per_day=MAX_TRADES_PER_DAY, ml_prob_min=ml_thr,
+                        max_trades_per_day=int(space.max_trades_per_day or MAX_TRADES_PER_DAY),
+                        ml_prob_min=ml_thr,
                         session_filter=session_filter,
                         session_start_hour=session_start, session_end_hour=session_end,
                         exit_mode=exit_mode, ml_scorer=ml,

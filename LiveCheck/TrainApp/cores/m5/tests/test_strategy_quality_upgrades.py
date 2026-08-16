@@ -200,16 +200,19 @@ def test_elite_presets_opt_in():
   assert space.rr_ratios == (3.5, 4.0)
   assert space.anti_chase is True
   assert space.anti_chase_fixed_rsi == 58.0
-  assert space.target_trades_per_week == 12.0
-  assert space.max_hold_bars == (192,)
-  assert space.min_bars_between == (16,)
+  assert space.target_trades_per_week == 3.0
+  assert space.max_hold_bars == (288,)
+  assert space.min_bars_between == (36,)
+  assert space.max_trades_per_day == 2
   assert MiningSearchSpace().exit_modes_full_only is False
   assert RECOMMENDED_PRESET == "elite_or_quality"
   eoq = mining_search_space_from_dict(get_preset(RECOMMENDED_PRESET))
   assert eoq.anti_chase_use_vwap is True
   assert eoq.anti_chase_logic == "or"
   assert eoq.rr_ratios == (3.2, 3.5, 4.0)
-  assert eoq.target_trades_per_week == 14.0
+  assert eoq.target_trades_per_week == 3.5
+  assert eoq.min_bars_between == (36,)
+  assert eoq.max_trades_per_day == 2
   assert "OR-quality" in preset_label(RECOMMENDED_PRESET)
   from mining_presets import CURATED_PRESETS, DEPRECATED_PRESETS, list_curated_presets
   assert RECOMMENDED_PRESET in CURATED_PRESETS

@@ -198,9 +198,8 @@ NOVA_FIXED = {
   "edge_surgery_dominant_side_ratio": 0.65,
 }
 
-# Challenge: WR>60% × RR>3 (accept lower Total R) on denser M5 capacity.
-# Math: loss drag ~1.15R ⇒ need avg_win ≥ ~3.5; quality void lifts WR.
-# TPW targets ~50–60% of config TARGET (24) — quality-first but not M15-sparse.
+# Challenge: WR>60% × RR>3 (accept lower Total R) — same sniper density as M15.
+# Wall-clock parity: 36×M5 ≈ 12×M15 (3h spacing); 288×M5 ≈ 96×M15 (24h hold).
 ELITE_60_3 = {
   **BASELINE_SPACE,
   "rr_ratios": [3.5, 4.0],
@@ -210,10 +209,11 @@ ELITE_60_3 = {
   "anti_chase_mode": "fixed",
   "anti_chase_fixed_rsi": 58.0,
   "anti_chase_use_vwap": False,
-  "max_hold_bars": [192],
-  "min_bars_between": [16],
-  "target_trades_per_week": 12.0,
-  "anti_chase_min_tpw": 6.0,
+  "max_hold_bars": [288],
+  "min_bars_between": [36],
+  "max_trades_per_day": 2,
+  "target_trades_per_week": 3.0,
+  "anti_chase_min_tpw": 3.0,
   "drawdown_penalty": 0.5,
   "loss_streak_penalty": 1.0,
 }
@@ -231,7 +231,7 @@ ELITE_55_4 = {
   **ELITE_60_3,
   "rr_ratios": [4.0],
   "anti_chase_fixed_rsi": 55.0,
-  "target_trades_per_week": 10.0,
+  "target_trades_per_week": 2.5,
 }
 
 # Sweet-spot OR-void: RSI≥58 or VWAP≥1.5, RR ladder 3.2–4.0.
@@ -242,7 +242,7 @@ ELITE_OR_QUALITY = {
   "anti_chase_use_vwap": True,
   "anti_chase_fixed_vwap": 1.5,
   "anti_chase_logic": "or",
-  "target_trades_per_week": 14.0,
+  "target_trades_per_week": 3.5,
 }
 
 # M5 stretch: denser than elite_or but keep anti-chase + high RR (era5 sweet spot ~11 tpw).
@@ -251,6 +251,9 @@ ELITE_M5_BALANCED = {
   "rr_ratios": [3.0, 3.5, 4.0],
   "anti_chase_fixed_rsi": 60.0,
   "anti_chase_fixed_vwap": 1.5,
+  "min_bars_between": [16],
+  "max_hold_bars": [192],
+  "max_trades_per_day": 5,
   "target_trades_per_week": 16.0,
   "anti_chase_min_tpw": 8.0,
   "score_thresholds": [1.0, 1.6, 2.2],
@@ -262,7 +265,7 @@ ELITE_60_35 = {
   **ELITE_60_3,
   "rr_ratios": [3.5],
   "anti_chase_fixed_rsi": 60.0,
-  "target_trades_per_week": 16.0,
+  "target_trades_per_week": 4.0,
 }
 
 # App-recommended direction (WR-first quality book; used by Settings default).
@@ -320,7 +323,7 @@ PRESET_LABELS: dict[str, str] = {
   "elite_60_3": "Elite WR60 · RR3.5–4",
   "elite_60_3_vwap": "Elite WR60 · VWAP",
   "elite_55_4": "Elite WR60 · RR4 (ít lệnh)",
-  "elite_or_quality": "Elite OR-quality (khuyến nghị)",
+  "elite_or_quality": "Elite OR-quality · M15 parity WR",
   "elite_m5_balanced": "Elite M5 balanced (R↑ giữ DD)",
   "elite_60_35": "Elite RSI60 · RR3.5",
 }
@@ -359,9 +362,9 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "tradeoff": "Ít void hơn OR · gần giữ Total R",
   },
   "elite_or_quality": {
-    "intent": "Ưu tiên WR/DD — hướng khuyến nghị app",
-    "knobs": "void RSI≥58 OR VWAP≥1.5 · RR 3.2–4 · exit full · elite_frontier",
-    "tradeoff": "WR/DD tốt · ít lệnh (~2/tuần) · Total R thấp hơn baseline",
+    "intent": "Ưu tiên WR/DD kiểu M15 — hướng khuyến nghị app",
+    "knobs": "void RSI≥58 OR VWAP≥1.5 · RR 3.2–4 · TPW 3.5 · giãn 3h · max 2/ngày · exit full",
+    "tradeoff": "WR/DD tốt · ít lệnh (~2/tuần) · Total R thấp hơn baseline dày",
   },
   "elite_m5_balanced": {
     "intent": "M5 stretch: gần BestBalance (~11–16 tpw) giữ anti-chase",
