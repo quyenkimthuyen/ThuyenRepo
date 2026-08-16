@@ -1,0 +1,3889 @@
+{
+  "data_source": {
+    "source": "mt5_ea",
+    "broker": "XMGlobal-MT5 7",
+    "pair": "GBPUSD",
+    "timeframe": "M15",
+    "broker_timezone": "Europe/Helsinki",
+    "fingerprint": "dee43ca923c147edcb1e4b9b4c8d788c89278cf9f1e51be74f28e97b68e74be2",
+    "start": "2024-01-01 22:00:00",
+    "end": "2026-08-10 02:45:00",
+    "bars": 64632
+  },
+  "data_range": {
+    "start": "2024-01-01",
+    "end": "2026-08-10",
+    "bars": 64632
+  },
+  "oos_start": "2026-03-30",
+  "config": {
+    "version": "adaptive_miner_v4",
+    "train_weeks": 6,
+    "target_trades_per_week": 10.0,
+    "pair": "GBP/USD",
+    "tf": "M15",
+    "use_learning_kb": true,
+    "kb_profile": "era_2025_2026_6thang",
+    "kb_snapshot": 3,
+    "kb_validation": {
+      "ok": true,
+      "message": "KB pin `tm_gbpusd_bestr_99_7r_wr53_6bcb3684_kb_pin.json`",
+      "profile_id": "era_2025_2026_6thang",
+      "pinned": true
+    },
+    "oos_from": "2026-04-01",
+    "oos_to": "2026-12-31",
+    "spread_pips": 1.5,
+    "slippage_pips": 0.3,
+    "holdout_months": 0,
+    "risk_pct_per_trade": 1.0,
+    "data_fingerprint": "dee43ca923c147edcb1e4b9b4c8d788c89278cf9f1e51be74f28e97b68e74be2",
+    "feature_profile": "current",
+    "mining_search_space": {
+      "rr_ratios": [
+        2.5,
+        3.0
+      ],
+      "atr_multipliers": [
+        0.9,
+        1.05
+      ],
+      "max_hold_bars": [
+        96
+      ],
+      "min_bars_between": [
+        12
+      ],
+      "session_ranges": [
+        [
+          7,
+          20
+        ]
+      ],
+      "session_filters": [
+        true
+      ],
+      "score_thresholds": [
+        0.6,
+        1.0,
+        1.6,
+        2.2
+      ],
+      "min_rules_matches": [
+        1,
+        2
+      ],
+      "ml_probability_thresholds": [
+        0.36,
+        0.4,
+        0.44,
+        0.48
+      ],
+      "min_feature_samples": 30,
+      "min_threshold_samples": 10,
+      "min_binary_samples": 8,
+      "include_session_regime_rules": false,
+      "target_trades_per_week": 10.0,
+      "drawdown_penalty": 0.0,
+      "loss_streak_penalty": 0.0,
+      "selection_mode": "legacy",
+      "edge_surgery": false,
+      "edge_surgery_min_hour_trades": 3,
+      "edge_surgery_max_hour_wr": 0.42,
+      "edge_surgery_dominant_side_ratio": 0.7,
+      "edge_surgery_hours": true,
+      "anti_chase": false,
+      "anti_chase_mode": "calibrate",
+      "anti_chase_fixed_rsi": 65.0,
+      "anti_chase_fixed_vwap": 99.0,
+      "anti_chase_rsi_caps": [
+        60.0,
+        62.0,
+        65.0,
+        68.0,
+        100.0
+      ],
+      "anti_chase_min_tpw": 5.0,
+      "anti_chase_use_vwap": false,
+      "anti_chase_vwap_caps": [
+        1.5,
+        2.0,
+        2.5,
+        99.0
+      ],
+      "anti_chase_logic": "or",
+      "exit_modes_full_only": false
+    },
+    "remine_each_week": true,
+    "remine_mode": "weekly",
+    "trade_model_id": "tm_gbpusd_bestr_99_7r_wr53_6bcb3684",
+    "mining_compare_role": "baseline_miner"
+  },
+  "overall_oos": {
+    "n_trades": 138,
+    "trades_per_week": 7.26,
+    "win_rate_pct": 46.38,
+    "avg_rr": 1.853,
+    "profit_factor": 1.636,
+    "total_pips": 377.54,
+    "total_r": 52.209,
+    "max_drawdown_r": 12.17,
+    "max_win_streak": 5,
+    "max_loss_streak": 7,
+    "risk_of_ruin_pct": 0.0
+  },
+  "last_1_year": {
+    "n_trades": 138,
+    "trades_per_week": 7.26,
+    "win_rate_pct": 46.38,
+    "avg_rr": 1.853,
+    "profit_factor": 1.636,
+    "total_pips": 377.54,
+    "total_r": 52.209,
+    "max_drawdown_r": 12.17,
+    "max_win_streak": 5,
+    "max_loss_streak": 7,
+    "risk_of_ruin_pct": 0.0
+  },
+  "constraints_met": {
+    "win_rate_above_60": false,
+    "rr_above_2": false,
+    "profitable": true
+  },
+  "last_strategy": {
+    "name": "Forge RR2.5 hybrid 2L5S session+price #1EF3",
+    "exit_mode": "hybrid",
+    "ml_prob_min": 0.48,
+    "rr": 2.5,
+    "atr_mult": 0.9,
+    "max_hold_bars": 96,
+    "min_bars_between": 12,
+    "session_filter": true,
+    "session_start_hour": 7,
+    "session_end_hour": 20,
+    "long_rules": [
+      {
+        "feat": "sweep_low_fade",
+        "op": "eq1",
+        "thr": 0.5,
+        "w": 0.416
+      },
+      {
+        "feat": "upper_wick_ratio",
+        "op": "gt",
+        "thr": 0.4653,
+        "w": 0.146
+      }
+    ],
+    "short_rules": [
+      {
+        "feat": "squeeze_break_dn",
+        "op": "eq1",
+        "thr": 0.5,
+        "w": 3.085
+      },
+      {
+        "feat": "session_vwap_dist",
+        "op": "gt",
+        "thr": 1.2525,
+        "w": 22.158
+      },
+      {
+        "feat": "price_vs_ema21",
+        "op": "gt",
+        "thr": 1.0759,
+        "w": 10.156
+      },
+      {
+        "feat": "ema_slope_21",
+        "op": "gt",
+        "thr": 0.1075,
+        "w": 8.551
+      },
+      {
+        "feat": "ema_slope_8",
+        "op": "gt",
+        "thr": 0.1816,
+        "w": 13.517
+      }
+    ]
+  },
+  "weekly_log": [
+    {
+      "week_start": "2026-04-06",
+      "strategy": "Forge RR2.5 full 2L6S price+ema #B9E1",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 6,
+      "train_wr": 0.6,
+      "oos_trades": 10,
+      "oos_wr": 0.5,
+      "oos_pips": 47.1,
+      "oos_r": 6.09
+    },
+    {
+      "week_start": "2026-04-13",
+      "strategy": "Forge RR3 full 2L6S price+ema #3B58",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 6,
+      "train_wr": 0.561,
+      "oos_trades": 10,
+      "oos_wr": 0.4,
+      "oos_pips": 14.6,
+      "oos_r": 4.17
+    },
+    {
+      "week_start": "2026-04-20",
+      "strategy": "Forge RR3 full 2L5S ema+session #220C",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 5,
+      "train_wr": 0.491,
+      "oos_trades": 7,
+      "oos_wr": 0.571,
+      "oos_pips": 71.4,
+      "oos_r": 7.94
+    },
+    {
+      "week_start": "2026-04-27",
+      "strategy": "Forge RR2.5 full 2L6S ema+price #204D",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 6,
+      "train_wr": 0.456,
+      "oos_trades": 9,
+      "oos_wr": 0.444,
+      "oos_pips": 3.9,
+      "oos_r": 3.49
+    },
+    {
+      "week_start": "2026-05-04",
+      "strategy": "Forge RR2.5 full 2L6S session+ema #F56D",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 6,
+      "train_wr": 0.542,
+      "oos_trades": 10,
+      "oos_wr": 0.3,
+      "oos_pips": -5.7,
+      "oos_r": -1.03
+    },
+    {
+      "week_start": "2026-05-11",
+      "strategy": "Forge RR2.5 full 2L5S ema+session #4BFA",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 5,
+      "train_wr": 0.479,
+      "oos_trades": 4,
+      "oos_wr": 0.75,
+      "oos_pips": 36.4,
+      "oos_r": 5.84
+    },
+    {
+      "week_start": "2026-05-18",
+      "strategy": "Forge RR2.5 full 2L4S ema+squeeze #62FB",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 4,
+      "train_wr": 0.49,
+      "oos_trades": 10,
+      "oos_wr": 0.7,
+      "oos_pips": 114.4,
+      "oos_r": 13.17
+    },
+    {
+      "week_start": "2026-05-25",
+      "strategy": "Forge RR2.5 hybrid 2L5S ema+session #B39A",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 5,
+      "train_wr": 0.571,
+      "oos_trades": 8,
+      "oos_wr": 0.5,
+      "oos_pips": 2.0,
+      "oos_r": 1.39
+    },
+    {
+      "week_start": "2026-06-01",
+      "strategy": "Forge RR2.5 full 2L6S ema+price #BD29",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 6,
+      "train_wr": 0.558,
+      "oos_trades": 7,
+      "oos_wr": 0.286,
+      "oos_pips": -9.4,
+      "oos_r": -1.58
+    },
+    {
+      "week_start": "2026-06-08",
+      "strategy": "Forge RR3 full 2L5S ema+session #4EB2",
+      "score_thr": 1.6,
+      "long_rules": 2,
+      "short_rules": 5,
+      "train_wr": 0.46,
+      "oos_trades": 10,
+      "oos_wr": 0.2,
+      "oos_pips": -27.1,
+      "oos_r": -3.66
+    },
+    {
+      "week_start": "2026-06-15",
+      "strategy": "Forge RR2.5 hybrid 2L4S session+ema #FF56",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 4,
+      "train_wr": 0.646,
+      "oos_trades": 7,
+      "oos_wr": 0.286,
+      "oos_pips": -18.0,
+      "oos_r": -3.39
+    },
+    {
+      "week_start": "2026-06-22",
+      "strategy": "Forge RR2.5 full 2L5S session+price #5556",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 5,
+      "train_wr": 0.636,
+      "oos_trades": 9,
+      "oos_wr": 0.667,
+      "oos_pips": 66.6,
+      "oos_r": 10.63
+    },
+    {
+      "week_start": "2026-06-29",
+      "strategy": "Forge RR2.5 full 2L4S session+ema #BA6C",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 4,
+      "train_wr": 0.596,
+      "oos_trades": 8,
+      "oos_wr": 0.375,
+      "oos_pips": 26.8,
+      "oos_r": 0.41
+    },
+    {
+      "week_start": "2026-07-06",
+      "strategy": "Forge RR2.5 hybrid 2L5S session+ema #0A9B",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 5,
+      "train_wr": 0.614,
+      "oos_trades": 10,
+      "oos_wr": 0.6,
+      "oos_pips": 28.5,
+      "oos_r": 4.68
+    },
+    {
+      "week_start": "2026-07-13",
+      "strategy": "Forge RR3 full 2L5S ema+session #6FDE",
+      "score_thr": 1.6,
+      "long_rules": 2,
+      "short_rules": 5,
+      "train_wr": 0.5,
+      "oos_trades": 0,
+      "oos_wr": 0.0,
+      "oos_pips": 0.0,
+      "oos_r": 0.0
+    },
+    {
+      "week_start": "2026-07-20",
+      "strategy": "Forge RR2.5 full 2L5S ema+price #72F6",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 5,
+      "train_wr": 0.543,
+      "oos_trades": 3,
+      "oos_wr": 0.333,
+      "oos_pips": 2.0,
+      "oos_r": -0.35
+    },
+    {
+      "week_start": "2026-07-27",
+      "strategy": "Forge RR2 hybrid 2L5S session+ema #9922",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 5,
+      "train_wr": 0.644,
+      "oos_trades": 9,
+      "oos_wr": 0.556,
+      "oos_pips": 1.8,
+      "oos_r": 2.35
+    },
+    {
+      "week_start": "2026-08-03",
+      "strategy": "Forge RR2.5 full 2L6S ema+price #AFEB",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 6,
+      "train_wr": 0.571,
+      "oos_trades": 7,
+      "oos_wr": 0.429,
+      "oos_pips": 22.2,
+      "oos_r": 2.06
+    },
+    {
+      "week_start": "2026-08-10",
+      "strategy": "Forge RR2.5 hybrid 2L5S session+price #1EF3",
+      "score_thr": 2.2,
+      "long_rules": 2,
+      "short_rules": 5,
+      "train_wr": 0.672,
+      "oos_trades": 0,
+      "oos_wr": 0.0,
+      "oos_pips": 0.0,
+      "oos_r": 0.0
+    }
+  ],
+  "schedule_weekly": [
+    {
+      "week_start": "2026-04-06",
+      "strategy": {
+        "name": "Forge RR2.5 full 2L6S price+ema #B9E1",
+        "exit_mode": "full",
+        "ml_prob_min": 0.48,
+        "rr": 2.5,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.41579974682448256
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.4537438954220333,
+            "w": 0.3800645007865989
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.862695284950201
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 3.189177606656064
+          },
+          {
+            "feat": "structure_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.7009741032347596
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0489000966398085,
+            "w": 20.835779433670883
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10746190448679059,
+            "w": 4.172093357391452
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 20.186269055584905
+          }
+        ]
+      },
+      "train_start_idx": 53096,
+      "train_end_idx": 55980,
+      "week_end": "2026-04-13",
+      "oos_trades": 10,
+      "oos_r": 6.09,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2026-04-13",
+      "strategy": {
+        "name": "Forge RR3 full 2L6S price+ema #3B58",
+        "exit_mode": "full",
+        "ml_prob_min": 0.44,
+        "rr": 3.0,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.15036241868824476
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.4537438954220333,
+            "w": 0.27871021792364725
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 3.9728521175123515
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 14.097644643707492
+          },
+          {
+            "feat": "structure_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 3.237710830708601
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0489000966398085,
+            "w": 29.469814498391873
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10746190448679059,
+            "w": 4.172093357391452
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 28.953538277259902
+          }
+        ]
+      },
+      "train_start_idx": 53576,
+      "train_end_idx": 56460,
+      "week_end": "2026-04-20",
+      "oos_trades": 10,
+      "oos_r": 4.167,
+      "oos_wr": 0.4
+    },
+    {
+      "week_start": "2026-04-20",
+      "strategy": {
+        "name": "Forge RR3 full 2L5S ema+session #220C",
+        "exit_mode": "full",
+        "ml_prob_min": 0.48,
+        "rr": 3.0,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.41579974682448256
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.46529216146158814,
+            "w": 0.14626167744190915
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 5.489500367031095
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 63.69051391195676
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0489000966398085,
+            "w": 38.68184072365051
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10746190448679059,
+            "w": 132.84135606232846
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 119.12433154361132
+          }
+        ]
+      },
+      "train_start_idx": 54060,
+      "train_end_idx": 56940,
+      "week_end": "2026-04-27",
+      "oos_trades": 7,
+      "oos_r": 7.94,
+      "oos_wr": 0.571
+    },
+    {
+      "week_start": "2026-04-27",
+      "strategy": {
+        "name": "Forge RR2.5 full 2L6S ema+price #204D",
+        "exit_mode": "full",
+        "ml_prob_min": 0.48,
+        "rr": 2.5,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.15036241868824476
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.4537438954220333,
+            "w": 0.27871021792364725
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.2849901978327414
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 4.494162998184794
+          },
+          {
+            "feat": "structure_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.2450681217281265
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0489000966398085,
+            "w": 18.84412190172226
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10906364152710878,
+            "w": 36.90885463372339
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 60.17813384122691
+          }
+        ]
+      },
+      "train_start_idx": 54540,
+      "train_end_idx": 57420,
+      "week_end": "2026-05-04",
+      "oos_trades": 9,
+      "oos_r": 3.494,
+      "oos_wr": 0.444
+    },
+    {
+      "week_start": "2026-05-04",
+      "strategy": {
+        "name": "Forge RR2.5 full 2L6S session+ema #F56D",
+        "exit_mode": "full",
+        "ml_prob_min": 0.44,
+        "rr": 2.5,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.15036241868824476
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.4537438954220333,
+            "w": 0.26430229776203007
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 3.9728521175123515
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 14.097644643707492
+          },
+          {
+            "feat": "structure_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 3.237710830708601
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0489000966398085,
+            "w": 4.243155086980083
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10746190448679059,
+            "w": 11.891462412068831
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 6.1718083052314
+          }
+        ]
+      },
+      "train_start_idx": 55020,
+      "train_end_idx": 57900,
+      "week_end": "2026-05-11",
+      "oos_trades": 10,
+      "oos_r": -1.035,
+      "oos_wr": 0.3
+    },
+    {
+      "week_start": "2026-05-11",
+      "strategy": {
+        "name": "Forge RR2.5 full 2L5S ema+session #4BFA",
+        "exit_mode": "full",
+        "ml_prob_min": 0.48,
+        "rr": 2.5,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 2.5,
+        "min_rules_match": 2,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.3256972281779888
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.4537438954220333,
+            "w": 0.3800645007865989
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 4.227575462218025
+          },
+          {
+            "feat": "structure_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.4108738313983606
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0225268502545528,
+            "w": 3.0
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.11433284111916836,
+            "w": 9.33104526124972
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.18996269388602655,
+            "w": 6.297957091757568
+          }
+        ]
+      },
+      "train_start_idx": 55500,
+      "train_end_idx": 58380,
+      "week_end": "2026-05-18",
+      "oos_trades": 4,
+      "oos_r": 5.842,
+      "oos_wr": 0.75
+    },
+    {
+      "week_start": "2026-05-18",
+      "strategy": {
+        "name": "Forge RR2.5 full 2L4S ema+squeeze #62FB",
+        "exit_mode": "full",
+        "ml_prob_min": 0.48,
+        "rr": 2.5,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.15036241868824476
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.46529216146158814,
+            "w": 0.043878503232572745
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 14.29667743775517
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0489000966398085,
+            "w": 6.001455030721654
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10746190448679059,
+            "w": 51.32906241542801
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.18806037082819052,
+            "w": 3.0
+          }
+        ]
+      },
+      "train_start_idx": 55980,
+      "train_end_idx": 58860,
+      "week_end": "2026-05-25",
+      "oos_trades": 10,
+      "oos_r": 13.17,
+      "oos_wr": 0.7
+    },
+    {
+      "week_start": "2026-05-25",
+      "strategy": {
+        "name": "Forge RR2.5 hybrid 2L5S ema+session #B39A",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.44,
+        "rr": 2.5,
+        "atr_mult": 1.05,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 1.05,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.14117230041817627
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.48875725585311397,
+            "w": 0.4875389248063639
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 3.7847528987534207
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 31.225159165309204
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.081232354454447,
+            "w": 3.0
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10746190448679059,
+            "w": 51.32906241542801
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 6.1718083052314
+          }
+        ]
+      },
+      "train_start_idx": 56460,
+      "train_end_idx": 59340,
+      "week_end": "2026-06-01",
+      "oos_trades": 8,
+      "oos_r": 1.393,
+      "oos_wr": 0.5
+    },
+    {
+      "week_start": "2026-06-01",
+      "strategy": {
+        "name": "Forge RR2.5 full 2L6S ema+price #BD29",
+        "exit_mode": "full",
+        "ml_prob_min": 0.48,
+        "rr": 2.5,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 2.5,
+        "min_rules_match": 2,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.3256972281779888
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.4537438954220333,
+            "w": 0.3800645007865989
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.862695284950201
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 3.189177606656064
+          },
+          {
+            "feat": "structure_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.7009741032347596
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0489000966398085,
+            "w": 4.243155086980083
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.11433284111916836,
+            "w": 9.33104526124972
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 9.033276095876332
+          }
+        ]
+      },
+      "train_start_idx": 56940,
+      "train_end_idx": 59820,
+      "week_end": "2026-06-08",
+      "oos_trades": 7,
+      "oos_r": -1.584,
+      "oos_wr": 0.286
+    },
+    {
+      "week_start": "2026-06-08",
+      "strategy": {
+        "name": "Forge RR3 full 2L5S ema+session #4EB2",
+        "exit_mode": "full",
+        "ml_prob_min": 0.48,
+        "rr": 3.0,
+        "atr_mult": 0.9,
+        "score_threshold": 1.6,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.15036241868824476
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.46529216146158814,
+            "w": 0.043878503232572745
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 4.5144651729745835
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.3729674037520887,
+            "w": 63.69051391195676
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.1190650570815628,
+            "w": 27.348875964263385
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10746190448679059,
+            "w": 184.74217973817107
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 170.8622273686925
+          }
+        ]
+      },
+      "train_start_idx": 57420,
+      "train_end_idx": 60300,
+      "week_end": "2026-06-15",
+      "oos_trades": 10,
+      "oos_r": -3.657,
+      "oos_wr": 0.2
+    },
+    {
+      "week_start": "2026-06-15",
+      "strategy": {
+        "name": "Forge RR2.5 hybrid 2L4S session+ema #FF56",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.48,
+        "rr": 2.5,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 2.5,
+        "min_rules_match": 2,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.15036241868824476
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.46529216146158814,
+            "w": 0.04971096845947108
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 14.29667743775517
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 98.27790410078812
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10746190448679059,
+            "w": 4.172093357391452
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 60.17813384122691
+          }
+        ]
+      },
+      "train_start_idx": 57900,
+      "train_end_idx": 60780,
+      "week_end": "2026-06-22",
+      "oos_trades": 7,
+      "oos_r": -3.389,
+      "oos_wr": 0.286
+    },
+    {
+      "week_start": "2026-06-22",
+      "strategy": {
+        "name": "Forge RR2.5 full 2L5S session+price #5556",
+        "exit_mode": "full",
+        "ml_prob_min": 0.48,
+        "rr": 2.5,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.15036241868824476
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.46529216146158814,
+            "w": 0.043878503232572745
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 14.29667743775517
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 98.27790410078812
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0489000966398085,
+            "w": 44.33463322809671
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10746190448679059,
+            "w": 4.172093357391452
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 10.414397239293884
+          }
+        ]
+      },
+      "train_start_idx": 58380,
+      "train_end_idx": 61260,
+      "week_end": "2026-06-29",
+      "oos_trades": 9,
+      "oos_r": 10.631,
+      "oos_wr": 0.667
+    },
+    {
+      "week_start": "2026-06-29",
+      "strategy": {
+        "name": "Forge RR2.5 full 2L4S session+ema #BA6C",
+        "exit_mode": "full",
+        "ml_prob_min": 0.48,
+        "rr": 2.5,
+        "atr_mult": 1.05,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 1.05,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.15036241868824476
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.46529216146158814,
+            "w": 0.043878503232572745
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 98.27790410078812
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0489000966398085,
+            "w": 44.33463322809671
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10746190448679059,
+            "w": 51.32906241542801
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 10.414397239293884
+          }
+        ]
+      },
+      "train_start_idx": 58860,
+      "train_end_idx": 61740,
+      "week_end": "2026-07-06",
+      "oos_trades": 8,
+      "oos_r": 0.407,
+      "oos_wr": 0.375
+    },
+    {
+      "week_start": "2026-07-06",
+      "strategy": {
+        "name": "Forge RR2.5 hybrid 2L5S session+ema #0A9B",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.48,
+        "rr": 2.5,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.11777934778197897
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.46529216146158814,
+            "w": 0.043878503232572745
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 3.6801352582376303
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 98.27790410078812
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0489000966398085,
+            "w": 6.001455030721654
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.11433284111916836,
+            "w": 14.160899838741033
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 12.956594628300117
+          }
+        ]
+      },
+      "train_start_idx": 59340,
+      "train_end_idx": 62220,
+      "week_end": "2026-07-13",
+      "oos_trades": 10,
+      "oos_r": 4.684,
+      "oos_wr": 0.6
+    },
+    {
+      "week_start": "2026-07-13",
+      "strategy": {
+        "name": "Forge RR3 full 2L5S ema+session #6FDE",
+        "exit_mode": "full",
+        "ml_prob_min": 0.48,
+        "rr": 3.0,
+        "atr_mult": 0.9,
+        "score_threshold": 1.6,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 3.0,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.41579974682448256
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.46529216146158814,
+            "w": 0.14626167744190915
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 5.489500367031095
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 63.69051391195676
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0489000966398085,
+            "w": 38.68184072365051
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10746190448679059,
+            "w": 132.84135606232846
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 119.12433154361132
+          }
+        ]
+      },
+      "train_start_idx": 59820,
+      "train_end_idx": 62700,
+      "week_end": "2026-07-20",
+      "oos_trades": 0,
+      "oos_r": 0.0,
+      "oos_wr": 0.0
+    },
+    {
+      "week_start": "2026-07-20",
+      "strategy": {
+        "name": "Forge RR2.5 full 2L5S ema+price #72F6",
+        "exit_mode": "full",
+        "ml_prob_min": 0.48,
+        "rr": 2.5,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 2.5,
+        "min_rules_match": 2,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.15036241868824476
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.46529216146158814,
+            "w": 0.043878503232572745
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 6.734034616939849
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 5.957464762915981
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0489000966398085,
+            "w": 54.71101641343701
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10116320053032528,
+            "w": 132.84135606232846
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 6.1718083052314
+          }
+        ]
+      },
+      "train_start_idx": 60300,
+      "train_end_idx": 63180,
+      "week_end": "2026-07-27",
+      "oos_trades": 3,
+      "oos_r": -0.347,
+      "oos_wr": 0.333
+    },
+    {
+      "week_start": "2026-07-27",
+      "strategy": {
+        "name": "Forge RR2 hybrid 2L5S session+ema #9922",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.48,
+        "rr": 2.5,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.41579974682448256
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.46529216146158814,
+            "w": 0.14626167744190915
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 3.6801352582376303
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 69.740614907363
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0489000966398085,
+            "w": 31.34551930293714
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.11025958213884632,
+            "w": 26.539809734842688
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 7.260868178216403
+          }
+        ]
+      },
+      "train_start_idx": 60780,
+      "train_end_idx": 63660,
+      "week_end": "2026-08-03",
+      "oos_trades": 9,
+      "oos_r": 2.348,
+      "oos_wr": 0.556
+    },
+    {
+      "week_start": "2026-08-03",
+      "strategy": {
+        "name": "Forge RR2.5 full 2L6S ema+price #AFEB",
+        "exit_mode": "full",
+        "ml_prob_min": 0.48,
+        "rr": 2.5,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 2.5,
+        "min_rules_match": 2,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.1996214801314566
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.4537438954220333,
+            "w": 0.27871021792364725
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 2.2849901978327414
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 9.536732557430183
+          },
+          {
+            "feat": "structure_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 1.8621728905979236
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.0489000966398085,
+            "w": 20.31661912017142
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10746190448679059,
+            "w": 11.891462412068831
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.17932179210209764,
+            "w": 34.55017339558548
+          }
+        ]
+      },
+      "train_start_idx": 61260,
+      "train_end_idx": 64140,
+      "week_end": "2026-08-10",
+      "oos_trades": 7,
+      "oos_r": 2.055,
+      "oos_wr": 0.429
+    },
+    {
+      "week_start": "2026-08-10",
+      "strategy": {
+        "name": "Forge RR2.5 hybrid 2L5S session+price #1EF3",
+        "exit_mode": "hybrid",
+        "ml_prob_min": 0.48,
+        "rr": 2.5,
+        "atr_mult": 0.9,
+        "score_threshold": 2.2,
+        "atr_mult_sl": 0.9,
+        "rr_ratio": 2.5,
+        "min_rules_match": 1,
+        "max_trades_per_day": 2,
+        "min_bars_between": 12,
+        "max_hold_bars": 96,
+        "partial_pct": 0.4,
+        "partial_at_r": 1.2,
+        "trail_activate_r": 1.8,
+        "trail_distance_r": 0.6,
+        "session_filter": true,
+        "session_start_hour": 7,
+        "session_end_hour": 20,
+        "htf_align_boost": 1.12,
+        "htf_counter_dampen": 0.88,
+        "blocked_hours": [],
+        "allow_long": true,
+        "allow_short": true,
+        "anti_chase": false,
+        "anti_chase_rsi_short_max": 100.0,
+        "anti_chase_rsi_long_min": 0.0,
+        "anti_chase_vwap_short_max": 99.0,
+        "anti_chase_logic": "or",
+        "long_rules": [
+          {
+            "feat": "sweep_low_fade",
+            "direction": "long",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 0.41579974682448256
+          },
+          {
+            "feat": "upper_wick_ratio",
+            "direction": "long",
+            "op": "gt",
+            "thr": 0.46529216146158814,
+            "w": 0.14626167744190915
+          }
+        ],
+        "short_rules": [
+          {
+            "feat": "squeeze_break_dn",
+            "direction": "short",
+            "op": "eq1",
+            "thr": 0.5,
+            "w": 3.0852829854133326
+          },
+          {
+            "feat": "session_vwap_dist",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.2525066402741725,
+            "w": 22.15820352187875
+          },
+          {
+            "feat": "price_vs_ema21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 1.075867850981424,
+            "w": 10.155846715256526
+          },
+          {
+            "feat": "ema_slope_21",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.10746190448679059,
+            "w": 8.550716434234216
+          },
+          {
+            "feat": "ema_slope_8",
+            "direction": "short",
+            "op": "gt",
+            "thr": 0.1815622090792187,
+            "w": 13.516753061067012
+          }
+        ]
+      },
+      "train_start_idx": 61740,
+      "train_end_idx": 64620,
+      "week_end": "2026-08-17",
+      "oos_trades": 0,
+      "oos_r": 0.0,
+      "oos_wr": 0.0
+    }
+  ],
+  "trades": [
+    {
+      "entry": "2026-04-06 05:30:00",
+      "exit": "2026-04-06 06:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.32154,
+      "exit_px": 1.32212,
+      "sl": 1.32201,
+      "tp": 1.32037,
+      "pnl_pips": -5.7,
+      "r": -1.22,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-06 09:30:00",
+      "exit": "2026-04-06 10:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.32508,
+      "exit_px": 1.32351,
+      "sl": 1.32574,
+      "tp": 1.3234,
+      "pnl_pips": 15.7,
+      "r": 2.34,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-07 06:45:00",
+      "exit": "2026-04-07 07:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.32414,
+      "exit_px": 1.32274,
+      "sl": 1.32473,
+      "tp": 1.32264,
+      "pnl_pips": 13.9,
+      "r": 2.32,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-07 10:00:00",
+      "exit": "2026-04-07 10:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.32634,
+      "exit_px": 1.32424,
+      "sl": 1.32723,
+      "tp": 1.32413,
+      "pnl_pips": 21.1,
+      "r": 2.38,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-08 05:30:00",
+      "exit": "2026-04-08 05:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.34236,
+      "exit_px": 1.34349,
+      "sl": 1.34338,
+      "tp": 1.33982,
+      "pnl_pips": -11.2,
+      "r": -1.1,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-08 08:30:00",
+      "exit": "2026-04-08 09:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34188,
+      "exit_px": 1.34318,
+      "sl": 1.34307,
+      "tp": 1.33892,
+      "pnl_pips": -12.9,
+      "r": -1.09,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-09 09:00:00",
+      "exit": "2026-04-09 09:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.34016,
+      "exit_px": 1.34098,
+      "sl": 1.34087,
+      "tp": 1.33837,
+      "pnl_pips": -8.2,
+      "r": -1.15,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-09 17:45:00",
+      "exit": "2026-04-09 21:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.3452,
+      "exit_px": 1.34289,
+      "sl": 1.34616,
+      "tp": 1.34279,
+      "pnl_pips": 23.0,
+      "r": 2.39,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-10 10:15:00",
+      "exit": "2026-04-10 10:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.34346,
+      "exit_px": 1.34422,
+      "sl": 1.34412,
+      "tp": 1.3418,
+      "pnl_pips": -7.7,
+      "r": -1.16,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-10 14:30:00",
+      "exit": "2026-04-10 14:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.34732,
+      "exit_px": 1.34539,
+      "sl": 1.34813,
+      "tp": 1.34529,
+      "pnl_pips": 19.2,
+      "r": 2.37,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-13 08:30:00",
+      "exit": "2026-04-13 10:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.3427,
+      "exit_px": 1.34342,
+      "sl": 1.34331,
+      "tp": 1.34088,
+      "pnl_pips": -7.1,
+      "r": -1.17,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-13 11:30:00",
+      "exit": "2026-04-13 11:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.34358,
+      "exit_px": 1.34204,
+      "sl": 1.34412,
+      "tp": 1.34193,
+      "pnl_pips": 15.4,
+      "r": 2.81,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-14 07:00:00",
+      "exit": "2026-04-14 07:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.35208,
+      "exit_px": 1.35266,
+      "sl": 1.35256,
+      "tp": 1.35063,
+      "pnl_pips": -5.9,
+      "r": -1.22,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-14 10:45:00",
+      "exit": "2026-04-14 11:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.35498,
+      "exit_px": 1.35576,
+      "sl": 1.35566,
+      "tp": 1.35297,
+      "pnl_pips": -7.8,
+      "r": -1.16,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-15 05:30:00",
+      "exit": "2026-04-15 06:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.35696,
+      "exit_px": 1.35581,
+      "sl": 1.35738,
+      "tp": 1.35571,
+      "pnl_pips": 11.5,
+      "r": 2.75,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-15 15:30:00",
+      "exit": "2026-04-16 02:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.35742,
+      "exit_px": 1.35837,
+      "sl": 1.35826,
+      "tp": 1.35492,
+      "pnl_pips": -9.4,
+      "r": -1.13,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-16 04:30:00",
+      "exit": "2026-04-16 06:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.35772,
+      "exit_px": 1.3564,
+      "sl": 1.3582,
+      "tp": 1.35629,
+      "pnl_pips": 13.3,
+      "r": 2.78,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-16 11:15:00",
+      "exit": "2026-04-16 14:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.35496,
+      "exit_px": 1.35305,
+      "sl": 1.35564,
+      "tp": 1.35294,
+      "pnl_pips": 19.2,
+      "r": 2.84,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-17 09:15:00",
+      "exit": "2026-04-17 09:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.35286,
+      "exit_px": 1.3535,
+      "sl": 1.3534,
+      "tp": 1.35123,
+      "pnl_pips": -6.5,
+      "r": -1.19,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-17 12:45:00",
+      "exit": "2026-04-17 13:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.35414,
+      "exit_px": 1.35494,
+      "sl": 1.35484,
+      "tp": 1.35203,
+      "pnl_pips": -8.1,
+      "r": -1.15,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-20 07:00:00",
+      "exit": "2026-04-20 07:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.35042,
+      "exit_px": 1.35117,
+      "sl": 1.35107,
+      "tp": 1.34846,
+      "pnl_pips": -7.6,
+      "r": -1.16,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-20 15:45:00",
+      "exit": "2026-04-21 07:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.35392,
+      "exit_px": 1.35137,
+      "sl": 1.3548,
+      "tp": 1.35127,
+      "pnl_pips": 25.4,
+      "r": 2.88,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-21 14:45:00",
+      "exit": "2026-04-21 15:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.35338,
+      "exit_px": 1.35112,
+      "sl": 1.35416,
+      "tp": 1.35101,
+      "pnl_pips": 22.6,
+      "r": 2.87,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-22 05:30:00",
+      "exit": "2026-04-22 09:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.3527,
+      "exit_px": 1.35344,
+      "sl": 1.35333,
+      "tp": 1.35078,
+      "pnl_pips": -7.4,
+      "r": -1.16,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-23 09:45:00",
+      "exit": "2026-04-23 10:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.35048,
+      "exit_px": 1.34852,
+      "sl": 1.35116,
+      "tp": 1.34842,
+      "pnl_pips": 19.5,
+      "r": 2.85,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-23 15:00:00",
+      "exit": "2026-04-23 17:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.35082,
+      "exit_px": 1.34833,
+      "sl": 1.35169,
+      "tp": 1.34823,
+      "pnl_pips": 24.9,
+      "r": 2.88,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-24 08:00:00",
+      "exit": "2026-04-24 08:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.34744,
+      "exit_px": 1.34804,
+      "sl": 1.34794,
+      "tp": 1.34592,
+      "pnl_pips": -6.1,
+      "r": -1.21,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-27 04:15:00",
+      "exit": "2026-04-27 06:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.3541,
+      "exit_px": 1.35307,
+      "sl": 1.35456,
+      "tp": 1.35296,
+      "pnl_pips": 10.4,
+      "r": 2.27,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-27 08:30:00",
+      "exit": "2026-04-27 08:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.35466,
+      "exit_px": 1.35535,
+      "sl": 1.35524,
+      "tp": 1.35322,
+      "pnl_pips": -6.8,
+      "r": -1.18,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-28 04:45:00",
+      "exit": "2026-04-28 05:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.35318,
+      "exit_px": 1.35235,
+      "sl": 1.35355,
+      "tp": 1.35224,
+      "pnl_pips": 8.3,
+      "r": 2.22,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-28 17:00:00",
+      "exit": "2026-04-28 17:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.35124,
+      "exit_px": 1.35205,
+      "sl": 1.35194,
+      "tp": 1.3495,
+      "pnl_pips": -8.0,
+      "r": -1.15,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-29 15:00:00",
+      "exit": "2026-04-29 16:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.34998,
+      "exit_px": 1.34801,
+      "sl": 1.3508,
+      "tp": 1.34791,
+      "pnl_pips": 19.6,
+      "r": 2.37,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-04-30 07:45:00",
+      "exit": "2026-04-30 08:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34856,
+      "exit_px": 1.34934,
+      "sl": 1.34924,
+      "tp": 1.34685,
+      "pnl_pips": -7.9,
+      "r": -1.15,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-04-30 15:15:00",
+      "exit": "2026-04-30 18:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.35826,
+      "exit_px": 1.35985,
+      "sl": 1.35975,
+      "tp": 1.35456,
+      "pnl_pips": -15.9,
+      "r": -1.07,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-01 07:00:00",
+      "exit": "2026-05-01 09:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.36086,
+      "exit_px": 1.35952,
+      "sl": 1.36143,
+      "tp": 1.35941,
+      "pnl_pips": 13.4,
+      "r": 2.32,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-01 12:15:00",
+      "exit": "2026-05-01 12:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.36288,
+      "exit_px": 1.3638,
+      "sl": 1.3637,
+      "tp": 1.36085,
+      "pnl_pips": -9.2,
+      "r": -1.13,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-04 06:15:00",
+      "exit": "2026-05-04 06:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.35938,
+      "exit_px": 1.35812,
+      "sl": 1.35992,
+      "tp": 1.35801,
+      "pnl_pips": 12.6,
+      "r": 2.31,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-04 14:30:00",
+      "exit": "2026-05-04 15:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.35632,
+      "exit_px": 1.35416,
+      "sl": 1.35722,
+      "tp": 1.35406,
+      "pnl_pips": 21.5,
+      "r": 2.38,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-05 08:15:00",
+      "exit": "2026-05-05 08:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.35406,
+      "exit_px": 1.35481,
+      "sl": 1.3547,
+      "tp": 1.35247,
+      "pnl_pips": -7.4,
+      "r": -1.16,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-05 13:15:00",
+      "exit": "2026-05-05 14:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.35514,
+      "exit_px": 1.35603,
+      "sl": 1.35593,
+      "tp": 1.35319,
+      "pnl_pips": -8.9,
+      "r": -1.13,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-06 09:00:00",
+      "exit": "2026-05-06 10:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.36234,
+      "exit_px": 1.36325,
+      "sl": 1.36315,
+      "tp": 1.36034,
+      "pnl_pips": -9.1,
+      "r": -1.13,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-06 16:15:00",
+      "exit": "2026-05-06 17:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.3589,
+      "exit_px": 1.35993,
+      "sl": 1.35983,
+      "tp": 1.35656,
+      "pnl_pips": -10.4,
+      "r": -1.11,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-07 07:15:00",
+      "exit": "2026-05-07 10:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.36196,
+      "exit_px": 1.36267,
+      "sl": 1.36257,
+      "tp": 1.36042,
+      "pnl_pips": -7.2,
+      "r": -1.17,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-07 15:00:00",
+      "exit": "2026-05-07 15:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.36282,
+      "exit_px": 1.36113,
+      "sl": 1.36353,
+      "tp": 1.36103,
+      "pnl_pips": 16.8,
+      "r": 2.35,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-08 06:45:00",
+      "exit": "2026-05-08 08:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.35868,
+      "exit_px": 1.35932,
+      "sl": 1.35922,
+      "tp": 1.35735,
+      "pnl_pips": -6.4,
+      "r": -1.2,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-08 09:45:00",
+      "exit": "2026-05-08 12:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.36136,
+      "exit_px": 1.36208,
+      "sl": 1.36197,
+      "tp": 1.35981,
+      "pnl_pips": -7.2,
+      "r": -1.17,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-11 08:30:00",
+      "exit": "2026-05-11 10:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.36096,
+      "exit_px": 1.35955,
+      "sl": 1.36157,
+      "tp": 1.35945,
+      "pnl_pips": 14.1,
+      "r": 2.33,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-11 13:45:00",
+      "exit": "2026-05-11 14:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.36264,
+      "exit_px": 1.36355,
+      "sl": 1.36344,
+      "tp": 1.36065,
+      "pnl_pips": -9.0,
+      "r": -1.13,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-13 06:00:00",
+      "exit": "2026-05-13 06:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.35466,
+      "exit_px": 1.35364,
+      "sl": 1.3551,
+      "tp": 1.35354,
+      "pnl_pips": 10.1,
+      "r": 2.27,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-13 15:45:00",
+      "exit": "2026-05-14 11:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.35242,
+      "exit_px": 1.35031,
+      "sl": 1.35331,
+      "tp": 1.3502,
+      "pnl_pips": 21.2,
+      "r": 2.38,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-18 06:15:00",
+      "exit": "2026-05-18 06:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.33334,
+      "exit_px": 1.33399,
+      "sl": 1.33389,
+      "tp": 1.33198,
+      "pnl_pips": -6.5,
+      "r": -1.19,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-18 16:15:00",
+      "exit": "2026-05-18 18:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.34422,
+      "exit_px": 1.34124,
+      "sl": 1.34546,
+      "tp": 1.34113,
+      "pnl_pips": 29.9,
+      "r": 2.42,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-19 12:30:00",
+      "exit": "2026-05-19 13:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.34136,
+      "exit_px": 1.33951,
+      "sl": 1.34215,
+      "tp": 1.33941,
+      "pnl_pips": 18.5,
+      "r": 2.37,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-19 17:15:00",
+      "exit": "2026-05-20 00:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34092,
+      "exit_px": 1.33892,
+      "sl": 1.34176,
+      "tp": 1.33881,
+      "pnl_pips": 20.0,
+      "r": 2.38,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-20 04:15:00",
+      "exit": "2026-05-20 06:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34012,
+      "exit_px": 1.33878,
+      "sl": 1.34069,
+      "tp": 1.33867,
+      "pnl_pips": 13.4,
+      "r": 2.32,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-20 15:00:00",
+      "exit": "2026-05-20 15:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.34308,
+      "exit_px": 1.34424,
+      "sl": 1.34414,
+      "tp": 1.34046,
+      "pnl_pips": -11.6,
+      "r": -1.1,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-21 08:30:00",
+      "exit": "2026-05-21 10:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.3438,
+      "exit_px": 1.34199,
+      "sl": 1.34457,
+      "tp": 1.34189,
+      "pnl_pips": 18.1,
+      "r": 2.36,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-21 17:45:00",
+      "exit": "2026-05-22 06:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.3441,
+      "exit_px": 1.34174,
+      "sl": 1.34508,
+      "tp": 1.34164,
+      "pnl_pips": 23.5,
+      "r": 2.39,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-22 13:15:00",
+      "exit": "2026-05-22 14:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34486,
+      "exit_px": 1.34305,
+      "sl": 1.34563,
+      "tp": 1.34294,
+      "pnl_pips": 18.2,
+      "r": 2.36,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-05-22 16:30:00",
+      "exit": "2026-05-22 17:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.34428,
+      "exit_px": 1.34518,
+      "sl": 1.34508,
+      "tp": 1.34227,
+      "pnl_pips": -9.1,
+      "r": -1.13,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-25 05:15:00",
+      "exit": "2026-05-25 07:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.34838,
+      "exit_px": 1.34736,
+      "sl": 1.34725,
+      "tp": 1.34708,
+      "pnl_pips": 10.3,
+      "r": 1.96,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-05-25 09:45:00",
+      "exit": "2026-05-25 11:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.34934,
+      "exit_px": 1.35002,
+      "sl": 1.34991,
+      "tp": 1.34793,
+      "pnl_pips": -6.7,
+      "r": -1.18,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-26 09:30:00",
+      "exit": "2026-05-26 10:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.34796,
+      "exit_px": 1.34868,
+      "sl": 1.34858,
+      "tp": 1.3464,
+      "pnl_pips": -7.3,
+      "r": -1.17,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-27 12:30:00",
+      "exit": "2026-05-27 12:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.3451,
+      "exit_px": 1.34429,
+      "sl": 1.34419,
+      "tp": 1.34331,
+      "pnl_pips": 8.0,
+      "r": 1.12,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-05-28 12:45:00",
+      "exit": "2026-05-28 13:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34174,
+      "exit_px": 1.34263,
+      "sl": 1.34253,
+      "tp": 1.33979,
+      "pnl_pips": -8.9,
+      "r": -1.13,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-28 15:45:00",
+      "exit": "2026-05-28 16:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.34342,
+      "exit_px": 1.34464,
+      "sl": 1.34454,
+      "tp": 1.34064,
+      "pnl_pips": -12.2,
+      "r": -1.09,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-05-29 06:15:00",
+      "exit": "2026-05-29 07:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34416,
+      "exit_px": 1.3434,
+      "sl": 1.3433,
+      "tp": 1.3431,
+      "pnl_pips": 7.6,
+      "r": 1.79,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-05-29 15:15:00",
+      "exit": "2026-05-29 17:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.3481,
+      "exit_px": 1.34698,
+      "sl": 1.34688,
+      "tp": 1.34557,
+      "pnl_pips": 11.1,
+      "r": 1.1,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-06-01 05:45:00",
+      "exit": "2026-06-01 06:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34622,
+      "exit_px": 1.34669,
+      "sl": 1.34659,
+      "tp": 1.34528,
+      "pnl_pips": -4.8,
+      "r": -1.28,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-01 17:45:00",
+      "exit": "2026-06-02 06:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34646,
+      "exit_px": 1.34744,
+      "sl": 1.34734,
+      "tp": 1.34428,
+      "pnl_pips": -9.8,
+      "r": -1.12,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-02 14:45:00",
+      "exit": "2026-06-02 17:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34764,
+      "exit_px": 1.34639,
+      "sl": 1.34819,
+      "tp": 1.34628,
+      "pnl_pips": 12.6,
+      "r": 2.31,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-04 06:15:00",
+      "exit": "2026-06-04 07:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.34302,
+      "exit_px": 1.34207,
+      "sl": 1.34343,
+      "tp": 1.34197,
+      "pnl_pips": 9.4,
+      "r": 2.25,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-04 09:45:00",
+      "exit": "2026-06-04 11:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34374,
+      "exit_px": 1.34441,
+      "sl": 1.34431,
+      "tp": 1.34231,
+      "pnl_pips": -6.8,
+      "r": -1.18,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-05 04:45:00",
+      "exit": "2026-06-05 05:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.34272,
+      "exit_px": 1.34314,
+      "sl": 1.34304,
+      "tp": 1.34195,
+      "pnl_pips": -4.2,
+      "r": -1.34,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-05 09:15:00",
+      "exit": "2026-06-05 10:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34632,
+      "exit_px": 1.34691,
+      "sl": 1.34681,
+      "tp": 1.34512,
+      "pnl_pips": -5.9,
+      "r": -1.22,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-08 04:30:00",
+      "exit": "2026-06-08 05:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.33424,
+      "exit_px": 1.33264,
+      "sl": 1.3348,
+      "tp": 1.33253,
+      "pnl_pips": 16.0,
+      "r": 2.81,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-08 11:15:00",
+      "exit": "2026-06-08 11:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.33582,
+      "exit_px": 1.3369,
+      "sl": 1.33679,
+      "tp": 1.33292,
+      "pnl_pips": -10.7,
+      "r": -1.11,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-09 04:45:00",
+      "exit": "2026-06-09 05:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.33556,
+      "exit_px": 1.33606,
+      "sl": 1.33596,
+      "tp": 1.33439,
+      "pnl_pips": -5.0,
+      "r": -1.27,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-09 09:15:00",
+      "exit": "2026-06-09 10:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.33836,
+      "exit_px": 1.33907,
+      "sl": 1.33897,
+      "tp": 1.33652,
+      "pnl_pips": -7.2,
+      "r": -1.17,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-10 06:45:00",
+      "exit": "2026-06-10 09:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.33922,
+      "exit_px": 1.3398,
+      "sl": 1.3397,
+      "tp": 1.33777,
+      "pnl_pips": -5.9,
+      "r": -1.22,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-10 12:45:00",
+      "exit": "2026-06-10 13:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.34002,
+      "exit_px": 1.3409,
+      "sl": 1.3408,
+      "tp": 1.33771,
+      "pnl_pips": -8.8,
+      "r": -1.14,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-11 04:45:00",
+      "exit": "2026-06-11 07:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.3382,
+      "exit_px": 1.33876,
+      "sl": 1.33866,
+      "tp": 1.33685,
+      "pnl_pips": -5.6,
+      "r": -1.23,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-11 17:45:00",
+      "exit": "2026-06-11 19:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.33976,
+      "exit_px": 1.34101,
+      "sl": 1.34091,
+      "tp": 1.33634,
+      "pnl_pips": -12.5,
+      "r": -1.09,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-12 09:30:00",
+      "exit": "2026-06-12 12:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.34216,
+      "exit_px": 1.33989,
+      "sl": 1.34296,
+      "tp": 1.33979,
+      "pnl_pips": 22.7,
+      "r": 2.87,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-12 15:30:00",
+      "exit": "2026-06-14 22:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34206,
+      "exit_px": 1.34308,
+      "sl": 1.34298,
+      "tp": 1.33929,
+      "pnl_pips": -10.3,
+      "r": -1.11,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-15 04:45:00",
+      "exit": "2026-06-15 05:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34464,
+      "exit_px": 1.34521,
+      "sl": 1.34511,
+      "tp": 1.34345,
+      "pnl_pips": -5.8,
+      "r": -1.22,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-15 13:30:00",
+      "exit": "2026-06-15 14:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.34368,
+      "exit_px": 1.34439,
+      "sl": 1.34429,
+      "tp": 1.34218,
+      "pnl_pips": -7.1,
+      "r": -1.17,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-16 08:00:00",
+      "exit": "2026-06-16 08:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.3414,
+      "exit_px": 1.342,
+      "sl": 1.3419,
+      "tp": 1.34014,
+      "pnl_pips": -6.1,
+      "r": -1.21,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-16 16:00:00",
+      "exit": "2026-06-16 19:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.34352,
+      "exit_px": 1.34266,
+      "sl": 1.34255,
+      "tp": 1.3416,
+      "pnl_pips": 8.7,
+      "r": 1.13,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-06-18 06:15:00",
+      "exit": "2026-06-18 06:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.33154,
+      "exit_px": 1.33226,
+      "sl": 1.33216,
+      "tp": 1.33002,
+      "pnl_pips": -7.2,
+      "r": -1.17,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-19 08:45:00",
+      "exit": "2026-06-19 09:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.32272,
+      "exit_px": 1.3237,
+      "sl": 1.3236,
+      "tp": 1.3205,
+      "pnl_pips": -9.9,
+      "r": -1.12,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-19 17:45:00",
+      "exit": "2026-06-19 20:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.3234,
+      "exit_px": 1.32247,
+      "sl": 1.32236,
+      "tp": 1.32172,
+      "pnl_pips": 9.3,
+      "r": 1.38,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-06-22 09:45:00",
+      "exit": "2026-06-22 10:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.32244,
+      "exit_px": 1.32354,
+      "sl": 1.32343,
+      "tp": 1.31997,
+      "pnl_pips": -10.9,
+      "r": -1.11,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-22 13:15:00",
+      "exit": "2026-06-23 03:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.32598,
+      "exit_px": 1.32349,
+      "sl": 1.32701,
+      "tp": 1.32339,
+      "pnl_pips": 24.8,
+      "r": 2.4,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-23 07:30:00",
+      "exit": "2026-06-23 07:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.32456,
+      "exit_px": 1.32318,
+      "sl": 1.32515,
+      "tp": 1.32307,
+      "pnl_pips": 13.8,
+      "r": 2.32,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-24 06:15:00",
+      "exit": "2026-06-24 06:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.32054,
+      "exit_px": 1.3194,
+      "sl": 1.32103,
+      "tp": 1.3193,
+      "pnl_pips": 11.3,
+      "r": 2.29,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-24 15:30:00",
+      "exit": "2026-06-24 16:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.31644,
+      "exit_px": 1.31762,
+      "sl": 1.31752,
+      "tp": 1.31373,
+      "pnl_pips": -11.9,
+      "r": -1.1,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-25 09:30:00",
+      "exit": "2026-06-25 10:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.31918,
+      "exit_px": 1.31794,
+      "sl": 1.31973,
+      "tp": 1.31783,
+      "pnl_pips": 12.5,
+      "r": 2.31,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-25 16:00:00",
+      "exit": "2026-06-25 21:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.32128,
+      "exit_px": 1.31877,
+      "sl": 1.32233,
+      "tp": 1.31866,
+      "pnl_pips": 25.2,
+      "r": 2.4,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-26 05:45:00",
+      "exit": "2026-06-26 06:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.3204,
+      "exit_px": 1.31938,
+      "sl": 1.32084,
+      "tp": 1.31928,
+      "pnl_pips": 10.1,
+      "r": 2.27,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-06-26 08:45:00",
+      "exit": "2026-06-26 09:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.32138,
+      "exit_px": 1.3222,
+      "sl": 1.3221,
+      "tp": 1.31957,
+      "pnl_pips": -8.3,
+      "r": -1.15,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-29 06:00:00",
+      "exit": "2026-06-29 06:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.32078,
+      "exit_px": 1.32137,
+      "sl": 1.32126,
+      "tp": 1.31959,
+      "pnl_pips": -5.8,
+      "r": -1.22,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-29 16:45:00",
+      "exit": "2026-06-29 19:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.32526,
+      "exit_px": 1.32614,
+      "sl": 1.32604,
+      "tp": 1.32329,
+      "pnl_pips": -8.9,
+      "r": -1.13,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-30 06:45:00",
+      "exit": "2026-06-30 07:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.32388,
+      "exit_px": 1.32457,
+      "sl": 1.32447,
+      "tp": 1.32243,
+      "pnl_pips": -6.9,
+      "r": -1.18,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-06-30 15:00:00",
+      "exit": "2026-07-01 01:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.32704,
+      "exit_px": 1.32433,
+      "sl": 1.32816,
+      "tp": 1.32422,
+      "pnl_pips": 27.1,
+      "r": 2.41,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-07-01 09:30:00",
+      "exit": "2026-07-01 12:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.32536,
+      "exit_px": 1.32371,
+      "sl": 1.32606,
+      "tp": 1.3236,
+      "pnl_pips": 16.5,
+      "r": 2.35,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-07-01 14:30:00",
+      "exit": "2026-07-01 14:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.32696,
+      "exit_px": 1.32829,
+      "sl": 1.32819,
+      "tp": 1.32391,
+      "pnl_pips": -13.3,
+      "r": -1.09,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-07-02 06:45:00",
+      "exit": "2026-07-02 07:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.3296,
+      "exit_px": 1.33018,
+      "sl": 1.33008,
+      "tp": 1.32838,
+      "pnl_pips": -5.9,
+      "r": -1.22,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-07-02 13:45:00",
+      "exit": "2026-07-03 13:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.33732,
+      "exit_px": 1.33492,
+      "sl": 1.33894,
+      "tp": 1.33329,
+      "pnl_pips": 24.0,
+      "r": 1.49,
+      "reason": "timeout"
+    },
+    {
+      "entry": "2026-07-06 14:15:00",
+      "exit": "2026-07-06 15:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.33566,
+      "exit_px": 1.33647,
+      "sl": 1.33636,
+      "tp": 1.33389,
+      "pnl_pips": -8.1,
+      "r": -1.15,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-07-06 18:00:00",
+      "exit": "2026-07-06 18:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.33798,
+      "exit_px": 1.33864,
+      "sl": 1.33854,
+      "tp": 1.33656,
+      "pnl_pips": -6.7,
+      "r": -1.19,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-07-07 05:30:00",
+      "exit": "2026-07-07 05:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.33794,
+      "exit_px": 1.33843,
+      "sl": 1.33833,
+      "tp": 1.33695,
+      "pnl_pips": -5.0,
+      "r": -1.27,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-07-07 09:00:00",
+      "exit": "2026-07-07 09:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.33892,
+      "exit_px": 1.33833,
+      "sl": 1.33823,
+      "tp": 1.33757,
+      "pnl_pips": 5.9,
+      "r": 1.1,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-07-08 13:45:00",
+      "exit": "2026-07-08 16:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.33704,
+      "exit_px": 1.33817,
+      "sl": 1.33806,
+      "tp": 1.33446,
+      "pnl_pips": -11.3,
+      "r": -1.1,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-07-08 17:30:00",
+      "exit": "2026-07-08 20:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.34038,
+      "exit_px": 1.33907,
+      "sl": 1.33897,
+      "tp": 1.33801,
+      "pnl_pips": 13.1,
+      "r": 1.38,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-07-09 06:45:00",
+      "exit": "2026-07-09 07:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.34244,
+      "exit_px": 1.34147,
+      "sl": 1.34137,
+      "tp": 1.34104,
+      "pnl_pips": 9.7,
+      "r": 1.73,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-07-09 18:00:00",
+      "exit": "2026-07-09 21:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34142,
+      "exit_px": 1.34005,
+      "sl": 1.33995,
+      "tp": 1.33984,
+      "pnl_pips": 13.6,
+      "r": 2.17,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-07-10 04:30:00",
+      "exit": "2026-07-10 05:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.34324,
+      "exit_px": 1.34246,
+      "sl": 1.34236,
+      "tp": 1.34196,
+      "pnl_pips": 7.8,
+      "r": 1.52,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-07-10 11:00:00",
+      "exit": "2026-07-10 11:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.34306,
+      "exit_px": 1.34212,
+      "sl": 1.34202,
+      "tp": 1.34149,
+      "pnl_pips": 9.4,
+      "r": 1.5,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-07-20 05:15:00",
+      "exit": "2026-07-20 05:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.34626,
+      "exit_px": 1.34668,
+      "sl": 1.34658,
+      "tp": 1.34545,
+      "pnl_pips": -4.3,
+      "r": -1.32,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-07-20 08:15:00",
+      "exit": "2026-07-20 09:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34718,
+      "exit_px": 1.34609,
+      "sl": 1.34765,
+      "tp": 1.34599,
+      "pnl_pips": 10.8,
+      "r": 2.28,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-07-21 06:15:00",
+      "exit": "2026-07-21 06:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.3446,
+      "exit_px": 1.34506,
+      "sl": 1.34495,
+      "tp": 1.34374,
+      "pnl_pips": -4.5,
+      "r": -1.3,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-07-27 06:30:00",
+      "exit": "2026-07-27 06:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.3356,
+      "exit_px": 1.33505,
+      "sl": 1.33494,
+      "tp": 1.33451,
+      "pnl_pips": 5.5,
+      "r": 1.26,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-07-28 07:30:00",
+      "exit": "2026-07-28 07:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.33008,
+      "exit_px": 1.32942,
+      "sl": 1.32932,
+      "tp": 1.32896,
+      "pnl_pips": 6.6,
+      "r": 1.47,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-07-28 15:15:00",
+      "exit": "2026-07-28 15:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.33,
+      "exit_px": 1.33077,
+      "sl": 1.33066,
+      "tp": 1.32836,
+      "pnl_pips": -7.6,
+      "r": -1.16,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-07-29 05:15:00",
+      "exit": "2026-07-29 06:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.32986,
+      "exit_px": 1.33036,
+      "sl": 1.33026,
+      "tp": 1.32885,
+      "pnl_pips": -5.1,
+      "r": -1.26,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-07-29 08:45:00",
+      "exit": "2026-07-29 09:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.33038,
+      "exit_px": 1.32981,
+      "sl": 1.32971,
+      "tp": 1.32915,
+      "pnl_pips": 5.7,
+      "r": 1.16,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-07-30 13:45:00",
+      "exit": "2026-07-30 14:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34124,
+      "exit_px": 1.34267,
+      "sl": 1.34256,
+      "tp": 1.33796,
+      "pnl_pips": -14.2,
+      "r": -1.08,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-07-30 17:45:00",
+      "exit": "2026-07-31 02:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34682,
+      "exit_px": 1.34547,
+      "sl": 1.34536,
+      "tp": 1.34405,
+      "pnl_pips": 13.5,
+      "r": 1.22,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-07-31 06:30:00",
+      "exit": "2026-07-31 07:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.34576,
+      "exit_px": 1.3448,
+      "sl": 1.3447,
+      "tp": 1.34445,
+      "pnl_pips": 9.6,
+      "r": 1.84,
+      "reason": "trail"
+    },
+    {
+      "entry": "2026-07-31 16:00:00",
+      "exit": "2026-07-31 17:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.34658,
+      "exit_px": 1.34779,
+      "sl": 1.34769,
+      "tp": 1.34379,
+      "pnl_pips": -12.2,
+      "r": -1.09,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-08-04 09:30:00",
+      "exit": "2026-08-04 10:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.34398,
+      "exit_px": 1.34459,
+      "sl": 1.34448,
+      "tp": 1.34274,
+      "pnl_pips": -6.0,
+      "r": -1.21,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-08-04 12:45:00",
+      "exit": "2026-08-04 13:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.34504,
+      "exit_px": 1.34383,
+      "sl": 1.34557,
+      "tp": 1.34372,
+      "pnl_pips": 12.2,
+      "r": 2.3,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-08-05 06:45:00",
+      "exit": "2026-08-05 07:00:00",
+      "dir": "SHORT",
+      "entry_px": 1.34614,
+      "exit_px": 1.34666,
+      "sl": 1.34655,
+      "tp": 1.34509,
+      "pnl_pips": -5.2,
+      "r": -1.25,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-08-05 12:30:00",
+      "exit": "2026-08-05 13:15:00",
+      "dir": "SHORT",
+      "entry_px": 1.34796,
+      "exit_px": 1.34665,
+      "sl": 1.34853,
+      "tp": 1.34655,
+      "pnl_pips": 13.1,
+      "r": 2.31,
+      "reason": "tp"
+    },
+    {
+      "entry": "2026-08-06 12:45:00",
+      "exit": "2026-08-06 13:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.34688,
+      "exit_px": 1.34747,
+      "sl": 1.34736,
+      "tp": 1.34566,
+      "pnl_pips": -5.9,
+      "r": -1.22,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-08-07 12:00:00",
+      "exit": "2026-08-07 12:30:00",
+      "dir": "SHORT",
+      "entry_px": 1.34472,
+      "exit_px": 1.34525,
+      "sl": 1.34514,
+      "tp": 1.34368,
+      "pnl_pips": -5.2,
+      "r": -1.25,
+      "reason": "sl"
+    },
+    {
+      "entry": "2026-08-07 16:45:00",
+      "exit": "2026-08-09 21:45:00",
+      "dir": "SHORT",
+      "entry_px": 1.3497,
+      "exit_px": 1.34778,
+      "sl": 1.35052,
+      "tp": 1.34768,
+      "pnl_pips": 19.2,
+      "r": 2.37,
+      "reason": "tp"
+    }
+  ]
+}
