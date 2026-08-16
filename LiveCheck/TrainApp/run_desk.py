@@ -1,4 +1,4 @@
-"""Run a TrainApp desk (Streamlit) with shared TF core + per-desk runtime."""
+"""Run a TrainApp desk (Streamlit) with shared GUI + TF core + per-desk runtime."""
 from __future__ import annotations
 
 import argparse
@@ -30,9 +30,9 @@ def main(argv: list[str] | None = None) -> int:
   cfg = apply_desk_env(args.desk)
   core = Path(cfg["core_root"])
   runtime = Path(cfg["runtime_root"])
-  app = core / "gui" / "app.py"
+  app = ROOT / "gui" / "app.py"
   if not app.exists():
-    raise SystemExit(f"Missing app: {app}")
+    raise SystemExit(f"Missing shared GUI app: {app}")
   runtime.mkdir(parents=True, exist_ok=True)
   for name in ("data", "results", "learning", "mt5"):
     (runtime / name).mkdir(parents=True, exist_ok=True)
@@ -42,24 +42,32 @@ def main(argv: list[str] | None = None) -> int:
     f"TrainApp desk={cfg['id']} label={cfg.get('label')} "
     f"pair={cfg.get('pair')} {cfg.get('tf')} port={port}"
   )
+  print(f"  gui     = {app}")
   print(f"  core    = {core}")
   print(f"  runtime = {runtime}")
   print(f"  bridge  = {cfg.get('bridge_subdir')} magic={cfg.get('magic')}")
 
+  # Shared GUI first on path, then desk core (config / mt5_bridge / data_loader).
+  path_prefix = [str(ROOT), str(core)]
+  for p in reversed(path_prefix):
+    if p in sys.path:
+      sys.path.remove(p)
+    sys.path.insert(0, p)
+
   if args.check:
-    # Import smoke
-    sys.path.insert(0, str(core))
     import config  # noqa: F401
     from mt5_bridge import protocol
+    from gui.desk_ui import desk_caption
     print("  DEFAULT_PAIR", config.DEFAULT_PAIR, "TF", config.DEFAULT_TF)
+    print("  FEATURE", getattr(config, "DEFAULT_FEATURE_PROFILE", "?"))
     print("  INSTANCE", protocol.INSTANCE_ID, "BRIDGE", protocol.BRIDGE_DIR)
+    print("  UI", desk_caption())
     print("OK")
     return 0
 
   env = os.environ.copy()
-  # Core first on PYTHONPATH so gui/config/mt5_bridge resolve to shared code.
   env["PYTHONPATH"] = os.pathsep.join(
-    [str(core), str(ROOT)] + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else [])
+    path_prefix + ([env["PYTHONPATH"]] if env.get("PYTHONPATH") else [])
   )
   cmd = [
     sys.executable, "-m", "streamlit", "run", str(app),
@@ -67,7 +75,6 @@ def main(argv: list[str] | None = None) -> int:
     "--server.headless", "true",
     "--browser.gatherUsageStats", "false",
   ]
-  # cwd=runtime so relative writes land in desk workspace when any code still uses cwd.
   return subprocess.call(cmd, cwd=str(runtime), env=env)
 
 

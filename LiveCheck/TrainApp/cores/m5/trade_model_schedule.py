@@ -14,8 +14,9 @@ from typing import Any
 import pandas as pd
 
 from strategy_miner import MAX_TRADES_PER_DAY, MinedStrategy, Rule, _label_outcomes
+from app_paths import get_root
 
-REPORT_DIR = Path(__file__).resolve().parent / "results"
+REPORT_DIR = get_root() / "results"
 MODELS_DIR = REPORT_DIR / "trade_models"
 _lock = threading.RLock()
 

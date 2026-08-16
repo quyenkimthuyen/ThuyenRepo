@@ -30,8 +30,9 @@ from strategy_miner import (
   mining_search_space_to_dict,
 )
 from trade_model_schedule import week_entry_from_strategy
+from app_paths import get_root
 
-REPORT_DIR = Path(__file__).parent / "results"
+REPORT_DIR = get_root() / "results"
 ProgressCallback = Callable[[int, int, object], None]
 
 

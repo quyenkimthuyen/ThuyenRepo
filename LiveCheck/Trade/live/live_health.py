@@ -194,9 +194,16 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
   roster = load_roster()
   enabled = [r for r in (roster.get("models") or []) if r.get("enabled")]
   groups = group_models_by_book(enabled)
-  bstat = bridge_status()
-  workers = list(bstat.get("workers") or load_workers().get("workers") or [])
-  bridge_running = bool(bstat.get("running")) if not sim else False
+  try:
+    bstat = bridge_status(sim=sim)
+  except TypeError:
+    bstat = bridge_status()
+  try:
+    extra_workers = load_workers(sim=sim)
+  except TypeError:
+    extra_workers = load_workers()
+  workers = list(bstat.get("workers") or extra_workers.get("workers") or [])
+  bridge_running = bool(bstat.get("running"))
   remine_gate_on = bool(gate_enabled())
 
   books_out: list[dict[str, Any]] = []

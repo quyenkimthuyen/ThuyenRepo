@@ -165,10 +165,18 @@ def _bridge_dirs_for_enabled(enabled: list[dict], *, sim: bool = False) -> list[
   return dirs
 
 
-def desk_snapshot(*, sim: bool = False) -> dict[str, Any]:
-  from replay_control import is_replay_running, load_sim_progress
+def _call_bridge_status(*, sim: bool = False) -> dict[str, Any]:
+  """Call status(); tolerate a stale Streamlit copy of bridge_control without sim=."""
+  try:
+    return bridge_status(sim=sim) or {}
+  except TypeError:
+    return bridge_status() or {}
 
-  bstat = bridge_status()
+
+def desk_snapshot(*, sim: bool = False) -> dict[str, Any]:
+  from replay_control import is_replay_running, load_oos_prefs, load_sim_progress
+
+  bstat = _call_bridge_status(sim=sim)
   enabled = book_models()
   bdirs = _bridge_dirs_for_enabled(enabled, sim=sim)
 
@@ -197,10 +205,30 @@ def desk_snapshot(*, sim: bool = False) -> dict[str, Any]:
   bar = bars[0] if bars else {}
 
   bar_ts = _parse_ts(bar.get("time") or bar.get("bar_time") or bar.get("updated_at"))
+  prefs_mode = ""
+  try:
+    prefs_mode = str((load_oos_prefs() or {}).get("mode") or "")
+  except Exception:
+    prefs_mode = ""
   # Replay bar_time is historical (2026) — treat as "online" if sim_control running / fresh file mtime
-  if sim:
+  if sim and prefs_mode != "ea":
     ea_online = bool(bars) or is_replay_running()
     ea_fresh = 0.0 if ea_online else None
+  elif sim:
+    # EA Simulate: heartbeat like Live, but on bridge_sim_live_* connection.json
+    ea_fresh = None
+    for bdir in bdirs:
+      for name in ("connection.json", "ea_sync.json", "heartbeat.json", "bar.json"):
+        p = Path(bdir) / name
+        try:
+          if not p.exists():
+            continue
+          age = max(0.0, time.time() - p.stat().st_mtime)
+          if ea_fresh is None or age < ea_fresh:
+            ea_fresh = age
+        except OSError:
+          continue
+    ea_online = ea_fresh is not None and ea_fresh < 180
   else:
     # Do NOT use candle bar_time for EA liveness — broker candle clocks can look
     # hours "stale" vs wall clock while connection.json is still heartbeat-fresh.
@@ -250,10 +278,7 @@ def desk_snapshot(*, sim: bool = False) -> dict[str, Any]:
   for bdir in bdirs:
     recent.extend(load_recent_fills(bdir, limit=20))
   recent = recent[-20:]
-  if sim:
-    replay = load_sim_progress()
-  else:
-    replay = {"running": False, "books": []}
+  replay = load_sim_progress()
 
   if sim:
     if replay.get("running"):
@@ -276,7 +301,7 @@ def desk_snapshot(*, sim: bool = False) -> dict[str, Any]:
   cfg = _read(RESULTS_DIR / "mt5_bridge_config.json") or {}
   subtitle = f"{n_models} model{'s' if n_models != 1 else ''} on"
   if sim:
-    subtitle = "REPLAY · " + subtitle
+    subtitle = ("EA SIMULATE · " if prefs_mode == "ea" else "REPLAY · ") + subtitle
 
   try:
     from live_health import build_live_health

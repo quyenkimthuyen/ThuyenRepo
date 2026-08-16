@@ -28,12 +28,37 @@ INLINE = LIVE_ROOT / "scripts" / "run_linux_replay_inline.py"
 OOS_FROM = "2023-01-01"
 OOS_TO = "2026-08-07"
 
-LIVE_LIKE_MODES = frozenset({"live_like", "paper", "ea", "inline"})
+LIVE_LIKE_MODES = frozenset({"live_like", "paper", "inline"})
+EA_MODES = frozenset({"ea", "ea_sim", "simulate", "history_feed"})
 PARITY_MODES = frozenset({"parity", "lab", "schedule_parity"})
+EA_DELAY_MS = 100
+HISTORY_FEED_EA_VERSION = (1, 21)
 
 
 def _now() -> str:
   return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+
+
+def _parse_ea_version(raw: Any) -> tuple[int, ...]:
+  parts: list[int] = []
+  for p in str(raw or "").split("."):
+    try:
+      parts.append(int(p))
+    except (TypeError, ValueError):
+      parts.append(0)
+  return tuple(parts) if parts else (0,)
+
+
+def live_ea_needs_history_feed_binary() -> bool:
+  """True when charts still run ForgeBridgeLive < 1.21 (Live mode ignores sim_control)."""
+  dirs = live_bridge_dirs()
+  if not dirs:
+    return True
+  for bdir in dirs:
+    conn = _read(bdir / "connection.json") or {}
+    if _parse_ea_version(conn.get("ea_version")) < HISTORY_FEED_EA_VERSION:
+      return True
+  return False
 
 
 def _read(path: Path) -> Any:
@@ -57,6 +82,8 @@ def _write(path: Path, data: Any) -> None:
 
 def normalize_replay_mode(mode: str | None) -> str:
   raw = str(mode or "").strip().lower()
+  if raw in EA_MODES:
+    return "ea"
   if raw in LIVE_LIKE_MODES:
     return "live_like"
   if raw in PARITY_MODES:
@@ -66,11 +93,16 @@ def normalize_replay_mode(mode: str | None) -> str:
 
 def load_oos_prefs() -> dict[str, Any]:
   data = _read(OOS_PREFS_PATH) or {}
+  try:
+    delay = int(data.get("delay_ms") or EA_DELAY_MS)
+  except (TypeError, ValueError):
+    delay = EA_DELAY_MS
   return {
     "from": str(data.get("from") or OOS_FROM)[:10],
     "to": str(data.get("to") or OOS_TO)[:10],
     "mode": normalize_replay_mode(data.get("mode") or "live_like"),
     "force_remine": bool(data.get("force_remine")),
+    "delay_ms": max(1, min(delay, 5000)),
   }
 
 
@@ -80,13 +112,20 @@ def save_oos_prefs(
   date_to: str | None = None,
   mode: str | None = None,
   force_remine: bool | None = None,
+  delay_ms: int | None = None,
+  **_extra: Any,
 ) -> dict[str, Any]:
   prev = load_oos_prefs()
+  try:
+    delay = int(delay_ms if delay_ms is not None else prev.get("delay_ms") or EA_DELAY_MS)
+  except (TypeError, ValueError):
+    delay = EA_DELAY_MS
   payload = {
     "from": str(date_from if date_from is not None else prev["from"])[:10],
     "to": str(date_to if date_to is not None else prev["to"])[:10],
     "mode": normalize_replay_mode(mode if mode is not None else prev["mode"]),
     "force_remine": bool(force_remine if force_remine is not None else prev["force_remine"]),
+    "delay_ms": max(1, min(delay, 5000)),
     "updated_at": _now(),
   }
   RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -96,6 +135,7 @@ def save_oos_prefs(
     "to": payload["to"],
     "mode": payload["mode"],
     "force_remine": payload["force_remine"],
+    "delay_ms": payload["delay_ms"],
   }
 
 
@@ -137,7 +177,7 @@ def paper_results_summary() -> dict[str, Any]:
   total_signals = 0
   n_ok = 0
   for (sym, tf), rows in group_models_by_book(enabled).items():
-    bdir = bridge_dir(sym, tf, sim=True)
+    bdir = bridge_dir(sym, tf, sim=False)
     sc = _read(bdir / "sim_control.json") or {}
     # Prefer per-book archive from batch
     book_arch = _read(RESULTS_DIR / f"replay_oos_{sym.lower()}_{tf.lower()}.json") or {}
@@ -166,8 +206,9 @@ def paper_results_summary() -> dict[str, Any]:
       "labels": [r.get("label") or r.get("model_id") for r in rows],
     })
   prefs = load_oos_prefs()
+  mode_n = normalize_replay_mode(prefs.get("mode"))
   return {
-    "mode": "live_like",
+    "mode": mode_n if mode_n in ("live_like", "ea") else "live_like",
     "n_books": len(books_out),
     "n_models": len(enabled),
     "n_ok": n_ok,
@@ -254,6 +295,8 @@ def _kill_tree(pid: int | None) -> None:
 
 
 def is_replay_running() -> bool:
+  if any_history_feed_active():
+    return True
   pid = None
   if PID_PATH.exists():
     try:
@@ -295,7 +338,166 @@ def stop_replay() -> dict[str, Any]:
       PID_PATH.unlink()
     except OSError:
       pass
-  return {"stopped": True, "at": _now()}
+  sim_stop: dict[str, Any] | None = None
+  for bdir in live_bridge_dirs():
+    try:
+      disable_sim_control(bdir)
+    except Exception:
+      pass
+  return {"stopped": True, "at": _now(), "sim": sim_stop}
+
+
+def _assert_live_feed_bridge(bdir: Path) -> Path:
+  p = Path(bdir)
+  name = p.name
+  if name.startswith("bridge_sim_live"):
+    raise RuntimeError(f"OOS HistoryFeed uses Live bridge, not {name}")
+  if not name.startswith("bridge_live"):
+    raise RuntimeError(f"OOS HistoryFeed refused non-live bridge: {name}")
+  return p
+
+
+def _norm_sim_date(s: str) -> str:
+  return str(s or "").strip().replace("-", ".")[:10]
+
+
+def disable_sim_control(bridge_dir: Path) -> dict[str, Any]:
+  bdir = _assert_live_feed_bridge(bridge_dir)
+  cur = _read(bdir / "sim_control.json") or {}
+  if not isinstance(cur, dict):
+    cur = {}
+  cur.update({
+    "enabled": False,
+    "ea_status": "idle",
+    "updated_at": _now(),
+  })
+  _write(bdir / "sim_control.json", cur)
+  return cur
+
+
+def write_history_feed_control(
+  bridge_dir: Path,
+  *,
+  date_from: str,
+  date_to: str,
+  delay_ms: int = EA_DELAY_MS,
+  request_id: str | None = None,
+) -> dict[str, Any]:
+  import uuid
+
+  bdir = _assert_live_feed_bridge(bridge_dir)
+  bdir.mkdir(parents=True, exist_ok=True)
+  for name in ("fill.json", "ea_fills.jsonl", "fills.jsonl"):
+    p = bdir / name
+    if p.exists():
+      try:
+        p.unlink()
+      except OSError:
+        pass
+  rid = str(request_id or uuid.uuid4().hex[:12])
+  payload = {
+    "enabled": True,
+    "from": _norm_sim_date(date_from),
+    "to": _norm_sim_date(date_to),
+    "delay_ms": max(1, int(delay_ms)),
+    "request_id": rid,
+    "ea_status": "pending",
+    "bars_done": 0,
+    "bars_total": 0,
+    "last_bar": "",
+    "error": "",
+    "source": "ea_history_feed",
+    "updated_at": _now(),
+  }
+  _write(bdir / "sim_control.json", payload)
+  return payload
+
+
+def _start_ea_simulate(
+  *,
+  date_from: str,
+  date_to: str,
+  force: bool,
+  delay_ms: int,
+) -> dict[str, Any]:
+  if os.name != "nt":
+    raise RuntimeError("OOS HistoryFeed cần Windows + MT5 (ForgeBridgeLive).")
+  from bridge_control import is_running as bridge_running, start_bridge, status as bridge_status
+  from deploy_ea import ensure_live_eas_deployed, roster_ea_coverage
+
+  env = os.environ
+  env["LIVE_REPLAY_FROM"] = date_from
+  env["LIVE_REPLAY_TO"] = date_to
+  env["LIVE_REPLAY_MODE"] = "ea"
+  env["LIVE_REPLAY_FORCE_REMINE"] = "1" if force else "0"
+
+  # Write control first so a Live EA already on chart starts HistoryFeed
+  # immediately (OnTick skips live ticks). Deploy after if charts are missing.
+  controls = []
+  for bdir in live_bridge_dirs():
+    controls.append(write_history_feed_control(
+      bdir,
+      date_from=date_from,
+      date_to=date_to,
+      delay_ms=delay_ms,
+    ))
+  cov = roster_ea_coverage(stale_after=180.0)
+  need_binary = (not bool(cov.get("all_online"))) or live_ea_needs_history_feed_binary()
+  deploy = ensure_live_eas_deployed(
+    force=need_binary,
+    wait_online=True,
+    wait_sec=60.0,
+  )
+  reused = False
+  if bridge_running(sim=False):
+    st = bridge_status(sim=False) or {}
+    started = {
+      "pid": st.get("pid"),
+      "n_workers": st.get("n_workers"),
+      "reused": True,
+    }
+    reused = True
+  else:
+    started = start_bridge(
+      require_chart=False,
+      sim=False,
+      auto_deploy_ea=False,
+      skip_preflight=True,
+    )
+  primary_pid = started.get("pid")
+  _write(STATE_PATH, {
+    "mode": "ea",
+    "oos_from": date_from,
+    "oos_to": date_to,
+    "force_remine": force,
+    "delay_ms": delay_ms,
+    "started_at": _now(),
+    "pid": primary_pid,
+    "n_workers": started.get("n_workers"),
+    "reused_live_workers": reused,
+    "deploy": {
+      "ok": deploy.get("ok"),
+      "deployed": deploy.get("deployed"),
+      "mode": deploy.get("mode"),
+      "reason": deploy.get("reason"),
+    },
+  })
+  return {
+    "started": True,
+    "pid": primary_pid,
+    "mode": "ea",
+    "force_remine": force,
+    "script": "ea_history_feed",
+    "log": str(LOG_PATH),
+    "from": date_from,
+    "to": date_to,
+    "delay_ms": delay_ms,
+    "n_workers": started.get("n_workers"),
+    "reused_live_workers": reused,
+    "deploy": deploy,
+    "controls": len(controls),
+    "at": _now(),
+  }
 
 
 def start_oos_replay(
@@ -305,6 +507,7 @@ def start_oos_replay(
   restart: bool = True,
   mode: str | None = None,
   force_remine: bool | None = None,
+  delay_ms: int | None = None,
 ) -> dict[str, Any]:
   prefs = load_oos_prefs()
   date_from, date_to = _normalize_oos_range(
@@ -313,13 +516,18 @@ def start_oos_replay(
   )
   mode_n = normalize_replay_mode(mode if mode is not None else prefs["mode"])
   force = bool(force_remine if force_remine is not None else prefs["force_remine"])
-  if mode_n != "live_like":
+  if mode_n == "parity":
     force = False
+  try:
+    delay = int(delay_ms if delay_ms is not None else prefs.get("delay_ms") or EA_DELAY_MS)
+  except (TypeError, ValueError):
+    delay = EA_DELAY_MS
   save_oos_prefs(
     date_from=date_from,
     date_to=date_to,
     mode=mode_n,
     force_remine=force,
+    delay_ms=delay,
   )
 
   if restart and is_replay_running():
@@ -328,6 +536,14 @@ def start_oos_replay(
 
   RESULTS_DIR.mkdir(parents=True, exist_ok=True)
   reset_strategy_stats(mode=mode_n, force_remine=force)
+
+  if mode_n == "ea":
+    return _start_ea_simulate(
+      date_from=date_from,
+      date_to=date_to,
+      force=force,
+      delay_ms=delay,
+    )
 
   env = os.environ.copy()
   env["LIVE_REPLAY_FROM"] = date_from
@@ -388,7 +604,7 @@ def load_sim_progress() -> dict[str, Any]:
     for b in (parity_batch.get("books") or [])
   }
   for (sym, tf), rows in group_models_by_book(enabled).items():
-    bdir = bridge_dir(sym, tf, sim=True)
+    bdir = bridge_dir(sym, tf, sim=False)
     sc = _read(bdir / "sim_control.json") or {}
     bar = _read(bdir / "bar.json") or {}
     status = _read(bdir / "status.json") or {}
@@ -423,6 +639,7 @@ def load_sim_progress() -> dict[str, Any]:
       "ea_status": ea_status,
       "bars_done": done,
       "bars_total": total,
+      "error": sc.get("error") or "",
       "pct": (
         100.0 if use_parity and not parity.get("partial")
         else (
@@ -472,6 +689,43 @@ def load_sim_progress() -> dict[str, Any]:
     "oos_from": last.get("oos_from") or prefs["from"],
     "oos_to": last.get("oos_to") or prefs["to"],
   }
+
+
+def live_bridge_dirs() -> list[Path]:
+  roster = load_roster()
+  enabled = [r for r in (roster.get("models") or []) if r.get("enabled")]
+  dirs: list[Path] = []
+  seen = set()
+  for (sym, tf), _ in group_models_by_book(enabled).items():
+    p = bridge_dir(sym, tf, sim=False)
+    if str(p) not in seen:
+      dirs.append(p)
+      seen.add(str(p))
+  return dirs
+
+
+def history_feed_active(bridge_dir: Path) -> bool:
+  """True only while the Live EA is actually ingesting HistoryFeed.
+
+  Leftover ``enabled: true`` with ``ea_status: idle`` must not lock the Start
+  button — that is the usual failure mode after a write the EA never picked up.
+  """
+  sc = _read(Path(bridge_dir) / "sim_control.json") or {}
+  if not isinstance(sc, dict) or not sc.get("enabled"):
+    return False
+  st = str(sc.get("ea_status") or "")
+  if st in ("running", "pending"):
+    return True
+  try:
+    if int(sc.get("bars_done") or 0) > 0 or int(sc.get("bars_total") or 0) > 0:
+      return True
+  except (TypeError, ValueError):
+    pass
+  return False
+
+
+def any_history_feed_active() -> bool:
+  return any(history_feed_active(p) for p in live_bridge_dirs())
 
 
 def sim_bridge_dirs() -> list[Path]:

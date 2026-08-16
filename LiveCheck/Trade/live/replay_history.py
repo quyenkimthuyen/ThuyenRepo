@@ -23,6 +23,9 @@ CURRENT_GLOBS = (
   "replay_oos_batch.pid",
   "replay_strategy_stats.json",
   "live_preflight.json",
+  "sim_workers.json",
+  "mt5_bridge_sim_*.json",
+  "mt5_bridge_sim_*.pid",
   "remine_gate_last.json",
   "remine_gate_alerts.jsonl",
   "risk_cap_last.json",
@@ -175,13 +178,16 @@ def archive_live_like_run(payload: dict | None = None) -> dict[str, Any]:
       "force_remine": stats.get("force_remine"),
     },
   }
+  mode_n = str(paper.get("mode") or "live_like")
+  if mode_n not in ("live_like", "ea"):
+    mode_n = "live_like"
   entry = {
     "run_id": run_id,
     "created_at": paper.get("updated_at") or _now(),
     "oos_from": paper.get("oos_from"),
     "oos_to": paper.get("oos_to"),
     "ok": paper.get("ok"),
-    "mode": "live_like",
+    "mode": mode_n,
     "n_books": summary["n_books"],
     "n_models": summary["n_models"],
     "n_ok": summary["n_ok"],
@@ -193,7 +199,7 @@ def archive_live_like_run(payload: dict | None = None) -> dict[str, Any]:
     **paper,
     "run_id": run_id,
     "summary": summary,
-    "mode": "live_like",
+    "mode": mode_n,
     "strategy_stats": stats,
   }
   path = HISTORY_DIR / f"{run_id}.json"

@@ -20,8 +20,9 @@ import numpy as np
 import pandas as pd
 
 from genome_naming import describe_genome, display_name, is_legacy_name
+from app_paths import get_root
 
-LEARNING_DIR = Path(__file__).parent / "learning"
+LEARNING_DIR = get_root() / "learning"
 KNOWLEDGE_PATH = LEARNING_DIR / "knowledge.json"
 MAX_GENOMES = 40
 MAX_ML_SAMPLES = 8000

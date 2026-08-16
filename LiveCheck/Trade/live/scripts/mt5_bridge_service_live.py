@@ -264,6 +264,24 @@ def main() -> int:
 
   if not args.once:
     _register(args, cli_ids)
+    if args.sim:
+      try:
+        from mt5_bridge.background import save_config
+        from safety import default_loss_guard_from_roster
+        extra = default_loss_guard_from_roster()
+        try:
+          from risk_prefs import load_risk_prefs
+          extra.update(load_risk_prefs())
+        except Exception:
+          pass
+        extra["loss_guard_tripped"] = False
+        extra["loss_guard_tripped_at"] = None
+        extra["loss_guard_tripped_reason"] = None
+        extra["loss_guard_enabled"] = bool(extra.get("loss_guard_enabled", True))
+        extra["sim"] = True
+        save_config(**extra)
+      except Exception as lg_exc:
+        print(f"[live-bridge] sim loss_guard seed skip: {lg_exc}", flush=True)
 
   bridge_dir = ensure_bridge_dir(args.bridge_dir)
   if args.sim:
@@ -316,6 +334,13 @@ def main() -> int:
     error=None,
     **_engine_status_fields(primary),
   )
+  def _feed_active() -> bool:
+    try:
+      from replay_control import history_feed_active
+      return bool(history_feed_active(bridge_dir))
+    except Exception:
+      return False
+
   if not args.sim:
     try:
       # Sticky EA fill.json first — real close must beat ghost BE reconcile.
@@ -329,6 +354,7 @@ def main() -> int:
         process_fill(sticky, bridge_dir=bridge_dir, model_id=sticky.get("model_id"))
     except Exception as fill_exc:
       print(f"[live-bridge] startup fill ingest skip: {fill_exc}", flush=True)
+  if (not args.sim) and (not _feed_active()):
     try:
       from position_sync import reconcile_bridge_positions
       rec = reconcile_bridge_positions(bridge_dir, reason="worker_start_reconcile")
@@ -359,7 +385,7 @@ def main() -> int:
 
   while True:
     try:
-      if (not args.sim) and is_kill_switch_armed():
+      if is_kill_switch_armed():
         write_status(bridge_dir, state="halted", halt_source="kill_switch", error="kill_switch")
         print("[live-bridge] kill-switch armed — exiting", flush=True)
         return 0
@@ -430,7 +456,7 @@ def main() -> int:
             summary=f"models={desired_ids} risk={desired_risk}",
           )
 
-      if not args.sim:
+      if (not args.sim) and (not _feed_active()):
         try:
           from position_sync import reconcile_bridge_positions
           reconcile_bridge_positions(bridge_dir)
@@ -439,7 +465,7 @@ def main() -> int:
 
       # End-of-week pre-remine for *next* Monday (quiet market). Fallback remains
       # first-bar remine if this never ran or failed.
-      if not args.sim and not args.once:
+      if (not args.sim) and (not args.once) and (not _feed_active()):
         now_chk = time.time()
         if (now_chk - last_preremine_check) >= 60.0:
           last_preremine_check = now_chk
@@ -475,6 +501,46 @@ def main() -> int:
             continue
         except Exception as lg_exc:
           print(f"[live-bridge] loss_guard skip: {lg_exc}", flush=True)
+      else:
+        try:
+          from mt5_bridge.background import check_and_apply_loss_guard
+          from mt5_bridge.loss_guard import build_flat_halt_decision
+          from mt5_bridge.protocol import bar_path, read_json, write_model_decision
+          check_and_apply_loss_guard(
+            bridge_dir=bridge_dir,
+            model_id=(primary.model_id if primary else None),
+          )
+          cfg_now = load_config()
+          if cfg_now.get("loss_guard_tripped"):
+            bar = read_json(bar_path(bridge_dir))
+            if isinstance(bar, dict):
+              primary_id = primary.model_id if primary else None
+              for mid, eng in engines.items():
+                decision = build_flat_halt_decision(
+                  bar,
+                  reason=cfg_now.get("loss_guard_tripped_reason") or "Loss guard",
+                  model_id=mid,
+                )
+                decision["magic"] = eng.magic
+                decision["risk_pct"] = eng.risk_pct
+                write_model_decision(
+                  decision,
+                  bridge_dir=bridge_dir,
+                  mirror_primary=True,
+                  primary_model_id=primary_id,
+                )
+            write_status(
+              bridge_dir,
+              state="halted",
+              halt_source="loss_guard",
+              error=cfg_now.get("loss_guard_tripped_reason"),
+            )
+            if args.once:
+              return 0
+            time.sleep(max(0.5, args.poll))
+            continue
+        except Exception as lg_exc:
+          print(f"[live-bridge] sim loss_guard skip: {lg_exc}", flush=True)
 
       last_fp, last_fill_fp = _cycle(engines, bridge_dir, last_fp, last_fill_fp)
       if not args.sim:

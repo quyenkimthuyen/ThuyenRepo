@@ -392,12 +392,21 @@ div[data-testid="stMetricDelta"] {
   background: transparent !important;
 }
 
-/* Progress / status */
-div[data-testid="stProgress"] > div > div {
-  background: var(--desk-chip-strong) !important;
+/* Custom replay progress — explicit width. Do not restyle st.progress:
+   Streamlit 1.58 fill is width:100% + translateX; coloring it looks 100% done. */
+.replay-prog {
+  height: 10px;
+  background: var(--desk-chip-strong);
+  border: 1px solid var(--desk-border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 0.2rem 0 0.75rem 0;
 }
-div[data-testid="stProgress"] [role="progressbar"] > div {
-  background: var(--desk-accent) !important;
+.replay-prog-fill {
+  height: 100%;
+  max-width: 100%;
+  background: var(--desk-accent);
+  border-radius: 6px;
 }
 
 [data-testid="stAlert"] {
@@ -405,8 +414,23 @@ div[data-testid="stProgress"] [role="progressbar"] > div {
   border: 1px solid var(--desk-border) !important;
   color: var(--desk-text) !important;
 }
+[data-testid="stAlert"]:has([data-testid="stAlertContentSuccess"]) {
+  background: var(--pill-ok-bg) !important;
+  border-color: var(--pill-ok-bd) !important;
+  color: var(--pill-ok-fg) !important;
+}
+[data-testid="stAlert"]:has([data-testid="stAlertContentError"]) {
+  background: var(--pill-danger-bg) !important;
+  border-color: var(--pill-danger-bd) !important;
+  color: var(--pill-danger-fg) !important;
+}
+[data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]) {
+  background: var(--pill-warn-bg) !important;
+  border-color: var(--pill-warn-bd) !important;
+  color: var(--pill-warn-fg) !important;
+}
 [data-testid="stAlert"] p {
-  color: var(--desk-text) !important;
+  color: inherit !important;
 }
 
 div[data-testid="stHorizontalBlock"] { align-items: flex-start; }
@@ -688,6 +712,27 @@ div[role="radiogroup"] {
 .health-alert-warn { background: var(--pill-warn-bg) !important; color: var(--pill-warn-fg) !important; }
 .health-alert-danger { background: var(--pill-danger-bg) !important; color: var(--pill-danger-fg) !important; }
 
+.import-flash {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  padding: 0.7rem 0.9rem;
+  border-radius: 8px;
+  margin: 0.45rem 0 0.75rem 0;
+  border: 1px solid transparent;
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+}
+.import-flash strong { display: block; margin-bottom: 0.2rem; }
+.import-flash-ok {
+  background: var(--pill-ok-bg) !important;
+  color: var(--pill-ok-fg) !important;
+  border-color: var(--pill-ok-bd) !important;
+}
+.import-flash-fail {
+  background: var(--pill-danger-bg) !important;
+  color: var(--pill-danger-fg) !important;
+  border-color: var(--pill-danger-bd) !important;
+}
+
 .hint {
   font-size: 0.82rem;
   color: var(--desk-muted) !important;
@@ -702,6 +747,20 @@ def inject_theme(mode: ThemeMode | None = None) -> None:
   st.markdown(
     f"<style>\n{_LIGHT_VARS}\n{_SHARED}\n</style>",
     unsafe_allow_html=True,
+  )
+
+
+def progress_bar_html(pct: float) -> str:
+  """Determinate bar with inline width — Streamlit st.progress + theme CSS looks 100%."""
+  try:
+    p = float(pct)
+  except (TypeError, ValueError):
+    p = 0.0
+  p = min(max(p, 0.0), 100.0)
+  return (
+    f'<div class="replay-prog" role="progressbar" '
+    f'aria-valuenow="{p:.1f}" aria-valuemin="0" aria-valuemax="100">'
+    f'<div class="replay-prog-fill" style="width:{p:.1f}%"></div></div>'
   )
 
 

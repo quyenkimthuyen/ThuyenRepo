@@ -1,0 +1,44 @@
+{
+  "desk": "e31",
+  "system": "AIEdge-ValidateSelect-CostGate-WF",
+  "space": "elite_or_quality",
+  "params": {
+    "preset": "elite_or_quality",
+    "train_weeks": 6,
+    "cost_gate_mult": 3.5,
+    "selection": "validate_wf_robust_score",
+    "soft_fallback": true,
+    "last_strategy": {
+      "name": "v3_full_rr4.0|chase:fixed_or_rsi<58+vwap<1.5",
+      "rr": 4.0,
+      "atr_mult": 0.9,
+      "ml_prob_min": 0.36,
+      "score_threshold": 1.0,
+      "max_hold_bars": 192,
+      "min_bars_between": 16,
+      "n_long_rules": 2,
+      "n_short_rules": 2,
+      "anti_chase": true,
+      "exit_mode": "full"
+    }
+  },
+  "param_key": "wf|elite_or_quality|tw6|gate3.5",
+  "validate": {
+    "n_trades": 4,
+    "total_r": 4.512,
+    "win_rate_pct": 50.0,
+    "avg_rr": 2.917,
+    "max_drawdown_r": 2.354,
+    "profit_factor": 3.194,
+    "robust_score": 1.667
+  },
+  "test": {
+    "n_trades": 7,
+    "total_r": -8.158,
+    "win_rate_pct": 0.0,
+    "avg_rr": 0.0,
+    "max_drawdown_r": 6.979,
+    "profit_factor": 0.0,
+    "robust_score": -3.919
+  }
+}

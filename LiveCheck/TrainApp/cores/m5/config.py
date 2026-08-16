@@ -41,5 +41,6 @@ DEFAULT_RISK_PCT_PER_TRADE = 1.0
 DEFAULT_MAX_WEEKLY_LOSS_R = 4.0
 DEFAULT_HOLDOUT_MONTHS = 0
 
-if DEFAULT_TF == "M5":
-  DEFAULT_FEATURE_PROFILE = str(_CFG.get("feature_profile") or "m5_parity")
+DEFAULT_FEATURE_PROFILE = str(
+  _CFG.get("feature_profile") or ("m5_parity" if DEFAULT_TF == "M5" else "current")
+)

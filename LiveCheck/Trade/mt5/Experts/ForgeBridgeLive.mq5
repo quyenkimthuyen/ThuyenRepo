@@ -8,7 +8,7 @@
 //| Keep ForgeBest3m_Frozen / ForgeBest3m_WF for MT5 side-by-side.   |
 //+------------------------------------------------------------------+
 #property copyright "EdgeMinerM15 bridge"
-#property version   "1.20"
+#property version   "1.21"
 
 #include <Trade/Trade.mqh>
 
@@ -145,6 +145,7 @@ int      g_sim_delay_ms = 100;
 string   g_sim_ea_status = "idle";
 string   g_sim_last_bar = "";
 string   g_sim_error = "";
+int      g_live_feed_timer_ms = 0;
 string   g_pending_decision = "";
 bool     g_paper_open = false;
 int      g_paper_held = 0;
@@ -399,6 +400,31 @@ void OnTimer()
    }
    if(InpMode == BRIDGE_LIVE)
    {
+      // Same Live EA / same bridge_live files: App writes sim_control.json to
+      // pace OOS bars. Worker + Live desk must not see a second "sim mode".
+      if(ReadSimControlFile() && g_sim_enabled)
+      {
+         if(g_live_feed_timer_ms != 50)
+         {
+            EventKillTimer();
+            EventSetMillisecondTimer(50);
+            g_live_feed_timer_ms = 50;
+         }
+         uint now_ms = GetTickCount();
+         if(g_last_heartbeat_ms == 0 || now_ms - g_last_heartbeat_ms >= (uint)MathMax(500, InpHeartbeatMs))
+         {
+            WriteConnectionJson();
+            g_last_heartbeat_ms = now_ms;
+         }
+         ProcessHistoryFeed();
+         return;
+      }
+      if(g_live_feed_timer_ms == 50)
+      {
+         EventKillTimer();
+         EventSetMillisecondTimer((int)MathMax(500, InpHeartbeatMs));
+         g_live_feed_timer_ms = 0;
+      }
       WriteConnectionJson();
       ProcessHistoryRequest();
       ProcessManualCommand();
@@ -880,6 +906,7 @@ bool WriteConnectionJson()
    json += "\"symbol\":\"" + _Symbol + "\",";
    json += "\"period\":\"" + PeriodTag() + "\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
+   json += "\"ea_version\":\"1.21\",";
    json += "\"bridge_subdir\":\"" + InpBridgeSubdir + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"account_margin_mode\":" + IntegerToString(AccountInfoInteger(ACCOUNT_MARGIN_MODE)) + ",";
@@ -2602,6 +2629,8 @@ void OnTick()
 {
    // History feed is timer-driven; do not trade live ticks in parallel
    if(InpMode == BRIDGE_HISTORY_FEED)
+      return;
+   if(InpMode == BRIDGE_LIVE && ReadSimControlFile() && g_sim_enabled)
       return;
 
    LoadModelsRoster();

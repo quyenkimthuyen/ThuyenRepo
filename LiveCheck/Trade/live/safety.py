@@ -122,6 +122,10 @@ def arm_kill_switch(*, reason: str = "manual_kill_switch", flatten: bool = True)
   try:
     from bridge_control import stop_bridge
     stop_bridge(flatten=False)
+    try:
+      stop_bridge(flatten=False, sim=True, sync_autostart=False)
+    except Exception:
+      pass
   except Exception:
     pid = cfg.get("service_pid")
     if not pid and PID_PATH.exists():

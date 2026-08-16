@@ -290,7 +290,7 @@ def ensure_mt5_running(*, wait_sec: float = 10.0) -> dict[str, Any]:
   }
 
 
-def enabled_books() -> list[dict[str, Any]]:
+def enabled_books(*, sim: bool = False) -> list[dict[str, Any]]:
   """Unique enabled (symbol, timeframe) books with magic/risk hints."""
   roster = load_roster()
   enabled = [r for r in (roster.get("models") or []) if r.get("enabled")]
@@ -315,12 +315,13 @@ def enabled_books() -> list[dict[str, Any]]:
     out.append({
       "symbol": sym_n,
       "timeframe": tf_n,
-      "bridge_subdir": bridge_subdir(sym_n, tf_n, sim=False),
-      "bridge_dir": str(bridge_dir(sym_n, tf_n, sim=False)),
+      "bridge_subdir": bridge_subdir(sym_n, tf_n, sim=bool(sim)),
+      "bridge_dir": str(bridge_dir(sym_n, tf_n, sim=bool(sim))),
       "magic": magic,
       "risk_pct": risk,
       "model_ids": [str(r.get("model_id") or "") for r in rows],
       "n_models": len(rows),
+      "sim": bool(sim),
     })
   return out
 
@@ -395,8 +396,8 @@ def book_ea_status(book: dict[str, Any], *, stale_after: float = 180.0) -> dict[
   }
 
 
-def roster_ea_coverage(*, stale_after: float = 180.0) -> dict[str, Any]:
-  books = enabled_books()
+def roster_ea_coverage(*, stale_after: float = 180.0, sim: bool = False) -> dict[str, Any]:
+  books = enabled_books(sim=sim)
   # Stale bridge JSON must not count as online when the terminal is down.
   if is_windows() and books and not is_mt5_running():
     statuses = []
@@ -428,6 +429,7 @@ def run_deploy_live_from_roster(
   *,
   timeout_sec: float = 240.0,
   enable_trading: bool = True,
+  mode: str = "Live",
 ) -> dict[str, Any]:
   """Invoke deploy_live_ea.ps1 -FromRoster (all enabled books, one MT5 restart)."""
   if not is_windows():
@@ -449,12 +451,15 @@ def run_deploy_live_from_roster(
       "code": 2,
     }
 
+  mode_n = str(mode or "Live").strip()
+  if mode_n not in ("Live", "HistoryFeed", "Both"):
+    mode_n = "Live"
   cmd = [
     "powershell.exe",
     "-NoProfile",
     "-ExecutionPolicy", "Bypass",
     "-File", str(DEPLOY_SCRIPT),
-    "-Mode", "Live",
+    "-Mode", mode_n,
     "-FromRoster",
     "-SkipBridgeService",
     "-Attach",
@@ -516,11 +521,12 @@ def wait_books_online(
   wait_sec: float = 60.0,
   poll_sec: float = 2.0,
   stale_after: float = 180.0,
+  sim: bool = False,
 ) -> dict[str, Any]:
   deadline = time.time() + float(wait_sec)
-  last = roster_ea_coverage(stale_after=stale_after)
+  last = roster_ea_coverage(stale_after=stale_after, sim=sim)
   while time.time() < deadline:
-    last = roster_ea_coverage(stale_after=stale_after)
+    last = roster_ea_coverage(stale_after=stale_after, sim=sim)
     if last["all_online"]:
       return {**last, "waited": True, "timed_out": False}
     time.sleep(max(0.5, float(poll_sec)))
@@ -646,3 +652,8 @@ def ensure_live_eas_deployed(
     "coverage": cov_after,
     "books": books,
   }
+
+
+def ensure_sim_eas_deployed(**kwargs: Any) -> dict[str, Any]:
+  """Compat alias — OOS feed uses the Live EA, not a separate Sim EA."""
+  return ensure_live_eas_deployed(**kwargs)

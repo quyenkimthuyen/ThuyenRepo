@@ -28,6 +28,7 @@ from shared.constants import LIVE_BRIDGE_PORT, LIVE_MAGIC_BASE, LIVE_SIM_PORT
 
 CONFIG_PATH = RESULTS_DIR / "mt5_bridge_config.json"
 WORKERS_PATH = RESULTS_DIR / "live_workers.json"
+SIM_WORKERS_PATH = RESULTS_DIR / "sim_workers.json"
 WORKERS_DIR = RESULTS_DIR / "workers"
 SERVICE_SCRIPT = LIVE_ROOT / "scripts" / "mt5_bridge_service_live.py"
 
@@ -182,16 +183,20 @@ def save_config(**updates) -> dict:
   return cfg
 
 
-def load_workers() -> dict:
-  data = _read(WORKERS_PATH)
+def _workers_path(*, sim: bool = False) -> Path:
+  return SIM_WORKERS_PATH if sim else WORKERS_PATH
+
+
+def load_workers(*, sim: bool = False) -> dict:
+  data = _read(_workers_path(sim=sim))
   if not data:
     return {"updated_at": None, "workers": []}
   return data
 
 
-def save_workers(workers: list[dict]) -> dict:
+def save_workers(workers: list[dict], *, sim: bool = False) -> dict:
   payload = {"updated_at": _now(), "workers": workers}
-  _write(WORKERS_PATH, payload)
+  _write(_workers_path(sim=sim), payload)
   return payload
 
 
@@ -212,15 +217,17 @@ def _kill_pid(pid: int | None) -> None:
     pass
 
 
-def is_running() -> bool:
-  return any(_pid_alive(w.get("pid")) for w in load_workers().get("workers") or [])
+def is_running(*, sim: bool = False) -> bool:
+  return any(_pid_alive(w.get("pid")) for w in load_workers(sim=sim).get("workers") or [])
 
 
-def service_pid() -> int | None:
+def service_pid(*, sim: bool = False) -> int | None:
   """Primary worker pid (compat)."""
-  for w in load_workers().get("workers") or []:
+  for w in load_workers(sim=sim).get("workers") or []:
     if _pid_alive(w.get("pid")):
       return int(w["pid"])
+  if sim:
+    return None
   # legacy single pid
   cfg = load_config()
   pid = cfg.get("service_pid")
@@ -325,17 +332,25 @@ def prepare_runtime(
 
   primary_risk = float(enabled[0].get("risk_pct") or 1.0)
   port = LIVE_SIM_PORT if sim else LIVE_BRIDGE_PORT
-  cfg = save_config(
-    enabled=False,
-    mode="process",
-    poll_sec=float(poll_sec),
-    model_ids=mat["model_ids"],
-    risk_pct=primary_risk,
-    monitor_port=port,
-    sim=bool(sim),
+  cfg_payload = {
+    "enabled": False,
+    "mode": "process",
+    "poll_sec": float(poll_sec),
+    "model_ids": mat["model_ids"],
+    "risk_pct": primary_risk,
+    "monitor_port": port,
+    "sim": bool(sim),
     **guard,
-    last_error=None,
-  )
+    "last_error": None,
+  }
+  if sim:
+    # Never write sim flags / trip state into the Live config file.
+    cfg_payload["loss_guard_tripped"] = False
+    cfg_payload["loss_guard_tripped_at"] = None
+    cfg_payload["loss_guard_tripped_reason"] = None
+    cfg = dict(cfg_payload)
+  else:
+    cfg = save_config(**cfg_payload)
   return {
     "materialize": mat,
     "groups": prepared_groups,
@@ -385,9 +400,9 @@ def start_bridge(
       "Risk guard tripped — clear trip in Setup → Risk limits before Start. "
       f"Reason: {cfg0.get('loss_guard_tripped_reason') or '—'}"
     )
-  # Stop prior workers first for clean multi-start
-  if is_running() and not once:
-    stop_bridge(flatten=False, sync_autostart=False)
+  # Stop prior workers of the SAME lane only — sim must not kill Live.
+  if is_running(sim=sim) and not once:
+    stop_bridge(flatten=False, sync_autostart=False, sim=sim)
 
   preflight: dict[str, Any] | None = None
   preflight_t0 = time.time()
@@ -516,6 +531,10 @@ def start_bridge(
       continue
     sym, tf = g["symbol"], g["timeframe"]
     bdir = Path(g["bridge_dir"])
+    if sim and not bdir.name.startswith("bridge_sim_live"):
+      raise RuntimeError(f"EA Simulate refused live bridge dir: {bdir.name}")
+    if (not sim) and bdir.name.startswith("bridge_sim_live"):
+      raise RuntimeError(f"Live refused sim bridge dir: {bdir.name}")
     bdir.mkdir(parents=True, exist_ok=True)
     (bdir / "decisions").mkdir(exist_ok=True)
     key = f"{sym}_{tf}".lower()
@@ -607,19 +626,20 @@ def start_bridge(
     if once:
       break
 
-  save_workers(workers)
+  save_workers(workers, sim=sim)
   primary = workers[0] if workers else {}
-  save_config(
-    enabled=not once,
-    mode="process",
-    service_pid=primary.get("pid"),
-    bridge_dir=primary.get("bridge_dir"),
-    model_ids=prep["materialize"]["model_ids"],
-    last_action="start_sim" if sim else "start",
-    workers=len(workers),
-    sim=bool(sim),
-    last_deploy=deploy_info,
-  )
+  if not sim:
+    save_config(
+      enabled=not once,
+      mode="process",
+      service_pid=primary.get("pid"),
+      bridge_dir=primary.get("bridge_dir"),
+      model_ids=prep["materialize"]["model_ids"],
+      last_action="start",
+      workers=len(workers),
+      sim=False,
+      last_deploy=deploy_info,
+    )
 
   # Confirm workers stay up. Bootstrap/remine is slow — poll PIDs up to 20s.
   # Only fail when every worker pid is dead AND logs show a hard crash (not progress).
@@ -660,7 +680,7 @@ def start_bridge(
 
     for w in workers:
       w["alive"] = _pid_alive(w.get("pid"))
-    save_workers(workers)
+    save_workers(workers, sim=sim)
 
   autostart_info: dict[str, Any] | None = None
   if (not sim) and (not once) and workers:
@@ -734,8 +754,16 @@ def start_bridge(
   }
 
 
-def stop_bridge(*, flatten: bool = False, sync_autostart: bool = True) -> dict[str, Any]:
-  workers = load_workers().get("workers") or []
+def stop_bridge(
+  *,
+  flatten: bool = False,
+  sync_autostart: bool = True,
+  sim: bool = False,
+) -> dict[str, Any]:
+  if sim:
+    flatten = False
+    sync_autostart = False
+  workers = load_workers(sim=sim).get("workers") or []
   pids = []
   for w in workers:
     pid = w.get("pid")
@@ -744,8 +772,8 @@ def stop_bridge(*, flatten: bool = False, sync_autostart: bool = True) -> dict[s
       from debug_log import log_event
       log_event(
         "worker_kill",
-        summary=f"kill {w.get('symbol')} {w.get('timeframe')} pid={pid}",
-        payload={"pid": pid, "flatten": bool(flatten), "key": w.get("key")},
+        summary=f"kill {w.get('symbol')} {w.get('timeframe')} pid={pid} sim={sim}",
+        payload={"pid": pid, "flatten": bool(flatten), "key": w.get("key"), "sim": bool(sim)},
         symbol=w.get("symbol"),
         timeframe=w.get("timeframe"),
         bridge_dir=w.get("bridge_dir"),
@@ -756,41 +784,54 @@ def stop_bridge(*, flatten: bool = False, sync_autostart: bool = True) -> dict[s
     _kill_pid(pid)
     bdir = Path(w.get("bridge_dir") or "")
     if bdir:
-      _write(bdir / "status.json", {"updated_at": _now(), "state": "stopped"})
-      if flatten:
+      _write(bdir / "status.json", {"updated_at": _now(), "state": "stopped", "sim": bool(sim)})
+      if flatten and not sim:
         from safety import write_flatten_command
         write_flatten_command(reason="bridge_stop", bridge_dir=bdir)
+      if sim and bdir.name.startswith("bridge_sim_live"):
+        try:
+          ctrl = _read(bdir / "sim_control.json") or {}
+          if isinstance(ctrl, dict):
+            ctrl["enabled"] = False
+            ctrl["ea_status"] = "idle"
+            ctrl["updated_at"] = _now()
+            _write(bdir / "sim_control.json", ctrl)
+        except Exception:
+          pass
 
-  # legacy single-process cleanup
-  cfg = load_config()
-  _kill_pid(cfg.get("service_pid"))
-  legacy_pid = RESULTS_DIR / "mt5_bridge_service.pid"
-  if legacy_pid.exists():
-    try:
-      _kill_pid(int(legacy_pid.read_text().strip()))
-      legacy_pid.unlink()
-    except Exception:
-      pass
+  if not sim:
+    # legacy single-process cleanup (Live lane only)
+    cfg = load_config()
+    _kill_pid(cfg.get("service_pid"))
+    legacy_pid = RESULTS_DIR / "mt5_bridge_service.pid"
+    if legacy_pid.exists():
+      try:
+        _kill_pid(int(legacy_pid.read_text().strip()))
+        legacy_pid.unlink()
+      except Exception:
+        pass
 
-  save_workers([])
-  save_config(enabled=False, service_pid=None, last_action="stop", workers=0)
-  if flatten and not workers:
+  save_workers([], sim=sim)
+  if not sim:
+    save_config(enabled=False, service_pid=None, last_action="stop", workers=0)
+  if flatten and not sim and not workers:
     from safety import write_flatten_command
     write_flatten_command(reason="bridge_stop", bridge_dir=BRIDGE_DIR)
-  _write(BRIDGE_DIR / "status.json", {"updated_at": _now(), "state": "stopped"})
+  if not sim:
+    _write(BRIDGE_DIR / "status.json", {"updated_at": _now(), "state": "stopped"})
   try:
     from debug_log import log_event
     log_event(
       "bridge_stop",
-      summary=f"stop flatten={flatten} pids={pids}",
-      payload={"flatten": bool(flatten), "pids": pids},
+      summary=f"stop flatten={flatten} sim={sim} pids={pids}",
+      payload={"flatten": bool(flatten), "sim": bool(sim), "pids": pids},
       source="bridge_control",
     )
   except Exception:
     pass
 
   autostart_info: dict[str, Any] | None = None
-  if sync_autostart:
+  if sync_autostart and not sim:
     try:
       from windows_autostart import sync_autostart_with_trading
       # Stop trading → gỡ Scheduled Task (reboot không tự resume)
@@ -808,13 +849,13 @@ def stop_bridge(*, flatten: bool = False, sync_autostart: bool = True) -> dict[s
     except Exception:
       autostart_info = None
 
-  return {"stopped": True, "pids": pids, "autostart": autostart_info}
+  return {"stopped": True, "pids": pids, "autostart": autostart_info, "sim": bool(sim)}
 
 
-def status() -> dict[str, Any]:
-  cfg = load_config()
+def status(*, sim: bool = False) -> dict[str, Any]:
+  cfg = load_config() if not sim else {}
   workers = []
-  for w in load_workers().get("workers") or []:
+  for w in load_workers(sim=sim).get("workers") or []:
     w = dict(w)
     w["alive"] = _pid_alive(w.get("pid"))
     w["bridge_status"] = _read(Path(w["bridge_dir"]) / "status.json") if w.get("bridge_dir") else {}
@@ -826,7 +867,8 @@ def status() -> dict[str, Any]:
     "config": cfg,
     "workers": workers,
     "n_workers": len(alive),
-    "bridge_status": (alive[0].get("bridge_status") if alive else _read(BRIDGE_DIR / "status.json")) or {},
+    "bridge_status": (alive[0].get("bridge_status") if alive else {}) or {},
     "kill_switch": is_kill_switch_armed(),
     "log": str(WORKERS_DIR),
+    "sim": bool(sim),
   }

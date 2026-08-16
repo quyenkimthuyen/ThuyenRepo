@@ -75,6 +75,8 @@ cd /home/thuyenng/work/ThuyenRepo/Final_app/split_app/live
 
 Windows + MT5 thật vẫn dùng EA `ForgeBridgeLive` / `ForgeBridgeLiveSim` như cũ.
 
+**EA Simulate (Replay tab):** App ghi `sim_control.json` (OOS from/to) → `ForgeBridgeLiveSim` HistoryFeed báo nến → worker `--sim` quyết định cùng Live → EA paper fill. Không `OrderSend`, không đụng `bridge_live_*`.
+
 **EA chart Comment (v1.10+):** mỗi nến đóng hiện sync status trên chart + Experts log
 (`SYNC OK` / `TIMEOUT`) và ghi `ea_sync.json` để Live **Pipeline health** đối chiếu.
 Tắt: input `InpShowComment=false`. Cần re-deploy/compile EA trên Windows.

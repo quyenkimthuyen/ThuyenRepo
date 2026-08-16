@@ -37,8 +37,9 @@ from meta_learner import mine_strategy_learning, record_trade_learning
 from optimizer import TARGET_TRADES_PER_WEEK
 from strategy import compute_metrics
 from strategy_miner import generate_signals_mined, backtest_mined, MinedStrategy
+from app_paths import get_root
 
-REPORT_DIR = Path(__file__).parent / "results"
+REPORT_DIR = get_root() / "results"
 
 
 def generate_weekly_schedule(df, first_trade_date):

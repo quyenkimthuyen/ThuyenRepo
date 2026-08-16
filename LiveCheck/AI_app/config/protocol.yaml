@@ -1,0 +1,50 @@
+# AI_app — locked evaluation protocol (do not change after first proof run)
+protocol:
+  name: AIEdge-v1
+  train:
+    from: "2025-01-01"
+    to: "2025-06-30"
+  validate:
+    from: "2025-07-01"
+    to: "2025-12-31"
+  test:
+    from: "2026-01-01"
+    to: "2026-08-07"
+  # Selection uses validate only. Test is touched once at the end.
+  select_metric: "robust_score"
+  min_validate_trades: 20
+  min_validate_wr: 42.0
+  max_validate_dd: 14.0
+  default_slippage_pips: 0.3
+  risk_r_per_trade: 1.0
+  # Realistic liquid-hours spreads (XM bridge); off-session can be wider
+
+desks:
+  e21:
+    label: E21
+    pair: EURUSD
+    tf: M15
+    spread_pips: 1.6
+    data_parquet: "C:/Work/ThuyenRepo/LiveCheck/Train/M15/EdgeMinerEURUSDM15/data/mt5_eurusd_m15.parquet"
+    trainapp_runtime: "C:/Work/ThuyenRepo/LiveCheck/TrainApp/runtime/e21"
+  g23:
+    label: G23
+    pair: GBPUSD
+    tf: M15
+    spread_pips: 2.0
+    data_parquet: "C:/Work/ThuyenRepo/LiveCheck/Train/M15/EdgeMinerGBPUSDM15/data/mt5_gbpusd_m15.parquet"
+    trainapp_runtime: "C:/Work/ThuyenRepo/LiveCheck/TrainApp/runtime/g23"
+  e31:
+    label: E31
+    pair: EURUSD
+    tf: M5
+    spread_pips: 1.6
+    data_parquet: "C:/Work/ThuyenRepo/LiveCheck/Train/M5/EdgeMinerEURUSDM5/data/mt5_eurusd_m5.parquet"
+    trainapp_runtime: "C:/Work/ThuyenRepo/LiveCheck/TrainApp/runtime/e31"
+  g33:
+    label: G33
+    pair: GBPUSD
+    tf: M5
+    spread_pips: 2.0
+    data_parquet: "C:/Work/ThuyenRepo/LiveCheck/Train/M5/EdgeMinerGBPUSDM5/data/mt5_gbpusd_m5.parquet"
+    trainapp_runtime: "C:/Work/ThuyenRepo/LiveCheck/TrainApp/runtime/g33"

@@ -41,6 +41,14 @@ input int    InpMaxHoldBars    = 36;                // fallback if decision omit
 CTrade   trade;
 const string INSTANCE_ID = "LIVE1";
 
+bool UsePaperFills()
+{
+   // HistoryFeed must never OrderSend — broker fills current market, not OOS close.
+   if(InpMode == BRIDGE_HISTORY_FEED)
+      return true;
+   return InpHistoryPaperFills;
+}
+
 string PeriodTag()
 {
    ENUM_TIMEFRAMES p = Period();
@@ -358,7 +366,7 @@ int OnInit()
       WriteConnectionJson();  // App can detect Sim EA online before Start feed
       EventSetMillisecondTimer(50);
       Print("ForgeBridgeLive HistoryFeed | Files/", InpBridgeSubdir,
-            " | paper=", InpHistoryPaperFills, " | models=", g_model_n,
+            " | paper=forced | models=", g_model_n,
             " | base_magic=", InpMagic);
       g_sync_summary = "history feed idle";
       RefreshChartComment(true);
@@ -2031,7 +2039,7 @@ void ApplyPendingOpen(const MqlRates &r)
    {
       if(g_slot_pending[s] == "")
          continue;
-      if(InpHistoryPaperFills)
+      if(UsePaperFills())
       {
          if(g_slot_paper_open[s])
             continue;
@@ -2040,11 +2048,11 @@ void ApplyPendingOpen(const MqlRates &r)
          continue;
       SetActiveSlot(s);
       bool ok = false;
-      if(InpHistoryPaperFills)
+      if(UsePaperFills())
          ok = PaperOpenFromDecision(g_slot_pending[s], r.open, bt);
       else
          ok = OpenFromDecision(g_slot_pending[s]);
-      if(ok && InpHistoryPaperFills)
+      if(ok && UsePaperFills())
       {
          g_slot_paper_open[s] = true;
          g_slot_paper_held[s] = 0;
@@ -2164,7 +2172,7 @@ void ProcessHistoryFeed()
    if(g_hist_n < 1 || g_hist_cursor >= g_hist_n)
    {
       // Force-close every paper slot (not only the last active globals).
-      if(InpHistoryPaperFills)
+      if(UsePaperFills())
       {
          for(int s = 0; s < g_model_n; s++)
          {
@@ -2220,7 +2228,7 @@ void ProcessHistoryFeed()
    // Open pending from previous bar decision at this bar's open
    ApplyPendingOpen(r);
 
-   if(InpHistoryPaperFills)
+   if(UsePaperFills())
       ManagePaperHistoryAll(r);
    else
       ManageOpen();
@@ -2248,7 +2256,7 @@ void ProcessHistoryFeed()
    uint deadline = GetTickCount() + (uint)wait_ms;
    for(int s = 0; s < g_model_n; s++)
    {
-      bool flat = InpHistoryPaperFills
+      bool flat = UsePaperFills()
          ? (!g_slot_paper_open[s])
          : (PositionsByMagic(g_model_magics[s]) == 0);
       if(!flat || g_slot_pending[s] != "")

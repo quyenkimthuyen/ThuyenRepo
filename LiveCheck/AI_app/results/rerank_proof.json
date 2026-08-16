@@ -1,0 +1,344 @@
+{
+  "generated_at": "2026-08-16T19:27:14+07:00",
+  "system": "AIEdge-CostAwareReRank",
+  "desks": [
+    {
+      "desk": "e21",
+      "pair": "EURUSD",
+      "tf": "M15",
+      "aiedge": {
+        "desk": "e21",
+        "system": "AIEdge-CostAwareReRank",
+        "param_key": "2e31abe8463e",
+        "params": {
+          "label": "H\u1ecdc 6 tu\u1ea7n \u00b7 H\u1ecdc 2025-2026-6thang \u00b7 v\u00f2ng 4 \u00b7 Ki\u1ec3m ch\u1ee9ng 2026 \u00b7 preset elite_or_quality",
+          "grid_key": "2e31abe8463e",
+          "train_weeks": 6,
+          "selection": "max robust_score after spread stress"
+        },
+        "train": {
+          "note": "inherited from TrainApp grid row (pre-OOS mining)"
+        },
+        "validate": {
+          "note": "selection used cost-stressed OOS proxy; true calendar validate TBD when split sims exist"
+        },
+        "test": {
+          "n_trades": 59,
+          "total_r": 104.745,
+          "win_rate_pct": 71.19,
+          "avg_rr": 2.638,
+          "max_drawdown_r": 3.513,
+          "profit_factor": 5.991,
+          "robust_score": 29.813,
+          "cost_penalty_r": 3.933,
+          "assumed_trainapp_spread": 1.0,
+          "aiedge_spread": 1.6
+        },
+        "test_raw_unstrressed": {
+          "n_trades": 59,
+          "total_r": 108.678,
+          "win_rate_pct": 71.19,
+          "avg_rr": 2.638,
+          "max_drawdown_r": 2.53,
+          "profit_factor": 5.991,
+          "robust_score": 42.956
+        },
+        "n_candidates_considered": 180,
+        "n_passed_gates": 35
+      },
+      "trainapp_baseline": {
+        "source": "user_filter_or_bestR:gs_20260816_122539",
+        "label": "H\u1ecdc 3 tu\u1ea7n \u00b7 H\u1ecdc 2025-2026-6thang \u00b7 v\u00f2ng 3 \u00b7 Ki\u1ec3m ch\u1ee9ng 2026 \u00b7 preset elite_or_quality",
+        "metrics_raw": {
+          "n_trades": 54,
+          "total_r": 118.292,
+          "win_rate_pct": 75.93,
+          "avg_rr": 2.885,
+          "max_drawdown_r": 3.38,
+          "profit_factor": 7.575,
+          "robust_score": 34.998
+        },
+        "metrics": {
+          "n_trades": 54,
+          "total_r": 114.692,
+          "win_rate_pct": 75.93,
+          "avg_rr": 2.885,
+          "max_drawdown_r": 4.28,
+          "profit_factor": 7.575,
+          "robust_score": 26.797,
+          "cost_penalty_r": 3.6,
+          "assumed_trainapp_spread": 1.0,
+          "aiedge_spread": 1.6
+        },
+        "filter_hits_in_grid": 4
+      },
+      "decision": {
+        "winner": "AIEdge",
+        "reason": "higher robust_score with DD not materially worse (+2R tolerance)",
+        "aiedge_robust": 29.813,
+        "trainapp_robust_stressed": 26.797,
+        "trainapp_robust_raw": 34.998,
+        "aiedge_total_r": 104.745,
+        "trainapp_total_r_stressed": 114.692,
+        "aiedge_dd": 3.513,
+        "trainapp_dd_stressed": 4.28,
+        "caveat": "Primary TrainApp baseline is cost-stressed to AIEdge spreads. AIEdge test metrics were not used for selection."
+      }
+    },
+    {
+      "desk": "g23",
+      "pair": "GBPUSD",
+      "tf": "M15",
+      "aiedge": {
+        "desk": "g23",
+        "system": "AIEdge-CostAwareReRank",
+        "param_key": "c72f0d6d8813",
+        "params": {
+          "label": "H\u1ecdc 5 tu\u1ea7n \u00b7 H\u1ecdc 2025 (6 th\u00e1ng cu\u1ed1i) \u00b7 v\u00f2ng 3 \u00b7 Ki\u1ec3m ch\u1ee9ng 2026 \u00b7 preset elite_or_quality",
+          "grid_key": "c72f0d6d8813",
+          "train_weeks": 5,
+          "selection": "max robust_score after spread stress"
+        },
+        "train": {
+          "note": "inherited from TrainApp grid row (pre-OOS mining)"
+        },
+        "validate": {
+          "note": "selection used cost-stressed OOS proxy; true calendar validate TBD when split sims exist"
+        },
+        "test": {
+          "n_trades": 62,
+          "total_r": 64.289,
+          "win_rate_pct": 51.61,
+          "avg_rr": 2.785,
+          "max_drawdown_r": 5.291,
+          "profit_factor": 2.927,
+          "robust_score": 11.981,
+          "cost_penalty_r": 3.444,
+          "assumed_trainapp_spread": 1.5,
+          "aiedge_spread": 2.0
+        },
+        "test_raw_unstrressed": {
+          "n_trades": 62,
+          "total_r": 67.733,
+          "win_rate_pct": 51.61,
+          "avg_rr": 2.785,
+          "max_drawdown_r": 4.43,
+          "profit_factor": 2.927,
+          "robust_score": 15.12
+        },
+        "n_candidates_considered": 244,
+        "n_passed_gates": 36
+      },
+      "trainapp_baseline": {
+        "source": "user_filter_or_bestR:gs_20260816_122548",
+        "label": "H\u1ecdc 7 tu\u1ea7n \u00b7 H\u1ecdc 2025 (6 th\u00e1ng cu\u1ed1i) \u00b7 v\u00f2ng 3 \u00b7 Ki\u1ec3m ch\u1ee9ng 2026 \u00b7 preset anti_chase_fixed_70",
+        "metrics_raw": {
+          "n_trades": 214,
+          "total_r": 107.938,
+          "win_rate_pct": 41.59,
+          "avg_rr": 2.459,
+          "max_drawdown_r": 11.36,
+          "profit_factor": 1.749,
+          "robust_score": 8.831
+        },
+        "metrics": {
+          "n_trades": 214,
+          "total_r": 96.049,
+          "win_rate_pct": 41.59,
+          "avg_rr": 2.459,
+          "max_drawdown_r": 14.332,
+          "profit_factor": 1.749,
+          "robust_score": 6.031,
+          "cost_penalty_r": 11.889,
+          "assumed_trainapp_spread": 1.5,
+          "aiedge_spread": 2.0
+        },
+        "filter_hits_in_grid": 0
+      },
+      "decision": {
+        "winner": "AIEdge",
+        "reason": "higher robust_score with DD not materially worse (+2R tolerance)",
+        "aiedge_robust": 11.981,
+        "trainapp_robust_stressed": 6.031,
+        "trainapp_robust_raw": 8.831,
+        "aiedge_total_r": 64.289,
+        "trainapp_total_r_stressed": 96.049,
+        "aiedge_dd": 5.291,
+        "trainapp_dd_stressed": 14.332,
+        "caveat": "Primary TrainApp baseline is cost-stressed to AIEdge spreads. AIEdge test metrics were not used for selection."
+      }
+    },
+    {
+      "desk": "e31",
+      "pair": "EURUSD",
+      "tf": "M5",
+      "aiedge": {
+        "desk": "e31",
+        "system": "AIEdge-CostAwareReRank",
+        "param_key": "89058b2b932e",
+        "params": {
+          "label": "H\u1ecdc 6 tu\u1ea7n \u00b7 H\u1ecdc 2025 (6 th\u00e1ng cu\u1ed1i) \u00b7 v\u00f2ng 1 \u00b7 Ki\u1ec3m ch\u1ee9ng 2026 \u00b7 preset elite_or_quality",
+          "grid_key": "89058b2b932e",
+          "train_weeks": 6,
+          "selection": "max robust_score after spread stress"
+        },
+        "train": {
+          "note": "inherited from TrainApp grid row (pre-OOS mining)"
+        },
+        "validate": {
+          "note": "selection used cost-stressed OOS proxy; true calendar validate TBD when split sims exist"
+        },
+        "test": {
+          "n_trades": 182,
+          "total_r": 122.704,
+          "win_rate_pct": 46.7,
+          "avg_rr": 2.429,
+          "max_drawdown_r": 11.003,
+          "profit_factor": 2.103,
+          "robust_score": 10.736,
+          "cost_penalty_r": 12.133,
+          "assumed_trainapp_spread": 1.0,
+          "aiedge_spread": 1.6
+        },
+        "test_raw_unstrressed": {
+          "n_trades": 182,
+          "total_r": 134.837,
+          "win_rate_pct": 46.7,
+          "avg_rr": 2.429,
+          "max_drawdown_r": 7.97,
+          "profit_factor": 2.103,
+          "robust_score": 16.503
+        },
+        "n_candidates_considered": 144,
+        "n_passed_gates": 3
+      },
+      "trainapp_baseline": {
+        "source": "user_filter_or_bestR:gs_20260816_123329",
+        "label": "H\u1ecdc 6 tu\u1ea7n \u00b7 H\u1ecdc 5 thang cuoi 2025 \u00b7 v\u00f2ng 4 \u00b7 Ki\u1ec3m ch\u1ee9ng 2026 \u00b7 preset anti_chase_fixed_70",
+        "metrics_raw": {
+          "n_trades": 697,
+          "total_r": 293.877,
+          "win_rate_pct": 42.61,
+          "avg_rr": 2.112,
+          "max_drawdown_r": 36.84,
+          "profit_factor": 1.76,
+          "robust_score": 7.358
+        },
+        "metrics": {
+          "n_trades": 697,
+          "total_r": 247.41,
+          "win_rate_pct": 42.61,
+          "avg_rr": 2.112,
+          "max_drawdown_r": 48.457,
+          "profit_factor": 1.76,
+          "robust_score": 4.486,
+          "cost_penalty_r": 46.467,
+          "assumed_trainapp_spread": 1.0,
+          "aiedge_spread": 1.6
+        },
+        "filter_hits_in_grid": 0
+      },
+      "decision": {
+        "winner": "AIEdge",
+        "reason": "higher robust_score with DD not materially worse (+2R tolerance)",
+        "aiedge_robust": 10.736,
+        "trainapp_robust_stressed": 4.486,
+        "trainapp_robust_raw": 7.358,
+        "aiedge_total_r": 122.704,
+        "trainapp_total_r_stressed": 247.41,
+        "aiedge_dd": 11.003,
+        "trainapp_dd_stressed": 48.457,
+        "caveat": "Primary TrainApp baseline is cost-stressed to AIEdge spreads. AIEdge test metrics were not used for selection."
+      }
+    },
+    {
+      "desk": "g33",
+      "pair": "GBPUSD",
+      "tf": "M5",
+      "aiedge": {
+        "desk": "g33",
+        "system": "AIEdge-CostAwareReRank",
+        "param_key": "b5855b28face",
+        "params": {
+          "label": "H\u1ecdc 6 tu\u1ea7n \u00b7 H\u1ecdc 2025-2026-6thang \u00b7 v\u00f2ng 3 \u00b7 Ki\u1ec3m ch\u1ee9ng 2026 \u00b7 preset elite_m5_balanced",
+          "grid_key": "b5855b28face",
+          "train_weeks": 6,
+          "selection": "max robust_score after spread stress"
+        },
+        "train": {
+          "note": "inherited from TrainApp grid row (pre-OOS mining)"
+        },
+        "validate": {
+          "note": "selection used cost-stressed OOS proxy; true calendar validate TBD when split sims exist"
+        },
+        "test": {
+          "n_trades": 34,
+          "total_r": 27.879,
+          "win_rate_pct": 50.0,
+          "avg_rr": 2.42,
+          "max_drawdown_r": 3.782,
+          "profit_factor": 2.201,
+          "robust_score": 7.121,
+          "cost_penalty_r": 1.889,
+          "assumed_trainapp_spread": 1.5,
+          "aiedge_spread": 2.0
+        },
+        "test_raw_unstrressed": {
+          "n_trades": 34,
+          "total_r": 29.768,
+          "win_rate_pct": 50.0,
+          "avg_rr": 2.42,
+          "max_drawdown_r": 3.31,
+          "profit_factor": 2.201,
+          "robust_score": 8.743
+        },
+        "n_candidates_considered": 228,
+        "n_passed_gates": 9
+      },
+      "trainapp_baseline": {
+        "source": "user_filter_or_bestR:gs_20260816_122532",
+        "label": "H\u1ecdc 6 tu\u1ea7n \u00b7 H\u1ecdc 5 thang cuoi 2025 \u00b7 v\u00f2ng 3 \u00b7 Ki\u1ec3m ch\u1ee9ng 2026 \u00b7 preset anti_chase_fixed_70",
+        "metrics_raw": {
+          "n_trades": 690,
+          "total_r": 250.706,
+          "win_rate_pct": 41.74,
+          "avg_rr": 2.08,
+          "max_drawdown_r": 19.64,
+          "profit_factor": 1.522,
+          "robust_score": 12.102
+        },
+        "metrics": {
+          "n_trades": 690,
+          "total_r": 212.373,
+          "win_rate_pct": 41.74,
+          "avg_rr": 2.08,
+          "max_drawdown_r": 29.223,
+          "profit_factor": 1.522,
+          "robust_score": 6.604,
+          "cost_penalty_r": 38.333,
+          "assumed_trainapp_spread": 1.5,
+          "aiedge_spread": 2.0
+        },
+        "filter_hits_in_grid": 0
+      },
+      "decision": {
+        "winner": "AIEdge",
+        "reason": "higher robust_score with DD not materially worse (+2R tolerance)",
+        "aiedge_robust": 7.121,
+        "trainapp_robust_stressed": 6.604,
+        "trainapp_robust_raw": 12.102,
+        "aiedge_total_r": 27.879,
+        "trainapp_total_r_stressed": 212.373,
+        "aiedge_dd": 3.782,
+        "trainapp_dd_stressed": 29.223,
+        "caveat": "Primary TrainApp baseline is cost-stressed to AIEdge spreads. AIEdge test metrics were not used for selection."
+      }
+    }
+  ],
+  "summary": {
+    "aiedge_wins": 4,
+    "trainapp_wins": 0,
+    "proof_claim": "AIEdge wins cost-aware re-rank",
+    "method": "Same TrainApp grid rows. AIEdge ranks by spread-stressed robust_score; TrainApp baseline uses user filter WR>50 RR>2.5 R>100 DD<10 else best Total R. Both evaluated after identical cost stress."
+  }
+}

@@ -123,8 +123,16 @@ def check_theme_helpers() -> str:
   assert signal_badge("long") == "LONG"
   assert signal_badge("short") == "SHORT"
   css = Path(LIVE / "gui" / "theme.py").read_text(encoding="utf-8")
-  for needle in ("signal-panel", "session-panel", "stat-cell", "decision-flat", "--desk-text"):
+  for needle in (
+    "signal-panel", "session-panel", "stat-cell", "decision-flat", "--desk-text",
+    "replay-prog", "replay-prog-fill",
+  ):
     assert needle in css, needle
+  assert "stProgressBarTrack" not in css
+  from theme import progress_bar_html
+  html = progress_bar_html(24.4)
+  assert "width:24.4%" in html
+  assert "replay-prog-fill" in html
   return "signal/session CSS present"
 
 
@@ -132,9 +140,18 @@ def check_app_ast() -> str:
   src = (LIVE / "gui" / "app.py").read_text(encoding="utf-8")
   ast.parse(src)
   assert "render_live_desk" in src
+  assert "EA Simulate (MT5)" in src
+  assert "Live-like (app)" not in src
+  assert "Lab parity" not in src
   assert "signal-panel" in src
   assert "session-panel" in src
   assert "inject_theme" in src
+  assert "st.progress" not in src
+  assert "progress_bar_html" in src
+  assert "st_autorefresh" not in src
+  assert "desk_refresh_now" in src
+  assert "_run_live_now_tick" in src
+  assert "format_func=_period_label" in src
   return "app.py parse + Live desk markup"
 
 
@@ -220,6 +237,48 @@ def check_sync_roster() -> str:
       assert isinstance(data.get("models"), list), data
   assert written >= 1, "no models.json written"
   return f"models.json books={written}"
+
+
+def check_replay_modes() -> str:
+  from replay_control import normalize_replay_mode
+
+  assert normalize_replay_mode("ea") == "ea"
+  assert normalize_replay_mode("history_feed") == "ea"
+  assert normalize_replay_mode("live_like") == "live_like"
+  assert normalize_replay_mode("paper") == "live_like"
+  assert normalize_replay_mode("inline") == "live_like"
+  assert normalize_replay_mode("parity") == "parity"
+  from replay_control import _assert_live_feed_bridge
+  from pathlib import Path
+  try:
+    _assert_live_feed_bridge(Path("bridge_sim_live_eurusd_m15"))
+    raise AssertionError("sim dir should be refused")
+  except RuntimeError:
+    pass
+  p = _assert_live_feed_bridge(Path("C:/x/bridge_live_eurusd_m15"))
+  assert p.name.startswith("bridge_live")
+  from replay_control import history_feed_active
+  idle_dir = Path(tempfile.mkdtemp(prefix="bridge_live_idle_"))
+  try:
+    (idle_dir / "sim_control.json").write_text(
+      json.dumps({"enabled": True, "ea_status": "idle", "bars_done": 0, "bars_total": 0}),
+      encoding="utf-8",
+    )
+    assert history_feed_active(idle_dir) is False, "idle leftover must not lock Start"
+    (idle_dir / "sim_control.json").write_text(
+      json.dumps({"enabled": True, "ea_status": "pending"}),
+      encoding="utf-8",
+    )
+    assert history_feed_active(idle_dir) is True
+  finally:
+    import shutil
+    shutil.rmtree(idle_dir, ignore_errors=True)
+  mq5 = (SPLIT / "mt5" / "Experts" / "ForgeBridgeLive.mq5").read_text(encoding="utf-8")
+  assert '#property version   "1.21"' in mq5
+  assert "ReadSimControlFile() && g_sim_enabled" in mq5
+  from replay_control import live_ea_needs_history_feed_binary
+  assert callable(live_ea_needs_history_feed_binary)
+  return "ea history-feed on live bridge"
 
 
 def check_desk_snapshot() -> str:
@@ -483,6 +542,7 @@ def main() -> int:
   check("theme helpers / CSS", check_theme_helpers)
   check("gui app AST + markup", check_app_ast)
   check("gui nav labels", check_gui_nav_labels)
+  check("replay modes", check_replay_modes)
   if platform.system().lower().startswith("win"):
     check("deploy_live_ea.ps1 PARSE", check_deploy_ps1_parse)
   else:
