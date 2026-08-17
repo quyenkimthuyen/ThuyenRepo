@@ -831,8 +831,6 @@ def _render_live_live_panels(*, period: str) -> dict:
 
   st.markdown('<div class="panel-label" style="margin-top:0.75rem">3 · Pipeline</div>', unsafe_allow_html=True)
   _render_health_panel(health_detail, sim=False)
-  st.markdown('<div class="panel-label" style="margin-top:0.75rem">Remine · tuần hiện tại</div>', unsafe_allow_html=True)
-  _render_remine_status_table()
 
   st.markdown('<div class="panel-label" style="margin-top:0.75rem">4 · Session</div>', unsafe_allow_html=True)
   rows = [
