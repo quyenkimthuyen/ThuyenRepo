@@ -86,6 +86,9 @@ def _reload_stale_live_modules() -> None:
       need_rc = True
   if need_rc:
     importlib.reload(rc)
+  import weekend_preremine as wpr
+  if not hasattr(wpr, "build_quality_status_table") or not hasattr(wpr, "quality_status_week"):
+    importlib.reload(wpr)
   import theme as th
   if not hasattr(th, "progress_bar_html") or "import-flash" not in getattr(th, "_SHARED", ""):
     importlib.reload(th)
@@ -102,6 +105,8 @@ from journal_view import (  # noqa: E402
   load_trades_many,
   journal_summary_many,
   stats_by_model_many,
+  _trade_r,
+  _trade_result,
   PERIOD_LABELS,
   PERIOD_TITLES,
   PERIODS,
@@ -156,6 +161,14 @@ if "desk_mode" not in st.session_state:
 
 # Top-level nav — defined early so sidebar / auto-refresh cannot race ahead of it.
 _TOP_NAV = ("Live", "Replay", "Models", "Setup")
+
+
+def _wl_text(wins, losses, be=0) -> str:
+  s = f"{int(wins or 0)}/{int(losses or 0)}"
+  n_be = int(be or 0)
+  if n_be:
+    s += f" · {n_be} BE"
+  return s
 
 
 def _live_workers_running() -> bool:
@@ -563,6 +576,48 @@ def render_replay_desk() -> dict:
   return snap
 
 
+def _render_remine_status_table() -> None:
+  """Current-week remine freeze for enabled models (Setup Quality + Live)."""
+  try:
+    from weekend_preremine import build_quality_status_table
+    data = build_quality_status_table()
+  except Exception as exc:
+    st.warning(f"Remine status unavailable: {exc}")
+    return
+  rows = data.get("rows") or []
+  week = data.get("week") or "—"
+  mode = data.get("mode") or "trading"
+  if mode == "preremine":
+    st.caption(
+      f"Weekend pre-remine · bảng = tuần tới **{week}** "
+      f"(tuần đang trade {data.get('trade_week')})"
+    )
+  else:
+    st.caption(
+      f"Tuần đang trade · **{week}**  ·  "
+      f"pre-remine tuần tới {data.get('next_week')} (T6 ≥18h / T7 / CN)"
+    )
+  if not rows:
+    st.caption("Chưa có model On — bật ở Models.")
+    return
+  ready_n = int(data.get("ready_n") or 0)
+  title = "Tuần hiện tại" if mode == "trading" else "Pre-remine tuần tới"
+  st.caption(
+    f"{title} · {ready_n}/{len(rows)} READY for week {week} · "
+    "n/PF/R = train metrics sau remine · base_PF = package baseline · gate = PASS/FAIL/—"
+  )
+  st.dataframe(
+    rows,
+    use_container_width=True,
+    hide_index=True,
+    height=min(420, 42 + 35 * len(rows)),
+    column_config={
+      "model": st.column_config.TextColumn("model", width="medium"),
+      "reason": st.column_config.TextColumn("reason", width="large"),
+    },
+  )
+
+
 def _health_flag_html(level: str, text: str) -> str:
   lv = level if level in ("ok", "warn", "danger", "muted") else "muted"
   return f'<span class="health-flag health-flag-{lv}">{text}</span>'
@@ -751,7 +806,7 @@ def _render_live_live_panels(*, period: str) -> dict:
           </div>
           <div class="stat-cell">
             <div class="stat-k">W/L</div>
-            <div class="stat-v neutral">{wins}/{losses}</div>
+            <div class="stat-v neutral">{_wl_text(wins, losses, session.get("be"))}</div>
           </div>
         </div>
       </div>
@@ -776,6 +831,8 @@ def _render_live_live_panels(*, period: str) -> dict:
 
   st.markdown('<div class="panel-label" style="margin-top:0.75rem">3 · Pipeline</div>', unsafe_allow_html=True)
   _render_health_panel(health_detail, sim=False)
+  st.markdown('<div class="panel-label" style="margin-top:0.75rem">Remine · tuần hiện tại</div>', unsafe_allow_html=True)
+  _render_remine_status_table()
 
   st.markdown('<div class="panel-label" style="margin-top:0.75rem">4 · Session</div>', unsafe_allow_html=True)
   rows = [
@@ -807,7 +864,7 @@ def _render_live_live_panels(*, period: str) -> dict:
   c1.metric("Closed", session.get("n_closed") or 0)
   c2.metric("Total R", f"{float(session.get('total_r') or 0):+.3f}")
   c3.metric("WR%", session.get("win_rate_pct") if session.get("win_rate_pct") is not None else "—")
-  c4.metric("W/L", f"{session.get('wins') or 0}/{session.get('losses') or 0}")
+  c4.metric("W/L", _wl_text(session.get("wins"), session.get("losses"), session.get("be")))
 
   if model_table:
     st.dataframe(model_table, use_container_width=True, hide_index=True)
@@ -841,7 +898,16 @@ def _render_live_live_panels(*, period: str) -> dict:
         "entry", "exit", "sl", "r", "result", "status", "mode", "reason", "magic",
       ]
       keys = [k for k in prefer if any(k in t for t in trades)]
-      rows_t = [{k: t.get(k) for k in keys} for t in trades[-80:]] if keys else trades[-80:]
+      rows_t = []
+      for t in (trades[-80:] if keys else []):
+        row = {k: t.get(k) for k in keys}
+        if "r" in row:
+          row["r"] = _trade_r(t)
+        if "result" in row:
+          row["result"] = _trade_result(t)
+        rows_t.append(row)
+      if not keys:
+        rows_t = trades[-80:]
       st.dataframe(rows_t, use_container_width=True, hide_index=True)
     else:
       st.caption("Chưa có trade — đợi EA đóng lệnh.")
@@ -1058,19 +1124,21 @@ def render_setup_page() -> None:
   with tab_risk:
     st.markdown('<div class="panel-label">1 · Loss guard</div>', unsafe_allow_html=True)
     st.caption(
-      "Sau khi lỗ/DD chạm ngưỡng → FLAT + dừng service. "
-      "Khác concurrent cap (chặn trước khi mở lệnh). 0 = tắt ngưỡng đó."
+      "Sau khi lỗ/DD chạm ngưỡng → FLAT + halt book đó. "
+      "Tắt guard hoặc Clear trip gỡ halt trên worker đang chạy (không cần đợi ngày mai). "
+      "0 = tắt ngưỡng đó."
     )
     prefs = load_risk_prefs()
     snap_r = risk_status_snapshot()
     if snap_r.get("tripped"):
+      book_bit = f"{str(snap_r.get('tripped_book') or '').replace('_', ' ').upper()} · " if snap_r.get("tripped_book") else ""
       st.error(
-        f"TRIPPED · {snap_r.get('tripped_reason') or 'risk guard'} "
+        f"TRIPPED · {book_bit}{snap_r.get('tripped_reason') or 'risk guard'} "
         f"· {snap_r.get('tripped_at') or ''}"
       )
-      if st.button("Clear trip (cho phép Start lại)", key="clear_risk_trip"):
+      if st.button("Clear trip (gỡ halt, worker tiếp tục)", key="clear_risk_trip"):
         clear_loss_guard_trip()
-        st.toast("Trip cleared — bấm Start trading")
+        st.toast("Đã gỡ halt trên worker — refresh nếu Pipeline còn ISSUES")
         st.rerun()
 
     cstat = st.columns(4)
@@ -1133,7 +1201,7 @@ def render_setup_page() -> None:
         )
       except Exception:
         pass
-      st.toast("Loss guard saved")
+      st.toast("Loss guard saved — đã đẩy xuống worker")
       st.rerun()
 
     st.markdown('<div class="panel-label" style="margin-top:0.75rem">2 · Concurrent risk cap</div>', unsafe_allow_html=True)
@@ -1208,174 +1276,7 @@ def render_setup_page() -> None:
       "Tắt gate ≠ tắt remine: tuần ngoài schedule vẫn remine bình thường; Live chỉ thôi cảnh báo REMINE_OK. "
       "Cuối tuần (T6 ≥18h / T7 / CN) worker pre-remine tuần tới; Thứ 2 chỉ fallback nếu chưa freeze."
     )
-    try:
-      from weekend_preremine import (
-        in_weekend_preremine_window,
-        load_all_preremine_state,
-        next_week_start,
-        weekend_preremine_target,
-      )
-      tgt = weekend_preremine_target()
-      target_week = str((tgt or next_week_start()).date())
-      if tgt is not None:
-        st.caption(f"Weekend pre-remine window · target week {target_week}")
-      elif in_weekend_preremine_window():
-        st.caption(f"Weekend pre-remine · next week {target_week}")
-      else:
-        st.caption(f"Weekend pre-remine idle · next week will be {target_week}")
-
-      books = (load_all_preremine_state().get("books") or {})
-      gate_by_model: dict[str, dict] = {}
-      try:
-        from remine_gate import load_gate_by_model_week
-        gate_by_model = load_gate_by_model_week(target_week)
-      except Exception:
-        gate_by_model = {}
-
-      def _fmt_num(v: Any, digits: int = 2) -> str:
-        if v is None or v == "":
-          return "—"
-        try:
-          x = float(v)
-          if x != x:  # NaN
-            return "—"
-          if abs(x - round(x)) < 1e-9:
-            return str(int(round(x)))
-          return f"{x:.{digits}f}"
-        except (TypeError, ValueError):
-          return str(v)
-
-      def _row_from_info(book: str, mid: str, info: dict, pr_status: str) -> dict:
-        src = str(info.get("source") or "—")
-        gate_row = gate_by_model.get(mid) or {}
-        # Prefer persisted weekend state; fall back to alerts for this target week.
-        metrics = {}
-        if info.get("n_trades") is not None or info.get("profit_factor") is not None:
-          metrics = {
-            "n_trades": info.get("n_trades"),
-            "profit_factor": info.get("profit_factor"),
-            "total_r": info.get("total_r"),
-          }
-        elif isinstance(gate_row.get("metrics"), dict) and str(gate_row.get("week_start") or "") == target_week:
-          metrics = gate_row.get("metrics") or {}
-        baseline_pf = info.get("baseline_pf")
-        if baseline_pf is None and isinstance(gate_row.get("baseline"), dict):
-          if str(gate_row.get("week_start") or "") == target_week:
-            baseline_pf = (gate_row.get("baseline") or {}).get("profit_factor")
-        gate_label = info.get("gate")
-        if not gate_label:
-          if src in ("schedule_hit", "state_done"):
-            gate_label = "—"
-          elif isinstance(gate_row, dict) and str(gate_row.get("week_start") or "") == target_week and "ok" in gate_row:
-            gate_label = "PASS" if gate_row.get("ok") else "FAIL"
-          elif src == "remine":
-            gate_label = "PASS"
-          elif src == "schedule_fallback":
-            gate_label = "FAIL"
-          else:
-            gate_label = "—"
-        reasons = info.get("gate_reasons") or info.get("error")
-        if (not reasons or reasons == "—") and gate_row.get("reasons") and str(gate_row.get("week_start") or "") == target_week:
-          reasons = "; ".join(str(x) for x in (gate_row.get("reasons") or []))
-        if isinstance(reasons, list):
-          reasons = "; ".join(str(x) for x in reasons)
-        reason_s = str(reasons or "").strip() or "—"
-        return {
-          "book": book,
-          "model": mid,
-          "week": str(info.get("week_start") or "—") if info else "—",
-          "status": pr_status,
-          "source": src,
-          "gate": gate_label,
-          "n": _fmt_num(metrics.get("n_trades"), 0),
-          "PF": _fmt_num(metrics.get("profit_factor"), 2),
-          "R": _fmt_num(metrics.get("total_r"), 1),
-          "base_PF": _fmt_num(baseline_pf, 2),
-          "reason": reason_s[:100],
-          "updated": str(info.get("updated_at") or "—")[:19] if info else "—",
-        }
-
-      # Roster models → pending if not yet in pre-remine state for target week.
-      roster_rows: list[dict] = []
-      try:
-        from package_store import load_roster
-        for m in (load_roster().get("models") or []):
-          if not m.get("enabled", True):
-            continue
-          sym = str(m.get("symbol") or "").upper()
-          tf = str(m.get("timeframe") or "").upper()
-          mid = str(m.get("model_id") or m.get("id") or "")
-          if not (sym and tf and mid):
-            continue
-          roster_rows.append(
-            {
-              "book": f"{sym.lower()}_{tf.lower()}",
-              "symbol": sym,
-              "timeframe": tf,
-              "model_id": mid,
-            }
-          )
-      except Exception:
-        roster_rows = []
-
-      by_book_model: dict[tuple[str, str], dict] = {}
-      for bk, row in books.items():
-        for mid, info in (row.get("models") or {}).items():
-          by_book_model[(str(bk), str(mid))] = dict(info or {})
-
-      status_rows: list[dict] = []
-      seen: set[tuple[str, str]] = set()
-      for rr in roster_rows:
-        key = (rr["book"], rr["model_id"])
-        seen.add(key)
-        info = by_book_model.get(key) or {}
-        week = str(info.get("week_start") or "")
-        if info and week == target_week and info.get("ok"):
-          pr_status = "READY"
-        elif info and week == target_week and info.get("ok") is False:
-          pr_status = "FAIL"
-        elif info and week and week != target_week:
-          pr_status = "STALE"
-        elif info:
-          pr_status = "PARTIAL"
-        else:
-          pr_status = "PENDING"
-        status_rows.append(_row_from_info(rr["book"], rr["model_id"], info, pr_status))
-      # Orphan state entries (not in roster) still useful to show.
-      for (bk, mid), info in sorted(by_book_model.items()):
-        if (bk, mid) in seen:
-          continue
-        week = str(info.get("week_start") or "")
-        pr_status = "READY" if (week == target_week and info.get("ok")) else (
-          "FAIL" if info.get("ok") is False else "STALE"
-        )
-        status_rows.append(_row_from_info(bk, mid, info, pr_status))
-
-      if status_rows:
-        ready_n = sum(1 for r in status_rows if r["status"] == "READY")
-        st.caption(
-          f"Pre-remine models · {ready_n}/{len(status_rows)} READY for week {target_week} · "
-          "n/PF/R = train metrics sau remine · base_PF = package baseline · gate = PASS/FAIL/—"
-        )
-        st.dataframe(
-          status_rows,
-          use_container_width=True,
-          hide_index=True,
-          height=min(420, 42 + 35 * len(status_rows)),
-          column_config={
-            "model": st.column_config.TextColumn("model", width="medium"),
-            "reason": st.column_config.TextColumn("reason", width="large"),
-          },
-        )
-      elif books:
-        bits = []
-        for bk, row in sorted(books.items()):
-          mods = row.get("models") or {}
-          ok_n = sum(1 for m in mods.values() if m.get("ok"))
-          bits.append(f"{bk} {ok_n}/{len(mods)}@{row.get('week_start') or '—'}")
-        st.caption("Pre-remine state · " + " · ".join(bits))
-    except Exception:
-      pass
+    _render_remine_status_table()
     try:
       from remine_gate import load_last_alert, load_prefs as load_rg_prefs, save_prefs as save_rg_prefs
       rg = load_rg_prefs()

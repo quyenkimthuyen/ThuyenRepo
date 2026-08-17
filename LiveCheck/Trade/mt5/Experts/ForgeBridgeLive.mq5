@@ -526,6 +526,85 @@ bool WritePositionsJson()
 }
 
 //+------------------------------------------------------------------+
+bool MagicIsOurs(const ulong magic)
+{
+   if(magic == InpMagic)
+      return true;
+   for(int s = 0; s < g_model_n; s++)
+      if(g_model_magics[s] == magic)
+         return true;
+   return false;
+}
+
+string DealReasonTag(const long reason)
+{
+   if(reason == DEAL_REASON_SL) return "sl";
+   if(reason == DEAL_REASON_TP) return "tp";
+   if(reason == DEAL_REASON_SO) return "stop_out";
+   if(reason == DEAL_REASON_CLIENT || reason == DEAL_REASON_MOBILE || reason == DEAL_REASON_WEB)
+      return "manual_close";
+   if(reason == DEAL_REASON_EXPERT) return "ea_close";
+   return "closed";
+}
+
+bool WriteDealsJson()
+{
+   // Source of truth for App journal: actual OUT deals from MT5 history.
+   datetime from = TimeCurrent() - 7 * 24 * 3600;
+   if(!HistorySelect(from, TimeCurrent()))
+      return false;
+   string json = "{";
+   json += "\"updated_at\":\"" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS) + "\",";
+   json += "\"symbol\":\"" + _Symbol + "\",";
+   json += "\"period\":\"" + PeriodTag() + "\",";
+   json += "\"deals\":[";
+   bool first = true;
+   int n = 0;
+   for(int i = HistoryDealsTotal() - 1; i >= 0 && n < 80; i--)
+   {
+      ulong deal = HistoryDealGetTicket(i);
+      if(deal == 0) continue;
+      if(HistoryDealGetString(deal, DEAL_SYMBOL) != _Symbol) continue;
+      long entry = HistoryDealGetInteger(deal, DEAL_ENTRY);
+      if(entry != DEAL_ENTRY_OUT && entry != DEAL_ENTRY_OUT_BY) continue;
+      ulong magic = (ulong)HistoryDealGetInteger(deal, DEAL_MAGIC);
+      if(!MagicIsOurs(magic)) continue;
+      ulong pos_id = (ulong)HistoryDealGetInteger(deal, DEAL_POSITION_ID);
+      double profit = HistoryDealGetDouble(deal, DEAL_PROFIT)
+                    + HistoryDealGetDouble(deal, DEAL_SWAP)
+                    + HistoryDealGetDouble(deal, DEAL_COMMISSION);
+      long dtype = HistoryDealGetInteger(deal, DEAL_TYPE);
+      string typ = (dtype == DEAL_TYPE_SELL) ? "SELL" : "BUY";
+      if(!first) json += ",";
+      first = false;
+      json += "{";
+      json += "\"deal\":" + IntegerToString((long)deal) + ",";
+      json += "\"position_id\":" + IntegerToString((long)pos_id) + ",";
+      json += "\"ticket\":" + IntegerToString((long)pos_id) + ",";
+      json += "\"magic\":" + IntegerToString((long)magic) + ",";
+      json += "\"model_id\":\"" + ModelIdForMagic(magic) + "\",";
+      json += "\"type\":\"" + typ + "\",";
+      json += "\"volume\":" + DoubleToString(HistoryDealGetDouble(deal, DEAL_VOLUME), 2) + ",";
+      json += "\"price\":" + DoubleToString(HistoryDealGetDouble(deal, DEAL_PRICE), _Digits) + ",";
+      json += "\"profit\":" + DoubleToString(profit, 2) + ",";
+      json += "\"profit_raw\":" + DoubleToString(HistoryDealGetDouble(deal, DEAL_PROFIT), 2) + ",";
+      json += "\"swap\":" + DoubleToString(HistoryDealGetDouble(deal, DEAL_SWAP), 2) + ",";
+      json += "\"commission\":" + DoubleToString(HistoryDealGetDouble(deal, DEAL_COMMISSION), 2) + ",";
+      json += "\"reason\":\"" + DealReasonTag(HistoryDealGetInteger(deal, DEAL_REASON)) + "\",";
+      json += "\"time\":\"" + TimeToString((datetime)HistoryDealGetInteger(deal, DEAL_TIME), TIME_DATE | TIME_SECONDS) + "\"";
+      json += "}";
+      n++;
+   }
+   json += "],\"n\":" + IntegerToString(n) + "}\n";
+   int dh = FileOpen(BridgePath("deals.json"), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ);
+   if(dh == INVALID_HANDLE)
+      return false;
+   FileWriteString(dh, json);
+   FileClose(dh);
+   return true;
+}
+
+//+------------------------------------------------------------------+
 double LotsForRisk(double sl_dist)
 {
    if(sl_dist <= 0) return 0;
@@ -906,7 +985,7 @@ bool WriteConnectionJson()
    json += "\"symbol\":\"" + _Symbol + "\",";
    json += "\"period\":\"" + PeriodTag() + "\",";
    json += "\"instance_id\":\"" + INSTANCE_ID + "\",";
-   json += "\"ea_version\":\"1.21\",";
+   json += "\"ea_version\":\"1.22\",";
    json += "\"bridge_subdir\":\"" + InpBridgeSubdir + "\",";
    json += "\"magic\":" + IntegerToString((long)InpMagic) + ",";
    json += "\"account_margin_mode\":" + IntegerToString(AccountInfoInteger(ACCOUNT_MARGIN_MODE)) + ",";
@@ -937,6 +1016,7 @@ bool WriteConnectionJson()
    FileWriteString(h, json);
    FileClose(h);
    WritePositionsJson();
+   WriteDealsJson();
    return true;
 }
 
@@ -1340,28 +1420,57 @@ void WriteFillJson(const string signal_id, const string action, const bool ok, c
 }
 
 //+------------------------------------------------------------------+
-string DetectCloseReasonFromHistory()
+bool LookupCloseDeal(const ulong pos_ticket, const ulong magic,
+                     double &profit, double &exit_px, string &reason)
 {
    datetime from = TimeCurrent() - 7 * 24 * 3600;
    if(!HistorySelect(from, TimeCurrent()))
-      return "closed";
-   for(int i = HistoryDealsTotal() - 1; i >= 0; i--)
+      return false;
+   ulong want_magic = (magic > 0 ? magic : InpMagic);
+   for(int pass = 0; pass < 2; pass++)
    {
-      ulong deal = HistoryDealGetTicket(i);
-      if(deal == 0) continue;
-      if((ulong)HistoryDealGetInteger(deal, DEAL_MAGIC) != InpMagic) continue;
-      if(HistoryDealGetString(deal, DEAL_SYMBOL) != _Symbol) continue;
-      long entry = HistoryDealGetInteger(deal, DEAL_ENTRY);
-      if(entry != DEAL_ENTRY_OUT && entry != DEAL_ENTRY_OUT_BY) continue;
-      long reason = HistoryDealGetInteger(deal, DEAL_REASON);
-      if(reason == DEAL_REASON_SL) return "sl";
-      if(reason == DEAL_REASON_TP) return "tp";
-      if(reason == DEAL_REASON_SO) return "stop_out";
-      if(reason == DEAL_REASON_CLIENT || reason == DEAL_REASON_MOBILE || reason == DEAL_REASON_WEB)
-         return "manual_close";
-      if(reason == DEAL_REASON_EXPERT) return "ea_close";
-      break;
+      for(int i = HistoryDealsTotal() - 1; i >= 0; i--)
+      {
+         ulong deal = HistoryDealGetTicket(i);
+         if(deal == 0) continue;
+         if(HistoryDealGetString(deal, DEAL_SYMBOL) != _Symbol) continue;
+         long entry = HistoryDealGetInteger(deal, DEAL_ENTRY);
+         if(entry != DEAL_ENTRY_OUT && entry != DEAL_ENTRY_OUT_BY) continue;
+         if(pass == 0)
+         {
+            if(pos_ticket == 0)
+               break;
+            if((ulong)HistoryDealGetInteger(deal, DEAL_POSITION_ID) != pos_ticket)
+               continue;
+         }
+         else if((ulong)HistoryDealGetInteger(deal, DEAL_MAGIC) != want_magic)
+            continue;
+         profit = HistoryDealGetDouble(deal, DEAL_PROFIT)
+                + HistoryDealGetDouble(deal, DEAL_SWAP)
+                + HistoryDealGetDouble(deal, DEAL_COMMISSION);
+         exit_px = HistoryDealGetDouble(deal, DEAL_PRICE);
+         long dr = HistoryDealGetInteger(deal, DEAL_REASON);
+         if(dr == DEAL_REASON_SL) reason = "sl";
+         else if(dr == DEAL_REASON_TP) reason = "tp";
+         else if(dr == DEAL_REASON_SO) reason = "stop_out";
+         else if(dr == DEAL_REASON_CLIENT || dr == DEAL_REASON_MOBILE || dr == DEAL_REASON_WEB)
+            reason = "manual_close";
+         else if(dr == DEAL_REASON_EXPERT) reason = "ea_close";
+         else if(reason == "" || reason == "closed")
+            reason = "closed";
+         return true;
+      }
    }
+   return false;
+}
+
+string DetectCloseReasonFromHistory()
+{
+   double profit = 0;
+   double exit_px = 0;
+   string reason = "closed";
+   if(LookupCloseDeal(g_open_ticket, g_active_magic, profit, exit_px, reason))
+      return reason;
    return "closed";
 }
 
@@ -1566,6 +1675,17 @@ bool OpenFromDecision(const string json)
       g_sync_sl = sl;
       g_sync_tp = tp;
       g_had_position = true;
+      int save_slot = (slot >= 0) ? slot : FindModelSlotByMagic(g_active_magic);
+      if(save_slot >= 0 && save_slot < MAX_MODELS)
+      {
+         g_slot_ticket[save_slot] = ticket;
+         g_slot_sid[save_slot] = sid;
+         g_slot_action[save_slot] = action;
+         g_slot_entry[save_slot] = price;
+         g_slot_sl[save_slot] = sl;
+         g_slot_sl_init[save_slot] = sl;
+         g_slot_lots[save_slot] = lots;
+      }
       Print("ForgeBridge ENTERED app_signal sid=", sid,
             " model=", g_active_model_id,
             " magic=", g_active_magic,
@@ -1594,31 +1714,20 @@ void ReportCloseIfNeeded(const string reason)
 {
    if(g_open_ticket == 0 && g_open_signal_id == "")
       return;
-   // Prefer deal profit from history for this position
+   // Prefer THIS position's deal — never the latest OUT for InpMagic (multi-model).
    double profit = 0;
    double exit_px = (g_open_action == "BUY")
       ? SymbolInfoDouble(_Symbol, SYMBOL_BID)
       : SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    string close_reason = reason;
-   datetime from = TimeCurrent() - 7 * 24 * 3600;
-   if(HistorySelect(from, TimeCurrent()))
+   string hist_reason = close_reason;
+   ulong mag = (g_active_magic > 0 ? g_active_magic : InpMagic);
+   if(LookupCloseDeal(g_open_ticket, mag, profit, exit_px, hist_reason))
    {
-      for(int i = HistoryDealsTotal() - 1; i >= 0; i--)
-      {
-         ulong deal = HistoryDealGetTicket(i);
-         if(deal == 0) continue;
-         if((ulong)HistoryDealGetInteger(deal, DEAL_MAGIC) != InpMagic) continue;
-         if(HistoryDealGetString(deal, DEAL_SYMBOL) != _Symbol) continue;
-         long entry = HistoryDealGetInteger(deal, DEAL_ENTRY);
-         if(entry != DEAL_ENTRY_OUT && entry != DEAL_ENTRY_OUT_BY) continue;
-         profit = HistoryDealGetDouble(deal, DEAL_PROFIT)
-                + HistoryDealGetDouble(deal, DEAL_SWAP)
-                + HistoryDealGetDouble(deal, DEAL_COMMISSION);
-         exit_px = HistoryDealGetDouble(deal, DEAL_PRICE);
-         break;
-      }
+      if(close_reason == "" || close_reason == "closed")
+         close_reason = hist_reason;
    }
-   if(close_reason == "" || close_reason == "closed")
+   else if(close_reason == "" || close_reason == "closed")
       close_reason = DetectCloseReasonFromHistory();
    bool manual_close = g_user_intervened
                        || close_reason == "manual_close"
@@ -1637,6 +1746,7 @@ void ReportCloseIfNeeded(const string reason)
    g_sync_tp = 0;
    g_had_position = false;
    WritePositionsJson();
+   WriteDealsJson();
 }
 
 //+------------------------------------------------------------------+
@@ -1657,7 +1767,23 @@ void ManageOpen()
       if(s_had[s] && n == 0)
       {
          SetActiveSlot(s);
+         if(g_slot_ticket[s] != 0)
+         {
+            g_open_ticket = g_slot_ticket[s];
+            if(g_slot_sid[s] != "")
+               g_open_signal_id = g_slot_sid[s];
+            if(g_slot_action[s] != "")
+               g_open_action = g_slot_action[s];
+            if(g_slot_entry[s] > 0)
+               g_open_entry = g_slot_entry[s];
+            if(g_slot_sl[s] > 0)
+               g_open_sl = g_slot_sl[s];
+            if(g_slot_lots[s] > 0)
+               g_open_lots = g_slot_lots[s];
+         }
          ReportCloseIfNeeded("closed");
+         g_slot_ticket[s] = 0;
+         g_slot_sid[s] = "";
          s_had[s] = false;
       }
       if(n > 0)
@@ -1682,6 +1808,10 @@ void ManageOpen()
          g_open_lots = PositionGetDouble(POSITION_VOLUME);
          g_open_action = (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) ? "BUY" : "SELL";
          g_had_position = true;
+         g_slot_ticket[s] = ticket;
+         g_slot_action[s] = g_open_action;
+         g_slot_entry[s] = g_open_entry;
+         g_slot_lots[s] = g_open_lots;
 
          // Keep App SL/TP in sync (user edits → mode manual)
          SyncPositionLevels(ticket);

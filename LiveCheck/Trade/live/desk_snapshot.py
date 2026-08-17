@@ -315,6 +315,18 @@ def desk_snapshot(*, sim: bool = False) -> dict[str, Any]:
       "books": [],
     }
 
+  lg_tripped = False if sim else bool(cfg.get("loss_guard_tripped"))
+  lg_reason = None if sim else cfg.get("loss_guard_tripped_reason")
+  if not sim:
+    try:
+      from risk_prefs import any_worker_loss_guard_trip
+      wt = any_worker_loss_guard_trip()
+      if wt.get("tripped"):
+        lg_tripped = True
+        lg_reason = wt.get("tripped_reason") or lg_reason
+    except Exception:
+      pass
+
   return {
     "mode": "replay" if sim else "live",
     "health": health,
@@ -358,8 +370,8 @@ def desk_snapshot(*, sim: bool = False) -> dict[str, Any]:
     "journal": journal,
     "by_model": by_model,
     "today": day,
-    "loss_guard_tripped": bool(cfg.get("loss_guard_tripped")) if not sim else False,
-    "loss_guard_reason": cfg.get("loss_guard_tripped_reason") if not sim else None,
+    "loss_guard_tripped": lg_tripped,
+    "loss_guard_reason": lg_reason,
     "risk_pct": cfg.get("risk_pct"),
     "updated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
     "recent_fills": recent,

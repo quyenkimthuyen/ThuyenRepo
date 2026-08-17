@@ -1,15 +1,17 @@
 {
   "desk": "g23",
-  "system": "AIEdge-ValidateSelect-CostGate-WF",
-  "space": "anti_chase_fixed_70",
+  "system": "AIEdge-v2-ValidateSelect-WF",
+  "space": "edge_gentle",
   "params": {
-    "preset": "anti_chase_fixed_70",
+    "preset": "edge_gentle",
     "train_weeks": 6,
     "cost_gate_mult": null,
-    "selection": "validate_wf_robust_score",
-    "soft_fallback": true,
+    "remine_stride": 1,
+    "selection": "validate_select_score_v2",
+    "soft_fallback": false,
+    "select_score": 2.512113040508034,
     "last_strategy": {
-      "name": "v3_full_rr3.0|chase:fixed_or_rsi<70+vwap<99",
+      "name": "v3_full_rr3.0",
       "rr": 3.0,
       "atr_mult": 0.9,
       "ml_prob_min": 0.36,
@@ -18,27 +20,27 @@
       "min_bars_between": 12,
       "n_long_rules": 2,
       "n_short_rules": 3,
-      "anti_chase": true,
+      "anti_chase": false,
       "exit_mode": "full"
     }
   },
-  "param_key": "wf|anti_chase_fixed_70|tw6|gateNone",
+  "param_key": "wf|edge_gentle|tw6|gateNone|s1",
   "validate": {
-    "n_trades": 134,
-    "total_r": 4.37,
-    "win_rate_pct": 32.84,
-    "avg_rr": 2.128,
-    "max_drawdown_r": 35.157,
-    "profit_factor": 1.08,
-    "robust_score": -0.984
+    "n_trades": 174,
+    "total_r": 32.817,
+    "win_rate_pct": 37.36,
+    "avg_rr": 2.097,
+    "max_drawdown_r": 20.786,
+    "profit_factor": 1.385,
+    "robust_score": 0.697
   },
   "test": {
-    "n_trades": 167,
-    "total_r": 63.307,
-    "win_rate_pct": 41.32,
-    "avg_rr": 2.199,
-    "max_drawdown_r": 17.658,
-    "profit_factor": 1.478,
-    "robust_score": 2.901
+    "n_trades": 187,
+    "total_r": 77.598,
+    "win_rate_pct": 42.78,
+    "avg_rr": 2.164,
+    "max_drawdown_r": 21.302,
+    "profit_factor": 1.636,
+    "robust_score": 3.032
   }
 }

@@ -19,7 +19,7 @@ sys.path.insert(0, str(ROOT))
 
 from desk_context import apply_desk_env  # noqa: E402
 
-FILTER = {"wr_gt": 55.0, "rr_gt": 2.6, "total_r_gt": 50.0, "max_dd_lt": 8.0}
+FILTER = {"wr_gt": 52.0, "rr_gt": 2.45, "total_r_gt": 40.0, "max_dd_lt": 8.0}
 
 
 def _purge() -> None:
@@ -137,25 +137,53 @@ def _run_desk(desk: str, *, workers: int) -> dict:
       f"tpw={float(r.get('trades_per_week') or 0):.2f} n={r.get('n_trades')} · {r.get('label')}",
     )
 
-  hits = [r for r in ranked if _passes(r)]
+  def _n(row: dict) -> int:
+    try:
+      return int(row.get("n_trades") or 0)
+    except Exception:
+      return 0
+
+  def _tpw(row: dict) -> float:
+    try:
+      return float(row.get("trades_per_week") or 0)
+    except Exception:
+      return 0.0
+
+  hits = [r for r in ranked if _passes(r) and _n(r) >= 20]
   if not hits:
-    _log(desk, "No row passed WR55/RR2.6/R50/DD8 — promoting best WR with DD<10")
+    _log(desk, "No row passed WR52/RR2.45/R40/DD8 n>=20 — promoting best WR with DD<10 n>=20 R>15")
     fallback = [
       r for r in ranked
       if float(r.get("max_drawdown_r") or 999) < 10.0
-      and float(r.get("win_rate_pct") or 0) >= 48.0
+      and float(r.get("win_rate_pct") or 0) >= 40.0
+      and float(r.get("total_r") or 0) > 15.0
+      and _n(r) >= 20
     ]
     fallback.sort(key=lambda r: float(r.get("win_rate_pct") or 0), reverse=True)
     hits = fallback[:3]
+  # Prefer a live-usable book (tpw>=1.2) as Active; keep sniper rows in the store.
+  bookish = [r for r in hits if _tpw(r) >= 1.2 and _n(r) >= 40]
+  active_row = max(bookish, key=lambda r: float(r.get("win_rate_pct") or 0)) if bookish else (hits[0] if hits else None)
   created = []
   for i, row in enumerate(hits[:5]):
     wr = float(row.get("win_rate_pct") or 0)
     rr = float(row.get("avg_rr") or 0)
     tot = float(row.get("total_r") or 0)
     label = f"M5Q WR{wr:.0f} RR{rr:.2f} +{tot:.0f}R"
-    model = create_trade_model(row, run_id=rid, label=label, set_active=(i == 0))
+    model = create_trade_model(
+      row,
+      run_id=rid,
+      label=label,
+      set_active=(active_row is not None and row is active_row),
+    )
     created.append(model)
-    _log(desk, f"Promoted {model.get('id')} · {label} · dd={row.get('max_drawdown_r')}")
+    _log(desk, f"Promoted {model.get('id')} · {label} · dd={row.get('max_drawdown_r')} n={_n(row)}")
+  if active_row is not None and created:
+    _log(
+      desk,
+      f"Active book WR={float(active_row.get('win_rate_pct') or 0):.1f} "
+      f"tpw={_tpw(active_row):.2f} n={_n(active_row)}",
+    )
   return {"desk": desk, "run_id": rid, "promoted": len(created), "models": [m.get("id") for m in created]}
 
 

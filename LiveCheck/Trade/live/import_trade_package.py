@@ -120,6 +120,11 @@ def import_one(tmpkg: Path) -> Path:
     "schedule_weeks": int(man.get("schedule_weeks") or 0),
   }
   (dest / "install_meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+  try:
+    from weekend_preremine import drop_preremine_model
+    drop_preremine_model(str(symbol), str(timeframe), str(mid))
+  except Exception:
+    pass
   return dest
 
 

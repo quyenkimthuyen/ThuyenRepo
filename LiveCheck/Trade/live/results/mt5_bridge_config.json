@@ -1,31 +1,23 @@
 {
   "enabled": true,
-  "model_id": "",
+  "mode": "process",
+  "poll_sec": 0.5,
   "model_ids": [
     "tm_breakthrough_anti_chase_fixe_bdedbc09",
     "tm_breakthrough_elite_60_3_vwap_c1ad2c33",
+    "tm_h_c_3_tu_n_h_c_2025-2026-6th_93dff1d5",
     "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e",
-    "tm_besttotalr_9662fd61",
+    "tm_h_c_6_tu_n_h_c_2025-2026-6th_7507124e",
     "tm_gbpusd_bestr_99_7r_wr53_6bcb3684",
     "tm_gbpusd_riskadj_79_7r_dd2_wr6_160c0c79",
+    "tm_gbpusd_riskadj_95_0r_dd5_wr5_ad5636dc",
     "tm_gbpusd_wr60_alt_79_5r_wr60_d7b0f5ed",
-    "tm_balance_49829f42",
-    "tm_bestbalance_2_fdca2f6b",
-    "tm_bestwinrate_61a3b401",
-    "tm_bestpf_f7e2ce53",
-    "tm_bestquality_28e7e716",
-    "tm_besttotalr_2d9abef9"
+    "tm_h_c_6_tu_n_giai_o_n_2025_202_36e9ae9f"
   ],
   "risk_pct": 1.0,
-  "poll_sec": 0.5,
-  "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_eurusd_m15",
-  "mode": "process",
-  "service_pid": 28988,
-  "last_run_at": "2026-08-14T22:43:47+07:00",
-  "last_error": null,
-  "last_action": "start",
-  "last_bar": "m5_parity",
-  "loss_guard_enabled": true,
+  "monitor_port": 9601,
+  "sim": false,
+  "loss_guard_enabled": false,
   "loss_guard_max_day": 16,
   "loss_guard_max_week": 5,
   "loss_guard_max_day_dd_r": 6.0,
@@ -35,10 +27,12 @@
   "loss_guard_tripped": false,
   "loss_guard_tripped_at": null,
   "loss_guard_tripped_reason": null,
-  "monitor_port": 9601,
-  "sim": false,
-  "updated_at": "2026-08-16T22:05:37+07:00",
-  "workers": 4,
+  "last_error": null,
+  "updated_at": "2026-08-17T21:14:05+07:00",
+  "service_pid": 18180,
+  "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_eurusd_m15",
+  "last_action": "start",
+  "workers": 2,
   "last_deploy": {
     "ok": true,
     "skipped": false,
@@ -65,12 +59,14 @@
           "model_ids": [
             "tm_breakthrough_anti_chase_fixe_bdedbc09",
             "tm_breakthrough_elite_60_3_vwap_c1ad2c33",
-            "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e"
+            "tm_h_c_3_tu_n_h_c_2025-2026-6th_93dff1d5",
+            "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e",
+            "tm_h_c_6_tu_n_h_c_2025-2026-6th_7507124e"
           ],
-          "n_models": 3,
+          "n_models": 5,
           "sim": false,
           "online": true,
-          "age_sec": 1.487579584121704,
+          "age_sec": 0.19170618057250977,
           "chart": {
             "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_eurusd_m15",
             "symbol": "EURUSD",
@@ -86,52 +82,23 @@
           "connected": true
         },
         {
-          "symbol": "EURUSD",
-          "timeframe": "M5",
-          "bridge_subdir": "bridge_live_eurusd_m5",
-          "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_eurusd_m5",
-          "magic": 20263008,
-          "risk_pct": 1.0,
-          "model_ids": [
-            "tm_balance_49829f42",
-            "tm_bestbalance_2_fdca2f6b",
-            "tm_bestwinrate_61a3b401"
-          ],
-          "n_models": 3,
-          "sim": false,
-          "online": true,
-          "age_sec": 0.5879406929016113,
-          "chart": {
-            "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_eurusd_m5",
-            "symbol": "EURUSD",
-            "timeframe": "M5",
-            "source": "bar.json",
-            "connected": true,
-            "raw": {
-              "symbol": "EURUSD",
-              "period": "M5",
-              "account": 318391274
-            }
-          },
-          "connected": true
-        },
-        {
           "symbol": "GBPUSD",
           "timeframe": "M15",
           "bridge_subdir": "bridge_live_gbpusd_m15",
           "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_gbpusd_m15",
-          "magic": 20263004,
+          "magic": 20263006,
           "risk_pct": 1.0,
           "model_ids": [
-            "tm_besttotalr_9662fd61",
             "tm_gbpusd_bestr_99_7r_wr53_6bcb3684",
             "tm_gbpusd_riskadj_79_7r_dd2_wr6_160c0c79",
-            "tm_gbpusd_wr60_alt_79_5r_wr60_d7b0f5ed"
+            "tm_gbpusd_riskadj_95_0r_dd5_wr5_ad5636dc",
+            "tm_gbpusd_wr60_alt_79_5r_wr60_d7b0f5ed",
+            "tm_h_c_6_tu_n_giai_o_n_2025_202_36e9ae9f"
           ],
-          "n_models": 4,
+          "n_models": 5,
           "sim": false,
           "online": true,
-          "age_sec": 0.6536128520965576,
+          "age_sec": 0.486217737197876,
           "chart": {
             "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_gbpusd_m15",
             "symbol": "GBPUSD",
@@ -145,40 +112,10 @@
             }
           },
           "connected": true
-        },
-        {
-          "symbol": "GBPUSD",
-          "timeframe": "M5",
-          "bridge_subdir": "bridge_live_gbpusd_m5",
-          "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_gbpusd_m5",
-          "magic": 20263011,
-          "risk_pct": 1.0,
-          "model_ids": [
-            "tm_bestpf_f7e2ce53",
-            "tm_bestquality_28e7e716",
-            "tm_besttotalr_2d9abef9"
-          ],
-          "n_models": 3,
-          "sim": false,
-          "online": true,
-          "age_sec": 0.7055597305297852,
-          "chart": {
-            "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_gbpusd_m5",
-            "symbol": "GBPUSD",
-            "timeframe": "M5",
-            "source": "bar.json",
-            "connected": true,
-            "raw": {
-              "symbol": "GBPUSD",
-              "period": "M5",
-              "account": 318391274
-            }
-          },
-          "connected": true
         }
       ],
-      "n_books": 4,
-      "n_online": 4,
+      "n_books": 2,
+      "n_online": 2,
       "all_online": true,
       "missing": [],
       "mt5_running": true
@@ -195,12 +132,14 @@
           "model_ids": [
             "tm_breakthrough_anti_chase_fixe_bdedbc09",
             "tm_breakthrough_elite_60_3_vwap_c1ad2c33",
-            "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e"
+            "tm_h_c_3_tu_n_h_c_2025-2026-6th_93dff1d5",
+            "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e",
+            "tm_h_c_6_tu_n_h_c_2025-2026-6th_7507124e"
           ],
-          "n_models": 3,
+          "n_models": 5,
           "sim": false,
           "online": true,
-          "age_sec": 1.495377540588379,
+          "age_sec": 0.19658470153808594,
           "chart": {
             "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_eurusd_m15",
             "symbol": "EURUSD",
@@ -216,52 +155,23 @@
           "connected": true
         },
         {
-          "symbol": "EURUSD",
-          "timeframe": "M5",
-          "bridge_subdir": "bridge_live_eurusd_m5",
-          "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_eurusd_m5",
-          "magic": 20263008,
-          "risk_pct": 1.0,
-          "model_ids": [
-            "tm_balance_49829f42",
-            "tm_bestbalance_2_fdca2f6b",
-            "tm_bestwinrate_61a3b401"
-          ],
-          "n_models": 3,
-          "sim": false,
-          "online": true,
-          "age_sec": 0.5955402851104736,
-          "chart": {
-            "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_eurusd_m5",
-            "symbol": "EURUSD",
-            "timeframe": "M5",
-            "source": "bar.json",
-            "connected": true,
-            "raw": {
-              "symbol": "EURUSD",
-              "period": "M5",
-              "account": 318391274
-            }
-          },
-          "connected": true
-        },
-        {
           "symbol": "GBPUSD",
           "timeframe": "M15",
           "bridge_subdir": "bridge_live_gbpusd_m15",
           "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_gbpusd_m15",
-          "magic": 20263004,
+          "magic": 20263006,
           "risk_pct": 1.0,
           "model_ids": [
-            "tm_besttotalr_9662fd61",
             "tm_gbpusd_bestr_99_7r_wr53_6bcb3684",
             "tm_gbpusd_riskadj_79_7r_dd2_wr6_160c0c79",
-            "tm_gbpusd_wr60_alt_79_5r_wr60_d7b0f5ed"
+            "tm_gbpusd_riskadj_95_0r_dd5_wr5_ad5636dc",
+            "tm_gbpusd_wr60_alt_79_5r_wr60_d7b0f5ed",
+            "tm_h_c_6_tu_n_giai_o_n_2025_202_36e9ae9f"
           ],
-          "n_models": 4,
+          "n_models": 5,
           "sim": false,
           "online": true,
-          "age_sec": 0.661588191986084,
+          "age_sec": 0.4910769462585449,
           "chart": {
             "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_gbpusd_m15",
             "symbol": "GBPUSD",
@@ -275,40 +185,10 @@
             }
           },
           "connected": true
-        },
-        {
-          "symbol": "GBPUSD",
-          "timeframe": "M5",
-          "bridge_subdir": "bridge_live_gbpusd_m5",
-          "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_gbpusd_m5",
-          "magic": 20263011,
-          "risk_pct": 1.0,
-          "model_ids": [
-            "tm_bestpf_f7e2ce53",
-            "tm_bestquality_28e7e716",
-            "tm_besttotalr_2d9abef9"
-          ],
-          "n_models": 3,
-          "sim": false,
-          "online": true,
-          "age_sec": 0.7136557102203369,
-          "chart": {
-            "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_gbpusd_m5",
-            "symbol": "GBPUSD",
-            "timeframe": "M5",
-            "source": "bar.json",
-            "connected": true,
-            "raw": {
-              "symbol": "GBPUSD",
-              "period": "M5",
-              "account": 318391274
-            }
-          },
-          "connected": true
         }
       ],
-      "n_books": 4,
-      "n_online": 4,
+      "n_books": 2,
+      "n_online": 2,
       "all_online": true,
       "missing": [],
       "mt5_running": true,
@@ -326,24 +206,11 @@
         "model_ids": [
           "tm_breakthrough_anti_chase_fixe_bdedbc09",
           "tm_breakthrough_elite_60_3_vwap_c1ad2c33",
-          "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e"
+          "tm_h_c_3_tu_n_h_c_2025-2026-6th_93dff1d5",
+          "tm_h_c_3_tu_n_h_c_2025-2026-6th_f574b07e",
+          "tm_h_c_6_tu_n_h_c_2025-2026-6th_7507124e"
         ],
-        "n_models": 3,
-        "sim": false
-      },
-      {
-        "symbol": "EURUSD",
-        "timeframe": "M5",
-        "bridge_subdir": "bridge_live_eurusd_m5",
-        "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_eurusd_m5",
-        "magic": 20263008,
-        "risk_pct": 1.0,
-        "model_ids": [
-          "tm_balance_49829f42",
-          "tm_bestbalance_2_fdca2f6b",
-          "tm_bestwinrate_61a3b401"
-        ],
-        "n_models": 3,
+        "n_models": 5,
         "sim": false
       },
       {
@@ -351,35 +218,18 @@
         "timeframe": "M15",
         "bridge_subdir": "bridge_live_gbpusd_m15",
         "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_gbpusd_m15",
-        "magic": 20263004,
+        "magic": 20263006,
         "risk_pct": 1.0,
         "model_ids": [
-          "tm_besttotalr_9662fd61",
           "tm_gbpusd_bestr_99_7r_wr53_6bcb3684",
           "tm_gbpusd_riskadj_79_7r_dd2_wr6_160c0c79",
-          "tm_gbpusd_wr60_alt_79_5r_wr60_d7b0f5ed"
+          "tm_gbpusd_riskadj_95_0r_dd5_wr5_ad5636dc",
+          "tm_gbpusd_wr60_alt_79_5r_wr60_d7b0f5ed",
+          "tm_h_c_6_tu_n_giai_o_n_2025_202_36e9ae9f"
         ],
-        "n_models": 4,
-        "sim": false
-      },
-      {
-        "symbol": "GBPUSD",
-        "timeframe": "M5",
-        "bridge_subdir": "bridge_live_gbpusd_m5",
-        "bridge_dir": "C:\\Work\\ThuyenRepo\\LiveCheck\\Trade\\mt5\\bridge_live_gbpusd_m5",
-        "magic": 20263011,
-        "risk_pct": 1.0,
-        "model_ids": [
-          "tm_bestpf_f7e2ce53",
-          "tm_bestquality_28e7e716",
-          "tm_besttotalr_2d9abef9"
-        ],
-        "n_models": 3,
+        "n_models": 5,
         "sim": false
       }
     ]
-  },
-  "kill_switch": false,
-  "kill_switch_reason": null,
-  "kill_switch_at": "2026-08-16T11:01:47+07:00"
+  }
 }

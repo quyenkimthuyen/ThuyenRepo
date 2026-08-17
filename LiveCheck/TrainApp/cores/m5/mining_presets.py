@@ -245,6 +245,46 @@ ELITE_OR_QUALITY = {
   "target_trades_per_week": 3.5,
 }
 
+# Round-2 WR push: drop weak admits (score 0.6 / ML 0.36 / 1-rule) that
+# kept E31 at 56% WR. Tighter void + RR 3.5–4 + hour surgery.
+ELITE_WR60 = {
+  **ELITE_OR_QUALITY,
+  "rr_ratios": [3.5, 4.0],
+  "score_thresholds": [1.0, 1.6, 2.2],
+  "min_rules_matches": [2],
+  "ml_probability_thresholds": [0.40, 0.44, 0.48],
+  "anti_chase_fixed_rsi": 55.0,
+  "anti_chase_fixed_vwap": 1.2,
+  "anti_chase_logic": "or",
+  "target_trades_per_week": 2.5,
+  "anti_chase_min_tpw": 2.0,
+  "edge_surgery": True,
+  "edge_surgery_hours": True,
+}
+
+# Same + London–NY overlap only (helps GBP more than Asia hours).
+ELITE_WR60_LDN = {
+  **ELITE_WR60,
+  "session_ranges": [[8, 17]],
+}
+
+# GBP M5: wr60 stacked too many gates (n=4–8). Keep OR-quality admits,
+# add London session + hour surgery only.
+ELITE_GBP_LDN = {
+  **ELITE_OR_QUALITY,
+  "session_ranges": [[8, 17]],
+  "edge_surgery": True,
+  "edge_surgery_hours": True,
+}
+
+# Round-1 G33 winner family (elite_55_4) + London + hour surgery.
+ELITE_GBP_RR4 = {
+  **ELITE_55_4,
+  "session_ranges": [[8, 17]],
+  "edge_surgery": True,
+  "edge_surgery_hours": True,
+}
+
 # M5 stretch: denser than elite_or but keep anti-chase + high RR (era5 sweet spot ~11 tpw).
 ELITE_M5_BALANCED = {
   **ELITE_OR_QUALITY,
@@ -324,6 +364,10 @@ PRESET_LABELS: dict[str, str] = {
   "elite_60_3_vwap": "Elite WR60 · VWAP",
   "elite_55_4": "Elite WR60 · RR4 (ít lệnh)",
   "elite_or_quality": "Elite OR-quality · M15 parity WR",
+  "elite_wr60": "Elite WR60 · siết admit",
+  "elite_wr60_ldn": "Elite WR60 · phiên London",
+  "elite_gbp_ldn": "Elite GBP · London OR-quality",
+  "elite_gbp_rr4": "Elite GBP · London RR4",
   "elite_m5_balanced": "Elite M5 balanced (R↑ giữ DD)",
   "elite_60_35": "Elite RSI60 · RR3.5",
 }
@@ -365,6 +409,26 @@ PRESET_BLURBS: dict[str, dict[str, str]] = {
     "intent": "Ưu tiên WR/DD kiểu M15 — hướng khuyến nghị app",
     "knobs": "void RSI≥58 OR VWAP≥1.5 · RR 3.2–4 · TPW 3.5 · giãn 3h · max 2/ngày · exit full",
     "tradeoff": "WR/DD tốt · ít lệnh (~2/tuần) · Total R thấp hơn baseline dày",
+  },
+  "elite_wr60": {
+    "intent": "Đẩy WR lên 60%+ sau khi đã có sách thưa M15-parity",
+    "knobs": "score≥1.0 · ML≥0.40 · 2 rules · RSI≥55 OR VWAP≥1.2 · RR 3.5–4 · edge_surgery",
+    "tradeoff": "WR cao hơn elite_or · ít lệnh hơn (~1.5–2.5/tuần) · Total R thấp hơn",
+  },
+  "elite_wr60_ldn": {
+    "intent": "WR60 + chỉ phiên 8–17h (cắt Asia)",
+    "knobs": "giống elite_wr60 · session 8–17",
+    "tradeoff": "Ít lệnh hơn nữa · có thể giúp GBP",
+  },
+  "elite_gbp_ldn": {
+    "intent": "GBP M5: London-only, giữ admit OR-quality (không siết score/ML)",
+    "knobs": "session 8–17 · void RSI≥58 OR VWAP≥1.5 · RR 3.2–4 · hour surgery",
+    "tradeoff": "Cắt Asia · giữ đủ lệnh hơn wr60 · WR có thể tăng nhẹ vs elite_or",
+  },
+  "elite_gbp_rr4": {
+    "intent": "GBP M5: họ elite_55_4 (best G33 vòng 1) + London + surgery",
+    "knobs": "session 8–17 · RSI≥55 · RR 4.0 · hour surgery",
+    "tradeoff": "Ít lệnh hơn OR-quality · RR cao hơn · WR hướng 45–50%",
   },
   "elite_m5_balanced": {
     "intent": "M5 stretch: gần BestBalance (~11–16 tpw) giữ anti-chase",
@@ -523,6 +587,10 @@ PRESETS: dict[str, dict] = {
   "elite_60_3_vwap": deepcopy(ELITE_60_3_VWAP),
   "elite_55_4": deepcopy(ELITE_55_4),
   "elite_or_quality": deepcopy(ELITE_OR_QUALITY),
+  "elite_wr60": deepcopy(ELITE_WR60),
+  "elite_wr60_ldn": deepcopy(ELITE_WR60_LDN),
+  "elite_gbp_ldn": deepcopy(ELITE_GBP_LDN),
+  "elite_gbp_rr4": deepcopy(ELITE_GBP_RR4),
   "elite_m5_balanced": deepcopy(ELITE_M5_BALANCED),
   "elite_60_35": deepcopy(ELITE_60_35),
 }

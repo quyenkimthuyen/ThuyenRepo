@@ -1,7 +1,8 @@
-"""Reconcile Live journal OPEN rows against EA MT5 positions snapshot.
+"""Reconcile Live journal against real MT5 positions + OUT deals.
 
-EA writes ``positions.json`` (per-ticket). App closes ghost OPEN rows when the
-ticket/magic is gone from MT5 — especially after EA/app restart or magic remap.
+EA writes ``positions.json`` (open tickets) and ``deals.json`` (History OUT deals).
+App never invents BE/SL: a journal OPEN is only closed when an MT5 deal or
+ticket-matched close fill exists.
 """
 from __future__ import annotations
 
@@ -114,24 +115,198 @@ def _compute_r(direction: str, entry: float, exit_px: float, sl: float) -> float
   return None
 
 
+def _deal_reason_tag(reason: int | None) -> str:
+  # MQL5 ENUM_DEAL_REASON
+  return {
+    0: "manual_close",  # CLIENT
+    1: "manual_close",  # MOBILE
+    2: "manual_close",  # WEB
+    3: "ea_close",
+    4: "sl",
+    5: "tp",
+    6: "stop_out",
+  }.get(int(reason or -1), "closed")
+
+
+def load_mt5_close_deals(bridge_dir: Path) -> dict[int, dict[str, Any]]:
+  """position ticket → OUT deal. Prefer EA deals.json (MT5 history), else terminal API."""
+  bdir = Path(bridge_dir)
+  out: dict[int, dict[str, Any]] = {}
+  data = _read(bdir / "deals.json")
+  if data is None:
+    rows = _deals_from_terminal(bdir)
+  elif isinstance(data, dict):
+    rows = list(data.get("deals") or [])
+  elif isinstance(data, list):
+    rows = data
+  else:
+    rows = []
+  for d in rows:
+    if not isinstance(d, dict):
+      continue
+    try:
+      pid = int(d.get("position_id") or d.get("ticket") or 0)
+    except (TypeError, ValueError):
+      pid = 0
+    if pid and pid not in out:
+      out[pid] = d
+  return out
+
+
+def _deals_from_terminal(bridge_dir: Path) -> list[dict[str, Any]]:
+  """Optional fallback: MetaTrader5 Python API on the same Windows terminal."""
+  conn = _read(Path(bridge_dir) / "connection.json") or {}
+  symbol = str(conn.get("symbol") or "")
+  magics = roster_magics(bridge_dir)
+  try:
+    import MetaTrader5 as mt5  # type: ignore
+  except ImportError:
+    return []
+  try:
+    if not mt5.initialize():
+      return []
+    from datetime import datetime, timedelta
+    raw = mt5.history_deals_get(
+      datetime.now() - timedelta(days=8),
+      datetime.now() + timedelta(days=1),
+    )
+  except Exception:
+    return []
+  if raw is None:
+    return []
+  rows: list[dict[str, Any]] = []
+  for d in raw:
+    try:
+      entry = int(getattr(d, "entry", -1))
+      if entry not in (1, 2):  # DEAL_ENTRY_OUT, OUT_BY
+        continue
+      if symbol and str(getattr(d, "symbol", "")) != symbol:
+        continue
+      magic = int(getattr(d, "magic", 0) or 0)
+      if magics and magic not in magics:
+        continue
+      pid = int(getattr(d, "position_id", 0) or 0)
+      profit = (
+        float(getattr(d, "profit", 0) or 0)
+        + float(getattr(d, "swap", 0) or 0)
+        + float(getattr(d, "commission", 0) or 0)
+      )
+      dtype = int(getattr(d, "type", 0) or 0)
+      t = getattr(d, "time", None)
+      time_s = ""
+      if t:
+        try:
+          from datetime import datetime as _dt
+          time_s = _dt.fromtimestamp(int(t)).strftime("%Y.%m.%d %H:%M:%S")
+        except (OSError, TypeError, ValueError, OverflowError):
+          time_s = str(t)
+      rows.append({
+        "deal": int(getattr(d, "ticket", 0) or 0),
+        "position_id": pid,
+        "ticket": pid,
+        "magic": magic,
+        "type": "SELL" if dtype == 1 else "BUY",
+        "volume": float(getattr(d, "volume", 0) or 0),
+        "price": float(getattr(d, "price", 0) or 0),
+        "profit": round(profit, 2),
+        "reason": _deal_reason_tag(getattr(d, "reason", None)),
+        "time": time_s,
+        "source": "mt5_terminal",
+      })
+    except (TypeError, ValueError, AttributeError):
+      continue
+  return rows
+
+
+def _deal_as_fill(deal: dict[str, Any], trade: dict[str, Any]) -> dict[str, Any]:
+  return {
+    "event": "close",
+    "ticket": deal.get("position_id") or deal.get("ticket") or trade.get("ticket"),
+    "price": deal.get("price"),
+    "profit": deal.get("profit"),
+    "reason": deal.get("reason") or "closed",
+    "detail": deal.get("reason") or "closed",
+    "time": deal.get("time"),
+    "sl": trade.get("sl") if trade.get("sl") is not None else trade.get("sl_initial"),
+    "action": trade.get("direction") or deal.get("type"),
+    "lots": deal.get("volume") if deal.get("volume") is not None else trade.get("lots"),
+    "source": "mt5_deal",
+  }
+
+
+def _needs_deal_repair(trade: dict[str, Any], deal: dict[str, Any]) -> bool:
+  st = str(trade.get("status") or "").upper()
+  if st not in ("CLOSED", "CLOSING"):
+    return False
+  try:
+    dp = float(deal.get("profit"))
+  except (TypeError, ValueError):
+    return False
+  if trade.get("profit") is None:
+    return True
+  try:
+    if abs(float(trade["profit"]) - dp) > 0.009:
+      return True
+  except (TypeError, ValueError):
+    return True
+  dpx = deal.get("price")
+  tpx = trade.get("exit_px") if trade.get("exit_px") is not None else trade.get("exit")
+  try:
+    if dpx is not None and tpx is not None and abs(float(dpx) - float(tpx)) > 1e-6:
+      return True
+  except (TypeError, ValueError):
+    return True
+  if str(trade.get("result") or "").upper() in ("BE", "") and abs(dp) > 1e-9:
+    return True
+  return False
+
+
+def _r_from_profit_money(trade: dict[str, Any], profit: float) -> float | None:
+  try:
+    lots = float(trade.get("lots") or 0)
+    entry = trade.get("entry_px")
+    if entry is None:
+      entry = trade.get("entry")
+    sl = trade.get("sl_initial")
+    if sl is None:
+      sl = trade.get("sl")
+    entry_f = float(entry)
+    sl_f = float(sl)
+  except (TypeError, ValueError):
+    return None
+  if lots <= 0:
+    return None
+  risk_px = abs(entry_f - sl_f)
+  if risk_px <= 0:
+    return None
+  risk_money = lots * 100000.0 * risk_px
+  if risk_money <= 0:
+    return None
+  return round(float(profit) / risk_money, 3)
+
+
 def _matching_close_fill(
   bridge_dir: Path,
   *,
   ticket: int = 0,
   signal_id: str | None = None,
 ) -> dict[str, Any] | None:
-  """Prefer sticky fill.json close, then recent fills.jsonl close for this ticket."""
+  """Prefer sticky fill.json close, then fills.jsonl close for this ticket.
+
+  Match by ticket only. Signal-id fallback is unsafe with multi-model fills
+  (EA used to stamp the last open's signal_id on other tickets).
+  """
   bdir = Path(bridge_dir)
   candidates: list[dict[str, Any]] = []
   sticky = _read(bdir / "fill.json")
   if isinstance(sticky, dict):
     candidates.append(sticky)
-  for name in ("fills.jsonl", "ea_fills.jsonl"):
+  for name in ("ea_fills.jsonl", "fills.jsonl"):
     path = bdir / name
     if not path.is_file():
       continue
     try:
-      lines = path.read_text(encoding="utf-8").splitlines()[-80:]
+      lines = path.read_text(encoding="utf-8").splitlines()[-4000:]
     except OSError:
       continue
     for line in reversed(lines):
@@ -145,14 +320,10 @@ def _matching_close_fill(
       if isinstance(row, dict):
         candidates.append(row)
 
+  sid = str(signal_id or "")
   for fill in candidates:
     event = str(fill.get("event") or "").lower()
-    detail = str(fill.get("detail") or fill.get("reason") or "").lower()
-    is_close = event == "close" or detail in (
-      "closed", "close", "sl", "tp", "max_hold", "manual",
-      "manual_close", "ea_close", "stop_out", "trail", "end_range",
-    )
-    if not is_close:
+    if event not in ("close", "closed"):
       continue
     try:
       ft = int(fill.get("ticket") or 0)
@@ -160,7 +331,9 @@ def _matching_close_fill(
       ft = 0
     if ticket and ft and ft == ticket:
       return fill
-    if signal_id and fill.get("signal_id") == signal_id:
+    if ticket and ft and ft != ticket:
+      continue
+    if (not ticket or not ft) and sid and str(fill.get("signal_id") or "") == sid:
       return fill
   return None
 
@@ -211,6 +384,19 @@ def _apply_close_from_fill(trade: dict[str, Any], fill: dict[str, Any], *, now: 
       trade["profit"] = float(fill["profit"])
     except (TypeError, ValueError):
       pass
+  if r is not None and result in ("WIN", "LOSS") and fill.get("profit") is not None:
+    try:
+      p = float(fill["profit"])
+    except (TypeError, ValueError):
+      p = None
+    if p is not None and ((p < -1e-9 and r > 0.05) or (p > 1e-9 and r < -0.05)):
+      # Fill price was another ticket's deal / current Bid. Trust profit vs planned SL.
+      aligned = _r_from_profit_money(trade, p)
+      if aligned is not None:
+        r = aligned
+      elif p < 0:
+        r = -1.0
+      result = "WIN" if p > 0 else ("LOSS" if p < 0 else "BE")
   if r is not None:
     trade["r"] = r
   elif trade.get("r") is None:
@@ -228,34 +414,32 @@ def reconcile_bridge_positions(
   *,
   reason: str = "ea_reconnect_reconcile",
 ) -> dict[str, Any]:
-  """Close journal OPEN ghosts that are not on EA; report orphans.
+  """Sync journal to real MT5 state.
 
-  Rules:
-  1. If positions.json present and fresh: close OPEN whose ticket not in snapshot
-     (and magic not in snapshot either as soft match).
-  2. Else if connection.positions == 0: close all OPEN (flat on MT5).
-  3. Always close OPEN whose magic is not in this book's models.json roster
-     (stale after magic remap / Rebuild roster).
-  Prefer matching EA close fill (fill.json / fills.jsonl) over inventing BE @ entry.
+  OPEN is closed only when an OUT deal (deals.json / terminal) or a
+  ticket-matched close fill exists. Missing deal → leave OPEN (retry next poll).
+  Already-CLOSED rows with no/wrong profit are repaired from the same deals.
   """
   bdir = Path(bridge_dir)
   trades_path = bdir / "trades.json"
   payload = _read(trades_path) or {}
   trades = list(payload.get("trades") or [])
   if not trades:
-    return {"ok": True, "closed": 0, "orphans": [], "bridge_dir": str(bdir)}
+    return {"ok": True, "closed": 0, "repaired": 0, "orphans": [], "bridge_dir": str(bdir)}
 
   snap = load_ea_positions(bdir)
   tickets, ea_magics = ea_position_keys(snap)
   has_snap = isinstance(snap, dict) and not snap.get("_stale") and "positions" in snap
   conn_n = connection_position_count(bdir)
   book_magics = roster_magics(bdir)
+  deals = load_mt5_close_deals(bdir)
 
   closed = 0
+  repaired = 0
+  awaiting = 0
   now = _now()
+  dirty = False
   for t in trades:
-    if str(t.get("status") or "").upper() != "OPEN":
-      continue
     try:
       ticket = int(t.get("ticket") or 0)
     except (TypeError, ValueError):
@@ -264,10 +448,24 @@ def reconcile_bridge_positions(
       magic = int(t.get("magic") or 0)
     except (TypeError, ValueError):
       magic = 0
+    deal = deals.get(ticket) if ticket else None
+    st = str(t.get("status") or "").upper()
+
+    if st == "CLOSED" and deal and _needs_deal_repair(t, deal):
+      _apply_close_from_fill(t, _deal_as_fill(deal, t), now=now)
+      interventions = list(t.get("interventions") or [])
+      if "mt5_deal" not in interventions:
+        interventions.append("mt5_deal")
+      t["interventions"] = [x for x in interventions if x != "sl_assumed"]
+      repaired += 1
+      dirty = True
+      continue
+
+    if st != "OPEN":
+      continue
 
     ghost = False
     detail = reason
-
     if book_magics and magic and magic not in book_magics:
       ghost = True
       detail = "magic_not_in_roster"
@@ -285,31 +483,36 @@ def reconcile_bridge_positions(
     if not ghost:
       continue
 
-    fill = _matching_close_fill(
-      bdir, ticket=ticket, signal_id=str(t.get("signal_id") or "") or None,
-    )
-    interventions = list(t.get("interventions") or [])
-    if fill:
-      _apply_close_from_fill(t, fill, now=now)
-      if "fill_recovered" not in interventions:
-        interventions.append("fill_recovered")
+    fill = None
+    source = None
+    if deal:
+      fill = _deal_as_fill(deal, t)
+      source = "mt5_deal"
     else:
-      t["status"] = "CLOSED"
-      t["exit_time"] = t.get("exit_time") or now
-      if t.get("exit_px") is None:
-        t["exit_px"] = t.get("entry_px")
-      t["reason"] = detail
-      if t.get("result") is None:
-        t["result"] = "BE"
-      if t.get("r") is None:
-        t["r"] = 0.0
-      t["updated_at"] = now
-      if "journal_desync" not in interventions:
-        interventions.append("journal_desync")
+      fill = _matching_close_fill(
+        bdir, ticket=ticket, signal_id=str(t.get("signal_id") or "") or None,
+      )
+      if fill:
+        source = "fill_recovered"
+
+    interventions = list(t.get("interventions") or [])
+    if not fill:
+      # Position gone on MT5 but History has no OUT deal yet — do not invent R.
+      if "awaiting_mt5_deal" not in interventions:
+        interventions.append("awaiting_mt5_deal")
+        t["interventions"] = interventions
+        dirty = True
+      awaiting += 1
+      continue
+
+    _apply_close_from_fill(t, fill, now=now)
+    if source and source not in interventions:
+      interventions.append(source)
     if detail not in interventions:
       interventions.append(detail)
     t["interventions"] = interventions
     closed += 1
+    dirty = True
 
   orphans: list[dict[str, Any]] = []
   if has_snap:
@@ -331,21 +534,25 @@ def reconcile_bridge_positions(
       if tk and tk not in journal_tickets:
         orphans.append(p)
 
-  if closed:
+  if dirty:
     _write(trades_path, {"updated_at": now, "trades": trades})
 
   result = {
     "ok": True,
     "closed": closed,
+    "repaired": repaired,
+    "awaiting": awaiting,
     "orphans": orphans,
     "bridge_dir": str(bdir),
     "ea_positions": len(tickets) if has_snap else conn_n,
     "has_snapshot": has_snap,
+    "n_deals": len(deals),
     "reason": reason,
   }
-  if closed or orphans:
+  if closed or repaired or awaiting or orphans:
     print(
-      f"[position_sync] {bdir.name}: closed={closed} orphans={len(orphans)} "
+      f"[position_sync] {bdir.name}: closed={closed} repaired={repaired} "
+      f"awaiting={awaiting} orphans={len(orphans)} deals={len(deals)} "
       f"ea_pos={result['ea_positions']} snap={has_snap}",
       flush=True,
     )

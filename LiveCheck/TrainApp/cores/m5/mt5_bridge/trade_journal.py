@@ -88,6 +88,54 @@ def _compute_r(direction: str, entry: float, exit_px: float, sl: float) -> float
   return None
 
 
+def _r_from_profit_money(row: dict, profit: float) -> float | None:
+  try:
+    lots = float(row.get("lots") or 0)
+    entry = row.get("entry_px")
+    sl = row.get("sl_initial")
+    if sl is None:
+      sl = row.get("sl")
+    entry_f = float(entry)
+    sl_f = float(sl)
+  except (TypeError, ValueError):
+    return None
+  if lots <= 0:
+    return None
+  risk_px = abs(entry_f - sl_f)
+  if risk_px <= 0:
+    return None
+  risk_money = lots * 100000.0 * risk_px
+  if risk_money <= 0:
+    return None
+  return round(float(profit) / risk_money, 3)
+
+
+def _align_r_with_profit(r: float | None, result: str | None, fill: dict, row: dict) -> tuple[float | None, str | None]:
+  """If fill price/R disagrees with broker profit, trust profit vs planned SL."""
+  if fill.get("profit") is None:
+    return r, result
+  try:
+    p = float(fill["profit"])
+  except (TypeError, ValueError):
+    return r, result
+  disagree = r is not None and ((p < -1e-9 and r > 0.05) or (p > 1e-9 and r < -0.05))
+  if disagree:
+    aligned = _r_from_profit_money(row, p)
+    if aligned is not None:
+      r = aligned
+    elif p < 0:
+      r = -1.0
+    elif p > 0:
+      r = abs(r) if r is not None else 1.0
+  if p > 1e-9:
+    result = "WIN"
+  elif p < -1e-9:
+    result = "LOSS"
+  elif result is None:
+    result = "BE"
+  return r, result
+
+
 def _find_open(
   trades: list[dict],
   *,
@@ -481,6 +529,8 @@ def process_fill(
     elif fill.get("profit") is not None:
       p = float(fill["profit"])
       result = "WIN" if p > 0 else ("LOSS" if p < 0 else "BE")
+
+    r, result = _align_r_with_profit(r, result, fill, row)
 
     close_reason = str(fill.get("reason") or fill.get("detail") or row.get("reason") or "")
     close_l = close_reason.lower()

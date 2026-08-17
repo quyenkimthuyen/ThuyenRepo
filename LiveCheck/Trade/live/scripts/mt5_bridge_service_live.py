@@ -264,24 +264,21 @@ def main() -> int:
 
   if not args.once:
     _register(args, cli_ids)
-    if args.sim:
-      try:
-        from mt5_bridge.background import save_config
-        from safety import default_loss_guard_from_roster
-        extra = default_loss_guard_from_roster()
-        try:
-          from risk_prefs import load_risk_prefs
-          extra.update(load_risk_prefs())
-        except Exception:
-          pass
+    try:
+      from mt5_bridge.background import save_config
+      from risk_prefs import RISK_KEYS, load_risk_prefs
+      prefs = load_risk_prefs()
+      extra = {k: prefs[k] for k in RISK_KEYS}
+      extra["loss_guard_enabled"] = bool(extra.get("loss_guard_enabled", True))
+      if args.sim or not extra["loss_guard_enabled"]:
         extra["loss_guard_tripped"] = False
         extra["loss_guard_tripped_at"] = None
         extra["loss_guard_tripped_reason"] = None
-        extra["loss_guard_enabled"] = bool(extra.get("loss_guard_enabled", True))
+      if args.sim:
         extra["sim"] = True
-        save_config(**extra)
-      except Exception as lg_exc:
-        print(f"[live-bridge] sim loss_guard seed skip: {lg_exc}", flush=True)
+      save_config(**extra)
+    except Exception as lg_exc:
+      print(f"[live-bridge] loss_guard seed skip: {lg_exc}", flush=True)
 
   bridge_dir = ensure_bridge_dir(args.bridge_dir)
   if args.sim:
@@ -488,7 +485,7 @@ def main() -> int:
             model_id=(primary.model_id if primary else None),
           )
           cfg_now = load_config()
-          if cfg_now.get("loss_guard_tripped"):
+          if cfg_now.get("loss_guard_tripped") and cfg_now.get("loss_guard_enabled", True):
             write_status(
               bridge_dir,
               state="halted",
@@ -511,7 +508,7 @@ def main() -> int:
             model_id=(primary.model_id if primary else None),
           )
           cfg_now = load_config()
-          if cfg_now.get("loss_guard_tripped"):
+          if cfg_now.get("loss_guard_tripped") and cfg_now.get("loss_guard_enabled", True):
             bar = read_json(bar_path(bridge_dir))
             if isinstance(bar, dict):
               primary_id = primary.model_id if primary else None

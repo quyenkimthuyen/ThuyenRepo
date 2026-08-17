@@ -67,6 +67,62 @@ def load_risk_prefs() -> dict[str, Any]:
   return out
 
 
+def _write(path: Path, data: Any) -> None:
+  path.parent.mkdir(parents=True, exist_ok=True)
+  tmp = path.with_suffix(path.suffix + ".tmp")
+  tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False, default=str) + "\n", encoding="utf-8")
+  tmp.replace(path)
+
+
+def worker_config_paths() -> list[Path]:
+  return sorted(RESULTS_DIR.glob("mt5_bridge_worker_*.json"))
+
+
+def apply_loss_guard_to_workers(
+  *,
+  clear_trip: bool = False,
+  **updates: Any,
+) -> list[str]:
+  """Push Risk-tab prefs into per-book worker JSON (running workers re-read each poll).
+
+  UI Save / disable used to write only ``mt5_bridge_config.json``. Each book worker
+  keeps ``mt5_bridge_worker_{book}.json`` — a sticky trip there keeps GBPUSD halted.
+  """
+  payload: dict[str, Any] = {}
+  for k, v in updates.items():
+    if k in RISK_KEYS or k.startswith("loss_guard_"):
+      payload[k] = v
+  if clear_trip or payload.get("loss_guard_enabled") is False:
+    payload["loss_guard_tripped"] = False
+    payload["loss_guard_tripped_at"] = None
+    payload["loss_guard_tripped_reason"] = None
+  if not payload:
+    return []
+  touched: list[str] = []
+  for path in worker_config_paths():
+    data = _read(path)
+    if not isinstance(data, dict):
+      continue
+    data.update(payload)
+    _write(path, data)
+    touched.append(path.name)
+  return touched
+
+
+def any_worker_loss_guard_trip() -> dict[str, Any]:
+  """First per-book trip latch, if any (global config can look clear)."""
+  for path in worker_config_paths():
+    data = _read(path) or {}
+    if isinstance(data, dict) and data.get("loss_guard_tripped"):
+      return {
+        "tripped": True,
+        "tripped_at": data.get("loss_guard_tripped_at"),
+        "tripped_reason": data.get("loss_guard_tripped_reason"),
+        "book": path.stem.replace("mt5_bridge_worker_", "", 1),
+      }
+  return {"tripped": False}
+
+
 def save_risk_prefs(**updates) -> dict[str, Any]:
   cur = load_risk_prefs()
   for k, v in updates.items():
@@ -75,22 +131,34 @@ def save_risk_prefs(**updates) -> dict[str, Any]:
   cur["updated_at"] = _now()
   PREFS_PATH.parent.mkdir(parents=True, exist_ok=True)
   PREFS_PATH.write_text(json.dumps(cur, indent=2) + "\n", encoding="utf-8")
+  try:
+    apply_loss_guard_to_workers(
+      clear_trip=not bool(cur.get("loss_guard_enabled")),
+      **{k: cur[k] for k in RISK_KEYS},
+    )
+  except Exception:
+    pass
   return load_risk_prefs()
 
 
 def clear_loss_guard_trip() -> dict[str, Any]:
-  """Clear tripped latch in live bridge config (does not Disarm kill-switch)."""
-  from bridge_control import load_config, save_config
+  """Clear tripped latch in live + per-book worker configs (does not Disarm kill-switch)."""
+  from bridge_control import save_config
   cfg = save_config(
     loss_guard_tripped=False,
     loss_guard_tripped_at=None,
     loss_guard_tripped_reason=None,
     last_error=None,
-    enabled=False,  # user must Start again deliberately
   )
+  workers = []
+  try:
+    workers = apply_loss_guard_to_workers(clear_trip=True)
+  except Exception:
+    workers = []
   return {
     "cleared": True,
     "at": _now(),
+    "workers": workers,
     "config": {k: cfg.get(k) for k in (
       "loss_guard_tripped", "loss_guard_enabled", "enabled",
     )},
@@ -112,12 +180,18 @@ def risk_status_snapshot() -> dict[str, Any]:
   merged["loss_guard_tripped"] = bool(cfg.get("loss_guard_tripped"))
   merged["loss_guard_tripped_at"] = cfg.get("loss_guard_tripped_at")
   merged["loss_guard_tripped_reason"] = cfg.get("loss_guard_tripped_reason")
+  book_trip = any_worker_loss_guard_trip()
+  if book_trip.get("tripped"):
+    merged["loss_guard_tripped"] = True
+    merged["loss_guard_tripped_at"] = book_trip.get("tripped_at") or merged.get("loss_guard_tripped_at")
+    merged["loss_guard_tripped_reason"] = book_trip.get("tripped_reason") or merged.get("loss_guard_tripped_reason")
 
   status = {
     "prefs": prefs,
     "tripped": merged["loss_guard_tripped"],
     "tripped_at": merged.get("loss_guard_tripped_at"),
     "tripped_reason": merged.get("loss_guard_tripped_reason"),
+    "tripped_book": book_trip.get("book") if book_trip.get("tripped") else None,
     "day_dd_r": None,
     "week_dd_r": None,
     "day_total_r": None,

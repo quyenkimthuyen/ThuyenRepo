@@ -2,13 +2,13 @@
   "meta": {
     "model_id": "tm_breakthrough_elite_60_3_vwap_c1ad2c33",
     "source": "live_remine",
-    "n_weeks": 2
+    "n_weeks": 1
   },
   "weekly": [
     {
-      "week_start": "2026-08-03",
+      "week_start": "2026-08-17",
       "strategy": {
-        "name": "Forge RR3.5 full 2L4S rsi+ema #555D|chase:fixed_or_rsi<58+vwap<1.2",
+        "name": "Forge RR3.5 full 2L3S rsi+ema #358F|chase:fixed_or_rsi<58+vwap<1.2",
         "exit_mode": "full",
         "ml_prob_min": 0.36,
         "rr": 3.5,
@@ -43,7 +43,7 @@
             "direction": "long",
             "op": "eq1",
             "thr": 0.5,
-            "w": 0.00428288603609059
+            "w": 0.047587622623228784
           },
           {
             "feat": "adx",
@@ -55,119 +55,30 @@
         ],
         "short_rules": [
           {
-            "feat": "range_sell",
-            "direction": "short",
-            "op": "eq1",
-            "thr": 0.5,
-            "w": 1.8740332517695921
-          },
-          {
-            "feat": "swing_strength",
-            "direction": "short",
-            "op": "gt",
-            "thr": 0.8946312505536178,
-            "w": 1.324571935711212
-          },
-          {
-            "feat": "rsi",
-            "direction": "short",
-            "op": "gt",
-            "thr": 58.44888747697333,
-            "w": 7.651545542863381
-          },
-          {
-            "feat": "ema_slope_8",
-            "direction": "short",
-            "op": "gt",
-            "thr": 0.15683842123350092,
-            "w": 5.293567750710318
-          }
-        ]
-      },
-      "train_start_idx": 36544,
-      "train_end_idx": 39473
-    },
-    {
-      "week_start": "2026-08-10",
-      "strategy": {
-        "name": "Forge RR3.5 full 2L4S rsi+range #FB7E|chase:fixed_or_rsi<58+vwap<1.2",
-        "exit_mode": "full",
-        "ml_prob_min": 0.36,
-        "rr": 3.5,
-        "atr_mult": 0.9,
-        "score_threshold": 0.6,
-        "atr_mult_sl": 0.9,
-        "rr_ratio": 3.5,
-        "min_rules_match": 1,
-        "max_trades_per_day": 2,
-        "min_bars_between": 12,
-        "max_hold_bars": 96,
-        "partial_pct": 0.4,
-        "partial_at_r": 1.2,
-        "trail_activate_r": 1.0,
-        "trail_distance_r": 0.5,
-        "session_filter": true,
-        "session_start_hour": 7,
-        "session_end_hour": 20,
-        "htf_align_boost": 1.12,
-        "htf_counter_dampen": 0.88,
-        "blocked_hours": [],
-        "allow_long": true,
-        "allow_short": true,
-        "anti_chase": true,
-        "anti_chase_rsi_short_max": 58.0,
-        "anti_chase_rsi_long_min": 42.0,
-        "anti_chase_vwap_short_max": 1.2,
-        "anti_chase_logic": "or",
-        "long_rules": [
-          {
-            "feat": "range_buy",
-            "direction": "long",
-            "op": "eq1",
-            "thr": 0.5,
-            "w": 0.15862540874409595
-          },
-          {
-            "feat": "adx",
-            "direction": "long",
-            "op": "lt",
-            "thr": 16.672582456171885,
-            "w": 0.028080833325245316
-          }
-        ],
-        "short_rules": [
-          {
-            "feat": "range_sell",
-            "direction": "short",
-            "op": "eq1",
-            "thr": 0.5,
-            "w": 4.210278742158079
-          },
-          {
             "feat": "swing_strength",
             "direction": "short",
             "op": "gt",
             "thr": 0.8238095234172416,
-            "w": 1.9773528588314622
+            "w": 2.500301884617753
           },
           {
             "feat": "rsi",
             "direction": "short",
             "op": "gt",
             "thr": 58.44888747697333,
-            "w": 4.798962985347256
+            "w": 5.594392504468114
           },
           {
             "feat": "ema_slope_8",
             "direction": "short",
             "op": "gt",
-            "thr": 0.15683842123350092,
-            "w": 2.279321944497367
+            "thr": 0.1532938850763377,
+            "w": 6.824999462671349
           }
         ]
       },
-      "train_start_idx": 37036,
-      "train_end_idx": 39697
+      "train_start_idx": 62222,
+      "train_end_idx": 65102
     }
   ]
 }

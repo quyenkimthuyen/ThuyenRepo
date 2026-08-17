@@ -1,15 +1,18 @@
 {
   "desk": "e21",
-  "system": "AIEdge-ValidateSelect-WF",
+  "system": "AIEdge-v2-ValidateSelect-WF",
   "space": "anti_chase_fixed_70",
   "params": {
     "preset": "anti_chase_fixed_70",
-    "train_weeks": 6,
-    "selection": "validate_wf_robust_score",
-    "soft_fallback": true,
+    "train_weeks": 9,
+    "cost_gate_mult": null,
+    "remine_stride": 1,
+    "selection": "validate_select_score_v2",
+    "soft_fallback": false,
+    "select_score": 3.2354691652201355,
     "last_strategy": {
-      "name": "Forge RR3.2 full 2L2S price+sweep #4D3A|chase:fixed_or_rsi<70+vwap<99",
-      "rr": 3.2,
+      "name": "v3_full_rr3.0|chase:fixed_or_rsi<70+vwap<99",
+      "rr": 3.0,
       "atr_mult": 0.9,
       "ml_prob_min": 0.48,
       "score_threshold": 0.6,
@@ -21,23 +24,23 @@
       "exit_mode": "full"
     }
   },
-  "param_key": "wf|anti_chase_fixed_70|tw6",
+  "param_key": "wf|anti_chase_fixed_70|tw9|gateNone|s1",
   "validate": {
-    "n_trades": 142,
-    "total_r": -21.3,
-    "win_rate_pct": 28.17,
-    "avg_rr": 2.112,
-    "max_drawdown_r": 35.65,
-    "profit_factor": 0.829,
-    "robust_score": -1.939
+    "n_trades": 107,
+    "total_r": 29.71,
+    "win_rate_pct": 39.25,
+    "avg_rr": 2.128,
+    "max_drawdown_r": 12.674,
+    "profit_factor": 1.549,
+    "robust_score": 1.557
   },
   "test": {
-    "n_trades": 161,
-    "total_r": -1.054,
-    "win_rate_pct": 31.68,
-    "avg_rr": 2.14,
-    "max_drawdown_r": 33.099,
-    "profit_factor": 0.938,
-    "robust_score": -1.198
+    "n_trades": 156,
+    "total_r": 11.801,
+    "win_rate_pct": 35.9,
+    "avg_rr": 1.958,
+    "max_drawdown_r": 31.695,
+    "profit_factor": 1.101,
+    "robust_score": -0.583
   }
 }

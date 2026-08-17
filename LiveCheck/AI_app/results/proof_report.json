@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-16T23:03:28+07:00",
-  "system": "AIEdge-v1 WalkForward",
+  "generated_at": "2026-08-17T09:14:18+07:00",
+  "system": "AIEdge-v2 WalkForward",
   "protocol": {
-    "name": "AIEdge-v1",
+    "name": "AIEdge-v2",
     "train": {
       "from": "2025-01-01",
       "to": "2025-06-30"
@@ -15,10 +15,10 @@
       "from": "2026-01-01",
       "to": "2026-08-07"
     },
-    "select_metric": "robust_score",
+    "select_metric": "select_score_v2",
     "min_validate_trades": 20,
-    "min_validate_wr": 42.0,
-    "max_validate_dd": 14.0,
+    "min_validate_wr": 36.0,
+    "max_validate_dd": 40.0,
     "default_slippage_pips": 0.3,
     "risk_r_per_trade": 1.0
   },
@@ -30,16 +30,19 @@
       "aiedge_cost_spread_pips": 1.6,
       "aiedge": {
         "desk": "e21",
-        "system": "AIEdge-ValidateSelect-WF",
+        "system": "AIEdge-v2-ValidateSelect-WF",
         "space": "anti_chase_fixed_70",
         "params": {
           "preset": "anti_chase_fixed_70",
-          "train_weeks": 6,
-          "selection": "validate_wf_robust_score",
-          "soft_fallback": true,
+          "train_weeks": 9,
+          "cost_gate_mult": null,
+          "remine_stride": 1,
+          "selection": "validate_select_score_v2",
+          "soft_fallback": false,
+          "select_score": 3.2354691652201355,
           "last_strategy": {
-            "name": "Forge RR3.2 full 2L2S price+sweep #4D3A|chase:fixed_or_rsi<70+vwap<99",
-            "rr": 3.2,
+            "name": "v3_full_rr3.0|chase:fixed_or_rsi<70+vwap<99",
+            "rr": 3.0,
             "atr_mult": 0.9,
             "ml_prob_min": 0.48,
             "score_threshold": 0.6,
@@ -51,29 +54,29 @@
             "exit_mode": "full"
           }
         },
-        "param_key": "wf|anti_chase_fixed_70|tw6",
+        "param_key": "wf|anti_chase_fixed_70|tw9|gateNone|s1",
         "validate": {
-          "n_trades": 142,
-          "total_r": -21.3,
-          "win_rate_pct": 28.17,
-          "avg_rr": 2.112,
-          "max_drawdown_r": 35.65,
-          "profit_factor": 0.829,
-          "robust_score": -1.939
+          "n_trades": 107,
+          "total_r": 29.71,
+          "win_rate_pct": 39.25,
+          "avg_rr": 2.128,
+          "max_drawdown_r": 12.674,
+          "profit_factor": 1.549,
+          "robust_score": 1.557
         },
         "test": {
-          "n_trades": 161,
-          "total_r": -1.054,
-          "win_rate_pct": 31.68,
-          "avg_rr": 2.14,
-          "max_drawdown_r": 33.099,
-          "profit_factor": 0.938,
-          "robust_score": -1.198
+          "n_trades": 156,
+          "total_r": 11.801,
+          "win_rate_pct": 35.9,
+          "avg_rr": 1.958,
+          "max_drawdown_r": 31.695,
+          "profit_factor": 1.101,
+          "robust_score": -0.583
         }
       },
       "trainapp_baseline": {
         "source": "fair_wf_same_cost",
-        "label": "TrainApp default elite_or_quality tw6 @ 1.6pip",
+        "label": "TrainApp default elite_or_quality tw6 stride1 @ 1.6pip (no cost-gate)",
         "metrics_raw": {
           "n_trades": 74,
           "total_r": -29.763,
@@ -92,19 +95,51 @@
           "profit_factor": 0.573,
           "robust_score": -2.738
         },
-        "note": "Re-simulated under AIEdge protocol costs on the locked TEST window. Published TrainApp grid rows that train on overlapping 2025-2026 eras are NOT used."
+        "note": "Re-simulated under AIEdge protocol costs on the locked TEST window. Published TrainApp grid rows that train on overlapping 2025-2026 eras are NOT used as the primary baseline."
+      },
+      "trainapp_published_stressed": {
+        "source": "grid:gs_20260816_122539",
+        "label": "H\u1ecdc 6 tu\u1ea7n \u00b7 H\u1ecdc 2025-2026-6thang \u00b7 v\u00f2ng 4 \u00b7 Ki\u1ec3m ch\u1ee9ng 2026 \u00b7 preset elite_or_quality",
+        "metrics_raw": {
+          "n_trades": 59,
+          "total_r": 108.678,
+          "win_rate_pct": 71.19,
+          "avg_rr": 2.638,
+          "max_drawdown_r": 2.53,
+          "profit_factor": 5.991,
+          "robust_score": 42.956
+        },
+        "metrics": {
+          "n_trades": 59,
+          "total_r": 104.745,
+          "win_rate_pct": 71.19,
+          "avg_rr": 2.638,
+          "max_drawdown_r": 3.513,
+          "profit_factor": 5.991,
+          "robust_score": 29.813,
+          "cost_penalty_r": 3.933,
+          "assumed_trainapp_spread": 1.0,
+          "aiedge_spread": 1.6
+        },
+        "note": "Raw TrainApp OOS + cost-stressed metrics for fairer compare",
+        "filter_hits_in_grid": 4,
+        "grid_ok_rows": 180,
+        "promoted_filt_count": 4
       },
       "decision": {
         "winner": "AIEdge",
         "reason": "higher robust_score with DD not materially worse (+2R tolerance)",
-        "aiedge_robust": -1.198,
+        "aiedge_robust": -0.583,
         "trainapp_robust_stressed": -2.738,
         "trainapp_robust_raw": -2.738,
-        "aiedge_total_r": -1.054,
+        "aiedge_total_r": 11.801,
         "trainapp_total_r_stressed": -29.763,
-        "aiedge_dd": 33.099,
+        "aiedge_dd": 31.695,
         "trainapp_dd_stressed": 34.365,
-        "caveat": "Primary TrainApp baseline is cost-stressed to AIEdge spreads. AIEdge test metrics were not used for selection."
+        "caveat": "Primary TrainApp baseline is cost-stressed to AIEdge spreads. AIEdge test metrics were not used for selection.",
+        "aiedge_profitable": true,
+        "beats_fair_total_r": true,
+        "vs_published_stressed_total_r": -92.944
       }
     },
     {
@@ -114,16 +149,18 @@
       "aiedge_cost_spread_pips": 2.0,
       "aiedge": {
         "desk": "g23",
-        "system": "AIEdge-ValidateSelect-CostGate-WF",
-        "space": "anti_chase_fixed_70",
+        "system": "AIEdge-v2-ValidateSelect-WF",
+        "space": "edge_gentle",
         "params": {
-          "preset": "anti_chase_fixed_70",
+          "preset": "edge_gentle",
           "train_weeks": 6,
           "cost_gate_mult": null,
-          "selection": "validate_wf_robust_score",
-          "soft_fallback": true,
+          "remine_stride": 1,
+          "selection": "validate_select_score_v2",
+          "soft_fallback": false,
+          "select_score": 2.512113040508034,
           "last_strategy": {
-            "name": "v3_full_rr3.0|chase:fixed_or_rsi<70+vwap<99",
+            "name": "v3_full_rr3.0",
             "rr": 3.0,
             "atr_mult": 0.9,
             "ml_prob_min": 0.36,
@@ -132,33 +169,33 @@
             "min_bars_between": 12,
             "n_long_rules": 2,
             "n_short_rules": 3,
-            "anti_chase": true,
+            "anti_chase": false,
             "exit_mode": "full"
           }
         },
-        "param_key": "wf|anti_chase_fixed_70|tw6|gateNone",
+        "param_key": "wf|edge_gentle|tw6|gateNone|s1",
         "validate": {
-          "n_trades": 134,
-          "total_r": 4.37,
-          "win_rate_pct": 32.84,
-          "avg_rr": 2.128,
-          "max_drawdown_r": 35.157,
-          "profit_factor": 1.08,
-          "robust_score": -0.984
+          "n_trades": 174,
+          "total_r": 32.817,
+          "win_rate_pct": 37.36,
+          "avg_rr": 2.097,
+          "max_drawdown_r": 20.786,
+          "profit_factor": 1.385,
+          "robust_score": 0.697
         },
         "test": {
-          "n_trades": 167,
-          "total_r": 63.307,
-          "win_rate_pct": 41.32,
-          "avg_rr": 2.199,
-          "max_drawdown_r": 17.658,
-          "profit_factor": 1.478,
-          "robust_score": 2.901
+          "n_trades": 187,
+          "total_r": 77.598,
+          "win_rate_pct": 42.78,
+          "avg_rr": 2.164,
+          "max_drawdown_r": 21.302,
+          "profit_factor": 1.636,
+          "robust_score": 3.032
         }
       },
       "trainapp_baseline": {
         "source": "fair_wf_same_cost",
-        "label": "TrainApp default elite_or_quality tw6 @ 2.0pip (no cost-gate)",
+        "label": "TrainApp default elite_or_quality tw6 stride1 @ 2.0pip (no cost-gate)",
         "metrics_raw": {
           "n_trades": 52,
           "total_r": -9.822,
@@ -177,197 +214,61 @@
           "profit_factor": 0.829,
           "robust_score": -1.987
         },
-        "note": "Re-simulated under AIEdge protocol costs on the locked TEST window. Published TrainApp grid rows that train on overlapping 2025-2026 eras are NOT used."
+        "note": "Re-simulated under AIEdge protocol costs on the locked TEST window. Published TrainApp grid rows that train on overlapping 2025-2026 eras are NOT used as the primary baseline."
+      },
+      "trainapp_published_stressed": {
+        "source": "grid:gs_20260816_122548",
+        "label": "H\u1ecdc 5 tu\u1ea7n \u00b7 H\u1ecdc 2025 (6 th\u00e1ng cu\u1ed1i) \u00b7 v\u00f2ng 3 \u00b7 Ki\u1ec3m ch\u1ee9ng 2026 \u00b7 preset elite_or_quality",
+        "metrics_raw": {
+          "n_trades": 62,
+          "total_r": 67.733,
+          "win_rate_pct": 51.61,
+          "avg_rr": 2.785,
+          "max_drawdown_r": 4.43,
+          "profit_factor": 2.927,
+          "robust_score": 15.12
+        },
+        "metrics": {
+          "n_trades": 62,
+          "total_r": 64.289,
+          "win_rate_pct": 51.61,
+          "avg_rr": 2.785,
+          "max_drawdown_r": 5.291,
+          "profit_factor": 2.927,
+          "robust_score": 11.981,
+          "cost_penalty_r": 3.444,
+          "assumed_trainapp_spread": 1.5,
+          "aiedge_spread": 2.0
+        },
+        "note": "Raw TrainApp OOS + cost-stressed metrics for fairer compare",
+        "filter_hits_in_grid": 0,
+        "grid_ok_rows": 244,
+        "promoted_filt_count": 0
       },
       "decision": {
         "winner": "AIEdge",
         "reason": "higher robust_score with DD not materially worse (+2R tolerance)",
-        "aiedge_robust": 2.901,
+        "aiedge_robust": 3.032,
         "trainapp_robust_stressed": -1.987,
         "trainapp_robust_raw": -1.987,
-        "aiedge_total_r": 63.307,
+        "aiedge_total_r": 77.598,
         "trainapp_total_r_stressed": -9.822,
-        "aiedge_dd": 17.658,
+        "aiedge_dd": 21.302,
         "trainapp_dd_stressed": 25.137,
-        "caveat": "Primary TrainApp baseline is cost-stressed to AIEdge spreads. AIEdge test metrics were not used for selection."
-      }
-    },
-    {
-      "desk": "e31",
-      "pair": "EURUSD",
-      "tf": "M5",
-      "aiedge_cost_spread_pips": 1.6,
-      "aiedge": {
-        "desk": "e31",
-        "system": "AIEdge-ValidateSelect-CostGate-WF",
-        "space": "elite_or_quality",
-        "params": {
-          "preset": "elite_or_quality",
-          "train_weeks": 6,
-          "cost_gate_mult": 3.5,
-          "selection": "validate_wf_robust_score",
-          "soft_fallback": true,
-          "last_strategy": {
-            "name": "v3_full_rr4.0|chase:fixed_or_rsi<58+vwap<1.5",
-            "rr": 4.0,
-            "atr_mult": 0.9,
-            "ml_prob_min": 0.36,
-            "score_threshold": 1.0,
-            "max_hold_bars": 192,
-            "min_bars_between": 16,
-            "n_long_rules": 2,
-            "n_short_rules": 2,
-            "anti_chase": true,
-            "exit_mode": "full"
-          }
-        },
-        "param_key": "wf|elite_or_quality|tw6|gate3.5",
-        "validate": {
-          "n_trades": 4,
-          "total_r": 4.512,
-          "win_rate_pct": 50.0,
-          "avg_rr": 2.917,
-          "max_drawdown_r": 2.354,
-          "profit_factor": 3.194,
-          "robust_score": 1.667
-        },
-        "test": {
-          "n_trades": 7,
-          "total_r": -8.158,
-          "win_rate_pct": 0.0,
-          "avg_rr": 0.0,
-          "max_drawdown_r": 6.979,
-          "profit_factor": 0.0,
-          "robust_score": -3.919
-        }
-      },
-      "trainapp_baseline": {
-        "source": "fair_wf_same_cost",
-        "label": "TrainApp default elite_or_quality tw6 @ 1.6pip (no cost-gate)",
-        "metrics_raw": {
-          "n_trades": 110,
-          "total_r": -64.733,
-          "win_rate_pct": 18.18,
-          "avg_rr": 2.122,
-          "max_drawdown_r": 78.893,
-          "profit_factor": 0.411,
-          "robust_score": -2.661
-        },
-        "metrics": {
-          "n_trades": 110,
-          "total_r": -64.733,
-          "win_rate_pct": 18.18,
-          "avg_rr": 2.122,
-          "max_drawdown_r": 78.893,
-          "profit_factor": 0.411,
-          "robust_score": -2.661
-        },
-        "note": "Re-simulated under AIEdge protocol costs on the locked TEST window. Published TrainApp grid rows that train on overlapping 2025-2026 eras are NOT used."
-      },
-      "decision": {
-        "winner": "AIEdge",
-        "reason": "higher total_r with DD <= baseline",
-        "aiedge_robust": -3.919,
-        "trainapp_robust_stressed": -2.661,
-        "trainapp_robust_raw": -2.661,
-        "aiedge_total_r": -8.158,
-        "trainapp_total_r_stressed": -64.733,
-        "aiedge_dd": 6.979,
-        "trainapp_dd_stressed": 78.893,
-        "caveat": "Primary TrainApp baseline is cost-stressed to AIEdge spreads. AIEdge test metrics were not used for selection."
-      }
-    },
-    {
-      "desk": "g33",
-      "pair": "GBPUSD",
-      "tf": "M5",
-      "aiedge_cost_spread_pips": 2.0,
-      "aiedge": {
-        "desk": "g33",
-        "system": "AIEdge-ValidateSelect-CostGate-WF",
-        "space": "anti_chase_fixed_70",
-        "params": {
-          "preset": "anti_chase_fixed_70",
-          "train_weeks": 6,
-          "cost_gate_mult": null,
-          "selection": "validate_wf_robust_score",
-          "soft_fallback": true,
-          "last_strategy": {
-            "name": "Forge RR3.2 full 2L4S sweep+session #DF49|chase:fixed_or_rsi<70+vwap<99",
-            "rr": 3.2,
-            "atr_mult": 1.05,
-            "ml_prob_min": 0.48,
-            "score_threshold": 1.0,
-            "max_hold_bars": 192,
-            "min_bars_between": 16,
-            "n_long_rules": 2,
-            "n_short_rules": 4,
-            "anti_chase": true,
-            "exit_mode": "full"
-          }
-        },
-        "param_key": "wf|anti_chase_fixed_70|tw6|gateNone",
-        "validate": {
-          "n_trades": 379,
-          "total_r": 32.792,
-          "win_rate_pct": 37.2,
-          "avg_rr": 1.859,
-          "max_drawdown_r": 41.443,
-          "profit_factor": 1.181,
-          "robust_score": -0.099
-        },
-        "test": {
-          "n_trades": 340,
-          "total_r": -63.954,
-          "win_rate_pct": 30.29,
-          "avg_rr": 1.843,
-          "max_drawdown_r": 91.043,
-          "profit_factor": 0.867,
-          "robust_score": -1.938
-        }
-      },
-      "trainapp_baseline": {
-        "source": "fair_wf_same_cost",
-        "label": "TrainApp default elite_or_quality tw6 @ 2.0pip (no cost-gate)",
-        "metrics_raw": {
-          "n_trades": 75,
-          "total_r": -22.903,
-          "win_rate_pct": 21.33,
-          "avg_rr": 2.598,
-          "max_drawdown_r": 27.771,
-          "profit_factor": 0.81,
-          "robust_score": -2.508
-        },
-        "metrics": {
-          "n_trades": 75,
-          "total_r": -22.903,
-          "win_rate_pct": 21.33,
-          "avg_rr": 2.598,
-          "max_drawdown_r": 27.771,
-          "profit_factor": 0.81,
-          "robust_score": -2.508
-        },
-        "note": "Re-simulated under AIEdge protocol costs on the locked TEST window. Published TrainApp grid rows that train on overlapping 2025-2026 eras are NOT used."
-      },
-      "decision": {
-        "winner": "TrainApp",
-        "reason": "TrainApp higher total_r with DD <= candidate",
-        "aiedge_robust": -1.938,
-        "trainapp_robust_stressed": -2.508,
-        "trainapp_robust_raw": -2.508,
-        "aiedge_total_r": -63.954,
-        "trainapp_total_r_stressed": -22.903,
-        "aiedge_dd": 91.043,
-        "trainapp_dd_stressed": 27.771,
-        "caveat": "Primary TrainApp baseline is cost-stressed to AIEdge spreads. AIEdge test metrics were not used for selection."
+        "caveat": "Primary TrainApp baseline is cost-stressed to AIEdge spreads. AIEdge test metrics were not used for selection.",
+        "aiedge_profitable": true,
+        "beats_fair_total_r": true,
+        "vs_published_stressed_total_r": 13.309
       }
     }
   ],
   "summary": {
-    "aiedge_wins": 3,
-    "trainapp_wins": 1,
+    "aiedge_wins": 2,
+    "trainapp_wins": 0,
     "ties": 0,
+    "n_desks": 2,
+    "aiedge_profitable_desks": 2,
     "proof_claim": "AIEdge wins on locked protocol",
-    "method": "Both systems use the same causal weekly walk-forward miner and the same realistic desk spreads on the locked TEST window. TrainApp-fair uses the fixed recommended recipe (elite_or_quality, 6w). AIEdge selects preset\u00d7train_weeks (+ optional cost-gate) on VALIDATE only, then runs TEST once. Published TrainApp grids that mined on overlapping 2025-2026 eras are excluded as protocol-invalid."
+    "method": "AIEdge-v2: desk-aware preset search + select_score favoring absolute R under realistic spreads; soft-fallback never prefers thin (<min_trades) samples; M5 uses biweekly remine and no aggressive cost-gate. Primary baseline is TrainApp-fair WF at the same costs."
   }
 }

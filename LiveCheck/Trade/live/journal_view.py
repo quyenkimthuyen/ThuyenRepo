@@ -202,27 +202,128 @@ def _parse_ts(raw: Any) -> datetime | None:
     return None
 
 
-def _trade_r(t: dict) -> float | None:
+_FX_CONTRACT = 100000.0
+
+
+def _num(val: Any) -> float | None:
+  if val is None or val == "":
+    return None
   try:
-    if t.get("r") is not None:
-      return float(t["r"])
+    return float(val)
   except (TypeError, ValueError):
-    pass
+    return None
+
+
+def _entry_px(t: dict) -> float | None:
+  if t.get("entry_px") is not None:
+    return _num(t.get("entry_px"))
+  return _num(t.get("entry"))
+
+
+def _exit_px(t: dict) -> float | None:
+  if t.get("exit_px") is not None:
+    return _num(t.get("exit_px"))
+  return _num(t.get("exit"))
+
+
+def _sl_px(t: dict) -> float | None:
+  if t.get("sl_initial") is not None:
+    return _num(t.get("sl_initial"))
+  return _num(t.get("sl"))
+
+
+def _signs_disagree(a: float | None, b: float | None) -> bool:
+  if a is None or b is None:
+    return False
+  return (a > 1e-9 and b < -1e-9) or (a < -1e-9 and b > 1e-9)
+
+
+def _r_from_prices(t: dict) -> float | None:
+  entry = _entry_px(t)
+  exit_px = _exit_px(t)
+  sl = _sl_px(t)
+  if entry is None or exit_px is None or sl is None:
+    return None
+  risk = abs(entry - sl)
+  if risk <= 0:
+    return None
+  d = str(t.get("direction") or t.get("action") or "").upper()
+  if d in ("BUY", "LONG"):
+    return round((exit_px - entry) / risk, 3)
+  if d in ("SELL", "SHORT"):
+    return round((entry - exit_px) / risk, 3)
   return None
 
 
+def _r_from_profit(t: dict, profit: float | None = None) -> float | None:
+  p = _num(profit if profit is not None else t.get("profit"))
+  lots = _num(t.get("lots"))
+  entry = _entry_px(t)
+  sl = _sl_px(t)
+  if p is None or lots is None or lots <= 0 or entry is None or sl is None:
+    return None
+  risk_px = abs(entry - sl)
+  if risk_px <= 0:
+    return None
+  risk_money = lots * _FX_CONTRACT * risk_px
+  if risk_money <= 0:
+    return None
+  return round(p / risk_money, 3)
+
+
+def _trade_r(t: dict) -> float | None:
+  stored: float | None = None
+  try:
+    if t.get("r") is not None:
+      stored = float(t["r"])
+  except (TypeError, ValueError):
+    stored = None
+  profit = _num(t.get("profit"))
+  price_r = _r_from_prices(t)
+  rp = _r_from_profit(t, profit)
+  if _signs_disagree(stored, profit) or _signs_disagree(price_r, profit):
+    if rp is not None:
+      return rp
+    if profit is not None and profit < -1e-9 and str(t.get("reason") or "").lower() == "sl":
+      return -1.0
+  reason_l = str(t.get("reason") or "").lower()
+  if (
+    rp is not None
+    and stored is not None
+    and abs(rp - stored) > 0.3
+    and reason_l in ("sl", "tp", "stop_out")
+  ):
+    # Same-sign but fill price was another deal; broker profit vs planned SL is fairer.
+    return rp
+  return stored
+
+
 def _trade_result(t: dict) -> str | None:
+  profit = _num(t.get("profit"))
+  r = _trade_r(t)
+  if profit is not None:
+    if profit > 1e-9:
+      return "WIN"
+    if profit < -1e-9:
+      return "LOSS"
+  if r is not None:
+    if r > 1e-9:
+      return "WIN"
+    if r < -1e-9:
+      return "LOSS"
+    return "BE"
   res = t.get("result")
   if res:
     return str(res).upper()
-  r = _trade_r(t)
-  if r is None:
-    return None
-  if r > 1e-9:
-    return "WIN"
-  if r < -1e-9:
-    return "LOSS"
-  return "BE"
+  return None
+
+
+def wl_text(wins: Any, losses: Any, be: Any = 0) -> str:
+  s = f"{int(wins or 0)}/{int(losses or 0)}"
+  n_be = int(be or 0)
+  if n_be:
+    s += f" · {n_be} BE"
+  return s
 
 
 def _model_key(t: dict) -> str:

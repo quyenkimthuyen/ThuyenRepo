@@ -213,6 +213,20 @@ def test_elite_presets_opt_in():
   assert eoq.target_trades_per_week == 3.5
   assert eoq.min_bars_between == (36,)
   assert eoq.max_trades_per_day == 2
+  wr60 = mining_search_space_from_dict(get_preset("elite_wr60"))
+  assert wr60.score_thresholds == (1.0, 1.6, 2.2)
+  assert wr60.min_rules_matches == (2,)
+  assert wr60.anti_chase_fixed_rsi == 55.0
+  assert wr60.edge_surgery is True
+  ldn = mining_search_space_from_dict(get_preset("elite_wr60_ldn"))
+  assert ldn.session_ranges == ((8, 17),)
+  gbp = mining_search_space_from_dict(get_preset("elite_gbp_ldn"))
+  assert gbp.session_ranges == ((8, 17),)
+  assert gbp.score_thresholds != wr60.score_thresholds
+  assert gbp.edge_surgery is True
+  rr4 = mining_search_space_from_dict(get_preset("elite_gbp_rr4"))
+  assert rr4.rr_ratios == (4.0,)
+  assert rr4.session_ranges == ((8, 17),)
   assert "OR-quality" in preset_label(RECOMMENDED_PRESET)
   from mining_presets import CURATED_PRESETS, DEPRECATED_PRESETS, list_curated_presets
   assert RECOMMENDED_PRESET in CURATED_PRESETS

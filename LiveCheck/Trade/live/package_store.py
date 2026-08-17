@@ -180,6 +180,11 @@ def save_roster(models: list[dict], *, active_book: dict | None = None) -> dict:
   elif prev.get("active_book") is not None:
     payload["active_book"] = prev.get("active_book")
   _write(ROSTER_PATH, payload)
+  try:
+    from weekend_preremine import prune_preremine_to_live_models
+    prune_preremine_to_live_models()
+  except Exception:
+    pass
   return payload
 
 

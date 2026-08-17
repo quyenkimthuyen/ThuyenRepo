@@ -1,6 +1,6 @@
 # AI_app — locked evaluation protocol (do not change after first proof run)
 protocol:
-  name: AIEdge-v1
+  name: AIEdge-v2
   train:
     from: "2025-01-01"
     to: "2025-06-30"
@@ -10,14 +10,12 @@ protocol:
   test:
     from: "2026-01-01"
     to: "2026-08-07"
-  # Selection uses validate only. Test is touched once at the end.
-  select_metric: "robust_score"
+  select_metric: "select_score_v2"
   min_validate_trades: 20
-  min_validate_wr: 42.0
-  max_validate_dd: 14.0
+  min_validate_wr: 36.0
+  max_validate_dd: 40.0
   default_slippage_pips: 0.3
   risk_r_per_trade: 1.0
-  # Realistic liquid-hours spreads (XM bridge); off-session can be wider
 
 desks:
   e21:

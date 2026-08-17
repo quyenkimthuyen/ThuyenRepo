@@ -249,6 +249,7 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
     sync_age = None
     pending_ea_timeout = False
     history_empty = False
+    book_halted = False
 
     if sim:
       book_level = "ok"
@@ -296,6 +297,9 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
           "code": st.upper(),
           "message": f"{sym_n} {tf_n}: state={st} · {status.get('error') or status.get('reason') or '—'}",
         })
+        book_halted = True
+      else:
+        book_halted = False
 
       has_ea_signal = bool(chart.get("symbol") or conn or bar)
       if ea_age is None or not has_ea_signal:
@@ -418,8 +422,8 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
       if isinstance(ea_sync, dict) and ea_sync:
         # Sticky TIMEOUT from a past remine/boot must not stay danger forever.
         sync_fresh = sync_age is not None and sync_age < max(120.0, _tf_bar_seconds(tf_n) * 2)
-        # HISTORY_EMPTY is the root cause — don't also scream TIMEOUT.
-        if "TIMEOUT" in sync_summary.upper() and sync_fresh and not history_empty:
+        # HISTORY_EMPTY / HALTED are the root cause — don't also scream TIMEOUT.
+        if "TIMEOUT" in sync_summary.upper() and sync_fresh and not history_empty and not book_halted:
           pending_ea_timeout = True
         if sync_bar and bar_key and sync_bar != bar_key and (bar_file_age or 0) > DECISION_LAG_SEC:
           book_level = _worst(book_level, "warn")
@@ -458,6 +462,9 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
         level = "ok"
       elif not bridge_running:
         level = "muted"
+      elif book_halted:
+        level = "warn"
+        flags.append("HALT")
       elif not dec:
         if worker_alive and bar_key and (bar_file_age is not None and bar_file_age > timeout_lim):
           level = "danger"

@@ -18,16 +18,20 @@ from aiapp.optimize.walkforward import run_desk_proof_wf  # noqa: E402
 def _md(report: dict) -> str:
   s = report["summary"]
   lines = [
-    "# AIEdge vs TrainApp — Proof Report",
+    "# AIEdge vs TrainApp — Proof Report (v2)",
     "",
     f"Generated: `{report['generated_at']}`",
+    "",
+    "## Verdict",
+    "",
+    f"**Fair WF claim:** **{s['proof_claim']}** "
+    f"(AIEdge {s['aiedge_wins']} · TrainApp {s['trainapp_wins']} · tie {s['ties']})",
+    "",
+    f"Profitable desks (AIEdge test R>0): **{s.get('aiedge_profitable_desks', 0)}/{s.get('n_desks', 0)}**",
     "",
     "## Method",
     "",
     s["method"],
-    "",
-    f"**Claim:** **{s['proof_claim']}** "
-    f"(AIEdge {s['aiedge_wins']} · TrainApp {s['trainapp_wins']} · tie {s['ties']})",
     "",
     "## Per desk",
     "",
@@ -36,30 +40,32 @@ def _md(report: dict) -> str:
     ai = (c.get("aiedge") or {}).get("test") or {}
     va = (c.get("aiedge") or {}).get("validate") or {}
     base = (c.get("trainapp_baseline") or {}).get("metrics") or {}
-    raw = (c.get("trainapp_baseline") or {}).get("metrics_raw") or {}
+    pub = (c.get("trainapp_published_stressed") or {}).get("metrics") or {}
     dec = c.get("decision") or {}
     lines += [
       f"### {c['desk'].upper()} · {c.get('pair')} {c.get('tf')}",
       "",
-      f"- **Winner:** {dec.get('winner')} — {dec.get('reason')}",
-      f"- AIEdge validate (selection): R={va.get('total_r')} WR={va.get('win_rate_pct')} "
-      f"DD={va.get('max_drawdown_r')} score={va.get('robust_score')}",
-      f"- AIEdge test (once): R={ai.get('total_r')} WR={ai.get('win_rate_pct')} "
-      f"RR={ai.get('avg_rr')} DD={ai.get('max_drawdown_r')} score={ai.get('robust_score')} "
-      f"n={ai.get('n_trades')} @ spread {c.get('aiedge_cost_spread_pips')} pip",
-      f"- TrainApp-fair (same cost WF): R={base.get('total_r')} WR={base.get('win_rate_pct')} "
-      f"DD={base.get('max_drawdown_r')} score={base.get('robust_score')}",
+      f"- **Winner (fair WF):** {dec.get('winner')} — {dec.get('reason')}",
+      f"- AIEdge profitable: {dec.get('aiedge_profitable')} | "
+      f"beats fair Total R: {dec.get('beats_fair_total_r')}",
+      f"- AIEdge validate: R={va.get('total_r')} WR={va.get('win_rate_pct')} "
+      f"DD={va.get('max_drawdown_r')} n={va.get('n_trades')}",
+      f"- AIEdge test: R={ai.get('total_r')} WR={ai.get('win_rate_pct')} "
+      f"RR={ai.get('avg_rr')} DD={ai.get('max_drawdown_r')} "
+      f"n={ai.get('n_trades')} @ {c.get('aiedge_cost_spread_pips')} pip",
+      f"- TrainApp-fair: R={base.get('total_r')} WR={base.get('win_rate_pct')} "
+      f"DD={base.get('max_drawdown_r')}",
+      f"- TrainApp published (cost-stressed, reference only): R={pub.get('total_r')} "
+      f"DD={pub.get('max_drawdown_r')} | gap AI−pub={dec.get('vs_published_stressed_total_r')}",
       f"- AIEdge pick: `{(c.get('aiedge') or {}).get('param_key')}`",
-      f"- TrainApp recipe: `{(c.get('trainapp_baseline') or {}).get('label')}`",
       "",
     ]
   lines += [
     "## Fairness notes",
     "",
-    "- Both sides: identical spreads, identical TEST calendar, causal weekly remine.",
-    "- AIEdge never uses TEST for selection (VALIDATE only).",
-    "- TrainApp-fair = fixed recommended preset (not the optimistic published grid).",
-    "- Published TrainApp rows trained on overlapping 2025-2026 eras are protocol-invalid.",
+    "- Primary baseline = TrainApp-fair (same cost WF), not published overlapping-era grids.",
+    "- AIEdge never uses TEST for selection.",
+    "- Published stressed numbers are shown only as a reference gap to the app UI.",
     "",
   ]
   return "\n".join(lines)
@@ -121,15 +127,23 @@ def run(desk_ids: list[str], *, merge_existing: bool = True) -> dict:
     wins = sum(1 for c in comparisons if (c.get("decision") or {}).get("winner") == "AIEdge")
     losses = sum(1 for c in comparisons if (c.get("decision") or {}).get("winner") == "TrainApp")
     ties = len(comparisons) - wins - losses
+    profitable = sum(
+      1
+      for c in comparisons
+      if (c.get("decision") or {}).get("aiedge_profitable")
+      or float((((c.get("aiedge") or {}).get("test") or {}).get("total_r") or 0)) > 0
+    )
     report = {
       "generated_at": datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),
-      "system": "AIEdge-v1 WalkForward",
+      "system": "AIEdge-v2 WalkForward",
       "protocol": protocol.get("protocol") or {},
       "desks": comparisons,
       "summary": {
         "aiedge_wins": wins,
         "trainapp_wins": losses,
         "ties": ties,
+        "n_desks": len(comparisons),
+        "aiedge_profitable_desks": profitable,
         "proof_claim": (
           "AIEdge wins on locked protocol"
           if wins > losses
@@ -140,11 +154,10 @@ def run(desk_ids: list[str], *, merge_existing: bool = True) -> dict:
           )
         ),
         "method": (
-          "Both systems use the same causal weekly walk-forward miner and the same "
-          "realistic desk spreads on the locked TEST window. TrainApp-fair uses the "
-          "fixed recommended recipe (elite_or_quality, 6w). AIEdge selects preset×train_weeks "
-          "(+ optional cost-gate) on VALIDATE only, then runs TEST once. Published TrainApp "
-          "grids that mined on overlapping 2025-2026 eras are excluded as protocol-invalid."
+          "AIEdge-v2: desk-aware preset search + select_score favoring absolute R under "
+          "realistic spreads; soft-fallback never prefers thin (<min_trades) samples; "
+          "M5 uses biweekly remine and no aggressive cost-gate. Primary baseline is "
+          "TrainApp-fair WF at the same costs."
         ),
       },
     }
