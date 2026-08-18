@@ -44,12 +44,17 @@ def import_one(tmpkg: Path) -> Path:
     )
   if tmpkg.suffix.lower() != ".tmpkg":
     raise ValueError(f"expected a .tmpkg package, got: {tmpkg.name}")
-  staging = INSTALLED_DIR / "_staging"
+  # BUG-08: unique staging per import — shared _staging races concurrent imports.
+  import os
+  import time
+  INSTALLED_DIR.mkdir(parents=True, exist_ok=True)
+  staging = INSTALLED_DIR / f"_staging_{os.getpid()}_{time.time_ns()}"
   if staging.exists():
     shutil.rmtree(staging)
   try:
     extract_package(tmpkg, staging)
   except PermissionError as exc:
+    shutil.rmtree(staging, ignore_errors=True)
     raise PermissionError(
       f"Cannot read package file {tmpkg}: {exc}\n"
       "Close any program locking the file, or copy the .tmpkg elsewhere and retry."
@@ -62,6 +67,9 @@ def import_one(tmpkg: Path) -> Path:
       "Fix on Lab: export_model_schedule.py for this model, then re-export .tmpkg "
       "with schedule.json (lab/export_trade_package.py --ensure-schedule)."
     ) from exc
+  except Exception:
+    shutil.rmtree(staging, ignore_errors=True)
+    raise
   man = json.loads((staging / "manifest.json").read_text(encoding="utf-8"))
   model_path = staging / "model.json"
   model = json.loads(model_path.read_text(encoding="utf-8")) if model_path.exists() else {}

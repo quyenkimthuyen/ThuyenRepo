@@ -206,24 +206,46 @@ def risk_status_snapshot() -> dict[str, Any]:
     if rows:
       bootstrap_host(rows[0].get("symbol") or "EURUSD", rows[0].get("timeframe") or "M15")
     from mt5_bridge.loss_guard import loss_guard_status
-    # Aggregate across live bridge dirs
     from books import bridge_dir, group_models_by_book
     groups = group_models_by_book(rows) if rows else {}
-    # Use primary + merge trades mentally via first book for snapshot simplicity
-    bdir = BRIDGE_DIR
-    if groups:
-      (sym, tf) = next(iter(groups.keys()))
-      bdir = bridge_dir(sym, tf, sim=False)
-    st = loss_guard_status({**prefs, **{k: cfg.get(k) for k in (
+    cfg_merge = {**prefs, **{k: cfg.get(k) for k in (
       "loss_guard_tripped", "loss_guard_tripped_at", "loss_guard_tripped_reason",
-    )}}, bridge_dir=bdir)
+    )}}
+    # BUG-09: aggregate across all books (worst DD/streak, sum total R).
+    day_dds: list[float] = []
+    week_dds: list[float] = []
+    day_totals: list[float] = []
+    week_totals: list[float] = []
+    day_streaks: list[int] = []
+    week_streaks: list[int] = []
+    book_dirs = []
+    if groups:
+      for (sym, tf) in groups.keys():
+        book_dirs.append(bridge_dir(sym, tf, sim=False))
+    else:
+      book_dirs.append(BRIDGE_DIR)
+    for bdir in book_dirs:
+      st = loss_guard_status(cfg_merge, bridge_dir=bdir)
+      if st.get("day_dd_r") is not None:
+        day_dds.append(float(st["day_dd_r"]))
+      if st.get("week_dd_r") is not None:
+        week_dds.append(float(st["week_dd_r"]))
+      if st.get("day_total_r") is not None:
+        day_totals.append(float(st["day_total_r"]))
+      if st.get("week_total_r") is not None:
+        week_totals.append(float(st["week_total_r"]))
+      if st.get("day_streak") is not None:
+        day_streaks.append(int(st["day_streak"]))
+      if st.get("week_streak") is not None:
+        week_streaks.append(int(st["week_streak"]))
     status.update({
-      "day_dd_r": st.get("day_dd_r"),
-      "week_dd_r": st.get("week_dd_r"),
-      "day_total_r": st.get("day_total_r"),
-      "week_total_r": st.get("week_total_r"),
-      "day_streak": st.get("day_streak"),
-      "week_streak": st.get("week_streak"),
+      "day_dd_r": max(day_dds) if day_dds else None,
+      "week_dd_r": max(week_dds) if week_dds else None,
+      "day_total_r": round(sum(day_totals), 4) if day_totals else None,
+      "week_total_r": round(sum(week_totals), 4) if week_totals else None,
+      "day_streak": max(day_streaks) if day_streaks else None,
+      "week_streak": max(week_streaks) if week_streaks else None,
+      "books_scanned": len(book_dirs),
     })
   except Exception as exc:
     status["status_error"] = str(exc)
