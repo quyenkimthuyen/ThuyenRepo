@@ -237,7 +237,7 @@ def render(embedded: bool = False):
   c3, c4 = st.columns(2)
   with c3:
     spread = st.number_input(
-      "Chênh lệch (pip)", 0.0, 3.0, step=0.1, key="settings_spread",
+      "Chênh lệch (pip)", 0.0, 5.0, step=0.1, key="settings_spread",
     )
   with c4:
     slip = st.number_input(

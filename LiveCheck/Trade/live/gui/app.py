@@ -43,8 +43,14 @@ def _reload_stale_live_modules() -> None:
     touched = True
   import live_health as lh
   bound = getattr(lh, "bridge_status", None)
-  if touched or (bound is not None and _missing_sim(bound)):
+  need_lh = (
+    touched
+    or not hasattr(lh, "live_quote")
+    or (bound is not None and _missing_sim(bound))
+  )
+  if need_lh:
     importlib.reload(lh)
+    touched = True
   import desk_snapshot as ds
   bound = getattr(ds, "bridge_status", None)
   if (
@@ -86,9 +92,25 @@ def _reload_stale_live_modules() -> None:
       need_rc = True
   if need_rc:
     importlib.reload(rc)
+  import package_store as ps
+  if not hasattr(ps, "rebuild_roster_preserving_sticky"):
+    importlib.reload(ps)
   import weekend_preremine as wpr
   if not hasattr(wpr, "build_quality_status_table") or not hasattr(wpr, "quality_status_week"):
     importlib.reload(wpr)
+  import risk_prefs as rp
+  need_rp = not hasattr(rp, "journal_risk_metrics")
+  if not need_rp:
+    try:
+      need_rp = "desk_day_total_r" not in inspect.getsource(rp.journal_risk_metrics)
+    except Exception:
+      need_rp = True
+  if need_rp:
+    importlib.reload(rp)
+    touched = True
+  lg_mod = sys.modules.get("loss_guard_ext")
+  if lg_mod is not None and not hasattr(lg_mod, "desk_closed_trades"):
+    importlib.reload(lg_mod)
   import theme as th
   if not hasattr(th, "progress_bar_html") or "import-flash" not in getattr(th, "_SHARED", ""):
     importlib.reload(th)
@@ -624,6 +646,35 @@ def _health_flag_html(level: str, text: str) -> str:
   return f'<span class="health-flag health-flag-{lv}">{text}</span>'
 
 
+def _json_file(path: Path) -> dict:
+  if not path.is_file():
+    return {}
+  try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+  except (OSError, json.JSONDecodeError):
+    return {}
+  return data if isinstance(data, dict) else {}
+
+
+def _book_live_quote(book: dict) -> dict:
+  """Tick bid/spread for health titles — read EA files, not snapshot fields."""
+  from live_health import live_quote
+
+  bdir = Path(str(book.get("bridge_dir") or ""))
+  conn = _json_file(bdir / "connection.json") if bdir.is_dir() else {}
+  bar = _json_file(bdir / "bar.json") if bdir.is_dir() else {}
+  q = live_quote(conn, bar)
+  if q.get("spread_text") and q.get("spread_text") != "—":
+    return q
+  snap = live_quote(
+    {"bid": book.get("bid"), "ask": book.get("ask"), "spread_points": book.get("spread_points")},
+    {"digits": book.get("digits"), "point": book.get("point")},
+  )
+  if snap.get("spread_text") and snap.get("spread_text") != "—":
+    return snap
+  return q
+
+
 def _render_health_panel(health: dict, *, sim: bool = False) -> None:
   """Per-book / per-model pipeline freshness — stuck EA/model detector."""
   if not health:
@@ -662,6 +713,15 @@ def _render_health_panel(health: dict, *, sim: bool = False) -> None:
     worker = (
       f"pid {book.get('worker_pid')}" if book.get("worker_alive") else "worker down"
     )
+    quote = _book_live_quote(book)
+    spr = quote.get("spread_text") or book.get("spread_text") or "—"
+    bid = quote.get("bid")
+    if bid is None:
+      bid = book.get("bid")
+    bid_s = f"{float(bid):.5f}".rstrip("0").rstrip(".") if bid is not None else ""
+    title_bits = f"{book.get('symbol')} {book.get('timeframe')} · spr {spr}"
+    if bid_s:
+      title_bits = f"{book.get('symbol')} {book.get('timeframe')} · {bid_s} spr {spr}"
     head_meta = (
       f"EA {book.get('ea_state')} {book.get('ea_age')} · "
       f"tick {book.get('tick_age') or '—'} · "
@@ -688,7 +748,7 @@ def _render_health_panel(health: dict, *, sim: bool = False) -> None:
       f"""
       <div class="health-book">
         <div class="health-book-head">
-          <div class="health-book-title">{book.get('symbol')} {book.get('timeframe')} · {book.get('n_models')} model(s)
+          <div class="health-book-title">{title_bits} · {book.get('n_models')} model(s)
             {_health_flag_html(book_lv, flags)}</div>
           <div class="health-book-meta">{head_meta}</div>
         </div>
@@ -998,24 +1058,39 @@ def render_live_desk() -> dict:
   a1, a2, a3, a4 = st.columns([1.3, 1, 1, 1.2])
   with a1:
     mt5_up = True
+    ea_fresh = True
     if os.name == "nt":
       try:
-        from deploy_ea import is_mt5_running
+        from deploy_ea import is_mt5_running, roster_ea_coverage
         mt5_up = bool(is_mt5_running())
+        ea_fresh = bool(roster_ea_coverage(stale_after=45.0).get("all_online"))
       except Exception:
         mt5_up = True
-    # Allow Start when MT5 is down even if workers still "Running".
-    start_disabled = bool(snap["kill_switch"] or not models or (running and mt5_up))
+        ea_fresh = True
+    need_ea_deploy = bool(os.name == "nt" and not ea_fresh)
+    # Allow Start when MT5 is down, or Deploy EA when workers are up but heartbeat is stale.
+    start_disabled = bool(
+      snap["kill_switch"] or not models or (running and mt5_up and not need_ea_deploy)
+    )
     start_why = ""
     if snap["kill_switch"]:
       start_why = "Kill đang armed — bấm Disarm kill trước."
     elif running and not mt5_up:
       start_why = "MT5 đã tắt — bấm Start để mở lại terminal (+ deploy nếu cần)."
+    elif running and need_ea_deploy:
+      start_why = "Worker đang chạy nhưng EA không heartbeat — bấm để attach lại ForgeBridgeLive."
     elif not models:
       start_why = "Chưa có model On — mở Models, bật On, Save."
     if not mt5_up and os.name == "nt":
       st.warning("XM MT5 không chạy — Start sẽ mở lại terminal64.")
-    start_label = "Start trading" if mt5_up or not running else "Mở lại MT5 + Start"
+    elif running and need_ea_deploy:
+      st.warning("EA chưa online trên chart — Start bị skip deploy vì heartbeat cũ. Bấm Deploy EA.")
+    if running and mt5_up and need_ea_deploy:
+      start_label = "Deploy EA"
+    elif mt5_up or not running:
+      start_label = "Start trading"
+    else:
+      start_label = "Mở lại MT5 + Start"
     if st.button(
       start_label,
       type="primary",
@@ -1029,7 +1104,13 @@ def render_live_desk() -> dict:
           "Start Live: check packages/OHLC → MT5/EA → workers "
           "(không remine lúc Start; remine trên nến đầu)…"
         ):
-          if running and not mt5_up:
+          if running and mt5_up and need_ea_deploy:
+            from deploy_ea import ensure_live_eas_deployed
+            dep = ensure_live_eas_deployed(
+              force=True, wait_online=True, wait_sec=60.0, stale_after=45.0,
+            )
+            out = {"n_workers": "kept", "deploy": dep, "pid": "—"}
+          elif running and not mt5_up:
             # Workers still up but terminal closed — reopen MT5 without full stop first.
             from deploy_ea import ensure_live_eas_deployed, ensure_mt5_running
             mt5 = ensure_mt5_running(wait_sec=12.0)
@@ -1039,7 +1120,7 @@ def render_live_desk() -> dict:
                 f"{mt5.get('error') or mt5.get('reason') or ''}"
               )
             dep = ensure_live_eas_deployed(
-              force=False, wait_online=True, wait_sec=45.0,
+              force=False, wait_online=True, wait_sec=45.0, stale_after=45.0,
             )
             out = {"n_workers": "kept", "deploy": dep, "pid": "—"}
             if mt5.get("started"):
@@ -1123,16 +1204,20 @@ def render_setup_page() -> None:
   with tab_risk:
     st.markdown('<div class="panel-label">1 · Loss guard</div>', unsafe_allow_html=True)
     st.caption(
-      "Sau khi lỗ/DD chạm ngưỡng → FLAT + halt book đó. "
-      "Tắt guard hoặc Clear trip gỡ halt trên worker đang chạy (không cần đợi ngày mai). "
-      "0 = tắt ngưỡng đó."
+      "Max DD ngày/tuần tính từng model (chạm → FLAT đúng model đó). "
+      "Max −R/ngày = tổng R hôm nay mọi model trên desk (chạm → FLAT tất cả). "
+      "0 = tắt ngưỡng đó. Clear trip gỡ halt."
     )
     prefs = load_risk_prefs()
     snap_r = risk_status_snapshot()
     if snap_r.get("tripped"):
       book_bit = f"{str(snap_r.get('tripped_book') or '').replace('_', ' ').upper()} · " if snap_r.get("tripped_book") else ""
+      halted_bit = ""
+      halted = snap_r.get("halted_models") or []
+      if halted:
+        halted_bit = f"models {', '.join(str(x) for x in halted[:4])} · "
       st.error(
-        f"TRIPPED · {book_bit}{snap_r.get('tripped_reason') or 'risk guard'} "
+        f"TRIPPED · {book_bit}{halted_bit}{snap_r.get('tripped_reason') or 'risk guard'} "
         f"· {snap_r.get('tripped_at') or ''}"
       )
       if st.button("Clear trip (gỡ halt, worker tiếp tục)", key="clear_risk_trip"):
@@ -1140,41 +1225,25 @@ def render_setup_page() -> None:
         st.toast("Đã gỡ halt trên worker — refresh nếu Pipeline còn ISSUES")
         st.rerun()
 
-    cstat = st.columns(4)
-    cstat[0].metric("DD hôm nay", f"{snap_r.get('day_dd_r') if snap_r.get('day_dd_r') is not None else '—'}R")
-    cstat[1].metric("DD tuần", f"{snap_r.get('week_dd_r') if snap_r.get('week_dd_r') is not None else '—'}R")
-    cstat[2].metric("R hôm nay", snap_r.get("day_total_r") if snap_r.get("day_total_r") is not None else "—")
-    cstat[3].metric("Streak thua ngày", snap_r.get("day_streak") if snap_r.get("day_streak") is not None else "—")
-
     en = st.toggle("Enable risk guard", value=bool(prefs.get("loss_guard_enabled", True)), key="risk_en")
-    r1, r2 = st.columns(2)
+    r1, r2, r3 = st.columns(3)
     with r1:
       day_dd = st.number_input(
-        "Max DD ngày (R)", min_value=0.0, max_value=100.0,
+        "Max DD ngày / model (R)", min_value=0.0, max_value=100.0,
         value=float(prefs.get("loss_guard_max_day_dd_r") or 0), step=0.5, key="risk_day_dd",
-        help="Peak-to-trough drawdown trong ngày ≥ ngưỡng → stop",
-      )
-      week_dd = st.number_input(
-        "Max DD tuần (R)", min_value=0.0, max_value=200.0,
-        value=float(prefs.get("loss_guard_max_week_dd_r") or 0), step=0.5, key="risk_week_dd",
-      )
-      day_loss = st.number_input(
-        "Max lỗ ngày (R)", min_value=0.0, max_value=100.0,
-        value=float(prefs.get("loss_guard_max_day_loss_r") or 0), step=0.5, key="risk_day_loss",
-        help="Tổng R trong ngày ≤ −ngưỡng → stop (0=tắt)",
+        help="Peak-to-trough DD trong ngày của từng model ≥ ngưỡng → FLAT model đó",
       )
     with r2:
-      week_loss = st.number_input(
-        "Max lỗ tuần (R)", min_value=0.0, max_value=200.0,
-        value=float(prefs.get("loss_guard_max_week_loss_r") or 0), step=0.5, key="risk_week_loss",
+      week_dd = st.number_input(
+        "Max DD tuần / model (R)", min_value=0.0, max_value=200.0,
+        value=float(prefs.get("loss_guard_max_week_dd_r") or 0), step=0.5, key="risk_week_dd",
+        help="Peak-to-trough DD trong tuần của từng model ≥ ngưỡng → FLAT model đó",
       )
-      day_streak = st.number_input(
-        "Max thua liên tiếp / ngày", min_value=0, max_value=50,
-        value=int(prefs.get("loss_guard_max_day") or 0), step=1, key="risk_day_streak",
-      )
-      week_streak = st.number_input(
-        "Max thua liên tiếp / tuần", min_value=0, max_value=80,
-        value=int(prefs.get("loss_guard_max_week") or 0), step=1, key="risk_week_streak",
+    with r3:
+      day_loss = st.number_input(
+        "Max −R / ngày (tổng model)", min_value=0.0, max_value=100.0,
+        value=float(prefs.get("loss_guard_max_day_loss_r") or 0), step=0.5, key="risk_day_loss",
+        help="Tổng R hôm nay mọi model ≤ −ngưỡng → FLAT tất cả (0=tắt)",
       )
 
     if st.button("Save loss guard", type="primary", key="save_risk_limits"):
@@ -1183,9 +1252,9 @@ def render_setup_page() -> None:
         loss_guard_max_day_dd_r=float(day_dd),
         loss_guard_max_week_dd_r=float(week_dd),
         loss_guard_max_day_loss_r=float(day_loss),
-        loss_guard_max_week_loss_r=float(week_loss),
-        loss_guard_max_day=int(day_streak),
-        loss_guard_max_week=int(week_streak),
+        loss_guard_max_week_loss_r=0.0,
+        loss_guard_max_day=0,
+        loss_guard_max_week=0,
       )
       try:
         from bridge_control import save_config
@@ -1194,9 +1263,9 @@ def render_setup_page() -> None:
           loss_guard_max_day_dd_r=float(day_dd),
           loss_guard_max_week_dd_r=float(week_dd),
           loss_guard_max_day_loss_r=float(day_loss),
-          loss_guard_max_week_loss_r=float(week_loss),
-          loss_guard_max_day=int(day_streak),
-          loss_guard_max_week=int(week_streak),
+          loss_guard_max_week_loss_r=0.0,
+          loss_guard_max_day=0,
+          loss_guard_max_week=0,
         )
       except Exception:
         pass

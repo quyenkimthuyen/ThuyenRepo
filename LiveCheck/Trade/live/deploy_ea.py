@@ -352,37 +352,24 @@ def _age_seconds(ts: datetime | None) -> float | None:
 def book_ea_status(book: dict[str, Any], *, stale_after: float = 180.0) -> dict[str, Any]:
   bdir = Path(book["bridge_dir"])
   chart = read_chart_identity(bdir)
-  conn = {}
+  conn: dict[str, Any] = {}
+  conn_path = bdir / "connection.json"
   try:
-    p = bdir / "connection.json"
-    if p.exists():
-      conn = json.loads(p.read_text(encoding="utf-8")) or {}
+    if conn_path.exists():
+      conn = json.loads(conn_path.read_text(encoding="utf-8")) or {}
   except (OSError, json.JSONDecodeError):
     conn = {}
-  bar = {}
+  # Heartbeat = when the EA last wrote connection.json. Never use bar_time
+  # (candle open) — that can look "fresh" while the EA is off the chart.
+  age: float | None = None
   try:
-    p = bdir / "bar.json"
-    if p.exists():
-      bar = json.loads(p.read_text(encoding="utf-8")) or {}
-  except (OSError, json.JSONDecodeError):
-    bar = {}
-  ts = _parse_ts(
-    conn.get("updated_at")
-    or conn.get("ts")
-    or bar.get("time")
-    or bar.get("bar_time")
-    or bar.get("updated_at")
-  )
-  age = _age_seconds(ts)
+    if conn_path.exists():
+      age = max(0.0, time.time() - conn_path.stat().st_mtime)
+  except OSError:
+    age = None
   if age is None:
-    # Fall back to file mtime — missing timestamps used to mark books "online" forever.
-    for candidate in (bdir / "connection.json", bdir / "bar.json"):
-      try:
-        if candidate.exists():
-          age = max(0.0, time.time() - candidate.stat().st_mtime)
-          break
-      except OSError:
-        pass
+    ts = _parse_ts(conn.get("updated_at") or conn.get("ts"))
+    age = _age_seconds(ts)
   has_identity = bool(chart.get("symbol") or chart.get("timeframe"))
   sym_ok = (not chart.get("symbol")) or chart.get("symbol") == book["symbol"]
   tf_ok = (not chart.get("timeframe")) or chart.get("timeframe") == book["timeframe"]

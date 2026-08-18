@@ -192,27 +192,11 @@ def is_kill_switch_armed() -> bool:
 
 
 def default_loss_guard_from_roster() -> dict[str, Any]:
-  """Conservative defaults; Max DD from package metrics when present."""
-  max_day = 3
-  max_week = 5
-  for row in (load_roster().get("models") or []):
-    if not row.get("enabled"):
-      continue
-    from live_config import INSTALLED_DIR
-    install = INSTALLED_DIR / str(row.get("install_id") or "")
-    metrics = _read(install / "metrics.json") or {}
-    model = _read(install / "model.json") or {}
-    dd = metrics.get("max_drawdown_r") or model.get("max_drawdown_r")
-    try:
-      if dd is not None:
-        # Match lab: int(max_dd)+1 as day streak limit floor
-        max_day = max(max_day, int(float(dd)) + 1)
-    except (TypeError, ValueError):
-      pass
+  """Conservative defaults: per-model DD day/week and optional daily −R."""
   return {
     "loss_guard_enabled": True,
-    "loss_guard_max_day": int(max_day),
-    "loss_guard_max_week": int(max_week),
+    "loss_guard_max_day": 0,
+    "loss_guard_max_week": 0,
     "loss_guard_max_day_dd_r": 6.0,
     "loss_guard_max_week_dd_r": 10.0,
     "loss_guard_max_day_loss_r": 0.0,
@@ -220,4 +204,5 @@ def default_loss_guard_from_roster() -> dict[str, Any]:
     "loss_guard_tripped": False,
     "loss_guard_tripped_at": None,
     "loss_guard_tripped_reason": None,
+    "loss_guard_halted_models": [],
   }

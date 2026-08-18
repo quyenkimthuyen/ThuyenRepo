@@ -329,6 +329,9 @@ def prepare_runtime(
     guard["loss_guard_tripped"] = False
     guard["loss_guard_tripped_at"] = None
     guard["loss_guard_tripped_reason"] = None
+  guard["loss_guard_halted_models"] = [
+    str(x) for x in (existing.get("loss_guard_halted_models") or []) if x
+  ]
 
   primary_risk = float(enabled[0].get("risk_pct") or 1.0)
   port = LIVE_SIM_PORT if sim else LIVE_BRIDGE_PORT
@@ -348,6 +351,7 @@ def prepare_runtime(
     cfg_payload["loss_guard_tripped"] = False
     cfg_payload["loss_guard_tripped_at"] = None
     cfg_payload["loss_guard_tripped_reason"] = None
+    cfg_payload["loss_guard_halted_models"] = []
     cfg = dict(cfg_payload)
   else:
     cfg = save_config(**cfg_payload)
@@ -459,6 +463,7 @@ def start_bridge(
       wait_online=True,
       wait_sec=60.0 if require_chart else 45.0,
       deploy_timeout_sec=240.0,
+      stale_after=45.0,
     )
     if require_chart:
       # Re-validate after deploy so Start fails clearly if a book is still offline

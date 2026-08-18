@@ -112,6 +112,61 @@ def _fmt_age(sec: float | None) -> str:
   return f"{int(sec // 3600)}h"
 
 
+def live_quote(conn: dict[str, Any] | None, bar: dict[str, Any] | None) -> dict[str, Any]:
+  """Live bid/ask/spread from EA connection.json (tick) with bar.json fallback."""
+  conn = conn if isinstance(conn, dict) else {}
+  bar = bar if isinstance(bar, dict) else {}
+  nested = conn.get("bar") if isinstance(conn.get("bar"), dict) else {}
+  bid = conn.get("bid")
+  ask = conn.get("ask")
+  pts = conn.get("spread_points")
+  if pts is None:
+    pts = bar.get("spread_points")
+  if pts is None:
+    pts = nested.get("spread_points")
+  digits = bar.get("digits")
+  if digits is None:
+    digits = conn.get("digits") or nested.get("digits")
+  point = bar.get("point")
+  if point is None:
+    point = conn.get("point") or nested.get("point")
+  try:
+    if pts is None and bid is not None and ask is not None and point not in (None, "", 0, 0.0):
+      pts = int(round((float(ask) - float(bid)) / float(point)))
+  except (TypeError, ValueError):
+    pass
+  try:
+    pts_n = int(pts) if pts is not None else None
+  except (TypeError, ValueError):
+    pts_n = None
+  pips = None
+  try:
+    if digits is not None:
+      d = int(digits)
+    elif point not in (None, ""):
+      d = 5 if float(point) <= 0.0001 else (3 if float(point) <= 0.01 else 2)
+    else:
+      d = 5
+    pip_div = 10 if d in (3, 5) else 1
+    if pts_n is not None:
+      pips = pts_n / float(pip_div)
+  except (TypeError, ValueError, ZeroDivisionError):
+    pips = None
+  if pips is not None:
+    text = f"{pips:.1f}p".replace(".0p", "p")
+  elif pts_n is not None:
+    text = f"{pts_n}pts"
+  else:
+    text = "—"
+  return {
+    "bid": bid,
+    "ask": ask,
+    "spread_points": pts_n,
+    "spread_pips": pips,
+    "spread_text": text,
+  }
+
+
 def _in_market_quiet_window(now: datetime | None = None) -> bool:
   """Fri ≥ MARKET_QUIET_FRI_HOUR, all Saturday, all Sunday (local)."""
   ts = now or datetime.now().astimezone()
@@ -682,6 +737,8 @@ def build_live_health(*, sim: bool = False) -> dict[str, Any]:
       "models": models_out,
       "n_models": len(models_out),
     }
+    quote = live_quote(conn if isinstance(conn, dict) else {}, bar if isinstance(bar, dict) else {})
+    book_row.update(quote)
     books_out.append(book_row)
     overall = _worst(overall, book_level)
 

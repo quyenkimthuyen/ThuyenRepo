@@ -494,12 +494,21 @@ def main() -> int:
       if not args.sim:
         try:
           from mt5_bridge.background import check_and_apply_loss_guard
+          from risk_prefs import RISK_KEYS, load_risk_prefs
+          prefs = load_risk_prefs()
+          runtime = {**load_config(), **{k: prefs[k] for k in RISK_KEYS}}
           check_and_apply_loss_guard(
             bridge_dir=bridge_dir,
             model_id=(primary.model_id if primary else None),
+            cfg=runtime,
           )
-          cfg_now = load_config()
-          if cfg_now.get("loss_guard_tripped") and cfg_now.get("loss_guard_enabled", True):
+          cfg_now = {**load_config(), **{k: prefs[k] for k in RISK_KEYS}}
+          book_wide = (
+            cfg_now.get("loss_guard_tripped")
+            and cfg_now.get("loss_guard_enabled", True)
+            and not (cfg_now.get("loss_guard_halted_models") or [])
+          )
+          if book_wide:
             write_status(
               bridge_dir,
               state="halted",
@@ -522,7 +531,12 @@ def main() -> int:
             model_id=(primary.model_id if primary else None),
           )
           cfg_now = load_config()
-          if cfg_now.get("loss_guard_tripped") and cfg_now.get("loss_guard_enabled", True):
+          book_wide = (
+            cfg_now.get("loss_guard_tripped")
+            and cfg_now.get("loss_guard_enabled", True)
+            and not (cfg_now.get("loss_guard_halted_models") or [])
+          )
+          if book_wide:
             bar = read_json(bar_path(bridge_dir))
             if isinstance(bar, dict):
               primary_id = primary.model_id if primary else None

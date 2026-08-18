@@ -180,6 +180,15 @@ def build_engines(
   return out
 
 
+def _cfg_float(data: dict, key: str, default: float = 0.0) -> float:
+  try:
+    if key not in data or data[key] is None:
+      return float(default)
+    return float(data[key])
+  except (TypeError, ValueError):
+    return float(default)
+
+
 def load_config() -> dict:
   data = _read_json(CONFIG_PATH) or {}
   bridge_dir = data.get("bridge_dir") or str(BRIDGE_DIR)
@@ -212,15 +221,26 @@ def load_config() -> dict:
     "loss_guard_max_week": int(
       data["loss_guard_max_week"] if "loss_guard_max_week" in data else 3
     ),
+    "loss_guard_max_day_dd_r": _cfg_float(data, "loss_guard_max_day_dd_r"),
+    "loss_guard_max_week_dd_r": _cfg_float(data, "loss_guard_max_week_dd_r"),
+    "loss_guard_max_day_loss_r": _cfg_float(data, "loss_guard_max_day_loss_r"),
+    "loss_guard_max_week_loss_r": _cfg_float(data, "loss_guard_max_week_loss_r"),
     "loss_guard_tripped": bool(data.get("loss_guard_tripped", False)),
     "loss_guard_tripped_at": data.get("loss_guard_tripped_at"),
     "loss_guard_tripped_reason": data.get("loss_guard_tripped_reason"),
+    "loss_guard_halted_models": [
+      str(x) for x in (data.get("loss_guard_halted_models") or []) if x
+    ],
   }
 
 
 def save_config(**updates) -> dict:
+  raw = _read_json(CONFIG_PATH) or {}
   cfg = load_config()
-  # Allow clearing nullable fields with None (e.g. service_pid)
+  # Keep extra keys (monitor_port, sim, DD limits written by Live) that
+  # load_config used to drop — worker poll save_config(last_run_at) was
+  # wiping loss_guard_max_*_dd_r so Max DD never reached evaluate().
+  merged = {**raw, **cfg}
   nullable = {
     "service_pid", "last_error", "last_action", "last_bar", "last_run_at",
     "loss_guard_tripped_at", "loss_guard_tripped_reason",
@@ -228,17 +248,17 @@ def save_config(**updates) -> dict:
   for k, v in updates.items():
     if v is None and k not in nullable:
       continue
-    cfg[k] = v
+    merged[k] = v
   if "model_ids" in updates or "model_id" in updates:
     ids = normalize_model_ids(
-      cfg.get("model_ids"),
-      fallback=cfg.get("model_id") or DEFAULT_MODEL_ID,
+      merged.get("model_ids"),
+      fallback=merged.get("model_id") or DEFAULT_MODEL_ID,
     )
-    cfg["model_ids"] = ids
+    merged["model_ids"] = ids
     if ids:
-      cfg["model_id"] = ids[0]
-  _write_json(CONFIG_PATH, cfg)
-  return cfg
+      merged["model_id"] = ids[0]
+  _write_json(CONFIG_PATH, merged)
+  return merged
 
 
 def check_and_apply_loss_guard(
@@ -261,10 +281,11 @@ def check_and_apply_loss_guard(
     trip,
     bridge_dir=bridge_dir,
     bar=bar,
-    model_id=model_id or (ids[0] if ids else runtime.get("model_id")),
-    model_ids=ids,
+    model_id=trip.get("model_id") or model_id or (ids[0] if ids else runtime.get("model_id")),
+    model_ids=([str(trip["model_id"])] if trip.get("per_model") and trip.get("model_id") else ids),
   )
-  _stop.set()
+  if not trip.get("per_model"):
+    _stop.set()
   return trip
 
 
@@ -538,20 +559,25 @@ def _cycle(
     )
 
   runtime = load_config() if not is_sim else {}
-  halt = (
+  halted_models = {
+    str(x) for x in (runtime.get("loss_guard_halted_models") or []) if x
+  }
+  svc_off = (not is_sim) and not runtime.get("enabled", True)
+  book_trip = (
     (not is_sim)
-    and (runtime.get("loss_guard_tripped") or not runtime.get("enabled", True))
+    and bool(runtime.get("loss_guard_tripped"))
+    and not halted_models
   )
+  book_halt = svc_off or book_trip
   per_model: dict[str, dict] = {}
   last_decision: dict | None = None
   for mid, eng in eng_map.items():
-    if halt:
+    if book_halt or mid in halted_models:
       from mt5_bridge.loss_guard import build_flat_halt_decision
-      decision = build_flat_halt_decision(
-        bar,
-        reason=runtime.get("loss_guard_tripped_reason") or "Loss guard / service disabled",
-        model_id=mid,
-      )
+      reason = runtime.get("loss_guard_tripped_reason") or "Loss guard / service disabled"
+      if mid in halted_models:
+        reason = runtime.get("loss_guard_tripped_reason") or f"Loss guard: {mid}"
+      decision = build_flat_halt_decision(bar, reason=reason, model_id=mid)
       decision["magic"] = eng.magic
       decision["risk_pct"] = eng.risk_pct
     else:

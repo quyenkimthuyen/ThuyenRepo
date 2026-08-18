@@ -64,6 +64,7 @@ def test_dd_guard_trips_without_streak():
   assert trip is not None
   assert trip["scope"] == "day_dd"
   assert trip["value"] >= 6.0
+  assert trip.get("per_model") is True
 
 
 def test_day_loss_r_trips():
@@ -87,3 +88,82 @@ def test_day_loss_r_trips():
   )
   assert trip is not None
   assert trip["scope"] == "day_loss"
+  assert trip.get("per_model") is False
+  assert trip["value"] == pytest.approx(-3.5)
+
+
+def test_day_loss_is_sum_across_models():
+  """Two models each −2R: neither hits 3R alone, desk sum −4R trips all."""
+  day = datetime.now().astimezone().strftime("%Y-%m-%d")
+  trades = [
+    {
+      "status": "CLOSED", "result": "LOSS", "r": -2.0, "model_id": "a",
+      "exit_time": f"{day}T10:00:00", "mode": "auto",
+    },
+    {
+      "status": "CLOSED", "result": "LOSS", "r": -2.0, "model_id": "b",
+      "exit_time": f"{day}T10:01:00", "mode": "auto",
+    },
+  ]
+  host = SimpleNamespace(
+    closed_auto_trades_chronologically=lambda trades=None, bridge_dir=None: trades or [],
+    trailing_loss_streak=lambda *a, **k: 0,
+  )
+  trip = evaluate_loss_guard_extended(
+    host,
+    {
+      "loss_guard_enabled": True,
+      "loss_guard_max_day_dd_r": 0.0,
+      "loss_guard_max_week_dd_r": 0.0,
+      "loss_guard_max_day_loss_r": 3.0,
+    },
+    trades=trades,
+  )
+  assert trip is not None
+  assert trip["scope"] == "day_loss"
+  assert trip.get("per_model") is False
+  assert trip["value"] == pytest.approx(-4.0)
+
+
+def test_dd_trips_only_the_bad_model():
+  """Two models in one book: only the one with DD ≥ 6R is halted."""
+  day = datetime.now().astimezone().strftime("%Y-%m-%d")
+  trades = []
+  for i, r in enumerate([-1.0, -1.0, -1.0]):
+    trades.append({
+      "status": "CLOSED",
+      "result": "LOSS",
+      "r": r,
+      "model_id": "good",
+      "exit_time": f"{day}T10:{i:02d}:00",
+      "mode": "auto",
+    })
+  for i, r in enumerate([-2.0, -2.0, -2.0, -2.0]):
+    trades.append({
+      "status": "CLOSED",
+      "result": "LOSS",
+      "r": r,
+      "model_id": "bad",
+      "exit_time": f"{day}T11:{i:02d}:00",
+      "mode": "auto",
+    })
+  host = SimpleNamespace(
+    closed_auto_trades_chronologically=lambda trades=None, bridge_dir=None: trades or [],
+    trailing_loss_streak=lambda *a, **k: 0,
+  )
+  trip = evaluate_loss_guard_extended(
+    host,
+    {
+      "loss_guard_enabled": True,
+      "loss_guard_max_day_dd_r": 6.0,
+      "loss_guard_max_week_dd_r": 10.0,
+      "loss_guard_max_day_loss_r": 0.0,
+    },
+    trades=trades,
+  )
+  assert trip is not None
+  assert trip["per_model"] is True
+  assert trip["model_id"] == "bad"
+  assert trip["scope"] == "day_dd"
+  assert trip["value"] >= 6.0
+

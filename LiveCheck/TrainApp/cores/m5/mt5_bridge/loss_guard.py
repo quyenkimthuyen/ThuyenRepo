@@ -282,6 +282,44 @@ def apply_loss_guard_halt(
   bridge_dir = ensure_bridge_dir(bridge_dir)
   reason = str(trip.get("reason") or "Loss guard tripped")
   now = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+  halt_mid = str(trip.get("model_id") or model_id or "").strip()
+  if trip.get("per_model") and halt_mid:
+    from mt5_bridge.background import load_config
+    halted = [str(x) for x in (load_config().get("loss_guard_halted_models") or []) if x]
+    if halt_mid not in halted:
+      halted.append(halt_mid)
+    save_config(
+      enabled=True,
+      loss_guard_halted_models=halted,
+      loss_guard_tripped=False,
+      loss_guard_tripped_at=now,
+      loss_guard_tripped_reason=reason,
+      last_error=reason,
+      last_action="FLAT",
+      last_run_at=now,
+    )
+    decision = build_flat_halt_decision(bar, reason=reason, model_id=halt_mid)
+    write_model_decision(
+      decision, bridge_dir=bridge_dir, mirror_primary=False, primary_model_id=halt_mid,
+    )
+    write_status(
+      bridge_dir,
+      state="running",
+      model_id=halt_mid,
+      model_ids=halted,
+      error=reason,
+      last_action="FLAT",
+      reason=reason,
+      halt_source="loss_guard_model",
+    )
+    append_event(
+      "system",
+      "loss_guard_halt",
+      bridge_dir=bridge_dir,
+      summary=reason,
+      payload=trip,
+    )
+    return decision
   save_config(
     enabled=False,
     loss_guard_tripped=True,

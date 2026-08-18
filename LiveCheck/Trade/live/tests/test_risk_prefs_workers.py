@@ -44,8 +44,35 @@ def test_disable_guard_clears_book_trip(tmp_path, monkeypatch):
 def test_clear_trip_updates_worker(tmp_path, monkeypatch):
   monkeypatch.setattr(rp, "RESULTS_DIR", tmp_path)
   worker = tmp_path / "mt5_bridge_worker_gbpusd_m15.json"
-  _write(worker, {"loss_guard_tripped": True, "loss_guard_tripped_reason": "x"})
+  _write(
+    worker,
+    {
+      "loss_guard_tripped": True,
+      "loss_guard_tripped_reason": "x",
+      "loss_guard_halted_models": ["tm_bad"],
+    },
+  )
   touched = rp.apply_loss_guard_to_workers(clear_trip=True)
   assert touched == ["mt5_bridge_worker_gbpusd_m15.json"]
   data = json.loads(worker.read_text(encoding="utf-8"))
   assert data["loss_guard_tripped"] is False
+  assert data.get("loss_guard_halted_models") == []
+  assert data.get("enabled") is True
+
+
+def test_halted_models_count_as_trip(tmp_path, monkeypatch):
+  monkeypatch.setattr(rp, "RESULTS_DIR", tmp_path)
+  worker = tmp_path / "mt5_bridge_worker_eurusd_m15.json"
+  _write(
+    worker,
+    {
+      "loss_guard_tripped": False,
+      "loss_guard_halted_models": ["tm_a"],
+      "loss_guard_tripped_reason": "Risk guard: tm_a DD ngày 6.00R",
+    },
+  )
+  trip = rp.any_worker_loss_guard_trip()
+  assert trip["tripped"] is True
+  assert trip["halted_models"] == ["tm_a"]
+  assert trip["book"] == "eurusd_m15"
+

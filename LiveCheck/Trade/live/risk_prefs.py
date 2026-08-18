@@ -96,6 +96,10 @@ def apply_loss_guard_to_workers(
     payload["loss_guard_tripped"] = False
     payload["loss_guard_tripped_at"] = None
     payload["loss_guard_tripped_reason"] = None
+    payload["loss_guard_halted_models"] = []
+  if clear_trip:
+    payload["enabled"] = True
+    payload["last_error"] = None
   if not payload:
     return []
   touched: list[str] = []
@@ -109,16 +113,33 @@ def apply_loss_guard_to_workers(
   return touched
 
 
-def any_worker_loss_guard_trip() -> dict[str, Any]:
-  """First per-book trip latch, if any (global config can look clear)."""
+def _halted_models_from_workers() -> list[str]:
+  seen: list[str] = []
   for path in worker_config_paths():
     data = _read(path) or {}
-    if isinstance(data, dict) and data.get("loss_guard_tripped"):
+    if not isinstance(data, dict):
+      continue
+    for mid in data.get("loss_guard_halted_models") or []:
+      sid = str(mid).strip()
+      if sid and sid not in seen:
+        seen.append(sid)
+  return seen
+
+
+def any_worker_loss_guard_trip() -> dict[str, Any]:
+  """First per-book trip latch or halted-model list, if any."""
+  for path in worker_config_paths():
+    data = _read(path) or {}
+    if not isinstance(data, dict):
+      continue
+    halted = [str(x) for x in (data.get("loss_guard_halted_models") or []) if x]
+    if data.get("loss_guard_tripped") or halted:
       return {
         "tripped": True,
         "tripped_at": data.get("loss_guard_tripped_at"),
         "tripped_reason": data.get("loss_guard_tripped_reason"),
         "book": path.stem.replace("mt5_bridge_worker_", "", 1),
+        "halted_models": halted,
       }
   return {"tripped": False}
 
@@ -148,7 +169,9 @@ def clear_loss_guard_trip() -> dict[str, Any]:
     loss_guard_tripped=False,
     loss_guard_tripped_at=None,
     loss_guard_tripped_reason=None,
+    loss_guard_halted_models=[],
     last_error=None,
+    enabled=True,
   )
   workers = []
   try:
@@ -165,16 +188,104 @@ def clear_loss_guard_trip() -> dict[str, Any]:
   }
 
 
+def _risk_bridge_dirs() -> list[Path]:
+  dirs: list[Path] = []
+  seen: set[str] = set()
+
+  def _add(path: Path) -> None:
+    try:
+      key = str(path.resolve())
+    except OSError:
+      key = str(path)
+    if key in seen:
+      return
+    seen.add(key)
+    dirs.append(Path(path))
+
+  try:
+    from books import bridge_dir, group_models_by_book
+    from package_store import load_roster
+    rows = [r for r in (load_roster().get("models") or []) if r.get("enabled")]
+    groups = group_models_by_book(rows) if rows else {}
+    for sym, tf in groups:
+      _add(bridge_dir(sym, tf, sim=False))
+  except Exception:
+    pass
+  if not dirs:
+    from live_config import MT5_ROOT
+    for path in sorted(MT5_ROOT.glob("bridge_live_*")):
+      if path.is_dir():
+        _add(path)
+  return dirs
+
+
+def journal_risk_metrics(
+  bridge_dirs: list[Path] | None = None,
+  *,
+  now: datetime | None = None,
+) -> dict[str, Any]:
+  """Per-model DD / day R from Live journals — no host bootstrap required."""
+  from journal_view import _is_closed, _trade_r, load_trades
+  from loss_guard_ext import group_trades_by_model, window_drawdown_r, window_total_r
+
+  dirs = list(bridge_dirs or [])
+  closed: list[dict] = []
+  for bdir in dirs:
+    for t in load_trades(bdir):
+      if not _is_closed(t):
+        continue
+      row = dict(t)
+      r = _trade_r(t)
+      if r is not None:
+        row["r"] = r
+      closed.append(row)
+
+  day_dds: list[float] = []
+  week_dds: list[float] = []
+  day_rs: list[float] = []
+  week_rs: list[float] = []
+  worst_dd_model = None
+  worst_dd = -1.0
+  worst_r_model = None
+  worst_r = 0.0
+  have_r = False
+  for mid, rows in group_trades_by_model(closed).items():
+    d = window_drawdown_r(rows, window="day", now=now)
+    w = window_drawdown_r(rows, window="week", now=now)
+    dr = window_total_r(rows, window="day", now=now)
+    wr = window_total_r(rows, window="week", now=now)
+    day_dds.append(d)
+    week_dds.append(w)
+    day_rs.append(dr)
+    week_rs.append(wr)
+    if d > worst_dd:
+      worst_dd = d
+      worst_dd_model = mid
+    if not have_r or dr < worst_r:
+      worst_r = dr
+      worst_r_model = mid
+      have_r = True
+  return {
+    "day_dd_r": round(max(day_dds), 4) if day_dds else 0.0,
+    "week_dd_r": round(max(week_dds), 4) if week_dds else 0.0,
+    "day_total_r": round(min(day_rs), 4) if day_rs else 0.0,
+    "desk_day_total_r": round(sum(day_rs), 4) if day_rs else 0.0,
+    "week_total_r": round(min(week_rs), 4) if week_rs else 0.0,
+    "worst_dd_model": worst_dd_model,
+    "worst_day_r_model": worst_r_model,
+    "books_scanned": len(dirs),
+    "n_closed": len(closed),
+  }
+
+
 def risk_status_snapshot() -> dict[str, Any]:
-  """UI status: prefs + live config trip + optional journal streaks/DD."""
+  """UI status: prefs + live config trip + journal DD / day R per model."""
   prefs = load_risk_prefs()
   from bridge_control import load_config
-  from live_config import BRIDGE_DIR
   cfg = load_config()
   merged = {**prefs}
   for k in RISK_KEYS:
     if k in cfg and cfg.get(k) is not None:
-      # prefer live runtime for trip flags; prefs for limits if set
       if k.startswith("loss_guard_tripped"):
         merged[k] = cfg.get(k)
   merged["loss_guard_tripped"] = bool(cfg.get("loss_guard_tripped"))
@@ -185,6 +296,11 @@ def risk_status_snapshot() -> dict[str, Any]:
     merged["loss_guard_tripped"] = True
     merged["loss_guard_tripped_at"] = book_trip.get("tripped_at") or merged.get("loss_guard_tripped_at")
     merged["loss_guard_tripped_reason"] = book_trip.get("tripped_reason") or merged.get("loss_guard_tripped_reason")
+  halted_all: list[str] = _halted_models_from_workers()
+  if book_trip.get("halted_models"):
+    for mid in book_trip["halted_models"]:
+      if mid not in halted_all:
+        halted_all.append(mid)
 
   status = {
     "prefs": prefs,
@@ -192,61 +308,21 @@ def risk_status_snapshot() -> dict[str, Any]:
     "tripped_at": merged.get("loss_guard_tripped_at"),
     "tripped_reason": merged.get("loss_guard_tripped_reason"),
     "tripped_book": book_trip.get("book") if book_trip.get("tripped") else None,
-    "day_dd_r": None,
-    "week_dd_r": None,
-    "day_total_r": None,
-    "week_total_r": None,
+    "halted_models": halted_all,
+    "day_dd_r": 0.0,
+    "week_dd_r": 0.0,
+    "day_total_r": 0.0,
+    "desk_day_total_r": 0.0,
+    "week_total_r": 0.0,
+    "worst_dd_model": None,
+    "worst_day_r_model": None,
     "day_streak": None,
     "week_streak": None,
   }
   try:
-    from runtime_bootstrap import bootstrap_host
-    from package_store import load_roster
-    rows = [r for r in (load_roster().get("models") or []) if r.get("enabled")]
-    if rows:
-      bootstrap_host(rows[0].get("symbol") or "EURUSD", rows[0].get("timeframe") or "M15")
-    from mt5_bridge.loss_guard import loss_guard_status
-    from books import bridge_dir, group_models_by_book
-    groups = group_models_by_book(rows) if rows else {}
-    cfg_merge = {**prefs, **{k: cfg.get(k) for k in (
-      "loss_guard_tripped", "loss_guard_tripped_at", "loss_guard_tripped_reason",
-    )}}
-    # BUG-09: aggregate across all books (worst DD/streak, sum total R).
-    day_dds: list[float] = []
-    week_dds: list[float] = []
-    day_totals: list[float] = []
-    week_totals: list[float] = []
-    day_streaks: list[int] = []
-    week_streaks: list[int] = []
-    book_dirs = []
-    if groups:
-      for (sym, tf) in groups.keys():
-        book_dirs.append(bridge_dir(sym, tf, sim=False))
-    else:
-      book_dirs.append(BRIDGE_DIR)
-    for bdir in book_dirs:
-      st = loss_guard_status(cfg_merge, bridge_dir=bdir)
-      if st.get("day_dd_r") is not None:
-        day_dds.append(float(st["day_dd_r"]))
-      if st.get("week_dd_r") is not None:
-        week_dds.append(float(st["week_dd_r"]))
-      if st.get("day_total_r") is not None:
-        day_totals.append(float(st["day_total_r"]))
-      if st.get("week_total_r") is not None:
-        week_totals.append(float(st["week_total_r"]))
-      if st.get("day_streak") is not None:
-        day_streaks.append(int(st["day_streak"]))
-      if st.get("week_streak") is not None:
-        week_streaks.append(int(st["week_streak"]))
-    status.update({
-      "day_dd_r": max(day_dds) if day_dds else None,
-      "week_dd_r": max(week_dds) if week_dds else None,
-      "day_total_r": round(sum(day_totals), 4) if day_totals else None,
-      "week_total_r": round(sum(week_totals), 4) if week_totals else None,
-      "day_streak": max(day_streaks) if day_streaks else None,
-      "week_streak": max(week_streaks) if week_streaks else None,
-      "books_scanned": len(book_dirs),
-    })
+    metrics = journal_risk_metrics(_risk_bridge_dirs())
+    status.update(metrics)
+    status["halted_models"] = halted_all
   except Exception as exc:
     status["status_error"] = str(exc)
   return status
