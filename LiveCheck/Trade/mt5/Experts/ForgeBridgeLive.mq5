@@ -517,12 +517,7 @@ bool WritePositionsJson()
       if(!PositionSelectByTicket(ticket)) continue;
       if(PositionGetString(POSITION_SYMBOL) != _Symbol) continue;
       ulong magic = (ulong)PositionGetInteger(POSITION_MAGIC);
-      bool ours = false;
-      for(int s = 0; s < g_model_n; s++)
-      {
-         if(g_model_magics[s] == magic) { ours = true; break; }
-      }
-      if(!ours && magic != InpMagic) continue;
+      if(!MagicIsOurs(magic)) continue;
 
       string mid = ModelIdForMagic(magic);
       string typ = (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) ? "BUY" : "SELL";
@@ -561,6 +556,11 @@ bool MagicIsOurs(const ulong magic)
    for(int s = 0; s < g_model_n; s++)
       if(g_model_magics[s] == magic)
          return true;
+   // BUG-10: disabled/orphan tickets still in Live magic block
+   ulong base = (g_roster_base_magic > 0 ? g_roster_base_magic : (ulong)InpMagic);
+   const int LIVE_MAGIC_SPAN = 15;
+   if(magic >= base && magic < base + (ulong)LIVE_MAGIC_SPAN)
+      return true;
    return false;
 }
 
@@ -1139,7 +1139,16 @@ bool CloseAllByMagic(const string reason)
             if(g_model_magics[s] == want) { ours = true; break; }
       }
       if(!ours) continue;
-      SetActiveSlot(FindModelSlotByMagic(want));
+      int slot_close = FindModelSlotByMagic(want);
+      if(slot_close >= 0)
+         SetActiveSlot(slot_close);
+      else
+      {
+         // Orphan magic (disabled model) — keep real magic on fill, not InpMagic
+         g_active_magic = want;
+         g_active_model_id = "";
+         trade.SetExpertMagicNumber((int)want);
+      }
       string action = (PositionGetInteger(POSITION_TYPE) == POSITION_TYPE_BUY) ? "BUY" : "SELL";
       double lots = PositionGetDouble(POSITION_VOLUME);
       double entry = PositionGetDouble(POSITION_PRICE_OPEN);
@@ -1711,6 +1720,12 @@ bool OpenFromDecision(const string json)
          g_slot_sl[save_slot] = sl;
          g_slot_sl_init[save_slot] = sl;
          g_slot_lots[save_slot] = lots;
+         // BUG-11: per-slot exit/trail/risk so ManageOpen does not use last-open globals
+         g_slot_risk[save_slot] = g_risk;
+         g_slot_exit_mode[save_slot] = g_exit_mode;
+         g_slot_trail_act[save_slot] = g_trail_act;
+         g_slot_trail_dist[save_slot] = g_trail_dist;
+         g_slot_max_hold[save_slot] = g_max_hold;
       }
       Print("ForgeBridge ENTERED app_signal sid=", sid,
             " model=", g_active_model_id,
@@ -1822,6 +1837,18 @@ void ManageOpen()
       if(PositionsByMagic(want) == 0)
          continue;
       SetActiveSlot(s);
+      // BUG-11: restore this model's exit params before trail / max_hold
+      if(g_slot_max_hold[s] > 0)
+      {
+         g_max_hold = g_slot_max_hold[s];
+         g_exit_mode = g_slot_exit_mode[s];
+         if(g_slot_trail_act[s] > 0)
+            g_trail_act = g_slot_trail_act[s];
+         if(g_slot_trail_dist[s] > 0)
+            g_trail_dist = g_slot_trail_dist[s];
+         if(g_slot_risk[s] > 0)
+            g_risk = g_slot_risk[s];
+      }
       for(int i = PositionsTotal() - 1; i >= 0; i--)
       {
          ulong ticket = PositionGetTicket(i);

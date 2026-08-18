@@ -209,6 +209,39 @@ def default_roster_from_installed(*, active_book: dict | None = None) -> list[di
   return rows
 
 
+def rebuild_roster_preserving_sticky() -> list[dict]:
+  """Rebuild roster from installed packages without wiping sticky magics/risk/enabled.
+
+  BUG-12: ``default_roster_from_installed`` sets ``magic: None`` and resets risk —
+  using it alone on Rebuild orphans open MT5 tickets. Merge prior roster fields by
+  ``install_id``, then re-run ``assign_magics``.
+  """
+  from magic_allocator import assign_magics
+
+  prev_by_iid: dict[str, dict] = {}
+  for row in (load_roster().get("models") or []):
+    iid = str(row.get("install_id") or "").strip()
+    if iid:
+      prev_by_iid[iid] = row
+
+  rows = default_roster_from_installed()
+  for row in rows:
+    iid = str(row.get("install_id") or "").strip()
+    old = prev_by_iid.get(iid)
+    if not old:
+      continue
+    if old.get("magic") is not None:
+      row["magic"] = old.get("magic")
+    if old.get("risk_pct") is not None:
+      try:
+        row["risk_pct"] = float(old.get("risk_pct"))
+      except (TypeError, ValueError):
+        pass
+    if "enabled" in old:
+      row["enabled"] = bool(old.get("enabled"))
+  return assign_magics(rows, sim=False)
+
+
 def get_installed(install_id: str) -> dict | None:
   iid = str(install_id or "").strip()
   if not iid:

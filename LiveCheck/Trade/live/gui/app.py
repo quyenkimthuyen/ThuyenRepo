@@ -117,6 +117,7 @@ from package_store import (  # noqa: E402
   delete_installed,
   list_installed,
   load_roster,
+  rebuild_roster_preserving_sticky,
   save_roster,
 )
 from books import bridge_subdir, group_models_by_book  # noqa: E402
@@ -1634,7 +1635,8 @@ def render_models_page() -> None:
           st.error(r.stderr or "sync failed")
     with s3:
       if st.button("Rebuild from installed", use_container_width=True, key="rebuild_roster_btn"):
-        save_roster(default_roster_from_installed())
+        # BUG-12: keep sticky magics / risk / enabled from prior roster
+        save_roster(rebuild_roster_preserving_sticky())
         st.rerun()
 
   # ── 2. Import ───────────────────────────────────────────────────────
