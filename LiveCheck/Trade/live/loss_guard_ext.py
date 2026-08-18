@@ -254,27 +254,76 @@ def loss_guard_status_extended(
 
 
 def patch_host_loss_guard(lg_module: Any) -> bool:
-  """Replace host evaluate/status with DD-aware versions. Idempotent."""
-  if getattr(lg_module, "_live_dd_ext", False):
-    return False
-  # Final_app already has DD — leave as-is
-  if hasattr(lg_module, "window_drawdown_r") and hasattr(lg_module, "window_total_r"):
-    lg_module._live_dd_ext = True
-    return False
+  """Replace host evaluate/status with DD-aware versions; wrap halt to close tickets.
 
-  def evaluate_loss_guard(cfg=None, *, bridge_dir=None, trades=None, now=None):  # noqa: ANN001
-    return evaluate_loss_guard_extended(
-      lg_module, cfg, bridge_dir=bridge_dir, trades=trades, now=now,
-    )
+  Idempotent. Always installs BUG-14 close-command wrap even when host already
+  has DD helpers (Final_app).
+  """
+  changed = False
 
-  def loss_guard_status(cfg=None, *, bridge_dir=None, trades=None, now=None):  # noqa: ANN001
-    return loss_guard_status_extended(
-      lg_module, cfg, bridge_dir=bridge_dir, trades=trades, now=now,
-    )
+  if not getattr(lg_module, "_live_dd_ext", False):
+    if hasattr(lg_module, "window_drawdown_r") and hasattr(lg_module, "window_total_r"):
+      lg_module._live_dd_ext = True
+    else:
+      def evaluate_loss_guard(cfg=None, *, bridge_dir=None, trades=None, now=None):  # noqa: ANN001
+        return evaluate_loss_guard_extended(
+          lg_module, cfg, bridge_dir=bridge_dir, trades=trades, now=now,
+        )
 
-  lg_module.window_drawdown_r = window_drawdown_r
-  lg_module.window_total_r = window_total_r
-  lg_module.evaluate_loss_guard = evaluate_loss_guard
-  lg_module.loss_guard_status = loss_guard_status
-  lg_module._live_dd_ext = True
-  return True
+      def loss_guard_status(cfg=None, *, bridge_dir=None, trades=None, now=None):  # noqa: ANN001
+        return loss_guard_status_extended(
+          lg_module, cfg, bridge_dir=bridge_dir, trades=trades, now=now,
+        )
+
+      lg_module.window_drawdown_r = window_drawdown_r
+      lg_module.window_total_r = window_total_r
+      lg_module.evaluate_loss_guard = evaluate_loss_guard
+      lg_module.loss_guard_status = loss_guard_status
+      lg_module._live_dd_ext = True
+      changed = True
+
+  # BUG-14: FLAT decision alone does not close open tickets — EA needs command.json.
+  if not getattr(lg_module, "_live_halt_close", False) and hasattr(
+    lg_module, "apply_loss_guard_halt",
+  ):
+    _orig_apply = lg_module.apply_loss_guard_halt
+
+    def apply_loss_guard_halt(  # noqa: ANN001
+      trip,
+      *,
+      bridge_dir=None,
+      bar=None,
+      model_id=None,
+      model_ids=None,
+    ):
+      already = False
+      try:
+        from mt5_bridge.background import load_config
+        already = bool((load_config() or {}).get("loss_guard_tripped"))
+      except Exception:
+        already = False
+      decision = _orig_apply(
+        trip,
+        bridge_dir=bridge_dir,
+        bar=bar,
+        model_id=model_id,
+        model_ids=model_ids,
+      )
+      if not already:
+        try:
+          from mt5_bridge.protocol import write_manual_close_command
+          reason = str((trip or {}).get("reason") or "loss_guard")
+          write_manual_close_command(
+            bridge_dir=bridge_dir,
+            reason=f"loss_guard:{reason}"[:240],
+            signal_id="loss_guard_halt_close",
+          )
+        except Exception:
+          pass
+      return decision
+
+    lg_module.apply_loss_guard_halt = apply_loss_guard_halt
+    lg_module._live_halt_close = True
+    changed = True
+
+  return changed

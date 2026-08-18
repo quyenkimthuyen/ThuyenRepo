@@ -785,9 +785,6 @@ def stop_bridge(
     bdir = Path(w.get("bridge_dir") or "")
     if bdir:
       _write(bdir / "status.json", {"updated_at": _now(), "state": "stopped", "sim": bool(sim)})
-      if flatten and not sim:
-        from safety import write_flatten_command
-        write_flatten_command(reason="bridge_stop", bridge_dir=bdir)
       if sim and bdir.name.startswith("bridge_sim_live"):
         try:
           ctrl = _read(bdir / "sim_control.json") or {}
@@ -814,9 +811,11 @@ def stop_bridge(
   save_workers([], sim=sim)
   if not sim:
     save_config(enabled=False, service_pid=None, last_action="stop", workers=0)
-  if flatten and not sim and not workers:
+  if flatten and not sim:
+    # BUG-13: full discovery (roster + workers + disk). Passing a single
+    # bridge_dir skips orphan books that are no longer in live_workers.json.
     from safety import write_flatten_command
-    write_flatten_command(reason="bridge_stop", bridge_dir=BRIDGE_DIR)
+    write_flatten_command(reason="bridge_stop")
   if not sim:
     _write(BRIDGE_DIR / "status.json", {"updated_at": _now(), "state": "stopped"})
   try:
